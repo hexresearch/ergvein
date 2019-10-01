@@ -7,7 +7,7 @@ in reflex-platform.project ({ pkgs, ... }: {
   };
   shells = {
     ghc = [
-
+        "ergvein-index-api"
     ];
   };
   overrides = import ./overrides.nix { inherit reflex-platform; };
