@@ -1,0 +1,112 @@
+name:                ergvein-wallet
+version:             0.1.0.0
+synopsis:            Cryptocurrency wallet with atomic swaps for desktop and Android.
+description:         See README.md
+category:            Cryptocurrency
+build-type:          Simple
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+    Ergvein.Wallet
+    Ergvein.Wallet.Elements
+    Ergvein.Wallet.Env
+    Ergvein.Wallet.Id
+    Ergvein.Wallet.Input
+    Ergvein.Wallet.Main
+    Ergvein.Wallet.Settings
+    Ergvein.Wallet.Style
+    Ergvein.Wallet.Style.TH
+    Ergvein.Wallet.Yaml
+  build-depends:
+      base
+    , aeson
+    , base16-bytestring
+    , bytestring                >= 0.10     && < 0.11
+    , clay                      >= 0.13     && < 0.14
+    , containers                >= 0.5      && < 0.6
+    , data-default
+    , directory
+    , ergvein-common            >= 1.0      && < 1.1
+    , exceptions
+    , file-embed                >= 0.0      && < 0.1
+    , http-client
+    , http-client-tls
+    , interpolatedstring-perl6
+    , jsaddle
+    , lens                      >= 4.16     && < 4.17
+    , mtl                       >= 2.2      && < 2.3
+    , process                   >= 1.6      && < 1.7
+    , random
+    , reflex                    >= 0.5      && < 0.6
+    , reflex-dom                >= 0.4      && < 0.6
+    , safe
+    , servant                   >= 0.14     && < 0.15
+    , servant-client            >= 0.14
+    , servant-client-core       >= 0.14
+    , template-haskell
+    , text                      >= 1.2      && < 1.3
+    , time
+    , vector
+    , yaml
+  default-language:    Haskell2010
+  default-extensions:
+    BangPatterns
+    ConstraintKinds
+    DataKinds
+    DeriveDataTypeable
+    DeriveGeneric
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    LambdaCase
+    OverloadedStrings
+    RankNTypes
+    RecordWildCards
+    RecursiveDo
+    ScopedTypeVariables
+    StandaloneDeriving
+    TemplateHaskell
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeOperators
+
+executable ergvein
+  hs-source-dirs:
+      app
+  main-is:             Main.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base
+    , data-default
+    , ergvein-wallet
+    , optparse-generic  >= 1.3      && < 1.4
+    , reflex
+    , reflex-dom
+  default-language:    Haskell2010
+  default-extensions:
+    BangPatterns
+    ConstraintKinds
+    DataKinds
+    DeriveDataTypeable
+    DeriveGeneric
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    LambdaCase
+    OverloadedStrings
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    StandaloneDeriving
+    TemplateHaskell
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeOperators
