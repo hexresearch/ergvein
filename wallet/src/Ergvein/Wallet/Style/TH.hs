@@ -9,7 +9,7 @@ import Data.FileEmbed
 import Data.ByteString (ByteString)
 
 milligramCss :: ByteString
-milligramCss = $(embedFile "statics/css/milligram.min.css")
+milligramCss = $(embedFile "static/css/milligram.min.css")
 
 tooltipCss :: ByteString
-tooltipCss = $(embedFile "statics/css/tooltip.css")
+tooltipCss = $(embedFile "static/css/tooltip.css")
