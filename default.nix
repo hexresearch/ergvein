@@ -1,4 +1,4 @@
-{ }:
+{ release ? false }:
 let
   reflex-platform = import ./reflex-platform.nix {};
 in reflex-platform.project ({ pkgs, ... }: {
