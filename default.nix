@@ -27,11 +27,13 @@ in reflex-platform.project ({ pkgs, ... }: {
       code = "1";
       name = "Alpha";
     };
-    releaseKey = if release then {
+    releaseKey = let
+      readPassword = file: builtins.replaceStrings ["\n"] [""] (builtins.readFile file);
+    in if release then {
       storeFile = ./release/release.keystore;
-      storePassword = builtins.readFile ./release/password;
+      storePassword = readPassword ./release/password;
       keyAlias = "ergvein_releasekey";
-      keyPassword = builtins.readFile ./release/password;
+      keyPassword = readPassword ./release/password;
     } else null;
   };
 
