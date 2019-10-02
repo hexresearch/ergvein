@@ -1,3 +1,4 @@
 packages:
-  ./wallet
   ./common
+  ./ergvein-index-api
+  ./wallet

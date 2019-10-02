@@ -24,6 +24,8 @@ in (self: super: let
     dontHaddock ( self.callCabal2nix name (ingnoreGarbage path) args ));
   in {
     # Internal
+    ergvein-common = ingnoreGarbage super.ergvein-common;
+    ergvein-index-api = ingnoreGarbage super.ergvein-index-api;
     ergvein-wallet = ingnoreGarbage super.ergvein-wallet;
     # Overrides
     clay = self.callPackage ./derivations/clay.nix {};
