@@ -4,7 +4,7 @@ let
 in reflex-platform.project ({ pkgs, ... }: {
   packages = {
     ergvein-common = ./common;
-    ergvein-index-api = ./ergvein-index-api;
+    ergvein-index-api = ./index-api;
     ergvein-wallet = ./wallet;
   };
   shells = {
