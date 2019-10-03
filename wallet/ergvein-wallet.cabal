@@ -15,6 +15,7 @@ library
     Ergvein.Wallet.Id
     Ergvein.Wallet.Input
     Ergvein.Wallet.Main
+    Ergvein.Wallet.Page.Seed
     Ergvein.Wallet.Settings
     Ergvein.Wallet.Style
     Ergvein.Wallet.Style.TH
