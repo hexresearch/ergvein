@@ -5,7 +5,16 @@ description:         See README.md
 category:            Cryptocurrency
 build-type:          Simple
 cabal-version:       >=1.10
-license:             See LICENSE in the root of the repository
+license:             MIT
+license-file:        LICENSE
+copyright:           2019 Investment Solutions AG
+author:
+                     - Anton Gushcha
+                     - Aminion
+                     - Vladimir Krutkin
+maintainer:          - Anton Gushcha <ncrashed@gmail.com>
+                     - Aminion <>
+                     - Vladimir Krutkin <krutkinvs@gmail.com>
 
 library
   hs-source-dirs:      src
