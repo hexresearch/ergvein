@@ -10,8 +10,10 @@ library
   hs-source-dirs:      src
   exposed-modules:
       Ergvein.Index.API
+      Ergvein.Index.API.Types
       Ergvein.Index.API.V1
-      Ergvein.Index.API.Models
+      Ergvein.Types.Currency
+
   build-depends:
         base
       , aeson
