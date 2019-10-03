@@ -1,7 +1,8 @@
 # Pin version of nixpkgs to ensure build reproduceability
 import ((import <nixpkgs> {}).fetchFromGitHub {
-  owner = "reflex-frp";
+  owner = "hexresearch";
   repo = "reflex-platform";
-  rev = "a7cd9a23e7faa9c2545a4c111229e28208e42351";
-  sha256  = "0y52rfrhk4zszgprpyni51l0pgq18dg695k5bmpd62c3zxar5mvm";
+  rev = "c87ab9bb1e760836c299a82dbcf1234d04a9ca9c";
+  sha256  = "0m72g99rb6g6b89b5wwwwr6ss40rsaj9ild7wswyzxgzq1cphwj0";
 })
+/* import ../reflex-platform */

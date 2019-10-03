@@ -30,5 +30,6 @@ in (self: super: let
     ergvein-crypto = ingnoreGarbage super.ergvein-crypto;
     # Overrides
     clay = self.callPackage ./derivations/clay.nix {};
+    cryptonite = self.callPackage ./derivations/cryptonite.nix {};
   }
 )
