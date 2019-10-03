@@ -1,6 +1,10 @@
 { release ? false }:
 let
-  reflex-platform = import ./reflex-platform.nix {};
+  reflex-platform = (import ./reflex-platform.nix) {
+    nixpkgsOverlays = [
+      (self: super: import ./nixpkgs-overlays/default.nix self super)
+    ];
+  };
 in reflex-platform.project ({ pkgs, ... }: {
   packages = {
     ergvein-common = ./common;

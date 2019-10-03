@@ -43,6 +43,7 @@ library
     , safe
     , template-haskell
     , text                      >= 1.2      && < 1.3
+    , secp256k1-haskell
     , time
     , vector
     , yaml
