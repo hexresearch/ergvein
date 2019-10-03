@@ -1,9 +1,9 @@
-{-# LANGUAGE OverloadedStrings #-}
 module Ergvein.Crypto.Keys(
     example
   , defaultEntropyLength
   , getEntropy
   , toMnemonic
+  , mnemonicToSeed
   , wordListEnglish
   ) where
 
