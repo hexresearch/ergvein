@@ -27,6 +27,7 @@ in (self: super: let
     ergvein-common = ingnoreGarbage super.ergvein-common;
     ergvein-index-api = ingnoreGarbage super.ergvein-index-api;
     ergvein-wallet = ingnoreGarbage super.ergvein-wallet;
+    ergvein-crypto = ingnoreGarbage super.ergvein-crypto;
     # Overrides
     clay = self.callPackage ./derivations/clay.nix {};
   }
