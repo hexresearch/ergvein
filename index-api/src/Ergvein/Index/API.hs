@@ -3,7 +3,7 @@ module Ergvein.Index.API where
 import Servant.API
 import Servant.API.Generic
 import Ergvein.Index.API.V1
-import Ergvein.Index.API.Models
+import Ergvein.Types.Currency
 
 data IndexVersionedApi route = IndexVersionedApi
     { 
