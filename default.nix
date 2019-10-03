@@ -4,6 +4,7 @@ let
     nixpkgsOverlays = [
       (self: super: import ./nixpkgs-overlays/default.nix self super)
     ];
+    config.android_sdk.accept_license = true;
   };
 in reflex-platform.project ({ pkgs, ... }: {
   packages = {
@@ -27,6 +28,9 @@ in reflex-platform.project ({ pkgs, ... }: {
     resources = ./wallet/static/res;
     assets = ./wallet/static/assets;
     iconPath = "@drawable/ic_launcher";
+    nativeDependencies = nixpkgs: haskellPackages: {
+      "libsecp256k1.so" = "${nixpkgs.secp256k1}/lib/libsecp256k1.so";
+    };
     version = {
       code = "1";
       name = "Alpha";

@@ -38,8 +38,8 @@ library
     , mtl                       >= 2.2      && < 2.3
     , process                   >= 1.6      && < 1.7
     , random
-    , reflex                    >= 0.5      && < 0.6
-    , reflex-dom                >= 0.4      && < 0.6
+    , reflex                    >= 0.4      && < 0.7
+    , reflex-dom                >= 0.4      && < 0.7
     , safe
     , template-haskell
     , text                      >= 1.2      && < 1.3
