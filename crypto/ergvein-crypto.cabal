@@ -17,7 +17,7 @@ library
     , vector
     , bytestring                >= 0.10     && < 0.11
     , entropy
-    , haskoin-core
+    , haskoin-core              >= 0.8.0    && < 0.8.1
   default-language:    Haskell2010
   default-extensions:
     OverloadedStrings
