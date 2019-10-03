@@ -5,13 +5,19 @@ module Ergvein.Wallet.Env(
   , Env(..)
   , newEnv
   , runEnv
+  -- * Reexports
+  , Text
+  , void
+  , module Reflex.Dom
   ) where
 
 import Control.Monad.Fix
 import Control.Monad.Reader
+import Data.Functor (void)
+import Data.Text (Text)
+import Ergvein.Wallet.Settings
 import Reflex
 import Reflex.Dom
-import Ergvein.Wallet.Settings
 
 type MonadFrontConstr t m = (MonadHold t m
   , PostBuild t m

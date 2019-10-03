@@ -4,8 +4,7 @@ module Ergvein.Wallet.Main(
 
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Env
-import Reflex.Dom
+import Ergvein.Wallet.Page.Seed
 
 frontend :: MonadFront t m => m ()
-frontend = container $ do
-  h2 $ text "Wallet"
+frontend = void mnemonicWidget
