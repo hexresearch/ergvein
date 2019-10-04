@@ -7,4 +7,4 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Seed
 
 frontend :: MonadFront t m => m ()
-frontend = void mnemonicWidget
+frontend = void mnemonicPage

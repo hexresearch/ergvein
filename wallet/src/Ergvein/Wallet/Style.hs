@@ -23,10 +23,10 @@ frontendCss = do
     backgroundColor majorBackground
 
 textColor :: Color
-textColor = rgb 179 184 229
+textColor = rgb 0 0 0
 
 majorBackground :: Color
-majorBackground = rgb 24 41 82
+majorBackground = rgb 255 255 255
 
 minorBackground :: Color
 minorBackground = rgb 59 78 122
