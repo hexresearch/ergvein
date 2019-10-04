@@ -1,24 +1,26 @@
 module Ergvein.Crypto.Keys(
-    example
-  , defaultEntropyLength
-  , getEntropy
+    getEntropy
   , toMnemonic
   , mnemonicToSeed
+  , makeXPrvKey
+  , deriveXPubKey
+  , xPubAddr
+  , addrToString
   , wordListEnglish
+  , example
   ) where
 
-import           Data.Text            (Text)
-import           Data.Vector          (Vector, fromListN)
-import qualified System.Entropy       as E
-import           Network.Haskoin.Keys (Entropy, Mnemonic, Passphrase, Seed, XPrvKey)
-import qualified Network.Haskoin.Keys as H
-import           Data.ByteString      (ByteString)
-import qualified Data.ByteString      as BS
-
-example :: IO ()
-example = do
-  ent <- getEntropy
-  print $ fmap makeXPrvKey (toMnemonic ent >>= mnemonicToSeed BS.empty)
+import           Data.Text                 (Text)
+import           Data.Vector               (Vector, fromListN)
+import qualified System.Entropy            as E
+import           Network.Haskoin.Keys      (Entropy, Mnemonic, Passphrase, Seed, XPrvKey, XPubKey)
+import qualified Network.Haskoin.Keys      as H
+import           Network.Haskoin.Address   (Address)
+import qualified Network.Haskoin.Address   as H
+import           Network.Haskoin.Constants (Network)
+import qualified Network.Haskoin.Constants as H
+import           Data.ByteString           (ByteString)
+import qualified Data.ByteString           as BS
 
 -- | According to the BIP32 the allowed size of entropy is between 16 and 64 bytes (32 bytes is advised).
 -- The mnemonic must encode entropy in a multiple of 4 bytes.
@@ -37,6 +39,43 @@ mnemonicToSeed = H.mnemonicToSeed
 
 makeXPrvKey :: ByteString -> XPrvKey
 makeXPrvKey = H.makeXPrvKey
+
+deriveXPubKey :: XPrvKey -> XPubKey
+deriveXPubKey = H.deriveXPubKey
+
+xPubAddr :: XPubKey -> Address
+xPubAddr = H.xPubAddr
+
+addrToString :: Network -> Address -> Maybe Text
+addrToString = H.addrToString
+
+example :: IO ()
+example = do
+  ent <- getEntropy
+  putStrLn "Entropy:"
+  print ent
+  let mnemonic = toMnemonic ent
+  putStrLn "\nMnemonic:"
+  print mnemonic
+  let seed = mnemonic >>= mnemonicToSeed BS.empty
+  putStrLn "\nSeed:"
+  print seed
+  let xPrvKey = fmap makeXPrvKey seed
+  putStrLn "\nExtended private key:"
+  print xPrvKey
+  let xPubKey = fmap deriveXPubKey xPrvKey
+  putStrLn "\nExtended public key:"
+  print xPubKey
+  let address = fmap xPubAddr xPubKey
+  putStrLn "\nAddress:"
+  print address
+  let network = H.btc
+  case address of
+    Left err -> print err
+    Right addr -> do
+      let humanReadableAddress = addrToString network addr
+      putStrLn "\nHuman readable address:"
+      print humanReadableAddress
 
 -- | Standard English dictionary from BIP-39 specification.
 wordListEnglish :: Vector Text
