@@ -10,20 +10,19 @@ type GetResp a = Get '[JSON] a
 type PostResp a = Post '[JSON] a
 
 
-type IndexGetBalance = "balance" :> QueryParam "pubKeyScriptHash" PubKeyScriptHash :> GetResp BalanceResponse
+type IndexGetBalance        = "balance" :> QueryParam "pubKeyScriptHash" PubKeyScriptHash :> GetResp BalanceResponse
 
-type IndexGetTxHashHistory = QueryParam "pubKeyScriptHash" PubKeyScriptHash :> GetResp TxHashHistoryResponse
+type IndexGetTxHashHistory  = "history" :> QueryParam "pubKeyScriptHash" PubKeyScriptHash :> GetResp TxHashHistoryResponse
 
-type IndexGetTxMerkleProof = 
-       QueryParam "pubKeyScriptHash" PubKeyScriptHash
-    :> QueryParam "blockHeight" BlockHeight
+type IndexGetTxMerkleProof  = "merkle" 
+    :> QueryParam "pubKeyScriptHash" PubKeyScriptHash :> QueryParam "blockHeight" BlockHeight 
     :> GetResp TxHashHistoryResponse
 
-type IndexGetTxHexView = Body [TxId] :> PostResp TxHexViewResponse
+type IndexGetTxHexView      = "view" :> Body [TxId] :> PostResp TxHexViewResponse
 
 type IndexGetTxFeeHistogram = "fee" :> "histogram" :> GetResp TxBroadcastResponse
 
-type IndexTxBroadcast = QueryParam "txHexView" TxHexView :> GetResp TxBroadcastResponse
+type IndexTxBroadcast       = "broadcast" :> Body TxHexView :> PostResp TxBroadcastResponse
     
 data IndexApi route = IndexApi
     { indexGetBalance        :: route :- IndexGetBalance
