@@ -24,8 +24,11 @@ type TxBlockIndex = Word
 -- | Node in Merkle tree, hash of concatenated child nodes
 type MerkleSum = Text
 
--- | Brunch
+-- | Brunch of MerkleSums in Merkle tree, for transaction validation, deepest MerkleSum first
 type TxMerkleProof = [MerkleSum]
+
+-- | Fee included with transaction as price for processing transaction by miner
+type TxFee = MoneyUnit
 
 -- | SHA256 hash of locking script with big-endian byte order, used to track transfers due inaccessibility
 -- of transaction addresses when indexer scans blockchain

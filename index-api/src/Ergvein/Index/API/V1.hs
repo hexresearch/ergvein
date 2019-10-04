@@ -21,12 +21,16 @@ type IndexGetTxMerkleProof =
 
 type IndexGetTxHexView = Body [TxId] :> PostResp TxHexViewResponse
 
+
 type IndexTxBroadcast = QueryParam "txHexView" TxHexView :> GetResp TxBroadcastResponse
+
+type IndexGetTxFeeHistogram = GetResp TxBroadcastResponse
     
 data IndexApi route = IndexApi
     { indexGetBalance        :: route :- IndexGetBalance
     , indexGetTxHashHistory  :: route :- IndexGetTxHashHistory
     , indexGetTxMerkleProof  :: route :- IndexGetTxMerkleProof
     , indexGetTxHexView      :: route :- IndexGetTxHexView
-    , indexTxBroadcast       :: route :- IndexTxBroadcast
+    , indexGetTxFeeHistogram :: route :- IndexGetTxFeeHistogram
+    , indexTxBroadcast       :: route :- IndexTxBroadcast  
     }
