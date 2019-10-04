@@ -6,7 +6,7 @@ module Ergvein.Wallet.Input(
 
 import Data.Text (Text)
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Env
+import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Id
 import Reflex.Dom
 

@@ -3,7 +3,7 @@ module Ergvein.Wallet.Main(
   ) where
 
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Env
+import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Seed
 
 frontend :: MonadFront t m => m ()

@@ -3,7 +3,7 @@ module Ergvein.Wallet.Page.Seed(
     mnemonicWidget
   ) where
 
-import Ergvein.Wallet.Env
+import Ergvein.Wallet.Monad
 
 mnemonicWidget :: MonadFront t m => m (Event t Text)
 mnemonicWidget = pure never

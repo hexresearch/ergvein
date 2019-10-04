@@ -11,10 +11,11 @@ library
   exposed-modules:
     Ergvein.Wallet
     Ergvein.Wallet.Elements
-    Ergvein.Wallet.Env
     Ergvein.Wallet.Id
     Ergvein.Wallet.Input
     Ergvein.Wallet.Main
+    Ergvein.Wallet.Monad
+    Ergvein.Wallet.Monad.Env
     Ergvein.Wallet.Page.Seed
     Ergvein.Wallet.Settings
     Ergvein.Wallet.Style
