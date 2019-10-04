@@ -44,6 +44,7 @@ frontendCss r = do
     color textColor
     backgroundColor majorBackground
     fontFamily ["Roboto"] []
+  buttonCss
   mnemonicWidgetCss
 
 textColor :: Color
@@ -54,6 +55,11 @@ majorBackground = rgb 255 255 255
 
 minorBackground :: Color
 minorBackground = rgb 59 78 122
+
+buttonCss :: Css
+buttonCss = do
+  ".button.button-outline" ? color black
+  ".button" ? border solid (rem 0.1) black
 
 fontFamilies :: Resources -> Css
 fontFamilies Resources{..} = do
