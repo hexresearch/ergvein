@@ -12,6 +12,7 @@ library
     Ergvein.Wallet
     Ergvein.Wallet.Elements
     Ergvein.Wallet.Embed
+    Ergvein.Wallet.Embed.TH
     Ergvein.Wallet.Id
     Ergvein.Wallet.Input
     Ergvein.Wallet.Main
@@ -20,7 +21,6 @@ library
     Ergvein.Wallet.Page.Seed
     Ergvein.Wallet.Settings
     Ergvein.Wallet.Style
-    Ergvein.Wallet.Style.TH
     Ergvein.Wallet.Yaml
   build-depends:
       base
