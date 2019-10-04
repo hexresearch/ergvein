@@ -39,6 +39,7 @@ library
     , interpolatedstring-perl6
     , jsaddle
     , lens                      >= 4.16     && < 4.17
+    , MonadRandom
     , mtl                       >= 2.2      && < 2.3
     , process                   >= 1.6      && < 1.7
     , random

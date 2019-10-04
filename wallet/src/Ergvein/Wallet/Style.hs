@@ -3,6 +3,7 @@ module Ergvein.Wallet.Style(
   ) where
 
 import Clay
+import Clay.Selector
 import Data.ByteString (ByteString)
 import Data.ByteString.Lazy (toStrict)
 import Data.Text (Text)
@@ -80,3 +81,13 @@ mnemonicWidgetCss = do
     fontSize $ pt 18
   ".mnemonic-warn" ? do
     marginTop $ px 30
+  ".guess-buttons" ? textAlign center
+  ".guess-button" ? do
+    marginRight $ px 30
+    display inlineBlock
+  let mkGuess cl c = do
+        cl ? backgroundColor c
+        cl `with` hover ? backgroundColor c
+        cl `with` focus ? backgroundColor c
+  mkGuess ".guess-true" green
+  mkGuess ".guess-false" red
