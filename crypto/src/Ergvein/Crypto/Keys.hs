@@ -46,7 +46,7 @@ deriveXPubKey = H.deriveXPubKey
 xPubAddr :: XPubKey -> Address
 xPubAddr = H.xPubAddr
 
-addrToString :: Network -> Address -> Maybe Text
+addrToString :: Network -> Address -> Text
 addrToString = H.addrToString
 
 example :: IO ()
