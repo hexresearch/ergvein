@@ -11,10 +11,12 @@ library
   exposed-modules:
     Ergvein.Wallet
     Ergvein.Wallet.Elements
-    Ergvein.Wallet.Env
     Ergvein.Wallet.Id
     Ergvein.Wallet.Input
     Ergvein.Wallet.Main
+    Ergvein.Wallet.Monad
+    Ergvein.Wallet.Monad.Env
+    Ergvein.Wallet.Page.Seed
     Ergvein.Wallet.Settings
     Ergvein.Wallet.Style
     Ergvein.Wallet.Style.TH
@@ -37,11 +39,12 @@ library
     , mtl                       >= 2.2      && < 2.3
     , process                   >= 1.6      && < 1.7
     , random
-    , reflex                    >= 0.5      && < 0.6
-    , reflex-dom                >= 0.4      && < 0.6
+    , reflex                    >= 0.4      && < 0.7
+    , reflex-dom                >= 0.4      && < 0.7
     , safe
     , template-haskell
     , text                      >= 1.2      && < 1.3
+    , haskoin-core
     , time
     , vector
     , yaml

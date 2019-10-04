@@ -1,31 +1,18 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Ergvein.Wallet.Env(
-    MonadFront(..)
-  , MonadFrontConstr
-  , Env(..)
+module Ergvein.Wallet.Monad.Env(
+    Env(..)
   , newEnv
   , runEnv
   ) where
 
 import Control.Monad.Fix
 import Control.Monad.Reader
+import Data.Functor (void)
+import Data.Text (Text)
+import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Monad
 import Reflex
 import Reflex.Dom
-import Ergvein.Wallet.Settings
-
-type MonadFrontConstr t m = (MonadHold t m
-  , PostBuild t m
-  , DomBuilder t m
-  , MonadFix m
-  , PerformEvent t m
-  , MonadIO (Performable m)
-  , MonadSample t (Performable m)
-  , MonadIO m
-  , TriggerEvent t m
-  , DomBuilderSpace m ~ GhcjsDomSpace)
-
-class MonadFrontConstr t m => MonadFront t m | m -> t where
-  getSettings :: m Settings
 
 data Env = Env {
   env'settings  :: !Settings

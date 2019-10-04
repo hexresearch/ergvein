@@ -29,5 +29,6 @@ in (self: super: let
     ergvein-wallet = ingnoreGarbage super.ergvein-wallet;
     # Overrides
     clay = self.callPackage ./derivations/clay.nix {};
+    cryptonite = self.callPackage ./derivations/cryptonite.nix {};
   }
 )
