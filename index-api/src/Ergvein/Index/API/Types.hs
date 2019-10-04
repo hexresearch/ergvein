@@ -1,6 +1,5 @@
 module Ergvein.Index.API.Types where
 
-import Data.SortedList
 import Ergvein.Aeson
 import Ergvein.Types.Currency
 
