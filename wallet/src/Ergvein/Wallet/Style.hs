@@ -43,6 +43,8 @@ frontendCss r = do
   body ? do
     color textColor
     backgroundColor majorBackground
+    fontFamily ["Roboto"] []
+  mnemonicWidgetCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -54,4 +56,21 @@ minorBackground :: Color
 minorBackground = rgb 59 78 122
 
 fontFamilies :: Resources -> Css
-fontFamilies Resources{..} = pure ()
+fontFamilies Resources{..} = do
+  makeFontFace "Roboto" robotoRegularUrl
+  makeFontFace "Roboto-Bold" robotoBoldUrl
+  makeFontFace "Roboto-Black" robotoBlackUrl
+  makeFontFace "Roboto-Medium" robotoMediumUrl
+  where
+    makeFontFace name url = fontFace $ do
+      fontFamily [name] []
+      fontFaceSrc [FontFaceSrcUrl url (Just TrueType)]
+      fontWeight $ weight 400
+
+mnemonicWidgetCss :: Css
+mnemonicWidgetCss = do
+  ".mnemonic-word" ? do
+    fontFamily ["Roboto-Medium"] []
+    fontSize $ pt 18
+  ".mnemonic-warn" ? do
+    marginTop $ px 30

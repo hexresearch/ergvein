@@ -13,8 +13,10 @@ mnemonicPage = container $ do
   pure ()
 
 mnemonicWidget :: MonadFront t m => m (Event t Text)
-mnemonicWidget = divClass "mnemonic" $ do
-  traverse_ (spanClass "mnemonic-word" . text) mockSeed
+mnemonicWidget = do
+  divClass "mnemonic-title" $ h4 $ text "Theese words are your seed phrase"
+  colonize 4 mockSeed $ divClass "column mnemonic-word" . text
+  divClass "mnemonic-warn" $ h4 $ text "It is the ONLY way to restore access to your wallet. Write it down or you will lost your money forever."
   pure never
 
 mockSeed :: [Text]
