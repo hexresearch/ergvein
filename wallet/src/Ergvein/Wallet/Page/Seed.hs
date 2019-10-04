@@ -66,7 +66,7 @@ guessButtons ws idyn = do
       classeD <- holdDyn "button button-outline guess-button" $ ffor btnE $ const $
         "button guess-button " <> if reali == i then "guess-true" else "guess-false"
       btnE <- buttonClass classeD $ pure $ ws !! i
-      delay 1 $ (if reali == i then i+1 else reali) <$ btnE
+      delay 1 $ fforMaybe btnE $ const $ if reali == i then Just (i+1) else Nothing
 
 mockSeed :: [Text]
 mockSeed = [ "inflict", "rose", "twelve", "coach", "elder", "live", "demand"
