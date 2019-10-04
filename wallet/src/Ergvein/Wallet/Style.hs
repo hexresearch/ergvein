@@ -1,6 +1,5 @@
 module Ergvein.Wallet.Style(
-    frontendCss
-  , frontendCssBS
+    compileFrontendCss
   ) where
 
 import Clay
@@ -8,7 +7,11 @@ import Data.ByteString (ByteString)
 import Data.ByteString.Lazy (toStrict)
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Ergvein.Wallet.Style.TH
+import Language.Javascript.JSaddle
 import Prelude hiding ((**), rem)
+
+compileFrontendCss :: MonadJSM m => m ByteString
+compileFrontendCss = pure frontendCssBS
 
 frontendCssBS :: ByteString
 frontendCssBS = let

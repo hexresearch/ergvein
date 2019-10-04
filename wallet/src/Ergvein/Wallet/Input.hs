@@ -6,8 +6,8 @@ module Ergvein.Wallet.Input(
 
 import Data.Text (Text)
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Id
+import Ergvein.Wallet.Monad
 import Reflex.Dom
 
 labeledTextInput :: MonadFront t m
