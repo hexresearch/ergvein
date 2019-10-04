@@ -3,7 +3,6 @@
 module Ergvein.Wallet.Style.TH(
     milligramCss
   , tooltipCss
-  , testImg
   ) where
 
 import Data.FileEmbed
@@ -14,6 +13,3 @@ milligramCss = $(embedFile "static/css/milligram.min.css")
 
 tooltipCss :: ByteString
 tooltipCss = $(embedFile "static/css/tooltip.css")
-
-testImg :: ByteString
-testImg = $(embedFile "static/res/drawable-hdpi/ic_launcher.png")
