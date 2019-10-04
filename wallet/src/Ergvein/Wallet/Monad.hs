@@ -3,6 +3,7 @@ module Ergvein.Wallet.Monad(
   , MonadFront(..)
   -- * Reexports
   , Text
+  , MonadJSM
   , void
   , traverse_
   , module Reflex.Dom
@@ -14,6 +15,7 @@ import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Text (Text)
 import Ergvein.Wallet.Settings
+import Language.Javascript.JSaddle
 import Reflex
 import Reflex.Dom
 
@@ -26,6 +28,7 @@ type MonadFrontConstr t m = (MonadHold t m
   , MonadSample t (Performable m)
   , MonadIO m
   , TriggerEvent t m
+  , MonadJSM m
   , DomBuilderSpace m ~ GhcjsDomSpace)
 
 class MonadFrontConstr t m => MonadFront t m | m -> t where

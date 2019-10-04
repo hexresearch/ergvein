@@ -13,7 +13,9 @@ import qualified GHCJS.DOM.Types as JS
 import qualified Data.Text as T
 
 createObjectURL_ :: MonadJSM m => Blob.Blob -> m JS.JSVal
-createObjectURL_ b = liftJSM $ jsg1 ("window.URL.createObjectURL" :: Text) (toJSVal b)
+createObjectURL_ b = liftJSM $ do
+  eval ("ergvein_createObjectURL = function(a) { return window.URL.createObjectURL(a); }" :: Text)
+  liftJSM $ jsg1 ("ergvein_createObjectURL" :: Text) (toJSVal b)
 
 createObjectURL :: MonadJSM m => ByteString -> m Text
 createObjectURL bs = do
