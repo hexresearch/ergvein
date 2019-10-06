@@ -1,5 +1,6 @@
 packages:
   ./common
   ./index-api
+  ./index-server
   ./wallet
   ./crypto

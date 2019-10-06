@@ -26,6 +26,7 @@ in (self: super: let
     # Internal
     ergvein-common = ingnoreGarbage super.ergvein-common;
     ergvein-index-api = ingnoreGarbage super.ergvein-index-api;
+    ergvein-index-server = ingnoreGarbage super.ergvein-index-server;
     ergvein-wallet = ingnoreGarbage super.ergvein-wallet;
     ergvein-crypto = ingnoreGarbage super.ergvein-crypto;
     # Overrides
