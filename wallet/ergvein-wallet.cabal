@@ -23,6 +23,7 @@ library
     Ergvein.Wallet.Settings
     Ergvein.Wallet.Style
     Ergvein.Wallet.Util
+    Ergvein.Wallet.Validate
     Ergvein.Wallet.Yaml
   build-depends:
       base
