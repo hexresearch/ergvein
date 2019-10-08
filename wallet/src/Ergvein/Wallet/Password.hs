@@ -14,7 +14,7 @@ setupPassword :: MonadFront t m => m (Event t Password)
 setupPassword = divClass "setup-password" $ form $ fieldset $ do
   p1D <- passwordField "Password"
   p2D <- passwordField "Repeat password"
-  e <- submitButton "Set"
+  e <- submitButton "button button-outline" "Set"
   validate $ poke e $ const $ runExceptT $ do
     p1 <- sampleDyn p1D
     p2 <- sampleDyn p2D
@@ -26,5 +26,13 @@ passwordField :: MonadFront t m => Text -> m (Dynamic t Password)
 passwordField _ = pure $ pure ""
 
 -- | Form submit button
-submitButton :: MonadFront t m => Text -> m (Event t ())
-submitButton _ = pure never
+submitButton :: MonadFront t m => Dynamic t Text -> Dynamic t Text -> m (Event t ())
+submitButton classD lblD = do
+  let classesD = do
+        classVal <- classD
+        lbl <- lblD
+        pure $ "class" =: classVal
+            <> "type"  =: "submit"
+            <> "value" =: lbl
+  (e, _) <- elDynAttr' "input" classesD blank
+  return $ domEvent Click e

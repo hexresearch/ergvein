@@ -10,7 +10,7 @@ import Data.Text (Text)
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Ergvein.Wallet.Embed
 import Ergvein.Wallet.Embed.TH
-import Language.Javascript.JSaddle
+import Language.Javascript.JSaddle hiding ((#))
 import Prelude hiding ((**), rem)
 
 data Resources = Resources {
@@ -59,8 +59,10 @@ minorBackground = rgb 59 78 122
 
 buttonCss :: Css
 buttonCss = do
-  ".button.button-outline" ? color black
-  ".button" ? border solid (rem 0.1) black
+  let submit = input # ("type" @= "submit")
+      submitOutline = submit # byClass "button-outline"
+  ".button.button-outline" <> submitOutline ? color black
+  ".button" <> submit ? border solid (rem 0.1) black
 
 fontFamilies :: Resources -> Css
 fontFamilies Resources{..} = do
