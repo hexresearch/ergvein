@@ -10,7 +10,7 @@ import Data.Text (Text)
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Ergvein.Wallet.Embed
 import Ergvein.Wallet.Embed.TH
-import Language.Javascript.JSaddle
+import Language.Javascript.JSaddle hiding ((#))
 import Prelude hiding ((**), rem)
 
 data Resources = Resources {
@@ -46,7 +46,10 @@ frontendCss r = do
     backgroundColor majorBackground
     fontFamily ["Roboto"] []
   buttonCss
+  inputCss
   mnemonicWidgetCss
+  validateCss
+  passwordCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -59,8 +62,15 @@ minorBackground = rgb 59 78 122
 
 buttonCss :: Css
 buttonCss = do
-  ".button.button-outline" ? color black
-  ".button" ? border solid (rem 0.1) black
+  let submit = input # ("type" @= "submit")
+      submitOutline = submit # byClass "button-outline"
+  ".button.button-outline" <> submitOutline ? color black
+  ".button" <> submit ? border solid (rem 0.1) black
+
+inputCss :: Css
+inputCss = do
+  let passInput = input # ("type" @= "password")
+  (passInput # hover) <> (passInput # focus) ? border solid (rem 0.1) black
 
 fontFamilies :: Resources -> Css
 fontFamilies Resources{..} = do
@@ -91,3 +101,26 @@ mnemonicWidgetCss = do
         cl `with` focus ? backgroundColor c
   mkGuess ".guess-true" green
   mkGuess ".guess-false" red
+
+validateCss :: Css
+validateCss = do
+  ".validate-error" ? do
+    fontSize $ pt 14
+
+passwordCss :: Css
+passwordCss = do
+  ".password-field" ? do
+    position relative
+    display inlineBlock
+    width $ pct 100
+  ".eyed-field" ? do
+    textAlign $ alignSide sideLeft
+    width $ pct 100
+  ".small-eye" ? do
+    width $ px 26
+    height $ px 14
+    position absolute
+    top $ px 0
+    right $ px 0
+    marginTop $ px 10
+    marginRight $ px 13

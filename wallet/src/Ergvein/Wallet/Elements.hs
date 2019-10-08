@@ -30,11 +30,12 @@ module Ergvein.Wallet.Elements(
   , form
   , fieldset
   , label
+  , imgClass
   , colonize
   , colonize_
   , buttonClass
-  , widgetHoldDyn
-  , updatedWithInit
+  , divButton
+  , module Ergvein.Wallet.Util
   ) where
 
 import Control.Concurrent
@@ -43,10 +44,14 @@ import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Data.Foldable (traverse_)
 import Data.IORef
+import Data.Map.Strict (Map)
 import Data.Text (Text)
 import Data.Time
+import Ergvein.Wallet.Util
 import Reflex
 import Reflex.Dom
+
+import qualified Data.Text as T
 
 container :: DomBuilder t m => m a -> m a
 container = divClass "container"
@@ -110,13 +115,18 @@ par :: DomBuilder t m => m a -> m a
 par = el "p"
 
 form :: DomBuilder t m => m a -> m a
-form = el "form"
+form = elAttr "form" [("onsubmit", "javascript:void(0)")]
 
 fieldset :: DomBuilder t m => m a -> m a
 fieldset = el "fieldset"
 
 label :: DomBuilder t m => Text -> m a -> m a
 label i = elAttr "label" ("for" =: i)
+
+imgClass :: DomBuilder t m => Text -> Text -> m ()
+imgClass src classVal = elAttr "img" [
+    ("src", src)
+  , ("class", classVal)] $ pure ()
 
 chunked :: Int -> [a] -> [[a]]
 chunked _ [] = []
@@ -139,22 +149,18 @@ colonize_ :: (DomBuilder t m)
 colonize_ n as w = traverse_ (row . traverse_ (column . w)) $ chunked n as
 
 -- | Button with CSS classes
-buttonClass :: (DomBuilder t m, PostBuild t m) => Dynamic t Text -> Dynamic t Text -> m (Event t ())
-buttonClass classValD sd = do
+mkButton :: (DomBuilder t m, PostBuild t m) => Text -> Map Text Text -> Dynamic t Text -> m a -> m (Event t a)
+mkButton eltp attrs classValD ma = do
   let classesD = do
         classVal <- classValD
-        pure [("class", classVal), ("href", "javascript:void(0)")]
-  (e, _) <- elDynAttr' "button" classesD  $ dynText sd
-  return $ domEvent Click e
+        pure $ attrs <> [("class", classVal)]
+  (e, a) <- elDynAttr' eltp classesD ma
+  return $ a <$ domEvent Click e
 
--- | Same as 'widgetHold' but for dynamic
-widgetHoldDyn :: forall t m a . (DomBuilder t m, MonadHold t m) => Dynamic t (m a) -> m (Dynamic t a)
-widgetHoldDyn maD = do
-  ma <- sample . current $ maD
-  widgetHold ma $ updated maD
+-- | Button with CSS classes
+buttonClass :: (DomBuilder t m, PostBuild t m) => Dynamic t Text -> Dynamic t Text -> m (Event t ())
+buttonClass classValD = mkButton "button" [("href", "javascript:void(0)")] classValD . dynText
 
--- | Same as 'updated', but fires init value with 'getPostBuild'
-updatedWithInit :: PostBuild t m => Dynamic t a -> m (Event t a)
-updatedWithInit da = do
-  buildE <- getPostBuild
-  pure $ leftmost [updated da, current da `tag` buildE]
+-- | Button with CSS classes
+divButton :: (DomBuilder t m, PostBuild t m) => Dynamic t Text -> m a -> m (Event t a)
+divButton = mkButton "div" []

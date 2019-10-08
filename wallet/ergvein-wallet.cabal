@@ -5,7 +5,10 @@ description:         See README.md
 category:            Cryptocurrency
 build-type:          Simple
 cabal-version:       >=1.10
-
+extra-source-files:
+  static/img/*
+  static/assets/font/*
+  
 library
   hs-source-dirs:      src
   exposed-modules:
@@ -18,9 +21,13 @@ library
     Ergvein.Wallet.Main
     Ergvein.Wallet.Monad
     Ergvein.Wallet.Monad.Env
+    Ergvein.Wallet.Page.Password
     Ergvein.Wallet.Page.Seed
+    Ergvein.Wallet.Password
     Ergvein.Wallet.Settings
     Ergvein.Wallet.Style
+    Ergvein.Wallet.Util
+    Ergvein.Wallet.Validate
     Ergvein.Wallet.Yaml
   build-depends:
       base
