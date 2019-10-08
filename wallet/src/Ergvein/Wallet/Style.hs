@@ -49,6 +49,7 @@ frontendCss r = do
   inputCss
   mnemonicWidgetCss
   validateCss
+  passwordCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -105,3 +106,21 @@ validateCss :: Css
 validateCss = do
   ".validate-error" ? do
     fontSize $ pt 14
+
+passwordCss :: Css
+passwordCss = do
+  ".password-field" ? do
+    position relative
+    display inlineBlock
+    width $ pct 100
+  ".eyed-field" ? do
+    textAlign $ alignSide sideLeft
+    width $ pct 100
+  ".small-eye" ? do
+    width $ px 26
+    height $ px 14
+    position absolute
+    top $ px 0
+    right $ px 0
+    marginTop $ px 10
+    marginRight $ px 13

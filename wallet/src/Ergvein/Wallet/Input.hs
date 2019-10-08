@@ -56,7 +56,8 @@ passFieldWithEye lbl = mdo
   typeD <- holdDyn initType $ poke eyeE $ const $ do
     v <- sampleDyn typeD
     pure $ if v == "password" then "text" else "password"
-  valD <- textInputTypeDyn (updated typeD) (def &
+  (valD, eyeE) <- divClass "password-field" $ do
+    valD <- textInputTypeDyn (updated typeD) (def &
       textInputConfig_attributes .~ pure
         (  "id"          =: showt i
         <> "class"       =: "eyed-field"
@@ -64,8 +65,9 @@ passFieldWithEye lbl = mdo
         <> "placeholder" =: "******"
         )
       & textInputConfig_inputType .~ initType)
-  smallEyeUrl <- createObjectURL smallEye
-  eyeE <- divButton "small-eye" $ imgClass smallEyeUrl ""
+    smallEyeUrl <- createObjectURL smallEye
+    eyeE <- divButton "small-eye" $ imgClass smallEyeUrl ""
+    pure (valD, eyeE)
   pure valD
 
 -- | Form submit button
