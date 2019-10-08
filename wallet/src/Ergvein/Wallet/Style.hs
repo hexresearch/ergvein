@@ -48,6 +48,7 @@ frontendCss r = do
   buttonCss
   inputCss
   mnemonicWidgetCss
+  validateCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -99,3 +100,8 @@ mnemonicWidgetCss = do
         cl `with` focus ? backgroundColor c
   mkGuess ".guess-true" green
   mkGuess ".guess-false" red
+
+validateCss :: Css
+validateCss = do
+  ".validate-error" ? do
+    fontSize $ pt 14
