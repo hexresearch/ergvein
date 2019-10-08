@@ -46,6 +46,7 @@ frontendCss r = do
     backgroundColor majorBackground
     fontFamily ["Roboto"] []
   buttonCss
+  inputCss
   mnemonicWidgetCss
 
 textColor :: Color
@@ -63,6 +64,11 @@ buttonCss = do
       submitOutline = submit # byClass "button-outline"
   ".button.button-outline" <> submitOutline ? color black
   ".button" <> submit ? border solid (rem 0.1) black
+
+inputCss :: Css
+inputCss = do
+  let passInput = input # ("type" @= "password")
+  (passInput # hover) <> (passInput # focus) ? border solid (rem 0.1) black
 
 fontFamilies :: Resources -> Css
 fontFamilies Resources{..} = do

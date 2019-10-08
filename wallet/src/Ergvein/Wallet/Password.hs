@@ -24,4 +24,4 @@ setupPassword = divClass "setup-password" $ form $ fieldset $ do
 
 -- | Password field with toggleable visibility
 passwordField :: MonadFront t m => Text -> m (Dynamic t Password)
-passwordField _ = pure $ pure ""
+passwordField = passField
