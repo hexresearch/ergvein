@@ -22,6 +22,7 @@ library
     Ergvein.Wallet.Password
     Ergvein.Wallet.Settings
     Ergvein.Wallet.Style
+    Ergvein.Wallet.Util
     Ergvein.Wallet.Yaml
   build-depends:
       base
