@@ -47,5 +47,6 @@ submitClass classD lblD = do
         pure $ "class" =: classVal
             <> "type"  =: "submit"
             <> "value" =: lbl
+            <> "onclick" =: "return false;"
   (e, _) <- elDynAttr' "input" classesD blank
   return $ domEvent Click e

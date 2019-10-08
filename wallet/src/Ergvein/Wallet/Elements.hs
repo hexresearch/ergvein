@@ -110,7 +110,7 @@ par :: DomBuilder t m => m a -> m a
 par = el "p"
 
 form :: DomBuilder t m => m a -> m a
-form = el "form"
+form = elAttr "form" [("onsubmit", "javascript:void(0)")]
 
 fieldset :: DomBuilder t m => m a -> m a
 fieldset = el "fieldset"
