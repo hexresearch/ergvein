@@ -139,9 +139,12 @@ colonize_ :: (DomBuilder t m)
 colonize_ n as w = traverse_ (row . traverse_ (column . w)) $ chunked n as
 
 -- | Button with CSS classes
-buttonClass :: (DomBuilder t m, PostBuild t m) => Text -> Dynamic t Text -> m (Event t ())
-buttonClass classVal sd = do
-  (e, _) <- elAttr' "button" [("class", classVal), ("href", "javascript:void(0)")] $ dynText sd
+buttonClass :: (DomBuilder t m, PostBuild t m) => Dynamic t Text -> Dynamic t Text -> m (Event t ())
+buttonClass classValD sd = do
+  let classesD = do
+        classVal <- classValD
+        pure [("class", classVal), ("href", "javascript:void(0)")]
+  (e, _) <- elDynAttr' "button" classesD  $ dynText sd
   return $ domEvent Click e
 
 -- | Same as 'widgetHold' but for dynamic
