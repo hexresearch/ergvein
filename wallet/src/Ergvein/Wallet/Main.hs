@@ -4,7 +4,7 @@ module Ergvein.Wallet.Main(
 
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Password
+import Ergvein.Wallet.Page.Password
 
 frontend :: MonadFront t m => m ()
-frontend = void setupPassword
+frontend = passwordPage
