@@ -31,4 +31,4 @@ data IndexApi route = IndexApi
     , indexGetTxHexView      :: route :- IndexGetTxHexView
     , indexGetTxFeeHistogram :: route :- IndexGetTxFeeHistogram
     , indexTxBroadcast       :: route :- IndexTxBroadcast  
-    }
+    } deriving Generic

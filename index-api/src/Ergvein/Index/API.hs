@@ -8,4 +8,4 @@ import Ergvein.Types.Currency
 data IndexVersionedApi route = IndexVersionedApi
     { 
         indexVersionedApi'v1 :: route :- "api" :> "v1" :> QueryParam "currency" Currency :> ToServant IndexApi AsApi
-    }
+    } deriving Generic

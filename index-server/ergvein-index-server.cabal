@@ -9,7 +9,9 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:
-    Ergvein.Server
+    Ergvein.Index.Server
+    Ergvein.Index.Server.Server
+    Ergvein.Index.Server.Server.V1
   build-depends:
         base
       , aeson
@@ -19,8 +21,9 @@ library
       , template-haskell
       , text     
       , servant                   >= 0.14 && < 0.15
-      , ergvein-index-api
+      , servant-server            >= 0.14 && < 0.15
       , ergvein-common
+      , ergvein-index-api
 
   default-language:    Haskell2010
   default-extensions:
@@ -61,6 +64,8 @@ executable ergvein-index-server
     , wai-extra
     , wai-util                    >= 0.8    && < 0.9
     , warp
+    , servant                   >= 0.14 && < 0.15
+    , servant-server            >= 0.14 && < 0.15
   default-language:    Haskell2010
   default-extensions:
     DataKinds
