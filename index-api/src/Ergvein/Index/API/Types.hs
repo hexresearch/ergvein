@@ -46,7 +46,7 @@ data TxMerkleProofItem = TxMerkleProofItem
     } deriving (Generic)
 $(deriveJSON (aesonOptionsStripPrefix "merkleItem") ''TxMerkleProofItem)
 
-data TxMerkleProofResponse = TxMerkleProof
+type TxMerkleProofResponse = TxMerkleProof
 
 --View
 data TxHexViewRequest = TxHexViewRequest
@@ -64,8 +64,8 @@ data TxFeeHistogramRequest = TxFeeHistogramRequest
 $(deriveJSON (aesonOptionsStripPrefix "feeHistogramReq") ''TxFeeHistogramRequest)
 
 data TxFeeHistogramItem = TxFeeHistogramItem
-    { feeHistogramItemTxFee :: !TxFee
-    , feeHistogramItemTxAmount              :: !Word
+    { feeHistogramItemTxFee    :: !TxFee
+    , feeHistogramItemTxAmount :: !Word
     } deriving (Generic)
 $(deriveJSON (aesonOptionsStripPrefix "feeHistogramItem") ''TxFeeHistogramItem)
 
@@ -74,7 +74,7 @@ type TxFeeHistogramResponse = [TxFeeHistogramItem]
 --Broadcast
 data TxBroadcastRequest = TxBroadcastRequest
     { txBroadcastReqCurrency  :: !Currency
-    , txBroadcastReqTxHexView :: TxHexView
+    , txBroadcastReqTxHexView :: !TxHexView
     } deriving (Generic)
 $(deriveJSON (aesonOptionsStripPrefix "txBroadcastReq") ''TxBroadcastRequest)
 
