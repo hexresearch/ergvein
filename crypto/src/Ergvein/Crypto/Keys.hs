@@ -6,21 +6,27 @@ module Ergvein.Crypto.Keys(
   , deriveXPubKey
   , xPubAddr
   , addrToString
+  , xPubErgoAddrString
   , wordListEnglish
-  , example
+  , btcExample
+  , ergoExample
   ) where
 
-import           Data.Text                 (Text)
-import           Data.Vector               (Vector, fromListN)
-import qualified System.Entropy            as E
-import           Network.Haskoin.Keys      (Entropy, Mnemonic, Passphrase, Seed, XPrvKey, XPubKey)
-import qualified Network.Haskoin.Keys      as H
-import           Network.Haskoin.Address   (Address)
-import qualified Network.Haskoin.Address   as H
-import           Network.Haskoin.Constants (Network)
-import qualified Network.Haskoin.Constants as H
-import           Data.ByteString           (ByteString)
-import qualified Data.ByteString           as BS
+import           Data.Text
+import           Data.Vector
+import qualified Data.ByteString                as BS
+import qualified Data.ByteArray                 as BA
+import qualified System.Entropy                 as E
+import           Network.Haskoin.Util
+import           Network.Haskoin.Keys
+import           Network.Haskoin.Address
+import           Network.Haskoin.Address.Base58
+import           Network.Haskoin.Constants
+import           Crypto.Hash
+import           Crypto.Hash.Algorithms
+
+data ErgoNetwork = ErgoTestnet | ErgoMainnet
+  deriving (Show, Eq)
 
 -- | According to the BIP32 the allowed size of entropy is between 16 and 64 bytes (32 bytes is advised).
 -- The mnemonic must encode entropy in a multiple of 4 bytes.
@@ -31,26 +37,19 @@ defaultEntropyLength = 32
 getEntropy :: IO Entropy
 getEntropy = E.getEntropy defaultEntropyLength
 
-toMnemonic :: Entropy -> Either String Mnemonic
-toMnemonic = H.toMnemonic
+xPubErgoAddrString :: ErgoNetwork -> XPubKey -> Text
+xPubErgoAddrString network key = encodeBase58 content
+  where
+    networkType = if network == ErgoTestnet then 16 else 0
+    p2pkType = 1
+    prefix = integerToBS $ networkType + p2pkType
+    keyByteString = exportPubKey True (xPubKey key)
+    checkSumContent = BS.append prefix keyByteString
+    checksum = BA.convert $ hashWith Blake2b_256 checkSumContent :: BS.ByteString
+    content = BS.take 38 (BS.concat [prefix, keyByteString, checksum])
 
-mnemonicToSeed :: Passphrase -> Mnemonic -> Either String Seed
-mnemonicToSeed = H.mnemonicToSeed
-
-makeXPrvKey :: ByteString -> XPrvKey
-makeXPrvKey = H.makeXPrvKey
-
-deriveXPubKey :: XPrvKey -> XPubKey
-deriveXPubKey = H.deriveXPubKey
-
-xPubAddr :: XPubKey -> Address
-xPubAddr = H.xPubAddr
-
-addrToString :: Network -> Address -> Text
-addrToString = H.addrToString
-
-example :: IO ()
-example = do
+btcExample :: IO ()
+btcExample = do
   ent <- getEntropy
   putStrLn "Entropy:"
   print ent
@@ -69,13 +68,35 @@ example = do
   let address = fmap xPubAddr xPubKey
   putStrLn "\nAddress:"
   print address
-  let network = H.btc
+  let network = btc
   case address of
     Left err -> print err
     Right addr -> do
       let humanReadableAddress = addrToString network addr
       putStrLn "\nHuman readable address:"
       print humanReadableAddress
+
+ergoExample :: IO ()
+ergoExample = do
+  ent <- getEntropy
+  putStrLn "Entropy:"
+  print ent
+  let mnemonic = toMnemonic ent
+  putStrLn "\nMnemonic:"
+  print mnemonic
+  let seed = mnemonic >>= mnemonicToSeed BS.empty
+  putStrLn "\nSeed:"
+  print seed
+  let xPrvKey = fmap makeXPrvKey seed
+  putStrLn "\nExtended private key:"
+  print xPrvKey
+  let xPubKey = fmap deriveXPubKey xPrvKey
+  putStrLn "\nExtended public key:"
+  print xPubKey
+  let network = ErgoMainnet
+  let address = fmap (xPubErgoAddrString network) xPubKey
+  putStrLn "\nAddress:"
+  print address
 
 -- | Standard English dictionary from BIP-39 specification.
 wordListEnglish :: Vector Text
