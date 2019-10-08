@@ -11,12 +11,14 @@ in reflex-platform.project ({ pkgs, ... }: {
     ergvein-common = ./common;
     ergvein-index-api = ./index-api;
     ergvein-wallet = ./wallet;
+    ergvein-crypto = ./crypto;
   };
   shells = {
     ghc = [
       "ergvein-common"
       "ergvein-index-api"
       "ergvein-wallet"
+      "ergvein-crypto"
     ];
   };
   overrides = import ./overrides.nix { inherit reflex-platform; };
