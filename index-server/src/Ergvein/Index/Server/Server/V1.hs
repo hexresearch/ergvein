@@ -10,18 +10,23 @@ import Ergvein.Index.API.Types
 import Ergvein.Index.API
 import Ergvein.Index.API.V1
 
-indexServer :: IndexApi AsServer
-indexServer = IndexApi 
+indexServer :: Maybe Currency -> IndexApi AsServer
+indexServer _ = IndexApi 
     { indexGetBalance = indexGetBalanceEndpoint
+    , indexGetTxHashHistory = undefined
+    , indexGetTxMerkleProof = undefined
+    , indexGetTxHexView = undefined
+    , indexGetTxFeeHistogram = undefined
+    , indexTxBroadcast = undefined
     }  
 
---indexGetBalanceEndpoint :: PubKeyScriptHash -> Server BalanceResponse
+indexGetBalanceEndpoint :: Maybe PubKeyScriptHash -> Handler BalanceResponse
 indexGetBalanceEndpoint x = do
     pure BalanceResponse { balRespConfirmed = 0 , balRespUnconfirmed = 0 }
 
---ergveinIndexServer :: IndexVersionedApi AsServer
+ergveinIndexServer :: IndexVersionedApi AsServer
 ergveinIndexServer = IndexVersionedApi {
-    indexVersionedApi'v1  = ToServant indexServer
+    indexVersionedApi'v1  = \mcur -> toServant $ indexServer mcur
     }
 
 indexApi :: Proxy (ToServantApi IndexVersionedApi)
