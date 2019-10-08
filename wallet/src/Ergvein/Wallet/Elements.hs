@@ -33,8 +33,7 @@ module Ergvein.Wallet.Elements(
   , colonize
   , colonize_
   , buttonClass
-  , widgetHoldDyn
-  , updatedWithInit
+  , module Ergvein.Wallet.Util
   ) where
 
 import Control.Concurrent
@@ -45,6 +44,7 @@ import Data.Foldable (traverse_)
 import Data.IORef
 import Data.Text (Text)
 import Data.Time
+import Ergvein.Wallet.Util
 import Reflex
 import Reflex.Dom
 
