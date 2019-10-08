@@ -19,6 +19,7 @@ library
     Ergvein.Wallet.Monad
     Ergvein.Wallet.Monad.Env
     Ergvein.Wallet.Page.Seed
+    Ergvein.Wallet.Password
     Ergvein.Wallet.Settings
     Ergvein.Wallet.Style
     Ergvein.Wallet.Yaml
