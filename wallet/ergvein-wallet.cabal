@@ -5,7 +5,10 @@ description:         See README.md
 category:            Cryptocurrency
 build-type:          Simple
 cabal-version:       >=1.10
-
+extra-source-files:
+  static/img/*
+  static/assets/font/*
+  
 library
   hs-source-dirs:      src
   exposed-modules:
