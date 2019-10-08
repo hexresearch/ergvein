@@ -2,8 +2,10 @@ module Ergvein.Wallet.Input(
     textField
   , passField
   , submitClass
+  , textInputTypeDyn
   ) where
 
+import Control.Monad (join)
 import Data.Text (Text)
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Id
@@ -50,3 +52,19 @@ submitClass classD lblD = do
             <> "onclick" =: "return false;"
   (e, _) <- elDynAttr' "input" classesD blank
   return $ domEvent Click e
+
+-- | Wrapper around text field that allows to switch its type dynamically with
+-- saving of previous value.
+textInputTypeDyn :: forall t m . MonadWidget t m => Event t Text -> TextInputConfig t -> m (Dynamic t Text)
+textInputTypeDyn typeE cfg = fmap join $ workflow $
+  go (_textInputConfig_inputType cfg) (_textInputConfig_initialValue cfg)
+  where
+    go :: Text -> Text -> Workflow t m (Dynamic t Text)
+    go tp v0 = Workflow $ do
+      tI <- textInput (cfg & textInputConfig_inputType .~ tp
+                           & textInputConfig_initialValue .~ v0)
+      let valD = _textInput_value tI
+      let nextE = flip pushAlways typeE $ \nextTp -> do
+            nextVal <- sample . current $ valD
+            pure $ go nextTp nextVal
+      pure (valD, nextE)
