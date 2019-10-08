@@ -38,13 +38,14 @@ passField lbl = fmap _textInput_value $ labeledTextInput lbl def {
     _textInputConfig_inputType  = "password"
   }
 
-submitClass :: MonadFront t m
-  => Text -- ^ Class
-  -> Text -- ^ Label
-  -> m (Event t ())
-submitClass cl lbl = do
-  (e, _) <- elAttr' "input" (
-       "class" =: cl
-    <> "type"  =: "submit"
-    <> "value" =: lbl) blank
-  pure $ domEvent Click e
+-- | Form submit button
+submitClass :: MonadFront t m => Dynamic t Text -> Dynamic t Text -> m (Event t ())
+submitClass classD lblD = do
+  let classesD = do
+        classVal <- classD
+        lbl <- lblD
+        pure $ "class" =: classVal
+            <> "type"  =: "submit"
+            <> "value" =: lbl
+  (e, _) <- elDynAttr' "input" classesD blank
+  return $ domEvent Click e
