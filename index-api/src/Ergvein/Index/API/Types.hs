@@ -40,13 +40,11 @@ data TxMerkleProofRequest = TxMerkleProofRequest
     } deriving (Generic)
 $(deriveJSON (aesonOptionsStripPrefix "merkleReq") ''TxMerkleProofRequest)
 
-data TxMerkleProofItem = TxMerkleProofItem
+data TxMerkleProofResponse = TxMerkleProofResponse
     { merkleItemTxMerkleProof :: !TxMerkleProof
     , merkleItemTxBlockIndex  :: !TxBlockIndex
     } deriving (Generic)
-$(deriveJSON (aesonOptionsStripPrefix "merkleItem") ''TxMerkleProofItem)
-
-type TxMerkleProofResponse = TxMerkleProof
+$(deriveJSON (aesonOptionsStripPrefix "merkleResp") ''TxMerkleProofResponse)
 
 --View
 data TxHexViewRequest = TxHexViewRequest
