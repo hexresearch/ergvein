@@ -7,4 +7,4 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
 
 frontend :: MonadFront t m => m ()
-frontend = passwordPage
+frontend = askPasswordPage
