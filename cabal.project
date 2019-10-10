@@ -1,5 +1,6 @@
 packages:
   ./common
-  ./index-api
-  ./wallet
   ./crypto
+  ./index-api
+  ./retractable
+  ./wallet
