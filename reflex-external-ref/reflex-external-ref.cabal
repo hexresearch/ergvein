@@ -4,7 +4,6 @@ synopsis:            External reference with reactivity support
 description:         See README.md
 stability:           Experimental
 category:            Reflex, FRP, Web, GUI, HTML, Javascript, Reactive, Reactivity, User Interfaces, User-interface
-category:            Reflex
 build-type:          Simple
 cabal-version:       >=1.10
 license:             MIT
