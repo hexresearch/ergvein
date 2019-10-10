@@ -1,0 +1,28 @@
+name:                reflex-localize
+version:             1.0.0.0
+synopsis:            Localization library for reflex
+description:         See README.md
+category:            Reflex
+build-type:          Simple
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+    Reflex.Localize
+    Reflex.Localize.Monad
+    Reflex.Localize.Class
+  build-depends:
+      base
+    , text
+    , reflex                    >= 0.4      && < 0.7
+    , reflex-dom                >= 0.4      && < 0.7
+    , mtl
+  default-language:    Haskell2010
+  default-extensions:
+    MultiParamTypeClasses
+    FlexibleInstances
+    FunctionalDependencies
+    UndecidableInstances
+    DeriveGeneric
+    DeriveDataTypeable

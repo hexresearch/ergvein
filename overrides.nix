@@ -31,5 +31,6 @@ in (self: super: let
     # Overrides
     clay = self.callPackage ./derivations/clay.nix {};
     cryptonite = self.callPackage ./derivations/cryptonite.nix {};
+    haskoin-core = self.callPackage ./derivations/haskoin-core.nix {};
   }
 )

@@ -6,7 +6,8 @@ import Ergvein.Wallet.Style
 import Ergvein.Wallet.Yaml
 import GHC.Generics
 import Options.Generic
-import Reflex.Dom
+import Reflex.Dom.Internal (run)
+import Reflex.Dom.Main (mainWidgetWithCss)
 
 data Options = Options {
   config :: Maybe FilePath <?> "Path to config file"
@@ -19,4 +20,6 @@ main = do
   opts <- getRecord "Furtovina launcher"
   settings :: Settings <- maybe (pure def) readYaml' $ unHelpful $ config opts
   env <- newEnv settings
-  mainWidgetWithCss frontendCssBS $ runEnv env frontend
+  run $ do
+    css <- compileFrontendCss
+    mainWidgetWithCss css $ runEnv env frontend

@@ -3,3 +3,5 @@ packages:
   ./index-api
   ./wallet
   ./crypto
+  ./reflex-localize
+  ./reflex-external-ref
