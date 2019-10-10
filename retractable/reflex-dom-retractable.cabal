@@ -21,6 +21,7 @@ library
   hs-source-dirs:      src
   exposed-modules:
     Reflex.Dom.Retractable
+    Reflex.Dom.Retractable.Class
   build-depends:
       base
     , reflex            >= 0.4      && < 0.7
