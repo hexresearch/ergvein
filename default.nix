@@ -12,6 +12,7 @@ in reflex-platform.project ({ pkgs, ... }: {
     ergvein-index-api = ./index-api;
     ergvein-wallet = ./wallet;
     ergvein-crypto = ./crypto;
+    reflex-external-ref = ./reflex-external-ref;
   };
   shells = {
     ghc = [
@@ -19,6 +20,7 @@ in reflex-platform.project ({ pkgs, ... }: {
       "ergvein-index-api"
       "ergvein-wallet"
       "ergvein-crypto"
+      "reflex-external-ref"
     ];
   };
   overrides = import ./overrides.nix { inherit reflex-platform; };

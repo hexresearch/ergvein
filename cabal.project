@@ -3,3 +3,4 @@ packages:
   ./index-api
   ./wallet
   ./crypto
+  ./reflex-external-ref
