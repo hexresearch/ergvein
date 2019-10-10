@@ -19,7 +19,7 @@ type Mnemonic = Text
 mnemonicPage :: MonadFront t m => m ()
 mnemonicPage = container $ do
   _ <- mnemonicWidget
-  _ <- mnemonicCheckWidget ""
+  -- _ <- mnemonicCheckWidget ""
   pure ()
 
 -- | Generate and show mnemonic phrase to user
