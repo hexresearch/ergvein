@@ -8,7 +8,7 @@ cabal-version:       >=1.10
 extra-source-files:
   static/img/*
   static/assets/font/*
-  
+
 library
   hs-source-dirs:      src
   exposed-modules:
@@ -53,6 +53,8 @@ library
     , reflex                    >= 0.4      && < 0.7
     , reflex-dom                >= 0.4      && < 0.7
     , reflex-dom-core
+    , reflex-external-ref
+    , reflex-localize
     , safe
     , template-haskell
     , text                      >= 1.2      && < 1.3

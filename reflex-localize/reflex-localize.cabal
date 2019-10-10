@@ -2,9 +2,22 @@ name:                reflex-localize
 version:             1.0.0.0
 synopsis:            Localization library for reflex
 description:         See README.md
-category:            Reflex
+stability:           Experimental
+category:            Reflex, FRP, Web, GUI, HTML, Javascript, Reactive, Reactivity, User Interfaces, User-interface
 build-type:          Simple
 cabal-version:       >=1.10
+license:             MIT
+license-file:        LICENSE
+copyright:           2019 Investment Solutions AG
+author:
+                     - Anton Gushcha
+                     - Aminion
+                     - Vladimir Krutkin
+                     - Levon Oganyan
+maintainer:          - Anton Gushcha <ncrashed@gmail.com>
+                     - Aminion <>
+                     - Vladimir Krutkin <krutkinvs@gmail.com>
+                     - Levon Oganyan
 
 library
   hs-source-dirs:      src

@@ -1,7 +1,7 @@
 packages:
   ./common
-  ./index-api
-  ./wallet
   ./crypto
-  ./reflex-localize
+  ./index-api
   ./reflex-external-ref
+  ./reflex-localize
+  ./wallet
