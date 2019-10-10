@@ -39,6 +39,7 @@ library
     , data-default
     , directory
     , ergvein-common            >= 1.0      && < 1.1
+    , ergvein-crypto            >= 0.1.0    && < 0.1.1
     , exceptions
     , file-embed                >= 0.0      && < 0.1
     , ghcjs-dom
