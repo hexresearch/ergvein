@@ -1,0 +1,26 @@
+-- |
+-- Module      : Reflex.Localize.Language
+-- Copyright   : (c) 2019 Investment Solutions AG
+-- License     : MIT
+-- Maintainer  : ncrashed@protonmail.com
+-- Stability   : unstable
+-- Portability : non-portable
+--
+-- A signature for languages enumeration that is used in your application,
+-- alows to not pass around actual language implementation in type classes.
+--
+signature Reflex.Localize.Language(
+    Language
+  ) where
+
+import GHC.Generics (Generic)
+import Prelude (Eq, Ord, Show, Read)
+
+-- | Possible languages enumeration that is defined in your application
+data Language
+
+instance Eq Language
+instance Ord Language
+instance Show Language
+instance Read Language
+instance Generic Language

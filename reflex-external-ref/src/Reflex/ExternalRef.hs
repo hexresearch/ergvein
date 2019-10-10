@@ -1,8 +1,11 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE RecordWildCards #-}
 
--- | External reference with reactivity support
+-- | External reference with reactivity support. The reference is needed in glue
+-- code between reflex and external libs where you cannot sample from dynamics
+-- with `MonadSample`.
 module Reflex.ExternalRef(
     ExternalRef(..)
   , newExternalRef
@@ -12,6 +15,7 @@ module Reflex.ExternalRef(
   , modifyExternalRefM
   , externalRefBehavior
   , externalRefDynamic
+  , externalFromDynamic
   ) where
 
 import Control.DeepSeq
@@ -44,7 +48,7 @@ instance NFData (ExternalRef t a) where
     ()
 
 -- | Creation of external ref in host monad
-newExternalRef :: MonadWidget t m => a -> m (ExternalRef t a)
+newExternalRef :: (MonadIO m, TriggerEvent t m) => a -> m (ExternalRef t a)
 newExternalRef a = do
   ref       <- liftIO $ newIORef a
   (e, fire) <- newTriggerEvent
@@ -84,13 +88,23 @@ modifyExternalRefM ExternalRef {..} f = do
   return b
 
 -- | Construct a behavior from external reference
-externalRefBehavior :: MonadWidget t m => ExternalRef t a -> m (Behavior t a)
+externalRefBehavior :: (MonadHold t m, MonadIO m) => ExternalRef t a -> m (Behavior t a)
 externalRefBehavior ExternalRef {..} = do
   a <- liftIO $ readIORef externalRef
   hold a externalEvent
 
 -- | Get dynamic that tracks value of the internal ref
-externalRefDynamic :: MonadWidget t m => ExternalRef t a -> m (Dynamic t a)
+externalRefDynamic :: (MonadHold t m, MonadIO m) => ExternalRef t a -> m (Dynamic t a)
 externalRefDynamic ExternalRef {..} = do
   a <- liftIO $ readIORef externalRef
   holdDyn a externalEvent
+
+-- | Create external ref that tracks content of dynamic. Editing of the ref
+-- has no effect on the original dynamic.
+externalFromDynamic :: (MonadHold t m, TriggerEvent t m, PerformEvent t m, Reflex t, MonadIO m, MonadIO (Performable m))
+  => Dynamic t a -> m (ExternalRef t a)
+externalFromDynamic da = do
+  a0 <- sample . current $ da
+  r <- newExternalRef a0
+  performEvent_ $ fmap (writeExternalRef r) $ updated da
+  pure r
