@@ -22,6 +22,7 @@ library
   exposed-modules:
     Reflex.Dom.Retractable
     Reflex.Dom.Retractable.Class
+    Reflex.Dom.Retractable.Trans
   build-depends:
       base
     , reflex            >= 0.4      && < 0.7
