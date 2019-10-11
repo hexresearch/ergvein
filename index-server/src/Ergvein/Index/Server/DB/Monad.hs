@@ -30,4 +30,6 @@ instance (MonadLogger m, MonadUnliftIO m) => MonadDB (ReaderT DBPool m) where
     {-# INLINE getDbPool #-}
 
 runDb :: MonadDB m => ReaderT SqlBackend m a -> m a
-runDb ma = undefined
+runDb ma = do
+    pool <- getDbPool
+    runSqlPool ma pool
