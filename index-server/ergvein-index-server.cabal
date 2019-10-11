@@ -34,7 +34,6 @@ library
       , persistent
       , persistent-template
       , persistent-postgresql
-      , postgresql-simple
       , esqueleto
       , ergvein-common
       , ergvein-index-api

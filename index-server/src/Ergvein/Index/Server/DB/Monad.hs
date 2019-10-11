@@ -1,19 +1,11 @@
 module Ergvein.Index.Server.DB.Monad where
 
-import Data.ByteString (ByteString)
-import Control.Concurrent
-import Control.Exception (bracket)
-import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Reader
 import Data.Pool
-import Database.PostgreSQL.Simple
-import Servant
 import Database.Persist.Sql
 import Database.Persist.Postgresql
-
-import qualified Control.Exception as E
 
 type DBPool = Pool SqlBackend
 
