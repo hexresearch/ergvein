@@ -11,10 +11,12 @@ library
   exposed-modules:
     Ergvein.Index.Server
     Ergvein.Index.Server.Server
+    Ergvein.Index.Server.Monad
     Ergvein.Index.Server.Server.V1
     Ergvein.Index.Server.DB.Schema
     Ergvein.Index.Server.DB.Queries
     Ergvein.Index.Server.DB.Monad
+    Ergvein.Index.Server.Config
 
   build-depends:
         base
@@ -27,8 +29,11 @@ library
       , lens
       , unliftio-core
       , resource-pool
+      , utf8-string
       , aeson
-      , monad-logger  
+      , yaml
+      , monad-logger
+      , exceptions  
       , servant                   >= 0.14 && < 0.15
       , servant-server            >= 0.14 && < 0.15
       , persistent

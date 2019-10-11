@@ -29,6 +29,10 @@ in reflex-platform.project ({ pkgs, ... }: {
   };
   overrides = import ./overrides.nix { inherit reflex-platform; };
 
+  shellToolOverrides = ghc: super: {
+    inherit (pkgs) postgresql;
+  };
+
   android.ergvein-wallet = {
     executableName = "ergvein";
     applicationId = "org.ergvein.wallet";
