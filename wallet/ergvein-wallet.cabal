@@ -9,6 +9,16 @@ extra-source-files:
   static/img/*
   static/assets/font/*
 
+library ergvein-wallet-language
+  hs-source-dirs:      src
+  exposed-modules:
+    Reflex.Localize.Language
+  build-depends:
+      base
+  default-language:    Haskell2010
+  default-extensions:
+    DeriveGeneric
+
 library
   hs-source-dirs:      src
   exposed-modules:
@@ -39,6 +49,7 @@ library
     , data-default
     , directory
     , ergvein-common            >= 1.0      && < 1.1
+    , ergvein-wallet-language
     , exceptions
     , file-embed                >= 0.0      && < 0.1
     , ghcjs-dom
@@ -54,6 +65,8 @@ library
     , reflex-dom                >= 0.4      && < 0.7
     , reflex-dom-core
     , reflex-dom-retractable
+    , reflex-external-ref
+    , reflex-localize
     , safe
     , template-haskell
     , text                      >= 1.2      && < 1.3

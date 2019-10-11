@@ -1,1 +1,1 @@
-ghcid -c "cabal new-repl"
+ghcid -c "cabal new-repl ergvein-wallet"

@@ -29,6 +29,8 @@ in (self: super: let
     ergvein-index-api = ingnoreGarbage super.ergvein-index-api;
     ergvein-wallet = ingnoreGarbage super.ergvein-wallet;
     reflex-dom-retractable = ingnoreGarbage super.reflex-dom-retractable;
+    reflex-external-ref = ingnoreGarbage super.reflex-external-ref;
+    reflex-localize = ingnoreGarbage super.reflex-localize;
     # Overrides
     clay = self.callPackage ./derivations/clay.nix {};
     cryptonite = self.callPackage ./derivations/cryptonite.nix {};
