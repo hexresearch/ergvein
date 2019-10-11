@@ -1,13 +1,15 @@
 module Reflex.Dom.Retractable.Class(
     Retractable(..)
+  , morphRetractable
   , MonadRetract(..)
+  , retractStack
   ) where
 
 import Control.Monad.Fix
+import Control.Monad.Reader
 import Data.Sequence (Seq)
 import GHC.Generics (Generic)
 import Reflex
-import Reflex.ExternalRef
 import Reflex.Network
 
 import qualified Data.Sequence as S
@@ -22,6 +24,10 @@ data Retractable t m = Retractable {
   -- Dynamic allows to save internal state of widget on return.
 , retractablePrev :: Maybe (Dynamic t (m ()))
 } deriving (Generic)
+
+-- | Helper to transform underlying monad in `Retractable`
+morphRetractable :: Reflex t => (forall a . n a -> m a) -> Retractable t n -> Retractable t m
+morphRetractable f (Retractable next prev) = Retractable (f next) (fmap f <$> prev)
 
 -- | Defines context of widget that can switch control to next widget
 -- and can be returned back with preserving of state.
@@ -64,3 +70,13 @@ retractStack ma = do
         (r : _) | Just maD <- retractablePrev r -> sample . current $ maD
         _ -> pure $ ma
   pure $ updated resD
+
+instance MonadRetract t m => MonadRetract t (ReaderT r m) where
+  nextWidget e = do
+    r <- ask
+    lift $ nextWidget (morphRetractable (flip runReaderT r) <$> e)
+  retract = lift . retract
+  nextWidgetEvent = do
+    e <- lift nextWidgetEvent
+    pure $ morphRetractable lift <$> e
+  retractEvent = lift retractEvent

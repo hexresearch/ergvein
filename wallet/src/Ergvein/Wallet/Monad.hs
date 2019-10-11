@@ -7,6 +7,7 @@ module Ergvein.Wallet.Monad(
   , void
   , traverse_
   , module Reflex.Dom
+  , module Reflex.Dom.Retractable.Class
   ) where
 
 import Control.Monad.Fix
@@ -18,6 +19,7 @@ import Ergvein.Wallet.Settings
 import Language.Javascript.JSaddle
 import Reflex
 import Reflex.Dom
+import Reflex.Dom.Retractable.Class
 
 type MonadFrontConstr t m = (MonadHold t m
   , PostBuild t m
@@ -29,7 +31,8 @@ type MonadFrontConstr t m = (MonadHold t m
   , MonadIO m
   , TriggerEvent t m
   , MonadJSM m
-  , DomBuilderSpace m ~ GhcjsDomSpace)
+  , DomBuilderSpace m ~ GhcjsDomSpace
+  , MonadRetract t m)
 
 class MonadFrontConstr t m => MonadFront t m | m -> t where
   getSettings :: m Settings

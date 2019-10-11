@@ -3,7 +3,9 @@ module Reflex.Dom.Retractable.Trans.Internal where
 import Control.Monad.Reader
 import Control.Monad.State.Strict
 import GHC.Generics
+import Language.Javascript.JSaddle.Types
 import Reflex
+import Reflex.Dom
 import Reflex.Dom.Retractable.Class
 
 type RetractableT t m = Retractable t (RetractT t m)
@@ -38,6 +40,9 @@ deriving instance PerformEvent t m => PerformEvent t (RetractT t m)
 deriving instance TriggerEvent t m => TriggerEvent t (RetractT t m)
 deriving instance MonadHold t m => MonadHold t (RetractT t m)
 deriving instance MonadSample t m => MonadSample t (RetractT t m)
+deriving instance DomBuilder t m => DomBuilder t (RetractT t m)
+deriving instance MonadIO m => MonadIO (RetractT t m)
+deriving instance MonadJSM m => MonadJSM (RetractT t m)
 deriving instance (Group q, Additive q, Query q, Eq q, MonadQuery t q m, Monad m) => MonadQuery t q (RetractT t m)
 deriving instance (Monoid w, DynamicWriter t w m) => DynamicWriter t w (RetractT t m)
 deriving instance (Monoid w, MonadBehaviorWriter t w m) => MonadBehaviorWriter t w (RetractT t m)
