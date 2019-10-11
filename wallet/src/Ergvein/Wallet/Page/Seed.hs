@@ -6,9 +6,11 @@ module Ergvein.Wallet.Page.Seed(
 
 import Control.Monad.Random.Strict
 import Data.List (permutations)
+import Data.Either (fromRight)
 import Ergvein.Text
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
+import Ergvein.Crypto
 
 import qualified Data.Text as T
 
@@ -16,15 +18,16 @@ type Mnemonic = Text
 
 mnemonicPage :: MonadFront t m => m ()
 mnemonicPage = container $ do
-  -- _ <- mnemonicWidget Nothing
-  _ <- mnemonicCheckWidget $ T.unwords mockSeed
+  _ <- mnemonicWidget
+  -- _ <- mnemonicCheckWidget ""
   pure ()
 
 -- | Generate and show mnemonic phrase to user
-mnemonicWidget :: MonadFront t m => Maybe Mnemonic -> m (Event t Mnemonic)
-mnemonicWidget mnemonic = do
-  let generateMnemonic = pure $ T.unwords mockSeed -- TODO: here insert generation of new mnemonic phrase
-  phrase <- maybe generateMnemonic pure mnemonic
+mnemonicWidget :: MonadFront t m => m (Event t Mnemonic)
+mnemonicWidget = do
+  ent <- liftIO getEntropy
+  let generateMnemonic = pure $ fromRight "" $ toMnemonic ent -- FIXME: show error msg if Left is returned from toMnemonic
+  phrase <- generateMnemonic
   divClass "mnemonic-title" $ h4 $ text "Theese words are your seed phrase"
   colonize 4 (T.words phrase) $ divClass "column mnemonic-word" . text
   divClass "mnemonic-warn" $ h4 $ text "It is the ONLY way to restore access to your wallet. Write it down or you will lost your money forever."
@@ -67,9 +70,3 @@ guessButtons ws idyn = do
         "button guess-button " <> if reali == i then "guess-true" else "guess-false"
       btnE <- buttonClass classeD $ pure $ ws !! i
       delay 1 $ fforMaybe btnE $ const $ if reali == i then Just (i+1) else Nothing
-
-mockSeed :: [Text]
-mockSeed = [ "inflict", "rose", "twelve", "coach", "elder", "live", "demand"
-  , "nurse", "clump", "claim", "pave", "detect", "guard", "rescue", "quantum"
-  , "devote", "quote", "reflect", "found", "turtle", "portion", "option"
-  , "resemble", "maple"]
