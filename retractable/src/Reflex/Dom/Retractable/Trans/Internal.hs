@@ -1,0 +1,104 @@
+module Reflex.Dom.Retractable.Trans.Internal where
+
+import Control.Monad.Reader
+import Control.Monad.State.Strict
+import GHC.Generics
+import Reflex
+import Reflex.Dom.Retractable.Class
+
+type RetractableT t m = Retractable t (RetractT t m)
+
+-- | Internal state of retractable widget
+data RetractEnv t m = RetractEnv
+  { renvNextFire     :: !(RetractableT t m -> IO ())
+  , renvNextEvent    :: !(Event t (RetractableT t m))
+  , renvRetractFire  :: !(IO ())
+  , renvRetractEvent :: !(Event t ())
+  } deriving (Generic)
+
+-- | Allocate new environment for `RetracT`.
+newRetractEnv :: TriggerEvent t m => m (RetractEnv t m)
+newRetractEnv = do
+  (nextE, nextFire) <- newTriggerEvent
+  (retrE, retrFire) <- newTriggerEvent
+  pure RetractEnv {
+      renvNextFire     = nextFire
+    , renvNextEvent    = nextE
+    , renvRetractFire  = retrFire ()
+    , renvRetractEvent = retrE
+    }
+
+-- | Plug-in implementation of `MonadRetract`.
+newtype RetractT t m a = RetractT { unRetractT :: ReaderT (RetractEnv t m) m a }
+  deriving (Functor, Applicative, Monad, Generic, MonadFix)
+
+deriving instance PostBuild t m => PostBuild t (RetractT t m)
+deriving instance NotReady t m => NotReady t (RetractT t m)
+deriving instance PerformEvent t m => PerformEvent t (RetractT t m)
+deriving instance TriggerEvent t m => TriggerEvent t (RetractT t m)
+deriving instance MonadHold t m => MonadHold t (RetractT t m)
+deriving instance MonadSample t m => MonadSample t (RetractT t m)
+deriving instance (Group q, Additive q, Query q, Eq q, MonadQuery t q m, Monad m) => MonadQuery t q (RetractT t m)
+deriving instance (Monoid w, DynamicWriter t w m) => DynamicWriter t w (RetractT t m)
+deriving instance (Monoid w, MonadBehaviorWriter t w m) => MonadBehaviorWriter t w (RetractT t m)
+deriving instance (Semigroup w, EventWriter t w m) => EventWriter t w (RetractT t m)
+deriving instance (Requester t m) => Requester t (RetractT t m)
+
+instance MonadTrans (RetractT t) where
+  lift = RetractT . lift
+  {-# INLINABLE lift #-}
+
+instance MonadReader e m => MonadReader e (RetractT t m) where
+  ask = lift ask
+  {-# INLINABLE ask #-}
+  local f (RetractT ma) = RetractT $ do
+    r <- ask
+    lift $ local f $ runReaderT ma r
+  {-# INLINABLE local #-}
+
+instance MonadState s m => MonadState s (RetractT t m) where
+  get = lift get
+  {-# INLINABLE get #-}
+  put = lift . put
+  {-# INLINABLE put #-}
+
+instance Adjustable t m => Adjustable t (RetractT t m) where
+  runWithReplace a0 a' = do
+    r <- RetractT ask
+    lift $ runWithReplace (runRetractT a0 r) $ fmap (`runRetractT` r) a'
+  {-# INLINABLE runWithReplace #-}
+  traverseIntMapWithKeyWithAdjust f dm0 dm' = do
+    r <- RetractT ask
+    lift $ traverseIntMapWithKeyWithAdjust (\k v -> runRetractT (f k v) r) dm0 dm'
+  {-# INLINABLE traverseIntMapWithKeyWithAdjust #-}
+  traverseDMapWithKeyWithAdjust f dm0 dm' = do
+    r <- RetractT ask
+    lift $ traverseDMapWithKeyWithAdjust (\k v -> runRetractT (f k v) r) dm0 dm'
+  {-# INLINABLE traverseDMapWithKeyWithAdjust #-}
+  traverseDMapWithKeyWithAdjustWithMove f dm0 dm' = do
+    r <- RetractT ask
+    lift $ traverseDMapWithKeyWithAdjustWithMove (\k v -> runRetractT (f k v) r) dm0 dm'
+  {-# INLINABLE traverseDMapWithKeyWithAdjustWithMove #-}
+
+-- | Execute retractable widget with given environment.
+runRetractT :: RetractT t m a -> RetractEnv t m -> m a
+runRetractT (RetractT ma) e = runReaderT ma e
+{-# INLINEABLE runRetractT #-}
+
+instance (PerformEvent t m, MonadHold t m, Adjustable t m, MonadFix m, MonadIO (Performable m))
+  => MonadRetract t (RetractT t m) where
+  nextWidget e = do
+    fire <- RetractT $ asks renvNextFire
+    performEvent $ fmap (liftIO . fire) e
+  {-# INLINEABLE nextWidget #-}
+
+  retract e = do
+    fire <- RetractT $ asks renvRetractFire
+    performEvent $ (liftIO fire) <$ e
+  {-# INLINEABLE retract #-}
+
+  nextWidgetEvent = RetractT $ asks renvNextEvent
+  {-# INLINABLE nextWidgetEvent #-}
+
+  retractEvent = RetractT $ asks renvRetractEvent
+  {-# INLINABLE retractEvent #-}
