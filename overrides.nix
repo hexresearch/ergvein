@@ -25,12 +25,15 @@ in (self: super: let
   in {
     # Internal
     ergvein-common = ingnoreGarbage super.ergvein-common;
+    ergvein-crypto = ingnoreGarbage super.ergvein-crypto;
     ergvein-index-api = ingnoreGarbage super.ergvein-index-api;
     ergvein-index-server = ingnoreGarbage super.ergvein-index-server;
     ergvein-wallet = ingnoreGarbage super.ergvein-wallet;
-    ergvein-crypto = ingnoreGarbage super.ergvein-crypto;
+    reflex-localize = ingnoreGarbage super.reflex-localize;
+    reflex-external-ref = ingnoreGarbage super.reflex-external-ref;
     # Overrides
     clay = self.callPackage ./derivations/clay.nix {};
     cryptonite = self.callPackage ./derivations/cryptonite.nix {};
+    haskoin-core = self.callPackage ./derivations/haskoin-core.nix {};
   }
 )
