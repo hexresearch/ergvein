@@ -42,3 +42,8 @@ library
     StandaloneDeriving
     TypeFamilies
     UndecidableInstances
+
+source-repository head
+  type: git
+  location: https://github.com/hexresearch/ergvein
+  subdir: retractable
