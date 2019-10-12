@@ -12,6 +12,7 @@ import Ergvein.Text
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Validate
+import Ergvein.Wallet.Wrapper
 
 import qualified Data.Text as T
 
@@ -20,7 +21,7 @@ type Mnemonic = Text
 mnemonicPage :: MonadFront t m => m ()
 mnemonicPage = go Nothing
   where
-    go mnemonic = container $ do
+    go mnemonic = wrapper $ do
       (e, md) <- mnemonicWidget mnemonic
       nextWidget $ ffor e $ \mn -> Retractable {
           retractableNext = checkPage mn
@@ -29,7 +30,7 @@ mnemonicPage = go Nothing
       pure ()
 
 checkPage :: MonadFront t m => Mnemonic -> m ()
-checkPage mn = container $ do
+checkPage mn = wrapper $ do
   _ <- mnemonicCheckWidget mn
   pure ()
 

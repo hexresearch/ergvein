@@ -4,12 +4,13 @@ module Ergvein.Wallet.Monad(
   -- * Reexports
   , Text
   , MonadJSM
-  , void
   , traverse_
   , module Reflex.Dom
   , module Reflex.Dom.Retractable.Class
+  , module Control.Monad
   ) where
 
+import Control.Monad
 import Control.Monad.Fix
 import Control.Monad.Reader
 import Data.Foldable (traverse_)
