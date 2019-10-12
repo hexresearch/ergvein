@@ -16,6 +16,8 @@ data RetractEnv t m = RetractEnv
   , renvNextEvent    :: !(Event t (RetractableT t m))
   , renvRetractFire  :: !(IO ())
   , renvRetractEvent :: !(Event t ())
+  , renvWipeFire     :: !(Maybe Int -> IO ())
+  , renvWipeEvent    :: !(Event t (Maybe Int))
   , renvStack        :: !(Dynamic t [RetractableT t m])
   } deriving (Generic)
 
@@ -24,11 +26,14 @@ newRetractEnv :: (Reflex t, TriggerEvent t m) => m (RetractEnv t m)
 newRetractEnv = do
   (nextE, nextFire) <- newTriggerEvent
   (retrE, retrFire) <- newTriggerEvent
+  (wipeE, wipeFire) <- newTriggerEvent
   pure RetractEnv {
       renvNextFire     = nextFire
     , renvNextEvent    = nextE
     , renvRetractFire  = retrFire ()
     , renvRetractEvent = retrE
+    , renvWipeFire     = wipeFire
+    , renvWipeEvent    = wipeE
     , renvStack        = pure []
     }
 
@@ -104,11 +109,19 @@ instance (PerformEvent t m, MonadHold t m, Adjustable t m, MonadFix m, MonadIO (
     performEvent $ (liftIO fire) <$ e
   {-# INLINEABLE retract #-}
 
+  wipeRetract e = do
+    fire <- RetractT $ asks renvWipeFire
+    performEvent $ fmap (liftIO . fire) e
+  {-# INLINEABLE wipeRetract #-}
+
   nextWidgetEvent = RetractT $ asks renvNextEvent
   {-# INLINABLE nextWidgetEvent #-}
 
   retractEvent = RetractT $ asks renvRetractEvent
   {-# INLINABLE retractEvent #-}
+
+  wipeRetractEvent = RetractT $ asks renvWipeEvent
+  {-# INLINABLE wipeRetractEvent #-}
 
   getRetractStack = RetractT $ asks renvStack
   {-# INLINEABLE getRetractStack #-}
