@@ -5,10 +5,13 @@ module Ergvein.Wallet.Page.Seed(
   ) where
 
 import Control.Monad.Random.Strict
+import Data.Bifunctor
 import Data.List (permutations)
+import Ergvein.Crypto.Keys
 import Ergvein.Text
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Validate
 
 import qualified Data.Text as T
 
@@ -16,20 +19,27 @@ type Mnemonic = Text
 
 mnemonicPage :: MonadFront t m => m ()
 mnemonicPage = container $ do
-  -- _ <- mnemonicWidget Nothing
-  _ <- mnemonicCheckWidget $ T.unwords mockSeed
+  _ <- mnemonicWidget Nothing
+  -- _ <- mnemonicCheckWidget $ T.unwords mockSeed
   pure ()
+
+generateMnemonic :: MonadFront t m => m (Maybe Mnemonic)
+generateMnemonic = do
+  e <- liftIO getEntropy
+  validateNow $ first T.pack $ toMnemonic e
 
 -- | Generate and show mnemonic phrase to user
 mnemonicWidget :: MonadFront t m => Maybe Mnemonic -> m (Event t Mnemonic)
 mnemonicWidget mnemonic = do
-  let generateMnemonic = pure $ T.unwords mockSeed -- TODO: here insert generation of new mnemonic phrase
-  phrase <- maybe generateMnemonic pure mnemonic
-  divClass "mnemonic-title" $ h4 $ text "Theese words are your seed phrase"
-  colonize 4 (T.words phrase) $ divClass "column mnemonic-word" . text
-  divClass "mnemonic-warn" $ h4 $ text "It is the ONLY way to restore access to your wallet. Write it down or you will lost your money forever."
-  btnE <- buttonClass "button button-outline" $ pure "I wrote them"
-  pure $ phrase <$ btnE
+  mphrase <- maybe generateMnemonic (pure . Just) mnemonic
+  case mphrase of
+    Nothing -> pure never
+    Just phrase -> do
+      divClass "mnemonic-title" $ h4 $ text "Theese words are your seed phrase"
+      colonize 4 (T.words phrase) $ divClass "column mnemonic-word" . text
+      divClass "mnemonic-warn" $ h4 $ text "It is the ONLY way to restore access to your wallet. Write it down or you will lost your money forever."
+      btnE <- buttonClass "button button-outline" $ pure "I wrote them"
+      pure $ phrase <$ btnE
 
 -- | Interactive check of mnemonic phrase
 mnemonicCheckWidget :: MonadFront t m => Mnemonic -> m (Event t Mnemonic)
