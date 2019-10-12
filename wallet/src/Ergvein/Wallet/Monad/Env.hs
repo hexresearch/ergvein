@@ -29,7 +29,7 @@ instance MonadFrontConstr t m => MonadFront t (ReaderT Env m) where
   getSettings = asks env'settings
   {-# INLINE getSettings #-}
 
-runEnv :: TriggerEvent t m => Env -> ReaderT Env (RetractT t m) a -> m a
+runEnv :: (Reflex t, TriggerEvent t m) => Env -> ReaderT Env (RetractT t m) a -> m a
 runEnv e ma = do
   re <- newRetractEnv
   runRetractT (runReaderT ma e) re

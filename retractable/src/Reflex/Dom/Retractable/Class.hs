@@ -48,6 +48,12 @@ class (MonadHold t m, MonadFix m, Reflex t, Adjustable t m) => MonadRetract t m 
   -- It's used for implementation of retractable stack.
   retractEvent :: m (Event t ())
 
+  -- | Get current stack of widget history
+  getRetractStack :: m (Dynamic t [Retractable t m])
+
+  -- | Execute subcomputation with given widget history. Affects results of `getRetractStack`.
+  withRetractStack :: Dynamic t [Retractable t m] -> m a -> m a
+
 -- | Helper ADT to merge actions with retractable stack
 data StackAction t m = StackPush (Retractable t m) | StackPop
 
@@ -62,7 +68,7 @@ retractStack ma = do
         StackPush r -> maybe rs (const $ r : rs) $ retractablePrev r
         StackPop -> drop 1 rs
   stackD :: Dynamic t [Retractable t m] <- foldDyn go [] actionE
-  resD <- networkHold ma $ flip pushAlways actionE $ \case
+  resD <- withRetractStack stackD $ networkHold ma $ flip pushAlways actionE $ \case
     StackPush r -> pure $ retractableNext r
     StackPop -> do
       rs <- sample . current $ stackD
@@ -75,8 +81,21 @@ instance MonadRetract t m => MonadRetract t (ReaderT r m) where
   nextWidget e = do
     r <- ask
     lift $ nextWidget (morphRetractable (flip runReaderT r) <$> e)
+  {-# INLINE nextWidget #-}
   retract = lift . retract
+  {-# INLINE retract #-}
   nextWidgetEvent = do
     e <- lift nextWidgetEvent
     pure $ morphRetractable lift <$> e
+  {-# INLINE nextWidgetEvent #-}
   retractEvent = lift retractEvent
+  {-# INLINE retractEvent #-}
+  getRetractStack = do
+    st <- lift getRetractStack
+    pure $ fmap (morphRetractable lift) <$> st
+  {-# INLINE getRetractStack #-}
+  withRetractStack st ma = do
+    r <- ask
+    let st' = fmap (morphRetractable (flip runReaderT r)) <$> st
+    lift $ withRetractStack st' (runReaderT ma r)
+  {-# INLINE withRetractStack #-}

@@ -16,10 +16,11 @@ data RetractEnv t m = RetractEnv
   , renvNextEvent    :: !(Event t (RetractableT t m))
   , renvRetractFire  :: !(IO ())
   , renvRetractEvent :: !(Event t ())
+  , renvStack        :: !(Dynamic t [RetractableT t m])
   } deriving (Generic)
 
 -- | Allocate new environment for `RetracT`.
-newRetractEnv :: TriggerEvent t m => m (RetractEnv t m)
+newRetractEnv :: (Reflex t, TriggerEvent t m) => m (RetractEnv t m)
 newRetractEnv = do
   (nextE, nextFire) <- newTriggerEvent
   (retrE, retrFire) <- newTriggerEvent
@@ -28,6 +29,7 @@ newRetractEnv = do
     , renvNextEvent    = nextE
     , renvRetractFire  = retrFire ()
     , renvRetractEvent = retrE
+    , renvStack        = pure []
     }
 
 -- | Plug-in implementation of `MonadRetract`.
@@ -107,3 +109,9 @@ instance (PerformEvent t m, MonadHold t m, Adjustable t m, MonadFix m, MonadIO (
 
   retractEvent = RetractT $ asks renvRetractEvent
   {-# INLINABLE retractEvent #-}
+
+  getRetractStack = RetractT $ asks renvStack
+  {-# INLINEABLE getRetractStack #-}
+
+  withRetractStack st (RetractT ma) = RetractT $ local (\r -> r { renvStack = st }) ma
+  {-# INLINEABLE withRetractStack #-}

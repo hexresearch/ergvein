@@ -9,7 +9,9 @@ import Ergvein.Wallet.Platform
 -- | Common wrapper to all pages. Embeds back button for desktop version.
 wrapper :: MonadFront t m => m a -> m a
 wrapper ma = container $ do
-  when isDesktop backButton
+  when isDesktop $ do
+    stD <- getRetractStack
+    void $ dyn $ ffor stD $ \st -> if null st then pure () else backButton
   ma
 
 -- | Button for going back on widget history
