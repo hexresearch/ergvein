@@ -18,9 +18,19 @@ import qualified Data.Text as T
 type Mnemonic = Text
 
 mnemonicPage :: MonadFront t m => m ()
-mnemonicPage = container $ do
-  _ <- mnemonicWidget Nothing
-  -- _ <- mnemonicCheckWidget $ T.unwords mockSeed
+mnemonicPage = go Nothing
+  where
+    go mnemonic = container $ do
+      (e, md) <- mnemonicWidget mnemonic
+      nextWidget $ ffor e $ \mn -> Retractable {
+          retractableNext = checkPage mn
+        , retractablePrev = Just $ go <$> md
+        }
+      pure ()
+
+checkPage :: MonadFront t m => Mnemonic -> m ()
+checkPage mn = container $ do
+  _ <- mnemonicCheckWidget mn
   pure ()
 
 generateMnemonic :: MonadFront t m => m (Maybe Mnemonic)
@@ -28,18 +38,18 @@ generateMnemonic = do
   e <- liftIO getEntropy
   validateNow $ first T.pack $ toMnemonic e
 
--- | Generate and show mnemonic phrase to user
-mnemonicWidget :: MonadFront t m => Maybe Mnemonic -> m (Event t Mnemonic)
+-- | Generate and show mnemonic phrase to user. Returned dynamic is state of widget.
+mnemonicWidget :: MonadFront t m => Maybe Mnemonic -> m (Event t Mnemonic, Dynamic t (Maybe Mnemonic))
 mnemonicWidget mnemonic = do
   mphrase <- maybe generateMnemonic (pure . Just) mnemonic
   case mphrase of
-    Nothing -> pure never
+    Nothing -> pure (never, pure Nothing)
     Just phrase -> do
       divClass "mnemonic-title" $ h4 $ text "Theese words are your seed phrase"
       colonize 4 (T.words phrase) $ divClass "column mnemonic-word" . text
       divClass "mnemonic-warn" $ h4 $ text "It is the ONLY way to restore access to your wallet. Write it down or you will lost your money forever."
       btnE <- buttonClass "button button-outline" $ pure "I wrote them"
-      pure $ phrase <$ btnE
+      pure (phrase <$ btnE, pure $ Just phrase)
 
 -- | Interactive check of mnemonic phrase
 mnemonicCheckWidget :: MonadFront t m => Mnemonic -> m (Event t Mnemonic)
@@ -77,9 +87,3 @@ guessButtons ws idyn = do
         "button guess-button " <> if reali == i then "guess-true" else "guess-false"
       btnE <- buttonClass classeD $ pure $ ws !! i
       delay 1 $ fforMaybe btnE $ const $ if reali == i then Just (i+1) else Nothing
-
-mockSeed :: [Text]
-mockSeed = [ "inflict", "rose", "twelve", "coach", "elder", "live", "demand"
-  , "nurse", "clump", "claim", "pave", "detect", "guard", "rescue", "quantum"
-  , "devote", "quote", "reflect", "found", "turtle", "portion", "option"
-  , "resemble", "maple"]
