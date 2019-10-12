@@ -19,4 +19,6 @@ app :: Application
 app = serve indexApi $ toServant indexServer
 
 main :: IO ()
-main = run 8000 app
+main = do
+    env <- newEnv cfg
+    

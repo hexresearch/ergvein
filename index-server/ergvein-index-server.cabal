@@ -9,6 +9,7 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:
+    Ergvein.Index.Server.App
     Ergvein.Index.Server
     Ergvein.Index.Server.Server
     Ergvein.Index.Server.Monad
@@ -33,7 +34,10 @@ library
       , aeson
       , yaml
       , monad-logger
-      , exceptions  
+      , exceptions
+      , wai
+      , wai-cors
+      , wai-extra
       , servant                   >= 0.14 && < 0.15
       , servant-server            >= 0.14 && < 0.15
       , persistent
