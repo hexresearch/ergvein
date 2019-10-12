@@ -1,3 +1,40 @@
+-- |
+-- Module      : Reflex.Dom.Retractable.Class
+-- Copyright   : (c) 2019 Investment Solutions AG
+-- License     : MIT
+-- Maintainer  : ncrashed@protonmail.com
+-- Stability   : unstable
+-- Portability : non-portable
+--
+-- Tagless final interface to the retractable stack of widgets. To use the API
+-- drop `retractStack` into your code where you want to display widgets with
+-- history. For instance, turn all your frontend into retractable widget:
+--
+-- @
+-- import Control.Monad
+-- import Reflex.Dom
+-- import Reflex.Dom.Retractable.Class
+--
+-- frontend :: (MonadWidget t m, MonadRetract t m) => m ()
+-- frontend = void $ retractStack $ pageA 42
+--
+-- pageA :: (MonadWidget t m, MonadRetract t m) => Int -> m ()
+-- pageA n = do
+--    e <- button "Go page B"
+--    void $ nextWidget $ ffor e $ const Retractable {
+--        retractableNext = pageB $ n + 1
+--      , retractablePrev = Just $ pure $ pageA n
+--      }
+--
+-- pageB :: (MonadWidget t m, MonadRetract t m) => Int -> m ()
+-- pageB n = do
+--   e <- button "Go page A"
+--   void $ nextWidget $ ffor e $ const  Retractable {
+--        retractableNext = pageA $ n + 1
+--      , retractablePrev = Just $ pure $ pageB n
+--      }
+-- @
+--
 module Reflex.Dom.Retractable.Class(
     Retractable(..)
   , morphRetractable
@@ -66,6 +103,8 @@ class (MonadHold t m, MonadFix m, Reflex t, Adjustable t m) => MonadRetract t m 
 data StackAction t m = StackPush (Retractable t m) | StackPop | StackWipe (Maybe Int)
 
 -- | All body of the widget will be rerendered when some subcomputation emits switching event.
+-- Plug the function somewhere close to the root of your reflex frontend and use functions from
+-- `MonadRetract` class to control switching content of the widget.
 retractStack :: forall t m . MonadRetract t m => m () -> m (Event t ())
 retractStack ma = do
   nextE <- fmap StackPush <$> nextWidgetEvent

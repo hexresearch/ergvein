@@ -1,3 +1,13 @@
+-- |
+-- Module      : Reflex.Dom.Retractable.Trans.Internal
+-- Copyright   : (c) 2019 Investment Solutions AG
+-- License     : MIT
+-- Maintainer  : ncrashed@protonmail.com
+-- Stability   : unstable
+-- Portability : non-portable
+--
+-- Plug-in implementation for `MonadRetract` using wrapper around `ReaderT`.
+-- Internal module, implementation details can be changed at any moment.
 module Reflex.Dom.Retractable.Trans.Internal where
 
 import Control.Monad.Reader
@@ -8,6 +18,7 @@ import Reflex
 import Reflex.Dom
 import Reflex.Dom.Retractable.Class
 
+-- | Helper to simplify types in `RetractEnv`
 type RetractableT t m = Retractable t (RetractT t m)
 
 -- | Internal state of retractable widget
@@ -96,6 +107,13 @@ instance Adjustable t m => Adjustable t (RetractT t m) where
 runRetractT :: RetractT t m a -> RetractEnv t m -> m a
 runRetractT (RetractT ma) e = runReaderT ma e
 {-# INLINEABLE runRetractT #-}
+
+-- | Simplified version of `runRetractT`
+runRetract :: (Reflex t, TriggerEvent t m) => RetractT t m a -> m a
+runRetract ma = do
+  re <- newRetractEnv
+  runRetractT ma re
+{-# INLINABLE runRetract #-}
 
 instance (PerformEvent t m, MonadHold t m, Adjustable t m, MonadFix m, MonadIO (Performable m))
   => MonadRetract t (RetractT t m) where

@@ -17,6 +17,10 @@ maintainer:          - Anton Gushcha <ncrashed@protonmail.com>
                      - Aminion <>
                      - Vladimir Krutkin <krutkinvs@gmail.com>
                      - Levon Oganyan <>
+extra-source-files:
+  README.md
+  CHANGELOG.md
+
 library
   hs-source-dirs:      src
   exposed-modules:
