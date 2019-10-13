@@ -1,24 +1,13 @@
 module Main where
 
-
 import Network.Wai.Handler.Warp   (run)
-import Servant
-
-import Servant.API.Generic
-import Servant.Server.Generic
-
-import Ergvein.Types.Currency
-import Ergvein.Index.API
-import Ergvein.Index.API.Types
-import Ergvein.Index.API.V1
-import Ergvein.Index.Server.Server
-import Ergvein.Index.Server.Server.V1
-
-
-app :: Application
-app = serve indexApi $ toServant indexServer
+import Network.Wai.Middleware.RequestLogger
+import Ergvein.Index.Server.Monad
+import Ergvein.Index.Server.App
+import Ergvein.Index.Server.Config
 
 main :: IO ()
 main = do
-    env <- newEnv cfg
-    
+    env <- newServerEnv $ Config { configDb = ""}
+    let app = logStdoutDev $ indexServerApp env
+    run 8000 app

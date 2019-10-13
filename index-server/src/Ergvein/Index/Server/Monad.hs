@@ -18,7 +18,7 @@ import Ergvein.Index.Server.DB.Schema
 data ServerEnv = ServerEnv 
   { envConfig :: !Config
   , envLogger :: !(Chan (Loc, LogSource, LogLevel, LogStr))
-  , envPool :: !DBPool
+  , envPool   :: !DBPool
   }
 
 newServerEnv :: MonadIO m => Config -> m ServerEnv
