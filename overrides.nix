@@ -3,6 +3,7 @@
 let
   pkgs = reflex-platform.nixpkgs;
   overrideCabal = pkgs.haskell.lib.overrideCabal;
+  enableCabalFlag = pkgs.haskell.lib.enableCabalFlag;
   lib = pkgs.haskell.lib;
   dontHaddock = lib.dontHaddock;
   gitignore = pkgs.callPackage (pkgs.fetchFromGitHub {
@@ -22,15 +23,21 @@ in (self: super: let
   # Internal packages (depends on production or dev environment)
   callInternal = name: path: args: (
     dontHaddock ( self.callCabal2nix name (ingnoreGarbage path) args ));
+  isAndroid = self.ghc.stdenv.targetPlatform.libc == "bionic";
+  addAndroidFlag = f : p : if isAndroid then enableCabalFlag p f else p;
+  androidOverride = drv: if isAndroid then overrideCabal drv (drv: {
+    configureFlags = (drv.configureFlags or []) ++ ["-fandroid"];
+  }) else drv;
   in {
     # Internal
     ergvein-common = ingnoreGarbage super.ergvein-common;
     ergvein-crypto = ingnoreGarbage super.ergvein-crypto;
     ergvein-index-api = ingnoreGarbage super.ergvein-index-api;
     ergvein-index-server = ingnoreGarbage super.ergvein-index-server;
-    ergvein-wallet = ingnoreGarbage super.ergvein-wallet;
-    reflex-localize = ingnoreGarbage super.reflex-localize;
+    ergvein-wallet = androidOverride (ingnoreGarbage super.ergvein-wallet);
+    reflex-dom-retractable = ingnoreGarbage super.reflex-dom-retractable;
     reflex-external-ref = ingnoreGarbage super.reflex-external-ref;
+    reflex-localize = ingnoreGarbage super.reflex-localize;
     # Overrides
     clay = self.callPackage ./derivations/clay.nix {};
     cryptonite = self.callPackage ./derivations/cryptonite.nix {};

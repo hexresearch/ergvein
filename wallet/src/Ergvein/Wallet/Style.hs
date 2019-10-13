@@ -64,8 +64,14 @@ buttonCss :: Css
 buttonCss = do
   let submit = input # ("type" @= "submit")
       submitOutline = submit # byClass "button-outline"
+      submitClear = submit # byClass "button-clear"
   ".button.button-outline" <> submitOutline ? color black
+  ".button.button-clear" <> submitClear ? color black
   ".button" <> submit ? border solid (rem 0.1) black
+  ".back-button" ? do
+    textAlign $ alignSide sideLeft
+  ".back-button" ** button ? do 
+    fontSize $ pt 12
 
 inputCss :: Css
 inputCss = do
