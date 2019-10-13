@@ -9,8 +9,9 @@ import Ergvein.Types.Currency
 import Ergvein.Index.API.Types
 import Ergvein.Index.API
 import Ergvein.Index.API.V1
+import Ergvein.Index.Server.Monad
 
-indexServer :: IndexApi AsServer
+indexServer :: IndexApi AsServerM
 indexServer = IndexApi 
     { indexGetBalance = indexGetBalanceEndpoint
     , indexGetTxHashHistory = indexGetTxHashHistoryEndpoint
@@ -46,26 +47,26 @@ btcBroadcastResponse = "0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1e
 ergoBroadcastResponse = "4c6282be413c6e300a530618b37790be5f286ded758accc2aebd41554a1be308"
 
 --Endpoints
-indexGetBalanceEndpoint :: BalanceRequest -> Handler BalanceResponse
+indexGetBalanceEndpoint :: BalanceRequest -> ServerM BalanceResponse
 indexGetBalanceEndpoint BalanceRequest { balReqCurrency = BTC }  = pure btcBalance
 indexGetBalanceEndpoint BalanceRequest { balReqCurrency = ERGO } = pure ergoBalance
 
-indexGetTxHashHistoryEndpoint :: TxHashHistoryRequest -> Handler TxHashHistoryResponse
+indexGetTxHashHistoryEndpoint :: TxHashHistoryRequest -> ServerM TxHashHistoryResponse
 indexGetTxHashHistoryEndpoint TxHashHistoryRequest { historyReqCurrency = BTC }  = pure btcHistory
 indexGetTxHashHistoryEndpoint TxHashHistoryRequest { historyReqCurrency = ERGO } = pure ergoHistory
 
-txMerkleProofEndpoint :: TxMerkleProofRequest -> Handler TxMerkleProofResponse
+txMerkleProofEndpoint :: TxMerkleProofRequest -> ServerM TxMerkleProofResponse
 txMerkleProofEndpoint TxMerkleProofRequest { merkleReqCurrency = BTC }  = pure btcProof
 txMerkleProofEndpoint TxMerkleProofRequest { merkleReqCurrency = ERGO } = pure ergoProof
 
-txHexViewEndpoint :: TxHexViewRequest -> Handler TxHexViewResponse
+txHexViewEndpoint :: TxHexViewRequest -> ServerM TxHexViewResponse
 txHexViewEndpoint TxHexViewRequest { viewReqCurrency = BTC }  = pure btcView
 txHexViewEndpoint TxHexViewRequest { viewReqCurrency = ERGO } = pure ergoView
 
-txFeeHistogramEndpoint :: TxFeeHistogramRequest -> Handler TxFeeHistogramResponse
+txFeeHistogramEndpoint :: TxFeeHistogramRequest -> ServerM TxFeeHistogramResponse
 txFeeHistogramEndpoint TxFeeHistogramRequest { feeHistogramReqCurrency = BTC }  = pure btcHistogram
 txFeeHistogramEndpoint TxFeeHistogramRequest { feeHistogramReqCurrency = ERGO } = pure ergoHistogram
 
-txBroadcastRequestEndpoint :: TxBroadcastRequest -> Handler TxBroadcastResponse
+txBroadcastRequestEndpoint :: TxBroadcastRequest -> ServerM TxBroadcastResponse
 txBroadcastRequestEndpoint TxBroadcastRequest { txBroadcastReqCurrency = BTC }  = pure ergoBroadcastResponse
 txBroadcastRequestEndpoint TxBroadcastRequest { txBroadcastReqCurrency = ERGO } = pure ergoBroadcastResponse

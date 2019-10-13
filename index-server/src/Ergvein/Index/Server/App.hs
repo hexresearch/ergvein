@@ -8,7 +8,6 @@ import Servant
 import Servant.API.Generic
 import Servant.Server.Generic
 
-
 import Ergvein.Index.API
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.Server
@@ -17,7 +16,7 @@ import Ergvein.Index.Server.Server.V1
 indexServerApp :: ServerEnv -> Application
 indexServerApp e = gzip def . appCors $ serve indexApi $ hoistServer indexApi (runServerM e) $ toServant indexServer
     where
-        appCors = cors $ const $ Just simpleCorsResourcePolicy
-        { corsRequestHeaders = ["Content-Type"]
-        , corsMethods = "PUT" : simpleMethods 
-        }
+        appCors = cors $ const $ Just simpleCorsResourcePolicy 
+            { corsRequestHeaders = ["Content-Type"]
+            , corsMethods = "PUT" : simpleMethods 
+            }
