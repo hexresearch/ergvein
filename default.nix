@@ -9,20 +9,22 @@ let
 in reflex-platform.project ({ pkgs, ... }: {
   packages = {
     ergvein-common = ./common;
+    ergvein-crypto = ./crypto;
     ergvein-index-api = ./index-api;
     ergvein-wallet = ./wallet;
-    ergvein-crypto = ./crypto;
-    reflex-localize = ./reflex-localize;
+    reflex-dom-retractable = ./retractable;
     reflex-external-ref = ./reflex-external-ref;
+    reflex-localize = ./reflex-localize;
   };
   shells = {
     ghc = [
       "ergvein-common"
+      "ergvein-crypto"
       "ergvein-index-api"
       "ergvein-wallet"
-      "ergvein-crypto"
-      "reflex-localize"
+      "reflex-dom-retractable"
       "reflex-external-ref"
+      "reflex-localize"
     ];
   };
   overrides = import ./overrides.nix { inherit reflex-platform; };

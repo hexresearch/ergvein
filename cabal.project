@@ -4,4 +4,5 @@ packages:
   ./index-api
   ./reflex-external-ref
   ./reflex-localize
+  ./retractable
   ./wallet

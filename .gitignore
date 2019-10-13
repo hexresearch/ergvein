@@ -1,4 +1,5 @@
 .ghc.environment*
 dist-newstyle
+dist
 android-result
 android-release

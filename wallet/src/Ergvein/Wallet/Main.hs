@@ -4,9 +4,7 @@ module Ergvein.Wallet.Main(
 
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Page.Seed
 
 frontend :: MonadFront t m => m ()
--- frontend = askPasswordPage
-frontend = mnemonicPage
+frontend = void $ retractStack mnemonicPage
