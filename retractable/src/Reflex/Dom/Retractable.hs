@@ -1,6 +1,6 @@
 -- |
 -- Module      : Reflex.Dom.Retractable
--- Copyright   : (c) 2019 Investment Solutions AG
+-- Copyright   : (c) 2019 ATUM SOLUTIONS AG
 -- License     : MIT
 -- Maintainer  : ncrashed@protonmail.com
 -- Stability   : unstable
