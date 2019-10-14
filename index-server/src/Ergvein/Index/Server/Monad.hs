@@ -25,7 +25,7 @@ newServerEnv :: MonadIO m => Config -> m ServerEnv
 newServerEnv cfg = do
   logger <- liftIO newChan
   pool <- liftIO . runStdoutLoggingT $ do
-    pool <- newDBPool $ fromString $ configDb cfg
+    pool <- newDBPool $ fromString $ connectionStringFromConfig cfg
     flip runReaderT pool $ runDb $ runMigration migrateAll
     pure pool
   pure ServerEnv { envConfig = cfg
