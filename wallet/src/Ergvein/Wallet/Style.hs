@@ -50,6 +50,7 @@ frontendCss r = do
   mnemonicWidgetCss
   validateCss
   passwordCss
+  initialPageCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -70,7 +71,7 @@ buttonCss = do
   ".button" <> submit ? border solid (rem 0.1) black
   ".back-button" ? do
     textAlign $ alignSide sideLeft
-  ".back-button" ** button ? do 
+  ".back-button" ** button ? do
     fontSize $ pt 12
 
 inputCss :: Css
@@ -130,3 +131,11 @@ passwordCss = do
     right $ px 0
     marginTop $ px 10
     marginRight $ px 13
+
+initialPageCss :: Css
+initialPageCss = do
+  ".initial-options" ** button ? do
+    width $ pct 80
+    marginLeft auto
+    marginRight auto
+    marginBottom $ px 10
