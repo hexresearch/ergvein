@@ -36,6 +36,7 @@ library
     Ergvein.Wallet.Main
     Ergvein.Wallet.Monad
     Ergvein.Wallet.Monad.Env
+    Ergvein.Wallet.Page.Initial
     Ergvein.Wallet.Page.Password
     Ergvein.Wallet.Page.Seed
     Ergvein.Wallet.Password
