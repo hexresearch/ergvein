@@ -1,0 +1,121 @@
+name:                ergvein-index-server
+version:             0.1.0.0
+synopsis:            Ergvein wallet cryptocurrencies index server
+description:         See README.md
+category:            Cryptocurrency
+build-type:          Simple
+cabal-version:       >=1.10
+license:             MIT
+license-file:        LICENSE
+copyright:           2019 ATUM SOLUTIONS AG
+author:              Anton Gushcha, Aminion, Vladimir Krutkin, Levon Oganyan
+maintainer:          Anton Gushcha <ncrashed@protonmail.com>, Vladimir Krutkin <krutkinvs@gmail.com>
+
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+    Ergvein.Index.Server.App
+    Ergvein.Index.Server.Server
+    Ergvein.Index.Server.Monad
+    Ergvein.Index.Server.Server.V1
+    Ergvein.Index.Server.DB.Schema
+    Ergvein.Index.Server.DB.Queries
+    Ergvein.Index.Server.DB.Monad
+    Ergvein.Index.Server.Config
+
+  build-depends:
+        base                     >= 4.7 && < 4.12
+      , mtl                      == 2.2.*
+      , template-haskell         == 2.13.*
+      , text                     == 1.2.*
+      , bytestring               == 0.10.*
+      , directory                == 1.3.*
+      , time                     == 1.8.*
+      , lens                     == 4.16.*
+      , unliftio-core            == 0.1.*
+      , resource-pool            == 0.2.*
+      , utf8-string              == 1.0.*
+      , aeson                    == 1.3.*
+      , yaml                     == 0.11.*
+      , monad-logger             == 0.3.*
+      , exceptions               == 0.10.*
+      , wai                      == 3.2.*
+      , wai-cors                 == 0.2.*
+      , wai-extra                == 3.0.*  
+      , servant                  == 0.14.*
+      , servant-server           == 0.14.*
+      , persistent               == 2.8.*
+      , persistent-template      == 2.5.*
+      , persistent-postgresql    == 2.8.*
+      , esqueleto                == 3.0.*
+      , ergvein-common
+      , ergvein-index-api
+
+  default-language:    Haskell2010
+  default-extensions:
+    ConstraintKinds
+    DataKinds
+    DeriveDataTypeable
+    DeriveGeneric
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    LambdaCase
+    OverloadedStrings
+    RankNTypes
+    RecordWildCards
+    RecursiveDo
+    ScopedTypeVariables
+    StandaloneDeriving
+    TemplateHaskell
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeOperators
+    QuasiQuotes
+    UndecidableInstances
+
+executable ergvein-index-server
+  hs-source-dirs:
+      app
+  main-is:             Main.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base                      >= 4.7 && < 4.12
+    , text                      == 1.2.*
+    , optparse-applicative      == 0.14.*
+    , wai                       == 3.2.*
+    , wai-extra                 == 3.0.* 
+    , warp                      == 3.2.*
+    , servant                   == 0.14.*
+    , servant-server            == 0.14.*
+    , ergvein-index-api
+    , ergvein-index-server
+  default-language:    Haskell2010
+  default-extensions:
+    ConstraintKinds
+    DataKinds
+    DeriveDataTypeable
+    DeriveGeneric
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    LambdaCase
+    OverloadedStrings
+    RankNTypes
+    RecordWildCards
+    RecursiveDo
+    ScopedTypeVariables
+    StandaloneDeriving
+    TemplateHaskell
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeOperators
+    QuasiQuotes
+    UndecidableInstances

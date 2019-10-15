@@ -33,6 +33,7 @@ in (self: super: let
     ergvein-common = ingnoreGarbage super.ergvein-common;
     ergvein-crypto = ingnoreGarbage super.ergvein-crypto;
     ergvein-index-api = ingnoreGarbage super.ergvein-index-api;
+    ergvein-index-server = ingnoreGarbage super.ergvein-index-server;
     ergvein-wallet = androidOverride (ingnoreGarbage super.ergvein-wallet);
     reflex-dom-retractable = ingnoreGarbage super.reflex-dom-retractable;
     reflex-external-ref = ingnoreGarbage super.reflex-external-ref;
