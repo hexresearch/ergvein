@@ -167,6 +167,7 @@ executable ergvein
     , reflex-dom
   if flag(android)
     build-depends: ergvein-wallet-android
+    cpp-options: -DANDROID
   else
     build-depends: ergvein-wallet-desktop
   default-language:    Haskell2010

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Main where
 
 import Data.Default
@@ -7,6 +8,12 @@ import Ergvein.Wallet.Style
 import Ergvein.Wallet.Yaml
 import GHC.Generics
 import Options.Generic
+
+#ifdef ANDROID
+import Ergvein.Wallet.Android.Run
+#else
+import Ergvein.Wallet.Desktop.Run
+#endif
 
 data Options = Options {
   config :: Maybe FilePath <?> "Path to config file"
@@ -21,5 +28,5 @@ main = do
   run $ \cbs -> do
     css <- compileFrontendCss
     mainWidgetWithCss css $ do
-      env <- newEnv settings 
+      env <- newEnv settings
       runEnv cbs env frontend
