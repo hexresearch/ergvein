@@ -28,14 +28,6 @@ in reflex-platform.project ({ pkgs, ... }: {
     ];
   };
   overrides = import ./overrides.nix { inherit reflex-platform; };
-  shellToolOverrides = ghc: super: {
-    /* cabal-install = ghc.callPackage ./derivations/cabal-install.nix {
-      Cabal = ghc.callPackage ./derivations/Cabal.nix{};
-      hackage-security =  ghc.callPackage ./derivations/hackage-security.nix {
-        Cabal = ghc.callPackage ./derivations/Cabal.nix{};
-      };
-    }; */
-  };
 
   android.ergvein-wallet = {
     executableName = "ergvein";

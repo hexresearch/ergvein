@@ -1,10 +1,11 @@
 -- | The module overrides standart reflex-dom widget to get access to low level
 -- Android callbacks.
-signature Ergvein.Wallet.Run(
-    run
+module Ergvein.Wallet.Run(
+    PlatformRun(..)
   ) where
 
 import Ergvein.Wallet.Run.Callbacks
 import Language.Javascript.JSaddle.Types
 
-run :: (RunCallbacks -> JSM ()) -> IO ()
+class PlatformRun where
+  run :: (RunCallbacks -> JSM ()) -> IO ()
