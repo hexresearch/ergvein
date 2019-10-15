@@ -37,7 +37,7 @@ in (self: super: let
     reflex-dom-retractable = ingnoreGarbage super.reflex-dom-retractable;
     reflex-external-ref = ingnoreGarbage super.reflex-external-ref;
     reflex-localize = ingnoreGarbage super.reflex-localize;
-    # Overrides
+    # Overridess
     clay = self.callPackage ./derivations/clay.nix {};
     cryptonite = self.callPackage ./derivations/cryptonite.nix {};
     haskoin-core = self.callPackage ./derivations/haskoin-core.nix {};

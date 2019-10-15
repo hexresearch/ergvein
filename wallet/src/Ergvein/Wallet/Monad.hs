@@ -19,7 +19,7 @@ import Data.Text (Text)
 import Ergvein.Wallet.Settings
 import Language.Javascript.JSaddle
 import Reflex
-import Reflex.Dom
+import Reflex.Dom hiding (run, mainWidgetWithCss)
 import Reflex.Dom.Retractable.Class
 
 type MonadFrontConstr t m = (MonadHold t m
@@ -37,3 +37,5 @@ type MonadFrontConstr t m = (MonadHold t m
 
 class MonadFrontConstr t m => MonadFront t m | m -> t where
   getSettings :: m Settings
+  -- | System back button event
+  getBackEvent :: m (Event t ())

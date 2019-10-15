@@ -4,10 +4,15 @@ synopsis:            Cryptocurrency wallet with atomic swaps for desktop and And
 description:         See README.md
 category:            Cryptocurrency
 build-type:          Simple
-cabal-version:       >=1.10
+cabal-version:       >=2.0
 extra-source-files:
   static/img/*
   static/assets/font/*
+
+flag android
+  description: Enable android specific features.
+  default: False
+  manual: True
 
 library ergvein-wallet-language
   hs-source-dirs:      src
@@ -19,10 +24,63 @@ library ergvein-wallet-language
   default-extensions:
     DeriveGeneric
 
-flag android
-  description: Enable android specific features.
-  default: False
-  manual: True
+library ergvein-wallet-callbacks
+  hs-source-dirs:      src-callbacks
+  exposed-modules:
+    Ergvein.Wallet.Run.Callbacks
+  default-language:    Haskell2010
+  build-depends:
+      base
+
+library ergvein-wallet-sigs
+  hs-source-dirs:      src-hsig
+  signatures:
+    Ergvein.Wallet.Run
+    Ergvein.Wallet.Native
+  default-language:    Haskell2010
+  build-depends:
+      base
+    , aeson
+    , ergvein-wallet-callbacks
+    , jsaddle
+    , text
+
+library ergvein-wallet-android
+  hs-source-dirs:      src-android
+  exposed-modules:
+    Ergvein.Wallet.Native
+    Ergvein.Wallet.Native.Android.MainWidget
+    Ergvein.Wallet.Run
+  build-depends:
+      base
+    , jsaddle
+    , android-activity
+    , ergvein-wallet-callbacks
+  default-language:    Haskell2010
+  c-sources:
+    cbits/android.c
+    cbits/clipboard.c
+    cbits/clock.c
+  build-tools: hsc2hs
+  extra-libraries: log android
+  if flag(android)
+    buildable: True
+  else
+    buildable: False
+
+library ergvein-wallet-desktop
+  hs-source-dirs:      src-desktop
+  exposed-modules:
+    Ergvein.Wallet.Native
+    Ergvein.Wallet.Run
+  build-depends:
+      base
+    , aeson
+    , ergvein-wallet-callbacks
+    , jsaddle
+    , jsaddle-webkit2gtk
+    , text 
+  default-language:    Haskell2010
 
 library
   hs-source-dirs:      src
@@ -58,7 +116,9 @@ library
     , directory
     , ergvein-common            >= 1.0      && < 1.1
     , ergvein-crypto            >= 0.1      && < 0.2
+    , ergvein-wallet-callbacks
     , ergvein-wallet-language
+    , ergvein-wallet-sigs
     , exceptions
     , file-embed                >= 0.0      && < 0.1
     , ghcjs-dom
@@ -82,8 +142,6 @@ library
     , time
     , vector
     , yaml
-  if flag(android)
-    cpp-options: -DANDROID
   default-language:    Haskell2010
   default-extensions:
     BangPatterns
@@ -121,6 +179,10 @@ executable ergvein
     , optparse-generic  >= 1.3      && < 1.4
     , reflex
     , reflex-dom
+  if flag(android)
+    build-depends: ergvein-wallet-android
+  else
+    build-depends: ergvein-wallet-desktop
   default-language:    Haskell2010
   default-extensions:
     BangPatterns

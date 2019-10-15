@@ -6,3 +6,4 @@ packages:
   ./reflex-localize
   ./retractable
   ./wallet
+shared: true
