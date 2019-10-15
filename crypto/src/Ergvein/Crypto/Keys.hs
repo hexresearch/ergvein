@@ -1,5 +1,6 @@
 module Ergvein.Crypto.Keys(
-    getEntropy
+    Mnemonic
+  , getEntropy
   , toMnemonic
   , mnemonicToSeed
   , makeXPrvKey

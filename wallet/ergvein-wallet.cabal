@@ -42,6 +42,7 @@ library
     Ergvein.Wallet.Password
     Ergvein.Wallet.Platform
     Ergvein.Wallet.Settings
+    Ergvein.Wallet.Storage
     Ergvein.Wallet.Style
     Ergvein.Wallet.Util
     Ergvein.Wallet.Validate
@@ -61,6 +62,7 @@ library
     , ergvein-wallet-language
     , exceptions
     , file-embed                >= 0.0      && < 0.1
+    , filepath
     , ghcjs-dom
     , haskoin-core
     , interpolatedstring-perl6

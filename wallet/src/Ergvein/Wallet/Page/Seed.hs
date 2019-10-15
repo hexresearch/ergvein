@@ -16,8 +16,6 @@ import Ergvein.Wallet.Wrapper
 
 import qualified Data.Text as T
 
-type Mnemonic = Text
-
 mnemonicPage :: MonadFront t m => m ()
 mnemonicPage = go Nothing
   where

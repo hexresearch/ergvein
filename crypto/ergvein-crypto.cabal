@@ -21,6 +21,7 @@ library
   hs-source-dirs:      src
   exposed-modules:
     Ergvein.Crypto
+    Ergvein.Crypto.Constants
     Ergvein.Crypto.Keys
   build-depends:
       base                      >= 4.9      && <5
