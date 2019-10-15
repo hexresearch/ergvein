@@ -2,9 +2,11 @@ module Ergvein.Types.Currency where
 
 import Data.Word
 import Data.Text
+import Ergvein.Aeson
 
 -- | Supported currencies 
 data Currency = BTC | ERGO
+$(deriveJSON aesonOptions ''Currency)
 
 -- | Smallest amount of currency
 type MoneyUnit = Word64
