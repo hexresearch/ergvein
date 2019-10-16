@@ -9,6 +9,7 @@ mkDerivation {
   pname = "haskoin-core";
   version = "0.8.0";
   sha256 = "ef12cd5d889d1f99ded46b6c1354e82e6ba927fcad3d2b498a9852bd601f7c79";
+  
   libraryHaskellDepends = [
     aeson array base base16-bytestring bytestring cereal conduit
     containers cryptonite entropy hashable memory mtl murmur3 network

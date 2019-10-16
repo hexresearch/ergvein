@@ -49,6 +49,8 @@ library
       , persistent-template      == 2.5.*
       , persistent-postgresql    == 2.8.*
       , esqueleto                == 3.0.*
+      , haskoin-core             == 0.9.*
+      , haskell-bitcoin-api
       , ergvein-common
       , ergvein-index-api
 
