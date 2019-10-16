@@ -23,6 +23,7 @@ library
     Ergvein.Crypto
     Ergvein.Crypto.Constants
     Ergvein.Crypto.Keys
+    Ergvein.Crypto.WordLists
   build-depends:
       base                      >= 4.9      && <5
     , text                      >= 1.2      && < 1.3
