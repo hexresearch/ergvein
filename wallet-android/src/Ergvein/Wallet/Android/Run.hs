@@ -6,9 +6,11 @@ import Android.HaskellActivity
 import Control.Concurrent
 import Control.Monad
 import Data.Default
+import Data.IORef
 import Data.String
-import Ergvein.Wallet.Native.Android.MainWidget
+import Ergvein.Wallet.Android.Native.MainWidget
 import Ergvein.Wallet.Run
+import Ergvein.Wallet.Run.Callbacks
 import Language.Javascript.JSaddle (JSM)
 import System.IO
 

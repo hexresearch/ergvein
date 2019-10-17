@@ -1,4 +1,4 @@
-{ release ? false }:
+{ release ? false, isAndroid ? false }:
 let
   reflex-platform = (import ./reflex-platform.nix) {
     nixpkgsOverlays = [
@@ -12,6 +12,9 @@ in reflex-platform.project ({ pkgs, ... }: {
     ergvein-crypto = ./crypto;
     ergvein-index-api = ./index-api;
     ergvein-wallet = ./wallet;
+    ergvein-wallet-android = ./wallet-android;
+    ergvein-wallet-desktop = ./wallet-desktop;
+    ergvein-wallet-native = ./wallet-native;
     reflex-dom-retractable = ./retractable;
     reflex-external-ref = ./reflex-external-ref;
     reflex-localize = ./reflex-localize;
@@ -22,12 +25,14 @@ in reflex-platform.project ({ pkgs, ... }: {
       "ergvein-crypto"
       "ergvein-index-api"
       "ergvein-wallet"
+      "ergvein-wallet-native"
+      "ergvein-wallet-desktop"
       "reflex-dom-retractable"
       "reflex-external-ref"
       "reflex-localize"
     ];
   };
-  overrides = import ./overrides.nix { inherit reflex-platform; };
+  overrides = import ./overrides.nix { inherit reflex-platform isAndroid; };
 
   android.ergvein-wallet = {
     executableName = "ergvein";
@@ -39,6 +44,9 @@ in reflex-platform.project ({ pkgs, ... }: {
     nativeDependencies = nixpkgs: haskellPackages: {
       "libsecp256k1.so" = "${nixpkgs.secp256k1}/lib/libsecp256k1.so";
     };
+    javaSources = _: [
+      ./wallet/java
+    ];
     version = {
       code = "1";
       name = "Alpha";

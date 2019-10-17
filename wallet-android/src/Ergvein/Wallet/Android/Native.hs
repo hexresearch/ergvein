@@ -1,4 +1,4 @@
-module Ergvein.Wallet.Native.Android(
+module Ergvein.Wallet.Android.Native(
 
   ) where
 
@@ -6,9 +6,10 @@ import Android.HaskellActivity
 import Control.Exception (handle, bracket, SomeException)
 import Control.Monad.IO.Class
 import Data.Text(Text, unpack)
+import Ergvein.Aeson
+import Ergvein.Wallet.Native
 import Foreign
 import Foreign.C
-import Ergvein.Aeson
 import System.Directory
 import System.FilePath.Posix
 import System.IO
@@ -40,7 +41,7 @@ instance PlatformNatives where
   storeValue k v = liftIO $ do
     mpath <- getFilesDir =<< getHaskellActivity
     case mpath of
-      Nothing -> pure $ "No such path " <> k
+      Nothing -> pure $ Left $ "No such path " <> k
       Just path -> let fpath = path <> "/" <> unpack k in do
         createDirectoryIfMissing True $ takeDirectory fpath
         writeJson fpath v
@@ -49,7 +50,7 @@ instance PlatformNatives where
   retrieveValue k a0 = liftIO $ do
     mpath <- getFilesDir =<< getHaskellActivity
     case mpath of
-      Nothing -> pure $ "No such path " <> k
+      Nothing -> pure $ Left $ "No such path " <> k
       Just path -> let fpath = path <> "/" <> unpack k in do
         ex <- doesFileExist fpath
         if ex

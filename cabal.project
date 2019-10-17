@@ -6,4 +6,7 @@ packages:
   ./reflex-localize
   ./retractable
   ./wallet
+  ./wallet-native
+  ./wallet-android
+  ./wallet-desktop
 shared: true
