@@ -23,6 +23,7 @@ library
     Ergvein.Index.Server.DB.Queries
     Ergvein.Index.Server.DB.Monad
     Ergvein.Index.Server.Config
+    Ergvein.Index.Server.Environment
 
   build-depends:
         base                     >= 4.7 && < 4.12
@@ -35,6 +36,7 @@ library
       , lens                     == 4.16.*
       , unliftio-core            == 0.1.*
       , resource-pool            == 0.2.*
+      , immortal                 == 0.3.*
       , utf8-string              == 1.0.*
       , aeson                    == 1.3.*
       , yaml                     == 0.11.*
@@ -49,8 +51,8 @@ library
       , persistent-template      == 2.5.*
       , persistent-postgresql    == 2.8.*
       , esqueleto                == 3.0.*
-      , haskoin-core             == 0.9.*
-      , haskell-bitcoin-api
+      , haskoin-core
+      , bitcoin-api
       , ergvein-common
       , ergvein-index-api
 
@@ -94,6 +96,9 @@ executable ergvein-index-server
     , warp                      == 3.2.*
     , servant                   == 0.14.*
     , servant-server            == 0.14.*
+    , immortal                 == 0.3.*
+    , unliftio-core
+    , bitcoin-api
     , ergvein-index-api
     , ergvein-index-server
   default-language:    Haskell2010

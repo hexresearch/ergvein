@@ -4,3 +4,7 @@ dbPort     : 5434
 dbUser     : localUser
 dbPassword : ""
 dbName     : localdb
+BTCNodeHost     : 127.0.0.1
+BTCNodePort     : 18332
+BTCNodeUser     : bitcoinrpc
+BTCNodePassword : password

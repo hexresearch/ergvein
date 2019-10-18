@@ -8,12 +8,16 @@ import Ergvein.Aeson
 import GHC.Generics
 
 data Config = Config 
-  { configServerPort :: !Int
-  , configDbHost     :: !String
-  , configDbPort     :: !Int
-  , configDbUser     :: !String
-  , configDbPassword :: !String
-  , configDbName     :: !String
+  { configServerPort      :: !Int
+  , configDbHost          :: !String
+  , configDbPort          :: !Int
+  , configDbUser          :: !String
+  , configDbPassword      :: !String
+  , configDbName          :: !String
+  , configBTCNodeHost     :: !String
+  , configBTCNodePort     :: !Int
+  , configBTCNodeUser     :: !Text
+  , configBTCNodePassword :: !Text
   } deriving (Show, Generic)
 deriveJSON (aesonOptionsStripPrefix "config") ''Config
 

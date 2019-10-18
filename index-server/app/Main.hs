@@ -7,6 +7,12 @@ import Network.Wai.Middleware.RequestLogger
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.App
 import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.Environment
+import Control.Immortal
+import Control.Monad.IO.Unlift
+import Ergvein.Index.Server.Config
+import Network.Bitcoin.Api.Client
+import Network.Bitcoin.Api.Blockchain
 
 import qualified Data.Text.IO as T
 
@@ -42,10 +48,21 @@ main = do
        <> progDesc "Starts Ergvein index server"
        <> header "ergvein-index-server - cryptocurrency index server for ergvein client" )
 
+scanner :: MonadUnliftIO m => Config -> m Thread
+scanner cfg = let 
+  f = withClient (configBTCNodeHost cfg) (configBTCNodePort cfg) (configBTCNodeUser cfg) (configBTCNodePassword cfg) getBlockCount
+  in create $ \thread -> liftIO $ do
+     x <- f
+     T.putStrLn $ pack $ show x
+     pure ()
+
 startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
-    CommandListen cfgPath -> do
+    CommandListen cfgPath ->  do
+
         cfg <- loadConfig cfgPath
+        t <- liftIO $ scanner cfg
+        T.putStrLn $ pack "thread"
         T.putStrLn $ pack $ connectionStringFromConfig cfg
         env <- newServerEnv cfg
         
@@ -53,3 +70,5 @@ startServer Options{..} = case optsCommand of
         let app = logStdoutDev $ indexServerApp env
             warpSettings = setPort (configServerPort cfg) defaultSettings
         runSettings warpSettings app
+
+  
