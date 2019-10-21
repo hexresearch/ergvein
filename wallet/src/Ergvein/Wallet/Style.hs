@@ -4,6 +4,7 @@ module Ergvein.Wallet.Style(
 
 import Clay
 import Clay.Selector
+import Clay.Stylesheet (prefixed)
 import Data.ByteString (ByteString)
 import Data.ByteString.Lazy (toStrict)
 import Data.Text (Text)
@@ -45,6 +46,7 @@ frontendCss r = do
     color textColor
     backgroundColor majorBackground
     fontFamily ["Roboto"] []
+  wrapperCss
   buttonCss
   inputCss
   mnemonicWidgetCss
@@ -60,6 +62,20 @@ majorBackground = rgb 255 255 255
 
 minorBackground :: Color
 minorBackground = rgb 59 78 122
+
+wrapperCss :: Css
+wrapperCss = do
+  ".container" ? do
+    position relative
+    height $ pct 100
+  ".vertical-center" ? do
+    margin (px 0) (px 0) (px 0) (px 0)
+    position absolute
+    top $ pct 50
+    translatePctY $ pct (-50)
+    width $ pct 100
+    where
+      translatePctY y = prefixed (browsers <> "transform") $ "translateY(" <> value y <> ")"
 
 buttonCss :: Css
 buttonCss = do
