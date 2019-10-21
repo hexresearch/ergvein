@@ -1,6 +1,10 @@
 module Ergvein.Crypto.Keys(
     Base58
+  , encodeBase58
+  , decodeBase58
   , Mnemonic
+  , toMnemonic
+  , mnemonicToSeed
   , XPubKey
   , XPrvKey
   , xPubImport
@@ -8,8 +12,6 @@ module Ergvein.Crypto.Keys(
   , xPubExport
   , xPrvExport
   , getEntropy
-  , toMnemonic
-  , mnemonicToSeed
   , makeXPrvKey
   , deriveXPubKey
   , xPubAddr
