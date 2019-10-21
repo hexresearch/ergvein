@@ -1,1 +1,1 @@
-nix-build -A android.ergvein-wallet -o android-result "$@"
+nix-build --arg isAndroid true -A android.ergvein-wallet -o android-result "$@"

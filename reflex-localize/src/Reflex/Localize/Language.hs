@@ -9,7 +9,7 @@
 -- A signature for languages enumeration that is used in your application,
 -- alows to not pass around actual language implementation in type classes.
 --
-signature Reflex.Localize.Language(
+module Reflex.Localize.Language(
     Language
   ) where
 
@@ -17,10 +17,4 @@ import GHC.Generics (Generic)
 import Prelude (Eq, Ord, Show, Read)
 
 -- | Possible languages enumeration that is defined in your application
-data Language
-
-instance Eq Language
-instance Ord Language
-instance Show Language
-instance Read Language
-instance Generic Language
+data family Language
