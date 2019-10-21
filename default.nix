@@ -11,6 +11,7 @@ in reflex-platform.project ({ pkgs, ... }: {
     ergvein-common = ./common;
     ergvein-crypto = ./crypto;
     ergvein-index-api = ./index-api;
+    ergvein-index-server = ./index-server;
     ergvein-wallet = ./wallet;
     ergvein-wallet-android = ./wallet-android;
     ergvein-wallet-desktop = ./wallet-desktop;
@@ -24,6 +25,7 @@ in reflex-platform.project ({ pkgs, ... }: {
       "ergvein-common"
       "ergvein-crypto"
       "ergvein-index-api"
+      "ergvein-index-server"
       "ergvein-wallet"
       "ergvein-wallet-native"
       "ergvein-wallet-desktop"
@@ -33,6 +35,10 @@ in reflex-platform.project ({ pkgs, ... }: {
     ];
   };
   overrides = import ./overrides.nix { inherit reflex-platform isAndroid; };
+
+  shellToolOverrides = ghc: super: {
+    inherit (pkgs) postgresql;
+  };
 
   android.ergvein-wallet = {
     executableName = "ergvein";
