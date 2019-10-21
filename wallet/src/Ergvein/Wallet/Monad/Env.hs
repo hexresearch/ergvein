@@ -39,9 +39,14 @@ instance MonadFrontConstr t m => MonadFront t (ReaderT (Env t) m) where
   getBackEvent = asks env'backEvent
   {-# INLINE getBackEvent #-}
 
-runEnv :: (MonadIO m, Reflex t, TriggerEvent t m)
+runEnv :: MonadBaseConstr t m
   => RunCallbacks -> Env t -> ReaderT (Env t) (RetractT t m) a -> m a
 runEnv cbs e ma = do
   liftIO $ writeIORef (runBackCallback cbs) $ env'backFire e
   re <- newRetractEnv
-  runRetractT (runReaderT ma e) re
+  runRetractT (runReaderT ma' e) re
+  where
+    ma' = systemBackButton >> ma
+
+systemBackButton :: MonadFront t m => m ()
+systemBackButton = void $ retract =<< getBackEvent

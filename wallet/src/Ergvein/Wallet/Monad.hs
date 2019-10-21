@@ -1,5 +1,6 @@
 module Ergvein.Wallet.Monad(
-    MonadFrontConstr
+    MonadBaseConstr
+  , MonadFrontConstr
   , MonadFront(..)
   -- * Reexports
   , Text
@@ -22,7 +23,8 @@ import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
 import Reflex.Dom.Retractable.Class
 
-type MonadFrontConstr t m = (MonadHold t m
+-- | Type classes that we need from reflex-dom itself.
+type MonadBaseConstr t m = (MonadHold t m
   , PostBuild t m
   , DomBuilder t m
   , MonadFix m
@@ -33,7 +35,13 @@ type MonadFrontConstr t m = (MonadHold t m
   , TriggerEvent t m
   , MonadJSM m
   , DomBuilderSpace m ~ GhcjsDomSpace
-  , MonadRetract t m)
+  )
+
+-- | Additional type classes for widgets API. There are contexts that
+-- cannot be derived from raw reflex-dom context.
+type MonadFrontConstr t m = (MonadBaseConstr t m
+  , MonadRetract t m
+  )
 
 class MonadFrontConstr t m => MonadFront t m | m -> t where
   getSettings :: m Settings
