@@ -11,12 +11,11 @@ import Ergvein.Crypto.Keys
 import Ergvein.Text
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Text as T
-
-type Mnemonic = Text
 
 mnemonicPage :: MonadFront t m => m ()
 mnemonicPage = go Nothing
@@ -31,7 +30,11 @@ mnemonicPage = go Nothing
 
 checkPage :: MonadFront t m => Mnemonic -> m ()
 checkPage mn = wrapper $ do
-  _ <- mnemonicCheckWidget mn
+  e <- mnemonicCheckWidget mn
+  nextWidget $ ffor e $ \m -> Retractable {
+      retractableNext = passwordPage m
+    , retractablePrev = Just $ pure $ checkPage m
+    }
   pure ()
 
 generateMnemonic :: MonadFront t m => m (Maybe Mnemonic)

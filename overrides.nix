@@ -23,7 +23,7 @@ in (self: super: let
   callInternal = name: path: args: (
     dontHaddock ( self.callCabal2nix name (ingnoreGarbage path) args ));
   isAndroid = self.ghc.stdenv.targetPlatform.isAndroid;
-  walletOpts = builtins.trace isAndroid (if isAndroid then "-fandroid --no-haddock" else "--no-haddock");
+  walletOpts = if isAndroid then "-fandroid --no-haddock" else "--no-haddock";
   in {
     # Internal
     ergvein-common = ingnoreGarbage super.ergvein-common;
