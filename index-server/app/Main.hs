@@ -11,13 +11,9 @@ import Ergvein.Index.Server.Environment
 import Control.Immortal
 import Control.Monad.IO.Unlift
 import Ergvein.Index.Server.Config
-import Network.Bitcoin.Api.Client
-import Network.Bitcoin.Api.Blockchain
+import Ergvein.Index.Server.BlockchainScanner 
 
 import qualified Data.Text.IO as T
-
-configurationFilePath :: String
-configurationFilePath = "./configuration.yaml"
 
 data Options = Options {
   optsCommand :: Command
@@ -48,24 +44,13 @@ main = do
        <> progDesc "Starts Ergvein index server"
        <> header "ergvein-index-server - cryptocurrency index server for ergvein client" )
 
-scanner :: MonadUnliftIO m => Config -> m Thread
-scanner cfg = let 
-  f = withClient (configBTCNodeHost cfg) (configBTCNodePort cfg) (configBTCNodeUser cfg) (configBTCNodePassword cfg) getBlockCount
-  in create $ \thread -> liftIO $ do
-     x <- f
-     T.putStrLn $ pack $ show x
-     pure ()
-
 startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
     CommandListen cfgPath ->  do
-
         cfg <- loadConfig cfgPath
-        t <- liftIO $ scanner cfg
-        T.putStrLn $ pack "thread"
+        t <- liftIO $ startBlockchainScanner cfg
         T.putStrLn $ pack $ connectionStringFromConfig cfg
-        env <- newServerEnv cfg
-        
+        env <- newServerEnv cfg     
         T.putStrLn $ pack $ "Server started at " <> configDbHost cfg <> ":" <> (show . configServerPort $ cfg)
         let app = logStdoutDev $ indexServerApp env
             warpSettings = setPort (configServerPort cfg) defaultSettings

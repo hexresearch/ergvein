@@ -24,6 +24,7 @@ library
     Ergvein.Index.Server.DB.Monad
     Ergvein.Index.Server.Config
     Ergvein.Index.Server.Environment
+    Ergvein.Index.Server.BlockchainScanner
 
   build-depends:
         base                     >= 4.7 && < 4.12
@@ -51,8 +52,9 @@ library
       , persistent-template      == 2.5.*
       , persistent-postgresql    == 2.8.*
       , esqueleto                == 3.0.*
+      , bitcoin-block
       , haskoin-core
-      , bitcoin-api
+      , bitcoin-api              == 0.12.*
       , ergvein-common
       , ergvein-index-api
 
