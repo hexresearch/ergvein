@@ -73,6 +73,8 @@ library
     , time
     , vector
     , yaml
+  if flag(android)
+    cpp-options: -DANDROID
   default-language:    Haskell2010
   default-extensions:
     BangPatterns

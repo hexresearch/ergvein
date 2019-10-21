@@ -67,13 +67,13 @@ wrapperCss :: Css
 wrapperCss = do
   ".container" ? do
     position relative
-    height $ pct 100
+    height $ pct 95
   ".vertical-center" ? do
     margin (px 0) (px 0) (px 0) (px 0)
     position absolute
     top $ pct 50
     translatePctY $ pct (-50)
-    width $ pct 100
+    width $ pct 90
     where
       translatePctY y = prefixed (browsers <> "transform") $ "translateY(" <> value y <> ")"
 
