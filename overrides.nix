@@ -1,5 +1,5 @@
 # Here you can put overrides of dependencies
-{ reflex-platform ? (import ./reflex-platform.nix {}), ... }:
+{ reflex-platform ? (import ./reflex-platform.nix {}), /*isAndroid ? false,*/ ... }:
 let
   pkgs = reflex-platform.nixpkgs;
   overrideCabal = pkgs.haskell.lib.overrideCabal;
@@ -18,27 +18,26 @@ let
       /dist-newstyle
     '';
     in { src = gitignore.gitignoreSourceAux ignore-list pkg.src; } );
-
 in (self: super: let
   # Internal packages (depends on production or dev environment)
   callInternal = name: path: args: (
     dontHaddock ( self.callCabal2nix name (ingnoreGarbage path) args ));
-  isAndroid = self.ghc.stdenv.targetPlatform.libc == "bionic";
-  addAndroidFlag = f : p : if isAndroid then enableCabalFlag p f else p;
-  androidOverride = drv: if isAndroid then overrideCabal drv (drv: {
-    configureFlags = (drv.configureFlags or []) ++ ["-fandroid"];
-  }) else drv;
+  isAndroid = self.ghc.stdenv.targetPlatform.isAndroid;
+  walletOpts = if isAndroid then "-fandroid --no-haddock" else "--no-haddock";
   in {
     # Internal
     ergvein-common = ingnoreGarbage super.ergvein-common;
     ergvein-crypto = ingnoreGarbage super.ergvein-crypto;
     ergvein-index-api = ingnoreGarbage super.ergvein-index-api;
     ergvein-index-server = ingnoreGarbage super.ergvein-index-server;
-    ergvein-wallet = androidOverride (ingnoreGarbage super.ergvein-wallet);
+    ergvein-wallet = ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-wallet" ./wallet walletOpts {});
+    ergvein-wallet-android = ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-wallet-android" ./wallet-android walletOpts {});
+    ergvein-wallet-desktop = ingnoreGarbage super.ergvein-wallet-desktop;
+    ergvein-wallet-native = ingnoreGarbage super.ergvein-wallet-native;
     reflex-dom-retractable = ingnoreGarbage super.reflex-dom-retractable;
     reflex-external-ref = ingnoreGarbage super.reflex-external-ref;
     reflex-localize = ingnoreGarbage super.reflex-localize;
-    # Overrides
+    # Overridess
     clay = self.callPackage ./derivations/clay.nix {};
     cryptonite = self.callPackage ./derivations/cryptonite.nix {};
     haskoin-core = self.callPackage ./derivations/haskoin-core.nix {};
