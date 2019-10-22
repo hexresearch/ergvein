@@ -7,25 +7,29 @@ import Ergvein.Index.Server.Config
 import Network.Bitcoin.Api.Client
 import Network.Bitcoin.Api.Blockchain
 import Network.Bitcoin.Api.Misc
+import Ergvein.Index.Server.Environment
 
 import qualified Data.Bitcoin.Block                     as Btc
 
 import qualified Data.Text.IO as T
 
 
-blocksStream :: Integer -> Config -> IO ()
-blocksStream grantedHeight cfg = let
-    btcNodeClient :: (Client -> IO a) -> IO a
-    btcNodeClient = withClient (configBTCNodeHost cfg) (configBTCNodePort cfg) (configBTCNodeUser cfg) (configBTCNodePassword cfg) 
+btcNodeClient :: Config -> (Client -> IO a) -> IO a
+btcNodeClient c = withClient (configBTCNodeHost c) (configBTCNodePort c) (configBTCNodeUser c) (configBTCNodePassword c) 
+
+blocksStream :: Integer -> ServerEnv -> IO ()
+blocksStream grantedHeight env = let 
+    client :: (Client -> IO a) -> IO a
+    client = btcNodeClient $ envConfig env
     go h = do
-        blockHash <- btcNodeClient $ flip getBlockHash h
-        block <- btcNodeClient $ flip getBlock blockHash
+        blockHash <- client $ flip getBlockHash h
+        block <- client $ flip getBlock blockHash
         pure ()
     in sequence_ $ go <$> [0..grantedHeight - 1]
 
-startBlockchainScanner :: MonadUnliftIO m => Config -> m Thread
-startBlockchainScanner cfg = let 
+startBlockchainScanner :: MonadUnliftIO m => ServerEnv -> m Thread
+startBlockchainScanner env = let 
     in create $ \thread -> liftIO $ do
-        x <-  blocksStream 10 cfg
+        x <-  blocksStream 10 env
         T.putStrLn $ pack $ show x
         mortalize thread
