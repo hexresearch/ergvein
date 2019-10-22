@@ -3,6 +3,7 @@ module Ergvein.Wallet.Page.Currencies(
   ) where
 
 import Ergvein.Text
+import Ergvein.Types.Currency
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Wrapper
@@ -28,4 +29,13 @@ getSyncProgress :: MonadFront t m => m (Dynamic t ScanProgress)
 getSyncProgress = pure $ pure $ ScanDays 10
 
 currenciesList :: MonadFront t m => m ()
-currenciesList = pure ()
+currenciesList = traverse_ currencyLine allCurrencies
+  where
+    currencyLine cur = row $ divClass "currency-line" $ do
+      divClass "currency-name" $ text $ currencyName cur
+      divClass "currency-balance" $ do
+        bal <- currencyBalance cur
+        dynText $ showMoney <$> bal
+
+currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
+currencyBalance cur = pure $ pure $ Money cur 1 

@@ -17,3 +17,7 @@ library
     , ergvein-common
     , jsaddle
     , text
+  default-extensions:
+    DeriveGeneric
+    OverloadedStrings
+    TemplateHaskell

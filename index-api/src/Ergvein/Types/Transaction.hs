@@ -1,15 +1,7 @@
-module Ergvein.Types.Currency where
+module Ergvein.Types.Transaction where
 
 import Data.Word
 import Data.Text
-import Ergvein.Aeson
-
--- | Supported currencies 
-data Currency = BTC | ERGO
-$(deriveJSON aesonOptions ''Currency)
-
--- | Smallest amount of currency
-type MoneyUnit = Word64
 
 -- | Hexadecimal representation of transaction id
 type TxId = Text
@@ -38,4 +30,3 @@ type PubKeyScriptHash = Text
 
 -- | Hexadecimal representation of transaction hash
 type TxHash = Text
-
