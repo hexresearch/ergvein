@@ -34,6 +34,7 @@ module Ergvein.Wallet.Elements(
   , colonize
   , colonize_
   , buttonClass
+  , outlineButton
   , divButton
   , module Ergvein.Wallet.Util
   ) where
@@ -160,6 +161,10 @@ mkButton eltp attrs classValD ma = do
 -- | Button with CSS classes
 buttonClass :: (DomBuilder t m, PostBuild t m) => Dynamic t Text -> Dynamic t Text -> m (Event t ())
 buttonClass classValD = mkButton "button" [("href", "javascript:void(0)")] classValD . dynText
+
+-- | Button with CSS classes
+outlineButton :: (DomBuilder t m, PostBuild t m) => Dynamic t Text -> m (Event t ())
+outlineButton = buttonClass "button button-outline"
 
 -- | Button with CSS classes
 divButton :: (DomBuilder t m, PostBuild t m) => Dynamic t Text -> m a -> m (Event t a)

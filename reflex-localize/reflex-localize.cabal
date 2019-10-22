@@ -3,12 +3,12 @@ version:             1.0.0.0
 synopsis:            Localization library for reflex
 description:         See README.md
 stability:           Experimental
--- category:            Reflex, FRP, Web, GUI, HTML, Javascript, Reactive, Reactivity, User Interfaces, User-interface
+category:            Reflex, FRP, Web, GUI, HTML, Javascript, Reactive, Reactivity, User Interfaces, User-interface
 build-type:          Simple
 cabal-version:       >= 1.25
 license:             MIT
 license-file:        LICENSE
-copyright:           2019 Investment Solutions AG
+copyright:           2019 ATUM SOLUTIONS AG
 author:
                      - Anton Gushcha
                      - Aminion
@@ -21,12 +21,11 @@ maintainer:          - Anton Gushcha <ncrashed@gmail.com>
 
 library
   hs-source-dirs:      src
-  signatures:
-    Reflex.Localize.Language
   exposed-modules:
     Reflex.Localize
-    Reflex.Localize.Monad
     Reflex.Localize.Class
+    Reflex.Localize.Language
+    Reflex.Localize.Monad
   build-depends:
       base
     , text
@@ -35,9 +34,10 @@ library
     , mtl
   default-language:    Haskell2010
   default-extensions:
-    MultiParamTypeClasses
+    DeriveDataTypeable
+    DeriveGeneric
     FlexibleInstances
     FunctionalDependencies
+    MultiParamTypeClasses
+    TypeFamilies
     UndecidableInstances
-    DeriveGeneric
-    DeriveDataTypeable

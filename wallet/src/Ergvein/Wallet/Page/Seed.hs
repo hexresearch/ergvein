@@ -11,12 +11,11 @@ import Ergvein.Crypto.Keys
 import Ergvein.Text
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Text as T
-
-type Mnemonic = Text
 
 mnemonicPage :: MonadFront t m => m ()
 mnemonicPage = go Nothing
@@ -31,7 +30,11 @@ mnemonicPage = go Nothing
 
 checkPage :: MonadFront t m => Mnemonic -> m ()
 checkPage mn = wrapper $ do
-  _ <- mnemonicCheckWidget mn
+  e <- mnemonicCheckWidget mn
+  nextWidget $ ffor e $ \m -> Retractable {
+      retractableNext = passwordPage m
+    , retractablePrev = Just $ pure $ checkPage m
+    }
   pure ()
 
 generateMnemonic :: MonadFront t m => m (Maybe Mnemonic)
@@ -49,7 +52,7 @@ mnemonicWidget mnemonic = do
       divClass "mnemonic-title" $ h4 $ text "Theese words are your seed phrase"
       colonize 4 (T.words phrase) $ divClass "column mnemonic-word" . text
       divClass "mnemonic-warn" $ h4 $ text "It is the ONLY way to restore access to your wallet. Write it down or you will lost your money forever."
-      btnE <- buttonClass "button button-outline" $ pure "I wrote them"
+      btnE <- outlineButton $ pure "I wrote them"
       pure (phrase <$ btnE, pure $ Just phrase)
 
 -- | Interactive check of mnemonic phrase

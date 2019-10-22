@@ -4,6 +4,7 @@ module Ergvein.Wallet.Style(
 
 import Clay
 import Clay.Selector
+import Clay.Stylesheet (prefixed)
 import Data.ByteString (ByteString)
 import Data.ByteString.Lazy (toStrict)
 import Data.Text (Text)
@@ -45,11 +46,13 @@ frontendCss r = do
     color textColor
     backgroundColor majorBackground
     fontFamily ["Roboto"] []
+  wrapperCss
   buttonCss
   inputCss
   mnemonicWidgetCss
   validateCss
   passwordCss
+  initialPageCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -59,6 +62,20 @@ majorBackground = rgb 255 255 255
 
 minorBackground :: Color
 minorBackground = rgb 59 78 122
+
+wrapperCss :: Css
+wrapperCss = do
+  ".container" ? do
+    position relative
+    height $ pct 95
+  ".vertical-center" ? do
+    margin (px 0) (px 0) (px 0) (px 0)
+    position absolute
+    top $ pct 50
+    translatePctY $ pct (-50)
+    width $ pct 90
+    where
+      translatePctY y = prefixed (browsers <> "transform") $ "translateY(" <> value y <> ")"
 
 buttonCss :: Css
 buttonCss = do
@@ -70,7 +87,7 @@ buttonCss = do
   ".button" <> submit ? border solid (rem 0.1) black
   ".back-button" ? do
     textAlign $ alignSide sideLeft
-  ".back-button" ** button ? do 
+  ".back-button" ** button ? do
     fontSize $ pt 12
 
 inputCss :: Css
@@ -130,3 +147,11 @@ passwordCss = do
     right $ px 0
     marginTop $ px 10
     marginRight $ px 13
+
+initialPageCss :: Css
+initialPageCss = do
+  ".initial-options" ** button ? do
+    width $ pct 80
+    marginLeft auto
+    marginRight auto
+    marginBottom $ px 10

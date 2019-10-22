@@ -12,7 +12,7 @@ wrapper ma = container $ do
   when isDesktop $ do
     stD <- getRetractStack
     void $ dyn $ ffor stD $ \st -> if null st then pure () else backButton
-  ma
+  divClass "vertical-center" ma
 
 -- | Button for going back on widget history
 backButton :: MonadFront t m => m ()

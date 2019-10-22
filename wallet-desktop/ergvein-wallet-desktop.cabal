@@ -1,0 +1,23 @@
+name:                ergvein-wallet-desktop
+version:             0.1.0.0
+synopsis:            Implementation for Ergvein wallet natives for desktop platform.
+description:         See README.md
+category:            Cryptocurrency
+build-type:          Simple
+cabal-version:       >=2.0
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+    Ergvein.Wallet.Desktop.Native
+    Ergvein.Wallet.Desktop.Run
+  build-depends:
+      base
+    , aeson
+    , ergvein-wallet-native
+    , jsaddle
+    , jsaddle-webkit2gtk
+    , text
+  default-language:    Haskell2010
+  default-extensions:
+    MultiParamTypeClasses
