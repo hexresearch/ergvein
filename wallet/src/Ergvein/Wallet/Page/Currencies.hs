@@ -15,7 +15,7 @@ currenciesPage = wrapper False $ do
   pure ()
 
 syncWidget :: MonadFront t m => m ()
-syncWidget = do
+syncWidget = divClass "currency-wrapper" $ do
   progressD <- getSyncProgress
   void $ widgetHoldDyn $ ffor progressD $ \case
     ScanDays d -> divClass "sync-progress" $ text $ showt d <> " days behind..."
@@ -29,9 +29,9 @@ getSyncProgress :: MonadFront t m => m (Dynamic t ScanProgress)
 getSyncProgress = pure $ pure $ ScanDays 10
 
 currenciesList :: MonadFront t m => m ()
-currenciesList = divClass "currencies" $ traverse_ currencyLine allCurrencies
+currenciesList = traverse_ currencyLine allCurrencies
   where
-    currencyLine cur = divClass "currency-line" $ do
+    currencyLine cur = divClass "currency-wrapper" $ divClass "currency-line" $ do
       divClass "currency-name" $ text $ currencyName cur
       divClass "currency-balance" $ do
         bal <- currencyBalance cur

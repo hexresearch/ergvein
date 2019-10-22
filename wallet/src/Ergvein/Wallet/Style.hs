@@ -161,19 +161,20 @@ currenciesPageCss :: Css
 currenciesPageCss = do
   ".sync-progress" ? do
     width $ pct 100
+    maxWidth $ px 500
+    display inlineBlock
     textAlign $ alignSide sideLeft
     fontSize $ pt 14
-  ".currencies" ? do
+  ".currency-wrapper" ? do
     textAlign center
   ".currency-line" ? do
     width $ pct 100
     maxWidth $ px 500
     display inlineBlock
+    fontSize $ pt 24
   ".currency-name" ? do
     display inlineBlock
     float floatLeft
-    fontSize $ pt 14
   ".currency-balance" ? do
     display inlineBlock
     float floatRight
-    fontSize $ pt 14
