@@ -1,7 +1,8 @@
 module Ergvein.Types.Transaction where
 
-import Data.Word
 import Data.Text
+import Data.Word
+import Ergvein.Types.Currency
 
 -- | Hexadecimal representation of transaction id
 type TxId = Text
