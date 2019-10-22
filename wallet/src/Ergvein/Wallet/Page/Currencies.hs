@@ -7,4 +7,5 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Wrapper
 
 currenciesPage :: MonadFront t m => m ()
-currenciesPage = pure ()
+currenciesPage = wrapper $ do
+  pure ()
