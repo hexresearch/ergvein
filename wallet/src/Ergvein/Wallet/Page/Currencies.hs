@@ -29,13 +29,13 @@ getSyncProgress :: MonadFront t m => m (Dynamic t ScanProgress)
 getSyncProgress = pure $ pure $ ScanDays 10
 
 currenciesList :: MonadFront t m => m ()
-currenciesList = traverse_ currencyLine allCurrencies
+currenciesList = divClass "currencies" $ traverse_ currencyLine allCurrencies
   where
-    currencyLine cur = row $ divClass "currency-line" $ do
+    currencyLine cur = divClass "currency-line" $ do
       divClass "currency-name" $ text $ currencyName cur
       divClass "currency-balance" $ do
         bal <- currencyBalance cur
         dynText $ showMoney <$> bal
 
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
-currencyBalance cur = pure $ pure $ Money cur 1 
+currencyBalance cur = pure $ pure $ Money cur 1

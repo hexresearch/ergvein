@@ -163,3 +163,17 @@ currenciesPageCss = do
     width $ pct 100
     textAlign $ alignSide sideLeft
     fontSize $ pt 14
+  ".currencies" ? do
+    textAlign center
+  ".currency-line" ? do
+    width $ pct 100
+    maxWidth $ px 500
+    display inlineBlock
+  ".currency-name" ? do
+    display inlineBlock
+    float floatLeft
+    fontSize $ pt 14
+  ".currency-balance" ? do
+    display inlineBlock
+    float floatRight
+    fontSize $ pt 14
