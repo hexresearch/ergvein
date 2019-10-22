@@ -5,7 +5,7 @@ import Data.Text
 import Ergvein.Aeson
 
 -- | Supported currencies 
-data Currency = BTC | ERGO
+data Currency = BTC | ERGO deriving (Show, Read, Eq)
 $(deriveJSON aesonOptions ''Currency)
 
 -- | Smallest amount of currency
