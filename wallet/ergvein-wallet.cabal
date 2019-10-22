@@ -50,7 +50,8 @@ library
     , directory
     , ergvein-common            >= 1.0      && < 1.1
     , ergvein-crypto            >= 0.1      && < 0.2
-    , ergvein-wallet-native
+    , ergvein-wallet-native     >= 0.1      && < 0.2
+    , ergvein-wallet-types      >= 0.1      && < 0.2
     , exceptions
     , file-embed                >= 0.0      && < 0.1
     , ghcjs-dom

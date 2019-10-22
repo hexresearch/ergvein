@@ -1,0 +1,19 @@
+name:                ergvein-wallet-types
+version:             0.1.0.0
+synopsis:            Domain types that shared across Ergvein cryptowallet packages.
+description:         See README.md
+category:            Cryptocurrency
+build-type:          Simple
+cabal-version:       >=2.0
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+    Ergvein.Types.Currency
+  default-language:    Haskell2010
+  build-depends:
+      base
+    , aeson
+    , ergvein-common
+    , jsaddle
+    , text
