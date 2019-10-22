@@ -53,6 +53,7 @@ frontendCss r = do
   validateCss
   passwordCss
   initialPageCss
+  currenciesPageCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -155,3 +156,10 @@ initialPageCss = do
     marginLeft auto
     marginRight auto
     marginBottom $ px 10
+
+currenciesPageCss :: Css
+currenciesPageCss = do
+  ".sync-progress" ? do
+    width $ pct 100
+    textAlign $ alignSide sideLeft
+    fontSize $ pt 14
