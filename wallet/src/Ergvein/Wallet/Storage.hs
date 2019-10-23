@@ -98,7 +98,7 @@ decryptWalletData encryptedWalletData password =
       Left err -> Left $ show err
       Right decryptedData -> case walletData of
         Left err -> Left $ show err
-        Right r -> r
+        Right wd -> Right wd
         where
           walletData = decodeJson $ decodeUtf8With lenientDecode decryptedData
   where
