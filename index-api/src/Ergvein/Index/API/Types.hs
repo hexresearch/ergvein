@@ -1,8 +1,9 @@
 module Ergvein.Index.API.Types where
 
-import GHC.Generics
 import Ergvein.Aeson
 import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
+import GHC.Generics
 
 -- Balance
 data BalanceRequest = BalanceRequest
@@ -77,4 +78,3 @@ data TxBroadcastRequest = TxBroadcastRequest
 $(deriveJSON (aesonOptionsStripPrefix "txBroadcastReq") ''TxBroadcastRequest)
 
 type TxBroadcastResponse = TxHash
-

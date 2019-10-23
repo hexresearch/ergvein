@@ -6,13 +6,14 @@ import Servant.API.Generic
 import Servant.Server.Generic
 
 import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
 import Ergvein.Index.API.Types
 import Ergvein.Index.API
 import Ergvein.Index.API.V1
 import Ergvein.Index.Server.Monad
 
 indexServer :: IndexApi AsServerM
-indexServer = IndexApi 
+indexServer = IndexApi
     { indexGetBalance = indexGetBalanceEndpoint
     , indexGetTxHashHistory = indexGetTxHashHistoryEndpoint
     , indexGetTxMerkleProof = txMerkleProofEndpoint

@@ -20,7 +20,7 @@ import qualified Data.Text as T
 mnemonicPage :: MonadFront t m => m ()
 mnemonicPage = go Nothing
   where
-    go mnemonic = wrapper $ do
+    go mnemonic = wrapper True $ do
       (e, md) <- mnemonicWidget mnemonic
       nextWidget $ ffor e $ \mn -> Retractable {
           retractableNext = checkPage mn
@@ -29,7 +29,7 @@ mnemonicPage = go Nothing
       pure ()
 
 checkPage :: MonadFront t m => Mnemonic -> m ()
-checkPage mn = wrapper $ do
+checkPage mn = wrapper True $ do
   e <- mnemonicCheckWidget mn
   nextWidget $ ffor e $ \m -> Retractable {
       retractableNext = passwordPage m

@@ -53,6 +53,7 @@ frontendCss r = do
   validateCss
   passwordCss
   initialPageCss
+  currenciesPageCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -155,3 +156,25 @@ initialPageCss = do
     marginLeft auto
     marginRight auto
     marginBottom $ px 10
+
+currenciesPageCss :: Css
+currenciesPageCss = do
+  ".sync-progress" ? do
+    width $ pct 100
+    maxWidth $ px 500
+    display inlineBlock
+    textAlign $ alignSide sideLeft
+    fontSize $ pt 14
+  ".currency-wrapper" ? do
+    textAlign center
+  ".currency-line" ? do
+    width $ pct 100
+    maxWidth $ px 500
+    display inlineBlock
+    fontSize $ pt 24
+  ".currency-name" ? do
+    display inlineBlock
+    float floatLeft
+  ".currency-balance" ? do
+    display inlineBlock
+    float floatRight

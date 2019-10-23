@@ -10,7 +10,7 @@ import Ergvein.Wallet.Wrapper
 data GoPage = GoSeed | GoRestore
 
 initialPage :: MonadFront t m => m ()
-initialPage = wrapper $ divClass "initial-options" $ do
+initialPage = wrapper True $ divClass "initial-options" $ do
   newE <- fmap (GoSeed <$) $ row . outlineButton $ pure "Create wallet"
   restoreE <- fmap (GoRestore <$) $ row . outlineButton $ pure "Restore wallet"
   let goE = leftmost [newE, restoreE]
