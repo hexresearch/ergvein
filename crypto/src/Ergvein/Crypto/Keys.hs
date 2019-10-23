@@ -34,11 +34,13 @@ import           Ergvein.Crypto.Constants
 getEntropy :: IO Entropy
 getEntropy = E.getEntropy defaultEntropyLength
 
+-- | Convert BTC extended public key to a human-readable string.
 xPubBtcAddrString :: Network -> XPubKey -> Text
 xPubBtcAddrString net key = addrToString net addr
   where
     addr = xPubAddr key
 
+-- | Convert ERGO extended public key to a human-readable string.
 xPubErgAddrString :: Network -> XPubKey -> Text
 xPubErgAddrString net key = encodeBase58 content
   where
@@ -48,7 +50,7 @@ xPubErgAddrString net key = encodeBase58 content
     checksum = BA.convert $ hashWith Blake2b_256 checkSumContent :: BS.ByteString
     content = BS.take 38 (BS.concat [prefix, keyByteString, checksum])
 
--- | Converts extended public key to a human-readable string.
+-- | Convert extended public key to a human-readable string.
 xPubAddrToString :: Network -> XPubKey -> Either String Text
 xPubAddrToString net key
   | net == btc || net == btcTest = Right $ xPubBtcAddrString net key

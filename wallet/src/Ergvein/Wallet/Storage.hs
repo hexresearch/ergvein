@@ -54,7 +54,7 @@ createWallet mnemonic = saveWalletData walletData
   where
     walletData = WalletData {mnemonic = mnemonic, privateKeys = empty}
 
--- | Add extended private key to wallet
+-- | Add extended private key to the WalletData value
 addXPrvKey :: WalletData -> Base58 -> WalletData
 addXPrvKey WalletData {mnemonic = mnemonic, privateKeys = privateKeys} xPrvKey =
   WalletData {mnemonic = mnemonic, privateKeys = privateKeys |> xPrvKey}
@@ -65,7 +65,7 @@ readWalletData = do
   walletDirectory <- getWalletDirectory
   readJson $ walletDirectory </> walletFileName
 
--- | Read wallet data to wallet file
+-- | Save wallet data to wallet file
 saveWalletData :: WalletData -> IO ()
 saveWalletData walletData = do
   walletDirectory <- getWalletDirectory
