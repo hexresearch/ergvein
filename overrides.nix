@@ -34,6 +34,7 @@ in (self: super: let
     ergvein-wallet-android = ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-wallet-android" ./wallet-android walletOpts {});
     ergvein-wallet-desktop = ingnoreGarbage super.ergvein-wallet-desktop;
     ergvein-wallet-native = ingnoreGarbage super.ergvein-wallet-native;
+    ergvein-wallet-types = ingnoreGarbage super.ergvein-wallet-types;
     reflex-dom-retractable = ingnoreGarbage super.reflex-dom-retractable;
     reflex-external-ref = ingnoreGarbage super.reflex-external-ref;
     reflex-localize = ingnoreGarbage super.reflex-localize;
