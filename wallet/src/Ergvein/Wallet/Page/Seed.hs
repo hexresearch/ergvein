@@ -16,6 +16,7 @@ import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Text as T
+import qualified Data.List as L
 
 mnemonicPage :: MonadFront t m => m ()
 mnemonicPage = go Nothing
@@ -50,10 +51,28 @@ mnemonicWidget mnemonic = do
     Nothing -> pure (never, pure Nothing)
     Just phrase -> do
       divClass "mnemonic-title" $ h4 $ text "Theese words are your seed phrase"
-      colonize 4 (T.words phrase) $ divClass "column mnemonic-word" . text
+      divClass "mnemonic-colony" $ colonize 4 (prepareMnemonic 4 phrase) $ \(i,w) ->
+        divClass "column mnemonic-word" $ do
+          elClass "span" "mnemonic-word-ix" $ text $ showt i
+          text w
       divClass "mnemonic-warn" $ h4 $ text "It is the ONLY way to restore access to your wallet. Write it down or you will lost your money forever."
       btnE <- outlineButton $ pure "I wrote them"
       pure (phrase <$ btnE, pure $ Just phrase)
+  where
+    prepareMnemonic :: Int -> Mnemonic -> [(Int, Text)]
+    prepareMnemonic cols = L.concat . L.transpose . mkCols cols . zip [1..] . T.words
+
+-- | Helper to cut a list into column-length chunks
+mkCols :: Int -> [a] -> [[a]]
+mkCols n vals = mkCols' [] vals
+  where
+    l = length vals
+    n' = l `div` n + if l `mod` n /= 0 then 1 else 0 -- n - is the number of columns with n' elems in eacn
+    mkCols' :: [[a]] -> [a] -> [[a]]
+    mkCols' acc xs = case xs of
+      [] -> acc
+      _ -> let (r, rest) = L.splitAt n' xs in mkCols' (acc ++ [r]) rest
+
 
 -- | Interactive check of mnemonic phrase
 mnemonicCheckWidget :: MonadFront t m => Mnemonic -> m (Event t Mnemonic)

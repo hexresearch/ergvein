@@ -113,6 +113,10 @@ mnemonicWidgetCss = do
   ".mnemonic-word" ? do
     fontFamily ["Roboto-Medium"] []
     fontSize $ pt 18
+    textAlign $ alignSide sideLeft
+  ".mnemonic-word-ix" ? do
+    fontSize $ em 0.6
+    marginRight $ em 0.25
   ".mnemonic-warn" ? do
     marginTop $ px 30
   ".guess-buttons" ? textAlign center
