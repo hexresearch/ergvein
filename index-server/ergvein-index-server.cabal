@@ -52,6 +52,7 @@ library
       , persistent-template      == 2.5.*
       , persistent-postgresql    == 2.8.*
       , esqueleto                == 3.0.*
+      , safe
       , bitcoin-block
       , haskoin-core
       , bitcoin-api              == 0.12.*
