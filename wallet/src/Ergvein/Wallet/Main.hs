@@ -15,6 +15,4 @@ import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Seed
 
 frontend :: MonadFront t m => m ()
--- frontend = void $ retractStack initialPage
--- frontend = void $ retractStack currenciesPage
-frontend = void $ seedRestorePage
+frontend = void $ retractStack initialPage

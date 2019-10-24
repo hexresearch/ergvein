@@ -14,21 +14,21 @@ module Ergvein.Crypto.Keys(
   , getWordsWithPrefix
   ) where
 
-import           Data.Text
-import           Data.Vector                    as V
-import qualified Data.ByteString                as BS
-import qualified Data.ByteArray                 as BA
-import qualified System.Entropy                 as E
-import           Network.Haskoin.Util
-import           Network.Haskoin.Keys
-import           Network.Haskoin.Address
-import           Network.Haskoin.Address.Base58
-import           Network.Haskoin.Constants
-import           Crypto.Hash
-import           Crypto.Hash.Algorithms
+import Crypto.Hash
+import Crypto.Hash.Algorithms
+import Data.Text
+import Data.Vector                              as V
+import Network.Haskoin.Address
+import Network.Haskoin.Address.Base58
+import Network.Haskoin.Constants
+import Network.Haskoin.Keys
+import Network.Haskoin.Util
 
-import qualified Data.Trie as DT
-import qualified Data.Text.Encoding as TE
+import qualified Data.ByteArray                 as BA
+import qualified Data.ByteString                as BS
+import qualified Data.Text.Encoding             as TE
+import qualified Data.Trie                      as DT
+import qualified System.Entropy                 as E
 
 data ErgoNetwork = ErgoTestnet | ErgoMainnet
   deriving (Show, Eq)
