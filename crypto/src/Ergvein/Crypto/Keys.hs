@@ -8,12 +8,14 @@ module Ergvein.Crypto.Keys(
   , addrToString
   , xPubErgoAddrString
   , wordListEnglish
+  , wordTrie
   , btcExample
   , ergoExample
+  , getWordsWithPrefix
   ) where
 
 import           Data.Text
-import           Data.Vector
+import           Data.Vector                    as V
 import qualified Data.ByteString                as BS
 import qualified Data.ByteArray                 as BA
 import qualified System.Entropy                 as E
@@ -24,6 +26,9 @@ import           Network.Haskoin.Address.Base58
 import           Network.Haskoin.Constants
 import           Crypto.Hash
 import           Crypto.Hash.Algorithms
+
+import qualified Data.Trie as DT
+import qualified Data.Text.Encoding as TE
 
 data ErgoNetwork = ErgoTestnet | ErgoMainnet
   deriving (Show, Eq)
@@ -97,6 +102,14 @@ ergoExample = do
   let address = fmap (xPubErgoAddrString network) xPubKey
   putStrLn "\nAddress:"
   print address
+
+-- | Dictionary as a Trie for fast lookup by prefix
+wordTrie :: DT.Trie Text
+wordTrie = DT.fromList $ V.toList $ V.map (\v -> (TE.encodeUtf8 v, v)) wordListEnglish
+
+-- | Return all words with given prefix
+getWordsWithPrefix :: Text -> [Text]
+getWordsWithPrefix p = DT.elems $ DT.submap (TE.encodeUtf8 p) wordTrie
 
 -- | Standard English dictionary from BIP-39 specification.
 wordListEnglish :: Vector Text
