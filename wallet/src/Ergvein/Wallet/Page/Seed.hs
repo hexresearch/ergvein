@@ -2,6 +2,7 @@
 module Ergvein.Wallet.Page.Seed(
     mnemonicPage
   , mnemonicWidget
+  , seedRestorePage
   ) where
 
 import Control.Monad.Random.Strict
@@ -14,6 +15,7 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
+import Ergvein.Wallet.Input
 
 import qualified Data.Text as T
 import qualified Data.List as L
@@ -110,3 +112,31 @@ guessButtons ws idyn = do
         "button guess-button " <> if reali == i then "guess-true" else "guess-false"
       btnE <- buttonClass classeD $ pure $ ws !! i
       delay 1 $ fforMaybe btnE $ const $ if reali == i then Just (i+1) else Nothing
+
+seedRestorePage :: forall t m . MonadFront t m => m ()
+seedRestorePage = do
+  h4 $ text "Seed restore"
+  resetE <- buttonClass (pure "button button-outline") (pure "Reset and start again")
+  mnemE <- fmap (switch . current) $ widgetHold seedRestoreWidget $ seedRestoreWidget <$ resetE
+  widgetHold (pure ()) $ ffor mnemE $ h4 . text
+  pure ()
+
+seedRestoreWidget :: forall t m . MonadFront t m => m (Event t Mnemonic)
+seedRestoreWidget = mdo
+  ixD <- foldDyn (\_ i -> i + 1) 1 wordE
+  divClass "mnemonic-verify-n" $ h4 $ dynText $ ffor ixD $
+    \i -> "Enter the " <> showt i <> "th word"
+  wordE <- fmap (switch . current) $ widgetHold waiting $ ffor (updated inpD) $ \t -> if t == ""
+    then waiting
+    else fmap leftmost $ colonize 3 (take 9 $ getWordsWithPrefix t) $ \w -> do
+       btnE <- buttonClass (pure "button button-outline guess-button restore-word") (pure w)
+       pure $ w <$ btnE
+  inpD <- fmap join $ widgetHold (textField "" "") $ ffor wordE $ const $ textField "" ""
+  mnemD <- foldDyn (\w m -> let p = if m == "" then "" else " " in m <> p <> w) "" wordE
+  goE <- delay 0.1 (updated ixD)
+  pure $ attachWithMaybe (\mnem i -> if i == 5 then Just mnem else Nothing) (current mnemD) goE
+  where
+    waiting :: m (Event t Text)
+    waiting = do
+      h4 $ text "Waiting for input..."
+      pure never

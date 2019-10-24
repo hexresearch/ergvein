@@ -123,6 +123,8 @@ mnemonicWidgetCss = do
   ".guess-button" ? do
     marginRight $ px 30
     display inlineBlock
+  ".restore-word" ? do
+    minWidth $ px 120
   let mkGuess cl c = do
         cl ? backgroundColor c
         cl `with` hover ? backgroundColor c
