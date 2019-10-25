@@ -47,3 +47,9 @@ class MonadFrontConstr t m => MonadFront t m | m -> t where
   getSettings :: m Settings
   -- | System back button event
   getBackEvent :: m (Event t ())
+  -- | Get loading widget trigger and fire
+  getLoadingWidgetTF :: m (Event t (Text, Bool), (Text, Bool) -> IO ())
+  -- | Request displaying the loading widget
+  toggleLoadingWidget :: Event t (Text, Bool) -> m ()
+  -- | Display loading via Dynamic
+  loadingWidgetDyn :: Dynamic t (Text, Bool) -> m ()
