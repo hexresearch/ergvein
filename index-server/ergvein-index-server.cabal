@@ -22,6 +22,7 @@ library
     Ergvein.Index.Server.DB.Schema
     Ergvein.Index.Server.DB.Queries
     Ergvein.Index.Server.DB.Monad
+    Ergvein.Index.Server.DB.Drv
     Ergvein.Index.Server.Config
     Ergvein.Index.Server.Environment
     Ergvein.Index.Server.BlockchainScanner
@@ -99,7 +100,7 @@ executable ergvein-index-server
     , warp                      == 3.2.*
     , servant                   == 0.14.*
     , servant-server            == 0.14.*
-    , immortal                 == 0.3.*
+    , immortal                  == 0.3.*
     , unliftio-core
     , bitcoin-api
     , ergvein-index-api

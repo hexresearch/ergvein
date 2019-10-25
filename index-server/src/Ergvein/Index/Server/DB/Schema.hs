@@ -7,8 +7,6 @@ import Database.Persist.TH
 import Ergvein.Types.Currency
 import Ergvein.Index.Server.DB.Drv
 
-
-
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 ScannedHeightRec
   currency Currency

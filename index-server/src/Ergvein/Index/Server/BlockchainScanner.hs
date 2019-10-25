@@ -1,54 +1,78 @@
 module Ergvein.Index.Server.BlockchainScanner where
 
-import Data.Text (Text, pack)
-import Control.Monad.Reader
-import Control.Monad.Logger
-import Control.Monad.IO.Unlift
+import Control.Concurrent
 import Control.Immortal
-import Ergvein.Index.Server.Config
-import Network.Bitcoin.Api.Client
+import Control.Monad.IO.Unlift
+import Control.Monad.Logger
+import Control.Monad.Reader
+import Data.Maybe
+import Data.Text (Text, pack)
+import Data.Word
+import Database.Esqueleto
+import Database.Persist.Class
+import Database.Persist.Sql
 import Network.Bitcoin.Api.Blockchain
+import Network.Bitcoin.Api.Client
 import Network.Bitcoin.Api.Misc
-import Ergvein.Index.Server.Environment
+
+import qualified Data.Bitcoin.Block as Btc
+import qualified Data.Text.IO       as T
+
+import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema
-import Database.Persist.Sql
+import Ergvein.Index.Server.Environment
 import Ergvein.Types.Currency
-import Data.Maybe
-import Database.Esqueleto
-import Database.Persist.Class
-
-import qualified Data.Bitcoin.Block                     as Btc
-
-import qualified Data.Text.IO as T
-
 
 btcNodeClient :: Config -> (Client -> IO a) -> IO a
 btcNodeClient c = withClient (configBTCNodeHost c) (configBTCNodePort c) (configBTCNodeUser c) (configBTCNodePassword c)
 
-runDbQuery :: ServerEnv -> QueryT (ReaderT DBPool (LoggingT IO)) a -> IO a
-runDbQuery env query = runStdoutLoggingT $ flip runReaderT (envPool env) $ runDb $ query
-    
-blocksStream ::  Integer -> ServerEnv -> IO ()
-blocksStream grantedHeight env = do
-    
-    scannedHeight2 <-  runDbQuery env $ getScannedHeight BTC
-    let x = 0 `fromMaybe` (scannedHeightRecHeight  <$> entityVal <$> scannedHeight2) 
-    sequence_ $ go <$> [0..grantedHeight - 1]
+runDbQuery :: DBPool -> QueryT (ReaderT DBPool (LoggingT IO)) a -> IO a
+runDbQuery pool query = runStdoutLoggingT $ flip runReaderT pool $ runDb $ query
+
+scannedBlockCount :: DBPool -> Currency -> IO BlockHeight
+scannedBlockCount pool currency =
+    fromMaybe defaultCount <$> persistedCount
     where
-        client :: (Client -> IO a) -> IO a
-        client = btcNodeClient $ envConfig env
-        go h = do
-            blockHash <- client $ flip getBlockHash h
-            block <- client $ flip getBlock blockHash
-            
-            pure ()
+      persistedCount = do
+        entity <- runDbQuery pool $ getScannedHeight currency
+        pure $ scannedHeightRecHeight . entityVal <$> entity
+      defaultCount = case currency of BTC  -> 0
+                                      ERGO -> 0
 
+bTCBlockScanner :: ServerEnv -> BlockHeight -> IO ()
+bTCBlockScanner env blockHeightToScan = do
+    let cfg = envConfig env
+    blockHash <- btcNodeClient cfg $ flip getBlockHash $ fromIntegral blockHeightToScan
+    block <- btcNodeClient cfg $ flip getBlock blockHash
+    runDbQuery (envPool env) $ updateScannedHeight BTC $ blockHeightToScan
+    pure ()
 
-startBlockchainScanner :: MonadUnliftIO m => ServerEnv -> m Thread
-startBlockchainScanner env = let 
-    in create $ \thread -> liftIO $ do
-        x <-  blocksStream 10 env
-        T.putStrLn $ pack $ show x
-        mortalize thread
+blocksToScan :: ServerEnv -> Currency -> IO [BlockHeight]
+blocksToScan env currency = do
+    actual  <- actualHeight
+    scanned <- scannedBlockCount (envPool env) BTC
+    pure [scanned..actual]
+    where
+      cfg = envConfig env
+      actualHeight = fromIntegral <$>
+        case currency of
+          BTC  -> btcNodeClient cfg getBlockCount
+          ERGO -> undefined
+
+scannerThread :: MonadUnliftIO m => Int -> IO [BlockHeight] -> (BlockHeight -> IO ()) -> m Thread
+scannerThread scanDelay heightsM scanner = 
+    create iteration
+    where
+      delay = threadDelay scanDelay
+      iteration thread = liftIO $ do
+        heights <- heightsM
+        sequence_ $ scanner <$> heights
+        delay
+
+startBlockchainScanner :: MonadUnliftIO m => ServerEnv -> m [Thread]
+startBlockchainScanner env = sequenceA 
+    [
+    scannerThread 5000000 (blocksToScan env BTC) $ bTCBlockScanner env
+    ]
