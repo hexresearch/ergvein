@@ -10,10 +10,12 @@ license-file:        LICENSE
 copyright:           2019 ATUM SOLUTIONS AG
 author:
                      - Anton Gushcha
+                     - Levon Oganyan
                      - Aminion
                      - Vladimir Krutkin
 maintainer:
                      - Anton Gushcha <ncrashed@gmail.com>
+                     - Levon Oganyan <lemarwin42@gmail.com>
                      - Aminion <bonumsignum@gmail.com>
                      - Vladimir Krutkin <krutkinvs@gmail.com>
 
@@ -25,7 +27,7 @@ library
   build-depends:
       base                      >= 4.9      && <5
     , bytestring                >= 0.10     && < 0.11
-    , bytestring-trie           >= 0.2      && < 0.3
+    , bytestring-trie           >= 0.2.5    && < 0.3
     , cryptonite                >= 0.25     && < 0.26
     , entropy                   >= 0.3.7    && < 0.4.1.6
     , haskoin-core              >= 0.8.0    && < 0.8.1
