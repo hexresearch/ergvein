@@ -52,7 +52,7 @@ bTCBlockScanner env blockHeightToScan = do
 blocksToScan :: ServerEnv -> Currency -> IO [BlockHeight]
 blocksToScan env currency = do
     actual  <- actualHeight
-    scanned <- scannedBlockCount (envPool env) BTC
+    scanned <- scannedBlockCount (envPool env) currency
     pure [scanned..actual]
     where
       cfg = envConfig env
