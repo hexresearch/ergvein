@@ -16,42 +16,43 @@ import Ergvein.Wallet.Embed.TH
 import Ergvein.Wallet.Id
 import Ergvein.Wallet.Monad
 import Reflex.Dom
+import Reflex.Localize
 
 type Password = Text
 
-labeledTextInput :: MonadFront t m
-  => Text -- ^ Label
+labeledTextInput :: (MonadFront t m, LocalizedPrint l)
+  => l -- ^ Label
   -> TextInputConfig t
   -> m (TextInput t)
 labeledTextInput lbl cfg = do
   i <- genId
-  label i $ text lbl
+  label i $ localizedText lbl
   textInput cfg {
       _textInputConfig_attributes = do
         as <- _textInputConfig_attributes cfg
         pure $ "id" =: i <> as
     }
 
-textField :: MonadFront t m
-  => Text -- ^ Label
+textField :: (MonadFront t m, LocalizedPrint l)
+  => l -- ^ Label
   -> Text -- ^ Initial value
   -> m (Dynamic t Text)
 textField lbl v0 = fmap _textInput_value $ labeledTextInput lbl def {
     _textInputConfig_initialValue = v0
   }
 
-passField :: MonadFront t m
-  => Text -- ^ Label
+passField :: (MonadFront t m, LocalizedPrint l)
+  => l -- ^ Label
   -> m (Dynamic t Text)
 passField lbl = fmap _textInput_value $ labeledTextInput lbl def {
     _textInputConfig_inputType  = "password"
   }
 
 -- | Password field with toggleable visibility
-passFieldWithEye :: MonadFront t m => Text -> m (Dynamic t Password)
+passFieldWithEye :: (MonadFront t m, LocalizedPrint l) => l -> m (Dynamic t Password)
 passFieldWithEye lbl = mdo
   i <- genId
-  label i $ text lbl
+  label i $ localizedText lbl
   let initType = "password"
   typeD <- holdDyn initType $ poke eyeE $ const $ do
     v <- sampleDyn typeD
@@ -71,8 +72,9 @@ passFieldWithEye lbl = mdo
   pure valD
 
 -- | Form submit button
-submitClass :: MonadFront t m => Dynamic t Text -> Dynamic t Text -> m (Event t ())
-submitClass classD lblD = do
+submitClass :: (MonadFront t m, LocalizedPrint l) => Dynamic t Text -> l -> m (Event t ())
+submitClass classD lbl = do
+  lblD <- localized lbl
   let classesD = do
         classVal <- classD
         lbl <- lblD

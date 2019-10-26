@@ -11,11 +11,13 @@ import Data.List (permutations)
 import Ergvein.Crypto.Keys
 import Ergvein.Text
 import Ergvein.Wallet.Elements
+import Ergvein.Wallet.Input
+import Ergvein.Wallet.Localization.Seed
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
-import Ergvein.Wallet.Input
+import Reflex.Localize
 
 import qualified Data.Text as T
 import qualified Data.List as L
@@ -52,13 +54,13 @@ mnemonicWidget mnemonic = do
   case mphrase of
     Nothing -> pure (never, pure Nothing)
     Just phrase -> do
-      divClass "mnemonic-title" $ h4 $ text "Theese words are your seed phrase"
+      divClass "mnemonic-title" $ h4 $ localizedText SPSTitle
       divClass "mnemonic-colony" $ colonize 4 (prepareMnemonic 4 phrase) $ \(i,w) ->
         divClass "column mnemonic-word" $ do
           elClass "span" "mnemonic-word-ix" $ text $ showt i
           text w
-      divClass "mnemonic-warn" $ h4 $ text "It is the ONLY way to restore access to your wallet. Write it down or you will lost your money forever."
-      btnE <- outlineButton $ pure "I wrote them"
+      divClass "mnemonic-warn" $ h4 $ localizedText SPSWarn
+      btnE <- outlineButton SPSWrote
       pure (phrase <$ btnE, pure $ Just phrase)
   where
     prepareMnemonic :: Int -> Mnemonic -> [(Int, Text)]
@@ -80,10 +82,13 @@ mkCols n vals = mkCols' [] vals
 mnemonicCheckWidget :: MonadFront t m => Mnemonic -> m (Event t Mnemonic)
 mnemonicCheckWidget mnemonic = mdo
   let ws = T.words mnemonic
-  divClass "mnemonic-verify-title" $ h4 $ text "Double check the seed phrase"
+  langD <- getLanguage
+  divClass "mnemonic-verify-title" $ h4 $ localizedText SPSVerifyTitle
   idyn <- holdDyn 0 ie
-  divClass "mnemonic-verify-n" $ h4 $ dynText $ ffor idyn $
-    \i -> "Select the " <> showt (i+1) <> "th word"
+  divClass "mnemonic-verify-n" $ h4 $ dynText $ do
+    l <- langD
+    i <- idyn
+    pure $ localizedShow l $ SPSSelectWord (i+1)
   ie <- guessButtons ws idyn
   pure $ fforMaybe (updated idyn) $ \i -> if i >= length ws
     then Just mnemonic
@@ -110,33 +115,33 @@ guessButtons ws idyn = do
     guessButton reali i = mdo
       classeD <- holdDyn "button button-outline guess-button" $ ffor btnE $ const $
         "button guess-button " <> if reali == i then "guess-true" else "guess-false"
-      btnE <- buttonClass classeD $ pure $ ws !! i
+      btnE <- buttonClass classeD $ ws !! i
       delay 1 $ fforMaybe btnE $ const $ if reali == i then Just (i+1) else Nothing
 
 seedRestorePage :: forall t m . MonadFront t m => m ()
 seedRestorePage = do
-  h4 $ text "Seed restore"
-  resetE <- buttonClass (pure "button button-outline") (pure "Reset and start again")
+  h4 $ localizedText SPSRestoreTitle
+  resetE <- buttonClass (pure "button button-outline") SPSReset
   mnemE <- fmap (switch . current) $ widgetHold seedRestoreWidget $ seedRestoreWidget <$ resetE
   widgetHold (pure ()) $ ffor mnemE $ h4 . text
   pure ()
 
 seedRestoreWidget :: forall t m . MonadFront t m => m (Event t Mnemonic)
 seedRestoreWidget = mdo
+  langD <- getLanguage
   ixD <- foldDyn (\_ i -> i + 1) 1 wordE
-  divClass "mnemonic-verify-n" $ h4 $ dynText $ ffor ixD $
-    \i -> "Enter the " <> showt i <> "th word"
+  divClass "mnemonic-verify-n" $ h4 $ dynText $
+    localizedShow <$> langD <*> (SPSEnterWord <$> ixD)
   wordE <- fmap (switch . current) $ widgetHold waiting $ ffor (updated inpD) $ \t -> if t == ""
     then waiting
     else fmap leftmost $ colonize 3 (take 9 $ getWordsWithPrefix t) $ \w -> do
-       btnE <- buttonClass (pure "button button-outline guess-button restore-word") (pure w)
+       btnE <- buttonClass (pure "button button-outline guess-button restore-word") w
        pure $ w <$ btnE
-  inpD <- fmap join $ widgetHold (textField "" "") $ ffor wordE $ const $ textField "" ""
+  let emptyStr :: Text = ""
+  inpD <- fmap join $ widgetHold (textField emptyStr "") $ ffor wordE $ const $ textField emptyStr ""
   mnemD <- foldDyn (\w m -> let p = if m == "" then "" else " " in m <> p <> w) "" wordE
   goE <- delay 0.1 (updated ixD)
   pure $ attachWithMaybe (\mnem i -> if i == 5 then Just mnem else Nothing) (current mnemD) goE
   where
     waiting :: m (Event t Text)
-    waiting = do
-      h4 $ text "Waiting for input..."
-      pure never
+    waiting = (h4 $ localizedText SPSWaiting) >> pure never
