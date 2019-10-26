@@ -10,6 +10,7 @@ import Control.Monad.Reader
 import Data.Functor (void)
 import Data.IORef
 import Data.Text (Text)
+import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Run
 import Ergvein.Wallet.Run.Callbacks
@@ -17,24 +18,38 @@ import Ergvein.Wallet.Settings
 import Reflex
 import Reflex.Dom
 import Reflex.Dom.Retractable
+import Reflex.Localize
+import Reflex.ExternalRef
 
 data Env t = Env {
   env'settings  :: !Settings
 , env'backEvent :: !(Event t ())
 , env'backFire  :: !(IO ())
 , env'loading   :: !(Event t (Text, Bool), (Text, Bool) -> IO ())
+, env'langRef   :: !(ExternalRef t Language)
 }
 
-newEnv :: (Reflex t, TriggerEvent t m) => Settings -> m (Env t)
+newEnv :: (Reflex t, TriggerEvent t m, MonadIO m) => Settings -> m (Env t)
 newEnv settings = do
   (backE, backFire) <- newTriggerEvent
   loadingEF <- newTriggerEvent
+  langRef <- newExternalRef $ settingsLang settings
+  re <- newRetractEnv
   pure Env {
       env'settings  = settings
     , env'backEvent = backE
     , env'backFire  = backFire ()
     , env'loading   = loadingEF
+    , env'langRef   = langRef
     }
+
+instance MonadBaseConstr t m => MonadLocalized t (ReaderT (Env t) m) where
+  setLanguage lang = do
+    langRef <- asks env'langRef
+    writeExternalRef langRef lang
+  {-# INLINE setLanguage #-}
+  getLanguage = externalRefDynamic =<< asks env'langRef
+  {-# INLINE getLanguage #-}
 
 instance MonadFrontConstr t m => MonadFront t (ReaderT (Env t) m) where
   getSettings = asks env'settings
@@ -59,7 +74,4 @@ runEnv cbs e ma = do
   re <- newRetractEnv
   runRetractT (runReaderT ma' e) re
   where
-    ma' = systemBackButton >> ma
-
-systemBackButton :: MonadFront t m => m ()
-systemBackButton = void $ retract =<< getBackEvent
+    ma' = (void $ retract =<< getBackEvent) >> ma

@@ -22,6 +22,7 @@ import Language.Javascript.JSaddle
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
 import Reflex.Dom.Retractable.Class
+import Reflex.Localize
 
 -- | Type classes that we need from reflex-dom itself.
 type MonadBaseConstr t m = (MonadHold t m
