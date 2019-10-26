@@ -100,6 +100,10 @@ instance (PerformEvent t m, MonadHold t m, Adjustable t m, MonadFix m, MonadIO (
   setLanguage lang = do
     langRef <- LocalizeT $ asks locEnvLangRef
     writeExternalRef langRef lang
+  setLanguageE langE = do
+    langRef <- LocalizeT $ asks locEnvLangRef
+    performEvent_ $ fmap (writeExternalRef langRef) langE
   getLanguage = LocalizeT $ (externalRefDynamic =<< asks locEnvLangRef)
   {-# INLINE setLanguage #-}
+  {-# INLINE setLanguageE #-}
   {-# INLINE getLanguage #-}

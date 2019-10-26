@@ -48,6 +48,10 @@ instance MonadBaseConstr t m => MonadLocalized t (ReaderT (Env t) m) where
     langRef <- asks env'langRef
     writeExternalRef langRef lang
   {-# INLINE setLanguage #-}
+  setLanguageE langE = do
+    langRef <- asks env'langRef
+    performEvent_ $ fmap (writeExternalRef langRef) langE
+  {-# INLINE setLanguageE #-}
   getLanguage = externalRefDynamic =<< asks env'langRef
   {-# INLINE getLanguage #-}
 
