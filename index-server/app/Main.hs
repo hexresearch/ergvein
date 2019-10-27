@@ -11,7 +11,7 @@ import Ergvein.Index.Server.Environment
 import Control.Immortal
 import Control.Monad.IO.Unlift
 import Ergvein.Index.Server.Config
-import Ergvein.Index.Server.BlockchainScanner 
+import Ergvein.Index.Server.BlockchainScan
 
 import qualified Data.Text.IO as T
 
@@ -54,5 +54,3 @@ startServer Options{..} = case optsCommand of
         let app = logStdoutDev $ indexServerApp env
             warpSettings = setPort (configServerPort cfg) defaultSettings
         runSettings warpSettings app
-
-  
