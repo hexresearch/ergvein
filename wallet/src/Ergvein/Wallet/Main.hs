@@ -11,5 +11,8 @@ import Ergvein.Wallet.Run
 import Ergvein.Wallet.Run.Callbacks
 import Reflex.Dom.Main (mainWidgetWithCss)
 
+import Ergvein.Wallet.Page.Currencies
+import Ergvein.Wallet.Page.Seed
+
 frontend :: MonadFront t m => m ()
 frontend = void $ retractStack initialPage

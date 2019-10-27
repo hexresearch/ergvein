@@ -24,9 +24,13 @@ library
     Ergvein.Wallet.Id
     Ergvein.Wallet.Input
     Ergvein.Wallet.Language
+    Ergvein.Wallet.Loading
+    Ergvein.Wallet.Localization.Password
+    Ergvein.Wallet.Localization.Seed
     Ergvein.Wallet.Main
     Ergvein.Wallet.Monad
     Ergvein.Wallet.Monad.Env
+    Ergvein.Wallet.Page.Currencies
     Ergvein.Wallet.Page.Initial
     Ergvein.Wallet.Page.Password
     Ergvein.Wallet.Page.Seed
@@ -49,7 +53,8 @@ library
     , directory
     , ergvein-common            >= 1.0      && < 1.1
     , ergvein-crypto            >= 0.1      && < 0.2
-    , ergvein-wallet-native
+    , ergvein-wallet-native     >= 0.1      && < 0.2
+    , ergvein-wallet-types      >= 0.1      && < 0.2
     , exceptions
     , file-embed                >= 0.0      && < 0.1
     , ghcjs-dom

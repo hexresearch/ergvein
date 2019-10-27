@@ -51,6 +51,7 @@ import Data.Time
 import Ergvein.Wallet.Util
 import Reflex
 import Reflex.Dom
+import Reflex.Localize
 
 import qualified Data.Text as T
 
@@ -159,11 +160,13 @@ mkButton eltp attrs classValD ma = do
   return $ a <$ domEvent Click e
 
 -- | Button with CSS classes
-buttonClass :: (DomBuilder t m, PostBuild t m) => Dynamic t Text -> Dynamic t Text -> m (Event t ())
-buttonClass classValD = mkButton "button" [("href", "javascript:void(0)")] classValD . dynText
+buttonClass :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
+  => Dynamic t Text -> lbl -> m (Event t ())
+buttonClass classValD lbl = mkButton "button" [("href", "javascript:void(0)")] classValD . dynText =<< localized lbl
 
 -- | Button with CSS classes
-outlineButton :: (DomBuilder t m, PostBuild t m) => Dynamic t Text -> m (Event t ())
+outlineButton :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
+  => lbl -> m (Event t ())
 outlineButton = buttonClass "button button-outline"
 
 -- | Button with CSS classes

@@ -22,6 +22,7 @@ import Language.Javascript.JSaddle
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
 import Reflex.Dom.Retractable.Class
+import Reflex.Localize
 
 -- | Type classes that we need from reflex-dom itself.
 type MonadBaseConstr t m = (MonadHold t m
@@ -43,7 +44,13 @@ type MonadFrontConstr t m = (MonadBaseConstr t m
   , MonadRetract t m
   )
 
-class MonadFrontConstr t m => MonadFront t m | m -> t where
+class (MonadFrontConstr t m, MonadLocalized t m) => MonadFront t m | m -> t where
   getSettings :: m Settings
   -- | System back button event
   getBackEvent :: m (Event t ())
+  -- | Get loading widget trigger and fire
+  getLoadingWidgetTF :: m (Event t (Text, Bool), (Text, Bool) -> IO ())
+  -- | Request displaying the loading widget
+  toggleLoadingWidget :: Event t (Text, Bool) -> m ()
+  -- | Display loading via Dynamic
+  loadingWidgetDyn :: Dynamic t (Text, Bool) -> m ()

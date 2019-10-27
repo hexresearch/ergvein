@@ -16,6 +16,7 @@ import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.Environment
 import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
 
 btcNodeClient :: Config -> (Client -> IO a) -> IO a
 btcNodeClient cfg = withClient 
