@@ -26,34 +26,38 @@ import Ergvein.Index.Server.Environment
 import Ergvein.Types.Currency
 
 btcNodeClient :: Config -> (Client -> IO a) -> IO a
-btcNodeClient c = withClient (configBTCNodeHost c) (configBTCNodePort c) (configBTCNodeUser c) (configBTCNodePassword c)
+btcNodeClient cfg = withClient 
+  (configBTCNodeHost     cfg)
+  (configBTCNodePort     cfg)
+  (configBTCNodeUser     cfg)
+  (configBTCNodePassword cfg)
 
 runDbQuery :: DBPool -> QueryT (ReaderT DBPool (LoggingT IO)) a -> IO a
-runDbQuery pool query = runStdoutLoggingT $ flip runReaderT pool $ runDb $ query
+runDbQuery pool query = runStdoutLoggingT $ flip runReaderT pool $ runDb query
 
-scannedBlockCount :: DBPool -> Currency -> IO BlockHeight
-scannedBlockCount pool currency =
-    fromMaybe defaultCount <$> persistedCount
+scannedBlockHeight :: DBPool -> Currency -> IO BlockHeight
+scannedBlockHeight pool currency =
+    fromMaybe startHeight <$> persistedHeight
     where
-      persistedCount = do
+      persistedHeight = do
         entity <- runDbQuery pool $ getScannedHeight currency
         pure $ scannedHeightRecHeight . entityVal <$> entity
-      defaultCount = case currency of BTC  -> 0
-                                      ERGO -> 0
+      startHeight = case currency of BTC  -> 0
+                                     ERGO -> 0
 
 bTCBlockScanner :: ServerEnv -> BlockHeight -> IO ()
 bTCBlockScanner env blockHeightToScan = do
     let cfg = envConfig env
     blockHash <- btcNodeClient cfg $ flip getBlockHash $ fromIntegral blockHeightToScan
     block <- btcNodeClient cfg $ flip getBlock blockHash
-    runDbQuery (envPool env) $ updateScannedHeight BTC $ blockHeightToScan
+    runDbQuery (envPool env) $ updateScannedHeight BTC blockHeightToScan
     pure ()
 
-blocksToScan :: ServerEnv -> Currency -> IO [BlockHeight]
-blocksToScan env currency = do
+blockHeightsToScan :: ServerEnv -> Currency -> IO [BlockHeight]
+blockHeightsToScan env currency = do
     actual  <- actualHeight
-    scanned <- scannedBlockCount (envPool env) currency
-    pure [scanned..actual]
+    scanned <- scannedBlockHeight (envPool env) currency
+    pure [succ scanned..actual]
     where
       cfg = envConfig env
       actualHeight = fromIntegral <$>
@@ -65,14 +69,13 @@ scannerThread :: MonadUnliftIO m => Int -> IO [BlockHeight] -> (BlockHeight -> I
 scannerThread scanDelay heightsM scanner = 
     create iteration
     where
-      delay = threadDelay scanDelay
       iteration thread = liftIO $ do
         heights <- heightsM
         sequence_ $ scanner <$> heights
-        delay
+        threadDelay scanDelay
 
 startBlockchainScanner :: MonadUnliftIO m => ServerEnv -> m [Thread]
 startBlockchainScanner env = sequenceA 
     [
-    scannerThread 5000000 (blocksToScan env BTC) $ bTCBlockScanner env
+    scannerThread 5000000 (blockHeightsToScan env BTC) $ bTCBlockScanner env
     ]
