@@ -25,3 +25,6 @@ runDb :: MonadDB m => ReaderT SqlBackend m a -> m a
 runDb ma = do
     pool <- getDbPool
     runSqlPool ma pool
+
+runDbQuery :: DBPool -> QueryT (ReaderT DBPool (LoggingT IO)) a -> IO a
+runDbQuery pool query = runStdoutLoggingT $ flip runReaderT pool $ runDb query

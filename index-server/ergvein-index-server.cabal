@@ -25,7 +25,7 @@ library
     Ergvein.Index.Server.DB.Drv
     Ergvein.Index.Server.Config
     Ergvein.Index.Server.Environment
-    Ergvein.Index.Server.BlockchainScanner
+    Ergvein.Index.Server.BlockchainScan
 
   build-depends:
         base                     >= 4.7 && < 4.12

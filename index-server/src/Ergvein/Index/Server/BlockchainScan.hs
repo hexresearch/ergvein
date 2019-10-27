@@ -1,4 +1,4 @@
-module Ergvein.Index.Server.BlockchainScanner where
+module Ergvein.Index.Server.BlockchainScan where
 
 import Control.Concurrent
 import Control.Immortal
@@ -6,17 +6,9 @@ import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Reader
 import Data.Maybe
-import Data.Text (Text, pack)
-import Data.Word
-import Database.Esqueleto
-import Database.Persist.Class
 import Database.Persist.Sql
 import Network.Bitcoin.Api.Blockchain
 import Network.Bitcoin.Api.Client
-import Network.Bitcoin.Api.Misc
-
-import qualified Data.Bitcoin.Block as Btc
-import qualified Data.Text.IO       as T
 
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
@@ -31,9 +23,6 @@ btcNodeClient cfg = withClient
   (configBTCNodePort     cfg)
   (configBTCNodeUser     cfg)
   (configBTCNodePassword cfg)
-
-runDbQuery :: DBPool -> QueryT (ReaderT DBPool (LoggingT IO)) a -> IO a
-runDbQuery pool query = runStdoutLoggingT $ flip runReaderT pool $ runDb query
 
 scannedBlockHeight :: DBPool -> Currency -> IO BlockHeight
 scannedBlockHeight pool currency =
@@ -77,5 +66,5 @@ scannerThread scanDelay heightsM scanner =
 startBlockchainScanner :: MonadUnliftIO m => ServerEnv -> m [Thread]
 startBlockchainScanner env = sequenceA 
     [
-    scannerThread 5000000 (blockHeightsToScan env BTC) $ bTCBlockScanner env
+    scannerThread (configBlockchainScanDelay $ envConfig  env) (blockHeightsToScan env BTC) $ bTCBlockScanner env
     ]
