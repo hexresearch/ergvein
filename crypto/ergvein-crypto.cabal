@@ -23,7 +23,10 @@ library
   hs-source-dirs:      src
   exposed-modules:
     Ergvein.Crypto
+    Ergvein.Crypto.Constants
     Ergvein.Crypto.Keys
+    Ergvein.Crypto.WordLists
+    Ergvein.Crypto.AES256
   build-depends:
       base                      >= 4.9      && <5
     , bytestring                >= 0.10     && < 0.11
@@ -37,3 +40,5 @@ library
   default-language:    Haskell2010
   default-extensions:
     OverloadedStrings
+    GADTs
+    ScopedTypeVariables
