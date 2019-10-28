@@ -9,6 +9,7 @@ import Control.Monad.Random.Strict
 import Data.Bifunctor
 import Data.List (permutations)
 import Ergvein.Crypto.Keys
+import Ergvein.Crypto.WordLists
 import Ergvein.Text
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input

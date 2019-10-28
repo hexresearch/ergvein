@@ -1,9 +1,22 @@
 module Ergvein.Crypto.WordLists(
-    wordListEnglish
+    wordTrie
+  , getWordsWithPrefix
+  , wordListEnglish
   ) where
 
 import Data.Text
-import Data.Vector
+import Data.Vector                              as V
+
+import qualified Data.Trie                      as DT
+import qualified Data.Text.Encoding             as TE
+
+-- | Dictionary as a Trie for fast lookup by prefix
+wordTrie :: DT.Trie Text
+wordTrie = DT.fromList $ V.toList $ V.map (\v -> (TE.encodeUtf8 v, v)) wordListEnglish
+
+-- | Return all words with given prefix
+getWordsWithPrefix :: Text -> [Text]
+getWordsWithPrefix p = DT.elems $ DT.submap (TE.encodeUtf8 p) wordTrie
 
 -- | Standard English dictionary from BIP-39 specification.
 wordListEnglish :: Vector Text
