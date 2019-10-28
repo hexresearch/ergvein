@@ -24,6 +24,9 @@ library
     Ergvein.Wallet.Id
     Ergvein.Wallet.Input
     Ergvein.Wallet.Language
+    Ergvein.Wallet.Loading
+    Ergvein.Wallet.Localization.Password
+    Ergvein.Wallet.Localization.Seed
     Ergvein.Wallet.Main
     Ergvein.Wallet.Monad
     Ergvein.Wallet.Monad.Env

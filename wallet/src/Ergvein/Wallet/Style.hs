@@ -54,6 +54,7 @@ frontendCss r = do
   passwordCss
   initialPageCss
   currenciesPageCss
+  loadingWidgetCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -113,12 +114,18 @@ mnemonicWidgetCss = do
   ".mnemonic-word" ? do
     fontFamily ["Roboto-Medium"] []
     fontSize $ pt 18
+    textAlign $ alignSide sideLeft
+  ".mnemonic-word-ix" ? do
+    fontSize $ em 0.6
+    marginRight $ em 0.25
   ".mnemonic-warn" ? do
     marginTop $ px 30
   ".guess-buttons" ? textAlign center
   ".guess-button" ? do
     marginRight $ px 30
     display inlineBlock
+  ".restore-word" ? do
+    minWidth $ px 120
   let mkGuess cl c = do
         cl ? backgroundColor c
         cl `with` hover ? backgroundColor c
@@ -178,3 +185,27 @@ currenciesPageCss = do
   ".currency-balance" ? do
     display inlineBlock
     float floatRight
+
+loadingWidgetCss :: Css
+loadingWidgetCss = do
+  ".loading-page" ? do
+    backgroundColor $ rgba 0 0 0 0.75
+    position absolute
+    height $ pct 160
+    width $ pct 100
+    top $ px 0
+    left $ px 0
+    zIndex 1
+    textAlign center
+  ".loading-box" ? do
+    display inlineBlock
+    marginTop $ vh 50
+    color white
+  ".loading__bar" ? do
+    border solid (px 2) "#9b4dca"
+    width $ px 120
+    height $ px 10
+    boxSizing borderBox
+  ".loading__status" ? do
+    backgroundColor "#ab5dda"
+    height $ pct 100
