@@ -53,10 +53,10 @@ library
       , persistent-template      == 2.5.*
       , persistent-postgresql    == 2.8.*
       , esqueleto                == 3.0.*
-      , safe
-      , bitcoin-block
-      , haskoin-core
-      , bitcoin-api              == 0.12.*
+      , safe                     == 0.3.*
+      , bitcoin-block            == 0.13.*
+      , haskoin-core             == 0.8.*
+      , bitcoin-api              == 0.12.1
       , ergvein-common
       , ergvein-index-api
       , ergvein-wallet-types 
@@ -102,8 +102,8 @@ executable ergvein-index-server
     , servant                   == 0.14.*
     , servant-server            == 0.14.*
     , immortal                  == 0.3.*
-    , unliftio-core
-    , bitcoin-api
+    , unliftio-core             == 0.1.*
+    , bitcoin-api               == 0.12.1
     , ergvein-index-api
     , ergvein-index-server
   default-language:    Haskell2010
