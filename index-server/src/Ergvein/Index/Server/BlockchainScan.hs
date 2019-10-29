@@ -25,15 +25,10 @@ btcNodeClient cfg = withClient
   (configBTCNodeUser     cfg)
   (configBTCNodePassword cfg)
 
-scannedBlockHeight :: DBPool -> Currency -> IO BlockHeight
-scannedBlockHeight pool currency =
-    fromMaybe startHeight <$> persistedHeight
-    where
-      persistedHeight = do
+scannedBlockHeight :: DBPool -> Currency -> IO (Maybe BlockHeight)
+scannedBlockHeight pool currency = do
         entity <- runDbQuery pool $ getScannedHeight currency
         pure $ scannedHeightRecHeight . entityVal <$> entity
-      startHeight = case currency of BTC  -> 0
-                                     ERGO -> 0
 
 bTCBlockScanner :: ServerEnv -> BlockHeight -> IO ()
 bTCBlockScanner env blockHeightToScan = do
@@ -47,13 +42,14 @@ blockHeightsToScan :: ServerEnv -> Currency -> IO [BlockHeight]
 blockHeightsToScan env currency = do
     actual  <- actualHeight
     scanned <- scannedBlockHeight (envPool env) currency
-    pure [succ scanned..actual]
+    let start = fromMaybe startHeight $ succ <$> scanned
+    pure [start..actual]
     where
       cfg = envConfig env
-      actualHeight = fromIntegral <$>
-        case currency of
-          BTC  -> btcNodeClient cfg getBlockCount
-          ERGO -> undefined
+      actualHeight = fromIntegral <$> case currency of BTC  -> btcNodeClient cfg getBlockCount
+                                                       ERGO -> undefined
+      startHeight = case currency of BTC  -> 0
+                                     ERGO -> 0
 
 scannerThread :: MonadUnliftIO m => Int -> IO [BlockHeight] -> (BlockHeight -> IO ()) -> m Thread
 scannerThread scanDelay heightsM scanner = 
