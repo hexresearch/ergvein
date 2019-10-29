@@ -1,18 +1,15 @@
 module Ergvein.Wallet.Page.Password(
     passwordPage
   , askPasswordPage
-  , Mnemonic
   ) where
 
+import Ergvein.Crypto.Keys     (Mnemonic)
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Password
 import Ergvein.Wallet.Wrapper
-
 import Ergvein.Wallet.Localization.Password
 import Reflex.Localize
-
-type Mnemonic = Text
 
 passwordPage :: MonadFront t m => Mnemonic -> m ()
 passwordPage _ = wrapper True $ do

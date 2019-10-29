@@ -9,6 +9,7 @@ module Ergvein.Aeson(
   , aesonOptions
   , aesonOptionsStripPrefix
   , aesonOptionsStripToApostroph
+  , defaultOptions
   , dropPrefixOptions
   , dropPunctuation
   , headToLower
@@ -26,7 +27,7 @@ module Ergvein.Aeson(
   , readJsonLazy
   ) where
 
-import Data.Aeson.TH (Options (..), SumEncoding (..))
+import Data.Aeson.TH (Options (..), SumEncoding (..), defaultOptions)
 import Data.Aeson.Types (ToJSON(..), FromJSON(..), ToJSONKey(..), FromJSONKey(..))
 import Data.Aeson(decode, decode', encode, eitherDecode')
 import Data.Bifunctor (first)
