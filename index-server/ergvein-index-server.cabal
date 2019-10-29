@@ -57,6 +57,8 @@ library
       , bitcoin-block            == 0.13.*
       , haskoin-core             == 0.8.*
       , bitcoin-api              == 0.12.1
+      , cereal
+      , hexstring
       , ergvein-common
       , ergvein-index-api
       , ergvein-wallet-types 

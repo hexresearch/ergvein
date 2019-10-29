@@ -6,9 +6,11 @@ import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Reader
 import Data.Maybe
+import Data.Either
 import Database.Persist.Sql
 import Network.Bitcoin.Api.Blockchain
 import Network.Bitcoin.Api.Client
+import Data.Serialize (decode, encode)
 
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
@@ -17,6 +19,12 @@ import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.Environment
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+
+import qualified Data.HexString as HS
+import qualified Network.Haskoin.Block as HK
+import qualified Network.Haskoin.Transaction as HK
+import qualified Data.Text.IO as T
+import Data.Text (Text, pack)
 
 btcNodeClient :: Config -> (Client -> IO a) -> IO a
 btcNodeClient cfg = withClient 
@@ -30,11 +38,35 @@ scannedBlockHeight pool currency = do
         entity <- runDbQuery pool $ getScannedHeight currency
         pure $ scannedHeightRecHeight . entityVal <$> entity
 
+data Unspent = Unspent {
+  txHash :: String,
+  pubKey :: String,
+  amount :: MoneyUnit
+}
+
+data Spent = Spent  {
+  txHashTarget :: String,
+  stxHash :: String,
+  spubKey :: String
+}
+
+utxo :: HS.HexString -> ([Unspent], [Spent])
+utxo str = let
+  block = decode $ HS.toBytes str
+  b = HK.blockTxns $ fromRight (error "") block
+  in mconcat $ f <$> b
+  where f tx = mempty
+
 bTCBlockScanner :: ServerEnv -> BlockHeight -> IO ()
 bTCBlockScanner env blockHeightToScan = do
     let cfg = envConfig env
     blockHash <- btcNodeClient cfg $ flip getBlockHash $ fromIntegral blockHeightToScan
-    block <- btcNodeClient cfg $ flip getBlock blockHash
+    blockM <-  btcNodeClient cfg $ flip getBlockRaw blockHash
+    let block :: Either String HK.Block
+        block = decode $ HS.toBytes $ fromMaybe (error "") blockM
+        b = fromRight (error "") block
+    let x =  HK.txOut =<< HK.blockTxns b
+    T.putStrLn $ pack $ show $ HK.outValue <$> x
     runDbQuery (envPool env) $ updateScannedHeight BTC blockHeightToScan
     pure ()
 
