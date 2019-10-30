@@ -1,7 +1,6 @@
 module Ergvein.Wallet.Monad.Unauth
   (
-    MonadUnauth
-  , UnauthEnv(..)
+    UnauthEnv(..)
   , newUnauthEnv
   , runUnauth
   ) where
@@ -16,10 +15,6 @@ import Reflex
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Reflex.Localize
-
--- | Context for unauthed widgets
--- Only to be used to request password and open the local storage
-type MonadUnauth t m = (MonadBaseConstr t m, MonadLocalized t m, MonadRetract t m, MonadBackable t m)
 
 data UnauthEnv t = UnauthEnv {
   unauthEnv'lang :: !(ExternalRef t Language)

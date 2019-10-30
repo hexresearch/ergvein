@@ -1,14 +1,17 @@
 module Ergvein.Wallet.Monad.Base
   (
     MonadBaseConstr
+  , MonadFrontBase
   , MonadBackable(..)
   ) where
 
-import Control.Monad.IO.Class
 import Control.Monad.Fix
+import Control.Monad.IO.Class
 import Language.Javascript.JSaddle
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
+import Reflex.Dom.Retractable
+import Reflex.Localize
 
 -- | Type classes that we need from reflex-dom itself.
 type MonadBaseConstr t m = (MonadHold t m
@@ -23,6 +26,10 @@ type MonadBaseConstr t m = (MonadHold t m
   , MonadJSM m
   , DomBuilderSpace m ~ GhcjsDomSpace
   )
+
+-- | Context for unauthed widgets
+-- Only to be used to request password and open the local storage
+type MonadFrontBase t m = (MonadBaseConstr t m, MonadLocalized t m, MonadRetract t m, MonadBackable t m)
 
 class MonadBaseConstr t m => MonadBackable t m | m -> t where
   -- | System back button event
