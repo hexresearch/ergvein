@@ -11,32 +11,20 @@ module Ergvein.Wallet.Storage.Secure(
   , walletFileName
   ) where
 
-import Ergvein.Aeson
-import Ergvein.IO
-import Ergvein.Crypto
-import Ergvein.Wallet.Input     (Password)
-import System.FilePath
-import System.Directory
-import Data.Text                (Text)
-import Data.Text.Encoding
-import Data.Text.Encoding.Error
+import Data.ByteArray           (convert)
 import Data.ByteString          (ByteString)
 import Data.ByteString.Base64   (encode, decodeLenient)
 import Data.Sequence
-import Data.ByteArray           (convert)
-
-data WalletData = WalletData
-  { mnemonic    :: Mnemonic
-  , privateKeys :: Seq Base58
-  } deriving (Show)
-$(deriveJSON defaultOptions ''WalletData)
-
-data EncryptedWalletData = EncryptedWalletData
-  { encryptedData   :: Text
-  , salt            :: Text
-  , initVector      :: Text
-  } deriving (Show)
-$(deriveJSON defaultOptions ''EncryptedWalletData)
+import Data.Text                (Text)
+import Data.Text.Encoding
+import Data.Text.Encoding.Error
+import Ergvein.Aeson
+import Ergvein.Crypto
+import Ergvein.IO
+import Ergvein.Wallet.Input     (Password)
+import Ergvein.Wallet.Storage.Secure.Data
+import System.Directory
+import System.FilePath
 
 -- | Get user home directory location with ".ergvein" directory appended.
 getWalletDirectory :: IO FilePath

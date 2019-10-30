@@ -44,6 +44,9 @@ library
     Ergvein.Wallet.Validate
     Ergvein.Wallet.Wrapper
     Ergvein.Wallet.Yaml
+    Ergvein.Wallet.Monad.Base
+    Ergvein.Wallet.Monad.Storage
+    Ergvein.Wallet.Storage.Secure.Data
   build-depends:
       base
     , aeson

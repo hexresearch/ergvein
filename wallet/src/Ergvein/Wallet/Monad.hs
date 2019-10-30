@@ -1,6 +1,7 @@
 module Ergvein.Wallet.Monad(
     MonadBaseConstr
   , MonadFrontConstr
+  , MonadStorage(..)
   , MonadFront(..)
   -- * Reexports
   , Text
@@ -17,6 +18,8 @@ import Control.Monad.Reader
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Text (Text)
+import Ergvein.Wallet.Monad.Base
+import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Settings
 import Language.Javascript.JSaddle
 import Reflex
@@ -24,27 +27,14 @@ import Reflex.Dom hiding (run, mainWidgetWithCss)
 import Reflex.Dom.Retractable.Class
 import Reflex.Localize
 
--- | Type classes that we need from reflex-dom itself.
-type MonadBaseConstr t m = (MonadHold t m
-  , PostBuild t m
-  , DomBuilder t m
-  , MonadFix m
-  , PerformEvent t m
-  , MonadIO (Performable m)
-  , MonadSample t (Performable m)
-  , MonadIO m
-  , TriggerEvent t m
-  , MonadJSM m
-  , DomBuilderSpace m ~ GhcjsDomSpace
-  )
-
 -- | Additional type classes for widgets API. There are contexts that
 -- cannot be derived from raw reflex-dom context.
 type MonadFrontConstr t m = (MonadBaseConstr t m
   , MonadRetract t m
+
   )
 
-class (MonadFrontConstr t m, MonadLocalized t m) => MonadFront t m | m -> t where
+class (MonadFrontConstr t m, MonadLocalized t m, MonadStorage t m) => MonadFront t m | m -> t where
   getSettings :: m Settings
   -- | System back button event
   getBackEvent :: m (Event t ())
