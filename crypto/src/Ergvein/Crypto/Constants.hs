@@ -1,16 +1,39 @@
 module Ergvein.Crypto.Constants(
     Network(..)
+  , NetworkTag(..)
   , defaultEntropyLength
   , btc
   , btcTest
   , erg
   , ergTest
+  , getNetworkFromTag
   ) where
 
-import Data.Version
+import Data.Aeson
 import Data.String
+import Data.Text(pack,unpack)
+import Data.Version
 import Network.Haskoin.Block
 import Network.Haskoin.Constants
+import Text.Read(readMaybe)
+
+-- | Currently supported networks. Used for wrappers and whatnot
+data NetworkTag = NetBTC | NetBTCTest | NetERG | NetERGTest
+  deriving (Show, Read, Eq, Ord, Enum, Bounded)
+
+-- | Get network correspondent to a given tag
+getNetworkFromTag :: NetworkTag -> Network
+getNetworkFromTag t = case t of
+  NetBTC     -> btc
+  NetBTCTest -> btcTest
+  NetERG     -> erg
+  NetERGTest -> ergTest
+
+instance ToJSON NetworkTag where
+  toJSON = toJSON . show
+instance FromJSON NetworkTag where
+  parseJSON = withText "NetworkTag" $
+    maybe (fail "Unknown network tag") pure . readMaybe . unpack
 
 -- | According to the BIP32 the allowed size of entropy is between 16 and 64 bytes (32 bytes is advised).
 -- The mnemonic must encode entropy in a multiple of 4 bytes.
