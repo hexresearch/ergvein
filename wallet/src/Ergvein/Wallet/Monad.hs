@@ -1,6 +1,7 @@
 module Ergvein.Wallet.Monad(
     MonadBaseConstr
   , MonadFrontConstr
+  , MonadBackable(..)
   , MonadStorage(..)
   , MonadFront(..)
   -- * Reexports
@@ -33,12 +34,11 @@ type MonadFrontConstr t m = (MonadBaseConstr t m
   , MonadRetract t m
   , MonadLocalized t m
   , MonadStorage t m
+  , MonadBackable t m
   )
 
 class MonadFrontConstr t m => MonadFront t m | m -> t where
   getSettings :: m Settings
-  -- | System back button event
-  getBackEvent :: m (Event t ())
   -- | Get loading widget trigger and fire
   getLoadingWidgetTF :: m (Event t (Text, Bool), (Text, Bool) -> IO ())
   -- | Request displaying the loading widget

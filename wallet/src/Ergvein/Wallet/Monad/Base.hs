@@ -1,6 +1,7 @@
 module Ergvein.Wallet.Monad.Base
   (
     MonadBaseConstr
+  , MonadBackable(..)
   ) where
 
 import Control.Monad.IO.Class
@@ -22,3 +23,7 @@ type MonadBaseConstr t m = (MonadHold t m
   , MonadJSM m
   , DomBuilderSpace m ~ GhcjsDomSpace
   )
+
+class MonadBaseConstr t m => MonadBackable t m | m -> t where
+  -- | System back button event
+  getBackEvent :: m (Event t ())

@@ -14,7 +14,6 @@ import Data.Text (Text)
 import Ergvein.Crypto
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Run
 import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Settings
@@ -66,11 +65,13 @@ instance MonadBaseConstr t m => MonadLocalized t (ErgveinM t m) where
   getLanguage = externalRefDynamic =<< asks env'langRef
   {-# INLINE getLanguage #-}
 
+instance (MonadBaseConstr t m) => MonadBackable t (ErgveinM t m) where
+  getBackEvent = asks env'backEvent
+  {-# INLINE getBackEvent #-}
+
 instance (MonadBaseConstr t m, MonadRetract t m) => MonadFront t (ErgveinM t m) where
   getSettings = asks env'settings
   {-# INLINE getSettings #-}
-  getBackEvent = asks env'backEvent
-  {-# INLINE getBackEvent #-}
   getLoadingWidgetTF = asks env'loading
   {-# INLINE getLoadingWidgetTF #-}
   toggleLoadingWidget reqE = do
