@@ -66,7 +66,7 @@ instance MonadBaseConstr t m => MonadLocalized t (ErgveinM t m) where
   getLanguage = externalRefDynamic =<< asks env'langRef
   {-# INLINE getLanguage #-}
 
-instance MonadFrontConstr t m => MonadFront t (ErgveinM t m) where
+instance (MonadBaseConstr t m, MonadRetract t m) => MonadFront t (ErgveinM t m) where
   getSettings = asks env'settings
   {-# INLINE getSettings #-}
   getBackEvent = asks env'backEvent

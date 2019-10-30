@@ -31,10 +31,11 @@ import Reflex.Localize
 -- cannot be derived from raw reflex-dom context.
 type MonadFrontConstr t m = (MonadBaseConstr t m
   , MonadRetract t m
-
+  , MonadLocalized t m
+  , MonadStorage t m
   )
 
-class (MonadFrontConstr t m, MonadLocalized t m, MonadStorage t m) => MonadFront t m | m -> t where
+class MonadFrontConstr t m => MonadFront t m | m -> t where
   getSettings :: m Settings
   -- | System back button event
   getBackEvent :: m (Event t ())
