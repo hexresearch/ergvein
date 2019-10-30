@@ -25,6 +25,7 @@ import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Reflex.Localize
 
+import Ergvein.Wallet.Native
 import qualified Data.Map.Strict as M
 
 data Env t = Env {
@@ -69,7 +70,7 @@ instance (MonadBaseConstr t m) => MonadBackable t (ErgveinM t m) where
   getBackEvent = asks env'backEvent
   {-# INLINE getBackEvent #-}
 
-instance (MonadBaseConstr t m, MonadRetract t m) => MonadFront t (ErgveinM t m) where
+instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFront t (ErgveinM t m) where
   getSettings = asks env'settings
   {-# INLINE getSettings #-}
   getLoadingWidgetTF = asks env'loading

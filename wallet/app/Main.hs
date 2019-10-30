@@ -11,8 +11,10 @@ import Options.Generic
 
 #ifdef ANDROID
 import Ergvein.Wallet.Android.Run
+import Ergvein.Wallet.Android.Native
 #else
 import Ergvein.Wallet.Desktop.Run
+import Ergvein.Wallet.Desktop.Native
 #endif
 
 data Options = Options {
