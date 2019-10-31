@@ -34,3 +34,6 @@ class PlatformNatives where
 
   -- | Put string into clipboard
   copyStr :: MonadIO m => Text -> m ()
+
+  -- | Get storage path
+  getStoreDir :: MonadIO m => m (Maybe FilePath)
