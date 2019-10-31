@@ -26,7 +26,7 @@ instance ParseRecord Options
 main :: IO ()
 main = do
   opts <- getRecord "Ergvein cryptowallet"
-  settings :: Settings <- maybe (pure def) readYaml' $ unHelpful $ config opts
+  settings :: Settings <- getSettings $ unHelpful $ config opts
   run $ \cbs -> do
     css <- compileFrontendCss
     mainWidgetWithCss css $ do
