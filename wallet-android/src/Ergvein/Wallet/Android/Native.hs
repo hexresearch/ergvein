@@ -38,8 +38,10 @@ encodeText text cont =
   BS.useAsCString (T.encodeUtf8 text) cont
 
 instance PlatformNatives where
+  getStoreDir = liftIO $ getFilesDir =<< getHaskellActivity
+
   storeValue k v = liftIO $ do
-    mpath <- getFilesDir =<< getHaskellActivity
+    mpath <- getStoreDir
     case mpath of
       Nothing -> pure $ Left $ "No such path " <> k
       Just path -> let fpath = path <> "/" <> unpack k in do
@@ -48,7 +50,7 @@ instance PlatformNatives where
         pure $ Right ()
 
   retrieveValue k a0 = liftIO $ do
-    mpath <- getFilesDir =<< getHaskellActivity
+    mpath <- getStoreDir
     case mpath of
       Nothing -> pure $ Left $ "No such path " <> k
       Just path -> let fpath = path <> "/" <> unpack k in do
@@ -60,7 +62,7 @@ instance PlatformNatives where
           else pure $ Right a0
 
   readStoredFile filename = liftIO $ do
-    mpath <- getFilesDir =<< getHaskellActivity
+    mpath <- getStoreDir
     case mpath of
       Nothing -> pure []
       Just path -> let fpath = path <> "/" <> unpack filename in do
@@ -72,7 +74,7 @@ instance PlatformNatives where
           else pure []
 
   appendStoredFile filename cnt = liftIO $ do
-    mpath <- getFilesDir =<< getHaskellActivity
+    mpath <- getStoreDir
     case mpath of
       Nothing -> pure ()
       Just path -> let fpath = path <> "/" <> unpack filename in do
@@ -82,7 +84,7 @@ instance PlatformNatives where
           else T.writeFile fpath cnt
 
   moveStoredFile filename1 filename2 = liftIO $ do
-    mpath <- getFilesDir =<< getHaskellActivity
+    mpath <- getStoreDir
     case mpath of
       Nothing -> pure ()
       Just path -> do
@@ -96,7 +98,7 @@ instance PlatformNatives where
           else pure ()
 
   getStoreFileSize filename = liftIO $ do
-    mpath <- getFilesDir =<< getHaskellActivity
+    mpath <- getStoreDir
     case mpath of
       Nothing -> pure 0
       Just path -> let fpath = path <> "/" <> unpack filename in do
