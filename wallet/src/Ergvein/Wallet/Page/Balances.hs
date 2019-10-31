@@ -14,8 +14,11 @@ import Reflex.Localize
 balancesPage :: MonadFront t m => m ()
 balancesPage = wrapper False $ do
   syncWidget
-  currenciesList
-  pure ()
+  historyE <- currenciesList
+  void $ nextWidget $ ffor historyE $ \cur -> Retractable {
+      retractableNext = historyPage cur
+    , retractablePrev = Just $ pure balancesPage
+    }
 
 syncWidget :: MonadFront t m => m ()
 syncWidget = divClass "currency-wrapper" $ do
@@ -49,20 +52,18 @@ instance LocalizedPrint ScanProgress where
 getSyncProgress :: MonadFront t m => m (Dynamic t ScanProgress)
 getSyncProgress = pure $ pure $ ScanDays 10
 
-currenciesList :: MonadFront t m => m ()
-currenciesList = traverse_ currencyLine allCurrencies
+currenciesList :: MonadFront t m => m (Event t Currency)
+currenciesList = fmap leftmost $ traverse currencyLine allCurrencies
   where
     currencyLine cur = do
       (e, _) <- divClass' "currency-wrapper" $ divClass "currency-line" $ do
         divClass "currency-name" $ text $ currencyName cur
         divClass "currency-balance" $ do
           bal <- currencyBalance cur
-          dynText $ showMoney <$> bal
-      let clickE = domEvent Click e
-      void $ nextWidget $ ffor clickE $ const $ Retractable {
-          retractableNext = historyPage cur
-        , retractablePrev = Just $ pure currenciesList
-        }
+          dynText $ do
+            m <- showMoney <$> bal
+            pure $ m <> "〉"
+      pure $ cur <$ domEvent Click e
 
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
 currencyBalance cur = pure $ pure $ Money cur 1
