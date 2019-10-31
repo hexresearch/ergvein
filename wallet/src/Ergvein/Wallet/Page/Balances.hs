@@ -7,6 +7,7 @@ import Ergvein.Types.Currency
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Page.History
 import Ergvein.Wallet.Wrapper
 import Reflex.Localize
 
