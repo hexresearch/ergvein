@@ -38,35 +38,26 @@ scannedBlockHeight pool currency = do
         entity <- runDbQuery pool $ getScannedHeight currency
         pure $ scannedHeightRecHeight . entityVal <$> entity
 
-data Unspent = Unspent {
-  txHash :: String,
-  pubKey :: String,
-  amount :: MoneyUnit
-}
 
-data Spent = Spent  {
-  txHashTarget :: String,
-  stxHash :: String,
-  spubKey :: String
-}
+btcBlock :: HS.HexString -> HK.Block
+btcBlock = (fromRight $ error "error parsing block") . decode . HS.toBytes
 
-utxo :: HS.HexString -> ([Unspent], [Spent])
-utxo str = let
-  block = decode $ HS.toBytes str
-  b = HK.blockTxns $ fromRight (error "") block
+utxo :: HK.Block -> ([String], [Unspent])
+utxo block = let
+  b = HK.blockTxns block
   in mconcat $ f <$> b
-  where f tx = mempty
+  where f tx = let
+            sm tIn = "undefined"
+            um tOut = Unspent (nosigTxHash tx) (scriptOutput tOut) (outValue tOut)
+            in ( sm <$> HK.txIn tx, um <$> HK.txOut tx)
 
 bTCBlockScanner :: ServerEnv -> BlockHeight -> IO ()
 bTCBlockScanner env blockHeightToScan = do
     let cfg = envConfig env
     blockHash <- btcNodeClient cfg $ flip getBlockHash $ fromIntegral blockHeightToScan
-    blockM <-  btcNodeClient cfg $ flip getBlockRaw blockHash
-    let block :: Either String HK.Block
-        block = decode $ HS.toBytes $ fromMaybe (error "") blockM
-        b = fromRight (error "") block
-    let x =  HK.txOut =<< HK.blockTxns b
-    T.putStrLn $ pack $ show $ HK.outValue <$> x
+    blockM <- (btcNodeClient cfg $ flip getBlockRaw blockHash)
+    let block = utxo $ btcBlock $ fromMaybe (error "") blockM
+    --T.putStrLn $ pack $ show $ block
     runDbQuery (envPool env) $ updateScannedHeight BTC blockHeightToScan
     pure ()
 
