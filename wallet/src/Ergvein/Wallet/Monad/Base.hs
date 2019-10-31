@@ -13,6 +13,7 @@ import Reflex.Dom hiding (run, mainWidgetWithCss)
 import Reflex.Dom.Retractable
 import Reflex.Localize
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Native
 
 -- | Type classes that we need from reflex-dom itself.
 type MonadBaseConstr t m = (MonadHold t m
@@ -31,6 +32,7 @@ type MonadBaseConstr t m = (MonadHold t m
 -- | Context for unauthed widgets
 -- Only to be used to request password and open the local storage
 type MonadFrontBase t m = (PlatformNatives
+  , HasStoreDir m
   , MonadBaseConstr t m
   , MonadLocalized t m
   , MonadRetract t m

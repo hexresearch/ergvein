@@ -14,6 +14,7 @@ import Data.Text (Text)
 import Ergvein.Crypto
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Run
 import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Settings
@@ -25,7 +26,6 @@ import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Reflex.Localize
 
-import Ergvein.Wallet.Native
 import qualified Data.Map.Strict as M
 
 data Env t = Env {
@@ -34,7 +34,8 @@ data Env t = Env {
 , env'backFire  :: !(IO ())
 , env'loading   :: !(Event t (Text, Bool), (Text, Bool) -> IO ())
 , env'langRef   :: !(ExternalRef t Language)
-, env'storage   :: !ErgveinStorage
+, env'storage   :: ErgveinStorage     -- Non strict so that undefined from newEnv does not cause panic. Will initialize later
+, env'storeDir  :: !Text
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -51,8 +52,12 @@ newEnv settings = do
     , env'backFire  = backFire ()
     , env'loading   = loadingEF
     , env'langRef   = langRef
+    , env'storeDir  = settingsStoreDir settings
     , env'storage   = undefined
     }
+
+instance Monad m => HasStoreDir (ErgveinM t m) where
+  getStoreDir = asks env'storeDir
 
 instance MonadBaseConstr t m => MonadLocalized t (ErgveinM t m) where
   setLanguage lang = do

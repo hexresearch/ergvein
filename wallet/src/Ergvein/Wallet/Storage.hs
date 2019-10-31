@@ -31,7 +31,7 @@ storageFileName = "storage"
 decryptStorage :: MonadIO m => Password -> Text -> m (Either Text ErgveinStorage)
 decryptStorage pass txt = pure $ text2json txt
 
-loadStorageFromFile :: (MonadIO m, PlatformNatives) => Password -> m (Either Text ErgveinStorage)
+loadStorageFromFile :: (MonadIO m, HasStoreDir m, PlatformNatives) => Password -> m (Either Text ErgveinStorage)
 loadStorageFromFile pass = do
   storageRawLines <- readStoredFile storageFileName
   case storageRawLines of
