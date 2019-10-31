@@ -7,12 +7,12 @@ module Ergvein.Wallet.Monad.Base
 
 import Control.Monad.Fix
 import Control.Monad.IO.Class
+import Control.Monad.Ref
 import Language.Javascript.JSaddle
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
 import Reflex.Dom.Retractable
 import Reflex.Localize
-import Ergvein.Wallet.Native
 import Ergvein.Wallet.Native
 
 -- | Type classes that we need from reflex-dom itself.
@@ -27,6 +27,13 @@ type MonadBaseConstr t m = (MonadHold t m
   , TriggerEvent t m
   , MonadJSM m
   , DomBuilderSpace m ~ GhcjsDomSpace
+  , HasJSContext m
+  , HasJSContext (Performable m)
+  , HasDocument m
+  , MonadRef m
+  , Ref m ~ Ref IO
+  , MonadRef (Performable m)
+  , Ref (Performable m) ~ Ref IO
   )
 
 -- | Context for unauthed widgets

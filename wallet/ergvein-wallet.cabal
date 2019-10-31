@@ -34,7 +34,8 @@ library
     Ergvein.Wallet.Monad.Front
     Ergvein.Wallet.Monad.Storage
     Ergvein.Wallet.Monad.Unauth
-    Ergvein.Wallet.Page.Currencies
+    Ergvein.Wallet.Page.Balances
+    Ergvein.Wallet.Page.History
     Ergvein.Wallet.Page.Initial
     Ergvein.Wallet.Page.Password
     Ergvein.Wallet.Page.Seed
@@ -76,6 +77,7 @@ library
     , mtl                       >= 2.2      && < 2.3
     , process                   >= 1.6      && < 1.7
     , random
+    , ref-tf                    >= 0.4      && < 0.5
     , reflex                    >= 0.4      && < 0.7
     , reflex-dom                >= 0.4      && < 0.7
     , reflex-dom-core
