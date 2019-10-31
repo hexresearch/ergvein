@@ -12,14 +12,15 @@ import Data.IORef
 import Data.Text (Text)
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Run
 import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Settings
 import Reflex
 import Reflex.Dom
 import Reflex.Dom.Retractable
-import Reflex.Localize
 import Reflex.ExternalRef
+import Reflex.Localize
 
 data Env t = Env {
   env'settings  :: !Settings
@@ -27,6 +28,7 @@ data Env t = Env {
 , env'backFire  :: !(IO ())
 , env'loading   :: !(Event t (Text, Bool), (Text, Bool) -> IO ())
 , env'langRef   :: !(ExternalRef t Language)
+, env'storeDir  :: !Text
 }
 
 newEnv :: (Reflex t, TriggerEvent t m, MonadIO m) => Settings -> m (Env t)
@@ -41,7 +43,11 @@ newEnv settings = do
     , env'backFire  = backFire ()
     , env'loading   = loadingEF
     , env'langRef   = langRef
+    , env'storeDir  = settingsStoreDir settings
     }
+
+instance Monad m => HasStoreDir (ReaderT (Env t) m) where
+  getStoreDir = asks env'storeDir
 
 instance MonadBaseConstr t m => MonadLocalized t (ReaderT (Env t) m) where
   setLanguage lang = do
