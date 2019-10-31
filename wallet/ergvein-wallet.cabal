@@ -24,6 +24,9 @@ library
     Ergvein.Wallet.Id
     Ergvein.Wallet.Input
     Ergvein.Wallet.Language
+    Ergvein.Wallet.Loading
+    Ergvein.Wallet.Localization.Password
+    Ergvein.Wallet.Localization.Seed
     Ergvein.Wallet.Main
     Ergvein.Wallet.Monad
     Ergvein.Wallet.Monad.Env
@@ -34,6 +37,7 @@ library
     Ergvein.Wallet.Password
     Ergvein.Wallet.Platform
     Ergvein.Wallet.Settings
+    Ergvein.Wallet.Storage
     Ergvein.Wallet.Style
     Ergvein.Wallet.Util
     Ergvein.Wallet.Validate
@@ -43,6 +47,7 @@ library
       base
     , aeson
     , base16-bytestring
+    , base64-bytestring         >= 1        && < 1.0.0.3
     , bytestring                >= 0.10     && < 0.11
     , clay                      >= 0.13     && < 0.14
     , containers                >= 0.5      && < 0.6
@@ -54,11 +59,13 @@ library
     , ergvein-wallet-types      >= 0.1      && < 0.2
     , exceptions
     , file-embed                >= 0.0      && < 0.1
+    , filepath
     , ghcjs-dom
     , haskoin-core
     , interpolatedstring-perl6
     , jsaddle
     , lens                      >= 4.16     && < 4.17
+    , memory                    >= 0.14.16  && < 0.15.1
     , MonadRandom
     , mtl                       >= 2.2      && < 2.3
     , process                   >= 1.6      && < 1.7

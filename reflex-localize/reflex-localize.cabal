@@ -26,18 +26,27 @@ library
     Reflex.Localize.Class
     Reflex.Localize.Language
     Reflex.Localize.Monad
+    Reflex.Localize.Trans
   build-depends:
       base
     , text
     , reflex                    >= 0.4      && < 0.7
     , reflex-dom                >= 0.4      && < 0.7
     , mtl
+    , reflex-external-ref
+    , jsaddle
   default-language:    Haskell2010
   default-extensions:
+    DataKinds
     DeriveDataTypeable
     DeriveGeneric
     FlexibleInstances
     FunctionalDependencies
+    GeneralizedNewtypeDeriving
+    LambdaCase
     MultiParamTypeClasses
+    RankNTypes
+    ScopedTypeVariables
+    StandaloneDeriving
     TypeFamilies
     UndecidableInstances
