@@ -90,6 +90,7 @@ library
     , yaml
   if flag(android)
     cpp-options: -DANDROID
+    build-depends: android-activity
   default-language:    Haskell2010
   default-extensions:
     BangPatterns
@@ -122,6 +123,7 @@ executable ergvein
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base
+    , directory
     , data-default
     , ergvein-wallet
     , ergvein-wallet-native
