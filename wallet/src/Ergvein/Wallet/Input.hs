@@ -20,7 +20,7 @@ import Reflex.Localize
 
 type Password = Text
 
-labeledTextInput :: (MonadFront t m, LocalizedPrint l)
+labeledTextInput :: (MonadFrontBase t m, LocalizedPrint l)
   => l -- ^ Label
   -> TextInputConfig t
   -> m (TextInput t)
@@ -33,7 +33,7 @@ labeledTextInput lbl cfg = do
         pure $ "id" =: i <> as
     }
 
-textField :: (MonadFront t m, LocalizedPrint l)
+textField :: (MonadFrontBase t m, LocalizedPrint l)
   => l -- ^ Label
   -> Text -- ^ Initial value
   -> m (Dynamic t Text)
@@ -41,7 +41,7 @@ textField lbl v0 = fmap _textInput_value $ labeledTextInput lbl def {
     _textInputConfig_initialValue = v0
   }
 
-passField :: (MonadFront t m, LocalizedPrint l)
+passField :: (MonadFrontBase t m, LocalizedPrint l)
   => l -- ^ Label
   -> m (Dynamic t Text)
 passField lbl = fmap _textInput_value $ labeledTextInput lbl def {
@@ -49,7 +49,7 @@ passField lbl = fmap _textInput_value $ labeledTextInput lbl def {
   }
 
 -- | Password field with toggleable visibility
-passFieldWithEye :: (MonadFront t m, LocalizedPrint l) => l -> m (Dynamic t Password)
+passFieldWithEye :: (MonadFrontBase t m, LocalizedPrint l) => l -> m (Dynamic t Password)
 passFieldWithEye lbl = mdo
   i <- genId
   label i $ localizedText lbl
@@ -72,7 +72,7 @@ passFieldWithEye lbl = mdo
   pure valD
 
 -- | Form submit button
-submitClass :: (MonadFront t m, LocalizedPrint l) => Dynamic t Text -> l -> m (Event t ())
+submitClass :: (MonadFrontBase t m, LocalizedPrint l) => Dynamic t Text -> l -> m (Event t ())
 submitClass classD lbl = do
   lblD <- localized lbl
   let classesD = do
@@ -87,7 +87,7 @@ submitClass classD lbl = do
 
 -- | Wrapper around text field that allows to switch its type dynamically with
 -- saving of previous value.
-textInputTypeDyn :: forall t m . MonadFront t m => Event t Text -> TextInputConfig t -> m (Dynamic t Text)
+textInputTypeDyn :: forall t m . MonadFrontBase t m => Event t Text -> TextInputConfig t -> m (Dynamic t Text)
 textInputTypeDyn typeE cfg = fmap join $ workflow $
   go (_textInputConfig_inputType cfg) (_textInputConfig_initialValue cfg)
   where

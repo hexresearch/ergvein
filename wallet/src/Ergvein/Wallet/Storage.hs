@@ -1,108 +1,41 @@
-module Ergvein.Wallet.Storage(
-    WalletData(..)
-  , EncryptedWalletData(..)
-  , createWallet
-  , readWalletData
-  , saveWalletData
-  , encryptWalletData
-  , decryptWalletData
-  , addXPrvKey
-  , getWalletDirectory
-  , walletFileName
+module Ergvein.Wallet.Storage
+  (
+    ErgveinStorage(..)
+  , loadStorageFromFile
   ) where
 
+import Control.Monad.IO.Class
+import Data.Text(Text)
 import Ergvein.Aeson
-import Ergvein.IO
 import Ergvein.Crypto
-import Ergvein.Wallet.Input     (Password)
-import System.FilePath
-import System.Directory
-import Data.Text                (Text)
-import Data.Text.Encoding
-import Data.Text.Encoding.Error
-import Data.ByteString          (ByteString)
-import Data.ByteString.Base64   (encode, decodeLenient)
-import Data.Sequence
-import Data.ByteArray           (convert)
+import Ergvein.Text
+import Ergvein.Wallet.Native
+import Ergvein.Wallet.Storage.Secure.Data
+import Network.Haskoin.Address
+import Network.Haskoin.Keys
+import qualified Data.Map.Strict as M
+import qualified Data.Text as T
 
-data WalletData = WalletData
-  { mnemonic    :: Mnemonic
-  , privateKeys :: Seq Base58
-  } deriving (Show)
-$(deriveJSON defaultOptions ''WalletData)
+type Password = Text
 
-data EncryptedWalletData = EncryptedWalletData
-  { encryptedData   :: Text
-  , salt            :: Text
-  , initVector      :: Text
-  } deriving (Show)
-$(deriveJSON defaultOptions ''EncryptedWalletData)
+data ErgveinStorage = ErgveinStorage{
+  storageWallet   :: EncryptedWalletData
+, storagePubKeys  :: M.Map EgvXPubKey [Base58]
+}
 
--- | Get user home directory location with ".ergvein" directory appended.
-getWalletDirectory :: IO FilePath
-getWalletDirectory = do
-  userHomeDirectory <- getHomeDirectory
-  return $ userHomeDirectory </> ".ergvein"
+$(deriveJSON defaultOptions ''ErgveinStorage)
 
--- | Specify wallet file name
-walletFileName :: String
-walletFileName = "wallet.json"
+storageFileName :: Text
+storageFileName = "storage"
 
--- | Creates wallet file with mnemonic phrase
-createWallet :: Mnemonic -> IO ()
-createWallet mnemonic = saveWalletData walletData
-  where
-    walletData = WalletData {mnemonic = mnemonic, privateKeys = empty}
+decryptStorage :: MonadIO m => Password -> Text -> m (Either Text ErgveinStorage)
+decryptStorage pass txt = pure $ text2json txt
 
--- | Add extended private key to the WalletData value
-addXPrvKey :: WalletData -> Base58 -> WalletData
-addXPrvKey WalletData {mnemonic = mnemonic, privateKeys = privateKeys} xPrvKey =
-  WalletData {mnemonic = mnemonic, privateKeys = privateKeys |> xPrvKey}
-
--- | Read wallet file
-readWalletData :: IO (Maybe WalletData)
-readWalletData = do
-  walletDirectory <- getWalletDirectory
-  readJson $ walletDirectory </> walletFileName
-
--- | Save wallet data to wallet file
-saveWalletData :: WalletData -> IO ()
-saveWalletData walletData = do
-  walletDirectory <- getWalletDirectory
-  createDirectoryIfMissing False walletDirectory
-  writeJson (walletDirectory </> walletFileName) walletData
-
-encryptWalletData :: WalletData -> Password -> IO EncryptedWalletData
-encryptWalletData walletData password = do
-  salt :: ByteString <- genRandomSalt
-  let secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
-  mInitIV <- genRandomIV (undefined :: AES256)
-  case mInitIV of
-    Nothing -> error "Failed to generate an initialization vector"
-    Just initIV -> do
-      let walletDataBS = encodeUtf8 $ encodeJson walletData
-      let encryptedData = encrypt secretKey initIV walletDataBS
-      case encryptedData of
-        Left err -> error $ show err
-        Right eData -> return EncryptedWalletData {
-            encryptedData = decodeUtf8With lenientDecode $ encode eData
-          , salt = decodeUtf8With lenientDecode $ encode salt
-          , initVector = decodeUtf8With lenientDecode $ encode (convert initIV :: ByteString)
-          }
-
-decryptWalletData :: EncryptedWalletData -> Password -> Either String WalletData
-decryptWalletData encryptedWalletData password =
-  case initIV of
-    Nothing -> Left "Failed to decode the initialization vector"
-    Just iv -> case decrypt secretKey iv encryptedDataBS of
-      Left err -> Left $ show err
-      Right decryptedData -> case walletData of
-        Left err -> Left $ show err
-        Right wd -> Right wd
-        where
-          walletData = decodeJson $ decodeUtf8With lenientDecode decryptedData
-  where
-    saltBS = decodeLenient $ encodeUtf8 $ salt encryptedWalletData
-    secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) saltBS) :: Key AES256 ByteString
-    initIV = makeIV $ decodeLenient $ encodeUtf8 $ initVector encryptedWalletData :: Maybe (IV AES256)
-    encryptedDataBS = decodeLenient $ encodeUtf8 $ encryptedData encryptedWalletData
+loadStorageFromFile :: (MonadIO m, HasStoreDir m, PlatformNatives) => Password -> m (Either Text ErgveinStorage)
+loadStorageFromFile pass = do
+  storageRawLines <- readStoredFile storageFileName
+  case storageRawLines of
+    [] -> do
+      appendStoredFile storageFileName ""
+      pure $ Left $ "Storage file is empty"
+    _ -> decryptStorage pass $ T.concat storageRawLines
