@@ -14,6 +14,7 @@ module Ergvein.Wallet.Monad(
 import Control.Monad
 import Control.Monad.Fix
 import Control.Monad.Reader
+import Control.Monad.Ref
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Text (Text)
@@ -36,6 +37,13 @@ type MonadBaseConstr t m = (MonadHold t m
   , TriggerEvent t m
   , MonadJSM m
   , DomBuilderSpace m ~ GhcjsDomSpace
+  , HasJSContext m
+  , HasJSContext (Performable m)
+  , HasDocument m
+  , MonadRef m
+  , Ref m ~ Ref IO
+  , MonadRef (Performable m)
+  , Ref (Performable m) ~ Ref IO
   )
 
 -- | Additional type classes for widgets API. There are contexts that

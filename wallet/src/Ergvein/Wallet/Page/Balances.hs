@@ -52,11 +52,17 @@ getSyncProgress = pure $ pure $ ScanDays 10
 currenciesList :: MonadFront t m => m ()
 currenciesList = traverse_ currencyLine allCurrencies
   where
-    currencyLine cur = divClass "currency-wrapper" $ divClass "currency-line" $ do
-      divClass "currency-name" $ text $ currencyName cur
-      divClass "currency-balance" $ do
-        bal <- currencyBalance cur
-        dynText $ showMoney <$> bal
+    currencyLine cur = do
+      (e, _) <- divClass' "currency-wrapper" $ divClass "currency-line" $ do
+        divClass "currency-name" $ text $ currencyName cur
+        divClass "currency-balance" $ do
+          bal <- currencyBalance cur
+          dynText $ showMoney <$> bal
+      let clickE = domEvent Click e
+      void $ nextWidget $ ffor clickE $ const $ Retractable {
+          retractableNext = historyPage cur
+        , retractablePrev = Just $ pure currenciesList
+        }
 
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
 currencyBalance cur = pure $ pure $ Money cur 1

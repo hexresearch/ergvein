@@ -16,6 +16,7 @@ module Ergvein.Wallet.Elements(
   , column90
   , column100
   , spanClass
+  , divClass'
   , elClassDyn
   , divClassDyn
   , spanClassDyn
@@ -85,6 +86,9 @@ elClassDyn :: (DomBuilder t m, PostBuild t m) => Text -> Dynamic t Text -> m a -
 elClassDyn eln classD = elDynAttr eln $ do
   v <- classD
   pure [("class", v)]
+
+divClass' :: (DomBuilder t m, PostBuild t m) => Text -> m a -> m (Element EventResult (DomBuilderSpace m) t, a)
+divClass' = elClass' "div"
 
 divClassDyn :: (DomBuilder t m, PostBuild t m) => Dynamic t Text -> m a -> m a
 divClassDyn = elClassDyn "div"
