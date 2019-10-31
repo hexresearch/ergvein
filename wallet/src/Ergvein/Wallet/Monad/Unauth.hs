@@ -7,10 +7,13 @@ module Ergvein.Wallet.Monad.Unauth
 
 import Control.Monad.Reader
 import Data.IORef
+import Data.Text (Text)
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Base
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Run
 import Ergvein.Wallet.Run.Callbacks
+import Ergvein.Wallet.Settings
 import Reflex
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
@@ -20,6 +23,7 @@ data UnauthEnv t = UnauthEnv {
   unauthEnv'lang :: !(ExternalRef t Language)
 , unauthEnv'backEvent :: !(Event t ())
 , unauthEnv'backFire  :: !(IO ())
+, unauthEnv'storeDir  :: !Text
 }
 
 instance MonadBaseConstr t m => MonadLocalized t (ReaderT (UnauthEnv t) m) where
@@ -38,14 +42,18 @@ instance (MonadBaseConstr t m) => MonadBackable t (ReaderT (UnauthEnv t) m) wher
   getBackEvent = asks unauthEnv'backEvent
   {-# INLINE getBackEvent #-}
 
-newUnauthEnv :: (Reflex t, TriggerEvent t m, MonadIO m) => Language -> m (UnauthEnv t)
-newUnauthEnv initLang = do
-  langRef <- newExternalRef initLang
+instance Monad m => HasStoreDir (ReaderT (UnauthEnv t) m) where
+  getStoreDir = asks unauthEnv'storeDir
+
+newUnauthEnv :: (Reflex t, TriggerEvent t m, MonadIO m) => Settings -> m (UnauthEnv t)
+newUnauthEnv Settings{..} = do
+  langRef <- newExternalRef settingsLang
   (backE, backFire) <- newTriggerEvent
   pure $ UnauthEnv {
       unauthEnv'lang      = langRef
     , unauthEnv'backEvent = backE
     , unauthEnv'backFire  = backFire ()
+    , unauthEnv'storeDir  = settingsStoreDir
     }
 
 runUnauth :: MonadBaseConstr t m
