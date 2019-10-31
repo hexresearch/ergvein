@@ -10,6 +10,7 @@ import Servant.Server.Generic
 
 import Ergvein.Index.API
 import Ergvein.Index.Server.Monad
+import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Server
 import Ergvein.Index.Server.Server.V1
 
@@ -20,3 +21,4 @@ indexServerApp e = gzip def . appCors $ serve indexApi $ hoistServer indexApi (r
             { corsRequestHeaders = ["Content-Type"]
             , corsMethods = "PUT" : simpleMethods 
             }
+
