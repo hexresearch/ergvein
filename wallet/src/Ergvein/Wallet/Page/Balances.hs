@@ -34,14 +34,14 @@ instance LocalizedPrint ScanProgress where
     English -> case v of
       ScanDays d  -> showt d <> if d == 1 then " day behind..." else " days behind..."
       ScanHours h -> showt h <> if h == 1 then " hour behind..." else " hours behind..."
-      ScanSynced  -> "Synced!"
+      ScanSynced  -> "Fully synced!"
     Russian -> case v of
-      ScanDays d  -> "Остаём на " <> showt d <> case (d `mod` 10) of
+      ScanDays d  -> "Отстаём на " <> showt d <> case (d `mod` 10) of
         1 -> " день..."
         2 -> " дня..."
         3 -> " дня..."
         _ -> " дней..."
-      ScanHours h -> "Остаём на " <> showt h <> case (h `mod` 10) of
+      ScanHours h -> "Отстаём на " <> showt h <> case (h `mod` 10) of
         1 -> " час..."
         2 -> " часа..."
         3 -> " часа..."
