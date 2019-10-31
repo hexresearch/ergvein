@@ -1,5 +1,5 @@
-module Ergvein.Wallet.Page.Currencies(
-    currenciesPage
+module Ergvein.Wallet.Page.Balances(
+    balancesPage
   ) where
 
 import Ergvein.Text
@@ -8,8 +8,8 @@ import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Wrapper
 
-currenciesPage :: MonadFront t m => m ()
-currenciesPage = wrapper False $ do
+balancesPage :: MonadFront t m => m ()
+balancesPage = wrapper False $ do
   syncWidget
   currenciesList
   pure ()
