@@ -1,16 +1,16 @@
 module Ergvein.Index.Server.Server.V1 where
 
 import Data.Proxy
-import Servant.Server
 import Servant.API.Generic
+import Servant.Server
 import Servant.Server.Generic
 
-import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
-import Ergvein.Index.API.Types
 import Ergvein.Index.API
+import Ergvein.Index.API.Types
 import Ergvein.Index.API.V1
 import Ergvein.Index.Server.Monad
+import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
