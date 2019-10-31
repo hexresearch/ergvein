@@ -38,17 +38,21 @@ btcNodeClient cfg = withClient
 btcBlock :: HS.HexString -> HK.Block
 btcBlock = (fromRight $ error "error parsing block") . decode . HS.toBytes
 
-utxo :: HK.Block -> ([String], [Unspent])
+scriptOutputHash :: B.ByteString -> PubKeyScriptHash
+scriptOutputHash = encodeHex . B.reverse . S.encode . HK.doubleSHA256
+
+utxo :: HK.Block -> ([String], [UTXOInfo])
 utxo block = let
-    in mconcat $ f <$> HK.blockTxns block
-    where f tx = let
-            txId = unpack $ HK.txHashToHex $ HK.txHash tx
-            sm tIn = "undefined"
-            um tOut = let
-                scriptHash = unpack $ encodeHex $ B.reverse $ S.encode $ HK.doubleSHA256 $ HK.scriptOutput tOut
-                output = HK.outValue tOut
-                in Unspent txId scriptHash output
-            in ( sm <$> HK.txIn tx, um <$> HK.txOut tx)
+    in mconcat $ inputsOutputsInfo <$> HK.blockTxns block
+    where inputsOutputsInfo tx = let
+            txHash = HK.txHashToHex $ HK.txHash tx
+            stxoInfo txIn = "undefined"
+            utxoInfo txOut = 
+              UTXOInfo { txHash = txHash
+                       , utxoPubKeyScriptHash = scriptOutputHash $ HK.scriptOutput txOut
+                       , outValue = HK.outValue txOut
+                       }
+            in (stxoInfo <$> HK.txIn tx, utxoInfo <$> HK.txOut tx)
 
 actualBTCHeight :: Config -> IO BlockHeight
 actualBTCHeight cfg = fromIntegral <$> btcNodeClient cfg getBlockCount
@@ -58,7 +62,7 @@ bTCBlockScanner env blockHeightToScan = do
     let cfg = envConfig env
     blockHash <- btcNodeClient cfg $ flip getBlockHash $ fromIntegral blockHeightToScan
     blockM <- (btcNodeClient cfg $ flip getBlockRaw blockHash)
-    let block = utxo $ btcBlock $ fromMaybe (error "") blockM
+    let block = utxo . btcBlock $ fromMaybe (error "") blockM
     T.putStrLn $ pack $ show $ block
     runDbQuery (envPool env) $ updateScannedHeight BTC blockHeightToScan
     pure ()

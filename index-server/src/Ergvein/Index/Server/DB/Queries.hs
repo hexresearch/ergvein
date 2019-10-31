@@ -1,9 +1,11 @@
 module Ergvein.Index.Server.DB.Queries where
 
 import Data.Word
+import Data.Text(Text)
 import Control.Monad
 import Control.Monad.IO.Class
 import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
 import Database.Esqueleto
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema
@@ -12,16 +14,16 @@ import qualified Database.Persist as DT
 
 import Safe (headMay)
 
-data Unspent = Unspent {
-  txHash :: String,
-  pubKey :: String,
-  amount :: MoneyUnit
+data UTXOInfo = UTXOInfo {
+  txHash :: TxHash,
+  utxoPubKeyScriptHash :: PubKeyScriptHash,
+  outValue :: MoneyUnit
 } deriving Show
 
-data Spent = Spent  {
-  txHashTarget :: String,
-  stxHash :: String,
-  spubKey :: String
+data STXOInfo = STXOInfo  {
+  txHashTarget :: TxHash,
+  stxHash :: TxHash,
+  stxoPubKeyScriptHash :: PubKeyScriptHash
 } deriving Show
 
 
@@ -33,5 +35,5 @@ getScannedHeight currency = fmap headMay $ select $ from $ \scannedHeight -> do
 updateScannedHeight :: MonadIO m => Currency -> Word64 -> QueryT m (Entity ScannedHeightRec)
 updateScannedHeight currency h = upsert (ScannedHeightRec currency h) [ScannedHeightRecHeight DT.=. h]
 
-insertUTXO :: MonadIO m => Unspent -> QueryT m (Key UtxoRec)
-insertUTXO utxo = insert (UtxoRec (txHash utxo) (pubKey utxo) (amount utxo))
+insertUTXO :: MonadIO m => UTXOInfo -> QueryT m (Key UtxoRec)
+insertUTXO utxo = insert (UtxoRec (txHash utxo) (utxoPubKeyScriptHash utxo) (outValue utxo))

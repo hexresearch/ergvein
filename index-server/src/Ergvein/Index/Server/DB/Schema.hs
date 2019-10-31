@@ -14,12 +14,12 @@ ScannedHeightRec
   height BlockHeight
   UniqueCurrency currency
 UtxoRec
-  txHash String
-  pubKey String
+  txHash Text
+  pubKey Text
   outValue MoneyUnit
   UniqueTxHashPubKey txHash pubKey
 StxoRec
-  txHash String
+  txHash Text
   utxoId ScannedHeightRecId
   UniqueTxHashUtxoId txHash utxoId
   |]
