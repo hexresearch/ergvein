@@ -17,6 +17,7 @@ import Control.Monad.Reader
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Text (Text)
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings
 import Language.Javascript.JSaddle
 import Reflex
@@ -44,7 +45,7 @@ type MonadFrontConstr t m = (MonadBaseConstr t m
   , MonadRetract t m
   )
 
-class (MonadFrontConstr t m, MonadLocalized t m) => MonadFront t m | m -> t where
+class (MonadFrontConstr t m, MonadLocalized t m, HasStoreDir m) => MonadFront t m | m -> t where
   getSettings :: m Settings
   -- | System back button event
   getBackEvent :: m (Event t ())
