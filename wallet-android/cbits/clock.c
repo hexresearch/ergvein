@@ -11,7 +11,7 @@ jint android_timezone_offset() {
   assert(attachResult == JNI_OK);
   __android_log_write(ANDROID_LOG_DEBUG, "android_timezone_offset", "attached to jvm");
 
-  jclass clockClass = (*env)->FindClass(env, "org/panax/Clock");
+  jclass clockClass = (*env)->FindClass(env, "org/ergvein/Clock");
   assert(clockClass);
   __android_log_write(ANDROID_LOG_DEBUG, "android_timezone_offset", "got Clock class");
 

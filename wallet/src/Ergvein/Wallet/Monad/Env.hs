@@ -13,6 +13,7 @@ import Data.Maybe (catMaybes)
 import Data.Text (Text)
 import Ergvein.Crypto
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Run
@@ -36,6 +37,9 @@ data Env t = Env {
 , env'langRef   :: !(ExternalRef t Language)
 , env'storage   :: ErgveinStorage     -- Non strict so that undefined from newEnv does not cause panic. Will initialize later
 , env'storeDir  :: !Text
+, env'errorsEF  :: (Event t ErrorInfo, ErrorInfo -> IO ()) -- ^ Holds errors for error poster
+, env'logsTrigger     :: (Event t LogEntry, LogEntry -> IO ())
+, env'logsNameSpaces  :: ExternalRef t [Text]
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -44,8 +48,11 @@ newEnv :: (Reflex t, TriggerEvent t m, MonadIO m) => Settings -> m (Env t)
 newEnv settings = do
   (backE, backFire) <- newTriggerEvent
   loadingEF <- newTriggerEvent
+  errorsEF <- newTriggerEvent
   langRef <- newExternalRef $ settingsLang settings
   re <- newRetractEnv
+  logsTrigger <- newTriggerEvent
+  nameSpaces <- newExternalRef []
   pure Env {
       env'settings  = settings
     , env'backEvent = backE
@@ -54,10 +61,17 @@ newEnv settings = do
     , env'langRef   = langRef
     , env'storeDir  = settingsStoreDir settings
     , env'storage   = undefined
+    , env'errorsEF  = errorsEF
+    , env'logsTrigger = logsTrigger
+    , env'logsNameSpaces = nameSpaces
     }
 
 instance Monad m => HasStoreDir (ErgveinM t m) where
   getStoreDir = asks env'storeDir
+
+instance MonadBaseConstr t m => MonadEgvLogger t (ErgveinM t m) where
+  getLogsTrigger = asks env'logsTrigger
+  getLogsNameSpacesRef = asks env'logsNameSpaces
 
 instance MonadBaseConstr t m => MonadLocalized t (ErgveinM t m) where
   setLanguage lang = do
@@ -88,6 +102,14 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFront 
     fire <- asks (snd . env'loading)
     performEvent_ $ (liftIO . fire) <$> (updated reqD)
   {-# INLINE loadingWidgetDyn #-}
+
+instance MonadBaseConstr t m => MonadErrorPoster t (ErgveinM t m) where
+  postError e = do
+    (_, fire) <- asks env'errorsEF
+    performEvent_ $ liftIO . fire <$> e
+  newErrorEvent = asks (fst . env'errorsEF)
+  {-# INLINE postError #-}
+  {-# INLINE newErrorEvent #-}
 
 instance MonadBaseConstr t m => MonadStorage t (ErgveinM t m) where
   getEncryptedWallet = asks (storageWallet . env'storage)

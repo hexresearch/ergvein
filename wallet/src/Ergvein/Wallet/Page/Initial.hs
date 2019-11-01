@@ -9,6 +9,9 @@ import Ergvein.Wallet.Wrapper
 import Ergvein.Wallet.Language
 import Reflex.Localize
 
+import Control.Monad.IO.Class
+import Data.Time
+
 data GoPage = GoSeed | GoRestore
 
 data InitialPageStrings =
@@ -29,6 +32,9 @@ initialPage = wrapper True $ divClass "initial-options" $ do
   newE <- fmap (GoSeed <$) $ row . outlineButton $ IPSCreate
   restoreE <- fmap (GoRestore <$) $ row . outlineButton $ IPSRestore
   let goE = leftmost [newE, restoreE]
+  panicE <- row . outlineButton $ ("Span panic" :: Text)
+  panicE' <- performEvent $ (liftIO getCurrentTime) <$ panicE
+  postError $ (\now -> ErrorInfo ErrorTypeFail 10 ["Debug"] now $ ("Panic" :: Text)) <$> panicE'
   void $ nextWidget $ ffor goE $ \go -> Retractable {
       retractableNext = case go of
         GoSeed -> mnemonicPage
