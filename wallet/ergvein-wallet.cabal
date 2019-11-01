@@ -40,6 +40,7 @@ library
     Ergvein.Wallet.Monad.Front
     Ergvein.Wallet.Monad.Storage
     Ergvein.Wallet.Monad.Unauth
+    Ergvein.Wallet.Monad.Util
     Ergvein.Wallet.Page.Balances
     Ergvein.Wallet.Page.History
     Ergvein.Wallet.Page.Initial
@@ -59,6 +60,7 @@ library
   build-depends:
       base
     , aeson
+    , async
     , base16-bytestring
     , base64-bytestring         >= 1        && < 1.0.0.3
     , bytestring                >= 0.10     && < 0.11

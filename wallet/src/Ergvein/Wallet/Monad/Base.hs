@@ -8,8 +8,10 @@ module Ergvein.Wallet.Monad.Base
   , errorTypeToSeverity
   , ErrorInfo(..)
   , MonadEgvLogger(..)
+  , HasUIThread(..)
   ) where
 
+import Control.Concurrent.Chan (Chan)
 import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Control.Monad.Ref
@@ -55,7 +57,8 @@ type MonadFrontBase t m = (PlatformNatives
   , MonadRetract t m
   , MonadBackable t m
   , MonadErrorPoster t m
-  , MonadEgvLogger t m)
+  , MonadEgvLogger t m
+  , HasUIThread m)
 
 -- | ===========================================================================
 -- |                Monad Backable. Implements back event
@@ -113,3 +116,12 @@ class MonadBaseConstr t m => MonadErrorPoster t m | m -> t where
   postError :: Event t ErrorInfo -> m ()
   -- | Fires when new error arrives from 'postError'
   newErrorEvent :: m (Event t ErrorInfo)
+
+-- | ===========================================================================
+-- |           Monad UI thread
+-- | ===========================================================================
+
+class Monad m => HasUIThread m where
+    -- | Internal method of getting channel where you can post actions that must be
+  -- executed in main UI thread.
+  getUiChan :: m (Chan (IO ()))
