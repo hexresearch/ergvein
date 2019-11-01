@@ -18,6 +18,7 @@ library
   hs-source-dirs:      src
   exposed-modules:
     Ergvein.Wallet
+    Ergvein.Wallet.Clipboard
     Ergvein.Wallet.Elements
     Ergvein.Wallet.Embed
     Ergvein.Wallet.Embed.TH

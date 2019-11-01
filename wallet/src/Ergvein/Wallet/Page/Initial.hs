@@ -11,6 +11,7 @@ import Reflex.Localize
 
 import Control.Monad.IO.Class
 import Data.Time
+import Ergvein.Wallet.Clipboard
 
 data GoPage = GoSeed | GoRestore
 
@@ -35,6 +36,7 @@ initialPage = wrapper True $ divClass "initial-options" $ do
   panicE <- row . outlineButton $ ("Span panic" :: Text)
   panicE' <- performEvent $ (liftIO getCurrentTime) <$ panicE
   postError $ (\now -> ErrorInfo ErrorTypeFail 10 ["Debug"] now $ ("Panic" :: Text)) <$> panicE'
+  copyButton (pure "Copied this")
   void $ nextWidget $ ffor goE $ \go -> Retractable {
       retractableNext = case go of
         GoSeed -> mnemonicPage
