@@ -53,12 +53,15 @@ frontendCss r = do
   validateCss
   passwordCss
   initialPageCss
-  currenciesPageCss
+  balancesPageCss
   loadingWidgetCss
   errorAlertsCss
 
 textColor :: Color
 textColor = rgb 0 0 0
+
+hoverColor :: Color
+hoverColor = rgb 112 112 112
 
 majorBackground :: Color
 majorBackground = rgb 255 255 255
@@ -165,8 +168,8 @@ initialPageCss = do
     marginRight auto
     marginBottom $ px 10
 
-currenciesPageCss :: Css
-currenciesPageCss = do
+balancesPageCss :: Css
+balancesPageCss = do
   ".sync-progress" ? do
     width $ pct 100
     maxWidth $ px 500
@@ -175,6 +178,9 @@ currenciesPageCss = do
     fontSize $ pt 14
   ".currency-wrapper" ? do
     textAlign center
+    cursor pointer
+  ".currency-wrapper:hover" ? do
+    color hoverColor
   ".currency-line" ? do
     width $ pct 100
     maxWidth $ px 500

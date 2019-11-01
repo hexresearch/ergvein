@@ -11,6 +11,7 @@
 module Reflex.Dom.Retractable.Trans.Internal where
 
 import Control.Monad.Reader
+import Control.Monad.Ref
 import Control.Monad.State.Strict
 import GHC.Generics
 import Language.Javascript.JSaddle.Types
@@ -50,7 +51,7 @@ newRetractEnv = do
 
 -- | Plug-in implementation of `MonadRetract`.
 newtype RetractT t m a = RetractT { unRetractT :: ReaderT (RetractEnv t m) m a }
-  deriving (Functor, Applicative, Monad, Generic, MonadFix)
+  deriving (Functor, Applicative, Monad, Generic, MonadFix, MonadRef, HasJSContext, HasDocument)
 
 deriving instance PostBuild t m => PostBuild t (RetractT t m)
 deriving instance NotReady t m => NotReady t (RetractT t m)

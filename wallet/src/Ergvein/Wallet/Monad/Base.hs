@@ -12,9 +12,11 @@ module Ergvein.Wallet.Monad.Base
 
 import Control.Monad.Fix
 import Control.Monad.IO.Class
+import Control.Monad.Ref
 import Data.Text (Text)
 import Data.Time(UTCTime)
 import Ergvein.Wallet.Log.Types
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Native
 import Language.Javascript.JSaddle
 import Reflex
@@ -35,6 +37,13 @@ type MonadBaseConstr t m = (MonadHold t m
   , TriggerEvent t m
   , MonadJSM m
   , DomBuilderSpace m ~ GhcjsDomSpace
+  , HasJSContext m
+  , HasJSContext (Performable m)
+  , HasDocument m
+  , MonadRef m
+  , Ref m ~ Ref IO
+  , MonadRef (Performable m)
+  , Ref (Performable m) ~ Ref IO
   )
 
 -- | Context for unauthed widgets
