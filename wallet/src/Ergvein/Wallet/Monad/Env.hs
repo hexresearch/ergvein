@@ -5,6 +5,7 @@ module Ergvein.Wallet.Monad.Env(
   , runEnv
   ) where
 
+import Control.Concurrent.Chan (Chan)
 import Control.Monad.Fix
 import Control.Monad.Reader
 import Data.Functor (void)
@@ -40,12 +41,16 @@ data Env t = Env {
 , env'errorsEF  :: (Event t ErrorInfo, ErrorInfo -> IO ()) -- ^ Holds errors for error poster
 , env'logsTrigger     :: (Event t LogEntry, LogEntry -> IO ())
 , env'logsNameSpaces  :: ExternalRef t [Text]
+, env'uiChan          :: Chan (IO ())
 }
 
 type ErgveinM t m = ReaderT (Env t) m
 
-newEnv :: (Reflex t, TriggerEvent t m, MonadIO m) => Settings -> m (Env t)
-newEnv settings = do
+newEnv :: (Reflex t, TriggerEvent t m, MonadIO m)
+  => Settings
+  -> Chan (IO ()) -- UI callbacks channel
+  -> m (Env t)
+newEnv settings uiChan = do
   (backE, backFire) <- newTriggerEvent
   loadingEF <- newTriggerEvent
   errorsEF <- newTriggerEvent
@@ -64,7 +69,11 @@ newEnv settings = do
     , env'errorsEF  = errorsEF
     , env'logsTrigger = logsTrigger
     , env'logsNameSpaces = nameSpaces
+    , env'uiChan = uiChan
     }
+
+instance Monad m => HasUIThread (ErgveinM t m) where
+  getUiChan = asks env'uiChan
 
 instance Monad m => HasStoreDir (ErgveinM t m) where
   getStoreDir = asks env'storeDir

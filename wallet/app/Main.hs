@@ -4,6 +4,7 @@ module Main where
 import Data.Default
 import Ergvein.Wallet
 import Ergvein.Wallet.Run
+import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Style
 import Ergvein.Wallet.Yaml
 import GHC.Generics
@@ -30,5 +31,5 @@ main = do
   run $ \cbs -> do
     css <- compileFrontendCss
     mainWidgetWithCss css $ do
-      env <- newEnv settings
+      env <- newEnv settings (runUiCallbacks cbs)
       runEnv cbs env frontend
