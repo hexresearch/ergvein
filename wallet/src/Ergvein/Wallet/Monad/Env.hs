@@ -36,6 +36,7 @@ data Env t = Env {
 , env'langRef   :: !(ExternalRef t Language)
 , env'storage   :: ErgveinStorage     -- Non strict so that undefined from newEnv does not cause panic. Will initialize later
 , env'storeDir  :: !Text
+, env'errorsEF  :: (Event t ErrorInfo, ErrorInfo -> IO ()) -- ^ Holds errors for error poster
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -44,6 +45,7 @@ newEnv :: (Reflex t, TriggerEvent t m, MonadIO m) => Settings -> m (Env t)
 newEnv settings = do
   (backE, backFire) <- newTriggerEvent
   loadingEF <- newTriggerEvent
+  errorsEF <- newTriggerEvent
   langRef <- newExternalRef $ settingsLang settings
   re <- newRetractEnv
   pure Env {
@@ -54,6 +56,7 @@ newEnv settings = do
     , env'langRef   = langRef
     , env'storeDir  = settingsStoreDir settings
     , env'storage   = undefined
+    , env'errorsEF  = errorsEF
     }
 
 instance Monad m => HasStoreDir (ErgveinM t m) where
@@ -88,6 +91,14 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFront 
     fire <- asks (snd . env'loading)
     performEvent_ $ (liftIO . fire) <$> (updated reqD)
   {-# INLINE loadingWidgetDyn #-}
+
+instance MonadBaseConstr t m => MonadErrorPoster t (ErgveinM t m) where
+  postError e = do
+    (_, fire) <- asks env'errorsEF
+    performEvent_ $ liftIO . fire <$> e
+  newErrorEvent = asks (fst . env'errorsEF)
+  {-# INLINE postError #-}
+  {-# INLINE newErrorEvent #-}
 
 instance MonadBaseConstr t m => MonadStorage t (ErgveinM t m) where
   getEncryptedWallet = asks (storageWallet . env'storage)
