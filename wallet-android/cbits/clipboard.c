@@ -40,7 +40,7 @@ void android_copy_str(jobject activity, const char* str) {
   assert(newPlainText);
   __android_log_write(ANDROID_LOG_DEBUG, "android_copy_str", "got method newPlainText");
 
-  jstring clipLabel = (*env)->NewStringUTF(env, "panax_clipboard");
+  jstring clipLabel = (*env)->NewStringUTF(env, "ergvein_clipboard");
   assert(clipLabel);
   jstring clipStr = (*env)->NewStringUTF(env, str);
   assert(clipStr);
@@ -80,7 +80,7 @@ jstring android_paste_str(jobject activity) {
   assert(attachResult == JNI_OK);
   __android_log_write(ANDROID_LOG_DEBUG, "android_paste_str", "attached to jvm");
 
-  jclass clipboardClass = (*env)->FindClass(env, "org/panax/Clipboard");
+  jclass clipboardClass = (*env)->FindClass(env, "org/ergvein/Clipboard");
   assert(clipboardClass);
   __android_log_write(ANDROID_LOG_DEBUG, "android_paste_str", "got Clipboard class");
 
