@@ -4,8 +4,6 @@ module Ergvein.Wallet.Log.Page(
     logsPage
   ) where
 
--- import Panax.Frontend.Clipboard
--- import Panax.Frontend.Menu
 import Data.Aeson
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
