@@ -32,9 +32,10 @@ initialPage = wrapper True $ divClass "initial-options" $ do
   newE <- fmap (GoSeed <$) $ row . outlineButton $ IPSCreate
   restoreE <- fmap (GoRestore <$) $ row . outlineButton $ IPSRestore
   let goE = leftmost [newE, restoreE]
-  now <- liftIO $ getCurrentTime
-  postError $ (ErrorInfo ErrorTypeFail 10 ["Debug"] now $ ("Panic" :: Text)) <$ goE
-  void $ nextWidget $ ffor never $ \go -> Retractable {
+  panicE <- row . outlineButton $ ("Span panic" :: Text)
+  panicE' <- performEvent $ (liftIO getCurrentTime) <$ panicE
+  postError $ (\now -> ErrorInfo ErrorTypeFail 10 ["Debug"] now $ ("Panic" :: Text)) <$> panicE'
+  void $ nextWidget $ ffor goE $ \go -> Retractable {
       retractableNext = case go of
         GoSeed -> mnemonicPage
         GoRestore -> initialPage -- TODO: here insert widget for restore page
