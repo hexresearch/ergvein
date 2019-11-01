@@ -12,6 +12,7 @@ module Ergvein.Wallet.Error(
   ) where
 
 import Control.Monad
+import Control.Monad.IO.Class
 import Data.Align
 import Data.Bifunctor
 import Data.Coerce
@@ -38,7 +39,8 @@ import Ergvein.Wallet.Util
 -- import Panax.Shared
 -- import Panax.Frontend.Localization
 -- import Panax.Frontend.Localization.Error
--- import Panax.Frontend.Log.Types
+import Ergvein.Wallet.Log.Types
+import Ergvein.Wallet.Language
 -- import Panax.Frontend.Monad
 
 badge :: forall t m a . MonadFrontBase t m => Text -> m a -> m a
@@ -57,18 +59,18 @@ errorHandlerWidget :: forall t m . (MonadLocalized t m, MonadErrorPoster t m, Mo
 errorHandlerWidget = divClass "error-overlay" $ mdo
   langD <- getLanguage
   errE <- newErrorEvent
-  -- logErrors errE
+  logErrors errE
   let
     accumErrors :: T.These ErrorInfo [Int] -> PushM t (Map Int (Maybe (ErrorInfo, Int)))
     accumErrors v = do
       n <- sample . current $ countD
       let
         handleNewErr :: ErrorInfo -> PushM t (Map Int (Maybe (ErrorInfo, Int)))
-        handleNewErr newErr@(ErrorInfo _ _ msg1) = do
+        handleNewErr newErr@(ErrorInfo _ _ _ _ msg1) = do
           let mkNew = M.singleton n (Just (newErr, 1))
           es <- sample . current $ infosD
           l <- sample . current $ langD
-          pure $ case findAmongMap (\(ErrorInfo _ _ msg2,_) -> (localizedShow l msg1 == localizedShow l msg2)) es of
+          pure $ case findAmongMap (\(ErrorInfo _ _ _ _ msg2,_) -> (localizedShow l msg1 == localizedShow l msg2)) es of
             Nothing -> mkNew
             Just (i, (ei, c)) -> M.singleton i (Just (ei, c+1))
         handleDeletes :: [Int] -> PushM t (Map Int (Maybe (ErrorInfo, Int)))
@@ -107,13 +109,19 @@ errorHandlerWidget = divClass "error-overlay" $ mdo
     countD = length <$> deletesED
   pure ()
 
--- logErrors :: forall t m . (MonadLocalized t m, MonadErrorPoster t m, MonadFrontBase t m) => Event t ErrorInfo -> m ()
--- logErrors e = postLog $ ffor e $ \ErrorInfo{..} -> LogEntry {
---     logTime = errorTime
---   , logSeverity = errorTypeToSeverity errorType
---   , logMessage = localizedShow English errorMessage
---   , logNameSpace = errorNameSpace
---   }
+logErrors :: forall t m . MonadFrontBase t m => Event t ErrorInfo -> m ()
+logErrors e = postLog $ ffor e $ \ErrorInfo{..} -> LogEntry {
+    logTime = errorTime
+  , logSeverity = errorTypeToSeverity errorType
+  , logMessage = localizedShow English errorMessage
+  , logNameSpace = errorNameSpace
+  }
+  where
+        -- | Posting log message
+    postLog :: MonadFrontBase t m => Event t LogEntry -> m ()
+    postLog e = do
+      (_, fire) <- getLogsTrigger
+      performEvent_ $ ffor e $ liftIO . fire
 
 -- | Widget that displays error to user. Fires when destruction timeout is passed.
 errorWidget :: MonadFrontBase t m => ErrorInfo -> Int -> m (Event t ())

@@ -40,12 +40,12 @@ frontendCssBS r = let
 
 frontendCss :: Resources -> Css
 frontendCss r = do
-  fontFamilies r
+  -- fontFamilies r
   html ? textAlign center
   body ? do
     color textColor
     backgroundColor majorBackground
-    fontFamily ["Roboto"] []
+    -- fontFamily ["Roboto"] []
   wrapperCss
   buttonCss
   inputCss

@@ -28,6 +28,11 @@ library
     Ergvein.Wallet.Loading
     Ergvein.Wallet.Localization.Password
     Ergvein.Wallet.Localization.Seed
+    Ergvein.Wallet.Log
+    Ergvein.Wallet.Log.Page
+    Ergvein.Wallet.Log.Reader
+    Ergvein.Wallet.Log.Types
+    Ergvein.Wallet.Log.Writer
     Ergvein.Wallet.Main
     Ergvein.Wallet.Monad
     Ergvein.Wallet.Monad.Base
@@ -92,7 +97,11 @@ library
     , yaml
   if flag(android)
     cpp-options: -DANDROID
-    build-depends: android-activity
+    build-depends:
+        android-activity
+      , ergvein-wallet-android
+  else
+    build-depends: ergvein-wallet-desktop
   default-language:    Haskell2010
   default-extensions:
     BangPatterns
