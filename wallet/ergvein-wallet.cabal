@@ -28,6 +28,7 @@ library
     Ergvein.Wallet.Input
     Ergvein.Wallet.Language
     Ergvein.Wallet.Loading
+    Ergvein.Wallet.Localization.Native
     Ergvein.Wallet.Localization.Password
     Ergvein.Wallet.Localization.Seed
     Ergvein.Wallet.Log

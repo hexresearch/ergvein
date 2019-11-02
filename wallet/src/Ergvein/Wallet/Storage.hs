@@ -10,8 +10,9 @@ import Data.Text(Text)
 import Ergvein.Aeson
 import Ergvein.Crypto
 import Ergvein.Text
-import Ergvein.Wallet.Native
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Localization.Native
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Secure.Data
 import Network.Haskoin.Address
 import Network.Haskoin.Keys
@@ -37,18 +38,14 @@ decryptStorage pass txt = pure $ either (Left . SADecodeError) Right $ text2json
 
 loadStorageFromFile :: (MonadIO m, HasStoreDir m, PlatformNatives) => Password -> m (Either StorageAlerts ErgveinStorage)
 loadStorageFromFile pass = do
-  storageRawLines <- readStoredFile storageFileName
-  case storageRawLines of
-    [] -> do
-      appendStoredFile storageFileName ""
-      pure $ Left SAEmptyError
-    _ -> decryptStorage pass $ T.concat storageRawLines
+  storageResp <- readStoredFile storageFileName
+  either (pure . Left . SANativeAlert) (decryptStorage pass . T.concat) storageResp
 
 -- Alerts regarding secure storage system
 data StorageAlerts
   = SADecodeError Text
   | SALoadedSucc
-  | SAEmptyError
+  | SANativeAlert NativeAlerts
   deriving (Eq)
 
 instance LocalizedPrint StorageAlerts where
@@ -56,5 +53,5 @@ instance LocalizedPrint StorageAlerts where
     English -> case v of
       SADecodeError e -> "Storage loading error: " <> e
       SALoadedSucc    -> "Storage loaded"
-      SAEmptyError    -> "Error! Storage is empty"
+      SANativeAlert a -> localizedShow l a
     Russian -> localizedShow English v

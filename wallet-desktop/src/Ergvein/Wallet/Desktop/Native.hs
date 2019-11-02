@@ -25,7 +25,6 @@ instance PlatformNatives where
       let fpath = T.unpack $ path <> "/" <> k
       createDirectoryIfMissing True $ takeDirectory fpath
       writeJson fpath v
-      pure $ Right ()
 
   retrieveValue k a0 = do
     path <- getStoreDir
@@ -35,7 +34,7 @@ instance PlatformNatives where
       if ex
         then do
           key <- readJson fpath
-          pure $ maybe (Left $ "Decoding error for key " <> k) Right key
+          pure $ maybe (Left $ NADecodingError k) Right key
         else pure $ Right a0
 
   readStoredFile filename = do
@@ -46,8 +45,8 @@ instance PlatformNatives where
       if ex
         then do
           cnt <- T.readFile fpath
-          pure $ T.lines cnt
-        else pure []
+          pure $ Right $ T.lines cnt
+        else pure $ Left $ NAFileDoesNotExist filename
 
   appendStoredFile filename cnt = do
     path <- getStoreDir
@@ -68,7 +67,8 @@ instance PlatformNatives where
         then do
           T.writeFile fpath2 =<< T.readFile fpath1
           T.writeFile fpath1 ""
-        else pure ()
+          pure $ Right ()
+        else pure $ Left $ NAFileDoesNotExist filename1
 
   getStoreFileSize filename = do
     path <- getStoreDir
@@ -76,8 +76,8 @@ instance PlatformNatives where
       let fpath = T.unpack $ path <> "/" <> filename
       ex <- doesFileExist fpath
       if ex
-        then withFile fpath ReadMode $ fmap fromIntegral . hFileSize
-        else pure 0
+        then fmap Right $ withFile fpath ReadMode $ fmap fromIntegral . hFileSize
+        else pure $ Left $ NAFileDoesNotExist filename
 
   pasteStr = liftIO $ fmap T.pack getClipboard
 

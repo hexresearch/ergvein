@@ -38,7 +38,7 @@ logReader = do
 -- | Extract log entries from internal storage
 readLogEntries :: MonadIO m => Text -> m [LogEntry]
 readLogEntries store = flip runReaderT store $ do
-  newEs <- readStoredFile logStorageKey
-  oldEs <- readStoredFile logStorageKeyOld
+  newEs <- fmap (either (const []) id) $ readStoredFile logStorageKey
+  oldEs <- fmap (either (const []) id) $ readStoredFile logStorageKeyOld
   let es = reverse newEs <> reverse oldEs
   pure $ catMaybes . fmap (decode . BS.fromStrict . encodeUtf8) $ es

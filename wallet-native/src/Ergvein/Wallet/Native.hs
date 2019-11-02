@@ -2,6 +2,7 @@
 module Ergvein.Wallet.Native
   ( PlatformNatives(..)
   , HasStoreDir(..)
+  , NativeAlerts(..)
   ) where
 
 import Control.Monad.Reader
@@ -15,28 +16,34 @@ class HasStoreDir m where
 instance Monad m => HasStoreDir (ReaderT Text m) where
   getStoreDir = ask
 
+data NativeAlerts
+  = NAFileDoesNotExist Text
+  | NAFileIsEmpty Text
+  | NADecodingError Text
+  | NAGenericError Text
+  deriving (Eq)
+
 class PlatformNatives where
   -- | Make platform specific URL to given resource.
   resUrl :: Text -> Text
 
   -- | Key-value store. Write JSON value
-  storeValue :: (HasStoreDir m, MonadIO m, ToJSON a) => Text -> a -> m (Either Text ())
+  storeValue :: (HasStoreDir m, MonadIO m, ToJSON a) => Text -> a -> m ()
 
   -- | Key-value store. Read JSON value by key
-  retrieveValue :: (HasStoreDir m, MonadIO m, FromJSON a) => Text -> a -> m (Either Text a)
+  retrieveValue :: (HasStoreDir m, MonadIO m, FromJSON a) => Text -> a -> m (Either NativeAlerts a)
 
-  -- | Read stored file line by line from android app folder. Non existing file
-  -- will return empty list.
-  readStoredFile :: (HasStoreDir m, MonadIO m) => Text -> m [Text]
+  -- | Read stored file line by line from android app folder
+  readStoredFile :: (HasStoreDir m, MonadIO m) => Text -> m (Either NativeAlerts [Text])
 
   -- | Write down a value to stored file at its end.
   appendStoredFile :: (HasStoreDir m, MonadIO m) => Text -> Text -> m ()
 
   -- | Move stored file from first name to the second with destruction of second.
-  moveStoredFile :: (HasStoreDir m, MonadIO m) => Text -> Text -> m ()
+  moveStoredFile :: (HasStoreDir m, MonadIO m) => Text -> Text -> m (Either NativeAlerts ())
 
   -- | Get size in bytes of stored file
-  getStoreFileSize :: (HasStoreDir m, MonadIO m) => Text -> m Int
+  getStoreFileSize :: (HasStoreDir m, MonadIO m) => Text -> m (Either NativeAlerts Int)
 
   -- | Get contents of clipboard
   pasteStr :: MonadIO m => m Text
