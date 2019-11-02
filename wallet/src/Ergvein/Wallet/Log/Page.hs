@@ -11,8 +11,8 @@ import Data.Maybe
 import Data.Text (pack)
 import Data.Time
 import Ergvein.Text
+import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Error
 import Ergvein.Wallet.Log.Reader
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad

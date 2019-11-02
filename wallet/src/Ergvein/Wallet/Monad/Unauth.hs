@@ -28,7 +28,7 @@ data UnauthEnv t = UnauthEnv {
 , unauth'loading         :: !(Event t (Text, Bool), (Text, Bool) -> IO ())
 , unauth'langRef         :: !(ExternalRef t Language)
 , unauth'storeDir        :: !Text
-, unauth'errorsEF        :: (Event t ErrorInfo, ErrorInfo -> IO ()) -- ^ Holds errors for error poster
+, unauth'alertsEF        :: (Event t AlertInfo, AlertInfo -> IO ()) -- ^ Holds alerts event and trigger
 , unauth'logsTrigger     :: (Event t LogEntry, LogEntry -> IO ())
 , unauth'logsNameSpaces  :: ExternalRef t [Text]
 , unauth'uiChan          :: Chan (IO ())
@@ -77,15 +77,15 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   getLangRef = asks unauth'langRef
   {-# INLINE getLangRef #-}
 
-instance MonadBaseConstr t m => MonadErrorPoster t (UnauthM t m) where
-  postError e = do
-    (_, fire) <- asks unauth'errorsEF
+instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
+  postAlert e = do
+    (_, fire) <- asks unauth'alertsEF
     performEvent_ $ liftIO . fire <$> e
-  newErrorEvent = asks (fst . unauth'errorsEF)
-  getErrorEventFire = asks unauth'errorsEF
-  {-# INLINE postError #-}
-  {-# INLINE newErrorEvent #-}
-  {-# INLINE getErrorEventFire #-}
+  newAlertEvent = asks (fst . unauth'alertsEF)
+  getAlertEventFire = asks unauth'alertsEF
+  {-# INLINE postAlert #-}
+  {-# INLINE newAlertEvent #-}
+  {-# INLINE getAlertEventFire #-}
 
 newUnauthEnv :: (Reflex t, TriggerEvent t m, MonadIO m)
   => Settings
@@ -94,7 +94,7 @@ newUnauthEnv :: (Reflex t, TriggerEvent t m, MonadIO m)
 newUnauthEnv settings uiChan = do
   (backE, backFire) <- newTriggerEvent
   loadingEF <- newTriggerEvent
-  errorsEF <- newTriggerEvent
+  alertsEF <- newTriggerEvent
   langRef <- newExternalRef $ settingsLang settings
   re <- newRetractEnv
   logsTrigger <- newTriggerEvent
@@ -105,7 +105,7 @@ newUnauthEnv settings uiChan = do
     , unauth'loading   = loadingEF
     , unauth'langRef   = langRef
     , unauth'storeDir  = settingsStoreDir settings
-    , unauth'errorsEF  = errorsEF
+    , unauth'alertsEF  = alertsEF
     , unauth'logsTrigger = logsTrigger
     , unauth'logsNameSpaces = nameSpaces
     , unauth'uiChan = uiChan

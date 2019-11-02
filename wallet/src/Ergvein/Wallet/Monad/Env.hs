@@ -44,7 +44,7 @@ data Env t = Env {
 , env'langRef         :: !(ExternalRef t Language)
 , env'storage         :: ErgveinStorage     -- Non strict so that undefined from newEnv does not cause panic. Will initialize later
 , env'storeDir        :: !Text
-, env'errorsEF        :: (Event t ErrorInfo, ErrorInfo -> IO ()) -- ^ Holds errors for error poster
+, env'alertsEF        :: (Event t AlertInfo, AlertInfo -> IO ()) -- ^ Holds alert event and trigger
 , env'logsTrigger     :: (Event t LogEntry, LogEntry -> IO ())
 , env'logsNameSpaces  :: ExternalRef t [Text]
 , env'uiChan          :: Chan (IO ())
@@ -59,7 +59,7 @@ newEnv :: (Reflex t, TriggerEvent t m, MonadIO m)
 newEnv settings uiChan = do
   (backE, backFire) <- newTriggerEvent
   loadingEF <- newTriggerEvent
-  errorsEF <- newTriggerEvent
+  alertsEF <- newTriggerEvent
   langRef <- newExternalRef $ settingsLang settings
   re <- newRetractEnv
   logsTrigger <- newTriggerEvent
@@ -71,7 +71,7 @@ newEnv settings uiChan = do
     , env'langRef   = langRef
     , env'storeDir  = settingsStoreDir settings
     , env'storage   = undefined
-    , env'errorsEF  = errorsEF
+    , env'alertsEF  = alertsEF
     , env'logsTrigger = logsTrigger
     , env'logsNameSpaces = nameSpaces
     , env'uiChan = uiChan
@@ -118,15 +118,15 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   getLangRef = asks env'langRef
   {-# INLINE getLangRef #-}
 
-instance MonadBaseConstr t m => MonadErrorPoster t (ErgveinM t m) where
-  postError e = do
-    (_, fire) <- asks env'errorsEF
+instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
+  postAlert e = do
+    (_, fire) <- asks env'alertsEF
     performEvent_ $ liftIO . fire <$> e
-  newErrorEvent = asks (fst . env'errorsEF)
-  getErrorEventFire = asks env'errorsEF
-  {-# INLINE postError #-}
-  {-# INLINE newErrorEvent #-}
-  {-# INLINE getErrorEventFire #-}
+  newAlertEvent = asks (fst . env'alertsEF)
+  getAlertEventFire = asks env'alertsEF
+  {-# INLINE postAlert #-}
+  {-# INLINE newAlertEvent #-}
+  {-# INLINE getAlertEventFire #-}
 
 instance MonadBaseConstr t m => MonadStorage t (ErgveinM t m) where
   getEncryptedWallet = asks (storageWallet . env'storage)
@@ -164,13 +164,13 @@ liftEnv passE = do
     ts <- liftIO $ getCurrentTime
     estore <- flip runReaderT storeDir $ loadStorageFromFile pass
     pure (ts,estore)
-  postError $ ffor estorageE $ \(ts, estore) -> case estore of
-    Left err -> ErrorInfo ErrorTypeFail 10 ["Storage"] ts err
-    Right _  -> ErrorInfo ErrorTypeSuccess 10 ["Storage"] ts ("Loaded storage" :: Text) -- TODO: Localized
+  postAlert $ ffor estorageE $ \(ts, estore) -> case estore of
+    Left err -> AlertInfo AlertTypeFail 10 ["Storage"] ts err
+    Right _  -> AlertInfo AlertTypeSuccess 10 ["Storage"] ts ("Loaded storage" :: Text) -- TODO: Localized
   settings        <- getSettings
   backEF          <- getBackEventFire
   loading         <- getLoadingWidgetTF
-  errorsEF        <- getErrorEventFire
+  alertsEF        <- getAlertEventFire
   logsTrigger     <- getLogsTrigger
   logsNameSpaces  <- getLogsNameSpacesRef
   uiChan          <- getUiChan
@@ -184,7 +184,7 @@ liftEnv passE = do
         , env'langRef         = langRef
         , env'storeDir        = storeDir
         , env'storage         = store
-        , env'errorsEF        = errorsEF
+        , env'alertsEF        = alertsEF
         , env'logsTrigger     = logsTrigger
         , env'logsNameSpaces  = logsNameSpaces
         , env'uiChan          = uiChan

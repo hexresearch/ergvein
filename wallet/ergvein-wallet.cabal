@@ -18,11 +18,11 @@ library
   hs-source-dirs:      src
   exposed-modules:
     Ergvein.Wallet
+    Ergvein.Wallet.Alert
     Ergvein.Wallet.Clipboard
     Ergvein.Wallet.Elements
     Ergvein.Wallet.Embed
     Ergvein.Wallet.Embed.TH
-    Ergvein.Wallet.Error
     Ergvein.Wallet.Id
     Ergvein.Wallet.Input
     Ergvein.Wallet.Language

@@ -35,7 +35,7 @@ initialPage = wrapper True $ divClass "initial-options" $ do
   let goE = leftmost [newE, restoreE]
   panicE <- row . outlineButton $ ("Span panic" :: Text)
   panicE' <- performEvent $ (liftIO getCurrentTime) <$ panicE
-  postError $ (\now -> ErrorInfo ErrorTypeFail 10 ["Debug"] now $ ("Panic" :: Text)) <$> panicE'
+  postAlert $ (\now -> AlertInfo AlertTypeFail 10 ["Debug"] now $ ("Panic" :: Text)) <$> panicE'
   copyButton (pure "Copied this")
   void $ nextWidget $ ffor goE $ \go -> Retractable {
       retractableNext = case go of

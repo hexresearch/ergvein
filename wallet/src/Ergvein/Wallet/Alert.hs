@@ -5,10 +5,10 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedLists #-}
 
--- | Widget to spam errors in popups. It is better than inplace error display as
+-- | Widget to spam alerts in popups. It is better than inplace alert display as
 -- it doesn't break layout of elements.
-module Ergvein.Wallet.Error(
-    errorHandlerWidget
+module Ergvein.Wallet.Alert(
+    alertHandlerWidget
   ) where
 
 import Control.Monad
@@ -49,27 +49,27 @@ badgePrimary = badge "badge-primary"
 findAmongMap :: (a -> Bool) -> Map k a -> Maybe (k, a)
 findAmongMap f = find (f . snd) . M.toList
 
--- | Widget to spam errors in popups. Call it anywhere in page to start displaying
--- errors in popups.
-errorHandlerWidget :: forall t m . (MonadLocalized t m, MonadErrorPoster t m, MonadFrontBase t m) => m ()
-errorHandlerWidget = divClass "error-overlay" $ mdo
+-- | Widget to spam alerts in popups. Call it anywhere in page to start displaying
+-- alerts in popups.
+alertHandlerWidget :: forall t m . (MonadLocalized t m, MonadAlertPoster t m, MonadFrontBase t m) => m ()
+alertHandlerWidget = divClass "alert-overlay" $ mdo
   langD <- getLanguage
-  errE <- newErrorEvent
-  logErrors errE
+  errE <- newAlertEvent
+  logAlerts errE
   let
-    accumErrors :: T.These ErrorInfo [Int] -> PushM t (Map Int (Maybe (ErrorInfo, Int)))
-    accumErrors v = do
+    accumAlerts :: T.These AlertInfo [Int] -> PushM t (Map Int (Maybe (AlertInfo, Int)))
+    accumAlerts v = do
       n <- sample . current $ countD
       let
-        handleNewErr :: ErrorInfo -> PushM t (Map Int (Maybe (ErrorInfo, Int)))
-        handleNewErr newErr@(ErrorInfo _ _ _ _ msg1) = do
+        handleNewErr :: AlertInfo -> PushM t (Map Int (Maybe (AlertInfo, Int)))
+        handleNewErr newErr@(AlertInfo _ _ _ _ msg1) = do
           let mkNew = M.singleton n (Just (newErr, 1))
           es <- sample . current $ infosD
           l <- sample . current $ langD
-          pure $ case findAmongMap (\(ErrorInfo _ _ _ _ msg2,_) -> (localizedShow l msg1 == localizedShow l msg2)) es of
+          pure $ case findAmongMap (\(AlertInfo _ _ _ _ msg2,_) -> (localizedShow l msg1 == localizedShow l msg2)) es of
             Nothing -> mkNew
             Just (i, (ei, c)) -> M.singleton i (Just (ei, c+1))
-        handleDeletes :: [Int] -> PushM t (Map Int (Maybe (ErrorInfo, Int)))
+        handleDeletes :: [Int] -> PushM t (Map Int (Maybe (AlertInfo, Int)))
         handleDeletes is = pure $ M.fromList $ (\i -> (i, Nothing)) <$> is
       case v of
         T.This newErr -> handleNewErr newErr
@@ -79,22 +79,22 @@ errorHandlerWidget = divClass "error-overlay" $ mdo
           addm <- handleNewErr newErr
           pure $ M.union remm addm
 
-    accumErrorsE :: Event t (Map Int (Maybe (ErrorInfo, Int)))
-    accumErrorsE = pushAlways accumErrors (align errE deleteE)
+    accumAlertsE :: Event t (Map Int (Maybe (AlertInfo, Int)))
+    accumAlertsE = pushAlways accumAlerts (align errE deleteE)
 
-    errorWidgetD :: Int -> (ErrorInfo, Int) -> Event t (ErrorInfo, Int) -> m (Dynamic t (ErrorInfo, Int), Event t ())
-    errorWidgetD _ v vE = do
+    alertWidgetD :: Int -> (AlertInfo, Int) -> Event t (AlertInfo, Int) -> m (Dynamic t (AlertInfo, Int), Event t ())
+    alertWidgetD _ v vE = do
       vD <- holdDyn v vE
-      rD <- widgetHoldDyn $ uncurry errorWidget <$> vD
+      rD <- widgetHoldDyn $ uncurry alertWidget <$> vD
       let delE = switch . current $ rD
       pure (vD, delE)
 
-  resD :: Dynamic t (Map Int (Dynamic t (ErrorInfo, Int), Event t ())) <- listWithKeyShallowDiff mempty accumErrorsE errorWidgetD
+  resD :: Dynamic t (Map Int (Dynamic t (AlertInfo, Int), Event t ())) <- listWithKeyShallowDiff mempty accumAlertsE alertWidgetD
   let
     deletesED :: Dynamic t (Map Int (Event t ()))
     deletesED = fmap snd <$> resD
 
-    infosD :: Dynamic t (Map Int (ErrorInfo, Int))
+    infosD :: Dynamic t (Map Int (AlertInfo, Int))
     infosD = joinDynThroughMap $ fmap fst <$> resD
 
     deleteE :: Event t [Int]
@@ -105,12 +105,12 @@ errorHandlerWidget = divClass "error-overlay" $ mdo
     countD = length <$> deletesED
   pure ()
 
-logErrors :: forall t m . MonadFrontBase t m => Event t ErrorInfo -> m ()
-logErrors e = postLog $ ffor e $ \ErrorInfo{..} -> LogEntry {
-    logTime = errorTime
-  , logSeverity = errorTypeToSeverity errorType
-  , logMessage = localizedShow English errorMessage
-  , logNameSpace = errorNameSpace
+logAlerts :: forall t m . MonadFrontBase t m => Event t AlertInfo -> m ()
+logAlerts e = postLog $ ffor e $ \AlertInfo{..} -> LogEntry {
+    logTime = alertTime
+  , logSeverity = alertTypeToSeverity alertType
+  , logMessage = localizedShow English alertMessage
+  , logNameSpace = alertNameSpace
   }
   where
         -- | Posting log message
@@ -119,18 +119,18 @@ logErrors e = postLog $ ffor e $ \ErrorInfo{..} -> LogEntry {
       (_, fire) <- getLogsTrigger
       performEvent_ $ ffor e $ liftIO . fire
 
--- | Widget that displays error to user. Fires when destruction timeout is passed.
-errorWidget :: MonadFrontBase t m => ErrorInfo -> Int -> m (Event t ())
-errorWidget ErrorInfo{..} n = do
+-- | Widget that displays alert to user. Fires when destruction timeout is passed.
+alertWidget :: MonadFrontBase t m => AlertInfo -> Int -> m (Event t ())
+alertWidget AlertInfo{..} n = do
   closeE <- elAttr "div" [
       ("role" , "alert")
-    , ("class", "alert-popup alert alert-error-handler col-md-offset-3 col-md-6 col-lg-offset-3 col-lg-6 col-sm-12 " <> errorTypeStyle errorType)
+    , ("class", "alert-popup alert alert-handler col-md-offset-3 col-md-6 col-lg-offset-3 col-lg-6 col-sm-12 " <> alertTypeStyle alertType)
     , ("style", "margin: 0px; border-radius: 0px; background-color: #ff931e; font-weight: normal; color: #ffffff;")
     ] $ do
       when (n > 1) $ badgePrimary $ text $ showt n
-      localizedText errorMessage
-      -- closeLabel <- localized ErrorClose
-      -- (e,_) <- elAttr' "div" [("class", "error-close")] $ do
+      localizedText alertMessage
+      -- closeLabel <- localized AlertClose
+      -- (e,_) <- elAttr' "div" [("class", "alert-close")] $ do
       --   let attrs = do
       --         label <- closeLabel
       --         pupx -> %, lots of changes in positions and width, added steaky header,…re [
@@ -143,18 +143,18 @@ errorWidget ErrorInfo{..} n = do
       --   elDynAttr "i" attrs $ pure ()
       -- pure $ domEvent Click e
       pure never
-  timeoutE <- delay (realToFrac errorTimeout) =<< getPostBuild
+  timeoutE <- delay (realToFrac alertTimeout) =<< getPostBuild
   pure $ leftmost [timeoutE, closeE]
 
--- | Which style to use for specific error type
-errorTypeStyle :: ErrorType -> Text
-errorTypeStyle et = case et of
-  ErrorTypeInfo -> "alert-info"
-  ErrorTypePrimary -> "alert-primary"
-  ErrorTypeSecondary -> "alert-secondary"
-  ErrorTypeWarn -> "alert-warning"
-  ErrorTypeSuccess -> "alert-success"
-  ErrorTypeFail -> "alert-danger"
+-- | Which style to use for specific alert type
+alertTypeStyle :: AlertType -> Text
+alertTypeStyle et = case et of
+  AlertTypeInfo -> "alert-info"
+  AlertTypePrimary -> "alert-primary"
+  AlertTypeSecondary -> "alert-secondary"
+  AlertTypeWarn -> "alert-warning"
+  AlertTypeSuccess -> "alert-success"
+  AlertTypeFail -> "alert-danger"
 
 -- | Amount of seconds to show messages by default
 defaultMsgTimeout :: Double

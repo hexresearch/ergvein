@@ -55,7 +55,7 @@ frontendCss r = do
   initialPageCss
   balancesPageCss
   loadingWidgetCss
-  errorAlertsCss
+  alertsCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -217,9 +217,9 @@ loadingWidgetCss = do
     backgroundColor "#ab5dda"
     height $ pct 100
 
-errorAlertsCss :: Css
-errorAlertsCss = do
-  ".error-overlay" ? do
+alertsCss :: Css
+alertsCss = do
+  ".alert-overlay" ? do
     pointerEvents none
     backgroundColor transparent
     position fixed
@@ -227,7 +227,7 @@ errorAlertsCss = do
     right $ px 0
     width $ pct 100
   ".alert" ? fontWeight (weight 600)
-  ".alert-error-handler" ? do
+  ".alert-handler" ? do
     zIndex 1
     marginLeft auto
     marginRight auto

@@ -4,11 +4,13 @@ module Ergvein.Wallet.Main(
   ) where
 
 import Data.ByteString (ByteString)
+import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Error
 import Ergvein.Wallet.Log.Writer
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Monad.Env
 import Ergvein.Wallet.Page.Initial
+import Ergvein.Wallet.Page.Seed
 import Ergvein.Wallet.Run
 import Ergvein.Wallet.Run.Callbacks
 import Reflex.Dom.Main (mainWidgetWithCss)
@@ -16,6 +18,8 @@ import Reflex.Dom.Main (mainWidgetWithCss)
 
 frontendUnauth :: MonadFrontBase t m => m ()
 frontendUnauth = do
-  errorHandlerWidget
+  alertHandlerWidget
   logWriter =<< fmap fst getLogsTrigger
-  void $ retractStack initialPage
+  requestAuth initialPage mnemonicPage
+  pure ()
+  -- void $ retractStack initialPage
