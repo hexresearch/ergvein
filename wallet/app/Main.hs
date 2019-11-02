@@ -31,5 +31,5 @@ main = do
   run $ \cbs -> do
     css <- compileFrontendCss
     mainWidgetWithCss css $ do
-      env <- newEnv settings (runUiCallbacks cbs)
-      runEnv cbs env frontend
+      unauthEnv <- newUnauthEnv settings (runUiCallbacks cbs)
+      runUnauth cbs unauthEnv frontendUnauth

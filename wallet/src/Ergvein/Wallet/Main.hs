@@ -1,5 +1,5 @@
 module Ergvein.Wallet.Main(
-    frontend
+    frontendUnauth
   , mainWidgetWithCss
   ) where
 
@@ -14,8 +14,8 @@ import Ergvein.Wallet.Run.Callbacks
 import Reflex.Dom.Main (mainWidgetWithCss)
 
 
-frontend :: MonadFront t m => m ()
-frontend = do
+frontendUnauth :: MonadFrontBase t m => m ()
+frontendUnauth = do
   errorHandlerWidget
   logWriter =<< fmap fst getLogsTrigger
   void $ retractStack initialPage

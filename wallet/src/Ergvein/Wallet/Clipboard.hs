@@ -36,7 +36,7 @@ instance LocalizedPrint CopyStr where
       StrPaste -> "Вставить"
 
 -- | Debug widgete for clipboard
-clipboardDebug :: MonadFront t m => m ()
+clipboardDebug :: MonadFrontBase t m => m ()
 clipboardDebug = mdo
   tinput <- textInput def {
       _textInputConfig_setValue = pastedE
@@ -49,7 +49,7 @@ clipboardDebug = mdo
   pure ()
 
 -- | Helper to make copying button
-copyButton :: MonadFront t m => Dynamic t Text -> m (Event t Text)
+copyButton :: MonadFrontBase t m => Dynamic t Text -> m (Event t Text)
 copyButton textD = do
   butE <- buttonClass (pure "form__btn confirm-button") StrCopy
   clipboardCopy $ current textD `tag` butE

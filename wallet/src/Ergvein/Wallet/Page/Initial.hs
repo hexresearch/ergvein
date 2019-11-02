@@ -28,7 +28,7 @@ instance LocalizedPrint InitialPageStrings where
       IPSCreate   -> "Создать кошелёк"
       IPSRestore  -> "Восстановить кошелёк"
 
-initialPage :: MonadFront t m => m ()
+initialPage :: MonadFrontBase t m => m ()
 initialPage = wrapper True $ divClass "initial-options" $ do
   newE <- fmap (GoSeed <$) $ row . outlineButton $ IPSCreate
   restoreE <- fmap (GoRestore <$) $ row . outlineButton $ IPSRestore

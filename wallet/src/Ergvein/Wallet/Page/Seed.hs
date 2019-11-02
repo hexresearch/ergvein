@@ -23,7 +23,7 @@ import Reflex.Localize
 import qualified Data.Text as T
 import qualified Data.List as L
 
-mnemonicPage :: MonadFront t m => m ()
+mnemonicPage :: MonadFrontBase t m => m ()
 mnemonicPage = go Nothing
   where
     go mnemonic = wrapper True $ do
@@ -34,7 +34,7 @@ mnemonicPage = go Nothing
         }
       pure ()
 
-checkPage :: MonadFront t m => Mnemonic -> m ()
+checkPage :: MonadFrontBase t m => Mnemonic -> m ()
 checkPage mn = wrapper True $ do
   e <- mnemonicCheckWidget mn
   nextWidget $ ffor e $ \m -> Retractable {
@@ -43,13 +43,13 @@ checkPage mn = wrapper True $ do
     }
   pure ()
 
-generateMnemonic :: MonadFront t m => m (Maybe Mnemonic)
+generateMnemonic :: MonadFrontBase t m => m (Maybe Mnemonic)
 generateMnemonic = do
   e <- liftIO getEntropy
   validateNow $ first T.pack $ toMnemonic e
 
 -- | Generate and show mnemonic phrase to user. Returned dynamic is state of widget.
-mnemonicWidget :: MonadFront t m => Maybe Mnemonic -> m (Event t Mnemonic, Dynamic t (Maybe Mnemonic))
+mnemonicWidget :: MonadFrontBase t m => Maybe Mnemonic -> m (Event t Mnemonic, Dynamic t (Maybe Mnemonic))
 mnemonicWidget mnemonic = do
   mphrase <- maybe generateMnemonic (pure . Just) mnemonic
   case mphrase of
@@ -80,7 +80,7 @@ mkCols n vals = mkCols' [] vals
 
 
 -- | Interactive check of mnemonic phrase
-mnemonicCheckWidget :: MonadFront t m => Mnemonic -> m (Event t Mnemonic)
+mnemonicCheckWidget :: MonadFrontBase t m => Mnemonic -> m (Event t Mnemonic)
 mnemonicCheckWidget mnemonic = mdo
   let ws = T.words mnemonic
   langD <- getLanguage
@@ -95,7 +95,7 @@ mnemonicCheckWidget mnemonic = mdo
     then Just mnemonic
     else Nothing
 
-guessButtons :: forall t m . MonadFront t m => [Text] -> Dynamic t Int -> m (Event t Int)
+guessButtons :: forall t m . MonadFrontBase t m => [Text] -> Dynamic t Int -> m (Event t Int)
 guessButtons ws idyn = do
   resD <- widgetHoldDyn $ ffor idyn $ \i -> if i >= length ws
     then pure never else divClass "guess-buttons" $ do
@@ -119,7 +119,7 @@ guessButtons ws idyn = do
       btnE <- buttonClass classeD $ ws !! i
       delay 1 $ fforMaybe btnE $ const $ if reali == i then Just (i+1) else Nothing
 
-seedRestorePage :: forall t m . MonadFront t m => m ()
+seedRestorePage :: forall t m . MonadFrontBase t m => m ()
 seedRestorePage = do
   h4 $ localizedText SPSRestoreTitle
   resetE <- buttonClass (pure "button button-outline") SPSReset
@@ -127,7 +127,7 @@ seedRestorePage = do
   widgetHold (pure ()) $ ffor mnemE $ h4 . text
   pure ()
 
-seedRestoreWidget :: forall t m . MonadFront t m => m (Event t Mnemonic)
+seedRestoreWidget :: forall t m . MonadFrontBase t m => m (Event t Mnemonic)
 seedRestoreWidget = mdo
   langD <- getLanguage
   ixD <- foldDyn (\_ i -> i + 1) 1 wordE

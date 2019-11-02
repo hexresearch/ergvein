@@ -1,14 +1,12 @@
 module Ergvein.Wallet.Monad.Base
   (
     MonadBaseConstr
-  , MonadFrontBase
-  , MonadBackable(..)
+  , MonadFrontConstr
   , MonadErrorPoster(..)
   , ErrorType(..)
   , errorTypeToSeverity
   , ErrorInfo(..)
   , MonadEgvLogger(..)
-  , HasUIThread(..)
   ) where
 
 import Control.Concurrent.Chan (Chan)
@@ -50,22 +48,13 @@ type MonadBaseConstr t m = (MonadHold t m
 
 -- | Context for unauthed widgets
 -- Only to be used to request password and open the local storage
-type MonadFrontBase t m = (PlatformNatives
+type MonadFrontConstr t m = (PlatformNatives
   , HasStoreDir m
   , MonadBaseConstr t m
   , MonadLocalized t m
   , MonadRetract t m
-  , MonadBackable t m
   , MonadErrorPoster t m
-  , MonadEgvLogger t m
-  , HasUIThread m)
-
--- | ===========================================================================
--- |                Monad Backable. Implements back event
--- | ===========================================================================
-class MonadBaseConstr t m => MonadBackable t m | m -> t where
-  -- | System back button event
-  getBackEvent :: m (Event t ())
+  , MonadEgvLogger t m)
 
 -- | ===========================================================================
 -- |           Monad EgvLogger. Implements Ervgein's logging
@@ -116,12 +105,5 @@ class MonadBaseConstr t m => MonadErrorPoster t m | m -> t where
   postError :: Event t ErrorInfo -> m ()
   -- | Fires when new error arrives from 'postError'
   newErrorEvent :: m (Event t ErrorInfo)
-
--- | ===========================================================================
--- |           Monad UI thread
--- | ===========================================================================
-
-class Monad m => HasUIThread m where
-    -- | Internal method of getting channel where you can post actions that must be
-  -- executed in main UI thread.
-  getUiChan :: m (Chan (IO ()))
+  -- | Get error's event and trigger. Internal
+  getErrorEventFire :: m (Event t ErrorInfo, ErrorInfo -> IO ())
