@@ -17,6 +17,7 @@ library
       base
     , aeson
     , jsaddle
+    , mtl
     , text
   default-extensions:
     MultiParamTypeClasses

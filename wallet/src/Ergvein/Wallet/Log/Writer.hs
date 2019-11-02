@@ -10,7 +10,7 @@ import Control.Monad.IO.Class
 import Data.Aeson
 import Data.Text.Encoding
 import Ergvein.Wallet.Log.Types
-import Ergvein.Wallet.Monad.Base
+import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
 import Reflex.Dom
 
@@ -21,9 +21,6 @@ import Ergvein.Wallet.Android.Native
 #else
 import Ergvein.Wallet.Desktop.Native
 #endif
-
-instance MonadIO m => HasStoreDir (ReaderT Text m) where
-  getStoreDir = ask
 
 -- | Widget that writes down to internal storage all log entries
 logWriter :: MonadFrontBase t m => Event t LogEntry -> m ()

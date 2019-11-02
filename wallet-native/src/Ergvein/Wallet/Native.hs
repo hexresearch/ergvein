@@ -1,14 +1,19 @@
+{-# LANGUAGE FlexibleInstances #-}
 module Ergvein.Wallet.Native
   ( PlatformNatives(..)
   , HasStoreDir(..)
   ) where
 
+import Control.Monad.Reader
 import Control.Monad.IO.Class
 import Data.Aeson
 import Data.Text (Text)
 
 class HasStoreDir m where
   getStoreDir :: m Text
+
+instance Monad m => HasStoreDir (ReaderT Text m) where
+  getStoreDir = ask
 
 class PlatformNatives where
   -- | Make platform specific URL to given resource.

@@ -11,7 +11,7 @@ import Data.Maybe
 import Data.Text(Text)
 import Data.Text.Encoding
 import Ergvein.Wallet.Log.Types
-import Ergvein.Wallet.Monad.Base
+import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Reflex.Dom
 
@@ -22,9 +22,6 @@ import Ergvein.Wallet.Android.Native
 #else
 import Ergvein.Wallet.Desktop.Native
 #endif
-
-instance MonadIO m => HasStoreDir (ReaderT Text m) where
-  getStoreDir = ask
 
 -- | Getting logs and dynamically updates them
 logReader :: MonadFrontBase t m => m (Dynamic t [LogEntry])
