@@ -20,6 +20,5 @@ frontendUnauth :: MonadFrontBase t m => m ()
 frontendUnauth = do
   alertHandlerWidget
   logWriter =<< fmap fst getLogsTrigger
-  requestAuth initialPage mnemonicPage
-  pure ()
-  -- void $ retractStack initialPage
+  void $ retractStack initialPage
+  -- requestAuth initialPage mnemonicPage
