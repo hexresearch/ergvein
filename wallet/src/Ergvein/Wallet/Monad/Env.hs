@@ -16,6 +16,7 @@ import Data.Maybe (catMaybes)
 import Data.Text (Text, unpack)
 import Data.Time
 import Ergvein.Crypto
+import Ergvein.Wallet.Alert.Type
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Base
@@ -166,7 +167,7 @@ liftEnv passE = do
     pure (ts,estore)
   postAlert $ ffor estorageE $ \(ts, estore) -> case estore of
     Left err -> AlertInfo AlertTypeFail 10 ["Storage"] ts err
-    Right _  -> AlertInfo AlertTypeSuccess 10 ["Storage"] ts ("Loaded storage" :: Text) -- TODO: Localized
+    Right _  -> AlertInfo AlertTypeSuccess 10 ["Storage"] ts SALoadedSucc
   settings        <- getSettings
   backEF          <- getBackEventFire
   loading         <- getLoadingWidgetTF

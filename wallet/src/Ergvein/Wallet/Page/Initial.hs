@@ -2,6 +2,7 @@ module Ergvein.Wallet.Page.Initial(
     initialPage
   ) where
 
+import Ergvein.Wallet.Alert.Type
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Seed
@@ -34,7 +35,7 @@ initialPage = wrapper True $ divClass "initial-options" $ do
   let goE = leftmost [newE, restoreE]
   panicE <- row . outlineButton $ ("Span panic" :: Text)
   panicE' <- performEvent $ (liftIO getCurrentTime) <$ panicE
-  postAlert $ (\now -> AlertInfo AlertTypeFail 10 ["Debug"] now $ ("Panic" :: Text)) <$> panicE'
+  postAlert $ (\now -> AlertInfo AlertTypeFail 10 ["Debug"] now DebugPanicAlert) <$> panicE'
   copyButton (pure "Copied this")
   void $ nextWidget $ ffor goE $ \go -> Retractable {
       retractableNext = case go of

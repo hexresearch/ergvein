@@ -21,9 +21,10 @@ percentDyn dt = do
 
 loadingWidget :: forall t m . MonadFront t m => m ()
 loadingWidget = do
+  errE <- newAlertEvent
   triggerE <- fmap fst getLoadingWidgetTF
   backE <- fmap fst getBackEventFire
-  let toggleE = leftmost [("", False) <$ backE, triggerE]
+  let toggleE = leftmost [("", False) <$ backE, ("", False) <$ errE, triggerE]
   tglD <- holdUniqDyn =<< holdDyn ("", False) toggleE
   widgetHold (pure ()) $ ffor (updated tglD) $ \(t, b) -> if not b
     then pure ()
