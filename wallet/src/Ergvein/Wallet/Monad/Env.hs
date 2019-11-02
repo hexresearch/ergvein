@@ -176,18 +176,7 @@ liftEnv passE = do
   uiChan          <- getUiChan
   langRef         <- getLangRef
   pure $ fforMaybe estorageE $ \(_, estore) -> case estore of
-    Left _ -> Just $ Env {
-          env'settings        = settings
-        , env'backEF          = backEF
-        , env'loading         = loading
-        , env'langRef         = langRef
-        , env'storeDir        = storeDir
-        , env'storage         = undefined
-        , env'errorsEF        = errorsEF
-        , env'logsTrigger     = logsTrigger
-        , env'logsNameSpaces  = logsNameSpaces
-        , env'uiChan          = uiChan
-        }
+    Left _ -> Nothing
     Right store -> Just $ Env {
           env'settings        = settings
         , env'backEF          = backEF
