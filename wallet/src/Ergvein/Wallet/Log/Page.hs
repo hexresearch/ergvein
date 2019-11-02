@@ -19,7 +19,7 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Util
 import Reflex.Dom
-import Reflex.Localize
+
 
 import qualified Data.Text as T
 

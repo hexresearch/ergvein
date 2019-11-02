@@ -20,7 +20,7 @@ import Ergvein.Wallet.Settings
 import Reflex
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
-import Reflex.Localize
+
 
 data UnauthEnv t = UnauthEnv {
   unauth'settings        :: !Settings

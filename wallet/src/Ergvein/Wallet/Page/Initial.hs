@@ -7,7 +7,6 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Seed
 import Ergvein.Wallet.Wrapper
 import Ergvein.Wallet.Language
-import Reflex.Localize
 
 import Control.Monad.IO.Class
 import Data.Time

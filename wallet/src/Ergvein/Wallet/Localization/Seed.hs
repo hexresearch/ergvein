@@ -5,7 +5,7 @@ module Ergvein.Wallet.Localization.Seed
 
 import Ergvein.Text
 import Ergvein.Wallet.Language
-import Reflex.Localize
+
 import Data.Text
 
 data SeedPageStrings =

@@ -6,7 +6,7 @@ module Ergvein.Wallet.Localization.Password
 
 import Ergvein.Text
 import Ergvein.Wallet.Language
-import Reflex.Localize
+
 import Data.Text
 
 data PasswordPageStrings = PPSTitle | PPSDescr | PPSUnlock

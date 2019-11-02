@@ -33,7 +33,7 @@ import Reflex
 import Reflex.Dom
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
-import Reflex.Localize
+
 
 import qualified Data.Map.Strict as M
 

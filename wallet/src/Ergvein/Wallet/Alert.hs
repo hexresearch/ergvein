@@ -32,7 +32,6 @@ import qualified Data.Foldable as F
 import qualified Data.Map.Strict as M
 import qualified Data.These as T
 
-import Reflex.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Text
 import Ergvein.Wallet.Util
