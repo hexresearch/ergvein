@@ -8,7 +8,7 @@ import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Wrapper
-import Reflex.Localize
+
 
 data CurrencyTitle = CurrencyTitle !Currency
 

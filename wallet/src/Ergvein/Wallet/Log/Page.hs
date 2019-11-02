@@ -11,15 +11,15 @@ import Data.Maybe
 import Data.Text (pack)
 import Data.Time
 import Ergvein.Text
+import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Error
 import Ergvein.Wallet.Log.Reader
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Util
 import Reflex.Dom
-import Reflex.Localize
+
 
 import qualified Data.Text as T
 
@@ -32,13 +32,6 @@ logsPage = divClass "logs-page" $ mdo
   entriesD <- logsWidget
   let entriesTxtD = T.unlines . fmap showt <$> entriesD
   pure ()
-  -- pure RetractableWidget {
-  --     retractableNextRoute = never
-  --   , retractableResult = pure LogsPage
-  --   , retractableReturn = pure logsPage
-  --   , retractableBackE = never
-  --   , retractableClearE = never
-  --   }
 
 -- | Display logs
 logsWidget :: forall t m . MonadFrontBase t m => m (Dynamic t [LogEntry])

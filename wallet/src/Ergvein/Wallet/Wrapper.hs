@@ -6,7 +6,7 @@ import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Language
-import Reflex.Localize
+
 
 -- | Common wrapper to all pages. Embeds back button for desktop version.
 wrapper :: MonadFrontBase t m => Bool -> m a -> m a

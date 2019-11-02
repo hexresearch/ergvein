@@ -9,7 +9,7 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.History
 import Ergvein.Wallet.Wrapper
-import Reflex.Localize
+
 
 balancesPage :: MonadFront t m => m ()
 balancesPage = wrapper False $ do

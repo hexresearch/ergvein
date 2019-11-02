@@ -30,6 +30,6 @@ logWriter e = do
 
 writeEntry :: MonadIO m => Text -> LogEntry -> m ()
 writeEntry store e = flip runReaderT store $ do
-  size <- getStoreFileSize logStorageKey
-  when (size >= logStorageMaxSize) $ moveStoredFile logStorageKey logStorageKeyOld
+  size <- fmap (either (const 0) id) $ getStoreFileSize logStorageKey
+  when (size >= logStorageMaxSize) $ void $ moveStoredFile logStorageKey logStorageKeyOld
   appendStoredFile logStorageKey $ (<> "\n") . decodeUtf8 . BS.toStrict . encode $ e

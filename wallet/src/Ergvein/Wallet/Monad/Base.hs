@@ -2,10 +2,10 @@ module Ergvein.Wallet.Monad.Base
   (
     MonadBaseConstr
   , MonadFrontConstr
-  , MonadErrorPoster(..)
-  , ErrorType(..)
-  , errorTypeToSeverity
-  , ErrorInfo(..)
+  , MonadAlertPoster(..)
+  , AlertType(..)
+  , alertTypeToSeverity
+  , AlertInfo(..)
   , MonadEgvLogger(..)
   ) where
 
@@ -53,7 +53,7 @@ type MonadFrontConstr t m = (PlatformNatives
   , MonadBaseConstr t m
   , MonadLocalized t m
   , MonadRetract t m
-  , MonadErrorPoster t m
+  , MonadAlertPoster t m
   , MonadEgvLogger t m)
 
 -- | ===========================================================================
@@ -67,43 +67,43 @@ class MonadBaseConstr t m => MonadEgvLogger t m where
   getLogsNameSpacesRef :: m (ExternalRef t [Text])
 
 -- | ===========================================================================
--- |           Monad Error Poster. Implements rendering of errors
+-- |           Monad Alert Poster. Implements rendering of alerts
 -- | ===========================================================================
 
--- | Different styles of errors (including success or info messages)
-data ErrorType =
-    ErrorTypeInfo
-  | ErrorTypePrimary
-  | ErrorTypeSecondary
-  | ErrorTypeWarn
-  | ErrorTypeSuccess
-  | ErrorTypeFail
+-- | Different styles of alerts (including success or info messages)
+data AlertType =
+    AlertTypeInfo
+  | AlertTypePrimary
+  | AlertTypeSecondary
+  | AlertTypeWarn
+  | AlertTypeSuccess
+  | AlertTypeFail
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
--- | Transformation from error types to log entry types
-errorTypeToSeverity :: ErrorType -> LogSeverity
-errorTypeToSeverity et = case et of
-  ErrorTypeInfo -> LogInfo
-  ErrorTypePrimary -> LogInfo
-  ErrorTypeSecondary -> LogInfo
-  ErrorTypeWarn -> LogWarning
-  ErrorTypeSuccess -> LogInfo
-  ErrorTypeFail -> LogError
+-- | Transformation from alert types to log entry types
+alertTypeToSeverity :: AlertType -> LogSeverity
+alertTypeToSeverity et = case et of
+  AlertTypeInfo       -> LogInfo
+  AlertTypePrimary    -> LogInfo
+  AlertTypeSecondary  -> LogInfo
+  AlertTypeWarn       -> LogWarning
+  AlertTypeSuccess    -> LogInfo
+  AlertTypeFail       -> LogError
 
--- | All info that is required to draw error message to user
-data ErrorInfo = forall a . (LocalizedPrint a, Eq a) =>  ErrorInfo {
-  errorType       :: !ErrorType -- ^ Style of message
-, errorTimeout    :: !Double -- ^ Amount of seconds the message should be shown
-, errorNameSpace  :: ![Text] -- ^ Optional name space for logs
-, errorTime       :: !UTCTime -- ^ Time of error
-, errorMessage    :: !a -- ^ Message to display
+-- | All info that is required to draw alert message to user
+data AlertInfo = forall a . (LocalizedPrint a, Eq a) =>  AlertInfo {
+  alertType       :: !AlertType -- ^ Style of message
+, alertTimeout    :: !Double -- ^ Amount of seconds the message should be shown
+, alertNameSpace  :: ![Text] -- ^ Optional name space for logs
+, alertTime       :: !UTCTime -- ^ Time of alert
+, alertMessage    :: !a -- ^ Message to display
 }
 
--- | Allows to delegate error displaying to another widget without coupling with it
-class MonadBaseConstr t m => MonadErrorPoster t m | m -> t where
-  -- | Add timed error to queue of errors to be displayed with special widget
-  postError :: Event t ErrorInfo -> m ()
-  -- | Fires when new error arrives from 'postError'
-  newErrorEvent :: m (Event t ErrorInfo)
-  -- | Get error's event and trigger. Internal
-  getErrorEventFire :: m (Event t ErrorInfo, ErrorInfo -> IO ())
+-- | Allows to delegate alert displaying to another widget without coupling with it
+class MonadBaseConstr t m => MonadAlertPoster t m | m -> t where
+  -- | Add timed alert to queue of alerts to be displayed with special widget
+  postAlert :: Event t AlertInfo -> m ()
+  -- | Fires when new alert arrives from 'postAlert'
+  newAlertEvent :: m (Event t AlertInfo)
+  -- | Get alert's event and trigger. Internal
+  getAlertEventFire :: m (Event t AlertInfo, AlertInfo -> IO ())
