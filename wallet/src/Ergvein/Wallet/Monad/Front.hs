@@ -15,6 +15,7 @@ import Control.Monad
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Text (Text)
+import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Settings
@@ -22,6 +23,7 @@ import Language.Javascript.JSaddle
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
 import Reflex.Dom.Retractable.Class
+import Reflex.ExternalRef
 
 type MonadFront t m = (MonadFrontBase t m, MonadStorage t m)
 
@@ -38,3 +40,5 @@ class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   -- | Internal method of getting channel where you can post actions that must be
   -- executed in main UI thread.
   getUiChan :: m (Chan (IO ()))
+  -- | Get langRef Internal
+  getLangRef :: m (ExternalRef t Language)

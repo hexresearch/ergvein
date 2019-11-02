@@ -3,7 +3,6 @@ module Ergvein.Wallet.Monad(
   ) where
 
 import Ergvein.Wallet.Monad.Base    as X
-import Ergvein.Wallet.Monad.Env     as X
 import Ergvein.Wallet.Monad.Front   as X
 import Ergvein.Wallet.Monad.Storage as X
 import Ergvein.Wallet.Monad.Unauth  as X

@@ -4,6 +4,7 @@ module Ergvein.Wallet.Monad.Env(
   , newEnv
   , runEnv
   , liftEnv
+  , requestAuth
   ) where
 
 import Control.Concurrent.Chan (Chan)
@@ -26,6 +27,7 @@ import Ergvein.Wallet.Run
 import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Settings (Settings(..))
 import Ergvein.Wallet.Storage
+import Ergvein.Wallet.Password
 import Network.Haskoin.Address
 import Reflex
 import Reflex.Dom
@@ -113,6 +115,8 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getBackEventFire #-}
   getUiChan = asks env'uiChan
   {-# INLINE getUiChan #-}
+  getLangRef = asks env'langRef
+  {-# INLINE getLangRef #-}
 
 instance MonadBaseConstr t m => MonadErrorPoster t (ErgveinM t m) where
   postError e = do
@@ -144,11 +148,19 @@ runEnv cbs e ma = do
 
 type Password = Text
 
-liftEnv :: (MonadFrontBase t m) => Password -> m (Event t (Env t))
-liftEnv pass = do
-  buildE <- getPostBuild
+requestAuth :: MonadFrontBase t m => m a -> (ErgveinM t m) a -> m (Dynamic t a)
+requestAuth m0 ma = mdo
+  drawE <- fmap (True <$) getPostBuild
+  passE <- fmap (switch . current) $ widgetHold (pure never) $ ffor (leftmost [drawE, hideE]) $
+    \b -> if b then askPassword else pure never
+  hideE <- fmap (False <$) $ delay 0.01 passE
+  envE  <- liftEnv passE
+  widgetHold m0 $ (runReaderT ma) <$> envE
+
+liftEnv :: (MonadFrontBase t m) => Event t Password -> m (Event t (Env t))
+liftEnv passE = do
   storeDir <- getStoreDir
-  estorageE <- performEvent $ ffor buildE $ const $ do
+  estorageE <- performEvent $ ffor passE $ \pass -> do
     ts <- liftIO $ getCurrentTime
     estore <- flip runReaderT storeDir $ loadStorageFromFile pass
     pure (ts,estore)
@@ -162,15 +174,21 @@ liftEnv pass = do
   logsTrigger     <- getLogsTrigger
   logsNameSpaces  <- getLogsNameSpacesRef
   uiChan          <- getUiChan
-  langD <- getLanguage
-  l <- sample . current $ langD
-  langRef <- newExternalRef l
-  performEvent $ fforMaybe estorageE $ \(_, estore) -> case estore of
-    Left _ -> Nothing
-    Right store -> Just $ do
-      l' <- sample . current $ langD
-      writeExternalRef langRef l'
-      pure $ Env {
+  langRef         <- getLangRef
+  pure $ fforMaybe estorageE $ \(_, estore) -> case estore of
+    Left _ -> Just $ Env {
+          env'settings        = settings
+        , env'backEF          = backEF
+        , env'loading         = loading
+        , env'langRef         = langRef
+        , env'storeDir        = storeDir
+        , env'storage         = undefined
+        , env'errorsEF        = errorsEF
+        , env'logsTrigger     = logsTrigger
+        , env'logsNameSpaces  = logsNameSpaces
+        , env'uiChan          = uiChan
+        }
+    Right store -> Just $ Env {
           env'settings        = settings
         , env'backEF          = backEF
         , env'loading         = loading

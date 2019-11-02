@@ -74,6 +74,8 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getBackEventFire #-}
   getUiChan = asks unauth'uiChan
   {-# INLINE getUiChan #-}
+  getLangRef = asks unauth'langRef
+  {-# INLINE getLangRef #-}
 
 instance MonadBaseConstr t m => MonadErrorPoster t (UnauthM t m) where
   postError e = do
@@ -84,7 +86,7 @@ instance MonadBaseConstr t m => MonadErrorPoster t (UnauthM t m) where
   {-# INLINE postError #-}
   {-# INLINE newErrorEvent #-}
   {-# INLINE getErrorEventFire #-}
-  
+
 newUnauthEnv :: (Reflex t, TriggerEvent t m, MonadIO m)
   => Settings
   -> Chan (IO ()) -- UI callbacks channel
