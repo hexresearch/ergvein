@@ -5,7 +5,8 @@
 -- handle*Msg :: Event (Either msg val) -> m (Event val)
 -- ^ sends Left occurences to alert popup and passed Right occurences through.
 -- handle*Msg logs all Left occurences (!)
--- log*Msg -- simply logs the messages w/o sending them to alert popup
+-- log*Msg :: Event (Either msg val) -> m (Event val)
+-- ^ simply logs the Left occurences w/o sending them to alert popup. Passes Right through
 -- This module also reexports common alert types and sets defaultMsgTimeout
 module Ergvein.Wallet.Alert
   (
