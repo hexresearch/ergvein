@@ -9,6 +9,27 @@
 -- it doesn't break layout of elements.
 module Ergvein.Wallet.Alert(
     alertHandlerWidget
+  , showDangerMsg
+  , showWarnMsg
+  , showSuccessMsg
+  , showPrimaryMsg
+  , showSecondaryMsg
+  , showInfoMsg
+  , showMsg
+  , handleDangerMsg
+  , handleWarnMsg
+  , handleSuccessMsg
+  , handlePrimaryMsg
+  , handleSecondaryMsg
+  , handleInfoMsg
+  , handleAlertWith
+  , logDangerMsg
+  , logWarnMsg
+  , logSuccessMsg
+  , logPrimaryMsg
+  , logSecondaryMsg
+  , logInfoMsg
+  , logAlertWith
   ) where
 
 import Control.Monad
@@ -17,6 +38,7 @@ import Data.Align
 import Data.Bifunctor
 import Data.Coerce
 import Data.Monoid
+import Data.Time
 import GHC.Generics
 import Reflex.Dom
 import Reflex.Host.Class
@@ -27,16 +49,17 @@ import Data.List (find)
 import Data.Map.Strict (Map)
 import Data.Text (Text)
 import Reflex hiding (askEvents)
+import Reflex.ExternalRef(readExternalRef)
 
 import qualified Data.Foldable as F
 import qualified Data.Map.Strict as M
 import qualified Data.These as T
 
-import Ergvein.Wallet.Monad
 import Ergvein.Text
-import Ergvein.Wallet.Util
-import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Log.Types
+import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Util
 
 badge :: forall t m a . MonadFrontBase t m => Text -> m a -> m a
 badge clazz = elClass "span" ("badge " <> clazz)
@@ -158,3 +181,120 @@ alertTypeStyle et = case et of
 -- | Amount of seconds to show messages by default
 defaultMsgTimeout :: Double
 defaultMsgTimeout = 10
+
+-- | Just an abbreviation
+type AlertHandler t m l = (MonadBaseConstr t m, MonadLocalized t m, MonadAlertPoster t m, MonadEgvLogger t m, LocalizedPrint l, Eq l)
+
+-- | Display 'Left' occurences as error messages
+showDangerMsg :: AlertHandler t m l => Event t l -> m ()
+showDangerMsg = showMsg AlertTypeFail
+
+-- | Display 'Left' occurences as warning messages
+showWarnMsg :: AlertHandler t m l => Event t l -> m ()
+showWarnMsg = showMsg AlertTypeWarn
+
+-- | Display 'Left' occurences as success messages
+showSuccessMsg :: AlertHandler t m l => Event t l -> m ()
+showSuccessMsg = showMsg AlertTypeSuccess
+
+-- | Display 'Left' occurences as primary messages
+showPrimaryMsg :: AlertHandler t m l => Event t l -> m ()
+showPrimaryMsg = showMsg AlertTypePrimary
+
+-- | Display 'Left' occurences as secondary messages
+showSecondaryMsg :: AlertHandler t m l => Event t l -> m ()
+showSecondaryMsg = showMsg AlertTypeSecondary
+
+-- | Display 'Left' occurences as info messages
+showInfoMsg :: AlertHandler t m l => Event t l -> m ()
+showInfoMsg = showMsg AlertTypeInfo
+
+-- | Show error message for user
+showMsg :: AlertHandler t m l => AlertType -> Event t l -> m ()
+showMsg et e = do
+  ns <- readExternalRef =<< getLogsNameSpacesRef
+  e' <- performEvent $ ffor e $ \v -> do
+    t <- liftIO getCurrentTime
+    pure $ AlertInfo et defaultMsgTimeout ns t v
+  postAlert e'
+
+-- | Display 'Left' occurences as error messages
+handleDangerMsg :: AlertHandler t m l => Event t (Either l a) -> m (Event t a)
+handleDangerMsg = handleAlertWith AlertTypeFail
+
+-- | Display 'Left' occurences as warning messages
+handleWarnMsg :: AlertHandler t m l => Event t (Either l a) -> m (Event t a)
+handleWarnMsg = handleAlertWith AlertTypeWarn
+
+-- | Display 'Left' occurences as success messages
+handleSuccessMsg :: AlertHandler t m l => Event t (Either l a) -> m (Event t a)
+handleSuccessMsg = handleAlertWith AlertTypeSuccess
+
+-- | Display 'Left' occurences as primary messages
+handlePrimaryMsg :: AlertHandler t m l => Event t (Either l a) -> m (Event t a)
+handlePrimaryMsg = handleAlertWith AlertTypePrimary
+
+-- | Display 'Left' occurences as secondary messages
+handleSecondaryMsg :: AlertHandler t m l => Event t (Either l a) -> m (Event t a)
+handleSecondaryMsg = handleAlertWith AlertTypeSecondary
+
+-- | Display 'Left' occurences as info messages
+handleInfoMsg :: AlertHandler t m l => Event t (Either l a) -> m (Event t a)
+handleInfoMsg = handleAlertWith AlertTypeInfo
+
+-- | Display 'Left' occurences as messages
+handleAlertWith :: AlertHandler t m l => AlertType -> Event t (Either l a) -> m (Event t a)
+handleAlertWith et e = do
+  ns <- readExternalRef =<< getLogsNameSpacesRef
+  alertE <- performEvent $ fforMaybe e $ \case
+    Left ge -> Just $ do
+      t <- liftIO getCurrentTime
+      pure $ AlertInfo et defaultMsgTimeout ns t ge
+    Right _ -> Nothing
+  _ <- postAlert alertE
+  pure $ fmapMaybe (either (const Nothing) Just) e
+
+-- | Just an abbreviation
+type AlertLogger t m l = (MonadBaseConstr t m, MonadLocalized t m, MonadEgvLogger t m, LocalizedPrint l, Eq l)
+
+-- | Write to log 'Left' occurences as error messages
+logDangerMsg :: AlertLogger t m l => Event t (Either l a) -> m (Event t a)
+logDangerMsg = logAlertWith AlertTypeFail
+
+-- | Write to log 'Left' occurences as warning messages
+logWarnMsg :: AlertLogger t m l => Event t (Either l a) -> m (Event t a)
+logWarnMsg = logAlertWith AlertTypeWarn
+
+-- | Write to log 'Left' occurences as success messages
+logSuccessMsg :: AlertLogger t m l => Event t (Either l a) -> m (Event t a)
+logSuccessMsg = logAlertWith AlertTypeSuccess
+
+-- | Write to log 'Left' occurences as primary messages
+logPrimaryMsg :: AlertLogger t m l => Event t (Either l a) -> m (Event t a)
+logPrimaryMsg = logAlertWith AlertTypePrimary
+
+-- | Write to log 'Left' occurences as secondary messages
+logSecondaryMsg :: AlertLogger t m l => Event t (Either l a) -> m (Event t a)
+logSecondaryMsg = logAlertWith AlertTypeSecondary
+
+-- | Write to log 'Left' occurences as info messages
+logInfoMsg :: AlertLogger t m l => Event t (Either l a) -> m (Event t a)
+logInfoMsg = logAlertWith AlertTypeInfo
+
+-- | Write to log 'Left' occurences as messages
+logAlertWith :: AlertLogger t m l => AlertType -> Event t (Either l a) -> m (Event t a)
+logAlertWith et e = do
+  ns <- readExternalRef =<< getLogsNameSpacesRef
+  postLog <- fmap snd getLogsTrigger
+  logE <- performEvent $ fforMaybe e $ \case
+    Left ge -> Just $ do
+      t <- liftIO getCurrentTime
+      pure LogEntry {
+          logTime = t
+        , logSeverity = alertTypeToSeverity et
+        , logMessage = localizedShow English ge
+        , logNameSpace = ns
+        }
+    Right _ -> Nothing
+  performEvent_ $ (liftIO . postLog) <$> logE
+  pure $ fmapMaybe (either (const Nothing) Just) e
