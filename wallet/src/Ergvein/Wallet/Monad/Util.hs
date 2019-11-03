@@ -4,13 +4,25 @@ module Ergvein.Wallet.Monad.Util
   , runOnUiThread_
   , runOnUiThreadA
   , runOnUiThreadM
+  , nameSpace
   ) where
 
 import Control.Monad.IO.Class
 import Control.Concurrent
 import Control.Concurrent.Async
+import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Front
 import Reflex
+import Reflex.ExternalRef
+
+-- | Wrap log name space for given widget
+nameSpace :: MonadFrontBase t m => Text -> m a -> m a
+nameSpace n ma = do
+  ref <- getLogsNameSpacesRef
+  ns <- modifyExternalRef ref $ \ns -> (n:ns, ns)
+  a <- ma
+  writeExternalRef ref ns
+  pure a
 
 -- | Execute the action in main thread of UI. Very useful for android API actions
 -- that must be executed in the same thread where Looper was created.

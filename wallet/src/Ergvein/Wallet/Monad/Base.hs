@@ -93,10 +93,11 @@ alertTypeToSeverity et = case et of
 -- | All info that is required to draw alert message to user
 data AlertInfo = forall a . (LocalizedPrint a, Eq a) =>  AlertInfo {
   alertType       :: !AlertType -- ^ Style of message
-, alertTimeout    :: !Double -- ^ Amount of seconds the message should be shown
-, alertNameSpace  :: ![Text] -- ^ Optional name space for logs
-, alertTime       :: !UTCTime -- ^ Time of alert
-, alertMessage    :: !a -- ^ Message to display
+, alertTimeout    :: !Double    -- ^ Amount of seconds the message should be shown
+, alertNameSpace  :: ![Text]    -- ^ Optional name space for logs
+, alertTime       :: !UTCTime   -- ^ Time of alert
+, alertDoLog      :: !Bool      -- ^ Whether to log the alert or not
+, alertMessage    :: !a         -- ^ Message to display
 }
 
 -- | Allows to delegate alert displaying to another widget without coupling with it

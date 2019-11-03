@@ -166,8 +166,8 @@ liftEnv passE = do
     estore <- flip runReaderT storeDir $ loadStorageFromFile pass
     pure (ts,estore)
   postAlert $ ffor estorageE $ \(ts, estore) -> case estore of
-    Left err -> AlertInfo AlertTypeFail 10 ["Storage"] ts err
-    Right _  -> AlertInfo AlertTypeSuccess 10 ["Storage"] ts SALoadedSucc
+    Left err -> AlertInfo AlertTypeFail 10 ["Storage"] ts True err
+    Right _  -> AlertInfo AlertTypeSuccess 10 ["Storage"] ts True SALoadedSucc
   settings        <- getSettings
   backEF          <- getBackEventFire
   loading         <- getLoadingWidgetTF
