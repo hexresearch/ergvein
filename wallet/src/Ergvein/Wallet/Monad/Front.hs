@@ -1,6 +1,7 @@
 module Ergvein.Wallet.Monad.Front(
     MonadFront(..)
   , MonadFrontBase(..)
+  , AuthInfo
   -- * Reexports
   , Text
   , MonadJSM
@@ -19,6 +20,7 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Storage
 import Language.Javascript.JSaddle
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
@@ -26,6 +28,8 @@ import Reflex.Dom.Retractable.Class
 import Reflex.ExternalRef
 
 type MonadFront t m = (MonadFrontBase t m, MonadStorage t m)
+
+type AuthInfo = ErgveinStorage
 
 class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   getSettings :: m Settings
@@ -42,3 +46,11 @@ class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   getUiChan :: m (Chan (IO ()))
   -- | Get langRef Internal
   getLangRef :: m (ExternalRef t Language)
+  -- | Return flag that comes 'True' as soon as user passes authoristion on server
+  isAuthorized :: m (Dynamic t Bool)
+  -- | Get authorization information that can be updated if user logs or logouts
+  getAuthInfoMaybe :: m (Dynamic t (Maybe AuthInfo))
+  -- | Manually set authorisation information for context. Used by widgets that
+  -- implement actual login/logout. Some implementations may ingore 'Nothing'
+  -- values if their semantic require persistent authorisation.
+  setAuthInfo :: Event t (Maybe AuthInfo) -> m (Event t ())

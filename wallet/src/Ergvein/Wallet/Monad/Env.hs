@@ -3,8 +3,8 @@ module Ergvein.Wallet.Monad.Env(
     Env(..)
   , newEnv
   , runEnv
-  , liftEnv
-  , requestAuth
+  , liftAuth
+  , liftUnauthed
   ) where
 
 import Control.Concurrent.Chan (Chan)
@@ -43,12 +43,12 @@ data Env t = Env {
 , env'backEF          :: !(Event t (), IO ())
 , env'loading         :: !(Event t (Text, Bool), (Text, Bool) -> IO ())
 , env'langRef         :: !(ExternalRef t Language)
-, env'storage         :: ErgveinStorage     -- Non strict so that undefined from newEnv does not cause panic. Will initialize later
+, env'authRef         :: (ExternalRef t AuthInfo)     -- Non strict so that undefined from newEnv does not cause panic. Will initialize later
 , env'storeDir        :: !Text
 , env'alertsEF        :: (Event t AlertInfo, AlertInfo -> IO ()) -- ^ Holds alert event and trigger
 , env'logsTrigger     :: (Event t LogEntry, LogEntry -> IO ())
-, env'logsNameSpaces  :: ExternalRef t [Text]
-, env'uiChan          :: Chan (IO ())
+, env'logsNameSpaces  :: !(ExternalRef t [Text])
+, env'uiChan          :: !(Chan (IO ()))
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -61,21 +61,22 @@ newEnv settings uiChan = do
   (backE, backFire) <- newTriggerEvent
   loadingEF <- newTriggerEvent
   alertsEF <- newTriggerEvent
+  authEF <- newTriggerEvent
   langRef <- newExternalRef $ settingsLang settings
   re <- newRetractEnv
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
   pure Env {
-      env'settings  = settings
-    , env'backEF    = (backE, backFire ())
-    , env'loading   = loadingEF
-    , env'langRef   = langRef
-    , env'storeDir  = settingsStoreDir settings
-    , env'storage   = undefined
-    , env'alertsEF  = alertsEF
-    , env'logsTrigger = logsTrigger
-    , env'logsNameSpaces = nameSpaces
-    , env'uiChan = uiChan
+      env'settings        = settings
+    , env'backEF          = (backE, backFire ())
+    , env'loading         = loadingEF
+    , env'langRef         = langRef
+    , env'storeDir        = settingsStoreDir settings
+    , env'authRef      = undefined
+    , env'alertsEF        = alertsEF
+    , env'logsTrigger     = logsTrigger
+    , env'logsNameSpaces  = nameSpaces
+    , env'uiChan          = uiChan
     }
 
 instance Monad m => HasStoreDir (ErgveinM t m) where
@@ -118,6 +119,20 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getUiChan #-}
   getLangRef = asks env'langRef
   {-# INLINE getLangRef #-}
+  isAuthorized = do
+    authd <- getAuthInfoMaybe
+    pure $ ffor authd $ \case
+      Just _ -> True
+      Nothing -> False
+  {-# INLINE isAuthorized #-}
+  getAuthInfoMaybe = (fmap . fmap) Just $ externalRefDynamic =<< asks env'authRef
+  {-# INLINE getAuthInfoMaybe #-}
+  setAuthInfo e = do
+    authRef <- asks env'authRef
+    performEvent $ ffor e $ \case
+      Nothing -> pure ()
+      Just v -> writeExternalRef authRef v
+  {-# INLINE setAuthInfo #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
@@ -130,11 +145,11 @@ instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   {-# INLINE getAlertEventFire #-}
 
 instance MonadBaseConstr t m => MonadStorage t (ErgveinM t m) where
-  getEncryptedWallet = asks (storageWallet . env'storage)
+  getEncryptedWallet = fmap storage'wallet $ readExternalRef =<< asks env'authRef
   {-# INLINE getEncryptedWallet #-}
   getAddressesByEgvXPubKey k = do
     let net = getNetworkFromTag $ egvXPubNetTag k
-    keyMap <- asks (storagePubKeys . env'storage)
+    keyMap <- fmap storage'pubKeys $ readExternalRef =<< asks env'authRef
     pure $ catMaybes $ maybe [] (fmap (stringToAddr net)) $ M.lookup k keyMap
   {-# INLINE getAddressesByEgvXPubKey #-}
 
@@ -149,44 +164,38 @@ runEnv cbs e ma = do
 
 type Password = Text
 
-requestAuth :: MonadFrontBase t m => m a -> (ErgveinM t m) a -> m (Dynamic t a)
-requestAuth m0 ma = mdo
-  drawE <- fmap (True <$) getPostBuild
-  passE <- fmap (switch . current) $ widgetHold (pure never) $ ffor (leftmost [drawE, hideE]) $
-    \b -> if b then askPassword else pure never
-  hideE <- fmap (False <$) $ delay 0.01 passE
-  envE  <- liftEnv passE
-  widgetHold m0 $ (runReaderT ma) <$> envE
+-- | Execute action under authorized context or return the given value as result
+-- is user is not authorized. Each time the login info changes (user logs out or logs in)
+-- the widget is updated.
+liftAuth :: MonadFrontBase t m => m a -> (ErgveinM t m) a -> m (Dynamic t a)
+liftAuth ma0 ma = mdo
+  mauthD <- holdUniqDyn =<< getAuthInfoMaybe
+  mauth0 <- sample . current $ mauthD
+  let runAuthed auth = do
+        settings        <- getSettings
+        backEF          <- getBackEventFire
+        loading         <- getLoadingWidgetTF
+        langRef         <- getLangRef
+        authRef         <- newExternalRef auth
+        storeDir        <- getStoreDir
+        alertsEF        <- getAlertEventFire
+        logsTrigger     <- getLogsTrigger
+        logsNameSpaces  <- getLogsNameSpacesRef
+        uiChan          <- getUiChan
+        let infoE = externalEvent authRef
+        a <- runReaderT ma $ Env
+          settings backEF loading langRef authRef storeDir alertsEF
+          logsTrigger logsNameSpaces uiChan
+        pure (a, infoE)
+  let
+    ma0e = (,never) <$> ma0
+    ma0' = maybe ma0e runAuthed mauth0
+    redrawE = updated mauthD
+  dres :: Dynamic t (a, Event t AuthInfo) <- widgetHold ma0' $ ffor redrawE $ maybe ma0e runAuthed
+  let authInfoE = switch . current . fmap snd $ dres
+  _ <- setAuthInfo $ Just <$> authInfoE
+  pure $ fst <$> dres
 
-liftEnv :: (MonadFrontBase t m) => Event t Password -> m (Event t (Env t))
-liftEnv passE = do
-  storeDir <- getStoreDir
-  estorageE <- performEvent $ ffor passE $ \pass -> do
-    ts <- liftIO $ getCurrentTime
-    estore <- flip runReaderT storeDir $ loadStorageFromFile pass
-    pure (ts,estore)
-  postAlert $ ffor estorageE $ \(ts, estore) -> case estore of
-    Left err -> AlertInfo AlertTypeFail 10 ["Storage"] ts True err
-    Right _  -> AlertInfo AlertTypeSuccess 10 ["Storage"] ts True SALoadedSucc
-  settings        <- getSettings
-  backEF          <- getBackEventFire
-  loading         <- getLoadingWidgetTF
-  alertsEF        <- getAlertEventFire
-  logsTrigger     <- getLogsTrigger
-  logsNameSpaces  <- getLogsNameSpacesRef
-  uiChan          <- getUiChan
-  langRef         <- getLangRef
-  pure $ fforMaybe estorageE $ \(_, estore) -> case estore of
-    Left _ -> Nothing
-    Right store -> Just $ Env {
-          env'settings        = settings
-        , env'backEF          = backEF
-        , env'loading         = loading
-        , env'langRef         = langRef
-        , env'storeDir        = storeDir
-        , env'storage         = store
-        , env'alertsEF        = alertsEF
-        , env'logsTrigger     = logsTrigger
-        , env'logsNameSpaces  = logsNameSpaces
-        , env'uiChan          = uiChan
-        }
+-- | Lift action that doesn't require authorisation in context where auth is mandatory
+liftUnauthed :: m a -> ErgveinM t m a
+liftUnauthed ma = ReaderT $ const ma
