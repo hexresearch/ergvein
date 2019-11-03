@@ -54,8 +54,8 @@ library
     Ergvein.Wallet.Platform
     Ergvein.Wallet.Settings
     Ergvein.Wallet.Storage
-    Ergvein.Wallet.Storage.Secure
-    Ergvein.Wallet.Storage.Secure.Data
+    Ergvein.Wallet.Storage.Data
+    Ergvein.Wallet.Storage.Util
     Ergvein.Wallet.Style
     Ergvein.Wallet.Util
     Ergvein.Wallet.Validate

@@ -19,6 +19,7 @@ import Data.Text (Text)
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Storage
+import Ergvein.Wallet.Storage.Data
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage
 import Language.Javascript.JSaddle

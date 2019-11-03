@@ -6,7 +6,7 @@ module Ergvein.Wallet.Monad.Storage
 import Ergvein.Crypto
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Storage
-import Ergvein.Wallet.Storage.Secure.Data
+import Ergvein.Wallet.Storage.Data
 import Network.Haskoin.Address
 
 class MonadBaseConstr t m => MonadStorage t m | m -> t where

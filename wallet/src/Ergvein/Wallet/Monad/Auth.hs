@@ -18,7 +18,7 @@ import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Monad.Unauth
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings (Settings(..))
-import Ergvein.Wallet.Storage
+import Ergvein.Wallet.Storage.Data
 import Network.Haskoin.Address
 import Reflex
 import Reflex.Dom
