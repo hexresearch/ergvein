@@ -23,11 +23,15 @@ import qualified Data.Text as T
 type Password = Text
 
 data ErgveinStorage = ErgveinStorage{
-  storageWallet   :: EncryptedWalletData
-, storagePubKeys  :: M.Map EgvXPubKey [Base58]
+  storage'wallet     :: EncryptedWalletData
+, storage'pubKeys    :: M.Map EgvXPubKey [Base58]
+, storage'walletName :: Text
 }
 
-$(deriveJSON defaultOptions ''ErgveinStorage)
+instance Eq ErgveinStorage where
+  a == b = storage'walletName a == storage'walletName b
+
+$(deriveJSON aesonOptionsStripToApostroph ''ErgveinStorage)
 
 storageFileName :: Text
 storageFileName = "storage"

@@ -8,7 +8,6 @@ import Ergvein.Wallet.Alert.Handler
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Log.Writer
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Monad.Env
 import Ergvein.Wallet.Page.Initial
 import Ergvein.Wallet.Page.Seed
 import Ergvein.Wallet.Run

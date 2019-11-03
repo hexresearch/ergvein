@@ -1,8 +1,8 @@
 module Ergvein.Wallet.Monad.Unauth
   (
     UnauthEnv(..)
-  , newUnauthEnv
-  , runUnauth
+  , newEnv
+  , runEnv
   ) where
 
 import Control.Concurrent.Chan
@@ -28,10 +28,11 @@ data UnauthEnv t = UnauthEnv {
 , unauth'loading         :: !(Event t (Text, Bool), (Text, Bool) -> IO ())
 , unauth'langRef         :: !(ExternalRef t Language)
 , unauth'storeDir        :: !Text
-, unauth'alertsEF        :: (Event t AlertInfo, AlertInfo -> IO ()) -- ^ Holds alerts event and trigger
-, unauth'logsTrigger     :: (Event t LogEntry, LogEntry -> IO ())
-, unauth'logsNameSpaces  :: ExternalRef t [Text]
-, unauth'uiChan          :: Chan (IO ())
+, unauth'alertsEF        :: !(Event t AlertInfo, AlertInfo -> IO ()) -- ^ Holds alerts event and trigger
+, unauth'logsTrigger     :: !(Event t LogEntry, LogEntry -> IO ())
+, unauth'logsNameSpaces  :: !(ExternalRef t [Text])
+, unauth'uiChan          :: !(Chan (IO ()))
+, unauth'authRef         :: !(ExternalRef t (Maybe AuthInfo))
 }
 
 type UnauthM t m = ReaderT (UnauthEnv t) m
@@ -76,7 +77,18 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getUiChan #-}
   getLangRef = asks unauth'langRef
   {-# INLINE getLangRef #-}
-
+  isAuthorized = do
+    authd <- getAuthInfoMaybe
+    pure $ ffor authd $ \case
+      Just _ -> True
+      Nothing -> False
+  {-# INLINE isAuthorized #-}
+  getAuthInfoMaybe = externalRefDynamic =<< asks unauth'authRef
+  {-# INLINE getAuthInfoMaybe #-}
+  setAuthInfo e = do
+    authRef <- asks unauth'authRef
+    performEvent $ ffor e $ writeExternalRef authRef
+  {-# INLINE setAuthInfo #-}
 instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
   postAlert e = do
     (_, fire) <- asks unauth'alertsEF
@@ -87,14 +99,15 @@ instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
   {-# INLINE newAlertEvent #-}
   {-# INLINE getAlertEventFire #-}
 
-newUnauthEnv :: (Reflex t, TriggerEvent t m, MonadIO m)
+newEnv :: (Reflex t, TriggerEvent t m, MonadIO m)
   => Settings
   -> Chan (IO ()) -- UI callbacks channel
   -> m (UnauthEnv t)
-newUnauthEnv settings uiChan = do
+newEnv settings uiChan = do
   (backE, backFire) <- newTriggerEvent
   loadingEF <- newTriggerEvent
   alertsEF <- newTriggerEvent
+  authRef <- newExternalRef Nothing
   langRef <- newExternalRef $ settingsLang settings
   re <- newRetractEnv
   logsTrigger <- newTriggerEvent
@@ -109,11 +122,12 @@ newUnauthEnv settings uiChan = do
     , unauth'logsTrigger = logsTrigger
     , unauth'logsNameSpaces = nameSpaces
     , unauth'uiChan = uiChan
+    , unauth'authRef = authRef
     }
 
-runUnauth :: (MonadBaseConstr t m, PlatformNatives)
+runEnv :: (MonadBaseConstr t m, PlatformNatives)
   => RunCallbacks -> UnauthEnv t -> ReaderT (UnauthEnv t) (RetractT t m) a -> m a
-runUnauth cbs e ma = do
+runEnv cbs e ma = do
   liftIO $ writeIORef (runBackCallback cbs) $ (snd . unauth'backEF) e
   re <- newRetractEnv
   runRetractT (runReaderT ma' e) re
