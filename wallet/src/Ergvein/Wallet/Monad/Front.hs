@@ -2,6 +2,7 @@ module Ergvein.Wallet.Monad.Front(
     MonadFront(..)
   , MonadFrontBase(..)
   , AuthInfo
+  , Password
   -- * Reexports
   , Text
   , MonadJSM
@@ -19,9 +20,8 @@ import Data.Text (Text)
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Storage
-import Ergvein.Wallet.Storage.Data
 import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Storage
+import Ergvein.Wallet.Storage.Data
 import Language.Javascript.JSaddle
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
@@ -31,6 +31,7 @@ import Reflex.ExternalRef
 type MonadFront t m = (MonadFrontBase t m, MonadStorage t m)
 
 type AuthInfo = ErgveinStorage
+type Password = Text
 
 class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   getSettings :: m Settings
@@ -55,3 +56,10 @@ class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   -- implement actual login/logout. Some implementations may ingore 'Nothing'
   -- values if their semantic require persistent authorisation.
   setAuthInfo :: Event t (Maybe AuthInfo) -> m (Event t ())
+  -- | Get event and trigger for pasword requesting modal. Int -- id of the request.
+  getPasswordModalEF :: m (Event t Int, Int -> IO ())
+  -- | Get event and trigger for the event that the password was submitted from modal. Internal
+  -- Nothing value means that the modal was dismissed
+  getPasswordSetEF :: m (Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
+  -- | Proper requester of passwords. Use
+  requestPasssword :: Event t () -> m (Event t Password)

@@ -20,7 +20,7 @@ import Ergvein.Wallet.Settings
 import Reflex
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
-
+import System.Random
 
 data UnauthEnv t = UnauthEnv {
   unauth'settings        :: !Settings
@@ -33,6 +33,8 @@ data UnauthEnv t = UnauthEnv {
 , unauth'logsNameSpaces  :: !(ExternalRef t [Text])
 , unauth'uiChan          :: !(Chan (IO ()))
 , unauth'authRef         :: !(ExternalRef t (Maybe AuthInfo))
+, unauth'passModalEF     :: !(Event t Int, Int -> IO ())
+, unauth'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
 }
 
 type UnauthM t m = ReaderT (UnauthEnv t) m
@@ -89,6 +91,18 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
     authRef <- asks unauth'authRef
     performEvent $ ffor e $ writeExternalRef authRef
   {-# INLINE setAuthInfo #-}
+  getPasswordModalEF = asks unauth'passModalEF
+  {-# INLINE getPasswordModalEF #-}
+  getPasswordSetEF = asks unauth'passSetEF
+  {-# INLINE getPasswordSetEF #-}
+  requestPasssword reqE = do
+    idE <- performEvent $ (liftIO randomIO) <$ reqE
+    idD <- holdDyn 0 idE
+    (_, modalF) <- asks unauth'passModalEF
+    (setE, _) <- asks unauth'passSetEF
+    performEvent_ $ fmap (liftIO . modalF) idE
+    pure $ attachWithMaybe (\i' (i,mp) -> if i == i' then mp else Nothing) (current idD) setE
+
 instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
   postAlert e = do
     (_, fire) <- asks unauth'alertsEF
@@ -107,6 +121,8 @@ newEnv settings uiChan = do
   (backE, backFire) <- newTriggerEvent
   loadingEF <- newTriggerEvent
   alertsEF <- newTriggerEvent
+  passSetEF <- newTriggerEvent
+  passModalEF <- newTriggerEvent
   authRef <- newExternalRef Nothing
   langRef <- newExternalRef $ settingsLang settings
   re <- newRetractEnv
@@ -123,6 +139,8 @@ newEnv settings uiChan = do
     , unauth'logsNameSpaces = nameSpaces
     , unauth'uiChan = uiChan
     , unauth'authRef = authRef
+    , unauth'passModalEF = passModalEF
+    , unauth'passSetEF = passSetEF
     }
 
 runEnv :: (MonadBaseConstr t m, PlatformNatives)

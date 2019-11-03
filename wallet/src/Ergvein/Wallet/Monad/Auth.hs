@@ -24,6 +24,7 @@ import Reflex
 import Reflex.Dom
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
+import System.Random
 
 import qualified Data.Map.Strict as M
 
@@ -38,6 +39,8 @@ data Env t = Env {
 , env'logsTrigger     :: (Event t LogEntry, LogEntry -> IO ())
 , env'logsNameSpaces  :: !(ExternalRef t [Text])
 , env'uiChan          :: !(Chan (IO ()))
+, env'passModalEF     :: !(Event t Int, Int -> IO ())
+, env'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -96,6 +99,17 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
       Nothing -> pure ()
       Just v -> writeExternalRef authRef v
   {-# INLINE setAuthInfo #-}
+  getPasswordModalEF = asks env'passModalEF
+  {-# INLINE getPasswordModalEF #-}
+  getPasswordSetEF = asks env'passSetEF
+  {-# INLINE getPasswordSetEF #-}
+  requestPasssword reqE = do
+    idE <- performEvent $ (liftIO randomIO) <$ reqE
+    idD <- holdDyn 0 idE
+    (_, modalF) <- asks env'passModalEF
+    (setE, _) <- asks env'passSetEF
+    performEvent_ $ fmap (liftIO . modalF) idE
+    pure $ attachWithMaybe (\i' (i,mp) -> if i == i' then mp else Nothing) (current idD) setE
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
@@ -134,10 +148,12 @@ liftAuth ma0 ma = mdo
         logsTrigger     <- getLogsTrigger
         logsNameSpaces  <- getLogsNameSpacesRef
         uiChan          <- getUiChan
+        passModalEF     <- getPasswordModalEF
+        passSetEF       <- getPasswordSetEF
         let infoE = externalEvent authRef
         a <- runReaderT ma $ Env
           settings backEF loading langRef authRef storeDir alertsEF
-          logsTrigger logsNameSpaces uiChan
+          logsTrigger logsNameSpaces uiChan passModalEF passSetEF
         pure (a, infoE)
   let
     ma0e = (,never) <$> ma0

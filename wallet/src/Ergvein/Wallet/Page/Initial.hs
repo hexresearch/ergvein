@@ -12,6 +12,7 @@ import Ergvein.Wallet.Language
 
 import Control.Monad.IO.Class
 import Ergvein.Wallet.Clipboard
+import Ergvein.Wallet.Password
 
 data GoPage = GoSeed | GoRestore
 
@@ -38,6 +39,8 @@ initialPage = wrapper True $ divClass "initial-options" $ do
   panicLogE <- row . outlineButton $ ("Log panic" :: Text)
   showDangerMsg $ DebugPanicAlert <$ panicE
   handleDangerMsg $ (Left DebugPanicAlert) <$ panicLogE
+  reqPassE <- row . outlineButton $ ("Request password" :: Text)
+  showDangerMsg =<< requestPasssword reqPassE
   copyButton (pure "Copied this")
   void $ nextWidget $ ffor goE $ \go -> Retractable {
       retractableNext = case go of

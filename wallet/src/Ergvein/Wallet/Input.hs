@@ -18,8 +18,6 @@ import Ergvein.Wallet.Monad
 import Reflex.Dom
 import Reflex.Localize
 
-type Password = Text
-
 labeledTextInput :: (MonadFrontBase t m, LocalizedPrint l)
   => l -- ^ Label
   -> TextInputConfig t

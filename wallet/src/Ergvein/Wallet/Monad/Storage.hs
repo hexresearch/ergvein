@@ -5,7 +5,6 @@ module Ergvein.Wallet.Monad.Storage
 
 import Ergvein.Crypto
 import Ergvein.Wallet.Monad.Base
-import Ergvein.Wallet.Storage
 import Ergvein.Wallet.Storage.Data
 import Network.Haskoin.Address
 
