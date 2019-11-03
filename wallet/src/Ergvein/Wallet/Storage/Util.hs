@@ -87,14 +87,14 @@ encryptWalletData walletData password = do
           , initVector = decodeUtf8With lenientDecode $ encode (convert initIV :: ByteString)
           }
 
-decryptWalletData :: EncryptedWalletData -> Password -> Either String WalletData
+decryptWalletData :: EncryptedWalletData -> Password -> Either Text WalletData
 decryptWalletData encryptedWalletData password =
   case initIV of
     Nothing -> Left "Failed to decode the initialization vector"
     Just iv -> case decrypt secretKey iv encryptedDataBS of
-      Left err -> Left $ show err
+      Left err -> Left $ showt err
       Right decryptedData -> case walletData of
-        Left err -> Left $ show err
+        Left err -> Left $ showt err
         Right wd -> Right wd
         where
           walletData = decodeJson $ decodeUtf8With lenientDecode decryptedData
