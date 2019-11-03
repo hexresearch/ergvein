@@ -12,7 +12,11 @@ import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Alert
 import Control.Monad.Trans.Class
 
-withWallet :: (MonadFront t m) => Event t (WalletData -> Performable m a) -> m (Event t a)
+-- | Requests password, runs a callback against decoded wallet and returns the result
+-- The callback is in 'Performable m'. Basically 'MonadIO'
+withWallet :: MonadFront t m
+  => Event t (WalletData -> Performable m a)    -- Event with a callback
+  -> m (Event t a)                              -- results of applying the callback to the wallet
 withWallet reqE = do
   encwal  <- getEncryptedWallet
   widgD   <- holdDyn Nothing $ Just <$> reqE
