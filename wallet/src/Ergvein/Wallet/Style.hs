@@ -166,6 +166,12 @@ passwordCss = do
     width $ vw 100
     height $ vh 100
     zIndex 1
+    backgroundColor white
+    display flex
+    flexDirection column
+    justifyContent center
+    paddingLeft $ pct 25
+    paddingRight $ pct 25
     
 initialPageCss :: Css
 initialPageCss = do

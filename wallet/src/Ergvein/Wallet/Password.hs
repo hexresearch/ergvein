@@ -31,14 +31,11 @@ askPassword = divClass "ask-password" $ form $ fieldset $ do
   pure $ tag (current pD) e
 
 askPasswordModal :: MonadFrontBase t m => m ()
-askPasswordModal = divClass "ask-password-modal" $ mdo
+askPasswordModal = mdo
   goE   <- fmap fst getPasswordModalEF
   fire  <- fmap snd getPasswordSetEF
   let redrawE = leftmost [Just <$> goE, Nothing <$ passE]
   passE <- fmap (switch . current) $ widgetHold (pure never) $ ffor redrawE $ \case
+    Just i -> divClass "ask-password-modal" $ (fmap . fmap) ((i,) . Just) askPassword  
     Nothing -> pure never
-    Just i -> divClass "ask-password" $ form $ fieldset $ do
-      pD <- passFieldWithEye PWSPassword
-      e <- submitClass "button button-outline" PWSGo
-      pure $ fmap ((i,) . Just) $ tag (current pD) e
   performEvent_ $ (liftIO . fire) <$> passE
