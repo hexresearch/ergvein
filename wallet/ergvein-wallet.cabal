@@ -40,7 +40,7 @@ library
     Ergvein.Wallet.Main
     Ergvein.Wallet.Monad
     Ergvein.Wallet.Monad.Base
-    Ergvein.Wallet.Monad.Env
+    Ergvein.Wallet.Monad.Auth
     Ergvein.Wallet.Monad.Front
     Ergvein.Wallet.Monad.Storage
     Ergvein.Wallet.Monad.Unauth

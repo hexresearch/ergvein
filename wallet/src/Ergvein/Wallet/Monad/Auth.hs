@@ -1,22 +1,15 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Ergvein.Wallet.Monad.Env(
-    Env(..)
-  , newEnv
-  , runEnv
-  , liftAuth
+module Ergvein.Wallet.Monad.Auth(
+    liftAuth
   , liftUnauthed
   ) where
 
 import Control.Concurrent.Chan (Chan)
-import Control.Monad.Fix
 import Control.Monad.Reader
 import Data.Functor (void)
-import Data.IORef
 import Data.Maybe (catMaybes)
 import Data.Text (Text, unpack)
-import Data.Time
 import Ergvein.Crypto
-import Ergvein.Wallet.Alert.Type
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Base
@@ -24,17 +17,13 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Monad.Unauth
 import Ergvein.Wallet.Native
-import Ergvein.Wallet.Run
-import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Settings (Settings(..))
 import Ergvein.Wallet.Storage
-import Ergvein.Wallet.Password
 import Network.Haskoin.Address
 import Reflex
 import Reflex.Dom
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
-
 
 import qualified Data.Map.Strict as M
 
@@ -43,7 +32,7 @@ data Env t = Env {
 , env'backEF          :: !(Event t (), IO ())
 , env'loading         :: !(Event t (Text, Bool), (Text, Bool) -> IO ())
 , env'langRef         :: !(ExternalRef t Language)
-, env'authRef         :: (ExternalRef t AuthInfo)     -- Non strict so that undefined from newEnv does not cause panic. Will initialize later
+, env'authRef         :: !(ExternalRef t AuthInfo)
 , env'storeDir        :: !Text
 , env'alertsEF        :: (Event t AlertInfo, AlertInfo -> IO ()) -- ^ Holds alert event and trigger
 , env'logsTrigger     :: (Event t LogEntry, LogEntry -> IO ())
@@ -52,32 +41,6 @@ data Env t = Env {
 }
 
 type ErgveinM t m = ReaderT (Env t) m
-
-newEnv :: (Reflex t, TriggerEvent t m, MonadIO m)
-  => Settings
-  -> Chan (IO ()) -- UI callbacks channel
-  -> m (Env t)
-newEnv settings uiChan = do
-  (backE, backFire) <- newTriggerEvent
-  loadingEF <- newTriggerEvent
-  alertsEF <- newTriggerEvent
-  authEF <- newTriggerEvent
-  langRef <- newExternalRef $ settingsLang settings
-  re <- newRetractEnv
-  logsTrigger <- newTriggerEvent
-  nameSpaces <- newExternalRef []
-  pure Env {
-      env'settings        = settings
-    , env'backEF          = (backE, backFire ())
-    , env'loading         = loadingEF
-    , env'langRef         = langRef
-    , env'storeDir        = settingsStoreDir settings
-    , env'authRef      = undefined
-    , env'alertsEF        = alertsEF
-    , env'logsTrigger     = logsTrigger
-    , env'logsNameSpaces  = nameSpaces
-    , env'uiChan          = uiChan
-    }
 
 instance Monad m => HasStoreDir (ErgveinM t m) where
   getStoreDir = asks env'storeDir
@@ -152,17 +115,6 @@ instance MonadBaseConstr t m => MonadStorage t (ErgveinM t m) where
     keyMap <- fmap storage'pubKeys $ readExternalRef =<< asks env'authRef
     pure $ catMaybes $ maybe [] (fmap (stringToAddr net)) $ M.lookup k keyMap
   {-# INLINE getAddressesByEgvXPubKey #-}
-
-runEnv :: (MonadBaseConstr t m, PlatformNatives)
-  => RunCallbacks -> Env t -> ReaderT (Env t) (RetractT t m) a -> m a
-runEnv cbs e ma = do
-  liftIO $ writeIORef (runBackCallback cbs) $ (snd . env'backEF) e
-  re <- newRetractEnv
-  runRetractT (runReaderT ma' e) re
-  where
-    ma' = (void $ retract . fst =<< getBackEventFire) >> ma
-
-type Password = Text
 
 -- | Execute action under authorized context or return the given value as result
 -- is user is not authorized. Each time the login info changes (user logs out or logs in)

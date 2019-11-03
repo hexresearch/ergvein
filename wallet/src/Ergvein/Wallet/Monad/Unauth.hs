@@ -1,8 +1,8 @@
 module Ergvein.Wallet.Monad.Unauth
   (
     UnauthEnv(..)
-  , newUnauthEnv
-  , runUnauth
+  , newEnv
+  , runEnv
   ) where
 
 import Control.Concurrent.Chan
@@ -99,11 +99,11 @@ instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
   {-# INLINE newAlertEvent #-}
   {-# INLINE getAlertEventFire #-}
 
-newUnauthEnv :: (Reflex t, TriggerEvent t m, MonadIO m)
+newEnv :: (Reflex t, TriggerEvent t m, MonadIO m)
   => Settings
   -> Chan (IO ()) -- UI callbacks channel
   -> m (UnauthEnv t)
-newUnauthEnv settings uiChan = do
+newEnv settings uiChan = do
   (backE, backFire) <- newTriggerEvent
   loadingEF <- newTriggerEvent
   alertsEF <- newTriggerEvent
@@ -125,9 +125,9 @@ newUnauthEnv settings uiChan = do
     , unauth'authRef = authRef
     }
 
-runUnauth :: (MonadBaseConstr t m, PlatformNatives)
+runEnv :: (MonadBaseConstr t m, PlatformNatives)
   => RunCallbacks -> UnauthEnv t -> ReaderT (UnauthEnv t) (RetractT t m) a -> m a
-runUnauth cbs e ma = do
+runEnv cbs e ma = do
   liftIO $ writeIORef (runBackCallback cbs) $ (snd . unauth'backEF) e
   re <- newRetractEnv
   runRetractT (runReaderT ma' e) re
