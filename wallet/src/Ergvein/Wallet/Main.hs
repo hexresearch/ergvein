@@ -23,4 +23,3 @@ frontend = do
   askPasswordModal
   logWriter =<< fmap fst getLogsTrigger
   void $ retractStack initialPage
-  -- requestAuth initialPage mnemonicPage
