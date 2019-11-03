@@ -4,7 +4,7 @@ module Ergvein.Wallet.Main(
   ) where
 
 import Data.ByteString (ByteString)
-import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Alert.Handler
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Log.Writer
 import Ergvein.Wallet.Monad

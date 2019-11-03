@@ -2,6 +2,7 @@ module Ergvein.Wallet.Page.Initial(
     initialPage
   ) where
 
+import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Alert.Type
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
@@ -10,7 +11,6 @@ import Ergvein.Wallet.Wrapper
 import Ergvein.Wallet.Language
 
 import Control.Monad.IO.Class
-import Data.Time
 import Ergvein.Wallet.Clipboard
 
 data GoPage = GoSeed | GoRestore
@@ -28,14 +28,16 @@ instance LocalizedPrint InitialPageStrings where
       IPSCreate   -> "Создать кошелёк"
       IPSRestore  -> "Восстановить кошелёк"
 
+-- | TODO: remove debugging elements
 initialPage :: MonadFrontBase t m => m ()
 initialPage = wrapper True $ divClass "initial-options" $ do
   newE <- fmap (GoSeed <$) $ row . outlineButton $ IPSCreate
   restoreE <- fmap (GoRestore <$) $ row . outlineButton $ IPSRestore
   let goE = leftmost [newE, restoreE]
   panicE <- row . outlineButton $ ("Span panic" :: Text)
-  panicE' <- performEvent $ (liftIO getCurrentTime) <$ panicE
-  postAlert $ (\now -> AlertInfo AlertTypeFail 10 ["Debug"] now DebugPanicAlert) <$> panicE'
+  panicLogE <- row . outlineButton $ ("Log panic" :: Text)
+  showDangerMsg $ DebugPanicAlert <$ panicE
+  handleDangerMsg $ (Left DebugPanicAlert) <$ panicLogE
   copyButton (pure "Copied this")
   void $ nextWidget $ ffor goE $ \go -> Retractable {
       retractableNext = case go of

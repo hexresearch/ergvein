@@ -19,6 +19,7 @@ library
   exposed-modules:
     Ergvein.Wallet
     Ergvein.Wallet.Alert
+    Ergvein.Wallet.Alert.Handler
     Ergvein.Wallet.Alert.Type
     Ergvein.Wallet.Clipboard
     Ergvein.Wallet.Elements
