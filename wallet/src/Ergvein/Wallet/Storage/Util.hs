@@ -42,8 +42,13 @@ createWallet mnemonic = case mnemonicToSeed "" mnemonic of
     masters = M.fromList $ fmap (\c -> (c, deriveCurrencyKey root c)) allCurrencies
     in Right $ WalletData seed (EgvRootKey root) masters
 
-encryptWalletData :: WalletData -> Password -> IO EncryptedWalletData
-encryptWalletData walletData password = do
+createStorage :: MonadIO m => Mnemonic -> Password -> m (Either StorageAlerts ErgveinStorage)
+createStorage mnemonic pass = either (pure . Left) (\wd -> do
+  ewd <- encryptWalletData wd pass
+  pure $ Right $ ErgveinStorage ewd mempty mempty) $ createWallet mnemonic
+
+encryptWalletData :: MonadIO m => WalletData -> Password -> m EncryptedWalletData
+encryptWalletData walletData password = liftIO $ do
   salt :: ByteString <- genRandomSalt
   let secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
   mInitIV <- genRandomIV (undefined :: AES256)

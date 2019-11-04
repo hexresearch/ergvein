@@ -9,5 +9,5 @@ import Ergvein.Wallet.Storage.Data
 import Network.Haskoin.Address
 
 class MonadBaseConstr t m => MonadStorage t m | m -> t where
-  getAddressesByEgvXPubKey :: EgvXPubKey -> m [Address]
-  getEncryptedWallet       :: m EncryptedWalletData
+  getAddressByCurIx   :: Currency -> Int -> m Base58
+  getEncryptedWallet  :: m EncryptedWalletData

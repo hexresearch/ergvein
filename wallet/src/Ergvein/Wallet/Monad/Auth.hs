@@ -19,6 +19,7 @@ import Ergvein.Wallet.Monad.Unauth
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings (Settings(..), storeSettings)
 import Ergvein.Wallet.Storage.Data
+import Ergvein.Wallet.Storage.Util
 import Network.Haskoin.Address
 import Reflex
 import Reflex.Dom
@@ -26,6 +27,7 @@ import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import System.Random
 
+import qualified Data.IntMap.Strict as MI
 import qualified Data.Map.Strict as M
 
 data Env t = Env {
@@ -132,11 +134,13 @@ instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
 instance MonadBaseConstr t m => MonadStorage t (ErgveinM t m) where
   getEncryptedWallet = fmap storage'wallet $ readExternalRef =<< asks env'authRef
   {-# INLINE getEncryptedWallet #-}
-  getAddressesByEgvXPubKey k = do
-    let cur = getCurrencyNetwork $ egvXPubCur k
-    keyMap <- fmap storage'pubKeys $ readExternalRef =<< asks env'authRef
-    pure $ catMaybes $ maybe [] (fmap (stringToAddr cur)) $ M.lookup k keyMap
-  {-# INLINE getAddressesByEgvXPubKey #-}
+  getAddressByCurIx cur i = do
+    currMap <- fmap storage'pubKeys $ readExternalRef =<< asks env'authRef
+    let maddr = MI.lookup i =<< M.lookup cur currMap
+    case maddr of
+      Nothing -> fail "NOT IMPLEMENTED" -- TODO: generate new address here
+      Just addr -> pure addr
+  {-# INLINE getAddressByCurIx #-}
 
 -- | Execute action under authorized context or return the given value as result
 -- is user is not authorized. Each time the login info changes (user logs out or logs in)

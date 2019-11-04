@@ -13,6 +13,7 @@ import Data.Text
 
 import qualified Data.Map.Strict as M
 import qualified Data.ByteString as BS
+import qualified Data.IntMap.Strict as MI
 
 data WalletData = WalletData
   { wallet'seed     :: Seed
@@ -42,7 +43,7 @@ $(deriveJSON defaultOptions ''EncryptedWalletData)
 
 data ErgveinStorage = ErgveinStorage{
   storage'wallet     :: EncryptedWalletData
-, storage'pubKeys    :: M.Map EgvXPubKey [Base58]
+, storage'pubKeys    :: M.Map Currency (MI.IntMap Base58)
 , storage'walletName :: Text
 }
 
