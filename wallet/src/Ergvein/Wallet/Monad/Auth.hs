@@ -17,7 +17,7 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Monad.Unauth
 import Ergvein.Wallet.Native
-import Ergvein.Wallet.Settings (Settings(..))
+import Ergvein.Wallet.Settings (Settings(..), storeSettings)
 import Ergvein.Wallet.Storage
 import Network.Haskoin.Address
 import Reflex
@@ -28,7 +28,7 @@ import Reflex.ExternalRef
 import qualified Data.Map.Strict as M
 
 data Env t = Env {
-  env'settings        :: !Settings
+  env'settings        :: !(ExternalRef t Settings)
 , env'backEF          :: !(Event t (), IO ())
 , env'loading         :: !(Event t (Text, Bool), (Text, Bool) -> IO ())
 , env'langRef         :: !(ExternalRef t Language)
@@ -64,7 +64,7 @@ instance MonadBaseConstr t m => MonadLocalized t (ErgveinM t m) where
   {-# INLINE getLanguage #-}
 
 instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontBase t (ErgveinM t m) where
-  getSettings = asks env'settings
+  getSettings = readExternalRef =<< asks env'settings
   {-# INLINE getSettings #-}
   getLoadingWidgetTF = asks env'loading
   {-# INLINE getLoadingWidgetTF #-}
@@ -96,6 +96,14 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
       Nothing -> pure ()
       Just v -> writeExternalRef authRef v
   {-# INLINE setAuthInfo #-}
+  updateSettings setE = do
+    settingsRef <- asks env'settings
+    performEvent_ $ ffor setE $ \s -> do
+      writeExternalRef settingsRef s
+      storeSettings s
+  {-# INLINE updateSettings #-}
+  getSettingsRef = asks env'settings
+  {-# INLINE getSettingsRef #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
@@ -134,9 +142,10 @@ liftAuth ma0 ma = mdo
         logsTrigger     <- getLogsTrigger
         logsNameSpaces  <- getLogsNameSpacesRef
         uiChan          <- getUiChan
+        settingsRef     <- getSettingsRef
         let infoE = externalEvent authRef
         a <- runReaderT ma $ Env
-          settings backEF loading langRef authRef storeDir alertsEF
+          settingsRef backEF loading langRef authRef storeDir alertsEF
           logsTrigger logsNameSpaces uiChan
         pure (a, infoE)
   let

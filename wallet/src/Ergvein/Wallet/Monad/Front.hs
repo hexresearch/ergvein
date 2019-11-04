@@ -32,7 +32,12 @@ type MonadFront t m = (MonadFrontBase t m, MonadStorage t m)
 type AuthInfo = ErgveinStorage
 
 class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
+  -- | Get current settings
   getSettings :: m Settings
+  -- | Update app's settings. Sets settings to provided value and stores them
+  updateSettings :: Event t Settings -> m ()
+  -- | Get settings ref. Internal
+  getSettingsRef :: m (ExternalRef t Settings)
   -- | Get loading widget trigger and fire
   getLoadingWidgetTF :: m (Event t (Text, Bool), (Text, Bool) -> IO ())
   -- | Request displaying the loading widget
