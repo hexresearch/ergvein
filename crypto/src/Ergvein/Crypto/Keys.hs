@@ -4,6 +4,7 @@ module Ergvein.Crypto.Keys(
   , encodeBase58
   , decodeBase58
   , Mnemonic
+  , Seed
   , toMnemonic
   , mnemonicToSeed
   , EgvXPubKey(..)

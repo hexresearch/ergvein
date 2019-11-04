@@ -5,19 +5,33 @@ module Ergvein.Wallet.Storage.Data
   , ErgveinStorage(..)
   ) where
 
+import Data.Aeson
 import Ergvein.Aeson
 import Ergvein.Crypto
 import Data.Sequence
 import Data.Text
 
 import qualified Data.Map.Strict as M
+import qualified Data.ByteString as BS
 
 data WalletData = WalletData
-  { wallet'mnemonic :: Mnemonic
+  { wallet'seed     :: Seed
   , wallet'root     :: EgvRootKey
   , wallet'masters  :: M.Map NetworkTag EgvXPrvKey
   }
-$(deriveJSON defaultOptions ''WalletData)
+
+instance ToJSON WalletData where
+  toJSON WalletData{..} = object [
+      "seed"    .= toJSON (BS.unpack wallet'seed)
+    , "root"    .= toJSON wallet'root
+    , "masters" .= toJSON wallet'masters
+    ]
+
+instance FromJSON WalletData where
+  parseJSON = withObject "WalletData" $ \o -> WalletData
+    <$> fmap BS.pack (o .: "seed")
+    <*> o .: "root"
+    <*> o .: "masters"
 
 data EncryptedWalletData = EncryptedWalletData
   { encryptedData   :: Text
