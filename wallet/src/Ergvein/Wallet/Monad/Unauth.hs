@@ -23,7 +23,7 @@ import Reflex.ExternalRef
 import System.Random
 
 data UnauthEnv t = UnauthEnv {
-  unauth'settings        :: !Settings
+  unauth'settings        :: !(ExternalRef t Settings)
 , unauth'backEF          :: !(Event t (), IO ())
 , unauth'loading         :: !(Event t (Text, Bool), (Text, Bool) -> IO ())
 , unauth'langRef         :: !(ExternalRef t Language)
@@ -61,7 +61,7 @@ instance MonadBaseConstr t m => MonadLocalized t (UnauthM t m) where
   {-# INLINE getLanguage #-}
 
 instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontBase t (UnauthM t m) where
-  getSettings = asks unauth'settings
+  getSettings = readExternalRef =<< asks unauth'settings
   {-# INLINE getSettings #-}
   getLoadingWidgetTF = asks unauth'loading
   {-# INLINE getLoadingWidgetTF #-}
@@ -102,6 +102,14 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
     (setE, _) <- asks unauth'passSetEF
     performEvent_ $ fmap (liftIO . modalF) idE
     pure $ attachWithMaybe (\i' (i,mp) -> if i == i' then mp else Nothing) (current idD) setE
+  updateSettings setE = do
+    settingsRef <- asks unauth'settings
+    performEvent_ $ ffor setE $ \s -> do
+      writeExternalRef settingsRef s
+      storeSettings s
+  {-# INLINE updateSettings #-}
+  getSettingsRef = asks unauth'settings
+  {-# INLINE getSettingsRef #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
   postAlert e = do
@@ -118,6 +126,7 @@ newEnv :: (Reflex t, TriggerEvent t m, MonadIO m)
   -> Chan (IO ()) -- UI callbacks channel
   -> m (UnauthEnv t)
 newEnv settings uiChan = do
+  settingsRef <- newExternalRef settings
   (backE, backFire) <- newTriggerEvent
   loadingEF <- newTriggerEvent
   alertsEF <- newTriggerEvent
@@ -129,7 +138,7 @@ newEnv settings uiChan = do
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
   pure UnauthEnv {
-      unauth'settings  = settings
+      unauth'settings  = settingsRef
     , unauth'backEF    = (backE, backFire ())
     , unauth'loading   = loadingEF
     , unauth'langRef   = langRef

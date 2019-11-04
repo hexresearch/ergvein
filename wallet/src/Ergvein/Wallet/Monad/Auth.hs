@@ -17,7 +17,7 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Monad.Unauth
 import Ergvein.Wallet.Native
-import Ergvein.Wallet.Settings (Settings(..))
+import Ergvein.Wallet.Settings (Settings(..), storeSettings)
 import Ergvein.Wallet.Storage.Data
 import Network.Haskoin.Address
 import Reflex
@@ -29,7 +29,7 @@ import System.Random
 import qualified Data.Map.Strict as M
 
 data Env t = Env {
-  env'settings        :: !Settings
+  env'settings        :: !(ExternalRef t Settings)
 , env'backEF          :: !(Event t (), IO ())
 , env'loading         :: !(Event t (Text, Bool), (Text, Bool) -> IO ())
 , env'langRef         :: !(ExternalRef t Language)
@@ -67,7 +67,7 @@ instance MonadBaseConstr t m => MonadLocalized t (ErgveinM t m) where
   {-# INLINE getLanguage #-}
 
 instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontBase t (ErgveinM t m) where
-  getSettings = asks env'settings
+  getSettings = readExternalRef =<< asks env'settings
   {-# INLINE getSettings #-}
   getLoadingWidgetTF = asks env'loading
   {-# INLINE getLoadingWidgetTF #-}
@@ -110,6 +110,14 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
     (setE, _) <- asks env'passSetEF
     performEvent_ $ fmap (liftIO . modalF) idE
     pure $ attachWithMaybe (\i' (i,mp) -> if i == i' then mp else Nothing) (current idD) setE
+  updateSettings setE = do
+    settingsRef <- asks env'settings
+    performEvent_ $ ffor setE $ \s -> do
+      writeExternalRef settingsRef s
+      storeSettings s
+  {-# INLINE updateSettings #-}
+  getSettingsRef = asks env'settings
+  {-# INLINE getSettingsRef #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
@@ -150,9 +158,10 @@ liftAuth ma0 ma = mdo
         uiChan          <- getUiChan
         passModalEF     <- getPasswordModalEF
         passSetEF       <- getPasswordSetEF
+        settingsRef     <- getSettingsRef
         let infoE = externalEvent authRef
         a <- runReaderT ma $ Env
-          settings backEF loading langRef authRef storeDir alertsEF
+          settingsRef backEF loading langRef authRef storeDir alertsEF
           logsTrigger logsNameSpaces uiChan passModalEF passSetEF
         pure (a, infoE)
   let

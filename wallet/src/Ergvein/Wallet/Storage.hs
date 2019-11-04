@@ -10,7 +10,6 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Storage.Data
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Alert
-import Control.Monad.Trans.Class
 
 -- | Requests password, runs a callback against decoded wallet and returns the result
 -- The callback is in 'Performable m'. Basically 'MonadIO'
