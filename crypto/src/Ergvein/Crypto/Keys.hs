@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 module Ergvein.Crypto.Keys(
     Base58
   , encodeBase58
@@ -5,9 +6,11 @@ module Ergvein.Crypto.Keys(
   , Mnemonic
   , toMnemonic
   , mnemonicToSeed
-  , XPubKey
   , EgvXPubKey(..)
+  , EgvXPrvKey(..)
+  , EgvRootKey(..)
   , NetworkTag(..)
+  , XPubKey
   , XPrvKey
   , xPubImport
   , xPrvImport
@@ -33,6 +36,7 @@ import Network.Haskoin.Address.Base58
 import Network.Haskoin.Constants
 import Network.Haskoin.Keys
 import Network.Haskoin.Util
+import Text.Read (readMaybe)
 
 import qualified Data.ByteArray                 as BA
 import qualified Data.ByteString                as BS
@@ -43,6 +47,16 @@ data EgvXPubKey = EgvXPubKey {
   egvXPubNetTag :: NetworkTag
 , egvXPubKey    :: XPubKey
 } deriving (Eq)
+
+-- | Wrapper around XPrvKey for easy to/from json manipulations
+data EgvXPrvKey = EgvXPrvKey {
+  egvXPrvNetTag :: NetworkTag
+, egvXPrvKey    :: XPrvKey
+} deriving (Eq)
+
+-- | Wrapper for a root key (a key w/o assigned network)
+newtype EgvRootKey = EgvRootKey {unEgvRootKey :: XPrvKey}
+  deriving (Eq, Show, Read)
 
 getEntropy :: IO Entropy
 getEntropy = E.getEntropy defaultEntropyLength
@@ -110,4 +124,44 @@ instance FromJSONKey EgvXPubKey where
 instance Ord EgvXPubKey where
   compare (EgvXPubKey net1 key1) (EgvXPubKey net2 key2) = case compare net1 net2 of
     EQ -> compare (xPubExport (getNetworkFromTag net1) key1) (xPubExport (getNetworkFromTag net2) key2)
+    x -> x
+
+instance ToJSON EgvXPrvKey where
+  toJSON (EgvXPrvKey net key) = object [
+      "tag" .= toJSON net
+    , "pub_key" .= xPrvToJSON (getNetworkFromTag net) key
+    ]
+
+instance FromJSON EgvXPrvKey where
+  parseJSON = withObject "EgvXPrvKey" $ \o -> do
+    net    <- o .: "tag"
+    key <- xPrvFromJSON (getNetworkFromTag net) =<< (o .: "pub_key")
+    pure $ EgvXPrvKey net key
+
+instance ToJSONKey EgvXPrvKey where
+instance FromJSONKey EgvXPrvKey where
+
+instance ToJSON EgvRootKey where
+  toJSON (EgvRootKey XPrvKey{..}) = object [
+      "d" .= toJSON xPrvDepth
+    , "p" .= toJSON xPrvParent
+    , "i" .= toJSON xPrvIndex
+    , "c" .= show xPrvChain
+    , "k" .= show xPrvKey
+    ]
+
+instance FromJSON EgvRootKey where
+  parseJSON = withObject "EgvRootKey" $ \o -> do
+    d <- o .: "d"
+    p <- o .: "p"
+    i <- o .: "i"
+    c <- o .: "c"
+    k <- o .: "k"
+    case (readMaybe c, readMaybe k) of
+      (Just c', Just k') -> pure $ EgvRootKey $ XPrvKey d p i c' k'
+      _ -> fail "failed to read c or k"
+
+instance Ord EgvXPrvKey where
+  compare (EgvXPrvKey net1 key1) (EgvXPrvKey net2 key2) = case compare net1 net2 of
+    EQ -> compare (xPrvExport (getNetworkFromTag net1) key1) (xPrvExport (getNetworkFromTag net2) key2)
     x -> x

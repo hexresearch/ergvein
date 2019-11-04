@@ -1,14 +1,14 @@
 module Ergvein.Wallet.Storage.Util(
     WalletData(..)
   , EncryptedWalletData(..)
-  , createWallet
-  , readWalletData
-  , saveWalletData
+  -- , createWallet
+  -- , readWalletData
+  -- , saveWalletData
   , encryptWalletData
   , decryptWalletData
-  , addXPrvKey
-  , getWalletDirectory
-  , walletFileName
+  -- , addXPrvKey
+  -- , getWalletDirectory
+  -- , walletFileName
   , loadStorageFromFile
   ) where
 
@@ -35,39 +35,39 @@ import qualified Data.Text as T
 
 type Password = Text
 
--- | Get user home directory location with ".ergvein" directory appended.
-getWalletDirectory :: IO FilePath
-getWalletDirectory = do
-  userHomeDirectory <- getHomeDirectory
-  return $ userHomeDirectory </> ".ergvein"
-
--- | Specify wallet file name
-walletFileName :: String
-walletFileName = "wallet.json"
-
--- | Creates wallet file with mnemonic phrase
-createWallet :: Mnemonic -> IO ()
-createWallet mnemonic = saveWalletData walletData
-  where
-    walletData = WalletData {mnemonic = mnemonic, privateKeys = empty}
-
--- | Add extended private key to the WalletData value
-addXPrvKey :: WalletData -> Base58 -> WalletData
-addXPrvKey WalletData {mnemonic = mnemonic, privateKeys = privateKeys} xPrvKey =
-  WalletData {mnemonic = mnemonic, privateKeys = privateKeys |> xPrvKey}
-
--- | Read wallet file
-readWalletData :: IO (Maybe WalletData)
-readWalletData = do
-  walletDirectory <- getWalletDirectory
-  readJson $ walletDirectory </> walletFileName
-
--- | Save wallet data to wallet file
-saveWalletData :: WalletData -> IO ()
-saveWalletData walletData = do
-  walletDirectory <- getWalletDirectory
-  createDirectoryIfMissing False walletDirectory
-  writeJson (walletDirectory </> walletFileName) walletData
+-- -- | Get user home directory location with ".ergvein" directory appended.
+-- getWalletDirectory :: IO FilePath
+-- getWalletDirectory = do
+--   userHomeDirectory <- getHomeDirectory
+--   return $ userHomeDirectory </> ".ergvein"
+--
+-- -- | Specify wallet file name
+-- walletFileName :: String
+-- walletFileName = "wallet.json"
+--
+-- -- | Creates wallet file with mnemonic phrase
+-- createWallet :: Mnemonic -> IO ()
+-- createWallet mnemonic = saveWalletData walletData
+--   where
+--     walletData = WalletData {mnemonic = mnemonic, privateKeys = empty}
+--
+-- -- | Add extended private key to the WalletData value
+-- addXPrvKey :: WalletData -> Base58 -> WalletData
+-- addXPrvKey WalletData {mnemonic = mnemonic, privateKeys = privateKeys} xPrvKey =
+--   WalletData {mnemonic = mnemonic, privateKeys = privateKeys |> xPrvKey}
+--
+-- -- | Read wallet file
+-- readWalletData :: IO (Maybe WalletData)
+-- readWalletData = do
+--   walletDirectory <- getWalletDirectory
+--   readJson $ walletDirectory </> walletFileName
+--
+-- -- | Save wallet data to wallet file
+-- saveWalletData :: WalletData -> IO ()
+-- saveWalletData walletData = do
+--   walletDirectory <- getWalletDirectory
+--   createDirectoryIfMissing False walletDirectory
+--   writeJson (walletDirectory </> walletFileName) walletData
 
 encryptWalletData :: WalletData -> Password -> IO EncryptedWalletData
 encryptWalletData walletData password = do

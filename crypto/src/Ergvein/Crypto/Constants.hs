@@ -35,6 +35,9 @@ instance FromJSON NetworkTag where
   parseJSON = withText "NetworkTag" $
     maybe (fail "Unknown network tag") pure . readMaybe . unpack
 
+instance ToJSONKey NetworkTag where
+instance FromJSONKey NetworkTag where
+
 -- | According to the BIP32 the allowed size of entropy is between 16 and 64 bytes (32 bytes is advised).
 -- The mnemonic must encode entropy in a multiple of 4 bytes.
 -- With 32 bytes of entropy generated mnemonic will contain 24 words.

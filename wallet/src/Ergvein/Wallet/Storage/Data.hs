@@ -13,9 +13,10 @@ import Data.Text
 import qualified Data.Map.Strict as M
 
 data WalletData = WalletData
-  { mnemonic    :: Mnemonic
-  , privateKeys :: Seq Base58
-  } deriving (Show)
+  { wallet'mnemonic :: Mnemonic
+  , wallet'root     :: EgvRootKey
+  , wallet'masters  :: M.Map NetworkTag EgvXPrvKey
+  }
 $(deriveJSON defaultOptions ''WalletData)
 
 data EncryptedWalletData = EncryptedWalletData
