@@ -1,5 +1,5 @@
-module Ergvein.Wallet.Page.Currencies(
-    currenciesPage
+module Ergvein.Wallet.Page.Balances(
+    balancesPage
   ) where
 
 import Ergvein.Text
@@ -7,14 +7,18 @@ import Ergvein.Types.Currency
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Page.History
 import Ergvein.Wallet.Wrapper
-import Reflex.Localize
 
-currenciesPage :: MonadFront t m => m ()
-currenciesPage = wrapper False $ do
+
+balancesPage :: MonadFront t m => m ()
+balancesPage = wrapper False $ do
   syncWidget
-  currenciesList
-  pure ()
+  historyE <- currenciesList
+  void $ nextWidget $ ffor historyE $ \cur -> Retractable {
+      retractableNext = historyPage cur
+    , retractablePrev = Just $ pure balancesPage
+    }
 
 syncWidget :: MonadFront t m => m ()
 syncWidget = divClass "currency-wrapper" $ do
@@ -30,14 +34,14 @@ instance LocalizedPrint ScanProgress where
     English -> case v of
       ScanDays d  -> showt d <> if d == 1 then " day behind..." else " days behind..."
       ScanHours h -> showt h <> if h == 1 then " hour behind..." else " hours behind..."
-      ScanSynced  -> "Synced!"
+      ScanSynced  -> "Fully synced!"
     Russian -> case v of
-      ScanDays d  -> "Остаём на " <> showt d <> case (d `mod` 10) of
+      ScanDays d  -> "Отстаём на " <> showt d <> case (d `mod` 10) of
         1 -> " день..."
         2 -> " дня..."
         3 -> " дня..."
         _ -> " дней..."
-      ScanHours h -> "Остаём на " <> showt h <> case (h `mod` 10) of
+      ScanHours h -> "Отстаём на " <> showt h <> case (h `mod` 10) of
         1 -> " час..."
         2 -> " часа..."
         3 -> " часа..."
@@ -48,14 +52,18 @@ instance LocalizedPrint ScanProgress where
 getSyncProgress :: MonadFront t m => m (Dynamic t ScanProgress)
 getSyncProgress = pure $ pure $ ScanDays 10
 
-currenciesList :: MonadFront t m => m ()
-currenciesList = traverse_ currencyLine allCurrencies
+currenciesList :: MonadFront t m => m (Event t Currency)
+currenciesList = fmap leftmost $ traverse currencyLine allCurrencies
   where
-    currencyLine cur = divClass "currency-wrapper" $ divClass "currency-line" $ do
-      divClass "currency-name" $ text $ currencyName cur
-      divClass "currency-balance" $ do
-        bal <- currencyBalance cur
-        dynText $ showMoney <$> bal
+    currencyLine cur = do
+      (e, _) <- divClass' "currency-wrapper" $ divClass "currency-line" $ do
+        divClass "currency-name" $ text $ currencyName cur
+        divClass "currency-balance" $ do
+          bal <- currencyBalance cur
+          dynText $ do
+            m <- showMoney <$> bal
+            pure $ m <> "〉"
+      pure $ cur <$ domEvent Click e
 
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
 currencyBalance cur = pure $ pure $ Money cur 1

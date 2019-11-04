@@ -6,10 +6,10 @@ import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Language
-import Reflex.Localize
+
 
 -- | Common wrapper to all pages. Embeds back button for desktop version.
-wrapper :: MonadFront t m => Bool -> m a -> m a
+wrapper :: MonadFrontBase t m => Bool -> m a -> m a
 wrapper centered ma = container $ do
   when isDesktop $ do
     stD <- getRetractStack
@@ -24,7 +24,7 @@ instance LocalizedPrint BackButtonStr where
     Russian -> "< Назад"
 
 -- | Button for going back on widget history
-backButton :: MonadFront t m => m ()
+backButton :: MonadFrontBase t m => m ()
 backButton = divClass "back-button" $ do
   e <- buttonClass "button button-clear" BackButtonStr
   void $ retract e
