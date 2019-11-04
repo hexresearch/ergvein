@@ -13,13 +13,17 @@ ScannedHeightRec
   currency Currency
   height BlockHeight
   UniqueCurrency currency
+  deriving Eq Show
 UtxoRec
   txHash Text
   pubKey Text
+  outIndex Word32
   outValue MoneyUnit
-  UniqueTxHashPubKey txHash pubKey
+  UniqueTxHashPubKeyOutIndex txHash pubKey outIndex
+  deriving Eq Show
 StxoRec
   txHash Text
-  utxoId ScannedHeightRecId
+  utxoId UtxoRecId
   UniqueTxHashUtxoId txHash utxoId
+  deriving Eq Show
   |]

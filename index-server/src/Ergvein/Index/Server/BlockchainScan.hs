@@ -29,7 +29,7 @@ blockHeightsToScan env currency = do
     where
       cfg = envConfig env
       actualHeight = case currency of BTC  -> actualBTCHeight cfg
-                                      ERGO -> undefined
+                                      ERGO -> undefined 
       startHeight =  case currency of BTC  -> 0
                                       ERGO -> 0
 

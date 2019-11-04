@@ -17,13 +17,14 @@ import Safe (headMay)
 data UTXOInfo = UTXOInfo {
   txHash :: TxHash,
   utxoPubKeyScriptHash :: PubKeyScriptHash,
+  utxoOutIndex :: Word32,
   outValue :: MoneyUnit
 } deriving Show
 
 data STXOInfo = STXOInfo  {
   txHashTarget :: TxHash,
   stxHash :: TxHash,
-  stxoPubKeyScriptHash :: PubKeyScriptHash
+  stxoOutIndex :: Word32
 } deriving Show
 
 
@@ -35,5 +36,14 @@ getScannedHeight currency = fmap headMay $ select $ from $ \scannedHeight -> do
 updateScannedHeight :: MonadIO m => Currency -> Word64 -> QueryT m (Entity ScannedHeightRec)
 updateScannedHeight currency h = upsert (ScannedHeightRec currency h) [ScannedHeightRecHeight DT.=. h]
 
-insertUTXO :: MonadIO m => UTXOInfo -> QueryT m (Key UtxoRec)
-insertUTXO utxo = insert (UtxoRec (txHash utxo) (utxoPubKeyScriptHash utxo) (outValue utxo))
+insertUTXO :: MonadIO m => [UTXOInfo] -> QueryT m ([Key UtxoRec])
+insertUTXO utxo = insertMany $ toEntity <$> utxo
+  where
+    toEntity u = UtxoRec (txHash u) (utxoPubKeyScriptHash u) (utxoOutIndex u) (outValue u)
+
+insertSTXO :: MonadIO m => STXOInfo -> QueryT m ()
+insertSTXO stxo = insertSelect $ from $ \storedUtxo -> do
+  where_ (   storedUtxo ^. UtxoRecTxHash   ==. (val $ txHashTarget stxo) 
+         &&. storedUtxo ^. UtxoRecOutIndex ==. (val $ stxoOutIndex stxo)
+         )
+  return $ StxoRec <# (val $ stxHash stxo) <&> (storedUtxo ^. UtxoRecId)
