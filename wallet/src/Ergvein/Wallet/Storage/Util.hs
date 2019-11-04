@@ -1,14 +1,10 @@
 module Ergvein.Wallet.Storage.Util(
     WalletData(..)
   , EncryptedWalletData(..)
-  -- , createWallet
-  -- , readWalletData
-  -- , saveWalletData
   , encryptWalletData
   , decryptWalletData
-  -- , addXPrvKey
-  -- , getWalletDirectory
-  -- , walletFileName
+  , createWallet
+  , storageFilePrefix
   , loadStorageFromFile
   ) where
 
@@ -24,6 +20,7 @@ import Ergvein.Aeson
 import Ergvein.Crypto
 import Ergvein.IO
 import Ergvein.Text
+import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Native
 import Ergvein.Wallet.Native
@@ -32,42 +29,18 @@ import System.Directory
 import System.FilePath
 
 import qualified Data.Text as T
+import qualified Data.Map.Strict as M
 
 type Password = Text
+type Login = Text
 
--- -- | Get user home directory location with ".ergvein" directory appended.
--- getWalletDirectory :: IO FilePath
--- getWalletDirectory = do
---   userHomeDirectory <- getHomeDirectory
---   return $ userHomeDirectory </> ".ergvein"
---
--- -- | Specify wallet file name
--- walletFileName :: String
--- walletFileName = "wallet.json"
---
--- -- | Creates wallet file with mnemonic phrase
--- createWallet :: Mnemonic -> IO ()
--- createWallet mnemonic = saveWalletData walletData
---   where
---     walletData = WalletData {mnemonic = mnemonic, privateKeys = empty}
---
--- -- | Add extended private key to the WalletData value
--- addXPrvKey :: WalletData -> Base58 -> WalletData
--- addXPrvKey WalletData {mnemonic = mnemonic, privateKeys = privateKeys} xPrvKey =
---   WalletData {mnemonic = mnemonic, privateKeys = privateKeys |> xPrvKey}
---
--- -- | Read wallet file
--- readWalletData :: IO (Maybe WalletData)
--- readWalletData = do
---   walletDirectory <- getWalletDirectory
---   readJson $ walletDirectory </> walletFileName
---
--- -- | Save wallet data to wallet file
--- saveWalletData :: WalletData -> IO ()
--- saveWalletData walletData = do
---   walletDirectory <- getWalletDirectory
---   createDirectoryIfMissing False walletDirectory
---   writeJson (walletDirectory </> walletFileName) walletData
+createWallet :: Mnemonic -> Either StorageAlerts WalletData
+createWallet mnemonic = case mnemonicToSeed "" mnemonic of
+  Left err -> Left $ SAMnemonicFail $ T.pack err
+  Right seed -> let
+    root = makeXPrvKey seed
+    masters = M.fromList $ fmap (\c -> (c, deriveCurrencyKey root c)) allCurrencies
+    in Right $ WalletData seed (EgvRootKey root) masters
 
 encryptWalletData :: WalletData -> Password -> IO EncryptedWalletData
 encryptWalletData walletData password = do
@@ -105,16 +78,18 @@ decryptWalletData encryptedWalletData password =
     encryptedDataBS = decodeLenient $ encodeUtf8 $ encryptedData encryptedWalletData
 
 
-storageFileName :: Text
-storageFileName = "storage"
+storageFilePrefix :: Text
+storageFilePrefix = "wallet_"
 
 -- TODO: Actually decrypt the storage
 decryptStorage :: MonadIO m => Password -> Text -> m (Either StorageAlerts ErgveinStorage)
 decryptStorage pass txt = pure $ either (Left . SADecodeError) Right $ text2json txt
 
-loadStorageFromFile :: (MonadIO m, HasStoreDir m, PlatformNatives) => Password -> m (Either StorageAlerts ErgveinStorage)
-loadStorageFromFile pass = do
-  storageResp <- readStoredFile storageFileName
+loadStorageFromFile :: (MonadIO m, HasStoreDir m, PlatformNatives)
+  => Login -> Password -> m (Either StorageAlerts ErgveinStorage)
+loadStorageFromFile login pass = do
+  let fname = storageFilePrefix <> T.replace " " "_" login
+  storageResp <- readStoredFile fname
   either (pure . Left . SANativeAlert) (decryptStorage pass . T.concat) storageResp
 
 -- Alerts regarding secure storage system
@@ -122,6 +97,7 @@ data StorageAlerts
   = SADecodeError Text
   | SALoadedSucc
   | SANativeAlert NativeAlerts
+  | SAMnemonicFail Text
   deriving (Eq)
 
 instance LocalizedPrint StorageAlerts where
@@ -130,4 +106,5 @@ instance LocalizedPrint StorageAlerts where
       SADecodeError e -> "Storage loading error: " <> e
       SALoadedSucc    -> "Storage loaded"
       SANativeAlert a -> localizedShow l a
+      SAMnemonicFail t -> "Failed to produce seed from mnemonic: " <> t
     Russian -> localizedShow English v
