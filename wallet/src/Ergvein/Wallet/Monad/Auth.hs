@@ -36,6 +36,7 @@ data Env t = Env {
 , env'loading         :: !(Event t (Text, Bool), (Text, Bool) -> IO ())
 , env'langRef         :: !(ExternalRef t Language)
 , env'authRef         :: !(ExternalRef t AuthInfo)
+, env'logoutFire      :: !(IO ())
 , env'storeDir        :: !Text
 , env'alertsEF        :: (Event t AlertInfo, AlertInfo -> IO ()) -- ^ Holds alert event and trigger
 , env'logsTrigger     :: (Event t LogEntry, LogEntry -> IO ())
@@ -97,8 +98,9 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getAuthInfoMaybe #-}
   setAuthInfo e = do
     authRef <- asks env'authRef
+    fire <- asks env'logoutFire
     performEvent $ ffor e $ \case
-      Nothing -> pure ()
+      Nothing -> liftIO fire
       Just v -> writeExternalRef authRef v
   {-# INLINE setAuthInfo #-}
   getPasswordModalEF = asks env'passModalEF
@@ -143,7 +145,7 @@ instance MonadBaseConstr t m => MonadStorage t (ErgveinM t m) where
   {-# INLINE getAddressByCurIx #-}
   getWalletName = fmap storage'walletName $ readExternalRef =<< asks env'authRef
   {-# INLINE getWalletName #-}
-  
+
 -- | Execute action under authorized context or return the given value as result
 -- is user is not authorized. Each time the login info changes (user logs out or logs in)
 -- the widget is updated.
@@ -151,6 +153,7 @@ liftAuth :: MonadFrontBase t m => m a -> (ErgveinM t m) a -> m (Dynamic t a)
 liftAuth ma0 ma = mdo
   mauthD <- holdUniqDyn =<< getAuthInfoMaybe
   mauth0 <- sample . current $ mauthD
+  (logoutE, logoutFire) <- newTriggerEvent
   let runAuthed auth = do
         settings        <- getSettings
         backEF          <- getBackEventFire
@@ -167,13 +170,13 @@ liftAuth ma0 ma = mdo
         settingsRef     <- getSettingsRef
         let infoE = externalEvent authRef
         a <- runReaderT ma $ Env
-          settingsRef backEF loading langRef authRef storeDir alertsEF
+          settingsRef backEF loading langRef authRef (logoutFire ()) storeDir alertsEF
           logsTrigger logsNameSpaces uiChan passModalEF passSetEF
         pure (a, infoE)
   let
     ma0e = (,never) <$> ma0
     ma0' = maybe ma0e runAuthed mauth0
-    redrawE = updated mauthD
+    redrawE = leftmost [updated mauthD, Nothing <$ logoutE]
   dres :: Dynamic t (a, Event t AuthInfo) <- widgetHold ma0' $ ffor redrawE $ maybe ma0e runAuthed
   let authInfoE = switch . current . fmap snd $ dres
   _ <- setAuthInfo $ Just <$> authInfoE

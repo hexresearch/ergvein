@@ -8,6 +8,7 @@ import Ergvein.Wallet.Alert.Type
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Seed
+import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Wrapper
 import Ergvein.Wallet.Language
 
@@ -15,7 +16,7 @@ import Control.Monad.IO.Class
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Password
 
-data GoPage = GoSeed | GoRestore
+data GoPage = GoSeed | GoRestore | Insta Text
 
 data InitialPageStrings =
     IPSCreate
@@ -46,3 +47,5 @@ initialAuthedPage :: MonadFront t m => m ()
 initialAuthedPage = wrapper True $ divClass "main-page" $ do
   anon_name <- getWalletName
   h4 $ text $ "Congrats " <> anon_name <> "! You've made it!"
+  logoutE <- row . outlineButton $ ("Logout" :: Text)
+  void $ setAuthInfo $ Nothing <$ logoutE
