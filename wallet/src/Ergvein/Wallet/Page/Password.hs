@@ -9,13 +9,16 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Password
 import Ergvein.Wallet.Wrapper
 import Ergvein.Wallet.Localization.Password
+import Ergvein.Wallet.Storage.Data
+import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Storage.Util
 import Reflex.Localize
 
 passwordPage :: MonadFrontBase t m => Mnemonic -> m ()
-passwordPage _ = wrapper True $ do
+passwordPage mnemonic = wrapper True $ do
   divClass "password-setup-title" $ h4 $ localizedText PPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText PPSDescr
-  void $ setupPassword
+  void $ setAuthInfo . fmap Just =<< handleDangerMsg =<< performEvent . fmap (createStorage mnemonic) =<< setupLoginPassword
 
 askPasswordPage :: MonadFrontBase t m => m ()
 askPasswordPage = wrapper True $ do

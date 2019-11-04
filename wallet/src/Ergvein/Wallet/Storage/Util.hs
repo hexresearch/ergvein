@@ -4,6 +4,7 @@ module Ergvein.Wallet.Storage.Util(
   , encryptWalletData
   , decryptWalletData
   , createWallet
+  , createStorage
   , storageFilePrefix
   , loadStorageFromFile
   ) where
@@ -32,7 +33,7 @@ import qualified Data.Text as T
 import qualified Data.Map.Strict as M
 
 type Password = Text
-type Login = Text
+type WalletName = Text
 
 createWallet :: Mnemonic -> Either StorageAlerts WalletData
 createWallet mnemonic = case mnemonicToSeed "" mnemonic of
@@ -42,10 +43,10 @@ createWallet mnemonic = case mnemonicToSeed "" mnemonic of
     masters = M.fromList $ fmap (\c -> (c, deriveCurrencyKey root c)) allCurrencies
     in Right $ WalletData seed (EgvRootKey root) masters
 
-createStorage :: MonadIO m => Mnemonic -> Password -> m (Either StorageAlerts ErgveinStorage)
-createStorage mnemonic pass = either (pure . Left) (\wd -> do
+createStorage :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either StorageAlerts ErgveinStorage)
+createStorage mnemonic (login, pass) = either (pure . Left) (\wd -> do
   ewd <- encryptWalletData wd pass
-  pure $ Right $ ErgveinStorage ewd mempty mempty) $ createWallet mnemonic
+  pure $ Right $ ErgveinStorage ewd mempty login) $ createWallet mnemonic
 
 encryptWalletData :: MonadIO m => WalletData -> Password -> m EncryptedWalletData
 encryptWalletData walletData password = liftIO $ do
@@ -91,7 +92,7 @@ decryptStorage :: MonadIO m => Password -> Text -> m (Either StorageAlerts Ergve
 decryptStorage pass txt = pure $ either (Left . SADecodeError) Right $ text2json txt
 
 loadStorageFromFile :: (MonadIO m, HasStoreDir m, PlatformNatives)
-  => Login -> Password -> m (Either StorageAlerts ErgveinStorage)
+  => WalletName -> Password -> m (Either StorageAlerts ErgveinStorage)
 loadStorageFromFile login pass = do
   let fname = storageFilePrefix <> T.replace " " "_" login
   storageResp <- readStoredFile fname

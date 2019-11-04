@@ -22,7 +22,7 @@ instance LocalizedPrint PasswordPageStrings where
       PPSDescr  -> "Этот пароль используется для каждой операции с вашими деньгами. Можете оставить поле пустым, если хотите (не рекомендуется)"
       PPSUnlock -> "Введите пароль для расшифровки приватных ключей"
 
-data PasswordWidgetStrings = PWSPassword | PWSRepeat | PWSSet | PWSNoMatch | PWSGo
+data PasswordWidgetStrings = PWSPassword | PWSRepeat | PWSSet | PWSNoMatch | PWSGo | PWSLogin | PWSEmptyLogin
 
 instance LocalizedPrint PasswordWidgetStrings where
   localizedShow l v = case l of
@@ -32,9 +32,13 @@ instance LocalizedPrint PasswordWidgetStrings where
       PWSSet      -> "Set"
       PWSNoMatch  -> "Passwords do not match!"
       PWSGo       -> "Go"
+      PWSLogin    -> "Login"
+      PWSEmptyLogin -> "Login is empty!"
     Russian -> case v of
       PWSPassword -> "Пароль"
       PWSRepeat   -> "Повторите пароль"
       PWSSet      -> "Установить"
       PWSNoMatch  -> "Пароли не совпадают!"
       PWSGo       -> "Перейти"
+      PWSLogin    -> "Логин"
+      PWSEmptyLogin -> "Логин пустой!"

@@ -141,7 +141,9 @@ instance MonadBaseConstr t m => MonadStorage t (ErgveinM t m) where
       Nothing -> fail "NOT IMPLEMENTED" -- TODO: generate new address here
       Just addr -> pure addr
   {-# INLINE getAddressByCurIx #-}
-
+  getWalletName = fmap storage'walletName $ readExternalRef =<< asks env'authRef
+  {-# INLINE getWalletName #-}
+  
 -- | Execute action under authorized context or return the given value as result
 -- is user is not authorized. Each time the login info changes (user logs out or logs in)
 -- the widget is updated.

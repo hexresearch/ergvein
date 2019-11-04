@@ -1,5 +1,6 @@
 module Ergvein.Wallet.Page.Initial(
     initialPage
+  , initialAuthedPage
   ) where
 
 import Ergvein.Wallet.Alert
@@ -29,22 +30,19 @@ instance LocalizedPrint InitialPageStrings where
       IPSCreate   -> "Создать кошелёк"
       IPSRestore  -> "Восстановить кошелёк"
 
--- | TODO: remove debugging elements
 initialPage :: MonadFrontBase t m => m ()
 initialPage = wrapper True $ divClass "initial-options" $ do
   newE <- fmap (GoSeed <$) $ row . outlineButton $ IPSCreate
   restoreE <- fmap (GoRestore <$) $ row . outlineButton $ IPSRestore
   let goE = leftmost [newE, restoreE]
-  panicE <- row . outlineButton $ ("Span panic" :: Text)
-  panicLogE <- row . outlineButton $ ("Log panic" :: Text)
-  showDangerMsg $ DebugPanicAlert <$ panicE
-  handleDangerMsg $ (Left DebugPanicAlert) <$ panicLogE
-  reqPassE <- row . outlineButton $ ("Request password" :: Text)
-  showDangerMsg =<< requestPasssword reqPassE
-  copyButton (pure "Copied this")
   void $ nextWidget $ ffor goE $ \go -> Retractable {
       retractableNext = case go of
         GoSeed -> mnemonicPage
-        GoRestore -> initialPage -- TODO: here insert widget for restore page
+        GoRestore -> seedRestorePage
     , retractablePrev = Just $ pure initialPage
     }
+
+initialAuthedPage :: MonadFront t m => m ()
+initialAuthedPage = wrapper True $ divClass "main-page" $ do
+  anon_name <- getWalletName
+  h4 $ text $ "Congrats " <> anon_name <> "! You've made it!"
