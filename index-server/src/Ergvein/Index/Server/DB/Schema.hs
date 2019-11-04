@@ -1,7 +1,6 @@
 module Ergvein.Index.Server.DB.Schema where
 
 import Data.Text (Text)
-import Data.Time (UTCTime)
 import Data.Word
 import Database.Persist.TH
 import Ergvein.Types.Currency
@@ -13,17 +12,14 @@ ScannedHeightRec
   currency Currency
   height BlockHeight
   UniqueCurrency currency
-  deriving Eq Show
 UtxoRec
-  txHash Text
-  pubKey Text
-  outIndex Word32
+  txHash TxHash
+  pubKey TxHash
+  outIndex TxOutIndex
   outValue MoneyUnit
   UniqueTxHashPubKeyOutIndex txHash pubKey outIndex
-  deriving Eq Show
 StxoRec
-  txHash Text
+  txHash TxHash
   utxoId UtxoRecId
   UniqueTxHashUtxoId txHash utxoId
-  deriving Eq Show
   |]

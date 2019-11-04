@@ -18,6 +18,13 @@ data ServerEnv = ServerEnv
     , envPool   :: !DBPool
     }
 
+btcNodeClient :: Config -> (Client -> IO a) -> IO a
+btcNodeClient cfg = withClient 
+    (configBTCNodeHost     cfg)
+    (configBTCNodePort     cfg)
+    (configBTCNodeUser     cfg)
+    (configBTCNodePassword cfg)
+
 newServerEnv :: MonadIO m => Config -> m ServerEnv
 newServerEnv cfg = do
     logger <- liftIO newChan
