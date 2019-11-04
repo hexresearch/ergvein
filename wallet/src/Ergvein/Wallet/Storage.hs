@@ -21,9 +21,11 @@ import Data.Text                (Text)
 import Data.Text.Encoding
 import Data.Text.Encoding.Error
 import Data.ByteString          (ByteString)
-import Data.ByteString.Base64   (encode, decodeLenient)
 import Data.Sequence
+import Data.Proxy
 import Data.ByteArray           (convert)
+
+import qualified Data.ByteString.Base64 as Base64 (encode, decodeLenient)
 
 data WalletData = WalletData
   { mnemonic    :: Mnemonic
@@ -76,23 +78,23 @@ encryptWalletData :: WalletData -> Password -> IO EncryptedWalletData
 encryptWalletData walletData password = do
   salt :: ByteString <- genRandomSalt
   let secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
-  mInitIV <- genRandomIV (undefined :: AES256)
-  case mInitIV of
+  iv' <- genRandomIV (undefined :: AES256)
+  case iv' of
     Nothing -> error "Failed to generate an initialization vector"
-    Just initIV -> do
+    Just iv -> do
       let walletDataBS = encodeUtf8 $ encodeJson walletData
-      let encryptedData = encrypt secretKey initIV walletDataBS
+      let encryptedData = encrypt secretKey iv walletDataBS
       case encryptedData of
         Left err -> error $ show err
         Right eData -> return EncryptedWalletData {
-            encryptedData = decodeUtf8With lenientDecode $ encode eData
-          , salt = decodeUtf8With lenientDecode $ encode salt
-          , initVector = decodeUtf8With lenientDecode $ encode (convert initIV :: ByteString)
+            encryptedData = decodeUtf8With lenientDecode $ Base64.encode eData
+          , salt = decodeUtf8With lenientDecode $ Base64.encode salt
+          , initVector = decodeUtf8With lenientDecode $ Base64.encode (convert iv :: ByteString)
           }
 
 decryptWalletData :: EncryptedWalletData -> Password -> Either String WalletData
 decryptWalletData encryptedWalletData password =
-  case initIV of
+  case iv' of
     Nothing -> Left "Failed to decode the initialization vector"
     Just iv -> case decrypt secretKey iv encryptedDataBS of
       Left err -> Left $ show err
@@ -102,7 +104,30 @@ decryptWalletData encryptedWalletData password =
         where
           walletData = decodeJson $ decodeUtf8With lenientDecode decryptedData
   where
-    saltBS = decodeLenient $ encodeUtf8 $ salt encryptedWalletData
+    saltBS = Base64.decodeLenient $ encodeUtf8 $ salt encryptedWalletData
     secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) saltBS) :: Key AES256 ByteString
-    initIV = makeIV $ decodeLenient $ encodeUtf8 $ initVector encryptedWalletData :: Maybe (IV AES256)
-    encryptedDataBS = decodeLenient $ encodeUtf8 $ encryptedData encryptedWalletData
+    iv' = makeIV $ Base64.decodeLenient $ encodeUtf8 $ initVector encryptedWalletData :: Maybe (IV AES256)
+    encryptedDataBS = Base64.decodeLenient $ encodeUtf8 $ encryptedData encryptedWalletData
+
+encryptWalletFile :: WalletData -> Point Curve_X25519 -> IO EncryptedWalletData
+encryptWalletFile walletData publicKey = do
+  let curve = Proxy :: Proxy Curve_X25519
+  deriveEncryptResult <- deriveEncrypt curve publicKey
+  case deriveEncryptResult of
+    CryptoFailed err -> error $ show err
+    CryptoPassed (point, sharedSecret) -> do
+      salt :: ByteString <- genRandomSalt
+      let secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params sharedSecret salt) :: Key AES256 ByteString
+      iv' <- genRandomIV (undefined :: AES256)
+      case iv' of
+        Nothing -> error "Failed to generate an initialization vector"
+        Just iv -> do
+          let walletDataBS = encodeUtf8 $ encodeJson walletData
+          let encryptedData = encryptWithAEAD AEAD_GCM secretKey iv ("" :: ByteString) walletDataBS 32
+          case encryptedData of
+            Left err -> error $ show err
+            Right (tag, eData) -> return EncryptedWalletData {
+                encryptedData = decodeUtf8With lenientDecode $ Base64.encode eData
+              , salt = decodeUtf8With lenientDecode $ Base64.encode salt
+              , initVector = decodeUtf8With lenientDecode $ Base64.encode (convert iv :: ByteString)
+              }

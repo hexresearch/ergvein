@@ -27,6 +27,7 @@ library
     Ergvein.Crypto.Keys
     Ergvein.Crypto.WordLists
     Ergvein.Crypto.AES256
+    Ergvein.Crypto.ECIES
   build-depends:
       base                      >= 4.9      && <5
     , bytestring                >= 0.10     && < 0.11
