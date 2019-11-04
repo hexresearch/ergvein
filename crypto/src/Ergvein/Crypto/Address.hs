@@ -5,22 +5,23 @@ module Ergvein.Crypto.Address
 
 import Data.Aeson
 import Ergvein.Crypto.Constants
+import Ergvein.Types.Currency
 import Network.Haskoin.Address
 import Network.Haskoin.Address.Base58
 
 data EgvAddress = EgvAddress {
-  egvAddrNetTag :: NetworkTag
-, egvAddress    :: Address
+  egvAddrCur :: Currency
+, egvAddress :: Address
 } deriving (Eq, Ord, Show, Read)
 
 instance ToJSON EgvAddress where
-  toJSON (EgvAddress net key) = object [
-      "tag"     .= toJSON net
-    , "address" .= addrToJSON (getNetworkFromTag net) key
+  toJSON (EgvAddress cur key) = object [
+      "cur"     .= toJSON cur
+    , "address" .= addrToJSON (getCurrencyNetwork cur) key
     ]
 
 instance FromJSON EgvAddress where
   parseJSON = withObject "EgvAddress" $ \o -> do
-    net    <- o .: "tag"
-    key <- addrFromJSON (getNetworkFromTag net) =<< (o .: "pub_key")
-    pure $ EgvAddress net key
+    cur    <- o .: "cur"
+    key <- addrFromJSON (getCurrencyNetwork cur) =<< (o .: "pub_key")
+    pure $ EgvAddress cur key

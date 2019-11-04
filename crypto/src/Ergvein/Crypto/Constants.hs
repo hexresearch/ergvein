@@ -1,42 +1,47 @@
+{-# LANGUAGE CPP #-}
+
 module Ergvein.Crypto.Constants(
-    Network(..)
-  , NetworkTag(..)
-  , defaultEntropyLength
+    defaultEntropyLength
   , btc
   , btcTest
   , erg
   , ergTest
-  , getNetworkFromTag
+  , getCurrencyNetwork
+  , getCurrencyIndex
   ) where
 
 import Data.Aeson
 import Data.String
 import Data.Text(pack,unpack)
 import Data.Version
+import Ergvein.Types.Currency (Currency(..))
 import Network.Haskoin.Block
 import Network.Haskoin.Constants
+import Network.Haskoin.Keys (KeyIndex)
 import Text.Read(readMaybe)
 
--- | Currently supported networks. Used for wrappers and whatnot
-data NetworkTag = NetBTC | NetBTCTest | NetERG | NetERGTest
-  deriving (Show, Read, Eq, Ord, Enum, Bounded)
-
+#ifdef TESTNET
 -- | Get network correspondent to a given tag
-getNetworkFromTag :: NetworkTag -> Network
-getNetworkFromTag t = case t of
-  NetBTC     -> btc
-  NetBTCTest -> btcTest
-  NetERG     -> erg
-  NetERGTest -> ergTest
+getCurrencyNetwork :: Currency -> Network
+getCurrencyNetwork t = case t of
+  BTC -> btcTest
+  ERGO -> ergTest
 
-instance ToJSON NetworkTag where
-  toJSON = toJSON . show
-instance FromJSON NetworkTag where
-  parseJSON = withText "NetworkTag" $
-    maybe (fail "Unknown network tag") pure . readMaybe . unpack
+getCurrencyIndex :: Currency -> KeyIndex
+getCurrencyIndex = const 1
+{-# INLINE getCurrencyIndex #-}
 
-instance ToJSONKey NetworkTag where
-instance FromJSONKey NetworkTag where
+#else
+getCurrencyNetwork :: Currency -> Network
+getCurrencyNetwork t = case t of
+  BTC -> btc
+  ERGO -> erg
+
+getNetworkIndex :: Currency -> KeyIndex
+getNetworkIndex t = case t of
+  BTC -> getBip44Coin btc
+  ERGO -> getBip44Coin erg
+#endif
 
 -- | According to the BIP32 the allowed size of entropy is between 16 and 64 bytes (32 bytes is advised).
 -- The mnemonic must encode entropy in a multiple of 4 bytes.

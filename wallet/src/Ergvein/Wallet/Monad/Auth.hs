@@ -133,9 +133,9 @@ instance MonadBaseConstr t m => MonadStorage t (ErgveinM t m) where
   getEncryptedWallet = fmap storage'wallet $ readExternalRef =<< asks env'authRef
   {-# INLINE getEncryptedWallet #-}
   getAddressesByEgvXPubKey k = do
-    let net = getNetworkFromTag $ egvXPubNetTag k
+    let cur = getCurrencyNetwork $ egvXPubCur k
     keyMap <- fmap storage'pubKeys $ readExternalRef =<< asks env'authRef
-    pure $ catMaybes $ maybe [] (fmap (stringToAddr net)) $ M.lookup k keyMap
+    pure $ catMaybes $ maybe [] (fmap (stringToAddr cur)) $ M.lookup k keyMap
   {-# INLINE getAddressesByEgvXPubKey #-}
 
 -- | Execute action under authorized context or return the given value as result

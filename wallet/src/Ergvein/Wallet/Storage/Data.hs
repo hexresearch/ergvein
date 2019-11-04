@@ -17,7 +17,7 @@ import qualified Data.ByteString as BS
 data WalletData = WalletData
   { wallet'seed     :: Seed
   , wallet'root     :: EgvRootKey
-  , wallet'masters  :: M.Map NetworkTag EgvXPrvKey
+  , wallet'masters  :: M.Map Currency EgvXPrvKey
   }
 
 instance ToJSON WalletData where
