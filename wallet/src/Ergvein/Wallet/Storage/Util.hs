@@ -1,14 +1,11 @@
 module Ergvein.Wallet.Storage.Util(
     WalletData(..)
   , EncryptedWalletData(..)
-  , createWallet
-  , readWalletData
-  , saveWalletData
   , encryptWalletData
   , decryptWalletData
-  , addXPrvKey
-  , getWalletDirectory
-  , walletFileName
+  , createWallet
+  , createStorage
+  , storageFilePrefix
   , loadStorageFromFile
   ) where
 
@@ -24,6 +21,7 @@ import Ergvein.Aeson
 import Ergvein.Crypto
 import Ergvein.IO
 import Ergvein.Text
+import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Native
 import Ergvein.Wallet.Native
@@ -32,45 +30,26 @@ import System.Directory
 import System.FilePath
 
 import qualified Data.Text as T
+import qualified Data.Map.Strict as M
 
 type Password = Text
+type WalletName = Text
 
--- | Get user home directory location with ".ergvein" directory appended.
-getWalletDirectory :: IO FilePath
-getWalletDirectory = do
-  userHomeDirectory <- getHomeDirectory
-  return $ userHomeDirectory </> ".ergvein"
+createWallet :: Mnemonic -> Either StorageAlerts WalletData
+createWallet mnemonic = case mnemonicToSeed "" mnemonic of
+  Left err -> Left $ SAMnemonicFail $ T.pack err
+  Right seed -> let
+    root = makeXPrvKey seed
+    masters = M.fromList $ fmap (\c -> (c, deriveCurrencyKey root c)) allCurrencies
+    in Right $ WalletData seed (EgvRootKey root) masters
 
--- | Specify wallet file name
-walletFileName :: String
-walletFileName = "wallet.json"
+createStorage :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either StorageAlerts ErgveinStorage)
+createStorage mnemonic (login, pass) = either (pure . Left) (\wd -> do
+  ewd <- encryptWalletData wd pass
+  pure $ Right $ ErgveinStorage ewd mempty login) $ createWallet mnemonic
 
--- | Creates wallet file with mnemonic phrase
-createWallet :: Mnemonic -> IO ()
-createWallet mnemonic = saveWalletData walletData
-  where
-    walletData = WalletData {mnemonic = mnemonic, privateKeys = empty}
-
--- | Add extended private key to the WalletData value
-addXPrvKey :: WalletData -> Base58 -> WalletData
-addXPrvKey WalletData {mnemonic = mnemonic, privateKeys = privateKeys} xPrvKey =
-  WalletData {mnemonic = mnemonic, privateKeys = privateKeys |> xPrvKey}
-
--- | Read wallet file
-readWalletData :: IO (Maybe WalletData)
-readWalletData = do
-  walletDirectory <- getWalletDirectory
-  readJson $ walletDirectory </> walletFileName
-
--- | Save wallet data to wallet file
-saveWalletData :: WalletData -> IO ()
-saveWalletData walletData = do
-  walletDirectory <- getWalletDirectory
-  createDirectoryIfMissing False walletDirectory
-  writeJson (walletDirectory </> walletFileName) walletData
-
-encryptWalletData :: WalletData -> Password -> IO EncryptedWalletData
-encryptWalletData walletData password = do
+encryptWalletData :: MonadIO m => WalletData -> Password -> m EncryptedWalletData
+encryptWalletData walletData password = liftIO $ do
   salt :: ByteString <- genRandomSalt
   let secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
   mInitIV <- genRandomIV (undefined :: AES256)
@@ -105,16 +84,18 @@ decryptWalletData encryptedWalletData password =
     encryptedDataBS = decodeLenient $ encodeUtf8 $ encryptedData encryptedWalletData
 
 
-storageFileName :: Text
-storageFileName = "storage"
+storageFilePrefix :: Text
+storageFilePrefix = "wallet_"
 
 -- TODO: Actually decrypt the storage
 decryptStorage :: MonadIO m => Password -> Text -> m (Either StorageAlerts ErgveinStorage)
 decryptStorage pass txt = pure $ either (Left . SADecodeError) Right $ text2json txt
 
-loadStorageFromFile :: (MonadIO m, HasStoreDir m, PlatformNatives) => Password -> m (Either StorageAlerts ErgveinStorage)
-loadStorageFromFile pass = do
-  storageResp <- readStoredFile storageFileName
+loadStorageFromFile :: (MonadIO m, HasStoreDir m, PlatformNatives)
+  => WalletName -> Password -> m (Either StorageAlerts ErgveinStorage)
+loadStorageFromFile login pass = do
+  let fname = storageFilePrefix <> T.replace " " "_" login
+  storageResp <- readStoredFile fname
   either (pure . Left . SANativeAlert) (decryptStorage pass . T.concat) storageResp
 
 -- Alerts regarding secure storage system
@@ -122,6 +103,7 @@ data StorageAlerts
   = SADecodeError Text
   | SALoadedSucc
   | SANativeAlert NativeAlerts
+  | SAMnemonicFail Text
   deriving (Eq)
 
 instance LocalizedPrint StorageAlerts where
@@ -130,4 +112,5 @@ instance LocalizedPrint StorageAlerts where
       SADecodeError e -> "Storage loading error: " <> e
       SALoadedSucc    -> "Storage loaded"
       SANativeAlert a -> localizedShow l a
+      SAMnemonicFail t -> "Failed to produce seed from mnemonic: " <> t
     Russian -> localizedShow English v

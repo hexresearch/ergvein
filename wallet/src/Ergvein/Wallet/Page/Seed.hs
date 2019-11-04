@@ -120,12 +120,14 @@ guessButtons ws idyn = do
       delay 1 $ fforMaybe btnE $ const $ if reali == i then Just (i+1) else Nothing
 
 seedRestorePage :: forall t m . MonadFrontBase t m => m ()
-seedRestorePage = do
+seedRestorePage = wrapper True $ do
   h4 $ localizedText SPSRestoreTitle
   resetE <- buttonClass (pure "button button-outline") SPSReset
   mnemE <- fmap (switch . current) $ widgetHold seedRestoreWidget $ seedRestoreWidget <$ resetE
-  widgetHold (pure ()) $ ffor mnemE $ h4 . text
-  pure ()
+  void $ nextWidget $ ffor mnemE $ \m -> Retractable {
+      retractableNext = passwordPage m
+    , retractablePrev = Just $ pure seedRestorePage
+    }
 
 seedRestoreWidget :: forall t m . MonadFrontBase t m => m (Event t Mnemonic)
 seedRestoreWidget = mdo
@@ -142,7 +144,7 @@ seedRestoreWidget = mdo
   inpD <- fmap join $ widgetHold (textField emptyStr "") $ ffor wordE $ const $ textField emptyStr ""
   mnemD <- foldDyn (\w m -> let p = if m == "" then "" else " " in m <> p <> w) "" wordE
   goE <- delay 0.1 (updated ixD)
-  pure $ attachWithMaybe (\mnem i -> if i == 5 then Just mnem else Nothing) (current mnemD) goE
+  pure $ attachWithMaybe (\mnem i -> if i == 25 then Just mnem else Nothing) (current mnemD) goE
   where
     waiting :: m (Event t Text)
     waiting = (h4 $ localizedText SPSWaiting) >> pure never
