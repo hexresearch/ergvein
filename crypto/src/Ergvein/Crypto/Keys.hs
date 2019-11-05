@@ -1,13 +1,17 @@
+{-# LANGUAGE RecordWildCards #-}
 module Ergvein.Crypto.Keys(
     Base58
   , encodeBase58
   , decodeBase58
   , Mnemonic
+  , Seed
   , toMnemonic
   , mnemonicToSeed
-  , XPubKey
   , EgvXPubKey(..)
-  , NetworkTag(..)
+  , EgvXPrvKey(..)
+  , EgvRootKey(..)
+  , Currency(..)
+  , XPubKey
   , XPrvKey
   , xPubImport
   , xPrvImport
@@ -16,6 +20,7 @@ module Ergvein.Crypto.Keys(
   , getEntropy
   , makeXPrvKey
   , deriveXPubKey
+  , deriveCurrencyKey
   , xPubAddr
   , addrToString
   , xPubErgAddrString
@@ -25,14 +30,16 @@ module Ergvein.Crypto.Keys(
 import Crypto.Hash
 import Crypto.Hash.Algorithms
 import Data.Aeson
-import Data.Text
+import Data.Text hiding (foldl)
 import Ergvein.Crypto.Constants
 import Ergvein.Crypto.WordLists
+import Ergvein.Types.Currency (Currency(..))
 import Network.Haskoin.Address
 import Network.Haskoin.Address.Base58
 import Network.Haskoin.Constants
 import Network.Haskoin.Keys
 import Network.Haskoin.Util
+import Text.Read (readMaybe)
 
 import qualified Data.ByteArray                 as BA
 import qualified Data.ByteString                as BS
@@ -40,9 +47,26 @@ import qualified System.Entropy                 as E
 
 -- | Wrapper around XPubKey for easy to/from json manipulations
 data EgvXPubKey = EgvXPubKey {
-  egvXPubNetTag :: NetworkTag
-, egvXPubKey    :: XPubKey
+  egvXPubCur  :: Currency
+, egvXPubKey  :: XPubKey
 } deriving (Eq)
+
+-- | Wrapper around XPrvKey for easy to/from json manipulations
+data EgvXPrvKey = EgvXPrvKey {
+  egvXPrvCur  :: Currency
+, egvXPrvKey  :: XPrvKey
+} deriving (Eq)
+
+-- | Wrapper for a root key (a key w/o assigned network)
+newtype EgvRootKey = EgvRootKey {unEgvRootKey :: XPrvKey}
+  deriving (Eq, Show, Read)
+
+-- | Derive a key for a specific network
+deriveCurrencyKey :: XPrvKey -> Currency -> EgvXPrvKey
+deriveCurrencyKey pk cur = let
+  path = [44,getCurrencyIndex cur,0]
+  key = foldl hardSubKey pk path
+  in EgvXPrvKey cur key
 
 getEntropy :: IO Entropy
 getEntropy = E.getEntropy defaultEntropyLength
@@ -93,21 +117,61 @@ example = do
   print address
 
 instance ToJSON EgvXPubKey where
-  toJSON (EgvXPubKey net key) = object [
-      "tag" .= toJSON net
-    , "pub_key" .= xPubToJSON (getNetworkFromTag net) key
+  toJSON (EgvXPubKey cur key) = object [
+      "cur" .= toJSON cur
+    , "pub_key" .= xPubToJSON (getCurrencyNetwork cur) key
     ]
 
 instance FromJSON EgvXPubKey where
   parseJSON = withObject "EgvXPubKey" $ \o -> do
-    net    <- o .: "tag"
-    key <- xPubFromJSON (getNetworkFromTag net) =<< (o .: "pub_key")
+    net    <- o .: "cur"
+    key <- xPubFromJSON (getCurrencyNetwork net) =<< (o .: "pub_key")
     pure $ EgvXPubKey net key
 
 instance ToJSONKey EgvXPubKey where
 instance FromJSONKey EgvXPubKey where
 
 instance Ord EgvXPubKey where
-  compare (EgvXPubKey net1 key1) (EgvXPubKey net2 key2) = case compare net1 net2 of
-    EQ -> compare (xPubExport (getNetworkFromTag net1) key1) (xPubExport (getNetworkFromTag net2) key2)
+  compare (EgvXPubKey cur1 key1) (EgvXPubKey cur2 key2) = case compare cur1 cur2 of
+    EQ -> compare (xPubExport (getCurrencyNetwork cur1) key1) (xPubExport (getCurrencyNetwork cur2) key2)
+    x -> x
+
+instance ToJSON EgvXPrvKey where
+  toJSON (EgvXPrvKey cur key) = object [
+      "cur" .= toJSON cur
+    , "pub_key" .= xPrvToJSON (getCurrencyNetwork cur) key
+    ]
+
+instance FromJSON EgvXPrvKey where
+  parseJSON = withObject "EgvXPrvKey" $ \o -> do
+    cur <- o .: "cur"
+    key <- xPrvFromJSON (getCurrencyNetwork cur) =<< (o .: "pub_key")
+    pure $ EgvXPrvKey cur key
+
+instance ToJSONKey EgvXPrvKey where
+instance FromJSONKey EgvXPrvKey where
+
+instance ToJSON EgvRootKey where
+  toJSON (EgvRootKey XPrvKey{..}) = object [
+      "d" .= toJSON xPrvDepth
+    , "p" .= toJSON xPrvParent
+    , "i" .= toJSON xPrvIndex
+    , "c" .= show xPrvChain
+    , "k" .= show xPrvKey
+    ]
+
+instance FromJSON EgvRootKey where
+  parseJSON = withObject "EgvRootKey" $ \o -> do
+    d <- o .: "d"
+    p <- o .: "p"
+    i <- o .: "i"
+    c <- o .: "c"
+    k <- o .: "k"
+    case (readMaybe c, readMaybe k) of
+      (Just c', Just k') -> pure $ EgvRootKey $ XPrvKey d p i c' k'
+      _ -> fail "failed to read c or k"
+
+instance Ord EgvXPrvKey where
+  compare (EgvXPrvKey cur1 key1) (EgvXPrvKey cur2 key2) = case compare cur1 cur2 of
+    EQ -> compare (xPrvExport (getCurrencyNetwork cur1) key1) (xPrvExport (getCurrencyNetwork cur2) key2)
     x -> x

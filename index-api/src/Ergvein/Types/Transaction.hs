@@ -31,3 +31,6 @@ type PubKeyScriptHash = Text
 
 -- | Hexadecimal representation of transaction hash
 type TxHash = Text
+
+-- | Index of the UTXO
+type TxOutIndex = Word

@@ -26,6 +26,8 @@ library
     Ergvein.Index.Server.Config
     Ergvein.Index.Server.Environment
     Ergvein.Index.Server.BlockchainScan
+    Ergvein.Index.Server.BlockScanner.BTCBlockScanner
+    Ergvein.Index.Server.BlockScanner.Types
 
   build-depends:
         base                     >= 4.7 && < 4.12
@@ -57,6 +59,9 @@ library
       , bitcoin-block            == 0.13.*
       , haskoin-core             == 0.8.*
       , bitcoin-api              == 0.12.1
+      , ilist                    == 0.3.*
+      , cereal                   == 0.5.*
+      , hexstring                == 0.11.*
       , ergvein-common
       , ergvein-index-api
       , ergvein-wallet-types 
