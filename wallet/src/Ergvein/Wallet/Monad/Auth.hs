@@ -149,7 +149,7 @@ instance MonadBaseConstr t m => MonadStorage t (ErgveinM t m) where
 -- | Execute action under authorized context or return the given value as result
 -- is user is not authorized. Each time the login info changes (user logs out or logs in)
 -- the widget is updated.
-liftAuth :: MonadFrontBase t m => m a -> (ErgveinM t m) a -> m (Dynamic t a)
+liftAuth :: MonadFrontBase t m => m a -> ErgveinM t m a -> m (Dynamic t a)
 liftAuth ma0 ma = mdo
   mauthD <- holdUniqDyn =<< getAuthInfoMaybe
   mauth0 <- sample . current $ mauthD

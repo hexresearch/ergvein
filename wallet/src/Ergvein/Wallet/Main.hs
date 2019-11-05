@@ -22,4 +22,4 @@ frontend = do
   loadingWidget
   askPasswordModal
   logWriter =<< fmap fst getLogsTrigger
-  void $ (retractStack initialPage) `liftAuth` (retractStack initialAuthedPage)
+  void $ retractStack initialPage `liftAuth` retractStack initialAuthedPage
