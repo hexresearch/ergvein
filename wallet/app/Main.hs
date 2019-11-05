@@ -4,6 +4,7 @@ module Main where
 import Data.Default
 import Ergvein.Wallet
 import Ergvein.Wallet.Run
+import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Style
 import Ergvein.Wallet.Yaml
 import GHC.Generics
@@ -11,8 +12,10 @@ import Options.Generic
 
 #ifdef ANDROID
 import Ergvein.Wallet.Android.Run
+import Ergvein.Wallet.Android.Native
 #else
 import Ergvein.Wallet.Desktop.Run
+import Ergvein.Wallet.Desktop.Native
 #endif
 
 data Options = Options {
@@ -24,9 +27,9 @@ instance ParseRecord Options
 main :: IO ()
 main = do
   opts <- getRecord "Ergvein cryptowallet"
-  settings :: Settings <- maybe (pure def) readYaml' $ unHelpful $ config opts
+  settings :: Settings <- loadSettings $ unHelpful $ config opts
   run $ \cbs -> do
     css <- compileFrontendCss
     mainWidgetWithCss css $ do
-      env <- newEnv settings
-      runEnv cbs env frontend
+      unauthEnv <- newEnv settings (runUiCallbacks cbs)
+      runEnv cbs unauthEnv frontendUnauth

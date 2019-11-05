@@ -7,11 +7,13 @@ import Network.Wai.Middleware.RequestLogger
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.App
 import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.Environment
+import Control.Immortal
+import Control.Monad.IO.Unlift
+import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.BlockchainScan
 
 import qualified Data.Text.IO as T
-
-configurationFilePath :: String
-configurationFilePath = "./configuration.yaml"
 
 data Options = Options {
   optsCommand :: Command
@@ -44,11 +46,10 @@ main = do
 
 startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
-    CommandListen cfgPath -> do
-        cfg <- loadConfig cfgPath
-        T.putStrLn $ pack $ connectionStringFromConfig cfg
+    CommandListen cfgPath ->  do
+        cfg <- loadConfig cfgPath      
         env <- newServerEnv cfg
-        
+        t <- liftIO $ startBlockchainScanner env
         T.putStrLn $ pack $ "Server started at " <> configDbHost cfg <> ":" <> (show . configServerPort $ cfg)
         let app = logStdoutDev $ indexServerApp env
             warpSettings = setPort (configServerPort cfg) defaultSettings

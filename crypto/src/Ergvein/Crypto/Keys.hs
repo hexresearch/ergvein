@@ -6,6 +6,8 @@ module Ergvein.Crypto.Keys(
   , toMnemonic
   , mnemonicToSeed
   , XPubKey
+  , EgvXPubKey(..)
+  , NetworkTag(..)
   , XPrvKey
   , xPubImport
   , xPrvImport
@@ -22,6 +24,7 @@ module Ergvein.Crypto.Keys(
 
 import Crypto.Hash
 import Crypto.Hash.Algorithms
+import Data.Aeson
 import Data.Text
 import Ergvein.Crypto.Constants
 import Ergvein.Crypto.WordLists
@@ -34,6 +37,12 @@ import Network.Haskoin.Util
 import qualified Data.ByteArray                 as BA
 import qualified Data.ByteString                as BS
 import qualified System.Entropy                 as E
+
+-- | Wrapper around XPubKey for easy to/from json manipulations
+data EgvXPubKey = EgvXPubKey {
+  egvXPubNetTag :: NetworkTag
+, egvXPubKey    :: XPubKey
+} deriving (Eq)
 
 getEntropy :: IO Entropy
 getEntropy = E.getEntropy defaultEntropyLength
@@ -82,3 +91,23 @@ example = do
   let address = fmap (xPubAddrToString network) xPubKey
   putStrLn "\nAddress:"
   print address
+
+instance ToJSON EgvXPubKey where
+  toJSON (EgvXPubKey net key) = object [
+      "tag" .= toJSON net
+    , "pub_key" .= xPubToJSON (getNetworkFromTag net) key
+    ]
+
+instance FromJSON EgvXPubKey where
+  parseJSON = withObject "EgvXPubKey" $ \o -> do
+    net    <- o .: "tag"
+    key <- xPubFromJSON (getNetworkFromTag net) =<< (o .: "pub_key")
+    pure $ EgvXPubKey net key
+
+instance ToJSONKey EgvXPubKey where
+instance FromJSONKey EgvXPubKey where
+
+instance Ord EgvXPubKey where
+  compare (EgvXPubKey net1 key1) (EgvXPubKey net2 key2) = case compare net1 net2 of
+    EQ -> compare (xPubExport (getNetworkFromTag net1) key1) (xPubExport (getNetworkFromTag net2) key2)
+    x -> x

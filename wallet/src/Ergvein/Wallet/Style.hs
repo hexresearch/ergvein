@@ -40,12 +40,12 @@ frontendCssBS r = let
 
 frontendCss :: Resources -> Css
 frontendCss r = do
-  fontFamilies r
+  -- fontFamilies r
   html ? textAlign center
   body ? do
     color textColor
     backgroundColor majorBackground
-    fontFamily ["Roboto"] []
+    -- fontFamily ["Roboto"] []
   wrapperCss
   buttonCss
   inputCss
@@ -53,11 +53,15 @@ frontendCss r = do
   validateCss
   passwordCss
   initialPageCss
-  currenciesPageCss
+  balancesPageCss
   loadingWidgetCss
+  alertsCss
 
 textColor :: Color
 textColor = rgb 0 0 0
+
+hoverColor :: Color
+hoverColor = rgb 112 112 112
 
 majorBackground :: Color
 majorBackground = rgb 255 255 255
@@ -164,8 +168,8 @@ initialPageCss = do
     marginRight auto
     marginBottom $ px 10
 
-currenciesPageCss :: Css
-currenciesPageCss = do
+balancesPageCss :: Css
+balancesPageCss = do
   ".sync-progress" ? do
     width $ pct 100
     maxWidth $ px 500
@@ -174,6 +178,9 @@ currenciesPageCss = do
     fontSize $ pt 14
   ".currency-wrapper" ? do
     textAlign center
+    cursor pointer
+  ".currency-wrapper:hover" ? do
+    color hoverColor
   ".currency-line" ? do
     width $ pct 100
     maxWidth $ px 500
@@ -209,3 +216,41 @@ loadingWidgetCss = do
   ".loading__status" ? do
     backgroundColor "#ab5dda"
     height $ pct 100
+
+alertsCss :: Css
+alertsCss = do
+  ".alert-overlay" ? do
+    pointerEvents none
+    backgroundColor transparent
+    position fixed
+    bottom $ px 0
+    right $ px 0
+    width $ pct 100
+  ".alert" ? fontWeight (weight 600)
+  ".alert-handler" ? do
+    zIndex 1
+    marginLeft auto
+    marginRight auto
+    textAlign center
+    let em1 = em 1 in padding em1 em1 em1 em1
+    let px10 = px 10 in borderRadius px10 px10 px10 px10
+    marginTop $ px 5
+    marginBottom $ px 5
+    marginLeft $ px 10
+    marginRight $ px 10
+    wordBreak breakAll
+  ".badge" ? do
+    let em' = em 0.75 in padding em' em' em' em'
+    marginRight $ em 1
+  ".alert-success" ? do
+    color "#ffffff"
+    backgroundColor "#88d68c"
+  ".alert-info" ? do
+    color "#ffffff"
+    backgroundColor "#3fa7d8"
+  ".alert-danger" ? do
+    color "#ffffff"
+    backgroundColor "#d64d35"
+  ".alert-secondary" ? do
+    color "#000"
+    backgroundColor "#a9a7a7"
