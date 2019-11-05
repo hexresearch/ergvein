@@ -45,8 +45,12 @@ frontendCss r = do
   body ? do
     color textColor
     backgroundColor majorBackground
+    marginTop $ px 0
+    marginLeft $ px 0
+    marginRight $ px 0
     -- fontFamily ["Roboto"] []
   wrapperCss
+  menuCss
   buttonCss
   inputCss
   mnemonicWidgetCss
@@ -73,7 +77,7 @@ wrapperCss :: Css
 wrapperCss = do
   ".container" ? do
     position relative
-    height $ pct 95
+    height $ pct 90
   ".vertical-center" ? do
     margin (px 0) (px 0) (px 0) (px 0)
     position absolute
@@ -82,6 +86,26 @@ wrapperCss = do
     width $ pct 90
     where
       translatePctY y = prefixed (browsers <> "transform") $ "translateY(" <> value y <> ")"
+
+menuCss :: Css
+menuCss = do
+  ".menu-header" ? do
+    width $ pct 100
+    backgroundColor black
+    color white
+    fontSize $ pt 14
+    paddingBottom $ px 10
+    display displayTable
+  ".menu-wallet-name" ? do
+    display tableCell
+    textAlign center
+    width $ pct 100
+  ".menu-wallet-menu" ? do
+    display tableCell
+    verticalAlign vAlignBottom
+  ".menu-button" ? do
+    width $ px 42
+    marginRight $ px 5
 
 buttonCss :: Css
 buttonCss = do
@@ -172,7 +196,7 @@ passwordCss = do
     justifyContent center
     paddingLeft $ pct 25
     paddingRight $ pct 25
-    
+
 initialPageCss :: Css
 initialPageCss = do
   ".initial-options" ** button ? do
