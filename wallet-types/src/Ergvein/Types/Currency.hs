@@ -22,6 +22,9 @@ data Currency = BTC | ERGO
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic)
 $(deriveJSON aesonOptions ''Currency)
 
+instance ToJSONKey Currency where
+instance FromJSONKey Currency where
+
 -- | All supported currencies
 allCurrencies :: [Currency]
 allCurrencies = [minBound .. maxBound]

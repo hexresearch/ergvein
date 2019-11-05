@@ -11,7 +11,7 @@ import Data.Time
 import Ergvein.Text
 import Ergvein.Wallet.Monad
 
-percentDyn :: MonadFront t m => NominalDiffTime -> m (Dynamic t Int)
+percentDyn :: MonadFrontBase t m => NominalDiffTime -> m (Dynamic t Int)
 percentDyn dt = do
   buildE <- getPostBuild
   (eE, fire) <- newTriggerEvent
@@ -19,7 +19,7 @@ percentDyn dt = do
   performEvent_ $ (liftIO $ fire ()) <$ tickE
   foldDyn (\_ v -> if v == 100 then 0 else v + 10) 0 tickE
 
-loadingWidget :: forall t m . MonadFront t m => m ()
+loadingWidget :: forall t m . MonadFrontBase t m => m ()
 loadingWidget = do
   errE <- newAlertEvent
   triggerE <- fmap fst getLoadingWidgetTF

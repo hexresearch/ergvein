@@ -159,7 +159,20 @@ passwordCss = do
     right $ px 0
     marginTop $ px 10
     marginRight $ px 13
-
+  ".ask-password-modal" ? do
+    position absolute
+    top $ px 0
+    left $ px 0
+    width $ vw 100
+    height $ vh 100
+    zIndex 1
+    backgroundColor white
+    display flex
+    flexDirection column
+    justifyContent center
+    paddingLeft $ pct 25
+    paddingRight $ pct 25
+    
 initialPageCss :: Css
 initialPageCss = do
   ".initial-options" ** button ? do
