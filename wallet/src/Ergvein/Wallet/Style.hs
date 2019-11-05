@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedLists #-}
 module Ergvein.Wallet.Style(
     compileFrontendCss
   ) where
@@ -40,7 +41,7 @@ frontendCssBS r = let
 
 frontendCss :: Resources -> Css
 frontendCss r = do
-  -- fontFamilies r
+  fontFamilies r
   html ? textAlign center
   body ? do
     color textColor
@@ -48,7 +49,7 @@ frontendCss r = do
     marginTop $ px 0
     marginLeft $ px 0
     marginRight $ px 0
-    -- fontFamily ["Roboto"] []
+    fontFamily ["Roboto"] []
   wrapperCss
   menuCss
   buttonCss
@@ -84,8 +85,12 @@ wrapperCss = do
     top $ pct 50
     translatePctY $ pct (-50)
     width $ pct 90
-    where
-      translatePctY y = prefixed (browsers <> "transform") $ "translateY(" <> value y <> ")"
+
+translatePctY :: Size Percentage -> Css
+translatePctY y = prefixed (browsers <> "transform") $ "translateY(" <> value y <> ")"
+
+translatePctX :: Size Percentage -> Css
+translatePctX x = prefixed (browsers <> "transform") $ "translateX(" <> value x <> ")"
 
 menuCss :: Css
 menuCss = do
@@ -100,12 +105,35 @@ menuCss = do
     display tableCell
     textAlign center
     width $ pct 100
+    paddingTop $ px 5
   ".menu-wallet-menu" ? do
     display tableCell
     verticalAlign vAlignBottom
   ".menu-button" ? do
     width $ px 42
-    marginRight $ px 5
+    marginRight $ px 10
+  ".menu-dropdown-wrapper" ? do
+    display inlineBlock
+    position relative
+  ".menu-dropdown" ? do
+    display displayNone
+    backgroundColor black
+    minWidth $ px 160
+    position absolute
+    boxShadow [bsColor (rgba 0 0 0 0.2) $ shadowWithSpread (px 0) (px 8) (px 16) (px 0)]
+    zIndex 1
+    translatePctX $ pct (-75)
+  ".menu-dropdown .button.button-clear" ? do
+    color white
+    fontSize $ pt 14
+    display block
+    border solid (rem 0.1) white
+    width $ pct 100
+    borderRadius (px 0) (px 0) (px 0) (px 0)
+    marginBottom $ px 0
+  ".menu-dropdown-wrapper:hover .menu-dropdown" ? do
+    display block
+
 
 buttonCss :: Css
 buttonCss = do
