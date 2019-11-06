@@ -7,7 +7,6 @@ import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Alert.Type
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Page.Seed
@@ -33,9 +32,7 @@ instance LocalizedPrint InitialPageStrings where
       IPSRestore  -> "Восстановить кошелёк"
 
 initialPage :: MonadFrontBase t m => m ()
-initialPage = do
-  menuWidget
-  wrapper True $ divClass "initial-options" $ do
+initialPage = wrapper True $ divClass "initial-options" $ do
     newE <- fmap (GoSeed <$) $ row . outlineButton $ IPSCreate
     restoreE <- fmap (GoRestore <$) $ row . outlineButton $ IPSRestore
     let goE = leftmost [newE, restoreE]

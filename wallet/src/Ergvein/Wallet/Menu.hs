@@ -7,10 +7,11 @@ import Ergvein.Wallet.Embed
 import Ergvein.Wallet.Embed.TH
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Page.Initial
 
-data MenuItems = MenuNetwork | MenuSettings | MenuAbout | MenuLogs
+data MenuItem = MenuNetwork | MenuSettings | MenuAbout | MenuLogs
 
-instance LocalizedPrint MenuItems where
+instance LocalizedPrint MenuItem where
   localizedShow l v = case l of
     English -> case v of
       MenuNetwork -> "Network"
@@ -23,18 +24,27 @@ instance LocalizedPrint MenuItems where
       MenuAbout -> "О программе"
       MenuLogs -> "Логи"
 
-menuWidget :: MonadFrontBase t m => m ()
-menuWidget = do
-  divClass "menu-header" $ do
-    divClass "menu-wallet-name" $ text "Default wallet"
-    divClass "menu-wallet-menu" $ do
-      menuIconUrl <- createObjectURL menuIcon
-      divClass "menu-dropdown-wrapper" $ do
-        btnE <- divButton "menu-button" $ imgClass menuIconUrl ""
-        divClass "menu-dropdown" $ do
-          clearButton MenuNetwork
-          clearButton MenuSettings
-          clearButton MenuAbout
-          clearButton MenuLogs
-          pure ()
-      pure ()
+menuWidget :: MonadFrontBase t m => Maybe (Dynamic t (m ())) -> m ()
+menuWidget prevWidget = divClass "menu-header" $ do
+  divClass "menu-wallet-name" $ text "Default wallet"
+  divClass "menu-wallet-menu" $ do
+    menuIconUrl <- createObjectURL menuIcon
+    divClass "menu-dropdown-wrapper" $ do
+      btnE <- divButton "menu-button" $ imgClass menuIconUrl ""
+      divClass "menu-dropdown" $ do
+        let menuBtn v = (v <$) <$> clearButton v
+        netE <- menuBtn MenuNetwork
+        setE <- menuBtn MenuSettings
+        abtE <- menuBtn MenuAbout
+        logE <- menuBtn MenuLogs
+        switchMenu prevWidget $ leftmost [netE, setE, abtE, logE]
+
+switchMenu :: MonadFrontBase t m => Maybe (Dynamic t (m ())) -> Event t MenuItem -> m ()
+switchMenu prevWidget e = void $ nextWidget $ ffor e $ \go -> Retractable {
+    retractableNext = case go of
+      MenuNetwork  -> initialPage
+      MenuSettings -> initialPage
+      MenuAbout    -> initialPage
+      MenuLogs     -> initialPage
+  , retractablePrev = prevWidget
+  }

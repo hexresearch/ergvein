@@ -9,6 +9,7 @@ import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Loading
 import Ergvein.Wallet.Log.Writer
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.Initial
 import Ergvein.Wallet.Page.Seed
 import Ergvein.Wallet.Password
@@ -22,4 +23,4 @@ frontend = do
   loadingWidget
   askPasswordModal
   logWriter =<< fmap fst getLogsTrigger
-  void $ retractStack initialPage `liftAuth` retractStack initialAuthedPage
+  void $ retractStack initialPage `liftAuth` retractStack balancesPage
