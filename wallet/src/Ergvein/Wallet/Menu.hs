@@ -7,7 +7,6 @@ import Ergvein.Wallet.Embed
 import Ergvein.Wallet.Embed.TH
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Page.Initial
 
 data MenuItem = MenuNetwork | MenuSettings | MenuAbout | MenuLogs
 
@@ -40,11 +39,13 @@ menuWidget prevWidget = divClass "menu-header" $ do
         switchMenu prevWidget $ leftmost [netE, setE, abtE, logE]
 
 switchMenu :: MonadFrontBase t m => Maybe (Dynamic t (m ())) -> Event t MenuItem -> m ()
-switchMenu prevWidget e = void $ nextWidget $ ffor e $ \go -> Retractable {
-    retractableNext = case go of
-      MenuNetwork  -> initialPage
-      MenuSettings -> initialPage
-      MenuAbout    -> initialPage
-      MenuLogs     -> initialPage
+switchMenu prevWidget e = void $ nextWidget $ fforMaybe e $ \go -> let
+  mkNext n = Retractable {
+    retractableNext = n
   , retractablePrev = prevWidget
   }
+  in case go of
+      MenuNetwork  -> Nothing -- TODO: use mkNext when we have corresponding pages
+      MenuSettings -> Nothing
+      MenuAbout    -> Nothing
+      MenuLogs     -> Nothing

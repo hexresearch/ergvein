@@ -6,12 +6,14 @@ module Ergvein.Wallet.Style(
 import Clay
 import Clay.Selector
 import Clay.Stylesheet (prefixed)
+import Control.Monad
 import Data.ByteString (ByteString)
 import Data.ByteString.Lazy (toStrict)
 import Data.Text (Text)
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Ergvein.Wallet.Embed
 import Ergvein.Wallet.Embed.TH
+import Ergvein.Wallet.Platform
 import Language.Javascript.JSaddle hiding ((#))
 import Prelude hiding ((**), rem)
 
@@ -123,6 +125,9 @@ menuCss = do
     boxShadow [bsColor (rgba 0 0 0 0.2) $ shadowWithSpread (px 0) (px 8) (px 16) (px 0)]
     zIndex 1
     translatePctX $ pct (-75)
+    when isAndroid $ do
+      marginTop $ px 10
+      marginLeft $ px 5
   ".menu-dropdown .button.button-clear" ? do
     color white
     fontSize $ pt 14
