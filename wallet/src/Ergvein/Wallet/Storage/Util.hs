@@ -49,7 +49,7 @@ createStorage :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either St
 createStorage mnemonic (login, pass) = either (pure . Left) (\wd -> do
   ewdResult <- encryptWalletData wd pass
   case ewdResult of
-    Left e -> pure $ Left e
+    Left err -> pure $ Left err
     Right ewd -> pure $ Right $ ErgveinStorage ewd mempty login) $ createWallet mnemonic
 
 encryptWalletData :: MonadIO m => WalletData -> Password -> m (Either StorageAlerts EncryptedWalletData)
@@ -58,12 +58,12 @@ encryptWalletData walletData password = liftIO $ do
   let secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
   iv <- genRandomIV (undefined :: AES256)
   case iv of
-    Nothing -> return $ Left $ SACryptoError "Failed to generate an AES initialization vector"
+    Nothing -> pure $ Left $ SACryptoError "Failed to generate an AES initialization vector"
     Just iv' -> do
       let walletDataBS = encodeUtf8 $ encodeJson walletData
       case encrypt secretKey iv' walletDataBS of
-        Left err -> return $ Left $ SACryptoError $ showt err
-        Right eData -> return $ Right $ EncryptedWalletData {
+        Left err -> pure $ Left $ SACryptoError $ showt err
+        Right eData -> pure $ Right $ EncryptedWalletData {
             encryptedWallet'ciphertext = eData
           , encryptedWallet'salt       = salt
           , encryptedWallet'iv         = iv'
@@ -89,21 +89,21 @@ encryptStorage storage publicKey = do
   let curve = Proxy :: Proxy Curve_X25519
   deriveEncryptResult <- deriveEncrypt curve publicKey
   case deriveEncryptResult of
-    CryptoFailed err -> return $ Left $ SACryptoError $ showt err
+    CryptoFailed err -> pure $ Left $ SACryptoError $ showt err
     CryptoPassed (eciesPoint, sharedSecret) -> do
       salt :: ByteString <- genRandomSalt
       let secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params sharedSecret salt) :: Key AES256 ByteString
       iv' <- genRandomIV (undefined :: AES256)
       case iv' of
-        Nothing -> return $ Left $ SACryptoError "Failed to generate an initialization vector"
+        Nothing -> pure $ Left $ SACryptoError "Failed to generate an initialization vector"
         Just iv -> do
           let storageBS = encodeUtf8 $ encodeJson storage
               ivBS = convert iv :: ByteString
               eciesPointBS = encodePoint curve eciesPoint :: ByteString
               encryptedData = encryptWithAEAD AEAD_GCM secretKey iv (BS.concat [salt, ivBS, eciesPointBS]) storageBS defaultAuthTagLength
           case encryptedData of
-            Left err ->return $ Left $ SACryptoError $ showt err
-            Right (authTag, ciphertext) -> return $ Right $ EncryptedErgveinStorage {
+            Left err -> pure $ Left $ SACryptoError $ showt err
+            Right (authTag, ciphertext) -> pure $ Right $ EncryptedErgveinStorage {
                 encryptedStorage'ciphertext = ciphertext
               , encryptedStorage'salt       = salt
               , encryptedStorage'iv         = iv
@@ -135,10 +135,10 @@ decryptStorage encryptedStorage privateKey = do
             where
               storage = decodeJson $ decodeUtf8With lenientDecode decryptedStorage
 
-passwordToECIESPrvKey :: Password -> ECIESPrvKey
+passwordToECIESPrvKey :: Password -> Either StorageAlerts ECIESPrvKey
 passwordToECIESPrvKey password = case secretKey passwordHash of
-  CryptoFailed err -> error "Failed to generate an ECIES secret key from password"
-  CryptoPassed key -> key
+  CryptoFailed err -> Left $ SACryptoError "Failed to generate an ECIES secret key from password"
+  CryptoPassed key -> Right key
   where
     passwordHash = fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) BS.empty :: ByteString
 
@@ -146,9 +146,9 @@ storageFilePrefix :: Text
 storageFilePrefix = "wallet_"
 
 saveStorageToFile :: (MonadIO m, MonadRandom m, HasStoreDir m, PlatformNatives)
-  => WalletName -> ECIESPubKey -> ErgveinStorage -> m ()
-saveStorageToFile login publicKey storage = do
-  let fname = storageFilePrefix <> T.replace " " "_" login
+  => ECIESPubKey -> ErgveinStorage -> m ()
+saveStorageToFile publicKey storage = do
+  let fname = storageFilePrefix <> T.replace " " "_" (storage'walletName storage)
   encryptedStorage <- encryptStorage storage publicKey
   case encryptedStorage of
     Left _ -> fail "Failed to encrypt storage"
@@ -160,12 +160,14 @@ loadStorageFromFile login pass = do
   let fname = storageFilePrefix <> T.replace " " "_" login
   storageResp <- readStoredFile fname
   case storageResp of
-    Left err -> return $ Left $ SANativeAlert err
+    Left err -> pure $ Left $ SANativeAlert err
     Right storageText -> case decodeJson $ T.concat storageText of
-      Left err -> return $ Left $ SADecodeError err
-      Right storage -> case decryptStorage storage (passwordToECIESPrvKey pass) of
-        Left err -> return $ Left err
-        Right s -> return $ Right s
+      Left err -> pure $ Left $ SADecodeError err
+      Right storage -> case passwordToECIESPrvKey pass of
+        Left err -> pure $ Left err
+        Right pubKey -> case decryptStorage storage pubKey of
+          Left err -> pure $ Left err
+          Right s -> pure $ Right s
 
 -- Alerts regarding secure storage system
 data StorageAlerts
