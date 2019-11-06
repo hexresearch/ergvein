@@ -6,11 +6,11 @@ module Ergvein.Wallet.Page.Initial(
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Alert.Type
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Page.Seed
-import Ergvein.Wallet.Page.Password
-import Ergvein.Wallet.Wrapper
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Page.Password
+import Ergvein.Wallet.Page.Seed
+import Ergvein.Wallet.Wrapper
 
 import Control.Monad.IO.Class
 import Ergvein.Wallet.Clipboard
@@ -33,15 +33,15 @@ instance LocalizedPrint InitialPageStrings where
 
 initialPage :: MonadFrontBase t m => m ()
 initialPage = wrapper True $ divClass "initial-options" $ do
-  newE <- fmap (GoSeed <$) $ row . outlineButton $ IPSCreate
-  restoreE <- fmap (GoRestore <$) $ row . outlineButton $ IPSRestore
-  let goE = leftmost [newE, restoreE]
-  void $ nextWidget $ ffor goE $ \go -> Retractable {
-      retractableNext = case go of
-        GoSeed -> mnemonicPage
-        GoRestore -> seedRestorePage
-    , retractablePrev = Just $ pure initialPage
-    }
+    newE <- fmap (GoSeed <$) $ row . outlineButton $ IPSCreate
+    restoreE <- fmap (GoRestore <$) $ row . outlineButton $ IPSRestore
+    let goE = leftmost [newE, restoreE]
+    void $ nextWidget $ ffor goE $ \go -> Retractable {
+        retractableNext = case go of
+          GoSeed -> mnemonicPage
+          GoRestore -> seedRestorePage
+      , retractablePrev = Just $ pure initialPage
+      }
 
 initialAuthedPage :: MonadFront t m => m ()
 initialAuthedPage = wrapper True $ divClass "main-page" $ do

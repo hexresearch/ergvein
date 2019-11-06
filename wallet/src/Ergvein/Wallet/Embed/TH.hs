@@ -17,4 +17,7 @@ robotoMedium = $(embedFile "static/assets/font/Roboto-Medium.ttf")
 robotoRegular = $(embedFile "static/assets/font/Roboto-Regular.ttf")
 
 smallEye :: ByteString
-smallEye = $(embedFile "static/img/small_eye.png") 
+smallEye = $(embedFile "static/img/small_eye.png")
+
+menuIcon :: ByteString
+menuIcon = $(embedFile "static/img/menu.png")  
