@@ -49,7 +49,7 @@ startServer Options{..} = case optsCommand of
     CommandListen cfgPath ->  do
         cfg <- loadConfig cfgPath      
         env <- newServerEnv cfg
-        t <- liftIO $ startBlockchainScanner env
+        --t <- liftIO $ startBlockchainScanner env
         T.putStrLn $ pack $ "Server started at " <> configDbHost cfg <> ":" <> (show . configServerPort $ cfg)
         let app = logStdoutDev $ indexServerApp env
             warpSettings = setPort (configServerPort cfg) defaultSettings

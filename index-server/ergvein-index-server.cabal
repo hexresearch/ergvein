@@ -62,6 +62,7 @@ library
       , ilist                    == 0.3.*
       , cereal                   == 0.5.*
       , hexstring                == 0.11.*
+      , containers
       , ergvein-common
       , ergvein-index-api
       , ergvein-wallet-types 

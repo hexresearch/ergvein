@@ -12,6 +12,14 @@ import Ergvein.Index.Server.Monad
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
+import Ergvein.Index.Server.DB.Queries
+import Ergvein.Index.Server.DB.Monad
+import Database.Persist.Types
+import Ergvein.Index.Server.DB.Schema
+import Database.Persist.Sql
+import Data.Maybe
+import qualified Data.Set
+
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
     { indexGetBalance = indexGetBalanceEndpoint
@@ -49,7 +57,26 @@ ergoBroadcastResponse = "4c6282be413c6e300a530618b37790be5f286ded758accc2aebd415
 
 --Endpoints
 indexGetBalanceEndpoint :: BalanceRequest -> ServerM BalanceResponse
-indexGetBalanceEndpoint BalanceRequest { balReqCurrency = BTC }  = pure btcBalance
+indexGetBalanceEndpoint req@(BalanceRequest { balReqCurrency = BTC  })  = do
+  txo <- runDb getAllTxo
+  stxo <- runDb getAllStxo
+  
+  let t = getDict txo
+      s = getSet stxo
+      f x = let
+        v = entityVal x
+        in if (not $ Data.Set.member (fromSqlKey $ entityKey x) s) && utxoRecPubKey v == balReqPubKeyScriptHash req
+            then
+                Just $ utxoRecOutValue v
+            else
+                Nothing
+      r = foldl (+) 0 (mapMaybe f txo) 
+  
+  pure btcBalance {balRespConfirmed = r}
+  where
+    getDict x = entityVal <$> x
+    getSet x =  Data.Set.fromList $ (fromSqlKey . stxoRecUtxoId . entityVal) <$> x
+
 indexGetBalanceEndpoint BalanceRequest { balReqCurrency = ERGO } = pure ergoBalance
 
 indexGetTxHashHistoryEndpoint :: TxHashHistoryRequest -> ServerM TxHashHistoryResponse

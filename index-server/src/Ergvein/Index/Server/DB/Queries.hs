@@ -21,7 +21,7 @@ getScannedHeight currency = fmap headMay $ select $ from $ \scannedHeight -> do
 upsertScannedHeight :: MonadIO m => Currency -> Word64 -> QueryT m (Entity ScannedHeightRec)
 upsertScannedHeight currency h = upsert (ScannedHeightRec currency h) [ScannedHeightRecHeight DT.=. h]
 
-insertTXOs :: MonadIO m => [TXOInfo] -> QueryT m ([Key UtxoRec])
+insertTXOs :: MonadIO m => [TXOInfo] -> QueryT m [Key UtxoRec]
 insertTXOs utxo = insertMany $ toEntity <$> utxo
   where
     toEntity u = UtxoRec (txo'txHash u) (txo'scriptHash u) (txo'outIndex u) (txo'outValue u)
@@ -32,3 +32,9 @@ insertSTXO stxo = insertSelect $ from $ \storedUtxo -> do
          &&. storedUtxo ^. UtxoRecOutIndex ==. (val $ stxo'outIndex stxo)
          )
   return $ StxoRec <# (val $ stxo'txHash stxo) <&> (storedUtxo ^. UtxoRecId)
+
+getAllTxo :: (MonadIO m) => QueryT m [Entity UtxoRec]
+getAllTxo = select $ from pure
+
+getAllStxo :: (MonadIO m) => QueryT m [Entity StxoRec]
+getAllStxo = select $ from pure

@@ -14,6 +14,7 @@ import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.Environment
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import Database.Esqueleto
 
 scannedBlockHeight :: DBPool -> Currency -> IO (Maybe BlockHeight)
 scannedBlockHeight pool currency = do

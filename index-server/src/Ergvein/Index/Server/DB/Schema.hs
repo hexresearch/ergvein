@@ -1,7 +1,5 @@
 module Ergvein.Index.Server.DB.Schema where
 
-import Data.Text (Text)
-import Data.Word
 import Database.Persist.TH
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
