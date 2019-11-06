@@ -27,9 +27,9 @@ instance ParseRecord Options
 main :: IO ()
 main = do
   opts <- getRecord "Ergvein cryptowallet"
-  settings :: Settings <- loadSettings $ unHelpful $ config opts
   run $ \cbs -> do
     css <- compileFrontendCss
     mainWidgetWithCss css $ do
+      settings :: Settings <- loadSettings $ unHelpful $ config opts
       env <- newEnv settings (runUiCallbacks cbs)
       runEnv cbs env frontend

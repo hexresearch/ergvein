@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedLists #-}
 module Ergvein.Wallet.Style(
     compileFrontendCss
   ) where
@@ -5,12 +6,14 @@ module Ergvein.Wallet.Style(
 import Clay
 import Clay.Selector
 import Clay.Stylesheet (prefixed)
+import Control.Monad
 import Data.ByteString (ByteString)
 import Data.ByteString.Lazy (toStrict)
 import Data.Text (Text)
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Ergvein.Wallet.Embed
 import Ergvein.Wallet.Embed.TH
+import Ergvein.Wallet.Platform
 import Language.Javascript.JSaddle hiding ((#))
 import Prelude hiding ((**), rem)
 
@@ -40,13 +43,17 @@ frontendCssBS r = let
 
 frontendCss :: Resources -> Css
 frontendCss r = do
-  -- fontFamilies r
+  fontFamilies r
   html ? textAlign center
   body ? do
     color textColor
     backgroundColor majorBackground
-    -- fontFamily ["Roboto"] []
+    marginTop $ px 0
+    marginLeft $ px 0
+    marginRight $ px 0
+    fontFamily ["Roboto"] []
   wrapperCss
+  menuCss
   buttonCss
   inputCss
   mnemonicWidgetCss
@@ -73,15 +80,65 @@ wrapperCss :: Css
 wrapperCss = do
   ".container" ? do
     position relative
-    height $ pct 95
+    height $ pct 90
   ".vertical-center" ? do
     margin (px 0) (px 0) (px 0) (px 0)
     position absolute
     top $ pct 50
     translatePctY $ pct (-50)
     width $ pct 90
-    where
-      translatePctY y = prefixed (browsers <> "transform") $ "translateY(" <> value y <> ")"
+
+translatePctY :: Size Percentage -> Css
+translatePctY y = prefixed (browsers <> "transform") $ "translateY(" <> value y <> ")"
+
+translatePctX :: Size Percentage -> Css
+translatePctX x = prefixed (browsers <> "transform") $ "translateX(" <> value x <> ")"
+
+menuCss :: Css
+menuCss = do
+  ".menu-header" ? do
+    width $ pct 100
+    backgroundColor black
+    color white
+    fontSize $ pt 14
+    paddingBottom $ px 10
+    display displayTable
+  ".menu-wallet-name" ? do
+    display tableCell
+    textAlign center
+    width $ pct 100
+    paddingTop $ px 5
+  ".menu-wallet-menu" ? do
+    display tableCell
+    verticalAlign vAlignBottom
+  ".menu-button" ? do
+    width $ px 42
+    marginRight $ px 10
+  ".menu-dropdown-wrapper" ? do
+    display inlineBlock
+    position relative
+  ".menu-dropdown" ? do
+    display displayNone
+    backgroundColor black
+    minWidth $ px 160
+    position absolute
+    boxShadow [bsColor (rgba 0 0 0 0.2) $ shadowWithSpread (px 0) (px 8) (px 16) (px 0)]
+    zIndex 1
+    translatePctX $ pct (-75)
+    when isAndroid $ do
+      marginTop $ px 10
+      marginLeft $ px 5
+  ".menu-dropdown .button.button-clear" ? do
+    color white
+    fontSize $ pt 14
+    display block
+    border solid (rem 0.1) white
+    width $ pct 100
+    borderRadius (px 0) (px 0) (px 0) (px 0)
+    marginBottom $ px 0
+  ".menu-dropdown-wrapper:hover .menu-dropdown" ? do
+    display block
+
 
 buttonCss :: Css
 buttonCss = do
@@ -172,7 +229,7 @@ passwordCss = do
     justifyContent center
     paddingLeft $ pct 25
     paddingRight $ pct 25
-    
+
 initialPageCss :: Css
 initialPageCss = do
   ".initial-options" ** button ? do

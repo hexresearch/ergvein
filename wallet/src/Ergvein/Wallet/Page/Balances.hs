@@ -6,19 +6,22 @@ import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.History
 import Ergvein.Wallet.Wrapper
 
-
 balancesPage :: MonadFront t m => m ()
-balancesPage = wrapper False $ do
-  syncWidget
-  historyE <- currenciesList
-  void $ nextWidget $ ffor historyE $ \cur -> Retractable {
-      retractableNext = historyPage cur
-    , retractablePrev = Just $ pure balancesPage
-    }
+balancesPage = do
+  let thisWidget = Just $ pure balancesPage
+  menuWidget thisWidget
+  wrapper False $ do
+    syncWidget
+    historyE <- currenciesList
+    void $ nextWidget $ ffor historyE $ \cur -> Retractable {
+        retractableNext = historyPage cur
+      , retractablePrev = thisWidget
+      }
 
 syncWidget :: MonadFront t m => m ()
 syncWidget = divClass "currency-wrapper" $ do
