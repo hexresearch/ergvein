@@ -2,6 +2,7 @@ module Ergvein.Wallet.Password(
     setupLoginPassword
   , askPassword
   , askPasswordModal
+  , mkAuthInfo
   ) where
 
 import Control.Monad.Except
@@ -42,3 +43,15 @@ askPasswordModal = mdo
     Just i -> divClass "ask-password-modal" $ (fmap . fmap) ((i,) . Just) askPassword
     Nothing -> pure never
   performEvent_ $ (liftIO . fire) <$> passE
+
+mkAuthInfo :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either Text AuthInfo)
+mkAuthInfo mnemonic (login, pass) = do
+  storage <- createStorage mnemonic (login, pass)
+  case storage of
+    Left err -> pure $ Left err
+    Right s -> case passwordToECIESPrvKey pass of
+      Left err -> pure $ Left "Failed to generate an ECIES secret key from password"
+      Right k -> Right AuthInfo {
+          authInfo'storage = s
+        , authInfo'eciesPubKey = toPublic k
+        }

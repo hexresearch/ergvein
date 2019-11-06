@@ -1,7 +1,7 @@
 module Ergvein.Wallet.Monad.Front(
     MonadFront(..)
   , MonadFrontBase(..)
-  , AuthInfo
+  , AuthInfo(..)
   , Password
   -- * Reexports
   , Text
@@ -17,6 +17,7 @@ import Control.Monad
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Text (Text)
+import Ergvein.Crypto
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Storage
@@ -30,7 +31,11 @@ import Reflex.ExternalRef
 
 type MonadFront t m = (MonadFrontBase t m, MonadStorage t m)
 
-type AuthInfo = ErgveinStorage
+data AuthInfo = AuthInfo {
+  authInfo'storage     :: ErgveinStorage
+, authInfo'eciesPubKey :: ECIESPubKey
+}
+
 type Password = Text
 
 class MonadFrontConstr t m => MonadFrontBase t m | m -> t where

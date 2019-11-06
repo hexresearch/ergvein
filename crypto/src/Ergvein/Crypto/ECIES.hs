@@ -10,11 +10,12 @@ module Ergvein.Crypto.ECIES(
   , encodePoint
   , decodePoint
   , secretKey
+  , toPublic
   ) where
 
 import Crypto.ECC (Curve_X25519, Point, Scalar, encodePoint, decodePoint)
 import Crypto.Error
-import Crypto.PubKey.Curve25519 (secretKey)
+import Crypto.PubKey.Curve25519 (secretKey, toPublic)
 import Crypto.PubKey.ECIES
 
 type ECIESPrvKey = Scalar Curve_X25519
