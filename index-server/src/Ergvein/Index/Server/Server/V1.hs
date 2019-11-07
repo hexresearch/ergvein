@@ -19,6 +19,7 @@ import Ergvein.Index.Server.DB.Schema
 import Database.Persist.Sql
 import Data.Maybe
 import qualified Data.Set
+import Data.List
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
@@ -80,7 +81,25 @@ indexGetBalanceEndpoint req@(BalanceRequest { balReqCurrency = BTC  })  = do
 indexGetBalanceEndpoint BalanceRequest { balReqCurrency = ERGO } = pure ergoBalance
 
 indexGetTxHashHistoryEndpoint :: TxHashHistoryRequest -> ServerM TxHashHistoryResponse
-indexGetTxHashHistoryEndpoint TxHashHistoryRequest { historyReqCurrency = BTC }  = pure btcHistory
+indexGetTxHashHistoryEndpoint  req@(TxHashHistoryRequest{ historyReqCurrency = BTC })  = do
+    txo <- runDb getAllTxo
+    stxo <- runDb getAllStxo
+    
+    let t = getDict txo
+        s = getSet stxo
+        f x = let
+          v = entityVal x
+            in if Data.Set.member (fromSqlKey $ entityKey x) s || utxoRecPubKey v == historyReqPubKeyScriptHash req
+                then
+                    Just $ utxoRecOutValue v
+                else
+                    Nothing
+    pure $ nub []
+    where
+        getDict x = entityVal <$> x
+        getSet x =  Data.Set.fromList $ (fromSqlKey . stxoRecUtxoId . entityVal) <$> x
+
+
 indexGetTxHashHistoryEndpoint TxHashHistoryRequest { historyReqCurrency = ERGO } = pure ergoHistory
 
 txMerkleProofEndpoint :: TxMerkleProofRequest -> ServerM TxMerkleProofResponse
