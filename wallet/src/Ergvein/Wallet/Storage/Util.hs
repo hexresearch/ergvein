@@ -6,6 +6,7 @@ module Ergvein.Wallet.Storage.Util(
   , createWallet
   , createStorage
   , storageFilePrefix
+  , saveStorageToFile
   , loadStorageFromFile
   ) where
 
@@ -122,11 +123,10 @@ decryptStorage encryptedStorage privateKey = do
   case deriveDecrypt curve eciesPoint privateKey of
       CryptoFailed err -> Left $ SACryptoError $ showt err
       CryptoPassed sharedSecret -> do
-        let 
-          ivBS = convert iv :: ByteString
-          eciesPointBS = encodePoint curve eciesPoint :: ByteString
-          secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params sharedSecret salt) :: Key AES256 ByteString
-          decryptedData = decryptWithAEAD AEAD_GCM secretKey iv (BS.concat [salt, ivBS, eciesPointBS]) ciphertext authTag
+        let ivBS = convert iv :: ByteString
+            eciesPointBS = encodePoint curve eciesPoint :: ByteString
+            secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params sharedSecret salt) :: Key AES256 ByteString
+            decryptedData = decryptWithAEAD AEAD_GCM secretKey iv (BS.concat [salt, ivBS, eciesPointBS]) ciphertext authTag
         case decryptedData of
           Nothing -> Left $ SACryptoError "Failed to decrypt storage"
           Just decryptedStorage -> case storage of
