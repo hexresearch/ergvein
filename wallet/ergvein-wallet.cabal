@@ -38,6 +38,7 @@ library
     Ergvein.Wallet.Log.Types
     Ergvein.Wallet.Log.Writer
     Ergvein.Wallet.Main
+    Ergvein.Wallet.Menu
     Ergvein.Wallet.Monad
     Ergvein.Wallet.Monad.Base
     Ergvein.Wallet.Monad.Auth
