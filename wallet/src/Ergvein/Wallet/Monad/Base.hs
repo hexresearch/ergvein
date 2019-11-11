@@ -50,6 +50,7 @@ type MonadBaseConstr t m = (MonadHold t m
 -- Only to be used to request password and open the local storage
 type MonadFrontConstr t m = (PlatformNatives
   , HasStoreDir m
+  , HasStoreDir (Performable m)
   , MonadBaseConstr t m
   , MonadLocalized t m
   , MonadRetract t m
