@@ -10,14 +10,21 @@ ScannedHeightRec
   currency Currency
   height BlockHeight
   UniqueCurrency currency
-UtxoRec
+  deriving Show
+TxRec
+  hash TxHash
+  blockHeigh BlockHeight
+  blockIndex TxBlockIndex
+  deriving Show
+TxOutRec
   txHash TxHash
-  pubKey TxHash
-  outIndex TxOutIndex
-  outValue MoneyUnit
-  UniqueTxHashPubKeyOutIndex txHash pubKey outIndex
-StxoRec
+  pubKeyScriptHash PubKeyScriptHash
+  index TxOutIndex
+  value MoneyUnit
+  deriving Show
+TxInRec
   txHash TxHash
-  utxoId UtxoRecId
-  UniqueTxHashUtxoId txHash utxoId
+  txOutHash TxHash
+  txOutIndex TxOutIndex
+  deriving Show
   |]

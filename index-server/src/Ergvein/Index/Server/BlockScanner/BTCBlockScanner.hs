@@ -28,27 +28,41 @@ import qualified Network.Haskoin.Block              as HK
 import qualified Network.Haskoin.Crypto             as HK
 import qualified Network.Haskoin.Transaction        as HK
 
-txoInfosFromTx :: HK.Tx -> ([SpentTXOInfo], [TXOInfo])
-txoInfosFromTx tx = let
-  txoInfo txOutIndex txOut = let
-    scriptOutputHash = encodeHex . B.reverse . S.encode . HK.doubleSHA256
-    in TXOInfo {  txo'txHash     = txHash
-                , txo'scriptHash = scriptOutputHash $ HK.scriptOutput txOut
-                , txo'outIndex   = fromIntegral txOutIndex
-                , txo'outValue   = HK.outValue txOut
-                }
-  txHash = HK.txHashToHex $ HK.txHash tx
-  spentTXOInfo txIn = let
-    spentOut = HK.prevOutput txIn
-    in SpentTXOInfo { stxo'txHash   = txHash
-                    , stxo'txoHash  = HK.txHashToHex $ HK.outPointHash spentOut
-                    , stxo'outIndex = fromIntegral $ HK.outPointIndex spentOut
-                    }
-  withoutCoinbaseTx = filter $ (/= HK.nullOutPoint) . HK.prevOutput
-  in (map spentTXOInfo $ withoutCoinbaseTx $ HK.txIn tx, imap txoInfo $ HK.txOut tx)
+import qualified Data.Text.IO as T
+import Data.Text (Text, pack)
 
-blockTXOInfos :: HK.Block -> ([SpentTXOInfo], [TXOInfo])
-blockTXOInfos block = mconcat $ txoInfosFromTx <$> HK.blockTxns block
+
+txInfo :: HK.Tx -> TxHash -> ([TxInInfo], [TxOutInfo])
+txInfo tx txHash = let
+  withoutCoinbaseTx = filter $ (/= HK.nullOutPoint) . HK.prevOutput
+  in (map txInInfo $ withoutCoinbaseTx $ HK.txIn tx, imap txOutInfo $ HK.txOut tx)
+  where
+    txInInfo txIn = let
+      prevOutput = HK.prevOutput txIn
+      in TxInInfo { txIn'txHash     = txHash
+                  , txIn'txOutHash  = HK.txHashToHex $ HK.outPointHash prevOutput
+                  , txIn'txOutIndex = fromIntegral $ HK.outPointIndex prevOutput
+                  }
+    txOutInfo txOutIndex txOut = let
+      scriptOutputHash = encodeHex . B.reverse . S.encode . HK.doubleSHA256
+      in TxOutInfo { txOut'txHash           = txHash
+                   , txOut'pubKeyScriptHash = scriptOutputHash $ HK.scriptOutput txOut
+                   , txOut'index            = fromIntegral txOutIndex
+                   , txOut'value            = HK.outValue txOut
+                   }    
+
+blockTxInfos :: HK.Block -> BlockHeight -> ([TxInfo], [TxInInfo], [TxOutInfo])
+blockTxInfos block txBlockHeight = mconcat $ txoInfosFromTx `imap` HK.blockTxns block
+  where
+    txoInfosFromTx txBlockIndex tx = let
+      txHash = HK.txHashToHex $ HK.txHash tx
+      txI = TxInfo { tx'hash = txHash
+                   , tx'blockHeight = txBlockHeight
+                   , tx'blockIndex  = fromIntegral txBlockIndex
+                   }
+      (txInI,txOutI) = txInfo tx txHash
+      in ([txI], txInI, txOutI)
+
 
 actualBTCHeight :: Config -> IO BlockHeight
 actualBTCHeight cfg = fromIntegral <$> btcNodeClient cfg getBlockCount
@@ -59,9 +73,11 @@ bTCBlockScanner env blockHeightToScan = do
   maybeRawBlock <- btcNodeClient cfg $ flip getBlockRaw blockHash
   let rawBlock = fromMaybe blockParsingError maybeRawBlock 
       parsedBlock = fromRight blockGettingError $ decode $ HS.toBytes rawBlock
-      (stxos, txos) = blockTXOInfos parsedBlock
-  runDbQuery dbPool $ insertTXOs txos
-  forM_ stxos (\info -> runDbQuery dbPool $ insertSTXO info)
+      (txInfos ,txInInfos, txOutInfos) = blockTxInfos parsedBlock blockHeightToScan
+  --T.putStrLn $ pack $ show txInInfos
+  runDbQuery dbPool $ insertTxs txInfos
+  runDbQuery dbPool $ insertTxOuts txOutInfos
+  runDbQuery dbPool $ insertTxIns txInInfos
   runDbQuery dbPool $ upsertScannedHeight BTC blockHeightToScan
   pure ()
   where

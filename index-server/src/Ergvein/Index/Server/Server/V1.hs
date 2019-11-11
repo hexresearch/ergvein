@@ -18,7 +18,8 @@ import Database.Persist.Types
 import Ergvein.Index.Server.DB.Schema
 import Database.Persist.Sql
 import Data.Maybe
-import qualified Data.Set
+import qualified Data.Set as Set
+import qualified Data.Map as Map
 import Data.List
 
 indexServer :: IndexApi AsServerM
@@ -59,46 +60,42 @@ ergoBroadcastResponse = "4c6282be413c6e300a530618b37790be5f286ded758accc2aebd415
 --Endpoints
 indexGetBalanceEndpoint :: BalanceRequest -> ServerM BalanceResponse
 indexGetBalanceEndpoint req@(BalanceRequest { balReqCurrency = BTC  })  = do
-  txo <- runDb getAllTxo
-  stxo <- runDb getAllStxo
+  txIns <- runDb getAllTxIn
+  txOuts <- runDb getAllTxOut
   
-  let t = getDict txo
-      s = getSet stxo
+  let t = getDict txOuts
+      s = getSet txIns
       f x = let
         v = entityVal x
-        in if (not $ Data.Set.member (fromSqlKey $ entityKey x) s) && utxoRecPubKey v == balReqPubKeyScriptHash req
+        in if (not $ Set.member (txOutRecTxHash v, txOutRecIndex v) s) && txOutRecPubKeyScriptHash v == balReqPubKeyScriptHash req
             then
-                Just $ utxoRecOutValue v
+                Just $ txOutRecValue v
             else
                 Nothing
-      r = foldl (+) 0 (mapMaybe f txo) 
+      r = foldl (+) 0 (mapMaybe f txOuts) 
   
   pure btcBalance {balRespConfirmed = r}
   where
     getDict x = entityVal <$> x
-    getSet x =  Data.Set.fromList $ (fromSqlKey . stxoRecUtxoId . entityVal) <$> x
+    getSet x =  Set.fromList $ (\x' -> (txInRecTxHash x', txInRecTxOutIndex x')) <$> entityVal <$> x
 
 indexGetBalanceEndpoint BalanceRequest { balReqCurrency = ERGO } = pure ergoBalance
 
 indexGetTxHashHistoryEndpoint :: TxHashHistoryRequest -> ServerM TxHashHistoryResponse
-indexGetTxHashHistoryEndpoint  req@(TxHashHistoryRequest{ historyReqCurrency = BTC })  = do
-    txo <- runDb getAllTxo
-    stxo <- runDb getAllStxo
-    
-    let t = getDict txo
-        s = getSet stxo
-        f x = let
-          v = entityVal x
-            in if Data.Set.member (fromSqlKey $ entityKey x) s || utxoRecPubKey v == historyReqPubKeyScriptHash req
-                then
-                    Just $ utxoRecOutValue v
-                else
-                    Nothing
-    pure $ nub []
-    where
-        getDict x = entityVal <$> x
-        getSet x =  Data.Set.fromList $ (fromSqlKey . stxoRecUtxoId . entityVal) <$> x
-
+indexGetTxHashHistoryEndpoint  req@(TxHashHistoryRequest{ historyReqCurrency = BTC }) = do
+    txInEntities <- runDb getAllTxIn
+    txOutEntities <- runDb getAllTxOut
+    txEntities <- runDb getAllTx
+    let txs = entityVal <$> txEntities
+        txOuts = Map.fromList $ (\e-> ((txOutRecTxHash e, txOutRecPubKeyScriptHash e), e)) <$> entityVal <$> txOutEntities
+        txOuts' = Map.fromList $ (\e-> ((txOutRecTxHash e, txOutRecIndex e), txOutRecPubKeyScriptHash e)) <$> entityVal <$> txOutEntities
+        f x = (txInRecTxHash x,  [txOuts' Map.! (txInRecTxOutHash x, txInRecTxOutIndex x)])
+        txIns = Map.fromListWith (++) $ f <$> entityVal <$> txInEntities
+        p1 tx = Map.member (txRecHash tx, historyReqPubKeyScriptHash req) txOuts
+        p2 tx = any (elem (historyReqPubKeyScriptHash req)) $ txIns Map.!? (txRecHash tx)
+        mp x = TxHashHistoryItem {historyItemTxHash = txRecHash x, historyItemBlockHeight = txRecBlockHeigh x }
+        r = mp <$> filter (\tx -> p1 tx || p2 tx) txs
+    pure r
 
 indexGetTxHashHistoryEndpoint TxHashHistoryRequest { historyReqCurrency = ERGO } = pure ergoHistory
 

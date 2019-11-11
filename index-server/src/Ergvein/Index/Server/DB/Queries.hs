@@ -13,6 +13,15 @@ import Ergvein.Index.Server.DB.Schema
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
+getAllTx :: (MonadIO m) => QueryT m [Entity TxRec]
+getAllTx = select $ from pure
+
+getAllTxOut :: (MonadIO m) => QueryT m [Entity TxOutRec]
+getAllTxOut = select $ from pure
+
+getAllTxIn :: (MonadIO m) => QueryT m [Entity TxInRec]
+getAllTxIn = select $ from pure
+
 getScannedHeight :: MonadIO m => Currency -> QueryT m (Maybe (Entity ScannedHeightRec))
 getScannedHeight currency = fmap headMay $ select $ from $ \scannedHeight -> do
   where_ (scannedHeight ^. ScannedHeightRecCurrency ==. val currency)
@@ -21,20 +30,17 @@ getScannedHeight currency = fmap headMay $ select $ from $ \scannedHeight -> do
 upsertScannedHeight :: MonadIO m => Currency -> Word64 -> QueryT m (Entity ScannedHeightRec)
 upsertScannedHeight currency h = upsert (ScannedHeightRec currency h) [ScannedHeightRecHeight DT.=. h]
 
-insertTXOs :: MonadIO m => [TXOInfo] -> QueryT m [Key UtxoRec]
-insertTXOs utxo = insertMany $ toEntity <$> utxo
+insertTxs :: MonadIO m => [TxInfo] -> QueryT m [Key TxRec]
+insertTxs txs = insertMany $ txRec <$> txs
+  where 
+    txRec tx = TxRec (tx'hash tx) (tx'blockHeight tx) (tx'blockIndex tx)
+
+insertTxOuts :: MonadIO m => [TxOutInfo] -> QueryT m [Key TxOutRec]
+insertTxOuts txOuts = insertMany $ txOutRec <$> txOuts
+  where 
+    txOutRec txOut = TxOutRec (txOut'txHash txOut) (txOut'pubKeyScriptHash txOut) (txOut'index txOut) (txOut'value txOut)
+
+insertTxIns :: MonadIO m => [TxInInfo] -> QueryT m [Key TxInRec]
+insertTxIns txIns = insertMany $ txInRec <$> txIns
   where
-    toEntity u = UtxoRec (txo'txHash u) (txo'scriptHash u) (txo'outIndex u) (txo'outValue u)
-
-insertSTXO :: MonadIO m => SpentTXOInfo -> QueryT m ()
-insertSTXO stxo = insertSelect $ from $ \storedUtxo -> do
-  where_ (   storedUtxo ^. UtxoRecTxHash   ==. (val $ stxo'txoHash stxo) 
-         &&. storedUtxo ^. UtxoRecOutIndex ==. (val $ stxo'outIndex stxo)
-         )
-  return $ StxoRec <# (val $ stxo'txHash stxo) <&> (storedUtxo ^. UtxoRecId)
-
-getAllTxo :: (MonadIO m) => QueryT m [Entity UtxoRec]
-getAllTxo = select $ from pure
-
-getAllStxo :: (MonadIO m) => QueryT m [Entity StxoRec]
-getAllStxo = select $ from pure
+    txInRec txIn = TxInRec (txIn'txHash txIn) (txIn'txOutHash txIn) (txIn'txOutIndex txIn)
