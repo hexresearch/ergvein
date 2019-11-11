@@ -9,6 +9,7 @@ import Control.Monad.Reader
 import Data.Functor (void)
 import Data.Maybe (catMaybes)
 import Data.Text (Text, unpack)
+import Ergvein.Wallet.Storage.Util (saveStorageToFile)
 import Ergvein.Crypto
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
@@ -133,18 +134,25 @@ instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   {-# INLINE newAlertEvent #-}
   {-# INLINE getAlertEventFire #-}
 
-instance MonadBaseConstr t m => MonadStorage t (ErgveinM t m) where
-  getEncryptedWallet = fmap storage'wallet $ readExternalRef =<< asks env'authRef
+instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) where
+  getEncryptedWallet = fmap (storage'wallet . authInfo'storage) $ readExternalRef =<< asks env'authRef
   {-# INLINE getEncryptedWallet #-}
   getAddressByCurIx cur i = do
-    currMap <- fmap storage'pubKeys $ readExternalRef =<< asks env'authRef
+    currMap <- fmap (storage'pubKeys . authInfo'storage) $ readExternalRef =<< asks env'authRef
     let maddr = MI.lookup i =<< M.lookup cur currMap
     case maddr of
       Nothing -> fail "NOT IMPLEMENTED" -- TODO: generate new address here
       Just addr -> pure addr
   {-# INLINE getAddressByCurIx #-}
-  getWalletName = fmap storage'walletName $ readExternalRef =<< asks env'authRef
+  getWalletName = fmap (storage'walletName . authInfo'storage) $ readExternalRef =<< asks env'authRef
   {-# INLINE getWalletName #-}
+  storeWallet e = do
+    authInfo <- readExternalRef =<< asks env'authRef
+    performEvent_ $ ffor e $ \a -> do
+      let storage = authInfo'storage authInfo
+      let eciesPubKey = authInfo'eciesPubKey authInfo
+      liftIO $ saveStorageToFile eciesPubKey storage
+  {-# INLINE storeWallet #-}
 
 -- | Execute action under authorized context or return the given value as result
 -- is user is not authorized. Each time the login info changes (user logs out or logs in)

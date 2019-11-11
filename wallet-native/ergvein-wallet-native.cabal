@@ -19,5 +19,6 @@ library
     , jsaddle
     , mtl
     , text
+    , reflex
   default-extensions:
     MultiParamTypeClasses

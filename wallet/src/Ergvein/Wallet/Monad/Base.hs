@@ -17,7 +17,6 @@ import Data.Text (Text)
 import Data.Time(UTCTime)
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Native
-import Ergvein.Wallet.Native
 import Language.Javascript.JSaddle
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
