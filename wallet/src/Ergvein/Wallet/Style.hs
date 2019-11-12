@@ -172,10 +172,14 @@ fontFamilies Resources{..} = do
 
 mnemonicWidgetCss :: Css
 mnemonicWidgetCss = do
-  ".mnemonic-word" ? do
+  ".mnemonic-word-dx" ? do
     fontFamily ["Roboto-Medium"] []
     fontSize $ pt 18
     textAlign $ alignSide sideLeft
+  ".mnemonic-word-mb" ? do
+    fontFamily ["Roboto-Medium"] []
+    fontSize $ pt 18
+    textAlign center
   ".mnemonic-word-ix" ? do
     fontSize $ em 0.6
     marginRight $ em 0.25
