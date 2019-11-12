@@ -8,14 +8,10 @@ module Ergvein.Wallet.Native
 import Control.Monad.Reader
 import Control.Monad.IO.Class
 import Data.Aeson
-import Reflex
 import Data.Text (Text)
 
-class HasStoreDir where
+class HasStoreDir m where
   getStoreDir :: m Text
-
-instance Monad m => HasStoreDir (Performable m) where
-  getStoreDir = ask
 
 data NativeAlerts
   = NAFileDoesNotExist Text

@@ -148,10 +148,10 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   {-# INLINE getWalletName #-}
   storeWallet e = do
     authInfo <- readExternalRef =<< asks env'authRef
-    performEvent_ $ ffor e $ \a -> do
+    performEvent_ $ ffor e $ \_ -> do
       let storage = authInfo'storage authInfo
       let eciesPubKey = authInfo'eciesPubKey authInfo
-      liftIO $ saveStorageToFile eciesPubKey storage
+      saveStorageToFile eciesPubKey storage
   {-# INLINE storeWallet #-}
 
 -- | Execute action under authorized context or return the given value as result
