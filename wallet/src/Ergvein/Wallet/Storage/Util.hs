@@ -1,8 +1,10 @@
 module Ergvein.Wallet.Storage.Util(
     WalletData(..)
   , EncryptedWalletData(..)
+  , WalletName
   , encryptWalletData
   , decryptWalletData
+  , passwordToECIESPrvKey
   , createWallet
   , createStorage
   , storageFilePrefix

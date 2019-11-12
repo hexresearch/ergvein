@@ -18,7 +18,10 @@ passwordPage :: MonadFrontBase t m => Mnemonic -> m ()
 passwordPage mnemonic = wrapper True $ do
   divClass "password-setup-title" $ h4 $ localizedText PPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText PPSDescr
-  void $ setAuthInfo . fmap Just =<< handleDangerMsg =<< performEvent . fmap (createStorage mnemonic) =<< setupLoginPassword
+  logPassE <- setupLoginPassword
+  createStorageE <- performEvent $ fmap (mkAuthInfo mnemonic) logPassE
+  authInfoE <- handleDangerMsg createStorageE
+  void $ setAuthInfo $ Just <$> authInfoE
 
 askPasswordPage :: MonadFrontBase t m => m ()
 askPasswordPage = wrapper True $ do

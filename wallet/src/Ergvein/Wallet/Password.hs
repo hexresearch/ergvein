@@ -6,10 +6,12 @@ module Ergvein.Wallet.Password(
   ) where
 
 import Control.Monad.Except
+import Ergvein.Crypto
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Localization.Password
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Validate
 
 import qualified Data.Text as T
@@ -48,10 +50,10 @@ mkAuthInfo :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either Text 
 mkAuthInfo mnemonic (login, pass) = do
   storage <- createStorage mnemonic (login, pass)
   case storage of
-    Left err -> pure $ Left err
+    Left err -> pure $ Left "Failed to create storage"
     Right s -> case passwordToECIESPrvKey pass of
       Left err -> pure $ Left "Failed to generate an ECIES secret key from password"
-      Right k -> Right AuthInfo {
+      Right k -> pure $ Right AuthInfo {
           authInfo'storage = s
         , authInfo'eciesPubKey = toPublic k
         }
