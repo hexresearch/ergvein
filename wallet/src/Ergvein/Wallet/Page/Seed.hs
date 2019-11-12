@@ -16,6 +16,7 @@ import Ergvein.Wallet.Input
 import Ergvein.Wallet.Localization.Seed
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
+import Ergvein.Wallet.Resize
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
 import Reflex.Localize
@@ -56,16 +57,18 @@ mnemonicWidget mnemonic = do
     Nothing -> pure (never, pure Nothing)
     Just phrase -> do
       divClass "mnemonic-title" $ h4 $ localizedText SPSTitle
-      divClass "mnemonic-colony" $ colonize 4 (prepareMnemonic 4 phrase) $ \(i,w) ->
-        divClass "column mnemonic-word" $ do
-          elClass "span" "mnemonic-word-ix" $ text $ showt i
-          text w
+      divClass "mnemonic-colony" $ adaptive (pure ()) (desktopMnemonic phrase)
       divClass "mnemonic-warn" $ h4 $ localizedText SPSWarn
       btnE <- outlineButton SPSWrote
       pure (phrase <$ btnE, pure $ Just phrase)
   where
     prepareMnemonic :: Int -> Mnemonic -> [(Int, Text)]
     prepareMnemonic cols = L.concat . L.transpose . mkCols cols . zip [1..] . T.words
+
+    desktopMnemonic phrase = void $ colonize 4 (prepareMnemonic 4 phrase) $ \(i,w) ->
+      divClass "column mnemonic-word" $ do
+        elClass "span" "mnemonic-word-ix" $ text $ showt i
+        text w
 
 -- | Helper to cut a list into column-length chunks
 mkCols :: Int -> [a] -> [[a]]
