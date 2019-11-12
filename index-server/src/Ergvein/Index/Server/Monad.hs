@@ -9,6 +9,7 @@ import Servant.Server.Generic
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.DB.Monad
 import Control.Monad.IO.Unlift
+import Ergvein.Index.Server.BlockchainCache 
 
 
 newtype ServerM a = ServerM { unServerM :: ReaderT ServerEnv (LoggingT IO) a }
@@ -32,6 +33,10 @@ runServerMIO env m = do
 instance MonadDB ServerM where
   getDbPool = asks envPool
   {-# INLINE getDbPool #-}
+
+instance BCache ServerM where
+  getCache = asks bCache
+  {-# INLINE getCache #-}
 
 instance MonadUnliftIO ServerM where
   askUnliftIO = ServerM $ (\(UnliftIO run) -> UnliftIO $ run . unServerM) <$> askUnliftIO

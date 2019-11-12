@@ -11,11 +11,15 @@ import Network.Bitcoin.Api.Types
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema
+import Ergvein.Index.Server.BlockchainCache
+import Control.Monad.STM
+import Control.Concurrent.STM.TVar
 
 data ServerEnv = ServerEnv 
     { envConfig :: !Config
     , envLogger :: !(Chan (Loc, LogSource, LogLevel, LogStr))
     , envPool   :: !DBPool
+    , bCache    :: !(TVar BCCache)
     }
 
 btcNodeClient :: Config -> (Client -> IO a) -> IO a
@@ -28,11 +32,14 @@ btcNodeClient cfg = withClient
 newServerEnv :: MonadIO m => Config -> m ServerEnv
 newServerEnv cfg = do
     logger <- liftIO newChan
-    pool <- liftIO . runStdoutLoggingT $ do
+    pool <- liftIO $ runStdoutLoggingT $ do
         pool <- newDBPool $ fromString $ connectionStringFromConfig cfg
         flip runReaderT pool $ runDb $ runMigration migrateAll
         pure pool
+    stored <- liftIO $ fromPersisted pool
+    bCache <- liftIO $ atomically $ newTVar stored
     pure ServerEnv { envConfig = cfg
                    , envLogger = logger
                    , envPool   = pool
+                   , bCache    = bCache
                    }

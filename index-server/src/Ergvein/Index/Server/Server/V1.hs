@@ -11,7 +11,7 @@ import Ergvein.Index.API.V1
 import Ergvein.Index.Server.Monad
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-
+import Control.Monad.IO.Unlift
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Monad
 import Database.Persist.Types
@@ -21,6 +21,9 @@ import Data.Maybe
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Data.List
+import Ergvein.Index.Server.BlockchainCache 
+import Control.Monad.STM
+import Control.Concurrent.STM.TVar
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
@@ -60,24 +63,13 @@ ergoBroadcastResponse = "4c6282be413c6e300a530618b37790be5f286ded758accc2aebd415
 --Endpoints
 indexGetBalanceEndpoint :: BalanceRequest -> ServerM BalanceResponse
 indexGetBalanceEndpoint req@(BalanceRequest { balReqCurrency = BTC  })  = do
-  txIns <- runDb getAllTxIn
-  txOuts <- runDb getAllTxOut
-  
-  let t = getDict txOuts
-      s = getSet txIns
-      f x = let
-        v = entityVal x
-        in if (not $ Set.member (txOutRecTxHash v, txOutRecIndex v) s) && txOutRecPubKeyScriptHash v == balReqPubKeyScriptHash req
-            then
-                Just $ txOutRecValue v
-            else
-                Nothing
-      r = foldl (+) 0 (mapMaybe f txOuts) 
+  c <- getCache
+  ch <- liftIO $ atomically $ readTVar c
+  let f x = (not $ Set.member (txOutRecTxHash x, txOutRecIndex x) $ txInsBy'OutTxHash'TxOutIndex ch)
+            && txOutRecPubKeyScriptHash x == balReqPubKeyScriptHash req
+      r = foldl (+) 0 $ txOutRecValue <$> (filter f $ txOuts ch) 
   
   pure btcBalance {balRespConfirmed = r}
-  where
-    getDict x = entityVal <$> x
-    getSet x =  Set.fromList $ (\x' -> (txInRecTxHash x', txInRecTxOutIndex x')) <$> entityVal <$> x
 
 indexGetBalanceEndpoint BalanceRequest { balReqCurrency = ERGO } = pure ergoBalance
 
