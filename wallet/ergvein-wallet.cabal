@@ -40,8 +40,8 @@ library
     Ergvein.Wallet.Main
     Ergvein.Wallet.Menu
     Ergvein.Wallet.Monad
-    Ergvein.Wallet.Monad.Base
     Ergvein.Wallet.Monad.Auth
+    Ergvein.Wallet.Monad.Base
     Ergvein.Wallet.Monad.Front
     Ergvein.Wallet.Monad.Storage
     Ergvein.Wallet.Monad.Unauth
@@ -53,6 +53,7 @@ library
     Ergvein.Wallet.Page.Seed
     Ergvein.Wallet.Password
     Ergvein.Wallet.Platform
+    Ergvein.Wallet.Resize
     Ergvein.Wallet.Settings
     Ergvein.Wallet.Storage
     Ergvein.Wallet.Storage.Data
