@@ -34,7 +34,7 @@ type MonadFront t m = (MonadFrontBase t m, MonadStorage t m)
 data AuthInfo = AuthInfo {
   authInfo'storage     :: ErgveinStorage
 , authInfo'eciesPubKey :: ECIESPubKey
-}
+} deriving (Eq)
 
 type Password = Text
 

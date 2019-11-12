@@ -15,7 +15,7 @@ module Ergvein.Crypto.AES256(
   , IV
   , makeIV
   , AuthTag(..)
-  , MonadRandom
+  , MonadRandom(..)
   ) where
 
 import Data.ByteArray (ByteArray, ByteArrayAccess)

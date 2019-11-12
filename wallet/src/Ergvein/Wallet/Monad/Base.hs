@@ -12,9 +12,11 @@ module Ergvein.Wallet.Monad.Base
 import Control.Concurrent.Chan (Chan)
 import Control.Monad.Fix
 import Control.Monad.IO.Class
+import Control.Monad.Reader
 import Control.Monad.Ref
 import Data.Text (Text)
 import Data.Time(UTCTime)
+import Ergvein.Crypto
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Native
 import Language.Javascript.JSaddle
@@ -23,6 +25,10 @@ import Reflex.Dom hiding (run, mainWidgetWithCss)
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Reflex.Localize
+
+instance MonadRandom m => MonadRandom (ReaderT e m) where
+  getRandomBytes = lift . getRandomBytes
+  {-# INLINE getRandomBytes #-}
 
 -- | Type classes that we need from reflex-dom itself.
 type MonadBaseConstr t m = (MonadHold t m
@@ -43,6 +49,8 @@ type MonadBaseConstr t m = (MonadHold t m
   , Ref m ~ Ref IO
   , MonadRef (Performable m)
   , Ref (Performable m) ~ Ref IO
+  , MonadRandom (Performable m)
+  , PlatformNatives
   )
 
 -- | Context for unauthed widgets
