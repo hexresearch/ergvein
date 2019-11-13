@@ -17,6 +17,10 @@ import Ergvein.Index.Server.Environment
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
+import Ergvein.Index.Server.BlockchainCache
+import Control.Concurrent.STM.TVar
+import Control.Monad.STM
+
 scannedBlockHeight :: DBPool -> Currency -> IO (Maybe BlockHeight)
 scannedBlockHeight pool currency = do
   entity <- runDbQuery pool $ getScannedHeight currency
@@ -41,6 +45,9 @@ storeInfo dbPool blockInfo = do
   runDbQuery dbPool $ insertTxOuts $ block'TxOutInfos blockInfo
   runDbQuery dbPool $ insertTxIns $ block'TxInInfos blockInfo
   pure ()
+
+updateCache :: TVar BCCache -> BlockInfo -> IO () 
+updateCache cache blockInfo = atomically $ modifyTVar' cache (<> B)
 
 storeScannedHeight :: DBPool -> Currency -> BlockHeight -> IO ()
 storeScannedHeight dbPool currency scannedHeight = void $ runDbQuery dbPool $ upsertScannedHeight currency scannedHeight

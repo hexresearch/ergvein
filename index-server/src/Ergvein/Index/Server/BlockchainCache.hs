@@ -13,6 +13,7 @@ import Data.Function
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
 import Database.Persist.Types
+import Ergvein.Index.Server.BlockScanner.Types
 
 data BCCache = BCCache
   { txInsBy'OutTxHash'TxOutIndex :: Set.Set (TxHash, TxOutIndex)
@@ -33,6 +34,12 @@ instance Monoid BCCache where
 
 class MonadUnliftIO m => BCache m where
   getCache :: m (TVar BCCache)
+
+cacheFromInfo :: BlockInfo -> BCCache
+cacheFromInfo blockInfo = let
+  x = Set.fromList $ (\x' -> (txInRecTxHash x', txInRecTxOutIndex x')) <$> block'TxInInfos blockInfo
+  y = txOuts blockInfo
+  in BCCache x y 
 
 fromPersisted :: DBPool -> IO BCCache
 fromPersisted pool = do 
