@@ -17,17 +17,10 @@ import Ergvein.Wallet.Run
 import Ergvein.Wallet.Run.Callbacks
 import Reflex.Dom.Main (mainWidgetWithCss)
 
-import Ergvein.Wallet.Native
-import Control.Monad.IO.Class
-
 frontend :: MonadFrontBase t m => m ()
 frontend = do
   alertHandlerWidget
   loadingWidget
   askPasswordModal
-  buildE <- getPostBuild
-  performEvent_ $ ffor buildE $ const $ do
-    t <- getStoreDir
-    liftIO $ print t
   logWriter =<< fmap fst getLogsTrigger
   void $ retractStack initialPage `liftAuth` retractStack balancesPage
