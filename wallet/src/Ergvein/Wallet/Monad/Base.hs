@@ -26,6 +26,9 @@ import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Reflex.Localize
 
+import Foreign.JavaScript.TH (WithJSContextSingleton)
+import Reflex.Spider.Internal (SpiderHostFrame, Global)
+
 instance MonadRandom m => MonadRandom (ReaderT e m) where
   getRandomBytes = lift . getRandomBytes
   {-# INLINE getRandomBytes #-}
@@ -116,3 +119,6 @@ class MonadBaseConstr t m => MonadAlertPoster t m | m -> t where
   newAlertEvent :: m (Event t AlertInfo)
   -- | Get alert's event and trigger. Internal
   getAlertEventFire :: m (Event t AlertInfo, AlertInfo -> IO ())
+
+instance MonadRandom (WithJSContextSingleton x (SpiderHostFrame Global)) where
+  getRandomBytes = liftIO . getRandomBytes
