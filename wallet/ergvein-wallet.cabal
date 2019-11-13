@@ -21,6 +21,7 @@ library
     Ergvein.Wallet.Alert
     Ergvein.Wallet.Alert.Handler
     Ergvein.Wallet.Alert.Type
+    Ergvein.Wallet.Client.Impl
     Ergvein.Wallet.Client.Util
     Ergvein.Wallet.Clipboard
     Ergvein.Wallet.Elements
