@@ -10,3 +10,4 @@ nodes. All data is double checked via sampling from set of nodes.
 * Built in atomic swaps, exchange your crypto in one click.
 * Built in decentralized coin mixing: [CoinJoin](https://en.bitcoin.it/wiki/CoinJoin) for BTC and [ErgoMix](https://ergoplatform.org/docs/AdvancedErgoScriptTutorial.pdf) for Ergo.
 * Mobile and desktop platforms are supported.
+* Decentralized public network of indexing nodes that allows users to make money when they run them.
