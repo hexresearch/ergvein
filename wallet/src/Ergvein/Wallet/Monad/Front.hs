@@ -7,6 +7,7 @@ module Ergvein.Wallet.Monad.Front(
   , Text
   , MonadJSM
   , traverse_
+  , module Ergvein.Wallet.Monad.Client
   , module Reflex.Dom
   , module Reflex.Dom.Retractable.Class
   , module Control.Monad
@@ -19,6 +20,7 @@ import Data.Functor (void)
 import Data.Text (Text)
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Base
+import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Data
@@ -28,7 +30,8 @@ import Reflex.Dom hiding (run, mainWidgetWithCss)
 import Reflex.Dom.Retractable.Class
 import Reflex.ExternalRef
 
-type MonadFront t m = (MonadFrontBase t m, MonadStorage t m)
+-- | Authorized context. Has access to storage and indexer's functionality
+type MonadFront t m = (MonadFrontBase t m, MonadStorage t m, MonadClient t m)
 
 type AuthInfo = ErgveinStorage
 type Password = Text

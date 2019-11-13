@@ -8,9 +8,11 @@ import Control.Concurrent.Chan (Chan)
 import Control.Monad.Random.Class
 import Control.Monad.Reader
 import Data.Functor (void)
+import Data.List (permutations)
 import Data.Maybe (catMaybes)
 import Data.Text (Text, unpack)
 import Ergvein.Crypto
+import Ergvein.Wallet.Client.Impl
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Base
@@ -28,6 +30,7 @@ import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 
 import qualified Data.IntMap.Strict as MI
+import qualified Data.Set as S
 import qualified Data.Map.Strict as M
 
 data Env t = Env {
@@ -44,6 +47,8 @@ data Env t = Env {
 , env'uiChan          :: !(Chan (IO ()))
 , env'passModalEF     :: !(Event t Int, Int -> IO ())
 , env'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
+, env'urls            :: !(ExternalRef t (S.Set Text))
+, env'urlNum          :: !(ExternalRef t Int)
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -155,7 +160,6 @@ liftAuth ma0 ma = mdo
   mauth0 <- sample . current $ mauthD
   (logoutE, logoutFire) <- newTriggerEvent
   let runAuthed auth = do
-        settings        <- getSettings
         backEF          <- getBackEventFire
         loading         <- getLoadingWidgetTF
         langRef         <- getLangRef
@@ -168,10 +172,13 @@ liftAuth ma0 ma = mdo
         passModalEF     <- getPasswordModalEF
         passSetEF       <- getPasswordSetEF
         settingsRef     <- getSettingsRef
+        settings        <- readExternalRef settingsRef
+        urlsRef         <- newExternalRef . S.fromList . settingsDefUrls $ settings
+        urlNumRef       <- newExternalRef . settingsDefUrlNum $ settings
         let infoE = externalEvent authRef
         a <- runReaderT ma $ Env
           settingsRef backEF loading langRef authRef (logoutFire ()) storeDir alertsEF
-          logsTrigger logsNameSpaces uiChan passModalEF passSetEF
+          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef
         pure (a, infoE)
   let
     ma0e = (,never) <$> ma0
@@ -185,3 +192,41 @@ liftAuth ma0 ma = mdo
 -- | Lift action that doesn't require authorisation in context where auth is mandatory
 liftUnauthed :: m a -> ErgveinM t m a
 liftUnauthed ma = ReaderT $ const ma
+
+instance MonadFrontBase t m => MonadClient t (ErgveinM t m) where
+  setRequiredUrlNum numE = do
+    numRef <- asks env'urlNum
+    performEvent_ $ (writeExternalRef numRef) <$> numE
+  getUrlList reqE = do
+    numRef <- asks env'urlNum
+    urlsRef <- asks env'urls
+    performEvent $ ffor reqE $ const $ liftIO $ do
+      n <- readExternalRef numRef
+      urls <- fmap S.elems $ readExternalRef urlsRef
+      let perml = product [1 .. (length urls)] - 1
+      i <- getRandomR (0, perml)
+      pure $ take n $ permutations urls !! i
+
+  addUrls urlsE = do
+    urlsRef <- asks env'urls
+    -- modifyExternalRef :: MonadIO m => ExternalRef t a -> (a -> (a, b)) -> m b
+    performEvent_ $ ffor urlsE $ \urls ->
+      modifyExternalRef urlsRef (\s -> (S.union (S.fromList urls) s, ()) )
+
+  invalidateUrls urlsE = do
+    urlsRef <- asks env'urls
+    performEvent_ $ ffor urlsE $ \urls ->
+      modifyExternalRef urlsRef (\s -> (S.difference s (S.fromList urls), ()) )
+
+  getBalance reqE        = requesterImpl (getBalanceImpl        reqE)
+  getTxHashHistory reqE  = requesterImpl (getTxHashHistoryImpl  reqE)
+  getTxMerkleProof reqE  = requesterImpl (getTxMerkleProofImpl  reqE)
+  getTxHexView reqE      = requesterImpl (getTxHexViewImpl      reqE)
+  getTxFeeHistogram reqE = requesterImpl (getTxFeeHistogramImpl reqE)
+  txBroadcast reqE       = requesterImpl (txBroadcastImpl       reqE)
+
+
+requesterImpl :: MonadFrontBase t m => (Text -> ErgveinM t m (Event t a)) -> ErgveinM t m (Event t a)
+requesterImpl req = do
+  urls <- readExternalRef =<< asks env'urls
+  req $ head $ S.elems urls
