@@ -5,6 +5,7 @@ module Ergvein.Wallet.Monad.Auth(
   ) where
 
 import Control.Concurrent.Chan (Chan)
+import Control.Monad.Random.Class
 import Control.Monad.Reader
 import Data.Functor (void)
 import Data.Maybe (catMaybes)
@@ -25,7 +26,6 @@ import Reflex
 import Reflex.Dom
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
-import System.Random
 
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Map.Strict as M
@@ -108,7 +108,7 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   getPasswordSetEF = asks env'passSetEF
   {-# INLINE getPasswordSetEF #-}
   requestPasssword reqE = do
-    idE <- performEvent $ (liftIO randomIO) <$ reqE
+    idE <- performEvent $ (liftIO getRandom) <$ reqE
     idD <- holdDyn 0 idE
     (_, modalF) <- asks env'passModalEF
     (setE, _) <- asks env'passSetEF

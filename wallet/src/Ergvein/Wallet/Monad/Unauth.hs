@@ -6,6 +6,7 @@ module Ergvein.Wallet.Monad.Unauth
   ) where
 
 import Control.Concurrent.Chan
+import Control.Monad.Random.Class
 import Control.Monad.Reader
 import Data.IORef
 import Data.Text (Text)
@@ -20,7 +21,6 @@ import Ergvein.Wallet.Settings
 import Reflex
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
-import System.Random
 
 data UnauthEnv t = UnauthEnv {
   unauth'settings        :: !(ExternalRef t Settings)
@@ -96,7 +96,7 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   getPasswordSetEF = asks unauth'passSetEF
   {-# INLINE getPasswordSetEF #-}
   requestPasssword reqE = do
-    idE <- performEvent $ (liftIO randomIO) <$ reqE
+    idE <- performEvent $ (liftIO getRandom) <$ reqE
     idD <- holdDyn 0 idE
     (_, modalF) <- asks unauth'passModalEF
     (setE, _) <- asks unauth'passSetEF
