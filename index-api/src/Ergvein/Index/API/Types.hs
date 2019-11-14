@@ -9,26 +9,26 @@ import GHC.Generics
 data BalanceRequest = BalanceRequest
     { balReqCurrency         :: !Currency
     , balReqPubKeyScriptHash :: !PubKeyScriptHash
-    } deriving (Generic)
+    } deriving (Eq, Show, Generic)
 $(deriveJSON (aesonOptionsStripPrefix "balReq") ''BalanceRequest)
 
 data BalanceResponse = BalanceResponse
     { balRespConfirmed   :: !MoneyUnit
     , balRespUnconfirmed :: !MoneyUnit
-    } deriving (Generic)
+    } deriving (Eq, Show, Generic)
 $(deriveJSON (aesonOptionsStripPrefix "balResp") ''BalanceResponse)
 
 -- History
 data TxHashHistoryRequest = TxHashHistoryRequest
     { historyReqCurrency         :: !Currency
     , historyReqPubKeyScriptHash :: !PubKeyScriptHash
-    } deriving (Generic)
+    } deriving (Eq, Show, Generic)
 $(deriveJSON (aesonOptionsStripPrefix "historyReq") ''TxHashHistoryRequest)
 
 data TxHashHistoryItem = TxHashHistoryItem
     { historyItemTxHash      :: !TxHash
     , historyItemBlockHeight :: !BlockHeight
-    } deriving (Generic)
+    } deriving (Eq, Show, Generic)
 $(deriveJSON (aesonOptionsStripPrefix "historyItem") ''TxHashHistoryItem)
 
 type TxHashHistoryResponse = [TxHashHistoryItem]
@@ -38,20 +38,20 @@ data TxMerkleProofRequest = TxMerkleProofRequest
     { merkleReqCurrency         :: !Currency
     , merkleReqPubKeyScriptHash :: !PubKeyScriptHash
     , merkleReqBlockHeight      :: !BlockHeight
-    } deriving (Generic)
+    } deriving (Eq, Show, Generic)
 $(deriveJSON (aesonOptionsStripPrefix "merkleReq") ''TxMerkleProofRequest)
 
 data TxMerkleProofResponse = TxMerkleProofResponse
     { merkleItemTxMerkleProof :: !TxMerkleProof
     , merkleItemTxBlockIndex  :: !TxBlockIndex
-    } deriving (Generic)
+    } deriving (Eq, Show, Generic)
 $(deriveJSON (aesonOptionsStripPrefix "merkleResp") ''TxMerkleProofResponse)
 
 --View
 data TxHexViewRequest = TxHexViewRequest
     { viewReqCurrency :: !Currency
     , viewReqTxIds    :: ![TxId]
-    } deriving (Generic)
+    } deriving (Eq, Show, Generic)
 $(deriveJSON (aesonOptionsStripPrefix "viewReq") ''TxHexViewRequest)
 
 type TxHexViewResponse = [TxHexView]
@@ -59,13 +59,13 @@ type TxHexViewResponse = [TxHexView]
 --Fee
 data TxFeeHistogramRequest = TxFeeHistogramRequest
     { feeHistogramReqCurrency :: !Currency
-    } deriving (Generic)
+    } deriving (Eq, Show, Generic)
 $(deriveJSON (aesonOptionsStripPrefix "feeHistogramReq") ''TxFeeHistogramRequest)
 
 data TxFeeHistogramItem = TxFeeHistogramItem
     { feeHistogramItemTxFee    :: !TxFee
     , feeHistogramItemTxAmount :: !Word
-    } deriving (Generic)
+    } deriving (Eq, Show, Generic)
 $(deriveJSON (aesonOptionsStripPrefix "feeHistogramItem") ''TxFeeHistogramItem)
 
 type TxFeeHistogramResponse = [TxFeeHistogramItem]
@@ -74,7 +74,7 @@ type TxFeeHistogramResponse = [TxFeeHistogramItem]
 data TxBroadcastRequest = TxBroadcastRequest
     { txBroadcastReqCurrency  :: !Currency
     , txBroadcastReqTxHexView :: !TxHexView
-    } deriving (Generic)
+    } deriving (Eq, Show, Generic)
 $(deriveJSON (aesonOptionsStripPrefix "txBroadcastReq") ''TxBroadcastRequest)
 
 type TxBroadcastResponse = TxHash

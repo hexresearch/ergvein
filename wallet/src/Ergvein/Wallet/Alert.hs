@@ -32,6 +32,7 @@ module Ergvein.Wallet.Alert
   , logSecondaryMsg
   , logInfoMsg
   , logAlertWith
+  , AlertHandler
   , module Ergvein.Wallet.Alert.Type
   ) where
 
