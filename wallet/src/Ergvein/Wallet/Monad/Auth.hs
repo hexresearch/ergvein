@@ -162,6 +162,7 @@ liftAuth ma0 ma = mdo
   mauthD <- holdUniqDyn =<< getAuthInfoMaybe
   mauth0 <- sample . current $ mauthD
   (logoutE, logoutFire) <- newTriggerEvent
+  (storeE, storeFire) <- newTriggerEvent
   let runAuthed auth = do
         settings        <- getSettings
         backEF          <- getBackEventFire
@@ -177,7 +178,7 @@ liftAuth ma0 ma = mdo
         passSetEF       <- getPasswordSetEF
         settingsRef     <- getSettingsRef
         let infoE = externalEvent authRef
-        a <- runReaderT ma $ Env
+        a <- runReaderT (wrapped ma) $ Env
           settingsRef backEF loading langRef authRef (logoutFire ()) storeDir alertsEF
           logsTrigger logsNameSpaces uiChan passModalEF passSetEF
         pure (a, infoE)
@@ -193,3 +194,8 @@ liftAuth ma0 ma = mdo
 -- | Lift action that doesn't require authorisation in context where auth is mandatory
 liftUnauthed :: m a -> ErgveinM t m a
 liftUnauthed ma = ReaderT $ const ma
+
+wrapped :: MonadFrontBase t m => ErgveinM t m a -> ErgveinM t m a
+wrapped ma = do
+  storeWallet =<< getPostBuild
+  ma
