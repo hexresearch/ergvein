@@ -162,7 +162,6 @@ liftAuth ma0 ma = mdo
   mauthD <- holdUniqDyn =<< getAuthInfoMaybe
   mauth0 <- sample . current $ mauthD
   (logoutE, logoutFire) <- newTriggerEvent
-  (storeE, storeFire) <- newTriggerEvent
   let runAuthed auth = do
         settings        <- getSettings
         backEF          <- getBackEventFire
