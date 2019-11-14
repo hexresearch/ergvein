@@ -43,12 +43,12 @@ class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   updateSettings :: Event t Settings -> m ()
   -- | Get settings ref. Internal
   getSettingsRef :: m (ExternalRef t Settings)
-  -- | Get loading widget trigger and fire
-  getLoadingWidgetTF :: m (Event t (Text, Bool), (Text, Bool) -> IO ())
+  -- | Get loading widget trigger and fire. This is internal stuff
+  getLoadingWidgetTF :: m (Event t (Bool, Text), (Bool, Text) -> IO ())
   -- | Request displaying the loading widget
-  toggleLoadingWidget :: Event t (Text, Bool) -> m ()
+  toggleLoadingWidget :: forall l . LocalizedPrint l => Event t (Bool, l) -> m ()
   -- | Display loading via Dynamic
-  loadingWidgetDyn :: Dynamic t (Text, Bool) -> m ()
+  loadingWidgetDyn :: forall l . LocalizedPrint l => Dynamic t (Bool, l) -> m ()
   -- | System back button event
   getBackEventFire :: m (Event t (), IO ())
   -- | Internal method of getting channel where you can post actions that must be

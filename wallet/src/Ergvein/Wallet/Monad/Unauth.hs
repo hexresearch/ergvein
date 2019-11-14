@@ -25,7 +25,7 @@ import Reflex.ExternalRef
 data UnauthEnv t = UnauthEnv {
   unauth'settings        :: !(ExternalRef t Settings)
 , unauth'backEF          :: !(Event t (), IO ())
-, unauth'loading         :: !(Event t (Text, Bool), (Text, Bool) -> IO ())
+, unauth'loading         :: !(Event t (Bool, Text), (Bool, Text) -> IO ())
 , unauth'langRef         :: !(ExternalRef t Language)
 , unauth'storeDir        :: !Text
 , unauth'alertsEF        :: !(Event t AlertInfo, AlertInfo -> IO ()) -- ^ Holds alerts event and trigger
@@ -67,11 +67,17 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getLoadingWidgetTF #-}
   toggleLoadingWidget reqE = do
     fire <- asks (snd . unauth'loading)
-    performEvent_ $ (liftIO . fire) <$> reqE
+    langRef <- asks unauth'langRef
+    performEvent_ $ ffor reqE $ \(b,lbl) -> liftIO $ do
+      lang <- readExternalRef langRef
+      fire (b,localizedShow lang lbl)
   {-# INLINE toggleLoadingWidget #-}
   loadingWidgetDyn reqD = do
     fire <- asks (snd . unauth'loading)
-    performEvent_ $ (liftIO . fire) <$> (updated reqD)
+    langRef <- asks unauth'langRef
+    performEvent_ $ ffor (updated reqD) $ \(b,lbl) -> liftIO $ do
+      lang <- readExternalRef langRef
+      fire (b,localizedShow lang lbl)
   {-# INLINE loadingWidgetDyn #-}
   getBackEventFire = asks unauth'backEF
   {-# INLINE getBackEventFire #-}

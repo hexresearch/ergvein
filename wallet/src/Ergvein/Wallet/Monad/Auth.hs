@@ -39,7 +39,7 @@ import qualified Data.List as L
 data Env t = Env {
   env'settings        :: !(ExternalRef t Settings)
 , env'backEF          :: !(Event t (), IO ())
-, env'loading         :: !(Event t (Text, Bool), (Text, Bool) -> IO ())
+, env'loading         :: !(Event t (Bool, Text), (Bool, Text) -> IO ())
 , env'langRef         :: !(ExternalRef t Language)
 , env'authRef         :: !(ExternalRef t AuthInfo)
 , env'logoutFire      :: !(IO ())
@@ -84,11 +84,17 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getLoadingWidgetTF #-}
   toggleLoadingWidget reqE = do
     fire <- asks (snd . env'loading)
-    performEvent_ $ (liftIO . fire) <$> reqE
+    langRef <- asks env'langRef
+    performEvent_ $ ffor reqE $ \(b,lbl) -> liftIO $ do
+      lang <- readExternalRef langRef
+      fire (b,localizedShow lang lbl)
   {-# INLINE toggleLoadingWidget #-}
   loadingWidgetDyn reqD = do
     fire <- asks (snd . env'loading)
-    performEvent_ $ (liftIO . fire) <$> (updated reqD)
+    langRef <- asks env'langRef
+    performEvent_ $ ffor (updated reqD) $ \(b,lbl) -> liftIO $ do
+      lang <- readExternalRef langRef
+      fire (b,localizedShow lang lbl)
   {-# INLINE loadingWidgetDyn #-}
   getBackEventFire = asks env'backEF
   {-# INLINE getBackEventFire #-}
@@ -227,6 +233,29 @@ instance MonadFrontBase t m => MonadClient t (ErgveinM t m) where
   getTxFeeHistogram reqE = requesterImpl reqE getTxFeeHistogramImpl'
   txBroadcast reqE       = requesterImpl reqE txBroadcastImpl'
 
+data RequestMessages
+  = RMSLoading Int Int
+  | RMSError
+  | RMSEmpty
+  | RMSValidationError
+  | RMSDone
+  deriving (Eq)
+
+instance LocalizedPrint RequestMessages where
+  localizedShow l v = case l of
+    English -> case v of
+      RMSLoading i n      -> "Loading: " <> showt i <> " of " <> showt n
+      RMSError            -> "A request has failed"
+      RMSEmpty            -> "Results are empty"
+      RMSValidationError  -> "Validation error: inconsistent results"
+      RMSDone             -> "Done!"
+    Russian -> case v of
+      RMSLoading i n      -> "Запрашиваю. " <> showt i <> " из " <> showt n <> " ответили."
+      RMSError            -> "Один из запросов не удался"
+      RMSEmpty            -> "Результатов нет"
+      RMSValidationError  -> "Ошибка: противоречивые ответы"
+      RMSDone             -> "Готово!"
+
 -- | Implements request logic:
 -- Request from n nodes and check if results are equal.
 -- TODO: Add more sophisticated validation
@@ -270,17 +299,17 @@ requesterImpl reqE endpoint = do
   resE <- handleDangerMsg $ fforMaybe (updated resD) $ \rs -> if length rs >= n then Just (validateRes rs) else Nothing
 
   -- | Handle messages for loading display
-  toggleLoadingWidget $ ffor reqE           $ \_        -> ("Loading: 0 of " <> showt n, True)
-  toggleLoadingWidget $ ffor totalFailE     $ \err      -> ("Some fail", True)
-  toggleLoadingWidget $ ffor (updated resD) $ \rs       -> ("Loading: " <> showt (length rs) <> " of " <> showt n, True)
-  toggleLoadingWidget $ ffor resE           $ \_        -> ("Done", False)
-  pure resE
+  toggleLoadingWidget $ ffor reqE           $ \_        -> (True , RMSLoading 0 n)
+  toggleLoadingWidget $ ffor totalFailE     $ \err      -> (True , RMSError)
+  toggleLoadingWidget $ ffor (updated resD) $ \rs       -> (True , RMSLoading (length rs) n)
+  toggleLoadingWidget $ ffor resE           $ \_        -> (False, RMSDone)
+  delay 0.1 resE
   where
-    validateRes :: Eq a => [a] -> Either Text a
+    validateRes :: Eq a => [a] -> Either RequestMessages a
     validateRes rs = case L.nub rs of
-      []    -> Left "Empty results"
+      []    -> Left RMSEmpty
       x:[]  -> Right x
-      _     -> Left "Inconsistent results"
+      _     -> Left RMSValidationError
 
     getExtraUrl :: MonadIO m => S.Set Text -> m Text
     getExtraUrl uss = do
