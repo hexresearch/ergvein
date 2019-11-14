@@ -72,6 +72,8 @@ library
       , conversion
       , deepseq
       , leveldb-haskell
+      , resourcet
+      , flat
 
   default-language:    Haskell2010
   default-extensions:

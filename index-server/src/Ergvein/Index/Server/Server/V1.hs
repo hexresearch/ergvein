@@ -25,6 +25,8 @@ import Ergvein.Index.Server.BlockchainCache
 import Control.Monad.STM
 import Control.Concurrent.STM.TVar
 import Ergvein.Index.Server.BlockScanner.Types
+import Database.LevelDB
+import Control.Monad.Trans.Resource (release)
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
@@ -64,6 +66,7 @@ ergoBroadcastResponse = "4c6282be413c6e300a530618b37790be5f286ded758accc2aebd415
 --Endpoints
 indexGetBalanceEndpoint :: BalanceRequest -> ServerM BalanceResponse
 indexGetBalanceEndpoint req@(BalanceRequest { balReqCurrency = BTC  })  = do
+  b <- runResourceT $ open "/tmp/leveltest" defaultOptions { createIfMissing = True, cacheSize = 2048 }
   cacheTVar <- getCache
   cache <- liftIO $ atomically $ readTVar cacheTVar
   pure btcBalance {balRespConfirmed = cache'byScript cache Map.! balReqPubKeyScriptHash req }
