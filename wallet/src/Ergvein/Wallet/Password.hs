@@ -9,6 +9,7 @@ import Control.Monad.Except
 import Ergvein.Crypto
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
+import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Password
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Storage.Util
@@ -17,6 +18,7 @@ import Ergvein.Wallet.Validate
 import qualified Data.Text as T
 
 data AuthInfoAlert = CreateStorageAlert | GenerateECIESKeyAlert
+    deriving Eq
 
 instance LocalizedPrint AuthInfoAlert where
   localizedShow l v = case l of
@@ -61,9 +63,9 @@ mkAuthInfo :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either AuthI
 mkAuthInfo mnemonic (login, pass) = do
   storage <- createStorage mnemonic (login, pass)
   case storage of
-    Left err -> pure $ Left "Failed to create storage"
+    Left err -> pure $ Left CreateStorageAlert
     Right s -> case passwordToECIESPrvKey pass of
-      Left err -> pure $ Left "Failed to generate an ECIES secret key from password"
+      Left err -> pure $ Left GenerateECIESKeyAlert
       Right k -> pure $ Right AuthInfo {
           authInfo'storage = s
         , authInfo'eciesPubKey = toPublic k
