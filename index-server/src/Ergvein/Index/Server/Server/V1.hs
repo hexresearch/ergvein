@@ -24,6 +24,7 @@ import Data.List
 import Ergvein.Index.Server.BlockchainCache 
 import Control.Monad.STM
 import Control.Concurrent.STM.TVar
+import Ergvein.Index.Server.BlockScanner.Types
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
@@ -63,13 +64,9 @@ ergoBroadcastResponse = "4c6282be413c6e300a530618b37790be5f286ded758accc2aebd415
 --Endpoints
 indexGetBalanceEndpoint :: BalanceRequest -> ServerM BalanceResponse
 indexGetBalanceEndpoint req@(BalanceRequest { balReqCurrency = BTC  })  = do
-  c <- getCache
-  ch <- liftIO $ atomically $ readTVar c
-  let f x = (not $ Set.member (txOutRecTxHash x, txOutRecIndex x) $ txInsBy'OutTxHash'TxOutIndex ch)
-            && txOutRecPubKeyScriptHash x == balReqPubKeyScriptHash req
-      r = foldl (+) 0 $ txOutRecValue <$> (filter f $ txOuts ch) 
-  
-  pure btcBalance {balRespConfirmed = r}
+  cacheTVar <- getCache
+  cache <- liftIO $ atomically $ readTVar cacheTVar
+  pure btcBalance {balRespConfirmed = cache'byScript cache Map.! balReqPubKeyScriptHash req }
 
 indexGetBalanceEndpoint BalanceRequest { balReqCurrency = ERGO } = pure ergoBalance
 

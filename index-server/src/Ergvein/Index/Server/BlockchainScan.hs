@@ -20,6 +20,8 @@ import Ergvein.Types.Transaction
 import Ergvein.Index.Server.BlockchainCache
 import Control.Concurrent.STM.TVar
 import Control.Monad.STM
+import Conversion
+
 
 scannedBlockHeight :: DBPool -> Currency -> IO (Maybe BlockHeight)
 scannedBlockHeight pool currency = do
@@ -47,7 +49,7 @@ storeInfo dbPool blockInfo = do
   pure ()
 
 updateCache :: TVar BCCache -> BlockInfo -> IO () 
-updateCache cache blockInfo = atomically $ modifyTVar' cache (<> B)
+updateCache cache blockInfo = atomically $ modifyTVar' cache $ flip addToCache blockInfo
 
 storeScannedHeight :: DBPool -> Currency -> BlockHeight -> IO ()
 storeScannedHeight dbPool currency scannedHeight = void $ runDbQuery dbPool $ upsertScannedHeight currency scannedHeight
@@ -61,6 +63,7 @@ scannerThread env currency scanInfo =
       blockInfo <- scanInfo blockHeight
       storeInfo pool blockInfo
       storeScannedHeight pool currency blockHeight
+      updateCache (bCache env) blockInfo
     scanIteration thread = liftIO $ do
       heights <- blockHeightsToScan env currency
       sequence_ $ blockIteration <$> heights
