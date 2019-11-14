@@ -4,3 +4,4 @@ module Ergvein.Index.Client
   ) where
 
 import Ergvein.Index.Client.V1 as X
+import Ergvein.Index.API.Types as X
