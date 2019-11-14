@@ -20,6 +20,8 @@ module Ergvein.Wallet.Client.Util
   , endpoint3'
   , endpoint4
   , endpoint4'
+  -- * Error type
+  , ClientError(..)
   -- * Reexports
   , module Reexport
   ) where
@@ -77,18 +79,18 @@ instance LocalizedPrint ClientError where
 type ClientHandler t m = AlertHandler t m ClientError
 
 -- | Derive client endpoints for given monad
-indexerVClient :: forall t m tag . MonadBaseConstr t m => Proxy m -> Proxy tag -> Text -> IndexVersionedApi (AsReflex t m tag)
-indexerVClient pm ptag url = fromServant $ client (Proxy :: Proxy (ToServantApi IndexVersionedApi)) pm ptag (pure $ BasePath url)
+indexerVClient :: forall t m tag . MonadBaseConstr t m => Proxy m -> Proxy tag -> Dynamic t Text -> IndexVersionedApi (AsReflex t m tag)
+indexerVClient pm ptag durl = fromServant $ client (Proxy :: Proxy (ToServantApi IndexVersionedApi)) pm ptag $ BasePath <$> durl
 
 -- | Derived client with no tag
-indexerVClient_ :: forall t m . MonadBaseConstr t m => Proxy m -> Text -> IndexVersionedApi (AsReflex t m ())
+indexerVClient_ :: forall t m . MonadBaseConstr t m => Proxy m -> Dynamic t Text -> IndexVersionedApi (AsReflex t m ())
 indexerVClient_ pm = indexerVClient pm (Proxy :: Proxy ())
 
-indexerV1 :: forall t m tag . MonadBaseConstr t m => Proxy m -> Proxy tag -> Text -> IndexApi (AsReflex t m tag)
-indexerV1 pm ptag url = fromServant . indexVersionedApi'v1 $ indexerVClient pm ptag url
+indexerV1 :: forall t m tag . MonadBaseConstr t m => Proxy m -> Proxy tag -> Dynamic t Text -> IndexApi (AsReflex t m tag)
+indexerV1 pm ptag durl = fromServant . indexVersionedApi'v1 $ indexerVClient pm ptag durl
 
 -- | Derived client with no tag
-indexerV1_ :: forall t m . MonadBaseConstr t m => Proxy m -> Text -> IndexApi (AsReflex t m ())
+indexerV1_ :: forall t m . MonadBaseConstr t m => Proxy m -> Dynamic t Text -> IndexApi (AsReflex t m ())
 indexerV1_ pm = fromServant . indexVersionedApi'v1 . indexerVClient pm (Proxy :: Proxy ())
 
 -- | Convert req result to text
@@ -146,14 +148,14 @@ endpoint4 :: forall t m a b c d e . ClientHandler t m
 endpoint4 endpoint bodyE = handleDangerMsg =<< endpoint4' endpoint bodyE
 
 -- | Helper for wrapping endpoint without authorisation
-endpoint0' :: forall t m a. ClientHandler t m
+endpoint0' :: forall t m a. MonadBaseConstr t m
   => DEndpoint t m a -- ^ Endpoint
   -> Event t () -- ^ Fire event
   -> m (Event t (Either ClientError a)) -- ^ Result
 endpoint0' endpoint fireE = fmap textifyResult <$> endpoint fireE
 
 -- | Helper for wrapping endpoint without authorisation
-endpoint1' :: forall t m a b. ClientHandler t m
+endpoint1' :: forall t m a b. MonadBaseConstr t m
   => (DBody t a -> DEndpoint t m b) -- ^ Endpoint
   -> Event t a -- ^ Argument
   -> m (Event t (Either ClientError b)) -- ^ Result
@@ -163,7 +165,7 @@ endpoint1' endpoint bodyE = do
   pure $ textifyResult <$> resE
 
 -- | Helper for wrapping endpoint without authorisation
-endpoint2' :: forall t m a b c . ClientHandler t m
+endpoint2' :: forall t m a b c . MonadBaseConstr t m
   => (DBody t a -> DBody t b -> DEndpoint t m c) -- ^ Endpoint
   -> Event t (a, b) -- ^ Argument
   -> m (Event t (Either ClientError c)) -- ^ Result
@@ -174,7 +176,7 @@ endpoint2' endpoint bodyE = do
   pure $ textifyResult <$> resE
 
 -- | Helper for wrapping endpoint without authorisation
-endpoint3' :: forall t m a b c d . ClientHandler t m
+endpoint3' :: forall t m a b c d . MonadBaseConstr t m
   => (DBody t a -> DBody t b -> DBody t c -> DEndpoint t m d) -- ^ Endpoint
   -> Event t (a, b, c) -- ^ Argument
   -> m (Event t (Either ClientError d)) -- ^ Result
@@ -186,7 +188,7 @@ endpoint3' endpoint bodyE = do
   pure $ textifyResult <$> resE
 
 -- | Helper for wrapping endpoint without authorisation
-endpoint4' :: forall t m a b c d e . ClientHandler t m
+endpoint4' :: forall t m a b c d e . MonadBaseConstr t m
   => (DBody t a -> DBody t b -> DBody t c -> DBody t d -> DEndpoint t m e) -- ^ Endpoint
   -> Event t (a, b, c, d) -- ^ Argument
   -> m (Event t (Either ClientError e)) -- ^ Result

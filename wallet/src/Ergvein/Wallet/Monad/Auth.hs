@@ -9,9 +9,11 @@ import Control.Monad.Random.Class
 import Control.Monad.Reader
 import Data.Functor (void)
 import Data.List (permutations)
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, listToMaybe)
 import Data.Text (Text, unpack)
 import Ergvein.Crypto
+import Ergvein.Text
+import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Client.Impl
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
@@ -32,6 +34,7 @@ import Reflex.ExternalRef
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Set as S
 import qualified Data.Map.Strict as M
+import qualified Data.List as L
 
 data Env t = Env {
   env'settings        :: !(ExternalRef t Settings)
@@ -209,7 +212,6 @@ instance MonadFrontBase t m => MonadClient t (ErgveinM t m) where
 
   addUrls urlsE = do
     urlsRef <- asks env'urls
-    -- modifyExternalRef :: MonadIO m => ExternalRef t a -> (a -> (a, b)) -> m b
     performEvent_ $ ffor urlsE $ \urls ->
       modifyExternalRef urlsRef (\s -> (S.union (S.fromList urls) s, ()) )
 
@@ -218,15 +220,76 @@ instance MonadFrontBase t m => MonadClient t (ErgveinM t m) where
     performEvent_ $ ffor urlsE $ \urls ->
       modifyExternalRef urlsRef (\s -> (S.difference s (S.fromList urls), ()) )
 
-  getBalance reqE        = requesterImpl (getBalanceImpl        reqE)
-  getTxHashHistory reqE  = requesterImpl (getTxHashHistoryImpl  reqE)
-  getTxMerkleProof reqE  = requesterImpl (getTxMerkleProofImpl  reqE)
-  getTxHexView reqE      = requesterImpl (getTxHexViewImpl      reqE)
-  getTxFeeHistogram reqE = requesterImpl (getTxFeeHistogramImpl reqE)
-  txBroadcast reqE       = requesterImpl (txBroadcastImpl       reqE)
+  getBalance reqE        = requesterImpl reqE getBalanceImpl'
+  getTxHashHistory reqE  = requesterImpl reqE getTxHashHistoryImpl'
+  getTxMerkleProof reqE  = requesterImpl reqE getTxMerkleProofImpl'
+  getTxHexView reqE      = requesterImpl reqE getTxHexViewImpl'
+  getTxFeeHistogram reqE = requesterImpl reqE getTxFeeHistogramImpl'
+  txBroadcast reqE       = requesterImpl reqE txBroadcastImpl'
 
+-- | Implements request logic:
+-- Request from n nodes and check if results are equal.
+-- TODO: Add more sophisticated validation
+requesterImpl :: (MonadFrontBase t m, LocalizedPrint e, Eq a)
+  => Event t b                                                              -- Request event
+  -> (Dynamic t Text -> Event t b -> ErgveinM t m (Event t (Either e a)))   -- Request function
+  -> ErgveinM t m (Event t a)                                               -- Result
+requesterImpl reqE endpoint = do
+  reqD  <- holdDyn Nothing $ Just <$> reqE        -- Hold request value for later
+  uss   <- readExternalRef =<< asks env'urls      -- Set of urls
+  n     <- readExternalRef =<< asks env'urlNum    -- Required number of confirmations
+  urls  <- getRandUrls n uss                      -- Initial list of urls to query
 
-requesterImpl :: MonadFrontBase t m => (Text -> ErgveinM t m (Event t a)) -> ErgveinM t m (Event t a)
-requesterImpl req = do
-  urls <- readExternalRef =<< asks env'urls
-  req $ head $ S.elems urls
+  -- | Get a response event eresE :: Event t (Either e a) and split into failure and success events
+  eresE <- fmap leftmost $ traverse (\u-> endpoint (pure u) reqE) urls
+  let failE = fforMaybe eresE $ \case
+        Left err -> Just err
+        _ -> Nothing
+      succE = fforMaybe eresE $ \case
+        Right res -> Just res
+        _ -> Nothing
+
+  rec   -- If a request fails then get a new url and try again
+    let totalFailE = leftmost [failE, extraFailE]
+    -- | Get a new url and store it in Dynamic
+    extraUrlD <- holdDyn "" =<< performEvent ((getExtraUrl uss) <$ totalFailE)
+    -- | Wait a bit after totalFailE before firing another request, so that extraUrlD holds new url
+    rereqE    <- delay 0.01 $ fmapMaybe id $ current reqD `tag` totalFailE
+    -- | Get extra results, split, feed extraFailE back into totalFailE
+    extraResE <- endpoint extraUrlD rereqE
+    let extraFailE = fforMaybe extraResE $ \case
+          Left err -> Just err
+          _ -> Nothing
+        extraSuccE = fforMaybe extraResE $ \case
+          Right res -> Just res
+          _ -> Nothing
+
+  -- | Collect successful results
+  resD <- foldDyn (:) [] $ leftmost [succE, extraSuccE]
+  -- | When there is enough result, run validation and fire the final event away
+  resE <- handleDangerMsg $ fforMaybe (updated resD) $ \rs -> if length rs >= n then Just (validateRes rs) else Nothing
+
+  -- | Handle messages for loading display
+  toggleLoadingWidget $ ffor reqE           $ \_        -> ("Loading: 0 of " <> showt n, True)
+  toggleLoadingWidget $ ffor totalFailE     $ \err      -> ("Some fail", True)
+  toggleLoadingWidget $ ffor (updated resD) $ \rs       -> ("Loading: " <> showt (length rs) <> " of " <> showt n, True)
+  toggleLoadingWidget $ ffor resE           $ \_        -> ("Done", False)
+  pure resE
+  where
+    validateRes :: Eq a => [a] -> Either Text a
+    validateRes rs = case L.nub rs of
+      []    -> Left "Empty results"
+      x:[]  -> Right x
+      _     -> Left "Inconsistent results"
+
+    getExtraUrl :: MonadIO m => S.Set Text -> m Text
+    getExtraUrl uss = do
+      i   <- liftIO $ getRandomR (0, S.size uss - 1)
+      pure $ S.elems uss !! i
+
+    getRandUrls :: MonadIO m => Int -> S.Set Text -> m [Text]
+    getRandUrls n uss = do
+      let us = S.elems uss
+          perml = product [1 .. (length us)] - 1
+      i <- liftIO $ getRandomR (0, perml)
+      pure $ take n $ permutations us !! i
