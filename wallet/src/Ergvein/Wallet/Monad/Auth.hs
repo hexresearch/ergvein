@@ -122,7 +122,7 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   getPasswordSetEF = asks env'passSetEF
   {-# INLINE getPasswordSetEF #-}
   requestPasssword reqE = do
-    idE <- performEvent $ (liftIO getRandom) <$ reqE
+    idE <- performEvent $ liftIO getRandom <$ reqE
     idD <- holdDyn 0 idE
     (_, modalF) <- asks env'passModalEF
     (setE, _) <- asks env'passSetEF
