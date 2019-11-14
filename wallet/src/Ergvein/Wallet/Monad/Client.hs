@@ -12,7 +12,7 @@ import Ergvein.Wallet.Monad.Base
 
 -- | Implements client logic, requesting multiple indexers and verifying results
 class MonadBaseConstr t m => MonadClient t m | m -> t where
-  -- | Helper functions
+  --  Helper functions
   -- | Set the number of required confirmations
   setRequiredUrlNum :: Event t Int -> m ()
   -- | Get a list of indexer urls. At most N urls, where N is set by setRequiredUrlNum
@@ -21,7 +21,7 @@ class MonadBaseConstr t m => MonadClient t m | m -> t where
   addUrls :: Event t [Text] -> m ()
   -- | Remove a number of urls from the set of valid urls
   invalidateUrls :: Event t [Text] -> m ()
-  -- | Client functions
+  -- Client functions
   getBalance :: Event t BalanceRequest -> m (Event t BalanceResponse)
   getTxHashHistory :: Event t TxHashHistoryRequest -> m (Event t TxHashHistoryResponse)
   getTxMerkleProof :: Event t TxMerkleProofRequest -> m (Event t TxMerkleProofResponse)
