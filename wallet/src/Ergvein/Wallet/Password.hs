@@ -16,6 +16,17 @@ import Ergvein.Wallet.Validate
 
 import qualified Data.Text as T
 
+data AuthInfoAlert = CreateStorageAlert | GenerateECIESKeyAlert
+
+instance LocalizedPrint AuthInfoAlert where
+  localizedShow l v = case l of
+    English -> case v of
+      CreateStorageAlert -> "Failed to create storage"
+      GenerateECIESKeyAlert -> "Failed to generate an ECIES secret key from password"
+    Russian -> case v of
+      CreateStorageAlert -> "Не удалось создать хранилище"
+      GenerateECIESKeyAlert -> "Не удалось сгенерировать ключ ECIES шифрования из пароля"
+
 setupLoginPassword :: MonadFrontBase t m => m (Event t (Text, Password))
 setupLoginPassword = divClass "setup-password" $ form $ fieldset $ do
   loginD <- textField PWSLogin ""
@@ -46,7 +57,7 @@ askPasswordModal = mdo
     Nothing -> pure never
   performEvent_ $ (liftIO . fire) <$> passE
 
-mkAuthInfo :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either Text AuthInfo)
+mkAuthInfo :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either AuthInfoAlert AuthInfo)
 mkAuthInfo mnemonic (login, pass) = do
   storage <- createStorage mnemonic (login, pass)
   case storage of
