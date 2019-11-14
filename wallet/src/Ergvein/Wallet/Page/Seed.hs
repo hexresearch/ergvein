@@ -16,6 +16,7 @@ import Ergvein.Wallet.Input
 import Ergvein.Wallet.Localization.Seed
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
+import Ergvein.Wallet.Resize
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
 import Reflex.Localize
@@ -26,7 +27,7 @@ import qualified Data.List as L
 mnemonicPage :: MonadFrontBase t m => m ()
 mnemonicPage = go Nothing
   where
-    go mnemonic = wrapper True $ do
+    go mnemonic = wrapper False $ do
       (e, md) <- mnemonicWidget mnemonic
       nextWidget $ ffor e $ \mn -> Retractable {
           retractableNext = checkPage mn
@@ -56,16 +57,20 @@ mnemonicWidget mnemonic = do
     Nothing -> pure (never, pure Nothing)
     Just phrase -> do
       divClass "mnemonic-title" $ h4 $ localizedText SPSTitle
-      divClass "mnemonic-colony" $ colonize 4 (prepareMnemonic 4 phrase) $ \(i,w) ->
-        divClass "column mnemonic-word" $ do
-          elClass "span" "mnemonic-word-ix" $ text $ showt i
-          text w
+      divClass "mnemonic-colony" $ adaptive (mobileMnemonic phrase) (desktopMnemonic phrase)
       divClass "mnemonic-warn" $ h4 $ localizedText SPSWarn
       btnE <- outlineButton SPSWrote
       pure (phrase <$ btnE, pure $ Just phrase)
   where
     prepareMnemonic :: Int -> Mnemonic -> [(Int, Text)]
     prepareMnemonic cols = L.concat . L.transpose . mkCols cols . zip [1..] . T.words
+
+    wordColumn cs i w = divClass ("column " <> cs) $ do
+      elClass "span" "mnemonic-word-ix" $ text $ showt i
+      text w
+
+    mobileMnemonic phrase = flip traverse_ (zip [1..] . T.words $ phrase) $ uncurry (wordColumn "mnemonic-word-mb")
+    desktopMnemonic phrase = void $ colonize 4 (prepareMnemonic 4 phrase) $ uncurry (wordColumn "mnemonic-word-dx")
 
 -- | Helper to cut a list into column-length chunks
 mkCols :: Int -> [a] -> [[a]]

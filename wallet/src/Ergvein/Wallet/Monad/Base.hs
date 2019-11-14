@@ -41,6 +41,7 @@ type MonadBaseConstr t m = (MonadHold t m
   , PerformEvent t m
   , MonadIO (Performable m)
   , MonadSample t (Performable m)
+  , MonadJSM (Performable m)
   , MonadIO m
   , TriggerEvent t m
   , MonadJSM m
