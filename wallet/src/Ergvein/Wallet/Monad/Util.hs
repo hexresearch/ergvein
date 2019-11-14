@@ -5,24 +5,75 @@ module Ergvein.Wallet.Monad.Util
   , runOnUiThreadA
   , runOnUiThreadM
   , nameSpace
+  , getLogNameSpace
+  , postSeverity
+  , logDebug
+  , logInfo
+  , logWarn
+  , logError
+  , postLog
   ) where
 
-import Control.Monad.IO.Class
 import Control.Concurrent
 import Control.Concurrent.Async
+import Control.Monad.IO.Class
+import Data.Time
+import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Front
 import Reflex
 import Reflex.ExternalRef
 
+-- | Posting log message
+postLog :: MonadEgvLogger t m => Event t LogEntry -> m ()
+postLog e = do
+  (_, fire) <- getLogsTrigger
+  performEvent_ $ ffor e $ liftIO . fire
+
 -- | Wrap log name space for given widget
-nameSpace :: MonadFrontBase t m => Text -> m a -> m a
+nameSpace :: MonadEgvLogger t m => Text -> m a -> m a
 nameSpace n ma = do
   ref <- getLogsNameSpacesRef
   ns <- modifyExternalRef ref $ \ns -> (n:ns, ns)
   a <- ma
   writeExternalRef ref ns
   pure a
+
+-- | Getting current name spaces for log
+getLogNameSpace :: MonadEgvLogger t m => m [Text]
+getLogNameSpace = do
+  ref <- getLogsNameSpacesRef
+  readExternalRef ref
+
+-- | Helper that posts given text as log str with given severity
+postSeverity :: MonadEgvLogger t m => LogSeverity -> Event t Text -> m ()
+postSeverity srv e = do
+  ns <- getLogNameSpace
+  e' <- performEvent $ ffor e $ \msg -> do
+    t <- liftIO getCurrentTime
+    pure LogEntry {
+        logTime = t
+      , logSeverity = srv
+      , logMessage = msg
+      , logNameSpace = ns
+      }
+  postLog e'
+
+-- | Helper that posts given text as log str with debug severity
+logDebug :: MonadEgvLogger t m => Event t Text -> m ()
+logDebug = postSeverity LogDebug
+
+-- | Helper that posts given text as log str with info severity
+logInfo :: MonadEgvLogger t m => Event t Text -> m ()
+logInfo = postSeverity LogInfo
+
+-- | Helper that posts given text as log str with warn severity
+logWarn :: MonadEgvLogger t m => Event t Text -> m ()
+logWarn = postSeverity LogWarning
+
+-- | Helper that posts given text as log str with error severity
+logError :: MonadEgvLogger t m => Event t Text -> m ()
+logError = postSeverity LogError
 
 -- | Execute the action in main thread of UI. Very useful for android API actions
 -- that must be executed in the same thread where Looper was created.
