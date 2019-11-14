@@ -10,6 +10,7 @@ import Control.Monad.Random.Class
 import Control.Monad.Reader
 import Data.IORef
 import Data.Text (Text)
+import Ergvein.Index.Client
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Base
@@ -18,6 +19,7 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Run
 import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Settings
+import Network.HTTP.Client hiding (Proxy)
 import Reflex
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
@@ -35,12 +37,16 @@ data UnauthEnv t = UnauthEnv {
 , unauth'authRef         :: !(ExternalRef t (Maybe AuthInfo))
 , unauth'passModalEF     :: !(Event t Int, Int -> IO ())
 , unauth'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
+, unauth'manager         :: !Manager
 }
 
 type UnauthM t m = ReaderT (UnauthEnv t) m
 
 instance Monad m => HasStoreDir (UnauthM t m) where
   getStoreDir = asks unauth'storeDir
+
+instance MonadIO m => HasClientManager (UnauthM t m) where
+  getClientMaganer = asks unauth'manager
 
 instance MonadBaseConstr t m => MonadEgvLogger t (UnauthM t m) where
   getLogsTrigger = asks unauth'logsTrigger
@@ -143,6 +149,7 @@ newEnv settings uiChan = do
   re <- newRetractEnv
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
+  manager <- liftIO $ newManager defaultManagerSettings
   pure UnauthEnv {
       unauth'settings  = settingsRef
     , unauth'backEF    = (backE, backFire ())
@@ -156,6 +163,7 @@ newEnv settings uiChan = do
     , unauth'authRef = authRef
     , unauth'passModalEF = passModalEF
     , unauth'passSetEF = passSetEF
+    , unauth'manager = manager
     }
 
 runEnv :: (MonadBaseConstr t m, PlatformNatives)

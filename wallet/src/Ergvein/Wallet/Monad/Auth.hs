@@ -12,6 +12,7 @@ import Data.List (permutations)
 import Data.Maybe (catMaybes, listToMaybe)
 import Data.Text (Text, unpack)
 import Ergvein.Crypto
+import Ergvein.Index.Client
 import Ergvein.Text
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Client.Impl
@@ -26,6 +27,7 @@ import Ergvein.Wallet.Settings (Settings(..), storeSettings)
 import Ergvein.Wallet.Storage.Data
 import Ergvein.Wallet.Storage.Util
 import Network.Haskoin.Address
+import Network.HTTP.Client hiding (Proxy)
 import Reflex
 import Reflex.Dom
 import Reflex.Dom.Retractable
@@ -52,12 +54,16 @@ data Env t = Env {
 , env'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
 , env'urls            :: !(ExternalRef t (S.Set Text))
 , env'urlNum          :: !(ExternalRef t Int)
+, env'manager         :: !Manager
 }
 
 type ErgveinM t m = ReaderT (Env t) m
 
 instance Monad m => HasStoreDir (ErgveinM t m) where
   getStoreDir = asks env'storeDir
+
+instance MonadIO m => HasClientManager (ErgveinM t m) where
+  getClientMaganer = asks env'manager
 
 instance MonadBaseConstr t m => MonadEgvLogger t (ErgveinM t m) where
   getLogsTrigger = asks env'logsTrigger
@@ -184,10 +190,11 @@ liftAuth ma0 ma = mdo
         settings        <- readExternalRef settingsRef
         urlsRef         <- newExternalRef . S.fromList . settingsDefUrls $ settings
         urlNumRef       <- newExternalRef . settingsDefUrlNum $ settings
+        manager         <- getClientMaganer
         let infoE = externalEvent authRef
         a <- runReaderT ma $ Env
           settingsRef backEF loading langRef authRef (logoutFire ()) storeDir alertsEF
-          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef
+          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef manager
         pure (a, infoE)
   let
     ma0e = (,never) <$> ma0

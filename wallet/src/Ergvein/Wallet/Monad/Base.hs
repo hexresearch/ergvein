@@ -15,6 +15,7 @@ import Control.Monad.IO.Class
 import Control.Monad.Ref
 import Data.Text (Text)
 import Data.Time(UTCTime)
+import Ergvein.Index.Client
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Native
@@ -55,7 +56,10 @@ type MonadFrontConstr t m = (PlatformNatives
   , MonadLocalized t m
   , MonadRetract t m
   , MonadAlertPoster t m
-  , MonadEgvLogger t m)
+  , MonadEgvLogger t m
+  , HasClientManager m
+  , HasClientManager (Performable m)
+  )
 
 -- | ===========================================================================
 -- |           Monad EgvLogger. Implements Ervgein's logging

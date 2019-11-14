@@ -78,8 +78,9 @@ library
     , data-default
     , directory
     , ergvein-common            >= 1.0      && < 1.1
-    , ergvein-index-api         >= 0.1      && < 0.2
     , ergvein-crypto            >= 0.1      && < 0.2
+    , ergvein-index-api         >= 0.1      && < 0.2
+    , ergvein-index-client      >= 0.1      && < 0.2
     , ergvein-wallet-native     >= 0.1      && < 0.2
     , ergvein-wallet-types      >= 0.1      && < 0.2
     , exceptions
@@ -87,6 +88,7 @@ library
     , filepath
     , ghcjs-dom
     , haskoin-core
+    , http-client               >= 0.5    && < 0.7
     , interpolatedstring-perl6
     , jsaddle
     , lens                      >= 4.16     && < 4.17
