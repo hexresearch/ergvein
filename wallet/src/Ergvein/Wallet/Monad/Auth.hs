@@ -15,7 +15,6 @@ import Ergvein.Crypto
 import Ergvein.Index.Client
 import Ergvein.Text
 import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Client.Impl
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Base

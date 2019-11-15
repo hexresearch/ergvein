@@ -20,7 +20,6 @@ import Data.Functor (void)
 import Data.Text (Text)
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Base
-import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Data
