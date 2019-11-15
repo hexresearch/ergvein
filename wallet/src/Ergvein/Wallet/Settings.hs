@@ -10,11 +10,12 @@ import Control.Monad.IO.Class
 import Data.Default
 import Data.Text(Text, pack, unpack)
 import Data.Yaml (encodeFile)
+import Data.Aeson (withText)
 import Ergvein.Aeson
 import Ergvein.Lens
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Yaml(readYamlEither')
-import Servant.Client(BaseUrl(..), Scheme(..), parseBaseUrl)
+import Servant.Client(BaseUrl(..), Scheme(..), parseBaseUrl, showBaseUrl)
 import System.Directory
 
 import qualified Control.Exception   as Exception
@@ -32,9 +33,13 @@ data Settings = Settings {
 , settingsDefUrlNum   :: Int
 } deriving (Eq, Show)
 
-$(deriveJSON defaultOptions ''Scheme)
-$(deriveJSON defaultOptions ''BaseUrl)
 $(deriveJSON (aesonOptionsStripPrefix "settings") ''Settings)
+
+instance ToJSON BaseUrl where
+  toJSON = toJSON . showBaseUrl
+
+instance FromJSON BaseUrl where
+  parseJSON = withText "BaseUrl" $ maybe (fail "Failed to parse BaseUrl") pure . parseBaseUrl . unpack
 
 makeLensesWith humbleFields ''Settings
 
