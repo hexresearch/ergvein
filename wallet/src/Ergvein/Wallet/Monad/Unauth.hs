@@ -23,6 +23,7 @@ import Network.HTTP.Client hiding (Proxy)
 import Reflex
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
+import qualified Data.Set as S
 
 data UnauthEnv t = UnauthEnv {
   unauth'settings        :: !(ExternalRef t Settings)
@@ -37,6 +38,8 @@ data UnauthEnv t = UnauthEnv {
 , unauth'authRef         :: !(ExternalRef t (Maybe AuthInfo))
 , unauth'passModalEF     :: !(Event t Int, Int -> IO ())
 , unauth'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
+, unauth'urls            :: !(ExternalRef t (S.Set Text))
+, unauth'urlNum          :: !(ExternalRef t Int)
 , unauth'manager         :: !Manager
 }
 
@@ -65,6 +68,31 @@ instance MonadBaseConstr t m => MonadLocalized t (UnauthM t m) where
   {-# INLINE setLanguageE #-}
   getLanguage = externalRefDynamic =<< asks unauth'langRef
   {-# INLINE getLanguage #-}
+
+instance MonadBaseConstr t m => MonadClient t (UnauthM t m) where
+  setRequiredUrlNum numE = do
+    numRef <- asks unauth'urlNum
+    performEvent_ $ (writeExternalRef numRef) <$> numE
+
+  getRequiredUrlNum reqE = do
+    numRef <- asks unauth'urlNum
+    performEvent $ (readExternalRef numRef) <$ reqE
+
+  getUrlList reqE = do
+    urlsRef <- asks unauth'urls
+    performEvent $ ffor reqE $ const $ liftIO $ fmap S.elems $ readExternalRef urlsRef
+
+  addUrls urlsE = do
+    urlsRef <- asks unauth'urls
+    performEvent_ $ ffor urlsE $ \urls ->
+      modifyExternalRef urlsRef (\s -> (S.union (S.fromList urls) s, ()) )
+
+  invalidateUrls urlsE = do
+    urlsRef <- asks unauth'urls
+    performEvent_ $ ffor urlsE $ \urls ->
+      modifyExternalRef urlsRef (\s -> (S.difference s (S.fromList urls), ()) )
+  getUrlsRef = asks unauth'urls
+  getRequiredUrlNumRef = asks unauth'urlNum
 
 instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontBase t (UnauthM t m) where
   getSettings = readExternalRef =<< asks unauth'settings
@@ -150,6 +178,8 @@ newEnv settings uiChan = do
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
   manager <- liftIO $ newManager defaultManagerSettings
+  urls <- newExternalRef $ S.fromList $ settingsDefUrls settings
+  urlNum <- newExternalRef $ settingsDefUrlNum settings
   pure UnauthEnv {
       unauth'settings  = settingsRef
     , unauth'backEF    = (backE, backFire ())
@@ -163,6 +193,8 @@ newEnv settings uiChan = do
     , unauth'authRef = authRef
     , unauth'passModalEF = passModalEF
     , unauth'passSetEF = passSetEF
+    , unauth'urls = urls
+    , unauth'urlNum = urlNum
     , unauth'manager = manager
     }
 

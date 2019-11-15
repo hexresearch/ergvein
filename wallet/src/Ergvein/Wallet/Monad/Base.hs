@@ -7,6 +7,7 @@ module Ergvein.Wallet.Monad.Base
   , alertTypeToSeverity
   , AlertInfo(..)
   , MonadEgvLogger(..)
+  , MonadClient(..)
   ) where
 
 import Control.Concurrent.Chan (Chan)
@@ -20,6 +21,7 @@ import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Native
 import Language.Javascript.JSaddle
+import qualified Data.Set as S
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
 import Reflex.Dom.Retractable
@@ -48,7 +50,7 @@ type MonadBaseConstr t m = (MonadHold t m
   , Ref (Performable m) ~ Ref IO
   )
 
--- | Context for unauthed widgets
+-- Context for unauthed widgets
 -- Only to be used to request password and open the local storage
 type MonadFrontConstr t m = (PlatformNatives
   , HasStoreDir m
@@ -59,21 +61,22 @@ type MonadFrontConstr t m = (PlatformNatives
   , MonadEgvLogger t m
   , HasClientManager m
   , HasClientManager (Performable m)
+  , MonadClient t m
   )
 
--- | ===========================================================================
--- |           Monad EgvLogger. Implements Ervgein's logging
--- | ===========================================================================
+-- ===========================================================================
+--           Monad EgvLogger. Implements Ervgein's logging
+-- ===========================================================================
 
 class MonadBaseConstr t m => MonadEgvLogger t m where
-    -- | Internal getting of logs event and trigger
+  -- | Internal getting of logs event and trigger
   getLogsTrigger :: m (Event t LogEntry, LogEntry -> IO ())
   -- | Get internal ref fo namespaces
   getLogsNameSpacesRef :: m (ExternalRef t [Text])
 
--- | ===========================================================================
--- |           Monad Alert Poster. Implements rendering of alerts
--- | ===========================================================================
+-- ===========================================================================
+--           Monad Alert Poster. Implements rendering of alerts
+-- ===========================================================================
 
 -- | Different styles of alerts (including success or info messages)
 data AlertType =
@@ -113,3 +116,24 @@ class MonadBaseConstr t m => MonadAlertPoster t m | m -> t where
   newAlertEvent :: m (Event t AlertInfo)
   -- | Get alert's event and trigger. Internal
   getAlertEventFire :: m (Event t AlertInfo, AlertInfo -> IO ())
+
+
+-- ===========================================================================
+--    Monad Client. Implements all required things for client operations
+-- ===========================================================================
+
+class (MonadBaseConstr t m, HasClientManager m, HasClientManager (Performable m)) => MonadClient t m | m -> t where
+  -- | Set the number of required confirmations
+  setRequiredUrlNum :: Event t Int -> m ()
+  -- | Get the number of required confirmations
+  getRequiredUrlNum :: Event t () -> m (Event t Int)
+  -- | Get all urls in a list
+  getUrlList :: Event t () -> m (Event t [Text])
+  -- | Add a number of urls to the set of valid urls
+  addUrls :: Event t [Text] -> m ()
+  -- | Remove a number of urls from the set of valid urls
+  invalidateUrls :: Event t [Text] -> m ()
+  -- | Get url reference. Internal
+  getUrlsRef :: m (ExternalRef t (S.Set Text))
+  -- | Get num reference. Internal
+  getRequiredUrlNumRef :: m (ExternalRef t Int)
