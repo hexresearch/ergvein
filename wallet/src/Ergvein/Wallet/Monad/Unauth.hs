@@ -10,6 +10,7 @@ import Control.Monad.Random.Class
 import Control.Monad.Reader
 import Data.IORef
 import Data.Text (Text)
+import Data.Time(NominalDiffTime)
 import Ergvein.Index.Client
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
@@ -23,8 +24,9 @@ import Network.HTTP.Client hiding (Proxy)
 import Reflex
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
-import qualified Data.Set as S
 import Servant.Client(BaseUrl)
+
+import qualified Data.Set as S
 
 data UnauthEnv t = UnauthEnv {
   unauth'settings        :: !(ExternalRef t Settings)
@@ -40,7 +42,8 @@ data UnauthEnv t = UnauthEnv {
 , unauth'passModalEF     :: !(Event t Int, Int -> IO ())
 , unauth'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
 , unauth'urls            :: !(ExternalRef t (S.Set BaseUrl))
-, unauth'urlNum          :: !(ExternalRef t Int)
+, unauth'urlNum          :: !(ExternalRef t (Int, Int))
+, unauth'timeout         :: !(ExternalRef t NominalDiffTime)
 , unauth'manager         :: !Manager
 }
 
@@ -94,6 +97,7 @@ instance MonadBaseConstr t m => MonadClient t (UnauthM t m) where
       modifyExternalRef urlsRef (\s -> (S.difference s (S.fromList urls), ()) )
   getUrlsRef = asks unauth'urls
   getRequiredUrlNumRef = asks unauth'urlNum
+  getRequestTimeoutRef = asks unauth'timeout
 
 instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontBase t (UnauthM t m) where
   getSettings = readExternalRef =<< asks unauth'settings
@@ -181,6 +185,7 @@ newEnv settings uiChan = do
   manager <- liftIO $ newManager defaultManagerSettings
   urls <- newExternalRef $ S.fromList $ settingsDefUrls settings
   urlNum <- newExternalRef $ settingsDefUrlNum settings
+  timeout <- newExternalRef $ settingsReqTimeout settings
   pure UnauthEnv {
       unauth'settings  = settingsRef
     , unauth'backEF    = (backE, backFire ())
@@ -196,6 +201,7 @@ newEnv settings uiChan = do
     , unauth'passSetEF = passSetEF
     , unauth'urls = urls
     , unauth'urlNum = urlNum
+    , unauth'timeout = timeout
     , unauth'manager = manager
     }
 

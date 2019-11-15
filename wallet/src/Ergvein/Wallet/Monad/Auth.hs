@@ -11,6 +11,7 @@ import Data.Functor (void)
 import Data.List (permutations)
 import Data.Maybe (catMaybes, listToMaybe)
 import Data.Text (Text, unpack)
+import Data.Time (NominalDiffTime)
 import Ergvein.Crypto
 import Ergvein.Index.Client
 import Ergvein.Text
@@ -53,7 +54,8 @@ data Env t = Env {
 , env'passModalEF     :: !(Event t Int, Int -> IO ())
 , env'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
 , env'urls            :: !(ExternalRef t (S.Set BaseUrl))
-, env'urlNum          :: !(ExternalRef t Int)
+, env'urlNum          :: !(ExternalRef t (Int, Int))
+, env'timeout         :: !(ExternalRef t NominalDiffTime)
 , env'manager         :: !Manager
 }
 
@@ -188,13 +190,14 @@ liftAuth ma0 ma = mdo
         passSetEF       <- getPasswordSetEF
         settingsRef     <- getSettingsRef
         settings        <- readExternalRef settingsRef
-        urlsRef         <- newExternalRef . S.fromList . settingsDefUrls $ settings
-        urlNumRef       <- newExternalRef . settingsDefUrlNum $ settings
+        urlsRef         <- getUrlsRef
+        urlNumRef       <- getRequiredUrlNumRef
+        timeoutRef      <- getRequestTimeoutRef
         manager         <- getClientMaganer
         let infoE = externalEvent authRef
         a <- runReaderT ma $ Env
           settingsRef backEF loading langRef authRef (logoutFire ()) storeDir alertsEF
-          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef manager
+          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager
         pure (a, infoE)
   let
     ma0e = (,never) <$> ma0
@@ -233,3 +236,4 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
       modifyExternalRef urlsRef (\s -> (S.difference s (S.fromList urls), ()) )
   getUrlsRef = asks env'urls
   getRequiredUrlNumRef = asks env'urlNum
+  getRequestTimeoutRef = asks env'timeout

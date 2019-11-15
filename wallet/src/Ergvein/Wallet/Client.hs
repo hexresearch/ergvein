@@ -46,7 +46,7 @@ txBroadcast :: MonadFrontBase t m => Event t TxBroadcastRequest -> m (Event t Tx
 txBroadcast = requesterImpl txBroadcastEndpoint
 
 data ClientMessages
-  = CMSLoading Int Int
+  = CMSLoading Int Int Int
   | CMSError
   | CMSEmpty
   | CMSValidationError
@@ -56,13 +56,13 @@ data ClientMessages
 instance LocalizedPrint ClientMessages where
   localizedShow l v = case l of
     English -> case v of
-      CMSLoading i n      -> "Loading: " <> showt i <> " of " <> showt n
+      CMSLoading i mi ma  -> "Loading: " <> showt i <> " of " <> showt ma <> " (" <> showt mi <> ")"
       CMSError            -> "A request has failed"
       CMSEmpty            -> "Results are empty"
       CMSValidationError  -> "Validation error: inconsistent results"
       CMSDone             -> "Done!"
     Russian -> case v of
-      CMSLoading i n      -> "Запрашиваю. " <> showt i <> " из " <> showt n <> " ответили."
+      CMSLoading i mi ma  -> "Запрашиваю. " <> showt i <> " из " <> showt ma <> " (" <> showt mi <> ") ответили."
       CMSError            -> "Один из запросов не удался"
       CMSEmpty            -> "Результатов нет"
       CMSValidationError  -> "Ошибка: противоречивые ответы"
@@ -90,10 +90,10 @@ requesterImpl :: (MonadFrontBase t m, Eq a)
   -> Event t b                                      -- Request event
   -> m (Event t a)                                  -- Result
 requesterImpl endpoint reqE = do
-  reqD  <- holdDyn Nothing $ Just <$> reqE          -- Hold request value for later
-  uss   <- readExternalRef =<< getUrlsRef           -- list of urls
-  n     <- readExternalRef =<< getRequiredUrlNumRef -- Required number of confirmations
-  urls  <- getRandUrls n uss                        -- Initial list of urls to query
+  reqD          <- holdDyn Nothing $ Just <$> reqE          -- Hold request value for later
+  uss           <- readExternalRef =<< getUrlsRef           -- list of urls
+  (minN, maxN)  <- readExternalRef =<< getRequiredUrlNumRef -- Required number of confirmations
+  urls          <- getRandUrls minN uss                     -- Initial list of urls to query
 
   -- Get a response event eresE :: Event t (Either e a) and split into failure and success events
   eresE <- fmap mconcat $ flip traverse urls $ \u -> endpointWrapper endpoint (pure $ Just u) reqE
@@ -128,12 +128,12 @@ requesterImpl endpoint reqE = do
   -- Collect successful results
   resD <- foldDyn (:) [] $ leftmost [succE, extraSuccE]
   -- When there is enough result, run validation and fire the final event away
-  resE <- handleDangerMsg $ fforMaybe (updated resD) $ \rs -> if length rs >= n then Just (validateRes rs) else Nothing
+  resE <- handleDangerMsg $ fforMaybe (updated resD) $ \rs -> if length rs >= minN then Just (validateRes rs) else Nothing
 
   -- Handle messages for loading display
-  toggleLoadingWidget $ ffor reqE           $ \_        -> (True , CMSLoading 0 n)
+  toggleLoadingWidget $ ffor reqE           $ \_        -> (True , CMSLoading 0 minN maxN)
   toggleLoadingWidget $ ffor totalFailE     $ \err      -> (True , CMSError)
-  toggleLoadingWidget $ ffor (updated resD) $ \rs       -> (True , CMSLoading (length rs) n)
+  toggleLoadingWidget $ ffor (updated resD) $ \rs       -> (True , CMSLoading (length rs) minN maxN)
   toggleLoadingWidget $ ffor resE           $ \_        -> (False, CMSDone)
 
   delay 0.1 resE

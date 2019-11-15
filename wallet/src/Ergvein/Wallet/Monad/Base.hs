@@ -15,7 +15,7 @@ import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Control.Monad.Ref
 import Data.Text (Text)
-import Data.Time(UTCTime)
+import Data.Time(UTCTime, NominalDiffTime)
 import Ergvein.Index.Client
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Native
@@ -125,9 +125,9 @@ class MonadBaseConstr t m => MonadAlertPoster t m | m -> t where
 
 class (MonadBaseConstr t m, HasClientManager m, HasClientManager (Performable m)) => MonadClient t m | m -> t where
   -- | Set the number of required confirmations
-  setRequiredUrlNum :: Event t Int -> m ()
+  setRequiredUrlNum :: Event t (Int, Int) -> m ()
   -- | Get the number of required confirmations
-  getRequiredUrlNum :: Event t () -> m (Event t Int)
+  getRequiredUrlNum :: Event t () -> m (Event t (Int, Int))
   -- | Get all urls in a list
   getUrlList :: Event t () -> m (Event t [BaseUrl])
   -- | Add a number of urls to the set of valid urls
@@ -137,4 +137,6 @@ class (MonadBaseConstr t m, HasClientManager m, HasClientManager (Performable m)
   -- | Get url reference. Internal
   getUrlsRef :: m (ExternalRef t (S.Set BaseUrl))
   -- | Get num reference. Internal
-  getRequiredUrlNumRef :: m (ExternalRef t Int)
+  getRequiredUrlNumRef :: m (ExternalRef t (Int, Int))
+  -- | Get request timeout ref
+  getRequestTimeoutRef :: m (ExternalRef t NominalDiffTime)
