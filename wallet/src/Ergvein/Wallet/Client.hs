@@ -51,6 +51,7 @@ data ClientMessages
   | CMSEmpty
   | CMSValidationError
   | CMSDone
+  | CMSTimeout
   deriving (Eq)
 
 instance LocalizedPrint ClientMessages where
@@ -61,92 +62,144 @@ instance LocalizedPrint ClientMessages where
       CMSEmpty            -> "Results are empty"
       CMSValidationError  -> "Validation error: inconsistent results"
       CMSDone             -> "Done!"
+      CMSTimeout          -> "Time out!"
     Russian -> case v of
       CMSLoading i mi ma  -> "Запрашиваю. " <> showt i <> " из " <> showt ma <> " (" <> showt mi <> ") ответили."
       CMSError            -> "Один из запросов не удался"
       CMSEmpty            -> "Результатов нет"
       CMSValidationError  -> "Ошибка: противоречивые ответы"
       CMSDone             -> "Готово!"
+      CMSTimeout          -> "Время вышло!"
 
 instance MonadIO m => HasClientManager (ReaderT Manager m) where
   getClientMaganer = ask
 
-endpointWrapper :: (MonadFrontBase t m)
-  => (BaseUrl -> b -> ReaderT Manager IO (Either e a))
-  -> Dynamic t (Maybe BaseUrl)
-  -> Event t b
-  -> m (Event t (Either e a))
-endpointWrapper endpoint urlD reqE = do
-  let urlReqE = attachWithMaybe (\mu r -> (,r) <$> mu) (current urlD) reqE
-  performEventAsync $ ffor urlReqE $ \(url,req) cb -> do
-    mng <- getClientMaganer
-    void $ liftIO $ forkIO $ cb =<< flip runReaderT mng (endpoint url req)
+data ResAct a = ResActAdd a | ResActSet [a] | ResActTimeout | ResActNoUrls
+  deriving (Show)
+
+data ResSignal a = RSEnough [a] | RSTimeout [a] | RSNoUrls [a]
+
+instance Foldable ResSignal where
+  foldr f b sig = case sig of
+    RSEnough  rs -> foldr f b rs
+    RSTimeout rs -> foldr f b rs
+    RSNoUrls  rs -> foldr f b rs
+
+mergeResStoreMaybe :: Eq a => Int -> ResAct a -> Either [a] (ResSignal a) -> Maybe (Either [a] (ResSignal a))
+mergeResStoreMaybe n act estore = case act of
+  ResActAdd a -> case estore of
+    Left xs' -> Just $ let xs = a:xs' in if length xs >= n then Right (RSEnough xs) else Left xs
+    _ -> Nothing
+  ResActSet xs  -> Just $ Left xs
+  ResActTimeout -> either (Just . Right . RSTimeout) (const Nothing) estore
+  ResActNoUrls  -> either (Just . Right . RSNoUrls) (const Nothing) estore
+
+validateRes :: Eq a => [a] -> Either ClientMessages a
+validateRes rs = case L.nub rs of
+  []    -> Left CMSEmpty
+  x:[]  -> Right x
+  _     -> Left CMSValidationError
 
 -- Implements request logic:
 -- Request from n nodes and check if results are equal.
 -- TODO: Add more sophisticated validation
-requesterImpl :: (MonadFrontBase t m, Eq a)
+requesterImpl :: forall t m e a b . (MonadFrontBase t m, Eq a, Show a)
   => (BaseUrl -> b -> ReaderT Manager IO (Either e a))   -- Request function
   -> Event t b                                      -- Request event
   -> m (Event t a)                                  -- Result
-requesterImpl endpoint reqE = do
-  reqD          <- holdDyn Nothing $ Just <$> reqE          -- Hold request value for later
+requesterImpl endpoint reqE = mdo
   uss           <- readExternalRef =<< getUrlsRef           -- list of urls
   (minN, maxN)  <- readExternalRef =<< getRequiredUrlNumRef -- Required number of confirmations
-  urls          <- getRandUrls minN uss                     -- Initial list of urls to query
+  dt            <- readExternalRef =<< getRequestTimeoutRef -- Get a timeout
+  let rereqE = fforMaybe outE $ either Just (const Nothing)
+      finE   = fforMaybe outE $ either (const Nothing) Just
+  drawE <- delay 0.1 $ leftmost [reqE, rereqE]
 
-  -- Get a response event eresE :: Event t (Either e a) and split into failure and success events
-  eresE <- fmap mconcat $ flip traverse urls $ \u -> endpointWrapper endpoint (pure $ Just u) reqE
+  timeoutMsgE <- delay dt $ (True, CMSTimeout) <$ drawE
+  timeoutE <- delay 1 timeoutMsgE
+  performEvent $ (liftIO $ putStrLn "TIMEOOOOOUT") <$ timeoutE
 
-  let failE = fforMaybe eresE $ \case
-        Left err -> Just err
-        _ -> Nothing
-      succE = fforMaybe eresE $ \case
-        Right res -> Just res
-        _ -> Nothing
-  rec   -- If a request fails then get a new url and try again
-    let totalFailE = leftmost [failE, extraFailE]
-    -- Collect used urls
-    usedUrlsD <- foldDyn S.insert (S.fromList urls) extraUrlE
-    -- Check if there are still unused urls and pick from them. If all urls were used at least once - pick from all urls
-    extraUrlE <- performEvent $ ffor (current usedUrlsD `tag` totalFailE) $ \used -> do
-      let diff = S.difference uss used
-      getExtraUrl $ if S.null diff then uss else diff
-
-    extraUrlD <- holdDyn Nothing $ fmap Just extraUrlE
-    -- Wait a bit after totalFailE before firing another request, so that extraUrlD holds new url
-    rereqE    <- delay 0.01 $ fmapMaybe id $ current reqD `tag` totalFailE
-    -- Get extra results, split, feed extraFailE back into totalFailE
-    extraResE <- endpointWrapper endpoint extraUrlD rereqE
-    let extraFailE = fforMaybe extraResE $ \case
+  outE :: Event t (Either b a) <- fmap (switch . current) $ widgetHold (pure never) $ ffor drawE $ \req -> do
+    toggleLoadingWidget timeoutMsgE
+    urls  <- getRandUrls maxN uss                     -- Initial list of urls to query
+    mng   <- getClientMaganer
+    eresE <- fmap mconcat $ flip traverse urls $ \u -> do
+      (ev, fire) <- newTriggerEvent
+      void $ liftIO $ forkIO $ fire =<< flip runReaderT mng (endpoint u req)
+      pure ev
+    let failE = fforMaybe eresE $ \case
           Left err -> Just err
           _ -> Nothing
-        extraSuccE = fforMaybe extraResE $ \case
+        succE = fforMaybe eresE $ \case
           Right res -> Just res
           _ -> Nothing
+    rec   -- If a request fails then get a new url and try again
+      let totalFailE = leftmost [failE, extraFailE]
+      -- Collect used urls
+      usedUrlsD <- foldDyn S.insert (S.fromList urls) extraUrlE
+      -- Check if there are still unused urls and pick from them. If all urls were used at least once - shoutout
+      murlE <- performEvent $ ffor (current usedUrlsD `tag` totalFailE) $ \used -> do
+        let diff = S.difference uss used
+        liftIO $ putStrLn $ show $ S.null diff
+        if S.null diff then pure Nothing else fmap Just $ getExtraUrl diff
+      let extraUrlE   = fmapMaybe id murlE
+          noMoreUrlE  = fmapMaybe (maybe (Just ResActNoUrls) (const Nothing)) murlE
+      -- Get extra results, split, feed extraFailE back into totalFailE
+      -- extraResE <- endpointWrapper endpoint extraUrlD rereqE
+      extraResE <- performEventAsync $ ffor extraUrlE $ \url cb ->
+          void $ liftIO $ forkIO $ cb =<< flip runReaderT mng (endpoint url req)
+      let extraFailE = fforMaybe extraResE $ \case
+            Left err -> Just err
+            _ -> Nothing
+          extraSuccE = fforMaybe extraResE $ \case
+            Right res -> Just res
+            _ -> Nothing
 
-  -- Collect successful results
-  resD <- foldDyn (:) [] $ leftmost [succE, extraSuccE]
-  -- When there is enough result, run validation and fire the final event away
-  resE <- handleDangerMsg $ fforMaybe (updated resD) $ \rs -> if length rs >= minN then Just (validateRes rs) else Nothing
+    let storeActE = leftmost [ResActAdd <$> succE, ResActAdd <$> extraSuccE, ResActTimeout <$ timeoutE, noMoreUrlE]
+    storeD <- foldDynMaybe (mergeResStoreMaybe maxN) (Left []) storeActE
+    resE <- handleDangerMsg $ fforMaybe (updated storeD) $ \case
+      Left _ -> Nothing
+      Right act -> case act of
+        RSEnough  rs -> Just $ validateRes rs
+        RSTimeout rs -> if length rs >= minN then Just (validateRes rs) else Nothing
+        RSNoUrls  rs -> if length rs >= minN then Just (validateRes rs) else Nothing
 
-  -- Handle messages for loading display
-  toggleLoadingWidget $ ffor reqE           $ \_        -> (True , CMSLoading 0 minN maxN)
-  toggleLoadingWidget $ ffor totalFailE     $ \err      -> (True , CMSError)
-  toggleLoadingWidget $ ffor (updated resD) $ \rs       -> (True , CMSLoading (length rs) minN maxN)
-  toggleLoadingWidget $ ffor resE           $ \_        -> (False, CMSDone)
+    -- Handle messages for loading display
+    toggleLoadingWidget $ ffor reqE           $ \_        -> (True , CMSLoading 0 minN maxN)
+    toggleLoadingWidget $ ffor totalFailE     $ \err      -> (True , CMSError)
+    toggleLoadingWidget $ ffor (updated storeD) $ \store  -> let l = either length length store in (True , CMSLoading l minN maxN)
+    toggleLoadingWidget $ ffor resE           $ \_        -> (False, CMSDone)
 
-  delay 0.1 resE
+
+    liftIO $ do
+      putStrLn $ show (minN, maxN)
+      putStrLn $ show $ baseUrlPort <$> urls
+    -- performEvent $ ffor extraUrlE $ liftIO . putStrLn . showBaseUrl
+    -- performEvent $ ffor extraFailE $ const $ liftIO (print "FAAAAAIL")
+    performEvent $ ffor noMoreUrlE $ const $ liftIO (print "NO MORE URLS")
+    performEvent $ ffor storeActE $ liftIO . putStrLn . show
+    performEvent $ ffor (updated usedUrlsD) $ liftIO . putStrLn . (++) "UsedD: " . show . fmap baseUrlPort . S.elems
+    performEvent $ ffor murlE $ \case
+      Just _ -> liftIO $ putStrLn "Murl: Just"
+      Nothing -> liftIO $ putStrLn "Murl: Nothing"
+    performEvent $ ffor (updated storeD) $ \case
+      Left rs ->  liftIO $ putStrLn $ "Left: " ++ (show $ length rs)
+      Right act -> liftIO $ putStrLn $ case act of
+        RSEnough  rs  -> "RSEnough: " ++ (show $ length rs)
+        RSTimeout rs  -> "RSTimeout: " ++ (show $ length rs)
+        RSNoUrls  _   -> "RSNoUrls"
+
+    delay 0.1 $ Right <$> resE
+
+  pure finE
 
   where
-    validateRes :: Eq a => [a] -> Either ClientMessages a
-    validateRes rs = case L.nub rs of
-      []    -> Left CMSEmpty
-      x:[]  -> Right x
-      _     -> Left CMSValidationError
-
-    getExtraUrl :: MonadIO m => S.Set BaseUrl -> m BaseUrl
-    getExtraUrl uss = liftIO $ fmap (S.elems uss !!) $ getRandomR (0, length uss - 1)
+    getExtraUrl :: MonadIO m => S.Set BaseUrl -> Performable m BaseUrl
+    getExtraUrl uss = do
+      liftIO $ putStrLn $ "DIFF: " ++ show (baseUrlPort <$> S.elems uss)
+      u <- liftIO $ fmap (S.elems uss !!) $ getRandomR (0, length uss - 1)
+      liftIO $ putStrLn $ show $ baseUrlPort u
+      pure u
 
     getRandUrls :: MonadIO m => Int -> S.Set BaseUrl -> m [BaseUrl]
     getRandUrls n usSet = liftIO $ do
