@@ -1,0 +1,1 @@
+cabal new-run exe:ergvein-index-server -- listen ./configuration.yaml
