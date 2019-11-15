@@ -95,7 +95,7 @@ requesterImpl endpoint reqE = do
   n     <- readExternalRef =<< getRequiredUrlNumRef -- Required number of confirmations
   urls  <- getRandUrls n uss                        -- Initial list of urls to query
 
-  -- | Get a response event eresE :: Event t (Either e a) and split into failure and success events
+  -- Get a response event eresE :: Event t (Either e a) and split into failure and success events
   eresE <- fmap mconcat $ flip traverse urls $ \u -> endpointWrapper endpoint (pure $ Just u) reqE
 
   let failE = fforMaybe eresE $ \case
@@ -106,11 +106,17 @@ requesterImpl endpoint reqE = do
         _ -> Nothing
   rec   -- If a request fails then get a new url and try again
     let totalFailE = leftmost [failE, extraFailE]
-    -- | Get a new url and store it in Dynamic
-    extraUrlD <- holdDyn Nothing =<< performEvent ((fmap Just $ getExtraUrl uss) <$ totalFailE)
-    -- | Wait a bit after totalFailE before firing another request, so that extraUrlD holds new url
+    -- Collect used urls
+    usedUrlsD <- foldDyn S.insert (S.fromList urls) extraUrlE
+    -- Check if there are still unused urls and pick from them. If all urls were used at least once - pick from all urls
+    extraUrlE <- performEvent $ ffor (current usedUrlsD `tag` totalFailE) $ \used -> do
+      let diff = S.difference uss used
+      getExtraUrl $ if S.null diff then uss else diff
+
+    extraUrlD <- holdDyn Nothing $ fmap Just extraUrlE
+    -- Wait a bit after totalFailE before firing another request, so that extraUrlD holds new url
     rereqE    <- delay 0.01 $ fmapMaybe id $ current reqD `tag` totalFailE
-    -- | Get extra results, split, feed extraFailE back into totalFailE
+    -- Get extra results, split, feed extraFailE back into totalFailE
     extraResE <- endpointWrapper endpoint extraUrlD rereqE
     let extraFailE = fforMaybe extraResE $ \case
           Left err -> Just err
@@ -119,12 +125,12 @@ requesterImpl endpoint reqE = do
           Right res -> Just res
           _ -> Nothing
 
-  -- | Collect successful results
+  -- Collect successful results
   resD <- foldDyn (:) [] $ leftmost [succE, extraSuccE]
-  -- | When there is enough result, run validation and fire the final event away
+  -- When there is enough result, run validation and fire the final event away
   resE <- handleDangerMsg $ fforMaybe (updated resD) $ \rs -> if length rs >= n then Just (validateRes rs) else Nothing
 
-  -- | Handle messages for loading display
+  -- Handle messages for loading display
   toggleLoadingWidget $ ffor reqE           $ \_        -> (True , CMSLoading 0 n)
   toggleLoadingWidget $ ffor totalFailE     $ \err      -> (True , CMSError)
   toggleLoadingWidget $ ffor (updated resD) $ \rs       -> (True , CMSLoading (length rs) n)
