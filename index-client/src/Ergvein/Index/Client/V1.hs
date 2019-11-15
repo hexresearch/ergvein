@@ -1,6 +1,7 @@
 module Ergvein.Index.Client.V1
   (
     HasClientManager(..)
+  , getBalanceEndpoint
   , getTxHashHistoryEndpoint
   , getTxMerkleProofEndpoint
   , getTxHexViewEndpoint

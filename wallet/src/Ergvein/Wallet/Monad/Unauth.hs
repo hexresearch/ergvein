@@ -24,6 +24,7 @@ import Reflex
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import qualified Data.Set as S
+import Servant.Client(BaseUrl)
 
 data UnauthEnv t = UnauthEnv {
   unauth'settings        :: !(ExternalRef t Settings)
@@ -38,7 +39,7 @@ data UnauthEnv t = UnauthEnv {
 , unauth'authRef         :: !(ExternalRef t (Maybe AuthInfo))
 , unauth'passModalEF     :: !(Event t Int, Int -> IO ())
 , unauth'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
-, unauth'urls            :: !(ExternalRef t (S.Set Text))
+, unauth'urls            :: !(ExternalRef t (S.Set BaseUrl))
 , unauth'urlNum          :: !(ExternalRef t Int)
 , unauth'manager         :: !Manager
 }

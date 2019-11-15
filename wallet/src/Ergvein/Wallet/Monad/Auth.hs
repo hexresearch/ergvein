@@ -31,6 +31,7 @@ import Reflex
 import Reflex.Dom
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
+import Servant.Client(BaseUrl)
 
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Set as S
@@ -51,7 +52,7 @@ data Env t = Env {
 , env'uiChan          :: !(Chan (IO ()))
 , env'passModalEF     :: !(Event t Int, Int -> IO ())
 , env'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
-, env'urls            :: !(ExternalRef t (S.Set Text))
+, env'urls            :: !(ExternalRef t (S.Set BaseUrl))
 , env'urlNum          :: !(ExternalRef t Int)
 , env'manager         :: !Manager
 }

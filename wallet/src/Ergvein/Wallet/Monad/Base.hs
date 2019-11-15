@@ -27,6 +27,7 @@ import Reflex.Dom hiding (run, mainWidgetWithCss)
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Reflex.Localize
+import Servant.Client(BaseUrl)
 
 -- | Type classes that we need from reflex-dom itself.
 type MonadBaseConstr t m = (MonadHold t m
@@ -128,12 +129,12 @@ class (MonadBaseConstr t m, HasClientManager m, HasClientManager (Performable m)
   -- | Get the number of required confirmations
   getRequiredUrlNum :: Event t () -> m (Event t Int)
   -- | Get all urls in a list
-  getUrlList :: Event t () -> m (Event t [Text])
+  getUrlList :: Event t () -> m (Event t [BaseUrl])
   -- | Add a number of urls to the set of valid urls
-  addUrls :: Event t [Text] -> m ()
+  addUrls :: Event t [BaseUrl] -> m ()
   -- | Remove a number of urls from the set of valid urls
-  invalidateUrls :: Event t [Text] -> m ()
+  invalidateUrls :: Event t [BaseUrl] -> m ()
   -- | Get url reference. Internal
-  getUrlsRef :: m (ExternalRef t (S.Set Text))
+  getUrlsRef :: m (ExternalRef t (S.Set BaseUrl))
   -- | Get num reference. Internal
   getRequiredUrlNumRef :: m (ExternalRef t Int)

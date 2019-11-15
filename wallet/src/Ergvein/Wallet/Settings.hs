@@ -14,6 +14,7 @@ import Ergvein.Aeson
 import Ergvein.Lens
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Yaml(readYamlEither')
+import Servant.Client(BaseUrl(..), Scheme(..), parseBaseUrl)
 import System.Directory
 
 import qualified Control.Exception   as Exception
@@ -27,10 +28,12 @@ data Settings = Settings {
   settingsLang        :: Language
 , settingsStoreDir    :: Text
 , settingsConfigPath  :: Text
-, settingsDefUrls     :: [Text]
+, settingsDefUrls     :: [BaseUrl]
 , settingsDefUrlNum   :: Int
 } deriving (Eq, Show)
 
+$(deriveJSON defaultOptions ''Scheme)
+$(deriveJSON defaultOptions ''BaseUrl)
 $(deriveJSON (aesonOptionsStripPrefix "settings") ''Settings)
 
 makeLensesWith humbleFields ''Settings
