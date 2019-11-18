@@ -14,6 +14,8 @@ import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.BlockchainCache
 import Control.Monad.STM
 import Control.Concurrent.STM.TVar
+import Database.LevelDB
+import Data.Default
 
 data ServerEnv = ServerEnv 
     { envConfig :: !Config
@@ -36,8 +38,10 @@ newServerEnv cfg = do
         pool <- newDBPool $ fromString $ connectionStringFromConfig cfg
         flip runReaderT pool $ runDb $ runMigration migrateAll
         pure pool
-    stored <- liftIO $ fromPersisted pool
-    bCache <- liftIO $ atomically $ newTVar stored
+    --stored <- liftIO $ fromPersisted pool
+    bCache <- liftIO $ atomically $ newTVar def
+    x <- liftIO $ fromPersisted' pool
+    _<- liftIO $ addToCache' x
     pure ServerEnv { envConfig = cfg
                    , envLogger = logger
                    , envPool   = pool

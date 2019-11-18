@@ -63,7 +63,8 @@ scannerThread env currency scanInfo =
       blockInfo <- scanInfo blockHeight
       storeInfo pool blockInfo
       storeScannedHeight pool currency blockHeight
-      updateCache (bCache env) blockInfo
+      --updateCache (bCache env) blockInfo
+      --addToCache' blockInfo
     scanIteration thread = liftIO $ do
       heights <- blockHeightsToScan env currency
       sequence_ $ blockIteration <$> heights

@@ -16,17 +16,17 @@ import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Monad
 import Database.Persist.Types
 import Ergvein.Index.Server.DB.Schema
-import Database.Persist.Sql
 import Data.Maybe
 import qualified Data.Set as Set
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.List
 import Ergvein.Index.Server.BlockchainCache 
 import Control.Monad.STM
 import Control.Concurrent.STM.TVar
 import Ergvein.Index.Server.BlockScanner.Types
-import Database.LevelDB
-import Control.Monad.Trans.Resource (release)
+import Database.LevelDB.Higher
+import Data.Flat
+import Data.Either
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
@@ -66,10 +66,18 @@ ergoBroadcastResponse = "4c6282be413c6e300a530618b37790be5f286ded758accc2aebd415
 --Endpoints
 indexGetBalanceEndpoint :: BalanceRequest -> ServerM BalanceResponse
 indexGetBalanceEndpoint req@(BalanceRequest { balReqCurrency = BTC  })  = do
-  b <- runResourceT $ open "/tmp/leveltest" defaultOptions { createIfMissing = True, cacheSize = 2048 }
   cacheTVar <- getCache
   cache <- liftIO $ atomically $ readTVar cacheTVar
-  pure btcBalance {balRespConfirmed = cache'byScript cache Map.! balReqPubKeyScriptHash req }
+  let f x = case x of
+          Unspent u -> cachedUnspent'value  u
+          otherwise -> 0
+  --let r = foldl  (+) 0 $ f <$> cache'byScript cache Map.! balReqPubKeyScriptHash req
+  
+  v <-  runCreateLevelDB "/tmp/mydb" "txOuts" $ get $ flat $ balReqPubKeyScriptHash req
+  let vz = fromRight (error "") $ unflat $ fromJust v :: [ScriptHistoryCached]
+  let r' = foldl  (+) 0 $ f <$> vz
+
+  pure btcBalance {balRespConfirmed = r' }
 
 indexGetBalanceEndpoint BalanceRequest { balReqCurrency = ERGO } = pure ergoBalance
 
