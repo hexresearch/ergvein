@@ -12,10 +12,11 @@ import Data.List (permutations)
 import Data.Maybe (catMaybes, listToMaybe)
 import Data.Text (Text, unpack)
 import Ergvein.Wallet.Storage.Util (saveStorageToFile)
+import Data.Time (NominalDiffTime)
 import Ergvein.Crypto
+import Ergvein.Index.Client
 import Ergvein.Text
 import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Client.Impl
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Base
@@ -27,10 +28,12 @@ import Ergvein.Wallet.Settings (Settings(..), storeSettings)
 import Ergvein.Wallet.Storage.Data
 import Ergvein.Wallet.Storage.Util
 import Network.Haskoin.Address
+import Network.HTTP.Client hiding (Proxy)
 import Reflex
 import Reflex.Dom
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
+import Servant.Client(BaseUrl)
 
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Set as S
@@ -51,14 +54,19 @@ data Env t = Env {
 , env'uiChan          :: !(Chan (IO ()))
 , env'passModalEF     :: !(Event t Int, Int -> IO ())
 , env'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
-, env'urls            :: !(ExternalRef t (S.Set Text))
-, env'urlNum          :: !(ExternalRef t Int)
+, env'urls            :: !(ExternalRef t (S.Set BaseUrl))
+, env'urlNum          :: !(ExternalRef t (Int, Int))
+, env'timeout         :: !(ExternalRef t NominalDiffTime)
+, env'manager         :: !Manager
 }
 
 type ErgveinM t m = ReaderT (Env t) m
 
 instance Monad m => HasStoreDir (ErgveinM t m) where
   getStoreDir = asks env'storeDir
+
+instance MonadIO m => HasClientManager (ErgveinM t m) where
+  getClientMaganer = asks env'manager
 
 instance MonadBaseConstr t m => MonadEgvLogger t (ErgveinM t m) where
   getLogsTrigger = asks env'logsTrigger
@@ -190,12 +198,14 @@ liftAuth ma0 ma = mdo
         passSetEF       <- getPasswordSetEF
         settingsRef     <- getSettingsRef
         settings        <- readExternalRef settingsRef
-        urlsRef         <- newExternalRef . S.fromList . settingsDefUrls $ settings
-        urlNumRef       <- newExternalRef . settingsDefUrlNum $ settings
+        urlsRef         <- getUrlsRef
+        urlNumRef       <- getRequiredUrlNumRef
+        timeoutRef      <- getRequestTimeoutRef
+        manager         <- getClientMaganer
         let infoE = externalEvent authRef
         a <- runReaderT (wrapped ma) $ Env
           settingsRef backEF loading langRef authRef (logoutFire ()) storeDir alertsEF
-          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef
+          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager
         pure (a, infoE)
   let
     ma0e = (,never) <$> ma0
@@ -215,19 +225,18 @@ wrapped ma = do
   storeWallet =<< getPostBuild
   ma
 
-instance MonadFrontBase t m => MonadClient t (ErgveinM t m) where
+instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
   setRequiredUrlNum numE = do
     numRef <- asks env'urlNum
     performEvent_ $ (writeExternalRef numRef) <$> numE
-  getUrlList reqE = do
+
+  getRequiredUrlNum reqE = do
     numRef <- asks env'urlNum
+    performEvent $ (readExternalRef numRef) <$ reqE
+
+  getUrlList reqE = do
     urlsRef <- asks env'urls
-    performEvent $ ffor reqE $ const $ liftIO $ do
-      n <- readExternalRef numRef
-      urls <- fmap S.elems $ readExternalRef urlsRef
-      let perml = product [1 .. (length urls)] - 1
-      i <- getRandomR (0, perml)
-      pure $ take n $ permutations urls !! i
+    performEvent $ ffor reqE $ const $ liftIO $ fmap S.elems $ readExternalRef urlsRef
 
   addUrls urlsE = do
     urlsRef <- asks env'urls
@@ -238,100 +247,6 @@ instance MonadFrontBase t m => MonadClient t (ErgveinM t m) where
     urlsRef <- asks env'urls
     performEvent_ $ ffor urlsE $ \urls ->
       modifyExternalRef urlsRef (\s -> (S.difference s (S.fromList urls), ()) )
-
-  getBalance reqE        = requesterImpl reqE getBalanceImpl'
-  getTxHashHistory reqE  = requesterImpl reqE getTxHashHistoryImpl'
-  getTxMerkleProof reqE  = requesterImpl reqE getTxMerkleProofImpl'
-  getTxHexView reqE      = requesterImpl reqE getTxHexViewImpl'
-  getTxFeeHistogram reqE = requesterImpl reqE getTxFeeHistogramImpl'
-  txBroadcast reqE       = requesterImpl reqE txBroadcastImpl'
-
-data RequestMessages
-  = RMSLoading Int Int
-  | RMSError
-  | RMSEmpty
-  | RMSValidationError
-  | RMSDone
-  deriving (Eq)
-
-instance LocalizedPrint RequestMessages where
-  localizedShow l v = case l of
-    English -> case v of
-      RMSLoading i n      -> "Loading: " <> showt i <> " of " <> showt n
-      RMSError            -> "A request has failed"
-      RMSEmpty            -> "Results are empty"
-      RMSValidationError  -> "Validation error: inconsistent results"
-      RMSDone             -> "Done!"
-    Russian -> case v of
-      RMSLoading i n      -> "Запрашиваю. " <> showt i <> " из " <> showt n <> " ответили."
-      RMSError            -> "Один из запросов не удался"
-      RMSEmpty            -> "Результатов нет"
-      RMSValidationError  -> "Ошибка: противоречивые ответы"
-      RMSDone             -> "Готово!"
-
--- | Implements request logic:
--- Request from n nodes and check if results are equal.
--- TODO: Add more sophisticated validation
-requesterImpl :: (MonadFrontBase t m, LocalizedPrint e, Eq a)
-  => Event t b                                                              -- Request event
-  -> (Dynamic t Text -> Event t b -> ErgveinM t m (Event t (Either e a)))   -- Request function
-  -> ErgveinM t m (Event t a)                                               -- Result
-requesterImpl reqE endpoint = do
-  reqD  <- holdDyn Nothing $ Just <$> reqE        -- Hold request value for later
-  uss   <- readExternalRef =<< asks env'urls      -- Set of urls
-  n     <- readExternalRef =<< asks env'urlNum    -- Required number of confirmations
-  urls  <- getRandUrls n uss                      -- Initial list of urls to query
-
-  -- | Get a response event eresE :: Event t (Either e a) and split into failure and success events
-  eresE <- fmap leftmost $ traverse (\u-> endpoint (pure u) reqE) urls
-  let failE = fforMaybe eresE $ \case
-        Left err -> Just err
-        _ -> Nothing
-      succE = fforMaybe eresE $ \case
-        Right res -> Just res
-        _ -> Nothing
-
-  rec   -- If a request fails then get a new url and try again
-    let totalFailE = leftmost [failE, extraFailE]
-    -- | Get a new url and store it in Dynamic
-    extraUrlD <- holdDyn "" =<< performEvent ((getExtraUrl uss) <$ totalFailE)
-    -- | Wait a bit after totalFailE before firing another request, so that extraUrlD holds new url
-    rereqE    <- delay 0.01 $ fmapMaybe id $ current reqD `tag` totalFailE
-    -- | Get extra results, split, feed extraFailE back into totalFailE
-    extraResE <- endpoint extraUrlD rereqE
-    let extraFailE = fforMaybe extraResE $ \case
-          Left err -> Just err
-          _ -> Nothing
-        extraSuccE = fforMaybe extraResE $ \case
-          Right res -> Just res
-          _ -> Nothing
-
-  -- | Collect successful results
-  resD <- foldDyn (:) [] $ leftmost [succE, extraSuccE]
-  -- | When there is enough result, run validation and fire the final event away
-  resE <- handleDangerMsg $ fforMaybe (updated resD) $ \rs -> if length rs >= n then Just (validateRes rs) else Nothing
-
-  -- | Handle messages for loading display
-  toggleLoadingWidget $ ffor reqE           $ \_        -> (True , RMSLoading 0 n)
-  toggleLoadingWidget $ ffor totalFailE     $ \err      -> (True , RMSError)
-  toggleLoadingWidget $ ffor (updated resD) $ \rs       -> (True , RMSLoading (length rs) n)
-  toggleLoadingWidget $ ffor resE           $ \_        -> (False, RMSDone)
-  delay 0.1 resE
-  where
-    validateRes :: Eq a => [a] -> Either RequestMessages a
-    validateRes rs = case L.nub rs of
-      []    -> Left RMSEmpty
-      x:[]  -> Right x
-      _     -> Left RMSValidationError
-
-    getExtraUrl :: MonadIO m => S.Set Text -> m Text
-    getExtraUrl uss = do
-      i   <- liftIO $ getRandomR (0, S.size uss - 1)
-      pure $ S.elems uss !! i
-
-    getRandUrls :: MonadIO m => Int -> S.Set Text -> m [Text]
-    getRandUrls n uss = do
-      let us = S.elems uss
-          perml = product [1 .. (length us)] - 1
-      i <- liftIO $ getRandomR (0, perml)
-      pure $ take n $ permutations us !! i
+  getUrlsRef = asks env'urls
+  getRequiredUrlNumRef = asks env'urlNum
+  getRequestTimeoutRef = asks env'timeout

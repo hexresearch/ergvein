@@ -7,7 +7,7 @@ module Ergvein.Wallet.Monad.Front(
   , Text
   , MonadJSM
   , traverse_
-  , module Ergvein.Wallet.Monad.Client
+  , module Ergvein.Wallet.Monad.Base
   , module Reflex.Dom
   , module Reflex.Dom.Retractable.Class
   , module Control.Monad
@@ -21,7 +21,6 @@ import Data.Text (Text)
 import Ergvein.Crypto
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Base
-import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Data

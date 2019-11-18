@@ -7,6 +7,7 @@ module Ergvein.Wallet.Monad.Base
   , alertTypeToSeverity
   , AlertInfo(..)
   , MonadEgvLogger(..)
+  , MonadClient(..)
   ) where
 
 import Control.Concurrent.Chan (Chan)
@@ -15,16 +16,19 @@ import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Control.Monad.Ref
 import Data.Text (Text)
-import Data.Time(UTCTime)
 import Ergvein.Crypto
+import Data.Time(UTCTime, NominalDiffTime)
+import Ergvein.Index.Client
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Native
 import Language.Javascript.JSaddle
+import qualified Data.Set as S
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Reflex.Localize
+import Servant.Client(BaseUrl)
 
 import Foreign.JavaScript.TH (WithJSContextSingleton)
 import Reflex.Spider.Internal (SpiderHostFrame, Global)
@@ -57,7 +61,7 @@ type MonadBaseConstr t m = (MonadHold t m
   , PlatformNatives
   )
 
--- | Context for unauthed widgets
+-- Context for unauthed widgets
 -- Only to be used to request password and open the local storage
 type MonadFrontConstr t m = (PlatformNatives
   , HasStoreDir m
@@ -66,21 +70,25 @@ type MonadFrontConstr t m = (PlatformNatives
   , MonadLocalized t m
   , MonadRetract t m
   , MonadAlertPoster t m
-  , MonadEgvLogger t m)
+  , MonadEgvLogger t m
+  , HasClientManager m
+  , HasClientManager (Performable m)
+  , MonadClient t m
+  )
 
--- | ===========================================================================
--- |           Monad EgvLogger. Implements Ervgein's logging
--- | ===========================================================================
+-- ===========================================================================
+--           Monad EgvLogger. Implements Ervgein's logging
+-- ===========================================================================
 
 class MonadBaseConstr t m => MonadEgvLogger t m where
-    -- | Internal getting of logs event and trigger
+  -- | Internal getting of logs event and trigger
   getLogsTrigger :: m (Event t LogEntry, LogEntry -> IO ())
   -- | Get internal ref fo namespaces
   getLogsNameSpacesRef :: m (ExternalRef t [Text])
 
--- | ===========================================================================
--- |           Monad Alert Poster. Implements rendering of alerts
--- | ===========================================================================
+-- ===========================================================================
+--           Monad Alert Poster. Implements rendering of alerts
+-- ===========================================================================
 
 -- | Different styles of alerts (including success or info messages)
 data AlertType =
@@ -123,3 +131,25 @@ class MonadBaseConstr t m => MonadAlertPoster t m | m -> t where
 
 instance MonadRandom (WithJSContextSingleton x (SpiderHostFrame Global)) where
   getRandomBytes = liftIO . getRandomBytes
+
+-- ===========================================================================
+--    Monad Client. Implements all required things for client operations
+-- ===========================================================================
+
+class (MonadBaseConstr t m, HasClientManager m, HasClientManager (Performable m)) => MonadClient t m | m -> t where
+  -- | Set the number of required confirmations
+  setRequiredUrlNum :: Event t (Int, Int) -> m ()
+  -- | Get the number of required confirmations
+  getRequiredUrlNum :: Event t () -> m (Event t (Int, Int))
+  -- | Get all urls in a list
+  getUrlList :: Event t () -> m (Event t [BaseUrl])
+  -- | Add a number of urls to the set of valid urls
+  addUrls :: Event t [BaseUrl] -> m ()
+  -- | Remove a number of urls from the set of valid urls
+  invalidateUrls :: Event t [BaseUrl] -> m ()
+  -- | Get url reference. Internal
+  getUrlsRef :: m (ExternalRef t (S.Set BaseUrl))
+  -- | Get num reference. Internal
+  getRequiredUrlNumRef :: m (ExternalRef t (Int, Int))
+  -- | Get request timeout ref
+  getRequestTimeoutRef :: m (ExternalRef t NominalDiffTime)

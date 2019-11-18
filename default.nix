@@ -11,6 +11,7 @@ in reflex-platform.project ({ pkgs, ... }: {
     ergvein-common = ./common;
     ergvein-crypto = ./crypto;
     ergvein-index-api = ./index-api;
+    ergvein-index-client = ./index-client;
     ergvein-index-server = ./index-server;
     ergvein-wallet = ./wallet;
     ergvein-wallet-android = ./wallet-android;
