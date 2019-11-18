@@ -63,9 +63,9 @@ newtype EgvRootKey = EgvRootKey {unEgvRootKey :: XPrvKey}
 
 -- | Derive a key for a specific network
 deriveCurrencyKey :: XPrvKey -> Currency -> EgvXPrvKey
-deriveCurrencyKey pk cur = let
-  path = [44,getCurrencyIndex cur,0]
-  key = foldl hardSubKey pk path
+deriveCurrencyKey pk cur =
+  let path = [44, getCurrencyIndex cur, 0]
+      key  = foldl hardSubKey pk path
   in EgvXPrvKey cur key
 
 getEntropy :: IO Entropy
@@ -74,25 +74,24 @@ getEntropy = E.getEntropy defaultEntropyLength
 -- | Convert BTC extended public key to a human-readable string.
 xPubBtcAddrString :: Network -> XPubKey -> Text
 xPubBtcAddrString net key = addrToString net addr
-  where
-    addr = xPubAddr key
+  where addr = xPubAddr key
 
 -- | Convert ERGO extended public key to a human-readable string.
 xPubErgAddrString :: Network -> XPubKey -> Text
 xPubErgAddrString net key = encodeBase58 content
-  where
-    prefix = BS.singleton $ getAddrPrefix net
-    keyByteString = exportPubKey True (xPubKey key)
-    checkSumContent = BS.append prefix keyByteString
-    checksum = BA.convert $ hashWith Blake2b_256 checkSumContent :: BS.ByteString
-    content = BS.take 38 (BS.concat [prefix, keyByteString, checksum])
+ where
+  prefix          = BS.singleton $ getAddrPrefix net
+  keyByteString   = exportPubKey True (xPubKey key)
+  checkSumContent = BS.append prefix keyByteString
+  checksum        = BA.convert $ hashWith Blake2b_256 checkSumContent :: BS.ByteString
+  content         = BS.take 38 (BS.concat [prefix, keyByteString, checksum])
 
 -- | Convert extended public key to a human-readable string.
 xPubAddrToString :: Network -> XPubKey -> Either String Text
 xPubAddrToString net key
   | net == btc || net == btcTest = Right $ xPubBtcAddrString net key
   | net == erg || net == ergTest = Right $ xPubErgAddrString net key
-  | otherwise = Left "Unknown network type"
+  | otherwise                    = Left "Unknown network type"
 
 example :: IO ()
 example = do
