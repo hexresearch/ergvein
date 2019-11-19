@@ -87,7 +87,7 @@ library
     , filepath
     , ghcjs-dom
     , haskoin-core
-    , http-client               >= 0.5    && < 0.7
+    , http-client               >= 0.5      && < 0.7
     , interpolatedstring-perl6
     , jsaddle
     , lens                      >= 4.16     && < 4.18

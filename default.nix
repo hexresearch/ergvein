@@ -51,6 +51,7 @@ in reflex-platform.project ({ pkgs, ... }: {
     assets = ./wallet/static/assets;
     iconPath = "@drawable/ic_launcher";
     nativeDependencies = nixpkgs: haskellPackages: {
+      "libz.so" = "${nixpkgs.zlib}/lib/libz.so.1";
       "libsecp256k1.so" = "${nixpkgs.secp256k1}/lib/libsecp256k1.so";
     };
     javaSources = _: [
