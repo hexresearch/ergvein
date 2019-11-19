@@ -66,18 +66,17 @@ ergoBroadcastResponse = "4c6282be413c6e300a530618b37790be5f286ded758accc2aebd415
 --Endpoints
 indexGetBalanceEndpoint :: BalanceRequest -> ServerM BalanceResponse
 indexGetBalanceEndpoint req@(BalanceRequest { balReqCurrency = BTC  })  = do
-  cacheTVar <- getCache
-  cache <- liftIO $ atomically $ readTVar cacheTVar
-  let f x = case x of
-          Unspent u -> cachedUnspent'value  u
-          otherwise -> 0
-  --let r = foldl  (+) 0 $ f <$> cache'byScript cache Map.! balReqPubKeyScriptHash req
-  
-  v <-  runCreateLevelDB "/tmp/mydb" "txOuts" $ get $ flat $ balReqPubKeyScriptHash req
-  let vz = fromRight (error "") $ unflat $ fromJust v :: [ScriptHistoryCached]
-  let r' = foldl  (+) 0 $ f <$> vz
+  maybeHistory <- runCreateLevelDB "/tmp/mydb" "txOuts" $ get $ flat $ balReqPubKeyScriptHash req
+  let history = fromRight (error parseError) $ unflat @[ScriptHistoryCached] $ fromMaybe (error gettingError) maybeHistory
+      confirmedBalance = foldl (+) 0 $ outValue <$> history
+  pure btcBalance {balRespConfirmed = confirmedBalance}
+  where
+    outValue out = case out of
+      Unspent unspent -> cachedUnspent'value unspent
+      otherwise -> 0
+    gettingError = "Error while getting history for " ++ (show $ balReqPubKeyScriptHash req)
+    parseError = "Error while parsing history for " ++ (show $ balReqPubKeyScriptHash req)
 
-  pure btcBalance {balRespConfirmed = r' }
 
 indexGetBalanceEndpoint BalanceRequest { balReqCurrency = ERGO } = pure ergoBalance
 

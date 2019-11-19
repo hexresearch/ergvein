@@ -48,9 +48,6 @@ storeInfo dbPool blockInfo = do
   runDbQuery dbPool $ insertTxIns $ block'TxInInfos blockInfo
   pure ()
 
-updateCache :: TVar BCCache -> BlockInfo -> IO () 
-updateCache cache blockInfo = atomically $ modifyTVar' cache $ flip addToCache blockInfo
-
 storeScannedHeight :: DBPool -> Currency -> BlockHeight -> IO ()
 storeScannedHeight dbPool currency scannedHeight = void $ runDbQuery dbPool $ upsertScannedHeight currency scannedHeight
 
@@ -63,8 +60,7 @@ scannerThread env currency scanInfo =
       blockInfo <- scanInfo blockHeight
       storeInfo pool blockInfo
       storeScannedHeight pool currency blockHeight
-      --updateCache (bCache env) blockInfo
-      --addToCache' blockInfo
+      --addToCache blockInfo
     scanIteration thread = liftIO $ do
       heights <- blockHeightsToScan env currency
       sequence_ $ blockIteration <$> heights

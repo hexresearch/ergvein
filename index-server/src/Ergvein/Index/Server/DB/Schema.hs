@@ -8,9 +8,6 @@ import Ergvein.Index.Server.BlockScanner.Types
 import Conversion
 import Database.Persist.Types
 
-
-
-
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 ScannedHeightRec
   currency Currency

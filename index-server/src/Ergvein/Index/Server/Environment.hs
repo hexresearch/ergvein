@@ -16,12 +16,12 @@ import Control.Monad.STM
 import Control.Concurrent.STM.TVar
 import Database.LevelDB
 import Data.Default
+import Database.LevelDB.Higher
 
 data ServerEnv = ServerEnv 
     { envConfig :: !Config
     , envLogger :: !(Chan (Loc, LogSource, LogLevel, LogStr))
     , envPool   :: !DBPool
-    , bCache    :: !(TVar BCCache)
     }
 
 btcNodeClient :: Config -> (Client -> IO a) -> IO a
@@ -38,12 +38,9 @@ newServerEnv cfg = do
         pool <- newDBPool $ fromString $ connectionStringFromConfig cfg
         flip runReaderT pool $ runDb $ runMigration migrateAll
         pure pool
-    --stored <- liftIO $ fromPersisted pool
-    bCache <- liftIO $ atomically $ newTVar def
-    x <- liftIO $ fromPersisted' pool
-    _<- liftIO $ addToCache' x
+    storedInfos <- liftIO $ fromPersisted pool
+    liftIO $ runCreateLevelDB "/tmp/mydb" "txOuts" $ addToCache storedInfos
     pure ServerEnv { envConfig = cfg
                    , envLogger = logger
                    , envPool   = pool
-                   , bCache    = bCache
                    }

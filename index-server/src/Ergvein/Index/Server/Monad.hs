@@ -34,10 +34,6 @@ instance MonadDB ServerM where
   getDbPool = asks envPool
   {-# INLINE getDbPool #-}
 
-instance BCache ServerM where
-  getCache = asks bCache
-  {-# INLINE getCache #-}
-
 instance MonadUnliftIO ServerM where
   askUnliftIO = ServerM $ (\(UnliftIO run) -> UnliftIO $ run . unServerM) <$> askUnliftIO
   withRunInIO go = ServerM $ withRunInIO (\k -> go $ k . unServerM)
