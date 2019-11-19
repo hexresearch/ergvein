@@ -31,19 +31,20 @@ import Database.LevelDB.Higher
 import qualified Data.Text.IO as T
 import Data.Text (Text, pack)
 import Control.Monad.Writer
+import Control.DeepSeq
 
 data CachedUnspentTxOut = CachedUnspentTxOut
   { cachedUnspent'index  :: TxOutIndex
   , cachedUnspent'value  :: MoneyUnit
   , cachedUnspent'txHash :: TxHash
-  }  deriving (Generic, NFData, Flat)
+  }  deriving (Generic, NFData, Flat, Show)
 
 data CachedSpentTxOut = CachedSpentTxOut
   { cachedSpent'spentInTxHash  :: TxHash
   , cachedSpent'txHash         :: TxHash
-  }  deriving (Generic, NFData, Flat)
+  }  deriving (Generic, NFData, Flat, Show)
 
-data ScriptHistoryCached = Unspent CachedUnspentTxOut | Spent CachedSpentTxOut  deriving (Generic, NFData, Flat)
+data ScriptHistoryCached = Unspent CachedUnspentTxOut | Spent CachedSpentTxOut  deriving (Generic, NFData, Flat, Show)
 
 instance Conversion TxOutInfo ScriptHistoryCached where
   convert txOutInfo = Unspent $ CachedUnspentTxOut (txOut'index txOutInfo) (txOut'value txOutInfo) (txOut'txHash txOutInfo) 
@@ -57,14 +58,16 @@ listToMap keySelector = Map.fromList . fmap (\v-> (keySelector v , v))
 cachedHistory :: MonadLevelDB m => PubKeyScriptHash -> m (Maybe (PubKeyScriptHash, [ScriptHistoryCached]))
 cachedHistory pubKeyScriptHash = do 
   maybeResult <- get $ flat pubKeyScriptHash
-  pure $ case maybeResult of
-    Just result -> fromRight (error "parse error") $ unflat result
-    otherwise -> Nothing
+  let maybeParsedResult = fromRight parsingError . unflat <$> maybeResult
+  pure $ (pubKeyScriptHash,) <$> maybeParsedResult
+  where
+    parsingError = error ("error parsing " ++ unpack pubKeyScriptHash)
 
 upsertHistory :: MonadLevelDB m => (PubKeyScriptHash, [ScriptHistoryCached]) -> WriterT WriteBatch m () 
 upsertHistory (key, value) = putB (flat key) $ flat value
 
-addToCache update = runCreateLevelDB "/tmp/mydb" "txOuts" $ do
+addToCache:: MonadLevelDB m => BlockInfo -> m ()
+addToCache update = do
   let updateHistoryMap = fmap convert <$> (listToGroupMap txOut'pubKeyScriptHash $ block'TxOutInfos update)
 
   cachedHistory <- sequence $ cachedHistory <$> Map.keys updateHistoryMap
@@ -74,6 +77,7 @@ addToCache update = runCreateLevelDB "/tmp/mydb" "txOuts" $ do
       unspentUpdatedHistory =  Map.toList $ (fmap unspentUpdated) <$> upsertHistoryMap
 
   runBatch $ sequence_ $ upsertHistory <$> unspentUpdatedHistory
+  pure ()
   where
     txInsMap = listToMap (\x -> (txIn'txOutHash x, txIn'txOutIndex x)) $ block'TxInInfos update  
     unspentUpdated (Unspent out) =
@@ -81,6 +85,17 @@ addToCache update = runCreateLevelDB "/tmp/mydb" "txOuts" $ do
         Just spentInfo -> Spent $ CachedSpentTxOut (txIn'txHash spentInfo) $ cachedUnspent'txHash out
         otherwise -> Unspent out
     unspentUpdated (Spent out) = Spent out
+
+deleteHistory :: MonadLevelDB m => m ()
+deleteHistory = do 
+  keys <- scan mempty queryBegins
+    { scanInit = []
+    , scanMap = \(key, value) -> key
+    , scanFilter = const True
+    , scanFold = (:)
+    }
+  runBatch $ sequence_ $ deleteB <$> keys
+  pure ()
 
 fromPersisted :: DBPool -> IO BlockInfo
 fromPersisted pool = do 

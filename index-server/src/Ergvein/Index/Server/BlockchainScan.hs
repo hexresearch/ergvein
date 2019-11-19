@@ -21,6 +21,7 @@ import Ergvein.Index.Server.BlockchainCache
 import Control.Concurrent.STM.TVar
 import Control.Monad.STM
 import Conversion
+import Database.LevelDB.Higher
 
 
 scannedBlockHeight :: DBPool -> Currency -> IO (Maybe BlockHeight)
@@ -60,7 +61,7 @@ scannerThread env currency scanInfo =
       blockInfo <- scanInfo blockHeight
       storeInfo pool blockInfo
       storeScannedHeight pool currency blockHeight
-      addToCache blockInfo
+      runCreateLevelDB "/tmp/mydb" "txOuts" $ addToCache blockInfo
     scanIteration thread = liftIO $ do
       heights <- blockHeightsToScan env currency
       sequence_ $ blockIteration <$> heights
