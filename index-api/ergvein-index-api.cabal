@@ -22,7 +22,7 @@ library
       , lens
       , template-haskell
       , text
-      , servant                   >= 0.14 && < 0.15
+      , servant                   >= 0.15 && < 0.17
       , ergvein-common
       , ergvein-wallet-types
 

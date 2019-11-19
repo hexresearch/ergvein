@@ -1,7 +1,7 @@
 module Ergvein.Wallet.Localization.Client
   (
     ClientMessage(..)
-  , ClientError(..)
+  , ClientErr(..)
   ) where
 
 import Ergvein.Text
@@ -36,10 +36,10 @@ instance LocalizedPrint ClientMessage where
       CMSTimeout          -> "Время вышло!"
       CMSRestarting       -> "Перезапускаем"
 
-data ClientError = ClientErrInconsistentResult | ClientErrNoUrls | ClientErrTimeOut
+data ClientErr = ClientErrInconsistentResult | ClientErrNoUrls | ClientErrTimeOut
   deriving (Eq, Show)
 
-instance LocalizedPrint ClientError where
+instance LocalizedPrint ClientErr where
   localizedShow l v = case l of
     English -> case v of
       ClientErrInconsistentResult -> "Failed to fetch. Inconsistent results"

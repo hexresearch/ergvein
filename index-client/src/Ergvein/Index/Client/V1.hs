@@ -35,32 +35,32 @@ apiV1 = fromServant $ indexVersionedApi'v1 api
 class MonadIO m => HasClientManager m where
   getClientMaganer  :: m Manager
 
-getBalanceEndpoint :: HasClientManager m => BaseUrl -> BalanceRequest -> m (Either ServantError BalanceResponse)
+getBalanceEndpoint :: HasClientManager m => BaseUrl -> BalanceRequest -> m (Either ClientError BalanceResponse)
 getBalanceEndpoint url req = do
   cenv <- fmap (flip mkClientEnv url) getClientMaganer
   liftIO $ flip runClientM cenv $ indexGetBalance apiV1 req
 
-getTxHashHistoryEndpoint :: HasClientManager m => BaseUrl -> TxHashHistoryRequest-> m (Either ServantError TxHashHistoryResponse)
+getTxHashHistoryEndpoint :: HasClientManager m => BaseUrl -> TxHashHistoryRequest-> m (Either ClientError TxHashHistoryResponse)
 getTxHashHistoryEndpoint url req = do
   cenv <- fmap (flip mkClientEnv url) getClientMaganer
   liftIO $ flip runClientM cenv $ indexGetTxHashHistory apiV1 req
 
-getTxMerkleProofEndpoint :: HasClientManager m => BaseUrl -> TxMerkleProofRequest -> m (Either ServantError TxMerkleProofResponse)
+getTxMerkleProofEndpoint :: HasClientManager m => BaseUrl -> TxMerkleProofRequest -> m (Either ClientError TxMerkleProofResponse)
 getTxMerkleProofEndpoint url req = do
   cenv <- fmap (flip mkClientEnv url) getClientMaganer
   liftIO $ flip runClientM cenv $ indexGetTxMerkleProof apiV1 req
 
-getTxHexViewEndpoint :: HasClientManager m => BaseUrl -> TxHexViewRequest -> m (Either ServantError TxHexViewResponse)
+getTxHexViewEndpoint :: HasClientManager m => BaseUrl -> TxHexViewRequest -> m (Either ClientError TxHexViewResponse)
 getTxHexViewEndpoint url req = do
   cenv <- fmap (flip mkClientEnv url) getClientMaganer
   liftIO $ flip runClientM cenv $ indexGetTxHexView apiV1 req
 
-getTxFeeHistogramEndpoint :: HasClientManager m => BaseUrl -> TxFeeHistogramRequest -> m (Either ServantError TxFeeHistogramResponse)
+getTxFeeHistogramEndpoint :: HasClientManager m => BaseUrl -> TxFeeHistogramRequest -> m (Either ClientError TxFeeHistogramResponse)
 getTxFeeHistogramEndpoint url req = do
   cenv <- fmap (flip mkClientEnv url) getClientMaganer
   liftIO $ flip runClientM cenv $ indexGetTxFeeHistogram apiV1 req
 
-txBroadcastEndpoint :: HasClientManager m => BaseUrl -> TxBroadcastRequest -> m (Either ServantError TxBroadcastResponse)
+txBroadcastEndpoint :: HasClientManager m => BaseUrl -> TxBroadcastRequest -> m (Either ClientError TxBroadcastResponse)
 txBroadcastEndpoint url req = do
   cenv <- fmap (flip mkClientEnv url) getClientMaganer
   liftIO $ flip runClientM cenv $ indexTxBroadcast apiV1 req

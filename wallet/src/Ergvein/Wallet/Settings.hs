@@ -37,12 +37,6 @@ data Settings = Settings {
 
 $(deriveJSON (aesonOptionsStripPrefix "settings") ''Settings)
 
-instance ToJSON BaseUrl where
-  toJSON = toJSON . showBaseUrl
-
-instance FromJSON BaseUrl where
-  parseJSON = withText "BaseUrl" $ maybe (fail "Failed to parse BaseUrl") pure . parseBaseUrl . unpack
-
 makeLensesWith humbleFields ''Settings
 
 -- | TODO: Implement some checks to see if the configPath folder is ok to write to

@@ -6,7 +6,7 @@ module Ergvein.Wallet.Client
   , getTxHexView
   , getTxFeeHistogram
   , txBroadcast
-  , ClientError(..)
+  , ClientErr(..)
   ) where
 
 import Control.Concurrent
@@ -33,22 +33,22 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Localization.Client
 
-getBalance :: MonadFrontBase t m => Event t BalanceRequest -> m (Event t (Either ClientError BalanceResponse))
+getBalance :: MonadFrontBase t m => Event t BalanceRequest -> m (Event t (Either ClientErr BalanceResponse))
 getBalance = requesterImpl getBalanceEndpoint
 
-getTxHashHistory :: MonadFrontBase t m => Event t TxHashHistoryRequest -> m (Event t (Either ClientError TxHashHistoryResponse))
+getTxHashHistory :: MonadFrontBase t m => Event t TxHashHistoryRequest -> m (Event t (Either ClientErr TxHashHistoryResponse))
 getTxHashHistory = requesterImpl getTxHashHistoryEndpoint
 
-getTxMerkleProof :: MonadFrontBase t m => Event t TxMerkleProofRequest -> m (Event t (Either ClientError TxMerkleProofResponse))
+getTxMerkleProof :: MonadFrontBase t m => Event t TxMerkleProofRequest -> m (Event t (Either ClientErr TxMerkleProofResponse))
 getTxMerkleProof = requesterImpl getTxMerkleProofEndpoint
 
-getTxHexView :: MonadFrontBase t m => Event t TxHexViewRequest -> m (Event t (Either ClientError TxHexViewResponse))
+getTxHexView :: MonadFrontBase t m => Event t TxHexViewRequest -> m (Event t (Either ClientErr TxHexViewResponse))
 getTxHexView = requesterImpl getTxHexViewEndpoint
 
-getTxFeeHistogram :: MonadFrontBase t m => Event t TxFeeHistogramRequest -> m (Event t (Either ClientError TxFeeHistogramResponse))
+getTxFeeHistogram :: MonadFrontBase t m => Event t TxFeeHistogramRequest -> m (Event t (Either ClientErr TxFeeHistogramResponse))
 getTxFeeHistogram = requesterImpl getTxFeeHistogramEndpoint
 
-txBroadcast :: MonadFrontBase t m => Event t TxBroadcastRequest -> m (Event t (Either ClientError TxBroadcastResponse))
+txBroadcast :: MonadFrontBase t m => Event t TxBroadcastRequest -> m (Event t (Either ClientErr TxBroadcastResponse))
 txBroadcast = requesterImpl txBroadcastEndpoint
 
 instance MonadIO m => HasClientManager (ReaderT Manager m) where
@@ -70,7 +70,7 @@ validateRes rs = case L.nub rs of
 requesterImpl :: (MonadFrontBase t m, Eq a, Show a, Show b)
   => (BaseUrl -> b -> ReaderT Manager IO (Either e a))    -- Request function
   -> Event t b                                            -- Request event
-  -> m (Event t (Either ClientError a))                   -- Result
+  -> m (Event t (Either ClientErr a))                   -- Result
 requesterImpl endpoint reqE = mdo
   uss  <- readExternalRef =<< getUrlsRef
   let initReqE = ffor reqE (\req -> Just (req, [], uss))

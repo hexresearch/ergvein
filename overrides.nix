@@ -45,5 +45,9 @@ in (self: super: let
     haskoin-core = self.callPackage ./derivations/haskoin-core.nix {};
     bitcoin-api = self.callPackage ./derivations/haskell-bitcoin-api.nix {};
     bytestring-trie = self.callPackage ./derivations/bytestring-trie.nix {};
+    servant = self.callPackage ./derivations/servant.nix {};
+    servant-client = self.callPackage ./derivations/servant-client.nix {};
+    servant-client-core = self.callPackage ./derivations/servant-client-core.nix {};
+    servant-server = self.callPackage ./derivations/servant-server.nix {};
   }
 )
