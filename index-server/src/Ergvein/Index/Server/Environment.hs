@@ -39,7 +39,7 @@ newServerEnv cfg = do
         flip runReaderT pool $ runDb $ runMigration migrateAll
         pure pool
     storedInfos <- liftIO $ fromPersisted pool
-    liftIO $ runCreateLevelDB "/tmp/mydb" "txOuts" $ addToCache storedInfos
+    liftIO $ addToCache storedInfos
     pure ServerEnv { envConfig = cfg
                    , envLogger = logger
                    , envPool   = pool

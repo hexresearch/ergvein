@@ -54,31 +54,22 @@ listToGroupMap keySelector = Map.fromListWith (++) . fmap (\v-> (keySelector v ,
 listToMap :: Ord k => (v -> k) -> [v] -> Map.Map k v
 listToMap keySelector = Map.fromList . fmap (\v-> (keySelector v , v))
 
-cachedHistory :: MonadLevelDB m => PubKeyScriptHash -> m (PubKeyScriptHash, [ScriptHistoryCached])
+cachedHistory :: MonadLevelDB m => PubKeyScriptHash -> m (Maybe (PubKeyScriptHash, [ScriptHistoryCached]))
 cachedHistory pubKeyScriptHash = do 
   maybeResult <- get $ flat pubKeyScriptHash
-  let result = fromMaybe (error "not found") $ maybeResult
-      parsedResult = fromRight (error "parse error") $ unflat result
-  pure parsedResult
+  pure $ case maybeResult of
+    Just result -> fromRight (error "parse error") $ unflat result
+    otherwise -> Nothing
 
 upsertHistory :: MonadLevelDB m => (PubKeyScriptHash, [ScriptHistoryCached]) -> WriterT WriteBatch m () 
 upsertHistory (key, value) = putB (flat key) $ flat value
 
-runCreateLevelDB' :: (MonadThrow m, MonadUnliftIO m)
-           => LevelDBT m a -- ^ The actions to execute
-           -> m a
-
-runCreateLevelDB'  = runCreateLevelDB "/tmp/mydb" "txOuts"
-
---x = runCreateLevelDB "/tmp/mydb" "txOuts"
-
-addToCache :: MonadLevelDB m => BlockInfo -> m ()
-addToCache update = do
+addToCache update = runCreateLevelDB "/tmp/mydb" "txOuts" $ do
   let updateHistoryMap = fmap convert <$> (listToGroupMap txOut'pubKeyScriptHash $ block'TxOutInfos update)
 
   cachedHistory <- sequence $ cachedHistory <$> Map.keys updateHistoryMap
 
-  let cachedHistoryMap = Map.fromList cachedHistory
+  let cachedHistoryMap = Map.fromList $ catMaybes cachedHistory
       upsertHistoryMap =  Map.unionWith (++) updateHistoryMap cachedHistoryMap
       unspentUpdatedHistory =  Map.toList $ (fmap unspentUpdated) <$> upsertHistoryMap
 
