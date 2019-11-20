@@ -49,5 +49,6 @@ in (self: super: let
     servant-client = self.callPackage ./derivations/servant-client.nix {};
     servant-client-core = self.callPackage ./derivations/servant-client-core.nix {};
     servant-server = self.callPackage ./derivations/servant-server.nix {};
+    zlib = self.callPackage ./derivations/zlib.nix { };
   }
 )
