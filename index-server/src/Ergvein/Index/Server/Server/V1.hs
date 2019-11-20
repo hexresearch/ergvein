@@ -27,6 +27,7 @@ import Ergvein.Index.Server.BlockScanner.Types
 import Database.LevelDB.Higher
 import Data.Flat
 import Data.Either
+import Data.Maybe
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
@@ -82,19 +83,20 @@ indexGetBalanceEndpoint BalanceRequest { balReqCurrency = ERGO } = pure ergoBala
 
 indexGetTxHashHistoryEndpoint :: TxHashHistoryRequest -> ServerM TxHashHistoryResponse
 indexGetTxHashHistoryEndpoint  req@(TxHashHistoryRequest{ historyReqCurrency = BTC }) = do
-    txInEntities <- runDb getAllTxIn
-    txOutEntities <- runDb getAllTxOut
-    txEntities <- runDb getAllTx
-    let txs = entityVal <$> txEntities
-        txOuts = Map.fromList $ (\e-> ((txOutRecTxHash e, txOutRecPubKeyScriptHash e), e)) <$> entityVal <$> txOutEntities
-        txOuts' = Map.fromList $ (\e-> ((txOutRecTxHash e, txOutRecIndex e), txOutRecPubKeyScriptHash e)) <$> entityVal <$> txOutEntities
-        f x = (txInRecTxHash x,  [txOuts' Map.! (txInRecTxOutHash x, txInRecTxOutIndex x)])
-        txIns = Map.fromListWith (++) $ f <$> entityVal <$> txInEntities
-        p1 tx = Map.member (txRecHash tx, historyReqPubKeyScriptHash req) txOuts
-        p2 tx = any (elem (historyReqPubKeyScriptHash req)) $ txIns Map.!? (txRecHash tx)
-        mp x = TxHashHistoryItem {historyItemTxHash = txRecHash x, historyItemBlockHeight = txRecBlockHeigh x }
-        r = mp <$> filter (\tx -> p1 tx || p2 tx) txs
-    pure r
+  maybeHistory <- runCreateLevelDB "/tmp/mydb" "txOuts" $ get $ flat $ historyReqPubKeyScriptHash req
+  let history = fromRight (error parseError) $ unflat @[ScriptHistoryCached] $ fromMaybe (error gettingError) maybeHistory
+  let inv = flat <$> (nub $ concat $ involvedTxs <$> history)
+  x <- runCreateLevelDB "/tmp/mydb" "txs" $ batchGet inv
+  let 
+      x' =  (fromRight $ error "") . unflat @CachedTx . fromJust <$> x
+      result = (\x -> TxHashHistoryItem (cachedTx'hash x) (cachedTx'blockHeight x) ) <$> x'
+  pure result 
+  where
+    involvedTxs out = case out of
+        Unspent unspent -> pure $ cachedUnspent'txHash unspent
+        Spent spent  -> [cachedSpent'spentInTxHash spent, cachedSpent'txHash spent]
+    gettingError = "Error while getting history for " ++ (show $ historyReqPubKeyScriptHash req)
+    parseError = "Error while parsing history for " ++ (show $ historyReqPubKeyScriptHash req)
 
 indexGetTxHashHistoryEndpoint TxHashHistoryRequest { historyReqCurrency = ERGO } = pure ergoHistory
 

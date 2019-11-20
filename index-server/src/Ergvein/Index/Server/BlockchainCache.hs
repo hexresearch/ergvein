@@ -44,16 +44,31 @@ data CachedSpentTxOut = CachedSpentTxOut
   , cachedSpent'txHash         :: TxHash
   }  deriving (Generic, NFData, Flat, Show)
 
+data CachedTx = CachedTx
+  { cachedTx'hash :: TxHash
+  , cachedTx'blockHeight  :: BlockHeight
+  , cachedTx'blockIndex   :: TxBlockIndex
+  }  deriving (Generic, NFData, Flat, Show)
+
 data ScriptHistoryCached = Unspent CachedUnspentTxOut | Spent CachedSpentTxOut  deriving (Generic, NFData, Flat, Show)
 
 instance Conversion TxOutInfo ScriptHistoryCached where
-  convert txOutInfo = Unspent $ CachedUnspentTxOut (txOut'index txOutInfo) (txOut'value txOutInfo) (txOut'txHash txOutInfo) 
+  convert txOutInfo = Unspent $ CachedUnspentTxOut (txOut'index txOutInfo) (txOut'value txOutInfo) (txOut'txHash txOutInfo)
+
+instance Conversion TxInfo CachedTx where
+  convert txInfo = CachedTx (tx'hash txInfo) (tx'blockHeight txInfo) (tx'blockIndex txInfo)
 
 listToGroupMap :: Ord k => (v -> k) -> [v] -> Map.Map k [v]
 listToGroupMap keySelector = Map.fromListWith (++) . fmap (\v-> (keySelector v , [v]))
 
 listToMap :: Ord k => (v -> k) -> [v] -> Map.Map k v
 listToMap keySelector = Map.fromList . fmap (\v-> (keySelector v , v))
+
+batchInsert :: MonadLevelDB m => [Item] -> WriterT WriteBatch m () 
+batchInsert items = sequence_ $ uncurry putB <$> items
+
+batchGet :: MonadLevelDB m => [Database.LevelDB.Higher.Key] -> m [Maybe Value]
+batchGet keys = sequence $ get <$> keys
 
 cachedHistory :: MonadLevelDB m => PubKeyScriptHash -> m (Maybe (PubKeyScriptHash, [ScriptHistoryCached]))
 cachedHistory pubKeyScriptHash = do 
@@ -63,11 +78,13 @@ cachedHistory pubKeyScriptHash = do
   where
     parsingError = error ("error parsing " ++ unpack pubKeyScriptHash)
 
-upsertHistory :: MonadLevelDB m => (PubKeyScriptHash, [ScriptHistoryCached]) -> WriterT WriteBatch m () 
-upsertHistory (key, value) = putB (flat key) $ flat value
+toItem :: (Flat k, Flat v) => (s -> k) -> (s -> v) -> s -> Item
+toItem keySelector valueSelector source = (flat $ keySelector source , flat $ valueSelector source)
 
 addToCache:: MonadLevelDB m => BlockInfo -> m ()
 addToCache update = do
+  withKeySpace "txs" $ runBatch $ batchInsert $ toItem tx'hash (convert @TxInfo @CachedTx) <$> block'TxInfos update
+
   let updateHistoryMap = fmap convert <$> (listToGroupMap txOut'pubKeyScriptHash $ block'TxOutInfos update)
 
   cachedHistory <- sequence $ cachedHistory <$> Map.keys updateHistoryMap
@@ -76,7 +93,7 @@ addToCache update = do
       upsertHistoryMap =  Map.unionWith (++) updateHistoryMap cachedHistoryMap
       unspentUpdatedHistory =  Map.toList $ (fmap unspentUpdated) <$> upsertHistoryMap
 
-  runBatch $ sequence_ $ upsertHistory <$> unspentUpdatedHistory
+  runBatch $ batchInsert $ toItem fst snd <$> unspentUpdatedHistory
   pure ()
   where
     txInsMap = listToMap (\x -> (txIn'txOutHash x, txIn'txOutIndex x)) $ block'TxInInfos update  
