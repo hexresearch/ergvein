@@ -30,6 +30,7 @@ in (self: super: let
     ergvein-crypto = ingnoreGarbage super.ergvein-crypto;
     ergvein-index-api = ingnoreGarbage super.ergvein-index-api;
     ergvein-index-server = ingnoreGarbage super.ergvein-index-server;
+    ergvein-index-client = ingnoreGarbage super.ergvein-index-client;
     ergvein-wallet = ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-wallet" ./wallet walletOpts {});
     ergvein-wallet-android = ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-wallet-android" ./wallet-android walletOpts {});
     ergvein-wallet-desktop = ingnoreGarbage super.ergvein-wallet-desktop;
@@ -44,6 +45,10 @@ in (self: super: let
     haskoin-core = self.callPackage ./derivations/haskoin-core.nix {};
     bitcoin-api = self.callPackage ./derivations/haskell-bitcoin-api.nix {};
     bytestring-trie = self.callPackage ./derivations/bytestring-trie.nix {};
-    servant-reflex = self.callPackage ./derivations/servant-reflex.nix {};
+    servant = self.callPackage ./derivations/servant.nix {};
+    servant-client = self.callPackage ./derivations/servant-client.nix {};
+    servant-client-core = self.callPackage ./derivations/servant-client-core.nix {};
+    servant-server = self.callPackage ./derivations/servant-server.nix {};
+    zlib = self.callPackage ./derivations/zlib.nix { };
   }
 )

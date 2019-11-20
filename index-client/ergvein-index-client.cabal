@@ -1,34 +1,33 @@
-name:                ergvein-index-api
+name:                ergvein-index-client
 version:             0.1.0.0
-synopsis:            Shared api contract for ergvein wallet cryptocurrencies index server
+synopsis:            Client for Ergvein wallet cryptocurrencies indexer
 description:         See README.md
 category:            Cryptocurrency
 build-type:          Simple
 cabal-version:       >=1.10
+license:             MIT
+license-file:        LICENSE
+copyright:           2019 ATUM SOLUTIONS AG
+author:              Levon Oganyan
+maintainer:          Levon Oganyan <lemarwin@protonmail.com>
 
 library
   hs-source-dirs:      src
   exposed-modules:
-      Ergvein.Index.API
-      Ergvein.Index.API.Types
-      Ergvein.Index.API.V1
-      Ergvein.Types.Transaction
-
+    Ergvein.Index.Client
+    Ergvein.Index.Client.V1
   build-depends:
-        base
-      , aeson
-      , bytestring
-      , directory
-      , lens
-      , template-haskell
-      , text
-      , servant                   >= 0.15 && < 0.17
+        base                    >= 4.7    && < 4.13
+      , text                    >= 1.2    && < 1.3
+      , servant                 >= 0.16   && < 0.17
+      , servant-client          >= 0.16   && < 0.17
+      , http-client             >= 0.5    && < 0.7
+      , mtl                     >= 2.1    && < 2.3
       , ergvein-common
+      , ergvein-index-api
       , ergvein-wallet-types
-
   default-language:    Haskell2010
   default-extensions:
-    BangPatterns
     ConstraintKinds
     DataKinds
     DeriveDataTypeable
@@ -50,3 +49,5 @@ library
     TypeApplications
     TypeFamilies
     TypeOperators
+    QuasiQuotes
+    UndecidableInstances

@@ -7,13 +7,16 @@ module Ergvein.Wallet.Settings (
 
 import Control.Lens
 import Control.Monad.IO.Class
+import Data.Aeson (withText)
 import Data.Default
 import Data.Text(Text, pack, unpack)
+import Data.Time (NominalDiffTime)
 import Data.Yaml (encodeFile)
 import Ergvein.Aeson
 import Ergvein.Lens
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Yaml(readYamlEither')
+import Servant.Client(BaseUrl(..), Scheme(..), parseBaseUrl, showBaseUrl)
 import System.Directory
 
 import qualified Control.Exception   as Exception
@@ -27,8 +30,9 @@ data Settings = Settings {
   settingsLang        :: Language
 , settingsStoreDir    :: Text
 , settingsConfigPath  :: Text
-, settingsDefUrls     :: [Text]
-, settingsDefUrlNum   :: Int
+, settingsDefUrls     :: [BaseUrl]
+, settingsDefUrlNum   :: (Int, Int)
+, settingsReqTimeout  :: NominalDiffTime
 } deriving (Eq, Show)
 
 $(deriveJSON (aesonOptionsStripPrefix "settings") ''Settings)
@@ -47,7 +51,7 @@ mkDefSettings :: MonadIO m => FilePath -> m Settings
 mkDefSettings home = liftIO $ do
   let storePath   = home <> "/store"
       configPath  = home <> "/config.yaml"
-      cfg = Settings English (pack storePath) (pack configPath) [] 3
+      cfg = Settings English (pack storePath) (pack configPath) [] (2,3) 5
   createDirectoryIfMissing True storePath
   encodeFile configPath cfg
   pure cfg
@@ -72,7 +76,7 @@ mkDefSettings = liftIO $ do
   putStrLn $ "Language   : English"
   let storePath   = home <> "/.ergvein/store"
       configPath  = home <> "/.ergvein/config.yaml"
-      cfg = Settings English (pack storePath) (pack configPath) [] 3
+      cfg = Settings English (pack storePath) (pack configPath) [] (2,3) 5
   createDirectoryIfMissing True storePath
   encodeFile configPath cfg
   pure cfg
