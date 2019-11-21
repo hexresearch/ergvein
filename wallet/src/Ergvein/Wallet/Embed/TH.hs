@@ -4,6 +4,9 @@ module Ergvein.Wallet.Embed.TH where
 import Data.FileEmbed
 import Data.ByteString (ByteString)
 
+gridCss :: ByteString
+gridCss = $(embedFile "static/css/grid.css")
+
 milligramCss :: ByteString
 milligramCss = $(embedFile "static/css/milligram.min.css")
 
@@ -20,4 +23,4 @@ smallEye :: ByteString
 smallEye = $(embedFile "static/img/small_eye.png")
 
 menuIcon :: ByteString
-menuIcon = $(embedFile "static/img/menu.png")  
+menuIcon = $(embedFile "static/img/menu.png")

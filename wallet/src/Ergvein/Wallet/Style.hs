@@ -39,7 +39,7 @@ compileFrontendCss = do
 frontendCssBS :: Resources -> ByteString
 frontendCssBS r = let
   selfcss = toStrict . encodeUtf8 . renderWith compact [] $ frontendCss r
-  in milligramCss <> tooltipCss <> selfcss
+  in milligramCss <> tooltipCss <> gridCss <> selfcss
 
 frontendCss :: Resources -> Css
 frontendCss r = do
@@ -80,13 +80,16 @@ wrapperCss :: Css
 wrapperCss = do
   ".container" ? do
     position relative
-    height $ pct 90
+    height $ pct 100
+    overflow hidden
   ".vertical-center" ? do
-    margin (px 0) (px 0) (px 0) (px 0)
     position absolute
     top $ pct 50
     translatePctY $ pct (-50)
-    width $ pct 90
+    left $ px 0
+    right $ px 0
+    width $ pct 100
+    overflow hidden
 
 translatePctY :: Size Percentage -> Css
 translatePctY y = prefixed (browsers <> "transform") $ "translateY(" <> value y <> ")"
@@ -185,10 +188,10 @@ mnemonicWidgetCss = do
     marginRight $ em 0.25
   ".mnemonic-warn" ? do
     marginTop $ px 30
-  ".guess-buttons" ? textAlign center
+  ".guess-buttons" ? do
+    margin (px 0) auto (px 0) auto
   ".guess-button" ? do
-    marginRight $ px 30
-    display inlineBlock
+    width $ pct 100
   ".restore-word" ? do
     minWidth $ px 120
   let mkGuess cl c = do
