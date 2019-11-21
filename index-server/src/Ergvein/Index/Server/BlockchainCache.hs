@@ -32,6 +32,7 @@ import qualified Data.Text.IO as T
 import Data.Text (Text, pack)
 import Control.Monad.Writer
 import Control.DeepSeq
+import Database.Persist.Pagination
 
 data CachedUnspentTxOut = CachedUnspentTxOut
   { cachedUnspent'index  :: TxOutIndex
@@ -81,7 +82,7 @@ cachedHistory pubKeyScriptHash = do
 toItem :: (Flat k, Flat v) => (s -> k) -> (s -> v) -> s -> Item
 toItem keySelector valueSelector source = (flat $ keySelector source , flat $ valueSelector source)
 
-addToCache:: MonadLevelDB m => BlockInfo -> m ()
+addToCache :: MonadLevelDB m => BlockInfo -> m ()
 addToCache update = do
   withKeySpace "txs" $ runBatch $ batchInsert $ toItem tx'hash (convert @TxInfo @CachedTx) <$> block'TxInfos update
 
@@ -112,6 +113,12 @@ deleteHistory = do
     , scanFold = (:)
     }
   runBatch $ sequence_ $ deleteB <$> keys
+  pure ()
+
+loadCache :: DBPool -> IO ()
+loadCache dbPool = runLevelDB "/tmp/mydb" def {maxOpenFiles = maxBound, createIfMissing = True} (def,def) mempty $ do
+--  x <- liftIO $ sequence $ iterate (\page -> runDbQuery dbPool $ pagination ) $ pure Nothing
+
   pure ()
 
 fromPersisted :: DBPool -> IO BlockInfo

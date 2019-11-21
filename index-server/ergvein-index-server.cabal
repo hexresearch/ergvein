@@ -75,6 +75,9 @@ library
       , higher-leveldb
       , resourcet
       , flat
+      , persistent-pagination
+      , conduit
+      , monad-extras
 
   default-language:    Haskell2010
   default-extensions:

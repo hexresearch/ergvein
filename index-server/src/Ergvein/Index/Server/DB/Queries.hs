@@ -12,6 +12,21 @@ import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import Database.Esqueleto.Pagination
+
+import           Conduit
+import           Control.Concurrent
+import           Control.Monad
+import           Control.Monad.IO.Class
+import           Control.Monad.Reader
+
+pag ::(MonadIO m) => ConduitT a (Entity TxOutRec) (ReaderT SqlBackend m) ()
+pag = streamEntities
+      emptyQuery
+      TxOutRecId
+      (PageSize 1000)
+      Ascend
+      (Range Nothing Nothing)
 
 getAllTx :: (MonadIO m) => QueryT m [Entity TxRec]
 getAllTx = select $ from pure
