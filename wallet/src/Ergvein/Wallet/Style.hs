@@ -160,8 +160,11 @@ buttonCss = do
 
 inputCss :: Css
 inputCss = do
+  let simpleBorder = border solid (rem 0.1) black
   let passInput = input # ("type" @= "password")
-  (passInput # hover) <> (passInput # focus) ? border solid (rem 0.1) black
+  (passInput # hover) <> (passInput # focus) ? simpleBorder
+  let textInput = input # ("type" @= "text")
+  (textInput # hover) <> (textInput # focus) ? simpleBorder
 
 fontFamilies :: Resources -> Css
 fontFamilies Resources{..} = do
