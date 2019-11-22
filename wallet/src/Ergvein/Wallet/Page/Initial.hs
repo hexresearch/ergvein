@@ -33,8 +33,8 @@ instance LocalizedPrint InitialPageStrings where
 
 initialPage :: MonadFrontBase t m => m ()
 initialPage = wrapper True $ divClass "initial-options" $ do
-    newE <- fmap (GoSeed <$) $ row . outlineButton $ IPSCreate
-    restoreE <- fmap (GoRestore <$) $ row . outlineButton $ IPSRestore
+    newE <- fmap (GoSeed <$) $ outlineButton IPSCreate
+    restoreE <- fmap (GoRestore <$) $ outlineButton IPSRestore
     let goE = leftmost [newE, restoreE]
     void $ nextWidget $ ffor goE $ \go -> Retractable {
         retractableNext = case go of

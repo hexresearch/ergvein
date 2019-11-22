@@ -81,21 +81,20 @@ wrapperCss = do
   ".container" ? do
     position relative
     height $ pct 100
-    overflow hidden
   ".vertical-center" ? do
     position absolute
     top $ pct 50
-    translatePctY $ pct (-50)
-    left $ px 0
-    right $ px 0
-    width $ pct 100
-    overflow hidden
+    left $ pct 50
+    translatePctXY (pct (-50)) (pct (-50))
+
+translatePctX :: Size Percentage -> Css
+translatePctX x = prefixed (browsers <> "transform") $ "translateX(" <> value x <> ")"
 
 translatePctY :: Size Percentage -> Css
 translatePctY y = prefixed (browsers <> "transform") $ "translateY(" <> value y <> ")"
 
-translatePctX :: Size Percentage -> Css
-translatePctX x = prefixed (browsers <> "transform") $ "translateX(" <> value x <> ")"
+translatePctXY :: Size Percentage -> Size Percentage -> Css
+translatePctXY x y = prefixed (browsers <> "transform") $ "translate(" <> value x <> ", " <> value y <> ")"
 
 menuCss :: Css
 menuCss = do
@@ -240,10 +239,10 @@ passwordCss = do
 initialPageCss :: Css
 initialPageCss = do
   ".initial-options" ** button ? do
-    width $ pct 80
+    width $ pct 100
     marginLeft auto
     marginRight auto
-    marginBottom $ px 10
+    marginBottom $ rem 1
 
 balancesPageCss :: Css
 balancesPageCss = do
