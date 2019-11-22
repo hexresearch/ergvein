@@ -1,6 +1,10 @@
+.grid1 {
+  display: grid;
+  width: max-content;
+}
+
 .grid3 {
   display: grid;
-  grid-template-columns: 1fr;
   width: max-content;
 }
 

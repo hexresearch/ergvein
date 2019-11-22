@@ -86,6 +86,9 @@ wrapperCss = do
     top $ pct 50
     left $ pct 50
     translatePctXY (pct (-50)) (pct (-50))
+    width $ pct 100
+    paddingLeft $ rem 2
+    paddingRight $ rem 2
 
 translatePctX :: Size Percentage -> Css
 translatePctX x = prefixed (browsers <> "transform") $ "translateX(" <> value x <> ")"
@@ -238,8 +241,7 @@ passwordCss = do
 
 initialPageCss :: Css
 initialPageCss = do
-  ".initial-options" ** button ? do
-    width $ pct 100
+  ".initial-options" ? do
     marginLeft auto
     marginRight auto
     marginBottom $ rem 1

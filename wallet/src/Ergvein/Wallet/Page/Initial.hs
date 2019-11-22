@@ -32,7 +32,7 @@ instance LocalizedPrint InitialPageStrings where
       IPSRestore  -> "Восстановить кошелёк"
 
 initialPage :: MonadFrontBase t m => m ()
-initialPage = wrapper True $ divClass "initial-options" $ do
+initialPage = wrapper True $ divClass "initial-options grid1" $ do
     newE <- fmap (GoSeed <$) $ outlineButton IPSCreate
     restoreE <- fmap (GoRestore <$) $ outlineButton IPSRestore
     let goE = leftmost [newE, restoreE]
