@@ -38,10 +38,8 @@ newServerEnv cfg = do
         pool <- newDBPool $ fromString $ connectionStringFromConfig cfg
         flip runReaderT pool $ runDb $ runMigration migrateAll
         pure pool
-    storedInfos <- liftIO $ fromPersisted pool
-    liftIO $ runLevelDB "/tmp/mydb" def {maxOpenFiles = maxBound, createIfMissing = True} (def,def) "txOuts" $ do
-        deleteHistory
-        addToCache storedInfos
+    --storedInfos <- liftIO $ fromPersisted pool
+    liftIO $ loadCache pool
     pure ServerEnv { envConfig = cfg
                    , envLogger = logger
                    , envPool   = pool

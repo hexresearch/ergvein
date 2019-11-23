@@ -33,6 +33,11 @@ import Data.Text (Text, pack)
 import Control.Monad.Writer
 import Control.DeepSeq
 import Database.Persist.Pagination
+import qualified Data.Conduit.List as CL
+import           Conduit
+import Control.Monad.IO.Unlift
+import Control.Monad.Logger
+import Control.Monad.Reader
 
 data CachedUnspentTxOut = CachedUnspentTxOut
   { cachedUnspent'index  :: TxOutIndex
@@ -116,10 +121,13 @@ deleteHistory = do
   pure ()
 
 loadCache :: DBPool -> IO ()
-loadCache dbPool = runLevelDB "/tmp/mydb" def {maxOpenFiles = maxBound, createIfMissing = True} (def,def) mempty $ do
---  x <- liftIO $ sequence $ iterate (\page -> runDbQuery dbPool $ pagination ) $ pure Nothing
-
-  pure ()
+loadCache dbPool = do 
+  x <- runDbQuery dbPool getAllTxOut
+  act x
+  pure () 
+  where
+    --act :: (MonadUnliftIO m, MonadLogger m) => [Entity TxOutRec] ->  m ()
+    act ch = liftIO $ runCreateLevelDB "~/tmp/ldb" "txOuts" $ addToCache $ BlockInfo [] [] $ convert @(Entity TxOutRec) @TxOutInfo <$> ch
 
 fromPersisted :: DBPool -> IO BlockInfo
 fromPersisted pool = do 

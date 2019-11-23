@@ -45,6 +45,7 @@ in (self: super: let
     bitcoin-api = self.callPackage ./derivations/haskell-bitcoin-api.nix {};
     bytestring-trie = self.callPackage ./derivations/bytestring-trie.nix {};
     servant-reflex = self.callPackage ./derivations/servant-reflex.nix {};
+    persistent-pagination = self.callPackage ./derivations/persistent-pagination.nix {};
     flat = lib.dontCheck (super.flat);
   }
 )

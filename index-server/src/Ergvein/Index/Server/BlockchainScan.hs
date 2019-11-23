@@ -61,7 +61,7 @@ scannerThread env currency scanInfo =
       blockInfo <- scanInfo blockHeight
       storeInfo pool blockInfo
       storeScannedHeight pool currency blockHeight
-      runCreateLevelDB "/tmp/mydb" "txOuts" $ addToCache blockInfo
+      runCreateLevelDB "~/tmp/ldb" "txOuts" $ addToCache blockInfo
     scanIteration thread = liftIO $ do
       heights <- blockHeightsToScan env currency
       sequence_ $ blockIteration <$> heights
