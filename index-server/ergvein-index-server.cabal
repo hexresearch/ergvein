@@ -11,8 +11,6 @@ copyright:           2019 ATUM SOLUTIONS AG
 author:              Anton Gushcha, Aminion, Vladimir Krutkin, Levon Oganyan
 maintainer:          Anton Gushcha <ncrashed@protonmail.com>, Vladimir Krutkin <krutkinvs@gmail.com>
 
-library-profiling: True
-
 library
   hs-source-dirs:      src
   exposed-modules:
