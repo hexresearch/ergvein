@@ -24,12 +24,10 @@ import Control.DeepSeq
 import Control.Monad.Trans.Resource (release)
 import Data.Flat
 import qualified Data.ByteString         as B
-import Data.Text
 import Data.Maybe
 import Data.Either
-import Database.LevelDB.Higher
 import qualified Data.Text.IO as T
-import Data.Text (Text, pack)
+import Data.Text (Text, pack, unpack)
 import Control.Monad.Writer
 import Control.DeepSeq
 import Database.Persist.Pagination
@@ -38,6 +36,8 @@ import           Conduit
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Reader
+import System.Directory
+import Database.LevelDB
 
 data CachedUnspentTxOut = CachedUnspentTxOut
   { cachedUnspent'index  :: TxOutIndex
@@ -70,36 +70,36 @@ listToGroupMap keySelector = Map.fromListWith (++) . fmap (\v-> (keySelector v ,
 listToMap :: Ord k => (v -> k) -> [v] -> Map.Map k v
 listToMap keySelector = Map.fromList . fmap (\v-> (keySelector v , v))
 
-batchInsert :: MonadLevelDB m => [Item] -> WriterT WriteBatch m () 
-batchInsert items = sequence_ $ uncurry putB <$> items
-
-batchGet :: MonadLevelDB m => [Database.LevelDB.Higher.Key] -> m [Maybe Value]
-batchGet keys = sequence $ get <$> keys
-
-cachedHistory :: MonadLevelDB m => PubKeyScriptHash -> m (Maybe (PubKeyScriptHash, [ScriptHistoryCached]))
-cachedHistory pubKeyScriptHash = do 
-  maybeResult <- get $ flat pubKeyScriptHash
+cachedHistory :: MonadIO m => DB -> PubKeyScriptHash -> m (Maybe (PubKeyScriptHash, [ScriptHistoryCached]))
+cachedHistory db pubKeyScriptHash = do 
+  maybeResult <- get db def $ historyKey pubKeyScriptHash
   let maybeParsedResult = fromRight parsingError . unflat <$> maybeResult
   pure $ (pubKeyScriptHash,) <$> maybeParsedResult
   where
     parsingError = error ("error parsing " ++ unpack pubKeyScriptHash)
 
-toItem :: (Flat k, Flat v) => (s -> k) -> (s -> v) -> s -> Item
+toItem :: (Flat k, Flat v) => (s -> k) -> (s -> v) -> s -> (B.ByteString, B.ByteString)
 toItem keySelector valueSelector source = (flat $ keySelector source , flat $ valueSelector source)
 
-addToCache :: MonadLevelDB m => BlockInfo -> m ()
-addToCache update = do
-  withKeySpace "txs" $ runBatch $ batchInsert $ toItem tx'hash (convert @TxInfo @CachedTx) <$> block'TxInfos update
+historyKey :: PubKeyScriptHash -> B.ByteString
+historyKey pubKeyScriptHash = "hst" <> flat pubKeyScriptHash
+
+txKey :: PubKeyScriptHash -> B.ByteString
+txKey pubKeyScriptHash = "hst" <> flat pubKeyScriptHash
+
+addToCache :: MonadIO m => DB -> BlockInfo -> m ()
+addToCache db update = do
+  write db def $ (\x -> Put (txKey $ tx'hash x) $ flat $ convert @TxInfo @CachedTx x) <$> block'TxInfos update
 
   let updateHistoryMap = fmap convert <$> (listToGroupMap txOut'pubKeyScriptHash $ block'TxOutInfos update)
 
-  cachedHistory <- sequence $ cachedHistory <$> Map.keys updateHistoryMap
+  cachedHistory <- sequence $ cachedHistory db <$> Map.keys updateHistoryMap
 
   let cachedHistoryMap = Map.fromList $ catMaybes cachedHistory
       upsertHistoryMap =  Map.unionWith (++) updateHistoryMap cachedHistoryMap
       unspentUpdatedHistory =  Map.toList $ (fmap unspentUpdated) <$> upsertHistoryMap
 
-  runBatch $ batchInsert $ toItem fst snd <$> unspentUpdatedHistory
+  write db def $ (\x -> Put (historyKey $ fst x) $ flat $ snd x) <$> unspentUpdatedHistory
   pure ()
   where
     txInsMap = listToMap (\x -> (txIn'txOutHash x, txIn'txOutIndex x)) $ block'TxInInfos update  
@@ -109,29 +109,19 @@ addToCache update = do
         otherwise -> Unspent out
     unspentUpdated (Spent out) = Spent out
 
-deleteHistory :: MonadLevelDB m => m ()
-deleteHistory = do 
-  keys <- scan mempty queryBegins
-    { scanInit = []
-    , scanMap = \(key, value) -> key
-    , scanFilter = const True
-    , scanFold = (:)
-    }
-  runBatch $ sequence_ $ deleteB <$> keys
-  pure ()
 
-loadCache :: DBPool -> IO ()
-loadCache dbPool = do 
-  x <- runDbQuery dbPool getAllTxOut
-  act x
-  pure () 
-  where
-    --act :: (MonadUnliftIO m, MonadLogger m) => [Entity TxOutRec] ->  m ()
-    act ch = liftIO $ runCreateLevelDB "~/tmp/ldb" "txOuts" $ addToCache $ BlockInfo [] [] $ convert @(Entity TxOutRec) @TxOutInfo <$> ch
+loadCache :: DB -> DBPool -> IO ()
+loadCache db dbPool = do 
+  persisted <- fromPersisted dbPool
+  T.putStrLn $ pack $ "from db done"
+  persisted `deepseq` addToCache db persisted
 
 fromPersisted :: DBPool -> IO BlockInfo
 fromPersisted pool = do 
   txInEntities <- runDbQuery pool getAllTxIn
   txOutEntities <- runDbQuery pool getAllTxOut
   txEntities <- runDbQuery pool getAllTx
-  pure $ convert (txEntities, txInEntities, txOutEntities)
+  pure $ force $ convert (txEntities, txInEntities, txOutEntities)
+
+levelDbDir :: IO FilePath
+levelDbDir = (++ "/tmp/ldb") <$> getCurrentDirectory

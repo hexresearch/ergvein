@@ -24,7 +24,6 @@ import Ergvein.Index.Server.BlockchainCache
 import Control.Monad.STM
 import Control.Concurrent.STM.TVar
 import Ergvein.Index.Server.BlockScanner.Types
-import Database.LevelDB.Higher
 import Data.Flat
 import Data.Either
 import Data.Maybe
@@ -66,37 +65,13 @@ ergoBroadcastResponse = "4c6282be413c6e300a530618b37790be5f286ded758accc2aebd415
 
 --Endpoints
 indexGetBalanceEndpoint :: BalanceRequest -> ServerM BalanceResponse
-indexGetBalanceEndpoint req@(BalanceRequest { balReqCurrency = BTC  })  = do
-  maybeHistory <- runCreateLevelDB "/tmp/mydb" "txOuts" $ get $ flat $ balReqPubKeyScriptHash req
-  let history = fromRight (error parseError) $ unflat @[ScriptHistoryCached] $ fromMaybe (error gettingError) maybeHistory
-      confirmedBalance = foldl (+) 0 $ outValue <$> history
-  pure btcBalance {balRespConfirmed = confirmedBalance}
-  where
-    outValue out = case out of
-      Unspent unspent -> cachedUnspent'value unspent
-      otherwise -> 0
-    gettingError = "Error while getting history for " ++ (show $ balReqPubKeyScriptHash req)
-    parseError = "Error while parsing history for " ++ (show $ balReqPubKeyScriptHash req)
+indexGetBalanceEndpoint req@(BalanceRequest { balReqCurrency = BTC  })  = undefined
 
 
 indexGetBalanceEndpoint BalanceRequest { balReqCurrency = ERGO } = pure ergoBalance
 
 indexGetTxHashHistoryEndpoint :: TxHashHistoryRequest -> ServerM TxHashHistoryResponse
-indexGetTxHashHistoryEndpoint  req@(TxHashHistoryRequest{ historyReqCurrency = BTC }) = do
-  maybeHistory <- runCreateLevelDB "/tmp/mydb" "txOuts" $ get $ flat $ historyReqPubKeyScriptHash req
-  let history = fromRight (error parseError) $ unflat @[ScriptHistoryCached] $ fromMaybe (error gettingError) maybeHistory
-  let inv = flat <$> (nub $ concat $ involvedTxs <$> history)
-  x <- runCreateLevelDB "/tmp/mydb" "txs" $ batchGet inv
-  let 
-      x' =  (fromRight $ error "") . unflat @CachedTx . fromJust <$> x
-      result = (\x -> TxHashHistoryItem (cachedTx'hash x) (cachedTx'blockHeight x) ) <$> x'
-  pure result 
-  where
-    involvedTxs out = case out of
-        Unspent unspent -> pure $ cachedUnspent'txHash unspent
-        Spent spent  -> [cachedSpent'spentInTxHash spent, cachedSpent'txHash spent]
-    gettingError = "Error while getting history for " ++ (show $ historyReqPubKeyScriptHash req)
-    parseError = "Error while parsing history for " ++ (show $ historyReqPubKeyScriptHash req)
+indexGetTxHashHistoryEndpoint  req@(TxHashHistoryRequest{ historyReqCurrency = BTC }) = undefined
 
 indexGetTxHashHistoryEndpoint TxHashHistoryRequest { historyReqCurrency = ERGO } = pure ergoHistory
 

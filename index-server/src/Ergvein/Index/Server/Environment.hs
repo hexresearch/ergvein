@@ -14,14 +14,18 @@ import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.BlockchainCache
 import Control.Monad.STM
 import Control.Concurrent.STM.TVar
-import Database.LevelDB
+import Database.LevelDB.Base
 import Data.Default
-import Database.LevelDB.Higher
+import System.Directory
+import qualified Data.Text.IO as T
+import Data.Text (Text, pack, unpack)
+import Control.DeepSeq
 
 data ServerEnv = ServerEnv 
     { envConfig :: !Config
     , envLogger :: !(Chan (Loc, LogSource, LogLevel, LogStr))
     , envPool   :: !DBPool
+    , ldb :: !DB
     }
 
 btcNodeClient :: Config -> (Client -> IO a) -> IO a
@@ -38,9 +42,15 @@ newServerEnv cfg = do
         pool <- newDBPool $ fromString $ connectionStringFromConfig cfg
         flip runReaderT pool $ runDb $ runMigration migrateAll
         pure pool
-    --storedInfos <- liftIO $ fromPersisted pool
-    liftIO $ loadCache pool
+    path <-liftIO $ levelDbDir
+    ex <- liftIO $ doesDirectoryExist path
+    if ex then liftIO $ removeDirectoryRecursive path else pure ()
+    db <-  open path def {createIfMissing = True }
+    x <- liftIO $ loadCache db pool
+    x `deepseq` pure x
+    liftIO $ T.putStrLn $ pack $ "from db done 2"
     pure ServerEnv { envConfig = cfg
                    , envLogger = logger
                    , envPool   = pool
+                   , ldb = db
                    }

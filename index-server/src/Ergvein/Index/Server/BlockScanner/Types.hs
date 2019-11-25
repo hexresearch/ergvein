@@ -31,4 +31,4 @@ data BlockInfo = BlockInfo
   { block'TxInfos :: [TxInfo]
   , block'TxInInfos :: [TxInInfo]
   , block'TxOutInfos :: [TxOutInfo]
-  }
+  } deriving (Generic, Show, NFData)

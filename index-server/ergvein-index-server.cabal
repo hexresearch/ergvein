@@ -11,6 +11,7 @@ copyright:           2019 ATUM SOLUTIONS AG
 author:              Anton Gushcha, Aminion, Vladimir Krutkin, Levon Oganyan
 maintainer:          Anton Gushcha <ncrashed@protonmail.com>, Vladimir Krutkin <krutkinvs@gmail.com>
 
+library-profiling: True
 
 library
   hs-source-dirs:      src
@@ -72,7 +73,6 @@ library
       , conversion
       , deepseq
       , leveldb-haskell
-      , higher-leveldb
       , resourcet
       , flat
       , persistent-pagination
@@ -151,3 +151,8 @@ executable ergvein-index-server
     TypeOperators
     QuasiQuotes
     UndecidableInstances
+  ghc-options:
+    -O2
+    -threaded
+    -fprof-auto-top
+    "-with-rtsopts=-N -p -s -h -i0.1"
