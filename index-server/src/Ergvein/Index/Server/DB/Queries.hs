@@ -24,7 +24,7 @@ pag ::(MonadIO m) => ConduitT a (Entity TxOutRec) (ReaderT SqlBackend m) ()
 pag = streamEntities
       emptyQuery
       TxOutRecId
-      (PageSize 1000)
+      (PageSize 10000)
       Ascend
       (Range Nothing Nothing)
 

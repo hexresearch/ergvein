@@ -118,10 +118,12 @@ loadCache db dbPool = do
 
 fromPersisted :: DBPool -> IO BlockInfo
 fromPersisted pool = do 
-  txInEntities <- runDbQuery pool getAllTxIn
-  txOutEntities <- runDbQuery pool getAllTxOut
-  txEntities <- runDbQuery pool getAllTx
-  pure $ force $ convert (txEntities, txInEntities, txOutEntities)
+  --txInEntities <- runDbQuery pool getAllTxIn
+  --txOutEntities <- runDbQuery pool getAllTxOut
+  --txEntities <- runDbQuery pool getAllTx
+  z <- runDbQuery pool $ runConduit $ pag .| sinkList
+  let x = convert $ BlockInfo [] [] (convert <$> z) 
+  x `deepseq`  pure x
 
 levelDbDir :: IO FilePath
 levelDbDir = (++ "/tmp/ldb") <$> getCurrentDirectory

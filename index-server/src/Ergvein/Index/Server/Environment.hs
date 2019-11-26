@@ -46,8 +46,9 @@ newServerEnv cfg = do
     ex <- liftIO $ doesDirectoryExist path
     if ex then liftIO $ removeDirectoryRecursive path else pure ()
     db <-  open path def {createIfMissing = True }
-    x <- liftIO $ loadCache db pool
-    x `deepseq` pure x
+    --x <- liftIO $ loadCache db pool
+    x <- liftIO $ fromPersisted pool
+    --x `deepseq` pure x
     liftIO $ T.putStrLn $ pack $ "from db done 2"
     pure ServerEnv { envConfig = cfg
                    , envLogger = logger
