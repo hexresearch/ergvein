@@ -72,7 +72,7 @@ library
     , base16-bytestring
     , base64-bytestring         >= 1        && < 1.0.0.3
     , bytestring                >= 0.10     && < 0.11
-    , clay                      >= 0.13     && < 0.14
+    , clay                      >= 0.14     && < 0.15
     , containers                >= 0.6      && < 0.7
     , data-default
     , directory

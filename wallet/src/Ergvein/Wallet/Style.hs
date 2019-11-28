@@ -17,6 +17,8 @@ import Ergvein.Wallet.Platform
 import Language.Javascript.JSaddle hiding ((#))
 import Prelude hiding ((**), rem)
 
+import qualified Clay.Media as M
+
 data Resources = Resources {
   robotoBlackUrl   :: !Text
 , robotoBoldUrl    :: !Text
@@ -80,19 +82,24 @@ wrapperCss :: Css
 wrapperCss = do
   ".container" ? do
     position relative
-    height $ pct 90
+    height $ pct 100
   ".vertical-center" ? do
-    margin (px 0) (px 0) (px 0) (px 0)
     position absolute
     top $ pct 50
-    translatePctY $ pct (-50)
-    width $ pct 90
+    left $ pct 50
+    translatePctXY (pct (-50)) (pct (-50))
+    width $ pct 100
+    paddingLeft $ rem 2
+    paddingRight $ rem 2
+
+translatePctX :: Size Percentage -> Css
+translatePctX x = prefixed (browsers <> "transform") $ "translateX(" <> value x <> ")"
 
 translatePctY :: Size Percentage -> Css
 translatePctY y = prefixed (browsers <> "transform") $ "translateY(" <> value y <> ")"
 
-translatePctX :: Size Percentage -> Css
-translatePctX x = prefixed (browsers <> "transform") $ "translateX(" <> value x <> ")"
+translatePctXY :: Size Percentage -> Size Percentage -> Css
+translatePctXY x y = prefixed (browsers <> "transform") $ "translate(" <> value x <> ", " <> value y <> ")"
 
 menuCss :: Css
 menuCss = do
@@ -155,8 +162,11 @@ buttonCss = do
 
 inputCss :: Css
 inputCss = do
+  let simpleBorder = border solid (rem 0.1) black
   let passInput = input # ("type" @= "password")
-  (passInput # hover) <> (passInput # focus) ? border solid (rem 0.1) black
+  (passInput # hover) <> (passInput # focus) ? simpleBorder
+  let textInput = input # ("type" @= "text")
+  (textInput # hover) <> (textInput # focus) ? simpleBorder
 
 fontFamilies :: Resources -> Css
 fontFamilies Resources{..} = do
@@ -185,10 +195,10 @@ mnemonicWidgetCss = do
     marginRight $ em 0.25
   ".mnemonic-warn" ? do
     marginTop $ px 30
-  ".guess-buttons" ? textAlign center
+  ".guess-buttons" ? do
+    margin (px 0) auto (px 0) auto
   ".guess-button" ? do
-    marginRight $ px 30
-    display inlineBlock
+    width $ pct 100
   ".restore-word" ? do
     minWidth $ px 120
   let mkGuess cl c = do
@@ -197,6 +207,17 @@ mnemonicWidgetCss = do
         cl `with` focus ? backgroundColor c
   mkGuess ".guess-true" green
   mkGuess ".guess-false" red
+  ".grid1" ? do
+    display grid
+    width maxContent
+  ".grid3" ? do
+    display grid
+    width maxContent
+  query M.screen [M.minWidth (rem 40)] $ ".grid3" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1, fr 1]
+    gridGap $ rem 1
+    width maxContent
 
 validateCss :: Css
 validateCss = do
@@ -236,11 +257,10 @@ passwordCss = do
 
 initialPageCss :: Css
 initialPageCss = do
-  ".initial-options" ** button ? do
-    width $ pct 80
+  ".initial-options" ? do
     marginLeft auto
     marginRight auto
-    marginBottom $ px 10
+    marginBottom $ rem 1
 
 balancesPageCss :: Css
 balancesPageCss = do

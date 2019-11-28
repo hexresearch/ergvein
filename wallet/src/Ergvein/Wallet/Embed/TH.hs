@@ -20,4 +20,4 @@ smallEye :: ByteString
 smallEye = $(embedFile "static/img/small_eye.png")
 
 menuIcon :: ByteString
-menuIcon = $(embedFile "static/img/menu.png")  
+menuIcon = $(embedFile "static/img/menu.png")
