@@ -5,31 +5,33 @@ module Tests.Ergo.Headers where
 import Test.Tasty.Hspec
 
 import Control.Monad
-import Data.ByteString (ByteString)
 import Data.Either.Combinators
 import Data.Text (Text)
 
-import qualified Data.ByteString.Base16 as BS16
 import qualified Data.Serialize as Serialize
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
 
 import Ergvein.Interfaces.Ergo.Header
-import Ergvein.Interfaces.Ergo.PoPowHeader
+import Ergvein.Interfaces.Ergo.Scorex.Util.Package
+
 
 spec_HeaderParser :: Spec
-spec_HeaderParser = forM_ headerSamples $ \sample -> do
+spec_HeaderParser = do
 
-  it ("Parse `Header` from sample " <> (show $ T.take 8 sample <> "..")) $ do
-      (leftToMaybe . Serialize.decode @Header . fromHex $ sample)
-        `shouldBe` Nothing
+  forM_ headerSamples $ \sample -> do
+    it ("Parse Header from sample " <> (show $ T.take 8 sample <> "..")) $ do
+        (leftToMaybe . Serialize.decode @Header . fromHex $ sample)
+          `shouldBe` Nothing
 
-  it ("Parse `PoPowHeader` from sample " <> (show $ T.take 8 sample <> "..")) $ do
-      (leftToMaybe . Serialize.decode @PoPowHeader . fromHex $ sample)
-        `shouldBe` Nothing
+  forM_ headerBadSamples $ \sample -> do
+    it ("Do not parse Header from bad sample " <> (show $ T.take 8 sample <> "..")) $ do
+        (rightToMaybe . Serialize.decode @Header . fromHex $ sample)
+          `shouldBe` Nothing
 
-fromHex :: Text -> ByteString
-fromHex = fst . BS16.decode . TE.encodeUtf8
+headerBadSamples :: [Text]
+headerBadSamples = [
+    "13dffff01ffd7ff3affa280cbff8780dc8cb3ff8000005b00cf01c87f01006a01ba5f0001ff3f47ff8069437fca9980ff808061f57fff7f110105ef0080afff7fff5a800019ff00fdd4caebcac4da9e3b8a01bf5cff010101002bba0143570831475ee58d0052807f7f0001075da901c7207fffffa3d7f5b103000000038b0f29a60fa8d7e1aeafbe512288a6c6bc696547bbf8247db23c95e83014513c03b07e0b08ff31053ec69881781fdce1e2f6549240efb2755f421578f53134f97d395ce4017f000000083e269b6f58ee089a01528024e4018001010d958081486cf5361913e8012c0680ffff80ffff00007f7ff7bf7f007f017f013c7d8000c61a01009effae5846800001cf0"
+  ]
 
 headerSamples :: [Text]
 headerSamples = [

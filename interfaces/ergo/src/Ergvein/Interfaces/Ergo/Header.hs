@@ -10,6 +10,7 @@ import Data.Word
 import Data.Serialize                     as S (Serialize (..), decode, encode, get, put)
 import Data.Serialize.Get                 as S
 import Data.Serialize.Put                 as S
+import Data.String
 import Data.Time
 
 import Ergvein.Interfaces.Ergo.Mining.AutolykosSolution
@@ -32,7 +33,7 @@ data Header = Header {
 , height :: Height
 , votes :: Votes
 , powSolution :: AutolykosSolution
-} deriving (Eq)
+} deriving (Eq, Show)
 
 instance Serialize Header where
     put Header{..} = do
@@ -91,6 +92,12 @@ instance Serialize Header where
 
 newtype Votes = Votes { unVotes :: ByteString }
   deriving (Eq)
+
+instance Show Votes where
+    show = show . toHex . unVotes
+
+instance IsString Votes where
+    fromString = Votes . fromHex . fromString
 
 instance Serialize Votes where
   -- votes: Array[Byte], //3 bytes

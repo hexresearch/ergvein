@@ -11,10 +11,10 @@ import Ergvein.Interfaces.Ergo.Scorex.Util.Package (ModifierId)
 import Ergvein.Interfaces.Ergo.Scorex.Util.Serialization.VLQLengthPrefixed
 
 newtype BlockId = BlockId { unBlockId :: ModifierId }
-  deriving (Eq, Serialize)
+  deriving (Eq, Show, Serialize)
 
 newtype Timestamp = Timestamp { unTimestamp :: Word64 } -- Long
-  deriving (Eq)
+  deriving (Eq, Show)
 
 instance Serialize Timestamp where
     put = do
@@ -25,10 +25,10 @@ instance Serialize Timestamp where
         Timestamp . unVLQWord64 <$> get
 
 newtype Version = Version { unVersion :: Word8 }   -- Byte
-  deriving (Eq, Serialize)
+  deriving (Eq, Show, Serialize)
 
 newtype Height = Height { unHeight :: Word32 }
-  deriving (Eq)
+  deriving (Eq, Show)
 
 instance Serialize Height where
     put = do
