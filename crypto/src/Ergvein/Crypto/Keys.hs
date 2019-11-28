@@ -123,7 +123,7 @@ instance ToJSON EgvXPubKey where
 
 instance FromJSON EgvXPubKey where
   parseJSON = withObject "EgvXPubKey" $ \o -> do
-    net    <- o .: "cur"
+    net <- o .: "cur"
     key <- xPubFromJSON (getCurrencyNetwork net) =<< (o .: "pub_key")
     pure $ EgvXPubKey net key
 
@@ -138,13 +138,13 @@ instance Ord EgvXPubKey where
 instance ToJSON EgvXPrvKey where
   toJSON (EgvXPrvKey cur key) = object [
       "cur" .= toJSON cur
-    , "pub_key" .= xPrvToJSON (getCurrencyNetwork cur) key
+    , "prv_key" .= xPrvToJSON (getCurrencyNetwork cur) key
     ]
 
 instance FromJSON EgvXPrvKey where
   parseJSON = withObject "EgvXPrvKey" $ \o -> do
     cur <- o .: "cur"
-    key <- xPrvFromJSON (getCurrencyNetwork cur) =<< (o .: "pub_key")
+    key <- xPrvFromJSON (getCurrencyNetwork cur) =<< (o .: "prv_key")
     pure $ EgvXPrvKey cur key
 
 instance ToJSONKey EgvXPrvKey where
