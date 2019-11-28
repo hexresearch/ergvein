@@ -20,11 +20,17 @@ import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Monad.Reader
 
-pag ::(MonadIO m) => ConduitT a (Entity TxOutRec) (ReaderT SqlBackend m) ()
-pag = streamEntities
+pageLoadSize :: PageSize
+pageLoadSize = PageSize 1048576
+
+pagedEntitiesStream ::(PersistRecordBackend record backend, PersistQueryRead backend, PersistUniqueRead backend,
+                      BackendCompatible SqlBackend backend, BackendCompatible SqlBackend (BaseBackend backend),
+                      Ord typ, PersistField typ, MonadIO m) 
+                      => EntityField record typ -> ConduitT a (Entity record) (ReaderT backend m) ()
+pagedEntitiesStream entityField = streamEntities
       emptyQuery
-      TxOutRecId
-      (PageSize 10000)
+      entityField
+      pageLoadSize
       Ascend
       (Range Nothing Nothing)
 

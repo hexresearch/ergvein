@@ -39,91 +39,80 @@ import Control.Monad.Reader
 import System.Directory
 import Database.LevelDB
 
-data CachedUnspentTxOut = CachedUnspentTxOut
-  { cachedUnspent'index  :: TxOutIndex
-  , cachedUnspent'value  :: MoneyUnit
-  , cachedUnspent'txHash :: TxHash
-  }  deriving (Generic, NFData, Flat, Show)
-
-data CachedSpentTxOut = CachedSpentTxOut
-  { cachedSpent'spentInTxHash  :: TxHash
-  , cachedSpent'txHash         :: TxHash
-  }  deriving (Generic, NFData, Flat, Show)
+data CachedTxOut = CachedTxOut
+  { cachedTxOut'index  :: TxOutIndex
+  , cachedTxOut'value  :: MoneyUnit
+  , cachedTxOut'txHash :: TxHash
+  } deriving (Generic, NFData, Flat, Show)
 
 data CachedTx = CachedTx
-  { cachedTx'hash :: TxHash
+  { cachedTx'hash         :: TxHash
   , cachedTx'blockHeight  :: BlockHeight
   , cachedTx'blockIndex   :: TxBlockIndex
-  }  deriving (Generic, NFData, Flat, Show)
+  } deriving (Generic, NFData, Flat, Show)
 
-data ScriptHistoryCached = Unspent CachedUnspentTxOut | Spent CachedSpentTxOut  deriving (Generic, NFData, Flat, Show)
-
-instance Conversion TxOutInfo ScriptHistoryCached where
-  convert txOutInfo = Unspent $ CachedUnspentTxOut (txOut'index txOutInfo) (txOut'value txOutInfo) (txOut'txHash txOutInfo)
+instance Conversion TxOutInfo CachedTxOut where
+  convert txOutInfo = CachedTxOut (txOut'index txOutInfo) (txOut'value txOutInfo) (txOut'txHash txOutInfo)
 
 instance Conversion TxInfo CachedTx where
   convert txInfo = CachedTx (tx'hash txInfo) (tx'blockHeight txInfo) (tx'blockIndex txInfo)
 
-listToGroupMap :: Ord k => (v -> k) -> [v] -> Map.Map k [v]
-listToGroupMap keySelector = Map.fromListWith (++) . fmap (\v-> (keySelector v , [v]))
+cachedTxKey :: B.ByteString
+cachedTxKey = "tx"
 
-listToMap :: Ord k => (v -> k) -> [v] -> Map.Map k v
-listToMap keySelector = Map.fromList . fmap (\v-> (keySelector v , v))
+cachedTxOutKey :: B.ByteString
+cachedTxOutKey = "out"
 
-cachedHistory :: MonadIO m => DB -> PubKeyScriptHash -> m (Maybe (PubKeyScriptHash, [ScriptHistoryCached]))
-cachedHistory db pubKeyScriptHash = do 
-  maybeResult <- get db def $ historyKey pubKeyScriptHash
+cachedTxInKey :: B.ByteString
+cachedTxInKey = "in"
+
+groupMapBy :: Ord k => (v -> k) -> [v] -> Map.Map k [v]
+groupMapBy keySelector = Map.fromListWith (++) . fmap (\v-> (keySelector v , [v]))
+
+mapBy :: Ord k => (v -> k) -> [v] -> Map.Map k v
+mapBy keySelector = Map.fromList . fmap (\v-> (keySelector v , v))
+
+get' :: (MonadIO m, Flat k, Flat v) => DB -> B.ByteString -> k -> m (Maybe (k, v))
+get' db keyPrefix key = do 
+  maybeResult <- get db def $ keyPrefix <> flat key
   let maybeParsedResult = fromRight parsingError . unflat <$> maybeResult
-  pure $ (pubKeyScriptHash,) <$> maybeParsedResult
+  pure $ (key,) <$> maybeParsedResult
   where
-    parsingError = error ("error parsing " ++ unpack pubKeyScriptHash)
+    parsingError = error "error parsing"
 
-toItem :: (Flat k, Flat v) => (s -> k) -> (s -> v) -> s -> (B.ByteString, B.ByteString)
-toItem keySelector valueSelector source = (flat $ keySelector source , flat $ valueSelector source)
+writeBatch :: (MonadIO m, Flat k, Flat v) =>  DB -> B.ByteString -> [(k, v)] -> m ()
+writeBatch db keyPrefix items = write db def $ storedRepresentation <$> items
+  where
+    storedRepresentation (key, value) = Put (keyPrefix <> flat key) (flat value)
 
-historyKey :: PubKeyScriptHash -> B.ByteString
-historyKey pubKeyScriptHash = "hst" <> flat pubKeyScriptHash
+cacheTxInfos :: MonadIO m => DB -> [TxInfo] -> m ()
+cacheTxInfos db infos = writeBatch db cachedTxKey $ (\info -> (tx'hash info, convert @TxInfo @CachedTx info)) <$> infos
 
-txKey :: PubKeyScriptHash -> B.ByteString
-txKey pubKeyScriptHash = "hst" <> flat pubKeyScriptHash
+cacheTxInInfos :: MonadIO m => DB -> [TxInInfo] -> m ()
+cacheTxInInfos db infos = writeBatch db cachedTxInKey $ (\info -> ((txIn'txOutHash info, txIn'txOutIndex info), txIn'txHash info)) <$> infos
+
+cacheTxOutInfos :: MonadIO m => DB -> [TxOutInfo] -> m ()
+cacheTxOutInfos db infos = do
+  let updateMap = fmap (convert @TxOutInfo @CachedTxOut) <$> (groupMapBy txOut'pubKeyScriptHash infos)
+  cached <- sequence $ get' db cachedTxOutKey <$> (Map.keys updateMap :: [PubKeyScriptHash])
+  let cachedMap = Map.fromList $ catMaybes cached     
+      updated = Map.toList $ Map.unionWith (++) cachedMap updateMap
+  writeBatch db cachedTxOutKey updated
 
 addToCache :: MonadIO m => DB -> BlockInfo -> m ()
 addToCache db update = do
-  write db def $ (\x -> Put (txKey $ tx'hash x) $ flat $ convert @TxInfo @CachedTx x) <$> block'TxInfos update
-
-  let updateHistoryMap = fmap convert <$> (listToGroupMap txOut'pubKeyScriptHash $ block'TxOutInfos update)
-
-  cachedHistory <- sequence $ cachedHistory db <$> Map.keys updateHistoryMap
-
-  let cachedHistoryMap = Map.fromList $ catMaybes cachedHistory
-      upsertHistoryMap =  Map.unionWith (++) updateHistoryMap cachedHistoryMap
-      unspentUpdatedHistory =  Map.toList $ (fmap unspentUpdated) <$> upsertHistoryMap
-
-  write db def $ (\x -> Put (historyKey $ fst x) $ flat $ snd x) <$> unspentUpdatedHistory
-  pure ()
-  where
-    txInsMap = listToMap (\x -> (txIn'txOutHash x, txIn'txOutIndex x)) $ block'TxInInfos update  
-    unspentUpdated (Unspent out) =
-      case txInsMap Map.!? (cachedUnspent'txHash out, cachedUnspent'index out) of
-        Just spentInfo -> Spent $ CachedSpentTxOut (txIn'txHash spentInfo) $ cachedUnspent'txHash out
-        otherwise -> Unspent out
-    unspentUpdated (Spent out) = Spent out
-
-
-loadCache :: DB -> DBPool -> IO ()
-loadCache db dbPool = do 
-  persisted <- fromPersisted dbPool
-  T.putStrLn $ pack $ "from db done"
-  persisted `deepseq` addToCache db persisted
+  cacheTxInfos db $ block'TxInfos update
+  cacheTxOutInfos db $ block'TxOutInfos update
+  cacheTxInInfos db $ block'TxInInfos update
 
 fromPersisted :: DBPool -> IO BlockInfo
 fromPersisted pool = do 
   --txInEntities <- runDbQuery pool getAllTxIn
   --txOutEntities <- runDbQuery pool getAllTxOut
   --txEntities <- runDbQuery pool getAllTx
-  z <- runDbQuery pool $ runConduit $ pag .| sinkList
+  z <- runDbQuery pool $ runConduit $ pagedEntitiesStream TxOutRecId .| sinkList
   let x = convert $ BlockInfo [] [] (convert <$> z) 
   x `deepseq`  pure x
 
 levelDbDir :: IO FilePath
-levelDbDir = (++ "/tmp/ldb") <$> getCurrentDirectory
+levelDbDir = (++ "/ldbCache") <$> getCurrentDirectory
