@@ -20,7 +20,7 @@ module Ergvein.Crypto.Keys(
   , getEntropy
   , makeXPrvKey
   , deriveXPubKey
-  , deriveCurrencyKey
+  , deriveCurrencyMasterKey
   , xPubAddr
   , addrToString
   , xPubErgAddrString
@@ -61,11 +61,35 @@ data EgvXPrvKey = EgvXPrvKey {
 newtype EgvRootKey = EgvRootKey {unEgvRootKey :: XPrvKey}
   deriving (Eq, Show, Read)
 
--- | Derive a key for a specific network
-deriveCurrencyKey :: XPrvKey -> Currency -> EgvXPrvKey
-deriveCurrencyKey pk cur =
+-- | Derive a BIP44 compatible key for a specific currency.
+-- Given a parent key /m/
+-- and a currency with code /c/, this function will compute /m\/44'\/c'\/0/.
+deriveCurrencyMasterKey :: XPrvKey -> Currency -> EgvXPrvKey
+deriveCurrencyMasterKey pk cur =
   let path = [44, getCurrencyIndex cur, 0]
       key  = foldl hardSubKey pk path
+  in EgvXPrvKey cur key
+
+-- | Derive a BIP44 compatible external key with a given index.
+-- Given a parent key /m/ and an index /i/, this function will compute /m\/0\/i/.
+-- It is planned to use the result of 'deriveCurrencyMasterKey' as the first argument of this function.
+deriveExternalKey :: EgvXPrvKey -> KeyIndex -> EgvXPrvKey
+deriveExternalKey egvK index =
+  let cur  = egvXPrvCur egvK
+      pk   = egvXPrvKey egvK
+      path = [0, index]
+      key  = foldl prvSubKey pk path
+  in EgvXPrvKey cur key
+
+-- | Derive a BIP44 compatible internal key (also known as change addresses) with a given index.
+-- Given a parent key /m/ and an index /i/, this function will compute /m\/1\/i/.
+-- It is planned to use the result of 'deriveCurrencyMasterKey' as the first argument of this function.
+deriveInternalKey :: EgvXPrvKey -> KeyIndex -> EgvXPrvKey
+deriveInternalKey egvK index =
+  let cur  = egvXPrvCur egvK
+      pk   = egvXPrvKey egvK
+      path = [1, index]
+      key  = foldl prvSubKey pk path
   in EgvXPrvKey cur key
 
 getEntropy :: IO Entropy

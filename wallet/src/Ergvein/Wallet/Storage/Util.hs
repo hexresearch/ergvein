@@ -45,7 +45,7 @@ createWallet mnemonic = case mnemonicToSeed "" mnemonic of
   Left err -> Left $ SAMnemonicFail $ showt err
   Right seed -> let
     root = makeXPrvKey seed
-    masters = M.fromList $ fmap (\c -> (c, deriveCurrencyKey root c)) allCurrencies
+    masters = M.fromList $ fmap (\c -> (c, deriveCurrencyMasterKey root c)) allCurrencies
     in Right $ WalletData seed (EgvRootKey root) masters
 
 createStorage :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either StorageAlerts ErgveinStorage)
