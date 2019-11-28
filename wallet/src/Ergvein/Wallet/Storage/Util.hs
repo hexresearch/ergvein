@@ -42,7 +42,7 @@ type WalletName = Text
 
 createWallet :: Mnemonic -> Either StorageAlerts WalletData
 createWallet mnemonic = case mnemonicToSeed "" mnemonic of
-  Left err -> Left $ SAMnemonicFail $ T.pack err
+  Left err -> Left $ SAMnemonicFail $ showt err
   Right seed -> let
     root = makeXPrvKey seed
     masters = M.fromList $ fmap (\c -> (c, deriveCurrencyKey root c)) allCurrencies
