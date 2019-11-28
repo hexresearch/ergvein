@@ -17,6 +17,8 @@ import Ergvein.Wallet.Platform
 import Language.Javascript.JSaddle hiding ((#))
 import Prelude hiding ((**), rem)
 
+import qualified Clay.Media as M
+
 data Resources = Resources {
   robotoBlackUrl   :: !Text
 , robotoBoldUrl    :: !Text
@@ -39,7 +41,7 @@ compileFrontendCss = do
 frontendCssBS :: Resources -> ByteString
 frontendCssBS r = let
   selfcss = toStrict . encodeUtf8 . renderWith compact [] $ frontendCss r
-  in milligramCss <> tooltipCss <> gridCss <> selfcss
+  in milligramCss <> tooltipCss <> selfcss
 
 frontendCss :: Resources -> Css
 frontendCss r = do
@@ -205,6 +207,17 @@ mnemonicWidgetCss = do
         cl `with` focus ? backgroundColor c
   mkGuess ".guess-true" green
   mkGuess ".guess-false" red
+  ".grid1" ? do
+    display grid
+    width maxContent
+  ".grid3" ? do
+    display grid
+    width maxContent
+  query M.screen [M.minWidth (rem 40)] $ ".grid3" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1, fr 1]
+    gridGap $ rem 1
+    width maxContent
 
 validateCss :: Css
 validateCss = do
