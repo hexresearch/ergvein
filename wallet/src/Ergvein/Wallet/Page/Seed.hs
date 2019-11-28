@@ -103,7 +103,7 @@ mnemonicCheckWidget mnemonic = mdo
 guessButtons :: forall t m . MonadFrontBase t m => [Text] -> Dynamic t Int -> m (Event t Int)
 guessButtons ws idyn = do
   resD <- widgetHoldDyn $ ffor idyn $ \i -> if i >= length ws
-    then pure never else divClass "guess-buttons" $ do
+    then pure never else divClass "guess-buttons grid3" $ do
       fake1 <- randomPick [i]
       fake2 <- randomPick [i, fake1]
       is <- shuffle [i, fake1, fake2]

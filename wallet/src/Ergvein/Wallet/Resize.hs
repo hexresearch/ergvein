@@ -9,7 +9,7 @@ import Reflex.Network
 -- | Critical width when we should change
 -- mobile-desktop widgets between each other
 mobileWidth :: Int
-mobileWidth = 650
+mobileWidth = 640
 
 -- | Get width of screen
 getWidth :: MonadJSM m => m Int
