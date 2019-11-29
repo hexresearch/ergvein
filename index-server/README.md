@@ -5,10 +5,10 @@ To run dev instance:
   >  Example of botcoin.conf
   >  ```
   >  testnet=1
-  >  rpcuser=bitcoinrpc
-  >  rpcpassword=password
   >  [test]
   >  server=1
+  >  rpcuser=bitcoinrpc
+  >  rpcpassword=password
   >  ```
   >  Note that actual rpcport will be "1[rpcport]" (8332 by default) if testnet chosen
 * run shells.sh at the ./ergvein to enter Nix shell
