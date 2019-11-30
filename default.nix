@@ -5,7 +5,6 @@ let
       (self: super: import ./nixpkgs-overlays/default.nix self super )
     ];
     config.android_sdk.accept_license = true;
-    enableLibraryProfiling = true;
   };
 in reflex-platform.project ({ pkgs, ... }: {
   packages = {

@@ -3,6 +3,7 @@ module Ergvein.Index.Server.DB.Schema where
 import Database.Persist.TH
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import Ergvein.Types.Block
 import Ergvein.Index.Server.DB.Drv
 import Ergvein.Index.Server.BlockScanner.Types
 import Conversion
@@ -30,6 +31,11 @@ TxInRec
   txOutHash TxHash
   txOutIndex TxOutIndex
   deriving Show
+BlockMetaRec
+  currency Currency
+  height BlockHeight
+  blockHeaderHexView BlockHeaderHexView
+  deriving Show
   |]
 
 instance Conversion (Entity TxRec) TxInfo where
@@ -46,6 +52,11 @@ instance Conversion (Entity TxOutRec) TxOutInfo where
   convert entity = let 
     value = entityVal entity 
     in TxOutInfo (txOutRecTxHash value) (txOutRecPubKeyScriptHash value) (txOutRecIndex value) (txOutRecValue value)
-        
-instance Conversion ([Entity TxRec], [Entity TxInRec], [Entity TxOutRec]) BlockInfo where
-  convert (txs, txIns, txOuts) = BlockInfo (convert <$> txs) (convert <$> txIns) (convert <$> txOuts)
+
+instance Conversion (Entity BlockMetaRec) BlockMetaInfo where
+  convert entity = let 
+    value = entityVal entity 
+    in BlockMetaInfo (blockMetaRecCurrency value) (blockMetaRecHeight value) (blockMetaRecBlockHeaderHexView value) 
+
+instance Conversion ([Entity TxRec], [Entity TxInRec], [Entity TxOutRec]) BlockContentInfo where
+  convert (txs, txIns, txOuts) = BlockContentInfo (convert <$> txs) (convert <$> txIns) (convert <$> txOuts)

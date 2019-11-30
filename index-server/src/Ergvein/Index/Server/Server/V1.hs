@@ -32,6 +32,7 @@ indexServer :: IndexApi AsServerM
 indexServer = IndexApi
     { indexGetBalance = indexGetBalanceEndpoint
     , indexGetTxHashHistory = indexGetTxHashHistoryEndpoint
+    , indexGetBlockHeaders = indexGetBlockHeadersEndpoint
     , indexGetTxMerkleProof = txMerkleProofEndpoint
     , indexGetTxHexView = txHexViewEndpoint
     , indexGetTxFeeHistogram = txFeeHistogramEndpoint
@@ -65,15 +66,42 @@ ergoBroadcastResponse = "4c6282be413c6e300a530618b37790be5f286ded758accc2aebd415
 
 --Endpoints
 indexGetBalanceEndpoint :: BalanceRequest -> ServerM BalanceResponse
-indexGetBalanceEndpoint req@(BalanceRequest { balReqCurrency = BTC  })  = undefined
+indexGetBalanceEndpoint req@(BalanceRequest { balReqCurrency = BTC  })  = do
+  db <- getDb
+  maybeUTXOs <- (fmap $ fmap $ unflatExact @[CachedTxOut]) $ getInKeySpace db cachedTxOutKey $ balReqPubKeyScriptHash req
+  let utxos = fromMaybe [] maybeUTXOs
+  tutxos <- mapM (f db) utxos
+  pure btcBalance { balRespConfirmed = foldl (+) 0 tutxos }
+  where
+    f db x = do
+        stxo <- getInKeySpace db cachedTxInKey $ (cachedTxOut'txHash x, cachedTxOut'index  x)
+        pure $ case stxo of
+            Just s -> 0
+            Nothing -> cachedTxOut'value x
 
 
 indexGetBalanceEndpoint BalanceRequest { balReqCurrency = ERGO } = pure ergoBalance
 
 indexGetTxHashHistoryEndpoint :: TxHashHistoryRequest -> ServerM TxHashHistoryResponse
-indexGetTxHashHistoryEndpoint  req@(TxHashHistoryRequest{ historyReqCurrency = BTC }) = undefined
+indexGetTxHashHistoryEndpoint  req@(TxHashHistoryRequest{ historyReqCurrency = BTC }) = do
+  db <- getDb
+  maybeUTXOs <- (fmap $ fmap $ unflatExact @[CachedTxOut]) (getInKeySpace db cachedTxOutKey $ historyReqPubKeyScriptHash req)
+  let utxos = fromMaybe [] maybeUTXOs
+  tutxos <- mapM (f db) utxos
+  txs <- mapM (fmap (unflatExact @CachedTx) . fmap fromJust . getInKeySpace db cachedTxKey) $ nub $ mconcat tutxos
+  --let sorted = sortBy txs 
+  pure $ (\x -> TxHashHistoryItem (cachedTx'hash x) (cachedTx'blockHeight x) ) <$> sortOn (\x-> (cachedTx'blockHeight x, cachedTx'blockIndex  x)) txs
+  where
+      f db x = do
+          stxo <- (fmap $ fmap $ unflatExact @TxHash) $  getInKeySpace db cachedTxInKey (cachedTxOut'txHash x, cachedTxOut'index x)
+          pure $ case stxo of
+              Just s -> [cachedTxOut'txHash x , s]
+              Nothing -> [cachedTxOut'txHash x]
 
 indexGetTxHashHistoryEndpoint TxHashHistoryRequest { historyReqCurrency = ERGO } = pure ergoHistory
+
+indexGetBlockHeadersEndpoint :: BlockHeadersRequest -> ServerM BlockHeadersResponse
+indexGetBlockHeadersEndpoint request = undefined
 
 txMerkleProofEndpoint :: TxMerkleProofRequest -> ServerM TxMerkleProofResponse
 txMerkleProofEndpoint TxMerkleProofRequest { merkleReqCurrency = BTC }  = pure btcProof

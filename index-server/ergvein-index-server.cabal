@@ -149,8 +149,3 @@ executable ergvein-index-server
     TypeOperators
     QuasiQuotes
     UndecidableInstances
-  ghc-options:
-    -O2
-    -threaded
-    -fprof-auto-top
-    "-with-rtsopts=-N -p -s -h -i0.1"

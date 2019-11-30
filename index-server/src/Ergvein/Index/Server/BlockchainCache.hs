@@ -23,7 +23,7 @@ import Data.Default
 import Control.DeepSeq
 import Control.Monad.Trans.Resource (release)
 import Data.Flat
-import qualified Data.ByteString         as B
+import qualified Data.ByteString as B
 import Data.Maybe
 import Data.Either
 import qualified Data.Text.IO as T
@@ -80,6 +80,12 @@ get' db keyPrefix key = do
   where
     parsingError = error "error parsing"
 
+getInKeySpace :: (MonadIO m, Flat k) => DB -> B.ByteString -> k -> m (Maybe B.ByteString)
+getInKeySpace db keyPrefix key = get db def $ keyPrefix <> flat key
+
+unflatExact :: (Flat b) => B.ByteString -> b
+unflatExact = fromRight (error "Flat parsing error") . unflat
+
 writeBatch :: (MonadIO m, Flat k, Flat v) =>  DB -> B.ByteString -> [(k, v)] -> m ()
 writeBatch db keyPrefix items = write db def $ storedRepresentation <$> items
   where
@@ -99,20 +105,27 @@ cacheTxOutInfos db infos = do
       updated = Map.toList $ Map.unionWith (++) cachedMap updateMap
   writeBatch db cachedTxOutKey updated
 
-addToCache :: MonadIO m => DB -> BlockInfo -> m ()
+addToCache :: MonadIO m => DB -> BlockContentInfo -> m ()
 addToCache db update = do
-  cacheTxInfos db $ block'TxInfos update
-  cacheTxOutInfos db $ block'TxOutInfos update
-  cacheTxInInfos db $ block'TxInInfos update
+  cacheTxOutInfos db $ blockContent'TxOutInfos update
+  cacheTxInInfos db $ blockContent'TxInInfos update
+  cacheTxInfos db $ blockContent'TxInfos update
 
-fromPersisted :: DBPool -> IO BlockInfo
-fromPersisted pool = do 
-  --txInEntities <- runDbQuery pool getAllTxIn
-  --txOutEntities <- runDbQuery pool getAllTxOut
-  --txEntities <- runDbQuery pool getAllTx
-  z <- runDbQuery pool $ runConduit $ pagedEntitiesStream TxOutRecId .| sinkList
-  let x = convert $ BlockInfo [] [] (convert <$> z) 
-  x `deepseq`  pure x
+loadCache :: DB -> DBPool -> IO ()
+loadCache db pool = do 
+  runDbQuery pool $ runConduit $ pagedEntitiesStream TxOutRecId 
+    .| CL.mapM_ (cacheTxOutInfos db . fmap convert)
+    .| sinkList
+
+  runDbQuery pool $ runConduit $ pagedEntitiesStream TxInRecId 
+    .| CL.mapM_ (cacheTxInInfos db . fmap convert)
+    .| sinkList
+
+  runDbQuery pool $ runConduit $ pagedEntitiesStream TxRecId 
+    .| CL.mapM_ (cacheTxInfos db . fmap convert)
+    .| sinkList
+
+  pure ()
 
 levelDbDir :: IO FilePath
 levelDbDir = (++ "/ldbCache") <$> getCurrentDirectory

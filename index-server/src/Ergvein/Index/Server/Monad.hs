@@ -34,6 +34,10 @@ instance MonadDB ServerM where
   getDbPool = asks envPool
   {-# INLINE getDbPool #-}
 
+instance MonadLDB ServerM where
+  getDb = asks ldb
+  {-# INLINE getDb #-}
+
 instance MonadUnliftIO ServerM where
   askUnliftIO = ServerM $ (\(UnliftIO run) -> UnliftIO $ run . unServerM) <$> askUnliftIO
   withRunInIO go = ServerM $ withRunInIO (\k -> go $ k . unServerM)

@@ -23,6 +23,9 @@ import Control.Monad.STM
 import Conversion
 
 
+import qualified Data.Text.IO as T
+import Data.Text (Text, pack)
+
 scannedBlockHeight :: DBPool -> Currency -> IO (Maybe BlockHeight)
 scannedBlockHeight pool currency = do
   entity <- runDbQuery pool $ getScannedHeight currency
@@ -41,28 +44,29 @@ blockHeightsToScan env currency = do
     startHeight =  case currency of BTC  -> 0
                                     ERGO -> 0
 
-storeInfo :: DBPool -> BlockInfo -> IO ()
-storeInfo dbPool blockInfo = do
-  runDbQuery dbPool $ insertTxs $ block'TxInfos blockInfo
-  runDbQuery dbPool $ insertTxOuts $ block'TxOutInfos blockInfo
-  runDbQuery dbPool $ insertTxIns $ block'TxInInfos blockInfo
+storeInfo :: (MonadIO m) => BlockContentInfo -> QueryT m ()
+storeInfo blockInfo = do
+  insertTxs $ blockContent'TxInfos blockInfo
+  insertTxOuts $ blockContent'TxOutInfos blockInfo
+  insertTxIns $ blockContent'TxInInfos blockInfo
   pure ()
 
-storeScannedHeight :: DBPool -> Currency -> BlockHeight -> IO ()
-storeScannedHeight dbPool currency scannedHeight = void $ runDbQuery dbPool $ upsertScannedHeight currency scannedHeight
+storeScannedHeight :: (MonadIO m) => Currency -> BlockHeight -> QueryT m ()
+storeScannedHeight currency scannedHeight = void $ upsertScannedHeight currency scannedHeight
 
-scannerThread :: MonadUnliftIO m => ServerEnv -> Currency -> (BlockHeight -> IO BlockInfo) -> m Thread
+scannerThread :: MonadUnliftIO m => ServerEnv -> Currency -> (BlockHeight -> IO BlockContentInfo) -> m Thread
 scannerThread env currency scanInfo = 
   create scanIteration
   where
     pool = envPool env
     blockIteration blockHeight = do
       blockInfo <- scanInfo blockHeight
-      storeInfo pool blockInfo
-      storeScannedHeight pool currency blockHeight
+      runDbQuery pool $ do
+        storeInfo blockInfo
+        storeScannedHeight currency blockHeight
       dir <- levelDbDir
       pure ()
-      addToCache (ldb env) blockInfo
+      --addToCache (ldb env) blockInfo
     scanIteration thread = liftIO $ do
       heights <- blockHeightsToScan env currency
       forM_ heights blockIteration

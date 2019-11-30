@@ -38,10 +38,11 @@ txInfo tx txHash = let
                    , txOut'value            = HK.outValue txOut
                    }    
 
-blockTxInfos :: HK.Block -> BlockHeight -> BlockInfo
+blockTxInfos :: HK.Block -> BlockHeight -> BlockContentInfo
 blockTxInfos block txBlockHeight = let
   (txInfos ,txInInfos, txOutInfos) = mconcat $ txoInfosFromTx `imap` HK.blockTxns block
-  in BlockInfo txInfos txInInfos txOutInfos
+  
+  in BlockContentInfo txInfos txInInfos txOutInfos
   where
     txoInfosFromTx txBlockIndex tx = let
       txHash = HK.txHashToHex $ HK.txHash tx
@@ -56,11 +57,11 @@ blockTxInfos block txBlockHeight = let
 actualBTCHeight :: Config -> IO BlockHeight
 actualBTCHeight cfg = fromIntegral <$> btcNodeClient cfg getBlockCount
 
-bTCBlockScanner :: ServerEnv -> BlockHeight -> IO BlockInfo
+bTCBlockScanner :: ServerEnv -> BlockHeight -> IO BlockContentInfo
 bTCBlockScanner env blockHeightToScan = do 
   blockHash <- btcNodeClient cfg $ flip getBlockHash $ fromIntegral blockHeightToScan
   maybeRawBlock <- btcNodeClient cfg $ flip getBlockRaw blockHash
-  let rawBlock = fromMaybe blockParsingError maybeRawBlock 
+  let rawBlock = fromMaybe blockParsingError maybeRawBlock
       parsedBlock = fromRight blockGettingError $ decode $ HS.toBytes rawBlock
   pure $ blockTxInfos parsedBlock blockHeightToScan
   where

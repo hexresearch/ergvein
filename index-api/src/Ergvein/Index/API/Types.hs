@@ -3,7 +3,9 @@ module Ergvein.Index.API.Types where
 import Ergvein.Aeson
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import Ergvein.Types.Block
 import GHC.Generics
+import Data.Word
 
 -- Balance
 data BalanceRequest = BalanceRequest
@@ -32,6 +34,16 @@ data TxHashHistoryItem = TxHashHistoryItem
 $(deriveJSON (aesonOptionsStripPrefix "historyItem") ''TxHashHistoryItem)
 
 type TxHashHistoryResponse = [TxHashHistoryItem]
+
+-- headers
+data BlockHeadersRequest = BlockHeadersRequest
+    { headersReqCurrency         :: !Currency
+    , headersReqStartIndex       :: !BlockHeight
+    , headersReqAmount           :: !Word64
+    } deriving (Eq, Show, Generic)
+$(deriveJSON (aesonOptionsStripPrefix "headersReq") ''BlockHeadersRequest)
+
+type BlockHeadersResponse = [BlockHeaderHexView]
 
 -- Merkle
 data TxMerkleProofRequest = TxMerkleProofRequest

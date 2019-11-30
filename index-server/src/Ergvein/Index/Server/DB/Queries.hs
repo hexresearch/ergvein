@@ -20,19 +20,18 @@ import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Monad.Reader
 
+import qualified Data.Conduit.List as CL
+
 pageLoadSize :: PageSize
 pageLoadSize = PageSize 1048576
 
 pagedEntitiesStream ::(PersistRecordBackend record backend, PersistQueryRead backend, PersistUniqueRead backend,
                       BackendCompatible SqlBackend backend, BackendCompatible SqlBackend (BaseBackend backend),
                       Ord typ, PersistField typ, MonadIO m) 
-                      => EntityField record typ -> ConduitT a (Entity record) (ReaderT backend m) ()
-pagedEntitiesStream entityField = streamEntities
-      emptyQuery
-      entityField
-      pageLoadSize
-      Ascend
-      (Range Nothing Nothing)
+                      => EntityField record typ -> ConduitT a [Entity record] (ReaderT backend m) ()
+pagedEntitiesStream entityField = let
+  pagedStream = streamEntities emptyQuery entityField pageLoadSize Ascend (Range Nothing Nothing)
+  in pagedStream .| (CL.chunksOf $ unPageSize pageLoadSize)
 
 getAllTx :: (MonadIO m) => QueryT m [Entity TxRec]
 getAllTx = select $ from pure
@@ -58,7 +57,7 @@ insertTxs txs = insertMany $ txRec <$> txs
 
 insertTxOuts :: MonadIO m => [TxOutInfo] -> QueryT m [Key TxOutRec]
 insertTxOuts txOuts = insertMany $ txOutRec <$> txOuts
-  where 
+  where
     txOutRec txOut = TxOutRec (txOut'txHash txOut) (txOut'pubKeyScriptHash txOut) (txOut'index txOut) (txOut'value txOut)
 
 insertTxIns :: MonadIO m => [TxInInfo] -> QueryT m [Key TxInRec]
