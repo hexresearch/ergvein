@@ -11,6 +11,7 @@ import           Ergvein.Index.Server.BlockScanner.Types
 import           Ergvein.Index.Server.Config
 import           Ergvein.Index.Server.Environment
 import           Ergvein.Types.Transaction
+import           Ergvein.Types.Currency
 
 import           Data.Serialize                     as S
 import qualified Data.ByteString                    as B
@@ -18,6 +19,7 @@ import qualified Data.HexString                     as HS
 import qualified Network.Haskoin.Block              as HK
 import qualified Network.Haskoin.Crypto             as HK
 import qualified Network.Haskoin.Transaction        as HK
+import qualified Network.Haskoin.Util               as HK
 
 txInfo :: HK.Tx -> TxHash -> ([TxInInfo], [TxOutInfo])
 txInfo tx txHash = let
@@ -38,12 +40,14 @@ txInfo tx txHash = let
                    , txOut'value            = HK.outValue txOut
                    }    
 
-blockTxInfos :: HK.Block -> BlockHeight -> BlockContentInfo
+blockTxInfos :: HK.Block -> BlockHeight -> BlockInfo
 blockTxInfos block txBlockHeight = let
   (txInfos ,txInInfos, txOutInfos) = mconcat $ txoInfosFromTx `imap` HK.blockTxns block
-  
-  in BlockContentInfo txInfos txInInfos txOutInfos
+  blockContent = BlockContentInfo txInfos txInInfos txOutInfos
+  blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHexView
+  in BlockInfo blockMeta blockContent
   where
+    blockHeaderHexView = HK.encodeHex $ S.encode $ HK.blockHeader block
     txoInfosFromTx txBlockIndex tx = let
       txHash = HK.txHashToHex $ HK.txHash tx
       txI = TxInfo { tx'hash = txHash
@@ -57,7 +61,7 @@ blockTxInfos block txBlockHeight = let
 actualBTCHeight :: Config -> IO BlockHeight
 actualBTCHeight cfg = fromIntegral <$> btcNodeClient cfg getBlockCount
 
-bTCBlockScanner :: ServerEnv -> BlockHeight -> IO BlockContentInfo
+bTCBlockScanner :: ServerEnv -> BlockHeight -> IO BlockInfo
 bTCBlockScanner env blockHeightToScan = do 
   blockHash <- btcNodeClient cfg $ flip getBlockHash $ fromIntegral blockHeightToScan
   maybeRawBlock <- btcNodeClient cfg $ flip getBlockRaw blockHash

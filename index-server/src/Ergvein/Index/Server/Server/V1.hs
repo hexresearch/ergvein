@@ -11,22 +11,20 @@ import Ergvein.Index.API.V1
 import Ergvein.Index.Server.Monad
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Control.Monad.IO.Unlift
-import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Monad
-import Database.Persist.Types
-import Ergvein.Index.Server.DB.Schema
 import Data.Maybe
-import qualified Data.Set as Set
-import qualified Data.Map.Strict as Map
 import Data.List
 import Ergvein.Index.Server.BlockchainCache 
-import Control.Monad.STM
-import Control.Concurrent.STM.TVar
-import Ergvein.Index.Server.BlockScanner.Types
+import Database.LevelDB.Iterator 
+import qualified Database.LevelDB.Streaming as LDB
+import Data.Default
 import Data.Flat
 import Data.Either
-import Data.Maybe
+import Control.Monad.IO.Class
+import qualified Data.Text.IO as T
+import Data.Text (Text, pack)
+import qualified Network.Haskoin.Util as HK
+import qualified Data.ByteString as BS
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
@@ -79,7 +77,6 @@ indexGetBalanceEndpoint req@(BalanceRequest { balReqCurrency = BTC  })  = do
             Just s -> 0
             Nothing -> cachedTxOut'value x
 
-
 indexGetBalanceEndpoint BalanceRequest { balReqCurrency = ERGO } = pure ergoBalance
 
 indexGetTxHashHistoryEndpoint :: TxHashHistoryRequest -> ServerM TxHashHistoryResponse
@@ -89,7 +86,6 @@ indexGetTxHashHistoryEndpoint  req@(TxHashHistoryRequest{ historyReqCurrency = B
   let utxos = fromMaybe [] maybeUTXOs
   tutxos <- mapM (f db) utxos
   txs <- mapM (fmap (unflatExact @CachedTx) . fmap fromJust . getInKeySpace db cachedTxKey) $ nub $ mconcat tutxos
-  --let sorted = sortBy txs 
   pure $ (\x -> TxHashHistoryItem (cachedTx'hash x) (cachedTx'blockHeight x) ) <$> sortOn (\x-> (cachedTx'blockHeight x, cachedTx'blockIndex  x)) txs
   where
       f db x = do
@@ -101,7 +97,16 @@ indexGetTxHashHistoryEndpoint  req@(TxHashHistoryRequest{ historyReqCurrency = B
 indexGetTxHashHistoryEndpoint TxHashHistoryRequest { historyReqCurrency = ERGO } = pure ergoHistory
 
 indexGetBlockHeadersEndpoint :: BlockHeadersRequest -> ServerM BlockHeadersResponse
-indexGetBlockHeadersEndpoint request = undefined
+indexGetBlockHeadersEndpoint request = do
+    db <- getDb
+    i <- createIter db  def
+    let range = LDB.KeyRange start $ c
+    slice <- LDB.toList $ LDB.entrySlice i range LDB.Asc
+    pure $ fromRight (error "key") . unflat @Text . snd <$> slice
+    where
+        start = flat (headersReqCurrency request, headersReqStartIndex request)
+        end = (headersReqCurrency request, headersReqStartIndex request + headersReqAmount request)
+        c x = compare (fromRight (error "key") $ unflat x) end 
 
 txMerkleProofEndpoint :: TxMerkleProofRequest -> ServerM TxMerkleProofResponse
 txMerkleProofEndpoint TxMerkleProofRequest { merkleReqCurrency = BTC }  = pure btcProof

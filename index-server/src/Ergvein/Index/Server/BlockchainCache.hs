@@ -2,40 +2,21 @@
 module Ergvein.Index.Server.BlockchainCache where 
 
 import Ergvein.Types.Transaction
-import Control.Monad.STM
-import Control.Concurrent.STM.TVar
-import Data.Monoid
-import Control.Monad.IO.Unlift
 import qualified Data.Map.Strict as Map
-import qualified Data.Set as Set
 import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.DB.Queries
-import Data.Function
-import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
-import Database.Persist.Types
 import Ergvein.Index.Server.BlockScanner.Types
 import Conversion
 import Control.DeepSeq
-import GHC.Generics
 import Ergvein.Types.Currency
 import Data.Default
-import Control.DeepSeq
-import Control.Monad.Trans.Resource (release)
 import Data.Flat
 import qualified Data.ByteString as B
 import Data.Maybe
 import Data.Either
-import qualified Data.Text.IO as T
-import Data.Text (Text, pack, unpack)
-import Control.Monad.Writer
-import Control.DeepSeq
-import Database.Persist.Pagination
 import qualified Data.Conduit.List as CL
 import           Conduit
-import Control.Monad.IO.Unlift
-import Control.Monad.Logger
-import Control.Monad.Reader
 import System.Directory
 import Database.LevelDB
 
@@ -66,6 +47,9 @@ cachedTxOutKey = "out"
 cachedTxInKey :: B.ByteString
 cachedTxInKey = "in"
 
+cachedMetaKey :: B.ByteString
+cachedMetaKey = "meta"
+
 groupMapBy :: Ord k => (v -> k) -> [v] -> Map.Map k [v]
 groupMapBy keySelector = Map.fromListWith (++) . fmap (\v-> (keySelector v , [v]))
 
@@ -91,6 +75,10 @@ writeBatch db keyPrefix items = write db def $ storedRepresentation <$> items
   where
     storedRepresentation (key, value) = Put (keyPrefix <> flat key) (flat value)
 
+
+cacheBlockMetaInfos :: MonadIO m => DB -> [BlockMetaInfo] -> m ()
+cacheBlockMetaInfos db infos =  writeBatch db "" $ (\info -> ((blockMeta'currency info, blockMeta'blockHeight info), blockMeta'headerHexView info)) <$> infos
+
 cacheTxInfos :: MonadIO m => DB -> [TxInfo] -> m ()
 cacheTxInfos db infos = writeBatch db cachedTxKey $ (\info -> (tx'hash info, convert @TxInfo @CachedTx info)) <$> infos
 
@@ -105,11 +93,11 @@ cacheTxOutInfos db infos = do
       updated = Map.toList $ Map.unionWith (++) cachedMap updateMap
   writeBatch db cachedTxOutKey updated
 
-addToCache :: MonadIO m => DB -> BlockContentInfo -> m ()
+addToCache :: MonadIO m => DB -> BlockInfo -> m ()
 addToCache db update = do
-  cacheTxOutInfos db $ blockContent'TxOutInfos update
-  cacheTxInInfos db $ blockContent'TxInInfos update
-  cacheTxInfos db $ blockContent'TxInfos update
+  cacheTxOutInfos db $ blockContent'TxOutInfos $ blockInfo'content update
+  cacheTxInInfos db $ blockContent'TxInInfos $ blockInfo'content update
+  cacheTxInfos db $ blockContent'TxInfos $ blockInfo'content update
 
 loadCache :: DB -> DBPool -> IO ()
 loadCache db pool = do 
@@ -123,6 +111,10 @@ loadCache db pool = do
 
   runDbQuery pool $ runConduit $ pagedEntitiesStream TxRecId 
     .| CL.mapM_ (cacheTxInfos db . fmap convert)
+    .| sinkList
+  
+  runDbQuery pool $ runConduit $ pagedEntitiesStream BlockMetaRecId 
+    .| CL.mapM_ (cacheBlockMetaInfos db . fmap convert)
     .| sinkList
 
   pure ()

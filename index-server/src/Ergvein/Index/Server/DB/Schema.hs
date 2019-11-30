@@ -47,7 +47,7 @@ instance Conversion (Entity TxInRec) TxInInfo where
   convert entity = let 
     value = entityVal entity 
     in TxInInfo (txInRecTxHash value) (txInRecTxOutHash value) (txInRecTxOutIndex value)
-    
+
 instance Conversion (Entity TxOutRec) TxOutInfo where
   convert entity = let 
     value = entityVal entity 
@@ -56,7 +56,4 @@ instance Conversion (Entity TxOutRec) TxOutInfo where
 instance Conversion (Entity BlockMetaRec) BlockMetaInfo where
   convert entity = let 
     value = entityVal entity 
-    in BlockMetaInfo (blockMetaRecCurrency value) (blockMetaRecHeight value) (blockMetaRecBlockHeaderHexView value) 
-
-instance Conversion ([Entity TxRec], [Entity TxInRec], [Entity TxOutRec]) BlockContentInfo where
-  convert (txs, txIns, txOuts) = BlockContentInfo (convert <$> txs) (convert <$> txIns) (convert <$> txOuts)
+    in BlockMetaInfo (blockMetaRecCurrency value) (blockMetaRecHeight value) (blockMetaRecBlockHeaderHexView value)

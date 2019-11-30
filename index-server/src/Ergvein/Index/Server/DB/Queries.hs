@@ -64,3 +64,8 @@ insertTxIns :: MonadIO m => [TxInInfo] -> QueryT m [Key TxInRec]
 insertTxIns txIns = insertMany $ txInRec <$> txIns
   where
     txInRec txIn = TxInRec (txIn'txHash txIn) (txIn'txOutHash txIn) (txIn'txOutIndex txIn)
+
+insertBlock :: MonadIO m => BlockMetaInfo -> QueryT m (Key BlockMetaRec)
+insertBlock block = insert $ blockMetaRec block
+  where
+    blockMetaRec block = BlockMetaRec (blockMeta'currency block) (blockMeta'blockHeight block) (blockMeta'headerHexView block)

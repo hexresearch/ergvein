@@ -44,17 +44,18 @@ blockHeightsToScan env currency = do
     startHeight =  case currency of BTC  -> 0
                                     ERGO -> 0
 
-storeInfo :: (MonadIO m) => BlockContentInfo -> QueryT m ()
+storeInfo :: (MonadIO m) => BlockInfo -> QueryT m ()
 storeInfo blockInfo = do
-  insertTxs $ blockContent'TxInfos blockInfo
-  insertTxOuts $ blockContent'TxOutInfos blockInfo
-  insertTxIns $ blockContent'TxInInfos blockInfo
+  insertTxs $ blockContent'TxInfos $ blockInfo'content blockInfo
+  insertTxOuts $ blockContent'TxOutInfos $ blockInfo'content blockInfo
+  insertTxIns $ blockContent'TxInInfos $ blockInfo'content blockInfo
+  insertBlock $ blockInfo'meta blockInfo
   pure ()
 
 storeScannedHeight :: (MonadIO m) => Currency -> BlockHeight -> QueryT m ()
 storeScannedHeight currency scannedHeight = void $ upsertScannedHeight currency scannedHeight
 
-scannerThread :: MonadUnliftIO m => ServerEnv -> Currency -> (BlockHeight -> IO BlockContentInfo) -> m Thread
+scannerThread :: MonadUnliftIO m => ServerEnv -> Currency -> (BlockHeight -> IO BlockInfo) -> m Thread
 scannerThread env currency scanInfo = 
   create scanIteration
   where

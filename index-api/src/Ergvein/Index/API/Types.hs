@@ -35,7 +35,7 @@ $(deriveJSON (aesonOptionsStripPrefix "historyItem") ''TxHashHistoryItem)
 
 type TxHashHistoryResponse = [TxHashHistoryItem]
 
--- headers
+-- Headers
 data BlockHeadersRequest = BlockHeadersRequest
     { headersReqCurrency         :: !Currency
     , headersReqStartIndex       :: !BlockHeight
