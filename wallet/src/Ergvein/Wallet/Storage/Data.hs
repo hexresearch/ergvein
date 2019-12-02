@@ -15,9 +15,18 @@ import Data.Text
 import Ergvein.Aeson
 import Ergvein.Crypto
 
-import qualified Data.Map.Strict as M
-import qualified Data.ByteString as BS
-import qualified Data.IntMap.Strict as MI
+import qualified Data.ByteString          as BS
+import qualified Data.ByteString.Base64   as B64
+import qualified Data.IntMap.Strict       as MI
+import qualified Data.Map.Strict          as M
+import qualified Data.Text.Encoding.Error as TEE
+import qualified Data.Text.Encoding       as TE
+
+byteStringToText :: ByteString -> Text
+byteStringToText bs = TE.decodeUtf8With TEE.lenientDecode $ B64.encode bs
+
+textToByteString :: Text -> ByteString
+textToByteString = B64.decodeLenient . TE.encodeUtf8
 
 data PrivateStorage = PrivateStorage {
     privateStorage'seed :: Seed
@@ -27,14 +36,14 @@ data PrivateStorage = PrivateStorage {
 
 instance ToJSON PrivateStorage where
   toJSON PrivateStorage{..} = object [
-      "seed" .= toJSON (BS.unpack privateStorage'seed)
+      "seed" .= toJSON (byteStringToText privateStorage'seed)
     , "root" .= toJSON privateStorage'root
     , "keys" .= toJSON privateStorage'keys
     ]
 
 instance FromJSON PrivateStorage where
   parseJSON = withObject "PrivateStorage" $ \o -> PrivateStorage
-    <$> fmap BS.pack (o .: "seed")
+    <$> fmap textToByteString (o .: "seed")
     <*> o .: "root"
     <*> o .: "keys"
 
@@ -46,16 +55,16 @@ data EncryptedPrivateStorage = EncryptedPrivateStorage {
 
 instance ToJSON EncryptedPrivateStorage where
   toJSON EncryptedPrivateStorage{..} = object [
-      "ciphertext" .= toJSON (BS.unpack encryptedPrivateStorage'ciphertext)
-    , "salt"       .= toJSON (BS.unpack encryptedPrivateStorage'salt)
-    , "iv"         .= toJSON (BS.unpack (convert encryptedPrivateStorage'iv :: ByteString))
+      "ciphertext" .= toJSON (byteStringToText encryptedPrivateStorage'ciphertext)
+    , "salt"       .= toJSON (byteStringToText encryptedPrivateStorage'salt)
+    , "iv"         .= toJSON (byteStringToText (convert encryptedPrivateStorage'iv :: ByteString))
     ]
 
 instance FromJSON EncryptedPrivateStorage where
   parseJSON = withObject "EncryptedPrivateStorage" $ \o -> do
-    ciphertext <- fmap BS.pack (o .: "ciphertext")
-    salt <- fmap BS.pack (o .: "salt")
-    iv <- fmap BS.pack (o .: "iv")
+    ciphertext <- fmap textToByteString (o .: "ciphertext")
+    salt       <- fmap textToByteString (o .: "salt")
+    iv         <- fmap textToByteString (o .: "iv")
     case makeIV iv of
       Nothing -> fail "failed to read iv"
       Just iv' -> pure $ EncryptedPrivateStorage ciphertext salt iv'
@@ -81,11 +90,11 @@ data EncryptedErgveinStorage = EncryptedErgveinStorage {
 
 instance ToJSON EncryptedErgveinStorage where
   toJSON EncryptedErgveinStorage{..} = object [
-      "ciphertext" .= toJSON (BS.unpack encryptedStorage'ciphertext)
-    , "salt"       .= toJSON (BS.unpack encryptedStorage'salt)
-    , "iv"         .= toJSON (BS.unpack (convert encryptedStorage'iv :: ByteString))
-    , "eciesPoint" .= toJSON (BS.unpack eciesPoint)
-    , "authTag"    .= toJSON (BS.unpack (convert encryptedStorage'authTag :: ByteString))
+      "ciphertext" .= toJSON (byteStringToText encryptedStorage'ciphertext)
+    , "salt"       .= toJSON (byteStringToText encryptedStorage'salt)
+    , "iv"         .= toJSON (byteStringToText (convert encryptedStorage'iv :: ByteString))
+    , "eciesPoint" .= toJSON (byteStringToText eciesPoint)
+    , "authTag"    .= toJSON (byteStringToText (convert encryptedStorage'authTag :: ByteString))
     ]
     where
       curve = Proxy :: Proxy Curve_X25519
@@ -93,11 +102,11 @@ instance ToJSON EncryptedErgveinStorage where
 
 instance FromJSON EncryptedErgveinStorage where
   parseJSON = withObject "EncryptedErgveinStorage" $ \o -> do
-    ciphertext <- fmap BS.pack (o .: "ciphertext")
-    salt <- fmap BS.pack (o .: "salt")
-    iv <- fmap BS.pack (o .: "iv")
-    eciesPoint <- fmap BS.pack (o .: "eciesPoint")
-    authTag <- fmap BS.pack (o .: "authTag")
+    ciphertext <- fmap textToByteString (o .: "ciphertext")
+    salt <- fmap textToByteString (o .: "salt")
+    iv <- fmap textToByteString (o .: "iv")
+    eciesPoint <- fmap textToByteString (o .: "eciesPoint")
+    authTag <- fmap textToByteString (o .: "authTag")
     case makeIV iv of
       Nothing -> fail "failed to read iv"
       Just iv' -> case decodePoint curve eciesPoint of
