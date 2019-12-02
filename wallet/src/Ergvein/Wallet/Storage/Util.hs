@@ -10,12 +10,14 @@ module Ergvein.Wallet.Storage.Util(
   , storageFilePrefix
   , saveStorageToFile
   , loadStorageFromFile
+  , listStorages
   ) where
 
 import Control.Monad.IO.Class
 import Data.ByteArray           (convert)
 import Data.ByteString          (ByteString)
 import Data.ByteString.Base64   (encode, decodeLenient)
+import Data.Maybe
 import Data.Proxy
 import Data.Sequence
 import Data.Text                (Text)
@@ -170,6 +172,17 @@ loadStorageFromFile login pass = do
         Right pubKey -> case decryptStorage storage pubKey of
           Left err -> pure $ Left err
           Right s -> pure $ Right s
+
+-- | Scan storage folder for all wallets
+listStorages :: (MonadIO m, HasStoreDir m, PlatformNatives)
+  => m [WalletName]
+listStorages = do
+  ns <- listKeys
+  pure $ catMaybes . fmap isWallet $ ns
+  where
+    isWallet n = let
+      (a, _) = T.breakOn storageFilePrefix n
+      in if T.null a then Just (T.drop (T.length storageFilePrefix) n) else Nothing
 
 -- Alerts regarding secure storage system
 data StorageAlerts

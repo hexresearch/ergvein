@@ -16,6 +16,8 @@ import Control.Monad.IO.Class
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Password
 
+import Ergvein.Wallet.Storage.Util
+
 data GoPage = GoSeed | GoRestore | Insta Text
 
 data InitialPageStrings =
@@ -33,6 +35,8 @@ instance LocalizedPrint InitialPageStrings where
 
 initialPage :: MonadFrontBase t m => m ()
 initialPage = wrapper True $ divClass "initial-options grid1" $ do
+    ls <- listStorages
+    traverse_ (h4 . text) ls
     newE <- fmap (GoSeed <$) $ outlineButton IPSCreate
     restoreE <- fmap (GoRestore <$) $ outlineButton IPSRestore
     let goE = leftmost [newE, restoreE]
