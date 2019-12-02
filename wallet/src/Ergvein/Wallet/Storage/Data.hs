@@ -1,7 +1,7 @@
 module Ergvein.Wallet.Storage.Data
   (
-    WalletData(..)
-  , EncryptedWalletData(..)
+    PrivateStorage(..)
+  , EncryptedPrivateStorage(..)
   , ErgveinStorage(..)
   , EncryptedErgveinStorage(..)
   ) where
@@ -19,51 +19,51 @@ import qualified Data.Map.Strict as M
 import qualified Data.ByteString as BS
 import qualified Data.IntMap.Strict as MI
 
-data WalletData = WalletData {
-    wallet'seed     :: Seed
-  , wallet'root     :: EgvRootKey
-  , wallet'masters  :: M.Map Currency EgvXPrvKey
+data PrivateStorage = PrivateStorage {
+    privateStorage'seed :: Seed
+  , privateStorage'root :: XPrvKey
+  , privateStorage'keys :: M.Map Currency EgvPrvKeyсhain
   }
 
-instance ToJSON WalletData where
-  toJSON WalletData{..} = object [
-      "seed"    .= toJSON (BS.unpack wallet'seed)
-    , "root"    .= toJSON wallet'root
-    , "masters" .= toJSON wallet'masters
+instance ToJSON PrivateStorage where
+  toJSON PrivateStorage{..} = object [
+      "seed" .= toJSON (BS.unpack privateStorage'seed)
+    , "root" .= toJSON privateStorage'root
+    , "keys" .= toJSON privateStorage'keys
     ]
 
-instance FromJSON WalletData where
-  parseJSON = withObject "WalletData" $ \o -> WalletData
+instance FromJSON PrivateStorage where
+  parseJSON = withObject "PrivateStorage" $ \o -> PrivateStorage
     <$> fmap BS.pack (o .: "seed")
     <*> o .: "root"
-    <*> o .: "masters"
+    <*> o .: "keys"
 
-data EncryptedWalletData = EncryptedWalletData {
-    encryptedWallet'ciphertext :: ByteString
-  , encryptedWallet'salt       :: ByteString
-  , encryptedWallet'iv         :: IV AES256
+data EncryptedPrivateStorage = EncryptedPrivateStorage {
+    encryptedPrivateStorage'ciphertext :: ByteString
+  , encryptedPrivateStorage'salt       :: ByteString
+  , encryptedPrivateStorage'iv         :: IV AES256
   }
 
-instance ToJSON EncryptedWalletData where
-  toJSON EncryptedWalletData{..} = object [
-      "ciphertext" .= toJSON (BS.unpack encryptedWallet'ciphertext)
-    , "salt"       .= toJSON (BS.unpack encryptedWallet'salt)
-    , "iv"         .= toJSON (BS.unpack (convert encryptedWallet'iv :: ByteString))
+instance ToJSON EncryptedPrivateStorage where
+  toJSON EncryptedPrivateStorage{..} = object [
+      "ciphertext" .= toJSON (BS.unpack encryptedPrivateStorage'ciphertext)
+    , "salt"       .= toJSON (BS.unpack encryptedPrivateStorage'salt)
+    , "iv"         .= toJSON (BS.unpack (convert encryptedPrivateStorage'iv :: ByteString))
     ]
 
-instance FromJSON EncryptedWalletData where
-  parseJSON = withObject "EncryptedWalletData" $ \o -> do
+instance FromJSON EncryptedPrivateStorage where
+  parseJSON = withObject "EncryptedPrivateStorage" $ \o -> do
     ciphertext <- fmap BS.pack (o .: "ciphertext")
     salt <- fmap BS.pack (o .: "salt")
     iv <- fmap BS.pack (o .: "iv")
     case makeIV iv of
       Nothing -> fail "failed to read iv"
-      Just iv' -> pure $ EncryptedWalletData ciphertext salt iv'
+      Just iv' -> pure $ EncryptedPrivateStorage ciphertext salt iv'
 
 data ErgveinStorage = ErgveinStorage {
-    storage'wallet     :: EncryptedWalletData
-  , storage'pubKeys    :: M.Map Currency (MI.IntMap Base58)
-  , storage'walletName :: Text
+    storage'encryptedPrivateStorage :: EncryptedPrivateStorage
+  , storage'publicStorage           :: M.Map Currency (MI.IntMap Base58)
+  , storage'walletName              :: Text
   }
 
 instance Eq ErgveinStorage where
