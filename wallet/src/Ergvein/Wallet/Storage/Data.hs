@@ -15,7 +15,6 @@ import Data.Text
 import Ergvein.Aeson
 import Ergvein.Crypto
 
-import qualified Data.ByteString          as BS
 import qualified Data.ByteString.Base64   as B64
 import qualified Data.IntMap.Strict       as MI
 import qualified Data.Map.Strict          as M
@@ -28,9 +27,24 @@ byteStringToText bs = TE.decodeUtf8With TEE.lenientDecode $ B64.encode bs
 textToByteString :: Text -> ByteString
 textToByteString = B64.decodeLenient . TE.encodeUtf8
 
+data EgvPrvKeyсhain = EgvPrvKeyсhain {
+  egvPrvKeyсhain'base     :: EgvXPrvKey
+  -- ^The first part of BIP44 key with derivation path /m\/purpose'\/coin_type'\/account'/.
+, egvPrvKeyсhain'external :: MI.IntMap EgvXPrvKey
+  -- ^Map with BIP44 external keys.
+  -- Private key indices are Map keys, and the private keys are Map values.
+  -- Private keys must have the following derivation path:
+  -- /m\/purpose'\/coin_type'\/account'\/0\/address_index/.
+, egvPrvKeyсhain'internal :: MI.IntMap EgvXPrvKey
+  -- ^Map with BIP44 internal keys.
+  -- Private key indices are Map keys, and the private keys are Map values.
+  -- Private keys must have the following derivation path:
+  -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.
+} deriving (Eq)
+
 data PrivateStorage = PrivateStorage {
     privateStorage'seed :: Seed
-  , privateStorage'root :: XPrvKey
+  , privateStorage'root :: EgvRootKey
   , privateStorage'keys :: M.Map Currency EgvPrvKeyсhain
   }
 
