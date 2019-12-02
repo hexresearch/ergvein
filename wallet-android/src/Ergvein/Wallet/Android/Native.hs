@@ -11,6 +11,7 @@ import Ergvein.Wallet.Native
 import Foreign
 import Foreign.C
 import System.Directory
+import System.Directory.Tree
 import System.FilePath.Posix
 import System.IO
 
@@ -39,7 +40,7 @@ encodeText text cont =
 
 instance PlatformNatives where
   resUrl = (<>) "file:///android_res/"
-  
+
   storeValue k v = do
     path <- getStoreDir
     liftIO $ do
@@ -57,6 +58,10 @@ instance PlatformNatives where
           key <- readJson fpath
           pure $ maybe (Left $ NADecodingError k) Right key
         else pure $ Right a0
+
+  listKeys = do
+    path <- getStoreDir
+    liftIO $ fmap (T.drop (T.length path + 1) . T.pack) <$> getFiles (T.unpack path)
 
   readStoredFile filename = do
     path <- getStoreDir
@@ -114,3 +119,13 @@ instance PlatformNatives where
   copyStr v = liftIO $ encodeText v $ \s -> do
     a <- getHaskellActivity
     androidCopyStr a s
+
+getFiles :: FilePath -> IO [FilePath]
+getFiles dir = do
+  _ :/ tree <- build dir
+  pure $ reverse $ go tree
+  where
+    go tree = case tree of
+      File _ n -> [n]
+      Dir _ trees -> concat . fmap go $ trees
+      _ -> []
