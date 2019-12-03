@@ -15,6 +15,7 @@ import qualified Data.Bytes.VarInt as BV
 newtype VLQLengthPrefixed a = VLQLengthPrefixed a
 newtype VLQInt32 = VLQInt32 { unVLQInt32 :: Int32 }
 newtype VLQWord32 = VLQWord32 { unVLQWord32 :: Word32 }
+newtype VLQWord64 = VLQWord64 { unVLQWord64 :: Word64 }
 
 -- | @note Uses ZigZag encoding. Should be used to decode '''only''' a value that was previously
 --       encoded with [[VLQByteBufferWriter.putInt]].
@@ -61,6 +62,10 @@ fromZigZag a = fromIntegral $ ((a :: Word32) `shiftR` 1) `xor` (onesForOdd a)
 instance Serialize VLQWord32 where
   put = BSerial.serialize . BV.VarInt . unVLQWord32
   get = VLQWord32 . BV.unVarInt <$> BSerial.deserialize
+
+instance Serialize VLQWord64 where
+  put = BSerial.serialize . BV.VarInt . unVLQWord64
+  get = VLQWord64 . BV.unVarInt <$> BSerial.deserialize
 
 instance Serialize a => Serialize (VLQLengthPrefixed [a]) where
   put (VLQLengthPrefixed as) = do
