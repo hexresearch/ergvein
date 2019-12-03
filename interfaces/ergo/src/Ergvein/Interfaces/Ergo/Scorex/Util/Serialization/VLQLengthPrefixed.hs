@@ -9,6 +9,8 @@ import Data.Serialize.Get as S
 import Data.Word
 
 import qualified Data.ByteString as BS
+import qualified Data.Bytes.Serial as BSerial
+import qualified Data.Bytes.VarInt as BV
 
 newtype VLQLengthPrefixed a = VLQLengthPrefixed a
 newtype VLQInt32 = VLQInt32 { unVLQInt32 :: Int32 }
@@ -57,8 +59,8 @@ fromZigZag a = fromIntegral $ ((a :: Word32) `shiftR` 1) `xor` (onesForOdd a)
     onesForOdd = flip (bool id complement) 0 . odd
 
 instance Serialize VLQWord32 where
-  put = undefined
-  get = undefined
+  put = BSerial.serialize . BV.VarInt . unVLQWord32
+  get = VLQWord32 . BV.unVarInt <$> BSerial.deserialize
 
 instance Serialize a => Serialize (VLQLengthPrefixed [a]) where
   put (VLQLengthPrefixed as) = do
