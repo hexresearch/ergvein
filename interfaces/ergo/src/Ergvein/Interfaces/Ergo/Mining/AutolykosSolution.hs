@@ -44,7 +44,6 @@ instance Serialize BigInt where
         -- val dBytesLength = r.getUByte()
         -- val d = BigInt(BigIntegers.fromUnsignedByteArray(r.getBytes(dBytesLength)))
         OneByteLengthPrefixed bs <- get
-        -- BigInt . fromIntegral @Natural <$> decode <$> get
         BigInt . fromIntegral @Natural <$> (either fail pure $ decode bs)
 
 newtype Secp256k1 = Secp256k1 { unSecp256k1 :: ByteString }
