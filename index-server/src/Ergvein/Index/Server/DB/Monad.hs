@@ -16,9 +16,6 @@ newDBPool connectionString = createPostgresqlPool connectionString 10
 class (MonadLogger m, MonadUnliftIO m) => MonadDB m where
     getDbPool :: m DBPool
 
-class (MonadLogger m, MonadUnliftIO m) => MonadLDB m where
-    getDb :: m DB
-
 type QueryT m a = ReaderT SqlBackend m a
 
 instance (MonadLogger m, MonadUnliftIO m) => MonadDB (ReaderT DBPool m) where

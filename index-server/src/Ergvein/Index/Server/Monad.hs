@@ -9,7 +9,7 @@ import Servant.Server.Generic
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.DB.Monad
 import Control.Monad.IO.Unlift
-import Ergvein.Index.Server.BlockchainCache 
+import Ergvein.Index.Server.Cache.Monad
 
 
 newtype ServerM a = ServerM { unServerM :: ReaderT ServerEnv (LoggingT IO) a }

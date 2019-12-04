@@ -18,8 +18,6 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
 import Ergvein.Index.Server.BlockchainCache
-import Control.Concurrent.STM.TVar
-import Control.Monad.STM
 import Conversion
 
 

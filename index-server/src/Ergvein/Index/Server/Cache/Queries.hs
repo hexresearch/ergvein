@@ -1,0 +1,1 @@
+module Ergvein.Index.Server.Cache.Queries where

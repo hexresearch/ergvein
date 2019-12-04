@@ -12,14 +12,8 @@ import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.BlockchainCache
-import Control.Monad.STM
-import Control.Concurrent.STM.TVar
 import Database.LevelDB.Base
 import Data.Default
-import System.Directory
-import qualified Data.Text.IO as T
-import Data.Text (Text, pack, unpack)
-import Control.DeepSeq
 
 data ServerEnv = ServerEnv 
     { envConfig :: !Config
@@ -42,12 +36,8 @@ newServerEnv cfg = do
         pool <- newDBPool $ fromString $ connectionStringFromConfig cfg
         flip runReaderT pool $ runDb $ runMigration migrateAll
         pure pool
-    path <-liftIO $ levelDbDir
-    ex <- liftIO $ doesDirectoryExist path
-    if ex then liftIO $ removeDirectoryRecursive path else pure ()
-    db <-  open path def {createIfMissing = True }
+    db <- liftIO $ openDb
     liftIO $ loadCache db pool
-    liftIO $ T.putStrLn $ pack $ "from db done 2"
     pure ServerEnv { envConfig = cfg
                    , envLogger = logger
                    , envPool   = pool
