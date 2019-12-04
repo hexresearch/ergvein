@@ -1,6 +1,8 @@
 module Ergvein.Index.Server.Server.V1 where
 
-import Data.Proxy
+import Data.Flat
+import Data.List
+import Data.Maybe
 import Servant.API.Generic
 import Servant.Server
 import Servant.Server.Generic
@@ -8,27 +10,12 @@ import Servant.Server.Generic
 import Ergvein.Index.API
 import Ergvein.Index.API.Types
 import Ergvein.Index.API.V1
+import Ergvein.Index.Server.Cache.Monad
+import Ergvein.Index.Server.Cache.Queries
+import Ergvein.Index.Server.Cache.Schema
 import Ergvein.Index.Server.Monad
 import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
-import Ergvein.Index.Server.DB.Monad
-import Data.Maybe
-import Data.List
-import Ergvein.Index.Server.BlockchainCache 
-import Database.LevelDB.Iterator 
-import qualified Database.LevelDB.Streaming as LDB
-import Data.Default
-import Data.Flat
-import Data.Either
-import Control.Monad.IO.Class
-import qualified Data.Text.IO as T
-import Data.Text (Text, pack)
-import qualified Network.Haskoin.Util as HK
-import qualified Data.ByteString as BS
-import Ergvein.Index.Server.Cache.Monad
-import Ergvein.Index.Server.Cache.Schema
-import Ergvein.Index.Server.Cache.Queries
-import Database.LevelDB
+import Data.Monoid
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
@@ -69,40 +56,39 @@ ergoBroadcastResponse = "4c6282be413c6e300a530618b37790be5f286ded758accc2aebd415
 --Endpoints
 indexGetBalanceEndpoint :: BalanceRequest -> ServerM BalanceResponse
 indexGetBalanceEndpoint req@(BalanceRequest { balReqCurrency = BTC  })  = do
-  db <- getDb
-  maybeUTXOs <- (fmap $ fmap $ unflatExact @TxOutCacheRec) $ get db def $ flat $ TxOutCacheRecKey $ balReqPubKeyScriptHash req
-  let utxos = fromMaybe [] maybeUTXOs
-  tutxos <- mapM (f db) utxos
-  pure btcBalance { balRespConfirmed = foldl (+) 0 tutxos }
+  maybeHistory <- getTxOutHistory $ balReqPubKeyScriptHash req
+  let confirmedBalance = case maybeHistory of
+        Just history -> getSum $ foldMap (Sum . txoValue) history 
+        Nothing      -> 0
+  pure $ btcBalance { balRespConfirmed = confirmedBalance }
   where
-    f db x = do
-        stxo <- get db def $ flat $ TxInCacheRecKey (txOutCacheRec'txHash x) $ txOutCacheRec'index  x
-        pure $ case stxo of
-            Just s -> 0
-            Nothing -> txOutCacheRec'value x
+    txoValue (UTXO txo) = txOutCacheRec'value txo
+    txoValue _ = 0
 
 indexGetBalanceEndpoint BalanceRequest { balReqCurrency = ERGO } = pure ergoBalance
 
 indexGetTxHashHistoryEndpoint :: TxHashHistoryRequest -> ServerM TxHashHistoryResponse
 indexGetTxHashHistoryEndpoint  req@(TxHashHistoryRequest{ historyReqCurrency = BTC }) = do
   db <- getDb
-  maybeUTXOs <- (fmap $ fmap $ unflatExact @TxOutCacheRec) (get db def $ flat $ TxOutCacheRecKey $ historyReqPubKeyScriptHash req)
-  let utxos = fromMaybe [] maybeUTXOs
-  tutxos <- mapM (f db) utxos
-  txs <- mapM (fmap (unflatExact @TxCacheRec) . fmap fromJust . get db def . flat . TxCacheRecKey ) $ nub $ mconcat tutxos
-  pure $ (\x -> TxHashHistoryItem (txCacheRec'hash x) (txCacheRec'blockHeight x) ) <$> sortOn (\x -> (txCacheRec'blockHeight x, txCacheRec'blockIndex  x)) txs
+  maybeHistory <- getTxOutHistory $ historyReqPubKeyScriptHash req
+  case maybeHistory of
+    Just history -> do
+        let uniqueHistoryTxIds = nub . mconcat $ utxoHistoryTxIds <$> history
+        txs <- mapM (getParsedExact . flat . TxCacheRecKey) uniqueHistoryTxIds
+        let sortedTxs = sortOn txSorting txs
+            historyItems = (\x -> TxHashHistoryItem (txCacheRec'hash x) (txCacheRec'blockHeight x)) <$> sortedTxs
+        pure historyItems
+    _-> pure []
   where
-      f db x = do
-          stxo <- (fmap $ fmap $ unflatExact @TxHash) $ get db def $ flat $ TxInCacheRecKey (txOutCacheRec'txHash x) $ txOutCacheRec'index x
-          pure $ case stxo of
-              Just s -> [txOutCacheRec'txHash x , s]
-              Nothing -> [txOutCacheRec'txHash x]
+    utxoHistoryTxIds (UTXO txo)         = [txOutCacheRec'txHash txo]
+    utxoHistoryTxIds (STXO (txo, stxo)) = [txOutCacheRec'txHash txo , txInCacheRec'txHash stxo]
+    txSorting tx = (txCacheRec'blockHeight tx, txCacheRec'blockIndex  tx)
 
 indexGetTxHashHistoryEndpoint TxHashHistoryRequest { historyReqCurrency = ERGO } = pure ergoHistory
 
 indexGetBlockHeadersEndpoint :: BlockHeadersRequest -> ServerM BlockHeadersResponse
 indexGetBlockHeadersEndpoint request = do
-    let start = BlockMetaCacheRecKey (headersReqCurrency request) (headersReqStartIndex request)
+    let start = flat $ BlockMetaCacheRecKey (headersReqCurrency request) (headersReqStartIndex request)
         end   = BlockMetaCacheRecKey (headersReqCurrency request) (pred $ headersReqStartIndex request + headersReqAmount request)
     slice <- safeEntrySlice start end
     let blockHeaders = snd <$> slice
