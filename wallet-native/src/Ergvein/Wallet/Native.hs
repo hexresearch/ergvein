@@ -50,3 +50,6 @@ class PlatformNatives where
 
   -- | Put string into clipboard
   copyStr :: MonadIO m => Text -> m ()
+
+  -- | Write to system log
+  logWrite :: MonadIO m => Text -> m ()

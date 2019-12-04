@@ -26,6 +26,7 @@ foreign import ccall safe "android_paste_str" androidPasteStr :: HaskellActivity
 foreign import ccall safe "read_paste_str" androidReadPasteStr :: JString -> IO CString
 foreign import ccall safe "release_paste_str" androidReleasePasteStr :: JString -> CString -> IO ()
 foreign import ccall safe "android_copy_str" androidCopyStr :: HaskellActivity -> CString -> IO ()
+foreign import ccall safe "android_log_write" androidLogWrite :: CString -> IO ()
 
 foreign import ccall safe "android_timezone_offset" androidTimezoneOffset :: IO Int
 
@@ -43,6 +44,7 @@ instance PlatformNatives where
 
   storeValue k v = do
     path <- getStoreDir
+    logWrite $ "Writing file " <> path <> "/" <> k
     liftIO $ do
       let fpath = T.unpack $ path <> "/" <> k
       createDirectoryIfMissing True $ takeDirectory fpath
@@ -50,6 +52,7 @@ instance PlatformNatives where
 
   retrieveValue k a0 = do
     path <- getStoreDir
+    logWrite $ "Reading file " <> path <> "/" <> k
     liftIO $ do
       let fpath = T.unpack $ path <> "/" <> k
       ex <- doesFileExist fpath
@@ -65,6 +68,7 @@ instance PlatformNatives where
 
   readStoredFile filename = do
     path <- getStoreDir
+    logWrite $ "Reading file " <> path <> "/" <> filename
     liftIO $ do
       let fpath = T.unpack $ path <> "/" <> filename
       ex <- doesFileExist fpath
@@ -76,6 +80,7 @@ instance PlatformNatives where
 
   appendStoredFile filename cnt = do
     path <- getStoreDir
+    logWrite $ "Appending file " <> path <> "/" <> filename
     liftIO $ do
       let fpath = T.unpack $ path <> "/" <> filename
       ex <- doesFileExist fpath
@@ -85,6 +90,7 @@ instance PlatformNatives where
 
   moveStoredFile filename1 filename2 = do
     path <- getStoreDir
+    logWrite $ "Moving file " <> path <> "/" <> filename1 <> " to " <> path <> "/" <> filename2
     liftIO $ do
       let fpath1 = T.unpack $ path <> "/" <> filename1
           fpath2 = T.unpack $ path <> "/" <> filename2
@@ -119,6 +125,9 @@ instance PlatformNatives where
   copyStr v = liftIO $ encodeText v $ \s -> do
     a <- getHaskellActivity
     androidCopyStr a s
+
+  logWrite v = liftIO $ encodeText v androidLogWrite
+  {-# INLINE logWrite #-}
 
 getFiles :: FilePath -> IO [FilePath]
 getFiles dir = do

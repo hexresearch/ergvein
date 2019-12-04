@@ -88,6 +88,8 @@ instance PlatformNatives where
 
   copyStr = liftIO . setClipboard . T.unpack
 
+  logWrite = liftIO . T.putStrLn
+
 getFiles :: FilePath -> IO [FilePath]
 getFiles dir = do
   _ :/ tree <- build dir

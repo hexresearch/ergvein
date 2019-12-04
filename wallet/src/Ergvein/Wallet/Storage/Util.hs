@@ -153,6 +153,7 @@ saveStorageToFile :: (MonadIO m, MonadRandom m, HasStoreDir m, PlatformNatives)
   => ECIESPubKey -> ErgveinStorage -> m ()
 saveStorageToFile publicKey storage = do
   let fname = storageFilePrefix <> T.replace " " "_" (storage'walletName storage)
+  logWrite $ "Storing storage to the " <> fname
   encryptedStorage <- encryptStorage storage publicKey
   case encryptedStorage of
     Left _ -> fail "Failed to encrypt storage"
