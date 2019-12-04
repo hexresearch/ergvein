@@ -68,15 +68,15 @@ indexGetBalanceEndpoint req@(BalanceRequest { balReqCurrency = BTC  })  = do
 indexGetBalanceEndpoint BalanceRequest { balReqCurrency = ERGO } = pure ergoBalance
 
 indexGetTxHashHistoryEndpoint :: TxHashHistoryRequest -> ServerM TxHashHistoryResponse
-indexGetTxHashHistoryEndpoint  req@(TxHashHistoryRequest{ historyReqCurrency = BTC }) = do
+indexGetTxHashHistoryEndpoint req@(TxHashHistoryRequest{ historyReqCurrency = BTC }) = do
   db <- getDb
   maybeHistory <- getTxOutHistory $ historyReqPubKeyScriptHash req
   case maybeHistory of
     Just history -> do
         let uniqueHistoryTxIds = nub . mconcat $ utxoHistoryTxIds <$> history
-        txs <- mapM (getParsedExact . flat . TxCacheRecKey) uniqueHistoryTxIds
+        txs <- getManyParsedExact $ flat . TxCacheRecKey <$> uniqueHistoryTxIds
         let sortedTxs = sortOn txSorting txs
-            historyItems = (\x -> TxHashHistoryItem (txCacheRec'hash x) (txCacheRec'blockHeight x)) <$> sortedTxs
+            historyItems = (\tx -> TxHashHistoryItem (txCacheRec'hash tx) (txCacheRec'blockHeight tx)) <$> sortedTxs
         pure historyItems
     _-> pure []
   where

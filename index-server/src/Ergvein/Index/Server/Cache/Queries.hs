@@ -41,6 +41,12 @@ getParsedExact key = do
   where
     notFoundErr = error "getParsedExact error"
 
+getManyParsedExact :: (MonadLDB m, Flat v) => [BS.ByteString] -> m [v]
+getManyParsedExact keys = do
+  db <- getDb
+  result <- mapM getParsedExact keys
+  pure result
+
 
 data TxOutHistoryItem = UTXO TxOutCacheRecItem | STXO (TxOutCacheRecItem, TxInCacheRec)
 
