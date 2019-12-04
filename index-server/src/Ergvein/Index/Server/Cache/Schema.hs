@@ -15,8 +15,8 @@ unflatExact' s = case unflat s of
 keyString :: (Flat k) => ByteString -> k -> ByteString
 keyString keyPrefix key = keyPrefix <> flat key
 
-unPrefixedKey keyPrefix key = Data.ByteString.drop 4 key
-  where err = error $ "unPrefixedKey error : keyPrefix " ++ show keyPrefix
+unPrefixedKey key = Data.ByteString.drop 4 key
+  where err = error $ "unPrefixedKey error"
 
 --TxOut
 
@@ -27,7 +27,7 @@ data TxOutCacheRecKey = TxOutCacheRecKey
   { txOutCacheRecKey'pubKeyScriptHash :: PubKeyScriptHash
   } deriving (Generic, Flat)
 
-data TxOutCacheRecItem = TxOutCacheRec
+data TxOutCacheRecItem = TxOutCacheRecItem
   { txOutCacheRec'index  :: TxOutIndex
   , txOutCacheRec'value  :: MoneyUnit
   , txOutCacheRec'txHash :: TxHash
@@ -72,7 +72,7 @@ cachedMetaKey :: (Currency, BlockHeight) -> ByteString
 cachedMetaKey = keyString cachedMetaKeyPrefix . uncurry BlockMetaCacheRecKey
 
 parsedCachedMetaKey :: ByteString -> BlockMetaCacheRecKey
-parsedCachedMetaKey = unflatExact' . unPrefixedKey cachedMetaKeyPrefix
+parsedCachedMetaKey = unflatExact' . unPrefixedKey
 
 data BlockMetaCacheRecKey = BlockMetaCacheRecKey
   { blockMetaCacheRecKey'currency     :: Currency

@@ -23,23 +23,11 @@ import Ergvein.Index.Server.DB.Schema
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
-data CachedTxOut = CachedTxOut
-  { cachedTxOut'index  :: TxOutIndex
-  , cachedTxOut'value  :: MoneyUnit
-  , cachedTxOut'txHash :: TxHash
-  } deriving (Generic, Flat, Show)
+instance Conversion TxOutInfo TxOutCacheRecItem where
+  convert txOutInfo = TxOutCacheRecItem (txOut'index txOutInfo) (txOut'value txOutInfo) (txOut'txHash txOutInfo)
 
-data CachedTx = CachedTx
-  { cachedTx'hash         :: TxHash
-  , cachedTx'blockHeight  :: BlockHeight
-  , cachedTx'blockIndex   :: TxBlockIndex
-  } deriving (Generic, Flat, Show)
-
-instance Conversion TxOutInfo CachedTxOut where
-  convert txOutInfo = CachedTxOut (txOut'index txOutInfo) (txOut'value txOutInfo) (txOut'txHash txOutInfo)
-
-instance Conversion TxInfo CachedTx where
-  convert txInfo = CachedTx (tx'hash txInfo) (tx'blockHeight txInfo) (tx'blockIndex txInfo)
+instance Conversion TxInfo TxCacheRec where
+  convert txInfo = TxCacheRec (tx'hash txInfo) (tx'blockHeight txInfo) (tx'blockIndex txInfo)
 
 groupMapBy :: Ord k => (v -> k) -> [v] -> Map.Map k [v]
 groupMapBy keySelector = Map.fromListWith (++) . fmap (\v-> (keySelector v , [v]))
@@ -54,14 +42,14 @@ cacheBlockMetaInfos db infos = write db def $ putItems keySelector valueSelector
     valueSelector info = BlockMetaCacheRec $ blockMeta'headerHexView info
 
 cacheTxInfos :: MonadIO m => DB -> [TxInfo] -> m ()
-cacheTxInfos db infos = write db def $ putItems (flat . TxCacheRecKey . tx'hash) (convert @TxInfo @CachedTx) infos
+cacheTxInfos db infos = write db def $ putItems (flat . TxCacheRecKey . tx'hash) (convert @TxInfo @TxCacheRec) infos
 
 cacheTxInInfos :: MonadIO m => DB -> [TxInInfo] -> m ()
 cacheTxInInfos db infos = write db def $ putItems (\info -> flat $ TxInCacheRecKey (txIn'txOutHash info) $ txIn'txOutIndex info) txIn'txHash infos
 
 cacheTxOutInfos :: MonadIO m => DB -> [TxOutInfo] -> m ()
 cacheTxOutInfos db infos = do
-  let updateMap = fmap (convert @TxOutInfo @CachedTxOut) <$> (groupMapBy txOut'pubKeyScriptHash infos)
+  let updateMap = fmap (convert @TxOutInfo @TxOutCacheRecItem) <$> (groupMapBy txOut'pubKeyScriptHash infos)
   cached <- sequence $ getCached <$> (Map.keys updateMap :: [PubKeyScriptHash])
   let cachedMap = Map.fromList $ catMaybes cached
       updated = Map.toList $ Map.unionWith (++) cachedMap updateMap

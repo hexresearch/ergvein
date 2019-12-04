@@ -27,6 +27,7 @@ import qualified Network.Haskoin.Util as HK
 import qualified Data.ByteString as BS
 import Ergvein.Index.Server.Cache.Monad
 import Ergvein.Index.Server.Cache.Schema
+import Ergvein.Index.Server.Cache.Queries
 import Database.LevelDB
 
 indexServer :: IndexApi AsServerM
@@ -69,47 +70,43 @@ ergoBroadcastResponse = "4c6282be413c6e300a530618b37790be5f286ded758accc2aebd415
 indexGetBalanceEndpoint :: BalanceRequest -> ServerM BalanceResponse
 indexGetBalanceEndpoint req@(BalanceRequest { balReqCurrency = BTC  })  = do
   db <- getDb
-  maybeUTXOs <- (fmap $ fmap $ unflatExact @[CachedTxOut]) $ get db def $ flat $ TxOutCacheRecKey $ balReqPubKeyScriptHash req
+  maybeUTXOs <- (fmap $ fmap $ unflatExact @TxOutCacheRec) $ get db def $ flat $ TxOutCacheRecKey $ balReqPubKeyScriptHash req
   let utxos = fromMaybe [] maybeUTXOs
   tutxos <- mapM (f db) utxos
   pure btcBalance { balRespConfirmed = foldl (+) 0 tutxos }
   where
     f db x = do
-        stxo <- get db def $ flat $ TxInCacheRecKey (cachedTxOut'txHash x) $ cachedTxOut'index  x
+        stxo <- get db def $ flat $ TxInCacheRecKey (txOutCacheRec'txHash x) $ txOutCacheRec'index  x
         pure $ case stxo of
             Just s -> 0
-            Nothing -> cachedTxOut'value x
+            Nothing -> txOutCacheRec'value x
 
 indexGetBalanceEndpoint BalanceRequest { balReqCurrency = ERGO } = pure ergoBalance
 
 indexGetTxHashHistoryEndpoint :: TxHashHistoryRequest -> ServerM TxHashHistoryResponse
 indexGetTxHashHistoryEndpoint  req@(TxHashHistoryRequest{ historyReqCurrency = BTC }) = do
   db <- getDb
-  maybeUTXOs <- (fmap $ fmap $ unflatExact @[CachedTxOut]) (get db def $ flat $ TxOutCacheRecKey $ historyReqPubKeyScriptHash req)
+  maybeUTXOs <- (fmap $ fmap $ unflatExact @TxOutCacheRec) (get db def $ flat $ TxOutCacheRecKey $ historyReqPubKeyScriptHash req)
   let utxos = fromMaybe [] maybeUTXOs
   tutxos <- mapM (f db) utxos
-  txs <- mapM (fmap (unflatExact @CachedTx) . fmap fromJust . get db def . flat . TxCacheRecKey ) $ nub $ mconcat tutxos
-  pure $ (\x -> TxHashHistoryItem (cachedTx'hash x) (cachedTx'blockHeight x) ) <$> sortOn (\x -> (cachedTx'blockHeight x, cachedTx'blockIndex  x)) txs
+  txs <- mapM (fmap (unflatExact @TxCacheRec) . fmap fromJust . get db def . flat . TxCacheRecKey ) $ nub $ mconcat tutxos
+  pure $ (\x -> TxHashHistoryItem (txCacheRec'hash x) (txCacheRec'blockHeight x) ) <$> sortOn (\x -> (txCacheRec'blockHeight x, txCacheRec'blockIndex  x)) txs
   where
       f db x = do
-          stxo <- (fmap $ fmap $ unflatExact @TxHash) $ get db def $ flat $ TxInCacheRecKey (cachedTxOut'txHash x) $ cachedTxOut'index x
+          stxo <- (fmap $ fmap $ unflatExact @TxHash) $ get db def $ flat $ TxInCacheRecKey (txOutCacheRec'txHash x) $ txOutCacheRec'index x
           pure $ case stxo of
-              Just s -> [cachedTxOut'txHash x , s]
-              Nothing -> [cachedTxOut'txHash x]
+              Just s -> [txOutCacheRec'txHash x , s]
+              Nothing -> [txOutCacheRec'txHash x]
 
 indexGetTxHashHistoryEndpoint TxHashHistoryRequest { historyReqCurrency = ERGO } = pure ergoHistory
 
 indexGetBlockHeadersEndpoint :: BlockHeadersRequest -> ServerM BlockHeadersResponse
 indexGetBlockHeadersEndpoint request = do
-    db <- getDb
-    i <- createIter db  def
-    let range = LDB.KeyRange start $ c
-    slice <- LDB.toList $ LDB.entrySlice i range LDB.Asc
-    pure $ unflatExact @Text . snd <$> slice
-    where
-        start = flat $ BlockMetaCacheRecKey (headersReqCurrency request) $ headersReqStartIndex request
-        end = BlockMetaCacheRecKey (headersReqCurrency request) $ headersReqStartIndex request + headersReqAmount request
-        c x = compare (parsedCachedMetaKey x) end 
+    let start = BlockMetaCacheRecKey (headersReqCurrency request) (headersReqStartIndex request)
+        end   = BlockMetaCacheRecKey (headersReqCurrency request) (pred $ headersReqStartIndex request + headersReqAmount request)
+    slice <- safeEntrySlice start end
+    let blockHeaders = snd <$> slice
+    pure blockHeaders
 
 txMerkleProofEndpoint :: TxMerkleProofRequest -> ServerM TxMerkleProofResponse
 txMerkleProofEndpoint TxMerkleProofRequest { merkleReqCurrency = BTC }  = pure btcProof
