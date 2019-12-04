@@ -12,7 +12,8 @@ import qualified Data.ByteString as BS
 import qualified Data.Bytes.Serial as BSerial
 import qualified Data.Bytes.VarInt as BV
 
-newtype VLQLengthPrefixed a = VLQLengthPrefixed a
+newtype VLQLengthPrefixed a = VLQLengthPrefixed { unVLQLengthPrefixed :: a }
+newtype OneByteLengthPrefixed a = OneByteLengthPrefixed { unOneByteLengthPrefixed :: a }
 newtype VLQInt32 = VLQInt32 { unVLQInt32 :: Int32 }
 newtype VLQWord32 = VLQWord32 { unVLQWord32 :: Word32 }
 newtype VLQWord64 = VLQWord64 { unVLQWord64 :: Word64 }
@@ -86,3 +87,15 @@ instance Serialize (VLQLengthPrefixed BS.ByteString) where
   get = do
       n <- fromIntegral . unVLQInt32 <$> get
       VLQLengthPrefixed <$> S.getBytes n
+
+instance Serialize (OneByteLengthPrefixed BS.ByteString) where
+  put (OneByteLengthPrefixed bs) = do
+      put @Word8 . fromIntegral . BS.length $ bs
+      -- w.putUByte(dBytes.length)
+      -- w.putBytes(dBytes)
+      put bs
+  get = do
+      -- val dBytesLength = r.getUByte()
+      -- val d = BigInt(BigIntegers.fromUnsignedByteArray(r.getBytes(dBytesLength)))
+      n <- fromIntegral @Word8 <$> get
+      OneByteLengthPrefixed <$> S.getBytes n
