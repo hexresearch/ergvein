@@ -2,20 +2,15 @@ module Ergvein.Index.Server.Server.V1 where
 
 import Data.Flat
 import Data.List
-import Data.Maybe
-import Servant.API.Generic
-import Servant.Server
-import Servant.Server.Generic
+import Data.Monoid
 
 import Ergvein.Index.API
 import Ergvein.Index.API.Types
 import Ergvein.Index.API.V1
-import Ergvein.Index.Server.Cache.Monad
 import Ergvein.Index.Server.Cache.Queries
 import Ergvein.Index.Server.Cache.Schema
 import Ergvein.Index.Server.Monad
 import Ergvein.Types.Currency
-import Data.Monoid
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
@@ -69,7 +64,6 @@ indexGetBalanceEndpoint BalanceRequest { balReqCurrency = ERGO } = pure ergoBala
 
 indexGetTxHashHistoryEndpoint :: TxHashHistoryRequest -> ServerM TxHashHistoryResponse
 indexGetTxHashHistoryEndpoint req@(TxHashHistoryRequest{ historyReqCurrency = BTC }) = do
-  db <- getDb
   maybeHistory <- getTxOutHistory $ historyReqPubKeyScriptHash req
   case maybeHistory of
     Just history -> do
