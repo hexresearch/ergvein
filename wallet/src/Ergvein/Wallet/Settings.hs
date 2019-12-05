@@ -62,10 +62,11 @@ loadSettings = const $ liftIO $ do
   case mpath of
     Nothing -> fail "Ergvein panic! No local folder!"
     Just path -> do
-      ex <- doesFileExist $ path <> "/config.yaml"
+      let configPath = path <> "/config.yaml"
+      ex <- doesFileExist configPath
       if not ex
         then mkDefSettings path
-        else either (const $ mkDefSettings path) pure =<< readYamlEither' path
+        else either (const $ mkDefSettings path) pure =<< readYamlEither' configPath
 #else
 mkDefSettings :: MonadIO m => m Settings
 mkDefSettings = liftIO $ do
@@ -90,8 +91,9 @@ loadSettings mpath = liftIO $ case mpath of
     putStrLn path
     loadSettings $ Just path
   Just path -> do
+    let configPath = path <> "/config.yaml"
     ex <- doesFileExist path
     if not ex
       then mkDefSettings
-      else either (const mkDefSettings) pure =<< readYamlEither' path
+      else either (const mkDefSettings) pure =<< readYamlEither' configPath
 #endif
