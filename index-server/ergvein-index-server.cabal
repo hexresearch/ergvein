@@ -32,14 +32,14 @@ library
     Ergvein.Index.Server.Cache.Schema
     Ergvein.Index.Server.Cache.Queries
   build-depends:
-        base                     >= 4.7 && < 4.12
-      , aeson                    == 1.3.*
+        base                     < 4.13
+      , aeson                    == 1.4.*
       , bitcoin-api              == 0.12.1
       , bitcoin-block            == 0.13.*
       , bytestring               == 0.10.*
       , cereal                   == 0.5.*
       , conduit                  == 1.3.*
-      , containers               == 0.5.*
+      , containers               == 0.6.*
       , conversion               == 1.2.*
       , data-default             == 0.7.*
       , directory                == 1.3.*
@@ -50,21 +50,21 @@ library
       , hexstring                == 0.11.*
       , ilist                    == 0.3.*
       , immortal                 == 0.3.*
-      , lens                     == 4.16.*
+      , lens                     == 4.17.*
       , leveldb-haskell          == 0.6.*
       , monad-extras             == 0.6.*
       , monad-logger             == 0.3.*
       , mtl                      == 2.2.*
-      , persistent               == 2.8.*
+      , persistent               == 2.9.*
       , persistent-pagination    == 0.1.*
-      , persistent-postgresql    == 2.8.*
+      , persistent-postgresql    == 2.9.*
       , persistent-template      == 2.5.*
       , resource-pool            == 0.2.*
       , resourcet                == 1.2.*
       , safe                     == 0.3.*
-      , servant                  == 0.14.*
-      , servant-server           == 0.14.*
-      , template-haskell         == 2.13.*
+      , servant                  == 0.16.*
+      , servant-server           == 0.16.*
+      , template-haskell         == 2.14.*
       , text                     == 1.2.*
       , time                     == 1.8.*
       , unliftio-core            == 0.1.*
@@ -106,12 +106,12 @@ executable ergvein-index-server
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base                      >= 4.7 && < 4.12
+      base                      < 4.13
     , bitcoin-api               == 0.12.1
     , immortal                  == 0.3.*
     , optparse-applicative      == 0.14.*
-    , servant                   == 0.14.*
-    , servant-server            == 0.14.*
+    , servant                   == 0.16.*
+    , servant-server            == 0.16.*
     , text                      == 1.2.*
     , unliftio-core             == 0.1.*
     , wai                       == 3.2.*

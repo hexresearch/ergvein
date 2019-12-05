@@ -21,8 +21,7 @@ library
     Ergvein.Wallet.Alert
     Ergvein.Wallet.Alert.Handler
     Ergvein.Wallet.Alert.Type
-    Ergvein.Wallet.Client.Impl
-    Ergvein.Wallet.Client.Util
+    Ergvein.Wallet.Client
     Ergvein.Wallet.Clipboard
     Ergvein.Wallet.Elements
     Ergvein.Wallet.Embed
@@ -31,6 +30,7 @@ library
     Ergvein.Wallet.Input
     Ergvein.Wallet.Language
     Ergvein.Wallet.Loading
+    Ergvein.Wallet.Localization.Client
     Ergvein.Wallet.Localization.Native
     Ergvein.Wallet.Localization.Password
     Ergvein.Wallet.Localization.Seed
@@ -44,7 +44,6 @@ library
     Ergvein.Wallet.Monad
     Ergvein.Wallet.Monad.Auth
     Ergvein.Wallet.Monad.Base
-    Ergvein.Wallet.Monad.Client
     Ergvein.Wallet.Monad.Front
     Ergvein.Wallet.Monad.Storage
     Ergvein.Wallet.Monad.Unauth
@@ -73,13 +72,14 @@ library
     , base16-bytestring
     , base64-bytestring         >= 1        && < 1.0.0.3
     , bytestring                >= 0.10     && < 0.11
-    , clay                      >= 0.13     && < 0.14
-    , containers                >= 0.5      && < 0.6
+    , clay                      >= 0.14     && < 0.15
+    , containers                >= 0.6      && < 0.7
     , data-default
     , directory
     , ergvein-common            >= 1.0      && < 1.1
-    , ergvein-index-api         >= 0.1      && < 0.2
     , ergvein-crypto            >= 0.1      && < 0.2
+    , ergvein-index-api         >= 0.1      && < 0.2
+    , ergvein-index-client      >= 0.1      && < 0.2
     , ergvein-wallet-native     >= 0.1      && < 0.2
     , ergvein-wallet-types      >= 0.1      && < 0.2
     , exceptions
@@ -87,9 +87,11 @@ library
     , filepath
     , ghcjs-dom
     , haskoin-core
+    , http-client               >= 0.5      && < 0.7
     , interpolatedstring-perl6
     , jsaddle
-    , lens                      >= 4.16     && < 4.17
+    , lens                      >= 4.16     && < 4.18
+    , lifted-base               >= 0.2      && < 0.3
     , memory                    >= 0.14.16  && < 0.15.1
     , MonadRandom
     , mtl                       >= 2.2      && < 2.3
@@ -102,8 +104,10 @@ library
     , reflex-external-ref
     , reflex-localize
     , safe
+    , semialign
     , servant
-    , servant-reflex
+    , servant-client            >= 0.16     && < 0.17
+    , stm                       >= 2.4      && < 2.6
     , template-haskell
     , text                      >= 1.2      && < 1.3
     , these
@@ -141,6 +145,7 @@ library
     TypeApplications
     TypeFamilies
     TypeOperators
+    UndecidableInstances
 
 executable ergvein
   hs-source-dirs:

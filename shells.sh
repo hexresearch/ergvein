@@ -1,1 +1,1 @@
-nix-shell -A shells.ghc
+nix-shell -A shells.ghc "$@"

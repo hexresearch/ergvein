@@ -26,9 +26,8 @@ import Ergvein.Wallet.Desktop.Native
 -- | Getting logs and dynamically updates them
 logReader :: MonadFrontBase t m => m (Dynamic t [LogEntry])
 logReader = do
-  store <- getStoreDir
   buildE <- getPostBuild
-  initE <- performEvent $ ffor buildE $ const (readLogEntries store)
+  initE <- performEvent $ ffor buildE $ const readLogEntries
   updE <- fst <$> getLogsTrigger
   foldDyn go [] $ leftmost [Right <$> updE, Left <$> initE]
   where
@@ -36,8 +35,8 @@ logReader = do
     go (Left !as) _ = as
 
 -- | Extract log entries from internal storage
-readLogEntries :: MonadIO m => Text -> m [LogEntry]
-readLogEntries store = flip runReaderT store $ do
+readLogEntries :: (HasStoreDir m, MonadIO m) => m [LogEntry]
+readLogEntries = do
   newEs <- fmap (either (const []) id) $ readStoredFile logStorageKey
   oldEs <- fmap (either (const []) id) $ readStoredFile logStorageKeyOld
   let es = reverse newEs <> reverse oldEs

@@ -24,12 +24,7 @@ import Ergvein.Wallet.Desktop.Native
 
 -- | Widget that writes down to internal storage all log entries
 logWriter :: MonadFrontBase t m => Event t LogEntry -> m ()
-logWriter e = do
-  store <- getStoreDir
-  performEvent_ $ (writeEntry store) <$> e
-
-writeEntry :: MonadIO m => Text -> LogEntry -> m ()
-writeEntry store e = flip runReaderT store $ do
-  size <- fmap (either (const 0) id) $ getStoreFileSize logStorageKey
+logWriter e = performEvent_ $ ffor e $ \entry -> do
+  size <- either (const 0) id <$> getStoreFileSize logStorageKey
   when (size >= logStorageMaxSize) $ void $ moveStoredFile logStorageKey logStorageKeyOld
-  appendStoredFile logStorageKey $ (<> "\n") . decodeUtf8 . BS.toStrict . encode $ e
+  appendStoredFile logStorageKey $ (<> "\n") . decodeUtf8 . BS.toStrict . encode $ entry
