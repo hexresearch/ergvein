@@ -15,8 +15,8 @@ class (MonadLogger m, MonadUnliftIO m) => MonadLDB m where
   getDb :: m LDB.DB
 
 data AreaKey = AreaKey 
-  { key'prefix :: BS.ByteString 
-  , key'base   :: BS.ByteString 
+  { key'prefix :: BS.ByteString
+  , key'base   :: BS.ByteString
   } deriving (Generic, Flat)
 
 keyString :: (Flat k) => BS.ByteString -> k -> BS.ByteString

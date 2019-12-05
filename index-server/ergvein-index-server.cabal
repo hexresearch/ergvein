@@ -25,7 +25,7 @@ library
     Ergvein.Index.Server.Config
     Ergvein.Index.Server.Environment
     Ergvein.Index.Server.BlockchainScan
-    Ergvein.Index.Server.BlockchainCache
+    Ergvein.Index.Server.Cache
     Ergvein.Index.Server.BlockScanner.BTCBlockScanner
     Ergvein.Index.Server.BlockScanner.Types
     Ergvein.Index.Server.Cache.Monad

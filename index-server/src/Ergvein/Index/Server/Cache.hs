@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
-module Ergvein.Index.Server.BlockchainCache where 
+module Ergvein.Index.Server.Cache where 
 
 import Conduit
 import Conversion
@@ -10,18 +10,17 @@ import Database.LevelDB
 import Database.LevelDB.Base as  LDB.Base
 import System.Directory
 
-import qualified Data.ByteString as B
-import qualified Data.Conduit.List as CL
-import qualified Data.Map.Strict as Map
-
 import Ergvein.Index.Server.BlockScanner.Types
 import Ergvein.Index.Server.Cache.Monad
 import Ergvein.Index.Server.Cache.Schema
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema
-import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+
+import qualified Data.ByteString as B
+import qualified Data.Conduit.List as CL
+import qualified Data.Map.Strict as Map
 
 instance Conversion TxOutInfo TxOutCacheRecItem where
   convert txOutInfo = TxOutCacheRecItem (txOut'index txOutInfo) (txOut'value txOutInfo) (txOut'txHash txOutInfo)
@@ -66,18 +65,16 @@ addToCache db update = do
   cacheTxInInfos db $ blockContent'TxInInfos $ blockInfo'content update
   cacheTxInfos db $ blockContent'TxInfos $ blockInfo'content update
 
-openDb :: MonadIO m => m DB
+openDb :: IO DB
 openDb = do
-  dbDirectory <- liftIO $ levelDbDir
+  dbDirectory <- levelDbDir
+  isDbDirExist <- liftIO $ doesDirectoryExist dbDirectory
+  if isDbDirExist then removeDirectoryRecursive dbDirectory else pure ()
   db <- LDB.Base.open dbDirectory def {createIfMissing = True }
   pure db
 
 loadCache :: DB -> DBPool -> IO ()
 loadCache db pool = do
-  dbDirectory <- levelDbDir
-  isDbDirExist <- liftIO $ doesDirectoryExist dbDirectory
-  if isDbDirExist then removeDirectoryRecursive dbDirectory else pure ()
-  
   runDbQuery pool $ runConduit $ pagedEntitiesStream TxOutRecId 
     .| CL.mapM_ (cacheTxOutInfos db . fmap convert)
     .| sinkList

@@ -17,7 +17,7 @@ import Ergvein.Index.Server.Environment
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
-import Ergvein.Index.Server.BlockchainCache
+import Ergvein.Index.Server.Cache
 import Conversion
 
 
@@ -65,7 +65,7 @@ scannerThread env currency scanInfo =
         storeScannedHeight currency blockHeight
       dir <- levelDbDir
       pure ()
-      --addToCache (ldb env) blockInfo
+      addToCache (ldb env) blockInfo
     scanIteration thread = liftIO $ do
       heights <- blockHeightsToScan env currency
       forM_ heights blockIteration

@@ -11,7 +11,7 @@ import Network.Bitcoin.Api.Types
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema
-import Ergvein.Index.Server.BlockchainCache
+import Ergvein.Index.Server.Cache
 import Database.LevelDB.Base
 import Data.Default
 
