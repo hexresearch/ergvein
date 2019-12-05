@@ -18,10 +18,13 @@ keyString keyPrefix key = keyPrefix <> flat key
 unPrefixedKey key = Data.ByteString.drop 4 key
   where err = error $ "unPrefixedKey error"
 
+parsedCacheKey :: (Flat k) => ByteString -> k
+parsedCacheKey = unflatExact' . unPrefixedKey
+
 --TxOut
 
-cachedTxOutKey :: TxOutCacheRecKey -> ByteString
-cachedTxOutKey = keyString "\0\0\0\1"
+cachedTxOutKey :: PubKeyScriptHash -> ByteString
+cachedTxOutKey = keyString "\0\0\0\0" . TxOutCacheRecKey
 
 data TxOutCacheRecKey = TxOutCacheRecKey
   { txOutCacheRecKey'pubKeyScriptHash :: PubKeyScriptHash
@@ -37,8 +40,8 @@ type TxOutCacheRec = [TxOutCacheRecItem]
 
 --TxIn
 
-cachedTxInKey :: TxInCacheRecKey -> ByteString
-cachedTxInKey = keyString "\0\0\1\0"
+cachedTxInKey :: (PubKeyScriptHash, TxOutIndex) -> ByteString
+cachedTxInKey = keyString "\0\0\0\1" . uncurry TxInCacheRecKey
 
 data TxInCacheRecKey = TxInCacheRecKey
   { txInCacheRecKey'txOutHash :: PubKeyScriptHash
@@ -51,8 +54,8 @@ data TxInCacheRec = TxInCacheRec
 
 --Tx
 
-cachedTxKey :: TxCacheRecKey -> ByteString
-cachedTxKey = keyString "\0\0\1\1"
+cachedTxKey :: TxHash -> ByteString
+cachedTxKey = keyString "\0\0\1\0" . TxCacheRecKey
 
 data TxCacheRecKey = TxCacheRecKey
   { txCacheRecKey'hash         :: TxHash
@@ -66,13 +69,8 @@ data TxCacheRec = TxCacheRec
 
 --BlockMeta
 
-cachedMetaKeyPrefix = "\0\1\0\0"
-
 cachedMetaKey :: (Currency, BlockHeight) -> ByteString
-cachedMetaKey = keyString cachedMetaKeyPrefix . uncurry BlockMetaCacheRecKey
-
-parsedCachedMetaKey :: ByteString -> BlockMetaCacheRecKey
-parsedCachedMetaKey = unflatExact' . unPrefixedKey
+cachedMetaKey = keyString "\0\0\1\1" . uncurry BlockMetaCacheRecKey
 
 data BlockMetaCacheRecKey = BlockMetaCacheRecKey
   { blockMetaCacheRecKey'currency     :: Currency

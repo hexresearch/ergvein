@@ -68,7 +68,7 @@ indexGetTxHashHistoryEndpoint req@(TxHashHistoryRequest{ historyReqCurrency = BT
   case maybeHistory of
     Just history -> do
         let uniqueHistoryTxIds = nub . mconcat $ utxoHistoryTxIds <$> history
-        txs <- getManyParsedExact $ flat . TxCacheRecKey <$> uniqueHistoryTxIds
+        txs <- getManyParsedExact $ cachedTxKey <$> uniqueHistoryTxIds
         let sortedTxs = sortOn txSorting txs
             historyItems = (\tx -> TxHashHistoryItem (txCacheRec'hash tx) (txCacheRec'blockHeight tx)) <$> sortedTxs
         pure historyItems
@@ -82,7 +82,7 @@ indexGetTxHashHistoryEndpoint TxHashHistoryRequest { historyReqCurrency = ERGO }
 
 indexGetBlockHeadersEndpoint :: BlockHeadersRequest -> ServerM BlockHeadersResponse
 indexGetBlockHeadersEndpoint request = do
-    let start = flat $ BlockMetaCacheRecKey (headersReqCurrency request) (headersReqStartIndex request)
+    let start = cachedMetaKey (headersReqCurrency request, headersReqStartIndex request)
         end   = BlockMetaCacheRecKey (headersReqCurrency request) (pred $ headersReqStartIndex request + headersReqAmount request)
     slice <- safeEntrySlice start end
     let blockHeaders = snd <$> slice

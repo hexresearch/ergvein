@@ -41,21 +41,22 @@ cacheBlockMetaInfos db infos = write db def $ putItems keySelector valueSelector
     valueSelector info = BlockMetaCacheRec $ blockMeta'headerHexView info
 
 cacheTxInfos :: MonadIO m => DB -> [TxInfo] -> m ()
-cacheTxInfos db infos = write db def $ putItems (flat . TxCacheRecKey . tx'hash) (convert @TxInfo @TxCacheRec) infos
+cacheTxInfos db infos = do 
+  write db def $ putItems (cachedTxKey . tx'hash) (convert @TxInfo @TxCacheRec) infos
 
 cacheTxInInfos :: MonadIO m => DB -> [TxInInfo] -> m ()
-cacheTxInInfos db infos = write db def $ putItems (\info -> flat $ TxInCacheRecKey (txIn'txOutHash info) $ txIn'txOutIndex info) txIn'txHash infos
+cacheTxInInfos db infos = write db def $ putItems (\info -> cachedTxInKey (txIn'txOutHash info, txIn'txOutIndex info)) txIn'txHash infos
 
 cacheTxOutInfos :: MonadIO m => DB -> [TxOutInfo] -> m ()
 cacheTxOutInfos db infos = do
   let updateMap = fmap (convert @TxOutInfo @TxOutCacheRecItem) <$> (groupMapBy txOut'pubKeyScriptHash infos)
-  cached <- sequence $ getCached <$> (Map.keys updateMap :: [PubKeyScriptHash])
+  cached <- mapM getCached $ Map.keys updateMap
   let cachedMap = Map.fromList $ catMaybes cached
       updated = Map.toList $ Map.unionWith (++) cachedMap updateMap
-  write db def $ putItems (flat . TxOutCacheRecKey . fst) snd updated
+  write db def $ putItems (cachedTxOutKey . fst) snd updated
   where
     getCached pubScriptHash = do
-      maybeStored <- get db def $ flat $ TxOutCacheRecKey pubScriptHash
+      maybeStored <- get db def $ cachedTxOutKey pubScriptHash
       let parsedMaybe = unflatExact <$> maybeStored
       pure $ (pubScriptHash,) <$> parsedMaybe
 
@@ -64,6 +65,7 @@ addToCache db update = do
   cacheTxOutInfos db $ blockContent'TxOutInfos $ blockInfo'content update
   cacheTxInInfos db $ blockContent'TxInInfos $ blockInfo'content update
   cacheTxInfos db $ blockContent'TxInfos $ blockInfo'content update
+  cacheBlockMetaInfos db $ [blockInfo'meta update]
 
 openDb :: IO DB
 openDb = do

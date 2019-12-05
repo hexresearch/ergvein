@@ -37,11 +37,11 @@ getParsedExact :: (MonadLDB m, Flat v) => BS.ByteString -> m v
 getParsedExact key = do
   db <- getDb
   maybeResult <- get db def key
-  let result = fromJust notFoundErr maybeResult
+  let result = fromMaybe notFoundErr maybeResult
       parsedResult = unflatExact result
   pure parsedResult
   where
-    notFoundErr = error "getParsedExact error"
+    notFoundErr = error $ "getParsedExact: not found" ++ show key
 
 getManyParsedExact :: (MonadLDB m, Flat v) => [BS.ByteString] -> m [v]
 getManyParsedExact keys = do
@@ -57,7 +57,7 @@ type TxOutHistory = [TxOutHistoryItem]
 getTxOutHistory :: (MonadLDB m) => PubKeyScriptHash -> m (Maybe TxOutHistory)
 getTxOutHistory key = do
   db <- getDb
-  maybeHistory <- getParsed $ flat key
+  maybeHistory <- getParsed $ cachedTxOutKey key
   case maybeHistory of
     Just history -> do
       txoHistory <- mapM withSpentInfo history
@@ -65,7 +65,7 @@ getTxOutHistory key = do
     _ -> pure Nothing
   where
     withSpentInfo utxo = do
-        maybeSTXO <- getParsed $ flat $ TxInCacheRecKey (txOutCacheRec'txHash utxo) (txOutCacheRec'index  utxo)
+        maybeSTXO <- getParsed $ cachedTxInKey (txOutCacheRec'txHash utxo, txOutCacheRec'index  utxo)
         pure $ case maybeSTXO of
           Just stxo -> STXO (utxo, stxo)
           _ -> UTXO utxo
