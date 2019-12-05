@@ -8,20 +8,15 @@ import GHC.Natural
 
 import Ergvein.Interfaces.Ergo.Scorex.Util.Serialization.VLQLengthPrefixed
 
--- import Crypto.Secp256k1
-
 -- | Solution of Autolykos PoW puzzle
 --
--- @param pk - miner public key. Should be used to collect block rewards
--- @param w  - one-time public key. Prevents revealing of miners secret
--- @param n  - nonce
--- @param d  - distance between pseudo-random number, corresponding to nonce `n` and a secret,
---           corresponding to `pk`. The lower `d` is, the harder it was to find this solution.
 data AutolykosSolution = AutolykosSolution {
-  minerPK   :: EcPointType -- pk
-, onetimePK :: EcPointType -- w
-, nonce     :: Nonce  -- n: Array[Byte]
-, distance  :: Integer     -- d: BigInt
+  minerPK   :: EcPointType -- ^ @param pk - miner public key. Should be used to collect block rewards
+, onetimePK :: EcPointType -- ^ @param w  - one-time public key. Prevents revealing of miners secret
+, nonce     :: Nonce       -- ^ @param n  - nonce
+, distance  :: Integer     -- ^ @param d : BigInt  - distance between
+                           -- pseudo-random number, corresponding to nonce `n` and a secret, corresponding
+                           -- to `pk`. The lower `d` is, the harder it was to find this solution.
 }
 
 newtype Nonce = Nonce { unNonce :: ByteString }

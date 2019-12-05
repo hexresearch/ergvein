@@ -16,12 +16,9 @@ import Ergvein.Interfaces.Ergo.Scorex.Util.Serialization.VLQLengthPrefixed
 
 
 data PoPowHeader = PoPowHeader {
-  header :: Header              -- header: Header
-, interlinks :: [ModifierId]    -- interlinks: Seq[ModifierId]
+  header :: Header
+, interlinks :: [ModifierId]
 }
-  -- FIXME Add lens getters:
-  -- def id: ModifierId = header.id
-  -- def height: Int = header.height
 
 instance Serialize PoPowHeader where
     put obj = do
