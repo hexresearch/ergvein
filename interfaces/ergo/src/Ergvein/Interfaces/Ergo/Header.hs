@@ -32,7 +32,7 @@ data Header = Header {
 , height :: Height
 , votes :: Votes
 , powSolution :: AutolykosSolution
-}
+} deriving (Eq)
 
 instance Serialize Header where
     put Header{..} = do
@@ -90,6 +90,7 @@ instance Serialize Header where
         pure Header {..}
 
 newtype Votes = Votes { unVotes :: ByteString }
+  deriving (Eq)
 
 instance Serialize Votes where
   -- votes: Array[Byte], //3 bytes

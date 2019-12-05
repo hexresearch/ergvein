@@ -81,6 +81,12 @@ test-suite ergvein-interface-ergo-test
     TupleSections
   build-depends:
       base                     >= 4.7 && < 4.12
+    , ergvein-interface-ergo
     , tasty
-    , tasty-hspec
     , tasty-discover
+    , tasty-hspec
+    , base16-bytestring
+    , bytestring
+    , cereal                   == 0.5.*
+    , either
+    , text

@@ -18,8 +18,10 @@ data AutolykosSolution = AutolykosSolution {
                            -- pseudo-random number, corresponding to nonce `n` and a secret, corresponding
                            -- to `pk`. The lower `d` is, the harder it was to find this solution.
 }
+  deriving (Eq)
 
 newtype Nonce = Nonce { unNonce :: ByteString }
+  deriving (Eq)
 
 instance Serialize Nonce where
     put = S.putByteString . unNonce
@@ -28,6 +30,7 @@ instance Serialize Nonce where
 
 
 newtype BigInt = BigInt { unBigInt :: Integer }
+  deriving (Eq)
 
 -- https://github.com/bigfatbrowncat/avian-pack.android.external.bouncycastle/blob/bd63be61caf85120ee69cda508a35580a230d57c/bcprov/src/main/java/org/bouncycastle/util/BigIntegers.java#L20
 instance Serialize BigInt where
@@ -42,6 +45,7 @@ instance Serialize BigInt where
         BigInt . fromIntegral @Natural <$> (either fail pure $ decode bs)
 
 newtype Secp256k1 = Secp256k1 { unSecp256k1 :: ByteString }
+  deriving (Eq)
 
 type EcPointType = Secp256k1
 

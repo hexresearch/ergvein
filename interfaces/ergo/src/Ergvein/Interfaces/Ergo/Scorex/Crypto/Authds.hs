@@ -22,6 +22,7 @@ import Data.Word
 
 -- //33 bytes! extra byte with tree height here!
 newtype ADDigest = ADDigest { unADDigest :: ByteString }  --  TaggedType[Array[Byte]]
+  deriving (Eq)
 
 instance Serialize ADDigest where
     get = ADDigest <$> S.getBytes 33
