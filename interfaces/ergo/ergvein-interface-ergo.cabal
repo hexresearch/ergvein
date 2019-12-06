@@ -27,13 +27,13 @@ library
     Ergvein.Interfaces.Ergo.Scorex.Util.Serialization.VLQLengthPrefixed
 
   build-depends:
-        base                     >= 4.7 && < 4.12
-      , template-haskell         == 2.13.*
+        base                     >= 4.7 && < 4.13
+      , template-haskell         == 2.14.*
       , text                     == 1.2.*
       , bytes
       , bytestring               == 0.10.*
       , time                     == 1.8.*
-      , lens                     == 4.16.*
+      , lens                     == 4.17.*
       , cereal                   == 0.5.*
       , hexstring                == 0.11.*
 
@@ -80,7 +80,7 @@ test-suite ergvein-interface-ergo-test
     ScopedTypeVariables
     TupleSections
   build-depends:
-      base                     >= 4.7 && < 4.12
+      base                     >= 4.7 && < 4.13
     , ergvein-interface-ergo
     , tasty
     , tasty-discover
