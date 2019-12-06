@@ -91,9 +91,8 @@ loadSettings mpath = liftIO $ case mpath of
     putStrLn path
     loadSettings $ Just path
   Just path -> do
-    let configPath = path <> "/config.yaml"
-    ex <- doesFileExist path
+    ex <- doesFileExist $ path <> "/config.yaml"
     if not ex
       then mkDefSettings
-      else either (const mkDefSettings) pure =<< readYamlEither' configPath
+      else either (const mkDefSettings) pure =<< readYamlEither' path
 #endif
