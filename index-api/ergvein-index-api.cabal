@@ -13,6 +13,7 @@ library
       Ergvein.Index.API.Types
       Ergvein.Index.API.V1
       Ergvein.Types.Transaction
+      Ergvein.Types.Block
 
   build-depends:
         base

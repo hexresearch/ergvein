@@ -2,7 +2,7 @@
 let
   reflex-platform = (import ./reflex-platform.nix) {
     nixpkgsOverlays = [
-      (self: super: import ./nixpkgs-overlays/default.nix self super)
+      (self: super: import ./nixpkgs-overlays/default.nix self super )
     ];
     config.android_sdk.accept_license = true;
   };
@@ -42,7 +42,7 @@ in reflex-platform.project ({ pkgs, ... }: {
   overrides = import ./overrides.nix { inherit reflex-platform isAndroid; };
 
   shellToolOverrides = ghc: super: {
-    inherit (pkgs) postgresql;
+    inherit (pkgs) postgresql leveldb;
   };
 
   android.ergvein-wallet = {

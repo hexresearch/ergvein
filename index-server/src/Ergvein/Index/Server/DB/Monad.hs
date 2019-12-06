@@ -6,10 +6,11 @@ import Control.Monad.Reader
 import Data.Pool
 import Database.Persist.Sql
 import Database.Persist.Postgresql
+import Database.LevelDB
 
 type DBPool = Pool SqlBackend
 
-newDBPool ::(MonadUnliftIO m, MonadLogger m) => ConnectionString -> m DBPool
+newDBPool :: (MonadUnliftIO m, MonadLogger m) => ConnectionString -> m DBPool
 newDBPool connectionString = createPostgresqlPool connectionString 10
 
 class (MonadLogger m, MonadUnliftIO m) => MonadDB m where

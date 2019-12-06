@@ -51,5 +51,8 @@ in (self: super: let
     servant-client-core = self.callPackage ./derivations/servant-client-core.nix {};
     servant-server = self.callPackage ./derivations/servant-server.nix {};
     zlib = self.callPackage ./derivations/zlib.nix { };
+    servant-reflex = self.callPackage ./derivations/servant-reflex.nix {};
+    persistent-pagination = self.callPackage ./derivations/persistent-pagination.nix {};
+    flat = lib.dontCheck (super.flat);
   }
 )
