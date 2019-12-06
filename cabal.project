@@ -12,4 +12,5 @@ packages:
   ./wallet-desktop
   ./wallet-native
   ./wallet-types
+  ./interfaces/ergo
 shared: true
