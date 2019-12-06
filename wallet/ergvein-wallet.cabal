@@ -30,10 +30,13 @@ library
     Ergvein.Wallet.Input
     Ergvein.Wallet.Language
     Ergvein.Wallet.Loading
+    Ergvein.Wallet.Localization.AuthInfo
     Ergvein.Wallet.Localization.Client
+    Ergvein.Wallet.Localization.Initial
     Ergvein.Wallet.Localization.Native
     Ergvein.Wallet.Localization.Password
     Ergvein.Wallet.Localization.Seed
+    Ergvein.Wallet.Localization.Storage
     Ergvein.Wallet.Log
     Ergvein.Wallet.Log.Page
     Ergvein.Wallet.Log.Reader
@@ -58,6 +61,7 @@ library
     Ergvein.Wallet.Resize
     Ergvein.Wallet.Settings
     Ergvein.Wallet.Storage
+    Ergvein.Wallet.Storage.AuthInfo
     Ergvein.Wallet.Storage.Data
     Ergvein.Wallet.Storage.Util
     Ergvein.Wallet.Style
@@ -151,7 +155,7 @@ executable ergvein
   hs-source-dirs:
       app
   main-is:             Main.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts="-N -A64m -AL256m -qn4"
+  ghc-options:         -threaded -rtsopts "-with-rtsopts=-N -A64m -AL256m -qn4"
   build-depends:
       base
     , directory

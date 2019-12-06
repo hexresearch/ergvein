@@ -11,6 +11,8 @@ module Ergvein.Wallet.Storage.Util(
   , saveStorageToFile
   , loadStorageFromFile
   , listStorages
+  , getLastStorage
+  , setLastStorage
   ) where
 
 import Control.Monad.IO.Class
@@ -30,6 +32,7 @@ import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Native
+import Ergvein.Wallet.Localization.Storage
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Data
 import System.Directory
@@ -42,7 +45,7 @@ import qualified Data.ByteString as BS
 type Password = Text
 type WalletName = Text
 
-createWallet :: Mnemonic -> Either StorageAlerts WalletData
+createWallet :: Mnemonic -> Either StorageAlert WalletData
 createWallet mnemonic = case mnemonicToSeed "" mnemonic of
   Left err -> Left $ SAMnemonicFail $ T.pack err
   Right seed -> let
@@ -50,14 +53,14 @@ createWallet mnemonic = case mnemonicToSeed "" mnemonic of
     masters = M.fromList $ fmap (\c -> (c, deriveCurrencyKey root c)) allCurrencies
     in Right $ WalletData seed (EgvRootKey root) masters
 
-createStorage :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either StorageAlerts ErgveinStorage)
+createStorage :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either StorageAlert ErgveinStorage)
 createStorage mnemonic (login, pass) = either (pure . Left) (\wd -> do
   ewdResult <- encryptWalletData wd pass
   case ewdResult of
     Left err -> pure $ Left err
     Right ewd -> pure $ Right $ ErgveinStorage ewd mempty login) $ createWallet mnemonic
 
-encryptWalletData :: MonadIO m => WalletData -> Password -> m (Either StorageAlerts EncryptedWalletData)
+encryptWalletData :: MonadIO m => WalletData -> Password -> m (Either StorageAlert EncryptedWalletData)
 encryptWalletData walletData password = liftIO $ do
   salt :: ByteString <- genRandomSalt
   let secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
@@ -74,7 +77,7 @@ encryptWalletData walletData password = liftIO $ do
           , encryptedWallet'iv         = iv'
           }
 
-decryptWalletData :: EncryptedWalletData -> Password -> Either StorageAlerts WalletData
+decryptWalletData :: EncryptedWalletData -> Password -> Either StorageAlert WalletData
 decryptWalletData encryptedWalletData password =
   case decrypt secretKey iv ciphertext of
     Left err -> Left $ SACryptoError $ showt err
@@ -89,7 +92,7 @@ decryptWalletData encryptedWalletData password =
     iv = encryptedWallet'iv encryptedWalletData
     ciphertext = encryptedWallet'ciphertext encryptedWalletData
 
-encryptStorage :: (MonadIO m, MonadRandom m) => ErgveinStorage -> ECIESPubKey -> m (Either StorageAlerts EncryptedErgveinStorage)
+encryptStorage :: (MonadIO m, MonadRandom m) => ErgveinStorage -> ECIESPubKey -> m (Either StorageAlert EncryptedErgveinStorage)
 encryptStorage storage publicKey = do
   let curve = Proxy :: Proxy Curve_X25519
   deriveEncryptResult <- deriveEncrypt curve publicKey
@@ -116,7 +119,7 @@ encryptStorage storage publicKey = do
               , encryptedStorage'authTag    = authTag
               }
 
-decryptStorage :: EncryptedErgveinStorage -> ECIESPrvKey -> Either StorageAlerts ErgveinStorage
+decryptStorage :: EncryptedErgveinStorage -> ECIESPrvKey -> Either StorageAlert ErgveinStorage
 decryptStorage encryptedStorage privateKey = do
   let curve = Proxy :: Proxy Curve_X25519
       ciphertext = encryptedStorage'ciphertext encryptedStorage
@@ -139,7 +142,7 @@ decryptStorage encryptedStorage privateKey = do
             where
               storage = decodeJson $ decodeUtf8With lenientDecode decryptedStorage
 
-passwordToECIESPrvKey :: Password -> Either StorageAlerts ECIESPrvKey
+passwordToECIESPrvKey :: Password -> Either StorageAlert ECIESPrvKey
 passwordToECIESPrvKey password = case secretKey passwordHash of
   CryptoFailed err -> Left $ SACryptoError "Failed to generate an ECIES secret key from password"
   CryptoPassed key -> Right key
@@ -160,7 +163,7 @@ saveStorageToFile publicKey storage = do
     Right encStorage -> storeValue fname encStorage
 
 loadStorageFromFile :: (MonadIO m, HasStoreDir m, PlatformNatives)
-  => WalletName -> Password -> m (Either StorageAlerts ErgveinStorage)
+  => WalletName -> Password -> m (Either StorageAlert ErgveinStorage)
 loadStorageFromFile login pass = do
   let fname = storageFilePrefix <> T.replace " " "_" login
   storageResp <- readStoredFile fname
@@ -185,21 +188,21 @@ listStorages = do
       (a, _) = T.breakOn storageFilePrefix n
       in if T.null a then Just (T.drop (T.length storageFilePrefix) n) else Nothing
 
--- Alerts regarding secure storage system
-data StorageAlerts
-  = SADecodeError Text
-  | SALoadedSucc
-  | SANativeAlert NativeAlerts
-  | SAMnemonicFail Text
-  | SACryptoError Text
-  deriving (Eq)
+-- | Name of file where last wallet name is stored
+lastWalletFile :: Text
+lastWalletFile = ".last-wallet"
 
-instance LocalizedPrint StorageAlerts where
-  localizedShow l v = case l of
-    English -> case v of
-      SADecodeError e -> "Storage loading error: " <> e
-      SALoadedSucc    -> "Storage loaded"
-      SANativeAlert a -> localizedShow l a
-      SAMnemonicFail t -> "Failed to produce seed from mnemonic: " <> t
-      SACryptoError e -> "Cryptographic error: " <> e
-    Russian -> localizedShow English v
+-- | Try to check `.last-wallet` file to get name of wallet
+getLastStorage :: (MonadIO m, HasStoreDir m, PlatformNatives)
+  => m (Maybe WalletName)
+getLastStorage = do
+  logWrite $ "Reading last storage file " <> lastWalletFile
+  mres <- retrieveValue lastWalletFile Nothing
+  pure $ either (const Nothing) id $ mres
+
+-- | Try to write `.last-wallet` file to set name of wallet
+setLastStorage :: (MonadIO m, HasStoreDir m, PlatformNatives)
+  => Maybe WalletName -> m ()
+setLastStorage mnane = do
+  logWrite $ "Writing last storage file " <> lastWalletFile
+  storeValue lastWalletFile mnane

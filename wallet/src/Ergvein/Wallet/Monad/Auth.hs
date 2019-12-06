@@ -11,7 +11,6 @@ import Data.Functor (void)
 import Data.List (permutations)
 import Data.Maybe (catMaybes, listToMaybe)
 import Data.Text (Text, unpack)
-import Ergvein.Wallet.Storage.Util (saveStorageToFile)
 import Data.Time (NominalDiffTime)
 import Ergvein.Crypto
 import Ergvein.Index.Client
@@ -123,8 +122,12 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
     authRef <- asks env'authRef
     fire <- asks env'logoutFire
     performEvent $ ffor e $ \case
-      Nothing -> liftIO fire
-      Just v -> writeExternalRef authRef v
+      Nothing -> do
+        setLastStorage Nothing
+        liftIO fire
+      Just v -> do
+        setLastStorage $ Just . storage'walletName . authInfo'storage $ v
+        writeExternalRef authRef v
   {-# INLINE setAuthInfo #-}
   getPasswordModalEF = asks env'passModalEF
   {-# INLINE getPasswordModalEF #-}

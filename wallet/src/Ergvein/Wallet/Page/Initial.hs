@@ -7,9 +7,12 @@ import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Alert.Type
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Localization.Initial
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Page.Seed
+import Ergvein.Wallet.Password
+import Ergvein.Wallet.Storage.AuthInfo
 import Ergvein.Wallet.Wrapper
 
 import Control.Monad.IO.Class
@@ -20,32 +23,37 @@ import Ergvein.Wallet.Storage.Util
 
 data GoPage = GoSeed | GoRestore | Insta Text
 
-data InitialPageStrings =
-    IPSCreate
-  | IPSRestore
-
-instance LocalizedPrint InitialPageStrings where
-  localizedShow l v = case l of
-    English -> case v of
-      IPSCreate   -> "Create wallet"
-      IPSRestore  -> "Restore wallet"
-    Russian -> case v of
-      IPSCreate   -> "Создать кошелёк"
-      IPSRestore  -> "Восстановить кошелёк"
-
 initialPage :: MonadFrontBase t m => m ()
-initialPage = wrapper True $ divClass "initial-options grid1" $ do
-    ls <- listStorages
-    traverse_ (h4 . text) ls
-    newE <- fmap (GoSeed <$) $ outlineButton IPSCreate
-    restoreE <- fmap (GoRestore <$) $ outlineButton IPSRestore
-    let goE = leftmost [newE, restoreE]
-    void $ nextWidget $ ffor goE $ \go -> Retractable {
-        retractableNext = case go of
-          GoSeed -> mnemonicPage
-          GoRestore -> seedRestorePage
-      , retractablePrev = Just $ pure initialPage
-      }
+initialPage = do
+    ss <- listStorages
+    if null ss then noWalletsPage else hasWalletsPage ss
+  where
+    noWalletsPage = wrapper True $ divClass "initial-options grid1" $ do
+      newE <- fmap (GoSeed <$) $ outlineButton IPSCreate
+      restoreE <- fmap (GoRestore <$) $ outlineButton IPSRestore
+      let goE = leftmost [newE, restoreE]
+      void $ nextWidget $ ffor goE $ \go -> Retractable {
+          retractableNext = case go of
+            GoSeed -> mnemonicPage
+            GoRestore -> seedRestorePage
+        , retractablePrev = Just $ pure initialPage
+        }
+    hasWalletsPage ss = do
+      mname <- getLastStorage
+      maybe (selectWalletsPage ss) loadWalletPage mname
+    selectWalletsPage ss = wrapper True $ do
+       h4 $ localizedText IPSSelectWallet
+       flip traverse_ ss $ \name -> do
+         btnE <- outlineButton name
+         void $ nextWidget $ ffor btnE $ const $ Retractable {
+             retractableNext = loadWalletPage name
+           , retractablePrev = Just $ pure $ selectWalletsPage ss
+           }
+    loadWalletPage name = do
+      passE <- askPasswordPage
+      mauthE <- performEvent $ loadAuthInfo name <$> passE
+      authE <- handleDangerMsg mauthE
+      void $ setAuthInfo $ Just <$> authE
 
 initialAuthedPage :: MonadFront t m => m ()
 initialAuthedPage = wrapper True $ divClass "main-page" $ do
