@@ -35,6 +35,7 @@ in reflex-platform.project ({ pkgs, ... }: {
       "ergvein-wallet-desktop"
       "ergvein-wallet-types"
       "ergvein-interface-ergo"
+      "haskell-ergo-api"
       "reflex-dom-retractable"
       "reflex-external-ref"
       "reflex-localize"

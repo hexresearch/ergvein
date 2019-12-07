@@ -13,4 +13,5 @@ packages:
   ./wallet-native
   ./wallet-types
   ./interfaces/ergo
+  ./haskell-ergo-api
 shared: true
