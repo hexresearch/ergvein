@@ -8,7 +8,7 @@ import Ergvein.Wallet.Embed.TH
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
 
-data MenuItem = MenuNetwork | MenuSettings | MenuAbout | MenuLogs
+data MenuItem = MenuNetwork | MenuSettings | MenuAbout | MenuLogs | MenuSwitch
 
 instance LocalizedPrint MenuItem where
   localizedShow l v = case l of
@@ -17,11 +17,13 @@ instance LocalizedPrint MenuItem where
       MenuSettings -> "Settings"
       MenuAbout -> "About"
       MenuLogs -> "Logs"
+      MenuSwitch -> "Switch wallet"
     Russian -> case v of
       MenuNetwork -> "Сеть"
       MenuSettings -> "Настройки"
       MenuAbout -> "О программе"
       MenuLogs -> "Логи"
+      MenuSwitch -> "Сменить кошелёк"
 
 menuWidget :: MonadFrontBase t m => Maybe (Dynamic t (m ())) -> m ()
 menuWidget prevWidget = divClass "menu-header" $ do
@@ -36,7 +38,8 @@ menuWidget prevWidget = divClass "menu-header" $ do
         setE <- menuBtn MenuSettings
         abtE <- menuBtn MenuAbout
         logE <- menuBtn MenuLogs
-        switchMenu prevWidget $ leftmost [netE, setE, abtE, logE]
+        switchE <- menuBtn MenuSwitch
+        switchMenu prevWidget $ leftmost [netE, setE, abtE, logE, switchE]
 
 switchMenu :: MonadFrontBase t m => Maybe (Dynamic t (m ())) -> Event t MenuItem -> m ()
 switchMenu prevWidget e = void $ nextWidget $ fforMaybe e $ \go -> let
@@ -49,3 +52,6 @@ switchMenu prevWidget e = void $ nextWidget $ fforMaybe e $ \go -> let
       MenuSettings -> Nothing
       MenuAbout    -> Nothing
       MenuLogs     -> Nothing
+      MenuSwitch   -> Just $ mkNext $ do
+        buildE <- delay 0.1 =<< getPostBuild
+        void $ setAuthInfo $ Nothing <$ buildE

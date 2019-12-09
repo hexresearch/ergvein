@@ -20,6 +20,8 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Run
 import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Storage.Data
+import Ergvein.Wallet.Storage.Util
 import Network.HTTP.Client hiding (Proxy)
 import Reflex
 import Reflex.Dom.Retractable
@@ -132,9 +134,14 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE isAuthorized #-}
   getAuthInfoMaybe = externalRefDynamic =<< asks unauth'authRef
   {-# INLINE getAuthInfoMaybe #-}
+  getAuthInfoRef = asks unauth'authRef
+  {-# INLINE getAuthInfoRef #-}
   setAuthInfo e = do
     authRef <- asks unauth'authRef
-    performEvent $ ffor e $ writeExternalRef authRef
+    performEvent $ ffor e $ \v -> do
+      logWrite "unauthed setAuthInfo: setting info"
+      setLastStorage $ storage'walletName . authInfo'storage <$> v
+      writeExternalRef authRef v
   {-# INLINE setAuthInfo #-}
   getPasswordModalEF = asks unauth'passModalEF
   {-# INLINE getPasswordModalEF #-}

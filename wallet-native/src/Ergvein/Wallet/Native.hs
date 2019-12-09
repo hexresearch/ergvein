@@ -30,6 +30,9 @@ class PlatformNatives where
   -- | Key-value store. Read JSON value by key
   retrieveValue :: (HasStoreDir m, MonadIO m, FromJSON a) => Text -> a -> m (Either NativeAlerts a)
 
+  -- | Return list of available keys to get with `retrieveValue`.
+  listKeys :: (HasStoreDir m, MonadIO m) => m [Text]
+
   -- | Read stored file line by line from android app folder
   readStoredFile :: (HasStoreDir m, MonadIO m) => Text -> m (Either NativeAlerts [Text])
 
@@ -47,3 +50,6 @@ class PlatformNatives where
 
   -- | Put string into clipboard
   copyStr :: MonadIO m => Text -> m ()
+
+  -- | Write to system log
+  logWrite :: MonadIO m => Text -> m ()

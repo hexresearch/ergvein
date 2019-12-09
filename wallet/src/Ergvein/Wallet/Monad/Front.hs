@@ -75,3 +75,5 @@ class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   getPasswordSetEF :: m (Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
   -- | Proper requester of passwords. Use
   requestPasssword :: Event t () -> m (Event t Password)
+  -- | Internal method to get storage of auth info
+  getAuthInfoRef :: m (ExternalRef t (Maybe AuthInfo))
