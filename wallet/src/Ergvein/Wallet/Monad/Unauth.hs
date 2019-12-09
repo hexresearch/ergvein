@@ -134,9 +134,12 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE isAuthorized #-}
   getAuthInfoMaybe = externalRefDynamic =<< asks unauth'authRef
   {-# INLINE getAuthInfoMaybe #-}
+  getAuthInfoRef = asks unauth'authRef
+  {-# INLINE getAuthInfoRef #-}
   setAuthInfo e = do
     authRef <- asks unauth'authRef
     performEvent $ ffor e $ \v -> do
+      logWrite "unauthed setAuthInfo: setting info"
       setLastStorage $ storage'walletName . authInfo'storage <$> v
       writeExternalRef authRef v
   {-# INLINE setAuthInfo #-}
