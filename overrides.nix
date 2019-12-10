@@ -4,6 +4,7 @@ let
   pkgs = reflex-platform.nixpkgs;
   overrideCabal = pkgs.haskell.lib.overrideCabal;
   enableCabalFlag = pkgs.haskell.lib.enableCabalFlag;
+  doJailbreak = pkgs.haskell.lib.doJailbreak;
   lib = pkgs.haskell.lib;
   dontHaddock = lib.dontHaddock;
   gitignore = pkgs.callPackage (pkgs.fetchFromGitHub {
@@ -50,5 +51,7 @@ in (self: super: let
     servant-client-core = self.callPackage ./derivations/servant-client-core.nix {};
     servant-server = self.callPackage ./derivations/servant-server.nix {};
     zlib = self.callPackage ./derivations/zlib.nix { };
+    stm-hamt = self.callPackage ./derivations/stm-hamt.nix { };
+    haskey = self.callPackage ./derivations/haskey.nix { };
   }
 )

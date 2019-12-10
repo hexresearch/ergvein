@@ -4,7 +4,10 @@ let
     nixpkgsOverlays = [
       (self: super: import ./nixpkgs-overlays/default.nix self super)
     ];
-    config.android_sdk.accept_license = true;
+    config = {
+      android_sdk.accept_license = true;
+      allowBroken = true;
+    };
   };
 in reflex-platform.project ({ pkgs, ... }: {
   packages = {

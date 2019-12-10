@@ -118,6 +118,7 @@ library
     , time
     , vector
     , yaml
+    , haskey
   if flag(android)
     cpp-options: -DANDROID
     build-depends:
