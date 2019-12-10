@@ -4,7 +4,10 @@ import Data.ByteString
 import Data.Serialize                     as S (Serialize (..), decode, encode, get, put)
 import Data.Serialize.Get                 as S
 import Data.Serialize.Put                 as S
+import Data.String
 import Data.Word
+
+import Ergvein.Interfaces.Ergo.Scorex.Util.Package
 
 -- Commented types are the port of original scala authds.scala source file. They are not needed yet.
 
@@ -23,6 +26,12 @@ import Data.Word
 -- //33 bytes! extra byte with tree height here!
 newtype ADDigest = ADDigest { unADDigest :: ByteString }  --  TaggedType[Array[Byte]]
   deriving (Eq)
+
+instance Show ADDigest where
+    show = show . toHex . unADDigest
+
+instance IsString ADDigest where
+    fromString = ADDigest . fromHex . fromString
 
 instance Serialize ADDigest where
     get = ADDigest <$> S.getBytes 33
