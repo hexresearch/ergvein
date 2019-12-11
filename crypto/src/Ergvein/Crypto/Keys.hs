@@ -78,13 +78,13 @@ data EgvXPrvKey = EgvXPrvKey {
 instance ToJSON EgvXPrvKey where
   toJSON (EgvXPrvKey currency key) = object [
       "currency" .= toJSON currency
-    , "prv_key"  .= xPrvToJSON (getCurrencyNetwork currency) key
+    , "prvKey"  .= xPrvToJSON (getCurrencyNetwork currency) key
     ]
 
 instance FromJSON EgvXPrvKey where
   parseJSON = withObject "EgvXPrvKey" $ \o -> do
     currency <- o .: "currency"
-    key <- xPrvFromJSON (getCurrencyNetwork currency) =<< (o .: "prv_key")
+    key <- xPrvFromJSON (getCurrencyNetwork currency) =<< (o .: "prvKey")
     pure $ EgvXPrvKey currency key
 
 instance Ord EgvXPrvKey where
@@ -101,13 +101,13 @@ data EgvXPubKey = EgvXPubKey {
 instance ToJSON EgvXPubKey where
   toJSON (EgvXPubKey currency key) = object [
       "currency" .= toJSON currency
-    , "pub_key"  .= xPubToJSON (getCurrencyNetwork currency) key
+    , "pubKey"  .= xPubToJSON (getCurrencyNetwork currency) key
     ]
 
 instance FromJSON EgvXPubKey where
   parseJSON = withObject "EgvXPubKey" $ \o -> do
     currency <- o .: "currency"
-    key <- xPubFromJSON (getCurrencyNetwork currency) =<< (o .: "pub_key")
+    key <- xPubFromJSON (getCurrencyNetwork currency) =<< (o .: "pubKey")
     pure $ EgvXPubKey currency key
 
 instance Ord EgvXPubKey where
