@@ -149,6 +149,6 @@ instance FromJSON Votes where
   parseJSON = withText "Votes" $ \v -> do
     bs <- either fail (pure) . fromHexEitherText $ v
     if (BS.length bs == 3)
-      then fail "Must be hex representation of bytestring 3 characters long"
-      else (pure . Votes $ bs)
+      then (pure . Votes $ bs)
+      else fail "Must be hex representation of bytestring 3 characters long"
   {-# INLINE parseJSON #-}
