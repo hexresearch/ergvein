@@ -17,14 +17,12 @@ data Client = Client {
 -- | Initializes a client and prepares it for making requests against the
 --   Ergo API. Connection reuse is provided, and cleanup of any acquired
 --   resources is handled automatically.
-newClient :: String -> Int -> T.Text -> T.Text -> IO Client 
-newClient host port user pass = do
+newClient :: String -> Int -> IO Client 
+newClient host port = do
   let options :: W.Options
-      options = W.defaults & applyAuth
-      
-      applyAuth = W.auth ?~ W.basicAuth (TE.encodeUtf8 user) (TE.encodeUtf8 pass)
+      options = W.defaults
       
       generateUrl :: String
-      generateUrl = "http://" ++ host ++ ":" ++ show port
+      generateUrl = "http://" ++ host ++ ":" ++ show port 
   session <- WS.newAPISession
   pure $ Client generateUrl options session

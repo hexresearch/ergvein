@@ -1,0 +1,1 @@
+module Network.Ergo.Api.Info where

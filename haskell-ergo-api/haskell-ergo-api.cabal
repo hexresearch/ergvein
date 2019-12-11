@@ -16,6 +16,8 @@ library
   exposed-modules:
     Network.Ergo.Api.Client
     Network.Ergo.Api.Internal
+    Network.Ergo.Api.Blocks
+    Network.Ergo.Api.Info
   build-depends:
       base                 >= 4.7 && < 4.13
     , aeson                == 1.4.*
@@ -31,3 +33,26 @@ library
   default-language:    Haskell2010
   default-extensions:
     OverloadedStrings
+
+test-suite test-suite
+  type: exitcode-stdio-1.0
+  ghc-options: -Wall -ferror-spans -threaded -fprof-auto -fprof-cafs -fno-warn-type-defaults
+  default-language: Haskell2010
+  hs-source-dirs:
+      test
+  main-is: Main.hs
+  other-modules:
+      Network.Ergo.Api.BlocksSpec
+      Spec
+  build-depends:
+      base >= 4.7 && < 4.13
+    , text
+    , bytestring
+    , base58string
+    , lens
+    , wreq
+    , bitcoin-tx
+    , bitcoin-script
+    , http-client
+    , hspec
+    , haskell-ergo-api
