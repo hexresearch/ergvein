@@ -5,13 +5,21 @@ module Ergvein.Interfaces.Ergo.Header where
 -- ergo/src/main/scala/org/ergoplatform/modifiers/history/Header.scala
 -----------------------------------------------------------------------------
 
+import Control.Monad
+import Data.Aeson
 import Data.ByteString
-import Data.Word
 import Data.Serialize                     as S (Serialize (..), decode, encode, get, put)
 import Data.Serialize.Get                 as S
 import Data.Serialize.Put                 as S
 import Data.String
 import Data.Time
+import Data.Word
+
+import qualified Data.ByteString as BS
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
+
+import Ergvein.Aeson
 
 import Ergvein.Interfaces.Ergo.Mining.AutolykosSolution
 import Ergvein.Interfaces.Ergo.NodeView.History.ErgoHistory
@@ -90,6 +98,35 @@ instance Serialize Header where
         powSolution <- get
         pure Header {..}
 
+instance FromJSON Header where
+  parseJSON = withObject "Header" $ \o -> do
+    -- version <- c.downField("version").as[Byte]
+    version <- o .: "version"  --  Version
+    -- parentId <- c.downField("parentId").as[ModifierId]
+    parentId <- o .: "parentId"  --  ModifierId
+    -- adProofsRoot <- c.downField("adProofsRoot").as[Digest32]
+    adProofsRoot <- o .: "adProofsRoot"  --  Digest32
+    -- transactionsRoot <- c.downField("transactionsRoot").as[Digest32]
+    transactionsRoot <- o .: "transactionsRoot"  --  Digest32
+    -- stateRoot <- c.downField("stateRoot").as[ADDigest]
+    stateRoot <- o .: "stateRoot"  --  ADDigest
+    -- timestamp <- c.downField("timestamp").as[Long]
+    timestamp <- o .: "timestamp"  --  Timestamp
+    -- extensionHash <- c.downField("extensionHash").as[Digest32]
+    extensionRoot <- o .: "extensionHash"  --  Digest32
+    -- nBits <- c.downField("nBits").as[Long]
+    nBits <- o .: "nBits"  --  NBits
+    -- height <- c.downField("height").as[Int]
+    height <- o .: "height"  --  Height
+    -- votes <- c.downField("votes").as[String]
+    votes <- o .: "votes"  --  Votes
+    -- solutions <- c.downField("powSolutions").as[AutolykosSolution]
+    powSolution <- o .: "powSolutions"  --  AutolykosSolution
+--     } yield Header(version, parentId, adProofsRoot, stateRoot,
+--       transactionsRoot, timestamp, nBits, height, extensionHash, solutions, Algos.decode(votes).get)
+    pure Header {..}
+  {-# INLINE parseJSON #-}
+
 newtype Votes = Votes { unVotes :: ByteString }
   deriving (Eq)
 
@@ -103,3 +140,15 @@ instance Serialize Votes where
   -- votes: Array[Byte], //3 bytes
     put = S.putByteString . unVotes
     get = Votes <$> S.getBytes 3
+
+instance ToJSON Votes where
+  toJSON = String . toHex . unVotes
+  {-# INLINE toJSON #-}
+
+instance FromJSON Votes where
+  parseJSON = withText "Votes" $ \v -> do
+    bs <- either fail (pure) . fromHexEitherText $ v
+    if (BS.length bs == 3)
+      then fail "Must be hex representation of bytestring 3 characters long"
+      else (pure . Votes $ bs)
+  {-# INLINE parseJSON #-}
