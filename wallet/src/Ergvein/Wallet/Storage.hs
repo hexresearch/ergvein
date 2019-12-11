@@ -14,10 +14,10 @@ import Ergvein.Wallet.Alert
 -- | Requests password, runs a callback against decoded wallet and returns the result
 -- The callback is in 'Performable m'. Basically 'MonadIO'
 withWallet :: MonadFront t m
-  => Event t (WalletData -> Performable m a)    -- Event with a callback
+  => Event t (PrivateStorage -> Performable m a)    -- Event with a callback
   -> m (Event t a)                              -- results of applying the callback to the wallet
 withWallet reqE = do
-  encwal  <- getEncryptedWallet
-  widgD   <- holdDyn Nothing $ Just <$> reqE
-  wallE   <- handleDangerMsg . fmap (decryptWalletData encwal) =<< requestPasssword (() <$ reqE)
-  performEvent $ attachWithMaybe (\mwg wall -> mwg <*> pure wall) (current widgD) wallE
+  eps      <- getEncryptedPrivateStorage
+  widgD    <- holdDyn Nothing $ Just <$> reqE
+  storageE <- handleDangerMsg . fmap (decryptPrivateStorage eps) =<< requestPasssword (() <$ reqE)
+  performEvent $ attachWithMaybe (\mwg wall -> mwg <*> pure wall) (current widgD) storageE

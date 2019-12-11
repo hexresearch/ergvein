@@ -20,6 +20,7 @@ module Ergvein.Crypto.Keys(
   , xPubAddr
   , addrToString
   , xPubErgAddrString
+  , KeyIndex
   , deriveCurrencyMasterKey
   , deriveExternalKey
   , deriveInternalKey
@@ -142,28 +143,32 @@ xPubAddrToString net key
 -- | Derive a BIP44 compatible key for a specific currency.
 -- Given a parent key /m/
 -- and a currency with code /c/, this function will compute /m\/44'\/c'\/0/.
-deriveCurrencyMasterKey :: XPrvKey -> Currency -> EgvXPrvKey
-deriveCurrencyMasterKey prvKey currency =
+deriveCurrencyMasterKey :: EgvRootKey -> Currency -> EgvXPrvKey
+deriveCurrencyMasterKey rootKey currency =
     let path = [44, getCurrencyIndex currency, 0]
-        derivedKey = foldl hardSubKey prvKey path
+        derivedKey = foldl hardSubKey (unEgvRootKey rootKey) path
     in EgvXPrvKey currency derivedKey
 
 -- | Derive a BIP44 compatible external key with a given index.
 -- Given a parent key /m/ and an index /i/, this function will compute /m\/0\/i/.
 -- It is planned to use the result of 'deriveCurrencyMasterKey' as the first argument of this function.
-deriveExternalKey :: XPrvKey -> Currency -> KeyIndex -> EgvXPrvKey
-deriveExternalKey prvKey currency index =
+deriveExternalKey :: EgvXPrvKey -> KeyIndex -> EgvXPrvKey
+deriveExternalKey masterKey index =
   let path = [0, index]
-      derivedKey = foldl prvSubKey prvKey path
+      mKey = egvXPrvKey masterKey
+      currency = egvXPrvCurrency masterKey
+      derivedKey = foldl prvSubKey mKey path
   in EgvXPrvKey currency derivedKey
 
 -- | Derive a BIP44 compatible internal key (also known as change addresses) with a given index.
 -- Given a parent key /m/ and an index /i/, this function will compute /m\/1\/i/.
 -- It is planned to use the result of 'deriveCurrencyMasterKey' as the first argument of this function.
-deriveInternalKey :: XPrvKey -> Currency -> KeyIndex -> EgvXPrvKey
-deriveInternalKey prvKey currency index =
+deriveInternalKey :: EgvXPrvKey -> KeyIndex -> EgvXPrvKey
+deriveInternalKey masterKey index =
   let path = [1, index]
-      derivedKey = foldl prvSubKey prvKey path
+      mKey = egvXPrvKey masterKey
+      currency = egvXPrvCurrency masterKey
+      derivedKey = foldl prvSubKey mKey path
   in EgvXPrvKey currency derivedKey
 
 example :: IO ()

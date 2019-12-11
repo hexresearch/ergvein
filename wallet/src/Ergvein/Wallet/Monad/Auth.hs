@@ -157,10 +157,10 @@ instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   {-# INLINE getAlertEventFire #-}
 
 instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) where
-  getEncryptedWallet = fmap (storage'wallet . authInfo'storage) $ readExternalRef =<< asks env'authRef
-  {-# INLINE getEncryptedWallet #-}
+  getEncryptedPrivateStorage = fmap (storage'encryptedPrivateStorage . authInfo'storage) $ readExternalRef =<< asks env'authRef
+  {-# INLINE getEncryptedPrivateStorage #-}
   getAddressByCurIx cur i = do
-    currMap <- fmap (storage'pubKeys . authInfo'storage) $ readExternalRef =<< asks env'authRef
+    currMap <- fmap (storage'publicStorage . authInfo'storage) $ readExternalRef =<< asks env'authRef
     let maddr = MI.lookup i =<< M.lookup cur currMap
     case maddr of
       Nothing -> fail "NOT IMPLEMENTED" -- TODO: generate new address here

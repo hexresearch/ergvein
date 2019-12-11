@@ -2,6 +2,7 @@ module Ergvein.Wallet.Storage.Data
   (
     PrivateStorage(..)
   , EncryptedPrivateStorage(..)
+  , EgvPrvKeyсhain(..)
   , ErgveinStorage(..)
   , EncryptedErgveinStorage(..)
   ) where
@@ -28,7 +29,7 @@ textToByteString :: Text -> ByteString
 textToByteString = B64.decodeLenient . TE.encodeUtf8
 
 data EgvPrvKeyсhain = EgvPrvKeyсhain {
-  egvPrvKeyсhain'base     :: EgvXPrvKey
+  egvPrvKeyсhain'master     :: EgvXPrvKey
   -- ^The first part of BIP44 key with derivation path /m\/purpose'\/coin_type'\/account'/.
 , egvPrvKeyсhain'external :: MI.IntMap EgvXPrvKey
   -- ^Map with BIP44 external keys.
@@ -41,6 +42,8 @@ data EgvPrvKeyсhain = EgvPrvKeyсhain {
   -- Private keys must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.
 } deriving (Eq)
+
+$(deriveJSON aesonOptionsStripToApostroph ''EgvPrvKeyсhain)
 
 data PrivateStorage = PrivateStorage {
     privateStorage'seed :: Seed
