@@ -39,28 +39,40 @@ import qualified Data.Text as T
 
 type Password = Text
 type WalletName = Text
+type PublicKeys = M.Map Currency EgvPubKeyсhain
 
-generateCurrencyKeys :: EgvRootKey -> Currency -> (Currency, EgvPrvKeyсhain)
-generateCurrencyKeys root currency =
+generateCurrencyPrvKeys :: EgvRootKey -> Currency -> (Currency, EgvPrvKeyсhain)
+generateCurrencyPrvKeys root currency =
   let master = deriveCurrencyMasterKey root currency
       external = MI.fromList [(i, deriveExternalKey master (fromIntegral i)) | i <- [0..externalAddressCount]]
       internal = MI.fromList [(i, deriveInternalKey master (fromIntegral i)) | i <- [0..internalAddressCount]]
   in (currency, EgvPrvKeyсhain master external internal)
 
-createPrivateStorage :: Mnemonic -> Either StorageAlerts PrivateStorage
-createPrivateStorage mnemonic = case mnemonicToSeed "" mnemonic of
-  Left err -> Left $ SAMnemonicFail $ showt err
-  Right seed -> let
-    root = EgvRootKey $ makeXPrvKey seed
-    privateKeys = M.fromList $ fmap (generateCurrencyKeys root) allCurrencies
-    in Right $ PrivateStorage seed root privateKeys
+createPrivateStorage :: Seed -> EgvRootKey -> PrivateStorage
+createPrivateStorage seed root = PrivateStorage seed root privateKeys
+  where privateKeys = M.fromList $ fmap (generateCurrencyPrvKeys root) allCurrencies
+
+generateCurrencyPubKeys :: EgvRootKey -> Currency -> (Currency, EgvPubKeyсhain)
+generateCurrencyPubKeys root currency =
+  let master = deriveCurrencyMasterKey root currency
+      external = MI.fromList [(i, deriveExternalKey master (fromIntegral i)) | i <- [0..externalAddressCount]]
+      internal = MI.fromList [(i, deriveInternalKey master (fromIntegral i)) | i <- [0..internalAddressCount]]
+  in (currency, EgvPubKeyсhain master external internal)
+
+generatePublicKeys :: EgvRootKey -> PublicKeys
+generatePublicKeys root = M.fromList $ fmap (generateCurrencyPubKeys root) allCurrencies
 
 createStorage :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either StorageAlerts ErgveinStorage)
-createStorage mnemonic (login, pass) = either (pure . Left) (\privateStorage -> do
-  encryptedPrivateStorageResult <- encryptPrivateStorage privateStorage pass
-  case encryptedPrivateStorageResult of
-    Left err -> pure $ Left err
-    Right eps -> pure $ Right $ ErgveinStorage eps mempty login) $ createPrivateStorage mnemonic
+createStorage mnemonic (login, pass) = case mnemonicToSeed "" mnemonic of
+  Left err -> Left $ SAMnemonicFail $ showt err
+  Right seed -> do
+    let root = EgvRootKey $ makeXPrvKey seed
+        privateStorage = createPrivateStorage seed root
+        publicKeys = createPublicKeys root
+    encryptedPrivateStorageResult <- encryptPrivateStorage privateStorage pass
+    case encryptedPrivateStorageResult of
+      Left err -> pure $ Left err
+      Right eps -> pure $ Right $ ErgveinStorage eps publicKeys login
 
 encryptPrivateStorage :: MonadIO m => PrivateStorage -> Password -> m (Either StorageAlerts EncryptedPrivateStorage)
 encryptPrivateStorage privateStorage password = liftIO $ do

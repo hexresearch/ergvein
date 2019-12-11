@@ -3,6 +3,7 @@ module Ergvein.Wallet.Storage.Data
     PrivateStorage(..)
   , EncryptedPrivateStorage(..)
   , EgvPrvKeyсhain(..)
+  , EgvPubKeyсhain(..)
   , ErgveinStorage(..)
   , EncryptedErgveinStorage(..)
   ) where
@@ -29,40 +30,57 @@ textToByteString :: Text -> ByteString
 textToByteString = B64.decodeLenient . TE.encodeUtf8
 
 data EgvPrvKeyсhain = EgvPrvKeyсhain {
-  egvPrvKeyсhain'master     :: EgvXPrvKey
-  -- ^The first part of BIP44 key with derivation path /m\/purpose'\/coin_type'\/account'/.
+  egvPrvKeyсhain'master   :: EgvXPrvKey
+  -- ^BIP44 private key with derivation path /m\/purpose'\/coin_type'\/account'/.
 , egvPrvKeyсhain'external :: MI.IntMap EgvXPrvKey
-  -- ^Map with BIP44 external keys.
-  -- Private key indices are Map keys, and the private keys are Map values.
-  -- Private keys must have the following derivation path:
+  -- ^Map with BIP44 external private keys.
+  -- Private key indices are map keys, and the private keys are map values.
+  -- This private keys must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/0\/address_index/.
 , egvPrvKeyсhain'internal :: MI.IntMap EgvXPrvKey
-  -- ^Map with BIP44 internal keys.
-  -- Private key indices are Map keys, and the private keys are Map values.
-  -- Private keys must have the following derivation path:
+  -- ^Map with BIP44 internal private keys.
+  -- Private key indices are map keys, and the private keys are map values.
+  -- This private keys must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.
 } deriving (Eq)
 
 $(deriveJSON aesonOptionsStripToApostroph ''EgvPrvKeyсhain)
 
+data EgvPubKeyсhain = EgvPubKeyсhain {
+  egvPubKeyсhain'master   :: EgvXPubKey
+  -- ^BIP44 public key with derivation path /m\/purpose'\/coin_type'\/account'/.
+, egvPubKeyсhain'external :: MI.IntMap EgvXPubKey
+  -- ^Map with BIP44 external public keys.
+  -- Public key indices are map keys, and the public keys are map values.
+  -- This public keys must have the following derivation path:
+  -- /m\/purpose'\/coin_type'\/account'\/0\/address_index/.
+, egvPubKeyсhain'internal :: MI.IntMap EgvXPubKey
+  -- ^Map with BIP44 internal keys.
+  -- Public key indices are map keys, and the public keys are map values.
+  -- This public keys must have the following derivation path:
+  -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.
+} deriving (Eq)
+
+$(deriveJSON aesonOptionsStripToApostroph ''EgvPubKeyсhain)
+
 data PrivateStorage = PrivateStorage {
-    privateStorage'seed :: Seed
-  , privateStorage'root :: EgvRootKey
-  , privateStorage'keys :: M.Map Currency EgvPrvKeyсhain
+    privateStorage'seed        :: Seed
+  , privateStorage'root        :: EgvRootKey
+  , privateStorage'privateKeys :: M.Map Currency EgvPrvKeyсhain
   }
 
 instance ToJSON PrivateStorage where
   toJSON PrivateStorage{..} = object [
-      "seed" .= toJSON (byteStringToText privateStorage'seed)
-    , "root" .= toJSON privateStorage'root
-    , "keys" .= toJSON privateStorage'keys
+      "seed"        .= toJSON (byteStringToText privateStorage'seed)
+    , "root"        .= toJSON privateStorage'root
+    , "privateKeys" .= toJSON privateStorage'privateKeys
     ]
 
 instance FromJSON PrivateStorage where
   parseJSON = withObject "PrivateStorage" $ \o -> PrivateStorage
     <$> fmap textToByteString (o .: "seed")
     <*> o .: "root"
-    <*> o .: "keys"
+    <*> o .: "privateKeys"
 
 data EncryptedPrivateStorage = EncryptedPrivateStorage {
     encryptedPrivateStorage'ciphertext :: ByteString
@@ -88,7 +106,7 @@ instance FromJSON EncryptedPrivateStorage where
 
 data ErgveinStorage = ErgveinStorage {
     storage'encryptedPrivateStorage :: EncryptedPrivateStorage
-  , storage'publicStorage           :: M.Map Currency (MI.IntMap Base58)
+  , storage'publicKeys              :: M.Map Currency EgvPubKeyсhain
   , storage'walletName              :: Text
   }
 
