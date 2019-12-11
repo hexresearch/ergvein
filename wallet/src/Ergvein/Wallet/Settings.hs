@@ -33,7 +33,6 @@ data Settings = Settings {
 , settingsDefUrls           :: [BaseUrl]
 , settingsDefUrlNum         :: (Int, Int)
 , settingsReqTimeout        :: NominalDiffTime
-, settingsGapLimit          :: Int
 } deriving (Eq, Show)
 
 $(deriveJSON (aesonOptionsStripPrefix "settings") ''Settings)
@@ -52,7 +51,7 @@ mkDefSettings :: MonadIO m => FilePath -> m Settings
 mkDefSettings home = liftIO $ do
   let storePath   = home <> "/store"
       configPath  = home <> "/config.yaml"
-      cfg = Settings English (pack storePath) (pack configPath) [] (2,3) 5 20
+      cfg = Settings English (pack storePath) (pack configPath) [] (2,3) 5
   createDirectoryIfMissing True storePath
   encodeFile configPath cfg
   pure cfg
@@ -77,7 +76,7 @@ mkDefSettings = liftIO $ do
   putStrLn $ "Language   : English"
   let storePath   = home <> "/.ergvein/store"
       configPath  = home <> "/.ergvein/config.yaml"
-      cfg = Settings English (pack storePath) (pack configPath) [] (2,3) 5 20
+      cfg = Settings English (pack storePath) (pack configPath) [] (2,3) 5
   createDirectoryIfMissing True storePath
   encodeFile configPath cfg
   pure cfg

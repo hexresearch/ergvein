@@ -27,6 +27,7 @@ import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Native
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Storage.Constants
 import Ergvein.Wallet.Storage.Data
 import System.Directory
 import System.FilePath
@@ -42,8 +43,8 @@ type WalletName = Text
 generateCurrencyKeys :: EgvRootKey -> Currency -> (Currency, EgvPrvKeyсhain)
 generateCurrencyKeys root currency =
   let master = deriveCurrencyMasterKey root currency
-      external = MI.fromList [(fromIntegral i, deriveExternalKey master i) | i <- [0..20]] -- FIXME: take the anount of generated keys from config
-      internal = MI.fromList [(fromIntegral i, deriveInternalKey master i) | i <- [0..5]] -- FIXME: take the anount of generated keys from config
+      external = MI.fromList [(i, deriveExternalKey master (fromIntegral i)) | i <- [0..externalAddressCount]]
+      internal = MI.fromList [(i, deriveInternalKey master (fromIntegral i)) | i <- [0..internalAddressCount]]
   in (currency, EgvPrvKeyсhain master external internal)
 
 createPrivateStorage :: Mnemonic -> Either StorageAlerts PrivateStorage
