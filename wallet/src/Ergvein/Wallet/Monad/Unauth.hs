@@ -12,6 +12,7 @@ import Data.IORef
 import Data.Text (Text)
 import Data.Time(NominalDiffTime)
 import Ergvein.Index.Client
+import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Base
@@ -46,6 +47,7 @@ data UnauthEnv t = UnauthEnv {
 , unauth'urls            :: !(ExternalRef t (S.Set BaseUrl))
 , unauth'urlNum          :: !(ExternalRef t (Int, Int))
 , unauth'timeout         :: !(ExternalRef t NominalDiffTime)
+, unauth'headersStorage  :: !HeadersStorage
 , unauth'manager         :: !Manager
 }
 
@@ -53,6 +55,11 @@ type UnauthM t m = ReaderT (UnauthEnv t) m
 
 instance Monad m => HasStoreDir (UnauthM t m) where
   getStoreDir = asks unauth'storeDir
+  {-# INLINE getStoreDir #-}
+
+instance Monad m => HasHeadersStorage (UnauthM t m) where
+  getHeadersStorage = asks unauth'headersStorage
+  {-# INLINE getHeadersStorage #-}
 
 instance MonadIO m => HasClientManager (UnauthM t m) where
   getClientMaganer = asks unauth'manager
@@ -193,6 +200,7 @@ newEnv settings uiChan = do
   urls <- newExternalRef $ S.fromList $ settingsDefUrls settings
   urlNum <- newExternalRef $ settingsDefUrlNum settings
   timeout <- newExternalRef $ settingsReqTimeout settings
+  hst <- liftIO $ runReaderT openHeadersStorage (settingsStoreDir settings)
   pure UnauthEnv {
       unauth'settings  = settingsRef
     , unauth'backEF    = (backE, backFire ())
@@ -210,6 +218,7 @@ newEnv settings uiChan = do
     , unauth'urlNum = urlNum
     , unauth'timeout = timeout
     , unauth'manager = manager
+    , unauth'headersStorage = hst
     }
 
 runEnv :: (MonadBaseConstr t m, PlatformNatives)

@@ -1,5 +1,6 @@
 module Ergvein.Wallet.Headers.Types(
     Schema(..)
+  , emptySchema
   , schemaBtc
   , module Ergvein.Wallet.Headers.Btc.Types
   ) where
@@ -18,6 +19,9 @@ data Schema = Schema {
 instance Binary Schema
 instance Value Schema
 instance Root Schema
+
+emptySchema :: Schema
+emptySchema = Schema emptySchemaBtc
 
 schemaBtc :: Lens' Schema SchemaBtc
 schemaBtc = lens _schemaBtc $ \s x -> s { _schemaBtc = x }

@@ -16,9 +16,10 @@ import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Control.Monad.Ref
 import Data.Text (Text)
-import Ergvein.Crypto
 import Data.Time(UTCTime, NominalDiffTime)
+import Ergvein.Crypto
 import Ergvein.Index.Client
+import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Native
 import Language.Javascript.JSaddle
@@ -66,6 +67,7 @@ type MonadBaseConstr t m = (MonadHold t m
 type MonadFrontConstr t m = (PlatformNatives
   , HasStoreDir m
   , HasStoreDir (Performable m)
+  , HasHeadersStorage m
   , MonadBaseConstr t m
   , MonadLocalized t m
   , MonadRetract t m
