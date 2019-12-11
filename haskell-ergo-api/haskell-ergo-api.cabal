@@ -28,11 +28,17 @@ library
     , text                 == 1.2.*
     , unordered-containers == 0.2.*
     , wreq                 == 0.5.*
+    , mtl                  == 2.2.*
+    , unliftio-core        == 0.1.*
     , ergvein-interface-ergo
 
   default-language:    Haskell2010
   default-extensions:
     OverloadedStrings
+    TypeApplications
+    DeriveGeneric
+    FlexibleContexts
+    FlexibleInstances
 
 test-suite test-suite
   type: exitcode-stdio-1.0
@@ -51,8 +57,8 @@ test-suite test-suite
     , base58string
     , lens
     , wreq
-    , bitcoin-tx
-    , bitcoin-script
     , http-client
     , hspec
+    , mtl                  == 2.2.*
+    , unliftio-core        == 0.1.*
     , haskell-ergo-api
