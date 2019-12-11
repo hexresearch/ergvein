@@ -8,6 +8,7 @@ module Ergvein.Types.Currency(
   , showMoney
   ) where
 
+import Data.Flat
 import Data.Ratio
 import Data.Text (Text)
 import Data.Word
@@ -19,7 +20,7 @@ import qualified Data.Text as T
 
 -- | Supported currencies
 data Currency = BTC | ERGO
-  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic)
+  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Flat)
 $(deriveJSON aesonOptions ''Currency)
 
 instance ToJSONKey Currency where

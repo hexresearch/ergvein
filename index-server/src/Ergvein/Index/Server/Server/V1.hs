@@ -1,21 +1,22 @@
 module Ergvein.Index.Server.Server.V1 where
 
-import Data.Proxy
-import Servant.API.Generic
-import Servant.Server
-import Servant.Server.Generic
+import Data.Flat
+import Data.List
+import Data.Monoid
 
 import Ergvein.Index.API
 import Ergvein.Index.API.Types
 import Ergvein.Index.API.V1
+import Ergvein.Index.Server.Cache.Queries
+import Ergvein.Index.Server.Cache.Schema
 import Ergvein.Index.Server.Monad
 import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
     { indexGetBalance = indexGetBalanceEndpoint
     , indexGetTxHashHistory = indexGetTxHashHistoryEndpoint
+    , indexGetBlockHeaders = indexGetBlockHeadersEndpoint
     , indexGetTxMerkleProof = txMerkleProofEndpoint
     , indexGetTxHexView = txHexViewEndpoint
     , indexGetTxFeeHistogram = txFeeHistogramEndpoint
@@ -49,12 +50,43 @@ ergoBroadcastResponse = "4c6282be413c6e300a530618b37790be5f286ded758accc2aebd415
 
 --Endpoints
 indexGetBalanceEndpoint :: BalanceRequest -> ServerM BalanceResponse
-indexGetBalanceEndpoint BalanceRequest { balReqCurrency = BTC }  = pure btcBalance
+indexGetBalanceEndpoint req@(BalanceRequest { balReqCurrency = BTC  })  = do
+  maybeHistory <- getTxOutHistory $ balReqPubKeyScriptHash req
+  let confirmedBalance = case maybeHistory of
+        Just history -> getSum $ foldMap (Sum . txoValue) history 
+        Nothing      -> 0
+  pure $ btcBalance { balRespConfirmed = confirmedBalance }
+  where
+    txoValue (UTXO txo) = txOutCacheRec'value txo
+    txoValue _ = 0
+
 indexGetBalanceEndpoint BalanceRequest { balReqCurrency = ERGO } = pure ergoBalance
 
 indexGetTxHashHistoryEndpoint :: TxHashHistoryRequest -> ServerM TxHashHistoryResponse
-indexGetTxHashHistoryEndpoint TxHashHistoryRequest { historyReqCurrency = BTC }  = pure btcHistory
+indexGetTxHashHistoryEndpoint req@(TxHashHistoryRequest{ historyReqCurrency = BTC }) = do
+  maybeHistory <- getTxOutHistory $ historyReqPubKeyScriptHash req
+  case maybeHistory of
+    Just history -> do
+        let uniqueHistoryTxIds = nub . mconcat $ utxoHistoryTxIds <$> history
+        txs <- getManyParsedExact $ cachedTxKey <$> uniqueHistoryTxIds
+        let sortedTxs = sortOn txSorting txs
+            historyItems = (\tx -> TxHashHistoryItem (txCacheRec'hash tx) (txCacheRec'blockHeight tx)) <$> sortedTxs
+        pure historyItems
+    _-> pure []
+  where
+    utxoHistoryTxIds (UTXO txo)         = [txOutCacheRec'txHash txo]
+    utxoHistoryTxIds (STXO (txo, stxo)) = [txOutCacheRec'txHash txo , txInCacheRec'txHash stxo]
+    txSorting tx = (txCacheRec'blockHeight tx, txCacheRec'blockIndex  tx)
+
 indexGetTxHashHistoryEndpoint TxHashHistoryRequest { historyReqCurrency = ERGO } = pure ergoHistory
+
+indexGetBlockHeadersEndpoint :: BlockHeadersRequest -> ServerM BlockHeadersResponse
+indexGetBlockHeadersEndpoint request = do
+    let start = cachedMetaKey (headersReqCurrency request, headersReqStartIndex request)
+        end   = BlockMetaCacheRecKey (headersReqCurrency request) (pred $ headersReqStartIndex request + headersReqAmount request)
+    slice <- safeEntrySlice start end
+    let blockHeaders = snd <$> slice
+    pure blockHeaders
 
 txMerkleProofEndpoint :: TxMerkleProofRequest -> ServerM TxMerkleProofResponse
 txMerkleProofEndpoint TxMerkleProofRequest { merkleReqCurrency = BTC }  = pure btcProof
