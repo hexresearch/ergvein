@@ -4,6 +4,7 @@ ergo/src/main/scala/org/ergoplatform/modifiers/history/Header.scala
 -}
 module Ergvein.Interfaces.Ergo.Header where
 
+import Crypto.Hash (hashWith, Blake2b_256(..))
 import Data.Aeson as A
 import Data.ByteString
 import Data.Serialize                     as S (Serialize (..), decode, encode, get, put)
@@ -12,6 +13,7 @@ import Data.Serialize.Put                 as S
 import Data.String
 import Data.Time
 
+import qualified Data.ByteArray as BA
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Text as T
@@ -150,7 +152,7 @@ computeId b a = hashFn $ mconcat [ S.encode (modifierTypeId a), b, S.encode a ]
 -- https://github.com/ScorexFoundation/sigmastate-interpreter/blob/98c27448da29d7cb7521d378080d5c52c13b76c3/sigmastate/src/main/scala/org/ergoplatform/settings/ErgoAlgos.scala#L13
 -- Blake2b256
 hashFn :: ByteString -> ByteString
-hashFn = undefined  -- FIXME Blake2b256
+hashFn = BA.convert . hashWith Blake2b_256
 
 instance FromJSON Header where
   parseJSON = withObject "Header" $ \o -> do
