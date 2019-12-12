@@ -32,17 +32,17 @@ import Ergvein.Interfaces.Ergo.Scorex.Util.Package
 
 
 data Header = Header {
-  version :: Version
-, parentId :: ModifierId
-, adProofsRoot :: AdProofsRoot
-, transactionsRoot :: TransactionsRoot
-, stateRoot :: ADDigest
-, timestamp :: Timestamp
-, extensionRoot :: ExtensionRoot
-, nBits :: NBits
-, height :: Height
-, votes :: Votes
-, powSolution :: AutolykosSolution
+  version :: !Version
+, parentId :: !ModifierId
+, adProofsRoot :: !AdProofsRoot
+, transactionsRoot :: !TransactionsRoot
+, stateRoot :: !ADDigest
+, timestamp :: !Timestamp
+, extensionRoot :: !ExtensionRoot
+, nBits :: !NBits
+, height :: !Height
+, votes :: !Votes
+, powSolution :: !AutolykosSolution
 } deriving (Eq, Show)
 
 instance Serialize Header where

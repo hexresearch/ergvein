@@ -15,8 +15,8 @@ import Ergvein.Interfaces.Ergo.Scorex.Util.Serialization.VLQLengthPrefixed
 
 
 data PoPowHeader = PoPowHeader {
-  header :: Header
-, interlinks :: [ModifierId]
+  header :: !Header
+, interlinks :: ![ModifierId]
 } deriving (Eq)
 
 instance Serialize PoPowHeader where
