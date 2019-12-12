@@ -31,6 +31,7 @@ library
     Ergvein.Wallet.Embed
     Ergvein.Wallet.Embed.TH
     Ergvein.Wallet.Headers.Btc.Types
+    Ergvein.Wallet.Headers.Btc.Queries
     Ergvein.Wallet.Headers.Storage
     Ergvein.Wallet.Headers.Types
     Ergvein.Wallet.Id
