@@ -1,0 +1,104 @@
+name:                ergvein-interface-ergo
+version:             0.1.0.0
+synopsis:            Ergvein interface for ergo cryptocurrency
+description:         See README.md
+category:            Cryptocurrency
+build-type:          Simple
+cabal-version:       >=1.10
+license:             MIT
+license-file:        LICENSE
+copyright:           2019 ATUM SOLUTIONS AG
+author:              Anton Gushcha, Aminion, Vladimir Krutkin, Levon Oganyan, Sergey Ivanov
+maintainer:          Anton Gushcha <ncrashed@protonmail.com>, Sergey Ivanov <ivanovs-4@yandex.ru>
+
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+    Ergvein.Interfaces.Ergo
+    Ergvein.Interfaces.Ergo.Common.BigNat
+    Ergvein.Interfaces.Ergo.Header
+    Ergvein.Interfaces.Ergo.Mining.AutolykosSolution
+    Ergvein.Interfaces.Ergo.Mining.Difficulty.RequiredDifficulty
+    Ergvein.Interfaces.Ergo.Modifiers.History.ModifierType
+    Ergvein.Interfaces.Ergo.NodeView.History.ErgoHistory
+    Ergvein.Interfaces.Ergo.PoPowHeader
+    Ergvein.Interfaces.Ergo.Scorex.Core.Block
+    Ergvein.Interfaces.Ergo.Scorex.Crypto.Authds
+    Ergvein.Interfaces.Ergo.Scorex.Crypto.Hash
+    Ergvein.Interfaces.Ergo.Scorex.Util.Package
+    Ergvein.Interfaces.Ergo.Scorex.Util.Serialization.VLQLengthPrefixed
+
+  build-depends:
+        base                     >= 4.7 && < 4.13
+      , aeson                    == 1.4.*
+      , ergvein-common
+      , template-haskell         == 2.14.*
+      , text                     == 1.2.*
+      , base16-bytestring
+      , bytes
+      , bytestring               == 0.10.*
+      , memory
+      , time                     == 1.8.*
+      , lens                     == 4.17.*
+      , cereal                   == 0.5.*
+      , hexstring                == 0.11.*
+      , safe
+      , scientific
+
+  default-language:    Haskell2010
+  default-extensions:
+    ConstraintKinds
+    DataKinds
+    DeriveDataTypeable
+    DeriveGeneric
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    LambdaCase
+    OverloadedStrings
+    QuasiQuotes
+    RankNTypes
+    RecordWildCards
+    RecursiveDo
+    ScopedTypeVariables
+    StandaloneDeriving
+    TemplateHaskell
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeOperators
+    UndecidableInstances
+    ViewPatterns
+
+test-suite ergvein-interface-ergo-test
+  default-language:    Haskell2010
+  type:                exitcode-stdio-1.0
+  main-is:             Driver.hs
+  hs-source-dirs:      test
+  other-modules:
+      Paths_ergvein_interface_ergo
+      Tests.Ergo.Headers
+  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
+  default-extensions:
+    NumDecimals
+    OverloadedStrings
+    QuasiQuotes
+    RecordWildCards
+    ScopedTypeVariables
+    TupleSections
+  build-depends:
+      base                     >= 4.7 && < 4.13
+    , aeson                    == 1.4.*
+    , ergvein-interface-ergo
+    , tasty
+    , tasty-discover
+    , tasty-hspec
+    , base16-bytestring
+    , bytes
+    , bytestring
+    , cereal                   == 0.5.*
+    , either
+    , text

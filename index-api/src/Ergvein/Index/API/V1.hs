@@ -13,6 +13,8 @@ type IndexGetBalance        = "balance"   :> Body BalanceRequest :> PostResp Bal
 
 type IndexGetTxHashHistory  = "history"   :> Body TxHashHistoryRequest :> PostResp TxHashHistoryResponse
 
+type IndexGetBlockHeaders   = "headers"   :> Body BlockHeadersRequest :> PostResp BlockHeadersResponse
+
 type IndexGetTxMerkleProof  = "merkle"    :> Body TxMerkleProofRequest :> PostResp TxMerkleProofResponse
 
 type IndexGetTxHexView      = "view"      :> Body TxHexViewRequest :> PostResp TxHexViewResponse
@@ -24,8 +26,9 @@ type IndexTxBroadcast       = "broadcast" :> Body TxBroadcastRequest :> PostResp
 data IndexApi route = IndexApi
     { indexGetBalance        :: route :- IndexGetBalance
     , indexGetTxHashHistory  :: route :- IndexGetTxHashHistory
+    , indexGetBlockHeaders   :: route :- IndexGetBlockHeaders
     , indexGetTxMerkleProof  :: route :- IndexGetTxMerkleProof
     , indexGetTxHexView      :: route :- IndexGetTxHexView
     , indexGetTxFeeHistogram :: route :- IndexGetTxFeeHistogram
-    , indexTxBroadcast       :: route :- IndexTxBroadcast  
+    , indexTxBroadcast       :: route :- IndexTxBroadcast
     } deriving Generic

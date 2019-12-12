@@ -1,5 +1,5 @@
 module Ergvein.Wallet.Localization.Native
-  (
+  ( module Ergvein.Wallet.Native
   ) where
 
 import Ergvein.Wallet.Native

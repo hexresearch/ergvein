@@ -12,6 +12,35 @@ import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import Database.Esqueleto.Pagination
+
+import           Conduit
+import           Control.Concurrent
+import           Control.Monad
+import           Control.Monad.IO.Class
+import           Control.Monad.Reader
+
+import qualified Data.Conduit.List as CL
+
+pageLoadSize :: PageSize
+pageLoadSize = PageSize 1048576
+
+pagedEntitiesStream ::(PersistRecordBackend record backend, PersistQueryRead backend, PersistUniqueRead backend,
+                      BackendCompatible SqlBackend backend, BackendCompatible SqlBackend (BaseBackend backend),
+                      Ord typ, PersistField typ, MonadIO m) 
+                      => EntityField record typ -> ConduitT a [Entity record] (ReaderT backend m) ()
+pagedEntitiesStream entityField = let
+  pagedStream = streamEntities emptyQuery entityField pageLoadSize Ascend (Range Nothing Nothing)
+  in pagedStream .| (CL.chunksOf $ unPageSize pageLoadSize)
+
+getAllTx :: (MonadIO m) => QueryT m [Entity TxRec]
+getAllTx = select $ from pure
+
+getAllTxOut :: (MonadIO m) => QueryT m [Entity TxOutRec]
+getAllTxOut = select $ from pure
+
+getAllTxIn :: (MonadIO m) => QueryT m [Entity TxInRec]
+getAllTxIn = select $ from pure
 
 getScannedHeight :: MonadIO m => Currency -> QueryT m (Maybe (Entity ScannedHeightRec))
 getScannedHeight currency = fmap headMay $ select $ from $ \scannedHeight -> do
@@ -21,14 +50,22 @@ getScannedHeight currency = fmap headMay $ select $ from $ \scannedHeight -> do
 upsertScannedHeight :: MonadIO m => Currency -> Word64 -> QueryT m (Entity ScannedHeightRec)
 upsertScannedHeight currency h = upsert (ScannedHeightRec currency h) [ScannedHeightRecHeight DT.=. h]
 
-insertTXOs :: MonadIO m => [TXOInfo] -> QueryT m ([Key UtxoRec])
-insertTXOs utxo = insertMany $ toEntity <$> utxo
-  where
-    toEntity u = UtxoRec (txo'txHash u) (txo'scriptHash u) (txo'outIndex u) (txo'outValue u)
+insertTxs :: MonadIO m => [TxInfo] -> QueryT m [Key TxRec]
+insertTxs txs = insertMany $ txRec <$> txs
+  where 
+    txRec tx = TxRec (tx'hash tx) (tx'blockHeight tx) (tx'blockIndex tx)
 
-insertSTXO :: MonadIO m => SpentTXOInfo -> QueryT m ()
-insertSTXO stxo = insertSelect $ from $ \storedUtxo -> do
-  where_ (   storedUtxo ^. UtxoRecTxHash   ==. (val $ stxo'txoHash stxo) 
-         &&. storedUtxo ^. UtxoRecOutIndex ==. (val $ stxo'outIndex stxo)
-         )
-  return $ StxoRec <# (val $ stxo'txHash stxo) <&> (storedUtxo ^. UtxoRecId)
+insertTxOuts :: MonadIO m => [TxOutInfo] -> QueryT m [Key TxOutRec]
+insertTxOuts txOuts = insertMany $ txOutRec <$> txOuts
+  where
+    txOutRec txOut = TxOutRec (txOut'txHash txOut) (txOut'pubKeyScriptHash txOut) (txOut'index txOut) (txOut'value txOut)
+
+insertTxIns :: MonadIO m => [TxInInfo] -> QueryT m [Key TxInRec]
+insertTxIns txIns = insertMany $ txInRec <$> txIns
+  where
+    txInRec txIn = TxInRec (txIn'txHash txIn) (txIn'txOutHash txIn) (txIn'txOutIndex txIn)
+
+insertBlock :: MonadIO m => BlockMetaInfo -> QueryT m (Key BlockMetaRec)
+insertBlock block = insert $ blockMetaRec block
+  where
+    blockMetaRec block = BlockMetaRec (blockMeta'currency block) (blockMeta'blockHeight block) (blockMeta'headerHexView block)

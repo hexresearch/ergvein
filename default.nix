@@ -2,7 +2,7 @@
 let
   reflex-platform = (import ./reflex-platform.nix) {
     nixpkgsOverlays = [
-      (self: super: import ./nixpkgs-overlays/default.nix self super)
+      (self: super: import ./nixpkgs-overlays/default.nix self super )
     ];
     config.android_sdk.accept_license = true;
   };
@@ -18,6 +18,7 @@ in reflex-platform.project ({ pkgs, ... }: {
     ergvein-wallet-desktop = ./wallet-desktop;
     ergvein-wallet-native = ./wallet-native;
     ergvein-wallet-types = ./wallet-types;
+    ergvein-interface-ergo = ./interfaces/ergo;
     reflex-dom-retractable = ./retractable;
     reflex-external-ref = ./reflex-external-ref;
     reflex-localize = ./reflex-localize;
@@ -32,6 +33,7 @@ in reflex-platform.project ({ pkgs, ... }: {
       "ergvein-wallet-native"
       "ergvein-wallet-desktop"
       "ergvein-wallet-types"
+      "ergvein-interface-ergo"
       "reflex-dom-retractable"
       "reflex-external-ref"
       "reflex-localize"
@@ -40,7 +42,7 @@ in reflex-platform.project ({ pkgs, ... }: {
   overrides = import ./overrides.nix { inherit reflex-platform isAndroid; };
 
   shellToolOverrides = ghc: super: {
-    inherit (pkgs) postgresql;
+    inherit (pkgs) postgresql leveldb;
   };
 
   android.ergvein-wallet = {

@@ -15,6 +15,7 @@ library
       base
     , aeson
     , directory
+    , directory-tree
     , ergvein-common
     , ergvein-wallet-native
     , filepath
