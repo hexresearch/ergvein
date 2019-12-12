@@ -8,6 +8,7 @@ import Data.Text(Text)
 import Ergvein.Aeson
 import Ergvein.Wallet.Native
 import System.Directory
+import System.Directory.Tree
 import System.FilePath.Posix
 import System.Hclip
 import System.IO
@@ -36,6 +37,10 @@ instance PlatformNatives where
           key <- readJson fpath
           pure $ maybe (Left $ NADecodingError k) Right key
         else pure $ Right a0
+
+  listKeys = do
+    path <- getStoreDir
+    liftIO $ fmap (T.drop (T.length path + 1) . T.pack) <$> getFiles (T.unpack path)
 
   readStoredFile filename = do
     path <- getStoreDir
@@ -82,3 +87,15 @@ instance PlatformNatives where
   pasteStr = liftIO $ fmap T.pack getClipboard
 
   copyStr = liftIO . setClipboard . T.unpack
+
+  logWrite = liftIO . T.putStrLn
+
+getFiles :: FilePath -> IO [FilePath]
+getFiles dir = do
+  _ :/ tree <- build dir
+  pure $ reverse $ go tree
+  where
+    go tree = case tree of
+      File _ n -> [n]
+      Dir _ trees -> concat . fmap go $ trees
+      _ -> []

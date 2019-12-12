@@ -124,3 +124,7 @@ void release_paste_str(jstring jstr, const char* str) {
   }
 
 }
+
+void android_log_write(const char* str) {
+  __android_log_write(ANDROID_LOG_DEBUG, "ergvein", str);
+}

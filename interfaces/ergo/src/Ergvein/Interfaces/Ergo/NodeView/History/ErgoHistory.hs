@@ -10,7 +10,7 @@ import Data.Serialize.Put                 as S
 
 -- From nodeView/history/ErgoHistory.scala
 newtype NBits = NBits { unNBits :: Word32 }
-  deriving (Eq)
+  deriving (Eq, Show)
 
 instance Serialize NBits where
     -- override def serialize(obj: NBits, w: Writer): Unit = { w.putBytes(uint32ToByteArrayBE(obj)) }

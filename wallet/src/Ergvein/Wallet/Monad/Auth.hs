@@ -11,7 +11,7 @@ import Data.Functor (void)
 import Data.List (permutations)
 import Data.Maybe (catMaybes, listToMaybe)
 import Data.Text (Text, unpack)
-import Ergvein.Wallet.Storage.Util (saveStorageToFile)
+import Data.Maybe
 import Data.Time (NominalDiffTime)
 import Ergvein.Crypto
 import Ergvein.Index.Client
@@ -45,7 +45,7 @@ data Env t = Env {
 , env'backEF          :: !(Event t (), IO ())
 , env'loading         :: !(Event t (Bool, Text), (Bool, Text) -> IO ())
 , env'langRef         :: !(ExternalRef t Language)
-, env'authRef         :: !(ExternalRef t AuthInfo)
+, env'authRef         :: !(ExternalRef t (Maybe AuthInfo))
 , env'logoutFire      :: !(IO ())
 , env'storeDir        :: !Text
 , env'alertsEF        :: (Event t AlertInfo, AlertInfo -> IO ()) -- ^ Holds alert event and trigger
@@ -117,14 +117,22 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
       Just _ -> True
       Nothing -> False
   {-# INLINE isAuthorized #-}
-  getAuthInfoMaybe = (fmap . fmap) Just $ externalRefDynamic =<< asks env'authRef
+  getAuthInfoMaybe = externalRefDynamic =<< asks env'authRef
   {-# INLINE getAuthInfoMaybe #-}
+  getAuthInfoRef = asks env'authRef
+  {-# INLINE getAuthInfoRef #-}
   setAuthInfo e = do
     authRef <- asks env'authRef
     fire <- asks env'logoutFire
     performEvent $ ffor e $ \case
-      Nothing -> liftIO fire
-      Just v -> writeExternalRef authRef v
+      Nothing -> do
+        logWrite "authed setAuthInfo: logout"
+        setLastStorage Nothing
+        liftIO fire
+      Just v -> do
+        logWrite "authed setAuthInfo: changing auth info"
+        setLastStorage $ Just . storage'walletName . authInfo'storage $ v
+        writeExternalRef authRef $ Just v
   {-# INLINE setAuthInfo #-}
   getPasswordModalEF = asks env'passModalEF
   {-# INLINE getPasswordModalEF #-}
@@ -157,23 +165,35 @@ instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   {-# INLINE getAlertEventFire #-}
 
 instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) where
-  getEncryptedWallet = fmap (storage'wallet . authInfo'storage) $ readExternalRef =<< asks env'authRef
+  getEncryptedWallet = fmap (storage'wallet . authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
+    where
+      guardit Nothing = error "getEncryptedWallet impossible: no auth in authed context!"
+      guardit (Just a) = a
   {-# INLINE getEncryptedWallet #-}
   getAddressByCurIx cur i = do
-    currMap <- fmap (storage'pubKeys . authInfo'storage) $ readExternalRef =<< asks env'authRef
+    currMap <- fmap (storage'pubKeys . authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
     let maddr = MI.lookup i =<< M.lookup cur currMap
     case maddr of
       Nothing -> fail "NOT IMPLEMENTED" -- TODO: generate new address here
       Just addr -> pure addr
+    where
+      guardit Nothing = error "getAddressByCurIx impossible: no auth in authed context!"
+      guardit (Just a) = a
   {-# INLINE getAddressByCurIx #-}
-  getWalletName = fmap (storage'walletName . authInfo'storage) $ readExternalRef =<< asks env'authRef
+  getWalletName = fmap (storage'walletName . authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
+    where
+      guardit Nothing = error "getWalletName impossible: no auth in authed context!"
+      guardit (Just a) = a
   {-# INLINE getWalletName #-}
   storeWallet e = do
-    authInfo <- readExternalRef =<< asks env'authRef
+    authInfo <- fmap guardit $ readExternalRef =<< asks env'authRef
     performEvent_ $ ffor e $ \_ -> do
       let storage = authInfo'storage authInfo
       let eciesPubKey = authInfo'eciesPubKey authInfo
       saveStorageToFile eciesPubKey storage
+    where
+      guardit Nothing = error "storeWallet impossible: no auth in authed context!"
+      guardit (Just a) = a
   {-# INLINE storeWallet #-}
 
 -- | Execute action under authorized context or return the given value as result
@@ -181,14 +201,14 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
 -- the widget is updated.
 liftAuth :: MonadFrontBase t m => m a -> ErgveinM t m a -> m (Dynamic t a)
 liftAuth ma0 ma = mdo
-  mauthD <- holdUniqDyn =<< getAuthInfoMaybe
+  mauthD <- getAuthInfoMaybe
   mauth0 <- sample . current $ mauthD
   (logoutE, logoutFire) <- newTriggerEvent
   let runAuthed auth = do
         backEF          <- getBackEventFire
         loading         <- getLoadingWidgetTF
         langRef         <- getLangRef
-        authRef         <- newExternalRef auth
+        authRef         <- getAuthInfoRef
         storeDir        <- getStoreDir
         alertsEF        <- getAlertEventFire
         logsTrigger     <- getLogsTrigger
@@ -202,19 +222,14 @@ liftAuth ma0 ma = mdo
         urlNumRef       <- getRequiredUrlNumRef
         timeoutRef      <- getRequestTimeoutRef
         manager         <- getClientMaganer
-        let infoE = externalEvent authRef
         a <- runReaderT (wrapped ma) $ Env
           settingsRef backEF loading langRef authRef (logoutFire ()) storeDir alertsEF
           logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager
-        pure (a, infoE)
+        pure a
   let
-    ma0e = (,never) <$> ma0
-    ma0' = maybe ma0e runAuthed mauth0
+    ma0' = maybe ma0 runAuthed mauth0
     redrawE = leftmost [updated mauthD, Nothing <$ logoutE]
-  dres :: Dynamic t (a, Event t AuthInfo) <- widgetHold ma0' $ ffor redrawE $ maybe ma0e runAuthed
-  let authInfoE = switch . current . fmap snd $ dres
-  _ <- setAuthInfo $ Just <$> authInfoE
-  pure $ fst <$> dres
+  widgetHold ma0' $ ffor redrawE $ maybe ma0 runAuthed
 
 -- | Lift action that doesn't require authorisation in context where auth is mandatory
 liftUnauthed :: m a -> ErgveinM t m a
