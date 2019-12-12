@@ -25,11 +25,13 @@ library
     , exceptions           == 0.10.*
     , http-client          == 0.6.*
     , lens                 == 4.17.*
+    , mtl                  == 2.2.*
+    , string-interpolate   == 0.1.*
     , text                 == 1.2.*
+    , unliftio-core        == 0.1.*
     , unordered-containers == 0.2.*
     , wreq                 == 0.5.*
-    , mtl                  == 2.2.*
-    , unliftio-core        == 0.1.*
+
     , ergvein-interface-ergo
 
   default-language:    Haskell2010
@@ -39,6 +41,7 @@ library
     DeriveGeneric
     FlexibleContexts
     FlexibleInstances
+    QuasiQuotes
 
 test-suite test-suite
   type: exitcode-stdio-1.0
@@ -51,14 +54,14 @@ test-suite test-suite
       Network.Ergo.Api.BlocksSpec
       Spec
   build-depends:
-      base >= 4.7 && < 4.13
-    , text
-    , bytestring
-    , base58string
-    , lens
-    , wreq
-    , http-client
-    , hspec
+      base                 >= 4.7 && < 4.13
+    , bytestring           == 0.10.*
+    , hspec                == 2.7.*
+    , lens                 == 4.17.*
     , mtl                  == 2.2.*
+    , text                 == 1.2.*
     , unliftio-core        == 0.1.*
+    , wreq                 == 0.5.*
+
+    , ergvein-interface-ergo
     , haskell-ergo-api

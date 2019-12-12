@@ -1,29 +1,34 @@
 module Network.Ergo.Api.Blocks where
 
+import Control.Lens ((^.))
+import Control.Monad.Reader
+import Data.Aeson
+import Data.String.Interpolate (i)
+import Data.Text
+import Data.Word
+import GHC.Generics
 import Network.Ergo.Api.Client
-import           Control.Lens              ((^.))
+
+import Ergvein.Interfaces.Ergo.Header
+import Ergvein.Interfaces.Ergo.Scorex.Core.Block
+import Ergvein.Interfaces.Ergo.Scorex.Util.Package
+
 import qualified Network.Wreq              as W
 import qualified Network.Wreq.Session      as WS
-import Data.Word
-import Ergvein.Interfaces.Ergo.Header
-import GHC.Generics
-import Data.Aeson
-import Control.Monad.Reader
 
+basePrefix :: Text
 basePrefix = "/blocks/"
 
-getHeaderIdsAtHeight :: ApiMonad m => Word32 -> m [String]
+getHeaderIdsAtHeight :: ApiMonad m => Height -> m [ModifierId]
 getHeaderIdsAtHeight height = do
   client <- getClient
-  let url = clientUrl client ++ basePrefix ++ "at/" ++ show height
+  let url = [i|#{ clientUrl client }#{ basePrefix }at/#{ show $ unHeight height }|]
   response <- liftIO $ W.asJSON  =<< WS.getWith (clientOpts client) (clientSession client) url
-  let parsed = show $ response
   pure $ response ^. W.responseBody
 
-getHeaderById ::  ApiMonad m => String -> m String
+getHeaderById ::  ApiMonad m => ModifierId -> m Header
 getHeaderById id = do
-    client <- getClient
-    let url = clientUrl client ++ basePrefix ++ id ++ "/header"
-    response <- liftIO $ WS.getWith (clientOpts client) (clientSession client) url
-    let parsed = show $ response ^. W.responseBody
-    pure $ parsed
+  client <- getClient
+  let url = [i|#{ clientUrl client }#{ basePrefix }#{ toHex $ unModifierId id }/header|]
+  response <- liftIO $ W.asJSON =<< WS.getWith (clientOpts client) (clientSession client) url
+  pure $ response ^. W.responseBody
