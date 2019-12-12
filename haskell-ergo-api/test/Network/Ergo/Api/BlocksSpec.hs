@@ -14,7 +14,6 @@ spec :: Spec
 spec = do
   describe "fdfdfd" $ do
     it "blocks" $ do
-    
 
       client <- newClient "127.0.0.1" 9052
       r <- flip runReaderT client $ getHeaderIdsAtHeight 6
