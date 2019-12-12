@@ -46,5 +46,5 @@ instance ToJSON ADDigest where
 
 instance FromJSON ADDigest where
   parseJSON = withText "ADDigest" $
-    either fail (pure . ADDigest) . fromHexEitherText
+    either fail (pure . ADDigest) . fromHexTextEither
   {-# INLINE parseJSON #-}

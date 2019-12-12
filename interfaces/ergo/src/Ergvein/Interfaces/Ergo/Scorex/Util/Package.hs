@@ -1,6 +1,6 @@
 module Ergvein.Interfaces.Ergo.Scorex.Util.Package where
 
-import Data.Aeson
+import Data.Aeson as A
 import Data.ByteString
 import Data.Serialize                     as S (Serialize (..), decode, encode, get, put)
 import Data.Serialize.Get                 as S
@@ -10,11 +10,12 @@ import Data.Text (Text)
 import Numeric.Natural
 import Safe.Partial
 
-import Ergvein.Aeson
-
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Base16 as BS16
 import qualified Data.Text.Encoding as TE
+
+import Ergvein.Aeson
 
 newtype ModifierId = ModifierId { unModifierId :: ByteString }
   deriving (Eq)
@@ -34,14 +35,14 @@ toHex = TE.decodeUtf8 . BS16.encode
 
 -- `Partial` constraint used to get the better stacktrace in case of an error
 fromHex :: Partial => Text -> ByteString
-fromHex = either error id . fromHexEitherText
+fromHex = either error id . fromHexTextEither
 
-fromHexEitherText :: Partial => Text -> Either String ByteString
-fromHexEitherText = fromHexEither . TE.encodeUtf8
+fromHexTextEither :: Partial => Text -> Either String ByteString
+fromHexTextEither = fromHexEither . TE.encodeUtf8
 
 fromHexEither :: Partial => ByteString -> Either String ByteString
-fromHexEither bs = let
-    (a, b) = BS16.decode bs
+fromHexEither bs =
+  let (a, b) = BS16.decode bs
   in if BS.null b
       then Right a
       else Left ("Not a valid hex string: " <> show bs)
@@ -52,5 +53,23 @@ instance ToJSON ModifierId where
 
 instance FromJSON ModifierId where
   parseJSON = withText "ModifierId" $
-    either fail (pure . ModifierId) . fromHexEitherText
+    either fail (pure . ModifierId) . fromHexTextEither
+  {-# INLINE parseJSON #-}
+
+newtype HexJSON = HexJSON { unHexJSON :: ByteString }
+  deriving (Eq)
+
+instance Show HexJSON where
+    show = show . toHex . unHexJSON
+
+instance IsString HexJSON where
+    fromString = HexJSON . fromHex . fromString
+
+instance ToJSON HexJSON where
+  toJSON = String . toHex . unHexJSON
+  {-# INLINE toJSON #-}
+
+instance FromJSON HexJSON where
+  parseJSON = withText "HexJSON" $
+    either fail (pure . HexJSON) . fromHexTextEither
   {-# INLINE parseJSON #-}

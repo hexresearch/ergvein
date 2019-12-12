@@ -5,23 +5,24 @@ module Ergvein.Interfaces.Ergo.Header where
 -- ergo/src/main/scala/org/ergoplatform/modifiers/history/Header.scala
 -----------------------------------------------------------------------------
 
-import Control.Monad
-import Data.Aeson
+import Data.Aeson as A
 import Data.ByteString
 import Data.Serialize                     as S (Serialize (..), decode, encode, get, put)
 import Data.Serialize.Get                 as S
 import Data.Serialize.Put                 as S
 import Data.String
 import Data.Time
-import Data.Word
 
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 
 import Ergvein.Aeson
 
 import Ergvein.Interfaces.Ergo.Mining.AutolykosSolution
+import Ergvein.Interfaces.Ergo.Mining.Difficulty.RequiredDifficulty
+import Ergvein.Interfaces.Ergo.Modifiers.History.ModifierType
 import Ergvein.Interfaces.Ergo.NodeView.History.ErgoHistory
 import Ergvein.Interfaces.Ergo.Scorex.Core.Block
 import Ergvein.Interfaces.Ergo.Scorex.Crypto.Authds
@@ -32,11 +33,11 @@ import Ergvein.Interfaces.Ergo.Scorex.Util.Package
 data Header = Header {
   version :: Version
 , parentId :: ModifierId
-, adProofsRoot :: Digest32
-, transactionsRoot :: Digest32
+, adProofsRoot :: AdProofsRoot
+, transactionsRoot :: TransactionsRoot
 , stateRoot :: ADDigest
 , timestamp :: Timestamp
-, extensionRoot :: Digest32
+, extensionRoot :: ExtensionRoot
 , nBits :: NBits
 , height :: Height
 , votes :: Votes
@@ -98,6 +99,60 @@ instance Serialize Header where
         powSolution <- get
         pure Header {..}
 
+instance ToJSON Header where
+  toJSON h@Header {..} = object [
+      -- "id" -> Algos.encode(h.id).asJson,
+      "id" .= toJSON (HexJSON serializedHId)
+      -- "transactionsRoot" -> Algos.encode(h.transactionsRoot).asJson,
+    , "transactionsRoot" .= toJSON transactionsRoot
+      -- "adProofsRoot" -> Algos.encode(h.ADProofsRoot).asJson,
+    , "adProofsRoot" .= toJSON adProofsRoot
+      -- "stateRoot" -> Algos.encode(h.stateRoot).asJson,
+    , "stateRoot" .= toJSON stateRoot
+      -- "parentId" -> Algos.encode(h.parentId).asJson,
+    , "parentId" .= toJSON parentId
+      -- "timestamp" -> h.timestamp.asJson,
+    , "timestamp" .= toJSON timestamp
+      -- "extensionHash" -> Algos.encode(h.extensionRoot).asJson,
+    , "extensionHash" .= toJSON extensionRoot
+      -- "powSolutions" -> h.powSolution.asJson,
+    , "powSolutions" .= toJSON powSolution
+      -- "nBits" -> h.nBits.asJson,
+    , "nBits" .= toJSON nBits
+      -- "height" -> h.height.asJson,
+    , "height" .= toJSON height
+      -- "difficulty" -> h.requiredDifficulty.toString.asJson,
+    , "difficulty" .= toJSON (requiredDifficulty h)
+      -- "version" -> h.version.asJson,
+    , "version" .= toJSON version
+      -- "votes" -> Algos.encode(h.votes).asJson,
+    , "votes" .= toJSON votes
+      -- "size" -> h.size.asJson,
+    , "size" .= toJSON (BS.length serializedH)
+      -- "extensionId" -> Algos.encode(h.extensionId).asJson,
+    , "extensionId" .= toJSON (HexJSON $ computeId serializedHId extensionRoot)
+      -- "transactionsId" -> Algos.encode(h.transactionsId).asJson,
+    , "transactionsId" .= toJSON (HexJSON $ computeId serializedHId transactionsRoot)
+      -- "adProofsId" -> Algos.encode(h.ADProofsId).asJson
+    , "adProofsId" .= toJSON (HexJSON $ computeId serializedHId adProofsRoot)
+    ]
+    where
+      serializedH = S.encode $ h
+      serializedHId = hashFn serializedHId
+  {-# INLINE toJSON #-}
+
+-- lazy val requiredDifficulty: Difficulty = RequiredDifficulty.decodeCompactBits(nBits)
+requiredDifficulty :: Header -> Difficulty
+requiredDifficulty = decodeCompactBits . nBits
+
+computeId :: (HasModifierTypeId a, Serialize a) => ByteString -> a -> ByteString
+computeId b a = hashFn $ mconcat [ S.encode (modifierTypeId a), b, S.encode a ]
+
+-- https://github.com/ScorexFoundation/sigmastate-interpreter/blob/98c27448da29d7cb7521d378080d5c52c13b76c3/sigmastate/src/main/scala/org/ergoplatform/settings/ErgoAlgos.scala#L13
+-- Blake2b256
+hashFn :: ByteString -> ByteString
+hashFn = undefined  -- FIXME Blake2b256
+
 instance FromJSON Header where
   parseJSON = withObject "Header" $ \o -> do
     -- version <- c.downField("version").as[Byte]
@@ -147,7 +202,7 @@ instance ToJSON Votes where
 
 instance FromJSON Votes where
   parseJSON = withText "Votes" $ \v -> do
-    bs <- either fail (pure) . fromHexEitherText $ v
+    bs <- either fail (pure) . fromHexTextEither $ v
     if (BS.length bs == 3)
       then (pure . Votes $ bs)
       else fail "Must be hex representation of bytestring 3 characters long"

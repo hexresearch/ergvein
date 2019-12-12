@@ -29,7 +29,7 @@ instance ToJSON Digest32 where
 
 instance FromJSON Digest32 where
   parseJSON = withText "Digest32" $
-    either fail (pure . Digest32) . fromHexEitherText
+    either fail (pure . Digest32) . fromHexTextEither
   {-# INLINE parseJSON #-}
 
 newtype Digest64 = Digest64 { unDigest64 :: ByteString }
