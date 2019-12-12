@@ -161,10 +161,10 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   {-# INLINE getEncryptedPrivateStorage #-}
   getAddressByCurIx cur i = do
     currMap <- fmap (storage'publicKeys . authInfo'storage) $ readExternalRef =<< asks env'authRef
-    let maddr = MI.lookup i =<< M.lookup cur currMap
-    case maddr of
+    let mXPubKey = (MI.lookup i) . egvPubKeyсhain'external =<< M.lookup cur currMap
+    case mXPubKey of
       Nothing -> fail "NOT IMPLEMENTED" -- TODO: generate new address here
-      Just addr -> pure addr
+      Just xPubKey -> pure $ xPubExport (getCurrencyNetwork cur) (egvXPubKey xPubKey)
   {-# INLINE getAddressByCurIx #-}
   getWalletName = fmap (storage'walletName . authInfo'storage) $ readExternalRef =<< asks env'authRef
   {-# INLINE getWalletName #-}

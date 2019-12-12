@@ -41,34 +41,34 @@ type Password = Text
 type WalletName = Text
 type PublicKeys = M.Map Currency EgvPubKeyсhain
 
-generateCurrencyPrvKeys :: EgvRootKey -> Currency -> (Currency, EgvPrvKeyсhain)
+generateCurrencyPrvKeys :: EgvRootPrvKey -> Currency -> (Currency, EgvPrvKeyсhain)
 generateCurrencyPrvKeys root currency =
-  let master = deriveCurrencyMasterKey root currency
-      external = MI.fromList [(i, deriveExternalKey master (fromIntegral i)) | i <- [0..externalAddressCount]]
-      internal = MI.fromList [(i, deriveInternalKey master (fromIntegral i)) | i <- [0..internalAddressCount]]
+  let master = deriveCurrencyMasterPrvKey root currency
+      external = MI.fromList [(i, deriveExternalPrvKey master (fromIntegral i)) | i <- [0..externalAddressCount]]
+      internal = MI.fromList [(i, deriveInternalPrvKey master (fromIntegral i)) | i <- [0..internalAddressCount]]
   in (currency, EgvPrvKeyсhain master external internal)
 
-createPrivateStorage :: Seed -> EgvRootKey -> PrivateStorage
+createPrivateStorage :: Seed -> EgvRootPrvKey -> PrivateStorage
 createPrivateStorage seed root = PrivateStorage seed root privateKeys
   where privateKeys = M.fromList $ fmap (generateCurrencyPrvKeys root) allCurrencies
 
-generateCurrencyPubKeys :: EgvRootKey -> Currency -> (Currency, EgvPubKeyсhain)
+generateCurrencyPubKeys :: EgvRootPrvKey -> Currency -> (Currency, EgvPubKeyсhain)
 generateCurrencyPubKeys root currency =
-  let master = deriveCurrencyMasterKey root currency
-      external = MI.fromList [(i, deriveExternalKey master (fromIntegral i)) | i <- [0..externalAddressCount]]
-      internal = MI.fromList [(i, deriveInternalKey master (fromIntegral i)) | i <- [0..internalAddressCount]]
+  let master = deriveCurrencyMasterPubKey root currency
+      external = MI.fromList [(i, deriveExternalPubKey master (fromIntegral i)) | i <- [0..externalAddressCount]]
+      internal = MI.fromList [(i, deriveInternalPubKey master (fromIntegral i)) | i <- [0..internalAddressCount]]
   in (currency, EgvPubKeyсhain master external internal)
 
-generatePublicKeys :: EgvRootKey -> PublicKeys
+generatePublicKeys :: EgvRootPrvKey -> PublicKeys
 generatePublicKeys root = M.fromList $ fmap (generateCurrencyPubKeys root) allCurrencies
 
 createStorage :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either StorageAlerts ErgveinStorage)
 createStorage mnemonic (login, pass) = case mnemonicToSeed "" mnemonic of
-  Left err -> Left $ SAMnemonicFail $ showt err
+  Left err -> pure $ Left $ SAMnemonicFail $ showt err
   Right seed -> do
-    let root = EgvRootKey $ makeXPrvKey seed
+    let root = EgvRootPrvKey $ makeXPrvKey seed
         privateStorage = createPrivateStorage seed root
-        publicKeys = createPublicKeys root
+        publicKeys = generatePublicKeys root
     encryptedPrivateStorageResult <- encryptPrivateStorage privateStorage pass
     case encryptedPrivateStorageResult of
       Left err -> pure $ Left err

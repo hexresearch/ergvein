@@ -65,7 +65,7 @@ $(deriveJSON aesonOptionsStripToApostroph ''EgvPubKeyсhain)
 
 data PrivateStorage = PrivateStorage {
     privateStorage'seed        :: Seed
-  , privateStorage'root        :: EgvRootKey
+  , privateStorage'root        :: EgvRootPrvKey
   , privateStorage'privateKeys :: M.Map Currency EgvPrvKeyсhain
   }
 
