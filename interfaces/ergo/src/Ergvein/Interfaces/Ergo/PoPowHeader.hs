@@ -1,9 +1,8 @@
+{-|
+The port of:
+ergo/src/main/scala/org/ergoplatform/modifiers/history/PoPowHeader.scala
+-}
 module Ergvein.Interfaces.Ergo.PoPowHeader where
-
------------------------------------------------------------------------------
--- | The port of:
--- ergo/src/main/scala/org/ergoplatform/modifiers/history/PoPowHeader.scala
------------------------------------------------------------------------------
 
 import qualified Data.ByteString as BS
 import Data.Serialize                     as S (Serialize (..), decode, encode, get, put)

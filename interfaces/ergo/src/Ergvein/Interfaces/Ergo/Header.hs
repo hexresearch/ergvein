@@ -1,9 +1,8 @@
+{-|
+The port of:
+ergo/src/main/scala/org/ergoplatform/modifiers/history/Header.scala
+-}
 module Ergvein.Interfaces.Ergo.Header where
-
------------------------------------------------------------------------------
--- | The port of:
--- ergo/src/main/scala/org/ergoplatform/modifiers/history/Header.scala
------------------------------------------------------------------------------
 
 import Data.Aeson as A
 import Data.ByteString
