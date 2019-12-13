@@ -15,23 +15,24 @@ library
   hs-source-dirs:      src
   exposed-modules:
     Ergvein.Index.Server.App
-    Ergvein.Index.Server.Server
-    Ergvein.Index.Server.Monad
-    Ergvein.Index.Server.Server.V1
-    Ergvein.Index.Server.DB.Schema
-    Ergvein.Index.Server.DB.Queries
-    Ergvein.Index.Server.DB.Monad
-    Ergvein.Index.Server.DB.Drv
-    Ergvein.Index.Server.Config
-    Ergvein.Index.Server.Environment
-    Ergvein.Index.Server.Cache
+    Ergvein.Index.Server.BlockchainScanning.Bitcoin
     Ergvein.Index.Server.BlockchainScanning.Common
+    Ergvein.Index.Server.BlockchainScanning.Ergo
     Ergvein.Index.Server.BlockchainScanning.Types
-    Ergvein.Index.Server.BlockchainScanning.BTC
-    Ergvein.Index.Server.BlockchainScanning.ERGO
+    Ergvein.Index.Server.Cache
     Ergvein.Index.Server.Cache.Monad
-    Ergvein.Index.Server.Cache.Schema
     Ergvein.Index.Server.Cache.Queries
+    Ergvein.Index.Server.Cache.Schema
+    Ergvein.Index.Server.Config
+    Ergvein.Index.Server.DB.Drv
+    Ergvein.Index.Server.DB.Monad
+    Ergvein.Index.Server.DB.Queries
+    Ergvein.Index.Server.DB.Schema
+    Ergvein.Index.Server.Environment
+    Ergvein.Index.Server.Monad
+    Ergvein.Index.Server.Server
+    Ergvein.Index.Server.Server.V1
+
   build-depends:
         base                     >= 4.7 && < 4.13
       , aeson                    == 1.4.*
@@ -44,6 +45,7 @@ library
       , conversion               == 1.2.*
       , data-default             == 0.7.*
       , directory                == 1.3.*
+      , ergo-api
       , esqueleto                == 3.0.*
       , exceptions               == 0.10.*
       , flat                     == 0.3.*

@@ -1,29 +1,29 @@
 module Ergvein.Index.Server.Environment where
 
 import Control.Concurrent
-import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Reader
 import Data.ByteString.UTF8
+import Database.LevelDB.Base
 import Database.Persist.Sql
-import Network.Bitcoin.Api.Client
-import Network.Bitcoin.Api.Types
+import qualified Network.Bitcoin.Api.Client as BitcoinApi
+import qualified Network.Ergo.Api.Client as ErgoApi
+
+import Ergvein.Index.Server.Cache
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema
-import Ergvein.Index.Server.Cache
-import Database.LevelDB.Base
-import Data.Default
 
 data ServerEnv = ServerEnv 
-    { envConfig :: !Config
-    , envLogger :: !(Chan (Loc, LogSource, LogLevel, LogStr))
-    , envPool   :: !DBPool
-    , ldb :: !DB
+    { env'config            :: !Config
+    , env'Logger            :: !(Chan (Loc, LogSource, LogLevel, LogStr))
+    , env'persistencePool   :: !DBPool
+    , env'levelDBContext    :: !DB
+    , env'ergoNodeClient    :: !ErgoApi.Client
     }
 
-btcNodeClient :: Config -> (Client -> IO a) -> IO a
-btcNodeClient cfg = withClient 
+btcNodeClient :: Config -> (BitcoinApi.Client -> IO a) -> IO a
+btcNodeClient cfg = BitcoinApi.withClient 
     (configBTCNodeHost     cfg)
     (configBTCNodePort     cfg)
     (configBTCNodeUser     cfg)
@@ -36,10 +36,12 @@ newServerEnv cfg = do
         pool <- newDBPool $ fromString $ connectionStringFromConfig cfg
         flip runReaderT pool $ runDb $ runMigration migrateAll
         pure pool
-    db <- liftIO $ openDb
-    liftIO $ loadCache db pool
-    pure ServerEnv { envConfig = cfg
-                   , envLogger = logger
-                   , envPool   = pool
-                   , ldb = db
+    levelDBContext <- liftIO $ openDb
+    liftIO $ loadCache levelDBContext pool
+    ergoNodeClient <- liftIO $ ErgoApi.newClient (configERGONodeHost cfg) $ (configERGONodePort cfg)
+    pure ServerEnv { env'config          = cfg
+                   , env'Logger          = logger
+                   , env'persistencePool = pool
+                   , env'levelDBContext  = levelDBContext
+                   , env'ergoNodeClient  = ergoNodeClient
                    }

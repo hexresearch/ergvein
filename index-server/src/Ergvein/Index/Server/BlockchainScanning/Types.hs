@@ -25,8 +25,8 @@ data TxInInfo = TxInInfo
   }
 
 data BlockMetaInfo = BlockMetaInfo
-  { blockMeta'currency    :: Currency
-  , blockMeta'blockHeight  :: BlockHeight
+  { blockMeta'currency      :: Currency
+  , blockMeta'blockHeight   :: BlockHeight
   , blockMeta'headerHexView :: BlockHeaderHexView
   }
 

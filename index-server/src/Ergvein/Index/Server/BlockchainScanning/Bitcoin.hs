@@ -1,4 +1,4 @@
-module Ergvein.Index.Server.BlockchainScanning.BTC where
+module Ergvein.Index.Server.BlockchainScanning.Bitcoin where
 
 import           Data.Either
 import           Data.List.Index
@@ -58,18 +58,18 @@ blockTxInfos block txBlockHeight = let
       in ([txI], txInI, txOutI)
 
 
-actualBTCHeight :: Config -> IO BlockHeight
-actualBTCHeight cfg = fromIntegral <$> btcNodeClient cfg getBlockCount
+actualHeight :: Config -> IO BlockHeight
+actualHeight cfg = fromIntegral <$> btcNodeClient cfg getBlockCount
 
-bTCBlockScanner :: ServerEnv -> BlockHeight -> IO BlockInfo
-bTCBlockScanner env blockHeightToScan = do 
+blockInfo :: ServerEnv -> BlockHeight -> IO BlockInfo
+blockInfo env blockHeightToScan = do 
   blockHash <- btcNodeClient cfg $ flip getBlockHash $ fromIntegral blockHeightToScan
   maybeRawBlock <- btcNodeClient cfg $ flip getBlockRaw blockHash
   let rawBlock = fromMaybe blockParsingError maybeRawBlock
       parsedBlock = fromRight blockGettingError $ decode $ HS.toBytes rawBlock
   pure $ blockTxInfos parsedBlock blockHeightToScan
   where
-    cfg    = envConfig env
-    dbPool = envPool env
+    cfg    = env'config env
+    dbPool = env'persistencePool env
     blockGettingError = error $ "Error getting BTC node at height " ++ show blockHeightToScan
     blockParsingError = error $ "Error parsing BTC node at height " ++ show blockHeightToScan

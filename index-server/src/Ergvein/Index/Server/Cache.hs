@@ -96,4 +96,4 @@ loadCache db pool = do
   pure ()
 
 levelDbDir :: IO FilePath
-levelDbDir = (++ "/ldbCache") <$> getCurrentDirectory
+levelDbDir = (++ "/ergveinCache") <$> getCurrentDirectory

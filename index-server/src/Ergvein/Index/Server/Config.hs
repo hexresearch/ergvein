@@ -14,11 +14,13 @@ data Config = Config
   , configDbUser              :: !String
   , configDbPassword          :: !String
   , configDbName              :: !String
+  , configBlockchainScanDelay :: !Int
   , configBTCNodeHost         :: !String
   , configBTCNodePort         :: !Int
   , configBTCNodeUser         :: !Text
   , configBTCNodePassword     :: !Text
-  , configBlockchainScanDelay :: !Int
+  , configERGONodeHost        :: !String
+  , configERGONodePort        :: !Int
   } deriving (Show, Generic)
 deriveJSON (aesonOptionsStripPrefix "config") ''Config
 

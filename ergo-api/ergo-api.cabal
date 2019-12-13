@@ -1,4 +1,4 @@
-name:                haskell-ergo-api
+name:                ergo-api
 version:             0.1.0.0
 synopsis:            Provides access to the API of Ergo node
 description:         See README.md
@@ -64,4 +64,4 @@ test-suite test-suite
     , wreq                 == 0.5.*
 
     , ergvein-interface-ergo
-    , haskell-ergo-api
+    , ergo-api

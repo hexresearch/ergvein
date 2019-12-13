@@ -21,7 +21,7 @@ catchHandler :: IO a -> Handler a
 catchHandler = Handler . ExceptT . try
 
 runServerM :: ServerEnv -> ServerM a -> Handler a
-runServerM e = catchHandler . runChanLoggingT (envLogger e) . flip runReaderT e . unServerM
+runServerM e = catchHandler . runChanLoggingT (env'Logger e) . flip runReaderT e . unServerM
 
 runServerMIO :: ServerEnv -> ServerM a -> IO a
 runServerMIO env m = do
@@ -31,11 +31,11 @@ runServerMIO env m = do
     Right a -> return a
 
 instance MonadDB ServerM where
-  getDbPool = asks envPool
+  getDbPool = asks env'persistencePool
   {-# INLINE getDbPool #-}
 
 instance MonadLDB ServerM where
-  getDb = asks ldb
+  getDb = asks env'levelDBContext
   {-# INLINE getDb #-}
 
 instance MonadUnliftIO ServerM where
