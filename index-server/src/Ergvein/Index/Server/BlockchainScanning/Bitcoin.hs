@@ -3,9 +3,8 @@ module Ergvein.Index.Server.BlockchainScanning.Bitcoin where
 import           Data.Either
 import           Data.List.Index
 import           Data.Maybe
-import           Network.Bitcoin.Api.Blockchain 
+import           Network.Bitcoin.Api.Blockchain
 import           Network.Bitcoin.Api.Client
-import           Network.Haskoin.Util
 
 import           Ergvein.Index.Server.BlockchainScanning.Types
 import           Ergvein.Index.Server.Config
@@ -33,7 +32,7 @@ txInfo tx txHash = let
                   , txIn'txOutIndex = fromIntegral $ HK.outPointIndex prevOutput
                   }
     txOutInfo txOutIndex txOut = let
-      scriptOutputHash = encodeHex . B.reverse . S.encode . HK.doubleSHA256
+      scriptOutputHash = HK.encodeHex . B.reverse . S.encode . HK.doubleSHA256
       in TxOutInfo { txOut'txHash           = txHash
                    , txOut'pubKeyScriptHash = scriptOutputHash $ HK.scriptOutput txOut
                    , txOut'index            = fromIntegral txOutIndex

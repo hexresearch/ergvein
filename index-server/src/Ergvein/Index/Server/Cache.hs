@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module Ergvein.Index.Server.Cache where 
 
 import Conduit
@@ -6,8 +5,7 @@ import Conversion
 import Data.Default
 import Data.Flat
 import Data.Maybe
-import Database.LevelDB
-import Database.LevelDB.Base as  LDB.Base
+import Database.LevelDB.Base
 import System.Directory
 
 import Ergvein.Index.Server.BlockchainScanning.Types
@@ -16,9 +14,8 @@ import Ergvein.Index.Server.Cache.Schema
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema
-import Ergvein.Types.Transaction
+import Ergvein.Index.Server.Utils
 
-import qualified Data.ByteString as B
 import qualified Data.Conduit.List as CL
 import qualified Data.Map.Strict as Map
 
@@ -27,12 +24,6 @@ instance Conversion TxOutInfo TxOutCacheRecItem where
 
 instance Conversion TxInfo TxCacheRec where
   convert txInfo = TxCacheRec (tx'hash txInfo) (tx'blockHeight txInfo) (tx'blockIndex txInfo)
-
-groupMapBy :: Ord k => (v -> k) -> [v] -> Map.Map k [v]
-groupMapBy keySelector = Map.fromListWith (++) . fmap (\v-> (keySelector v , [v]))
-
-mapBy :: Ord k => (v -> k) -> [v] -> Map.Map k v
-mapBy keySelector = Map.fromList . fmap (\v-> (keySelector v , v))
 
 cacheBlockMetaInfos :: MonadIO m => DB -> [BlockMetaInfo] -> m ()
 cacheBlockMetaInfos db infos = write db def $ putItems keySelector valueSelector infos
@@ -72,24 +63,24 @@ openDb = do
   dbDirectory <- levelDbDir
   isDbDirExist <- liftIO $ doesDirectoryExist dbDirectory
   if isDbDirExist then removeDirectoryRecursive dbDirectory else pure ()
-  db <- LDB.Base.open dbDirectory def {createIfMissing = True }
+  db <- open dbDirectory def {createIfMissing = True }
   pure db
 
-loadCache :: DB -> DBPool -> IO ()
-loadCache db pool = do
-  runDbQuery pool $ runConduit $ pagedEntitiesStream TxOutRecId 
+loadCache :: (MonadIO m) => DB -> QueryT m ()
+loadCache db = do
+  runConduit $ pagedEntitiesStream TxOutRecId 
     .| CL.mapM_ (cacheTxOutInfos db . fmap convert)
     .| sinkList
 
-  runDbQuery pool $ runConduit $ pagedEntitiesStream TxInRecId 
+  runConduit $ pagedEntitiesStream TxInRecId 
     .| CL.mapM_ (cacheTxInInfos db . fmap convert)
     .| sinkList
 
-  runDbQuery pool $ runConduit $ pagedEntitiesStream TxRecId 
+  runConduit $ pagedEntitiesStream TxRecId 
     .| CL.mapM_ (cacheTxInfos db . fmap convert)
     .| sinkList
 
-  runDbQuery pool $ runConduit $ pagedEntitiesStream BlockMetaRecId 
+  runConduit $ pagedEntitiesStream BlockMetaRecId 
     .| CL.mapM_ (cacheBlockMetaInfos db . fmap convert)
     .| sinkList
 

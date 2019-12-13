@@ -1,6 +1,5 @@
 module Ergvein.Index.Server.Config where
 
-import Prelude
 import Control.Monad.IO.Class
 import Data.Text 
 import Data.Yaml.Config

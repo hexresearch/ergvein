@@ -4,9 +4,7 @@ import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Reader
 import Data.Pool
-import Database.Persist.Sql
 import Database.Persist.Postgresql
-import Database.LevelDB
 
 type DBPool = Pool SqlBackend
 

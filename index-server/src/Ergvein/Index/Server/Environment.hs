@@ -6,13 +6,14 @@ import Control.Monad.Reader
 import Data.ByteString.UTF8
 import Database.LevelDB.Base
 import Database.Persist.Sql
-import qualified Network.Bitcoin.Api.Client as BitcoinApi
-import qualified Network.Ergo.Api.Client as ErgoApi
 
 import Ergvein.Index.Server.Cache
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema
+
+import qualified Network.Bitcoin.Api.Client as BitcoinApi
+import qualified Network.Ergo.Api.Client as ErgoApi
 
 data ServerEnv = ServerEnv 
     { env'config            :: !Config
@@ -37,7 +38,7 @@ newServerEnv cfg = do
         flip runReaderT pool $ runDb $ runMigration migrateAll
         pure pool
     levelDBContext <- liftIO $ openDb
-    liftIO $ loadCache levelDBContext pool
+    liftIO $ runDbQuery pool $ loadCache levelDBContext
     ergoNodeClient <- liftIO $ ErgoApi.newClient (configERGONodeHost cfg) $ (configERGONodePort cfg)
     pure ServerEnv { env'config          = cfg
                    , env'Logger          = logger

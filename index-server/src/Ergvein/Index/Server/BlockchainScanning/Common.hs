@@ -4,11 +4,12 @@ import Control.Concurrent
 import Control.Immortal
 import Control.Monad
 import Control.Monad.IO.Unlift
+import Conversion
 import Data.Maybe
 import Database.Persist.Sql
 
-
 import Ergvein.Index.Server.BlockchainScanning.Types
+import Ergvein.Index.Server.Cache
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries
@@ -17,22 +18,18 @@ import Ergvein.Index.Server.Environment
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
-import Ergvein.Index.Server.Cache
-import Conversion
-
-import qualified Data.Text.IO as T
 import qualified Ergvein.Index.Server.BlockchainScanning.Bitcoin as BTCScanning
 import qualified Ergvein.Index.Server.BlockchainScanning.Ergo as ERGOScanning
 
-scannedBlockHeight :: DBPool -> Currency -> IO (Maybe BlockHeight)
-scannedBlockHeight pool currency = do
-  entity <- runDbQuery pool $ getScannedHeight currency
+scannedBlockHeight :: (MonadIO m) => Currency -> QueryT m (Maybe BlockHeight)
+scannedBlockHeight currency = do
+  entity <- getScannedHeight currency
   pure $ scannedHeightRecHeight . entityVal <$> entity
 
 blockHeightsToScan :: ServerEnv -> Currency -> IO [BlockHeight]
 blockHeightsToScan env currency = do
   actual  <- actualHeight
-  scanned <- scannedBlockHeight (env'persistencePool env) currency
+  scanned <- runDbQuery (env'persistencePool env) $ scannedBlockHeight currency
   let start = fromMaybe startHeight $ succ <$> scanned
   pure [start..actual]
   where
@@ -63,7 +60,6 @@ scannerThread env currency scanInfo =
       runDbQuery pool $ do
         storeInfo blockInfo
         storeScannedHeight currency blockHeight
-      dir <- levelDbDir
       pure ()
       addToCache (env'levelDBContext env) blockInfo
     scanIteration thread = liftIO $ do

@@ -23,10 +23,8 @@ indexServer = IndexApi
     , indexTxBroadcast = txBroadcastRequestEndpoint
     }
 --Stubs
-btcBalance  = BalanceResponse { balRespConfirmed = 1024, balRespUnconfirmed = 2048 }
 ergoBalance = BalanceResponse { balRespConfirmed = 2048, balRespUnconfirmed = 4096 }
 
-btcHistory = [TxHashHistoryItem {historyItemTxHash = "0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098", historyItemBlockHeight = 0} ]
 ergoHistory = [TxHashHistoryItem {historyItemTxHash = "4c6282be413c6e300a530618b37790be5f286ded758accc2aebd41554a1be308", historyItemBlockHeight = 1} ]
 
 btcProof = TxMerkleProofResponse{ merkleItemTxMerkleProof = [""] , merkleItemTxBlockIndex = 1 }
@@ -55,7 +53,7 @@ indexGetBalanceEndpoint req@(BalanceRequest { balReqCurrency = BTC  })  = do
   let confirmedBalance = case maybeHistory of
         Just history -> getSum $ foldMap (Sum . txoValue) history 
         Nothing      -> 0
-  pure $ btcBalance { balRespConfirmed = confirmedBalance }
+  pure $ BalanceResponse { balRespConfirmed = confirmedBalance, balRespUnconfirmed = 0}
   where
     txoValue (UTXO txo) = txOutCacheRec'value txo
     txoValue _ = 0
