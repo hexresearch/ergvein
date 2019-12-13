@@ -24,10 +24,11 @@ library
     Ergvein.Index.Server.DB.Drv
     Ergvein.Index.Server.Config
     Ergvein.Index.Server.Environment
-    Ergvein.Index.Server.BlockchainScan
     Ergvein.Index.Server.Cache
-    Ergvein.Index.Server.BlockScanner.BTCBlockScanner
-    Ergvein.Index.Server.BlockScanner.Types
+    Ergvein.Index.Server.BlockchainScanning.Common
+    Ergvein.Index.Server.BlockchainScanning.Types
+    Ergvein.Index.Server.BlockchainScanning.BTC
+    Ergvein.Index.Server.BlockchainScanning.ERGO
     Ergvein.Index.Server.Cache.Monad
     Ergvein.Index.Server.Cache.Schema
     Ergvein.Index.Server.Cache.Queries

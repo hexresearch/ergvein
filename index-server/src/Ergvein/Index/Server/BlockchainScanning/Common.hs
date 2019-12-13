@@ -1,4 +1,4 @@
-module Ergvein.Index.Server.BlockchainScan where
+module Ergvein.Index.Server.BlockchainScanning.Common where
 
 import Control.Concurrent
 import Control.Immortal
@@ -7,8 +7,8 @@ import Control.Monad.IO.Unlift
 import Data.Maybe
 import Database.Persist.Sql
 
-import Ergvein.Index.Server.BlockScanner.BTCBlockScanner
-import Ergvein.Index.Server.BlockScanner.Types
+import Ergvein.Index.Server.BlockchainScanning.BTC
+import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries

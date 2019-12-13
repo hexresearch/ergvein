@@ -1,13 +1,13 @@
-module Ergvein.Index.Server.BlockScanner.BTCBlockScanner where
+module Ergvein.Index.Server.BlockchainScanning.BTC where
 
 import           Data.Either
 import           Data.List.Index
 import           Data.Maybe
-import           Network.Bitcoin.Api.Blockchain
+import           Network.Bitcoin.Api.Blockchain 
 import           Network.Bitcoin.Api.Client
 import           Network.Haskoin.Util
 
-import           Ergvein.Index.Server.BlockScanner.Types
+import           Ergvein.Index.Server.BlockchainScanning.Types
 import           Ergvein.Index.Server.Config
 import           Ergvein.Index.Server.Environment
 import           Ergvein.Types.Transaction

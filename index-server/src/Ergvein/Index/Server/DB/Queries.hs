@@ -7,7 +7,7 @@ import Database.Esqueleto
 import Safe 
 import qualified Database.Persist as DT
 
-import Ergvein.Index.Server.BlockScanner.Types
+import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema
 import Ergvein.Types.Currency

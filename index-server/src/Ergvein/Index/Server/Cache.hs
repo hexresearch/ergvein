@@ -10,7 +10,7 @@ import Database.LevelDB
 import Database.LevelDB.Base as  LDB.Base
 import System.Directory
 
-import Ergvein.Index.Server.BlockScanner.Types
+import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.Cache.Monad
 import Ergvein.Index.Server.Cache.Schema
 import Ergvein.Index.Server.DB.Monad

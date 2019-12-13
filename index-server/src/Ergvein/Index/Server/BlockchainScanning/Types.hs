@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
-module Ergvein.Index.Server.BlockScanner.Types where
+module Ergvein.Index.Server.BlockchainScanning.Types where
 
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
