@@ -23,7 +23,7 @@ library
     , aeson                == 1.4.*
     , bytestring           == 0.10.*
     , exceptions           == 0.10.*
-    , http-client          == 0.6.*
+    , http-client          == 0.5.*
     , lens                 == 4.17.*
     , mtl                  == 2.2.*
     , string-interpolate   == 0.1.*
