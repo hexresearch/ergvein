@@ -1,7 +1,9 @@
 module Ergvein.Wallet.Storage.Data
   (
-    WalletData(..)
-  , EncryptedWalletData(..)
+    PrivateStorage(..)
+  , EncryptedPrivateStorage(..)
+  , EgvPrvKeyсhain(..)
+  , EgvPubKeyсhain(..)
   , ErgveinStorage(..)
   , EncryptedErgveinStorage(..)
   ) where
@@ -15,7 +17,6 @@ import Data.Text
 import Ergvein.Aeson
 import Ergvein.Crypto
 
-import qualified Data.ByteString          as BS
 import qualified Data.ByteString.Base64   as B64
 import qualified Data.IntMap.Strict       as MI
 import qualified Data.Map.Strict          as M
@@ -28,51 +29,85 @@ byteStringToText bs = TE.decodeUtf8With TEE.lenientDecode $ B64.encode bs
 textToByteString :: Text -> ByteString
 textToByteString = B64.decodeLenient . TE.encodeUtf8
 
-data WalletData = WalletData {
-    wallet'seed     :: Seed
-  , wallet'root     :: EgvRootKey
-  , wallet'masters  :: M.Map Currency EgvXPrvKey
+data EgvPrvKeyсhain = EgvPrvKeyсhain {
+  egvPrvKeyсhain'master   :: EgvXPrvKey
+  -- ^BIP44 private key with derivation path /m\/purpose'\/coin_type'\/account'/.
+, egvPrvKeyсhain'external :: MI.IntMap EgvXPrvKey
+  -- ^Map with BIP44 external private keys.
+  -- Private key indices are map keys, and the private keys are map values.
+  -- This private keys must have the following derivation path:
+  -- /m\/purpose'\/coin_type'\/account'\/0\/address_index/.
+, egvPrvKeyсhain'internal :: MI.IntMap EgvXPrvKey
+  -- ^Map with BIP44 internal private keys.
+  -- Private key indices are map keys, and the private keys are map values.
+  -- This private keys must have the following derivation path:
+  -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.
+} deriving (Eq)
+
+$(deriveJSON aesonOptionsStripToApostroph ''EgvPrvKeyсhain)
+
+data EgvPubKeyсhain = EgvPubKeyсhain {
+  egvPubKeyсhain'master   :: EgvXPubKey
+  -- ^BIP44 public key with derivation path /m\/purpose'\/coin_type'\/account'/.
+, egvPubKeyсhain'external :: MI.IntMap EgvXPubKey
+  -- ^Map with BIP44 external public keys.
+  -- Public key indices are map keys, and the public keys are map values.
+  -- This public keys must have the following derivation path:
+  -- /m\/purpose'\/coin_type'\/account'\/0\/address_index/.
+, egvPubKeyсhain'internal :: MI.IntMap EgvXPubKey
+  -- ^Map with BIP44 internal keys.
+  -- Public key indices are map keys, and the public keys are map values.
+  -- This public keys must have the following derivation path:
+  -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.
+} deriving (Eq)
+
+$(deriveJSON aesonOptionsStripToApostroph ''EgvPubKeyсhain)
+
+data PrivateStorage = PrivateStorage {
+    privateStorage'seed        :: Seed
+  , privateStorage'root        :: EgvRootPrvKey
+  , privateStorage'privateKeys :: M.Map Currency EgvPrvKeyсhain
   }
 
-instance ToJSON WalletData where
-  toJSON WalletData{..} = object [
-      "seed"    .= toJSON (byteStringToText wallet'seed)
-    , "root"    .= toJSON wallet'root
-    , "masters" .= toJSON wallet'masters
+instance ToJSON PrivateStorage where
+  toJSON PrivateStorage{..} = object [
+      "seed"        .= toJSON (byteStringToText privateStorage'seed)
+    , "root"        .= toJSON privateStorage'root
+    , "privateKeys" .= toJSON privateStorage'privateKeys
     ]
 
-instance FromJSON WalletData where
-  parseJSON = withObject "WalletData" $ \o -> WalletData
+instance FromJSON PrivateStorage where
+  parseJSON = withObject "PrivateStorage" $ \o -> PrivateStorage
     <$> fmap textToByteString (o .: "seed")
     <*> o .: "root"
-    <*> o .: "masters"
+    <*> o .: "privateKeys"
 
-data EncryptedWalletData = EncryptedWalletData {
-    encryptedWallet'ciphertext :: ByteString
-  , encryptedWallet'salt       :: ByteString
-  , encryptedWallet'iv         :: IV AES256
+data EncryptedPrivateStorage = EncryptedPrivateStorage {
+    encryptedPrivateStorage'ciphertext :: ByteString
+  , encryptedPrivateStorage'salt       :: ByteString
+  , encryptedPrivateStorage'iv         :: IV AES256
   }
 
-instance ToJSON EncryptedWalletData where
-  toJSON EncryptedWalletData{..} = object [
-      "ciphertext" .= toJSON (byteStringToText encryptedWallet'ciphertext)
-    , "salt"       .= toJSON (byteStringToText encryptedWallet'salt)
-    , "iv"         .= toJSON (byteStringToText (convert encryptedWallet'iv :: ByteString))
+instance ToJSON EncryptedPrivateStorage where
+  toJSON EncryptedPrivateStorage{..} = object [
+      "ciphertext" .= toJSON (byteStringToText encryptedPrivateStorage'ciphertext)
+    , "salt"       .= toJSON (byteStringToText encryptedPrivateStorage'salt)
+    , "iv"         .= toJSON (byteStringToText (convert encryptedPrivateStorage'iv :: ByteString))
     ]
 
-instance FromJSON EncryptedWalletData where
-  parseJSON = withObject "EncryptedWalletData" $ \o -> do
+instance FromJSON EncryptedPrivateStorage where
+  parseJSON = withObject "EncryptedPrivateStorage" $ \o -> do
     ciphertext <- fmap textToByteString (o .: "ciphertext")
     salt       <- fmap textToByteString (o .: "salt")
     iv         <- fmap textToByteString (o .: "iv")
     case makeIV iv of
       Nothing -> fail "failed to read iv"
-      Just iv' -> pure $ EncryptedWalletData ciphertext salt iv'
+      Just iv' -> pure $ EncryptedPrivateStorage ciphertext salt iv'
 
 data ErgveinStorage = ErgveinStorage {
-    storage'wallet     :: EncryptedWalletData
-  , storage'pubKeys    :: M.Map Currency (MI.IntMap Base58)
-  , storage'walletName :: Text
+    storage'encryptedPrivateStorage :: EncryptedPrivateStorage
+  , storage'publicKeys              :: M.Map Currency EgvPubKeyсhain
+  , storage'walletName              :: Text
   }
 
 instance Eq ErgveinStorage where

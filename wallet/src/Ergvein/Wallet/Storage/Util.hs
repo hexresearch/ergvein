@@ -1,11 +1,9 @@
 module Ergvein.Wallet.Storage.Util(
-    WalletData(..)
-  , EncryptedWalletData(..)
-  , WalletName
-  , encryptWalletData
-  , decryptWalletData
+    WalletName
+  , encryptPrivateStorage
+  , decryptPrivateStorage
   , passwordToECIESPrvKey
-  , createWallet
+  , createPrivateStorage
   , createStorage
   , storageFilePrefix
   , saveStorageToFile
@@ -34,63 +32,84 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Native
 import Ergvein.Wallet.Localization.Storage
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Storage.Constants
 import Ergvein.Wallet.Storage.Data
 import System.Directory
 import System.FilePath
 
-import qualified Data.Text as T
-import qualified Data.Map.Strict as M
 import qualified Data.ByteString as BS
+import qualified Data.IntMap.Strict as MI
+import qualified Data.Map.Strict as M
+import qualified Data.Text as T
 
 type Password = Text
 type WalletName = Text
+type PublicKeys = M.Map Currency EgvPubKeyсhain
 
-createWallet :: Mnemonic -> Either StorageAlert WalletData
-createWallet mnemonic = case mnemonicToSeed "" mnemonic of
-  Left err -> Left $ SAMnemonicFail $ T.pack err
-  Right seed -> let
-    root = makeXPrvKey seed
-    masters = M.fromList $ fmap (\c -> (c, deriveCurrencyKey root c)) allCurrencies
-    in Right $ WalletData seed (EgvRootKey root) masters
+generateCurrencyPrvKeys :: EgvRootPrvKey -> Currency -> (Currency, EgvPrvKeyсhain)
+generateCurrencyPrvKeys root currency =
+  let master = deriveCurrencyMasterPrvKey root currency
+      external = MI.fromList [(i, deriveExternalPrvKey master (fromIntegral i)) | i <- [0..externalAddressCount]]
+      internal = MI.fromList [(i, deriveInternalPrvKey master (fromIntegral i)) | i <- [0..internalAddressCount]]
+  in (currency, EgvPrvKeyсhain master external internal)
+
+createPrivateStorage :: Seed -> EgvRootPrvKey -> PrivateStorage
+createPrivateStorage seed root = PrivateStorage seed root privateKeys
+  where privateKeys = M.fromList $ fmap (generateCurrencyPrvKeys root) allCurrencies
+
+generateCurrencyPubKeys :: EgvRootPrvKey -> Currency -> (Currency, EgvPubKeyсhain)
+generateCurrencyPubKeys root currency =
+  let master = deriveCurrencyMasterPubKey root currency
+      external = MI.fromList [(i, deriveExternalPubKey master (fromIntegral i)) | i <- [0..externalAddressCount]]
+      internal = MI.fromList [(i, deriveInternalPubKey master (fromIntegral i)) | i <- [0..internalAddressCount]]
+  in (currency, EgvPubKeyсhain master external internal)
+
+generatePublicKeys :: EgvRootPrvKey -> PublicKeys
+generatePublicKeys root = M.fromList $ fmap (generateCurrencyPubKeys root) allCurrencies
 
 createStorage :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either StorageAlert ErgveinStorage)
-createStorage mnemonic (login, pass) = either (pure . Left) (\wd -> do
-  ewdResult <- encryptWalletData wd pass
-  case ewdResult of
-    Left err -> pure $ Left err
-    Right ewd -> pure $ Right $ ErgveinStorage ewd mempty login) $ createWallet mnemonic
+createStorage mnemonic (login, pass) = case mnemonicToSeed "" mnemonic of
+  Left err -> pure $ Left $ SAMnemonicFail $ showt err
+  Right seed -> do
+    let root = EgvRootPrvKey $ makeXPrvKey seed
+        privateStorage = createPrivateStorage seed root
+        publicKeys = generatePublicKeys root
+    encryptedPrivateStorageResult <- encryptPrivateStorage privateStorage pass
+    case encryptedPrivateStorageResult of
+      Left err -> pure $ Left err
+      Right eps -> pure $ Right $ ErgveinStorage eps publicKeys login
 
-encryptWalletData :: MonadIO m => WalletData -> Password -> m (Either StorageAlert EncryptedWalletData)
-encryptWalletData walletData password = liftIO $ do
+encryptPrivateStorage :: MonadIO m => PrivateStorage -> Password -> m (Either StorageAlert EncryptedPrivateStorage)
+encryptPrivateStorage privateStorage password = liftIO $ do
   salt :: ByteString <- genRandomSalt
   let secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
   iv <- genRandomIV (undefined :: AES256)
   case iv of
     Nothing -> pure $ Left $ SACryptoError "Failed to generate an AES initialization vector"
     Just iv' -> do
-      let walletDataBS = encodeUtf8 $ encodeJson walletData
-      case encrypt secretKey iv' walletDataBS of
+      let privateStorageBS = encodeUtf8 $ encodeJson privateStorage
+      case encrypt secretKey iv' privateStorageBS of
         Left err -> pure $ Left $ SACryptoError $ showt err
-        Right eData -> pure $ Right $ EncryptedWalletData {
-            encryptedWallet'ciphertext = eData
-          , encryptedWallet'salt       = salt
-          , encryptedWallet'iv         = iv'
+        Right ciphertext -> pure $ Right $ EncryptedPrivateStorage {
+            encryptedPrivateStorage'ciphertext = ciphertext
+          , encryptedPrivateStorage'salt       = salt
+          , encryptedPrivateStorage'iv         = iv'
           }
 
-decryptWalletData :: EncryptedWalletData -> Password -> Either StorageAlert WalletData
-decryptWalletData encryptedWalletData password =
+decryptPrivateStorage :: EncryptedPrivateStorage -> Password -> Either StorageAlert PrivateStorage
+decryptPrivateStorage encryptedPrivateStorage password =
   case decrypt secretKey iv ciphertext of
     Left err -> Left $ SACryptoError $ showt err
-    Right decryptedData -> do
-      let walletData = decodeJson $ decodeUtf8With lenientDecode decryptedData
-      case walletData of
+    Right decryptedPrivateStorage -> do
+      let decodedPrivateStorage = decodeJson $ decodeUtf8With lenientDecode decryptedPrivateStorage
+      case decodedPrivateStorage of
         Left err -> Left $ SACryptoError $ showt err
-        Right wd -> Right wd
+        Right dps -> Right dps
   where
-    salt = encryptedWallet'salt encryptedWalletData
+    salt = encryptedPrivateStorage'salt encryptedPrivateStorage
     secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
-    iv = encryptedWallet'iv encryptedWalletData
-    ciphertext = encryptedWallet'ciphertext encryptedWalletData
+    iv = encryptedPrivateStorage'iv encryptedPrivateStorage
+    ciphertext = encryptedPrivateStorage'ciphertext encryptedPrivateStorage
 
 encryptStorage :: (MonadIO m, MonadRandom m) => ErgveinStorage -> ECIESPubKey -> m (Either StorageAlert EncryptedErgveinStorage)
 encryptStorage storage publicKey = do
