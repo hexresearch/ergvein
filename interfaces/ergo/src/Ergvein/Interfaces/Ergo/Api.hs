@@ -142,7 +142,7 @@ data NodeInfo = NodeInfo {
   -- appVersion:
   -- type: string
   -- example: 0.0.1
-, fullHeight :: !Int32
+, fullHeight :: !Word32
   -- fullHeight:
   -- type: integer
   -- format: int32
@@ -150,10 +150,10 @@ data NodeInfo = NodeInfo {
   -- minimum: 0
   -- example: 667
   -- nullable: true
-, headersHeight :: !Int32
+, headersHeight :: !Word32
   -- headersHeight:
   -- type: integer
-  -- format: int32
+  -- format: Word32
   -- description: Can be 'null' if state is empty (no header applied since node launch)
   -- minimum: 0
   -- example: 667
@@ -201,14 +201,14 @@ data NodeInfo = NodeInfo {
   -- isMining:
   -- type: boolean
   -- example: true
-, peersCount :: !Int32
+, peersCount :: !Word32
   -- peersCount:
   -- type: integer
   -- description: Number of connected peers
   -- format: int32
   -- minimum: 0
   -- example: 327
-, unconfirmedCount :: !Int32
+, unconfirmedCount :: !Word32
   -- unconfirmedCount:
   -- description: Current unconfirmed transactions count
   -- type: integer
@@ -216,7 +216,7 @@ data NodeInfo = NodeInfo {
   -- minimum: 0
   -- maximum: 10000
   -- example: 327
-, difficulty :: !Int32
+, difficulty :: !Word32
   -- difficulty:
   -- type: integer
   -- format: int32
@@ -261,35 +261,35 @@ data NodeInfo = NodeInfo {
 }
 
 data Parameters = Parameters {
-  height :: !Int32
+  height :: !Word32
     -- type: integer
     -- format: int32
     -- description: Height when current parameters were considered(not actual height). Can be '0' if state is empty
     -- minimum: 0
     -- example: 667
     -- nullable: false
-, storageFeeFactor :: !Int32
+, storageFeeFactor :: !Word32
     -- type: integer
     -- format: int32
     -- description: Storage fee coefficient (per byte per storage period ~4 years)
     -- minimum: 0
     -- example: 100000
     -- nullable: false
-, minValuePerByte :: !Int32
+, minValuePerByte :: !Word32
     -- type: integer
     -- format: int32
     -- description: Minimum value per byte of an output
     -- minimum: 0
     -- example: 360
     -- nullable: false
-, maxBlockSize :: !Int32
+, maxBlockSize :: !Word32
     -- type: integer
     -- format: int32
     -- description: Maximum block size (in bytes)
     -- minimum: 0
     -- example: 1048576
     -- nullable: false
-, maxBlockCost :: !Int32
+, maxBlockCost :: !Word32
     -- type: integer
     -- format: int32
     -- description: Maximum cumulative computational complexity of input scipts in block transactions
@@ -299,28 +299,28 @@ data Parameters = Parameters {
 , blockVersion :: !Int32
     -- $ref: '#/components/schemas/Version'
     -- nullable: false
-, tokenAccessCost :: !Int32
+, tokenAccessCost :: !Word32
     -- type: integer
     -- format: int32
     -- description: Validation cost of a single token
     -- minimum: 0
     -- example: 100
     -- nullable: false
-, inputCost :: !Int32
+, inputCost :: !Word32
     -- type: integer
     -- format: int32
     -- description: Validation cost per one transaction input
     -- minimum: 0
     -- example: 100
     -- nullable: false
-, dataInputCost :: !Int32
+, dataInputCost :: !Word32
     -- type: integer
     -- format: int32
     -- description: Validation cost per one data input
     -- minimum: 0
     -- example: 100
     -- nullable: false
-, outputCost :: !Int32
+, outputCost :: !Word32
     -- type: integer
     -- format: int32
     -- description: Validation cost per one transaction output
