@@ -27,12 +27,12 @@ import Android.HaskellActivity
 #endif
 
 data Settings = Settings {
-  settingsLang        :: Language
-, settingsStoreDir    :: Text
-, settingsConfigPath  :: Text
-, settingsDefUrls     :: [BaseUrl]
-, settingsDefUrlNum   :: (Int, Int)
-, settingsReqTimeout  :: NominalDiffTime
+  settingsLang              :: Language
+, settingsStoreDir          :: Text
+, settingsConfigPath        :: Text
+, settingsDefUrls           :: [BaseUrl]
+, settingsDefUrlNum         :: (Int, Int)
+, settingsReqTimeout        :: NominalDiffTime
 } deriving (Eq, Show)
 
 $(deriveJSON (aesonOptionsStripPrefix "settings") ''Settings)
