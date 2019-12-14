@@ -446,4 +446,4 @@ deriveJSON A.defaultOptions ''ErgoTransactionDataInput
 deriveJSON A.defaultOptions ''ErgoTransactionOutput
 deriveJSON A.defaultOptions ''SpendingProof
 deriveJSON A.defaultOptions ''Asset
-deriveJSON A.defaultOptions ''Registers
+deriveJSON unwrapUnaryOptions ''Registers
