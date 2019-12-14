@@ -56,12 +56,12 @@ data ErgoTransactionDataInput = ErgoTransactionDataInput {
   -- - boxId
   boxId :: !TransactionBoxId
     -- $ref: '#/components/schemas/TransactionBoxId'
-, extension :: !(Properties SValue)
     -- type: object
     -- additionalProperties:
       -- $ref: '#/components/schemas/SValue'
     -- example:
       -- '1': 'a2aed72ff1b139f35d1ad2938cb44c9848a34d4dcfd6d8ab717ebde40a7304f2541cf628ffc8b5c496e6161eba3f169c6dd440704b1719e0'
+, extension :: !(Maybe (Properties SValue))
 }
 
 -- | Spending proof for transaction input
