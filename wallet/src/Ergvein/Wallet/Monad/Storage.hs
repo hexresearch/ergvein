@@ -13,7 +13,7 @@ import Network.Haskoin.Address
 import Reflex
 
 class (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t m | m -> t where
-  getAddressByCurIx   :: Currency -> Int -> m Base58
-  getEncryptedWallet  :: m EncryptedWalletData
-  getWalletName       :: m Text
-  storeWallet         :: Event t () -> m ()
+  getAddressByCurIx           :: Currency -> Int -> m Base58
+  getEncryptedPrivateStorage  :: m EncryptedPrivateStorage
+  getWalletName               :: m Text
+  storeWallet                 :: Event t () -> m ()

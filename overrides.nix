@@ -54,5 +54,6 @@ in (self: super: let
     servant-reflex = self.callPackage ./derivations/servant-reflex.nix {};
     persistent-pagination = self.callPackage ./derivations/persistent-pagination.nix {};
     flat = lib.dontCheck (super.flat);
+    reflex-dom-core = lib.dontCheck (super.reflex-dom-core);
   }
 )
