@@ -38,6 +38,7 @@ library
       , base16-bytestring
       , bytes
       , bytestring               == 0.10.*
+      , cryptonite
       , memory
       , time                     == 1.8.*
       , lens                     == 4.17.*
