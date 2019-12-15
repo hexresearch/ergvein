@@ -12,15 +12,16 @@ import Control.Monad.Reader
 import Ergvein.Interfaces.Ergo.Scorex.Util.Package
 import Data.ByteString (unpack)
 import Ergvein.Interfaces.Ergo.Scorex.Core.Block
+import Network.Ergo.Api.Info
 
 spec :: Spec
 spec = do
-  describe "fdfdfd" $ do
+  describe "Blocks api" $ do
     it "blocks" $ do
 
       client <- newClient "127.0.0.1" 9052
       r <- flip runReaderT client $ getHeaderIdsAtHeight $ Height 6
-      r2 <- flip runReaderT client $ getHeaderById $ head r
-      T.putStrLn $ T.pack $ show r
-      T.putStrLn $ T.pack $ show r2
+      r3 <- flip runReaderT client $ getTransactionsById $ head r
+      r3 <- flip runReaderT client $ getInfo
+      T.putStrLn $ T.pack $ show r3
       True `shouldBe` True

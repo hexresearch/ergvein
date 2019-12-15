@@ -22,7 +22,7 @@ basePrefix = "/blocks/"
 getHeaderIdsAtHeight :: ApiMonad m => Height -> m [ModifierId]
 getHeaderIdsAtHeight height = do
   client <- getClient
-  let url = [i|#{ clientUrl client }#{ basePrefix }at/#{ show $ unHeight height }|]
+  let url = [i|#{ clientUrl client }#{ basePrefix }at/#{ unHeight height }|]
   response <- liftIO $ W.asJSON  =<< WS.getWith (clientOpts client) (clientSession client) url
   pure $ response ^. W.responseBody
 
@@ -32,3 +32,10 @@ getHeaderById id = do
   let url = [i|#{ clientUrl client }#{ basePrefix }#{ toHex $ unModifierId id }/header|]
   response <- liftIO $ W.asJSON =<< WS.getWith (clientOpts client) (clientSession client) url
   pure $ response ^. W.responseBody
+
+getTransactionsById :: ApiMonad m => ModifierId -> m String
+getTransactionsById id = do
+  client <- getClient
+  let url = [i|#{ clientUrl client }#{ basePrefix }#{ toHex $ unModifierId id }//blocks/{headerId}/transactions|]
+  response <- liftIO $ WS.getWith (clientOpts client) (clientSession client) url
+  pure $ show $ response ^. W.responseBody

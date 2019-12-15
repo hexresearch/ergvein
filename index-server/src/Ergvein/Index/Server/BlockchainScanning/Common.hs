@@ -35,7 +35,7 @@ blockHeightsToScan env currency = do
   where
     cfg = env'config env
     actualHeight = case currency of BTC  -> BTCScanning.actualHeight cfg
-                                    ERGO -> ERGOScanning.actualHeight cfg 
+                                    ERGO -> ERGOScanning.actualHeight env 
     startHeight =  case currency of BTC  -> 0
                                     ERGO -> 0
 
@@ -56,12 +56,12 @@ scannerThread env currency scanInfo =
   where
     pool = env'persistencePool env
     blockIteration blockHeight = do
-      blockInfo <- scanInfo blockHeight
+      --blockInfo <- scanInfo blockHeight
       runDbQuery pool $ do
-        storeInfo blockInfo
+        --storeInfo blockInfo
         storeScannedHeight currency blockHeight
       pure ()
-      addToCache (env'levelDBContext env) blockInfo
+      --addToCache (env'levelDBContext env) blockInfo
     scanIteration thread = liftIO $ do
       heights <- blockHeightsToScan env currency
       forM_ heights blockIteration
@@ -70,6 +70,6 @@ scannerThread env currency scanInfo =
 startBlockchainScanning :: MonadUnliftIO m => ServerEnv -> m [Thread]
 startBlockchainScanning env =
     sequenceA 
-    [ scannerThread env BTC $ BTCScanning.blockInfo env
-    , scannerThread env ERGO $ ERGOScanning.blockInfo env 
+    [ --scannerThread env BTC $ BTCScanning.blockInfo env
+     scannerThread env ERGO $ ERGOScanning.blockInfo env 
     ]

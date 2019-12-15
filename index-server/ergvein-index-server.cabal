@@ -81,6 +81,7 @@ library
       , ergvein-common
       , ergvein-index-api
       , ergvein-wallet-types
+      , ergvein-interface-ergo
 
   default-language:    Haskell2010
   default-extensions:
