@@ -112,6 +112,11 @@ data Parameters = Parameters {
 , outputCost :: !Word32
 }
 
+data BlockTransactions = BlockTransactions {
+  headerId :: !ModifierId
+, transactions :: ![ErgoTransaction]
+, size :: !Word32
+}
 
 -- | Token detail in the transaction
 data Asset = Asset {
@@ -217,5 +222,6 @@ deriveJSON A.defaultOptions ''ErgoTransactionInput
 deriveJSON A.defaultOptions ''ErgoTransactionDataInput
 deriveJSON A.defaultOptions ''ErgoTransactionOutput
 deriveJSON A.defaultOptions ''SpendingProof
+deriveJSON A.defaultOptions ''BlockTransactions
 deriveJSON A.defaultOptions ''Asset
 deriveJSON unwrapUnaryOptions ''Registers
