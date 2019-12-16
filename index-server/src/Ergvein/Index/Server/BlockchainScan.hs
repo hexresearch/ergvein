@@ -3,7 +3,9 @@ module Ergvein.Index.Server.BlockchainScan where
 import Control.Concurrent
 import Control.Immortal
 import Control.Monad
+import Control.Monad.Catch
 import Control.Monad.IO.Unlift
+import Control.Monad.Logger
 import Data.Maybe
 import Database.Persist.Sql
 
@@ -38,7 +40,7 @@ blockHeightsToScan env currency = do
   where
     cfg = envConfig env
     actualHeight = case currency of BTC  -> actualBTCHeight cfg
-                                    ERGO -> undefined 
+                                    ERGO -> undefined
     startHeight =  case currency of BTC  -> 0
                                     ERGO -> 0
 
@@ -53,9 +55,9 @@ storeInfo blockInfo = do
 storeScannedHeight :: (MonadIO m) => Currency -> BlockHeight -> QueryT m ()
 storeScannedHeight currency scannedHeight = void $ upsertScannedHeight currency scannedHeight
 
-scannerThread :: MonadUnliftIO m => ServerEnv -> Currency -> (BlockHeight -> IO BlockInfo) -> m Thread
-scannerThread env currency scanInfo = 
-  create scanIteration
+scannerThread :: (MonadUnliftIO m, MonadCatch m, MonadLogger m) => ServerEnv -> Currency -> (BlockHeight -> IO BlockInfo) -> m Thread
+scannerThread env currency scanInfo =
+  create $ logOnException . scanIteration
   where
     pool = envPool env
     blockIteration blockHeight = do
@@ -64,15 +66,14 @@ scannerThread env currency scanInfo =
         storeInfo blockInfo
         storeScannedHeight currency blockHeight
       dir <- levelDbDir
-      pure ()
       addToCache (ldb env) blockInfo
     scanIteration thread = liftIO $ do
       heights <- blockHeightsToScan env currency
       forM_ heights blockIteration
       threadDelay $ configBlockchainScanDelay $ envConfig env
 
-startBlockchainScanner :: MonadUnliftIO m => ServerEnv -> m [Thread]
+startBlockchainScanner :: (MonadUnliftIO m, MonadCatch m, MonadLogger m) => ServerEnv -> m [Thread]
 startBlockchainScanner env =
-    sequenceA 
-    [ scannerThread env BTC $ bTCBlockScanner env 
+    sequenceA
+    [ scannerThread env BTC $ bTCBlockScanner env
     ]

@@ -99,6 +99,7 @@ library
     TypeApplications
     TypeFamilies
     TypeOperators
+
 executable ergvein-index-server
   hs-source-dirs:
       app
@@ -106,16 +107,17 @@ executable ergvein-index-server
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base                      >= 4.7 && < 4.13
-    , bitcoin-api               == 0.12.1
-    , immortal                  == 0.3.*
+    , bitcoin-api
+    , immortal
+    , monad-logger
     , optparse-applicative      == 0.14.*
-    , servant                   == 0.16.*
-    , servant-server            == 0.16.*
-    , text                      == 1.2.*
-    , unliftio-core             == 0.1.*
-    , wai                       == 3.2.*
-    , wai-extra                 == 3.0.*
-    , warp                      == 3.2.*
+    , servant
+    , servant-server
+    , text
+    , unliftio-core
+    , wai
+    , wai-extra
+    , warp
 
     , ergvein-index-api
     , ergvein-index-server
