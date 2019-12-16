@@ -62,7 +62,6 @@ data Env t = Env {
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
 , env'manager         :: !Manager
 , env'headersStorage  :: !HeadersStorage
-, env'headersLoader   :: !I.Thread
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -233,11 +232,10 @@ liftAuth ma0 ma = mdo
         timeoutRef      <- getRequestTimeoutRef
         manager         <- getClientMaganer
         hst             <- getHeadersStorage
-        loaderThread    <- liftIO $ runReaderT headersLoader hst
-        performEvent_ $ ffor logoutE $ const $ liftIO $ I.stop loaderThread
+        headersLoader
         a <- runReaderT (wrapped ma) $ Env
           settingsRef backEF loading langRef authRef (logoutFire ()) storeDir alertsEF
-          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager hst loaderThread
+          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager hst
         pure a
   let
     ma0' = maybe ma0 runAuthed mauth0

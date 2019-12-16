@@ -16,26 +16,24 @@ module Ergvein.Wallet.Headers.Loader (
   headersLoader
 ) where
 
-import Data.Foldable (traverse_)
-import Control.Concurrent
-import Control.Immortal
 import Control.Monad
 import Control.Monad.IO.Unlift
+import Ergvein.Index.API.Types
+import Ergvein.Types.Currency
+import Ergvein.Wallet.Client
 import Ergvein.Wallet.Headers.Storage
-import Ergvein.Wallet.Native
+import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Util
+import Ergvein.Wallet.Native
+import Ergvein.Wallet.Alert
 
-headersLoader :: (HasHeadersStorage m, MonadUnliftIO m, PlatformNatives) => m Thread
-headersLoader = createWithLabel "headers loader" $ \thread -> do
-  ts <- sequence [headersLoaderBtc]
-  let stopThem _ = traverse_ (liftIO . stop) ts
-  onFinish stopThem $ liftIO $ forever $ threadDelay 1000000
+headersLoader :: (HasHeadersStorage m, MonadFrontBase t m) => m ()
+headersLoader = nameSpace "headers loader" $ do
+  sequence_ [headersLoaderBtc]
 
-headersLoaderBtc :: (HasHeadersStorage m, MonadUnliftIO m, PlatformNatives) => m Thread
-headersLoaderBtc = worker "headers loader btc" $ const $ forever $ do
-
+headersLoaderBtc :: (HasHeadersStorage m, MonadFrontBase t m) => m ()
+headersLoaderBtc = nameSpace "btc" $ do
+  buildE <- getPostBuild
+  he <- handleDangerMsg =<< getHeight (HeightRequest BTC <$ buildE)
+  performEvent_ $ ffor he $ \h -> liftIO $ print h
   pure ()
-
-
-
-

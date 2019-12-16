@@ -1,7 +1,7 @@
 {-# LANGUAGE RecursiveDo #-}
 module Ergvein.Wallet.Client
-  (
-    getBalance
+  ( getHeight
+  , getBalance
   , getTxHashHistory
   , getTxMerkleProof
   , getTxHexView
@@ -17,8 +17,9 @@ import Control.Concurrent.STM.TVar
 import Control.Monad.IO.Class
 import Control.Monad.Random
 import Control.Monad.Reader
-import Data.Maybe
 import Data.Foldable
+import Data.List (sortOn)
+import Data.Maybe
 import Data.Traversable
 import Network.HTTP.Client (Manager)
 import Reflex.ExternalRef
@@ -38,7 +39,12 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Localization.Client
 
 getHeight :: MonadFrontBase t m => Event t HeightRequest -> m (Event t (Either ClientErr HeightResponse))
-getHeight = requesterEq getHeightEndpoint
+getHeight = requester meanHeight getHeightEndpoint
+
+meanHeight :: [HeightResponse] -> Either ClientMessage HeightResponse
+meanHeight [] = Left CMSEmpty
+meanHeight [x] = Right x
+meanHeight xs = Right $ head $ drop (length xs `div` 2) $ sortOn heightRespHeight xs
 
 getBalance :: MonadFrontBase t m => Event t BalanceRequest -> m (Event t (Either ClientErr BalanceResponse))
 getBalance = requesterEq getBalanceEndpoint
@@ -124,7 +130,6 @@ requesterBody validateRes uss endpoint initRes req = do
   (ereses, triggers)  <- fmap unzip $ for (zip [1..] urls) $ \(i, u) -> do
     (ev, fire) <- newTriggerEvent
     void $ liftIO $ forkIO $ do
-      liftIO $ threadDelay 10000000
       fire =<< (pure . pure . (i,)) =<< runReaderT (endpoint u req) mng
     pure (ev, (i,fire))
 
