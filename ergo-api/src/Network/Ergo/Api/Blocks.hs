@@ -8,6 +8,7 @@ import Data.Text
 import Data.Word
 import GHC.Generics
 import Network.Ergo.Api.Client
+import Ergvein.Interfaces.Ergo.Api
 
 import Ergvein.Interfaces.Ergo.Header
 import Ergvein.Interfaces.Ergo.Scorex.Core.Block
@@ -33,9 +34,9 @@ getHeaderById id = do
   response <- liftIO $ W.asJSON =<< WS.getWith (clientOpts client) (clientSession client) url
   pure $ response ^. W.responseBody
 
-getTransactionsById :: ApiMonad m => ModifierId -> m String
+getTransactionsById :: ApiMonad m => ModifierId -> m BlockTransactions
 getTransactionsById id = do
   client <- getClient
   let url = [i|#{ clientUrl client }#{ basePrefix }#{ toHex $ unModifierId id }//blocks/{headerId}/transactions|]
-  response <- liftIO $ WS.getWith (clientOpts client) (clientSession client) url
-  pure $ show $ response ^. W.responseBody
+  response <- liftIO $ W.asJSON =<< WS.getWith (clientOpts client) (clientSession client) url
+  pure $ response ^. W.responseBody

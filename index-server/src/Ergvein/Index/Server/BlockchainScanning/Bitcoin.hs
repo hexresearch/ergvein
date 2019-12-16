@@ -12,7 +12,7 @@ import           Ergvein.Index.Server.Environment
 import           Ergvein.Types.Transaction
 import           Ergvein.Types.Currency
 
-import           Data.Serialize                     as S
+import Data.Serialize
 import qualified Data.ByteString                    as B
 import qualified Data.HexString                     as HS
 import qualified Network.Haskoin.Block              as HK
@@ -32,7 +32,7 @@ txInfo tx txHash = let
                   , txIn'txOutIndex = fromIntegral $ HK.outPointIndex prevOutput
                   }
     txOutInfo txOutIndex txOut = let
-      scriptOutputHash = HK.encodeHex . B.reverse . S.encode . HK.doubleSHA256
+      scriptOutputHash = HK.encodeHex . B.reverse . encode . HK.doubleSHA256
       in TxOutInfo { txOut'txHash           = txHash
                    , txOut'pubKeyScriptHash = scriptOutputHash $ HK.scriptOutput txOut
                    , txOut'index            = fromIntegral txOutIndex
@@ -46,7 +46,7 @@ blockTxInfos block txBlockHeight = let
   blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHexView
   in BlockInfo blockMeta blockContent
   where
-    blockHeaderHexView = HK.encodeHex $ S.encode $ HK.blockHeader block
+    blockHeaderHexView = HK.encodeHex $ encode $ HK.blockHeader block
     txoInfosFromTx txBlockIndex tx = let
       txHash = HK.txHashToHex $ HK.txHash tx
       txI = TxInfo { tx'hash = txHash

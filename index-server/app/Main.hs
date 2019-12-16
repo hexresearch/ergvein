@@ -47,7 +47,7 @@ main = do
 startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
     CommandListen cfgPath ->  do
-        cfg <- loadConfig cfgPath      
+        cfg <- loadConfig cfgPath
         env <- newServerEnv cfg
         liftIO $ startBlockchainScanning env
         T.putStrLn $ pack $ "Server started at " <> configDbHost cfg <> ":" <> (show . configServerPort $ cfg)
