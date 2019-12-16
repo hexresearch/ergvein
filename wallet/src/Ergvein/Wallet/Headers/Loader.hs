@@ -33,6 +33,7 @@ headersLoader = createWithLabel "headers loader" $ \thread -> do
 
 headersLoaderBtc :: (HasHeadersStorage m, MonadUnliftIO m, PlatformNatives) => m Thread
 headersLoaderBtc = worker "headers loader btc" $ const $ forever $ do
+
   pure ()
 
 

@@ -141,7 +141,8 @@ instance MonadRandom (WithJSContextSingleton x (SpiderHostFrame Global)) where
 class (MonadBaseConstr t m, HasClientManager m, HasClientManager (Performable m)) => MonadClient t m | m -> t where
   -- | Set the number of required confirmations
   setRequiredUrlNum :: Event t (Int, Int) -> m ()
-  -- | Get the number of required confirmations
+  -- | Get the number of required confirmations. First is minimum required answers. Second is sufficient
+  -- amount of answers from indexers.
   getRequiredUrlNum :: Event t () -> m (Event t (Int, Int))
   -- | Get all urls in a list
   getUrlList :: Event t () -> m (Event t [BaseUrl])

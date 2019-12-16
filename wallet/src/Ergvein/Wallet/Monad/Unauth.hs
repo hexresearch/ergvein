@@ -85,15 +85,15 @@ instance MonadBaseConstr t m => MonadLocalized t (UnauthM t m) where
 instance MonadBaseConstr t m => MonadClient t (UnauthM t m) where
   setRequiredUrlNum numE = do
     numRef <- asks unauth'urlNum
-    performEvent_ $ (writeExternalRef numRef) <$> numE
+    performEvent_ $ writeExternalRef numRef <$> numE
 
   getRequiredUrlNum reqE = do
     numRef <- asks unauth'urlNum
-    performEvent $ (readExternalRef numRef) <$ reqE
+    performEvent $ readExternalRef numRef <$ reqE
 
   getUrlList reqE = do
     urlsRef <- asks unauth'urls
-    performEvent $ ffor reqE $ const $ liftIO $ fmap S.elems $ readExternalRef urlsRef
+    performEvent $ ffor reqE $ const $ liftIO $ S.elems <$> readExternalRef urlsRef
 
   addUrls urlsE = do
     urlsRef <- asks unauth'urls
@@ -228,4 +228,4 @@ runEnv cbs e ma = do
   re <- newRetractEnv
   runRetractT (runReaderT ma' e) re
   where
-    ma' = (void $ retract . fst =<< getBackEventFire) >> ma
+    ma' = void (retract . fst =<< getBackEventFire) >> ma
