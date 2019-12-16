@@ -18,10 +18,10 @@ import Ergvein.Interfaces.Ergo.Scorex.Util.Serialization.VLQLengthPrefixed
 -- | Solution of Autolykos PoW puzzle
 --
 data AutolykosSolution = AutolykosSolution {
-  minerPK   :: EcPointType -- ^ @param pk - miner public key. Should be used to collect block rewards
-, onetimePK :: EcPointType -- ^ @param w  - one-time public key. Prevents revealing of miners secret
-, nonce     :: Nonce       -- ^ @param n  - nonce
-, distance  :: BigNat      -- ^ @param d : BigInt  - distance between
+  minerPK   :: !EcPointType -- ^ @param pk - miner public key. Should be used to collect block rewards
+, onetimePK :: !EcPointType -- ^ @param w  - one-time public key. Prevents revealing of miners secret
+, nonce     :: !Nonce       -- ^ @param n  - nonce
+, distance  :: !BigNat      -- ^ @param d : BigInt  - distance between
                            -- pseudo-random number, corresponding to nonce `n` and a secret, corresponding
                            -- to `pk`. The lower `d` is, the harder it was to find this solution.
 }

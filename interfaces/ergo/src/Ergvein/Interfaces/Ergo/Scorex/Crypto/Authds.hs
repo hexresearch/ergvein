@@ -19,7 +19,23 @@ import Ergvein.Interfaces.Ergo.Scorex.Util.Package
 -- newtype Side = Side { unSide :: Word8 }  --  TaggedType[Byte]
 --   deriving (Serialize)
 
--- newtype ADKey = ADKey { unADKey :: ByteString }  --  TaggedType[Array[Byte]]
+newtype ADKey = ADKey { unADKey :: ByteString }  --  TaggedType[Array[Byte]]
+  deriving (Eq)
+
+instance Show ADKey where
+    show = show . toHex . unADKey
+
+instance IsString ADKey where
+    fromString = ADKey . fromHex . fromString
+
+instance ToJSON ADKey where
+  toJSON = String . toHex . unADKey
+  {-# INLINE toJSON #-}
+
+instance FromJSON ADKey where
+  parseJSON = withText "ADKey" $
+    either fail (pure . ADKey) . fromHexTextEither
+  {-# INLINE parseJSON #-}
 
 -- newtype ADValue = ADValue { unADValue :: ByteString }  --  TaggedType[Array[Byte]]
 
