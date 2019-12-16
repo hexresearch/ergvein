@@ -18,6 +18,7 @@ import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.Environment
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import Ergvein.Text
 
 import Ergvein.Index.Server.Cache
 import Conversion
@@ -35,7 +36,7 @@ blockHeightsToScan :: ServerEnv -> Currency -> IO [BlockHeight]
 blockHeightsToScan env currency = do
   actual  <- actualHeight
   scanned <- scannedBlockHeight (envPool env) currency
-  let start = fromMaybe startHeight $ succ <$> scanned
+  let start = maybe startHeight succ scanned
   pure [start..actual]
   where
     cfg = envConfig env
@@ -55,22 +56,28 @@ storeInfo blockInfo = do
 storeScannedHeight :: (MonadIO m) => Currency -> BlockHeight -> QueryT m ()
 storeScannedHeight currency scannedHeight = void $ upsertScannedHeight currency scannedHeight
 
-scannerThread :: (MonadUnliftIO m, MonadCatch m, MonadLogger m) => ServerEnv -> Currency -> (BlockHeight -> IO BlockInfo) -> m Thread
+scannerThread :: forall m . (MonadUnliftIO m, MonadCatch m, MonadLogger m) => ServerEnv -> Currency -> (BlockHeight -> IO BlockInfo) -> m Thread
 scannerThread env currency scanInfo =
   create $ logOnException . scanIteration
   where
     pool = envPool env
+
+    blockIteration :: BlockHeight -> m ()
     blockIteration blockHeight = do
-      blockInfo <- scanInfo blockHeight
-      runDbQuery pool $ do
-        storeInfo blockInfo
-        storeScannedHeight currency blockHeight
-      dir <- levelDbDir
-      addToCache (ldb env) blockInfo
-    scanIteration thread = liftIO $ do
-      heights <- blockHeightsToScan env currency
+      logInfoN $ "Scanning height " <> showt blockHeight
+      liftIO $ do
+        blockInfo <- scanInfo blockHeight
+        runDbQuery pool $ do
+          storeInfo blockInfo
+          storeScannedHeight currency blockHeight
+        dir <- levelDbDir
+        addToCache (ldb env) blockInfo
+
+    scanIteration :: Thread -> m ()
+    scanIteration thread = do
+      heights <- liftIO $ blockHeightsToScan env currency
       forM_ heights blockIteration
-      threadDelay $ configBlockchainScanDelay $ envConfig env
+      liftIO $ threadDelay $ configBlockchainScanDelay $ envConfig env
 
 startBlockchainScanner :: (MonadUnliftIO m, MonadCatch m, MonadLogger m) => ServerEnv -> m [Thread]
 startBlockchainScanner env =
