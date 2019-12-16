@@ -6,6 +6,7 @@ import Control.Monad
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
+import Data.Foldable (traverse_)
 import Data.Maybe
 import Database.Persist.Sql
 
@@ -34,16 +35,20 @@ scannedBlockHeight pool currency = do
 
 blockHeightsToScan :: ServerEnv -> Currency -> IO [BlockHeight]
 blockHeightsToScan env currency = do
-  actual  <- actualHeight
+  actual  <- blockTotalHeight cfg currency
   scanned <- scannedBlockHeight (envPool env) currency
   let start = maybe startHeight succ scanned
   pure [start..actual]
   where
     cfg = envConfig env
-    actualHeight = case currency of BTC  -> actualBTCHeight cfg
-                                    ERGO -> undefined
     startHeight =  case currency of BTC  -> 0
                                     ERGO -> 0
+
+blockTotalHeight :: MonadIO m => Config -> Currency -> m BlockHeight
+blockTotalHeight cfg currency = liftIO $ case currency of
+    BTC  -> actualBTCHeight cfg
+    ERGO -> error "blockTotalHeight: ERG undefined" -- TODO: do this
+
 
 storeInfo :: (MonadIO m) => BlockInfo -> QueryT m ()
 storeInfo blockInfo = do
@@ -62,9 +67,10 @@ scannerThread env currency scanInfo =
   where
     pool = envPool env
 
-    blockIteration :: BlockHeight -> m ()
-    blockIteration blockHeight = do
-      logInfoN $ "Scanning height " <> showt blockHeight
+    blockIteration :: BlockHeight -> BlockHeight -> m ()
+    blockIteration totalh blockHeight = do
+      let percent = fromIntegral blockHeight / fromIntegral totalh :: Double
+      logInfoN $ "Scanning height " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
       liftIO $ do
         blockInfo <- scanInfo blockHeight
         runDbQuery pool $ do
@@ -75,8 +81,9 @@ scannerThread env currency scanInfo =
 
     scanIteration :: Thread -> m ()
     scanIteration thread = do
+      totalh <- blockTotalHeight (envConfig env) currency
       heights <- liftIO $ blockHeightsToScan env currency
-      forM_ heights blockIteration
+      traverse_ (blockIteration totalh) heights
       liftIO $ threadDelay $ configBlockchainScanDelay $ envConfig env
 
 startBlockchainScanner :: (MonadUnliftIO m, MonadCatch m, MonadLogger m) => ServerEnv -> m [Thread]

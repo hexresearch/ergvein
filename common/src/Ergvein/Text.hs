@@ -3,12 +3,14 @@ module Ergvein.Text(
   , text2bs
   , text2json
   , json2text
+  , showf
   ) where
 
 import Data.Aeson
 import Data.Bifunctor
 import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
+import Text.Printf
 import qualified Data.ByteString.Lazy as BS
 
 -- | Helper to transform any showable value to text
@@ -29,3 +31,7 @@ text2json = first pack . eitherDecode' . text2bs
 json2text :: ToJSON a => a -> Text
 json2text = decodeUtf8 . BS.toStrict . encode
 {-# INLINABLE json2text #-}
+
+-- | Print floating point number with fixed precision
+showf :: (Floating a, PrintfArg a) => Int -> a -> Text
+showf n = pack . printf ("%." <> show n <> "f")
