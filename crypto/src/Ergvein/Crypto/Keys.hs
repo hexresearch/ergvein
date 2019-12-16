@@ -1,4 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
 module Ergvein.Crypto.Keys(
     Base58
   , encodeBase58
@@ -7,23 +6,27 @@ module Ergvein.Crypto.Keys(
   , Seed
   , toMnemonic
   , mnemonicToSeed
-  , EgvXPubKey(..)
-  , EgvXPrvKey(..)
-  , EgvRootKey(..)
   , Currency(..)
-  , XPubKey
-  , XPrvKey
-  , xPubImport
   , xPrvImport
-  , xPubExport
   , xPrvExport
+  , xPubImport
+  , xPubExport
+  , EgvXPrvKey(..)
+  , EgvXPubKey(..)
+  , EgvRootPrvKey(..)
   , getEntropy
   , makeXPrvKey
   , deriveXPubKey
-  , deriveCurrencyKey
   , xPubAddr
   , addrToString
   , xPubErgAddrString
+  , KeyIndex
+  , deriveCurrencyMasterPrvKey
+  , deriveCurrencyMasterPubKey
+  , deriveExternalPrvKey
+  , deriveExternalPubKey
+  , deriveInternalPrvKey
+  , deriveInternalPubKey
   , example
   ) where
 
@@ -41,32 +44,79 @@ import Network.Haskoin.Keys
 import Network.Haskoin.Util
 import Text.Read (readMaybe)
 
-import qualified Data.ByteArray                 as BA
-import qualified Data.ByteString                as BS
-import qualified System.Entropy                 as E
+import qualified Data.ByteArray  as BA
+import qualified Data.ByteString as BS
+import qualified System.Entropy  as E
 
--- | Wrapper around XPubKey for easy to/from json manipulations
-data EgvXPubKey = EgvXPubKey {
-  egvXPubCur  :: Currency
-, egvXPubKey  :: XPubKey
-} deriving (Eq)
+-- | Wrapper for a root private key (a key without assigned network)
+newtype EgvRootPrvKey = EgvRootPrvKey {unEgvRootPrvKey :: XPrvKey}
+  deriving (Eq, Show, Read)
+
+instance ToJSON EgvRootPrvKey where
+  toJSON (EgvRootPrvKey XPrvKey{..}) = object [
+      "depth"  .= toJSON xPrvDepth
+    , "parent" .= toJSON xPrvParent
+    , "index"  .= toJSON xPrvIndex
+    , "chain"  .= show xPrvChain
+    , "key"    .= show xPrvKey
+    ]
+
+instance FromJSON EgvRootPrvKey where
+  parseJSON = withObject "EgvRootPrvKey" $ \o -> do
+    depth  <- o .: "depth"
+    parent <- o .: "parent"
+    index  <- o .: "index"
+    chain  <- o .: "chain"
+    key    <- o .: "key"
+    case (readMaybe chain, readMaybe key) of
+      (Just chain', Just key') -> pure $ EgvRootPrvKey $ XPrvKey depth parent index chain' key'
+      _ -> fail "failed to read chain code or key"
 
 -- | Wrapper around XPrvKey for easy to/from json manipulations
 data EgvXPrvKey = EgvXPrvKey {
-  egvXPrvCur  :: Currency
-, egvXPrvKey  :: XPrvKey
+  egvXPrvCurrency :: Currency
+, egvXPrvKey      :: XPrvKey
 } deriving (Eq)
 
--- | Wrapper for a root key (a key w/o assigned network)
-newtype EgvRootKey = EgvRootKey {unEgvRootKey :: XPrvKey}
-  deriving (Eq, Show, Read)
+instance ToJSON EgvXPrvKey where
+  toJSON (EgvXPrvKey currency key) = object [
+      "currency" .= toJSON currency
+    , "prvKey"  .= xPrvToJSON (getCurrencyNetwork currency) key
+    ]
 
--- | Derive a key for a specific network
-deriveCurrencyKey :: XPrvKey -> Currency -> EgvXPrvKey
-deriveCurrencyKey pk cur =
-  let path = [44, getCurrencyIndex cur, 0]
-      key  = foldl hardSubKey pk path
-  in EgvXPrvKey cur key
+instance FromJSON EgvXPrvKey where
+  parseJSON = withObject "EgvXPrvKey" $ \o -> do
+    currency <- o .: "currency"
+    key <- xPrvFromJSON (getCurrencyNetwork currency) =<< (o .: "prvKey")
+    pure $ EgvXPrvKey currency key
+
+instance Ord EgvXPrvKey where
+  compare (EgvXPrvKey currency1 key1) (EgvXPrvKey currency2 key2) = case compare currency1 currency2 of
+    EQ -> compare (xPrvExport (getCurrencyNetwork currency1) key1) (xPrvExport (getCurrencyNetwork currency2) key2)
+    x -> x
+
+-- | Wrapper around XPubKey for easy to/from json manipulations
+data EgvXPubKey = EgvXPubKey {
+  egvXPubCurrency :: Currency
+, egvXPubKey      :: XPubKey
+} deriving (Eq)
+
+instance ToJSON EgvXPubKey where
+  toJSON (EgvXPubKey currency key) = object [
+      "currency" .= toJSON currency
+    , "pubKey"  .= xPubToJSON (getCurrencyNetwork currency) key
+    ]
+
+instance FromJSON EgvXPubKey where
+  parseJSON = withObject "EgvXPubKey" $ \o -> do
+    currency <- o .: "currency"
+    key <- xPubFromJSON (getCurrencyNetwork currency) =<< (o .: "pubKey")
+    pure $ EgvXPubKey currency key
+
+instance Ord EgvXPubKey where
+  compare (EgvXPubKey currency1 key1) (EgvXPubKey currency2 key2) = case compare currency1 currency2 of
+    EQ -> compare (xPubExport (getCurrencyNetwork currency1) key1) (xPubExport (getCurrencyNetwork currency2) key2)
+    x -> x
 
 getEntropy :: IO Entropy
 getEntropy = E.getEntropy defaultEntropyLength
@@ -93,6 +143,68 @@ xPubAddrToString net key
   | net == erg || net == ergTest = Right $ xPubErgAddrString net key
   | otherwise                    = Left "Unknown network type"
 
+-- | Derive a BIP44 compatible private key for a specific currency.
+-- Given a parent private key /m/
+-- and a currency with code /c/, this function will compute /m\/44'\/c'\/0/.
+deriveCurrencyMasterPrvKey :: EgvRootPrvKey -> Currency -> EgvXPrvKey
+deriveCurrencyMasterPrvKey rootKey currency =
+    let hardPath = [44, getCurrencyIndex currency]
+        derivedKey = prvSubKey (foldl hardSubKey (unEgvRootPrvKey rootKey) hardPath) 0
+    in EgvXPrvKey currency derivedKey
+
+-- | Derive a BIP44 compatible public key for a specific currency.
+-- Given a parent public key /m/
+-- and a currency with code /c/, this function will compute /m\/44'\/c'\/0/.
+deriveCurrencyMasterPubKey :: EgvRootPrvKey -> Currency -> EgvXPubKey
+deriveCurrencyMasterPubKey rootKey currency =
+    let path = [44, getCurrencyIndex currency]
+        derivedKey = deriveXPubKey $ prvSubKey (foldl hardSubKey (unEgvRootPrvKey rootKey) path) 0
+    in EgvXPubKey currency derivedKey
+
+-- | Derive a BIP44 compatible external private key with a given index.
+-- Given a parent private key /m/ and an index /i/, this function will compute /m\/0\/i/.
+-- It is planned to use the result of 'deriveCurrencyMasterPrvKey' as the first argument of this function.
+deriveExternalPrvKey :: EgvXPrvKey -> KeyIndex -> EgvXPrvKey
+deriveExternalPrvKey masterKey index =
+  let path = [0, index]
+      mKey = egvXPrvKey masterKey
+      currency = egvXPrvCurrency masterKey
+      derivedKey = foldl prvSubKey mKey path
+  in EgvXPrvKey currency derivedKey
+
+-- | Derive a BIP44 compatible external public key with a given index.
+-- Given a parent public key /m/ and an index /i/, this function will compute /m\/0\/i/.
+-- It is planned to use the result of 'deriveCurrencyMasterPubKey' as the first argument of this function.
+deriveExternalPubKey :: EgvXPubKey -> KeyIndex -> EgvXPubKey
+deriveExternalPubKey masterKey index =
+  let path = [0, index]
+      mKey = egvXPubKey masterKey
+      currency = egvXPubCurrency masterKey
+      derivedKey = foldl pubSubKey mKey path
+  in EgvXPubKey currency derivedKey
+
+-- | Derive a BIP44 compatible internal private key (also known as change addresses) with a given index.
+-- Given a parent private key /m/ and an index /i/, this function will compute /m\/1\/i/.
+-- It is planned to use the result of 'deriveCurrencyMasterPrvKey' as the first argument of this function.
+deriveInternalPrvKey :: EgvXPrvKey -> KeyIndex -> EgvXPrvKey
+deriveInternalPrvKey masterKey index =
+  let path = [1, index]
+      mKey = egvXPrvKey masterKey
+      currency = egvXPrvCurrency masterKey
+      derivedKey = foldl prvSubKey mKey path
+  in EgvXPrvKey currency derivedKey
+
+-- | Derive a BIP44 compatible internal public key with a given index.
+-- Given a parent public key /m/ and an index /i/, this function will compute /m\/1\/i/.
+-- It is planned to use the result of 'deriveCurrencyMasterPubKey' as the first argument of this function.
+deriveInternalPubKey :: EgvXPubKey -> KeyIndex -> EgvXPubKey
+deriveInternalPubKey masterKey index =
+  let path = [1, index]
+      mKey = egvXPubKey masterKey
+      currency = egvXPubCurrency masterKey
+      derivedKey = foldl pubSubKey mKey path
+  in EgvXPubKey currency derivedKey
+
 example :: IO ()
 example = do
   ent <- getEntropy
@@ -114,63 +226,3 @@ example = do
   let address = fmap (xPubAddrToString network) xPubKey
   putStrLn "\nAddress:"
   print address
-
-instance ToJSON EgvXPubKey where
-  toJSON (EgvXPubKey cur key) = object [
-      "cur" .= toJSON cur
-    , "pub_key" .= xPubToJSON (getCurrencyNetwork cur) key
-    ]
-
-instance FromJSON EgvXPubKey where
-  parseJSON = withObject "EgvXPubKey" $ \o -> do
-    net    <- o .: "cur"
-    key <- xPubFromJSON (getCurrencyNetwork net) =<< (o .: "pub_key")
-    pure $ EgvXPubKey net key
-
-instance ToJSONKey EgvXPubKey where
-instance FromJSONKey EgvXPubKey where
-
-instance Ord EgvXPubKey where
-  compare (EgvXPubKey cur1 key1) (EgvXPubKey cur2 key2) = case compare cur1 cur2 of
-    EQ -> compare (xPubExport (getCurrencyNetwork cur1) key1) (xPubExport (getCurrencyNetwork cur2) key2)
-    x -> x
-
-instance ToJSON EgvXPrvKey where
-  toJSON (EgvXPrvKey cur key) = object [
-      "cur" .= toJSON cur
-    , "pub_key" .= xPrvToJSON (getCurrencyNetwork cur) key
-    ]
-
-instance FromJSON EgvXPrvKey where
-  parseJSON = withObject "EgvXPrvKey" $ \o -> do
-    cur <- o .: "cur"
-    key <- xPrvFromJSON (getCurrencyNetwork cur) =<< (o .: "pub_key")
-    pure $ EgvXPrvKey cur key
-
-instance ToJSONKey EgvXPrvKey where
-instance FromJSONKey EgvXPrvKey where
-
-instance ToJSON EgvRootKey where
-  toJSON (EgvRootKey XPrvKey{..}) = object [
-      "d" .= toJSON xPrvDepth
-    , "p" .= toJSON xPrvParent
-    , "i" .= toJSON xPrvIndex
-    , "c" .= show xPrvChain
-    , "k" .= show xPrvKey
-    ]
-
-instance FromJSON EgvRootKey where
-  parseJSON = withObject "EgvRootKey" $ \o -> do
-    d <- o .: "d"
-    p <- o .: "p"
-    i <- o .: "i"
-    c <- o .: "c"
-    k <- o .: "k"
-    case (readMaybe c, readMaybe k) of
-      (Just c', Just k') -> pure $ EgvRootKey $ XPrvKey d p i c' k'
-      _ -> fail "failed to read c or k"
-
-instance Ord EgvXPrvKey where
-  compare (EgvXPrvKey cur1 key1) (EgvXPrvKey cur2 key2) = case compare cur1 cur2 of
-    EQ -> compare (xPrvExport (getCurrencyNetwork cur1) key1) (xPrvExport (getCurrencyNetwork cur2) key2)
-    x -> x

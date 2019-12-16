@@ -56,5 +56,6 @@ in (self: super: let
     haskey = self.callPackage ./derivations/haskey.nix { };
     persistent-pagination = self.callPackage ./derivations/persistent-pagination.nix {};
     flat = lib.dontCheck (super.flat);
+    reflex-dom-core = lib.dontCheck (super.reflex-dom-core);
   }
 )

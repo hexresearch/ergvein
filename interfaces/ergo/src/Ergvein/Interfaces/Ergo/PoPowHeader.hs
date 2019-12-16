@@ -1,9 +1,8 @@
+{-|
+The port of:
+ergo/src/main/scala/org/ergoplatform/modifiers/history/PoPowHeader.scala
+-}
 module Ergvein.Interfaces.Ergo.PoPowHeader where
-
------------------------------------------------------------------------------
--- | The port of:
--- ergo/src/main/scala/org/ergoplatform/modifiers/history/PoPowHeader.scala
------------------------------------------------------------------------------
 
 import qualified Data.ByteString as BS
 import Data.Serialize                     as S (Serialize (..), decode, encode, get, put)
@@ -16,8 +15,8 @@ import Ergvein.Interfaces.Ergo.Scorex.Util.Serialization.VLQLengthPrefixed
 
 
 data PoPowHeader = PoPowHeader {
-  header :: Header
-, interlinks :: [ModifierId]
+  header :: !Header
+, interlinks :: ![ModifierId]
 } deriving (Eq)
 
 instance Serialize PoPowHeader where

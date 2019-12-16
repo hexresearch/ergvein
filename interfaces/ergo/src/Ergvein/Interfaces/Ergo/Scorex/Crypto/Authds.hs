@@ -1,11 +1,14 @@
 module Ergvein.Interfaces.Ergo.Scorex.Crypto.Authds where
 
+import Data.Aeson
 import Data.ByteString
 import Data.Serialize                     as S (Serialize (..), decode, encode, get, put)
 import Data.Serialize.Get                 as S
 import Data.Serialize.Put                 as S
 import Data.String
 import Data.Word
+
+import Ergvein.Aeson
 
 import Ergvein.Interfaces.Ergo.Scorex.Util.Package
 
@@ -16,7 +19,23 @@ import Ergvein.Interfaces.Ergo.Scorex.Util.Package
 -- newtype Side = Side { unSide :: Word8 }  --  TaggedType[Byte]
 --   deriving (Serialize)
 
--- newtype ADKey = ADKey { unADKey :: ByteString }  --  TaggedType[Array[Byte]]
+newtype ADKey = ADKey { unADKey :: ByteString }  --  TaggedType[Array[Byte]]
+  deriving (Eq)
+
+instance Show ADKey where
+    show = show . toHex . unADKey
+
+instance IsString ADKey where
+    fromString = ADKey . fromHex . fromString
+
+instance ToJSON ADKey where
+  toJSON = String . toHex . unADKey
+  {-# INLINE toJSON #-}
+
+instance FromJSON ADKey where
+  parseJSON = withText "ADKey" $
+    either fail (pure . ADKey) . fromHexTextEither
+  {-# INLINE parseJSON #-}
 
 -- newtype ADValue = ADValue { unADValue :: ByteString }  --  TaggedType[Array[Byte]]
 
@@ -36,3 +55,12 @@ instance IsString ADDigest where
 instance Serialize ADDigest where
     get = ADDigest <$> S.getBytes 33
     put = S.putByteString . unADDigest
+
+instance ToJSON ADDigest where
+  toJSON = String . toHex . unADDigest
+  {-# INLINE toJSON #-}
+
+instance FromJSON ADDigest where
+  parseJSON = withText "ADDigest" $
+    either fail (pure . ADDigest) . fromHexTextEither
+  {-# INLINE parseJSON #-}

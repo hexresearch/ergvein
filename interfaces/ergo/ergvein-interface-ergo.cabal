@@ -16,8 +16,13 @@ library
   hs-source-dirs:      src
   exposed-modules:
     Ergvein.Interfaces.Ergo
+    Ergvein.Interfaces.Ergo.Api
+    Ergvein.Interfaces.Ergo.Common.BigNat
     Ergvein.Interfaces.Ergo.Header
+    Ergvein.Interfaces.Ergo.It.Api.NodeApi
     Ergvein.Interfaces.Ergo.Mining.AutolykosSolution
+    Ergvein.Interfaces.Ergo.Mining.Difficulty.RequiredDifficulty
+    Ergvein.Interfaces.Ergo.Modifiers.History.ModifierType
     Ergvein.Interfaces.Ergo.NodeView.History.ErgoHistory
     Ergvein.Interfaces.Ergo.PoPowHeader
     Ergvein.Interfaces.Ergo.Scorex.Core.Block
@@ -28,16 +33,27 @@ library
 
   build-depends:
         base                     >= 4.7 && < 4.13
-      , template-haskell         == 2.14.*
-      , text                     == 1.2.*
+      , aeson                    == 1.4.*
       , base16-bytestring
       , bytes
       , bytestring               == 0.10.*
+      , cryptonite
+      , memory
       , time                     == 1.8.*
       , lens                     == 4.17.*
       , cereal                   == 0.5.*
+      , containers
+      , ergvein-common
       , hexstring                == 0.11.*
+      , lens                     == 4.17.*
+      , memory
       , safe
+      , scientific
+      , strict
+      , template-haskell         == 2.14.*
+      , text                     == 1.2.*
+      , time                     == 1.8.*
+      , unordered-containers
 
   default-language:    Haskell2010
   default-extensions:
@@ -45,6 +61,7 @@ library
     DataKinds
     DeriveDataTypeable
     DeriveGeneric
+    DuplicateRecordFields
     FlexibleContexts
     FlexibleInstances
     FunctionalDependencies
@@ -52,6 +69,7 @@ library
     GeneralizedNewtypeDeriving
     LambdaCase
     OverloadedStrings
+    QuasiQuotes
     RankNTypes
     RecordWildCards
     RecursiveDo
@@ -62,8 +80,8 @@ library
     TypeApplications
     TypeFamilies
     TypeOperators
-    QuasiQuotes
     UndecidableInstances
+    ViewPatterns
 
 test-suite ergvein-interface-ergo-test
   default-language:    Haskell2010
@@ -83,6 +101,7 @@ test-suite ergvein-interface-ergo-test
     TupleSections
   build-depends:
       base                     >= 4.7 && < 4.13
+    , aeson                    == 1.4.*
     , ergvein-interface-ergo
     , tasty
     , tasty-discover

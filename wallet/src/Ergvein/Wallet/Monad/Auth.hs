@@ -172,17 +172,17 @@ instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   {-# INLINE getAlertEventFire #-}
 
 instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) where
-  getEncryptedWallet = fmap (storage'wallet . authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
+  getEncryptedPrivateStorage = fmap (storage'encryptedPrivateStorage . authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
     where
       guardit Nothing = error "getEncryptedWallet impossible: no auth in authed context!"
       guardit (Just a) = a
-  {-# INLINE getEncryptedWallet #-}
+  {-# INLINE getEncryptedPrivateStorage #-}
   getAddressByCurIx cur i = do
-    currMap <- fmap (storage'pubKeys . authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
-    let maddr = MI.lookup i =<< M.lookup cur currMap
-    case maddr of
+    currMap <- fmap (storage'publicKeys . authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
+    let mXPubKey = (MI.lookup i) . egvPubKeyсhain'external =<< M.lookup cur currMap
+    case mXPubKey of
       Nothing -> fail "NOT IMPLEMENTED" -- TODO: generate new address here
-      Just addr -> pure addr
+      Just xPubKey -> pure $ xPubExport (getCurrencyNetwork cur) (egvXPubKey xPubKey)
     where
       guardit Nothing = error "getAddressByCurIx impossible: no auth in authed context!"
       guardit (Just a) = a

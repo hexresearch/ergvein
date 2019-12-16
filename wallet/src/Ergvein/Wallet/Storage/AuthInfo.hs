@@ -12,7 +12,6 @@ import Ergvein.Wallet.Localization.AuthInfo
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Util
-import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Validate
 
 initAuthInfo :: MonadIO m => Mnemonic -> WalletName -> Password -> m (Either AuthInfoAlert AuthInfo)
