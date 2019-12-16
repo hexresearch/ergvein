@@ -18,6 +18,7 @@ import Ergvein.Index.Client
 import Ergvein.Text
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Headers.Storage
+import Ergvein.Wallet.Headers.Loader
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Base
@@ -36,6 +37,7 @@ import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Servant.Client(BaseUrl)
 
+import qualified Control.Immortal as I
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Set as S
 import qualified Data.Map.Strict as M
@@ -60,6 +62,7 @@ data Env t = Env {
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
 , env'manager         :: !Manager
 , env'headersStorage  :: !HeadersStorage
+, env'headersLoader   :: !I.Thread
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -230,9 +233,11 @@ liftAuth ma0 ma = mdo
         timeoutRef      <- getRequestTimeoutRef
         manager         <- getClientMaganer
         hst             <- getHeadersStorage
+        loaderThread    <- liftIO $ runReaderT headersLoader hst
+        performEvent_ $ ffor logoutE $ const $ liftIO $ I.stop loaderThread
         a <- runReaderT (wrapped ma) $ Env
           settingsRef backEF loading langRef authRef (logoutFire ()) storeDir alertsEF
-          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager hst
+          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager hst loaderThread
         pure a
   let
     ma0' = maybe ma0 runAuthed mauth0

@@ -9,6 +9,7 @@ module Ergvein.Wallet.Headers.Storage(
 import Control.Monad.Catch
 import Control.Monad.Haskey
 import Control.Monad.IO.Class
+import Control.Monad.Reader
 import Data.Text (Text, unpack)
 import Ergvein.Wallet.Headers.Types
 import Ergvein.Wallet.Native
@@ -37,5 +38,9 @@ openHeadersStorage = do
         Nothing -> createConcurrentDb hnds emptySchema
         Just db -> return db
 
-class HasHeadersStorage m where
+class Monad m => HasHeadersStorage m where
   getHeadersStorage :: m HeadersStorage
+
+instance Monad m => HasHeadersStorage (ReaderT HeadersStorage m) where
+  getHeadersStorage = ask
+  {-# INLINE getHeadersStorage #-}
