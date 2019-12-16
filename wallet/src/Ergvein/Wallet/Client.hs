@@ -29,12 +29,16 @@ import qualified Data.IntMap.Strict as MI
 import qualified Data.List as L
 import qualified Data.Set as S
 
+import Ergvein.Index.API.Types
 import Ergvein.Index.Client
 import Ergvein.Text
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Localization.Client
+
+getHeight :: MonadFrontBase t m => Event t HeightRequest -> m (Event t (Either ClientErr HeightResponse))
+getHeight = requesterEq getHeightEndpoint
 
 getBalance :: MonadFrontBase t m => Event t BalanceRequest -> m (Event t (Either ClientErr BalanceResponse))
 getBalance = requesterEq getBalanceEndpoint
