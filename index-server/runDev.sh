@@ -1,1 +1,1 @@
-cabal new-run exe:ergvein-index-server -- listen ./configuration.yaml +RTS -A64m -AL256m -qn4
+cabal new-run exe:ergvein-index-server -- listen ./configuration.yaml
