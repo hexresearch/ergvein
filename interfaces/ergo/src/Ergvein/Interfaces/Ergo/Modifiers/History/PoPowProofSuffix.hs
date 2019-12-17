@@ -8,9 +8,9 @@ import Ergvein.Aeson
 import Ergvein.Interfaces.Ergo.PoPowHeader
 
 data PoPowProofSuffix = PoPowProofSuffix {
-  k       :: !Int32
+  suffixK :: !Int32
 , chain   :: ![PoPowHeader]
 , sizeOpt :: !(Maybe Int32)
 } deriving (Eq, Show)
 
-deriveJSON A.defaultOptions ''PoPowProofSuffix
+deriveJSON (A.defaultOptions { fieldLabelModifier = (\case { "suffixK" -> "k"; a -> a; }) }) ''PoPowProofSuffix
