@@ -12,6 +12,7 @@ import           Ergvein.Index.Server.Config
 import           Ergvein.Index.Server.Environment
 import           Ergvein.Types.Transaction
 import           Ergvein.Types.Currency
+import           Ergvein.Crypto.SHA256 
 
 import           Data.Serialize                     as S
 import qualified Data.ByteString                    as B
@@ -33,7 +34,7 @@ txInfo tx txHash = let
                   , txIn'txOutIndex = fromIntegral $ HK.outPointIndex prevOutput
                   }
     txOutInfo txOutIndex txOut = let
-      scriptOutputHash = encodeHex . B.reverse . S.encode . HK.doubleSHA256
+      scriptOutputHash = encodeSHA256Hex . doubleSHA256
       in TxOutInfo { txOut'txHash           = txHash
                    , txOut'pubKeyScriptHash = scriptOutputHash $ HK.scriptOutput txOut
                    , txOut'index            = fromIntegral txOutIndex

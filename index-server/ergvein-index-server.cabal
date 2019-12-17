@@ -75,6 +75,7 @@ library
       , yaml                     == 0.11.*
 
       , ergvein-common
+      , ergvein-crypto
       , ergvein-index-api
       , ergvein-wallet-types
 
