@@ -37,6 +37,13 @@ getHeaderById id = do
 getTransactionsById :: ApiMonad m => ModifierId -> m BlockTransactions
 getTransactionsById id = do
   client <- getClient
-  let url = [i|#{ clientUrl client }#{ basePrefix }#{ toHex $ unModifierId id }//blocks/{headerId}/transactions|]
+  let url = [i|#{ clientUrl client }#{ basePrefix }#{ toHex $ unModifierId id }/transactions|]
+  response <- liftIO $ W.asJSON =<< WS.getWith (clientOpts client) (clientSession client) url
+  pure $ response ^. W.responseBody
+
+getById :: ApiMonad m => ModifierId -> m FullBlock
+getById id = do
+  client <- getClient
+  let url = [i|#{ clientUrl client }#{ basePrefix }#{ toHex $ unModifierId id }|]
   response <- liftIO $ W.asJSON =<< WS.getWith (clientOpts client) (clientSession client) url
   pure $ response ^. W.responseBody

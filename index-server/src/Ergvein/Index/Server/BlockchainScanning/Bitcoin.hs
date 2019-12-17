@@ -37,7 +37,7 @@ txInfo tx txHash = let
                    , txOut'pubKeyScriptHash = scriptOutputHash $ HK.scriptOutput txOut
                    , txOut'index            = fromIntegral txOutIndex
                    , txOut'value            = HK.outValue txOut
-                   }    
+                   }
 
 blockTxInfos :: HK.Block -> BlockHeight -> BlockInfo
 blockTxInfos block txBlockHeight = let
@@ -61,7 +61,7 @@ actualHeight :: Config -> IO BlockHeight
 actualHeight cfg = fromIntegral <$> btcNodeClient cfg getBlockCount
 
 blockInfo :: ServerEnv -> BlockHeight -> IO BlockInfo
-blockInfo env blockHeightToScan = do 
+blockInfo env blockHeightToScan = do
   blockHash <- btcNodeClient cfg $ flip getBlockHash $ fromIntegral blockHeightToScan
   maybeRawBlock <- btcNodeClient cfg $ flip getBlockRaw blockHash
   let rawBlock = fromMaybe blockParsingError maybeRawBlock
