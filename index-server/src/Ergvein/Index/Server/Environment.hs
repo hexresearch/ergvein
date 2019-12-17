@@ -32,7 +32,7 @@ btcNodeClient cfg = withClient (configBTCNodeHost cfg)
                                (configBTCNodeUser cfg)
                                (configBTCNodePassword cfg)
 
-newServerEnv :: MonadIO m => Config -> m ServerEnv
+newServerEnv :: (MonadIO m, MonadLogger m) => Config -> m ServerEnv
 newServerEnv cfg = do
     logger <- liftIO newChan
     pool   <- liftIO $ runStdoutLoggingT $ do
@@ -41,7 +41,7 @@ newServerEnv cfg = do
         flip runReaderT pool $ runDb $ runMigration migrateAll
         pure pool
     db <- liftIO openDb
-    liftIO $ loadCache db pool
+    loadCache db pool
     pure ServerEnv { envConfig = cfg
                    , envLogger = logger
                    , envPool   = pool

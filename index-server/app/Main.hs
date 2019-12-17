@@ -49,7 +49,7 @@ startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
     CommandListen cfgPath ->  do
         cfg <- loadConfig cfgPath
-        env <- newServerEnv cfg
+        env <- runStdoutLoggingT $ newServerEnv cfg
         liftIO $ runStdoutLoggingT $ startBlockchainScanner env
         T.putStrLn $ pack $ "Server started at " <> configDbHost cfg <> ":" <> (show . configServerPort $ cfg)
         let app = logStdoutDev $ indexServerApp env
