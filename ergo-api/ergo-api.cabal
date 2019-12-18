@@ -14,10 +14,11 @@ maintainer:          Anton Gushcha <ncrashed@protonmail.com>, Vladimir Krutkin <
 library
   hs-source-dirs:      src
   exposed-modules:
-    Network.Ergo.Api.Client
-    Network.Ergo.Api.Internal
     Network.Ergo.Api.Blocks
+    Network.Ergo.Api.Client
     Network.Ergo.Api.Info
+    Network.Ergo.Api.Internal
+    Network.Ergo.Api.Utxo
   build-depends:
       base                 >= 4.7 && < 4.13
     , aeson                == 1.4.*

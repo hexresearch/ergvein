@@ -16,14 +16,15 @@ import Ergvein.Interfaces.Ergo.Scorex.Core.Block
 import Ergvein.Types.Currency
 import Data.ByteString (ByteString)
 import Data.Serialize
+import Ergvein.Crypto.SHA256 
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.ByteString.Base16 as BS16
 
-txInfo :: ErgoTransaction -> TxHash -> ([TxInInfo], [TxOutInfo])
+{-txInfo :: ErgoTransaction -> TxHash -> ([TxInInfo], [TxOutInfo])
 txInfo tx txHash = let
-  withoutCoinbaseTx = filter $ (const True) . HK.prevOutput
-  in (map txInInfo $ withoutCoinbaseTx $ outputs tx, map txOutInfo $ inputs tx)
+  --withoutCoinbaseTx = filter $ (const True) . HK.prevOutput
+  in (map txInInfo $ outputs tx, map txOutInfo $ inputs tx)
   where
     txInInfo txIn = let
       prevOutput = HK.prevOutput txIn
@@ -32,13 +33,16 @@ txInfo tx txHash = let
                   , txIn'txOutIndex = fromIntegral $ HK.outPointIndex prevOutput
                   }
     txOutInfo txOut = let
-      scriptOutputHash = HK.encodeHex . B.reverse . encode . HK.doubleSHA256
+      scriptOutputHash = encodeSHA256Hex . doubleSHA256
       in TxOutInfo { txOut'txHash           = txHash
                    , txOut'pubKeyScriptHash = scriptOutputHash $ HK.scriptOutput txOut
                    , txOut'index            = fromIntegral index
                    , txOut'value            = value txOut
-                   }
- 
+                   }-}
+
+txInfo :: ErgoTransaction -> TxHash -> ([TxInInfo], [TxOutInfo])
+txInfo tx txHash = undefined
+
 actualHeight :: ServerEnv -> IO BlockHeight
 actualHeight env = do
   info <- flip runReaderT (env'ergoNodeClient env) $ getInfo
@@ -49,17 +53,17 @@ toHex = TE.decodeUtf8 . BS16.encode
 
 blockTxInfos :: FullBlock -> BlockHeight -> BlockInfo
 blockTxInfos block txBlockHeight = let
-  (txInfos ,txInInfos, txOutInfos) = mconcat $ txoInfosFromTx `imap` (transactions $ blockTransactions block)
+  (txInfos ,txInInfos, txOutInfos) = mconcat $  txoInfosFromTx <$> (transactions $ blockTransactions block)
   blockContent = BlockContentInfo txInfos txInInfos txOutInfos
   blockMeta = BlockMetaInfo ERGO txBlockHeight blockHeaderHexView
   in undefined
   where
     blockHeaderHexView = toHex $ undefined
-    txoInfosFromTx txBlockIndex tx = let
+    txoInfosFromTx tx = let
       txHash = T.pack $ show $  transactionId (tx :: ErgoTransaction)
       txI = TxInfo { tx'hash = txHash
                    , tx'blockHeight = txBlockHeight
-                   , tx'blockIndex  = fromIntegral txBlockIndex
+                   , tx'blockIndex  = fromIntegral 4
                    }
       (txInI,txOutI) = txInfo tx txHash
       in ([txI], txInI, txOutI)
