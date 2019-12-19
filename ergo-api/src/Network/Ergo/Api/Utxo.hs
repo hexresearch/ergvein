@@ -20,9 +20,9 @@ import qualified Network.Wreq.Session      as WS
 basePrefix :: Text
 basePrefix = "/utxo/"
 
-getById :: ApiMonad m => TransactionBoxId -> m String
+getById :: ApiMonad m => TransactionBoxId -> m ErgoTransactionOutput
 getById id = do
   client <- getClient
   let url = [i|#{ clientUrl client }#{ basePrefix }#{ toHex $ unTransactionBoxId id }|]
-  response <- liftIO $ WS.getWith (clientOpts client) (clientSession client) url
-  pure $ show $ response ^. W.responseBody
+  response <- liftIO $ W.asJSON =<< WS.getWith (clientOpts client) (clientSession client) url
+  pure $ response ^. W.responseBody
