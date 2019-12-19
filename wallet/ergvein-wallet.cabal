@@ -55,6 +55,7 @@ library
     Ergvein.Wallet.Page.History
     Ergvein.Wallet.Page.Initial
     Ergvein.Wallet.Page.Password
+    Ergvein.Wallet.Page.PatternKey
     Ergvein.Wallet.Page.Seed
     Ergvein.Wallet.Password
     Ergvein.Wallet.Platform
@@ -105,6 +106,7 @@ library
     , reflex-dom                >= 0.4      && < 0.7
     , reflex-dom-core
     , reflex-dom-retractable
+    , reflex-dom-fragment-shader-canvas
     , reflex-external-ref
     , reflex-localize
     , safe

@@ -16,6 +16,7 @@ import Ergvein.Wallet.Input
 import Ergvein.Wallet.Localization.Seed
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
+import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Resize
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
@@ -60,6 +61,8 @@ mnemonicWidget mnemonic = do
       divClass "mnemonic-colony" $ adaptive (mobileMnemonic phrase) (desktopMnemonic phrase)
       divClass "mnemonic-warn" $ h4 $ localizedText SPSWarn
       btnE <- outlineButton SPSWrote
+      --divClass "mytestClass" $ h4 $ text "lol"
+      --patternKeyWidget
       pure (phrase <$ btnE, pure $ Just phrase)
   where
     prepareMnemonic :: Int -> Mnemonic -> [(Int, Text)]

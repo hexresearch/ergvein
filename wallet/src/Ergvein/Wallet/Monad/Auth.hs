@@ -30,6 +30,7 @@ import Ergvein.Wallet.Storage.Util
 import Network.Haskoin.Address
 import Network.HTTP.Client hiding (Proxy)
 import Reflex
+import Reflex.Host.Class
 import Reflex.Dom
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
@@ -265,3 +266,8 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
   getUrlsRef = asks env'urls
   getRequiredUrlNumRef = asks env'urlNum
   getRequestTimeoutRef = asks env'timeout
+
+
+instance MonadFrontBase t m => MonadReflexCreateTrigger t (ErgveinM t m) where
+  newEventWithTrigger = lift . newEventWithTrigger
+  newFanEventWithTrigger f = lift $ newFanEventWithTrigger f
