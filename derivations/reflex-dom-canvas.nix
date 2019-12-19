@@ -6,9 +6,9 @@ mkDerivation {
   pname = "reflex-dom-canvas";
   version = "0.4.0.1";
   src = fetchgit {
-    url = "https://github.com/qfpl/reflex-dom-canvas.git";
-    #sha256 = "01jz1aqrrrg6x5q108axa3n7yhfrd1c72gj67xkjbpj35hwja1y9";
-    rev = "b9131dffd521e4534eb2240e3fe0b7bfb70136a8";
+    url = "https://github.com/hexresearch/reflex-dom-canvas.git";
+    sha256 = "16lv03djblzlpw7i4clzpw7417pqbplxw9qwm9ir2ap5xwnsrhdf";
+    rev = "6c9d7ee534c8b17db3520ee2f56a0d3693080a28";
     fetchSubmodules = true;
   };
   libraryHaskellDepends = [

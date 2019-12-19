@@ -36,7 +36,6 @@ in reflex-platform.project ({ pkgs, ... }: {
       "ergvein-wallet-types"
       "ergvein-interface-ergo"
       "reflex-dom-retractable"
-      "reflex-dom-canvas"
       "reflex-external-ref"
       "reflex-localize"
     ];
