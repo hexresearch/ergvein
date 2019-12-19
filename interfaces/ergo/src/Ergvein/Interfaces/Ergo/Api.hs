@@ -13,6 +13,11 @@ import Data.Word
 
 import Ergvein.Aeson
 
+import Ergvein.Interfaces.Ergo.Header
+import Ergvein.Interfaces.Ergo.Mining.AutolykosSolution
+import Ergvein.Interfaces.Ergo.NodeView.History.ErgoHistory
+import Ergvein.Interfaces.Ergo.Scorex.Core.Block
+import Ergvein.Interfaces.Ergo.Scorex.Crypto.Authds
 import Ergvein.Interfaces.Ergo.Scorex.Crypto.Hash (Digest32(..))
 import Ergvein.Interfaces.Ergo.Scorex.Util.Package
 
@@ -60,7 +65,7 @@ data ErgoTransactionOutput = ErgoTransactionOutput {
   boxId :: !(Maybe TransactionBoxId)
 , value :: !Word64
 , ergoTree :: !ErgoTree
-, creationHeight :: Int32
+, creationHeight :: !Int32
 , assets :: ![Asset]
 , additionalRegisters :: !Registers
 , transactionId :: !(Maybe TransactionId)
@@ -68,7 +73,7 @@ data ErgoTransactionOutput = ErgoTransactionOutput {
 }
 
 data ErgoTransaction = ErgoTransaction {
-  tid :: !TransactionId -- field "id"
+  transactionId :: !TransactionId -- field "id"
 , inputs :: ![ErgoTransactionInput]
 , dataInputs :: ![ErgoTransactionDataInput]
 , outputs :: ![ErgoTransactionOutput]
@@ -112,10 +117,52 @@ data Parameters = Parameters {
 , outputCost :: !Word32
 }
 
+-- | Block with header and transactions
+data FullBlock = FullBlock {
+  header :: !BlockHeader
+, blockTransactions :: !BlockTransactions
+, adProofs :: !BlockADProofs
+, extension :: !Extension
+, size :: !Int32
+}
+
+data BlockHeader = BlockHeader {
+  headerId :: !ModifierId
+, timestamp :: !Timestamp
+, version :: !Version
+, adProofsRoot :: !Digest32
+, stateRoot :: !ADDigest
+, transactionsRoot :: !Digest32
+, nBits :: !NBits
+, extensionHash :: !Digest32
+, powSolutions :: !AutolykosSolution
+, height :: !Word32
+, difficulty :: !Word32
+, parentId :: !ModifierId
+, votes :: !Votes
+, size :: !(Maybe Int32)
+, extensionId :: !(Maybe ModifierId)
+, transactionsId :: !(Maybe ModifierId)
+, adProofsId :: !(Maybe ModifierId)
+}
+
 data BlockTransactions = BlockTransactions {
   headerId :: !ModifierId
 , transactions :: ![ErgoTransaction]
 , size :: !Word32
+}
+
+data Extension = Extension {
+  headerId :: !ModifierId
+, digest :: !Digest32
+, fields :: ![HexJSON]
+}
+
+data BlockADProofs = BlockADProofs {
+  headerId :: !ModifierId
+, proofBytes :: !SerializedAdProof
+, digest :: !Digest32
+, size :: !Int32
 }
 
 -- | Token detail in the transaction
@@ -217,11 +264,36 @@ instance FromJSON ErgoTree where
 
 ----------------------------------------
 
-deriveJSON (A.defaultOptions { fieldLabelModifier = (\case { "tid" -> "id"; a -> a; }) }) ''ErgoTransaction
+-- | Base16-encoded ad proofs
+newtype SerializedAdProof = SerializedAdProof { unSerializedAdProof :: ByteString }
+  deriving (Eq)
+
+instance Show SerializedAdProof where
+    show = show . toHex . unSerializedAdProof
+
+instance IsString SerializedAdProof where
+    fromString = SerializedAdProof . fromHex . fromString
+
+instance ToJSON SerializedAdProof where
+  toJSON = String . toHex . unSerializedAdProof
+  {-# INLINE toJSON #-}
+
+instance FromJSON SerializedAdProof where
+  parseJSON = withText "SerializedAdProof" $
+    either fail (pure . SerializedAdProof) . fromHexTextEither
+  {-# INLINE parseJSON #-}
+
+----------------------------------------
+
+deriveJSON (A.defaultOptions { fieldLabelModifier = (\case { "transactionId" -> "id"; a -> a; }) }) ''ErgoTransaction
 deriveJSON A.defaultOptions ''ErgoTransactionInput
 deriveJSON A.defaultOptions ''ErgoTransactionDataInput
 deriveJSON A.defaultOptions ''ErgoTransactionOutput
 deriveJSON A.defaultOptions ''SpendingProof
+deriveJSON A.defaultOptions ''FullBlock
+deriveJSON (A.defaultOptions { fieldLabelModifier = (\case { "headerId" -> "id"; a -> a; }) }) ''BlockHeader
 deriveJSON A.defaultOptions ''BlockTransactions
+deriveJSON A.defaultOptions ''Extension
+deriveJSON A.defaultOptions ''BlockADProofs
 deriveJSON A.defaultOptions ''Asset
 deriveJSON unwrapUnaryOptions ''Registers
