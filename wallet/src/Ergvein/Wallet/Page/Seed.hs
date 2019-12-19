@@ -62,7 +62,7 @@ mnemonicWidget mnemonic = do
       divClass "mnemonic-warn" $ h4 $ localizedText SPSWarn
       btnE <- outlineButton SPSWrote
       --divClass "mytestClass" $ h4 $ text "lol"
-      --patternKeyWidget
+      patternKeyWidget
       pure (phrase <$ btnE, pure $ Just phrase)
   where
     prepareMnemonic :: Int -> Mnemonic -> [(Int, Text)]

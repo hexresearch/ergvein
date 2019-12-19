@@ -55,5 +55,6 @@ in (self: super: let
     persistent-pagination = self.callPackage ./derivations/persistent-pagination.nix {};
     flat = lib.dontCheck (super.flat);
     reflex-dom-core = lib.dontCheck (super.reflex-dom-core);
+    reflex-dom-canvas = self.callPackage ./derivations/reflex-dom-canvas.nix {};
   }
 )

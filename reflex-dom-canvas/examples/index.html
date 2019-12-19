@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script id="vert-shader" type="x-vertex-shader">
+     attribute vec4 a_position;
+
+     void main() {
+       gl_Position = a_position;
+     }
+    </script>
+
+    <script id="frag-shader" type="x-fragment-shader">
+     precision mediump float;
+
+     void main() {
+       gl_FragColor = vec4(1, 0, 0.5, 1);
+     }
+    </script>
+
+  </head>
+  <body>
+  </body>
+    <script language="javascript" src="result/js/examples.min.js" defer></script>
+</html>

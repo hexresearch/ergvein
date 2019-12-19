@@ -266,8 +266,3 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
   getUrlsRef = asks env'urls
   getRequiredUrlNumRef = asks env'urlNum
   getRequestTimeoutRef = asks env'timeout
-
-
-instance MonadFrontBase t m => MonadReflexCreateTrigger t (ErgveinM t m) where
-  newEventWithTrigger = lift . newEventWithTrigger
-  newFanEventWithTrigger f = lift $ newFanEventWithTrigger f

@@ -43,7 +43,7 @@ library
       , conversion               == 1.2.*
       , data-default             == 0.7.*
       , directory                == 1.3.*
-      , esqueleto                == 3.0.*
+      , esqueleto
       , exceptions               == 0.10.*
       , flat                     == 0.3.*
       , haskoin-core             == 0.8.*
@@ -56,7 +56,7 @@ library
       , monad-logger             == 0.3.*
       , mtl                      == 2.2.*
       , persistent               == 2.9.*
-      , persistent-pagination    == 0.1.*
+      , persistent-pagination    
       , persistent-postgresql    == 2.9.*
       , persistent-template      == 2.5.*
       , resource-pool            == 0.2.*
@@ -121,7 +121,7 @@ executable ergvein-index-server
 
     , ergvein-index-api
     , ergvein-index-server
-    
+
   default-language:    Haskell2010
   default-extensions:
     RankNTypes

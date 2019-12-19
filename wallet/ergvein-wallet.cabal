@@ -105,8 +105,8 @@ library
     , reflex                    >= 0.4      && < 0.7
     , reflex-dom                >= 0.4      && < 0.7
     , reflex-dom-core
+    , reflex-dom-canvas
     , reflex-dom-retractable
-    , reflex-dom-fragment-shader-canvas
     , reflex-external-ref
     , reflex-localize
     , safe
