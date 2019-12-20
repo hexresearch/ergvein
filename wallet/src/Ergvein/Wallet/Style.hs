@@ -5,6 +5,7 @@ module Ergvein.Wallet.Style(
 
 import Clay
 import Clay.Selector
+import Clay.Display
 import Clay.Stylesheet (prefixed)
 import Control.Monad
 import Data.ByteString (ByteString)
@@ -348,3 +349,11 @@ alertsCss = do
   ".alert-secondary" ? do
     color "#000"
     backgroundColor "#a9a7a7"
+
+
+patternKeyCss :: Css
+patternKeyCss = do
+  ".myTestDiv" ? do
+    pointerEvents none
+    backgroundColor "red"
+    display block
