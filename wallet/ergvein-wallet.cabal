@@ -56,6 +56,8 @@ library
     Ergvein.Wallet.Page.Initial
     Ergvein.Wallet.Page.Password
     Ergvein.Wallet.Page.PatternKey
+    Ergvein.Wallet.Page.PatternKeyWebgl
+    Ergvein.Wallet.Page.PatternKeyUtils.Utils
     Ergvein.Wallet.Page.Seed
     Ergvein.Wallet.Password
     Ergvein.Wallet.Platform
@@ -63,6 +65,7 @@ library
     Ergvein.Wallet.Settings
     Ergvein.Wallet.Storage
     Ergvein.Wallet.Storage.AuthInfo
+    Ergvein.Wallet.Storage.Constants
     Ergvein.Wallet.Storage.Data
     Ergvein.Wallet.Storage.Util
     Ergvein.Wallet.Style
@@ -101,6 +104,7 @@ library
     , MonadRandom
     , mtl                       >= 2.2      && < 2.3
     , process                   >= 1.6      && < 1.7
+    , random
     , ref-tf                    >= 0.4      && < 0.5
     , reflex                    >= 0.4      && < 0.7
     , reflex-dom                >= 0.4      && < 0.7
