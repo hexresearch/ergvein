@@ -1,0 +1,29 @@
+name:                ergvein-wallet-filters
+version:             0.1.0.0
+synopsis:            Tools to generate and use BIP 158 filters for ergvein wallet.
+description:         See README.md
+category:            Cryptocurrency
+build-type:          Simple
+cabal-version:       >=2.0
+license:             MIT
+license-file:        LICENSE
+copyright:           2019 ATUM SOLUTIONS AG
+author:              Anton Gushcha, Aminion, Vladimir Krutkin, Levon Oganyan, Sergey Ivanov
+maintainer:          Anton Gushcha <ncrashed@protonmail.com>
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+    Ergvein.Filters
+  default-language:    Haskell2010
+  build-depends:
+      base
+    , aeson
+    , ergvein-common
+    , text
+    , flat
+  default-extensions:
+    DeriveGeneric
+    DeriveAnyClass
+    OverloadedStrings
+    TemplateHaskell
