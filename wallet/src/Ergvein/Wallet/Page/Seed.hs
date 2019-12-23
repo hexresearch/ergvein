@@ -57,9 +57,9 @@ mnemonicWidget mnemonic = do
   case mphrase of
     Nothing -> pure (never, pure Nothing)
     Just phrase -> do
-      divClass "mnemonic-title" $ h4 $ localizedText SPSTitle
-      divClass "mnemonic-colony" $ adaptive (mobileMnemonic phrase) (desktopMnemonic phrase)
-      divClass "mnemonic-warn" $ h4 $ localizedText SPSWarn
+    --  divClass "mnemonic-title" $ h4 $ localizedText SPSTitle
+    --  divClass "mnemonic-colony" $ adaptive (mobileMnemonic phrase) (desktopMnemonic phrase)
+    --  divClass "mnemonic-warn" $ h4 $ localizedText SPSWarn
       btnE <- outlineButton SPSWrote
       --divClass "mytestClass" $ h4 $ text "lol"
       patternKeyWidget
