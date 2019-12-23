@@ -17,7 +17,7 @@ library
     , ergvein-common
     , jsaddle
     , text
-    , flat 
+    , flat
   default-extensions:
     DeriveGeneric
     DeriveAnyClass

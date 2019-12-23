@@ -256,12 +256,12 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
   addUrls urlsE = do
     urlsRef <- asks env'urls
     performEvent_ $ ffor urlsE $ \urls ->
-      modifyExternalRef urlsRef (\s -> (S.union (S.fromList urls) s, ()) )
+      modifyExternalRef urlsRef (\s -> (S.union (S.fromList urls) s, ()))
 
   invalidateUrls urlsE = do
     urlsRef <- asks env'urls
     performEvent_ $ ffor urlsE $ \urls ->
-      modifyExternalRef urlsRef (\s -> (S.difference s (S.fromList urls), ()) )
+      modifyExternalRef urlsRef (\s -> (S.difference s (S.fromList urls), ()))
   getUrlsRef = asks env'urls
   getRequiredUrlNumRef = asks env'urlNum
   getRequestTimeoutRef = asks env'timeout

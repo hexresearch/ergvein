@@ -39,7 +39,7 @@ txInfo tx txHash = let
                    , txOut'pubKeyScriptHash = scriptOutputHash $ HK.scriptOutput txOut
                    , txOut'index            = fromIntegral txOutIndex
                    , txOut'value            = HK.outValue txOut
-                   }    
+                   }
 
 blockTxInfos :: HK.Block -> BlockHeight -> BlockInfo
 blockTxInfos block txBlockHeight = let
