@@ -3,3 +3,6 @@ dist-newstyle
 dist
 android-result
 android-release
+.stack-work
+cabal.project.freeze
+stack.yaml.lock

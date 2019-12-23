@@ -12,17 +12,24 @@ module Ergvein.Wallet.Monad.Util
   , logWarn
   , logError
   , postLog
+  , worker
   ) where
 
 import Control.Concurrent
 import Control.Concurrent.Async
 import Control.Monad.IO.Class
+import Control.Monad.IO.Unlift
 import Data.Time
+import Data.Text (pack)
+import Ergvein.Text
 import Ergvein.Wallet.Log.Types
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Front
 import Reflex
 import Reflex.ExternalRef
+
+import qualified Control.Immortal as I
 
 -- | Posting log message
 postLog :: MonadEgvLogger t m => Event t LogEntry -> m ()
@@ -105,3 +112,13 @@ runOnUiThreadM :: MonadFrontBase t m => IO () -> m ()
 runOnUiThreadM ma = do
   ch <- getUiChan
   liftIO $ writeChan ch ma
+
+-- | Helper that starts new immortal thread with logging of errors
+worker :: (MonadUnliftIO m, PlatformNatives) => String -> (I.Thread -> m ()) -> m I.Thread
+worker lbl f = I.createWithLabel lbl $ \thread -> I.onUnexpectedFinish thread logthem (f thread)
+  where
+    logthem me = case me of
+      Left e -> do
+        logWrite $ "Worker " <> pack lbl <> " exit with: " <> showt e
+        liftIO $ threadDelay 1000000
+      _ -> pure ()

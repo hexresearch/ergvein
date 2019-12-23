@@ -1,17 +1,17 @@
 module Main where
 
-
-import Options.Applicative
-import Network.Wai.Handler.Warp
-import Network.Wai.Middleware.RequestLogger
-import Ergvein.Index.Server.Monad
-import Ergvein.Index.Server.App
-import Ergvein.Index.Server.Config
-import Ergvein.Index.Server.Environment
 import Control.Immortal
 import Control.Monad.IO.Unlift
-import Ergvein.Index.Server.Config
+import Control.Monad.Logger
+import Ergvein.Index.Server.App
 import Ergvein.Index.Server.BlockchainScan
+import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.Environment
+import Ergvein.Index.Server.Monad
+import Network.Wai.Handler.Warp
+import Network.Wai.Middleware.RequestLogger
+import Options.Applicative
 
 import qualified Data.Text.IO as T
 import Data.Text (Text, pack)
@@ -48,9 +48,9 @@ main = do
 startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
     CommandListen cfgPath ->  do
-        cfg <- loadConfig cfgPath      
-        env <- newServerEnv cfg
-        liftIO $ startBlockchainScanner env
+        cfg <- loadConfig cfgPath
+        env <- runStdoutLoggingT $ newServerEnv cfg
+        liftIO $ runStdoutLoggingT $ startBlockchainScanner env
         T.putStrLn $ pack $ "Server started at " <> configDbHost cfg <> ":" <> (show . configServerPort $ cfg)
         let app = logStdoutDev $ indexServerApp env
             warpSettings = setPort (configServerPort cfg) defaultSettings

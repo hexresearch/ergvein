@@ -8,4 +8,4 @@ BTCNodeHost     : localhost
 BTCNodePort     : 18332
 BTCNodeUser     : bitcoinrpc
 BTCNodePassword : password
-blockchainScanDelay : 1000000
+blockchainScanDelay : 1000000dbLog      : true
