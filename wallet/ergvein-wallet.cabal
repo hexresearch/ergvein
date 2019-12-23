@@ -117,6 +117,7 @@ library
     , semialign
     , servant
     , servant-client            >= 0.16     && < 0.17
+    , split
     , stm                       >= 2.4      && < 2.6
     , template-haskell
     , text                      >= 1.2      && < 1.3

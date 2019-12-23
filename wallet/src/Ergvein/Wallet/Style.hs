@@ -357,3 +357,5 @@ patternKeyCss = do
     pointerEvents none
     backgroundColor "red"
     display block
+  ".myDebugLog" ? do
+    display block

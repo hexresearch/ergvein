@@ -28,8 +28,11 @@ import qualified System.Random                    as Rnd
 import           Control.Lens                     (to, (^.))
 import           Control.Monad.IO.Class           (liftIO)
 import qualified Data.Map as Map
-import qualified Data.Text as T
+import           Data.Maybe (fromJust)
+import           Data.List  (find)
+import           Data.List.Split
 import           Data.Monoid
+import qualified Data.Text as T
 import           Data.Time                        (UTCTime, getCurrentTime)
 import qualified Ergvein.Wallet.Page.PatternKeyUtils.Utils as UT
 
@@ -40,9 +43,15 @@ import Data.Maybe
 import qualified GHCJS.DOM.Blob as Blob
 import qualified GHCJS.DOM.Types as JS
 
+type Square  = (Double, Double, Double, Double)
+type Coursor = (Double, Double)
+
+data DrawCommand = AddSquare | Clear deriving (Show)
+
+data TouchState = Pressed | Unpressed deriving (Show)
 
 patternKeyWidget :: MonadFrontBase t m => m ()
-patternKeyWidget = divClass "myTestDiv" $ do
+patternKeyWidget = divClass "myTestDiv" $ mdo
   let
     canvasH = 320
     canvasW = 320
@@ -72,30 +81,66 @@ patternKeyWidget = divClass "myTestDiv" $ do
       moveE  = domEvent Mousemove canvasEl
       downE  = domEvent Mousedown canvasEl
       upE    = domEvent Mouseup canvasEl
-    --  dGrid r  = constDyn $ drawGrid canvasW canvasH r
+      dGrid  = constDyn $ drawGrid canvasW canvasH emptySq
       dClear = constDyn $ clearCanvas canvasW canvasH
   tmovePrE <- performEvent $ ffor tmoveE prepTCoord
   tdownPrE <- performEvent $ ffor tdownE prepTCoord
   tupPrE   <- performEvent $ ffor tupE   prepTCoord
   movePrE  <- performEvent $ ffor moveE  prepCoord
-  downPrE <- performEvent $ ffor downE prepCoord
+  downPrE  <- performEvent $ ffor downE  prepCoord
   upPrE    <- performEvent $ ffor upE    prepCoord
-  lastClickD <- holdDyn (0,0) downE
+
+  let pressedE = leftmost [Pressed <$ tdownE, Unpressed <$ tupE]
+
+  touchD <- holdDyn Unpressed pressedE
+
   --positionD <- holdDyn (0,0) $ fmap (lastClickD <- holdDyn (0,0) downE\(ClientRect{..}, _) -> (crLeft, crTop)) sizeE
 
-  sqUpdE <- performEvent $ ffor tmovePrE $ \(x,y) -> pure ((x,y),hitOrMiss (x,y) coords)
+  sqUpdE <- performEvent $ ffor tmovePrE $ \(x,y) -> pure (AddSquare,(x,y),hitOrMiss (x,y) coords)
 
-  sqD <- holdDyn emptySq $ fmap (\(_,r) -> r) sqUpdE
+  let predrawE = leftmost [sqUpdE, (Clear,(0,0),emptySq) <$ tupPrE]
 
---  dynText $ fmap showt sqD
+  sqD <- holdDyn (Clear,(0,0),emptySq) $ flip pushAlways predrawE $ \(dc,cur,sqs) -> do
+    touchS <- sample . current $ touchD
+    case touchS of
+      Pressed -> case dc of
+        AddSquare -> do
+          (_,_,sqsv) <- sample . current $ sqD
+          pure (AddSquare,cur,concatMyLists sqs sqsv)
+        Clear -> pure (Clear,(0,0),emptySq)
+      Unpressed -> pure (Clear,(0,0),emptySq)
 
-  lD <- sample . current $ lastClickD
+  let selE = fmap (\(dc, sqs) -> (dc, fmap fst sqs)) $ fmap (\(dc,sqs) -> (dc, filter jstFilter sqs)) $ fmap (\(dc,_,sqs) -> (dc,sqs)) predrawE
 
-  eTick <- RD.tickLossy 0.016 aTime
+  selectedD <- holdDyn (Clear,[]) $ flip pushAlways selE $ \(dc, sqs) -> do
+    touchS <- sample . current $ touchD
+    case touchS of
+      Pressed -> case dc of
+        AddSquare -> if (null sqs)
+          then do
+            v <- sample . current $ selectedD
+            pure v
+          else do
+            (dc,v) <- sample . current $ selectedD
+            case (find (==(head sqs)) v) of
+              Just _ -> pure (AddSquare, v)
+              Nothing -> pure $ (AddSquare, v <> [head sqs])
+        Clear -> pure (Clear, [])
+      Unpressed -> pure (Clear, [])
+
+  divClass "myDebugLog" $ dynText $ fmap showt selectedD
+
+  eTick <- RD.tickLossy 0.04 aTime
+
+  draw1E <- performEvent $ ffor (updated sqD) $ \a -> do
+    sel <- sample . current $ selectedD
+    pure (a,sel)
+--  let draw2E = fmap (\a -> (Nothing, Just a)) updated selectedD
+--  leftmost
 
   eTicken <- fmap R.switch . R.hold R.never $ R.leftmost
-    [ ()      <$ eTick <$ startE
-    , R.never <$ stopE
+    [ ()      <$ eTick <$ tdownE --startE
+    , R.never <$ tupE--stopE
     ]
 
   --dLine <- holdDyn (drawLineZero) $ ffor movePrE $ \(x,y) -> do
@@ -104,40 +149,26 @@ patternKeyWidget = divClass "myTestDiv" $ do
   --  drawLineZero
   --  drawLine canvasW canvasH (fromIntegral x) (fromIntegral y) 0 0 -- (fromIntegral (fx - a)) (fromIntegral (fy - b))
 
+  --dLines <- holdDyn (drawLinesZero) $ ffor (updated selectedD) $ \sel -> do
+  --  drawLines sel coords
 
-  dLine <- holdDyn (drawLineZero) $ ffor sqUpdE $ \((x,y),r) -> do
-    drawLine canvasW canvasH x y 0 0 r -- (fromIntegral (fx - a)) (fromIntegral (fy - b))
-    --  (fx, fy) <- liftM $ sample $ current $ lastClickD
-  --    (a, b) <- liftM $ sample $ current $ positionD
+  dLine <- holdDyn (drawLineZero) $ ffor draw1E $ \((_,(x,y),r),sel) -> do
+    drawLine canvasW canvasH x y 0 0 r
+    drawLines sel coords
 
+  d2D <- fmap (^. Canvas.canvasInfo_context) <$> CDyn.dContext2d (Canvas.CanvasConfig canvasEl [])
 
-  d2D <- fmap (^. Canvas.canvasInfo_context) <$> CDyn.dContext2d ( Canvas.CanvasConfig canvasEl [] )
-
---  eTick <- RD.tickLossy 0.016 aTime
-
---  eTicken <- fmap R.switch . R.hold R.never $ R.leftmost
---    [ ()      <$ eTick <$ eStart
---    , R.never <$ eStop
---    ]
 
 --  dFloatFeed' <- UT.dFloatFeed ( 0.0, 450.0 ) stdGen eTicken
 --  dDataLines <- UT.dDataz canvasH canvasW dataN
 --    $ R.current dFloatFeed' <@ eTicken
 
 --  _ <- CDyn.nextFrameWithCxFree dLine d2D $ () <$ tmovePrE
+  _ <- CDyn.nextFrameWithCxFree dGrid d2D $ leftmost [() <$ startE, () <$ tupE]
+
   _ <- CDyn.nextFrameWithCxFree dLine d2D $ () <$ eTicken
 
---  performEvent_ $ ffor startE $ \_ -> do
---    _ <- CDyn.nextFrameWithCxFree dGrid d2D startE
-
   _ <- CDyn.nextFrameWithCxFree dClear d2D stopE
-  --divClass "myDebugLog" $ dynText $ fmap showt dDataLines
-
-  divClass "myDebugLog" $ widgetHold (text "empty") $ ffor downPrE $ \tR -> do
-      text $ showt $ tR
-
-  divClass "myDebugLog" $ widgetHold (text "empty") $ ffor upPrE $ \tR -> do
-      text $ showt $ tR
 
 {-
   divClass "myDebugLog" $ widgetHold (text "empty") $ ffor tdownE $ \tR -> do
@@ -164,16 +195,20 @@ patternKeyWidget = divClass "myTestDiv" $ do
 
   pure ()
 
-hitOrMiss2 :: (Int, Int) -> [(Maybe Int, (Double, Double, Double, Double))] -> [(Maybe Int, (Double, Double, Double, Double))]
-hitOrMiss2 (ix,iy) squares = fmap (\(num,(sqX, sqY, sqW, sqH)) -> if ((sqX < x) && (sqY < y) && ((sqX + sqW) > x) && ((sqY + sqH) > y))
-  then (Just 1, (sqX, sqY, sqW, sqH))
-  else (Nothing, (sqX, sqY, sqW, sqH))
-  ) squares
-  where
-    x = fromIntegral ix
-    y = fromIntegral iy
+jstFilter :: (Maybe Int, a) -> Bool
+jstFilter a = case (fst a) of
+  Just n -> True
+  Nothing -> False
 
-hitOrMiss :: (Double, Double) -> [(Int, (Double, Double, Double, Double))] -> [(Maybe Int, (Double, Double, Double, Double))]
+concatMyLists :: [(Maybe Int, Square)] -> [(Maybe Int, Square)] -> [(Maybe Int, Square)]
+concatMyLists a b = (\((mi1,f1),(mi2,f2)) -> case mi1 of
+  Just n1 -> (Just n1, f1)
+  Nothing -> case mi2 of
+    Just n2 -> (Just n2, f2)
+    Nothing -> (Nothing,f2)
+  ) <$> (zip a b)
+
+hitOrMiss :: Coursor -> [(Int, Square)] -> [(Maybe Int, Square)]
 hitOrMiss (x,y) squares = fmap (\(num,(sqX, sqY, sqW, sqH)) -> if ((sqX < x) && (sqY < y) && ((sqX + sqW) > x) && ((sqY + sqH) > y))
   then (Just num, (sqX, sqY, sqW, sqH))
   else (Nothing, (sqX, sqY, sqW, sqH))
@@ -188,7 +223,7 @@ clearCanvas canvasW canvasH = do
   CanvasF.beginPathF
   CanvasF.closePathF
 
-drawGrid :: Int -> Int ->  [(Maybe Int, (Double, Double, Double, Double))] -> CanvasF.CanvasM ()
+drawGrid :: Int -> Int ->  [(Maybe Int, Square)] -> CanvasF.CanvasM ()
 drawGrid canvasW canvasH r = do
   clearCanvas canvasW canvasH
   CanvasF.beginPathF
@@ -200,21 +235,49 @@ drawGrid canvasW canvasH r = do
   CanvasF.strokeF
   CanvasF.closePathF
 
-drawLine :: Int -> Int -> Double -> Double -> Double -> Double -> [(Maybe Int, (Double, Double, Double, Double))] -> CanvasF.CanvasM ()
+drawLine :: Int -> Int -> Double -> Double -> Double -> Double -> [(Maybe Int, Square)] -> CanvasF.CanvasM ()
 drawLine canvasW canvasH coordX coordY fromX fromY r = do
 --  clearCanvas canvasW canvasH
 --  CanvasF.beginPathF
   drawGrid canvasW canvasH r
-  CanvasF.moveToF fromX fromY
-  CanvasF.lineToF coordX coordY
+--  CanvasF.moveToF fromX fromY
+--  CanvasF.lineToF coordX coordY
   CanvasF.strokeStyleF "#000000"
   CanvasF.strokeF
+
+drawLines :: (DrawCommand, [Maybe Int]) -> [(Int, Square)] -> CanvasF.CanvasM ()
+drawLines (dc, mi) z = case dc of
+  AddSquare -> if ((length mi) < 2)
+    then pure ()
+    else do
+      let (fjMi :: [Int]) = fmap fromJust mi
+      let (prepList :: [Int]) = ([head fjMi]) <> (concat (fmap (\a -> [a,a]) fjMi)) <> ([last fjMi])
+      let pointsList  = chunksOf 2 $ fmap (\a -> case (find (\(num,_) -> num == a ) z) of
+            Just (num, (a,b,c,d)) -> (a+c/2,b+d/2)
+            Nothing -> (0,0) ) prepList
+      traverse_ (\[(ax,ay),(bx,by)] -> do
+        CanvasF.beginPathF
+        CanvasF.moveToF ax ay
+        CanvasF.lineToF bx by
+        CanvasF.strokeStyleF "#000000"
+        CanvasF.strokeF
+        CanvasF.closePathF
+         ) pointsList
+      --CanvasF.strokeStyleF "#000000"
+      --CanvasF.strokeF
+      pure ()
+  Clear -> pure ()
+
 
 drawLineZero :: CanvasF.CanvasM ()
 drawLineZero = do
   CanvasF.moveToF 0 0
 
-reqList :: Int -> Int -> Int -> [(Double, Double, Double, Double)]
+drawLinesZero :: CanvasF.CanvasM ()
+drawLinesZero = do
+  CanvasF.moveToF 0 0
+
+reqList :: Int -> Int -> Int -> [Square]
 reqList width height count = mconcat $ fmap (\num -> rowList width height count num) rList
   where
     stepW = fromIntegral $ floor (rW / (3*rCount+1))
@@ -224,7 +287,7 @@ reqList width height count = mconcat $ fmap (\num -> rowList width height count 
     rW = fromIntegral width
     rH = fromIntegral height
 
-rowList :: Int -> Int -> Int -> Double -> [(Double, Double, Double, Double)]
+rowList :: Int -> Int -> Int -> Double -> [Square]
 rowList width height count globN = fmap (\num -> (stepH*2*num + stepH,stepW*2*globN + stepW, stepW,stepH)) rList
   where
     stepW = fromIntegral $ floor (rW / (3*rCount+1))
