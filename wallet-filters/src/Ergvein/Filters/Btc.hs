@@ -5,11 +5,18 @@ module Ergvein.Filters.Btc
   , fromSegWit
     -- * Filter
   , BtcAddressFilter
+  , makeBtcFilter
+  , applyBtcFilter
   )
 where
 
 import           GHC.Generics
-import           Haskoin.Core.Address
+import           Network.Haskoin.Crypto         ( Hash160
+                                                , Hash256
+                                                )
+import           Network.Haskoin.Address
+import           Network.Haskoin.Block
+
 
 -- | Special wrapper around SegWit address (P2WPKH or P2WSH) to distinct it from other types of addresses.
 data SegWitAddress = SegWitPubkey !Hash160 | SegWitScript !Hash256
@@ -32,8 +39,8 @@ fromSegWit a = case a of
 data BtcAddressFilter = BtcAddressFilter
 
 -- | Add each segwit transaction to filter.
-makeBtcAddressFilter :: Block -> BtcAddressFilter
-makeBtcAddressFilter = undefined
+makeBtcFilter :: Block -> BtcAddressFilter
+makeBtcFilter = undefined
 
 -- | Check that given address is located in the filter.
 applyBtcFilter :: BtcAddressFilter -> SegWitAddress -> Bool
