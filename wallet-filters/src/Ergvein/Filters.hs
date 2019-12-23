@@ -1,3 +1,6 @@
-module Ergvein.Filters(
+module Ergvein.Filters
+  ( module Ergvein.Filters.Btc
+  )
+where
 
-  ) where
+import           Ergvein.Filters.Btc
