@@ -16,12 +16,14 @@ in reflex-platform.project ({ pkgs, ... }: {
     ergvein-index-api = ./index-api;
     ergvein-index-client = ./index-client;
     ergvein-index-server = ./index-server;
+    ergvein-interface-ergo = ./interfaces/ergo;
     ergvein-wallet = ./wallet;
     ergvein-wallet-android = ./wallet-android;
     ergvein-wallet-desktop = ./wallet-desktop;
+    ergvein-wallet-filters = ./wallet-filters;
     ergvein-wallet-native = ./wallet-native;
     ergvein-wallet-types = ./wallet-types;
-    ergvein-interface-ergo = ./interfaces/ergo;
+    golomb-rice = ./golomb-rice;
     reflex-dom-retractable = ./retractable;
     reflex-external-ref = ./reflex-external-ref;
     reflex-localize = ./reflex-localize;
@@ -32,11 +34,12 @@ in reflex-platform.project ({ pkgs, ... }: {
       "ergvein-crypto"
       "ergvein-index-api"
       "ergvein-index-server"
-      "ergvein-wallet"
-      "ergvein-wallet-native"
-      "ergvein-wallet-desktop"
-      "ergvein-wallet-types"
       "ergvein-interface-ergo"
+      "ergvein-wallet-desktop"
+      "ergvein-wallet-filters"
+      "ergvein-wallet-native"
+      "ergvein-wallet"
+      "golomb-rice"
       "reflex-dom-retractable"
       "reflex-external-ref"
       "reflex-localize"

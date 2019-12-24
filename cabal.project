@@ -1,6 +1,7 @@
 packages:
   ./common
   ./crypto
+  ./golomb-rice
   ./index-api
   ./index-client
   ./index-server
