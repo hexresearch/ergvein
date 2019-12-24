@@ -6,14 +6,10 @@ module Ergvein.Crypto.Keys(
   , Seed
   , toMnemonic
   , mnemonicToSeed
-  , Currency(..)
   , xPrvImport
   , xPrvExport
   , xPubImport
   , xPubExport
-  , EgvXPrvKey(..)
-  , EgvXPubKey(..)
-  , EgvRootPrvKey(..)
   , getEntropy
   , makeXPrvKey
   , deriveXPubKey
@@ -31,92 +27,18 @@ module Ergvein.Crypto.Keys(
   ) where
 
 import Crypto.Hash
-import Crypto.Hash.Algorithms
-import Data.Aeson
-import Data.Text hiding (foldl)
+import Data.Text (Text)
 import Ergvein.Crypto.Constants
-import Ergvein.Crypto.WordLists
-import Ergvein.Types.Currency (Currency(..))
+import Ergvein.Types.Currency
+import Ergvein.Types.Keys
 import Network.Haskoin.Address
 import Network.Haskoin.Address.Base58
 import Network.Haskoin.Constants
 import Network.Haskoin.Keys
-import Network.Haskoin.Util
-import Text.Read (readMaybe)
 
 import qualified Data.ByteArray  as BA
 import qualified Data.ByteString as BS
 import qualified System.Entropy  as E
-
--- | Wrapper for a root private key (a key without assigned network)
-newtype EgvRootPrvKey = EgvRootPrvKey {unEgvRootPrvKey :: XPrvKey}
-  deriving (Eq, Show, Read)
-
-instance ToJSON EgvRootPrvKey where
-  toJSON (EgvRootPrvKey XPrvKey{..}) = object [
-      "depth"  .= toJSON xPrvDepth
-    , "parent" .= toJSON xPrvParent
-    , "index"  .= toJSON xPrvIndex
-    , "chain"  .= show xPrvChain
-    , "key"    .= show xPrvKey
-    ]
-
-instance FromJSON EgvRootPrvKey where
-  parseJSON = withObject "EgvRootPrvKey" $ \o -> do
-    depth  <- o .: "depth"
-    parent <- o .: "parent"
-    index  <- o .: "index"
-    chain  <- o .: "chain"
-    key    <- o .: "key"
-    case (readMaybe chain, readMaybe key) of
-      (Just chain', Just key') -> pure $ EgvRootPrvKey $ XPrvKey depth parent index chain' key'
-      _ -> fail "failed to read chain code or key"
-
--- | Wrapper around XPrvKey for easy to/from json manipulations
-data EgvXPrvKey = EgvXPrvKey {
-  egvXPrvCurrency :: Currency
-, egvXPrvKey      :: XPrvKey
-} deriving (Eq)
-
-instance ToJSON EgvXPrvKey where
-  toJSON (EgvXPrvKey currency key) = object [
-      "currency" .= toJSON currency
-    , "prvKey"  .= xPrvToJSON (getCurrencyNetwork currency) key
-    ]
-
-instance FromJSON EgvXPrvKey where
-  parseJSON = withObject "EgvXPrvKey" $ \o -> do
-    currency <- o .: "currency"
-    key <- xPrvFromJSON (getCurrencyNetwork currency) =<< (o .: "prvKey")
-    pure $ EgvXPrvKey currency key
-
-instance Ord EgvXPrvKey where
-  compare (EgvXPrvKey currency1 key1) (EgvXPrvKey currency2 key2) = case compare currency1 currency2 of
-    EQ -> compare (xPrvExport (getCurrencyNetwork currency1) key1) (xPrvExport (getCurrencyNetwork currency2) key2)
-    x -> x
-
--- | Wrapper around XPubKey for easy to/from json manipulations
-data EgvXPubKey = EgvXPubKey {
-  egvXPubCurrency :: Currency
-, egvXPubKey      :: XPubKey
-} deriving (Eq)
-
-instance ToJSON EgvXPubKey where
-  toJSON (EgvXPubKey currency key) = object [
-      "currency" .= toJSON currency
-    , "pubKey"  .= xPubToJSON (getCurrencyNetwork currency) key
-    ]
-
-instance FromJSON EgvXPubKey where
-  parseJSON = withObject "EgvXPubKey" $ \o -> do
-    currency <- o .: "currency"
-    key <- xPubFromJSON (getCurrencyNetwork currency) =<< (o .: "pubKey")
-    pure $ EgvXPubKey currency key
-
-instance Ord EgvXPubKey where
-  compare (EgvXPubKey currency1 key1) (EgvXPubKey currency2 key2) = case compare currency1 currency2 of
-    EQ -> compare (xPubExport (getCurrencyNetwork currency1) key1) (xPubExport (getCurrencyNetwork currency2) key2)
-    x -> x
 
 getEntropy :: IO Entropy
 getEntropy = E.getEntropy defaultEntropyLength
@@ -222,7 +144,7 @@ example = do
   let xPubKey = fmap deriveXPubKey xPrvKey
   putStrLn "\nExtended public key:"
   print xPubKey
-  let network = erg
+  let network = btc
   let address = fmap (xPubAddrToString network) xPubKey
   putStrLn "\nAddress:"
   print address

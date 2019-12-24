@@ -19,11 +19,11 @@ import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Text (Text)
 import Ergvein.Crypto
+import Ergvein.Types.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Storage.Data
 import Language.Javascript.JSaddle
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)

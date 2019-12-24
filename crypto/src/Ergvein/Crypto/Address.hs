@@ -4,10 +4,8 @@ module Ergvein.Crypto.Address
   ) where
 
 import Data.Aeson
-import Ergvein.Crypto.Constants
 import Ergvein.Types.Currency
 import Network.Haskoin.Address
-import Network.Haskoin.Address.Base58
 
 data EgvAddress = EgvAddress {
   egvAddrCur :: Currency

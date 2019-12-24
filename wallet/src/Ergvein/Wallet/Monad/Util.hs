@@ -21,7 +21,6 @@ import Data.Time
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Front
-import Reflex
 import Reflex.ExternalRef
 
 -- | Posting log message

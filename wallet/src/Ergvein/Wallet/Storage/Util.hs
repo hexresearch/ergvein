@@ -16,26 +16,20 @@ module Ergvein.Wallet.Storage.Util(
 import Control.Monad.IO.Class
 import Data.ByteArray           (convert)
 import Data.ByteString          (ByteString)
-import Data.ByteString.Base64   (encode, decodeLenient)
 import Data.Maybe
 import Data.Proxy
-import Data.Sequence
 import Data.Text                (Text)
 import Data.Text.Encoding
 import Data.Text.Encoding.Error
 import Ergvein.Aeson
 import Ergvein.Crypto
-import Ergvein.IO
 import Ergvein.Text
 import Ergvein.Types.Currency
-import Ergvein.Wallet.Language
+import Ergvein.Types.Keys
+import Ergvein.Types.Storage
 import Ergvein.Wallet.Localization.Native
 import Ergvein.Wallet.Localization.Storage
-import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Constants
-import Ergvein.Wallet.Storage.Data
-import System.Directory
-import System.FilePath
 
 import qualified Data.ByteString as BS
 import qualified Data.IntMap.Strict as MI

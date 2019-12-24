@@ -4,10 +4,7 @@ module Ergvein.Wallet.Localization.Password
   , PasswordWidgetStrings(..)
   ) where
 
-import Ergvein.Text
 import Ergvein.Wallet.Language
-
-import Data.Text
 
 data PasswordPageStrings = PPSTitle | PPSDescr | PPSUnlock
 

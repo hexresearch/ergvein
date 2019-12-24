@@ -17,13 +17,11 @@ import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
-import Ergvein.Wallet.Run
 import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Storage.Data
+import Ergvein.Types.Storage
 import Ergvein.Wallet.Storage.Util
 import Network.HTTP.Client hiding (Proxy)
-import Reflex
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Servant.Client(BaseUrl)

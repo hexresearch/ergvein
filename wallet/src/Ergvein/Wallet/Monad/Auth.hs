@@ -7,38 +7,27 @@ module Ergvein.Wallet.Monad.Auth(
 import Control.Concurrent.Chan (Chan)
 import Control.Monad.Random.Class
 import Control.Monad.Reader
-import Data.Functor (void)
-import Data.List (permutations)
-import Data.Maybe (catMaybes, listToMaybe)
-import Data.Text (Text, unpack)
-import Data.Maybe
 import Data.Time (NominalDiffTime)
 import Ergvein.Crypto
 import Ergvein.Index.Client
-import Ergvein.Text
-import Ergvein.Wallet.Alert
+import Ergvein.Types.Currency
+import Ergvein.Types.Keys
+import Ergvein.Types.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
-import Ergvein.Wallet.Monad.Unauth
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings (Settings(..), storeSettings)
-import Ergvein.Wallet.Storage.Data
 import Ergvein.Wallet.Storage.Util
-import Network.Haskoin.Address
 import Network.HTTP.Client hiding (Proxy)
-import Reflex
-import Reflex.Dom
-import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Servant.Client(BaseUrl)
 
 import qualified Data.IntMap.Strict as MI
-import qualified Data.Set as S
 import qualified Data.Map.Strict as M
-import qualified Data.List as L
+import qualified Data.Set as S
 
 data Env t = Env {
   env'settings        :: !(ExternalRef t Settings)

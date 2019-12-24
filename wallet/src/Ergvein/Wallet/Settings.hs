@@ -7,8 +7,6 @@ module Ergvein.Wallet.Settings (
 
 import Control.Lens
 import Control.Monad.IO.Class
-import Data.Aeson (withText)
-import Data.Default
 import Data.Text(Text, pack, unpack)
 import Data.Time (NominalDiffTime)
 import Data.Yaml (encodeFile)
@@ -16,10 +14,9 @@ import Ergvein.Aeson
 import Ergvein.Lens
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Yaml(readYamlEither')
-import Servant.Client(BaseUrl(..), Scheme(..), parseBaseUrl, showBaseUrl)
+import Servant.Client(BaseUrl(..))
 import System.Directory
 
-import qualified Control.Exception   as Exception
 import qualified Data.Text as T
 
 #ifdef ANDROID
