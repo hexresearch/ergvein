@@ -42,6 +42,5 @@ spec_encodingCheck = describe "encoded bits are correct" $ do
     ]
 
 prop_encodingDecodingWord :: Small Word64 -> Bool
-prop_encodingDecodingWord (Small w) = let
-  (rw, s) = decodeWord p (encodeWord p w)
-  in rw == w && BS.null s
+prop_encodingDecodingWord (Small w) =
+  let (rw, s) = decodeWord p (encodeWord p w) in rw == w && BS.null s
