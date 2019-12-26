@@ -19,10 +19,8 @@ module Ergvein.Crypto.Keys(
   , KeyIndex
   , deriveCurrencyMasterPrvKey
   , deriveCurrencyMasterPubKey
-  , deriveExternalPrvKey
-  , deriveExternalPubKey
-  , deriveInternalPrvKey
-  , deriveInternalPubKey
+  , derivePrvKey
+  , derivePubKey
   , example
   ) where
 
@@ -83,45 +81,25 @@ deriveCurrencyMasterPubKey rootKey currency =
         derivedKey = deriveXPubKey $ prvSubKey (foldl hardSubKey (unEgvRootPrvKey rootKey) path) 0
     in EgvXPubKey currency derivedKey
 
--- | Derive a BIP44 compatible external private key with a given index.
--- Given a parent private key /m/ and an index /i/, this function will compute /m\/0\/i/.
+-- | Derive a BIP44 compatible private key with a given purpose (external or internal) and index.
+-- Given a parent private key /m/, purpose /p/ and an index /i/, this function will compute /m\/p\/i/.
 -- It is planned to use the result of 'deriveCurrencyMasterPrvKey' as the first argument of this function.
-deriveExternalPrvKey :: EgvXPrvKey -> KeyIndex -> EgvXPrvKey
-deriveExternalPrvKey masterKey index =
-  let path = [0, index]
+derivePrvKey :: EgvXPrvKey -> KeyPurpose -> KeyIndex -> EgvXPrvKey
+derivePrvKey masterKey keyPurpose index =
+  let pCode = if keyPurpose == External then 0 else 1
+      path = [pCode, index]
       mKey = egvXPrvKey masterKey
       currency = egvXPrvCurrency masterKey
       derivedKey = foldl prvSubKey mKey path
   in EgvXPrvKey currency derivedKey
 
--- | Derive a BIP44 compatible external public key with a given index.
--- Given a parent public key /m/ and an index /i/, this function will compute /m\/0\/i/.
+-- | Derive a BIP44 compatible public key with a given purpose (external or internal) and index.
+-- Given a parent public key /m/, purpose /p/ and an index /i/, this function will compute /m\/p\/i/.
 -- It is planned to use the result of 'deriveCurrencyMasterPubKey' as the first argument of this function.
-deriveExternalPubKey :: EgvXPubKey -> KeyIndex -> EgvXPubKey
-deriveExternalPubKey masterKey index =
-  let path = [0, index]
-      mKey = egvXPubKey masterKey
-      currency = egvXPubCurrency masterKey
-      derivedKey = foldl pubSubKey mKey path
-  in EgvXPubKey currency derivedKey
-
--- | Derive a BIP44 compatible internal private key (also known as change addresses) with a given index.
--- Given a parent private key /m/ and an index /i/, this function will compute /m\/1\/i/.
--- It is planned to use the result of 'deriveCurrencyMasterPrvKey' as the first argument of this function.
-deriveInternalPrvKey :: EgvXPrvKey -> KeyIndex -> EgvXPrvKey
-deriveInternalPrvKey masterKey index =
-  let path = [1, index]
-      mKey = egvXPrvKey masterKey
-      currency = egvXPrvCurrency masterKey
-      derivedKey = foldl prvSubKey mKey path
-  in EgvXPrvKey currency derivedKey
-
--- | Derive a BIP44 compatible internal public key with a given index.
--- Given a parent public key /m/ and an index /i/, this function will compute /m\/1\/i/.
--- It is planned to use the result of 'deriveCurrencyMasterPubKey' as the first argument of this function.
-deriveInternalPubKey :: EgvXPubKey -> KeyIndex -> EgvXPubKey
-deriveInternalPubKey masterKey index =
-  let path = [1, index]
+derivePubKey :: EgvXPubKey -> KeyPurpose -> KeyIndex -> EgvXPubKey
+derivePubKey masterKey keyPurpose index =
+  let pCode = if keyPurpose == External then 0 else 1
+      path = [pCode, index]
       mKey = egvXPubKey masterKey
       currency = egvXPubCurrency masterKey
       derivedKey = foldl pubSubKey mKey path

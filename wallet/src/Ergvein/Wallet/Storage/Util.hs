@@ -38,28 +38,23 @@ import qualified Data.Text as T
 
 type Password = Text
 type WalletName = Text
-type PublicKeys = M.Map Currency EgvPubKeyсhain
 
-generateCurrencyPrvKeys :: EgvRootPrvKey -> Currency -> (Currency, EgvPrvKeyсhain)
-generateCurrencyPrvKeys root currency =
+createEmptyPrvKeychain :: EgvRootPrvKey -> Currency -> EgvPrvKeyсhain
+createEmptyPrvKeychain root currency =
   let master = deriveCurrencyMasterPrvKey root currency
-      external = MI.fromList [(i, deriveExternalPrvKey master (fromIntegral i)) | i <- [0..externalAddressCount]]
-      internal = MI.fromList [(i, deriveInternalPrvKey master (fromIntegral i)) | i <- [0..internalAddressCount]]
-  in (currency, EgvPrvKeyсhain master external internal)
+  in EgvPrvKeyсhain master MI.empty MI.empty
 
 createPrivateStorage :: Seed -> EgvRootPrvKey -> PrivateStorage
 createPrivateStorage seed root = PrivateStorage seed root privateKeys
-  where privateKeys = M.fromList $ fmap (generateCurrencyPrvKeys root) allCurrencies
+  where privateKeys = M.fromList [(currency, createEmptyPrvKeychain root currency) | currency <- allCurrencies]
 
-generateCurrencyPubKeys :: EgvRootPrvKey -> Currency -> (Currency, EgvPubKeyсhain)
-generateCurrencyPubKeys root currency =
+createEmptyPubKeyсhain :: EgvRootPrvKey -> Currency -> EgvPubKeyсhain
+createEmptyPubKeyсhain root currency =
   let master = deriveCurrencyMasterPubKey root currency
-      external = MI.fromList [(i, deriveExternalPubKey master (fromIntegral i)) | i <- [0..externalAddressCount]]
-      internal = MI.fromList [(i, deriveInternalPubKey master (fromIntegral i)) | i <- [0..internalAddressCount]]
-  in (currency, EgvPubKeyсhain master external internal)
+  in EgvPubKeyсhain master MI.empty MI.empty
 
-generatePublicKeys :: EgvRootPrvKey -> PublicKeys
-generatePublicKeys root = M.fromList $ fmap (generateCurrencyPubKeys root) allCurrencies
+createPublicKeyStore :: EgvRootPrvKey -> M.Map Currency EgvPubKeyсhain
+createPublicKeyStore root = M.fromList [(currency, createEmptyPubKeyсhain root currency) | currency <- allCurrencies]
 
 createStorage :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either StorageAlert ErgveinStorage)
 createStorage mnemonic (login, pass) = case mnemonicToSeed "" mnemonic of
@@ -67,11 +62,11 @@ createStorage mnemonic (login, pass) = case mnemonicToSeed "" mnemonic of
   Right seed -> do
     let root = EgvRootPrvKey $ makeXPrvKey seed
         privateStorage = createPrivateStorage seed root
-        publicKeys = generatePublicKeys root
+        publicKeyStore = createPublicKeyStore root
     encryptedPrivateStorageResult <- encryptPrivateStorage privateStorage pass
     case encryptedPrivateStorageResult of
       Left err -> pure $ Left err
-      Right eps -> pure $ Right $ ErgveinStorage eps publicKeys login
+      Right eps -> pure $ Right $ ErgveinStorage eps publicKeyStore login
 
 encryptPrivateStorage :: MonadIO m => PrivateStorage -> Password -> m (Either StorageAlert EncryptedPrivateStorage)
 encryptPrivateStorage privateStorage password = liftIO $ do

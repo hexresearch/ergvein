@@ -4,6 +4,7 @@ module Ergvein.Types.Keys(
   , EgvXPubKey(..)
   , EgvPrvKeyсhain(..)
   , EgvPubKeyсhain(..)
+  , KeyPurpose(..)
   ) where
 
 import Data.Aeson
@@ -117,3 +118,7 @@ data EgvPubKeyсhain = EgvPubKeyсhain {
 } deriving (Eq)
 
 $(deriveJSON aesonOptionsStripToApostroph ''EgvPubKeyсhain)
+
+-- | Supported key purposes
+data KeyPurpose = External | Internal
+  deriving (Eq, Ord, Show, Read)

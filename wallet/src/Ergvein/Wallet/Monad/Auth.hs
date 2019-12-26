@@ -174,6 +174,11 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
       guardit Nothing = error "getWalletName impossible: no auth in authed context!"
       guardit (Just a) = a
   {-# INLINE getWalletName #-}
+  getPublicKeys = fmap (storage'publicKeys . authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
+    where
+      guardit Nothing = error "getPublicKeys impossible: no auth in authed context!"
+      guardit (Just a) = a
+  {-# INLINE getPublicKeys #-}
   storeWallet e = do
     authInfo <- fmap guardit $ readExternalRef =<< asks env'authRef
     performEvent_ $ ffor e $ \_ -> do
