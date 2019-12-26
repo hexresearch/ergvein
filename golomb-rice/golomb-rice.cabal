@@ -45,8 +45,9 @@ test-suite golomb-rice-test
     TupleSections
   build-depends:
       base
+    , bitstream
+    , bytestring
     , golomb-rice
     , tasty
     , tasty-discover
     , tasty-hspec
-    , bytestring

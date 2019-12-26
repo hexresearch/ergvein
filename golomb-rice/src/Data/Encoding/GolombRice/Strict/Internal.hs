@@ -10,7 +10,7 @@ import           Prelude                 hiding ( null )
 -- | Big endian stream of bits
 type GolombStream = BS.Bitstream BS.Right
 
--- | Stream of Golomb-Rice encoded bits. 
+-- | Stream of Golomb-Rice encoded bits.
 data GolombRice a = GolombRice {
   golombRiceP      :: !Int -- ^ Number of bits P in remainder part of encoding
 , golombRiceStream :: !GolombStream -- ^ Big endian stream of bits
@@ -35,7 +35,7 @@ singleton p a = GolombRice p bs where bs = foldMap (encodeWord p) $ toWords a
 null :: GolombRice a -> Bool
 null = BS.null . golombRiceStream
 
--- | Encode single word in
+-- | Encode single word in stream
 encodeWord
   :: Int -- ^ Number of bits P in reminder of each element
   -> Word64 -- ^ Element to write down
@@ -46,6 +46,18 @@ encodeWord p x = prefix <> reminder
   prefix = BS.pack $ count q
   count i | i <= 0    = [False]
           | otherwise = True : count (i - 1)
-  reminder = BS.pack $ bebits p
-  bebits i | i < 0     = []
-           | otherwise = x `testBit` i : bebits (i - 1)
+  reminder = BS.fromNBits p x
+
+-- | Decode single word from stream
+decodeWord
+  :: Int -- ^ Number of bits P in reminder of each element
+  -> GolombStream -- ^ Stream of bits
+  -> (Word64, GolombStream) -- ^ Result and leftover
+decodeWord p s = (x, leftover)
+ where
+  prefix   = BS.takeWhile id s
+  postfix  = BS.drop 1 . BS.dropWhile id $ s
+  leftover = BS.drop p postfix
+  q        = BS.length prefix
+  r        = BS.toBits . BS.take p $ postfix
+  x        = (q `shiftL` p) + r
