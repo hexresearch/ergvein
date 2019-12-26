@@ -3,9 +3,10 @@ module Data.Encoding.GolombRiceTest where
 import qualified Data.Bitstream                as BS
 import           Data.Encoding.GolombRice.Strict.Internal
                                                as G
+import           Data.Foldable
 import           Data.Word
 import           Test.Tasty.Hspec
-import           Data.Foldable
+import           Test.Tasty.QuickCheck
 
 p :: Int
 p = 19
@@ -39,3 +40,8 @@ spec_encodingCheck = describe "encoded bits are correct" $ do
     , (9 , [True, True, False, False, True])
     , (10, [True, True, False, True, False])
     ]
+
+prop_encodingDecodingWord :: Small Word64 -> Bool
+prop_encodingDecodingWord (Small w) = let
+  (rw, s) = decodeWord p (encodeWord p w)
+  in rw == w && BS.null s
