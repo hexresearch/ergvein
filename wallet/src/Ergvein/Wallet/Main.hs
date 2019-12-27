@@ -4,7 +4,9 @@ module Ergvein.Wallet.Main(
   ) where
 
 import Data.ByteString (ByteString)
+import Ergvein.Crypto.Address
 import Ergvein.Crypto.Keys (derivePubKey)
+import Ergvein.Crypto.SHA256
 import Ergvein.Index.API.Types
 import Ergvein.Text
 import Ergvein.Types.Currency
@@ -68,19 +70,20 @@ getNextKey curr purpose = do
     Just pKC -> do
       let master = egvPubKeyсhain'master pKC
           index = fromIntegral $ MI.size $ egvPubKeyсhain'external pKC
-          xpk = derivePubKey master purpose index
+          xpk = egvXPubKey $ derivePubKey master purpose index
           pk = PubKeyI (xPubKey xpk) False
-          p2wpkhScript = addressToOutput $ pubKeyWitnessAddr pk
-          scriptHash = encodeSHA256Hex $ doubleSHA256
+          -- p2wpkhScript = addressToOutput $ pubKeyWitnessAddr pk
+          p2wpkhScript = addressToScriptBS $ pubKeyWitnessAddr pk
+          scriptHash = encodeSHA256Hex $ doubleSHA256 p2wpkhScript
       pure $ scriptHash
 
 -- FIXME
 validateHistory :: Event t TxHashHistoryResponse -> m (Event t Bool)
-validateHistory respE = pure $ fmap (const True) respE
+validateHistory respE = pure $ True <$ respE
 
 -- FIXME
 storeNewTransactions :: Event t Bool -> m (Event t Int)
-storeNewTransactions valE = pure $ fmap (const 0) valE
+storeNewTransactions valE = pure $ 0 <$ valE
 
 -- filterAddress :: Event t Address -> m (Event t [BlockHeight])
 

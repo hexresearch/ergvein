@@ -12,7 +12,7 @@ import           Ergvein.Index.Server.Config
 import           Ergvein.Index.Server.Environment
 import           Ergvein.Types.Transaction
 import           Ergvein.Types.Currency
-import           Ergvein.Crypto.SHA256 
+import           Ergvein.Crypto.SHA256
 
 import           Data.Serialize                     as S
 import qualified Data.ByteString                    as B

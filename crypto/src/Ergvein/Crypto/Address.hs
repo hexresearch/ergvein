@@ -1,6 +1,9 @@
 module Ergvein.Crypto.Address
   (
-    EgvAddress(..)
+      EgvAddress(..)
+    , addressToOutput
+    , addressToScriptBS
+    , pubKeyWitnessAddr
   ) where
 
 import Data.Aeson

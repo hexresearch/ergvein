@@ -1,6 +1,8 @@
 module Ergvein.Types.Keys(
     SecKeyI(..)
   , PubKeyI(..)
+  , XPrvKey(..)
+  , XPubKey(..)
   , EgvRootPrvKey(..)
   , EgvXPrvKey(..)
   , EgvXPubKey(..)
