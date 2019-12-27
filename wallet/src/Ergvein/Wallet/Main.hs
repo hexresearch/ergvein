@@ -5,10 +5,14 @@ module Ergvein.Wallet.Main(
 
 import Data.ByteString (ByteString)
 import Ergvein.Crypto.Keys (derivePubKey)
+import Ergvein.Index.API.Types
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
+import Ergvein.Types.Transaction (PubKeyScriptHash)
+import Ergvein.Wallet.Alert (handleDangerMsg)
 import Ergvein.Wallet.Alert.Handler
+import Ergvein.Wallet.Client
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Loading
 import Ergvein.Wallet.Log.Writer
@@ -38,27 +42,24 @@ frontend = do
   void $ retractStack initialPage `liftAuth` (scanKeys >> retractStack balancesPage)
 
 scanKeys :: MonadFront t m => m ()
-scanKeys = pure ()
+scanKeys = mdo
+  gapD <- holdDyn 0 gapE
+  buildE <- getPostBuild
+  let nextE = leftmost [newE, buildE]
+  nextKeyE <- performEvent $ getNextKey BTC External <$ nextE
+  mresE <- getTxHashHistory $ TxHashHistoryRequest BTC <$> nextKeyE
+  resE <- handleDangerMsg mresE
+  validE <- validateHistory resE
+  storedE :: Event t Int <- storeNewTransactions validE
+  let newE = flip push storedE $ \i -> do
+        gap <- sample . current $ gapD
+        pure $ if i == 0 && gap > gapLimit then Nothing else Just ()
+      gapE = flip push storedE $ \i -> do
+        gap <- sample . current $ gapD
+        pure $ if i == 0 then Just $ gap + 1 else Nothing
+  pure ()
 
--- scanKeys :: MonadFront t m => m ()
--- scanKeys = mdo
---   gapD <- holdDyn 0 gapE
---   buildE <- getPostBuild
---   let nextE = leftmost [newE, buildE]
---   nextKeyE <- performEvent $ getNextKey <$> nextE
---   mresE <- getTxHashHistory $ TxHashHistoryRequest BTC <$> nextKeyE
---   resE <- handleDangerMsg mresE
---   validE <- validateHistory resE
---   storedE :: Event t Int <- storeNewTransactions validE
---   let newE = flip push storedE $ \i -> do
---         gap <- sample . current $ gapD
---         pure $ if i == 0 && gap > gapLimit then Nothing else Just ()
---       gapE = flip push storedE $ \i -> do
---         gap <- sample . current $ gapD
---         pure $ if i == 0 then Just $ gap + 1 else Nothing
---   pure ()
-
-getNextKey :: MonadStorage t m => Currency -> KeyPurpose -> m EgvXPubKey
+getNextKey :: MonadStorage t m => Currency -> KeyPurpose -> m PubKeyScriptHash
 getNextKey curr purpose = do
   pKeys <- getPublicKeys
   let pKeyChain = M.lookup curr pKeys
@@ -67,7 +68,19 @@ getNextKey curr purpose = do
     Just pKC -> do
       let master = egvPubKeyсhain'master pKC
           index = fromIntegral $ MI.size $ egvPubKeyсhain'external pKC
-      pure $ derivePubKey master purpose index
+          xpk = derivePubKey master purpose index
+          pk = PubKeyI (xPubKey xpk) False
+          p2wpkhScript = addressToOutput $ pubKeyWitnessAddr pk
+          scriptHash = encodeSHA256Hex $ doubleSHA256
+      pure $ scriptHash
+
+-- FIXME
+validateHistory :: Event t TxHashHistoryResponse -> m (Event t Bool)
+validateHistory respE = pure $ fmap (const True) respE
+
+-- FIXME
+storeNewTransactions :: Event t Bool -> m (Event t Int)
+storeNewTransactions valE = pure $ fmap (const 0) valE
 
 -- filterAddress :: Event t Address -> m (Event t [BlockHeight])
 

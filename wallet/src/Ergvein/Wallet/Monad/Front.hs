@@ -31,7 +31,11 @@ import Reflex.Dom.Retractable.Class
 import Reflex.ExternalRef
 
 -- | Authorized context. Has access to storage and indexer's functionality
-type MonadFront t m = (MonadFrontBase t m, MonadStorage t m, MonadClient t m)
+type MonadFront t m = (
+    MonadFrontBase t m
+  , MonadStorage t m
+  , MonadClient t m
+  )
 
 data AuthInfo = AuthInfo {
   authInfo'storage     :: ErgveinStorage
