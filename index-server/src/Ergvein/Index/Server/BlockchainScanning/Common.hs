@@ -39,7 +39,7 @@ blockHeightsToScan env currency = do
   where
     cfg = envServerConfig env
     startHeight =  case currency of BTC  -> 0
-                                    ERGO -> 0
+                                    ERGO -> 1
 
 blockTotalHeight :: MonadIO m => ServerEnv -> Currency -> m BlockHeight
 blockTotalHeight env currency = liftIO $ case currency of
