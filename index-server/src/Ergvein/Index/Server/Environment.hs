@@ -49,7 +49,7 @@ newServerEnv cfg = do
         flip runReaderT pool $ runDb $ runMigration migrateAll
         pure pool
     levelDBContext <- liftIO $ openDb
-    liftIO $ runDbQuery pool $ loadCache levelDBContext
+    loadCache levelDBContext pool
     ergoNodeClient <- liftIO $ ErgoApi.newClient (configERGONodeHost cfg) $ (configERGONodePort cfg)
     pure ServerEnv { env'config          = cfg
                    , env'Logger          = logger
