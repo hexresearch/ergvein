@@ -65,7 +65,7 @@ indexGetBalanceEndpoint req@BalanceRequest { balReqCurrency = BTC  }  = do
         Nothing      -> 0
   pure $ BalanceResponse { balRespConfirmed = confirmedBalance, balRespUnconfirmed = 0 }
   where
-    txoValue (UTXO txo) = txOutCacheRec'value txo
+    txoValue (UTXO txo) = txOutCacheRecValue txo
     txoValue _ = 0
 
 indexGetBalanceEndpoint BalanceRequest { balReqCurrency = ERGO } = pure ergoBalance
@@ -78,13 +78,13 @@ indexGetTxHashHistoryEndpoint req@TxHashHistoryRequest{ historyReqCurrency = BTC
         let uniqueHistoryTxIds = nub . mconcat $ utxoHistoryTxIds <$> history
         txs <- getManyParsedExact $ cachedTxKey <$> uniqueHistoryTxIds
         let sortedTxs = sortOn txSorting txs
-            historyItems = (\tx -> TxHashHistoryItem (txCacheRec'hash tx) (txCacheRec'blockHeight tx)) <$> sortedTxs
+            historyItems = (\tx -> TxHashHistoryItem (txCacheRecHash tx) (txCacheRecBlockHeight tx)) <$> sortedTxs
         pure historyItems
     _-> pure []
   where
-    utxoHistoryTxIds (UTXO txo)         = [txOutCacheRec'txHash txo]
-    utxoHistoryTxIds (STXO (txo, stxo)) = [txOutCacheRec'txHash txo , txInCacheRec'txHash stxo]
-    txSorting tx = (txCacheRec'blockHeight tx, txCacheRec'blockIndex  tx)
+    utxoHistoryTxIds (UTXO txo)         = [txOutCacheRecTxHash txo]
+    utxoHistoryTxIds (STXO (txo, stxo)) = [txOutCacheRecTxHash txo , txInCacheRecTxHash stxo]
+    txSorting tx = (txCacheRecBlockHeight tx, txCacheRecBlockIndex  tx)
 
 indexGetTxHashHistoryEndpoint TxHashHistoryRequest { historyReqCurrency = ERGO } = pure ergoHistory
 

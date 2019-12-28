@@ -26,11 +26,11 @@ import qualified Network.Bitcoin.Api.Client as BitcoinApi
 import qualified Network.Ergo.Api.Client as ErgoApi
 
 data ServerEnv = ServerEnv 
-    { env'config            :: !Config
-    , env'Logger            :: !(Chan (Loc, LogSource, LogLevel, LogStr))
-    , env'persistencePool   :: !DBPool
-    , env'levelDBContext    :: !DB
-    , env'ergoNodeClient    :: !ErgoApi.Client
+    { envServerConfig      :: !Config
+    , envLogger            :: !(Chan (Loc, LogSource, LogLevel, LogStr))
+    , envPersistencePool   :: !DBPool
+    , envLevelDBContext   :: !DB
+    , envErgoNodeClient   :: !ErgoApi.Client
     }
 
 btcNodeClient :: Config -> (BitcoinApi.Client -> IO a) -> IO a
@@ -51,11 +51,11 @@ newServerEnv cfg = do
     levelDBContext <- liftIO $ openDb
     loadCache levelDBContext pool
     ergoNodeClient <- liftIO $ ErgoApi.newClient (configERGONodeHost cfg) $ (configERGONodePort cfg)
-    pure ServerEnv { env'config          = cfg
-                   , env'Logger          = logger
-                   , env'persistencePool = pool
-                   , env'levelDBContext  = levelDBContext
-                   , env'ergoNodeClient  = ergoNodeClient
+    pure ServerEnv { envServerConfig    = cfg
+                   , envLogger          = logger
+                   , envPersistencePool = pool
+                   , envLevelDBContext  = levelDBContext
+                   , envErgoNodeClient  = ergoNodeClient
                    }
 
 -- | Log exceptions at Error severity

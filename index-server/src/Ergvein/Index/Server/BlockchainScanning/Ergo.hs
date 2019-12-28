@@ -18,44 +18,43 @@ import Data.ByteString (ByteString)
 import Data.Serialize
 import Network.Ergo.Api.Client
 import qualified Network.Ergo.Api.Utxo as UtxoApi
-import Ergvein.Crypto.SHA256 
+import Ergvein.Crypto.SHA256
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.ByteString.Base16 as BS16
 import           Data.List.Index
-
 
 toHex :: ByteString -> T.Text
 toHex = TE.decodeUtf8 . BS16.encode
 
 actualHeight :: ServerEnv -> IO BlockHeight
 actualHeight env = do
-  info <- flip runReaderT (env'ergoNodeClient env) $ getInfo
-  pure $ fromIntegral $ fromMaybe 0 $ bestBlockHeight $ info
+  info <- runReaderT getInfo (envErgoNodeClient env)
+  pure $ fromIntegral $ fromMaybe 0 $ bestBlockHeight info
 
 txInInfos :: ApiMonad m => ErgoTransaction -> m [TxInInfo]
 txInInfos tx = do
   let txHash = T.pack $ show $ unTransactionId $ transactionId (tx :: ErgoTransaction)
   let d =  (boxId :: ErgoTransactionDataInput -> TransactionBoxId) <$> dataInputs tx
-  r <- forM d UtxoApi.getById 
+  r <- forM d UtxoApi.getById
   pure $ (\x -> TxInInfo txHash (toHex $ unTransactionId $ fromJust $ transactionId (x :: ErgoTransactionOutput)) (fromIntegral $ fromJust $ index (x :: ErgoTransactionOutput))) <$> r
-  
+
 txInfo' :: BlockHeight -> Int -> ErgoTransaction -> TxInfo
-txInfo' txBlockHeight txBlockIndex tx = TxInfo (T.pack $ show $ unTransactionId $ transactionId (tx :: ErgoTransaction)) (txBlockHeight) (fromIntegral txBlockIndex)
+txInfo' txBlockHeight txBlockIndex tx = TxInfo (T.pack $ show $ unTransactionId $ transactionId (tx :: ErgoTransaction)) txBlockHeight (fromIntegral txBlockIndex)
 
 txOutInfos ::  ErgoTransaction -> [TxOutInfo]
 txOutInfos tx = let
   txHash = T.pack $ show $ unTransactionId $ transactionId (tx :: ErgoTransaction)
-  f x = TxOutInfo txHash undefined (fromIntegral $ fromJust $ index $ x) (value x)
+  f x = TxOutInfo txHash undefined (fromIntegral $ fromJust $ index x) (value x)
   in f <$> outputs tx
 
 blockInfo :: ServerEnv -> BlockHeight -> IO BlockInfo
 blockInfo env blockHeightToScan = do
-  headersAtHeight <- flip runReaderT (env'ergoNodeClient env) $ getHeaderIdsAtHeight $ Height $ fromIntegral blockHeightToScan
+  headersAtHeight <- flip runReaderT (envErgoNodeClient env) $ getHeaderIdsAtHeight $ Height $ fromIntegral blockHeightToScan
   let mainHeaderId = head headersAtHeight
-  block <- flip runReaderT (env'ergoNodeClient env) $ getById mainHeaderId
+  block <- flip runReaderT (envErgoNodeClient env) $ getById mainHeaderId
 
-  txins <- flip runReaderT (env'ergoNodeClient env) $ mconcat <$> forM (transactions $ blockTransactions block) txInInfos
+  txins <- flip runReaderT (envErgoNodeClient env) $ mconcat <$> forM (transactions $ blockTransactions block) txInInfos
 
   let txs = txInfo' blockHeightToScan `imap` (transactions $ blockTransactions block)
   let txouts = mconcat $ txOutInfos <$> (transactions $ blockTransactions block)
