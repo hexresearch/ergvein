@@ -73,8 +73,10 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
 
   (canvasEl, _) <- RD.elAttr' "canvas" canvasAttrs RD.blank
 
-  let prepCoord (x,y) = fmap (\(a,b)-> (a, b)) $ fmap (\ClientRect{..} -> ((fromIntegral x) - crLeft, (fromIntegral y) - crTop)) $ elementPosition (_element_raw canvasEl)
-      prepTCoord TouchEventResult{..} = fmap (\(a,b)-> (a, b)) $ fmap (\ClientRect{..} -> ((fromIntegral (_touchResult_screenX (head _touchEventResult_touches))) - crLeft, (fromIntegral (_touchResult_screenY (head _touchEventResult_touches)) - crTop - 35))) $ elementPosition (_element_raw canvasEl)
+  let elP = elementPosition $ _element_raw canvasEl
+
+  let prepCoord (x,y) = fmap (\(a,b)-> (a, b)) $ fmap (\ClientRect{..} -> ((fromIntegral x) - crLeft, (fromIntegral y) - crTop)) elP
+      prepTCoord TouchEventResult{..} = fmap (\(a,b)-> (a, b)) $ fmap (\ClientRect{..} -> ((fromIntegral (_touchResult_screenX (head _touchEventResult_touches))) - crLeft, (fromIntegral (_touchResult_screenY (head _touchEventResult_touches)) - crTop - 35))) elP
       tmoveE = domEvent Touchmove canvasEl
       tdownE  = domEvent Touchstart canvasEl
       tupE    = domEvent Touchend canvasEl
@@ -130,7 +132,7 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
 
   divClass "myDebugLog" $ dynText $ fmap showt selectedD
 
-  eTick <- RD.tickLossy 0.04 aTime
+  eTick <- RD.tickLossy 0.005 aTime
 
   draw1E <- performEvent $ ffor (updated sqD) $ \a -> do
     sel <- sample . current $ selectedD
