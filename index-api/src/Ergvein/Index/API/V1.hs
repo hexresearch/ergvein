@@ -7,6 +7,9 @@ import Ergvein.Index.API.Types
 type Body a = ReqBody '[JSON] a
 type PostResp a = Post '[JSON] a
 
+
+type IndexGetHeight         = "height"    :> Body HeightRequest :> PostResp HeightResponse
+
 type IndexGetBalance        = "balance"   :> Body BalanceRequest :> PostResp BalanceResponse
 
 type IndexGetTxHashHistory  = "history"   :> Body TxHashHistoryRequest :> PostResp TxHashHistoryResponse
@@ -20,9 +23,10 @@ type IndexGetTxHexView      = "view"      :> Body TxHexViewRequest :> PostResp T
 type IndexGetTxFeeHistogram = "fee"       :> "histogram" :> Body TxFeeHistogramRequest :> PostResp TxFeeHistogramResponse
 
 type IndexTxBroadcast       = "broadcast" :> Body TxBroadcastRequest :> PostResp TxBroadcastResponse
-    
+
 data IndexApi route = IndexApi
-    { indexGetBalance        :: route :- IndexGetBalance
+    { indexGetHeight         :: route :- IndexGetHeight
+    , indexGetBalance        :: route :- IndexGetBalance
     , indexGetTxHashHistory  :: route :- IndexGetTxHashHistory
     , indexGetBlockHeaders   :: route :- IndexGetBlockHeaders
     , indexGetTxMerkleProof  :: route :- IndexGetTxMerkleProof

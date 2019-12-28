@@ -15,6 +15,7 @@ import Ergvein.Aeson
 
 import Ergvein.Interfaces.Ergo.Header
 import Ergvein.Interfaces.Ergo.Mining.AutolykosSolution
+import Ergvein.Interfaces.Ergo.Modifiers.History.ModifierType
 import Ergvein.Interfaces.Ergo.NodeView.History.ErgoHistory
 import Ergvein.Interfaces.Ergo.Scorex.Core.Block
 import Ergvein.Interfaces.Ergo.Scorex.Crypto.Authds
@@ -145,6 +146,21 @@ data BlockHeader = BlockHeader {
 , transactionsId :: !(Maybe ModifierId)
 , adProofsId :: !(Maybe ModifierId)
 }
+
+headerFromApi :: BlockHeader -> Header
+headerFromApi BlockHeader {..} = Header {
+    version             = version
+  , parentId            = parentId
+  , adProofsRoot        = AdProofsRoot adProofsRoot
+  , transactionsRoot    = TransactionsRoot transactionsRoot
+  , stateRoot           = stateRoot
+  , timestamp           = timestamp
+  , extensionRoot       = ExtensionRoot extensionHash
+  , nBits               = nBits
+  , height              = Height height
+  , votes               = votes
+  , powSolution         = powSolutions
+  }
 
 data BlockTransactions = BlockTransactions {
   headerId :: !ModifierId

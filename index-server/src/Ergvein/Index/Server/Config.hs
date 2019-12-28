@@ -1,12 +1,12 @@
 module Ergvein.Index.Server.Config where
 
 import Control.Monad.IO.Class
-import Data.Text 
+import Data.Text
 import Data.Yaml.Config
 import Ergvein.Aeson
 import GHC.Generics
 
-data Config = Config 
+data Config = Config
   { configServerPort          :: !Int
   , configDbHost              :: !String
   , configDbPort              :: !Int
@@ -14,6 +14,7 @@ data Config = Config
   , configDbPassword          :: !String
   , configDbName              :: !String
   , configBlockchainScanDelay :: !Int
+  , configDbLog               :: !Bool 
   , configBTCNodeHost         :: !String
   , configBTCNodePort         :: !Int
   , configBTCNodeUser         :: !Text
@@ -30,7 +31,7 @@ connectionStringFromConfig cfg = let
            , ("user", configDbUser)
            , ("password", configDbPassword)
            , ("dbname", configDbName)
-           ] 
+           ]
   in unpack $ intercalate " " $ segment <$> params
   where
     segment (label, accessor) = mconcat [label, "=", pack $ accessor cfg]
