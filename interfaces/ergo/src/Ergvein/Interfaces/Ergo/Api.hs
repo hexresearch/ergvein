@@ -15,6 +15,7 @@ import Ergvein.Aeson
 
 import Ergvein.Interfaces.Ergo.Header
 import Ergvein.Interfaces.Ergo.Mining.AutolykosSolution
+import Ergvein.Interfaces.Ergo.Mining.Difficulty.RequiredDifficulty
 import Ergvein.Interfaces.Ergo.Modifiers.History.ModifierType
 import Ergvein.Interfaces.Ergo.NodeView.History.ErgoHistory
 import Ergvein.Interfaces.Ergo.Scorex.Core.Block
@@ -138,7 +139,7 @@ data BlockHeader = BlockHeader {
 , extensionHash :: !Digest32
 , powSolutions :: !AutolykosSolution
 , height :: !Word32
-, difficulty :: !Word32
+, difficulty :: !Difficulty
 , parentId :: !ModifierId
 , votes :: !Votes
 , size :: !(Maybe Int32)
