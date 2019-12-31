@@ -29,8 +29,6 @@ indexServer = IndexApi
     , indexTxBroadcast = txBroadcastRequestEndpoint
     }
 -- Stubs
-ergoBalance = BalanceResponse { balRespConfirmed = 2048, balRespUnconfirmed = 4096 }
-ergoHistory = [TxHashHistoryItem {historyItemTxHash = "4c6282be413c6e300a530618b37790be5f286ded758accc2aebd41554a1be308", historyItemBlockHeight = 1} ]
 
 btcProof = TxMerkleProofResponse{ merkleItemTxMerkleProof = [""] , merkleItemTxBlockIndex = 1 }
 ergoProof = TxMerkleProofResponse{ merkleItemTxMerkleProof = [""] , merkleItemTxBlockIndex = 2 }
@@ -58,8 +56,8 @@ indexGetHeightEndpoint (HeightRequest currency) = do
   pure $ HeightResponse $ fromMaybe 0 mh
 
 indexGetBalanceEndpoint :: BalanceRequest -> ServerM BalanceResponse
-indexGetBalanceEndpoint req@BalanceRequest { balReqCurrency = BTC  }  = do
-  maybeHistory <- getTxOutHistory $ balReqPubKeyScriptHash req
+indexGetBalanceEndpoint request = do
+  maybeHistory <- getTxOutHistory $ balReqPubKeyScriptHash request
   let confirmedBalance = case maybeHistory of
         Just history -> getSum $ foldMap (Sum . txoValue) history
         Nothing      -> 0
@@ -68,11 +66,9 @@ indexGetBalanceEndpoint req@BalanceRequest { balReqCurrency = BTC  }  = do
     txoValue (UTXO txo) = txOutCacheRecValue txo
     txoValue _ = 0
 
-indexGetBalanceEndpoint BalanceRequest { balReqCurrency = ERGO } = pure ergoBalance
-
 indexGetTxHashHistoryEndpoint :: TxHashHistoryRequest -> ServerM TxHashHistoryResponse
-indexGetTxHashHistoryEndpoint req@TxHashHistoryRequest{ historyReqCurrency = BTC } = do
-  maybeHistory <- getTxOutHistory $ historyReqPubKeyScriptHash req
+indexGetTxHashHistoryEndpoint request = do
+  maybeHistory <- getTxOutHistory $ historyReqPubKeyScriptHash request
   case maybeHistory of
     Just history -> do
         let uniqueHistoryTxIds = nub . mconcat $ utxoHistoryTxIds <$> history
@@ -85,8 +81,6 @@ indexGetTxHashHistoryEndpoint req@TxHashHistoryRequest{ historyReqCurrency = BTC
     utxoHistoryTxIds (UTXO txo)         = [txOutCacheRecTxHash txo]
     utxoHistoryTxIds (STXO (txo, stxo)) = [txOutCacheRecTxHash txo , txInCacheRecTxHash stxo]
     txSorting tx = (txCacheRecBlockHeight tx, txCacheRecBlockIndex  tx)
-
-indexGetTxHashHistoryEndpoint TxHashHistoryRequest { historyReqCurrency = ERGO } = pure ergoHistory
 
 indexGetBlockHeadersEndpoint :: BlockHeadersRequest -> ServerM BlockHeadersResponse
 indexGetBlockHeadersEndpoint request = do
