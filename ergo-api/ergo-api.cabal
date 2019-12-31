@@ -43,6 +43,7 @@ library
     FlexibleContexts
     FlexibleInstances
     QuasiQuotes
+    DuplicateRecordFields
 
 test-suite test-suite
   type: exitcode-stdio-1.0
@@ -53,6 +54,8 @@ test-suite test-suite
   main-is: Main.hs
   other-modules:
       Network.Ergo.Api.BlocksSpec
+      Network.Ergo.Api.BlocksSpec
+      Network.Ergo.Api.TestUtil
       Spec
   build-depends:
       base                 >= 4.7 && < 4.13

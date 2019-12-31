@@ -1,27 +1,37 @@
 module Network.Ergo.Api.BlocksSpec where
 
-import           Test.Hspec
-import Network.Ergo.Api.Client
-import Network.Ergo.Api.Blocks
-import qualified Data.Text                                    as T (pack)
-import qualified Data.Text.IO as T
-import qualified Network.Wreq              as W
-import           Control.Lens              ((^.))
-import qualified Data.ByteString.Lazy      as BL
 import Control.Monad.Reader
-import Ergvein.Interfaces.Ergo.Scorex.Util.Package
-import Data.ByteString (unpack)
 import Ergvein.Interfaces.Ergo.Scorex.Core.Block
-import Network.Ergo.Api.Info
-
+import Network.Ergo.Api.Blocks
+import Network.Ergo.Api.Client
+import Network.Ergo.Api.TestUtil
+import Test.Hspec
 
 spec :: Spec
 spec = do
-  describe "Blocks api" $ do
-    it "blocks" $ do
+  describe "when testing Blocks functions" $ do
+    it "can request block headers at height" $ do
+      client <- testClient
+      idsAtHeight <- flip runReaderT client $ getHeaderIdsAtHeight $ Height 1
+      null idsAtHeight `shouldBe` False
 
-      client <- newClient "127.0.0.1" 9052
-      r <- flip runReaderT client $ getHeaderIdsAtHeight $ Height 6
-      error $ show $ head r
-      r3 <- flip runReaderT client $ getById $ head r
-      True `shouldBe` True
+    it "can request block header by id" $ do
+      client <- testClient
+      idsAtHeight <- flip runReaderT client $ getHeaderIdsAtHeight $ Height 1
+      let mainChainId = head idsAtHeight
+      header <- flip runReaderT client $ getHeaderById mainChainId
+      True  `shouldBe` True
+
+    it "can request block transactions by id" $ do
+      client <- testClient
+      idsAtHeight <- flip runReaderT client $ getHeaderIdsAtHeight $ Height 1
+      let mainChainId = head idsAtHeight
+      header <- flip runReaderT client $ getTransactionsById mainChainId
+      True  `shouldBe` True
+
+    it "can request full block by id" $ do
+      client <- testClient
+      idsAtHeight <- flip runReaderT client $ getHeaderIdsAtHeight $ Height 1
+      let mainChainId = head idsAtHeight
+      header <- flip runReaderT client $ getById mainChainId
+      True  `shouldBe` True
