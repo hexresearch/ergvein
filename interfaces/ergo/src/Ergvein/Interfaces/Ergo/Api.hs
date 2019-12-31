@@ -25,7 +25,7 @@ import Ergvein.Interfaces.Ergo.Scorex.Util.Package
 data ErgoTransactionInput = ErgoTransactionInput {
   boxId :: !TransactionBoxId
 , spendingProof :: !SpendingProof
-, extension :: !(Properties SValue)
+, extension :: ! (Maybe (Properties SValue))
 }
 
 ----------------------------------------
@@ -171,7 +171,7 @@ data BlockTransactions = BlockTransactions {
 data Extension = Extension {
   headerId :: !ModifierId
 , digest :: !Digest32
-, fields :: ![HexJSON]
+, fields :: ![[HexJSON]]
 }
 
 data BlockADProofs = BlockADProofs {
