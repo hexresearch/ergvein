@@ -92,15 +92,17 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
   downPrE  <- performEvent $ ffor downE  prepCoord
   upPrE    <- performEvent $ ffor upE    prepCoord
 
-  let pressedE = leftmost [Pressed <$ tdownE, Unpressed <$ tupE]
+  let pressedE = leftmost [Pressed <$ downE, Unpressed <$ upE]
 
   touchD <- holdDyn Unpressed pressedE
 
+  lastM <- holdDyn Nothing $ ffor movePrE \x -> Just x  
+
   --positionD <- holdDyn (0,0) $ fmap (lastClickD <- holdDyn (0,0) downE\(ClientRect{..}, _) -> (crLeft, crTop)) sizeE
 
-  sqUpdE <- performEvent $ ffor tmovePrE $ \(x,y) -> pure (AddSquare,(x,y),hitOrMiss (x,y) coords)
+  sqUpdE <- performEvent $ ffor movePrE $ \(x,y) -> pure (AddSquare,(x,y),hitOrMiss (x,y) coords)
 
-  let predrawE = leftmost [sqUpdE, (Clear,(0,0),emptySq) <$ tupPrE]
+  let predrawE = leftmost [sqUpdE, (Clear,(0,0),emptySq) <$ upPrE]
 
   sqD <- holdDyn (Clear,(0,0),emptySq) $ flip pushAlways predrawE $ \(dc,cur,sqs) -> do
     touchS <- sample . current $ touchD
@@ -132,19 +134,19 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
 
   divClass "myDebugLog" $ dynText $ fmap showt selectedD
 
-  --eTick <- RD.tickLossy 0.01 aTime
+  eTick <- RD.tickLossy 0.01 aTime
 
   draw1E <- performEvent $ ffor (updated sqD) $ \a -> do
     sel <- sample . current $ selectedD
     pure (a,sel)
 --  let draw2E = fmap (\a -> (Nothing, Just a)) updated selectedD
 --  leftmost
-{-
+
   eTicken <- fmap R.switch . R.hold R.never $ R.leftmost
-    [ ()      <$ eTick <$ downE --startE
-    , R.never <$ upE--stopE
+    [ ()      <$ eTick <$ downE
+    , R.never <$ upE
     ]
--}
+
   --dLine <- holdDyn (drawLineZero) $ ffor movePrE $ \(x,y) -> do
   --  (fx, fy) <- liftM $ sample $ current $ lastClickDcrTop
   --    (a, b) <- liftM $ sample $ current $ positionD
@@ -166,9 +168,9 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
 --    $ R.current dFloatFeed' <@ eTicken
 
 --  _ <- CDyn.nextFrameWithCxFree dLine d2D $ () <$ tmovePrE
-  _ <- CDyn.nextFrameWithCxFree dGrid d2D $ leftmost [() <$ tdownE, () <$ tupE]
+  _ <- CDyn.nextFrameWithCxFree dGrid d2D $ leftmost [() <$ downE, () <$ upE]
 
-  _ <- CDyn.nextFrameWithCxFree dLine d2D $ () <$ tmoveE
+  _ <- CDyn.nextFrameWithCxFree dLine d2D $ () <$ moveE
 
   _ <- CDyn.nextFrameWithCxFree dClear d2D stopE
 
