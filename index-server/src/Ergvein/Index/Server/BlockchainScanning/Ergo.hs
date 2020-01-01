@@ -1,28 +1,25 @@
 module Ergvein.Index.Server.BlockchainScanning.Ergo where
 
-import           Control.Monad.Reader
-import           Data.ByteString                ( ByteString )
-import           Data.List.Index
-import           Data.Maybe
-import           Data.Serialize
-import           Ergvein.Crypto.SHA256
-import           Ergvein.Index.Server.BlockchainScanning.Types
-import           Ergvein.Index.Server.Environment
-import           Ergvein.Interfaces.Ergo.Api
-import           Ergvein.Interfaces.Ergo.It.Api.NodeApi
-import           Ergvein.Interfaces.Ergo.Scorex.Core.Block
-import           Ergvein.Types.Currency
-import           Ergvein.Types.Transaction
+import  Control.Monad.Reader
+import  Data.List.Index
+import  Data.Maybe
+import  Data.Serialize
+
+import Ergvein.Crypto.SHA256
+import Ergvein.Index.Server.BlockchainScanning.Types
+import Ergvein.Index.Server.Environment
+import Ergvein.Interfaces.Ergo.Api
+import Ergvein.Interfaces.Ergo.It.Api.NodeApi
+import Ergvein.Interfaces.Ergo.Scorex.Core.Block
+import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
+import Ergvein.Text
+
 import           Network.Ergo.Api.Blocks
 import           Network.Ergo.Api.Client
 import           Network.Ergo.Api.Info
-import qualified Data.ByteString.Base16        as BS16
-import qualified Data.Text                     as T
-import qualified Data.Text.Encoding            as TE
-import qualified Network.Ergo.Api.Utxo         as UtxoApi
+import qualified Network.Ergo.Api.Utxo    as UtxoApi
 
-toHex :: ByteString -> TxHash
-toHex = TE.decodeUtf8 . BS16.encode
 
 txInfo :: ApiMonad m => ErgoTransaction -> TxHash -> m ([TxInInfo], [TxOutInfo])
 txInfo tx txHash = do
@@ -34,7 +31,7 @@ txInfo tx txHash = do
     txInInfo txIn = do
       box <- UtxoApi.getById $ boxId (txIn :: ErgoTransactionDataInput)
       pure $ TxInInfo { txInTxHash     = txHash
-                      , txInTxOutHash  = toHex $ unTransactionId $ fromJust $ transactionId (box :: ErgoTransactionOutput)
+                      , txInTxOutHash  = bs2Hex $ unTransactionId $ fromJust $ transactionId (box :: ErgoTransactionOutput)
                       , txInTxOutIndex = fromIntegral $ fromJust $ index box
                       }
 
@@ -53,10 +50,10 @@ blockTxInfos block txBlockHeight = do
       blockMeta = BlockMetaInfo ERGO (fromIntegral txBlockHeight) blockHeaderHexView
   pure $ BlockInfo blockMeta blockContent
   where
-    blockHeaderHexView = toHex $ encode $ headerFromApi $ header block
+    blockHeaderHexView = bs2Hex $ encode $ headerFromApi $ header block
     txoInfosFromTx :: ApiMonad m => Int -> ErgoTransaction -> m ([TxInfo], [TxInInfo], [TxOutInfo])
     txoInfosFromTx txBlockIndex tx = do
-      let txHash = toHex $ unTransactionId $ transactionId (tx :: ErgoTransaction)
+      let txHash = bs2Hex $ unTransactionId $ transactionId (tx :: ErgoTransaction)
           txI = TxInfo { txHash = txHash
                        , txBlockHeight = txBlockHeight
                        , txBlockIndex  = fromIntegral txBlockIndex
