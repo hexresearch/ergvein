@@ -6,12 +6,10 @@ import Network.Wai.Middleware.Gzip
 
 import Servant
 import Servant.API.Generic
-import Servant.Server.Generic
 
 import Ergvein.Index.API
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.Environment
-import Ergvein.Index.Server.Server
 import Ergvein.Index.Server.Server.V1
 
 indexServerApp :: ServerEnv -> Application

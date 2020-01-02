@@ -13,4 +13,5 @@ packages:
   ./wallet-native
   ./wallet-types
   ./interfaces/ergo
+  ./ergo-api
 shared: true

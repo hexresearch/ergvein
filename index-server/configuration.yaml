@@ -1,11 +1,15 @@
-serverPort : 8080
-dbHost     : localhost
-dbPort     : 5434
-dbUser     : localDb
-dbPassword : ""
-dbName     : localDb
-BTCNodeHost     : localhost
-BTCNodePort     : 18332
-BTCNodeUser     : bitcoinrpc
-BTCNodePassword : password
-blockchainScanDelay : 1000000dbLog      : true
+serverPort          : 8080
+dbHost              : localhost
+dbPort              : 5434
+dbUser              : localDb
+dbPassword          : ""
+dbName              : localDb
+BTCNodeHost         : localhost
+BTCNodePort         : 18332
+BTCNodeUser         : bitcoinrpc
+BTCNodePassword     : password
+ERGONodeHost        : localhost
+ERGONodePort        : 9052
+blockchainScanDelay : 1000000
+blockchainScanDelay : 1000000
+dbLog               : true

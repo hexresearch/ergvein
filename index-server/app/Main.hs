@@ -1,17 +1,25 @@
 module Main where
 
+import Options.Applicative
+import Network.Wai.Handler.Warp
+import Network.Wai.Middleware.RequestLogger
+import Ergvein.Index.Server.Monad
 import Control.Immortal
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Ergvein.Index.Server.App
-import Ergvein.Index.Server.BlockchainScan
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Environment
+import Control.Immortal
+import Control.Monad.IO.Unlift
+import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.Monad
 import Network.Wai.Handler.Warp
 import Network.Wai.Middleware.RequestLogger
 import Options.Applicative
+import Ergvein.Index.Server.BlockchainScanning.Common
 
 import qualified Data.Text.IO as T
 import Data.Text (Text, pack)

@@ -7,10 +7,13 @@ import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Reader
 import Data.ByteString.UTF8
+import Database.LevelDB.Base
 import Data.Default
 import Data.Typeable
 import Database.LevelDB.Base
 import Database.Persist.Sql
+
+import Ergvein.Index.Server.Cache
 import Ergvein.Index.Server.Cache
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
@@ -19,18 +22,23 @@ import Ergvein.Text
 import Network.Bitcoin.Api.Client
 import Network.Bitcoin.Api.Types
 
-data ServerEnv = ServerEnv
-    { envConfig :: !Config
-    , envLogger :: !(Chan (Loc, LogSource, LogLevel, LogStr))
-    , envPool   :: !DBPool
-    , ldb :: !DB
+import qualified Network.Bitcoin.Api.Client as BitcoinApi
+import qualified Network.Ergo.Api.Client as ErgoApi
+
+data ServerEnv = ServerEnv 
+    { envServerConfig      :: !Config
+    , envLogger            :: !(Chan (Loc, LogSource, LogLevel, LogStr))
+    , envPersistencePool   :: !DBPool
+    , envLevelDBContext   :: !DB
+    , envErgoNodeClient   :: !ErgoApi.Client
     }
 
-btcNodeClient :: Config -> (Client -> IO a) -> IO a
-btcNodeClient cfg = withClient (configBTCNodeHost cfg)
-                               (configBTCNodePort cfg)
-                               (configBTCNodeUser cfg)
-                               (configBTCNodePassword cfg)
+btcNodeClient :: Config -> (BitcoinApi.Client -> IO a) -> IO a
+btcNodeClient cfg = BitcoinApi.withClient 
+    (configBTCNodeHost     cfg)
+    (configBTCNodePort     cfg)
+    (configBTCNodeUser     cfg)
+    (configBTCNodePassword cfg)
 
 newServerEnv :: (MonadIO m, MonadLogger m) => Config -> m ServerEnv
 newServerEnv cfg = do
@@ -40,12 +48,14 @@ newServerEnv cfg = do
         pool <- newDBPool doLog $ fromString $ connectionStringFromConfig cfg
         flip runReaderT pool $ runDb $ runMigration migrateAll
         pure pool
-    db <- liftIO openDb
-    loadCache db pool
-    pure ServerEnv { envConfig = cfg
-                   , envLogger = logger
-                   , envPool   = pool
-                   , ldb       = db
+    levelDBContext <- liftIO $ openDb
+    loadCache levelDBContext pool
+    ergoNodeClient <- liftIO $ ErgoApi.newClient (configERGONodeHost cfg) $ (configERGONodePort cfg)
+    pure ServerEnv { envServerConfig    = cfg
+                   , envLogger          = logger
+                   , envPersistencePool = pool
+                   , envLevelDBContext  = levelDBContext
+                   , envErgoNodeClient  = ergoNodeClient
                    }
 
 -- | Log exceptions at Error severity

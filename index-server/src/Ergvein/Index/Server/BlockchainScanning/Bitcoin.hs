@@ -1,20 +1,19 @@
-module Ergvein.Index.Server.BlockScanner.BTCBlockScanner where
+module Ergvein.Index.Server.BlockchainScanning.Bitcoin where
 
 import           Data.Either
 import           Data.List.Index
 import           Data.Maybe
 import           Network.Bitcoin.Api.Blockchain
 import           Network.Bitcoin.Api.Client
-import           Network.Haskoin.Util
 
-import           Ergvein.Index.Server.BlockScanner.Types
+import           Ergvein.Index.Server.BlockchainScanning.Types
 import           Ergvein.Index.Server.Config
 import           Ergvein.Index.Server.Environment
 import           Ergvein.Types.Transaction
 import           Ergvein.Types.Currency
-import           Ergvein.Crypto.SHA256 
+import           Ergvein.Crypto.SHA256
 
-import           Data.Serialize                     as S
+import Data.Serialize
 import qualified Data.ByteString                    as B
 import qualified Data.HexString                     as HS
 import qualified Network.Haskoin.Block              as HK
@@ -29,17 +28,17 @@ txInfo tx txHash = let
   where
     txInInfo txIn = let
       prevOutput = HK.prevOutput txIn
-      in TxInInfo { txIn'txHash     = txHash
-                  , txIn'txOutHash  = HK.txHashToHex $ HK.outPointHash prevOutput
-                  , txIn'txOutIndex = fromIntegral $ HK.outPointIndex prevOutput
+      in TxInInfo { txInTxHash     = txHash
+                  , txInTxOutHash  = HK.txHashToHex $ HK.outPointHash prevOutput
+                  , txInTxOutIndex = fromIntegral $ HK.outPointIndex prevOutput
                   }
     txOutInfo txOutIndex txOut = let
       scriptOutputHash = encodeSHA256Hex . doubleSHA256
-      in TxOutInfo { txOut'txHash           = txHash
-                   , txOut'pubKeyScriptHash = scriptOutputHash $ HK.scriptOutput txOut
-                   , txOut'index            = fromIntegral txOutIndex
-                   , txOut'value            = HK.outValue txOut
-                   }    
+      in TxOutInfo { txOutTxHash           = txHash
+                   , txOutPubKeyScriptHash = scriptOutputHash $ HK.scriptOutput txOut
+                   , txOutIndex            = fromIntegral txOutIndex
+                   , txOutValue            = HK.outValue txOut
+                   }
 
 blockTxInfos :: HK.Block -> BlockHeight -> BlockInfo
 blockTxInfos block txBlockHeight = let
@@ -48,29 +47,29 @@ blockTxInfos block txBlockHeight = let
   blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHexView
   in BlockInfo blockMeta blockContent
   where
-    blockHeaderHexView = HK.encodeHex $ S.encode $ HK.blockHeader block
+    blockHeaderHexView = HK.encodeHex $ encode $ HK.blockHeader block
     txoInfosFromTx txBlockIndex tx = let
       txHash = HK.txHashToHex $ HK.txHash tx
-      txI = TxInfo { tx'hash = txHash
-                   , tx'blockHeight = txBlockHeight
-                   , tx'blockIndex  = fromIntegral txBlockIndex
+      txI = TxInfo { txHash = txHash
+                   , txBlockHeight = txBlockHeight
+                   , txBlockIndex  = fromIntegral txBlockIndex
                    }
       (txInI,txOutI) = txInfo tx txHash
       in ([txI], txInI, txOutI)
 
 
-actualBTCHeight :: Config -> IO BlockHeight
-actualBTCHeight cfg = fromIntegral <$> btcNodeClient cfg getBlockCount
+actualHeight :: Config -> IO BlockHeight
+actualHeight cfg = fromIntegral <$> btcNodeClient cfg getBlockCount
 
-bTCBlockScanner :: ServerEnv -> BlockHeight -> IO BlockInfo
-bTCBlockScanner env blockHeightToScan = do 
+blockInfo :: ServerEnv -> BlockHeight -> IO BlockInfo
+blockInfo env blockHeightToScan = do
   blockHash <- btcNodeClient cfg $ flip getBlockHash $ fromIntegral blockHeightToScan
   maybeRawBlock <- btcNodeClient cfg $ flip getBlockRaw blockHash
   let rawBlock = fromMaybe blockParsingError maybeRawBlock
       parsedBlock = fromRight blockGettingError $ decode $ HS.toBytes rawBlock
   pure $ blockTxInfos parsedBlock blockHeightToScan
   where
-    cfg    = envConfig env
-    dbPool = envPool env
+    cfg    = envServerConfig env
+    dbPool = envPersistencePool env
     blockGettingError = error $ "Error getting BTC node at height " ++ show blockHeightToScan
     blockParsingError = error $ "Error parsing BTC node at height " ++ show blockHeightToScan

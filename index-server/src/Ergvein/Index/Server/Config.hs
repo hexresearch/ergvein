@@ -1,6 +1,5 @@
 module Ergvein.Index.Server.Config where
 
-import Prelude
 import Control.Monad.IO.Class
 import Data.Text
 import Data.Yaml.Config
@@ -14,12 +13,14 @@ data Config = Config
   , configDbUser              :: !String
   , configDbPassword          :: !String
   , configDbName              :: !String
+  , configBlockchainScanDelay :: !Int
   , configDbLog               :: !Bool 
   , configBTCNodeHost         :: !String
   , configBTCNodePort         :: !Int
   , configBTCNodeUser         :: !Text
   , configBTCNodePassword     :: !Text
-  , configBlockchainScanDelay :: !Int
+  , configERGONodeHost        :: !String
+  , configERGONodePort        :: !Int
   } deriving (Show, Generic)
 deriveJSON (aesonOptionsStripPrefix "config") ''Config
 
