@@ -1,15 +1,18 @@
 packages:
   ./common
   ./crypto
+  ./golomb-rice
   ./index-api
   ./index-client
   ./index-server
+  ./interfaces/ergo
   ./reflex-external-ref
   ./reflex-localize
   ./retractable
   ./wallet
   ./wallet-android
   ./wallet-desktop
+  ./wallet-filters
   ./wallet-native
   ./wallet-types
   ./interfaces/ergo

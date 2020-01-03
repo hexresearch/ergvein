@@ -30,15 +30,18 @@ in (self: super: let
     ergvein-common = ingnoreGarbage super.ergvein-common;
     ergvein-crypto = ingnoreGarbage super.ergvein-crypto;
     ergvein-index-api = ingnoreGarbage super.ergvein-index-api;
-    ergvein-index-server = ingnoreGarbage super.ergvein-index-server;
     ergvein-index-client = ingnoreGarbage super.ergvein-index-client;
+    ergvein-index-server = ingnoreGarbage super.ergvein-index-server;
+    ergvein-interface-ergo = ingnoreGarbage super.ergvein-interface-ergo;
     ergvein-wallet = ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-wallet" ./wallet walletOpts {});
     ergvein-wallet-android = ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-wallet-android" ./wallet-android walletOpts {});
     ergvein-wallet-desktop = ingnoreGarbage super.ergvein-wallet-desktop;
+    ergvein-wallet-filters = ingnoreGarbage super.ergvein-wallet-filters;
     ergvein-wallet-native = ingnoreGarbage super.ergvein-wallet-native;
     ergvein-wallet-types = ingnoreGarbage super.ergvein-wallet-types;
     ergvein-interface-ergo = ingnoreGarbage super.ergvein-interface-ergo;
     ergo-api = ingnoreGarbage super.ergo-api;
+    golomb-rice = ingnoreGarbage super.golomb-rice;
     reflex-dom-retractable = ingnoreGarbage super.reflex-dom-retractable;
     reflex-external-ref = ingnoreGarbage super.reflex-external-ref;
     reflex-localize = ingnoreGarbage super.reflex-localize;
@@ -58,5 +61,6 @@ in (self: super: let
     persistent-pagination = self.callPackage ./derivations/persistent-pagination.nix {};
     flat = lib.dontCheck (super.flat);
     reflex-dom-core = lib.dontCheck (super.reflex-dom-core);
+    bitstream = self.callPackage ./derivations/bitstream.nix { };
   }
 )
