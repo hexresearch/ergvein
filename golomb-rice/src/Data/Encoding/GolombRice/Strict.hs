@@ -7,6 +7,11 @@ module Data.Encoding.GolombRice.Strict
   , singleton
     -- * Quering
   , null
+  , headMay
+  , head
+    -- * Converting
+  , fromList
+  , toList
   )
 where
 

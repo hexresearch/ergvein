@@ -52,6 +52,21 @@ head :: (Partial, GolombItem a) => GolombRice a -> a
 head gr = fromWord . P.head $ decodeWords (golombRiceP gr) (golombRiceStream gr)
 {-# INLINABLE head #-}
 
+-- | Convert list of items to golomb rice encoding.
+fromList :: GolombItem a
+  => Int  -- ^ Number of bits P in reminder of each element
+  -> [a]
+  -> GolombRice a
+fromList p = GolombRice p . foldMap (encodeWord p) . fmap toWord
+{-# INLINEABLE fromList #-}
+
+-- | Decode all items from golomb rice encoding.
+toList :: GolombItem a
+  => GolombRice a
+  -> [a]
+toList (GolombRice p s) = fmap fromWord $ decodeWords p s
+{-# INLINEABLE toList #-}
+
 -- | Encode single word in stream
 encodeWord
   :: Int -- ^ Number of bits P in reminder of each element
@@ -64,10 +79,6 @@ encodeWord p x = prefix <> reminder
   count i | i <= 0    = [False]
           | otherwise = True : count (i - 1)
   reminder = BS.fromNBits p x
-  -- reminder = go (p-1)
-  -- go i
-  --   | i < 0     = []
-  --   | otherwise = testBit x i : go (i-1)
 
 -- | Decode single word from stream
 decodeWord
@@ -82,20 +93,15 @@ decodeWord p s = (x, leftover)
   q        = fromIntegral $ BS.length prefix
   r        = BS.toBits . BS.take p $ postfix
   x        = (q `shiftL` p) + r
-  -- toBits   = go 0 0
-  -- go !i !acc bs
-  --   | i >= p = acc
-  --   | otherwise = let
-  --     a = if bs V.! i then 1 `shiftL` fromIntegral (p-i-1) else 0
-  --     acc' = acc + a
-  --     in go (i+1) acc' bs
 
 -- | Decode to list of words from stream.
 decodeWords
   :: Int -- ^ Number of bits P in reminder of each element
   -> GolombStream -- ^ Stream of bits
   -> [Word64]
-decodeWords p = go
+decodeWords p gs
+  | BS.null gs = []
+  | otherwise = go gs
   where
     go !s = let
       (w, s') = decodeWord p s

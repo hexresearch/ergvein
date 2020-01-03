@@ -3,16 +3,11 @@ module Data.Encoding.GolombRiceTest where
 import qualified Data.Bitstream                as BS
 import           Data.Encoding.GolombRice.Strict.Internal
                                                as G
-import qualified Data.ByteString as B
 import           Data.Foldable
 import           Data.Word
 import           Test.QuickCheck.Instances.ByteString ()
 import           Test.Tasty.Hspec
 import           Test.Tasty.QuickCheck
-
-import qualified Data.Vector.Unboxed as V
-
-import Debug.Trace
 
 p :: Int
 p = 19
@@ -56,3 +51,8 @@ prop_encodingDecodingWord (Small w) =
 
 prop_singletonHeadWord :: Small Word64 -> Bool
 prop_singletonHeadWord (Small w) = G.head (G.singleton p w) == w
+
+prop_encodingDecodingWords :: [Small Word64] -> Bool
+prop_encodingDecodingWords wss = let
+  ws = fmap (\(Small a) -> a) wss
+  in G.toList (G.fromList p ws) == ws
