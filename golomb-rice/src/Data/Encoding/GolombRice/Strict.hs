@@ -12,6 +12,12 @@ module Data.Encoding.GolombRice.Strict
     -- * Converting
   , fromList
   , toList
+  , fromVector
+  , toVector
+  , fromVectorUnboxed
+  , toVectorUnboxed
+  , toByteString
+  , fromByteString
   )
 where
 

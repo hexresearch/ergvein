@@ -2,6 +2,7 @@
 module Data.Encoding.GolombRice.Strict.Internal where
 
 import           Data.Bits
+import           Data.ByteString                (ByteString)
 import           Data.Encoding.GolombRice.Item
 import           Data.Word
 import           Prelude                 hiding ( null, head )
@@ -9,6 +10,7 @@ import           Safe.Partial
 import qualified Data.Bitstream                as BS
 import qualified Data.Foldable                 as F
 import qualified Data.Vector.Generic           as V
+import qualified Data.Vector.Unboxed           as VU
 import qualified Prelude                       as P
 
 -- | Big endian stream of bits
@@ -82,6 +84,36 @@ toVector :: (GolombItem a, V.Vector v a, Foldable v)
   -> v a
 toVector (GolombRice p s) = V.fromList . fmap fromWord $ decodeWords p s
 {-# INLINABLE toVector #-}
+
+-- | Convert array of items to golomb rice encoding.
+fromVectorUnboxed :: (GolombItem a, VU.Unbox a)
+  => Int -- ^ Number of bits P in reminder of each element
+  -> VU.Vector a
+  -> GolombRice a
+fromVectorUnboxed p = GolombRice p . foldMap (encodeWord p) . fmap toWord . VU.toList
+{-# INLINABLE fromVectorUnboxed #-}
+
+-- | Decode all items from golomb rice encoding.
+toVectorUnboxed :: (GolombItem a, VU.Unbox a)
+  => GolombRice a
+  -> VU.Vector a
+toVectorUnboxed (GolombRice p s) = V.fromList . fmap fromWord $ decodeWords p s
+{-# INLINABLE toVectorUnboxed #-}
+
+-- | Deserialise golomb encoding from bytestring.
+fromByteString :: GolombItem a
+  => Int -- ^ Number of bits P in reminder of each element
+  -> ByteString
+  -> GolombRice a
+fromByteString p = GolombRice p . BS.fromByteString
+{-# INLINABLE fromByteString #-}
+
+-- | Serialise golomb encoding to bytestring. The resulting octets will be padded with zeroes.
+toByteString :: GolombItem a
+  => GolombRice a
+  -> ByteString
+toByteString (GolombRice _ s) = BS.toByteString s
+{-# INLINABLE toByteString #-}
 
 -- | Encode single word in stream
 encodeWord

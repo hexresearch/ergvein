@@ -16,20 +16,21 @@ library
   exposed-modules:
     Ergvein.Filters
     Ergvein.Filters.Btc
+    Ergvein.Filters.GCS
     Ergvein.Filters.Hash
   default-language:    Haskell2010
   build-depends:
       base
     , aeson
+    , bytestring        >= 0.10
     , ergvein-common
     , flat
-    , golomb-rice  >= 0.1  && < 0.2
-    , haskoin-core >= 0.8  && < 0.9
-    , memory       >= 0.11 && < 0.16
-    , text
-    , vector       >= 0.12 && < 0.13
-    , wide-word    >= 0.1  && < 0.2
-    , bytestring   >= 0.10
+    , golomb-rice       >= 0.1  && < 0.25
+    , haskoin-core      >= 0.8
+    , memory            >= 0.11
+    , vector            >= 0.12
+    , vector-algorithms >= 0.8
+    , wide-word         >= 0.1
   default-extensions:
     DeriveGeneric
     DeriveAnyClass

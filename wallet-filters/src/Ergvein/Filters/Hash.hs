@@ -1,6 +1,7 @@
 module Ergvein.Filters.Hash(
     hashToRange
   , hashSetConstruct
+  , SipKey
   ) where
 
 import Data.ByteArray.Hash
@@ -23,10 +24,10 @@ hashToRange rangeF key bs = hf
     hf = word128Hi64 $ fromIntegral h * fromIntegral rangeF
 
 -- | Construct hashes that are added to filter.
-hashSetConstruct :: Vector ByteString -- ^ Payload items
-  -> SipKey -- ^ Key for hash function
+hashSetConstruct :: SipKey -- ^ Key for hash function
   -> Word64 -- ^ False positive factor. Matches other items with probability 1 / M
+  -> Vector ByteString -- ^ Payload items
   -> VU.Vector Word64 -- ^ Resulted hashes
-hashSetConstruct xs key m = V.convert $ fmap (hashToRange (n * m) key) xs
+hashSetConstruct key m xs = V.convert $ fmap (hashToRange (n * m) key) xs
   where
     n = fromIntegral $ length xs
