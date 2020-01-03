@@ -35,8 +35,7 @@ in reflex-platform.project ({ pkgs, ... }: {
       "ergvein-common"
       "ergvein-crypto"
       "ergvein-index-api"
-      "ergvein-index-
-      server"
+      "ergvein-index-server"
       "ergvein-interface-ergo"
       "ergvein-wallet-desktop"
       "ergvein-wallet-filters"

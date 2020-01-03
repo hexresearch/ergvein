@@ -8,6 +8,7 @@ import           Prelude                 hiding ( null, head )
 import           Safe.Partial
 import qualified Data.Bitstream                as BS
 import qualified Data.Foldable                 as F
+import qualified Data.Vector.Generic           as V
 import qualified Prelude                       as P
 
 -- | Big endian stream of bits
@@ -54,7 +55,7 @@ head gr = fromWord . P.head $ decodeWords (golombRiceP gr) (golombRiceStream gr)
 
 -- | Convert list of items to golomb rice encoding.
 fromList :: GolombItem a
-  => Int  -- ^ Number of bits P in reminder of each element
+  => Int -- ^ Number of bits P in reminder of each element
   -> [a]
   -> GolombRice a
 fromList p = GolombRice p . foldMap (encodeWord p) . fmap toWord
@@ -66,6 +67,21 @@ toList :: GolombItem a
   -> [a]
 toList (GolombRice p s) = fmap fromWord $ decodeWords p s
 {-# INLINEABLE toList #-}
+
+-- | Convert array of items to golomb rice encoding.
+fromVector :: (GolombItem a, V.Vector v a, Foldable v, V.Vector v Word64)
+  => Int -- ^ Number of bits P in reminder of each element
+  -> v a
+  -> GolombRice a
+fromVector p = GolombRice p . foldMap (encodeWord p) . V.map toWord
+{-# INLINABLE fromVector #-}
+
+-- | Decode all items from golomb rice encoding.
+toVector :: (GolombItem a, V.Vector v a, Foldable v)
+  => GolombRice a
+  -> v a
+toVector (GolombRice p s) = V.fromList . fmap fromWord $ decodeWords p s
+{-# INLINABLE toVector #-}
 
 -- | Encode single word in stream
 encodeWord

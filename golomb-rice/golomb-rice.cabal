@@ -26,8 +26,9 @@ library
     , safe            >= 0.3 && < 0.4
     , vector          >= 0.12
   default-extensions:
-    DeriveGeneric
     DeriveAnyClass
+    DeriveGeneric
+    FlexibleContexts
     OverloadedStrings
     TemplateHaskell
 
