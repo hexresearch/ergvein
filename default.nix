@@ -23,7 +23,6 @@ in reflex-platform.project ({ pkgs, ... }: {
     ergvein-wallet-filters = ./wallet-filters;
     ergvein-wallet-native = ./wallet-native;
     ergvein-wallet-types = ./wallet-types;
-    ergvein-interface-ergo = ./interfaces/ergo;
     ergo-api = ./ergo-api;
     golomb-rice = ./golomb-rice;
     reflex-dom-retractable = ./retractable;

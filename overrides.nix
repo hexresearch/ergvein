@@ -39,7 +39,6 @@ in (self: super: let
     ergvein-wallet-filters = ingnoreGarbage super.ergvein-wallet-filters;
     ergvein-wallet-native = ingnoreGarbage super.ergvein-wallet-native;
     ergvein-wallet-types = ingnoreGarbage super.ergvein-wallet-types;
-    ergvein-interface-ergo = ingnoreGarbage super.ergvein-interface-ergo;
     ergo-api = ingnoreGarbage super.ergo-api;
     golomb-rice = ingnoreGarbage super.golomb-rice;
     reflex-dom-retractable = ingnoreGarbage super.reflex-dom-retractable;
