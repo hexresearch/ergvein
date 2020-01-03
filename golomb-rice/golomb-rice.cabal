@@ -23,6 +23,8 @@ library
       base            >= 4.7 && < 4.13
     , bitstream       >= 0.3 && < 0.4
     , bytestring      >= 0.9 && < 0.11
+    , safe            >= 0.3 && < 0.4
+    , vector          >= 0.12
   default-extensions:
     DeriveGeneric
     DeriveAnyClass
@@ -49,7 +51,9 @@ test-suite golomb-rice-test
     , bitstream
     , bytestring
     , golomb-rice
+    , quickcheck-instances
     , tasty
     , tasty-discover
     , tasty-hspec
     , tasty-quickcheck
+    , vector

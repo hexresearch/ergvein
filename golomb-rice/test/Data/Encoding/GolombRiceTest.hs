@@ -3,10 +3,16 @@ module Data.Encoding.GolombRiceTest where
 import qualified Data.Bitstream                as BS
 import           Data.Encoding.GolombRice.Strict.Internal
                                                as G
+import qualified Data.ByteString as B
 import           Data.Foldable
 import           Data.Word
+import           Test.QuickCheck.Instances.ByteString ()
 import           Test.Tasty.Hspec
 import           Test.Tasty.QuickCheck
+
+import qualified Data.Vector.Unboxed as V
+
+import Debug.Trace
 
 p :: Int
 p = 19
@@ -19,6 +25,9 @@ spec_basicEncoding = describe "basic test vectors" $ do
   it "non empty stream is not empty"
     $          G.null (G.singleton p 0 :: GRWord)
     `shouldBe` False
+  it "encodes long number" $ let
+    a = 524388
+    in G.head (G.singleton p a :: GRWord) `shouldBe` a
 
 spec_encodingCheck :: Spec
 spec_encodingCheck = describe "encoded bits are correct" $ do
@@ -44,3 +53,6 @@ spec_encodingCheck = describe "encoded bits are correct" $ do
 prop_encodingDecodingWord :: Small Word64 -> Bool
 prop_encodingDecodingWord (Small w) =
   let (rw, s) = decodeWord p (encodeWord p w) in rw == w && BS.null s
+
+prop_singletonHeadWord :: Small Word64 -> Bool
+prop_singletonHeadWord (Small w) = G.head (G.singleton p w) == w
