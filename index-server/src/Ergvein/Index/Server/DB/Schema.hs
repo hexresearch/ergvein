@@ -35,6 +35,7 @@ BlockMetaRec
   currency Currency
   height BlockHeight
   blockHeaderHexView BlockHeaderHexView
+  addressFilterHexView AddressFilterHexView
   deriving Show
   |]
 
@@ -56,4 +57,4 @@ instance Conversion (Entity TxOutRec) TxOutInfo where
 instance Conversion (Entity BlockMetaRec) BlockMetaInfo where
   convert entity = let 
     value = entityVal entity 
-    in BlockMetaInfo (blockMetaRecCurrency value) (blockMetaRecHeight value) (blockMetaRecBlockHeaderHexView value)
+    in BlockMetaInfo (blockMetaRecCurrency value) (blockMetaRecHeight value) (blockMetaRecBlockHeaderHexView value) (blockMetaRecAddressFilterHexView value)

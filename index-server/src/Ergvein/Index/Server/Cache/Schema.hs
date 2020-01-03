@@ -3,6 +3,7 @@ module Ergvein.Index.Server.Cache.Schema where
 
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import Ergvein.Types.Block
 import Data.Flat
 import Data.ByteString
 
@@ -78,5 +79,6 @@ data BlockMetaCacheRecKey = BlockMetaCacheRecKey
   } deriving (Generic, Eq, Ord, Flat)
 
 data BlockMetaCacheRec = BlockMetaCacheRec
-  { blockMetaCacheRecHeaderHexView  :: TxHash
+  { blockMetaCacheRecHeaderHexView  :: BlockHeaderHexView
+  , blockMetaCacheRecAddressFilterHexView :: AddressFilterHexView
   } deriving (Generic, Flat)

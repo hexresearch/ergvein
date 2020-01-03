@@ -12,6 +12,7 @@ import           Ergvein.Index.Server.Environment
 import           Ergvein.Types.Transaction
 import           Ergvein.Types.Currency
 import           Ergvein.Crypto.SHA256
+import           Ergvein.Filters.Btc
 
 import Data.Serialize
 import qualified Data.ByteString                    as B
@@ -44,8 +45,9 @@ blockTxInfos :: HK.Block -> BlockHeight -> BlockInfo
 blockTxInfos block txBlockHeight = let
   (txInfos ,txInInfos, txOutInfos) = mconcat $ txoInfosFromTx `imap` HK.blockTxns block
   blockContent = BlockContentInfo txInfos txInInfos txOutInfos
-  blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHexView
-  in BlockInfo blockMeta blockContent
+  blockAddressFilter = const "btcBlockAddressFilter" $ makeBtcFilter block
+  blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHexView blockAddressFilter
+  in BlockInfo blockMeta blockContent 
   where
     blockHeaderHexView = HK.encodeHex $ encode $ HK.blockHeader block
     txoInfosFromTx txBlockIndex tx = let

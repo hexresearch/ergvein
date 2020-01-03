@@ -68,4 +68,4 @@ insertTxIns txIns = insertMany $ txInRec <$> txIns
 insertBlock :: MonadIO m => BlockMetaInfo -> QueryT m (Key BlockMetaRec)
 insertBlock block = insert $ blockMetaRec block
   where
-    blockMetaRec block = BlockMetaRec (blockMetaCurrency block) (blockMetaBlockHeight block) (blockMetaHeaderHexView block)
+    blockMetaRec block = BlockMetaRec (blockMetaCurrency block) (blockMetaBlockHeight block) (blockMetaHeaderHexView block) (blockMetaAddressFilterHexView block)
