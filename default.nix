@@ -11,6 +11,7 @@ let
   };
 in reflex-platform.project ({ pkgs, ... }: {
   packages = {
+    ergo-api = ./ergo-api;
     ergvein-common = ./common;
     ergvein-crypto = ./crypto;
     ergvein-index-api = ./index-api;
@@ -30,10 +31,12 @@ in reflex-platform.project ({ pkgs, ... }: {
   };
   shells = {
     ghc = [
+      "ergo-api"
       "ergvein-common"
       "ergvein-crypto"
       "ergvein-index-api"
-      "ergvein-index-server"
+      "ergvein-index-
+      server"
       "ergvein-interface-ergo"
       "ergvein-wallet-desktop"
       "ergvein-wallet-filters"

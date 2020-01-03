@@ -1,6 +1,7 @@
 packages:
   ./common
   ./crypto
+  ./ergo-api
   ./golomb-rice
   ./index-api
   ./index-client
@@ -15,4 +16,3 @@ packages:
   ./wallet-filters
   ./wallet-native
   ./wallet-types
-shared: true

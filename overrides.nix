@@ -27,6 +27,7 @@ in (self: super: let
   walletOpts = if isAndroid then "-fandroid --no-haddock" else "--no-haddock";
   in {
     # Internal
+    ergo-api = ingnoreGarbage super.ergo-api;
     ergvein-common = ingnoreGarbage super.ergvein-common;
     ergvein-crypto = ingnoreGarbage super.ergvein-crypto;
     ergvein-index-api = ingnoreGarbage super.ergvein-index-api;
