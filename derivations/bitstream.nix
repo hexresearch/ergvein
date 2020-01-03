@@ -1,15 +1,10 @@
-{ mkDerivation, base, base-unicode-symbols, bytestring, fetchgit
-, QuickCheck, stdenv, vector
+{ mkDerivation, base, base-unicode-symbols, bytestring, QuickCheck
+, stdenv, vector
 }:
 mkDerivation {
   pname = "bitstream";
   version = "0.3.0.0";
-  src = fetchgit {
-    url = "https://github.com/hexresearch/bitstream";
-    sha256 = "1c797rms5lbjvplmnnfp8j4n3msh9c46mjzjxbh7xjlhbkq9qkai";
-    rev = "2e5f54e8d304269aa6c2801e71457ae3d7c7bc3d";
-    fetchSubmodules = true;
-  };
+  sha256 = "70af13e53f07094ebef94c2ba9a99c8482bd30e00497d86280bfa87f5ade9e89";
   libraryHaskellDepends = [
     base base-unicode-symbols bytestring vector
   ];
