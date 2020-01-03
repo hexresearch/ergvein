@@ -27,6 +27,7 @@ data BlockMetaInfo = BlockMetaInfo
   { blockMetaCurrency      :: Currency
   , blockMetaBlockHeight   :: BlockHeight
   , blockMetaHeaderHexView :: BlockHeaderHexView
+  , blockMetaAddressFilterHexView :: AddressFilterHexView
   }
 
 data BlockContentInfo = BlockContentInfo
