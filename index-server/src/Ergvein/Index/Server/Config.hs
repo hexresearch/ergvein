@@ -1,24 +1,26 @@
 module Ergvein.Index.Server.Config where
 
-import Prelude
 import Control.Monad.IO.Class
-import Data.Text 
+import Data.Text
 import Data.Yaml.Config
 import Ergvein.Aeson
 import GHC.Generics
 
-data Config = Config 
+data Config = Config
   { configServerPort          :: !Int
   , configDbHost              :: !String
   , configDbPort              :: !Int
   , configDbUser              :: !String
   , configDbPassword          :: !String
   , configDbName              :: !String
+  , configBlockchainScanDelay :: !Int
+  , configDbLog               :: !Bool 
   , configBTCNodeHost         :: !String
   , configBTCNodePort         :: !Int
   , configBTCNodeUser         :: !Text
   , configBTCNodePassword     :: !Text
-  , configBlockchainScanDelay :: !Int
+  , configERGONodeHost        :: !String
+  , configERGONodePort        :: !Int
   } deriving (Show, Generic)
 deriveJSON (aesonOptionsStripPrefix "config") ''Config
 
@@ -29,7 +31,7 @@ connectionStringFromConfig cfg = let
            , ("user", configDbUser)
            , ("password", configDbPassword)
            , ("dbname", configDbName)
-           ] 
+           ]
   in unpack $ intercalate " " $ segment <$> params
   where
     segment (label, accessor) = mconcat [label, "=", pack $ accessor cfg]

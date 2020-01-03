@@ -93,6 +93,7 @@ test-suite ergvein-interface-ergo-test
   hs-source-dirs:      test
   other-modules:
       Paths_ergvein_interface_ergo
+      Tests.Ergo.Api
       Tests.Ergo.Headers
   ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
   default-extensions:
@@ -102,6 +103,7 @@ test-suite ergvein-interface-ergo-test
     RecordWildCards
     ScopedTypeVariables
     TupleSections
+    ExtendedDefaultRules
   build-depends:
       base                     >= 4.7 && < 4.13
     , aeson                    == 1.4.*
@@ -115,3 +117,4 @@ test-suite ergvein-interface-ergo-test
     , cereal                   == 0.5.*
     , either
     , text
+    , interpolatedstring-perl6

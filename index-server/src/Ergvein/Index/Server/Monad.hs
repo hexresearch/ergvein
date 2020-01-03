@@ -31,11 +31,11 @@ runServerMIO env m = do
     Right a -> return a
 
 instance MonadDB ServerM where
-  getDbPool = asks envPool
+  getDbPool = asks envPersistencePool
   {-# INLINE getDbPool #-}
 
 instance MonadLDB ServerM where
-  getDb = asks ldb
+  getDb = asks envLevelDBContext
   {-# INLINE getDb #-}
 
 instance MonadUnliftIO ServerM where

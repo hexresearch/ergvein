@@ -4,7 +4,6 @@ import Data.Proxy
 import Servant.API
 import Servant.API.Generic
 import Ergvein.Index.API.V1
-import Ergvein.Types.Currency
 
 data IndexVersionedApi route = IndexVersionedApi
     { indexVersionedApi'v1 :: route :- "api" :> "v1" :> ToServant IndexApi AsApi
