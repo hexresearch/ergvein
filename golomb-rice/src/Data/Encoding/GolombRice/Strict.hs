@@ -9,6 +9,9 @@ module Data.Encoding.GolombRice.Strict
   , null
   , headMay
   , head
+    -- * Folding
+  , Shortcut(..) 
+  , foldl
     -- * Converting
   , fromList
   , toList

@@ -5,6 +5,7 @@ import           Data.Bits
 import           Data.ByteString                (ByteString)
 import           Data.Encoding.GolombRice.Item
 import           Data.Word
+import           GHC.Generics
 import           Prelude                 hiding ( null, head )
 import           Safe.Partial
 import qualified Data.Bitstream                as BS
@@ -115,6 +116,16 @@ toByteString :: GolombItem a
 toByteString (GolombRice _ s) = BS.toByteString s
 {-# INLINABLE toByteString #-}
 
+-- | Foldl over elements with shortcutting that allows to skip rest of set.
+foldl :: GolombItem a
+  => (b -> a -> Shortcut b) -- ^ Folding function with shorcutting
+  -> b -- ^ Starting accumulator
+  -> GolombRice a
+  -> b
+foldl f b0 (GolombRice p gs) = foldWords p f' b0 gs
+  where
+    f' !b = f b . fromWord
+
 -- | Encode single word in stream
 encodeWord
   :: Int -- ^ Number of bits P in reminder of each element
@@ -154,3 +165,25 @@ decodeWords p gs
     go !s = let
       (w, s') = decodeWord p s
       in if BS.null s' then [w] else w `seq` w : go s'
+
+-- | Helper that tells fold either to continue or stop scanning
+data Shortcut a = Next !a | Stop !a
+  deriving (Show, Eq, Generic)
+
+-- | Fold over stream of words
+foldWords
+  :: Int -- ^ Number of bits P in reminder of each element
+  -> (a -> Word64 -> Shortcut a) -- ^ Folding function with stop condition
+  -> a -- ^ Start accumulator
+  -> GolombStream
+  -> a -- ^ End accumulator
+foldWords p f a0 gs
+  | BS.null gs = a0
+  | otherwise = go a0 gs
+  where
+    go !a !s = let
+      (w, s') = decodeWord p s
+      sh = f a w
+      in case sh of
+          Next a' -> if BS.null s' then a' else go a' s'
+          Stop a' -> a'
