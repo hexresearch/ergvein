@@ -96,6 +96,11 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
 
   touchD <- holdDyn Unpressed pressedE
 
+
+  lastM <- holdDyn Nothing $ ffor movePrE \x -> Just x
+
+  --positionD <- holdDyn (0,0) $ fmap (lastClickD <- holdDyn (0,0) downE\(ClientRect{..}, _) -> (crLeft, crTop)) sizeE
+
   sqUpdE <- performEvent $ ffor movePrE $ \(x,y) -> pure (AddSquare,(x,y),hitOrMiss (x,y) coords)
 
   let predrawE = leftmost [sqUpdE, (Clear,(0,0),emptySq) <$ upPrE]
@@ -130,19 +135,19 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
 
   divClass "myDebugLog" $ dynText $ fmap showt selectedD
 
-  --eTick <- RD.tickLossy 0.01 aTime
+  eTick <- RD.tickLossy 0.01 aTime
 
   draw1E <- performEvent $ ffor (updated sqD) $ \a -> do
     sel <- sample . current $ selectedD
     pure (a,sel)
 --  let draw2E = fmap (\a -> (Nothing, Just a)) updated selectedD
 --  leftmost
-{-
+
   eTicken <- fmap R.switch . R.hold R.never $ R.leftmost
-    [ ()      <$ eTick <$ downE --startE
-    , R.never <$ upE--stopE
+    [ ()      <$ eTick <$ downE
+    , R.never <$ upE
     ]
--}
+
 
   dLine <- holdDyn (drawLineZero) $ ffor draw1E $ \((_,(x,y),r),sel) -> do
     drawLine canvasW canvasH x y 0 0 r
@@ -205,15 +210,10 @@ hitOrMiss (x,y) squares = fmap (\(num,(sqX, sqY, sqW, sqH)) -> if ((sqX < x) && 
   then (Just num, (sqX, sqY, sqW, sqH))
   else (Nothing, (sqX, sqY, sqW, sqH))
   ) squares
---  where
---    x = fromIntegral ix
---    y = fromIntegral iy
 
 clearCanvas :: Int -> Int -> CanvasF.CanvasM ()
 clearCanvas canvasW canvasH = do
   CanvasF.clearRectF 0.0 0.0 (fromIntegral canvasW) (fromIntegral canvasH)
-  CanvasF.beginPathF
-  CanvasF.closePathF
 
 drawGrid :: Int -> Int ->  [(Maybe Int, Square)] -> CanvasF.CanvasM ()
 drawGrid canvasW canvasH r = do
@@ -225,15 +225,10 @@ drawGrid canvasW canvasH r = do
     Nothing -> CanvasF.rectF (realToFrac a) (realToFrac b) (realToFrac c) (realToFrac d)) r
   CanvasF.strokeStyleF "#000000"
   CanvasF.strokeF
-  CanvasF.closePathF
 
 drawLine :: Int -> Int -> Double -> Double -> Double -> Double -> [(Maybe Int, Square)] -> CanvasF.CanvasM ()
 drawLine canvasW canvasH coordX coordY fromX fromY r = do
---  clearCanvas canvasW canvasH
---  CanvasF.beginPathF
   drawGrid canvasW canvasH r
---  CanvasF.moveToF fromX fromY
---  CanvasF.lineToF coordX coordY
   CanvasF.strokeStyleF "#000000"
   CanvasF.strokeF
 
@@ -253,10 +248,7 @@ drawLines (dc, mi) z = case dc of
         CanvasF.lineToF bx by
         CanvasF.strokeStyleF "#000000"
         CanvasF.strokeF
-        CanvasF.closePathF
          ) pointsList
-      --CanvasF.strokeStyleF "#000000"
-      --CanvasF.strokeF
       pure ()
   Clear -> pure ()
 

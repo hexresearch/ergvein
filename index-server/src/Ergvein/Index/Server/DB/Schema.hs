@@ -5,7 +5,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Types.Block
 import Ergvein.Index.Server.DB.Drv
-import Ergvein.Index.Server.BlockScanner.Types
+import Ergvein.Index.Server.BlockchainScanning.Types
 import Conversion
 import Database.Persist.Types
 

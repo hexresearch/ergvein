@@ -65,7 +65,7 @@ getTxOutHistory key = do
     _ -> pure Nothing
   where
     withSpentInfo utxo = do
-        maybeSTXO <- getParsed $ cachedTxInKey (txOutCacheRec'txHash utxo, txOutCacheRec'index  utxo)
+        maybeSTXO <- getParsed $ cachedTxInKey (txOutCacheRecTxHash utxo, txOutCacheRecIndex  utxo)
         pure $ case maybeSTXO of
           Just stxo -> STXO (utxo, stxo)
           _ -> UTXO utxo

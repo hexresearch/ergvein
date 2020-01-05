@@ -15,6 +15,8 @@ import Ergvein.Aeson
 
 import Ergvein.Interfaces.Ergo.Header
 import Ergvein.Interfaces.Ergo.Mining.AutolykosSolution
+import Ergvein.Interfaces.Ergo.Mining.Difficulty.RequiredDifficulty
+import Ergvein.Interfaces.Ergo.Modifiers.History.ModifierType
 import Ergvein.Interfaces.Ergo.NodeView.History.ErgoHistory
 import Ergvein.Interfaces.Ergo.Scorex.Core.Block
 import Ergvein.Interfaces.Ergo.Scorex.Crypto.Authds
@@ -24,7 +26,7 @@ import Ergvein.Interfaces.Ergo.Scorex.Util.Package
 data ErgoTransactionInput = ErgoTransactionInput {
   boxId :: !TransactionBoxId
 , spendingProof :: !SpendingProof
-, extension :: !(Properties SValue)
+, extension :: ! (Maybe (Properties SValue))
 }
 
 ----------------------------------------
@@ -137,7 +139,7 @@ data BlockHeader = BlockHeader {
 , extensionHash :: !Digest32
 , powSolutions :: !AutolykosSolution
 , height :: !Word32
-, difficulty :: !Word32
+, difficulty :: !Difficulty
 , parentId :: !ModifierId
 , votes :: !Votes
 , size :: !(Maybe Int32)
@@ -145,6 +147,21 @@ data BlockHeader = BlockHeader {
 , transactionsId :: !(Maybe ModifierId)
 , adProofsId :: !(Maybe ModifierId)
 }
+
+headerFromApi :: BlockHeader -> Header
+headerFromApi BlockHeader {..} = Header {
+    version             = version
+  , parentId            = parentId
+  , adProofsRoot        = AdProofsRoot adProofsRoot
+  , transactionsRoot    = TransactionsRoot transactionsRoot
+  , stateRoot           = stateRoot
+  , timestamp           = timestamp
+  , extensionRoot       = ExtensionRoot extensionHash
+  , nBits               = nBits
+  , height              = Height height
+  , votes               = votes
+  , powSolution         = powSolutions
+  }
 
 data BlockTransactions = BlockTransactions {
   headerId :: !ModifierId
@@ -155,7 +172,7 @@ data BlockTransactions = BlockTransactions {
 data Extension = Extension {
   headerId :: !ModifierId
 , digest :: !Digest32
-, fields :: ![HexJSON]
+, fields :: ![[HexJSON]]
 }
 
 data BlockADProofs = BlockADProofs {

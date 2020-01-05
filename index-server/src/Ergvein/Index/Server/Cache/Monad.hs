@@ -8,6 +8,7 @@ import Data.Default
 import Data.Either
 import Data.Flat
 import Data.Maybe
+
 import qualified Database.LevelDB as LDB
 import qualified Data.ByteString as BS
 
@@ -15,8 +16,8 @@ class (MonadLogger m, MonadUnliftIO m) => MonadLDB m where
   getDb :: m LDB.DB
 
 data AreaKey = AreaKey 
-  { key'prefix :: BS.ByteString
-  , key'base   :: BS.ByteString
+  { keyPrefix :: BS.ByteString
+  , keyBase   :: BS.ByteString
   } deriving (Generic, Flat)
 
 keyString :: (Flat k) => BS.ByteString -> k -> BS.ByteString
