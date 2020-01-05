@@ -96,8 +96,6 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
 
   touchD <- holdDyn Unpressed pressedE
 
-  --positionD <- holdDyn (0,0) $ fmap (lastClickD <- holdDyn (0,0) downE\(ClientRect{..}, _) -> (crLeft, crTop)) sizeE
-
   sqUpdE <- performEvent $ ffor movePrE $ \(x,y) -> pure (AddSquare,(x,y),hitOrMiss (x,y) coords)
 
   let predrawE = leftmost [sqUpdE, (Clear,(0,0),emptySq) <$ upPrE]
@@ -145,14 +143,6 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
     , R.never <$ upE--stopE
     ]
 -}
-  --dLine <- holdDyn (drawLineZero) $ ffor movePrE $ \(x,y) -> do
-  --  (fx, fy) <- liftM $ sample $ current $ lastClickDcrTop
-  --    (a, b) <- liftM $ sample $ current $ positionD
-  --  drawLineZero
-  --  drawLine canvasW canvasH (fromIntegral x) (fromIntegral y) 0 0 -- (fromIntegral (fx - a)) (fromIntegral (fy - b))
-
-  --dLines <- holdDyn (drawLinesZero) $ ffor (updated selectedD) $ \sel -> do
-  --  drawLines sel coords
 
   dLine <- holdDyn (drawLineZero) $ ffor draw1E $ \((_,(x,y),r),sel) -> do
     drawLine canvasW canvasH x y 0 0 r
