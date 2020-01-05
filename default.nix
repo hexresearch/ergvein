@@ -24,7 +24,7 @@ in reflex-platform.project ({ pkgs, ... }: {
     ergvein-interface-ergo = ./interfaces/ergo;
     ergo-api = ./ergo-api;
     reflex-dom-retractable = ./retractable;
-#    reflex-dom-canvas = ./reflex-dom-canvas;
+    reflex-dom-canvas = ./reflex-dom-canvas;
     reflex-external-ref = ./reflex-external-ref;
     reflex-localize = ./reflex-localize;
   };

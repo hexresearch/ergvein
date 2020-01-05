@@ -24,7 +24,6 @@ import qualified Reflex.Dom.CanvasBuilder.Types   as Canvas
 import qualified Reflex.Dom.CanvasDyn             as CDyn
 
 
-import qualified System.Random                    as Rnd
 import           Control.Lens                     (to, (^.))
 import           Control.Monad.IO.Class           (liftIO)
 import qualified Data.Map as Map
@@ -66,7 +65,6 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
       ]
 
   aTime  <- liftIO $ getCurrentTime
-  stdGen <- liftIO $ Rnd.getStdGen
 
   startE <- RD.button "Start"
   stopE  <- RD.button "Stop"
@@ -97,7 +95,7 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
   touchD <- holdDyn Unpressed pressedE
 
 
-  lastM <- holdDyn Nothing $ ffor movePrE \x -> Just x
+  --lastM <- holdDyn Nothing $ ffor movePrE \x -> Just x
 
   --positionD <- holdDyn (0,0) $ fmap (lastClickD <- holdDyn (0,0) downE\(ClientRect{..}, _) -> (crLeft, crTop)) sizeE
 

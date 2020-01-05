@@ -66,6 +66,8 @@ library
         Ergvein.Wallet.Page.Initial
         Ergvein.Wallet.Page.Password
         Ergvein.Wallet.Page.Seed
+        Ergvein.Wallet.Page.PatternKey
+        Ergvein.Wallet.Page.PatternKeyUtils.Utils
         Ergvein.Wallet.Password
         Ergvein.Wallet.Platform
         Ergvein.Wallet.Resize
@@ -129,6 +131,7 @@ library
         reflex >=0.4 && <0.7,
         reflex-dom >=0.4 && <0.7,
         reflex-dom-core -any,
+        reflex-dom-canvas -any,
         reflex-dom-retractable -any,
         reflex-external-ref -any,
         reflex-localize -any,
@@ -136,6 +139,7 @@ library
         semialign -any,
         servant -any,
         servant-client >=0.16 && <0.17,
+        split >=0.2.3.3 && <0.3,
         stm >=2.4 && <2.6,
         template-haskell -any,
         text >=1.2 && <1.3,

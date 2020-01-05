@@ -1,6 +1,5 @@
 module Ergvein.Wallet.Page.PatternKeyUtils.Utils(
-    dFloatFeed
-  , keepFixedSeq
+    keepFixedSeq
   , lineInstruction
   , zeroLine
   , emptyDataSet
@@ -18,8 +17,6 @@ import           Control.Lens         (both, cons, makeLenses, makePrisms, over,
                                        (^.), _1, _2)
 
 import           Control.Monad.Fix    (MonadFix)
-import           System.Random        (StdGen)
-import qualified System.Random        as Rnd
 import           Data.Function        ((&))
 import           Data.Text            (Text)
 import           Data.Sequence        (Seq)
@@ -28,24 +25,6 @@ import           Reflex               (Dynamic, Event, MonadHold, Reflex, (<@))
 import qualified Reflex               as R
 import           Reflex.Dom.Canvas.Context2D (CanvasM)
 import qualified Reflex.Dom.Canvas.Context2D as CanvasF
-
-dFloatFeed
-  :: ( Reflex t
-     , MonadHold t m
-     , MonadFix m
-     )
-  => (Float, Float)
-  -> StdGen
-  -> Event t ()
-  -> m (Dynamic t Float)
-dFloatFeed lohi stdGen eTickInfo =
-  let
-    rr = Rnd.randomR lohi
-  in mdo
-    dRGen <- R.holdDyn (rr stdGen)
-      $ (rr . snd) <$> R.current dRGen <@ eTickInfo
-
-    pure ( fst <$> dRGen )
 
 keepFixedSeq
   :: Int
