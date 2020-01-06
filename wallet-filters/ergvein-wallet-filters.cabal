@@ -23,8 +23,10 @@ library
       base
     , aeson
     , bytestring        >= 0.10
+    , containers        >= 0.5
     , ergvein-common
-    , flat
+    , attoparsec        >= 0.13
+    , attoparsec-binary >= 0.2  && < 0.3
     , golomb-rice       >= 0.1  && < 0.25
     , haskoin-core      >= 0.8
     , memory            >= 0.11
@@ -32,9 +34,10 @@ library
     , vector-algorithms >= 0.8
     , wide-word         >= 0.1
   default-extensions:
-    DeriveGeneric
     DeriveAnyClass
+    DeriveGeneric
     OverloadedStrings
+    RecordWildCards
     TemplateHaskell
 
 test-suite ergvein-wallet-filters-test
