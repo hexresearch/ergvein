@@ -1,0 +1,1 @@
+cabal new-run exe:ergvein-checkpoints-generator -- listen ./configuration.yaml
