@@ -1,0 +1,37 @@
+name:                ergvein-checkpoints-generator
+version:             0.1.0.0
+synopsis:            Ergvein checkpoints generator
+description:         See README.md
+category:            Cryptocurrency
+build-type:          Simple
+cabal-version:       >=1.10
+license:             MIT
+license-file:        LICENSE
+copyright:           2019 ATUM SOLUTIONS AG
+author:              Anton Gushcha, Aminion, Vladimir Krutkin, Levon Oganyan
+maintainer:          Anton Gushcha <ncrashed@protonmail.com>, Vladimir Krutkin <krutkinvs@gmail.com>
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+    Crypto.Hash.MerkleTree
+    Scan
+  build-depends:
+        base                     >= 4.7     &&  < 4.13
+      , protolude
+      , cryptonite
+      , cereal
+      , memory
+      , bytestring
+      , random
+  default-language:    Haskell2010
+  default-extensions:
+executable ergvein-checkpoints-generator
+  hs-source-dirs:
+      app
+  main-is:             Main.hs
+  ghc-options:
+  build-depends:
+      base
+  default-language:    Haskell2010
+  default-extensions:

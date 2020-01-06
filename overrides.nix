@@ -31,6 +31,7 @@ in (self: super: let
     ergvein-crypto = ingnoreGarbage super.ergvein-crypto;
     ergvein-index-api = ingnoreGarbage super.ergvein-index-api;
     ergvein-index-server = ingnoreGarbage super.ergvein-index-server;
+    ergvein-checkpoints-generator = ingnoreGarbage super.ergvein-checkpoints-generator;
     ergvein-index-client = ingnoreGarbage super.ergvein-index-client;
     ergvein-wallet = ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-wallet" ./wallet walletOpts {});
     ergvein-wallet-android = ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-wallet-android" ./wallet-android walletOpts {});

@@ -34,6 +34,7 @@ packages:
 - index-api
 - index-client
 - index-server
+- checkpoints-generator
 - interfaces/ergo
 - reflex-external-ref
 - reflex-localize

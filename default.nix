@@ -16,6 +16,7 @@ in reflex-platform.project ({ pkgs, ... }: {
     ergvein-index-api = ./index-api;
     ergvein-index-client = ./index-client;
     ergvein-index-server = ./index-server;
+    ergvein-checkpoints-generator = ./checkpoints-generator;
     ergvein-wallet = ./wallet;
     ergvein-wallet-android = ./wallet-android;
     ergvein-wallet-desktop = ./wallet-desktop;
@@ -33,6 +34,7 @@ in reflex-platform.project ({ pkgs, ... }: {
       "ergvein-crypto"
       "ergvein-index-api"
       "ergvein-index-server"
+      "ergvein-checkpoints-generator"
       "ergvein-wallet"
       "ergvein-wallet-native"
       "ergvein-wallet-desktop"
