@@ -21,7 +21,7 @@ type GolombStream = BS.Bitstream BS.Right
 data GolombRice a = GolombRice {
   golombRiceP      :: !Int -- ^ Number of bits P in remainder part of encoding
 , golombRiceStream :: !GolombStream -- ^ Big endian stream of bits
-}
+} deriving (Show, Generic)
 
 -- | Create empty gololmb rice stream
 empty
