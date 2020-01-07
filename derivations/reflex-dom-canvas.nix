@@ -7,8 +7,8 @@ mkDerivation {
   version = "0.4.0.1";
   src = fetchgit {
     url = "https://github.com/hexresearch/reflex-dom-canvas.git";
-    sha256 = "16lv03djblzlpw7i4clzpw7417pqbplxw9qwm9ir2ap5xwnsrhdf";
-    rev = "6c9d7ee534c8b17db3520ee2f56a0d3693080a28";
+    sha256 = "1slq8gmhy8agjssyzfs6y0sna427b7lwvvbqps9w87h8h0d3z1pr";
+    rev = "2d067bb9e806aba5a749d74b175aaf154cf0945d";
     fetchSubmodules = true;
   };
   libraryHaskellDepends = [

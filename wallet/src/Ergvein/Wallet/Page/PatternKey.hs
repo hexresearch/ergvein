@@ -95,8 +95,8 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
   touchD <- holdDyn Unpressed pressedE
 
 
-  --lastM <- holdDyn Nothing $ ffor movePrE \x -> Just x
 
+  --lastM <- holdDyn Nothing $ ffor movePrE \x -> Just x
   --positionD <- holdDyn (0,0) $ fmap (lastClickD <- holdDyn (0,0) downE\(ClientRect{..}, _) -> (crLeft, crTop)) sizeE
 
   sqUpdE <- performEvent $ ffor movePrE $ \(x,y) -> pure (AddSquare,(x,y),hitOrMiss (x,y) coords)
@@ -132,6 +132,8 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
       Unpressed -> pure (Clear, [])
 
   divClass "myDebugLog" $ dynText $ fmap showt selectedD
+  divClass "myDebugLog" $ do
+     traverse_ text $ fmap showt emptySq
 
   eTick <- RD.tickLossy 0.01 aTime
 
@@ -141,11 +143,11 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
 --  let draw2E = fmap (\a -> (Nothing, Just a)) updated selectedD
 --  leftmost
 
-  eTicken <- fmap R.switch . R.hold R.never $ R.leftmost
+{-  eTicken <- fmap R.switch . R.hold R.never $ R.leftmost
     [ ()      <$ eTick <$ downE
     , R.never <$ upE
-    ]
-
+    ]м
+-}
 
   dLine <- holdDyn (drawLineZero) $ ffor draw1E $ \((_,(x,y),r),sel) -> do
     drawLine canvasW canvasH x y 0 0 r
@@ -227,8 +229,12 @@ drawGrid canvasW canvasH r = do
 drawLine :: Int -> Int -> Double -> Double -> Double -> Double -> [(Maybe Int, Square)] -> CanvasF.CanvasM ()
 drawLine canvasW canvasH coordX coordY fromX fromY r = do
   drawGrid canvasW canvasH r
+  CanvasF.lineWidthF 2
+  CanvasF.moveToF 0 0
+  CanvasF.lineToF coordX coordY
   CanvasF.strokeStyleF "#000000"
   CanvasF.strokeF
+  CanvasF.lineWidthF 1
 
 drawLines :: (DrawCommand, [Maybe Int]) -> [(Int, Square)] -> CanvasF.CanvasM ()
 drawLines (dc, mi) z = case dc of
@@ -242,10 +248,13 @@ drawLines (dc, mi) z = case dc of
             Nothing -> (0,0) ) prepList
       traverse_ (\[(ax,ay),(bx,by)] -> do
         CanvasF.beginPathF
+        CanvasF.lineWidthF 2
         CanvasF.moveToF ax ay
         CanvasF.lineToF bx by
         CanvasF.strokeStyleF "#000000"
         CanvasF.strokeF
+        CanvasF.lineWidthF 1
+
          ) pointsList
       pure ()
   Clear -> pure ()
