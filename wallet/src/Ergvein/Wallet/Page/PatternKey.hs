@@ -36,7 +36,7 @@ import           Data.Time                        (UTCTime, getCurrentTime)
 import qualified Ergvein.Wallet.Page.PatternKeyUtils.Utils as UT
 
 
-import Language.Javascript.JSaddle
+import Language.Javascript.JSaddle hiding ((!!))
 import Data.Maybe
 
 import qualified GHCJS.DOM.Blob as Blob
@@ -52,12 +52,6 @@ data TouchState = Pressed | Unpressed deriving (Show)
 patternKeyWidget :: MonadFrontBase t m => m ()
 patternKeyWidget = divClass "myTestDiv" $ mdo
   let
-    canvasH = 320
-    canvasW = 320
-    dataN   = 20
-    coords = zip [0..] $ reqList canvasW canvasW 3
-    emptySq = zip (take 9 (repeat Nothing)) $ reqList canvasW canvasW 3
-
     canvasAttrs = Map.fromList
       [ ("height", T.pack . show $ canvasH)
       , ("width" , T.pack . show $ canvasW)
@@ -90,7 +84,7 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
   downPrE  <- performEvent $ ffor downE  prepCoord
   upPrE    <- performEvent $ ffor upE    prepCoord
 
-  let pressedE = leftmost [Pressed <$ downE, Unpressed <$ upE]
+  let pressedE = leftmost [Pressed <$ tdownE, Unpressed <$ tupE]
 
   touchD <- holdDyn Unpressed pressedE
 
@@ -99,9 +93,9 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
   --lastM <- holdDyn Nothing $ ffor movePrE \x -> Just x
   --positionD <- holdDyn (0,0) $ fmap (lastClickD <- holdDyn (0,0) downE\(ClientRect{..}, _) -> (crLeft, crTop)) sizeE
 
-  sqUpdE <- performEvent $ ffor movePrE $ \(x,y) -> pure (AddSquare,(x,y),hitOrMiss (x,y) coords)
+  sqUpdE <- performEvent $ ffor tmovePrE $ \(x,y) -> pure (AddSquare,(x,y),hitOrMiss (x,y) coords)
 
-  let predrawE = leftmost [sqUpdE, (Clear,(0,0),emptySq) <$ upPrE]
+  let predrawE = leftmost [sqUpdE, (Clear,(0,0),emptySq) <$ tupPrE]
 
   sqD <- holdDyn (Clear,(0,0),emptySq) $ flip pushAlways predrawE $ \(dc,cur,sqs) -> do
     touchS <- sample . current $ touchD
@@ -132,14 +126,28 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
       Unpressed -> pure (Clear, [])
 
   divClass "myDebugLog" $ dynText $ fmap showt selectedD
-  divClass "myDebugLog" $ do
-     traverse_ text $ fmap showt emptySq
+
+  let draw2E = updated selectedD
+  let draw2E' = fmap (\(a,lst) -> case a of
+        Clear -> (Clear,(0,0))
+        AddSquare -> if null lst
+          then (AddSquare,(0,0))
+          else (AddSquare,(sqr2tuple (lst :: [Maybe Int])))
+            ) draw2E
+
+  debugMoveD <- holdDyn (Clear,(0,0)) draw2E'
+
+  divClass "myDebugLog" $ dynText $ fmap showt debugMoveD
+
+--  divClass "myDebugLog" $ do
+--     traverse_ text $ fmap showt emptySq
 
   eTick <- RD.tickLossy 0.01 aTime
 
   draw1E <- performEvent $ ffor (updated sqD) $ \a -> do
     sel <- sample . current $ selectedD
-    pure (a,sel)
+    ln <- sample . current $ debugMoveD
+    pure (a,sel,ln)
 --  let draw2E = fmap (\a -> (Nothing, Just a)) updated selectedD
 --  leftmost
 
@@ -149,8 +157,8 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
     ]м
 -}
 
-  dLine <- holdDyn (drawLineZero) $ ffor draw1E $ \((_,(x,y),r),sel) -> do
-    drawLine canvasW canvasH x y 0 0 r
+  dLine <- holdDyn (drawLineZero) $ ffor draw1E $ \((_,(x,y),r),sel,ln) -> do
+    drawLine canvasW canvasH x y 0 0 ln r
     drawLines sel coords
 
   d2D <- fmap (^. Canvas.canvasInfo_context) <$> CDyn.dContext2d (Canvas.CanvasConfig canvasEl [])
@@ -161,9 +169,9 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
 --    $ R.current dFloatFeed' <@ eTicken
 
 --  _ <- CDyn.nextFrameWithCxFree dLine d2D $ () <$ tmovePrE
-  _ <- CDyn.nextFrameWithCxFree dGrid d2D $ leftmost [() <$ downE, () <$ upE]
+  _ <- CDyn.nextFrameWithCxFree dGrid d2D $ leftmost [() <$ tdownE, () <$ tupE]
 
-  _ <- CDyn.nextFrameWithCxFree dLine d2D $ () <$ moveE
+  _ <- CDyn.nextFrameWithCxFree dLine d2D $ () <$ tmoveE
 
   _ <- CDyn.nextFrameWithCxFree dClear d2D stopE
 
@@ -191,6 +199,18 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
 -}
 
   pure ()
+    where
+      sqr2tuple :: [Maybe Int] -> (Double, Double)
+      sqr2tuple lst = case (last lst) of
+        Just num -> (\(a,b,c,d) -> (a+c/2,b+d/2)) $ snd $ emptySq !! num
+        Nothing -> (0,0)
+
+      canvasH = 320
+      canvasW = 320
+      dataN   = 20
+      coords = zip [0..] $ reqList canvasW canvasW 3
+      emptySq = zip (take 9 (repeat Nothing)) $ reqList canvasW canvasW 3
+    -- (a+c/2,b+d/2)
 
 jstFilter :: (Maybe Int, a) -> Bool
 jstFilter a = case (fst a) of
@@ -226,15 +246,21 @@ drawGrid canvasW canvasH r = do
   CanvasF.strokeStyleF "#000000"
   CanvasF.strokeF
 
-drawLine :: Int -> Int -> Double -> Double -> Double -> Double -> [(Maybe Int, Square)] -> CanvasF.CanvasM ()
-drawLine canvasW canvasH coordX coordY fromX fromY r = do
+drawLine :: Int -> Int -> Double -> Double -> Double -> Double -> (DrawCommand,(Double,Double)) -> [(Maybe Int, Square)] -> CanvasF.CanvasM ()
+drawLine canvasW canvasH coordX coordY fromX fromY (a,(cntX,cntY)) r = do
   drawGrid canvasW canvasH r
   CanvasF.lineWidthF 2
-  CanvasF.moveToF 0 0
-  CanvasF.lineToF coordX coordY
-  CanvasF.strokeStyleF "#000000"
-  CanvasF.strokeF
-  CanvasF.lineWidthF 1
+  case a of
+    Clear -> do
+      CanvasF.strokeStyleF "#000000"
+      CanvasF.strokeF
+      CanvasF.lineWidthF 1
+    AddSquare -> do
+      CanvasF.moveToF cntX cntY
+      CanvasF.lineToF coordX coordY
+      CanvasF.strokeStyleF "#000000"
+      CanvasF.strokeF
+      CanvasF.lineWidthF 1
 
 drawLines :: (DrawCommand, [Maybe Int]) -> [(Int, Square)] -> CanvasF.CanvasM ()
 drawLines (dc, mi) z = case dc of
