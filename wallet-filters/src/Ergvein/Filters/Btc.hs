@@ -105,8 +105,8 @@ type InputTxs = [Tx]
 --
 -- Network argument controls whether we are in testnet or mainnet.
 makeBtcFilter :: Network -> InputTxs -> Block -> BtcAddrFilter
-makeBtcFilter net intxs block = BtcAddrFilter {
-    btcAddrFilterN = n
+makeBtcFilter net intxs block = BtcAddrFilter
+  { btcAddrFilterN   = n
   , btcAddrFilterGcs = constructGcs btcDefP sipkey btcDefM totalSet
   }
  where
@@ -114,9 +114,9 @@ makeBtcFilter net intxs block = BtcAddrFilter {
     (fmap getSegWitAddr . txOut)
   outputSet = makeSegWitSet $ blockTxns block
   inputSet  = makeSegWitSet intxs
-  totalSet = V.fromList $ outputSet <> inputSet
-  n = fromIntegral $ V.length totalSet
-  sipkey = blockSipHash block
+  totalSet  = V.fromList $ outputSet <> inputSet
+  n         = fromIntegral $ V.length totalSet
+  sipkey    = blockSipHash . headerHash . blockHeader $ block
 
 -- | Extract segwit address from transaction output
 getSegWitAddr :: TxOut -> Maybe SegWitAddress
@@ -128,9 +128,8 @@ getSegWitAddr tout = case decodeOutputBS $ scriptOutput tout of
 -- | Siphash key for filter is first 16 bytes of the hash (in standard little-endian representation)
 -- of the block for which the filter is constructed. This ensures the key is deterministic while
 -- still varying from block to block.
-blockSipHash :: Block -> SipKey
-blockSipHash =
-  fromBs . BS.reverse . encode . getBlockHash . headerHash . blockHeader
+blockSipHash :: BlockHash -> SipKey
+blockSipHash = fromBs . BS.reverse . encode . getBlockHash
  where
   toWord64 =
     fst . foldl (\(!acc, !i) b -> (acc + fromIntegral b ^ i, i + 1)) (0, 1)
@@ -138,5 +137,13 @@ blockSipHash =
                      (toWord64 $ BS.unpack . BS.take 8 . BS.drop 8 $ bs)
 
 -- | Check that given address is located in the filter.
-applyBtcFilter :: Network -> BtcAddrFilter -> SegWitAddress -> Bool
-applyBtcFilter = undefined
+applyBtcFilter :: Network -> BlockHash -> BtcAddrFilter -> SegWitAddress -> Bool
+applyBtcFilter net bhash BtcAddrFilter {..} addr = matchGcs btcDefP
+                                                            sipkey
+                                                            btcDefM
+                                                            btcAddrFilterN
+                                                            btcAddrFilterGcs
+                                                            item
+ where
+  item   = encodeSegWitAddress net addr
+  sipkey = blockSipHash bhash
