@@ -22,11 +22,12 @@ library
   build-depends:
       base
     , aeson
-    , bytestring        >= 0.10
-    , containers        >= 0.5
-    , ergvein-common
     , attoparsec        >= 0.13
     , attoparsec-binary >= 0.2  && < 0.3
+    , bytestring        >= 0.10
+    , cereal
+    , containers        >= 0.5
+    , ergvein-common
     , golomb-rice       >= 0.1  && < 0.25
     , haskoin-core      >= 0.8
     , memory            >= 0.11

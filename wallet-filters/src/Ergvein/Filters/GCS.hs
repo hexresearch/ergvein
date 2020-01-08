@@ -15,6 +15,7 @@
 {-# LANGUAGE MultiWayIf #-}
 module Ergvein.Filters.GCS(
     GCS
+  , SipKey
   , encodeGcs
   , decodeGcs
   , constructGcs

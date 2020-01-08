@@ -1,6 +1,7 @@
 -- | Implements BIP-158 like filter for Bech32 addresses. Note
 -- that IT IS NOT exact BIP-158 as we don't put all public and redeem scripts
 -- inside the filter to save bandwidth.
+{-# LANGUAGE BangPatterns #-}
 module Ergvein.Filters.Btc
   ( -- * SegWit address
     SegWitAddress(..)
@@ -17,9 +18,12 @@ where
 
 import qualified Data.Attoparsec.Binary as A
 import qualified Data.Attoparsec.ByteString as A
+import           Data.ByteArray.Hash (SipKey(..))
 import           Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Builder as B
+import           Data.Serialize (encode)
 import           Data.Word
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
@@ -81,6 +85,15 @@ type InputTxs = Map TxHash Tx
 -- in the given block.
 makeBtcFilter :: InputTxs -> Block -> BtcAddrFilter
 makeBtcFilter txs block = undefined
+
+-- | Siphash key for filter is first 16 bytes of the hash (in standard little-endian representation)
+-- of the block for which the filter is constructed. This ensures the key is deterministic while
+-- still varying from block to block.
+blockSipHash :: Block -> SipKey
+blockSipHash = fromBs . BS.reverse . encode . getBlockHash . headerHash . blockHeader
+  where
+    toWord64 = fst . foldl (\(!acc, !i) b -> (acc + fromIntegral b ^ i, i+1)) (0, 1)
+    fromBs bs = SipKey (toWord64 $ BS.unpack . BS.take 8 $ bs) (toWord64 $ BS.unpack . BS.take 8 . BS.drop 8 $ bs)
 
 -- | Check that given address is located in the filter.
 applyBtcFilter :: BtcAddrFilter -> SegWitAddress -> Bool
