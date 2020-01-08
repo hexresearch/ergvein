@@ -40,6 +40,7 @@ import qualified Data.ByteString.Builder       as B
 import qualified Data.ByteString.Lazy          as BSL
 import qualified Data.Map.Strict               as M
 import qualified Data.Text.Encoding            as T
+import qualified Data.Vector                   as V
 
 -- | Special wrapper around SegWit address (P2WPKH or P2WSH) to distinct it from other types of addresses.
 data SegWitAddress = SegWitPubkey !Hash160 | SegWitScript !Hash256
@@ -69,6 +70,11 @@ encodeSegWitAddress n = T.encodeUtf8 . addrToString n . fromSegWit
 btcDefP :: Int
 btcDefP = 19
 
+-- | Default value for M parameter (the target false positive rate).
+-- Set to fixed `784931` according to BIP-158.
+btcDefM :: Word64
+btcDefM = 784931
+
 -- | BIP 158 filter that tracks only Bech32 SegWit addresses that are used in specific block.
 data BtcAddrFilter = BtcAddrFilter {
   btcAddrFilterN   :: !Word64 -- ^ the total amount of items in filter
@@ -91,7 +97,7 @@ decodeBtcAddrFilter = A.parseOnly (parser <* A.endOfInput)
       <*> fmap (decodeGcs btcDefP) A.takeByteString
 
 -- | Contains each input tx for each tx in a block
-type InputTxs = Map TxHash Tx
+type InputTxs = [Tx]
 
 -- | Add each segwit transaction to filter. We add Bech32 addresses for outputs that
 -- are used as inputs in the given block and addresses that are outputs of transactions
@@ -99,10 +105,18 @@ type InputTxs = Map TxHash Tx
 --
 -- Network argument controls whether we are in testnet or mainnet.
 makeBtcFilter :: Network -> InputTxs -> Block -> BtcAddrFilter
-makeBtcFilter net txs block = undefined
+makeBtcFilter net intxs block = BtcAddrFilter {
+    btcAddrFilterN = n
+  , btcAddrFilterGcs = constructGcs btcDefP sipkey btcDefM totalSet
+  }
  where
-  outputSet =
-    catMaybes $ concatMap (fmap getSegWitAddr . txOut) $ blockTxns block
+  makeSegWitSet = fmap (encodeSegWitAddress net) . catMaybes . concatMap
+    (fmap getSegWitAddr . txOut)
+  outputSet = makeSegWitSet $ blockTxns block
+  inputSet  = makeSegWitSet intxs
+  totalSet = V.fromList $ outputSet <> inputSet
+  n = fromIntegral $ V.length totalSet
+  sipkey = blockSipHash block
 
 -- | Extract segwit address from transaction output
 getSegWitAddr :: TxOut -> Maybe SegWitAddress
