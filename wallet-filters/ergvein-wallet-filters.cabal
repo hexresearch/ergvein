@@ -31,6 +31,7 @@ library
     , golomb-rice       >= 0.1  && < 0.25
     , haskoin-core      >= 0.8
     , memory            >= 0.11
+    , text              >= 1.2
     , vector            >= 0.12
     , vector-algorithms >= 0.8
     , wide-word         >= 0.1

@@ -26,6 +26,7 @@ import           Ergvein.Filters.GCS
 import           GHC.Generics
 import           Network.Haskoin.Address
 import           Network.Haskoin.Block
+import           Network.Haskoin.Constants
 import           Network.Haskoin.Crypto         ( Hash160
                                                 , Hash256
                                                 )
@@ -38,6 +39,7 @@ import qualified Data.ByteString               as BS
 import qualified Data.ByteString.Builder       as B
 import qualified Data.ByteString.Lazy          as BSL
 import qualified Data.Map.Strict               as M
+import qualified Data.Text.Encoding            as T
 
 -- | Special wrapper around SegWit address (P2WPKH or P2WSH) to distinct it from other types of addresses.
 data SegWitAddress = SegWitPubkey !Hash160 | SegWitScript !Hash256
@@ -55,6 +57,12 @@ fromSegWit :: SegWitAddress -> Address
 fromSegWit a = case a of
   SegWitPubkey v -> WitnessPubKeyAddress v
   SegWitScript v -> WitnessScriptAddress v
+
+-- | Convert address to format that is passed to filter. Address is converted
+-- to string and encoded as bytes. Network argument controls whether we are
+-- in testnet or mainnet.
+encodeSegWitAddress :: Network -> SegWitAddress -> ByteString
+encodeSegWitAddress n = T.encodeUtf8 . addrToString n . fromSegWit
 
 -- | Default value for P parameter (amount of bits in golomb rice encoding).
 -- Set to fixed `19` according to BIP-158.
@@ -88,8 +96,10 @@ type InputTxs = Map TxHash Tx
 -- | Add each segwit transaction to filter. We add Bech32 addresses for outputs that
 -- are used as inputs in the given block and addresses that are outputs of transactions
 -- in the given block.
-makeBtcFilter :: InputTxs -> Block -> BtcAddrFilter
-makeBtcFilter txs block = undefined
+--
+-- Network argument controls whether we are in testnet or mainnet.
+makeBtcFilter :: Network -> InputTxs -> Block -> BtcAddrFilter
+makeBtcFilter net txs block = undefined
  where
   outputSet =
     catMaybes $ concatMap (fmap getSegWitAddr . txOut) $ blockTxns block
@@ -114,5 +124,5 @@ blockSipHash =
                      (toWord64 $ BS.unpack . BS.take 8 . BS.drop 8 $ bs)
 
 -- | Check that given address is located in the filter.
-applyBtcFilter :: BtcAddrFilter -> SegWitAddress -> Bool
+applyBtcFilter :: Network -> BtcAddrFilter -> SegWitAddress -> Bool
 applyBtcFilter = undefined
