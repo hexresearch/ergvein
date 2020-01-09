@@ -191,7 +191,7 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   {-# INLINE storeWallet #-}
 
 -- | Execute action under authorized context or return the given value as result
--- is user is not authorized. Each time the login info changes (user logs out or logs in)
+-- if user is not authorized. Each time the login info changes (user logs out or logs in)
 -- the widget is updated.
 liftAuth :: MonadFrontBase t m => m a -> ErgveinM t m a -> m (Dynamic t a)
 liftAuth ma0 ma = mdo
