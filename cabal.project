@@ -14,4 +14,3 @@ packages:
   ./wallet-types
   ./interfaces/ergo
   ./ergo-api
-shared: true
