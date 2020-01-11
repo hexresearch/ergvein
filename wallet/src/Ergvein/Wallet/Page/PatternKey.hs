@@ -60,10 +60,11 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
 
   aTime  <- liftIO $ getCurrentTime
 
-  startE <- RD.button "Start"
-  stopE  <- RD.button "Stop"
+  buildE <- delay 0.1 =<< getPostBuild
 
   (canvasEl, _) <- RD.elAttr' "canvas" canvasAttrs RD.blank
+
+  rawJSBeginPath $ _element_raw canvasEl
 
   let elP = elementPosition $ _element_raw canvasEl
 
@@ -76,26 +77,18 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
       downE  = domEvent Mousedown canvasEl
       upE    = domEvent Mouseup canvasEl
       dGrid  = constDyn $ drawGrid canvasW canvasH emptySq
-      dClear = constDyn $ clearCanvas canvasW canvasH
+--      dClear = constDyn $ clearCanvas canvasW canvasH
+      pressedE = leftmost [Pressed <$ downE, Unpressed <$ upE]
+      predrawE = leftmost [sqUpdE, (Clear,(0,0),emptySq) <$ upPrE]
+      selE = fmap (\(dc, sqs) -> (dc, fmap fst sqs)) $ fmap (\(dc,sqs) -> (dc, filter jstFilter sqs)) $ fmap (\(dc,_,sqs) -> (dc,sqs)) predrawE
   tmovePrE <- performEvent $ ffor tmoveE prepTCoord
   tdownPrE <- performEvent $ ffor tdownE prepTCoord
   tupPrE   <- performEvent $ ffor tupE   prepTCoord
   movePrE  <- performEvent $ ffor moveE  prepCoord
   downPrE  <- performEvent $ ffor downE  prepCoord
   upPrE    <- performEvent $ ffor upE    prepCoord
-
-  let pressedE = leftmost [Pressed <$ tdownE, Unpressed <$ tupE]
-
   touchD <- holdDyn Unpressed pressedE
-
-
-
-  --lastM <- holdDyn Nothing $ ffor movePrE \x -> Just x
-  --positionD <- holdDyn (0,0) $ fmap (lastClickD <- holdDyn (0,0) downE\(ClientRect{..}, _) -> (crLeft, crTop)) sizeE
-
-  sqUpdE <- performEvent $ ffor tmovePrE $ \(x,y) -> pure (AddSquare,(x,y),hitOrMiss (x,y) coords)
-
-  let predrawE = leftmost [sqUpdE, (Clear,(0,0),emptySq) <$ tupPrE]
+  sqUpdE <- performEvent $ ffor movePrE $ \(x,y) -> pure (AddSquare,(x,y),hitOrMiss (x,y) coords)
 
   sqD <- holdDyn (Clear,(0,0),emptySq) $ flip pushAlways predrawE $ \(dc,cur,sqs) -> do
     touchS <- sample . current $ touchD
@@ -106,8 +99,6 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
           pure (AddSquare,cur,concatMyLists sqs sqsv)
         Clear -> pure (Clear,(0,0),emptySq)
       Unpressed -> pure (Clear,(0,0),emptySq)
-
-  let selE = fmap (\(dc, sqs) -> (dc, fmap fst sqs)) $ fmap (\(dc,sqs) -> (dc, filter jstFilter sqs)) $ fmap (\(dc,_,sqs) -> (dc,sqs)) predrawE
 
   selectedD <- holdDyn (Clear,[]) $ flip pushAlways selE $ \(dc, sqs) -> do
     touchS <- sample . current $ touchD
@@ -125,7 +116,6 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
         Clear -> pure (Clear, [])
       Unpressed -> pure (Clear, [])
 
-  divClass "myDebugLog" $ dynText $ fmap showt selectedD
 
   let draw2E = updated selectedD
   let draw2E' = fmap (\(a,lst) -> case a of
@@ -135,68 +125,20 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
           else (AddSquare,(sqr2tuple (lst :: [Maybe Int])))
             ) draw2E
 
-  debugMoveD <- holdDyn (Clear,(0,0)) draw2E'
-
-  divClass "myDebugLog" $ dynText $ fmap showt debugMoveD
-
---  divClass "myDebugLog" $ do
---     traverse_ text $ fmap showt emptySq
-
-  eTick <- RD.tickLossy 0.01 aTime
+  moveD <- holdDyn (Clear,(0,0)) draw2E'
 
   draw1E <- performEvent $ ffor (updated sqD) $ \a -> do
     sel <- sample . current $ selectedD
-    ln <- sample . current $ debugMoveD
+    ln <- sample . current $ moveD
     pure (a,sel,ln)
---  let draw2E = fmap (\a -> (Nothing, Just a)) updated selectedD
---  leftmost
-
-{-  eTicken <- fmap R.switch . R.hold R.never $ R.leftmost
-    [ ()      <$ eTick <$ downE
-    , R.never <$ upE
-    ]м
--}
 
   dLine <- holdDyn (drawLineZero) $ ffor draw1E $ \((_,(x,y),r),sel,ln) -> do
     drawLine canvasW canvasH x y 0 0 ln r
     drawLines sel coords
 
   d2D <- fmap (^. Canvas.canvasInfo_context) <$> CDyn.dContext2d (Canvas.CanvasConfig canvasEl [])
-
-
---  dFloatFeed' <- UT.dFloatFeed ( 0.0, 450.0 ) stdGen eTicken
---  dDataLines <- UT.dDataz canvasH canvasW dataN
---    $ R.current dFloatFeed' <@ eTicken
-
---  _ <- CDyn.nextFrameWithCxFree dLine d2D $ () <$ tmovePrE
-  _ <- CDyn.nextFrameWithCxFree dGrid d2D $ leftmost [() <$ tdownE, () <$ tupE]
-
-  _ <- CDyn.nextFrameWithCxFree dLine d2D $ () <$ tmoveE
-
-  _ <- CDyn.nextFrameWithCxFree dClear d2D stopE
-
-{-
-  divClass "myDebugLog" $ widgetHold (text "empty") $ ffor tdownE $ \tR -> do
-      text $ showt $ tR
-
-  divClass "myDebugLog" $ widgetHold (text "empty") $ ffor tupE $ \tR -> do
-      text $ showt $ tR
-
-  divClass "myDebugLog" $ widgetHold (text "empty") $ ffor tmovePrE $ \tR -> do
-      text $ showt $ tR
-
-  divClass "myDebugLog" $ widgetHold (text "empty") $ ffor tdownPrE $ \tR -> do
-      text $ showt $ tR
-
-  divClass "myDebugLog" $ widgetHold (text "empty") $ ffor tupE $ \tR -> do
-      text $ showt $ tR
-  --divClass "myDebugLog" $ dynText $ fmap showt dDataLines
-  divClass "myDebugLog" $ widgetHold (text "empty") $ ffor upE $ \tR -> do
-      text $ showt $ tR
-  --divClass "myDebugLog" $ dynText $ fmap showt dDataLines
-  divClass "myDebugLog" $ widgetHold (text "empty") $ ffor downE $ \tR -> dotR
-      text $ showt $ tR
--}
+  _ <- CDyn.nextFrameWithCxFree dGrid d2D $ leftmost [() <$ downE, () <$ upE, buildE]
+  _ <- CDyn.nextFrameWithCxFree dLine d2D $ () <$ moveE
 
   pure ()
     where
@@ -207,10 +149,8 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
 
       canvasH = 320
       canvasW = 320
-      dataN   = 20
       coords = zip [0..] $ reqList canvasW canvasW 3
       emptySq = zip (take 9 (repeat Nothing)) $ reqList canvasW canvasW 3
-    -- (a+c/2,b+d/2)
 
 jstFilter :: (Maybe Int, a) -> Bool
 jstFilter a = case (fst a) of
@@ -254,13 +194,11 @@ drawLine canvasW canvasH coordX coordY fromX fromY (a,(cntX,cntY)) r = do
     Clear -> do
       CanvasF.strokeStyleF "#000000"
       CanvasF.strokeF
-      CanvasF.lineWidthF 1
     AddSquare -> do
       CanvasF.moveToF cntX cntY
       CanvasF.lineToF coordX coordY
       CanvasF.strokeStyleF "#000000"
       CanvasF.strokeF
-      CanvasF.lineWidthF 1
 
 drawLines :: (DrawCommand, [Maybe Int]) -> [(Int, Square)] -> CanvasF.CanvasM ()
 drawLines (dc, mi) z = case dc of
@@ -279,7 +217,6 @@ drawLines (dc, mi) z = case dc of
         CanvasF.lineToF bx by
         CanvasF.strokeStyleF "#000000"
         CanvasF.strokeF
-        CanvasF.lineWidthF 1
 
          ) pointsList
       pure ()
@@ -347,3 +284,28 @@ elementPosition el = liftJSM $ do
   eval ("ergvein_elementPosition = function(a) { return a.getBoundingClientRect(); }" :: Text)
   jsv <- liftJSM $ jsg1 ("ergvein_elementPosition" :: Text) (toJSVal el)
   fromJSValUnchecked jsv
+{-
+  CanvasF.beginPathF
+  CanvasF.lineWidthF 2
+  CanvasF.moveToF ax ay
+  CanvasF.lineToF bx by
+  CanvasF.strokeStyleF "#000000"
+  CanvasF.strokeF
+-}
+
+rawJSBeginPath :: MonadJSM m => RawElement GhcjsDomSpace -> m ()
+rawJSBeginPath el = liftJSM $ do
+  eval func1
+  _ <- liftJSM $ jsg1 func2 (toJSVal el)
+  pure ()
+  where
+    (func2 :: Text) = "ergvein_drawtouchline"
+    (func1 :: Text) = " ergvein_drawtouchline = function(cnv) { "
+                   <> " var ctx = cnv.getContext(\"2d\");"
+                   <> " ctx.beginPath(); "
+                   <> " ctx.lineWidth = 2; "
+                   <> " ctx.moveTo(0,0); "
+                   <> " ctx.lineTo(100,100); "
+                   <> " ctx.strokeStyle = \"#000000\"; "
+                   <> " ctx.stroke(); "
+                   <> " }"
