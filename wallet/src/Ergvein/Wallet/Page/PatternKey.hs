@@ -64,8 +64,6 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
 
   (canvasEl, _) <- RD.elAttr' "canvas" canvasAttrs RD.blank
 
-  rawJSBeginPath $ _element_raw canvasEl
-
   let elP = elementPosition $ _element_raw canvasEl
 
   let prepCoord (x,y) = fmap (\(a,b)-> (a, b)) $ fmap (\ClientRect{..} -> ((fromIntegral x) - crLeft, (fromIntegral y) - crTop)) elP
@@ -76,10 +74,10 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
       moveE  = domEvent Mousemove canvasEl
       downE  = domEvent Mousedown canvasEl
       upE    = domEvent Mouseup canvasEl
-      dGrid  = constDyn $ drawGrid canvasW canvasH emptySq
+      --dGrid  = constDyn $ drawGrid canvasW canvasH emptySq
 --      dClear = constDyn $ clearCanvas canvasW canvasH
-      pressedE = leftmost [Pressed <$ downE, Unpressed <$ upE]
-      predrawE = leftmost [sqUpdE, (Clear,(0,0),emptySq) <$ upPrE]
+      pressedE = leftmost [Pressed <$ tdownE, Unpressed <$ tupE]
+      predrawE = leftmost [sqUpdE, (Clear,(0,0),emptySq) <$ tupPrE]
       selE = fmap (\(dc, sqs) -> (dc, fmap fst sqs)) $ fmap (\(dc,sqs) -> (dc, filter jstFilter sqs)) $ fmap (\(dc,_,sqs) -> (dc,sqs)) predrawE
   tmovePrE <- performEvent $ ffor tmoveE prepTCoord
   tdownPrE <- performEvent $ ffor tdownE prepTCoord
@@ -88,7 +86,9 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
   downPrE  <- performEvent $ ffor downE  prepCoord
   upPrE    <- performEvent $ ffor upE    prepCoord
   touchD <- holdDyn Unpressed pressedE
-  sqUpdE <- performEvent $ ffor movePrE $ \(x,y) -> pure (AddSquare,(x,y),hitOrMiss (x,y) coords)
+  sqUpdE <- performEvent $ ffor (leftmost [tmovePrE, tdownPrE]) $ \(x,y) -> pure (AddSquare,(x,y),hitOrMiss (x,y) coords)
+
+  dGridT  <- holdDyn (drawGridT canvasW canvasH emptySq) $ never
 
   sqD <- holdDyn (Clear,(0,0),emptySq) $ flip pushAlways predrawE $ \(dc,cur,sqs) -> do
     touchS <- sample . current $ touchD
@@ -132,13 +132,25 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
     ln <- sample . current $ moveD
     pure (a,sel,ln)
 
+  dLineT <- holdDyn (drawLineZeroT) $ ffor draw1E $ \((_,(x,y),r),sel,ln) -> (drawLineT canvasW canvasH x y 0 0 ln r)
+                                                                          <> (drawLinesT sel coords)
+{-
   dLine <- holdDyn (drawLineZero) $ ffor draw1E $ \((_,(x,y),r),sel,ln) -> do
     drawLine canvasW canvasH x y 0 0 ln r
     drawLines sel coords
 
   d2D <- fmap (^. Canvas.canvasInfo_context) <$> CDyn.dContext2d (Canvas.CanvasConfig canvasEl [])
-  _ <- CDyn.nextFrameWithCxFree dGrid d2D $ leftmost [() <$ downE, () <$ upE, buildE]
-  _ <- CDyn.nextFrameWithCxFree dLine d2D $ () <$ moveE
+  _ <- CDyn.nextFrameWithCxFree dGrid d2D $ leftmost [() <$ tdownE, () <$ tupE, buildE]
+  _ <- CDyn.nextFrameWithCxFree dLine d2D $ () <$ tmoveE
+
+-}
+  performEvent_ $ ffor (leftmost [() <$ tdownE, () <$ tupE, buildE]) $ \_ -> do
+    dGridS <- sample . current $ dGridT
+    rawJSCall (_element_raw canvasEl) dGridS
+
+  performEvent_ $ ffor (leftmost [() <$ tmoveE, () <$ tdownE]) $ \_ -> do
+    dLineS <- sample . current $ dLineT
+    rawJSCall (_element_raw canvasEl) dLineS
 
   pure ()
     where
@@ -166,7 +178,7 @@ concatMyLists a b = (\((mi1,f1),(mi2,f2)) -> case mi1 of
   ) <$> (zip a b)
 
 hitOrMiss :: Coursor -> [(Int, Square)] -> [(Maybe Int, Square)]
-hitOrMiss (x,y) squares = fmap (\(num,(sqX, sqY, sqW, sqH)) -> if ((sqX < x) && (sqY < y) && ((sqX + sqW) > x) && ((sqY + sqH) > y))
+hitOrMiss (x,y) squares = fmap (\(num,(sqX, sqY, sqW, sqH)) -> if (((sqX-5) < x) && ((sqY-5) < y) && ((sqX + sqW + 5) > x) && ((sqY + sqH + 5) > y))
   then (Just num, (sqX, sqY, sqW, sqH))
   else (Nothing, (sqX, sqY, sqW, sqH))
   ) squares
@@ -185,6 +197,56 @@ drawGrid canvasW canvasH r = do
     Nothing -> CanvasF.rectF (realToFrac a) (realToFrac b) (realToFrac c) (realToFrac d)) r
   CanvasF.strokeStyleF "#000000"
   CanvasF.strokeF
+
+drawGridT :: Int -> Int -> [(Maybe Int, Square)] -> Text
+drawGridT cW cH r = (clearCanvasT cW cH)
+                    <> beginPathT
+                    <> (rectZeroT cW cH)
+                    <> (T.concat  (fmap fillRects r))
+                    <> strokeStyleT
+                    <> strokeT
+  where
+    fillRects (mN, (a,b,c,d)) = case mN of
+      Just _ -> fillRectT a b c d
+      Nothing -> rectT a b c d
+
+clearCanvasT :: Int -> Int -> Text
+clearCanvasT cW cH = " ctx.clearRect(0,0," <> (showt cW) <> "," <> (showt cH) <> "); "
+
+beginPathT :: Text
+beginPathT = " ctx.beginPath(); "
+
+strokeStyleT :: Text
+strokeStyleT = " ctx.strokeStyle = \"#000000\"; "
+
+strokeT :: Text
+strokeT = " ctx.stroke(); "
+
+rectZeroT :: Int -> Int -> Text
+rectZeroT cW cH = " ctx.rect(0,0," <> (showt cW) <> "," <> (showt cH) <> "); "
+
+fillRectT :: Double -> Double -> Double -> Double -> Text
+fillRectT a b c d = " ctx.fillRect(" <> (showt a) <> "," <> (showt b) <> "," <> (showt c) <> "," <> (showt d) <> "); "
+
+rectT :: Double -> Double -> Double -> Double -> Text
+rectT a b c d = " ctx.rect(" <> (showt a) <> "," <> (showt b) <> "," <> (showt c) <> "," <> (showt d) <> "); "
+
+lineWidthT :: Int -> Text
+lineWidthT lw = " ctx.lineWidth = " <> (showt lw) <> "; "
+
+moveToT :: Double -> Double -> Text
+moveToT mX mY = " ctx.moveTo(" <> (showt mX) <> "," <> (showt mY) <> "); "
+
+lineToT :: Double -> Double -> Text
+lineToT mX mY = " ctx.lineTo(" <> (showt mX) <> "," <> (showt mY) <> "); "
+
+drawLineT :: Int -> Int -> Double -> Double -> Double -> Double -> (DrawCommand,(Double,Double)) -> [(Maybe Int, Square)] -> Text
+drawLineT canvasW canvasH coordX coordY fromX fromY (a,(cntX,cntY)) r = case a of
+  Clear ->  drawGridT canvasW canvasH r
+  AddSquare -> (drawGridT canvasW canvasH r)
+            <> (moveToT cntX cntY)
+            <> (lineToT coordX coordY)
+            <> strokeT
 
 drawLine :: Int -> Int -> Double -> Double -> Double -> Double -> (DrawCommand,(Double,Double)) -> [(Maybe Int, Square)] -> CanvasF.CanvasM ()
 drawLine canvasW canvasH coordX coordY fromX fromY (a,(cntX,cntY)) r = do
@@ -218,17 +280,34 @@ drawLines (dc, mi) z = case dc of
         CanvasF.strokeStyleF "#000000"
         CanvasF.strokeF
 
-         ) pointsList
+         ) (pointsList :: [[(Double,Double)]])
       pure ()
   Clear -> pure ()
 
+drawLinesT :: (DrawCommand, [Maybe Int]) -> [(Int, Square)] -> Text
+drawLinesT (dc, mi) z = case dc of
+  AddSquare -> if ((length mi) < 2)
+    then ""
+    else T.concat $ fmap drawLs pointsList
+      where
+        (fjMi :: [Int]) = fmap fromJust mi
+        (prepList :: [Int]) = ([head fjMi]) <> (concat (fmap (\a -> [a,a]) fjMi)) <> ([last fjMi])
+        pointsList  = chunksOf 2 $ fmap (\a -> case (find (\(num,_) -> num == a ) z) of
+            Just (num, (a,b,c,d)) -> (a+c/2,b+d/2)
+            Nothing -> (0,0) ) prepList
+        drawLs :: [(Double, Double)] -> Text
+        drawLs [(ax,ay),(bx,by)] = beginPathT
+                                <> (lineWidthT 2)
+                                <> (moveToT ax ay)
+                                <> (lineToT bx by)
+                                <> strokeT
+  Clear -> ""
+
+drawLineZeroT :: Text
+drawLineZeroT = " ctx.moveTo(0,0); "
 
 drawLineZero :: CanvasF.CanvasM ()
 drawLineZero = do
-  CanvasF.moveToF 0 0
-
-drawLinesZero :: CanvasF.CanvasM ()
-drawLinesZero = do
   CanvasF.moveToF 0 0
 
 reqList :: Int -> Int -> Int -> [Square]
@@ -309,3 +388,13 @@ rawJSBeginPath el = liftJSM $ do
                    <> " ctx.strokeStyle = \"#000000\"; "
                    <> " ctx.stroke(); "
                    <> " }"
+
+rawJSCall :: MonadJSM m => RawElement GhcjsDomSpace -> Text -> m ()
+rawJSCall el t = liftJSM $ do
+  eval ("console.log('called!')"::Text)
+  eval func1
+  _ <- liftJSM $ jsg1 func2 (toJSVal el)
+  pure ()
+  where
+    (func2 :: Text) = "ergvein_drawgrid"
+    (func1 :: Text) = " ergvein_drawgrid = function(cnv) { " <> " var ctx = cnv.getContext(\"2d\");" <> t <> " }"
