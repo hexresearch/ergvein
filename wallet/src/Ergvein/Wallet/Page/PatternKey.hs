@@ -86,7 +86,9 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
   downPrE  <- performEvent $ ffor downE  prepCoord
   upPrE    <- performEvent $ ffor upE    prepCoord
   touchD <- holdDyn Unpressed pressedE
-  sqUpdE <- performEvent $ ffor (leftmost [tmovePrE, tdownPrE]) $ \(x,y) -> pure (AddSquare,(x,y),hitOrMiss (x,y) coords)
+  sqUpdE <- performEvent $ ffor (leftmost [tmovePrE, tdownPrE]) $ \(x,y) -> do
+    (sd :: (DrawCommand, (Double, Double))) <- sample . current $ moveD
+    pure (AddSquare,(x,y),hitOrMiss (x,y) coords sd)
 
   dGridT  <- holdDyn (drawGridT canvasW canvasH emptySq) $ never
 
@@ -142,8 +144,8 @@ patternKeyWidget = divClass "myTestDiv" $ mdo
   d2D <- fmap (^. Canvas.canvasInfo_context) <$> CDyn.dContext2d (Canvas.CanvasConfig canvasEl [])
   _ <- CDyn.nextFrameWithCxFree dGrid d2D $ leftmost [() <$ tdownE, () <$ tupE, buildE]
   _ <- CDyn.nextFrameWithCxFree dLine d2D $ () <$ tmoveE
-
 -}
+
   performEvent_ $ ffor (leftmost [() <$ tdownE, () <$ tupE, buildE]) $ \_ -> do
     dGridS <- sample . current $ dGridT
     rawJSCall (_element_raw canvasEl) dGridS
@@ -177,11 +179,29 @@ concatMyLists a b = (\((mi1,f1),(mi2,f2)) -> case mi1 of
     Nothing -> (Nothing,f2)
   ) <$> (zip a b)
 
-hitOrMiss :: Coursor -> [(Int, Square)] -> [(Maybe Int, Square)]
-hitOrMiss (x,y) squares = fmap (\(num,(sqX, sqY, sqW, sqH)) -> if (((sqX-5) < x) && ((sqY-5) < y) && ((sqX + sqW + 5) > x) && ((sqY + sqH + 5) > y))
+hitOrMiss :: Coursor -> [(Int, Square)] -> (DrawCommand, (Double, Double)) -> [(Maybe Int, Square)]
+hitOrMiss (x,y) squares (dc,(oldX,oldY)) = fmap (\(num,(sqX, sqY, sqW, sqH)) -> if (((sqX-5) < x) && ((sqY-5) < y) && ((sqX + sqW + 5) > x) && ((sqY + sqH + 5) > y))
   then (Just num, (sqX, sqY, sqW, sqH))
-  else (Nothing, (sqX, sqY, sqW, sqH))
+  else case dc of
+    AddSquare -> if (((sqX-5) < midX) && ((sqY-5) < midY) && ((sqX + sqW + 5) > midX) && ((sqY + sqH + 5) > midY))
+      then (Just num, (sqX, sqY, sqW, sqH))
+      else (Nothing, (sqX, sqY, sqW, sqH))
+    Clear -> (Nothing, (sqX, sqY, sqW, sqH))
   ) squares
+  where
+    midX = if x > oldX
+      then ((x - oldX)/2) + oldX
+      else ((oldX - x)/2) + x
+    midY = if y > oldY
+      then ((y - oldY)/2) + oldY
+      else ((oldY - y)/2) + y
+
+{-    lineK = (y - oldY) / (x - oldX)
+    lineB = (x*oldY - y*oldX)/(x-oldX)
+    sqX2 = sqX+sqW
+    sqY2 = sqY+sqH
+    lineSq1K = (sqY - sqY) / (x - oldX)
+  -}
 
 clearCanvas :: Int -> Int -> CanvasF.CanvasM ()
 clearCanvas canvasW canvasH = do
@@ -247,7 +267,7 @@ drawLineT canvasW canvasH coordX coordY fromX fromY (a,(cntX,cntY)) r = case a o
             <> (moveToT cntX cntY)
             <> (lineToT coordX coordY)
             <> strokeT
-
+{-
 drawLine :: Int -> Int -> Double -> Double -> Double -> Double -> (DrawCommand,(Double,Double)) -> [(Maybe Int, Square)] -> CanvasF.CanvasM ()
 drawLine canvasW canvasH coordX coordY fromX fromY (a,(cntX,cntY)) r = do
   drawGrid canvasW canvasH r
@@ -283,6 +303,7 @@ drawLines (dc, mi) z = case dc of
          ) (pointsList :: [[(Double,Double)]])
       pure ()
   Clear -> pure ()
+-}
 
 drawLinesT :: (DrawCommand, [Maybe Int]) -> [(Int, Square)] -> Text
 drawLinesT (dc, mi) z = case dc of
