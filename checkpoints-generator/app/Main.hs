@@ -3,13 +3,15 @@ module Main where
 import System.Environment
 import Crypto.Hash.MerkleTree
 import Options.Applicative
+import Scan
+import Data.Text
 import Data.Semigroup ((<>))
 
 data BTCNodeConnection = BTCNodeConnection
   { host     :: String
   , port     :: Int
-  , user     :: String
-  , password :: String
+  , user     :: Text
+  , password :: Text
   } deriving Show
 
 btcNodeConnection :: Parser BTCNodeConnection
@@ -23,7 +25,7 @@ main :: IO ()
 main = do
   args <- getArgs
   nodeConnection <- execParser opts
-  putStrLn $ show nodeConnection
+  scan (host nodeConnection) (port nodeConnection) (user nodeConnection) (password nodeConnection)
   pure ()
   where
     opts = info (btcNodeConnection <**> helper) fullDesc
