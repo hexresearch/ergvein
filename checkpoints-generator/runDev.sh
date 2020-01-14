@@ -1,1 +1,1 @@
-cabal new-run exe:ergvein-checkpoints-generator -- listen ./configuration.yaml
+cabal new-run exe:ergvein-checkpoints-generator -- --host localhost --port 18332 --user bitcoinrpc --password password
