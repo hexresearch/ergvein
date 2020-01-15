@@ -44,47 +44,44 @@ frontend = do
   void $ retractStack initialPage `liftAuth` (scanKeys >> retractStack balancesPage)
 
 scanKeys :: MonadFront t m => m ()
-scanKeys = mdo
-  gapD <- holdDyn 0 gapE
-  buildE <- getPostBuild
-  let nextE = leftmost [newE, buildE]
-  nextKeyE <- performEvent $ getNextKey BTC External <$ nextE
-  mresE <- getTxHashHistory $ TxHashHistoryRequest BTC <$> nextKeyE
-  resE <- handleDangerMsg mresE
-  validE <- validateHistory resE
-  storedE :: Event t Int <- storeNewTransactions validE
-  let newE = flip push storedE $ \i -> do
-        gap <- sample . current $ gapD
-        pure $ if i == 0 && gap > gapLimit then Nothing else Just ()
-      gapE = flip push storedE $ \i -> do
-        gap <- sample . current $ gapD
-        pure $ if i == 0 then Just $ gap + 1 else Nothing
-  pure ()
+scanKeys = do
+  logWrite "Key scanning"
+  pubKeys <- getPublicKeys
+  case M.lookup BTC pubKeys of
+    Nothing -> fail "BTC public storage not found"
+    Just btcPubKeys -> mdo
+      gapD <- holdDyn 0 gapE
+      lastKeyIndexD <- holdDyn 0 lastKeyIndexE
+      buildE <- getPostBuild
+      nextE' <- delay 0 nextE
+      storedE <- storeNewTransactions nextKeyE
+      let btcMasterPubKey = egvPubKeyсhain'master btcPubKeys
+          nextE = leftmost [newE, buildE]
+          newE = flip push storedE $ \i -> do
+            gap <- sample . current $ gapD
+            pure $ if i == 0 && gap >= gapLimit then Nothing else Just ()
+          gapE = traceEvent "gap" <$> flip push storedE $ \i -> do
+            gap <- sample . current $ gapD
+            pure $ if i == 0 && gap < gapLimit then Just $ gap + 1 else Nothing
+          nextKeyE = traceEvent "derived key" <$> flip push nextE' $ \_ -> do
+            gap <- sample . current $ gapD
+            lastKeyIndex <- sample . current $ lastKeyIndexD
+            pure $ if gap >= gapLimit then Nothing else Just $ generateNextKey btcMasterPubKey BTC External lastKeyIndex
+          lastKeyIndexE = traceEvent "key index" <$> flip pushAlways nextKeyE $ \_ -> do
+            lastKeyIndex <- sample . current $ lastKeyIndexD
+            pure $ lastKeyIndex + 1
+      pure ()
 
-getNextKey :: MonadStorage t m => Currency -> KeyPurpose -> m PubKeyScriptHash
-getNextKey curr purpose = do
-  pKeys <- getPublicKeys
-  let pKeyChain = M.lookup curr pKeys
-  case pKeyChain of
-    Nothing -> fail "getNextKey: unknown currency"
-    Just pKC -> do
-      let master = egvPubKeyсhain'master pKC
-          index = fromIntegral $ MI.size $ egvPubKeyсhain'external pKC
-          xpk = egvXPubKey $ derivePubKey master purpose index
-          pk = PubKeyI (xPubKey xpk) False
-          -- p2wpkhScript = addressToOutput $ pubKeyWitnessAddr pk
-          p2wpkhScript = addressToScriptBS $ pubKeyWitnessAddr pk
-          scriptHash = encodeSHA256Hex $ doubleSHA256 p2wpkhScript
-      pure $ scriptHash
+generateNextKey :: EgvXPubKey -> Currency -> KeyPurpose -> Int -> PubKeyScriptHash
+generateNextKey master curr purpose index = scriptHash
+  where
+    extendedPubKey = egvXPubKey $ derivePubKey master purpose (fromIntegral index)
+    pubKey = PubKeyI (xPubKey extendedPubKey) False
+    address = pubKeyWitnessAddr pubKey
+    p2wpkhScript = addressToScriptBS address
+    scriptHash = encodeSHA256Hex $ doubleSHA256 p2wpkhScript
+    network = getCurrencyNetwork curr
 
 -- FIXME
-validateHistory :: Event t TxHashHistoryResponse -> m (Event t Bool)
-validateHistory respE = pure $ True <$ respE
-
--- FIXME
-storeNewTransactions :: Event t Bool -> m (Event t Int)
+storeNewTransactions :: MonadFront t m => Event t PubKeyScriptHash -> m (Event t Int)
 storeNewTransactions valE = pure $ 0 <$ valE
-
--- filterAddress :: Event t Address -> m (Event t [BlockHeight])
-
--- getBlock :: Event t BlockHeight -> m (Event t Block)

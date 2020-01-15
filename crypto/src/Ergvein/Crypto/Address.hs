@@ -3,6 +3,7 @@ module Ergvein.Crypto.Address
       EgvAddress(..)
     , addressToOutput
     , addressToScriptBS
+    , addrToString
     , pubKeyWitnessAddr
   ) where
 
