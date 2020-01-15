@@ -5,6 +5,7 @@ packages:
   ./index-client
   ./index-server
   ./checkpoints-generator
+  ./data-merkle-tree
   ./reflex-external-ref
   ./reflex-localize
   ./retractable

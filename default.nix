@@ -27,6 +27,7 @@ in reflex-platform.project ({ pkgs, ... }: {
     reflex-dom-retractable = ./retractable;
     reflex-external-ref = ./reflex-external-ref;
     reflex-localize = ./reflex-localize;
+    data-merkle-tree = ./data-merkle-tree;
   };
   shells = {
     ghc = [
@@ -35,6 +36,7 @@ in reflex-platform.project ({ pkgs, ... }: {
       "ergvein-index-api"
       "ergvein-index-server"
       "ergvein-checkpoints-generator"
+      "data-merkle-tree"
       "ergvein-wallet"
       "ergvein-wallet-native"
       "ergvein-wallet-desktop"
