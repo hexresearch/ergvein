@@ -2,23 +2,22 @@ module Scan where
 
 import qualified Network.Bitcoin.Api.Client as BitcoinApi
 import Network.Bitcoin.Api.Blockchain
-import Data.Text (Text)
+import Data.Text (Text, pack)
 import Data.HexString
 import Data.Maybe
 import Data.List.Split
 import Crypto.Hash
-import Data.ByteArray
+import Data.ByteArray (convert)
 import Data.ByteString (ByteString)
+import Crypto.Hash.MerkleTree
+import qualified Data.Text.IO as TIO
 
 scan :: String -> Int -> Text -> Text -> IO ()
 scan host port user password = do
   count <- client getBlockCount
-  let f = hashInitWith SHA256
-  r <- mapM itera $ [0 .. 99 ]
-  let 
-    sp :: [ByteString]
-    sp = convert . hashFinalize . hashUpdates f <$> chunksOf 10 r
-  putStrLn $ show sp
+  r <- mapM itera $ [0 .. 9999]
+  let sp = mkMerkleTree $ convert . hashFinalize . hashUpdates (hashInitWith SHA256) <$> chunksOf 1000 r
+  TIO.writeFile "out" $ pack $ show sp
   pure ()
   where
     client = BitcoinApi.withClient host port user password

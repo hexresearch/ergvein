@@ -4,7 +4,6 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Crypto.Hash.MerkleTree (
@@ -33,8 +32,6 @@ module Crypto.Hash.MerkleTree (
   testMerkleProofN,
 ) where
 
-import Protolude hiding (hash)
-
 import Crypto.Hash (Digest, SHA3_256(..), hash)
 
 import qualified Data.List as List
@@ -42,6 +39,12 @@ import qualified Data.Serialize as S
 import qualified Data.ByteArray as B
 import qualified Data.ByteArray.Encoding as B
 import qualified Data.ByteString as BS
+import Data.Word
+import GHC.Generics
+import Data.Bits
+import qualified Data.ByteString.Lazy.UTF8 as BLU
+import qualified Data.Text as T
+import Data.Text.Encoding (encodeUtf8)
 
 import System.Random (randomRIO)
 
@@ -51,7 +54,7 @@ import System.Random (randomRIO)
 
 -- | A merkle tree root.
 newtype MerkleRoot a = MerkleRoot
-  { getMerkleRoot :: ByteString
+  { getMerkleRoot :: BS.ByteString
   } deriving (Show, Eq, Ord,  Generic, S.Serialize)
 
 instance B.ByteArrayAccess (MerkleRoot a) where
@@ -98,7 +101,7 @@ mtRoot MerkleEmpty      = emptyHash
 mtRoot (MerkleTree _ x) = mRoot x
 
 -- | Returns root of merkle tree root hashed.
-mtHash :: MerkleTree a -> ByteString
+mtHash :: MerkleTree a -> BS.ByteString
 mtHash MerkleEmpty      = merkleHash ""
 mtHash (MerkleTree _ x) = B.convert (mRoot x)
 
@@ -135,7 +138,7 @@ powerOfTwo n
 -- Constructors
 -------------------------------------------------------------------------------
 
-mkLeaf :: ByteString -> MerkleNode ByteString
+mkLeaf :: BS.ByteString -> MerkleNode BS.ByteString
 mkLeaf a =
   MerkleLeaf
   { mVal  = a
@@ -158,7 +161,7 @@ mkRootHash (MerkleRoot l) (MerkleRoot r) = MerkleRoot $ merkleHash $ mconcat
   [ BS.singleton 1, B.convert l, B.convert r ]
 
 -- | Smart constructor for 'MerkleTree'.
-mkMerkleTree :: [ByteString] -> MerkleTree ByteString
+mkMerkleTree :: [BS.ByteString] -> MerkleTree BS.ByteString
 mkMerkleTree [] = MerkleEmpty
 mkMerkleTree ls = MerkleTree (fromIntegral lsLen) (go lsLen ls)
   where
@@ -238,11 +241,11 @@ validateMerkleProof (MerkleProof proofElems) treeRoot leafRoot =
 -- > Length size         : n/a
 -- > Word size           : 64
 -- > Rounds              : 24
-sha256 :: ByteString -> ByteString
+sha256 :: BS.ByteString -> BS.ByteString
 sha256 x = B.convertToBase B.Base16 (hash x :: Digest SHA3_256)
 
 -- | Hash function to use for merkle tree
-merkleHash :: ByteString -> ByteString
+merkleHash :: BS.ByteString -> BS.ByteString
 merkleHash = sha256
 
 -------------------------------------------------------------------------------
@@ -252,10 +255,11 @@ merkleHash = sha256
 -- | Constructs a merkle tree and random leaf root to test inclusion of
 testMerkleProofN :: Int -> IO Bool
 testMerkleProofN n
-  | n < 2 = panic "Cannot construct a merkle tree with < 2 nodes"
+  | n < 2 = error "Cannot construct a merkle tree with < 2 nodes"
   | otherwise = do
       randN <- randomRIO (1,n) :: IO Int
-      let mtree = mkMerkleTree $ show <$> [1..n]
-          randLeaf = mkLeafRootHash $ show randN
+      let f = encodeUtf8 . T.pack . show
+      let mtree = mkMerkleTree $ f <$> [1..n]
+          randLeaf = mkLeafRootHash $ f randN
           proof = merkleProof mtree randLeaf
       return $ validateMerkleProof proof (mtRoot mtree) randLeaf
