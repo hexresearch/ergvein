@@ -23,6 +23,7 @@ library
     Ergvein.Interfaces.Ergo.Mining.AutolykosSolution
     Ergvein.Interfaces.Ergo.Mining.Difficulty.RequiredDifficulty
     Ergvein.Interfaces.Ergo.Modifiers.History.ModifierType
+    Ergvein.Interfaces.Ergo.Modifiers.History.PoPow
     Ergvein.Interfaces.Ergo.Modifiers.History.PoPowProof
     Ergvein.Interfaces.Ergo.Modifiers.History.PoPowProofPrefix
     Ergvein.Interfaces.Ergo.Modifiers.History.PoPowProofSuffix

@@ -1,6 +1,7 @@
 module Ergvein.Interfaces.Ergo.Modifiers.History.PoPowProof where
 
 import Data.Aeson as A
+import Data.Int
 
 import Ergvein.Aeson
 
@@ -11,5 +12,11 @@ data PoPowProof = PoPowProof {
   prefix :: !PoPowProofPrefix
 , suffix :: !PoPowProofSuffix
 } deriving (Eq, Show)
+
+poPowProofM :: PoPowProof -> Int32
+poPowProofM = prefixM . prefix
+
+poPowProofK :: PoPowProof -> Int32
+poPowProofK = suffixK . suffix
 
 deriveJSON A.defaultOptions ''PoPowProof
