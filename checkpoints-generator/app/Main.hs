@@ -1,7 +1,6 @@
 module Main where
 
 import System.Environment
-import Crypto.Hash.MerkleTree
 import Options.Applicative
 import Scan
 import Data.Text

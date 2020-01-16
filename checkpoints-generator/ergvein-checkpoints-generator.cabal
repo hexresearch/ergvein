@@ -14,7 +14,6 @@ maintainer:          Anton Gushcha <ncrashed@protonmail.com>, Vladimir Krutkin <
 library
   hs-source-dirs:      src
   exposed-modules:
-    Crypto.Hash.MerkleTree
     Scan
   build-depends:
         base                     >= 4.7     &&  < 4.13
@@ -30,6 +29,7 @@ library
       , cryptonite
       , memory
       , utf8-string
+      , data-merkle-tree
   default-language:    Haskell2010
   default-extensions:
 executable ergvein-checkpoints-generator

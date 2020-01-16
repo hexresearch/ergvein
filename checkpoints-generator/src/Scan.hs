@@ -9,7 +9,7 @@ import Data.List.Split
 import Crypto.Hash
 import Data.ByteArray (convert)
 import Data.ByteString (ByteString)
-import Crypto.Hash.MerkleTree
+import Data.MerkleTree
 import qualified Data.Text.IO as TIO
 
 scan :: String -> Int -> Text -> Text -> IO ()
