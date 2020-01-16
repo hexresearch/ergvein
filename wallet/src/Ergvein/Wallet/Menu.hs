@@ -8,6 +8,8 @@ import Ergvein.Wallet.Embed.TH
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
 
+import {-# SOURCE #-} Ergvein.Wallet.Page.Settings (settingsPage)
+
 data MenuItem = MenuNetwork | MenuSettings | MenuAbout | MenuLogs | MenuSwitch
 
 instance LocalizedPrint MenuItem where
@@ -25,9 +27,9 @@ instance LocalizedPrint MenuItem where
       MenuLogs -> "Логи"
       MenuSwitch -> "Сменить кошелёк"
 
-menuWidget :: MonadFrontBase t m => Maybe (Dynamic t (m ())) -> m ()
-menuWidget prevWidget = divClass "menu-header" $ do
-  divClass "menu-wallet-name" $ text "Default wallet"
+menuWidget :: MonadFront t m => Text -> Maybe (Dynamic t (m ())) -> m ()
+menuWidget titleTxt prevWidget = divClass "menu-header" $ do
+  divClass "menu-wallet-name" $ text titleTxt -- "Default wallet"
   divClass "menu-wallet-menu" $ do
     menuIconUrl <- createObjectURL menuIcon
     divClass "menu-dropdown-wrapper" $ do
@@ -41,7 +43,7 @@ menuWidget prevWidget = divClass "menu-header" $ do
         switchE <- menuBtn MenuSwitch
         switchMenu prevWidget $ leftmost [netE, setE, abtE, logE, switchE]
 
-switchMenu :: MonadFrontBase t m => Maybe (Dynamic t (m ())) -> Event t MenuItem -> m ()
+switchMenu :: MonadFront t m => Maybe (Dynamic t (m ())) -> Event t MenuItem -> m ()
 switchMenu prevWidget e = void $ nextWidget $ fforMaybe e $ \go -> let
   mkNext n = Retractable {
     retractableNext = n
@@ -49,7 +51,7 @@ switchMenu prevWidget e = void $ nextWidget $ fforMaybe e $ \go -> let
   }
   in case go of
       MenuNetwork  -> Nothing -- TODO: use mkNext when we have corresponding pages
-      MenuSettings -> Nothing
+      MenuSettings -> Just $ mkNext settingsPage
       MenuAbout    -> Nothing
       MenuLogs     -> Nothing
       MenuSwitch   -> Just $ mkNext $ do

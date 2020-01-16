@@ -46,6 +46,7 @@ library
         Ergvein.Wallet.Localization.Native
         Ergvein.Wallet.Localization.Password
         Ergvein.Wallet.Localization.Seed
+        Ergvein.Wallet.Localization.Settings
         Ergvein.Wallet.Localization.Storage
         Ergvein.Wallet.Log
         Ergvein.Wallet.Log.Page
@@ -66,6 +67,7 @@ library
         Ergvein.Wallet.Page.Initial
         Ergvein.Wallet.Page.Password
         Ergvein.Wallet.Page.Seed
+        Ergvein.Wallet.Page.Settings
         Ergvein.Wallet.Password
         Ergvein.Wallet.Platform
         Ergvein.Wallet.Resize

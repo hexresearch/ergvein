@@ -22,7 +22,7 @@ instance LocalizedPrint CurrencyTitle where
 historyPage :: MonadFront t m => Currency -> m ()
 historyPage cur = do
   let thisWidget = Just $ pure $ historyPage cur
-  menuWidget thisWidget
+  menuWidget "Hist" thisWidget
   wrapper True $ do
     h3 $ localizedText $ CurrencyTitle cur
     pure ()

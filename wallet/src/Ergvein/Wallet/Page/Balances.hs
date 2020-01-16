@@ -14,7 +14,7 @@ import Ergvein.Wallet.Wrapper
 balancesPage :: MonadFront t m => m ()
 balancesPage = do
   let thisWidget = Just $ pure balancesPage
-  menuWidget thisWidget
+  menuWidget "Default wallet" thisWidget
   wrapper False $ do
     syncWidget
     historyE <- currenciesList
