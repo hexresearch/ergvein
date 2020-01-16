@@ -155,8 +155,8 @@ getCurrencyNetwork t = case t of
   BTC -> btc
   ERGO -> erg
 
-getNetworkIndex :: Currency -> KeyIndex
-getNetworkIndex t = case t of
+getCurrencyIndex :: Currency -> KeyIndex
+getCurrencyIndex t = case t of
   BTC -> getBip44Coin btc
   ERGO -> getBip44Coin erg
 #endif
