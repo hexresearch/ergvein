@@ -31,7 +31,6 @@ data EgvAddress = EgvAddress {
 egvAddrToString :: EgvAddressContent -> Text
 egvAddrToString (BtcAddress addr) = addrToString (getCurrencyNetwork BTC) addr
 egvAddrToString (ErgAddress addr) = encodeBase58 addr
--- egvAddrToString _ = undefined
 
 egvAddrContentToJSON :: EgvAddressContent -> Value
 egvAddrContentToJSON = String . egvAddrToString

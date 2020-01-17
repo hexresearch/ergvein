@@ -54,30 +54,33 @@ scanKeysCurrency currency = do
   pubKeys <- getPublicKeys
   case M.lookup currency pubKeys of
       Nothing -> fail $ (show currency) ++ " public storage not found"
-      Just pubKeys -> mdo
-        gapD <- holdDyn 0 gapE
-        nextKeyIndexD <- holdDyn 0 nextKeyIndexE
-        buildE <- getPostBuild
-        nextE' <- delay 0 nextE
-        filterAddressE <- filterAddress nextKeyE
-        getBlockE <- getBlocks filterAddressE
-        storedE <- storeNewTransactions getBlockE
-        let masterPubKey = egvPubKeyсhain'master pubKeys
-            nextE = leftmost [newE, buildE]
-            newE = flip push storedE $ \i -> do
-              gap <- sample . current $ gapD
-              pure $ if i == 0 && gap >= gapLimit then Nothing else Just ()
-            gapE = traceEvent "gap" <$> flip pushAlways storedE $ \i -> do
-              gap <- sample . current $ gapD
-              pure $ if i == 0 && gap < gapLimit then gap + 1 else 0
-            nextKeyE = traceEventWith (("address derived: " ++) . T.unpack . egvAddrToString . egvAddress) <$> flip push nextE' $ \_ -> do
-              gap <- sample . current $ gapD
-              nextKeyIndex <- sample . current $ nextKeyIndexD
-              pure $ if gap >= gapLimit then Nothing else Just $ generateNextAddr masterPubKey External nextKeyIndex
-            nextKeyIndexE = traceEvent "next key index" <$> flip pushAlways nextKeyE $ \_ -> do
-              nextKeyIndex <- sample . current $ nextKeyIndexD
-              pure $ nextKeyIndex + 1
-        pure ()
+      Just pubKeys -> traverse_ (scanKeysPurpose pubKeys currency) [External, Internal]
+
+scanKeysPurpose :: MonadFront t m => EgvPubKeyсhain -> Currency -> KeyPurpose -> m ()
+scanKeysPurpose pubKeys currency keyPurpose= mdo
+  gapD <- holdDyn 0 gapE
+  nextKeyIndexD <- holdDyn 0 nextKeyIndexE
+  buildE <- getPostBuild
+  nextE' <- delay 0 nextE
+  filterAddressE <- filterAddress nextKeyE
+  getBlockE <- getBlocks filterAddressE
+  storedE <- storeNewTransactions getBlockE
+  let masterPubKey = egvPubKeyсhain'master pubKeys
+      nextE = leftmost [newE, buildE]
+      newE = flip push storedE $ \i -> do
+        gap <- sample . current $ gapD
+        pure $ if i == 0 && gap >= gapLimit then Nothing else Just ()
+      gapE = traceEvent "gap" <$> flip pushAlways storedE $ \i -> do
+        gap <- sample . current $ gapD
+        pure $ if i == 0 && gap < gapLimit then gap + 1 else 0
+      nextKeyE = traceEventWith (("address derived: " ++) . T.unpack . egvAddrToString . egvAddress) <$> flip push nextE' $ \_ -> do
+        gap <- sample . current $ gapD
+        nextKeyIndex <- sample . current $ nextKeyIndexD
+        pure $ if gap >= gapLimit then Nothing else Just $ generateNextAddr masterPubKey keyPurpose nextKeyIndex
+      nextKeyIndexE = traceEvent "next key index" <$> flip pushAlways nextKeyE $ \_ -> do
+        nextKeyIndex <- sample . current $ nextKeyIndexD
+        pure $ nextKeyIndex + 1
+  pure ()
 
 generateNextAddr :: EgvXPubKey -> KeyPurpose -> Int -> EgvAddress
 generateNextAddr master purpose index = egvXPubKeyToEgvAddress derivedXPubKey
