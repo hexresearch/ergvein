@@ -14,8 +14,7 @@ module Ergvein.Crypto.Keys(
   , makeXPrvKey
   , deriveXPubKey
   , xPubAddr
-  , addrToString
-  , xPubErgAddrString
+  , egvXPubKeyToEgvAddress
   , KeyIndex
   , deriveCurrencyMasterPrvKey
   , deriveCurrencyMasterPubKey
@@ -26,6 +25,7 @@ module Ergvein.Crypto.Keys(
 
 import Crypto.Hash
 import Data.Text (Text)
+import Ergvein.Crypto.Address
 import Ergvein.Crypto.Constants
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
@@ -41,27 +41,29 @@ import qualified System.Entropy  as E
 getEntropy :: IO Entropy
 getEntropy = E.getEntropy defaultEntropyLength
 
--- | Convert BTC extended public key to a human-readable string.
-xPubBtcAddrString :: Network -> XPubKey -> Text
-xPubBtcAddrString net key = addrToString net addr
-  where addr = xPubAddr key
+-- | Convert BTC extended public key to EgvAddress.
+xPubBtcToEgvAddr :: Network -> XPubKey -> EgvAddress
+xPubBtcToEgvAddr net key = EgvAddress BTC (BtcAddress address)
+  where address = pubKeyWitnessAddr pubKey
+        pubKey = PubKeyI (xPubKey key) False
 
--- | Convert ERGO extended public key to a human-readable string.
-xPubErgAddrString :: Network -> XPubKey -> Text
-xPubErgAddrString net key = encodeBase58 content
- where
-  prefix          = BS.singleton $ getAddrPrefix net
-  keyByteString   = exportPubKey True (xPubKey key)
-  checkSumContent = BS.append prefix keyByteString
-  checksum        = BA.convert $ hashWith Blake2b_256 checkSumContent :: BS.ByteString
-  content         = BS.take 38 (BS.concat [prefix, keyByteString, checksum])
+-- | Convert ERGO extended public key to EgvAddress.
+xPubErgToEgvAddr :: Network -> XPubKey -> EgvAddress
+xPubErgToEgvAddr net key = EgvAddress ERGO (ErgAddress address)
+  where prefix          = BS.singleton $ getAddrPrefix net
+        keyByteString   = exportPubKey True (xPubKey key)
+        checkSumContent = BS.append prefix keyByteString
+        checksum        = BA.convert $ hashWith Blake2b_256 checkSumContent :: BS.ByteString
+        address         = BS.take 38 (BS.concat [prefix, keyByteString, checksum])
 
--- | Convert extended public key to a human-readable string.
-xPubAddrToString :: Network -> XPubKey -> Either String Text
-xPubAddrToString net key
-  | net == btc || net == btcTest = Right $ xPubBtcAddrString net key
-  | net == erg || net == ergTest = Right $ xPubErgAddrString net key
-  | otherwise                    = Left "Unknown network type"
+egvXPubKeyToEgvAddress :: EgvXPubKey -> EgvAddress
+egvXPubKeyToEgvAddress key
+  | currency == BTC = xPubBtcToEgvAddr net xpk
+  | currency == ERGO = xPubErgToEgvAddr net xpk
+  | otherwise = undefined
+  where currency = egvXPubCurrency key
+        xpk = egvXPubKey key
+        net = getCurrencyNetwork currency
 
 -- | Derive a BIP44 compatible private key for a specific currency.
 -- Given a parent private key /m/
@@ -122,7 +124,7 @@ example = do
   let xPubKey = fmap deriveXPubKey xPrvKey
   putStrLn "\nExtended public key:"
   print xPubKey
-  let network = btc
-  let address = fmap (xPubAddrToString network) xPubKey
+  let currency = BTC
+  let address = fmap (egvXPubKeyToEgvAddress . EgvXPubKey currency) xPubKey
   putStrLn "\nAddress:"
   print address
