@@ -18,9 +18,9 @@ data SubPageSettings
 settingsPage :: MonadFront t m => m ()
 settingsPage = do
   let thisWidget = Just $ pure $ settingsPage
-  menuWidget "Settings" thisWidget
+  menuWidget STPSTitle thisWidget
   wrapper True $ do
-    h3 $ localizedText $ STPSTitle
+    -- h3 $ localizedText $ STPSTitle
     divClass "initial-options grid1" $ do
       goLangE <- fmap (GoLanguage <$) $ outlineButton STPSButLanguage
       goPinE  <- fmap (GoPinCode  <$) $ outlineButton STPSButPinCode

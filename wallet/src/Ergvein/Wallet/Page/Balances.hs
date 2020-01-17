@@ -11,10 +11,19 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.History
 import Ergvein.Wallet.Wrapper
 
+data BalanceTitle = BalanceTitle
+
+instance LocalizedPrint BalanceTitle where
+  localizedShow l v = case l of
+    English -> case v of
+      BalanceTitle  -> "Default wallet"
+    Russian -> case v of
+      BalanceTitle  -> "Настройки"
+
 balancesPage :: MonadFront t m => m ()
 balancesPage = do
   let thisWidget = Just $ pure balancesPage
-  menuWidget "Default wallet" thisWidget
+  menuWidget BalanceTitle thisWidget
   wrapper False $ do
     syncWidget
     historyE <- currenciesList
