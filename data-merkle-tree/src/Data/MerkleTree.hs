@@ -37,8 +37,8 @@ import Data.Bits
 import qualified Data.ByteString.Lazy.UTF8 as BLU
 import qualified Data.Text as T
 import Data.Text.Encoding (encodeUtf8)
-
 import System.Random (randomRIO)
+import Control.DeepSeq
 
 -------------------------------------------------------------------------------
 -- Types
@@ -47,7 +47,7 @@ import System.Random (randomRIO)
 -- | A merkle tree root.
 newtype MerkleRoot a = MerkleRoot
   { getMerkleRoot :: BS.ByteString
-  } deriving (Show, Eq, Ord,  Generic, S.Serialize)
+  } deriving (Show, Eq, Ord,  Generic, S.Serialize, NFData)
 
 instance B.ByteArrayAccess (MerkleRoot a) where
   length (MerkleRoot bs) = B.length bs
@@ -57,7 +57,7 @@ instance B.ByteArrayAccess (MerkleRoot a) where
 data MerkleTree a
   = MerkleEmpty
   | MerkleTree Word32 (MerkleNode a)
-  deriving (Show, Eq, Generic, S.Serialize)
+  deriving (Show, Eq, Generic, S.Serialize, NFData)
 
 data MerkleNode a
   = MerkleBranch {
@@ -69,7 +69,7 @@ data MerkleNode a
       mRoot :: MerkleRoot a
     , mVal  :: a
   }
-  deriving (Eq, Show, Generic, S.Serialize)
+  deriving (Eq, Show, Generic, S.Serialize, NFData)
 
 instance Foldable MerkleTree where
   foldMap _ MerkleEmpty      = mempty
@@ -169,16 +169,16 @@ mkMerkleTree ls = MerkleTree (fromIntegral lsLen) (go lsLen ls)
 -------------------------------------------------------------------------------
 
 newtype MerkleProof a = MerkleProof { getMerkleProof :: [ProofElem a] }
-  deriving (Show, Eq, Ord, Generic, S.Serialize)
+  deriving (Show, Eq, Ord, Generic, S.Serialize, NFData)
 
 data ProofElem a = ProofElem
   { nodeRoot    :: MerkleRoot a
   , siblingRoot :: MerkleRoot a
   , nodeSide    :: Side
-  } deriving (Show, Eq, Ord, Generic, S.Serialize)
+  } deriving (Show, Eq, Ord, Generic, S.Serialize, NFData)
 
 data Side = L | R
-  deriving (Show, Eq, Ord, Generic, S.Serialize)
+  deriving (Show, Eq, Ord, Generic, S.Serialize, NFData)
 
 -- | Construct a merkle tree proof of inclusion
 -- Walks the entire tree recursively, building a list of "proof elements"
@@ -250,8 +250,7 @@ testMerkleProofN n
   | n < 2 = error "Cannot construct a merkle tree with < 2 nodes"
   | otherwise = do
       randN <- randomRIO (1,n) :: IO Int
-      let f = encodeUtf8 . T.pack . show
-      let mtree = mkMerkleTree $ f <$> [1..n]
-          randLeaf = mkLeafRootHash $ f randN
+      let mtree = mkMerkleTree $ S.encode <$> [1..n]
+          randLeaf = mkLeafRootHash $ S.encode randN
           proof = merkleProof mtree randLeaf
-      return $ validateMerkleProof proof (mtRoot mtree) randLeaf
+      pure $ validateMerkleProof proof (mtRoot mtree) randLeaf

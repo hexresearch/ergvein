@@ -16,16 +16,14 @@ library
   exposed-modules:
     Data.MerkleTree
   build-depends:
-      base                     >= 4.7     &&  < 4.13
+      base        >= 4.7     &&  < 4.13
     , cryptonite
     , cereal
     , memory
     , bytestring
     , random
     , text
-    , split
-    , hexstring
-    , cryptonite
+    , deepseq
     , utf8-string
     
   default-language:    Haskell2010
@@ -37,3 +35,16 @@ library
     NamedFieldPuns
     ScopedTypeVariables
     OverloadedStrings
+executable benchmark
+  hs-source-dirs:
+      app
+  main-is:             Main.hs
+  ghc-options: 
+  build-depends:
+      base
+    , criterion
+    , cereal
+    , data-merkle-tree
+
+  default-language:    Haskell2010
+  default-extensions:
