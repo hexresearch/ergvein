@@ -139,7 +139,7 @@ instance ToJSON Header where
     ]
     where
       serializedH = S.encode $ h
-      serializedHId = hashFn serializedHId
+      serializedHId = hashFn serializedH
   {-# INLINE toJSON #-}
 
 -- lazy val requiredDifficulty: Difficulty = RequiredDifficulty.decodeCompactBits(nBits)
