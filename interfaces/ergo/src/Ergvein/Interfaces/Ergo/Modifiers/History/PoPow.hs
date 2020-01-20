@@ -9,9 +9,16 @@ import qualified Data.Map.Strict as M
 
 
 class IsBlock b where
-  mu :: b -> Int
+  type BlockHash b
+  mu :: b -> Int     -- ^ Difficulty
+  blockHash :: b -> BlockHash b
 
-class (c ~ (Container c) (Element c), Foldable (Container c), IsBlock (Element c)) => IsChain c where
+class (c ~ (Container c) (Element c)
+      , Foldable (Container c)
+      , IsBlock (Element c)
+      , Ord (BlockHash (Element c))
+      )
+    => IsChain c where
   type Element c
   type Container c :: * -> *
   chainLength :: c -> Int
@@ -19,7 +26,7 @@ class (c ~ (Container c) (Element c), Foldable (Container c), IsBlock (Element c
   isValidChainAnchoredTo :: c -> c -> Bool
   findDivergingSubchains :: c -> c -> Maybe (c, c)
   findDivergingSubchains a b = fmap (chainFromList *** chainFromList) $
-      findDivergingSubListsOn mu (F.toList a) (F.toList b)
+      findDivergingSubListsOn blockHash (F.toList a) (F.toList b)
 
 class IsChain (Chain p) => Proof p where
   type Chain p
@@ -93,12 +100,3 @@ findDivergingSubListsOn f a b = do
 
     init' [] = []
     init' a = init a
-
--- main = do
---   let c = [0,9,11,12]
---   -- let c = []
---   let mab = findDivergingSubListsOn show ([1..4] <> c) ([7,8] <> c)
---   flip (maybe (print mab)) mab $ \(a, b) -> do
---     mapM_ print a
---     putStrLn ""
---     mapM_ print b
