@@ -3,6 +3,7 @@ module Ergvein.Wallet.Page.Settings(
   ) where
 
 import qualified Data.Map.Strict as M
+import Reflex.Dom
 
 import Ergvein.Text
 import Ergvein.Wallet.Localization.Settings
@@ -10,6 +11,7 @@ import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
 
 data SubPageSettings
@@ -42,18 +44,16 @@ languagePage = do
       langD <- getLanguage
       initKey <- sample . current $ langD
       let listLangsD = ffor langD $ \l -> M.fromList $ fmap (\v -> (v, localizedShow l v)) allLanguages
-      dp <- dropdown initKey listLangsD def {
-                _dropdownConfig_setValue = updated langD
---              , _dropdownConfig_attributes = do
---                  atrs <- _dropdownConfig_attributes def
---                  pure $ atrs <> [ ("id"   , "id_sel_lang" )
---                                 , ("class", ""            )
---                                 , ("style", ""            )
---                                 ]
+          ddnCfg = DropdownConfig {
+                _dropdownConfig_setValue   = updated langD
+              , _dropdownConfig_attributes = constDyn ("class" =: "select-lang")
               }
+      dp <- dropdown initKey listLangsD ddnCfg
       let selD = _dropdown_value dp
       selE <- fmap updated $ holdUniqDyn selD
       widgetHold (pure ()) $ setLanguage <$> selE
+      settings <- getSettings
+      updateSettings $ ffor selE (\lng -> settings {settingsLang = lng})
       pure ()
     pure ()
 
