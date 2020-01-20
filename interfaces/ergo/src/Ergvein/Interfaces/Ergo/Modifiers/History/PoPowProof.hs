@@ -5,8 +5,10 @@ import Data.Int
 
 import Ergvein.Aeson
 
+import Ergvein.Interfaces.Ergo.Modifiers.History.PoPow
 import Ergvein.Interfaces.Ergo.Modifiers.History.PoPowProofPrefix
 import Ergvein.Interfaces.Ergo.Modifiers.History.PoPowProofSuffix
+import Ergvein.Interfaces.Ergo.PoPowHeader
 
 data PoPowProof = PoPowProof {
   prefix :: !PoPowProofPrefix
@@ -18,5 +20,11 @@ poPowProofM = prefixM . prefix
 
 poPowProofK :: PoPowProof -> Int32
 poPowProofK = suffixK . suffix
+
+instance (p ~ ([PoPowHeader], [PoPowHeader])) => Proof p where
+  type Chain p = [PoPowHeader]
+  proofPrefix = fst
+  proofSuffix = snd
+  mkProof = (,)
 
 deriveJSON A.defaultOptions ''PoPowProof

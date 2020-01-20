@@ -142,6 +142,9 @@ instance ToJSON Header where
       serializedHId = hashFn serializedH
   {-# INLINE toJSON #-}
 
+calculateHeaderId :: Header -> ModifierId
+calculateHeaderId = ModifierId . hashFn . S.encode
+
 -- lazy val requiredDifficulty: Difficulty = RequiredDifficulty.decodeCompactBits(nBits)
 requiredDifficulty :: Header -> Difficulty
 requiredDifficulty = decodeCompactBits . nBits

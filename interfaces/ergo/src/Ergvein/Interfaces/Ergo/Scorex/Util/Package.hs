@@ -18,7 +18,7 @@ import qualified Data.Text.Encoding as TE
 import Ergvein.Aeson
 
 newtype ModifierId = ModifierId { unModifierId :: ByteString }
-  deriving (Eq)
+  deriving (Eq, Ord)
 
 instance Serialize ModifierId where
     get = ModifierId <$> S.getBytes 32

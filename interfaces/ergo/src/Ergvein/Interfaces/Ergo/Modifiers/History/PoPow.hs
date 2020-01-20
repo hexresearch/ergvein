@@ -7,35 +7,39 @@ import Data.Functor
 import Data.List
 import qualified Data.Map.Strict as M
 
+import Ergvein.Interfaces.Ergo.Mining.Difficulty.RequiredDifficulty
 
-class IsBlock b where
+
+class IsChainElem b where
   type BlockHash b
-  mu :: b -> Int     -- ^ Difficulty
   blockHash :: b -> BlockHash b
+  mu :: b -> Int
 
-class (c ~ (Container c) (Element c)
-      , Foldable (Container c)
-      , IsBlock (Element c)
+class ( IsChainElem (Element c)
       , Ord (BlockHash (Element c))
+      , Foldable (Container c)
       )
     => IsChain c where
   type Element c
   type Container c :: * -> *
+  chainElems :: c -> (Container c) (Element c)
   chainLength :: c -> Int
   chainFromList :: [Element c] -> c
   isValidChainAnchoredTo :: c -> c -> Bool
   findDivergingSubchains :: c -> c -> Maybe (c, c)
-  findDivergingSubchains a b = fmap (chainFromList *** chainFromList) $
-      findDivergingSubListsOn blockHash (F.toList a) (F.toList b)
+
+-- findDivergingSubchainsWithList :: _
+findDivergingSubchainsWithList a b = fmap (chainFromList *** chainFromList) $
+    findDivergingSubListsOn blockHash (F.toList a) (F.toList b)
 
 class IsChain (Chain p) => Proof p where
   type Chain p
-  prefix :: p -> Chain p  -- π
-  suffix :: p -> Chain p  -- χ
+  proofPrefix :: p -> Chain p  -- π
+  proofSuffix :: p -> Chain p  -- χ
   mkProof :: Chain p -> Chain p -> p
 
 proofChain :: (Proof p, Semigroup (Chain p)) => p -> Chain p
-proofChain p = suffix p <> prefix p  --  Notice swapped order of prefix, suffix cause head of chain is leftmost element of most monoids
+proofChain p = proofSuffix p <> proofPrefix p  --  Notice swapped order of proofPrefix, proofSuffix cause head of chain is leftmost element of most monoids
 
 -- The Verify algorithm for the NIPoPoW protocol
 -- 1: function Verify q m,k (P)
@@ -56,9 +60,9 @@ proofChain p = suffix p <> prefix p  --  Notice swapped order of prefix, suffix 
 -- k - size of the suffix of the proof
 niPoPowVerify :: forall p. (Proof p, Monoid (Chain p), Eq (Chain p))
               => Chain p -> (Chain p -> Bool) -> Int -> Int -> [p] -> Bool
-niPoPowVerify g q m k = q' . suffix
-    . foldl' (\b a -> if prefix a `proofIsMBetterThan` prefix b then a else b) (mkProof g mempty)
-    . filter (\p -> chainLength (suffix p) == k && isValidChain (proofChain p))
+niPoPowVerify g q m k = q' . proofSuffix
+    . foldl' (\b a -> if proofPrefix a `proofIsMBetterThan` proofPrefix b then a else b) (mkProof g mempty)
+    . filter (\p -> chainLength (proofSuffix p) == k && isValidChain (proofChain p))
   where
     q' a | a == mempty = False
          | otherwise   = q a
@@ -84,8 +88,9 @@ proofCompare m a b = maybe False id $ do
     bestArg :: c -> Int
     bestArg = foldl' max 0
         . fmap (\(k, v) -> 2^k * v)
-        . filter (\(k, v) -> k>=m || v==0) . M.toList
+        . filter (\(k, v) -> v>=m || k==0) . M.toList
         . foldl' (\a b -> M.insertWith (+) (mu b) 1 a) mempty
+        . chainElems
 
 findDivergingSubListsOn :: forall a b. (Ord b)
     => (a -> b) -> [a] -> [a] -> Maybe ([a], [a])
