@@ -27,7 +27,7 @@ import Ergvein.Wallet.Password
 import Ergvein.Wallet.Run
 import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Storage.Constants
-import Network.Haskoin.Block (Block)
+import Network.Haskoin.Block (Block, genesisBlock)
 
 import Reflex.Dom.Main (mainWidgetWithCss)
 
@@ -63,7 +63,7 @@ scanKeysPurpose pubKeys currency keyPurpose = mdo
   nextKeyIndexD <- holdDyn 0 nextKeyIndexE
   buildE <- getPostBuild
   nextE' <- delay 0 nextE
-  filterAddressE <- filterAddress nextKeyE
+  filterAddressE <- filterAddress nextAddrE
   getBlockE <- getBlocks filterAddressE
   storedE <- storeNewTransactions getBlockE
   let masterPubKey = egvPubKeyсhain'master pubKeys
@@ -74,28 +74,31 @@ scanKeysPurpose pubKeys currency keyPurpose = mdo
       gapE = traceEvent "gap" <$> flip pushAlways storedE $ \i -> do
         gap <- sample . current $ gapD
         pure $ if i == 0 && gap < gapLimit then gap + 1 else 0
-      nextKeyE = traceEventWith (("address derived: " ++) . T.unpack . egvAddrToString . egvAddress) <$> flip push nextE' $ \_ -> do
+      nextAddrE = traceEventWith (("address derived: " ++) . T.unpack . egvAddrToString . egvAddress . snd) <$> flip push nextE' $ \_ -> do
         gap <- sample . current $ gapD
         nextKeyIndex <- sample . current $ nextKeyIndexD
         pure $ if gap >= gapLimit then Nothing else Just $ generateNextAddr masterPubKey keyPurpose nextKeyIndex
-      nextKeyIndexE = traceEvent "next key index" <$> flip pushAlways nextKeyE $ \_ -> do
+      nextKeyIndexE = traceEvent "next key index" <$> flip pushAlways nextAddrE $ \_ -> do
         nextKeyIndex <- sample . current $ nextKeyIndexD
         pure $ nextKeyIndex + 1
   pure ()
 
-generateNextAddr :: EgvXPubKey -> KeyPurpose -> Int -> EgvAddress
-generateNextAddr master purpose index = egvXPubKeyToEgvAddress derivedXPubKey
+generateNextAddr :: EgvXPubKey -> KeyPurpose -> Int -> (Int, EgvAddress)
+generateNextAddr master purpose index = (index, egvXPubKeyToEgvAddress derivedXPubKey)
   where currency = egvXPubCurrency master
         derivedXPubKey = derivePubKey master purpose (fromIntegral index)
 
 -- FIXME
-filterAddress :: MonadFront t m => Event t EgvAddress -> m (Event t [BlockHeight])
-filterAddress addrE = pure $ [] <$ addrE
+filterAddress :: MonadFront t m => Event t (Int, EgvAddress) -> m (Event t [BlockHeight])
+filterAddress addrE = pure $ filterAddressMock <$> addrE
+  where filterAddressMock (idx, addr) = if idx < 5 then [1] else []
 
 -- FIXME
 getBlocks :: MonadFront t m => Event t [BlockHeight] -> m (Event t [Block])
-getBlocks blockHeightE = pure $ [] <$ blockHeightE
+getBlocks blockHeightE = pure $ getBlocksMock <$> blockHeightE
+  where getBlocksMock bhs = if null bhs then [] else [genesisBlock $ getCurrencyNetwork BTC]
 
 -- FIXME
 storeNewTransactions :: MonadFront t m => Event t [Block] -> m (Event t Int)
-storeNewTransactions valE = pure $ 0 <$ valE
+storeNewTransactions valE = pure $ storeNewTransactionsMock <$> valE
+  where storeNewTransactionsMock blocks = if null blocks then 0 else 1
