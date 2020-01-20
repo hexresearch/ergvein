@@ -46,18 +46,19 @@ frontend = do
   void $ retractStack initialPage `liftAuth` (scanKeys >> retractStack balancesPage)
 
 scanKeys :: MonadFront t m => m ()
-scanKeys = traverse_ scanKeysCurrency allCurrencies
-
-scanKeysCurrency :: MonadFront t m => Currency -> m ()
-scanKeysCurrency currency = do
-  logWrite $ "Key scanning for " <> (showt currency)
+scanKeys = do
   pubKeys <- getPublicKeys
+  traverse_ (scanKeysCurrency pubKeys) allCurrencies
+
+scanKeysCurrency :: MonadFront t m => M.Map Currency EgvPubKeyсhain -> Currency -> m ()
+scanKeysCurrency pubKeys currency = do
+  logWrite $ "Key scanning for " <> (showt currency)
   case M.lookup currency pubKeys of
       Nothing -> fail $ (show currency) ++ " public storage not found"
       Just pubKeys -> traverse_ (scanKeysPurpose pubKeys currency) [External, Internal]
 
 scanKeysPurpose :: MonadFront t m => EgvPubKeyсhain -> Currency -> KeyPurpose -> m ()
-scanKeysPurpose pubKeys currency keyPurpose= mdo
+scanKeysPurpose pubKeys currency keyPurpose = mdo
   gapD <- holdDyn 0 gapE
   nextKeyIndexD <- holdDyn 0 nextKeyIndexE
   buildE <- getPostBuild
