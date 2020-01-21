@@ -1,6 +1,7 @@
+{-# LANGUAGE RecursiveDo #-}
 module Ergvein.Wallet.Client
-  (
-    getBalance
+  ( getHeight
+  , getBalance
   , getTxHashHistory
   , getTxMerkleProof
   , getTxHexView
@@ -14,7 +15,10 @@ import Control.Concurrent.STM
 import Control.Monad.IO.Class
 import Control.Monad.Random
 import Control.Monad.Reader
+import Data.Foldable
+import Data.List (sortOn)
 import Data.Maybe
+import Data.Traversable
 import Network.HTTP.Client (Manager)
 import Reflex.ExternalRef
 import Servant.Client
@@ -24,28 +28,37 @@ import qualified Data.IntMap.Strict as MI
 import qualified Data.List as L
 import qualified Data.Set as S
 
+import Ergvein.Index.API.Types
 import Ergvein.Index.Client
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Localization.Client
 
+getHeight :: MonadFrontBase t m => Event t HeightRequest -> m (Event t (Either ClientErr HeightResponse))
+getHeight = requester meanHeight getHeightEndpoint
+
+meanHeight :: [HeightResponse] -> Either ClientMessage HeightResponse
+meanHeight [] = Left CMSEmpty
+meanHeight [x] = Right x
+meanHeight xs = Right $ head $ drop (length xs `div` 2) $ sortOn heightRespHeight xs
+
 getBalance :: MonadFrontBase t m => Event t BalanceRequest -> m (Event t (Either ClientErr BalanceResponse))
-getBalance = requesterImpl getBalanceEndpoint
+getBalance = requesterEq getBalanceEndpoint
 
 getTxHashHistory :: MonadFrontBase t m => Event t TxHashHistoryRequest -> m (Event t (Either ClientErr TxHashHistoryResponse))
-getTxHashHistory = requesterImpl getTxHashHistoryEndpoint
+getTxHashHistory = requesterEq getTxHashHistoryEndpoint
 
 getTxMerkleProof :: MonadFrontBase t m => Event t TxMerkleProofRequest -> m (Event t (Either ClientErr TxMerkleProofResponse))
-getTxMerkleProof = requesterImpl getTxMerkleProofEndpoint
+getTxMerkleProof = requesterEq getTxMerkleProofEndpoint
 
 getTxHexView :: MonadFrontBase t m => Event t TxHexViewRequest -> m (Event t (Either ClientErr TxHexViewResponse))
-getTxHexView = requesterImpl getTxHexViewEndpoint
+getTxHexView = requesterEq getTxHexViewEndpoint
 
 getTxFeeHistogram :: MonadFrontBase t m => Event t TxFeeHistogramRequest -> m (Event t (Either ClientErr TxFeeHistogramResponse))
-getTxFeeHistogram = requesterImpl getTxFeeHistogramEndpoint
+getTxFeeHistogram = requesterEq getTxFeeHistogramEndpoint
 
 txBroadcast :: MonadFrontBase t m => Event t TxBroadcastRequest -> m (Event t (Either ClientErr TxBroadcastResponse))
-txBroadcast = requesterImpl txBroadcastEndpoint
+txBroadcast = requesterEq txBroadcastEndpoint
 
 instance MonadIO m => HasClientManager (ReaderT Manager m) where
   getClientMaganer = ask
@@ -54,25 +67,33 @@ data ResAct = ResActCheck | ResActTimeout | ResActNoUrls
 
 data ReqSignal a b = ReqFin a | ReqFailTimeout | ReqFailUrls | ReqTimeout b [a] (S.Set BaseUrl)
 
-validateRes :: Eq a => [a] -> Either ClientMessage a
-validateRes rs = case L.nub rs of
+validateEq :: Eq a => [a] -> Either ClientMessage a
+validateEq rs = case L.nub rs of
   []    -> Left CMSEmpty
   x:[]  -> Right x
   _     -> Left CMSValidationError
 
 -- Implements request logic:
 -- Request from n nodes and check if results are equal.
--- TODO: Add more sophisticated validation
-requesterImpl :: (MonadFrontBase t m, Eq a, Show a, Show b)
-  => (BaseUrl -> b -> ReaderT Manager IO (Either e a))    -- Request function
-  -> Event t b                                            -- Request event
-  -> m (Event t (Either ClientErr a))                   -- Result
-requesterImpl endpoint reqE = mdo
+requesterEq :: (MonadFrontBase t m, Eq a, Show a, Show b)
+  => (BaseUrl -> b -> ReaderT Manager IO (Either e a))    -- ^ Request function
+  -> Event t b                                            -- ^ Request event
+  -> m (Event t (Either ClientErr a))                     -- ^ Result
+requesterEq = requester validateEq
+
+-- Implements request logic:
+-- Request from n nodes and check if results are equal.
+requester :: (MonadFrontBase t m, Eq a, Show a, Show b)
+  => ([a] -> Either ClientMessage a)                      -- ^ Validation of inputs
+  -> (BaseUrl -> b -> ReaderT Manager IO (Either e a))    -- ^ Request function
+  -> Event t b                                            -- ^ Request event
+  -> m (Event t (Either ClientErr a))                     -- ^ Result
+requester validateRes endpoint reqE = mdo
   uss  <- readExternalRef =<< getUrlsRef
   let initReqE = ffor reqE (\req -> Just (req, [], uss))
   drawE <- delay 0.1 $ leftmost [initReqE, redrawE]
   respE <- fmap (switch . current) $ widgetHold (pure never) $ ffor drawE $ \case
-    Just (req, rs, urls) -> requesterBody urls endpoint rs req
+    Just (req, rs, urls) -> requesterBody validateRes urls endpoint rs req
     _ -> pure never
   let redrawE = ffor respE $ \case
         ReqTimeout req [] uss -> Just (req, [], uss)
@@ -82,15 +103,16 @@ requesterImpl endpoint reqE = mdo
     ReqFin res        -> Just $ Right res
     ReqFailTimeout    -> Just $ Left ClientErrTimeOut
     ReqFailUrls       -> Just $ Left ClientErrNoUrls
-    ReqTimeout _ _ _  -> Nothing
+    ReqTimeout {}     -> Nothing
 
-requesterBody :: forall t m e a b . (MonadFrontBase t m, Eq a, Show a)
-  => S.Set BaseUrl
+requesterBody :: forall t m e a b . (MonadFrontBase t m, Show a)
+  => ([a] -> Either ClientMessage a)                      -- ^ Validation of inputs
+  -> S.Set BaseUrl
   -> (BaseUrl -> b -> ReaderT Manager IO (Either e a))
   -> [a]
   -> b
   -> m (Event t (ReqSignal a b))
-requesterBody uss endpoint initRes req = do
+requesterBody validateRes uss endpoint initRes req = do
   buildE        <- getPostBuild
   (minN, maxN)  <- readExternalRef =<< getRequiredUrlNumRef -- Required number of confirmations
   dt            <- readExternalRef =<< getRequestTimeoutRef -- Get a timeout
@@ -101,11 +123,10 @@ requesterBody uss endpoint initRes req = do
   resCountRef   <- liftIO $ newTVarIO $ S.size uss          -- A counter of "visited" urls. Counts down till 0
 
   -- Request all staring urls concurrently and give back events and triggers
-  (ereses, triggers)  <- fmap unzip $ flip traverse (zip [1..] urls) $ \(i, u) -> do
+  (ereses, triggers)  <- fmap unzip $ for (zip [1..] urls) $ \(i, u) -> do
     (ev, fire) <- newTriggerEvent
     void $ liftIO $ forkIO $ do
-      liftIO $ threadDelay 10000000
-      fire =<< (pure . pure . (i,)) =<< flip runReaderT mng (endpoint u req)
+      fire =<< (pure . pure . (i,)) =<< runReaderT (endpoint u req) mng
     pure (ev, (i,fire))
 
   let eresE :: Event t [(Int, Either e a)]            -- a response event. Carries ids and possble results
@@ -125,14 +146,14 @@ requesterBody uss endpoint initRes req = do
   -- If a request has failed, check if there are still unused urls
   -- If there are none -- send ResActNoUrls
   noMoreUrlE' <- fmap (fmapMaybe id) $ performEvent $ ffor eresE $ \ies -> do
-    ress <- flip traverse ies $ \(i, eres) -> liftIO $ do
+    ress <- for ies $ \(i, eres) -> liftIO $ do
       c <- atomically $ modifyTVar' resCountRef (flip (-) 1) >> readTVar resCountRef
       pure $ either (const $ if c <= 1 then Just ResActNoUrls else Nothing) (const Nothing) eres
     pure $ listToMaybe $ catMaybes ress
   noMoreUrlE <- delay 0.5 noMoreUrlE'
 
   rec
-    usedUrlsD   <- foldDyn (\us acc -> foldr S.insert acc $ snd (unzip us)) (S.fromList urls) $ extraUrlsE
+    usedUrlsD   <- foldDyn (\us acc -> foldr S.insert acc $ fmap snd us) (S.fromList urls) extraUrlsE
     extraUrlsE  <- fmap (fmapMaybe id) $ performEvent $ ffor (current usedUrlsD `attach` failE) $ \(used, ies) -> do
       ress <- foldM (\(diff, acc) i -> if S.null diff then pure (diff, acc) else do
           u <- getExtraUrl diff
@@ -145,8 +166,8 @@ requesterBody uss endpoint initRes req = do
   -- it could get messy if, while a forked request waits for a response,
   -- another request fails and fiers extraUrlE again, overriding control of the event
   -- At least this is a working theory
-  performEvent_ $ ffor extraUrlsE $ \ius -> void $ flip traverse ius $ \(i,url) -> whenJust (MI.lookup i fires) $
-    \fire -> void $ liftIO $ forkIO $ fire =<< (pure . pure . (i,)) =<< flip runReaderT mng (endpoint url req)
+  performEvent_ $ ffor extraUrlsE $ \ius -> for_ ius $ \(i,url) -> whenJust (MI.lookup i fires) $
+    \fire -> void $ liftIO $ forkIO $ fire =<< (pure . pure . (i,)) =<< runReaderT (endpoint url req) mng
 
   storeD  <- foldDyn (++) initRes succE
   checkE  <- delay 0.05 succE
@@ -172,7 +193,7 @@ requesterBody uss endpoint initRes req = do
   toggleLoadingWidget $ (True , CMSTimeout) <$ timeoutMsgE
   toggleLoadingWidget $ (True , CMSError)   <$ failE
   toggleLoadingWidget $ ffor resE $ \case
-    ReqTimeout _ _ _ -> (True, CMSRestarting)
+    ReqTimeout{} -> (True, CMSRestarting)
     _ -> (False, CMSDone)
   toggleLoadingWidget =<< fmap ((True , CMSLoading 0 minN maxN) <$) getPostBuild
   toggleLoadingWidget $ ffor (updated storeD) $ \store -> (True , CMSLoading (length store) minN maxN)
@@ -180,7 +201,7 @@ requesterBody uss endpoint initRes req = do
   delay 0.1 resE
   where
     getExtraUrl :: MonadIO m => S.Set BaseUrl -> Performable m BaseUrl
-    getExtraUrl uss = liftIO $ fmap (S.elems uss !!) $ getRandomR (0, length uss - 1)
+    getExtraUrl uss = liftIO $ (S.elems uss !!) <$> getRandomR (0, length uss - 1)
 
     getRandUrls :: MonadIO m => Int -> S.Set BaseUrl -> m [BaseUrl]
     getRandUrls n usSet = liftIO $ do

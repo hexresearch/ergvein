@@ -10,9 +10,10 @@ import Control.Monad.Reader
 import Data.Time (NominalDiffTime)
 import Ergvein.Crypto
 import Ergvein.Index.Client
-import Ergvein.Types.Currency
-import Ergvein.Types.Keys
-import Ergvein.Types.Storage
+import Ergvein.Text
+import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Headers.Storage
+import Ergvein.Wallet.Headers.Loader
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Base
@@ -25,6 +26,7 @@ import Network.HTTP.Client hiding (Proxy)
 import Reflex.ExternalRef
 import Servant.Client(BaseUrl)
 
+import qualified Control.Immortal as I
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -47,12 +49,18 @@ data Env t = Env {
 , env'urlNum          :: !(ExternalRef t (Int, Int))
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
 , env'manager         :: !Manager
+, env'headersStorage  :: !HeadersStorage
 }
 
 type ErgveinM t m = ReaderT (Env t) m
 
 instance Monad m => HasStoreDir (ErgveinM t m) where
   getStoreDir = asks env'storeDir
+  {-# INLINE getStoreDir #-}
+
+instance Monad m => HasHeadersStorage (ErgveinM t m) where
+  getHeadersStorage = asks env'headersStorage
+  {-# INLINE getHeadersStorage #-}
 
 instance MonadIO m => HasClientManager (ErgveinM t m) where
   getClientMaganer = asks env'manager
@@ -216,9 +224,11 @@ liftAuth ma0 ma = mdo
         urlNumRef       <- getRequiredUrlNumRef
         timeoutRef      <- getRequestTimeoutRef
         manager         <- getClientMaganer
+        hst             <- getHeadersStorage
+        headersLoader
         a <- runReaderT (wrapped ma) $ Env
           settingsRef backEF loading langRef authRef (logoutFire ()) storeDir alertsEF
-          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager
+          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager hst
         pure a
   let
     ma0' = maybe ma0 runAuthed mauth0

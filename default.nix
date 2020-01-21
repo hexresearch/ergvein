@@ -4,7 +4,10 @@ let
     nixpkgsOverlays = [
       (self: super: import ./nixpkgs-overlays/default.nix self super )
     ];
-    config.android_sdk.accept_license = true;
+    config = {
+      android_sdk.accept_license = true;
+      allowBroken = true;
+    };
   };
 in reflex-platform.project ({ pkgs, ... }: {
   packages = {
@@ -19,6 +22,7 @@ in reflex-platform.project ({ pkgs, ... }: {
     ergvein-wallet-native = ./wallet-native;
     ergvein-wallet-types = ./wallet-types;
     ergvein-interface-ergo = ./interfaces/ergo;
+    ergo-api = ./ergo-api;
     reflex-dom-retractable = ./retractable;
     reflex-external-ref = ./reflex-external-ref;
     reflex-localize = ./reflex-localize;
@@ -34,6 +38,7 @@ in reflex-platform.project ({ pkgs, ... }: {
       "ergvein-wallet-desktop"
       "ergvein-wallet-types"
       "ergvein-interface-ergo"
+      "ergo-api"
       "reflex-dom-retractable"
       "reflex-external-ref"
       "reflex-localize"

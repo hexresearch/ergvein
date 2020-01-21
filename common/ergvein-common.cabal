@@ -21,5 +21,5 @@ library
     , lens
     , template-haskell
     , text
-    , base64-bytestring >= 1 && < 1.0.0.3
+    , base16-bytestring
   default-language:    Haskell2010

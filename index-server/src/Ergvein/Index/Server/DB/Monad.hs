@@ -4,14 +4,17 @@ import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Reader
 import Data.Pool
-import Database.Persist.Sql
 import Database.Persist.Postgresql
-import Database.LevelDB
 
 type DBPool = Pool SqlBackend
 
-newDBPool :: (MonadUnliftIO m, MonadLogger m) => ConnectionString -> m DBPool
-newDBPool connectionString = createPostgresqlPool connectionString 10
+newDBPool :: (MonadUnliftIO m)
+  => Bool -- ^ Use debug logger
+  -> ConnectionString -> LoggingT m DBPool
+newDBPool dbgLog connectionString = logger $ createPostgresqlPool connectionString 10
+  where
+    logger = if dbgLog then id
+      else filterLogger (\_ lvl -> lvl /= LevelDebug)
 
 class (MonadLogger m, MonadUnliftIO m) => MonadDB m where
     getDbPool :: m DBPool
@@ -27,5 +30,5 @@ runDb ma = do
     pool <- getDbPool
     runSqlPool ma pool
 
-runDbQuery :: DBPool -> QueryT (ReaderT DBPool (LoggingT IO)) a -> IO a
-runDbQuery pool query = runStdoutLoggingT $ flip runReaderT pool $ runDb query
+runDbQuery :: MonadIO m => DBPool -> QueryT (ReaderT DBPool (LoggingT IO)) a -> m a
+runDbQuery pool query = liftIO $ runStdoutLoggingT $ flip runReaderT pool $ runDb query

@@ -7,6 +7,17 @@ import Ergvein.Types.Block
 import GHC.Generics
 import Data.Word
 
+-- Height
+newtype HeightRequest = HeightRequest
+    { heightReqCurrency :: Currency
+    } deriving (Eq, Show, Generic)
+$(deriveJSON (aesonOptionsStripPrefix "heightReq") ''HeightRequest)
+
+newtype HeightResponse = HeightResponse
+    { heightRespHeight :: BlockHeight
+    } deriving (Eq, Show, Generic)
+$(deriveJSON (aesonOptionsStripPrefix "heightResp") ''HeightResponse)
+
 -- Balance
 data BalanceRequest = BalanceRequest
     { balReqCurrency         :: !Currency

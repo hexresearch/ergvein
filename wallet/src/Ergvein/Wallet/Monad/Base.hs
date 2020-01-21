@@ -15,9 +15,10 @@ import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Control.Monad.Ref
 import Data.Text (Text)
-import Ergvein.Crypto
 import Data.Time(UTCTime, NominalDiffTime)
+import Ergvein.Crypto
 import Ergvein.Index.Client
+import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Native
 import Language.Javascript.JSaddle
@@ -65,6 +66,7 @@ type MonadBaseConstr t m = (MonadHold t m
 type MonadFrontConstr t m = (PlatformNatives
   , HasStoreDir m
   , HasStoreDir (Performable m)
+  , HasHeadersStorage m
   , MonadBaseConstr t m
   , MonadLocalized t m
   , MonadRetract t m
@@ -138,7 +140,8 @@ instance MonadRandom (WithJSContextSingleton x (SpiderHostFrame Global)) where
 class (MonadBaseConstr t m, HasClientManager m, HasClientManager (Performable m)) => MonadClient t m | m -> t where
   -- | Set the number of required confirmations
   setRequiredUrlNum :: Event t (Int, Int) -> m ()
-  -- | Get the number of required confirmations
+  -- | Get the number of required confirmations. First is minimum required answers. Second is sufficient
+  -- amount of answers from indexers.
   getRequiredUrlNum :: Event t () -> m (Event t (Int, Int))
   -- | Get all urls in a list
   getUrlList :: Event t () -> m (Event t [BaseUrl])

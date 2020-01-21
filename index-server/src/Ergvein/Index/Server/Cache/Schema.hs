@@ -27,13 +27,13 @@ cachedTxOutKey :: PubKeyScriptHash -> ByteString
 cachedTxOutKey = keyString "\0\0\0\0" . TxOutCacheRecKey
 
 data TxOutCacheRecKey = TxOutCacheRecKey
-  { txOutCacheRecKey'pubKeyScriptHash :: PubKeyScriptHash
+  { txOutCacheRecKeyPubKeyScriptHash :: PubKeyScriptHash
   } deriving (Generic, Flat)
 
 data TxOutCacheRecItem = TxOutCacheRecItem
-  { txOutCacheRec'index  :: TxOutIndex
-  , txOutCacheRec'value  :: MoneyUnit
-  , txOutCacheRec'txHash :: TxHash
+  { txOutCacheRecIndex  :: TxOutIndex
+  , txOutCacheRecValue  :: MoneyUnit
+  , txOutCacheRecTxHash :: TxHash
   } deriving (Generic, Flat)
 
 type TxOutCacheRec = [TxOutCacheRecItem]
@@ -44,12 +44,12 @@ cachedTxInKey :: (PubKeyScriptHash, TxOutIndex) -> ByteString
 cachedTxInKey = keyString "\0\0\0\1" . uncurry TxInCacheRecKey
 
 data TxInCacheRecKey = TxInCacheRecKey
-  { txInCacheRecKey'txOutHash :: PubKeyScriptHash
-  , txInCacheRecKey'txOutIndex :: TxOutIndex
+  { txInCacheRecKeyTxOutHash :: PubKeyScriptHash
+  , txInCacheRecKeyTxOutIndex :: TxOutIndex
   } deriving (Generic, Flat)
 
 data TxInCacheRec = TxInCacheRec
-  { txInCacheRec'txHash  :: TxHash
+  { txInCacheRecTxHash  :: TxHash
   } deriving (Generic, Flat)
 
 --Tx
@@ -58,13 +58,13 @@ cachedTxKey :: TxHash -> ByteString
 cachedTxKey = keyString "\0\0\1\0" . TxCacheRecKey
 
 data TxCacheRecKey = TxCacheRecKey
-  { txCacheRecKey'hash         :: TxHash
+  { txCacheRecKeyHash         :: TxHash
   } deriving (Generic, Flat)
 
 data TxCacheRec = TxCacheRec
-  { txCacheRec'hash         :: TxHash
-  , txCacheRec'blockHeight  :: BlockHeight
-  , txCacheRec'blockIndex   :: TxBlockIndex
+  { txCacheRecHash         :: TxHash
+  , txCacheRecBlockHeight  :: BlockHeight
+  , txCacheRecBlockIndex   :: TxBlockIndex
   } deriving (Generic, Flat)
 
 --BlockMeta
@@ -73,10 +73,10 @@ cachedMetaKey :: (Currency, BlockHeight) -> ByteString
 cachedMetaKey = keyString "\0\0\1\1" . uncurry BlockMetaCacheRecKey
 
 data BlockMetaCacheRecKey = BlockMetaCacheRecKey
-  { blockMetaCacheRecKey'currency     :: Currency
-  , blockMetaCacheRecKey'blockHeight  :: BlockHeight
+  { blockMetaCacheRecKeyCurrency     :: Currency
+  , blockMetaCacheRecKeyBlockHeight  :: BlockHeight
   } deriving (Generic, Eq, Ord, Flat)
 
 data BlockMetaCacheRec = BlockMetaCacheRec
-  { blockMetaCacheRec'headerHexView  :: TxHash
+  { blockMetaCacheRecHeaderHexView  :: TxHash
   } deriving (Generic, Flat)

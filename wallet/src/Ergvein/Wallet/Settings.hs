@@ -88,7 +88,7 @@ loadSettings mpath = liftIO $ case mpath of
     putStrLn path
     loadSettings $ Just path
   Just path -> do
-    ex <- doesFileExist $ path <> "/config.yaml"
+    ex <- doesFileExist path
     if not ex
       then mkDefSettings
       else either (const mkDefSettings) pure =<< readYamlEither' path

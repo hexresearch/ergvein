@@ -13,6 +13,10 @@ import Data.Text (Text)
 class HasStoreDir m where
   getStoreDir :: m Text
 
+instance Monad m => HasStoreDir (ReaderT Text m) where 
+  getStoreDir = ask
+  {-# INLINE getStoreDir #-}
+
 data NativeAlerts
   = NAFileDoesNotExist Text
   | NAFileIsEmpty Text

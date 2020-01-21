@@ -4,6 +4,7 @@ let
   pkgs = reflex-platform.nixpkgs;
   overrideCabal = pkgs.haskell.lib.overrideCabal;
   enableCabalFlag = pkgs.haskell.lib.enableCabalFlag;
+  doJailbreak = pkgs.haskell.lib.doJailbreak;
   lib = pkgs.haskell.lib;
   dontHaddock = lib.dontHaddock;
   gitignore = pkgs.callPackage (pkgs.fetchFromGitHub {
@@ -37,6 +38,7 @@ in (self: super: let
     ergvein-wallet-native = ingnoreGarbage super.ergvein-wallet-native;
     ergvein-wallet-types = ingnoreGarbage super.ergvein-wallet-types;
     ergvein-interface-ergo = ingnoreGarbage super.ergvein-interface-ergo;
+    ergo-api = ingnoreGarbage super.ergo-api;
     reflex-dom-retractable = ingnoreGarbage super.reflex-dom-retractable;
     reflex-external-ref = ingnoreGarbage super.reflex-external-ref;
     reflex-localize = ingnoreGarbage super.reflex-localize;
@@ -51,7 +53,8 @@ in (self: super: let
     servant-client-core = self.callPackage ./derivations/servant-client-core.nix {};
     servant-server = self.callPackage ./derivations/servant-server.nix {};
     zlib = self.callPackage ./derivations/zlib.nix { };
-    servant-reflex = self.callPackage ./derivations/servant-reflex.nix {};
+    stm-hamt = self.callPackage ./derivations/stm-hamt.nix { };
+    haskey = self.callPackage ./derivations/haskey.nix { };
     persistent-pagination = self.callPackage ./derivations/persistent-pagination.nix {};
     flat = lib.dontCheck (super.flat);
     reflex-dom-core = lib.dontCheck (super.reflex-dom-core);
