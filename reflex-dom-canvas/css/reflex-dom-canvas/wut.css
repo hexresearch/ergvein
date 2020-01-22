@@ -1,0 +1,12 @@
+.day-item {
+  margin-left: 0.3em;
+  float: left;
+  border: 1px solid #999;
+}
+
+.day-item:nth-child(1n+2) {}
+.day-item:nth-child(1n+3) {}
+.day-item:nth-child(1n+4) {}
+.day-item:nth-child(1n+5) {}
+.day-item:nth-child(1n+6) {}
+.day-item:nth-child(1n+7) {}

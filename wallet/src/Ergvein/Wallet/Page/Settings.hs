@@ -1,9 +1,13 @@
+{-# LANGUAGE OverloadedLists #-}
 module Ergvein.Wallet.Page.Settings(
     settingsPage
   ) where
 
 import qualified Data.Map.Strict as M
 import Reflex.Dom
+import qualified Reflex.Dom.Canvas.Context2D    as CanvasF
+import qualified Reflex.Dom.CanvasBuilder.Types as Canvas
+import qualified Reflex.Dom.CanvasDyn           as CDyn
 
 import Ergvein.Text
 import Ergvein.Wallet.Localization.Settings
@@ -63,6 +67,32 @@ pinCodePage = do
   menuWidget STPSTitle thisWidget
   wrapper True $ do
     h3 $ localizedText $ STPSSetsPinCode
-    divClass "initial-options grid1" $ do
-      pure ()
+    --elAttr "div" [("style","width: 200px; height: 200px; background-color: #00ff00; margin-left: auto; margin-right: auto;")] blank
+    --graphPinCode
+    divClass "" $ text "MyTest"
+    el "span" $ text "Span Text!"
+    --graphPinCode
     pure ()
+
+graphPinCode :: MonadFrontBase t m => m ()
+graphPinCode = do
+  elAttr "svg" [ ("style","display: block; width: 400px; height: 400px; margin-left: auto; margin-right: auto;")
+               , ("width", "400"), ("height", "400"), ("viewBox","0 0 400 400")
+               ] $ do
+    elAttr "circle" [ ("cx","100")
+                    , ("cy","100")
+                    , ("r","25")
+                    --, ("style","fill: #ff0000; stroke: #ff0000; stroke-width: 1;")
+                    , ("stroke","green")
+                    , ("fill","white")
+                    , ("stroke-width","1")
+                    ] blank
+    elAttr "rect" [("x","50"), ("y","100"), ("width","200"), ("height","100"), ("style","fill: #ffc107; stroke: #e65100; stroke-width: 2;")] blank
+    pure ()
+
+--graphPinCodeiCs :: MonadFrontBase t m => m ()
+--graphPinCodeCs = do
+--  canvasEl <- elAttr "canvas" [ ("style","display: block; width: 400px; height: 400px; margin-left: auto; margin-right: auto;")
+--                              , ("width", "400"), ("height", "400"), ("viewBox","0 0 400 400")
+--                              ] blank
+
