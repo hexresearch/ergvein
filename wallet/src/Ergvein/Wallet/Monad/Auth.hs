@@ -11,9 +11,12 @@ import Data.Time (NominalDiffTime)
 import Ergvein.Crypto
 import Ergvein.Index.Client
 import Ergvein.Text
+import Ergvein.Types.Currency
+import Ergvein.Types.Keys
+import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Headers.Loader
+import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Base
