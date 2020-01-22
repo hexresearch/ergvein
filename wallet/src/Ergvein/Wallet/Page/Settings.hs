@@ -3,11 +3,14 @@ module Ergvein.Wallet.Page.Settings(
     settingsPage
   ) where
 
+import Control.Monad.IO.Class (liftIO)
 import qualified Data.Map.Strict as M
-import Reflex.Dom
-import qualified Reflex.Dom.Canvas.Context2D    as CanvasF
-import qualified Reflex.Dom.CanvasBuilder.Types as Canvas
-import qualified Reflex.Dom.CanvasDyn           as CDyn
+import Data.Time
+import Reflex.Host.Class
+import Reflex.Dom as RD
+import Reflex.Dom.Canvas.Context2D    as CanvasF
+import Reflex.Dom.CanvasBuilder.Types as Canvas
+import Reflex.Dom.CanvasDyn           as CDyn
 
 import Ergvein.Text
 import Ergvein.Wallet.Localization.Settings
@@ -69,12 +72,13 @@ pinCodePage = do
     h3 $ localizedText $ STPSSetsPinCode
     --elAttr "div" [("style","width: 200px; height: 200px; background-color: #00ff00; margin-left: auto; margin-right: auto;")] blank
     --graphPinCode
+    graphPinCodeCs
     divClass "" $ text "MyTest"
     el "span" $ text "Span Text!"
     --graphPinCode
     pure ()
 
-graphPinCode :: MonadFrontBase t m => m ()
+graphPinCode :: forall t m . (MonadFrontBase t m) => m ()
 graphPinCode = do
   elAttr "svg" [ ("style","display: block; width: 400px; height: 400px; margin-left: auto; margin-right: auto;")
                , ("width", "400"), ("height", "400"), ("viewBox","0 0 400 400")
@@ -90,9 +94,17 @@ graphPinCode = do
     elAttr "rect" [("x","50"), ("y","100"), ("width","200"), ("height","100"), ("style","fill: #ffc107; stroke: #e65100; stroke-width: 2;")] blank
     pure ()
 
---graphPinCodeiCs :: MonadFrontBase t m => m ()
---graphPinCodeCs = do
---  canvasEl <- elAttr "canvas" [ ("style","display: block; width: 400px; height: 400px; margin-left: auto; margin-right: auto;")
---                              , ("width", "400"), ("height", "400"), ("viewBox","0 0 400 400")
---                              ] blank
-
+graphPinCodeCs :: MonadFront t m => m ()
+graphPinCodeCs = do
+  now <- liftIO getCurrentTime
+  canvasEl <- fst <$> elAttr' "canvas"
+                        [ ("style","display: block; width: 400px; height: 400px; margin-left: auto; margin-right: auto;")
+                        ] blank
+  d2D <- fmap Canvas._canvasInfo_context <$> CDyn.dContext2d ( Canvas.CanvasConfig canvasEl [] )
+  eTick <- fmap void $ RD.tickLossy 0.1 now
+  _ <- CDyn.nextFrameWithCxFree (constDyn toDraw) d2D eTick
+  pure ()
+  where
+    toDraw = do
+      CanvasF.strokeStyleF "#FF0000"
+      CanvasF.rectF 10 10 100 100
