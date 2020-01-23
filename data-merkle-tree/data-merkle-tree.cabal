@@ -17,13 +17,13 @@ library
     Data.MerkleTree
   build-depends:
       base        >= 4.7     &&  < 4.13
-    , cryptonite
-    , cereal
-    , memory
     , bytestring
+    , cereal
+    , cryptonite
+    , deepseq
+    , memory
     , random
     , text
-    , deepseq
     , utf8-string
     
   default-language:    Haskell2010
@@ -48,3 +48,29 @@ executable benchmark
 
   default-language:    Haskell2010
   default-extensions:
+
+test-suite merkle-tree-test
+  default-language:    Haskell2010
+  type:                exitcode-stdio-1.0
+  main-is:             Driver.hs
+  hs-source-dirs:      test
+  other-modules:
+      Data.Test.MerkleTree
+  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
+  default-extensions:
+    NumDecimals
+    OverloadedStrings
+    QuasiQuotes
+    RecordWildCards
+    ScopedTypeVariables
+    TupleSections
+  build-depends:
+      base
+    , data-merkle-tree
+    , tasty
+    , tasty-discover
+    , tasty-hspec
+    , tasty-quickcheck
+    , QuickCheck
+    , bytestring
+    , quickcheck-instances
