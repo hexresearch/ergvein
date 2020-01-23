@@ -68,19 +68,19 @@ egvXPubKeyToEgvAddress key
 -- | Derive a BIP44 compatible private key for a specific currency.
 -- Given a parent private key /m/
 -- and a currency with code /c/, this function will compute /m\/44'\/c'\/0/.
-deriveCurrencyMasterPrvKey :: EgvRootPrvKey -> Currency -> EgvXPrvKey
+deriveCurrencyMasterPrvKey :: EgvRootXPrvKey -> Currency -> EgvXPrvKey
 deriveCurrencyMasterPrvKey rootKey currency =
     let hardPath = [44, getCurrencyIndex currency]
-        derivedKey = prvSubKey (foldl hardSubKey (unEgvRootPrvKey rootKey) hardPath) 0
+        derivedKey = prvSubKey (foldl hardSubKey (unEgvRootXPrvKey rootKey) hardPath) 0
     in EgvXPrvKey currency derivedKey
 
 -- | Derive a BIP44 compatible public key for a specific currency.
 -- Given a parent public key /m/
 -- and a currency with code /c/, this function will compute /m\/44'\/c'\/0/.
-deriveCurrencyMasterPubKey :: EgvRootPrvKey -> Currency -> EgvXPubKey
+deriveCurrencyMasterPubKey :: EgvRootXPrvKey -> Currency -> EgvXPubKey
 deriveCurrencyMasterPubKey rootKey currency =
     let path = [44, getCurrencyIndex currency]
-        derivedKey = deriveXPubKey $ prvSubKey (foldl hardSubKey (unEgvRootPrvKey rootKey) path) 0
+        derivedKey = deriveXPubKey $ prvSubKey (foldl hardSubKey (unEgvRootXPrvKey rootKey) path) 0
     in EgvXPubKey currency derivedKey
 
 -- | Derive a BIP44 compatible private key with a given purpose (external or internal) and index.

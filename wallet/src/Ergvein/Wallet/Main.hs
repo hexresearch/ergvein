@@ -11,6 +11,7 @@ import Ergvein.Index.API.Types
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
+import Ergvein.Types.Storage
 import Ergvein.Types.Transaction (PubKeyScriptHash, BlockHeight)
 import Ergvein.Wallet.Alert (handleDangerMsg)
 import Ergvein.Wallet.Alert.Handler
@@ -49,8 +50,11 @@ scanKeys :: MonadFront t m => m ()
 scanKeys = do
   pubKeys <- getPublicKeys
   traverse_ (scanKeysCurrency pubKeys) allCurrencies
+  -- authInfoE <- traverse (scanKeysCurrency pubKeys) allCurrencies
+  -- setAuthInfo authInfoE
+  -- storeWallet
 
-scanKeysCurrency :: MonadFront t m => M.Map Currency EgvPubKeyсhain -> Currency -> m ()
+scanKeysCurrency :: MonadFront t m => PublicKeystore -> Currency -> m ()
 scanKeysCurrency pubKeys currency = do
   logWrite $ "Key scanning for " <> (showt currency)
   case M.lookup currency pubKeys of

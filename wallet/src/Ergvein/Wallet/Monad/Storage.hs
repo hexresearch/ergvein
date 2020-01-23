@@ -18,5 +18,5 @@ class (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t m | m -> t where
   getAddressByCurIx          :: Currency -> Int -> m Base58
   getEncryptedPrivateStorage :: m EncryptedPrivateStorage
   getWalletName              :: m Text
-  getPublicKeys              :: m (M.Map Currency EgvPubKeyсhain)
+  getPublicKeys              :: m PublicKeystore
   storeWallet                :: Event t () -> m ()

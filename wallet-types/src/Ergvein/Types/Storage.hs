@@ -1,6 +1,8 @@
 module Ergvein.Types.Storage
   (
-    PrivateStorage(..)
+    PrivateKeystore
+  , PublicKeystore
+  , PrivateStorage(..)
   , EncryptedPrivateStorage(..)
   , ErgveinStorage(..)
   , EncryptedErgveinStorage(..)
@@ -28,10 +30,12 @@ import qualified Data.Map.Strict          as M
 import qualified Data.Text.Encoding.Error as TEE
 import qualified Data.Text.Encoding       as TE
 
+type PrivateKeystore = M.Map Currency EgvPrvKeyсhain
+
 data PrivateStorage = PrivateStorage {
     privateStorage'seed        :: Seed
-  , privateStorage'root        :: EgvRootPrvKey
-  , privateStorage'privateKeys :: M.Map Currency EgvPrvKeyсhain
+  , privateStorage'root        :: EgvRootXPrvKey
+  , privateStorage'privateKeys :: PrivateKeystore
   }
 
 instance ToJSON PrivateStorage where
@@ -69,9 +73,11 @@ instance FromJSON EncryptedPrivateStorage where
       Nothing -> fail "failed to read iv"
       Just iv' -> pure $ EncryptedPrivateStorage ciphertext salt iv'
 
+type PublicKeystore = M.Map Currency EgvPubKeyсhain
+
 data ErgveinStorage = ErgveinStorage {
     storage'encryptedPrivateStorage :: EncryptedPrivateStorage
-  , storage'publicKeys              :: M.Map Currency EgvPubKeyсhain
+  , storage'publicKeys              :: PublicKeystore
   , storage'walletName              :: Text
   }
 
@@ -112,6 +118,6 @@ instance FromJSON EncryptedErgveinStorage where
       Just iv' -> case decodePoint curve eciesPoint of
         CryptoFailed _ -> fail "failed to read eciesPoint"
         CryptoPassed eciesPoint' -> pure $ EncryptedErgveinStorage ciphertext salt iv' eciesPoint' authTag'
-        where 
+        where
           curve = Proxy :: Proxy Curve_X25519
           authTag' = AuthTag (convert authTag :: Bytes)

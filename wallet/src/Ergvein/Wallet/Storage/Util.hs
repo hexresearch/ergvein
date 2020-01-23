@@ -39,30 +39,30 @@ import qualified Data.Text as T
 type Password = Text
 type WalletName = Text
 
-createEmptyPrvKeychain :: EgvRootPrvKey -> Currency -> EgvPrvKeyсhain
+createEmptyPrvKeychain :: EgvRootXPrvKey -> Currency -> EgvPrvKeyсhain
 createEmptyPrvKeychain root currency =
   let master = deriveCurrencyMasterPrvKey root currency
   in EgvPrvKeyсhain master MI.empty MI.empty
 
-createPrivateStorage :: Seed -> EgvRootPrvKey -> PrivateStorage
+createPrivateStorage :: Seed -> EgvRootXPrvKey -> PrivateStorage
 createPrivateStorage seed root = PrivateStorage seed root privateKeys
   where privateKeys = M.fromList [(currency, createEmptyPrvKeychain root currency) | currency <- allCurrencies]
 
-createEmptyPubKeyсhain :: EgvRootPrvKey -> Currency -> EgvPubKeyсhain
+createEmptyPubKeyсhain :: EgvRootXPrvKey -> Currency -> EgvPubKeyсhain
 createEmptyPubKeyсhain root currency =
   let master = deriveCurrencyMasterPubKey root currency
   in EgvPubKeyсhain master MI.empty MI.empty
 
-createPublicKeyStore :: EgvRootPrvKey -> M.Map Currency EgvPubKeyсhain
-createPublicKeyStore root = M.fromList [(currency, createEmptyPubKeyсhain root currency) | currency <- allCurrencies]
+createPublicKeystore :: EgvRootXPrvKey -> PublicKeystore
+createPublicKeystore root = M.fromList [(currency, createEmptyPubKeyсhain root currency) | currency <- allCurrencies]
 
 createStorage :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either StorageAlert ErgveinStorage)
 createStorage mnemonic (login, pass) = case mnemonicToSeed "" mnemonic of
   Left err -> pure $ Left $ SAMnemonicFail $ showt err
   Right seed -> do
-    let root = EgvRootPrvKey $ makeXPrvKey seed
+    let root = EgvRootXPrvKey $ makeXPrvKey seed
         privateStorage = createPrivateStorage seed root
-        publicKeyStore = createPublicKeyStore root
+        publicKeyStore = createPublicKeystore root
     encryptedPrivateStorageResult <- encryptPrivateStorage privateStorage pass
     case encryptedPrivateStorageResult of
       Left err -> pure $ Left err
