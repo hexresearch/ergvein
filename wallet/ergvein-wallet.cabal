@@ -134,7 +134,7 @@ library
         reflex >=0.4 && <0.7,
         reflex-dom >=0.4 && <0.7,
         reflex-dom-core -any,
-        reflex-dom-canvas -any,
+--        reflex-dom-canvas -any,
         reflex-dom-retractable -any,
         reflex-external-ref -any,
         reflex-localize -any,

@@ -40,7 +40,7 @@ data AuthInfo = AuthInfo {
 
 type Password = Text
 
-class (MonadFrontConstr t m, MonadWidget t m) => MonadFrontBase t m | m -> t where
+class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   -- | Get current settings
   getSettings :: m Settings
   -- | Update app's settings. Sets settings to provided value and stores them

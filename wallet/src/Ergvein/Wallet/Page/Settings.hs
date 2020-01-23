@@ -8,9 +8,9 @@ import qualified Data.Map.Strict as M
 import Data.Time
 import Reflex.Host.Class
 import Reflex.Dom as RD
-import Reflex.Dom.Canvas.Context2D    as CanvasF
-import Reflex.Dom.CanvasBuilder.Types as Canvas
-import Reflex.Dom.CanvasDyn           as CDyn
+--import Reflex.Dom.Canvas.Context2D    as CanvasF
+--import Reflex.Dom.CanvasBuilder.Types as Canvas
+--import Reflex.Dom.CanvasDyn           as CDyn
 
 import Ergvein.Text
 import Ergvein.Wallet.Localization.Settings
@@ -70,14 +70,63 @@ pinCodePage = do
   menuWidget STPSTitle thisWidget
   wrapper True $ do
     h3 $ localizedText $ STPSSetsPinCode
-    --elAttr "div" [("style","width: 200px; height: 200px; background-color: #00ff00; margin-left: auto; margin-right: auto;")] blank
-    --graphPinCode
-    graphPinCodeCs
-    divClass "" $ text "MyTest"
-    el "span" $ text "Span Text!"
-    --graphPinCode
+    graphPinCode
     pure ()
 
+graphPinCode :: MonadFrontBase t m => m ()
+graphPinCode = do
+  (e, _) <- elAttr' "div" canvasAttrs $ do
+    elItem 1 sizeGrid     sizeGrid
+    elItem 2 (sizeGrid*3) sizeGrid
+    elItem 3 (sizeGrid*5) sizeGrid
+    elItem 4 sizeGrid     (sizeGrid*3)
+    elItem 5 (sizeGrid*3) (sizeGrid*3)
+    elItem 6 (sizeGrid*5) (sizeGrid*3)
+    elItem 7 sizeGrid     (sizeGrid*5)
+    elItem 8 (sizeGrid*3) (sizeGrid*5)
+    elItem 9 (sizeGrid*5) (sizeGrid*5)
+    pure ()
+  let xyE = domEvent Mousemove e
+  xyD <- holdDyn (0,0) xyE
+  dynText $ fmap showt xyD
+  pure ()
+  where
+    canvasWidth, canvasHeight, sizeGrid :: Int
+    canvasWidth = 420
+    canvasHeight = 420
+    sizeGrid = 400 `div` 6
+
+    itemR :: Int
+    itemR = sizeGrid `div` 4
+
+    canvasAttrs :: M.Map Text Text
+    canvasAttrs = [ ("id"   , "id_graph_pin_code_canvas")
+                  , ("class", "graph-pin-code-canvas"   )
+                  , ("style", canvasStyle               )
+                  ]
+
+    canvasStyle :: Text
+    canvasStyle = "width:"  <> showt canvasWidth  <> "px" <> ";"
+               <> "height:" <> showt canvasHeight <> "px" <> ";"
+
+    itemAttrs :: Int -> Int -> Int -> M.Map Text Text
+    itemAttrs nmb posX posY =
+      [ ("id"   , "id_graph_pin_item_" <> showt nmb)
+      , ("class", "graph-pin-code-point"           )
+      , ("style", itemStyle posX posY              )
+      ]
+
+    itemStyle :: Int -> Int -> Text
+    itemStyle posX posY = "left:"   <> showt posX      <> "px" <> ";"
+                       <> "top:"    <> showt posY      <> "px" <> ";"
+                       <> "width:"  <> showt (2*itemR) <> "px" <> ";"
+                       <> "height:" <> showt (2*itemR) <> "px" <> ";"
+
+    elItem :: MonadFrontBase t m => Int -> Int -> Int -> m ()
+    elItem nmb posX posY =
+      elAttr "div" (itemAttrs nmb posX posY) blank
+
+{-
 graphPinCode :: forall t m . (MonadFrontBase t m) => m ()
 graphPinCode = do
   elAttr "svg" [ ("style","display: block; width: 400px; height: 400px; margin-left: auto; margin-right: auto;")
@@ -108,3 +157,4 @@ graphPinCodeCs = do
     toDraw = do
       CanvasF.strokeStyleF "#FF0000"
       CanvasF.rectF 10 10 100 100
+-}

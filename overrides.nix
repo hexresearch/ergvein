@@ -49,7 +49,7 @@ in (self: super: let
     bitcoin-api = self.callPackage ./derivations/haskell-bitcoin-api.nix {};
     bytestring-trie = self.callPackage ./derivations/bytestring-trie.nix {};
     servant = self.callPackage ./derivations/servant.nix {};
-    reflex-dom-canvas = lib.dontCheck (self.callPackage ./derivations/reflex-dom-canvas.nix {});
+#    reflex-dom-canvas = lib.dontCheck (self.callPackage ./derivations/reflex-dom-canvas.nix {});
     servant-client = self.callPackage ./derivations/servant-client.nix {};
     servant-client-core = self.callPackage ./derivations/servant-client-core.nix {};
     servant-server = self.callPackage ./derivations/servant-server.nix {};

@@ -66,6 +66,7 @@ frontendCss r = do
   loadingWidgetCss
   alertsCss
   selectCss
+  graphPinCodeCanvasCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -358,3 +359,20 @@ selectCss = do
   "option" ? do
     fontSize $ pt 18
     height   $ em 1.8
+
+graphPinCodeCanvasCss :: Css
+graphPinCodeCanvasCss = do
+  ".graph-pin-code-canvas" ? do
+    position relative
+    backgroundColor $ rgb 240 240 240
+    border solid (px 1) black
+    borderRadius (px 5) (px 5) (px 5) (px 5)
+    let px' = px 0 in padding px' px' px' px'
+    marginLeft auto
+    marginRight auto
+  ".graph-pin-code-point" ? do
+    position absolute
+    backgroundColor $ rgb 140 140 140
+    let px' = px 0 in padding px' px' px' px'
+    let px' = px 0 in margin px' px' px' px'
+    let pct' = pct 50 in borderRadius pct' pct' pct' pct'
