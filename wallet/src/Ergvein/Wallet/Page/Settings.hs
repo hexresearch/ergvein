@@ -6,6 +6,7 @@ module Ergvein.Wallet.Page.Settings(
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.Map.Strict as M
 import Data.Time
+import Data.Function.Flip (flip3)
 import Reflex.Host.Class
 import Reflex.Dom as RD
 --import Reflex.Dom.Canvas.Context2D    as CanvasF
@@ -70,26 +71,73 @@ pinCodePage = do
   menuWidget STPSTitle thisWidget
   wrapper True $ do
     h3 $ localizedText $ STPSSetsPinCode
-    graphPinCode
+    pinCodeE <- graphPinCode
+    pinCodeD <- holdDyn (PinCode []) pinCodeE
+    dynText $ fmap showt pinCodeD
     pure ()
 
-graphPinCode :: MonadFrontBase t m => m ()
+data PinCode = PinCode { unPinCode :: [Int] } deriving (Eq, Show)
+
+data PinProcess = PinProcess
+  { pinProcess'flag :: Bool
+  , pinProcess'pin  :: PinCode
+  } deriving (Eq, Show)
+
+data PinAct
+  = PinStart
+  | PinStop
+  | PinAdd Int
+  deriving Show
+
+isEmptyPinCode :: PinCode -> Bool
+isEmptyPinCode = null . unPinCode
+
+initPinProcess :: PinProcess
+initPinProcess = PinProcess False $ PinCode []
+
+addPinProcess :: PinProcess -> Int -> PinProcess
+addPinProcess pp@PinProcess{..} v =
+  let upc = unPinCode pinProcess'pin in case canAdd upc v of
+    True  -> pp {pinProcess'pin = PinCode (upc ++ [v]) }
+    False -> pp
+  where
+    canAdd :: [Int] -> Int -> Bool
+    canAdd [] v =
+      pinProcess'flag
+    canAdd xs v =
+      if last xs == v
+        then False
+        else pinProcess'flag
+
+graphPinCode :: MonadFrontBase t m => m (Event t PinCode)
 graphPinCode = do
-  (e, _) <- elAttr' "div" canvasAttrs $ do
-    elItem 1 sizeGrid     sizeGrid
-    elItem 2 (sizeGrid*3) sizeGrid
-    elItem 3 (sizeGrid*5) sizeGrid
-    elItem 4 sizeGrid     (sizeGrid*3)
-    elItem 5 (sizeGrid*3) (sizeGrid*3)
-    elItem 6 (sizeGrid*5) (sizeGrid*3)
-    elItem 7 sizeGrid     (sizeGrid*5)
-    elItem 8 (sizeGrid*3) (sizeGrid*5)
-    elItem 9 (sizeGrid*5) (sizeGrid*5)
-    pure ()
-  let xyE = domEvent Mousemove e
-  xyD <- holdDyn (0,0) xyE
-  dynText $ fmap showt xyD
-  pure ()
+  (e, itemE) <- elAttr' "div" canvasAttrs $ do
+    let itemsGeom = [ (1, sizeGrid  , sizeGrid  )
+                    , (2, sizeGrid*3, sizeGrid  )
+                    , (3, sizeGrid*5, sizeGrid  )
+                    , (4, sizeGrid  , sizeGrid*3)
+                    , (5, sizeGrid*3, sizeGrid*3)
+                    , (6, sizeGrid*5, sizeGrid*3)
+                    , (7, sizeGrid  , sizeGrid*5)
+                    , (8, sizeGrid*3, sizeGrid*5)
+                    , (9, sizeGrid*5, sizeGrid*5)
+                    ]
+    fmap leftmost $ mapM (\(n,x,y) -> elItem n x y) itemsGeom
+  let pinActE = leftmost [ PinStart <$ domEvent Mousedown e
+                         , PinStop  <$ domEvent Mouseup   e
+                         , itemE
+                         ]
+  pinProcessD' <- flip3 foldDyn pinActE initPinProcess $
+                    \act pp -> case act of
+                      PinStart -> initPinProcess {pinProcess'flag = True}
+                      PinStop  -> pp {pinProcess'flag = False}
+                      PinAdd v -> addPinProcess pp v
+  pinProcessD <- holdUniqDyn pinProcessD'
+  --dynText $ fmap showt pinProcessD
+  pure $ fforMaybe (updated pinProcessD) $ \PinProcess{..} ->
+    if pinProcess'flag == False && isEmptyPinCode pinProcess'pin == False
+      then Just pinProcess'pin
+      else Nothing
   where
     canvasWidth, canvasHeight, sizeGrid :: Int
     canvasWidth = 420
@@ -122,9 +170,15 @@ graphPinCode = do
                        <> "width:"  <> showt (2*itemR) <> "px" <> ";"
                        <> "height:" <> showt (2*itemR) <> "px" <> ";"
 
-    elItem :: MonadFrontBase t m => Int -> Int -> Int -> m ()
-    elItem nmb posX posY =
-      elAttr "div" (itemAttrs nmb posX posY) blank
+    elItem :: MonadFrontBase t m => Int -> Int -> Int -> m (Event t PinAct)
+    elItem nmb posX posY = do
+      (e,_) <- elAttr' "div" (itemAttrs nmb posX posY) blank
+      let downE  = domEvent Mousedown  e
+          enterE = domEvent Mouseenter e
+          startE = PinStart   <$ downE
+          addE   = PinAdd nmb <$ enterE
+      addAtStartE <- delay 0.01 $ PinAdd nmb <$ downE
+      pure $ leftmost [startE, addAtStartE, addE]
 
 {-
 graphPinCode :: forall t m . (MonadFrontBase t m) => m ()

@@ -370,9 +370,13 @@ graphPinCodeCanvasCss = do
     let px' = px 0 in padding px' px' px' px'
     marginLeft auto
     marginRight auto
+    userSelect none
+    cursor pointer
   ".graph-pin-code-point" ? do
     position absolute
     backgroundColor $ rgb 140 140 140
     let px' = px 0 in padding px' px' px' px'
     let px' = px 0 in margin px' px' px' px'
     let pct' = pct 50 in borderRadius pct' pct' pct' pct'
+    userSelect none
+    cursor pointer
