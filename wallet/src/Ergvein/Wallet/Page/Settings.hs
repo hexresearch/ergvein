@@ -110,19 +110,14 @@ addPinProcess pp@PinProcess{..} v =
         else pinProcess'flag
 
 graphPinCode :: MonadFrontBase t m => m (Event t PinCode)
-graphPinCode = do
+graphPinCode = mdo
   (e, itemE) <- elAttr' "div" canvasAttrs $ do
-    let itemsGeom = [ (1, sizeGrid  , sizeGrid  )
-                    , (2, sizeGrid*3, sizeGrid  )
-                    , (3, sizeGrid*5, sizeGrid  )
-                    , (4, sizeGrid  , sizeGrid*3)
-                    , (5, sizeGrid*3, sizeGrid*3)
-                    , (6, sizeGrid*5, sizeGrid*3)
-                    , (7, sizeGrid  , sizeGrid*5)
-                    , (8, sizeGrid*3, sizeGrid*5)
-                    , (9, sizeGrid*5, sizeGrid*5)
-                    ]
-    fmap leftmost $ mapM (\(n,x,y) -> elItem n x y) itemsGeom
+    resE <- fmap leftmost $ mapM (\(n,x,y) -> elItem n x y) itemsGeom
+    divClass "graph-pin-code-glass" $ widgetHold_ (pure ()) $ ffor (updated pinProcessD) $ \pp -> do
+      let pvs = unPinCode . pinProcess'pin $ pp
+      mapM_ (\(n,x,y) -> elItemCheck pvs n x y) itemsGeom
+      drawLines pvs
+    pure resE
   let pinActE = leftmost [ PinStart <$ domEvent Mousedown e
                          , PinStop  <$ domEvent Mouseup   e
                          , itemE
@@ -133,16 +128,26 @@ graphPinCode = do
                       PinStop  -> pp {pinProcess'flag = False}
                       PinAdd v -> addPinProcess pp v
   pinProcessD <- holdUniqDyn pinProcessD'
-  --dynText $ fmap showt pinProcessD
   pure $ fforMaybe (updated pinProcessD) $ \PinProcess{..} ->
     if pinProcess'flag == False && isEmptyPinCode pinProcess'pin == False
       then Just pinProcess'pin
       else Nothing
   where
+    itemsGeom :: [(Int,Int,Int)]
+    itemsGeom = [ (1, sizeGrid  , sizeGrid  )
+                , (2, sizeGrid*3, sizeGrid  )
+                , (3, sizeGrid*5, sizeGrid  )
+                , (4, sizeGrid  , sizeGrid*3)
+                , (5, sizeGrid*3, sizeGrid*3)
+                , (6, sizeGrid*5, sizeGrid*3)
+                , (7, sizeGrid  , sizeGrid*5)
+                , (8, sizeGrid*3, sizeGrid*5)
+                , (9, sizeGrid*5, sizeGrid*5)
+                ]
     canvasWidth, canvasHeight, sizeGrid :: Int
     canvasWidth = 420
     canvasHeight = 420
-    sizeGrid = 400 `div` 6
+    sizeGrid = 420 `div` 6
 
     itemR :: Int
     itemR = sizeGrid `div` 4
@@ -157,28 +162,65 @@ graphPinCode = do
     canvasStyle = "width:"  <> showt canvasWidth  <> "px" <> ";"
                <> "height:" <> showt canvasHeight <> "px" <> ";"
 
-    itemAttrs :: Int -> Int -> Int -> M.Map Text Text
-    itemAttrs nmb posX posY =
-      [ ("id"   , "id_graph_pin_item_" <> showt nmb)
-      , ("class", "graph-pin-code-point"           )
-      , ("style", itemStyle posX posY              )
+    itemAttrs :: Int -> Int -> Int -> Int -> Text -> M.Map Text Text
+    itemAttrs nmb posX posY whVal pref =
+      [ ("id"   , "id_graph_pin_item_" <> pref <> showt nmb)
+      , ("class", "graph-pin-code-" <> pref                )
+      , ("style", itemStyle posX posY whVal                )
       ]
 
-    itemStyle :: Int -> Int -> Text
-    itemStyle posX posY = "left:"   <> showt posX      <> "px" <> ";"
-                       <> "top:"    <> showt posY      <> "px" <> ";"
-                       <> "width:"  <> showt (2*itemR) <> "px" <> ";"
-                       <> "height:" <> showt (2*itemR) <> "px" <> ";"
+    itemStyle :: Int -> Int -> Int -> Text
+    itemStyle posX posY whVal = "left:"   <> showt (posX - whVal `div` 2) <> "px" <> ";"
+                             <> "top:"    <> showt (posY - whVal `div` 2) <> "px" <> ";"
+                             <> "width:"  <> showt whVal <> "px" <> ";"
+                             <> "height:" <> showt whVal <> "px" <> ";"
 
     elItem :: MonadFrontBase t m => Int -> Int -> Int -> m (Event t PinAct)
     elItem nmb posX posY = do
-      (e,_) <- elAttr' "div" (itemAttrs nmb posX posY) blank
+      (e,_) <- elAttr' "div" (itemAttrs nmb posX posY (2*itemR) "point") blank
       let downE  = domEvent Mousedown  e
           enterE = domEvent Mouseenter e
           startE = PinStart   <$ downE
           addE   = PinAdd nmb <$ enterE
       addAtStartE <- delay 0.01 $ PinAdd nmb <$ downE
       pure $ leftmost [startE, addAtStartE, addE]
+
+    elItemCheck :: MonadFrontBase t m => [Int] -> Int -> Int -> Int -> m ()
+    elItemCheck pvs nmb posX posY =
+      if elem nmb pvs == True
+        then elAttr "div" (itemAttrs nmb posX posY (3*itemR) "point-check") blank
+        else pure ()
+
+    drawLines :: MonadFrontBase t m => [Int] -> m ()
+    drawLines = \case
+      []         ->
+        pure ()
+      (x1:x2:xs) -> do
+        let posX = fst $ getPosXY (x1 - 1)
+            posY = snd $ getPosXY (x1 - 1)
+        case calcAngle x1 x2 of
+          Just (va,dx,dy) -> elAttr "div" [ ("class","graph-pin-code-line-check")
+                                          , ("style","width:"     <> showt (sizeGrid*2) <> "px"       <> ";"
+                                                  <> "left:"      <> showt (posX + dx)  <> "px"       <> ";"
+                                                  <> "top:"       <> showt (posY + dy)  <> "px"       <> ";"
+                                                  <> "transform:" <> " rotate(" <> showt va <> "deg)" <> ";"
+                                            )
+                                          ] blank
+          Nothing -> pure ()
+        drawLines (x2:xs)
+      _         ->
+        pure ()
+      where
+        calcAngle :: Int -> Int -> Maybe (Int, Int, Int)
+        calcAngle v1 v2 = case v2 - v1 of
+          1   -> Just (0 ,         0  ,         0)
+          3   -> Just (90, -sizeGrid  ,  sizeGrid)
+          -1  -> Just (0 , -sizeGrid*2,         0)
+          -3  -> Just (90, -sizeGrid  , -sizeGrid)
+          _   -> Nothing
+
+        getPosXY :: Int -> (Int,Int)
+        getPosXY nmb = let (_,x,y) = itemsGeom !! nmb in (x,y)
 
 {-
 graphPinCode :: forall t m . (MonadFrontBase t m) => m ()

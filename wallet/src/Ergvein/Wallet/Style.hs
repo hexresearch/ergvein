@@ -372,6 +372,7 @@ graphPinCodeCanvasCss = do
     marginRight auto
     userSelect none
     cursor pointer
+    zIndex 3
   ".graph-pin-code-point" ? do
     position absolute
     backgroundColor $ rgb 140 140 140
@@ -380,3 +381,31 @@ graphPinCodeCanvasCss = do
     let pct' = pct 50 in borderRadius pct' pct' pct' pct'
     userSelect none
     cursor pointer
+    zIndex 5
+  ".graph-pin-code-glass" ? do
+    position absolute
+    backgroundColor none
+    let px' = px 0 in padding px' px' px' px'
+    let px' = px 0 in margin px' px' px' px'
+    let pct' = pct 50 in borderRadius pct' pct' pct' pct'
+    userSelect none
+    zIndex 10
+  ".graph-pin-code-point-check" ? do
+    position absolute
+    backgroundColor $ rgb 90 90 90
+    let px' = px 0 in padding px' px' px' px'
+    let px' = px 0 in margin px' px' px' px'
+    let pct' = pct 50 in borderRadius pct' pct' pct' pct'
+    userSelect none
+    cursor pointer
+    zIndex 10
+  ".graph-pin-code-line-check" ? do
+    position absolute
+    backgroundColor $ none
+    let px' = px 0 in padding px' px' px' px'
+    let px' = px 0 in margin px' px' px' px'
+    userSelect none
+    cursor pointer
+    borderTop solid (px 2) $ rgb 90 90 90
+    height $ px 2
+    zIndex 10
