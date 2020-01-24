@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Scan where
 
 import qualified Network.Bitcoin.Api.Client as BitcoinApi
@@ -15,8 +16,8 @@ import qualified Data.Text.IO as TIO
 scan :: String -> Int -> Text -> Text -> IO ()
 scan host port user password = do
   count <- client getBlockCount
-  r <- mapM itera $ [0 .. 9999]
-  let sp = mkMerkleTree $ convert . hashFinalize . hashUpdates (hashInitWith SHA256) <$> chunksOf 1000 r
+  let r = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"] :: [ByteString]
+  let sp = mkMerkleTree $ convert . hashFinalize . hashUpdates (hashInitWith SHA256) <$> chunksOf 2 r
   TIO.writeFile "out" $ pack $ show sp
   pure ()
   where
@@ -26,4 +27,7 @@ scan host port user password = do
       hash <-  client $ flip getBlockHash x 
       r <- client $ flip getBlockHeader hash
       pure $ toBytes $ fromJust r 
-      
+
+
+g:: ByteString
+g = convert . hashFinalize . hashUpdates (hashInitWith SHA256) $ (["five"]::[ByteString])

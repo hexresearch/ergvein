@@ -45,6 +45,10 @@ executable ergvein-checkpoints-generator
     , tasty
     , tasty-discover
     , tasty-hspec
+    , file-embed
+    , bytestring
+    , data-merkle-tree
 
   default-language:    Haskell2010
   default-extensions:
+    TemplateHaskell

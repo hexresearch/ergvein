@@ -47,7 +47,7 @@ import Control.DeepSeq
 -- | A merkle tree root.
 newtype MerkleRoot a = MerkleRoot
   { getMerkleRoot :: BS.ByteString
-  } deriving (Show, Eq, Ord,  Generic, S.Serialize, NFData)
+  } deriving (Show, Read, Eq, Ord,  Generic, S.Serialize, NFData)
 
 instance B.ByteArrayAccess (MerkleRoot a) where
   length (MerkleRoot bs) = B.length bs
@@ -57,7 +57,7 @@ instance B.ByteArrayAccess (MerkleRoot a) where
 data MerkleTree a
   = MerkleEmpty
   | MerkleTree Word32 (MerkleNode a)
-  deriving (Show, Eq, Generic, S.Serialize, NFData)
+  deriving (Show, Read, Eq, Generic, S.Serialize, NFData)
 
 data MerkleNode a
   = MerkleBranch {
@@ -69,7 +69,7 @@ data MerkleNode a
       mRoot :: MerkleRoot a
     , mVal  :: a
   }
-  deriving (Eq, Show, Generic, S.Serialize, NFData)
+  deriving (Eq, Show, Read, Generic, S.Serialize, NFData)
 
 instance Foldable MerkleTree where
   foldMap _ MerkleEmpty      = mempty
@@ -169,16 +169,16 @@ mkMerkleTree ls = MerkleTree (fromIntegral lsLen) (go lsLen ls)
 -------------------------------------------------------------------------------
 
 newtype MerkleProof a = MerkleProof { getMerkleProof :: [ProofElem a] }
-  deriving (Show, Eq, Ord, Generic, S.Serialize, NFData)
+  deriving (Show, Read, Eq, Ord, Generic, S.Serialize, NFData)
 
 data ProofElem a = ProofElem
   { nodeRoot    :: MerkleRoot a
   , siblingRoot :: MerkleRoot a
   , nodeSide    :: Side
-  } deriving (Show, Eq, Ord, Generic, S.Serialize, NFData)
+  } deriving (Show, Read, Eq, Ord, Generic, S.Serialize, NFData)
 
 data Side = L | R
-  deriving (Show, Eq, Ord, Generic, S.Serialize, NFData)
+  deriving (Show, Read, Eq, Ord, Generic, S.Serialize, NFData)
 
 -- | Construct a merkle tree proof of inclusion
 -- Walks the entire tree recursively, building a list of "proof elements"
