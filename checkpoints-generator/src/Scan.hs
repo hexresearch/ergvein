@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+
 module Scan where
 
 import qualified Network.Bitcoin.Api.Client as BitcoinApi
@@ -12,22 +12,51 @@ import Data.ByteArray (convert)
 import Data.ByteString (ByteString)
 import Data.MerkleTree
 import qualified Data.Text.IO as TIO
+import qualified Data.Conduit.List as CL
+import Data.Conduit
+import qualified Data.Conduit.Combinators as CC
 
-scan :: String -> Int -> Text -> Text -> IO ()
-scan host port user password = do
-  count <- client getBlockCount
-  let r = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"] :: [ByteString]
-  let sp = mkMerkleTree $ convert . hashFinalize . hashUpdates (hashInitWith SHA256) <$> chunksOf 2 r
-  TIO.writeFile "out" $ pack $ show sp
-  pure ()
+data ScanConfig = ScanConfig
+  { cfgNodeHost     :: String
+  , cfgNodePort     :: Int
+  , cfgNodeUser     :: Text
+  , cfgNodePassword :: Text
+  , cfgChunkSize    :: Integer
+  , cfgFileName     :: String
+  } deriving Show
+
+scanToFile :: ScanConfig -> IO ()
+scanToFile scanConfig= do
+  headersMerkleTree <- headersMerkleTree scanConfig
+  TIO.writeFile (cfgFileName scanConfig) $ pack $ show headersMerkleTree
+
+headersMerkleTree :: ScanConfig -> IO (MerkleTree ByteString)
+headersMerkleTree scanConfig = do
+  nodeHeight <- client getBlockCount
+
+  let roundNodeHeight = nodeHeight - nodeHeight `rem` cfgChunkSize scanConfig
+
+  tree <- runConduit $ 
+    CL.enumFromTo 0 roundNodeHeight
+    .| CL.mapM (blockHeaderAtHeight roundNodeHeight)
+    .| CL.chunksOf (fromIntegral $ cfgChunkSize scanConfig)
+    .| CL.map chunkHash
+    .| CC.sinkList
+         
+  pure $ mkMerkleTree tree
   where
-    client = BitcoinApi.withClient host port user password
-    itera x = do
-      putStrLn $ "getting at " <> show x
-      hash <-  client $ flip getBlockHash x 
-      r <- client $ flip getBlockHeader hash
-      pure $ toBytes $ fromJust r 
+    chunkHash :: [ByteString] -> ByteString
+    chunkHash = convert . hashFinalize . hashUpdates (hashInitWith SHA256)
 
+    client = BitcoinApi.withClient 
+      (cfgNodeHost scanConfig)
+      (cfgNodePort scanConfig)
+      (cfgNodeUser scanConfig)
+      (cfgNodePassword scanConfig)
 
-g:: ByteString
-g = convert . hashFinalize . hashUpdates (hashInitWith SHA256) $ (["five"]::[ByteString])
+    blockHeaderAtHeight :: Integer -> Integer -> IO ByteString
+    blockHeaderAtHeight nodeHeight heightToScan = do
+      putStrLn $ "scanning at " <> show heightToScan <> " " <> show (succ heightToScan * 100 `div` nodeHeight)
+      blockHash <-  client $ flip getBlockHash heightToScan
+      blockHeader <- client $ flip getBlockHeader blockHash
+      pure $ toBytes $ fromJust blockHeader

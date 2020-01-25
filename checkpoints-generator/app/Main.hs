@@ -12,33 +12,23 @@ import qualified Data.ByteString as BS
 import Data.MerkleTree
 import Data.ByteString.Char8 as C8
 
-data BTCNodeConnection = BTCNodeConnection
-  { host     :: String
-  , port     :: Int
-  , user     :: Text
-  , password :: Text
-  } deriving Show
 
-btcNodeConnection :: Parser BTCNodeConnection
-btcNodeConnection = BTCNodeConnection
+
+scanConfig :: Parser ScanConfig
+scanConfig = ScanConfig
       <$> strOption ( long "host")
       <*> option auto ( long "port")
       <*> strOption ( long "user")
       <*> strOption ( long "password")
-
-tree :: MerkleTree BS.ByteString
-tree = read $ $(embedStringFile "out")
+      <*> option auto ( long "chunkSize")
+      <*> strOption ( long "fileName")
 
 main :: IO ()
 main = do
   args <- getArgs
-  nodeConnection <- execParser opts
-  let leafHash = mkLeafRootHash g
-      leafProof = merkleProof tree leafHash
-  error $ show $ validateMerkleProof leafProof (mtRoot tree) leafHash
-  --scan (host nodeConnection) (port nodeConnection) (user nodeConnection) (password nodeConnection)
-  pure ()
+  scanConfig <- execParser opts
+  scanToFile scanConfig
   where
-    opts = info (btcNodeConnection <**> helper) fullDesc
+    opts = info (scanConfig <**> helper) fullDesc
 
 
