@@ -1,20 +1,17 @@
+module Scanning where
 
-module Scan where
-
-import qualified Network.Bitcoin.Api.Client as BitcoinApi
-import Network.Bitcoin.Api.Blockchain
-import Data.Text (Text, pack)
+import Data.ByteString (ByteString)
+import Data.Conduit
 import Data.HexString
 import Data.Maybe
-import Data.List.Split
-import Crypto.Hash
-import Data.ByteArray (convert)
-import Data.ByteString (ByteString)
 import Data.MerkleTree
-import qualified Data.Text.IO as TIO
-import qualified Data.Conduit.List as CL
-import Data.Conduit
+import Data.Text (Text, pack)
+import Network.Bitcoin.Api.Blockchain
+import Utils
 import qualified Data.Conduit.Combinators as CC
+import qualified Data.Conduit.List as CL
+import qualified Data.Text.IO as TIO
+import qualified Network.Bitcoin.Api.Client as BitcoinApi
 
 data ScanConfig = ScanConfig
   { cfgNodeHost     :: String
@@ -45,18 +42,15 @@ headersMerkleTree scanConfig = do
          
   pure $ mkMerkleTree tree
   where
-    chunkHash :: [ByteString] -> ByteString
-    chunkHash = convert . hashFinalize . hashUpdates (hashInitWith SHA256)
-
     client = BitcoinApi.withClient 
       (cfgNodeHost scanConfig)
       (cfgNodePort scanConfig)
       (cfgNodeUser scanConfig)
       (cfgNodePassword scanConfig)
 
-    blockHeaderAtHeight :: Integer -> Integer -> IO ByteString
+    blockHeaderAtHeight :: Integer -> Integer -> IO HexString
     blockHeaderAtHeight nodeHeight heightToScan = do
       putStrLn $ "scanning at " <> show heightToScan <> " " <> show (succ heightToScan * 100 `div` nodeHeight)
       blockHash <-  client $ flip getBlockHash heightToScan
       blockHeader <- client $ flip getBlockHeader blockHash
-      pure $ toBytes $ fromJust blockHeader
+      pure $ fromJust blockHeader

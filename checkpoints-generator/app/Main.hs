@@ -4,24 +4,18 @@ module Main where
 
 import System.Environment
 import Options.Applicative
-import Scan
-import Data.Text
+import Scanning
 import Data.Semigroup ((<>))
-import Data.FileEmbed
-import qualified Data.ByteString as BS
-import Data.MerkleTree
 import Data.ByteString.Char8 as C8
-
-
 
 scanConfig :: Parser ScanConfig
 scanConfig = ScanConfig
-      <$> strOption ( long "host")
+      <$> strOption   ( long "host")
       <*> option auto ( long "port")
-      <*> strOption ( long "user")
-      <*> strOption ( long "password")
+      <*> strOption   ( long "user")
+      <*> strOption   ( long "password")
       <*> option auto ( long "chunkSize")
-      <*> strOption ( long "fileName")
+      <*> strOption   ( long "fileName")
 
 main :: IO ()
 main = do
@@ -30,5 +24,3 @@ main = do
   scanToFile scanConfig
   where
     opts = info (scanConfig <**> helper) fullDesc
-
-
