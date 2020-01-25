@@ -18,10 +18,7 @@ module Data.MerkleTree (
   mtRoot,
   mtSize,
   mtHash,
-  mtHeight,
-
-  -- ** Testing
-  testMerkleProofN,
+  mtHeight
 ) where
 
 import Crypto.Hash (Digest, SHA3_256(..), hash)
@@ -37,7 +34,6 @@ import Data.Bits
 import qualified Data.ByteString.Lazy.UTF8 as BLU
 import qualified Data.Text as T
 import Data.Text.Encoding (encodeUtf8)
-import System.Random (randomRIO)
 import Control.DeepSeq
 
 -------------------------------------------------------------------------------
@@ -239,18 +235,3 @@ sha256 x = B.convertToBase B.Base16 (hash x :: Digest SHA3_256)
 -- | Hash function to use for merkle tree
 merkleHash :: BS.ByteString -> BS.ByteString
 merkleHash = sha256
-
--------------------------------------------------------------------------------
--- Testing
--------------------------------------------------------------------------------
-
--- | Constructs a merkle tree and random leaf root to test inclusion of
-testMerkleProofN :: Int -> IO Bool
-testMerkleProofN n
-  | n < 2 = error "Cannot construct a merkle tree with < 2 nodes"
-  | otherwise = do
-      randN <- randomRIO (1,n) :: IO Int
-      let mtree = mkMerkleTree $ S.encode <$> [1..n]
-          randLeaf = mkLeafRootHash $ S.encode randN
-          proof = merkleProof mtree randLeaf
-      pure $ validateMerkleProof proof (mtRoot mtree) randLeaf
