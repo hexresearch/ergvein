@@ -1,5 +1,6 @@
-module Scanning where
+module Crypto.Checkpoint.Btc where
 
+import Crypto.Checkpoint.Utils
 import Data.ByteString (ByteString)
 import Data.Conduit
 import Data.HexString
@@ -7,7 +8,6 @@ import Data.Maybe
 import Data.MerkleTree
 import Data.Text (Text, pack)
 import Network.Bitcoin.Api.Blockchain
-import Utils
 import qualified Data.Conduit.Combinators as CC
 import qualified Data.Conduit.List as CL
 import qualified Data.Text.IO as TIO

@@ -34,7 +34,7 @@ packages:
 - index-api
 - index-client
 - index-server
-- checkpoints-generator
+- checkpoint-generator
 - data-merkle-tree
 - interfaces/ergo
 - reflex-external-ref

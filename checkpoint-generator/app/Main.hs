@@ -4,7 +4,7 @@ module Main where
 
 import System.Environment
 import Options.Applicative
-import Scanning
+import Crypto.Checkpoint.Btc
 import Data.Semigroup ((<>))
 import Data.ByteString.Char8 as C8
 

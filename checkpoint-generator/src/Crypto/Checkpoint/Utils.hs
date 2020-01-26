@@ -1,4 +1,4 @@
-module Utils where
+module Crypto.Checkpoint.Utils where
 
 import Crypto.Hash
 import Data.ByteArray (convert)
