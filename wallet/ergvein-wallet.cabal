@@ -67,7 +67,8 @@ library
         Ergvein.Wallet.Page.Password
         Ergvein.Wallet.Page.Seed
         Ergvein.Wallet.Page.PatternKey
-        Ergvein.Wallet.Page.PatternKeyUtils.Utils
+        Ergvein.Wallet.Page.Canvas
+        Ergvein.Wallet.Page.QRCode
         Ergvein.Wallet.Password
         Ergvein.Wallet.Platform
         Ergvein.Wallet.Resize
@@ -145,6 +146,7 @@ library
         text >=1.2 && <1.3,
         these -any,
         time -any,
+        qrcode-core,
         unliftio-core >= 0.1 && < 0.2,
         vector -any,
         yaml -any
