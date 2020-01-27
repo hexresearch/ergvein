@@ -120,7 +120,6 @@ graphPinCode = mdo
         drawLines pvs
         pure chActE
     pure $ leftmost [resE, chResE]
-  --dbgPrintE itemE
   let pinActE = leftmost [ PinStart <$ domEvent Mousedown e
                          , PinStop  <$ domEvent Mouseup   e
                          , itemE
@@ -192,7 +191,7 @@ graphPinCode = mdo
     elItemCheck pvs nmb posX posY =
       if elem nmb pvs == True
         then do
-          (e,_) <- elAttr' "div" (itemAttrs nmb posX posY (3*itemR) "point-check") blank
+          (e,_) <- elAttr' "div" (itemAttrs nmb posX posY (3*itemR + itemR `div` 2) "point-check") blank
           let enterE = domEvent Mouseenter e
               addE   = PinAdd nmb <$ enterE
           pure addE
@@ -220,17 +219,18 @@ graphPinCode = mdo
       where
         calcAngle :: Int -> Int -> Maybe (Int, Int, Int)
         calcAngle v1 v2 = case v2 - v1 of
-          1   -> Just (0 ,         0  ,         0)
-          3   -> Just (90, -sizeGrid  ,  sizeGrid)
-          -1  -> Just (0 , -sizeGrid*2,         0)
-          -3  -> Just (90, -sizeGrid  , -sizeGrid)
-          _   -> Nothing
+          (1 )  -> Just ( 0 ,         0  ,         0)
+          (3 )  -> Just ( 90, -sizeGrid  ,  sizeGrid)
+          (-1)  -> Just ( 0 , -sizeGrid*2,         0)
+          (-3)  -> Just ( 90, -sizeGrid  , -sizeGrid)
+          (4 )  -> Just ( 45,         0  ,  sizeGrid)
+          (-4)  -> Just ( 45, -sizeGrid*2, -sizeGrid)
+          (-2)  -> Just (-45,         0  , -sizeGrid)
+          (2 )  -> Just (-45, -sizeGrid*2,  sizeGrid)
+          _     -> Nothing
 
         getPosXY :: Int -> (Int,Int)
         getPosXY nmb = let (_,x,y) = itemsGeom !! nmb in (x,y)
-
-dbgPrintE :: (MonadFrontBase t m, Show a) => Event t a -> m ()
-dbgPrintE = performEvent_ . fmap (liftIO . print)
 
 {-
 graphPinCode :: forall t m . (MonadFrontBase t m) => m ()
