@@ -113,11 +113,14 @@ graphPinCode :: MonadFrontBase t m => m (Event t PinCode)
 graphPinCode = mdo
   (e, itemE) <- elAttr' "div" canvasAttrs $ do
     resE <- fmap leftmost $ mapM (\(n,x,y) -> elItem n x y) itemsGeom
-    divClass "graph-pin-code-glass" $ widgetHold_ (pure ()) $ ffor (updated pinProcessD) $ \pp -> do
-      let pvs = unPinCode . pinProcess'pin $ pp
-      mapM_ (\(n,x,y) -> elItemCheck pvs n x y) itemsGeom
-      drawLines pvs
-    pure resE
+    chResE <- fmap switchDyn $ divClass "graph-pin-code-glass" $
+      widgetHold (pure never) $ ffor (updated pinProcessD) $ \pp -> do
+        let pvs = unPinCode . pinProcess'pin $ pp
+        chActE <- fmap leftmost $ mapM (\(n,x,y) -> elItemCheck pvs n x y) itemsGeom
+        drawLines pvs
+        pure chActE
+    pure $ leftmost [resE, chResE]
+  --dbgPrintE itemE
   let pinActE = leftmost [ PinStart <$ domEvent Mousedown e
                          , PinStop  <$ domEvent Mouseup   e
                          , itemE
@@ -185,11 +188,15 @@ graphPinCode = mdo
       addAtStartE <- delay 0.01 $ PinAdd nmb <$ downE
       pure $ leftmost [startE, addAtStartE, addE]
 
-    elItemCheck :: MonadFrontBase t m => [Int] -> Int -> Int -> Int -> m ()
+    elItemCheck :: MonadFrontBase t m => [Int] -> Int -> Int -> Int -> m (Event t PinAct)
     elItemCheck pvs nmb posX posY =
       if elem nmb pvs == True
-        then elAttr "div" (itemAttrs nmb posX posY (3*itemR) "point-check") blank
-        else pure ()
+        then do
+          (e,_) <- elAttr' "div" (itemAttrs nmb posX posY (3*itemR) "point-check") blank
+          let enterE = domEvent Mouseenter e
+              addE   = PinAdd nmb <$ enterE
+          pure addE
+        else pure never
 
     drawLines :: MonadFrontBase t m => [Int] -> m ()
     drawLines = \case
@@ -221,6 +228,9 @@ graphPinCode = mdo
 
         getPosXY :: Int -> (Int,Int)
         getPosXY nmb = let (_,x,y) = itemsGeom !! nmb in (x,y)
+
+dbgPrintE :: (MonadFrontBase t m, Show a) => Event t a -> m ()
+dbgPrintE = performEvent_ . fmap (liftIO . print)
 
 {-
 graphPinCode :: forall t m . (MonadFrontBase t m) => m ()
