@@ -45,7 +45,7 @@ instance FromJSON EgvRootXPrvKey where
 data EgvXPrvKey = EgvXPrvKey {
   egvXPrvCurrency :: Currency
 , egvXPrvKey      :: XPrvKey
-} deriving (Eq)
+} deriving (Eq, Show, Read)
 
 instance ToJSON EgvXPrvKey where
   toJSON (EgvXPrvKey currency key) = object [
@@ -68,7 +68,7 @@ instance Ord EgvXPrvKey where
 data EgvXPubKey = EgvXPubKey {
   egvXPubCurrency :: Currency
 , egvXPubKey      :: XPubKey
-} deriving (Eq)
+} deriving (Eq, Show, Read)
 
 instance ToJSON EgvXPubKey where
   toJSON (EgvXPubKey currency key) = object [
@@ -98,7 +98,7 @@ data EgvPrvKeyсhain = EgvPrvKeyсhain {
   -- ^Map with BIP44 internal extended private keys and corresponding indices.
   -- This private keys must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.
-} deriving (Eq)
+} deriving (Eq, Show, Read)
 
 $(deriveJSON aesonOptionsStripToApostroph ''EgvPrvKeyсhain)
 
@@ -113,7 +113,7 @@ data EgvPubKeyсhain = EgvPubKeyсhain {
   -- ^Map with BIP44 internal extended public keys and corresponding indices.
   -- This addresses must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.
-} deriving (Eq)
+} deriving (Eq, Show, Read)
 
 $(deriveJSON aesonOptionsStripToApostroph ''EgvPubKeyсhain)
 
