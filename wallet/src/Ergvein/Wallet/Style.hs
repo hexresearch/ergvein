@@ -373,6 +373,17 @@ graphPinCodeCanvasCss = do
     userSelect none
     cursor pointer
     zIndex 3
+  ".graph-pin-code-canvas-error" ? do
+    position relative
+    backgroundColor $ rgb 255 230 230
+    border solid (px 1) $ rgb 190 0 0
+    borderRadius (px 5) (px 5) (px 5) (px 5)
+    let px' = px 0 in padding px' px' px' px'
+    marginLeft auto
+    marginRight auto
+    userSelect none
+    cursor pointer
+    zIndex 3
   ".graph-pin-code-point" ? do
     position absolute
     backgroundColor $ rgb 140 140 140
