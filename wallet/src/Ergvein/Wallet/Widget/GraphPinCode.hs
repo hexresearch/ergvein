@@ -63,14 +63,9 @@ graphPinCode actionE = mdo
         drawLines pvs
         pure chActE
     pure $ leftmost [resE, chResE]
---  let actActE = fforMaybe actionE $ \case
---                  CleanPinCode  -> Just PinClean
---                  ResetPinCode  -> Just PinClean
---                  ErrorPinCode  -> Nothing
   let pinActE = leftmost [ PinStart <$ domEvent Mousedown e
                          , PinStop  <$ domEvent Mouseup   e
                          , itemE
---                         , actActE
                          ]
   pinProcessD' <- flip3 foldDyn pinActE initPinProcess $
                     \act pp -> case act of

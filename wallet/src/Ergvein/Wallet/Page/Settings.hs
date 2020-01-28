@@ -9,9 +9,6 @@ import Data.Time
 import Data.Function.Flip (flip3)
 import Reflex.Host.Class
 import Reflex.Dom as RD
---import Reflex.Dom.Canvas.Context2D    as CanvasF
---import Reflex.Dom.CanvasBuilder.Types as Canvas
---import Reflex.Dom.CanvasDyn           as CDyn
 
 import Ergvein.Text
 import Ergvein.Wallet.Localization.Settings
@@ -66,7 +63,6 @@ languagePage = do
       pure ()
     pure ()
 
---data PinOnOff = PinOn | PinOff
 data GoPinSets
   = GoPinBase
   | GoPinInputCode
@@ -81,10 +77,6 @@ pinCodePage = do
           ffor (leftmost [goPinE, goPinSetsE]) $ \case
             GoPinBase       -> pagePinBase
             GoPinInputCode  -> pagePinInput
-    --let switchE = ffor switchE'
-    --pinCodeE <- graphPinCode never
-    --pinCodeD <- holdDyn (PinCode []) pinCodeE
-    --dynText $ fmap showt pinCodeD
     pure ()
     where
       pagePinBase :: MonadFront t m => m (Event t GoPinSets)
@@ -115,36 +107,3 @@ pinCodePage = do
         settings <- getSettings
         updateSettings $ ffor setPinE (\pcv -> settings {settingsPinCode = Just $ showt pcv})
         delay 0.1 $ GoPinBase <$ setPinE
-
-{-
-graphPinCode :: forall t m . (MonadFrontBase t m) => m ()
-graphPinCode = do
-  elAttr "svg" [ ("style","display: block; width: 400px; height: 400px; margin-left: auto; margin-right: auto;")
-               , ("width", "400"), ("height", "400"), ("viewBox","0 0 400 400")
-               ] $ do
-    elAttr "circle" [ ("cx","100")
-                    , ("cy","100")
-                    , ("r","25")
-                    --, ("style","fill: #ff0000; stroke: #ff0000; stroke-width: 1;")
-                    , ("stroke","green")
-                    , ("fill","white")
-                    , ("stroke-width","1")
-                    ] blank
-    elAttr "rect" [("x","50"), ("y","100"), ("width","200"), ("height","100"), ("style","fill: #ffc107; stroke: #e65100; stroke-width: 2;")] blank
-    pure ()
-
-graphPinCodeCs :: MonadFront t m => m ()
-graphPinCodeCs = do
-  now <- liftIO getCurrentTime
-  canvasEl <- fst <$> elAttr' "canvas"
-                        [ ("style","display: block; width: 400px; height: 400px; margin-left: auto; margin-right: auto;")
-                        ] blank
-  d2D <- fmap Canvas._canvasInfo_context <$> CDyn.dContext2d ( Canvas.CanvasConfig canvasEl [] )
-  eTick <- fmap void $ RD.tickLossy 0.1 now
-  _ <- CDyn.nextFrameWithCxFree (constDyn toDraw) d2D eTick
-  pure ()
-  where
-    toDraw = do
-      CanvasF.strokeStyleF "#FF0000"
-      CanvasF.rectF 10 10 100 100
--}
