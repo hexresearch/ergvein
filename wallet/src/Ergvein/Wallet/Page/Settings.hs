@@ -66,16 +66,54 @@ languagePage = do
       pure ()
     pure ()
 
+--data PinOnOff = PinOn | PinOff
+data GoPinSets
+  = GoPinBase
+  | GoPinInputCode
+
 pinCodePage :: MonadFront t m => m ()
 pinCodePage = do
   let thisWidget = Just $ pure $ pinCodePage
   menuWidget STPSTitle thisWidget
   wrapper True $ do
-    h3 $ localizedText $ STPSSetsPinCode
-    pinCodeE <- graphPinCode never
-    pinCodeD <- holdDyn (PinCode []) pinCodeE
-    dynText $ fmap showt pinCodeD
+    goPinSetsE <- fmap (GoPinBase <$) getPostBuild
+    rec goPinE <- fmap switchDyn $ widgetHold (pure never) $
+          ffor (leftmost [goPinE, goPinSetsE]) $ \case
+            GoPinBase       -> pagePinBase
+            GoPinInputCode  -> pagePinInput
+    --let switchE = ffor switchE'
+    --pinCodeE <- graphPinCode never
+    --pinCodeD <- holdDyn (PinCode []) pinCodeE
+    --dynText $ fmap showt pinCodeD
     pure ()
+    where
+      pagePinBase :: MonadFront t m => m (Event t GoPinSets)
+      pagePinBase = do
+        h3 $ localizedText $ STPSSetsPinCode
+        setsPinCodeMb <- fmap settingsPinCode getSettings
+        switchE' <- outlineButton $ case setsPinCodeMb of
+                      Nothing -> STPSSetsPinOn
+                      Just _  -> STPSSetsPinOff
+        let switchE = ffor switchE' $ \_ -> case setsPinCodeMb of
+                        Nothing -> GoPinInputCode
+                        Just _  -> GoPinBase
+        let cleanE = fforMaybe switchE $ \case
+                    GoPinBase -> Just ()
+                    _         -> Nothing
+        settings <- getSettings
+        updateSettings $ ffor cleanE (\_ -> settings {settingsPinCode = Nothing})
+        delay 0.1 switchE
+
+      pagePinInput :: MonadFront t m => m (Event t GoPinSets)
+      pagePinInput = do
+        h3 $ localizedText $ STPSSetsPinInput
+        pinCodeE <- graphPinCode never
+        setPinE <- fmap switchDyn $ widgetHold (pure never) $
+          ffor pinCodeE $ \PinCode{..} ->
+            fmap (unPinCode <$) $ outlineButton STPSSetsPinDoSet
+        settings <- getSettings
+        updateSettings $ ffor setPinE (\pcv -> settings {settingsPinCode = Just $ showt pcv})
+        delay 0.1 $ GoPinBase <$ setPinE
 
 {-
 graphPinCode :: forall t m . (MonadFrontBase t m) => m ()
