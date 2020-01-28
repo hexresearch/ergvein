@@ -263,6 +263,8 @@ initialPageCss = do
     marginLeft auto
     marginRight auto
     marginBottom $ rem 1
+  ".text-pin-code-error" ? do
+    color $ rgb 190 0 0
 
 balancesPageCss :: Css
 balancesPageCss = do

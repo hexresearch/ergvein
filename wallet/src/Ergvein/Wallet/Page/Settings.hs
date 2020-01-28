@@ -109,7 +109,8 @@ pinCodePage = do
         h3 $ localizedText $ STPSSetsPinInput
         pinCodeE <- graphPinCode never
         setPinE <- fmap switchDyn $ widgetHold (pure never) $
-          ffor pinCodeE $ \PinCode{..} ->
+          ffor pinCodeE $ \PinCode{..} -> do
+            elAttr "div" [("style","height: 25px;")] blank
             fmap (unPinCode <$) $ outlineButton STPSSetsPinDoSet
         settings <- getSettings
         updateSettings $ ffor setPinE (\pcv -> settings {settingsPinCode = Just $ showt pcv})

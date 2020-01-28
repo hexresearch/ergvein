@@ -15,6 +15,7 @@ data ActionPinCode
   = CleanPinCode
   | ResetPinCode
   | ErrorPinCode
+  deriving Show
 
 data PinCode = PinCode { unPinCode :: [Int] } deriving (Eq, Show)
 
@@ -62,14 +63,14 @@ graphPinCode actionE = mdo
         drawLines pvs
         pure chActE
     pure $ leftmost [resE, chResE]
-  let actActE = fforMaybe actionE $ \case
-                  CleanPinCode  -> Just PinClean
-                  ResetPinCode  -> Just PinClean
-                  ErrorPinCode  -> Nothing
+--  let actActE = fforMaybe actionE $ \case
+--                  CleanPinCode  -> Just PinClean
+--                  ResetPinCode  -> Just PinClean
+--                  ErrorPinCode  -> Nothing
   let pinActE = leftmost [ PinStart <$ domEvent Mousedown e
                          , PinStop  <$ domEvent Mouseup   e
                          , itemE
-                         , actActE
+--                         , actActE
                          ]
   pinProcessD' <- flip3 foldDyn pinActE initPinProcess $
                     \act pp -> case act of
@@ -105,7 +106,10 @@ graphPinCode actionE = mdo
     canvasAttrsDyn :: Reflex t => Dynamic t ActionPinCode -> Dynamic t (M.Map Text Text)
     canvasAttrsDyn actionD = ffor actionD $ \act ->
       [ ("id"   , "id_graph_pin_code_canvas")
-      , ("class", "graph-pin-code-canvas"   )
+      , ("class", case act of
+                    ErrorPinCode  -> "graph-pin-code-canvas-ergvein"
+                    _             -> "graph-pin-code-canvas"
+        )
       , ("style", canvasStyle               )
       ]
 
