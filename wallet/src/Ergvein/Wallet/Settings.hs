@@ -52,7 +52,7 @@ mkDefSettings :: MonadIO m => FilePath -> m Settings
 mkDefSettings home = liftIO $ do
   let storePath   = home <> "/store"
       configPath  = home <> "/config.yaml"
-      cfg = Settings English (pack storePath) (pack configPath) [] (2,3) 5
+      cfg = Settings English (pack storePath) (pack configPath) [] (2,3) 5 Nothing
   createDirectoryIfMissing True storePath
   encodeFile configPath cfg
   pure cfg
