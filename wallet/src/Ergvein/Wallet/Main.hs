@@ -48,20 +48,38 @@ frontend = do
 
 accountDiscovery :: MonadFront t m => m ()
 accountDiscovery = do
+  logWrite "Key scanning started"
   pubKeystore <- getPublicKeystore
   updatedPubKeystoreE <- scanKeys pubKeystore
-  pure ()
-  -- setAuthInfo authInfoE
-  -- storeWallet
+  mauthD <- getAuthInfoMaybe
+  let updatedAuthE = flip pushAlways updatedPubKeystoreE $ \store -> do
+        mauth <- sample . current $ mauthD
+        case mauth of
+          Nothing -> fail "accountDiscovery: not authorized"
+          Just auth -> pure $ Just AuthInfo {
+                authInfo'storage = ErgveinStorage {
+                    storage'encryptedPrivateStorage = storage'encryptedPrivateStorage $ authInfo'storage auth
+                  , storage'publicKeys = store
+                  , storage'walletName = storage'walletName $ authInfo'storage auth
+                }
+              , authInfo'eciesPubKey = authInfo'eciesPubKey auth
+              , authInfo'isUpdate = True
+            }
+-- ErgveinStorage {
+    -- storage'encryptedPrivateStorage :: EncryptedPrivateStorage
+  -- , storage'publicKeys              :: PublicKeystore
+  -- , storage'walletName              :: Text
+  -- }
+  setAuthInfoE <- setAuthInfo updatedAuthE
+  storeWallet $ () <$ setAuthInfoE
 
 scanKeys :: MonadFront t m => PublicKeystore -> m (Event t PublicKeystore)
 scanKeys pubKeystore = do
-  logWrite "Key scanning started"
   scanEvents <- traverse (applyScan pubKeystore) allCurrencies
   let scanEvents' = [(M.fromList . (: []) <$> e) | e <- scanEvents]
-  let someE = mergeWith M.union scanEvents'
-  newPubKeystoreD <- foldDyn M.union M.empty someE
-  let newPubKeystoreDUpdatedE = updated newPubKeystoreD -- this event does not fire for some reason :(
+      scanEvents'' = mergeWith M.union scanEvents'
+  newPubKeystoreD <- foldDyn M.union M.empty scanEvents''
+  let newPubKeystoreDUpdatedE = updated newPubKeystoreD
       allFinishedE = flip push newPubKeystoreDUpdatedE $ \updatedKeystore -> do
         pure $ if M.size updatedKeystore == length allCurrencies then Just $ updatedKeystore else Nothing
   pure allFinishedE

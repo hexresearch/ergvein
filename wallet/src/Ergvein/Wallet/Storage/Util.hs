@@ -62,11 +62,11 @@ createStorage mnemonic (login, pass) = case mnemonicToSeed "" mnemonic of
   Right seed -> do
     let root = EgvRootXPrvKey $ makeXPrvKey seed
         privateStorage = createPrivateStorage seed root
-        publicKeyStore = createPublicKeystore root
+        publicKeystore = createPublicKeystore root
     encryptedPrivateStorageResult <- encryptPrivateStorage privateStorage pass
     case encryptedPrivateStorageResult of
       Left err -> pure $ Left err
-      Right eps -> pure $ Right $ ErgveinStorage eps publicKeyStore login
+      Right eps -> pure $ Right $ ErgveinStorage eps publicKeystore login
 
 encryptPrivateStorage :: MonadIO m => PrivateStorage -> Password -> m (Either StorageAlert EncryptedPrivateStorage)
 encryptPrivateStorage privateStorage password = liftIO $ do
