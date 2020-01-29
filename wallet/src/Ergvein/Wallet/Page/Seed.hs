@@ -58,13 +58,12 @@ mnemonicWidget mnemonic = do
   case mphrase of
     Nothing -> pure (never, pure Nothing)
     Just phrase -> do
-    --  divClass "mnemonic-title" $ h4 $ localizedText SPSTitle
-    --  divClass "mnemonic-colony" $ adaptive (mobileMnemonic phrase) (desktopMnemonic phrase)
-    --  divClass "mnemonic-warn" $ h4 $ localizedText SPSWarn
+      divClass "mnemonic-title" $ h4 $ localizedText SPSTitle
+      divClass "mnemonic-colony" $ adaptive (mobileMnemonic phrase) (desktopMnemonic phrase)
+      divClass "mnemonic-warn" $ h4 $ localizedText SPSWarn
       btnE <- outlineButton SPSWrote
-      --divClass "mytestClass" $ h4 $ text "lol"
       --patternKeyWidget
-      qrCodeWidget "bc1q7llvpjux6lswq3uzw9y9vqew9kpyt89nf0x97c" BTC
+    --  qrCodeWidget "bc1q7llvpjux6lswq3uzw9y9vqew9kpyt89nf0x97c" BTC
       pure (phrase <$ btnE, pure $ Just phrase)
   where
     prepareMnemonic :: Int -> Mnemonic -> [(Int, Text)]

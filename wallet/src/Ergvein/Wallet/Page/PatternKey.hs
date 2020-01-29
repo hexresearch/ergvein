@@ -21,12 +21,10 @@ import Language.Javascript.JSaddle hiding ((!!))
 patternKeyWidget :: MonadFrontBase t m => m ()
 patternKeyWidget = divClass "pattern-container" $ mdo
   buildE <- delay 0.1 =<< getPostBuild
-
   canvasEl <- createCanvas cOpts
-
+  
   let elP = elementPosition $ _element_raw canvasEl
-
-  let prepCoord (x,y) = fmap (\(a,b)-> (a, b)) $ fmap (\ClientRect{..} -> ((fromIntegral x) - crLeft, (fromIntegral y) - crTop)) elP
+      prepCoord (x,y) = fmap (\(a,b)-> (a, b)) $ fmap (\ClientRect{..} -> ((fromIntegral x) - crLeft, (fromIntegral y) - crTop)) elP
       prepTCoord TouchEventResult{..} = fmap (\(a,b)-> (a, b)) $ fmap (\ClientRect{..} -> ((fromIntegral (_touchResult_screenX (head _touchEventResult_touches))) - crLeft, (fromIntegral (_touchResult_screenY (head _touchEventResult_touches)) - crTop - 35))) elP
       tmoveE = domEvent Touchmove canvasEl
       tdownE  = domEvent Touchstart canvasEl

@@ -18,21 +18,13 @@ import           Data.Maybe (fromMaybe)
 
 qrCodeWidget :: MonadFrontBase t m => Text -> Currency -> m ()
 qrCodeWidget addr cur = divClass "qrcode-container" $ mdo
-    let
-      canvasW = 256
-      canvasH = 256
-      canvasAttrs = Map.fromList
-        [ ("height", showt canvasH)
-        , ("width" , showt canvasW)
-        , ("id"    , "qrcode-canvas")
-        , ("class" , "qr-canvas")
-        ]
-      qrData = qrcGen addr cur
-
-    (canvasEl, _) <- elAttr' "canvas" canvasAttrs blank
-
+    canvasEl <- createCanvas cOpts
     rawJSCall (_element_raw canvasEl) $ drawGridT canvasW canvasH (qrcPerCanvas qrData canvasW)
-
+    where
+      canvasH = 256
+      canvasW = 256
+      cOpts = CanvasOptions canvasW canvasH "qrcode" "qrcode"
+      qrData = qrcGen addr cur
 
 qrcGen :: Text -> Currency -> Maybe QRImage
 qrcGen t cur = encodeText (defaultQRCodeOptions L) Utf8WithoutECI $ curprefix <> t
