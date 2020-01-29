@@ -21,6 +21,7 @@ initAuthInfo mnemonic login pass = do
       Right k -> pure $ Right AuthInfo {
           authInfo'storage = s
         , authInfo'eciesPubKey = toPublic k
+        , authInfo'isUpdate = False
         }
 
 loadAuthInfo :: (MonadIO m, HasStoreDir m, PlatformNatives) => WalletName -> Password -> m (Either AuthInfoAlert AuthInfo)
@@ -33,4 +34,5 @@ loadAuthInfo login pass = do
       Right k -> pure $ Right AuthInfo {
           authInfo'storage = s
         , authInfo'eciesPubKey = toPublic k
+        , authInfo'isUpdate = False
         }

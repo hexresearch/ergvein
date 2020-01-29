@@ -202,8 +202,8 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   {-# INLINE storeWallet #-}
 
 -- | Execute action under authorized context or return the given value as result
--- if user is not authorized. Each time the login info changes (user logs out or logs in)
--- the widget is updated.
+-- if user is not authorized. Each time the login info changes and authInfo'isUpdate flag is set to 'False'
+-- (user logs out or logs in) the widget is updated.
 liftAuth :: MonadFrontBase t m => m a -> ErgveinM t m a -> m (Dynamic t a)
 liftAuth ma0 ma = mdo
   mauthD <- getAuthInfoMaybe
@@ -235,8 +235,14 @@ liftAuth ma0 ma = mdo
         pure a
   let
     ma0' = maybe ma0 runAuthed mauth0
-    redrawE = leftmost [updated mauthD, Nothing <$ logoutE]
+    newAuthInfoE = ffilter isMauthUpdate $ updated mauthD
+    redrawE = leftmost [newAuthInfoE, Nothing <$ logoutE]
   widgetHold ma0' $ ffor redrawE $ maybe ma0 runAuthed
+
+isMauthUpdate :: Maybe AuthInfo -> Bool
+isMauthUpdate mauth = case mauth of
+  Nothing -> True
+  Just auth -> not $ authInfo'isUpdate auth
 
 -- | Lift action that doesn't require authorisation in context where auth is mandatory
 liftUnauthed :: m a -> ErgveinM t m a
