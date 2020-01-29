@@ -52,10 +52,11 @@ accountDiscovery = do
   pubKeystore <- getPublicKeystore
   updatedPubKeystoreE <- scanKeys pubKeystore
   mauthD <- getAuthInfoMaybe
-  let updatedAuthE = flip pushAlways updatedPubKeystoreE $ \store -> do
+  let updatedAuthE = traceEventWith (const "Key scanning finished") <$> flip pushAlways updatedPubKeystoreE $ \store -> do
         mauth <- sample . current $ mauthD
         case mauth of
           Nothing -> fail "accountDiscovery: not authorized"
+          -- TODO: use lenses here
           Just auth -> pure $ Just AuthInfo {
                 authInfo'storage = ErgveinStorage {
                     storage'encryptedPrivateStorage = storage'encryptedPrivateStorage $ authInfo'storage auth
@@ -65,11 +66,6 @@ accountDiscovery = do
               , authInfo'eciesPubKey = authInfo'eciesPubKey auth
               , authInfo'isUpdate = True
             }
--- ErgveinStorage {
-    -- storage'encryptedPrivateStorage :: EncryptedPrivateStorage
-  -- , storage'publicKeys              :: PublicKeystore
-  -- , storage'walletName              :: Text
-  -- }
   setAuthInfoE <- setAuthInfo updatedAuthE
   storeWallet $ () <$ setAuthInfoE
 
