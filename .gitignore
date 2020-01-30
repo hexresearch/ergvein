@@ -1,6 +1,7 @@
 .ghc.environment*
 dist-newstyle
 dist
+result
 android-result
 android-release
 .stack-work
