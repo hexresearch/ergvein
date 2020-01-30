@@ -46,6 +46,7 @@ library
         Ergvein.Wallet.Localization.Native
         Ergvein.Wallet.Localization.Password
         Ergvein.Wallet.Localization.Seed
+        Ergvein.Wallet.Localization.Settings
         Ergvein.Wallet.Localization.Storage
         Ergvein.Wallet.Log
         Ergvein.Wallet.Log.Page
@@ -54,6 +55,8 @@ library
         Ergvein.Wallet.Log.Writer
         Ergvein.Wallet.Main
         Ergvein.Wallet.Menu
+        Ergvein.Wallet.Menu.Switcher
+        Ergvein.Wallet.Menu.Types
         Ergvein.Wallet.Monad
         Ergvein.Wallet.Monad.Auth
         Ergvein.Wallet.Monad.Base
@@ -61,6 +64,7 @@ library
         Ergvein.Wallet.Monad.Storage
         Ergvein.Wallet.Monad.Unauth
         Ergvein.Wallet.Monad.Util
+        Ergvein.Wallet.Page.About
         Ergvein.Wallet.Page.Balances
         Ergvein.Wallet.Page.History
         Ergvein.Wallet.Page.Initial
@@ -69,6 +73,7 @@ library
         Ergvein.Wallet.Page.PatternKey
         Ergvein.Wallet.Page.Canvas
         Ergvein.Wallet.Page.QRCode
+        Ergvein.Wallet.Page.Settings
         Ergvein.Wallet.Password
         Ergvein.Wallet.Platform
         Ergvein.Wallet.Resize
@@ -81,6 +86,7 @@ library
         Ergvein.Wallet.Style
         Ergvein.Wallet.Util
         Ergvein.Wallet.Validate
+        Ergvein.Wallet.Widget.GraphPinCode
         Ergvein.Wallet.Wrapper
         Ergvein.Wallet.Yaml
     hs-source-dirs: src
@@ -101,6 +107,7 @@ library
         bytestring >=0.10 && <0.11,
         cereal >=0.5 && <0.6,
         clay >=0.14 && <0.15,
+        composition-extra -any,
         containers >=0.6 && <0.7,
         data-default -any,
         directory -any,

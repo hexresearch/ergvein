@@ -50,6 +50,12 @@ askPasswordModal = mdo
     Nothing -> pure never
   performEvent_ $ (liftIO . fire) <$> passE
 
+askPattern :: MonadFrontBase t m => m (Event t Password)
+askPattern = divClass "ask-password" $ form $ fieldset $ do
+  pD <- passFieldWithEye PWSPassword
+  e <- submitClass "button button-outline" PWSGo
+  pure $ tag (current pD) e
+
 setupLoginPattern :: MonadFrontBase t m => m (Event t (Text, Password))
 setupLoginPattern = divClass "setup-password" $ form $ fieldset $ mdo
   loginD <- textField PWSLogin ""

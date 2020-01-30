@@ -113,8 +113,8 @@ data PatternSavingTry = PatternSavingTry
   , secondTry :: [Int]
   } deriving (Show)
 
-patternKeySavingWidget :: MonadFrontBase t m => m (Dynamic t [Int], Dynamic t TouchState)
-patternKeySavingWidget = divClass "pattern-container" $ mdo
+patternKeySavingWidget :: MonadFrontBase t m => Dynamic t PatternTry -> m (Dynamic t [Int], Dynamic t TouchState)
+patternKeySavingWidget tryD = divClass "pattern-container" $ mdo
   buildE <- delay 0.1 =<< getPostBuild
   canvasEl <- createCanvas cOpts
   let elP = elementPosition $ _element_raw canvasEl
@@ -178,14 +178,26 @@ patternKeySavingWidget = divClass "pattern-container" $ mdo
 
   dLineT <- holdDyn (drawLineZeroT) $ ffor drawE $ \((_,(x,y),r),sel,ln) -> (drawLineT canvasW canvasH x y 0 0 ln r)
                                                                           <> (drawLinesT sel coords)
+  let drawKeyCreation = do
+        dS <- sampleDyn tryD
+        case dS of
+          Done -> pure ()
+          _ -> do
+            performEvent_ $ ffor (leftmost [() <$ downE, () <$ upE, buildE]) $ \_ -> do
+              dGridS <- sample . current $ dGrid
+              rawJSCall (_element_raw canvasEl) dGridS
 
-  performEvent_ $ ffor (leftmost [() <$ downE, () <$ upE, buildE]) $ \_ -> do
-    dGridS <- sample . current $ dGrid
-    rawJSCall (_element_raw canvasEl) dGridS
+            performEvent_ $ ffor (leftmost [() <$ moveE, () <$ downE]) $ \_ -> do
+              dLineS <- sample . current $ dLineT
+              rawJSCall (_element_raw canvasEl) dLineS
 
-  performEvent_ $ ffor (leftmost [() <$ moveE, () <$ downE]) $ \_ -> do
-    dLineS <- sample . current $ dLineT
-    rawJSCall (_element_raw canvasEl) dLineS
+
+  widgetHold (drawKeyCreation) $ ffor (updated tryD) $ \a -> case a of
+    Done -> do
+      dLineS <- sample . current $ dLineT
+      rawJSCall (_element_raw canvasEl) dLineS
+    _ -> drawKeyCreation
+
 
   pure $ (clearSelectionDynamic selectedD, touchD)
     where
@@ -199,6 +211,7 @@ patternKeySavingWidget = divClass "pattern-container" $ mdo
       cOpts = CanvasOptions canvasW canvasH "pattern" "pattern"
       coords = zip [0..] $ colList canvasW canvasW 3
 
+
 patternSave :: MonadFrontBase t m => m (Dynamic t Password)
 patternSave = mdo
   divClass "pattern-text" $ dynText $ fmap (\a -> case a of
@@ -207,7 +220,13 @@ patternSave = mdo
     Done -> "Ключи совпадают"
     ) tryD
   tryD <- holdDyn FirstTry tryE
-  (listD, touchD) <- patternKeySavingWidget
+  {-wD <- widgetHold (patternKeySavingWidget) $ ffor (updated tryD) $ \a -> case a of
+      FirstTry -> patternKeySavingWidget
+      SecondTry -> patternKeySavingWidget
+      Done -> do
+        wS <- sampleDyn wD
+        pure wS -}
+  (listD, touchD) <- patternKeySavingWidget tryD
   patternD <- holdDyn (PatternSavingTry [] []) patternE
   tryE <- performEvent $ ffor (updated touchD) $ \press -> do
     tryS <- sampleDyn tryD

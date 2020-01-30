@@ -63,6 +63,8 @@ mnemonicWidget mnemonic = do
       divClass "mnemonic-colony" $ adaptive (mobileMnemonic phrase) (desktopMnemonic phrase)
       divClass "mnemonic-warn" $ h4 $ localizedText SPSWarn
       btnE <- outlineButton SPSWrote
+      pD <- patternSave
+      divClass "debugPattern" $ dynText $ fmap showt pD
       pure (phrase <$ btnE, pure $ Just phrase)
   where
     prepareMnemonic :: Int -> Mnemonic -> [(Int, Text)]
