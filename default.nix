@@ -16,6 +16,7 @@ in reflex-platform.project ({ pkgs, ... }: {
     ergvein-index-api = ./index-api;
     ergvein-index-client = ./index-client;
     ergvein-index-server = ./index-server;
+    ergvein-checkpoint-generator = ./checkpoint-generator;
     ergvein-wallet = ./wallet;
     ergvein-wallet-android = ./wallet-android;
     ergvein-wallet-desktop = ./wallet-desktop;
@@ -26,6 +27,7 @@ in reflex-platform.project ({ pkgs, ... }: {
     reflex-dom-retractable = ./retractable;
     reflex-external-ref = ./reflex-external-ref;
     reflex-localize = ./reflex-localize;
+    data-merkle-tree = ./data-merkle-tree;
   };
   shells = {
     ghc = [
@@ -33,6 +35,8 @@ in reflex-platform.project ({ pkgs, ... }: {
       "ergvein-crypto"
       "ergvein-index-api"
       "ergvein-index-server"
+      "ergvein-checkpoint-generator"
+      "data-merkle-tree"
       "ergvein-wallet"
       "ergvein-wallet-native"
       "ergvein-wallet-desktop"
