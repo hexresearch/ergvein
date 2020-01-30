@@ -11,38 +11,39 @@ let
   };
 in reflex-platform.project ({ pkgs, ... }: {
   packages = {
+    data-merkle-tree = ./data-merkle-tree;
+    ergo-api = ./ergo-api;
+    ergvein-checkpoint-generator = ./checkpoint-generator;
     ergvein-common = ./common;
     ergvein-crypto = ./crypto;
     ergvein-index-api = ./index-api;
     ergvein-index-client = ./index-client;
     ergvein-index-server = ./index-server;
-    ergvein-checkpoint-generator = ./checkpoint-generator;
+    ergvein-interface-ergo = ./interfaces/ergo;
     ergvein-wallet = ./wallet;
     ergvein-wallet-android = ./wallet-android;
     ergvein-wallet-desktop = ./wallet-desktop;
     ergvein-wallet-native = ./wallet-native;
     ergvein-wallet-types = ./wallet-types;
-    ergvein-interface-ergo = ./interfaces/ergo;
-    ergo-api = ./ergo-api;
     reflex-dom-retractable = ./retractable;
     reflex-external-ref = ./reflex-external-ref;
     reflex-localize = ./reflex-localize;
-    data-merkle-tree = ./data-merkle-tree;
   };
   shells = {
     ghc = [
+      "data-merkle-tree"
+      "ergo-api"
+      "ergvein-checkpoint-generator"
       "ergvein-common"
       "ergvein-crypto"
       "ergvein-index-api"
+      "ergvein-index-client"
       "ergvein-index-server"
-      "ergvein-checkpoint-generator"
-      "data-merkle-tree"
-      "ergvein-wallet"
-      "ergvein-wallet-native"
-      "ergvein-wallet-desktop"
-      "ergvein-wallet-types"
       "ergvein-interface-ergo"
-      "ergo-api"
+      "ergvein-wallet-desktop"
+      "ergvein-wallet-native"
+      "ergvein-wallet-types"
+      "ergvein-wallet"
       "reflex-dom-retractable"
       "reflex-external-ref"
       "reflex-localize"
