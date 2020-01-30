@@ -3,6 +3,7 @@ module Ergvein.Wallet.Localization.Settings(
   ) where
 
 import Ergvein.Text
+import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
 
 import Data.Text
@@ -14,23 +15,23 @@ data SettingsPageStrings =
   | STPSButUnits
   | STPSSelectLanguage
   | STPSSetsPinCode
-  | STPSSelectUnitsBTC
+  | STPSSelectUnitsFor Currency
 
 instance LocalizedPrint SettingsPageStrings where
   localizedShow l v = case l of
     English -> case v of
-      STPSTitle             -> "Settings"
-      STPSButLanguage       -> "Language"
-      STPSButPinCode        -> "PIN Code"
-      STPSButUnits          -> "Display units for cryptos"
-      STPSSelectLanguage    -> "Select language:"
-      STPSSetsPinCode       -> "Settings for PIN code"
-      STPSSelectUnitsBTC    -> "Settings display units for BTC:"
+      STPSTitle               -> "Settings"
+      STPSButLanguage         -> "Language"
+      STPSButPinCode          -> "PIN Code"
+      STPSButUnits            -> "Display units for cryptos"
+      STPSSelectLanguage      -> "Select language:"
+      STPSSetsPinCode         -> "Settings for PIN code"
+      STPSSelectUnitsFor cur  -> "Settings display units for " <> showt cur <> ":"
     Russian -> case v of
-      STPSTitle             -> "Настройки"
-      STPSButLanguage       -> "Язык"
-      STPSButPinCode        -> "ПИН код"
-      STPSButUnits          -> "Единицы отображения криптосистем"
-      STPSSelectLanguage    -> "Выберите язык:"
-      STPSSetsPinCode       -> "Настройки ПИН кода"
-      STPSSelectUnitsBTC    -> "Выберите единиц отображения для BTC:"
+      STPSTitle               -> "Настройки"
+      STPSButLanguage         -> "Язык"
+      STPSButPinCode          -> "ПИН код"
+      STPSButUnits            -> "Единицы отображения криптосистем"
+      STPSSelectLanguage      -> "Выберите язык:"
+      STPSSetsPinCode         -> "Настройки ПИН кода"
+      STPSSelectUnitsFor cur  -> "Выберите единиц отображения для " <> showt cur <> ":"

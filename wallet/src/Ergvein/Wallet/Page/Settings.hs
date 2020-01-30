@@ -6,6 +6,7 @@ import qualified Data.Map.Strict as M
 import Reflex.Dom
 
 import Ergvein.Text
+import Ergvein.Types.Currency
 import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
@@ -70,49 +71,41 @@ pinCodePage = do
       pure ()
     pure ()
 
-data Testw = TestOne | TestTwo
-
-type family Units a where
-  Units TestOne = Bool
-  Units TestTwo = Int
-
-data UnitsBTC
-  = U_BTC
-  | U_mBTC
-  | U_uBTC
-  | U_satoshi
-  deriving (Eq, Ord, Enum, Bounded, Show, Read)
-
 instance LocalizedPrint UnitsBTC where
   localizedShow _ v = case v of
-    U_BTC     -> "BTC"
-    U_mBTC    -> "mBTC"
-    U_uBTC    -> "uBTC"
-    U_satoshi -> "satoshi"
+    BTC_BTC     -> "BTC"
+    BTC_mBTC    -> "mBTC"
+    BTC_uBTC    -> "uBTC"
+    BTC_satoshi -> "satoshi"
 
-allUnitsBTC :: [UnitsBTC]
-allUnitsBTC = [minBound .. maxBound]
+instance LocalizedPrint UnitsERGO where
+  localizedShow _ v = case v of
+    ERGO_ERGO -> "ERGO"
 
 unitsPage :: MonadFront t m => m ()
 unitsPage = do
   let thisWidget = Just $ pure $ unitsPage
   menuWidget STPSTitle thisWidget
   wrapper True $ do
-    h3 $ localizedText $ STPSSelectUnitsBTC
+    h3 $ localizedText $ STPSSelectUnitsFor BTC
     divClass "initial-options grid1" $ do
-      langD <- getLanguage
-      let unitBtcD = constDyn U_BTC
-      initKey <- sample . current $ unitBtcD
-      let listUnitsBtcD = ffor langD $ \l -> M.fromList $ fmap (\v -> (v, localizedShow l v)) allUnitsBTC
-          ddnCfg = DropdownConfig {
-                _dropdownConfig_setValue   = updated unitBtcD
-              , _dropdownConfig_attributes = constDyn ("class" =: "select-lang")
-              }
-      dp <- dropdown initKey listUnitsBtcD ddnCfg
-      let selD = _dropdown_value dp
-      selE <- fmap updated $ holdUniqDyn selD
-      --widgetHold (pure ()) $ setLanguage <$> selE
-      --settings <- getSettings
-      --updateSettings $ ffor selE (\lng -> settings {settingsLang = lng})
+      unitBtcE <- unitsDropdown defUnitBTC allUnitsBTC
+      pure ()
+    h3 $ localizedText $ STPSSelectUnitsFor ERGO
+    divClass "initial-options grid1" $ do
+      unitBtcE <- unitsDropdown defUnitERGO allUnitsERGO
       pure ()
     pure ()
+  where
+    unitsDropdown val allUnits = do
+      langD <- getLanguage
+      let unitD = constDyn val
+      initKey <- sample . current $ unitD
+      let listUnitsD = ffor langD $ \l -> M.fromList $ fmap (\v -> (v, localizedShow l v)) allUnits
+          ddnCfg = DropdownConfig {
+                _dropdownConfig_setValue   = updated unitD
+              , _dropdownConfig_attributes = constDyn ("class" =: "select-lang")
+              }
+      dp <- dropdown initKey listUnitsD ddnCfg
+      let selD = _dropdown_value dp
+      fmap updated $ holdUniqDyn selD

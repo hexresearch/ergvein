@@ -19,9 +19,7 @@ library
     , text
     , flat
   default-extensions:
-    DataKinds
     DeriveGeneric
     DeriveAnyClass
     OverloadedStrings
     TemplateHaskell
-    TypeFamilies

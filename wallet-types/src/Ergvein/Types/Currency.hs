@@ -6,9 +6,12 @@ module Ergvein.Types.Currency(
   , MoneyUnit
   , Money(..)
   , showMoney
-  , Units(..)
   , UnitsBTC(..)
+  , defUnitBTC
+  , allUnitsBTC
   , UnitsERGO(..)
+  , defUnitERGO
+  , allUnitsERGO
   ) where
 
 import Data.Flat
@@ -71,10 +74,7 @@ moneyFromRational cur amount = Money cur val
 showMoney :: Money -> Text
 showMoney m@(Money cur _) = T.pack $ printf ("%." <> show (currencyResolution cur) <> "f") (realToFrac (moneyToRational m) :: Double)
 
-type family Units a where
-  Units BTC  = UnitsBTC
-  Units ERGO = UnitsERGO
-
+-- | Display units for BTC
 data UnitsBTC
   = BTC_BTC
   | BTC_mBTC
@@ -82,19 +82,27 @@ data UnitsBTC
   | BTC_satoshi
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Generic)
 
-data UnitsERGO
-  = ERGO_ERGO
-  deriving (Eq, Ord, Enum, Bounded, Show, Read, Generic)
-
 $(deriveJSON aesonOptions ''UnitsBTC)
 instance ToJSONKey UnitsBTC where
 instance FromJSONKey UnitsBTC where
+
+defUnitBTC :: UnitsBTC
+defUnitBTC = BTC_BTC
+
+allUnitsBTC :: [UnitsBTC]
+allUnitsBTC = [minBound .. maxBound]
+
+-- | Display units for ERGO
+data UnitsERGO
+  = ERGO_ERGO
+  deriving (Eq, Ord, Enum, Bounded, Show, Read, Generic)
 
 $(deriveJSON aesonOptions ''UnitsERGO)
 instance ToJSONKey UnitsERGO where
 instance FromJSONKey UnitsERGO where
 
---allUnits :: Currency -> [Units (*)]
-allUnits cur = case cur of
-  BTC  -> [BTC_BTC, BTC_mBTC, BTC_uBTC, BTC_satoshi]
-  ERGO -> [ERGO_ERGO]
+defUnitERGO :: UnitsERGO
+defUnitERGO = ERGO_ERGO
+
+allUnitsERGO :: [UnitsERGO]
+allUnitsERGO = [minBound .. maxBound]
