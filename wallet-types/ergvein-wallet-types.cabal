@@ -6,20 +6,36 @@ category:            Cryptocurrency
 build-type:          Simple
 cabal-version:       >=2.0
 
+flag testnet
+  description: Build the testnet version
+  default: True
+  manual: True
+
 library
   hs-source-dirs:      src
   exposed-modules:
     Ergvein.Types.Currency
+    Ergvein.Types.Keys
+    Ergvein.Types.Storage
   default-language:    Haskell2010
   build-depends:
-      base
-    , aeson
+      aeson
+    , base
+    , base64-bytestring         >= 1        && < 1.0.0.3
+    , bytestring                >= 0.10     && < 0.11
+    , containers                >= 0.6      && < 0.7
+    , cryptonite                >= 0.25     && < 0.26
     , ergvein-common
+    , flat
+    , haskoin-core              >= 0.8.0    && < 0.8.1
     , jsaddle
+    , memory                    >= 0.14.16  && < 0.15.1
     , text
-    , flat 
+  if flag(testnet)
+    cpp-options: -DTESTNET
   default-extensions:
     DeriveGeneric
     DeriveAnyClass
     OverloadedStrings
     TemplateHaskell
+    RecordWildCards

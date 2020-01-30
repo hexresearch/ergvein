@@ -3,17 +3,13 @@ module Ergvein.Wallet.Log.Reader(
     logReader
   ) where
 
-import Control.Monad
 import Control.Monad.Reader
-import Control.Monad.IO.Class
 import Data.Aeson
 import Data.Maybe
-import Data.Text(Text)
 import Data.Text.Encoding
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
-import Reflex.Dom
 
 import qualified Data.ByteString.Lazy as BS
 

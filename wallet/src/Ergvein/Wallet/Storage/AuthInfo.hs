@@ -5,14 +5,11 @@ module Ergvein.Wallet.Storage.AuthInfo(
 
 import Control.Monad.Except
 import Ergvein.Crypto
-import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
-import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.AuthInfo
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Util
-import Ergvein.Wallet.Validate
 
 initAuthInfo :: MonadIO m => Mnemonic -> WalletName -> Password -> m (Either AuthInfoAlert AuthInfo)
 initAuthInfo mnemonic login pass = do
@@ -24,6 +21,7 @@ initAuthInfo mnemonic login pass = do
       Right k -> pure $ Right AuthInfo {
           authInfo'storage = s
         , authInfo'eciesPubKey = toPublic k
+        , authInfo'isUpdate = False
         }
 
 loadAuthInfo :: (MonadIO m, HasStoreDir m, PlatformNatives) => WalletName -> Password -> m (Either AuthInfoAlert AuthInfo)
@@ -36,4 +34,5 @@ loadAuthInfo login pass = do
       Right k -> pure $ Right AuthInfo {
           authInfo'storage = s
         , authInfo'eciesPubKey = toPublic k
+        , authInfo'isUpdate = False
         }

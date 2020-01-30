@@ -14,23 +14,12 @@ module Ergvein.Wallet.Alert.Handler(
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Align
-import Data.Bifunctor
-import Data.Coerce
-import Data.Monoid
-import Data.Time
-import GHC.Generics
 import Reflex.Dom
-import Reflex.Host.Class
-
-import Language.Javascript.JSaddle.Types
 
 import Data.List (find)
 import Data.Map.Strict (Map)
 import Data.Text (Text)
-import Reflex hiding (askEvents)
-import Reflex.ExternalRef(readExternalRef)
 
-import qualified Data.Foldable as F
 import qualified Data.Map.Strict as M
 import qualified Data.These as T
 

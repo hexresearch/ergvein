@@ -2,12 +2,10 @@
 module Ergvein.Wallet.Storage
   (
     withWallet
-  , module Ergvein.Wallet.Storage.Data
   ) where
 
-import Control.Monad.IO.Class
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Storage.Data
+import Ergvein.Types.Storage
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Alert
 
