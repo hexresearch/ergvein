@@ -17,9 +17,11 @@ library
     , ergvein-common
     , jsaddle
     , text
-    , flat 
+    , flat
   default-extensions:
+    DataKinds
     DeriveGeneric
     DeriveAnyClass
     OverloadedStrings
     TemplateHaskell
+    TypeFamilies
