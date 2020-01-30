@@ -21,8 +21,9 @@ module Ergvein.Wallet.Page.Canvas(
   , ClientRect(..)
   , Square(..)
   , DrawCommand(..)
-  , Coursor(..)
+  , Position(..)
   , TouchState(..)
+  , PatternTry(..)
   -- Canvas Type
   , CanvasOptions(..)
   , defCanvasOptions
@@ -46,11 +47,13 @@ import Language.Javascript.JSaddle hiding ((!!))
 import qualified GHCJS.DOM.Types as JS
 
 type Square  = (Double, Double, Double, Double)
-type Coursor = (Double, Double)
+type Position = (Double, Double)
 
 data DrawCommand = AddSquare | Clear deriving (Show)
 
 data TouchState = Pressed | Unpressed deriving (Show)
+
+data PatternTry = FirstTry | SecondTry | Done deriving (Show)
 
 data CanvasOptions = CanvasOptions {
   coWidth   :: !Int
@@ -86,23 +89,6 @@ concatMyLists a b = (\((mi1,f1),(mi2,f2)) -> case mi1 of
     Just n2 -> (Just n2, f2)
     Nothing -> (Nothing,f2)
   ) <$> (zip a b)
-
-hitOrMiss :: Coursor -> [(Int, Square)] -> (DrawCommand, (Double, Double)) -> [(Maybe Int, Square)]
-hitOrMiss (x,y) squares (dc,(oldX,oldY)) = fmap (\(num,(sqX, sqY, sqW, sqH)) -> if (((sqX-5) < x) && ((sqY-5) < y) && ((sqX + sqW + 5) > x) && ((sqY + sqH + 5) > y))
-  then (Just num, (sqX, sqY, sqW, sqH))
-  else case dc of
-    AddSquare -> if (((sqX-5) < midX) && ((sqY-5) < midY) && ((sqX + sqW + 5) > midX) && ((sqY + sqH + 5) > midY))
-      then (Just num, (sqX, sqY, sqW, sqH))
-      else (Nothing, (sqX, sqY, sqW, sqH))
-    Clear -> (Nothing, (sqX, sqY, sqW, sqH))
-  ) squares
-  where
-    midX = if x > oldX
-      then ((x - oldX)/2) + oldX
-      else ((oldX - x)/2) + x
-    midY = if y > oldY
-      then ((y - oldY)/2) + oldY
-      else ((oldY - y)/2) + y
 
 drawGridT :: Int -> Int -> [(Maybe Int, Square)] -> Text
 drawGridT cW cH r = (clearCanvasT cW cH)
@@ -165,6 +151,7 @@ drawLineT canvasW canvasH coordX coordY fromX fromY (a,(cntX,cntY)) r = case a o
             <> (moveToT cntX cntY)
             <> (lineToT coordX coordY)
             <> strokeT
+  --Save -> ""
 
 drawLinesT :: (DrawCommand, [Maybe Int]) -> [(Int, Square)] -> Text
 drawLinesT (dc, mi) z = case dc of
@@ -184,6 +171,7 @@ drawLinesT (dc, mi) z = case dc of
                                 <> (lineToT bx by)
                                 <> strokeT
   Clear -> ""
+  --Save -> ""
 
 drawLineZeroT :: Text
 drawLineZeroT = " ctx.moveTo(0,0); "
