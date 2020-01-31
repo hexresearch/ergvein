@@ -1,4 +1,4 @@
-module Ergvein.Crypto.WordLists(
+module Ergvein.Crypto.WordLists (
     wordTrie
   , getWordsWithPrefix
   , wordListEnglish

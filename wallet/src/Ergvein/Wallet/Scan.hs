@@ -2,7 +2,7 @@ module Ergvein.Wallet.Scan(
     accountDiscovery
   ) where
 
-import Ergvein.Crypto.Keys (derivePubKey)
+import Ergvein.Wallet.Storage.Keys (derivePubKey)
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
@@ -12,8 +12,8 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Constants
 import Network.Haskoin.Block (Block, genesisBlock)
 
-import qualified Data.IntMap.Strict    as MI
-import qualified Data.Map.Strict       as M
+import qualified Data.IntMap.Strict as MI
+import qualified Data.Map.Strict    as M
 
 accountDiscovery :: MonadFront t m => m ()
 accountDiscovery = do

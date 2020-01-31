@@ -25,19 +25,16 @@ import Ergvein.Aeson
 import Ergvein.Crypto
 import Ergvein.Text
 import Ergvein.Types.Currency
+import Ergvein.Wallet.Storage.Keys
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Localization.Native
 import Ergvein.Wallet.Localization.Storage
-import Ergvein.Wallet.Storage.Constants
 
 import qualified Data.ByteString as BS
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-
-type Password = Text
-type WalletName = Text
 
 createEmptyPrvKeychain :: EgvRootXPrvKey -> Currency -> EgvPrvKeyсhain
 createEmptyPrvKeychain root currency =

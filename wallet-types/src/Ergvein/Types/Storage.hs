@@ -1,6 +1,8 @@
 module Ergvein.Types.Storage
   (
-    PrivateKeystore
+    WalletName
+  , Password
+  , PrivateKeystore
   , PublicKeystore
   , PrivateStorage(..)
   , EncryptedPrivateStorage(..)
@@ -29,6 +31,10 @@ import qualified Data.IntMap.Strict       as MI
 import qualified Data.Map.Strict          as M
 import qualified Data.Text.Encoding.Error as TEE
 import qualified Data.Text.Encoding       as TE
+
+type WalletName = Text
+
+type Password = Text
 
 type PrivateKeystore = M.Map Currency EgvPrvKeyсhain
 
