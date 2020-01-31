@@ -1,7 +1,8 @@
 module Ergvein.Wallet.Page.PatternKey(
-    patternKeyWidget
-  , patternKeySavingWidget
+    patternAsk
+  , patternAskWidget
   , patternSave
+  , patternSaveWidget
   , PatternSavingTry(..)
   ) where
 
@@ -22,8 +23,8 @@ import qualified Data.Text as T
 
 import Language.Javascript.JSaddle hiding ((!!))
 
-patternKeyWidget :: MonadFrontBase t m => m ()
-patternKeyWidget = divClass "pattern-container" $ mdo
+patternAsk :: MonadFrontBase t m => m (Dynamic t Password, Dynamic t TouchState)
+patternAsk = divClass "pattern-container" $ mdo
   buildE <- delay 0.1 =<< getPostBuild
   canvasEl <- createCanvas cOpts
   let elP = elementPosition $ _element_raw canvasEl
@@ -47,31 +48,31 @@ patternKeyWidget = divClass "pattern-container" $ mdo
   touchD <- holdDyn Unpressed pressedE
 
   squaresUpdatedE <- performEvent $ ffor (leftmost [movePrE, downPrE]) $ \(x,y) -> do
-    sd <- sample . current $ moveD
+    sd <- sampleDyn moveD
     pure (AddSquare,(x,y),hitOrMiss (x,y) coords sd)
   -- Grid dynamic
   dGrid <- holdDyn (drawGridT canvasW canvasH emptySq) $ never
   -- Dynamic with squares list
   squaresD <- holdDyn (Clear,(0,0),emptySq) $ poke predrawE $ \(dc,cur,sqs) -> do
-    touchS <- sample . current $ touchD
+    touchS <- sampleDyn touchD
     case touchS of
       Pressed -> case dc of
         AddSquare -> do
-          (_,_,sqsv) <- sample . current $ squaresD
+          (_,_,sqsv) <- sampleDyn squaresD
           pure (AddSquare,cur,addToSquareList sqs sqsv)
         Clear -> pure (Clear,(0,0),emptySq)
       Unpressed -> pure (Clear,(0,0),emptySq)
 
   selectedD <- holdDyn (Clear,[]) $ poke selE $ \(dc, sqs) -> do
-    touchS <- sample . current $ touchD
+    touchS <- sampleDyn touchD
     case touchS of
       Pressed -> case dc of
         AddSquare -> if (null sqs)
           then do
-            v <- sample . current $ selectedD
+            v <- sampleDyn selectedD
             pure v
           else do
-            (dc,v) <- sample . current $ selectedD
+            (dc,v) <- sampleDyn selectedD
             case (find (==(head sqs)) v) of
               Just _ -> pure (AddSquare, v)
               Nothing -> pure $ (AddSquare, v <> [head sqs])
@@ -81,28 +82,23 @@ patternKeyWidget = divClass "pattern-container" $ mdo
   moveD <- holdDyn (Clear,(0,0)) $ fmap lastSquarePosition $ updated selectedD
 
   drawE <- performEvent $ ffor (updated squaresD) $ \a -> do
-    sel <- sample . current $ selectedD
-    ln <- sample . current $ moveD
+    sel <- sampleDyn selectedD
+    ln <- sampleDyn moveD
     pure (a,sel,ln)
 
   dLineT <- holdDyn (drawLineZeroT) $ ffor drawE $ \((_,(x,y),r),sel,ln) -> (drawLineT canvasW canvasH x y 0 0 ln r)
                                                                           <> (drawLinesT sel coords)
 
   performEvent_ $ ffor (leftmost [() <$ downE, () <$ upE, buildE]) $ \_ -> do
-    dGridS <- sample . current $ dGrid
+    dGridS <- sampleDyn dGrid
     rawJSCall (_element_raw canvasEl) dGridS
 
   performEvent_ $ ffor (leftmost [() <$ moveE, () <$ downE]) $ \_ -> do
-    dLineS <- sample . current $ dLineT
+    dLineS <- sampleDyn dLineT
     rawJSCall (_element_raw canvasEl) dLineS
 
-  pure ()
+  pure $ (fmap showt $ clearSelectionDynamic selectedD, touchD)
     where
-      lastSquareCenter :: [Maybe Int] -> (Double, Double)
-      lastSquareCenter lst = case (last lst) of
-        Just num -> (\(a,b,c,d) -> (a+c/2,b+d/2)) $ snd $ emptySq !! num
-        Nothing -> (0,0)
-
       canvasH = 320
       canvasW = 320
       cOpts = CanvasOptions canvasW canvasH "pattern" "pattern"
@@ -113,8 +109,8 @@ data PatternSavingTry = PatternSavingTry
   , secondTry :: [Int]
   } deriving (Show)
 
-patternKeySavingWidget :: MonadFrontBase t m => Dynamic t PatternTry -> m (Dynamic t [Int], Dynamic t TouchState)
-patternKeySavingWidget tryD = divClass "pattern-container" $ mdo
+patternSave :: MonadFrontBase t m => Dynamic t PatternTry -> m (Dynamic t [Int], Dynamic t TouchState)
+patternSave tryD = divClass "pattern-container" $ mdo
   buildE <- delay 0.1 =<< getPostBuild
   canvasEl <- createCanvas cOpts
   let elP = elementPosition $ _element_raw canvasEl
@@ -129,6 +125,8 @@ patternKeySavingWidget tryD = divClass "pattern-container" $ mdo
       pressedE = leftmost [Pressed <$ downE, Unpressed <$ upE]
       predrawE = leftmost [squaresUpdatedE, (Clear,(0,0),emptySq) <$ upPrE]
       selE = fmap (\(dc, sqs) -> (dc, fmap fst sqs)) $ fmap (\(dc,sqs) -> (dc, filter jstFilter sqs)) $ fmap (\(dc,_,sqs) -> (dc,sqs)) predrawE
+      gridE = leftmost [() <$ downE, () <$ upE, buildE]
+      lineE = leftmost [() <$ moveE, () <$ downE]
   tmovePrE <- performEvent $ ffor tmoveE prepTCoord
   tdownPrE <- performEvent $ ffor tdownE prepTCoord
   tupPrE   <- performEvent $ ffor tupE   prepTCoord
@@ -138,95 +136,101 @@ patternKeySavingWidget tryD = divClass "pattern-container" $ mdo
   touchD <- holdDyn Unpressed pressedE
 
   squaresUpdatedE <- performEvent $ ffor (leftmost [movePrE, downPrE]) $ \(x,y) -> do
-    sd <- sample . current $ moveD
+    sd <- sampleDyn moveD
     pure (AddSquare,(x,y),hitOrMiss (x,y) coords sd)
   -- Grid dynamic
   dGrid <- holdDyn (drawGridT canvasW canvasH emptySq) $ never
   -- Dynamic with squares list
   squaresD <- holdDyn (Clear,(0,0),emptySq) $ poke predrawE $ \(dc,cur,sqs) -> do
-    touchS <- sample . current $ touchD
-    case touchS of
-      Pressed -> case dc of
-        AddSquare -> do
-          (_,_,sqsv) <- sample . current $ squaresD
-          pure (AddSquare,cur,addToSquareList sqs sqsv)
-        Clear -> pure (Clear,(0,0),emptySq)
-      Unpressed -> pure (Clear,(0,0),emptySq)
+    tryS<- sampleDyn tryD
+    squaresS <- sampleDyn squaresD
+    touchS <- sampleDyn touchD
+    case tryS of
+      Done -> pure squaresS
+      _    ->  case touchS of
+                Pressed -> case dc of
+                  AddSquare -> do
+                    (_,_,sqsv) <- sampleDyn squaresD
+                    pure (AddSquare,cur,addToSquareList sqs sqsv)
+                  Clear -> pure (Clear,(0,0),emptySq)
+                Unpressed -> pure (Clear,(0,0),emptySq)
 
   selectedD <- holdDyn (Clear,[]) $ poke selE $ \(dc, sqs) -> do
-    touchS <- sample . current $ touchD
-    case touchS of
-      Pressed -> case dc of
-        AddSquare -> if (null sqs)
-          then do
-            v <- sample . current $ selectedD
-            pure v
-          else do
-            (dc,v) <- sample . current $ selectedD
-            case (find (==(head sqs)) v) of
-              Just _ -> pure (AddSquare, v)
-              Nothing -> pure $ (AddSquare, v <> [head sqs])
-        Clear -> pure (Clear, [])
-      Unpressed -> pure (Clear, [])
+    tryS<- sampleDyn tryD
+    selectedS <- sampleDyn selectedD
+    touchS <- sampleDyn touchD
+    case tryS of
+      Done -> pure selectedS
+      _    -> case touchS of
+                Pressed -> case dc of
+                  AddSquare -> if (null sqs)
+                    then do
+                      v <- sampleDyn selectedD
+                      pure v
+                    else do
+                      (dc,v) <- sampleDyn selectedD
+                      case (find (==(head sqs)) v) of
+                        Just _ -> pure (AddSquare, v)
+                        Nothing -> pure $ (AddSquare, v <> [head sqs])
+                  Clear -> pure (Clear, [])
+                Unpressed -> pure (Clear, [])
 
   moveD <- holdDyn (Clear,(0,0)) $ fmap lastSquarePosition $ updated selectedD
 
-  drawE <- performEvent $ ffor (updated squaresD) $ \a -> do
-    sel <- sample . current $ selectedD
-    ln <- sample . current $ moveD
-    pure (a,sel,ln)
+  dlineE  <- performEvent $ ffor (updated squaresD) $ \(_,(x,y),r) -> do
+    sel <- sampleDyn selectedD
+    ln <- sampleDyn moveD
+    pure $ (drawLineT canvasW canvasH x y 0 0 ln r) <> (drawLinesT sel coords)
 
-  dLineT <- holdDyn (drawLineZeroT) $ ffor drawE $ \((_,(x,y),r),sel,ln) -> (drawLineT canvasW canvasH x y 0 0 ln r)
-                                                                          <> (drawLinesT sel coords)
+  dLineT <- holdDyn (drawLineZeroT) $ poke dlineE $ \t -> do
+    tryS <- sampleDyn tryD
+    dLineS <- sampleDyn dLineT
+    case tryS of
+      Done -> pure dLineS
+      _    -> pure t
   let drawKeyCreation = do
-        dS <- sampleDyn tryD
-        case dS of
-          Done -> pure ()
-          _ -> do
-            performEvent_ $ ffor (leftmost [() <$ downE, () <$ upE, buildE]) $ \_ -> do
-              dGridS <- sample . current $ dGrid
-              rawJSCall (_element_raw canvasEl) dGridS
+        tryS <- sampleDyn tryD
+        performEvent_ $ ffor gridE $ \_ -> do
+          dGridS <- sampleDyn dGrid
+          rawJSCall (_element_raw canvasEl) dGridS
 
-            performEvent_ $ ffor (leftmost [() <$ moveE, () <$ downE]) $ \_ -> do
-              dLineS <- sample . current $ dLineT
-              rawJSCall (_element_raw canvasEl) dLineS
-
+        performEvent_ $ ffor lineE $ \_ -> do
+          dLineS <- sampleDyn dLineT
+          rawJSCall (_element_raw canvasEl) dLineS
 
   widgetHold (drawKeyCreation) $ ffor (updated tryD) $ \a -> case a of
     Done -> do
-      dLineS <- sample . current $ dLineT
+      dLineS <- sampleDyn dLineT
       rawJSCall (_element_raw canvasEl) dLineS
     _ -> drawKeyCreation
 
 
   pure $ (clearSelectionDynamic selectedD, touchD)
     where
-      lastSquareCenter :: [Maybe Int] -> (Double, Double)
-      lastSquareCenter lst = case (last lst) of
-        Just num -> (\(a,b,c,d) -> (a+c/2,b+d/2)) $ snd $ emptySq !! num
-        Nothing -> (0,0)
-
       canvasH = 320
       canvasW = 320
       cOpts = CanvasOptions canvasW canvasH "pattern" "pattern"
       coords = zip [0..] $ colList canvasW canvasW 3
 
+patternAskWidget :: MonadFrontBase t m => m (Dynamic t Password)
+patternAskWidget = mdo
+  patternD <- holdDyn "" patternE
+  (pD, touchD) <- patternAsk
+  patternE <- performEvent $ ffor (ffilter (\e -> e == Unpressed) (updated touchD)) $ \_ -> do
+    p <- sampleDyn pD
+    pure p
+  pure patternD
 
-patternSave :: MonadFrontBase t m => m (Dynamic t Password)
-patternSave = mdo
+patternSaveWidget :: MonadFrontBase t m => m (Dynamic t Password)
+patternSaveWidget = mdo
   divClass "pattern-text" $ dynText $ fmap (\a -> case a of
     FirstTry -> "Введите графический ключ. Ключи должены совпадать."
     SecondTry -> "Повторите графический ключ. Ключи должены совпадать."
+    ErrorTry -> "Ключи не совпадают. Введите графический ключ."
     Done -> "Ключи совпадают"
     ) tryD
   tryD <- holdDyn FirstTry tryE
-  {-wD <- widgetHold (patternKeySavingWidget) $ ffor (updated tryD) $ \a -> case a of
-      FirstTry -> patternKeySavingWidget
-      SecondTry -> patternKeySavingWidget
-      Done -> do
-        wS <- sampleDyn wD
-        pure wS -}
-  (listD, touchD) <- patternKeySavingWidget tryD
+  (listD, touchD) <- patternSave tryD
   patternD <- holdDyn (PatternSavingTry [] []) patternE
   tryE <- performEvent $ ffor (updated touchD) $ \press -> do
     tryS <- sampleDyn tryD
@@ -237,7 +241,8 @@ patternSave = mdo
            PatternSavingTry{..} <- sampleDyn patternD
            if firstTry == secondTry
              then pure Done
-             else pure FirstTry
+             else pure ErrorTry
+         ErrorTry -> pure SecondTry
          Done -> pure Done
        Pressed -> pure tryS
   patternE <- performEvent $ ffor (updated listD) $ \a -> do
@@ -245,10 +250,9 @@ patternSave = mdo
     tryS <- sampleDyn tryD
     case tryS of
       FirstTry -> pure $ PatternSavingTry a []
+      ErrorTry -> pure $ PatternSavingTry a []
       SecondTry -> pure $ PatternSavingTry (firstTry patternS) a
       Done -> pure patternS
-  --divClass "debugPattern" $ dynText $ fmap showt patternD
-  --divClass "debugPattern" $ dynText $ fmap showt tryD
   passOkE <- performEvent $ ffor (updated patternD) $ \PatternSavingTry{..} -> do
     tryS <- sampleDyn tryD
     case tryS of

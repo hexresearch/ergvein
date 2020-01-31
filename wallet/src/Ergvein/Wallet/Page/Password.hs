@@ -27,4 +27,5 @@ passwordPage mnemonic = wrapper True $ do
 askPasswordPage :: MonadFrontBase t m => m (Event t Password)
 askPasswordPage = wrapper True $ do
   divClass "password-ask-title" $ h4 $ localizedText PPSUnlock
-  askPassword
+  --askPassword
+  askPattern

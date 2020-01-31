@@ -49,11 +49,11 @@ import qualified GHCJS.DOM.Types as JS
 type Square  = (Double, Double, Double, Double)
 type Position = (Double, Double)
 
-data DrawCommand = AddSquare | Clear deriving (Show)
+data DrawCommand = AddSquare | Clear deriving (Show, Eq)
 
-data TouchState = Pressed | Unpressed deriving (Show)
+data TouchState = Pressed | Unpressed deriving (Show, Eq)
 
-data PatternTry = FirstTry | SecondTry | Done deriving (Show)
+data PatternTry = FirstTry | SecondTry | ErrorTry | Done deriving (Show, Eq)
 
 data CanvasOptions = CanvasOptions {
   coWidth   :: !Int

@@ -3,6 +3,8 @@ module Ergvein.Wallet.Password(
   , setupLoginPattern
   , askPassword
   , askPasswordModal
+  , askPattern
+  , askPatternModal
   ) where
 
 import Control.Monad.Except
@@ -51,15 +53,25 @@ askPasswordModal = mdo
   performEvent_ $ (liftIO . fire) <$> passE
 
 askPattern :: MonadFrontBase t m => m (Event t Password)
-askPattern = divClass "ask-password" $ form $ fieldset $ do
-  pD <- passFieldWithEye PWSPassword
-  e <- submitClass "button button-outline" PWSGo
+askPattern = divClass "ask-pattern" $ form $ fieldset $ do
+  pD <- patternAskWidget
+  e <- delay 0.1 $ updated pD
   pure $ tag (current pD) e
+
+askPatternModal :: MonadFrontBase t m => m ()
+askPatternModal = mdo
+  goE   <- fmap fst getPasswordModalEF
+  fire  <- fmap snd getPasswordSetEF
+  let redrawE = leftmost [Just <$> goE, Nothing <$ passE]
+  passE <- fmap (switch . current) $ widgetHold (pure never) $ ffor redrawE $ \case
+    Just i -> divClass "ask-pattern-modal" $ (fmap . fmap) ((i,) . Just) askPattern
+    Nothing -> pure never
+  performEvent_ $ (liftIO . fire) <$> passE
 
 setupLoginPattern :: MonadFrontBase t m => m (Event t (Text, Password))
 setupLoginPattern = divClass "setup-password" $ form $ fieldset $ mdo
   loginD <- textField PWSLogin ""
-  pD <- patternSave
+  pD <- patternSaveWidget
   divClass "debugPattern" $ dynText $ fmap showt pD
   e <- submitClass "button button-outline" PWSSet
   validate $ poke e $ const $ runExceptT $ do

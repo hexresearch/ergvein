@@ -24,7 +24,8 @@ frontend = do
   logWrite "Frontend started"
   alertHandlerWidget
   loadingWidget
-  askPasswordModal
+--  askPasswordModal
+  askPatternModal
   logWriter =<< fmap fst getLogsTrigger
   logWrite "Entering initial page"
   void $ retractStack initialPage `liftAuth` retractStack balancesPage
