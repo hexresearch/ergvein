@@ -35,3 +35,14 @@ instance LocalizedPrint SettingsPageStrings where
       STPSSelectLanguage      -> "Выберите язык:"
       STPSSetsPinCode         -> "Настройки ПИН кода"
       STPSSelectUnitsFor cur  -> "Выберите единиц отображения для " <> showt cur <> ":"
+
+instance LocalizedPrint UnitBTC where
+  localizedShow _ v = case v of
+    BTC_BTC     -> "BTC"
+    BTC_mBTC    -> "mBTC"
+    BTC_uBTC    -> "uBTC"
+    BTC_satoshi -> "satoshi"
+
+instance LocalizedPrint UnitERGO where
+  localizedShow _ v = case v of
+    ERGO_ERGO -> "ERGO"

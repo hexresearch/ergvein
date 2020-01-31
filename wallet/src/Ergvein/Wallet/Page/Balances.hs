@@ -2,13 +2,17 @@ module Ergvein.Wallet.Page.Balances(
     balancesPage
   ) where
 
+import Data.Maybe (fromMaybe)
+
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.History
+import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
 
 data BalanceTitle = BalanceTitle
@@ -72,10 +76,21 @@ currenciesList = fmap leftmost $ traverse currencyLine allCurrencies
         divClass "currency-name" $ text $ currencyName cur
         divClass "currency-balance" $ do
           bal <- currencyBalance cur
+          settings <- getSettings
+          let setUs = getSettingsUnits settings
           dynText $ do
-            m <- showMoney <$> bal
-            pure $ m <> "〉"
+            m <- (\v -> showMoneyUnit v setUs) <$> bal
+            u <- (\(Money cur _) -> showUnit cur setUs) <$> bal
+            pure $ m <> " (" <> u <> ") " <> "〉"
       pure $ cur <$ domEvent Click e
+
+    getSettingsUnits = fromMaybe defUnits . settingsUnits
 
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
 currencyBalance cur = pure $ pure $ Money cur 1
+
+showUnit :: Currency -> Units -> Text
+showUnit cur units =
+  case cur of
+    BTC  -> showt $ getUnitBTC  units
+    ERGO -> showt $ getUnitERGO units

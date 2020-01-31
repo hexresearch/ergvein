@@ -72,17 +72,6 @@ pinCodePage = do
       pure ()
     pure ()
 
-instance LocalizedPrint UnitBTC where
-  localizedShow _ v = case v of
-    BTC_BTC     -> "BTC"
-    BTC_mBTC    -> "mBTC"
-    BTC_uBTC    -> "uBTC"
-    BTC_satoshi -> "satoshi"
-
-instance LocalizedPrint UnitERGO where
-  localizedShow _ v = case v of
-    ERGO_ERGO -> "ERGO"
-
 unitsPage :: MonadFront t m => m ()
 unitsPage = do
   let thisWidget = Just $ pure $ unitsPage
@@ -118,6 +107,3 @@ unitsPage = do
       fmap updated $ holdUniqDyn selD
 
     getSettingsUnits = fromMaybe defUnits . settingsUnits
-
-    getUnitBTC Units{..} = fromMaybe defUnitBTC unitBTC
-    getUnitERGO Units{..} = fromMaybe defUnitERGO unitERGO

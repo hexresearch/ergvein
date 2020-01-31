@@ -2,10 +2,12 @@ module Ergvein.Types.Currency(
     Currency(..)
   , allCurrencies
   , currencyResolution
+  , currencyResolutionUnit
   , currencyName
   , MoneyUnit
   , Money(..)
   , showMoney
+  , showMoneyUnit
   , UnitBTC(..)
   , defUnitBTC
   , allUnitsBTC
@@ -14,9 +16,12 @@ module Ergvein.Types.Currency(
   , allUnitsERGO
   , Units(..)
   , defUnits
+  , getUnitBTC
+  , getUnitERGO
   ) where
 
 import Data.Flat
+import Data.Maybe (fromMaybe)
 import Data.Ratio
 import Data.Text (Text)
 import Data.Word
@@ -38,49 +43,11 @@ instance FromJSONKey Currency where
 allCurrencies :: [Currency]
 allCurrencies = [minBound .. maxBound]
 
--- | Amount of digits after point for currency
-currencyResolution :: Currency -> Int
-currencyResolution c = case c of
-  BTC -> 8
-  ERGO -> 9
-{-# INLINE currencyResolution #-}
-
-currencyName :: Currency -> Text
-currencyName c = case c of
-  BTC -> "Bitcoin"
-  ERGO -> "Ergo"
-{-# INLINE currencyName #-}
-
--- | Smallest amount of currency
-type MoneyUnit = Word64
-
--- | Amount of money tagged with specific currency
-data Money = Money {
-    moneyCurrency :: !Currency
-  , moneyValue    :: !MoneyUnit
-  } deriving (Eq, Ord, Show, Read, Generic)
-
--- | Convert to rational number amount of cryptocurrency
-moneyToRational :: Money -> Rational
-moneyToRational (Money cur amount) = fromIntegral amount % (10 ^ currencyResolution cur)
-{-# INLINE moneyToRational #-}
-
--- | Convert a rational number to money value
-moneyFromRational :: Currency -> Rational -> Money
-moneyFromRational cur amount = Money cur val
-  where
-    val = fromIntegral . numerator $ amount * (denominator amount % 10 ^ currencyResolution cur)
-{-# INLINE moneyFromRational #-}
-
--- | Print amount of cryptocurrency
-showMoney :: Money -> Text
-showMoney m@(Money cur _) = T.pack $ printf ("%." <> show (currencyResolution cur) <> "f") (realToFrac (moneyToRational m) :: Double)
-
 -- | Display units for BTC
 data UnitBTC
   = BTC_BTC
-  | BTC_mBTC
   | BTC_uBTC
+  | BTC_mBTC
   | BTC_satoshi
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Generic)
 
@@ -124,3 +91,63 @@ defUnits = Units {
     unitBTC   = Just BTC_BTC
   , unitERGO  = Just ERGO_ERGO
   }
+
+getUnitBTC :: Units -> UnitBTC
+getUnitBTC Units{..} = fromMaybe defUnitBTC unitBTC
+
+getUnitERGO :: Units -> UnitERGO
+getUnitERGO Units{..} = fromMaybe defUnitERGO unitERGO
+
+-- | Amount of digits after point for currency
+currencyResolution :: Currency -> Int
+currencyResolution c = currencyResolutionUnit c defUnits
+{-# INLINE currencyResolution #-}
+
+currencyResolutionUnit :: Currency -> Units -> Int
+currencyResolutionUnit c Units{..} = case c of
+  BTC  -> case fromMaybe defUnitBTC unitBTC of
+            BTC_BTC     -> 8
+            BTC_uBTC    -> 6
+            BTC_mBTC    -> 3
+            BTC_satoshi -> 0
+  ERGO -> case fromMaybe defUnitERGO unitERGO of
+            ERGO_ERGO   -> 9
+{-# INLINE currencyResolutionUnit #-}
+
+currencyName :: Currency -> Text
+currencyName c = case c of
+  BTC -> "Bitcoin"
+  ERGO -> "Ergo"
+{-# INLINE currencyName #-}
+
+-- | Smallest amount of currency
+type MoneyUnit = Word64
+
+-- | Amount of money tagged with specific currency
+data Money = Money {
+    moneyCurrency :: !Currency
+  , moneyValue    :: !MoneyUnit
+  } deriving (Eq, Ord, Show, Read, Generic)
+
+-- | Convert to rational number amount of cryptocurrency
+moneyToRational :: Money -> Rational
+moneyToRational (Money cur amount) = fromIntegral amount % (10 ^ currencyResolution cur)
+{-# INLINE moneyToRational #-}
+
+moneyToRationalUnit :: Money -> Units -> Rational
+moneyToRationalUnit (Money cur amount) units = fromIntegral amount % (10 ^ currencyResolutionUnit cur units)
+{-# INLINE moneyToRationalUnit #-}
+
+-- | Convert a rational number to money value
+moneyFromRational :: Currency -> Rational -> Money
+moneyFromRational cur amount = Money cur val
+  where
+    val = fromIntegral . numerator $ amount * (denominator amount % 10 ^ currencyResolution cur)
+{-# INLINE moneyFromRational #-}
+
+-- | Print amount of cryptocurrency
+showMoney :: Money -> Text
+showMoney m@(Money cur _) = T.pack $ printf ("%." <> show (currencyResolution cur) <> "f") (realToFrac (moneyToRational m) :: Double)
+
+showMoneyUnit :: Money -> Units -> Text
+showMoneyUnit m@(Money cur _) units = T.pack $ printf ("%." <> show (currencyResolution cur) <> "f") (realToFrac (moneyToRationalUnit m units) :: Double)
