@@ -46,6 +46,7 @@ library
         Ergvein.Wallet.Localization.Native
         Ergvein.Wallet.Localization.Password
         Ergvein.Wallet.Localization.Seed
+        Ergvein.Wallet.Localization.Settings
         Ergvein.Wallet.Localization.Storage
         Ergvein.Wallet.Log
         Ergvein.Wallet.Log.Page
@@ -54,6 +55,8 @@ library
         Ergvein.Wallet.Log.Writer
         Ergvein.Wallet.Main
         Ergvein.Wallet.Menu
+        Ergvein.Wallet.Menu.Switcher
+        Ergvein.Wallet.Menu.Types
         Ergvein.Wallet.Monad
         Ergvein.Wallet.Monad.Auth
         Ergvein.Wallet.Monad.Base
@@ -61,11 +64,13 @@ library
         Ergvein.Wallet.Monad.Storage
         Ergvein.Wallet.Monad.Unauth
         Ergvein.Wallet.Monad.Util
+        Ergvein.Wallet.Page.About
         Ergvein.Wallet.Page.Balances
         Ergvein.Wallet.Page.History
         Ergvein.Wallet.Page.Initial
         Ergvein.Wallet.Page.Password
         Ergvein.Wallet.Page.Seed
+        Ergvein.Wallet.Page.Settings
         Ergvein.Wallet.Password
         Ergvein.Wallet.Platform
         Ergvein.Wallet.Resize

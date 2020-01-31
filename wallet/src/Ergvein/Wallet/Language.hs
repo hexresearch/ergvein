@@ -1,6 +1,7 @@
 -- | Module that fullfils data family required by `reflex-localize`
 module Ergvein.Wallet.Language(
     Language(..)
+  , allLanguages
   , module Reflex.Localize
   ) where
 
@@ -13,6 +14,14 @@ import Reflex.Localize.Language
 data instance Language
   = English
   | Russian
-  deriving (Eq, Ord, Show, Read, Generic)
+  deriving (Eq, Ord, Enum, Bounded, Show, Read, Generic)
+
+instance LocalizedPrint Language where
+  localizedShow _ v = case v of
+    English -> "English"
+    Russian -> "Русский"
 
 $(deriveJSON aesonOptions 'English)
+
+allLanguages :: [Language]
+allLanguages = [minBound .. maxBound]
