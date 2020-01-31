@@ -6,12 +6,14 @@ module Ergvein.Types.Currency(
   , MoneyUnit
   , Money(..)
   , showMoney
-  , UnitsBTC(..)
+  , UnitBTC(..)
   , defUnitBTC
   , allUnitsBTC
-  , UnitsERGO(..)
+  , UnitERGO(..)
   , defUnitERGO
   , allUnitsERGO
+  , Units(..)
+  , defUnits
   ) where
 
 import Data.Flat
@@ -75,34 +77,50 @@ showMoney :: Money -> Text
 showMoney m@(Money cur _) = T.pack $ printf ("%." <> show (currencyResolution cur) <> "f") (realToFrac (moneyToRational m) :: Double)
 
 -- | Display units for BTC
-data UnitsBTC
+data UnitBTC
   = BTC_BTC
   | BTC_mBTC
   | BTC_uBTC
   | BTC_satoshi
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Generic)
 
-$(deriveJSON aesonOptions ''UnitsBTC)
-instance ToJSONKey UnitsBTC where
-instance FromJSONKey UnitsBTC where
+$(deriveJSON aesonOptions ''UnitBTC)
+instance ToJSONKey UnitBTC where
+instance FromJSONKey UnitBTC where
 
-defUnitBTC :: UnitsBTC
+defUnitBTC :: UnitBTC
 defUnitBTC = BTC_BTC
 
-allUnitsBTC :: [UnitsBTC]
+allUnitsBTC :: [UnitBTC]
 allUnitsBTC = [minBound .. maxBound]
 
 -- | Display units for ERGO
-data UnitsERGO
+data UnitERGO
   = ERGO_ERGO
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Generic)
 
-$(deriveJSON aesonOptions ''UnitsERGO)
-instance ToJSONKey UnitsERGO where
-instance FromJSONKey UnitsERGO where
+$(deriveJSON aesonOptions ''UnitERGO)
+instance ToJSONKey UnitERGO where
+instance FromJSONKey UnitERGO where
 
-defUnitERGO :: UnitsERGO
+defUnitERGO :: UnitERGO
 defUnitERGO = ERGO_ERGO
 
-allUnitsERGO :: [UnitsERGO]
+allUnitsERGO :: [UnitERGO]
 allUnitsERGO = [minBound .. maxBound]
+
+-- | Union units
+data Units = Units {
+    unitBTC   :: Maybe UnitBTC
+  , unitERGO  :: Maybe UnitERGO
+  } deriving (Eq, Ord, Show, Read, Generic)
+
+$(deriveJSON aesonOptions ''Units)
+instance ToJSONKey Units where
+instance FromJSONKey Units where
+
+defUnits :: Units
+defUnits = Units {
+    unitBTC   = Just BTC_BTC
+  , unitERGO  = Just ERGO_ERGO
+  }

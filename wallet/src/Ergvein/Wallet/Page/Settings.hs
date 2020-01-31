@@ -3,6 +3,7 @@ module Ergvein.Wallet.Page.Settings(
   ) where
 
 import qualified Data.Map.Strict as M
+import Data.Maybe (fromMaybe)
 import Reflex.Dom
 
 import Ergvein.Text
@@ -71,14 +72,14 @@ pinCodePage = do
       pure ()
     pure ()
 
-instance LocalizedPrint UnitsBTC where
+instance LocalizedPrint UnitBTC where
   localizedShow _ v = case v of
     BTC_BTC     -> "BTC"
     BTC_mBTC    -> "mBTC"
     BTC_uBTC    -> "uBTC"
     BTC_satoshi -> "satoshi"
 
-instance LocalizedPrint UnitsERGO where
+instance LocalizedPrint UnitERGO where
   localizedShow _ v = case v of
     ERGO_ERGO -> "ERGO"
 
@@ -89,11 +90,17 @@ unitsPage = do
   wrapper True $ do
     h3 $ localizedText $ STPSSelectUnitsFor BTC
     divClass "initial-options grid1" $ do
-      unitBtcE <- unitsDropdown defUnitBTC allUnitsBTC
+      settings <- getSettings
+      let setUs = getSettingsUnits settings
+      unitBtcE <- unitsDropdown (getUnitBTC setUs) allUnitsBTC
+      updateSettings $ ffor unitBtcE (\ubtc -> settings {settingsUnits = Just $ setUs {unitBTC = Just ubtc}})
       pure ()
     h3 $ localizedText $ STPSSelectUnitsFor ERGO
     divClass "initial-options grid1" $ do
-      unitBtcE <- unitsDropdown defUnitERGO allUnitsERGO
+      settings <- getSettings
+      let setUs = getSettingsUnits settings
+      unitErgoE <- unitsDropdown (getUnitERGO setUs) allUnitsERGO
+      updateSettings $ ffor unitErgoE (\uergo -> settings {settingsUnits = Just $ setUs {unitERGO = Just uergo}})
       pure ()
     pure ()
   where
@@ -109,3 +116,8 @@ unitsPage = do
       dp <- dropdown initKey listUnitsD ddnCfg
       let selD = _dropdown_value dp
       fmap updated $ holdUniqDyn selD
+
+    getSettingsUnits = fromMaybe defUnits . settingsUnits
+
+    getUnitBTC Units{..} = fromMaybe defUnitBTC unitBTC
+    getUnitERGO Units{..} = fromMaybe defUnitERGO unitERGO
