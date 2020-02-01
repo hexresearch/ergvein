@@ -36,9 +36,11 @@ patternAsk = divClass "pattern-container" $ mdo
       moveE  = domEvent Mousemove canvasEl
       downE  = domEvent Mousedown canvasEl
       upE    = domEvent Mouseup canvasEl
-      pressedE = leftmost [Pressed <$ downE, Unpressed <$ upE]
-      predrawE = leftmost [squaresUpdatedE, (Clear,(0,0),emptySq) <$ upPrE]
+      pressedE = leftmost [Pressed <$ tdownE, Unpressed <$ tupE]
+      predrawE = leftmost [squaresUpdatedE, (Clear,(0,0),emptySq) <$ tupPrE]
       selE = fmap (\(dc, sqs) -> (dc, fmap fst sqs)) $ fmap (\(dc,sqs) -> (dc, filter jstFilter sqs)) $ fmap (\(dc,_,sqs) -> (dc,sqs)) predrawE
+      gridE = leftmost [() <$ tdownE, () <$ tupE, buildE]
+      lineE = leftmost [() <$ tmoveE, () <$ tdownE]
   tmovePrE <- performEvent $ ffor tmoveE prepTCoord
   tdownPrE <- performEvent $ ffor tdownE prepTCoord
   tupPrE   <- performEvent $ ffor tupE   prepTCoord
@@ -47,7 +49,7 @@ patternAsk = divClass "pattern-container" $ mdo
   upPrE    <- performEvent $ ffor upE    prepCoord
   touchD <- holdDyn Unpressed pressedE
 
-  squaresUpdatedE <- performEvent $ ffor (leftmost [movePrE, downPrE]) $ \(x,y) -> do
+  squaresUpdatedE <- performEvent $ ffor (leftmost [tmovePrE, tdownPrE]) $ \(x,y) -> do
     sd <- sampleDyn moveD
     pure (AddSquare,(x,y),hitOrMiss (x,y) coords sd)
   -- Grid dynamic
@@ -89,11 +91,11 @@ patternAsk = divClass "pattern-container" $ mdo
   dLineT <- holdDyn (drawLineZeroT) $ ffor drawE $ \((_,(x,y),r),sel,ln) -> (drawLineT canvasW canvasH x y 0 0 ln r)
                                                                           <> (drawLinesT sel coords)
 
-  performEvent_ $ ffor (leftmost [() <$ downE, () <$ upE, buildE]) $ \_ -> do
+  performEvent_ $ ffor gridE $ \_ -> do
     dGridS <- sampleDyn dGrid
     rawJSCall (_element_raw canvasEl) dGridS
 
-  performEvent_ $ ffor (leftmost [() <$ moveE, () <$ downE]) $ \_ -> do
+  performEvent_ $ ffor lineE $ \_ -> do
     dLineS <- sampleDyn dLineT
     rawJSCall (_element_raw canvasEl) dLineS
 
@@ -122,11 +124,11 @@ patternSave tryD = divClass "pattern-container" $ mdo
       moveE  = domEvent Mousemove canvasEl
       downE  = domEvent Mousedown canvasEl
       upE    = domEvent Mouseup canvasEl
-      pressedE = leftmost [Pressed <$ downE, Unpressed <$ upE]
-      predrawE = leftmost [squaresUpdatedE, (Clear,(0,0),emptySq) <$ upPrE]
+      pressedE = leftmost [Pressed <$ tdownE, Unpressed <$ tupE]
+      predrawE = leftmost [squaresUpdatedE, (Clear,(0,0),emptySq) <$ tupPrE]
       selE = fmap (\(dc, sqs) -> (dc, fmap fst sqs)) $ fmap (\(dc,sqs) -> (dc, filter jstFilter sqs)) $ fmap (\(dc,_,sqs) -> (dc,sqs)) predrawE
-      gridE = leftmost [() <$ downE, () <$ upE, buildE]
-      lineE = leftmost [() <$ moveE, () <$ downE]
+      gridE = leftmost [() <$ tdownE, () <$ tupE, buildE]
+      lineE = leftmost [() <$ tmoveE, () <$ tdownE]
   tmovePrE <- performEvent $ ffor tmoveE prepTCoord
   tdownPrE <- performEvent $ ffor tdownE prepTCoord
   tupPrE   <- performEvent $ ffor tupE   prepTCoord
@@ -135,7 +137,7 @@ patternSave tryD = divClass "pattern-container" $ mdo
   upPrE    <- performEvent $ ffor upE    prepCoord
   touchD <- holdDyn Unpressed pressedE
 
-  squaresUpdatedE <- performEvent $ ffor (leftmost [movePrE, downPrE]) $ \(x,y) -> do
+  squaresUpdatedE <- performEvent $ ffor (leftmost [tmovePrE, tdownPrE]) $ \(x,y) -> do
     sd <- sampleDyn moveD
     pure (AddSquare,(x,y),hitOrMiss (x,y) coords sd)
   -- Grid dynamic

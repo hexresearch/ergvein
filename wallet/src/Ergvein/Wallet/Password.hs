@@ -72,7 +72,6 @@ setupLoginPattern :: MonadFrontBase t m => m (Event t (Text, Password))
 setupLoginPattern = divClass "setup-password" $ form $ fieldset $ mdo
   loginD <- textField PWSLogin ""
   pD <- patternSaveWidget
-  divClass "debugPattern" $ dynText $ fmap showt pD
   e <- submitClass "button button-outline" PWSSet
   validate $ poke e $ const $ runExceptT $ do
     l  <- sampleDyn loginD
