@@ -6,6 +6,7 @@ import           Data.Maybe
 import           Network.Haskoin.Address
 import           Network.Haskoin.Block
 import           Network.Haskoin.Constants
+import           Network.Haskoin.Transaction
 import qualified Data.Serialize                as S
 import           Data.Text                      ( Text
                                                 , unpack
@@ -18,26 +19,28 @@ import           Ergvein.Filters.Btc
 import           Data.Foldable
 
 spec_filterPositive :: Spec
-spec_filterPositive = forM_ samples $ \(block, as) -> do
-  let bfilter = makeBtcFilter block
-      bid     = blockHashToHex . headerHash . blockHeader $ block
+spec_filterPositive = forM_ samples $ \(block, txs, as) -> do
+  let bfilter = makeBtcFilter btcTest txs block 
+      bhash   = headerHash . blockHeader $ block
+      bid     = blockHashToHex bhash
   describe ("block " ++ show bid) $ forM_ as $ \a -> do
     let at = unpack $ addrToString btcTest $ fromSegWit a
     it ("block filter contains address " ++ at)
-      $          applyBtcFilter bfilter a
+      $          applyBtcFilter btcTest bhash bfilter a
       `shouldBe` True
-  where samples = zip testBlocks testAddresses
+  where samples = zip3 testBlocks testInputTxs testAddresses
 
 spec_filterNegative :: Spec
-spec_filterNegative = forM_ testBlocks $ \block -> do
-  let bfilter = makeBtcFilter block
-      bid     = blockHashToHex . headerHash . blockHeader $ block
+spec_filterNegative = forM_ samples $ \(block, txs) -> do
+  let bfilter = makeBtcFilter btcTest txs block
+      bhash   = headerHash . blockHeader $ block
+      bid     = blockHashToHex bhash
       at      = unpack $ addrToString btcTest $ fromSegWit testAddress
   describe ("block " ++ show bid)
     $          it ("block filter should not contain address " ++ at)
-    $          applyBtcFilter bfilter testAddress
+    $          applyBtcFilter btcTest bhash bfilter testAddress
     `shouldBe` False
-
+  where samples = zip testBlocks testInputTxs
 
 testBlocks :: [Block]
 testBlocks = fmap
@@ -47,12 +50,21 @@ testBlocks = fmap
   ]
   where loadBlock = either error id . S.decode @Block . fromHex
 
+testInputTxs :: [[Tx]]
+testInputTxs = (fmap . fmap)
+  loadTx 
+  [ [ "01000000000101cb6d6ca7e36725d98592c142bc8e54b53e81d1079d0a45fca91ae9640f4faf2f0000000000ffffffff020000000000000000536a4c50000228120002ca4f86db7d73e73ba71e587a6b46f7ec375c2fecc374ac668de79ec5c018b1cfc9a811cf32c7ddfd8f1c31bfb5db5e00f2230405f5e153929d764f75662be062df035a8aa8c6f56dba3094591900000000001600148765bf25275f6e034e5c61cfadf7a76a7e5dbca90247304402207f1cdcf37a5f7fb04a2e989f390bad38dd31536899388fcb39ea877ac662a39a02205835f15cc37d89a3f92cf3a0a006c27bb662f2eda93791a66fd31b97069cdd24012102916c6da5139821053bd5145a052d5bb803da5b588425882ddce9c9194afb722a00000000"
+  , "01000000000101f54d73a0eb37ac94f4d630d11dd5665bb7762affec377de13a55bc0445e182350000000000ffffffff02d1f6340000000000160014728227dfd4dfe62eb788fac48917df9ff235fccf0000000000000000536a4c50000228120002ca4f86db7d73e73ba71e587a6b46f7ec375c2fecc374ac668de79ec5c018b1cfc9a811cf32c7ddfd8f1c31bfb5db5e00f2230405f5e153929d764f75662be062df035a8aa8c6f56dba300247304402206d747cb0da86f6a140c5e685f4c926932ced93bcd3726b68b0d9f50fbe87682502207cadaabd39882109c76302d6eab003b87ca90d81ed15f2231b7c17e9bf13e36b01210259c87de12afef1bee19ed3e1380a73236a9d774a9c107fdd35e04ae346b7a57600000000"
+    ]
+  , [ "0200000000010151d925bcb17a8e2f10d9b9cb49e2e114931a46b663a1b1a369c3b345dbb0f7950100000000feffffff02102700000000000017a914c695341928e6e887447f006345be943cf368cb5887f9747c000000000017a9144660975e7a3cdf9d59776f101119a3d0eb0b09c7870247304402206b55143ca18cafb7cad445d7edbe3fb0be78fc4a264ca0b777b8ff8f702d49f00220020a3e60b5134fa7407198528d50dd4a0613af95bfbe797d4cb21e8a56fef55c0121024971d3abb3bda9aec650a39b06de2eee131392a8ada7676ca034247630a177075af11800"
+  ]]
+
 testAddresses :: [[SegWitAddress]]
 testAddresses = (fmap . fmap)
   loadAddress
   [ [ "tb1qnrycqvuwahpf8rq0glr675mp8zrxmsua32u482"
     , "tb1q2n59pluplhy072hg3j2atc7h8as3434uw4wv02"
-    , "tb1q2n59pluplhy072hg3j2atc7h8as3434uw4wv02"
+    , "tb1qsajm7ff8tahqxnjuv886maa8dfl9m09fm674pe"
     ]
   , [ "tb1qal6enq02jpmgv7d08cj7a0ng8xlneezrz5g98q"
     , "tb1ql4x827apmcrh5nlm75pknutjya4f2sy05l23yc"
@@ -68,6 +80,9 @@ loadAddress t =
   fromMaybe (error "Failed to parse address")
     $   guardSegWit
     =<< stringToAddr btcTest t
+
+loadTx :: Text -> Tx
+loadTx = either error id . S.decode @Tx . fromHex
 
 -- `Partial` constraint used to get the better stacktrace in case of an error
 fromHex :: Text -> ByteString
