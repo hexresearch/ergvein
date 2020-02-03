@@ -78,9 +78,10 @@ currenciesList = fmap leftmost $ traverse currencyLine allCurrencies
           bal <- currencyBalance cur
           settings <- getSettings
           let setUs = getSettingsUnits settings
+          langD <- getLanguage
           dynText $ do
             m <- (\v -> showMoneyUnit v setUs) <$> bal
-            u <- (\(Money cur _) -> showUnit cur setUs) <$> bal
+            u <- ffor2 bal langD $ \(Money cur _) lang -> showUnit cur lang setUs
             pure $ m <> " (" <> u <> ") " <> "〉"
       pure $ cur <$ domEvent Click e
 
@@ -89,8 +90,8 @@ currenciesList = fmap leftmost $ traverse currencyLine allCurrencies
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
 currencyBalance cur = pure $ pure $ Money cur 1
 
-showUnit :: Currency -> Units -> Text
-showUnit cur units =
+showUnit :: Currency -> Language -> Units -> Text
+showUnit cur lang units =
   case cur of
-    BTC  -> showt $ getUnitBTC  units
-    ERGO -> showt $ getUnitERGO units
+    BTC  -> localizedShow lang $ getUnitBTC  units
+    ERGO -> localizedShow lang $ getUnitERGO units

@@ -41,7 +41,7 @@ instance LocalizedPrint UnitBTC where
     BTC_BTC     -> "BTC"
     BTC_mBTC    -> "mBTC"
     BTC_uBTC    -> "uBTC"
-    BTC_satoshi -> "satoshi"
+    BTC_Satoshi -> "Satoshi"
 
 instance LocalizedPrint UnitERGO where
   localizedShow _ v = case v of

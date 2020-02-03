@@ -48,7 +48,7 @@ data UnitBTC
   = BTC_BTC
   | BTC_uBTC
   | BTC_mBTC
-  | BTC_satoshi
+  | BTC_Satoshi
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Generic)
 
 $(deriveJSON aesonOptions ''UnitBTC)
@@ -109,7 +109,7 @@ currencyResolutionUnit c Units{..} = case c of
             BTC_BTC     -> 8
             BTC_uBTC    -> 6
             BTC_mBTC    -> 3
-            BTC_satoshi -> 0
+            BTC_Satoshi -> 0
   ERGO -> case fromMaybe defUnitERGO unitERGO of
             ERGO_ERGO   -> 9
 {-# INLINE currencyResolutionUnit #-}
@@ -150,4 +150,5 @@ showMoney :: Money -> Text
 showMoney m@(Money cur _) = T.pack $ printf ("%." <> show (currencyResolution cur) <> "f") (realToFrac (moneyToRational m) :: Double)
 
 showMoneyUnit :: Money -> Units -> Text
-showMoneyUnit m@(Money cur _) units = T.pack $ printf ("%." <> show (currencyResolution cur) <> "f") (realToFrac (moneyToRationalUnit m units) :: Double)
+showMoneyUnit m@(Money cur _) units =
+  T.pack $ printf ("%." <> show (currencyResolutionUnit cur units) <> "f") (realToFrac (moneyToRationalUnit m units) :: Double)
