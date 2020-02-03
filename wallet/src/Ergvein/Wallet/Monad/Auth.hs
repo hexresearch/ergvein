@@ -131,7 +131,7 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
         liftIO fire
       Just v -> do
         logWrite "authed setAuthInfo: changing auth info"
-        setLastStorage $ Just . storage'walletName . authInfo'storage $ v
+        setLastStorage $ Just . _storage'walletName . _authInfo'storage $ v
         writeExternalRef authRef $ Just v
   {-# INLINE setAuthInfo #-}
   getPasswordModalEF = asks env'passModalEF
@@ -165,13 +165,13 @@ instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   {-# INLINE getAlertEventFire #-}
 
 instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) where
-  getEncryptedPrivateStorage = fmap (storage'encryptedPrivateStorage . authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
+  getEncryptedPrivateStorage = fmap (_storage'encryptedPrivateStorage . _authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
     where
       guardit Nothing = error "getEncryptedWallet impossible: no auth in authed context!"
       guardit (Just a) = a
   {-# INLINE getEncryptedPrivateStorage #-}
   getAddressByCurIx cur i = do
-    currMap <- fmap (storage'publicKeys . authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
+    currMap <- fmap (_storage'publicKeys . _authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
     let mXPubKey = (MI.lookup i) . egvPubKeyсhain'external =<< M.lookup cur currMap
     case mXPubKey of
       Nothing -> fail "NOT IMPLEMENTED" -- TODO: generate new address here
@@ -180,12 +180,12 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
       guardit Nothing = error "getAddressByCurIx impossible: no auth in authed context!"
       guardit (Just a) = a
   {-# INLINE getAddressByCurIx #-}
-  getWalletName = fmap (storage'walletName . authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
+  getWalletName = fmap (_storage'walletName . _authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
     where
       guardit Nothing = error "getWalletName impossible: no auth in authed context!"
       guardit (Just a) = a
   {-# INLINE getWalletName #-}
-  getPublicKeystore = fmap (storage'publicKeys . authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
+  getPublicKeystore = fmap (_storage'publicKeys . _authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
     where
       guardit Nothing = error "getPublicKeystore impossible: no auth in authed context!"
       guardit (Just a) = a
@@ -193,8 +193,8 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   storeWallet e = do
     authInfo <- fmap guardit $ readExternalRef =<< asks env'authRef
     performEvent_ $ ffor e $ \_ -> do
-      let storage = authInfo'storage authInfo
-      let eciesPubKey = authInfo'eciesPubKey authInfo
+      let storage = _authInfo'storage authInfo
+      let eciesPubKey = _authInfo'eciesPubKey authInfo
       saveStorageToFile eciesPubKey storage
     where
       guardit Nothing = error "storeWallet impossible: no auth in authed context!"
@@ -242,7 +242,7 @@ liftAuth ma0 ma = mdo
 isMauthUpdate :: Maybe AuthInfo -> Bool
 isMauthUpdate mauth = case mauth of
   Nothing -> True
-  Just auth -> not $ authInfo'isUpdate auth
+  Just auth -> not $ _authInfo'isUpdate auth
 
 -- | Lift action that doesn't require authorisation in context where auth is mandatory
 liftUnauthed :: m a -> ErgveinM t m a

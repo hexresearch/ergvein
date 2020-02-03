@@ -6,6 +6,7 @@ import Ergvein.Wallet.Storage.Keys (derivePubKey)
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
+import Ergvein.Types.AuthInfo
 import Ergvein.Types.Transaction (BlockHeight)
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
@@ -25,16 +26,7 @@ accountDiscovery = do
         mauth <- sample . current $ mauthD
         case mauth of
           Nothing -> fail "accountDiscovery: not authorized"
-          -- TODO: use lenses here
-          Just auth -> pure $ Just AuthInfo {
-                authInfo'storage = ErgveinStorage {
-                    storage'encryptedPrivateStorage = storage'encryptedPrivateStorage $ authInfo'storage auth
-                  , storage'publicKeys = store
-                  , storage'walletName = storage'walletName $ authInfo'storage auth
-                }
-              , authInfo'eciesPubKey = authInfo'eciesPubKey auth
-              , authInfo'isUpdate = True
-            }
+          Just auth -> pure $ Just $ authInfo'storage . storage'publicKeys .~ store $ authInfo'isUpdate .~ True $ auth
   setAuthInfoE <- setAuthInfo updatedAuthE
   storeWallet $ () <$ setAuthInfoE
 
@@ -49,9 +41,10 @@ scanKeys pubKeystore = do
         pure $ if M.size updatedKeystore == length allCurrencies then Just $ updatedKeystore else Nothing
   pure allFinishedE
 
+-- TODO: use M.lookup instead of M.! and show error msg if currency not found
 applyScan :: MonadFront t m => PublicKeystore -> Currency -> m (Event t (Currency, EgvPubKeyсhain))
 applyScan pubKeystore currency = scanCurrencyKeys currency (getKeychain currency pubKeystore )
-  where getKeychain currency pubKeystore = pubKeystore M.! currency -- FIXME use M.lookup instead of M.! and show error msg if currency not found
+  where getKeychain currency pubKeystore = pubKeystore M.! currency
 
 scanCurrencyKeys :: MonadFront t m => Currency -> EgvPubKeyсhain -> m (Event t (Currency, EgvPubKeyсhain))
 scanCurrencyKeys currency keyChain = mdo
