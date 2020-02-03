@@ -9,7 +9,6 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Password
 import Ergvein.Wallet.Wrapper
 import Ergvein.Wallet.Localization.Password
-import Ergvein.Wallet.Storage.Data
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Storage.AuthInfo
 import Reflex.Localize

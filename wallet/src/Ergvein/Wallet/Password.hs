@@ -5,13 +5,10 @@ module Ergvein.Wallet.Password(
   ) where
 
 import Control.Monad.Except
-import Ergvein.Crypto
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
-import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Password
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Validate
 
 import qualified Data.Text as T

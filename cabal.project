@@ -1,6 +1,8 @@
 packages:
+  ./checkpoint-generator
   ./common
   ./crypto
+  ./data-merkle-tree
   ./ergo-api
   ./golomb-rice
   ./index-api

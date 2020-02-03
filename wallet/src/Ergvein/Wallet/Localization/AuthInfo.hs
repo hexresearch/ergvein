@@ -3,11 +3,8 @@ module Ergvein.Wallet.Localization.AuthInfo
     AuthInfoAlert(..)
   ) where
 
-import Ergvein.Text
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Storage
-
-import Data.Text
 
 data AuthInfoAlert = CreateStorageAlert !StorageAlert | GenerateECIESKeyAlert | LoadStorageAlert !StorageAlert
     deriving Eq

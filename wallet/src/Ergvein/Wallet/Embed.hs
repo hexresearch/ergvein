@@ -10,7 +10,6 @@ import Data.Maybe
 
 import qualified GHCJS.DOM.Blob as Blob
 import qualified GHCJS.DOM.Types as JS
-import qualified Data.Text as T
 
 createObjectURL_ :: MonadJSM m => Blob.Blob -> m JS.JSVal
 createObjectURL_ b = liftJSM $ do

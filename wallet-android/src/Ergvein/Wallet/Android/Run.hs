@@ -24,7 +24,7 @@ instance PlatformRun where
             runBackCallback = backCbRef
           , runUiCallbacks = uiCbChan
           }
-    continueWithCallbacks $ traceActivityCallbacks $ def
+    continueWithCallbacks $ def
       { _activityCallbacks_onCreate = \_ -> do
           a <- getHaskellActivity
           let startPage = fromString "file:///android_asset/index.html"

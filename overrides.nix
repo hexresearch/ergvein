@@ -27,7 +27,9 @@ in (self: super: let
   walletOpts = if isAndroid then "-fandroid --no-haddock" else "--no-haddock";
   in {
     # Internal
+    data-merkle-tree = ingnoreGarbage super.data-merkle-tree;
     ergo-api = ingnoreGarbage super.ergo-api;
+    ergvein-checkpoint-generator = ingnoreGarbage super.ergvein-checkpoint-generator;
     ergvein-common = ingnoreGarbage super.ergvein-common;
     ergvein-crypto = ingnoreGarbage super.ergvein-crypto;
     ergvein-index-api = ingnoreGarbage super.ergvein-index-api;
@@ -47,6 +49,7 @@ in (self: super: let
     # Overridess
     clay = self.callPackage ./derivations/clay.nix {};
     cryptonite = self.callPackage ./derivations/cryptonite.nix {};
+    criterion = lib.dontCheck super.criterion;
     haskoin-core = self.callPackage ./derivations/haskoin-core.nix {};
     bitcoin-api = self.callPackage ./derivations/haskell-bitcoin-api.nix {};
     bytestring-trie = self.callPackage ./derivations/bytestring-trie.nix {};

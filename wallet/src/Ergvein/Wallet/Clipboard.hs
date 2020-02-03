@@ -5,12 +5,11 @@ module Ergvein.Wallet.Clipboard(
   , copyButton
   ) where
 
-import Data.Text (Text, pack, unpack)
+import Data.Text (Text)
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
-import Reflex.Dom
 
 -- | Clipboard control widget that allows to put text into clipboard. Returns
 -- event when the text is copied with the same text.

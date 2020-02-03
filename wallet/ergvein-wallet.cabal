@@ -46,6 +46,7 @@ library
         Ergvein.Wallet.Localization.Native
         Ergvein.Wallet.Localization.Password
         Ergvein.Wallet.Localization.Seed
+        Ergvein.Wallet.Localization.Settings
         Ergvein.Wallet.Localization.Storage
         Ergvein.Wallet.Log
         Ergvein.Wallet.Log.Page
@@ -54,6 +55,8 @@ library
         Ergvein.Wallet.Log.Writer
         Ergvein.Wallet.Main
         Ergvein.Wallet.Menu
+        Ergvein.Wallet.Menu.Switcher
+        Ergvein.Wallet.Menu.Types
         Ergvein.Wallet.Monad
         Ergvein.Wallet.Monad.Auth
         Ergvein.Wallet.Monad.Base
@@ -61,19 +64,21 @@ library
         Ergvein.Wallet.Monad.Storage
         Ergvein.Wallet.Monad.Unauth
         Ergvein.Wallet.Monad.Util
+        Ergvein.Wallet.Page.About
         Ergvein.Wallet.Page.Balances
         Ergvein.Wallet.Page.History
         Ergvein.Wallet.Page.Initial
         Ergvein.Wallet.Page.Password
         Ergvein.Wallet.Page.Seed
+        Ergvein.Wallet.Page.Settings
         Ergvein.Wallet.Password
         Ergvein.Wallet.Platform
         Ergvein.Wallet.Resize
+        Ergvein.Wallet.Scan
         Ergvein.Wallet.Settings
         Ergvein.Wallet.Storage
         Ergvein.Wallet.Storage.AuthInfo
         Ergvein.Wallet.Storage.Constants
-        Ergvein.Wallet.Storage.Data
         Ergvein.Wallet.Storage.Util
         Ergvein.Wallet.Style
         Ergvein.Wallet.Util
@@ -157,32 +162,46 @@ library
     if flag(testnet)
         cpp-options: -DTESTNET
 
-executable ergvein
-    main-is: Main.hs
-    hs-source-dirs: app
-    default-language: Haskell2010
-    default-extensions: BangPatterns ConstraintKinds DataKinds
-                        DeriveDataTypeable DeriveGeneric FlexibleContexts FlexibleInstances
-                        FunctionalDependencies GADTs GeneralizedNewtypeDeriving LambdaCase
-                        OverloadedStrings RankNTypes RecordWildCards ScopedTypeVariables
-                        StandaloneDeriving TemplateHaskell TupleSections TypeApplications
-                        TypeFamilies TypeOperators
-    ghc-options: -threaded -rtsopts
-                 "-with-rtsopts=-N -A64m -AL256m -qn4"
-    build-depends:
-        base -any,
-        directory -any,
-        data-default -any,
-        ergvein-wallet -any,
-        ergvein-wallet-native -any,
-        optparse-generic >=1.3 && <1.4,
-        reflex -any,
-        reflex-dom -any
 
-    if flag(android)
-        cpp-options: -DANDROID
-        build-depends:
-            ergvein-wallet-android -any
-    else
-        build-depends:
-            ergvein-wallet-desktop -any
+executable ergvein
+  hs-source-dirs:
+      app
+  main-is:             Main.hs
+  ghc-options:         -threaded -rtsopts "-with-rtsopts=-N -A64m -AL256m -qn4"
+  build-depends:
+      base
+    , directory
+    , data-default
+    , ergvein-wallet
+    , ergvein-wallet-native
+    , optparse-generic  >= 1.3      && < 1.4
+    , reflex
+    , reflex-dom
+  if flag(android)
+    build-depends: ergvein-wallet-android
+    cpp-options: -DANDROID
+  else
+    build-depends: ergvein-wallet-desktop
+  default-language:    Haskell2010
+  default-extensions:
+    BangPatterns
+    ConstraintKinds
+    DataKinds
+    DeriveDataTypeable
+    DeriveGeneric
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    LambdaCase
+    OverloadedStrings
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    StandaloneDeriving
+    TemplateHaskell
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeOperators

@@ -65,6 +65,7 @@ frontendCss r = do
   balancesPageCss
   loadingWidgetCss
   alertsCss
+  selectCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -316,7 +317,7 @@ alertsCss = do
   ".alert-overlay" ? do
     pointerEvents none
     backgroundColor transparent
-    position fixed
+    position absolute
     bottom $ px 0
     right $ px 0
     width $ pct 100
@@ -348,3 +349,12 @@ alertsCss = do
   ".alert-secondary" ? do
     color "#000"
     backgroundColor "#a9a7a7"
+
+selectCss :: Css
+selectCss = do
+  ".select-lang" ? do
+    fontSize $ pt 18
+    height   $ em 1.8
+  "option" ? do
+    fontSize $ pt 18
+    height   $ em 1.8
