@@ -29,29 +29,8 @@ data GoPage = GoSeed | GoRestore
 
 initialPage :: MonadFrontBase t m => m ()
 initialPage = do
-  setsPinCodeMb <- fmap settingsPinCode getSettings
-  gpbE <- delay 0.1 =<< getPostBuild
-  let initE = setsPinCodeMb <$ gpbE
-  rec routE <- fmap switchDyn $ widgetHold (pure never) $
-        ffor (leftmost [routE, initE]) $ \case
-            Nothing -> do
-              ss <- listStorages
-              if null ss then noWalletsPage else hasWalletsPage ss
-              pure never
-            Just vt -> wrapper True $ divClass "initial-options grid1" $ mdo
-              h4 $ localizedText IPSPinCode
-              pinCodeE <- graphPinCode never
-              let checkE = ffor pinCodeE $ \PinCode{..} ->
-                              if (unPinCode == (read $ unpack vt))
-                                then True
-                                else False
-              _ <- widgetHold_ (pure ()) $ ffor checkE $ \case
-                      False -> elClass "h6" "text-pin-code-error" $ localizedText IPSPinCodeError
-                      True  -> pure ()
-              pure $ fforMaybe checkE $ \case
-                        True  -> Just Nothing
-                        False -> Nothing
-  pure ()
+    ss <- listStorages
+    if null ss then noWalletsPage else hasWalletsPage ss
   where
     noWalletsPage = wrapper True $ divClass "initial-options grid1" $ noWallets
     noWallets = do
@@ -78,7 +57,7 @@ initialPage = do
        h4 $ localizedText IPSOtherOptions
        noWallets
     loadWalletPage name = do
-      passE <- askPasswordPage
+      passE <- askPasswordPage name
       mauthE <- performEvent $ loadAuthInfo name <$> passE
       authE <- handleDangerMsg mauthE
       void $ setAuthInfo $ Just <$> authE

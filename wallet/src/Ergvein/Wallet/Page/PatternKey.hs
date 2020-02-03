@@ -9,6 +9,7 @@ module Ergvein.Wallet.Page.PatternKey(
   , saveCounter
 #endif
   , PatternSavingTry(..)
+  , PatternTries(..)
   ) where
 
 import Ergvein.Aeson
@@ -16,15 +17,14 @@ import Ergvein.Text
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Canvas
 import Ergvein.Wallet.Util
-import Ergvein.Wallet.Yaml(readYamlEither')
 
 import Control.Monad.IO.Class
 import Data.Aeson.Types as A
-import Data.Yaml (encodeFile)
+import Data.Aeson
 
 import Reflex.Dom
 
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import           Data.Maybe (fromJust, fromMaybe)
 import           Data.List  (find)
 import           Data.List.Split
@@ -40,7 +40,7 @@ import Android.HaskellActivity
 #endif
 
 data PatternTries = PatternTries {
-  patterntriesCount  :: Int
+  patterntriesCount  :: Map.Map Text Integer
 } deriving (Eq, Show)
 
 $(deriveJSON (aesonOptionsStripPrefix "pattern") ''PatternTries)
@@ -55,9 +55,6 @@ patternAsk = divClass "pattern-container" $ mdo
       tmoveE = domEvent Touchmove canvasEl
       tdownE  = domEvent Touchstart canvasEl
       tupE    = domEvent Touchend canvasEl
-      moveE  = domEvent Mousemove canvasEl
-      downE  = domEvent Mousedown canvasEl
-      upE    = domEvent Mouseup canvasEl
       pressedE = leftmost [Pressed <$ tdownE, Unpressed <$ tupE]
       predrawE = leftmost [squaresUpdatedE, (Clear,(0,0),emptySq) <$ tupPrE]
       selE = fmap (\(dc, sqs) -> (dc, fmap fst sqs)) $ fmap (\(dc,sqs) -> (dc, filter jstFilter sqs)) $ fmap (\(dc,_,sqs) -> (dc,sqs)) predrawE
@@ -66,9 +63,6 @@ patternAsk = divClass "pattern-container" $ mdo
   tmovePrE <- performEvent $ ffor tmoveE prepTCoord
   tdownPrE <- performEvent $ ffor tdownE prepTCoord
   tupPrE   <- performEvent $ ffor tupE   prepTCoord
-  movePrE  <- performEvent $ ffor moveE  prepCoord
-  downPrE  <- performEvent $ ffor downE  prepCoord
-  upPrE    <- performEvent $ ffor upE    prepCoord
   touchD <- holdDyn Unpressed pressedE
 
   squaresUpdatedE <- performEvent $ ffor (leftmost [tmovePrE, tdownPrE]) $ \(x,y) -> do
@@ -143,9 +137,6 @@ patternSave tryD = divClass "pattern-container" $ mdo
       tmoveE = domEvent Touchmove canvasEl
       tdownE  = domEvent Touchstart canvasEl
       tupE    = domEvent Touchend canvasEl
-      moveE  = domEvent Mousemove canvasEl
-      downE  = domEvent Mousedown canvasEl
-      upE    = domEvent Mouseup canvasEl
       pressedE = leftmost [Pressed <$ tdownE, Unpressed <$ tupE]
       predrawE = leftmost [squaresUpdatedE, (Clear,(0,0),emptySq) <$ tupPrE]
       selE = fmap (\(dc, sqs) -> (dc, fmap fst sqs)) $ fmap (\(dc,sqs) -> (dc, filter jstFilter sqs)) $ fmap (\(dc,_,sqs) -> (dc,sqs)) predrawE
@@ -154,9 +145,6 @@ patternSave tryD = divClass "pattern-container" $ mdo
   tmovePrE <- performEvent $ ffor tmoveE prepTCoord
   tdownPrE <- performEvent $ ffor tdownE prepTCoord
   tupPrE   <- performEvent $ ffor tupE   prepTCoord
-  movePrE  <- performEvent $ ffor moveE  prepCoord
-  downPrE  <- performEvent $ ffor downE  prepCoord
-  upPrE    <- performEvent $ ffor upE    prepCoord
   touchD <- holdDyn Unpressed pressedE
 
   squaresUpdatedE <- performEvent $ ffor (leftmost [tmovePrE, tdownPrE]) $ \(x,y) -> do
@@ -284,23 +272,20 @@ patternSaveWidget = mdo
       Done -> pure $ showt firstTry
       _ -> pure ""
   passD <- holdDyn "" passOkE
-#ifdef ANDROID
-  saveCounter 0
-#endif 
   pure passD
 
 #ifdef ANDROID
-saveCounter :: MonadIO m => Int -> m PatternTries
-saveCounter i = do
+saveCounter :: MonadIO m => PatternTries -> m ()
+saveCounter pt = do
   mpath <- liftIO $ getFilesDir =<< getHaskellActivity
   case mpath of
     Nothing -> fail "Ergvein panic! No local folder!"
     Just path -> do
       let triespath = path <> "/tries.yaml"
       ex <- liftIO $ doesFileExist triespath
-      liftIO $ encodeFile triespath $ PatternTries i
+      liftIO $ encodeFile triespath $ pt
 
-loadCounter :: MonadIO m => m PatternTries
+loadCounter ::MonadIO m => m PatternTries
 loadCounter = do
   mpath <- liftIO $ getFilesDir =<< getHaskellActivity
   case mpath of
@@ -309,8 +294,12 @@ loadCounter = do
       let triespath = path <> "/tries.yaml"
       ex <- liftIO $ doesFileExist triespath
       if not ex
-        then PatternTries 0
-        else either (const $ PatternTries 0) pure =<< readYamlEither' triespath
+        then pure (PatternTries (Map.fromList []))
+        else do
+          mPT <- liftIO $ decodeFileStrict' triespath
+          case mPT of
+            Just p -> pure p
+            Nothing -> pure (PatternTries (Map.fromList []))
 #endif
 
 clearSelectionDynamic :: Reflex t => Dynamic t (DrawCommand, [Maybe Int]) -> Dynamic t [Int]

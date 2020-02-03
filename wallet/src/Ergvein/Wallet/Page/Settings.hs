@@ -31,8 +31,8 @@ settingsPage = do
   wrapper True $ do
     divClass "initial-options grid1" $ do
       goLangE <- fmap (GoLanguage <$) $ outlineButton STPSButLanguage
-      goPinE  <- fmap (GoPinCode  <$) $ outlineButton STPSButPinCode
-      let goE = leftmost [goLangE, goPinE]
+--      goPinE  <- fmap (GoPinCode  <$) $ outlineButton STPSButPinCode
+      let goE = leftmost [goLangE]
       void $ nextWidget $ ffor goE $ \spg -> Retractable {
           retractableNext = case spg of
             GoLanguage  -> languagePage
