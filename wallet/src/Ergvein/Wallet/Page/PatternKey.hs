@@ -1,17 +1,26 @@
+{-# LANGUAGE CPP #-}
 module Ergvein.Wallet.Page.PatternKey(
     patternAsk
   , patternAskWidget
   , patternSave
   , patternSaveWidget
+#ifdef ANDROID
+  , loadCounter
+  , saveCounter
+#endif
   , PatternSavingTry(..)
   ) where
 
+import Ergvein.Aeson
 import Ergvein.Text
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Canvas
 import Ergvein.Wallet.Util
+import Ergvein.Wallet.Yaml(readYamlEither')
 
+import Control.Monad.IO.Class
 import Data.Aeson.Types as A
+import Data.Yaml (encodeFile)
 
 import Reflex.Dom
 
@@ -20,8 +29,21 @@ import           Data.Maybe (fromJust, fromMaybe)
 import           Data.List  (find)
 import           Data.List.Split
 import qualified Data.Text as T
+import           Data.Time   (UTCTime, getCurrentTime)
+import           System.Directory
+
 
 import Language.Javascript.JSaddle hiding ((!!))
+
+#ifdef ANDROID
+import Android.HaskellActivity
+#endif
+
+data PatternTries = PatternTries {
+  patterntriesCount  :: Int
+} deriving (Eq, Show)
+
+$(deriveJSON (aesonOptionsStripPrefix "pattern") ''PatternTries)
 
 patternAsk :: MonadFrontBase t m => m (Dynamic t Password, Dynamic t TouchState)
 patternAsk = divClass "pattern-container" $ mdo
@@ -206,7 +228,6 @@ patternSave tryD = divClass "pattern-container" $ mdo
       rawJSCall (_element_raw canvasEl) dLineS
     _ -> drawKeyCreation
 
-
   pure $ (clearSelectionDynamic selectedD, touchD)
     where
       canvasH = 320
@@ -216,7 +237,9 @@ patternSave tryD = divClass "pattern-container" $ mdo
 
 patternAskWidget :: MonadFrontBase t m => m (Dynamic t Password)
 patternAskWidget = mdo
+  e <- tickLossyFromPostBuildTime 30
   patternD <- holdDyn "" patternE
+  _ <- widgetHold (pure ()) $ ffor e $ \_ -> divClass "text" $ text "lol"
   (pD, touchD) <- patternAsk
   patternE <- performEvent $ ffor (ffilter (\e -> e == Unpressed) (updated touchD)) $ \_ -> do
     p <- sampleDyn pD
@@ -261,7 +284,34 @@ patternSaveWidget = mdo
       Done -> pure $ showt firstTry
       _ -> pure ""
   passD <- holdDyn "" passOkE
+#ifdef ANDROID
+  saveCounter 0
+#endif 
   pure passD
+
+#ifdef ANDROID
+saveCounter :: MonadIO m => Int -> m PatternTries
+saveCounter i = do
+  mpath <- liftIO $ getFilesDir =<< getHaskellActivity
+  case mpath of
+    Nothing -> fail "Ergvein panic! No local folder!"
+    Just path -> do
+      let triespath = path <> "/tries.yaml"
+      ex <- liftIO $ doesFileExist triespath
+      liftIO $ encodeFile triespath $ PatternTries i
+
+loadCounter :: MonadIO m => m PatternTries
+loadCounter = do
+  mpath <- liftIO $ getFilesDir =<< getHaskellActivity
+  case mpath of
+    Nothing -> fail "Ergvein panic! No local folder!"
+    Just path -> do
+      let triespath = path <> "/tries.yaml"
+      ex <- liftIO $ doesFileExist triespath
+      if not ex
+        then PatternTries 0
+        else either (const $ PatternTries 0) pure =<< readYamlEither' triespath
+#endif
 
 clearSelectionDynamic :: Reflex t => Dynamic t (DrawCommand, [Maybe Int]) -> Dynamic t [Int]
 clearSelectionDynamic selD = fmap (fmap (\a -> fromMaybe 0 a)) $ fmap snd selD

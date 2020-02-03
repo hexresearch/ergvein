@@ -1,10 +1,13 @@
+{-# LANGUAGE CPP #-}
 module Ergvein.Wallet.Password(
     setupLoginPassword
-  , setupLoginPattern
   , askPassword
   , askPasswordModal
+#ifdef ANDROID
+  , setupLoginPattern
   , askPattern
   , askPatternModal
+#endif
   ) where
 
 import Control.Monad.Except
@@ -19,7 +22,10 @@ import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Validate
 
+import Reflex.Dom
+
 import qualified Data.Text as T
+import           Data.Time (UTCTime, getCurrentTime)
 
 setupLoginPassword :: MonadFrontBase t m => m (Event t (Text, Password))
 setupLoginPassword = divClass "setup-password" $ form $ fieldset $ mdo
@@ -52,10 +58,26 @@ askPasswordModal = mdo
     Nothing -> pure never
   performEvent_ $ (liftIO . fire) <$> passE
 
+#ifdef ANDROID
 askPattern :: MonadFrontBase t m => m (Event t Password)
-askPattern = divClass "ask-pattern" $ form $ fieldset $ do
+askPattern = divClass "ask-pattern" $ form $ fieldset $ mdo
+  c <- loadCounter
+  e2 <- tickLossyFromPostBuildTime 10
+  now <- liftIO $ getCurrentTime
+  a <- (clockLossy 1 now)
+  s <- widgetHold (pure False) $ ffor (updated a) $ \TickInfo{..} -> if (10 - _tickInfo_n) > 0
+    then do
+      divClass "backcounter" $ text $ "You should wait " <>  (showt $ 10 - _tickInfo_n) <> " sec"
+      pure False
+    else do
+      pure (True)
   pD <- patternAskWidget
-  e <- delay 0.1 $ updated pD
+  performEvent $ ffor (updated pD) $ \
+  counterD <- holdDyn c $ poke (updated pD) $ \_ -> do
+    cS <- sampleDyn counterD
+    pure (cS + 1)
+  divClass "counter" $ dynText $ fmap showt counterD
+  let e = ffilter (\TickInfo{..} -> (10 - _tickInfo_n) < 0) $ updated a
   pure $ tag (current pD) e
 
 askPatternModal :: MonadFrontBase t m => m ()
@@ -79,3 +101,4 @@ setupLoginPattern = divClass "setup-password" $ form $ fieldset $ mdo
     check PWSEmptyLogin $ not $ T.null l
     check PWSEmptyPassword $ not $ T.null p
     pure (l,p)
+#endif
