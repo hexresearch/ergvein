@@ -10,7 +10,6 @@ module Ergvein.Wallet.Monad.Base
   , MonadClient(..)
   ) where
 
-import Control.Concurrent.Chan (Chan)
 import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Control.Monad.Reader

@@ -15,7 +15,6 @@ import Ergvein.Crypto
 import Ergvein.Text
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
-import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Password
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Storage.Util
@@ -101,11 +100,7 @@ askPatternModal = mdo
   fire  <- fmap snd getPasswordSetEF
   let redrawE = leftmost [Just <$> goE, Nothing <$ passE]
   passE <- fmap (switch . current) $ widgetHold (pure never) $ ffor redrawE $ \case
-    Just i -> do
-      ss <- listStorages
-      if null ss
-        then divClass "ask-pattern-modal" $ (fmap . fmap) ((i,) . Just) $ askPattern ""
-        else divClass "ask-pattern-modal" $ (fmap . fmap) ((i,) . Just) $ askPattern "1"
+    Just i -> divClass "ask-pattern-modal" $ (fmap . fmap) ((i,) . Just) $ askPattern ""
     Nothing -> pure never
   performEvent_ $ (liftIO . fire) <$> passE
 

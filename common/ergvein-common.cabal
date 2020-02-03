@@ -16,10 +16,11 @@ library
   build-depends:
       base
     , aeson
+    , base16-bytestring
+    , base64-bytestring
     , bytestring
     , directory
     , lens
     , template-haskell
     , text
-    , base16-bytestring
   default-language:    Haskell2010

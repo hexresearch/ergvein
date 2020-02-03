@@ -3,14 +3,14 @@ module Ergvein.Crypto.SHA256 where
 import Crypto.Hash
 import Data.Text
 
-import qualified Data.ByteArray          as BA
-import qualified Data.ByteString         as BS
-import qualified Data.ByteString.Base16  as BS16
-import qualified Data.ByteString.Short   as BSS
-import qualified Data.Serialize          as S
-import qualified Data.Text.Encoding      as E
-import qualified Data.Serialize.Put      as Put
-import qualified Data.Serialize.Get      as Get
+import qualified Data.ByteArray         as BA
+import qualified Data.ByteString        as BS
+import qualified Data.ByteString.Base16 as BS16
+import qualified Data.ByteString.Short  as BSS
+import qualified Data.Serialize         as S
+import qualified Data.Text.Encoding     as E
+import qualified Data.Serialize.Put     as Put
+import qualified Data.Serialize.Get     as Get
 
 newtype Hash256 = Hash256 { getHash256 :: BSS.ShortByteString }
     deriving (Eq, Ord)

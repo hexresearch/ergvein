@@ -41,21 +41,13 @@ module Ergvein.Wallet.Elements(
   , module Ergvein.Wallet.Util
   ) where
 
-import Control.Concurrent
-import Control.Monad
-import Control.Monad.Fix
-import Control.Monad.IO.Class
 import Data.Foldable (traverse_)
-import Data.IORef
 import Data.Map.Strict (Map)
 import Data.Text (Text)
-import Data.Time
 import Ergvein.Wallet.Util
 import Reflex
 import Reflex.Dom
 import Reflex.Localize
-
-import qualified Data.Text as T
 
 container :: DomBuilder t m => m a -> m a
 container = divClass "container"

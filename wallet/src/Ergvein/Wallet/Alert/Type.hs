@@ -3,8 +3,6 @@ module Ergvein.Wallet.Alert.Type
     ErgveinAlert(..)
   ) where
 
-import Data.Text
-import Ergvein.Text
 import Ergvein.Wallet.Language
 
 data ErgveinAlert
