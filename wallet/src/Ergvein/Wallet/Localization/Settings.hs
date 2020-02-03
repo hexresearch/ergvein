@@ -45,4 +45,4 @@ instance LocalizedPrint UnitBTC where
 
 instance LocalizedPrint UnitERGO where
   localizedShow _ v = case v of
-    ERGO_ERGO -> "ERGO"
+    ERGO_ERGO -> "ERG"

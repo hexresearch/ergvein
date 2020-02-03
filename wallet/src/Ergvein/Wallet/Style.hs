@@ -280,7 +280,7 @@ balancesPageCss = do
     width $ pct 100
     maxWidth $ px 500
     display inlineBlock
-    fontSize $ pt 24
+    fontSize $ pt (if isAndroid then 18 else 24)
   ".currency-content" ? do
     display displayTable
   ".currency-content-row" ? do
@@ -290,18 +290,18 @@ balancesPageCss = do
     color hoverColor
   ".currency-name" ? do
     display tableCell
-    paddingRight $ px 15
+    paddingRight $ px 3
     textAlign $ alignSide sideLeft
   ".currency-balance" ? do
     display tableCell
-    paddingRight $ px 10
+    paddingRight $ px 3
     textAlign $ alignSide sideRight
   ".currency-unit" ? do
     display tableCell
     textAlign $ alignSide sideLeft
   ".currency-arrow" ? do
     display tableCell
-    paddingLeft $ px 10
+    paddingLeft $ px 3
     textAlign $ alignSide sideRight
 
 loadingWidgetCss :: Css

@@ -22,7 +22,7 @@ instance LocalizedPrint BalanceTitle where
     English -> case v of
       BalanceTitle  -> "Default wallet"
     Russian -> case v of
-      BalanceTitle  -> "Настройки"
+      BalanceTitle  -> "Стандартный кошелек"
 
 balancesPage :: MonadFront t m => m ()
 balancesPage = do
@@ -80,13 +80,8 @@ currenciesList = divClass "currency-line" $ divClass "currency-content" $
         langD <- getLanguage
         divClass "currency-name"    $ text $ currencyName cur
         divClass "currency-balance" $ dynText $ (\v -> showMoneyUnit v setUs) <$> bal
-        divClass "currency-unit"    $ dynText $ " (" <> (ffor2 bal langD $ \(Money cur _) lang -> showUnit cur lang setUs) <> ")"
+        divClass "currency-unit"    $ dynText $ ffor2 bal langD $ \(Money cur _) lang -> symbolUnit cur lang setUs
         divClass "currency-arrow"   $ text "〉"
---        divClass "currency-balance" $ do
---          dynText $ do
---            m <- (\v -> showMoneyUnit v setUs) <$> bal
---            u <- ffor2 bal langD $ \(Money cur _) lang -> showUnit cur lang setUs
---            pure $ m <> " (" <> u <> ") " <> "〉"
       pure $ cur <$ domEvent Click e
 
     getSettingsUnits = fromMaybe defUnits . settingsUnits
@@ -94,8 +89,13 @@ currenciesList = divClass "currency-line" $ divClass "currency-content" $
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
 currencyBalance cur = pure $ pure $ Money cur 1
 
-showUnit :: Currency -> Language -> Units -> Text
-showUnit cur lang units =
+symbolUnit :: Currency -> Language -> Units -> Text
+symbolUnit cur lang units =
   case cur of
-    BTC  -> localizedShow lang $ getUnitBTC  units
-    ERGO -> localizedShow lang $ getUnitERGO units
+    BTC  -> case getUnitBTC units of
+              BTC_BTC     -> "฿"
+              BTC_mBTC    -> "m฿"
+              BTC_uBTC    -> "μ฿"
+              BTC_Satoshi -> "S"
+    ERGO -> case getUnitERGO units of
+              ERGO_ERGO -> "ERG"
