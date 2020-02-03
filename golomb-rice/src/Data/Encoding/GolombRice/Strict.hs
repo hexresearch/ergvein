@@ -7,6 +7,20 @@ module Data.Encoding.GolombRice.Strict
   , singleton
     -- * Quering
   , null
+  , headMay
+  , head
+    -- * Folding
+  , Shortcut(..) 
+  , foldl
+    -- * Converting
+  , fromList
+  , toList
+  , fromVector
+  , toVector
+  , fromVectorUnboxed
+  , toVectorUnboxed
+  , toByteString
+  , fromByteString
   )
 where
 

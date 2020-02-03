@@ -4,20 +4,15 @@ module Ergvein.Wallet.Page.Initial(
   ) where
 
 import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Alert.Type
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Initial
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Page.Seed
-import Ergvein.Wallet.Password
 import Ergvein.Wallet.Storage.AuthInfo
 import Ergvein.Wallet.Wrapper
 
-import Control.Monad.IO.Class
-import Ergvein.Wallet.Clipboard
-import Ergvein.Wallet.Password
 
 import Ergvein.Wallet.Storage.Util
 

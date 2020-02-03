@@ -16,18 +16,30 @@ library
   exposed-modules:
     Ergvein.Filters
     Ergvein.Filters.Btc
+    Ergvein.Filters.GCS
+    Ergvein.Filters.Hash
   default-language:    Haskell2010
   build-depends:
       base
     , aeson
+    , attoparsec        >= 0.13
+    , attoparsec-binary >= 0.2  && < 0.3
+    , bytestring        >= 0.10
+    , cereal
+    , containers        >= 0.5
     , ergvein-common
-    , text
-    , flat
-    , haskoin-core >= 0.8 && < 0.9
+    , golomb-rice       >= 0.1  && < 0.25
+    , haskoin-core      >= 0.8
+    , memory            >= 0.11
+    , text              >= 1.2
+    , vector            >= 0.12
+    , vector-algorithms >= 0.8
+    , wide-word         >= 0.1
   default-extensions:
-    DeriveGeneric
     DeriveAnyClass
+    DeriveGeneric
     OverloadedStrings
+    RecordWildCards
     TemplateHaskell
 
 test-suite ergvein-wallet-filters-test

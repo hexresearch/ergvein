@@ -15,7 +15,6 @@ import Ergvein.Wallet.Embed
 import Ergvein.Wallet.Embed.TH
 import Ergvein.Wallet.Id
 import Ergvein.Wallet.Monad
-import Reflex.Dom
 import Reflex.Localize
 
 labeledTextInput :: (MonadFrontBase t m, LocalizedPrint l)

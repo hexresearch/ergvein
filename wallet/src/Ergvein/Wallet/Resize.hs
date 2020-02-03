@@ -4,7 +4,6 @@ module Ergvein.Wallet.Resize(
 
 import Ergvein.Wallet.Monad
 import Language.Javascript.JSaddle
-import Reflex.Network
 
 -- | Critical width when we should change
 -- mobile-desktop widgets between each other

@@ -9,7 +9,7 @@ module Ergvein.Wallet.Yaml(
 import Data.Aeson
 import Data.ByteString (ByteString)
 import Data.ByteString as BS       (readFile)
-import Data.Yaml                   (decodeEither', ParseException, prettyPrintParseException)
+import Data.Yaml                   (decodeEither')
 import Data.Yaml.Config            (loadYamlSettings, useEnv)
 import qualified Control.Exception   as Exception
 import qualified Data.Text           as T

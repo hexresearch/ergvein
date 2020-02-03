@@ -3,10 +3,7 @@ module Ergvein.Wallet.Localization.Initial
     InitialPageStrings(..)
   ) where
 
-import Ergvein.Text
 import Ergvein.Wallet.Language
-
-import Data.Text
 
 data InitialPageStrings =
     IPSCreate

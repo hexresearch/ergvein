@@ -19,11 +19,11 @@ import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Text (Text)
 import Ergvein.Crypto
+import Ergvein.Types.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Storage.Data
 import Language.Javascript.JSaddle
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
@@ -31,11 +31,19 @@ import Reflex.Dom.Retractable.Class
 import Reflex.ExternalRef
 
 -- | Authorized context. Has access to storage and indexer's functionality
-type MonadFront t m = (MonadFrontBase t m, MonadStorage t m, MonadClient t m)
+type MonadFront t m = (
+    MonadFrontBase t m
+  , MonadStorage t m
+  , MonadClient t m
+  )
 
 data AuthInfo = AuthInfo {
   authInfo'storage     :: ErgveinStorage
 , authInfo'eciesPubKey :: ECIESPubKey
+, authInfo'isUpdate    :: Bool
+  -- ^ This field indicates whether the widget should be redrawn in 'liftAuth'.
+  -- 'False' means that the value obtained as a result of updating the previous 'AuthInfo',
+  -- 'True' means that the value was newly created or loaded from the storage file at startup.
 } deriving (Eq)
 
 type Password = Text

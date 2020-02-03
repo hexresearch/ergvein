@@ -5,10 +5,10 @@ module Ergvein.Crypto.WordLists(
   ) where
 
 import Data.Text
-import Data.Vector                              as V
+import Data.Vector                  as V
 
-import qualified Data.Trie                      as DT
-import qualified Data.Text.Encoding             as TE
+import qualified Data.Text.Encoding as TE
+import qualified Data.Trie          as DT
 
 -- | Dictionary as a Trie for fast lookup by prefix
 wordTrie :: DT.Trie Text

@@ -1,6 +1,9 @@
 packages:
+  ./checkpoint-generator
   ./common
   ./crypto
+  ./data-merkle-tree
+  ./ergo-api
   ./golomb-rice
   ./index-api
   ./index-client
@@ -15,6 +18,3 @@ packages:
   ./wallet-filters
   ./wallet-native
   ./wallet-types
-  ./interfaces/ergo
-  ./ergo-api
-shared: true

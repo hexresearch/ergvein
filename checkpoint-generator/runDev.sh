@@ -1,0 +1,1 @@
+cabal new-run exe:ergvein-checkpoint-generator -- --host localhost --port 18332 --user bitcoinrpc --password password --chunkSize 10000 --fileName btcHeadersTree

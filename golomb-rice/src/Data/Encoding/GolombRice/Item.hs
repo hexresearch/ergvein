@@ -3,7 +3,11 @@ module Data.Encoding.GolombRice.Item
   )
 where
 
+import           Data.Bits
+import           Data.Int
 import           Data.Word
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BSL
 
 -- | Golomb encoder can store anything that can be converted
 -- to 'Word64'.
@@ -11,17 +15,28 @@ import           Data.Word
 -- The following rule must hold:
 --
 -- @
---   fromWords (toWords a) == (a, [])
+--   fromWord . toWord == id
 -- @
 class GolombItem a where
-  -- | Convert element to words
-  toWords   :: a -> [Word64]
+  -- | Convert element to word
+  toWord   :: a -> Word64
   -- | Parse element from first N words and return reminder
-  fromWords :: [Word64] -> (a, [Word64])
+  fromWord :: Word64 -> a
 
 instance GolombItem Word64 where
-  toWords = pure
-  {-# INLINE toWords #-}
-  fromWords []       = (0, [])
-  fromWords (a : as) = (a, as)
-  {-# INLINE fromWords #-}
+  toWord = id
+  {-# INLINE toWord #-}
+  fromWord = id
+  {-# INLINE fromWord #-}
+
+instance GolombItem Word32 where
+  toWord = fromIntegral
+  {-# INLINE toWord #-}
+  fromWord = fromIntegral
+  {-# INLINE fromWord #-}
+
+instance GolombItem Word where
+  toWord = fromIntegral
+  {-# INLINE toWord #-}
+  fromWord = fromIntegral
+  {-# INLINE fromWord #-}

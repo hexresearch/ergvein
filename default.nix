@@ -11,6 +11,8 @@ let
   };
 in reflex-platform.project ({ pkgs, ... }: {
   packages = {
+    data-merkle-tree = ./data-merkle-tree;
+    ergvein-checkpoint-generator = ./checkpoint-generator;
     ergvein-common = ./common;
     ergvein-crypto = ./crypto;
     ergvein-index-api = ./index-api;
@@ -31,12 +33,15 @@ in reflex-platform.project ({ pkgs, ... }: {
   };
   shells = {
     ghc = [
+      "data-merkle-tree"
+      "ergo-api"
+      "ergvein-checkpoint-generator"
       "ergvein-common"
       "ergvein-crypto"
       "ergvein-index-api"
+      "ergvein-index-client"
       "ergvein-index-server"
       "ergvein-interface-ergo"
-      "ergo-api"
       "ergvein-wallet-desktop"
       "ergvein-wallet-filters"
       "ergvein-wallet-native"
