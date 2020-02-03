@@ -237,10 +237,10 @@ patternAskWidget = mdo
 patternSaveWidget :: MonadFrontBase t m => m (Dynamic t Password)
 patternSaveWidget = mdo
   divClass "pattern-text" $ dynText $ fmap (\a -> case a of
-    FirstTry -> "Введите графический ключ. Ключи должены совпадать."
-    SecondTry -> "Повторите графический ключ. Ключи должены совпадать."
-    ErrorTry -> "Ключи не совпадают. Введите графический ключ."
-    Done -> "Ключи совпадают"
+    FirstTry -> "Enter pattern key."
+    SecondTry -> "Repeat pattern key. Keys should match."
+    ErrorTry -> "Keys don't match. Enter pattern key."
+    Done -> "Keys match"
     ) tryD
   tryD <- holdDyn FirstTry tryE
   (listD, touchD) <- patternSave tryD
