@@ -27,6 +27,7 @@ in reflex-platform.project ({ pkgs, ... }: {
     ergvein-wallet-native = ./wallet-native;
     ergvein-wallet-types = ./wallet-types;
     reflex-dom-retractable = ./retractable;
+    reflex-dom-canvas = ./reflex-dom-canvas;
     reflex-external-ref = ./reflex-external-ref;
     reflex-localize = ./reflex-localize;
   };

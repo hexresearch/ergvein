@@ -16,6 +16,7 @@ import Ergvein.Wallet.Input
 import Ergvein.Wallet.Localization.Seed
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
+import Ergvein.Wallet.Page.Canvas
 import Ergvein.Wallet.Resize
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
@@ -55,7 +56,7 @@ mnemonicWidget mnemonic = do
   mphrase <- maybe generateMnemonic (pure . Just) mnemonic
   case mphrase of
     Nothing -> pure (never, pure Nothing)
-    Just phrase -> do
+    Just phrase -> mdo
       divClass "mnemonic-title" $ h4 $ localizedText SPSTitle
       divClass "mnemonic-colony" $ adaptive (mobileMnemonic phrase) (desktopMnemonic phrase)
       divClass "mnemonic-warn" $ h4 $ localizedText SPSWarn

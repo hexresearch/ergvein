@@ -26,6 +26,10 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings (Settings(..), storeSettings)
 import Ergvein.Wallet.Storage.Util
 import Network.HTTP.Client hiding (Proxy)
+import Reflex
+import Reflex.Host.Class
+import Reflex.Dom
+import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Servant.Client(BaseUrl)
 

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Ergvein.Wallet.Page.Balances(
     balancesPage
   ) where
@@ -9,7 +10,11 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.History
+import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Wrapper
+
+import Control.Monad.IO.Class
+import Data.Map.Strict as Map
 
 data BalanceTitle = BalanceTitle
 
@@ -22,6 +27,11 @@ instance LocalizedPrint BalanceTitle where
 
 balancesPage :: MonadFront t m => m ()
 balancesPage = do
+  anon_name <- getWalletName
+#ifdef ANDROID
+  c <- liftIO $ loadCounter
+  liftIO $ saveCounter $ PatternTries $ Map.insert anon_name 0 (patterntriesCount c)
+#endif
   let thisWidget = Just $ pure balancesPage
   menuWidget BalanceTitle thisWidget
   wrapper False $ do
