@@ -225,9 +225,7 @@ patternSave tryD = divClass "pattern-container" $ mdo
 
 patternAskWidget :: MonadFrontBase t m => m (Dynamic t Password)
 patternAskWidget = mdo
-  e <- tickLossyFromPostBuildTime 30
   patternD <- holdDyn "" patternE
-  _ <- widgetHold (pure ()) $ ffor e $ \_ -> divClass "text" $ text "lol"
   (pD, touchD) <- patternAsk
   patternE <- performEvent $ ffor (ffilter (\e -> e == Unpressed) (updated touchD)) $ \_ -> do
     p <- sampleDyn pD
