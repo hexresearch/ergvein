@@ -46,8 +46,8 @@ allCurrencies = [minBound .. maxBound]
 -- | Display units for BTC
 data UnitBTC
   = BTC_BTC
-  | BTC_uBTC
   | BTC_mBTC
+  | BTC_uBTC
   | BTC_Satoshi
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Generic)
 
@@ -107,8 +107,8 @@ currencyResolutionUnit :: Currency -> Units -> Int
 currencyResolutionUnit c Units{..} = case c of
   BTC  -> case fromMaybe defUnitBTC unitBTC of
             BTC_BTC     -> 8
-            BTC_uBTC    -> 6
-            BTC_mBTC    -> 3
+            BTC_mBTC    -> 6
+            BTC_uBTC    -> 3
             BTC_Satoshi -> 0
   ERGO -> case fromMaybe defUnitERGO unitERGO of
             ERGO_ERGO   -> 9

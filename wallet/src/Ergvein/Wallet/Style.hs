@@ -281,12 +281,28 @@ balancesPageCss = do
     maxWidth $ px 500
     display inlineBlock
     fontSize $ pt 24
+  ".currency-content" ? do
+    display displayTable
+  ".currency-content-row" ? do
+    display tableRow
+    cursor pointer
+  ".currency-content-row:hover" ? do
+    color hoverColor
   ".currency-name" ? do
-    display inlineBlock
-    float floatLeft
+    display tableCell
+    paddingRight $ px 15
+    textAlign $ alignSide sideLeft
   ".currency-balance" ? do
-    display inlineBlock
-    float floatRight
+    display tableCell
+    paddingRight $ px 10
+    textAlign $ alignSide sideRight
+  ".currency-unit" ? do
+    display tableCell
+    textAlign $ alignSide sideLeft
+  ".currency-arrow" ? do
+    display tableCell
+    paddingLeft $ px 10
+    textAlign $ alignSide sideRight
 
 loadingWidgetCss :: Css
 loadingWidgetCss = do

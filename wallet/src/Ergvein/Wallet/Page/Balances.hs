@@ -69,20 +69,24 @@ getSyncProgress :: MonadFront t m => m (Dynamic t ScanProgress)
 getSyncProgress = pure $ pure $ ScanDays 10
 
 currenciesList :: MonadFront t m => m (Event t Currency)
-currenciesList = fmap leftmost $ traverse currencyLine allCurrencies
+currenciesList = divClass "currency-line" $ divClass "currency-content" $
+  fmap leftmost $ traverse currencyLine allCurrencies
   where
     currencyLine cur = do
-      (e, _) <- divClass' "currency-wrapper" $ divClass "currency-line" $ do
-        divClass "currency-name" $ text $ currencyName cur
-        divClass "currency-balance" $ do
-          bal <- currencyBalance cur
-          settings <- getSettings
-          let setUs = getSettingsUnits settings
-          langD <- getLanguage
-          dynText $ do
-            m <- (\v -> showMoneyUnit v setUs) <$> bal
-            u <- ffor2 bal langD $ \(Money cur _) lang -> showUnit cur lang setUs
-            pure $ m <> " (" <> u <> ") " <> "〉"
+      (e, _) <- divClass' "currency-content-row" $ do
+        bal <- currencyBalance cur
+        settings <- getSettings
+        let setUs = getSettingsUnits settings
+        langD <- getLanguage
+        divClass "currency-name"    $ text $ currencyName cur
+        divClass "currency-balance" $ dynText $ (\v -> showMoneyUnit v setUs) <$> bal
+        divClass "currency-unit"    $ dynText $ " (" <> (ffor2 bal langD $ \(Money cur _) lang -> showUnit cur lang setUs) <> ")"
+        divClass "currency-arrow"   $ text "〉"
+--        divClass "currency-balance" $ do
+--          dynText $ do
+--            m <- (\v -> showMoneyUnit v setUs) <$> bal
+--            u <- ffor2 bal langD $ \(Money cur _) lang -> showUnit cur lang setUs
+--            pure $ m <> " (" <> u <> ") " <> "〉"
       pure $ cur <$ domEvent Click e
 
     getSettingsUnits = fromMaybe defUnits . settingsUnits
