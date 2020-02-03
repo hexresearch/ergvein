@@ -1,19 +1,20 @@
 packages:
+  ./checkpoint-generator
   ./common
   ./crypto
+  ./data-merkle-tree
+  ./ergo-api
+  ./golomb-rice
   ./index-api
   ./index-client
   ./index-server
-  ./checkpoint-generator
-  ./data-merkle-tree
+  ./interfaces/ergo
   ./reflex-external-ref
   ./reflex-localize
   ./retractable
   ./wallet
   ./wallet-android
   ./wallet-desktop
+  ./wallet-filters
   ./wallet-native
   ./wallet-types
-  ./interfaces/ergo
-  ./ergo-api
-shared: true

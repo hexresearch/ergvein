@@ -1,0 +1,73 @@
+name:                ergvein-wallet-filters
+version:             0.1.0.0
+synopsis:            Tools to generate and use BIP 158 filters for ergvein wallet.
+description:         See README.md
+category:            Cryptocurrency
+build-type:          Simple
+cabal-version:       >=2.0
+license:             MIT
+license-file:        LICENSE
+copyright:           2019 ATUM SOLUTIONS AG
+author:              Anton Gushcha, Aminion, Vladimir Krutkin, Levon Oganyan, Sergey Ivanov
+maintainer:          Anton Gushcha <ncrashed@protonmail.com>
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+    Ergvein.Filters
+    Ergvein.Filters.Btc
+    Ergvein.Filters.GCS
+    Ergvein.Filters.Hash
+  default-language:    Haskell2010
+  build-depends:
+      base
+    , aeson
+    , attoparsec        >= 0.13
+    , attoparsec-binary >= 0.2  && < 0.3
+    , bytestring        >= 0.10
+    , cereal
+    , containers        >= 0.5
+    , ergvein-common
+    , golomb-rice       >= 0.1  && < 0.25
+    , haskoin-core      >= 0.8
+    , memory            >= 0.11
+    , text              >= 1.2
+    , vector            >= 0.12
+    , vector-algorithms >= 0.8
+    , wide-word         >= 0.1
+  default-extensions:
+    DeriveAnyClass
+    DeriveGeneric
+    OverloadedStrings
+    RecordWildCards
+    TemplateHaskell
+
+test-suite ergvein-wallet-filters-test
+  default-language:    Haskell2010
+  type:                exitcode-stdio-1.0
+  main-is:             Driver.hs
+  hs-source-dirs:      test
+  other-modules:
+      Ergvein.Filters.BtcTest
+  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
+  default-extensions:
+    NumDecimals
+    OverloadedStrings
+    QuasiQuotes
+    RecordWildCards
+    ScopedTypeVariables
+    TupleSections
+  build-depends:
+      base
+    , aeson
+    , ergvein-wallet-filters
+    , tasty
+    , tasty-discover
+    , tasty-hspec
+    , base16-bytestring
+    , bytes
+    , bytestring
+    , cereal
+    , either
+    , text
+    , haskoin-core
