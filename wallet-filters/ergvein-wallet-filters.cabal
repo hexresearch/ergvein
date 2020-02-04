@@ -24,6 +24,7 @@ library
     , aeson
     , attoparsec        >= 0.13
     , attoparsec-binary >= 0.2  && < 0.3
+    , binary            >= 0.8
     , bytestring        >= 0.10
     , cereal
     , containers        >= 0.5
