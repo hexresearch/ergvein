@@ -40,6 +40,7 @@ library
         Ergvein.Wallet.Input
         Ergvein.Wallet.Language
         Ergvein.Wallet.Loading
+        Ergvein.Wallet.Localization.About
         Ergvein.Wallet.Localization.AuthInfo
         Ergvein.Wallet.Localization.Client
         Ergvein.Wallet.Localization.Initial
