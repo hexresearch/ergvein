@@ -3,7 +3,6 @@ module Ergvein.Wallet.Localization.Storage
     StorageAlert(..)
   ) where
 
-import Ergvein.Text
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Native
 

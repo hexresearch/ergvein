@@ -4,15 +4,11 @@ module Ergvein.Wallet.Log.Writer(
   ) where
 
 import Control.Monad
-import Control.Monad.Reader
-import Data.Text(Text)
-import Control.Monad.IO.Class
 import Data.Aeson
 import Data.Text.Encoding
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
-import Reflex.Dom
 
 import qualified Data.ByteString.Lazy as BS
 

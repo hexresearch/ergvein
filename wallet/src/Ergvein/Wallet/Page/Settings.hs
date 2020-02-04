@@ -2,6 +2,12 @@ module Ergvein.Wallet.Page.Settings(
     settingsPage
   ) where
 
+import Control.Monad.IO.Class (liftIO)
+import qualified Data.Map.Strict as M
+import Data.Time
+import Data.Function.Flip (flip3)
+import Reflex.Host.Class
+import Reflex.Dom as RD
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
 import Reflex.Dom
@@ -14,6 +20,7 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Widget.GraphPinCode
 import Ergvein.Wallet.Wrapper
 
 data SubPageSettings
@@ -28,9 +35,8 @@ settingsPage = do
   wrapper True $ do
     divClass "initial-options grid1" $ do
       goLangE   <- fmap (GoLanguage <$) $ outlineButton STPSButLanguage
-      goPinE    <- fmap (GoPinCode  <$) $ outlineButton STPSButPinCode
       goUnitsE  <- fmap (GoUnits    <$) $ outlineButton STPSButUnits
-      let goE = leftmost [goLangE, goPinE, goUnitsE]
+      let goE = leftmost [goLangE, goUnitsE]
       void $ nextWidget $ ffor goE $ \spg -> Retractable {
           retractableNext = case spg of
             GoLanguage  -> languagePage
@@ -61,6 +67,10 @@ languagePage = do
       updateSettings $ ffor selE (\lng -> settings {settingsLang = lng})
       pure ()
     pure ()
+
+data GoPinSets
+  = GoPinBase
+  | GoPinInputCode
 
 pinCodePage :: MonadFront t m => m ()
 pinCodePage = do

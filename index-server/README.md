@@ -2,7 +2,7 @@
 
 To run dev instance:
 * server expects bitcoin node running (host, port, user and password can be changed for indexer in configuration.yaml)
-  >  Example of botcoin.conf
+  >  Example of bitcoin.conf
   >  ```
   >  testnet=1
   >  [test]

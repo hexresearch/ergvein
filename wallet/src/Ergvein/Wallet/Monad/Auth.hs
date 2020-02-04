@@ -7,31 +7,27 @@ module Ergvein.Wallet.Monad.Auth(
 import Control.Concurrent.Chan (Chan)
 import Control.Monad.Random.Class
 import Control.Monad.Reader
-import Data.Functor (void)
-import Data.List (permutations)
-import Data.Maybe (catMaybes, listToMaybe)
-import Data.Text (Text, unpack)
-import Data.Maybe
 import Data.Time (NominalDiffTime)
 import Ergvein.Crypto
 import Ergvein.Index.Client
 import Ergvein.Text
+import Ergvein.Types.Currency
+import Ergvein.Types.Keys
+import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Headers.Loader
+import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
-import Ergvein.Wallet.Monad.Unauth
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings (Settings(..), storeSettings)
-import Ergvein.Wallet.Storage.Data
 import Ergvein.Wallet.Storage.Util
-import Network.Haskoin.Address
 import Network.HTTP.Client hiding (Proxy)
 import Reflex
+import Reflex.Host.Class
 import Reflex.Dom
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
@@ -39,9 +35,8 @@ import Servant.Client(BaseUrl)
 
 import qualified Control.Immortal as I
 import qualified Data.IntMap.Strict as MI
-import qualified Data.Set as S
 import qualified Data.Map.Strict as M
-import qualified Data.List as L
+import qualified Data.Set as S
 
 data Env t = Env {
   env'settings        :: !(ExternalRef t Settings)
@@ -194,6 +189,11 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
       guardit Nothing = error "getWalletName impossible: no auth in authed context!"
       guardit (Just a) = a
   {-# INLINE getWalletName #-}
+  getPublicKeystore = fmap (storage'publicKeys . authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
+    where
+      guardit Nothing = error "getPublicKeystore impossible: no auth in authed context!"
+      guardit (Just a) = a
+  {-# INLINE getPublicKeystore #-}
   storeWallet e = do
     authInfo <- fmap guardit $ readExternalRef =<< asks env'authRef
     performEvent_ $ ffor e $ \_ -> do
@@ -206,8 +206,8 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   {-# INLINE storeWallet #-}
 
 -- | Execute action under authorized context or return the given value as result
--- is user is not authorized. Each time the login info changes (user logs out or logs in)
--- the widget is updated.
+-- if user is not authorized. Each time the login info changes and authInfo'isUpdate flag is set to 'False'
+-- (user logs out or logs in) the widget is updated.
 liftAuth :: MonadFrontBase t m => m a -> ErgveinM t m a -> m (Dynamic t a)
 liftAuth ma0 ma = mdo
   mauthD <- getAuthInfoMaybe
@@ -239,8 +239,14 @@ liftAuth ma0 ma = mdo
         pure a
   let
     ma0' = maybe ma0 runAuthed mauth0
-    redrawE = leftmost [updated mauthD, Nothing <$ logoutE]
+    newAuthInfoE = ffilter isMauthUpdate $ updated mauthD
+    redrawE = leftmost [newAuthInfoE, Nothing <$ logoutE]
   widgetHold ma0' $ ffor redrawE $ maybe ma0 runAuthed
+
+isMauthUpdate :: Maybe AuthInfo -> Bool
+isMauthUpdate mauth = case mauth of
+  Nothing -> True
+  Just auth -> not $ authInfo'isUpdate auth
 
 -- | Lift action that doesn't require authorisation in context where auth is mandatory
 liftUnauthed :: m a -> ErgveinM t m a
@@ -267,12 +273,12 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
   addUrls urlsE = do
     urlsRef <- asks env'urls
     performEvent_ $ ffor urlsE $ \urls ->
-      modifyExternalRef urlsRef (\s -> (S.union (S.fromList urls) s, ()) )
+      modifyExternalRef urlsRef (\s -> (S.union (S.fromList urls) s, ()))
 
   invalidateUrls urlsE = do
     urlsRef <- asks env'urls
     performEvent_ $ ffor urlsE $ \urls ->
-      modifyExternalRef urlsRef (\s -> (S.difference s (S.fromList urls), ()) )
+      modifyExternalRef urlsRef (\s -> (S.difference s (S.fromList urls), ()))
   getUrlsRef = asks env'urls
   getRequiredUrlNumRef = asks env'urlNum
   getRequestTimeoutRef = asks env'timeout

@@ -10,7 +10,6 @@ module Ergvein.Wallet.Monad.Base
   , MonadClient(..)
   ) where
 
-import Control.Concurrent.Chan (Chan)
 import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Control.Monad.Reader
@@ -28,6 +27,7 @@ import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
+import Reflex.Host.Class
 import Reflex.Localize
 import Servant.Client(BaseUrl)
 
@@ -60,8 +60,13 @@ type MonadBaseConstr t m = (MonadHold t m
   , Ref (Performable m) ~ Ref IO
   , MonadRandom (Performable m)
   , PlatformNatives
+  , MonadReflexCreateTrigger t m
   )
-
+{-
+instance MonadReflexCreateTrigger t m => MonadReflexCreateTrigger t (ErgveinM t m) where
+  newEventWithTrigger = lift . newEventWithTrigger
+  newFanEventWithTrigger f = lift $ newFanEventWithTrigger f
+-}
 -- Context for unauthed widgets
 -- Only to be used to request password and open the local storage
 type MonadFrontConstr t m = (PlatformNatives

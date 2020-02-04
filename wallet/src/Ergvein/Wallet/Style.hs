@@ -5,6 +5,7 @@ module Ergvein.Wallet.Style(
 
 import Clay
 import Clay.Selector
+import Clay.Display
 import Clay.Stylesheet (prefixed)
 import Control.Monad
 import Data.ByteString (ByteString)
@@ -66,6 +67,7 @@ frontendCss r = do
   loadingWidgetCss
   alertsCss
   selectCss
+  graphPinCodeCanvasCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -262,6 +264,8 @@ initialPageCss = do
     marginLeft auto
     marginRight auto
     marginBottom $ rem 1
+  ".text-pin-code-error" ? do
+    color $ rgb 190 0 0
 
 balancesPageCss :: Css
 balancesPageCss = do
@@ -333,7 +337,7 @@ alertsCss = do
   ".alert-overlay" ? do
     pointerEvents none
     backgroundColor transparent
-    position fixed
+    position absolute
     bottom $ px 0
     right $ px 0
     width $ pct 100
@@ -366,6 +370,15 @@ alertsCss = do
     color "#000"
     backgroundColor "#a9a7a7"
 
+patternKeyCss :: Css
+patternKeyCss = do
+  ".myTestDiv" ? do
+    pointerEvents none
+    backgroundColor "red"
+    display block
+  ".myDebugLog" ? do
+    display block
+
 selectCss :: Css
 selectCss = do
   ".select-lang" ? do
@@ -374,3 +387,64 @@ selectCss = do
   "option" ? do
     fontSize $ pt 18
     height   $ em 1.8
+
+graphPinCodeCanvasCss :: Css
+graphPinCodeCanvasCss = do
+  ".graph-pin-code-canvas" ? do
+    position relative
+    backgroundColor $ rgb 240 240 240
+    border solid (px 1) black
+    borderRadius (px 5) (px 5) (px 5) (px 5)
+    let px' = px 0 in padding px' px' px' px'
+    marginLeft auto
+    marginRight auto
+    userSelect none
+    cursor pointer
+    zIndex 3
+  ".graph-pin-code-canvas-error" ? do
+    position relative
+    backgroundColor $ rgb 255 230 230
+    border solid (px 1) $ rgb 190 0 0
+    borderRadius (px 5) (px 5) (px 5) (px 5)
+    let px' = px 0 in padding px' px' px' px'
+    marginLeft auto
+    marginRight auto
+    userSelect none
+    cursor pointer
+    zIndex 3
+  ".graph-pin-code-point" ? do
+    position absolute
+    backgroundColor $ rgb 140 140 140
+    let px' = px 0 in padding px' px' px' px'
+    let px' = px 0 in margin px' px' px' px'
+    let pct' = pct 50 in borderRadius pct' pct' pct' pct'
+    userSelect none
+    cursor pointer
+    zIndex 5
+  ".graph-pin-code-glass" ? do
+    position absolute
+    backgroundColor none
+    let px' = px 0 in padding px' px' px' px'
+    let px' = px 0 in margin px' px' px' px'
+    let pct' = pct 50 in borderRadius pct' pct' pct' pct'
+    userSelect none
+    zIndex 10
+  ".graph-pin-code-point-check" ? do
+    position absolute
+    backgroundColor $ rgb 90 90 90
+    let px' = px 0 in padding px' px' px' px'
+    let px' = px 0 in margin px' px' px' px'
+    let pct' = pct 50 in borderRadius pct' pct' pct' pct'
+    userSelect none
+    cursor pointer
+    zIndex 10
+  ".graph-pin-code-line-check" ? do
+    position absolute
+    backgroundColor $ none
+    let px' = px 0 in padding px' px' px' px'
+    let px' = px 0 in margin px' px' px' px'
+    userSelect none
+    cursor pointer
+    borderTop solid (px 2) $ rgb 90 90 90
+    height $ px 2
+    zIndex 10

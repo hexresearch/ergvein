@@ -2,7 +2,6 @@ module Ergvein.Wallet.Page.History(
     historyPage
   ) where
 
-import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language

@@ -11,9 +11,7 @@ module Ergvein.Wallet.Client
   ) where
 
 import Control.Concurrent
-import Control.Concurrent.Lifted hiding (threadDelay)
 import Control.Concurrent.STM
-import Control.Concurrent.STM.TVar
 import Control.Monad.IO.Class
 import Control.Monad.Random
 import Control.Monad.Reader
@@ -32,9 +30,7 @@ import qualified Data.Set as S
 
 import Ergvein.Index.API.Types
 import Ergvein.Index.Client
-import Ergvein.Text
 import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Localization.Client
 

@@ -1,3 +1,8 @@
+0.1.2.0
+=======
+
+* Add instance for `MonadReflexCreateTrigger`.
+
 0.1.1.0
 =======
 
