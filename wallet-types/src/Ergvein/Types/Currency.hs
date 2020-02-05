@@ -11,6 +11,10 @@ module Ergvein.Types.Currency(
   , allCurrencies
   , currencyResolution
   , currencyName
+  , currencyGenesisTime
+  , currencyBlockDuration
+  , currencyBlockTime
+  , currencyBehind
   , MoneyUnit
   , Money(..)
   , showMoney
@@ -20,6 +24,8 @@ import Data.Flat
 import Data.Ratio
 import Data.String
 import Data.Text (Text, pack, unpack)
+import Data.Time 
+import Data.Time.Clock.POSIX
 import Data.Version
 import Data.Word
 import Ergvein.Aeson
@@ -185,6 +191,28 @@ currencyName c = case c of
   BTC -> "Bitcoin"
   ERGO -> "Ergo"
 {-# INLINE currencyName #-}
+
+-- | Get time of genesis block of currency
+currencyGenesisTime :: Currency -> UTCTime 
+currencyGenesisTime c = case c of 
+  BTC -> fromEpoch (1231006505 :: Int)
+  ERGO -> fromEpoch (1561998777 :: Int)
+  where 
+    fromEpoch = posixSecondsToUTCTime . fromIntegral
+
+-- | Average duration between blocks
+currencyBlockDuration :: Currency -> NominalDiffTime
+currencyBlockDuration c = case c of 
+  BTC -> fromIntegral 600
+  ERGO -> fromIntegral 120
+
+-- | Approx time of block 
+currencyBlockTime :: Currency -> Int -> UTCTime
+currencyBlockTime c i = addUTCTime (fromIntegral i * currencyBlockDuration c) $ currencyGenesisTime c
+
+-- | Get approx time we are behind the head
+currencyBehind :: Currency -> Int -> Int -> NominalDiffTime
+currencyBehind c n total = fromIntegral (total - n) * currencyBlockDuration c
 
 -- | Smallest amount of currency
 type MoneyUnit = Word64
