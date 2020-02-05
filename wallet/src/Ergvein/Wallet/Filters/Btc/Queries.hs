@@ -1,6 +1,7 @@
 module Ergvein.Wallet.Filters.Btc.Queries(
     insertFilter
   , getFilter
+  , getFiltersHeight
   ) where
 
 import Control.Lens
@@ -20,3 +21,5 @@ insertFilter h f = schemaBtcFilters %%~ B.insert h f
 getFilter :: AllocReaderM m => BlockHeight -> SchemaBtc -> m (Maybe BtcAddrFilter)
 getFilter k s = B.lookup k (s ^. schemaBtcFilters)
 
+getFiltersHeight :: AllocReaderM m => SchemaBtc -> m BlockHeight
+getFiltersHeight s = fromMaybe 0 . fmap fst <$> B.lookupMax (s ^. schemaBtcFilters)

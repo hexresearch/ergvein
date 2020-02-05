@@ -28,20 +28,37 @@ import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
+import Reflex.Workflow
 
 filtersLoader :: (HasFiltersStorage m, MonadFrontBase t m) => m ()
 filtersLoader = nameSpace "filters loader" $ do
   sequence_ [filtersLoaderBtc]
 
-filtersLoaderBtc :: (HasFiltersStorage m, MonadFrontBase t m) => m ()
-filtersLoaderBtc = nameSpace "btc" $ do
-  buildE <- getPostBuild
-  he <- getFilters ((BTC, 0, 1) <$ buildE)
-  performEvent_ $ ffor he $ \h -> liftIO $ print h
-  pure ()
+filtersLoaderBtc :: MonadFrontBase t m => m ()
+filtersLoaderBtc = nameSpace "btc" $ void $ workflow go 
+  where 
+    go = Workflow $ do
+      buildE <- getPostBuild
+      ch <- getCurrentHeight BTC
+      fh <- getFiltersHeight BTC
+      logWrite $ "Current height is " <> showt ch <> ", and filters are for height " <> showt fh
+      if ch > fh then do 
+        let n = 100
+        logWrite $ "Getting next " <> showt n <> " filters"
+        fse <- getFilters ((BTC, fh+1, n) <$ buildE)
+        we <- performEvent $ ffor fse $ \fs -> traverse_ (uncurry insertFilter) (zip [fh+1 ..] fs) 
+        pure ((), go <$ we)
+      else do 
+        logWrite "Sleeping, waiting for new filters ..."
+        de <- delay 120 buildE
+        pure ((), go <$ de)
+
+-- | Get known top height for given currency
+getCurrentHeight :: MonadFrontBase t m => Currency -> m BlockHeight
+getCurrentHeight _ = pure 2000
 
 getFilters :: MonadFrontBase t m => Event t (Currency, BlockHeight, Int) -> m (Event t [AddrFilter])
-getFilters e = pure $ [mockFilter] <$ e 
+getFilters e = delay 0.1 $ [mockFilter] <$ e 
 
 mockFilter :: AddrFilter
 mockFilter = AddrFilterBtc $ either error id $ decodeBtcAddrFilter . hex2bs $ "0000000000000004171bad529ff6142e1d4840"

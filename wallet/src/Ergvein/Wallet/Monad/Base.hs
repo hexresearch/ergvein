@@ -69,6 +69,7 @@ type MonadFrontConstr t m = (PlatformNatives
   , HasStoreDir (Performable m)
   , HasHeadersStorage m
   , HasFiltersStorage m
+  , HasFiltersStorage (Performable m)
   , MonadBaseConstr t m
   , MonadLocalized t m
   , MonadRetract t m
