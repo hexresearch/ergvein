@@ -84,11 +84,13 @@ scannerThread env currency scanInfo =
       traverse_ (blockIteration totalh) heights
       liftIO $ threadDelay $ configBlockchainScanDelay $ envServerConfig env
     
-    selectedInfoToStore info = if configPubScriptHistoryScan $ envServerConfig env then info else info { blockInfoContent = BlockContentInfo [] [] [] }
+    selectedInfoToStore info = if configPubScriptHistoryScan $ envServerConfig env then info else 
+      let blockContent = BlockContentInfo (blockContentTxInfos $ blockInfoContent info) [] []
+      in info { blockInfoContent = blockContent }
 
 startBlockchainScanner :: (MonadUnliftIO m, MonadCatch m, MonadLogger m) => ServerEnv -> m [Thread]
 startBlockchainScanner env =
     sequenceA
     [ scannerThread env BTC $ BTCScanning.blockInfo env
-    , scannerThread env ERGO $ ERGOScanning.blockInfo env 
+    --, scannerThread env ERGO $ ERGOScanning.blockInfo env 
     ]
