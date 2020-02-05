@@ -69,16 +69,13 @@ actualHeight env = do
     pure $ fromIntegral $ fromMaybe 0 $ bestBlockHeight info
 
 blockInfo :: ServerEnv -> BlockHeight -> IO BlockInfo
-blockInfo env blockHeightToScan = do
-    headersAtHeight <-
-        flip runReaderT (envErgoNodeClient env)
-        $ getHeaderIdsAtHeight
-        $ Height
-        $ fromIntegral blockHeightToScan
+blockInfo env blockHeightToScan = flip runReaderT (envErgoNodeClient env) $ do
+  headersAtHeight <- getHeaderIdsAtHeight
+      $ Height
+      $ fromIntegral blockHeightToScan
 
-    let mainChainId = head headersAtHeight
+  let mainChainId = head headersAtHeight
 
-    block <- flip runReaderT (envErgoNodeClient env) $ getById mainChainId
-    blockInfo <- flip runReaderT (envErgoNodeClient env) $ blockTxInfos block blockHeightToScan
-
-    pure blockInfo
+  block <- getById mainChainId
+  blockInfo <- blockTxInfos block blockHeightToScan
+  pure blockInfo
