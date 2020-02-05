@@ -18,8 +18,9 @@ module Ergvein.Wallet.Filters.Loader (
 
 import Control.Monad
 import Control.Monad.IO.Unlift
-import Ergvein.Index.API.Types
 import Ergvein.Filters 
+import Ergvein.Index.API.Types
+import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Client
@@ -41,3 +42,6 @@ filtersLoaderBtc = nameSpace "btc" $ do
 
 getFilters :: MonadFrontBase t m => Event t (Currency, BlockHeight, Int) -> m (Event t [AddrFilter])
 getFilters = error "getFilters mock"
+
+mockFilter :: AddrFilter
+mockFilter = AddrFilterBtc $ either error id $ decodeBtcAddrFilter . hex2bs $ "0000000000000004171bad529ff6142e1d4840"

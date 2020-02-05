@@ -61,14 +61,15 @@ test-suite ergvein-wallet-filters-test
   build-depends:
       base
     , aeson
-    , ergvein-wallet-filters
-    , tasty
-    , tasty-discover
-    , tasty-hspec
     , base16-bytestring
     , bytes
     , bytestring
     , cereal
     , either
-    , text
+    , ergvein-common
+    , ergvein-wallet-filters
     , haskoin-core
+    , tasty
+    , tasty-discover
+    , tasty-hspec
+    , text
