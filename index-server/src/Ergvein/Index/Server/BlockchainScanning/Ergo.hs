@@ -56,6 +56,7 @@ blockTxInfos block txBlockHeight = do
     txoInfosFromTx txBlockIndex tx = do
       let txHash = bs2Hex $ unTransactionId $ transactionId (tx :: ErgoTransaction)
           txI = TxInfo { txHash = txHash
+                       , txHexView = "txHexView"
                        , txBlockHeight = txBlockHeight
                        , txBlockIndex  = fromIntegral txBlockIndex
                        }

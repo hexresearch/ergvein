@@ -6,6 +6,7 @@ import Ergvein.Types.Block
 
 data TxInfo = TxInfo
   { txHash        :: TxHash
+  , txHexView     :: TxHexView
   , txBlockHeight :: BlockHeight
   , txBlockIndex  :: TxBlockIndex
   }

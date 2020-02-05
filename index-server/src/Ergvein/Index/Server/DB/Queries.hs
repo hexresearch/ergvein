@@ -53,7 +53,7 @@ upsertScannedHeight currency h = upsert (ScannedHeightRec currency h) [ScannedHe
 insertTxs :: MonadIO m => [TxInfo] -> QueryT m [Key TxRec]
 insertTxs txs = insertMany $ txRec <$> txs
   where 
-    txRec tx = TxRec (txHash tx) (txBlockHeight tx) (txBlockIndex tx)
+    txRec tx = TxRec (txHash tx) (txHexView tx) (txBlockHeight tx) (txBlockIndex tx)
 
 insertTxOuts :: MonadIO m => [TxOutInfo] -> QueryT m [Key TxOutRec]
 insertTxOuts txOuts = insertMany $ txOutRec <$> txOuts

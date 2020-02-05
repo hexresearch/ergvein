@@ -21,6 +21,7 @@ import qualified Network.Haskoin.Block              as HK
 import qualified Network.Haskoin.Crypto             as HK
 import qualified Network.Haskoin.Transaction        as HK
 import qualified Network.Haskoin.Util               as HK
+import qualified Network.Haskoin.Constants          as HK
 
 txInfo :: HK.Tx -> TxHash -> ([TxInInfo], [TxOutInfo])
 txInfo tx txHash = let
@@ -45,7 +46,7 @@ blockTxInfos :: HK.Block -> BlockHeight -> BlockInfo
 blockTxInfos block txBlockHeight = let
   (txInfos ,txInInfos, txOutInfos) = mconcat $ txoInfosFromTx `imap` HK.blockTxns block
   blockContent = BlockContentInfo txInfos txInInfos txOutInfos
-  blockAddressFilter = const "btcBlockAddressFilter" $ makeBtcFilter block
+  blockAddressFilter = btcFilter (undefined) (undefined)
   blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHexView blockAddressFilter
   in BlockInfo blockMeta blockContent 
   where
@@ -53,11 +54,13 @@ blockTxInfos block txBlockHeight = let
     txoInfosFromTx txBlockIndex tx = let
       txHash = HK.txHashToHex $ HK.txHash tx
       txI = TxInfo { txHash = txHash
+                   , txHexView = HK.encodeHex $ encode tx 
                    , txBlockHeight = txBlockHeight
                    , txBlockIndex  = fromIntegral txBlockIndex
                    }
       (txInI,txOutI) = txInfo tx txHash
       in ([txI], txInI, txOutI)
+    btcFilter txs blk = const "btcBlockAddressFilter" $ makeBtcFilter HK.btcTest txs blk
 
 
 actualHeight :: Config -> IO BlockHeight
