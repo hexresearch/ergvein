@@ -143,7 +143,7 @@ seedRestoreWidget = mdo
     localizedShow <$> langD <*> (SPSEnterWord <$> ixD)
   wordE <- fmap (switch . current) $ widgetHold waiting $ ffor (updated inpD) $ \t -> if t == ""
     then waiting
-    else fmap leftmost $ colonize 3 (take 9 $ getWordsWithPrefix t) $ \w -> do
+    else fmap leftmost $ colonize 3 (take 9 $ getWordsWithPrefix $ T.toLower t) $ \w -> do
        btnE <- buttonClass (pure "button button-outline guess-button restore-word") w
        pure $ w <$ btnE
   let emptyStr :: Text = ""
