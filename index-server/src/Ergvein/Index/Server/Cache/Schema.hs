@@ -64,7 +64,7 @@ data TxCacheRecKey = TxCacheRecKey
 
 data TxCacheRec = TxCacheRec
   { txCacheRecHash         :: TxHash
-  , txCacheRecHash         :: TxHexView
+  , txCacheRecHexView      :: TxHexView
   , txCacheRecBlockHeight  :: BlockHeight
   , txCacheRecBlockIndex   :: TxBlockIndex
   } deriving (Generic, Flat)
