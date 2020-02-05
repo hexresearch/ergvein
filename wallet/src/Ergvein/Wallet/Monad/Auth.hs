@@ -15,6 +15,8 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Filters.Loader
+import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Headers.Loader
 import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Language
@@ -53,6 +55,7 @@ data Env t = Env {
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
 , env'manager         :: !Manager
 , env'headersStorage  :: !HeadersStorage
+, env'filtersStorage  :: !FiltersStorage
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -64,6 +67,10 @@ instance Monad m => HasStoreDir (ErgveinM t m) where
 instance Monad m => HasHeadersStorage (ErgveinM t m) where
   getHeadersStorage = asks env'headersStorage
   {-# INLINE getHeadersStorage #-}
+
+instance Monad m => HasFiltersStorage (ErgveinM t m) where
+  getFiltersStorage = asks env'filtersStorage
+  {-# INLINE getFiltersStorage #-}
 
 instance MonadIO m => HasClientManager (ErgveinM t m) where
   getClientMaganer = asks env'manager
@@ -228,10 +235,12 @@ liftAuth ma0 ma = mdo
         timeoutRef      <- getRequestTimeoutRef
         manager         <- getClientMaganer
         hst             <- getHeadersStorage
+        fst             <- getFiltersStorage
         headersLoader
+        filtersLoader
         a <- runReaderT (wrapped ma) $ Env
           settingsRef backEF loading langRef authRef (logoutFire ()) storeDir alertsEF
-          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager hst
+          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager hst fst
         pure a
   let
     ma0' = maybe ma0 runAuthed mauth0

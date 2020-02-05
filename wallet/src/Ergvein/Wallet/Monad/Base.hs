@@ -19,6 +19,7 @@ import Data.Time(UTCTime, NominalDiffTime)
 import Ergvein.Crypto
 import Ergvein.Index.Client
 import Ergvein.Wallet.Headers.Storage
+import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Native
 import Language.Javascript.JSaddle
@@ -67,6 +68,7 @@ type MonadFrontConstr t m = (PlatformNatives
   , HasStoreDir m
   , HasStoreDir (Performable m)
   , HasHeadersStorage m
+  , HasFiltersStorage m
   , MonadBaseConstr t m
   , MonadLocalized t m
   , MonadRetract t m
