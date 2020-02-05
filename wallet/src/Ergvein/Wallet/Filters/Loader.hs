@@ -36,12 +36,12 @@ filtersLoader = nameSpace "filters loader" $ do
 filtersLoaderBtc :: (HasFiltersStorage m, MonadFrontBase t m) => m ()
 filtersLoaderBtc = nameSpace "btc" $ do
   buildE <- getPostBuild
-  he <- handleDangerMsg =<< getHeight (HeightRequest BTC <$ buildE)
+  he <- getFilters ((BTC, 0, 1) <$ buildE)
   performEvent_ $ ffor he $ \h -> liftIO $ print h
   pure ()
 
 getFilters :: MonadFrontBase t m => Event t (Currency, BlockHeight, Int) -> m (Event t [AddrFilter])
-getFilters = error "getFilters mock"
+getFilters e = pure $ [mockFilter] <$ e 
 
 mockFilter :: AddrFilter
 mockFilter = AddrFilterBtc $ either error id $ decodeBtcAddrFilter . hex2bs $ "0000000000000004171bad529ff6142e1d4840"
