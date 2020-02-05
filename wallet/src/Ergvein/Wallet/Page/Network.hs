@@ -1,5 +1,5 @@
-module Ergvein.Wallet.Page.About(
-    aboutPage
+module Ergvein.Wallet.Page.Network(
+    networkPage
   ) where
 
 import Ergvein.Text
@@ -11,9 +11,10 @@ import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Wrapper
 
-aboutPage :: MonadFront t m => m ()
-aboutPage = do
-  let thisWidget = Just $ pure $ aboutPage
+
+networkPage :: MonadFront t m => m ()
+networkPage = do
+  let thisWidget = Just $ pure $ networkPage
   menuWidget NPSTitle thisWidget
   wrapper True $ do
     h3 $ localizedText $ NPSTitle
