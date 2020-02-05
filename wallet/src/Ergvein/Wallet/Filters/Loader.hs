@@ -19,13 +19,14 @@ module Ergvein.Wallet.Filters.Loader (
 import Control.Monad
 import Control.Monad.IO.Unlift
 import Ergvein.Index.API.Types
+import Ergvein.Filters 
 import Ergvein.Types.Currency
+import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Client
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
-import Ergvein.Wallet.Alert
 
 filtersLoader :: (HasFiltersStorage m, MonadFrontBase t m) => m ()
 filtersLoader = nameSpace "filters loader" $ do
@@ -37,3 +38,6 @@ filtersLoaderBtc = nameSpace "btc" $ do
   he <- handleDangerMsg =<< getHeight (HeightRequest BTC <$ buildE)
   performEvent_ $ ffor he $ \h -> liftIO $ print h
   pure ()
+
+getFilters :: MonadFrontBase t m => Event t (Currency, BlockHeight, Int) -> m (Event t [AddrFilter])
+getFilters = error "getFilters mock"
