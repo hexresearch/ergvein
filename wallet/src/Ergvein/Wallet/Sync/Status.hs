@@ -2,6 +2,7 @@ module Ergvein.Wallet.Sync.Status(
     SyncBehind(..)
   , SyncStage(..)
   , SyncProgress(..)
+  , syncProgressBehind
   ) where 
 
 
