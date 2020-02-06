@@ -1,35 +1,39 @@
 module Ergvein.Index.Server.BlockchainScanning.Bitcoin where
 
-import           Control.Monad.Reader
 import           Control.Monad.Logger
+import           Control.Monad.Reader
 import           Data.Either
 import           Data.List.Index
 import           Data.Maybe
-import  qualified         Data.Map.Strict as Map
+import           Data.Serialize
+
 import           Network.Bitcoin.Api.Blockchain
 import           Network.Bitcoin.Api.Client
 
-import           Ergvein.Index.Server.BlockchainScanning.Types
-import           Ergvein.Index.Server.Config
-import           Ergvein.Index.Server.Environment
-import           Ergvein.Types.Transaction
-import           Ergvein.Types.Currency
 import           Ergvein.Crypto.SHA256
 import           Ergvein.Filters.Btc
+import           Ergvein.Index.Server.BlockchainScanning.Types
 import           Ergvein.Index.Server.Cache.Monad
-import           Ergvein.Index.Server.Cache.Schema
 import           Ergvein.Index.Server.Cache.Queries
+import           Ergvein.Index.Server.Cache.Schema
+import           Ergvein.Index.Server.Config
+import           Ergvein.Index.Server.Environment
 import           Ergvein.Index.Server.Utils
-import           Network.Bitcoin.Api.Misc
+import           Ergvein.Types.Currency
+import           Ergvein.Types.Transaction
 
-import Data.Serialize
 import qualified Data.ByteString                    as B
 import qualified Data.HexString                     as HS
+import qualified Data.Map.Strict                    as Map
 import qualified Network.Haskoin.Block              as HK
+import qualified Network.Haskoin.Constants          as HK
 import qualified Network.Haskoin.Crypto             as HK
 import qualified Network.Haskoin.Transaction        as HK
 import qualified Network.Haskoin.Util               as HK
-import qualified Network.Haskoin.Constants          as HK
+
+instance MonadLDB (ReaderT ServerEnv IO) where
+  getDb = asks envLevelDBContext
+  {-# INLINE getDb #-}
 
 txInfo :: HK.Tx -> TxHash -> ([TxInInfo], [TxOutInfo])
 txInfo tx txHash = let
@@ -55,21 +59,26 @@ blockTxInfos block txBlockHeight nodeNetwork = do
   let (txInfos ,txInInfos, txOutInfos) = mconcat $ txoInfosFromTx `imap` HK.blockTxns block
       blockContent = BlockContentInfo txInfos txInInfos txOutInfos
       txInfosMap = mapBy txHash $ HK.blockTxns block
-      txInSource :: MonadLDB m => TxInInfo -> m HK.Tx
-      txInSource input = fromMaybe defa (pure <$> (Map.lookup txId txInfosMap))
-        where
-          txId = txInTxOutHash input
-          defa = do
-            x <- getParsedExact $ cachedTxKey txId
-            pure . fromRight (error "") . decode . fromJust . HK.decodeHex . txCacheRecHexView $ x
 
-  txsEnts <- sequence $ txInSource <$> txInInfos
-  let blockAddressFilter = HK.encodeHex $ encodeBtcAddrFilter $ makeBtcFilter nodeNetwork txsEnts block
-  let blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHexView blockAddressFilter
+  blockTxInSources <- mapM (txInSource txInfosMap) txInInfos
+  let blockAddressFilter = HK.encodeHex $ encodeBtcAddrFilter $ makeBtcFilter nodeNetwork blockTxInSources block
+      blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHexView blockAddressFilter
+
   pure $ BlockInfo blockMeta blockContent 
   where
     txHash = HK.txHashToHex . HK.txHash
     blockHeaderHexView = HK.encodeHex $ encode $ HK.blockHeader block
+    txInSource :: MonadLDB m => Map.Map TxId HK.Tx -> TxInInfo -> m HK.Tx
+    txInSource blockTxMap txInput = 
+      case Map.lookup txInId blockTxMap of
+        Just    sourceTx -> pure sourceTx
+        Nothing          -> fromChache
+      where
+        txInId = txInTxOutHash txInput
+        decodeError = "error decoding btc txIn source transaction " <> show txInId
+        fromChache = do
+          src <- getParsedExact $ cachedTxKey txInId
+          pure $ fromRight (error decodeError) $ decode $ fromJust $ HK.decodeHex $ txCacheRecHexView src
     txoInfosFromTx txBlockIndex tx = let
       txHash' = txHash tx
       txI = TxInfo { txHash = txHash'
@@ -80,13 +89,8 @@ blockTxInfos block txBlockHeight nodeNetwork = do
       (txInI,txOutI) = txInfo tx txHash'
       in ([txI], txInI, txOutI)
 
-
 actualHeight :: Config -> IO BlockHeight
 actualHeight cfg = fromIntegral <$> btcNodeClient cfg getBlockCount
-
-instance MonadLDB (ReaderT ServerEnv IO) where
-  getDb = asks envLevelDBContext
-  {-# INLINE getDb #-}
 
 blockInfo :: ServerEnv -> BlockHeight -> IO BlockInfo
 blockInfo env blockHeightToScan = flip runReaderT env $ do
@@ -94,7 +98,7 @@ blockInfo env blockHeightToScan = flip runReaderT env $ do
   maybeRawBlock <- liftIO $ btcNodeClient cfg $ flip getBlockRaw blockHash
   let rawBlock = fromMaybe blockParsingError maybeRawBlock
       parsedBlock = fromRight blockGettingError $ decode $ HS.toBytes rawBlock
-      currentNetwork = if configBTCNodeIsTestnet cfg then HK.btcTest else HK.btc
+      currentNetwork = envBitconNodeNetwork env
   
   blockTxInfos parsedBlock blockHeightToScan currentNetwork
   where

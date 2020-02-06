@@ -92,5 +92,5 @@ startBlockchainScanner :: (MonadUnliftIO m, MonadCatch m, MonadLogger m) => Serv
 startBlockchainScanner env =
     sequenceA
     [ scannerThread env BTC $ BTCScanning.blockInfo env
-    --, scannerThread env ERGO $ ERGOScanning.blockInfo env 
+    , scannerThread env ERGO $ ERGOScanning.blockInfo env 
     ]
