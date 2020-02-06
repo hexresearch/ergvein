@@ -12,6 +12,7 @@ import Data.IORef
 import Data.Text (Text)
 import Data.Time(NominalDiffTime)
 import Ergvein.Index.Client
+import Ergvein.Types.Storage
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Language
@@ -21,8 +22,8 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Settings
-import Ergvein.Types.Storage
 import Ergvein.Wallet.Storage.Util
+import Ergvein.Wallet.Sync.Status
 import Network.HTTP.Client hiding (Proxy)
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
@@ -49,6 +50,7 @@ data UnauthEnv t = UnauthEnv {
 , unauth'headersStorage  :: !HeadersStorage
 , unauth'filtersStorage  :: !FiltersStorage
 , unauth'manager         :: !Manager
+, unauth'syncProgress    :: !(ExternalRef t SyncProgress)
 }
 
 type UnauthM t m = ReaderT (UnauthEnv t) m
@@ -111,6 +113,11 @@ instance MonadBaseConstr t m => MonadClient t (UnauthM t m) where
   getUrlsRef = asks unauth'urls
   getRequiredUrlNumRef = asks unauth'urlNum
   getRequestTimeoutRef = asks unauth'timeout
+  getSyncProgress = externalRefDynamic =<< asks unauth'syncProgress 
+  setSyncProgress ev = do 
+    ref <- asks unauth'syncProgress
+    performEvent_ $ writeExternalRef ref <$> ev 
+  getSyncProgressRef = asks unauth'syncProgress
 
 instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontBase t (UnauthM t m) where
   getSettings = readExternalRef =<< asks unauth'settings
@@ -206,6 +213,7 @@ newEnv settings uiChan = do
   timeout <- newExternalRef $ settingsReqTimeout settings
   hst <- liftIO $ runReaderT openHeadersStorage (settingsStoreDir settings)
   fst <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
+  syncRef <- newExternalRef Synced
   pure UnauthEnv {
       unauth'settings  = settingsRef
     , unauth'backEF    = (backE, backFire ())
@@ -225,6 +233,7 @@ newEnv settings uiChan = do
     , unauth'manager = manager
     , unauth'headersStorage = hst
     , unauth'filtersStorage = fst 
+    , unauth'syncProgress = syncRef
     }
 
 runEnv :: (MonadBaseConstr t m, PlatformNatives)

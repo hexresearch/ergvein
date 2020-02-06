@@ -25,6 +25,7 @@ import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Settings (Settings(..), storeSettings)
 import Ergvein.Wallet.Storage.Util
 import Network.HTTP.Client hiding (Proxy)
@@ -56,6 +57,7 @@ data Env t = Env {
 , env'manager         :: !Manager
 , env'headersStorage  :: !HeadersStorage
 , env'filtersStorage  :: !FiltersStorage
+, env'syncProgress    :: !(ExternalRef t SyncProgress)
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -236,11 +238,12 @@ liftAuth ma0 ma = mdo
         manager         <- getClientMaganer
         hst             <- getHeadersStorage
         fst             <- getFiltersStorage
+        syncRef         <- getSyncProgressRef
         headersLoader
         filtersLoader
         a <- runReaderT (wrapped ma) $ Env
           settingsRef backEF loading langRef authRef (logoutFire ()) storeDir alertsEF
-          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager hst fst
+          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager hst fst syncRef
         pure a
   let
     ma0' = maybe ma0 runAuthed mauth0
@@ -287,3 +290,8 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
   getUrlsRef = asks env'urls
   getRequiredUrlNumRef = asks env'urlNum
   getRequestTimeoutRef = asks env'timeout
+  getSyncProgressRef = asks env'syncProgress 
+  getSyncProgress = externalRefDynamic =<< asks env'syncProgress 
+  setSyncProgress ev = do 
+    ref <- asks env'syncProgress
+    performEvent_ $ writeExternalRef ref <$> ev 

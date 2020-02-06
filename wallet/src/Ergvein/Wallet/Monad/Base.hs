@@ -18,10 +18,11 @@ import Data.Text (Text)
 import Data.Time(UTCTime, NominalDiffTime)
 import Ergvein.Crypto
 import Ergvein.Index.Client
-import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Filters.Storage
+import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Sync.Status
 import Language.Javascript.JSaddle
 import qualified Data.Set as S
 import Reflex
@@ -158,3 +159,9 @@ class (MonadBaseConstr t m, HasClientManager m, HasClientManager (Performable m)
   getRequiredUrlNumRef :: m (ExternalRef t (Int, Int))
   -- | Get request timeout ref
   getRequestTimeoutRef :: m (ExternalRef t NominalDiffTime)
+  -- | Set global sync process value each time the event is fired
+  setSyncProgress :: Event t SyncProgress -> m ()
+  -- | Get global sync process value
+  getSyncProgress :: m (Dynamic t SyncProgress)
+  -- | Internal method. 
+  getSyncProgressRef :: m (ExternalRef t SyncProgress)
