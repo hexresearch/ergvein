@@ -47,12 +47,8 @@ networkPage = do
 
 optionsContent :: MonadFront t m => Currency -> m ()
 optionsContent cur = do
-  -- h3 $ localizedText cur
+  gpbE <- getPostBuild
   lineOption $ do
-    gpbE <- getPostBuild
-    --heightE <- getHeight (HeightRequest BTC <$ gpbE)
-    --resE <- getUrlList gpbE
-    --dbgPrintE resE
     nameOption NPSStatus
     valueOption $ NPSStatusVal 10
     descrOption NPSStatusDescr
@@ -64,17 +60,23 @@ optionsContent cur = do
     labelHorSep
   lineOption $ do
     nameOption NPSHeight
-    valueOption $ NPSHeightVal 0
+    heightE' <- getHeight (HeightRequest cur <$ gpbE)
+    let heightE = ffor heightE' $ \case
+                    Left err    -> NPSError err
+                    Right hrsp  -> NPSHeightVal $ heightRespHeight hrsp
+    heightD <- holdDyn NPSWait heightE
+    valueOptionDyn heightD
     descrOption NPSHeightDescr
     labelHorSep
   pure ()
   where
-    lineOption  = divClass "network-wrapper" . divClass "network-line"
-    nameOption  = divClass "network-name"    . localizedText
-    valueOption = divClass "network-value"   . localizedText
-    descrOption = (>>) elBR . divClass "network-descr" . localizedText
-    labelHorSep = elAttr "hr" [("class","network-hr-sep-lb")] blank
-    elBR        = el "br" blank
+    lineOption       = divClass "network-wrapper" . divClass "network-line"
+    nameOption       = divClass "network-name"    . localizedText
+    valueOption      = divClass "network-value"   . localizedText
+    valueOptionDyn v = getLanguage >>= \langD -> divClass "network-value" $ dynText $ ffor2 langD v localizedShow
+    descrOption      = (>>) elBR . divClass "network-descr" . localizedText
+    labelHorSep      = elAttr "hr" [("class","network-hr-sep-lb")] blank
+    elBR             = el "br" blank
     --optionSection t v d = do
     --  nameOption t
     --  valueOption v

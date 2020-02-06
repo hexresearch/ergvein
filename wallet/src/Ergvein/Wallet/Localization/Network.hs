@@ -3,6 +3,7 @@ module Ergvein.Wallet.Localization.Network(
   ) where
 
 import Ergvein.Text
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Language
 
 import Data.Text
@@ -16,8 +17,11 @@ data NetworkPageStrings =
   | NPSServerVal Text
   | NPSServerDescr
   | NPSHeight
-  | NPSHeightVal Int
+  | NPSHeightVal BlockHeight
   | NPSHeightDescr
+  | NPSWait
+  | NPSNoValue
+  | forall e . LocalizedPrint e => NPSError e
 
 instance LocalizedPrint NetworkPageStrings where
   localizedShow l v = case l of
@@ -32,6 +36,9 @@ instance LocalizedPrint NetworkPageStrings where
       NPSHeight       -> "Height: "
       NPSHeightVal n  -> showt n <> " blocks."
       NPSHeightDescr  -> "Current height (and if there any forks detected)"
+      NPSWait         -> "Wait ..."
+      NPSNoValue      -> "No value"
+      NPSError e      -> localizedShow l e
     Russian -> case v of
       NPSTitle        -> "Сеть"
       NPSStatus       -> "Статус: "
@@ -55,3 +62,6 @@ instance LocalizedPrint NetworkPageStrings where
                             4 -> " блока."
                             _ -> " блоков."
       NPSHeightDescr  -> "Текущая высота (и форки, если обнаружены)"
+      NPSWait         -> "Ждите ..."
+      NPSNoValue      -> "Нет значения"
+      NPSError e      -> localizedShow l e
