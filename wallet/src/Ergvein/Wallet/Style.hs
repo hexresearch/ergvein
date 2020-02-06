@@ -64,6 +64,7 @@ frontendCss r = do
   passwordCss
   initialPageCss
   balancesPageCss
+  networkPageCss
   loadingWidgetCss
   alertsCss
   selectCss
@@ -291,6 +292,73 @@ balancesPageCss = do
   ".currency-balance" ? do
     display inlineBlock
     float floatRight
+
+networkPageCss :: Css
+networkPageCss = do
+  ".network-wrapper" ? do
+    textAlign center
+  ".network-title" ? do
+    width $ pct 100
+    maxWidth $ px 500
+    display inlineBlock
+  ".network-title-table" ? do
+    display displayTable
+  ".network-title-row" ? do
+    display tableRow
+  ".network-title-name" ? do
+    display tableCell
+    paddingRight $ px 3
+    textAlign $ alignSide sideLeft
+    width $ pct 65
+  ".network-title-cur" ? do
+    display tableCell
+    paddingRight $ px 3
+    width $ pct 35
+    textAlign $ alignSide sideRight
+  ".network-hr-sep" ? do
+    marginTop $ px 5
+    border solid (px 3) black
+  ".network-hr-sep-lb" ? do
+    border solid (px 1) black
+  ".network-line" ? do
+    width $ pct 100
+    maxWidth $ px 500
+    display inlineBlock
+    textAlign center
+  ".network-name" ? do
+    display inlineBlock
+    float floatLeft
+    fontWeight bold
+  ".network-value" ? do
+    display inlineBlock
+    float floatLeft
+    fontWeight bold
+  ".network-descr" ? do
+    display inlineBlock
+    float floatLeft
+    fontStyle italic
+    fontSizeCustom smaller
+{-  ".about-content" ? do
+    display displayTable
+    marginTop $ px 10
+    fontSize $ pt (if isAndroid then 12 else 18)
+  ".about-content-row" ? do
+    display tableRow
+  ".about-content-cell-label" ? do
+    display tableCell
+    let px' = px 5 in padding px' (px 20) px' px'
+    textAlign $ alignSide sideLeft
+    verticalAlign vAlignBottom
+  ".about-content-cell-value" ? do
+    display tableCell
+    let px' = px 5 in padding px' px' px' px'
+    textAlign $ alignSide sideLeft
+    verticalAlign vAlignBottom
+    width $ pct 1
+  ".about-distrib" ? do
+    paddingTop $ px 45
+    fontSize $ pt (if isAndroid then 12 else 18)
+-}
 
 loadingWidgetCss :: Css
 loadingWidgetCss = do

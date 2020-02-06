@@ -42,6 +42,7 @@ library
         Ergvein.Wallet.Loading
         Ergvein.Wallet.Localization.AuthInfo
         Ergvein.Wallet.Localization.Client
+        Ergvein.Wallet.Localization.Currency
         Ergvein.Wallet.Localization.Initial
         Ergvein.Wallet.Localization.Native
         Ergvein.Wallet.Localization.Network

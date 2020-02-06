@@ -12,6 +12,12 @@ data NetworkPageStrings =
   | NPSStatus
   | NPSStatusVal Int
   | NPSStatusDescr
+  | NPSServer
+  | NPSServerVal Text
+  | NPSServerDescr
+  | NPSHeight
+  | NPSHeightVal Int
+  | NPSHeightDescr
 
 instance LocalizedPrint NetworkPageStrings where
   localizedShow l v = case l of
@@ -20,6 +26,12 @@ instance LocalizedPrint NetworkPageStrings where
       NPSStatus       -> "Status: "
       NPSStatusVal n  -> showt n <> " connections."
       NPSStatusDescr  -> "Amount of indexers connected"
+      NPSServer       -> "Server: "
+      NPSServerVal s  -> s
+      NPSServerDescr  -> "Server indexer for tx history"
+      NPSHeight       -> "Height: "
+      NPSHeightVal n  -> showt n <> " blocks."
+      NPSHeightDescr  -> "Current height (and if there any forks detected)"
     Russian -> case v of
       NPSTitle        -> "Сеть"
       NPSStatus       -> "Статус: "
@@ -31,3 +43,15 @@ instance LocalizedPrint NetworkPageStrings where
                             4 -> " соединения."
                             _ -> " соединений."
       NPSStatusDescr  -> "Количество подключенных индексаторов"
+      NPSServer       -> "Сервер: "
+      NPSServerVal s  -> s
+      NPSServerDescr  -> "Сервер индесатор для истории транзаций"
+      NPSHeight       -> "Высота: "
+      NPSHeightVal n  -> (<>) (showt n) $ case n of
+                            0 -> " блоков."
+                            1 -> " блок."
+                            2 -> " блока."
+                            3 -> " блока."
+                            4 -> " блока."
+                            _ -> " блоков."
+      NPSHeightDescr  -> "Текущая высота (и форки, если обнаружены)"
