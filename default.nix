@@ -28,6 +28,7 @@ in reflex-platform.project ({ pkgs, ... }: {
     ergo-api = ./ergo-api;
     golomb-rice = ./golomb-rice;
     reflex-dom-retractable = ./retractable;
+    reflex-dom-canvas = ./reflex-dom-canvas;
     reflex-external-ref = ./reflex-external-ref;
     reflex-localize = ./reflex-localize;
   };

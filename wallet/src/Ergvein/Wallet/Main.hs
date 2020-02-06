@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Ergvein.Wallet.Main(
     frontend
   , mainWidgetWithCss
@@ -20,7 +21,11 @@ frontend = do
   logWrite "Frontend started"
   alertHandlerWidget
   loadingWidget
+#ifdef ANDROID
+  askPatternModal
+#else
   askPasswordModal
+#endif
   logWriter =<< fmap fst getLogsTrigger
   logWrite "Entering initial page"
   void $ retractStack initialPage `liftAuth` (accountDiscovery >> retractStack balancesPage)

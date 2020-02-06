@@ -1,5 +1,5 @@
 name:                reflex-dom-retractable
-version:             0.1.1.0
+version:             0.1.2.0
 synopsis:            Routing and retractable back button for reflex-dom
 description:         Library that automates widget switches and back button retract stack. See README.md
 Stability:           Experimental

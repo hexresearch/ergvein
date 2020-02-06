@@ -18,3 +18,5 @@ packages:
   ./wallet-filters
   ./wallet-native
   ./wallet-types
+  ./interfaces/ergo
+  ./ergo-api
