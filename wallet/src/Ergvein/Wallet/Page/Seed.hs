@@ -144,8 +144,8 @@ seedRestoreWidget = mdo
   wordE <- fmap (switch . current) $ widgetHold waiting $ ffor (updated inpD) $ \t -> if t == ""
     then waiting
     else fmap leftmost $ colonize 3 (take 9 $ getWordsWithPrefix t) $ \w -> do
-       btnE <- buttonClass (pure "button button-outline guess-button restore-word") w
-       pure $ w <$ btnE
+      btnE <- buttonClass (pure "button button-outline guess-button restore-word") w
+      pure $ w <$ btnE
   let emptyStr :: Text = ""
   inpD <- fmap join $ widgetHold (textField emptyStr "") $ ffor wordE $ const $ textField emptyStr ""
   mnemD <- foldDyn (\w m -> let p = if m == "" then "" else " " in m <> p <> w) "" wordE

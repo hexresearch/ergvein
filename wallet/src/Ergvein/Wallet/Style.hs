@@ -19,6 +19,7 @@ import Language.Javascript.JSaddle hiding ((#))
 import Prelude hiding ((**), rem)
 
 import qualified Clay.Media as M
+import qualified Clay.Flexbox as F
 
 data Resources = Resources {
   robotoBlackUrl   :: !Text
@@ -269,28 +270,24 @@ initialPageCss = do
 
 balancesPageCss :: Css
 balancesPageCss = do
-  ".sync-progress" ? do
-    width $ pct 100
+  ".balances-wrapper" ? do
     maxWidth $ px 500
-    display inlineBlock
     textAlign $ alignSide sideLeft
+    margin (px 0) auto (px 0) auto
+  ".sync-progress" ? do
     fontSize $ pt 14
-  ".currency-wrapper" ? do
-    textAlign center
-    cursor pointer
-  ".currency-wrapper:hover" ? do
-    color hoverColor
   ".currency-line" ? do
-    width $ pct 100
-    maxWidth $ px 500
-    display inlineBlock
     fontSize $ pt 24
-  ".currency-name" ? do
-    display inlineBlock
-    float floatLeft
-  ".currency-balance" ? do
-    display inlineBlock
-    float floatRight
+    cursor pointer
+    display flex
+    justifyContent spaceBetween
+    flexWrap F.wrap
+  ".currency-line:hover" ? color hoverColor
+  ".currency-buttons" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1]
+    gridGap $ rem 1
+    width maxContent
 
 loadingWidgetCss :: Css
 loadingWidgetCss = do

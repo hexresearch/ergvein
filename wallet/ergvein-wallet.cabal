@@ -73,6 +73,7 @@ library
         Ergvein.Wallet.Page.PatternKey
         Ergvein.Wallet.Page.Canvas
         Ergvein.Wallet.Page.QRCode
+        Ergvein.Wallet.Page.Send
         Ergvein.Wallet.Page.Settings
         Ergvein.Wallet.Password
         Ergvein.Wallet.Platform

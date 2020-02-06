@@ -11,6 +11,7 @@ import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.History
 import Ergvein.Wallet.Page.PatternKey
+import Ergvein.Wallet.Page.Send
 import Ergvein.Wallet.Wrapper
 
 import Control.Monad.IO.Class
@@ -25,6 +26,20 @@ instance LocalizedPrint BalanceTitle where
     Russian -> case v of
       BalanceTitle  -> "Настройки"
 
+data ButtonSend = ButtonSend
+
+instance LocalizedPrint ButtonSend where
+  localizedShow l _ = case l of
+    English ->  "Send"
+    Russian ->  "Отправить"
+
+data ButtonRecieve = ButtonRecieve
+
+instance LocalizedPrint ButtonRecieve where
+  localizedShow l _ = case l of
+    English -> "Recieve"
+    Russian -> "Получить"
+
 balancesPage :: MonadFront t m => m ()
 balancesPage = do
   anon_name <- getWalletName
@@ -34,16 +49,12 @@ balancesPage = do
 #endif
   let thisWidget = Just $ pure balancesPage
   menuWidget BalanceTitle thisWidget
-  wrapper False $ do
+  wrapper False $ divClass "balances-wrapper" $ do
     syncWidget
-    historyE <- currenciesList
-    void $ nextWidget $ ffor historyE $ \cur -> Retractable {
-        retractableNext = historyPage cur
-      , retractablePrev = thisWidget
-      }
+    currenciesList
 
 syncWidget :: MonadFront t m => m ()
-syncWidget = divClass "currency-wrapper" $ do
+syncWidget = do
   progressD <- getSyncProgress
   void $ widgetHoldDyn $ ffor progressD $ \sp -> case sp of
     ScanSynced -> pure ()
@@ -74,17 +85,29 @@ instance LocalizedPrint ScanProgress where
 getSyncProgress :: MonadFront t m => m (Dynamic t ScanProgress)
 getSyncProgress = pure $ pure $ ScanDays 10
 
-currenciesList :: MonadFront t m => m (Event t Currency)
-currenciesList = fmap leftmost $ traverse currencyLine allCurrencies
+currenciesList :: MonadFront t m => m ()
+currenciesList = do
+  historyE <- leftmost <$> traverse currencyLine allCurrencies
+  void $ nextWidget $ ffor historyE $ \cur -> Retractable {
+      retractableNext = historyPage cur
+    , retractablePrev = Just $ pure balancesPage
+    }
   where
     currencyLine cur = do
-      (e, _) <- divClass' "currency-wrapper" $ divClass "currency-line" $ do
+      (e, _) <- divClass' "currency-line" $ do
         divClass "currency-name" $ text $ currencyName cur
         divClass "currency-balance" $ do
           bal <- currencyBalance cur
           dynText $ do
             m <- showMoney <$> bal
             pure $ m <> "〉"
+      divClass "currency-buttons" $ do
+        sendBtnE <- outlineButton ButtonSend
+        recieveBtnE <- outlineButton ButtonRecieve
+        nextWidget $ ffor sendBtnE $ const Retractable {
+            retractableNext = sendPage cur
+          , retractablePrev = Just $ pure balancesPage
+          }
       pure $ cur <$ domEvent Click e
 
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
