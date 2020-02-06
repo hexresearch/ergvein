@@ -28,6 +28,7 @@ import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Sync.Status
 import Reflex.Workflow
 
 filtersLoader :: (HasFiltersStorage m, MonadFrontBase t m) => m ()
@@ -42,6 +43,7 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
       ch <- getCurrentHeight BTC
       fh <- getFiltersHeight BTC
       logWrite $ "Current height is " <> showt ch <> ", and filters are for height " <> showt fh
+      postSync BTC ch fh 
       if ch > fh then do 
         let n = 100
         logWrite $ "Getting next " <> showt n <> " filters"
@@ -52,6 +54,12 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
         logWrite "Sleeping, waiting for new filters ..."
         de <- delay 120 buildE
         pure ((), go <$ de)
+
+
+postSync :: MonadFrontBase t m => Currency -> BlockHeight -> BlockHeight -> m ()
+postSync cur ch fh = do 
+  buildE <- getPostBuild
+  setSyncProgress $ SyncMeta cur SyncFilters (fromIntegral fh) (fromIntegral ch) <$ buildE
 
 -- | Get known top height for given currency
 getCurrentHeight :: MonadFrontBase t m => Currency -> m BlockHeight

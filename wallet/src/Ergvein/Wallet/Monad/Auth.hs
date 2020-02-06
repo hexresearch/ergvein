@@ -239,7 +239,7 @@ liftAuth ma0 ma = mdo
         hst             <- getHeadersStorage
         fst             <- getFiltersStorage
         syncRef         <- getSyncProgressRef
-        headersLoader
+        -- headersLoader
         filtersLoader
         a <- runReaderT (wrapped ma) $ Env
           settingsRef backEF loading langRef authRef (logoutFire ()) storeDir alertsEF

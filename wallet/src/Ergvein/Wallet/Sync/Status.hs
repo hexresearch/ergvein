@@ -68,9 +68,10 @@ syncProgressBehind v = case v of
 instance LocalizedPrint SyncProgress where 
   localizedShow l v@SyncMeta{..} = case l of 
     English -> "Syncing " <> localizedShow l syncMetaStage <> " of " <> showt syncMetaCur <> precentStr
-    Russian -> "Синхронизация " <> localizedShow l syncMetaStage <> " of " <> showt syncMetaCur <> precentStr
+    Russian -> "Синхронизация " <> localizedShow l syncMetaStage <> " " <> showt syncMetaCur <> precentStr
     where 
-      percent = ceiling $ fromIntegral syncMetaAmount / fromIntegral syncMetaTotal
+      percent :: Int
+      percent = ceiling $ 100 * (fromIntegral syncMetaAmount :: Double) / fromIntegral syncMetaTotal
       precentStr = " " <> showt percent <> "% "
   localizedShow l Synced = case l of 
     English -> "Synced"
