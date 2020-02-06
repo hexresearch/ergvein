@@ -20,6 +20,7 @@ import           Ergvein.Index.Server.Cache.Monad
 import           Ergvein.Index.Server.Cache.Schema
 import           Ergvein.Index.Server.Cache.Queries
 import           Ergvein.Index.Server.Utils
+import           Network.Bitcoin.Api.Misc
 
 import Data.Serialize
 import qualified Data.ByteString                    as B
@@ -49,13 +50,13 @@ txInfo tx txHash = let
                    , txOutValue            = HK.outValue txOut
                    }
 
-blockTxInfos :: MonadLDB m => HK.Block -> BlockHeight -> m BlockInfo
-blockTxInfos block txBlockHeight = do 
+blockTxInfos :: MonadLDB m => HK.Block -> BlockHeight -> HK.Network -> m BlockInfo
+blockTxInfos block txBlockHeight nodeNetwork = do 
   let (txInfos ,txInInfos, txOutInfos) = mconcat $ txoInfosFromTx `imap` HK.blockTxns block
       blockContent = BlockContentInfo txInfos txInInfos txOutInfos
       txInfosMap = mapBy txHash $ HK.blockTxns block
       txInSource :: MonadLDB m => TxInInfo -> m HK.Tx
-      txInSource input = do fromMaybe defa (pure <$> (Map.lookup txId txInfosMap))
+      txInSource input = fromMaybe defa (pure <$> (Map.lookup txId txInfosMap))
         where
           txId = txInTxOutHash input
           defa = do
@@ -63,7 +64,7 @@ blockTxInfos block txBlockHeight = do
             pure . fromRight (error "") . decode . fromJust . HK.decodeHex . txCacheRecHexView $ x
 
   txsEnts <- sequence $ txInSource <$> txInInfos
-  let blockAddressFilter = HK.encodeHex $ encodeBtcAddrFilter $ makeBtcFilter HK.btcTest txsEnts block
+  let blockAddressFilter = HK.encodeHex $ encodeBtcAddrFilter $ makeBtcFilter nodeNetwork txsEnts block
   let blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHexView blockAddressFilter
   pure $ BlockInfo blockMeta blockContent 
   where
@@ -93,8 +94,9 @@ blockInfo env blockHeightToScan = flip runReaderT env $ do
   maybeRawBlock <- liftIO $ btcNodeClient cfg $ flip getBlockRaw blockHash
   let rawBlock = fromMaybe blockParsingError maybeRawBlock
       parsedBlock = fromRight blockGettingError $ decode $ HS.toBytes rawBlock
+      currentNetwork = if configBTCNodeIsTestnet cfg then HK.btcTest else HK.btc
   
-  blockTxInfos parsedBlock blockHeightToScan
+  blockTxInfos parsedBlock blockHeightToScan currentNetwork
   where
     cfg    = envServerConfig env
     dbPool = envPersistencePool env

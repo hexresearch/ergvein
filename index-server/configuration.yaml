@@ -4,6 +4,7 @@ dbPort               : 5434
 dbUser               : localDb
 dbPassword           : ""
 dbName               : localDb
+BTCNodeIsTestnet     : true
 BTCNodeHost          : localhost
 BTCNodePort          : 18332
 BTCNodeUser          : bitcoinrpc

@@ -16,6 +16,7 @@ data Config = Config
   , configBlockchainScanDelay   :: !Int
   , configDbLog                 :: !Bool
   , configPubScriptHistoryScan  :: !Bool
+  , configBTCNodeIsTestnet      :: !Bool
   , configBTCNodeHost           :: !String
   , configBTCNodePort           :: !Int
   , configBTCNodeUser           :: !Text

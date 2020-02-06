@@ -21,6 +21,7 @@ import Ergvein.Index.Server.DB.Schema
 import Ergvein.Text
 import Network.Bitcoin.Api.Client
 import Network.Bitcoin.Api.Types
+import Network.Bitcoin.Api.Misc
 
 import qualified Network.Bitcoin.Api.Client as BitcoinApi
 import qualified Network.Ergo.Api.Client as ErgoApi
@@ -29,8 +30,8 @@ data ServerEnv = ServerEnv
     { envServerConfig      :: !Config
     , envLogger            :: !(Chan (Loc, LogSource, LogLevel, LogStr))
     , envPersistencePool   :: !DBPool
-    , envLevelDBContext   :: !DB
-    , envErgoNodeClient   :: !ErgoApi.Client
+    , envLevelDBContext    :: !DB
+    , envErgoNodeClient    :: !ErgoApi.Client
     }
 
 btcNodeClient :: Config -> (BitcoinApi.Client -> IO a) -> IO a
