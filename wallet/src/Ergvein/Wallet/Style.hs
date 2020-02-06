@@ -67,6 +67,7 @@ frontendCss r = do
   loadingWidgetCss
   alertsCss
   selectCss
+  buttonsToggleCss
   graphPinCodeCanvasCss
 
 textColor :: Color
@@ -371,6 +372,22 @@ selectCss = do
   "option" ? do
     fontSize $ pt 18
     height   $ em 1.8
+
+buttonsToggleCss :: Css
+buttonsToggleCss = do
+  ".button-on" ? do
+    fontSize $ pt 18
+    width $ px 200
+    backgroundColor "#000000"
+    color "#ffffff"
+  ".button-off" ? do
+    fontSize $ pt 18
+    width $ px 200
+    backgroundColor "#ffffff"
+    color "#000000"
+  ".button-not-working" ? do
+    visibility hidden
+    pointerEvents none
 
 graphPinCodeCanvasCss :: Css
 graphPinCodeCanvasCss = do
