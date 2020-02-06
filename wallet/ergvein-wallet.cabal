@@ -88,6 +88,7 @@ library
         Ergvein.Wallet.Storage.Util
         Ergvein.Wallet.Style
         Ergvein.Wallet.Sync.Status
+        Ergvein.Wallet.Sync.Widget
         Ergvein.Wallet.Util
         Ergvein.Wallet.Validate
         Ergvein.Wallet.Wrapper
