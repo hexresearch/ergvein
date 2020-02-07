@@ -38,14 +38,32 @@ data AmountString = AmountString
 instance LocalizedPrint AmountString where
   localizedShow l _ = case l of
     English -> "Amount"
-    Russian -> "Количество"
+    Russian -> "Сумма"
+
+data BtnPasteString = BtnPasteString
+
+instance LocalizedPrint BtnPasteString where
+  localizedShow l _ = case l of
+    English -> "Paste"
+    Russian -> "Вставить"
+
+data BtnScanQRCode = BtnScanQRCode
+
+instance LocalizedPrint BtnScanQRCode where
+  localizedShow l _ = case l of
+    English -> "Scan QR code"
+    Russian -> "Сканировать QR-код"
 
 sendPage :: MonadFront t m => Currency -> m ()
 sendPage cur = do
   let thisWidget = Just $ pure $ sendPage cur
   menuWidget (SendTitle cur) thisWidget
-  wrapper True $ do
+  wrapper True $ divClass "sendpage-wrapper" $ do
     recipientE <- textField RecipientString ""
+    divClass "sendpage-buttons-wrapper" $ do
+      qrE <- outlineButton BtnScanQRCode
+      pasteE <- outlineButton BtnPasteString
+      pure()
     amountE <- textField AmountString ""
-    submitE <- submitClass "button button-outline" SendBtnString
+    submitE <- submitClass "button button-outline sendpage-submit" SendBtnString
     pure ()

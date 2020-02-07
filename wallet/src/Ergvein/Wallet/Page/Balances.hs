@@ -101,9 +101,9 @@ currenciesList = do
           dynText $ do
             m <- showMoney <$> bal
             pure $ m <> "〉"
-      divClass "currency-buttons" $ do
-        sendBtnE <- outlineButton ButtonSend
-        recieveBtnE <- outlineButton ButtonRecieve
+      divClass "currency-buttons-wrapper" $ do
+        sendBtnE <- buttonClass "button button-outline currency-button" ButtonSend
+        recieveBtnE <- buttonClass "button button-outline currency-button" ButtonRecieve
         nextWidget $ ffor sendBtnE $ const Retractable {
             retractableNext = sendPage cur
           , retractablePrev = Just $ pure balancesPage

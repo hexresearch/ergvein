@@ -65,6 +65,7 @@ frontendCss r = do
   passwordCss
   initialPageCss
   balancesPageCss
+  sendPageCss
   loadingWidgetCss
   alertsCss
   selectCss
@@ -149,7 +150,6 @@ menuCss = do
     marginBottom $ px 0
   ".menu-dropdown-wrapper:hover .menu-dropdown" ? do
     display block
-
 
 buttonCss :: Css
 buttonCss = do
@@ -279,15 +279,29 @@ balancesPageCss = do
   ".currency-line" ? do
     fontSize $ pt 24
     cursor pointer
-    display flex
-    justifyContent spaceBetween
-    flexWrap F.wrap
-  ".currency-line:hover" ? color hoverColor
-  ".currency-buttons" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 3]
+    gridGap $ rem 1
+  ".currency-line:hover" ? do
+    color hoverColor
+  ".currency-balance" ? do
+    textAlign $ alignSide sideRight
+  ".currency-buttons-wrapper" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1]
     gridGap $ rem 1
-    width maxContent
+
+sendPageCss :: Css
+sendPageCss = do
+  ".sendpage-wrapper" ? do
+    maxWidth $ px 500
+    margin (px 0) auto (px 0) auto
+  ".sendpage-buttons-wrapper" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1]
+    gridGap $ rem 1
+  ".sendpage-submit" ? do
+    width $ pct 100
 
 loadingWidgetCss :: Css
 loadingWidgetCss = do
