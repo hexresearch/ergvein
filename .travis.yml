@@ -20,6 +20,6 @@ before_script:
   - cachix use ergvein
 
 script:
-  nix-build -A ghc.ergvein-wallet
-  nix-build -A ghc.ergvein-index-server
-  nix-build --arg isAndroid true -A android.ergvein-wallet
+  - nix-build -A ghc.ergvein-wallet
+  - nix-build -A ghc.ergvein-index-server
+  - nix-build --arg isAndroid true -A android.ergvein-wallet
