@@ -59,13 +59,13 @@ test-suite test-suite
       Spec
   build-depends:
       base                 >= 4.7 && < 4.13
-    , bytestring           == 0.10.*
-    , hspec                == 2.7.*
-    , lens                 == 4.17.*
-    , mtl                  == 2.2.*
-    , text                 == 1.2.*
-    , unliftio-core        == 0.1.*
-    , wreq                 == 0.5.*
+    , bytestring           
+    , hspec                
+    , lens                 
+    , mtl                  
+    , text                 
+    , unliftio-core       
+    , wreq                 
 
     , ergvein-interface-ergo
     , ergo-api
