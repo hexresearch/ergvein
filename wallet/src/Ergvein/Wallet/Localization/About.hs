@@ -23,11 +23,11 @@ instance LocalizedPrint AboutPageStrings where
       AboutLicence    -> "Licence"
       AboutHomepage   -> "Homepage"
       AboutDevelopers -> "Developers"
-      AboutDistrib    -> "Distributed by HEX Team"
+      AboutDistrib    -> ""
     Russian -> case v of
       AboutTitle      -> "О Ergvein"
       AboutVersion    -> "Версия"
       AboutLicence    -> "Лицензия"
       AboutHomepage   -> "Сайт"
       AboutDevelopers -> "Разработчики"
-      AboutDistrib    -> "Распространяется HEX Team"
+      AboutDistrib    -> ""
