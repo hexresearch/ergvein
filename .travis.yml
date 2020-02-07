@@ -5,8 +5,7 @@ cache:
   - "$HOME/nix.store"
 env:
   global:
-  - secure: AXFQcthRGqb3yilHNkjKn/X+qRnZk2qT/Le3LTQ+ScerYVGPLbwtuH+kQbsC48wJ2pMUIJ6vwHPv2eOj+nnLRugMw7Rf1VqHRHreaTrJHRV1ErRU3N7el/z5RaYs4wn6n6hmRfu9DeusJTOnNiIxmzKg+78imVP+yWn1JPuapKL27MImPggUEnJQWmfaZRwf5fg2BpbjzMP2QbtZW4a4f490Yk9mbBuqk11Z2LpR3dNQNg6fQAfwE/+P4DmEr1R18CWlkE/8b4n9d9IrbljcPFHa7oKQV36vfoBR87ZF1RC1DlT1deP6i+FyBkZxROVW0CSo4FXnwpkjmYPhBw2ROK+uy++rSFGab1+zJg7G5qOmUYdtDvZPXIw1JyDainmB5/Jecwzb5jAiXFIkcwLMYewURQGeqQj2k1MLeckD3mYnsgL8ehWaFbTNUUhDwbjkr+CXwXIvWyZk+JvwquVVQ4rVR2APLqgfb9+WhAXXR0ofRs+tLUk7fGLwwpJQV7O/eo/DtoF9jGsliAja144nSTnvsAYV2xhQ4Z1z4D81EJ/ndf1+Jbe/TZqKa9h7eriOLkBHBgJgGrWZapQ/FyrBu/fQgK0/Gmt0vbyHZxrUlGHohLeZtX+M+tQhbdk45QPcvA5wOdhfnuNYtOjXmCVuRZoU1l1OQ3fJJ02RzIXST9o=
-
+    - secure: "SW7XDQlFaHJDrY29VaFwCIW+QBtjY4/kKDS/vFGQq6BGxFuIqkv0nPZ36ONI76/cDZ+tyacijkWhTGL/zftnqHAgkbuK5zgD1KMedypbUL/RvW2tWKkhkUZ9cp7NUYY/60QfCv93ySgMM+nU1WqwbV/JgWjoFqzedN/su/g76Bm429V4FHK+rLGhGLbta4gHCRLe1GG4WDFOeaBrzTWd5wCz247SD9VEF97Cj8HVoqtFYTuLBvWee6JWE8l/IzG4iAlf12enCZUbk7CkDHYt9vemF+2Z1IWSlA9Rr70s+u7ZzHklgBvFHVyzt7wXVUrqhSWgX3bbd6UNR0Q9ThocWcvmD38PzcW3XyyDswuuhMlf84/qN8wJXGHc1E7grt1xJ1cz6mC7jbWYH3VvU0jhkR7lMJ+oV5hES2IAD8G+YnYozcCb4tiqgg3sizGkFfJ0DRUinK8L9NwzWf6bG33yKomgq3LhCekl2o1OlPkmzqGQlm8o11f8ClyHQaasreYmM0tx5wmbZTdl2F2ZPrh+LIy88TAYQirU25ZZSwkUwU8Sg6e/AKsaIaFlbzh67sIICKEImjdFbKhv8GmCAzzf/9iTADk7TBp1A6jXs1pbYLM4P+u8N1/sYwDQR/3L9dfCACiVxhWDvQ2doIYR/se3UtjQvhg2YvuIw2H9ZmnX+II="
 before_install:
 - sudo mkdir -p /etc/nix
 - echo "substituters = https://cache.nixos.org/ file://$HOME/nix.store" | sudo tee
@@ -19,6 +18,7 @@ before_script:
 - nix-env -iA cachix -f https://cachix.org/api/v1/install
 - cachix use ergvein
 script:
-- nix-build -A ghc.ergvein-wallet | cachix push ergvein
-- nix-build -A ghc.ergvein-index-server | cachix push ergvein
-- nix-build --arg isAndroid true -A android.ergvein-wallet | cachix push ergvein
+- cachix push ergvein --watch-store&
+- nix-build -A ghc.ergvein-wallet
+- nix-build -A ghc.ergvein-index-server
+- nix-build --arg isAndroid true -A android.ergvein-wallet
