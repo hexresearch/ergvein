@@ -15,7 +15,7 @@ before_cache:
   - nix copy --to file://$HOME/nix.store -f default.nix buildInputs
 
 before_script:
-  - sudo mkdir /etc/nix && echo 'sandbox = true' | sudo tee /etc/nix/nix.conf
+  # - sudo mkdir /etc/nix && echo 'sandbox = true' | sudo tee /etc/nix/nix.conf
   - nix-env -iA cachix -f https://cachix.org/api/v1/install
   - cachix use ergvein
 
