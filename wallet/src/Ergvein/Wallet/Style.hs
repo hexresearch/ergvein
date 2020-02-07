@@ -64,6 +64,7 @@ frontendCss r = do
   passwordCss
   initialPageCss
   balancesPageCss
+  aboutPageCss
   loadingWidgetCss
   alertsCss
   selectCss
@@ -309,6 +310,38 @@ balancesPageCss = do
     display tableCell
     paddingLeft $ px 3
     textAlign $ alignSide sideRight
+
+aboutPageCss :: Css
+aboutPageCss = do
+  ".about-wrapper" ? do
+    textAlign center
+  ".about-hr-sep" ? do
+    border solid (px 3) black
+  ".about-line" ? do
+    width $ pct 100
+    maxWidth $ px 500
+    display inlineBlock
+    textAlign center
+  ".about-content" ? do
+    display displayTable
+    marginTop $ px 10
+    fontSize $ pt (if isAndroid then 12 else 18)
+  ".about-content-row" ? do
+    display tableRow
+  ".about-content-cell-label" ? do
+    display tableCell
+    let px' = px 5 in padding px' (px 20) px' px'
+    textAlign $ alignSide sideLeft
+    verticalAlign vAlignBottom
+  ".about-content-cell-value" ? do
+    display tableCell
+    let px' = px 5 in padding px' px' px' px'
+    textAlign $ alignSide sideLeft
+    verticalAlign vAlignBottom
+    width $ pct 1
+  ".about-distrib" ? do
+    paddingTop $ px 45
+    fontSize $ pt (if isAndroid then 12 else 18)
 
 loadingWidgetCss :: Css
 loadingWidgetCss = do
