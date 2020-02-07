@@ -22,10 +22,25 @@ import qualified Clay.Media as M
 import qualified Clay.Flexbox as F
 
 data Resources = Resources {
-  robotoBlackUrl   :: !Text
-, robotoBoldUrl    :: !Text
-, robotoMediumUrl  :: !Text
-, robotoRegularUrl :: !Text
+  robotoBlackUrl    :: !Text
+, robotoBoldUrl     :: !Text
+, robotoMediumUrl   :: !Text
+, robotoRegularUrl  :: !Text
+, fabrands400eotUrl    :: !Text
+, fabrands400svgUrl    :: !Text
+, fabrands400ttfUrl    :: !Text
+, fabrands400woffUrl   :: !Text
+, fabrands400woff2Url  :: !Text
+, faregular400eotUrl   :: !Text
+, faregular400svgUrl   :: !Text
+, faregular400ttfUrl   :: !Text
+, faregular400woffUrl  :: !Text
+, faregular400woff2Url :: !Text
+, fasolid900eotUrl     :: !Text
+, fasolid900svgUrl     :: !Text
+, fasolid900ttfUrl     :: !Text
+, fasolid900woffUrl    :: !Text
+, fasolid900woff2Url   :: !Text
 }
 
 embedResources :: MonadJSM m => m Resources
@@ -34,6 +49,21 @@ embedResources = Resources
   <*> createObjectURL robotoBold
   <*> createObjectURL robotoMedium
   <*> createObjectURL robotoRegular
+  <*> createObjectURL fabrands400eot
+  <*> createObjectURL fabrands400svg
+  <*> createObjectURL fabrands400ttf
+  <*> createObjectURL fabrands400woff
+  <*> createObjectURL fabrands400woff2
+  <*> createObjectURL faregular400eot
+  <*> createObjectURL faregular400svg
+  <*> createObjectURL faregular400ttf
+  <*> createObjectURL faregular400woff
+  <*> createObjectURL faregular400woff2
+  <*> createObjectURL fasolid900eot
+  <*> createObjectURL fasolid900svg
+  <*> createObjectURL fasolid900ttf
+  <*> createObjectURL fasolid900woff
+  <*> createObjectURL fasolid900woff2
 
 compileFrontendCss :: MonadJSM m => m ByteString
 compileFrontendCss = do
@@ -43,11 +73,12 @@ compileFrontendCss = do
 frontendCssBS :: Resources -> ByteString
 frontendCssBS r = let
   selfcss = toStrict . encodeUtf8 . renderWith compact [] $ frontendCss r
-  in milligramCss <> tooltipCss <> selfcss
+  in milligramCss <> tooltipCss <> fontawesomeCss <> selfcss
 
 frontendCss :: Resources -> Css
 frontendCss r = do
   fontFamilies r
+  faFontFamilies r
   html ? textAlign center
   body ? do
     color textColor
@@ -183,6 +214,38 @@ fontFamilies Resources{..} = do
       fontFamily [name] []
       fontFaceSrc [FontFaceSrcUrl url (Just TrueType)]
       fontWeight $ weight 400
+
+faFontFamilies :: Resources -> Css
+faFontFamilies Resources{..} = do
+  makeFontFace "Font Awesome 5 Brands" 400 [
+      fabrands400eotUrl
+    , fabrands400svgUrl
+    , fabrands400ttfUrl
+    , fabrands400woffUrl
+    , fabrands400woff2Url
+    ]
+  makeFontFace "Font Awesome 5 Free" 400 [
+      faregular400eotUrl
+    , faregular400svgUrl
+    , faregular400ttfUrl
+    , faregular400woffUrl
+    , faregular400woff2Url
+    ]
+  makeFontFace "Font Awesome 5 Free" 900 [
+      fasolid900eotUrl
+    , fasolid900svgUrl
+    , fasolid900ttfUrl
+    , fasolid900woffUrl
+    , fasolid900woff2Url
+    ]
+  where
+    makeFontFace name w urls = fontFace $ do
+      fontFamily [name] []
+      fontStyle normal
+      fontFaceSrc [FontFaceSrcUrl url (Just format)
+        | url    <- urls,
+          format <- [EmbeddedOpenType, SVG, TrueType, WOFF, WOFF2]]
+      fontWeight $ weight w
 
 mnemonicWidgetCss :: Css
 mnemonicWidgetCss = do
