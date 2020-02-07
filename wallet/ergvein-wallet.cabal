@@ -42,6 +42,7 @@ library
         Ergvein.Wallet.Loading
         Ergvein.Wallet.Localization.AuthInfo
         Ergvein.Wallet.Localization.Client
+        Ergvein.Wallet.Localization.Currencies
         Ergvein.Wallet.Localization.Initial
         Ergvein.Wallet.Localization.Native
         Ergvein.Wallet.Localization.Password
@@ -66,10 +67,14 @@ library
         Ergvein.Wallet.Monad.Util
         Ergvein.Wallet.Page.About
         Ergvein.Wallet.Page.Balances
+        Ergvein.Wallet.Page.Currencies
         Ergvein.Wallet.Page.History
         Ergvein.Wallet.Page.Initial
         Ergvein.Wallet.Page.Password
         Ergvein.Wallet.Page.Seed
+        Ergvein.Wallet.Page.PatternKey
+        Ergvein.Wallet.Page.Canvas
+        Ergvein.Wallet.Page.QRCode
         Ergvein.Wallet.Page.Settings
         Ergvein.Wallet.Password
         Ergvein.Wallet.Platform
@@ -83,6 +88,7 @@ library
         Ergvein.Wallet.Style
         Ergvein.Wallet.Util
         Ergvein.Wallet.Validate
+        Ergvein.Wallet.Widget.GraphPinCode
         Ergvein.Wallet.Wrapper
         Ergvein.Wallet.Yaml
     hs-source-dirs: src
@@ -103,6 +109,7 @@ library
         bytestring >=0.10 && <0.11,
         cereal >=0.5 && <0.6,
         clay >=0.14 && <0.15,
+        composition-extra -any,
         containers >=0.6 && <0.7,
         data-default -any,
         directory -any,
@@ -141,11 +148,13 @@ library
         semialign -any,
         servant -any,
         servant-client >=0.16 && <0.17,
+        split >=0.2.3.3 && <0.3,
         stm >=2.4 && <2.6,
         template-haskell -any,
         text >=1.2 && <1.3,
         these -any,
         time -any,
+        qrcode-core,
         unliftio-core >= 0.1 && < 0.2,
         vector -any,
         yaml -any

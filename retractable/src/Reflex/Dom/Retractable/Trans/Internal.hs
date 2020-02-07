@@ -18,6 +18,7 @@ import Language.Javascript.JSaddle.Types
 import Reflex
 import Reflex.Dom
 import Reflex.Dom.Retractable.Class
+import Reflex.Host.Class
 
 -- | Helper to simplify types in `RetractEnv`
 type RetractableT t m = Retractable t (RetractT t m)
@@ -67,6 +68,7 @@ deriving instance (Monoid w, DynamicWriter t w m) => DynamicWriter t w (RetractT
 deriving instance (Monoid w, MonadBehaviorWriter t w m) => MonadBehaviorWriter t w (RetractT t m)
 deriving instance (Semigroup w, EventWriter t w m) => EventWriter t w (RetractT t m)
 deriving instance (Requester t m) => Requester t (RetractT t m)
+deriving instance MonadReflexCreateTrigger t m => MonadReflexCreateTrigger t (RetractT t m)
 
 instance MonadTrans (RetractT t) where
   lift = RetractT . lift

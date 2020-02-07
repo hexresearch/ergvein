@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Ergvein.Wallet.Page.Password(
     passwordPage
   , askPasswordPage
@@ -17,12 +18,20 @@ passwordPage :: MonadFrontBase t m => Mnemonic -> m ()
 passwordPage mnemonic = wrapper True $ do
   divClass "password-setup-title" $ h4 $ localizedText PPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText PPSDescr
+#ifdef ANDROID
+  logPassE <- setupLoginPattern
+#else
   logPassE <- setupLoginPassword
+#endif
   createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo mnemonic) logPassE
   authInfoE <- handleDangerMsg createStorageE
   void $ setAuthInfo $ Just <$> authInfoE
 
-askPasswordPage :: MonadFrontBase t m => m (Event t Password)
-askPasswordPage = wrapper True $ do
+askPasswordPage :: MonadFrontBase t m => Text -> m (Event t Password)
+askPasswordPage name = wrapper True $ do
   divClass "password-ask-title" $ h4 $ localizedText PPSUnlock
+#ifdef ANDROID
+  askPattern name
+#else
   askPassword
+#endif
