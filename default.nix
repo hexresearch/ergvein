@@ -12,7 +12,6 @@ let
 in reflex-platform.project ({ pkgs, ... }: {
   packages = {
     data-merkle-tree = ./data-merkle-tree;
-    ergo-api = ./ergo-api;
     ergvein-checkpoint-generator = ./checkpoint-generator;
     ergvein-common = ./common;
     ergvein-crypto = ./crypto;
@@ -26,6 +25,8 @@ in reflex-platform.project ({ pkgs, ... }: {
     ergvein-wallet-filters = ./wallet-filters;
     ergvein-wallet-native = ./wallet-native;
     ergvein-wallet-types = ./wallet-types;
+    ergo-api = ./ergo-api;
+    golomb-rice = ./golomb-rice;
     reflex-dom-retractable = ./retractable;
     reflex-dom-canvas = ./reflex-dom-canvas;
     reflex-external-ref = ./reflex-external-ref;
@@ -43,9 +44,10 @@ in reflex-platform.project ({ pkgs, ... }: {
       "ergvein-index-server"
       "ergvein-interface-ergo"
       "ergvein-wallet-desktop"
+      "ergvein-wallet-filters"
       "ergvein-wallet-native"
-      "ergvein-wallet-types"
       "ergvein-wallet"
+      "golomb-rice"
       "reflex-dom-retractable"
       "reflex-external-ref"
       "reflex-localize"

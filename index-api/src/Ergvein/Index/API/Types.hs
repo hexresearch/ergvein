@@ -56,6 +56,16 @@ $(deriveJSON (aesonOptionsStripPrefix "headersReq") ''BlockHeadersRequest)
 
 type BlockHeadersResponse = [BlockHeaderHexView]
 
+-- Filters
+data BlockFiltersRequest = BlockFiltersRequest
+    { filtersReqCurrency         :: !Currency
+    , filtersReqStartIndex       :: !BlockHeight
+    , filtersReqAmount           :: !Word64
+    } deriving (Eq, Show, Generic)
+$(deriveJSON (aesonOptionsStripPrefix "filtersReq") ''BlockFiltersRequest)
+
+type BlockFiltersResponse = [AddressFilterHexView]
+
 -- Merkle
 data TxMerkleProofRequest = TxMerkleProofRequest
     { merkleReqCurrency         :: !Currency

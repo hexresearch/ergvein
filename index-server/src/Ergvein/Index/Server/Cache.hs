@@ -25,13 +25,13 @@ instance Conversion TxOutInfo TxOutCacheRecItem where
   convert txOutInfo = TxOutCacheRecItem (txOutIndex txOutInfo) (txOutValue txOutInfo) (txOutTxHash txOutInfo)
 
 instance Conversion TxInfo TxCacheRec where
-  convert txInfo = TxCacheRec (txHash txInfo) (txBlockHeight txInfo) (txBlockIndex txInfo)
+  convert txInfo = TxCacheRec (txHash txInfo) (txHexView txInfo) (txBlockHeight txInfo) (txBlockIndex txInfo)
 
 cacheBlockMetaInfos :: MonadIO m => DB -> [BlockMetaInfo] -> m ()
 cacheBlockMetaInfos db infos = write db def $ putItems keySelector valueSelector infos
   where
     keySelector   info = cachedMetaKey (blockMetaCurrency info, blockMetaBlockHeight info)
-    valueSelector info = BlockMetaCacheRec $ blockMetaHeaderHexView info
+    valueSelector info = BlockMetaCacheRec (blockMetaHeaderHexView info) (blockMetaAddressFilterHexView info)
 
 cacheTxInfos :: MonadIO m => DB -> [TxInfo] -> m ()
 cacheTxInfos db infos = do
