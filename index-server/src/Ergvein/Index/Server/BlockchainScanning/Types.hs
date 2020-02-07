@@ -6,6 +6,7 @@ import Ergvein.Types.Block
 
 data TxInfo = TxInfo
   { txHash        :: TxHash
+  , txHexView     :: TxHexView
   , txBlockHeight :: BlockHeight
   , txBlockIndex  :: TxBlockIndex
   }
@@ -27,6 +28,7 @@ data BlockMetaInfo = BlockMetaInfo
   { blockMetaCurrency      :: Currency
   , blockMetaBlockHeight   :: BlockHeight
   , blockMetaHeaderHexView :: BlockHeaderHexView
+  , blockMetaAddressFilterHexView :: AddressFilterHexView
   }
 
 data BlockContentInfo = BlockContentInfo

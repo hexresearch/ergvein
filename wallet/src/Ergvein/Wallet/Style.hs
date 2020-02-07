@@ -65,9 +65,11 @@ frontendCss r = do
   initialPageCss
   balancesPageCss
   networkPageCss
+  aboutPageCss
   loadingWidgetCss
   alertsCss
   selectCss
+  buttonsToggleCss
   graphPinCodeCanvasCss
 
 textColor :: Color
@@ -285,13 +287,62 @@ balancesPageCss = do
     width $ pct 100
     maxWidth $ px 500
     display inlineBlock
-    fontSize $ pt 24
+    fontSize $ pt (if isAndroid then 18 else 24)
+  ".currency-content" ? do
+    display displayTable
+    width $ pct 100
+  ".currency-content-row" ? do
+    display tableRow
+    cursor pointer
+  ".currency-content-row:hover" ? do
+    color hoverColor
   ".currency-name" ? do
-    display inlineBlock
-    float floatLeft
+    display tableCell
+    paddingRight $ px 3
+    textAlign $ alignSide sideLeft
   ".currency-balance" ? do
+    display tableCell
+    paddingRight $ px 3
+    textAlign $ alignSide sideRight
+  ".currency-unit" ? do
+    display tableCell
+    textAlign $ alignSide sideLeft
+  ".currency-arrow" ? do
+    display tableCell
+    paddingLeft $ px 3
+    textAlign $ alignSide sideRight
+
+aboutPageCss :: Css
+aboutPageCss = do
+  ".about-wrapper" ? do
+    textAlign center
+  ".about-hr-sep" ? do
+    border solid (px 3) black
+  ".about-line" ? do
+    width $ pct 100
+    maxWidth $ px 500
     display inlineBlock
-    float floatRight
+    textAlign center
+  ".about-content" ? do
+    display displayTable
+    marginTop $ px 10
+    fontSize $ pt (if isAndroid then 12 else 18)
+  ".about-content-row" ? do
+    display tableRow
+  ".about-content-cell-label" ? do
+    display tableCell
+    let px' = px 5 in padding px' (px 20) px' px'
+    textAlign $ alignSide sideLeft
+    verticalAlign vAlignBottom
+  ".about-content-cell-value" ? do
+    display tableCell
+    let px' = px 5 in padding px' px' px' px'
+    textAlign $ alignSide sideLeft
+    verticalAlign vAlignBottom
+    width $ pct 1
+  ".about-distrib" ? do
+    paddingTop $ px 45
+    fontSize $ pt (if isAndroid then 12 else 18)
 
 networkPageCss :: Css
 networkPageCss = do
@@ -423,6 +474,22 @@ selectCss = do
   "option" ? do
     fontSize $ pt 18
     height   $ em 1.8
+
+buttonsToggleCss :: Css
+buttonsToggleCss = do
+  ".button-on" ? do
+    fontSize $ pt 18
+    width $ px 200
+    backgroundColor "#000000"
+    color "#ffffff"
+  ".button-off" ? do
+    fontSize $ pt 18
+    width $ px 200
+    backgroundColor "#ffffff"
+    color "#000000"
+  ".button-not-working" ? do
+    visibility hidden
+    pointerEvents none
 
 graphPinCodeCanvasCss :: Css
 graphPinCodeCanvasCss = do

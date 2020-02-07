@@ -1,4 +1,4 @@
-module Ergvein.Crypto.Address
+module Ergvein.Types.Address
   (
       EgvAddress(..)
     , EgvAddressContent(..)

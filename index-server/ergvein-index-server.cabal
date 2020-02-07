@@ -47,8 +47,8 @@ library
       , conversion               >= 1.2     &&  < 1.3
       , data-default             >= 0.7     &&  < 0.8
       , directory                >= 1.3     &&  < 1.4
-      , esqueleto                >= 3.0     &&  < 4.0
-      , exceptions               >= 0.10    &&  < 0.11
+      , esqueleto                >= 2.0     &&  < 3.0
+      , exceptions               >= 0.10    &&  < 0.11 
       , flat                     >= 0.3     &&  < 0.4
       , haskoin-core             >= 0.8     &&  < 0.9
       , hexstring                >= 0.11    &&  < 0.12
@@ -83,6 +83,7 @@ library
       , ergvein-crypto
       , ergvein-index-api
       , ergvein-interface-ergo
+      , ergvein-wallet-filters
       , ergvein-wallet-types
 
   default-language:    Haskell2010

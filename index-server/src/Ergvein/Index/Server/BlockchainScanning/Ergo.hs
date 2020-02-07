@@ -47,7 +47,8 @@ blockTxInfos :: ApiMonad m => FullBlock -> BlockHeight -> m BlockInfo
 blockTxInfos block txBlockHeight = do
   (txInfos ,txInInfos, txOutInfos) <- mconcat <$> (sequence $ txoInfosFromTx `imap` (transactions $ blockTransactions block))
   let blockContent = BlockContentInfo txInfos txInInfos txOutInfos
-      blockMeta = BlockMetaInfo ERGO (fromIntegral txBlockHeight) blockHeaderHexView
+      blockAddressFilter = const "ergoBlockAddressFilter" $ undefined
+      blockMeta = BlockMetaInfo ERGO (fromIntegral txBlockHeight) blockHeaderHexView blockAddressFilter
   pure $ BlockInfo blockMeta blockContent
   where
     blockHeaderHexView = bs2Hex $ encode $ headerFromApi $ header block
@@ -55,6 +56,7 @@ blockTxInfos block txBlockHeight = do
     txoInfosFromTx txBlockIndex tx = do
       let txHash = bs2Hex $ unTransactionId $ transactionId (tx :: ErgoTransaction)
           txI = TxInfo { txHash = txHash
+                       , txHexView = "txHexView"
                        , txBlockHeight = txBlockHeight
                        , txBlockIndex  = fromIntegral txBlockIndex
                        }
@@ -67,16 +69,13 @@ actualHeight env = do
     pure $ fromIntegral $ fromMaybe 0 $ bestBlockHeight info
 
 blockInfo :: ServerEnv -> BlockHeight -> IO BlockInfo
-blockInfo env blockHeightToScan = do
-    headersAtHeight <-
-        flip runReaderT (envErgoNodeClient env)
-        $ getHeaderIdsAtHeight
-        $ Height
-        $ fromIntegral blockHeightToScan
+blockInfo env blockHeightToScan = flip runReaderT (envErgoNodeClient env) $ do
+  headersAtHeight <- getHeaderIdsAtHeight
+      $ Height
+      $ fromIntegral blockHeightToScan
 
-    let mainChainId = head headersAtHeight
+  let mainChainId = head headersAtHeight
 
-    block <- flip runReaderT (envErgoNodeClient env) $ getById mainChainId
-    blockInfo <- flip runReaderT (envErgoNodeClient env) $ blockTxInfos block blockHeightToScan
-
-    pure blockInfo
+  block <- getById mainChainId
+  blockInfo <- blockTxInfos block blockHeightToScan
+  pure blockInfo
