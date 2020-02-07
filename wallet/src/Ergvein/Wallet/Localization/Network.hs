@@ -7,6 +7,7 @@ import Ergvein.Types.Transaction
 import Ergvein.Wallet.Language
 
 import Data.Text
+import Servant.Client (BaseUrl, showBaseUrl)
 
 data NetworkPageStrings =
     NPSTitle
@@ -14,7 +15,7 @@ data NetworkPageStrings =
   | NPSStatusVal Int
   | NPSStatusDescr
   | NPSServer
-  | NPSServerVal Text
+  | NPSServerVal BaseUrl
   | NPSServerDescr
   | NPSHeight
   | NPSHeightVal BlockHeight
@@ -31,7 +32,7 @@ instance LocalizedPrint NetworkPageStrings where
       NPSStatusVal n  -> showt n <> " connections."
       NPSStatusDescr  -> "Amount of indexers connected"
       NPSServer       -> "Server: "
-      NPSServerVal s  -> s
+      NPSServerVal s  -> pack $ showBaseUrl s
       NPSServerDescr  -> "Server indexer for tx history"
       NPSHeight       -> "Height: "
       NPSHeightVal n  -> showt n <> " blocks."
@@ -51,7 +52,7 @@ instance LocalizedPrint NetworkPageStrings where
                             _ -> " соединений."
       NPSStatusDescr  -> "Количество подключенных индексаторов"
       NPSServer       -> "Сервер: "
-      NPSServerVal s  -> s
+      NPSServerVal s  -> pack $ showBaseUrl s
       NPSServerDescr  -> "Сервер индесатор для истории транзаций"
       NPSHeight       -> "Высота: "
       NPSHeightVal n  -> (<>) (showt n) $ case n of

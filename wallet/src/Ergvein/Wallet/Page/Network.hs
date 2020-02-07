@@ -3,12 +3,15 @@ module Ergvein.Wallet.Page.Network(
     networkPage
   ) where
 
+import Control.Monad.IO.Class
 import qualified Data.Map.Strict as M
+import Servant.Client (BaseUrl, parseBaseUrl)
 
 import Ergvein.Wallet.Client
 import Ergvein.Index.API.Types
 import Ergvein.Text
 import Ergvein.Types.Currency
+import Ergvein.Types.Transaction (BlockHeight)
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Currency
@@ -49,36 +52,76 @@ optionsContent :: MonadFront t m => Currency -> m ()
 optionsContent cur = do
   gpbE <- getPostBuild
   lineOption $ do
-    nameOption NPSStatus
-    valueOption $ NPSStatusVal 10
-    descrOption NPSStatusDescr
-    labelHorSep
+    statusD <- flip fmap (tempGetStatus cur) $ \sD -> ffor sD $ \case
+                    Left err  -> NPSError err
+                    Right v   -> NPSStatusVal v
+    lineOptionNoEdit NPSStatus statusD NPSStatusDescr
   lineOption $ do
     nameOption NPSServer
-    valueOption $ NPSServerVal "test.server.world.ru"
+    baseUrlD <- fmap (NPSServerVal <$>) $ tempGetServer cur
+    valueOptionDyn baseUrlD
     descrOption NPSServerDescr
     labelHorSep
   lineOption $ do
-    nameOption NPSHeight
-    heightE' <- getHeight (HeightRequest cur <$ gpbE)
-    let heightE = ffor heightE' $ \case
-                    Left err    -> NPSError err
-                    Right hrsp  -> NPSHeightVal $ heightRespHeight hrsp
-    heightD <- holdDyn NPSWait heightE
-    valueOptionDyn heightD
-    descrOption NPSHeightDescr
-    labelHorSep
+    heightD <- flip fmap (tempGetHeight cur) $ \hD -> ffor hD $ \case
+                 Left err   -> NPSError err
+                 Right hrsp -> NPSHeightVal hrsp
+    lineOptionNoEdit NPSHeight heightD NPSHeightDescr
   pure ()
   where
     lineOption       = divClass "network-wrapper" . divClass "network-line"
     nameOption       = divClass "network-name"    . localizedText
-    valueOption      = divClass "network-value"   . localizedText
+    --valueOption      = divClass "network-value"   . localizedText
     valueOptionDyn v = getLanguage >>= \langD -> divClass "network-value" $ dynText $ ffor2 langD v localizedShow
     descrOption      = (>>) elBR . divClass "network-descr" . localizedText
     labelHorSep      = elAttr "hr" [("class","network-hr-sep-lb")] blank
     elBR             = el "br" blank
-    --optionSection t v d = do
-    --  nameOption t
-    --  valueOption v
-    --  descrOption d
-    --  labelHorSep
+
+lineOptionNoEdit :: MonadFront t m
+                 => NetworkPageStrings
+                 -> Dynamic t NetworkPageStrings
+                 -> NetworkPageStrings
+                 -> m ()
+lineOptionNoEdit name valD descr = do
+  nameOption name
+  valueOptionDyn valD
+  descrOption descr
+  labelHorSep
+  where
+    nameOption       = divClass "network-name"    . localizedText
+    valueOptionDyn v = getLanguage >>= \langD -> divClass "network-value" $ dynText $ ffor2 langD v localizedShow
+    descrOption      = (>>) elBR . divClass "network-descr" . localizedText
+    labelHorSep      = elAttr "hr" [("class","network-hr-sep-lb")] blank
+    elBR             = el "br" blank
+
+
+-- | Temporary stubs for data
+data TempErr =
+    TempErr
+  | TempErrNoData
+
+instance LocalizedPrint TempErr where
+  localizedShow l v = case l of
+    English -> case v of
+      TempErr       -> "Error"
+      TempErrNoData -> "It is not possibleto receive data"
+    Russian -> case v of
+      TempErr       -> "Ошибка"
+      TempErrNoData -> "Невозможно получить данные"
+
+tempGetStatus:: MonadFront t m => Currency -> m (Dynamic t (Either TempErr Int))
+tempGetStatus = \case
+  BTC   -> pure $ pure $ Right 1
+  ERGO  -> pure $ pure $ Left TempErr
+
+tempGetHeight :: MonadFront t m => Currency -> m (Dynamic t (Either TempErr BlockHeight))
+tempGetHeight = \case
+  BTC   -> pure $ pure $ Right 5
+  ERGO  -> pure $ pure $ Right 3
+
+tempGetServer :: MonadFront t m => Currency -> m (Dynamic t BaseUrl)
+tempGetServer = \case
+  BTC   -> do baseUrl <- liftIO $ parseBaseUrl "http://test.serverbtc.ru"
+              pure $ pure baseUrl
+  ERGO  -> do baseUrl <- liftIO $ parseBaseUrl "http://test.serverergo.ru"
+              pure $ pure baseUrl
