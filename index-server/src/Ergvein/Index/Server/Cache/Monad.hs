@@ -12,7 +12,7 @@ import Data.Maybe
 import qualified Database.LevelDB as LDB
 import qualified Data.ByteString as BS
 
-class (MonadLogger m, MonadUnliftIO m) => MonadLDB m where
+class  MonadUnliftIO m => MonadLDB m where
   getDb :: m LDB.DB
 
 data AreaKey = AreaKey 

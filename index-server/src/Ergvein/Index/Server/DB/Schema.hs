@@ -17,6 +17,7 @@ ScannedHeightRec
   deriving Show
 TxRec
   hash TxHash
+  hexView TxHexView
   blockHeigh BlockHeight
   blockIndex TxBlockIndex
   deriving Show
@@ -35,13 +36,14 @@ BlockMetaRec
   currency Currency
   height BlockHeight
   blockHeaderHexView BlockHeaderHexView
+  addressFilterHexView AddressFilterHexView
   deriving Show
   |]
 
 instance Conversion (Entity TxRec) TxInfo where
   convert entity = let 
     value = entityVal entity 
-    in TxInfo (txRecHash value) (txRecBlockHeigh value) (txRecBlockIndex value)
+    in TxInfo (txRecHash value) (txRecHexView value) (txRecBlockHeigh value) (txRecBlockIndex value)
 
 instance Conversion (Entity TxInRec) TxInInfo where
   convert entity = let 
@@ -56,4 +58,4 @@ instance Conversion (Entity TxOutRec) TxOutInfo where
 instance Conversion (Entity BlockMetaRec) BlockMetaInfo where
   convert entity = let 
     value = entityVal entity 
-    in BlockMetaInfo (blockMetaRecCurrency value) (blockMetaRecHeight value) (blockMetaRecBlockHeaderHexView value)
+    in BlockMetaInfo (blockMetaRecCurrency value) (blockMetaRecHeight value) (blockMetaRecBlockHeaderHexView value) (blockMetaRecAddressFilterHexView value)
