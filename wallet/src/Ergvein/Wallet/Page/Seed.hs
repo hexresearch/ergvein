@@ -10,6 +10,7 @@ import Data.Bifunctor
 import Data.List (permutations)
 import Ergvein.Crypto.Keys
 import Ergvein.Crypto.WordLists
+import Ergvein.Crypto.Util
 import Ergvein.Text
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input

@@ -19,9 +19,9 @@ initAuthInfo mnemonic login pass = do
     Right s -> case passwordToECIESPrvKey pass of
       Left err -> pure $ Left GenerateECIESKeyAlert
       Right k -> pure $ Right AuthInfo {
-          authInfo'storage = s
-        , authInfo'eciesPubKey = toPublic k
-        , authInfo'isUpdate = False
+          _authInfo'storage = s
+        , _authInfo'eciesPubKey = toPublic k
+        , _authInfo'isUpdate = False
         }
 
 loadAuthInfo :: (MonadIO m, HasStoreDir m, PlatformNatives) => WalletName -> Password -> m (Either AuthInfoAlert AuthInfo)
@@ -32,7 +32,7 @@ loadAuthInfo login pass = do
     Right s -> case passwordToECIESPrvKey pass of
       Left err -> pure $ Left GenerateECIESKeyAlert
       Right k -> pure $ Right AuthInfo {
-          authInfo'storage = s
-        , authInfo'eciesPubKey = toPublic k
-        , authInfo'isUpdate = False
+          _authInfo'storage = s
+        , _authInfo'eciesPubKey = toPublic k
+        , _authInfo'isUpdate = False
         }

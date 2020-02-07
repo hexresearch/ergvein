@@ -1,13 +1,6 @@
-module Ergvein.Types.Storage
-  (
-    PrivateKeystore
-  , PublicKeystore
-  , PrivateStorage(..)
-  , EncryptedPrivateStorage(..)
-  , ErgveinStorage(..)
-  , EncryptedErgveinStorage(..)
-  ) where
+module Ergvein.Types.Storage where
 
+import Control.Lens (makeLenses)
 import Crypto.Cipher.AES
 import Crypto.Cipher.Types
 import Crypto.ECC (Curve_X25519, Point, encodePoint, decodePoint)
@@ -30,19 +23,25 @@ import qualified Data.Map.Strict          as M
 import qualified Data.Text.Encoding.Error as TEE
 import qualified Data.Text.Encoding       as TE
 
+type WalletName = Text
+
+type Password = Text
+
 type PrivateKeystore = M.Map Currency EgvPrvKeyсhain
 
 data PrivateStorage = PrivateStorage {
-    privateStorage'seed        :: Seed
-  , privateStorage'root        :: EgvRootXPrvKey
-  , privateStorage'privateKeys :: PrivateKeystore
+    _privateStorage'seed        :: Seed
+  , _privateStorage'root        :: EgvRootXPrvKey
+  , _privateStorage'privateKeys :: PrivateKeystore
   }
+
+makeLenses ''PrivateStorage
 
 instance ToJSON PrivateStorage where
   toJSON PrivateStorage{..} = object [
-      "seed"        .= toJSON (bs2Base64Text privateStorage'seed)
-    , "root"        .= toJSON privateStorage'root
-    , "privateKeys" .= toJSON privateStorage'privateKeys
+      "seed"        .= toJSON (bs2Base64Text _privateStorage'seed)
+    , "root"        .= toJSON _privateStorage'root
+    , "privateKeys" .= toJSON _privateStorage'privateKeys
     ]
 
 instance FromJSON PrivateStorage where
@@ -52,16 +51,18 @@ instance FromJSON PrivateStorage where
     <*> o .: "privateKeys"
 
 data EncryptedPrivateStorage = EncryptedPrivateStorage {
-    encryptedPrivateStorage'ciphertext :: ByteString
-  , encryptedPrivateStorage'salt       :: ByteString
-  , encryptedPrivateStorage'iv         :: IV AES256
+    _encryptedPrivateStorage'ciphertext :: ByteString
+  , _encryptedPrivateStorage'salt       :: ByteString
+  , _encryptedPrivateStorage'iv         :: IV AES256
   }
+
+makeLenses ''EncryptedPrivateStorage
 
 instance ToJSON EncryptedPrivateStorage where
   toJSON EncryptedPrivateStorage{..} = object [
-      "ciphertext" .= toJSON (bs2Base64Text encryptedPrivateStorage'ciphertext)
-    , "salt"       .= toJSON (bs2Base64Text encryptedPrivateStorage'salt)
-    , "iv"         .= toJSON (bs2Base64Text (convert encryptedPrivateStorage'iv :: ByteString))
+      "ciphertext" .= toJSON (bs2Base64Text _encryptedPrivateStorage'ciphertext)
+    , "salt"       .= toJSON (bs2Base64Text _encryptedPrivateStorage'salt)
+    , "iv"         .= toJSON (bs2Base64Text (convert _encryptedPrivateStorage'iv :: ByteString))
     ]
 
 instance FromJSON EncryptedPrivateStorage where
@@ -76,35 +77,39 @@ instance FromJSON EncryptedPrivateStorage where
 type PublicKeystore = M.Map Currency EgvPubKeyсhain
 
 data ErgveinStorage = ErgveinStorage {
-    storage'encryptedPrivateStorage :: EncryptedPrivateStorage
-  , storage'publicKeys              :: PublicKeystore
-  , storage'walletName              :: Text
+    _storage'encryptedPrivateStorage :: EncryptedPrivateStorage
+  , _storage'publicKeys              :: PublicKeystore
+  , _storage'walletName              :: Text
   }
 
+makeLenses ''ErgveinStorage
+
 instance Eq ErgveinStorage where
-  a == b = storage'walletName a == storage'walletName b
+  a == b = _storage'walletName a == _storage'walletName b
 
 $(deriveJSON aesonOptionsStripToApostroph ''ErgveinStorage)
 
 data EncryptedErgveinStorage = EncryptedErgveinStorage {
-    encryptedStorage'ciphertext :: ByteString
-  , encryptedStorage'salt       :: ByteString
-  , encryptedStorage'iv         :: IV AES256
-  , encryptedStorage'eciesPoint :: Point Curve_X25519
-  , encryptedStorage'authTag    :: AuthTag
+    _encryptedStorage'ciphertext :: ByteString
+  , _encryptedStorage'salt       :: ByteString
+  , _encryptedStorage'iv         :: IV AES256
+  , _encryptedStorage'eciesPoint :: Point Curve_X25519
+  , _encryptedStorage'authTag    :: AuthTag
   }
+
+makeLenses ''EncryptedErgveinStorage
 
 instance ToJSON EncryptedErgveinStorage where
   toJSON EncryptedErgveinStorage{..} = object [
-      "ciphertext" .= toJSON (bs2Base64Text encryptedStorage'ciphertext)
-    , "salt"       .= toJSON (bs2Base64Text encryptedStorage'salt)
-    , "iv"         .= toJSON (bs2Base64Text (convert encryptedStorage'iv :: ByteString))
+      "ciphertext" .= toJSON (bs2Base64Text _encryptedStorage'ciphertext)
+    , "salt"       .= toJSON (bs2Base64Text _encryptedStorage'salt)
+    , "iv"         .= toJSON (bs2Base64Text (convert _encryptedStorage'iv :: ByteString))
     , "eciesPoint" .= toJSON (bs2Base64Text eciesPoint)
-    , "authTag"    .= toJSON (bs2Base64Text (convert encryptedStorage'authTag :: ByteString))
+    , "authTag"    .= toJSON (bs2Base64Text (convert _encryptedStorage'authTag :: ByteString))
     ]
     where
       curve = Proxy :: Proxy Curve_X25519
-      eciesPoint = encodePoint curve encryptedStorage'eciesPoint :: ByteString
+      eciesPoint = encodePoint curve _encryptedStorage'eciesPoint :: ByteString
 
 instance FromJSON EncryptedErgveinStorage where
   parseJSON = withObject "EncryptedErgveinStorage" $ \o -> do

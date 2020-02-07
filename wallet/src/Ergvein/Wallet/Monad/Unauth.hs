@@ -145,7 +145,7 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
     authRef <- asks unauth'authRef
     performEvent $ ffor e $ \v -> do
       logWrite "unauthed setAuthInfo: setting info"
-      setLastStorage $ storage'walletName . authInfo'storage <$> v
+      setLastStorage $ _storage'walletName . _authInfo'storage <$> v
       writeExternalRef authRef v
   {-# INLINE setAuthInfo #-}
   getPasswordModalEF = asks unauth'passModalEF
