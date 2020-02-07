@@ -1,0 +1,25 @@
+language: nix
+nix: 2.0.4
+
+cache:
+  directories:
+  - $HOME/nix.store
+
+before_install:
+  - sudo mkdir -p /etc/nix
+  - echo "substituters = https://cache.nixos.org/ file://$HOME/nix.store" | sudo tee -a /etc/nix/nix.conf > /dev/null
+  - echo 'require-sigs = false' | sudo tee -a /etc/nix/nix.conf > /dev/null
+
+before_cache:
+  - mkdir -p $HOME/nix.store
+  - nix copy --to file://$HOME/nix.store -f default.nix buildInputs
+
+before_script:
+  - sudo mkdir /etc/nix && echo 'sandbox = true' | sudo tee /etc/nix/nix.conf
+  - nix-env -iA cachix -f https://cachix.org/api/v1/install
+  - cachix use ergvein
+
+script:
+  nix-build -A ghc.ergvein-wallet
+  nix-build -A ghc.ergvein-index-server
+  nix-build --arg isAndroid true -A android.ergvein-wallet
