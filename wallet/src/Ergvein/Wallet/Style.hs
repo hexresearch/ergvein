@@ -287,6 +287,7 @@ balancesPageCss = do
     fontSize $ pt (if isAndroid then 18 else 24)
   ".currency-content" ? do
     display displayTable
+    width $ pct 100
   ".currency-content-row" ? do
     display tableRow
     cursor pointer

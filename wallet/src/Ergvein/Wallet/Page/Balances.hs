@@ -103,9 +103,11 @@ symbolUnit :: Currency -> Language -> Units -> Text
 symbolUnit cur lang units =
   case cur of
     BTC  -> case getUnitBTC units of
-              BTC_BTC     -> "฿"
-              BTC_mBTC    -> "m฿"
-              BTC_uBTC    -> "μ฿"
-              BTC_Satoshi -> "S"
+              BtcWhole    -> "btc"
+              BtcMilli    -> "mbtc"
+              BtcSat      -> "sat"
     ERGO -> case getUnitERGO units of
-              ERGO_ERGO -> "ERG"
+              ErgWhole    -> "erg"
+              ErgMilli    -> "merg"
+              ErgNano     -> "sat"
+

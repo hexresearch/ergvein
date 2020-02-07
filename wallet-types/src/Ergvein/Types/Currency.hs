@@ -188,10 +188,9 @@ allCurrencies = [minBound .. maxBound]
 
 -- | Display units for BTC
 data UnitBTC
-  = BTC_BTC
-  | BTC_mBTC
-  | BTC_uBTC
-  | BTC_Satoshi
+  = BtcWhole
+  | BtcMilli
+  | BtcSat
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Generic)
 
 $(deriveJSON aesonOptions ''UnitBTC)
@@ -199,14 +198,16 @@ instance ToJSONKey UnitBTC where
 instance FromJSONKey UnitBTC where
 
 defUnitBTC :: UnitBTC
-defUnitBTC = BTC_BTC
+defUnitBTC = BtcWhole
 
 allUnitsBTC :: [UnitBTC]
 allUnitsBTC = [minBound .. maxBound]
 
 -- | Display units for ERGO
 data UnitERGO
-  = ERGO_ERGO
+  = ErgWhole
+  | ErgMilli
+  | ErgNano
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Generic)
 
 $(deriveJSON aesonOptions ''UnitERGO)
@@ -214,7 +215,7 @@ instance ToJSONKey UnitERGO where
 instance FromJSONKey UnitERGO where
 
 defUnitERGO :: UnitERGO
-defUnitERGO = ERGO_ERGO
+defUnitERGO = ErgWhole
 
 allUnitsERGO :: [UnitERGO]
 allUnitsERGO = [minBound .. maxBound]
@@ -231,8 +232,8 @@ instance FromJSONKey Units where
 
 defUnits :: Units
 defUnits = Units {
-    unitBTC   = Just BTC_BTC
-  , unitERGO  = Just ERGO_ERGO
+    unitBTC   = Just BtcWhole
+  , unitERGO  = Just ErgWhole
   }
 
 getUnitBTC :: Units -> UnitBTC
@@ -249,12 +250,13 @@ currencyResolution c = currencyResolutionUnit c defUnits
 currencyResolutionUnit :: Currency -> Units -> Int
 currencyResolutionUnit c Units{..} = case c of
   BTC  -> case fromMaybe defUnitBTC unitBTC of
-            BTC_BTC     -> 8
-            BTC_mBTC    -> 6
-            BTC_uBTC    -> 3
-            BTC_Satoshi -> 0
+            BtcWhole     -> 8
+            BtcMilli     -> 6
+            BtcSat       -> 0
   ERGO -> case fromMaybe defUnitERGO unitERGO of
-            ERGO_ERGO   -> 9
+            ErgWhole     -> 9
+            ErgMilli     -> 6
+            ErgNano      -> 0
 {-# INLINE currencyResolutionUnit #-}
 
 currencyName :: Currency -> Text

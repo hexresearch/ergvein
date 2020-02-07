@@ -50,11 +50,12 @@ instance LocalizedPrint SettingsPageStrings where
 
 instance LocalizedPrint UnitBTC where
   localizedShow _ v = case v of
-    BTC_BTC     -> "BTC"
-    BTC_mBTC    -> "mBTC"
-    BTC_uBTC    -> "uBTC"
-    BTC_Satoshi -> "Satoshi"
+    BtcWhole    -> "btc"
+    BtcMilli    -> "mbtc"
+    BtcSat      -> "sat"
 
 instance LocalizedPrint UnitERGO where
   localizedShow _ v = case v of
-    ERGO_ERGO -> "ERG"
+    ErgWhole -> "erg"
+    ErgMilli -> "merg"
+    ErgNano  -> "nerg"
