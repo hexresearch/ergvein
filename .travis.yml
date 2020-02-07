@@ -1,25 +1,23 @@
 language: nix
 nix: 2.0.4
-
 cache:
   directories:
-  - $HOME/nix.store
-
+  - "$HOME/nix.store"
 before_install:
-  - sudo mkdir -p /etc/nix
-  - echo "substituters = https://cache.nixos.org/ file://$HOME/nix.store" | sudo tee -a /etc/nix/nix.conf > /dev/null
-  - echo 'require-sigs = false' | sudo tee -a /etc/nix/nix.conf > /dev/null
-
+- sudo mkdir -p /etc/nix
+- echo "substituters = https://cache.nixos.org/ file://$HOME/nix.store" | sudo tee
+  -a /etc/nix/nix.conf > /dev/null
+- echo 'require-sigs = false' | sudo tee -a /etc/nix/nix.conf > /dev/null
 before_cache:
-  - mkdir -p $HOME/nix.store
-  - nix copy --to file://$HOME/nix.store -f default.nix buildInputs
-
+- mkdir -p $HOME/nix.store
+- nix copy --to file://$HOME/nix.store -f default.nix buildInputs
 before_script:
-  # - sudo mkdir /etc/nix && echo 'sandbox = true' | sudo tee /etc/nix/nix.conf
-  - nix-env -iA cachix -f https://cachix.org/api/v1/install
-  - cachix use ergvein
-
+- nix-env -iA cachix -f https://cachix.org/api/v1/install
+- cachix use ergvein
 script:
-  - nix-build -A ghc.ergvein-wallet
-  - nix-build -A ghc.ergvein-index-server
-  - nix-build --arg isAndroid true -A android.ergvein-wallet
+- nix-build -A ghc.ergvein-wallet | cachix push ergvein
+- nix-build -A ghc.ergvein-index-server | cachix push ergvein
+- nix-build --arg isAndroid true -A android.ergvein-wallet | cachix push ergvein
+env:
+  global:
+    secure: IozQv0u0M0hI/4TCB8EFJy2HNl79mt9PRW1PdihZJy20+D6IPxKTplxSp10n8eYPI40tfSH1SNQ6pNZqKhn6cv4mdHG4d18w36VUz5SnS58+yokm660E6HwvD035Ia4MDYiP7CSOroWjTYGYUiCtH6zN7/N1Dm6a5IkK0aJRHctlAAEMVh13Erh0BdQzRZeltRGhkAROkocFVP5A5If85iQlHkeC6l5cGOxpiCZEUEsv47ov0Kb30VhrEkh1gXaniYjN9pzsc+QjwSRGGVLtE5cE1bT0baN/7RGQ1rt/DUaSmrx/qHe9K5eXu6G9Tox7UueIT9udVAhNC0HdEzUcnbXAoIM8qINeqveglZPcVkNbYyYvPbJZsSDUzutjBk7Xfhgk2hmQnR1q3s3e+lB/mDglw2kRCa2pFhIjyvRKkoJlZAJTtzcsO8JMaGgw1h4Sq2jLcggc9MBJ2t1b8Pmqxqj18alZ5NYR2xWMr8q0/FQeqW8cuUKrt5G8XXiZrIVy8bSLe55dA7YlYwqT/DjMMqJOnSu1J7TeNIvJaQqBpicKuE+L1hfSQ27HZ15H1jva4jxyJhSGl2OhyRsqNCkpCORTvdTLUEki7DcVa/kJ2J778Jjv+TeEjJkTfyCo5me5sw+6D22horS5LS+S1giGRwrvddNM5Gy4NF3rJ4AXbng=
