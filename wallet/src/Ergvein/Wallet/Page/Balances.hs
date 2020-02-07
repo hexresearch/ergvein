@@ -3,13 +3,17 @@ module Ergvein.Wallet.Page.Balances(
     balancesPage
   ) where
 
+import Data.Maybe (fromMaybe)
+
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.History
+import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Wrapper
 
@@ -23,7 +27,7 @@ instance LocalizedPrint BalanceTitle where
     English -> case v of
       BalanceTitle  -> "Default wallet"
     Russian -> case v of
-      BalanceTitle  -> "Настройки"
+      BalanceTitle  -> "Стандартный кошелек"
 
 balancesPage :: MonadFront t m => m ()
 balancesPage = do
@@ -75,17 +79,35 @@ getSyncProgress :: MonadFront t m => m (Dynamic t ScanProgress)
 getSyncProgress = pure $ pure $ ScanDays 10
 
 currenciesList :: MonadFront t m => m (Event t Currency)
-currenciesList = fmap leftmost $ traverse currencyLine allCurrencies
+currenciesList = divClass "currency-line" $ divClass "currency-content" $
+  fmap leftmost $ traverse currencyLine allCurrencies
   where
     currencyLine cur = do
-      (e, _) <- divClass' "currency-wrapper" $ divClass "currency-line" $ do
-        divClass "currency-name" $ text $ currencyName cur
-        divClass "currency-balance" $ do
-          bal <- currencyBalance cur
-          dynText $ do
-            m <- showMoney <$> bal
-            pure $ m <> "〉"
+      (e, _) <- divClass' "currency-content-row" $ do
+        bal <- currencyBalance cur
+        settings <- getSettings
+        let setUs = getSettingsUnits settings
+        langD <- getLanguage
+        divClass "currency-name"    $ text $ currencyName cur
+        divClass "currency-balance" $ dynText $ (\v -> showMoneyUnit v setUs) <$> bal
+        divClass "currency-unit"    $ dynText $ ffor2 bal langD $ \(Money cur _) lang -> symbolUnit cur lang setUs
+        divClass "currency-arrow"   $ text "〉"
       pure $ cur <$ domEvent Click e
+
+    getSettingsUnits = fromMaybe defUnits . settingsUnits
 
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
 currencyBalance cur = pure $ pure $ Money cur 1
+
+symbolUnit :: Currency -> Language -> Units -> Text
+symbolUnit cur lang units =
+  case cur of
+    BTC  -> case getUnitBTC units of
+              BtcWhole    -> "btc"
+              BtcMilli    -> "mbtc"
+              BtcSat      -> "sat"
+    ERGO -> case getUnitERGO units of
+              ErgWhole    -> "erg"
+              ErgMilli    -> "merg"
+              ErgNano     -> "sat"
+

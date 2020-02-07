@@ -31,11 +31,13 @@ library
     , jsaddle
     , memory                    >= 0.14.16  && < 0.15.1
     , text
+    , flat
   if flag(testnet)
     cpp-options: -DTESTNET
   default-extensions:
     DeriveGeneric
     DeriveAnyClass
     OverloadedStrings
+    RecordWildCards
     TemplateHaskell
     RecordWildCards
