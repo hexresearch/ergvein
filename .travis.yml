@@ -3,6 +3,10 @@ nix: 2.0.4
 cache:
   directories:
   - "$HOME/nix.store"
+env:
+  global:
+  - secure: AXFQcthRGqb3yilHNkjKn/X+qRnZk2qT/Le3LTQ+ScerYVGPLbwtuH+kQbsC48wJ2pMUIJ6vwHPv2eOj+nnLRugMw7Rf1VqHRHreaTrJHRV1ErRU3N7el/z5RaYs4wn6n6hmRfu9DeusJTOnNiIxmzKg+78imVP+yWn1JPuapKL27MImPggUEnJQWmfaZRwf5fg2BpbjzMP2QbtZW4a4f490Yk9mbBuqk11Z2LpR3dNQNg6fQAfwE/+P4DmEr1R18CWlkE/8b4n9d9IrbljcPFHa7oKQV36vfoBR87ZF1RC1DlT1deP6i+FyBkZxROVW0CSo4FXnwpkjmYPhBw2ROK+uy++rSFGab1+zJg7G5qOmUYdtDvZPXIw1JyDainmB5/Jecwzb5jAiXFIkcwLMYewURQGeqQj2k1MLeckD3mYnsgL8ehWaFbTNUUhDwbjkr+CXwXIvWyZk+JvwquVVQ4rVR2APLqgfb9+WhAXXR0ofRs+tLUk7fGLwwpJQV7O/eo/DtoF9jGsliAja144nSTnvsAYV2xhQ4Z1z4D81EJ/ndf1+Jbe/TZqKa9h7eriOLkBHBgJgGrWZapQ/FyrBu/fQgK0/Gmt0vbyHZxrUlGHohLeZtX+M+tQhbdk45QPcvA5wOdhfnuNYtOjXmCVuRZoU1l1OQ3fJJ02RzIXST9o=
+
 before_install:
 - sudo mkdir -p /etc/nix
 - echo "substituters = https://cache.nixos.org/ file://$HOME/nix.store" | sudo tee
@@ -18,6 +22,3 @@ script:
 - nix-build -A ghc.ergvein-wallet | cachix push ergvein
 - nix-build -A ghc.ergvein-index-server | cachix push ergvein
 - nix-build --arg isAndroid true -A android.ergvein-wallet | cachix push ergvein
-env:
-  global:
-    secure: JymWdfF0fbmxnLnrLrFPGLJGKQ5dNjsIjfRPlIrR0VPC4Ud1PcjYpknEAHi3JCxvOu6NsEniXtcPmVTAnCRvj75Af2y0K3kjtpy0PxfIPCPLS6wKg13QSemPHQq9CMPKsbTZge0MZgPRMs5kwv1kqUEcJnZQiiA/rRkfLs0R1dK4x/eP95TL4L5vF9kEip011S0GpH2EwrfFBSB8kA5l9Qn67tHZNAy7veEi17lAtBFGwLFspWxn9Qyu3g5rgVss9UvBcXrwfkxKE8uXWznkV08xG3BuhEoesLeqKKn9dqLeHnzLyi8gkofRwgyv9qBkGGblhyFOLpLAbATRA8/kiSc7TjMFl6gHNsXtkRH0VO6DPGYJ8cptDGB/wXDan5acz7wJurCJpBmutgrE1qJP1gs+rlvhbq9XCfOrfyqLyGfSzOYdfFh4hOLitl0dQBoyApSVF8uWt8kQhF9dbAy7V2zbPsO80c6LRsIuxWifeI+rjmaYpb7AUWNYUK5VfE2IUukbV5OrZzPP4FOH8OqUOu/RLVYxK3WsyURfdZ06+E+c2CJRNY1xcwlY1IqS7SSRSkTac0UPeq7IvM0uvokydJpegn5QLYchw2TGfN8J8KulbyI7n+D+B7uZTUFYiaxcwAUWrxfPAVc5ADPdZRf0C5ThzaeThBg+r67VGTN79DE=
