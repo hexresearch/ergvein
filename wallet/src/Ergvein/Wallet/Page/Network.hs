@@ -5,7 +5,9 @@ module Ergvein.Wallet.Page.Network(
 
 import Control.Monad.IO.Class
 import qualified Data.Map.Strict as M
-import Servant.Client (BaseUrl, parseBaseUrl)
+import Data.Maybe (fromMaybe)
+import Data.Text as T
+import Servant.Client (BaseUrl, parseBaseUrl, showBaseUrl)
 
 import Ergvein.Wallet.Client
 import Ergvein.Index.API.Types
@@ -20,16 +22,17 @@ import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Wrapper
 
-networkPage :: MonadFront t m => m ()
-networkPage = do
-  let thisWidget = Just $ pure $ networkPage
+networkPage :: MonadFront t m => Maybe Currency -> m ()
+networkPage curMb = do
+  let thisWidget = Just $ pure $ networkPage curMb
   menuWidget NPSTitle thisWidget
   wrapper False $ do
     curD <- titleWrap $ do
       divClass "network-title-name" $ h3 $ localizedText $ NPSTitle
       divClass "network-title-cur" $ do
-        curE <- currenciesDropdown BTC allCurrencies
-        holdDyn BTC curE
+        let initCur = fromMaybe BTC curMb
+        curE <- currenciesDropdown initCur allCurrencies
+        holdDyn initCur curE
     baseHorSep
     void $ widgetHoldDyn $ ffor curD $ \cur -> optionsContent cur
   where
@@ -56,22 +59,26 @@ optionsContent cur = do
                     Left err  -> NPSError err
                     Right v   -> NPSStatusVal v
     lineOptionNoEdit NPSStatus statusD NPSStatusDescr
-  lineOption $ do
+  selE <- lineOption $ do
     nameOption NPSServer
     baseUrlD <- fmap (NPSServerVal <$>) $ tempGetServer cur
-    valueOptionDyn baseUrlD
+    (e,_) <- el' "div" $ valueOptionDyn baseUrlD
+    let selE = cur <$ domEvent Click e
     descrOption NPSServerDescr
     labelHorSep
+    pure selE
   lineOption $ do
     heightD <- flip fmap (tempGetHeight cur) $ \hD -> ffor hD $ \case
                  Left err   -> NPSError err
                  Right hrsp -> NPSHeightVal hrsp
     lineOptionNoEdit NPSHeight heightD NPSHeightDescr
-  pure ()
+  void $ nextWidget $ ffor selE $ \cur -> Retractable {
+      retractableNext = pageSelectionOfServer cur
+    , retractablePrev = Nothing
+    }
   where
     lineOption       = divClass "network-wrapper" . divClass "network-line"
     nameOption       = divClass "network-name"    . localizedText
-    --valueOption      = divClass "network-value"   . localizedText
     valueOptionDyn v = getLanguage >>= \langD -> divClass "network-value" $ dynText $ ffor2 langD v localizedShow
     descrOption      = (>>) elBR . divClass "network-descr" . localizedText
     labelHorSep      = elAttr "hr" [("class","network-hr-sep-lb")] blank
@@ -93,6 +100,27 @@ lineOptionNoEdit name valD descr = do
     descrOption      = (>>) elBR . divClass "network-descr" . localizedText
     labelHorSep      = elAttr "hr" [("class","network-hr-sep-lb")] blank
     elBR             = el "br" blank
+
+
+pageSelectionOfServer :: MonadFront t m => Currency -> m ()
+pageSelectionOfServer cur = do
+  let thisWidget = Just $ pure $ pageSelectionOfServer cur
+  menuWidget NPSTitle thisWidget
+  wrapper False $ do
+    h3 $ localizedText $ NPSSelectServer cur
+    listD <- tempGetListServer cur
+    list <- sample $ current listD
+    selE <- fmap leftmost $ traverse renderItem list
+    -- TODO: Do something for changing URL
+    void $ nextWidget $ ffor selE $ \_ -> Retractable {
+        retractableNext = networkPage $ Just cur
+      , retractablePrev = Just $ pure $ networkPage $ Just cur
+      }
+  where
+    renderItem baseUrl = do
+      (e, _) <- divClass' "network-sel-cur-item" $ text $ T.pack $ showBaseUrl baseUrl
+      pure $ baseUrl <$ domEvent Click e
+
 
 
 -- | Temporary stubs for data
@@ -125,3 +153,20 @@ tempGetServer = \case
               pure $ pure baseUrl
   ERGO  -> do baseUrl <- liftIO $ parseBaseUrl "http://test.serverergo.ru"
               pure $ pure baseUrl
+
+tempGetListServer :: MonadFront t m => Currency -> m (Dynamic t [BaseUrl])
+tempGetListServer = \case
+  BTC   -> do listUrls <- liftIO $ sequence [ parseBaseUrl "http://test.serverbtc.ru"
+                                            , parseBaseUrl "http://test.serverbtc1.ru"
+                                            , parseBaseUrl "http://test.serverbtc2.ru"
+                                            , parseBaseUrl "http://test.serverbtc3.ru"
+                                            , parseBaseUrl "http://test.serverbtc4.ru"
+                                            ]
+              pure $ pure listUrls
+  ERGO  -> do listUrls <- liftIO $ sequence [ parseBaseUrl "http://test.serverergo.ru"
+                                            , parseBaseUrl "http://test.serverergo1.ru"
+                                            , parseBaseUrl "http://test.serverergo2.ru"
+                                            , parseBaseUrl "http://test.serverergo3.ru"
+                                            , parseBaseUrl "http://test.serverergo4.ru"
+                                            ]
+              pure $ pure listUrls

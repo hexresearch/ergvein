@@ -307,11 +307,13 @@ networkPageCss = do
     display tableRow
   ".network-title-name" ? do
     display tableCell
+    paddingTop $ px 15
     paddingRight $ px 3
     textAlign $ alignSide sideLeft
     width $ pct 65
   ".network-title-cur" ? do
     display tableCell
+    paddingTop $ px 15
     paddingRight $ px 3
     width $ pct 35
     textAlign $ alignSide sideRight
@@ -338,27 +340,9 @@ networkPageCss = do
     float floatLeft
     fontStyle italic
     fontSizeCustom smaller
-{-  ".about-content" ? do
-    display displayTable
-    marginTop $ px 10
-    fontSize $ pt (if isAndroid then 12 else 18)
-  ".about-content-row" ? do
-    display tableRow
-  ".about-content-cell-label" ? do
-    display tableCell
-    let px' = px 5 in padding px' (px 20) px' px'
-    textAlign $ alignSide sideLeft
-    verticalAlign vAlignBottom
-  ".about-content-cell-value" ? do
-    display tableCell
-    let px' = px 5 in padding px' px' px' px'
-    textAlign $ alignSide sideLeft
-    verticalAlign vAlignBottom
-    width $ pct 1
-  ".about-distrib" ? do
-    paddingTop $ px 45
-    fontSize $ pt (if isAndroid then 12 else 18)
--}
+  ".network-sel-cur-item" ? do
+    textAlign center
+    cursor pointer
 
 loadingWidgetCss :: Css
 loadingWidgetCss = do

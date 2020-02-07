@@ -20,7 +20,7 @@ switchMenu prevWidget e = void $ nextWidget $ fforMaybe e $ \go -> let
   , retractablePrev = prevWidget
   }
   in case go of
-      MenuNetwork  -> Just $ mkNext networkPage
+      MenuNetwork  -> Just $ mkNext $ networkPage Nothing
       MenuSettings -> Just $ mkNext settingsPage
       MenuAbout    -> Just $ mkNext aboutPage
       MenuLogs     -> Nothing
