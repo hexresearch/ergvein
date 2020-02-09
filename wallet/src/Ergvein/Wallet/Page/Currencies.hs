@@ -1,4 +1,4 @@
--- | Page for mnemonic phrase generation
+{-# LANGUAGE CPP #-}
 module Ergvein.Wallet.Page.Currencies(
     selectCurrenciesPage
   , selectCurrenciesWidget
@@ -26,7 +26,11 @@ selectCurrenciesPage :: MonadFrontBase t m => Mnemonic -> m ()
 selectCurrenciesPage m = wrapper True $ do
   e <- selectCurrenciesWidget
   nextWidget $ ffor (m <$ e) $ \m -> Retractable {
+#ifdef ANDROID
+      retractableNext = setupLoginPage m
+#else
       retractableNext = passwordPage m
+#endif
     , retractablePrev = Just $ pure $ selectCurrenciesPage m
     }
   pure ()
