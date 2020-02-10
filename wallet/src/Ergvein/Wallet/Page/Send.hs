@@ -51,8 +51,8 @@ data BtnScanQRCode = BtnScanQRCode
 
 instance LocalizedPrint BtnScanQRCode where
   localizedShow l _ = case l of
-    English -> "Scan QR code"
-    Russian -> "Сканировать QR-код"
+    English -> "Scan"
+    Russian -> "Сканировать"
 
 sendPage :: MonadFront t m => Currency -> m ()
 sendPage cur = do
