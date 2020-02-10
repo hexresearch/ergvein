@@ -47,7 +47,11 @@ frontendCssBS r = let
 frontendCss :: Resources -> Css
 frontendCss r = do
   fontFamilies r
-  html ? textAlign center
+  html ? do
+    textAlign center
+    let px' = px 0 in padding px' px' px' px'
+    let px' = px 0 in margin px' px' px' px'
+    height $ pct 100
   body ? do
     color textColor
     backgroundColor majorBackground
@@ -55,6 +59,7 @@ frontendCss r = do
     marginLeft $ px 0
     marginRight $ px 0
     fontFamily ["Roboto"] []
+    overflowY auto
   wrapperCss
   menuCss
   buttonCss
@@ -87,8 +92,9 @@ minorBackground = rgb 59 78 122
 wrapperCss :: Css
 wrapperCss = do
   ".container" ? do
+--    marginTop $ px 40
     position relative
-    height $ pct 100
+    height $ pct 80
   ".vertical-center" ? do
     position absolute
     top $ pct 50
@@ -116,6 +122,8 @@ menuCss = do
     fontSize $ pt 14
     paddingBottom $ px 10
     display displayTable
+--    position absolute
+--    top $ px 0
   ".menu-wallet-name" ? do
     display tableCell
     textAlign center
