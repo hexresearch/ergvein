@@ -28,6 +28,7 @@ library
         Ergvein.Wallet.Alert.Type
         Ergvein.Wallet.Client
         Ergvein.Wallet.Clipboard
+        Ergvein.Wallet.Currencies
         Ergvein.Wallet.Elements
         Ergvein.Wallet.Embed
         Ergvein.Wallet.Embed.TH

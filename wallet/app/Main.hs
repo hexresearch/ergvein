@@ -3,6 +3,7 @@ module Main where
 
 import Data.Default
 import Ergvein.Wallet
+import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Run
 import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Style
@@ -31,5 +32,6 @@ main = do
     css <- compileFrontendCss
     mainWidgetWithCss css $ do
       settings :: Settings <- loadSettings $ unHelpful $ config opts
-      env <- newEnv settings (runUiCallbacks cbs)
+      currs <- loadActiveCurrencies
+      env <- newEnv settings currs (runUiCallbacks cbs)
       runEnv cbs env frontend

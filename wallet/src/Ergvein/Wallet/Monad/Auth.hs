@@ -15,6 +15,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Headers.Loader
 import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Language
@@ -43,6 +44,7 @@ data Env t = Env {
 , env'backEF          :: !(Event t (), IO ())
 , env'loading         :: !(Event t (Bool, Text), (Bool, Text) -> IO ())
 , env'langRef         :: !(ExternalRef t Language)
+, env'activeCursRef   :: !(ExternalRef t ActiveCurrencies)
 , env'authRef         :: !(ExternalRef t (Maybe AuthInfo))
 , env'logoutFire      :: !(IO ())
 , env'storeDir        :: !Text
@@ -115,6 +117,8 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getUiChan #-}
   getLangRef = asks env'langRef
   {-# INLINE getLangRef #-}
+  getActiveCursRef = asks env'activeCursRef
+  {-# INLINE getActiveCursRef #-}
   isAuthorized = do
     authd <- getAuthInfoMaybe
     pure $ ffor authd $ \case
@@ -217,6 +221,7 @@ liftAuth ma0 ma = mdo
         backEF          <- getBackEventFire
         loading         <- getLoadingWidgetTF
         langRef         <- getLangRef
+        activeCursRef   <- getActiveCursRef
         authRef         <- getAuthInfoRef
         storeDir        <- getStoreDir
         alertsEF        <- getAlertEventFire
@@ -234,7 +239,7 @@ liftAuth ma0 ma = mdo
         hst             <- getHeadersStorage
         headersLoader
         a <- runReaderT (wrapped ma) $ Env
-          settingsRef backEF loading langRef authRef (logoutFire ()) storeDir alertsEF
+          settingsRef backEF loading langRef activeCursRef authRef (logoutFire ()) storeDir alertsEF
           logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager hst
         pure a
   let
