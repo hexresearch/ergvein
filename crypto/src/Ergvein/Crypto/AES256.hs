@@ -1,11 +1,8 @@
-module Ergvein.Crypto.AES256(
+module Ergvein.Crypto.AES256 (
     encrypt
   , decrypt
   , encryptWithAEAD
   , decryptWithAEAD
-  , fastPBKDF2_SHA256
-  , defaultPBKDF2Params
-  , defaultPBKDF2SaltLength
   , defaultAuthTagLength
   , genRandomSalt
   , genRandomIV
@@ -18,25 +15,16 @@ module Ergvein.Crypto.AES256(
   , MonadRandom(..)
   ) where
 
-import Data.ByteArray (ByteArray, ByteArrayAccess)
-import Data.ByteString (ByteString)
-import Crypto.KDF.PBKDF2 (Parameters(..), fastPBKDF2_SHA256)
 import Crypto.Cipher.AES (AES256)
 import Crypto.Cipher.Types
 import Crypto.Error (CryptoFailable(..), CryptoError(..))
 import Crypto.Random.Types (MonadRandom, getRandomBytes)
+import Data.ByteArray (ByteArray, ByteArrayAccess)
+import Data.ByteString (ByteString)
+import Ergvein.Crypto.PBKDF
 
 data Key c a where
   Key :: (BlockCipher c, ByteArray a) => a -> Key c a
-
-defaultPBKDF2Params :: Parameters
-defaultPBKDF2Params = Parameters {
-    iterCounts = 100000
-  , outputLength = 32
-}
-
-defaultPBKDF2SaltLength :: Int
-defaultPBKDF2SaltLength = 32
 
 defaultAuthTagLength :: Int
 defaultAuthTagLength = 16

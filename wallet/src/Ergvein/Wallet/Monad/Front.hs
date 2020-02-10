@@ -18,7 +18,7 @@ import Control.Monad
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Text (Text)
-import Ergvein.Crypto
+import Ergvein.Types.AuthInfo
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Base
@@ -36,17 +36,6 @@ type MonadFront t m = (
   , MonadStorage t m
   , MonadClient t m
   )
-
-data AuthInfo = AuthInfo {
-  authInfo'storage     :: ErgveinStorage
-, authInfo'eciesPubKey :: ECIESPubKey
-, authInfo'isUpdate    :: Bool
-  -- ^ This field indicates whether the widget should be redrawn in 'liftAuth'.
-  -- 'False' means that the value obtained as a result of updating the previous 'AuthInfo',
-  -- 'True' means that the value was newly created or loaded from the storage file at startup.
-} deriving (Eq)
-
-type Password = Text
 
 class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   -- | Get current settings

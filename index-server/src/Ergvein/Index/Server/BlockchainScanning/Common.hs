@@ -70,11 +70,12 @@ scannerThread env currency scanInfo =
       logInfoN $ "Scanning height " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
       liftIO $ do
         blockInfo <- scanInfo blockHeight
+        let blockInfoToStore = selectedInfoToStore blockInfo
         runDbQuery pool $ do
-          storeInfo blockInfo
+          storeInfo blockInfoToStore
           storeScannedHeight currency blockHeight
         dir <- levelDbDir
-        addToCache (envLevelDBContext env) blockInfo
+        addToCache (envLevelDBContext env) blockInfoToStore
 
     scanIteration :: Thread -> m ()
     scanIteration thread = do
@@ -82,6 +83,10 @@ scannerThread env currency scanInfo =
       heights <- liftIO $ blockHeightsToScan env currency
       traverse_ (blockIteration totalh) heights
       liftIO $ threadDelay $ configBlockchainScanDelay $ envServerConfig env
+    
+    selectedInfoToStore info = if configPubScriptHistoryScan $ envServerConfig env then info else 
+      let blockContent = BlockContentInfo (blockContentTxInfos $ blockInfoContent info) [] []
+      in info { blockInfoContent = blockContent }
 
 startBlockchainScanner :: (MonadUnliftIO m, MonadCatch m, MonadLogger m) => ServerEnv -> m [Thread]
 startBlockchainScanner env =

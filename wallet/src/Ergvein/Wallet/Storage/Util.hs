@@ -25,19 +25,16 @@ import Ergvein.Aeson
 import Ergvein.Crypto
 import Ergvein.Text
 import Ergvein.Types.Currency
+import Ergvein.Wallet.Storage.Keys
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Localization.Native
 import Ergvein.Wallet.Localization.Storage
-import Ergvein.Wallet.Storage.Constants
 
 import qualified Data.ByteString as BS
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-
-type Password = Text
-type WalletName = Text
 
 createEmptyPrvKeychain :: EgvRootXPrvKey -> Currency -> EgvPrvKeyсhain
 createEmptyPrvKeychain root currency =
@@ -79,11 +76,7 @@ encryptPrivateStorage privateStorage password = liftIO $ do
       let privateStorageBS = encodeUtf8 $ encodeJson privateStorage
       case encrypt secretKey iv' privateStorageBS of
         Left err -> pure $ Left $ SACryptoError $ showt err
-        Right ciphertext -> pure $ Right $ EncryptedPrivateStorage {
-            encryptedPrivateStorage'ciphertext = ciphertext
-          , encryptedPrivateStorage'salt       = salt
-          , encryptedPrivateStorage'iv         = iv'
-          }
+        Right ciphertext -> pure $ Right $ EncryptedPrivateStorage ciphertext salt iv'
 
 decryptPrivateStorage :: EncryptedPrivateStorage -> Password -> Either StorageAlert PrivateStorage
 decryptPrivateStorage encryptedPrivateStorage password =
@@ -95,10 +88,10 @@ decryptPrivateStorage encryptedPrivateStorage password =
         Left err -> Left $ SACryptoError $ showt err
         Right dps -> Right dps
   where
-    salt = encryptedPrivateStorage'salt encryptedPrivateStorage
+    salt = _encryptedPrivateStorage'salt encryptedPrivateStorage
     secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
-    iv = encryptedPrivateStorage'iv encryptedPrivateStorage
-    ciphertext = encryptedPrivateStorage'ciphertext encryptedPrivateStorage
+    iv = _encryptedPrivateStorage'iv encryptedPrivateStorage
+    ciphertext = _encryptedPrivateStorage'ciphertext encryptedPrivateStorage
 
 encryptStorage :: (MonadIO m, MonadRandom m) => ErgveinStorage -> ECIESPubKey -> m (Either StorageAlert EncryptedErgveinStorage)
 encryptStorage storage publicKey = do
@@ -119,22 +112,16 @@ encryptStorage storage publicKey = do
               encryptedData = encryptWithAEAD AEAD_GCM secretKey iv (BS.concat [salt, ivBS, eciesPointBS]) storageBS defaultAuthTagLength
           case encryptedData of
             Left err -> pure $ Left $ SACryptoError $ showt err
-            Right (authTag, ciphertext) -> pure $ Right $ EncryptedErgveinStorage {
-                encryptedStorage'ciphertext = ciphertext
-              , encryptedStorage'salt       = salt
-              , encryptedStorage'iv         = iv
-              , encryptedStorage'eciesPoint = eciesPoint
-              , encryptedStorage'authTag    = authTag
-              }
+            Right (authTag, ciphertext) -> pure $ Right $ EncryptedErgveinStorage ciphertext salt iv eciesPoint authTag
 
 decryptStorage :: EncryptedErgveinStorage -> ECIESPrvKey -> Either StorageAlert ErgveinStorage
 decryptStorage encryptedStorage privateKey = do
   let curve = Proxy :: Proxy Curve_X25519
-      ciphertext = encryptedStorage'ciphertext encryptedStorage
-      salt       = encryptedStorage'salt       encryptedStorage
-      iv         = encryptedStorage'iv         encryptedStorage
-      eciesPoint = encryptedStorage'eciesPoint encryptedStorage
-      authTag    = encryptedStorage'authTag    encryptedStorage
+      ciphertext = _encryptedStorage'ciphertext encryptedStorage
+      salt       = _encryptedStorage'salt       encryptedStorage
+      iv         = _encryptedStorage'iv         encryptedStorage
+      eciesPoint = _encryptedStorage'eciesPoint encryptedStorage
+      authTag    = _encryptedStorage'authTag    encryptedStorage
   case deriveDecrypt curve eciesPoint privateKey of
       CryptoFailed err -> Left $ SACryptoError $ showt err
       CryptoPassed sharedSecret -> do
@@ -163,7 +150,7 @@ storageFilePrefix = "wallet_"
 saveStorageToFile :: (MonadIO m, MonadRandom m, HasStoreDir m, PlatformNatives)
   => ECIESPubKey -> ErgveinStorage -> m ()
 saveStorageToFile publicKey storage = do
-  let fname = storageFilePrefix <> T.replace " " "_" (storage'walletName storage)
+  let fname = storageFilePrefix <> T.replace " " "_" (_storage'walletName storage)
   logWrite $ "Storing storage to the " <> fname
   encryptedStorage <- encryptStorage storage publicKey
   case encryptedStorage of

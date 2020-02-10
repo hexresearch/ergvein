@@ -16,6 +16,8 @@ type IndexGetTxHashHistory  = "history"   :> Body TxHashHistoryRequest :> PostRe
 
 type IndexGetBlockHeaders   = "headers"   :> Body BlockHeadersRequest :> PostResp BlockHeadersResponse
 
+type IndexGetBlockFilters   = "filters"   :> Body BlockFiltersRequest :> PostResp BlockFiltersResponse
+
 type IndexGetTxMerkleProof  = "merkle"    :> Body TxMerkleProofRequest :> PostResp TxMerkleProofResponse
 
 type IndexGetTxHexView      = "view"      :> Body TxHexViewRequest :> PostResp TxHexViewResponse
@@ -29,6 +31,7 @@ data IndexApi route = IndexApi
     , indexGetBalance        :: route :- IndexGetBalance
     , indexGetTxHashHistory  :: route :- IndexGetTxHashHistory
     , indexGetBlockHeaders   :: route :- IndexGetBlockHeaders
+    , indexGetBlockFilters   :: route :- IndexGetBlockFilters
     , indexGetTxMerkleProof  :: route :- IndexGetTxMerkleProof
     , indexGetTxHexView      :: route :- IndexGetTxHexView
     , indexGetTxFeeHistogram :: route :- IndexGetTxFeeHistogram

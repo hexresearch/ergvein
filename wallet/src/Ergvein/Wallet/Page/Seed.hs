@@ -10,6 +10,7 @@ import Data.Bifunctor
 import Data.List (permutations)
 import Ergvein.Crypto.Keys
 import Ergvein.Crypto.WordLists
+import Ergvein.Crypto.Util
 import Ergvein.Text
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
@@ -17,6 +18,7 @@ import Ergvein.Wallet.Localization.Seed
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Page.Canvas
+import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Resize
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
@@ -40,7 +42,7 @@ checkPage :: MonadFrontBase t m => Mnemonic -> m ()
 checkPage mn = wrapper True $ do
   e <- mnemonicCheckWidget mn
   nextWidget $ ffor e $ \m -> Retractable {
-      retractableNext = passwordPage m
+      retractableNext = selectCurrenciesPage m
     , retractablePrev = Just $ pure $ checkPage m
     }
   pure ()
@@ -143,9 +145,9 @@ seedRestoreWidget = mdo
     localizedShow <$> langD <*> (SPSEnterWord <$> ixD)
   wordE <- fmap (switch . current) $ widgetHold waiting $ ffor (updated inpD) $ \t -> if t == ""
     then waiting
-    else fmap leftmost $ colonize 3 (take 9 $ getWordsWithPrefix t) $ \w -> do
-      btnE <- buttonClass (pure "button button-outline guess-button restore-word") w
-      pure $ w <$ btnE
+    else fmap leftmost $ colonize 3 (take 9 $ getWordsWithPrefix $ T.toLower t) $ \w -> do
+       btnE <- buttonClass (pure "button button-outline guess-button restore-word") w
+       pure $ w <$ btnE
   let emptyStr :: Text = ""
   inpD <- fmap join $ widgetHold (textField emptyStr "") $ ffor wordE $ const $ textField emptyStr ""
   mnemD <- foldDyn (\w m -> let p = if m == "" then "" else " " in m <> p <> w) "" wordE

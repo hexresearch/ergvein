@@ -97,9 +97,12 @@ frontendCss r = do
   initialPageCss
   balancesPageCss
   sendPageCss
+  networkPageCss
+  aboutPageCss
   loadingWidgetCss
   alertsCss
   selectCss
+  buttonsToggleCss
   graphPinCodeCanvasCss
 
 textColor :: Color
@@ -340,19 +343,33 @@ balancesPageCss = do
   ".sync-progress" ? do
     fontSize $ pt 14
   ".currency-line" ? do
-    fontSize $ pt 24
+    width $ pct 100
+    maxWidth $ px 500
+    display inlineBlock
+    fontSize $ pt (if isAndroid then 18 else 24)
+  ".currency-content" ? do
+    display displayTable
+    width $ pct 100
+  ".currency-content-row" ? do
+    display tableRow
     cursor pointer
-    display grid
-    gridTemplateColumns [fr 1, fr 3]
-    gridGap $ rem 1
-  ".currency-line:hover" ? do
+  ".currency-content-row:hover" ? do
     color hoverColor
+  ".currency-name" ? do
+    display tableCell
+    paddingRight $ px 3
+    textAlign $ alignSide sideLeft
   ".currency-balance" ? do
+    display tableCell
+    paddingRight $ px 3
     textAlign $ alignSide sideRight
-  ".currency-buttons-wrapper" ? do
-    display grid
-    gridTemplateColumns [fr 1, fr 1]
-    gridGap $ rem 1
+  ".currency-unit" ? do
+    display tableCell
+    textAlign $ alignSide sideLeft
+  ".currency-arrow" ? do
+    display tableCell
+    paddingLeft $ px 3
+    textAlign $ alignSide sideRight
 
 sendPageCss :: Css
 sendPageCss = do
@@ -368,6 +385,89 @@ sendPageCss = do
   ".button-icon-wrapper" ? do
     fontSize $ pt 11
     marginLeft $ em 0.5
+
+aboutPageCss :: Css
+aboutPageCss = do
+  ".about-wrapper" ? do
+    textAlign center
+  ".about-hr-sep" ? do
+    border solid (px 3) black
+  ".about-line" ? do
+    width $ pct 100
+    maxWidth $ px 500
+    display inlineBlock
+    textAlign center
+  ".about-content" ? do
+    display displayTable
+    marginTop $ px 10
+    fontSize $ pt (if isAndroid then 12 else 18)
+  ".about-content-row" ? do
+    display tableRow
+  ".about-content-cell-label" ? do
+    display tableCell
+    let px' = px 5 in padding px' (px 20) px' px'
+    textAlign $ alignSide sideLeft
+    verticalAlign vAlignBottom
+  ".about-content-cell-value" ? do
+    display tableCell
+    let px' = px 5 in padding px' px' px' px'
+    textAlign $ alignSide sideLeft
+    verticalAlign vAlignBottom
+    width $ pct 1
+  ".about-distrib" ? do
+    paddingTop $ px 45
+    fontSize $ pt (if isAndroid then 12 else 18)
+
+networkPageCss :: Css
+networkPageCss = do
+  ".network-wrapper" ? do
+    textAlign center
+  ".network-title" ? do
+    width $ pct 100
+    maxWidth $ px 500
+    display inlineBlock
+  ".network-title-table" ? do
+    display displayTable
+  ".network-title-row" ? do
+    display tableRow
+  ".network-title-name" ? do
+    display tableCell
+    paddingTop $ px 15
+    paddingRight $ px 3
+    textAlign $ alignSide sideLeft
+    width $ pct 65
+  ".network-title-cur" ? do
+    display tableCell
+    paddingTop $ px 15
+    paddingRight $ px 3
+    width $ pct 35
+    textAlign $ alignSide sideRight
+  ".network-hr-sep" ? do
+    marginTop $ px 5
+    border solid (px 3) black
+  ".network-hr-sep-lb" ? do
+    border solid (px 1) black
+  ".network-line" ? do
+    width $ pct 100
+    maxWidth $ px 500
+    display inlineBlock
+    textAlign center
+  ".network-name" ? do
+    display inlineBlock
+    float floatLeft
+    fontWeight bold
+  ".network-value" ? do
+    display inlineBlock
+    float floatLeft
+    fontWeight bold
+  ".network-descr" ? do
+    display inlineBlock
+    float floatLeft
+    fontStyle italic
+    fontSizeCustom smaller
+  ".network-sel-cur-item" ? do
+    textAlign center
+    cursor pointer
 
 loadingWidgetCss :: Css
 loadingWidgetCss = do
@@ -448,6 +548,22 @@ selectCss = do
   "option" ? do
     fontSize $ pt 18
     height   $ em 1.8
+
+buttonsToggleCss :: Css
+buttonsToggleCss = do
+  ".button-on" ? do
+    fontSize $ pt 18
+    width $ px 200
+    backgroundColor "#000000"
+    color "#ffffff"
+  ".button-off" ? do
+    fontSize $ pt 18
+    width $ px 200
+    backgroundColor "#ffffff"
+    color "#000000"
+  ".button-not-working" ? do
+    visibility hidden
+    pointerEvents none
 
 graphPinCodeCanvasCss :: Css
 graphPinCodeCanvasCss = do

@@ -3,8 +3,9 @@ module Ergvein.Wallet.Password(
     setupLoginPassword
   , askPassword
   , askPasswordModal
+  , setupLogin
+  , setupPattern
 #ifdef ANDROID
-  , setupLoginPattern
   , askPattern
   , askPatternModal
 #endif
@@ -104,15 +105,21 @@ askPatternModal = mdo
     Nothing -> pure never
   performEvent_ $ (liftIO . fire) <$> passE
 
-setupLoginPattern :: MonadFrontBase t m => m (Event t (Text, Password))
-setupLoginPattern = divClass "setup-password" $ form $ fieldset $ mdo
-  loginD <- textField PWSLogin ""
+#endif
+
+setupPattern :: MonadFrontBase t m => m (Event t Password)
+setupPattern = divClass "setup-password" $ form $ fieldset $ mdo
   pD <- patternSaveWidget
+  validate $ poke (updated pD) $ const $ runExceptT $ do
+    p  <- sampleDyn pD
+    check PWSEmptyPattern $ not $ T.null p
+    pure p
+
+setupLogin :: MonadFrontBase t m => m (Event t Text)
+setupLogin = divClass "setup-password" $ form $ fieldset $ mdo
+  loginD <- textField PWSLogin ""
   e <- submitClass "button button-outline" PWSSet
   validate $ poke e $ const $ runExceptT $ do
     l  <- sampleDyn loginD
-    p  <- sampleDyn pD
     check PWSEmptyLogin $ not $ T.null l
-    check PWSEmptyPassword $ not $ T.null p
-    pure (l,p)
-#endif
+    pure l

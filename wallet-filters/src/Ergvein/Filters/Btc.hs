@@ -35,6 +35,7 @@ import           Network.Haskoin.Transaction
 
 import qualified Data.Attoparsec.Binary        as A
 import qualified Data.Attoparsec.ByteString    as A
+import qualified Data.Binary                   as B
 import qualified Data.ByteString               as BS
 import qualified Data.ByteString.Builder       as B
 import qualified Data.ByteString.Lazy          as BSL
@@ -95,6 +96,15 @@ decodeBtcAddrFilter = A.parseOnly (parser <* A.endOfInput)
     BtcAddrFilter
       <$> A.anyWord64be
       <*> fmap (decodeGcs btcDefP) A.takeByteString
+
+
+instance B.Binary BtcAddrFilter where 
+  put = B.put . encodeBtcAddrFilter
+  {-# INLINE put #-}
+  get = do 
+    bs <- B.get 
+    either fail pure $ decodeBtcAddrFilter bs
+  {-# INLINE get #-}
 
 -- | Contains each input tx for each tx in a block
 type InputTxs = [Tx]
