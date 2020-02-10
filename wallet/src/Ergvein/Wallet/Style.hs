@@ -338,49 +338,42 @@ balancesPageCss :: Css
 balancesPageCss = do
   ".balances-wrapper" ? do
     maxWidth $ px 500
-    textAlign $ alignSide sideLeft
     margin (px 0) auto (px 0) auto
+    textAlign $ alignSide sideLeft
   ".sync-progress" ? do
     fontSize $ pt 14
-  ".currency-line" ? do
-    width $ pct 100
-    maxWidth $ px 500
-    display inlineBlock
-    fontSize $ pt (if isAndroid then 18 else 24)
-  ".currency-content" ? do
-    display displayTable
-    width $ pct 100
-  ".currency-content-row" ? do
-    display tableRow
-    cursor pointer
-  ".currency-content-row:hover" ? do
-    color hoverColor
-  ".currency-name" ? do
-    display tableCell
-    paddingRight $ px 3
-    textAlign $ alignSide sideLeft
-  ".currency-balance" ? do
-    display tableCell
-    paddingRight $ px 3
-    textAlign $ alignSide sideRight
-  ".currency-unit" ? do
-    display tableCell
-    textAlign $ alignSide sideLeft
-  ".currency-arrow" ? do
-    display tableCell
-    paddingLeft $ px 3
-    textAlign $ alignSide sideRight
-
-sendPageCss :: Css
-sendPageCss = do
-  ".sendpage-wrapper" ? do
-    maxWidth $ px 500
-    margin (px 0) auto (px 0) auto
-  ".sendpage-buttons-wrapper" ? do
+  ".currency-first-row" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1]
     gridGap $ rem 1
-  ".sendpage-submit" ? do
+    fontSize $ pt (if isAndroid then 18 else 24)
+    cursor pointer
+  ".currency-first-row:hover" ? do
+    color hoverColor
+  ".currency-balance" ? do
+    display flex
+    justifyContent flexEnd
+  ".currency-value" ? do
+    paddingRight $ rem 1
+  ".currency-unit" ? do
+    paddingRight $ rem 1
+  ".currency-arrow" ? do
+    paddingRight $ rem 0
+  ".currency-second-row" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1]
+    gridGap $ rem 1
+
+sendPageCss :: Css
+sendPageCss = do
+  ".send-wrapper" ? do
+    maxWidth $ px 500
+    margin (px 0) auto (px 0) auto
+  ".send-buttons-wrapper" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1]
+    gridGap $ rem 1
+  ".send-submit" ? do
     width $ pct 100
   ".button-icon-wrapper" ? do
     fontSize $ pt 11

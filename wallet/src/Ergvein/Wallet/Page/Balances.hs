@@ -89,23 +89,62 @@ instance LocalizedPrint ScanProgress where
 getSyncProgress :: MonadFront t m => m (Dynamic t ScanProgress)
 getSyncProgress = pure $ pure $ ScanDays 10
 
-currenciesList :: MonadFront t m => m (Event t Currency)
-currenciesList = divClass "currency-line" $ divClass "currency-content" $
-  fmap leftmost $ traverse currencyLine allCurrencies
+currenciesList :: MonadFront t m => m ()
+currenciesList = divClass "currency-content" $ do
+  historyE <- leftmost <$> traverse currencyLine allCurrencies
+  let thisWidget = Just $ pure balancesPage
+  void $ nextWidget $ ffor historyE $ \cur -> Retractable {
+    retractableNext = historyPage cur
+  , retractablePrev = thisWidget
+  }
   where
     currencyLine cur = do
-      (e, _) <- divClass' "currency-content-row" $ do
+      (e, _) <- divClass' "currency-first-row" $ do
         bal <- currencyBalance cur
         settings <- getSettings
         let setUs = getSettingsUnits settings
         langD <- getLanguage
         divClass "currency-name"    $ text $ currencyName cur
-        divClass "currency-balance" $ dynText $ (\v -> showMoneyUnit v setUs) <$> bal
-        divClass "currency-unit"    $ dynText $ ffor2 bal langD $ \(Money cur _) lang -> symbolUnit cur lang setUs
-        divClass "currency-arrow"   $ text "〉"
+        divClass "currency-balance" $ do
+          elClass "span" "currency-value" $ dynText $ (\v -> showMoneyUnit v setUs) <$> bal
+          elClass "span" "currency-unit"  $ dynText $ ffor2 bal langD $ \(Money cur _) lang -> symbolUnit cur lang setUs
+          elClass "span" "currency-arrow" $ text "〉"
+      divClass "currency-second-row" $ do
+        sendBtnE <- buttonClass "button button-outline currency-button" ButtonSend
+        recieveBtnE <- buttonClass "button button-outline currency-button" ButtonRecieve
+        nextWidget $ ffor sendBtnE $ const Retractable {
+            retractableNext = sendPage cur
+          , retractablePrev = Just $ pure balancesPage
+          }
       pure $ cur <$ domEvent Click e
-
     getSettingsUnits = fromMaybe defUnits . settingsUnits
+
+
+-- currenciesList :: MonadFront t m => m ()
+-- currenciesList = do
+--   historyE <- leftmost <$> traverse currencyLine allCurrencies
+--   void $ nextWidget $ ffor historyE $ \cur -> Retractable {
+--       retractableNext = historyPage cur
+--     , retractablePrev = Just $ pure balancesPage
+--     }
+--   where
+--     currencyLine cur = do
+--       (e, _) <- divClass' "currency-line" $ do
+--         divClass "currency-name" $ text $ currencyName cur
+--         divClass "currency-balance" $ do
+--           bal <- currencyBalance cur
+--           dynText $ do
+--             m <- showMoney <$> bal
+--             pure $ m <> "〉"
+--       divClass "currency-buttons-wrapper" $ do
+--         sendBtnE <- buttonClass "button button-outline currency-button" ButtonSend
+--         recieveBtnE <- buttonClass "button button-outline currency-button" ButtonRecieve
+--         nextWidget $ ffor sendBtnE $ const Retractable {
+--             retractableNext = sendPage cur
+--           , retractablePrev = Just $ pure balancesPage
+--           }
+--       pure $ cur <$ domEvent Click e
+
 
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
 currencyBalance cur = pure $ pure $ Money cur 1

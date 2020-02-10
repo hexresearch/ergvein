@@ -58,12 +58,12 @@ sendPage :: MonadFront t m => Currency -> m ()
 sendPage cur = do
   let thisWidget = Just $ pure $ sendPage cur
   menuWidget (SendTitle cur) thisWidget
-  wrapper True $ divClass "sendpage-wrapper" $ do
+  wrapper True $ divClass "send-wrapper" $ do
     recipientE <- textField RecipientString ""
-    divClass "sendpage-buttons-wrapper" $ do
+    divClass "send-buttons-wrapper" $ do
       qrE <- outlineButtonWithIcon BtnScanQRCode "fas fa-qrcode"
       pasteE <- outlineButtonWithIcon BtnPasteString "fas fa-clipboard"
       pure()
     amountE <- textField AmountString ""
-    submitE <- submitClass "button button-outline sendpage-submit" SendBtnString
+    submitE <- submitClass "button button-outline send-submit" SendBtnString
     pure ()
