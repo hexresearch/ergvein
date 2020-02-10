@@ -61,9 +61,18 @@ sendPage cur = do
   wrapper True $ divClass "sendpage-wrapper" $ do
     recipientE <- textField RecipientString ""
     divClass "sendpage-buttons-wrapper" $ do
-      qrE <- outlineButton BtnScanQRCode
-      pasteE <- outlineButton BtnPasteString
+      qrE <- buttonWithIcon "Scan QR code" "fas fa-qrcode"
+      pasteE <- buttonWithIcon "Paste" "fas fa-clipboard"
+      -- qrE <- outlineButton BtnScanQRCode
+      -- pasteE <- outlineButton BtnPasteString
       pure()
     amountE <- textField AmountString ""
     submitE <- submitClass "button button-outline sendpage-submit" SendBtnString
     pure ()
+
+buttonWithIcon :: DomBuilder t m => Text -> Text -> m (Event t ())
+buttonWithIcon t i = do
+  (e, _) <- elClass' "button" "button button-outline" $ do
+    text t
+    elClass "span" "sendpage-icon-wrapper" $ elClass "i" i blank
+  return $ domEvent Click e
