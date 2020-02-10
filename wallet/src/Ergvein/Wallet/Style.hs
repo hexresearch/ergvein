@@ -92,9 +92,11 @@ minorBackground = rgb 59 78 122
 wrapperCss :: Css
 wrapperCss = do
   ".container" ? do
---    marginTop $ px 40
     position relative
     height $ pct 80
+--  ".container-spacer" ? do
+--    minHeight $ px 40
+--    height $ px 40
   ".vertical-center" ? do
     position absolute
     top $ pct 50
@@ -122,8 +124,6 @@ menuCss = do
     fontSize $ pt 14
     paddingBottom $ px 10
     display displayTable
---    position absolute
---    top $ px 0
   ".menu-wallet-name" ? do
     display tableCell
     textAlign center
