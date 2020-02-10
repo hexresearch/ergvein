@@ -14,6 +14,8 @@ module Ergvein.Wallet.Page.PatternKey(
 
 import Ergvein.Aeson
 import Ergvein.Text
+import Ergvein.Wallet.Language
+import Ergvein.Wallet.Localization.PatternKey
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Canvas
 import Ergvein.Wallet.Util
@@ -234,12 +236,11 @@ patternAskWidget = mdo
 
 patternSaveWidget :: MonadFrontBase t m => m (Dynamic t Password)
 patternSaveWidget = mdo
-  divClass "pattern-text" $ dynText $ fmap (\a -> case a of
-    FirstTry -> "Enter pattern key."
-    SecondTry -> "Repeat pattern key. Keys should match."
-    ErrorTry -> "Keys don't match. Enter pattern key."
-    Done -> "Keys match"
-    ) tryD
+  widgetHold (localizedText PKSFirstTry) $ ffor (updated tryD) $ \a -> case a of
+    FirstTry -> localizedText PKSFirstTry
+    SecondTry -> localizedText PKSSecondTry
+    ErrorTry -> localizedText PKSErrorTry
+    Done -> localizedText PKSDone
   tryD <- holdDyn FirstTry tryE
   (listD, touchD) <- patternSave tryD
   patternD <- holdDyn (PatternSavingTry [] []) patternE

@@ -1,23 +1,25 @@
 language: nix
-nix: 2.0.4
+nix: 2.3
 cache:
   directories:
   - "$HOME/nix.store"
+env:
+  global:
+  - secure: "SW7XDQlFaHJDrY29VaFwCIW+QBtjY4/kKDS/vFGQq6BGxFuIqkv0nPZ36ONI76/cDZ+tyacijkWhTGL/zftnqHAgkbuK5zgD1KMedypbUL/RvW2tWKkhkUZ9cp7NUYY/60QfCv93ySgMM+nU1WqwbV/JgWjoFqzedN/su/g76Bm429V4FHK+rLGhGLbta4gHCRLe1GG4WDFOeaBrzTWd5wCz247SD9VEF97Cj8HVoqtFYTuLBvWee6JWE8l/IzG4iAlf12enCZUbk7CkDHYt9vemF+2Z1IWSlA9Rr70s+u7ZzHklgBvFHVyzt7wXVUrqhSWgX3bbd6UNR0Q9ThocWcvmD38PzcW3XyyDswuuhMlf84/qN8wJXGHc1E7grt1xJ1cz6mC7jbWYH3VvU0jhkR7lMJ+oV5hES2IAD8G+YnYozcCb4tiqgg3sizGkFfJ0DRUinK8L9NwzWf6bG33yKomgq3LhCekl2o1OlPkmzqGQlm8o11f8ClyHQaasreYmM0tx5wmbZTdl2F2ZPrh+LIy88TAYQirU25ZZSwkUwU8Sg6e/AKsaIaFlbzh67sIICKEImjdFbKhv8GmCAzzf/9iTADk7TBp1A6jXs1pbYLM4P+u8N1/sYwDQR/3L9dfCACiVxhWDvQ2doIYR/se3UtjQvhg2YvuIw2H9ZmnX+II="
 before_install:
 - sudo mkdir -p /etc/nix
-- echo "substituters = https://cache.nixos.org/ file://$HOME/nix.store" | sudo tee
+- echo "substituters = https://cache.nixos.org/ https://nixcache.reflex-frp.org file://$HOME/nix.store" | sudo tee
   -a /etc/nix/nix.conf > /dev/null
 - echo 'require-sigs = false' | sudo tee -a /etc/nix/nix.conf > /dev/null
 before_cache:
 - mkdir -p $HOME/nix.store
-- nix copy --to file://$HOME/nix.store -f default.nix buildInputs
+- nix copy --to file://$HOME/nix.store -f default.nix ghc.ergvein-wallet ghc.ergvein-index-server
+- nix copy --to file://$HOME/nix.store -f default.nix --arg isAndroid true android.ergvein-wallet
 before_script:
 - nix-env -iA cachix -f https://cachix.org/api/v1/install
 - cachix use ergvein
 script:
-- nix-build -A ghc.ergvein-wallet | cachix push ergvein
-- nix-build -A ghc.ergvein-index-server | cachix push ergvein
-- nix-build --arg isAndroid true -A android.ergvein-wallet | cachix push ergvein
-env:
-  global:
-    secure: JymWdfF0fbmxnLnrLrFPGLJGKQ5dNjsIjfRPlIrR0VPC4Ud1PcjYpknEAHi3JCxvOu6NsEniXtcPmVTAnCRvj75Af2y0K3kjtpy0PxfIPCPLS6wKg13QSemPHQq9CMPKsbTZge0MZgPRMs5kwv1kqUEcJnZQiiA/rRkfLs0R1dK4x/eP95TL4L5vF9kEip011S0GpH2EwrfFBSB8kA5l9Qn67tHZNAy7veEi17lAtBFGwLFspWxn9Qyu3g5rgVss9UvBcXrwfkxKE8uXWznkV08xG3BuhEoesLeqKKn9dqLeHnzLyi8gkofRwgyv9qBkGGblhyFOLpLAbATRA8/kiSc7TjMFl6gHNsXtkRH0VO6DPGYJ8cptDGB/wXDan5acz7wJurCJpBmutgrE1qJP1gs+rlvhbq9XCfOrfyqLyGfSzOYdfFh4hOLitl0dQBoyApSVF8uWt8kQhF9dbAy7V2zbPsO80c6LRsIuxWifeI+rjmaYpb7AUWNYUK5VfE2IUukbV5OrZzPP4FOH8OqUOu/RLVYxK3WsyURfdZ06+E+c2CJRNY1xcwlY1IqS7SSRSkTac0UPeq7IvM0uvokydJpegn5QLYchw2TGfN8J8KulbyI7n+D+B7uZTUFYiaxcwAUWrxfPAVc5ADPdZRf0C5ThzaeThBg+r67VGTN79DE=
+- cachix push ergvein --watch-store&
+- nix-build -A ghc.ergvein-wallet
+- nix-build -A ghc.ergvein-index-server
+- nix-build --arg isAndroid true -A android.ergvein-wallet
