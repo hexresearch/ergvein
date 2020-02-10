@@ -38,6 +38,7 @@ module Ergvein.Wallet.Elements(
   , outlineButton
   , clearButton
   , divButton
+  , outlineButtonWithIcon
   , module Ergvein.Wallet.Util
   ) where
 
@@ -174,3 +175,23 @@ clearButton = buttonClass "button button-clear"
 -- | Button with CSS classes
 divButton :: (DomBuilder t m, PostBuild t m) => Dynamic t Text -> m a -> m (Event t a)
 divButton = mkButton "div" []
+
+-- Bright button with dark outline and icon from Font Awesome library
+-- The first parameter is the button text
+-- The second parameter is the icon class
+-- Usage example:
+-- >>> outlineButtonWithIcon BtnPasteString "fas fa-clipboard"
+-- As a result, such an element will be created:
+-- <button class="button button-outline href="javascript:void(0)">
+--   Scan QR code
+--   <span class="button-icon-wrapper">
+--     <i class="fas fa-qrcode">::before</i>
+--   </span>
+-- </button>
+-- 
+outlineButtonWithIcon :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
+  => lbl -> Text -> m (Event t ())
+outlineButtonWithIcon lbl i =
+  mkButton "button" [("href", "javascript:void(0)")] "button button-outline" $ do
+    dynText =<< localized lbl
+    elClass "span" "button-icon-wrapper" $ elClass "i" i blank

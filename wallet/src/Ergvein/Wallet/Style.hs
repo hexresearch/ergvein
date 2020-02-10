@@ -365,7 +365,7 @@ sendPageCss = do
     gridGap $ rem 1
   ".sendpage-submit" ? do
     width $ pct 100
-  ".sendpage-icon-wrapper" ? do
+  ".button-icon-wrapper" ? do
     fontSize $ pt 11
     marginLeft $ em 0.5
 
