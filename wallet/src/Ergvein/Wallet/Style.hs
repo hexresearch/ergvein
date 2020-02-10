@@ -353,12 +353,11 @@ balancesPageCss = do
   ".currency-balance" ? do
     display flex
     justifyContent flexEnd
+    textAlign $ alignSide sideRight
   ".currency-value" ? do
-    paddingRight $ rem 1
+    paddingRight $ rem 0.5
   ".currency-unit" ? do
-    paddingRight $ rem 1
-  ".currency-arrow" ? do
-    paddingRight $ rem 0
+    paddingRight $ rem 0.5
   ".currency-second-row" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1]
