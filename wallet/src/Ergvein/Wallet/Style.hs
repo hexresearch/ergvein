@@ -376,7 +376,6 @@ sendPageCss = do
   ".send-submit" ? do
     width $ pct 100
   ".button-icon-wrapper" ? do
-    fontSize $ pt 11
     marginLeft $ em 0.5
 
 aboutPageCss :: Css

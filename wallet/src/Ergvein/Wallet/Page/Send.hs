@@ -61,8 +61,8 @@ sendPage cur = do
   wrapper True $ divClass "send-wrapper" $ do
     recipientE <- textField RecipientString ""
     divClass "send-buttons-wrapper" $ do
-      qrE <- outlineButtonWithIcon BtnScanQRCode "fas fa-qrcode"
-      pasteE <- outlineButtonWithIcon BtnPasteString "fas fa-clipboard"
+      qrE <- outlineButtonWithIcon BtnScanQRCode "fas fa-qrcode fa-lg"
+      pasteE <- outlineButtonWithIcon BtnPasteString "fas fa-clipboard fa-lg"
       pure()
     amountE <- textField AmountString ""
     submitE <- submitClass "button button-outline send-submit" SendBtnString
