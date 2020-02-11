@@ -8,6 +8,7 @@ import Data.Maybe (fromMaybe)
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Elements
+import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Menu
@@ -40,7 +41,7 @@ balancesPage = do
   menuWidget BalanceTitle thisWidget
   wrapper False $ do
     syncWidget
-    historyE <- currenciesList
+    historyE <- currenciesList anon_name
     void $ nextWidget $ ffor historyE $ \cur -> Retractable {
         retractableNext = historyPage cur
       , retractablePrev = thisWidget
@@ -78,14 +79,14 @@ instance LocalizedPrint ScanProgress where
 getSyncProgress :: MonadFront t m => m (Dynamic t ScanProgress)
 getSyncProgress = pure $ pure $ ScanDays 10
 
-currenciesList :: MonadFront t m => m (Event t Currency)
-currenciesList = divClass "currency-line" $ divClass "currency-content" $
-  fmap leftmost $ traverse currencyLine allCurrencies
+currenciesList :: MonadFront t m => Text -> m (Event t Currency)
+currenciesList name = divClass "currency-line" $ divClass "currency-content" $ do
+  s <- getSettings
+  fmap leftmost $ traverse (currencyLine s) (getActiveCurrencies s)
   where
-    currencyLine cur = do
+    currencyLine settings cur = do
       (e, _) <- divClass' "currency-content-row" $ do
         bal <- currencyBalance cur
-        settings <- getSettings
         let setUs = getSettingsUnits settings
         langD <- getLanguage
         divClass "currency-name"    $ text $ currencyName cur
@@ -93,7 +94,7 @@ currenciesList = divClass "currency-line" $ divClass "currency-content" $
         divClass "currency-unit"    $ dynText $ ffor2 bal langD $ \(Money cur _) lang -> symbolUnit cur lang setUs
         divClass "currency-arrow"   $ text "〉"
       pure $ cur <$ domEvent Click e
-
+    getActiveCurrencies s = fromMaybe allCurrencies $ Map.lookup name $ activeCurrenciesMap $ settingsActiveCurrencies s
     getSettingsUnits = fromMaybe defUnits . settingsUnits
 
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
@@ -110,4 +111,3 @@ symbolUnit cur lang units =
               ErgWhole    -> "erg"
               ErgMilli    -> "merg"
               ErgNano     -> "sat"
-

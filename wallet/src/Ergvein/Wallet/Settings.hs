@@ -16,12 +16,14 @@ import Data.Yaml (encodeFile)
 import Ergvein.Aeson
 import Ergvein.Lens
 import Ergvein.Types.Currency (Units(..), defUnits, Currency, allCurrencies)
+import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Yaml(readYamlEither')
 import Servant.Client(BaseUrl(..))
 import System.Directory
 
 import qualified Data.Text as T
+import qualified Data.Map as Map
 
 #ifdef ANDROID
 import Android.HaskellActivity
@@ -35,6 +37,7 @@ data Settings = Settings {
 , settingsDefUrlNum         :: (Int, Int)
 , settingsReqTimeout        :: NominalDiffTime
 , settingsUnits             :: Maybe Units
+, settingsActiveCurrencies  :: ActiveCurrencies
 } deriving (Eq, Show)
 
 $(deriveJSON (aesonOptionsStripPrefix "settings") ''Settings)
@@ -53,7 +56,7 @@ mkDefSettings :: MonadIO m => FilePath -> m Settings
 mkDefSettings home = liftIO $ do
   let storePath   = home <> "/store"
       configPath  = home <> "/config.yaml"
-      cfg = Settings English (pack storePath) (pack configPath) [] (2,3) 5 (Just defUnits)
+      cfg = Settings English (pack storePath) (pack configPath) [] (2,3) 5 (Just defUnits) $ ActiveCurrencies (Map.fromList [])
   createDirectoryIfMissing True storePath
   encodeFile configPath cfg
   pure cfg
@@ -79,7 +82,7 @@ mkDefSettings = liftIO $ do
   putStrLn $ "Language   : English"
   let storePath   = home <> "/.ergvein/store"
       configPath  = home <> "/.ergvein/config.yaml"
-      cfg = Settings English (pack storePath) (pack configPath) [] (2,3) 5 (Just defUnits)
+      cfg = Settings English (pack storePath) (pack configPath) [] (2,3) 5 (Just defUnits) $ ActiveCurrencies (Map.fromList [])
   createDirectoryIfMissing True storePath
   encodeFile configPath cfg
   pure cfg

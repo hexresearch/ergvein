@@ -32,6 +32,5 @@ main = do
     css <- compileFrontendCss
     mainWidgetWithCss css $ do
       settings :: Settings <- loadSettings $ unHelpful $ config opts
-      currs <- loadActiveCurrencies
-      env <- newEnv settings currs (runUiCallbacks cbs)
+      env <- newEnv settings (runUiCallbacks cbs)
       runEnv cbs env frontend

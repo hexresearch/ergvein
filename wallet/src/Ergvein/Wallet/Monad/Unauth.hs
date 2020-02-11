@@ -184,10 +184,9 @@ instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
 
 newEnv :: (Reflex t, TriggerEvent t m, MonadIO m)
   => Settings
-  -> ActiveCurrencies
   -> Chan (IO ()) -- UI callbacks channel
   -> m (UnauthEnv t)
-newEnv settings ac uiChan = do
+newEnv settings uiChan = do
   settingsRef <- newExternalRef settings
   (backE, backFire) <- newTriggerEvent
   loadingEF <- newTriggerEvent
@@ -196,7 +195,7 @@ newEnv settings ac uiChan = do
   passModalEF <- newTriggerEvent
   authRef <- newExternalRef Nothing
   langRef <- newExternalRef $ settingsLang settings
-  activeCursRef <- newExternalRef ac
+  activeCursRef <- newExternalRef $ settingsActiveCurrencies settings
   re <- newRetractEnv
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
