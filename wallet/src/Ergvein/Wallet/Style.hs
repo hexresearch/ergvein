@@ -47,7 +47,11 @@ frontendCssBS r = let
 frontendCss :: Resources -> Css
 frontendCss r = do
   fontFamilies r
-  html ? textAlign center
+  html ? do
+    textAlign center
+    let px' = px 0 in padding px' px' px' px'
+    let px' = px 0 in margin px' px' px' px'
+    height $ pct 100
   body ? do
     color textColor
     backgroundColor majorBackground
@@ -55,6 +59,7 @@ frontendCss r = do
     marginLeft $ px 0
     marginRight $ px 0
     fontFamily ["Roboto"] []
+    overflowY auto
   wrapperCss
   menuCss
   buttonCss
@@ -64,6 +69,7 @@ frontendCss r = do
   passwordCss
   initialPageCss
   balancesPageCss
+  networkPageCss
   aboutPageCss
   loadingWidgetCss
   alertsCss
@@ -87,7 +93,7 @@ wrapperCss :: Css
 wrapperCss = do
   ".container" ? do
     position relative
-    height $ pct 100
+    height $ pct 80
   ".vertical-center" ? do
     position absolute
     top $ pct 50
@@ -341,6 +347,63 @@ aboutPageCss = do
     width $ pct 1
   ".about-distrib" ? do
     paddingTop $ px 45
+    fontSize $ pt (if isAndroid then 12 else 18)
+
+networkPageCss :: Css
+networkPageCss = do
+  ".network-wrapper" ? do
+    textAlign center
+  ".network-title" ? do
+    width $ pct 100
+    maxWidth $ px 500
+    display inlineBlock
+  ".network-title-table" ? do
+    display displayTable
+  ".network-title-row" ? do
+    display tableRow
+  ".network-title-name" ? do
+    display tableCell
+    paddingTop $ px 15
+    paddingRight $ px 3
+    textAlign $ alignSide sideLeft
+    width $ pct 65
+  ".network-title-cur" ? do
+    display tableCell
+    paddingTop $ px 15
+    paddingRight $ px 3
+    width $ pct 35
+    textAlign $ alignSide sideRight
+  ".network-hr-sep" ? do
+    marginTop $ px 5
+    border solid (px 3) black
+  ".network-hr-sep-lb" ? do
+    border solid (px 1) black
+  ".network-line" ? do
+    width $ pct 100
+    maxWidth $ px 500
+    display inlineBlock
+    textAlign center
+  ".network-name" ? do
+    display inlineBlock
+    float floatLeft
+    fontWeight bold
+  ".network-name-edit" ? do
+    display inlineBlock
+    float floatRight
+    fontWeight bold
+    color "#3F7FBF"
+  ".network-value" ? do
+    display inlineBlock
+    float floatLeft
+    fontWeight bold
+  ".network-descr" ? do
+    display inlineBlock
+    float floatLeft
+    fontStyle italic
+    fontSizeCustom smaller
+  ".network-sel-cur-item" ? do
+    textAlign center
+    cursor pointer
     fontSize $ pt (if isAndroid then 12 else 18)
 
 loadingWidgetCss :: Css
