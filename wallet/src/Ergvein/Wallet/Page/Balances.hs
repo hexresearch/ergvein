@@ -110,4 +110,4 @@ symbolUnit cur lang units =
     ERGO -> case getUnitERGO units of
               ErgWhole    -> "erg"
               ErgMilli    -> "merg"
-              ErgNano     -> "sat"
+              ErgNano     -> "nerg"
