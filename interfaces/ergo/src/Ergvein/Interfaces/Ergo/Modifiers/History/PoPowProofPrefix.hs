@@ -16,14 +16,4 @@ data PoPowProofPrefix = PoPowProofPrefix {
 , size     :: !(Maybe Int32)
 } deriving (Eq, Show)
 
-instance IsChain [PoPowHeader] where
-  type Element [PoPowHeader] = PoPowHeader
-  type Container [PoPowHeader] = []
-  chainElems = id
-  chainLength = length
-  chainFromList = id
-  findDivergingSubchains = findDivergingSubchainsWithList
-  isValidChainAnchoredTo = undefined
-
-
 deriveJSON (A.defaultOptions { fieldLabelModifier = (\case { "prefixM" -> "m"; a -> a; }) }) ''PoPowProofPrefix

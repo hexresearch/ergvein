@@ -58,5 +58,15 @@ instance IsChainElem PoPowHeader where
       -- ^ https://github.com/bitcoin-core/secp256k1/blob/544435fc90a5672d862e2a51f44c10251893b97d/src/ecdsa_impl.h#L18
       actualTarget = unBigNat . Autolukos.distance . powSolution . header $ h
 
+instance IsChain [PoPowHeader] where
+  type Element [PoPowHeader] = PoPowHeader
+  type Container [PoPowHeader] = []
+  chainElems = id
+  chainLength = length
+  chainFromList = id
+  findDivergingSubchains = findDivergingSubchainsWithList
+  isValidChainAnchoredTo = undefined
+
+
 
 deriveJSON A.defaultOptions ''PoPowHeader

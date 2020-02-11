@@ -28,7 +28,8 @@ class ( IsChainElem (Element c)
   isValidChainAnchoredTo :: c -> c -> Bool
   findDivergingSubchains :: c -> c -> Maybe (c, c)
 
--- findDivergingSubchainsWithList :: _
+findDivergingSubchainsWithList :: (IsChain c, Foldable t0, Foldable t1)
+    => t0 (Element c) -> t1 (Element c) -> Maybe (c, c)
 findDivergingSubchainsWithList a b = fmap (chainFromList *** chainFromList) $
     findDivergingSubListsOn blockHash (F.toList a) (F.toList b)
 
