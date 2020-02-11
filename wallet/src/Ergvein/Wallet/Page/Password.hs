@@ -47,16 +47,17 @@ setupLoginPage m ac = wrapper True $ do
 
 setupPatternPage :: MonadFrontBase t m => Mnemonic -> Text -> [Currency] -> m ()
 setupPatternPage m l curs = wrapper True $ do
-  ac <- loadActiveCurrencies
   buildE <- getPostBuild
-  performEvent_ $ ffor buildE $ \_ -> do
-    saveActiveCurrencies $ ActiveCurrencies $ Map.insert l curs (activeCurrenciesMap ac)
+  s <- getSettings
+  updateSettings $ ffor buildE $ \_ -> s {settingsActiveCurrencies = acSet l s}
   patE <- setupPattern
   patD <- holdDyn "" patE
   let logPassE = fmap (\p -> (l,p)) patE
   createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo m) logPassE
   authInfoE <- handleDangerMsg createStorageE
   void $ setAuthInfo $ Just <$> authInfoE
+  where
+    acSet l s = ActiveCurrencies $ Map.insert l curs $ activeCurrenciesMap $ settingsActiveCurrencies s
 
 askPasswordPage :: MonadFrontBase t m => Text -> m (Event t Password)
 askPasswordPage name = wrapper True $ do
