@@ -94,9 +94,6 @@ wrapperCss = do
   ".container" ? do
     position relative
     height $ pct 80
---  ".container-spacer" ? do
---    minHeight $ px 40
---    height $ px 40
   ".vertical-center" ? do
     position absolute
     top $ pct 50

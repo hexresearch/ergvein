@@ -76,13 +76,6 @@ optionsContent cur = do
       retractableNext = pageSelectionOfServer cur
     , retractablePrev = Nothing
     }
-  where
-    lineOption       = divClass "network-wrapper" . divClass "network-line"
-    nameOption       = divClass "network-name"    . localizedText
-    valueOptionDyn v = getLanguage >>= \langD -> divClass "network-value" $ dynText $ ffor2 langD v localizedShow
-    descrOption      = (>>) elBR . divClass "network-descr" . localizedText
-    labelHorSep      = elAttr "hr" [("class","network-hr-sep-lb")] blank
-    elBR             = el "br" blank
 
 lineOptionNoEdit :: MonadFront t m
                  => NetworkPageStrings
@@ -94,12 +87,20 @@ lineOptionNoEdit name valD descr = do
   valueOptionDyn valD
   descrOption descr
   labelHorSep
-  where
-    nameOption       = divClass "network-name"    . localizedText
-    valueOptionDyn v = getLanguage >>= \langD -> divClass "network-value" $ dynText $ ffor2 langD v localizedShow
-    descrOption      = (>>) elBR . divClass "network-descr" . localizedText
-    labelHorSep      = elAttr "hr" [("class","network-hr-sep-lb")] blank
-    elBR             = el "br" blank
+
+lineOption :: MonadFront t m => m a -> m a
+lineOption = divClass "network-wrapper" . divClass "network-line"
+
+nameOption, descrOption :: (MonadFront t m, LocalizedPrint a) => a -> m ()
+nameOption = divClass "network-name"    . localizedText
+descrOption = (>>) elBR . divClass "network-descr" . localizedText
+
+valueOptionDyn :: (MonadFront t m, LocalizedPrint a) => Dynamic t a -> m ()
+valueOptionDyn v = getLanguage >>= \langD -> divClass "network-value" $ dynText $ ffor2 langD v localizedShow
+
+labelHorSep, elBR :: MonadFront t m => m ()
+labelHorSep = elAttr "hr" [("class","network-hr-sep-lb")] blank
+elBR = el "br" blank
 
 
 pageSelectionOfServer :: MonadFront t m => Currency -> m ()
