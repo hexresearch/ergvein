@@ -62,7 +62,9 @@ optionsContent cur = do
   selE <- lineOption $ do
     nameOption NPSServer
     baseUrlD <- fmap (NPSServerVal <$>) $ tempGetServer cur
-    (e,_) <- el' "div" $ valueOptionDyn baseUrlD
+    (e,_) <- el' "div" $ do
+      valueOptionDyn baseUrlD
+      divClass "network-name-edit" $ localizedText NPSServerValEdit
     let selE = cur <$ domEvent Click e
     descrOption NPSServerDescr
     labelHorSep

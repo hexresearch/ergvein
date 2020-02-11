@@ -387,6 +387,11 @@ networkPageCss = do
     display inlineBlock
     float floatLeft
     fontWeight bold
+  ".network-name-edit" ? do
+    display inlineBlock
+    float floatRight
+    fontWeight bold
+    color "#3F7FBF"
   ".network-value" ? do
     display inlineBlock
     float floatLeft
@@ -399,6 +404,7 @@ networkPageCss = do
   ".network-sel-cur-item" ? do
     textAlign center
     cursor pointer
+    fontSize $ pt (if isAndroid then 12 else 18)
 
 loadingWidgetCss :: Css
 loadingWidgetCss = do
