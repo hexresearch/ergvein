@@ -25,8 +25,11 @@ class ( IsChainElem (Element c)
   chainElems :: c -> (Container c) (Element c)
   chainLength :: c -> Int
   chainFromList :: [Element c] -> c
-  isValidChainAnchoredTo :: c -> c -> Bool
+  isValidChainAnchoredTo :: Element c -> c -> Bool
   findDivergingSubchains :: c -> c -> Maybe (c, c)
+
+trivialChain :: IsChain c => Element c -> c
+trivialChain = chainFromList . (:[])
 
 findDivergingSubchainsWithList :: (IsChain c, Foldable t0, Foldable t1)
     => t0 (Element c) -> t1 (Element c) -> Maybe (c, c)
@@ -59,10 +62,10 @@ proofChain p = proofSuffix p <> proofPrefix p  --  Notice swapped order of proof
 -- q - Q predicate
 -- m - security parameter pertaining to the prefix of the proof
 -- k - size of the suffix of the proof
-niPoPowVerify :: forall p. (Proof p, Monoid (Chain p), Eq (Chain p))
-              => Chain p -> (Chain p -> Bool) -> Int -> Int -> [p] -> Bool
+niPoPowVerify :: forall p. (Proof p, Monoid (Chain p), Eq (Chain p), IsChainElem (Element p))
+              => Element (Chain p) -> (Chain p -> Bool) -> Int -> Int -> [p] -> Bool
 niPoPowVerify g q m k = q' . proofSuffix
-    . foldl' (\b a -> if proofPrefix a `proofIsMBetterThan` proofPrefix b then a else b) (mkProof g mempty)
+    . foldl' (\b a -> if proofPrefix a `proofIsMBetterThan` proofPrefix b then a else b) (mkProof (trivialChain g) mempty)
     . filter (\p -> chainLength (proofSuffix p) == k && isValidChain (proofChain p))
   where
     q' a | a == mempty = False
