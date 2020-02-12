@@ -70,6 +70,7 @@ frontendCss r = do
   initialPageCss
   balancesPageCss
   networkPageCss
+  infoPageCss
   aboutPageCss
   loadingWidgetCss
   alertsCss
@@ -405,6 +406,11 @@ networkPageCss = do
     textAlign center
     cursor pointer
     fontSize $ pt (if isAndroid then 12 else 18)
+
+infoPageCss :: Css
+infoPageCss = do
+  ".info-v-spacer" ? do
+    height $ px 25
 
 loadingWidgetCss :: Css
 loadingWidgetCss = do
