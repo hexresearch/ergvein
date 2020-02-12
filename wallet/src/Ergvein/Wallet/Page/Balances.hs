@@ -38,11 +38,11 @@ instance LocalizedPrint ButtonSend where
     English ->  "Send"
     Russian ->  "Отправить"
 
-data ButtonRecieve = ButtonRecieve
+data ButtonReceive = ButtonReceive
 
-instance LocalizedPrint ButtonRecieve where
+instance LocalizedPrint ButtonReceive where
   localizedShow l _ = case l of
-    English -> "Recieve"
+    English -> "Receive"
     Russian -> "Получить"
 
 balancesPage :: MonadFront t m => m ()

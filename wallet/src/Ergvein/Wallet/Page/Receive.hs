@@ -1,5 +1,5 @@
-module Ergvein.Wallet.Page.Recieve (
-    recievePage
+module Ergvein.Wallet.Page.Receive (
+    receivePage
   ) where
 
 import Ergvein.Types.Currency
@@ -15,14 +15,14 @@ data CurrencyTitle = CurrencyTitle !Currency
 
 instance LocalizedPrint CurrencyTitle where
   localizedShow l (CurrencyTitle c) = case l of
-    English -> "Recieve " <> currencyName c
+    English -> "Receive " <> currencyName c
     Russian -> "Получение " <> currencyName c
 
-recievePage :: MonadFront t m => Currency -> m ()
-recievePage cur = do
-  let thisWidget = Just $ pure $ recievePage cur
+receivePage :: MonadFront t m => Currency -> m ()
+receivePage cur = do
+  let thisWidget = Just $ pure $ receivePage cur
   menuWidget (CurrencyTitle cur) thisWidget
-  navbarWidget cur thisWidget NavbarRecieve
+  navbarWidget cur thisWidget NavbarReceive
   wrapper True $ do
     h3 $ localizedText $ CurrencyTitle cur
     pure ()

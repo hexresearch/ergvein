@@ -8,7 +8,7 @@ import Ergvein.Wallet.Monad
 data NavbarItem
   = NavbarSend
   | NavbarHistory
-  | NavbarRecieve
+  | NavbarReceive
   deriving Eq
 
 instance LocalizedPrint NavbarItem where
@@ -16,8 +16,8 @@ instance LocalizedPrint NavbarItem where
     English -> case v of
       NavbarSend    -> "Send"
       NavbarHistory -> "History"
-      NavbarRecieve -> "Recieve"
+      NavbarReceive -> "Receive"
     Russian -> case v of
       NavbarSend    -> "Отправка"
       NavbarHistory -> "История"
-      NavbarRecieve -> "Получение"
+      NavbarReceive -> "Получение"

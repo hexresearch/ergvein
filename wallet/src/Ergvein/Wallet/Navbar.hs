@@ -15,8 +15,8 @@ navbarWidget :: (MonadFront t m) => Currency -> Maybe (Dynamic t (m ())) -> Acti
 navbarWidget cur prevWidget activeItem = divClass "navbar" $ do
   sendE <- navbarBtn NavbarSend activeItem
   historyE <- navbarBtn NavbarHistory activeItem
-  recieveE <- navbarBtn NavbarRecieve activeItem
-  switchNavbar cur prevWidget (leftmost [sendE, historyE, recieveE])
+  receiveE <- navbarBtn NavbarReceive activeItem
+  switchNavbar cur prevWidget (leftmost [sendE, historyE, receiveE])
 
 navbarBtn :: (DomBuilder t m, MonadLocalized t m) => NavbarItem -> ActiveItem-> m (Event t NavbarItem)
 navbarBtn v activeItem

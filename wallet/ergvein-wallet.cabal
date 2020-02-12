@@ -83,7 +83,7 @@ library
         Ergvein.Wallet.Page.Password
         Ergvein.Wallet.Page.PatternKey
         Ergvein.Wallet.Page.QRCode
-        Ergvein.Wallet.Page.Recieve
+        Ergvein.Wallet.Page.Receive
         Ergvein.Wallet.Page.Seed
         Ergvein.Wallet.Page.Send
         Ergvein.Wallet.Page.Settings
