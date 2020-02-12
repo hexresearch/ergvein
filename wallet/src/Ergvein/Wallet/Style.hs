@@ -79,7 +79,11 @@ frontendCss :: Resources -> Css
 frontendCss r = do
   fontFamilies r
   faFontFamilies r
-  html ? textAlign center
+  html ? do
+    textAlign center
+    let px' = px 0 in padding px' px' px' px'
+    let px' = px 0 in margin px' px' px' px'
+    height $ pct 100
   body ? do
     color textColor
     backgroundColor majorBackground
@@ -87,6 +91,7 @@ frontendCss r = do
     marginLeft $ px 0
     marginRight $ px 0
     fontFamily ["Roboto"] []
+    overflowY auto
   wrapperCss
   menuCss
   navbarCss
@@ -122,7 +127,7 @@ wrapperCss :: Css
 wrapperCss = do
   ".container" ? do
     position relative
-    height $ pct 100
+    height $ pct 80
   ".vertical-center" ? do
     position absolute
     top $ pct 50
@@ -462,6 +467,11 @@ networkPageCss = do
     display inlineBlock
     float floatLeft
     fontWeight bold
+  ".network-name-edit" ? do
+    display inlineBlock
+    float floatRight
+    fontWeight bold
+    color "#3F7FBF"
   ".network-value" ? do
     display inlineBlock
     float floatLeft
@@ -474,6 +484,7 @@ networkPageCss = do
   ".network-sel-cur-item" ? do
     textAlign center
     cursor pointer
+    fontSize $ pt (if isAndroid then 12 else 18)
 
 loadingWidgetCss :: Css
 loadingWidgetCss = do

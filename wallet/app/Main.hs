@@ -3,6 +3,7 @@ module Main where
 
 import Data.Default
 import Ergvein.Wallet
+import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Run
 import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Style

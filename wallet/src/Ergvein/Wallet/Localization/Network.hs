@@ -17,6 +17,7 @@ data NetworkPageStrings =
   | NPSStatusDescr
   | NPSServer
   | NPSServerVal BaseUrl
+  | NPSServerValEdit
   | NPSServerDescr
   | NPSHeight
   | NPSHeightVal BlockHeight
@@ -35,6 +36,7 @@ instance LocalizedPrint NetworkPageStrings where
       NPSStatusDescr    -> "Amount of indexers connected"
       NPSServer         -> "Server: "
       NPSServerVal s    -> pack $ showBaseUrl s
+      NPSServerValEdit  -> "Edit"
       NPSServerDescr    -> "Server indexer for tx history"
       NPSHeight         -> "Height: "
       NPSHeightVal n    -> showt n <> " blocks."
@@ -56,6 +58,7 @@ instance LocalizedPrint NetworkPageStrings where
       NPSStatusDescr    -> "Количество подключенных индексаторов"
       NPSServer         -> "Сервер: "
       NPSServerVal s    -> pack $ showBaseUrl s
+      NPSServerValEdit  -> "Редактировать"
       NPSServerDescr    -> "Сервер индесатор для истории транзаций"
       NPSHeight         -> "Высота: "
       NPSHeightVal n    -> (<>) (showt n) $ case n of

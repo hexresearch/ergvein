@@ -3,29 +3,30 @@ module Ergvein.Wallet.Page.Settings(
   ) where
 
 import Control.Monad.IO.Class (liftIO)
-import qualified Data.Map.Strict as M
+import qualified Data.Map.Strict as Map
 import Data.Time
 import Data.Function.Flip (flip3)
 import Reflex.Host.Class
 import Reflex.Dom as RD
-import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
 import Reflex.Dom
 
 import Ergvein.Text
 import Ergvein.Types.Currency
+import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Widget.GraphPinCode
 import Ergvein.Wallet.Wrapper
 
 data SubPageSettings
   = GoLanguage
-  | GoPinCode
+  | GoCurrencies
   | GoUnits
 
 settingsPage :: MonadFront t m => m ()
@@ -35,13 +36,14 @@ settingsPage = do
   wrapper True $ do
     divClass "initial-options grid1" $ do
       goLangE   <- fmap (GoLanguage <$) $ outlineButton STPSButLanguage
+      goCurrE   <- fmap (GoCurrencies <$) $ outlineButton STPSButActiveCurrs
       goUnitsE  <- fmap (GoUnits    <$) $ outlineButton STPSButUnits
-      let goE = leftmost [goLangE, goUnitsE]
+      let goE = leftmost [goLangE, goCurrE, goUnitsE]
       void $ nextWidget $ ffor goE $ \spg -> Retractable {
           retractableNext = case spg of
-            GoLanguage  -> languagePage
-            GoPinCode   -> pinCodePage
-            GoUnits     -> unitsPage
+            GoLanguage   -> languagePage
+            GoCurrencies -> currenciesPage
+            GoUnits      -> unitsPage
         , retractablePrev = thisWidget
         }
 
@@ -54,7 +56,7 @@ languagePage = do
     divClass "initial-options grid1" $ do
       langD <- getLanguage
       initKey <- sample . current $ langD
-      let listLangsD = ffor langD $ \l -> M.fromList $ fmap (\v -> (v, localizedShow l v)) allLanguages
+      let listLangsD = ffor langD $ \l -> Map.fromList $ fmap (\v -> (v, localizedShow l v)) allLanguages
           ddnCfg = DropdownConfig {
                 _dropdownConfig_setValue   = updated langD
               , _dropdownConfig_attributes = constDyn ("class" =: "select-lang")
@@ -68,19 +70,20 @@ languagePage = do
       pure ()
     pure ()
 
-data GoPinSets
-  = GoPinBase
-  | GoPinInputCode
-
-pinCodePage :: MonadFront t m => m ()
-pinCodePage = do
-  let thisWidget = Just $ pure $ pinCodePage
+currenciesPage :: MonadFront t m => m ()
+currenciesPage = do
+  let thisWidget = Just $ pure $ currenciesPage
   menuWidget STPSTitle thisWidget
   wrapper True $ do
-    h3 $ localizedText $ STPSSetsPinCode
+    h3 $ localizedText $ STPSSetsActiveCurrs
     divClass "initial-options grid1" $ do
-      pure ()
-    pure ()
+      s <- getSettings
+      anon_name <- getWalletName
+      currListE <- selectCurrenciesWidget $ getActiveCurrencies anon_name s
+      updateSettings $ ffor currListE $ \curs -> s {settingsActiveCurrencies = acSet anon_name s curs}
+  where
+    getActiveCurrencies name s = fromMaybe allCurrencies $ Map.lookup name $ activeCurrenciesMap $ settingsActiveCurrencies s
+    acSet l s curs = ActiveCurrencies $ Map.insert l curs $ activeCurrenciesMap $ settingsActiveCurrencies s
 
 unitsPage :: MonadFront t m => m ()
 unitsPage = do
@@ -107,7 +110,7 @@ unitsPage = do
       langD <- getLanguage
       let unitD = constDyn val
       initKey <- sample . current $ unitD
-      let listUnitsD = ffor langD $ \l -> M.fromList $ fmap (\v -> (v, localizedShow l v)) allUnits
+      let listUnitsD = ffor langD $ \l -> Map.fromList $ fmap (\v -> (v, localizedShow l v)) allUnits
           ddnCfg = DropdownConfig {
                 _dropdownConfig_setValue   = updated unitD
               , _dropdownConfig_attributes = constDyn ("class" =: "select-lang")

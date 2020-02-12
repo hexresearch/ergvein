@@ -11,10 +11,10 @@ import Data.Text
 data SettingsPageStrings =
     STPSTitle
   | STPSButLanguage
-  | STPSButPinCode
+  | STPSButActiveCurrs
   | STPSButUnits
   | STPSSelectLanguage
-  | STPSSetsPinCode
+  | STPSSetsActiveCurrs
   | STPSSelectUnitsFor Currency
   | STPSSetsPinOn
   | STPSSetsPinOff
@@ -26,10 +26,10 @@ instance LocalizedPrint SettingsPageStrings where
     English -> case v of
       STPSTitle               -> "Settings"
       STPSButLanguage         -> "Language"
-      STPSButPinCode          -> "PIN Code"
+      STPSButActiveCurrs      -> "Currencies"
       STPSButUnits            -> "Display units for cryptos"
       STPSSelectLanguage      -> "Select language:"
-      STPSSetsPinCode         -> "Settings for PIN code"
+      STPSSetsActiveCurrs     -> "Settings for active currencies"
       STPSSelectUnitsFor cur  -> "Settings display units for " <> showt cur <> ":"
       STPSSetsPinOn           -> "Switch on PIN code"
       STPSSetsPinOff          -> "Switch off PIN code"
@@ -38,10 +38,10 @@ instance LocalizedPrint SettingsPageStrings where
     Russian -> case v of
       STPSTitle               -> "Настройки"
       STPSButLanguage         -> "Язык"
-      STPSButPinCode          -> "ПИН код"
+      STPSButActiveCurrs      -> "Валюты"
       STPSButUnits            -> "Единицы отображения криптосистем"
       STPSSelectLanguage      -> "Выберите язык:"
-      STPSSetsPinCode         -> "Настройки ПИН кода"
+      STPSSetsActiveCurrs     -> "Настройки активных валют"
       STPSSelectUnitsFor cur  -> "Выберите единиц отображения для " <> showt cur <> ":"
       STPSSetsPinOn           -> "Включить ПИН код"
       STPSSetsPinOff          -> "Выключить ПИН код"
