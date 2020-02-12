@@ -28,7 +28,7 @@ import Reflex.Localize
 
 selectCurrenciesPage :: MonadFrontBase t m => Mnemonic -> m ()
 selectCurrenciesPage m = wrapper True $ do
-  e <- selectCurrenciesWidget
+  e <- selectCurrenciesWidget []
   nextWidget $ ffor e $ \ac -> Retractable {
 #ifdef ANDROID
       retractableNext = setupLoginPage m ac
@@ -39,15 +39,14 @@ selectCurrenciesPage m = wrapper True $ do
     }
   pure ()
 
-selectCurrenciesWidget :: MonadFrontBase t m => m (Event t [Currency])
-selectCurrenciesWidget = mdo
+selectCurrenciesWidget :: MonadFrontBase t m => [Currency] -> m (Event t [Currency])
+selectCurrenciesWidget currs = mdo
   divClass "select-currencies-title" $ h4 $ localizedText CurTitle
-  let emptyList = zip allCurrencies (repeat False)
   eL <- traverse (\(cur,flag) -> divClass "currency-toggle" $ do
     let curD = fmap (toggled . snd .  (fromMaybe (cur, False)) . (find (\(c,_) -> c == cur))) curListD
     e <- divButton curD (text $ showt cur)
-    pure (cur <$ e) ) emptyList
-  curListD <- holdDyn emptyList $ poke (leftmost eL) $ \cur -> do
+    pure (cur <$ e) ) $ startList currs
+  curListD <- holdDyn (startList currs) $ poke (leftmost eL) $ \cur -> do
     curListS <- sampleDyn curListD
     pure $ fmap (invert cur) curListS
   let curButtonD = fmap (enabled . checkTrue) curListD
@@ -75,30 +74,6 @@ selectCurrenciesWidget = mdo
       Just _ -> True
       Nothing -> False
 
-{-
-saveActiveCurrencies :: MonadIO m => [] -> m ()
-saveActiveCurrencies pt = do
-  mpath <- liftIO $ getFilesDir =<< getHaskellActivity
-  case mpath of
-    Nothing -> fail "Ergvein panic! No local folder!"
-    Just path -> do
-      let triespath = path <> "/tries.yaml"
-      ex <- liftIO $ doesFileExist triespath
-      liftIO $ encodeFile triespath $ pt
-
-loadActiveCurrencies ::MonadIO m => m PatternTries
-loadActiveCurrencies = do
-  mpath <- liftIO $ getFilesDir =<< getHaskellActivity
-  case mpath of
-    Nothing -> fail "Ergvein panic! No local folder!"
-    Just path -> do
-      let triespath = path <> "/tries.yaml"
-      ex <- liftIO $ doesFileExist triespath
-      if not ex
-        then pure (PatternTries (Map.fromList []))
-        else do
-          mPT <- liftIO $ decodeFileStrict' triespath
-          case mPT of
-            Just p -> pure p
-            Nothing -> pure (PatternTries (Map.fromList []))
--}
+    startList currs = ffor allCurrencies $ \cur -> if (elem cur currs)
+      then (cur,True)
+      else (cur,False)
