@@ -342,26 +342,25 @@ balancesPageCss = do
     textAlign $ alignSide sideLeft
   ".sync-progress" ? do
     fontSize $ pt 14
-  ".currency-first-row" ? do
-    display grid
-    gridTemplateColumns [fr 1, fr 1]
-    gridGap $ rem 1
+  ".currency-content" ? do
+    display displayTable
+    width $ pct 100
+  ".currency-row" ? do
+    display tableRow
     fontSize $ pt (if isAndroid then 18 else 24)
     cursor pointer
-  ".currency-first-row:hover" ? do
+  ".currency-row:hover" ? do
     color hoverColor
+  ".currency-name" ? do
+    display tableCell
+    paddingRight $ rem 1
   ".currency-balance" ? do
-    display flex
-    justifyContent flexEnd
+    display tableCell
     textAlign $ alignSide sideRight
   ".currency-value" ? do
     paddingRight $ rem 0.5
   ".currency-unit" ? do
     paddingRight $ rem 0.5
-  ".currency-second-row" ? do
-    display grid
-    gridTemplateColumns [fr 1, fr 1]
-    gridGap $ rem 1
 
 sendPageCss :: Css
 sendPageCss = do

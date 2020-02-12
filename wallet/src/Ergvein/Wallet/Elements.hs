@@ -188,7 +188,6 @@ divButton = mkButton "div" []
 --     <i class="fas fa-qrcode">::before</i>
 --   </span>
 -- </button>
--- 
 outlineButtonWithIcon :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
   => lbl -> Text -> m (Event t ())
 outlineButtonWithIcon lbl i =
