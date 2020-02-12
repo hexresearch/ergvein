@@ -11,7 +11,7 @@ tooltipCss :: ByteString
 tooltipCss = $(embedFile "static/css/tooltip.css")
 
 fontawesomeCss :: ByteString
-fontawesomeCss = $(embedFile "static/css/fontawesome.css")
+fontawesomeCss = $(embedFile "static/css/fontawesome.min.css")
 
 robotBlack, robotoBold, robotoMedium, robotoRegular :: ByteString
 robotBlack = $(embedFile "static/assets/font/Roboto-Black.ttf")

@@ -189,11 +189,10 @@ menuCss = do
 navbarCss :: Css
 navbarCss = do
   ".navbar" ? do
-    display flex
-    margin (rem 0) (rem (-1)) (rem 0) (rem (-1))
+    display grid
+    gridTemplateColumns [fr 1, fr 1, fr 1]
   ".navbar-item" ? do
     padding (rem 1) (rem 1) (rem 1) (rem 1)
-    flexGrow 1
     cursor pointer
   ".navbar-item:hover" ? do
     color hoverColor

@@ -15,11 +15,9 @@ import Ergvein.Wallet.Wrapper
 data SendTitle = SendTitle !Currency
 
 instance LocalizedPrint SendTitle where
-  localizedShow l v = case l of
-    English -> case v of
-      SendTitle c -> "Send " <> currencyName c
-    Russian -> case v of
-      SendTitle c -> "Отправить " <> currencyName c
+  localizedShow l (SendTitle c) = case l of
+    English -> "Send " <> currencyName c
+    Russian -> "Отправить " <> currencyName c
 
 data SendBtnString = SendBtnString
 

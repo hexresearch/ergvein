@@ -2,7 +2,6 @@ module Ergvein.Wallet.Navbar.Types (
     NavbarItem (..)
   ) where
 
-
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
 
