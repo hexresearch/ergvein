@@ -70,6 +70,8 @@ library
         Ergvein.Wallet.Monad.Unauth
         Ergvein.Wallet.Monad.Util
         Ergvein.Wallet.Navbar
+        Ergvein.Wallet.Navbar.Switcher
+        Ergvein.Wallet.Navbar.Types
         Ergvein.Wallet.Page.About
         Ergvein.Wallet.Page.Balances
         Ergvein.Wallet.Page.Canvas
@@ -80,6 +82,7 @@ library
         Ergvein.Wallet.Page.Password
         Ergvein.Wallet.Page.PatternKey
         Ergvein.Wallet.Page.QRCode
+        Ergvein.Wallet.Page.Recieve
         Ergvein.Wallet.Page.Seed
         Ergvein.Wallet.Page.Send
         Ergvein.Wallet.Page.Settings

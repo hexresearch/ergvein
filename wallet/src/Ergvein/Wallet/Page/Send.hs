@@ -8,6 +8,8 @@ import Ergvein.Wallet.Input
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Navbar
+import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Wrapper
 
 data SendTitle = SendTitle !Currency
@@ -58,6 +60,7 @@ sendPage :: MonadFront t m => Currency -> m ()
 sendPage cur = do
   let thisWidget = Just $ pure $ sendPage cur
   menuWidget (SendTitle cur) thisWidget
+  navbarWidget cur thisWidget NavbarSend
   wrapper True $ divClass "send-wrapper" $ do
     recipientE <- textField RecipientString ""
     divClass "send-buttons-wrapper" $ do

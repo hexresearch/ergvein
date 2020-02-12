@@ -1,5 +1,5 @@
-module Ergvein.Wallet.Page.History(
-    historyPage
+module Ergvein.Wallet.Page.Recieve (
+    recievePage
   ) where
 
 import Ergvein.Types.Currency
@@ -15,14 +15,14 @@ data CurrencyTitle = CurrencyTitle !Currency
 
 instance LocalizedPrint CurrencyTitle where
   localizedShow l (CurrencyTitle c) = case l of
-    English -> "History " <> currencyName c
-    Russian -> "История " <> currencyName c
+    English -> "Recieve " <> currencyName c
+    Russian -> "Получение " <> currencyName c
 
-historyPage :: MonadFront t m => Currency -> m ()
-historyPage cur = do
-  let thisWidget = Just $ pure $ historyPage cur
+recievePage :: MonadFront t m => Currency -> m ()
+recievePage cur = do
+  let thisWidget = Just $ pure $ recievePage cur
   menuWidget (CurrencyTitle cur) thisWidget
-  navbarWidget cur thisWidget NavbarHistory
+  navbarWidget cur thisWidget NavbarRecieve
   wrapper True $ do
     h3 $ localizedText $ CurrencyTitle cur
     pure ()
