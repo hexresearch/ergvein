@@ -20,5 +20,5 @@ instance LocalizedPrint NavbarItem where
       NavbarRecieve -> "Recieve"
     Russian -> case v of
       NavbarSend    -> "Отправка"
-      NavbarHistory -> "Баланс"
+      NavbarHistory -> "История"
       NavbarRecieve -> "Получение"

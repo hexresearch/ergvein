@@ -190,7 +190,7 @@ navbarCss :: Css
 navbarCss = do
   ".navbar" ? do
     display flex
-    margin (rem 1) (rem 1) (rem 1) (rem 1)
+    margin (rem 0) (rem (-1)) (rem 0) (rem (-1))
   ".navbar-item" ? do
     padding (rem 1) (rem 1) (rem 1) (rem 1)
     flexGrow 1
