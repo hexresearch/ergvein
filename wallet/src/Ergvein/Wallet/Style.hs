@@ -89,6 +89,7 @@ frontendCss r = do
     fontFamily ["Roboto"] []
   wrapperCss
   menuCss
+  navbarCss
   buttonCss
   inputCss
   mnemonicWidgetCss
@@ -184,6 +185,22 @@ menuCss = do
     marginBottom $ px 0
   ".menu-dropdown-wrapper:hover .menu-dropdown" ? do
     display block
+
+navbarCss :: Css
+navbarCss = do
+  ".navbar" ? do
+    display flex
+    margin (rem 1) (rem 1) (rem 1) (rem 1)
+  ".navbar-item" ? do
+    padding (rem 1) (rem 1) (rem 1) (rem 1)
+    flexGrow 1
+    cursor pointer
+  ".navbar-item:hover" ? do
+    color hoverColor
+  ".navbar-item.active" ? do
+    borderBottom solid (px 4) textColor
+  ".navbar-item.active:hover" ? do
+    borderColor hoverColor
 
 buttonCss :: Css
 buttonCss = do

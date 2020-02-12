@@ -7,6 +7,7 @@ import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Wrapper
 
 data CurrencyTitle = CurrencyTitle !Currency
@@ -22,6 +23,7 @@ historyPage :: MonadFront t m => Currency -> m ()
 historyPage cur = do
   let thisWidget = Just $ pure $ historyPage cur
   menuWidget (CurrencyTitle cur) thisWidget
+  navbarWidget
   wrapper True $ do
     h3 $ localizedText $ CurrencyTitle cur
     pure ()
