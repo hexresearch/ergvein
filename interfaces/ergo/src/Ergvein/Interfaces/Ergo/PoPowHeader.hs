@@ -72,7 +72,13 @@ instance (HasNormaliseHeader a, IsChainElem a, Ord (BlockHash a)) => IsChain [a]
   isValidChainAnchoredTo h hs = isValidChainAnchoredTo' (normalizeHeader h) (normalizeHeader <$> hs)
 
 instance HasNormaliseHeader PoPowHeader where
-  normalizeHeader = undefined
+  -- normalizeHeader :: PoPowHeader -> PoPowNormHeader
+  normalizeHeader h@PoPowHeader {..} = PoPowNormHeader {
+      blockId     = calculateHeaderId header
+    , level       = mu h
+    , header'     = header
+    , interlinks' = interlinks
+    }
 
 cookPoPowHeader :: Api.FullBlock -> PoPowHeader
 cookPoPowHeader b = PoPowHeader {
