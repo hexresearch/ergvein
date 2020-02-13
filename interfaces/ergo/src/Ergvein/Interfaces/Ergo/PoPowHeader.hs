@@ -4,7 +4,10 @@ ergo/src/main/scala/org/ergoplatform/modifiers/history/PoPowHeader.scala
 -}
 module Ergvein.Interfaces.Ergo.PoPowHeader where
 
+import Control.Arrow
+import Control.Lens
 import Data.Aeson as A
+import Data.List
 import Data.Serialize                     as S (Serialize (..), decode, encode, get, put)
 import Data.Serialize.Get                 as S
 import Data.Serialize.Put                 as S
@@ -12,7 +15,6 @@ import Numeric.Natural
 import qualified Data.ByteString as BS
 
 import Ergvein.Aeson
-
 import Ergvein.Interfaces.Ergo.Common.BigNat
 import Ergvein.Interfaces.Ergo.Header
 import Ergvein.Interfaces.Ergo.Mining.Difficulty.RequiredDifficulty
@@ -20,6 +22,7 @@ import Ergvein.Interfaces.Ergo.Modifiers.History.PoPow
 import Ergvein.Interfaces.Ergo.Modifiers.History.ValidateChain
 import Ergvein.Interfaces.Ergo.Scorex.Util.Package
 import Ergvein.Interfaces.Ergo.Scorex.Util.Serialization.VLQLengthPrefixed
+import qualified Ergvein.Interfaces.Ergo.Api as Api
 import qualified Ergvein.Interfaces.Ergo.Mining.AutolykosSolution as Autolukos
 
 
@@ -70,6 +73,25 @@ instance (HasNormaliseHeader a, IsChainElem a, Ord (BlockHash a)) => IsChain [a]
 
 instance HasNormaliseHeader PoPowHeader where
   normalizeHeader = undefined
+
+
+unpackInterlinksFromFullBlock :: Api.FullBlock -> [ModifierId]
+unpackInterlinksFromFullBlock = unpackInterlinks . (Api.extension :: Api.FullBlock -> Api.Extension)
+
+-- | Predefined key is used for storing interlinks vector - the first byte of
+-- the key is 0x01, the second one corresponds to index of the link in the
+-- vector and the value contains actual link (32 bytes) prefixed with the
+-- number of times it appears in the vector (1 byte).
+unpackInterlinks :: Api.Extension -> [ModifierId]
+unpackInterlinks =
+        Api.fields
+    >>> fmap (first unHexJSON)
+    >>> filter ((==(Just 1)) . preview (ix 0) . fst)
+    >>> fmap (first (preview (ix 1)))
+    >>> sortOn fst
+    >>> fmap ( (\b -> replicate (maybe 1 fromIntegral (b^?(ix 0))) (ModifierId . BS.drop 1 $ b))
+             . unHexJSON . snd)
+    >>> mconcat
 
 
 deriveJSON A.defaultOptions ''PoPowHeader

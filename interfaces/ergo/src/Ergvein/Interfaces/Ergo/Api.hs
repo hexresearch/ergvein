@@ -172,7 +172,7 @@ data BlockTransactions = BlockTransactions {
 data Extension = Extension {
   headerId :: !ModifierId
 , digest :: !Digest32
-, fields :: ![[HexJSON]]
+, fields :: ![(HexJSON, HexJSON)]
 }
 
 data BlockADProofs = BlockADProofs {
