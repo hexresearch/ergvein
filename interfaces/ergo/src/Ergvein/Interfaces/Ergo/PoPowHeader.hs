@@ -13,13 +13,14 @@ import qualified Data.ByteString as BS
 
 import Ergvein.Aeson
 
-import qualified Ergvein.Interfaces.Ergo.Mining.AutolykosSolution as Autolukos
 import Ergvein.Interfaces.Ergo.Common.BigNat
 import Ergvein.Interfaces.Ergo.Header
 import Ergvein.Interfaces.Ergo.Mining.Difficulty.RequiredDifficulty
 import Ergvein.Interfaces.Ergo.Modifiers.History.PoPow
+import Ergvein.Interfaces.Ergo.Modifiers.History.ValidateChain
 import Ergvein.Interfaces.Ergo.Scorex.Util.Package
 import Ergvein.Interfaces.Ergo.Scorex.Util.Serialization.VLQLengthPrefixed
+import qualified Ergvein.Interfaces.Ergo.Mining.AutolykosSolution as Autolukos
 
 
 data PoPowHeader = PoPowHeader {
@@ -58,23 +59,17 @@ instance IsChainElem PoPowHeader where
       -- ^ https://github.com/bitcoin-core/secp256k1/blob/544435fc90a5672d862e2a51f44c10251893b97d/src/ecdsa_impl.h#L18
       actualTarget = unBigNat . Autolukos.distance . powSolution . header $ h
 
-instance IsChain [PoPowHeader] where
-  type Element [PoPowHeader] = PoPowHeader
-  type Container [PoPowHeader] = []
+instance (HasNormaliseHeader a, IsChainElem a, Ord (BlockHash a)) => IsChain [a] where
+  type Element [a] = a
+  type Container [a] = []
   chainElems = id
   chainLength = length
   chainFromList = id
   findDivergingSubchains = findDivergingSubchainsWithList
-  isValidChainAnchoredTo = isValidChainAnchoredTo'
+  isValidChainAnchoredTo h hs = isValidChainAnchoredTo' (normalizeHeader h) (normalizeHeader <$> hs)
 
-isValidChainAnchoredTo' :: PoPowHeader -> [PoPowHeader] -> Bool
-isValidChainAnchoredTo' g = undefined
-
-data PoPowElem = PoPowElem {
-  blockId     :: ModifierId
-, interlinks' :: [ModifierId]
-}
-
+instance HasNormaliseHeader PoPowHeader where
+  normalizeHeader = undefined
 
 
 deriveJSON A.defaultOptions ''PoPowHeader

@@ -30,7 +30,7 @@ newtype Version = Version { unVersion :: Word8 }   -- Byte
   deriving (Eq, Show, Serialize)
 
 newtype Height = Height { unHeight :: Word32 }
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 instance Serialize Height where
     put = do

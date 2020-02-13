@@ -27,6 +27,7 @@ library
     Ergvein.Interfaces.Ergo.Modifiers.History.PoPowProof
     Ergvein.Interfaces.Ergo.Modifiers.History.PoPowProofPrefix
     Ergvein.Interfaces.Ergo.Modifiers.History.PoPowProofSuffix
+    Ergvein.Interfaces.Ergo.Modifiers.History.ValidateChain
     Ergvein.Interfaces.Ergo.NodeView.History.ErgoHistory
     Ergvein.Interfaces.Ergo.PoPowHeader
     Ergvein.Interfaces.Ergo.Scorex.Core.Block
