@@ -74,9 +74,14 @@ instance (HasNormaliseHeader a, IsChainElem a, Ord (BlockHash a)) => IsChain [a]
 instance HasNormaliseHeader PoPowHeader where
   normalizeHeader = undefined
 
-
-unpackInterlinksFromFullBlock :: Api.FullBlock -> [ModifierId]
-unpackInterlinksFromFullBlock = unpackInterlinks . (Api.extension :: Api.FullBlock -> Api.Extension)
+cookPoPowHeader :: Api.FullBlock -> PoPowHeader
+cookPoPowHeader b = PoPowHeader {
+    header     = Api.headerFromApi . Api.header $ b
+  , interlinks = unpackInterlinksFromFullBlock b
+  }
+  where
+    unpackInterlinksFromFullBlock :: Api.FullBlock -> [ModifierId]
+    unpackInterlinksFromFullBlock = unpackInterlinks . (Api.extension :: Api.FullBlock -> Api.Extension)
 
 -- | Predefined key is used for storing interlinks vector - the first byte of
 -- the key is 0x01, the second one corresponds to index of the link in the
@@ -92,6 +97,5 @@ unpackInterlinks =
     >>> fmap ( (\b -> replicate (maybe 1 fromIntegral (b^?(ix 0))) (ModifierId . BS.drop 1 $ b))
              . unHexJSON . snd)
     >>> mconcat
-
 
 deriveJSON A.defaultOptions ''PoPowHeader
