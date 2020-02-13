@@ -47,6 +47,7 @@ library
         Ergvein.Wallet.Localization.Currencies
         Ergvein.Wallet.Localization.Currency
         Ergvein.Wallet.Localization.Initial
+        Ergvein.Wallet.Localization.Info
         Ergvein.Wallet.Localization.Native
         Ergvein.Wallet.Localization.Network
         Ergvein.Wallet.Localization.Password
@@ -79,6 +80,7 @@ library
         Ergvein.Wallet.Page.Currencies
         Ergvein.Wallet.Page.History
         Ergvein.Wallet.Page.Initial
+        Ergvein.Wallet.Page.Info
         Ergvein.Wallet.Page.Network
         Ergvein.Wallet.Page.Password
         Ergvein.Wallet.Page.PatternKey

@@ -9,6 +9,7 @@ import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
+--import Ergvein.Wallet.Page.Info
 import Ergvein.Wallet.Wrapper
 
 data CurrencyTitle = CurrencyTitle !Currency
@@ -25,4 +26,9 @@ historyPage cur = do
   navbarWidget cur thisWidget NavbarHistory
   wrapper True $ do
     h3 $ localizedText $ CurrencyTitle cur
+--    goE <- fmap (cur <$) $ outlineButton ("Debug info"::Text)
+--    void $ nextWidget $ ffor goE $ \cr -> Retractable {
+--        retractableNext = infoPage cr
+--      , retractablePrev = thisWidget
+--      }
     pure ()

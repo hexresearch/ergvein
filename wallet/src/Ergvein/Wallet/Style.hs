@@ -104,6 +104,7 @@ frontendCss r = do
   balancesPageCss
   sendPageCss
   networkPageCss
+  infoPageCss
   aboutPageCss
   loadingWidgetCss
   alertsCss
@@ -485,6 +486,22 @@ networkPageCss = do
     textAlign center
     cursor pointer
     fontSize $ pt (if isAndroid then 12 else 18)
+
+infoPageCss :: Css
+infoPageCss = do
+  ".info-content" ? do
+    width $ pct 100
+    maxWidth $ px 500
+    display inlineBlock
+  ".info-v-spacer" ? do
+    height $ px 25
+  ".info-block-value" ? do
+    textAlign $ alignSide sideLeft
+    let px3  = px 3
+        px10 = px 10
+        in padding px3 px10 px3 px10
+    border solid (px 1) $ rgb 140 140 140
+    let px4 = px 4 in borderRadius px4 px4 px4 px4
 
 loadingWidgetCss :: Css
 loadingWidgetCss = do
