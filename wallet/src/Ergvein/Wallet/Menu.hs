@@ -2,11 +2,11 @@ module Ergvein.Wallet.Menu(
     menuWidget
   ) where
 
+import {-# SOURCE #-} Ergvein.Wallet.Menu.Switcher
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Embed
 import Ergvein.Wallet.Embed.TH
 import Ergvein.Wallet.Language
-import {-# SOURCE #-} Ergvein.Wallet.Menu.Switcher
 import Ergvein.Wallet.Menu.Types
 import Ergvein.Wallet.Monad
 

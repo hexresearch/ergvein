@@ -19,12 +19,28 @@ import Language.Javascript.JSaddle hiding ((#))
 import Prelude hiding ((**), rem)
 
 import qualified Clay.Media as M
+import qualified Clay.Flexbox as F
 
 data Resources = Resources {
-  robotoBlackUrl   :: !Text
-, robotoBoldUrl    :: !Text
-, robotoMediumUrl  :: !Text
-, robotoRegularUrl :: !Text
+  robotoBlackUrl    :: !Text
+, robotoBoldUrl     :: !Text
+, robotoMediumUrl   :: !Text
+, robotoRegularUrl  :: !Text
+, fabrands400eotUrl    :: !Text
+, fabrands400svgUrl    :: !Text
+, fabrands400ttfUrl    :: !Text
+, fabrands400woffUrl   :: !Text
+, fabrands400woff2Url  :: !Text
+, faregular400eotUrl   :: !Text
+, faregular400svgUrl   :: !Text
+, faregular400ttfUrl   :: !Text
+, faregular400woffUrl  :: !Text
+, faregular400woff2Url :: !Text
+, fasolid900eotUrl     :: !Text
+, fasolid900svgUrl     :: !Text
+, fasolid900ttfUrl     :: !Text
+, fasolid900woffUrl    :: !Text
+, fasolid900woff2Url   :: !Text
 }
 
 embedResources :: MonadJSM m => m Resources
@@ -33,6 +49,21 @@ embedResources = Resources
   <*> createObjectURL robotoBold
   <*> createObjectURL robotoMedium
   <*> createObjectURL robotoRegular
+  <*> createObjectURL fabrands400eot
+  <*> createObjectURL fabrands400svg
+  <*> createObjectURL fabrands400ttf
+  <*> createObjectURL fabrands400woff
+  <*> createObjectURL fabrands400woff2
+  <*> createObjectURL faregular400eot
+  <*> createObjectURL faregular400svg
+  <*> createObjectURL faregular400ttf
+  <*> createObjectURL faregular400woff
+  <*> createObjectURL faregular400woff2
+  <*> createObjectURL fasolid900eot
+  <*> createObjectURL fasolid900svg
+  <*> createObjectURL fasolid900ttf
+  <*> createObjectURL fasolid900woff
+  <*> createObjectURL fasolid900woff2
 
 compileFrontendCss :: MonadJSM m => m ByteString
 compileFrontendCss = do
@@ -42,11 +73,12 @@ compileFrontendCss = do
 frontendCssBS :: Resources -> ByteString
 frontendCssBS r = let
   selfcss = toStrict . encodeUtf8 . renderWith compact [] $ frontendCss r
-  in milligramCss <> tooltipCss <> selfcss
+  in milligramCss <> tooltipCss <> fontawesomeCss <> selfcss
 
 frontendCss :: Resources -> Css
 frontendCss r = do
   fontFamilies r
+  faFontFamilies r
   html ? do
     textAlign center
     let px' = px 0 in padding px' px' px' px'
@@ -62,6 +94,7 @@ frontendCss r = do
     overflowY auto
   wrapperCss
   menuCss
+  navbarCss
   buttonCss
   inputCss
   mnemonicWidgetCss
@@ -69,6 +102,7 @@ frontendCss r = do
   passwordCss
   initialPageCss
   balancesPageCss
+  sendPageCss
   networkPageCss
   infoPageCss
   aboutPageCss
@@ -158,6 +192,20 @@ menuCss = do
   ".menu-dropdown-wrapper:hover .menu-dropdown" ? do
     display block
 
+navbarCss :: Css
+navbarCss = do
+  ".navbar" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1, fr 1]
+  ".navbar-item" ? do
+    padding (rem 1) (rem 1) (rem 1) (rem 1)
+    cursor pointer
+  ".navbar-item:hover" ? do
+    color hoverColor
+  ".navbar-item.active" ? do
+    borderBottom solid (px 4) textColor
+  ".navbar-item.active:hover" ? do
+    borderColor hoverColor
 
 buttonCss :: Css
 buttonCss = do
@@ -191,6 +239,38 @@ fontFamilies Resources{..} = do
       fontFamily [name] []
       fontFaceSrc [FontFaceSrcUrl url (Just TrueType)]
       fontWeight $ weight 400
+
+faFontFamilies :: Resources -> Css
+faFontFamilies Resources{..} = do
+  makeFontFace "Font Awesome 5 Brands" 400 [
+      fabrands400eotUrl
+    , fabrands400svgUrl
+    , fabrands400ttfUrl
+    , fabrands400woffUrl
+    , fabrands400woff2Url
+    ]
+  makeFontFace "Font Awesome 5 Free" 400 [
+      faregular400eotUrl
+    , faregular400svgUrl
+    , faregular400ttfUrl
+    , faregular400woffUrl
+    , faregular400woff2Url
+    ]
+  makeFontFace "Font Awesome 5 Free" 900 [
+      fasolid900eotUrl
+    , fasolid900svgUrl
+    , fasolid900ttfUrl
+    , fasolid900woffUrl
+    , fasolid900woff2Url
+    ]
+  where
+    makeFontFace name w urls = fontFace $ do
+      fontFamily [name] []
+      fontStyle normal
+      fontFaceSrc [FontFaceSrcUrl url (Just format)
+        | url    <- urls,
+          format <- [EmbeddedOpenType, SVG, TrueType, WOFF, WOFF2]]
+      fontWeight $ weight w
 
 mnemonicWidgetCss :: Css
 mnemonicWidgetCss = do
@@ -278,45 +358,45 @@ initialPageCss = do
 
 balancesPageCss :: Css
 balancesPageCss = do
-  ".sync-progress" ? do
-    width $ pct 100
+  ".balances-wrapper" ? do
     maxWidth $ px 500
-    display inlineBlock
+    margin (px 0) auto (px 0) auto
     textAlign $ alignSide sideLeft
+  ".sync-progress" ? do
     fontSize $ pt 14
-  ".currency-wrapper" ? do
-    textAlign center
-    cursor pointer
-  ".currency-wrapper:hover" ? do
-    color hoverColor
-  ".currency-line" ? do
-    width $ pct 100
-    maxWidth $ px 500
-    display inlineBlock
-    fontSize $ pt (if isAndroid then 18 else 24)
   ".currency-content" ? do
     display displayTable
     width $ pct 100
-  ".currency-content-row" ? do
+  ".currency-row" ? do
     display tableRow
+    fontSize $ pt (if isAndroid then 18 else 24)
     cursor pointer
-  ".currency-content-row:hover" ? do
+  ".currency-row:hover" ? do
     color hoverColor
   ".currency-name" ? do
     display tableCell
-    paddingRight $ px 3
-    textAlign $ alignSide sideLeft
+    paddingRight $ rem 1
   ".currency-balance" ? do
     display tableCell
-    paddingRight $ px 3
     textAlign $ alignSide sideRight
+  ".currency-value" ? do
+    paddingRight $ rem 0.5
   ".currency-unit" ? do
-    display tableCell
-    textAlign $ alignSide sideLeft
-  ".currency-arrow" ? do
-    display tableCell
-    paddingLeft $ px 3
-    textAlign $ alignSide sideRight
+    paddingRight $ rem 0.5
+
+sendPageCss :: Css
+sendPageCss = do
+  ".send-wrapper" ? do
+    maxWidth $ px 500
+    margin (px 0) auto (px 0) auto
+  ".send-buttons-wrapper" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1]
+    gridGap $ rem 1
+  ".send-submit" ? do
+    width $ pct 100
+  ".button-icon-wrapper" ? do
+    marginLeft $ em 0.5
 
 aboutPageCss :: Css
 aboutPageCss = do
