@@ -133,7 +133,7 @@ seedRestorePage = wrapper True $ do
   resetE <- buttonClass (pure "button button-outline") SPSReset
   mnemE <- fmap (switch . current) $ widgetHold seedRestoreWidget $ seedRestoreWidget <$ resetE
   void $ nextWidget $ ffor mnemE $ \m -> Retractable {
-      retractableNext = passwordPage m
+      retractableNext = selectCurrenciesPage m
     , retractablePrev = Just $ pure seedRestorePage
     }
 

@@ -8,6 +8,7 @@ import Data.Maybe (fromMaybe)
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Elements
+import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Menu
@@ -15,6 +16,7 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.History
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Page.PatternKey
+import Ergvein.Wallet.Page.Send
 import Ergvein.Wallet.Wrapper
 
 import Control.Monad.IO.Class
@@ -29,6 +31,20 @@ instance LocalizedPrint BalanceTitle where
     Russian -> case v of
       BalanceTitle  -> "Стандартный кошелек"
 
+data ButtonSend = ButtonSend
+
+instance LocalizedPrint ButtonSend where
+  localizedShow l _ = case l of
+    English ->  "Send"
+    Russian ->  "Отправить"
+
+data ButtonReceive = ButtonReceive
+
+instance LocalizedPrint ButtonReceive where
+  localizedShow l _ = case l of
+    English -> "Receive"
+    Russian -> "Получить"
+
 balancesPage :: MonadFront t m => m ()
 balancesPage = do
   anon_name <- getWalletName
@@ -38,16 +54,12 @@ balancesPage = do
 #endif
   let thisWidget = Just $ pure balancesPage
   menuWidget BalanceTitle thisWidget
-  wrapper False $ do
+  wrapper False $ divClass "balances-wrapper" $ do
     syncWidget
-    historyE <- currenciesList
-    void $ nextWidget $ ffor historyE $ \cur -> Retractable {
-        retractableNext = historyPage cur
-      , retractablePrev = thisWidget
-      }
+    currenciesList anon_name
 
 syncWidget :: MonadFront t m => m ()
-syncWidget = divClass "currency-wrapper" $ do
+syncWidget = do
   progressD <- getSyncProgress
   void $ widgetHoldDyn $ ffor progressD $ \sp -> case sp of
     ScanSynced -> pure ()
@@ -78,22 +90,28 @@ instance LocalizedPrint ScanProgress where
 getSyncProgress :: MonadFront t m => m (Dynamic t ScanProgress)
 getSyncProgress = pure $ pure $ ScanDays 10
 
-currenciesList :: MonadFront t m => m (Event t Currency)
-currenciesList = divClass "currency-line" $ divClass "currency-content" $
-  fmap leftmost $ traverse currencyLine allCurrencies
+currenciesList :: MonadFront t m => Text -> m ()
+currenciesList name = divClass "currency-content" $ do
+  s <- getSettings
+  historyE <- leftmost <$> traverse (currencyLine s) (getActiveCurrencies s)
+  let thisWidget = Just $ pure balancesPage
+  void $ nextWidget $ ffor historyE $ \cur -> Retractable {
+    retractableNext = historyPage cur
+  , retractablePrev = thisWidget
+  }
   where
-    currencyLine cur = do
-      (e, _) <- divClass' "currency-content-row" $ do
+    currencyLine settings cur = do
+      (e, _) <- divClass' "currency-row" $ do
         bal <- currencyBalance cur
-        settings <- getSettings
         let setUs = getSettingsUnits settings
         langD <- getLanguage
         divClass "currency-name"    $ text $ currencyName cur
-        divClass "currency-balance" $ dynText $ (\v -> showMoneyUnit v setUs) <$> bal
-        divClass "currency-unit"    $ dynText $ ffor2 bal langD $ \(Money cur _) lang -> symbolUnit cur lang setUs
-        divClass "currency-arrow"   $ text "〉"
+        divClass "currency-balance" $ do
+          elClass "span" "currency-value" $ dynText $ (\v -> showMoneyUnit v setUs) <$> bal
+          elClass "span" "currency-unit"  $ dynText $ ffor2 bal langD $ \(Money cur _) lang -> symbolUnit cur lang setUs
+          elClass "span" "currency-arrow" $ text "〉"
       pure $ cur <$ domEvent Click e
-
+    getActiveCurrencies s = fromMaybe allCurrencies $ Map.lookup name $ activeCurrenciesMap $ settingsActiveCurrencies s
     getSettingsUnits = fromMaybe defUnits . settingsUnits
 
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
@@ -109,5 +127,4 @@ symbolUnit cur lang units =
     ERGO -> case getUnitERGO units of
               ErgWhole    -> "erg"
               ErgMilli    -> "merg"
-              ErgNano     -> "sat"
-
+              ErgNano     -> "nerg"
