@@ -7,6 +7,7 @@ import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
+import Ergvein.Wallet.Clipboard (clipboardCopy)
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Id
 import Ergvein.Wallet.Input
@@ -27,10 +28,12 @@ sharePage cur = do
   let thisWidget = Just $ pure $ sharePage cur
   menuWidget (ShareTitle cur) thisWidget
   wrapper False $ divClass "share-content" $ do
-    let tempUrl = "url://temp.share.er"
+    let shareAdd = "175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W"
+    let shareMoney = Money cur 1
+    let tempUrl = "bitcoin:" <> shareAdd <> "?amount=" <> (showt $ moneyValue shareMoney)
     textLabel ShareLink $ text tempUrl
     copyE <- fmap (tempUrl <$) $ outlineButton ShareCopy
-    dbgPrintE copyE
+    _ <- clipboardCopy copyE
     pure ()
 
 textLabel :: (MonadFrontBase t m, LocalizedPrint l)
