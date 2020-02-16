@@ -55,6 +55,7 @@ library
         Ergvein.Wallet.Localization.Seed
         Ergvein.Wallet.Localization.Settings
         Ergvein.Wallet.Localization.Storage
+        Ergvein.Wallet.Localization.Share
         Ergvein.Wallet.Log
         Ergvein.Wallet.Log.Page
         Ergvein.Wallet.Log.Reader
@@ -89,6 +90,7 @@ library
         Ergvein.Wallet.Page.Seed
         Ergvein.Wallet.Page.Send
         Ergvein.Wallet.Page.Settings
+        Ergvein.Wallet.Page.Share
         Ergvein.Wallet.Password
         Ergvein.Wallet.Platform
         Ergvein.Wallet.Resize
