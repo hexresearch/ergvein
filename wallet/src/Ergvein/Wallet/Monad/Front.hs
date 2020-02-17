@@ -4,6 +4,7 @@ module Ergvein.Wallet.Monad.Front(
   , AuthInfo(..)
   , Password
   , getCurrentHeight
+  , setCurrentHeight
   -- * Reexports
   , Text
   , MonadJSM
@@ -93,9 +94,15 @@ class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   -- | Internal method to get reference with known heights per currency.
   getHeightRef :: m (ExternalRef t (Map Currency Integer))
  
--- | Get current value of longest chain height for given currency. TODO: migrate this to direct asking BTC nodes, not indexer.
+-- | Get current value of longest chain height for given currency. 
 getCurrentHeight :: MonadFrontBase t m => Currency -> m Integer
 getCurrentHeight c = do 
   r <- getHeightRef
   m <- readExternalRef r 
   pure $ fromMaybe 0 $ M.lookup c m
+
+-- | Update current height of longest chain for given currency. TODO: migrate this to direct asking BTC nodes, not indexer.
+setCurrentHeight :: MonadFrontBase t m => Currency -> Event t Integer -> m ()
+setCurrentHeight c e = do 
+  r <- getHeightRef
+  performEvent_ $ ffor e $ \h -> modifyExternalRef r ((, ()) . M.insert c h) 
