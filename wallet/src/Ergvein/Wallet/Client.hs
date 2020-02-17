@@ -190,13 +190,13 @@ requesterBody validateRes uss endpoint initRes req = do
     gateB <- fmap current $ holdDyn True $ False <$ resE
 
   -- Handle messages for loading display
-  toggleLoadingWidget $ (True , CMSTimeout) <$ timeoutMsgE
-  toggleLoadingWidget $ (True , CMSError)   <$ failE
-  toggleLoadingWidget $ ffor resE $ \case
-    ReqTimeout{} -> (True, CMSRestarting)
-    _ -> (False, CMSDone)
-  toggleLoadingWidget =<< fmap ((True , CMSLoading 0 minN maxN) <$) getPostBuild
-  toggleLoadingWidget $ ffor (updated storeD) $ \store -> (True , CMSLoading (length store) minN maxN)
+  -- toggleLoadingWidget $ (True , CMSTimeout) <$ timeoutMsgE
+  -- toggleLoadingWidget $ (True , CMSError)   <$ failE
+  -- toggleLoadingWidget $ ffor resE $ \case
+  --   ReqTimeout{} -> (True, CMSRestarting)
+  --   _ -> (False, CMSDone)
+  -- toggleLoadingWidget =<< fmap ((True , CMSLoading 0 minN maxN) <$) getPostBuild
+  -- toggleLoadingWidget $ ffor (updated storeD) $ \store -> (True , CMSLoading (length store) minN maxN)
 
   delay 0.1 resE
   where
