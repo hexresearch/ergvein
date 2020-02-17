@@ -40,7 +40,7 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
   where 
     go = Workflow $ do
       buildE <- getPostBuild
-      ch <- getCurrentHeight BTC
+      ch <- fmap fromIntegral $ getCurrentHeight BTC
       fh <- getFiltersHeight BTC
       logWrite $ "Current height is " <> showt ch <> ", and filters are for height " <> showt fh
       postSync BTC ch fh 
@@ -60,10 +60,6 @@ postSync :: MonadFrontBase t m => Currency -> BlockHeight -> BlockHeight -> m ()
 postSync cur ch fh = do 
   buildE <- getPostBuild
   setSyncProgress $ SyncMeta cur SyncFilters (fromIntegral fh) (fromIntegral ch) <$ buildE
-
--- | Get known top height for given currency
-getCurrentHeight :: MonadFrontBase t m => Currency -> m BlockHeight
-getCurrentHeight _ = pure 2000
 
 getFilters :: MonadFrontBase t m => Event t (Currency, BlockHeight, Int) -> m (Event t [AddrFilter])
 getFilters e = delay 0.1 $ [mockFilter] <$ e 

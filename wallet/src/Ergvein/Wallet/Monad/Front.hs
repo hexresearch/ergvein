@@ -3,6 +3,7 @@ module Ergvein.Wallet.Monad.Front(
   , MonadFrontBase(..)
   , AuthInfo(..)
   , Password
+  , getCurrentHeight
   -- * Reexports
   , Text
   , MonadJSM
@@ -17,8 +18,11 @@ import Control.Concurrent.Chan
 import Control.Monad
 import Data.Foldable (traverse_)
 import Data.Functor (void)
+import Data.Map (Map)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Ergvein.Types.AuthInfo
+import Ergvein.Types.Currency
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Language
@@ -31,6 +35,8 @@ import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
 import Reflex.Dom.Retractable.Class
 import Reflex.ExternalRef
+
+import qualified Data.Map.Strict as M 
 
 -- | Authorized context. Has access to storage and indexer's functionality
 type MonadFront t m = (
@@ -84,3 +90,12 @@ class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   getSyncProgress :: m (Dynamic t SyncProgress)
   -- | Internal method. 
   getSyncProgressRef :: m (ExternalRef t SyncProgress)
+  -- | Internal method to get reference with known heights per currency.
+  getHeightRef :: m (ExternalRef t (Map Currency Integer))
+ 
+-- | Get current value of longest chain height for given currency. TODO: migrate this to direct asking BTC nodes, not indexer.
+getCurrentHeight :: MonadFrontBase t m => Currency -> m Integer
+getCurrentHeight c = do 
+  r <- getHeightRef
+  m <- readExternalRef r 
+  pure $ fromMaybe 0 $ M.lookup c m

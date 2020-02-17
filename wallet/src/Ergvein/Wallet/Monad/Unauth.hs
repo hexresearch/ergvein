@@ -9,9 +9,11 @@ import Control.Concurrent.Chan
 import Control.Monad.Random.Class
 import Control.Monad.Reader
 import Data.IORef
+import Data.Map (Map)
 import Data.Text (Text)
 import Data.Time(NominalDiffTime)
 import Ergvein.Index.Client
+import Ergvein.Types.Currency
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Filters.Storage
@@ -53,6 +55,7 @@ data UnauthEnv t = UnauthEnv {
 , unauth'filtersStorage  :: !FiltersStorage
 , unauth'manager         :: !Manager
 , unauth'syncProgress    :: !(ExternalRef t SyncProgress)
+, unauth'heightRef       :: !(ExternalRef t (Map Currency Integer))
 }
 
 type UnauthM t m = ReaderT (UnauthEnv t) m
@@ -187,6 +190,8 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE setSyncProgress #-}
   getSyncProgressRef = asks unauth'syncProgress
   {-# INLINE getSyncProgressRef #-}
+  getHeightRef = asks unauth'heightRef
+  {-# INLINE getHeightRef #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
   postAlert e = do
@@ -222,6 +227,7 @@ newEnv settings uiChan = do
   hst <- liftIO $ runReaderT openHeadersStorage (settingsStoreDir settings)
   fst <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
   syncRef <- newExternalRef Synced
+  heightRef <- newExternalRef mempty
   pure UnauthEnv {
       unauth'settings  = settingsRef
     , unauth'backEF    = (backE, backFire ())
@@ -243,6 +249,7 @@ newEnv settings uiChan = do
     , unauth'headersStorage = hst
     , unauth'filtersStorage = fst 
     , unauth'syncProgress = syncRef
+    , unauth'heightRef = heightRef
     }
 
 runEnv :: (MonadBaseConstr t m, PlatformNatives)
