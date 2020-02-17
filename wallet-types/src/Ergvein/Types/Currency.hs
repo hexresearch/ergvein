@@ -251,7 +251,7 @@ currencyResolutionUnit :: Currency -> Units -> Int
 currencyResolutionUnit c Units{..} = case c of
   BTC  -> case fromMaybe defUnitBTC unitBTC of
             BtcWhole     -> 8
-            BtcMilli     -> 6
+            BtcMilli     -> 5
             BtcSat       -> 0
   ERGO -> case fromMaybe defUnitERGO unitERGO of
             ErgWhole     -> 9

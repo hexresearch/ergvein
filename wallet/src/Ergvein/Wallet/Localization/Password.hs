@@ -2,9 +2,33 @@ module Ergvein.Wallet.Localization.Password
   (
     PasswordPageStrings(..)
   , PasswordWidgetStrings(..)
+  , LoginPageStrings(..)
+  , PatternPageStrings(..)
   ) where
 
 import Ergvein.Wallet.Language
+
+data LoginPageStrings = LPSTitle | LPSDescr
+
+instance LocalizedPrint LoginPageStrings where
+  localizedShow l v = case l of
+    English -> case v of
+      LPSTitle  -> "Set login name for wallet"
+      LPSDescr -> "You could have several wallets and name helps to separate them."
+    Russian -> case v of
+      LPSTitle  -> "Установите логин для кошелька"
+      LPSDescr -> "Вы можете иметь несколько кошельков и имя поможет различать их"
+
+data PatternPageStrings = PatPSTitle | PatPSDescr
+
+instance LocalizedPrint PatternPageStrings where
+  localizedShow l v = case l of
+    English -> case v of
+      PatPSTitle -> "Setup encryption pattern key for your wallet"
+      PatPSDescr -> "The pattern key is used every time you perform an operation with your money"
+    Russian -> case v of
+      PatPSTitle -> "Установите графический ключ шифрования для кошелька"
+      PatPSDescr -> "Этот графический ключ используется для каждой операции с вашими деньгами"
 
 data PasswordPageStrings = PPSTitle | PPSDescr | PPSUnlock
 
