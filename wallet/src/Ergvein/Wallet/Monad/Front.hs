@@ -25,6 +25,7 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Sync.Status
 import Language.Javascript.JSaddle
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
@@ -77,3 +78,9 @@ class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   requestPasssword :: Event t () -> m (Event t Password)
   -- | Internal method to get storage of auth info
   getAuthInfoRef :: m (ExternalRef t (Maybe AuthInfo))
+  -- | Set global sync process value each time the event is fired
+  setSyncProgress :: Event t SyncProgress -> m ()
+  -- | Get global sync process value
+  getSyncProgress :: m (Dynamic t SyncProgress)
+  -- | Internal method. 
+  getSyncProgressRef :: m (ExternalRef t SyncProgress)

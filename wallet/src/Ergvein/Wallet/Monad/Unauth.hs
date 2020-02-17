@@ -115,11 +115,6 @@ instance MonadBaseConstr t m => MonadClient t (UnauthM t m) where
   getUrlsRef = asks unauth'urls
   getRequiredUrlNumRef = asks unauth'urlNum
   getRequestTimeoutRef = asks unauth'timeout
-  getSyncProgress = externalRefDynamic =<< asks unauth'syncProgress 
-  setSyncProgress ev = do 
-    ref <- asks unauth'syncProgress
-    performEvent_ $ writeExternalRef ref <$> ev 
-  getSyncProgressRef = asks unauth'syncProgress
 
 instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontBase t (UnauthM t m) where
   getSettings = readExternalRef =<< asks unauth'settings
@@ -184,6 +179,14 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE updateSettings #-}
   getSettingsRef = asks unauth'settings
   {-# INLINE getSettingsRef #-}
+  getSyncProgress = externalRefDynamic =<< asks unauth'syncProgress 
+  {-# INLINE getSyncProgress #-}
+  setSyncProgress ev = do 
+    ref <- asks unauth'syncProgress
+    performEvent_ $ writeExternalRef ref <$> ev 
+  {-# INLINE setSyncProgress #-}
+  getSyncProgressRef = asks unauth'syncProgress
+  {-# INLINE getSyncProgressRef #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
   postAlert e = do

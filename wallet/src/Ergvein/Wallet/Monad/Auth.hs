@@ -170,6 +170,14 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE updateSettings #-}
   getSettingsRef = asks env'settings
   {-# INLINE getSettingsRef #-}
+  getSyncProgressRef = asks env'syncProgress 
+  {-# INLINE getSyncProgressRef #-}
+  getSyncProgress = externalRefDynamic =<< asks env'syncProgress 
+  {-# INLINE getSyncProgress #-}
+  setSyncProgress ev = do 
+    ref <- asks env'syncProgress
+    performEvent_ $ writeExternalRef ref <$> ev 
+  {-# INLINE setSyncProgress #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
@@ -298,8 +306,3 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
   getUrlsRef = asks env'urls
   getRequiredUrlNumRef = asks env'urlNum
   getRequestTimeoutRef = asks env'timeout
-  getSyncProgressRef = asks env'syncProgress 
-  getSyncProgress = externalRefDynamic =<< asks env'syncProgress 
-  setSyncProgress ev = do 
-    ref <- asks env'syncProgress
-    performEvent_ $ writeExternalRef ref <$> ev 
