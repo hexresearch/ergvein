@@ -3,8 +3,6 @@ module Ergvein.Wallet.Menu.Switcher(
   ) where
 
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Embed
-import Ergvein.Wallet.Embed.TH
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu.Types
 import Ergvein.Wallet.Monad
