@@ -10,6 +10,7 @@ module Ergvein.Types.Currency(
   , getCurrencyIndex
   , allCurrencies
   , currencyResolution
+  , currencyResolutionUnit
   , currencyName
   , currencyGenesisTime
   , currencyBlockDuration
@@ -18,9 +19,21 @@ module Ergvein.Types.Currency(
   , MoneyUnit
   , Money(..)
   , showMoney
+  , showMoneyUnit
+  , UnitBTC(..)
+  , defUnitBTC
+  , allUnitsBTC
+  , UnitERGO(..)
+  , defUnitERGO
+  , allUnitsERGO
+  , Units(..)
+  , defUnits
+  , getUnitBTC
+  , getUnitERGO
   ) where
 
 import Data.Flat
+import Data.Maybe (fromMaybe)
 import Data.Ratio
 import Data.String
 import Data.Text (Text, pack, unpack)
@@ -179,12 +192,78 @@ instance FromJSONKey Currency where
 allCurrencies :: [Currency]
 allCurrencies = [minBound .. maxBound]
 
+-- | Display units for BTC
+data UnitBTC
+  = BtcWhole
+  | BtcMilli
+  | BtcSat
+  deriving (Eq, Ord, Enum, Bounded, Show, Read, Generic)
+
+$(deriveJSON aesonOptions ''UnitBTC)
+instance ToJSONKey UnitBTC where
+instance FromJSONKey UnitBTC where
+
+defUnitBTC :: UnitBTC
+defUnitBTC = BtcWhole
+
+allUnitsBTC :: [UnitBTC]
+allUnitsBTC = [minBound .. maxBound]
+
+-- | Display units for ERGO
+data UnitERGO
+  = ErgWhole
+  | ErgMilli
+  | ErgNano
+  deriving (Eq, Ord, Enum, Bounded, Show, Read, Generic)
+
+$(deriveJSON aesonOptions ''UnitERGO)
+instance ToJSONKey UnitERGO where
+instance FromJSONKey UnitERGO where
+
+defUnitERGO :: UnitERGO
+defUnitERGO = ErgWhole
+
+allUnitsERGO :: [UnitERGO]
+allUnitsERGO = [minBound .. maxBound]
+
+-- | Union units
+data Units = Units {
+    unitBTC   :: Maybe UnitBTC
+  , unitERGO  :: Maybe UnitERGO
+  } deriving (Eq, Ord, Show, Read, Generic)
+
+$(deriveJSON aesonOptions ''Units)
+instance ToJSONKey Units where
+instance FromJSONKey Units where
+
+defUnits :: Units
+defUnits = Units {
+    unitBTC   = Just BtcWhole
+  , unitERGO  = Just ErgWhole
+  }
+
+getUnitBTC :: Units -> UnitBTC
+getUnitBTC Units{..} = fromMaybe defUnitBTC unitBTC
+
+getUnitERGO :: Units -> UnitERGO
+getUnitERGO Units{..} = fromMaybe defUnitERGO unitERGO
+
 -- | Amount of digits after point for currency
 currencyResolution :: Currency -> Int
-currencyResolution c = case c of
-  BTC -> 8
-  ERGO -> 9
+currencyResolution c = currencyResolutionUnit c defUnits
 {-# INLINE currencyResolution #-}
+
+currencyResolutionUnit :: Currency -> Units -> Int
+currencyResolutionUnit c Units{..} = case c of
+  BTC  -> case fromMaybe defUnitBTC unitBTC of
+            BtcWhole     -> 8
+            BtcMilli     -> 5
+            BtcSat       -> 0
+  ERGO -> case fromMaybe defUnitERGO unitERGO of
+            ErgWhole     -> 9
+            ErgMilli     -> 6
+            ErgNano      -> 0
+{-# INLINE currencyResolutionUnit #-}
 
 currencyName :: Currency -> Text
 currencyName c = case c of
@@ -228,6 +307,10 @@ moneyToRational :: Money -> Rational
 moneyToRational (Money cur amount) = fromIntegral amount % (10 ^ currencyResolution cur)
 {-# INLINE moneyToRational #-}
 
+moneyToRationalUnit :: Money -> Units -> Rational
+moneyToRationalUnit (Money cur amount) units = fromIntegral amount % (10 ^ currencyResolutionUnit cur units)
+{-# INLINE moneyToRationalUnit #-}
+
 -- | Convert a rational number to money value
 moneyFromRational :: Currency -> Rational -> Money
 moneyFromRational cur amount = Money cur val
@@ -238,3 +321,7 @@ moneyFromRational cur amount = Money cur val
 -- | Print amount of cryptocurrency
 showMoney :: Money -> Text
 showMoney m@(Money cur _) = T.pack $ printf ("%." <> show (currencyResolution cur) <> "f") (realToFrac (moneyToRational m) :: Double)
+
+showMoneyUnit :: Money -> Units -> Text
+showMoneyUnit m@(Money cur _) units =
+  T.pack $ printf ("%." <> show (currencyResolutionUnit cur units) <> "f") (realToFrac (moneyToRationalUnit m units) :: Double)

@@ -27,6 +27,7 @@ in reflex-platform.project ({ pkgs, ... }: {
     ergvein-wallet-native = ./wallet-native;
     ergvein-wallet-types = ./wallet-types;
     golomb-rice = ./golomb-rice;
+    reflex-dom-canvas = ./reflex-dom-canvas;
     reflex-dom-retractable = ./retractable;
     reflex-external-ref = ./reflex-external-ref;
     reflex-localize = ./reflex-localize;
@@ -45,7 +46,6 @@ in reflex-platform.project ({ pkgs, ... }: {
       "ergvein-wallet-desktop"
       "ergvein-wallet-filters"
       "ergvein-wallet-native"
-      "ergvein-wallet-types"
       "ergvein-wallet"
       "golomb-rice"
       "reflex-dom-retractable"

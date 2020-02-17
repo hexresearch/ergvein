@@ -19,23 +19,27 @@ instance LocalizedPrint PasswordPageStrings where
       PPSDescr  -> "Этот пароль используется для каждой операции с вашими деньгами. Можете оставить поле пустым, если хотите (не рекомендуется)"
       PPSUnlock -> "Введите пароль для расшифровки приватных ключей"
 
-data PasswordWidgetStrings = PWSPassword | PWSRepeat | PWSSet | PWSNoMatch | PWSGo | PWSLogin | PWSEmptyLogin
+data PasswordWidgetStrings = PWSPassword | PWSRepeat | PWSSet | PWSNoMatch | PWSGo | PWSLogin | PWSEmptyLogin | PWSEmptyPassword | PWSEmptyPattern
 
 instance LocalizedPrint PasswordWidgetStrings where
   localizedShow l v = case l of
     English -> case v of
-      PWSPassword -> "Password"
-      PWSRepeat   -> "Repeat password"
-      PWSSet      -> "Set"
-      PWSNoMatch  -> "Passwords do not match!"
-      PWSGo       -> "Go"
-      PWSLogin    -> "Login"
-      PWSEmptyLogin -> "Login is empty!"
+      PWSPassword      -> "Password"
+      PWSRepeat        -> "Repeat password"
+      PWSSet           -> "Set"
+      PWSNoMatch       -> "Passwords do not match!"
+      PWSGo            -> "Go"
+      PWSLogin         -> "Login"
+      PWSEmptyLogin    -> "Login is empty!"
+      PWSEmptyPassword -> "Password is empty!"
+      PWSEmptyPattern  -> ""
     Russian -> case v of
-      PWSPassword -> "Пароль"
-      PWSRepeat   -> "Повторите пароль"
-      PWSSet      -> "Установить"
-      PWSNoMatch  -> "Пароли не совпадают!"
-      PWSGo       -> "Перейти"
-      PWSLogin    -> "Логин"
-      PWSEmptyLogin -> "Логин пустой!"
+      PWSPassword      -> "Пароль"
+      PWSRepeat        -> "Повторите пароль"
+      PWSSet           -> "Установить"
+      PWSNoMatch       -> "Пароли не совпадают!"
+      PWSGo            -> "Перейти"
+      PWSLogin         -> "Логин"
+      PWSEmptyLogin    -> "Логин пустой!"
+      PWSEmptyPassword -> "Пароль пустой!"
+      PWSEmptyPattern  -> ""

@@ -13,6 +13,7 @@ import Data.Text (Text)
 import Data.Time(NominalDiffTime)
 import Ergvein.Index.Client
 import Ergvein.Types.Storage
+import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Language
@@ -36,6 +37,7 @@ data UnauthEnv t = UnauthEnv {
 , unauth'backEF          :: !(Event t (), IO ())
 , unauth'loading         :: !(Event t (Bool, Text), (Bool, Text) -> IO ())
 , unauth'langRef         :: !(ExternalRef t Language)
+, unauth'activeCursRef   :: !(ExternalRef t ActiveCurrencies)
 , unauth'storeDir        :: !Text
 , unauth'alertsEF        :: !(Event t AlertInfo, AlertInfo -> IO ()) -- ^ Holds alerts event and trigger
 , unauth'logsTrigger     :: !(Event t LogEntry, LogEntry -> IO ())
@@ -144,6 +146,8 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getUiChan #-}
   getLangRef = asks unauth'langRef
   {-# INLINE getLangRef #-}
+  getActiveCursRef = asks unauth'activeCursRef
+  {-# INLINE getActiveCursRef #-}
   isAuthorized = do
     authd <- getAuthInfoMaybe
     pure $ ffor authd $ \case
@@ -158,7 +162,7 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
     authRef <- asks unauth'authRef
     performEvent $ ffor e $ \v -> do
       logWrite "unauthed setAuthInfo: setting info"
-      setLastStorage $ storage'walletName . authInfo'storage <$> v
+      setLastStorage $ _storage'walletName . _authInfo'storage <$> v
       writeExternalRef authRef v
   {-# INLINE setAuthInfo #-}
   getPasswordModalEF = asks unauth'passModalEF
@@ -204,6 +208,7 @@ newEnv settings uiChan = do
   passModalEF <- newTriggerEvent
   authRef <- newExternalRef Nothing
   langRef <- newExternalRef $ settingsLang settings
+  activeCursRef <- newExternalRef $ settingsActiveCurrencies settings
   re <- newRetractEnv
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
@@ -219,6 +224,7 @@ newEnv settings uiChan = do
     , unauth'backEF    = (backE, backFire ())
     , unauth'loading   = loadingEF
     , unauth'langRef   = langRef
+    , unauth'activeCursRef = activeCursRef
     , unauth'storeDir  = settingsStoreDir settings
     , unauth'alertsEF  = alertsEF
     , unauth'logsTrigger = logsTrigger

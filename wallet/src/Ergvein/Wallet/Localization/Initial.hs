@@ -10,6 +10,8 @@ data InitialPageStrings =
   | IPSRestore
   | IPSSelectWallet
   | IPSOtherOptions
+  | IPSPinCode
+  | IPSPinCodeError
 
 instance LocalizedPrint InitialPageStrings where
   localizedShow l v = case l of
@@ -18,8 +20,12 @@ instance LocalizedPrint InitialPageStrings where
       IPSRestore  -> "Restore wallet"
       IPSSelectWallet -> "Select wallet"
       IPSOtherOptions -> "Either"
+      IPSPinCode -> "PIN code:"
+      IPSPinCodeError -> "Invalid code"
     Russian -> case v of
       IPSCreate   -> "Создать кошелёк"
       IPSRestore  -> "Восстановить кошелёк"
       IPSSelectWallet -> "Выберите кошелёк"
       IPSOtherOptions -> "Или"
+      IPSPinCode -> "ПИН код:"
+      IPSPinCodeError -> "Неправильный код"

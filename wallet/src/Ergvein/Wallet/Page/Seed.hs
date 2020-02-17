@@ -10,12 +10,15 @@ import Data.Bifunctor
 import Data.List (permutations)
 import Ergvein.Crypto.Keys
 import Ergvein.Crypto.WordLists
+import Ergvein.Crypto.Util
 import Ergvein.Text
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Localization.Seed
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
+import Ergvein.Wallet.Page.Canvas
+import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Resize
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
@@ -39,7 +42,7 @@ checkPage :: MonadFrontBase t m => Mnemonic -> m ()
 checkPage mn = wrapper True $ do
   e <- mnemonicCheckWidget mn
   nextWidget $ ffor e $ \m -> Retractable {
-      retractableNext = passwordPage m
+      retractableNext = selectCurrenciesPage m
     , retractablePrev = Just $ pure $ checkPage m
     }
   pure ()
@@ -55,7 +58,7 @@ mnemonicWidget mnemonic = do
   mphrase <- maybe generateMnemonic (pure . Just) mnemonic
   case mphrase of
     Nothing -> pure (never, pure Nothing)
-    Just phrase -> do
+    Just phrase -> mdo
       divClass "mnemonic-title" $ h4 $ localizedText SPSTitle
       divClass "mnemonic-colony" $ adaptive (mobileMnemonic phrase) (desktopMnemonic phrase)
       divClass "mnemonic-warn" $ h4 $ localizedText SPSWarn
@@ -130,7 +133,7 @@ seedRestorePage = wrapper True $ do
   resetE <- buttonClass (pure "button button-outline") SPSReset
   mnemE <- fmap (switch . current) $ widgetHold seedRestoreWidget $ seedRestoreWidget <$ resetE
   void $ nextWidget $ ffor mnemE $ \m -> Retractable {
-      retractableNext = passwordPage m
+      retractableNext = selectCurrenciesPage m
     , retractablePrev = Just $ pure seedRestorePage
     }
 
@@ -142,7 +145,7 @@ seedRestoreWidget = mdo
     localizedShow <$> langD <*> (SPSEnterWord <$> ixD)
   wordE <- fmap (switch . current) $ widgetHold waiting $ ffor (updated inpD) $ \t -> if t == ""
     then waiting
-    else fmap leftmost $ colonize 3 (take 9 $ getWordsWithPrefix t) $ \w -> do
+    else fmap leftmost $ colonize 3 (take 9 $ getWordsWithPrefix $ T.toLower t) $ \w -> do
        btnE <- buttonClass (pure "button button-outline guess-button restore-word") w
        pure $ w <$ btnE
   let emptyStr :: Text = ""

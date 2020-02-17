@@ -28,7 +28,6 @@ in (self: super: let
   in {
     # Internal
     data-merkle-tree = ingnoreGarbage super.data-merkle-tree;
-    ergo-api = ingnoreGarbage super.ergo-api;
     ergvein-checkpoint-generator = ingnoreGarbage super.ergvein-checkpoint-generator;
     ergvein-common = ingnoreGarbage super.ergvein-common;
     ergvein-crypto = ingnoreGarbage super.ergvein-crypto;
@@ -42,6 +41,7 @@ in (self: super: let
     ergvein-wallet-filters = ingnoreGarbage super.ergvein-wallet-filters;
     ergvein-wallet-native = ingnoreGarbage super.ergvein-wallet-native;
     ergvein-wallet-types = ingnoreGarbage super.ergvein-wallet-types;
+    ergo-api = lib.dontCheck (ingnoreGarbage super.ergo-api);
     golomb-rice = ingnoreGarbage super.golomb-rice;
     reflex-dom-retractable = ingnoreGarbage super.reflex-dom-retractable;
     reflex-external-ref = ingnoreGarbage super.reflex-external-ref;

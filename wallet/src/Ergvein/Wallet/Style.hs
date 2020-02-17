@@ -5,6 +5,7 @@ module Ergvein.Wallet.Style(
 
 import Clay
 import Clay.Selector
+import Clay.Display
 import Clay.Stylesheet (prefixed)
 import Control.Monad
 import Data.ByteString (ByteString)
@@ -18,12 +19,28 @@ import Language.Javascript.JSaddle hiding ((#))
 import Prelude hiding ((**), rem)
 
 import qualified Clay.Media as M
+import qualified Clay.Flexbox as F
 
 data Resources = Resources {
-  robotoBlackUrl   :: !Text
-, robotoBoldUrl    :: !Text
-, robotoMediumUrl  :: !Text
-, robotoRegularUrl :: !Text
+  robotoBlackUrl    :: !Text
+, robotoBoldUrl     :: !Text
+, robotoMediumUrl   :: !Text
+, robotoRegularUrl  :: !Text
+, fabrands400eotUrl    :: !Text
+, fabrands400svgUrl    :: !Text
+, fabrands400ttfUrl    :: !Text
+, fabrands400woffUrl   :: !Text
+, fabrands400woff2Url  :: !Text
+, faregular400eotUrl   :: !Text
+, faregular400svgUrl   :: !Text
+, faregular400ttfUrl   :: !Text
+, faregular400woffUrl  :: !Text
+, faregular400woff2Url :: !Text
+, fasolid900eotUrl     :: !Text
+, fasolid900svgUrl     :: !Text
+, fasolid900ttfUrl     :: !Text
+, fasolid900woffUrl    :: !Text
+, fasolid900woff2Url   :: !Text
 }
 
 embedResources :: MonadJSM m => m Resources
@@ -32,6 +49,21 @@ embedResources = Resources
   <*> createObjectURL robotoBold
   <*> createObjectURL robotoMedium
   <*> createObjectURL robotoRegular
+  <*> createObjectURL fabrands400eot
+  <*> createObjectURL fabrands400svg
+  <*> createObjectURL fabrands400ttf
+  <*> createObjectURL fabrands400woff
+  <*> createObjectURL fabrands400woff2
+  <*> createObjectURL faregular400eot
+  <*> createObjectURL faregular400svg
+  <*> createObjectURL faregular400ttf
+  <*> createObjectURL faregular400woff
+  <*> createObjectURL faregular400woff2
+  <*> createObjectURL fasolid900eot
+  <*> createObjectURL fasolid900svg
+  <*> createObjectURL fasolid900ttf
+  <*> createObjectURL fasolid900woff
+  <*> createObjectURL fasolid900woff2
 
 compileFrontendCss :: MonadJSM m => m ByteString
 compileFrontendCss = do
@@ -41,12 +73,17 @@ compileFrontendCss = do
 frontendCssBS :: Resources -> ByteString
 frontendCssBS r = let
   selfcss = toStrict . encodeUtf8 . renderWith compact [] $ frontendCss r
-  in milligramCss <> tooltipCss <> selfcss
+  in milligramCss <> tooltipCss <> fontawesomeCss <> selfcss
 
 frontendCss :: Resources -> Css
 frontendCss r = do
   fontFamilies r
-  html ? textAlign center
+  faFontFamilies r
+  html ? do
+    textAlign center
+    let px' = px 0 in padding px' px' px' px'
+    let px' = px 0 in margin px' px' px' px'
+    height $ pct 100
   body ? do
     color textColor
     backgroundColor majorBackground
@@ -54,8 +91,10 @@ frontendCss r = do
     marginLeft $ px 0
     marginRight $ px 0
     fontFamily ["Roboto"] []
+    overflowY auto
   wrapperCss
   menuCss
+  navbarCss
   buttonCss
   inputCss
   mnemonicWidgetCss
@@ -63,9 +102,15 @@ frontendCss r = do
   passwordCss
   initialPageCss
   balancesPageCss
+  sendPageCss
+  networkPageCss
+  infoPageCss
+  aboutPageCss
   loadingWidgetCss
   alertsCss
   selectCss
+  buttonsToggleCss
+  graphPinCodeCanvasCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -83,7 +128,7 @@ wrapperCss :: Css
 wrapperCss = do
   ".container" ? do
     position relative
-    height $ pct 100
+    height $ pct 80
   ".vertical-center" ? do
     position absolute
     top $ pct 50
@@ -147,6 +192,20 @@ menuCss = do
   ".menu-dropdown-wrapper:hover .menu-dropdown" ? do
     display block
 
+navbarCss :: Css
+navbarCss = do
+  ".navbar" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1, fr 1]
+  ".navbar-item" ? do
+    padding (rem 1) (rem 1) (rem 1) (rem 1)
+    cursor pointer
+  ".navbar-item:hover" ? do
+    color hoverColor
+  ".navbar-item.active" ? do
+    borderBottom solid (px 4) textColor
+  ".navbar-item.active:hover" ? do
+    borderColor hoverColor
 
 buttonCss :: Css
 buttonCss = do
@@ -180,6 +239,38 @@ fontFamilies Resources{..} = do
       fontFamily [name] []
       fontFaceSrc [FontFaceSrcUrl url (Just TrueType)]
       fontWeight $ weight 400
+
+faFontFamilies :: Resources -> Css
+faFontFamilies Resources{..} = do
+  makeFontFace "Font Awesome 5 Brands" 400 [
+      fabrands400eotUrl
+    , fabrands400svgUrl
+    , fabrands400ttfUrl
+    , fabrands400woffUrl
+    , fabrands400woff2Url
+    ]
+  makeFontFace "Font Awesome 5 Free" 400 [
+      faregular400eotUrl
+    , faregular400svgUrl
+    , faregular400ttfUrl
+    , faregular400woffUrl
+    , faregular400woff2Url
+    ]
+  makeFontFace "Font Awesome 5 Free" 900 [
+      fasolid900eotUrl
+    , fasolid900svgUrl
+    , fasolid900ttfUrl
+    , fasolid900woffUrl
+    , fasolid900woff2Url
+    ]
+  where
+    makeFontFace name w urls = fontFace $ do
+      fontFamily [name] []
+      fontStyle normal
+      fontFaceSrc [FontFaceSrcUrl url (Just format)
+        | url    <- urls,
+          format <- [EmbeddedOpenType, SVG, TrueType, WOFF, WOFF2]]
+      fontWeight $ weight w
 
 mnemonicWidgetCss :: Css
 mnemonicWidgetCss = do
@@ -262,31 +353,155 @@ initialPageCss = do
     marginLeft auto
     marginRight auto
     marginBottom $ rem 1
+  ".text-pin-code-error" ? do
+    color $ rgb 190 0 0
 
 balancesPageCss :: Css
 balancesPageCss = do
-  ".sync-progress" ? do
-    width $ pct 100
+  ".balances-wrapper" ? do
     maxWidth $ px 500
-    display inlineBlock
+    margin (px 0) auto (px 0) auto
     textAlign $ alignSide sideLeft
+  ".sync-progress" ? do
     fontSize $ pt 14
-  ".currency-wrapper" ? do
-    textAlign center
+  ".currency-content" ? do
+    display displayTable
+    width $ pct 100
+  ".currency-row" ? do
+    display tableRow
+    fontSize $ pt (if isAndroid then 18 else 24)
     cursor pointer
-  ".currency-wrapper:hover" ? do
+  ".currency-row:hover" ? do
     color hoverColor
-  ".currency-line" ? do
+  ".currency-name" ? do
+    display tableCell
+    paddingRight $ rem 1
+  ".currency-balance" ? do
+    display tableCell
+    textAlign $ alignSide sideRight
+  ".currency-value" ? do
+    paddingRight $ rem 0.5
+  ".currency-unit" ? do
+    paddingRight $ rem 0.5
+
+sendPageCss :: Css
+sendPageCss = do
+  ".send-wrapper" ? do
+    maxWidth $ px 500
+    margin (px 0) auto (px 0) auto
+  ".send-buttons-wrapper" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1]
+    gridGap $ rem 1
+  ".send-submit" ? do
+    width $ pct 100
+  ".button-icon-wrapper" ? do
+    marginLeft $ em 0.5
+
+aboutPageCss :: Css
+aboutPageCss = do
+  ".about-wrapper" ? do
+    textAlign center
+  ".about-hr-sep" ? do
+    border solid (px 3) black
+  ".about-line" ? do
     width $ pct 100
     maxWidth $ px 500
     display inlineBlock
-    fontSize $ pt 24
-  ".currency-name" ? do
+    textAlign center
+  ".about-content" ? do
+    display displayTable
+    marginTop $ px 10
+    fontSize $ pt (if isAndroid then 12 else 18)
+  ".about-content-row" ? do
+    display tableRow
+  ".about-content-cell-label" ? do
+    display tableCell
+    let px' = px 5 in padding px' (px 20) px' px'
+    textAlign $ alignSide sideLeft
+    verticalAlign vAlignBottom
+  ".about-content-cell-value" ? do
+    display tableCell
+    let px' = px 5 in padding px' px' px' px'
+    textAlign $ alignSide sideLeft
+    verticalAlign vAlignBottom
+    width $ pct 1
+  ".about-distrib" ? do
+    paddingTop $ px 45
+    fontSize $ pt (if isAndroid then 12 else 18)
+
+networkPageCss :: Css
+networkPageCss = do
+  ".network-wrapper" ? do
+    textAlign center
+  ".network-title" ? do
+    width $ pct 100
+    maxWidth $ px 500
+    display inlineBlock
+  ".network-title-table" ? do
+    display displayTable
+  ".network-title-row" ? do
+    display tableRow
+  ".network-title-name" ? do
+    display tableCell
+    paddingTop $ px 15
+    paddingRight $ px 3
+    textAlign $ alignSide sideLeft
+    width $ pct 65
+  ".network-title-cur" ? do
+    display tableCell
+    paddingTop $ px 15
+    paddingRight $ px 3
+    width $ pct 35
+    textAlign $ alignSide sideRight
+  ".network-hr-sep" ? do
+    marginTop $ px 5
+    border solid (px 3) black
+  ".network-hr-sep-lb" ? do
+    border solid (px 1) black
+  ".network-line" ? do
+    width $ pct 100
+    maxWidth $ px 500
+    display inlineBlock
+    textAlign center
+  ".network-name" ? do
     display inlineBlock
     float floatLeft
-  ".currency-balance" ? do
+    fontWeight bold
+  ".network-name-edit" ? do
     display inlineBlock
     float floatRight
+    fontWeight bold
+    color "#3F7FBF"
+  ".network-value" ? do
+    display inlineBlock
+    float floatLeft
+    fontWeight bold
+  ".network-descr" ? do
+    display inlineBlock
+    float floatLeft
+    fontStyle italic
+    fontSizeCustom smaller
+  ".network-sel-cur-item" ? do
+    textAlign center
+    cursor pointer
+    fontSize $ pt (if isAndroid then 12 else 18)
+
+infoPageCss :: Css
+infoPageCss = do
+  ".info-content" ? do
+    width $ pct 100
+    maxWidth $ px 500
+    display inlineBlock
+  ".info-v-spacer" ? do
+    height $ px 25
+  ".info-block-value" ? do
+    textAlign $ alignSide sideLeft
+    let px3  = px 3
+        px10 = px 10
+        in padding px3 px10 px3 px10
+    border solid (px 1) $ rgb 140 140 140
+    let px4 = px 4 in borderRadius px4 px4 px4 px4
 
 loadingWidgetCss :: Css
 loadingWidgetCss = do
@@ -350,6 +565,15 @@ alertsCss = do
     color "#000"
     backgroundColor "#a9a7a7"
 
+patternKeyCss :: Css
+patternKeyCss = do
+  ".myTestDiv" ? do
+    pointerEvents none
+    backgroundColor "red"
+    display block
+  ".myDebugLog" ? do
+    display block
+
 selectCss :: Css
 selectCss = do
   ".select-lang" ? do
@@ -358,3 +582,80 @@ selectCss = do
   "option" ? do
     fontSize $ pt 18
     height   $ em 1.8
+
+buttonsToggleCss :: Css
+buttonsToggleCss = do
+  ".button-on" ? do
+    fontSize $ pt 18
+    width $ px 200
+    backgroundColor "#000000"
+    color "#ffffff"
+  ".button-off" ? do
+    fontSize $ pt 18
+    width $ px 200
+    backgroundColor "#ffffff"
+    color "#000000"
+  ".button-not-working" ? do
+    visibility hidden
+    pointerEvents none
+
+graphPinCodeCanvasCss :: Css
+graphPinCodeCanvasCss = do
+  ".graph-pin-code-canvas" ? do
+    position relative
+    backgroundColor $ rgb 240 240 240
+    border solid (px 1) black
+    borderRadius (px 5) (px 5) (px 5) (px 5)
+    let px' = px 0 in padding px' px' px' px'
+    marginLeft auto
+    marginRight auto
+    userSelect none
+    cursor pointer
+    zIndex 3
+  ".graph-pin-code-canvas-error" ? do
+    position relative
+    backgroundColor $ rgb 255 230 230
+    border solid (px 1) $ rgb 190 0 0
+    borderRadius (px 5) (px 5) (px 5) (px 5)
+    let px' = px 0 in padding px' px' px' px'
+    marginLeft auto
+    marginRight auto
+    userSelect none
+    cursor pointer
+    zIndex 3
+  ".graph-pin-code-point" ? do
+    position absolute
+    backgroundColor $ rgb 140 140 140
+    let px' = px 0 in padding px' px' px' px'
+    let px' = px 0 in margin px' px' px' px'
+    let pct' = pct 50 in borderRadius pct' pct' pct' pct'
+    userSelect none
+    cursor pointer
+    zIndex 5
+  ".graph-pin-code-glass" ? do
+    position absolute
+    backgroundColor none
+    let px' = px 0 in padding px' px' px' px'
+    let px' = px 0 in margin px' px' px' px'
+    let pct' = pct 50 in borderRadius pct' pct' pct' pct'
+    userSelect none
+    zIndex 10
+  ".graph-pin-code-point-check" ? do
+    position absolute
+    backgroundColor $ rgb 90 90 90
+    let px' = px 0 in padding px' px' px' px'
+    let px' = px 0 in margin px' px' px' px'
+    let pct' = pct 50 in borderRadius pct' pct' pct' pct'
+    userSelect none
+    cursor pointer
+    zIndex 10
+  ".graph-pin-code-line-check" ? do
+    position absolute
+    backgroundColor $ none
+    let px' = px 0 in padding px' px' px' px'
+    let px' = px 0 in margin px' px' px' px'
+    userSelect none
+    cursor pointer
+    borderTop solid (px 2) $ rgb 90 90 90
+    height $ px 2
+    zIndex 10

@@ -1,10 +1,19 @@
+{-# LANGUAGE CPP #-}
 module Ergvein.Wallet.Page.Password(
     passwordPage
+  , setupLoginPage
+  , setupPatternPage
   , askPasswordPage
   ) where
 
+import Control.Monad.IO.Class
+import Data.Map as Map
+
 import Ergvein.Crypto.Keys     (Mnemonic)
+import Ergvein.Types.Currency
 import Ergvein.Wallet.Elements
+import Ergvein.Wallet.Currencies
+import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Password
 import Ergvein.Wallet.Wrapper
@@ -13,16 +22,48 @@ import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Storage.AuthInfo
 import Reflex.Localize
 
-passwordPage :: MonadFrontBase t m => Mnemonic -> m ()
-passwordPage mnemonic = wrapper True $ do
+passwordPage :: MonadFrontBase t m => Mnemonic -> [Currency] -> m ()
+passwordPage mnemonic curs = wrapper True $ do
   divClass "password-setup-title" $ h4 $ localizedText PPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText PPSDescr
   logPassE <- setupLoginPassword
+  s <- getSettings
+  updateSettings $ ffor logPassE $ \(l,_) -> s {settingsActiveCurrencies = acSet l s}
   createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo mnemonic) logPassE
   authInfoE <- handleDangerMsg createStorageE
   void $ setAuthInfo $ Just <$> authInfoE
+  where
+    acSet l s = ActiveCurrencies $ Map.insert l curs $ activeCurrenciesMap $ settingsActiveCurrencies s
 
-askPasswordPage :: MonadFrontBase t m => m (Event t Password)
-askPasswordPage = wrapper True $ do
+setupLoginPage :: MonadFrontBase t m => Mnemonic -> [Currency] -> m ()
+setupLoginPage m ac = wrapper True $ do
+  logE <- setupLogin
+  logD <- holdDyn "" logE
+  nextWidget $ ffor (updated logD) $ \l -> Retractable {
+      retractableNext = setupPatternPage m l ac
+    , retractablePrev = Just $ pure $ setupLoginPage m ac
+    }
+  pure ()
+
+setupPatternPage :: MonadFrontBase t m => Mnemonic -> Text -> [Currency] -> m ()
+setupPatternPage m l curs = wrapper True $ do
+  buildE <- getPostBuild
+  s <- getSettings
+  updateSettings $ ffor buildE $ \_ -> s {settingsActiveCurrencies = acSet l s}
+  patE <- setupPattern
+  patD <- holdDyn "" patE
+  let logPassE = fmap (\p -> (l,p)) patE
+  createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo m) logPassE
+  authInfoE <- handleDangerMsg createStorageE
+  void $ setAuthInfo $ Just <$> authInfoE
+  where
+    acSet l s = ActiveCurrencies $ Map.insert l curs $ activeCurrenciesMap $ settingsActiveCurrencies s
+
+askPasswordPage :: MonadFrontBase t m => Text -> m (Event t Password)
+askPasswordPage name = wrapper True $ do
   divClass "password-ask-title" $ h4 $ localizedText PPSUnlock
+#ifdef ANDROID
+  askPattern name
+#else
   askPassword
+#endif
