@@ -7,6 +7,7 @@ module Ergvein.Interfaces.Ergo.PoPowHeader where
 import Control.Arrow
 import Control.Lens
 import Data.Aeson as A
+import Data.Either.Combinators
 import Data.List
 import Data.Serialize                     as S (Serialize (..), decode, encode, get, put)
 import Data.Serialize.Get                 as S
@@ -69,15 +70,15 @@ instance (HasNormaliseHeader a, IsChainElem a, Ord (BlockHash a)) => IsChain [a]
   chainLength = length
   chainFromList = id
   findDivergingSubchains = findDivergingSubchainsWithList
-  isValidChainAnchoredTo h hs = isValidChainAnchoredTo' (normalizeHeader h) (normalizeHeader <$> hs)
+  isValidChainAnchoredTo h hs = isRight $ isValidChainAnchoredTo' (normalizeHeader h) (normalizeHeader <$> hs)
 
 instance HasNormaliseHeader PoPowHeader where
   -- normalizeHeader :: PoPowHeader -> PoPowNormHeader
   normalizeHeader h@PoPowHeader {..} = PoPowNormHeader {
       blockId     = calculateHeaderId header
     , level       = mu h
-    , header'     = header
-    , interlinks' = interlinks
+    , hdr         = header
+    , ilinks      = interlinks
     }
 
 cookPoPowHeader :: Api.FullBlock -> PoPowHeader
