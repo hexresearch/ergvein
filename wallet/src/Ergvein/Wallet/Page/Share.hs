@@ -16,6 +16,7 @@ import Ergvein.Wallet.Localization.Share
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Share (shareShareUrl)
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Map.Strict as M
@@ -48,7 +49,8 @@ sharePage cur = do
       let tempUrl = generateURL shareAdd shareMoney
       textLabel ShareLink $ text tempUrl
       copyE <- fmap (tempUrl <$) $ outlineButton ShareCopy
-      _ <- clipboardCopy copyE
+      --_ <- clipboardCopy copyE
+      _ <- shareShareUrl copyE
       pure ()
 
     generateURL :: Base58 -> Money -> Text
