@@ -35,11 +35,11 @@ let
     fromImage = baseImage;
     tag = containerTag;
     contents = cnts;
-    config.WorkingDir = "/index-server";
-    config.Cmd = ["--listen" "./configuration.yaml"];
+    config.WorkingDir = "./index-server";
+    config.Cmd = ["ergvein-index-server" "--listen" "./configuration.yaml"];
   };
 
-  index-server-container = mkDockerImage "index-server" [
+  index-server-container = mkDockerImage "ergvein-index-server" [
     (takeFolder "index-server" ../index-server "srv")
   ];
 in { inherit
