@@ -56,7 +56,7 @@ instance IsChainElem PoPowHeader where
   -- val level = log2(requiredTarget.doubleValue) - log2(realTarget.doubleValue)
   mu h = floor . logBase @Double 2 $ fromIntegral $ requiredTarget `div` actualTarget
     where
-      requiredTarget = secp256k1_n -- FIXME  / RequiredDifficulty.decodeCompactBits(header.nBits)
+      requiredTarget = secp256k1_n `div` (unBigNat . unDifficulty . decodeCompactBits . nBits . header $ h)
       -- ^ https://github.com/ergoplatform/ergo/blob/cf687538d50970409c8bc6db3d0ddae35de548da/src/main/scala/org/ergoplatform/modifiers/history/popow/PoPowAlgos.scala#L97
       secp256k1_n = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141 :: Natural
       -- ^ https://github.com/bitcoin-core/secp256k1/blob/544435fc90a5672d862e2a51f44c10251893b97d/src/ecdsa_impl.h#L18
