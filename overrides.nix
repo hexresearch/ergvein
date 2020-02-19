@@ -62,8 +62,8 @@ in (self: super: let
     haskey = self.callPackage ./derivations/haskey.nix { };
     persistent-pagination = self.callPackage ./derivations/persistent-pagination.nix {};
     flat = lib.dontCheck (super.flat);
-    wide-word = lib.dontCheck (super.wide-word);
     reflex-dom-core = lib.dontCheck (super.reflex-dom-core);
     bitstream = self.callPackage ./derivations/bitstream.nix { };
+    wide-word = lib.dontCheck (self.callPackage ./derivations/wide-word.nix { });
   }
 )
