@@ -39,9 +39,3 @@ fasolid900svg = $(embedFile "static/assets/font/fa-solid-900.svg")
 fasolid900ttf = $(embedFile "static/assets/font/fa-solid-900.ttf")
 fasolid900woff = $(embedFile "static/assets/font/fa-solid-900.woff")
 fasolid900woff2 = $(embedFile "static/assets/font/fa-solid-900.woff2")
-
-smallEye :: ByteString
-smallEye = $(embedFile "static/img/small_eye.png")
-
-menuIcon :: ByteString
-menuIcon = $(embedFile "static/img/menu.png")
