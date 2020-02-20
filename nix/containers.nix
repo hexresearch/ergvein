@@ -43,7 +43,7 @@ let
     };
   };
 
-  index-server-container = mkDockerImage "ergvein-index-server" [
+  index-server-container = mkDockerImage "ergvein/ergvein-index-server" [
     (takeOnly "index-server" "${project.ghc.ergvein-index-server}/bin/ergvein-index-server")
   ];
 in { inherit

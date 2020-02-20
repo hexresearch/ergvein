@@ -1,8 +1,12 @@
 language: nix
 nix: 2.3
+services:
+  - docker
 env:
   global:
   - secure: "SW7XDQlFaHJDrY29VaFwCIW+QBtjY4/kKDS/vFGQq6BGxFuIqkv0nPZ36ONI76/cDZ+tyacijkWhTGL/zftnqHAgkbuK5zgD1KMedypbUL/RvW2tWKkhkUZ9cp7NUYY/60QfCv93ySgMM+nU1WqwbV/JgWjoFqzedN/su/g76Bm429V4FHK+rLGhGLbta4gHCRLe1GG4WDFOeaBrzTWd5wCz247SD9VEF97Cj8HVoqtFYTuLBvWee6JWE8l/IzG4iAlf12enCZUbk7CkDHYt9vemF+2Z1IWSlA9Rr70s+u7ZzHklgBvFHVyzt7wXVUrqhSWgX3bbd6UNR0Q9ThocWcvmD38PzcW3XyyDswuuhMlf84/qN8wJXGHc1E7grt1xJ1cz6mC7jbWYH3VvU0jhkR7lMJ+oV5hES2IAD8G+YnYozcCb4tiqgg3sizGkFfJ0DRUinK8L9NwzWf6bG33yKomgq3LhCekl2o1OlPkmzqGQlm8o11f8ClyHQaasreYmM0tx5wmbZTdl2F2ZPrh+LIy88TAYQirU25ZZSwkUwU8Sg6e/AKsaIaFlbzh67sIICKEImjdFbKhv8GmCAzzf/9iTADk7TBp1A6jXs1pbYLM4P+u8N1/sYwDQR/3L9dfCACiVxhWDvQ2doIYR/se3UtjQvhg2YvuIw2H9ZmnX+II="
+  - secure: "Oe2sUFSeHqM9eyvNt3pLzjk6C27/z5KZB0xUC/Km6RehgJGFMRrRD+iB2yqaTfiU34iwXESwQ2zme+ZaPeZAFPOaXrn9yFZd6kfU20c4yljNByMVGWoCG89sRrT+4TMPJEGRybTBB+LTiqoAtGQQANrBI2Sy8Q8x/7wbpUCCPeRL7RPohX83PXN4rWh/eZnGUAknOB4TSbZEvrrUl2lsHzZGrSWpea08IT7HIAC7zKIugpyDAdMvx9KoPVoh1Drmtt0Leyy2tJ+YMjpCBLK4BluJQyvav9QmiJQxoFSHQZbQZ5fCHGlmrw0d89lCqf6hBIaPWlmqm5AlcLDEFcAnYVRoyAsahyL5oHTRGvQEb7PsqjYLWtPQQLy/Lp9Qd/7QJVCzZN2oNguYsAoGmFFv2+rjUwILeqW5mmEV8Og8OdYcnKxXwnIDBKs8HhquUt6ioG0NguVkQyze6hlY6cMRQBtbm46lC3qndyGnuufeNVDFxFhtvwLFeku1WQBUh3obJ1RHZDgmKY/+CnNAfoyvHg9yOKie67v1l0oon3R8vQewIp3FMZzgTEZz+TjFgGjBNsk77ZFBKsn5Vl8v92aZ356Oxyo10N8DfSwH4KgQffTKGjvV61GiIQnOyE6OMx8nqNMgjVcjwvrWa6fTx0zi1gYjC3ILIyPvUKsh7oXIB7c="
+  - DOCKER_USERNAME=ergvein
 before_install:
 - sudo mkdir -p /etc/nix
 - echo "substituters = https://cache.nixos.org/ https://nixcache.reflex-frp.org" | sudo tee
@@ -15,14 +19,7 @@ before_script:
 - cachix push ergvein --watch-store&
 
 script:
-- echo "travis_fold:start:Desktop"
-- nix-build -A ghc.ergvein-wallet
-- echo "travis_fold:end:Desktop"
-
-- echo "travis_fold:start:IndexServer"
-- nix-build -A ghc.ergvein-index-server
-- echo "travis_fold:end:IndexServer"
-
-- echo "travis_fold:start:Android"
-- nix-build --arg isAndroid true -A android.ergvein-wallet
-- echo "travis_fold:end:Android"
+#- nix-build -A ghc.ergvein-wallet
+#- nix-build -A ghc.ergvein-index-server
+#- nix-build --arg isAndroid true -A android.ergvein-wallet
+- cd nix && ./ci-build-docker.sh
