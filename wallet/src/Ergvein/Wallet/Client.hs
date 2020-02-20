@@ -2,6 +2,7 @@
 module Ergvein.Wallet.Client
   ( getHeight
   , getBalance
+  , getBlockFilters
   , getTxHashHistory
   , getTxMerkleProof
   , getTxHexView
@@ -44,6 +45,9 @@ meanHeight xs = Right $ head $ drop (length xs `div` 2) $ sortOn heightRespHeigh
 
 getBalance :: MonadFrontBase t m => Event t BalanceRequest -> m (Event t (Either ClientErr BalanceResponse))
 getBalance = requesterEq getBalanceEndpoint
+
+getBlockFilters :: MonadFrontBase t m => Event t BlockFiltersRequest -> m (Event t (Either ClientErr BlockFiltersResponse))
+getBlockFilters = requesterEq getBlockFiltersEndpoint 
 
 getTxHashHistory :: MonadFrontBase t m => Event t TxHashHistoryRequest -> m (Event t (Either ClientErr TxHashHistoryResponse))
 getTxHashHistory = requesterEq getTxHashHistoryEndpoint

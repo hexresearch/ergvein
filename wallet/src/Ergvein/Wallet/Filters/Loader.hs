@@ -18,6 +18,7 @@ module Ergvein.Wallet.Filters.Loader (
 
 import Control.Monad
 import Control.Monad.IO.Unlift
+import Data.Maybe 
 import Ergvein.Filters 
 import Ergvein.Index.API.Types
 import Ergvein.Text
@@ -62,7 +63,10 @@ postSync cur ch fh = do
   setSyncProgress $ SyncMeta cur SyncFilters (fromIntegral fh) (fromIntegral ch) <$ buildE
 
 getFilters :: MonadFrontBase t m => Event t (Currency, BlockHeight, Int) -> m (Event t [AddrFilter])
-getFilters e = delay 0.1 $ [mockFilter] <$ e 
-
-mockFilter :: AddrFilter
-mockFilter = AddrFilterBtc $ either error id $ decodeBtcAddrFilter . hex2bs $ "0000000000000004171bad529ff6142e1d4840"
+getFilters e = do 
+  resE <- getBlockFilters $ ffor e $ \(cur, h, n) -> BlockFiltersRequest cur (fromIntegral h) (fromIntegral n)
+  hexE <- handleDangerMsg resE 
+  performEvent_ $ ffor hexE $ liftIO . print
+  let decoder = decodeBtcAddrFilter <=< hex2bsTE
+  let filtersE = fmap AddrFilterBtc . catMaybes . fmap (either (const Nothing) Just . decoder) <$> hexE
+  pure filtersE
