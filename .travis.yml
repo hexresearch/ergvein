@@ -14,11 +14,15 @@ before_script:
 - cachix use ergvein
 - cachix push ergvein --watch-store&
 
-jobs:
-  include:
-    - stage: Desktop
-      script: nix-build -A ghc.ergvein-wallet
-    - stage: Index server
-      script: nix-build -A ghc.ergvein-index-server
-    - stage: Android 
-      script: nix-build --arg isAndroid true -A android.ergvein-wallet
+script:
+- echo "travis_fold:start:Desktop"
+- nix-build -A ghc.ergvein-wallet
+- echo "travis_fold:end:Desktop"
+
+- echo "travis_fold:start:IndexServer"
+- nix-build -A ghc.ergvein-index-server
+- echo "travis_fold:end:IndexServer"
+
+- echo "travis_fold:start:Android"
+- nix-build --arg isAndroid true -A android.ergvein-wallet
+- echo "travis_fold:end:Android"
