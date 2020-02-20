@@ -109,6 +109,7 @@ library
     TypeFamilies
     TypeOperators
     DuplicateRecordFields
+
 executable ergvein-index-server
   hs-source-dirs:
       app

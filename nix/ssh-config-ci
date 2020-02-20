@@ -1,5 +1,0 @@
-StrictHostKeyChecking=no
-UserKnownHostsFile /dev/null
-Host github.com
-  User git
-  IdentityFile /etc/ssh/id_rsa

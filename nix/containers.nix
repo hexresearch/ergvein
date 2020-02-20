@@ -12,6 +12,7 @@
 let
   reflex-platform = import ../platform-overlay.nix;
   pkgs = reflex-platform.nixpkgs;
+  project = import ../default.nix { release = true; };
 
   baseImage = pkgs.dockerTools.pullImage {
       imageName = "alpine";
@@ -21,9 +22,9 @@ let
 
   # As we place all executables in single derivation the derivation takes them
   # from it and allows us to make thin containers for each one.
-  takeOnly = name: path: innerPath: pkgs.runCommandNoCC "only-${name}" {} ''
-    mkdir -p $out/$(dirname ${innerPath})
-    cp ${path} $out/${innerPath}
+  takeOnly = name: path: pkgs.runCommandNoCC "only-${name}" {} ''
+    mkdir -p $out
+    cp ${path} $out/${name}
   '';
   takeFolder = name: path: innerPath: pkgs.runCommandNoCC "folder-${name}" {} ''
     mkdir -p $out/${innerPath}
@@ -35,12 +36,15 @@ let
     fromImage = baseImage;
     tag = containerTag;
     contents = cnts;
-    config.WorkingDir = "./index-server";
-    config.Cmd = ["ergvein-index-server" "--listen" "./configuration.yaml"];
+    config = {
+      Entrypoint = [
+        "/index-server"
+      ];
+    };
   };
 
   index-server-container = mkDockerImage "ergvein-index-server" [
-    (takeFolder "index-server" ../index-server "srv")
+    (takeOnly "index-server" "${project.ghc.ergvein-index-server}/bin/ergvein-index-server")
   ];
 in { inherit
   index-server-container
