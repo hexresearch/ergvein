@@ -1,14 +1,6 @@
 { release ? false, isAndroid ? false }:
 let
-  reflex-platform = (import ./reflex-platform.nix) {
-    nixpkgsOverlays = [
-      (self: super: import ./nixpkgs-overlays/default.nix self super )
-    ];
-    config = {
-      android_sdk.accept_license = true;
-      allowBroken = true;
-    };
-  };
+   reflex-platform = import ./platform-overlay.nix;
 in reflex-platform.project ({ pkgs, ... }: {
   packages = {
     data-merkle-tree = ./data-merkle-tree;
