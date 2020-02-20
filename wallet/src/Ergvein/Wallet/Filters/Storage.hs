@@ -6,6 +6,7 @@ module Ergvein.Wallet.Filters.Storage(
   , openFiltersStorage
   , getFiltersHeight
   , insertFilter
+  , getFilter
   ) where
 
 import Control.Lens
@@ -64,3 +65,7 @@ insertFilter h f = runFiltersStorage $ transact_ $ \schema -> case f of
   AddrFilterBtc btcf -> do
     btcs <- BTC.insertFilter h btcf (view schemaBtc schema)
     commit_ $ schema & schemaBtc .~ btcs
+
+getFilter :: (MonadIO m, HasFiltersStorage m) => Currency -> BlockHeight -> m (Maybe AddrFilter)
+getFilter c bh = runFiltersStorage $ transactReadOnly $ \schema -> case c of 
+  BTC -> fmap (fmap AddrFilterBtc) $ BTC.getFilter bh $ view schemaBtc schema
