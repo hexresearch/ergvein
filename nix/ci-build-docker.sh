@@ -2,7 +2,7 @@
 #!/usr/bin/env bash
 set -erv
 
-PUBLISH="false"
+PUBLISH="true"
 
 GIT_HASH=$(git rev-parse HEAD)
 GIT_TAG=$(git tag -l --points-at HEAD)
@@ -30,6 +30,7 @@ containers=$(NIX_PATH=$GIT_NIX_PATH$NIX_PATH nix-build containers.nix \
 for container in $containers
 do
   docker load < $container
+  docker tag $container ergvein/$container:$CONTAINER_TAG
 done
 
 if $PUBLISH; then
