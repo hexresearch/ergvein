@@ -6,7 +6,7 @@ GIT_BRANCH=$TRAVIS_BRANCH
 GIT_HASH=$(git rev-parse HEAD)
 GIT_TAG=$(git tag -l --points-at HEAD)
 CONTAINER_TAG="$GIT_BRANCH"
-PUBLISH="true"
+PUBLISH="false"
 if [ ! -z $GIT_TAG ]; then
   CONTAINER_TAG=$GIT_TAG
   GIT_TAG_ARG="--arg gitTag \"\\\"$GIT_TAG\\\"\""
@@ -37,7 +37,7 @@ do
 done
 
 if $PUBLISH; then
-docker login --password $DOCKER_PASSWORD --username $DOCKER_USERNAME 
+echo $DOCKER_PASSWORD | docker login --username $DOCKER_USERNAME --password-stdin
 docker tag ergvein-index-server:$CONTAINER_TAG ergvein/ergvein-index-server:$CONTAINER_TAG
 docker push ergvein/ergvein-index-server:$CONTAINER_TAG 
 fi
