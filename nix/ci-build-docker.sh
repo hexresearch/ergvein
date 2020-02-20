@@ -2,7 +2,7 @@
 #!/usr/bin/env bash
 set -erv
 
-GIT_BRANCH=$(git branch | grep \* | cut -d ' ' -f2)
+GIT_BRANCH=$TRAVIS_BRANCH
 GIT_HASH=$(git rev-parse HEAD)
 GIT_TAG=$(git tag -l --points-at HEAD)
 CONTAINER_TAG="$GIT_BRANCH"
