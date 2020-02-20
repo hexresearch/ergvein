@@ -13,9 +13,10 @@ if [ ! -z $GIT_TAG ]; then
   echo "Publish with $GIT_TAG"
 else 
   if [[ "$GIT_BRANCH" == "master" && "$TRAVIS_PULL_REQUEST" == "false" ]]; then
-  CONTAINER_TAG="latest"
-  PUBLISH="true"
-  echo "Publish with latest"
+    CONTAINER_TAG="latest"
+    PUBLISH="true"
+    echo "Publish with latest"
+  fi
 fi
 GIT_BRANCH=$(git branch | grep \* | cut -d ' ' -f2)
 
