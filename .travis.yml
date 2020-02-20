@@ -12,8 +12,13 @@ before_install:
 before_script:
 - nix-env -iA cachix -f https://cachix.org/api/v1/install
 - cachix use ergvein
-script:
 - cachix push ergvein --watch-store&
-- nix-build -A ghc.ergvein-wallet
-- nix-build -A ghc.ergvein-index-server
-- nix-build --arg isAndroid true -A android.ergvein-wallet
+
+jobs:
+  include:
+    - stage: Desktop
+      script: nix-build -A ghc.ergvein-wallet
+    - stage: Index server
+      script: nix-build -A ghc.ergvein-index-server
+    - stage: Android 
+      script: nix-build --arg isAndroid true -A android.ergvein-wallet
