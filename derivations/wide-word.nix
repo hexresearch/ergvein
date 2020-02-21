@@ -6,12 +6,12 @@ mkDerivation {
   pname = "wide-word";
   version = "0.1.1.0";
   src = fetchgit {
-    url = "https://github.com/erikd/wide-word.git";
-    sha256 = "058ig4z0xs3i86zh83ls0zyylndgylywwb96b8h2vw7ksjys06qs";
-    rev = "5179788115f4d5ae8e02a8869d0c0c1ac09e83d5";
+    url = "https://github.com/hexresearch/wide-word";
+    sha256 = "02w5379djnz8gwa05is5r43w125z8zma3dj3lw2x6fk7l5c2qjjg";
+    rev = "5f59e52c30f1eca652565b1a5f18ff1368587dfe";
     fetchSubmodules = true;
   };
-  libraryHaskellDepends = [ base deepseq primitive ];
+  libraryHaskellDepends = [ base deepseq ghc-prim primitive ];
   testHaskellDepends = [
     base bytestring ghc-prim hedgehog primitive QuickCheck
     quickcheck-classes semirings
