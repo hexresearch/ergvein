@@ -19,10 +19,11 @@ void android_share_url(jobject activity, const char* str) {
   assert(shareUrl);
   __android_log_write(ANDROID_LOG_DEBUG, "android_share_url", "got method shareUrl");
 
-  const char* resStr = (*env)->GetStringUTFChars(env, str, NULL);
-  assert(resStr);
+  jstring urlStr = (*env)->NewStringUTF(env, str);
+  assert(urlStr);
+  __android_log_write(ANDROID_LOG_DEBUG, "android_share_url", "created strings for share");
 
-  (*env)->CallVoidMethod(env, shareUrl, activity, resStr);
+  (*env)->CallStaticVoidMethod(env, shareClass, shareUrl, activity, urlStr);
   if((*env)->ExceptionOccurred(env)) {
     __android_log_write(ANDROID_LOG_DEBUG, "android_share_url", "Failed to call shareUrl");
     (*env)->ExceptionDescribe(env);
