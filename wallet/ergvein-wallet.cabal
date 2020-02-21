@@ -36,6 +36,7 @@ library
         Ergvein.Wallet.Filters.Btc.Queries
         Ergvein.Wallet.Filters.Btc.Types
         Ergvein.Wallet.Filters.Loader
+        Ergvein.Wallet.Filters.Scan
         Ergvein.Wallet.Filters.Storage
         Ergvein.Wallet.Filters.Types
         Ergvein.Wallet.Headers.Btc.Queries
