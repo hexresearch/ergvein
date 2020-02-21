@@ -18,6 +18,7 @@ module Ergvein.Wallet.Filters.Loader (
 
 import Control.Monad
 import Control.Monad.IO.Unlift
+import Data.Bifunctor
 import Data.Maybe 
 import Ergvein.Filters 
 import Ergvein.Index.API.Types
@@ -30,6 +31,7 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Sync.Status
+import Network.Haskoin.Block
 import Reflex.Workflow
 
 filtersLoader :: (HasFiltersStorage m, MonadFrontBase t m) => m ()
@@ -49,7 +51,7 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
         let n = 100
         logWrite $ "Getting next " <> showt n <> " filters"
         fse <- getFilters ((BTC, fh+1, n) <$ buildE)
-        we <- performEvent $ ffor fse $ \fs -> traverse_ (uncurry insertFilter) (zip [fh+1 ..] fs) 
+        we <- performEvent $ ffor fse $ \fs -> traverse_ (\(h, (bh, f)) -> insertFilter h bh f) (zip [fh+1 ..] fs) 
         pure ((), go <$ we)
       else do 
         logWrite "Sleeping, waiting for new filters ..."
@@ -62,11 +64,12 @@ postSync cur ch fh = do
   buildE <- getPostBuild
   setSyncProgress $ SyncMeta cur SyncFilters (fromIntegral fh) (fromIntegral ch) <$ buildE
 
-getFilters :: MonadFrontBase t m => Event t (Currency, BlockHeight, Int) -> m (Event t [AddrFilter])
+getFilters :: MonadFrontBase t m => Event t (Currency, BlockHeight, Int) -> m (Event t [(BlockHash, AddrFilter)])
 getFilters e = do 
   resE <- getBlockFilters $ ffor e $ \(cur, h, n) -> BlockFiltersRequest cur (fromIntegral h) (fromIntegral n)
   hexE <- handleDangerMsg resE 
   performEvent_ $ ffor hexE $ liftIO . print
   let decoder = decodeBtcAddrFilter <=< hex2bsTE
-  let filtersE = fmap AddrFilterBtc . catMaybes . fmap (either (const Nothing) Just . decoder) <$> hexE
-  pure filtersE
+      mkFilter = either (const Nothing) (Just . AddrFilterBtc) . decoder 
+      mkPair (a, b) = (,) <$> hexToBlockHash a <*> mkFilter b
+  pure $ catMaybes . fmap mkPair <$> hexE

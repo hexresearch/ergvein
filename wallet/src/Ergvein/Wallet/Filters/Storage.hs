@@ -7,6 +7,7 @@ module Ergvein.Wallet.Filters.Storage(
   , getFiltersHeight
   , insertFilter
   , getFilter
+  , foldFilters
   ) where
 
 import Control.Lens
@@ -60,12 +61,17 @@ getFiltersHeight :: (MonadIO m, HasFiltersStorage m) => Currency -> m BlockHeigh
 getFiltersHeight cur = case cur of 
   BTC -> runFiltersStorage $ transactReadOnly $ BTC.getFiltersHeight . (view schemaBtc)
 
-insertFilter :: (MonadIO m, HasFiltersStorage m) => BlockHeight -> AddrFilter -> m ()
-insertFilter h f = runFiltersStorage $ transact_ $ \schema -> case f of 
+insertFilter :: (MonadIO m, HasFiltersStorage m) => BlockHeight -> BlockHash -> AddrFilter -> m ()
+insertFilter h bh f = runFiltersStorage $ transact_ $ \schema -> case f of 
   AddrFilterBtc btcf -> do
-    btcs <- BTC.insertFilter h btcf (view schemaBtc schema)
+    btcs <- BTC.insertFilter h bh btcf (view schemaBtc schema)
     commit_ $ schema & schemaBtc .~ btcs
 
 getFilter :: (MonadIO m, HasFiltersStorage m) => Currency -> BlockHeight -> m (Maybe AddrFilter)
 getFilter c bh = runFiltersStorage $ transactReadOnly $ \schema -> case c of 
   BTC -> fmap (fmap AddrFilterBtc) $ BTC.getFilter bh $ view schemaBtc schema
+
+-- | Right fold over filters.
+foldFilters :: (MonadIO m, HasFiltersStorage m) => Currency -> (BlockHash -> AddrFilter -> a -> a) -> a -> m a 
+foldFilters c f a0 = runFiltersStorage $ transactReadOnly $ case c of 
+  BTC -> BTC.foldFilters (\k -> f k . AddrFilterBtc) a0 . view schemaBtc

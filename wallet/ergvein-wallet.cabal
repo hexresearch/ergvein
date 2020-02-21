@@ -23,6 +23,7 @@ flag testnet
 library
     exposed-modules:
         Control.Monad.Haskey.State
+        Control.Monad.Haskey.Haskoin
         Ergvein.Wallet
         Ergvein.Wallet.Alert
         Ergvein.Wallet.Alert.Handler
@@ -135,6 +136,7 @@ library
         composition-extra -any,
         containers >=0.6 && <0.7,
         data-default -any,
+        dependent-sum >= 0.6,
         directory -any,
         ergvein-common >=1.0 && <1.1,
         ergvein-crypto >=0.1 && <0.2,

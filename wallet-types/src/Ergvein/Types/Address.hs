@@ -1,6 +1,8 @@
 module Ergvein.Types.Address
   (
       EgvAddress(..)
+    , BtcAddress
+    , ErgAddress
     , EgvAddressContent(..)
     , addressToOutput
     , addressToScriptBS

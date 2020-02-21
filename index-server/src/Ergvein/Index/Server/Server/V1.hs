@@ -11,13 +11,17 @@ import Ergvein.Index.API.Types
 import Ergvein.Index.API.V1
 import Ergvein.Index.Server.Cache.Queries
 import Ergvein.Index.Server.Cache.Schema
-import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries
+import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.Monad
+import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Data.Word
+
+import qualified Network.Haskoin.Block as Btc 
+import qualified Data.Serialize as S 
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
@@ -102,8 +106,12 @@ indexGetBlockHeadersEndpoint request = do
 indexGetBlockFiltersEndpoint :: BlockFiltersRequest -> ServerM BlockFiltersResponse
 indexGetBlockFiltersEndpoint request = do
     slice <- getBlockMetaSlice (filtersReqCurrency request) (filtersReqStartIndex request) (filtersReqAmount request)
-    let blockFilters = blockMetaCacheRecAddressFilterHexView <$> slice
+    let blockFilters = (\s -> (mkHash $ blockMetaCacheRecHeaderHexView s, blockMetaCacheRecAddressFilterHexView s)) <$> slice
     pure blockFilters
+    where 
+      mkHash = case filtersReqCurrency request of 
+        BTC -> Btc.blockHashToHex . Btc.headerHash . either (error . ("Failed to decode block hash! " ++)) id . S.decode . hex2bs
+        _ -> error "Ergo indexGetBlockFiltersEndpoint is not implemented!" -- TODO here
 
 txMerkleProofEndpoint :: TxMerkleProofRequest -> ServerM TxMerkleProofResponse
 txMerkleProofEndpoint TxMerkleProofRequest { merkleReqCurrency = BTC }  = pure btcProof

@@ -64,7 +64,7 @@ data BlockFiltersRequest = BlockFiltersRequest
     } deriving (Eq, Show, Generic)
 $(deriveJSON (aesonOptionsStripPrefix "filtersReq") ''BlockFiltersRequest)
 
-type BlockFiltersResponse = [AddressFilterHexView]
+type BlockFiltersResponse = [(BlockHash, AddressFilterHexView)]
 
 -- Merkle
 data TxMerkleProofRequest = TxMerkleProofRequest

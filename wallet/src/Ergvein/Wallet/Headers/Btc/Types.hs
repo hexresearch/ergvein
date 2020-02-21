@@ -9,6 +9,7 @@ module Ergvein.Wallet.Headers.Btc.Types(
 
 import Control.Lens (Lens', lens)
 import Control.Monad.Haskey
+import Control.Monad.Haskey.Haskoin
 import Data.Binary (Binary(..))
 import Data.BTree.Impure (Tree)
 import Data.BTree.Primitives (Value)
@@ -45,21 +46,3 @@ blockNodeId = headerHash . nodeHeader
 defaultBestBlock :: BlockNode
 defaultBestBlock = genesisNode btcNetwork
 
-deriving instance Generic BlockHash
-deriving instance Generic BlockHeader
-deriving instance Generic BlockNode
-instance Binary BlockHash
-instance Binary BlockHeader
-instance Binary BlockNode
-
-instance Binary Hash256 where
-  put = put . S.runPut . S.put
-  {-# INLINE put #-}
-  get = do
-    bs <- get
-    either fail pure $ S.runGet S.get bs
-  {-# INLINE get #-}
-
-instance Value BlockNode
-instance Value BlockHash
-instance Key BlockHash
