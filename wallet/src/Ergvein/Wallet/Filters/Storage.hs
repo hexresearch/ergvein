@@ -4,12 +4,14 @@ module Ergvein.Wallet.Filters.Storage(
   , HasFiltersStorage(..)
   , runFiltersStorage
   , openFiltersStorage
+  , performFilters
   , getFiltersHeight
   , insertFilter
   , getFilter
   , foldFilters
   ) where
 
+import Control.Concurrent
 import Control.Lens
 import Control.Monad.Catch
 import Control.Monad.Haskey
@@ -21,6 +23,7 @@ import Ergvein.Types.Currency
 import Ergvein.Wallet.Filters.Types
 import Ergvein.Wallet.Native
 import Network.Haskoin.Block
+import Reflex.Dom 
 
 import qualified Ergvein.Wallet.Filters.Btc.Queries as BTC
 
@@ -56,6 +59,13 @@ class Monad m => HasFiltersStorage m where
 instance Monad m => HasFiltersStorage (ReaderT FiltersStorage m) where
   getFiltersStorage = ask
   {-# INLINE getFiltersStorage #-}
+
+-- | Helper to perform actions in store concurrently in reflex network.
+performFilters :: (PerformEvent t m, TriggerEvent t m, HasFiltersStorage (Performable m), MonadIO (Performable m)) 
+  => Event t (ReaderT FiltersStorage IO a) -> m (Event t a)
+performFilters e = performEventAsync $ ffor e $ \ma fire -> do 
+  s <- getFiltersStorage
+  void . liftIO . forkIO $ fire =<< runReaderT ma s
 
 getFiltersHeight :: (MonadIO m, HasFiltersStorage m) => Currency -> m BlockHeight 
 getFiltersHeight cur = case cur of 
