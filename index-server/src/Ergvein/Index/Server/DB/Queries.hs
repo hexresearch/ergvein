@@ -23,7 +23,7 @@ import           Control.Monad.Reader
 import qualified Data.Conduit.List as CL
 
 pageLoadSize :: PageSize
-pageLoadSize = PageSize 1048576
+pageLoadSize = PageSize 65536
 
 pagedEntitiesStream ::(PersistRecordBackend record backend, PersistQueryRead backend, PersistUniqueRead backend,
                       BackendCompatible SqlBackend backend, BackendCompatible SqlBackend (BaseBackend backend),

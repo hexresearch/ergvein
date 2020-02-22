@@ -19,7 +19,7 @@ safeEntrySlice startKey endKey = do
   db <- getDb
   iterator <- createIter db def
   slice <- LDBStreaming.toList $ LDBStreaming.entrySlice iterator range LDBStreaming.Asc
-  pure $ over _2 unflatExact  <$> over _1 unflatExact <$> slice
+  pure $ over _2 unflatExact  <$> over _1 (unflatExact . unPrefixedKey) <$> slice
   where
     range = LDBStreaming.KeyRange startKey comparison
     comparison key = case unflat $ unPrefixedKey key of

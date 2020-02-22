@@ -8,6 +8,7 @@ import Data.Default
 import Data.Either
 import Data.Flat
 import Data.Maybe
+import Data.Word8
 
 import qualified Database.LevelDB as LDB
 import qualified Data.ByteString as BS
@@ -20,11 +21,8 @@ data AreaKey = AreaKey
   , keyBase   :: BS.ByteString
   } deriving (Generic, Flat)
 
-keyString :: (Flat k) => BS.ByteString -> k -> BS.ByteString
-keyString keyPrefix key = keyPrefix <> flat key
-
-putItem :: (Flat v) => BS.ByteString -> v -> LDB.BatchOp
-putItem key value = LDB.Put key $ flat value
+keyString :: (Flat k) => Word8 -> k -> BS.ByteString
+keyString keyPrefix key = keyPrefix `BS.cons` flat key
 
 putItems :: (Flat v) => (a -> BS.ByteString) -> (a -> v) -> [a] -> LDB.WriteBatch
 putItems keySelector valueSelector items = putI <$> items

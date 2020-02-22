@@ -5,7 +5,9 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Types.Block
 import Data.Flat
-import Data.ByteString
+import Data.ByteString (ByteString)
+import Data.Word8
+import qualified Data.ByteString as BS
 
 
 unflatExact' :: (Flat b) => ByteString -> b
@@ -13,10 +15,10 @@ unflatExact' s = case unflat s of
     Right k -> k
     Left e -> error $ show e ++ "value " ++  show s
 
-keyString :: (Flat k) => ByteString -> k -> ByteString
-keyString keyPrefix key = keyPrefix <> flat key
+keyString :: (Flat k) => Word8 -> k -> ByteString
+keyString keyPrefix key = keyPrefix `BS.cons` flat key
 
-unPrefixedKey key = Data.ByteString.drop 4 key
+unPrefixedKey key = BS.tail key
   where err = error $ "unPrefixedKey error"
 
 parsedCacheKey :: (Flat k) => ByteString -> k
@@ -25,7 +27,7 @@ parsedCacheKey = unflatExact' . unPrefixedKey
 --TxOut
 
 cachedTxOutKey :: PubKeyScriptHash -> ByteString
-cachedTxOutKey = keyString "\0\0\0\0" . TxOutCacheRecKey
+cachedTxOutKey = keyString 0x0. TxOutCacheRecKey
 
 data TxOutCacheRecKey = TxOutCacheRecKey
   { txOutCacheRecKeyPubKeyScriptHash :: PubKeyScriptHash
@@ -42,7 +44,7 @@ type TxOutCacheRec = [TxOutCacheRecItem]
 --TxIn
 
 cachedTxInKey :: (PubKeyScriptHash, TxOutIndex) -> ByteString
-cachedTxInKey = keyString "\0\0\0\1" . uncurry TxInCacheRecKey
+cachedTxInKey = keyString 0x1 . uncurry TxInCacheRecKey
 
 data TxInCacheRecKey = TxInCacheRecKey
   { txInCacheRecKeyTxOutHash :: PubKeyScriptHash
@@ -56,7 +58,7 @@ data TxInCacheRec = TxInCacheRec
 --Tx
 
 cachedTxKey :: TxHash -> ByteString
-cachedTxKey = keyString "\0\0\1\0" . TxCacheRecKey
+cachedTxKey = keyString 0x2 . TxCacheRecKey
 
 data TxCacheRecKey = TxCacheRecKey
   { txCacheRecKeyHash         :: TxHash
@@ -72,14 +74,14 @@ data TxCacheRec = TxCacheRec
 --BlockMeta
 
 cachedMetaKey :: (Currency, BlockHeight) -> ByteString
-cachedMetaKey = keyString "\0\0\1\1" . uncurry BlockMetaCacheRecKey
+cachedMetaKey = keyString 0x3 . uncurry BlockMetaCacheRecKey
 
 data BlockMetaCacheRecKey = BlockMetaCacheRecKey
   { blockMetaCacheRecKeyCurrency     :: Currency
   , blockMetaCacheRecKeyBlockHeight  :: BlockHeight
-  } deriving (Generic, Eq, Ord, Flat)
+  } deriving (Generic, Eq, Ord, Flat, Show)
 
 data BlockMetaCacheRec = BlockMetaCacheRec
   { blockMetaCacheRecHeaderHexView  :: BlockHeaderHexView
   , blockMetaCacheRecAddressFilterHexView :: AddressFilterHexView
-  } deriving (Generic, Flat)
+  } deriving (Generic, Flat, Show)

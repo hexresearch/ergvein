@@ -7,6 +7,7 @@ import Conversion
 import Data.Default
 import Data.Flat
 import Data.Maybe
+import Data.List
 import Database.LevelDB.Base
 import System.Directory
 
@@ -28,7 +29,7 @@ instance Conversion TxInfo TxCacheRec where
   convert txInfo = TxCacheRec (txHash txInfo) (txHexView txInfo) (txBlockHeight txInfo) (txBlockIndex txInfo)
 
 cacheBlockMetaInfos :: MonadIO m => DB -> [BlockMetaInfo] -> m ()
-cacheBlockMetaInfos db infos = write db def $ putItems keySelector valueSelector infos
+cacheBlockMetaInfos db infos = write db def $ putItems keySelector valueSelector $ sortOn blockMetaBlockHeight infos
   where
     keySelector   info = cachedMetaKey (blockMetaCurrency info, blockMetaBlockHeight info)
     valueSelector info = BlockMetaCacheRec (blockMetaHeaderHexView info) (blockMetaAddressFilterHexView info)
