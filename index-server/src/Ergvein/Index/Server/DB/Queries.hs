@@ -5,14 +5,13 @@ import Control.Monad.IO.Class
 import Data.Word
 import Database.Esqueleto
 import Safe 
-import qualified Database.Persist as DT
 
+import Database.Esqueleto.Pagination
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Database.Esqueleto.Pagination
 
 import           Conduit
 import           Control.Concurrent
@@ -21,6 +20,7 @@ import           Control.Monad.IO.Class
 import           Control.Monad.Reader
 
 import qualified Data.Conduit.List as CL
+import qualified Database.Persist as DT
 
 pageLoadSize :: PageSize
 pageLoadSize = PageSize 65536
@@ -32,15 +32,6 @@ pagedEntitiesStream ::(PersistRecordBackend record backend, PersistQueryRead bac
 pagedEntitiesStream entityField = let
   pagedStream = streamEntities emptyQuery entityField pageLoadSize Ascend (Range Nothing Nothing)
   in pagedStream .| (CL.chunksOf $ unPageSize pageLoadSize)
-
-getAllTx :: (MonadIO m) => QueryT m [Entity TxRec]
-getAllTx = select $ from pure
-
-getAllTxOut :: (MonadIO m) => QueryT m [Entity TxOutRec]
-getAllTxOut = select $ from pure
-
-getAllTxIn :: (MonadIO m) => QueryT m [Entity TxInRec]
-getAllTxIn = select $ from pure
 
 getScannedHeight :: MonadIO m => Currency -> QueryT m (Maybe (Entity ScannedHeightRec))
 getScannedHeight currency = fmap headMay $ select $ from $ \scannedHeight -> do

@@ -6,13 +6,14 @@ import Control.Monad.Logger
 import Conversion
 import Data.Default
 import Data.Flat
-import Data.Maybe
 import Data.List
+import Data.Maybe
 import Database.LevelDB.Base
 import System.Directory
 
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.Cache.Monad
+import Ergvein.Index.Server.Cache.Queries
 import Ergvein.Index.Server.Cache.Schema
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries

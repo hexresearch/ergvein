@@ -13,6 +13,7 @@ import Ergvein.Types.Transaction
 
 import Data.ByteString as BS
 import qualified Database.LevelDB.Streaming as LDBStreaming
+import qualified Database.LevelDB as LDB
 
 safeEntrySlice :: (MonadLDB m , Ord k, Flat k, Flat v) => BS.ByteString -> k -> m [(k,v)]
 safeEntrySlice startKey endKey = do
@@ -53,6 +54,10 @@ getManyParsedExact keys = do
 data TxOutHistoryItem = UTXO TxOutCacheRecItem | STXO (TxOutCacheRecItem, TxInCacheRec)
 
 type TxOutHistory = [TxOutHistoryItem]
+
+putItems :: (Flat v) => (a -> BS.ByteString) -> (a -> v) -> [a] -> LDB.WriteBatch
+putItems keySelector valueSelector items = putI <$> items
+  where putI item = LDB.Put (keySelector item) $ flat $ valueSelector item
 
 getTxOutHistory :: (MonadLDB m) => PubKeyScriptHash -> m (Maybe TxOutHistory)
 getTxOutHistory key = do

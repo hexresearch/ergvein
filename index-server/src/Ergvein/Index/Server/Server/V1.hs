@@ -4,6 +4,7 @@ import Data.Flat
 import Data.List
 import Data.Maybe
 import Data.Monoid
+import Data.Word
 import Database.Persist.Sql
 
 import Ergvein.Index.API
@@ -11,13 +12,12 @@ import Ergvein.Index.API.Types
 import Ergvein.Index.API.V1
 import Ergvein.Index.Server.Cache.Queries
 import Ergvein.Index.Server.Cache.Schema
-import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries
+import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.Monad
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Data.Word
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
