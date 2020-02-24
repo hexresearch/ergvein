@@ -5,6 +5,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Types.Block
 import Data.Flat
+import System.ByteOrder
 import Data.ByteString
 
 
@@ -72,14 +73,25 @@ data TxCacheRec = TxCacheRec
 --BlockMeta
 
 cachedMetaKey :: (Currency, BlockHeight) -> ByteString
-cachedMetaKey = keyString "\0\0\1\1" . uncurry BlockMetaCacheRecKey
+cachedMetaKey (c, bh) = keyString "\0\0\1\1" $ BlockMetaCacheRecKey c $ LEHeight bh
 
 data BlockMetaCacheRecKey = BlockMetaCacheRecKey
   { blockMetaCacheRecKeyCurrency     :: Currency
-  , blockMetaCacheRecKeyBlockHeight  :: BlockHeight
-  } deriving (Generic, Eq, Ord, Flat)
+  , blockMetaCacheRecKeyBlockHeight  :: LEHeight
+  } deriving (Generic, Eq, Ord, Flat, Show)
 
 data BlockMetaCacheRec = BlockMetaCacheRec
   { blockMetaCacheRecHeaderHexView  :: BlockHeaderHexView
   , blockMetaCacheRecAddressFilterHexView :: AddressFilterHexView
   } deriving (Generic, Flat)
+
+newtype LEHeight = LEHeight { unLEHeight :: BlockHeight }
+  deriving (Generic, Eq, Ord, Show)
+
+instance Flat LEHeight where 
+  encode = encode . toBigEndian . unLEHeight
+  {-# INLINE encode #-}
+  decode = LEHeight . fromBigEndian <$> decode
+  {-# INLINE decode #-}
+  size (LEHeight a) = size $ toBigEndian a 
+  {-# INLINE size #-}

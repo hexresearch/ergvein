@@ -92,7 +92,7 @@ indexGetTxHashHistoryEndpoint request = do
 getBlockMetaSlice :: Currency -> BlockHeight -> Word64 -> ServerM [BlockMetaCacheRec]
 getBlockMetaSlice currency startHeight amount = do
   let start = cachedMetaKey (currency, startHeight) 
-      end   = BlockMetaCacheRecKey currency (pred $ startHeight + amount)
+      end   = BlockMetaCacheRecKey currency (LEHeight $ pred $ startHeight + amount)
   slice <- safeEntrySlice start end
   let metaSlice = snd <$> slice
   pure metaSlice

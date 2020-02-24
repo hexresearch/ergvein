@@ -65,5 +65,7 @@ in (self: super: let
     reflex-dom-core = lib.dontCheck (super.reflex-dom-core);
     bitstream = self.callPackage ./derivations/bitstream.nix { };
     wide-word = lib.dontCheck (self.callPackage ./derivations/wide-word.nix { });
+    byte-order = self.callPackage ./derivations/byte-order.nix {};
+    primitive-unaligned = self.callPackage ./derivations/primitive-unaligned.nix { };
   }
 )
