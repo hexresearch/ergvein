@@ -85,3 +85,4 @@ getFilter c bh = runFiltersStorage $ transactReadOnly $ \schema -> case c of
 foldFilters :: (MonadIO m, HasFiltersStorage m) => Currency -> (BlockHash -> AddrFilter -> a -> a) -> a -> m a 
 foldFilters c f a0 = runFiltersStorage $ transactReadOnly $ case c of 
   BTC -> BTC.foldFilters (\k -> f k . AddrFilterBtc) a0 . view schemaBtc
+  ERGO -> const $ pure a0 -- ^ TODO: add ergo here
