@@ -42,13 +42,10 @@ library
       , base16-bytestring
       , bytes
       , bytestring               == 0.10.*
-      , cryptonite
-      , either
-      , memory
-      , time                     == 1.8.*
-      , lens                     == 4.17.*
       , cereal                   == 0.5.*
       , containers
+      , cryptonite
+      , either
       , ergvein-common
       , hexstring                == 0.11.*
       , lens                     == 4.17.*
@@ -102,24 +99,28 @@ test-suite ergvein-interface-ergo-test
       Tests.Ergo.ValidateChain
   ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
   default-extensions:
+    DataKinds
+    ExtendedDefaultRules
     NumDecimals
     OverloadedStrings
     QuasiQuotes
     RecordWildCards
     ScopedTypeVariables
     TupleSections
-    ExtendedDefaultRules
   build-depends:
       base                     >= 4.7 && < 4.13
     , aeson                    == 1.4.*
-    , ergvein-interface-ergo
-    , tasty
-    , tasty-discover
-    , tasty-hspec
     , base16-bytestring
     , bytes
     , bytestring
     , cereal                   == 0.5.*
     , either
-    , text
+    , ergvein-interface-ergo
+    , generic-lens
+    , include-file
     , interpolatedstring-perl6
+    , lens
+    , tasty
+    , tasty-discover
+    , tasty-hspec
+    , text

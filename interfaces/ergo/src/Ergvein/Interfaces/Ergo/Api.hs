@@ -28,7 +28,7 @@ data ErgoTransactionInput = ErgoTransactionInput {
   boxId :: !TransactionBoxId
 , spendingProof :: !SpendingProof
 , extension :: ! (Maybe (Properties SValue))
-} deriving (Generic, Show)
+} deriving (Eq, Generic, Show)
 
 ----------------------------------------
 
@@ -56,13 +56,13 @@ data ErgoTransactionDataInput = ErgoTransactionDataInput {
 -- required:
   boxId :: !TransactionBoxId
 , extension :: !(Maybe (Properties SValue))
-} deriving (Generic, Show)
+} deriving (Eq, Generic, Show)
 
 -- | Spending proof for transaction input
 data SpendingProof = SpendingProof {
   proofBytes :: !SpendingProofBytes
 , extension :: !(Properties SValue)
-} deriving (Generic, Show)
+} deriving (Eq, Generic, Show)
 
 data ErgoTransactionOutput = ErgoTransactionOutput {
   boxId :: !(Maybe TransactionBoxId)
@@ -73,7 +73,7 @@ data ErgoTransactionOutput = ErgoTransactionOutput {
 , additionalRegisters :: !Registers
 , transactionId :: !(Maybe TransactionId)
 , index :: !(Maybe Int32)
-} deriving (Generic, Show)
+} deriving (Eq, Generic, Show)
 
 data ErgoTransaction = ErgoTransaction {
   transactionId :: !TransactionId -- field "id"
@@ -81,7 +81,7 @@ data ErgoTransaction = ErgoTransaction {
 , dataInputs :: ![ErgoTransactionDataInput]
 , outputs :: ![ErgoTransactionOutput]
 , size :: !Int32
-} deriving (Generic, Show)
+} deriving (Eq, Generic, Show)
 
 -- https://github.com/ergoplatform/ergo/blob/2ada64922e605bfecccddcbec91af1af52e591b9/src/main/resources/api/openapi.yaml#L928
 data NodeInfo = NodeInfo {
@@ -127,7 +127,7 @@ data FullBlock = FullBlock {
 , adProofs :: !BlockADProofs
 , extension :: !Extension
 , size :: !Int32
-} deriving (Generic, Show)
+} deriving (Eq, Generic, Show)
 
 data BlockHeader = BlockHeader {
   headerId :: !ModifierId
@@ -147,7 +147,7 @@ data BlockHeader = BlockHeader {
 , extensionId :: !(Maybe ModifierId)
 , transactionsId :: !(Maybe ModifierId)
 , adProofsId :: !(Maybe ModifierId)
-} deriving (Generic, Show)
+} deriving (Eq, Generic, Show)
 
 headerFromApi :: BlockHeader -> Header
 headerFromApi BlockHeader {..} = Header {
@@ -168,30 +168,30 @@ data BlockTransactions = BlockTransactions {
   headerId :: !ModifierId
 , transactions :: ![ErgoTransaction]
 , size :: !Word32
-} deriving (Generic, Show)
+} deriving (Eq, Generic, Show)
 
 data Extension = Extension {
   headerId :: !ModifierId
 , digest :: !Digest32
 , fields :: ![(HexJSON, HexJSON)]
-} deriving (Generic, Show)
+} deriving (Eq, Generic, Show)
 
 data BlockADProofs = BlockADProofs {
   headerId :: !ModifierId
 , proofBytes :: !SerializedAdProof
 , digest :: !Digest32
 , size :: !Int32
-} deriving (Generic, Show)
+} deriving (Eq, Generic, Show)
 
 -- | Token detail in the transaction
 data Asset = Asset {
   tokenId :: !Digest32
 , amount :: !Int64
-} deriving (Generic, Show)
+} deriving (Eq, Generic, Show)
 
 newtype Registers = Registers {
   unRegisters :: Properties SValue
-} deriving (Generic, Show)
+} deriving (Eq, Generic, Show)
 
 type Properties a = HashMap Text a
 

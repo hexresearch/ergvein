@@ -1,16 +1,24 @@
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Tests.Ergo.Headers where
 
 import Test.Tasty.Hspec
 
+import Control.Lens
 import Control.Monad
+import Data.Aeson as A
 import Data.Either.Combinators
+import Data.Generics.Product.Fields
 import Data.Text (Text)
+
+import Data.ByteString.Lazy (ByteString,pack)
+import Development.IncludeFile (includeFileInSource,Word8)
 
 import qualified Data.Serialize as Serialize
 import qualified Data.Text as T
 
+import Ergvein.Interfaces.Ergo.Api as Api
 import Ergvein.Interfaces.Ergo.Header
 import Ergvein.Interfaces.Ergo.Scorex.Util.Package
 
@@ -46,3 +54,14 @@ headerSamples = [
   , "b6c680cbff804800004f00007f7f003691ff01007f138080700040017f7f7f7fffbfc438fc74ff01800a7f007f7f8001b9ffe3768021187f7f017f00c9b301177f017f77360100ffa3ff22ff016c7f459180017f7f80b58001df35807f3c0d00d20000722df27f800101ff39806c01ff9a80ff0e1992857f32d8c2d9017fff7f15fff8b4d795aef787ec59b9010080547f01005a51ff739600005d47d89fac10001199a0631b8001019a34010200008995f5a204000000038b0f29a60fa8d7e1aeafbe512288a6c6bc696547bbf8247db23c95e83014513c022c65954f3487dee276b6e402deb17d8b454aff60fa2678c3168b9ec9ad6bee9321987f7049767dff20fffffffffffffffffffffffffffffffebaaedce6af48a03b3fd25e8cd0364140"
   , "ff006a00bb9e808d01005da8807f48ff009780841f1901006480950700b9ff8067ff010001c40180558001914e007fff7f00c0e3b1d6ffb880cbdd7b007f7fe559d80100720164cd001300bfff34addc547fdc7fbd08ff32804d807ff3f00031ff9aff8001f0cb80001f353ed918de0157ff5cff7f7f0100b180808100358029807ffe9292dae4f5f1b02cffc2c536c801ca4ad1737f1e36ce2db0ffe1ff0000d0ffffcf010017161f8e7a1002088eb78de0c906000000038b0f29a60fa8d7e1aeafbe512288a6c6bc696547bbf8247db23c95e83014513c0338e50f272e9f8515fa55fab6bf5d9b994a748cf1eeeee951061ba310f314b9a453d9ff08677fff5120fffffffffffffffffffffffffffffffebaaedce6af48a03b51af00eeeaf65a5c"
   ]
+
+
+$(includeFileInSource "test/data/full_block_2.json" "sampleFullBlock_2")
+
+spec_HeaderHash :: Spec
+spec_HeaderHash = do
+  it "Check header serialization and calculation of hash" $ do
+      fb <- either fail pure $ A.eitherDecode @FullBlock $ sampleFullBlock_2
+      let bh = Api.header fb
+          h = Api.headerFromApi bh
+      calculateHeaderId h `shouldBe` (bh ^. field @"headerId")
