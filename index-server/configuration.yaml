@@ -12,5 +12,5 @@ BTCNodePassword      : password
 ERGONodeHost         : localhost
 ERGONodePort         : 9052
 blockchainScanDelay  : 1000000
-dbLog                : false
+dbLog                : true
 pubScriptHistoryScan : false
