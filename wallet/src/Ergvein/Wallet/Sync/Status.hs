@@ -36,17 +36,19 @@ nominalToBehind t
   | t < 24 * 3600 = SyncHours $ ceiling $ t / 3600
   | otherwise = SyncDays $ ceiling $ t / (24 * 3600)
 
-data SyncStage = SyncFilters | SyncHeaders | SyncBlocks
+data SyncStage = SyncFilters | SyncAddress !Int | SyncHeaders | SyncBlocks
   deriving (Show)
 
 instance LocalizedPrint SyncStage where 
   localizedShow l v = case l of 
     English -> case v of 
       SyncFilters -> "filters"
+      SyncAddress i -> "address " <> showt i 
       SyncHeaders -> "headers"
       SyncBlocks  -> "blocks" 
     Russian -> case v of 
       SyncFilters -> "фильтров"
+      SyncAddress i -> "адрес " <> showt i 
       SyncHeaders -> "заголовков"
       SyncBlocks  -> "блоков" 
 

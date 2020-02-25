@@ -66,6 +66,7 @@ data Env t = Env {
 , env'filtersStorage  :: !FiltersStorage
 , env'syncProgress    :: !(ExternalRef t SyncProgress)
 , env'heightRef       :: !(ExternalRef t (Map Currency Integer))
+, env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -182,6 +183,8 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE setSyncProgress #-}
   getHeightRef = asks env'heightRef
   {-# INLINE getHeightRef #-}
+  getFiltersSyncRef = asks env'filtersSyncRef 
+  {-# INLINE getFiltersSyncRef #-}
 
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
@@ -262,11 +265,12 @@ liftAuth ma0 ma = mdo
         fst             <- getFiltersStorage
         syncRef         <- getSyncProgressRef
         heightRef       <- getHeightRef
+        fsyncRef        <- getFiltersSyncRef
         -- headersLoader
         filtersLoader
         runReaderT (wrapped ma) $ Env
           settingsRef backEF loading langRef activeCursRef authRef (logoutFire ()) storeDir alertsEF
-          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager hst fst syncRef heightRef
+          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager hst fst syncRef heightRef fsyncRef
   let
     ma0' = maybe ma0 runAuthed mauth0
     newAuthInfoE = ffilter isMauthUpdate $ updated mauthD

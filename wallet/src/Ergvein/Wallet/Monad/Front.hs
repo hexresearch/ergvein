@@ -5,6 +5,7 @@ module Ergvein.Wallet.Monad.Front(
   , Password
   , getCurrentHeight
   , setCurrentHeight
+  , getFiltersSync
   -- * Reexports
   , Text
   , MonadJSM
@@ -93,7 +94,9 @@ class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   getSyncProgressRef :: m (ExternalRef t SyncProgress)
   -- | Internal method to get reference with known heights per currency.
   getHeightRef :: m (ExternalRef t (Map Currency Integer))
- 
+  -- | Internal method to get flag if we has fully synced filters at the moment.
+  getFiltersSyncRef :: m (ExternalRef t (Map Currency Bool))
+
 -- | Get current value of longest chain height for given currency. 
 getCurrentHeight :: MonadFrontBase t m => Currency -> m Integer
 getCurrentHeight c = do 
@@ -106,3 +109,9 @@ setCurrentHeight :: MonadFrontBase t m => Currency -> Event t Integer -> m ()
 setCurrentHeight c e = do 
   r <- getHeightRef
   performEvent_ $ ffor e $ \h -> modifyExternalRef r ((, ()) . M.insert c h) 
+
+-- | Get current value that tells you whether filters are fully in sync now or not
+getFiltersSync :: MonadFrontBase t m => Currency -> m (Dynamic t Bool)
+getFiltersSync c = do 
+  d <- externalRefDynamic =<< getFiltersSyncRef
+  pure $ fromMaybe False . M.lookup c <$> d

@@ -56,6 +56,7 @@ data UnauthEnv t = UnauthEnv {
 , unauth'manager         :: !Manager
 , unauth'syncProgress    :: !(ExternalRef t SyncProgress)
 , unauth'heightRef       :: !(ExternalRef t (Map Currency Integer))
+, unauth'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
 }
 
 type UnauthM t m = ReaderT (UnauthEnv t) m
@@ -192,6 +193,8 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getSyncProgressRef #-}
   getHeightRef = asks unauth'heightRef
   {-# INLINE getHeightRef #-}
+  getFiltersSyncRef = asks unauth'filtersSyncRef
+  {-# INLINE getFiltersSyncRef #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
   postAlert e = do
@@ -228,6 +231,7 @@ newEnv settings uiChan = do
   fst <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
   syncRef <- newExternalRef Synced
   heightRef <- newExternalRef mempty
+  fsyncRef <- newExternalRef mempty
   pure UnauthEnv {
       unauth'settings  = settingsRef
     , unauth'backEF    = (backE, backFire ())
@@ -250,6 +254,7 @@ newEnv settings uiChan = do
     , unauth'filtersStorage = fst 
     , unauth'syncProgress = syncRef
     , unauth'heightRef = heightRef
+    , unauth'filtersSyncRef = fsyncRef
     }
 
 runEnv :: (MonadBaseConstr t m, PlatformNatives)
