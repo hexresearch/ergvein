@@ -44,18 +44,20 @@ sharePage cur = do
     renderPage :: MonadFront t m => Address -> m ()
     renderPage addr = do
       let addrBase   = addrToString (getCurrencyNetwork cur) addr
-      let shareAdd   = addrBase
+      let shareAddr  = addrBase
           shareMoney = Money cur 1
-      let tempUrl = generateURL shareAdd shareMoney
+      let tempUrl = generateURL shareAddr shareMoney
       textLabel ShareLink $ text tempUrl
-      copyE <- fmap (tempUrl <$) $ outlineButton ShareCopy
-      --_ <- clipboardCopy copyE
-      _ <- shareShareUrl copyE
+      copyE  <- fmap (shareAddr <$) $ outlineButton ShareCopy
+      shareE <- fmap (tempUrl   <$) $ outlineButton ShareShare
+      _ <- clipboardCopy copyE
+      _ <- shareShareUrl shareE
       pure ()
 
     generateURL :: Base58 -> Money -> Text
     generateURL addrB58 money = case cur of
-      BTC   -> "bitcoin:" <> addrB58 <> "?amount=" <> (showMoneyUnit money units)
+      --BTC   -> "bitcoin://" <> addrB58 <> "?amount=" <> (showMoneyUnit money units)
+      BTC   -> "bitcoin://" <> addrB58
       -- TODO: Fix URL for Ergo
       ERGO  -> ""
 
