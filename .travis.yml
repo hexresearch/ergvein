@@ -1,8 +1,12 @@
 language: nix
 nix: 2.3
+services:
+  - docker
 env:
   global:
   - secure: "SW7XDQlFaHJDrY29VaFwCIW+QBtjY4/kKDS/vFGQq6BGxFuIqkv0nPZ36ONI76/cDZ+tyacijkWhTGL/zftnqHAgkbuK5zgD1KMedypbUL/RvW2tWKkhkUZ9cp7NUYY/60QfCv93ySgMM+nU1WqwbV/JgWjoFqzedN/su/g76Bm429V4FHK+rLGhGLbta4gHCRLe1GG4WDFOeaBrzTWd5wCz247SD9VEF97Cj8HVoqtFYTuLBvWee6JWE8l/IzG4iAlf12enCZUbk7CkDHYt9vemF+2Z1IWSlA9Rr70s+u7ZzHklgBvFHVyzt7wXVUrqhSWgX3bbd6UNR0Q9ThocWcvmD38PzcW3XyyDswuuhMlf84/qN8wJXGHc1E7grt1xJ1cz6mC7jbWYH3VvU0jhkR7lMJ+oV5hES2IAD8G+YnYozcCb4tiqgg3sizGkFfJ0DRUinK8L9NwzWf6bG33yKomgq3LhCekl2o1OlPkmzqGQlm8o11f8ClyHQaasreYmM0tx5wmbZTdl2F2ZPrh+LIy88TAYQirU25ZZSwkUwU8Sg6e/AKsaIaFlbzh67sIICKEImjdFbKhv8GmCAzzf/9iTADk7TBp1A6jXs1pbYLM4P+u8N1/sYwDQR/3L9dfCACiVxhWDvQ2doIYR/se3UtjQvhg2YvuIw2H9ZmnX+II="
+  - secure: "hKhJLEz+vQoFkbW3wEvccrS2/kac17vxbMPmZhYCB2jA1LazJehTJIdo+T1Bfhrn5KnCbAsCP9lwC1UFnZcg6pYIvzQSezQeiqNa0HAbsfP+y1YGRF2GwWduBK1fb3zHqwvPEK1tBsY1taRM/4xg9s7Pvp9YLVlIAvGf/m2Kevg2b2QQo8+4RjfiWuuRfs51EJ1BtlqxldkMI6AE1/87M0IoCPNy6sHcxvfDQHB93w1e7p/dsWgktjMSSz+lhOsumvfSYLZGw+f6gkYZkx4ishpnA3JXGS8DD5u/8XWEpGrkZToizLrXplrMEFxo1qb8r5xR6vb+rnf7GIJdfbh2MmLC5/6tvS7al1K67MhiwWZZrNMFT2mGIYp2Yj6iwHY0DnaXEe24YVYRMcX6+N3uCYDCTdh4NMlpQfjFCidtFEFphcnTAQQ0AVu1LNIYkbkUw8llHArPR17o4qigznL+D0zyFl0CTSUh+hdP83AvEp1SJ2bNoOwlpgy09WWYR7+aC0BDN1+AQZquJJ6Vv3ymnurgVa0qu3G4wShA/tJNfqyDcKv/c3n2lZa4uz0moIovtoccMxEGiZOTONKWIuoWB08N1OMTJgz+WwrN+u4vp800ChYWLtRUnSzgI1mayI6PL6UpnRDmOnsdeINSIrfV9LJldB5hSMm3eWiDELlQ7Lg="
+  - DOCKER_USERNAME=ergvein
 before_install:
 - sudo mkdir -p /etc/nix
 - echo "substituters = https://cache.nixos.org/ https://nixcache.reflex-frp.org" | sudo tee
@@ -12,8 +16,10 @@ before_install:
 before_script:
 - nix-env -iA cachix -f https://cachix.org/api/v1/install
 - cachix use ergvein
-script:
 - cachix push ergvein --watch-store&
+
+script:
 - nix-build -A ghc.ergvein-wallet
 - nix-build -A ghc.ergvein-index-server
 - nix-build --arg isAndroid true -A android.ergvein-wallet
+- cd nix && ./ci-build-docker.sh

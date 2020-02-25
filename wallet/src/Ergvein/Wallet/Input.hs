@@ -12,8 +12,6 @@ import Control.Monad (join)
 import Data.Text (Text)
 import Ergvein.Text
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Embed
-import Ergvein.Wallet.Embed.TH
 import Ergvein.Wallet.Id
 import Ergvein.Wallet.Monad
 import Reflex.Localize
@@ -86,16 +84,21 @@ passFieldWithEye lbl = mdo
   (valD, eyeE) <- divClass "password-field" $ do
     valD <- textInputTypeDyn (updated typeD) (def &
       textInputConfig_attributes .~ pure
-        (  "id"          =: showt i
+        (  "id"          =: i
         <> "class"       =: "eyed-field"
-        <> "name"        =: ("password-" <> showt i)
+        <> "name"        =: ("password-" <> i)
         <> "placeholder" =: "******"
         )
       & textInputConfig_inputType .~ initType)
-    smallEyeUrl <- createObjectURL smallEye
-    eyeE <- divButton "small-eye" $ imgClass smallEyeUrl ""
+    passwordVisibleD <- toggle False eyeE
+    let eyeButtonIconClassD = eyeButtonIconClass <$> passwordVisibleD
+    eyeE <- divButton "small-eye" $ elClassDyn "i" eyeButtonIconClassD blank
     pure (valD, eyeE)
   pure valD
+
+eyeButtonIconClass :: Bool -> Text
+eyeButtonIconClass True = "far fa-eye-slash fa-fw"
+eyeButtonIconClass _ = "far fa-eye fa-fw"
 
 -- | Form submit button
 submitClass :: (MonadFrontBase t m, LocalizedPrint l) => Dynamic t Text -> l -> m (Event t ())

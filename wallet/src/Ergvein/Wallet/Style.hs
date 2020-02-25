@@ -149,38 +149,30 @@ translatePctXY x y = prefixed (browsers <> "transform") $ "translate(" <> value 
 
 menuCss :: Css
 menuCss = do
+  ".menu-wrapper" ? do
+    position relative
   ".menu-header" ? do
-    width $ pct 100
+    display flex
+    alignItems stretch
     backgroundColor black
     color white
     fontSize $ pt 14
-    paddingBottom $ px 10
-    display displayTable
   ".menu-wallet-name" ? do
-    display tableCell
-    textAlign center
     width $ pct 100
-    paddingTop $ px 5
-  ".menu-wallet-menu" ? do
-    display tableCell
-    verticalAlign vAlignBottom
+    padding (rem 1) (rem 0) (rem 1) (rem 1)
   ".menu-button" ? do
-    width $ px 42
-    marginRight $ px 10
-  ".menu-dropdown-wrapper" ? do
-    display inlineBlock
-    position relative
+    fontSize $ pt 22
+    padding (rem 1) (rem 1) (rem 1) (rem 1)
+    display flex
+    alignItems stretch
   ".menu-dropdown" ? do
+    position absolute
+    right $ px 0
     display displayNone
     backgroundColor black
-    minWidth $ px 160
-    position absolute
-    boxShadow [bsColor (rgba 0 0 0 0.2) $ shadowWithSpread (px 0) (px 8) (px 16) (px 0)]
     zIndex 1
-    translatePctX $ pct (-75)
-    when isAndroid $ do
-      marginTop $ px 10
-      marginLeft $ px 5
+    minWidth $ px 160
+    boxShadow [bsColor (rgba 0 0 0 0.2) $ shadowWithSpread (px 0) (px 8) (px 16) (px 0)]
   ".menu-dropdown .button.button-clear" ? do
     color white
     fontSize $ pt 14
@@ -189,7 +181,7 @@ menuCss = do
     width $ pct 100
     borderRadius (px 0) (px 0) (px 0) (px 0)
     marginBottom $ px 0
-  ".menu-dropdown-wrapper:hover .menu-dropdown" ? do
+  ".menu-dropdown.visible" ? do
     display block
 
 navbarCss :: Css
@@ -321,20 +313,23 @@ validateCss = do
 passwordCss :: Css
 passwordCss = do
   ".password-field" ? do
+    display flex
+    alignItems center
     position relative
-    display inlineBlock
-    width $ pct 100
+    marginBottom $ rem 1.5
   ".eyed-field" ? do
-    textAlign $ alignSide sideLeft
     width $ pct 100
+    marginBottom $ rem 0
   ".small-eye" ? do
-    width $ px 26
-    height $ px 14
     position absolute
-    top $ px 0
-    right $ px 0
-    marginTop $ px 10
-    marginRight $ px 13
+    display flex
+    alignItems center
+    right $ rem 0.8
+    fontSize $ pt 16
+    color hoverColor
+    backgroundColor white
+  ".small-eye:hover" ? do
+    cursor pointer
   ".ask-password-modal" ? do
     position absolute
     top $ px 0
@@ -404,7 +399,7 @@ sendPageCss = do
   ".send-submit" ? do
     width $ pct 100
   ".button-icon-wrapper" ? do
-    marginLeft $ em 0.5
+    marginLeft $ rem 0.5
 
 aboutPageCss :: Css
 aboutPageCss = do
