@@ -48,10 +48,14 @@ sharePage cur = do
           shareMoney = Money cur 1
       let tempUrl = generateURL shareAddr shareMoney
       textLabel ShareLink $ text tempUrl
-      copyE  <- fmap (shareAddr <$) $ outlineButton ShareCopy
-      shareE <- fmap (tempUrl   <$) $ outlineButton ShareShare
+      copyE    <- fmap (shareAddr  <$) $ outlineButton ShareCopy
+      el "br" blank
+      shareE   <- fmap (tempUrl    <$) $ outlineButton ShareShare
+      el "br" blank
+      shareQrE <- fmap (testBase64 <$) $ outlineButton ShareQR
       _ <- clipboardCopy copyE
       _ <- shareShareUrl shareE
+      _ <- shareShareUrl shareQrE
       pure ()
 
     generateURL :: Base58 -> Money -> Text
@@ -66,6 +70,9 @@ sharePage cur = do
         unitBTC  = Just BtcWhole
       , unitERGO = Just ErgWhole
       }
+
+testBase64 :: Text
+testBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABb2lDQ1BpY2MAACiRdZE7SwNBFIW/RCXigxRaqKRIEcUiQlAQS42FTRCJEYzaJJtsIuSx7CaI2Ao2FgEL0cZX4T/QVrBVEARFELHwF/hqJKx33ECCJLPM3o8zcy4zZ8AdyWl5qz0E+ULJjM6F/cvxFb/nDTeDeGjHl9AsY2ZhIULL8f2AS9X7MdWr9b6mozuVtjRwdQpPaoZZEp4WjmyUDMW7wv1aNpESPhYOmnJA4RulJx1+VZxx+FOxGYvOglv19GcaONnAWtbMC48KB/K5slY7j7pJT7qwtCh1SKYPiyhzhPGTpMw6OUqMSS1IZs19oT/fPEXxaPI32MQUR4aseIOilqVrWqouelq+HJsq9/95WvrEuNO9JwwdL7b9MQyePahWbPvnxLarp9D2DFeFur8oOU19iV6pa4Ej8G7DxXVdS+7D5Q4MPBkJM/Entcl06zq8n0NvHPruoGvVyaq2ztkjxLbkiW7h4BBGZL937ReXxWfa+r1HsAAAAAlwSFlzAAAPYQAAD2EBqD+naQAAAUlJREFUWEftl7sRgzAMhsGkoGcGNqBkELagYCt2YRMGoIIgX+AUx0IPwpEivuMobOn/0MtHuqwruXG5G7W99B/gtyOQpunlJcJG4GoIFgBCcBYC7CkfhwB4RFghODs2AmcgsDg171gASIEFQiKuGkQaCKm4CiAWiaqqPtpUI+4L3HIZYZGiKJJxHD2IVtwMEIrleZ5M07RHQ3PBmiKwKTnn3go0TJNkjIq6gHI0z/PbFgBpl94CKYRDBoC0EGYAquAg/9z0w1EyAcTEw8KTQqgBjlrNAqECwPmlWk0LIQbALcf1uQZCBJBl2d7vfd+LOo2DxFMLpjG51pzDf4N/uq47PBvbHIZhaduWtIMvozdfwiDeNI1aXGJAAmxfDe+6riW+TGeiAFi8LEuTY6lR9DKyXKuiyowcesQMxRVsVUV2ojb8gg7p4naAJ2zQRmOjezLqAAAAAElFTkSuQmCC"
 
 textLabel :: (MonadFrontBase t m, LocalizedPrint l)
   => l -- ^ Label

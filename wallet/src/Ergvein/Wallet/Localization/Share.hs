@@ -13,6 +13,7 @@ data SharePageStrings =
   | ShareLink
   | ShareCopy
   | ShareShare
+  | ShareQR
 
 instance LocalizedPrint SharePageStrings where
   localizedShow l v = case l of
@@ -21,8 +22,10 @@ instance LocalizedPrint SharePageStrings where
       ShareLink         -> "Link: "
       ShareCopy         -> "Copy"
       ShareShare        -> "Share"
+      ShareQR           -> "Share QR code"
     Russian -> case v of
       ShareTitle c      -> "Поделиться для " <> currencyName c
       ShareLink         -> "Ссылка: "
       ShareCopy         -> "Копировать"
       ShareShare        -> "Поделиться"
+      ShareQR           -> "Поделиться QR кодом"
