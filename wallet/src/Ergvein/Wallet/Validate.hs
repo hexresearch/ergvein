@@ -1,10 +1,45 @@
-module Ergvein.Wallet.Validate(
+module Ergvein.Wallet.Validate (
     validate
   , validateNow
+  , validateNonEmptyString
+  , validateRational
+  , VError(..)
+  , Validation(..)
   ) where
 
+import Control.Lens
+import Data.Maybe
+import Data.Ratio
+import Data.Validation hiding (validate)
+import Ergvein.Types.Currency
+import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
-import Reflex.Localize
+import Text.Parsec
+
+newtype NonEmptyString = NonEmptyString String deriving (Show)
+
+data VError = MustNotBeEmpty
+            | MustBeRational
+  deriving (Show)
+
+instance LocalizedPrint VError where
+  localizedShow l v = case l of
+    English -> case v of
+      MustNotBeEmpty -> "This field is required."
+      MustBeRational -> "Enter a valid amount."
+    Russian -> case v of
+      MustNotBeEmpty -> "Заполните это поле."
+      MustBeRational -> "Введите корректное значение."
+
+validateNonEmptyString :: String -> Validation [VError] NonEmptyString
+validateNonEmptyString x = if x /= []
+  then _Success # NonEmptyString x
+  else _Failure # [MustNotBeEmpty]
+
+validateRational :: String -> Validation [VError] Rational
+validateRational x = case parse rational "" x of
+  Left err -> _Failure # [MustBeRational]
+  Right r -> _Success # r
 
 -- | Helper for widget that displays error
 errorWidget :: (MonadFrontBase t m, LocalizedPrint l) => l -> m ()
@@ -26,3 +61,35 @@ validateNow ma = case ma of
     errorWidget err
     pure Nothing
   Right a -> pure $ Just a
+
+(<++>) a b = (++) <$> a <*> b
+(<:>) a b = (:) <$> a <*> b
+
+readInt = read :: String -> Integer
+
+number :: Stream s m Char => ParsecT s u m String
+number = many1 digit
+
+plus :: Stream s m Char => ParsecT s u m String
+plus = char '+' *> number
+
+minus :: Stream s m Char => ParsecT s u m String
+minus = char '-' <:> number
+
+integer :: Stream s m Char => ParsecT s u m String
+integer = plus <|> minus <|> number
+
+fractional :: Stream s m Char => ParsecT s u m String
+fractional = option "" $ char '.' *> number
+
+intFracToRational :: String -> String -> Rational
+intFracToRational intStr fracStr = if null fracStr
+  then int % 1
+  else (int * exponent + dec * signum int) % exponent
+  where exponent = 10 ^ length fracStr
+        int = readInt intStr
+        dec = readInt fracStr
+
+rational :: Stream s m Char => ParsecT s u m Rational
+rational = fmap (uncurry intFracToRational) intFrac
+  where intFrac = (,) <$> integer <*> fractional <* eof

@@ -1,6 +1,7 @@
 module Ergvein.Wallet.Input(
     Password
   , textField
+  , validatedTextField
   , passField
   , passFieldWithEye
   , submitClass
@@ -16,6 +17,8 @@ import Ergvein.Wallet.Embed.TH
 import Ergvein.Wallet.Id
 import Ergvein.Wallet.Monad
 import Reflex.Localize
+
+import qualified Data.Text as T
 
 labeledTextInput :: (MonadFrontBase t m, LocalizedPrint l)
   => l -- ^ Label
@@ -37,6 +40,32 @@ textField :: (MonadFrontBase t m, LocalizedPrint l)
 textField lbl v0 = fmap _textInput_value $ labeledTextInput lbl def {
     _textInputConfig_initialValue = v0
   }
+
+validatedTextField :: (MonadFrontBase t m, LocalizedPrint l, LocalizedPrint l1)
+  => l -- ^ Label
+  -> Text -- ^ Initial value
+  -> Dynamic t (Maybe [l1]) -- ^ List of errors
+  -> m (Dynamic t Text)
+validatedTextField lbl v0 mErrsD = do
+  textInputValueD <- inputField
+  divClass "form-field-errors" $ simpleList localizedErrsD displayError
+  pure textInputValueD
+  where
+    localizedErrsD = fmap getErrsD mErrsD
+    inputField = _textInput_value <$> labeledTextInput lbl def {
+      _textInputConfig_initialValue = v0
+    }
+
+getErrsD :: Maybe [l] -> [l]
+getErrsD mErrs = case mErrs of
+  Nothing -> []
+  Just errs -> errs
+
+displayError :: (MonadFrontBase t m, LocalizedPrint l) => Dynamic t l -> m ()
+displayError errD = do
+  err <- sampleDyn errD
+  localizedText err
+  br
 
 passField :: (MonadFrontBase t m, LocalizedPrint l)
   => l -- ^ Label

@@ -14,6 +14,10 @@ module Ergvein.Types.Currency(
   , currencyName
   , MoneyUnit
   , Money(..)
+  , moneyToRational
+  , moneyToRationalUnit
+  , moneyFromRational
+  , moneyFromRationalUnit
   , showMoney
   , showMoneyUnit
   , UnitBTC(..)
@@ -250,13 +254,13 @@ currencyResolution c = currencyResolutionUnit c defUnits
 currencyResolutionUnit :: Currency -> Units -> Int
 currencyResolutionUnit c Units{..} = case c of
   BTC  -> case fromMaybe defUnitBTC unitBTC of
-            BtcWhole     -> 8
-            BtcMilli     -> 5
-            BtcSat       -> 0
+            BtcWhole -> 8
+            BtcMilli -> 5
+            BtcSat   -> 0
   ERGO -> case fromMaybe defUnitERGO unitERGO of
-            ErgWhole     -> 9
-            ErgMilli     -> 6
-            ErgNano      -> 0
+            ErgWhole -> 9
+            ErgMilli -> 6
+            ErgNano  -> 0
 {-# INLINE currencyResolutionUnit #-}
 
 currencyName :: Currency -> Text
@@ -271,7 +275,7 @@ type MoneyUnit = Word64
 -- | Amount of money tagged with specific currency
 data Money = Money {
     moneyCurrency :: !Currency
-  , moneyValue    :: !MoneyUnit
+  , moneyAmount   :: !MoneyUnit
   } deriving (Eq, Ord, Show, Read, Generic)
 
 -- | Convert to rational number amount of cryptocurrency
@@ -287,8 +291,14 @@ moneyToRationalUnit (Money cur amount) units = fromIntegral amount % (10 ^ curre
 moneyFromRational :: Currency -> Rational -> Money
 moneyFromRational cur amount = Money cur val
   where
-    val = fromIntegral . numerator $ amount * (denominator amount % 10 ^ currencyResolution cur)
+    val = fromIntegral . round $ amount * (10 ^ currencyResolution cur)
 {-# INLINE moneyFromRational #-}
+
+moneyFromRationalUnit :: Currency -> Units-> Rational -> Money
+moneyFromRationalUnit cur units amount = Money cur val
+  where
+    val = fromIntegral . round $ amount * (10 ^ currencyResolutionUnit cur units)
+{-# INLINE moneyFromRationalUnit #-}
 
 -- | Print amount of cryptocurrency
 showMoney :: Money -> Text
