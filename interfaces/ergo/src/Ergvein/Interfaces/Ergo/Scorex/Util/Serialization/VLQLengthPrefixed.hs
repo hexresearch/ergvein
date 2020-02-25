@@ -6,6 +6,7 @@ import Data.Bool
 import Data.Int
 import Data.Serialize as S (Serialize (..), decode, encode, get, put)
 import Data.Serialize.Get as S
+import Data.Serialize.Put as S
 import Data.Word
 
 import qualified Data.ByteString as BS
@@ -83,7 +84,7 @@ instance Serialize (VLQLengthPrefixed BS.ByteString) where
       -- w.putInt(headerBytes.length)
       put . VLQInt32 . fromIntegral . BS.length $ bs
       -- w.putBytes(headerBytes)
-      put bs
+      S.putByteString bs
   get = do
       n <- fromIntegral . unVLQInt32 <$> get
       VLQLengthPrefixed <$> S.getBytes n
@@ -93,7 +94,7 @@ instance Serialize (OneByteLengthPrefixed BS.ByteString) where
       put @Word8 . fromIntegral . BS.length $ bs
       -- w.putUByte(dBytes.length)
       -- w.putBytes(dBytes)
-      put bs
+      S.putByteString bs
   get = do
       -- val dBytesLength = r.getUByte()
       -- val d = BigInt(BigIntegers.fromUnsignedByteArray(r.getBytes(dBytesLength)))

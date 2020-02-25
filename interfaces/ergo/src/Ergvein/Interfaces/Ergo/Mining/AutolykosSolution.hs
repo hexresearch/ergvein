@@ -88,7 +88,7 @@ instance IsString Secp256k1 where
 
 -- val PublicKeyLength: Byte = 33
 instance Serialize Secp256k1 where
-    put = put . unSecp256k1
+    put = S.putByteString . unSecp256k1
     get = Secp256k1 <$> S.getBytes 33
 
 instance ToJSON Secp256k1 where
