@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.util.Base64;
+import android.provider.MediaStore;
 
 import systems.obsidian.HaskellActivity;
 
@@ -28,16 +29,19 @@ public class Share {
 
     //Open image as Base64
     //decode base64 string to image
-    byte[] imageBytes = Base64.decode(url, Base64.DEFAULT);
-    Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+//    byte[] imageBytes = Base64.decode(url, Base64.DEFAULT);
+//    Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
 
-    Intent intentBase64 = new Intent(Intent.ACTION_SEND);
-    intentBase64.setType("image/*");
+//    Intent intentBase64 = new Intent(Intent.ACTION_SEND);
+//    String urlQR= MediaStore.Images.Media.insertImage(a.getContentResolver(), bitmap, "title", "description");
+//    intentBase64.putExtra(Intent.EXTRA_STREAM, Uri.parse(urlQR));
+//    intentBase64.setType("image/*");
+    //intentBase64.setType("data:image/png;base64");
     //Intent intentBase64 = new Intent(Intent.EXTRA_STREAM, Uri.parse(url));
-    intentBase64.putExtra(Intent.EXTRA_STREAM, bitmap);
+    //intentBase64.putExtra(Intent.EXTRA_STREAM, bitmap);
     //intentBase64.putExtra(Intent.EXTRA_STREAM, Uri.parse(url));
     //intentBase64.setType("image/png");
-    a.startActivity(Intent.createChooser(intentBase64, "Share test image to.."));
+//    a.startActivity(Intent.createChooser(intentBase64, "Share test image to.."));
     //try {
     //  File file = new File(a.getExternalCacheDir(),"tempqr.png");
     //  FileOutputStream fOut = new FileOutputStream(file);
@@ -67,6 +71,12 @@ public class Share {
 
     //Intent shareIntent = Intent.createChooser(sendIntent, null);
 //    a.startActivity(Intent.createChooser(shareIntent, "Share test to.."));
+
+    Intent intentText = new Intent(Intent.ACTION_SEND);
+    intentText.setType("text/plain");
+    intentText.putExtra(Intent.EXTRA_SUBJECT, "Subject Here");
+    intentText.putExtra(Intent.EXTRA_TEXT, "qwertyuiopasdfghjklzxcvbnm");
+    a.startActivity(Intent.createChooser(intentText, "Share test to.."));
   }
 
 }
