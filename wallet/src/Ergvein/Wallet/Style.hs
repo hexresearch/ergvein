@@ -22,10 +22,10 @@ import qualified Clay.Media as M
 import qualified Clay.Flexbox as F
 
 data Resources = Resources {
-  robotoBlackUrl    :: !Text
-, robotoBoldUrl     :: !Text
-, robotoMediumUrl   :: !Text
-, robotoRegularUrl  :: !Text
+  robotoBlackUrl       :: !Text
+, robotoBoldUrl        :: !Text
+, robotoMediumUrl      :: !Text
+, robotoRegularUrl     :: !Text
 , fabrands400eotUrl    :: !Text
 , fabrands400svgUrl    :: !Text
 , fabrands400ttfUrl    :: !Text
@@ -513,13 +513,17 @@ sharePageCss = do
   ".share-v-spacer" ? do
     height $ px 20
   ".share-block-value" ? do
-    textAlign $ alignSide sideLeft
+    --textAlign $ alignSide sideLeft
+    textAlign center
     let px3  = px 5
         px10 = px 10
         in padding px3 px10 px3 px10
     border solid (px 1) $ rgb 140 140 140
     let px4 = px 4 in borderRadius px4 px4 px4 px4
     marginBottom $ px 15
+  ".share-image-qrcode" ? do
+    width $ px 300
+    height $ px 300
 
 loadingWidgetCss :: Css
 loadingWidgetCss = do

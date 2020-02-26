@@ -91,6 +91,9 @@ instance PlatformNatives where
   -- | TODO: Fix shareUrl for desktop application later
   shareUrl = liftIO . setClipboard . T.unpack
 
+  -- | TODO: Fix shareUrl for desktop application later
+  sendUrl = liftIO . setClipboard . T.unpack
+
   logWrite = liftIO . T.putStrLn
 
 getFiles :: FilePath -> IO [FilePath]

@@ -29,3 +29,28 @@ void android_share_url(jobject activity, const char* str) {
     (*env)->ExceptionDescribe(env);
   }
 }
+
+void android_send_url(jobject activity, const char* str) {
+  JNIEnv *env;
+  jint attachResult = (*HaskellActivity_jvm)->AttachCurrentThread(HaskellActivity_jvm, (void **)&env, NULL);
+  assert(attachResult == JNI_OK);
+  __android_log_write(ANDROID_LOG_DEBUG, "android_send_url", "attached to jvm");
+
+  jclass shareClass = (*env)->FindClass(env, "org/ergvein/Share");
+  assert(shareClass);
+  __android_log_write(ANDROID_LOG_DEBUG, "android_send_url", "got Share class");
+
+  jmethodID sendUrl = (*env)->GetStaticMethodID(env, shareClass, "sendUrl", "(Lsystems/obsidian/HaskellActivity;Ljava/lang/String;)V");
+  assert(sendUrl);
+  __android_log_write(ANDROID_LOG_DEBUG, "android_send_url", "got method sendUrl");
+
+  jstring urlStr = (*env)->NewStringUTF(env, str);
+  assert(urlStr);
+  __android_log_write(ANDROID_LOG_DEBUG, "android_send_url", "created strings for share send");
+
+  (*env)->CallStaticVoidMethod(env, shareClass, sendUrl, activity, urlStr);
+  if((*env)->ExceptionOccurred(env)) {
+    __android_log_write(ANDROID_LOG_DEBUG, "android_send_url", "Failed to call sendUrl");
+    (*env)->ExceptionDescribe(env);
+  }
+}

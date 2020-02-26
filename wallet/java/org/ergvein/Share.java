@@ -24,8 +24,8 @@ public class Share {
 
   private static void shareUrl(final HaskellActivity a, String url) {
     // For open other app
-//    final Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-//    a.startActivity(Intent.createChooser(intent, "Share test to.."));
+    final Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+    a.startActivity(Intent.createChooser(intent, "Share .."));
 
     //Open image as Base64
     //decode base64 string to image
@@ -71,12 +71,14 @@ public class Share {
 
     //Intent shareIntent = Intent.createChooser(sendIntent, null);
 //    a.startActivity(Intent.createChooser(shareIntent, "Share test to.."));
+  }
 
+  private static void sendUrl(final HaskellActivity a, String url) {
     Intent intentText = new Intent(Intent.ACTION_SEND);
     intentText.setType("text/plain");
-    intentText.putExtra(Intent.EXTRA_SUBJECT, "Subject Here");
-    intentText.putExtra(Intent.EXTRA_TEXT, "qwertyuiopasdfghjklzxcvbnm");
-    a.startActivity(Intent.createChooser(intentText, "Share test to.."));
+    intentText.putExtra(Intent.EXTRA_SUBJECT, "My address");
+    intentText.putExtra(Intent.EXTRA_TEXT, url);
+    a.startActivity(Intent.createChooser(intentText, "Share .."));
   }
 
 }

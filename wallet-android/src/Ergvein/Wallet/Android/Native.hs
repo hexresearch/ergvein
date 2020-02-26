@@ -31,6 +31,7 @@ foreign import ccall safe "android_log_write" androidLogWrite :: CString -> IO (
 foreign import ccall safe "android_timezone_offset" androidTimezoneOffset :: IO Int
 
 foreign import ccall safe "android_share_url" androidShareUrl :: HaskellActivity -> CString -> IO ()
+foreign import ccall safe "android_send_url" androidSendUrl :: HaskellActivity -> CString -> IO ()
 
 decodeText :: CString -> IO Text
 decodeText cstr = do
@@ -131,6 +132,10 @@ instance PlatformNatives where
   shareUrl v = liftIO $ encodeText v $ \s -> do
     a <- getHaskellActivity
     androidShareUrl a s
+
+  sendUrl v = liftIO $ encodeText v $ \s -> do
+    a <- getHaskellActivity
+    androidSendUrl a s
 
   logWrite v = liftIO $ encodeText v androidLogWrite
   {-# INLINE logWrite #-}
