@@ -48,10 +48,10 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
       logWrite $ "Current height is " <> showt ch <> ", and filters are for height " <> showt fh
       postSync BTC ch fh 
       if ch > fh then do 
-        let n = 100
+        let n = 1000
         logWrite $ "Getting next " <> showt n <> " filters"
         fse <- getFilters ((BTC, fh+1, n) <$ buildE)
-        we <- performEvent $ ffor fse $ \fs -> traverse_ (\(h, (bh, f)) -> insertFilter h bh f) (zip [fh+1 ..] fs) 
+        we <- performFilters $ ffor fse $ \fs -> traverse_ (\(h, (bh, f)) -> insertFilter h bh f) (zip [fh+1 ..] fs) 
         pure ((), go <$ we)
       else do 
         logWrite "Sleeping, waiting for new filters ..."
@@ -68,7 +68,7 @@ getFilters :: MonadFrontBase t m => Event t (Currency, BlockHeight, Int) -> m (E
 getFilters e = do 
   resE <- getBlockFilters $ ffor e $ \(cur, h, n) -> BlockFiltersRequest cur (fromIntegral h) (fromIntegral n)
   hexE <- handleDangerMsg resE 
-  performEvent_ $ ffor hexE $ liftIO . print
+  -- performEvent_ $ ffor hexE $ liftIO . print
   let decoder = decodeBtcAddrFilter <=< hex2bsTE
       mkFilter = either (const Nothing) (Just . AddrFilterBtc) . decoder 
       mkPair (a, b) = (,) <$> hexToBlockHash a <*> mkFilter b

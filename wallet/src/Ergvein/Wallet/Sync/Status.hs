@@ -17,14 +17,28 @@ data SyncBehind = SyncDays !Int | SyncHours !Int
 instance LocalizedPrint SyncBehind where
   localizedShow l v = case l of
     English -> case v of
-      SyncDays d  -> showt d <> if d == 1 then " day behind..." else " days behind..."
+      SyncDays d | d < 365 -> showt d <> if d == 1 then " day behind..." else " days behind..."
+      SyncDays d -> showt (d `div` 365) <> " years " <> showt (d `mod` 365) <> if d == 1 then " day behind..." else " days behind..."
       SyncHours h -> showt h <> if h == 1 then " hour behind..." else " hours behind..."
     Russian -> case v of
-      SyncDays d  -> "Отстаём на " <> showt d <> case (d `mod` 10) of
+      SyncDays d | d < 365 -> "Отстаём на " <> showt d <> case (d `mod` 10) of
         1 -> " день..."
         2 -> " дня..."
         3 -> " дня..."
         _ -> " дней..."
+      SyncDays d  -> "Отстаём на " <> showt (d `div` 365) <> yearsEnding <> showt (d `mod` 365) <> daysEnding 
+        where 
+          yearsEnding = case d `div` 365 of 
+            1 -> " год "
+            2 -> " года "
+            3 -> " года "
+            4 -> " года "
+            _ -> " лет "
+          daysEnding = case (d `mod` 10) of
+            1 -> " день..."
+            2 -> " дня..."
+            3 -> " дня..."
+            _ -> " дней..."
       SyncHours h -> "Отстаём на " <> showt h <> case (h `mod` 10) of
         1 -> " час..."
         2 -> " часа..."
