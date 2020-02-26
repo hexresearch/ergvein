@@ -215,12 +215,10 @@ buttonCss = do
 inputCss :: Css
 inputCss = do
   let simpleBorder = border solid (rem 0.1) black
-  let isInvalidBorder = border solid (rem 0.1) red
   let passInput = input # ("type" @= "password")
   (passInput # hover) <> (passInput # focus) ? simpleBorder
   let textInput = input # ("type" @= "text")
   (textInput # hover) <> (textInput # focus) ? simpleBorder
-  ".is-invalid" ? isInvalidBorder
 
 fontFamilies :: Resources -> Css
 fontFamilies Resources{..} = do
@@ -387,11 +385,11 @@ sendPageCss = do
     maxWidth $ px 500
     margin (px 0) auto (px 0) auto
   ".send-page input" ? do
-    marginBottom $ em 0.2
+    marginBottom $ em 0.5
   ".form-field-errors" ? do
     color red
     textAlign $ alignSide sideLeft
-    marginBottom $ em 1
+    marginBottom $ em 0.5
   ".send-buttons-wrapper" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1]
@@ -400,6 +398,7 @@ sendPageCss = do
     width $ pct 100
   ".button-icon-wrapper" ? do
     marginLeft $ rem 0.5
+  ".is-invalid input" ? border solid (rem 0.1) red
 
 aboutPageCss :: Css
 aboutPageCss = do

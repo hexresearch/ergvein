@@ -65,7 +65,7 @@ sendPage cur = do
   menuWidget (SendTitle cur) thisWidget
   navbarWidget cur thisWidget NavbarSend
   wrapper True $ divClass "send-page" $ form $ fieldset $ mdo
-    recipientErrsD <- holdDyn (Nothing :: Maybe [VError]) recipientErrsE
+    recipientErrsD <- holdDyn Nothing recipientErrsE
     recipientD <- validatedTextField RecipientString "" recipientErrsD
     (qrE, pasteE) <- divClass "send-buttons-wrapper" $ do
       qrE <- outlineButtonWithIcon BtnScanQRCode "fas fa-qrcode fa-lg"
@@ -79,7 +79,7 @@ sendPage cur = do
           case validateNonEmptyString $ T.unpack recipient of
             Failure errs -> pure $ Just errs
             Success _ -> pure Nothing
-    let amountErrsE = traceEvent "amountErrsE" $ poke submitE $ \_ -> do
+    let amountErrsE = poke submitE $ \_ -> do
           amount <- sampleDyn amountD
           case (\x -> validateNonEmptyString x *> validateRational x) $ T.unpack amount of
             Failure errs -> pure $ Just errs
