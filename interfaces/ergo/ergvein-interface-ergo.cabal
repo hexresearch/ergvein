@@ -95,6 +95,7 @@ test-suite ergvein-interface-ergo-test
   other-modules:
       Paths_ergvein_interface_ergo
       Tests.Ergo.Api
+      Tests.Ergo.BigNat
       Tests.Ergo.Headers
       Tests.Ergo.ValidateChain
   ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
@@ -120,7 +121,9 @@ test-suite ergvein-interface-ergo-test
     , include-file
     , interpolatedstring-perl6
     , lens
+    , quickcheck-instances
     , tasty
     , tasty-discover
     , tasty-hspec
+    , tasty-quickcheck
     , text

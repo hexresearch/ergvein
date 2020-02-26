@@ -43,13 +43,13 @@ instance Serialize BigNat where
 -- Fold and unfold an Integral to and from a list of its bytes
 --
 unrollIntegral :: (Integral a, Bits a) => a -> [Word8]
-unrollIntegral = unfoldr step
+unrollIntegral = reverse . unfoldr step
   where
     step 0 = Nothing
     step i = Just (fromIntegral i, i `shiftR` 8)
 
 rollIntegral :: (Integral a, Bits a) => [Word8] -> a
-rollIntegral   = foldr unstep 0
+rollIntegral   = foldr unstep 0 . reverse
   where
     -- unstep :: (Integral b, Num a, Bits a) => b -> a -> a
     unstep b a = a `shiftL` 8 .|. fromIntegral b
