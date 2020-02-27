@@ -81,7 +81,7 @@ sendPage cur = do
             Success _ -> pure Nothing
     let amountErrsE = poke submitE $ \_ -> do
           amount <- sampleDyn amountD
-          case (\x -> validateNonEmptyString x *> validateRational x) $ T.unpack amount of
+          case validateAmount $ T.unpack amount of
             Failure errs -> pure $ Just errs
             Success _ -> pure Nothing
     pure ()

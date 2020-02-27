@@ -16,9 +16,6 @@ import Ergvein.Wallet.Id
 import Ergvein.Wallet.Monad
 import Reflex.Localize
 
--- TODO: remove this
-import Ergvein.Wallet.Language
-
 import qualified Data.Text as T
 
 labeledTextInput :: (MonadFrontBase t m, LocalizedPrint l)
@@ -60,7 +57,8 @@ validatedTextField lbl v0 mErrsD = do
 
 displayError :: (MonadFrontBase t m, LocalizedPrint l) => Dynamic t l -> m ()
 displayError errD = do
-  let localizedErrD = fmap (localizedShow English) errD -- TODO: fix this
+  langD <- getLanguage
+  let localizedErrD = zipDynWith localizedShow langD errD
   dynText localizedErrD
   br
 

@@ -3,6 +3,8 @@ module Ergvein.Wallet.Validate (
   , validateNow
   , validateNonEmptyString
   , validateRational
+  , validatePositiveRational
+  , validateAmount
   , VError(..)
   , Validation(..)
   ) where
@@ -17,19 +19,23 @@ import Ergvein.Wallet.Monad
 import Text.Parsec
 
 newtype NonEmptyString = NonEmptyString String deriving (Show)
+newtype PositiveRational = PositiveRational Rational deriving (Show)
 
 data VError = MustNotBeEmpty
             | MustBeRational
+            | MustBePositive
   deriving (Show)
 
 instance LocalizedPrint VError where
   localizedShow l v = case l of
     English -> case v of
       MustNotBeEmpty -> "This field is required."
-      MustBeRational -> "Enter a valid amount."
+      MustBeRational -> "Enter a valid amount (example: 1.23)."
+      MustBePositive -> "Value must be positive."
     Russian -> case v of
       MustNotBeEmpty -> "Заполните это поле."
-      MustBeRational -> "Введите корректное значение."
+      MustBeRational -> "Введите корректное значение (пример: 1.23)."
+      MustBePositive -> "Значение должно быть положительным."
 
 validateNonEmptyString :: String -> Validation [VError] NonEmptyString
 validateNonEmptyString x = if x /= []
@@ -39,7 +45,21 @@ validateNonEmptyString x = if x /= []
 validateRational :: String -> Validation [VError] Rational
 validateRational x = case parse rational "" x of
   Left err -> _Failure # [MustBeRational]
-  Right r -> _Success # r
+  Right result -> _Success # result
+
+validatePositiveRational :: Rational -> Validation [VError] PositiveRational
+validatePositiveRational x = if x > 0
+  then _Success # PositiveRational x
+  else _Failure # [MustBePositive]
+
+validateAmount :: String -> Validation [VError] Rational
+validateAmount x = case validateNonEmptyString x of
+  Failure errs -> _Failure # errs
+  Success (NonEmptyString result) -> case validateRational result of
+    Failure errs' -> _Failure # errs'
+    Success result' -> case validatePositiveRational result' of
+      Failure errs'' -> _Failure # errs''
+      Success (PositiveRational result'') -> _Success # result''
 
 -- | Helper for widget that displays error
 errorWidget :: (MonadFrontBase t m, LocalizedPrint l) => l -> m ()
