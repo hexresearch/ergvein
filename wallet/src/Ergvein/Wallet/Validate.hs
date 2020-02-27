@@ -105,10 +105,11 @@ fractional = option "" $ char '.' *> number
 intFracToRational :: String -> String -> Rational
 intFracToRational intStr fracStr = if null fracStr
   then int % 1
-  else (int * exponent + dec * signum int) % exponent
+  else (int * exponent + frac * sign int) % exponent
   where exponent = 10 ^ length fracStr
         int = readInt intStr
-        dec = readInt fracStr
+        frac = readInt fracStr
+        sign x = if x == 0 then signum 1 else signum x
 
 rational :: Stream s m Char => ParsecT s u m Rational
 rational = fmap (uncurry intFracToRational) intFrac
