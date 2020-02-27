@@ -20,13 +20,13 @@ import qualified Data.ByteString as BS
 
 -- | Convert BTC extended public key to EgvAddress.
 xPubBtcToEgvAddr :: Network -> XPubKey -> EgvAddress
-xPubBtcToEgvAddr net key = EgvAddress BTC (BtcAddress address)
+xPubBtcToEgvAddr net key = BtcAddress address
   where address = pubKeyWitnessAddr pubKey
         pubKey = PubKeyI (xPubKey key) False
 
 -- | Convert ERGO extended public key to EgvAddress.
 xPubErgToEgvAddr :: Network -> XPubKey -> EgvAddress
-xPubErgToEgvAddr net key = EgvAddress ERGO (ErgAddress address)
+xPubErgToEgvAddr net key = ErgAddress address
   where prefix          = BS.singleton $ getAddrPrefix net
         keyByteString   = exportPubKey True (xPubKey key)
         checkSumContent = BS.append prefix keyByteString
