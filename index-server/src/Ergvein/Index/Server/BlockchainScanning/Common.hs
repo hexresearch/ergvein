@@ -74,7 +74,6 @@ scannerThread env currency scanInfo =
         runDbQuery pool $ do
           storeInfo blockInfoToStore
           storeScannedHeight currency blockHeight
-        dir <- levelDbDir
         addToCache (envLevelDBContext env) blockInfoToStore
 
     scanIteration :: Thread -> m ()

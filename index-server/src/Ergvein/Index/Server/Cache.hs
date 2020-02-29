@@ -60,9 +60,9 @@ addToCache db update = do
   cacheTxInfos db $ blockContentTxInfos $ blockInfoContent update
   cacheBlockMetaInfos db $ [blockInfoMeta update]
 
-openDb :: IO DB
-openDb = do
-  dbDirectory <- levelDbDir
+openCacheDb :: FilePath -> IO DB
+openCacheDb dir = do
+  dbDirectory <- (++ dir) <$> getCurrentDirectory
   isDbDirExist <- liftIO $ doesDirectoryExist dbDirectory
   if isDbDirExist then removeDirectoryRecursive dbDirectory else pure ()
   db <- open dbDirectory def {createIfMissing = True }
