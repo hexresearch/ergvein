@@ -381,9 +381,15 @@ balancesPageCss = do
 
 sendPageCss :: Css
 sendPageCss = do
-  ".send-wrapper" ? do
+  ".send-page" ? do
     maxWidth $ px 500
     margin (px 0) auto (px 0) auto
+  ".send-page input" ? do
+    marginBottom $ em 0.5
+  ".form-field-errors" ? do
+    color red
+    textAlign $ alignSide sideLeft
+    marginBottom $ em 0.5
   ".send-buttons-wrapper" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1]
@@ -392,6 +398,7 @@ sendPageCss = do
     width $ pct 100
   ".button-icon-wrapper" ? do
     marginLeft $ rem 0.5
+  ".is-invalid input" ? border solid (rem 0.1) red
 
 aboutPageCss :: Css
 aboutPageCss = do

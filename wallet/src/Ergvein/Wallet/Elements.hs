@@ -124,7 +124,7 @@ par :: DomBuilder t m => m a -> m a
 par = el "p"
 
 form :: DomBuilder t m => m a -> m a
-form = elAttr "form" [("onsubmit", "javascript:void(0)")]
+form = elAttr "form" [("onsubmit", "return false;")]
 
 fieldset :: DomBuilder t m => m a -> m a
 fieldset = el "fieldset"
@@ -169,7 +169,7 @@ mkButton eltp attrs classValD ma = do
 -- | Button with CSS classes
 buttonClass :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
   => Dynamic t Text -> lbl -> m (Event t ())
-buttonClass classValD lbl = mkButton "button" [("href", "javascript:void(0)")] classValD . dynText =<< localized lbl
+buttonClass classValD lbl = mkButton "button" [("onclick", "return false;")] classValD . dynText =<< localized lbl
 
 -- | Bright button with dark outline
 outlineButton :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
@@ -205,6 +205,6 @@ divButton = mkButton "div" []
 outlineButtonWithIcon :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
   => lbl -> Text -> m (Event t ())
 outlineButtonWithIcon lbl i =
-  mkButton "button" [("href", "javascript:void(0)")] "button button-outline" $ do
+  mkButton "button" [("onclick", "return false;")] "button button-outline" $ do
     dynText =<< localized lbl
     elClass "span" "button-icon-wrapper" $ elClass "i" i blank
