@@ -1,10 +1,7 @@
 module Ergvein.Types.Address
   (
       EgvAddress(..)
-    , EgvAddressContent(..)
-    , addressToOutput
-    , addressToScriptBS
-    , egvAddrContentToString
+    , egvAddrToString
   ) where
 
 import Data.Aeson
@@ -19,25 +16,20 @@ type BtcAddress = Address
 
 type ErgAddress = ByteString
 
-data EgvAddressContent
+data EgvAddress
   = BtcAddress { getBtcAddr :: BtcAddress }
   | ErgAddress { getErgAddr :: ErgAddress }
   deriving (Eq, Show, Read)
 
-data EgvAddress = EgvAddress {
-    egvAddrCurrency :: Currency
-  , egvAddrContent :: EgvAddressContent
-  } deriving (Eq, Show, Read)
+egvAddrToString :: EgvAddress -> Text
+egvAddrToString (BtcAddress addr) = addrToString (getCurrencyNetwork BTC) addr
+egvAddrToString (ErgAddress addr) = encodeBase58 addr
 
-egvAddrContentToString :: EgvAddressContent -> Text
-egvAddrContentToString (BtcAddress addr) = addrToString (getCurrencyNetwork BTC) addr
-egvAddrContentToString (ErgAddress addr) = encodeBase58 addr
+egvAddrToJSON :: EgvAddress -> Value
+egvAddrToJSON = String . egvAddrToString
 
-egvAddrContentToJSON :: EgvAddressContent -> Value
-egvAddrContentToJSON = String . egvAddrContentToString
-
-egvAddrContentFromJSON :: Currency -> Value -> Parser EgvAddressContent
-egvAddrContentFromJSON cur
+egvAddrFromJSON :: Currency -> Value -> Parser EgvAddress
+egvAddrFromJSON cur
   | cur == BTC = withText "address" $ \t ->
     case stringToAddr (getCurrencyNetwork BTC) t of
       Nothing -> fail "could not decode address"
@@ -48,13 +40,16 @@ egvAddrContentFromJSON cur
       Just x  -> return $ ErgAddress x
 
 instance ToJSON EgvAddress where
-  toJSON (EgvAddress cur addr) = object [
-      "currency" .= toJSON cur
-    , "address"  .= egvAddrContentToJSON addr
+  toJSON egvAddr@(BtcAddress addr) = object [
+      "currency" .= toJSON BTC
+    , "address"  .= egvAddrToJSON egvAddr
+    ]
+  toJSON egvAddr@(ErgAddress addr) = object [
+      "currency" .= toJSON ERGO
+    , "address"  .= egvAddrToJSON egvAddr
     ]
 
 instance FromJSON EgvAddress where
   parseJSON = withObject "EgvAddress" $ \o -> do
     cur  <- o .: "currency"
-    addr <- egvAddrContentFromJSON cur =<< (o .: "address")
-    pure $ EgvAddress cur addr
+    egvAddrFromJSON cur =<< (o .: "address")
