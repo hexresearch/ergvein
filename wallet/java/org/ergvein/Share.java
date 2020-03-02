@@ -7,11 +7,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 import android.net.Uri;
-//import android.net.Uri.Builder;
+import android.net.Uri.Builder;
+import android.text.Html;
 
 import java.util.ArrayList;
-//import java.io.File;
-//import java.io.FileOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -26,11 +27,31 @@ public class Share {
     // For open other app
     final Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
     a.startActivity(Intent.createChooser(intent, "Share .."));
+  }
 
-    //Open image as Base64
-    //decode base64 string to image
-//    byte[] imageBytes = Base64.decode(url, Base64.DEFAULT);
-//    Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+  private static void sendUrl(final HaskellActivity a, String url) {
+    Intent intentText = new Intent(Intent.ACTION_SEND);
+    intentText.setType("text/plain");
+    intentText.putExtra(Intent.EXTRA_SUBJECT, "My address");
+    intentText.putExtra(Intent.EXTRA_TEXT, url);
+    a.startActivity(Intent.createChooser(intentText, "Share .."));
+  }
+
+  private static void shareImg(final HaskellActivity a, String url) {
+    Intent intentHtml = new Intent(Intent.ACTION_SEND);
+    intentHtml.setType("text/html");
+    intentHtml.putExtra(Intent.EXTRA_SUBJECT, "My address");
+    intentHtml.putExtra(Intent.EXTRA_HTML_TEXT, "<img src=\'"+ url + "\'></img>");
+    a.startActivity(Intent.createChooser(intentHtml, "Share .."));
+
+    //Decode base64 string to image
+    //byte[] imageBytes = Base64.decode(url, Base64.DEFAULT);
+    //Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+
+    //try {
+    //} catch (Exception e) {
+    //  e.printStackTrace();
+   // }
 
 //    Intent intentBase64 = new Intent(Intent.ACTION_SEND);
 //    String urlQR= MediaStore.Images.Media.insertImage(a.getContentResolver(), bitmap, "title", "description");
@@ -72,13 +93,4 @@ public class Share {
     //Intent shareIntent = Intent.createChooser(sendIntent, null);
 //    a.startActivity(Intent.createChooser(shareIntent, "Share test to.."));
   }
-
-  private static void sendUrl(final HaskellActivity a, String url) {
-    Intent intentText = new Intent(Intent.ACTION_SEND);
-    intentText.setType("text/plain");
-    intentText.putExtra(Intent.EXTRA_SUBJECT, "My address");
-    intentText.putExtra(Intent.EXTRA_TEXT, url);
-    a.startActivity(Intent.createChooser(intentText, "Share .."));
-  }
-
 }

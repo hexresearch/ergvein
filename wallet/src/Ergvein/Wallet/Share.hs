@@ -1,6 +1,7 @@
 module Ergvein.Wallet.Share(
     shareShareUrl
   , shareSendUrl
+  , shareShareImg
   ) where
 
 import Data.Text (Text)
@@ -19,3 +20,7 @@ shareSendUrl e = runOnUiThread $ ffor e $ \str -> do
   sendUrl str
   pure str
 
+shareShareImg :: MonadFrontBase t m => Event t Text -> m (Event t Text)
+shareShareImg e = runOnUiThread $ ffor e $ \str -> do
+  shareImg str
+  pure str
