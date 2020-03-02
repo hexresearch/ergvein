@@ -49,7 +49,7 @@ type TxHashHistoryResponse = [TxHashHistoryItem]
 -- Headers
 data BlockHeadersRequest = BlockHeadersRequest
     { headersReqCurrency         :: !Currency
-    , headersReqStartIndex       :: !BlockHeight
+    , headersReqStartHeight       :: !BlockHeight
     , headersReqAmount           :: !Word64
     } deriving (Eq, Show, Generic)
 $(deriveJSON (aesonOptionsStripPrefix "headersReq") ''BlockHeadersRequest)
@@ -59,7 +59,7 @@ type BlockHeadersResponse = [BlockHeaderHexView]
 -- Filters
 data BlockFiltersRequest = BlockFiltersRequest
     { filtersReqCurrency         :: !Currency
-    , filtersReqStartIndex       :: !BlockHeight
+    , filtersReqStartHeight      :: !BlockHeight
     , filtersReqAmount           :: !Word64
     } deriving (Eq, Show, Generic)
 $(deriveJSON (aesonOptionsStripPrefix "filtersReq") ''BlockFiltersRequest)
