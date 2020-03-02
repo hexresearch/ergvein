@@ -16,6 +16,7 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Share
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Page.QRCode
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Share
 import Ergvein.Wallet.Wrapper
@@ -47,8 +48,13 @@ sharePage cur = do
       let addrBase  = addrToString (getCurrencyNetwork cur) addr
       let shareAddr = addrBase
           shareUrl  = generateURL shareAddr
-      elAttr "img" [("src",testBase64), ("class","share-image-qrcode")] blank
+--      elAttr "img" [("src",testBase64), ("class","share-image-qrcode")] blank
       -- textLabel ShareLink $ mapM_ (\v -> text v >> br) $ T.chunksOf 24 $ shareUrl
+      qrCodeWidget shareAddr cur
+      gpbE <- delay 0.1 =<< getPostBuild
+      void $ widgetHold blank $ ffor gpbE $ \_ -> do
+        textBase64 <- genQrCodeBase64Image
+        elAttr "img" [("src",textBase64), ("class","share-image-qrcode")] blank
       elAttr "div" [("class","share-block-value")] $ mapM_ (\v -> text v >> br) $ T.chunksOf 24 $ shareUrl
       vertSpacer
       divClass "initial-options grid1" $ do
@@ -70,8 +76,7 @@ sharePage cur = do
     generateURL :: Base58 -> Text
     generateURL addrB58 = case cur of
       BTC   -> "bitcoin://" <> addrB58
-      -- TODO: Fix URL for Ergo
-      ERGO  -> ""
+      ERGO  -> "ergo://" <> addrB58
 
     units :: Units
     units = Units {
