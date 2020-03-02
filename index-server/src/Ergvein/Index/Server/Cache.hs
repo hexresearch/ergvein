@@ -3,12 +3,14 @@ module Ergvein.Index.Server.Cache where
 
 import Conduit
 import Control.Monad.Logger
+import Control.Monad
 import Conversion
 import Data.Default
 import Data.Flat
 import Data.Maybe
 import Database.LevelDB.Base
 import System.Directory
+import System.FilePath
 
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.Cache.Monad
@@ -61,12 +63,19 @@ addToCache db update = do
   cacheBlockMetaInfos db $ [blockInfoMeta update]
 
 openCacheDb :: FilePath -> IO DB
-openCacheDb dir = do
-  dbDirectory <- (++ dir) <$> getCurrentDirectory
-  isDbDirExist <- liftIO $ doesDirectoryExist dbDirectory
-  if isDbDirExist then removeDirectoryRecursive dbDirectory else pure ()
-  db <- open dbDirectory def {createIfMissing = True }
-  pure db
+openCacheDb cacheDirectory = do
+  canonicalPathDirectory <- canonicalizePath cacheDirectory
+  isDbDirExist <- doesDirectoryExist canonicalPathDirectory
+  if isDbDirExist then clearDirectoryContent canonicalPathDirectory
+                  else createDirectory canonicalPathDirectory
+
+  open canonicalPathDirectory def {createIfMissing = True }
+  where
+    clearDirectoryContent path = do
+      content <- listDirectory path
+      let contentFullPaths = (path </>) <$> content
+      forM_ contentFullPaths removePathForcibly
+    
 
 loadCache :: (MonadLogger m, MonadIO m) => DB -> DBPool -> m ()
 loadCache db pool = do
@@ -93,6 +102,3 @@ loadCache db pool = do
     .| sinkList
 
   pure ()
-
-levelDbDir :: IO FilePath
-levelDbDir = (++ "/ergveinCache") <$> getCurrentDirectory

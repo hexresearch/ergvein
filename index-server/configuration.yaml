@@ -4,7 +4,7 @@ dbPort               : 5434
 dbUser               : localDb
 dbPassword           : ""
 dbName               : localDb
-cachePath            : "/ergveinCache"
+cachePath            : "./ergveinCache"
 BTCNodeIsTestnet     : true
 BTCNodeHost          : localhost
 BTCNodePort          : 18332
