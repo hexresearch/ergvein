@@ -88,14 +88,7 @@ instance PlatformNatives where
 
   copyStr = liftIO . setClipboard . T.unpack
 
-  -- | TODO: Fix shareUrl for desktop application later
   shareUrl = liftIO . setClipboard . T.unpack
-
-  -- | TODO: Fix sendUrl for desktop application later
-  sendUrl = liftIO . setClipboard . T.unpack
-
-  -- | TODO: Fix shareImg for desktop application later
-  shareImg = liftIO . setClipboard . T.unpack
 
   logWrite = liftIO . T.putStrLn
 

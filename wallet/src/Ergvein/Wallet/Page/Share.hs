@@ -57,17 +57,11 @@ sharePage cur = do
         elAttr "div" [("class","share-block-value")] $ mapM_ (\v -> text v >> br) $ T.chunksOf 24 $ shareUrl
         vertSpacer
         divClass "initial-options grid1" $ do
-          copyE    <- fmap (shareAddr  <$) $ outlineButton ShareCopy
-#ifdef ANDROID
-          sendE    <- fmap (shareUrl   <$) $ outlineButton ShareSend
-          shareE   <- fmap (shareUrl   <$) $ outlineButton ShareShare
---          shareImg <- fmap (textBase64 <$) $ outlineButton ShareQR
-#endif
+          copyE <- fmap (shareAddr <$) $ outlineButton ShareCopy
           _ <- clipboardCopy copyE
 #ifdef ANDROID
-          _ <- shareSendUrl  sendE
+          shareE <- fmap (shareUrl <$) $ outlineButton ShareShare
           _ <- shareShareUrl shareE
---          _ <- shareShareImg shareImg
 #endif
           pure ()
       pure ()
@@ -82,16 +76,6 @@ sharePage cur = do
         unitBTC  = Just BtcWhole
       , unitERGO = Just ErgWhole
       }
-
---textLabel :: (MonadFrontBase t m, LocalizedPrint l)
---  => l -- ^ Label
---  -> m a -- ^ Value
---  -> m ()
---textLabel lbl val = do
---  i <- genId
---  label i $ localizedText lbl
---  elAttr "div" [("class","share-block-value"),("id",i)] $ val
---  pure ()
 
 vertSpacer :: MonadFrontBase t m => m ()
 vertSpacer = divClass "share-v-spacer" blank

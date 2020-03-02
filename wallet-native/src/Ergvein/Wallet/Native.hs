@@ -58,11 +58,5 @@ class PlatformNatives where
   -- | Share URL string for other applications
   shareUrl :: MonadIO m => Text -> m ()
 
-  -- | Send URL string for other applications
-  sendUrl :: MonadIO m => Text -> m ()
-
-  -- | Share image as string for other applications
-  shareImg :: MonadIO m => Text -> m ()
-
   -- | Write to system log
   logWrite :: MonadIO m => Text -> m ()
