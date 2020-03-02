@@ -37,6 +37,8 @@ passwordPage mnemonic curs = wrapper True $ do
 
 setupLoginPage :: MonadFrontBase t m => Mnemonic -> [Currency] -> m ()
 setupLoginPage m ac = wrapper True $ do
+  divClass "password-setup-title" $ h4 $ localizedText LPSTitle
+  divClass "password-setup-descr" $ h5 $ localizedText LPSDescr
   logE <- setupLogin
   logD <- holdDyn "" logE
   nextWidget $ ffor (updated logD) $ \l -> Retractable {
@@ -47,6 +49,8 @@ setupLoginPage m ac = wrapper True $ do
 
 setupPatternPage :: MonadFrontBase t m => Mnemonic -> Text -> [Currency] -> m ()
 setupPatternPage m l curs = wrapper True $ do
+  divClass "password-setup-title" $ h4 $ localizedText PatPSTitle
+  divClass "password-setup-descr" $ h5 $ localizedText PatPSDescr
   buildE <- getPostBuild
   s <- getSettings
   updateSettings $ ffor buildE $ \_ -> s {settingsActiveCurrencies = acSet l s}
