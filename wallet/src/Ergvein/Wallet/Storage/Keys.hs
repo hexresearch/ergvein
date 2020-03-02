@@ -15,8 +15,9 @@ import Network.Haskoin.Address
 import Network.Haskoin.Constants
 import Network.Haskoin.Keys
 
-import qualified Data.ByteArray  as BA
-import qualified Data.ByteString as BS
+import qualified Data.ByteArray        as BA
+import qualified Data.ByteString       as BS
+import qualified Data.ByteString.Short as BSS
 
 -- | Convert BTC extended public key to EgvAddress.
 xPubBtcToEgvAddr :: Network -> XPubKey -> EgvAddress
@@ -26,12 +27,12 @@ xPubBtcToEgvAddr net key = BtcAddress address
 
 -- | Convert ERGO extended public key to EgvAddress.
 xPubErgToEgvAddr :: Network -> XPubKey -> EgvAddress
-xPubErgToEgvAddr net key = ErgAddress address
+xPubErgToEgvAddr net key = ErgAddress $ ErgPubKeyAddress address
   where prefix          = BS.singleton $ getAddrPrefix net
         keyByteString   = exportPubKey True (xPubKey key)
         checkSumContent = BS.append prefix keyByteString
         checksum        = BA.convert $ hashWith Blake2b_256 checkSumContent :: BS.ByteString
-        address         = BS.take 38 (BS.concat [prefix, keyByteString, checksum])
+        address         = BSS.toShort $ BS.take 38 (BS.concat [prefix, keyByteString, checksum])
 
 egvXPubKeyToEgvAddress :: EgvXPubKey -> EgvAddress
 egvXPubKeyToEgvAddress key
