@@ -522,8 +522,8 @@ sharePageCss = do
     let px4 = px 4 in borderRadius px4 px4 px4 px4
     marginBottom $ px 15
   ".share-image-qrcode" ? do
-    width $ px 300
-    height $ px 300
+    width $ px 256
+    height $ px 256
 
 loadingWidgetCss :: Css
 loadingWidgetCss = do
