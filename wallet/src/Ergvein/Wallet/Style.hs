@@ -512,6 +512,19 @@ sharePageCss = do
     display inlineBlock
   ".share-v-spacer" ? do
     height $ px 20
+  ".qrcode-container" ? do
+    width $ px 256
+    height $ px 256
+  ".share-qrcode-container" ? do
+    width $ px 256
+    height $ px 256
+    justifyContent center
+    let px0 = px 0 in padding px0 px0 px0 $ px 8
+    margin (px 0) auto (px 0) auto
+  ".share-buttons-wrapper" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1]
+    gridGap $ rem 1
   ".share-block-value" ? do
     --textAlign $ alignSide sideLeft
     textAlign center

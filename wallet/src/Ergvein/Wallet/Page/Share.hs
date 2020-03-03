@@ -49,21 +49,22 @@ sharePage cur = do
       let shareAddr = addrBase
           shareUrl  = generateURL shareAddr
       vertSpacer
-      qrCodeWidget shareAddr cur
-      gpbE <- delay 0.1 =<< getPostBuild
-      void $ widgetHold blank $ ffor gpbE $ \_ -> do
-        textBase64 <- genQrCodeBase64Image
-        --elAttr "img" [("src",textBase64), ("class","share-image-qrcode")] blank
-        elAttr "div" [("class","share-block-value")] $ mapM_ (\v -> text v >> br) $ T.chunksOf 24 $ shareUrl
-        vertSpacer
-        divClass "initial-options grid1" $ do
-          copyE <- fmap (shareAddr <$) $ outlineButton ShareCopy
-          _ <- clipboardCopy copyE
+      divClass "share-qrcode-container" $ qrCodeWidget shareAddr cur
+      (e,_) <- elAttr' "div" [("class","share-block-value")] $ mapM_ (\v -> text v >> br) $ T.chunksOf 17 $ shareAddr
+      let copyLineE = shareUrl <$ domEvent Click e
+      vertSpacer
 #ifdef ANDROID
-          shareE <- fmap (shareUrl <$) $ outlineButton ShareShare
-          _ <- shareShareUrl shareE
+      divClass "share-buttons-wrapper" $ do
+#else
+      divClass "" $ do
 #endif
-          pure ()
+        copyButE <- fmap (shareUrl <$) $ outlineButtonWithIcon ShareCopy "fas fa-copy"
+        _ <- clipboardCopy $ leftmost [copyLineE, copyButE]
+#ifdef ANDROID
+        shareE <- fmap (shareUrl <$) $ outlineButtonWithIcon ShareShare "fas fa-share-alt"
+        _ <- shareShareUrl shareE
+#endif
+        pure ()
       pure ()
 
     generateURL :: Base58 -> Text
