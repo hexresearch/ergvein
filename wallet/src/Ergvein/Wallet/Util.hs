@@ -5,6 +5,10 @@ module Ergvein.Wallet.Util(
   , sampleDyn
   , check
   , dbgPrintE
+  , eventToNextFrame
+  , eventToNextFrame'
+  , eventToNextFrameN
+  , eventToNextFrameN'
   ) where
 
 import Control.Monad.Except
@@ -39,3 +43,22 @@ check _ True = pure ()
 
 dbgPrintE :: (MonadFrontBase t m, Show a) => Event t a -> m ()
 dbgPrintE = performEvent_ . fmap (liftIO . print)
+
+eventToNextFrame :: MonadWidget t m => Event t a -> m (Event t a)
+eventToNextFrame = performEvent . (fmap (liftIO . pure. id))
+
+eventToNextFrame' :: MonadWidget t m => m (Event t a) -> m (Event t a)
+eventToNextFrame' evtM = do
+  evt <- evtM
+  eventToNextFrame evt
+
+eventToNextFrameN :: MonadWidget t m => Int -> Event t a -> m (Event t a)
+eventToNextFrameN n evt
+  | n < 1     = do performEvent $ (fmap (liftIO . pure. id)) evt
+  | otherwise = do evtN <- performEvent $ (fmap (liftIO . pure. id)) evt
+                   eventToNextFrameN (n - 1) evtN
+
+eventToNextFrameN' :: MonadWidget t m => Int -> m (Event t a) -> m (Event t a)
+eventToNextFrameN' n evtM = do
+  evt <- evtM
+  eventToNextFrameN n evt
