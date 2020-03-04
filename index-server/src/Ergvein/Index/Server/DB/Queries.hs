@@ -22,6 +22,9 @@ import           Data.Proxy
 
 import qualified Data.Conduit.List as CL
 import qualified Database.Persist as DT
+import qualified Data.Conduit.Internal as DCI
+import Control.Monad.Logger
+import Data.Text (Text, pack)
 
 pageLoadSize :: PageSize
 pageLoadSize = PageSize 65536
@@ -68,3 +71,11 @@ rowsCount :: forall record m . (BackendCompatible SqlBackend (PersistEntityBacke
 rowsCount _ = do 
   result <- select $ from (\(_ :: SqlExpr (Entity record)) -> pure $ countRows)
   pure $ unValue $ head $ result
+
+chunksCount :: forall record m . (BackendCompatible SqlBackend (PersistEntityBackend record),
+                                PersistEntity record, MonadIO m)
+                                 => Proxy record -> QueryT m Word64
+chunksCount _ = do 
+  rCount <- rowsCount (Proxy :: Proxy record)
+  let cCount = ceiling $ fromIntegral rCount / (fromIntegral $  unPageSize pageLoadSize)
+  pure cCount
