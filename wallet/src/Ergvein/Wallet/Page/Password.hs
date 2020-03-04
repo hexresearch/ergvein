@@ -53,21 +53,13 @@ setupPatternPage :: MonadFrontBase t m => Mnemonic -> Text -> [Currency] -> m ()
 setupPatternPage m l curs = wrapper True $ do
   divClass "password-setup-title" $ h4 $ localizedText PatPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText PatPSDescr
-  --buildE <- getPostBuild
   patE <- setupPattern
   let logPassE = fmap (\p -> (l,p)) patE
   s <- getSettings
   updateSettings $ ffor logPassE $ \_ -> s {settingsActiveCurrencies = acSet l s}
-  --createStorageE <- delay 0.1 =<< (performEvent $ fmap (uncurry $ initAuthInfo m) logPassE)
   createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo m) logPassE
   authInfoE <- handleDangerMsg createStorageE
   void $ setAuthInfo $ Just <$> authInfoE
-  --goE <- setAuthInfo $ Just <$> authInfoE
-  --nextWidget $ ffor goE $ \_ -> Retractable {
-  --    retractableNext = void (accountDiscovery >> retractStack balancesPage)
-  --  , retractablePrev = Just $ pure $ setupLoginPage m curs
-  --  }
-  --pure ()
   where
     acSet l s = ActiveCurrencies $ Map.insert l curs $ activeCurrenciesMap $ settingsActiveCurrencies s
 

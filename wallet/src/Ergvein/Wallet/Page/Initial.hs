@@ -18,20 +18,15 @@ import Ergvein.Wallet.Storage.AuthInfo
 import Ergvein.Wallet.Widget.GraphPinCode
 import Ergvein.Wallet.Wrapper
 
-
 import Ergvein.Wallet.Storage.Util
 
 data GoPage = GoSeed | GoRestore
 
 initialPage :: MonadFrontBase t m => m ()
 initialPage = do
-  patE <- setupPattern
-  tempD <- holdDyn "TEST" patE
-  h4 $ dynText tempD
-  pure ()
-    --ss <- listStorages
-    --if null ss then noWalletsPage else hasWalletsPage ss
-{-  where
+  ss <- listStorages
+  if null ss then noWalletsPage else hasWalletsPage ss
+  where
     noWalletsPage = wrapper True $ divClass "initial-options grid1" $ noWallets
     noWallets = do
       newE <- fmap (GoSeed <$) $ outlineButton IPSCreate
@@ -47,21 +42,20 @@ initialPage = do
       mname <- getLastStorage
       maybe (selectWalletsPage ss) loadWalletPage mname
     selectWalletsPage ss = wrapper True $ divClass "initial-options grid1" $ do
-       h4 $ localizedText IPSSelectWallet
-       flip traverse_ ss $ \name -> do
-         btnE <- outlineButton name
-         void $ nextWidget $ ffor btnE $ const $ Retractable {
-             retractableNext = loadWalletPage name
-           , retractablePrev = Just $ pure $ selectWalletsPage ss
-           }
-       h4 $ localizedText IPSOtherOptions
-       noWallets
+      h4 $ localizedText IPSSelectWallet
+      flip traverse_ ss $ \name -> do
+        btnE <- outlineButton name
+        void $ nextWidget $ ffor btnE $ const $ Retractable {
+            retractableNext = loadWalletPage name
+          , retractablePrev = Just $ pure $ selectWalletsPage ss
+          }
+      h4 $ localizedText IPSOtherOptions
+      noWallets
     loadWalletPage name = do
       passE <- askPasswordPage name
       mauthE <- performEvent $ loadAuthInfo name <$> passE
       authE <- handleDangerMsg mauthE
       void $ setAuthInfo $ Just <$> authE
--}
 
 initialAuthedPage :: MonadFront t m => m ()
 initialAuthedPage = wrapper True $ divClass "main-page" $ do
