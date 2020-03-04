@@ -25,9 +25,13 @@ data GoPage = GoSeed | GoRestore
 
 initialPage :: MonadFrontBase t m => m ()
 initialPage = do
-    ss <- listStorages
-    if null ss then noWalletsPage else hasWalletsPage ss
-  where
+  patE <- setupPattern
+  tempD <- holdDyn "TEST" patE
+  h4 $ dynText tempD
+  pure ()
+    --ss <- listStorages
+    --if null ss then noWalletsPage else hasWalletsPage ss
+{-  where
     noWalletsPage = wrapper True $ divClass "initial-options grid1" $ noWallets
     noWallets = do
       newE <- fmap (GoSeed <$) $ outlineButton IPSCreate
@@ -57,6 +61,7 @@ initialPage = do
       mauthE <- performEvent $ loadAuthInfo name <$> passE
       authE <- handleDangerMsg mauthE
       void $ setAuthInfo $ Just <$> authE
+-}
 
 initialAuthedPage :: MonadFront t m => m ()
 initialAuthedPage = wrapper True $ divClass "main-page" $ do

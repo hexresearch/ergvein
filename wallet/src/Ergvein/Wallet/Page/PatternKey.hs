@@ -243,6 +243,9 @@ patternSaveWidget = mdo
     Done -> localizedText PKSDone
   tryD <- holdDyn FirstTry tryE
   (listD, touchD) <- patternSave tryD
+  --el "h4" $ dynText $ fmap (\v -> "tryD: " <> (showt v)) tryD
+  --el "h4" $ dynText $ fmap (\v -> "patternD: " <> (showt v)) patternD
+  --el "h4" $ dynText $ fmap (\v -> "passD: " <> v) passD
   patternD <- holdDyn (PatternSavingTry [] []) patternE
   tryE <- performEvent $ ffor (updated touchD) $ \press -> do
     tryS <- sampleDyn tryD

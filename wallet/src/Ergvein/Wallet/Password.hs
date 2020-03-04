@@ -110,7 +110,15 @@ askPatternModal = mdo
 setupPattern :: MonadFrontBase t m => m (Event t Password)
 setupPattern = divClass "setup-password" $ form $ fieldset $ mdo
   pD <- patternSaveWidget
-  validate $ poke (updated pD) $ const $ runExceptT $ do
+  pE <- delay 0.1 $ updated pD
+  --el "h4" $ dynText $ fmap (\v -> "pD: " <> (showt v)) pD
+  --let testE = updated pD
+  --testRepE <- delay 0.1 testE
+  --let tE = leftmost [testE, testRepE]
+  --testD <- holdDyn "Test" testE
+  --el "h4" $ dynText $ fmap (\v -> "testD: " <> v) testD
+  --validate $ poke (updated pD) $ const $ runExceptT $ do
+  validate $ poke pE $ const $ runExceptT $ do
     p  <- sampleDyn pD
     check PWSEmptyPattern $ not $ T.null p
     pure p
