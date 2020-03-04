@@ -2,17 +2,20 @@
 module Ergvein.Index.Server.Cache where
 
 import Conduit
-import Control.Monad.Logger
 import Control.Monad
+import Control.Monad.Logger
 import Conversion
 import Data.Default
 import Data.Flat
 import Data.List
 import Data.Maybe
+import Data.Proxy
+import Data.Text (Text, pack)
+import Data.Word
 import Database.LevelDB.Base
+import Database.Persist.Pagination.Types
 import System.Directory
 import System.FilePath
-import Data.Text (Text, pack)
 
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.Cache.Monad
@@ -22,12 +25,9 @@ import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.Utils
-import           Data.Proxy
-import qualified Data.Conduit.Internal as DCI
-import Database.Persist.Pagination.Types
-import Data.Word
 import Ergvein.Text
 
+import qualified Data.Conduit.Internal as DCI
 import qualified Data.Conduit.List as CL
 import qualified Data.Map.Strict as Map
 

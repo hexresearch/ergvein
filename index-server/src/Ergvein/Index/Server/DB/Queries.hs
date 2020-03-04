@@ -20,11 +20,9 @@ import           Control.Monad.IO.Class
 import           Control.Monad.Reader
 import           Data.Proxy
 
+import qualified Data.Conduit.Internal as DCI
 import qualified Data.Conduit.List as CL
 import qualified Database.Persist as DT
-import qualified Data.Conduit.Internal as DCI
-import Control.Monad.Logger
-import Data.Text (Text, pack)
 
 pageLoadSize :: PageSize
 pageLoadSize = PageSize 65536
