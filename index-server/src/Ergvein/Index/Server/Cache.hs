@@ -12,6 +12,7 @@ import Data.Maybe
 import Database.LevelDB.Base
 import System.Directory
 import System.FilePath
+import Data.Text (Text, pack)
 
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.Cache.Monad
@@ -21,6 +22,9 @@ import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.Utils
+import           Data.Proxy
+import qualified Data.Conduit.Internal as DCI
+import Database.Persist.Pagination.Types
 
 import qualified Data.Conduit.List as CL
 import qualified Data.Map.Strict as Map
@@ -83,6 +87,8 @@ loadCache :: (MonadLogger m, MonadIO m) => DB -> DBPool -> m ()
 loadCache db pool = do
   logInfoN "Loading cache"
 
+
+
   logInfoN "Loading outputs"
   runDbQuery pool $ runConduit $ pagedEntitiesStream TxOutRecId
     .| CL.mapM_ (cacheTxOutInfos db . fmap convert)
@@ -99,8 +105,25 @@ loadCache db pool = do
     .| sinkList
 
   logInfoN "Loading block headers"
-  runDbQuery pool $ runConduit $ pagedEntitiesStream BlockMetaRecId
+
+
+  r <- runDbQuery pool (rowsCount (Proxy :: Proxy BlockMetaRec))
+  error $ show r
+  let cnt = chunkCount (unPageSize pageLoadSize) r
+
+  runDbQuery pool $ runConduit $ 
+     (DCI.zipSources (chunksEnumeration cnt) (pagedEntitiesStream BlockMetaRecId))
+    .| CL.mapM (logLoadingProgress "block meta" cnt)
     .| CL.mapM_ (cacheBlockMetaInfos db . fmap convert)
     .| sinkList
 
   pure ()
+
+logLoadingProgress :: MonadLogger m => Text -> Int -> (Int, a) -> m a
+logLoadingProgress entityType chunkCount (chunkIndex, chunkData) = do
+  logInfoN $ "Loading " <> entityType <> ": " <> (pack $ show chunkIndex) <> " of " <> (pack $ show chunkCount)
+  pure chunkData
+
+chunkCount chunkSize dataLength = ceiling $ fromIntegral dataLength / fromIntegral chunkSize
+
+chunksEnumeration chunkCount= CL.enumFromTo 1 chunkCount

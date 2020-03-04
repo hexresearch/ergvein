@@ -110,6 +110,7 @@ library
     TypeFamilies
     TypeOperators
     DuplicateRecordFields
+    QuantifiedConstraints
 
 executable ergvein-index-server
   hs-source-dirs:
