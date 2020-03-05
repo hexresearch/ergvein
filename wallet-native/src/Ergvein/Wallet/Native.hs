@@ -58,5 +58,8 @@ class PlatformNatives where
   -- | Share URL string for other applications
   shareUrl :: MonadIO m => Text -> m ()
 
+  -- | Work for camera of device
+  cameraWork :: MonadIO m => Text -> m ()
+
   -- | Write to system log
   logWrite :: MonadIO m => Text -> m ()
