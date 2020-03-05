@@ -6,6 +6,7 @@ module Ergvein.Wallet.Page.Initial(
 import Data.Text (unpack)
 
 import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Initial
@@ -24,7 +25,10 @@ data GoPage = GoSeed | GoRestore
 
 initialPage :: MonadFrontBase t m => m ()
 initialPage = do
-  ss <- listStorages
+  cameraE <- fmap ("Test" <$) $ outlineButton ("Debug QR scan"::Text)
+  _ <- openCamara cameraE
+  pure ()
+{-  ss <- listStorages
   if null ss then noWalletsPage else hasWalletsPage ss
   where
     noWalletsPage = wrapper True $ divClass "initial-options grid1" $ noWallets
@@ -56,7 +60,7 @@ initialPage = do
       mauthE <- performEvent $ loadAuthInfo name <$> passE
       authE <- handleDangerMsg mauthE
       void $ setAuthInfo $ Just <$> authE
-
+-}
 initialAuthedPage :: MonadFront t m => m ()
 initialAuthedPage = wrapper True $ divClass "main-page" $ do
   anon_name <- getWalletName
