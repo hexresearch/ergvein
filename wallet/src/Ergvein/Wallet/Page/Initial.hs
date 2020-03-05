@@ -18,15 +18,14 @@ import Ergvein.Wallet.Storage.AuthInfo
 import Ergvein.Wallet.Widget.GraphPinCode
 import Ergvein.Wallet.Wrapper
 
-
 import Ergvein.Wallet.Storage.Util
 
 data GoPage = GoSeed | GoRestore
 
 initialPage :: MonadFrontBase t m => m ()
 initialPage = do
-    ss <- listStorages
-    if null ss then noWalletsPage else hasWalletsPage ss
+  ss <- listStorages
+  if null ss then noWalletsPage else hasWalletsPage ss
   where
     noWalletsPage = wrapper True $ divClass "initial-options grid1" $ noWallets
     noWallets = do
@@ -43,15 +42,15 @@ initialPage = do
       mname <- getLastStorage
       maybe (selectWalletsPage ss) loadWalletPage mname
     selectWalletsPage ss = wrapper True $ divClass "initial-options grid1" $ do
-       h4 $ localizedText IPSSelectWallet
-       flip traverse_ ss $ \name -> do
-         btnE <- outlineButton name
-         void $ nextWidget $ ffor btnE $ const $ Retractable {
-             retractableNext = loadWalletPage name
-           , retractablePrev = Just $ pure $ selectWalletsPage ss
-           }
-       h4 $ localizedText IPSOtherOptions
-       noWallets
+      h4 $ localizedText IPSSelectWallet
+      flip traverse_ ss $ \name -> do
+        btnE <- outlineButton name
+        void $ nextWidget $ ffor btnE $ const $ Retractable {
+            retractableNext = loadWalletPage name
+          , retractablePrev = Just $ pure $ selectWalletsPage ss
+          }
+      h4 $ localizedText IPSOtherOptions
+      noWallets
     loadWalletPage name = do
       passE <- askPasswordPage name
       mauthE <- performEvent $ loadAuthInfo name <$> passE

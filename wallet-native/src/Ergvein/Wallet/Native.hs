@@ -13,7 +13,7 @@ import Data.Text (Text)
 class HasStoreDir m where
   getStoreDir :: m Text
 
-instance Monad m => HasStoreDir (ReaderT Text m) where 
+instance Monad m => HasStoreDir (ReaderT Text m) where
   getStoreDir = ask
   {-# INLINE getStoreDir #-}
 
@@ -54,6 +54,9 @@ class PlatformNatives where
 
   -- | Put string into clipboard
   copyStr :: MonadIO m => Text -> m ()
+
+  -- | Share URL string for other applications
+  shareUrl :: MonadIO m => Text -> m ()
 
   -- | Write to system log
   logWrite :: MonadIO m => Text -> m ()
