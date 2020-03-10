@@ -19,6 +19,8 @@ import android.graphics.BitmapFactory;
 import android.util.Base64;
 import android.provider.MediaStore;
 
+import android.app.Fragment;
+
 import systems.obsidian.HaskellActivity;
 
 public class Camera {
@@ -27,6 +29,7 @@ public class Camera {
     try {
       Intent intent = new Intent("com.google.zxing.client.android.SCAN");
       intent.putExtra("SCAN_MODE", "QR_CODE_MODE"); // "PRODUCT_MODE for bar codes
+      //a.add(new Fragment(){},"my_fragment");
       a.startActivityForResult(intent, 0);
     } catch (Exception e) {
       Uri marketUri = Uri.parse("market://details?id=com.google.zxing.client.android");
