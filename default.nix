@@ -45,7 +45,7 @@ in reflex-platform.project ({ pkgs, ... }: {
       "reflex-localize"
     ];
   };
-  overrides = import ./overrides.nix { inherit reflex-platform isAndroid; };
+  overrides = import ./overrides.nix { inherit reflex-platform; };
 
   shellToolOverrides = ghc: super: {
     inherit (pkgs) postgresql leveldb;
@@ -58,11 +58,11 @@ in reflex-platform.project ({ pkgs, ... }: {
     resources = ./wallet/static/res;
     assets = ./wallet/static/assets;
     iconPath = "@drawable/ic_launcher";
-    nativeDependencies = nixpkgs: haskellPackages: {
-      "libz.so" = "${nixpkgs.zlib}/lib/libz.so.1";
-      "libsecp256k1.so" = "${nixpkgs.secp256k1}/lib/libsecp256k1.so";
-    };
-    javaSources = _: [
+    runtimeSharedLibs = nixpkgs: [
+      "${nixpkgs.zlibSys}/lib/libz.so"
+      "${nixpkgs.secp256k1}/lib/libsecp256k1.so"
+    ];
+    javaSources = [
       ./wallet/java
     ];
     version = {
