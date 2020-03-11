@@ -47,6 +47,8 @@ in (self: super: let
     reflex-external-ref = ingnoreGarbage super.reflex-external-ref;
     reflex-localize = ingnoreGarbage super.reflex-localize;
     # Overridess
+    android-activity = self.callPackage ./derivations/android-activity.nix {};
+    # android-activity = lib.dontCheck (super.android-activity);
     clay = self.callPackage ./derivations/clay.nix {};
     cryptonite = self.callPackage ./derivations/cryptonite.nix {};
     criterion = lib.dontCheck super.criterion;

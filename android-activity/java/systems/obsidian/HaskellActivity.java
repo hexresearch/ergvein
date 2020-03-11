@@ -33,6 +33,8 @@ public class HaskellActivity extends Activity {
   // See https://stackoverflow.com/questions/337268/what-is-the-correct-way-to-store-a-native-pointer-inside-a-java-object
   final long callbacks;
 
+  private String resultScanQR = "Empty";
+
   static {
     System.loadLibrary("HaskellActivity");
   }
@@ -148,6 +150,18 @@ public class HaskellActivity extends Activity {
     if(callbacks != 0 && intent != null && intent.getData() != null && intent.getAction() != null) {
       haskellOnNewIntent(callbacks, intent.getAction(), intent.getDataString()); //TODO: Use a more canonical way of passing this data - i.e. pass the Intent and let the Haskell side get the data out with JNI
     }
+  }
+
+  @Override
+  protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    super.onActivityResult(requestCode, resultCode, data);
+    if(requestCode == 450) {
+      resultScanQR = data.getStringExtra("SCAN_RESULT");
+    }
+  }
+
+  public String getResultScanQR() {
+    return resultScanQR;
   }
 
   // Proper separation of concerns is really a whole lot of work in Java, so
