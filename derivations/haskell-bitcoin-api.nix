@@ -5,11 +5,11 @@
 }:
 mkDerivation {
   pname = "bitcoin-api";
-  version = "0.12.1";
+  version = "0.13.0";
   doCheck = false;
   src = fetchgit {
     url = "https://github.com/hexresearch/haskell-bitcoin-api";
-    sha256 = "1jv19adzi5kmb6a6i9ifxb32c9dnyy6nh1qwwpzmmzxd23xc8xzl";
+    sha256 = "0iir22qjizpbi9axmqnm3zhjjrkpvlk472m41vyk3bajjx7aj5n6";
     rev = "eeafca3112c072f9ff06338fc010ae2229efb6b1";
     fetchSubmodules = true;
   };

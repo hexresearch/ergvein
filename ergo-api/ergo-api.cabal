@@ -24,14 +24,14 @@ library
     , aeson                == 1.4.*
     , bytestring           == 0.10.*
     , exceptions           == 0.10.*
-    , http-client          == 0.5.*
+    , http-client          >= 0.5 && < 0.7
     , lens                 == 4.17.*
     , mtl                  == 2.2.*
     , string-interpolate  
     , text                 == 1.2.*
     , unliftio-core        == 0.1.*
     , unordered-containers == 0.2.*
-    , wreq                 == 0.5.*
+    , wreq                 >= 0.5 && < 0.7
 
     , ergvein-interface-ergo
 
