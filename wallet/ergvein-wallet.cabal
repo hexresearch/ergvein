@@ -183,7 +183,8 @@ library
         qrcode-core,
         unliftio-core >= 0.1 && < 0.2,
         vector -any,
-        yaml -any
+        yaml -any,
+        lmdb-simple >= 0.4 && < 0.5
 
     if flag(android)
         cpp-options: -DANDROID

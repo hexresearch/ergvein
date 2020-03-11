@@ -53,10 +53,6 @@ in (self: super: let
     haskoin-core = self.callPackage ./derivations/haskoin-core.nix {};
     bitcoin-api = self.callPackage ./derivations/haskell-bitcoin-api.nix {};
     bytestring-trie = self.callPackage ./derivations/bytestring-trie.nix {};
-    # servant = self.callPackage ./derivations/servant.nix {};
-    # servant-client = self.callPackage ./derivations/servant-client.nix {};
-    # servant-client-core = self.callPackage ./derivations/servant-client-core.nix {};
-    # servant-server = self.callPackage ./derivations/servant-server.nix {};
     zlib = self.callPackage ./derivations/zlib.nix { };
     stm-hamt = self.callPackage ./derivations/stm-hamt.nix { };
     haskey = self.callPackage ./derivations/haskey.nix { };
@@ -67,6 +63,6 @@ in (self: super: let
     wide-word = lib.dontCheck (self.callPackage ./derivations/wide-word.nix { });
     byte-order = self.callPackage ./derivations/byte-order.nix {};
     primitive-unaligned = self.callPackage ./derivations/primitive-unaligned.nix { };
-    lmdb = self.callPackage ./derivations/haskell-lmdb.nix { lmdb = pkgs.lmdb; };
+    lmdb = self.callPackage ./derivations/haskell-lmdb.nix { };
   }
 )

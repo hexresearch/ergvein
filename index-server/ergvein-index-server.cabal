@@ -38,7 +38,7 @@ library
         base                     >= 4.7     &&  < 4.13
       , aeson                    >= 1.4     &&  < 1.5
       , base16-bytestring        >= 0.1     &&  < 0.2
-      , bitcoin-api              == 0.12.1
+      , bitcoin-api              == 0.13.*
       , bitcoin-block            >= 0.13    &&  < 0.14
       , byte-order               >= 0.1     &&  < 0.2
       , bytestring               >= 0.10    &&  < 0.11
