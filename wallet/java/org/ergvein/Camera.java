@@ -37,6 +37,7 @@ public class Camera {
       a.startActivity(marketIntent);
     }
 
+
     //try {
     //  Intent intent = new Intent("tw.mobileapp.qrcode.banner");
     //  intent.putExtra("SCAN_MODE", "QR_CODE_MODE"); // "PRODUCT_MODE for bar codes
