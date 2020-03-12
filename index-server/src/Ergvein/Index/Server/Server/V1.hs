@@ -105,7 +105,7 @@ indexGetBlockHeadersEndpoint request = do
 
 indexGetBlockFiltersEndpoint :: BlockFiltersRequest -> ServerM BlockFiltersResponse
 indexGetBlockFiltersEndpoint request = do
-    slice <- getBlockMetaSlice (filtersReqCurrency request) (filtersReqStartIndex request) (filtersReqAmount request)
+    slice <- getBlockMetaSlice (filtersReqCurrency request) (filtersReqStartHeight request) (filtersReqAmount request)
     let blockFilters = (\s -> (mkHash $ blockMetaCacheRecHeaderHexView s, blockMetaCacheRecAddressFilterHexView s)) <$> slice
     pure blockFilters
     where 
