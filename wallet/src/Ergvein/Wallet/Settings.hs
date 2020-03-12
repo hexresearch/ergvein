@@ -9,7 +9,6 @@ import Control.Lens
 import Control.Monad.IO.Class
 import Data.Aeson (withText)
 import Data.Default
-import Data.Maybe (fromJust)
 import Data.Text(Text, pack, unpack)
 import Data.Time (NominalDiffTime)
 import Data.Yaml (encodeFile)
@@ -35,7 +34,7 @@ data Settings = Settings {
 , settingsStoreDir          :: Text
 , settingsConfigPath        :: Text
 , settingsDefUrls           :: [BaseUrl]
-, settingsDefUrlNum         :: (Int, Int)
+, settingsDefUrlNum         :: (Int, Int) -- ^ First is minimum required answers. Second is sufficient amount of answers from indexers.
 , settingsReqTimeout        :: NominalDiffTime
 , settingsUnits             :: Maybe Units
 , settingsActiveCurrencies  :: ActiveCurrencies
@@ -54,16 +53,19 @@ storeSettings s = liftIO $ do
 
 defaultIndexers :: [BaseUrl]
 defaultIndexers = [
-    parse "http://127.0.0.1:8080"
+    parse "https://ergvein-indexer1.hxr.team"
+  , parse "https://ergvein-indexer2.hxr.team"
+  , parse "https://ergvein-indexer3.hxr.team"
+  , parse "https://ergvein-indexer4.hxr.team"
   ]
   where 
-    parse = fromJust . parseBaseUrl 
+    parse = either (error . ("Failed to parse default indexer: " ++) . show) id . parseBaseUrl 
 
 defaultIndexersNum :: (Int, Int)
-defaultIndexersNum = (1, 1)
+defaultIndexersNum = (2, 4)
 
 defaultIndexerTimeout :: NominalDiffTime
-defaultIndexerTimeout = 5 
+defaultIndexerTimeout = 20
 
 defaultSettings :: FilePath -> Settings 
 defaultSettings home =  

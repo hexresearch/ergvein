@@ -17,4 +17,4 @@ syncWidget progressD = divClass "currency-wrapper" $ do
     Synced -> pure ()
     _ -> do 
       divClass "sync-progress" $ localizedText sp
-      divClass "sync-progress" $ localizedText $ fromJust $ syncProgressBehind sp
+      traverse_ (divClass "sync-progress" . localizedText) $ syncProgressBehind sp

@@ -28,6 +28,7 @@ import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Sync.Status
 import Network.HTTP.Client hiding (Proxy)
+import Network.HTTP.Client.TLS (newTlsManager)
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Servant.Client(BaseUrl)
@@ -223,7 +224,7 @@ newEnv settings uiChan = do
   re <- newRetractEnv
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
-  manager <- liftIO $ newManager defaultManagerSettings
+  manager <- liftIO newTlsManager
   urls <- newExternalRef $ S.fromList $ settingsDefUrls settings
   urlNum <- newExternalRef $ settingsDefUrlNum settings
   timeout <- newExternalRef $ settingsReqTimeout settings

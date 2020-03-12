@@ -48,7 +48,7 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
       logWrite $ "Current height is " <> showt ch <> ", and filters are for height " <> showt fh
       postSync BTC ch fh 
       if ch > fh then do 
-        let n = 1000
+        let n = 100
         logWrite $ "Getting next " <> showt n <> " filters"
         fse <- getFilters ((BTC, fh+1, n) <$ buildE)
         we <- performFilters $ ffor fse $ \fs -> traverse_ (\(h, (bh, f)) -> insertFilter h bh f) (zip [fh+1 ..] fs) 
