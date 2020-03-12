@@ -33,7 +33,7 @@ public class HaskellActivity extends Activity {
   // See https://stackoverflow.com/questions/337268/what-is-the-correct-way-to-store-a-native-pointer-inside-a-java-object
   final long callbacks;
 
-  private String resultScanQR = "Empty";
+  private String resultScanQR = "";
 
   static {
     System.loadLibrary("HaskellActivity");
@@ -161,7 +161,9 @@ public class HaskellActivity extends Activity {
   }
 
   public String getResultScanQR() {
-    return resultScanQR;
+    String resVal = resultScanQR;
+    resultScanQR = "";
+    return resVal;
   }
 
   // Proper separation of concerns is really a whole lot of work in Java, so
