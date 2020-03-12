@@ -61,5 +61,8 @@ class PlatformNatives where
   -- | Work for camera of device
   cameraWork :: MonadIO m => Text -> m ()
 
+  -- | Work for get result from camera of device
+  cameraGetResult :: MonadIO m => m Text
+
   -- | Write to system log
   logWrite :: MonadIO m => Text -> m ()

@@ -27,6 +27,10 @@ initialPage :: MonadFrontBase t m => m ()
 initialPage = do
   cameraE <- fmap ("Test" <$) $ outlineButton ("Debug QR scan"::Text)
   _ <- openCamara cameraE
+  resButE <- outlineButton ("Get result"::Text)
+  resE <- getResultCamara resButE
+  resD <- holdDyn "RESULT" resE
+  h4 $ dynText resD
   pure ()
 {-  ss <- listStorages
   if null ss then noWalletsPage else hasWalletsPage ss

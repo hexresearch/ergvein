@@ -93,6 +93,9 @@ instance PlatformNatives where
   -- TODO: Fix later for desktop application
   cameraWork = liftIO . setClipboard . T.unpack
 
+  -- TODO: Fix later for desktop application
+  cameraGetResult = liftIO $ pure "TempDesktop"
+
   logWrite = liftIO . T.putStrLn
 
 getFiles :: FilePath -> IO [FilePath]

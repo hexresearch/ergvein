@@ -1,5 +1,6 @@
 module Ergvein.Wallet.Camera(
     openCamara
+  , getResultCamara
   ) where
 
 import Data.Text (Text)
@@ -12,3 +13,6 @@ openCamara :: MonadFrontBase t m => Event t Text -> m (Event t Text)
 openCamara e = runOnUiThread $ ffor e $ \str -> do
   cameraWork str
   pure str
+
+getResultCamara :: MonadFrontBase t m => Event t () -> m (Event t Text)
+getResultCamara e = runOnUiThread $ ffor e $ const cameraGetResult
