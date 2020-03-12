@@ -1,4 +1,4 @@
-{ mkDerivation, array, base, fetchgit, lmdb, stdenv }:
+{ mkDerivation, array, base, fetchgit, lmdbSys, stdenv }:
 mkDerivation {
   pname = "lmdb";
   version = "0.2.5";
@@ -9,7 +9,7 @@ mkDerivation {
     fetchSubmodules = true;
   };
   libraryHaskellDepends = [ array base ];
-  librarySystemDepends = [ lmdb ];
+  librarySystemDepends = [ lmdbSys ];
   homepage = "http://github.com/dmbarbour/haskell-lmdb";
   description = "Lightning MDB bindings";
   license = stdenv.lib.licenses.bsd2;
