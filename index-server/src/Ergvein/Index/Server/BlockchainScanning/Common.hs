@@ -67,14 +67,13 @@ scannerThread env currency scanInfo =
     blockIteration :: BlockHeight -> BlockHeight -> m ()
     blockIteration totalh blockHeight = do
       let percent = fromIntegral blockHeight / fromIntegral totalh :: Double
-      logInfoN $ "Scanning height " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
+      logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
       liftIO $ do
         blockInfo <- scanInfo blockHeight
         let blockInfoToStore = selectedInfoToStore blockInfo
         runDbQuery pool $ do
           storeInfo blockInfoToStore
           storeScannedHeight currency blockHeight
-        dir <- levelDbDir
         addToCache (envLevelDBContext env) blockInfoToStore
 
     scanIteration :: Thread -> m ()
@@ -91,6 +90,6 @@ scannerThread env currency scanInfo =
 startBlockchainScanner :: (MonadUnliftIO m, MonadCatch m, MonadLogger m) => ServerEnv -> m [Thread]
 startBlockchainScanner env =
     sequenceA
-    [ scannerThread env BTC $ BTCScanning.blockInfo env
+    [ scannerThread env BTC  $ BTCScanning.blockInfo  env
     , scannerThread env ERGO $ ERGOScanning.blockInfo env 
     ]

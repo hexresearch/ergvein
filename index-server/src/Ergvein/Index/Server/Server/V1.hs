@@ -4,6 +4,7 @@ import Data.Flat
 import Data.List
 import Data.Maybe
 import Data.Monoid
+import Data.Word
 import Database.Persist.Sql
 
 import Ergvein.Index.API
@@ -18,7 +19,6 @@ import Ergvein.Index.Server.Monad
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Data.Word
 
 import qualified Network.Haskoin.Block as Btc 
 import qualified Data.Serialize as S 
@@ -89,17 +89,17 @@ indexGetTxHashHistoryEndpoint request = do
     utxoHistoryTxIds (STXO (txo, stxo)) = [txOutCacheRecTxHash txo , txInCacheRecTxHash stxo]
     txSorting tx = (txCacheRecBlockHeight tx, txCacheRecBlockIndex  tx)
 
-getBlockMetaSlice :: Currency -> BlockHeight -> Word64 -> ServerM [BlockMetaCacheRec]
-getBlockMetaSlice currency startHeight amount = do
+getBlockMetaSlice :: Currency -> BlockHeight -> BlockHeight -> ServerM [BlockMetaCacheRec]
+getBlockMetaSlice currency startHeight endHeight = do
   let start = cachedMetaKey (currency, startHeight) 
-      end   = BlockMetaCacheRecKey currency (LEHeight $ pred $ startHeight + amount)
+      end   = BlockMetaCacheRecKey currency $ startHeight + endHeight
   slice <- safeEntrySlice start end
   let metaSlice = snd <$> slice
   pure metaSlice
 
 indexGetBlockHeadersEndpoint :: BlockHeadersRequest -> ServerM BlockHeadersResponse
 indexGetBlockHeadersEndpoint request = do
-    slice <- getBlockMetaSlice (headersReqCurrency request) (headersReqStartIndex request) (headersReqAmount request)
+    slice <- getBlockMetaSlice (headersReqCurrency request) (headersReqStartHeight request) (headersReqAmount request)
     let blockHeaders = blockMetaCacheRecHeaderHexView <$> slice
     pure blockHeaders
 

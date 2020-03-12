@@ -13,6 +13,7 @@ data Config = Config
   , configDbUser                :: !String
   , configDbPassword            :: !String
   , configDbName                :: !String
+  , configCachePath             :: !String
   , configBlockchainScanDelay   :: !Int
   , configDbLog                 :: !Bool
   , configPubScriptHistoryScan  :: !Bool

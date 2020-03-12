@@ -51,7 +51,7 @@ newServerEnv cfg = do
         pool <- newDBPool doLog $ fromString $ connectionStringFromConfig cfg
         flip runReaderT pool $ runDb $ runMigration migrateAll
         pure pool
-    levelDBContext <- liftIO $ openDb
+    levelDBContext <- liftIO $ openCacheDb $ configCachePath cfg
     loadCache levelDBContext pool
     ergoNodeClient <- liftIO $ ErgoApi.newClient (configERGONodeHost cfg) $ (configERGONodePort cfg)
     let bitconNodeNetwork = if configBTCNodeIsTestnet cfg then HK.btcTest else HK.btc

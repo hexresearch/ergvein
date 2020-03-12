@@ -22,10 +22,10 @@ import qualified Clay.Media as M
 import qualified Clay.Flexbox as F
 
 data Resources = Resources {
-  robotoBlackUrl    :: !Text
-, robotoBoldUrl     :: !Text
-, robotoMediumUrl   :: !Text
-, robotoRegularUrl  :: !Text
+  robotoBlackUrl       :: !Text
+, robotoBoldUrl        :: !Text
+, robotoMediumUrl      :: !Text
+, robotoRegularUrl     :: !Text
 , fabrands400eotUrl    :: !Text
 , fabrands400svgUrl    :: !Text
 , fabrands400ttfUrl    :: !Text
@@ -105,6 +105,7 @@ frontendCss r = do
   sendPageCss
   networkPageCss
   infoPageCss
+  sharePageCss
   aboutPageCss
   loadingWidgetCss
   alertsCss
@@ -381,9 +382,15 @@ balancesPageCss = do
 
 sendPageCss :: Css
 sendPageCss = do
-  ".send-wrapper" ? do
+  ".send-page" ? do
     maxWidth $ px 500
     margin (px 0) auto (px 0) auto
+  ".send-page input" ? do
+    marginBottom $ em 0.5
+  ".form-field-errors" ? do
+    color red
+    textAlign $ alignSide sideLeft
+    marginBottom $ em 0.5
   ".send-buttons-wrapper" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1]
@@ -392,6 +399,7 @@ sendPageCss = do
     width $ pct 100
   ".button-icon-wrapper" ? do
     marginLeft $ rem 0.5
+  ".is-invalid input" ? border solid (rem 0.1) red
 
 aboutPageCss :: Css
 aboutPageCss = do
@@ -497,6 +505,40 @@ infoPageCss = do
         in padding px3 px10 px3 px10
     border solid (px 1) $ rgb 140 140 140
     let px4 = px 4 in borderRadius px4 px4 px4 px4
+
+sharePageCss :: Css
+sharePageCss = do
+  ".share-content" ? do
+    width $ pct 100
+    maxWidth $ px 500
+    display inlineBlock
+  ".share-v-spacer" ? do
+    height $ px 20
+  ".qrcode-container" ? do
+    width $ px 256
+    height $ px 256
+  ".share-qrcode-container" ? do
+    width $ px 256
+    height $ px 256
+    justifyContent center
+    let px0 = px 0 in padding px0 px0 px0 $ px 8
+    margin (px 0) auto (px 0) auto
+  ".share-buttons-wrapper" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1]
+    gridGap $ rem 1
+  ".share-block-value" ? do
+    --textAlign $ alignSide sideLeft
+    textAlign center
+    let px3  = px 5
+        px10 = px 10
+        in padding px3 px10 px3 px10
+    border solid (px 1) $ rgb 140 140 140
+    let px4 = px 4 in borderRadius px4 px4 px4 px4
+    marginBottom $ px 15
+  ".share-image-qrcode" ? do
+    width $ px 256
+    height $ px 256
 
 loadingWidgetCss :: Css
 loadingWidgetCss = do
