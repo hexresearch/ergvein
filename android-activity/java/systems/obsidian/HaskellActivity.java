@@ -33,6 +33,7 @@ public class HaskellActivity extends Activity {
   // See https://stackoverflow.com/questions/337268/what-is-the-correct-way-to-store-a-native-pointer-inside-a-java-object
   final long callbacks;
 
+  private Object syncResultScanQR = new Object();
   private String resultScanQR = "";
 
   static {
@@ -156,13 +157,20 @@ public class HaskellActivity extends Activity {
   protected void onActivityResult(int requestCode, int resultCode, Intent data) {
     super.onActivityResult(requestCode, resultCode, data);
     if(requestCode == 450) {
-      resultScanQR = data.getStringExtra("SCAN_RESULT");
+      synchronized(syncResultScanQR) {
+        resultScanQR = data.getStringExtra("SCAN_RESULT");
+      }
     }
   }
 
   public String getResultScanQR() {
-    String resVal = resultScanQR;
-    resultScanQR = "";
+    String resVal = "";
+
+    synchronized(syncResultScanQR) {
+      resVal = resultScanQR;
+      resultScanQR = "";
+    }
+
     return resVal;
   }
 
