@@ -25,14 +25,7 @@ data GoPage = GoSeed | GoRestore
 
 initialPage :: MonadFrontBase t m => m ()
 initialPage = do
-  cameraE <- fmap ("Test" <$) $ outlineButton ("Debug QR scan"::Text)
-  openE <- openCamara cameraE
-  openGoE <- delay 1.0 openE
-  resE <- waiterResultCamera (() <$ openGoE)
-  resD <- holdDyn "RESULT" resE
-  h4 $ dynText resD
-  pure ()
-{-  ss <- listStorages
+  ss <- listStorages
   if null ss then noWalletsPage else hasWalletsPage ss
   where
     noWalletsPage = wrapper True $ divClass "initial-options grid1" $ noWallets
@@ -64,7 +57,7 @@ initialPage = do
       mauthE <- performEvent $ loadAuthInfo name <$> passE
       authE <- handleDangerMsg mauthE
       void $ setAuthInfo $ Just <$> authE
--}
+
 initialAuthedPage :: MonadFront t m => m ()
 initialAuthedPage = wrapper True $ divClass "main-page" $ do
   anon_name <- getWalletName

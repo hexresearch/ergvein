@@ -5,6 +5,7 @@ module Ergvein.Wallet.Page.Send (
 import Control.Monad.Except
 import Ergvein.Text
 import Ergvein.Types.Currency
+import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Language
@@ -66,11 +67,13 @@ sendPage cur = do
   navbarWidget cur thisWidget NavbarSend
   wrapper True $ divClass "send-page" $ form $ fieldset $ mdo
     recipientErrsD <- holdDyn Nothing recipientErrsE
-    recipientD <- validatedTextField RecipientString "" recipientErrsD
-    (qrE, pasteE) <- divClass "send-buttons-wrapper" $ do
+    recipientD <- validatedTextFieldSetVal RecipientString "" recipientErrsD resQRcodeE
+    (qrE, pasteE, resQRcodeE) <- divClass "send-buttons-wrapper" $ do
       qrE <- outlineButtonWithIcon BtnScanQRCode "fas fa-qrcode fa-lg"
+      openE <- delay 1.0 =<< openCamara qrE
+      resQRcodeE <- waiterResultCamera openE
       pasteE <- outlineButtonWithIcon BtnPasteString "fas fa-clipboard fa-lg"
-      pure (qrE, pasteE)
+      pure (qrE, pasteE, resQRcodeE)
     amountErrsD <- holdDyn Nothing amountErrsE
     amountD <- validatedTextField AmountString "" amountErrsD
     submitE <- submitClass "button button-outline send-submit" SendBtnString
