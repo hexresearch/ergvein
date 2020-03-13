@@ -4,6 +4,7 @@ module Ergvein.Wallet.Page.Initial(
   ) where
 
 import Data.Text (unpack)
+import Data.Text as T
 
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Camera
@@ -26,16 +27,26 @@ data GoPage = GoSeed | GoRestore
 initialPage :: MonadFrontBase t m => m ()
 initialPage = do
   cameraE <- fmap ("Test" <$) $ outlineButton ("Debug QR scan"::Text)
-  _ <- openCamara cameraE
-  --openE <- openCamara cameraE
-  --openGoE <- delay 1.0 openE
-  resButE <- outlineButton ("Get result"::Text)
+  --_ <- openCamara cameraE
+  openE <- openCamara cameraE
+  openGoE <- delay 1.0 openE
+  --resButE <- outlineButton ("Get result"::Text)
   --resE <- getResultCamara $ leftmost [() <$ openGoE, resButE]
-  resE <- getResultCamara resButE
+  --resE <- getResultCamara resButE
+  resE <- waiterCamReslt (() <$ openGoE)
   resD <- holdDyn "RESULT" resE
   h4 $ dynText resD
   pure ()
   where
+    waiterCamReslt :: MonadFrontBase t m => Event t () -> m (Event t Text)
+    waiterCamReslt startE = mdo
+      resE <- getResultCamara $ leftmost [startE, nextE]
+      nextE <- delay 1.0 $ fforMaybe resE $ \v -> case T.null v of
+                            True  -> Just ()
+                            False -> Nothing
+      pure $ fforMaybe resE $ \v -> case T.null v of
+              True  -> Nothing
+              False -> Just v
 
 {-  ss <- listStorages
   if null ss then noWalletsPage else hasWalletsPage ss
