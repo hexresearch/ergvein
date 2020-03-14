@@ -64,5 +64,7 @@ in (self: super: let
     byte-order = self.callPackage ./derivations/byte-order.nix {};
     primitive-unaligned = self.callPackage ./derivations/primitive-unaligned.nix { };
     lmdb = self.callPackage ./derivations/haskell-lmdb.nix { };
+    x509-validation = lib.dontCheck super.x509-validation;
+    tls = lib.dontCheck super.tls;
   }
 )
