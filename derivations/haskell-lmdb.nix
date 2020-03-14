@@ -4,8 +4,8 @@ mkDerivation {
   version = "0.2.5";
   src = fetchgit {
     url = "https://github.com/hexresearch/haskell-lmdb.git";
-    sha256 = "1rspfklhw4mzph4pi9hpqs6k9d1bjdskjziii6bdgznnybkyw6yc";
-    rev = "1e562429874919d445576c87cf118d7de5112b5b";
+    sha256 = "07k3mg3jy8ajygj1zq7j0521b92nk9mmcds52mx48vg6lnny8rih";
+    rev = "895c65bfffcbb55c34a35c28abfc84bc7d519477";
     fetchSubmodules = true;
   };
   libraryHaskellDepends = [ array base ];
