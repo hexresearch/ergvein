@@ -4,6 +4,8 @@ let
       (self: super: import ./nixpkgs-overlays/default.nix self super)
     ];
     config.android_sdk.accept_license = true;
+    config.oraclejdk.accept_license = true;
+    config.allowUnfree = true;
   };
   project = (import ./default.nix) { isAndroid = true; };
   pkgs = reflex-platform.nixpkgs;

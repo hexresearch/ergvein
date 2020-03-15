@@ -3,6 +3,7 @@ module Ergvein.Wallet.Page.History(
   ) where
 
 import Ergvein.Types.Currency
+--import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu
@@ -27,6 +28,8 @@ historyPage cur = do
   navbarWidget cur thisWidget NavbarHistory
   wrapper True $ do
     h3 $ localizedText $ CurrencyTitle cur
+--    cameraE <- fmap ("Test" <$) $ outlineButton ("Debug QR scan"::Text)
+--    _ <- openCamara cameraE
 --    goE <- fmap (cur <$) $ outlineButton ("Debug info"::Text)
 --    void $ nextWidget $ ffor goE $ \cr -> Retractable {
 --        retractableNext = sharePage cr

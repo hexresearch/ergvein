@@ -32,6 +32,9 @@ foreign import ccall safe "android_timezone_offset" androidTimezoneOffset :: IO 
 
 foreign import ccall safe "android_share_url" androidShareUrl :: HaskellActivity -> CString -> IO ()
 
+foreign import ccall safe "android_camera_open" androidCameraOpen :: HaskellActivity -> CString -> IO ()
+foreign import ccall safe "android_camera_get_result" androidCameraGetResult :: HaskellActivity -> IO CString
+
 decodeText :: CString -> IO Text
 decodeText cstr = do
   bytestr <- BS.packCString cstr
@@ -131,6 +134,15 @@ instance PlatformNatives where
   shareUrl v = liftIO $ encodeText v $ \s -> do
     a <- getHaskellActivity
     androidShareUrl a s
+
+  cameraWork v = liftIO $ encodeText v $ \s -> do
+    a <- getHaskellActivity
+    androidCameraOpen a s
+
+  cameraGetResult = liftIO $ do
+    a <- getHaskellActivity
+    r <- androidCameraGetResult a
+    decodeText r
 
   logWrite v = liftIO $ encodeText v androidLogWrite
   {-# INLINE logWrite #-}

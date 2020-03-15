@@ -6,6 +6,7 @@ module Ergvein.Wallet.Page.Initial(
 import Data.Text (unpack)
 
 import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Initial
