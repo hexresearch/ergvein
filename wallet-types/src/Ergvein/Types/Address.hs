@@ -1,6 +1,9 @@
 module Ergvein.Types.Address
   (
       EgvAddress(..)
+    , BtcAddress
+    , ErgAddress
+    , egvAddrCurrency
     , egvAddrToString
   ) where
 
@@ -20,6 +23,11 @@ data EgvAddress
   = BtcAddress { getBtcAddr :: BtcAddress }
   | ErgAddress { getErgAddr :: ErgAddress }
   deriving (Eq, Show, Read)
+
+egvAddrCurrency :: EgvAddress -> Currency 
+egvAddrCurrency addr = case addr of 
+  BtcAddress{} -> BTC 
+  ErgAddress{} -> ERGO
 
 egvAddrToString :: EgvAddress -> Text
 egvAddrToString (BtcAddress addr) = addrToString (getCurrencyNetwork BTC) addr

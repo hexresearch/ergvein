@@ -1,20 +1,27 @@
+{-# LANGUAGE NumericUnderscores #-}
 module Ergvein.Wallet.Scan(
     accountDiscovery
   ) where
 
-import Ergvein.Wallet.Storage.Keys (derivePubKey)
+import Control.Concurrent 
+import Control.Monad 
+import Control.Monad.IO.Class 
+import Data.Function
+import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
-import Ergvein.Types.AuthInfo
 import Ergvein.Types.Transaction (BlockHeight)
+import Ergvein.Wallet.Filters.Storage 
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Constants
-import Network.Haskoin.Block (Block, genesisBlock)
+import Ergvein.Wallet.Storage.Keys (derivePubKey, egvXPubKeyToEgvAddress)
+import Network.Haskoin.Block (Block, BlockHash, genesisBlock)
 
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Map.Strict    as M
+import qualified Ergvein.Wallet.Filters.Scan as Filters
 
 accountDiscovery :: MonadFront t m => m ()
 accountDiscovery = do
@@ -49,7 +56,7 @@ applyScan pubKeystore currency = scanCurrencyKeys currency (getKeychain currency
 scanCurrencyKeys :: MonadFront t m => Currency -> EgvPubKeyсhain -> m (Event t (Currency, EgvPubKeyсhain))
 scanCurrencyKeys currency keyChain = mdo
   buildE <- getPostBuild
-  nextE <- delay 0 $ leftmost [newE, buildE]
+  nextE <- waitFilters currency =<< delay 0 (leftmost [newE, buildE])
   gapD <- holdDyn 0 gapE
   nextKeyIndexD <- holdDyn initKeyChainSize nextKeyIndexE
   newKeyChainD <- foldDyn addKey keyChain nextKeyE
@@ -84,13 +91,23 @@ generateNextKey master purpose index = (index, derivedXPubKey)
 addKey :: (Int, EgvXPubKey) -> EgvPubKeyсhain -> EgvPubKeyсhain
 addKey (index, key) (EgvPubKeyсhain master external internal) = EgvPubKeyсhain master (MI.insert index key external) internal
 
--- FIXME
-filterAddress :: MonadFront t m => Event t (Int, EgvXPubKey) -> m (Event t [BlockHeight])
-filterAddress addrE = pure $ filterAddressMock <$> addrE
-  where filterAddressMock (idx, addr) = if idx < 5 then [1] else []
+-- | If the given event fires and there is not fully synced filters. Wait for the synced filters and then fire the event.
+waitFilters :: MonadFront t m => Currency -> Event t a -> m (Event t a)
+waitFilters c e = do 
+  syncedD <- getFiltersSync c
+  performEventAsync $ ffor e $ \a fire -> do 
+    synced <- sample . current $ syncedD 
+    liftIO $ if synced then fire a else void . forkIO $ fix $ \next -> do 
+      logWrite "Waiting filters sync..."
+      threadDelay 1000_0000 
+      if synced then fire a else next
 
 -- FIXME
-getBlocks :: MonadFront t m => Event t [BlockHeight] -> m (Event t [Block])
+filterAddress :: MonadFront t m => Event t (Int, EgvXPubKey) -> m (Event t [BlockHash])
+filterAddress e = performFilters $ ffor e $ \(_, pk) -> Filters.filterAddress $ egvXPubKeyToEgvAddress pk
+
+-- FIXME
+getBlocks :: MonadFront t m => Event t [BlockHash] -> m (Event t [Block])
 getBlocks blockHeightE = pure $ getBlocksMock <$> blockHeightE
   where getBlocksMock bhs = if null bhs then [] else [genesisBlock $ getCurrencyNetwork BTC]
 

@@ -35,7 +35,7 @@ library
     , lens                      == 4.17.*
     , memory                    >= 0.14.16  && < 0.15.1
     , text
-    , flat
+    , time
   if flag(testnet)
     cpp-options: -DTESTNET
   default-extensions:

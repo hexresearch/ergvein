@@ -159,7 +159,7 @@ drawLinesT (dc, mi) z = case dc of
     then ""
     else T.concat $ fmap drawLs pointsList
       where
-        (fjMi :: [Int]) = fmap fromJust mi
+        (fjMi :: [Int]) = catMaybes mi
         (prepList :: [Int]) = ([head fjMi]) <> (concat (fmap (\a -> [a,a]) fjMi)) <> ([last fjMi])
         pointsList  = chunksOf 2 $ fmap (\a -> case (find (\(num,_) -> num == a ) z) of
             Just (num, (a,b,c,d)) -> (a+c/2,b+d/2)

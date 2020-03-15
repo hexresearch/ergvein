@@ -5,6 +5,9 @@ module Ergvein.Text(
   , json2text
   , showf
   , bs2Hex
+  , hex2bs
+  , hex2bsTE
+  , hex2bsE
   , base64Text2bs
   , bs2Base64Text
   ) where
@@ -46,9 +49,6 @@ json2text = decodeUtf8 . BSL.toStrict . encode
 showf :: (Floating a, PrintfArg a) => Int -> a -> Text
 showf n = pack . printf ("%." <> show n <> "f")
 
-bs2Hex :: BS.ByteString -> Text
-bs2Hex = TE.decodeUtf8 . BS16.encode
-
 -- | Convert Base64 encoded text to ByteString
 base64Text2bs :: Text -> ByteString
 base64Text2bs = BS64.decodeLenient . TE.encodeUtf8
@@ -56,3 +56,20 @@ base64Text2bs = BS64.decodeLenient . TE.encodeUtf8
 -- | Convert ByteString to Base64 encoded text
 bs2Base64Text :: ByteString -> Text
 bs2Base64Text bs = TE.decodeUtf8With TEE.lenientDecode $ BS64.encode bs
+
+bs2Hex :: BS.ByteString -> Text
+bs2Hex = TE.decodeUtf8 . BS16.encode
+
+-- `Partial` constraint used to get the better stacktrace in case of an error
+hex2bs :: Text -> BS.ByteString
+hex2bs = either error id . hex2bsTE
+
+hex2bsTE :: Text -> Either String BS.ByteString
+hex2bsTE = hex2bsE . TE.encodeUtf8
+
+hex2bsE :: BS.ByteString -> Either String BS.ByteString
+hex2bsE bs =
+  let (a, b) = BS16.decode bs
+  in  if BS.null b
+        then Right a
+        else Left ("Not a valid hex string: " <> show bs)

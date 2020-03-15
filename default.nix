@@ -4,6 +4,7 @@ let
 in reflex-platform.project ({ pkgs, ... }: {
   packages = {
     data-merkle-tree = ./data-merkle-tree;
+    ergo-api = ./ergo-api;
     ergvein-checkpoint-generator = ./checkpoint-generator;
     ergvein-common = ./common;
     ergvein-crypto = ./crypto;
@@ -17,10 +18,9 @@ in reflex-platform.project ({ pkgs, ... }: {
     ergvein-wallet-filters = ./wallet-filters;
     ergvein-wallet-native = ./wallet-native;
     ergvein-wallet-types = ./wallet-types;
-    ergo-api = ./ergo-api;
     golomb-rice = ./golomb-rice;
-    reflex-dom-retractable = ./retractable;
     reflex-dom-canvas = ./reflex-dom-canvas;
+    reflex-dom-retractable = ./retractable;
     reflex-external-ref = ./reflex-external-ref;
     reflex-localize = ./reflex-localize;
   };
@@ -45,7 +45,7 @@ in reflex-platform.project ({ pkgs, ... }: {
       "reflex-localize"
     ];
   };
-  overrides = import ./overrides.nix { inherit reflex-platform isAndroid; };
+  overrides = import ./overrides.nix { inherit reflex-platform; };
 
   shellToolOverrides = ghc: super: {
     inherit (pkgs) postgresql leveldb;
@@ -58,11 +58,11 @@ in reflex-platform.project ({ pkgs, ... }: {
     resources = ./wallet/static/res;
     assets = ./wallet/static/assets;
     iconPath = "@drawable/ic_launcher";
-    nativeDependencies = nixpkgs: haskellPackages: {
-      "libz.so" = "${nixpkgs.zlib}/lib/libz.so.1";
-      "libsecp256k1.so" = "${nixpkgs.secp256k1}/lib/libsecp256k1.so";
-    };
-    javaSources = _: [
+    runtimeSharedLibs = nixpkgs: [
+      "${nixpkgs.zlibSys}/lib/libz.so"
+      "${nixpkgs.secp256k1}/lib/libsecp256k1.so"
+    ];
+    javaSources = [
       ./wallet/java
     ];
     version = {

@@ -53,4 +53,4 @@ headersMerkleTree scanConfig = do
       putStrLn $ "scanning at " <> show heightToScan <> " " <> show (succ heightToScan * 100 `div` nodeHeight)
       blockHash <-  client $ flip getBlockHash heightToScan
       blockHeader <- client $ flip getBlockHeader blockHash
-      pure $ fromJust blockHeader
+      pure $ fromMaybe (error "blockHeaderAtHeight: impossible, blockHeader is Nothing!") blockHeader

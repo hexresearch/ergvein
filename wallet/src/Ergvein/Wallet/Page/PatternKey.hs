@@ -27,7 +27,7 @@ import Data.Aeson
 import Reflex.Dom
 
 import qualified Data.Map.Strict as Map
-import           Data.Maybe (fromJust, fromMaybe)
+import           Data.Maybe (catMaybes, fromMaybe)
 import           Data.List  (find)
 import           Data.List.Split
 import qualified Data.Text as T

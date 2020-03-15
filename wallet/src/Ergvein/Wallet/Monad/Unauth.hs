@@ -9,10 +9,14 @@ import Control.Concurrent.Chan
 import Control.Monad.Random.Class
 import Control.Monad.Reader
 import Data.IORef
+import Data.Map (Map)
 import Data.Text (Text)
 import Data.Time(NominalDiffTime)
 import Ergvein.Index.Client
+import Ergvein.Types.Currency
+import Ergvein.Types.Storage
 import Ergvein.Wallet.Currencies
+import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
@@ -21,9 +25,10 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Settings
-import Ergvein.Types.Storage
 import Ergvein.Wallet.Storage.Util
+import Ergvein.Wallet.Sync.Status
 import Network.HTTP.Client hiding (Proxy)
+import Network.HTTP.Client.TLS (newTlsManager)
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Servant.Client(BaseUrl)
@@ -48,7 +53,11 @@ data UnauthEnv t = UnauthEnv {
 , unauth'urlNum          :: !(ExternalRef t (Int, Int))
 , unauth'timeout         :: !(ExternalRef t NominalDiffTime)
 , unauth'headersStorage  :: !HeadersStorage
+, unauth'filtersStorage  :: !FiltersStorage
 , unauth'manager         :: !Manager
+, unauth'syncProgress    :: !(ExternalRef t SyncProgress)
+, unauth'heightRef       :: !(ExternalRef t (Map Currency Integer))
+, unauth'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
 }
 
 type UnauthM t m = ReaderT (UnauthEnv t) m
@@ -60,6 +69,10 @@ instance Monad m => HasStoreDir (UnauthM t m) where
 instance Monad m => HasHeadersStorage (UnauthM t m) where
   getHeadersStorage = asks unauth'headersStorage
   {-# INLINE getHeadersStorage #-}
+
+instance Monad m => HasFiltersStorage (UnauthM t m) where 
+  getFiltersStorage = asks unauth'filtersStorage
+  {-# INLINE getFiltersStorage #-}
 
 instance MonadIO m => HasClientManager (UnauthM t m) where
   getClientMaganer = asks unauth'manager
@@ -171,6 +184,18 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE updateSettings #-}
   getSettingsRef = asks unauth'settings
   {-# INLINE getSettingsRef #-}
+  getSyncProgress = externalRefDynamic =<< asks unauth'syncProgress 
+  {-# INLINE getSyncProgress #-}
+  setSyncProgress ev = do 
+    ref <- asks unauth'syncProgress
+    performEvent_ $ writeExternalRef ref <$> ev 
+  {-# INLINE setSyncProgress #-}
+  getSyncProgressRef = asks unauth'syncProgress
+  {-# INLINE getSyncProgressRef #-}
+  getHeightRef = asks unauth'heightRef
+  {-# INLINE getHeightRef #-}
+  getFiltersSyncRef = asks unauth'filtersSyncRef
+  {-# INLINE getFiltersSyncRef #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
   postAlert e = do
@@ -199,11 +224,15 @@ newEnv settings uiChan = do
   re <- newRetractEnv
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
-  manager <- liftIO $ newManager defaultManagerSettings
+  manager <- liftIO newTlsManager
   urls <- newExternalRef $ S.fromList $ settingsDefUrls settings
   urlNum <- newExternalRef $ settingsDefUrlNum settings
   timeout <- newExternalRef $ settingsReqTimeout settings
   hst <- liftIO $ runReaderT openHeadersStorage (settingsStoreDir settings)
+  fst <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
+  syncRef <- newExternalRef Synced
+  heightRef <- newExternalRef mempty
+  fsyncRef <- newExternalRef mempty
   pure UnauthEnv {
       unauth'settings  = settingsRef
     , unauth'backEF    = (backE, backFire ())
@@ -223,6 +252,10 @@ newEnv settings uiChan = do
     , unauth'timeout = timeout
     , unauth'manager = manager
     , unauth'headersStorage = hst
+    , unauth'filtersStorage = fst 
+    , unauth'syncProgress = syncRef
+    , unauth'heightRef = heightRef
+    , unauth'filtersSyncRef = fsyncRef
     }
 
 runEnv :: (MonadBaseConstr t m, PlatformNatives)
