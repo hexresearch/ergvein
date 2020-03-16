@@ -61,6 +61,7 @@ in reflex-platform.project ({ pkgs, ... }: {
     runtimeSharedLibs = nixpkgs: [
       "${nixpkgs.zlibSys}/lib/libz.so"
       "${nixpkgs.secp256k1}/lib/libsecp256k1.so"
+      "${nixpkgs.lmdbSys}/lib/liblmdb.so"
     ];
     javaSources = [
       ./wallet/java
