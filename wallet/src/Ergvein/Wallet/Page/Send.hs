@@ -82,5 +82,5 @@ sendPage currency = do
           amount <- sampleDyn amountD
           pure (V.toEither $ validateRecipient currency (T.unpack recipient),
                 V.toEither $ validateAmount $ T.unpack amount)
-        validatedE = traceEvent "valid" $ fforMaybe validationE (\x -> if (isRight $ fst x) && (isRight $ snd x) then Just x else Nothing) 
+        validatedE = fforMaybe validationE (\x -> if (isRight $ fst x) && (isRight $ snd x) then Just x else Nothing)
     pure ()

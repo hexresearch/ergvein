@@ -36,7 +36,7 @@ txInfo tx txHash = do
                       }
 
     txOutInfo txOut = let
-      scriptOutputHash = encodeSHA256Hex . doubleSHA256
+      scriptOutputHash = showt . doubleSHA256
       in TxOutInfo { txOutTxHash           = txHash
                    , txOutPubKeyScriptHash = scriptOutputHash $ unErgoTree $ ergoTree txOut
                    , txOutIndex            = fromIntegral $ fromJust $ index txOut

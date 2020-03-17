@@ -3,10 +3,11 @@ module Ergvein.Wallet.Scan(
   ) where
 
 import Ergvein.Wallet.Storage.Keys (derivePubKey)
+import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
+import Ergvein.Types.Network
 import Ergvein.Types.Storage
-import Ergvein.Types.AuthInfo
 import Ergvein.Types.Transaction (BlockHeight)
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
@@ -92,7 +93,7 @@ filterAddress addrE = pure $ filterAddressMock <$> addrE
 -- FIXME
 getBlocks :: MonadFront t m => Event t [BlockHeight] -> m (Event t [Block])
 getBlocks blockHeightE = pure $ getBlocksMock <$> blockHeightE
-  where getBlocksMock bhs = if null bhs then [] else [genesisBlock $ getCurrencyNetwork BTC]
+  where getBlocksMock bhs = if null bhs then [] else [genesisBlock $ getBtcNetwork $ getCurrencyNetwork BTC]
 
 -- FIXME
 storeNewTransactions :: MonadFront t m => Event t [Block] -> m (Event t Int)
