@@ -89,23 +89,27 @@ unitsPage :: MonadFront t m => m ()
 unitsPage = do
   let thisWidget = Just $ pure $ unitsPage
   menuWidget STPSTitle thisWidget
-  wrapper True $ do
-    h3 $ localizedText $ STPSSelectUnitsFor BTC
-    divClass "initial-options grid1" $ do
-      settings <- getSettings
-      let setUs = getSettingsUnits settings
-      unitBtcE <- unitsDropdown (getUnitBTC setUs) allUnitsBTC
-      updateSettings $ ffor unitBtcE (\ubtc -> settings {settingsUnits = Just $ setUs {unitBTC = Just ubtc}})
-      pure ()
-    h3 $ localizedText $ STPSSelectUnitsFor ERGO
-    divClass "initial-options grid1" $ do
-      settings <- getSettings
-      let setUs = getSettingsUnits settings
-      unitErgoE <- unitsDropdown (getUnitERGO setUs) allUnitsERGO
-      updateSettings $ ffor unitErgoE (\uergo -> settings {settingsUnits = Just $ setUs {unitERGO = Just uergo}})
-      pure ()
+  wrapper True $ mdo
+    cntED <- widgetHold content $ content <$ switchDyn cntED
     pure ()
   where
+    content = do
+      h3 $ localizedText $ STPSSelectUnitsFor BTC
+      ubE <- divClass "initial-options grid1" $ do
+        settings <- getSettings
+        let setUs = getSettingsUnits settings
+        unitBtcE <- unitsDropdown (getUnitBTC setUs) allUnitsBTC
+        updateSettings $ ffor unitBtcE (\ubtc -> settings {settingsUnits = Just $ setUs {unitBTC = Just ubtc}})
+        delay 0.1 (() <$ unitBtcE)
+      h3 $ localizedText $ STPSSelectUnitsFor ERGO
+      ueE <- divClass "initial-options grid1" $ do
+        settings <- getSettings
+        let setUs = getSettingsUnits settings
+        unitErgoE <- unitsDropdown (getUnitERGO setUs) allUnitsERGO
+        updateSettings $ ffor unitErgoE (\uergo -> settings {settingsUnits = Just $ setUs {unitERGO = Just uergo}})
+        delay 0.1 (() <$ unitErgoE)
+      pure $ leftmost [ubE, ueE]
+
     unitsDropdown val allUnits = do
       langD <- getLanguage
       let unitD = constDyn val
