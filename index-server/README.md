@@ -15,3 +15,7 @@ To run dev instance:
 * navigate to ergvein/index-server folder
 * run initDevDb.sh to create test Postgresql database
 * run runDev.sh to start server
+
+To run docker instance:
+
+You can use prebuilt docker images of ergvein index server, for docker-compose istructions see [docker-compose-example](docker-compose-example/README.md)

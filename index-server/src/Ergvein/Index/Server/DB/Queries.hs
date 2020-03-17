@@ -18,7 +18,9 @@ import           Control.Concurrent
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Monad.Reader
+import           Data.Proxy
 
+import qualified Data.Conduit.Internal as DCI
 import qualified Data.Conduit.List as CL
 import qualified Database.Persist as DT
 
@@ -56,7 +58,22 @@ insertTxIns txIns = insertMany $ txInRec <$> txIns
   where
     txInRec txIn = TxInRec (txInTxHash txIn) (txInTxOutHash txIn) (txInTxOutIndex txIn)
 
-insertBlock :: MonadIO m => BlockMetaInfo -> QueryT m (Key BlockMetaRec)
+insertBlock  :: MonadIO m  => BlockMetaInfo -> QueryT m (Key BlockMetaRec)
 insertBlock block = insert $ blockMetaRec block
   where
     blockMetaRec block = BlockMetaRec (blockMetaCurrency block) (blockMetaBlockHeight block) (blockMetaHeaderHexView block) (blockMetaAddressFilterHexView block)
+
+rowsCount :: forall record m . (BackendCompatible SqlBackend (PersistEntityBackend record),
+                                PersistEntity record, MonadIO m)
+                                 => Proxy record -> QueryT m Word64
+rowsCount _ = do 
+  result <- select $ from (\(_ :: SqlExpr (Entity record)) -> pure $ countRows)
+  pure $ unValue $ head $ result
+
+chunksCount :: forall record m . (BackendCompatible SqlBackend (PersistEntityBackend record),
+                                PersistEntity record, MonadIO m)
+                                 => Proxy record -> QueryT m Word64
+chunksCount _ = do 
+  rCount <- rowsCount (Proxy :: Proxy record)
+  let cCount = ceiling $ fromIntegral rCount / (fromIntegral $  unPageSize pageLoadSize)
+  pure cCount

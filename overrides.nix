@@ -1,5 +1,5 @@
 # Here you can put overrides of dependencies
-{ reflex-platform ? (import ./reflex-platform.nix {}), /*isAndroid ? false,*/ ... }:
+{ reflex-platform }:
 let
   pkgs = reflex-platform.nixpkgs;
   overrideCabal = pkgs.haskell.lib.overrideCabal;
@@ -47,23 +47,26 @@ in (self: super: let
     reflex-external-ref = ingnoreGarbage super.reflex-external-ref;
     reflex-localize = ingnoreGarbage super.reflex-localize;
     # Overridess
+    android-activity = self.callPackage ./derivations/android-activity.nix {};
+    # android-activity = lib.dontCheck (super.android-activity);
     clay = self.callPackage ./derivations/clay.nix {};
     cryptonite = self.callPackage ./derivations/cryptonite.nix {};
     criterion = lib.dontCheck super.criterion;
     haskoin-core = self.callPackage ./derivations/haskoin-core.nix {};
     bitcoin-api = self.callPackage ./derivations/haskell-bitcoin-api.nix {};
     bytestring-trie = self.callPackage ./derivations/bytestring-trie.nix {};
-    servant = self.callPackage ./derivations/servant.nix {};
-    servant-client = self.callPackage ./derivations/servant-client.nix {};
-    servant-client-core = self.callPackage ./derivations/servant-client-core.nix {};
-    servant-server = self.callPackage ./derivations/servant-server.nix {};
     zlib = self.callPackage ./derivations/zlib.nix { };
     stm-hamt = self.callPackage ./derivations/stm-hamt.nix { };
     haskey = self.callPackage ./derivations/haskey.nix { };
     persistent-pagination = self.callPackage ./derivations/persistent-pagination.nix {};
     flat = lib.dontCheck (super.flat);
-    wide-word = lib.dontCheck (super.wide-word);
     reflex-dom-core = lib.dontCheck (super.reflex-dom-core);
     bitstream = self.callPackage ./derivations/bitstream.nix { };
+    wide-word = lib.dontCheck (self.callPackage ./derivations/wide-word.nix { });
+    byte-order = self.callPackage ./derivations/byte-order.nix {};
+    primitive-unaligned = self.callPackage ./derivations/primitive-unaligned.nix { };
+    lmdb = self.callPackage ./derivations/haskell-lmdb.nix { };
+    x509-validation = lib.dontCheck super.x509-validation;
+    tls = lib.dontCheck super.tls;
   }
 )

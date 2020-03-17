@@ -2,6 +2,7 @@ module Ergvein.Wallet.Input(
     Password
   , textField
   , validatedTextField
+  , validatedTextFieldSetVal
   , passField
   , passFieldWithEye
   , submitClass
@@ -53,6 +54,24 @@ validatedTextField lbl v0 mErrsD = do
     isInvalidD = fmap (maybe "" (const "is-invalid")) mErrsD
     inputField = divClassDyn isInvalidD $ _textInput_value <$> labeledTextInput lbl def {
       _textInputConfig_initialValue = v0
+    }
+
+validatedTextFieldSetVal :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPrint l1)
+  => l0 -- ^ Label
+  -> Text -- ^ Initial value
+  -> Dynamic t (Maybe [l1]) -- ^ List of errors
+  -> Event t Text
+  -> m (Dynamic t Text)
+validatedTextFieldSetVal lbl v0 mErrsD setValE = do
+  textInputValueD <- inputField
+  divClass "form-field-errors" $ simpleList errsD displayError
+  pure textInputValueD
+  where
+    errsD = fmap (maybe [] id) mErrsD
+    isInvalidD = fmap (maybe "" (const "is-invalid")) mErrsD
+    inputField = divClassDyn isInvalidD $ _textInput_value <$> labeledTextInput lbl def {
+      _textInputConfig_initialValue = v0
+    , _textInputConfig_setValue = setValE
     }
 
 displayError :: (MonadFrontBase t m, LocalizedPrint l) => Dynamic t l -> m ()

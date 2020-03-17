@@ -1,5 +1,6 @@
 module Ergvein.Wallet.Page.QRCode(
-  qrCodeWidget
+    qrCodeWidget
+  , genQrCodeBase64Image
   ) where
 
 import Ergvein.Text
@@ -8,6 +9,10 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Canvas
 
 import Reflex.Dom
+
+import Language.Javascript.JSaddle.Evaluate
+import Language.Javascript.JSaddle.Monad
+import Language.Javascript.JSaddle.Value
 
 import qualified Data.Vector.Unboxed              as UV
 import           Codec.QRCode
@@ -26,13 +31,22 @@ qrCodeWidget addr cur = divClass "qrcode-container" $ mdo
       cOpts = CanvasOptions canvasW canvasH "qrcode" "qrcode"
       qrData = qrcGen addr cur
 
+genQrCodeBase64Image :: MonadFrontBase t m => m Text
+genQrCodeBase64Image = do
+  textRes <- liftJSM $ valToText $ eval $ canvasToBase64Image
+  pure textRes
+  where
+    canvasToBase64Image :: Text
+    canvasToBase64Image = "(function(){var cnvs = document.getElementById('qrcode'); var textBase64 = cnvs.toDataURL('image/png'); return textBase64;})();"
+    --canvasToBase64Image = "(function(){return 'test'})();"
+
 qrcGen :: Text -> Currency -> Maybe QRImage
 qrcGen t cur = encodeText (defaultQRCodeOptions L) Utf8WithoutECI $ curprefix <> t
   where
     curprefix :: Text
     curprefix = case cur of
-      BTC ->  "bitcoin:"
-      ERGO -> "ergo:"
+      BTC ->  "bitcoin://"
+      ERGO -> "ergo://"
 
 qrcPerCanvas :: Maybe QRImage -> Int -> [(Maybe Int, Square)]
 qrcPerCanvas mqrI cW = case mqrI of

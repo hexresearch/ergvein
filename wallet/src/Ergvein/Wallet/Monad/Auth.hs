@@ -7,6 +7,7 @@ module Ergvein.Wallet.Monad.Auth(
 import Control.Concurrent.Chan (Chan)
 import Control.Monad.Random.Class
 import Control.Monad.Reader
+import Data.Map.Strict (Map)
 import Data.Time (NominalDiffTime)
 import Ergvein.Crypto
 import Ergvein.Index.Client
@@ -17,6 +18,8 @@ import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Currencies
+import Ergvein.Wallet.Filters.Loader
+import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Headers.Loader
 import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Language
@@ -25,6 +28,7 @@ import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Settings (Settings(..), storeSettings)
 import Ergvein.Wallet.Storage.Util
 import Network.HTTP.Client hiding (Proxy)
@@ -60,6 +64,10 @@ data Env t = Env {
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
 , env'manager         :: !Manager
 , env'headersStorage  :: !HeadersStorage
+, env'filtersStorage  :: !FiltersStorage
+, env'syncProgress    :: !(ExternalRef t SyncProgress)
+, env'heightRef       :: !(ExternalRef t (Map Currency Integer))
+, env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -71,6 +79,10 @@ instance Monad m => HasStoreDir (ErgveinM t m) where
 instance Monad m => HasHeadersStorage (ErgveinM t m) where
   getHeadersStorage = asks env'headersStorage
   {-# INLINE getHeadersStorage #-}
+
+instance Monad m => HasFiltersStorage (ErgveinM t m) where
+  getFiltersStorage = asks env'filtersStorage
+  {-# INLINE getFiltersStorage #-}
 
 instance MonadIO m => HasClientManager (ErgveinM t m) where
   getClientMaganer = asks env'manager
@@ -162,6 +174,19 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE updateSettings #-}
   getSettingsRef = asks env'settings
   {-# INLINE getSettingsRef #-}
+  getSyncProgressRef = asks env'syncProgress 
+  {-# INLINE getSyncProgressRef #-}
+  getSyncProgress = externalRefDynamic =<< asks env'syncProgress 
+  {-# INLINE getSyncProgress #-}
+  setSyncProgress ev = do 
+    ref <- asks env'syncProgress
+    performEvent_ $ writeExternalRef ref <$> ev 
+  {-# INLINE setSyncProgress #-}
+  getHeightRef = asks env'heightRef
+  {-# INLINE getHeightRef #-}
+  getFiltersSyncRef = asks env'filtersSyncRef 
+  {-# INLINE getFiltersSyncRef #-}
+
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
@@ -238,11 +263,15 @@ liftAuth ma0 ma = mdo
         timeoutRef      <- getRequestTimeoutRef
         manager         <- getClientMaganer
         hst             <- getHeadersStorage
-        headersLoader
-        a <- runReaderT (wrapped ma) $ Env
+        fst             <- getFiltersStorage
+        syncRef         <- getSyncProgressRef
+        heightRef       <- getHeightRef
+        fsyncRef        <- getFiltersSyncRef
+        -- headersLoader
+        filtersLoader
+        runReaderT (wrapped ma) $ Env
           settingsRef backEF loading langRef activeCursRef authRef (logoutFire ()) storeDir alertsEF
-          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager hst
-        pure a
+          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager hst fst syncRef heightRef fsyncRef
   let
     ma0' = maybe ma0 runAuthed mauth0
     newAuthInfoE = ffilter isMauthUpdate $ updated mauthD

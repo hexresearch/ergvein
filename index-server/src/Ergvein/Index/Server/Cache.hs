@@ -2,14 +2,18 @@
 module Ergvein.Index.Server.Cache where
 
 import Conduit
-import Control.Monad.Logger
 import Control.Monad
+import Control.Monad.Logger
 import Conversion
 import Data.Default
 import Data.Flat
 import Data.List
 import Data.Maybe
+import Data.Proxy
+import Data.Text (Text, pack)
+import Data.Word
 import Database.LevelDB.Base
+import Database.Persist.Pagination.Types
 import System.Directory
 import System.FilePath
 
@@ -21,7 +25,9 @@ import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.Utils
+import Ergvein.Text
 
+import qualified Data.Conduit.Internal as DCI
 import qualified Data.Conduit.List as CL
 import qualified Data.Map.Strict as Map
 
@@ -83,24 +89,38 @@ loadCache :: (MonadLogger m, MonadIO m) => DB -> DBPool -> m ()
 loadCache db pool = do
   logInfoN "Loading cache"
 
-  logInfoN "Loading outputs"
-  runDbQuery pool $ runConduit $ pagedEntitiesStream TxOutRecId
+  txOutChunksCount <- runDbQuery pool (chunksCount (Proxy :: Proxy TxOutRec))
+  runDbQuery pool $ runConduit 
+     $ DCI.zipSources (chunksEnumeration txOutChunksCount) (pagedEntitiesStream TxOutRecId)
+    .| CL.mapM  (logLoadingProgress "outputs" txOutChunksCount)
     .| CL.mapM_ (cacheTxOutInfos db . fmap convert)
     .| sinkList
 
-  logInfoN "Loading inputs"
-  runDbQuery pool $ runConduit $ pagedEntitiesStream TxInRecId
+  txInChunksCount <- runDbQuery pool (chunksCount (Proxy :: Proxy TxInRec))
+  runDbQuery pool $ runConduit
+     $ DCI.zipSources (chunksEnumeration txInChunksCount) (pagedEntitiesStream TxInRecId)
+    .| CL.mapM  (logLoadingProgress "inputs" txInChunksCount)
     .| CL.mapM_ (cacheTxInInfos db . fmap convert)
     .| sinkList
 
-  logInfoN "Loading transactions"
-  runDbQuery pool $ runConduit $ pagedEntitiesStream TxRecId
+  txChunksCount <- runDbQuery pool (chunksCount (Proxy :: Proxy TxRec))
+  runDbQuery pool $ runConduit
+     $ DCI.zipSources (chunksEnumeration txChunksCount) (pagedEntitiesStream TxRecId)
+    .| CL.mapM  (logLoadingProgress "transactions" txChunksCount)
     .| CL.mapM_ (cacheTxInfos db . fmap convert)
     .| sinkList
 
-  logInfoN "Loading block headers"
-  runDbQuery pool $ runConduit $ pagedEntitiesStream BlockMetaRecId
+  blockMetaChunksCount <- runDbQuery pool (chunksCount (Proxy :: Proxy BlockMetaRec))
+  runDbQuery pool $ runConduit
+     $ DCI.zipSources (chunksEnumeration blockMetaChunksCount) (pagedEntitiesStream BlockMetaRecId)
+    .| CL.mapM  (logLoadingProgress "block meta" blockMetaChunksCount)
     .| CL.mapM_ (cacheBlockMetaInfos db . fmap convert)
     .| sinkList
 
   pure ()
+  where 
+    chunksEnumeration chunkCount = CL.enumFromTo 1 chunkCount
+    logLoadingProgress :: MonadLogger m => Text -> Word64 -> (Word64, a) -> m a
+    logLoadingProgress entityType chunkCount (chunkIndex, chunkData) = do
+      logInfoN $ "Loading " <> entityType <> " cache: " <> showf 2 (fromIntegral chunkIndex / fromIntegral chunkCount * 100 :: Double) <> "%"
+      pure chunkData

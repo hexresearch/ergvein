@@ -35,6 +35,8 @@ library
     c-sources:
       cbits/clipboard.c
       cbits/clock.c
+      cbits/share.c
+      cbits/camera.c
     build-depends: android-activity
     build-tools: hsc2hs
     exposed-modules:

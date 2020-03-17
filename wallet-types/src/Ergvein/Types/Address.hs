@@ -5,6 +5,7 @@ module Ergvein.Types.Address (
     , pubKeyErgAddr
     , egvAddrToString
     , stringToEgvAddr
+    , egvAddrCurrency
   ) where
 
 import Data.Aeson
@@ -100,6 +101,11 @@ btcAddrToString = HA.addrToString net
 ergAddrToString :: ErgAddress -> Text
 ergAddrToString = encodeBase58CheckErg . runPut . base58PutErg net
   where net = getErgNetwork $ getCurrencyNetwork ERGO
+
+egvAddrCurrency :: EgvAddress -> Currency
+egvAddrCurrency addr = case addr of
+  BtcAddress{} -> BTC
+  ErgAddress{} -> ERGO
 
 egvAddrToString :: EgvAddress -> Text
 egvAddrToString (BtcAddress addr) = btcAddrToString addr

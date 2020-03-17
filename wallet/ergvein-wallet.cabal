@@ -22,16 +22,25 @@ flag testnet
 
 library
     exposed-modules:
+        Control.Monad.Haskey.State
+        Control.Monad.Haskey.Haskoin
         Ergvein.Wallet
         Ergvein.Wallet.Alert
         Ergvein.Wallet.Alert.Handler
         Ergvein.Wallet.Alert.Type
+        Ergvein.Wallet.Camera
         Ergvein.Wallet.Client
         Ergvein.Wallet.Clipboard
         Ergvein.Wallet.Currencies
         Ergvein.Wallet.Elements
         Ergvein.Wallet.Embed
         Ergvein.Wallet.Embed.TH
+        Ergvein.Wallet.Filters.Btc.Queries
+        Ergvein.Wallet.Filters.Btc.Types
+        Ergvein.Wallet.Filters.Loader
+        Ergvein.Wallet.Filters.Scan
+        Ergvein.Wallet.Filters.Storage
+        Ergvein.Wallet.Filters.Types
         Ergvein.Wallet.Headers.Btc.Queries
         Ergvein.Wallet.Headers.Btc.Types
         Ergvein.Wallet.Headers.Loader
@@ -55,6 +64,7 @@ library
         Ergvein.Wallet.Localization.Seed
         Ergvein.Wallet.Localization.Settings
         Ergvein.Wallet.Localization.Storage
+        Ergvein.Wallet.Localization.Share
         Ergvein.Wallet.Log
         Ergvein.Wallet.Log.Page
         Ergvein.Wallet.Log.Reader
@@ -89,17 +99,21 @@ library
         Ergvein.Wallet.Page.Seed
         Ergvein.Wallet.Page.Send
         Ergvein.Wallet.Page.Settings
+        Ergvein.Wallet.Page.Share
         Ergvein.Wallet.Password
         Ergvein.Wallet.Platform
         Ergvein.Wallet.Resize
         Ergvein.Wallet.Scan
         Ergvein.Wallet.Settings
+        Ergvein.Wallet.Share
         Ergvein.Wallet.Storage
         Ergvein.Wallet.Storage.AuthInfo
         Ergvein.Wallet.Storage.Constants
         Ergvein.Wallet.Storage.Keys
         Ergvein.Wallet.Storage.Util
         Ergvein.Wallet.Style
+        Ergvein.Wallet.Sync.Status
+        Ergvein.Wallet.Sync.Widget
         Ergvein.Wallet.Util
         Ergvein.Wallet.Validate
         Ergvein.Wallet.Widget.GraphPinCode
@@ -126,11 +140,13 @@ library
         composition-extra -any,
         containers >=0.6 && <0.7,
         data-default -any,
+        dependent-sum >= 0.6,
         directory -any,
         ergvein-common >=1.0 && <1.1,
         ergvein-crypto >=0.1 && <0.2,
         ergvein-index-api >=0.1 && <0.2,
         ergvein-index-client >=0.1 && <0.2,
+        ergvein-wallet-filters >= 0.1 && < 0.2,
         ergvein-wallet-native >=0.1 && <0.2,
         ergvein-wallet-types >=0.1 && <0.2,
         exceptions -any,
@@ -142,6 +158,7 @@ library
         haskey-mtl >=0.3 && <0.4,
         haskoin-core -any,
         http-client >=0.5 && <0.7,
+        http-client-tls >= 0.3 && < 0.4,
         immortal >= 0.3 && < 0.4,
         interpolatedstring-perl6 -any,
         jsaddle -any,
@@ -173,7 +190,8 @@ library
         unliftio-core >= 0.1 && < 0.2,
         validation >=1 && < 1.2,
         vector -any,
-        yaml -any
+        yaml -any,
+        lmdb-simple >= 0.4 && < 0.5
 
     if flag(android)
         cpp-options: -DANDROID

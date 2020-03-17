@@ -18,6 +18,7 @@ import Data.Text (Text)
 import Data.Time(UTCTime, NominalDiffTime)
 import Ergvein.Crypto
 import Ergvein.Index.Client
+import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Native
@@ -73,6 +74,8 @@ type MonadFrontConstr t m = (PlatformNatives
   , HasStoreDir m
   , HasStoreDir (Performable m)
   , HasHeadersStorage m
+  , HasFiltersStorage m
+  , HasFiltersStorage (Performable m)
   , MonadBaseConstr t m
   , MonadLocalized t m
   , MonadRetract t m
@@ -144,7 +147,8 @@ instance MonadRandom (WithJSContextSingleton x (SpiderHostFrame Global)) where
 -- ===========================================================================
 
 class (MonadBaseConstr t m, HasClientManager m, HasClientManager (Performable m)) => MonadClient t m | m -> t where
-  -- | Set the number of required confirmations
+  -- | Set the number of required confirmations. First is minimum required answers. Second is sufficient
+  -- amount of answers from indexers.
   setRequiredUrlNum :: Event t (Int, Int) -> m ()
   -- | Get the number of required confirmations. First is minimum required answers. Second is sufficient
   -- amount of answers from indexers.
@@ -161,3 +165,4 @@ class (MonadBaseConstr t m, HasClientManager m, HasClientManager (Performable m)
   getRequiredUrlNumRef :: m (ExternalRef t (Int, Int))
   -- | Get request timeout ref
   getRequestTimeoutRef :: m (ExternalRef t NominalDiffTime)
+

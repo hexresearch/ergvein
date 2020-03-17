@@ -6,6 +6,7 @@ import Control.Monad.Except
 import Data.Either (isRight)
 import Ergvein.Text
 import Ergvein.Types.Currency
+import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Language
@@ -69,11 +70,13 @@ sendPage currency = do
   navbarWidget currency thisWidget NavbarSend
   wrapper True $ divClass "send-page" $ form $ fieldset $ mdo
     recipientErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing) . fst)
-    recipientD <- validatedTextField RecipientString "" recipientErrsD
-    (qrE, pasteE) <- divClass "send-buttons-wrapper" $ do
+    recipientD <- validatedTextFieldSetVal RecipientString "" recipientErrsD resQRcodeE
+    (qrE, pasteE, resQRcodeE) <- divClass "send-buttons-wrapper" $ do
       qrE <- outlineButtonWithIcon BtnScanQRCode "fas fa-qrcode fa-lg"
+      openE <- delay 1.0 =<< openCamara qrE
+      resQRcodeE <- waiterResultCamera openE
       pasteE <- outlineButtonWithIcon BtnPasteString "fas fa-clipboard fa-lg"
-      pure (qrE, pasteE)
+      pure (qrE, pasteE, resQRcodeE)
     amountErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing) . snd)
     amountD <- validatedTextField AmountString "" amountErrsD
     submitE <- submitClass "button button-outline send-submit" SendBtnString

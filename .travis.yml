@@ -23,3 +23,7 @@ script:
 - nix-build -A ghc.ergvein-index-server
 - nix-build --arg isAndroid true -A android.ergvein-wallet
 - cd nix && ./ci-build-docker.sh
+
+branches:
+  only:
+  - master

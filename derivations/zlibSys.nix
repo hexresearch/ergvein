@@ -102,7 +102,7 @@ stdenv.mkDerivation (rec {
 
   installFlags = stdenv.lib.optionals (stdenv.hostPlatform.libc == "msvcrt") [
     "BINARY_PATH=$(out)/bin"
-    "INCLUDE_PATH=$(dev)/include"
+    "INCLUDE_PATH=$(out)/include"
     "LIBRARY_PATH=$(out)/lib"
   ];
 
