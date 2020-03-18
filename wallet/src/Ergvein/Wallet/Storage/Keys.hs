@@ -1,4 +1,4 @@
-module Ergvein.Wallet.Storage.Keys(
+module Ergvein.Wallet.Storage.Keys (
     egvXPubKeyToEgvAddress
   , deriveCurrencyMasterPrvKey
   , deriveCurrencyMasterPubKey
