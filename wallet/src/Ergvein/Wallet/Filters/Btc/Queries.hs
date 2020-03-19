@@ -12,20 +12,22 @@ import Ergvein.Filters.Btc
 import Ergvein.Wallet.Filters.Btc.Types
 import Network.Haskoin.Block
 
+import qualified Database.LMDB.Simple.Extra as LMDB
+
 insertFilter :: MonadIO m => BlockHeight -> BlockHash -> BtcAddrFilter -> Environment ReadWrite -> m ()
-insertFilter h bh f = liftIO . readWriteTransaction $ do 
-  fdb <- getBtcFiltersDb
-  hdb <- getBtcHeightsDb
+insertFilter h bh f e = liftIO . readWriteTransaction e $ do 
+  fdb <- getBtcFiltersDb 
+  hdb <- getBtcHeightsDb 
   tdb <- getBtcTotalDb
   put fdb bh $ Just f 
   put hdb h $ Just bh 
   mtotal <- get tdb ()
   case mtotal of 
-    Just total | total >= h -> put tdb () $ Just h  
-    _ -> pure ()
+    Just total | total >= h -> pure ()
+    _ -> put tdb () $ Just h  
    
-getFilter :: AllocReaderM m => BlockHeight -> SchemaBtc -> m (Maybe BtcAddrFilter)
-getFilter k s = do 
+getFilter :: MonadIO m => BlockHeight -> Environment ReadWrite -> m (Maybe BtcAddrFilter)
+getFilter k e = liftIO . readOnlyTransaction e $ do 
   fdb <- getBtcFiltersDb
   hdb <- getBtcHeightsDb
   mh <- get hdb k
@@ -33,9 +35,13 @@ getFilter k s = do
     Nothing -> pure Nothing 
     Just h -> get fdb h
   
-getFiltersHeight :: AllocReaderM m => SchemaBtc -> m BlockHeight
-getFiltersHeight s = fromMaybe 0 . fmap fst <$> B.lookupMax (s ^. schemaBtcHeights)
+getFiltersHeight :: MonadIO m => Environment ReadWrite -> m BlockHeight
+getFiltersHeight e = liftIO . readOnlyTransaction e $ do 
+  tdb <- getBtcTotalDb
+  fromMaybe 0 <$> get tdb ()
 
 -- | Right fold over all filters
-foldFilters :: AllocReaderM m => (BlockHash -> BtcAddrFilter -> a -> a) -> a -> SchemaBtc -> m a 
-foldFilters f a0 = B.foldrWithKey f a0 . view schemaBtcFilters
+foldFilters :: MonadIO m =>  (BlockHash -> BtcAddrFilter -> a -> a) -> a -> Environment ReadWrite -> m a 
+foldFilters f a0 e = liftIO . readOnlyTransaction e $ do 
+  fdb <- getBtcFiltersDb
+  LMDB.foldrWithKey f a0 fdb
