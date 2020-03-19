@@ -19,6 +19,7 @@ import           Ergvein.Index.Server.Cache.Schema
 import           Ergvein.Index.Server.Config
 import           Ergvein.Index.Server.Environment
 import           Ergvein.Index.Server.Utils
+import           Ergvein.Text
 import           Ergvein.Types.Currency
 import           Ergvein.Types.Transaction
 
