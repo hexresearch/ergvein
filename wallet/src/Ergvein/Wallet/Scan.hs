@@ -10,6 +10,7 @@ import Data.Function
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
+import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction (BlockHeight)
 import Ergvein.Wallet.Filters.Storage 
@@ -109,7 +110,7 @@ filterAddress e = performFilters $ ffor e $ \(_, pk) -> Filters.filterAddress $ 
 -- FIXME
 getBlocks :: MonadFront t m => Event t [BlockHash] -> m (Event t [Block])
 getBlocks blockHeightE = pure $ getBlocksMock <$> blockHeightE
-  where getBlocksMock bhs = if null bhs then [] else [genesisBlock $ getCurrencyNetwork BTC]
+  where getBlocksMock bhs = if null bhs then [] else [genesisBlock $ getBtcNetwork $ getCurrencyNetwork BTC]
 
 -- FIXME
 storeNewTransactions :: MonadFront t m => Event t [Block] -> m (Event t Int)

@@ -7,15 +7,124 @@ module Ergvein.Types.Keys(
   , EgvPrvKeyсhain(..)
   , EgvPubKeyсhain(..)
   , KeyPurpose(..)
+  , xPrvExport
+  , xPrvImport
+  , xPubExport
+  , xPubImport
   ) where
 
+import Control.Monad
 import Data.Aeson
+import Data.Aeson.Types       (Parser)
+import Data.Serialize         (get, put)
+import Data.Serialize.Get     (Get, getWord32be, getWord8, runGet)
+import Data.Serialize.Put     (Putter, putWord32be, putWord8, runPut)
 import Ergvein.Aeson
+import Ergvein.Crypto.Keys
+import Ergvein.Crypto.Util
 import Ergvein.Types.Currency
-import Network.Haskoin.Keys
-import Text.Read(readMaybe)
+import Ergvein.Types.Network
+import Text.Read              (readMaybe)
 
 import qualified Data.IntMap.Strict as MI
+
+-- | Parse a binary extended private key.
+getXPrvKey :: EgvNetwork -> Get XPrvKey
+getXPrvKey (EgvBtcNetwork net) = do
+  ver <- getWord32be
+  unless (ver == getExtSecretPrefix net) $ fail
+      "Get: Invalid version for extended private key"
+  XPrvKey <$> getWord8
+          <*> getWord32be
+          <*> getWord32be
+          <*> get
+          <*> getPadPrvKey
+getXPrvKey (EgvErgNetwork net) = do
+  ver <- getWord32be
+  unless (ver == getErgExtSecretPrefix net) $ fail
+      "Get: Invalid version for extended private key"
+  XPrvKey <$> getWord8
+          <*> getWord32be
+          <*> getWord32be
+          <*> get
+          <*> getPadPrvKey
+
+-- | Serialize an extended private key.
+putXPrvKey :: EgvNetwork -> Putter XPrvKey
+putXPrvKey (EgvBtcNetwork net) k = do
+  putWord32be  $ getExtSecretPrefix net
+  putWord8     $ xPrvDepth k
+  putWord32be  $ xPrvParent k
+  putWord32be  $ xPrvIndex k
+  put          $ xPrvChain k
+  putPadPrvKey $ xPrvKey k
+putXPrvKey (EgvErgNetwork net) k = do
+  putWord32be  $ getErgExtSecretPrefix net
+  putWord8     $ xPrvDepth k
+  putWord32be  $ xPrvParent k
+  putWord32be  $ xPrvIndex k
+  put          $ xPrvChain k
+  putPadPrvKey $ xPrvKey k
+
+-- | Parse a binary extended public key.
+getXPubKey :: EgvNetwork -> Get XPubKey
+getXPubKey (EgvBtcNetwork net) = do
+  ver <- getWord32be
+  unless (ver == getExtPubKeyPrefix net) $ fail
+      "Get: Invalid version for extended public key"
+  XPubKey <$> getWord8
+          <*> getWord32be
+          <*> getWord32be
+          <*> get
+          <*> (pubKeyPoint <$> get)
+getXPubKey (EgvErgNetwork net) = do
+  ver <- getWord32be
+  unless (ver == getErgExtPubKeyPrefix net) $ fail
+      "Get: Invalid version for extended public key"
+  XPubKey <$> getWord8
+          <*> getWord32be
+          <*> getWord32be
+          <*> get
+          <*> (pubKeyPoint <$> get)
+
+-- | Serialize an extended public key.
+putXPubKey :: EgvNetwork -> Putter XPubKey
+putXPubKey (EgvBtcNetwork net) k = do
+  putWord32be $ getExtPubKeyPrefix net
+  putWord8    $ xPubDepth k
+  putWord32be $ xPubParent k
+  putWord32be $ xPubIndex k
+  put         $ xPubChain k
+  put         $ wrapPubKey True (xPubKey k)
+putXPubKey (EgvErgNetwork net) k = do
+  putWord32be $ getErgExtPubKeyPrefix net
+  putWord8    $ xPubDepth k
+  putWord32be $ xPubParent k
+  putWord32be $ xPubIndex k
+  put         $ xPubChain k
+  put         $ wrapPubKey True (xPubKey k)
+
+-- | Exports an extended private key to the BIP32 key export format ('Base58').
+xPrvExport :: EgvNetwork -> XPrvKey -> Base58
+xPrvExport n@(EgvBtcNetwork net) = encodeBase58CheckBtc . runPut . putXPrvKey n
+xPrvExport n@(EgvErgNetwork net) = encodeBase58CheckErg . runPut . putXPrvKey n
+
+-- | Exports an extended public key to the BIP32 key export format ('Base58').
+xPubExport :: EgvNetwork -> XPubKey -> Base58
+xPubExport n@(EgvBtcNetwork net) = encodeBase58CheckBtc . runPut . putXPubKey n
+xPubExport n@(EgvErgNetwork net) = encodeBase58CheckErg . runPut . putXPubKey n
+
+-- | Decodes a BIP32 encoded extended private key. This function will fail if
+-- invalid base 58 characters are detected or if the checksum fails.
+xPrvImport :: EgvNetwork -> Base58 -> Maybe XPrvKey
+xPrvImport n@(EgvBtcNetwork net) = eitherToMaybe . runGet (getXPrvKey n) <=< decodeBase58CheckBtc
+xPrvImport n@(EgvErgNetwork net) = eitherToMaybe . runGet (getXPrvKey n) <=< decodeBase58CheckErg
+
+-- | Decodes a BIP32 encoded extended public key. This function will fail if
+-- invalid base 58 characters are detected or if the checksum fails.
+xPubImport :: EgvNetwork -> Base58 -> Maybe XPubKey
+xPubImport n@(EgvBtcNetwork net) = eitherToMaybe . runGet (getXPubKey n) <=< decodeBase58CheckBtc
+xPubImport n@(EgvErgNetwork net) = eitherToMaybe . runGet (getXPubKey n) <=< decodeBase58CheckErg
 
 -- | Wrapper for a root extended private key (a key without assigned network)
 newtype EgvRootXPrvKey = EgvRootXPrvKey {unEgvRootXPrvKey :: XPrvKey}
@@ -47,10 +156,22 @@ data EgvXPrvKey = EgvXPrvKey {
 , egvXPrvKey      :: XPrvKey
 } deriving (Eq, Show, Read)
 
+-- | Get JSON 'Value' from 'XPrvKey'.
+xPrvToJSON :: EgvNetwork -> XPrvKey -> Value
+xPrvToJSON net = String . xPrvExport net
+
+-- | Decode an extended private key from a JSON string
+xPrvFromJSON :: EgvNetwork -> Value -> Parser XPrvKey
+xPrvFromJSON net =
+    withText "xprv" $ \t ->
+        case xPrvImport net t of
+            Nothing -> fail "could not read xprv"
+            Just x  -> return x
+
 instance ToJSON EgvXPrvKey where
   toJSON (EgvXPrvKey currency key) = object [
       "currency" .= toJSON currency
-    , "prvKey"  .= xPrvToJSON (getCurrencyNetwork currency) key
+    , "prvKey"   .= xPrvToJSON (getCurrencyNetwork currency) key
     ]
 
 instance FromJSON EgvXPrvKey where
@@ -69,6 +190,18 @@ data EgvXPubKey = EgvXPubKey {
   egvXPubCurrency :: Currency
 , egvXPubKey      :: XPubKey
 } deriving (Eq, Show, Read)
+
+-- | Get JSON 'Value' from 'XPubKey'.
+xPubToJSON :: EgvNetwork -> XPubKey -> Value
+xPubToJSON net = String . xPubExport net
+
+-- | Decode an extended public key from a JSON string
+xPubFromJSON :: EgvNetwork -> Value -> Parser XPubKey
+xPubFromJSON net =
+    withText "xpub" $ \t ->
+        case xPubImport net t of
+            Nothing -> fail "could not read xpub"
+            Just x  -> return x
 
 instance ToJSON EgvXPubKey where
   toJSON (EgvXPubKey currency key) = object [

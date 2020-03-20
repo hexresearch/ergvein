@@ -6,6 +6,7 @@ module Ergvein.Wallet.Page.Info(
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
+import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Id
@@ -20,7 +21,6 @@ import Ergvein.Wallet.Wrapper
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
-import Network.Haskoin.Keys
 
 infoPage :: MonadFront t m => Currency -> m ()
 infoPage cur = do
@@ -47,7 +47,7 @@ infoPage cur = do
     vertSpacer
 
     pks :: PublicKeystore <- getPublicKeystore
-    let masterPKeyMb = (xPubExport (getCurrencyNetwork cur)  . egvXPubKey . egvPubKeyсhain'master) <$> M.lookup cur pks
+    let masterPKeyMb = (xPubExport (getCurrencyNetwork cur) . egvXPubKey . egvPubKeyсhain'master) <$> M.lookup cur pks
         partsPKey = T.chunksOf 20 $ fromMaybe "" masterPKeyMb
     textLabel MasterPublicKey $ mapM_ (\v -> text v >> br) partsPKey
     pure ()
