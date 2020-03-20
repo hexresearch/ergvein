@@ -23,6 +23,7 @@ import Ergvein.Wallet.Filters.Types
 import Ergvein.Wallet.Native
 import Network.Haskoin.Block
 import Reflex.Dom 
+import System.Directory
 
 import qualified Ergvein.Wallet.Filters.Btc.Types as BTC
 import qualified Ergvein.Wallet.Filters.Btc.Queries as BTC
@@ -41,7 +42,11 @@ getFiltersStoragePath = do
 openFiltersStorage :: (MonadIO m, MonadMask m, HasStoreDir m) => m FiltersStorage
 openFiltersStorage = do
   fn <- getFiltersStoragePath
-  e <- liftIO $ openEnvironment (unpack fn) $ defaultLimits { 
+  let path = unpack fn
+  liftIO $ do 
+    storeEx <- doesDirectoryExist path
+    unless storeEx $ createDirectory path
+  e <- liftIO $ openEnvironment path $ defaultLimits { 
       maxDatabases = 6 -- TODO: update when we need more dbs for new currencies 
     , mapSize = 1024 * 1024 * 4 * 1024 } -- 4 GB max size
   liftIO $ readWriteTransaction e BTC.initBtcDbs
