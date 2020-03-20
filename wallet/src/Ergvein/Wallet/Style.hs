@@ -172,7 +172,6 @@ menuCss = do
   ".menu-dropdown" ? do
     position absolute
     right $ px 0
-    display displayNone
     backgroundColor black
     zIndex 1
     minWidth $ px 160
@@ -185,12 +184,10 @@ menuCss = do
     width $ pct 100
     borderRadius (px 0) (px 0) (px 0) (px 0)
     marginBottom $ px 0
-  ".menu-back-button" ? do
+  ".menu-back-button.hidden" ? do
     visibility hidden
-  ".menu-back-button.visible" ? do
-    visibility visible
-  ".menu-dropdown.visible" ? do
-    display block
+  ".menu-dropdown.hidden" ? do
+    display displayNone
 
 navbarCss :: Css
 navbarCss = do

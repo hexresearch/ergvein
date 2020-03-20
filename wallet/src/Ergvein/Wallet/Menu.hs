@@ -13,12 +13,12 @@ menuWidget :: (MonadFront t m, LocalizedPrint a) => a -> Maybe (Dynamic t (m ())
 menuWidget titleVal prevWidget = divClass "menu-wrapper" $ mdo
   btnE <- divClass "menu-header" $ do
     stD <- getRetractStack
-    backButton $ (not . null) <$> stD
+    backButton $ null <$> stD
     divClass "menu-wallet-name" $ localizedText titleVal -- "Default wallet"
     divButton "menu-header-button menu-dropdown-button" $ elClassDyn "i" menuDropdownButtonIconClassD blank
-  dropdownVisibleD <- toggle False btnE
-  let dropdownClassesD = visibilityClass "menu-dropdown" <$> dropdownVisibleD
-  let menuDropdownButtonIconClassD = menuDropdownButtonIconClass <$> dropdownVisibleD
+  dropdownIsHiddenD <- toggle True btnE
+  let dropdownClassesD = visibilityClass "menu-dropdown" <$> dropdownIsHiddenD
+  let menuDropdownButtonIconClassD = menuDropdownButtonIconClass <$> dropdownIsHiddenD
   divClassDyn dropdownClassesD $ do
     let menuBtn v = (v <$) <$> clearButton v
     balE <- menuBtn MenuBalances
@@ -36,12 +36,13 @@ backButton visibilityD = do
   e <- divButton backButtonVisibleD $ elClass "i" "fas fa-arrow-left fa-fw" blank
   void $ retract e
 
+-- | Adds "hidden" class to the given classes if predicate is True
 visibilityClass :: Text -> Bool -> Text
-visibilityClass c isVisible = c <> " " <> toClass isVisible
+visibilityClass c isHidden = c <> " " <> toClass isHidden
   where 
-    toClass True = "visible"
+    toClass True = "hidden"
     toClass _    = ""
 
 menuDropdownButtonIconClass :: Bool -> Text
-menuDropdownButtonIconClass True = "fas fa-times fa-fw"
-menuDropdownButtonIconClass _    = "fas fa-bars fa-fw"
+menuDropdownButtonIconClass True = "fas fa-bars fa-fw"
+menuDropdownButtonIconClass _    = "fas fa-times fa-fw"
