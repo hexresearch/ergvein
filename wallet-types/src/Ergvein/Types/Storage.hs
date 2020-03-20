@@ -9,7 +9,6 @@ import Data.Aeson
 import Data.ByteArray (convert, Bytes)
 import Data.ByteString (ByteString)
 import Data.Proxy
-import Data.Sequence
 import Data.Text
 import Ergvein.Aeson
 import Ergvein.Text
@@ -17,11 +16,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Network.Haskoin.Keys
 
-import qualified Data.ByteString.Base64   as B64
-import qualified Data.IntMap.Strict       as MI
 import qualified Data.Map.Strict          as M
-import qualified Data.Text.Encoding.Error as TEE
-import qualified Data.Text.Encoding       as TE
 
 type WalletName = Text
 

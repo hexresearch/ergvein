@@ -10,7 +10,7 @@ import           Data.Serialize
 import           Network.Bitcoin.Api.Blockchain
 import           Network.Bitcoin.Api.Client
 
-import           Ergvein.Crypto.SHA256
+import           Ergvein.Crypto.Hash
 import           Ergvein.Filters.Btc
 import           Ergvein.Index.Server.BlockchainScanning.Types
 import           Ergvein.Index.Server.Cache.Monad
@@ -19,6 +19,7 @@ import           Ergvein.Index.Server.Cache.Schema
 import           Ergvein.Index.Server.Config
 import           Ergvein.Index.Server.Environment
 import           Ergvein.Index.Server.Utils
+import           Ergvein.Text
 import           Ergvein.Types.Currency
 import           Ergvein.Types.Transaction
 
@@ -47,7 +48,7 @@ txInfo tx txHash = let
                   , txInTxOutIndex = fromIntegral $ HK.outPointIndex prevOutput
                   }
     txOutInfo txOutIndex txOut = let
-      scriptOutputHash = encodeSHA256Hex . doubleSHA256
+      scriptOutputHash = showt . doubleSHA256
       in TxOutInfo { txOutTxHash           = txHash
                    , txOutPubKeyScriptHash = scriptOutputHash $ HK.scriptOutput txOut
                    , txOutIndex            = fromIntegral txOutIndex

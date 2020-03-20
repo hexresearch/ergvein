@@ -1,4 +1,4 @@
-module Ergvein.Wallet.Storage.Keys(
+module Ergvein.Wallet.Storage.Keys (
     egvXPubKeyToEgvAddress
   , deriveCurrencyMasterPrvKey
   , deriveCurrencyMasterPubKey
@@ -6,41 +6,26 @@ module Ergvein.Wallet.Storage.Keys(
   , derivePubKey
   ) where
 
--- import Crypto.Hash
 import Ergvein.Crypto
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
-import Network.Haskoin.Address
-import Network.Haskoin.Constants
-import Network.Haskoin.Keys
+import Ergvein.Types.Network
 
-import qualified Data.ByteArray  as BA
 import qualified Data.ByteString as BS
 
--- | Convert BTC extended public key to EgvAddress.
-xPubBtcToEgvAddr :: Network -> XPubKey -> EgvAddress
-xPubBtcToEgvAddr net key = BtcAddress address
-  where address = pubKeyWitnessAddr pubKey
-        pubKey = PubKeyI (xPubKey key) False
+xPubToBtcAddr :: XPubKey -> BtcAddress
+xPubToBtcAddr key = pubKeyWitnessAddr $ PubKeyI (xPubKey key) False
 
--- | Convert ERGO extended public key to EgvAddress.
-xPubErgToEgvAddr :: Network -> XPubKey -> EgvAddress
-xPubErgToEgvAddr net key = ErgAddress address
-  where prefix          = BS.singleton $ getAddrPrefix net
-        keyByteString   = exportPubKey True (xPubKey key)
-        checkSumContent = BS.append prefix keyByteString
-        checksum        = BA.convert $ hashWith Blake2b_256 checkSumContent :: BS.ByteString
-        address         = BS.take 38 (BS.concat [prefix, keyByteString, checksum])
+xPubToErgAddr :: XPubKey -> ErgAddress
+xPubToErgAddr key = pubKeyErgAddr $ PubKeyI (xPubKey key) False
 
 egvXPubKeyToEgvAddress :: EgvXPubKey -> EgvAddress
 egvXPubKeyToEgvAddress key
-  | currency == BTC = xPubBtcToEgvAddr net xpk
-  | currency == ERGO = xPubErgToEgvAddr net xpk
-  | otherwise = undefined
+  | currency == BTC = BtcAddress $ xPubToBtcAddr xpk
+  | currency == ERGO = ErgAddress $ xPubToErgAddr xpk
   where currency = egvXPubCurrency key
         xpk = egvXPubKey key
-        net = getCurrencyNetwork currency
 
 -- | Derive a BIP44 compatible private key for a specific currency.
 -- Given a parent private key /m/

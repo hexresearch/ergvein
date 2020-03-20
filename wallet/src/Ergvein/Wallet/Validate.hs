@@ -1,10 +1,8 @@
 module Ergvein.Wallet.Validate (
     validate
   , validateNow
-  , validateNonEmptyString
-  , validateRational
-  , validatePositiveRational
   , validateAmount
+  , validateRecipient
   , VError(..)
   , Validation(..)
   ) where
@@ -13,10 +11,13 @@ import Control.Lens
 import Data.Maybe
 import Data.Ratio
 import Data.Validation hiding (validate)
+import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
 import Text.Parsec
+
+import qualified Data.Text as T
 
 newtype NonEmptyString = NonEmptyString String deriving (Show)
 newtype PositiveRational = PositiveRational Rational deriving (Show)
@@ -24,6 +25,7 @@ newtype PositiveRational = PositiveRational Rational deriving (Show)
 data VError = MustNotBeEmpty
             | MustBeRational
             | MustBePositive
+            | InvalidAddress
   deriving (Show)
 
 instance LocalizedPrint VError where
@@ -32,10 +34,12 @@ instance LocalizedPrint VError where
       MustNotBeEmpty -> "This field is required."
       MustBeRational -> "Enter a valid amount (example: 1.23)."
       MustBePositive -> "Value must be positive."
+      InvalidAddress -> "Invalid address."
     Russian -> case v of
       MustNotBeEmpty -> "Заполните это поле."
       MustBeRational -> "Введите корректное значение (пример: 1.23)."
       MustBePositive -> "Значение должно быть положительным."
+      InvalidAddress -> "Неверный адрес."
 
 validateNonEmptyString :: String -> Validation [VError] NonEmptyString
 validateNonEmptyString x = if x /= []
@@ -60,6 +64,18 @@ validateAmount x = case validateNonEmptyString x of
     Success result' -> case validatePositiveRational result' of
       Failure errs'' -> _Failure # errs''
       Success (PositiveRational result'') -> _Success # result''
+
+validateAddress :: Currency -> String -> Validation [VError] EgvAddress
+validateAddress currency addrStr = case stringToEgvAddr currency (T.pack addrStr) of
+  Nothing   -> _Failure # [InvalidAddress]
+  Just addr -> _Success # addr
+
+validateRecipient :: Currency -> String -> Validation [VError] EgvAddress
+validateRecipient currency addrStr = case validateNonEmptyString addrStr of
+  Failure errs -> _Failure # errs
+  Success (NonEmptyString nonEmptyAddrStr) -> case validateAddress currency nonEmptyAddrStr of
+    Failure errs' -> _Failure # errs'
+    Success addr -> _Success # addr
 
 -- | Helper for widget that displays error
 errorWidget :: (MonadFrontBase t m, LocalizedPrint l) => l -> m ()

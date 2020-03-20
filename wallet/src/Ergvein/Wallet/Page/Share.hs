@@ -5,8 +5,10 @@ module Ergvein.Wallet.Page.Share(
   ) where
 
 import Ergvein.Text
+import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
+import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Clipboard (clipboardCopy)
 import Ergvein.Wallet.Elements
@@ -19,6 +21,7 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.QRCode
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Share
+import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Map.Strict as M
@@ -34,8 +37,8 @@ sharePage cur = do
   menuWidget (ShareTitle cur) thisWidget
   wrapper False $ divClass "share-content" $ do
     pks :: PublicKeystore <- getPublicKeystore
-    let xPubKeyMb  = (egvXPubKey . egvPubKeyсhain'master) <$> M.lookup cur pks
-        addressMb  = xPubAddr <$> xPubKeyMb
+    let xPubKeyMb  = egvPubKeyсhain'master <$> M.lookup cur pks
+        addressMb  = egvXPubKeyToEgvAddress <$> xPubKeyMb
     maybe errorPage renderPage addressMb
     pure ()
   where
@@ -43,9 +46,9 @@ sharePage cur = do
     errorPage = do
       pure ()
 
-    renderPage :: MonadFront t m => Address -> m ()
+    renderPage :: MonadFront t m => EgvAddress -> m ()
     renderPage addr = do
-      let addrBase  = addrToString (getCurrencyNetwork cur) addr
+      let addrBase  = egvAddrToString addr
       let shareAddr = addrBase
           shareUrl  = generateURL shareAddr
       vertSpacer

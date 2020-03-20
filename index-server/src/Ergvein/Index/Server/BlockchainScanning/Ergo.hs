@@ -5,15 +5,15 @@ import  Data.List.Index
 import  Data.Maybe
 import  Data.Serialize
 
-import Ergvein.Crypto.SHA256
+import Ergvein.Crypto.Hash
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.Environment
 import Ergvein.Interfaces.Ergo.Api
 import Ergvein.Interfaces.Ergo.It.Api.NodeApi
 import Ergvein.Interfaces.Ergo.Scorex.Core.Block
+import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Ergvein.Text
 
 import           Network.Ergo.Api.Blocks
 import           Network.Ergo.Api.Client
@@ -36,7 +36,7 @@ txInfo tx txHash = do
                       }
 
     txOutInfo txOut = let
-      scriptOutputHash = encodeSHA256Hex . doubleSHA256
+      scriptOutputHash = showt . doubleSHA256
       in TxOutInfo { txOutTxHash           = txHash
                    , txOutPubKeyScriptHash = scriptOutputHash $ unErgoTree $ ergoTree txOut
                    , txOutIndex            = fromIntegral $ fromJust $ index txOut
