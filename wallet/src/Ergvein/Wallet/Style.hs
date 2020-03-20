@@ -161,11 +161,14 @@ menuCss = do
   ".menu-wallet-name" ? do
     width $ pct 100
     padding (rem 1) (rem 0) (rem 1) (rem 1)
-  ".menu-button" ? do
-    fontSize $ pt 22
+  ".menu-header-button" ? do
+    fontSize $ pt 20
     padding (rem 1) (rem 1) (rem 1) (rem 1)
     display flex
     alignItems stretch
+  ".menu-header-button:hover" ? do
+    cursor pointer
+    color hoverColor
   ".menu-dropdown" ? do
     position absolute
     right $ px 0
@@ -182,6 +185,10 @@ menuCss = do
     width $ pct 100
     borderRadius (px 0) (px 0) (px 0) (px 0)
     marginBottom $ px 0
+  ".menu-back-button" ? do
+    visibility hidden
+  ".menu-back-button.visible" ? do
+    visibility visible
   ".menu-dropdown.visible" ? do
     display block
 

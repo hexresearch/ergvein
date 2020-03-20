@@ -20,5 +20,5 @@ navbarWidget cur prevWidget activeItem = divClass "navbar" $ do
 
 navbarBtn :: (DomBuilder t m, MonadLocalized t m) => NavbarItem -> ActiveItem-> m (Event t NavbarItem)
 navbarBtn v activeItem
-  | v == activeItem = (v <$) <$> spanBtn "navbar-item active" v
-  | v /= activeItem = (v <$) <$> spanBtn "navbar-item" v
+  | v == activeItem = (v <$) <$> spanButton "navbar-item active" v
+  | v /= activeItem = (v <$) <$> spanButton "navbar-item" v
