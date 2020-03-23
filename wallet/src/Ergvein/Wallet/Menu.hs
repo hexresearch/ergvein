@@ -1,5 +1,6 @@
 module Ergvein.Wallet.Menu(
     menuWidget
+  , menuWidgetOnlyBackBtn
   ) where
 
 import Data.Text (Text)
@@ -13,7 +14,7 @@ menuWidget :: (MonadFront t m, LocalizedPrint a) => a -> Maybe (Dynamic t (m ())
 menuWidget titleVal prevWidget = divClass "menu-wrapper" $ mdo
   btnE <- divClass "menu-header" $ do
     stD <- getRetractStack
-    backButton $ null <$> stD
+    backButton "menu-header-button menu-back-button" $ null <$> stD
     divClass "menu-wallet-name" $ localizedText titleVal -- "Default wallet"
     divButton "menu-header-button menu-dropdown-button" $ elClassDyn "i" menuDropdownButtonIconClassD blank
   dropdownIsHiddenD <- toggle True btnE
@@ -29,10 +30,15 @@ menuWidget titleVal prevWidget = divClass "menu-wrapper" $ mdo
     switchE <- menuBtn MenuSwitch
     switchMenu prevWidget $ leftmost [balE, netE, setE, abtE, logE, switchE]
 
+menuWidgetOnlyBackBtn :: MonadFrontBase t m => m ()
+menuWidgetOnlyBackBtn = divClass "menu-widget-only-back-btn" $ do
+  stD <- getRetractStack
+  void $ backButton "menu-header-button menu-back-button" $ null <$> stD
+
 -- | Button for going back on widget history
-backButton :: MonadFrontBase t m => Dynamic t Bool -> m ()
-backButton visibilityD = do
-  let backButtonVisibleD = visibilityClass "menu-header-button menu-back-button" <$> visibilityD
+backButton :: MonadFrontBase t m => Text -> Dynamic t Bool -> m ()
+backButton c visibilityD = do
+  let backButtonVisibleD = visibilityClass c <$> visibilityD
   e <- divButton backButtonVisibleD $ elClass "i" "fas fa-arrow-left fa-fw" blank
   void $ retract e
 

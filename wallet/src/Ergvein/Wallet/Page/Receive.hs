@@ -11,18 +11,16 @@ import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Wrapper
 
-data CurrencyTitle = CurrencyTitle !Currency
+newtype RecieveTitle = RecieveTitle Currency
 
-instance LocalizedPrint CurrencyTitle where
-  localizedShow l (CurrencyTitle c) = case l of
+instance LocalizedPrint RecieveTitle where
+  localizedShow l (RecieveTitle c) = case l of
     English -> "Receive " <> currencyName c
-    Russian -> "Получение " <> currencyName c
+    Russian -> "Получить " <> currencyName c
 
 receivePage :: MonadFront t m => Currency -> m ()
-receivePage cur = do
+receivePage cur = divClass "base-container" $ do
   let thisWidget = Just $ pure $ receivePage cur
-  menuWidget (CurrencyTitle cur) thisWidget
+  menuWidget (RecieveTitle cur) thisWidget
   navbarWidget cur thisWidget NavbarReceive
-  wrapper True $ do
-    h3 $ localizedText $ CurrencyTitle cur
-    pure ()
+  void $ divClass "vertical-center" $ h3 $ localizedText $ RecieveTitle cur

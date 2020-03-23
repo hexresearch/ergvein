@@ -30,7 +30,7 @@ import qualified Data.List as L
 mnemonicPage :: MonadFrontBase t m => m ()
 mnemonicPage = go Nothing
   where
-    go mnemonic = wrapper False $ do
+    go mnemonic = wrapperSimple False $ do
       (e, md) <- mnemonicWidget mnemonic
       nextWidget $ ffor e $ \mn -> Retractable {
           retractableNext = checkPage mn
@@ -39,7 +39,7 @@ mnemonicPage = go Nothing
       pure ()
 
 checkPage :: MonadFrontBase t m => Mnemonic -> m ()
-checkPage mn = wrapper True $ do
+checkPage mn = wrapperSimple True $ do
   e <- mnemonicCheckWidget mn
   nextWidget $ ffor e $ \m -> Retractable {
       retractableNext = selectCurrenciesPage m
@@ -128,7 +128,7 @@ guessButtons ws idyn = do
       delay 1 $ fforMaybe btnE $ const $ if reali == i then Just (i+1) else Nothing
 
 seedRestorePage :: forall t m . MonadFrontBase t m => m ()
-seedRestorePage = wrapper True $ do
+seedRestorePage = wrapperSimple True $ do
   h4 $ localizedText SPSRestoreTitle
   resetE <- buttonClass (pure "button button-outline") SPSReset
   mnemE <- fmap (switch . current) $ widgetHold seedRestoreWidget $ seedRestoreWidget <$ resetE

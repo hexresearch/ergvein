@@ -21,7 +21,7 @@ import Ergvein.Wallet.Wrapper
 import qualified Data.Text as T
 import qualified Data.Validation as V
 
-data SendTitle = SendTitle !Currency
+newtype SendTitle = SendTitle Currency
 
 instance LocalizedPrint SendTitle where
   localizedShow l (SendTitle c) = case l of
@@ -64,11 +64,11 @@ instance LocalizedPrint BtnScanQRCode where
     Russian -> "Сканировать"
 
 sendPage :: MonadFront t m => Currency -> m ()
-sendPage currency = do
-  let thisWidget = Just $ pure $ sendPage currency
-  menuWidget (SendTitle currency) thisWidget
-  navbarWidget currency thisWidget NavbarSend
-  wrapper True $ divClass "send-page" $ form $ fieldset $ mdo
+sendPage cur = divClass "base-container" $ do
+  let thisWidget = Just $ pure $ sendPage cur
+  menuWidget (SendTitle cur) thisWidget
+  navbarWidget cur thisWidget NavbarSend
+  divClass "vertical-center" $ divClass "send-page" $ form $ fieldset $ mdo
     recipientErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing) . fst)
     recipientD <- validatedTextFieldSetVal RecipientString "" recipientErrsD resQRcodeE
     (qrE, pasteE, resQRcodeE) <- divClass "send-buttons-wrapper" $ do
@@ -83,7 +83,7 @@ sendPage currency = do
     let validationE = poke submitE $ \_ -> do
           recipient <- sampleDyn recipientD
           amount <- sampleDyn amountD
-          pure (V.toEither $ validateRecipient currency (T.unpack recipient),
+          pure (V.toEither $ validateRecipient cur (T.unpack recipient),
                 V.toEither $ validateAmount $ T.unpack amount)
         validatedE = fforMaybe validationE (\x -> if (isRight $ fst x) && (isRight $ snd x) then Just x else Nothing)
     pure ()

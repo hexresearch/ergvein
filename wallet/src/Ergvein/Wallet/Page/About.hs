@@ -13,34 +13,31 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Wrapper
 
 aboutPage :: MonadFront t m => m ()
-aboutPage = do
-  let thisWidget = Just $ pure $ aboutPage
-  menuWidget AboutTitle thisWidget
-  wrapper False $ do
-    h3 $ localizedText $ AboutTitle
-    elAttr "hr" [("class","about-hr-sep")] blank
-    divClass "about-wrapper" $ do
-      aboutContent $ do
-        aboutRow $ do
-          aboutCellLabel $ localizedText AboutVersion
-          aboutCellValue $ text "0.0.1"
-        aboutRow $ do
-          aboutCellLabel $ localizedText AboutLicence
-          aboutCellValue $ text "MIT License"
-        aboutRow $ do
-          aboutCellLabel $ localizedText AboutHomepage
-          let homepaeUrl = "https://ergvein.org"
-          aboutCellValue $ elAttr "a" [("href", homepaeUrl)] $ text homepaeUrl
-        aboutRow $ do
-          aboutCellLabel $ localizedText AboutDevelopers
-          aboutCellValue $ do
-            text "One One"
-            elBR
-            text "Two Two"
-            elBR
-            text "Three Three"
-      divClass "about-line" $ divClass "about-distrib" $ localizedText AboutDistrib
-    pure ()
+aboutPage = wrapper AboutTitle (Just $ pure aboutPage) False $ do
+  h3 $ localizedText $ AboutTitle
+  elAttr "hr" [("class","about-hr-sep")] blank
+  divClass "about-wrapper" $ do
+    aboutContent $ do
+      aboutRow $ do
+        aboutCellLabel $ localizedText AboutVersion
+        aboutCellValue $ text "0.0.1"
+      aboutRow $ do
+        aboutCellLabel $ localizedText AboutLicence
+        aboutCellValue $ text "MIT License"
+      aboutRow $ do
+        aboutCellLabel $ localizedText AboutHomepage
+        let homepaeUrl = "https://ergvein.org"
+        aboutCellValue $ elAttr "a" [("href", homepaeUrl)] $ text homepaeUrl
+      aboutRow $ do
+        aboutCellLabel $ localizedText AboutDevelopers
+        aboutCellValue $ do
+          text "One One"
+          elBR
+          text "Two Two"
+          elBR
+          text "Three Three"
+    divClass "about-line" $ divClass "about-distrib" $ localizedText AboutDistrib
+  pure ()
   where
     aboutContent   = divClass "about-line" . divClass "about-content"
     aboutRow       = divClass "about-content-row"

@@ -80,16 +80,14 @@ frontendCss r = do
   fontFamilies r
   faFontFamilies r
   html ? do
-    textAlign center
-    let px' = px 0 in padding px' px' px' px'
     let px' = px 0 in margin px' px' px' px'
-    height $ pct 100
+    let px' = px 0 in padding px' px' px' px'
+    textAlign center
   body ? do
+    let px' = px 0 in margin px' px' px' px'
+    let px' = px 0 in padding px' px' px' px'
     color textColor
     backgroundColor majorBackground
-    marginTop $ px 0
-    marginLeft $ px 0
-    marginRight $ px 0
     fontFamily ["Roboto"] []
     overflowY auto
   wrapperCss
@@ -127,17 +125,17 @@ minorBackground = rgb 59 78 122
 
 wrapperCss :: Css
 wrapperCss = do
-  ".container" ? do
-    position relative
-    height $ pct 80
+  ".base-container" ? do
+    display flex
+    flexDirection column
+    height $ pct 100
+  ".content-container" ? do
+    let em' = em 1 in margin em' em' em' em'
   ".vertical-center" ? do
-    position absolute
-    top $ pct 50
-    left $ pct 50
-    translatePctXY (pct (-50)) (pct (-50))
-    width $ pct 100
-    paddingLeft $ rem 2
-    paddingRight $ rem 2
+    flexGrow 1
+    display flex
+    flexDirection column
+    justifyContent center
 
 translatePctX :: Size Percentage -> Css
 translatePctX x = prefixed (browsers <> "transform") $ "translateX(" <> value x <> ")"
@@ -151,6 +149,7 @@ translatePctXY x y = prefixed (browsers <> "transform") $ "translate(" <> value 
 menuCss :: Css
 menuCss = do
   ".menu-wrapper" ? do
+    width $ pct 100
     position relative
   ".menu-header" ? do
     display flex
@@ -160,7 +159,7 @@ menuCss = do
     fontSize $ pt 14
   ".menu-wallet-name" ? do
     width $ pct 100
-    padding (rem 1) (rem 0) (rem 1) (rem 1)
+    padding (rem 1) (rem 0) (rem 1) (rem 0)
   ".menu-header-button" ? do
     fontSize $ pt 20
     padding (rem 1) (rem 1) (rem 1) (rem 1)

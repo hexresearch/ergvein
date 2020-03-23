@@ -14,20 +14,19 @@ import Ergvein.Wallet.Navbar.Types
 --import Ergvein.Wallet.Page.Share
 import Ergvein.Wallet.Wrapper
 
-data CurrencyTitle = CurrencyTitle !Currency
+newtype HistoryTitle = HistoryTitle Currency
 
-instance LocalizedPrint CurrencyTitle where
-  localizedShow l (CurrencyTitle c) = case l of
+instance LocalizedPrint HistoryTitle where
+  localizedShow l (HistoryTitle c) = case l of
     English -> "History " <> currencyName c
     Russian -> "История " <> currencyName c
 
 historyPage :: MonadFront t m => Currency -> m ()
-historyPage cur = do
+historyPage cur = divClass "base-container" $ do
   let thisWidget = Just $ pure $ historyPage cur
-  menuWidget (CurrencyTitle cur) thisWidget
+  menuWidget (HistoryTitle cur) thisWidget
   navbarWidget cur thisWidget NavbarHistory
-  wrapper True $ do
-    h3 $ localizedText $ CurrencyTitle cur
+  void $ divClass "vertical-center" $ h3 $ localizedText $ HistoryTitle cur
 --    cameraE <- fmap ("Test" <$) $ outlineButton ("Debug QR scan"::Text)
 --    _ <- openCamara cameraE
 --    goE <- fmap (cur <$) $ outlineButton ("Debug info"::Text)
@@ -40,4 +39,3 @@ historyPage cur = do
 --        retractableNext = infoPage cr
 --      , retractablePrev = thisWidget
 --      }
-    pure ()

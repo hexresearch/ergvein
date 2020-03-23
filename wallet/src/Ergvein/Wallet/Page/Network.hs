@@ -23,18 +23,15 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Wrapper
 
 networkPage :: MonadFront t m => Maybe Currency -> m ()
-networkPage curMb = do
-  let thisWidget = Just $ pure $ networkPage curMb
-  menuWidget NPSTitle thisWidget
-  wrapper False $ do
-    curD <- titleWrap $ do
-      divClass "network-title-name" $ h3 $ localizedText $ NPSTitle
-      divClass "network-title-cur" $ do
-        let initCur = fromMaybe BTC curMb
-        curE <- currenciesDropdown initCur allCurrencies
-        holdDyn initCur curE
-    baseHorSep
-    void $ widgetHoldDyn $ ffor curD $ \cur -> optionsContent cur
+networkPage curMb = wrapper NPSTitle (Just $ pure $ networkPage curMb) False $ do
+  curD <- titleWrap $ do
+    divClass "network-title-name" $ h3 $ localizedText $ NPSTitle
+    divClass "network-title-cur" $ do
+      let initCur = fromMaybe BTC curMb
+      curE <- currenciesDropdown initCur allCurrencies
+      holdDyn initCur curE
+  baseHorSep
+  void $ widgetHoldDyn $ ffor curD $ \cur -> optionsContent cur
   where
     titleWrap  = divClass "network-title" . divClass "network-title-table" . divClass "network-title-row"
     baseHorSep = elAttr "hr" [("class","network-hr-sep"   )] blank
@@ -104,27 +101,21 @@ labelHorSep, elBR :: MonadFront t m => m ()
 labelHorSep = elAttr "hr" [("class","network-hr-sep-lb")] blank
 elBR = el "br" blank
 
-
 pageSelectionOfServer :: MonadFront t m => Currency -> m ()
-pageSelectionOfServer cur = do
-  let thisWidget = Just $ pure $ pageSelectionOfServer cur
-  menuWidget NPSTitle thisWidget
-  wrapper False $ do
-    h3 $ localizedText $ NPSSelectServer cur
-    listD <- tempGetListServer cur
-    list <- sample $ current listD
-    selE <- fmap leftmost $ traverse renderItem list
-    -- TODO: Do something for changing URL
-    void $ nextWidget $ ffor selE $ \_ -> Retractable {
-        retractableNext = networkPage $ Just cur
-      , retractablePrev = Just $ pure $ networkPage $ Just cur
-      }
+pageSelectionOfServer cur = wrapper NPSTitle (Just $ pure $ pageSelectionOfServer cur) False $ do
+  h3 $ localizedText $ NPSSelectServer cur
+  listD <- tempGetListServer cur
+  list <- sample $ current listD
+  selE <- fmap leftmost $ traverse renderItem list
+  -- TODO: Do something for changing URL
+  void $ nextWidget $ ffor selE $ \_ -> Retractable {
+      retractableNext = networkPage $ Just cur
+    , retractablePrev = Just $ pure $ networkPage $ Just cur
+    }
   where
     renderItem baseUrl = do
       (e, _) <- divClass' "network-sel-cur-item" $ text $ T.pack $ showBaseUrl baseUrl
       pure $ baseUrl <$ domEvent Click e
-
-
 
 -- | Temporary stubs for data
 data TempErr =
