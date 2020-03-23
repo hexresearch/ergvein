@@ -4,6 +4,7 @@ module Ergvein.Index.Server.Cache where
 import Conduit
 import Control.Monad
 import Control.Monad.Logger
+import Control.Monad.Catch
 import Conversion
 import Data.Default
 import Data.Flat
@@ -70,20 +71,26 @@ addToCache db update = do
   cacheTxInfos db $ blockContentTxInfos $ blockInfoContent update
   cacheBlockMetaInfos db $ [blockInfoMeta update]
 
-openCacheDb :: FilePath -> IO DB
-openCacheDb cacheDirectory = do
-  canonicalPathDirectory <- canonicalizePath cacheDirectory
-  isDbDirExist <- doesDirectoryExist canonicalPathDirectory
-  if isDbDirExist then clearDirectoryContent canonicalPathDirectory
-                  else createDirectory canonicalPathDirectory
-
-  open canonicalPathDirectory def {createIfMissing = True }
+openCacheDb :: (MonadLogger m, MonadIO m) => FilePath -> DBPool -> m DB
+openCacheDb cacheDirectory pool = do
+  canonicalPathDirectory <- liftIO $ canonicalizePath cacheDirectory
+  isDbDirExist <- liftIO $ doesDirectoryExist canonicalPathDirectory
+  liftIO $ if isDbDirExist then pure ()
+                           else createDirectory canonicalPathDirectory                  
+  levelDBContext <- liftIO $ open canonicalPathDirectory def `catch` restoreCache pool canonicalPathDirectory
+  pure levelDBContext
   where
     clearDirectoryContent path = do
       content <- listDirectory path
       let contentFullPaths = (path </>) <$> content
       forM_ contentFullPaths removePathForcibly
-    
+
+    restoreCache :: DBPool -> FilePath -> SomeException -> IO DB
+    restoreCache p pt _ = do
+       clearDirectoryContent pt
+       ctx <- open pt def {createIfMissing = True }
+       runStdoutLoggingT $ loadCache ctx p
+       pure ctx
 
 loadCache :: (MonadLogger m, MonadIO m) => DB -> DBPool -> m ()
 loadCache db pool = do
