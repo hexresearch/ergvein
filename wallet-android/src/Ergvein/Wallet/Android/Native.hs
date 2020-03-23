@@ -14,6 +14,7 @@ import System.Directory
 import System.Directory.Tree
 import System.FilePath.Posix
 import System.IO
+import System.X509.Android
 
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
@@ -146,6 +147,8 @@ instance PlatformNatives where
 
   logWrite v = liftIO $ encodeText v androidLogWrite
   {-# INLINE logWrite #-}
+
+  readSystemCertificates = getSystemCertificateStore
 
 getFiles :: FilePath -> IO [FilePath]
 getFiles dir = do

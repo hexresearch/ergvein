@@ -192,13 +192,16 @@ library
         vector -any,
         yaml -any,
         lmdb-simple >= 0.4 && < 0.5, 
-        serialise >= 0.2 && < 0.3
+        serialise >= 0.2 && < 0.3,
+        tls -any, 
+        connection -any
 
     if flag(android)
         cpp-options: -DANDROID
         build-depends:
             android-activity -any,
-            ergvein-wallet-android -any
+            ergvein-wallet-android -any, 
+            x509-android -any
     else
         build-depends:
             ergvein-wallet-desktop -any

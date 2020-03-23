@@ -28,10 +28,12 @@ import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Sync.Status
 import Network.HTTP.Client hiding (Proxy)
-import Network.HTTP.Client.TLS (newTlsManager)
+import Network.HTTP.Client.TLS (newTlsManagerWith, mkManagerSettings)
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Servant.Client(BaseUrl)
+import Network.Connection
+import Network.TLS 
 
 import qualified Data.Set as S
 
@@ -207,7 +209,7 @@ instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
   {-# INLINE newAlertEvent #-}
   {-# INLINE getAlertEventFire #-}
 
-newEnv :: (Reflex t, TriggerEvent t m, MonadIO m)
+newEnv :: (Reflex t, TriggerEvent t m, MonadIO m, PlatformNatives)
   => Settings
   -> Chan (IO ()) -- UI callbacks channel
   -> m (UnauthEnv t)
@@ -224,7 +226,8 @@ newEnv settings uiChan = do
   re <- newRetractEnv
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
-  manager <- liftIO newTlsManager
+  tlsSettiings <- mkTlsSettiings
+  manager <- liftIO $ newTlsManagerWith $ mkManagerSettings tlsSettiings Nothing
   urls <- newExternalRef $ S.fromList $ settingsDefUrls settings
   urlNum <- newExternalRef $ settingsDefUrlNum settings
   timeout <- newExternalRef $ settingsReqTimeout settings
@@ -266,3 +269,14 @@ runEnv cbs e ma = do
   runRetractT (runReaderT ma' e) re
   where
     ma' = void (retract . fst =<< getBackEventFire) >> ma
+
+mkTlsSettiings :: (MonadIO m, PlatformNatives) => m TLSSettings  
+mkTlsSettiings = do 
+  store <- readSystemCertificates
+  pure $ TLSSettings $ defParams {
+      clientShared = (clientShared defParams) {
+        sharedCAStore = store
+      }
+    }
+  where 
+    defParams = defaultParamsClient "localhost" ""
