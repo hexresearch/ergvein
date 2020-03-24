@@ -41,6 +41,7 @@ library
     , string-conversions        >= 0.4.0.1  && <0.4.0.2
     , text
     , time
+    , byteorder
   if flag(testnet)
     cpp-options: -DTESTNET
   default-extensions:

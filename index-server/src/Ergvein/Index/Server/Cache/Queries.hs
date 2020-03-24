@@ -14,17 +14,18 @@ import Ergvein.Types.Transaction
 import Data.ByteString as BS
 import qualified Database.LevelDB.Streaming as LDBStreaming
 import qualified Database.LevelDB as LDB
+import qualified Data.Serialize as Ser
 
-safeEntrySlice :: (MonadLDB m , Ord k, Flat k, Flat v) => BS.ByteString -> k -> m [(k,v)]
+safeEntrySlice :: (MonadLDB m , Ord k, Ser.Serialize k, Flat v) => BS.ByteString -> k -> m [(k,v)]
 safeEntrySlice startKey endKey = do
   db <- getDb
   iterator <- createIter db def
   slice <- LDBStreaming.toList $ LDBStreaming.entrySlice iterator range LDBStreaming.Asc
-  pure $ over _2 unflatExact  <$> over _1 (unflatExact . unPrefixedKey) <$> slice
+  pure $ over _2 unflatExact  <$> over _1 (decodeExact . unPrefixedKey) <$> slice
   where
     range = LDBStreaming.KeyRange startKey comparison
-    comparison key = case unflat $ unPrefixedKey key of
-      Right parsedKey -> compare parsedKey endKey
+    comparison key = case Ser.decode $ unPrefixedKey key of
+      Right parsedKey -> compare parsedKey endKey  --if compare parsedKey endKey == GT then (error $ show $ unflat @BlockMetaCacheRecKey $ unPrefixedKey key) else compare parsedKey endKey
       _ -> GT
 
 getParsed :: (MonadLDB m, Flat v) => BS.ByteString -> m (Maybe v)
