@@ -34,6 +34,7 @@ indexServer = IndexApi
     , indexGetTxHexView = txHexViewEndpoint
     , indexGetTxFeeHistogram = txFeeHistogramEndpoint
     , indexTxBroadcast = txBroadcastRequestEndpoint
+    , indexGetInfo = indexGetInfoEndpoint
     }
 -- Stubs
 
@@ -112,6 +113,9 @@ indexGetBlockFiltersEndpoint request = do
       mkHash = case filtersReqCurrency request of 
         BTC -> Btc.blockHashToHex . Btc.headerHash . either (error . ("Failed to decode block hash! " ++)) id . S.decode . hex2bs
         _ -> error "Ergo indexGetBlockFiltersEndpoint is not implemented!" -- TODO here
+
+indexGetInfoEndpoint :: ServerM InfoResponse
+indexGetInfoEndpoint = undefined
 
 txMerkleProofEndpoint :: TxMerkleProofRequest -> ServerM TxMerkleProofResponse
 txMerkleProofEndpoint TxMerkleProofRequest { merkleReqCurrency = BTC }  = pure btcProof
