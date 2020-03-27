@@ -21,6 +21,9 @@ import Ergvein.Index.Server.Environment
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Text
+import  Control.Monad.Reader
+import Ergvein.Index.Server.Monad
+import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 
 import qualified Ergvein.Index.Server.BlockchainScanning.Bitcoin as BTCScanning
 import qualified Ergvein.Index.Server.BlockchainScanning.Ergo as ERGOScanning
@@ -30,22 +33,20 @@ scannedBlockHeight currency = do
   entity <- getScannedHeight currency
   pure $ scannedHeightRecHeight . entityVal <$> entity
 
-blockHeightsToScan :: ServerEnv -> Currency -> IO [BlockHeight]
-blockHeightsToScan env currency = do
-  actual  <- blockTotalHeight env currency
-  scanned <- runDbQuery (envPersistencePool env) $ scannedBlockHeight currency
+blockHeightsToScan :: Currency -> ServerM [BlockHeight]
+blockHeightsToScan currency = do
+  actual  <- actualHeight currency
+  scanned <- runDb $ scannedBlockHeight currency
   let start = maybe startHeight succ scanned
   pure [start..actual]
   where
-    cfg = envServerConfig env
     startHeight =  case currency of BTC  -> 0
                                     ERGO -> 1
 
-blockTotalHeight :: MonadIO m => ServerEnv -> Currency -> m BlockHeight
-blockTotalHeight env currency = liftIO $ case currency of
-    BTC  -> BTCScanning.actualHeight $ envServerConfig env
-    ERGO -> ERGOScanning.actualHeight env
-
+actualHeight :: Currency -> ServerM BlockHeight
+actualHeight currency = case currency of
+    BTC  -> BTCScanning.actualHeight
+    ERGO -> ERGOScanning.actualHeight 
 
 storeInfo :: (MonadIO m) => BlockInfo -> QueryT m ()
 storeInfo blockInfo = do
@@ -58,28 +59,28 @@ storeInfo blockInfo = do
 storeScannedHeight :: (MonadIO m) => Currency -> BlockHeight -> QueryT m ()
 storeScannedHeight currency scannedHeight = void $ upsertScannedHeight currency scannedHeight
 
-scannerThread :: forall m . (MonadUnliftIO m, MonadCatch m, MonadLogger m) => ServerEnv -> Currency -> (BlockHeight -> IO BlockInfo) -> m Thread
+scannerThread :: ServerEnv -> Currency -> (BlockHeight -> IO BlockInfo) -> ServerM Thread
 scannerThread env currency scanInfo =
   create $ logOnException . scanIteration
   where
     pool = envPersistencePool env
 
-    blockIteration :: BlockHeight -> BlockHeight -> m ()
+    blockIteration :: BlockHeight -> BlockHeight -> ServerM ()
     blockIteration totalh blockHeight = do
       let percent = fromIntegral blockHeight / fromIntegral totalh :: Double
       logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
-      liftIO $ do
-        blockInfo <- scanInfo blockHeight
+      do
+        blockInfo <- liftIO $ scanInfo blockHeight
         let blockInfoToStore = selectedInfoToStore blockInfo
-        runDbQuery pool $ do
+        runDb $ do
           storeInfo blockInfoToStore
           storeScannedHeight currency blockHeight
         addToCache (envLevelDBContext env) blockInfoToStore
 
-    scanIteration :: Thread -> m ()
+    scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
-      totalh <- blockTotalHeight env currency
-      heights <- liftIO $ blockHeightsToScan env currency
+      totalh <- actualHeight currency
+      heights <- blockHeightsToScan currency
       traverse_ (blockIteration totalh) heights
       liftIO $ threadDelay $ configBlockchainScanDelay $ envServerConfig env
     
@@ -87,9 +88,16 @@ scannerThread env currency scanInfo =
       let blockContent = BlockContentInfo (blockContentTxInfos $ blockInfoContent info) [] []
       in info { blockInfoContent = blockContent }
 
-startBlockchainScanner :: (MonadUnliftIO m, MonadCatch m, MonadLogger m) => ServerEnv -> m [Thread]
+f :: (MonadIO m) => ServerEnv -> BlockHeight -> m BlockInfo
+f env = (\z -> do
+  x <- liftIO $ runServerMIO env $ BTCScanning.blockInfo z
+  pure x)
+
+
+
+startBlockchainScanner ::  ServerEnv -> ServerM [Thread]
 startBlockchainScanner env =
     sequenceA
-    [ scannerThread env BTC  $ BTCScanning.blockInfo  env
-    , scannerThread env ERGO $ ERGOScanning.blockInfo env 
+    [ scannerThread env BTC $ f env
+    --, scannerThread env ERGO $ ERGOScanning.blockInfo env 
     ]

@@ -5,6 +5,7 @@ import Data.Text
 import Data.Yaml.Config
 import Ergvein.Aeson
 import GHC.Generics
+import Control.Monad.Reader
 
 data Config = Config
   { configServerPort            :: !Int
@@ -26,6 +27,12 @@ data Config = Config
   , configERGONodePort          :: !Int
   } deriving (Show, Generic)
 deriveJSON (aesonOptionsStripPrefix "config") ''Config
+
+class HasServerConfig m where
+  serverConfig :: m Config
+
+
+
 
 connectionStringFromConfig :: Config -> String
 connectionStringFromConfig cfg = let

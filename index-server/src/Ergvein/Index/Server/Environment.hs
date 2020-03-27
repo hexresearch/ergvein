@@ -43,12 +43,21 @@ btcNodeClient cfg = BitcoinApi.withClient
     (configBTCNodeUser     cfg)
     (configBTCNodePassword cfg)
 
+class HasBitcoinNodeNetwork m where
+  network :: m HK.Network
+
+instance (Monad m) => HasBitcoinNodeNetwork (ReaderT ServerEnv m) where
+  network = asks envBitconNodeNetwork
+
+instance (Monad m) => HasServerConfig (ReaderT ServerEnv m) where
+  serverConfig = asks envServerConfig
+
 newServerEnv :: (MonadIO m, MonadLogger m) => Config -> m ServerEnv
 newServerEnv cfg = do
     logger <- liftIO newChan
-    persistencePool   <- liftIO $ runStdoutLoggingT $ do
-        let doLog = configDbLog cfg
-        persistencePool <- newDBPool doLog $ fromString $ connectionStringFromConfig cfg
+    persistencePool <- liftIO $ runStdoutLoggingT $ do
+        let dbLog = configDbLog cfg
+        persistencePool <- newDBPool dbLog $ fromString $ connectionStringFromConfig cfg
         flip runReaderT persistencePool $ runDb $ runMigration migrateAll
         pure persistencePool
     levelDBContext <- openCacheDb (configCachePath cfg) persistencePool
