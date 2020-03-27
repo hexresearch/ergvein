@@ -36,21 +36,8 @@ data ServerEnv = ServerEnv
     , envErgoNodeClient    :: !ErgoApi.Client
     }
 
-btcNodeClient :: Config -> (BitcoinApi.Client -> IO a) -> IO a
-btcNodeClient cfg = BitcoinApi.withClient 
-    (configBTCNodeHost     cfg)
-    (configBTCNodePort     cfg)
-    (configBTCNodeUser     cfg)
-    (configBTCNodePassword cfg)
-
 class HasBitcoinNodeNetwork m where
-  network :: m HK.Network
-
-instance (Monad m) => HasBitcoinNodeNetwork (ReaderT ServerEnv m) where
-  network = asks envBitconNodeNetwork
-
-instance (Monad m) => HasServerConfig (ReaderT ServerEnv m) where
-  serverConfig = asks envServerConfig
+  currentBitcoinNetwork :: m HK.Network
 
 newServerEnv :: (MonadIO m, MonadLogger m) => Config -> m ServerEnv
 newServerEnv cfg = do

@@ -21,9 +21,6 @@ import           Network.Ergo.Api.Info
 import qualified Network.Ergo.Api.Utxo    as UtxoApi
 import Control.Monad.IO.Unlift
 
-
-
-
 txInfo :: ApiMonad m => ErgoTransaction -> TxHash -> m ([TxInInfo], [TxOutInfo])
 txInfo tx txHash = do
   let txOuts = txOutInfo <$> outputs tx 

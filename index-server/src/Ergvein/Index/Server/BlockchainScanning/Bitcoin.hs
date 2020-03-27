@@ -34,10 +34,6 @@ import qualified Network.Haskoin.Util               as HK
 
 import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 
-instance (MonadIO m) => MonadLDB (ReaderT ServerEnv m) where
-  getDb = asks envLevelDBContext
-  {-# INLINE getDb #-}
-
 txInfo :: HK.Tx -> TxHash -> ([TxInInfo], [TxOutInfo])
 txInfo tx txHash = let
   withoutCoinbaseTx = filter $ (/= HK.nullOutPoint) . HK.prevOutput
@@ -105,7 +101,7 @@ blockInfo blockHeightToScan =  do
   let rawBlock = fromMaybe blockParsingError maybeRawBlock
       parsedBlock = fromRight blockGettingError $ decode $ HS.toBytes rawBlock
   
-  currentNetwork <- network 
+  currentNetwork <- currentBitcoinNetwork 
   
   blockTxInfos parsedBlock blockHeightToScan currentNetwork
   where
