@@ -64,8 +64,9 @@ cacheTxOutInfos db infos = do
       let parsedMaybe = unflatExact <$> maybeStored
       pure $ (pubScriptHash,) <$> parsedMaybe
 
-addToCache :: MonadIO m => DB -> BlockInfo -> m ()
-addToCache db update = do
+addToCache :: (MonadLDB m) => BlockInfo -> m ()
+addToCache update = do
+  db <- getDb
   cacheTxOutInfos db $ blockContentTxOutInfos $ blockInfoContent update
   cacheTxInInfos db $ blockContentTxInInfos $ blockInfoContent update
   cacheTxInfos db $ blockContentTxInfos $ blockInfoContent update

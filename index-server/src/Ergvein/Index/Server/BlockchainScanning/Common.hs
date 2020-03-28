@@ -21,7 +21,7 @@ import Ergvein.Index.Server.Environment
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Text
-import  Control.Monad.Reader
+import Control.Monad.Reader
 import Ergvein.Index.Server.Monad
 import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 
@@ -50,54 +50,50 @@ actualHeight currency = case currency of
 
 storeInfo :: (MonadIO m) => BlockInfo -> QueryT m ()
 storeInfo blockInfo = do
-  insertTxs $ blockContentTxInfos $ blockInfoContent blockInfo
-  insertTxOuts $ blockContentTxOutInfos $ blockInfoContent blockInfo
-  insertTxIns $ blockContentTxInInfos $ blockInfoContent blockInfo
-  insertBlock $ blockInfoMeta blockInfo
+  insertTxs    $ blockContentTxInfos     $ blockInfoContent blockInfo
+  insertTxOuts $ blockContentTxOutInfos  $ blockInfoContent blockInfo
+  insertTxIns  $ blockContentTxInInfos   $ blockInfoContent blockInfo
+  insertBlock  $ blockInfoMeta blockInfo
   pure ()
 
 storeScannedHeight :: (MonadIO m) => Currency -> BlockHeight -> QueryT m ()
 storeScannedHeight currency scannedHeight = void $ upsertScannedHeight currency scannedHeight
 
-scannerThread :: ServerEnv -> Currency -> (BlockHeight -> IO BlockInfo) -> ServerM Thread
-scannerThread env currency scanInfo =
+scannerThread :: Currency -> (BlockHeight -> IO BlockInfo) -> ServerM Thread
+scannerThread currency scanInfo = do
   create $ logOnException . scanIteration
   where
-    pool = envPersistencePool env
-
     blockIteration :: BlockHeight -> BlockHeight -> ServerM ()
     blockIteration totalh blockHeight = do
       let percent = fromIntegral blockHeight / fromIntegral totalh :: Double
       logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
       do
         blockInfo <- liftIO $ scanInfo blockHeight
-        let blockInfoToStore = selectedInfoToStore blockInfo
+        blockInfoToStore <- selectedInfoToStore blockInfo
         runDb $ do
           storeInfo blockInfoToStore
           storeScannedHeight currency blockHeight
-        addToCache (envLevelDBContext env) blockInfoToStore
+        addToCache blockInfoToStore
 
     scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
+      error "here"
+      cfg <- serverConfig
       totalh <- actualHeight currency
       heights <- blockHeightsToScan currency
       traverse_ (blockIteration totalh) heights
-      liftIO $ threadDelay $ configBlockchainScanDelay $ envServerConfig env
+      liftIO $ threadDelay $ configBlockchainScanDelay cfg
     
-    selectedInfoToStore info = if configPubScriptHistoryScan $ envServerConfig env then info else 
-      let blockContent = BlockContentInfo (blockContentTxInfos $ blockInfoContent info) [] []
-      in info { blockInfoContent = blockContent }
+    selectedInfoToStore info = do
+      cfg <- serverConfig
+      pure $ if configPubScriptHistoryScan cfg then info 
+             else 
+                let blockContent = BlockContentInfo (blockContentTxInfos $ blockInfoContent info) [] []
+                in info { blockInfoContent = blockContent }
 
-f :: (MonadIO m) => ServerEnv -> BlockHeight -> m BlockInfo
-f env = (\z -> do
-  x <- liftIO $ runServerMIO env $ BTCScanning.blockInfo z
-  pure x)
-
-
+f :: ServerEnv -> BlockHeight -> IO BlockInfo
+f env = runServerMIO env . BTCScanning.blockInfo
 
 startBlockchainScanner ::  ServerEnv -> ServerM [Thread]
-startBlockchainScanner env =
-    sequenceA
-    [ scannerThread env BTC $ f env
-    --, scannerThread env ERGO $ ERGOScanning.blockInfo env 
-    ]
+startBlockchainScanner env = do
+    sequenceA [ scannerThread BTC $ f env ]
