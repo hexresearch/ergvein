@@ -68,8 +68,8 @@ actualHeight = do
     info <- getInfo
     pure $ fromIntegral $ fromMaybe 0 $ bestBlockHeight info
 
-blockInfo :: ServerEnv -> BlockHeight -> IO BlockInfo
-blockInfo env blockHeightToScan = flip runReaderT (envErgoNodeClient env) $ do
+blockInfo :: ApiMonad m  => BlockHeight -> m BlockInfo
+blockInfo blockHeightToScan = do
   headersAtHeight <- getHeaderIdsAtHeight
       $ Height
       $ fromIntegral blockHeightToScan

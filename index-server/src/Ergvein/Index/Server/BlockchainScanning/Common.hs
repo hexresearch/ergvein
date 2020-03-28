@@ -59,7 +59,7 @@ storeInfo blockInfo = do
 storeScannedHeight :: (MonadIO m) => Currency -> BlockHeight -> QueryT m ()
 storeScannedHeight currency scannedHeight = void $ upsertScannedHeight currency scannedHeight
 
-scannerThread :: Currency -> (BlockHeight -> IO BlockInfo) -> ServerM Thread
+scannerThread :: Currency -> (BlockHeight -> ServerM BlockInfo) -> ServerM Thread
 scannerThread currency scanInfo = do
   create $ logOnException . scanIteration
   where
@@ -68,7 +68,7 @@ scannerThread currency scanInfo = do
       let percent = fromIntegral blockHeight / fromIntegral totalh :: Double
       logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
       do
-        blockInfo <- liftIO $ scanInfo blockHeight
+        blockInfo <- scanInfo blockHeight
         blockInfoToStore <- selectedInfoToStore blockInfo
         runDb $ do
           storeInfo blockInfoToStore
@@ -91,9 +91,9 @@ scannerThread currency scanInfo = do
                 let blockContent = BlockContentInfo (blockContentTxInfos $ blockInfoContent info) [] []
                 in info { blockInfoContent = blockContent }
 
-f :: ServerEnv -> BlockHeight -> IO BlockInfo
-f env = runServerMIO env . BTCScanning.blockInfo
-
-startBlockchainScanner ::  ServerEnv -> ServerM [Thread]
-startBlockchainScanner env = do
-    sequenceA [ scannerThread BTC $ f env ]
+startBlockchainScanner :: ServerM [Thread]
+startBlockchainScanner = 
+  sequenceA 
+    [ scannerThread BTC  BTCScanning.blockInfo
+    , scannerThread ERGO ERGOScanning.blockInfo
+    ]
