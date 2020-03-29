@@ -45,7 +45,7 @@ newServerEnv cfg = do
     persistencePool <- liftIO $ runStdoutLoggingT $ do
         let dbLog = configDbLog cfg
         persistencePool <- newDBPool dbLog $ fromString $ connectionStringFromConfig cfg
-        flip runReaderT persistencePool $ runDb $ runMigration migrateAll
+        flip runReaderT persistencePool $ dbQuery $ runMigration migrateAll
         pure persistencePool
     levelDBContext <- openCacheDb (configCachePath cfg) persistencePool
     ergoNodeClient <- liftIO $ ErgoApi.newClient (configERGONodeHost cfg) $ (configERGONodePort cfg)

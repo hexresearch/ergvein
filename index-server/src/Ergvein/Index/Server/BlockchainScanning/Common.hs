@@ -36,7 +36,7 @@ scannedBlockHeight currency = do
 blockHeightsToScan :: Currency -> ServerM [BlockHeight]
 blockHeightsToScan currency = do
   actual  <- actualHeight currency
-  scanned <- runDb $ scannedBlockHeight currency
+  scanned <- dbQuery $ scannedBlockHeight currency
   let start = maybe startHeight succ scanned
   pure [start..actual]
   where
@@ -70,7 +70,7 @@ scannerThread currency scanInfo = do
       do
         blockInfo <- scanInfo blockHeight
         blockInfoToStore <- selectedInfoToStore blockInfo
-        runDb $ do
+        dbQuery $ do
           storeInfo blockInfoToStore
           storeScannedHeight currency blockHeight
         addToCache blockInfoToStore

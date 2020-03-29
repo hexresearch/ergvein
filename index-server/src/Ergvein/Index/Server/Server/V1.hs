@@ -60,7 +60,7 @@ ergoBroadcastResponse = "4c6282be413c6e300a530618b37790be5f286ded758accc2aebd415
 --Endpoints
 indexGetHeightEndpoint :: HeightRequest -> ServerM HeightResponse
 indexGetHeightEndpoint (HeightRequest currency) = do
-  mh <- runDb $ fmap (scannedHeightRecHeight . entityVal) <$> getScannedHeight currency
+  mh <- dbQuery $ fmap (scannedHeightRecHeight . entityVal) <$> getScannedHeight currency
   pure $ HeightResponse $ fromMaybe 0 mh
 
 indexGetBalanceEndpoint :: BalanceRequest -> ServerM BalanceResponse

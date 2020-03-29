@@ -25,10 +25,10 @@ instance (MonadLogger m, MonadUnliftIO m) => MonadDB (ReaderT DBPool m) where
     getDbPool = ask
     {-# INLINE getDbPool #-}
 
-runDb :: MonadDB m => ReaderT SqlBackend m a -> m a
-runDb ma = do
+dbQuery :: MonadDB m => ReaderT SqlBackend m a -> m a
+dbQuery ma = do
     pool <- getDbPool
     runSqlPool ma pool
 
-runDbQuery :: MonadIO m => DBPool -> QueryT (ReaderT DBPool (LoggingT IO)) a -> m a
-runDbQuery pool query = liftIO $ runStdoutLoggingT $ flip runReaderT pool $ runDb query
+dbQueryManual :: MonadIO m => DBPool -> QueryT (ReaderT DBPool (LoggingT IO)) a -> m a
+dbQueryManual pool query = liftIO $ runStdoutLoggingT $ flip runReaderT pool $ dbQuery query
