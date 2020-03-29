@@ -2,12 +2,9 @@ module Ergvein.Index.Server.BlockchainScanning.Common where
 
 import Control.Concurrent
 import Control.Immortal
-import Control.Monad
 import Control.Monad.Catch
-import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Data.Foldable (traverse_)
-import Conversion
 import Data.Maybe
 import Database.Persist.Sql
 
@@ -60,8 +57,7 @@ storeScannedHeight :: (MonadIO m) => Currency -> BlockHeight -> QueryT m ()
 storeScannedHeight currency scannedHeight = void $ upsertScannedHeight currency scannedHeight
 
 scannerThread :: Currency -> (BlockHeight -> ServerM BlockInfo) -> ServerM Thread
-scannerThread currency scanInfo = do
-  create $ logOnException . scanIteration
+scannerThread currency scanInfo = create $ logOnException . scanIteration
   where
     blockIteration :: BlockHeight -> BlockHeight -> ServerM ()
     blockIteration totalh blockHeight = do
@@ -77,13 +73,12 @@ scannerThread currency scanInfo = do
 
     scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
-      error "here"
       cfg <- serverConfig
-      totalh <- actualHeight currency
+      totalh <-  actualHeight currency
       heights <- blockHeightsToScan currency
       traverse_ (blockIteration totalh) heights
       liftIO $ threadDelay $ configBlockchainScanDelay cfg
-    
+
     selectedInfoToStore info = do
       cfg <- serverConfig
       pure $ if configPubScriptHistoryScan cfg then info 
@@ -92,8 +87,7 @@ scannerThread currency scanInfo = do
                 in info { blockInfoContent = blockContent }
 
 startBlockchainScanner :: ServerM [Thread]
-startBlockchainScanner = 
-  sequenceA 
-    [ scannerThread BTC  BTCScanning.blockInfo
-    , scannerThread ERGO ERGOScanning.blockInfo
-    ]
+startBlockchainScanner = sequenceA 
+  [ scannerThread BTC  BTCScanning.blockInfo
+  , scannerThread ERGO ERGOScanning.blockInfo
+  ]

@@ -42,6 +42,7 @@ class HasBitcoinNodeNetwork m where
 newServerEnv :: (MonadIO m, MonadLogger m) => Config -> m ServerEnv
 newServerEnv cfg = do
     logger <- liftIO newChan
+    void . liftIO . forkIO $ runStdoutLoggingT $ unChanLoggingT logger
     persistencePool <- liftIO $ runStdoutLoggingT $ do
         let dbLog = configDbLog cfg
         persistencePool <- newDBPool dbLog $ fromString $ connectionStringFromConfig cfg
