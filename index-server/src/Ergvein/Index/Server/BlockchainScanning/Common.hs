@@ -20,10 +20,27 @@ import Ergvein.Types.Transaction
 import Ergvein.Text
 import Control.Monad.Reader
 import Ergvein.Index.Server.Monad
-import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 
+import qualified Network.Bitcoin.Api.Client                      as BitcoinApi
 import qualified Ergvein.Index.Server.BlockchainScanning.Bitcoin as BTCScanning
-import qualified Ergvein.Index.Server.BlockchainScanning.Ergo as ERGOScanning
+import qualified Ergvein.Index.Server.BlockchainScanning.Ergo    as ERGOScanning
+
+data ScanProgressInfo = ScanProgressInfo
+  { nfoCurrency      :: !Currency
+  , nfoScannedHeight :: !BlockHeight
+  , nfoActualHeight  :: !BlockHeight
+  }
+
+scanningInfo :: ServerM [ScanProgressInfo]
+scanningInfo = mapM nfo allCurrencies
+  where
+    nfo :: Currency -> ServerM ScanProgressInfo
+    nfo currency = do
+      maybeScanned <- dbQuery $ scannedBlockHeight currency
+      let scanned = fromMaybe (currencyHeightStart currency) maybeScanned
+      actual  <- actualHeight currency
+      pure $ ScanProgressInfo currency scanned actual
+
 
 scannedBlockHeight :: (MonadIO m) => Currency -> QueryT m (Maybe BlockHeight)
 scannedBlockHeight currency = do
@@ -34,16 +51,13 @@ blockHeightsToScan :: Currency -> ServerM [BlockHeight]
 blockHeightsToScan currency = do
   actual  <- actualHeight currency
   scanned <- dbQuery $ scannedBlockHeight currency
-  let start = maybe startHeight succ scanned
+  let start = maybe (currencyHeightStart currency) succ scanned
   pure [start..actual]
-  where
-    startHeight =  case currency of BTC  -> 0
-                                    ERGO -> 1
 
 actualHeight :: Currency -> ServerM BlockHeight
 actualHeight currency = case currency of
-    BTC  -> BTCScanning.actualHeight
-    ERGO -> ERGOScanning.actualHeight 
+  BTC  -> BTCScanning.actualHeight
+  ERGO -> ERGOScanning.actualHeight 
 
 storeInfo :: (MonadIO m) => BlockInfo -> QueryT m ()
 storeInfo blockInfo = do

@@ -19,6 +19,7 @@ import Ergvein.Index.Server.Monad
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import Ergvein.Index.Server.BlockchainScanning.Common
 
 import qualified Network.Haskoin.Block as Btc 
 import qualified Data.Serialize as S 
@@ -115,7 +116,12 @@ indexGetBlockFiltersEndpoint request = do
         _ -> error "Ergo indexGetBlockFiltersEndpoint is not implemented!" -- TODO here
 
 indexGetInfoEndpoint :: ServerM InfoResponse
-indexGetInfoEndpoint = undefined
+indexGetInfoEndpoint = do 
+  scanInfo <- scanningInfo
+  let mappedScanInfo = scanNfoItem <$> scanInfo
+  pure $ InfoResponse mappedScanInfo
+  where
+    scanNfoItem nfo = ScanProgressItem (nfoCurrency nfo) (nfoScannedHeight nfo) (nfoActualHeight nfo)
 
 txMerkleProofEndpoint :: TxMerkleProofRequest -> ServerM TxMerkleProofResponse
 txMerkleProofEndpoint TxMerkleProofRequest { merkleReqCurrency = BTC }  = pure btcProof
