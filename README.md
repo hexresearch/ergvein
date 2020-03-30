@@ -44,3 +44,10 @@ We provide binary cache for builds via cachix.org. To start using it to speed up
 nix-env -iA cachix -f https://cachix.org/api/v1/install
 cachix use ergvein
 ```
+
+# Troubleshooting
+
+## Element inspector fails to render
+
+If the page turns to blank when you open the element inspector or resize the window try exporting
+`export WEBKIT_DISABLE_COMPOSITING_MODE=1` before running the app.
