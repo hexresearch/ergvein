@@ -5,7 +5,6 @@ import Data.Text
 import Data.Yaml.Config
 import Ergvein.Aeson
 import GHC.Generics
-import Control.Monad.Reader
 
 data Config = Config
   { configServerPort            :: !Int

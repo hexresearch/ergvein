@@ -115,7 +115,7 @@ type TxBroadcastResponse = TxHash
 --Broadcast
 data ScanProgressItem = ScanProgressItem
     { scanProgressCurrency      :: !Currency
-    , scanProgressCurrentHeight :: !BlockHeight
+    , scanProgressScannedHeight :: !BlockHeight
     , scanProgressActualHeight  :: !BlockHeight
     } deriving (Eq, Show, Generic)
 $(deriveJSON (aesonOptionsStripPrefix "infoRespScanProgressItem") ''ScanProgressItem)
