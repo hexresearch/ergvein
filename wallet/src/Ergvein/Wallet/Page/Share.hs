@@ -32,15 +32,12 @@ import Network.Haskoin.Address.Base58
 import Network.Haskoin.Keys
 
 sharePage :: MonadFront t m => Currency -> m ()
-sharePage cur = do
-  let thisWidget = Just $ pure $ sharePage cur
-  menuWidget (ShareTitle cur) thisWidget
-  wrapper False $ divClass "share-content" $ do
-    pks :: PublicKeystore <- getPublicKeystore
-    let xPubKeyMb  = egvPubKeyсhain'master <$> M.lookup cur pks
-        addressMb  = egvXPubKeyToEgvAddress <$> xPubKeyMb
-    maybe errorPage renderPage addressMb
-    pure ()
+sharePage cur = wrapper (ShareTitle cur) (Just $ pure $ sharePage cur) False $ divClass "share-content" $ do
+  pks :: PublicKeystore <- getPublicKeystore
+  let xPubKeyMb  = egvPubKeyсhain'master <$> M.lookup cur pks
+      addressMb  = egvXPubKeyToEgvAddress <$> xPubKeyMb
+  maybe errorPage renderPage addressMb
+  pure ()
   where
     errorPage :: MonadFront t m => m ()
     errorPage = do

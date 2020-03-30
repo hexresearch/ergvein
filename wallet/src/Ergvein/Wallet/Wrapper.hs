@@ -1,30 +1,21 @@
 module Ergvein.Wallet.Wrapper(
     wrapper
+  , wrapperSimple
   ) where
 
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Menu
+import Ergvein.Wallet.Monad
 
+-- | Common page wrapper. Contains header menu with back button.
+wrapper :: (MonadFront t m, LocalizedPrint l) => l -> Maybe (Dynamic t (m ())) -> Bool -> m a -> m a
+wrapper titleVal prevWidget centered ma = divClass "base-container" $ do
+  headerWidget titleVal prevWidget
+  if centered then divClass "content-wrapper centered-wrapper" $ divClass "centered-content" $ ma else divClass "content-wrapper" ma
 
--- | Common wrapper to all pages. Embeds back button for desktop version.
-wrapper :: MonadFrontBase t m => Bool -> m a -> m a
-wrapper centered ma = container $ do
-  when isDesktop $ do
-    stD <- getRetractStack
-    void $ dyn $ ffor stD $ \st -> if null st then pure () else backButton
-  if centered then divClass "vertical-center" ma else ma
-
-data BackButtonStr = BackButtonStr
-
-instance LocalizedPrint BackButtonStr where
-  localizedShow l _ = case l of
-    English -> "< Back"
-    Russian -> "< Назад"
-
--- | Button for going back on widget history
-backButton :: MonadFrontBase t m => m ()
-backButton = divClass "back-button" $ do
-  e <- buttonClass "button button-clear" BackButtonStr
-  void $ retract e
+-- | Simplified page wrapper. Contains header with back button only.
+wrapperSimple :: MonadFrontBase t m => Bool -> m a -> m a
+wrapperSimple centered ma = divClass "base-container" $ do
+  headerWidgetOnlyBackBtn
+  if centered then divClass "content-wrapper centered-wrapper" $ divClass "centered-content" $ ma else divClass "content-wrapper" ma
