@@ -66,9 +66,9 @@ instance LocalizedPrint BtnScanQRCode where
 sendPage :: MonadFront t m => Currency -> m ()
 sendPage cur = divClass "base-container" $ do
   let thisWidget = Just $ pure $ sendPage cur
-  menuWidget (SendTitle cur) thisWidget
+  headerWidget (SendTitle cur) thisWidget
   navbarWidget cur thisWidget NavbarSend
-  divClass "vertical-center" $ divClass "send-page" $ form $ fieldset $ mdo
+  divClass "centered-wrapper" $ divClass "centered-content" $ divClass "send-page" $ form $ fieldset $ mdo
     recipientErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing) . fst)
     recipientD <- validatedTextFieldSetVal RecipientString "" recipientErrsD resQRcodeE
     (qrE, pasteE, resQRcodeE) <- divClass "send-buttons-wrapper" $ do

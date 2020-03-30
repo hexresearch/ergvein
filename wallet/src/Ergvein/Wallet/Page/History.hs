@@ -24,9 +24,9 @@ instance LocalizedPrint HistoryTitle where
 historyPage :: MonadFront t m => Currency -> m ()
 historyPage cur = divClass "base-container" $ do
   let thisWidget = Just $ pure $ historyPage cur
-  menuWidget (HistoryTitle cur) thisWidget
+  headerWidget (HistoryTitle cur) thisWidget
   navbarWidget cur thisWidget NavbarHistory
-  void $ divClass "vertical-center" $ h3 $ localizedText $ HistoryTitle cur
+  void $ divClass "centered-wrapper" $ divClass "centered-content" $ h3 $ localizedText $ HistoryTitle cur
 --    cameraE <- fmap ("Test" <$) $ outlineButton ("Debug QR scan"::Text)
 --    _ <- openCamara cameraE
 --    goE <- fmap (cur <$) $ outlineButton ("Debug info"::Text)

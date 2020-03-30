@@ -21,6 +21,6 @@ instance LocalizedPrint RecieveTitle where
 receivePage :: MonadFront t m => Currency -> m ()
 receivePage cur = divClass "base-container" $ do
   let thisWidget = Just $ pure $ receivePage cur
-  menuWidget (RecieveTitle cur) thisWidget
+  headerWidget (RecieveTitle cur) thisWidget
   navbarWidget cur thisWidget NavbarReceive
-  void $ divClass "vertical-center" $ h3 $ localizedText $ RecieveTitle cur
+  void $ divClass "centered-wrapper" $ divClass "centered-content" $ h3 $ localizedText $ RecieveTitle cur

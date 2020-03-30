@@ -1,6 +1,6 @@
 module Ergvein.Wallet.Menu(
-    menuWidget
-  , menuWidgetOnlyBackBtn
+    headerWidget
+  , headerWidgetOnlyBackBtn
   ) where
 
 import Data.Text (Text)
@@ -10,15 +10,15 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu.Types
 import Ergvein.Wallet.Monad
 
-menuWidget :: (MonadFront t m, LocalizedPrint a) => a -> Maybe (Dynamic t (m ())) -> m ()
-menuWidget titleVal prevWidget = divClass "menu-wrapper" $ mdo
-  btnE <- divClass "menu-header" $ do
+headerWidget :: (MonadFront t m, LocalizedPrint a) => a -> Maybe (Dynamic t (m ())) -> m ()
+headerWidget titleVal prevWidget = divClass "header-wrapper" $ mdo
+  btnE <- divClass "header" $ do
     stD <- getRetractStack
-    backButton "menu-header-button menu-back-button" $ null <$> stD
-    divClass "menu-wallet-name" $ localizedText titleVal -- "Default wallet"
-    divButton "menu-header-button menu-dropdown-button" $ elClassDyn "i" menuDropdownButtonIconClassD blank
+    backButton "header-button header-back-button" $ null <$> stD
+    divClass "header-wallet-name" $ localizedText titleVal -- "Default wallet"
+    divButton "header-button header-menu-dropdown-button" $ elClassDyn "i" menuDropdownButtonIconClassD blank
   dropdownIsHiddenD <- toggle True btnE
-  let dropdownClassesD = visibilityClass "menu-dropdown" <$> dropdownIsHiddenD
+  let dropdownClassesD = visibilityClass "header-menu-dropdown" <$> dropdownIsHiddenD
   let menuDropdownButtonIconClassD = menuDropdownButtonIconClass <$> dropdownIsHiddenD
   divClassDyn dropdownClassesD $ do
     let menuBtn v = (v <$) <$> clearButton v
@@ -30,10 +30,10 @@ menuWidget titleVal prevWidget = divClass "menu-wrapper" $ mdo
     switchE <- menuBtn MenuSwitch
     switchMenu prevWidget $ leftmost [balE, netE, setE, abtE, logE, switchE]
 
-menuWidgetOnlyBackBtn :: MonadFrontBase t m => m ()
-menuWidgetOnlyBackBtn = divClass "menu-widget-only-back-btn" $ do
+headerWidgetOnlyBackBtn :: MonadFrontBase t m => m ()
+headerWidgetOnlyBackBtn = divClass "header-wrapper" $ divClass "header-only-back-btn" $ do
   stD <- getRetractStack
-  void $ backButton "menu-header-button menu-back-button" $ null <$> stD
+  void $ backButton "header-button header-back-button" $ null <$> stD
 
 -- | Button for going back on widget history
 backButton :: MonadFrontBase t m => Text -> Dynamic t Bool -> m ()

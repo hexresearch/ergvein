@@ -80,18 +80,18 @@ frontendCss r = do
   fontFamilies r
   faFontFamilies r
   html ? do
-    let px' = px 0 in margin px' px' px' px'
-    let px' = px 0 in padding px' px' px' px'
+    margin (px 0) (px 0) (px 0) (px 0)
+    padding (px 0) (px 0) (px 0) (px 0)
     textAlign center
   body ? do
-    let px' = px 0 in margin px' px' px' px'
-    let px' = px 0 in padding px' px' px' px'
+    margin (px 0) (px 0) (px 0) (px 0)
+    padding (px 0) (px 0) (px 0) (px 0)
     color textColor
     backgroundColor majorBackground
     fontFamily ["Roboto"] []
     overflowY auto
   wrapperCss
-  menuCss
+  headerCss
   navbarCss
   buttonCss
   inputCss
@@ -129,13 +129,13 @@ wrapperCss = do
     display flex
     flexDirection column
     height $ pct 100
-  ".content-container" ? do
-    let em' = em 1 in margin em' em' em' em'
-  ".vertical-center" ? do
+  ".content-wrapper" ? do
+    padding (rem 1) (rem 1) (rem 1) (rem 1)
+  ".centered-wrapper" ? do
     flexGrow 1
     display flex
-    flexDirection column
-    justifyContent center
+  ".centered-content" ? do
+    margin auto auto auto auto
 
 translatePctX :: Size Percentage -> Css
 translatePctX x = prefixed (browsers <> "transform") $ "translateX(" <> value x <> ")"
@@ -146,36 +146,40 @@ translatePctY y = prefixed (browsers <> "transform") $ "translateY(" <> value y 
 translatePctXY :: Size Percentage -> Size Percentage -> Css
 translatePctXY x y = prefixed (browsers <> "transform") $ "translate(" <> value x <> ", " <> value y <> ")"
 
-menuCss :: Css
-menuCss = do
-  ".menu-wrapper" ? do
+headerCss :: Css
+headerCss = do
+  ".header-wrapper" ? do
     width $ pct 100
     position relative
-  ".menu-header" ? do
+  ".header" ? do
     display flex
     alignItems stretch
     backgroundColor black
     color white
     fontSize $ pt 14
-  ".menu-wallet-name" ? do
+  ".header-only-back-btn" ? do
+    display flex
+    alignItems stretch
+    fontSize $ pt 14
+  ".header-wallet-name" ? do
     width $ pct 100
     padding (rem 1) (rem 0) (rem 1) (rem 0)
-  ".menu-header-button" ? do
+  ".header-button" ? do
     fontSize $ pt 20
     padding (rem 1) (rem 1) (rem 1) (rem 1)
     display flex
     alignItems stretch
-  ".menu-header-button:hover" ? do
+  ".header-button:hover" ? do
     cursor pointer
     color hoverColor
-  ".menu-dropdown" ? do
+  ".header-menu-dropdown" ? do
     position absolute
     right $ px 0
     backgroundColor black
     zIndex 1
     minWidth $ px 160
     boxShadow [bsColor (rgba 0 0 0 0.2) $ shadowWithSpread (px 0) (px 8) (px 16) (px 0)]
-  ".menu-dropdown .button.button-clear" ? do
+  ".header-menu-dropdown .button.button-clear" ? do
     color white
     fontSize $ pt 14
     display block
@@ -183,9 +187,9 @@ menuCss = do
     width $ pct 100
     borderRadius (px 0) (px 0) (px 0) (px 0)
     marginBottom $ px 0
-  ".menu-back-button.hidden" ? do
+  ".header-back-button.hidden" ? do
     visibility hidden
-  ".menu-dropdown.hidden" ? do
+  ".header-menu-dropdown.hidden" ? do
     display displayNone
 
 navbarCss :: Css
@@ -348,10 +352,6 @@ passwordCss = do
 
 initialPageCss :: Css
 initialPageCss = do
-  ".initial-options" ? do
-    marginLeft auto
-    marginRight auto
-    marginBottom $ rem 1
   ".text-pin-code-error" ? do
     color $ rgb 190 0 0
 
@@ -646,7 +646,7 @@ graphPinCodeCanvasCss = do
     backgroundColor $ rgb 240 240 240
     border solid (px 1) black
     borderRadius (px 5) (px 5) (px 5) (px 5)
-    let px' = px 0 in padding px' px' px' px'
+    padding (px 0) (px 0) (px 0) (px 0)
     marginLeft auto
     marginRight auto
     userSelect none
