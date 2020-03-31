@@ -26,7 +26,6 @@ library
     , jsaddle
     , reflex-dom
     , text
-    , x509-android
   default-language:    Haskell2010
   default-extensions:
     MultiParamTypeClasses
@@ -38,9 +37,10 @@ library
       cbits/clock.c
       cbits/share.c
       cbits/camera.c
-    build-depends: android-activity
+    build-depends: android-activity, x509-android
     build-tools: hsc2hs
     exposed-modules:
       Ergvein.Wallet.Android.Native
+      Ergvein.Wallet.Android.Native.Certs
       Ergvein.Wallet.Android.Native.MainWidget
       Ergvein.Wallet.Android.Run

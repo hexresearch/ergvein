@@ -64,9 +64,12 @@ let
         "${nixpkgs.secp256k1}/lib/libsecp256k1.so"
         "${nixpkgs.lmdbSys}/lib/liblmdb.so"
       ];
+      /* additionalDependencies = ''
+
+      ''; */
       javaSources = [
         ./wallet/java
-        "${project.ghc.x509-android}/java"
+        "${project.ghc.x509-android.src}/java"
       ];
       version = {
         code = "1";

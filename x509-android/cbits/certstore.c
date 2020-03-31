@@ -3,17 +3,16 @@
 #include <stdlib.h>
 #include <android/log.h>
 #include <HaskellActivity.h>
-#include "MainWidget.h"
 
-void android_load_certs() {
+void android_load_certs(jobject activity) {
   JNIEnv *env;
   jint attachResult = (*HaskellActivity_jvm)->AttachCurrentThread(HaskellActivity_jvm, (void **)&env, NULL);
   assert(attachResult == JNI_OK);
   __android_log_write(ANDROID_LOG_DEBUG, "load_certs", "attached to jvm");
 
-  jclass certStoreClass = (*env)->FindClass(env, "haskell/x509android/CertificateStore");
+  jclass certStoreClass = (*env)->FindClass(env, "haskell/x509android/Certificates");
   assert(certStoreClass);
-  __android_log_write(ANDROID_LOG_DEBUG, "load_certs", "got CertificateStore class");
+  __android_log_write(ANDROID_LOG_DEBUG, "load_certs", "got Certificates class");
 
   jmethodID loadCerts = (*env)->GetStaticMethodID(env, certStoreClass, "loadCerts", "(Lsystems/obsidian/HaskellActivity;)V");
   assert(loadCerts);
@@ -32,9 +31,9 @@ int android_certs_length() {
   assert(attachResult == JNI_OK);
   __android_log_write(ANDROID_LOG_DEBUG, "certs_length", "attached to jvm");
 
-  jclass certStoreClass = (*env)->FindClass(env, "haskell/x509android/CertificateStore");
+  jclass certStoreClass = (*env)->FindClass(env, "haskell/x509android/Certificates");
   assert(certStoreClass);
-  __android_log_write(ANDROID_LOG_DEBUG, "certs_length", "got CertificateStore class");
+  __android_log_write(ANDROID_LOG_DEBUG, "certs_length", "got Certificates class");
 
   jmethodID lengthMethod = (*env)->GetStaticMethodID(env, certStoreClass, "length", "()I");
   assert(lengthMethod);
@@ -55,15 +54,15 @@ jstring android_get_cert(int i) {
   assert(attachResult == JNI_OK);
   __android_log_write(ANDROID_LOG_DEBUG, "get_cert", "attached to jvm");
 
-  jclass certStoreClass = (*env)->FindClass(env, "haskell/x509android/CertificateStore");
+  jclass certStoreClass = (*env)->FindClass(env, "haskell/x509android/Certificates");
   assert(certStoreClass);
-  __android_log_write(ANDROID_LOG_DEBUG, "get_cert", "got CertificateStore class");
+  __android_log_write(ANDROID_LOG_DEBUG, "get_cert", "got Certificates class");
 
   jmethodID getCert = (*env)->GetStaticMethodID(env, certStoreClass, "getCert", "(I)Ljava/lang/String;");
   assert(getCert);
   __android_log_write(ANDROID_LOG_DEBUG, "get_cert", "got method getCert");
 
-  jobject res = (*env)->CallStaticIntMethod(env, certStoreClass, getCert);
+  jobject res = (*env)->CallStaticObjectMethod(env, certStoreClass, getCert, i);
   if((*env)->ExceptionOccurred(env)) {
     __android_log_write(ANDROID_LOG_DEBUG, "get_cert", "Failed to call getCert");
     (*env)->ExceptionDescribe(env);

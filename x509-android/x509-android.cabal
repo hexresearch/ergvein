@@ -12,19 +12,27 @@ author:              Anton Gushcha, Aminion, Vladimir Krutkin, Levon Oganyan, Se
 maintainer:          Anton Gushcha <ncrashed@protonmail.com>
 extra-source-files:  java/*
 
+flag android
+  description: Enable android specific features.
+  default: False
+  manual: True
+
 library
   hs-source-dirs:      src
-  c-sources: 
-    cbits/certstore.c
-  build-tools: hsc2hs
-  exposed-modules:
-    System.X509.Android
   default-language:    Haskell2010
   build-depends:
       base              >= 4.7 && < 4.13
-    , android-activity
+    , pem               >= 0.1
     , x509              >= 1.6
     , x509-store        >= 1.6.2
+    , bytestring
+  if flag(android)
+    c-sources:
+      cbits/certstore.c
+    build-depends: android-activity
+    build-tools: hsc2hs
+    exposed-modules:
+      System.X509.Android
   default-extensions:
     DeriveAnyClass
     DeriveGeneric
