@@ -8,6 +8,7 @@ module Ergvein.Wallet.Monad.Unauth
 import Control.Concurrent.Chan
 import Control.Monad.Random.Class
 import Control.Monad.Reader
+import Data.Default
 import Data.IORef
 import Data.Map (Map)
 import Data.Text (Text)
@@ -22,13 +23,17 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Front
+import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Sync.Status
+import Network.Connection
 import Network.HTTP.Client hiding (Proxy)
-import Network.HTTP.Client.TLS (newTlsManager)
+import Network.HTTP.Client.TLS (newTlsManagerWith, mkManagerSettings, newTlsManager)
+import Network.TLS
+import Network.TLS.Extra.Cipher
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Servant.Client(BaseUrl)
@@ -54,7 +59,7 @@ data UnauthEnv t = UnauthEnv {
 , unauth'timeout         :: !(ExternalRef t NominalDiffTime)
 , unauth'headersStorage  :: !HeadersStorage
 , unauth'filtersStorage  :: !FiltersStorage
-, unauth'manager         :: !Manager
+, unauth'manager         :: !(IORef Manager)
 , unauth'syncProgress    :: !(ExternalRef t SyncProgress)
 , unauth'heightRef       :: !(ExternalRef t (Map Currency Integer))
 , unauth'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
@@ -70,12 +75,12 @@ instance Monad m => HasHeadersStorage (UnauthM t m) where
   getHeadersStorage = asks unauth'headersStorage
   {-# INLINE getHeadersStorage #-}
 
-instance Monad m => HasFiltersStorage (UnauthM t m) where 
+instance Monad m => HasFiltersStorage (UnauthM t m) where
   getFiltersStorage = asks unauth'filtersStorage
   {-# INLINE getFiltersStorage #-}
 
 instance MonadIO m => HasClientManager (UnauthM t m) where
-  getClientMaganer = asks unauth'manager
+  getClientMaganer = liftIO . readIORef =<< asks unauth'manager
 
 instance MonadBaseConstr t m => MonadEgvLogger t (UnauthM t m) where
   getLogsTrigger = asks unauth'logsTrigger
@@ -184,11 +189,11 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE updateSettings #-}
   getSettingsRef = asks unauth'settings
   {-# INLINE getSettingsRef #-}
-  getSyncProgress = externalRefDynamic =<< asks unauth'syncProgress 
+  getSyncProgress = externalRefDynamic =<< asks unauth'syncProgress
   {-# INLINE getSyncProgress #-}
-  setSyncProgress ev = do 
+  setSyncProgress ev = do
     ref <- asks unauth'syncProgress
-    performEvent_ $ writeExternalRef ref <$> ev 
+    performEvent_ $ writeExternalRef ref <$> ev
   {-# INLINE setSyncProgress #-}
   getSyncProgressRef = asks unauth'syncProgress
   {-# INLINE getSyncProgressRef #-}
@@ -207,7 +212,7 @@ instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
   {-# INLINE newAlertEvent #-}
   {-# INLINE getAlertEventFire #-}
 
-newEnv :: (Reflex t, TriggerEvent t m, MonadIO m)
+newEnv :: (Reflex t, TriggerEvent t m, MonadIO m, PlatformNatives)
   => Settings
   -> Chan (IO ()) -- UI callbacks channel
   -> m (UnauthEnv t)
@@ -225,6 +230,7 @@ newEnv settings uiChan = do
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
   manager <- liftIO newTlsManager
+  managerRef <- liftIO $ newIORef manager
   urls <- newExternalRef $ S.fromList $ settingsDefUrls settings
   urlNum <- newExternalRef $ settingsDefUrlNum settings
   timeout <- newExternalRef $ settingsReqTimeout settings
@@ -250,9 +256,9 @@ newEnv settings uiChan = do
     , unauth'urls = urls
     , unauth'urlNum = urlNum
     , unauth'timeout = timeout
-    , unauth'manager = manager
+    , unauth'manager = managerRef
     , unauth'headersStorage = hst
-    , unauth'filtersStorage = fst 
+    , unauth'filtersStorage = fst
     , unauth'syncProgress = syncRef
     , unauth'heightRef = heightRef
     , unauth'filtersSyncRef = fsyncRef
@@ -265,4 +271,30 @@ runEnv cbs e ma = do
   re <- newRetractEnv
   runRetractT (runReaderT ma' e) re
   where
-    ma' = void (retract . fst =<< getBackEventFire) >> ma
+    ma' = do
+      env <- ask
+      runOnUiThreadM $ runReaderT setupTlsManager env
+      void (retract . fst =<< getBackEventFire)
+      ma
+
+mkTlsSettings :: (MonadIO m, PlatformNatives) => m TLSSettings
+mkTlsSettings = do
+  store <- readSystemCertificates
+  pure $ TLSSettings $ defParams {
+      clientShared = (clientShared defParams) {
+        sharedCAStore = store
+      }
+    , clientSupported = def {
+        supportedCiphers = ciphersuite_strong
+      }
+    }
+  where
+    defParams = defaultParamsClient "localhost" ""
+
+setupTlsManager :: (MonadIO m, MonadReader (UnauthEnv t) m, PlatformNatives) => m ()
+setupTlsManager = do
+  e <- ask
+  sett <- mkTlsSettings
+  liftIO $ do
+    manager <- newTlsManagerWith $ mkManagerSettings sett Nothing
+    writeIORef (unauth'manager e) manager

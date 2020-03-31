@@ -1,0 +1,41 @@
+name:                x509-android
+version:             0.1.0.0
+synopsis:            Reading SSL certifactes through Android Java API.
+description:         See README.md
+category:            System
+build-type:          Simple
+cabal-version:       >=2.0
+license:             MIT
+license-file:        LICENSE
+copyright:           2020 ATUM SOLUTIONS AG
+author:              Anton Gushcha, Aminion, Vladimir Krutkin, Levon Oganyan, Sergey Ivanov
+maintainer:          Anton Gushcha <ncrashed@protonmail.com>
+extra-source-files:  java/*
+
+flag android
+  description: Enable android specific features.
+  default: False
+  manual: True
+
+library
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+  build-depends:
+      base              >= 4.7 && < 4.13
+    , pem               >= 0.1
+    , x509              >= 1.6
+    , x509-store        >= 1.6.2
+    , bytestring
+  if flag(android)
+    c-sources:
+      cbits/certstore.c
+    build-depends: android-activity
+    build-tools: hsc2hs
+    exposed-modules:
+      System.X509.Android
+  default-extensions:
+    DeriveAnyClass
+    DeriveGeneric
+    FlexibleContexts
+    OverloadedStrings
+    TemplateHaskell

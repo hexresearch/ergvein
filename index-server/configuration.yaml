@@ -8,10 +8,10 @@ cachePath            : "./ergveinCache"
 BTCNodeIsTestnet     : true
 BTCNodeHost          : localhost
 BTCNodePort          : 18332
-BTCNodeUser          : bitcoinrpc
-BTCNodePassword      : password
+BTCNodeUser          : user
+BTCNodePassword      : supersecretpassword
 ERGONodeHost         : localhost
 ERGONodePort         : 9052
 blockchainScanDelay  : 1000000
-dbLog                : true
+dbLog                : false
 pubScriptHistoryScan : false

@@ -1,42 +1,60 @@
 module Ergvein.Wallet.Filters.Btc.Types(
-    SchemaBtc(..)
-  , emptySchemaBtc
-  , schemaBtcFilters
-  , schemaBtcHeights
+    initBtcDbs
+  , getBtcFiltersDb
+  , getBtcHeightsDb
+  , getBtcTotalDb
   ) where
 
-import Control.Lens (Lens', lens)
-import Control.Monad.Haskey
-import Control.Monad.Haskey.Haskoin
-import Data.Binary (Binary(..))
-import Data.BTree.Impure (Tree)
-import Data.BTree.Primitives (Value)
-import Data.BTree.Primitives.Key
-import Data.Text (Text)
+import Database.LMDB.Simple
 import Ergvein.Filters.Btc
 import Ergvein.Wallet.Platform
-import GHC.Generics (Generic)
 import Network.Haskoin.Block
 import Network.Haskoin.Crypto
 
+import qualified Codec.Serialise as S
 import qualified Data.BTree.Impure as B
-import qualified Data.Serialize as S
+import qualified Data.Serialize as Cereal 
 
-data SchemaBtc = SchemaBtc {
-  _schemaBtcFilters   :: Tree BlockHash BtcAddrFilter
-, _schemaBtcHeights   :: Tree BlockHeight BlockHash
-} deriving (Generic, Show)
+filtersDbName :: String 
+filtersDbName = "btcfilters"
 
-instance Binary SchemaBtc
-instance Value SchemaBtc
+heightsDbName :: String 
+heightsDbName = "btcheights"
 
-emptySchemaBtc :: SchemaBtc
-emptySchemaBtc = SchemaBtc B.empty B.empty
+totalDbName :: String 
+totalDbName = "btctotal"
 
-schemaBtcFilters :: Lens' SchemaBtc (Tree BlockHash BtcAddrFilter)
-schemaBtcFilters = lens _schemaBtcFilters $ \s x -> s { _schemaBtcFilters = x }
+-- | Force creation of datab
+initBtcDbs :: Transaction ReadWrite ()
+initBtcDbs = do 
+  fdb <- getBtcFiltersDb
+  hdb <- getBtcHeightsDb
+  tdb <- getBtcTotalDb 
+  tdb `seq` hdb `seq` fdb `seq` pure ()
 
-schemaBtcHeights :: Lens' SchemaBtc (Tree BlockHeight BlockHash)
-schemaBtcHeights = lens _schemaBtcHeights $ \s x -> s { _schemaBtcHeights = x }
+getBtcFiltersDb :: Mode mode => Transaction mode (Database BlockHash BtcAddrFilter)
+getBtcFiltersDb = getDatabase $ Just filtersDbName
 
-instance Value BtcAddrFilter
+getBtcHeightsDb :: Mode mode => Transaction mode (Database BlockHeight BlockHash)
+getBtcHeightsDb = getDatabase $ Just heightsDbName
+
+getBtcTotalDb :: Mode mode => Transaction mode (Database () BlockHeight)
+getBtcTotalDb = getDatabase $ Just totalDbName
+
+deriving instance S.Serialise BlockHash
+
+instance S.Serialise Hash256 where 
+  encode = S.encode . Cereal.encode 
+  {-# INLINE encode #-}
+  decode = do 
+    bs <- S.decode 
+    either fail pure $ Cereal.decode bs
+  {-# INLINE decode #-}
+
+instance S.Serialise BtcAddrFilter where 
+  encode = S.encode . encodeBtcAddrFilter
+  {-# INLINE encode #-}
+  decode = do 
+    bs <- S.decode 
+    either fail pure $ decodeBtcAddrFilter bs
+  {-# INLINE decode #-}

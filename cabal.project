@@ -18,3 +18,4 @@ packages:
   ./wallet-filters
   ./wallet-native
   ./wallet-types
+  ./x509-android

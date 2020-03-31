@@ -23,6 +23,8 @@ library
     , jsaddle
     , jsaddle-webkit2gtk
     , text
+    , x509-store
+    , x509-system
   default-language:    Haskell2010
   default-extensions:
     MultiParamTypeClasses

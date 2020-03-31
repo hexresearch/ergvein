@@ -191,7 +191,10 @@ library
         validation >=1 && < 1.2,
         vector -any,
         yaml -any,
-        lmdb-simple >= 0.4 && < 0.5
+        lmdb-simple >= 0.4 && < 0.5,
+        serialise >= 0.2 && < 0.3,
+        tls -any,
+        connection -any
 
     if flag(android)
         cpp-options: -DANDROID
