@@ -40,7 +40,7 @@ module Ergvein.Wallet.Elements(
   , outlineButton
   , clearButton
   , divButton
-  , spanBtn
+  , spanButton
   , outlineButtonWithIcon
   , module Ergvein.Wallet.Util
   ) where
@@ -182,9 +182,9 @@ clearButton :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrin
 clearButton = buttonClass "button button-clear"
 
  -- | Span that acts like a button with CSS classes
-spanBtn :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
+spanButton :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
   => Dynamic t Text -> lbl -> m (Event t ())
-spanBtn classValD lbl = mkButton "span" [] classValD . dynText =<< localized lbl
+spanButton classValD lbl = mkButton "span" [] classValD . dynText =<< localized lbl
 
 -- | Div that acts like a button with CSS classes
 divButton :: (DomBuilder t m, PostBuild t m) => Dynamic t Text -> m a -> m (Event t a)

@@ -28,7 +28,7 @@ initialPage = do
   ss <- listStorages
   if null ss then noWalletsPage else hasWalletsPage ss
   where
-    noWalletsPage = wrapper True $ divClass "initial-options grid1" $ noWallets
+    noWalletsPage = wrapperSimple True $ divClass "initial-options grid1" $ noWallets
     noWallets = do
       newE <- fmap (GoSeed <$) $ outlineButton IPSCreate
       restoreE <- fmap (GoRestore <$) $ outlineButton IPSRestore
@@ -42,7 +42,7 @@ initialPage = do
     hasWalletsPage ss = do
       mname <- getLastStorage
       maybe (selectWalletsPage ss) loadWalletPage mname
-    selectWalletsPage ss = wrapper True $ divClass "initial-options grid1" $ do
+    selectWalletsPage ss = wrapperSimple True $ divClass "initial-options grid1" $ do
       h4 $ localizedText IPSSelectWallet
       flip traverse_ ss $ \name -> do
         btnE <- outlineButton name
@@ -59,7 +59,7 @@ initialPage = do
       void $ setAuthInfo $ Just <$> authE
 
 initialAuthedPage :: MonadFront t m => m ()
-initialAuthedPage = wrapper True $ divClass "main-page" $ do
+initialAuthedPage = wrapperSimple True $ divClass "main-page" $ do
   anon_name <- getWalletName
   h4 $ text $ "Congrats " <> anon_name <> "! You've made it!"
   logoutE <- row . outlineButton $ ("Logout" :: Text)

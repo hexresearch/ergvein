@@ -1,8 +1,6 @@
-module Ergvein.Wallet.Filters.Storage(
-    FiltersT
-  , FiltersStorage
+module Ergvein.Wallet.Filters.Storage( 
+    FiltersStorage
   , HasFiltersStorage(..)
-  , runFiltersStorage
   , openFiltersStorage
   , performFilters
   , getFiltersHeight
@@ -18,17 +16,19 @@ import Control.Monad.Haskey
 import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.Text (Text, unpack)
+import Database.LMDB.Simple
 import Ergvein.Filters
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Filters.Types
 import Ergvein.Wallet.Native
 import Network.Haskoin.Block
 import Reflex.Dom 
+import System.Directory
 
+import qualified Ergvein.Wallet.Filters.Btc.Types as BTC
 import qualified Ergvein.Wallet.Filters.Btc.Queries as BTC
 
-type FiltersT m a = HaskeyT Schema m a
-type FiltersStorage = ConcurrentDb Schema
+type FiltersStorage = Environment ReadWrite
 
 -- | Name of filters sub storage folder in global storage folder
 filtersStorageName :: Text
@@ -39,19 +39,18 @@ getFiltersStoragePath = do
   st <- getStoreDir
   pure $ st <> "/" <> filtersStorageName
 
-runFiltersStorage :: (MonadIO m, HasFiltersStorage m) => FiltersT IO a -> m a
-runFiltersStorage ma = do
-  db <- getFiltersStorage
-  liftIO $ runHaskeyT ma db defFileStoreConfig
-
 openFiltersStorage :: (MonadIO m, MonadMask m, HasStoreDir m) => m FiltersStorage
 openFiltersStorage = do
   fn <- getFiltersStoragePath
-  let hnds = concurrentHandles . unpack $ fn
-  flip runFileStoreT defFileStoreConfig $
-    openConcurrentDb hnds >>= \case
-        Nothing -> createConcurrentDb hnds emptySchema
-        Just db -> return db
+  let path = unpack fn
+  liftIO $ do 
+    storeEx <- doesDirectoryExist path
+    unless storeEx $ createDirectory path
+  e <- liftIO $ openEnvironment path $ defaultLimits { 
+      maxDatabases = 6 -- TODO: update when we need more dbs for new currencies 
+    , mapSize = 1024 * 1024 * 4 * 1024 } -- 4 GB max size
+  liftIO $ readWriteTransaction e BTC.initBtcDbs
+  pure e 
 
 class Monad m => HasFiltersStorage m where
   getFiltersStorage :: m FiltersStorage
@@ -68,21 +67,27 @@ performFilters e = performEventAsync $ ffor e $ \ma fire -> do
   void . liftIO . forkIO $ fire =<< runReaderT ma s
 
 getFiltersHeight :: (MonadIO m, HasFiltersStorage m) => Currency -> m BlockHeight 
-getFiltersHeight cur = case cur of 
-  BTC -> runFiltersStorage $ transactReadOnly $ BTC.getFiltersHeight . (view schemaBtc)
+getFiltersHeight cur = do 
+  e <- getFiltersStorage
+  case cur of 
+    BTC -> BTC.getFiltersHeight e
 
 insertFilter :: (MonadIO m, HasFiltersStorage m) => BlockHeight -> BlockHash -> AddrFilter -> m ()
-insertFilter h bh f = runFiltersStorage $ transact_ $ \schema -> case f of 
-  AddrFilterBtc btcf -> do
-    btcs <- BTC.insertFilter h bh btcf (view schemaBtc schema)
-    commit_ $ schema & schemaBtc .~ btcs
+insertFilter h bh f = do 
+  e <- getFiltersStorage
+  case f of 
+    AddrFilterBtc btcf -> BTC.insertFilter h bh btcf e
 
 getFilter :: (MonadIO m, HasFiltersStorage m) => Currency -> BlockHeight -> m (Maybe AddrFilter)
-getFilter c bh = runFiltersStorage $ transactReadOnly $ \schema -> case c of 
-  BTC -> fmap (fmap AddrFilterBtc) $ BTC.getFilter bh $ view schemaBtc schema
+getFilter c bh = do 
+  e <- getFiltersStorage
+  case c of 
+    BTC -> fmap (fmap AddrFilterBtc) $ BTC.getFilter bh e
 
 -- | Right fold over filters.
 foldFilters :: (MonadIO m, HasFiltersStorage m) => Currency -> (BlockHash -> AddrFilter -> a -> a) -> a -> m a 
-foldFilters c f a0 = runFiltersStorage $ transactReadOnly $ case c of 
-  BTC -> BTC.foldFilters (\k -> f k . AddrFilterBtc) a0 . view schemaBtc
-  ERGO -> const $ pure a0 -- ^ TODO: add ergo here
+foldFilters c f a0 = do 
+  e <- getFiltersStorage
+  case c of 
+    BTC -> BTC.foldFilters (\k -> f k . AddrFilterBtc) a0 e
+    ERGO -> pure a0 -- ^ TODO: add ergo here

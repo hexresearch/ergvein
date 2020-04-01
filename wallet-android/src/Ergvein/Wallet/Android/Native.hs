@@ -7,6 +7,7 @@ import Control.Exception (handle, bracket, SomeException)
 import Control.Monad.IO.Class
 import Data.Text(Text, unpack)
 import Ergvein.Aeson
+import Ergvein.Wallet.Android.Native.Certs
 import Ergvein.Wallet.Native
 import Foreign
 import Foreign.C
@@ -14,6 +15,7 @@ import System.Directory
 import System.Directory.Tree
 import System.FilePath.Posix
 import System.IO
+import System.X509.Android
 
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
@@ -146,6 +148,8 @@ instance PlatformNatives where
 
   logWrite v = liftIO $ encodeText v androidLogWrite
   {-# INLINE logWrite #-}
+
+  readSystemCertificates = getSystemCertificateStore additionalCertificates
 
 getFiles :: FilePath -> IO [FilePath]
 getFiles dir = do

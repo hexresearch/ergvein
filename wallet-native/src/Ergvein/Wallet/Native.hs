@@ -5,10 +5,11 @@ module Ergvein.Wallet.Native
   , NativeAlerts(..)
   ) where
 
-import Control.Monad.Reader
 import Control.Monad.IO.Class
+import Control.Monad.Reader
 import Data.Aeson
 import Data.Text (Text)
+import Data.X509.CertificateStore (CertificateStore)
 
 class HasStoreDir m where
   getStoreDir :: m Text
@@ -66,3 +67,6 @@ class PlatformNatives where
 
   -- | Write to system log
   logWrite :: MonadIO m => Text -> m ()
+
+  -- | Read system wide certificate store for TLS connections
+  readSystemCertificates :: MonadIO m => m CertificateStore
