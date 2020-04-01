@@ -47,7 +47,10 @@ in (self: super: let
     reflex-external-ref = ingnoreGarbage super.reflex-external-ref;
     reflex-localize = ingnoreGarbage super.reflex-localize;
     # Overridess
-    android-activity = self.callPackage ./derivations/android-activity.nix {};
+    android-activity = self.callPackage ./derivations/android-activity.nix {
+      inherit (pkgs.buildPackages) jdk;
+    };
+    x509-android = super.callCabal2nixWithOptions "x509-android" ./x509-android walletOpts {};
     # android-activity = lib.dontCheck (super.android-activity);
     clay = self.callPackage ./derivations/clay.nix {};
     cryptonite = self.callPackage ./derivations/cryptonite.nix {};
@@ -67,6 +70,8 @@ in (self: super: let
     primitive-unaligned = self.callPackage ./derivations/primitive-unaligned.nix { };
     lmdb = self.callPackage ./derivations/haskell-lmdb.nix { };
     x509-validation = lib.dontCheck super.x509-validation;
-    tls = lib.dontCheck super.tls;
+    tls = lib.dontCheck (self.callPackage ./derivations/tls.nix { });
+    tls-session-manager = lib.dontCheck (self.callPackage ./derivations/tls-session-manager.nix { });
+    connection = self.callPackage ./derivations/connection.nix { };
   }
 )

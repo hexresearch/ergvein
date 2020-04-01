@@ -30,79 +30,67 @@ data SubPageSettings
   | GoUnits
 
 settingsPage :: MonadFront t m => m ()
-settingsPage = do
-  let thisWidget = Just $ pure $ settingsPage
-  menuWidget STPSTitle thisWidget
-  wrapper True $ do
-    divClass "initial-options grid1" $ do
-      goLangE   <- fmap (GoLanguage <$) $ outlineButton STPSButLanguage
-      goCurrE   <- fmap (GoCurrencies <$) $ outlineButton STPSButActiveCurrs
-      goUnitsE  <- fmap (GoUnits    <$) $ outlineButton STPSButUnits
-      let goE = leftmost [goLangE, goCurrE, goUnitsE]
-      void $ nextWidget $ ffor goE $ \spg -> Retractable {
-          retractableNext = case spg of
-            GoLanguage   -> languagePage
-            GoCurrencies -> currenciesPage
-            GoUnits      -> unitsPage
-        , retractablePrev = thisWidget
-        }
+settingsPage = wrapper STPSTitle (Just $ pure settingsPage) True $ do
+  divClass "initial-options grid1" $ do
+    goLangE   <- fmap (GoLanguage <$) $ outlineButton STPSButLanguage
+    goCurrE   <- fmap (GoCurrencies <$) $ outlineButton STPSButActiveCurrs
+    goUnitsE  <- fmap (GoUnits    <$) $ outlineButton STPSButUnits
+    let goE = leftmost [goLangE, goCurrE, goUnitsE]
+    void $ nextWidget $ ffor goE $ \spg -> Retractable {
+        retractableNext = case spg of
+          GoLanguage   -> languagePage
+          GoCurrencies -> currenciesPage
+          GoUnits      -> unitsPage
+      , retractablePrev = Just $ pure settingsPage
+      }
 
 languagePage :: MonadFront t m => m ()
-languagePage = do
-  let thisWidget = Just $ pure $ languagePage
-  menuWidget STPSTitle thisWidget
-  wrapper True $ do
-    h3 $ localizedText $ STPSSelectLanguage
-    divClass "initial-options grid1" $ do
-      langD <- getLanguage
-      initKey <- sample . current $ langD
-      let listLangsD = ffor langD $ \l -> Map.fromList $ fmap (\v -> (v, localizedShow l v)) allLanguages
-          ddnCfg = DropdownConfig {
-                _dropdownConfig_setValue   = updated langD
-              , _dropdownConfig_attributes = constDyn ("class" =: "select-lang")
-              }
-      dp <- dropdown initKey listLangsD ddnCfg
-      let selD = _dropdown_value dp
-      selE <- fmap updated $ holdUniqDyn selD
-      widgetHold (pure ()) $ setLanguage <$> selE
-      settings <- getSettings
-      updateSettings $ ffor selE (\lng -> settings {settingsLang = lng})
-      pure ()
+languagePage = wrapper STPSTitle (Just $ pure languagePage) True $ do
+  h3 $ localizedText $ STPSSelectLanguage
+  divClass "initial-options grid1" $ do
+    langD <- getLanguage
+    initKey <- sample . current $ langD
+    let listLangsD = ffor langD $ \l -> Map.fromList $ fmap (\v -> (v, localizedShow l v)) allLanguages
+        ddnCfg = DropdownConfig {
+              _dropdownConfig_setValue   = updated langD
+            , _dropdownConfig_attributes = constDyn ("class" =: "select-lang")
+            }
+    dp <- dropdown initKey listLangsD ddnCfg
+    let selD = _dropdown_value dp
+    selE <- fmap updated $ holdUniqDyn selD
+    widgetHold (pure ()) $ setLanguage <$> selE
+    settings <- getSettings
+    updateSettings $ ffor selE (\lng -> settings {settingsLang = lng})
     pure ()
+  pure ()
 
 currenciesPage :: MonadFront t m => m ()
-currenciesPage = do
-  let thisWidget = Just $ pure $ currenciesPage
-  menuWidget STPSTitle thisWidget
-  wrapper True $ do
-    h3 $ localizedText $ STPSSetsActiveCurrs
-    divClass "initial-options grid1" $ do
-      s <- getSettings
-      anon_name <- getWalletName
-      currListE <- selectCurrenciesWidget $ getActiveCurrencies anon_name s
-      updateSettings $ ffor currListE $ \curs -> s {settingsActiveCurrencies = acSet anon_name s curs}
+currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
+  h3 $ localizedText STPSSetsActiveCurrs
+  divClass "initial-options" $ do
+    s <- getSettings
+    anon_name <- getWalletName
+    currListE <- selectCurrenciesWidget $ getActiveCurrencies anon_name s
+    updateSettings $ ffor currListE $ \curs -> s {settingsActiveCurrencies = acSet anon_name s curs}
   where
     getActiveCurrencies name s = fromMaybe allCurrencies $ Map.lookup name $ activeCurrenciesMap $ settingsActiveCurrencies s
     acSet l s curs = ActiveCurrencies $ Map.insert l curs $ activeCurrenciesMap $ settingsActiveCurrencies s
 
 unitsPage :: MonadFront t m => m ()
-unitsPage = do
-  let thisWidget = Just $ pure $ unitsPage
-  menuWidget STPSTitle thisWidget
-  wrapper True $ mdo
-    cntED <- widgetHold content $ content <$ switchDyn cntED
-    pure ()
+unitsPage = wrapper STPSTitle (Just $ pure unitsPage) True $ mdo
+  cntED <- widgetHold content $ content <$ switchDyn cntED
+  pure ()
   where
     content = do
       h3 $ localizedText $ STPSSelectUnitsFor BTC
-      ubE <- divClass "initial-options grid1" $ do
+      ubE <- divClass "initial-options" $ do
         settings <- getSettings
         let setUs = getSettingsUnits settings
         unitBtcE <- unitsDropdown (getUnitBTC setUs) allUnitsBTC
         updateSettings $ ffor unitBtcE (\ubtc -> settings {settingsUnits = Just $ setUs {unitBTC = Just ubtc}})
         delay 0.1 (() <$ unitBtcE)
       h3 $ localizedText $ STPSSelectUnitsFor ERGO
-      ueE <- divClass "initial-options grid1" $ do
+      ueE <- divClass "initial-options" $ do
         settings <- getSettings
         let setUs = getSettingsUnits settings
         unitErgoE <- unitsDropdown (getUnitERGO setUs) allUnitsERGO

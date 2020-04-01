@@ -23,14 +23,14 @@ import Ergvein.Wallet.Wrapper
 import Control.Monad.IO.Class
 import Data.Map.Strict as Map
 
-data BalanceTitle = BalanceTitle
+data BalancesTitle = BalancesTitle
 
-instance LocalizedPrint BalanceTitle where
+instance LocalizedPrint BalancesTitle where
   localizedShow l v = case l of
     English -> case v of
-      BalanceTitle  -> "Default wallet"
+      BalancesTitle  -> "Default wallet"
     Russian -> case v of
-      BalanceTitle  -> "Стандартный кошелек"
+      BalancesTitle  -> "Стандартный кошелек"
 
 data ButtonSend = ButtonSend
 
@@ -53,9 +53,7 @@ balancesPage = do
   c <- liftIO $ loadCounter
   liftIO $ saveCounter $ PatternTries $ Map.insert anon_name 0 (patterntriesCount c)
 #endif
-  let thisWidget = Just $ pure balancesPage
-  menuWidget BalanceTitle thisWidget
-  wrapper False $ divClass "balances-wrapper" $ do
+  wrapper BalancesTitle (Just $ pure balancesPage) False $ divClass "balances-wrapper" $ do
     syncWidget =<< getSyncProgress
     currenciesList anon_name
 

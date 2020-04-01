@@ -14,9 +14,11 @@ import Data.Time (NominalDiffTime)
 import Data.Yaml (encodeFile)
 import Ergvein.Aeson
 import Ergvein.Lens
+import Ergvein.Text
 import Ergvein.Types.Currency (Units(..), defUnits, Currency, allCurrencies)
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Yaml(readYamlEither')
 import qualified Data.Map.Strict as M
 import Servant.Client(BaseUrl(..), parseBaseUrl)
@@ -90,7 +92,7 @@ mkDefSettings home = liftIO $ do
   encodeFile (unpack $ settingsConfigPath cfg) cfg
   pure cfg
 
-loadSettings :: MonadIO m => Maybe FilePath -> m Settings
+loadSettings :: (MonadIO m, PlatformNatives) => Maybe FilePath -> m Settings
 loadSettings = const $ liftIO $ do
   mpath <- getFilesDir =<< getHaskellActivity
   case mpath of
@@ -98,9 +100,12 @@ loadSettings = const $ liftIO $ do
     Just path -> do
       let configPath = path <> "/config.yaml"
       ex <- doesFileExist configPath
-      if not ex
+      sett <- if not ex
         then mkDefSettings path
         else either (const $ mkDefSettings path) pure =<< readYamlEither' configPath
+      logWrite $ "Loaded settings: " <> showt sett 
+      pure sett 
+
 #else
 mkDefSettings :: MonadIO m => m Settings
 mkDefSettings = liftIO $ do

@@ -1,5 +1,6 @@
 module Ergvein.Wallet.Menu(
-    menuWidget
+    headerWidget
+  , headerWidgetOnlyBackBtn
   ) where
 
 import Data.Text (Text)
@@ -9,14 +10,16 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu.Types
 import Ergvein.Wallet.Monad
 
-menuWidget :: (MonadFront t m, LocalizedPrint a) => a -> Maybe (Dynamic t (m ())) -> m ()
-menuWidget titleVal prevWidget = divClass "menu-wrapper" $ mdo
-  btnE <- divClass "menu-header" $ do
-    divClass "menu-wallet-name" $ localizedText titleVal -- "Default wallet"
-    divButton "menu-button" $ elClassDyn "i" menuButtonIconClassD blank
-  dropdownVisibleD <- toggle False btnE
-  let dropdownClassesD = dropdownClasses <$> dropdownVisibleD
-  let menuButtonIconClassD = menuButtonIconClass <$> dropdownVisibleD
+headerWidget :: (MonadFront t m, LocalizedPrint a) => a -> Maybe (Dynamic t (m ())) -> m ()
+headerWidget titleVal prevWidget = divClass "header-wrapper" $ mdo
+  btnE <- divClass "header" $ do
+    stD <- getRetractStack
+    backButton "header-button header-back-button" $ null <$> stD
+    divClass "header-wallet-name" $ localizedText titleVal -- "Default wallet"
+    divButton "header-button header-menu-dropdown-button" $ elClassDyn "i" menuDropdownButtonIconClassD blank
+  dropdownIsHiddenD <- toggle True btnE
+  let dropdownClassesD = visibilityClass "header-menu-dropdown" <$> dropdownIsHiddenD
+  let menuDropdownButtonIconClassD = menuDropdownButtonIconClass <$> dropdownIsHiddenD
   divClassDyn dropdownClassesD $ do
     let menuBtn v = (v <$) <$> clearButton v
     balE <- menuBtn MenuBalances
@@ -27,12 +30,25 @@ menuWidget titleVal prevWidget = divClass "menu-wrapper" $ mdo
     switchE <- menuBtn MenuSwitch
     switchMenu prevWidget $ leftmost [balE, netE, setE, abtE, logE, switchE]
 
-dropdownClasses :: Bool -> Text
-dropdownClasses v = "menu-dropdown " <> visible v
-  where 
-    visible True = "visible"
-    visible _    = ""
+headerWidgetOnlyBackBtn :: MonadFrontBase t m => m ()
+headerWidgetOnlyBackBtn = divClass "header-wrapper" $ divClass "header-only-back-btn" $ do
+  stD <- getRetractStack
+  void $ backButton "header-button header-back-button" $ null <$> stD
 
-menuButtonIconClass :: Bool -> Text
-menuButtonIconClass True = "fas fa-times fa-fw"
-menuButtonIconClass _ = "fas fa-bars fa-fw"
+-- | Button for going back on widget history
+backButton :: MonadFrontBase t m => Text -> Dynamic t Bool -> m ()
+backButton c visibilityD = do
+  let backButtonVisibleD = visibilityClass c <$> visibilityD
+  e <- divButton backButtonVisibleD $ elClass "i" "fas fa-arrow-left fa-fw" blank
+  void $ retract e
+
+-- | Adds "hidden" class to the given classes if predicate is True
+visibilityClass :: Text -> Bool -> Text
+visibilityClass c isHidden = c <> " " <> toClass isHidden
+  where 
+    toClass True = "hidden"
+    toClass _    = ""
+
+menuDropdownButtonIconClass :: Bool -> Text
+menuDropdownButtonIconClass True = "fas fa-bars fa-fw"
+menuDropdownButtonIconClass _    = "fas fa-times fa-fw"
