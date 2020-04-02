@@ -37,3 +37,8 @@ type TxHash = Text
 
 -- | Index of the UTXO
 type TxOutIndex = Word
+
+-- | index of the first block in blockchain
+currencyHeightStart :: Currency -> BlockHeight
+currencyHeightStart = \case BTC  -> 0
+                            ERGO -> 1

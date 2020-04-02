@@ -111,3 +111,17 @@ data TxBroadcastRequest = TxBroadcastRequest
 $(deriveJSON (aesonOptionsStripPrefix "txBroadcastReq") ''TxBroadcastRequest)
 
 type TxBroadcastResponse = TxHash
+
+--Broadcast
+data ScanProgressItem = ScanProgressItem
+    { scanProgressCurrency      :: !Currency
+    , scanProgressScannedHeight :: !BlockHeight
+    , scanProgressActualHeight  :: !BlockHeight
+    } deriving (Eq, Show, Generic)
+$(deriveJSON (aesonOptionsStripPrefix "infoRespScanProgressItem") ''ScanProgressItem)
+
+--Info
+data InfoResponse = InfoResponse
+    { infoScanProgress  :: [ScanProgressItem]
+    } deriving (Eq, Show, Generic)
+$(deriveJSON (aesonOptionsStripPrefix "infoResp") ''InfoResponse)

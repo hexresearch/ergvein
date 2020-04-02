@@ -27,6 +27,9 @@ data Config = Config
   } deriving (Show, Generic)
 deriveJSON (aesonOptionsStripPrefix "config") ''Config
 
+class HasServerConfig m where
+  serverConfig :: m Config
+
 connectionStringFromConfig :: Config -> String
 connectionStringFromConfig cfg = let
   params = [ ("host", configDbHost)

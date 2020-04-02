@@ -2,12 +2,9 @@ module Ergvein.Index.Server.BlockchainScanning.Common where
 
 import Control.Concurrent
 import Control.Immortal
-import Control.Monad
 import Control.Monad.Catch
-import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Data.Foldable (traverse_)
-import Conversion
 import Data.Maybe
 import Database.Persist.Sql
 
@@ -21,75 +18,90 @@ import Ergvein.Index.Server.Environment
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Text
+import Control.Monad.Reader
+import Ergvein.Index.Server.Monad
 
+import qualified Network.Bitcoin.Api.Client                      as BitcoinApi
 import qualified Ergvein.Index.Server.BlockchainScanning.Bitcoin as BTCScanning
-import qualified Ergvein.Index.Server.BlockchainScanning.Ergo as ERGOScanning
+import qualified Ergvein.Index.Server.BlockchainScanning.Ergo    as ERGOScanning
+
+data ScanProgressInfo = ScanProgressInfo
+  { nfoCurrency      :: !Currency
+  , nfoScannedHeight :: !BlockHeight
+  , nfoActualHeight  :: !BlockHeight
+  }
+
+scanningInfo :: ServerM [ScanProgressInfo]
+scanningInfo = mapM nfo allCurrencies
+  where
+    nfo :: Currency -> ServerM ScanProgressInfo
+    nfo currency = do
+      maybeScanned <- dbQuery $ scannedBlockHeight currency
+      let scanned = fromMaybe (currencyHeightStart currency) maybeScanned
+      actual  <- actualHeight currency
+      pure $ ScanProgressInfo currency scanned actual
+
 
 scannedBlockHeight :: (MonadIO m) => Currency -> QueryT m (Maybe BlockHeight)
 scannedBlockHeight currency = do
   entity <- getScannedHeight currency
   pure $ scannedHeightRecHeight . entityVal <$> entity
 
-blockHeightsToScan :: ServerEnv -> Currency -> IO [BlockHeight]
-blockHeightsToScan env currency = do
-  actual  <- blockTotalHeight env currency
-  scanned <- runDbQuery (envPersistencePool env) $ scannedBlockHeight currency
-  let start = maybe startHeight succ scanned
+blockHeightsToScan :: Currency -> ServerM [BlockHeight]
+blockHeightsToScan currency = do
+  actual  <- actualHeight currency
+  scanned <- dbQuery $ scannedBlockHeight currency
+  let start = maybe (currencyHeightStart currency) succ scanned
   pure [start..actual]
-  where
-    cfg = envServerConfig env
-    startHeight =  case currency of BTC  -> 0
-                                    ERGO -> 1
 
-blockTotalHeight :: MonadIO m => ServerEnv -> Currency -> m BlockHeight
-blockTotalHeight env currency = liftIO $ case currency of
-    BTC  -> BTCScanning.actualHeight $ envServerConfig env
-    ERGO -> ERGOScanning.actualHeight env
-
+actualHeight :: Currency -> ServerM BlockHeight
+actualHeight currency = case currency of
+  BTC  -> BTCScanning.actualHeight
+  ERGO -> ERGOScanning.actualHeight 
 
 storeInfo :: (MonadIO m) => BlockInfo -> QueryT m ()
 storeInfo blockInfo = do
-  insertTxs $ blockContentTxInfos $ blockInfoContent blockInfo
-  insertTxOuts $ blockContentTxOutInfos $ blockInfoContent blockInfo
-  insertTxIns $ blockContentTxInInfos $ blockInfoContent blockInfo
-  insertBlock $ blockInfoMeta blockInfo
+  insertTxs    $ blockContentTxInfos     $ blockInfoContent blockInfo
+  insertTxOuts $ blockContentTxOutInfos  $ blockInfoContent blockInfo
+  insertTxIns  $ blockContentTxInInfos   $ blockInfoContent blockInfo
+  insertBlock  $ blockInfoMeta blockInfo
   pure ()
 
 storeScannedHeight :: (MonadIO m) => Currency -> BlockHeight -> QueryT m ()
 storeScannedHeight currency scannedHeight = void $ upsertScannedHeight currency scannedHeight
 
-scannerThread :: forall m . (MonadUnliftIO m, MonadCatch m, MonadLogger m) => ServerEnv -> Currency -> (BlockHeight -> IO BlockInfo) -> m Thread
-scannerThread env currency scanInfo =
-  create $ logOnException . scanIteration
+scannerThread :: Currency -> (BlockHeight -> ServerM BlockInfo) -> ServerM Thread
+scannerThread currency scanInfo = create $ logOnException . scanIteration
   where
-    pool = envPersistencePool env
-
-    blockIteration :: BlockHeight -> BlockHeight -> m ()
+    blockIteration :: BlockHeight -> BlockHeight -> ServerM ()
     blockIteration totalh blockHeight = do
       let percent = fromIntegral blockHeight / fromIntegral totalh :: Double
       logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
-      liftIO $ do
+      do
         blockInfo <- scanInfo blockHeight
-        let blockInfoToStore = selectedInfoToStore blockInfo
-        runDbQuery pool $ do
+        blockInfoToStore <- selectedInfoToStore blockInfo
+        dbQuery $ do
           storeInfo blockInfoToStore
           storeScannedHeight currency blockHeight
-        addToCache (envLevelDBContext env) blockInfoToStore
+        addToCache blockInfoToStore
 
-    scanIteration :: Thread -> m ()
+    scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
-      totalh <- blockTotalHeight env currency
-      heights <- liftIO $ blockHeightsToScan env currency
+      cfg <- serverConfig
+      totalh <-  actualHeight currency
+      heights <- blockHeightsToScan currency
       traverse_ (blockIteration totalh) heights
-      liftIO $ threadDelay $ configBlockchainScanDelay $ envServerConfig env
-    
-    selectedInfoToStore info = if configPubScriptHistoryScan $ envServerConfig env then info else 
-      let blockContent = BlockContentInfo (blockContentTxInfos $ blockInfoContent info) [] []
-      in info { blockInfoContent = blockContent }
+      liftIO $ threadDelay $ configBlockchainScanDelay cfg
 
-startBlockchainScanner :: (MonadUnliftIO m, MonadCatch m, MonadLogger m) => ServerEnv -> m [Thread]
-startBlockchainScanner env =
-    sequenceA
-    [ scannerThread env BTC  $ BTCScanning.blockInfo  env
-    , scannerThread env ERGO $ ERGOScanning.blockInfo env 
-    ]
+    selectedInfoToStore info = do
+      cfg <- serverConfig
+      pure $ if configPubScriptHistoryScan cfg then info 
+             else 
+                let blockContent = BlockContentInfo (blockContentTxInfos $ blockInfoContent info) [] []
+                in info { blockInfoContent = blockContent }
+
+startBlockchainScanner :: ServerM [Thread]
+startBlockchainScanner = sequenceA 
+  [ scannerThread BTC  BTCScanning.blockInfo
+  , scannerThread ERGO ERGOScanning.blockInfo
+  ]

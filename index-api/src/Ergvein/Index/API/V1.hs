@@ -26,6 +26,8 @@ type IndexGetTxFeeHistogram = "fee"       :> "histogram" :> Body TxFeeHistogramR
 
 type IndexTxBroadcast       = "broadcast" :> Body TxBroadcastRequest :> PostResp TxBroadcastResponse
 
+type IndexGetInfo           = "info"      :> PostResp InfoResponse
+
 data IndexApi route = IndexApi
     { indexGetHeight         :: route :- IndexGetHeight
     , indexGetBalance        :: route :- IndexGetBalance
@@ -36,4 +38,5 @@ data IndexApi route = IndexApi
     , indexGetTxHexView      :: route :- IndexGetTxHexView
     , indexGetTxFeeHistogram :: route :- IndexGetTxFeeHistogram
     , indexTxBroadcast       :: route :- IndexTxBroadcast
+    , indexGetInfo           :: route :- IndexGetInfo
     } deriving Generic

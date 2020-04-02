@@ -36,20 +36,17 @@ data ServerEnv = ServerEnv
     , envErgoNodeClient    :: !ErgoApi.Client
     }
 
-btcNodeClient :: Config -> (BitcoinApi.Client -> IO a) -> IO a
-btcNodeClient cfg = BitcoinApi.withClient 
-    (configBTCNodeHost     cfg)
-    (configBTCNodePort     cfg)
-    (configBTCNodeUser     cfg)
-    (configBTCNodePassword cfg)
+class HasBitcoinNodeNetwork m where
+  currentBitcoinNetwork :: m HK.Network
 
 newServerEnv :: (MonadIO m, MonadLogger m) => Config -> m ServerEnv
 newServerEnv cfg = do
     logger <- liftIO newChan
-    persistencePool   <- liftIO $ runStdoutLoggingT $ do
-        let doLog = configDbLog cfg
-        persistencePool <- newDBPool doLog $ fromString $ connectionStringFromConfig cfg
-        flip runReaderT persistencePool $ runDb $ runMigration migrateAll
+    void . liftIO . forkIO $ runStdoutLoggingT $ unChanLoggingT logger
+    persistencePool <- liftIO $ runStdoutLoggingT $ do
+        let dbLog = configDbLog cfg
+        persistencePool <- newDBPool dbLog $ fromString $ connectionStringFromConfig cfg
+        flip runReaderT persistencePool $ dbQuery $ runMigration migrateAll
         pure persistencePool
     levelDBContext <- openCacheDb (configCachePath cfg) persistencePool
     ergoNodeClient <- liftIO $ ErgoApi.newClient (configERGONodeHost cfg) $ (configERGONodePort cfg)
