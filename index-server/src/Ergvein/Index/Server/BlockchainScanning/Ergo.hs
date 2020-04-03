@@ -19,7 +19,7 @@ import           Network.Ergo.Api.Blocks
 import           Network.Ergo.Api.Client
 import           Network.Ergo.Api.Info
 import qualified Network.Ergo.Api.Utxo    as UtxoApi
-
+import Control.Monad.IO.Unlift
 
 txInfo :: ApiMonad m => ErgoTransaction -> TxHash -> m ([TxInInfo], [TxOutInfo])
 txInfo tx txHash = do
@@ -63,13 +63,13 @@ blockTxInfos block txBlockHeight = do
       (txInI,txOutI) <- txInfo tx txHash
       pure ([txI], txInI, txOutI)
 
-actualHeight :: ServerEnv -> IO BlockHeight
-actualHeight env = do
-    info <- runReaderT getInfo (envErgoNodeClient env)
+actualHeight :: ApiMonad m => m BlockHeight
+actualHeight = do
+    info <- getInfo
     pure $ fromIntegral $ fromMaybe 0 $ bestBlockHeight info
 
-blockInfo :: ServerEnv -> BlockHeight -> IO BlockInfo
-blockInfo env blockHeightToScan = flip runReaderT (envErgoNodeClient env) $ do
+blockInfo :: ApiMonad m  => BlockHeight -> m BlockInfo
+blockInfo blockHeightToScan = do
   headersAtHeight <- getHeaderIdsAtHeight
       $ Height
       $ fromIntegral blockHeightToScan

@@ -19,6 +19,7 @@ import Ergvein.Index.Server.Monad
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import Ergvein.Index.Server.BlockchainScanning.Common
 
 import qualified Network.Haskoin.Block as Btc 
 import qualified Data.Serialize as S 
@@ -34,6 +35,7 @@ indexServer = IndexApi
     , indexGetTxHexView = txHexViewEndpoint
     , indexGetTxFeeHistogram = txFeeHistogramEndpoint
     , indexTxBroadcast = txBroadcastRequestEndpoint
+    , indexGetInfo = indexGetInfoEndpoint
     }
 -- Stubs
 
@@ -59,7 +61,7 @@ ergoBroadcastResponse = "4c6282be413c6e300a530618b37790be5f286ded758accc2aebd415
 --Endpoints
 indexGetHeightEndpoint :: HeightRequest -> ServerM HeightResponse
 indexGetHeightEndpoint (HeightRequest currency) = do
-  mh <- runDb $ fmap (scannedHeightRecHeight . entityVal) <$> getScannedHeight currency
+  mh <- dbQuery $ fmap (scannedHeightRecHeight . entityVal) <$> getScannedHeight currency
   pure $ HeightResponse $ fromMaybe 0 mh
 
 indexGetBalanceEndpoint :: BalanceRequest -> ServerM BalanceResponse
@@ -112,6 +114,14 @@ indexGetBlockFiltersEndpoint request = do
       mkHash = case filtersReqCurrency request of 
         BTC -> Btc.blockHashToHex . Btc.headerHash . either (error . ("Failed to decode block hash! " ++)) id . S.decode . hex2bs
         _ -> error "Ergo indexGetBlockFiltersEndpoint is not implemented!" -- TODO here
+
+indexGetInfoEndpoint :: ServerM InfoResponse
+indexGetInfoEndpoint = do 
+  scanInfo <- scanningInfo
+  let mappedScanInfo = scanNfoItem <$> scanInfo
+  pure $ InfoResponse mappedScanInfo
+  where
+    scanNfoItem nfo = ScanProgressItem (nfoCurrency nfo) (nfoScannedHeight nfo) (nfoActualHeight nfo)
 
 txMerkleProofEndpoint :: TxMerkleProofRequest -> ServerM TxMerkleProofResponse
 txMerkleProofEndpoint TxMerkleProofRequest { merkleReqCurrency = BTC }  = pure btcProof
