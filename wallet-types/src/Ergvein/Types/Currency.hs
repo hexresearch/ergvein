@@ -39,12 +39,13 @@ import Data.Version
 import Data.Word
 import Ergvein.Aeson
 import Text.Printf
+import Data.Serialize (Serialize)
 
 import qualified Data.Text as T
 
 -- | Supported currencies
 data Currency = BTC | ERGO
-  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Flat)
+  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Flat, Serialize)
 $(deriveJSON aesonOptions ''Currency)
 
 instance ToJSONKey Currency where

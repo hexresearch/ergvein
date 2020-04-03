@@ -32,7 +32,6 @@ library
     , ergvein-common
     , ergvein-crypto
     , flat
-    , flat
     , hashable                  >= 1.2.7.0  && < 1.3.0.1
     , haskoin-core              >= 0.8.0    && < 0.8.1
     , jsaddle
