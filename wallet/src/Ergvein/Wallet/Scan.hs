@@ -3,9 +3,9 @@ module Ergvein.Wallet.Scan(
     accountDiscovery
   ) where
 
-import Control.Concurrent 
-import Control.Monad 
-import Control.Monad.IO.Class 
+import Control.Concurrent
+import Control.Monad
+import Control.Monad.IO.Class
 import Data.Function
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
@@ -13,15 +13,15 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction (BlockHeight)
-import Ergvein.Wallet.Filters.Storage 
+import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Constants
 import Ergvein.Wallet.Storage.Keys (derivePubKey, egvXPubKeyToEgvAddress)
 import Network.Haskoin.Block (Block, BlockHash, genesisBlock)
 
-import qualified Data.IntMap.Strict as MI
-import qualified Data.Map.Strict    as M
+import qualified Data.IntMap.Strict          as MI
+import qualified Data.Map.Strict             as M
 import qualified Ergvein.Wallet.Filters.Scan as Filters
 
 accountDiscovery :: MonadFront t m => m ()
