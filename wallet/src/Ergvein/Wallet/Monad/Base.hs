@@ -8,16 +8,20 @@ module Ergvein.Wallet.Monad.Base
   , AlertInfo(..)
   , MonadEgvLogger(..)
   , MonadClient(..)
+  , IndexerInfo(..)
   ) where
 
 import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Control.Monad.Ref
+import Data.Map
 import Data.Text (Text)
 import Data.Time(UTCTime, NominalDiffTime)
 import Ergvein.Crypto
 import Ergvein.Index.Client
+import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Log.Types
@@ -166,3 +170,12 @@ class (MonadBaseConstr t m, HasClientManager m, HasClientManager (Performable m)
   -- | Get request timeout ref
   getRequestTimeoutRef :: m (ExternalRef t NominalDiffTime)
 
+
+-- ===========================================================================
+--    Frontend-wide types
+-- ===========================================================================
+
+data IndexerInfo = IndexerInfo {
+  indInfoHeights :: Map Currency (BlockHeight,BlockHeight)
+, indInfoLatency :: NominalDiffTime
+} deriving (Show)
