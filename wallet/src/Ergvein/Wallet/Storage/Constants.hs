@@ -1,15 +1,8 @@
-module Ergvein.Wallet.Storage.Constants
-  (
+module Ergvein.Wallet.Storage.Constants (
     gapLimit
-  , externalAddressCount
-  , internalAddressCount
   ) where
 
+-- | Defines the number of generated private / publick keys in excess of the number that was used.
+-- Suppose you have N keys used in storage, then wallet application will tend to keep N + gapLimit keys.
 gapLimit :: Int
 gapLimit = 20
-
-externalAddressCount :: Int
-externalAddressCount = 20
-
-internalAddressCount :: Int
-internalAddressCount = 6
