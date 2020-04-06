@@ -68,6 +68,8 @@ data Env t = Env {
 , env'syncProgress    :: !(ExternalRef t SyncProgress)
 , env'heightRef       :: !(ExternalRef t (Map Currency Integer))
 , env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
+, env'indexers        :: !(ExternalRef t (Map BaseUrl (Maybe IndexerInfo)))
+, env'indexersEF      :: !(Event t (), IO ())
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -174,19 +176,42 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE updateSettings #-}
   getSettingsRef = asks env'settings
   {-# INLINE getSettingsRef #-}
-  getSyncProgressRef = asks env'syncProgress 
+  getSyncProgressRef = asks env'syncProgress
   {-# INLINE getSyncProgressRef #-}
-  getSyncProgress = externalRefDynamic =<< asks env'syncProgress 
+  getSyncProgress = externalRefDynamic =<< asks env'syncProgress
   {-# INLINE getSyncProgress #-}
-  setSyncProgress ev = do 
+  setSyncProgress ev = do
     ref <- asks env'syncProgress
-    performEvent_ $ writeExternalRef ref <$> ev 
+    performEvent_ $ writeExternalRef ref <$> ev
   {-# INLINE setSyncProgress #-}
   getHeightRef = asks env'heightRef
   {-# INLINE getHeightRef #-}
-  getFiltersSyncRef = asks env'filtersSyncRef 
+  getFiltersSyncRef = asks env'filtersSyncRef
   {-# INLINE getFiltersSyncRef #-}
-
+  getIndexerInfoRef = asks env'indexers
+  {-# INLINE getIndexerInfoRef #-}
+  getIndexerInfoD = externalRefDynamic =<< asks env'indexers
+  {-# INLINE getIndexerInfoD #-}
+  getIndexerInfoEF = asks env'indexersEF
+  {-# INLINE getIndexerInfoEF #-}
+  refreshIndexerInfo e = do
+    fire <- asks (snd . env'indexersEF)
+    performEvent_ $ (liftIO fire) <$ e
+  {-# INLINE refreshIndexerInfo #-}
+  updateIndexerURL urlE = do
+    indRef <- asks env'indexers
+    urlRef <- asks env'urls
+    performEvent $ ffor urlE $ \(o,n) -> do
+      im <- readExternalRef indRef
+      case M.lookup n im of
+        Just _ -> pure False
+        Nothing -> do
+          let v = join $ M.lookup o im
+          urls <- readExternalRef urlRef
+          writeExternalRef indRef $ M.insert n v $ M.delete o im
+          writeExternalRef urlRef $ S.insert n $ S.delete o urls
+          pure True
+  {-# INLINE updateIndexerURL #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
@@ -267,11 +292,14 @@ liftAuth ma0 ma = mdo
         syncRef         <- getSyncProgressRef
         heightRef       <- getHeightRef
         fsyncRef        <- getFiltersSyncRef
+        indexRef        <- getIndexerInfoRef
+        indexEF         <- getIndexerInfoEF
         -- headersLoader
         filtersLoader
         runReaderT (wrapped ma) $ Env
           settingsRef backEF loading langRef activeCursRef authRef (logoutFire ()) storeDir alertsEF
-          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager hst fst syncRef heightRef fsyncRef
+          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager
+          hst fst syncRef heightRef fsyncRef indexRef indexEF
   let
     ma0' = maybe ma0 runAuthed mauth0
     newAuthInfoE = ffilter isMauthUpdate $ updated mauthD

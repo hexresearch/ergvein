@@ -22,8 +22,8 @@ flag testnet
 
 library
     exposed-modules:
-        Control.Monad.Haskey.State
         Control.Monad.Haskey.Haskoin
+        Control.Monad.Haskey.State
         Ergvein.Wallet
         Ergvein.Wallet.Alert
         Ergvein.Wallet.Alert.Handler
@@ -55,16 +55,16 @@ library
         Ergvein.Wallet.Localization.Client
         Ergvein.Wallet.Localization.Currencies
         Ergvein.Wallet.Localization.Currency
-        Ergvein.Wallet.Localization.Initial
         Ergvein.Wallet.Localization.Info
+        Ergvein.Wallet.Localization.Initial
         Ergvein.Wallet.Localization.Native
         Ergvein.Wallet.Localization.Network
         Ergvein.Wallet.Localization.Password
         Ergvein.Wallet.Localization.PatternKey
         Ergvein.Wallet.Localization.Seed
         Ergvein.Wallet.Localization.Settings
-        Ergvein.Wallet.Localization.Storage
         Ergvein.Wallet.Localization.Share
+        Ergvein.Wallet.Localization.Storage
         Ergvein.Wallet.Log
         Ergvein.Wallet.Log.Page
         Ergvein.Wallet.Log.Reader
@@ -89,8 +89,8 @@ library
         Ergvein.Wallet.Page.Canvas
         Ergvein.Wallet.Page.Currencies
         Ergvein.Wallet.Page.History
-        Ergvein.Wallet.Page.Initial
         Ergvein.Wallet.Page.Info
+        Ergvein.Wallet.Page.Initial
         Ergvein.Wallet.Page.Network
         Ergvein.Wallet.Page.Password
         Ergvein.Wallet.Page.PatternKey
@@ -117,6 +117,7 @@ library
         Ergvein.Wallet.Util
         Ergvein.Wallet.Validate
         Ergvein.Wallet.Widget.GraphPinCode
+        Ergvein.Wallet.Worker.Info
         Ergvein.Wallet.Wrapper
         Ergvein.Wallet.Yaml
     hs-source-dirs: src
