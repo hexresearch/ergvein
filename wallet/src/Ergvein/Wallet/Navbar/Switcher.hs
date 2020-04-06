@@ -6,6 +6,7 @@ import Ergvein.Types.Currency
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar.Types
 
+import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.History
 import Ergvein.Wallet.Page.Receive
 import Ergvein.Wallet.Page.Send
@@ -14,7 +15,7 @@ switchNavbar :: MonadFront t m => Currency -> Maybe (Dynamic t (m ())) -> Event 
 switchNavbar cur prevWidget e = void $ nextWidget $ fforMaybe e $ \go -> let
   mkNext n = Retractable {
     retractableNext = n
-  , retractablePrev = prevWidget
+  , retractablePrev = Just $ pure balancesPage
   }
   in case go of
     NavbarSend    -> Just $ mkNext $ sendPage cur
