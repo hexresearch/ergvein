@@ -4,9 +4,7 @@ module Ergvein.Wallet.Page.Network(
   ) where
 
 import Control.Monad.IO.Class
-import qualified Data.Map.Strict as M
-import Data.Maybe (fromMaybe)
-import Data.Text as T
+import Data.Maybe (fromMaybe, catMaybes, isJust)
 import Servant.Client (BaseUrl, parseBaseUrl, showBaseUrl)
 
 import Ergvein.Wallet.Client
@@ -21,6 +19,10 @@ import Ergvein.Wallet.Localization.Network
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Wrapper
+
+import qualified Data.List as L
+import qualified Data.Map.Strict as M
+import qualified Data.Text as T
 
 networkPage :: MonadFront t m => Maybe Currency -> m ()
 networkPage curMb = wrapper NPSTitle (Just $ pure $ networkPage curMb) False $ do
@@ -51,29 +53,24 @@ networkPage curMb = wrapper NPSTitle (Just $ pure $ networkPage curMb) False $ d
 optionsContent :: MonadFront t m => Currency -> m ()
 optionsContent cur = do
   gpbE <- getPostBuild
-  lineOption $ do
-    statusD <- flip fmap (tempGetStatus cur) $ \sD -> ffor sD $ \case
-                    Left err  -> NPSError err
-                    Right v   -> NPSStatusVal v
-    lineOptionNoEdit NPSStatus statusD NPSStatusDescr
-  selE <- lineOption $ do
-    nameOption NPSServer
-    baseUrlD <- fmap (NPSServerVal <$>) $ tempGetServer cur
-    (e,_) <- el' "div" $ do
-      valueOptionDyn baseUrlD
-      divClass "network-name-edit" $ localizedText NPSServerValEdit
-    let selE = cur <$ domEvent Click e
-    descrOption NPSServerDescr
-    labelHorSep
-    pure selE
-  lineOption $ do
-    heightD <- flip fmap (tempGetHeight cur) $ \hD -> ffor hD $ \case
-                 Left err   -> NPSError err
-                 Right hrsp -> NPSHeightVal hrsp
-    lineOptionNoEdit NPSHeight heightD NPSHeightDescr
-  void $ nextWidget $ ffor selE $ \cur -> Retractable {
+  infomapD <- getIndexerInfoD
+  let servNumD = (NPSServerVal . M.size) <$> infomapD
+      actServNumD = (NPSServerVal . length . catMaybes . M.elems) <$> infomapD
+      servCurInfoD = ffor infomapD $ \im -> let
+        act = L.nub . catMaybes . fmap (M.lookup cur . indInfoHeights) . catMaybes . M.elems $ im
+        in case act of
+            [] ->  NPSNoServerAvail
+            v:[] -> NPSSyncInfo v
+            _ -> NPSDesync
+
+  lineOption $ lineOptionNoEdit NPSServer servNumD NPSServerDescr
+  lineOption $ lineOptionNoEdit NPSSyncStatus servCurInfoD NPSSyncDescr
+  editE <- lineOption $ do
+    refreshIndexerInfo =<< outlineButton NPSRefresh
+    fmap (cur <$) $ outlineButton NPSServerList
+  void $ nextWidget $ ffor editE $ \cur -> Retractable {
       retractableNext = pageSelectionOfServer cur
-    , retractablePrev = Nothing
+    , retractablePrev = Just (pure $ networkPage (Just cur))
     }
 
 lineOptionNoEdit :: MonadFront t m
@@ -102,65 +99,58 @@ labelHorSep = elAttr "hr" [("class","network-hr-sep-lb")] blank
 elBR = el "br" blank
 
 pageSelectionOfServer :: MonadFront t m => Currency -> m ()
-pageSelectionOfServer cur = wrapper NPSTitle (Just $ pure $ pageSelectionOfServer cur) False $ do
-  h3 $ localizedText $ NPSSelectServer cur
-  listD <- tempGetListServer cur
-  list <- sample $ current listD
-  selE <- fmap leftmost $ traverse renderItem list
-  -- TODO: Do something for changing URL
-  void $ nextWidget $ ffor selE $ \_ -> Retractable {
+pageSelectionOfServer cur = wrapper NPSTitle (Just $ pure $ pageSelectionOfServer cur) False $ mdo
+  h3 $ localizedText NPSServerList
+  infomapD <- fmap2 (M.mapKeys Just) getIndexerInfoD
+  keyD <- holdDyn Nothing selE
+  selE <- fmap2 snd $ selectViewListWithKey keyD infomapD renderItem
+  void $ nextWidget $ ffor never $ \_ -> Retractable {
       retractableNext = networkPage $ Just cur
     , retractablePrev = Just $ pure $ networkPage $ Just cur
     }
   where
-    renderItem baseUrl = do
-      (e, _) <- divClass' "network-sel-cur-item" $ text $ T.pack $ showBaseUrl baseUrl
-      pure $ baseUrl <$ domEvent Click e
+    renderItem :: MonadFront t m => Maybe BaseUrl -> Dynamic t (Maybe IndexerInfo) -> Dynamic t Bool -> m (Event t (Maybe BaseUrl))
+    renderItem murl infoD selD = case murl of
+      Nothing -> pure never
+      Just url -> let selInfoD = (,) <$> selD <*> infoD in
+        fmap (switch . current) $ widgetHoldDyn $ ffor selInfoD $ \(sel,minfo) -> do
+          if sel then editWidget url minfo else infoWidget cur url minfo
 
--- | Temporary stubs for data
-data TempErr =
-    TempErr
-  | TempErrNoData
+editWidget :: MonadFront t m => BaseUrl -> Maybe IndexerInfo -> m (Event t (Maybe BaseUrl))
+editWidget url minfo = lineOption $ do
+  urlD <- fmap _textInput_value $ textInput def { _textInputConfig_initialValue = T.pack . showBaseUrl $ url }
+  okE <- outlineButtonWithIconNoText "fas fa-check"
+  cancelE <- outlineButtonWithIconNoText "fas fa-times"
+  let murlE = attachWith (\t _ -> parseBaseUrl $ T.unpack t) (current urlD) okE
+      dupE  = fforMaybe murlE $ \murl -> if Just url == murl then Just () else Nothing
+      urlE  = fforMaybe murlE $ \murl -> if Just url == murl then Nothing else (url,) <$> murl
+  updE <- updateIndexerURL urlE
+  let urlErrE = fmapMaybe (maybe (Just NPSParseError) (const Nothing)) murlE
+      updErrE = fmapMaybe (\b -> if b then Nothing else Just NPSDuplicateURL) updE
+      errE    = leftmost [urlErrE, updErrE]
+  noErrE <- delay 3 errE
+  widgetHold (pure ()) $ ffor (leftmost [Nothing <$ noErrE, Just <$> errE]) $ \case
+    Nothing -> pure ()
+    Just err -> divClass "form-field-errors" $ localizedText err
+  labelHorSep
+  pure $ Nothing <$ (leftmost [cancelE, dupE])
 
-instance LocalizedPrint TempErr where
-  localizedShow l v = case l of
-    English -> case v of
-      TempErr       -> "Error"
-      TempErrNoData -> "It is not possibleto receive data"
-    Russian -> case v of
-      TempErr       -> "Ошибка"
-      TempErrNoData -> "Невозможно получить данные"
+infoWidget :: MonadFront t m => Currency -> BaseUrl -> Maybe IndexerInfo -> m (Event t (Maybe BaseUrl))
+infoWidget cur url minfo = lineOption $ do
+  (e,_) <- el "div" $ do
+    divClass "network-name" $ do
+      let cls = if isJust minfo then "indexer-online" else "indexer-offline"
+      elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
+      text $ T.pack . showBaseUrl $ url
+    elAttr' "button" [("class", "button button-outline network-name-edit")] $ localizedText NPSServerEdit
+  maybe (pure ()) (descrOption . NPSLatency . indInfoLatency) minfo
+  descrOption $ case minfo of
+    Nothing -> NPSOffline
+    Just info -> case M.lookup cur $ indInfoHeights info of
+      Nothing -> NPSNoIndex cur
+      Just v -> NPSHeightInfo v
+  labelHorSep
+  pure $ (Just url) <$ domEvent Click e
 
-tempGetStatus:: MonadFront t m => Currency -> m (Dynamic t (Either TempErr Int))
-tempGetStatus = \case
-  BTC   -> pure $ pure $ Right 1
-  ERGO  -> pure $ pure $ Left TempErr
-
-tempGetHeight :: MonadFront t m => Currency -> m (Dynamic t (Either TempErr BlockHeight))
-tempGetHeight = \case
-  BTC   -> pure $ pure $ Right 5
-  ERGO  -> pure $ pure $ Right 3
-
-tempGetServer :: MonadFront t m => Currency -> m (Dynamic t BaseUrl)
-tempGetServer = \case
-  BTC   -> do baseUrl <- liftIO $ parseBaseUrl "http://test.serverbtc.ru"
-              pure $ pure baseUrl
-  ERGO  -> do baseUrl <- liftIO $ parseBaseUrl "http://test.serverergo.ru"
-              pure $ pure baseUrl
-
-tempGetListServer :: MonadFront t m => Currency -> m (Dynamic t [BaseUrl])
-tempGetListServer = \case
-  BTC   -> do listUrls <- liftIO $ sequence [ parseBaseUrl "http://test.serverbtc.ru"
-                                            , parseBaseUrl "http://test.serverbtc1.ru"
-                                            , parseBaseUrl "http://test.serverbtc2.ru"
-                                            , parseBaseUrl "http://test.serverbtc3.ru"
-                                            , parseBaseUrl "http://test.serverbtc4.ru"
-                                            ]
-              pure $ pure listUrls
-  ERGO  -> do listUrls <- liftIO $ sequence [ parseBaseUrl "http://test.serverergo.ru"
-                                            , parseBaseUrl "http://test.serverergo1.ru"
-                                            , parseBaseUrl "http://test.serverergo2.ru"
-                                            , parseBaseUrl "http://test.serverergo3.ru"
-                                            , parseBaseUrl "http://test.serverergo4.ru"
-                                            ]
-              pure $ pure listUrls
+fmap2 :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
+fmap2 = fmap . fmap
