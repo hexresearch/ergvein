@@ -3,12 +3,13 @@ module Ergvein.Index.Client.V1
     HasClientManager(..)
   , getHeightEndpoint
   , getBalanceEndpoint
-  , getBlockFiltersEndpoint  
+  , getBlockFiltersEndpoint
   , getTxHashHistoryEndpoint
   , getTxMerkleProofEndpoint
   , getTxHexViewEndpoint
   , getTxFeeHistogramEndpoint
   , txBroadcastEndpoint
+  , getInfoEndpoint
   ) where
 
 import Control.Monad.IO.Class
@@ -22,7 +23,7 @@ import Ergvein.Index.API
 import Ergvein.Index.API.Types
 import Ergvein.Index.API.V1
 import Ergvein.Text
-import Ergvein.Wallet.Native 
+import Ergvein.Wallet.Native
 import Network.HTTP.Client hiding (Proxy)
 
 data AsClient
@@ -43,8 +44,8 @@ getHeightEndpoint :: (HasClientManager m, PlatformNatives) => BaseUrl -> HeightR
 getHeightEndpoint url req = do
   cenv <- fmap (`mkClientEnv` url) getClientMaganer
   res <- liftIO $ flip runClientM cenv $ indexGetHeight apiV1 req
-  liftIO $ case res of 
-    Left er -> logWrite $ showt er 
+  liftIO $ case res of
+    Left er -> logWrite $ showt er
     _ -> pure ()
   pure res
 
@@ -54,7 +55,7 @@ getBalanceEndpoint url req = do
   liftIO $ flip runClientM cenv $ indexGetBalance apiV1 req
 
 getBlockFiltersEndpoint :: HasClientManager m => BaseUrl -> BlockFiltersRequest -> m (Either ClientError BlockFiltersResponse)
-getBlockFiltersEndpoint url req = do 
+getBlockFiltersEndpoint url req = do
   cenv <- fmap (`mkClientEnv` url) getClientMaganer
   liftIO $ flip runClientM cenv $ indexGetBlockFilters apiV1 req
 
@@ -82,3 +83,8 @@ txBroadcastEndpoint :: HasClientManager m => BaseUrl -> TxBroadcastRequest -> m 
 txBroadcastEndpoint url req = do
   cenv <- fmap (`mkClientEnv` url) getClientMaganer
   liftIO $ flip runClientM cenv $ indexTxBroadcast apiV1 req
+
+getInfoEndpoint :: HasClientManager m => BaseUrl -> () -> m (Either ClientError InfoResponse)
+getInfoEndpoint url _ = do
+  cenv <- fmap (`mkClientEnv` url) getClientMaganer
+  liftIO $ flip runClientM cenv $ indexGetInfo apiV1
