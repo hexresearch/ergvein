@@ -23,28 +23,21 @@ import Ergvein.Wallet.Wrapper
 import Control.Monad.IO.Class
 import Data.Map.Strict as Map
 
-data BalancesTitle = BalancesTitle
+data BalancesStrings
+  = BalancesTitle
+  | ButtonSend
+  | ButtonReceive
 
-instance LocalizedPrint BalancesTitle where
+instance LocalizedPrint BalancesStrings where
   localizedShow l v = case l of
     English -> case v of
       BalancesTitle  -> "Default wallet"
+      ButtonSend ->  "Send"
+      ButtonReceive -> "Receive"
     Russian -> case v of
       BalancesTitle  -> "Стандартный кошелек"
-
-data ButtonSend = ButtonSend
-
-instance LocalizedPrint ButtonSend where
-  localizedShow l _ = case l of
-    English ->  "Send"
-    Russian ->  "Отправить"
-
-data ButtonReceive = ButtonReceive
-
-instance LocalizedPrint ButtonReceive where
-  localizedShow l _ = case l of
-    English -> "Receive"
-    Russian -> "Получить"
+      ButtonSend ->  "Отправить"
+      ButtonReceive -> "Получить"
 
 balancesPage :: MonadFront t m => m ()
 balancesPage = do

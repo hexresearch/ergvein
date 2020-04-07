@@ -21,47 +21,30 @@ import Ergvein.Wallet.Wrapper
 import qualified Data.Text as T
 import qualified Data.Validation as V
 
-newtype SendTitle = SendTitle Currency
+data SendStrings
+  = SendTitle Currency
+  | SendBtnString
+  | RecipientString
+  | AmountString
+  | BtnPasteString
+  | BtnScanQRCode
 
-instance LocalizedPrint SendTitle where
-  localizedShow l (SendTitle c) = case l of
-    English -> "Send " <> currencyName c
-    Russian -> "Отправить " <> currencyName c
-
-data SendBtnString = SendBtnString
-
-instance LocalizedPrint SendBtnString where
-  localizedShow l _ = case l of
-    English -> "Send"
-    Russian -> "Отправить"
-
-data RecipientString = RecipientString
-
-instance LocalizedPrint RecipientString where
-  localizedShow l _ = case l of
-    English -> "Recipient"
-    Russian -> "Получатель"
-
-data AmountString = AmountString
-
-instance LocalizedPrint AmountString where
-  localizedShow l _ = case l of
-    English -> "Amount"
-    Russian -> "Сумма"
-
-data BtnPasteString = BtnPasteString
-
-instance LocalizedPrint BtnPasteString where
-  localizedShow l _ = case l of
-    English -> "Paste"
-    Russian -> "Вставить"
-
-data BtnScanQRCode = BtnScanQRCode
-
-instance LocalizedPrint BtnScanQRCode where
-  localizedShow l _ = case l of
-    English -> "Scan"
-    Russian -> "Сканировать"
+instance LocalizedPrint SendStrings where
+  localizedShow l v = case l of
+    English -> case v of
+      SendTitle c -> "Send " <> currencyName c
+      SendBtnString -> "Send"
+      RecipientString -> "Recipient"
+      AmountString -> "Amount"
+      BtnPasteString -> "Paste"
+      BtnScanQRCode -> "Scan"
+    Russian -> case v of
+      SendTitle c -> "Отправить " <> currencyName c
+      SendBtnString -> "Отправить"
+      RecipientString -> "Получатель"
+      AmountString -> "Сумма"
+      BtnPasteString -> "Вставить"
+      BtnScanQRCode -> "Сканировать"
 
 sendPage :: MonadFront t m => Currency -> m ()
 sendPage cur = divClass "base-container" $ do

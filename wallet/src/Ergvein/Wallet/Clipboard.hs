@@ -36,12 +36,10 @@ instance LocalizedPrint CopyStr where
 -- | Debug widgete for clipboard
 clipboardDebug :: MonadFrontBase t m => m ()
 clipboardDebug = mdo
-  tinput <- textInput def {
-      _textInputConfig_setValue = pastedE
-    }
+  tinput <- inputElement $ def & inputElementConfig_setValue .~ pastedE
   copyE <- buttonClass (pure "form__btn confirm-button") StrCopy
   pasteE <- buttonClass (pure "form__btn confirm-button") StrPaste
-  let copyStrE = tag (current $ _textInput_value tinput) copyE
+  let copyStrE = tag (current $ _inputElement_value tinput) copyE
   _ <- clipboardCopy copyStrE
   pastedE <- clipboardPaste pasteE
   pure ()
