@@ -39,6 +39,7 @@ import Reflex.ExternalRef
 import Servant.Client(BaseUrl)
 
 import qualified Data.Set as S
+import qualified Data.Map as M
 
 data UnauthEnv t = UnauthEnv {
   unauth'settings        :: !(ExternalRef t Settings)
@@ -63,6 +64,8 @@ data UnauthEnv t = UnauthEnv {
 , unauth'syncProgress    :: !(ExternalRef t SyncProgress)
 , unauth'heightRef       :: !(ExternalRef t (Map Currency Integer))
 , unauth'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
+, unauth'indexers        :: !(ExternalRef t (Map BaseUrl (Maybe IndexerInfo)))
+, unauth'indexersEF      :: !(Event t (), IO ())
 }
 
 type UnauthM t m = ReaderT (UnauthEnv t) m
@@ -201,7 +204,31 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getHeightRef #-}
   getFiltersSyncRef = asks unauth'filtersSyncRef
   {-# INLINE getFiltersSyncRef #-}
-
+  getIndexerInfoRef = asks unauth'indexers
+  {-# INLINE getIndexerInfoRef #-}
+  getIndexerInfoD = externalRefDynamic =<< asks unauth'indexers
+  {-# INLINE getIndexerInfoD #-}
+  getIndexerInfoEF = asks unauth'indexersEF
+  {-# INLINE getIndexerInfoEF #-}
+  refreshIndexerInfo e = do
+    fire <- asks (snd . unauth'indexersEF)
+    performEvent_ $ (liftIO fire) <$ e
+  {-# INLINE refreshIndexerInfo #-}
+  updateIndexerURL urlE = do
+    indRef <- asks unauth'indexers
+    urlRef <- asks unauth'urls
+    performEvent $ ffor urlE $ \(o,n) -> do
+      im <- readExternalRef indRef
+      case M.lookup n im of
+        Just _ -> pure False
+        Nothing -> do
+          let v = join $ M.lookup o im
+          urls <- readExternalRef urlRef
+          writeExternalRef indRef $ M.insert n v $ M.delete o im
+          writeExternalRef urlRef $ S.insert n $ S.delete o urls
+          pure True
+  {-# INLINE updateIndexerURL #-}
+  
 instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
   postAlert e = do
     (_, fire) <- asks unauth'alertsEF
@@ -239,6 +266,8 @@ newEnv settings uiChan = do
   syncRef <- newExternalRef Synced
   heightRef <- newExternalRef mempty
   fsyncRef <- newExternalRef mempty
+  indexInfoRef <- newExternalRef $ M.fromList $ fmap (,Nothing) $ settingsDefUrls settings
+  (indexersE, indexersF) <- newTriggerEvent
   pure UnauthEnv {
       unauth'settings  = settingsRef
     , unauth'backEF    = (backE, backFire ())
@@ -262,6 +291,8 @@ newEnv settings uiChan = do
     , unauth'syncProgress = syncRef
     , unauth'heightRef = heightRef
     , unauth'filtersSyncRef = fsyncRef
+    , unauth'indexers = indexInfoRef
+    , unauth'indexersEF = (indexersE, indexersF ())
     }
 
 runEnv :: (MonadBaseConstr t m, PlatformNatives)

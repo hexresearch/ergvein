@@ -21,6 +21,7 @@ import Ergvein.Wallet.Page.Initial
 import Ergvein.Wallet.Password
 import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Util
+import Ergvein.Wallet.Worker.Info
 import Reflex.ExternalRef
 
 import Reflex.Dom.Main (mainWidgetWithCss)
@@ -31,6 +32,7 @@ frontend = do
   alertHandlerWidget
   loadingWidget
   heightAsking
+  infoWorker
 #ifdef ANDROID
   askPatternModal
 #else
@@ -59,7 +61,7 @@ heightAsking = do
       queryHeights c = do
         resE <- getHeight $ HeightRequest c <$ e
         performEvent_ $ fforMaybe resE $ \case
-          Left er -> Just $ logWrite $ "Height request for " <> showt c <> " is failed: " <> showt er 
+          Left er -> Just $ logWrite $ "Height request for " <> showt c <> " is failed: " <> showt er
           _ -> Nothing
         performEvent_ $ ffor resE $ liftIO . writeExternalRef pollRef . either (const errorHeightPoll) (const defaulHeightPoll)
         he <- handleDangerMsg resE

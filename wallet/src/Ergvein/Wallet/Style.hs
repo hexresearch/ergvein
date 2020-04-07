@@ -492,6 +492,15 @@ networkPageCss = do
     textAlign center
     cursor pointer
     fontSize $ pt (if isAndroid then 12 else 18)
+  ".indexer-online" ? do
+    marginRight $ em 1
+    color green
+  ".indexer-offline" ? do
+    marginRight $ em 1
+    color red
+  ".net-refresh-btn" ? do
+    height   $ em 3.8
+    verticalAlign vAlignTop
 
 infoPageCss :: Css
 infoPageCss = do
