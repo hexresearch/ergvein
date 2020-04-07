@@ -498,7 +498,10 @@ networkPageCss = do
   ".indexer-offline" ? do
     marginRight $ em 1
     color red
-    
+  ".net-refresh-btn" ? do
+    height   $ em 3.8
+    verticalAlign vAlignTop
+
 infoPageCss :: Css
 infoPageCss = do
   ".info-content" ? do

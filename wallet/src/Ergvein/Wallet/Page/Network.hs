@@ -26,14 +26,49 @@ import qualified Data.Text as T
 
 networkPage :: MonadFront t m => Maybe Currency -> m ()
 networkPage curMb = wrapper NPSTitle (Just $ pure $ networkPage curMb) False $ do
+  curD <- networkPageHeader $ fromMaybe BTC curMb
+  allIndsD <- getIndexerInfoD
+  void $ widgetHoldDyn $ ffor curD $ \cur -> do
+    let currInfoD = ffor allIndsD $ \im -> let
+          act = catMaybes $ M.elems im
+          in catMaybes $ ffor act $ \IndexerInfo{..} -> (indInfoLatency,) <$> M.lookup cur indInfoHeights
+        servCurInfoD = ffor currInfoD $ \xys -> let
+          act = (\(_,ys) -> L.nub ys) $ unzip xys
+          in case act of
+              [] ->  NPSNoServerAvail
+              v:[] -> NPSSyncInfo v
+              _ -> NPSDesync
+        (servNumD, avgLatD) = splitDynPure $ ffor currInfoD $ \xys -> let
+          l = length xys
+          lats = fst $ unzip xys
+          avgL = if l == 0 then NPSNoServerAvail else NPSAvgLat $ sum lats / fromIntegral l
+          in (NPSServerVal l, avgL)
+
+    listE <- lineOption $ do
+      nameOption NPSServer
+      listE <- el "div" $ do
+        valueOptionDyn servNumD
+        divClass "network-name-edit" $ fmap (cur <$) $ outlineButton NPSServerListView
+      descrOption NPSServerDescr
+      descrOptionDyn avgLatD
+      labelHorSep
+      pure listE
+
+    lineOption $ lineOptionNoEdit NPSSyncStatus servCurInfoD NPSSyncDescr
+    nextWidget $ ffor listE $ \cur -> Retractable {
+        retractableNext = serversInfoPage cur
+      , retractablePrev = Just (pure $ networkPage (Just cur))
+      }
+
+networkPageHeader :: MonadFront t m => Currency -> m (Dynamic t Currency)
+networkPageHeader initCur = do
   curD <- titleWrap $ do
     divClass "network-title-name" $ h3 $ localizedText $ NPSTitle
-    divClass "network-title-cur" $ do
-      let initCur = fromMaybe BTC curMb
-      curE <- currenciesDropdown initCur allCurrencies
-      holdDyn initCur curE
+    curD <- divClass "network-title-cur" $ holdDyn initCur =<< currenciesDropdown initCur allCurrencies
+    divClass "network-title-cur" $ refreshIndexerInfo =<< buttonClass "button button-outline net-refresh-btn" NPSRefresh
+    pure curD
   baseHorSep
-  void $ widgetHoldDyn $ ffor curD $ \cur -> optionsContent cur
+  pure curD
   where
     titleWrap  = divClass "network-title" . divClass "network-title-table" . divClass "network-title-row"
     baseHorSep = elAttr "hr" [("class","network-hr-sep"   )] blank
@@ -50,28 +85,20 @@ networkPage curMb = wrapper NPSTitle (Just $ pure $ networkPage curMb) False $ d
       let selD = _dropdown_value dp
       fmap updated $ holdUniqDyn selD
 
-optionsContent :: MonadFront t m => Currency -> m ()
-optionsContent cur = do
-  gpbE <- getPostBuild
-  infomapD <- getIndexerInfoD
-  let servNumD = (NPSServerVal . M.size) <$> infomapD
-      actServNumD = (NPSServerVal . length . catMaybes . M.elems) <$> infomapD
-      servCurInfoD = ffor infomapD $ \im -> let
-        act = L.nub . catMaybes . fmap (M.lookup cur . indInfoHeights) . catMaybes . M.elems $ im
-        in case act of
-            [] ->  NPSNoServerAvail
-            v:[] -> NPSSyncInfo v
-            _ -> NPSDesync
-
-  lineOption $ lineOptionNoEdit NPSServer servNumD NPSServerDescr
-  lineOption $ lineOptionNoEdit NPSSyncStatus servCurInfoD NPSSyncDescr
-  editE <- lineOption $ do
-    refreshIndexerInfo =<< outlineButton NPSRefresh
-    fmap (cur <$) $ outlineButton NPSServerList
-  void $ nextWidget $ ffor editE $ \cur -> Retractable {
-      retractableNext = pageSelectionOfServer cur
-    , retractablePrev = Just (pure $ networkPage (Just cur))
-    }
+serversInfoPage :: MonadFront t m => Currency -> m ()
+serversInfoPage initCur = wrapper NPSTitle (Just $ pure $ serversInfoPage initCur) False $ mdo
+  curD <- networkPageHeader initCur
+  allIndsD <- getIndexerInfoD
+  void $ widgetHoldDyn $ ffor curD $ \cur -> do
+    let indMapD = fmap (M.filter (isJust . join . fmap (M.lookup cur . indInfoHeights))) allIndsD
+    listWithKey indMapD $ \url minfoD -> lineOption $ widgetHoldDyn $ ffor minfoD $ \minfo -> do
+      divClass "network-name" $ do
+        let cls = if isJust minfo then "indexer-online" else "indexer-offline"
+        elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
+        text $ T.pack . showBaseUrl $ url
+      maybe (pure ()) (descrOption . NPSLatency . indInfoLatency) minfo
+      descrOption $ maybe NPSOffline (maybe (NPSNoIndex cur) NPSHeightInfo . M.lookup cur . indInfoHeights) minfo
+      labelHorSep
 
 lineOptionNoEdit :: MonadFront t m
                  => NetworkPageStrings
@@ -91,66 +118,10 @@ nameOption, descrOption :: (MonadFront t m, LocalizedPrint a) => a -> m ()
 nameOption = divClass "network-name"    . localizedText
 descrOption = (>>) elBR . divClass "network-descr" . localizedText
 
-valueOptionDyn :: (MonadFront t m, LocalizedPrint a) => Dynamic t a -> m ()
+valueOptionDyn, descrOptionDyn :: (MonadFront t m, LocalizedPrint a) => Dynamic t a -> m ()
 valueOptionDyn v = getLanguage >>= \langD -> divClass "network-value" $ dynText $ ffor2 langD v localizedShow
+descrOptionDyn v = getLanguage >>= \langD -> (>>) elBR (divClass "network-descr" $ dynText $ ffor2 langD v localizedShow)
 
 labelHorSep, elBR :: MonadFront t m => m ()
 labelHorSep = elAttr "hr" [("class","network-hr-sep-lb")] blank
 elBR = el "br" blank
-
-pageSelectionOfServer :: MonadFront t m => Currency -> m ()
-pageSelectionOfServer cur = wrapper NPSTitle (Just $ pure $ pageSelectionOfServer cur) False $ mdo
-  h3 $ localizedText NPSServerList
-  infomapD <- fmap2 (M.mapKeys Just) getIndexerInfoD
-  keyD <- holdDyn Nothing selE
-  selE <- fmap2 snd $ selectViewListWithKey keyD infomapD renderItem
-  void $ nextWidget $ ffor never $ \_ -> Retractable {
-      retractableNext = networkPage $ Just cur
-    , retractablePrev = Just $ pure $ networkPage $ Just cur
-    }
-  where
-    renderItem :: MonadFront t m => Maybe BaseUrl -> Dynamic t (Maybe IndexerInfo) -> Dynamic t Bool -> m (Event t (Maybe BaseUrl))
-    renderItem murl infoD selD = case murl of
-      Nothing -> pure never
-      Just url -> let selInfoD = (,) <$> selD <*> infoD in
-        fmap (switch . current) $ widgetHoldDyn $ ffor selInfoD $ \(sel,minfo) -> do
-          if sel then editWidget url minfo else infoWidget cur url minfo
-
-editWidget :: MonadFront t m => BaseUrl -> Maybe IndexerInfo -> m (Event t (Maybe BaseUrl))
-editWidget url minfo = lineOption $ do
-  urlD <- fmap _textInput_value $ textInput def { _textInputConfig_initialValue = T.pack . showBaseUrl $ url }
-  okE <- outlineButtonWithIconNoText "fas fa-check"
-  cancelE <- outlineButtonWithIconNoText "fas fa-times"
-  let murlE = attachWith (\t _ -> parseBaseUrl $ T.unpack t) (current urlD) okE
-      dupE  = fforMaybe murlE $ \murl -> if Just url == murl then Just () else Nothing
-      urlE  = fforMaybe murlE $ \murl -> if Just url == murl then Nothing else (url,) <$> murl
-  updE <- updateIndexerURL urlE
-  let urlErrE = fmapMaybe (maybe (Just NPSParseError) (const Nothing)) murlE
-      updErrE = fmapMaybe (\b -> if b then Nothing else Just NPSDuplicateURL) updE
-      errE    = leftmost [urlErrE, updErrE]
-  noErrE <- delay 3 errE
-  widgetHold (pure ()) $ ffor (leftmost [Nothing <$ noErrE, Just <$> errE]) $ \case
-    Nothing -> pure ()
-    Just err -> divClass "form-field-errors" $ localizedText err
-  labelHorSep
-  pure $ Nothing <$ (leftmost [cancelE, dupE])
-
-infoWidget :: MonadFront t m => Currency -> BaseUrl -> Maybe IndexerInfo -> m (Event t (Maybe BaseUrl))
-infoWidget cur url minfo = lineOption $ do
-  (e,_) <- el "div" $ do
-    divClass "network-name" $ do
-      let cls = if isJust minfo then "indexer-online" else "indexer-offline"
-      elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
-      text $ T.pack . showBaseUrl $ url
-    elAttr' "button" [("class", "button button-outline network-name-edit")] $ localizedText NPSServerEdit
-  maybe (pure ()) (descrOption . NPSLatency . indInfoLatency) minfo
-  descrOption $ case minfo of
-    Nothing -> NPSOffline
-    Just info -> case M.lookup cur $ indInfoHeights info of
-      Nothing -> NPSNoIndex cur
-      Just v -> NPSHeightInfo v
-  labelHorSep
-  pure $ (Just url) <$ domEvent Click e
-
-fmap2 :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
-fmap2 = fmap . fmap

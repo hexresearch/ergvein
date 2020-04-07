@@ -23,21 +23,23 @@ data NetworkPageStrings
   | NPSDesync
   | NPSSyncDescr
   | NPSRefresh
-  | NPSServerList
+  | NPSServerListView
+  | NPSServerListInfo Currency
   | NPSServerEdit
   | NPSParseError
   | NPSDuplicateURL
   | NPSLatency NominalDiffTime
+  | NPSAvgLat NominalDiffTime
   | NPSOffline
   | NPSNoIndex Currency
   | NPSHeightInfo (BlockHeight, BlockHeight)
-  
+
 instance LocalizedPrint NetworkPageStrings where
   localizedShow l v = case l of
     English -> case v of
       NPSTitle              -> "Network"
       NPSServer             -> "Servers: "
-      NPSServerVal n        -> showt n <> if n == 1 then " server" else " servers"
+      NPSServerVal n        -> showt n <> if n == 1 then " active server" else " active servers"
       NPSServerDescr        -> "Number of servers in the list"
       NPSSyncStatus         -> "Height status: "
       NPSNoServerAvail      -> "No indexer available"
@@ -45,24 +47,26 @@ instance LocalizedPrint NetworkPageStrings where
       NPSDesync             -> "Indexers are not in sync"
       NPSSyncDescr          -> "Indexed height / actual blockchain height"
       NPSRefresh            -> "Refresh"
-      NPSServerList         -> "View server list"
+      NPSServerListView     -> "View server list"
+      NPSServerListInfo c   -> showt c <> " indexers"
       NPSServerEdit         -> "Edit"
       NPSParseError         -> "Failed to parse URL"
       NPSDuplicateURL       -> "Duplicate URL"
       NPSLatency lat        -> "Latency: " <> showt lat
+      NPSAvgLat lat         -> "Average latency: " <> showt lat
       NPSOffline            -> "Offline"
       NPSNoIndex c          -> "Has no index for " <> showt c
       NPSHeightInfo (ch,ah) -> "Index height: " <> showt ch <> ". Blockchain height: " <> showt ah
     Russian -> case v of
       NPSTitle              -> "Сеть"
       NPSServer             -> "Сервера: "
-      NPSServerVal n        -> (<>) (showt n) $ case n `div` 10 of
-                                0 -> " серверов"
-                                1 -> " сервер"
-                                2 -> " сервера"
-                                3 -> " сервера"
-                                4 -> " сервера"
-                                _ -> " серверов"
+      NPSServerVal n        -> (<>) (showt n <> " активных ") $ case n `div` 10 of
+                                0 -> "серверов"
+                                1 -> "сервер"
+                                2 -> "сервера"
+                                3 -> "сервера"
+                                4 -> "сервера"
+                                _ -> "серверов"
       NPSServerDescr        -> "Количество серверов в списке"
       NPSSyncStatus         -> "Высота: "
       NPSNoServerAvail      -> "Нет доступных индексеров"
@@ -70,11 +74,13 @@ instance LocalizedPrint NetworkPageStrings where
       NPSDesync             -> "Индексеры не синхронизованы"
       NPSSyncDescr          -> "Индексированная высота / действительная высота блокчейна"
       NPSRefresh            -> "Обновить"
-      NPSServerList         -> "Список серверов"
+      NPSServerListView     -> "Список серверов"
+      NPSServerListInfo c   -> showt c <> " индексеры"
       NPSServerEdit         -> "Редактировать"
       NPSParseError         -> "Некорректный URL"
       NPSDuplicateURL       -> "Дублирование URL"
       NPSLatency lat        -> "Задержка: " <> showt lat
+      NPSAvgLat lat         -> "Средняя задержка : " <> showt lat
       NPSOffline            -> "Оффлайн"
       NPSNoIndex c          -> "Нет индекса для " <> showt c
       NPSHeightInfo (ch,ah) -> "Высота индекса: " <> showt ch <> " .Высота блокчейна: " <> showt ah
