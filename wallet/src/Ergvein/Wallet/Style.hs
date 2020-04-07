@@ -110,6 +110,7 @@ frontendCss r = do
   selectCss
   buttonsToggleCss
   graphPinCodeCanvasCss
+  historyPageCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -638,6 +639,42 @@ buttonsToggleCss = do
   ".button-not-working" ? do
     visibility hidden
     pointerEvents none
+
+historyPageCss :: Css
+historyPageCss = do
+  ".history-table-header" ? do
+    marginTop (px 0)
+    borderTop solid (px 2) black
+    borderBottom solid (px 2) black
+    display grid
+    gridTemplateColumns [fr 5, fr 4, fr 1]
+  ".history-amount-header" ? do
+    borderRight solid (px 2) black
+    display block
+  ".history-date-header" ? do
+    borderRight solid (px 2) black
+    display block
+  ".history-status-header" ? do
+    display block
+  ".history-table-row" ? do
+    display grid
+    gridTemplateColumns [fr 5, fr 4, fr 1]
+  ".history-amount-transrefill" ? do
+    borderRight solid (px 2) black
+    display block
+    color $ rgb 0 190 0
+  ".history-amount-transwithdraw" ? do
+    borderRight solid (px 2) black
+    display block
+    color $ rgb 190 0 0
+  ".history-date" ? do
+    borderRight solid (px 2) black
+    display block
+  "history-status-transuncofirmed" ? do
+    color $ rgb 190 0 0
+    display block
+  "history-status-transcofirmed" ? do
+    display block
 
 graphPinCodeCanvasCss :: Css
 graphPinCodeCanvasCss = do
