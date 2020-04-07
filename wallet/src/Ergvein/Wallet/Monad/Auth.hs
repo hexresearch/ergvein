@@ -59,15 +59,16 @@ data Env t = Env {
 , env'uiChan          :: !(Chan (IO ()))
 , env'passModalEF     :: !(Event t Int, Int -> IO ())
 , env'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
-, env'urls            :: !(ExternalRef t (S.Set BaseUrl))
-, env'urlNum          :: !(ExternalRef t (Int, Int))
-, env'timeout         :: !(ExternalRef t NominalDiffTime)
 , env'manager         :: !Manager
 , env'headersStorage  :: !HeadersStorage
 , env'filtersStorage  :: !FiltersStorage
 , env'syncProgress    :: !(ExternalRef t SyncProgress)
 , env'heightRef       :: !(ExternalRef t (Map Currency Integer))
 , env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
+
+, env'urlsArchive     :: !(ExternalRef t (S.Set BaseUrl))
+, env'urlNum          :: !(ExternalRef t (Int, Int))
+, env'timeout         :: !(ExternalRef t NominalDiffTime)
 , env'indexers        :: !(ExternalRef t (Map BaseUrl (Maybe IndexerInfo)))
 , env'indexersEF      :: !(Event t (), IO ())
 }
@@ -200,7 +201,7 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE refreshIndexerInfo #-}
   updateIndexerURL urlE = do
     indRef <- asks env'indexers
-    urlRef <- asks env'urls
+    urlRef <- asks env'urlsArchive
     performEvent $ ffor urlE $ \(o,n) -> do
       im <- readExternalRef indRef
       case M.lookup n im of
@@ -298,8 +299,8 @@ liftAuth ma0 ma = mdo
         filtersLoader
         runReaderT (wrapped ma) $ Env
           settingsRef backEF loading langRef activeCursRef authRef (logoutFire ()) storeDir alertsEF
-          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager
-          hst fst syncRef heightRef fsyncRef indexRef indexEF
+          logsTrigger logsNameSpaces uiChan passModalEF passSetEF manager
+          hst fst syncRef heightRef fsyncRef urlsRef urlNumRef timeoutRef indexRef indexEF
   let
     ma0' = maybe ma0 runAuthed mauth0
     newAuthInfoE = ffilter isMauthUpdate $ updated mauthD
@@ -321,27 +322,9 @@ wrapped ma = do
   ma
 
 instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
-  setRequiredUrlNum numE = do
-    numRef <- asks env'urlNum
-    performEvent_ $ (writeExternalRef numRef) <$> numE
-
-  getRequiredUrlNum reqE = do
-    numRef <- asks env'urlNum
-    performEvent $ (readExternalRef numRef) <$ reqE
-
-  getUrlList reqE = do
-    urlsRef <- asks env'urls
-    performEvent $ ffor reqE $ const $ liftIO $ fmap S.elems $ readExternalRef urlsRef
-
-  addUrls urlsE = do
-    urlsRef <- asks env'urls
-    performEvent_ $ ffor urlsE $ \urls ->
-      modifyExternalRef urlsRef (\s -> (S.union (S.fromList urls) s, ()))
-
-  invalidateUrls urlsE = do
-    urlsRef <- asks env'urls
-    performEvent_ $ ffor urlsE $ \urls ->
-      modifyExternalRef urlsRef (\s -> (S.difference s (S.fromList urls), ()))
-  getUrlsRef = asks env'urls
+  getUrlsRef = asks env'urlsArchive
+  {-# INLINE getUrlsRef #-}
   getRequiredUrlNumRef = asks env'urlNum
+  {-# INLINE getRequiredUrlNumRef #-}
   getRequestTimeoutRef = asks env'timeout
+  {-# INLINE getRequestTimeoutRef #-}
