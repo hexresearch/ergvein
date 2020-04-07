@@ -52,8 +52,8 @@ askPassword = divClass "ask-password" $ form $ fieldset $ do
 
 askPasswordModal :: MonadFrontBase t m => m ()
 askPasswordModal = mdo
-  goE   <- fmap fst getPasswordModalEF
-  fire  <- fmap snd getPasswordSetEF
+  goE  <- fmap fst getPasswordModalEF
+  fire <- fmap snd getPasswordSetEF
   let redrawE = leftmost [Just <$> goE, Nothing <$ passE]
   passE <- fmap (switch . current) $ widgetHold (pure never) $ ffor redrawE $ \case
     Just i -> divClass "ask-password-modal" $ (fmap . fmap) ((i,) . Just) askPassword
@@ -61,6 +61,7 @@ askPasswordModal = mdo
   performEvent_ $ (liftIO . fire) <$> passE
 
 #ifdef ANDROID
+
 askPattern :: MonadFrontBase t m => Text -> m (Event t Password)
 askPattern name = divClass "ask-pattern" $ form $ fieldset $ mdo
   c <- loadCounter
@@ -97,13 +98,13 @@ askPattern name = divClass "ask-pattern" $ form $ fieldset $ mdo
 
 askPatternModal :: MonadFrontBase t m => m ()
 askPatternModal = mdo
-  goE   <- fmap fst getPasswordModalEF
-  fire  <- fmap snd getPasswordSetEF
+  goE  <- fmap fst getPasswordModalEF
+  fire <- fmap snd getPasswordSetEF
   let redrawE = leftmost [Just <$> goE, Nothing <$ passE]
   passE <- fmap (switch . current) $ widgetHold (pure never) $ ffor redrawE $ \case
     Just i -> divClass "ask-pattern-modal" $ (fmap . fmap) ((i,) . Just) $ askPattern ""
     Nothing -> pure never
-  performEvent_ $ (liftIO . fire) <$> passE
+  performEvent $ (liftIO . fire) <$> passE
 
 #endif
 
@@ -112,7 +113,7 @@ setupPattern = divClass "setup-password" $ form $ fieldset $ mdo
   pD <- patternSaveWidget
   pE <- delay 0.1 $ updated pD
   validate $ poke pE $ const $ runExceptT $ do
-    p  <- sampleDyn pD
+    p <- sampleDyn pD
     check PWSEmptyPattern $ not $ T.null p
     pure p
 
@@ -121,6 +122,6 @@ setupLogin = divClass "setup-password" $ form $ fieldset $ mdo
   loginD <- textField PWSLogin ""
   e <- submitClass "button button-outline" PWSSet
   validate $ poke e $ const $ runExceptT $ do
-    l  <- sampleDyn loginD
+    l <- sampleDyn loginD
     check PWSEmptyLogin $ not $ T.null l
     pure l

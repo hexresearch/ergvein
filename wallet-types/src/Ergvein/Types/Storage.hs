@@ -16,7 +16,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Network.Haskoin.Keys
 
-import qualified Data.Map.Strict          as M
+import qualified Data.Map.Strict as M
 
 type WalletName = Text
 

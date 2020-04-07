@@ -66,4 +66,4 @@ heightAsking = do
         performEvent_ $ ffor resE $ liftIO . writeExternalRef pollRef . either (const errorHeightPoll) (const defaulHeightPoll)
         he <- handleDangerMsg resE
         setCurrentHeight c $ fromIntegral . heightRespHeight <$> he
-  traverse_  queryHeights allCurrencies
+  traverse_ queryHeights allCurrencies

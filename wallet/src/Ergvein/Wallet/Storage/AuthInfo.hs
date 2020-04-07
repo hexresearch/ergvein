@@ -1,10 +1,11 @@
-module Ergvein.Wallet.Storage.AuthInfo(
+module Ergvein.Wallet.Storage.AuthInfo (
     initAuthInfo
   , loadAuthInfo
   ) where
 
 import Control.Monad.Except
 import Ergvein.Crypto
+import Ergvein.Types.Storage
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Localization.AuthInfo
 import Ergvein.Wallet.Monad

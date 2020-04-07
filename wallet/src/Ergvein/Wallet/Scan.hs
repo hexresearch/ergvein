@@ -1,29 +1,33 @@
 {-# LANGUAGE NumericUnderscores #-}
-module Ergvein.Wallet.Scan(
+module Ergvein.Wallet.Scan (
     accountDiscovery
   ) where
 
-import Control.Concurrent 
-import Control.Monad 
-import Control.Monad.IO.Class 
+import Control.Concurrent
+import Control.Monad
+import Control.Monad.IO.Class
 import Data.Function
+import Ergvein.Text
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction (BlockHeight)
-import Ergvein.Wallet.Filters.Storage 
+import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Constants
 import Ergvein.Wallet.Storage.Keys (derivePubKey, egvXPubKeyToEgvAddress)
+import Ergvein.Wallet.Storage.Util (addXPubKeyToKeyсhain)
 import Network.Haskoin.Block (Block, BlockHash, genesisBlock)
 
-import qualified Data.IntMap.Strict as MI
-import qualified Data.Map.Strict    as M
+import qualified Data.IntMap.Strict          as MI
+import qualified Data.Map.Strict             as M
 import qualified Ergvein.Wallet.Filters.Scan as Filters
 
+-- | Loads current PublicKeystore, performs BIP44 account discovery algorithm and
+-- stores updated PublicKeystore to the wallet file.
 accountDiscovery :: MonadFront t m => m ()
 accountDiscovery = do
   logWrite "Key scanning started"
@@ -36,8 +40,10 @@ accountDiscovery = do
           Nothing -> fail "accountDiscovery: not authorized"
           Just auth -> pure $ Just $ authInfo'storage . storage'publicKeys .~ store $ authInfo'isUpdate .~ True $ auth
   setAuthInfoE <- setAuthInfo updatedAuthE
-  storeWallet $ () <$ setAuthInfoE
+  storeWallet setAuthInfoE
 
+-- Gets old PublicKeystore, performs BIP44 account discovery algorithm for all currencies
+-- then returns Event with updated PublicKeystore.
 scanKeys :: MonadFront t m => PublicKeystore -> m (Event t PublicKeystore)
 scanKeys pubKeystore = do
   scanEvents <- traverse (applyScan pubKeystore) allCurrencies
@@ -51,7 +57,7 @@ scanKeys pubKeystore = do
 
 -- TODO: use M.lookup instead of M.! and show error msg if currency not found
 applyScan :: MonadFront t m => PublicKeystore -> Currency -> m (Event t (Currency, EgvPubKeyсhain))
-applyScan pubKeystore currency = scanCurrencyKeys currency (getKeychain currency pubKeystore )
+applyScan pubKeystore currency = scanCurrencyKeys currency (getKeychain currency pubKeystore)
   where getKeychain currency pubKeystore = pubKeystore M.! currency
 
 scanCurrencyKeys :: MonadFront t m => Currency -> EgvPubKeyсhain -> m (Event t (Currency, EgvPubKeyсhain))
@@ -60,7 +66,7 @@ scanCurrencyKeys currency keyChain = mdo
   nextE <- waitFilters currency =<< delay 0 (leftmost [newE, buildE])
   gapD <- holdDyn 0 gapE
   nextKeyIndexD <- holdDyn initKeyChainSize nextKeyIndexE
-  newKeyChainD <- foldDyn addKey keyChain nextKeyE
+  newKeyChainD <- foldDyn (addXPubKeyToKeyсhain External) keyChain nextKeyE
   filterAddressE <- filterAddress nextKeyE
   getBlockE <- getBlocks filterAddressE
   storedE <- storeNewTransactions getBlockE
@@ -75,7 +81,7 @@ scanCurrencyKeys currency keyChain = mdo
       nextKeyE = flip push nextE $ \_ -> do
         gap <- sample . current $ gapD
         nextKeyIndex <- sample . current $ nextKeyIndexD
-        pure $ if gap > gapLimit then Nothing else Just $ generateNextKey masterPubKey External nextKeyIndex
+        pure $ if gap > gapLimit then Nothing else Just $ (nextKeyIndex, derivePubKey masterPubKey External (fromIntegral nextKeyIndex))
       nextKeyIndexE = flip pushAlways nextKeyE $ \_ -> do
         nextKeyIndex <- sample . current $ nextKeyIndexD
         pure $ nextKeyIndex + 1
@@ -83,14 +89,6 @@ scanCurrencyKeys currency keyChain = mdo
         newKeyChain <- sample . current $ newKeyChainD
         pure $ if g > gapLimit then Just $ (currency, newKeyChain) else Nothing
   pure finishedE
-
-generateNextKey :: EgvXPubKey -> KeyPurpose -> Int -> (Int, EgvXPubKey)
-generateNextKey master purpose index = (index, derivedXPubKey)
-  where currency = egvXPubCurrency master
-        derivedXPubKey = derivePubKey master purpose (fromIntegral index)
-
-addKey :: (Int, EgvXPubKey) -> EgvPubKeyсhain -> EgvPubKeyсhain
-addKey (index, key) (EgvPubKeyсhain master external internal) = EgvPubKeyсhain master (MI.insert index key external) internal
 
 -- | If the given event fires and there is not fully synced filters. Wait for the synced filters and then fire the event.
 waitFilters :: MonadFront t m => Currency -> Event t a -> m (Event t a)
