@@ -104,7 +104,7 @@ askPatternModal = mdo
   passE <- fmap (switch . current) $ widgetHold (pure never) $ ffor redrawE $ \case
     Just i -> divClass "ask-pattern-modal" $ (fmap . fmap) ((i,) . Just) $ askPattern ""
     Nothing -> pure never
-  performEvent $ (liftIO . fire) <$> passE
+  performEvent_ $ (liftIO . fire) <$> passE
 
 #endif
 
