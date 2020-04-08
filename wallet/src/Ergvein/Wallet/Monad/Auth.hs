@@ -8,7 +8,7 @@ import Control.Concurrent.Chan (Chan)
 import Control.Monad.Random.Class
 import Control.Monad.Reader
 import Data.Map.Strict (Map)
-import Data.Time (NominalDiffTime)
+import Data.Time (NominalDiffTime, getCurrentTime, diffUTCTime)
 import Ergvein.Crypto
 import Ergvein.Index.Client
 import Ergvein.Text
@@ -323,17 +323,43 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
     fire <- asks (snd . env'indexersEF)
     performEvent_ $ (liftIO fire) <$ e
   {-# INLINE refreshIndexerInfo #-}
-  updateIndexerURL urlE = do
-    indRef <- asks env'activeUrls
-    urlRef <- asks env'urlsArchive
-    performEvent $ ffor urlE $ \(o,n) -> do
-      im <- readExternalRef indRef
-      case M.lookup n im of
-        Just _ -> pure False
-        Nothing -> do
-          let v = join $ M.lookup o im
-          urls <- readExternalRef urlRef
-          writeExternalRef indRef $ M.insert n v $ M.delete o im
-          writeExternalRef urlRef $ S.insert n $ S.delete o urls
-          pure True
-  {-# INLINE updateIndexerURL #-}
+  pingIndexer urlE = do
+    mng <- getClientMaganer
+    performEvent $ (pingIndexerIO mng) <$> urlE
+  activateURL urlE = do
+    actRef  <- asks env'activeUrls
+    iaRef   <- asks env'inactiveUrls
+    acrhRef <- asks env'urlsArchive
+    mng     <- getClientMaganer
+    performEvent $ ffor urlE $ \url -> do
+      res <- pingIndexerIO mng url
+      modifyExternalRef iaRef ((,()) . S.delete url)
+      modifyExternalRef acrhRef ((,()) . S.delete url)
+      modifyExternalRef actRef ((,()) . M.insert url res)
+  deactivateURL urlE = do
+    actRef  <- asks env'activeUrls
+    iaRef   <- asks env'inactiveUrls
+    mng     <- getClientMaganer
+    performEvent $ ffor urlE $ \url -> do
+      modifyExternalRef actRef ((,()) . M.delete url)
+      modifyExternalRef iaRef ((,()) . S.insert url)
+  forgetURL urlE = do
+    actRef  <- asks env'activeUrls
+    iaRef   <- asks env'inactiveUrls
+    acrhRef <- asks env'urlsArchive
+    mng     <- getClientMaganer
+    performEvent $ ffor urlE $ \url -> do
+      modifyExternalRef iaRef ((,()) . S.delete url)
+      modifyExternalRef acrhRef ((,()) . S.delete url)
+      modifyExternalRef actRef ((,()) . M.delete url)
+
+pingIndexerIO :: MonadIO m => Manager -> BaseUrl -> m (Maybe IndexerInfo)
+pingIndexerIO mng url = liftIO $ do
+  t0 <- getCurrentTime
+  res <- runReaderT (getInfoEndpoint url ()) mng
+  t1 <- getCurrentTime
+  pure $ case res of
+    Left _ -> Nothing
+    Right (InfoResponse vals) -> let
+      curmap = M.fromList $ fmap (\(ScanProgressItem cur sh ah) -> (cur, (sh, ah))) vals
+      in Just $ IndexerInfo curmap $ diffUTCTime t1 t0

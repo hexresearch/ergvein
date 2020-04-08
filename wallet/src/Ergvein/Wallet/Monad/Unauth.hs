@@ -12,7 +12,7 @@ import Data.Default
 import Data.IORef
 import Data.Map (Map)
 import Data.Text (Text)
-import Data.Time(NominalDiffTime)
+import Data.Time(NominalDiffTime, getCurrentTime, diffUTCTime)
 import Ergvein.Index.Client
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
@@ -37,6 +37,7 @@ import Network.TLS.Extra.Cipher
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Servant.Client(BaseUrl)
+import Ergvein.Wallet.Client
 
 import qualified Data.Set as S
 import qualified Data.Map as M
@@ -127,20 +128,46 @@ instance MonadBaseConstr t m => MonadClient t (UnauthM t m) where
     fire <- asks (snd . unauth'indexersEF)
     performEvent_ $ (liftIO fire) <$ e
   {-# INLINE refreshIndexerInfo #-}
-  updateIndexerURL urlE = do
-    indRef <- asks unauth'activeUrls
-    urlRef <- asks unauth'urlsArchive
-    performEvent $ ffor urlE $ \(o,n) -> do
-      im <- readExternalRef indRef
-      case M.lookup n im of
-        Just _ -> pure False
-        Nothing -> do
-          let v = join $ M.lookup o im
-          urls <- readExternalRef urlRef
-          writeExternalRef indRef $ M.insert n v $ M.delete o im
-          writeExternalRef urlRef $ S.insert n $ S.delete o urls
-          pure True
-  {-# INLINE updateIndexerURL #-}
+  pingIndexer urlE = do
+    mng <- getClientMaganer
+    performEvent $ (pingIndexerIO mng) <$> urlE
+  activateURL urlE = do
+    actRef  <- asks unauth'activeUrls
+    iaRef   <- asks unauth'inactiveUrls
+    acrhRef <- asks unauth'urlsArchive
+    mng     <- getClientMaganer
+    performEvent $ ffor urlE $ \url -> do
+      res <- pingIndexerIO mng url
+      modifyExternalRef iaRef ((,()) . S.delete url)
+      modifyExternalRef acrhRef ((,()) . S.delete url)
+      modifyExternalRef actRef ((,()) . M.insert url res)
+  deactivateURL urlE = do
+    actRef  <- asks unauth'activeUrls
+    iaRef   <- asks unauth'inactiveUrls
+    mng     <- getClientMaganer
+    performEvent $ ffor urlE $ \url -> do
+      modifyExternalRef actRef ((,()) . M.delete url)
+      modifyExternalRef iaRef ((,()) . S.insert url)
+  forgetURL urlE = do
+    actRef  <- asks unauth'activeUrls
+    iaRef   <- asks unauth'inactiveUrls
+    acrhRef <- asks unauth'urlsArchive
+    mng     <- getClientMaganer
+    performEvent $ ffor urlE $ \url -> do
+      modifyExternalRef iaRef ((,()) . S.delete url)
+      modifyExternalRef acrhRef ((,()) . S.delete url)
+      modifyExternalRef actRef ((,()) . M.delete url)
+
+pingIndexerIO :: MonadIO m => Manager -> BaseUrl -> m (Maybe IndexerInfo)
+pingIndexerIO mng url = liftIO $ do
+  t0 <- getCurrentTime
+  res <- runReaderT (getInfoEndpoint url ()) mng
+  t1 <- getCurrentTime
+  pure $ case res of
+    Left _ -> Nothing
+    Right (InfoResponse vals) -> let
+      curmap = M.fromList $ fmap (\(ScanProgressItem cur sh ah) -> (cur, (sh, ah))) vals
+      in Just $ IndexerInfo curmap $ diffUTCTime t1 t0
 
 instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontBase t (UnauthM t m) where
   getSettings = readExternalRef =<< asks unauth'settings

@@ -169,8 +169,14 @@ class (MonadBaseConstr t m, HasClientManager m, HasClientManager (Performable m)
   getIndexerInfoEF  :: m (Event t (), IO ())
   -- | Call indexer info to be refreshed
   refreshIndexerInfo :: Event t () -> m ()
-  -- | Update indexer's URL: (Old URL, New URL). Returns False if New URL is already present.
-  updateIndexerURL  :: Event t (BaseUrl, BaseUrl) -> m (Event t Bool)
+  -- | Request stats from a specific URL
+  pingIndexer :: Event t BaseUrl -> m (Event t (Maybe IndexerInfo))
+  -- | Activate an URL
+  activateURL :: Event t BaseUrl -> m (Event t ())
+  -- | Deactivate an URL
+  deactivateURL :: Event t BaseUrl -> m (Event t ())
+  -- | Forget an URL
+  forgetURL  :: Event t BaseUrl -> m (Event t ())
 
 -- ===========================================================================
 --    Frontend-wide types
