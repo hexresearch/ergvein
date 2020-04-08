@@ -63,10 +63,11 @@ data UnauthEnv t = UnauthEnv {
 , unauth'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
 
 , unauth'urlsArchive     :: !(ExternalRef t (S.Set BaseUrl))
-, unauth'urlNum          :: !(ExternalRef t (Int, Int))
+, unauth'reqUrlNum       :: !(ExternalRef t (Int, Int))
+, unauth'actUrlNum       :: !(ExternalRef t Int)
 , unauth'timeout         :: !(ExternalRef t NominalDiffTime)
-, unauth'activeIdxs      :: !(ExternalRef t (Map BaseUrl (Maybe IndexerInfo)))
-, unauth'inactiveIdxs    :: !(ExternalRef t (S.Set BaseUrl))
+, unauth'activeUrls      :: !(ExternalRef t (Map BaseUrl (Maybe IndexerInfo)))
+, unauth'inactiveUrls    :: !(ExternalRef t (S.Set BaseUrl))
 , unauth'indexersEF      :: !(Event t (), IO ())
 }
 
@@ -106,12 +107,40 @@ instance MonadBaseConstr t m => MonadLocalized t (UnauthM t m) where
   {-# INLINE getLanguage #-}
 
 instance MonadBaseConstr t m => MonadClient t (UnauthM t m) where
-  getUrlsRef = asks unauth'urlsArchive
-  {-# INLINE getUrlsRef #-}
-  getRequiredUrlNumRef = asks unauth'urlNum
+  getArchivedUrlsRef = asks unauth'urlsArchive
+  {-# INLINE getArchivedUrlsRef #-}
+  getActiveUrlsRef = asks unauth'activeUrls
+  {-# INLINE getActiveUrlsRef #-}
+  getInactiveUrlsRef = asks unauth'inactiveUrls
+  {-# INLINE getInactiveUrlsRef #-}
+  getActiveUrlsNumRef = asks unauth'actUrlNum
+  {-# INLINE getActiveUrlsNumRef #-}
+  getRequiredUrlNumRef = asks unauth'reqUrlNum
   {-# INLINE getRequiredUrlNumRef #-}
   getRequestTimeoutRef = asks unauth'timeout
   {-# INLINE getRequestTimeoutRef #-}
+  getIndexerInfoD = externalRefDynamic =<< asks unauth'activeUrls
+  {-# INLINE getIndexerInfoD #-}
+  getIndexerInfoEF = asks unauth'indexersEF
+  {-# INLINE getIndexerInfoEF #-}
+  refreshIndexerInfo e = do
+    fire <- asks (snd . unauth'indexersEF)
+    performEvent_ $ (liftIO fire) <$ e
+  {-# INLINE refreshIndexerInfo #-}
+  updateIndexerURL urlE = do
+    indRef <- asks unauth'activeUrls
+    urlRef <- asks unauth'urlsArchive
+    performEvent $ ffor urlE $ \(o,n) -> do
+      im <- readExternalRef indRef
+      case M.lookup n im of
+        Just _ -> pure False
+        Nothing -> do
+          let v = join $ M.lookup o im
+          urls <- readExternalRef urlRef
+          writeExternalRef indRef $ M.insert n v $ M.delete o im
+          writeExternalRef urlRef $ S.insert n $ S.delete o urls
+          pure True
+  {-# INLINE updateIndexerURL #-}
 
 instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontBase t (UnauthM t m) where
   getSettings = readExternalRef =<< asks unauth'settings
@@ -188,30 +217,6 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getHeightRef #-}
   getFiltersSyncRef = asks unauth'filtersSyncRef
   {-# INLINE getFiltersSyncRef #-}
-  getIndexerInfoRef = asks unauth'activeIdxs
-  {-# INLINE getIndexerInfoRef #-}
-  getIndexerInfoD = externalRefDynamic =<< asks unauth'activeIdxs
-  {-# INLINE getIndexerInfoD #-}
-  getIndexerInfoEF = asks unauth'indexersEF
-  {-# INLINE getIndexerInfoEF #-}
-  refreshIndexerInfo e = do
-    fire <- asks (snd . unauth'indexersEF)
-    performEvent_ $ (liftIO fire) <$ e
-  {-# INLINE refreshIndexerInfo #-}
-  updateIndexerURL urlE = do
-    indRef <- asks unauth'activeIdxs
-    urlRef <- asks unauth'urlsArchive
-    performEvent $ ffor urlE $ \(o,n) -> do
-      im <- readExternalRef indRef
-      case M.lookup n im of
-        Just _ -> pure False
-        Nothing -> do
-          let v = join $ M.lookup o im
-          urls <- readExternalRef urlRef
-          writeExternalRef indRef $ M.insert n v $ M.delete o im
-          writeExternalRef urlRef $ S.insert n $ S.delete o urls
-          pure True
-  {-# INLINE updateIndexerURL #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
   postAlert e = do
@@ -242,15 +247,17 @@ newEnv settings uiChan = do
   nameSpaces <- newExternalRef []
   manager <- liftIO newTlsManager
   managerRef <- liftIO $ newIORef manager
-  urls <- newExternalRef $ S.fromList $ settingsDefUrls settings
-  urlNum <- newExternalRef $ settingsDefUrlNum settings
-  timeout <- newExternalRef $ settingsReqTimeout settings
   hst <- liftIO $ runReaderT openHeadersStorage (settingsStoreDir settings)
   fst <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
   syncRef <- newExternalRef Synced
   heightRef <- newExternalRef mempty
   fsyncRef <- newExternalRef mempty
-  indexInfoRef <- newExternalRef $ M.fromList $ fmap (,Nothing) $ settingsDefUrls settings
+  urlsArchive   <- newExternalRef $ S.fromList $ settingsPassiveUrls settings
+  inactiveUrls  <- newExternalRef $ S.fromList $ settingsDeactivatedUrls settings
+  activeUrlsRef <- newExternalRef $ M.fromList $ fmap (,Nothing) $ settingsActiveUrls settings
+  reqUrlNumRef  <- newExternalRef $ settingsReqUrlNum settings
+  actUrlNumRef  <- newExternalRef $ settingsActUrlNum settings
+  timeoutRef    <- newExternalRef $ settingsReqTimeout settings
   (indexersE, indexersF) <- newTriggerEvent
   pure UnauthEnv {
       unauth'settings       = settingsRef
@@ -272,11 +279,12 @@ newEnv settings uiChan = do
     , unauth'syncProgress   = syncRef
     , unauth'heightRef      = heightRef
     , unauth'filtersSyncRef = fsyncRef
-    , unauth'urlsArchive    = urls
-    , unauth'urlNum         = urlNum
-    , unauth'timeout        = timeout
-    , unauth'activeIdxs     = indexInfoRef
-    , unauth'inactiveIdxs   = urls
+    , unauth'urlsArchive    = urlsArchive
+    , unauth'reqUrlNum      = reqUrlNumRef
+    , unauth'actUrlNum      = actUrlNumRef
+    , unauth'timeout        = timeoutRef
+    , unauth'activeUrls     = activeUrlsRef
+    , unauth'inactiveUrls   = inactiveUrls
     , unauth'indexersEF     = (indexersE, indexersF ())
     }
 

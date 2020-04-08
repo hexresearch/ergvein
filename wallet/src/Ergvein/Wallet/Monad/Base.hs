@@ -151,13 +151,26 @@ instance MonadRandom (WithJSContextSingleton x (SpiderHostFrame Global)) where
 -- ===========================================================================
 
 class (MonadBaseConstr t m, HasClientManager m, HasClientManager (Performable m)) => MonadClient t m | m -> t where
-  -- | Get url reference. Internal
-  getUrlsRef :: m (ExternalRef t (S.Set BaseUrl))
+  -- | Get passive urls' reference. Internal
+  getArchivedUrlsRef :: m (ExternalRef t (S.Set BaseUrl))
+  -- | Internal method to get reference to indexers
+  getActiveUrlsRef :: m (ExternalRef t (Map BaseUrl (Maybe IndexerInfo)))
+  -- | Get deactivated urls' reference. Internal
+  getInactiveUrlsRef :: m (ExternalRef t (S.Set BaseUrl))
+  -- | Get reference to the minimal number of active urls. Internal
+  getActiveUrlsNumRef :: m (ExternalRef t Int)
   -- | Get num reference. Internal
   getRequiredUrlNumRef :: m (ExternalRef t (Int, Int))
   -- | Get request timeout ref
   getRequestTimeoutRef :: m (ExternalRef t NominalDiffTime)
-
+  -- | Get a dynamic with indexer info map
+  getIndexerInfoD   :: m (Dynamic t (Map BaseUrl (Maybe IndexerInfo)))
+  -- | Get event and trigger for indexer info refresher
+  getIndexerInfoEF  :: m (Event t (), IO ())
+  -- | Call indexer info to be refreshed
+  refreshIndexerInfo :: Event t () -> m ()
+  -- | Update indexer's URL: (Old URL, New URL). Returns False if New URL is already present.
+  updateIndexerURL  :: Event t (BaseUrl, BaseUrl) -> m (Event t Bool)
 
 -- ===========================================================================
 --    Frontend-wide types

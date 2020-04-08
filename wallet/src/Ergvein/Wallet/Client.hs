@@ -26,6 +26,7 @@ import Servant.Client
 
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as MI
+import qualified Data.Map.Strict as M
 import qualified Data.List as L
 import qualified Data.Set as S
 
@@ -47,7 +48,7 @@ getBalance :: MonadFrontBase t m => Event t BalanceRequest -> m (Event t (Either
 getBalance = requesterEq getBalanceEndpoint
 
 getBlockFilters :: MonadFrontBase t m => Event t BlockFiltersRequest -> m (Event t (Either ClientErr BlockFiltersResponse))
-getBlockFilters = requesterEq getBlockFiltersEndpoint 
+getBlockFilters = requesterEq getBlockFiltersEndpoint
 
 getTxHashHistory :: MonadFrontBase t m => Event t TxHashHistoryRequest -> m (Event t (Either ClientErr TxHashHistoryResponse))
 getTxHashHistory = requesterEq getTxHashHistoryEndpoint
@@ -93,7 +94,7 @@ requester :: (MonadFrontBase t m, Eq a, Show a, Show b)
   -> Event t b                                            -- ^ Request event
   -> m (Event t (Either ClientErr a))                     -- ^ Result
 requester validateRes endpoint reqE = mdo
-  uss  <- readExternalRef =<< getUrlsRef
+  uss  <- fmap (S.fromList . M.keys) . readExternalRef =<< getActiveUrlsRef
   let initReqE = ffor reqE (\req -> Just (req, [], uss))
   drawE <- delay 0.1 $ leftmost [initReqE, redrawE]
   respE <- fmap (switch . current) $ widgetHold (pure never) $ ffor drawE $ \case

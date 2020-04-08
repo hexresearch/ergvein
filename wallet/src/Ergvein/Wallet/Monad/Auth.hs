@@ -67,9 +67,11 @@ data Env t = Env {
 , env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
 
 , env'urlsArchive     :: !(ExternalRef t (S.Set BaseUrl))
-, env'urlNum          :: !(ExternalRef t (Int, Int))
+, env'reqUrlNum       :: !(ExternalRef t (Int, Int))
+, env'actUrlNum       :: !(ExternalRef t Int)
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
-, env'indexers        :: !(ExternalRef t (Map BaseUrl (Maybe IndexerInfo)))
+, env'activeUrls      :: !(ExternalRef t (Map BaseUrl (Maybe IndexerInfo)))
+, env'inactiveUrls    :: !(ExternalRef t (S.Set BaseUrl))
 , env'indexersEF      :: !(Event t (), IO ())
 }
 
@@ -189,30 +191,6 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getHeightRef #-}
   getFiltersSyncRef = asks env'filtersSyncRef
   {-# INLINE getFiltersSyncRef #-}
-  getIndexerInfoRef = asks env'indexers
-  {-# INLINE getIndexerInfoRef #-}
-  getIndexerInfoD = externalRefDynamic =<< asks env'indexers
-  {-# INLINE getIndexerInfoD #-}
-  getIndexerInfoEF = asks env'indexersEF
-  {-# INLINE getIndexerInfoEF #-}
-  refreshIndexerInfo e = do
-    fire <- asks (snd . env'indexersEF)
-    performEvent_ $ (liftIO fire) <$ e
-  {-# INLINE refreshIndexerInfo #-}
-  updateIndexerURL urlE = do
-    indRef <- asks env'indexers
-    urlRef <- asks env'urlsArchive
-    performEvent $ ffor urlE $ \(o,n) -> do
-      im <- readExternalRef indRef
-      case M.lookup n im of
-        Just _ -> pure False
-        Nothing -> do
-          let v = join $ M.lookup o im
-          urls <- readExternalRef urlRef
-          writeExternalRef indRef $ M.insert n v $ M.delete o im
-          writeExternalRef urlRef $ S.insert n $ S.delete o urls
-          pure True
-  {-# INLINE updateIndexerURL #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
@@ -284,23 +262,26 @@ liftAuth ma0 ma = mdo
         passSetEF       <- getPasswordSetEF
         settingsRef     <- getSettingsRef
         settings        <- readExternalRef settingsRef
-        urlsRef         <- getUrlsRef
-        urlNumRef       <- getRequiredUrlNumRef
-        timeoutRef      <- getRequestTimeoutRef
         manager         <- getClientMaganer
         hst             <- getHeadersStorage
         fst             <- getFiltersStorage
         syncRef         <- getSyncProgressRef
         heightRef       <- getHeightRef
         fsyncRef        <- getFiltersSyncRef
-        indexRef        <- getIndexerInfoRef
+        urlsArchive     <- getArchivedUrlsRef
+        inactiveUrls    <- getInactiveUrlsRef
+        activeUrlsRef   <- getActiveUrlsRef
+        reqUrlNumRef    <- getRequiredUrlNumRef
+        actUrlNumRef    <- getActiveUrlsNumRef
+        timeoutRef      <- getRequestTimeoutRef
         indexEF         <- getIndexerInfoEF
         -- headersLoader
         filtersLoader
         runReaderT (wrapped ma) $ Env
           settingsRef backEF loading langRef activeCursRef authRef (logoutFire ()) storeDir alertsEF
           logsTrigger logsNameSpaces uiChan passModalEF passSetEF manager
-          hst fst syncRef heightRef fsyncRef urlsRef urlNumRef timeoutRef indexRef indexEF
+          hst fst syncRef heightRef fsyncRef
+          urlsArchive reqUrlNumRef actUrlNumRef timeoutRef activeUrlsRef inactiveUrls indexEF
   let
     ma0' = maybe ma0 runAuthed mauth0
     newAuthInfoE = ffilter isMauthUpdate $ updated mauthD
@@ -322,9 +303,37 @@ wrapped ma = do
   ma
 
 instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
-  getUrlsRef = asks env'urlsArchive
-  {-# INLINE getUrlsRef #-}
-  getRequiredUrlNumRef = asks env'urlNum
+  getArchivedUrlsRef = asks env'urlsArchive
+  {-# INLINE getArchivedUrlsRef #-}
+  getActiveUrlsRef = asks env'activeUrls
+  {-# INLINE getActiveUrlsRef #-}
+  getInactiveUrlsRef = asks env'inactiveUrls
+  {-# INLINE getInactiveUrlsRef #-}
+  getActiveUrlsNumRef = asks env'actUrlNum
+  {-# INLINE getActiveUrlsNumRef #-}
+  getRequiredUrlNumRef = asks env'reqUrlNum
   {-# INLINE getRequiredUrlNumRef #-}
   getRequestTimeoutRef = asks env'timeout
   {-# INLINE getRequestTimeoutRef #-}
+  getIndexerInfoD = externalRefDynamic =<< asks env'activeUrls
+  {-# INLINE getIndexerInfoD #-}
+  getIndexerInfoEF = asks env'indexersEF
+  {-# INLINE getIndexerInfoEF #-}
+  refreshIndexerInfo e = do
+    fire <- asks (snd . env'indexersEF)
+    performEvent_ $ (liftIO fire) <$ e
+  {-# INLINE refreshIndexerInfo #-}
+  updateIndexerURL urlE = do
+    indRef <- asks env'activeUrls
+    urlRef <- asks env'urlsArchive
+    performEvent $ ffor urlE $ \(o,n) -> do
+      im <- readExternalRef indRef
+      case M.lookup n im of
+        Just _ -> pure False
+        Nothing -> do
+          let v = join $ M.lookup o im
+          urls <- readExternalRef urlRef
+          writeExternalRef indRef $ M.insert n v $ M.delete o im
+          writeExternalRef urlRef $ S.insert n $ S.delete o urls
+          pure True
+  {-# INLINE updateIndexerURL #-}
