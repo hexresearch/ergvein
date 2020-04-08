@@ -657,24 +657,22 @@ historyPageCss = do
   ".history-status-header" ? do
     display block
   ".history-table-row" ? do
+    fontSize $ px 16
+    paddingTop $ px 20
+    paddingBottom $ px 20
     display grid
     gridTemplateColumns [fr 5, fr 4, fr 1]
+  ".history-table-row:hover" ? do
+    backgroundColor $ rgb 220 220 220
   ".history-amount-transrefill" ? do
-    borderRight solid (px 2) black
     display block
-    color $ rgb 0 190 0
+    color $ rgb 0 120 0
   ".history-amount-transwithdraw" ? do
-    borderRight solid (px 2) black
     display block
-    color $ rgb 190 0 0
-  ".history-date" ? do
-    borderRight solid (px 2) black
-    display block
-  "history-status-transuncofirmed" ? do
-    color $ rgb 190 0 0
-    display block
-  "history-status-transcofirmed" ? do
-    display block
+    color $ rgb 120 0 0
+  ".transaction-info-hex" ? do
+    display grid
+    gridTemplateColumns [fr 2, fr 8]
 
 graphPinCodeCanvasCss :: Css
 graphPinCodeCanvasCss = do

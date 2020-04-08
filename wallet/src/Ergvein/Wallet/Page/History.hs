@@ -6,6 +6,7 @@ import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Localization.History
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar
@@ -15,36 +16,38 @@ import Ergvein.Wallet.Wrapper
 import Data.Time
 import Data.Text as T
 
-
-newtype HistoryTitle = HistoryTitle Currency
-
-instance LocalizedPrint HistoryTitle where
-  localizedShow l (HistoryTitle c) = case l of
-    English -> "History " <> currencyName c
-    Russian -> "История " <> currencyName c
-
 historyPage :: MonadFront t m => Currency -> m ()
 historyPage cur = divClass "base-container" $ do
   let thisWidget = Just $ pure $ historyPage cur
   let trHistoryList = mockTransHistory cur
   headerWidget (HistoryTitle cur) thisWidget
   navbarWidget cur thisWidget NavbarHistory
-  divClass "history-table-header" $ do
-      divClass "history-amount-header" $ text $ "Amount " <> (showt cur)
-      divClass "history-date-header" $ text "Date"
-      divClass "history-status-header" $ text "Status"
-  divClass "history-table-body" $ historyTableWidget trHistoryList
+  goE <- divClass "history-table-body" $ historyTableWidget trHistoryList
+  void $ nextWidget $ ffor (leftmost goE) $ \tr -> Retractable {
+      retractableNext = transactionInfoPage cur tr
+    , retractablePrev = thisWidget
+    }
 
-historyTableWidget :: MonadFront t m => [TransactionMock] -> m ()
+transactionInfoPage :: MonadFront t m => Currency -> TransactionMock -> m ()
+transactionInfoPage cur tr@TransactionMock{..} = divClass "base-container" $ do
+  let thisWidget = Just $ pure $ transactionInfoPage cur tr
+  headerWidget HistoryTITitle thisWidget
+  divClass "transaction-info-body" $ do
+    divClass "transaction-info-hex" $ do
+      divClass "info-descr" $ localizedText HistoryTIHash
+      divClass "info-body" $ text $ txId txInfo
+  pure ()
+
+historyTableWidget :: MonadFront t m => [TransactionMock] -> m ([Event t TransactionMock])
 historyTableWidget trList = do
-  traverse_ historyTableRow trList
+   traverse historyTableRow trList
     where
-      historyTableRow :: MonadFront t m => TransactionMock -> m ()
-      historyTableRow tr@TransactionMock{..} = divClass "history-table-row" $ do
+      historyTableRow :: MonadFront t m => TransactionMock -> m (Event t TransactionMock)
+      historyTableRow tr@TransactionMock{..} = divButton "history-table-row" $ do
         divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ text $ symb <> (showMoney txAmount)
         divClass "history-date"   $ text $ txDate
         divClass ("history-status-" <> ((T.toLower . showt) txInOut)) $ text $ stat
-        pure ()
+        pure tr
         where
           symb :: Text
           symb = case txInOut of
@@ -56,6 +59,10 @@ historyTableWidget trList = do
             TransUncofirmed -> "?"
 
 -- Mock Transaction info types for visualisation.
+data TransStatus = TransConfirmed | TransUncofirmed deriving (Eq,Show)
+data TransType = TransRefill | TransWithdraw deriving (Eq,Show)
+data TransOutputType = TOSpent | TOUnspent deriving (Eq,Show)
+
 mockTransHistory :: Currency -> [TransactionMock]
 mockTransHistory cur = [
   TransactionMock (moneyFromRational cur 0.63919646) "2020-04-07 14:12" TransRefill   (trMockInfo cur) TransUncofirmed
@@ -67,7 +74,7 @@ mockTransHistory cur = [
 trMockInfo :: Currency -> TransactionInfo
 trMockInfo cur = TransactionInfo
   "330ce5f20e63b97604fb6add4e4be53197363ac5ebf7342e1372212b7b49498e"
-  "330ce5f20e63b97604fb6add4e4be53197363ac5ebf7342e1372212b7b49498e"
+  (Just "330ce5f20e63b97604fb6add4e4be53197363ac5ebf7342e1372212b7b49498e")
   "https://www.blockchain.com/btc/tx/330ce5f20e63b97604fb6add4e4be53197363ac5ebf7342e1372212b7b49498e"
   (moneyFromRational cur 0.000706)
   11
@@ -84,13 +91,9 @@ data TransactionMock = TransactionMock {
  ,txStatus :: TransStatus
 } deriving (Show)
 
-data TransStatus = TransConfirmed | TransUncofirmed deriving (Eq,Show)
-data TransType = TransRefill | TransWithdraw deriving (Eq,Show)
-data TransOutputType = TOSpent | TOUnspent deriving (Eq,Show)
-
 data TransactionInfo = TransactionInfo {
   txId            :: Text
- ,txLabel         :: Text
+ ,txLabel         :: Maybe Text
  ,txUrl           :: Text
  ,txFee           :: Money
  ,txConfirmations :: Int
