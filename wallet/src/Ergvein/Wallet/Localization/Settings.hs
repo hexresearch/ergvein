@@ -87,7 +87,9 @@ data NetSetupStrings
   | NSSSave
   | NSSAddUrl
   | NSSAdd
+  | NSSEdit
   | NSSClose
+  | NSSCopyURL
 
 instance LocalizedPrint NetSetupStrings where
   localizedShow l v = case l of
@@ -110,7 +112,9 @@ instance LocalizedPrint NetSetupStrings where
       NSSSave         -> "Save"
       NSSAddUrl       -> "Add indexer"
       NSSAdd          -> "Add"
+      NSSEdit         -> "Edit"
       NSSClose        -> "Close"
+      NSSCopyURL      -> "Copy URL"
     Russian -> case v of
       NSSTitle        -> "Настройки сети"
       NSSLatency lat  -> "Задержка: " <> showt lat
@@ -130,4 +134,6 @@ instance LocalizedPrint NetSetupStrings where
       NSSSave         -> "Сохранить"
       NSSAddUrl       -> "Добавить индексер"
       NSSAdd          -> "Добавить"
+      NSSEdit         -> "Изменить"
       NSSClose        -> "Закрыть"
+      NSSCopyURL      -> "Copy URL"

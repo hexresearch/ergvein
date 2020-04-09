@@ -15,6 +15,7 @@ import Text.Read
 
 import Ergvein.Text
 import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Language
@@ -123,28 +124,26 @@ activePageWidget = mdo
     fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline mt-1" $ if b then NSSClose else NSSAddUrl
   hideE <- activateURL =<< addUrlWidget showD
-  divClass "centered-wrapper" $ divClass "centered-content" $ mdo
-    allIndsD <- (fmap . fmap) (M.mapKeys Just) getIndexerInfoD
-    keyD <- foldDyn (\nk ok -> if nk == ok then Nothing else nk) Nothing selE
-    selE <- selectViewListWithKey_ keyD allIndsD $ \murl minfoD bD -> lineOption $
-      fmap (switch . current) $ widgetHoldDyn $ ffor bD $ \b -> do
-        let url = fromJust murl
-        e <- divE $ widgetHoldDyn $ ffor minfoD $ \minfo -> do
-          divClass "network-name" $ do
-            let cls = if isJust minfo then "indexer-online" else "indexer-offline"
-            elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
-            text $ T.pack . showBaseUrl $ url
-          descrOption $ maybe NSSOffline (NSSLatency . indInfoLatency) minfo
-        widgetHoldDyn $ (\b -> if b then editWidget url else pure ()) <$> bD
-        labelHorSep
-        pure e
+  divClass "centered-wrapper" $ divClass "centered-content" $
+    void . flip listWithKey renderActive =<< getIndexerInfoD
+
+renderActive :: MonadFront t m => BaseUrl -> Dynamic t (Maybe IndexerInfo) -> m ()
+renderActive url minfoD = mdo
+  tglD <- holdDyn False tglE
+  tglE <- fmap switchDyn $ widgetHoldDyn $ ffor minfoD $ \minfo -> lineOption $ do
+    tglE' <- divClass "network-name" $ do
+      let cls = if isJust minfo then "indexer-online" else "indexer-offline"
+      elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
+      text $ T.pack . showBaseUrl $ url
+      fmap switchDyn $ widgetHoldDyn $ ffor tglD $ \b ->
+        fmap (not b <$) $ buttonClass "button button-outline mt-1 ml-1" $ if b then NSSClose else NSSEdit
+    descrOption $ maybe NSSOffline (NSSLatency . indInfoLatency) minfo
+    pure tglE'
+  widgetHoldDyn $ ffor tglD $ \b -> if not b then pure () else lineOption $ do
+    deactivateURL . (url <$) =<< buttonClass "button button-outline mt-1 ml-1" NSSDisable
+    forgetURL . (url <$) =<< buttonClass "button button-outline mt-1 ml-1" NSSForget
     pure ()
-  where
-    editWidget :: MonadFront t m => BaseUrl -> m ()
-    editWidget url = lineOption $ do
-      deactivateURL . (url <$) =<< outlineButton NSSDisable
-      forgetURL . (url <$) =<< outlineButton NSSForget
-      pure ()
+  labelHorSep
 
 inactivePageWidget :: forall t m . MonadFront t m => m ()
 inactivePageWidget = mdo
@@ -161,35 +160,37 @@ inactivePageWidget = mdo
       resE <- pingIndexer $ u <$ pingAllE
       pure (u, snd <$> resE)
   divClass "centered-wrapper" $ divClass "centered-content" $ mdo
-    keyD <- foldDyn (\nk ok -> if nk == ok then Nothing else nk) Nothing $ Just <$> selE
     infomapD <- foldDyn M.union M.empty $ leftmost [resE, allResE]
-    selD <- simpleList urlsD $ \urlD -> do
-      let isMeD = (\u murl -> Just u == murl) <$> urlD <*> keyD
-          myInfoD = M.lookup <$> urlD <*> infomapD
-          allD = (,,) <$> urlD <*> isMeD <*> myInfoD
-      evntsD <- widgetHoldDyn $ renderItem <$> allD
-      pure $ bimap switchDyn switchDyn $ splitDynPure evntsD
-    let (selE, pingE) = bimap switchDyn switchDyn . splitDynPure . fmap (bimap leftmost leftmost . unzip) $ selD
+    a :: Dynamic t [Dynamic t (Event t BaseUrl)] <- simpleList urlsD $ \urlD -> do
+      let myInfoD = M.lookup <$> urlD <*> infomapD
+      widgetHoldDyn $ renderInactive <$> urlD <*> myInfoD
+    let pingE = switchDyn . fmap leftmost . join . fmap sequence $ a
     resE <- (fmap . fmap) (uncurry M.singleton) $ pingIndexer pingE
     pure ()
-  where
-    renderItem :: MonadFront t m => (BaseUrl, Bool, Maybe (Maybe IndexerInfo)) -> m (Event t BaseUrl, Event t BaseUrl)
-    renderItem (url, me, mminfo) = do
-      e <- divE $ case mminfo of
-        Nothing -> divClass "network-name" $ text $ T.pack . showBaseUrl $ url
+
+renderInactive :: MonadFront t m => BaseUrl -> Maybe (Maybe IndexerInfo) -> m (Event t BaseUrl)
+renderInactive url mminfo = mdo
+  let urlTxt = T.pack $ showBaseUrl url
+  tglD <- holdDyn False tglE
+  tglE <- lineOption $ do
+    tglE' <- divClass "network-name" $ do
+      case mminfo of
+        Nothing -> text urlTxt
         Just minfo -> do
-          divClass "network-name" $ do
-            let cls = if isJust minfo then "indexer-online" else "indexer-offline"
-            elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
-            text $ T.pack . showBaseUrl $ url
-          descrOption $ maybe NSSOffline (NSSLatency . indInfoLatency) minfo
-      pingE <- if not me then (pure never) else lineOption $ do
-        activateURL . (url <$) =<< outlineButton NSSEnable
-        pingE <- outlineButton NSSPing
-        forgetURL . (url <$) =<< outlineButton NSSForget
-        pure pingE
-      labelHorSep
-      pure $ (url <$ e, url <$ pingE)
+          let cls = if isJust minfo then "indexer-online" else "indexer-offline"
+          elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
+          text urlTxt
+      fmap switchDyn $ widgetHoldDyn $ ffor tglD $ \b ->
+        fmap (not b <$) $ buttonClass "button button-outline mt-1 ml-1" $ if b then NSSClose else NSSEdit
+    maybe (pure ()) (descrOption . maybe NSSOffline (NSSLatency . indInfoLatency)) mminfo
+    pure tglE'
+  pingE <- fmap switchDyn $ widgetHoldDyn $ ffor tglD $ \b -> if not b then pure never else lineOption $ do
+    activateURL . (url <$) =<< outlineButton NSSEnable
+    pingE <- fmap (url <$) $ outlineButton NSSPing
+    forgetURL . (url <$) =<< outlineButton NSSForget
+    pure pingE
+  labelHorSep
+  pure pingE
 
 navbarWidget :: MonadFront t m => NavbarItem -> m (Dynamic t NavbarItem)
 navbarWidget initItem = divClass "navbar" $ mdo
@@ -219,5 +220,5 @@ valueOptionDyn v = getLanguage >>= \langD -> divClass "network-value" $ dynText 
 descrOptionDyn v = getLanguage >>= \langD -> (>>) elBR (divClass "network-descr" $ dynText $ ffor2 langD v localizedShow)
 
 labelHorSep, elBR :: MonadFront t m => m ()
-labelHorSep = elAttr "hr" [("class","network-hr-sep-lb")] blank
+labelHorSep = elAttr "hr" [("class","network-hr-sep-nomargin")] blank
 elBR = el "br" blank
