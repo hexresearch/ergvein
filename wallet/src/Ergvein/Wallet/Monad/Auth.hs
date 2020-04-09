@@ -113,6 +113,8 @@ instance MonadBaseConstr t m => MonadLocalized t (ErgveinM t m) where
 instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontBase t (ErgveinM t m) where
   getSettings = readExternalRef =<< asks env'settings
   {-# INLINE getSettings #-}
+  getSettingsD = externalRefDynamic =<< asks env'settings
+  {-# INLINE getSettingsD #-}
   getLoadingWidgetTF = asks env'loading
   {-# INLINE getLoadingWidgetTF #-}
   toggleLoadingWidget reqE = do
@@ -309,6 +311,8 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
   {-# INLINE getActiveUrlsRef #-}
   getInactiveUrlsRef = asks env'inactiveUrls
   {-# INLINE getInactiveUrlsRef #-}
+  getInactiveUrlsD = externalRefDynamic =<< asks env'inactiveUrls
+  {-# INLINE getInactiveUrlsD #-}
   getActiveUrlsNumRef = asks env'actUrlNum
   {-# INLINE getActiveUrlsNumRef #-}
   getRequiredUrlNumRef = asks env'reqUrlNum
@@ -335,7 +339,7 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
       res <- pingIndexerIO mng url
       modifyExternalRef iaRef ((,()) . S.delete url)
       modifyExternalRef acrhRef ((,()) . S.delete url)
-      modifyExternalRef actRef ((,()) . M.insert url res)
+      modifyExternalRef actRef ((,()) . uncurry M.insert res)
   deactivateURL urlE = do
     actRef  <- asks env'activeUrls
     iaRef   <- asks env'inactiveUrls
@@ -353,13 +357,13 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
       modifyExternalRef acrhRef ((,()) . S.delete url)
       modifyExternalRef actRef ((,()) . M.delete url)
 
-pingIndexerIO :: MonadIO m => Manager -> BaseUrl -> m (Maybe IndexerInfo)
+pingIndexerIO :: MonadIO m => Manager -> BaseUrl -> m (BaseUrl, Maybe IndexerInfo)
 pingIndexerIO mng url = liftIO $ do
   t0 <- getCurrentTime
   res <- runReaderT (getInfoEndpoint url ()) mng
   t1 <- getCurrentTime
   pure $ case res of
-    Left _ -> Nothing
+    Left _ -> (url, Nothing)
     Right (InfoResponse vals) -> let
       curmap = M.fromList $ fmap (\(ScanProgressItem cur sh ah) -> (cur, (sh, ah))) vals
-      in Just $ IndexerInfo curmap $ diffUTCTime t1 t0
+      in (url, Just $ IndexerInfo curmap $ diffUTCTime t1 t0)

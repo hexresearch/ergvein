@@ -501,7 +501,9 @@ networkPageCss = do
   ".net-refresh-btn" ? do
     height   $ em 3.8
     verticalAlign vAlignTop
-
+  ".mt-1" ? do
+    marginTop $ em 1
+    
 infoPageCss :: Css
 infoPageCss = do
   ".info-content" ? do

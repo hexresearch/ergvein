@@ -14,13 +14,14 @@ import Reflex.Dom
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Currencies
-import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Page.Currencies
+import Ergvein.Wallet.Page.Settings.Network
+import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Widget.GraphPinCode
 import Ergvein.Wallet.Wrapper
 
@@ -28,18 +29,21 @@ data SubPageSettings
   = GoLanguage
   | GoCurrencies
   | GoUnits
+  | GoNetwork
 
 settingsPage :: MonadFront t m => m ()
 settingsPage = wrapper STPSTitle (Just $ pure settingsPage) True $ do
   divClass "initial-options grid1" $ do
-    goLangE   <- fmap (GoLanguage <$) $ outlineButton STPSButLanguage
+    goLangE   <- fmap (GoLanguage   <$) $ outlineButton STPSButLanguage
     goCurrE   <- fmap (GoCurrencies <$) $ outlineButton STPSButActiveCurrs
-    goUnitsE  <- fmap (GoUnits    <$) $ outlineButton STPSButUnits
-    let goE = leftmost [goLangE, goCurrE, goUnitsE]
+    goNetE    <- fmap (GoNetwork    <$) $ outlineButton STPSButNetwork
+    goUnitsE  <- fmap (GoUnits      <$) $ outlineButton STPSButUnits
+    let goE = leftmost [goLangE, goCurrE, goNetE, goUnitsE]
     void $ nextWidget $ ffor goE $ \spg -> Retractable {
         retractableNext = case spg of
           GoLanguage   -> languagePage
           GoCurrencies -> currenciesPage
+          GoNetwork    -> networkSettingsPage
           GoUnits      -> unitsPage
       , retractablePrev = Just $ pure settingsPage
       }

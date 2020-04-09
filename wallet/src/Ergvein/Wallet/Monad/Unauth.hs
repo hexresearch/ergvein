@@ -114,6 +114,8 @@ instance MonadBaseConstr t m => MonadClient t (UnauthM t m) where
   {-# INLINE getActiveUrlsRef #-}
   getInactiveUrlsRef = asks unauth'inactiveUrls
   {-# INLINE getInactiveUrlsRef #-}
+  getInactiveUrlsD = externalRefDynamic =<< asks unauth'inactiveUrls
+  {-# INLINE getInactiveUrlsD #-}
   getActiveUrlsNumRef = asks unauth'actUrlNum
   {-# INLINE getActiveUrlsNumRef #-}
   getRequiredUrlNumRef = asks unauth'reqUrlNum
@@ -140,7 +142,7 @@ instance MonadBaseConstr t m => MonadClient t (UnauthM t m) where
       res <- pingIndexerIO mng url
       modifyExternalRef iaRef ((,()) . S.delete url)
       modifyExternalRef acrhRef ((,()) . S.delete url)
-      modifyExternalRef actRef ((,()) . M.insert url res)
+      modifyExternalRef actRef ((,()) . uncurry M.insert res)
   deactivateURL urlE = do
     actRef  <- asks unauth'activeUrls
     iaRef   <- asks unauth'inactiveUrls
@@ -158,20 +160,22 @@ instance MonadBaseConstr t m => MonadClient t (UnauthM t m) where
       modifyExternalRef acrhRef ((,()) . S.delete url)
       modifyExternalRef actRef ((,()) . M.delete url)
 
-pingIndexerIO :: MonadIO m => Manager -> BaseUrl -> m (Maybe IndexerInfo)
+pingIndexerIO :: MonadIO m => Manager -> BaseUrl -> m (BaseUrl, Maybe IndexerInfo)
 pingIndexerIO mng url = liftIO $ do
   t0 <- getCurrentTime
   res <- runReaderT (getInfoEndpoint url ()) mng
   t1 <- getCurrentTime
   pure $ case res of
-    Left _ -> Nothing
+    Left _ -> (url, Nothing)
     Right (InfoResponse vals) -> let
       curmap = M.fromList $ fmap (\(ScanProgressItem cur sh ah) -> (cur, (sh, ah))) vals
-      in Just $ IndexerInfo curmap $ diffUTCTime t1 t0
+      in (url, Just $ IndexerInfo curmap $ diffUTCTime t1 t0)
 
 instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontBase t (UnauthM t m) where
   getSettings = readExternalRef =<< asks unauth'settings
   {-# INLINE getSettings #-}
+  getSettingsD = externalRefDynamic =<< asks unauth'settings
+  {-# INLINE getSettingsD #-}
   getLoadingWidgetTF = asks unauth'loading
   {-# INLINE getLoadingWidgetTF #-}
   toggleLoadingWidget reqE = do

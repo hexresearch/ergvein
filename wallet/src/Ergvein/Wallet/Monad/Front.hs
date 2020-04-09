@@ -51,6 +51,8 @@ type MonadFront t m = (
 class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   -- | Get current settings
   getSettings :: m Settings
+  -- | Get current settings dynamic
+  getSettingsD :: m (Dynamic t Settings)
   -- | Update app's settings. Sets settings to provided value and stores them
   updateSettings :: Event t Settings -> m ()
   -- | Get settings ref. Internal

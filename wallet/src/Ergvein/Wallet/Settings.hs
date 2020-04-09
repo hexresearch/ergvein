@@ -3,6 +3,11 @@ module Ergvein.Wallet.Settings (
     Settings(..)
   , loadSettings
   , storeSettings
+  , defaultSettings
+  , defaultIndexers
+  , defaultIndexersNum
+  , defaultIndexerTimeout
+  , defaultActUrlNum
   ) where
 
 import Control.Lens hiding ((.=))
@@ -102,6 +107,9 @@ defaultIndexersNum = (2, 4)
 defaultIndexerTimeout :: NominalDiffTime
 defaultIndexerTimeout = 20
 
+defaultActUrlNum :: Int
+defaultActUrlNum = 10
+
 defaultSettings :: FilePath -> Settings
 defaultSettings home =
   let storePath   = home <> "/store"
@@ -117,7 +125,7 @@ defaultSettings home =
       , settingsDeactivatedUrls   = []
       , settingsPassiveUrls       = []
       , settingsReqUrlNum         = defaultIndexersNum
-      , settingsActUrlNum         = 10
+      , settingsActUrlNum         = defaultActUrlNum
       }
 
 -- | TODO: Implement some checks to see if the configPath folder is ok to write to

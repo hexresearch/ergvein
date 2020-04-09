@@ -157,6 +157,8 @@ class (MonadBaseConstr t m, HasClientManager m, HasClientManager (Performable m)
   getActiveUrlsRef :: m (ExternalRef t (Map BaseUrl (Maybe IndexerInfo)))
   -- | Get deactivated urls' reference. Internal
   getInactiveUrlsRef :: m (ExternalRef t (S.Set BaseUrl))
+  -- | Get deactivated urls dynamic
+  getInactiveUrlsD :: m (Dynamic t (S.Set BaseUrl))
   -- | Get reference to the minimal number of active urls. Internal
   getActiveUrlsNumRef :: m (ExternalRef t Int)
   -- | Get num reference. Internal
@@ -170,7 +172,7 @@ class (MonadBaseConstr t m, HasClientManager m, HasClientManager (Performable m)
   -- | Call indexer info to be refreshed
   refreshIndexerInfo :: Event t () -> m ()
   -- | Request stats from a specific URL
-  pingIndexer :: Event t BaseUrl -> m (Event t (Maybe IndexerInfo))
+  pingIndexer :: Event t BaseUrl -> m (Event t (BaseUrl, Maybe IndexerInfo))
   -- | Activate an URL
   activateURL :: Event t BaseUrl -> m (Event t ())
   -- | Deactivate an URL

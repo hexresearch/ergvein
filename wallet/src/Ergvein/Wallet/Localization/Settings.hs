@@ -1,17 +1,19 @@
 module Ergvein.Wallet.Localization.Settings(
     SettingsPageStrings(..)
+  , NetSetupStrings(..)
   ) where
 
+import Data.Text
+import Data.Time
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
-
-import Data.Text
 
 data SettingsPageStrings =
     STPSTitle
   | STPSButLanguage
   | STPSButActiveCurrs
+  | STPSButNetwork
   | STPSButUnits
   | STPSSelectLanguage
   | STPSSetsActiveCurrs
@@ -27,6 +29,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSTitle               -> "Settings"
       STPSButLanguage         -> "Language"
       STPSButActiveCurrs      -> "Currencies"
+      STPSButNetwork          -> "Network"
       STPSButUnits            -> "Display units for cryptos"
       STPSSelectLanguage      -> "Select language:"
       STPSSetsActiveCurrs     -> "Settings for active currencies"
@@ -39,6 +42,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSTitle               -> "Настройки"
       STPSButLanguage         -> "Язык"
       STPSButActiveCurrs      -> "Валюты"
+      STPSButNetwork          -> "Сеть"
       STPSButUnits            -> "Единицы отображения криптосистем"
       STPSSelectLanguage      -> "Выберите язык:"
       STPSSetsActiveCurrs     -> "Настройки активных валют"
@@ -59,3 +63,43 @@ instance LocalizedPrint UnitERGO where
     ErgWhole -> "erg"
     ErgMilli -> "merg"
     ErgNano  -> "nerg"
+
+data NetSetupStrings
+  = NSSTitle
+  | NSSLatency NominalDiffTime
+  | NSSOffline
+  | NSSRefresh
+  | NSSPing
+  | NSSPingAll
+  | NSSDisable
+  | NSSEnable
+  | NSSForget
+  | NSSRestoreUrls
+  | NSSRestoreDef
+
+instance LocalizedPrint NetSetupStrings where
+  localizedShow l v = case l of
+    English -> case v of
+      NSSTitle        -> "Network settings"
+      NSSLatency lat  -> "Latency: " <> showt lat
+      NSSOffline      -> "Offline"
+      NSSRefresh      -> "Refresh"
+      NSSPing         -> "Ping"
+      NSSDisable      -> "Disable"
+      NSSEnable       -> "Enable"
+      NSSForget       -> "Forget"
+      NSSPingAll      -> "Ping all"
+      NSSRestoreUrls  -> "Restore default indexers"
+      NSSRestoreDef   -> "Restore default values"
+    Russian -> case v of
+      NSSTitle        -> "Настройки сети"
+      NSSLatency lat  -> "Задержка: " <> showt lat
+      NSSOffline      -> "Оффлайн"
+      NSSRefresh      -> "Обновить"
+      NSSPing         -> "Запросить статус"
+      NSSDisable      -> "Отключить"
+      NSSEnable       -> "Включить"
+      NSSForget       -> "Забыть"
+      NSSPingAll      -> "Запросить всех"
+      NSSRestoreUrls  -> "Восстановить сервера по умолчанию"
+      NSSRestoreDef   -> "Восстановить значения по умолчанию"
