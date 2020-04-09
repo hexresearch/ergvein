@@ -137,28 +137,61 @@ instance MonadBaseConstr t m => MonadClient t (UnauthM t m) where
     actRef  <- asks unauth'activeUrls
     iaRef   <- asks unauth'inactiveUrls
     acrhRef <- asks unauth'urlsArchive
+    setRef  <- asks unauth'settings
     mng     <- getClientMaganer
     performEvent $ ffor urlE $ \url -> do
       res <- pingIndexerIO mng url
-      modifyExternalRef iaRef ((,()) . S.delete url)
-      modifyExternalRef acrhRef ((,()) . S.delete url)
-      modifyExternalRef actRef ((,()) . uncurry M.insert res)
+      ias <- modifyExternalRef iaRef $ \us ->
+        let us' = S.delete url us in (us', S.toList us')
+      ars <- modifyExternalRef acrhRef $ \as ->
+        let as' = S.delete url as in  (as', S.toList as')
+      acs <- modifyExternalRef actRef $ \as ->
+        let as' = uncurry M.insert res as in (as', M.keys as')
+      s <- modifyExternalRef setRef $ \s -> let
+        s' = s {
+            settingsActiveUrls      = acs
+          , settingsDeactivatedUrls = ias
+          , settingsPassiveUrls     = ars
+          }
+        in (s', s')
+      storeSettings s
+      pure ()
   deactivateURL urlE = do
     actRef  <- asks unauth'activeUrls
     iaRef   <- asks unauth'inactiveUrls
-    mng     <- getClientMaganer
+    setRef  <- asks unauth'settings
     performEvent $ ffor urlE $ \url -> do
-      modifyExternalRef actRef ((,()) . M.delete url)
-      modifyExternalRef iaRef ((,()) . S.insert url)
+      acs <- modifyExternalRef actRef $ \as ->
+        let as' = M.delete url as in (as', M.keys as')
+      ias <- modifyExternalRef iaRef  $ \us ->
+        let us' = S.insert url us in (us', S.toList us')
+      s <- modifyExternalRef setRef $ \s -> let
+        s' = s {
+            settingsActiveUrls      = acs
+          , settingsDeactivatedUrls = ias
+          }
+        in (s', s')
+      storeSettings s
   forgetURL urlE = do
     actRef  <- asks unauth'activeUrls
     iaRef   <- asks unauth'inactiveUrls
     acrhRef <- asks unauth'urlsArchive
-    mng     <- getClientMaganer
+    setRef  <- asks unauth'settings
     performEvent $ ffor urlE $ \url -> do
-      modifyExternalRef iaRef ((,()) . S.delete url)
-      modifyExternalRef acrhRef ((,()) . S.delete url)
-      modifyExternalRef actRef ((,()) . M.delete url)
+      ias <- modifyExternalRef iaRef $ \us ->
+        let us' = S.delete url us in (us', S.toList us')
+      ars <- modifyExternalRef acrhRef $ \as ->
+        let as' = S.delete url as in  (as', S.toList as')
+      acs <- modifyExternalRef actRef $ \as ->
+        let as' = M.delete url as in (as', M.keys as')
+      s <- modifyExternalRef setRef $ \s -> let
+        s' = s {
+            settingsActiveUrls      = acs
+          , settingsDeactivatedUrls = ias
+          , settingsPassiveUrls     = ars
+          }
+        in (s', s')
+      storeSettings s
 
 pingIndexerIO :: MonadIO m => Manager -> BaseUrl -> m (BaseUrl, Maybe IndexerInfo)
 pingIndexerIO mng url = liftIO $ do
