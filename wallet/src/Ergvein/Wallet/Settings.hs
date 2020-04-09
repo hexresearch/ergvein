@@ -147,7 +147,7 @@ loadSettings = const $ liftIO $ do
       cfg <- if not ex
         then pure $ defaultSettings path
         else fmap (either (const $ defaultSettings path) id) $ readYamlEither' configPath
-      logWrite $ "Loaded settings: " <> showt sett
+      logWrite $ "Loaded settings: " <> showt cfg
       createDirectoryIfMissing True (unpack $ settingsStoreDir cfg)
       encodeFile (unpack $ settingsConfigPath cfg) cfg
       pure cfg
