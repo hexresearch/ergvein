@@ -53,12 +53,12 @@ erg =
     ErgNetwork
     { getErgNetworkName = "erg"
     , getErgNetworkIdent = "erg"
-    , getErgAddrPrefix = 1               -- Leading symbol(s): Q-Z, a-k, m-o
-    , getErgScriptHashPrefix = 2         -- Leading symbol(s): o-z, 2
-    , getErgScriptPrefix = 3             -- Leading symbol(s): 2
-    , getErgSecretPrefix = 128           -- Leading symbol(s): 5 for WIF uncompressed pubkey or K or L for WIF compressed pubkey
-    , getErgExtPubKeyPrefix = 0x0488b21e -- Leading symbol(s): xpub
-    , getErgExtSecretPrefix = 0x0488ade4 -- Leading symbol(s): xprv
+    , getErgAddrPrefix = 1
+    , getErgScriptHashPrefix = 2
+    , getErgScriptPrefix = 3
+    , getErgSecretPrefix = 128
+    , getErgExtPubKeyPrefix = 0x0488b21e
+    , getErgExtSecretPrefix = 0x0488ade4
     , getErgBip44Coin = 429
     }
 
@@ -68,12 +68,12 @@ ergTest =
     ErgNetwork
     { getErgNetworkName = "ergtest"
     , getErgNetworkIdent = "ergTest"
-    , getErgAddrPrefix = 17              -- Leading symbol(s): 7 or 8
-    , getErgScriptHashPrefix = 18        -- Leading symbol(s): 8
-    , getErgScriptPrefix = 19            -- Leading symbol(s): 8 or 9
-    , getErgSecretPrefix = 239           -- Leading symbol(s): 9 for WIF uncompressed pubkey or c for WIF compressed pubkey
-    , getErgExtPubKeyPrefix = 0x043587cf -- Leading symbol(s): tpub
-    , getErgExtSecretPrefix = 0x04358394 -- Leading symbol(s): tprv
+    , getErgAddrPrefix = 17
+    , getErgScriptHashPrefix = 18
+    , getErgScriptPrefix = 19
+    , getErgSecretPrefix = 239
+    , getErgExtPubKeyPrefix = 0x043587cf
+    , getErgExtSecretPrefix = 0x04358394
     , getErgBip44Coin = 1
     }
 
