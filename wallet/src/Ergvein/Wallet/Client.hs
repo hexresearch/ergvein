@@ -94,7 +94,7 @@ requester :: (MonadFrontBase t m, Eq a, Show a, Show b)
   -> Event t b                                            -- ^ Request event
   -> m (Event t (Either ClientErr a))                     -- ^ Result
 requester validateRes endpoint reqE = mdo
-  uss  <- fmap (S.fromList . M.keys) . readExternalRef =<< getActiveUrlsRef
+  uss  <- fmap M.keysSet . readExternalRef =<< getActiveUrlsRef
   let initReqE = ffor reqE (\req -> Just (req, [], uss))
   drawE <- delay 0.1 $ leftmost [initReqE, redrawE]
   respE <- fmap (switch . current) $ widgetHold (pure never) $ ffor drawE $ \case
