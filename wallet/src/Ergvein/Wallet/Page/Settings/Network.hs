@@ -5,11 +5,12 @@ module Ergvein.Wallet.Page.Settings.Network
     networkSettingsPage
   ) where
 
+import Control.Lens
+import Data.Bifunctor
 import Data.Maybe (isJust, fromJust)
 import Data.Time
 import Reflex.Dom
-import Servant.Client(BaseUrl, showBaseUrl)
-import Data.Bifunctor
+import Servant.Client(BaseUrl, showBaseUrl, parseBaseUrl)
 import Text.Read
 
 import Ergvein.Text
@@ -40,15 +41,6 @@ instance LocalizedPrint NavbarItem where
       DisabledPage    -> "Запасные индексеры"
       ParametersPage  -> "Сетевые параметры"
 
-networkSettingsPage :: MonadFront t m => m ()
-networkSettingsPage = divClass "base-container" $ do
-  headerWidget NSSTitle $ Just $ pure networkSettingsPage
-  navD <- navbarWidget ActivePage
-  void $ widgetHoldDyn $ ffor navD $ \case
-    ActivePage      -> activePageWidget
-    DisabledPage    -> inactivePageWidget
-    ParametersPage  -> parametersPageWidget
-
 data ParametersParseErrors = PPENDT | PPEInt
 
 instance LocalizedPrint ParametersParseErrors where
@@ -59,6 +51,15 @@ instance LocalizedPrint ParametersParseErrors where
     Russian -> case v of
       PPENDT -> "Некорректное значение. Только дробные числа"
       PPEInt -> "Некорректное значение. Только целые числа"
+
+networkSettingsPage :: MonadFront t m => m ()
+networkSettingsPage = divClass "base-container" $ do
+  headerWidget NSSTitle $ Just $ pure networkSettingsPage
+  navD <- navbarWidget ActivePage
+  void $ widgetHoldDyn $ ffor navD $ \case
+    ActivePage      -> activePageWidget
+    DisabledPage    -> inactivePageWidget
+    ParametersPage  -> parametersPageWidget
 
 parametersPageWidget :: MonadFront t m => m ()
 parametersPageWidget = mdo
@@ -98,11 +99,30 @@ parametersPageWidget = mdo
   where
     fmap2 = fmap . fmap
 
-activePageWidget :: MonadFront t m => m ()
-activePageWidget = do
-  lineOption $ do
+addUrlWidget :: forall t m . MonadFront t m => Dynamic t Bool -> m (Event t BaseUrl)
+addUrlWidget showD = mdo
+  hideE <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not b then pure never else do
+    murlE <- lineOption $ do
+      textD <- fmap _inputElement_value $ inputElement $ def
+        & inputElementConfig_elementConfig . elementConfig_initialAttributes .~ ("type" =: "text")
+      goE <- outlineButton NSSAddUrl
+      let urlE :: Event t (Maybe BaseUrl) = fmap (parseBaseUrl . T.unpack) $ current textD `tag` goE
+      pure urlE
+    widgetHold (pure ()) $ ffor murlE $ \case
+      Nothing -> divClass "form-field-errors" $ text "Falied to parse URL"
+      _ -> pure ()
+    pure $ fmapMaybe id murlE
+  pure hideE
+
+activePageWidget :: forall t m . MonadFront t m => m ()
+activePageWidget = mdo
+  showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
+  tglE <- lineOption $ do
     refreshIndexerInfo =<< buttonClass "button button-outline mt-1" NSSRefresh
     void $ buttonClass "button button-outline mt-1" NSSRestoreUrls
+    fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
+      fmap (not b <$) $ buttonClass "button button-outline mt-1" $ if b then NSSClose else NSSAddUrl
+  hideE <- activateURL =<< addUrlWidget showD
   divClass "centered-wrapper" $ divClass "centered-content" $ mdo
     allIndsD <- (fmap . fmap) (M.mapKeys Just) getIndexerInfoD
     keyD <- foldDyn (\nk ok -> if nk == ok then Nothing else nk) Nothing selE
@@ -127,9 +147,15 @@ activePageWidget = do
       pure ()
 
 inactivePageWidget :: forall t m . MonadFront t m => m ()
-inactivePageWidget = do
+inactivePageWidget = mdo
   urlsD <- (fmap . fmap) S.toList getInactiveUrlsD
-  pingAllE <- lineOption $ buttonClass "button button-outline mt-1" NSSPingAll
+  showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
+  (pingAllE, tglE) <- lineOption $ do
+    pingAllE <- buttonClass "button button-outline mt-1" NSSPingAll
+    tglE <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
+      fmap (not b <$) $ buttonClass "button button-outline mt-1" $ if b then NSSClose else NSSAddUrl
+    pure (pingAllE, tglE)
+  hideE <- deactivateURL =<< addUrlWidget showD
   allResE <- fmap switchDyn $ widgetHoldDyn $ ffor urlsD $ \urls ->
     fmap (mergeMap . M.fromList) $ flip traverse urls $ \u -> do
       resE <- pingIndexer $ u <$ pingAllE

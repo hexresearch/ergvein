@@ -24,7 +24,7 @@ data SettingsPageStrings =
   | STPSSetsPinDoSet
   | STPSSuccess
   deriving (Eq)
-  
+
 instance LocalizedPrint SettingsPageStrings where
   localizedShow l v = case l of
     English -> case v of
@@ -85,6 +85,9 @@ data NetSetupStrings
   | NSSReqNumMin
   | NSSReqNumMax
   | NSSSave
+  | NSSAddUrl
+  | NSSAdd
+  | NSSClose
 
 instance LocalizedPrint NetSetupStrings where
   localizedShow l v = case l of
@@ -98,13 +101,16 @@ instance LocalizedPrint NetSetupStrings where
       NSSEnable       -> "Enable"
       NSSForget       -> "Forget"
       NSSPingAll      -> "Ping all"
-      NSSRestoreUrls  -> "Restore default indexers"
+      NSSRestoreUrls  -> "Add default URLs"
       NSSRestoreDef   -> "Restore default values"
       NSSReqTimeout   -> "Request timeout, s"
       NSSActUrlNum    -> "Min. number of active indexers"
       NSSReqNumMin    -> "Min. number of confirmations"
       NSSReqNumMax    -> "Required number of confirmations"
       NSSSave         -> "Save"
+      NSSAddUrl       -> "Add indexer"
+      NSSAdd          -> "Add"
+      NSSClose        -> "Close"
     Russian -> case v of
       NSSTitle        -> "Настройки сети"
       NSSLatency lat  -> "Задержка: " <> showt lat
@@ -122,3 +128,6 @@ instance LocalizedPrint NetSetupStrings where
       NSSReqNumMin    -> "Минимальное количество подтверждений"
       NSSReqNumMax    -> "Необходимое количество подтверждений"
       NSSSave         -> "Сохранить"
+      NSSAddUrl       -> "Добавить индексер"
+      NSSAdd          -> "Добавить"
+      NSSClose        -> "Закрыть"
