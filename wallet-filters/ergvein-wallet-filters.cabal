@@ -75,3 +75,15 @@ test-suite ergvein-wallet-filters-test
     , tasty-discover
     , tasty-hspec
     , text
+
+benchmark bench-btc-filters
+  default-language:  Haskell2010
+  other-extensions:  BangPatterns
+  type:              exitcode-stdio-1.0
+  main-is:           BTC.hs
+  hs-source-dirs:    bench
+  build-depends:
+     ergvein-wallet-filters
+   , base
+   , bytestring
+   , criterion
