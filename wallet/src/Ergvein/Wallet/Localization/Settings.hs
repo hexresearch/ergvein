@@ -22,7 +22,9 @@ data SettingsPageStrings =
   | STPSSetsPinOff
   | STPSSetsPinInput
   | STPSSetsPinDoSet
-
+  | STPSSuccess
+  deriving (Eq)
+  
 instance LocalizedPrint SettingsPageStrings where
   localizedShow l v = case l of
     English -> case v of
@@ -38,6 +40,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSSetsPinOff          -> "Switch off PIN code"
       STPSSetsPinInput        -> "Enter PIN code:"
       STPSSetsPinDoSet        -> "Set PIN code"
+      STPSSuccess             -> "Successfully updated settings"
     Russian -> case v of
       STPSTitle               -> "Настройки"
       STPSButLanguage         -> "Язык"
@@ -51,6 +54,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSSetsPinOff          -> "Выключить ПИН код"
       STPSSetsPinInput        -> "Введите ПИН код:"
       STPSSetsPinDoSet        -> "Установить ПИН код"
+      STPSSuccess             -> "Настройки успешно обновлены"
 
 instance LocalizedPrint UnitBTC where
   localizedShow _ v = case v of
@@ -76,6 +80,11 @@ data NetSetupStrings
   | NSSForget
   | NSSRestoreUrls
   | NSSRestoreDef
+  | NSSReqTimeout
+  | NSSActUrlNum
+  | NSSReqNumMin
+  | NSSReqNumMax
+  | NSSSave
 
 instance LocalizedPrint NetSetupStrings where
   localizedShow l v = case l of
@@ -91,6 +100,11 @@ instance LocalizedPrint NetSetupStrings where
       NSSPingAll      -> "Ping all"
       NSSRestoreUrls  -> "Restore default indexers"
       NSSRestoreDef   -> "Restore default values"
+      NSSReqTimeout   -> "Request timeout, s"
+      NSSActUrlNum    -> "Min. number of active indexers"
+      NSSReqNumMin    -> "Min. number of confirmations"
+      NSSReqNumMax    -> "Required number of confirmations"
+      NSSSave         -> "Save"
     Russian -> case v of
       NSSTitle        -> "Настройки сети"
       NSSLatency lat  -> "Задержка: " <> showt lat
@@ -103,3 +117,8 @@ instance LocalizedPrint NetSetupStrings where
       NSSPingAll      -> "Запросить всех"
       NSSRestoreUrls  -> "Восстановить сервера по умолчанию"
       NSSRestoreDef   -> "Восстановить значения по умолчанию"
+      NSSReqTimeout   -> "Время ожидания ответа, с"
+      NSSActUrlNum    -> "Минимальное количество активных серверов"
+      NSSReqNumMin    -> "Минимальное количество подтверждений"
+      NSSReqNumMax    -> "Необходимое количество подтверждений"
+      NSSSave         -> "Сохранить"

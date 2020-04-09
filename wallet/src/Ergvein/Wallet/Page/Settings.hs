@@ -13,6 +13,7 @@ import Reflex.Dom
 
 import Ergvein.Text
 import Ergvein.Types.Currency
+import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
@@ -64,8 +65,8 @@ languagePage = wrapper STPSTitle (Just $ pure languagePage) True $ do
     selE <- fmap updated $ holdUniqDyn selD
     widgetHold (pure ()) $ setLanguage <$> selE
     settings <- getSettings
-    updateSettings $ ffor selE (\lng -> settings {settingsLang = lng})
-    pure ()
+    updE <- updateSettings $ ffor selE (\lng -> settings {settingsLang = lng})
+    showSuccessMsg $ STPSSuccess <$ updE
   pure ()
 
 currenciesPage :: MonadFront t m => m ()
@@ -75,7 +76,8 @@ currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
     s <- getSettings
     anon_name <- getWalletName
     currListE <- selectCurrenciesWidget $ getActiveCurrencies anon_name s
-    updateSettings $ ffor currListE $ \curs -> s {settingsActiveCurrencies = acSet anon_name s curs}
+    updE <- updateSettings $ ffor currListE $ \curs -> s {settingsActiveCurrencies = acSet anon_name s curs}
+    showSuccessMsg $ STPSSuccess <$ updE
   where
     getActiveCurrencies name s = fromMaybe allCurrencies $ Map.lookup name $ activeCurrenciesMap $ settingsActiveCurrencies s
     acSet l s curs = ActiveCurrencies $ Map.insert l curs $ activeCurrenciesMap $ settingsActiveCurrencies s

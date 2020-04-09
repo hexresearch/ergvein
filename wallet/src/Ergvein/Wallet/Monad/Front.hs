@@ -54,7 +54,7 @@ class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   -- | Get current settings dynamic
   getSettingsD :: m (Dynamic t Settings)
   -- | Update app's settings. Sets settings to provided value and stores them
-  updateSettings :: Event t Settings -> m ()
+  updateSettings :: Event t Settings -> m (Event t ())
   -- | Get settings ref. Internal
   getSettingsRef :: m (ExternalRef t Settings)
   -- | Get loading widget trigger and fire. This is internal stuff

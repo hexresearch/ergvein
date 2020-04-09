@@ -10,9 +10,12 @@ import Data.Time
 import Reflex.Dom
 import Servant.Client(BaseUrl, showBaseUrl)
 import Data.Bifunctor
+import Text.Read
 
 import Ergvein.Text
+import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
+import Ergvein.Wallet.Input
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Menu
@@ -44,7 +47,45 @@ networkSettingsPage = divClass "base-container" $ do
   void $ widgetHoldDyn $ ffor navD $ \case
     ActivePage      -> activePageWidget
     DisabledPage    -> inactivePageWidget
-    ParametersPage  -> pure ()
+    ParametersPage  -> parametersPageWidget
+
+parametersPageWidget :: MonadFront t m => m ()
+parametersPageWidget = mdo
+  setD <- getSettingsD
+  lineOption $ do
+    saveE <- buttonClass "button button-outline mt-1" NSSSave
+    defE <- buttonClass "button button-outline mt-1" NSSRestoreDef
+    updE <- updateSettings $ flip pushAlways defE $ const $ do
+      set <- sample $ current setD
+      pure $ set {
+            settingsReqTimeout = defaultIndexerTimeout
+          , settingsReqUrlNum  = defaultIndexersNum
+          , settingsActUrlNum  = defaultActUrlNum
+        }
+    updE' <- updateSettings $ flip pushAlways saveE $ const $ do
+      set <- sample $ current setD
+      (dt, actNum, rmin, rmax) <- sample $ current valsD
+      pure $ set {
+            settingsReqTimeout = dt
+          , settingsReqUrlNum  = (rmin, rmax)
+          , settingsActUrlNum  = actNum
+        }
+    showSuccessMsg $ STPSSuccess <$ (leftmost [updE, updE'])
+  valsD <- fmap join $ divClass "centered-wrapper" $ divClass "centered-content" $
+    widgetHoldDyn $ ffor setD $ \set@Settings{..} -> do
+      let dt0 :: Double = realToFrac settingsReqTimeout
+      dtD <- fmap2 realToFrac $ textFieldValidated NSSReqTimeout dt0 $
+        maybe (Left ["Failed to parse NominalDiffTime" :: Text]) Right . readMaybe . T.unpack
+      actNumD <- textFieldValidated NSSActUrlNum settingsActUrlNum $
+        maybe (Left ["Failed to parse NominalDiffTime" :: Text]) Right . readMaybe . T.unpack
+      rminD <- textFieldValidated NSSReqNumMin (fst settingsReqUrlNum) $
+        maybe (Left ["Failed to parse NominalDiffTime" :: Text]) Right . readMaybe . T.unpack
+      rmaxD <- textFieldValidated NSSReqNumMax (snd settingsReqUrlNum) $
+        maybe (Left ["Failed to parse NominalDiffTime" :: Text]) Right . readMaybe . T.unpack
+      pure $ (,,,) <$> dtD <*> actNumD <*> rminD <*> rmaxD
+  pure ()
+  where
+    fmap2 = fmap . fmap
 
 activePageWidget :: MonadFront t m => m ()
 activePageWidget = do

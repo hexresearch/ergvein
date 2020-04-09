@@ -3,6 +3,8 @@ module Ergvein.Wallet.Input(
   , textField
   , validatedTextField
   , validatedTextFieldSetVal
+  , textFieldSetValValidated
+  , textFieldValidated
   , passField
   , passFieldWithEye
   , submitClass
@@ -68,6 +70,29 @@ validatedTextFieldSetVal lbl v0 mErrsD setValE = do
     inputField = divClassDyn isInvalidD $ fmap _inputElement_value $ labeledTextInput lbl $ def
       & inputElementConfig_initialValue .~ v0
       & inputElementConfig_setValue .~ setValE
+
+textFieldSetValValidated :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPrint l1, Show a)
+  => l0 -- ^ Label
+  -> a -- ^ Initial value
+  -> Event t a -- ^ Set value event
+  -> (Text -> Either [l1] a) -- ^ Validatior
+  -> m (Dynamic t a) -- ^ Only valid values get through
+textFieldSetValValidated lbl v0 setValE f = mdo
+  mErrsD <- holdDyn Nothing $ fmap (either Just (const Nothing)) rawE
+  txtD <- validatedTextFieldSetVal lbl (showt v0) mErrsD (showt <$> setValE)
+  let rawE = updated $ f <$> txtD
+  holdDyn v0 $ fmapMaybe (either (const Nothing) Just) rawE
+
+textFieldValidated :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPrint l1, Show a)
+  => l0 -- ^ Label
+  -> a -- ^ Initial value
+  -> (Text -> Either [l1] a) -- ^ Validatior
+  -> m (Dynamic t a) -- ^ Only valid values get through
+textFieldValidated lbl v0 f = mdo
+  mErrsD <- holdDyn Nothing $ fmap (either Just (const Nothing)) rawE
+  txtD <- validatedTextField lbl (showt v0) mErrsD
+  let rawE = updated $ f <$> txtD
+  holdDyn v0 $ fmapMaybe (either (const Nothing) Just) rawE
 
 displayError :: (MonadFrontBase t m, LocalizedPrint l) => Dynamic t l -> m ()
 displayError errD = do

@@ -175,7 +175,7 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
     pure $ attachWithMaybe (\i' (i,mp) -> if i == i' then mp else Nothing) (current idD) setE
   updateSettings setE = do
     settingsRef <- asks env'settings
-    performEvent_ $ ffor setE $ \s -> do
+    performEvent $ ffor setE $ \s -> do
       writeExternalRef settingsRef s
       storeSettings s
   {-# INLINE updateSettings #-}
