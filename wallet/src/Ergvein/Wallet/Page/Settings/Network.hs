@@ -120,7 +120,7 @@ activePageWidget = mdo
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   tglE <- lineOption $ do
     refreshIndexerInfo =<< buttonClass "button button-outline mt-1" NSSRefresh
-    defE <- buttonClass "button button-outline mt-1" NSSRestoreUrls
+    restoreDefaultIndexers =<< buttonClass "button button-outline mt-1" NSSRestoreUrls
     fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline mt-1" $ if b then NSSClose else NSSAddUrl
   hideE <- activateURL =<< addUrlWidget showD

@@ -41,6 +41,7 @@ import Ergvein.Wallet.Client
 
 import qualified Data.Set as S
 import qualified Data.Map as M
+import qualified Data.List as L
 
 data UnauthEnv t = UnauthEnv {
   unauth'settings        :: !(ExternalRef t Settings)
@@ -192,6 +193,29 @@ instance MonadBaseConstr t m => MonadClient t (UnauthM t m) where
           }
         in (s', s')
       storeSettings s
+  restoreDefaultIndexers reqE = do
+    actRef  <- asks unauth'activeUrls
+    iaRef   <- asks unauth'inactiveUrls
+    acrhRef <- asks unauth'urlsArchive
+    setRef  <- asks unauth'settings
+    let defSet = S.fromList defaultIndexers
+    performEvent $ ffor reqE $ const $ do
+      ias <- modifyExternalRef iaRef $ \us ->
+        let us' = us `S.difference` defSet in (us', S.toList us')
+      ars <- modifyExternalRef acrhRef $ \as ->
+        let as' = as `S.difference` defSet in  (as', S.toList as')
+      acs <- modifyExternalRef actRef $ \as ->
+        let as' = L.foldl' (\m u -> M.insert u Nothing m) as defaultIndexers
+        in (as', M.keys as')
+      s <- modifyExternalRef setRef $ \s -> let
+        s' = s {
+            settingsActiveUrls      = acs
+          , settingsDeactivatedUrls = ias
+          , settingsPassiveUrls     = ars
+          }
+        in (s', s')
+      storeSettings s
+      pure ()
 
 pingIndexerIO :: MonadIO m => Manager -> BaseUrl -> m (BaseUrl, Maybe IndexerInfo)
 pingIndexerIO mng url = liftIO $ do

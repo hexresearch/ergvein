@@ -179,7 +179,9 @@ class (MonadBaseConstr t m, HasClientManager m, HasClientManager (Performable m)
   deactivateURL :: Event t BaseUrl -> m (Event t ())
   -- | Forget an URL
   forgetURL  :: Event t BaseUrl -> m (Event t ())
-
+  -- | Restore default indexers
+  restoreDefaultIndexers :: Event t () -> m (Event t ())
+  
 -- ===========================================================================
 --    Frontend-wide types
 -- ===========================================================================

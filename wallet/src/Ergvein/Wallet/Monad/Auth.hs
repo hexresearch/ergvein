@@ -29,7 +29,7 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Sync.Status
-import Ergvein.Wallet.Settings (Settings(..), storeSettings)
+import Ergvein.Wallet.Settings (Settings(..), storeSettings, defaultIndexers)
 import Ergvein.Wallet.Storage.Util
 import Network.HTTP.Client hiding (Proxy)
 import Reflex
@@ -43,6 +43,7 @@ import qualified Control.Immortal as I
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+import qualified Data.List as L
 
 data Env t = Env {
   env'settings        :: !(ExternalRef t Settings)
@@ -389,6 +390,29 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
           }
         in (s', s')
       storeSettings s
+  restoreDefaultIndexers reqE = do
+    actRef  <- asks env'activeUrls
+    iaRef   <- asks env'inactiveUrls
+    acrhRef <- asks env'urlsArchive
+    setRef  <- asks env'settings
+    let defSet = S.fromList defaultIndexers
+    performEvent $ ffor reqE $ const $ do
+      ias <- modifyExternalRef iaRef $ \us ->
+        let us' = us `S.difference` defSet in (us', S.toList us')
+      ars <- modifyExternalRef acrhRef $ \as ->
+        let as' = as `S.difference` defSet in  (as', S.toList as')
+      acs <- modifyExternalRef actRef $ \as ->
+        let as' = L.foldl' (\m u -> M.insert u Nothing m) as defaultIndexers
+        in (as', M.keys as')
+      s <- modifyExternalRef setRef $ \s -> let
+        s' = s {
+            settingsActiveUrls      = acs
+          , settingsDeactivatedUrls = ias
+          , settingsPassiveUrls     = ars
+          }
+        in (s', s')
+      storeSettings s
+      pure ()
 
 pingIndexerIO :: MonadIO m => Manager -> BaseUrl -> m (BaseUrl, Maybe IndexerInfo)
 pingIndexerIO mng url = liftIO $ do
