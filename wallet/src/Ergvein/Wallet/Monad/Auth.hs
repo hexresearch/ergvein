@@ -8,7 +8,7 @@ import Control.Concurrent.Chan (Chan)
 import Control.Monad.Random.Class
 import Control.Monad.Reader
 import Data.Map.Strict (Map)
-import Data.Time (NominalDiffTime)
+import Data.Time (NominalDiffTime, getCurrentTime, diffUTCTime)
 import Ergvein.Crypto
 import Ergvein.Index.Client
 import Ergvein.Text
@@ -29,7 +29,7 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Sync.Status
-import Ergvein.Wallet.Settings (Settings(..), storeSettings)
+import Ergvein.Wallet.Settings (Settings(..), storeSettings, defaultIndexers)
 import Ergvein.Wallet.Storage.Util
 import Network.HTTP.Client hiding (Proxy)
 import Reflex
@@ -43,6 +43,7 @@ import qualified Control.Immortal as I
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+import qualified Data.List as L
 
 data Env t = Env {
   env'settings        :: !(ExternalRef t Settings)
@@ -59,16 +60,19 @@ data Env t = Env {
 , env'uiChan          :: !(Chan (IO ()))
 , env'passModalEF     :: !(Event t Int, Int -> IO ())
 , env'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
-, env'urls            :: !(ExternalRef t (S.Set BaseUrl))
-, env'urlNum          :: !(ExternalRef t (Int, Int))
-, env'timeout         :: !(ExternalRef t NominalDiffTime)
 , env'manager         :: !Manager
 , env'headersStorage  :: !HeadersStorage
 , env'filtersStorage  :: !FiltersStorage
 , env'syncProgress    :: !(ExternalRef t SyncProgress)
 , env'heightRef       :: !(ExternalRef t (Map Currency Integer))
 , env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
-, env'indexers        :: !(ExternalRef t (Map BaseUrl (Maybe IndexerInfo)))
+
+, env'urlsArchive     :: !(ExternalRef t (S.Set BaseUrl))
+, env'reqUrlNum       :: !(ExternalRef t (Int, Int))
+, env'actUrlNum       :: !(ExternalRef t Int)
+, env'timeout         :: !(ExternalRef t NominalDiffTime)
+, env'activeUrls      :: !(ExternalRef t (Map BaseUrl (Maybe IndexerInfo)))
+, env'inactiveUrls    :: !(ExternalRef t (S.Set BaseUrl))
 , env'indexersEF      :: !(Event t (), IO ())
 }
 
@@ -110,6 +114,8 @@ instance MonadBaseConstr t m => MonadLocalized t (ErgveinM t m) where
 instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontBase t (ErgveinM t m) where
   getSettings = readExternalRef =<< asks env'settings
   {-# INLINE getSettings #-}
+  getSettingsD = externalRefDynamic =<< asks env'settings
+  {-# INLINE getSettingsD #-}
   getLoadingWidgetTF = asks env'loading
   {-# INLINE getLoadingWidgetTF #-}
   toggleLoadingWidget reqE = do
@@ -170,7 +176,7 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
     pure $ attachWithMaybe (\i' (i,mp) -> if i == i' then mp else Nothing) (current idD) setE
   updateSettings setE = do
     settingsRef <- asks env'settings
-    performEvent_ $ ffor setE $ \s -> do
+    performEvent $ ffor setE $ \s -> do
       writeExternalRef settingsRef s
       storeSettings s
   {-# INLINE updateSettings #-}
@@ -188,30 +194,6 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getHeightRef #-}
   getFiltersSyncRef = asks env'filtersSyncRef
   {-# INLINE getFiltersSyncRef #-}
-  getIndexerInfoRef = asks env'indexers
-  {-# INLINE getIndexerInfoRef #-}
-  getIndexerInfoD = externalRefDynamic =<< asks env'indexers
-  {-# INLINE getIndexerInfoD #-}
-  getIndexerInfoEF = asks env'indexersEF
-  {-# INLINE getIndexerInfoEF #-}
-  refreshIndexerInfo e = do
-    fire <- asks (snd . env'indexersEF)
-    performEvent_ $ (liftIO fire) <$ e
-  {-# INLINE refreshIndexerInfo #-}
-  updateIndexerURL urlE = do
-    indRef <- asks env'indexers
-    urlRef <- asks env'urls
-    performEvent $ ffor urlE $ \(o,n) -> do
-      im <- readExternalRef indRef
-      case M.lookup n im of
-        Just _ -> pure False
-        Nothing -> do
-          let v = join $ M.lookup o im
-          urls <- readExternalRef urlRef
-          writeExternalRef indRef $ M.insert n v $ M.delete o im
-          writeExternalRef urlRef $ S.insert n $ S.delete o urls
-          pure True
-  {-# INLINE updateIndexerURL #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
@@ -283,23 +265,26 @@ liftAuth ma0 ma = mdo
         passSetEF       <- getPasswordSetEF
         settingsRef     <- getSettingsRef
         settings        <- readExternalRef settingsRef
-        urlsRef         <- getUrlsRef
-        urlNumRef       <- getRequiredUrlNumRef
-        timeoutRef      <- getRequestTimeoutRef
         manager         <- getClientMaganer
         hst             <- getHeadersStorage
         fst             <- getFiltersStorage
         syncRef         <- getSyncProgressRef
         heightRef       <- getHeightRef
         fsyncRef        <- getFiltersSyncRef
-        indexRef        <- getIndexerInfoRef
+        urlsArchive     <- getArchivedUrlsRef
+        inactiveUrls    <- getInactiveUrlsRef
+        activeUrlsRef   <- getActiveUrlsRef
+        reqUrlNumRef    <- getRequiredUrlNumRef
+        actUrlNumRef    <- getActiveUrlsNumRef
+        timeoutRef      <- getRequestTimeoutRef
         indexEF         <- getIndexerInfoEF
         -- headersLoader
         filtersLoader
         runReaderT (wrapped ma) $ Env
           settingsRef backEF loading langRef activeCursRef authRef (logoutFire ()) storeDir alertsEF
-          logsTrigger logsNameSpaces uiChan passModalEF passSetEF urlsRef urlNumRef timeoutRef manager
-          hst fst syncRef heightRef fsyncRef indexRef indexEF
+          logsTrigger logsNameSpaces uiChan passModalEF passSetEF manager
+          hst fst syncRef heightRef fsyncRef
+          urlsArchive reqUrlNumRef actUrlNumRef timeoutRef activeUrlsRef inactiveUrls indexEF
   let
     ma0' = maybe ma0 runAuthed mauth0
     newAuthInfoE = ffilter isMauthUpdate $ updated mauthD
@@ -321,27 +306,121 @@ wrapped ma = do
   ma
 
 instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
-  setRequiredUrlNum numE = do
-    numRef <- asks env'urlNum
-    performEvent_ $ (writeExternalRef numRef) <$> numE
-
-  getRequiredUrlNum reqE = do
-    numRef <- asks env'urlNum
-    performEvent $ (readExternalRef numRef) <$ reqE
-
-  getUrlList reqE = do
-    urlsRef <- asks env'urls
-    performEvent $ ffor reqE $ const $ liftIO $ fmap S.elems $ readExternalRef urlsRef
-
-  addUrls urlsE = do
-    urlsRef <- asks env'urls
-    performEvent_ $ ffor urlsE $ \urls ->
-      modifyExternalRef urlsRef (\s -> (S.union (S.fromList urls) s, ()))
-
-  invalidateUrls urlsE = do
-    urlsRef <- asks env'urls
-    performEvent_ $ ffor urlsE $ \urls ->
-      modifyExternalRef urlsRef (\s -> (S.difference s (S.fromList urls), ()))
-  getUrlsRef = asks env'urls
-  getRequiredUrlNumRef = asks env'urlNum
+  getArchivedUrlsRef = asks env'urlsArchive
+  {-# INLINE getArchivedUrlsRef #-}
+  getActiveUrlsRef = asks env'activeUrls
+  {-# INLINE getActiveUrlsRef #-}
+  getInactiveUrlsRef = asks env'inactiveUrls
+  {-# INLINE getInactiveUrlsRef #-}
+  getInactiveUrlsD = externalRefDynamic =<< asks env'inactiveUrls
+  {-# INLINE getInactiveUrlsD #-}
+  getActiveUrlsNumRef = asks env'actUrlNum
+  {-# INLINE getActiveUrlsNumRef #-}
+  getRequiredUrlNumRef = asks env'reqUrlNum
+  {-# INLINE getRequiredUrlNumRef #-}
   getRequestTimeoutRef = asks env'timeout
+  {-# INLINE getRequestTimeoutRef #-}
+  getIndexerInfoD = externalRefDynamic =<< asks env'activeUrls
+  {-# INLINE getIndexerInfoD #-}
+  getIndexerInfoEF = asks env'indexersEF
+  {-# INLINE getIndexerInfoEF #-}
+  refreshIndexerInfo e = do
+    fire <- asks (snd . env'indexersEF)
+    performEvent_ $ (liftIO fire) <$ e
+  {-# INLINE refreshIndexerInfo #-}
+  pingIndexer urlE = do
+    mng <- getClientMaganer
+    performEvent $ (pingIndexerIO mng) <$> urlE
+  activateURL urlE = do
+    actRef  <- asks env'activeUrls
+    iaRef   <- asks env'inactiveUrls
+    acrhRef <- asks env'urlsArchive
+    setRef  <- asks env'settings
+    mng     <- getClientMaganer
+    performEvent $ ffor urlE $ \url -> do
+      res <- pingIndexerIO mng url
+      ias <- modifyExternalRef iaRef $ \us ->
+        let us' = S.delete url us in (us', S.toList us')
+      ars <- modifyExternalRef acrhRef $ \as ->
+        let as' = S.delete url as in  (as', S.toList as')
+      acs <- modifyExternalRef actRef $ \as ->
+        let as' = uncurry M.insert res as in (as', M.keys as')
+      s <- modifyExternalRef setRef $ \s -> let
+        s' = s {
+            settingsActiveUrls      = acs
+          , settingsDeactivatedUrls = ias
+          , settingsPassiveUrls     = ars
+          }
+        in (s', s')
+      storeSettings s
+      pure ()
+  deactivateURL urlE = do
+    actRef  <- asks env'activeUrls
+    iaRef   <- asks env'inactiveUrls
+    setRef  <- asks env'settings
+    performEvent $ ffor urlE $ \url -> do
+      acs <- modifyExternalRef actRef $ \as ->
+        let as' = M.delete url as in (as', M.keys as')
+      ias <- modifyExternalRef iaRef  $ \us ->
+        let us' = S.insert url us in (us', S.toList us')
+      s <- modifyExternalRef setRef $ \s -> let
+        s' = s {
+            settingsActiveUrls      = acs
+          , settingsDeactivatedUrls = ias
+          }
+        in (s', s')
+      storeSettings s
+  forgetURL urlE = do
+    actRef  <- asks env'activeUrls
+    iaRef   <- asks env'inactiveUrls
+    acrhRef <- asks env'urlsArchive
+    setRef  <- asks env'settings
+    performEvent $ ffor urlE $ \url -> do
+      ias <- modifyExternalRef iaRef $ \us ->
+        let us' = S.delete url us in (us', S.toList us')
+      ars <- modifyExternalRef acrhRef $ \as ->
+        let as' = S.delete url as in  (as', S.toList as')
+      acs <- modifyExternalRef actRef $ \as ->
+        let as' = M.delete url as in (as', M.keys as')
+      s <- modifyExternalRef setRef $ \s -> let
+        s' = s {
+            settingsActiveUrls      = acs
+          , settingsDeactivatedUrls = ias
+          , settingsPassiveUrls     = ars
+          }
+        in (s', s')
+      storeSettings s
+  restoreDefaultIndexers reqE = do
+    actRef  <- asks env'activeUrls
+    iaRef   <- asks env'inactiveUrls
+    acrhRef <- asks env'urlsArchive
+    setRef  <- asks env'settings
+    let defSet = S.fromList defaultIndexers
+    performEvent $ ffor reqE $ const $ do
+      ias <- modifyExternalRef iaRef $ \us ->
+        let us' = us `S.difference` defSet in (us', S.toList us')
+      ars <- modifyExternalRef acrhRef $ \as ->
+        let as' = as `S.difference` defSet in  (as', S.toList as')
+      acs <- modifyExternalRef actRef $ \as ->
+        let as' = L.foldl' (\m u -> M.insert u Nothing m) as defaultIndexers
+        in (as', M.keys as')
+      s <- modifyExternalRef setRef $ \s -> let
+        s' = s {
+            settingsActiveUrls      = acs
+          , settingsDeactivatedUrls = ias
+          , settingsPassiveUrls     = ars
+          }
+        in (s', s')
+      storeSettings s
+      pure ()
+
+pingIndexerIO :: MonadIO m => Manager -> BaseUrl -> m (BaseUrl, Maybe IndexerInfo)
+pingIndexerIO mng url = liftIO $ do
+  t0 <- getCurrentTime
+  res <- runReaderT (getInfoEndpoint url ()) mng
+  t1 <- getCurrentTime
+  pure $ case res of
+    Left _ -> (url, Nothing)
+    Right (InfoResponse vals) -> let
+      curmap = M.fromList $ fmap (\(ScanProgressItem cur sh ah) -> (cur, (sh, ah))) vals
+      in (url, Just $ IndexerInfo curmap $ diffUTCTime t1 t0)

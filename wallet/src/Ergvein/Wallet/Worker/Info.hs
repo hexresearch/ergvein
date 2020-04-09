@@ -19,7 +19,7 @@ infoWorkerInterval = 60
 
 infoWorker :: MonadFrontBase t m => m ()
 infoWorker = do
-  indexerInfoRef  <- getIndexerInfoRef
+  indexerInfoRef  <- getActiveUrlsRef
   mng             <- getClientMaganer
   refreshE        <- fmap fst $ getIndexerInfoEF
   te <- fmap void $ tickLossyFromPostBuildTime infoWorkerInterval

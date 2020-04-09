@@ -51,8 +51,10 @@ type MonadFront t m = (
 class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   -- | Get current settings
   getSettings :: m Settings
+  -- | Get current settings dynamic
+  getSettingsD :: m (Dynamic t Settings)
   -- | Update app's settings. Sets settings to provided value and stores them
-  updateSettings :: Event t Settings -> m ()
+  updateSettings :: Event t Settings -> m (Event t ())
   -- | Get settings ref. Internal
   getSettingsRef :: m (ExternalRef t Settings)
   -- | Get loading widget trigger and fire. This is internal stuff
@@ -97,16 +99,6 @@ class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   getHeightRef :: m (ExternalRef t (Map Currency Integer))
   -- | Internal method to get flag if we has fully synced filters at the moment.
   getFiltersSyncRef :: m (ExternalRef t (Map Currency Bool))
-  -- | Internal method to get reference to indexers
-  getIndexerInfoRef :: m (ExternalRef t (Map BaseUrl (Maybe IndexerInfo)))
-  -- | Get a dynamic with indexer info map
-  getIndexerInfoD   :: m (Dynamic t (Map BaseUrl (Maybe IndexerInfo)))
-  -- | Get event and trigger for indexer info refresher
-  getIndexerInfoEF  :: m (Event t (), IO ())
-  -- | Call indexer info to be refreshed
-  refreshIndexerInfo :: Event t () -> m ()
-  -- | Update indexer's URL: (Old URL, New URL). Returns False if New URL is already present.
-  updateIndexerURL  :: Event t (BaseUrl, BaseUrl) -> m (Event t Bool)
 
 -- | Get current value of longest chain height for given currency.
 getCurrentHeight :: MonadFrontBase t m => Currency -> m Integer
