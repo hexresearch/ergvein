@@ -49,6 +49,17 @@ networkSettingsPage = divClass "base-container" $ do
     DisabledPage    -> inactivePageWidget
     ParametersPage  -> parametersPageWidget
 
+data ParametersParseErrors = PPENDT | PPEInt
+
+instance LocalizedPrint ParametersParseErrors where
+  localizedShow l v = case l of
+    English -> case v of
+      PPENDT -> "Failed to parse seconds"
+      PPEInt -> "Failed to parse integer"
+    Russian -> case v of
+      PPENDT -> "Некорректное значение. Только дробные числа"
+      PPEInt -> "Некорректное значение. Только целые числа"
+
 parametersPageWidget :: MonadFront t m => m ()
 parametersPageWidget = mdo
   setD <- getSettingsD
@@ -75,13 +86,13 @@ parametersPageWidget = mdo
     widgetHoldDyn $ ffor setD $ \set@Settings{..} -> do
       let dt0 :: Double = realToFrac settingsReqTimeout
       dtD <- fmap2 realToFrac $ textFieldValidated NSSReqTimeout dt0 $
-        maybe (Left ["Failed to parse NominalDiffTime" :: Text]) Right . readMaybe . T.unpack
+        maybe (Left [PPENDT]) Right . readMaybe . T.unpack
       actNumD <- textFieldValidated NSSActUrlNum settingsActUrlNum $
-        maybe (Left ["Failed to parse NominalDiffTime" :: Text]) Right . readMaybe . T.unpack
+        maybe (Left [PPEInt]) Right . readMaybe . T.unpack
       rminD <- textFieldValidated NSSReqNumMin (fst settingsReqUrlNum) $
-        maybe (Left ["Failed to parse NominalDiffTime" :: Text]) Right . readMaybe . T.unpack
+        maybe (Left [PPEInt]) Right . readMaybe . T.unpack
       rmaxD <- textFieldValidated NSSReqNumMax (snd settingsReqUrlNum) $
-        maybe (Left ["Failed to parse NominalDiffTime" :: Text]) Right . readMaybe . T.unpack
+        maybe (Left [PPEInt]) Right . readMaybe . T.unpack
       pure $ (,,,) <$> dtD <*> actNumD <*> rminD <*> rmaxD
   pure ()
   where
