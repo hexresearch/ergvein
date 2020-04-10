@@ -22,7 +22,7 @@ import Servant.Client(BaseUrl)
 
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Ergvein.Wallet.Monad
+import Reflex.Dom
 
 import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Node.ERGO

@@ -16,6 +16,7 @@ import Data.Time(NominalDiffTime, getCurrentTime, diffUTCTime)
 import Ergvein.Index.Client
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
+import Ergvein.Wallet.Client
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Headers.Storage
@@ -25,6 +26,7 @@ import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Node
 import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Util
@@ -37,11 +39,11 @@ import Network.TLS.Extra.Cipher
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Servant.Client(BaseUrl)
-import Ergvein.Wallet.Client
 
-import qualified Data.Set as S
-import qualified Data.Map as M
+import qualified Data.Dependent.Map as DM
 import qualified Data.List as L
+import qualified Data.Map as M
+import qualified Data.Set as S
 
 data UnauthEnv t = UnauthEnv {
   unauth'settings        :: !(ExternalRef t Settings)
@@ -71,6 +73,7 @@ data UnauthEnv t = UnauthEnv {
 , unauth'activeUrls      :: !(ExternalRef t (Map BaseUrl (Maybe IndexerInfo)))
 , unauth'inactiveUrls    :: !(ExternalRef t (S.Set BaseUrl))
 , unauth'indexersEF      :: !(Event t (), IO ())
+, unauth'nodeConsRef     :: !(ExternalRef t (ConnMap t))
 }
 
 type UnauthM t m = ReaderT (UnauthEnv t) m
@@ -305,6 +308,8 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getHeightRef #-}
   getFiltersSyncRef = asks unauth'filtersSyncRef
   {-# INLINE getFiltersSyncRef #-}
+  getNodeConnRef = asks unauth'nodeConsRef
+  {-# INLINE getNodeConnRef #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
   postAlert e = do
@@ -346,6 +351,7 @@ newEnv settings uiChan = do
   reqUrlNumRef  <- newExternalRef $ settingsReqUrlNum settings
   actUrlNumRef  <- newExternalRef $ settingsActUrlNum settings
   timeoutRef    <- newExternalRef $ settingsReqTimeout settings
+  consRef       <- newExternalRef $ DM.empty
   (indexersE, indexersF) <- newTriggerEvent
   pure UnauthEnv {
       unauth'settings       = settingsRef
@@ -374,6 +380,7 @@ newEnv settings uiChan = do
     , unauth'activeUrls     = activeUrlsRef
     , unauth'inactiveUrls   = inactiveUrls
     , unauth'indexersEF     = (indexersE, indexersF ())
+    , unauth'nodeConsRef    = consRef
     }
 
 runEnv :: (MonadBaseConstr t m, PlatformNatives)

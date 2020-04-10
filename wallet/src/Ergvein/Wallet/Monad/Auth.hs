@@ -28,15 +28,16 @@ import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
-import Ergvein.Wallet.Sync.Status
+import Ergvein.Wallet.Node
 import Ergvein.Wallet.Settings (Settings(..), storeSettings, defaultIndexers)
 import Ergvein.Wallet.Storage.Util
+import Ergvein.Wallet.Sync.Status
 import Network.HTTP.Client hiding (Proxy)
 import Reflex
-import Reflex.Host.Class
 import Reflex.Dom
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
+import Reflex.Host.Class
 import Servant.Client(BaseUrl)
 
 import qualified Control.Immortal as I
@@ -74,6 +75,7 @@ data Env t = Env {
 , env'activeUrls      :: !(ExternalRef t (Map BaseUrl (Maybe IndexerInfo)))
 , env'inactiveUrls    :: !(ExternalRef t (S.Set BaseUrl))
 , env'indexersEF      :: !(Event t (), IO ())
+, env'nodeConsRef     :: !(ExternalRef t (ConnMap t))
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -194,7 +196,9 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getHeightRef #-}
   getFiltersSyncRef = asks env'filtersSyncRef
   {-# INLINE getFiltersSyncRef #-}
-
+  getNodeConnRef = asks env'nodeConsRef
+  {-# INLINE getNodeConnRef #-}
+  
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
     (_, fire) <- asks env'alertsEF
@@ -278,13 +282,14 @@ liftAuth ma0 ma = mdo
         actUrlNumRef    <- getActiveUrlsNumRef
         timeoutRef      <- getRequestTimeoutRef
         indexEF         <- getIndexerInfoEF
+        conmap          <- getNodeConnRef
         -- headersLoader
         filtersLoader
         runReaderT (wrapped ma) $ Env
           settingsRef backEF loading langRef activeCursRef authRef (logoutFire ()) storeDir alertsEF
           logsTrigger logsNameSpaces uiChan passModalEF passSetEF manager
           hst fst syncRef heightRef fsyncRef
-          urlsArchive reqUrlNumRef actUrlNumRef timeoutRef activeUrlsRef inactiveUrls indexEF
+          urlsArchive reqUrlNumRef actUrlNumRef timeoutRef activeUrlsRef inactiveUrls indexEF conmap
   let
     ma0' = maybe ma0 runAuthed mauth0
     newAuthInfoE = ffilter isMauthUpdate $ updated mauthD

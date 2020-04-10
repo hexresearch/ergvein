@@ -30,6 +30,7 @@ import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Storage
+import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Sync.Status
 import Language.Javascript.JSaddle
@@ -99,6 +100,8 @@ class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   getHeightRef :: m (ExternalRef t (Map Currency Integer))
   -- | Internal method to get flag if we has fully synced filters at the moment.
   getFiltersSyncRef :: m (ExternalRef t (Map Currency Bool))
+  -- | Internal method to get connection map ref
+  getNodeConnRef  :: m (ExternalRef t (ConnMap t))
 
 -- | Get current value of longest chain height for given currency.
 getCurrentHeight :: MonadFrontBase t m => Currency -> m Integer
