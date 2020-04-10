@@ -20,6 +20,7 @@ instance LocalizedPrint HistoryTitle where
 data HistoryPageStrings =
     HistoryTITitle
   | HistoryTIHash
+  | HistoryTILabel
   | HistoryTIURL
   | HistoryTIFee
   | HistoryTIConfirmations
@@ -33,6 +34,7 @@ instance LocalizedPrint HistoryPageStrings where
     English -> case v of
       HistoryTITitle          -> "Transaction info"
       HistoryTIHash           -> "Hash"
+      HistoryTILabel          -> "Label"
       HistoryTIURL            -> "Blockexplorer URL"
       HistoryTIFee            -> "Fee"
       HistoryTIConfirmations  -> "Confirmations"
@@ -43,6 +45,7 @@ instance LocalizedPrint HistoryPageStrings where
     Russian -> case v of
       HistoryTITitle          -> "Слова мнемоники от вашего кошелька"
       HistoryTIHash           -> "Хэш"
+      HistoryTILabel          -> "Название"
       HistoryTIURL            -> "Blockexplorer URL"
       HistoryTIFee            -> "Комиссия"
       HistoryTIConfirmations  -> "Подтверждения"

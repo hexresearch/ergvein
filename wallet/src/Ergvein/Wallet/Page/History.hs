@@ -4,6 +4,7 @@ module Ergvein.Wallet.Page.History(
 
 import Ergvein.Text
 import Ergvein.Types.Currency
+import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.History
@@ -33,9 +34,18 @@ transactionInfoPage cur tr@TransactionMock{..} = divClass "base-container" $ do
   let thisWidget = Just $ pure $ transactionInfoPage cur tr
   headerWidget HistoryTITitle thisWidget
   divClass "transaction-info-body" $ do
-    divClass "transaction-info-hex" $ do
+    divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIHash
       divClass "info-body" $ text $ txId txInfo
+    case (txLabel txInfo) of
+      Just lbl -> do
+        divClass "transaction-info-element" $ do
+          divClass "info-descr" $ localizedText HistoryTILabel
+          divClass "info-body" $ text lbl
+      Nothing -> pure ()
+    divClass "transaction-info-element" $ do
+      divClass "info-descr" $ localizedText HistoryTIURL
+      divClass "info-body" $ text $ txUrl txInfo
   pure ()
 
 historyTableWidget :: MonadFront t m => [TransactionMock] -> m ([Event t TransactionMock])

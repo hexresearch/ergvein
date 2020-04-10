@@ -670,9 +670,15 @@ historyPageCss = do
   ".history-amount-transwithdraw" ? do
     display block
     color $ rgb 120 0 0
-  ".transaction-info-hex" ? do
+  ".transaction-info-body" ? do
+    fontSize $ px 16
+  ".transaction-info-element" ? do
     display grid
     gridTemplateColumns [fr 2, fr 8]
+    marginTop $ px 20
+  ".info-body" ? do
+    textOverflow overflowEllipsis
+    width $ pct 50
 
 graphPinCodeCanvasCss :: Css
 graphPinCodeCanvasCss = do
