@@ -84,6 +84,9 @@ benchmark bench-btc-filters
   hs-source-dirs:    bench
   build-depends:
      ergvein-wallet-filters
+   , ergvein-common
+   , cereal
+   , haskoin-core
    , base
    , bytestring
    , criterion
