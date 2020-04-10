@@ -84,6 +84,11 @@ library
         Ergvein.Wallet.Navbar
         Ergvein.Wallet.Navbar.Switcher
         Ergvein.Wallet.Navbar.Types
+        Ergvein.Wallet.Node
+        Ergvein.Wallet.Node.BTC
+        Ergvein.Wallet.Node.ERGO
+        Ergvein.Wallet.Node.Prim
+        Ergvein.Wallet.Node.Types
         Ergvein.Wallet.Page.About
         Ergvein.Wallet.Page.Balances
         Ergvein.Wallet.Page.Canvas
@@ -143,6 +148,7 @@ library
         containers >=0.6 && <0.7,
         data-default -any,
         dependent-sum >= 0.6,
+        dependent-map >= 0.3,
         directory -any,
         ergvein-common >=1.0 && <1.1,
         ergvein-crypto >=0.1 && <0.2,
