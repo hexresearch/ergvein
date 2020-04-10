@@ -151,26 +151,37 @@ instance MonadRandom (WithJSContextSingleton x (SpiderHostFrame Global)) where
 -- ===========================================================================
 
 class (MonadBaseConstr t m, HasClientManager m, HasClientManager (Performable m)) => MonadClient t m | m -> t where
-  -- | Set the number of required confirmations. First is minimum required answers. Second is sufficient
-  -- amount of answers from indexers.
-  setRequiredUrlNum :: Event t (Int, Int) -> m ()
-  -- | Get the number of required confirmations. First is minimum required answers. Second is sufficient
-  -- amount of answers from indexers.
-  getRequiredUrlNum :: Event t () -> m (Event t (Int, Int))
-  -- | Get all urls in a list
-  getUrlList :: Event t () -> m (Event t [BaseUrl])
-  -- | Add a number of urls to the set of valid urls
-  addUrls :: Event t [BaseUrl] -> m ()
-  -- | Remove a number of urls from the set of valid urls
-  invalidateUrls :: Event t [BaseUrl] -> m ()
-  -- | Get url reference. Internal
-  getUrlsRef :: m (ExternalRef t (S.Set BaseUrl))
+  -- | Get passive urls' reference. Internal
+  getArchivedUrlsRef :: m (ExternalRef t (S.Set BaseUrl))
+  -- | Internal method to get reference to indexers
+  getActiveUrlsRef :: m (ExternalRef t (Map BaseUrl (Maybe IndexerInfo)))
+  -- | Get deactivated urls' reference. Internal
+  getInactiveUrlsRef :: m (ExternalRef t (S.Set BaseUrl))
+  -- | Get deactivated urls dynamic
+  getInactiveUrlsD :: m (Dynamic t (S.Set BaseUrl))
+  -- | Get reference to the minimal number of active urls. Internal
+  getActiveUrlsNumRef :: m (ExternalRef t Int)
   -- | Get num reference. Internal
   getRequiredUrlNumRef :: m (ExternalRef t (Int, Int))
   -- | Get request timeout ref
   getRequestTimeoutRef :: m (ExternalRef t NominalDiffTime)
-
-
+  -- | Get a dynamic with indexer info map
+  getIndexerInfoD   :: m (Dynamic t (Map BaseUrl (Maybe IndexerInfo)))
+  -- | Get event and trigger for indexer info refresher
+  getIndexerInfoEF  :: m (Event t (), IO ())
+  -- | Call indexer info to be refreshed
+  refreshIndexerInfo :: Event t () -> m ()
+  -- | Request stats from a specific URL
+  pingIndexer :: Event t BaseUrl -> m (Event t (BaseUrl, Maybe IndexerInfo))
+  -- | Activate an URL
+  activateURL :: Event t BaseUrl -> m (Event t ())
+  -- | Deactivate an URL
+  deactivateURL :: Event t BaseUrl -> m (Event t ())
+  -- | Forget an URL
+  forgetURL  :: Event t BaseUrl -> m (Event t ())
+  -- | Restore default indexers
+  restoreDefaultIndexers :: Event t () -> m (Event t ())
+  
 -- ===========================================================================
 --    Frontend-wide types
 -- ===========================================================================

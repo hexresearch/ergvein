@@ -3,17 +3,11 @@ module Ergvein.Wallet.Scan (
     accountDiscovery
   ) where
 
-import Control.Concurrent
-import Control.Monad
-import Control.Monad.IO.Class
-import Data.Function
-import Ergvein.Text
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
-import Ergvein.Types.Transaction (BlockHeight)
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
@@ -64,7 +58,7 @@ scanKeys pubKeystore = do
 -- TODO: use M.lookup instead of M.! and show error msg if currency not found
 applyScan :: MonadFront t m => PublicKeystore -> Currency -> m (Event t (Currency, EgvPubKeyсhain))
 applyScan pubKeystore currency = scanCurrencyKeys currency (getKeychain currency pubKeystore)
-  where getKeychain currency pubKeystore = pubKeystore M.! currency
+  where getKeychain cur pubKeystore' = pubKeystore' M.! cur
 
 scanCurrencyKeys :: MonadFront t m => Currency -> EgvPubKeyсhain -> m (Event t (Currency, EgvPubKeyсhain))
 scanCurrencyKeys currency keyChain = mdo
@@ -98,14 +92,20 @@ scanCurrencyKeys currency keyChain = mdo
 
 -- | If the given event fires and there is not fully synced filters. Wait for the synced filters and then fire the event.
 waitFilters :: MonadFront t m => Currency -> Event t a -> m (Event t a)
-waitFilters c e = do
+waitFilters c e = mdo
+  eD <- holdDyn Nothing $ leftmost [Just <$> e, Nothing <$ passValE']
   syncedD <- getFiltersSync c
-  performEventAsync $ ffor e $ \a fire -> do
-    synced <- sample . current $ syncedD
-    liftIO $ if synced then fire a else void . forkIO $ fix $ \next -> do
-      logWrite "Waiting filters sync..."
-      threadDelay 1000_0000
-      if synced then fire a else next
+  let passValE = fmapMaybe id $ updated $ foo <$> eD <*> syncedD
+      notSyncE = attachWithMaybe
+        (\b _ -> if b then Nothing else Just "Waiting filters sync...") (current syncedD) e
+  performEvent_ $ logWrite <$> notSyncE
+  passValE' <- delay 0.01 passValE
+  pure passValE
+  where
+    foo :: Maybe a -> Bool -> Maybe a
+    foo ma b = case (ma,b) of
+      (Just a, True) -> Just a
+      _ -> Nothing
 
 filterAddress :: MonadFront t m => Event t (Int, EgvXPubKey) -> m (Event t [BlockHash])
 filterAddress e = performFilters $ ffor e $ \(_, pk) -> Filters.filterAddress $ egvXPubKeyToEgvAddress pk

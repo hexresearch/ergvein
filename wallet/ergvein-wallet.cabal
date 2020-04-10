@@ -99,6 +99,7 @@ library
         Ergvein.Wallet.Page.Seed
         Ergvein.Wallet.Page.Send
         Ergvein.Wallet.Page.Settings
+        Ergvein.Wallet.Page.Settings.Network
         Ergvein.Wallet.Page.Share
         Ergvein.Wallet.Password
         Ergvein.Wallet.Platform
