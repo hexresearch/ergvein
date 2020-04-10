@@ -14,6 +14,7 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction (BlockHeight)
+import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
@@ -21,6 +22,7 @@ import Ergvein.Wallet.Storage.Constants
 import Ergvein.Wallet.Storage.Keys (derivePubKey, egvXPubKeyToEgvAddress)
 import Ergvein.Wallet.Storage.Util (addXPubKeyToKeyсhain)
 import Network.Haskoin.Block (Block, BlockHash, genesisBlock)
+import Reflex.ExternalRef
 
 import qualified Data.IntMap.Strict          as MI
 import qualified Data.Map.Strict             as M
@@ -92,14 +94,52 @@ scanCurrencyKeys currency keyChain = mdo
 
 -- | If the given event fires and there is not fully synced filters. Wait for the synced filters and then fire the event.
 waitFilters :: MonadFront t m => Currency -> Event t a -> m (Event t a)
-waitFilters c e = do 
+waitFilters c e = mdo
+  eD <- holdDyn Nothing $ leftmost [Just <$> e, Nothing <$ passValE']
   syncedD <- getFiltersSync c
-  performEventAsync $ ffor e $ \a fire -> do 
-    synced <- sample . current $ syncedD 
-    liftIO $ if synced then fire a else void . forkIO $ fix $ \next -> do 
-      logWrite "Waiting filters sync..."
-      threadDelay 1000_0000 
-      if synced then fire a else next
+  let passValE = fmapMaybe id $ updated $ foo <$> eD <*> syncedD
+      notSyncE = attachWithMaybe
+        (\b _ -> if b then Nothing else Just "Waiting filters sync...") (current syncedD) e
+  performEvent_ $ logWrite <$> notSyncE
+  passValE' <- delay 0.01 passValE
+  pure passValE
+  where
+    foo :: Maybe a -> Bool -> Maybe a
+    foo ma b = case (ma,b) of
+      (Just a, True) -> Just a
+      _ -> Nothing
+
+-- A simple routine to test waitFilters
+waitFiltersTest :: MonadFront t m => m ()
+waitFiltersTest = do
+  let mk :: Text -> Text
+      mk = id
+  fsRef <- getFiltersSyncRef
+
+  buildE <- getPostBuild
+  showInfoMsg $ (mk "buildE") <$ buildE
+
+  wE <- waitFilters BTC buildE
+  showInfoMsg $ (mk "buildE on hold passed through") <$ wE
+
+  setSyncE <- delay 15 buildE
+  showInfoMsg $ (mk "set all currencies as synced") <$ setSyncE
+
+  setE <- performEvent $ ffor setSyncE $ const $ do
+    syncVals <- readExternalRef fsRef
+    writeExternalRef fsRef (M.fromList [(BTC, True), (ERGO, True)])
+    pure syncVals
+  showInfoMsg $ (mk "sync is set!") <$ setE
+
+  performEvent_ . fmap (writeExternalRef fsRef) =<< delay 0.5 setE
+
+  reSetE <- delay 10 setE
+  reSetE' <- performEvent $ ffor reSetE $ const $ do
+    syncVals <- readExternalRef fsRef
+    writeExternalRef fsRef (M.fromList [(BTC, True), (ERGO, True)])
+    pure syncVals
+  showInfoMsg $ (mk "sync is re-set! buildE should not reappear") <$ reSetE
+  performEvent_ . fmap (writeExternalRef fsRef) =<< delay 0.5 reSetE'
 
 -- FIXME
 filterAddress :: MonadFront t m => Event t (Int, EgvXPubKey) -> m (Event t [BlockHash])
