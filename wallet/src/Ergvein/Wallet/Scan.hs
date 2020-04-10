@@ -3,18 +3,11 @@ module Ergvein.Wallet.Scan (
     accountDiscovery
   ) where
 
-import Control.Concurrent
-import Control.Monad
-import Control.Monad.IO.Class
-import Data.Function
-import Ergvein.Text
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
-import Ergvein.Types.Transaction (BlockHeight)
-import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
@@ -22,7 +15,6 @@ import Ergvein.Wallet.Storage.Constants
 import Ergvein.Wallet.Storage.Keys (derivePubKey, egvXPubKeyToEgvAddress)
 import Ergvein.Wallet.Storage.Util (addXPubKeyToKeyсhain)
 import Network.Haskoin.Block (Block, BlockHash, genesisBlock)
-import Reflex.ExternalRef
 
 import qualified Data.IntMap.Strict          as MI
 import qualified Data.Map.Strict             as M
@@ -60,7 +52,7 @@ scanKeys pubKeystore = do
 -- TODO: use M.lookup instead of M.! and show error msg if currency not found
 applyScan :: MonadFront t m => PublicKeystore -> Currency -> m (Event t (Currency, EgvPubKeyсhain))
 applyScan pubKeystore currency = scanCurrencyKeys currency (getKeychain currency pubKeystore)
-  where getKeychain currency pubKeystore = pubKeystore M.! currency
+  where getKeychain cur pubKeystore' = pubKeystore' M.! cur
 
 scanCurrencyKeys :: MonadFront t m => Currency -> EgvPubKeyсhain -> m (Event t (Currency, EgvPubKeyсhain))
 scanCurrencyKeys currency keyChain = mdo
@@ -108,38 +100,6 @@ waitFilters c e = mdo
     foo ma b = case (ma,b) of
       (Just a, True) -> Just a
       _ -> Nothing
-
--- A simple routine to test waitFilters
-waitFiltersTest :: MonadFront t m => m ()
-waitFiltersTest = do
-  let mk :: Text -> Text
-      mk = id
-  fsRef <- getFiltersSyncRef
-
-  buildE <- getPostBuild
-  showInfoMsg $ (mk "buildE") <$ buildE
-
-  wE <- waitFilters BTC buildE
-  showInfoMsg $ (mk "buildE on hold passed through") <$ wE
-
-  setSyncE <- delay 15 buildE
-  showInfoMsg $ (mk "set all currencies as synced") <$ setSyncE
-
-  setE <- performEvent $ ffor setSyncE $ const $ do
-    syncVals <- readExternalRef fsRef
-    writeExternalRef fsRef (M.fromList [(BTC, True), (ERGO, True)])
-    pure syncVals
-  showInfoMsg $ (mk "sync is set!") <$ setE
-
-  performEvent_ . fmap (writeExternalRef fsRef) =<< delay 0.5 setE
-
-  reSetE <- delay 10 setE
-  reSetE' <- performEvent $ ffor reSetE $ const $ do
-    syncVals <- readExternalRef fsRef
-    writeExternalRef fsRef (M.fromList [(BTC, True), (ERGO, True)])
-    pure syncVals
-  showInfoMsg $ (mk "sync is re-set! buildE should not reappear") <$ reSetE
-  performEvent_ . fmap (writeExternalRef fsRef) =<< delay 0.5 reSetE'
 
 -- FIXME
 filterAddress :: MonadFront t m => Event t (Int, EgvXPubKey) -> m (Event t [BlockHash])
