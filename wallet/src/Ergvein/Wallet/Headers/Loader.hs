@@ -27,11 +27,11 @@ import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Alert
 
-headersLoader :: (HasHeadersStorage m, MonadFrontBase t m) => m ()
+headersLoader :: (HasHeadersStorage m, MonadFrontBase t m, MonadClient t m) => m ()
 headersLoader = nameSpace "headers loader" $ do
   sequence_ [headersLoaderBtc]
 
-headersLoaderBtc :: (HasHeadersStorage m, MonadFrontBase t m) => m ()
+headersLoaderBtc :: (HasHeadersStorage m, MonadFrontBase t m, MonadClient t m) => m ()
 headersLoaderBtc = nameSpace "btc" $ do
   buildE <- getPostBuild
   he <- handleDangerMsg =<< getHeight (HeightRequest BTC <$ buildE)

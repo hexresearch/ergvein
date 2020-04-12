@@ -7,8 +7,21 @@ module Ergvein.Wallet.Monad.Auth(
 import Control.Concurrent.Chan (Chan)
 import Control.Monad.Random.Class
 import Control.Monad.Reader
+import Data.IORef
 import Data.Map.Strict (Map)
 import Data.Time (NominalDiffTime, getCurrentTime, diffUTCTime)
+import Network.Connection
+import Network.HTTP.Client hiding (Proxy)
+import Network.HTTP.Client.TLS (newTlsManagerWith, mkManagerSettings, newTlsManager)
+import Network.TLS
+import Network.TLS.Extra.Cipher
+import Reflex
+import Reflex.Dom
+import Reflex.Dom.Retractable
+import Reflex.ExternalRef
+import Reflex.Host.Class
+import Servant.Client(BaseUrl)
+
 import Ergvein.Crypto
 import Ergvein.Index.Client
 import Ergvein.Text
@@ -27,17 +40,13 @@ import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
+import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
-import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Settings (Settings(..), storeSettings, defaultIndexers)
 import Ergvein.Wallet.Storage.Util
-import Network.HTTP.Client hiding (Proxy)
-import Reflex
-import Reflex.Host.Class
-import Reflex.Dom
-import Reflex.Dom.Retractable
-import Reflex.ExternalRef
-import Servant.Client(BaseUrl)
+import Ergvein.Wallet.Sync.Status
+import Ergvein.Wallet.Worker.Height
+import Ergvein.Wallet.Worker.Info
 
 import qualified Control.Immortal as I
 import qualified Data.IntMap.Strict as MI
@@ -60,7 +69,7 @@ data Env t = Env {
 , env'uiChan          :: !(Chan (IO ()))
 , env'passModalEF     :: !(Event t Int, Int -> IO ())
 , env'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
-, env'manager         :: !Manager
+, env'manager         :: !(IORef Manager)
 , env'headersStorage  :: !HeadersStorage
 , env'filtersStorage  :: !FiltersStorage
 , env'syncProgress    :: !(ExternalRef t SyncProgress)
@@ -91,7 +100,7 @@ instance Monad m => HasFiltersStorage (ErgveinM t m) where
   {-# INLINE getFiltersStorage #-}
 
 instance MonadIO m => HasClientManager (ErgveinM t m) where
-  getClientMaganer = asks env'manager
+  getClientMaganer = liftIO . readIORef =<< asks env'manager
 
 instance MonadBaseConstr t m => MonadEgvLogger t (ErgveinM t m) where
   getLogsTrigger = asks env'logsTrigger
@@ -138,8 +147,6 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getUiChan #-}
   getLangRef = asks env'langRef
   {-# INLINE getLangRef #-}
-  getActiveCursRef = asks env'activeCursRef
-  {-# INLINE getActiveCursRef #-}
   isAuthorized = do
     authd <- getAuthInfoMaybe
     pure $ ffor authd $ \case
@@ -182,6 +189,8 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE updateSettings #-}
   getSettingsRef = asks env'settings
   {-# INLINE getSettingsRef #-}
+
+instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   getSyncProgressRef = asks env'syncProgress
   {-# INLINE getSyncProgressRef #-}
   getSyncProgress = externalRefDynamic =<< asks env'syncProgress
@@ -194,6 +203,8 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getHeightRef #-}
   getFiltersSyncRef = asks env'filtersSyncRef
   {-# INLINE getFiltersSyncRef #-}
+  getActiveCursRef = asks env'activeCursRef
+  {-# INLINE getActiveCursRef #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
@@ -251,10 +262,10 @@ liftAuth ma0 ma = mdo
   mauth0 <- sample . current $ mauthD
   (logoutE, logoutFire) <- newTriggerEvent
   let runAuthed auth = do
+        -- Get refs from Unauth context
         backEF          <- getBackEventFire
         loading         <- getLoadingWidgetTF
         langRef         <- getLangRef
-        activeCursRef   <- getActiveCursRef
         authRef         <- getAuthInfoRef
         storeDir        <- getStoreDir
         alertsEF        <- getAlertEventFire
@@ -264,27 +275,41 @@ liftAuth ma0 ma = mdo
         passModalEF     <- getPasswordModalEF
         passSetEF       <- getPasswordSetEF
         settingsRef     <- getSettingsRef
+        
+        -- Read settings to fill other refs
         settings        <- readExternalRef settingsRef
-        manager         <- getClientMaganer
-        hst             <- getHeadersStorage
-        fst             <- getFiltersStorage
-        syncRef         <- getSyncProgressRef
-        heightRef       <- getHeightRef
-        fsyncRef        <- getFiltersSyncRef
-        urlsArchive     <- getArchivedUrlsRef
-        inactiveUrls    <- getInactiveUrlsRef
-        activeUrlsRef   <- getActiveUrlsRef
-        reqUrlNumRef    <- getRequiredUrlNumRef
-        actUrlNumRef    <- getActiveUrlsNumRef
-        timeoutRef      <- getRequestTimeoutRef
-        indexEF         <- getIndexerInfoEF
+
+        -- MonadClient refs
+        urlsArchive     <- newExternalRef $ S.fromList $ settingsPassiveUrls settings
+        inactiveUrls    <- newExternalRef $ S.fromList $ settingsDeactivatedUrls settings
+        activeUrlsRef   <- newExternalRef $ M.fromList $ fmap (,Nothing) $ settingsActiveUrls settings
+        reqUrlNumRef    <- newExternalRef $ settingsReqUrlNum settings
+        actUrlNumRef    <- newExternalRef $ settingsActUrlNum settings
+        timeoutRef      <- newExternalRef $ settingsReqTimeout settings
+        (indexersE, indexersF) <- newTriggerEvent
+
+        -- Create data for Auth context
+        managerRef      <- liftIO . newIORef =<< newTlsManager
+        activeCursRef   <- newExternalRef $ settingsActiveCurrencies settings
+        headersStore    <- liftIO $ runReaderT openHeadersStorage (settingsStoreDir settings)
+        syncRef         <- newExternalRef Synced
+        filtersStore    <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
+        heightRef       <- newExternalRef mempty
+        fsyncRef        <- newExternalRef mempty
+
         -- headersLoader
-        filtersLoader
-        runReaderT (wrapped ma) $ Env
-          settingsRef backEF loading langRef activeCursRef authRef (logoutFire ()) storeDir alertsEF
-          logsTrigger logsNameSpaces uiChan passModalEF passSetEF manager
-          hst fst syncRef heightRef fsyncRef
-          urlsArchive reqUrlNumRef actUrlNumRef timeoutRef activeUrlsRef inactiveUrls indexEF
+        let env = Env
+              settingsRef backEF loading langRef activeCursRef authRef (logoutFire ()) storeDir alertsEF
+              logsTrigger logsNameSpaces uiChan passModalEF passSetEF managerRef
+              headersStore filtersStore syncRef heightRef fsyncRef
+              urlsArchive reqUrlNumRef actUrlNumRef timeoutRef activeUrlsRef inactiveUrls (indexersE, indexersF ())
+
+        flip runReaderT env $ do -- Workers and other routines go here
+          filtersLoader
+          infoWorker
+          heightAsking
+        runOnUiThreadM $ runReaderT setupTlsManager env
+        runReaderT (wrapped ma) env
   let
     ma0' = maybe ma0 runAuthed mauth0
     newAuthInfoE = ffilter isMauthUpdate $ updated mauthD
@@ -424,3 +449,25 @@ pingIndexerIO mng url = liftIO $ do
     Right (InfoResponse vals) -> let
       curmap = M.fromList $ fmap (\(ScanProgressItem cur sh ah) -> (cur, (sh, ah))) vals
       in (url, Just $ IndexerInfo curmap $ diffUTCTime t1 t0)
+
+mkTlsSettings :: (MonadIO m, PlatformNatives) => m TLSSettings
+mkTlsSettings = do
+  store <- readSystemCertificates
+  pure $ TLSSettings $ defParams {
+      clientShared = (clientShared defParams) {
+        sharedCAStore = store
+      }
+    , clientSupported = def {
+        supportedCiphers = ciphersuite_strong
+      }
+    }
+  where
+    defParams = defaultParamsClient "localhost" ""
+
+setupTlsManager :: (MonadIO m, MonadReader (Env t) m, PlatformNatives) => m ()
+setupTlsManager = do
+  e <- ask
+  sett <- mkTlsSettings
+  liftIO $ do
+    manager <- newTlsManagerWith $ mkManagerSettings sett Nothing
+    writeIORef (env'manager e) manager
