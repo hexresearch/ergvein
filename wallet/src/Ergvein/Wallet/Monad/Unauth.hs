@@ -11,6 +11,7 @@ import Control.Monad.Reader
 import Data.Default
 import Data.IORef
 import Data.Map (Map)
+import Data.Maybe
 import Data.Text (Text)
 import Data.Time(NominalDiffTime, getCurrentTime, diffUTCTime)
 import Ergvein.Index.Client
@@ -310,6 +311,11 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getFiltersSyncRef #-}
   getNodeConnRef = asks unauth'nodeConsRef
   {-# INLINE getNodeConnRef #-}
+  getNodesByCurrencyD cur =
+    (fmap . fmap) (fromMaybe (M.empty) . getAllConnByCurrency cur) . externalRefDynamic =<< asks unauth'nodeConsRef
+  {-# INLINE getNodesByCurrencyD #-}
+  getNodeConnectionsD = externalRefDynamic =<< asks unauth'nodeConsRef
+  {-# INLINE getNodeConnectionsD #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
   postAlert e = do

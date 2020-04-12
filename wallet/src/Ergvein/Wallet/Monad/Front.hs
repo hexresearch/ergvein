@@ -102,6 +102,10 @@ class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   getFiltersSyncRef :: m (ExternalRef t (Map Currency Bool))
   -- | Internal method to get connection map ref
   getNodeConnRef  :: m (ExternalRef t (ConnMap t))
+  -- | Get nodes by currency. Basically useless, but who knows
+  getNodesByCurrencyD :: Currency -> m (Dynamic t (Map BaseUrl (NodeConn t)))
+  -- | Get connections map
+  getNodeConnectionsD :: m (Dynamic t (ConnMap t))
 
 -- | Get current value of longest chain height for given currency.
 getCurrentHeight :: MonadFrontBase t m => Currency -> m Integer

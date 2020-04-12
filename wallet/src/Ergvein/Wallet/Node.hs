@@ -36,8 +36,10 @@ addNodeConn nc cm = case nc of
 getNodeConn :: CurrencyTag t a -> BaseUrl -> ConnMap t -> Maybe a
 getNodeConn t url cm = M.lookup url =<< DM.lookup t cm
 
-getAllConnByCurrency :: CurrencyTag t a -> ConnMap t -> Maybe (M.Map BaseUrl a)
-getAllConnByCurrency = DM.lookup
+getAllConnByCurrency :: Currency -> ConnMap t -> Maybe (M.Map BaseUrl (NodeConn t))
+getAllConnByCurrency cur cm = case cur of
+  BTC  -> (fmap . fmap) NodeConnBTC $ DM.lookup BTCTag cm
+  ERGO -> (fmap . fmap) NodeConnERG $ DM.lookup ERGOTag cm
 
 initNode :: (Reflex t, TriggerEvent t m, MonadIO m) => Currency -> BaseUrl -> m (NodeConn t)
 initNode cur url = case cur of

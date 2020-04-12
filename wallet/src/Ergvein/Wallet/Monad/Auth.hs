@@ -8,6 +8,7 @@ import Control.Concurrent.Chan (Chan)
 import Control.Monad.Random.Class
 import Control.Monad.Reader
 import Data.Map.Strict (Map)
+import Data.Maybe
 import Data.Time (NominalDiffTime, getCurrentTime, diffUTCTime)
 import Ergvein.Crypto
 import Ergvein.Index.Client
@@ -198,7 +199,12 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getFiltersSyncRef #-}
   getNodeConnRef = asks env'nodeConsRef
   {-# INLINE getNodeConnRef #-}
-  
+  getNodesByCurrencyD cur =
+    (fmap . fmap) (fromMaybe (M.empty) . getAllConnByCurrency cur) . externalRefDynamic =<< asks env'nodeConsRef
+  {-# INLINE getNodesByCurrencyD #-}
+  getNodeConnectionsD = externalRefDynamic =<< asks env'nodeConsRef
+  {-# INLINE getNodeConnectionsD #-}
+
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
     (_, fire) <- asks env'alertsEF

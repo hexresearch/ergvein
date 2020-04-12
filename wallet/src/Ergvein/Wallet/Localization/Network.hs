@@ -33,7 +33,11 @@ data NetworkPageStrings
   | NPSOffline
   | NPSNoIndex Currency
   | NPSHeightInfo (BlockHeight, BlockHeight)
-
+  | NPSNodes
+  | NPSNodesNum Int
+  | NPSActiveNum Int
+  | NPSNoActiveNodes
+  
 instance LocalizedPrint NetworkPageStrings where
   localizedShow l v = case l of
     English -> case v of
@@ -57,6 +61,10 @@ instance LocalizedPrint NetworkPageStrings where
       NPSOffline            -> "Offline"
       NPSNoIndex c          -> "Has no index for " <> showt c
       NPSHeightInfo (ch,ah) -> "Index height: " <> showt ch <> ". Blockchain height: " <> showt ah
+      NPSNodes              -> "Blockchain nodes: "
+      NPSNodesNum n         -> "Total nodes: " <> showt n
+      NPSActiveNum n        -> showt n <> " connected"
+      NPSNoActiveNodes      -> "No active nodes"
     Russian -> case v of
       NPSTitle              -> "Сеть"
       NPSServer             -> "Сервера: "
@@ -84,3 +92,7 @@ instance LocalizedPrint NetworkPageStrings where
       NPSOffline            -> "Оффлайн"
       NPSNoIndex c          -> "Нет индекса для " <> showt c
       NPSHeightInfo (ch,ah) -> "Высота индекса: " <> showt ch <> " .Высота блокчейна: " <> showt ah
+      NPSNodes              -> "Блокчейн-узлы: "
+      NPSNodesNum n         -> "Всего узлов: " <> showt n
+      NPSActiveNum n        -> showt n <> " активных соединений"
+      NPSNoActiveNodes      -> "Нет активных узлов"
