@@ -31,24 +31,6 @@ import Ergvein.Wallet.Node.Prim
 import Data.Map.Strict (Map)
 import Data.Dependent.Map (DMap)
 
-data NodeStatus = NodeStatus {
-  nodestatHeight :: BlockHeight
-, nodestatLat    :: NominalDiffTime
-}
-
-data NodeConnection t cur = NodeConnection {
-  nodeconCurrency :: Currency
-, nodeconUrl      :: BaseUrl
-, nodeconStatus   :: Maybe NodeStatus
-, nodeconOpensE   :: Event t ()
-, nodeconClosedE  :: Event t ()
-, nodeconReqE     :: NodeReq cur -> IO ()
-, nodeconRespE    :: Event t (NodeResp cur)
-}
-
-type NodeBTC t = NodeConnection t BTCType
-type NodeERG t = NodeConnection t ERGOType
-
 data NodeConn t = NodeConnBTC (NodeBTC t) | NodeConnERG (NodeERG t)
 
 data CurrencyTag t a where

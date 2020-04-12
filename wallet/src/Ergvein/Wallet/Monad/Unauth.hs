@@ -351,7 +351,7 @@ newEnv settings uiChan = do
   reqUrlNumRef  <- newExternalRef $ settingsReqUrlNum settings
   actUrlNumRef  <- newExternalRef $ settingsActUrlNum settings
   timeoutRef    <- newExternalRef $ settingsReqTimeout settings
-  consRef       <- newExternalRef $ DM.empty
+  consRef       <- newExternalRef =<< initializeNodes (settingsNodes settings)
   (indexersE, indexersF) <- newTriggerEvent
   pure UnauthEnv {
       unauth'settings       = settingsRef
