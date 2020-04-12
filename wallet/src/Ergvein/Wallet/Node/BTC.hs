@@ -16,6 +16,10 @@ import Ergvein.Wallet.Node.Prim
 import Reflex
 import Servant.Client(BaseUrl)
 
+-- These two are for dummy stats
+import Control.Monad.Random
+import Ergvein.Text
+
 data BTCType = BTCType
 type NodeBTC t = NodeConnection t BTCType
 
@@ -28,10 +32,14 @@ instance HasNode BTCType where
   type NodeResp BTCType = Text
 
 initBTCNode :: (Reflex t, TriggerEvent t m, MonadIO m) => BaseUrl -> m (NodeBTC t)
-initBTCNode url =  pure $ NodeConnection {
+initBTCNode url = do
+  b  <- liftIO randomIO
+  d :: Double <- liftIO $ randomRIO (0, 1.5)
+  bh <- liftIO randomIO
+  pure $ NodeConnection {
     nodeconCurrency = BTC
   , nodeconUrl      = url
-  , nodeconStatus   = Nothing
+  , nodeconStatus   = if b then Nothing else Just $ NodeStatus bh (realToFrac d)
   , nodeconOpensE   = never
   , nodeconClosedE  = never
   , nodeconReqE     = const $ pure ()
