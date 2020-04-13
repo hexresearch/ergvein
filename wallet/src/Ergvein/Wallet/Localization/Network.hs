@@ -37,7 +37,9 @@ data NetworkPageStrings
   | NPSNodesNum Int
   | NPSActiveNum Int
   | NPSNoActiveNodes
-  
+  | NPSNoCurrencies
+  | NPSTitleCur Currency
+
 instance LocalizedPrint NetworkPageStrings where
   localizedShow l v = case l of
     English -> case v of
@@ -65,6 +67,8 @@ instance LocalizedPrint NetworkPageStrings where
       NPSNodesNum n         -> "Total nodes: " <> showt n
       NPSActiveNum n        -> showt n <> " connected"
       NPSNoActiveNodes      -> "No active nodes"
+      NPSNoCurrencies       -> "No active currencies"
+      NPSTitleCur c         -> "Network " <> showt c
     Russian -> case v of
       NPSTitle              -> "Сеть"
       NPSServer             -> "Сервера: "
@@ -96,3 +100,5 @@ instance LocalizedPrint NetworkPageStrings where
       NPSNodesNum n         -> "Всего узлов: " <> showt n
       NPSActiveNum n        -> showt n <> " активных соединений"
       NPSNoActiveNodes      -> "Нет активных узлов"
+      NPSNoCurrencies       -> "Нет активных валют"
+      NPSTitleCur c         -> "Сеть " <> showt c
