@@ -27,13 +27,13 @@ accountDiscovery = do
   logWrite "Key scanning started"
   pubKeystore <- getPublicKeystore
   updatedPubKeystoreE <- scanKeys pubKeystore
-  mauthD <- getAuthInfoMaybe
-  let updatedAuthE = traceEventWith (const "Key scanning finished") <$> flip pushAlways updatedPubKeystoreE $ \store -> do
-        mauth <- sample . current $ mauthD
-        case mauth of
-          Nothing -> fail "accountDiscovery: not authorized"
-          Just auth -> pure $ Just $ authInfo'storage . storage'publicKeys .~ store $ authInfo'isUpdate .~ True $ auth
-  setAuthInfoE <- setAuthInfo updatedAuthE
+  authD <- getAuthInfo
+  let updAuthE = traceEventWith (const "Key scanning finished") <$> flip pushAlways updatedPubKeystoreE $ \store -> do
+        auth <- sample . current $ authD
+        pure $ Just $ auth
+          & authInfo'storage . storage'publicKeys .~ store
+          & authInfo'isUpdate .~ True
+  setAuthInfoE <- setAuthInfo updAuthE
   storeWallet setAuthInfoE
 
 -- Gets old PublicKeystore, performs BIP44 account discovery algorithm for all currencies

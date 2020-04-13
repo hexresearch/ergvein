@@ -68,6 +68,8 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   getFiltersSyncRef :: m (ExternalRef t (Map Currency Bool))
   -- | Get activeCursRef Internal
   getActiveCursRef :: m (ExternalRef t ActiveCurrencies)
+  -- | Get auth info. Not a Maybe since this is authorized context
+  getAuthInfo :: m (Dynamic t AuthInfo)
 
 class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   -- | Get current settings

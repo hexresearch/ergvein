@@ -65,10 +65,10 @@ data Env t = Env {
 , env'logsTrigger     :: (Event t LogEntry, LogEntry -> IO ())
 , env'logsNameSpaces  :: !(ExternalRef t [Text])
 , env'uiChan          :: !(Chan (IO ()))
-, env'authRef         :: !(ExternalRef t (Maybe AuthInfo))
 , env'passModalEF     :: !(Event t Int, Int -> IO ())
 , env'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
 -- Auth context
+, env'authRef         :: !(ExternalRef t AuthInfo)
 , env'logoutFire      :: !(IO ())
 , env'activeCursRef   :: !(ExternalRef t ActiveCurrencies)
 , env'manager         :: !(IORef Manager)
@@ -154,9 +154,9 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
       Just _ -> True
       Nothing -> False
   {-# INLINE isAuthorized #-}
-  getAuthInfoMaybe = externalRefDynamic =<< asks env'authRef
+  getAuthInfoMaybe = (fmap . fmap) Just . externalRefDynamic =<< asks env'authRef
   {-# INLINE getAuthInfoMaybe #-}
-  getAuthInfoRef = asks env'authRef
+  getAuthInfoRef = fmapExternalRef Just =<< asks env'authRef
   {-# INLINE getAuthInfoRef #-}
   setAuthInfo e = do
     authRef <- asks env'authRef
@@ -169,7 +169,7 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
       Just v -> do
         logWrite "authed setAuthInfo: changing auth info"
         setLastStorage $ Just . _storage'walletName . _authInfo'storage $ v
-        writeExternalRef authRef $ Just v
+        writeExternalRef authRef v
   {-# INLINE setAuthInfo #-}
   getPasswordModalEF = asks env'passModalEF
   {-# INLINE getPasswordModalEF #-}
@@ -206,6 +206,8 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getFiltersSyncRef #-}
   getActiveCursRef = asks env'activeCursRef
   {-# INLINE getActiveCursRef #-}
+  getAuthInfo = externalRefDynamic =<< asks env'authRef
+  {-# INLINE getAuthInfo #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
@@ -218,40 +220,25 @@ instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   {-# INLINE getAlertEventFire #-}
 
 instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) where
-  getEncryptedPrivateStorage = fmap (_storage'encryptedPrivateStorage . _authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
-    where
-      guardit Nothing = error "getEncryptedWallet impossible: no auth in authed context!"
-      guardit (Just a) = a
+  getEncryptedPrivateStorage = fmap (_storage'encryptedPrivateStorage . _authInfo'storage) $ readExternalRef =<< asks env'authRef
   {-# INLINE getEncryptedPrivateStorage #-}
   getAddressByCurIx cur i = do
-    currMap <- fmap (_storage'publicKeys . _authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
+    currMap <- fmap (_storage'publicKeys . _authInfo'storage) $ readExternalRef =<< asks env'authRef
     let mXPubKey = (MI.lookup i) . egvPubKeyсhain'external =<< M.lookup cur currMap
     case mXPubKey of
       Nothing -> fail "NOT IMPLEMENTED" -- TODO: generate new address here
       Just xPubKey -> pure $ xPubExport (getCurrencyNetwork cur) (egvXPubKey xPubKey)
-    where
-      guardit Nothing = error "getAddressByCurIx impossible: no auth in authed context!"
-      guardit (Just a) = a
   {-# INLINE getAddressByCurIx #-}
-  getWalletName = fmap (_storage'walletName . _authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
-    where
-      guardit Nothing = error "getWalletName impossible: no auth in authed context!"
-      guardit (Just a) = a
+  getWalletName = fmap (_storage'walletName . _authInfo'storage) $ readExternalRef =<< asks env'authRef
   {-# INLINE getWalletName #-}
-  getPublicKeystore = fmap (_storage'publicKeys . _authInfo'storage . guardit) $ readExternalRef =<< asks env'authRef
-    where
-      guardit Nothing = error "getPublicKeystore impossible: no auth in authed context!"
-      guardit (Just a) = a
+  getPublicKeystore = fmap (_storage'publicKeys . _authInfo'storage) $ readExternalRef =<< asks env'authRef
   {-# INLINE getPublicKeystore #-}
   storeWallet e = do
-    authInfo <- fmap guardit $ readExternalRef =<< asks env'authRef
+    authInfo <- readExternalRef =<< asks env'authRef
     performEvent_ $ ffor e $ \_ -> do
       let storage = _authInfo'storage authInfo
       let eciesPubKey = _authInfo'eciesPubKey authInfo
       saveStorageToFile eciesPubKey storage
-    where
-      guardit Nothing = error "storeWallet impossible: no auth in authed context!"
-      guardit (Just a) = a
   {-# INLINE storeWallet #-}
 
 -- | Execute action under authorized context or return the given value as result
@@ -267,7 +254,6 @@ liftAuth ma0 ma = mdo
         backEF          <- getBackEventFire
         loading         <- getLoadingWidgetTF
         langRef         <- getLangRef
-        authRef         <- getAuthInfoRef
         storeDir        <- getStoreDir
         alertsEF        <- getAlertEventFire
         logsTrigger     <- getLogsTrigger
@@ -281,6 +267,7 @@ liftAuth ma0 ma = mdo
         settings        <- readExternalRef settingsRef
 
         -- MonadClient refs
+        authRef         <- newExternalRef auth
         urlsArchive     <- newExternalRef $ S.fromList $ settingsPassiveUrls settings
         inactiveUrls    <- newExternalRef $ S.fromList $ settingsDeactivatedUrls settings
         activeUrlsRef   <- newExternalRef $ M.fromList $ fmap (,Nothing) $ settingsActiveUrls settings
@@ -300,8 +287,8 @@ liftAuth ma0 ma = mdo
 
         -- headersLoader
         let env = Env
-              settingsRef backEF loading langRef storeDir alertsEF logsTrigger logsNameSpaces uiChan authRef passModalEF passSetEF
-              (logoutFire ()) activeCursRef managerRef headersStore filtersStore syncRef heightRef fsyncRef
+              settingsRef backEF loading langRef storeDir alertsEF logsTrigger logsNameSpaces uiChan passModalEF passSetEF
+              authRef (logoutFire ()) activeCursRef managerRef headersStore filtersStore syncRef heightRef fsyncRef
               urlsArchive inactiveUrls activeUrlsRef reqUrlNumRef actUrlNumRef timeoutRef (indexersE, indexersF ())
 
         flip runReaderT env $ do -- Workers and other routines go here
