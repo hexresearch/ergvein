@@ -1,12 +1,14 @@
 module Ergvein.Types.AuthInfo where
 
 import Control.Lens
+import Data.Text (Text)
 import Ergvein.Crypto.ECIES
 import Ergvein.Types.Storage
 
 data AuthInfo = AuthInfo {
   _authInfo'storage     :: ErgveinStorage
 , _authInfo'eciesPubKey :: ECIESPubKey
+, _authInfo'login       :: Text
 , _authInfo'isUpdate    :: Bool
   -- ^ This field indicates whether the widget should be redrawn in 'liftAuth'.
   -- 'False' means that the value obtained as a result of updating the previous 'AuthInfo',
