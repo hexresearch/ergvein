@@ -208,6 +208,8 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getActiveCursRef #-}
   getAuthInfo = externalRefDynamic =<< asks env'authRef
   {-# INLINE getAuthInfo #-}
+  getLoginD = (fmap . fmap) _authInfo'login . externalRefDynamic =<< asks env'authRef
+  {-# INLINE getLoginD #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do

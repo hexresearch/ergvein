@@ -70,7 +70,9 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   getActiveCursRef :: m (ExternalRef t ActiveCurrencies)
   -- | Get auth info. Not a Maybe since this is authorized context
   getAuthInfo :: m (Dynamic t AuthInfo)
-
+  -- | Get login. Convenience function
+  getLoginD :: m (Dynamic t Text)
+  
 class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   -- | Get current settings
   getSettings :: m Settings
