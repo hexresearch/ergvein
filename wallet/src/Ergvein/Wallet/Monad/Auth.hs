@@ -305,6 +305,7 @@ liftAuth ma0 ma = mdo
         let login = _authInfo'login auth
             acurs = maybe S.empty S.fromList $ M.lookup login $ activeCurrenciesMap $ settingsActiveCurrencies settings
             nodes = M.restrictKeys (settingsNodes settings) acurs
+
         -- MonadClient refs
         authRef         <- newExternalRef auth
         urlsArchive     <- newExternalRef $ S.fromList $ settingsPassiveUrls settings

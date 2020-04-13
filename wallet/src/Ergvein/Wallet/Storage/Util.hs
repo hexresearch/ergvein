@@ -78,8 +78,8 @@ createStorage mnemonic (login, pass) = case mnemonicToSeed "" mnemonic of
     let root = EgvRootXPrvKey $ makeXPrvKey seed
         privateStorage = createPrivateStorage seed root
         publicKeystore = createPublicKeystore root
-    encryptedPrivateStorageResult <- encryptPrivateStorage privateStorage pass
-    case encryptedPrivateStorageResult of
+    encryptPrivateStorageResult <- encryptPrivateStorage privateStorage pass
+    case encryptPrivateStorageResult of
       Left err -> pure $ Left err
       Right eps -> pure $ Right $ ErgveinStorage eps publicKeystore login
 
