@@ -26,14 +26,20 @@ accountDiscovery :: MonadFront t m => m ()
 accountDiscovery = do
   logWrite "Key scanning started"
   pubKeystore <- getPublicKeystore
-  updatedPubKeystoreE <- scanKeys pubKeystore
+  let showPubKeystoreDiff updatedPubKeystore =
+        "Discovered new BTC keys: " ++ show (btcAddressesCount updatedPubKeystore - btcAddressesCount pubKeystore) ++ "\n" ++
+        "Discovered new ERGO keys: " ++ show (ergAddressesCount updatedPubKeystore - ergAddressesCount pubKeystore)
+      btcAddressesCount s = getExternalPubkeysCount BTC s
+      ergAddressesCount s = getExternalPubkeysCount ERGO s
+      getExternalPubkeysCount currency keystore = MI.size $ egvPubKeyсhain'external (keystore M.! currency)
+  updatedPubKeystoreE <- traceEventWith showPubKeystoreDiff <$> scanKeys pubKeystore
   authD <- getAuthInfo
-  let updAuthE = traceEventWith (const "Key scanning finished") <$> flip pushAlways updatedPubKeystoreE $ \store -> do
+  let updatedAuthE = traceEventWith (const "Key scanning finished") <$> flip pushAlways updatedPubKeystoreE $ \store -> do
         auth <- sample . current $ authD
         pure $ Just $ auth
           & authInfo'storage . storage'publicKeys .~ store
           & authInfo'isUpdate .~ True
-  setAuthInfoE <- setAuthInfo updAuthE
+  setAuthInfoE <- setAuthInfo updatedAuthE
   storeWallet setAuthInfoE
 
 -- Gets old PublicKeystore, performs BIP44 account discovery algorithm for all currencies
@@ -59,7 +65,7 @@ scanCurrencyKeys currency keyChain = mdo
   buildE <- getPostBuild
   nextE <- waitFilters currency =<< delay 0 (leftmost [newE, buildE])
   gapD <- holdDyn 0 gapE
-  nextKeyIndexD <- holdDyn initKeyChainSize nextKeyIndexE
+  nextKeyIndexD <- holdDyn (if initKeyChainSize > gapLimit then initKeyChainSize - gapLimit else 0) nextKeyIndexE
   newKeyChainD <- foldDyn (addXPubKeyToKeyсhain External) keyChain nextKeyE
   filterAddressE <- filterAddress nextKeyE
   getBlockE <- getBlocks filterAddressE
@@ -68,20 +74,20 @@ scanCurrencyKeys currency keyChain = mdo
       initKeyChainSize = MI.size $ egvPubKeyсhain'external keyChain
       newE = flip push storedE $ \i -> do
         gap <- sample . current $ gapD
-        pure $ if i == 0 && gap > gapLimit then Nothing else Just ()
+        pure $ if i == 0 && gap >= gapLimit then Nothing else Just ()
       gapE = flip pushAlways storedE $ \i -> do
         gap <- sample . current $ gapD
-        pure $ if i == 0 && gap <= gapLimit then gap + 1 else 0
+        pure $ if i == 0 && gap < gapLimit then gap + 1 else 0
       nextKeyE = flip push nextE $ \_ -> do
         gap <- sample . current $ gapD
         nextKeyIndex <- sample . current $ nextKeyIndexD
-        pure $ if gap > gapLimit then Nothing else Just $ (nextKeyIndex, derivePubKey masterPubKey External (fromIntegral nextKeyIndex))
+        pure $ if gap >= gapLimit then Nothing else Just $ (nextKeyIndex, derivePubKey masterPubKey External (fromIntegral nextKeyIndex))
       nextKeyIndexE = flip pushAlways nextKeyE $ \_ -> do
         nextKeyIndex <- sample . current $ nextKeyIndexD
         pure $ nextKeyIndex + 1
       finishedE = flip push gapE $ \g -> do
         newKeyChain <- sample . current $ newKeyChainD
-        pure $ if g > gapLimit then Just $ (currency, newKeyChain) else Nothing
+        pure $ if g >= gapLimit then Just $ (currency, newKeyChain) else Nothing
   pure finishedE
 
 -- | If the given event fires and there is not fully synced filters. Wait for the synced filters and then fire the event.
@@ -101,7 +107,6 @@ waitFilters c e = mdo
       (Just a, True) -> Just a
       _ -> Nothing
 
--- FIXME
 filterAddress :: MonadFront t m => Event t (Int, EgvXPubKey) -> m (Event t [BlockHash])
 filterAddress e = performFilters $ ffor e $ \(_, pk) -> Filters.filterAddress $ egvXPubKeyToEgvAddress pk
 
