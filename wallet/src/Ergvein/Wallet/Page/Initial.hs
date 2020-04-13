@@ -1,6 +1,5 @@
 module Ergvein.Wallet.Page.Initial(
     initialPage
-  , initialAuthedPage
   ) where
 
 import Data.Text (unpack)
@@ -57,10 +56,3 @@ initialPage = do
       mauthE <- performEvent $ loadAuthInfo name <$> passE
       authE <- handleDangerMsg mauthE
       void $ setAuthInfo $ Just <$> authE
-
-initialAuthedPage :: MonadFront t m => m ()
-initialAuthedPage = wrapperSimple True $ divClass "main-page" $ do
-  anon_name <- getWalletName
-  h4 $ text $ "Congrats " <> anon_name <> "! You've made it!"
-  logoutE <- row . outlineButton $ ("Logout" :: Text)
-  void $ setAuthInfo $ Nothing <$ logoutE
