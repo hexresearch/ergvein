@@ -21,7 +21,7 @@ import Data.Yaml (encodeFile)
 import Ergvein.Aeson
 import Ergvein.Lens
 import Ergvein.Text
-import Ergvein.Types.Currency (Units(..), defUnits, Currency, allCurrencies)
+import Ergvein.Types.Currency
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Native
@@ -31,7 +31,6 @@ import Servant.Client(BaseUrl(..), parseBaseUrl)
 import System.Directory
 
 import qualified Data.Text as T
-import qualified Data.Map as Map
 
 #ifdef ANDROID
 import Android.HaskellActivity
@@ -49,12 +48,11 @@ data Settings = Settings {
 , settingsPassiveUrls       :: [BaseUrl]
 , settingsReqUrlNum         :: (Int, Int) -- ^ First is minimum required answers. Second is sufficient amount of answers from indexers.
 , settingsActUrlNum         :: Int
+, settingsNodes             :: M.Map Currency [BaseUrl]
 } deriving (Eq, Show)
 
 
 makeLensesWith humbleFields ''Settings
-
--- $(deriveJSON (aesonOptionsStripPrefix "settings") ''Settings)
 
 instance FromJSON Settings where
   parseJSON = withObject "Settings" $ \o -> do
@@ -74,6 +72,7 @@ instance FromJSON Settings where
             (Nothing, Nothing, Nothing) -> (defaultIndexers, [], [])
             (Just [], Just [], Just []) -> (defaultIndexers, [], [])
             _ -> (fromMaybe [] mActiveUrls, fromMaybe [] mDeactivatedUrls, fromMaybe [] mPassiveUrls)
+    settingsNodes             <- o .:? "nodes" .!= defaultNodes
     pure Settings{..}
 
 instance ToJSON Settings where
@@ -89,6 +88,7 @@ instance ToJSON Settings where
     , "passiveUrls"       .= toJSON settingsPassiveUrls
     , "reqUrlNum"         .= toJSON settingsReqUrlNum
     , "actUrlNum"         .= toJSON settingsActUrlNum
+    , "nodes"             .= toJSON settingsNodes
    ]
 
 defaultIndexers :: [BaseUrl]
@@ -98,6 +98,18 @@ defaultIndexers = [
   , parse "https://ergvein-indexer3.hxr.team"
   , parse "https://ergvein-indexer4.hxr.team"
   ]
+  where
+    parse = either (error . ("Failed to parse default indexer: " ++) . show) id . parseBaseUrl
+
+defaultNodes :: M.Map Currency [BaseUrl]
+defaultNodes = M.fromList $ [
+    (BTC, [
+      parse "127.0.0.1"
+    , parse "127.0.0.2"
+    ])
+  , (ERGO, [
+      parse "127.0.0.1"
+    , parse "127.0.0.2"])]
   where
     parse = either (error . ("Failed to parse default indexer: " ++) . show) id . parseBaseUrl
 
@@ -126,6 +138,7 @@ defaultSettings home =
       , settingsPassiveUrls       = []
       , settingsReqUrlNum         = defaultIndexersNum
       , settingsActUrlNum         = defaultActUrlNum
+      , settingsNodes             = defaultNodes
       }
 
 -- | TODO: Implement some checks to see if the configPath folder is ok to write to

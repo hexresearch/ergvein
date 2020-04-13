@@ -9,6 +9,7 @@ import Control.Monad.Random.Class
 import Control.Monad.Reader
 import Data.IORef
 import Data.Map.Strict (Map)
+import Data.Maybe (fromMaybe)
 import Data.Time (NominalDiffTime, getCurrentTime, diffUTCTime)
 import Network.Connection
 import Network.HTTP.Client hiding (Proxy)
@@ -42,6 +43,7 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Node
 import Ergvein.Wallet.Settings (Settings(..), storeSettings, defaultIndexers)
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Sync.Status
@@ -70,7 +72,7 @@ data Env t = Env {
 -- Auth context
 , env'authRef         :: !(ExternalRef t AuthInfo)
 , env'logoutFire      :: !(IO ())
-, env'activeCursRef   :: !(ExternalRef t ActiveCurrencies)
+, env'activeCursRef   :: !(ExternalRef t (S.Set Currency))
 , env'manager         :: !(IORef Manager)
 , env'headersStorage  :: !HeadersStorage
 , env'filtersStorage  :: !FiltersStorage
@@ -84,6 +86,7 @@ data Env t = Env {
 , env'actUrlNum       :: !(ExternalRef t Int)
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
 , env'indexersEF      :: !(Event t (), IO ())
+, env'nodeConsRef     :: !(ExternalRef t (ConnMap t))
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -204,12 +207,44 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getHeightRef #-}
   getFiltersSyncRef = asks env'filtersSyncRef
   {-# INLINE getFiltersSyncRef #-}
-  getActiveCursRef = asks env'activeCursRef
-  {-# INLINE getActiveCursRef #-}
+  getActiveCursD = externalRefDynamic =<< asks env'activeCursRef
+  {-# INLINE getActiveCursD #-}
+  updateActuveCurs updE = do
+    curRef      <- asks env'activeCursRef
+    nodeRef     <- asks env'nodeConsRef
+    settingsRef <- asks env'settings
+    authRef     <- asks env'authRef
+    fmap updated $ widgetHold (pure ()) $ ffor updE $ \f -> do
+      (diffMap, newcs) <- modifyExternalRef curRef $ \cs -> let
+        cs' = f cs
+        offUrls = S.map (\u -> (u, False)) $ S.difference cs cs'
+        onUrls  = S.map (\u -> (u, True))  $ S.difference cs' cs
+        onUrls' = S.map (\u -> (u, True))  $ S.intersection cs cs'
+        dm = M.fromList $ S.toList $ offUrls <> onUrls <> onUrls'
+        in (cs',(dm, S.toList cs'))
+      settings <- readExternalRef settingsRef
+      login    <- fmap _authInfo'login $ readExternalRef authRef
+      let urls = settingsNodes settings
+          ac   = activeCurrenciesMap $ settingsActiveCurrencies settings
+          ac'  = M.insert login newcs ac
+          set' = settings {settingsActiveCurrencies = ActiveCurrencies ac'}
+
+      writeExternalRef settingsRef set'
+      storeSettings set'
+      writeExternalRef nodeRef =<< reinitNodes urls diffMap =<< readExternalRef nodeRef
+
+  {-# INLINE updateActuveCurs #-}
   getAuthInfo = externalRefDynamic =<< asks env'authRef
   {-# INLINE getAuthInfo #-}
   getLoginD = (fmap . fmap) _authInfo'login . externalRefDynamic =<< asks env'authRef
   {-# INLINE getLoginD #-}
+  getNodeConnRef = asks env'nodeConsRef
+  {-# INLINE getNodeConnRef #-}
+  getNodesByCurrencyD cur =
+    (fmap . fmap) (fromMaybe (M.empty) . getAllConnByCurrency cur) . externalRefDynamic =<< asks env'nodeConsRef
+  {-# INLINE getNodesByCurrencyD #-}
+  getNodeConnectionsD = externalRefDynamic =<< asks env'nodeConsRef
+  {-# INLINE getNodeConnectionsD #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
@@ -267,6 +302,9 @@ liftAuth ma0 ma = mdo
 
         -- Read settings to fill other refs
         settings        <- readExternalRef settingsRef
+        let login = _authInfo'login auth
+            acurs = maybe S.empty S.fromList $ M.lookup login $ activeCurrenciesMap $ settingsActiveCurrencies settings
+            nodes = M.restrictKeys (settingsNodes settings) acurs
 
         -- MonadClient refs
         authRef         <- newExternalRef auth
@@ -280,18 +318,19 @@ liftAuth ma0 ma = mdo
 
         -- Create data for Auth context
         managerRef      <- liftIO . newIORef =<< newTlsManager
-        activeCursRef   <- newExternalRef $ settingsActiveCurrencies settings
+        activeCursRef   <- newExternalRef acurs
         headersStore    <- liftIO $ runReaderT openHeadersStorage (settingsStoreDir settings)
         syncRef         <- newExternalRef Synced
         filtersStore    <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
         heightRef       <- newExternalRef mempty
         fsyncRef        <- newExternalRef mempty
-
+        consRef         <- newExternalRef =<< initializeNodes nodes
         -- headersLoader
         let env = Env
               settingsRef backEF loading langRef storeDir alertsEF logsTrigger logsNameSpaces uiChan passModalEF passSetEF
               authRef (logoutFire ()) activeCursRef managerRef headersStore filtersStore syncRef heightRef fsyncRef
               urlsArchive inactiveUrls activeUrlsRef reqUrlNumRef actUrlNumRef timeoutRef (indexersE, indexersF ())
+              consRef
 
         flip runReaderT env $ do -- Workers and other routines go here
           filtersLoader
