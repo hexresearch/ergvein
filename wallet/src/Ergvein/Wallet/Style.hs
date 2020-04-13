@@ -677,8 +677,9 @@ historyPageCss = do
     gridTemplateColumns [fr 2, fr 8]
     marginTop $ px 20
   ".info-body" ? do
+    textAlign center
+    overflow hidden
     textOverflow overflowEllipsis
-    width $ pct 50
 
 graphPinCodeCanvasCss :: Css
 graphPinCodeCanvasCss = do
