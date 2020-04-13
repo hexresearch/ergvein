@@ -22,8 +22,6 @@ import Ergvein.Crypto
 import Ergvein.Index.Client
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Ergvein.Wallet.Filters.Storage
-import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Native
 import Language.Javascript.JSaddle
@@ -77,17 +75,11 @@ instance MonadReflexCreateTrigger t m => MonadReflexCreateTrigger t (ErgveinM t 
 type MonadFrontConstr t m = (PlatformNatives
   , HasStoreDir m
   , HasStoreDir (Performable m)
-  , HasHeadersStorage m
-  , HasFiltersStorage m
-  , HasFiltersStorage (Performable m)
   , MonadBaseConstr t m
   , MonadLocalized t m
   , MonadRetract t m
   , MonadAlertPoster t m
   , MonadEgvLogger t m
-  , HasClientManager m
-  , HasClientManager (Performable m)
-  , MonadClient t m
   )
 
 -- ===========================================================================
@@ -150,7 +142,11 @@ instance MonadRandom (WithJSContextSingleton x (SpiderHostFrame Global)) where
 --    Monad Client. Implements all required things for client operations
 -- ===========================================================================
 
-class (MonadBaseConstr t m, HasClientManager m, HasClientManager (Performable m)) => MonadClient t m | m -> t where
+class (
+    MonadBaseConstr t m
+  , HasClientManager m
+  , HasClientManager (Performable m)
+  ) => MonadClient t m | m -> t where
   -- | Get passive urls' reference. Internal
   getArchivedUrlsRef :: m (ExternalRef t (S.Set BaseUrl))
   -- | Internal method to get reference to indexers
@@ -181,7 +177,7 @@ class (MonadBaseConstr t m, HasClientManager m, HasClientManager (Performable m)
   forgetURL  :: Event t BaseUrl -> m (Event t ())
   -- | Restore default indexers
   restoreDefaultIndexers :: Event t () -> m (Event t ())
-  
+
 -- ===========================================================================
 --    Frontend-wide types
 -- ===========================================================================

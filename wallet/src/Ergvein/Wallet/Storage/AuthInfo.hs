@@ -22,6 +22,7 @@ initAuthInfo mnemonic login pass = do
       Right k -> pure $ Right AuthInfo {
           _authInfo'storage = s
         , _authInfo'eciesPubKey = toPublic k
+        , _authInfo'login = login
         , _authInfo'isUpdate = False
         }
 
@@ -36,6 +37,7 @@ loadAuthInfo login pass = do
           AuthInfo {
             _authInfo'storage = s
           , _authInfo'eciesPubKey = toPublic k
+          , _authInfo'login = login
           , _authInfo'isUpdate = False
           }
         , pass

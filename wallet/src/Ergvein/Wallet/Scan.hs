@@ -33,12 +33,12 @@ accountDiscovery = do
       ergAddressesCount s = getExternalPubkeysCount ERGO s
       getExternalPubkeysCount currency keystore = MI.size $ egvPubKeyсhain'external (keystore M.! currency)
   updatedPubKeystoreE <- traceEventWith showPubKeystoreDiff <$> scanKeys pubKeystore
-  mauthD <- getAuthInfoMaybe
+  authD <- getAuthInfo
   let updatedAuthE = traceEventWith (const "Key scanning finished") <$> flip pushAlways updatedPubKeystoreE $ \store -> do
-        mauth <- sample . current $ mauthD
-        case mauth of
-          Nothing -> fail "accountDiscovery: not authorized"
-          Just auth -> pure $ Just $ authInfo'storage . storage'publicKeys .~ store $ authInfo'isUpdate .~ True $ auth
+        auth <- sample . current $ authD
+        pure $ Just $ auth
+          & authInfo'storage . storage'publicKeys .~ store
+          & authInfo'isUpdate .~ True
   setAuthInfoE <- setAuthInfo updatedAuthE
   storeWallet setAuthInfoE
 
