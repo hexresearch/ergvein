@@ -69,7 +69,7 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   -- | Internal method to get flag if we has fully synced filters at the moment.
   getFiltersSyncRef :: m (ExternalRef t (Map Currency Bool))
   -- | Get activeCursRef Internal
-  getActiveCursRef :: m (ExternalRef t (S.Set Currency))
+  getActiveCursD :: m (Dynamic t (S.Set Currency))
   -- | Update active currencies
   updateActuveCurs :: (Event t (S.Set Currency -> S.Set Currency)) -> m (Event t ())
   -- | Get auth info. Not a Maybe since this is authorized context

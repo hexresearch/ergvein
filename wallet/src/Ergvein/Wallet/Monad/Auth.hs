@@ -207,8 +207,8 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getHeightRef #-}
   getFiltersSyncRef = asks env'filtersSyncRef
   {-# INLINE getFiltersSyncRef #-}
-  getActiveCursRef = asks env'activeCursRef
-  {-# INLINE getActiveCursRef #-}
+  getActiveCursD = externalRefDynamic =<< asks env'activeCursRef
+  {-# INLINE getActiveCursD #-}
   updateActuveCurs updE = do
     curRef      <- asks env'activeCursRef
     nodeRef     <- asks env'nodeConsRef

@@ -75,14 +75,11 @@ currenciesPage :: MonadFront t m => m ()
 currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
   h3 $ localizedText STPSSetsActiveCurrs
   divClass "initial-options" $ do
-    s <- getSettings
-    anon_name <- getWalletName
-    currListE <- selectCurrenciesWidget $ getActiveCurrencies anon_name s
-    updE <- updateActuveCurs $ fmap (\cl -> const (S.fromList cl)) currListE
-    showSuccessMsg $ STPSSuccess <$ updE
-  where
-    getActiveCurrencies name s = fromMaybe allCurrencies $ Map.lookup name $ activeCurrenciesMap $ settingsActiveCurrencies s
-    acSet l s curs = ActiveCurrencies $ Map.insert l curs $ activeCurrenciesMap $ settingsActiveCurrencies s
+    activeCursD <- getActiveCursD
+    void $ widgetHoldDyn $ ffor activeCursD $ \currs -> do
+      currListE <- selectCurrenciesWidget $ S.toList currs
+      updE <- updateActuveCurs $ fmap (\cl -> const (S.fromList cl)) currListE
+      showSuccessMsg $ STPSSuccess <$ updE
 
 unitsPage :: MonadFront t m => m ()
 unitsPage = wrapper STPSTitle (Just $ pure unitsPage) True $ mdo
