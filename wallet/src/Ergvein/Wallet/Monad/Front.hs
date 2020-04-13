@@ -45,6 +45,7 @@ import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Sync.Status
 
 import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 
 -- | Authorized context. Has access to storage and indexer's functionality
 type MonadFront t m = (
@@ -68,7 +69,9 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   -- | Internal method to get flag if we has fully synced filters at the moment.
   getFiltersSyncRef :: m (ExternalRef t (Map Currency Bool))
   -- | Get activeCursRef Internal
-  getActiveCursRef :: m (ExternalRef t ActiveCurrencies)
+  getActiveCursRef :: m (ExternalRef t (S.Set Currency))
+  -- | Update active currencies
+  updateActuveCurs :: (Event t (S.Set Currency -> S.Set Currency)) -> m (Event t ())
   -- | Get auth info. Not a Maybe since this is authorized context
   getAuthInfo :: m (Dynamic t AuthInfo)
   -- | Get login. Convenience function

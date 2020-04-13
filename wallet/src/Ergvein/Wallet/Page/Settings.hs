@@ -26,6 +26,8 @@ import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Widget.GraphPinCode
 import Ergvein.Wallet.Wrapper
 
+import qualified Data.Set as S
+
 data SubPageSettings
   = GoLanguage
   | GoCurrencies
@@ -76,7 +78,7 @@ currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
     s <- getSettings
     anon_name <- getWalletName
     currListE <- selectCurrenciesWidget $ getActiveCurrencies anon_name s
-    updE <- updateSettings $ ffor currListE $ \curs -> s {settingsActiveCurrencies = acSet anon_name s curs}
+    updE <- updateActuveCurs $ fmap (\cl -> const (S.fromList cl)) currListE
     showSuccessMsg $ STPSSuccess <$ updE
   where
     getActiveCurrencies name s = fromMaybe allCurrencies $ Map.lookup name $ activeCurrenciesMap $ settingsActiveCurrencies s
