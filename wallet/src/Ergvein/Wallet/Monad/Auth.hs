@@ -55,33 +55,34 @@ import qualified Data.Set as S
 import qualified Data.List as L
 
 data Env t = Env {
+  -- Unauth context's fields
   env'settings        :: !(ExternalRef t Settings)
 , env'backEF          :: !(Event t (), IO ())
 , env'loading         :: !(Event t (Bool, Text), (Bool, Text) -> IO ())
 , env'langRef         :: !(ExternalRef t Language)
-, env'activeCursRef   :: !(ExternalRef t ActiveCurrencies)
-, env'authRef         :: !(ExternalRef t (Maybe AuthInfo))
-, env'logoutFire      :: !(IO ())
 , env'storeDir        :: !Text
 , env'alertsEF        :: (Event t AlertInfo, AlertInfo -> IO ()) -- ^ Holds alert event and trigger
 , env'logsTrigger     :: (Event t LogEntry, LogEntry -> IO ())
 , env'logsNameSpaces  :: !(ExternalRef t [Text])
 , env'uiChan          :: !(Chan (IO ()))
+, env'authRef         :: !(ExternalRef t (Maybe AuthInfo))
 , env'passModalEF     :: !(Event t Int, Int -> IO ())
 , env'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
+-- Auth context
+, env'logoutFire      :: !(IO ())
+, env'activeCursRef   :: !(ExternalRef t ActiveCurrencies)
 , env'manager         :: !(IORef Manager)
 , env'headersStorage  :: !HeadersStorage
 , env'filtersStorage  :: !FiltersStorage
 , env'syncProgress    :: !(ExternalRef t SyncProgress)
 , env'heightRef       :: !(ExternalRef t (Map Currency Integer))
 , env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
-
 , env'urlsArchive     :: !(ExternalRef t (S.Set BaseUrl))
+, env'inactiveUrls    :: !(ExternalRef t (S.Set BaseUrl))
+, env'activeUrls      :: !(ExternalRef t (Map BaseUrl (Maybe IndexerInfo)))
 , env'reqUrlNum       :: !(ExternalRef t (Int, Int))
 , env'actUrlNum       :: !(ExternalRef t Int)
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
-, env'activeUrls      :: !(ExternalRef t (Map BaseUrl (Maybe IndexerInfo)))
-, env'inactiveUrls    :: !(ExternalRef t (S.Set BaseUrl))
 , env'indexersEF      :: !(Event t (), IO ())
 }
 
@@ -275,7 +276,7 @@ liftAuth ma0 ma = mdo
         passModalEF     <- getPasswordModalEF
         passSetEF       <- getPasswordSetEF
         settingsRef     <- getSettingsRef
-        
+
         -- Read settings to fill other refs
         settings        <- readExternalRef settingsRef
 
@@ -299,10 +300,9 @@ liftAuth ma0 ma = mdo
 
         -- headersLoader
         let env = Env
-              settingsRef backEF loading langRef activeCursRef authRef (logoutFire ()) storeDir alertsEF
-              logsTrigger logsNameSpaces uiChan passModalEF passSetEF managerRef
-              headersStore filtersStore syncRef heightRef fsyncRef
-              urlsArchive reqUrlNumRef actUrlNumRef timeoutRef activeUrlsRef inactiveUrls (indexersE, indexersF ())
+              settingsRef backEF loading langRef storeDir alertsEF logsTrigger logsNameSpaces uiChan authRef passModalEF passSetEF
+              (logoutFire ()) activeCursRef managerRef headersStore filtersStore syncRef heightRef fsyncRef
+              urlsArchive inactiveUrls activeUrlsRef reqUrlNumRef actUrlNumRef timeoutRef (indexersE, indexersF ())
 
         flip runReaderT env $ do -- Workers and other routines go here
           filtersLoader
