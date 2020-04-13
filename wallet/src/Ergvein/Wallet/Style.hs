@@ -466,6 +466,10 @@ networkPageCss = do
     border solid (px 3) black
   ".network-hr-sep-lb" ? do
     border solid (px 1) black
+  ".network-hr-sep-nomargin" ? do
+    border solid (px 1) black
+    marginTop $ em 0
+    marginBottom $ em 0
   ".network-line" ? do
     width $ pct 100
     maxWidth $ px 500
@@ -493,6 +497,19 @@ networkPageCss = do
     textAlign center
     cursor pointer
     fontSize $ pt (if isAndroid then 12 else 18)
+  ".indexer-online" ? do
+    marginRight $ em 1
+    color green
+  ".indexer-offline" ? do
+    marginRight $ em 1
+    color red
+  ".net-refresh-btn" ? do
+    height   $ em 3.8
+    verticalAlign vAlignTop
+  ".mt-1" ? do
+    marginTop $ em 1
+  ".ml-1" ? do
+    marginLeft $ em 1
 
 infoPageCss :: Css
 infoPageCss = do

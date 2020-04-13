@@ -3,17 +3,11 @@ module Ergvein.Wallet.Scan (
     accountDiscovery
   ) where
 
-import Control.Concurrent
-import Control.Monad
-import Control.Monad.IO.Class
-import Data.Function
-import Ergvein.Text
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
-import Ergvein.Types.Transaction (BlockHeight)
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
@@ -32,13 +26,19 @@ accountDiscovery :: MonadFront t m => m ()
 accountDiscovery = do
   logWrite "Key scanning started"
   pubKeystore <- getPublicKeystore
-  updatedPubKeystoreE <- scanKeys pubKeystore
-  mauthD <- getAuthInfoMaybe
+  let showPubKeystoreDiff updatedPubKeystore =
+        "Discovered new BTC keys: " ++ show (btcAddressesCount updatedPubKeystore - btcAddressesCount pubKeystore) ++ "\n" ++
+        "Discovered new ERGO keys: " ++ show (ergAddressesCount updatedPubKeystore - ergAddressesCount pubKeystore)
+      btcAddressesCount s = getExternalPubkeysCount BTC s
+      ergAddressesCount s = getExternalPubkeysCount ERGO s
+      getExternalPubkeysCount currency keystore = MI.size $ egvPubKeyсhain'external (keystore M.! currency)
+  updatedPubKeystoreE <- traceEventWith showPubKeystoreDiff <$> scanKeys pubKeystore
+  authD <- getAuthInfo
   let updatedAuthE = traceEventWith (const "Key scanning finished") <$> flip pushAlways updatedPubKeystoreE $ \store -> do
-        mauth <- sample . current $ mauthD
-        case mauth of
-          Nothing -> fail "accountDiscovery: not authorized"
-          Just auth -> pure $ Just $ authInfo'storage . storage'publicKeys .~ store $ authInfo'isUpdate .~ True $ auth
+        auth <- sample . current $ authD
+        pure $ Just $ auth
+          & authInfo'storage . storage'publicKeys .~ store
+          & authInfo'isUpdate .~ True
   setAuthInfoE <- setAuthInfo updatedAuthE
   storeWallet setAuthInfoE
 
@@ -58,14 +58,14 @@ scanKeys pubKeystore = do
 -- TODO: use M.lookup instead of M.! and show error msg if currency not found
 applyScan :: MonadFront t m => PublicKeystore -> Currency -> m (Event t (Currency, EgvPubKeyсhain))
 applyScan pubKeystore currency = scanCurrencyKeys currency (getKeychain currency pubKeystore)
-  where getKeychain currency pubKeystore = pubKeystore M.! currency
+  where getKeychain cur pubKeystore' = pubKeystore' M.! cur
 
 scanCurrencyKeys :: MonadFront t m => Currency -> EgvPubKeyсhain -> m (Event t (Currency, EgvPubKeyсhain))
 scanCurrencyKeys currency keyChain = mdo
   buildE <- getPostBuild
   nextE <- waitFilters currency =<< delay 0 (leftmost [newE, buildE])
   gapD <- holdDyn 0 gapE
-  nextKeyIndexD <- holdDyn initKeyChainSize nextKeyIndexE
+  nextKeyIndexD <- holdDyn (if initKeyChainSize > gapLimit then initKeyChainSize - gapLimit else 0) nextKeyIndexE
   newKeyChainD <- foldDyn (addXPubKeyToKeyсhain External) keyChain nextKeyE
   filterAddressE <- filterAddress nextKeyE
   getBlockE <- getBlocks filterAddressE
@@ -74,34 +74,39 @@ scanCurrencyKeys currency keyChain = mdo
       initKeyChainSize = MI.size $ egvPubKeyсhain'external keyChain
       newE = flip push storedE $ \i -> do
         gap <- sample . current $ gapD
-        pure $ if i == 0 && gap > gapLimit then Nothing else Just ()
+        pure $ if i == 0 && gap >= gapLimit then Nothing else Just ()
       gapE = flip pushAlways storedE $ \i -> do
         gap <- sample . current $ gapD
-        pure $ if i == 0 && gap <= gapLimit then gap + 1 else 0
+        pure $ if i == 0 && gap < gapLimit then gap + 1 else 0
       nextKeyE = flip push nextE $ \_ -> do
         gap <- sample . current $ gapD
         nextKeyIndex <- sample . current $ nextKeyIndexD
-        pure $ if gap > gapLimit then Nothing else Just $ (nextKeyIndex, derivePubKey masterPubKey External (fromIntegral nextKeyIndex))
+        pure $ if gap >= gapLimit then Nothing else Just $ (nextKeyIndex, derivePubKey masterPubKey External (fromIntegral nextKeyIndex))
       nextKeyIndexE = flip pushAlways nextKeyE $ \_ -> do
         nextKeyIndex <- sample . current $ nextKeyIndexD
         pure $ nextKeyIndex + 1
       finishedE = flip push gapE $ \g -> do
         newKeyChain <- sample . current $ newKeyChainD
-        pure $ if g > gapLimit then Just $ (currency, newKeyChain) else Nothing
+        pure $ if g >= gapLimit then Just $ (currency, newKeyChain) else Nothing
   pure finishedE
 
 -- | If the given event fires and there is not fully synced filters. Wait for the synced filters and then fire the event.
 waitFilters :: MonadFront t m => Currency -> Event t a -> m (Event t a)
-waitFilters c e = do 
+waitFilters c e = mdo
+  eD <- holdDyn Nothing $ leftmost [Just <$> e, Nothing <$ passValE']
   syncedD <- getFiltersSync c
-  performEventAsync $ ffor e $ \a fire -> do 
-    synced <- sample . current $ syncedD 
-    liftIO $ if synced then fire a else void . forkIO $ fix $ \next -> do 
-      logWrite "Waiting filters sync..."
-      threadDelay 1000_0000 
-      if synced then fire a else next
+  let passValE = fmapMaybe id $ updated $ foo <$> eD <*> syncedD
+      notSyncE = attachWithMaybe
+        (\b _ -> if b then Nothing else Just "Waiting filters sync...") (current syncedD) e
+  performEvent_ $ logWrite <$> notSyncE
+  passValE' <- delay 0.01 passValE
+  pure passValE
+  where
+    foo :: Maybe a -> Bool -> Maybe a
+    foo ma b = case (ma,b) of
+      (Just a, True) -> Just a
+      _ -> Nothing
 
--- FIXME
 filterAddress :: MonadFront t m => Event t (Int, EgvXPubKey) -> m (Event t [BlockHash])
 filterAddress e = performFilters $ ffor e $ \(_, pk) -> Filters.filterAddress $ egvXPubKeyToEgvAddress pk
 

@@ -4,77 +4,147 @@ module Ergvein.Wallet.Page.Network(
   ) where
 
 import Control.Monad.IO.Class
-import qualified Data.Map.Strict as M
-import Data.Maybe (fromMaybe)
-import Data.Text as T
+import Data.Maybe (fromMaybe, catMaybes, isJust)
 import Servant.Client (BaseUrl, parseBaseUrl, showBaseUrl)
 
-import Ergvein.Wallet.Client
 import Ergvein.Index.API.Types
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction (BlockHeight)
+import Ergvein.Wallet.Client
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Currency
 import Ergvein.Wallet.Localization.Network
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Node
 import Ergvein.Wallet.Wrapper
+
+import qualified Data.Dependent.Map as DM
+import qualified Data.List as L
+import qualified Data.Map.Strict as M
+import qualified Data.Set as S
+import qualified Data.Text as T
+
+import Ergvein.Wallet.Native
 
 networkPage :: MonadFront t m => Maybe Currency -> m ()
 networkPage curMb = wrapper NPSTitle (Just $ pure $ networkPage curMb) False $ do
-  curD <- titleWrap $ do
-    divClass "network-title-name" $ h3 $ localizedText $ NPSTitle
-    divClass "network-title-cur" $ do
-      let initCur = fromMaybe BTC curMb
-      curE <- currenciesDropdown initCur allCurrencies
-      holdDyn initCur curE
+  curD <- networkPageHeader curMb
+  void $ widgetHoldDyn $ ffor curD $ \case
+    Nothing -> pure ()
+    Just cur -> networkPageWidget cur
+
+
+networkPageWidget :: MonadFront t m => Currency -> m ()
+networkPageWidget cur = do
+  allIndsD <- getIndexerInfoD
+  conmapD <- getNodeConnectionsD
+  let currInfoD = ffor allIndsD $ \im -> let
+        act = catMaybes $ M.elems im
+        in catMaybes $ ffor act $ \IndexerInfo{..} -> (indInfoLatency,) <$> M.lookup cur indInfoHeights
+      servCurInfoD = ffor currInfoD $ \xys -> let
+        act = (\(_,ys) -> L.nub ys) $ unzip xys
+        in case act of
+            [] ->  NPSNoServerAvail
+            v:[] -> NPSSyncInfo v
+            _ -> NPSDesync
+      (servNumD, avgLatD) = splitDynPure $ ffor currInfoD $ \xys -> let
+        l = length xys
+        lats = fst $ unzip xys
+        avgL = if l == 0 then NPSNoServerAvail else NPSAvgLat $ sum lats / fromIntegral l
+        in (NPSServerVal l, avgL)
+
+  listE <- lineOption $ do
+    nameOption NPSServer
+    listE <- el "div" $ do
+      valueOptionDyn servNumD
+      divClass "network-name-edit" $ fmap (cur <$) $ outlineButton NPSServerListView
+    descrOption NPSServerDescr
+    descrOptionDyn avgLatD
+    labelHorSep
+    pure listE
+
+  lineOption $ lineOptionNoEdit NPSSyncStatus servCurInfoD NPSSyncDescr
+  lineOption $ do
+    let nnnD = ffor conmapD $ \cm -> case cur of
+          BTC  -> let
+            btcm    = fromMaybe M.empty $ DM.lookup BTCTag cm
+            actives = catMaybes $ fmap nodeconStatus $ M.elems btcm
+            actN    = length actives
+            avgLat  = if actN == 0 then NPSNoActiveNodes else NPSAvgLat $ (sum $ fmap nodestatLat actives) / fromIntegral actN
+            in (NPSNodesNum $ M.size btcm, NPSActiveNum actN, avgLat)
+          ERGO  -> let
+            ergom   = fromMaybe M.empty $ DM.lookup ERGOTag cm
+            actives = catMaybes $ fmap nodeconStatus $ M.elems ergom
+            actN    = length actives
+            avgLat  = if actN == 0 then NPSNoActiveNodes else NPSAvgLat $ (sum $ fmap nodestatLat actives) / fromIntegral actN
+            in (NPSNodesNum $ M.size ergom, NPSActiveNum actN, avgLat)
+        totalND  = (\(n,_,_) -> n) <$> nnnD
+        activeND = (\(_,n,_) -> n) <$> nnnD
+        avgLatD  = (\(_,_,l) -> l) <$> nnnD
+    nameOption NPSNodes
+    valueOptionDyn activeND
+    descrOptionDyn totalND
+    descrOptionDyn avgLatD
+    labelHorSep
+  void $ nextWidget $ ffor listE $ \cur -> Retractable {
+      retractableNext = serversInfoPage cur
+    , retractablePrev = Just (pure $ networkPage (Just cur))
+    }
+
+networkPageHeader :: MonadFront t m => Maybe Currency -> m (Dynamic t (Maybe Currency))
+networkPageHeader minitCur = do
+  activeCursD <- getActiveCursD
+  langD <- getLanguage
+  curD <- fmap join $ titleWrap $ widgetHoldDyn $ ffor activeCursD $ \curSet -> case S.toList curSet of
+    [] -> do
+      divClass "network-title-name" $ h3 $ localizedText NPSNoCurrencies
+      pure $ pure Nothing
+    cur:[] -> do
+      divClass "network-title-name" $ h3 $ localizedText $ NPSTitleCur cur
+      divClass "network-title-cur" $ refreshIndexerInfo =<< buttonClass "button button-outline net-refresh-btn" NPSRefresh
+      pure $ pure (Just cur)
+    curs -> do
+      divClass "network-title-name" $ h3 $ localizedText $ NPSTitle
+      curD <- divClass "network-title-cur" $ currenciesDropdown minitCur curs
+      divClass "network-title-cur" $ refreshIndexerInfo =<< buttonClass "button button-outline net-refresh-btn" NPSRefresh
+      pure curD
   baseHorSep
-  void $ widgetHoldDyn $ ffor curD $ \cur -> optionsContent cur
+  pure curD
   where
     titleWrap  = divClass "network-title" . divClass "network-title-table" . divClass "network-title-row"
     baseHorSep = elAttr "hr" [("class","network-hr-sep"   )] blank
-    currenciesDropdown val allCurs = do
+    currenciesDropdown :: MonadFrontBase t m => Maybe Currency -> [Currency] -> m (Dynamic t (Maybe Currency))
+    currenciesDropdown minitKey currs = do
       langD <- getLanguage
-      let curD = constDyn val
-      initKey <- sample . current $ curD
-      let listCursD = ffor langD $ \l -> M.fromList $ fmap (\v -> (v, localizedShow l v)) allCurs
-          ddnCfg = DropdownConfig {
-                _dropdownConfig_setValue   = updated curD
-              , _dropdownConfig_attributes = constDyn ("class" =: "select-lang")
-              }
-      dp <- dropdown initKey listCursD ddnCfg
-      let selD = _dropdown_value dp
-      fmap updated $ holdUniqDyn selD
+      let listCursD = do
+            l <- langD
+            pure $ M.fromList $ fmap (\v -> (v, localizedShow l v)) currs
+      let initKey = case minitKey of
+            Nothing -> head currs
+            Just k -> if k `elem` currs then k else head currs
+      dp <- dropdown initKey listCursD $ def &
+        dropdownConfig_attributes .~ constDyn ("class" =: "select-lang")
+      (fmap . fmap) Just $ holdUniqDyn $ _dropdown_value dp
 
-optionsContent :: MonadFront t m => Currency -> m ()
-optionsContent cur = do
-  gpbE <- getPostBuild
-  lineOption $ do
-    statusD <- flip fmap (tempGetStatus cur) $ \sD -> ffor sD $ \case
-                    Left err  -> NPSError err
-                    Right v   -> NPSStatusVal v
-    lineOptionNoEdit NPSStatus statusD NPSStatusDescr
-  selE <- lineOption $ do
-    nameOption NPSServer
-    baseUrlD <- fmap (NPSServerVal <$>) $ tempGetServer cur
-    (e,_) <- el' "div" $ do
-      valueOptionDyn baseUrlD
-      divClass "network-name-edit" $ localizedText NPSServerValEdit
-    let selE = cur <$ domEvent Click e
-    descrOption NPSServerDescr
-    labelHorSep
-    pure selE
-  lineOption $ do
-    heightD <- flip fmap (tempGetHeight cur) $ \hD -> ffor hD $ \case
-                 Left err   -> NPSError err
-                 Right hrsp -> NPSHeightVal hrsp
-    lineOptionNoEdit NPSHeight heightD NPSHeightDescr
-  void $ nextWidget $ ffor selE $ \cur -> Retractable {
-      retractableNext = pageSelectionOfServer cur
-    , retractablePrev = Nothing
-    }
+serversInfoPage :: MonadFront t m => Currency -> m ()
+serversInfoPage initCur = wrapper NPSTitle (Just $ pure $ serversInfoPage initCur) False $ mdo
+  curD <- networkPageHeader $ Just initCur
+  void $ widgetHoldDyn $ ffor curD $ \case
+    Nothing -> pure ()
+    Just cur -> do
+      allIndsD <- getIndexerInfoD
+      let indMapD = fmap (M.filter (isJust . join . fmap (M.lookup cur . indInfoHeights))) allIndsD
+      void $ listWithKey indMapD $ \url minfoD -> lineOption $ widgetHoldDyn $ ffor minfoD $ \minfo -> do
+        divClass "network-name" $ do
+          let cls = if isJust minfo then "indexer-online" else "indexer-offline"
+          elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
+          text $ T.pack . showBaseUrl $ url
+        maybe (pure ()) (descrOption . NPSLatency . indInfoLatency) minfo
+        descrOption $ maybe NPSOffline (maybe (NPSNoIndex cur) NPSHeightInfo . M.lookup cur . indInfoHeights) minfo
+        labelHorSep
 
 lineOptionNoEdit :: MonadFront t m
                  => NetworkPageStrings
@@ -94,73 +164,10 @@ nameOption, descrOption :: (MonadFront t m, LocalizedPrint a) => a -> m ()
 nameOption = divClass "network-name"    . localizedText
 descrOption = (>>) elBR . divClass "network-descr" . localizedText
 
-valueOptionDyn :: (MonadFront t m, LocalizedPrint a) => Dynamic t a -> m ()
+valueOptionDyn, descrOptionDyn :: (MonadFront t m, LocalizedPrint a) => Dynamic t a -> m ()
 valueOptionDyn v = getLanguage >>= \langD -> divClass "network-value" $ dynText $ ffor2 langD v localizedShow
+descrOptionDyn v = getLanguage >>= \langD -> (>>) elBR (divClass "network-descr" $ dynText $ ffor2 langD v localizedShow)
 
 labelHorSep, elBR :: MonadFront t m => m ()
 labelHorSep = elAttr "hr" [("class","network-hr-sep-lb")] blank
 elBR = el "br" blank
-
-pageSelectionOfServer :: MonadFront t m => Currency -> m ()
-pageSelectionOfServer cur = wrapper NPSTitle (Just $ pure $ pageSelectionOfServer cur) False $ do
-  h3 $ localizedText $ NPSSelectServer cur
-  listD <- tempGetListServer cur
-  list <- sample $ current listD
-  selE <- fmap leftmost $ traverse renderItem list
-  -- TODO: Do something for changing URL
-  void $ nextWidget $ ffor selE $ \_ -> Retractable {
-      retractableNext = networkPage $ Just cur
-    , retractablePrev = Just $ pure $ networkPage $ Just cur
-    }
-  where
-    renderItem baseUrl = do
-      (e, _) <- divClass' "network-sel-cur-item" $ text $ T.pack $ showBaseUrl baseUrl
-      pure $ baseUrl <$ domEvent Click e
-
--- | Temporary stubs for data
-data TempErr =
-    TempErr
-  | TempErrNoData
-
-instance LocalizedPrint TempErr where
-  localizedShow l v = case l of
-    English -> case v of
-      TempErr       -> "Error"
-      TempErrNoData -> "It is not possibleto receive data"
-    Russian -> case v of
-      TempErr       -> "Ошибка"
-      TempErrNoData -> "Невозможно получить данные"
-
-tempGetStatus:: MonadFront t m => Currency -> m (Dynamic t (Either TempErr Int))
-tempGetStatus = \case
-  BTC   -> pure $ pure $ Right 1
-  ERGO  -> pure $ pure $ Left TempErr
-
-tempGetHeight :: MonadFront t m => Currency -> m (Dynamic t (Either TempErr BlockHeight))
-tempGetHeight = \case
-  BTC   -> pure $ pure $ Right 5
-  ERGO  -> pure $ pure $ Right 3
-
-tempGetServer :: MonadFront t m => Currency -> m (Dynamic t BaseUrl)
-tempGetServer = \case
-  BTC   -> do baseUrl <- liftIO $ parseBaseUrl "http://test.serverbtc.ru"
-              pure $ pure baseUrl
-  ERGO  -> do baseUrl <- liftIO $ parseBaseUrl "http://test.serverergo.ru"
-              pure $ pure baseUrl
-
-tempGetListServer :: MonadFront t m => Currency -> m (Dynamic t [BaseUrl])
-tempGetListServer = \case
-  BTC   -> do listUrls <- liftIO $ sequence [ parseBaseUrl "http://test.serverbtc.ru"
-                                            , parseBaseUrl "http://test.serverbtc1.ru"
-                                            , parseBaseUrl "http://test.serverbtc2.ru"
-                                            , parseBaseUrl "http://test.serverbtc3.ru"
-                                            , parseBaseUrl "http://test.serverbtc4.ru"
-                                            ]
-              pure $ pure listUrls
-  ERGO  -> do listUrls <- liftIO $ sequence [ parseBaseUrl "http://test.serverergo.ru"
-                                            , parseBaseUrl "http://test.serverergo1.ru"
-                                            , parseBaseUrl "http://test.serverergo2.ru"
-                                            , parseBaseUrl "http://test.serverergo3.ru"
-                                            , parseBaseUrl "http://test.serverergo4.ru"
-                                            ]
-              pure $ pure listUrls

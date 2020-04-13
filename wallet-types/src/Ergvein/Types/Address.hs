@@ -57,7 +57,7 @@ instance Serialize VLAddr where
 
 data ErgAddress
   = ErgPubKeyAddress     { getErgAddrAL      :: !VLAddr }
-  | ErgScriptHashAddress { getErgAddrHash160 :: !Hash160 }
+  | ErgScriptHashAddress { getErgAddrHash160 :: !Hash192 }
   | ErgScriptAddress     { getErgAddrAL      :: !VLAddr }
   deriving (Eq, Generic, Show, Read, Serialize)
 

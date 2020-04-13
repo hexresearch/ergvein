@@ -1,4 +1,4 @@
-module Ergvein.Types.Keys(
+module Ergvein.Types.Keys (
     XPrvKey(..)
   , XPubKey(..)
   , EgvRootXPrvKey(..)
