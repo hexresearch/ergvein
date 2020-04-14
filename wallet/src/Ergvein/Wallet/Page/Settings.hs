@@ -13,33 +13,40 @@ import Reflex.Dom
 
 import Ergvein.Text
 import Ergvein.Types.Currency
+import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Currencies
-import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Page.Currencies
+import Ergvein.Wallet.Page.Settings.Network
+import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Widget.GraphPinCode
 import Ergvein.Wallet.Wrapper
+
+import qualified Data.Set as S
 
 data SubPageSettings
   = GoLanguage
   | GoCurrencies
   | GoUnits
+  | GoNetwork
 
 settingsPage :: MonadFront t m => m ()
 settingsPage = wrapper STPSTitle (Just $ pure settingsPage) True $ do
   divClass "initial-options grid1" $ do
-    goLangE   <- fmap (GoLanguage <$) $ outlineButton STPSButLanguage
+    goLangE   <- fmap (GoLanguage   <$) $ outlineButton STPSButLanguage
     goCurrE   <- fmap (GoCurrencies <$) $ outlineButton STPSButActiveCurrs
-    goUnitsE  <- fmap (GoUnits    <$) $ outlineButton STPSButUnits
-    let goE = leftmost [goLangE, goCurrE, goUnitsE]
+    goNetE    <- fmap (GoNetwork    <$) $ outlineButton STPSButNetwork
+    goUnitsE  <- fmap (GoUnits      <$) $ outlineButton STPSButUnits
+    let goE = leftmost [goLangE, goCurrE, goNetE, goUnitsE]
     void $ nextWidget $ ffor goE $ \spg -> Retractable {
         retractableNext = case spg of
           GoLanguage   -> languagePage
           GoCurrencies -> currenciesPage
+          GoNetwork    -> networkSettingsPage
           GoUnits      -> unitsPage
       , retractablePrev = Just $ pure settingsPage
       }
@@ -60,21 +67,19 @@ languagePage = wrapper STPSTitle (Just $ pure languagePage) True $ do
     selE <- fmap updated $ holdUniqDyn selD
     widgetHold (pure ()) $ setLanguage <$> selE
     settings <- getSettings
-    updateSettings $ ffor selE (\lng -> settings {settingsLang = lng})
-    pure ()
+    updE <- updateSettings $ ffor selE (\lng -> settings {settingsLang = lng})
+    showSuccessMsg $ STPSSuccess <$ updE
   pure ()
 
 currenciesPage :: MonadFront t m => m ()
 currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
   h3 $ localizedText STPSSetsActiveCurrs
   divClass "initial-options" $ do
-    s <- getSettings
-    anon_name <- getWalletName
-    currListE <- selectCurrenciesWidget $ getActiveCurrencies anon_name s
-    updateSettings $ ffor currListE $ \curs -> s {settingsActiveCurrencies = acSet anon_name s curs}
-  where
-    getActiveCurrencies name s = fromMaybe allCurrencies $ Map.lookup name $ activeCurrenciesMap $ settingsActiveCurrencies s
-    acSet l s curs = ActiveCurrencies $ Map.insert l curs $ activeCurrenciesMap $ settingsActiveCurrencies s
+    activeCursD <- getActiveCursD
+    void $ widgetHoldDyn $ ffor activeCursD $ \currs -> do
+      currListE <- selectCurrenciesWidget $ S.toList currs
+      updE <- updateActuveCurs $ fmap (\cl -> const (S.fromList cl)) currListE
+      showSuccessMsg $ STPSSuccess <$ updE
 
 unitsPage :: MonadFront t m => m ()
 unitsPage = wrapper STPSTitle (Just $ pure unitsPage) True $ mdo

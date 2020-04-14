@@ -26,6 +26,7 @@ import Servant.Client
 
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as MI
+import qualified Data.Map.Strict as M
 import qualified Data.List as L
 import qualified Data.Set as S
 
@@ -35,7 +36,7 @@ import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Localization.Client
 
-getHeight :: MonadFrontBase t m => Event t HeightRequest -> m (Event t (Either ClientErr HeightResponse))
+getHeight :: (MonadFrontBase t m, MonadClient t m) => Event t HeightRequest -> m (Event t (Either ClientErr HeightResponse))
 getHeight = requester meanHeight getHeightEndpoint
 
 meanHeight :: [HeightResponse] -> Either ClientMessage HeightResponse
@@ -43,25 +44,25 @@ meanHeight [] = Left CMSEmpty
 meanHeight [x] = Right x
 meanHeight xs = Right $ head $ drop (length xs `div` 2) $ sortOn heightRespHeight xs
 
-getBalance :: MonadFrontBase t m => Event t BalanceRequest -> m (Event t (Either ClientErr BalanceResponse))
+getBalance :: (MonadFrontBase t m, MonadClient t m) => Event t BalanceRequest -> m (Event t (Either ClientErr BalanceResponse))
 getBalance = requesterEq getBalanceEndpoint
 
-getBlockFilters :: MonadFrontBase t m => Event t BlockFiltersRequest -> m (Event t (Either ClientErr BlockFiltersResponse))
-getBlockFilters = requesterEq getBlockFiltersEndpoint 
+getBlockFilters :: (MonadFrontBase t m, MonadClient t m) => Event t BlockFiltersRequest -> m (Event t (Either ClientErr BlockFiltersResponse))
+getBlockFilters = requesterEq getBlockFiltersEndpoint
 
-getTxHashHistory :: MonadFrontBase t m => Event t TxHashHistoryRequest -> m (Event t (Either ClientErr TxHashHistoryResponse))
+getTxHashHistory :: (MonadFrontBase t m, MonadClient t m) => Event t TxHashHistoryRequest -> m (Event t (Either ClientErr TxHashHistoryResponse))
 getTxHashHistory = requesterEq getTxHashHistoryEndpoint
 
-getTxMerkleProof :: MonadFrontBase t m => Event t TxMerkleProofRequest -> m (Event t (Either ClientErr TxMerkleProofResponse))
+getTxMerkleProof :: (MonadFrontBase t m, MonadClient t m) => Event t TxMerkleProofRequest -> m (Event t (Either ClientErr TxMerkleProofResponse))
 getTxMerkleProof = requesterEq getTxMerkleProofEndpoint
 
-getTxHexView :: MonadFrontBase t m => Event t TxHexViewRequest -> m (Event t (Either ClientErr TxHexViewResponse))
+getTxHexView :: (MonadFrontBase t m, MonadClient t m) => Event t TxHexViewRequest -> m (Event t (Either ClientErr TxHexViewResponse))
 getTxHexView = requesterEq getTxHexViewEndpoint
 
-getTxFeeHistogram :: MonadFrontBase t m => Event t TxFeeHistogramRequest -> m (Event t (Either ClientErr TxFeeHistogramResponse))
+getTxFeeHistogram :: (MonadFrontBase t m, MonadClient t m) => Event t TxFeeHistogramRequest -> m (Event t (Either ClientErr TxFeeHistogramResponse))
 getTxFeeHistogram = requesterEq getTxFeeHistogramEndpoint
 
-txBroadcast :: MonadFrontBase t m => Event t TxBroadcastRequest -> m (Event t (Either ClientErr TxBroadcastResponse))
+txBroadcast :: (MonadFrontBase t m, MonadClient t m) => Event t TxBroadcastRequest -> m (Event t (Either ClientErr TxBroadcastResponse))
 txBroadcast = requesterEq txBroadcastEndpoint
 
 instance MonadIO m => HasClientManager (ReaderT Manager m) where
@@ -79,7 +80,7 @@ validateEq rs = case L.nub rs of
 
 -- Implements request logic:
 -- Request from n nodes and check if results are equal.
-requesterEq :: (MonadFrontBase t m, Eq a, Show a, Show b)
+requesterEq :: (MonadFrontBase t m, MonadClient t m, Eq a, Show a, Show b)
   => (BaseUrl -> b -> ReaderT Manager IO (Either e a))    -- ^ Request function
   -> Event t b                                            -- ^ Request event
   -> m (Event t (Either ClientErr a))                     -- ^ Result
@@ -87,13 +88,13 @@ requesterEq = requester validateEq
 
 -- Implements request logic:
 -- Request from n nodes and check if results are equal.
-requester :: (MonadFrontBase t m, Eq a, Show a, Show b)
+requester :: (MonadFrontBase t m, MonadClient t m, Eq a, Show a, Show b)
   => ([a] -> Either ClientMessage a)                      -- ^ Validation of inputs
   -> (BaseUrl -> b -> ReaderT Manager IO (Either e a))    -- ^ Request function
   -> Event t b                                            -- ^ Request event
   -> m (Event t (Either ClientErr a))                     -- ^ Result
 requester validateRes endpoint reqE = mdo
-  uss  <- readExternalRef =<< getUrlsRef
+  uss  <- fmap M.keysSet . readExternalRef =<< getActiveUrlsRef
   let initReqE = ffor reqE (\req -> Just (req, [], uss))
   drawE <- delay 0.1 $ leftmost [initReqE, redrawE]
   respE <- fmap (switch . current) $ widgetHold (pure never) $ ffor drawE $ \case
@@ -109,7 +110,7 @@ requester validateRes endpoint reqE = mdo
     ReqFailUrls       -> Just $ Left ClientErrNoUrls
     ReqTimeout {}     -> Nothing
 
-requesterBody :: forall t m e a b . (MonadFrontBase t m, Show a)
+requesterBody :: forall t m e a b . ((MonadFrontBase t m, MonadClient t m), Show a)
   => ([a] -> Either ClientMessage a)                      -- ^ Validation of inputs
   -> S.Set BaseUrl
   -> (BaseUrl -> b -> ReaderT Manager IO (Either e a))

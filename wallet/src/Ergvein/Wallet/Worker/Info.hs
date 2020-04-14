@@ -5,21 +5,23 @@ module Ergvein.Wallet.Worker.Info
 
 import Control.Monad.Reader
 import Data.Time
-import Ergvein.Text
-import Ergvein.Wallet.Native
+import Reflex.ExternalRef
+
 import Ergvein.Index.API.Types
 import Ergvein.Index.Client
-import Ergvein.Wallet.Monad
-import Reflex.ExternalRef
+import Ergvein.Text
+import Ergvein.Wallet.Client
+import Ergvein.Wallet.Monad.Front
+import Ergvein.Wallet.Native
 
 import qualified Data.Map as M
 
 infoWorkerInterval :: NominalDiffTime
 infoWorkerInterval = 60
 
-infoWorker :: MonadFrontBase t m => m ()
+infoWorker :: MonadFront t m => m ()
 infoWorker = do
-  indexerInfoRef  <- getIndexerInfoRef
+  indexerInfoRef  <- getActiveUrlsRef
   mng             <- getClientMaganer
   refreshE        <- fmap fst $ getIndexerInfoEF
   te <- fmap void $ tickLossyFromPostBuildTime infoWorkerInterval

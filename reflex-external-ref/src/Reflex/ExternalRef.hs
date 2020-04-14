@@ -16,6 +16,7 @@ module Reflex.ExternalRef(
   , externalRefBehavior
   , externalRefDynamic
   , externalFromDynamic
+  , fmapExternalRef
   ) where
 
 import Control.DeepSeq
@@ -107,4 +108,15 @@ externalFromDynamic da = do
   a0 <- sample . current $ da
   r <- newExternalRef a0
   performEvent_ $ fmap (writeExternalRef r) $ updated da
+  pure r
+
+-- | Creates external ref as a result of "fmapping" a function to the original ref.
+-- ExternalRef t is not a true Functior, since it requres monadic action to "fmap"
+-- Editing of the new ref has no effect on the original dynamic.
+fmapExternalRef :: (MonadIO m, TriggerEvent t m, PerformEvent t m, MonadIO (Performable m))
+  => (a -> b) -> ExternalRef t a -> m (ExternalRef t b)
+fmapExternalRef f ea = do
+  v0 <- readExternalRef ea
+  r  <- newExternalRef $ f v0
+  performEvent_ $ fmap (writeExternalRef r . f) $ externalEvent ea
   pure r
