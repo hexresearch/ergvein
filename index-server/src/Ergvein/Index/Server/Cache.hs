@@ -27,6 +27,7 @@ import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.Utils
 import Ergvein.Text
+import Database.LevelDB.Internal
 
 import qualified Data.Conduit.Internal as DCI
 import qualified Data.Conduit.List as CL
@@ -76,21 +77,32 @@ openCacheDb :: (MonadLogger m, MonadIO m) => FilePath -> DBPool -> m DB
 openCacheDb cacheDirectory pool = do
   canonicalPathDirectory <- liftIO $ canonicalizePath cacheDirectory
   isDbDirExist <- liftIO $ doesDirectoryExist canonicalPathDirectory
-  liftIO $ if isDbDirExist then pure ()
-                           else createDirectory canonicalPathDirectory                  
-  levelDBContext <- liftIO $ open canonicalPathDirectory def `catch` restoreCache pool canonicalPathDirectory
+  liftIO $ unless isDbDirExist $ createDirectory canonicalPathDirectory                  
+  levelDBContext <- liftIO $ do
+    db <- open canonicalPathDirectory def
+    dbSchemaVersion <- dbSchemaVersion db
+    if dbSchemaVersion == Just schemaVersion then do
+      pure db
+    else do
+      unsafeClose db
+      restoreCache canonicalPathDirectory
+    `catch` (\(SomeException _) -> restoreCache canonicalPathDirectory)
   pure levelDBContext
   where
+    dbSchemaVersion db = do
+      maybeDbSchemaVersion <- get db def cachedSchemaVersionKey 
+      pure $ unflatExact <$> maybeDbSchemaVersion
     clearDirectoryContent path = do
       content <- listDirectory path
       let contentFullPaths = (path </>) <$> content
       forM_ contentFullPaths removePathForcibly
 
-    restoreCache :: DBPool -> FilePath -> SomeException -> IO DB
-    restoreCache p pt _ = do
+    restoreCache :: FilePath -> IO DB
+    restoreCache pt = do
        clearDirectoryContent pt
        ctx <- open pt def {createIfMissing = True }
-       runStdoutLoggingT $ loadCache ctx p
+       runStdoutLoggingT $ loadCache ctx pool
+       put ctx def cachedSchemaVersionKey (flat schemaVersion) 
        pure ctx
 
 loadCache :: (MonadLogger m, MonadIO m) => DB -> DBPool -> m ()
