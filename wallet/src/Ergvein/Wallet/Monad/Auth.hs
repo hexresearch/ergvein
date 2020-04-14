@@ -4,6 +4,7 @@ module Ergvein.Wallet.Monad.Auth(
   , liftUnauthed
   ) where
 
+import Control.Concurrent
 import Control.Concurrent.Chan (Chan)
 import Control.Monad.Random.Class
 import Control.Monad.Reader
@@ -333,9 +334,11 @@ liftAuth ma0 ma = mdo
               consRef
 
         flip runReaderT env $ do -- Workers and other routines go here
-          filtersLoader
-          infoWorker
-          heightAsking
+          -- Remove all three: works fine
+          -- filtersLoader
+          -- infoWorker
+          -- heightAsking
+          pure ()
         runOnUiThreadM $ runReaderT setupTlsManager env
         runReaderT (wrapped ma) env
   let
@@ -383,7 +386,8 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
   {-# INLINE refreshIndexerInfo #-}
   pingIndexer urlE = do
     mng <- getClientMaganer
-    performEvent $ (pingIndexerIO mng) <$> urlE
+    performEventAsync $ ffor urlE $ \url fire -> void $ liftIO $ forkIO $ do
+      fire =<< pingIndexerIO mng url
   activateURL urlE = do
     actRef  <- asks env'activeUrls
     iaRef   <- asks env'inactiveUrls
