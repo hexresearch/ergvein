@@ -69,11 +69,11 @@ instance FromJSON EncryptedPrivateStorage where
       Nothing -> fail "failed to read iv"
       Just iv' -> pure $ EncryptedPrivateStorage ciphertext salt iv'
 
-type PublicKeystore = M.Map Currency EgvPubKeyсhain
+type PublicStorage = M.Map Currency EgvPubKeyсhain
 
 data ErgveinStorage = ErgveinStorage {
     _storage'encryptedPrivateStorage :: EncryptedPrivateStorage
-  , _storage'publicKeys              :: PublicKeystore
+  , _storage'publicKeys              :: PublicStorage
   , _storage'walletName              :: Text
   }
 

@@ -233,8 +233,8 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   {-# INLINE getAddressByCurIx #-}
   getWalletName = fmap (_storage'walletName . _authInfo'storage) $ readExternalRef =<< asks env'authRef
   {-# INLINE getWalletName #-}
-  getPublicKeystore = fmap (_storage'publicKeys . _authInfo'storage) $ readExternalRef =<< asks env'authRef
-  {-# INLINE getPublicKeystore #-}
+  getPublicStorage = fmap (_storage'publicKeys . _authInfo'storage) $ readExternalRef =<< asks env'authRef
+  {-# INLINE getPublicStorage #-}
   storeWallet e = do
     authInfo <- readExternalRef =<< asks env'authRef
     performEvent_ $ ffor e $ \_ -> do

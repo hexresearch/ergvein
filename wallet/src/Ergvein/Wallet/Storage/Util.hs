@@ -68,8 +68,8 @@ createPubKeyсhain root currency =
       internalKeys = MI.fromList [(index, derivePubKey masterKey Internal (fromIntegral index)) | index <- [0..(gapLimit-1)]]
   in EgvPubKeyсhain masterKey externalKeys internalKeys
 
-createPublicKeystore :: EgvRootXPrvKey -> PublicKeystore
-createPublicKeystore root = M.fromList [(currency, createPubKeyсhain root currency) | currency <- allCurrencies]
+createPublicStorage :: EgvRootXPrvKey -> PublicStorage
+createPublicStorage root = M.fromList [(currency, createPubKeyсhain root currency) | currency <- allCurrencies]
 
 createStorage :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either StorageAlert ErgveinStorage)
 createStorage mnemonic (login, pass) = case mnemonicToSeed "" mnemonic of
@@ -77,7 +77,7 @@ createStorage mnemonic (login, pass) = case mnemonicToSeed "" mnemonic of
   Right seed -> do
     let root = EgvRootXPrvKey $ makeXPrvKey seed
         privateStorage = createPrivateStorage seed root
-        publicKeystore = createPublicKeystore root
+        publicKeystore = createPublicStorage root
     encryptPrivateStorageResult <- encryptPrivateStorage privateStorage pass
     case encryptPrivateStorageResult of
       Left err -> pure $ Left err

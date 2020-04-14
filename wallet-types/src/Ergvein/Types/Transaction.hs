@@ -1,8 +1,37 @@
-module Ergvein.Types.Transaction where
+module Ergvein.Types.Transaction (
+      BtcTx(..)
+    , ErgTx(..)
+    , EgvTx(..)
+    , TxId
+    , TxHexView
+    , BlockHeight
+    , BlockHash
+    , TxBlockIndex
+    , MerkleSum
+    , TxMerkleProof
+    , TxFee
+    , PubKeyScriptHash
+    , TxHash
+    , TxOutIndex
+    , currencyHeightStart
+  ) where
 
 import Data.Text
 import Data.Word
 import Ergvein.Types.Currency
+import Data.ByteString (ByteString)
+
+import qualified Network.Haskoin.Transaction as HK
+
+type BtcTx = HK.Tx
+
+newtype ErgTx = ErgTransaction ByteString
+  deriving (Eq, Show, Read)
+
+data EgvTx
+  = BtcTx { getBtcTx :: !BtcTx }
+  | ErgTx { getErgTx :: !ErgTx }
+  deriving (Eq, Show, Read)
 
 -- | Hexadecimal representation of transaction id
 type TxId = Text
@@ -14,7 +43,7 @@ type TxHexView = Text
 type BlockHeight = Word64
 
 -- | Hash of block (usually header only) that identifies block.
-type BlockHash = Text 
+type BlockHash = Text
 
 -- | Index of the transaction in block
 type TxBlockIndex = Word

@@ -20,12 +20,12 @@ import qualified Data.IntMap.Strict          as MI
 import qualified Data.Map.Strict             as M
 import qualified Ergvein.Wallet.Filters.Scan as Filters
 
--- | Loads current PublicKeystore, performs BIP44 account discovery algorithm and
--- stores updated PublicKeystore to the wallet file.
+-- | Loads current PublicStorage, performs BIP44 account discovery algorithm and
+-- stores updated PublicStorage to the wallet file.
 accountDiscovery :: MonadFront t m => m ()
 accountDiscovery = do
   logWrite "Key scanning started"
-  pubKeystore <- getPublicKeystore
+  pubKeystore <- getPublicStorage
   let showPubKeystoreDiff updatedPubKeystore =
         "Discovered new BTC keys: " ++ show (btcAddressesCount updatedPubKeystore - btcAddressesCount pubKeystore) ++ "\n" ++
         "Discovered new ERGO keys: " ++ show (ergAddressesCount updatedPubKeystore - ergAddressesCount pubKeystore)
@@ -42,9 +42,9 @@ accountDiscovery = do
   setAuthInfoE <- setAuthInfo updatedAuthE
   storeWallet setAuthInfoE
 
--- Gets old PublicKeystore, performs BIP44 account discovery algorithm for all currencies
--- then returns Event with updated PublicKeystore.
-scanKeys :: MonadFront t m => PublicKeystore -> m (Event t PublicKeystore)
+-- Gets old PublicStorage, performs BIP44 account discovery algorithm for all currencies
+-- then returns Event with updated PublicStorage.
+scanKeys :: MonadFront t m => PublicStorage -> m (Event t PublicStorage)
 scanKeys pubKeystore = do
   scanEvents <- traverse (applyScan pubKeystore) allCurrencies
   let scanEvents' = [(M.fromList . (: []) <$> e) | e <- scanEvents]
@@ -56,7 +56,7 @@ scanKeys pubKeystore = do
   pure allFinishedE
 
 -- TODO: use M.lookup instead of M.! and show error msg if currency not found
-applyScan :: MonadFront t m => PublicKeystore -> Currency -> m (Event t (Currency, EgvPubKeyсhain))
+applyScan :: MonadFront t m => PublicStorage -> Currency -> m (Event t (Currency, EgvPubKeyсhain))
 applyScan pubKeystore currency = scanCurrencyKeys currency (getKeychain currency pubKeystore)
   where getKeychain cur pubKeystore' = pubKeystore' M.! cur
 
