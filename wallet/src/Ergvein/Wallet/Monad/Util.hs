@@ -12,21 +12,26 @@ module Ergvein.Wallet.Monad.Util
   , logWarn
   , logError
   , postLog
+  , performFork
+  , performFork_
   , worker
   ) where
 
 import Control.Concurrent
 import Control.Concurrent.Async
+import Control.Exception
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
-import Data.Time
 import Data.Text (pack)
+import Data.Time
 import Ergvein.Text
 import Ergvein.Wallet.Log.Types
-import Ergvein.Wallet.Native
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Front
+import Ergvein.Wallet.Native
+import Foreign.JavaScript.TH (WithJSContextSingleton(..))
 import Reflex.ExternalRef
+import Reflex.Spider.Internal (SpiderHostFrame(..), EventM(..))
 
 import qualified Control.Immortal as I
 
@@ -112,6 +117,22 @@ runOnUiThreadM ma = do
   ch <- getUiChan
   liftIO $ writeChan ch ma
 
+-- | Helper that runs action in event in new thread with respect for logging of errors.
+performFork :: forall t m a . MonadFrontBase t m => Event t (Performable m a) -> m (Event t a)
+performFork em = performEventAsync $ ffor em $ \ma fire -> do
+  unlift <- askUnliftIO
+  void . liftIO . forkIO $ do
+    ea :: Either SomeException a <- try $ unliftIO unlift ma
+    either (logWrite . ("Forked event failed: " <>) . showt) fire ea
+
+-- | Helper that runs action in event in new thread with respect for logging of errors.
+performFork_ :: forall t m . MonadFrontBase t m => Event t (Performable m ()) -> m ()
+performFork_ em = performEvent_ $ ffor em $ \ma -> do
+  unlift <- askUnliftIO
+  void . liftIO . forkIO $ do
+    ea :: Either SomeException () <- try $ unliftIO unlift ma
+    either (logWrite . ("Forked event failed: " <>) . showt) pure ea
+
 -- | Helper that starts new immortal thread with logging of errors
 worker :: (MonadUnliftIO m, PlatformNatives) => String -> (I.Thread -> m ()) -> m I.Thread
 worker lbl f = I.createWithLabel lbl $ \thread -> I.onUnexpectedFinish thread logthem (f thread)
@@ -121,3 +142,15 @@ worker lbl f = I.createWithLabel lbl $ \thread -> I.onUnexpectedFinish thread lo
         logWrite $ "Worker " <> pack lbl <> " exit with: " <> showt e
         liftIO $ threadDelay 1000000
       _ -> pure ()
+
+instance MonadUnliftIO m => MonadUnliftIO (WithJSContextSingleton x m) where
+  withRunInIO = wrappedWithRunInIO WithJSContextSingleton unWithJSContextSingleton
+  {-# INLINE withRunInIO #-}
+
+instance MonadUnliftIO (SpiderHostFrame x) where
+  withRunInIO = wrappedWithRunInIO SpiderHostFrame runSpiderHostFrame
+  {-# INLINE withRunInIO #-}
+
+instance MonadUnliftIO (EventM x) where
+  withRunInIO = wrappedWithRunInIO EventM unEventM
+  {-# INLINE withRunInIO #-}

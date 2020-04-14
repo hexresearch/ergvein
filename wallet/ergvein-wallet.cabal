@@ -225,8 +225,8 @@ executable ergvein
   ghc-options:         -threaded -rtsopts "-with-rtsopts=-N -A64m -AL256m -qn4"
   build-depends:
       base
-    , directory
     , data-default
+    , directory
     , ergvein-wallet
     , ergvein-wallet-native
     , optparse-generic  >= 1.3      && < 1.4
