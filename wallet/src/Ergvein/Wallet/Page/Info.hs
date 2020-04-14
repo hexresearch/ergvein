@@ -43,10 +43,10 @@ infoPage cur = wrapper (InfoTitle cur) (Just $ pure $ infoPage cur) False $ divC
   textLabel ConfirmedBalance $ text balCfrmVal
   vertSpacer
 
-  pks :: PublicStorage <- getPublicStorage
-  let masterPKeyMb = (xPubExport (getCurrencyNetwork cur) . egvXPubKey . egvPubKeyсhain'master) <$> M.lookup cur pks
+  pks :: PubStorage <- getPubStorage
+  let masterPKeyMb = (xPubExport (getCurrencyNetwork cur) . egvXPubKey . pubKeystore'master) <$> M.lookup cur pks
       partsPKey = T.chunksOf 20 $ fromMaybe "" masterPKeyMb
-  textLabel MasterPublicKey $ mapM_ (\v -> text v >> br) partsPKey
+  textLabel MasterPubKey $ mapM_ (\v -> text v >> br) partsPKey
   pure ()
   where
     getSettingsUnits = fromMaybe defUnits . settingsUnits

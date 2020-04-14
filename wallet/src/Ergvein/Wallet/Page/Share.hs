@@ -33,8 +33,8 @@ import Network.Haskoin.Keys
 
 sharePage :: MonadFront t m => Currency -> m ()
 sharePage cur = wrapper (ShareTitle cur) (Just $ pure $ sharePage cur) False $ divClass "share-content" $ do
-  pks :: PublicStorage <- getPublicStorage
-  let xPubKeyMb  = egvPubKeyсhain'master <$> M.lookup cur pks
+  pks :: PubStorage <- getPubStorage
+  let xPubKeyMb  = pubKeystore'master <$> M.lookup cur pks
       addressMb  = egvXPubKeyToEgvAddress <$> xPubKeyMb
   maybe errorPage renderPage addressMb
   pure ()
