@@ -4,8 +4,10 @@ module Ergvein.Wallet.Worker.Info
   ) where
 
 import Control.Monad.Reader
+import Data.Text as T
 import Data.Time
 import Reflex.ExternalRef
+import Servant.Client
 
 import Ergvein.Index.API.Types
 import Ergvein.Index.Client
@@ -32,10 +34,12 @@ infoWorker = do
       t0 <- getCurrentTime
       res <- runReaderT (getInfoEndpoint u ()) mng
       t1 <- getCurrentTime
-      pure $ (u,) $ case res of
-        Left _ -> Nothing
+      case res of
+        Left err -> do
+          logWrite $ "[InfoWorker][" <> T.pack (showBaseUrl u) <> "]: " <> showt err
+          pure (u, Nothing)
         Right (InfoResponse vals) -> let
           curmap = M.fromList $ fmap (\(ScanProgressItem cur sh ah) -> (cur, (sh, ah))) vals
-          in Just $ IndexerInfo curmap $ diffUTCTime t1 t0
+          in pure $ (u,) $ Just $ IndexerInfo curmap $ diffUTCTime t1 t0
     writeExternalRef indexerInfoRef $ M.fromList ress
     -- logWrite $ showt ress
