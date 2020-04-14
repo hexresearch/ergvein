@@ -46,6 +46,18 @@ transactionInfoPage cur tr@TransactionMock{..} = divClass "base-container" $ do
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIURL
       divClass "info-body" $ text $ txUrl txInfo
+    divClass "transaction-info-element" $ do
+      divClass "info-descr" $ localizedText HistoryTIHash
+      divClass "info-body" $ text $ txId txInfo
+    case (txLabel txInfo) of
+      Just lbl -> do
+        divClass "transaction-info-element" $ do
+          divClass "info-descr" $ localizedText HistoryTILabel
+          divClass "info-body" $ text lbl
+      Nothing -> pure ()
+    divClass "transaction-info-element" $ do
+      divClass "info-descr" $ localizedText HistoryTIURL
+      divClass "info-body" $ text $ txUrl txInfo
   pure ()
 
 historyTableWidget :: MonadFront t m => [TransactionMock] -> m ([Event t TransactionMock])
