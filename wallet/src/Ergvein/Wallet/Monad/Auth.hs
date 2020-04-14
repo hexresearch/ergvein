@@ -387,8 +387,7 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
   {-# INLINE refreshIndexerInfo #-}
   pingIndexer urlE = do
     mng <- getClientMaganer
-    performEventAsync $ ffor urlE $ \url fire -> void $ liftIO $ forkIO $ do
-      fire =<< pingIndexerIO mng url
+    performFork $ ffor urlE $ liftIO . pingIndexerIO mng
   activateURL urlE = do
     actRef  <- asks env'activeUrls
     iaRef   <- asks env'inactiveUrls
