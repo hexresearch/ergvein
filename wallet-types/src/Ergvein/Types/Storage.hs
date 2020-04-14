@@ -71,20 +71,20 @@ instance FromJSON EncryptedPrivateStorage where
 
 type PublicStorage = M.Map Currency EgvPubKeyсhain
 
-data ErgveinStorage = ErgveinStorage {
+data WalletStorage = WalletStorage {
     _storage'encryptedPrivateStorage :: EncryptedPrivateStorage
   , _storage'publicKeys              :: PublicStorage
   , _storage'walletName              :: Text
   }
 
-makeLenses ''ErgveinStorage
+makeLenses ''WalletStorage
 
-instance Eq ErgveinStorage where
+instance Eq WalletStorage where
   a == b = _storage'walletName a == _storage'walletName b
 
-$(deriveJSON aesonOptionsStripToApostroph ''ErgveinStorage)
+$(deriveJSON aesonOptionsStripToApostroph ''WalletStorage)
 
-data EncryptedErgveinStorage = EncryptedErgveinStorage {
+data EncryptedWalletStorage = EncryptedWalletStorage {
     _encryptedStorage'ciphertext :: ByteString
   , _encryptedStorage'salt       :: ByteString
   , _encryptedStorage'iv         :: IV AES256
@@ -92,10 +92,10 @@ data EncryptedErgveinStorage = EncryptedErgveinStorage {
   , _encryptedStorage'authTag    :: AuthTag
   }
 
-makeLenses ''EncryptedErgveinStorage
+makeLenses ''EncryptedWalletStorage
 
-instance ToJSON EncryptedErgveinStorage where
-  toJSON EncryptedErgveinStorage{..} = object [
+instance ToJSON EncryptedWalletStorage where
+  toJSON EncryptedWalletStorage{..} = object [
       "ciphertext" .= toJSON (bs2Base64Text _encryptedStorage'ciphertext)
     , "salt"       .= toJSON (bs2Base64Text _encryptedStorage'salt)
     , "iv"         .= toJSON (bs2Base64Text (convert _encryptedStorage'iv :: ByteString))
@@ -106,8 +106,8 @@ instance ToJSON EncryptedErgveinStorage where
       curve = Proxy :: Proxy Curve_X25519
       eciesPoint = encodePoint curve _encryptedStorage'eciesPoint :: ByteString
 
-instance FromJSON EncryptedErgveinStorage where
-  parseJSON = withObject "EncryptedErgveinStorage" $ \o -> do
+instance FromJSON EncryptedWalletStorage where
+  parseJSON = withObject "EncryptedWalletStorage" $ \o -> do
     ciphertext <- fmap base64Text2bs (o .: "ciphertext")
     salt <- fmap base64Text2bs (o .: "salt")
     iv <- fmap base64Text2bs (o .: "iv")
@@ -117,7 +117,7 @@ instance FromJSON EncryptedErgveinStorage where
       Nothing -> fail "failed to read iv"
       Just iv' -> case decodePoint curve eciesPoint of
         CryptoFailed _ -> fail "failed to read eciesPoint"
-        CryptoPassed eciesPoint' -> pure $ EncryptedErgveinStorage ciphertext salt iv' eciesPoint' authTag'
+        CryptoPassed eciesPoint' -> pure $ EncryptedWalletStorage ciphertext salt iv' eciesPoint' authTag'
         where
           curve = Proxy :: Proxy Curve_X25519
           authTag' = AuthTag (convert authTag :: Bytes)

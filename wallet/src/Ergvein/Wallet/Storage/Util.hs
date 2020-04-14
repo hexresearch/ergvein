@@ -71,7 +71,7 @@ createPubKeyсhain root currency =
 createPublicStorage :: EgvRootXPrvKey -> PublicStorage
 createPublicStorage root = M.fromList [(currency, createPubKeyсhain root currency) | currency <- allCurrencies]
 
-createStorage :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either StorageAlert ErgveinStorage)
+createStorage :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either StorageAlert WalletStorage)
 createStorage mnemonic (login, pass) = case mnemonicToSeed "" mnemonic of
   Left err -> pure $ Left $ SAMnemonicFail $ showt err
   Right seed -> do
@@ -81,7 +81,7 @@ createStorage mnemonic (login, pass) = case mnemonicToSeed "" mnemonic of
     encryptPrivateStorageResult <- encryptPrivateStorage privateStorage pass
     case encryptPrivateStorageResult of
       Left err -> pure $ Left err
-      Right eps -> pure $ Right $ ErgveinStorage eps publicKeystore login
+      Right eps -> pure $ Right $ WalletStorage eps publicKeystore login
 
 encryptPrivateStorage :: MonadIO m => PrivateStorage -> Password -> m (Either StorageAlert EncryptedPrivateStorage)
 encryptPrivateStorage privateStorage password = liftIO $ do
@@ -111,7 +111,7 @@ decryptPrivateStorage encryptedPrivateStorage password =
     iv = _encryptedPrivateStorage'iv encryptedPrivateStorage
     ciphertext = _encryptedPrivateStorage'ciphertext encryptedPrivateStorage
 
-encryptStorage :: (MonadIO m, MonadRandom m) => ErgveinStorage -> ECIESPubKey -> m (Either StorageAlert EncryptedErgveinStorage)
+encryptStorage :: (MonadIO m, MonadRandom m) => WalletStorage -> ECIESPubKey -> m (Either StorageAlert EncryptedWalletStorage)
 encryptStorage storage publicKey = do
   let curve = Proxy :: Proxy Curve_X25519
   deriveEncryptResult <- deriveEncrypt curve publicKey
@@ -130,9 +130,9 @@ encryptStorage storage publicKey = do
               encryptedData = encryptWithAEAD AEAD_GCM secretKey iv (BS.concat [salt, ivBS, eciesPointBS]) storageBS defaultAuthTagLength
           case encryptedData of
             Left err -> pure $ Left $ SACryptoError $ showt err
-            Right (authTag, ciphertext) -> pure $ Right $ EncryptedErgveinStorage ciphertext salt iv eciesPoint authTag
+            Right (authTag, ciphertext) -> pure $ Right $ EncryptedWalletStorage ciphertext salt iv eciesPoint authTag
 
-decryptStorage :: EncryptedErgveinStorage -> ECIESPrvKey -> Either StorageAlert ErgveinStorage
+decryptStorage :: EncryptedWalletStorage -> ECIESPrvKey -> Either StorageAlert WalletStorage
 decryptStorage encryptedStorage privateKey = do
   let curve = Proxy :: Proxy Curve_X25519
       ciphertext = _encryptedStorage'ciphertext encryptedStorage
@@ -166,7 +166,7 @@ storageFilePrefix :: Text
 storageFilePrefix = "wallet_"
 
 saveStorageToFile :: (MonadIO m, MonadRandom m, HasStoreDir m, PlatformNatives)
-  => ECIESPubKey -> ErgveinStorage -> m ()
+  => ECIESPubKey -> WalletStorage -> m ()
 saveStorageToFile publicKey storage = do
   let fname = storageFilePrefix <> T.replace " " "_" (_storage'walletName storage)
   logWrite $ "Storing storage to the " <> fname
@@ -176,7 +176,7 @@ saveStorageToFile publicKey storage = do
     Right encStorage -> storeValue fname encStorage
 
 loadStorageFromFile :: (MonadIO m, HasStoreDir m, PlatformNatives)
-  => WalletName -> Password -> m (Either StorageAlert ErgveinStorage)
+  => WalletName -> Password -> m (Either StorageAlert WalletStorage)
 loadStorageFromFile login pass = do
   let fname = storageFilePrefix <> T.replace " " "_" login
   storageResp <- readStoredFile fname

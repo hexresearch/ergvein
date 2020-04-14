@@ -6,7 +6,7 @@ import Ergvein.Crypto.ECIES
 import Ergvein.Types.Storage
 
 data AuthInfo = AuthInfo {
-  _authInfo'storage     :: ErgveinStorage
+  _authInfo'storage     :: WalletStorage
 , _authInfo'eciesPubKey :: ECIESPubKey
 , _authInfo'login       :: Text
 , _authInfo'isUpdate    :: Bool
