@@ -13,6 +13,7 @@ module Ergvein.Wallet.Monad.Base
 
 import Control.Monad.Fix
 import Control.Monad.IO.Class
+import Control.Monad.IO.Unlift
 import Control.Monad.Reader
 import Control.Monad.Ref
 import Data.Map
@@ -48,6 +49,7 @@ type MonadBaseConstr t m = (MonadHold t m
   , MonadFix m
   , PerformEvent t m
   , MonadIO (Performable m)
+  , MonadUnliftIO (Performable m)
   , MonadSample t (Performable m)
   , MonadJSM (Performable m)
   , MonadIO m
