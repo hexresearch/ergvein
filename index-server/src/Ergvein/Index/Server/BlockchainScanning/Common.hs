@@ -61,9 +61,6 @@ actualHeight currency = case currency of
 
 storeInfo :: (MonadIO m) => BlockInfo -> QueryT m ()
 storeInfo blockInfo = do
-  insertTxs    $ blockContentTxInfos     $ blockInfoContent blockInfo
-  insertTxOuts $ blockContentTxOutInfos  $ blockInfoContent blockInfo
-  insertTxIns  $ blockContentTxInInfos   $ blockInfoContent blockInfo
   insertBlock  $ blockInfoMeta blockInfo
   pure ()
 
