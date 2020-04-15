@@ -64,12 +64,12 @@ blockTxInfos block txBlockHeight nodeNetwork = do
   blockTxInSources <- mapM (txInSource txInfosMap) uniqueTxInIds
 
   let blockAddressFilter = HK.encodeHex $ encodeBtcAddrFilter $ makeBtcFilter nodeNetwork blockTxInSources block
-      blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHexView blockAddressFilter
+      blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHashHexView blockAddressFilter
 
   pure $ BlockInfo blockMeta blockContent 
   where
     txHash = HK.txHashToHex . HK.txHash
-    blockHeaderHexView = HK.encodeHex $ encode $ HK.blockHeader block
+    blockHeaderHashHexView = HK.blockHashToHex $ HK.headerHash $ HK.blockHeader block
     txInSource :: MonadLDB m => Map.Map TxId HK.Tx -> TxHash -> m HK.Tx
     txInSource blockTxMap txInId = 
       case Map.lookup txInId blockTxMap of

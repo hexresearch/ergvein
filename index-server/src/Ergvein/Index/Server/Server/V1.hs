@@ -48,12 +48,8 @@ getBlockMetaSlice currency startHeight endHeight = do
 indexGetBlockFiltersEndpoint :: BlockFiltersRequest -> ServerM BlockFiltersResponse
 indexGetBlockFiltersEndpoint request = do
     slice <- getBlockMetaSlice (filtersReqCurrency request) (filtersReqStartHeight request) (filtersReqAmount request)
-    let blockFilters = (\s -> (mkHash $ blockMetaCacheRecHeaderHexView s, blockMetaCacheRecAddressFilterHexView s)) <$> slice
+    let blockFilters = (\s -> (blockMetaCacheRecHeaderHashHexView s, blockMetaCacheRecAddressFilterHexView s)) <$> slice
     pure blockFilters
-    where 
-      mkHash = case filtersReqCurrency request of 
-        BTC -> Btc.blockHashToHex . Btc.headerHash . either (error . ("Failed to decode block hash! " ++)) id . S.decode . hex2bs
-        _ -> error "Ergo indexGetBlockFiltersEndpoint is not implemented!" -- TODO here
 
 indexGetInfoEndpoint :: ServerM InfoResponse
 indexGetInfoEndpoint = do 

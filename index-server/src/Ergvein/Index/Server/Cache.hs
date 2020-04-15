@@ -43,7 +43,7 @@ cacheBlockMetaInfos :: MonadIO m => DB -> [BlockMetaInfo] -> m ()
 cacheBlockMetaInfos db infos = write db def $ putItems keySelector valueSelector infos
   where
     keySelector   info = cachedMetaKey (blockMetaCurrency info, blockMetaBlockHeight info)
-    valueSelector info = BlockMetaCacheRec (blockMetaHeaderHexView info) (blockMetaAddressFilterHexView info)
+    valueSelector info = BlockMetaCacheRec (blockMetaHeaderHashHexView info) (blockMetaAddressFilterHexView info)
 
 cacheTxInfos :: MonadIO m => DB -> [TxInfo] -> m ()
 cacheTxInfos db infos = do

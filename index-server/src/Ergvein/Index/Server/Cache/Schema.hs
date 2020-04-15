@@ -102,7 +102,7 @@ data BlockMetaCacheRecKey = BlockMetaCacheRecKey
   } deriving (Generic, Show, Eq, Ord, Serialize)
 
 data BlockMetaCacheRec = BlockMetaCacheRec
-  { blockMetaCacheRecHeaderHexView  :: BlockHeaderHexView
+  { blockMetaCacheRecHeaderHashHexView  :: BlockHeaderHashHexView
   , blockMetaCacheRecAddressFilterHexView :: AddressFilterHexView
   } deriving (Generic, Show, Eq, Ord, Flat)
 
