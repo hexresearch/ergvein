@@ -27,69 +27,15 @@ import qualified Data.Serialize as S
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
     { indexGetHeight = indexGetHeightEndpoint
-    , indexGetBalance = indexGetBalanceEndpoint
-    , indexGetTxHashHistory = indexGetTxHashHistoryEndpoint
-    , indexGetBlockHeaders = indexGetBlockHeadersEndpoint
     , indexGetBlockFilters = indexGetBlockFiltersEndpoint
-    , indexGetTxMerkleProof = txMerkleProofEndpoint
-    , indexGetTxHexView = txHexViewEndpoint
-    , indexGetTxFeeHistogram = txFeeHistogramEndpoint
-    , indexTxBroadcast = txBroadcastRequestEndpoint
     , indexGetInfo = indexGetInfoEndpoint
     }
--- Stubs
-
-btcProof = TxMerkleProofResponse{ merkleItemTxMerkleProof = [""] , merkleItemTxBlockIndex = 1 }
-ergoProof = TxMerkleProofResponse{ merkleItemTxMerkleProof = [""] , merkleItemTxBlockIndex = 2 }
-
-btcView = ["btc"]
-ergoView = ["ergo"]
-
-btcHistogram = [ TxFeeHistogramItem { feeHistogramItemTxFee = 3, feeHistogramItemTxAmount = 9 }
-               , TxFeeHistogramItem { feeHistogramItemTxFee = 4, feeHistogramItemTxAmount = 16 }
-               , TxFeeHistogramItem { feeHistogramItemTxFee = 5, feeHistogramItemTxAmount = 25 }
-               ]
-
-ergoHistogram = [ TxFeeHistogramItem { feeHistogramItemTxFee = 4, feeHistogramItemTxAmount = 16 }
-                , TxFeeHistogramItem { feeHistogramItemTxFee = 6, feeHistogramItemTxAmount = 36 }
-                , TxFeeHistogramItem { feeHistogramItemTxFee = 8, feeHistogramItemTxAmount = 64 }
-                ]
-
-btcBroadcastResponse = "0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098"
-ergoBroadcastResponse = "4c6282be413c6e300a530618b37790be5f286ded758accc2aebd41554a1be308"
 
 --Endpoints
 indexGetHeightEndpoint :: HeightRequest -> ServerM HeightResponse
 indexGetHeightEndpoint (HeightRequest currency) = do
   mh <- dbQuery $ fmap (scannedHeightRecHeight . entityVal) <$> getScannedHeight currency
   pure $ HeightResponse $ fromMaybe 0 mh
-
-indexGetBalanceEndpoint :: BalanceRequest -> ServerM BalanceResponse
-indexGetBalanceEndpoint request = do
-  maybeHistory <- getTxOutHistory $ balReqPubKeyScriptHash request
-  let confirmedBalance = case maybeHistory of
-        Just history -> getSum $ foldMap (Sum . txoValue) history
-        Nothing      -> 0
-  pure $ BalanceResponse { balRespConfirmed = confirmedBalance, balRespUnconfirmed = 0 }
-  where
-    txoValue (UTXO txo) = txOutCacheRecValue txo
-    txoValue _ = 0
-
-indexGetTxHashHistoryEndpoint :: TxHashHistoryRequest -> ServerM TxHashHistoryResponse
-indexGetTxHashHistoryEndpoint request = do
-  maybeHistory <- getTxOutHistory $ historyReqPubKeyScriptHash request
-  case maybeHistory of
-    Just history -> do
-        let uniqueHistoryTxIds = nub . mconcat $ utxoHistoryTxIds <$> history
-        txs <- getManyParsedExact $ cachedTxKey <$> uniqueHistoryTxIds
-        let sortedTxs = sortOn txSorting txs
-            historyItems = (\tx -> TxHashHistoryItem (txCacheRecHash tx) (txCacheRecBlockHeight tx)) <$> sortedTxs
-        pure historyItems
-    _-> pure []
-  where
-    utxoHistoryTxIds (UTXO txo)         = [txOutCacheRecTxHash txo]
-    utxoHistoryTxIds (STXO (txo, stxo)) = [txOutCacheRecTxHash txo , txInCacheRecTxHash stxo]
-    txSorting tx = (txCacheRecBlockHeight tx, txCacheRecBlockIndex  tx)
 
 getBlockMetaSlice :: Currency -> BlockHeight -> BlockHeight -> ServerM [BlockMetaCacheRec]
 getBlockMetaSlice currency startHeight endHeight = do
@@ -98,12 +44,6 @@ getBlockMetaSlice currency startHeight endHeight = do
   slice <- safeEntrySlice start end
   let metaSlice = snd <$> slice
   pure metaSlice
-
-indexGetBlockHeadersEndpoint :: BlockHeadersRequest -> ServerM BlockHeadersResponse
-indexGetBlockHeadersEndpoint request = do
-    slice <- getBlockMetaSlice (headersReqCurrency request) (headersReqStartHeight request) (headersReqAmount request)
-    let blockHeaders = blockMetaCacheRecHeaderHexView <$> slice
-    pure blockHeaders
 
 indexGetBlockFiltersEndpoint :: BlockFiltersRequest -> ServerM BlockFiltersResponse
 indexGetBlockFiltersEndpoint request = do
@@ -122,19 +62,3 @@ indexGetInfoEndpoint = do
   pure $ InfoResponse mappedScanInfo
   where
     scanNfoItem nfo = ScanProgressItem (nfoCurrency nfo) (nfoScannedHeight nfo) (nfoActualHeight nfo)
-
-txMerkleProofEndpoint :: TxMerkleProofRequest -> ServerM TxMerkleProofResponse
-txMerkleProofEndpoint TxMerkleProofRequest { merkleReqCurrency = BTC }  = pure btcProof
-txMerkleProofEndpoint TxMerkleProofRequest { merkleReqCurrency = ERGO } = pure ergoProof
-
-txHexViewEndpoint :: TxHexViewRequest -> ServerM TxHexViewResponse
-txHexViewEndpoint TxHexViewRequest { viewReqCurrency = BTC }  = pure btcView
-txHexViewEndpoint TxHexViewRequest { viewReqCurrency = ERGO } = pure ergoView
-
-txFeeHistogramEndpoint :: TxFeeHistogramRequest -> ServerM TxFeeHistogramResponse
-txFeeHistogramEndpoint TxFeeHistogramRequest { feeHistogramReqCurrency = BTC }  = pure btcHistogram
-txFeeHistogramEndpoint TxFeeHistogramRequest { feeHistogramReqCurrency = ERGO } = pure ergoHistogram
-
-txBroadcastRequestEndpoint :: TxBroadcastRequest -> ServerM TxBroadcastResponse
-txBroadcastRequestEndpoint TxBroadcastRequest { txBroadcastReqCurrency = BTC }  = pure btcBroadcastResponse
-txBroadcastRequestEndpoint TxBroadcastRequest { txBroadcastReqCurrency = ERGO } = pure ergoBroadcastResponse

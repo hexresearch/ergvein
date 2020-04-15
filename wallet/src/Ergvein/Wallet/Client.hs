@@ -1,13 +1,7 @@
 {-# LANGUAGE RecursiveDo #-}
 module Ergvein.Wallet.Client
   ( getHeight
-  , getBalance
   , getBlockFilters
-  , getTxHashHistory
-  , getTxMerkleProof
-  , getTxHexView
-  , getTxFeeHistogram
-  , txBroadcast
   , ClientErr(..)
   ) where
 
@@ -44,26 +38,8 @@ meanHeight [] = Left CMSEmpty
 meanHeight [x] = Right x
 meanHeight xs = Right $ head $ drop (length xs `div` 2) $ sortOn heightRespHeight xs
 
-getBalance :: (MonadFrontBase t m, MonadClient t m) => Event t BalanceRequest -> m (Event t (Either ClientErr BalanceResponse))
-getBalance = requesterEq getBalanceEndpoint
-
 getBlockFilters :: (MonadFrontBase t m, MonadClient t m) => Event t BlockFiltersRequest -> m (Event t (Either ClientErr BlockFiltersResponse))
 getBlockFilters = requesterEq getBlockFiltersEndpoint
-
-getTxHashHistory :: (MonadFrontBase t m, MonadClient t m) => Event t TxHashHistoryRequest -> m (Event t (Either ClientErr TxHashHistoryResponse))
-getTxHashHistory = requesterEq getTxHashHistoryEndpoint
-
-getTxMerkleProof :: (MonadFrontBase t m, MonadClient t m) => Event t TxMerkleProofRequest -> m (Event t (Either ClientErr TxMerkleProofResponse))
-getTxMerkleProof = requesterEq getTxMerkleProofEndpoint
-
-getTxHexView :: (MonadFrontBase t m, MonadClient t m) => Event t TxHexViewRequest -> m (Event t (Either ClientErr TxHexViewResponse))
-getTxHexView = requesterEq getTxHexViewEndpoint
-
-getTxFeeHistogram :: (MonadFrontBase t m, MonadClient t m) => Event t TxFeeHistogramRequest -> m (Event t (Either ClientErr TxFeeHistogramResponse))
-getTxFeeHistogram = requesterEq getTxFeeHistogramEndpoint
-
-txBroadcast :: (MonadFrontBase t m, MonadClient t m) => Event t TxBroadcastRequest -> m (Event t (Either ClientErr TxBroadcastResponse))
-txBroadcast = requesterEq txBroadcastEndpoint
 
 instance MonadIO m => HasClientManager (ReaderT Manager m) where
   getClientMaganer = ask
