@@ -335,11 +335,9 @@ liftAuth ma0 ma = mdo
               consRef
 
         flip runReaderT env $ do -- Workers and other routines go here
-          -- Remove all three: works fine
-          -- filtersLoader
+          filtersLoader
           infoWorker
-          -- heightAsking
-          pure ()
+          heightAsking
         runOnUiThreadM $ runReaderT setupTlsManager env
         runReaderT (wrapped ma) env
   let
