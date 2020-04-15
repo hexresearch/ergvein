@@ -416,7 +416,7 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
     actRef  <- asks env'activeUrls
     iaRef   <- asks env'inactiveUrls
     setRef  <- asks env'settings
-    performEvent $ ffor urlE $ \url -> do
+    performEventAsync $ ffor urlE $ \url fire -> void $ liftIO $ forkIO $ do
       acs <- modifyExternalRef actRef $ \as ->
         let as' = M.delete url as in (as', M.keys as')
       ias <- modifyExternalRef iaRef  $ \us ->
@@ -428,6 +428,8 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
           }
         in (s', s')
       storeSettings s
+      fire ()
+
   forgetURL urlE = do
     actRef  <- asks env'activeUrls
     iaRef   <- asks env'inactiveUrls
