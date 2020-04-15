@@ -11,11 +11,15 @@ import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import System.ByteOrder
+import Data.FileEmbed
+import Crypto.Hash.SHA256
 
 import qualified Data.ByteString as BS
 import qualified Data.Serialize as S
 
-data KeyPrefix = Meta | TxOut | TxIn | Tx deriving Enum
+data KeyPrefix = Meta | TxOut | TxIn | Tx | SchemaVersion deriving Enum
+
+schemaVersion = hash $(embedFile "src/Ergvein/Index/Server/Cache/Schema.hs")
 
 instance Serialize Text where
   put txt = S.put $ encodeUtf8 txt
@@ -101,3 +105,11 @@ data BlockMetaCacheRec = BlockMetaCacheRec
   { blockMetaCacheRecHeaderHexView  :: BlockHeaderHexView
   , blockMetaCacheRecAddressFilterHexView :: AddressFilterHexView
   } deriving (Generic, Show, Eq, Ord, Flat)
+
+--BlockMeta
+
+cachedSchemaVersionKey :: ByteString
+cachedSchemaVersionKey  = keyString SchemaVersion (mempty @String)
+
+data SchemaVersionCacheRec = Text  deriving (Generic, Show, Eq, Ord, Flat)
+

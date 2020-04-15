@@ -24,6 +24,7 @@ import           Ergvein.Types.Currency
 import           Ergvein.Types.Transaction
 
 import qualified Data.ByteString                    as B
+import qualified Data.HashSet                       as Set
 import qualified Data.HexString                     as HS
 import qualified Data.Map.Strict                    as Map
 import qualified Network.Haskoin.Block              as HK
@@ -58,8 +59,10 @@ blockTxInfos block txBlockHeight nodeNetwork = do
   let (txInfos ,txInInfos, txOutInfos) = mconcat $ txoInfosFromTx `imap` HK.blockTxns block
       blockContent = BlockContentInfo txInfos txInInfos txOutInfos
       txInfosMap = mapBy txHash $ HK.blockTxns block
+      uniqueTxInIds = Set.toList $ Set.fromList $ txInTxOutHash <$> txInInfos
 
-  blockTxInSources <- mapM (txInSource txInfosMap) txInInfos
+  blockTxInSources <- mapM (txInSource txInfosMap) uniqueTxInIds
+
   let blockAddressFilter = HK.encodeHex $ encodeBtcAddrFilter $ makeBtcFilter nodeNetwork blockTxInSources block
       blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHexView blockAddressFilter
 
@@ -67,13 +70,12 @@ blockTxInfos block txBlockHeight nodeNetwork = do
   where
     txHash = HK.txHashToHex . HK.txHash
     blockHeaderHexView = HK.encodeHex $ encode $ HK.blockHeader block
-    txInSource :: MonadLDB m => Map.Map TxId HK.Tx -> TxInInfo -> m HK.Tx
-    txInSource blockTxMap txInput = 
+    txInSource :: MonadLDB m => Map.Map TxId HK.Tx -> TxHash -> m HK.Tx
+    txInSource blockTxMap txInId = 
       case Map.lookup txInId blockTxMap of
         Just    sourceTx -> pure sourceTx
         Nothing          -> fromChache
       where
-        txInId = txInTxOutHash txInput
         decodeError = "error decoding btc txIn source transaction " <> show txInId
         fromChache = do
           src <- getParsedExact $ cachedTxKey txInId
