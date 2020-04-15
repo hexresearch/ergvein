@@ -4,12 +4,14 @@ module Ergvein.Wallet.Monad.Auth(
   , liftUnauthed
   ) where
 
+import Control.Concurrent
 import Control.Concurrent.Chan (Chan)
 import Control.Monad.Random.Class
 import Control.Monad.Reader
 import Data.IORef
 import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe)
+import Data.Text as T
 import Data.Time (NominalDiffTime, getCurrentTime, diffUTCTime)
 import Network.Connection
 import Network.HTTP.Client hiding (Proxy)
@@ -21,7 +23,7 @@ import Reflex.Dom
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Reflex.Host.Class
-import Servant.Client(BaseUrl)
+import Servant.Client(BaseUrl, showBaseUrl)
 
 import Ergvein.Crypto
 import Ergvein.Index.Client
@@ -333,9 +335,11 @@ liftAuth ma0 ma = mdo
               consRef
 
         flip runReaderT env $ do -- Workers and other routines go here
-          filtersLoader
+          -- Remove all three: works fine
+          -- filtersLoader
           infoWorker
-          heightAsking
+          -- heightAsking
+          pure ()
         runOnUiThreadM $ runReaderT setupTlsManager env
         runReaderT (wrapped ma) env
   let
@@ -383,7 +387,7 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
   {-# INLINE refreshIndexerInfo #-}
   pingIndexer urlE = do
     mng <- getClientMaganer
-    performEvent $ (pingIndexerIO mng) <$> urlE
+    performFork $ ffor urlE $ liftIO . pingIndexerIO mng
   activateURL urlE = do
     actRef  <- asks env'activeUrls
     iaRef   <- asks env'inactiveUrls
@@ -411,7 +415,7 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
     actRef  <- asks env'activeUrls
     iaRef   <- asks env'inactiveUrls
     setRef  <- asks env'settings
-    performEvent $ ffor urlE $ \url -> do
+    performEventAsync $ ffor urlE $ \url fire -> void $ liftIO $ forkIO $ do
       acs <- modifyExternalRef actRef $ \as ->
         let as' = M.delete url as in (as', M.keys as')
       ias <- modifyExternalRef iaRef  $ \us ->
@@ -423,6 +427,8 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
           }
         in (s', s')
       storeSettings s
+      fire ()
+
   forgetURL urlE = do
     actRef  <- asks env'activeUrls
     iaRef   <- asks env'inactiveUrls
@@ -467,16 +473,18 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
       storeSettings s
       pure ()
 
-pingIndexerIO :: MonadIO m => Manager -> BaseUrl -> m (BaseUrl, Maybe IndexerInfo)
+pingIndexerIO :: (MonadIO m, PlatformNatives) => Manager -> BaseUrl -> m (BaseUrl, Maybe IndexerInfo)
 pingIndexerIO mng url = liftIO $ do
   t0 <- getCurrentTime
   res <- runReaderT (getInfoEndpoint url ()) mng
   t1 <- getCurrentTime
-  pure $ case res of
-    Left _ -> (url, Nothing)
+  case res of
+    Left err -> do
+      logWrite $ "[InfoWorker][" <> T.pack (showBaseUrl url) <> "]: " <> showt err
+      pure $ (url, Nothing)
     Right (InfoResponse vals) -> let
       curmap = M.fromList $ fmap (\(ScanProgressItem cur sh ah) -> (cur, (sh, ah))) vals
-      in (url, Just $ IndexerInfo curmap $ diffUTCTime t1 t0)
+      in pure $ (url, Just $ IndexerInfo curmap $ diffUTCTime t1 t0)
 
 mkTlsSettings :: (MonadIO m, PlatformNatives) => m TLSSettings
 mkTlsSettings = do

@@ -51,7 +51,7 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
         let n = 100
         logWrite $ "Getting next " <> showt n <> " filters"
         fse <- getFilters ((BTC, fh+1, n) <$ buildE)
-        we <- performFilters $ ffor fse $ \fs -> traverse_ (\(h, (bh, f)) -> insertFilter h bh f) (zip [fh+1 ..] fs)
+        we <- performFork $ ffor fse $ \fs -> traverse_ (\(h, (bh, f)) -> insertFilter h bh f) (zip [fh+1 ..] fs)
         pure ((), go <$ we)
       else do
         logWrite "Sleeping, waiting for new filters ..."
