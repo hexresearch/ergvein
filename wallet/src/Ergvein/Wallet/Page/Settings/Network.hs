@@ -118,13 +118,13 @@ addUrlWidget showD = mdo
 activePageWidget :: forall t m . MonadFront t m => m ()
 activePageWidget = mdo
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
-  tglE <- lineOption $ do
-    refreshIndexerInfo =<< buttonClass "button button-outline mt-1" NSSRefresh
-    restoreDefaultIndexers =<< buttonClass "button button-outline mt-1" NSSRestoreUrls
+  tglE <- divClass "network-wrapper mt-1" $ divClass "net-header-btns-3" $ do
+    refreshIndexerInfo =<< buttonClass "button button-outline m-0" NSSRefresh
+    restoreDefaultIndexers =<< buttonClass "button button-outline m-0" NSSRestoreUrls
     fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
-      fmap (not b <$) $ buttonClass "button button-outline mt-1" $ if b then NSSClose else NSSAddUrl
+      fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSClose else NSSAddUrl
   hideE <- activateURL =<< addUrlWidget showD
-  divClass "centered-wrapper" $ divClass "centered-content" $
+  divClass "centered-wrapper" $ divClass "lr-centered-content" $
     void . flip listWithKey renderActive =<< getIndexerInfoD
 
 renderActive :: MonadFront t m => BaseUrl -> Dynamic t (Maybe IndexerInfo) -> m ()
@@ -132,34 +132,36 @@ renderActive url minfoD = mdo
   tglD <- holdDyn False tglE
   tglE <- fmap switchDyn $ widgetHoldDyn $ ffor minfoD $ \minfo -> lineOption $ do
     tglE' <- divClass "network-name" $ do
-      let cls = if isJust minfo then "indexer-online" else "indexer-offline"
+      let cls = if isJust minfo then "mt-a mb-a indexer-online" else "mt-a mb-a indexer-offline"
       elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
-      text $ T.pack . showBaseUrl $ url
+      divClass "mt-a mb-a network-name-txt" $ text $ T.pack . showBaseUrl $ url
       fmap switchDyn $ widgetHoldDyn $ ffor tglD $ \b ->
-        fmap (not b <$) $ buttonClass "button button-outline mt-1 ml-1" $ if b then NSSClose else NSSEdit
+        fmap (not b <$) $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a" $ if b then NSSClose else NSSEdit
     descrOption $ maybe NSSOffline (NSSLatency . indInfoLatency) minfo
     pure tglE'
-  widgetHoldDyn $ ffor tglD $ \b -> if not b then pure () else lineOption $ do
-    deactivateURL . (url <$) =<< buttonClass "button button-outline mt-1 ml-1" NSSDisable
-    forgetURL . (url <$) =<< buttonClass "button button-outline mt-1 ml-1" NSSForget
-    pure ()
-  labelHorSep
+  widgetHoldDyn $ ffor tglD $ \b -> if not b
+    then pure ()
+    else divClass "network-wrapper mt-2" . divClass "network-line" $ do
+      deactivateURL . (url <$) =<< buttonClass "button button-outline mt-1 ml-1" NSSDisable
+      forgetURL . (url <$) =<< buttonClass "button button-outline mt-1 ml-1" NSSForget
+      pure ()
+  pure ()
 
 inactivePageWidget :: forall t m . MonadFront t m => m ()
 inactivePageWidget = mdo
   urlsD <- (fmap . fmap) S.toList getInactiveUrlsD
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
-  (pingAllE, tglE) <- lineOption $ do
-    pingAllE <- buttonClass "button button-outline mt-1" NSSPingAll
+  (pingAllE, tglE) <- divClass "network-wrapper mt-1" $ divClass "net-header-btns-2" $ do
+    pingAllE <- buttonClass "button button-outline m-0" NSSPingAll
     tglE <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
-      fmap (not b <$) $ buttonClass "button button-outline mt-1" $ if b then NSSClose else NSSAddUrl
+      fmap (not b <$) $ buttonClass "m-0 button button-outline" $ if b then NSSClose else NSSAddUrl
     pure (pingAllE, tglE)
   hideE <- deactivateURL =<< addUrlWidget showD
   allResE <- fmap switchDyn $ widgetHoldDyn $ ffor urlsD $ \urls ->
     fmap (mergeMap . M.fromList) $ flip traverse urls $ \u -> do
       resE <- pingIndexer $ u <$ pingAllE
       pure (u, snd <$> resE)
-  divClass "centered-wrapper" $ divClass "centered-content" $ mdo
+  divClass "centered-wrapper" $ divClass "lr-centered-content" $ mdo
     infomapD <- foldDyn M.union M.empty $ leftmost [resE, allResE]
     a :: Dynamic t [Dynamic t (Event t BaseUrl)] <- simpleList urlsD $ \urlD -> do
       let myInfoD = M.lookup <$> urlD <*> infomapD
@@ -175,21 +177,22 @@ renderInactive url mminfo = mdo
   tglE <- lineOption $ do
     tglE' <- divClass "network-name" $ do
       case mminfo of
-        Nothing -> text urlTxt
+        Nothing -> divClass "mt-a mb-a network-name-txt" $ text urlTxt
         Just minfo -> do
-          let cls = if isJust minfo then "indexer-online" else "indexer-offline"
+          let cls = if isJust minfo then "mt-a mb-a indexer-online" else "mt-a mb-a indexer-offline"
           elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
-          text urlTxt
+          divClass "mt-a mb-a network-name-txt" $ text urlTxt
       fmap switchDyn $ widgetHoldDyn $ ffor tglD $ \b ->
-        fmap (not b <$) $ buttonClass "button button-outline mt-1 ml-1" $ if b then NSSClose else NSSEdit
+        fmap (not b <$) $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a" $ if b then NSSClose else NSSEdit
     maybe (pure ()) (descrOption . maybe NSSOffline (NSSLatency . indInfoLatency)) mminfo
     pure tglE'
-  pingE <- fmap switchDyn $ widgetHoldDyn $ ffor tglD $ \b -> if not b then pure never else lineOption $ do
-    activateURL . (url <$) =<< outlineButton NSSEnable
-    pingE <- fmap (url <$) $ outlineButton NSSPing
-    forgetURL . (url <$) =<< outlineButton NSSForget
-    pure pingE
-  labelHorSep
+  pingE <- fmap switchDyn $ widgetHoldDyn $ ffor tglD $ \b -> if not b
+    then pure never
+    else divClass "network-wrapper mt-2" . divClass "network-line" $ do
+      activateURL . (url <$) =<< outlineButton NSSEnable
+      pingE <- fmap (url <$) $ outlineButton NSSPing
+      forgetURL . (url <$) =<< outlineButton NSSForget
+      pure pingE
   pure pingE
 
 navbarWidget :: MonadFront t m => NavbarItem -> m (Dynamic t NavbarItem)
@@ -201,7 +204,7 @@ navbarWidget initItem = divClass "navbar" $ mdo
   pure selD
 
 lineOption :: MonadFront t m => m a -> m a
-lineOption = divClass "network-wrapper" . divClass "network-line"
+lineOption = divClass "network-wrapper mt-1" . divClass "network-line"
 
 lineOptionE :: MonadFront t m => m a -> m (Event t ())
 lineOptionE ma = do
@@ -213,7 +216,7 @@ divE ma = fmap (domEvent Click . fst) $ el' "div" ma
 
 nameOption, descrOption :: (MonadFront t m, LocalizedPrint a) => a -> m ()
 nameOption = divClass "network-name"    . localizedText
-descrOption = (>>) elBR . divClass "network-descr" . localizedText
+descrOption = divClass "network-descr" . localizedText
 
 valueOptionDyn, descrOptionDyn :: (MonadFront t m, LocalizedPrint a) => Dynamic t a -> m ()
 valueOptionDyn v = getLanguage >>= \langD -> divClass "network-value" $ dynText $ ffor2 langD v localizedShow
