@@ -2,9 +2,10 @@
 module Ergvein.Index.Server.Cache where
 
 import Conduit
+import Control.Concurrent.Async
 import Control.Monad
-import Control.Monad.Logger
 import Control.Monad.Catch
+import Control.Monad.Logger
 import Conversion
 import Data.Default
 import Data.Flat
@@ -14,6 +15,7 @@ import Data.Proxy
 import Data.Text (Text, pack)
 import Data.Word
 import Database.LevelDB.Base
+import Database.LevelDB.Internal
 import Database.Persist.Pagination.Types
 import System.Directory
 import System.FilePath
@@ -27,7 +29,6 @@ import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.Utils
 import Ergvein.Text
-import Database.LevelDB.Internal
 
 import qualified Data.Conduit.Internal as DCI
 import qualified Data.Conduit.List as CL
@@ -77,7 +78,7 @@ openCacheDb :: (MonadLogger m, MonadIO m) => FilePath -> DBPool -> m DB
 openCacheDb cacheDirectory pool = do
   canonicalPathDirectory <- liftIO $ canonicalizePath cacheDirectory
   isDbDirExist <- liftIO $ doesDirectoryExist canonicalPathDirectory
-  liftIO $ unless isDbDirExist $ createDirectory canonicalPathDirectory                  
+  liftIO $ unless isDbDirExist $ createDirectory canonicalPathDirectory
   levelDBContext <- liftIO $ do
     db <- open canonicalPathDirectory def
     dbSchemaVersion <- dbSchemaVersion db
@@ -101,7 +102,7 @@ openCacheDb cacheDirectory pool = do
     restoreCache pt = do
        clearDirectoryContent pt
        ctx <- open pt def {createIfMissing = True }
-       runStdoutLoggingT $ loadCache ctx pool
+       async $ runStdoutLoggingT $ loadCache ctx pool
        put ctx def cachedSchemaVersionKey (flat schemaVersion) 
        pure ctx
 
