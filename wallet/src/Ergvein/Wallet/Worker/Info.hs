@@ -13,6 +13,7 @@ import Ergvein.Index.API.Types
 import Ergvein.Index.Client
 import Ergvein.Text
 import Ergvein.Wallet.Client
+import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
 
@@ -24,16 +25,15 @@ infoWorkerInterval = 60
 infoWorker :: MonadFront t m => m ()
 infoWorker = do
   indexerInfoRef  <- getActiveUrlsRef
-  mng             <- getClientMaganer
   refreshE        <- fmap fst $ getIndexerInfoEF
   te <- fmap void $ tickLossyFromPostBuildTime infoWorkerInterval
   let goE = leftmost [void te, refreshE]
-  performEvent_ $ ffor goE $ const $ liftIO $ do
+  performFork_ $ ffor goE $ const $ do
     urls <- fmap M.keys $ readExternalRef indexerInfoRef
     ress <- flip traverse urls $ \u -> do
-      t0 <- getCurrentTime
-      res <- runReaderT (getInfoEndpoint u ()) mng
-      t1 <- getCurrentTime
+      t0 <- liftIO getCurrentTime
+      res <- getInfoEndpoint u ()
+      t1 <- liftIO getCurrentTime
       case res of
         Left err -> do
           logWrite $ "[InfoWorker][" <> T.pack (showBaseUrl u) <> "]: " <> showt err

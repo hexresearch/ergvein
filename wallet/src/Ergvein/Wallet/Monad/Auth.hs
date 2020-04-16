@@ -75,7 +75,7 @@ data Env t = Env {
 , env'authRef         :: !(ExternalRef t AuthInfo)
 , env'logoutFire      :: !(IO ())
 , env'activeCursRef   :: !(ExternalRef t (S.Set Currency))
-, env'manager         :: !(IORef Manager)
+, env'manager         :: !(MVar Manager)
 , env'headersStorage  :: !HeadersStorage
 , env'filtersStorage  :: !FiltersStorage
 , env'syncProgress    :: !(ExternalRef t SyncProgress)
@@ -106,7 +106,7 @@ instance Monad m => HasFiltersStorage (ErgveinM t m) where
   {-# INLINE getFiltersStorage #-}
 
 instance MonadIO m => HasClientManager (ErgveinM t m) where
-  getClientMaganer = liftIO . readIORef =<< asks env'manager
+  getClientMaganer = liftIO . readMVar =<< asks env'manager
 
 instance MonadBaseConstr t m => MonadEgvLogger t (ErgveinM t m) where
   getLogsTrigger = asks env'logsTrigger
@@ -319,7 +319,7 @@ liftAuth ma0 ma = mdo
         (indexersE, indexersF) <- newTriggerEvent
 
         -- Create data for Auth context
-        managerRef      <- liftIO . newIORef =<< newTlsManager
+        managerRef      <- liftIO newEmptyMVar
         activeCursRef   <- newExternalRef acurs
         headersStore    <- liftIO $ runReaderT openHeadersStorage (settingsStoreDir settings)
         syncRef         <- newExternalRef Synced
@@ -385,16 +385,16 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
     fire <- asks (snd . env'indexersEF)
     performEvent_ $ (liftIO fire) <$ e
   {-# INLINE refreshIndexerInfo #-}
-  pingIndexer urlE = do
+  pingIndexer urlE = performFork $ ffor urlE $ \url -> do
     mng <- getClientMaganer
-    performFork $ ffor urlE $ liftIO . pingIndexerIO mng
+    pingIndexerIO mng url
   activateURL urlE = do
     actRef  <- asks env'activeUrls
     iaRef   <- asks env'inactiveUrls
     acrhRef <- asks env'urlsArchive
     setRef  <- asks env'settings
-    mng     <- getClientMaganer
-    performEvent $ ffor urlE $ \url -> do
+    performFork $ ffor urlE $ \url -> do
+      mng <- getClientMaganer
       res <- pingIndexerIO mng url
       ias <- modifyExternalRef iaRef $ \us ->
         let us' = S.delete url us in (us', S.toList us')
@@ -504,4 +504,4 @@ setupTlsManager = do
   sett <- mkTlsSettings
   liftIO $ do
     manager <- newTlsManagerWith $ mkManagerSettings sett Nothing
-    writeIORef (env'manager e) manager
+    putMVar (env'manager e) manager
