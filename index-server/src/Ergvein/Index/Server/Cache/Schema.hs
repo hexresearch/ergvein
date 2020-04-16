@@ -17,7 +17,7 @@ import Crypto.Hash.SHA256
 import qualified Data.ByteString as BS
 import qualified Data.Serialize as S
 
-data KeyPrefix = Meta | TxOut | TxIn | Tx | SchemaVersion deriving Enum
+data KeyPrefix = Meta | Tx | SchemaVersion deriving Enum
 
 schemaVersion = hash $(embedFile "src/Ergvein/Index/Server/Cache/Schema.hs")
 
@@ -44,37 +44,6 @@ unPrefixedKey key = BS.tail key
 parsedCacheKey :: Serialize k => ByteString -> k
 parsedCacheKey = fromRight (error "ser") . S.decode . unPrefixedKey
 
---TxOut
-
-cachedTxOutKey :: PubKeyScriptHash -> ByteString
-cachedTxOutKey = keyString TxOut . TxOutCacheRecKey
-
-data TxOutCacheRecKey = TxOutCacheRecKey
-  { txOutCacheRecKeyPubKeyScriptHash :: PubKeyScriptHash
-  } deriving (Generic, Show, Eq, Ord, Serialize)
-
-data TxOutCacheRecItem = TxOutCacheRecItem
-  { txOutCacheRecIndex  :: TxOutIndex
-  , txOutCacheRecValue  :: MoneyUnit
-  , txOutCacheRecTxHash :: TxHash
-  } deriving (Generic, Show, Eq, Ord, Flat)
-
-type TxOutCacheRec = [TxOutCacheRecItem]
-
---TxIn
-
-cachedTxInKey :: (PubKeyScriptHash, TxOutIndex) -> ByteString
-cachedTxInKey = keyString TxIn . uncurry TxInCacheRecKey
-
-data TxInCacheRecKey = TxInCacheRecKey
-  { txInCacheRecKeyTxOutHash :: PubKeyScriptHash
-  , txInCacheRecKeyTxOutIndex :: TxOutIndex
-  } deriving (Generic, Show, Eq, Ord, Serialize)
-
-data TxInCacheRec = TxInCacheRec
-  { txInCacheRecTxHash  :: TxHash
-  } deriving (Generic, Show, Eq, Ord, Flat)
-
 --Tx
 
 cachedTxKey :: TxHash -> ByteString
@@ -87,8 +56,7 @@ data TxCacheRecKey = TxCacheRecKey
 data TxCacheRec = TxCacheRec
   { txCacheRecHash         :: TxHash
   , txCacheRecHexView      :: TxHexView
-  , txCacheRecBlockHeight  :: BlockHeight
-  , txCacheRecBlockIndex   :: TxBlockIndex
+  , txCacheRecUnspentOutputsCount :: Word
   } deriving (Generic, Show, Eq, Ord, Flat)
 
 --BlockMeta

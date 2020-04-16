@@ -28,16 +28,13 @@ import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.Utils
 import Ergvein.Text
 import Database.LevelDB.Internal
+import Conversion
 
 import qualified Data.Conduit.Internal as DCI
 import qualified Data.Conduit.List as CL
 import qualified Data.Map.Strict as Map
 
-instance Conversion TxOutInfo TxOutCacheRecItem where
-  convert txOutInfo = TxOutCacheRecItem (txOutIndex txOutInfo) (txOutValue txOutInfo) (txOutTxHash txOutInfo)
 
-instance Conversion TxInfo TxCacheRec where
-  convert txInfo = TxCacheRec (txHash txInfo) (txHexView txInfo) (txBlockHeight txInfo) (txBlockIndex txInfo)
 
 cacheBlockMetaInfos :: MonadIO m => DB -> [BlockMetaInfo] -> m ()
 cacheBlockMetaInfos db infos = write db def $ putItems keySelector valueSelector infos
@@ -45,32 +42,14 @@ cacheBlockMetaInfos db infos = write db def $ putItems keySelector valueSelector
     keySelector   info = cachedMetaKey (blockMetaCurrency info, blockMetaBlockHeight info)
     valueSelector info = BlockMetaCacheRec (blockMetaHeaderHashHexView info) (blockMetaAddressFilterHexView info)
 
-cacheTxInfos :: MonadIO m => DB -> [TxInfo] -> m ()
+cacheTxInfos :: MonadIO m => DB -> [TxInfo2] -> m ()
 cacheTxInfos db infos = do
-  write db def $ putItems (cachedTxKey . txHash) (convert @TxInfo @TxCacheRec) infos
-
-cacheTxInInfos :: MonadIO m => DB -> [TxInInfo] -> m ()
-cacheTxInInfos db infos = write db def $ putItems (\info -> cachedTxInKey (txInTxOutHash info, txInTxOutIndex info)) txInTxHash infos
-
-cacheTxOutInfos :: MonadIO m => DB -> [TxOutInfo] -> m ()
-cacheTxOutInfos db infos = do
-  let updateMap = fmap (convert @TxOutInfo @TxOutCacheRecItem) <$> (groupMapBy txOutPubKeyScriptHash infos)
-  cached <- mapM getCached $ Map.keys updateMap
-  let cachedMap = Map.fromList $ catMaybes cached
-      updated = Map.toList $ Map.unionWith (++) cachedMap updateMap
-  write db def $ putItems (cachedTxOutKey . fst) snd updated
-  where
-    getCached pubScriptHash = do
-      maybeStored <- get db def $ cachedTxOutKey pubScriptHash
-      let parsedMaybe = unflatExact <$> maybeStored
-      pure $ (pubScriptHash,) <$> parsedMaybe
+  write db def $ putItems (cachedTxKey . txHash2) (convert @TxInfo2 @TxCacheRec) infos
 
 addToCache :: (MonadLDB m) => BlockInfo -> m ()
 addToCache update = do
   db <- getDb
-  cacheTxOutInfos db $ blockContentTxOutInfos $ blockInfoContent update
-  cacheTxInInfos db $ blockContentTxInInfos $ blockInfoContent update
-  cacheTxInfos db $ blockContentTxInfos $ blockInfoContent update
+  actCache (spentTxsHash update) (blockContentTxInfos2 update)
   cacheBlockMetaInfos db $ [blockInfoMeta update]
 
 openCacheDb :: (MonadLogger m, MonadIO m) => FilePath -> DBPool -> m DB

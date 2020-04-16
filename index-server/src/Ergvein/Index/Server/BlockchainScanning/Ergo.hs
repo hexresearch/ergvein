@@ -49,7 +49,7 @@ blockTxInfos block txBlockHeight = do
   let blockContent = BlockContentInfo txInfos txInInfos txOutInfos
       blockAddressFilter = mempty
       blockMeta = BlockMetaInfo ERGO (fromIntegral txBlockHeight) blockHeaderHashHexView blockAddressFilter
-  pure $ BlockInfo blockMeta blockContent
+  pure $ BlockInfo blockMeta [] [] blockContent
   where
     blockHeaderHashHexView = mempty --TODO
     txoInfosFromTx :: ApiMonad m => Int -> ErgoTransaction -> m ([TxInfo], [TxInInfo], [TxOutInfo])

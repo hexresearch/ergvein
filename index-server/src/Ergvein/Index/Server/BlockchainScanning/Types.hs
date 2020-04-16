@@ -37,7 +37,15 @@ data BlockContentInfo = BlockContentInfo
   , blockContentTxOutInfos :: [TxOutInfo]
   }
 
+data TxInfo2 = TxInfo2
+  { txHash2      :: TxHash
+  , txHexView2     :: TxHexView
+  , txOutputsCount :: Word
+  }
+
 data BlockInfo = BlockInfo
   { blockInfoMeta    :: BlockMetaInfo
+  , spentTxsHash :: [TxHash]
+  , blockContentTxInfos2 :: [TxInfo2]
   , blockInfoContent :: BlockContentInfo
   }
