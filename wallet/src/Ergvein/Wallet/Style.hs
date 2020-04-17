@@ -465,6 +465,8 @@ networkPageCss = do
     paddingRight $ px 3
     width $ pct 35
     textAlign $ alignSide sideRight
+  ".network-title-cur > .select-lang" ? do
+    width maxContent
   ".network-hr-sep" ? do
     marginTop $ px 5
     border solid (px 3) black
@@ -713,6 +715,7 @@ legoStyles = do
   ".padl-a" ? paddingLeft    auto
   ".padr-a" ? paddingRight   auto
   ".padt-a" ? paddingTop     auto
+  ".width-80" ? width (pct 80)
 
 graphPinCodeCanvasCss :: Css
 graphPinCodeCanvasCss = do
