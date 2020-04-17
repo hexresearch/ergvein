@@ -689,12 +689,16 @@ historyPageCss = do
     color $ rgb 120 0 0
   ".transaction-info-body" ? do
     fontSize $ px 16
+    marginLeft $ px 20
+    marginRight $ px 20
   ".transaction-info-element" ? do
     display grid
     gridTemplateColumns [fr 2, fr 8]
     marginTop $ px 20
+  ".info-descr" ? do
+    textAlign $ alignSide sideLeft
   ".info-body" ? do
-    textAlign center
+    textAlign $ alignSide sideLeft
     overflow hidden
     textOverflow overflowEllipsis
 
