@@ -59,8 +59,8 @@ blockTxInfos block txBlockHeight nodeNetwork = do
 
     txInfo :: HK.Tx -> ([TxInfo], [TxHash])
     txInfo tx = let
-      info = TxInfo { txHash2 = HK.txHashToHex $ HK.txHash tx
-                    , txHexView2 = HK.encodeHex $ encode tx 
+      info = TxInfo { txHash = HK.txHashToHex $ HK.txHash tx
+                    , txHexView = HK.encodeHex $ encode tx 
                     , txOutputsCount = fromIntegral $ length $ HK.txOut tx
                     }
       withoutCoinbaseTx = filter $ (/= HK.nullOutPoint)

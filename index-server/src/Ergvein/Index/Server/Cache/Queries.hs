@@ -22,7 +22,7 @@ import Debug.Trace
 import Control.Monad.IO.Class
 
 instance Conversion TxInfo TxCacheRec where
-  convert txInfo = TxCacheRec (txHash2 txInfo) (txHexView2 txInfo) (txOutputsCount txInfo)
+  convert txInfo = TxCacheRec (txHash txInfo) (txHexView txInfo) (txOutputsCount txInfo)
 
 safeEntrySlice :: (MonadLDB m , Ord k, S.Serialize k, Flat v) => BS.ByteString -> k -> m [(k,v)]
 safeEntrySlice startKey endKey = do
@@ -66,7 +66,7 @@ putItems keySelector valueSelector items = putI <$> items
 updateTxSpends  :: (MonadLDB m) => [TxHash] -> [TxInfo] -> m ()
 updateTxSpends spentTxsHash newTxInfos = do
   db <- getDb
-  write db def $ putItems (cachedTxKey . txHash2) (convert @_ @TxCacheRec) newTxInfos
+  write db def $ putItems (cachedTxKey . txHash) (convert @_ @TxCacheRec) newTxInfos
   cachedInfo <- getManyParsedExact @_ @TxCacheRec  $ cachedTxKey <$> Map.keys outSpendsAmountByTx 
   write db def $ infoUpdate <$> cachedInfo
   where

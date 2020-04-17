@@ -44,7 +44,7 @@ cacheBlockMetaInfos db infos = write db def $ putItems keySelector valueSelector
 
 cacheTxInfos :: MonadIO m => DB -> [TxInfo] -> m ()
 cacheTxInfos db infos = do
-  write db def $ putItems (cachedTxKey . txHash2) (convert @TxInfo @TxCacheRec) infos
+  write db def $ putItems (cachedTxKey . txHash) (convert @TxInfo @TxCacheRec) infos
 
 addToCache :: (MonadLDB m) => BlockInfo -> m ()
 addToCache update = do

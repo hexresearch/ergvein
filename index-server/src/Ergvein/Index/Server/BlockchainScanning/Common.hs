@@ -92,5 +92,5 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
 startBlockchainScanner :: ServerM [Thread]
 startBlockchainScanner = sequenceA 
   [ scannerThread BTC  BTCScanning.blockInfo
- -- , scannerThread ERGO ERGOScanning.blockInfo
+  , scannerThread ERGO ERGOScanning.blockInfo
   ]
