@@ -46,16 +46,16 @@ txInfo tx txHash = do
 blockTxInfos :: ApiMonad m => FullBlock -> BlockHeight -> m BlockInfo
 blockTxInfos block txBlockHeight = do
   (txInfos ,txInInfos, txOutInfos) <- mconcat <$> (sequence $ txoInfosFromTx `imap` (transactions $ blockTransactions block))
-  let blockAddressFilter = mempty
+  let blockHeaderHashHexView = mempty --TODO
+      blockAddressFilter = mempty
       blockMeta = BlockMetaInfo ERGO (fromIntegral txBlockHeight) blockHeaderHashHexView blockAddressFilter
   pure $ BlockInfo blockMeta [] []
   where
-    blockHeaderHashHexView = mempty --TODO
     txoInfosFromTx :: ApiMonad m => Int -> ErgoTransaction -> m ([TxInfo], [TxInInfo], [TxOutInfo])
     txoInfosFromTx txBlockIndex tx = do
       let txHash = bs2Hex $ unTransactionId $ transactionId (tx :: ErgoTransaction)
           txI = TxInfo { txHash = txHash
-                       , txHexView = "txHexView"
+                       , txHexView = mempty
                        , txBlockHeight = txBlockHeight
                        , txBlockIndex  = fromIntegral txBlockIndex
                        }

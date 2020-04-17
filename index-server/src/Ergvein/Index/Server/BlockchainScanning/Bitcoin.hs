@@ -6,12 +6,12 @@ import           Data.Either
 import           Data.List.Index
 import           Data.Maybe
 import           Data.Serialize
-
 import           Network.Bitcoin.Api.Blockchain
 import           Network.Bitcoin.Api.Client
 
 import           Ergvein.Crypto.Hash
 import           Ergvein.Filters.Btc
+import           Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import           Ergvein.Index.Server.BlockchainScanning.Types
 import           Ergvein.Index.Server.Cache.Monad
 import           Ergvein.Index.Server.Cache.Queries
@@ -23,37 +23,31 @@ import           Ergvein.Text
 import           Ergvein.Types.Currency
 import           Ergvein.Types.Transaction
 
-import qualified Data.ByteString                    as B
 import qualified Data.HashSet                       as Set
 import qualified Data.HexString                     as HS
 import qualified Data.Map.Strict                    as Map
 import qualified Network.Haskoin.Block              as HK
 import qualified Network.Haskoin.Constants          as HK
-import qualified Network.Haskoin.Crypto             as HK
 import qualified Network.Haskoin.Transaction        as HK
 import qualified Network.Haskoin.Util               as HK
-import qualified Data.Text                          as T
-
-import Debug.Trace
-
-import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 
 blockTxInfos :: MonadLDB m => HK.Block -> BlockHeight -> HK.Network -> m BlockInfo
 blockTxInfos block txBlockHeight nodeNetwork = do 
-  let (txInfos ,txInInfos) = mconcat $ txInfo <$> HK.blockTxns block
-      txInfosMap = mapBy (HK.txHashToHex . HK.txHash) $ HK.blockTxns block
-      uniqueTxInIds = Set.toList $ Set.fromList txInInfos
+  let (txInfos , spentTxsIds) = mconcat $ txInfo <$> HK.blockTxns block
+      
+      uniqueSpentTxIds = Set.toList $ Set.fromList spentTxsIds
   
-  blockTxInSources <- mapM (txInSource txInfosMap) uniqueTxInIds
+  uniqueSpentTxs <- mapM spentTxSource uniqueSpentTxIds
 
-  let blockAddressFilter = HK.encodeHex $ encodeBtcAddrFilter $ makeBtcFilter nodeNetwork blockTxInSources block
+  let blockHeaderHashHexView = HK.blockHashToHex $ HK.headerHash $ HK.blockHeader block
+      blockAddressFilter = HK.encodeHex $ encodeBtcAddrFilter $ makeBtcFilter nodeNetwork uniqueSpentTxs block
       blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHashHexView blockAddressFilter
 
-  pure $ BlockInfo blockMeta txInInfos txInfos 
+  pure $ BlockInfo blockMeta spentTxsIds txInfos 
   where
-    blockHeaderHashHexView = HK.blockHashToHex $ HK.headerHash $ HK.blockHeader block
-    txInSource :: MonadLDB m => Map.Map TxId HK.Tx -> T.Text -> m HK.Tx
-    txInSource blockTxMap txInId = 
+    blockTxMap = mapBy (HK.txHashToHex . HK.txHash) $ HK.blockTxns block
+    spentTxSource :: MonadLDB m => TxHash -> m HK.Tx
+    spentTxSource txInId = 
       case Map.lookup txInId blockTxMap of
         Just    sourceTx -> pure sourceTx
         Nothing          -> fromChache
@@ -62,18 +56,16 @@ blockTxInfos block txBlockHeight nodeNetwork = do
         fromChache = do
           src <- getParsedExact $ cachedTxKey txInId
           pure $ fromRight (error decodeError) $ decode $ fromJust $ HK.decodeHex $ txCacheRecHexView src
-    txInfo :: HK.Tx -> ([TxInfo2], [T.Text])
+
+    txInfo :: HK.Tx -> ([TxInfo], [TxHash])
     txInfo tx = let
-      withoutCoinbaseTx = filter $ (/= HK.nullOutPoint) 
-      txI = TxInfo2 { txHash2 = HK.txHashToHex $ HK.txHash tx
+      info = TxInfo { txHash2 = HK.txHashToHex $ HK.txHash tx
                     , txHexView2 = HK.encodeHex $ encode tx 
                     , txOutputsCount = fromIntegral $ length $ HK.txOut tx
                     }
-      txInI = HK.txHashToHex . HK.outPointHash <$> (withoutCoinbaseTx $ HK.prevOutput <$> HK.txIn tx)
-      in ([txI], txInI)
-
---actualHeight :: Config -> IO BlockHeight
---actualHeight cfg = fromIntegral <$> btcNodeClient cfg getBlockCount
+      withoutCoinbaseTx = filter $ (/= HK.nullOutPoint)
+      spentTxInfo = HK.txHashToHex . HK.outPointHash <$> (withoutCoinbaseTx $ HK.prevOutput <$> HK.txIn tx)
+      in ([info], spentTxInfo)
 
 actualHeight :: (Monad m, BitcoinApiMonad m) => m BlockHeight
 actualHeight = fromIntegral <$> nodeRpcCall getBlockCount

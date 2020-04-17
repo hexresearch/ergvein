@@ -42,14 +42,14 @@ cacheBlockMetaInfos db infos = write db def $ putItems keySelector valueSelector
     keySelector   info = cachedMetaKey (blockMetaCurrency info, blockMetaBlockHeight info)
     valueSelector info = BlockMetaCacheRec (blockMetaHeaderHashHexView info) (blockMetaAddressFilterHexView info)
 
-cacheTxInfos :: MonadIO m => DB -> [TxInfo2] -> m ()
+cacheTxInfos :: MonadIO m => DB -> [TxInfo] -> m ()
 cacheTxInfos db infos = do
-  write db def $ putItems (cachedTxKey . txHash2) (convert @TxInfo2 @TxCacheRec) infos
+  write db def $ putItems (cachedTxKey . txHash2) (convert @TxInfo @TxCacheRec) infos
 
 addToCache :: (MonadLDB m) => BlockInfo -> m ()
 addToCache update = do
   db <- getDb
-  updateTxSpends (spentTxsHash update) $ blockContentTxInfos2 update
+  updateTxSpends (spentTxsHash update) $ blockContentTxInfos update
   cacheBlockMetaInfos db $ [blockInfoMeta update]
 
 openCacheDb :: (MonadLogger m, MonadIO m) => FilePath -> DBPool -> m DB

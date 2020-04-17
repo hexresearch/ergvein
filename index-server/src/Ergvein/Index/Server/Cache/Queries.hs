@@ -21,7 +21,7 @@ import qualified Database.LevelDB.Streaming as LDBStreaming
 import Debug.Trace
 import Control.Monad.IO.Class
 
-instance Conversion TxInfo2 TxCacheRec where
+instance Conversion TxInfo TxCacheRec where
   convert txInfo = TxCacheRec (txHash2 txInfo) (txHexView2 txInfo) (txOutputsCount txInfo)
 
 safeEntrySlice :: (MonadLDB m , Ord k, S.Serialize k, Flat v) => BS.ByteString -> k -> m [(k,v)]
@@ -63,7 +63,7 @@ putItems :: (Flat v) => (a -> BS.ByteString) -> (a -> v) -> [a] -> LDB.WriteBatc
 putItems keySelector valueSelector items = putI <$> items
   where putI item = LDB.Put (keySelector item) $ flat $ valueSelector item
 
-updateTxSpends  :: (MonadLDB m) => [TxHash] -> [TxInfo2] -> m ()
+updateTxSpends  :: (MonadLDB m) => [TxHash] -> [TxInfo] -> m ()
 updateTxSpends spentTxsHash newTxInfos = do
   db <- getDb
   write db def $ putItems (cachedTxKey . txHash2) (convert @_ @TxCacheRec) newTxInfos
