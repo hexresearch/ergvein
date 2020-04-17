@@ -21,47 +21,25 @@ import           Network.Ergo.Api.Info
 import qualified Network.Ergo.Api.Utxo    as UtxoApi
 import Control.Monad.IO.Unlift
 
-txInfo :: ApiMonad m => ErgoTransaction -> TxHash -> m ([TxInInfo], [TxOutInfo])
-txInfo tx txHash = do
-  let txOuts = txOutInfo <$> outputs tx 
+txInfo :: ApiMonad m => ErgoTransaction -> m ([TxInfo], [TxHash])
+txInfo tx = do
+  let info = TxInfo { txHash = bs2Hex $ unTransactionId $ transactionId (tx :: ErgoTransaction)
+                    , txHexView = mempty
+                    , txOutputsCount = fromIntegral $ length $ dataInputs tx
+                    }
   txIns <- forM (dataInputs tx) txInInfo
-  pure $ (txIns, txOuts)
+  let spentTxIds = bs2Hex . unTransactionId . fromJust . (transactionId :: ErgoTransactionOutput -> Maybe TransactionId) <$> txIns
+  pure $ ([info], spentTxIds)
   where
-    txInInfo :: ApiMonad m => ErgoTransactionDataInput -> m TxInInfo
-    txInInfo txIn = do
-      box <- UtxoApi.getById $ boxId (txIn :: ErgoTransactionDataInput)
-      pure $ TxInInfo { txInTxHash     = txHash
-                      , txInTxOutHash  = bs2Hex $ unTransactionId $ fromJust $ transactionId (box :: ErgoTransactionOutput)
-                      , txInTxOutIndex = fromIntegral $ fromJust $ index box
-                      }
-
-    txOutInfo txOut = let
-      scriptOutputHash = showt . doubleSHA256
-      in TxOutInfo { txOutTxHash           = txHash
-                   , txOutPubKeyScriptHash = scriptOutputHash $ unErgoTree $ ergoTree txOut
-                   , txOutIndex            = fromIntegral $ fromJust $ index txOut
-                   , txOutValue            = value txOut
-                   }
+    txInInfo txIn = UtxoApi.getById $ boxId (txIn :: ErgoTransactionDataInput)
 
 blockTxInfos :: ApiMonad m => FullBlock -> BlockHeight -> m BlockInfo
 blockTxInfos block txBlockHeight = do
-  (txInfos ,txInInfos, txOutInfos) <- mconcat <$> (sequence $ txoInfosFromTx `imap` (transactions $ blockTransactions block))
-  let blockContent = BlockContentInfo txInfos txInInfos txOutInfos
+  (txInfos , spentTxsIds) <- mconcat <$> mapM txInfo (transactions $ blockTransactions block)
+  let blockHeaderHashHexView = mempty --TODO
       blockAddressFilter = mempty
-      blockMeta = BlockMetaInfo ERGO (fromIntegral txBlockHeight) blockHeaderHexView blockAddressFilter
-  pure $ BlockInfo blockMeta blockContent
-  where
-    blockHeaderHexView = bs2Hex $ encode $ headerFromApi $ header block
-    txoInfosFromTx :: ApiMonad m => Int -> ErgoTransaction -> m ([TxInfo], [TxInInfo], [TxOutInfo])
-    txoInfosFromTx txBlockIndex tx = do
-      let txHash = bs2Hex $ unTransactionId $ transactionId (tx :: ErgoTransaction)
-          txI = TxInfo { txHash = txHash
-                       , txHexView = "txHexView"
-                       , txBlockHeight = txBlockHeight
-                       , txBlockIndex  = fromIntegral txBlockIndex
-                       }
-      (txInI,txOutI) <- txInfo tx txHash
-      pure ([txI], txInI, txOutI)
+      blockMeta = BlockMetaInfo ERGO (fromIntegral txBlockHeight) blockHeaderHashHexView blockAddressFilter
+  pure $ BlockInfo blockMeta spentTxsIds txInfos
 
 actualHeight :: ApiMonad m => m BlockHeight
 actualHeight = do
