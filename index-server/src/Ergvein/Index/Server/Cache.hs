@@ -49,7 +49,7 @@ cacheTxInfos db infos = do
 addToCache :: (MonadLDB m) => BlockInfo -> m ()
 addToCache update = do
   db <- getDb
-  actCache (spentTxsHash update) (blockContentTxInfos2 update)
+  updateTxSpends (spentTxsHash update) $ blockContentTxInfos2 update
   cacheBlockMetaInfos db $ [blockInfoMeta update]
 
 openCacheDb :: (MonadLogger m, MonadIO m) => FilePath -> DBPool -> m DB

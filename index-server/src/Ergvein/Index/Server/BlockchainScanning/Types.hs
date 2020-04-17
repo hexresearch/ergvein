@@ -31,12 +31,6 @@ data BlockMetaInfo = BlockMetaInfo
   , blockMetaAddressFilterHexView :: AddressFilterHexView
   }
 
-data BlockContentInfo = BlockContentInfo
-  { blockContentTxInfos    :: [TxInfo]
-  , blockContentTxInInfos  :: [TxInInfo]
-  , blockContentTxOutInfos :: [TxOutInfo]
-  }
-
 data TxInfo2 = TxInfo2
   { txHash2      :: TxHash
   , txHexView2     :: TxHexView
@@ -47,5 +41,4 @@ data BlockInfo = BlockInfo
   { blockInfoMeta    :: BlockMetaInfo
   , spentTxsHash :: [TxHash]
   , blockContentTxInfos2 :: [TxInfo2]
-  , blockInfoContent :: BlockContentInfo
   }

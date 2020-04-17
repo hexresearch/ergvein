@@ -63,21 +63,17 @@ putItems :: (Flat v) => (a -> BS.ByteString) -> (a -> v) -> [a] -> LDB.WriteBatc
 putItems keySelector valueSelector items = putI <$> items
   where putI item = LDB.Put (keySelector item) $ flat $ valueSelector item
 
-actCache  :: (MonadLDB m) => [TxHash] -> [TxInfo2] -> m ()
-actCache txsToSpend newTxs = do
+updateTxSpends  :: (MonadLDB m) => [TxHash] -> [TxInfo2] -> m ()
+updateTxSpends spentTxsHash newTxInfos = do
   db <- getDb
-  let n = putItems (cachedTxKey . txHash2) (convert @_ @TxCacheRec) newTxs
-      n' = Map.fromListWith (+) $ (,1) <$> txsToSpend
-
-  write db def n
-
-  rr <- getManyParsedExact @_ @TxCacheRec  $ cachedTxKey <$> Map.keys n'
-  let z =  (\x-> let
-              t = txCacheRecUnspentOutputsCount x - n' Map.! (txCacheRecHash x)
-              in if t > 0 then 
-                   LDB.Put (cachedTxKey $ txCacheRecHash x) (flat $ x { txCacheRecUnspentOutputsCount = t })
-                 else
-                   LDB.Del $ cachedTxKey $ txCacheRecHash x
-            ) <$> rr
-  
-  write db def z
+  write db def $ putItems (cachedTxKey . txHash2) (convert @_ @TxCacheRec) newTxInfos
+  cachedInfo <- getManyParsedExact @_ @TxCacheRec  $ cachedTxKey <$> Map.keys outSpendsAmountByTx 
+  write db def $ infoUpdate <$> cachedInfo
+  where
+    outSpendsAmountByTx = Map.fromListWith (+) $ (,1) <$> spentTxsHash
+    infoUpdate info = let 
+      outputsLeft = txCacheRecUnspentOutputsCount info - outSpendsAmountByTx Map.! (txCacheRecHash info)
+      in if outputsLeft == 0 then 
+          LDB.Del $ cachedTxKey $ txCacheRecHash info
+         else
+          LDB.Put (cachedTxKey $ txCacheRecHash info) (flat $ info { txCacheRecUnspentOutputsCount = outputsLeft })

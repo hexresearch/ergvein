@@ -41,7 +41,6 @@ import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 blockTxInfos :: MonadLDB m => HK.Block -> BlockHeight -> HK.Network -> m BlockInfo
 blockTxInfos block txBlockHeight nodeNetwork = do 
   let (txInfos ,txInInfos) = mconcat $ txInfo <$> HK.blockTxns block
-      blockContent = BlockContentInfo [] [] []
       txInfosMap = mapBy (HK.txHashToHex . HK.txHash) $ HK.blockTxns block
       uniqueTxInIds = Set.toList $ Set.fromList txInInfos
   
@@ -50,7 +49,7 @@ blockTxInfos block txBlockHeight nodeNetwork = do
   let blockAddressFilter = HK.encodeHex $ encodeBtcAddrFilter $ makeBtcFilter nodeNetwork blockTxInSources block
       blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHashHexView blockAddressFilter
 
-  pure $ BlockInfo blockMeta txInInfos txInfos blockContent 
+  pure $ BlockInfo blockMeta txInInfos txInfos 
   where
     blockHeaderHashHexView = HK.blockHashToHex $ HK.headerHash $ HK.blockHeader block
     txInSource :: MonadLDB m => Map.Map TxId HK.Tx -> T.Text -> m HK.Tx
