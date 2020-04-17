@@ -32,7 +32,8 @@ data NetworkPageStrings
   | NPSAvgLat NominalDiffTime
   | NPSOffline
   | NPSNoIndex Currency
-  | NPSHeightInfo (BlockHeight, BlockHeight)
+  | NPSHeightInfo1 BlockHeight
+  | NPSHeightInfo2 BlockHeight
   | NPSNodes
   | NPSNodesNum Int
   | NPSActiveNum Int
@@ -53,7 +54,7 @@ instance LocalizedPrint NetworkPageStrings where
       NPSDesync             -> "Indexers are not in sync"
       NPSSyncDescr          -> "Indexed height / actual blockchain height"
       NPSRefresh            -> "Refresh"
-      NPSServerListView     -> "View server list"
+      NPSServerListView     -> "View"
       NPSServerListInfo c   -> showt c <> " indexers"
       NPSServerEdit         -> "Edit"
       NPSParseError         -> "Failed to parse URL"
@@ -62,7 +63,8 @@ instance LocalizedPrint NetworkPageStrings where
       NPSAvgLat lat         -> "Average latency: " <> showt lat
       NPSOffline            -> "Offline"
       NPSNoIndex c          -> "Has no index for " <> showt c
-      NPSHeightInfo (ch,ah) -> "Index height: " <> showt ch <> ". Blockchain height: " <> showt ah
+      NPSHeightInfo1 ch     -> "Index height: " <> showt ch
+      NPSHeightInfo2 ah     -> "Blockchain height: " <> showt ah
       NPSNodes              -> "Blockchain nodes: "
       NPSNodesNum n         -> "Total nodes: " <> showt n
       NPSActiveNum n        -> showt n <> " connected"
@@ -86,7 +88,7 @@ instance LocalizedPrint NetworkPageStrings where
       NPSDesync             -> "Индексеры не синхронизованы"
       NPSSyncDescr          -> "Индексированная высота / действительная высота блокчейна"
       NPSRefresh            -> "Обновить"
-      NPSServerListView     -> "Список серверов"
+      NPSServerListView     -> "Обзор"
       NPSServerListInfo c   -> showt c <> " индексеры"
       NPSServerEdit         -> "Редактировать"
       NPSParseError         -> "Некорректный URL"
@@ -95,7 +97,8 @@ instance LocalizedPrint NetworkPageStrings where
       NPSAvgLat lat         -> "Средняя задержка : " <> showt lat
       NPSOffline            -> "Оффлайн"
       NPSNoIndex c          -> "Нет индекса для " <> showt c
-      NPSHeightInfo (ch,ah) -> "Высота индекса: " <> showt ch <> " .Высота блокчейна: " <> showt ah
+      NPSHeightInfo1 ch     -> "Высота индекса: " <> showt ch
+      NPSHeightInfo2 ah     -> "Высота блокчейна: " <> showt ah
       NPSNodes              -> "Блокчейн-узлы: "
       NPSNodesNum n         -> "Всего узлов: " <> showt n
       NPSActiveNum n        -> showt n <> " активных соединений"

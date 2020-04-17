@@ -31,7 +31,6 @@ import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Sync.Status
 import Network.Connection
 import Network.HTTP.Client hiding (Proxy)
-import Network.HTTP.Client.TLS (newTlsManagerWith, mkManagerSettings, newTlsManager)
 import Network.TLS
 import Network.TLS.Extra.Cipher
 import Reflex.Dom.Retractable

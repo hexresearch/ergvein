@@ -14,6 +14,7 @@ import Ergvein.Index.API.Types
 import Ergvein.Index.Client
 import Ergvein.Text
 import Ergvein.Wallet.Client
+import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
 
@@ -27,14 +28,14 @@ infoWorkerInterval = 60
 infoWorker :: MonadFront t m => m ()
 infoWorker = do
   indexerInfoRef  <- getActiveUrlsRef
-  mng             <- getClientMaganer
   refreshE        <- fmap fst $ getIndexerInfoEF
   te <- fmap void $ tickLossyFromPostBuildTime infoWorkerInterval
   let goE = leftmost [void te, refreshE]
   let chunkN = 3  -- Number of concurrent request threads
-  performEvent_ $ ffor goE $ const $ liftIO $ do
+  performFork_ $ ffor goE $ const $ do
     urlChunks <- fmap (mkChunks chunkN . M.keys) $ readExternalRef indexerInfoRef
-    ress <- fmap mconcat $ flip mapConcurrently urlChunks $ \urls -> flip traverse urls $ \u -> do
+    mng <- getClientMaganer
+    ress <- liftIO $ fmap mconcat $ flip mapConcurrently urlChunks $ \urls -> flip traverse urls $ \u -> do
       t0 <- getCurrentTime
       res <- runReaderT (getInfoEndpoint u ()) mng
       t1 <- getCurrentTime
