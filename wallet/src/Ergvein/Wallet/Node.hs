@@ -46,25 +46,25 @@ getAllConnByCurrency cur cm = case cur of
   BTC  -> (fmap . fmap) NodeConnBTC $ DM.lookup BTCTag cm
   ERGO -> (fmap . fmap) NodeConnERG $ DM.lookup ERGOTag cm
 
-initNode :: (Reflex t, TriggerEvent t m, MonadIO m) => Currency -> BaseUrl -> m (NodeConn t)
+initNode :: MonadBaseConstr t m => Currency -> BaseUrl -> m (NodeConn t)
 initNode cur url = case cur of
   BTC   -> fmap NodeConnBTC $ initBTCNode url
   ERGO  -> fmap NodeConnERG $ initErgoNode url
 
-initializeNodes :: (Reflex t, TriggerEvent t m, MonadIO m) => M.Map Currency [BaseUrl] -> m (ConnMap t)
+initializeNodes :: MonadBaseConstr t m => M.Map Currency [BaseUrl] -> m (ConnMap t)
 initializeNodes urlmap = do
   let ks = M.keys urlmap
   conns <- fmap join $ flip traverse ks $ \k -> traverse (initNode k) $ fromMaybe [] $ M.lookup k urlmap
   pure $ addMultipleConns DM.empty conns
 
-reinitNodes :: (Reflex t, TriggerEvent t m, MonadIO m)
+reinitNodes :: MonadBaseConstr t m
   => M.Map Currency [BaseUrl]   -- Map with all urls
   -> M.Map Currency Bool        -- True -- initialize or keep existing conns. False -- remove conns
   -> ConnMap t                  -- Inital map of connections
   -> m (ConnMap t)
 reinitNodes urls cs conMap = foldlM updCurr conMap $ M.toList cs
   where
-    updCurr :: (Reflex t, TriggerEvent t m, MonadIO m) => ConnMap t -> (Currency, Bool) -> m (ConnMap t)
+    updCurr :: MonadBaseConstr t m => ConnMap t -> (Currency, Bool) -> m (ConnMap t)
     updCurr cm (cur, b) = case cur of
       BTC -> case (DM.lookup BTCTag cm, b) of
         (Nothing, True) -> do

@@ -8,6 +8,9 @@ module Ergvein.Wallet.Node.Prim
   , HasNode(..)
   , NodeConnection(..)
   , NodeStatus(..)
+  , HostPort
+  , Host
+  , Port
   ) where
 
 import Data.Aeson
@@ -32,7 +35,7 @@ class (JSON (NodeReq cur), JSON (NodeResp cur), CurrencyRep cur) => HasNode cur 
 data NodeConnection t cur = NodeConnection {
   nodeconCurrency :: Currency
 , nodeconUrl      :: BaseUrl
-, nodeconStatus   :: Maybe NodeStatus
+, nodeconStatus   :: Maybe NodeStatus -- TODO: make this field Dynamic
 , nodeconOpensE   :: Event t ()
 , nodeconClosedE  :: Event t ()
 , nodeconReqE     :: NodeReq cur -> IO ()
@@ -43,3 +46,12 @@ data NodeStatus = NodeStatus {
   nodestatHeight :: BlockHeight
 , nodestatLat    :: NominalDiffTime
 }
+
+-- | Type alias for a combination of hostname and port.
+type HostPort = (Host, Port)
+
+-- | Type alias for a hostname.
+type Host = String
+
+-- | Type alias for a port number.
+type Port = Int
