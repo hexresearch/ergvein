@@ -40,10 +40,12 @@ import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Storage
+import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Sync.Status
 
 import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 
 -- | Authorized context. Has access to storage and indexer's functionality
 type MonadFront t m = (
@@ -67,12 +69,20 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   -- | Internal method to get flag if we has fully synced filters at the moment.
   getFiltersSyncRef :: m (ExternalRef t (Map Currency Bool))
   -- | Get activeCursRef Internal
-  getActiveCursRef :: m (ExternalRef t ActiveCurrencies)
+  getActiveCursD :: m (Dynamic t (S.Set Currency))
+  -- | Update active currencies
+  updateActuveCurs :: (Event t (S.Set Currency -> S.Set Currency)) -> m (Event t ())
   -- | Get auth info. Not a Maybe since this is authorized context
   getAuthInfo :: m (Dynamic t AuthInfo)
   -- | Get login. Convenience function
   getLoginD :: m (Dynamic t Text)
-  
+  -- | Internal method to get connection map ref
+  getNodeConnRef  :: m (ExternalRef t (ConnMap t))
+  -- | Get nodes by currency. Basically useless, but who knows
+  getNodesByCurrencyD :: Currency -> m (Dynamic t (Map BaseUrl (NodeConn t)))
+  -- | Get connections map
+  getNodeConnectionsD :: m (Dynamic t (ConnMap t))
+
 class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   -- | Get current settings
   getSettings :: m Settings

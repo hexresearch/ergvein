@@ -12,21 +12,27 @@ module Ergvein.Wallet.Monad.Util
   , logWarn
   , logError
   , postLog
+  , performFork
+  , performFork_
   , worker
   ) where
 
 import Control.Concurrent
 import Control.Concurrent.Async
+import Control.Exception
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
-import Data.Time
 import Data.Text (pack)
+import Data.Time
 import Ergvein.Text
 import Ergvein.Wallet.Log.Types
-import Ergvein.Wallet.Native
+import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Front
+import Ergvein.Wallet.Native
+import Foreign.JavaScript.TH (WithJSContextSingleton(..))
 import Reflex.ExternalRef
+import Reflex.Spider.Internal (SpiderHostFrame(..), EventM(..))
 
 import qualified Control.Immortal as I
 
@@ -83,17 +89,21 @@ logError = postSeverity LogError
 
 -- | Execute the action in main thread of UI. Very useful for android API actions
 -- that must be executed in the same thread where Looper was created.
-runOnUiThread :: MonadFrontBase t m => Event t (IO a) -> m (Event t a)
+runOnUiThread :: MonadFrontBase t m => Event t (Performable m a) -> m (Event t a)
 runOnUiThread ema = do
   ch <- getUiChan
-  performEventAsync $ ffor ema $ \ma fire -> liftIO $ writeChan ch $ fire =<< ma
+  performEventAsync $ ffor ema $ \ma fire -> do
+    unlift <- askUnliftIO
+    liftIO $ writeChan ch $ fire =<< unliftIO unlift ma
 
 -- | Execute the action in main thread of UI. Very useful for android API actions
 -- that must be executed in the same thread where Looper was created.
-runOnUiThread_ :: MonadFrontBase t m => Event t (IO ()) -> m ()
+runOnUiThread_ :: MonadFrontBase t m => Event t (Performable m ()) -> m ()
 runOnUiThread_ ema = do
   ch <- getUiChan
-  performEvent_ $ ffor ema $ \ma -> liftIO $ writeChan ch ma
+  performEvent_ $ ffor ema $ \ma -> do
+    unlift <- askUnliftIO
+    liftIO $ writeChan ch (unliftIO unlift ma)
 
 -- | Execute the action in main thread of UI. Very useful for android API actions
 -- that must be executed in the same thread where Looper was created.

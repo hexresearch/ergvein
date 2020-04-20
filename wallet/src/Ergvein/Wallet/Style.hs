@@ -110,6 +110,7 @@ frontendCss r = do
   selectCss
   buttonsToggleCss
   graphPinCodeCanvasCss
+  legoStyles
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -136,6 +137,10 @@ wrapperCss = do
     display flex
   ".centered-content" ? do
     margin auto auto auto auto
+  ".lr-centered-content" ? do
+    margin (em 1) auto (px 0) auto
+    paddingLeft $ em 1
+    paddingRight $ em 1
 
 translatePctX :: Size Percentage -> Css
 translatePctX x = prefixed (browsers <> "transform") $ "translateX(" <> value x <> ")"
@@ -460,29 +465,38 @@ networkPageCss = do
     paddingRight $ px 3
     width $ pct 35
     textAlign $ alignSide sideRight
+  ".network-title-cur > .select-lang" ? do
+    width maxContent
   ".network-hr-sep" ? do
     marginTop $ px 5
     border solid (px 3) black
   ".network-hr-sep-lb" ? do
     border solid (px 1) black
   ".network-hr-sep-nomargin" ? do
-    border solid (px 1) black
-    marginTop $ em 0
-    marginBottom $ em 0
+    border none none none
+    marginTop $ em 0.5
+    marginBottom $ em 0.5
   ".network-line" ? do
     width $ pct 100
     maxWidth $ px 500
-    display inlineBlock
     textAlign center
   ".network-name" ? do
-    display inlineBlock
-    float floatLeft
+    display flex
+    width $ pct 100
     fontWeight bold
+  ".network-name-txt" ? do
+    textAlign $ alignSide sideLeft
+    wordBreak breakAll
+    paddingRight $ em 0.5
   ".network-name-edit" ? do
     display inlineBlock
     float floatRight
     fontWeight bold
     color "#3F7FBF"
+  ".network-edit-btn" ? do
+    width fitContent
+    paddingLeft $ em 1.5
+    paddingRight $ em 1.5
   ".network-value" ? do
     display inlineBlock
     float floatLeft
@@ -492,23 +506,43 @@ networkPageCss = do
     float floatLeft
     fontStyle italic
     fontSizeCustom smaller
+    textAlign $ alignSide sideLeft
+    width $ pct 100
   ".network-sel-cur-item" ? do
     textAlign center
     cursor pointer
     fontSize $ pt (if isAndroid then 12 else 18)
   ".indexer-online" ? do
-    marginRight $ em 1
+    marginRight $ em 0.5
     color green
   ".indexer-offline" ? do
-    marginRight $ em 1
+    marginRight $ em 0.5
     color red
   ".net-refresh-btn" ? do
     height   $ em 3.8
     verticalAlign vAlignTop
-  ".mt-1" ? do
-    marginTop $ em 1
-  ".ml-1" ? do
-    marginLeft $ em 1
+  ".net-header-btns-3" ? do
+    display grid
+    width maxContent
+    gridGap $ em 0.5
+    marginLeft auto
+    marginRight auto
+  ".net-header-btns-2" ? do
+    display grid
+    width maxContent
+    gridGap $ em 0.5
+    marginLeft auto
+    marginRight auto
+  query M.screen [M.minWidth (rem 60)] $ ".net-header-btns-3" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1, fr 1]
+    gridGap $ em 0.5
+    width maxContent
+  query M.screen [M.minWidth (rem 60)] $ ".net-header-btns-2" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1]
+    gridGap $ em 0.5
+    width maxContent
 
 infoPageCss :: Css
 infoPageCss = do
@@ -655,6 +689,33 @@ buttonsToggleCss = do
   ".button-not-working" ? do
     visibility hidden
     pointerEvents none
+
+legoStyles :: Css
+legoStyles = do
+  ".mb-0" ? (marginBottom $ px 0)
+  ".ml-0" ? (marginLeft   $ px 0)
+  ".mr-0" ? (marginRight  $ px 0)
+  ".mt-0" ? (marginTop    $ px 0)
+  ".m-0"  ? margin (px 0) (px 0) (px 0) (px 0)
+  ".mb-1" ? (marginBottom $ em 1)
+  ".ml-1" ? (marginLeft   $ em 1)
+  ".mr-1" ? (marginRight  $ em 1)
+  ".mt-1" ? (marginTop    $ em 1)
+  ".mt-2" ? (marginTop    $ em 2)
+  ".mb-a" ? marginBottom  auto
+  ".ml-a" ? marginLeft    auto
+  ".mr-a" ? marginRight   auto
+  ".mt-a" ? marginTop     auto
+  ".mtb-a" ? (marginTop auto) >> (marginBottom auto)
+  ".padb-1" ? (paddingBottom $ em 1)
+  ".padl-1" ? (paddingLeft   $ em 1)
+  ".padr-1" ? (paddingRight  $ em 1)
+  ".padt-1" ? (paddingTop    $ em 1)
+  ".padb-a" ? paddingBottom  auto
+  ".padl-a" ? paddingLeft    auto
+  ".padr-a" ? paddingRight   auto
+  ".padt-a" ? paddingTop     auto
+  ".width-80" ? width (pct 80)
 
 graphPinCodeCanvasCss :: Css
 graphPinCodeCanvasCss = do

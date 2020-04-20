@@ -1,8 +1,7 @@
-module Ergvein.Wallet.Filters.Storage( 
+module Ergvein.Wallet.Filters.Storage(
     FiltersStorage
   , HasFiltersStorage(..)
   , openFiltersStorage
-  , performFilters
   , getFiltersHeight
   , insertFilter
   , getFilter
@@ -20,9 +19,10 @@ import Database.LMDB.Simple
 import Ergvein.Filters
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Filters.Types
+import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Native
 import Network.Haskoin.Block
-import Reflex.Dom 
+import Reflex.Dom
 import System.Directory
 
 import qualified Ergvein.Wallet.Filters.Btc.Types as BTC
@@ -43,14 +43,14 @@ openFiltersStorage :: (MonadIO m, MonadMask m, HasStoreDir m) => m FiltersStorag
 openFiltersStorage = do
   fn <- getFiltersStoragePath
   let path = unpack fn
-  liftIO $ do 
+  liftIO $ do
     storeEx <- doesDirectoryExist path
     unless storeEx $ createDirectory path
-  e <- liftIO $ openEnvironment path $ defaultLimits { 
-      maxDatabases = 6 -- TODO: update when we need more dbs for new currencies 
+  e <- liftIO $ openEnvironment path $ defaultLimits {
+      maxDatabases = 6 -- TODO: update when we need more dbs for new currencies
     , mapSize = 1024 * 1024 * 4 * 1024 } -- 4 GB max size
   liftIO $ readWriteTransaction e BTC.initBtcDbs
-  pure e 
+  pure e
 
 class Monad m => HasFiltersStorage m where
   getFiltersStorage :: m FiltersStorage
@@ -59,35 +59,28 @@ instance Monad m => HasFiltersStorage (ReaderT FiltersStorage m) where
   getFiltersStorage = ask
   {-# INLINE getFiltersStorage #-}
 
--- | Helper to perform actions in store concurrently in reflex network.
-performFilters :: (PerformEvent t m, TriggerEvent t m, HasFiltersStorage (Performable m), MonadIO (Performable m)) 
-  => Event t (ReaderT FiltersStorage IO a) -> m (Event t a)
-performFilters e = performEventAsync $ ffor e $ \ma fire -> do 
-  s <- getFiltersStorage
-  void . liftIO . forkIO $ fire =<< runReaderT ma s
-
-getFiltersHeight :: (MonadIO m, HasFiltersStorage m) => Currency -> m BlockHeight 
-getFiltersHeight cur = do 
+getFiltersHeight :: (MonadIO m, HasFiltersStorage m) => Currency -> m BlockHeight
+getFiltersHeight cur = do
   e <- getFiltersStorage
-  case cur of 
+  case cur of
     BTC -> BTC.getFiltersHeight e
 
 insertFilter :: (MonadIO m, HasFiltersStorage m) => BlockHeight -> BlockHash -> AddrFilter -> m ()
-insertFilter h bh f = do 
+insertFilter h bh f = do
   e <- getFiltersStorage
-  case f of 
+  case f of
     AddrFilterBtc btcf -> BTC.insertFilter h bh btcf e
 
 getFilter :: (MonadIO m, HasFiltersStorage m) => Currency -> BlockHeight -> m (Maybe AddrFilter)
-getFilter c bh = do 
+getFilter c bh = do
   e <- getFiltersStorage
-  case c of 
+  case c of
     BTC -> fmap (fmap AddrFilterBtc) $ BTC.getFilter bh e
 
 -- | Right fold over filters.
-foldFilters :: (MonadIO m, HasFiltersStorage m) => Currency -> (BlockHash -> AddrFilter -> a -> a) -> a -> m a 
-foldFilters c f a0 = do 
+foldFilters :: (MonadIO m, HasFiltersStorage m) => Currency -> (BlockHash -> AddrFilter -> a -> a) -> a -> m a
+foldFilters c f a0 = do
   e <- getFiltersStorage
-  case c of 
+  case c of
     BTC -> BTC.foldFilters (\k -> f k . AddrFilterBtc) a0 e
     ERGO -> pure a0 -- ^ TODO: add ergo here

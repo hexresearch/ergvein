@@ -61,10 +61,7 @@ actualHeight currency = case currency of
 
 storeInfo :: (MonadIO m) => BlockInfo -> QueryT m ()
 storeInfo blockInfo = do
-  insertTxs    $ blockContentTxInfos     $ blockInfoContent blockInfo
-  insertTxOuts $ blockContentTxOutInfos  $ blockInfoContent blockInfo
-  insertTxIns  $ blockContentTxInInfos   $ blockInfoContent blockInfo
-  insertBlock  $ blockInfoMeta blockInfo
+  insertBlock $ blockInfoMeta blockInfo
   pure ()
 
 storeScannedHeight :: (MonadIO m) => Currency -> BlockHeight -> QueryT m ()
@@ -79,11 +76,10 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
       logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
       do
         blockInfo <- scanInfo blockHeight
-        blockInfoToStore <- selectedInfoToStore blockInfo
         dbQuery $ do
-          storeInfo blockInfoToStore
+          storeInfo blockInfo
           storeScannedHeight currency blockHeight
-        addToCache blockInfoToStore
+        addToCache blockInfo
 
     scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
@@ -92,13 +88,6 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
       heights <- blockHeightsToScan currency
       traverse_ (blockIteration totalh) heights
       liftIO $ threadDelay $ configBlockchainScanDelay cfg
-
-    selectedInfoToStore info = do
-      cfg <- serverConfig
-      pure $ if configPubScriptHistoryScan cfg then info 
-             else 
-                let blockContent = BlockContentInfo (blockContentTxInfos $ blockInfoContent info) [] []
-                in info { blockInfoContent = blockContent }
 
 startBlockchainScanner :: ServerM [Thread]
 startBlockchainScanner = sequenceA 
