@@ -1,3 +1,3 @@
 # Wallet storage data types
 
-[](./ergvein-wallet-storage-types.png)
+![Wallet storage data types scheme](./ergvein-wallet-storage-types.png)
