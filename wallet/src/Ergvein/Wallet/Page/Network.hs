@@ -56,43 +56,44 @@ networkPageWidget cur = do
         avgL = if l == 0 then NPSNoServerAvail else NPSAvgLat $ sum lats / fromIntegral l
         in (NPSServerVal l, avgL)
 
-  listE <- lineOption $ do
-    nameOption NPSServer
-    listE <- el "div" $ do
-      valueOptionDyn servNumD
-      divClass "network-name-edit" $ fmap (cur <$) $ outlineButton NPSServerListView
-    descrOption NPSServerDescr
-    descrOptionDyn avgLatD
-    labelHorSep
-    pure listE
+  divClass "centered-wrapper" $ divClass "lr-centered-content width-80" $ do
+    listE <- lineOption $ do
+      nameOption NPSServer
+      listE <- el "div" $ do
+        valueOptionDyn servNumD
+        divClass "network-name-edit" $ fmap (cur <$) $ outlineButton NPSServerListView
+      descrOption NPSServerDescr
+      descrOptionDyn avgLatD
+      labelHorSep
+      pure listE
 
-  lineOption $ lineOptionNoEdit NPSSyncStatus servCurInfoD NPSSyncDescr
-  lineOption $ do
-    let nnnD = ffor conmapD $ \cm -> case cur of
-          BTC  -> let
-            btcm    = fromMaybe M.empty $ DM.lookup BTCTag cm
-            actives = catMaybes $ fmap nodeconStatus $ M.elems btcm
-            actN    = length actives
-            avgLat  = if actN == 0 then NPSNoActiveNodes else NPSAvgLat $ (sum $ fmap nodestatLat actives) / fromIntegral actN
-            in (NPSNodesNum $ M.size btcm, NPSActiveNum actN, avgLat)
-          ERGO  -> let
-            ergom   = fromMaybe M.empty $ DM.lookup ERGOTag cm
-            actives = catMaybes $ fmap nodeconStatus $ M.elems ergom
-            actN    = length actives
-            avgLat  = if actN == 0 then NPSNoActiveNodes else NPSAvgLat $ (sum $ fmap nodestatLat actives) / fromIntegral actN
-            in (NPSNodesNum $ M.size ergom, NPSActiveNum actN, avgLat)
-        totalND  = (\(n,_,_) -> n) <$> nnnD
-        activeND = (\(_,n,_) -> n) <$> nnnD
-        avgLatD  = (\(_,_,l) -> l) <$> nnnD
-    nameOption NPSNodes
-    valueOptionDyn activeND
-    descrOptionDyn totalND
-    descrOptionDyn avgLatD
-    labelHorSep
-  void $ nextWidget $ ffor listE $ \cur -> Retractable {
-      retractableNext = serversInfoPage cur
-    , retractablePrev = Just (pure $ networkPage (Just cur))
-    }
+    lineOption $ lineOptionNoEdit NPSSyncStatus servCurInfoD NPSSyncDescr
+    lineOption $ do
+      let nnnD = ffor conmapD $ \cm -> case cur of
+            BTC  -> let
+              btcm    = fromMaybe M.empty $ DM.lookup BTCTag cm
+              actives = catMaybes $ fmap nodeconStatus $ M.elems btcm
+              actN    = length actives
+              avgLat  = if actN == 0 then NPSNoActiveNodes else NPSAvgLat $ (sum $ fmap nodestatLat actives) / fromIntegral actN
+              in (NPSNodesNum $ M.size btcm, NPSActiveNum actN, avgLat)
+            ERGO  -> let
+              ergom   = fromMaybe M.empty $ DM.lookup ERGOTag cm
+              actives = catMaybes $ fmap nodeconStatus $ M.elems ergom
+              actN    = length actives
+              avgLat  = if actN == 0 then NPSNoActiveNodes else NPSAvgLat $ (sum $ fmap nodestatLat actives) / fromIntegral actN
+              in (NPSNodesNum $ M.size ergom, NPSActiveNum actN, avgLat)
+          totalND  = (\(n,_,_) -> n) <$> nnnD
+          activeND = (\(_,n,_) -> n) <$> nnnD
+          avgLatD  = (\(_,_,l) -> l) <$> nnnD
+      nameOption NPSNodes
+      valueOptionDyn activeND
+      descrOptionDyn totalND
+      descrOptionDyn avgLatD
+      labelHorSep
+    void $ nextWidget $ ffor listE $ \cur -> Retractable {
+        retractableNext = serversInfoPage cur
+      , retractablePrev = Just (pure $ networkPage (Just cur))
+      }
 
 networkPageHeader :: MonadFront t m => Maybe Currency -> m (Dynamic t (Maybe Currency))
 networkPageHeader minitCur = do
@@ -134,16 +135,23 @@ serversInfoPage initCur = wrapper NPSTitle (Just $ pure $ serversInfoPage initCu
   curD <- networkPageHeader $ Just initCur
   void $ widgetHoldDyn $ ffor curD $ \case
     Nothing -> pure ()
-    Just cur -> do
+    Just cur -> divClass "centered-wrapper" $ divClass "lr-centered-content" $ do
       allIndsD <- getIndexerInfoD
       let indMapD = fmap (M.filter (isJust . join . fmap (M.lookup cur . indInfoHeights))) allIndsD
       void $ listWithKey indMapD $ \url minfoD -> lineOption $ widgetHoldDyn $ ffor minfoD $ \minfo -> do
         divClass "network-name" $ do
-          let cls = if isJust minfo then "indexer-online" else "indexer-offline"
+          let cls = if isJust minfo then "mt-a mb-a indexer-online" else "mt-a mb-a indexer-offline"
           elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
           text $ T.pack . showBaseUrl $ url
-        maybe (pure ()) (descrOption . NPSLatency . indInfoLatency) minfo
-        descrOption $ maybe NPSOffline (maybe (NPSNoIndex cur) NPSHeightInfo . M.lookup cur . indInfoHeights) minfo
+        maybe (pure ()) (descrOptionNoBR . NPSLatency . indInfoLatency) minfo
+        case minfo of
+          Nothing -> descrOptionNoBR NPSOffline
+          Just ii -> case M.lookup cur $ indInfoHeights ii of
+            Nothing -> descrOptionNoBR $ NPSNoIndex cur
+            Just (ch, ah) -> do
+              descrOptionNoBR $ NPSHeightInfo1 ch
+              descrOptionNoBR $ NPSHeightInfo2 ah
+        -- descrOptionNoBR $ maybe NPSOffline (maybe (NPSNoIndex cur) NPSHeightInfo . M.lookup cur . indInfoHeights) minfo
         labelHorSep
 
 lineOptionNoEdit :: MonadFront t m
@@ -158,11 +166,12 @@ lineOptionNoEdit name valD descr = do
   labelHorSep
 
 lineOption :: MonadFront t m => m a -> m a
-lineOption = divClass "network-wrapper" . divClass "network-line"
+lineOption = divClass "network-wrapper" . divClass "network-line ml-a mr-a"
 
-nameOption, descrOption :: (MonadFront t m, LocalizedPrint a) => a -> m ()
+nameOption, descrOption, descrOptionNoBR :: (MonadFront t m, LocalizedPrint a) => a -> m ()
 nameOption = divClass "network-name"    . localizedText
 descrOption = (>>) elBR . divClass "network-descr" . localizedText
+descrOptionNoBR = divClass "network-descr" . localizedText
 
 valueOptionDyn, descrOptionDyn :: (MonadFront t m, LocalizedPrint a) => Dynamic t a -> m ()
 valueOptionDyn v = getLanguage >>= \langD -> divClass "network-value" $ dynText $ ffor2 langD v localizedShow

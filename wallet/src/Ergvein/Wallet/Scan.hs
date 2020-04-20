@@ -108,7 +108,7 @@ waitFilters c e = mdo
       _ -> Nothing
 
 filterAddress :: MonadFront t m => Event t (Int, EgvXPubKey) -> m (Event t [BlockHash])
-filterAddress e = performFilters $ ffor e $ \(_, pk) -> Filters.filterAddress $ egvXPubKeyToEgvAddress pk
+filterAddress e = performFork $ ffor e $ \(_, pk) -> Filters.filterAddress $ egvXPubKeyToEgvAddress pk
 
 -- FIXME
 getBlocks :: MonadFront t m => Event t [BlockHash] -> m (Event t [Block])

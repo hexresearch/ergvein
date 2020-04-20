@@ -43,25 +43,10 @@ getScannedHeight currency = fmap headMay $ select $ from $ \scannedHeight -> do
 upsertScannedHeight :: MonadIO m => Currency -> Word64 -> QueryT m (Entity ScannedHeightRec)
 upsertScannedHeight currency h = upsert (ScannedHeightRec currency h) [ScannedHeightRecHeight DT.=. h]
 
-insertTxs :: MonadIO m => [TxInfo] -> QueryT m [Key TxRec]
-insertTxs txs = insertMany $ txRec <$> txs
-  where 
-    txRec tx = TxRec (txHash tx) (txHexView tx) (txBlockHeight tx) (txBlockIndex tx)
-
-insertTxOuts :: MonadIO m => [TxOutInfo] -> QueryT m [Key TxOutRec]
-insertTxOuts txOuts = insertMany $ txOutRec <$> txOuts
-  where
-    txOutRec txOut = TxOutRec (txOutTxHash txOut) (txOutPubKeyScriptHash txOut) (txOutIndex txOut) (txOutValue txOut)
-
-insertTxIns :: MonadIO m => [TxInInfo] -> QueryT m [Key TxInRec]
-insertTxIns txIns = insertMany $ txInRec <$> txIns
-  where
-    txInRec txIn = TxInRec (txInTxHash txIn) (txInTxOutHash txIn) (txInTxOutIndex txIn)
-
 insertBlock  :: MonadIO m  => BlockMetaInfo -> QueryT m (Key BlockMetaRec)
 insertBlock block = insert $ blockMetaRec block
   where
-    blockMetaRec block = BlockMetaRec (blockMetaCurrency block) (blockMetaBlockHeight block) (blockMetaHeaderHexView block) (blockMetaAddressFilterHexView block)
+    blockMetaRec block = BlockMetaRec (blockMetaCurrency block) (blockMetaBlockHeight block) (blockMetaHeaderHashHexView block) (blockMetaAddressFilterHexView block)
 
 rowsCount :: forall record m . (BackendCompatible SqlBackend (PersistEntityBackend record),
                                 PersistEntity record, MonadIO m)
