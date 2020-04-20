@@ -1,1 +1,0 @@
-# Wallet storage data types
