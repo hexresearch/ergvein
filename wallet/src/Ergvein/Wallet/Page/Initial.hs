@@ -84,24 +84,24 @@ generateMissingPrvKeys (authInfo, pass) = do
         Left err -> pure $ Left err
         Right encryptedUpdatedPrvStorage -> pure $ Right $ set (authInfo'storage . storage'encryptedPrvStorage) encryptedUpdatedPrvStorage authInfo
       where
-        prvKeystore = view prvStorage'currencyPrvStorages decryptedPrvStorage
-        pubKeystore = view (authInfo'storage . storage'pubKeys) authInfo
-        pubKeysNumber = M.map (\keystore -> (
-            MI.size $ pubKeystore'external keystore,
-            MI.size $ pubKeystore'internal keystore
-          )) pubKeystore
+        currencyPrvStorages = view prvStorage'currencyPrvStorages decryptedPrvStorage
+        currencyPubStorages = view (authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages) authInfo
+        pubKeysNumber = M.map (\currencyPubStorage -> (
+            MI.size $ pubKeystore'external (view currencyPubStorage'pubKeystore currencyPubStorage),
+            MI.size $ pubKeystore'internal (view currencyPubStorage'pubKeystore currencyPubStorage)
+          )) currencyPubStorages
         updatedPrvKeystore =
           MM.merge
           MM.dropMissing
           MM.dropMissing
           (MM.zipWithMatched generateMissingPrvKeysHelper)
-          prvKeystore
+          currencyPrvStorages
           pubKeysNumber
 
 generateMissingPrvKeysHelper ::
   Currency
   -> CurrencyPrvStorage -- ^ Private keystore
-  -> (Int, Int)     -- ^ Total number of external and internal private keys respectively that should be stored in keystore
+  -> (Int, Int)         -- ^ Total number of external and internal private keys respectively that should be stored in keystore
   -> CurrencyPrvStorage -- ^ Updated private keystore
 generateMissingPrvKeysHelper currency (CurrencyPrvStorage prvKeystore) (goalExternalKeysNum, goalInternalKeysNum) =
   CurrencyPrvStorage $ PrvKeystore masterPrvKey updatedExternalPrvKeys updatedInternalPrvKeys

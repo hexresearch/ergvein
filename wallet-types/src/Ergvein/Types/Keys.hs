@@ -2,6 +2,7 @@ module Ergvein.Types.Keys (
     XPrvKey(..)
   , XPubKey(..)
   , EgvRootXPrvKey(..)
+  , EgvRootXPubKey(..)
   , EgvXPrvKey(..)
   , EgvXPubKey(..)
   , PrvKeystore(..)
@@ -148,6 +149,30 @@ instance FromJSON EgvRootXPrvKey where
     key    <- o .: "key"
     case (readMaybe chain, readMaybe key) of
       (Just chain', Just key') -> pure $ EgvRootXPrvKey $ XPrvKey depth parent index chain' key'
+      _ -> fail "failed to read chain code or key"
+
+-- | Wrapper for a root extended public key (a key without assigned network)
+newtype EgvRootXPubKey = EgvRootXPubKey {unEgvRootXPubKey :: XPubKey}
+  deriving (Eq, Show, Read)
+
+instance ToJSON EgvRootXPubKey where
+  toJSON (EgvRootXPubKey XPubKey{..}) = object [
+      "depth"  .= toJSON xPubDepth
+    , "parent" .= toJSON xPubParent
+    , "index"  .= toJSON xPubIndex
+    , "chain"  .= show xPubChain
+    , "key"    .= show xPubKey
+    ]
+
+instance FromJSON EgvRootXPubKey where
+  parseJSON = withObject "EgvRootXPubKey" $ \o -> do
+    depth  <- o .: "depth"
+    parent <- o .: "parent"
+    index  <- o .: "index"
+    chain  <- o .: "chain"
+    key    <- o .: "key"
+    case (readMaybe chain, readMaybe key) of
+      (Just chain', Just key') -> pure $ EgvRootXPubKey $ XPubKey depth parent index chain' key'
       _ -> fail "failed to read chain code or key"
 
 -- | Wrapper around XPrvKey for easy to/from json manipulations

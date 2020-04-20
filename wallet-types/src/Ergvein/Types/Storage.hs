@@ -14,6 +14,7 @@ import Ergvein.Aeson
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
+import Ergvein.Types.Transaction
 import Network.Haskoin.Keys
 
 import qualified Data.Map.Strict as M
@@ -77,11 +78,29 @@ instance FromJSON EncryptedPrvStorage where
       Nothing -> fail "failed to read iv"
       Just iv' -> pure $ EncryptedPrvStorage ciphertext salt iv'
 
-type PubStorage = M.Map Currency PubKeystore
+data CurrencyPubStorage = CurrencyPubStorage {
+    _currencyPubStorage'pubKeystore  :: PubKeystore
+  , _currencyPubStorage'transactions :: M.Map TxId EgvTx
+  }
+
+makeLenses ''CurrencyPubStorage
+
+$(deriveJSON aesonOptionsStripToApostroph ''CurrencyPubStorage)
+
+type CurrencyPubStorages = M.Map Currency CurrencyPubStorage
+
+data PubStorage = PubStorage {
+    _pubStorage'rootPubKey          :: EgvRootXPubKey
+  , _pubStorage'currencyPubStorages :: CurrencyPubStorages
+  }
+
+makeLenses ''PubStorage
+
+$(deriveJSON aesonOptionsStripToApostroph ''PubStorage)
 
 data WalletStorage = WalletStorage {
     _storage'encryptedPrvStorage :: EncryptedPrvStorage
-  , _storage'pubKeys             :: PubStorage
+  , _storage'pubStorage          :: PubStorage
   , _storage'walletName          :: Text
   }
 

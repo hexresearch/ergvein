@@ -13,64 +13,65 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Constants
 import Ergvein.Wallet.Storage.Keys (derivePubKey, egvXPubKeyToEgvAddress)
-import Ergvein.Wallet.Storage.Util (addXPubKeyToKeyсhain)
+import Ergvein.Wallet.Storage.Util (addXPubKeyToKeystore)
 import Network.Haskoin.Block (Block, BlockHash, genesisBlock)
 
 import qualified Data.IntMap.Strict          as MI
 import qualified Data.Map.Strict             as M
 import qualified Ergvein.Wallet.Filters.Scan as Filters
+import qualified Data.Text                   as T
+
 
 -- | Loads current PubStorage, performs BIP44 account discovery algorithm and
 -- stores updated PubStorage to the wallet file.
 accountDiscovery :: MonadFront t m => m ()
 accountDiscovery = do
-  logWrite "Key scanning started"
-  pubKeystore <- getPubStorage
-  let showPubKeystoreDiff updatedPubKeystore =
-        "Discovered new BTC keys: " ++ show (btcAddressesCount updatedPubKeystore - btcAddressesCount pubKeystore) ++ "\n" ++
-        "Discovered new ERGO keys: " ++ show (ergAddressesCount updatedPubKeystore - ergAddressesCount pubKeystore)
-      btcAddressesCount s = getExternalPubkeysCount BTC s
-      ergAddressesCount s = getExternalPubkeysCount ERGO s
-      getExternalPubkeysCount currency keystore = MI.size $ pubKeystore'external (keystore M.! currency)
-  updatedPubKeystoreE <- traceEventWith showPubKeystoreDiff <$> scanKeys pubKeystore
+  logWrite "Account discovery started"
+  pubStorages <- _pubStorage'currencyPubStorages <$> getPubStorage
+  updatedPubStoragesE <- scan pubStorages
   authD <- getAuthInfo
-  let updatedAuthE = traceEventWith (const "Key scanning finished") <$> flip pushAlways updatedPubKeystoreE $ \store -> do
-        auth <- sample . current $ authD
-        pure $ Just $ auth
-          & authInfo'storage . storage'pubKeys .~ store
-          & authInfo'isUpdate .~ True
+  let updatedAuthE = traceEventWith (const "Account discovery finished") <$>
+        flip pushAlways updatedPubStoragesE $ \updatedPubStorages -> do
+          auth <- sample . current $ authD
+          pure $ Just $ auth
+            & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages .~ updatedPubStorages
+            & authInfo'isUpdate .~ True
   setAuthInfoE <- setAuthInfo updatedAuthE
   storeWallet setAuthInfoE
 
--- Gets old PubStorage, performs BIP44 account discovery algorithm for all currencies
--- then returns Event with updated PubStorage.
-scanKeys :: MonadFront t m => PubStorage -> m (Event t PubStorage)
-scanKeys pubKeystore = do
-  scanEvents <- traverse (applyScan pubKeystore) allCurrencies
+-- Gets old CurrencyPubStorages, performs BIP44 account discovery algorithm for all currencies
+-- then returns event with updated PubStorage.
+scan :: MonadFront t m => CurrencyPubStorages -> m (Event t CurrencyPubStorages)
+scan currencyPubStorages = do
+  scanEvents <- traverse (applyScan currencyPubStorages) allCurrencies
   let scanEvents' = [(M.fromList . (: []) <$> e) | e <- scanEvents]
       scanEvents'' = mergeWith M.union scanEvents'
-  newPubKeystoreD <- foldDyn M.union M.empty scanEvents''
-  let newPubKeystoreDUpdatedE = updated newPubKeystoreD
-      allFinishedE = flip push newPubKeystoreDUpdatedE $ \updatedKeystore -> do
-        pure $ if M.size updatedKeystore == length allCurrencies then Just $ updatedKeystore else Nothing
+  scannedCurrencyPubStoragesD <- foldDyn M.union M.empty scanEvents''
+  let allFinishedE = flip push (updated scannedCurrencyPubStoragesD) $ \updatedCurrencyPubStorage -> do
+        pure $ if M.size updatedCurrencyPubStorage == length allCurrencies then Just $ updatedCurrencyPubStorage else Nothing
   pure allFinishedE
 
--- TODO: use M.lookup instead of M.! and show error msg if currency not found
-applyScan :: MonadFront t m => PubStorage -> Currency -> m (Event t (Currency, PubKeystore))
-applyScan pubKeystore currency = scanCurrencyKeys currency (getKeystore currency pubKeystore)
-  where getKeystore cur pubKeystore' = pubKeystore' M.! cur
+-- Applies scan for a certain currency then returns event with result.
+applyScan :: MonadFront t m => CurrencyPubStorages -> Currency -> m (Event t (Currency, CurrencyPubStorage))
+applyScan currencyPubStorages currency =
+  case M.lookup currency currencyPubStorages of
+    Nothing -> fail $ "Could not find currency: " ++ (T.unpack $ currencyName currency)
+    Just currencyPubStorage -> scanCurrency currency currencyPubStorage
 
-scanCurrencyKeys :: MonadFront t m => Currency -> PubKeystore -> m (Event t (Currency, PubKeystore))
-scanCurrencyKeys currency keystore = mdo
+scanCurrency :: MonadFront t m => Currency -> CurrencyPubStorage -> m (Event t (Currency, CurrencyPubStorage))
+scanCurrency currency currencyPubStorage = mdo
   buildE <- getPostBuild
   nextE <- waitFilters currency =<< delay 0 (leftmost [newE, buildE])
   gapD <- holdDyn 0 gapE
   nextKeyIndexD <- holdDyn (if initKeystoreSize > gapLimit then initKeystoreSize - gapLimit else 0) nextKeyIndexE
-  newKeystoreD <- foldDyn (addXPubKeyToKeyсhain External) keystore nextKeyE
+  -- добавить сюда добавление транзакций в CurrencyPubStorage
+  -- newKeystoreD переименовать в newCurrencyPubStorageD
+  newKeystoreD <- foldDyn (addXPubKeyToKeystore External) keystore nextKeyE
   filterAddressE <- filterAddress nextKeyE
   getBlockE <- getBlocks filterAddressE
   storedE <- storeNewTransactions getBlockE
-  let masterPubKey = pubKeystore'master keystore
+  let keystore = _currencyPubStorage'pubKeystore currencyPubStorage
+      masterPubKey = pubKeystore'master keystore
       initKeystoreSize = MI.size $ pubKeystore'external keystore
       newE = flip push storedE $ \i -> do
         gap <- sample . current $ gapD
@@ -87,7 +88,7 @@ scanCurrencyKeys currency keystore = mdo
         pure $ nextKeyIndex + 1
       finishedE = flip push gapE $ \g -> do
         newKeystore <- sample . current $ newKeystoreD
-        pure $ if g >= gapLimit then Just $ (currency, newKeystore) else Nothing
+        pure $ if g >= gapLimit then Just $ (currency, CurrencyPubStorage newKeystore M.empty) else Nothing
   pure finishedE
 
 -- | If the given event fires and there is not fully synced filters. Wait for the synced filters and then fire the event.

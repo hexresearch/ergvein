@@ -1,6 +1,6 @@
 module Ergvein.Wallet.Storage.Util(
-    addXPrvKeyToKeyсhain
-  , addXPubKeyToKeyсhain
+    addXPrvKeyToKeystore
+  , addXPubKeyToKeystore
   , encryptPrvStorage
   , decryptPrvStorage
   , passwordToECIESPrvKey
@@ -38,50 +38,56 @@ import qualified Data.IntMap.Strict as MI
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 
-addXPrvKeyToKeyсhain :: KeyPurpose -> (Int, EgvXPrvKey) -> PrvKeystore -> PrvKeystore
-addXPrvKeyToKeyсhain External (index, key) (PrvKeystore master external internal) =
+addXPrvKeyToKeystore :: KeyPurpose -> (Int, EgvXPrvKey) -> PrvKeystore -> PrvKeystore
+addXPrvKeyToKeystore External (index, key) (PrvKeystore master external internal) =
    PrvKeystore master (MI.insert index key external) internal
-addXPrvKeyToKeyсhain Internal (index, key) (PrvKeystore master external internal) =
+addXPrvKeyToKeystore Internal (index, key) (PrvKeystore master external internal) =
    PrvKeystore master external (MI.insert index key internal)
 
-createPrvKeystore :: EgvRootXPrvKey -> Currency -> PrvKeystore
-createPrvKeystore root currency =
-  let masterKey = deriveCurrencyMasterPrvKey root currency
-      externalKeys = MI.fromList [(index, derivePrvKey masterKey External (fromIntegral index)) | index <- [0..(gapLimit-1)]]
-      internalKeys = MI.fromList [(index, derivePrvKey masterKey Internal (fromIntegral index)) | index <- [0..(gapLimit-1)]]
-  in PrvKeystore masterKey externalKeys internalKeys
+createPrvKeystore :: EgvXPrvKey -> PrvKeystore
+createPrvKeystore masterPrvKey =
+  let externalKeys = MI.fromList [(index, derivePrvKey masterPrvKey External (fromIntegral index)) | index <- [0..(gapLimit-1)]]
+      internalKeys = MI.fromList [(index, derivePrvKey masterPrvKey Internal (fromIntegral index)) | index <- [0..(gapLimit-1)]]
+  in PrvKeystore masterPrvKey externalKeys internalKeys
 
 createPrvStorage :: Seed -> EgvRootXPrvKey -> PrvStorage
-createPrvStorage seed root = PrvStorage seed root prvKeys
-  where prvKeys = M.fromList [(currency, CurrencyPrvStorage $ createPrvKeystore root currency) | currency <- allCurrencies]
+createPrvStorage seed rootPrvKey = PrvStorage seed rootPrvKey prvStorages
+  where prvStorages = M.fromList [
+            (currency, CurrencyPrvStorage $ createPrvKeystore $ deriveCurrencyMasterPrvKey rootPrvKey currency) |
+            currency <- allCurrencies
+          ]
 
-addXPubKeyToKeyсhain :: KeyPurpose -> (Int, EgvXPubKey) -> PubKeystore -> PubKeystore
-addXPubKeyToKeyсhain External (index, key) (PubKeystore master external internal) =
+addXPubKeyToKeystore :: KeyPurpose -> (Int, EgvXPubKey) -> PubKeystore -> PubKeystore
+addXPubKeyToKeystore External (index, key) (PubKeystore master external internal) =
   PubKeystore master (MI.insert index key external) internal
-addXPubKeyToKeyсhain Internal (index, key) (PubKeystore master external internal) =
+addXPubKeyToKeystore Internal (index, key) (PubKeystore master external internal) =
   PubKeystore master external (MI.insert index key internal)
 
-createPubKeyсhain :: EgvRootXPrvKey -> Currency -> PubKeystore
-createPubKeyсhain root currency =
-  let masterKey = deriveCurrencyMasterPubKey root currency
-      externalKeys = MI.fromList [(index, derivePubKey masterKey External (fromIntegral index)) | index <- [0..(gapLimit-1)]]
-      internalKeys = MI.fromList [(index, derivePubKey masterKey Internal (fromIntegral index)) | index <- [0..(gapLimit-1)]]
-  in PubKeystore masterKey externalKeys internalKeys
+createPubKeystore :: EgvXPubKey -> PubKeystore
+createPubKeystore masterPubKey =
+  let externalKeys = MI.fromList [(index, derivePubKey masterPubKey External (fromIntegral index)) | index <- [0..(gapLimit-1)]]
+      internalKeys = MI.fromList [(index, derivePubKey masterPubKey Internal (fromIntegral index)) | index <- [0..(gapLimit-1)]]
+  in PubKeystore masterPubKey externalKeys internalKeys
 
 createPubStorage :: EgvRootXPrvKey -> PubStorage
-createPubStorage root = M.fromList [(currency, createPubKeyсhain root currency) | currency <- allCurrencies]
+createPubStorage rootPrvKey = PubStorage rootPubKey pubStorages
+  where rootPubKey = EgvRootXPubKey $ deriveXPubKey $ unEgvRootXPrvKey rootPrvKey
+        pubStorages = M.fromList [
+            (currency, CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey rootPrvKey currency) (M.fromList [])) |
+            currency <- allCurrencies
+          ]
 
 createStorage :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either StorageAlert WalletStorage)
 createStorage mnemonic (login, pass) = case mnemonicToSeed "" mnemonic of
   Left err -> pure $ Left $ SAMnemonicFail $ showt err
   Right seed -> do
-    let root = EgvRootXPrvKey $ makeXPrvKey seed
-        prvStorage = createPrvStorage seed root
-        pubKeystore = createPubStorage root
+    let rootPrvKey = EgvRootXPrvKey $ makeXPrvKey seed
+        prvStorage = createPrvStorage seed rootPrvKey
+        pubStorage = createPubStorage rootPrvKey
     encryptPrvStorageResult <- encryptPrvStorage prvStorage pass
     case encryptPrvStorageResult of
       Left err -> pure $ Left err
-      Right eps -> pure $ Right $ WalletStorage eps pubKeystore login
+      Right encryptedPrvStorage -> pure $ Right $ WalletStorage encryptedPrvStorage pubStorage login
 
 encryptPrvStorage :: MonadIO m => PrvStorage -> Password -> m (Either StorageAlert EncryptedPrvStorage)
 encryptPrvStorage prvStorage password = liftIO $ do
