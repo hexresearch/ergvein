@@ -102,8 +102,7 @@ defaultIndexers = [
 defaultNodes :: M.Map Currency [BaseUrl]
 defaultNodes = M.fromList $ [
     (BTC, [
-      parse "127.0.0.1"
-    , parse "127.0.0.2"
+      parse "79.155.84.176:18333"
     ])
   , (ERGO, [
       parse "127.0.0.1"

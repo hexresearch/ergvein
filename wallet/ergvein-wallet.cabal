@@ -168,7 +168,7 @@ library
         haskey >=0.3 && <0.4,
         haskey-btree >=0.3 && <0.4,
         haskey-mtl >=0.3 && <0.4,
-        haskoin-core -any,
+        haskoin-core >= 0.8 && < 0.9,
         http-client >=0.5 && <0.7,
         http-client-tls >= 0.3 && < 0.4,
         immortal >= 0.3 && < 0.4,

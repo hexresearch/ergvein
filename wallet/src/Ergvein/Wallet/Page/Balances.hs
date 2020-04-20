@@ -3,7 +3,7 @@ module Ergvein.Wallet.Page.Balances(
     balancesPage
   ) where
 
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, fromJust)
 
 import Ergvein.Text
 import Ergvein.Types.Currency
@@ -22,6 +22,16 @@ import Ergvein.Wallet.Wrapper
 
 import Control.Monad.IO.Class
 import Data.Map.Strict as Map
+
+-- These are for nodeTestWidget
+import qualified Data.Dependent.Map as DM
+import qualified Data.Text as T
+import Ergvein.Wallet.Node
+import Ergvein.Wallet.Native
+import Network.Haskoin.Network
+import Control.Monad.Random
+import Ergvein.Wallet.Node.BTC
+import Ergvein.Wallet.Alert
 
 data BalancesStrings
   = BalancesTitle
@@ -50,8 +60,28 @@ balancesPage = do
     syncWidget =<< getSyncProgress
     currenciesList anon_name
 
+nodeTestWidget :: MonadFront t m => m ()
+nodeTestWidget = do
+  conMapD <- getNodeConnectionsD
+  widgetHoldDyn $ ffor conMapD $ \cm -> do
+    let node = head $ Map.elems $ fromJust $ DM.lookup BTCTag cm
+    let respE = nodeconRespE node
+        fire  = nodeconReqFire node
+    buildE <- delay 5 =<< getPostBuild
+    pingE <- performEvent $ ffor buildE $ const $ liftIO $ do
+      r <- randomIO
+      fire $ MPing $ Ping r
+      pure $ "Ping: " <> showt r
+    let pongE = fforMaybe respE $ \case
+          MPong (Pong p) -> Just $ "Pong: " <> showt p
+          _ -> Nothing
+    logShowInfoMsg $ leftmost [pingE, pongE]
+    pure ()
+  pure ()
+
 currenciesList :: MonadFront t m => Text -> m ()
 currenciesList name = divClass "currency-content" $ do
+  nodeTestWidget
   s <- getSettings
   historyE <- leftmost <$> traverse (currencyLine s) (getActiveCurrencies s)
   let thisWidget = Just $ pure balancesPage

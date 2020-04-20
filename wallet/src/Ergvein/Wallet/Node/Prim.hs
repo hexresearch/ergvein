@@ -14,6 +14,7 @@ module Ergvein.Wallet.Node.Prim
   ) where
 
 import Data.Aeson
+import Data.Serialize
 import Data.Time
 import Reflex
 import Servant.Client(BaseUrl)
@@ -28,18 +29,20 @@ class CurrencyRep cur where
   curRep :: cur -> Currency
 
 -- Type family for request and response
-class (JSON (NodeReq cur), JSON (NodeResp cur), CurrencyRep cur) => HasNode cur where
+class (CurrencyRep cur) => HasNode cur where
   type NodeReq cur :: *
   type NodeResp cur :: *
+  type NodeSpecific cur :: *
 
 data NodeConnection t cur = NodeConnection {
   nodeconCurrency :: Currency
 , nodeconUrl      :: BaseUrl
 , nodeconStatus   :: Maybe NodeStatus -- TODO: make this field Dynamic
 , nodeconOpensE   :: Event t ()
-, nodeconClosedE  :: Event t ()
-, nodeconReqE     :: NodeReq cur -> IO ()
+, nodeconCloseEF  :: (Event t (), IO ())
+, nodeconReqFire  :: NodeReq cur -> IO ()
 , nodeconRespE    :: Event t (NodeResp cur)
+, nodeExtra       :: NodeSpecific cur
 }
 
 data NodeStatus = NodeStatus {

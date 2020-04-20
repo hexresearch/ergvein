@@ -27,6 +27,7 @@ instance CurrencyRep ERGOType where
 instance HasNode ERGOType where
   type NodeReq ERGOType = Text
   type NodeResp ERGOType = Text
+  type NodeSpecific ERGOType = ()
 
 initErgoNode :: (Reflex t, TriggerEvent t m, MonadIO m) => BaseUrl -> m (NodeERG t)
 initErgoNode url =  pure $ NodeConnection {
@@ -34,7 +35,8 @@ initErgoNode url =  pure $ NodeConnection {
   , nodeconUrl      = url
   , nodeconStatus   = Nothing
   , nodeconOpensE   = never
-  , nodeconClosedE  = never
-  , nodeconReqE     = const $ pure ()
+  , nodeconCloseEF  = (never, pure ())
+  , nodeconReqFire  = const $ pure ()
   , nodeconRespE    = never
+  , nodeExtra       = ()
   }
