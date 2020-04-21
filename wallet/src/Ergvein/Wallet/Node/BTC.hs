@@ -64,7 +64,7 @@ initBTCNode url = do
   let nstat = if b then Nothing else Just $ NodeStatus bh (realToFrac d)
 
 
-  let net = btcTest   -- TODO: Switch to a proper BTC network
+  let net = btc
   (restartE, fireRestart)   <- newTriggerEvent
   (respE, fireResp)         <- newTriggerEvent
   (reqE, fireReq)           <- newTriggerEvent
