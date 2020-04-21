@@ -129,13 +129,11 @@ runNode u net incChan fire = withConnection u $ \ad -> peer_session ad
   where
     go = forever $ dispatchMessage =<< liftIO (atomically (readTChan incChan))
     peer_session ad =
-        let ins = appSource ad
-            ons = appSink ad
-            src = runConduit $ ins .| inPeerConduit net u .| mapM_C send_msg
-            snk = outPeerConduit net .| ons
-         in withAsync src $ \as -> do
-                link as
-                runConduit (go .| snk)
+      let ins = appSource ad
+          ons = appSink ad
+          src = runConduit $ ins .| inPeerConduit net u .| mapM_C send_msg
+          snk = outPeerConduit net .| ons
+       in withAsync src $ \as -> link as >> runConduit (go .| snk)
     send_msg = liftIO . fire
 
 -- | Wrapper for message dispatching
@@ -151,22 +149,23 @@ inPeerConduit :: (MonadIO m, PlatformNatives)
     => Network
     -> BaseUrl
     -> ConduitT ByteString Message m ()
-inPeerConduit net a = forever $ do
-    x <- takeCE 24 .| foldC
-    case decode x of
+inPeerConduit net url = forever $ do
+  x <- takeCE 24 .| foldC
+  case decode x of
+    Left e -> do
+      nodeLog "Could not decode incoming message header"
+      throwIO DecodeHeaderError
+    Right (MessageHeader _ cmd len _) -> do
+      when (len > 32 * 2 ^ (20 :: Int)) $ do
+        nodeLog "Payload too large"
+        throwIO $ PayloadTooLarge len
+      y <- takeCE (fromIntegral len) .| foldC
+      case runGet (getMessage net) $ x `B.append` y of
         Left e -> do
-          logWrite $ nodeString a <> "Could not decode incoming message header"
-          throwIO DecodeHeaderError
-        Right (MessageHeader _ cmd len _) -> do
-          when (len > 32 * 2 ^ (20 :: Int)) $ do
-            logWrite $ nodeString a <> "Payload too large"
-            throwIO $ PayloadTooLarge len
-          y <- takeCE (fromIntegral len) .| foldC
-          case runGet (getMessage net) $ x `B.append` y of
-              Left e -> do
-                logWrite $ nodeString a <> "Cannot decode payload: " <> showt e
-                throwIO CannotDecodePayload
-              Right msg -> yield msg
+          nodeLog $ "Cannot decode payload: " <> showt e
+          throwIO CannotDecodePayload
+        Right msg -> yield msg
+  where nodeLog = logWrite . (nodeString url <>)
 
 -- | Outgoing peer conduit to serialize and send messages.
 outPeerConduit :: Monad m => Network -> ConduitT Message ByteString m ()
@@ -193,17 +192,13 @@ mkVers net url = liftIO $ do
 toSockAddr :: MonadUnliftIO m => BaseUrl -> m [SockAddr]
 toSockAddr BaseUrl{..} = go `catch` e
   where
-    go =
-        fmap (fmap addrAddress) . liftIO $
-        getAddrInfo
-            (Just
-                 defaultHints
-                 { addrFlags = [AI_ADDRCONFIG]
-                 , addrSocketType = Stream
-                 , addrFamily = AF_INET
-                 })
-            (Just baseUrlHost)
-            (Just (show baseUrlPort))
+    go = fmap (fmap addrAddress) . liftIO $
+      getAddrInfo
+        (Just defaultHints {
+            addrFlags = [AI_ADDRCONFIG]
+          , addrSocketType = Stream
+          , addrFamily = AF_INET
+          }) (Just baseUrlHost) (Just (show baseUrlPort))
     e :: Monad m => SomeException -> m [SockAddr]
     e _ = return []
 
