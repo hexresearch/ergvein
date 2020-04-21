@@ -170,9 +170,11 @@ inPeerConduit net url cfIO = forever $ do
   let cf = liftIO cfIO
   case decode x of
     Left e -> do
-      nodeLog "Could not decode incoming message header"
+      nodeLog $ "Could not decode incoming message header: " <> showt e
+      nodeLog $ showt x
       cf >> throwIO DecodeHeaderError
     Right (MessageHeader _ cmd len _) -> do
+      -- nodeLog $ showt cmd
       when (len > 32 * 2 ^ (20 :: Int)) $ do
         nodeLog "Payload too large"
         cf >> throwIO (PayloadTooLarge len)
