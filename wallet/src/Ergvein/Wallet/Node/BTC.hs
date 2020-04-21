@@ -76,7 +76,7 @@ initBTCNode url = do
       externalClose = atomically . writeTChan reqChanIn $ MsgKill
 
       writeMsg = atomically . writeTChan reqChanIn . MsgMessage
-      nodeLog = logWrite . (nodeString url <>)
+      nodeLog = logWrite . (nodeString BTC url <>)
 
   -- Send incoming messages to the channel
   performEvent_ $ liftIO . writeMsg <$> reqE
@@ -99,7 +99,9 @@ initBTCNode url = do
       nodeLog $ "Received version at height: " <> showt startHeight
       writeMsg MVerAck
     _ -> pure ()
-
+  shakeD <- holdDyn False $ fforMaybe respE $ \case
+    MVerAck -> Just True
+    _ -> Nothing
   pure $ NodeConnection {
     nodeconCurrency = BTC
   , nodeconUrl      = url
@@ -108,7 +110,8 @@ initBTCNode url = do
   , nodeconCloseEF  = (closeE, externalClose)
   , nodeconReqFire  = fireReq
   , nodeconRespE    = respE
-  , nodeExtra       = ()
+  , nodeconExtra    = ()
+  , nodeconShaked   = shakeD
   }
 
 -- | Connect to a socket via TCP.
@@ -165,7 +168,7 @@ inPeerConduit net url = forever $ do
           nodeLog $ "Cannot decode payload: " <> showt e
           throwIO CannotDecodePayload
         Right msg -> yield msg
-  where nodeLog = logWrite . (nodeString url <>)
+  where nodeLog = logWrite . (nodeString BTC url <>)
 
 -- | Outgoing peer conduit to serialize and send messages.
 outPeerConduit :: Monad m => Network -> ConduitT Message ByteString m ()
@@ -237,7 +240,3 @@ instance Exception PeerException
 
 commandToText :: MessageCommand -> Text
 commandToText = either (const "unknown") id . TE.decodeUtf8' . commandToString
-
--- | Node string for logging
-nodeString :: BaseUrl -> Text
-nodeString BaseUrl{..} = "[BTC]<" <> T.pack baseUrlHost <> ":" <> showt baseUrlPort <> ">: "

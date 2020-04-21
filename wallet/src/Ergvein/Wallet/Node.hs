@@ -8,6 +8,7 @@ module Ergvein.Wallet.Node
   , getAllConnByCurrency
   , initializeNodes
   , reinitNodes
+  , requestNodeWait
   , module Ergvein.Wallet.Node.Types
   ) where
 
@@ -18,8 +19,10 @@ import Servant.Client(BaseUrl)
 
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Monad.Front
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Node.ERGO
+import Ergvein.Wallet.Node.Prim
 import Ergvein.Wallet.Node.Types
 
 import qualified Data.Dependent.Map as DM
@@ -78,3 +81,17 @@ reinitNodes urls cs conMap = foldlM updCurr conMap $ M.toList cs
           pure $ addMultipleConns cm conns
         (Just _, False) -> pure $ DM.delete ERGOTag cm
         _ -> pure cm
+
+requestNodeWait :: (MonadBaseConstr t m, HasNode cur)
+  => NodeConnection t cur -> Event t (NodeReq cur) -> m ()
+requestNodeWait NodeConnection{..} reqE = do
+  reqD <- holdDyn Nothing $ Just <$> reqE
+  let passValE = updated $ foo <$> reqD <*> nodeconShaked
+  performEvent_ $ ffor passValE $ \case
+    Nothing -> logWrite $ (nodeString nodeconCurrency nodeconUrl) <> "Handshake is not yet finalized. Waiting."
+    Just v  -> liftIO . nodeconReqFire $ v
+  where
+    foo :: Maybe a -> Bool -> Maybe a
+    foo ma b = case (ma,b) of
+      (Just a, True) -> Just a
+      _ -> Nothing

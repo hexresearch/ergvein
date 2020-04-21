@@ -11,16 +11,19 @@ module Ergvein.Wallet.Node.Prim
   , HostPort
   , Host
   , Port
+  , nodeString
   ) where
 
 import Data.Aeson
 import Data.Serialize
-import Data.Time
+import Data.Time (NominalDiffTime)
+import Data.Text (Text, pack)
 import Reflex
-import Servant.Client(BaseUrl)
+import Servant.Client(BaseUrl(..))
 
-import Ergvein.Types.Transaction
+import Ergvein.Text (showt)
 import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
 
 type JSON a = (FromJSON a, ToJSON a)
 
@@ -42,7 +45,8 @@ data NodeConnection t cur = NodeConnection {
 , nodeconCloseEF  :: (Event t (), IO ())
 , nodeconReqFire  :: NodeReq cur -> IO ()
 , nodeconRespE    :: Event t (NodeResp cur)
-, nodeExtra       :: NodeSpecific cur
+, nodeconExtra    :: NodeSpecific cur
+, nodeconShaked   :: Dynamic t Bool
 }
 
 data NodeStatus = NodeStatus {
@@ -58,3 +62,7 @@ type Host = String
 
 -- | Type alias for a port number.
 type Port = Int
+
+-- | Node string for logging
+nodeString :: Currency -> BaseUrl -> Text
+nodeString cur BaseUrl{..} = "[" <> showt cur <> "]<" <> pack baseUrlHost <> ":" <> showt baseUrlPort <> ">: "

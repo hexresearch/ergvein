@@ -63,21 +63,16 @@ balancesPage = do
 nodeTestWidget :: MonadFront t m => m ()
 nodeTestWidget = do
   conMapD <- getNodeConnectionsD
-  widgetHoldDyn $ ffor conMapD $ \cm -> do
+  void . widgetHoldDyn $ ffor conMapD $ \cm -> do
     let node = head $ Map.elems $ fromJust $ DM.lookup BTCTag cm
     let respE = nodeconRespE node
-        fire  = nodeconReqFire node
-    buildE <- delay 5 =<< getPostBuild
-    pingE <- performEvent $ ffor buildE $ const $ liftIO $ do
-      r <- randomIO
-      fire $ MPing $ Ping r
-      pure $ "Ping: " <> showt r
+    buildE <- getPostBuild
+    pingE <- performEvent $ (const $ liftIO randomIO) <$> buildE
+    requestNodeWait node $ MPing . Ping <$> pingE
     let pongE = fforMaybe respE $ \case
           MPong (Pong p) -> Just $ "Pong: " <> showt p
           _ -> Nothing
-    logShowInfoMsg $ leftmost [pingE, pongE]
-    pure ()
-  pure ()
+    logShowInfoMsg $ leftmost [(<>) "Ping: " . showt <$> pingE, pongE]
 
 currenciesList :: MonadFront t m => Text -> m ()
 currenciesList name = divClass "currency-content" $ do

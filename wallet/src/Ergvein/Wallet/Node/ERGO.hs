@@ -38,5 +38,6 @@ initErgoNode url =  pure $ NodeConnection {
   , nodeconCloseEF  = (never, pure ())
   , nodeconReqFire  = const $ pure ()
   , nodeconRespE    = never
-  , nodeExtra       = ()
+  , nodeconExtra    = ()
+  , nodeconShaked   = pure False
   }
