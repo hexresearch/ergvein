@@ -39,15 +39,17 @@ class (CurrencyRep cur) => HasNode cur where
   type NodeSpecific cur :: *
 
 data NodeConnection t cur = NodeConnection {
-  nodeconCurrency :: Currency
-, nodeconUrl      :: BaseUrl
-, nodeconStatus   :: ExternalRef t (Maybe NodeStatus)
-, nodeconOpensE   :: Event t ()
-, nodeconCloseEF  :: (Event t (), IO ())
-, nodeconReqFire  :: NodeReq cur -> IO ()
-, nodeconRespE    :: Event t (NodeResp cur)
-, nodeconExtra    :: NodeSpecific cur
-, nodeconShaked   :: Dynamic t Bool
+  nodeconCurrency   :: Currency
+, nodeconUrl        :: BaseUrl
+, nodeconStatus     :: ExternalRef t (Maybe NodeStatus)
+, nodeconOpensE     :: Event t ()
+, nodeconCloseE     :: Event t ()
+, nodeconCloseFire  :: IO ()
+, nodeconRestart    :: IO ()
+, nodeconReqFire    :: NodeReq cur -> IO ()
+, nodeconRespE      :: Event t (NodeResp cur)
+, nodeconExtra      :: NodeSpecific cur
+, nodeconIsUp       :: Dynamic t Bool
 }
 
 data NodeStatus = NodeStatus {

@@ -65,14 +65,16 @@ initBTCNode url = do
 
 
   let net = btcTest   -- TODO: Switch to a proper BTC network
-  buildE              <- getPostBuild
-  reqChanIn           <- liftIO $ newBroadcastTChanIO
-  reqChanOut          <- liftIO $ atomically $ dupTChan reqChanIn
-  (respE, fireResp)   <- newTriggerEvent
-  (reqE, fireReq)     <- newTriggerEvent
-  (closeE, fireClose) <- newTriggerEvent
-  socadrs             <- liftIO $ toSockAddr url
+  (restartE, fireRestart)   <- newTriggerEvent
+  (respE, fireResp)         <- newTriggerEvent
+  (reqE, fireReq)           <- newTriggerEvent
+  (closeE, fireClose)       <- newTriggerEvent
+  buildE                    <- getPostBuild
+  reqChanIn                 <- liftIO $ newBroadcastTChanIO
+  reqChanOut                <- liftIO $ atomically $ dupTChan reqChanIn
+  socadrs                   <- liftIO $ toSockAddr url
 
+  let startE = leftmost [buildE, restartE]
   let externalClose :: IO () -- This closure is exposed to the wallet to manually kill the connection
       externalClose = atomically . writeTChan reqChanIn $ MsgKill
 
@@ -83,14 +85,11 @@ initBTCNode url = do
   performEvent_ $ liftIO . writeMsg <$> reqE
 
   -- Start the connection
-  performEvent $ ffor buildE $ const $ liftIO $ case socadrs of
+  performEvent $ ffor startE $ const $ liftIO $ case socadrs of
     []   -> nodeLog $ "Failed to convert BaseUrl to SockAddr: " <> T.pack (showBaseUrl url)
     sa:_ -> do
       -- Spawn connection listener
-      forkIO $ runNode url net reqChanOut fireResp `catch` \(e :: PeerException) -> do
-        nodeLog $ "Halting the connection: " <> showt e
-        fireClose ()
-
+      forkIO $ runNode url net reqChanOut fireResp (fireClose ())
       -- Start the handshake
       writeMsg =<< mkVers net sa
 
@@ -111,15 +110,17 @@ initBTCNode url = do
 
   statRef <- newExternalRef Nothing
   pure $ NodeConnection {
-    nodeconCurrency = BTC
-  , nodeconUrl      = url
-  , nodeconStatus   = statRef
-  , nodeconOpensE   = openE
-  , nodeconCloseEF  = (closeE, externalClose)
-  , nodeconReqFire  = fireReq
-  , nodeconRespE    = respE
-  , nodeconExtra    = ()
-  , nodeconShaked   = shakeD
+    nodeconCurrency   = BTC
+  , nodeconUrl        = url
+  , nodeconStatus     = statRef
+  , nodeconOpensE     = openE
+  , nodeconCloseE     = closeE
+  , nodeconCloseFire  = externalClose
+  , nodeconRestart    = fireRestart ()
+  , nodeconReqFire    = fireReq
+  , nodeconRespE      = respE
+  , nodeconExtra      = ()
+  , nodeconIsUp       = shakeD
   }
 
 -- | Connect to a socket via TCP.
@@ -135,14 +136,15 @@ runNode :: (MonadUnliftIO m, MonadIO m, PlatformNatives)
   -> Network                      -- Which network to use: BTC or BTCTest
   -> TChan MsgWrap                -- Request channel
   -> (Message -> IO ())           -- Response fire
+  -> IO ()                        -- Connection closed fire
   -> m ()
-runNode u net incChan fire = withConnection u $ \ad -> peer_session ad
+runNode u net incChan fire cf = withConnection u $ \ad -> peer_session ad
   where
-    go = forever $ dispatchMessage =<< liftIO (atomically (readTChan incChan))
+    go = forever $ dispatchMessage cf =<< liftIO (atomically (readTChan incChan))
     peer_session ad =
       let ins = appSource ad
           ons = appSink ad
-          src = runConduit $ ins .| inPeerConduit net u .| mapM_C send_msg
+          src = runConduit $ ins .| inPeerConduit net u cf .| mapM_C send_msg
           snk = outPeerConduit net .| ons
        in withAsync src $ \as -> link as >> runConduit (go .| snk)
     send_msg = liftIO . fire
@@ -151,30 +153,32 @@ runNode u net incChan fire = withConnection u $ \ad -> peer_session ad
 data MsgWrap = MsgMessage Message | MsgKill
 
 -- | Message dispatcher to distinguish between messages from a peer and external messages
-dispatchMessage :: MonadIO m => MsgWrap -> ConduitT i Message m ()
-dispatchMessage (MsgMessage msg) = yield msg
-dispatchMessage MsgKill = throwIO PeerSeppuku
+dispatchMessage :: MonadIO m => IO () -> MsgWrap -> ConduitT i Message m ()
+dispatchMessage _ (MsgMessage msg) = yield msg
+dispatchMessage cf MsgKill = (liftIO cf) >> throwIO PeerSeppuku
 
 -- | Internal conduit to parse messages coming from peer.
 inPeerConduit :: (MonadIO m, PlatformNatives)
     => Network
     -> BaseUrl
+    -> IO ()
     -> ConduitT ByteString Message m ()
-inPeerConduit net url = forever $ do
+inPeerConduit net url cfIO = forever $ do
   x <- takeCE 24 .| foldC
+  let cf = liftIO cfIO
   case decode x of
     Left e -> do
       nodeLog "Could not decode incoming message header"
-      throwIO DecodeHeaderError
+      cf >> throwIO DecodeHeaderError
     Right (MessageHeader _ cmd len _) -> do
       when (len > 32 * 2 ^ (20 :: Int)) $ do
         nodeLog "Payload too large"
-        throwIO $ PayloadTooLarge len
+        cf >> throwIO (PayloadTooLarge len)
       y <- takeCE (fromIntegral len) .| foldC
       case runGet (getMessage net) $ x `B.append` y of
         Left e -> do
           nodeLog $ "Cannot decode payload: " <> showt e
-          throwIO CannotDecodePayload
+          cf >> throwIO CannotDecodePayload
         Right msg -> yield msg
   where nodeLog = logWrite . (nodeString BTC url <>)
 

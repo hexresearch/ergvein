@@ -9,6 +9,8 @@ module Ergvein.Wallet.Node
   , initializeNodes
   , reinitNodes
   , requestNodeWait
+  , requestNodeNow
+  , closeNodeIfUp
   , module Ergvein.Wallet.Node.Types
   ) where
 
@@ -24,6 +26,7 @@ import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Node.ERGO
 import Ergvein.Wallet.Node.Prim
 import Ergvein.Wallet.Node.Types
+import Ergvein.Wallet.Util
 
 import qualified Data.Dependent.Map as DM
 import qualified Data.Map as M
@@ -82,16 +85,31 @@ reinitNodes urls cs conMap = foldlM updCurr conMap $ M.toList cs
         (Just _, False) -> pure $ DM.delete ERGOTag cm
         _ -> pure cm
 
+-- Send a request to a node. Wait until the connection is up
 requestNodeWait :: (MonadBaseConstr t m, HasNode cur)
   => NodeConnection t cur -> Event t (NodeReq cur) -> m ()
 requestNodeWait NodeConnection{..} reqE = do
   reqD <- holdDyn Nothing $ Just <$> reqE
-  let passValE = updated $ foo <$> reqD <*> nodeconShaked
+  let passValE = updated $ (,) <$> reqD <*> nodeconIsUp
   performEvent_ $ ffor passValE $ \case
-    Nothing -> logWrite $ (nodeString nodeconCurrency nodeconUrl) <> "Handshake is not yet finalized. Waiting."
-    Just v  -> liftIO . nodeconReqFire $ v
-  where
-    foo :: Maybe a -> Bool -> Maybe a
-    foo ma b = case (ma,b) of
-      (Just a, True) -> Just a
-      _ -> Nothing
+    (Just _, False) -> logWrite $
+      (nodeString nodeconCurrency nodeconUrl) <> "Connection is not active. Waiting."
+    (Just v, True) -> liftIO . nodeconReqFire $ v
+    _ -> pure ()
+
+-- Send a request to a node and return the connection status.
+requestNodeNow :: (MonadBaseConstr t m, HasNode cur)
+  => NodeConnection t cur -> Event t (NodeReq cur) -> m (Event t Bool)
+requestNodeNow NodeConnection{..} reqE = do
+  performEvent $ ffor (current nodeconIsUp `attach` reqE) $ \(isUp, v) -> do
+    if isUp
+      then liftIO . nodeconReqFire $ v
+      else logWrite $ (nodeString nodeconCurrency nodeconUrl) <> "Connection is not active"
+    pure isUp
+
+closeNodeIfUp :: (MonadBaseConstr t m, HasNode cur)
+  => NodeConnection t cur -> Event t () -> m ()
+closeNodeIfUp NodeConnection{..} closeE =
+  performEvent_ $ ffor (current nodeconIsUp `tag` closeE) $ \case
+    True -> liftIO nodeconCloseFire
+    False -> pure ()

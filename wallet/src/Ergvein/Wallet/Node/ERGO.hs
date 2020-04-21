@@ -34,13 +34,15 @@ initErgoNode :: (Reflex t, TriggerEvent t m, MonadIO m) => BaseUrl -> m (NodeERG
 initErgoNode url = do
   statRef <- newExternalRef Nothing
   pure $ NodeConnection {
-      nodeconCurrency = ERGO
-    , nodeconUrl      = url
-    , nodeconStatus   = statRef
-    , nodeconOpensE   = never
-    , nodeconCloseEF  = (never, pure ())
-    , nodeconReqFire  = const $ pure ()
-    , nodeconRespE    = never
-    , nodeconExtra    = ()
-    , nodeconShaked   = pure False
+      nodeconCurrency   = ERGO
+    , nodeconUrl        = url
+    , nodeconStatus     = statRef
+    , nodeconOpensE     = never
+    , nodeconCloseE     = never
+    , nodeconCloseFire  = pure ()
+    , nodeconRestart    = pure ()
+    , nodeconReqFire    = const $ pure ()
+    , nodeconRespE      = never
+    , nodeconExtra      = ()
+    , nodeconIsUp       = pure False
     }
