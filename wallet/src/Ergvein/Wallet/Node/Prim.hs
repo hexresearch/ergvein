@@ -16,9 +16,10 @@ module Ergvein.Wallet.Node.Prim
 
 import Data.Aeson
 import Data.Serialize
-import Data.Time (NominalDiffTime)
 import Data.Text (Text, pack)
+import Data.Time (NominalDiffTime)
 import Reflex
+import Reflex.ExternalRef
 import Servant.Client(BaseUrl(..))
 
 import Ergvein.Text (showt)
@@ -40,7 +41,7 @@ class (CurrencyRep cur) => HasNode cur where
 data NodeConnection t cur = NodeConnection {
   nodeconCurrency :: Currency
 , nodeconUrl      :: BaseUrl
-, nodeconStatus   :: Maybe NodeStatus -- TODO: make this field Dynamic
+, nodeconStatus   :: ExternalRef t (Maybe NodeStatus)
 , nodeconOpensE   :: Event t ()
 , nodeconCloseEF  :: (Event t (), IO ())
 , nodeconReqFire  :: NodeReq cur -> IO ()

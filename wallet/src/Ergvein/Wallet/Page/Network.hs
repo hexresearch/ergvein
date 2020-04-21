@@ -67,29 +67,29 @@ networkPageWidget cur = do
       labelHorSep
       pure listE
 
-    lineOption $ lineOptionNoEdit NPSSyncStatus servCurInfoD NPSSyncDescr
-    lineOption $ do
-      let nnnD = ffor conmapD $ \cm -> case cur of
-            BTC  -> let
-              btcm    = fromMaybe M.empty $ DM.lookup BTCTag cm
-              actives = catMaybes $ fmap nodeconStatus $ M.elems btcm
-              actN    = length actives
-              avgLat  = if actN == 0 then NPSNoActiveNodes else NPSAvgLat $ (sum $ fmap nodestatLat actives) / fromIntegral actN
-              in (NPSNodesNum $ M.size btcm, NPSActiveNum actN, avgLat)
-            ERGO  -> let
-              ergom   = fromMaybe M.empty $ DM.lookup ERGOTag cm
-              actives = catMaybes $ fmap nodeconStatus $ M.elems ergom
-              actN    = length actives
-              avgLat  = if actN == 0 then NPSNoActiveNodes else NPSAvgLat $ (sum $ fmap nodestatLat actives) / fromIntegral actN
-              in (NPSNodesNum $ M.size ergom, NPSActiveNum actN, avgLat)
-          totalND  = (\(n,_,_) -> n) <$> nnnD
-          activeND = (\(_,n,_) -> n) <$> nnnD
-          avgLatD  = (\(_,_,l) -> l) <$> nnnD
-      nameOption NPSNodes
-      valueOptionDyn activeND
-      descrOptionDyn totalND
-      descrOptionDyn avgLatD
-      labelHorSep
+    -- lineOption $ lineOptionNoEdit NPSSyncStatus servCurInfoD NPSSyncDescr
+    -- lineOption $ do
+    --   let nnnD = ffor conmapD $ \cm -> case cur of
+    --         BTC  -> let
+    --           btcm    = fromMaybe M.empty $ DM.lookup BTCTag cm
+    --           actives = catMaybes $ fmap nodeconStatus $ M.elems btcm
+    --           actN    = length actives
+    --           avgLat  = if actN == 0 then NPSNoActiveNodes else NPSAvgLat $ (sum $ fmap nodestatLat actives) / fromIntegral actN
+    --           in (NPSNodesNum $ M.size btcm, NPSActiveNum actN, avgLat)
+    --         ERGO  -> let
+    --           ergom   = fromMaybe M.empty $ DM.lookup ERGOTag cm
+    --           actives = catMaybes $ fmap nodeconStatus $ M.elems ergom
+    --           actN    = length actives
+    --           avgLat  = if actN == 0 then NPSNoActiveNodes else NPSAvgLat $ (sum $ fmap nodestatLat actives) / fromIntegral actN
+    --           in (NPSNodesNum $ M.size ergom, NPSActiveNum actN, avgLat)
+    --       totalND  = (\(n,_,_) -> n) <$> nnnD
+    --       activeND = (\(_,n,_) -> n) <$> nnnD
+    --       avgLatD  = (\(_,_,l) -> l) <$> nnnD
+    --   nameOption NPSNodes
+    --   valueOptionDyn activeND
+    --   descrOptionDyn totalND
+    --   descrOptionDyn avgLatD
+    --   labelHorSep
     void $ nextWidget $ ffor listE $ \cur -> Retractable {
         retractableNext = serversInfoPage cur
       , retractablePrev = Just (pure $ networkPage (Just cur))

@@ -25,6 +25,7 @@ import Network.Haskoin.Constants
 import Network.Haskoin.Network
 import Network.Socket
 import Reflex
+import Reflex.ExternalRef
 import Servant.Client(BaseUrl(..), showBaseUrl)
 import UnliftIO hiding (atomically)
 
@@ -101,15 +102,18 @@ initBTCNode url = do
     _ -> pure ()
 
   -- Track handshake status
-  shakeD <- holdDyn False $ fforMaybe respE $ \case
-    MVerAck -> Just True
-    _ -> Nothing
+  let verAckE = fforMaybe respE $ \case
+        MVerAck -> Just True
+        _ -> Nothing
+
+  shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
   let openE = fmapMaybe (\b -> if b then Just () else Nothing) $ updated shakeD
 
+  statRef <- newExternalRef Nothing
   pure $ NodeConnection {
     nodeconCurrency = BTC
   , nodeconUrl      = url
-  , nodeconStatus   = nstat
+  , nodeconStatus   = statRef
   , nodeconOpensE   = openE
   , nodeconCloseEF  = (closeE, externalClose)
   , nodeconReqFire  = fireReq
