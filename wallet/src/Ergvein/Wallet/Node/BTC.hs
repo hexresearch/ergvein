@@ -110,7 +110,7 @@ initBTCNode url = do
   shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
   let openE = fmapMaybe (\b -> if b then Just () else Nothing) $ updated shakeD
 
-  statRef <- newExternalRef Nothing
+  statRef <- newExternalRef nstat
   pure $ NodeConnection {
     nodeconCurrency   = BTC
   , nodeconUrl        = url

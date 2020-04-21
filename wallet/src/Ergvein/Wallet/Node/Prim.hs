@@ -55,7 +55,7 @@ data NodeConnection t cur = NodeConnection {
 data NodeStatus = NodeStatus {
   nodestatHeight :: BlockHeight
 , nodestatLat    :: NominalDiffTime
-}
+} deriving (Show)
 
 -- | Type alias for a combination of hostname and port.
 type HostPort = (Host, Port)
