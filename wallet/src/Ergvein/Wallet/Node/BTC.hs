@@ -166,10 +166,11 @@ inPeerConduit :: (MonadIO m, PlatformNatives)
     -> IO ()
     -> ConduitT ByteString Message m ()
 inPeerConduit net url cfIO = forever $ do
-  x <- takeCE 24 .| foldC
+  x <- takeExactlyCE 24 foldC
   let cf = liftIO cfIO
-  case decode x of
+  when (not . B.null $ x) $ case decode x of
     Left e -> do
+      nodeLog $ "Consumed " <> showt (B.length x)
       nodeLog $ "Could not decode incoming message header: " <> showt e
       nodeLog $ showt x
       cf >> throwIO DecodeHeaderError
@@ -178,7 +179,7 @@ inPeerConduit net url cfIO = forever $ do
       when (len > 32 * 2 ^ (20 :: Int)) $ do
         nodeLog "Payload too large"
         cf >> throwIO (PayloadTooLarge len)
-      y <- takeCE (fromIntegral len) .| foldC
+      y <- takeExactlyCE (fromIntegral len) foldC
       case runGet (getMessage net) $ x `B.append` y of
         Left e -> do
           nodeLog $ "Cannot decode payload: " <> showt e
