@@ -75,26 +75,29 @@ initBTCNode url = do
   let externalClose :: IO () -- This closure is exposed to the wallet to manually kill the connection
       externalClose = atomically . writeTChan reqChanIn $ MsgKill
 
+      writeMsg = atomically . writeTChan reqChanIn . MsgMessage
+      nodeLog = logWrite . (nodeString url <>)
+
   -- Send incoming messages to the channel
-  performEvent_ $ (liftIO . atomically . writeTChan reqChanIn . MsgMessage) <$> reqE
+  performEvent_ $ liftIO . writeMsg <$> reqE
 
   -- Start the connection
   performEvent $ ffor buildE $ const $ liftIO $ case socadrs of
-    []   -> logWrite $ "Failed to convert BaseUrl to SockAddr: " <> T.pack (showBaseUrl url)
+    []   -> nodeLog $ "Failed to convert BaseUrl to SockAddr: " <> T.pack (showBaseUrl url)
     sa:_ -> do
       -- Spawn connection listener
-      forkIO $ (runNode url net reqChanOut fireResp) `catch` \(e :: PeerException) -> do
-        logWrite $ nodeString url <> "Halting the connection: " <> showt e
+      forkIO $ runNode url net reqChanOut fireResp `catch` \(e :: PeerException) -> do
+        nodeLog $ "Halting the connection: " <> showt e
         fireClose ()
 
       -- Start the handshake
-      atomically . writeTChan reqChanIn . MsgMessage =<< (mkVers net sa)
+      writeMsg =<< mkVers net sa
 
   -- Finalize the handshake by sending "verack" message as a response
   performEvent_ $ ffor respE $ \case
-    MVersion Version{..} -> do
-      logWrite $ nodeString url <> "Received version at height: " <> showt startHeight
-      liftIO $ atomically . writeTChan reqChanIn $ MsgMessage MVerAck
+    MVersion Version{..} -> liftIO $ do
+      nodeLog $ "Received version at height: " <> showt startHeight
+      writeMsg MVerAck
     _ -> pure ()
 
   pure $ NodeConnection {
