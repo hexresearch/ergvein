@@ -14,6 +14,7 @@ import Ergvein.Aeson
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
+import Ergvein.Types.Transaction
 import Network.Haskoin.Keys
 
 import qualified Data.Map.Strict as M
@@ -22,69 +23,95 @@ type WalletName = Text
 
 type Password = Text
 
-type PrivateKeystore = M.Map Currency EgvPrvKeyсhain
-
-data PrivateStorage = PrivateStorage {
-    _privateStorage'seed        :: Seed
-  , _privateStorage'root        :: EgvRootXPrvKey
-  , _privateStorage'privateKeys :: PrivateKeystore
+data CurrencyPrvStorage = CurrencyPrvStorage {
+    _currencyPrvStorage'prvKeystore :: PrvKeystore
   }
 
-makeLenses ''PrivateStorage
+makeLenses ''CurrencyPrvStorage
 
-instance ToJSON PrivateStorage where
-  toJSON PrivateStorage{..} = object [
-      "seed"        .= toJSON (bs2Base64Text _privateStorage'seed)
-    , "root"        .= toJSON _privateStorage'root
-    , "privateKeys" .= toJSON _privateStorage'privateKeys
+$(deriveJSON aesonOptionsStripToApostroph ''CurrencyPrvStorage)
+
+type CurrencyPrvStorages = M.Map Currency CurrencyPrvStorage
+
+data PrvStorage = PrvStorage {
+    _prvStorage'seed                :: Seed
+  , _prvStorage'rootPrvKey          :: EgvRootXPrvKey
+  , _prvStorage'currencyPrvStorages :: CurrencyPrvStorages
+  }
+
+makeLenses ''PrvStorage
+
+instance ToJSON PrvStorage where
+  toJSON PrvStorage{..} = object [
+      "seed"                .= toJSON (bs2Base64Text _prvStorage'seed)
+    , "rootPrvKey"          .= toJSON _prvStorage'rootPrvKey
+    , "currencyPrvStorages" .= toJSON _prvStorage'currencyPrvStorages
     ]
 
-instance FromJSON PrivateStorage where
-  parseJSON = withObject "PrivateStorage" $ \o -> PrivateStorage
+instance FromJSON PrvStorage where
+  parseJSON = withObject "PrvStorage" $ \o -> PrvStorage
     <$> fmap base64Text2bs (o .: "seed")
-    <*> o .: "root"
-    <*> o .: "privateKeys"
+    <*> o .: "rootPrvKey"
+    <*> o .: "currencyPrvStorages"
 
-data EncryptedPrivateStorage = EncryptedPrivateStorage {
-    _encryptedPrivateStorage'ciphertext :: ByteString
-  , _encryptedPrivateStorage'salt       :: ByteString
-  , _encryptedPrivateStorage'iv         :: IV AES256
+data EncryptedPrvStorage = EncryptedPrvStorage {
+    _encryptedPrvStorage'ciphertext :: ByteString
+  , _encryptedPrvStorage'salt       :: ByteString
+  , _encryptedPrvStorage'iv         :: IV AES256
   }
 
-makeLenses ''EncryptedPrivateStorage
+makeLenses ''EncryptedPrvStorage
 
-instance ToJSON EncryptedPrivateStorage where
-  toJSON EncryptedPrivateStorage{..} = object [
-      "ciphertext" .= toJSON (bs2Base64Text _encryptedPrivateStorage'ciphertext)
-    , "salt"       .= toJSON (bs2Base64Text _encryptedPrivateStorage'salt)
-    , "iv"         .= toJSON (bs2Base64Text (convert _encryptedPrivateStorage'iv :: ByteString))
+instance ToJSON EncryptedPrvStorage where
+  toJSON EncryptedPrvStorage{..} = object [
+      "ciphertext" .= toJSON (bs2Base64Text _encryptedPrvStorage'ciphertext)
+    , "salt"       .= toJSON (bs2Base64Text _encryptedPrvStorage'salt)
+    , "iv"         .= toJSON (bs2Base64Text (convert _encryptedPrvStorage'iv :: ByteString))
     ]
 
-instance FromJSON EncryptedPrivateStorage where
-  parseJSON = withObject "EncryptedPrivateStorage" $ \o -> do
+instance FromJSON EncryptedPrvStorage where
+  parseJSON = withObject "EncryptedPrvStorage" $ \o -> do
     ciphertext <- fmap base64Text2bs (o .: "ciphertext")
     salt       <- fmap base64Text2bs (o .: "salt")
     iv         <- fmap base64Text2bs (o .: "iv")
     case makeIV iv of
       Nothing -> fail "failed to read iv"
-      Just iv' -> pure $ EncryptedPrivateStorage ciphertext salt iv'
+      Just iv' -> pure $ EncryptedPrvStorage ciphertext salt iv'
 
-type PublicKeystore = M.Map Currency EgvPubKeyсhain
-
-data ErgveinStorage = ErgveinStorage {
-    _storage'encryptedPrivateStorage :: EncryptedPrivateStorage
-  , _storage'publicKeys              :: PublicKeystore
-  , _storage'walletName              :: Text
+data CurrencyPubStorage = CurrencyPubStorage {
+    _currencyPubStorage'pubKeystore  :: PubKeystore
+  , _currencyPubStorage'transactions :: M.Map TxId EgvTx
   }
 
-makeLenses ''ErgveinStorage
+makeLenses ''CurrencyPubStorage
 
-instance Eq ErgveinStorage where
+$(deriveJSON aesonOptionsStripToApostroph ''CurrencyPubStorage)
+
+type CurrencyPubStorages = M.Map Currency CurrencyPubStorage
+
+data PubStorage = PubStorage {
+    _pubStorage'rootPubKey          :: EgvRootXPubKey
+  , _pubStorage'currencyPubStorages :: CurrencyPubStorages
+  }
+
+makeLenses ''PubStorage
+
+$(deriveJSON aesonOptionsStripToApostroph ''PubStorage)
+
+data WalletStorage = WalletStorage {
+    _storage'encryptedPrvStorage :: EncryptedPrvStorage
+  , _storage'pubStorage          :: PubStorage
+  , _storage'walletName          :: Text
+  }
+
+makeLenses ''WalletStorage
+
+instance Eq WalletStorage where
   a == b = _storage'walletName a == _storage'walletName b
 
-$(deriveJSON aesonOptionsStripToApostroph ''ErgveinStorage)
+$(deriveJSON aesonOptionsStripToApostroph ''WalletStorage)
 
-data EncryptedErgveinStorage = EncryptedErgveinStorage {
+data EncryptedWalletStorage = EncryptedWalletStorage {
     _encryptedStorage'ciphertext :: ByteString
   , _encryptedStorage'salt       :: ByteString
   , _encryptedStorage'iv         :: IV AES256
@@ -92,10 +119,10 @@ data EncryptedErgveinStorage = EncryptedErgveinStorage {
   , _encryptedStorage'authTag    :: AuthTag
   }
 
-makeLenses ''EncryptedErgveinStorage
+makeLenses ''EncryptedWalletStorage
 
-instance ToJSON EncryptedErgveinStorage where
-  toJSON EncryptedErgveinStorage{..} = object [
+instance ToJSON EncryptedWalletStorage where
+  toJSON EncryptedWalletStorage{..} = object [
       "ciphertext" .= toJSON (bs2Base64Text _encryptedStorage'ciphertext)
     , "salt"       .= toJSON (bs2Base64Text _encryptedStorage'salt)
     , "iv"         .= toJSON (bs2Base64Text (convert _encryptedStorage'iv :: ByteString))
@@ -106,8 +133,8 @@ instance ToJSON EncryptedErgveinStorage where
       curve = Proxy :: Proxy Curve_X25519
       eciesPoint = encodePoint curve _encryptedStorage'eciesPoint :: ByteString
 
-instance FromJSON EncryptedErgveinStorage where
-  parseJSON = withObject "EncryptedErgveinStorage" $ \o -> do
+instance FromJSON EncryptedWalletStorage where
+  parseJSON = withObject "EncryptedWalletStorage" $ \o -> do
     ciphertext <- fmap base64Text2bs (o .: "ciphertext")
     salt <- fmap base64Text2bs (o .: "salt")
     iv <- fmap base64Text2bs (o .: "iv")
@@ -117,7 +144,7 @@ instance FromJSON EncryptedErgveinStorage where
       Nothing -> fail "failed to read iv"
       Just iv' -> case decodePoint curve eciesPoint of
         CryptoFailed _ -> fail "failed to read eciesPoint"
-        CryptoPassed eciesPoint' -> pure $ EncryptedErgveinStorage ciphertext salt iv' eciesPoint' authTag'
+        CryptoPassed eciesPoint' -> pure $ EncryptedWalletStorage ciphertext salt iv' eciesPoint' authTag'
         where
           curve = Proxy :: Proxy Curve_X25519
           authTag' = AuthTag (convert authTag :: Bytes)

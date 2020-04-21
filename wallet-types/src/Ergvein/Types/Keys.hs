@@ -2,10 +2,11 @@ module Ergvein.Types.Keys (
     XPrvKey(..)
   , XPubKey(..)
   , EgvRootXPrvKey(..)
+  , EgvRootXPubKey(..)
   , EgvXPrvKey(..)
   , EgvXPubKey(..)
-  , EgvPrvKeyсhain(..)
-  , EgvPubKeyсhain(..)
+  , PrvKeystore(..)
+  , PubKeystore(..)
   , KeyPurpose(..)
   , xPrvExport
   , xPrvImport
@@ -150,6 +151,30 @@ instance FromJSON EgvRootXPrvKey where
       (Just chain', Just key') -> pure $ EgvRootXPrvKey $ XPrvKey depth parent index chain' key'
       _ -> fail "failed to read chain code or key"
 
+-- | Wrapper for a root extended public key (a key without assigned network)
+newtype EgvRootXPubKey = EgvRootXPubKey {unEgvRootXPubKey :: XPubKey}
+  deriving (Eq, Show, Read)
+
+instance ToJSON EgvRootXPubKey where
+  toJSON (EgvRootXPubKey XPubKey{..}) = object [
+      "depth"  .= toJSON xPubDepth
+    , "parent" .= toJSON xPubParent
+    , "index"  .= toJSON xPubIndex
+    , "chain"  .= show xPubChain
+    , "key"    .= show xPubKey
+    ]
+
+instance FromJSON EgvRootXPubKey where
+  parseJSON = withObject "EgvRootXPubKey" $ \o -> do
+    depth  <- o .: "depth"
+    parent <- o .: "parent"
+    index  <- o .: "index"
+    chain  <- o .: "chain"
+    key    <- o .: "key"
+    case (readMaybe chain, readMaybe key) of
+      (Just chain', Just key') -> pure $ EgvRootXPubKey $ XPubKey depth parent index chain' key'
+      _ -> fail "failed to read chain code or key"
+
 -- | Wrapper around XPrvKey for easy to/from json manipulations
 data EgvXPrvKey = EgvXPrvKey {
   egvXPrvCurrency :: Currency
@@ -220,35 +245,35 @@ instance Ord EgvXPubKey where
     EQ -> compare (xPubExport (getCurrencyNetwork currency1) key1) (xPubExport (getCurrencyNetwork currency2) key2)
     x -> x
 
-data EgvPrvKeyсhain = EgvPrvKeyсhain {
-  egvPrvKeyсhain'master   :: EgvXPrvKey
+data PrvKeystore = PrvKeystore {
+  prvKeystore'master   :: EgvXPrvKey
   -- ^Extended private key with BIP44 derivation path /m\/purpose'\/coin_type'\/account'/.
-, egvPrvKeyсhain'external :: MI.IntMap EgvXPrvKey
+, prvKeystore'external :: MI.IntMap EgvXPrvKey
   -- ^Map with BIP44 external extended private keys and corresponding indices.
   -- This private keys must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/0\/address_index/.
-, egvPrvKeyсhain'internal :: MI.IntMap EgvXPrvKey
+, prvKeystore'internal :: MI.IntMap EgvXPrvKey
   -- ^Map with BIP44 internal extended private keys and corresponding indices.
   -- This private keys must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.
 } deriving (Eq, Show, Read)
 
-$(deriveJSON aesonOptionsStripToApostroph ''EgvPrvKeyсhain)
+$(deriveJSON aesonOptionsStripToApostroph ''PrvKeystore)
 
-data EgvPubKeyсhain = EgvPubKeyсhain {
-  egvPubKeyсhain'master   :: EgvXPubKey
+data PubKeystore = PubKeystore {
+  pubKeystore'master   :: EgvXPubKey
   -- ^Extended public key with BIP44 derivation path /m\/purpose'\/coin_type'\/account'/.
-, egvPubKeyсhain'external :: MI.IntMap EgvXPubKey
+, pubKeystore'external :: MI.IntMap EgvXPubKey
   -- ^Map with BIP44 external extended public keys and corresponding indices.
   -- This addresses must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/0\/address_index/.
-, egvPubKeyсhain'internal :: MI.IntMap EgvXPubKey
+, pubKeystore'internal :: MI.IntMap EgvXPubKey
   -- ^Map with BIP44 internal extended public keys and corresponding indices.
   -- This addresses must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.
 } deriving (Eq, Show, Read)
 
-$(deriveJSON aesonOptionsStripToApostroph ''EgvPubKeyсhain)
+$(deriveJSON aesonOptionsStripToApostroph ''PubKeystore)
 
 -- | Supported key purposes. It represents /change/ field in BIP44 derivation path.
 -- External chain is used for addresses that are meant to be visible outside of the wallet (e.g. for receiving payments).
