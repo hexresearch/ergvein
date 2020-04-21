@@ -21,8 +21,14 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Index.Server.BlockchainScanning.Common
 
-import qualified Network.Haskoin.Block as Btc 
+import Data.Proxy
+import Servant.API
+import Servant.API.Generic
+import Servant.Client
+
+import qualified Network.Haskoin.Block as Btc
 import qualified Data.Serialize as S 
+import Ergvein.Index.Server.PeerDiscovery.Discovery
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi

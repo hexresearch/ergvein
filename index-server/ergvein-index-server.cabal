@@ -34,6 +34,8 @@ library
     Ergvein.Index.Server.Server.V1
     Ergvein.Index.Server.Utils
     Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
+    Ergvein.Index.Server.PeerDiscovery.Types
+    Ergvein.Index.Server.PeerDiscovery.Discovery
 
   build-depends:
         base                     >= 4.7     &&  < 4.13
@@ -73,7 +75,9 @@ library
       , resourcet                >= 1.2     &&  < 1.3
       , safe                     >= 0.3     &&  < 0.4
       , servant                  >= 0.16    &&  < 0.17
+      , servant-client-core      >= 0.16    &&  < 0.17
       , servant-server           >= 0.16    &&  < 0.17
+      , servant-client           >= 0.16    &&  < 0.17
       , template-haskell         >= 2.14    &&  < 2.15
       , text                     >= 1.2     &&  < 1.3
       , time                     >= 1.8     &&  < 1.9
@@ -84,7 +88,8 @@ library
       , wai-cors                 >= 0.2     &&  < 0.3
       , wai-extra                >= 3.0     &&  < 3.1
       , yaml                     >= 0.11    &&  < 0.12
-
+      , http-client              >= 0.6     &&  < 0.7
+      , ergvein-index-client
       , ergo-api
       , ergvein-common
       , ergvein-crypto
@@ -117,6 +122,7 @@ library
     TypeOperators
     DuplicateRecordFields
     QuantifiedConstraints
+    UndecidableInstances
 
 executable ergvein-index-server
   hs-source-dirs:
