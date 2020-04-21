@@ -94,10 +94,12 @@ initBTCNode url = do
       writeMsg =<< mkVers net sa
 
   -- Finalize the handshake by sending "verack" message as a response
+  -- Also, respond to ping messages by corrseponding pongs
   performEvent_ $ ffor respE $ \case
     MVersion Version{..} -> liftIO $ do
       nodeLog $ "Received version at height: " <> showt startHeight
       writeMsg MVerAck
+    MPing (Ping v) -> liftIO $ writeMsg $ MPong (Pong v)
     _ -> pure ()
 
   -- Track handshake status
