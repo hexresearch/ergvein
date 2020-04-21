@@ -99,14 +99,18 @@ initBTCNode url = do
       nodeLog $ "Received version at height: " <> showt startHeight
       writeMsg MVerAck
     _ -> pure ()
+
+  -- Track handshake status
   shakeD <- holdDyn False $ fforMaybe respE $ \case
     MVerAck -> Just True
     _ -> Nothing
+  let openE = fmapMaybe (\b -> if b then Just () else Nothing) $ updated shakeD
+
   pure $ NodeConnection {
     nodeconCurrency = BTC
   , nodeconUrl      = url
   , nodeconStatus   = nstat
-  , nodeconOpensE   = () <$ respE
+  , nodeconOpensE   = openE
   , nodeconCloseEF  = (closeE, externalClose)
   , nodeconReqFire  = fireReq
   , nodeconRespE    = respE
