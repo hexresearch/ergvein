@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedLists #-}
 module Ergvein.Wallet.Page.History(
     historyPage
   ) where
@@ -36,34 +37,36 @@ transactionInfoPage cur tr@TransactionMock{..} = divClass "base-container" $ do
   divClass "transaction-info-body" $ do
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIHash
-      divClass "info-body" $ text $ txId txInfo
+      divClass "info-body info-hash" $ text $ txId txInfo
     case (txLabel txInfo) of
       Just lbl -> do
         divClass "transaction-info-element" $ do
           divClass "info-descr" $ localizedText HistoryTILabel
-          divClass "info-body" $ text lbl
+          divClass "info-body info-label" $ text lbl
       Nothing -> pure ()
     divClass "transaction-info-element" $ do
-      divClass "info-descr" $ localizedText HistoryTIURL
-      divClass "info-body" $ text $ txUrl txInfo
+      let url = txUrl txInfo
+      divClass "info-descr " $ localizedText HistoryTIURL
+      --,("target","_blank")
+      divClass "info-body info-url" $ elAttr "a" [("href",url)] $ text url
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIFee
-      divClass "info-body" $ text $ showt $ txFee txInfo
+      divClass "info-body info-fee" $ text $ showMoney $ txFee txInfo
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIConfirmations
-      divClass "info-body" $ text $ showt $ txConfirmations txInfo
+      divClass "info-body info-conf" $ text $ showt $ txConfirmations txInfo
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIBlock
-      divClass "info-body" $ text $ showt $ txBlock txInfo
+      divClass "info-body info-block" $ text $ txBlock txInfo
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIRaw
-      divClass "info-body" $ text $ showt $ txRaw txInfo
+      divClass "info-body info-raw" $ text $ txRaw txInfo
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIOutputs
-      divClass "info-body" $ text $ showt $ txOutputs txInfo
+      divClass "info-body info-out" $ text $ showt $ txOutputs txInfo
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIInputs
-      divClass "info-body" $ text $ showt $ txInputs txInfo
+      divClass "info-body info-in" $ text $ showt $ txInputs txInfo
   pure ()
 
 historyTableWidget :: MonadFront t m => [TransactionMock] -> m ([Event t TransactionMock])

@@ -735,6 +735,10 @@ historyPageCss = do
     textAlign $ alignSide sideLeft
     overflow hidden
     textOverflow overflowEllipsis
+  ".info-hash" ? do
+    wordWrap breakWord
+  ".info-raw" ? do
+    wordWrap breakWord
 
 legoStyles :: Css
 legoStyles = do

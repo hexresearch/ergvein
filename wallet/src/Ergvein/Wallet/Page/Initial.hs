@@ -34,6 +34,8 @@ import qualified Data.IntMap.Strict    as MI
 
 data GoPage = GoSeed | GoRestore
 
+data GoSwitch = GoPass Password | GoSwitchWallet
+
 initialPage :: MonadFrontBase t m => m ()
 initialPage = do
   ss <- listStorages
@@ -52,7 +54,15 @@ initialPage = do
         }
     hasWalletsPage ss = do
       mname <- getLastStorage
-      maybe (selectWalletsPage ss) loadWalletPage mname
+      selectTrougth ss mname
+    selectTrougth ss mname = do
+      buildE <-getPostBuild
+      case mname of
+        Just name -> void $ nextWidget $ ffor buildE $ const $ Retractable {
+                retractableNext = loadWalletPage name
+              , retractablePrev = Just $ pure $ selectWalletsPage ss
+              }
+        Nothing -> selectWalletsPage ss
     selectWalletsPage ss = wrapperSimple True $ divClass "initial-options grid1" $ do
       h4 $ localizedText IPSSelectWallet
       flip traverse_ ss $ \name -> do
