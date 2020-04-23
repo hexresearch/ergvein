@@ -72,5 +72,6 @@ indexGetInfoEndpoint = do
 addPeerEndpoint :: ServerM ()
 addPeerEndpoint = do
   url <- PeerCandidate <$> parseBaseUrl "https://ergvein-indexer2.hxr.team"
+  liftIO $ traceIO $ show $ peerCandidateUrl url
   r <- considerPeerCandidate url
   pure ()   
