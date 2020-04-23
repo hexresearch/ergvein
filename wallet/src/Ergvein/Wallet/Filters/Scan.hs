@@ -1,10 +1,10 @@
 module Ergvein.Wallet.Filters.Scan(
     filterAddress
-  ) where 
+  ) where
 
-import Control.Monad.IO.Class 
+import Control.Monad.IO.Class
 import Data.Dependent.Sum
-import Data.Functor.Identity 
+import Data.Functor.Identity
 import Ergvein.Filters
 import Ergvein.Filters.Btc
 import Ergvein.Types.Address
@@ -16,10 +16,10 @@ import Network.Haskoin.Block
 
 filterAddress :: (MonadIO m, HasFiltersStorage m) => EgvAddress -> m [BlockHash]
 filterAddress addr = foldFilters (egvAddrCurrency addr) f []
-  where 
-    f bhash gfilter acc = case matchAddrFilter addr gfilter of 
-      Just (AFBtc :=> Identity (caddr, cfilter)) -> case guardSegWit caddr of 
-        Nothing -> acc 
+  where
+    f bhash gfilter acc = case matchAddrFilter addr gfilter of
+      Just (AFBtc :=> Identity (caddr, cfilter)) -> case guardSegWit caddr of
+        Nothing -> acc
         Just saddr -> if applyBtcFilter btcNetwork bhash cfilter saddr then bhash : acc else acc
-      Just (AFErgo :=> _) -> acc -- TODO: add ergo hree
-      _ -> acc 
+      Just (AFErgo :=> _) -> acc -- TODO: add ergo here
+      _ -> acc

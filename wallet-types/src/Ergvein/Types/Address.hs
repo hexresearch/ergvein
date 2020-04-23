@@ -2,7 +2,7 @@ module Ergvein.Types.Address (
       BtcAddress(..)
     , ErgAddress(..)
     , EgvAddress(..)
-    , pubKeyErgAddr
+    , VLAddr(..)
     , egvAddrToString
     , egvAddrFromString
     , egvAddrCurrency
@@ -89,10 +89,6 @@ base58GetErg net = do
       | x == getErgScriptHashPrefix net = ErgScriptHashAddress <$> S.get
       | x == getErgScriptPrefix     net = ErgScriptAddress     <$> S.get
       | otherwise = fail "Does not recognize address prefix"
-
--- TODO: make sure this is right. Make sure pubkey is compressed
-pubKeyErgAddr :: PubKeyI -> ErgAddress
-pubKeyErgAddr = ErgPubKeyAddress . VLAddr . BSS.toShort . S.encode
 
 btcAddrToString :: BtcAddress -> Text
 btcAddrToString = HA.addrToString net
