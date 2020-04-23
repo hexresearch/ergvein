@@ -730,6 +730,8 @@ historyPageCss = do
     gridTemplateColumns [fr 2, fr 8]
     marginTop $ px 20
   ".info-descr" ? do
+    fontWeight $ weight 600
+    fontSize $ px 18
     textAlign $ alignSide sideLeft
   ".info-body" ? do
     textAlign $ alignSide sideLeft
@@ -739,6 +741,12 @@ historyPageCss = do
     wordWrap breakWord
   ".info-raw" ? do
     wordWrap breakWord
+  ".out-element" ? do
+    display grid
+    gridTemplateColumns [fr 2, fr 8]
+    marginBottom $ px 10
+  ".out-descr" ? do
+    fontWeight $ weight 600
 
 legoStyles :: Css
 legoStyles = do

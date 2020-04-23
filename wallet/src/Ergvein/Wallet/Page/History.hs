@@ -47,11 +47,17 @@ transactionInfoPage cur tr@TransactionMock{..} = divClass "base-container" $ do
     divClass "transaction-info-element" $ do
       let url = txUrl txInfo
       divClass "info-descr " $ localizedText HistoryTIURL
-      --,("target","_blank")
       divClass "info-body info-url" $ elAttr "a" [("href",url)] $ text url
     divClass "transaction-info-element" $ do
+      divClass "info-descr" $ localizedText HistoryTIVolume
+      divClass "info-body info-fee" $ do
+        text $ showMoney $ txAmount
+        text $ showt cur
+    divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIFee
-      divClass "info-body info-fee" $ text $ showMoney $ txFee txInfo
+      divClass "info-body info-fee" $ do
+        text $ showMoney $ txFee txInfo
+        text $ showt cur
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIConfirmations
       divClass "info-body info-conf" $ text $ showt $ txConfirmations txInfo
@@ -63,10 +69,26 @@ transactionInfoPage cur tr@TransactionMock{..} = divClass "base-container" $ do
       divClass "info-body info-raw" $ text $ txRaw txInfo
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIOutputs
-      divClass "info-body info-out" $ text $ showt $ txOutputs txInfo
+      divClass "info-body info-out" $ do
+        flip traverse (txOutputs txInfo) $ \(oHash,oVal,oType) -> divClass "out-element" $ do
+          divClass "out-descr" $ localizedText HistoryTIOutputsValue
+          divClass "out-body"  $ do
+            text $ showMoney $ oVal
+            text $ showt cur
+          divClass "out-descr" $ localizedText HistoryTIOutputsAddress
+          divClass "out-body"  $ text $ oHash
+          divClass "out-descr" $ localizedText HistoryTIOutputsStatus
+          divClass "out-body"  $ localizedText oType
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIInputs
-      divClass "info-body info-in" $ text $ showt $ txInputs txInfo
+      divClass "info-body info-in" $ do
+        flip traverse (txInputs txInfo) $ \(oHash,oVal) -> divClass "out-element" $ do
+          divClass "out-descr" $ localizedText HistoryTIOutputsValue
+          divClass "out-body" $ do
+            text $ showMoney $ oVal
+            text $ showt cur
+          divClass "out-descr" $ localizedText HistoryTIOutputsAddress
+          divClass "out-body"  $ text $ oHash
   pure ()
 
 historyTableWidget :: MonadFront t m => [TransactionMock] -> m ([Event t TransactionMock])
@@ -94,6 +116,15 @@ data TransStatus = TransConfirmed | TransUncofirmed deriving (Eq,Show)
 data TransType = TransRefill | TransWithdraw deriving (Eq,Show)
 data TransOutputType = TOSpent | TOUnspent deriving (Eq,Show)
 
+instance LocalizedPrint TransOutputType where
+  localizedShow l v = case l of
+    English -> case v of
+      TOSpent   -> "Spent"
+      TOUnspent -> "Unspent"
+    Russian -> case v of
+      TOSpent   -> "Потрачены"
+      TOUnspent -> "Непотрачены"
+
 mockTransHistory :: Currency -> [TransactionMock]
 mockTransHistory cur = [
   TransactionMock (moneyFromRational cur 0.63919646) "2020-04-07 14:12" TransRefill   (trMockInfo cur) TransUncofirmed
@@ -105,7 +136,7 @@ mockTransHistory cur = [
 trMockInfo :: Currency -> TransactionInfo
 trMockInfo cur = TransactionInfo
   "330ce5f20e63b97604fb6add4e4be53197363ac5ebf7342e1372212b7b49498e"
-  (Just "330ce5f20e63b97604fb6add4e4be53197363ac5ebf7342e1372212b7b49498e")
+  (Just "s3")
   "https://www.blockchain.com/btc/tx/330ce5f20e63b97604fb6add4e4be53197363ac5ebf7342e1372212b7b49498e"
   (moneyFromRational cur 0.000706)
   11

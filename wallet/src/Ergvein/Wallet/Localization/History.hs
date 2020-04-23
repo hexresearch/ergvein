@@ -19,6 +19,7 @@ instance LocalizedPrint HistoryTitle where
 
 data HistoryPageStrings =
     HistoryTITitle
+  | HistoryTIVolume
   | HistoryTIHash
   | HistoryTILabel
   | HistoryTIURL
@@ -28,11 +29,15 @@ data HistoryPageStrings =
   | HistoryTIRaw
   | HistoryTIOutputs
   | HistoryTIInputs
+  | HistoryTIOutputsAddress
+  | HistoryTIOutputsValue
+  | HistoryTIOutputsStatus
 
 instance LocalizedPrint HistoryPageStrings where
   localizedShow l v = case l of
     English -> case v of
       HistoryTITitle          -> "Transaction info"
+      HistoryTIVolume         -> "Volume"
       HistoryTIHash           -> "Hash"
       HistoryTILabel          -> "Label"
       HistoryTIURL            -> "Blockexplorer"
@@ -42,8 +47,12 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTIRaw            -> "Raw"
       HistoryTIOutputs        -> "Outputs"
       HistoryTIInputs         -> "Inputs"
+      HistoryTIOutputsAddress -> "Address"
+      HistoryTIOutputsValue   -> "Value"
+      HistoryTIOutputsStatus  -> "Status"
     Russian -> case v of
       HistoryTITitle          -> "Слова мнемоники от вашего кошелька"
+      HistoryTIVolume         -> "Объем"
       HistoryTIHash           -> "Хэш"
       HistoryTILabel          -> "Название"
       HistoryTIURL            -> "Blockexplorer"
@@ -53,3 +62,6 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTIRaw            -> "Код"
       HistoryTIOutputs        -> "Выходы"
       HistoryTIInputs         -> "Входы"
+      HistoryTIOutputsAddress -> "Адрес"
+      HistoryTIOutputsValue   -> "Объем"
+      HistoryTIOutputsStatus  -> "Статус"
