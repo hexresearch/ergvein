@@ -38,9 +38,7 @@ import Servant.Client(BaseUrl)
 import Foreign.JavaScript.TH (WithJSContextSingleton)
 import Reflex.Spider.Internal (SpiderHostFrame, Global)
 
-instance MonadRandom m => MonadRandom (ReaderT e m) where
-  getRandomBytes = lift . getRandomBytes
-  {-# INLINE getRandomBytes #-}
+import qualified Reflex.Profiled as RP
 
 -- | Type classes that we need from reflex-dom itself.
 type MonadBaseConstr t m = (MonadHold t m
@@ -137,9 +135,6 @@ class MonadBaseConstr t m => MonadAlertPoster t m | m -> t where
   -- | Get alert's event and trigger. Internal
   getAlertEventFire :: m (Event t AlertInfo, AlertInfo -> IO ())
 
-instance MonadRandom (WithJSContextSingleton x (SpiderHostFrame Global)) where
-  getRandomBytes = liftIO . getRandomBytes
-
 -- ===========================================================================
 --    Monad Client. Implements all required things for client operations
 -- ===========================================================================
@@ -188,3 +183,17 @@ data IndexerInfo = IndexerInfo {
   indInfoHeights :: Map Currency (BlockHeight,BlockHeight)
 , indInfoLatency :: NominalDiffTime
 } deriving (Show)
+
+-- ===========================================================================
+--    Helper instances for base monad
+-- ===========================================================================
+
+instance MonadRandom m => MonadRandom (ReaderT e m) where
+  getRandomBytes = lift . getRandomBytes
+  {-# INLINE getRandomBytes #-}
+
+instance MonadRandom (WithJSContextSingleton x (SpiderHostFrame Global)) where
+  getRandomBytes = liftIO . getRandomBytes
+
+instance MonadRandom (WithJSContextSingleton x (RP.ProfiledM (SpiderHostFrame Global))) where
+  getRandomBytes = liftIO . getRandomBytes

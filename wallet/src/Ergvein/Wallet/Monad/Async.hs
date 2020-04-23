@@ -19,6 +19,8 @@ import Reflex.Spider.Internal (SpiderHostFrame(..), EventM(..))
 import Reflex
 import Control.Monad
 
+import qualified Reflex.Profiled as RP
+
 -- | Helper that runs action in event in new thread with respect for logging of errors.
 performFork :: forall t m a . (PerformEvent t m, TriggerEvent t m, MonadUnliftIO (Performable m), PlatformNatives) => Event t (Performable m a) -> m (Event t a)
 performFork em = performEventAsync $ ffor em $ \ma fire -> do
@@ -37,6 +39,10 @@ performFork_ em = performEvent_ $ ffor em $ \ma -> do
 
 instance MonadUnliftIO m => MonadUnliftIO (WithJSContextSingleton x m) where
   withRunInIO = wrappedWithRunInIO WithJSContextSingleton unWithJSContextSingleton
+  {-# INLINE withRunInIO #-}
+
+instance MonadUnliftIO m => MonadUnliftIO (RP.ProfiledM m) where
+  withRunInIO = wrappedWithRunInIO ProfiledM runProfiledM
   {-# INLINE withRunInIO #-}
 
 instance MonadUnliftIO (SpiderHostFrame x) where

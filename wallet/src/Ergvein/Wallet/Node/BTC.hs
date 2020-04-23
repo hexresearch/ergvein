@@ -166,6 +166,7 @@ inPeerConduit :: (MonadIO m, PlatformNatives)
     -> IO ()
     -> ConduitT ByteString Message m ()
 inPeerConduit net url cfIO = forever $ do
+  pure ()
   x <- takeExactlyCE 24 foldC
   let cf = liftIO cfIO
   when (not . B.null $ x) $ case decode x of
@@ -174,7 +175,7 @@ inPeerConduit net url cfIO = forever $ do
       nodeLog $ "Could not decode incoming message header: " <> showt e
       nodeLog $ showt x
       cf >> throwIO DecodeHeaderError
-    Right (MessageHeader _ cmd len _) -> do
+    Right (MessageHeader !_ !cmd !len !_) -> do
       -- nodeLog $ showt cmd
       when (len > 32 * 2 ^ (20 :: Int)) $ do
         nodeLog "Payload too large"
@@ -184,7 +185,7 @@ inPeerConduit net url cfIO = forever $ do
         Left e -> do
           nodeLog $ "Cannot decode payload: " <> showt e
           cf >> throwIO CannotDecodePayload
-        Right msg -> yield msg
+        Right !msg -> yield msg
   where nodeLog = logWrite . (nodeString BTC url <>)
 
 -- | Outgoing peer conduit to serialize and send messages.
