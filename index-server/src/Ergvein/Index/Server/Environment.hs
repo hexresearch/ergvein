@@ -22,10 +22,19 @@ import Ergvein.Text
 import Network.Bitcoin.Api.Client
 import Network.Bitcoin.Api.Types
 import Network.Bitcoin.Api.Misc
+import Network.HTTP.Client.TLS
+import Network.Connection
 
 import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 import qualified Network.Ergo.Api.Client     as ErgoApi
 import qualified Network.Haskoin.Constants   as HK
+import qualified Network.HTTP.Client as HC
+
+
+import Network.HTTP.Client hiding (Proxy)
+import Network.HTTP.Client.TLS (newTlsManagerWith, mkManagerSettings, newTlsManager)
+import Network.TLS
+import Network.TLS.Extra.Cipher
 
 data ServerEnv = ServerEnv 
     { envServerConfig      :: !Config
@@ -34,6 +43,7 @@ data ServerEnv = ServerEnv
     , envLevelDBContext    :: !DB
     , envBitconNodeNetwork :: !HK.Network
     , envErgoNodeClient    :: !ErgoApi.Client
+    , envHttpClient        :: HC.Manager
     }
 
 class HasBitcoinNodeNetwork m where
@@ -51,12 +61,16 @@ newServerEnv cfg = do
     levelDBContext <- openCacheDb (configCachePath cfg) persistencePool
     ergoNodeClient <- liftIO $ ErgoApi.newClient (configERGONodeHost cfg) $ (configERGONodePort cfg)
     let bitconNodeNetwork = if configBTCNodeIsTestnet cfg then HK.btcTest else HK.btc
+    
+    manager <- liftIO $ newTlsManager
+
     pure ServerEnv { envServerConfig    = cfg
                    , envLogger          = logger
                    , envPersistencePool = persistencePool
                    , envLevelDBContext  = levelDBContext
                    , envBitconNodeNetwork = bitconNodeNetwork
                    , envErgoNodeClient  = ergoNodeClient
+                   , envHttpClient = manager
                    }
 
 -- | Log exceptions at Error severity

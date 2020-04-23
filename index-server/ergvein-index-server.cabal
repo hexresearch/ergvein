@@ -97,6 +97,9 @@ library
       , ergvein-interface-ergo
       , ergvein-wallet-filters
       , ergvein-wallet-types
+      , http-client-tls
+      , tls
+      , connection
 
   default-language:    Haskell2010
   default-extensions:

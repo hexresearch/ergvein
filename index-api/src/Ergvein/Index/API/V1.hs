@@ -14,8 +14,11 @@ type IndexGetBlockFilters   = "filters"   :> Body BlockFiltersRequest :> PostRes
 
 type IndexGetInfo           = "info"      :> PostResp InfoResponse
 
+type IndexAddPeer           = "addPeer"   :> PostResp ()
+
 data IndexApi route = IndexApi
     { indexGetHeight         :: route :- IndexGetHeight
     , indexGetBlockFilters   :: route :- IndexGetBlockFilters
     , indexGetInfo           :: route :- IndexGetInfo
+    , indexAddPeer           :: route :- IndexAddPeer
     } deriving Generic

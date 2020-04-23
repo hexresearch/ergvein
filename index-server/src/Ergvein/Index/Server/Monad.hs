@@ -14,6 +14,8 @@ import Network.Ergo.Api.Client
 import Servant.Server
 import Servant.Server.Generic
 import qualified Network.Bitcoin.Api.Client  as BitcoinApi
+import Ergvein.Index.Client
+import Control.Concurrent.MVar
 
 newtype ServerM a = ServerM { unServerM :: ReaderT ServerEnv (LoggingT IO) a }
   deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader ServerEnv, MonadThrow, MonadCatch, MonadMask)
@@ -63,6 +65,10 @@ instance BitcoinApiMonad ServerM where
      (configBTCNodeUser     cfg)
      (configBTCNodePassword cfg)
      f
+
+instance HasClientManager ServerM where
+  getClientMaganer = asks envHttpClient
+  {-# INLINE getClientMaganer #-}
 
 instance MonadUnliftIO ServerM where
   askUnliftIO = ServerM $ (\(UnliftIO run) -> UnliftIO $ run . unServerM) <$> askUnliftIO

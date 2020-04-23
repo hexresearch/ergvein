@@ -19,6 +19,7 @@ import Ergvein.Index.API.V1
 import Ergvein.Text
 import Ergvein.Wallet.Native
 import Network.HTTP.Client hiding (Proxy)
+import Control.Monad.IO.Class
 
 data AsClient
 

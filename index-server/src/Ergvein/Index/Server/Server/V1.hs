@@ -29,12 +29,16 @@ import Servant.Client
 import qualified Network.Haskoin.Block as Btc
 import qualified Data.Serialize as S 
 import Ergvein.Index.Server.PeerDiscovery.Discovery
+import Ergvein.Index.Server.PeerDiscovery.Types
+import Debug.Trace
+import Control.Monad.IO.Unlift
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
     { indexGetHeight = indexGetHeightEndpoint
     , indexGetBlockFilters = indexGetBlockFiltersEndpoint
     , indexGetInfo = indexGetInfoEndpoint
+    , indexAddPeer = addPeerEndpoint
     }
 
 --Endpoints
@@ -64,3 +68,9 @@ indexGetInfoEndpoint = do
   pure $ InfoResponse mappedScanInfo
   where
     scanNfoItem nfo = ScanProgressItem (nfoCurrency nfo) (nfoScannedHeight nfo) (nfoActualHeight nfo)
+
+addPeerEndpoint :: ServerM ()
+addPeerEndpoint = do
+  url <- PeerCandidate <$> parseBaseUrl "https://ergvein-indexer2.hxr.team"
+  r <- considerPeerCandidate url
+  pure ()   
