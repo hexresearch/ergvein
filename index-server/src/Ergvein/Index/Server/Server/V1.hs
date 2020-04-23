@@ -69,9 +69,12 @@ indexGetInfoEndpoint = do
   where
     scanNfoItem nfo = ScanProgressItem (nfoCurrency nfo) (nfoScannedHeight nfo) (nfoActualHeight nfo)
 
-addPeerEndpoint :: ServerM ()
-addPeerEndpoint = do
-  url <- PeerCandidate <$> parseBaseUrl "https://ergvein-indexer2.hxr.team"
-  liftIO $ traceIO $ show $ peerCandidateUrl url
+addPeerEndpoint :: AddPeerReq -> ServerM AddPeerResp
+addPeerEndpoint request = do
+  url <- PeerCandidate <$> (parseBaseUrl $ addPeerReqUrl $ request) 
   r <- considerPeerCandidate url
-  pure ()   
+  pure $ t r
+
+t :: PeerValidationResult -> AddPeerResp
+t = \case OK   -> AddPeerResp True  Nothing
+          Fail -> AddPeerResp False $ Just "Error"

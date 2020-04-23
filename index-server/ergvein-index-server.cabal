@@ -126,6 +126,7 @@ library
     DuplicateRecordFields
     QuantifiedConstraints
     UndecidableInstances
+    LambdaCase
 
 executable ergvein-index-server
   hs-source-dirs:

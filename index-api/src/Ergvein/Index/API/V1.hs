@@ -14,7 +14,7 @@ type IndexGetBlockFilters   = "filters"   :> Body BlockFiltersRequest :> PostRes
 
 type IndexGetInfo           = "info"      :> PostResp InfoResponse
 
-type IndexAddPeer           = "addPeer"   :> PostResp ()
+type IndexAddPeer           = "addPeer"   :> Body AddPeerReq :> PostResp AddPeerResp
 
 data IndexApi route = IndexApi
     { indexGetHeight         :: route :- IndexGetHeight
