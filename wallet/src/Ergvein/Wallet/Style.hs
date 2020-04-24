@@ -747,6 +747,38 @@ historyPageCss = do
     marginBottom $ px 10
   ".out-descr" ? do
     fontWeight $ weight 600
+  ".transaction-info-body-andr" ? do
+    fontSize $ px 16
+    marginTop $ px 10
+    marginLeft $ px 10
+    marginRight $ px 10
+  ".info-descr-andr" ? do
+    marginTop $ px 10
+    fontWeight $ weight 600
+    textAlign $ alignSide sideLeft
+  ".info-andr-hash" ? do
+    cursor pointer
+  ".info-andr-element" ? do
+    display grid
+    gridTemplateColumns [fr 8, fr 2]
+  ".info-body-andr" ? do
+    overflow hidden
+    textOverflow overflowEllipsis
+    textAlign $ alignSide sideLeft
+  ".info-copy-button" ? do
+    fontSize $ px 18
+    fontWeight $ weight 500
+  ".currname" ? do
+    marginLeft $ px 10
+  ".expand-button" ? do
+    textAlign $ alignSide sideRight
+  ".info-exits-andr" ? do
+    marginTop $ px 5
+  ".out-body-andr" ? do
+    marginLeft $ px 10
+    overflow hidden
+    textOverflow overflowEllipsis
+    textAlign $ alignSide sideLeft
 
 legoStyles :: Css
 legoStyles = do
