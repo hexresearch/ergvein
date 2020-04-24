@@ -6,6 +6,7 @@ module Ergvein.Types.Address (
     , egvAddrToString
     , egvAddrFromString
     , egvAddrCurrency
+    , btcAddrToString'
   ) where
 
 import Data.Aeson
@@ -22,16 +23,16 @@ import Ergvein.Crypto
 import Ergvein.Types.Currency
 import Ergvein.Types.Network
 import GHC.Generics            (Generic)
-import Network.Haskoin.Address (Address)
 
-import qualified Data.ByteString.Short   as BSS
-import qualified Data.Serialize          as S
-import qualified Data.Serialize.Get      as Get
-import qualified Data.Serialize.Put      as Put
-import qualified Network.Haskoin.Address as HA
-import qualified Text.Read               as R
+import qualified Data.ByteString.Short     as BSS
+import qualified Data.Serialize            as S
+import qualified Data.Serialize.Get        as Get
+import qualified Data.Serialize.Put        as Put
+import qualified Network.Haskoin.Address   as HA
+import qualified Network.Haskoin.Constants as HC
+import qualified Text.Read                 as R
 
-type BtcAddress = Address
+type BtcAddress = HA.Address
 
 -- | Type for variable-length addresses.
 newtype VLAddr = VLAddr { getErgVLAddr :: ShortByteString }
@@ -90,8 +91,13 @@ base58GetErg net = do
       | x == getErgScriptPrefix     net = ErgScriptAddress     <$> S.get
       | otherwise = fail "Does not recognize address prefix"
 
+btcAddrToString' :: BtcNetwork -> BtcAddress -> Text
+btcAddrToString' net addr = case HA.addrToString net addr of
+  Nothing -> undefined -- FIXME
+  Just s -> s
+
 btcAddrToString :: BtcAddress -> Text
-btcAddrToString = HA.addrToString net
+btcAddrToString = btcAddrToString' net
   where net = getBtcNetwork $ getCurrencyNetwork BTC
 
 ergAddrToString :: ErgAddress -> Text

@@ -56,7 +56,7 @@ library
       , file-embed               >= 0.0.11  &&  < 0.0.12
       , filepath                 >= 1.4     &&  < 1.5
       , flat                     >= 0.3     &&  < 0.4
-      , haskoin-core             >= 0.8     &&  < 0.9
+      , haskoin-core             >= 0.12.0  &&  < 0.12.1
       , hexstring                >= 0.11    &&  < 0.12
       , ilist                    >= 0.3     &&  < 0.4
       , immortal                 >= 0.3     &&  < 0.4

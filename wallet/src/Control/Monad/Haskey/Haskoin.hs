@@ -11,9 +11,6 @@ import Data.BTree.Primitives.Key
 
 import qualified Data.Serialize as S
 
-deriving instance Generic BlockHash
-deriving instance Generic BlockHeader
-deriving instance Generic BlockNode
 instance Binary BlockHash
 instance Binary BlockHeader
 instance Binary BlockNode

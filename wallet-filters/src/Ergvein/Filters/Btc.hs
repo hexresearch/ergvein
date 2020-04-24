@@ -23,6 +23,7 @@ import           Data.Maybe
 import           Data.Serialize                 ( encode )
 import           Data.Word
 import           Ergvein.Filters.GCS
+import           Ergvein.Types.Address          (btcAddrToString')
 import           GHC.Generics
 import           Network.Haskoin.Address
 import           Network.Haskoin.Block
@@ -64,7 +65,7 @@ fromSegWit a = case a of
 -- to string and encoded as bytes. Network argument controls whether we are
 -- in testnet or mainnet.
 encodeSegWitAddress :: Network -> SegWitAddress -> ByteString
-encodeSegWitAddress n = T.encodeUtf8 . addrToString n . fromSegWit
+encodeSegWitAddress n = T.encodeUtf8 . btcAddrToString' n . fromSegWit
 
 -- | Default value for P parameter (amount of bits in golomb rice encoding).
 -- Set to fixed `19` according to BIP-158.

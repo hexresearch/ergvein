@@ -57,7 +57,7 @@ packages:
 #
 extra-deps:
 - bytestring-trie-0.2.5.0@sha256:9efa9c6f556314d28486be2470ff789419c5238ed2e354870623a3cbbd28fbe2,3349
-- haskoin-core-0.8.0@sha256:4304848844820ab03d7ae84ed9a1c0464d9b23725777917b38f2864ed9cf56d9,3935
+- haskoin-core-0.12.0
 - git: https://github.com/hexresearch/haskell-bitcoin-api
   commit: 341dbd528646dc97ebc6a2d36c092d266df0d719
 - git: https://github.com/hexresearch/clay.git
