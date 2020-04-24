@@ -29,6 +29,7 @@ library
         Ergvein.Wallet.Camera
         Ergvein.Wallet.Client
         Ergvein.Wallet.Clipboard
+        Ergvein.Wallet.Codec
         Ergvein.Wallet.Currencies
         Ergvein.Wallet.Elements
         Ergvein.Wallet.Embed

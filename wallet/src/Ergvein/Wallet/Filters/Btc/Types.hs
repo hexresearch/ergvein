@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Wallet.Filters.Btc.Types(
     initBtcDbs
   , getBtcFiltersDb
@@ -11,8 +10,7 @@ import Ergvein.Filters.Btc
 import Network.Haskoin.Block
 import Network.Haskoin.Crypto
 
-import qualified Codec.Serialise as S
-import qualified Data.Serialize as Cereal
+import Ergvein.Wallet.Codec()
 
 filtersDbName :: String
 filtersDbName = "btcfilters"
@@ -39,21 +37,3 @@ getBtcHeightsDb = getDatabase $ Just heightsDbName
 
 getBtcTotalDb :: Mode mode => Transaction mode (Database () BlockHeight)
 getBtcTotalDb = getDatabase $ Just totalDbName
-
-deriving instance S.Serialise BlockHash
-
-instance S.Serialise Hash256 where
-  encode = S.encode . Cereal.encode
-  {-# INLINE encode #-}
-  decode = do
-    bs <- S.decode
-    either fail pure $ Cereal.decode bs
-  {-# INLINE decode #-}
-
-instance S.Serialise BtcAddrFilter where
-  encode = S.encode . encodeBtcAddrFilter
-  {-# INLINE encode #-}
-  decode = do
-    bs <- S.decode
-    either fail pure $ decodeBtcAddrFilter bs
-  {-# INLINE decode #-}

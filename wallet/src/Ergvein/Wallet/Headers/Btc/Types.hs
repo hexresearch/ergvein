@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Wallet.Headers.Btc.Types(
     initBtcDbs
   , getBtcHeadersDB
@@ -9,8 +8,7 @@ import Database.LMDB.Simple
 import Network.Haskoin.Block
 import Network.Haskoin.Crypto
 
-import qualified Codec.Serialise as S
-import qualified Data.Serialize as Cereal
+import Ergvein.Wallet.Codec()
 
 btcHeadersDBName :: String
 btcHeadersDBName = "btcheaders"
@@ -30,21 +28,3 @@ getBtcHeadersDB = getDatabase $ Just btcHeadersDBName
 
 getBtcBestHeaderDB :: Mode mode => Transaction mode (Database () BlockNode)
 getBtcBestHeaderDB = getDatabase $ Just btcBestHeaderDBName
-
-deriving instance S.Serialise BlockHash
-
-instance S.Serialise Hash256 where
-  encode = S.encode . Cereal.encode
-  {-# INLINE encode #-}
-  decode = do
-    bs <- S.decode
-    either fail pure $ Cereal.decode bs
-  {-# INLINE decode #-}
-
-instance S.Serialise BlockNode where
-  encode = S.encode . Cereal.encode
-  {-# INLINE encode #-}
-  decode = do
-    bs <- S.decode
-    either fail pure $ Cereal.decode bs
-  {-# INLINE decode #-}
