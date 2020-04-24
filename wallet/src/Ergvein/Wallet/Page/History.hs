@@ -97,13 +97,10 @@ transactionInfoPageAndroid :: MonadFront t m => Currency -> TransactionMock -> m
 transactionInfoPageAndroid cur tr@TransactionMock{..} = divClass "base-container" $ do
   let thisWidget = Just $ pure $ transactionInfoPage cur tr
   headerWidget HistoryTITitle thisWidget
-  divClass "transaction-info-body-andr" $ do
-    divClass "info-descr-andr" $ do
-      localizedText HistoryTIHash
-      elClass "span" "expand-button" $ text $ "▾" -- ▼▲ ▾
-    copiedHashE <- divButton "info-hash-andr info-andr-element" $ do
-      divClass "info-body-andr" $ text $ txId txInfo
-      divClass "info-copy-button" $ text $ "⎘"
+  divClass "transaction-info-body-andr" $ mdo
+    hashD <- expD hashE hashD
+    hashE <- expHead hashD HistoryTIHash
+    copiedHashE <- copyDiv hashD $ txId txInfo
     case (txLabel txInfo) of
       Just lbl -> do
         divClass "info-descr-andr" $ localizedText HistoryTILabel
@@ -121,18 +118,15 @@ transactionInfoPageAndroid cur tr@TransactionMock{..} = divClass "base-container
     divClass "info-descr-andr" $ localizedText HistoryTIConfirmations
     divClass "info-body-andr" $ do
       text $ showt $ txConfirmations txInfo
-    divClass "info-descr-andr" $ do
-       localizedText HistoryTIBlock
-       elClass "span" "expand-button" $ text $ "▾"
-    copiedBlockE <- divButton "info-hash-andr info-andr-element" $ do
-      divClass "info-body-andr" $ text $ txBlock txInfo
-      divClass "info-copy-button" $ text $ "⎘"
-    divClass "info-descr-andr" $ do
-       localizedText HistoryTIRaw
-       elClass "span" "expand-button" $ text $ "▾"
-    copiedRawE <- divButton "info-hash-andr info-andr-element" $ do
-      divClass "info-body-andr" $ text $ txRaw txInfo
-      divClass "info-copy-button" $ text $ "⎘"
+
+    blockD <- expD blockE blockD
+    blockE <- expHead blockD HistoryTIBlock
+    copiedBlockE <- copyDiv blockD $ txBlock txInfo
+
+    rawD <- expD rawE rawD
+    rawE <- expHead rawD HistoryTIRaw
+    copiedRawE <- copyDiv rawD $ txRaw txInfo
+
     divClass "info-descr-andr" $ localizedText HistoryTIOutputs
     divClass "info-body-andr info-exits-andr" $ do
       flip traverse (txOutputs txInfo) $ \(oHash,oVal,oType) -> divClass "out-element" $ do
@@ -162,6 +156,27 @@ transactionInfoPageAndroid cur tr@TransactionMock{..} = divClass "base-container
     cE <- clipboardCopy $ copiedE
     showSuccessMsg $ CSCopied <$ cE
     pure ()
+    where
+      expD expE expD = holdDyn Hidden $ poke expE $ \_ -> do
+            st <- sampleDyn expD
+            case st of
+              Hidden -> pure Expanded
+              Expanded -> pure Hidden
+
+      expDiv statD txt = widgetHoldDyn $ ffor statD $ \exStatus -> case exStatus of
+        Hidden   -> divClass "info-body-andr" $ text txt
+        Expanded -> divClass "info-body-andr-expanded" $ text txt
+
+      expHead statD txt = divButton "info-descr-andr" $ do
+          localizedText txt
+          elClass "span" "expand-button" $ widgetHoldDyn $ ffor statD $ \exStatus -> case exStatus of
+            Hidden   -> text $ "▾"
+            Expanded -> text $ "▴"  -- ▼▲ ▾
+
+      copyDiv copyD txt = divButton "info-hash-andr info-andr-element" $ do
+        expDiv copyD txt
+        divClass "info-copy-button" $ text $ "⎘"
+
 --    divClass "info-andr-element" $ do
 --      let url = txUrl txInfo
 --      divClass "info-body-andr info-url" $ elAttr "a" [("href",url)] $ text url
@@ -239,6 +254,9 @@ historyTableWidget trList = do
           stat = case txStatus of
             TransConfirmed -> "✓"
             TransUncofirmed -> "?"
+
+-- Front types, should be moved to Utils
+data ExpStatus = Expanded | Hidden deriving (Eq, Show)
 
 -- Mock Transaction info types for visualisation.
 data TransStatus = TransConfirmed | TransUncofirmed deriving (Eq,Show)

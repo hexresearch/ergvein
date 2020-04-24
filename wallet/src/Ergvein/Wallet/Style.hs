@@ -765,9 +765,14 @@ historyPageCss = do
     overflow hidden
     textOverflow overflowEllipsis
     textAlign $ alignSide sideLeft
+  ".info-body-andr-expanded" ? do
+    overflow hidden
+    overflowWrap breakWord
+    textAlign $ alignSide sideLeft
   ".info-copy-button" ? do
     fontSize $ px 18
     fontWeight $ weight 500
+    margin auto auto auto auto
   ".currname" ? do
     marginLeft $ px 10
   ".expand-button" ? do
