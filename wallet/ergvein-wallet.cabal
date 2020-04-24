@@ -66,6 +66,7 @@ library
         Ergvein.Wallet.Localization.Settings
         Ergvein.Wallet.Localization.Share
         Ergvein.Wallet.Localization.Storage
+        Ergvein.Wallet.Localization.Util
         Ergvein.Wallet.Log
         Ergvein.Wallet.Log.Page
         Ergvein.Wallet.Log.Reader

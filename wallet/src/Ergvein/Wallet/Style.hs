@@ -771,7 +771,7 @@ historyPageCss = do
   ".currname" ? do
     marginLeft $ px 10
   ".expand-button" ? do
-    textAlign $ alignSide sideRight
+    marginLeft $ px 10
   ".info-exits-andr" ? do
     marginTop $ px 5
   ".out-body-andr" ? do

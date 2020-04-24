@@ -5,10 +5,12 @@ module Ergvein.Wallet.Page.History(
 
 import Ergvein.Text
 import Ergvein.Types.Currency
+import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.History
+import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar
@@ -98,8 +100,8 @@ transactionInfoPageAndroid cur tr@TransactionMock{..} = divClass "base-container
   divClass "transaction-info-body-andr" $ do
     divClass "info-descr-andr" $ do
       localizedText HistoryTIHash
-      elClass "span" "expand-button" $ text $ "▾" -- ▴ ▾
-    divClass "info-hash-andr info-andr-element" $ do
+      elClass "span" "expand-button" $ text $ "▾" -- ▼▲ ▾
+    copiedHashE <- divButton "info-hash-andr info-andr-element" $ do
       divClass "info-body-andr" $ text $ txId txInfo
       divClass "info-copy-button" $ text $ "⎘"
     case (txLabel txInfo) of
@@ -122,13 +124,13 @@ transactionInfoPageAndroid cur tr@TransactionMock{..} = divClass "base-container
     divClass "info-descr-andr" $ do
        localizedText HistoryTIBlock
        elClass "span" "expand-button" $ text $ "▾"
-    divClass "info-hash-andr info-andr-element" $ do
+    copiedBlockE <- divButton "info-hash-andr info-andr-element" $ do
       divClass "info-body-andr" $ text $ txBlock txInfo
       divClass "info-copy-button" $ text $ "⎘"
     divClass "info-descr-andr" $ do
        localizedText HistoryTIRaw
        elClass "span" "expand-button" $ text $ "▾"
-    divClass "info-hash-andr info-andr-element" $ do
+    copiedRawE <- divButton "info-hash-andr info-andr-element" $ do
       divClass "info-body-andr" $ text $ txRaw txInfo
       divClass "info-copy-button" $ text $ "⎘"
     divClass "info-descr-andr" $ localizedText HistoryTIOutputs
@@ -153,8 +155,12 @@ transactionInfoPageAndroid cur tr@TransactionMock{..} = divClass "base-container
         divClass "out-body-andr"  $ text $ oHash
     divClass "info-descr-andr" $ localizedText HistoryTIURL
     divClass "info-andr-element" $ do
-      let url = txUrl txInfo
-      divClass "info-body-andr info-url" $ elAttr "a" [("href",url)] $ text url
+      divClass "info-body-andr info-url" $ elAttr "a" [("href",txUrl txInfo)] $ text $ txUrl txInfo
+    let copiedE = leftmost[(txId txInfo) <$ copiedHashE,
+                           (txBlock txInfo) <$ copiedBlockE,
+                           (txRaw txInfo) <$ copiedRawE]
+    cE <- clipboardCopy $ copiedE
+    showSuccessMsg $ CSCopied <$ cE
     pure ()
 --    divClass "info-andr-element" $ do
 --      let url = txUrl txInfo

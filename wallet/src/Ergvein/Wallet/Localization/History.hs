@@ -32,6 +32,7 @@ data HistoryPageStrings =
   | HistoryTIOutputsAddress
   | HistoryTIOutputsValue
   | HistoryTIOutputsStatus
+  deriving (Eq)
 
 instance LocalizedPrint HistoryPageStrings where
   localizedShow l v = case l of
