@@ -8,21 +8,15 @@ module Ergvein.Wallet.Filters.Storage(
   , foldFilters
   ) where
 
-import Control.Concurrent
-import Control.Lens
 import Control.Monad.Catch
-import Control.Monad.Haskey
 import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.Text (Text, unpack)
 import Database.LMDB.Simple
 import Ergvein.Filters
 import Ergvein.Types.Currency
-import Ergvein.Wallet.Filters.Types
-import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Native
 import Network.Haskoin.Block
-import Reflex.Dom
 import System.Directory
 
 import qualified Ergvein.Wallet.Filters.Btc.Types as BTC

@@ -17,8 +17,6 @@ module Ergvein.Wallet.Filters.Loader (
 ) where
 
 import Control.Monad
-import Control.Monad.IO.Unlift
-import Data.Bifunctor
 import Data.Maybe
 import Ergvein.Filters
 import Ergvein.Index.API.Types
@@ -32,7 +30,6 @@ import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Sync.Status
 import Network.Haskoin.Block
-import Reflex.Workflow
 
 filtersLoader :: (HasFiltersStorage m, MonadFront t m) => m ()
 filtersLoader = nameSpace "filters loader" $ do

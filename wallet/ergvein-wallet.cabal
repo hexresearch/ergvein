@@ -22,8 +22,6 @@ flag testnet
 
 library
     exposed-modules:
-        Control.Monad.Haskey.Haskoin
-        Control.Monad.Haskey.State
         Ergvein.Wallet
         Ergvein.Wallet.Alert
         Ergvein.Wallet.Alert.Handler
@@ -165,9 +163,6 @@ library
         file-embed >=0.0 && <0.1,
         filepath -any,
         ghcjs-dom -any,
-        haskey >=0.3 && <0.4,
-        haskey-btree >=0.3 && <0.4,
-        haskey-mtl >=0.3 && <0.4,
         haskoin-core >= 0.8 && < 0.9,
         http-client >=0.5 && <0.7,
         http-client-tls >= 0.3 && < 0.4,
