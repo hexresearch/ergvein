@@ -48,7 +48,7 @@ instance ApiMonad ServerM where
   {-# INLINE getClient #-}
 
 instance HasBitcoinNodeNetwork ServerM where
-  currentBitcoinNetwork = asks envBitconNodeNetwork
+  currentBitcoinNetwork = asks envBitcoinNodeNetwork
   {-# INLINE currentBitcoinNetwork #-}
 
 instance HasServerConfig ServerM where
@@ -67,8 +67,16 @@ instance BitcoinApiMonad ServerM where
      f
 
 instance HasClientManager ServerM where
-  getClientMaganer = asks envHttpClient
-  {-# INLINE getClientMaganer #-}
+  getClientManager = asks envHttpManager
+  {-# INLINE getClientManager #-}
+
+instance HasHttpManager ServerM where
+  getHttpManager = asks envHttpManager
+  {-# INLINE getHttpManager #-}
+
+instance HasTlsManager ServerM where
+  getTlsManager = asks envTlsManager
+  {-# INLINE getTlsManager #-}
 
 instance MonadUnliftIO ServerM where
   askUnliftIO = ServerM $ (\(UnliftIO run) -> UnliftIO $ run . unServerM) <$> askUnliftIO

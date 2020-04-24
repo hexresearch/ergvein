@@ -41,13 +41,20 @@ data ServerEnv = ServerEnv
     , envLogger            :: !(Chan (Loc, LogSource, LogLevel, LogStr))
     , envPersistencePool   :: !DBPool
     , envLevelDBContext    :: !DB
-    , envBitconNodeNetwork :: !HK.Network
+    , envBitcoinNodeNetwork :: !HK.Network
     , envErgoNodeClient    :: !ErgoApi.Client
-    , envHttpClient        :: HC.Manager
+    , envHttpManager        :: !HC.Manager
+    , envTlsManager         :: !HC.Manager
     }
 
 class HasBitcoinNodeNetwork m where
   currentBitcoinNetwork :: m HK.Network
+
+class MonadIO m => HasHttpManager m where
+  getHttpManager  :: m Manager
+
+class MonadIO m => HasTlsManager m where
+  getTlsManager  :: m Manager
 
 newServerEnv :: (MonadIO m, MonadLogger m) => Config -> m ServerEnv
 newServerEnv cfg = do
@@ -60,17 +67,19 @@ newServerEnv cfg = do
         pure persistencePool
     levelDBContext <- openCacheDb (configCachePath cfg) persistencePool
     ergoNodeClient <- liftIO $ ErgoApi.newClient (configERGONodeHost cfg) $ (configERGONodePort cfg)
-    let bitconNodeNetwork = if configBTCNodeIsTestnet cfg then HK.btcTest else HK.btc
+    let bitcoinNodeNetwork = if configBTCNodeIsTestnet cfg then HK.btcTest else HK.btc
     
-    manager <- liftIO $ newTlsManager
+    httpManager <- liftIO $ HC.newManager HC.defaultManagerSettings
+    tlsManager <- liftIO $ newTlsManager
 
-    pure ServerEnv { envServerConfig    = cfg
-                   , envLogger          = logger
-                   , envPersistencePool = persistencePool
-                   , envLevelDBContext  = levelDBContext
-                   , envBitconNodeNetwork = bitconNodeNetwork
-                   , envErgoNodeClient  = ergoNodeClient
-                   , envHttpClient = manager
+    pure ServerEnv { envServerConfig       = cfg
+                   , envLogger             = logger
+                   , envPersistencePool    = persistencePool
+                   , envLevelDBContext     = levelDBContext
+                   , envBitcoinNodeNetwork = bitcoinNodeNetwork
+                   , envErgoNodeClient     = ergoNodeClient
+                   , envHttpManager        = httpManager
+                   , envTlsManager         = tlsManager
                    }
 
 -- | Log exceptions at Error severity
