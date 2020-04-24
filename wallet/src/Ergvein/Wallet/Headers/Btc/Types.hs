@@ -1,48 +1,50 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Wallet.Headers.Btc.Types(
-    SchemaBtc(..)
-  , emptySchemaBtc
-  , schemaBtcHeaders
-  , schemaBtcBestBlock
-  , blockNodeId
-  , defaultBestBlock
+    initBtcDbs
+  , getBtcHeadersDB
+  , getBtcBestHeaderDB
   ) where
 
-import Control.Lens (Lens', lens)
-import Control.Monad.Haskey
-import Control.Monad.Haskey.Haskoin
-import Data.Binary (Binary(..))
-import Data.BTree.Impure (Tree)
-import Data.BTree.Primitives (Value)
-import Data.Text (Text)
-import Ergvein.Wallet.Platform
-import GHC.Generics (Generic)
+import Database.LMDB.Simple
 import Network.Haskoin.Block
 import Network.Haskoin.Crypto
-import Data.BTree.Primitives.Key
 
-import qualified Data.BTree.Impure as B
-import qualified Data.Serialize as S
+import qualified Codec.Serialise as S
+import qualified Data.Serialize as Cereal
 
-data SchemaBtc = SchemaBtc {
-  _schemaBtcHeaders   :: Tree BlockHash BlockNode
-, _schemaBtcBestBlock :: Tree () BlockNode
-} deriving (Generic, Show)
+btcHeadersDBName :: String
+btcHeadersDBName = "btcheaders"
 
-instance Binary SchemaBtc
-instance Value SchemaBtc
+btcBestHeaderDBName :: String
+btcBestHeaderDBName = "btcbestheader"
 
-emptySchemaBtc :: SchemaBtc
-emptySchemaBtc = SchemaBtc B.empty B.empty
+-- | Force creation of datab
+initBtcDbs :: Transaction ReadWrite ()
+initBtcDbs = do
+  fdb <- getBtcHeadersDB
+  bdb <- getBtcBestHeaderDB
+  bdb `seq` fdb `seq` pure ()
 
-schemaBtcHeaders :: Lens' SchemaBtc (Tree BlockHash BlockNode)
-schemaBtcHeaders = lens _schemaBtcHeaders $ \s x -> s { _schemaBtcHeaders = x }
+getBtcHeadersDB :: Mode mode => Transaction mode (Database BlockHash BlockNode)
+getBtcHeadersDB = getDatabase $ Just btcHeadersDBName
 
-schemaBtcBestBlock :: Lens' SchemaBtc (Tree () BlockNode)
-schemaBtcBestBlock = lens _schemaBtcBestBlock $ \s x -> s { _schemaBtcBestBlock = x }
+getBtcBestHeaderDB :: Mode mode => Transaction mode (Database () BlockNode)
+getBtcBestHeaderDB = getDatabase $ Just btcBestHeaderDBName
 
-blockNodeId :: BlockNode -> BlockHash
-blockNodeId = headerHash . nodeHeader
+deriving instance S.Serialise BlockHash
 
-defaultBestBlock :: BlockNode
-defaultBestBlock = genesisNode btcNetwork
+instance S.Serialise Hash256 where
+  encode = S.encode . Cereal.encode
+  {-# INLINE encode #-}
+  decode = do
+    bs <- S.decode
+    either fail pure $ Cereal.decode bs
+  {-# INLINE decode #-}
 
+instance S.Serialise BlockNode where
+  encode = S.encode . Cereal.encode
+  {-# INLINE encode #-}
+  decode = do
+    bs <- S.decode
+    either fail pure $ Cereal.decode bs
+  {-# INLINE decode #-}

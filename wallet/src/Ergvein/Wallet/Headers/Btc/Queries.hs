@@ -1,40 +1,51 @@
 module Ergvein.Wallet.Headers.Btc.Queries(
-    insertHeader
-  , getHeader
-  , setBestHeader
-  , getBestHeader
+    BTCHeadersStorage(..)
+  , runBTCHeaderQuery
   ) where
 
-import Control.Lens
-import Control.Monad.Haskey
-import Control.Monad.Haskey.State
-import Control.Monad.State.Strict
-import Data.BTree.Alloc
+import Control.Monad.IO.Class
+import Control.Monad.Reader
 import Data.Maybe
-import Ergvein.Wallet.Headers.Btc.Types
+import Database.LMDB.Simple
 import Network.Haskoin.Block
 
-import qualified Data.BTree.Impure as B
+import Ergvein.Wallet.Headers.Btc.Types
+import Ergvein.Wallet.Headers.Types
+import Ergvein.Wallet.Platform
 
-insertHeader :: AllocM m => BlockNode -> SchemaBtc -> m SchemaBtc
-insertHeader n = schemaBtcHeaders %%~ B.insert (blockNodeId n) n
+insertHeader :: MonadIO m => BlockNode -> HeadersStorage -> m ()
+insertHeader bhead e = liftIO . readWriteTransaction e $ do
+  db <- getBtcHeadersDB
+  put db (headerHash $ nodeHeader bhead) $ Just bhead
 
-getHeader :: AllocReaderM m => BlockHash -> SchemaBtc -> m (Maybe BlockNode)
-getHeader k s = B.lookup k (s ^. schemaBtcHeaders)
+getHeader :: MonadIO m => BlockHash -> HeadersStorage -> m (Maybe BlockNode)
+getHeader bhash e = liftIO . readOnlyTransaction e $ do
+  db <- getBtcHeadersDB
+  get db bhash
 
-setBestHeader :: AllocM m => BlockNode -> SchemaBtc -> m SchemaBtc
-setBestHeader n = schemaBtcBestBlock %%~ B.insert () n
+setBestHeader :: MonadIO m => BlockNode -> HeadersStorage -> m ()
+setBestHeader bhead e = liftIO . readWriteTransaction e $ do
+  db <- getBtcBestHeaderDB
+  put db () $ Just bhead
 
-getBestHeader :: AllocReaderM m => SchemaBtc -> m BlockNode
-getBestHeader s = fromMaybe defaultBestBlock <$> B.lookup () (s ^. schemaBtcBestBlock)
+getBestHeader :: MonadIO m => HeadersStorage -> m BlockNode
+getBestHeader e = liftIO . readOnlyTransaction e $ do
+  db <- getBtcBestHeaderDB
+  fromMaybe defaultBestBlock <$> get db ()
 
-instance AllocM m => BlockHeaders (StateT SchemaBtc m) where
-  addBlockHeader = applyState . insertHeader
-  getBlockHeader h = getHeader h =<< get
-  getBestBlockHeader = getBestHeader =<< get
-  setBestBlockHeader = applyState . setBestHeader
-  {-# INLINE addBlockHeader #-}
-  {-# INLINE getBlockHeader #-}
-  {-# INLINE getBestBlockHeader #-}
-  {-# INLINE setBestBlockHeader #-}
+defaultBestBlock :: BlockNode
+defaultBestBlock = genesisNode btcNetwork
 
+newtype BTCHeadersStorage m a = BTCHeadersStorage {unBTCHeadersStorage :: ReaderT HeadersStorage m a}
+  deriving (Functor,  Applicative, Monad, MonadReader HeadersStorage, MonadIO)
+
+instance MonadIO m => BlockHeaders (BTCHeadersStorage m) where
+  addBlockHeader bh = BTCHeadersStorage $ insertHeader bh =<< ask
+  getBlockHeader bh = BTCHeadersStorage $ getHeader bh =<< ask
+  getBestBlockHeader = BTCHeadersStorage $ getBestHeader =<< ask
+  setBestBlockHeader bh = BTCHeadersStorage $ setBestHeader bh =<< ask
+
+runBTCHeaderQuery :: (HasHeadersStorage m) => BTCHeadersStorage m a -> m a
+runBTCHeaderQuery ma = do
+  hs <- getHeadersStorage
+  runReaderT (unBTCHeadersStorage ma) hs
