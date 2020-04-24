@@ -42,7 +42,7 @@ getBlockFilters :: (MonadFrontBase t m, MonadClient t m) => Event t BlockFilters
 getBlockFilters = requesterEq getBlockFiltersEndpoint
 
 instance MonadIO m => HasClientManager (ReaderT Manager m) where
-  getClientMaganer = ask
+  getClientManager = ask
 
 data ResAct = ResActCheck | ResActTimeout | ResActNoUrls
 
@@ -100,7 +100,7 @@ requesterBody validateRes uss endpoint initRes req = do
   timeoutMsgE   <- delay dt buildE                          -- When to show a timeout message
   timeoutE      <- delay 1 timeoutMsgE                      -- When to actually signal a timeout
   urls          <- getRandUrls maxN uss                     -- Starting urls. Asked concurrently
-  mng           <- getClientMaganer                         -- Client manger for requests
+  mng           <- getClientManager                         -- Client manger for requests
   resCountRef   <- liftIO $ newTVarIO $ S.size uss          -- A counter of "visited" urls. Counts down till 0
 
   -- Request all staring urls concurrently and give back events and triggers

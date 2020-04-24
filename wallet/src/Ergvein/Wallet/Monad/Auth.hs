@@ -106,7 +106,7 @@ instance Monad m => HasFiltersStorage (ErgveinM t m) where
   {-# INLINE getFiltersStorage #-}
 
 instance MonadIO m => HasClientManager (ErgveinM t m) where
-  getClientMaganer = liftIO . readMVar =<< asks env'manager
+  getClientManager = liftIO . readMVar =<< asks env'manager
 
 instance MonadBaseConstr t m => MonadEgvLogger t (ErgveinM t m) where
   getLogsTrigger = asks env'logsTrigger
@@ -386,7 +386,7 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
     performEvent_ $ (liftIO fire) <$ e
   {-# INLINE refreshIndexerInfo #-}
   pingIndexer urlE = performFork $ ffor urlE $ \url -> do
-    mng <- getClientMaganer
+    mng <- getClientManager
     pingIndexerIO mng url
   activateURL urlE = do
     actRef  <- asks env'activeUrls
@@ -394,7 +394,7 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
     acrhRef <- asks env'urlsArchive
     setRef  <- asks env'settings
     performFork $ ffor urlE $ \url -> do
-      mng <- getClientMaganer
+      mng <- getClientManager
       res <- pingIndexerIO mng url
       ias <- modifyExternalRef iaRef $ \us ->
         let us' = S.delete url us in (us', S.toList us')

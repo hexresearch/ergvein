@@ -33,11 +33,11 @@ apiV1 :: IndexApi AsClient
 apiV1 = fromServant $ indexVersionedApi'v1 api
 
 class MonadIO m => HasClientManager m where
-  getClientMaganer  :: m Manager
+  getClientManager  :: m Manager
 
 getHeightEndpoint :: (HasClientManager m, PlatformNatives) => BaseUrl -> HeightRequest -> m (Either ClientError HeightResponse)
 getHeightEndpoint url req = do
-  cenv <- fmap (`mkClientEnv` url) getClientMaganer
+  cenv <- (`mkClientEnv` url) <$> getClientManager
   res <- liftIO $ flip runClientM cenv $ indexGetHeight apiV1 req
   liftIO $ case res of
     Left er -> logWrite $ showt er
@@ -46,10 +46,10 @@ getHeightEndpoint url req = do
 
 getBlockFiltersEndpoint :: HasClientManager m => BaseUrl -> BlockFiltersRequest -> m (Either ClientError BlockFiltersResponse)
 getBlockFiltersEndpoint url req = do
-  cenv <- fmap (`mkClientEnv` url) getClientMaganer
+  cenv <- fmap (`mkClientEnv` url) getClientManager
   liftIO $ flip runClientM cenv $ indexGetBlockFilters apiV1 req
 
 getInfoEndpoint :: HasClientManager m => BaseUrl -> () -> m (Either ClientError InfoResponse)
 getInfoEndpoint url _ = do
-  cenv <- fmap (`mkClientEnv` url) getClientMaganer
+  cenv <- fmap (`mkClientEnv` url) getClientManager
   liftIO $ flip runClientM cenv $ indexGetInfo apiV1
