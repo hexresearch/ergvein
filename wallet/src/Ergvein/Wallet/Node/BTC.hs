@@ -64,41 +64,46 @@ initBTCNode url = do
 
   let net = btc
   (restartE, fireRestart)   <- newTriggerEvent
-  (respE, fireResp)         <- newTriggerEvent
   (reqE, fireReq)           <- newTriggerEvent
   (closeE, fireClose)       <- newTriggerEvent
+  (closeSE, fireCloseS)     <- newTriggerEvent
   buildE                    <- getPostBuild
-  reqChanIn                 <- liftIO $ newBroadcastTChanIO
-  reqChanOut                <- liftIO $ atomically $ dupTChan reqChanIn
   socadrs                   <- liftIO $ toSockAddr url
 
   let startE = leftmost [buildE, restartE]
   let externalClose :: IO () -- This closure is exposed to the wallet to manually kill the connection
-      externalClose = atomically . writeTChan reqChanIn $ MsgKill
+      externalClose = fireCloseS MsgKill
 
-      writeMsg = atomically . writeTChan reqChanIn . MsgMessage
+      writeMsg = fireReq . MsgMessage
       nodeLog = logWrite . (nodeString BTC url <>)
 
+      extCloseE = fforMaybe reqE $ \case
+        MsgKill -> Just ()
+        _ -> Nothing
+      reqMsgE = fforMaybe reqE $ \case
+        MsgMessage msg -> Just msg
+        _ -> Nothing
   -- Send incoming messages to the channel
   performEvent_ $ liftIO . writeMsg <$> reqE
 
   -- Start the connection
-  _ <- widgetHold (pure ()) $ ffor startE $ const $ case socadrs of
+  s <- fmap switchSocket $ widgetHold (pure noSocket) $ ffor startE $ const $ case socadrs of
     sa :_ -> do
       (Just sname, Just sport) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True sa
       let peer = Peer sname sport
+      -- Spawn connection listener
       s <- socket SocketConf {
-          _socketConfPeer = peer
-        , _socketConfSend = _
+          _socketConfPeer   = peer
+        , _socketConfSend   = reqMsgE
         , _socketConfPeeker = _
-        , _socketConfClose = _
+        , _socketConfClose  = closeSE
         , _socketConfReopen = Just 5
         }
-      -- Spawn connection listener
-      forkIO $ runNode url net reqChanOut fireResp (fireClose ())
       -- Start the handshake
       writeMsg =<< mkVers net sa
+      pure s
     _   -> nodeLog $ "Failed to convert BaseUrl to SockAddr: " <> T.pack (showBaseUrl url)
+  let respE = _socketInbound s
 
   -- Finalize the handshake by sending "verack" message as a response
   -- Also, respond to ping messages by corrseponding pongs

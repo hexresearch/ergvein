@@ -9,9 +9,12 @@ module Ergvein.Wallet.Node.Socket(
   , CloseReason(..)
   , isCloseFinal
   , Socket(..)
+  , noSocket
+  , switchSocket
   , socket
   ) where
 
+import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad.IO.Unlift
 import Control.Monad.Reader
@@ -103,6 +106,24 @@ data Socket t a = Socket {
 , _socketRecvEr  :: !(Event t InboundException)
 } deriving (Generic)
 
+-- | Mock socket that does nothing
+noSocket :: Reflex t => Socket t a
+noSocket = Socket {
+    _socketInbound = never
+  , _socketClosed = never
+  , _socketStatus = pure SocketInitial
+  , _socketRecvEr = never
+  }
+
+-- | Switch over chain of sockets to represent only current one
+switchSocket :: Reflex t => Dynamic t (Socket t a) -> Socket t a
+switchSocket dsock = Socket {
+    _socketInbound = switch . current $ _socketInbound <$> dsock
+  , _socketClosed = switch . current $ _socketClosed <$> dsock
+  , _socketStatus = join $ _socketStatus <$> dsock
+  , _socketRecvEr = switch . current $ _socketRecvEr <$> dsock
+  }
+
 -- | Widget that starts TCP socket internally and reconnects if needed.
 socket :: (TriggerEvent t m, PerformEvent t m, MonadHold t m, PostBuild t m, MonadIO (Performable m), MonadIO m, MonadUnliftIO (Performable m), PlatformNatives)
   => SocketConf t a -> m (Socket t a)
@@ -119,14 +140,21 @@ socket SocketConf{..} = do
     _ -> pure never
   let connectE = leftmost [reconnectE, buildE]
   intVar <- liftIO $ newTVarIO False
+  sendChan <- liftIO newTChanIO
   performEvent_ $ ffor closeE $ const $ liftIO $ atomically $ writeTVar intVar True
   performEvent_ $ ffor reconnectE $ const $ liftIO $ atomically $ writeTVar intVar True
+  performEvent_ $ ffor _socketConfSend $ liftIO . atomically . writeTChan sendChan
   performFork_ $ ffor connectE $ const $ do
     let closeCb e = closeFire $ CloseError doReconnecting e
+        sendThread sock = forever $ do
+          msgs <- atomically $ readAllTVar sendChan
+          N.sendLazy sock . BSL.fromChunks $ msgs
         conCb (sock, _) = do
           let env = PeekerEnv intVar sock
-          ma <- Ex.tryAny $ runReaderT _socketConfPeeker env
-          either readErFire inFire ma
+          void $ forkIO $ sendThread sock
+          forever $ do
+            ma <- Ex.tryAny $ runReaderT _socketConfPeeker env
+            either readErFire inFire ma
         Peer host port = _socketConfPeer
     liftIO $ N.connect host port conCb `Ex.catchAny` closeCb
   pure Socket {
@@ -155,3 +183,10 @@ receiveExactly intVar sock n = go n mempty
           l = BS.length bs
           acc' = acc <> BB.byteString bs
           in if l < i then go (i - l) acc' else pure . BSL.toStrict . BB.toLazyByteString $ acc
+
+readAllTVar :: TChan a -> STM [a]
+readAllTVar chan = go []
+  where
+    go !acc = do
+      mres <- tryReadTChan chan
+      maybe (pure acc) (go . (: acc)) mres
