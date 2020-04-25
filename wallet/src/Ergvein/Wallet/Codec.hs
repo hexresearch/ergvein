@@ -36,3 +36,11 @@ instance S.Serialise BlockNode where
     bs <- S.decode
     either fail pure $ Cereal.decode bs
   {-# INLINE decode #-}
+
+instance S.Serialise Block where
+  encode = S.encode . Cereal.encode
+  {-# INLINE encode #-}
+  decode = do
+    bs <- S.decode
+    either fail pure $ Cereal.decode bs
+  {-# INLINE decode #-}
