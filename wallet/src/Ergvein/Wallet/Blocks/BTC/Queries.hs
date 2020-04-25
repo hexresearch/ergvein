@@ -5,6 +5,7 @@ module Ergvein.Wallet.Blocks.BTC.Queries(
 
 import Control.Monad.IO.Class
 import Control.Monad.Reader
+import Data.Foldable (traverse_)
 import Data.Maybe
 import Database.LMDB.Simple
 import Network.Haskoin.Block
@@ -19,6 +20,14 @@ insertBTCBlock blk = do
   liftIO . readWriteTransaction e $ do
     db <- getBTCBlocksDb
     put db (headerHash $ blockHeader blk) $ Just blk
+
+insertMultipleBTCBlocks :: (MonadIO m, HasBlocksStorage m) => [Block] -> m ()
+insertMultipleBTCBlocks blks = do
+  e <- getBlocksStorage
+  liftIO . readWriteTransaction e $ do
+    db <- getBTCBlocksDb
+    flip traverse_ blks $ \blk ->
+      put db (headerHash $ blockHeader blk) $ Just blk
 
 getBTCBlock :: (MonadIO m, HasBlocksStorage m) => BlockHash -> m (Maybe Block)
 getBTCBlock bh = do
