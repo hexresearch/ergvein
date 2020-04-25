@@ -13,7 +13,7 @@ data InfoPageStrings =
   | NameWallet
   | TotalBalance
   | ConfirmedBalance
-  | MasterPublicKey
+  | MasterPubKey
 
 instance LocalizedPrint InfoPageStrings where
   localizedShow l v = case l of
@@ -22,10 +22,10 @@ instance LocalizedPrint InfoPageStrings where
       NameWallet        -> "Name of wallet: "
       TotalBalance      -> "Total balance: "
       ConfirmedBalance  -> "Confirmed balance: "
-      MasterPublicKey   -> "Master public key: "
+      MasterPubKey      -> "Master public key: "
     Russian -> case v of
-      InfoTitle c -> "Информация о кошельке " <> currencyName c
+      InfoTitle c       -> "Информация о кошельке " <> currencyName c
       NameWallet        -> "Наименование кошелька: "
       TotalBalance      -> "Итоговый баланс: "
       ConfirmedBalance  -> "Подтвержденный баланс: "
-      MasterPublicKey   -> "Открытый мастер-ключ: "
+      MasterPubKey      -> "Открытый мастер-ключ: "

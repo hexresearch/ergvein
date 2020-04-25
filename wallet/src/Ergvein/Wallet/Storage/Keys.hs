@@ -29,21 +29,22 @@ egvXPubKeyToEgvAddress key
 
 -- | Derive a BIP44 compatible private key for a specific currency.
 -- Given a parent private key /m/
--- and a currency with code /c/, this function will compute /m\/44'\/c'\/0/.
+-- and a currency with code /c/, this function will compute private key with path /m\/44'\/c'\/0'/.
 deriveCurrencyMasterPrvKey :: EgvRootXPrvKey -> Currency -> EgvXPrvKey
-deriveCurrencyMasterPrvKey rootKey currency =
-    let hardPath = [44, getCurrencyIndex currency]
-        derivedKey = prvSubKey (foldl hardSubKey (unEgvRootXPrvKey rootKey) hardPath) 0
-    in EgvXPrvKey currency derivedKey
+deriveCurrencyMasterPrvKey rootPrvKey currency =
+    let hardPath = [44, getCurrencyIndex currency, 0]
+        derivedPrvKey = foldl hardSubKey (unEgvRootXPrvKey rootPrvKey) hardPath
+    in EgvXPrvKey currency derivedPrvKey
 
 -- | Derive a BIP44 compatible public key for a specific currency.
--- Given a parent public key /m/
--- and a currency with code /c/, this function will compute /m\/44'\/c'\/0/.
+-- Given a parent private key /m/
+-- and a currency with code /c/, this function will compute public key with path /m\/44'\/c'\/0'/.
 deriveCurrencyMasterPubKey :: EgvRootXPrvKey -> Currency -> EgvXPubKey
-deriveCurrencyMasterPubKey rootKey currency =
-    let path = [44, getCurrencyIndex currency]
-        derivedKey = deriveXPubKey $ prvSubKey (foldl hardSubKey (unEgvRootXPrvKey rootKey) path) 0
-    in EgvXPubKey currency derivedKey
+deriveCurrencyMasterPubKey rootPrvKey currency =
+    let hardPath = [44, getCurrencyIndex currency, 0]
+        derivedPrvKey = foldl hardSubKey (unEgvRootXPrvKey rootPrvKey) hardPath
+        derivedPubKey = deriveXPubKey derivedPrvKey
+    in EgvXPubKey currency derivedPubKey
 
 -- | Derive a BIP44 compatible private key with a given purpose (external or internal) and index.
 -- Given a parent private key /m/, purpose /p/ and an index /i/, this function will compute /m\/p\/i/.

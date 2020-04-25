@@ -66,7 +66,7 @@ validateAmount x = case validateNonEmptyString x of
       Success (PositiveRational result'') -> _Success # result''
 
 validateAddress :: Currency -> String -> Validation [VError] EgvAddress
-validateAddress currency addrStr = case stringToEgvAddr currency (T.pack addrStr) of
+validateAddress currency addrStr = case egvAddrFromString currency (T.pack addrStr) of
   Nothing   -> _Failure # [InvalidAddress]
   Just addr -> _Success # addr
 
