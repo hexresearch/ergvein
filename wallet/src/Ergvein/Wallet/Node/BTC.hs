@@ -9,13 +9,11 @@ module Ergvein.Wallet.Node.BTC
   , commandToText
   ) where
 
-import Conduit
 import Control.Concurrent (forkIO)
 import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Control.Monad.STM
 import Data.ByteString (ByteString)
-import Data.Conduit.Network (AppData(..), clientSettings, runGeneralTCPClient, appSource, appSink)
 import Data.Serialize (decode, runGet, runPut)
 import Data.String.Conversions (cs)
 import Data.Text (Text)
@@ -23,7 +21,6 @@ import Data.Time.Clock.POSIX
 import Data.Word
 import Network.Haskoin.Constants
 import Network.Haskoin.Network
-import Network.Socket
 import Reflex
 import Reflex.ExternalRef
 import Servant.Client(BaseUrl(..), showBaseUrl)
@@ -37,6 +34,7 @@ import Ergvein.Types.Currency
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node.Prim
+import Ergvein.Wallet.Node.Socket
 
 -- These two are for dummy stats
 import Control.Monad.Random
@@ -85,13 +83,22 @@ initBTCNode url = do
   performEvent_ $ liftIO . writeMsg <$> reqE
 
   -- Start the connection
-  performEvent $ ffor startE $ const $ liftIO $ case socadrs of
-    []   -> nodeLog $ "Failed to convert BaseUrl to SockAddr: " <> T.pack (showBaseUrl url)
-    sa:_ -> do
+  _ <- widgetHold (pure ()) $ ffor startE $ const $ case socadrs of
+    sa :_ -> do
+      (Just sname, Just sport) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True sa
+      let peer = Peer sname sport
+      s <- socket SocketConf {
+          _socketConfPeer = peer
+        , _socketConfSend = _
+        , _socketConfPeeker = _
+        , _socketConfClose = _
+        , _socketConfReopen = Just 5
+        }
       -- Spawn connection listener
       forkIO $ runNode url net reqChanOut fireResp (fireClose ())
       -- Start the handshake
       writeMsg =<< mkVers net sa
+    _   -> nodeLog $ "Failed to convert BaseUrl to SockAddr: " <> T.pack (showBaseUrl url)
 
   -- Finalize the handshake by sending "verack" message as a response
   -- Also, respond to ping messages by corrseponding pongs
@@ -125,12 +132,6 @@ initBTCNode url = do
   , nodeconIsUp       = shakeD
   }
 
--- | Connect to a socket via TCP.
-withConnection :: MonadUnliftIO m => BaseUrl -> (AppData -> m a) -> m a
-withConnection BaseUrl{..} f =
-  let cset = clientSettings baseUrlPort (cs baseUrlHost)
-  in runGeneralTCPClient cset f
-
 -- | A process that runs the connection and handles messages
 -- Does not perform the handshake!
 runNode :: (MonadUnliftIO m, MonadIO m, PlatformNatives)
@@ -160,14 +161,13 @@ dispatchMessage _ (MsgMessage msg) = yield msg
 dispatchMessage cf MsgKill = (liftIO cf) >> throwIO PeerSeppuku
 
 -- | Internal conduit to parse messages coming from peer.
-inPeerConduit :: (MonadIO m, PlatformNatives)
+inPeerConduit :: (MonadPeeker m, MonadIO m, PlatformNatives)
     => Network
     -> BaseUrl
     -> IO ()
-    -> ConduitT ByteString Message m ()
+    -> m ()
 inPeerConduit net url cfIO = forever $ do
-  pure ()
-  x <- takeExactlyCE 24 foldC
+  x <- peek 24
   let cf = liftIO cfIO
   when (not . B.null $ x) $ case decode x of
     Left e -> do
@@ -180,7 +180,7 @@ inPeerConduit net url cfIO = forever $ do
       when (len > 32 * 2 ^ (20 :: Int)) $ do
         nodeLog "Payload too large"
         cf >> throwIO (PayloadTooLarge len)
-      y <- takeExactlyCE (fromIntegral len) foldC
+      y <- peek (fromIntegral len)
       case runGet (getMessage net) $ x `B.append` y of
         Left e -> do
           nodeLog $ "Cannot decode payload: " <> showt e

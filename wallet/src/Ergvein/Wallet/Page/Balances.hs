@@ -32,6 +32,7 @@ import Network.Haskoin.Network
 import Control.Monad.Random
 import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Alert
+import System.Exit
 
 data BalancesStrings
   = BalancesTitle
