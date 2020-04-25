@@ -3,6 +3,7 @@ module Ergvein.Wallet.Client
   ( getHeight
   , getBlockFilters
   , ClientErr(..)
+  , module Ergvein.Index.API.Types
   ) where
 
 import Control.Concurrent
@@ -31,7 +32,7 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Localization.Client
 
 getHeight :: (MonadFrontBase t m, MonadClient t m) => Event t HeightRequest -> m (Event t (Either ClientErr HeightResponse))
-getHeight = requester meanHeight getHeightEndpoint
+getHeight = requester False meanHeight getHeightEndpoint
 
 meanHeight :: [HeightResponse] -> Either ClientMessage HeightResponse
 meanHeight [] = Left CMSEmpty
@@ -60,21 +61,22 @@ requesterEq :: (MonadFrontBase t m, MonadClient t m, Eq a, Show a, Show b)
   => (BaseUrl -> b -> ReaderT Manager IO (Either e a))    -- ^ Request function
   -> Event t b                                            -- ^ Request event
   -> m (Event t (Either ClientErr a))                     -- ^ Result
-requesterEq = requester validateEq
+requesterEq = requester False validateEq
 
 -- Implements request logic:
 -- Request from n nodes and check if results are equal.
 requester :: (MonadFrontBase t m, MonadClient t m, Eq a, Show a, Show b)
-  => ([a] -> Either ClientMessage a)                      -- ^ Validation of inputs
+  => Bool                                                 -- ^ Show loading widget or not
+  -> ([a] -> Either ClientMessage a)                      -- ^ Validation of inputs
   -> (BaseUrl -> b -> ReaderT Manager IO (Either e a))    -- ^ Request function
   -> Event t b                                            -- ^ Request event
   -> m (Event t (Either ClientErr a))                     -- ^ Result
-requester validateRes endpoint reqE = mdo
+requester showLoad validateRes endpoint reqE = mdo
   uss  <- fmap M.keysSet . readExternalRef =<< getActiveUrlsRef
   let initReqE = ffor reqE (\req -> Just (req, [], uss))
   drawE <- delay 0.1 $ leftmost [initReqE, redrawE]
   respE <- fmap (switch . current) $ widgetHold (pure never) $ ffor drawE $ \case
-    Just (req, rs, urls) -> requesterBody validateRes urls endpoint rs req
+    Just (req, rs, urls) -> requesterBody showLoad validateRes urls endpoint rs req
     _ -> pure never
   let redrawE = ffor respE $ \case
         ReqTimeout req [] uss -> Just (req, [], uss)
@@ -87,13 +89,14 @@ requester validateRes endpoint reqE = mdo
     ReqTimeout {}     -> Nothing
 
 requesterBody :: forall t m e a b . ((MonadFrontBase t m, MonadClient t m), Show a)
-  => ([a] -> Either ClientMessage a)                      -- ^ Validation of inputs
+  => Bool                                                 -- ^ Show loading widget or not
+  -> ([a] -> Either ClientMessage a)                      -- ^ Validation of inputs
   -> S.Set BaseUrl
   -> (BaseUrl -> b -> ReaderT Manager IO (Either e a))
   -> [a]
   -> b
   -> m (Event t (ReqSignal a b))
-requesterBody validateRes uss endpoint initRes req = do
+requesterBody showLoad validateRes uss endpoint initRes req = do
   buildE        <- getPostBuild
   (minN, maxN)  <- readExternalRef =<< getRequiredUrlNumRef -- Required number of confirmations
   dt            <- readExternalRef =<< getRequestTimeoutRef -- Get a timeout
@@ -171,13 +174,14 @@ requesterBody validateRes uss endpoint initRes req = do
     gateB <- fmap current $ holdDyn True $ False <$ resE
 
   -- Handle messages for loading display
-  -- toggleLoadingWidget $ (True , CMSTimeout) <$ timeoutMsgE
-  -- toggleLoadingWidget $ (True , CMSError)   <$ failE
-  -- toggleLoadingWidget $ ffor resE $ \case
-  --   ReqTimeout{} -> (True, CMSRestarting)
-  --   _ -> (False, CMSDone)
-  -- toggleLoadingWidget =<< fmap ((True , CMSLoading 0 minN maxN) <$) getPostBuild
-  -- toggleLoadingWidget $ ffor (updated storeD) $ \store -> (True , CMSLoading (length store) minN maxN)
+  when showLoad $ do
+    toggleLoadingWidget $ (True , CMSTimeout) <$ timeoutMsgE
+    toggleLoadingWidget $ (True , CMSError)   <$ failE
+    toggleLoadingWidget $ ffor resE $ \case
+      ReqTimeout{} -> (True, CMSRestarting)
+      _ -> (False, CMSDone)
+    toggleLoadingWidget =<< fmap ((True , CMSLoading 0 minN maxN) <$) getPostBuild
+    toggleLoadingWidget $ ffor (updated storeD) $ \store -> (True , CMSLoading (length store) minN maxN)
 
   delay 0.1 resE
   where
