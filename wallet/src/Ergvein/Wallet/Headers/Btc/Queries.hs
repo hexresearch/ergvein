@@ -5,6 +5,7 @@ module Ergvein.Wallet.Headers.Btc.Queries(
 
 import Control.Monad.IO.Class
 import Control.Monad.Reader
+import Data.Foldable (traverse_)
 import Data.Maybe
 import Database.LMDB.Simple
 import Network.Haskoin.Block
@@ -17,6 +18,12 @@ insertHeader :: MonadIO m => BlockNode -> HeadersStorage -> m ()
 insertHeader bhead e = liftIO . readWriteTransaction e $ do
   db <- getBtcHeadersDB
   put db (headerHash $ nodeHeader bhead) $ Just bhead
+
+insertMultipleHeaders :: MonadIO m => [BlockNode] -> HeadersStorage -> m ()
+insertMultipleHeaders bheads e = liftIO . readWriteTransaction e $ do
+  db <- getBtcHeadersDB
+  flip traverse_ bheads $ \bhead ->
+    put db (headerHash $ nodeHeader bhead) $ Just bhead
 
 getHeader :: MonadIO m => BlockHash -> HeadersStorage -> m (Maybe BlockNode)
 getHeader bhash e = liftIO . readOnlyTransaction e $ do
@@ -44,6 +51,7 @@ instance MonadIO m => BlockHeaders (BTCHeadersStorage m) where
   getBlockHeader bh = BTCHeadersStorage $ getHeader bh =<< ask
   getBestBlockHeader = BTCHeadersStorage $ getBestHeader =<< ask
   setBestBlockHeader bh = BTCHeadersStorage $ setBestHeader bh =<< ask
+  addBlockHeaders bhs = BTCHeadersStorage $ insertMultipleHeaders bhs =<< ask
 
 runBTCHeaderQuery :: (HasHeadersStorage m) => BTCHeadersStorage m a -> m a
 runBTCHeaderQuery ma = do

@@ -26,9 +26,15 @@ library
         Ergvein.Wallet.Alert
         Ergvein.Wallet.Alert.Handler
         Ergvein.Wallet.Alert.Type
+        Ergvein.Wallet.Blocks.BTC
+        Ergvein.Wallet.Blocks.BTC.Queries
+        Ergvein.Wallet.Blocks.BTC.Types
+        Ergvein.Wallet.Blocks.Storage
+        Ergvein.Wallet.Blocks.Types
         Ergvein.Wallet.Camera
         Ergvein.Wallet.Client
         Ergvein.Wallet.Clipboard
+        Ergvein.Wallet.Codec
         Ergvein.Wallet.Currencies
         Ergvein.Wallet.Elements
         Ergvein.Wallet.Embed
