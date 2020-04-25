@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Wallet.Headers.Btc.Types(
     initBtcDbs
   , getBtcHeadersDB

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Wallet.Filters.Btc.Types(
     initBtcDbs
   , getBtcFiltersDb
