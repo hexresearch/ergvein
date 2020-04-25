@@ -2,9 +2,13 @@ module Ergvein.Wallet.Blocks.BTC
   (
     requestBTCBlockNode
   , requestBTCBlockConfirm
-  , requestBTCBlockRandNode
+  , requestBTCBlockRN
   , storeBlockByE
   , getBlockByE
+  , requestBTCBlocksWait
+  , requestBTCBlocksWaitRN
+  , requestBTCBlocksListen
+  , requestBTCBlocksListenRN
   , BlockRequestMessage(..)
   ) where
 
@@ -24,6 +28,7 @@ import qualified Data.Map as M
 import qualified Data.List as L
 
 -- | Request a block from a node
+--   Returns Nothing if the blockhash is not found in the inventory
 requestBTCBlockNode :: MonadFront t m => NodeBTC t -> Event t BlockHash -> m (Event t (Maybe Block))
 requestBTCBlockNode node@NodeConnection{..} bhE = do
   -- Send a request when the connection is established
@@ -45,7 +50,7 @@ requestBTCBlockNode node@NodeConnection{..} bhE = do
 
 data BlockRequestMessage = BRMBlock !Block | BRMNotFound | BRMConflict
 
--- Request a block from n nodes and check that they return the same block
+-- | Request a block from n nodes and check that they all return the same block
 requestBTCBlockConfirm :: MonadFront t m => Int -> Event t BlockHash -> m (Event t BlockRequestMessage)
 requestBTCBlockConfirm n reqE = do
   conMapD <- getNodeConnectionsD
@@ -68,9 +73,10 @@ requestBTCBlockConfirm n reqE = do
             blk:[] -> Just $ BRMBlock blk
             _  -> Just BRMConflict
 
--- Request a block from a random connected node
-requestBTCBlockRandNode :: MonadFront t m => Event t BlockHash -> m (Event t (Maybe Block))
-requestBTCBlockRandNode reqE = do
+-- | Request a block from a random connected node
+--   Returns Nothing if the blockhash is not found in the inventory
+requestBTCBlockRN :: MonadFront t m => Event t BlockHash -> m (Event t (Maybe Block))
+requestBTCBlockRN reqE = do
   conMapD <- getNodeConnectionsD
   fmap switchDyn $ widgetHoldDyn $ ffor conMapD $ \cm -> case DM.lookup BTCTag cm of
     Nothing -> pure never
@@ -80,6 +86,78 @@ requestBTCBlockRandNode reqE = do
         let n = length btcs
         i <- liftIO $ randomRIO (0, n - 1)
         requestBTCBlockNode (btcs!!i) reqE
+
+-- | Request multiple blocks from a node
+--   Wait until there is a response for each block from the request
+requestBTCBlocksWait :: MonadFront t m => NodeBTC t -> Event t [BlockHash] -> m (Event t [Block])
+requestBTCBlocksWait node reqE = do
+  let respE = nodeconRespE node
+  -- Send a request when the connection is established
+  requestNodeWait node $ ffor reqE $ \bhs ->
+    MGetData $ GetData $ fmap (InvVector InvBlock . getBlockHash) bhs
+  fmap switchDyn $ widgetHold (pure never) $ ffor reqE $ \bhs -> do
+    let updE = fforMaybe respE $ \case
+          MBlock blk -> let
+            bh = headerHash $ blockHeader blk
+            in if bh `L.elem` bhs
+                  then Just $ [(bh, Just blk)]
+                  else Nothing
+          MNotFound (NotFound invs) -> case catMaybes $ (filt bhs) <$> invs of
+            [] -> Nothing
+            vals -> Just vals
+          _ -> Nothing
+
+    responsesD <- foldDyn (\vals m0 -> L.foldl' (\m (u,mv) -> M.insert u mv m) m0 vals) M.empty updE
+    pure $ fforMaybe (updated responsesD) $ \respMap -> if M.size respMap /= length bhs
+      then Nothing
+      else Just $ catMaybes $ M.elems respMap
+  where
+    filt :: [BlockHash] -> InvVector -> Maybe (BlockHash, Maybe Block)
+    filt bhs (InvVector ivt ivh) = case ivt of
+      InvBlock -> let bh = BlockHash ivh
+        in if bh `L.elem` bhs then Just (bh, Nothing) else Nothing
+
+-- | Request multiple blocks from a random connected node
+--   Wait until there is a response for each block from the request
+requestBTCBlocksWaitRN :: MonadFront t m => Event t [BlockHash] -> m (Event t [Block])
+requestBTCBlocksWaitRN reqE = do
+  conMapD <- getNodeConnectionsD
+  fmap switchDyn $ widgetHoldDyn $ ffor conMapD $ \cm -> case DM.lookup BTCTag cm of
+    Nothing -> pure never
+    Just btcsMap -> case M.elems btcsMap of
+      [] -> pure never
+      btcs -> do
+        let n = length btcs
+        i <- liftIO $ randomRIO (0, n - 1)
+        requestBTCBlocksWait (btcs!!i) reqE
+
+-- | Request multiple blocks from a node
+--   Return an event, which fires whenever one of the blocks form the request is received
+requestBTCBlocksListen :: MonadFront t m => NodeBTC t -> Event t [BlockHash] -> m (Event t Block)
+requestBTCBlocksListen node reqE = do
+  let respE = nodeconRespE node
+  -- Send a request when the connection is established
+  requestNodeWait node $ ffor reqE $ \bhs ->
+    MGetData $ GetData $ fmap (InvVector InvBlock . getBlockHash) bhs
+  fmap switchDyn $ widgetHold (pure never) $ ffor reqE $ \bhs -> do
+    pure $ fforMaybe respE $ \case
+      MBlock blk -> let bh = headerHash $ blockHeader blk
+        in if bh `L.elem` bhs then Just blk else Nothing
+      _ -> Nothing
+
+-- | Request multiple blocks from a random connected node
+--   Return an event, which fires whenever one of the blocks form the request is received
+requestBTCBlocksListenRN :: MonadFront t m => Event t [BlockHash] -> m (Event t Block)
+requestBTCBlocksListenRN reqE = do
+  conMapD <- getNodeConnectionsD
+  fmap switchDyn $ widgetHoldDyn $ ffor conMapD $ \cm -> case DM.lookup BTCTag cm of
+    Nothing -> pure never
+    Just btcsMap -> case M.elems btcsMap of
+      [] -> pure never
+      btcs -> do
+        let n = length btcs
+        i <- liftIO $ randomRIO (0, n - 1)
+        requestBTCBlocksListen (btcs!!i) reqE
 
 storeBlockByE :: (MonadBaseConstr t m, HasBlocksStorage (Performable m)) => Event t Block -> m (Event t ())
 storeBlockByE = performEvent . fmap insertBTCBlock
