@@ -624,7 +624,7 @@ alertsCss = do
   ".alert-overlay" ? do
     pointerEvents none
     backgroundColor transparent
-    position absolute
+    position sticky
     bottom $ px 0
     right $ px 0
     width $ pct 100

@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE CPP #-}
 module Ergvein.Wallet.Page.History(
     historyPage
   ) where
@@ -28,73 +29,13 @@ historyPage cur = divClass "base-container" $ do
   navbarWidget cur thisWidget NavbarHistory
   goE <- divClass "history-table-body" $ historyTableWidget trHistoryList
   void $ nextWidget $ ffor (leftmost goE) $ \tr -> Retractable {
-      retractableNext = transactionInfoPageAndroid cur tr
+      retractableNext = transactionInfoPage cur tr
     , retractablePrev = thisWidget
     }
 
+#ifdef ANDROID
 transactionInfoPage :: MonadFront t m => Currency -> TransactionMock -> m ()
 transactionInfoPage cur tr@TransactionMock{..} = divClass "base-container" $ do
-  let thisWidget = Just $ pure $ transactionInfoPage cur tr
-  headerWidget HistoryTITitle thisWidget
-  divClass "transaction-info-body" $ do
-    divClass "transaction-info-element" $ do
-      divClass "info-descr" $ localizedText HistoryTIHash
-      divClass "info-body info-hash" $ text $ txId txInfo
-    case (txLabel txInfo) of
-      Just lbl -> do
-        divClass "transaction-info-element" $ do
-          divClass "info-descr" $ localizedText HistoryTILabel
-          divClass "info-body info-label" $ text lbl
-      Nothing -> pure ()
-    divClass "transaction-info-element" $ do
-      let url = txUrl txInfo
-      divClass "info-descr " $ localizedText HistoryTIURL
-      divClass "info-body info-url" $ elAttr "a" [("href",url)] $ text url
-    divClass "transaction-info-element" $ do
-      divClass "info-descr" $ localizedText HistoryTIVolume
-      divClass "info-body info-fee" $ do
-        text $ showMoney $ txAmount
-        text $ showt cur
-    divClass "transaction-info-element" $ do
-      divClass "info-descr" $ localizedText HistoryTIFee
-      divClass "info-body info-fee" $ do
-        text $ showMoney $ txFee txInfo
-        text $ showt cur
-    divClass "transaction-info-element" $ do
-      divClass "info-descr" $ localizedText HistoryTIConfirmations
-      divClass "info-body info-conf" $ text $ showt $ txConfirmations txInfo
-    divClass "transaction-info-element" $ do
-      divClass "info-descr" $ localizedText HistoryTIBlock
-      divClass "info-body info-block" $ text $ txBlock txInfo
-    divClass "transaction-info-element" $ do
-      divClass "info-descr" $ localizedText HistoryTIRaw
-      divClass "info-body info-raw" $ text $ txRaw txInfo
-    divClass "transaction-info-element" $ do
-      divClass "info-descr" $ localizedText HistoryTIOutputs
-      divClass "info-body info-out" $ do
-        flip traverse (txOutputs txInfo) $ \(oHash,oVal,oType) -> divClass "out-element" $ do
-          divClass "out-descr" $ localizedText HistoryTIOutputsValue
-          divClass "out-body"  $ do
-            text $ showMoney $ oVal
-            text $ showt cur
-          divClass "out-descr" $ localizedText HistoryTIOutputsAddress
-          divClass "out-body"  $ text $ oHash
-          divClass "out-descr" $ localizedText HistoryTIOutputsStatus
-          divClass "out-body"  $ localizedText oType
-    divClass "transaction-info-element" $ do
-      divClass "info-descr" $ localizedText HistoryTIInputs
-      divClass "info-body info-in" $ do
-        flip traverse (txInputs txInfo) $ \(oHash,oVal) -> divClass "out-element" $ do
-          divClass "out-descr" $ localizedText HistoryTIOutputsValue
-          divClass "out-body" $ do
-            text $ showMoney $ oVal
-            text $ showt cur
-          divClass "out-descr" $ localizedText HistoryTIOutputsAddress
-          divClass "out-body"  $ text $ oHash
-  pure ()
-
-transactionInfoPageAndroid :: MonadFront t m => Currency -> TransactionMock -> m ()
-transactionInfoPageAndroid cur tr@TransactionMock{..} = divClass "base-container" $ do
   let thisWidget = Just $ pure $ transactionInfoPage cur tr
   headerWidget HistoryTITitle thisWidget
   divClass "transaction-info-body-andr" $ mdo
@@ -170,17 +111,23 @@ transactionInfoPageAndroid cur tr@TransactionMock{..} = divClass "base-container
       expHead statD txt = divButton "info-descr-andr" $ do
           localizedText txt
           elClass "span" "expand-button" $ widgetHoldDyn $ ffor statD $ \exStatus -> case exStatus of
-            Hidden   -> text $ "▾"
-            Expanded -> text $ "▴"  -- ▼▲ ▾
+            Hidden   -> text $ "▼"
+            Expanded -> text $ "▲"  -- ▼▲ ▾▴
 
       copyDiv copyD txt = divButton "info-hash-andr info-andr-element" $ do
         expDiv copyD txt
         divClass "info-copy-button" $ text $ "⎘"
-
---    divClass "info-andr-element" $ do
---      let url = txUrl txInfo
---      divClass "info-body-andr info-url" $ elAttr "a" [("href",url)] $ text url
-  {-
+#else
+transactionInfoPage :: MonadFront t m => Currency -> TransactionMock -> m ()
+transactionInfoPage cur tr@TransactionMock{..} = divClass "base-container" $ do
+  let thisWidget = Just $ pure $ transactionInfoPage cur tr
+  e <- delay 0.1 =<< getPostBuild
+  showSuccessMsg $ CSCopied <$ e
+  headerWidget HistoryTITitle thisWidget
+  divClass "transaction-info-body" $ do
+    divClass "transaction-info-element" $ do
+      divClass "info-descr" $ localizedText HistoryTIHash
+      divClass "info-body info-hash" $ text $ txId txInfo
     case (txLabel txInfo) of
       Just lbl -> do
         divClass "transaction-info-element" $ do
@@ -233,7 +180,7 @@ transactionInfoPageAndroid cur tr@TransactionMock{..} = divClass "base-container
           divClass "out-descr" $ localizedText HistoryTIOutputsAddress
           divClass "out-body"  $ text $ oHash
   pure ()
-  -}
+#endif
 
 historyTableWidget :: MonadFront t m => [TransactionMock] -> m ([Event t TransactionMock])
 historyTableWidget trList = do
