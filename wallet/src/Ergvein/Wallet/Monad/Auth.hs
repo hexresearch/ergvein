@@ -207,9 +207,15 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getSyncProgressRef #-}
   getSyncProgress = externalRefDynamic =<< asks env'syncProgress
   {-# INLINE getSyncProgress #-}
-  setSyncProgress ev = do
-    ref <- asks env'syncProgress
-    performEvent_ $ writeExternalRef ref <$> ev
+  setSyncProgress spE = do
+    syncProgRef <- asks env'syncProgress
+    syncRef <- asks env'filtersSyncRef
+    performEvent_ $ ffor spE $ \sp -> do
+      writeExternalRef syncProgRef sp
+      case sp of
+        SyncMeta cur SyncFilters a t -> when (a >= t && t /= 0) $
+          modifyExternalRef syncRef $ \m -> (,()) $ M.insert cur True m
+        _ -> pure ()
   {-# INLINE setSyncProgress #-}
   getHeightRef = asks env'heightRef
   {-# INLINE getHeightRef #-}
@@ -343,9 +349,9 @@ liftAuth ma0 ma = mdo
 
         flip runReaderT env $ do -- Workers and other routines go here
           -- Remove all three: works fine
-          -- filtersLoader
+          filtersLoader
           infoWorker
-          -- heightAsking
+          heightAsking
           pure ()
         runOnUiThreadM $ runReaderT setupTlsManager env
         runReaderT (wrapped ma) env
@@ -487,7 +493,7 @@ pingIndexerIO mng url = liftIO $ do
   t1 <- getCurrentTime
   case res of
     Left err -> do
-      logWrite $ "[InfoWorker][" <> T.pack (showBaseUrl url) <> "]: " <> showt err
+      logWrite $ "[pingIndexerIO][" <> T.pack (showBaseUrl url) <> "]: " <> showt err
       pure $ (url, Nothing)
     Right (InfoResponse vals) -> let
       curmap = M.fromList $ fmap (\(ScanProgressItem cur sh ah) -> (cur, (sh, ah))) vals

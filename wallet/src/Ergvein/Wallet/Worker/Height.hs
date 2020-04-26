@@ -27,6 +27,7 @@ errorHeightPoll = 5
 -- | TODO: stop using indexer and start quering nodes directly
 heightAsking :: (MonadFrontAuth t m, MonadClient t m) => m ()
 heightAsking = do
+  logWrite "[heightAsking]: Start worker"
   be <- getPostBuild
   pollRef <- newExternalRef defaulHeightPoll
   pollDyn <- externalRefDynamic pollRef
