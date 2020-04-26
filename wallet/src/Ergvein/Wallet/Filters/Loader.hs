@@ -14,10 +14,14 @@
 
 module Ergvein.Wallet.Filters.Loader (
   filtersLoader
+, getFilters
 ) where
 
 import Control.Monad
 import Data.Maybe
+import Network.Haskoin.Block
+import Reflex.ExternalRef
+
 import Ergvein.Filters
 import Ergvein.Index.API.Types
 import Ergvein.Text
@@ -29,7 +33,8 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Sync.Status
-import Network.Haskoin.Block
+
+import qualified Data.Map as M
 
 filtersLoader :: (HasFiltersStorage m, MonadFront t m) => m ()
 filtersLoader = nameSpace "filters loader" $ do
@@ -47,7 +52,7 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
       if ch > fh then do
         let n = 100
         logWrite $ "Getting next " <> showt n <> " filters"
-        fse <- getFilters ((BTC, fh+1, n) <$ buildE)
+        fse <- getFiltersSolo ((BTC, fh+1, n) <$ buildE)
         we <- performFork $ ffor fse $ \fs -> traverse_ (\(h, (bh, f)) -> insertFilter h bh f) (zip [fh+1 ..] fs)
         pure ((), go <$ we)
       else do
@@ -65,7 +70,16 @@ getFilters :: MonadFront t m => Event t (Currency, BlockHeight, Int) -> m (Event
 getFilters e = do
   resE <- getBlockFilters $ ffor e $ \(cur, h, n) -> BlockFiltersRequest cur (fromIntegral h) (fromIntegral n)
   hexE <- handleDangerMsg resE
-  -- performEvent_ $ ffor hexE $ liftIO . print
+  let decoder = decodeBtcAddrFilter <=< hex2bsTE
+      mkFilter = either (const Nothing) (Just . AddrFilterBtc) . decoder
+      mkPair (a, b) = (,) <$> hexToBlockHash a <*> mkFilter b
+  pure $ catMaybes . fmap mkPair <$> hexE
+
+getFiltersSolo :: MonadFront t m => Event t (Currency, BlockHeight, Int) -> m (Event t [(BlockHash, AddrFilter)])
+getFiltersSolo e = do
+  url  <- fmap (head . M.keys) . readExternalRef =<< getActiveUrlsRef
+  resE <- getBlockFiltersSolo $ ffor e $ \(cur, h, n) -> (url, BlockFiltersRequest cur (fromIntegral h) (fromIntegral n))
+  hexE <- handleDangerMsg resE
   let decoder = decodeBtcAddrFilter <=< hex2bsTE
       mkFilter = either (const Nothing) (Just . AddrFilterBtc) . decoder
       mkPair (a, b) = (,) <$> hexToBlockHash a <*> mkFilter b
