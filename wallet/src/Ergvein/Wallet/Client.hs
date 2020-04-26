@@ -2,6 +2,7 @@
 module Ergvein.Wallet.Client
   ( getHeight
   , getBlockFilters
+  , getBlockFiltersSolo
   , ClientErr(..)
   , module Ergvein.Index.API.Types
   ) where
@@ -28,6 +29,7 @@ import qualified Data.Set as S
 import Ergvein.Index.API.Types
 import Ergvein.Index.Client
 import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Localization.Client
 
@@ -42,6 +44,9 @@ meanHeight xs = Right $ head $ drop (length xs `div` 2) $ sortOn heightRespHeigh
 getBlockFilters :: (MonadFrontBase t m, MonadClient t m) => Event t BlockFiltersRequest -> m (Event t (Either ClientErr BlockFiltersResponse))
 getBlockFilters = requesterEq getBlockFiltersEndpoint
 
+getBlockFiltersSolo :: (MonadFrontBase t m, MonadClient t m) => Event t (BaseUrl, BlockFiltersRequest) -> m (Event t (Either ClientErr BlockFiltersResponse))
+getBlockFiltersSolo = requestSolo getBlockFiltersEndpoint
+
 instance MonadIO m => HasClientManager (ReaderT Manager m) where
   getClientMaganer = ask
 
@@ -54,6 +59,15 @@ validateEq rs = case L.nub rs of
   []    -> Left CMSEmpty
   x:[]  -> Right x
   _     -> Left CMSValidationError
+
+requestSolo :: (MonadFrontBase t m, MonadClient t m, Eq a, Show a, Show b)
+  => (BaseUrl -> b -> ReaderT Manager IO (Either e a))
+  -> Event t (BaseUrl, b)
+  -> m (Event t (Either ClientErr a))
+requestSolo endpoint reqE = do
+  mng <- getClientMaganer
+  resE <- performFork $ ffor reqE $ \(u, req) -> liftIO $ runReaderT (endpoint u req) mng
+  pure $ either (const $ Left ClientErrTimeOut) Right <$> resE
 
 -- Implements request logic:
 -- Request from n nodes and check if results are equal.
