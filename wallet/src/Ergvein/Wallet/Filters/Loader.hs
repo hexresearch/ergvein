@@ -14,7 +14,6 @@
 
 module Ergvein.Wallet.Filters.Loader (
   filtersLoader
-, getFilters
 ) where
 
 import Control.Monad
@@ -25,6 +24,7 @@ import Reflex.ExternalRef
 import Ergvein.Filters
 import Ergvein.Index.API.Types
 import Ergvein.Text
+import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Client
@@ -52,8 +52,8 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
       if ch > fh then do
         let n = 100
         logWrite $ "Getting next " <> showt n <> " filters"
-        fse <- getFiltersSolo ((BTC, fh+1, n) <$ buildE)
-        we <- performFork $ ffor fse $ \fs -> traverse_ (\(h, (bh, f)) -> insertFilter h bh f) (zip [fh+1 ..] fs)
+        fse <- getFilters ((BTC, fh+1, n) <$ buildE)
+        we <- performFork $ ffor fse $ \fs -> traverse_ (\(h, (bh, f)) -> insertFilter BTC h bh f) (zip [fh+1 ..] fs)
         pure ((), go <$ we)
       else do
         logWrite "Sleeping, waiting for new filters ..."
@@ -66,21 +66,10 @@ postSync cur ch fh = do
   buildE <- getPostBuild
   setSyncProgress $ SyncMeta cur SyncFilters (fromIntegral fh) (fromIntegral ch) <$ buildE
 
-getFilters :: MonadFront t m => Event t (Currency, BlockHeight, Int) -> m (Event t [(BlockHash, AddrFilter)])
+getFilters :: MonadFront t m => Event t (Currency, BlockHeight, Int) -> m (Event t [(BlockHash, AddressFilterHexView)])
 getFilters e = do
-  resE <- getBlockFilters $ ffor e $ \(cur, h, n) -> BlockFiltersRequest cur (fromIntegral h) (fromIntegral n)
+  resE <- getBlockFiltersRandom $ ffor e $ \(cur, h, n) ->
+    BlockFiltersRequest cur (fromIntegral h) (fromIntegral n)
   hexE <- handleDangerMsg resE
-  let decoder = decodeBtcAddrFilter <=< hex2bsTE
-      mkFilter = either (const Nothing) (Just . AddrFilterBtc) . decoder
-      mkPair (a, b) = (,) <$> hexToBlockHash a <*> mkFilter b
-  pure $ catMaybes . fmap mkPair <$> hexE
-
-getFiltersSolo :: MonadFront t m => Event t (Currency, BlockHeight, Int) -> m (Event t [(BlockHash, AddrFilter)])
-getFiltersSolo e = do
-  url  <- fmap (head . M.keys) . readExternalRef =<< getActiveUrlsRef
-  resE <- getBlockFiltersSolo $ ffor e $ \(cur, h, n) -> (url, BlockFiltersRequest cur (fromIntegral h) (fromIntegral n))
-  hexE <- handleDangerMsg resE
-  let decoder = decodeBtcAddrFilter <=< hex2bsTE
-      mkFilter = either (const Nothing) (Just . AddrFilterBtc) . decoder
-      mkPair (a, b) = (,) <$> hexToBlockHash a <*> mkFilter b
-  pure $ catMaybes . fmap mkPair <$> hexE
+  let mkPair (a, b) = (, b) <$> hexToBlockHash a
+  pure $ fmap (catMaybes .  fmap mkPair) hexE
