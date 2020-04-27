@@ -183,6 +183,7 @@ library
         MonadRandom -any,
         mtl >=2.2 && <2.3,
         network-simple >= 0.4.5 && < 0.5,
+        network -any,
         parsec -any,
         process >=1.6 && <1.7,
         qrcode-core,

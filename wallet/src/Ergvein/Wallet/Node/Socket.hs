@@ -9,9 +9,11 @@ module Ergvein.Wallet.Node.Socket(
   , CloseReason(..)
   , isCloseFinal
   , Socket(..)
+  , socketConnected
   , noSocket
   , switchSocket
   , socket
+  , N.SockAddr
   ) where
 
 import Control.Concurrent
@@ -24,6 +26,7 @@ import Data.Maybe
 import Data.Time
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Native
+import Ergvein.Text
 import GHC.Generics
 import Reflex
 
@@ -91,7 +94,7 @@ data CloseReason =
 isCloseFinal :: CloseReason -> Bool
 isCloseFinal r = case r of
   CloseGracefull -> True
-  CloseError b _ -> b
+  CloseError b _ -> not b
 
 -- | Widget that is created with `socket` and allows to get results from
 -- the socket.
@@ -105,6 +108,12 @@ data Socket t a = Socket {
 -- | Fires when failed to read bytes from socket
 , _socketRecvEr  :: !(Event t InboundException)
 } deriving (Generic)
+
+-- | Get event that fires each time the socket is connected to host
+socketConnected :: Reflex t => Socket t a -> Event t ()
+socketConnected Socket{..} = fforMaybe (updated _socketStatus) $ \case
+  SocketOperational -> Just ()
+  _ -> Nothing
 
 -- | Mock socket that does nothing
 noSocket :: Reflex t => Socket t a
@@ -125,7 +134,7 @@ switchSocket dsock = Socket {
   }
 
 -- | Widget that starts TCP socket internally and reconnects if needed.
-socket :: (TriggerEvent t m, PerformEvent t m, MonadHold t m, PostBuild t m, MonadIO (Performable m), MonadIO m, MonadUnliftIO (Performable m), PlatformNatives)
+socket :: (Show a, TriggerEvent t m, PerformEvent t m, MonadHold t m, PostBuild t m, MonadIO (Performable m), MonadIO m, MonadUnliftIO (Performable m), PlatformNatives)
   => SocketConf t a -> m (Socket t a)
 socket SocketConf{..} = do
   buildE <- delay 0.01 =<< getPostBuild
@@ -138,25 +147,39 @@ socket SocketConf{..} = do
   reconnectE <- case _socketConfReopen of
     Just dt -> delay dt $ fforMaybe closeE $ \cr -> if isCloseFinal cr then Nothing else Just ()
     _ -> pure never
+  -- performEvent_ $ ffor closeE $ logWrite . showt
+  -- performEvent_ $ ffor reconnectE $ logWrite . showt
   let connectE = leftmost [reconnectE, buildE]
   intVar <- liftIO $ newTVarIO False
   sendChan <- liftIO newTChanIO
   performEvent_ $ ffor closeE $ const $ liftIO $ atomically $ writeTVar intVar True
-  performEvent_ $ ffor reconnectE $ const $ liftIO $ atomically $ writeTVar intVar True
+  performEvent_ $ ffor reconnectE $ const $ liftIO $ atomically $ writeTVar intVar False
   performEvent_ $ ffor _socketConfSend $ liftIO . atomically . writeTChan sendChan
-  performFork_ $ ffor connectE $ const $ do
-    let closeCb e = closeFire $ CloseError doReconnecting e
+  performFork_ $ ffor connectE $ const $ liftIO $ do
+    let closeCb e = do
+          statusFire SocketClosed
+          closeFire $ CloseError doReconnecting e
         sendThread sock = forever $ do
           msgs <- atomically $ readAllTVar sendChan
+          -- logWrite $ "Sending message"
           N.sendLazy sock . BSL.fromChunks $ msgs
         conCb (sock, _) = do
+          -- logWrite $ "Connected"
+          statusFire SocketOperational
           let env = PeekerEnv intVar sock
           void $ forkIO $ sendThread sock
-          forever $ do
-            ma <- Ex.tryAny $ runReaderT _socketConfPeeker env
-            either readErFire inFire ma
+          fix $ \next -> do
+            mma <- Ex.tryAny $ Ex.try $ runReaderT _socketConfPeeker env
+            case mma of
+              Left e -> readErFire e >> next
+              Right (Left (e :: ReceiveException)) -> do
+                readErFire $ Ex.SomeException e
+                closeCb $ Ex.SomeException e
+              Right (Right a) -> inFire a >> next
         Peer host port = _socketConfPeer
-    liftIO $ N.connect host port conCb `Ex.catchAny` closeCb
+    -- logWrite $ "Connecting to " <> showt host <> ":" <> showt port
+    statusFire SocketConnecting
+    N.connect host port conCb `Ex.catchAny` closeCb
   pure Socket {
       _socketInbound = inE
     , _socketClosed  = closeE
@@ -182,11 +205,12 @@ receiveExactly intVar sock n = go n mempty
         Just bs -> let
           l = BS.length bs
           acc' = acc <> BB.byteString bs
-          in if l < i then go (i - l) acc' else pure . BSL.toStrict . BB.toLazyByteString $ acc
+          in if l < i then go (i - l) acc' else pure . BSL.toStrict . BB.toLazyByteString $ acc'
 
 readAllTVar :: TChan a -> STM [a]
 readAllTVar chan = go []
   where
     go !acc = do
-      mres <- tryReadTChan chan
-      maybe (pure acc) (go . (: acc)) mres
+      a <- readTChan chan
+      empty <- isEmptyTChan chan
+      if empty then pure (a : acc) else go (a : acc)
