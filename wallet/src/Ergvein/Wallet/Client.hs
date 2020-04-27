@@ -1,8 +1,11 @@
 {-# LANGUAGE RecursiveDo #-}
 module Ergvein.Wallet.Client
   ( getHeight
+  , getHeightSolo
+  , getHeightRandom
   , getBlockFilters
   , getBlockFiltersSolo
+  , getBlockFiltersRandom
   , ClientErr(..)
   , module Ergvein.Index.API.Types
   ) where
@@ -33,8 +36,17 @@ import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Localization.Client
 
+import Ergvein.Wallet.Native
+import Ergvein.Text
+
 getHeight :: (MonadFrontBase t m, MonadClient t m) => Event t HeightRequest -> m (Event t (Either ClientErr HeightResponse))
 getHeight = requester False meanHeight getHeightEndpoint
+
+getHeightSolo :: (MonadFrontBase t m, MonadClient t m) => Event t (BaseUrl, HeightRequest) -> m (Event t (Either ClientErr HeightResponse))
+getHeightSolo = requestSolo getHeightEndpoint
+
+getHeightRandom :: (MonadFrontBase t m, MonadClient t m) => Event t HeightRequest -> m (Event t (Either ClientErr HeightResponse))
+getHeightRandom = requestSoloRandom getHeightEndpoint
 
 meanHeight :: [HeightResponse] -> Either ClientMessage HeightResponse
 meanHeight [] = Left CMSEmpty
@@ -46,6 +58,9 @@ getBlockFilters = requesterEq getBlockFiltersEndpoint
 
 getBlockFiltersSolo :: (MonadFrontBase t m, MonadClient t m) => Event t (BaseUrl, BlockFiltersRequest) -> m (Event t (Either ClientErr BlockFiltersResponse))
 getBlockFiltersSolo = requestSolo getBlockFiltersEndpoint
+
+getBlockFiltersRandom :: (MonadFrontBase t m, MonadClient t m) => Event t BlockFiltersRequest -> m (Event t (Either ClientErr BlockFiltersResponse))
+getBlockFiltersRandom = requestSoloRandom getBlockFiltersEndpoint
 
 instance MonadIO m => HasClientManager (ReaderT Manager m) where
   getClientMaganer = ask
@@ -59,6 +74,15 @@ validateEq rs = case L.nub rs of
   []    -> Left CMSEmpty
   x:[]  -> Right x
   _     -> Left CMSValidationError
+
+requestSoloRandom :: (MonadFrontBase t m, MonadClient t m, Eq a, Show a, Show b)
+  => (BaseUrl -> b -> ReaderT Manager IO (Either e a))
+  -> Event t b
+  -> m (Event t (Either ClientErr a))
+requestSoloRandom endpoint reqE = do
+  urls  <- fmap M.keys . readExternalRef =<< getActiveUrlsRef
+  i <- liftIO $ randomRIO (0, length urls - 1)
+  requestSolo endpoint $ (urls!!i, ) <$> reqE
 
 requestSolo :: (MonadFrontBase t m, MonadClient t m, Eq a, Show a, Show b)
   => (BaseUrl -> b -> ReaderT Manager IO (Either e a))
