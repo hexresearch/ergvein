@@ -1,5 +1,8 @@
 module Ergvein.Wallet.Node.Socket(
     InboundException
+  , ConnectException
+  , CloseException
+  , ReceiveException(..)
   , MonadPeeker(..)
   , Peer(..)
   , N.ServiceName
@@ -46,7 +49,8 @@ type CloseException = Ex.SomeException
 -- | Interface monad for `socket` widget that allows to peek exact amount of
 -- bytes from socket to parse next portion of data.
 class Monad m => MonadPeeker m where
-  -- | Peek exact amount of bytes
+  -- | Peek exact amount of bytes. Can throw `ReceiveException` when connection
+  -- is closed from other side or broken.
   peek :: Int -> m ByteString
 
 -- | Environment for `MonadPeeker` implementation
@@ -187,7 +191,10 @@ socket SocketConf{..} = do
     , _socketRecvEr  = readErE
     }
 
-data ReceiveException = ReceiveEndOfInput | ReceiveInterrupted
+-- | Exception occured when receiving bytes from socket fails.
+data ReceiveException =
+    ReceiveEndOfInput -- ^ Connection was closed from other side
+  | ReceiveInterrupted -- ^ Receiving was interrupted by our side 
   deriving (Eq, Show, Generic)
 
 instance Ex.Exception ReceiveException
