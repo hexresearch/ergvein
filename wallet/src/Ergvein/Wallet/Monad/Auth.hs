@@ -347,13 +347,14 @@ liftAuth ma0 ma = mdo
               urlsArchive inactiveUrls activeUrlsRef reqUrlNumRef actUrlNumRef timeoutRef (indexersE, indexersF ())
               consRef
 
+        runOnUiThreadM $ runReaderT setupTlsManager env
+
         flip runReaderT env $ do -- Workers and other routines go here
           -- Remove all three: works fine
           filtersLoader
           infoWorker
           heightAsking
           pure ()
-        runOnUiThreadM $ runReaderT setupTlsManager env
         runReaderT (wrapped ma) env
   let
     ma0' = maybe ma0 runAuthed mauth0
