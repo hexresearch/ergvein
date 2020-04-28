@@ -27,6 +27,8 @@ import qualified Data.Dependent.Map as DM
 import qualified Data.Map as M
 import qualified Data.List as L
 
+import Ergvein.Wallet.Native
+
 -- | Request a block from a node
 --   Returns Nothing if the blockhash is not found in the inventory
 requestBTCBlockNode :: MonadFront t m => NodeBTC t -> Event t BlockHash -> m (Event t (Maybe Block))
@@ -121,6 +123,7 @@ requestBTCBlocksWait node reqE = do
 --   Wait until there is a response for each block from the request
 requestBTCBlocksWaitRN :: MonadFront t m => Event t [BlockHash] -> m (Event t [Block])
 requestBTCBlocksWaitRN reqE = do
+  logWrite "[requestBTCBlocksWaitRN]: Request"
   conMapD <- getNodeConnectionsD
   fmap switchDyn $ widgetHoldDyn $ ffor conMapD $ \cm -> case DM.lookup BTCTag cm of
     Nothing -> pure never

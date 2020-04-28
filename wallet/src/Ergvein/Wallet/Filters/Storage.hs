@@ -4,6 +4,7 @@ module Ergvein.Wallet.Filters.Storage(
   , openFiltersStorage
   , getFiltersHeight
   , insertFilter
+  , insertMultipleFilters
   , getFilter
   , foldFilters
   ) where
@@ -13,11 +14,13 @@ import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.Text (Text, unpack)
 import Database.LMDB.Simple
-import Ergvein.Filters
-import Ergvein.Types.Currency
-import Ergvein.Wallet.Native
 import Network.Haskoin.Block
 import System.Directory
+
+import Ergvein.Filters
+import Ergvein.Types.Block
+import Ergvein.Types.Currency
+import Ergvein.Wallet.Native
 
 import qualified Ergvein.Wallet.Filters.Btc.Types as BTC
 import qualified Ergvein.Wallet.Filters.Btc.Queries as BTC
@@ -59,11 +62,20 @@ getFiltersHeight cur = do
   case cur of
     BTC -> BTC.getFiltersHeight e
 
-insertFilter :: (MonadIO m, HasFiltersStorage m) => BlockHeight -> BlockHash -> AddrFilter -> m ()
-insertFilter h bh f = do
+insertFilter :: (MonadIO m, HasFiltersStorage m) => Currency -> BlockHeight -> BlockHash -> AddressFilterHexView -> m ()
+insertFilter cur h bh f = do
   e <- getFiltersStorage
-  case f of
-    AddrFilterBtc btcf -> BTC.insertFilter h bh btcf e
+  case cur of
+    BTC -> BTC.insertFilter h bh f e
+
+insertMultipleFilters :: (MonadIO m, HasFiltersStorage m, Foldable t)
+  => Currency
+  -> t (BlockHeight, BlockHash, AddressFilterHexView)
+  -> m ()
+insertMultipleFilters cur fs = do
+  e <- getFiltersStorage
+  case cur of
+    BTC -> BTC.insertMultipleFilters fs e
 
 getFilter :: (MonadIO m, HasFiltersStorage m) => Currency -> BlockHeight -> m (Maybe AddrFilter)
 getFilter c bh = do

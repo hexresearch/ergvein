@@ -6,11 +6,13 @@ module Ergvein.Wallet.Filters.Btc.Types(
   , getBtcTotalDb
   ) where
 
+import Data.ByteString
 import Database.LMDB.Simple
-import Ergvein.Filters.Btc
 import Network.Haskoin.Block
 import Network.Haskoin.Crypto
 
+import Ergvein.Filters.Btc
+import Ergvein.Types.Block
 import Ergvein.Wallet.Codec()
 
 filtersDbName :: String
@@ -30,7 +32,7 @@ initBtcDbs = do
   tdb <- getBtcTotalDb
   tdb `seq` hdb `seq` fdb `seq` pure ()
 
-getBtcFiltersDb :: Mode mode => Transaction mode (Database BlockHash BtcAddrFilter)
+getBtcFiltersDb :: Mode mode => Transaction mode (Database BlockHash ByteString)
 getBtcFiltersDb = getDatabase $ Just filtersDbName
 
 getBtcHeightsDb :: Mode mode => Transaction mode (Database BlockHeight BlockHash)

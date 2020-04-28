@@ -73,5 +73,6 @@ in (self: super: let
     lmdb = self.callPackage ./derivations/haskell-lmdb.nix { };
     x509-validation = lib.dontCheck super.x509-validation;
     tls = lib.dontCheck super.tls;
+    reflex = enableCabalFlag super.reflex "O2";
   }
 )

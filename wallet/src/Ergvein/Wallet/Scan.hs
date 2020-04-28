@@ -3,18 +3,20 @@ module Ergvein.Wallet.Scan (
     accountDiscovery
   ) where
 
+import Network.Haskoin.Block (Block, BlockHash, genesisBlock)
+
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
+import Ergvein.Wallet.Blocks.BTC
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Constants
 import Ergvein.Wallet.Storage.Keys (derivePubKey, egvXPubKeyToEgvAddress)
 import Ergvein.Wallet.Storage.Util (addXPubKeyToKeyсhain)
-import Network.Haskoin.Block (Block, BlockHash, genesisBlock)
 
 import qualified Data.IntMap.Strict          as MI
 import qualified Data.Map.Strict             as M
@@ -68,7 +70,7 @@ scanCurrencyKeys currency keyChain = mdo
   nextKeyIndexD <- holdDyn (if initKeyChainSize > gapLimit then initKeyChainSize - gapLimit else 0) nextKeyIndexE
   newKeyChainD <- foldDyn (addXPubKeyToKeyсhain External) keyChain nextKeyE
   filterAddressE <- filterAddress nextKeyE
-  getBlockE <- getBlocks filterAddressE
+  getBlockE <- requestBTCBlocksWaitRN filterAddressE
   storedE <- storeNewTransactions getBlockE
   let masterPubKey = egvPubKeyсhain'master keyChain
       initKeyChainSize = MI.size $ egvPubKeyсhain'external keyChain
@@ -109,11 +111,6 @@ waitFilters c e = mdo
 
 filterAddress :: MonadFront t m => Event t (Int, EgvXPubKey) -> m (Event t [BlockHash])
 filterAddress e = performFork $ ffor e $ \(_, pk) -> Filters.filterAddress $ egvXPubKeyToEgvAddress pk
-
--- FIXME
-getBlocks :: MonadFront t m => Event t [BlockHash] -> m (Event t [Block])
-getBlocks blockHeightE = pure $ getBlocksMock <$> blockHeightE
-  where getBlocksMock bhs = if null bhs then [] else [genesisBlock $ getBtcNetwork $ getCurrencyNetwork BTC]
 
 -- FIXME
 storeNewTransactions :: MonadFront t m => Event t [Block] -> m (Event t Int)
