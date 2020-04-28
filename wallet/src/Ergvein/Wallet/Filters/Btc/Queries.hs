@@ -1,5 +1,6 @@
 module Ergvein.Wallet.Filters.Btc.Queries(
     insertFilter
+  , insertMultipleFilters
   , getFilter
   , getFiltersHeight
   , foldFilters
@@ -8,6 +9,7 @@ module Ergvein.Wallet.Filters.Btc.Queries(
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.ByteString
+import Data.Foldable (traverse_)
 import Data.Maybe
 import Database.LMDB.Simple
 import Network.Haskoin.Block
@@ -25,6 +27,19 @@ insertFilter h bh fview e = liftIO . readWriteTransaction e $ do
   hdb <- getBtcHeightsDb
   tdb <- getBtcTotalDb
   ffor31 either (hex2bsTE fview) (const $ pure ()) $ \f -> do
+    put fdb bh $ Just f
+    put hdb h $ Just bh
+    mtotal <- get tdb ()
+    case mtotal of
+      Just total | total >= h -> pure ()
+      _ -> put tdb () $ Just h
+
+insertMultipleFilters :: (MonadIO m, Foldable t) => t (BlockHeight, BlockHash, AddressFilterHexView) -> Environment ReadWrite -> m ()
+insertMultipleFilters fs e = liftIO . readWriteTransaction e $ do
+  fdb <- getBtcFiltersDb
+  hdb <- getBtcHeightsDb
+  tdb <- getBtcTotalDb
+  flip traverse_ fs $ \(h,bh,fview) -> ffor31 either (hex2bsTE fview) (const $ pure ()) $ \f -> do
     put fdb bh $ Just f
     put hdb h $ Just bh
     mtotal <- get tdb ()

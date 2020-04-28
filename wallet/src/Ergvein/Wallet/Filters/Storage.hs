@@ -4,6 +4,7 @@ module Ergvein.Wallet.Filters.Storage(
   , openFiltersStorage
   , getFiltersHeight
   , insertFilter
+  , insertMultipleFilters
   , getFilter
   , foldFilters
   ) where
@@ -66,6 +67,15 @@ insertFilter cur h bh f = do
   e <- getFiltersStorage
   case cur of
     BTC -> BTC.insertFilter h bh f e
+
+insertMultipleFilters :: (MonadIO m, HasFiltersStorage m, Foldable t)
+  => Currency
+  -> t (BlockHeight, BlockHash, AddressFilterHexView)
+  -> m ()
+insertMultipleFilters cur fs = do
+  e <- getFiltersStorage
+  case cur of
+    BTC -> BTC.insertMultipleFilters fs e
 
 getFilter :: (MonadIO m, HasFiltersStorage m) => Currency -> BlockHeight -> m (Maybe AddrFilter)
 getFilter c bh = do

@@ -50,16 +50,16 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
       logWrite $ "Current height is " <> showt ch <> ", and filters are for height " <> showt fh
       postSync BTC ch fh
       if ch > fh then do
-        let n = 100
-        logWrite $ "Getting next " <> showt n <> " filters"
+        let n = 500
         fse <- getFilters ((BTC, fh+1, n) <$ buildE)
-        we <- performFork $ ffor fse $ \fs -> traverse_ (\(h, (bh, f)) -> insertFilter BTC h bh f) (zip [fh+1 ..] fs)
-        pure ((), go <$ we)
+        we <- performFork $ ffor fse $ \fs ->
+          insertMultipleFilters BTC $ zipWith (\h (bh,f) -> (h,bh,f)) [fh+1..] fs
+        goE <- fmap (go <$) $ delay 1 we
+        pure ((), goE)
       else do
         logWrite "Sleeping, waiting for new filters ..."
         de <- delay 120 buildE
         pure ((), go <$ de)
-
 
 postSync :: MonadFront t m => Currency -> BlockHeight -> BlockHeight -> m ()
 postSync cur ch fh = do
