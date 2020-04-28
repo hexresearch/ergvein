@@ -32,6 +32,7 @@ import Ergvein.Index.Server.PeerDiscovery.Discovery
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Debug.Trace
 import Control.Monad.IO.Unlift
+import Control.Monad.Trans.Except
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
@@ -72,9 +73,10 @@ indexGetInfoEndpoint = do
 addPeerEndpoint :: AddPeerReq -> ServerM AddPeerResp
 addPeerEndpoint request = do
   url <- PeerCandidate <$> (parseBaseUrl $ addPeerReqUrl $ request) 
-  r <- considerPeerCandidate url
-  pure $ t r
+  result <- runExceptT $ considerPeerCandidate url
+  pure $ peerValidationToResponce result
 
-t :: PeerValidationResult -> AddPeerResp
-t = \case OK   -> AddPeerResp True  Nothing
-          Fail -> AddPeerResp False $ Just "Error"
+peerValidationToResponce :: Either PeerValidationResult () -> AddPeerResp
+peerValidationToResponce = \case
+  Right () -> AddPeerResp True  Nothing
+  Left err -> AddPeerResp False $ Just "Error"

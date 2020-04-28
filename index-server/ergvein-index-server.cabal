@@ -48,6 +48,7 @@ library
       , bytestring               >= 0.10    &&  < 0.11
       , cereal                   >= 0.5     &&  < 0.6
       , conduit                  >= 1.3     &&  < 1.4
+      , connection               >= 0.3     &&  < 0.4
       , containers               >= 0.6     &&  < 0.7
       , conversion               >= 1.2     &&  < 1.3
       , cryptohash               >= 0.11    &&  < 0.12
@@ -60,6 +61,8 @@ library
       , flat                     >= 0.3     &&  < 0.4
       , haskoin-core             >= 0.8     &&  < 0.9
       , hexstring                >= 0.11    &&  < 0.12
+      , http-client              >= 0.6     &&  < 0.7
+      , http-client-tls          >= 0.3     &&  < 0.4
       , ilist                    >= 0.3     &&  < 0.4
       , immortal                 >= 0.3     &&  < 0.4
       , lens                     >= 4.17    &&  < 4.18
@@ -75,12 +78,14 @@ library
       , resourcet                >= 1.2     &&  < 1.3
       , safe                     >= 0.3     &&  < 0.4
       , servant                  >= 0.16    &&  < 0.17
+      , servant-client           >= 0.16    &&  < 0.17
       , servant-client-core      >= 0.16    &&  < 0.17
       , servant-server           >= 0.16    &&  < 0.17
-      , servant-client           >= 0.16    &&  < 0.17
       , template-haskell         >= 2.14    &&  < 2.15
       , text                     >= 1.2     &&  < 1.3
       , time                     >= 1.8     &&  < 1.9
+      , tls                      >= 1.4     &&  < 1.5
+      , transformers             >= 0.5     &&  < 0.6
       , unliftio-core            >= 0.1     &&  < 0.2
       , unordered-containers     >= 0.2     &&  < 0.3
       , utf8-string              >= 1.0     &&  < 1.1
@@ -88,18 +93,15 @@ library
       , wai-cors                 >= 0.2     &&  < 0.3
       , wai-extra                >= 3.0     &&  < 3.1
       , yaml                     >= 0.11    &&  < 0.12
-      , http-client              >= 0.6     &&  < 0.7
-      , ergvein-index-client
       , ergo-api
       , ergvein-common
       , ergvein-crypto
       , ergvein-index-api
+      , ergvein-index-client
       , ergvein-interface-ergo
       , ergvein-wallet-filters
       , ergvein-wallet-types
-      , http-client-tls
-      , tls
-      , connection
+
 
   default-language:    Haskell2010
   default-extensions:

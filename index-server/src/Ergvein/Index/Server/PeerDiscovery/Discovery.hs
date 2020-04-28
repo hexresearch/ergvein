@@ -13,30 +13,38 @@ import qualified Network.HTTP.Client as HC
 import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.Monad
 import qualified Data.Map.Strict as Map
+import Control.Monad.Trans.Except
 
 instance MonadIO m => HasClientManager (ReaderT HC.Manager m) where
   getClientManager = ask
   {-# INLINE getClientManager #-}
 
-exeToSchema :: (HasHttpManager m, HasTlsManager m, HasClientManager m) => Scheme -> ReaderT HC.Manager m a -> m a
-exeToSchema s mm = do
-  mgr <- case s of  
-          Http ->  getHttpManager
-          Https -> getTlsManager
-  runReaderT mm mgr
+candidateInfo :: (HasHttpManager m, HasTlsManager m, HasClientManager m) => Scheme -> BaseUrl -> ExceptT PeerValidationResult m InfoResponse
+candidateInfo schema baseUrl = do
+  connectionManager <- lift $ 
+    case schema of  
+      Http  -> getHttpManager
+      Https -> getTlsManager
 
-valResult :: InfoResponse -> ServerM (Either PeerValidationResult InfoResponse)
-valResult r = do
-  r' <-  scanningInfo
-  let rd = Map.fromList $ (\x-> (scanProgressCurrency x, scanProgressScannedHeight x)) <$> infoScanProgress r
-  undefined
+  info <- runReaderT (getInfoEndpoint baseUrl ()) connectionManager
+  except $ first (const Fail) info
 
-considerPeerCandidate :: (HasTlsManager m, HasHttpManager m, HasClientManager m) => PeerCandidate -> m PeerValidationResult
-considerPeerCandidate c = do
-  let schema = baseUrlScheme $ peerCandidateUrl c
-  infoResult <- exeToSchema schema $ getInfoEndpoint (peerCandidateUrl c) ()
-  let x = first (const Fail) infoResult
-  liftIO $ traceIO $ show infoResult
-  pure $ case infoResult of
-            Right resp -> OK
-            Left fail -> Fail
+candidateScanValidation :: InfoResponse -> ExceptT PeerValidationResult ServerM ()
+candidateScanValidation candidateInfo = do
+  localInfo <- lift $ scanningInfo
+  let isCandidateScanMatchLocal = all isCurrencyScannedEnough localInfo
+  except $ if isCandidateScanMatchLocal then Right () else Left Fail
+  where
+   isCurrencyScannedEnough candidate = 
+    any (notLessThenOne (nfoScannedHeight candidate) . scanProgressScannedHeight) 
+    $ candidateInfoMap Map.!? nfoCurrency candidate
+   notLessThenOne local = (local <=) . succ
+   candidateInfoMap = Map.fromList $ (\scanInfo -> (scanProgressCurrency scanInfo, scanInfo)) 
+                                  <$> infoScanProgress candidateInfo
+
+considerPeerCandidate :: PeerCandidate -> ExceptT PeerValidationResult ServerM ()
+considerPeerCandidate candidate = do
+  let candidateSchema = baseUrlScheme $ peerCandidateUrl candidate
+  infoResult <- candidateInfo candidateSchema $ peerCandidateUrl candidate
+  candidateScanResult <- candidateScanValidation infoResult
+  pure candidateScanResult
