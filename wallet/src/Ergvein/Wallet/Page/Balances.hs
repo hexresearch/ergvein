@@ -92,7 +92,7 @@ storeTestWidget :: MonadFront t m => m ()
 storeTestWidget = do
   goE <- outlineButton ("Rand" :: Text)
   let bh :: BlockHash = "000000000000000000011e66c8f568558750ce1396630e1fa49d3ecd440b1e9b"
-  mblockE <- requestBTCBlockRandNode $ bh <$ goE
+  mblockE <- requestBTCBlockRN $ bh <$ goE
   performEvent_ $ (logWrite . showt . maybe Nothing (Just . blockHeader)) <$> mblockE
 
   goMulE <- outlineButton ("Go mul" :: Text)

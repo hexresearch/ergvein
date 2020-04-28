@@ -31,7 +31,7 @@ import Ergvein.Wallet.Node.Prim
 import Data.Map.Strict (Map)
 import Data.Dependent.Map (DMap)
 
-data NodeConn t = NodeConnBTC (NodeBTC t) | NodeConnERG (NodeERG t)
+data NodeConn t = NodeConnBTC !(NodeBTC t) | NodeConnERG !(NodeERG t)
 
 data CurrencyTag t a where
   BTCTag :: CurrencyTag t (NodeBTC t)

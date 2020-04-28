@@ -9,13 +9,12 @@ module Ergvein.Wallet.Node.BTC
   , commandToText
   ) where
 
-import Conduit
 import Control.Concurrent (forkIO)
+import Control.Monad.Catch (throwM, MonadThrow)
 import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Control.Monad.STM
 import Data.ByteString (ByteString)
-import Data.Conduit.Network (AppData(..), clientSettings, runGeneralTCPClient, appSource, appSink)
 import Data.Serialize (decode, runGet, runPut)
 import Data.String.Conversions (cs)
 import Data.Text (Text)
@@ -23,8 +22,10 @@ import Data.Time.Clock.POSIX
 import Data.Word
 import Network.Haskoin.Constants
 import Network.Haskoin.Network
-import Network.Socket
+import Network.Socket (AddrInfo(..), getNameInfo, NameInfoFlag(..), SockAddr(..)
+  , getAddrInfo, defaultHints, AddrInfoFlag(..), SocketType(..), Family(..))
 import Reflex
+import Reflex.Dom
 import Reflex.ExternalRef
 import Servant.Client(BaseUrl(..), showBaseUrl)
 import UnliftIO hiding (atomically)
@@ -34,9 +35,11 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 
 import Ergvein.Types.Currency
+import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node.Prim
+import Ergvein.Wallet.Node.Socket
 
 -- These two are for dummy stats
 import Control.Monad.Random
@@ -56,141 +59,120 @@ instance HasNode BTCType where
 
 initBTCNode :: MonadBaseConstr t m => BaseUrl -> m (NodeBTC t)
 initBTCNode url = do
-
   -- Dummy status TODO: Make status real later
   b  <- liftIO randomIO
   d :: Double <- liftIO $ randomRIO (0, 1.5)
   bh <- liftIO randomIO
   let nstat = if b then Nothing else Just $ NodeStatus bh (realToFrac d)
 
-
   let net = btc
+      nodeLog :: MonadIO m => Text -> m ()
+      nodeLog = logWrite . (nodeString BTC url <>)
   (restartE, fireRestart)   <- newTriggerEvent
-  (respE, fireResp)         <- newTriggerEvent
   (reqE, fireReq)           <- newTriggerEvent
   (closeE, fireClose)       <- newTriggerEvent
+  (closeSE, fireCloseS)     <- newTriggerEvent
   buildE                    <- getPostBuild
-  reqChanIn                 <- liftIO $ newBroadcastTChanIO
-  reqChanOut                <- liftIO $ atomically $ dupTChan reqChanIn
   socadrs                   <- liftIO $ toSockAddr url
+  statRef                   <- newExternalRef nstat
+  case socadrs of
+    [] -> do
+      nodeLog $ "Failed to convert BaseUrl to SockAddr: " <> T.pack (showBaseUrl url)
+      pure NodeConnection {
+          nodeconCurrency   = BTC
+        , nodeconUrl        = url
+        , nodeconStatus     = statRef
+        , nodeconOpensE     = never
+        , nodeconCloseE     = closeE
+        , nodeconCloseFire  = fireCloseS ()
+        , nodeconRestart    = fireRestart ()
+        , nodeconReqFire    = fireReq
+        , nodeconRespE      = never
+        , nodeconExtra      = ()
+        , nodeconIsUp       = pure False
+        }
+    sa :_ -> do
+      let startE = leftmost [buildE, restartE]
 
-  let startE = leftmost [buildE, restartE]
-  let externalClose :: IO () -- This closure is exposed to the wallet to manually kill the connection
-      externalClose = atomically . writeTChan reqChanIn $ MsgKill
+      -- Resolve address
+      peerE <- performFork $ ffor startE $ const $ do
+        (Just sname, Just sport) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True sa
+        pure $ Peer sname sport
 
-      writeMsg = atomically . writeTChan reqChanIn . MsgMessage
-      nodeLog = logWrite . (nodeString BTC url <>)
+      -- Start the connection
+      s <- fmap switchSocket $ widgetHold (pure noSocket) $ ffor peerE $ \peer -> do
+        socket SocketConf {
+            _socketConfPeer   = peer
+          , _socketConfSend   = runPut . putMessage net <$> reqE
+          , _socketConfPeeker = peekMessage net url
+          , _socketConfClose  = closeSE
+          , _socketConfReopen = Just 10
+          }
 
-  -- Send incoming messages to the channel
-  performEvent_ $ liftIO . writeMsg <$> reqE
-
-  -- Start the connection
-  performEvent $ ffor startE $ const $ liftIO $ case socadrs of
-    []   -> nodeLog $ "Failed to convert BaseUrl to SockAddr: " <> T.pack (showBaseUrl url)
-    sa:_ -> do
-      -- Spawn connection listener
-      forkIO $ runNode url net reqChanOut fireResp (fireClose ())
+      let respE = _socketInbound s
+      -- performEvent_ $ ffor respE $ nodeLog . showt
+      performEvent_ $ ffor (_socketRecvEr s) $ nodeLog . showt
       -- Start the handshake
-      writeMsg =<< mkVers net sa
+      performEvent_ $ ffor (socketConnected s) $ const $ liftIO $ fireReq =<< mkVers net sa
 
-  -- Finalize the handshake by sending "verack" message as a response
-  -- Also, respond to ping messages by corrseponding pongs
-  performEvent_ $ ffor respE $ \case
-    MVersion Version{..} -> liftIO $ do
-      nodeLog $ "Received version at height: " <> showt startHeight
-      writeMsg MVerAck
-    MPing (Ping v) -> liftIO $ writeMsg $ MPong (Pong v)
-    _ -> pure ()
+      -- Finalize the handshake by sending "verack" message as a response
+      -- Also, respond to ping messages by corrseponding pongs
+      performEvent_ $ ffor respE $ \case
+        MVersion Version{..} -> liftIO $ do
+          nodeLog $ "Received version at height: " <> showt startHeight
+          fireReq MVerAck
+        MPing (Ping v) -> liftIO $ fireReq $ MPong (Pong v)
+        _ -> pure ()
 
-  -- Track handshake status
-  let verAckE = fforMaybe respE $ \case
-        MVerAck -> Just True
-        _ -> Nothing
+      -- Track handshake status
+      let verAckE = fforMaybe respE $ \case
+            MVerAck -> Just True
+            _ -> Nothing
 
-  shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
-  let openE = fmapMaybe (\b -> if b then Just () else Nothing) $ updated shakeD
+      shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
+      let openE = fmapMaybe (\b -> if b then Just () else Nothing) $ updated shakeD
 
-  statRef <- newExternalRef nstat
-  pure $ NodeConnection {
-    nodeconCurrency   = BTC
-  , nodeconUrl        = url
-  , nodeconStatus     = statRef
-  , nodeconOpensE     = openE
-  , nodeconCloseE     = closeE
-  , nodeconCloseFire  = externalClose
-  , nodeconRestart    = fireRestart ()
-  , nodeconReqFire    = fireReq
-  , nodeconRespE      = respE
-  , nodeconExtra      = ()
-  , nodeconIsUp       = shakeD
-  }
+      pure $ NodeConnection {
+        nodeconCurrency   = BTC
+      , nodeconUrl        = url
+      , nodeconStatus     = statRef
+      , nodeconOpensE     = openE
+      , nodeconCloseE     = closeE
+      , nodeconCloseFire  = fireCloseS ()
+      , nodeconRestart    = fireRestart ()
+      , nodeconReqFire    = fireReq
+      , nodeconRespE      = respE
+      , nodeconExtra      = ()
+      , nodeconIsUp       = shakeD
+      }
 
--- | Connect to a socket via TCP.
-withConnection :: MonadUnliftIO m => BaseUrl -> (AppData -> m a) -> m a
-withConnection BaseUrl{..} f =
-  let cset = clientSettings baseUrlPort (cs baseUrlHost)
-  in runGeneralTCPClient cset f
-
--- | A process that runs the connection and handles messages
--- Does not perform the handshake!
-runNode :: (MonadUnliftIO m, MonadIO m, PlatformNatives)
-  => BaseUrl                      -- Node's url
-  -> Network                      -- Which network to use: BTC or BTCTest
-  -> TChan MsgWrap                -- Request channel
-  -> (Message -> IO ())           -- Response fire
-  -> IO ()                        -- Connection closed fire
-  -> m ()
-runNode u net incChan fire cf = withConnection u $ \ad -> peer_session ad
-  where
-    go = forever $ dispatchMessage cf =<< liftIO (atomically (readTChan incChan))
-    peer_session ad =
-      let ins = appSource ad
-          ons = appSink ad
-          src = runConduit $ ins .| inPeerConduit net u cf .| mapM_C send_msg
-          snk = outPeerConduit net .| ons
-       in withAsync src $ \as -> link as >> runConduit (go .| snk)
-    send_msg = liftIO . fire
-
--- | Wrapper for message dispatching
-data MsgWrap = MsgMessage Message | MsgKill
-
--- | Message dispatcher to distinguish between messages from a peer and external messages
-dispatchMessage :: MonadIO m => IO () -> MsgWrap -> ConduitT i Message m ()
-dispatchMessage _ (MsgMessage msg) = yield msg
-dispatchMessage cf MsgKill = (liftIO cf) >> throwIO PeerSeppuku
-
--- | Internal conduit to parse messages coming from peer.
-inPeerConduit :: (MonadIO m, PlatformNatives)
+-- | Internal peeker to parse messages coming from peer.
+peekMessage :: (MonadPeeker m, MonadIO m, MonadThrow m, PlatformNatives)
     => Network
     -> BaseUrl
-    -> IO ()
-    -> ConduitT ByteString Message m ()
-inPeerConduit net url cfIO = forever $ do
-  pure ()
-  x <- takeExactlyCE 24 foldC
-  let cf = liftIO cfIO
-  when (not . B.null $ x) $ case decode x of
+    -> m Message
+peekMessage net url = do
+  x <- peek 24
+  case decode x of
     Left e -> do
       nodeLog $ "Consumed " <> showt (B.length x)
       nodeLog $ "Could not decode incoming message header: " <> showt e
       nodeLog $ showt x
-      cf >> throwIO DecodeHeaderError
+      throwM DecodeHeaderError
     Right (MessageHeader !_ !cmd !len !_) -> do
       -- nodeLog $ showt cmd
       when (len > 32 * 2 ^ (20 :: Int)) $ do
         nodeLog "Payload too large"
-        cf >> throwIO (PayloadTooLarge len)
-      y <- takeExactlyCE (fromIntegral len) foldC
-      case runGet (getMessage net) $ x `B.append` y of
-        Left e -> do
-          nodeLog $ "Cannot decode payload: " <> showt e
-          cf >> throwIO CannotDecodePayload
-        Right !msg -> yield msg
+        throwM (PayloadTooLarge len)
+      let parseMessage bs = case runGet (getMessage net) bs of
+            Left e -> do
+              nodeLog $ "Cannot decode payload: " <> showt e
+              throwM CannotDecodePayload
+            Right !msg -> pure msg
+      if len == 0 then parseMessage x else do
+        y <- peek (fromIntegral len)
+        parseMessage $ x `B.append` y
   where nodeLog = logWrite . (nodeString BTC url <>)
-
--- | Outgoing peer conduit to serialize and send messages.
-outPeerConduit :: Monad m => Network -> ConduitT Message ByteString m ()
-outPeerConduit net = awaitForever $ yield . runPut . putMessage net
 
 -- | Create version data message
 mkVers :: MonadIO m => Network -> SockAddr -> m Message

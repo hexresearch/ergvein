@@ -39,6 +39,7 @@ import Foreign.JavaScript.TH (WithJSContextSingleton)
 import Reflex.Spider.Internal (SpiderHostFrame, Global)
 
 import qualified Reflex.Profiled as RP
+import qualified Control.Monad.Fail as F
 
 -- | Type classes that we need from reflex-dom itself.
 type MonadBaseConstr t m = (MonadHold t m
@@ -50,6 +51,7 @@ type MonadBaseConstr t m = (MonadHold t m
   , MonadUnliftIO (Performable m)
   , MonadSample t (Performable m)
   , MonadJSM (Performable m)
+  , F.MonadFail (Performable m)
   , MonadIO m
   , TriggerEvent t m
   , MonadJSM m
@@ -197,3 +199,6 @@ instance MonadRandom (WithJSContextSingleton x (SpiderHostFrame Global)) where
 
 instance MonadRandom (WithJSContextSingleton x (RP.ProfiledM (SpiderHostFrame Global))) where
   getRandomBytes = liftIO . getRandomBytes
+
+instance F.MonadFail (WithJSContextSingleton x (SpiderHostFrame Global)) where
+  fail = liftIO . F.fail
