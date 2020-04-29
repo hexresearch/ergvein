@@ -3,7 +3,7 @@ module Ergvein.Wallet.Page.Balances(
     balancesPage
   ) where
 
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, fromJust)
 
 import Ergvein.Text
 import Ergvein.Types.Currency
@@ -22,6 +22,25 @@ import Ergvein.Wallet.Wrapper
 
 import Control.Monad.IO.Class
 import Data.Map.Strict as Map
+
+-- These are for nodeTestWidget
+import qualified Data.Dependent.Map as DM
+import qualified Data.Text as T
+import Ergvein.Wallet.Node
+import Ergvein.Wallet.Native
+import Network.Haskoin.Network
+import Control.Monad.Random
+import Ergvein.Wallet.Node.BTC
+import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Platform
+import Network.Haskoin.Block
+import Network.Haskoin.Crypto
+import Ergvein.Crypto.Hash
+import Data.ByteString(ByteString)
+import Control.Monad.Catch
+import Ergvein.Wallet.Headers.Btc.Queries
+import Ergvein.Wallet.Blocks.BTC
+import Ergvein.Wallet.Blocks.BTC.Queries
 
 data BalancesStrings
   = BalancesTitle
@@ -50,8 +69,48 @@ balancesPage = do
     syncWidget =<< getSyncProgress
     currenciesList anon_name
 
+nodeTestWidget :: MonadFront t m => m ()
+nodeTestWidget = do
+  conMapD <- getNodeConnectionsD
+  void . widgetHoldDyn $ ffor conMapD $ \cm -> do
+    let node   = head $ Map.elems $ fromJust $ DM.lookup BTCTag cm
+    let respE  = nodeconRespE node
+    let closeE = nodeconCloseE node
+    let fire   = nodeconReqFire node
+    logShowInfoMsg $ ("closeE" :: Text) <$ closeE
+    goE <- outlineButton ("Go" :: Text)
+    let bh :: BlockHash = "000000000000000000011e66c8f568558750ce1396630e1fa49d3ecd440b1e9b"
+    mblockE <- requestBTCBlockNode node $ bh <$ never
+    performEvent_ $ (logWrite . showt . maybe Nothing (Just . blockHeader)) <$> mblockE
+    insE <- performEvent $ fforMaybe mblockE $ \case
+      Nothing -> Nothing
+      Just blk -> Just $ insertBTCBlock blk
+    mblkE <- performEvent $ ffor goE $ const $ getBTCBlock bh
+    performEvent $ (logWrite . showt . maybe Nothing (Just . blockHeader)) <$> mblkE
+
+storeTestWidget :: MonadFront t m => m ()
+storeTestWidget = do
+  goE <- outlineButton ("Rand" :: Text)
+  let bh :: BlockHash = "000000000000000000011e66c8f568558750ce1396630e1fa49d3ecd440b1e9b"
+  mblockE <- requestBTCBlockRN $ bh <$ goE
+  performEvent_ $ (logWrite . showt . maybe Nothing (Just . blockHeader)) <$> mblockE
+
+  goMulE <- outlineButton ("Go mul" :: Text)
+  let bh' :: BlockHash = "0000000000000000000dfd9382d5fa9d39b635745817e83e4da9366937067d4c"
+
+  -- blkRespE <- requestBTCBlockConfirm 2 . (<$) bh' =<< getPostBuild
+  -- blkE <- performEvent $ ffor blkRespE $ \case
+  --   BRMNotFound   -> logWrite "BRMNotFound" >> pure Nothing
+  --   BRMConflict   -> logWrite "BRMConflict" >> pure Nothing
+  --   BRMBlock blk  -> (logWrite $ showt $ blockHeader blk) >> pure (Just blk)
+  mblkE <- getBlockByE . (<$) bh' =<< getPostBuild -- storeBlockByE (fmapMaybe id blkE)
+  performEvent $ (logWrite . showt . maybe Nothing (Just . blockHeader)) <$> mblkE
+  pure ()
+
 currenciesList :: MonadFront t m => Text -> m ()
 currenciesList name = divClass "currency-content" $ do
+  nodeTestWidget
+  storeTestWidget
   s <- getSettings
   historyE <- leftmost <$> traverse (currencyLine s) (getActiveCurrencies s)
   let thisWidget = Just $ pure balancesPage

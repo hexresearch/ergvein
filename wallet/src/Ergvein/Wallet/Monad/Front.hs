@@ -34,6 +34,7 @@ import Reflex.ExternalRef
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
+import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Headers.Storage
@@ -53,8 +54,11 @@ type MonadFront t m = (
   , MonadStorage t m
   , MonadClient t m
   , HasHeadersStorage m
+  , HasHeadersStorage (Performable m)
   , HasFiltersStorage m
   , HasFiltersStorage (Performable m)
+  , HasBlocksStorage m
+  , HasBlocksStorage (Performable m)
   )
 
 class MonadFrontBase t m => MonadFrontAuth t m | m -> t where

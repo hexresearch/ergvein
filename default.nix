@@ -1,6 +1,6 @@
-{ release ? false, isAndroid ? false }:
+{ release ? false, isAndroid ? false, profile ? false }:
 let
-   reflex-platform = import ./platform-overlay.nix;
+   reflex-platform = import ./platform-overlay.nix { inherit profile; };
    project = reflex-platform.project ({ pkgs, ... }: {
     packages = {
       data-merkle-tree = ./data-merkle-tree;

@@ -33,6 +33,7 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Filters.Loader
 import Ergvein.Wallet.Filters.Storage
@@ -78,6 +79,7 @@ data Env t = Env {
 , env'manager         :: !(MVar Manager)
 , env'headersStorage  :: !HeadersStorage
 , env'filtersStorage  :: !FiltersStorage
+, env'blocksStorage   :: !BlocksStorage
 , env'syncProgress    :: !(ExternalRef t SyncProgress)
 , env'heightRef       :: !(ExternalRef t (Map Currency Integer))
 , env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
@@ -104,6 +106,10 @@ instance Monad m => HasHeadersStorage (ErgveinM t m) where
 instance Monad m => HasFiltersStorage (ErgveinM t m) where
   getFiltersStorage = asks env'filtersStorage
   {-# INLINE getFiltersStorage #-}
+
+instance Monad m => HasBlocksStorage (ErgveinM t m) where
+  getBlocksStorage = asks env'blocksStorage
+  {-# INLINE getBlocksStorage #-}
 
 instance MonadIO m => HasClientManager (ErgveinM t m) where
   getClientMaganer = liftIO . readMVar =<< asks env'manager
@@ -201,9 +207,15 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getSyncProgressRef #-}
   getSyncProgress = externalRefDynamic =<< asks env'syncProgress
   {-# INLINE getSyncProgress #-}
-  setSyncProgress ev = do
-    ref <- asks env'syncProgress
-    performEvent_ $ writeExternalRef ref <$> ev
+  setSyncProgress spE = do
+    syncProgRef <- asks env'syncProgress
+    syncRef <- asks env'filtersSyncRef
+    performEvent_ $ ffor spE $ \sp -> do
+      writeExternalRef syncProgRef sp
+      case sp of
+        SyncMeta cur SyncFilters a t -> when (a >= t && t /= 0) $
+          modifyExternalRef syncRef $ \m -> (,()) $ M.insert cur True m
+        _ -> pure ()
   {-# INLINE setSyncProgress #-}
   getHeightRef = asks env'heightRef
   {-# INLINE getHeightRef #-}
@@ -324,23 +336,25 @@ liftAuth ma0 ma = mdo
         headersStore    <- liftIO $ runReaderT openHeadersStorage (settingsStoreDir settings)
         syncRef         <- newExternalRef Synced
         filtersStore    <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
+        blocksStore     <- liftIO $ runReaderT openBlocksStorage (settingsStoreDir settings)
         heightRef       <- newExternalRef mempty
         fsyncRef        <- newExternalRef mempty
         consRef         <- newExternalRef =<< initializeNodes nodes
         -- headersLoader
         let env = Env
               settingsRef backEF loading langRef storeDir alertsEF logsTrigger logsNameSpaces uiChan passModalEF passSetEF
-              authRef (logoutFire ()) activeCursRef managerRef headersStore filtersStore syncRef heightRef fsyncRef
+              authRef (logoutFire ()) activeCursRef managerRef headersStore filtersStore blocksStore syncRef heightRef fsyncRef
               urlsArchive inactiveUrls activeUrlsRef reqUrlNumRef actUrlNumRef timeoutRef (indexersE, indexersF ())
               consRef
 
+        runOnUiThreadM $ runReaderT setupTlsManager env
+
         flip runReaderT env $ do -- Workers and other routines go here
           -- Remove all three: works fine
-          -- filtersLoader
+          filtersLoader
           infoWorker
-          -- heightAsking
+          heightAsking
           pure ()
-        runOnUiThreadM $ runReaderT setupTlsManager env
         runReaderT (wrapped ma) env
   let
     ma0' = maybe ma0 runAuthed mauth0
@@ -480,7 +494,7 @@ pingIndexerIO mng url = liftIO $ do
   t1 <- getCurrentTime
   case res of
     Left err -> do
-      logWrite $ "[InfoWorker][" <> T.pack (showBaseUrl url) <> "]: " <> showt err
+      logWrite $ "[pingIndexerIO][" <> T.pack (showBaseUrl url) <> "]: " <> showt err
       pure $ (url, Nothing)
     Right (InfoResponse vals) -> let
       curmap = M.fromList $ fmap (\(ScanProgressItem cur sh ah) -> (cur, (sh, ah))) vals

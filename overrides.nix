@@ -4,6 +4,7 @@ let
   pkgs = reflex-platform.nixpkgs;
   overrideCabal = pkgs.haskell.lib.overrideCabal;
   enableCabalFlag = pkgs.haskell.lib.enableCabalFlag;
+  disableCabalFlag = pkgs.haskell.lib.disableCabalFlag;
   doJailbreak = pkgs.haskell.lib.doJailbreak;
   lib = pkgs.haskell.lib;
   dontHaddock = lib.dontHaddock;
@@ -25,6 +26,7 @@ in (self: super: let
     dontHaddock ( self.callCabal2nix name (ingnoreGarbage path) args ));
   isAndroid = self.ghc.stdenv.targetPlatform.isAndroid;
   walletOpts = if isAndroid then "-fandroid --no-haddock" else "--no-haddock";
+  dontProfile = drv: disableCabalFlag drv "profile-reflex";
   in {
     # Internal
     data-merkle-tree = ingnoreGarbage super.data-merkle-tree;
@@ -64,13 +66,14 @@ in (self: super: let
     haskey = self.callPackage ./derivations/haskey.nix {};
     persistent-pagination = self.callPackage ./derivations/persistent-pagination.nix {};
     flat = lib.dontCheck (super.flat);
-    reflex-dom-core = lib.dontCheck (super.reflex-dom-core);
-    bitstream = self.callPackage ./derivations/bitstream.nix {};
-    wide-word = lib.dontCheck (self.callPackage ./derivations/wide-word.nix {});
+    reflex-dom-core = dontProfile (lib.dontCheck (super.reflex-dom-core));
+    bitstream = self.callPackage ./derivations/bitstream.nix { };
+    wide-word = lib.dontCheck (self.callPackage ./derivations/wide-word.nix { });
     byte-order = self.callPackage ./derivations/byte-order.nix {};
     primitive-unaligned = self.callPackage ./derivations/primitive-unaligned.nix {};
     lmdb = self.callPackage ./derivations/haskell-lmdb.nix {};
     x509-validation = lib.dontCheck super.x509-validation;
     tls = lib.dontCheck super.tls;
+    reflex = enableCabalFlag super.reflex "O2";
   }
 )
