@@ -55,8 +55,8 @@ instance HasNode BTCType where
   type NodeResp BTCType = Message
   type NodeSpecific BTCType = ()
 
-initBTCNode :: MonadBaseConstr t m => BaseUrl -> m (NodeBTC t)
-initBTCNode url = do
+initBTCNode :: MonadBaseConstr t m => BaseUrl -> Event t NodeMessage -> m (NodeBTC t)
+initBTCNode url msgE = do
   -- Dummy status TODO: Make status real later
   b  <- liftIO randomIO
   d :: Double <- liftIO $ randomRIO (0, 1.5)
@@ -66,9 +66,16 @@ initBTCNode url = do
   let net = btc
       nodeLog :: MonadIO m => Text -> m ()
       nodeLog = logWrite . (nodeString BTC url <>)
-  (restartE, fireRestart)   <- newTriggerEvent
-  (reqE, fireReq)           <- newTriggerEvent
-  (closeE, fireClose)       <- newTriggerEvent
+
+  let restartE = fforMaybe msgE $ \case
+        NodeMsgRestart -> Just ()
+        _ -> Nothing
+      closeE = fforMaybe msgE $ \case
+        NodeMsgClose -> Just ()
+        _ -> Nothing
+      reqE = fforMaybe msgE $ \case
+        NodeMsgReq (NodeReqBTC req) -> Just req
+        _ -> Nothing
   (closeSE, fireCloseS)     <- newTriggerEvent
   buildE                    <- getPostBuild
   socadrs                   <- liftIO $ toSockAddr url
@@ -94,30 +101,31 @@ initBTCNode url = do
         (Just sname, Just sport) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True sa
         pure $ Peer sname sport
 
-      -- Start the connection
-      s <- fmap switchSocket $ widgetHold (pure noSocket) $ ffor peerE $ \peer -> do
-        socket SocketConf {
-            _socketConfPeer   = peer
-          , _socketConfSend   = runPut . putMessage net <$> reqE
-          , _socketConfPeeker = peekMessage net url
-          , _socketConfClose  = closeSE
-          , _socketConfReopen = Just 10
-          }
+      rec
+        -- Start the connection
+        s <- fmap switchSocket $ widgetHold (pure noSocket) $ ffor peerE $ \peer -> do
+          socket SocketConf {
+              _socketConfPeer   = peer
+            , _socketConfSend   = fmap (runPut . putMessage net) $ leftmost [reqE, handshakeE, hsRespE]
+            , _socketConfPeeker = peekMessage net url
+            , _socketConfClose  = closeE
+            , _socketConfReopen = Just 10
+            }
 
-      let respE = _socketInbound s
-      -- performEvent_ $ ffor respE $ nodeLog . showt
+        let respE = _socketInbound s
+        -- Start the handshake
+        handshakeE <- performEvent $ ffor (socketConnected s) $ const $ mkVers net sa
+        -- Finalize the handshake by sending "verack" message as a response
+        -- Also, respond to ping messages by corrseponding pongs
+        hsRespE <- performEvent $ fforMaybe respE $ \case
+          MVersion Version{..} -> Just $ liftIO $ do
+            nodeLog $ "Received version at height: " <> showt startHeight
+            pure MVerAck
+          MPing (Ping v) -> Just $ pure $ MPong (Pong v)
+          _ -> Nothing
+        -- End rec
+
       performEvent_ $ ffor (_socketRecvEr s) $ nodeLog . showt
-      -- Start the handshake
-      performEvent_ $ ffor (socketConnected s) $ const $ liftIO $ fireReq =<< mkVers net sa
-
-      -- Finalize the handshake by sending "verack" message as a response
-      -- Also, respond to ping messages by corrseponding pongs
-      performEvent_ $ ffor respE $ \case
-        MVersion Version{..} -> liftIO $ do
-          nodeLog $ "Received version at height: " <> showt startHeight
-          fireReq MVerAck
-        MPing (Ping v) -> liftIO $ fireReq $ MPong (Pong v)
-        _ -> pure ()
 
       -- Track handshake status
       let verAckE = fforMaybe respE $ \case
@@ -126,13 +134,13 @@ initBTCNode url = do
 
       shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
       let openE = fmapMaybe (\b -> if b then Just () else Nothing) $ updated shakeD
-
+          closedE = () <$ _socketClosed s
       pure $ NodeConnection {
         nodeconCurrency   = BTC
       , nodeconUrl        = url
       , nodeconStatus     = statRef
       , nodeconOpensE     = openE
-      , nodeconCloseE     = closeE
+      , nodeconCloseE     = closedE
       , nodeconRespE      = respE
       , nodeconExtra      = ()
       , nodeconIsUp       = shakeD

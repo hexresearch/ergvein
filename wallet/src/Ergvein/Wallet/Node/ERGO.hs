@@ -28,8 +28,8 @@ instance HasNode ERGOType where
   type NodeResp ERGOType = Text
   type NodeSpecific ERGOType = ()
 
-initErgoNode :: (Reflex t, TriggerEvent t m, MonadIO m) => BaseUrl -> m (NodeERG t)
-initErgoNode url = do
+initErgoNode :: (Reflex t, TriggerEvent t m, MonadIO m) => BaseUrl -> Event t NodeMessage -> m (NodeERG t)
+initErgoNode url _ = do
   statRef <- newExternalRef Nothing
   pure $ NodeConnection {
       nodeconCurrency   = ERGO

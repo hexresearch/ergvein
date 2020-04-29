@@ -95,7 +95,7 @@ data Env t = Env {
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
 , env'indexersEF      :: !(Event t (), IO ())
 , env'nodeConsRef     :: !(ExternalRef t (ConnMap t))
-, env'nodeReqSelector :: !(EventSelector t (Const2 Currency (Map BaseUrl NodeMessage)))
+, env'nodeReqSelector :: !(RequestSelector t)
 , env'nodeReqFire     :: !(Map Currency (Map BaseUrl NodeMessage) -> IO ())
 }
 
@@ -234,6 +234,7 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
     nodeRef     <- asks env'nodeConsRef
     settingsRef <- asks env'settings
     authRef     <- asks env'authRef
+    sel         <- asks env'nodeReqSelector
     fmap updated $ widgetHold (pure ()) $ ffor updE $ \f -> do
       (diffMap, newcs) <- modifyExternalRef curRef $ \cs -> let
         cs' = f cs
@@ -251,7 +252,7 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
 
       writeExternalRef settingsRef set'
       storeSettings set'
-      writeExternalRef nodeRef =<< reinitNodes urls diffMap =<< readExternalRef nodeRef
+      writeExternalRef nodeRef =<< reinitNodes urls diffMap sel =<< readExternalRef nodeRef
 
   {-# INLINE updateActuveCurs #-}
   getAuthInfo = externalRefDynamic =<< asks env'authRef
@@ -347,6 +348,9 @@ liftAuth ma0 ma = mdo
         (indexersE, indexersF) <- newTriggerEvent
 
         -- Create data for Auth context
+        (reqE, reqFire) <- newTriggerEvent
+        let sel = fanMap reqE -- Node request selector :: RequestSelector t
+
         managerRef      <- liftIO newEmptyMVar
         activeCursRef   <- newExternalRef acurs
         headersStore    <- liftIO $ runReaderT openHeadersStorage (settingsStoreDir settings)
@@ -355,9 +359,7 @@ liftAuth ma0 ma = mdo
         blocksStore     <- liftIO $ runReaderT openBlocksStorage (settingsStoreDir settings)
         heightRef       <- newExternalRef mempty
         fsyncRef        <- newExternalRef mempty
-        consRef         <- newExternalRef =<< initializeNodes nodes
-        (reqE, reqFire) <- newTriggerEvent
-        let sel = fanMap reqE
+        consRef         <- newExternalRef =<< initializeNodes sel nodes
         -- headersLoader
         let env = Env
               settingsRef backEF loading langRef storeDir alertsEF logsTrigger logsNameSpaces uiChan passModalEF passSetEF
