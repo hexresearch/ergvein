@@ -56,8 +56,12 @@ import Ergvein.Wallet.Worker.Info
 import qualified Control.Immortal as I
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Map.Strict as M
+import qualified Data.Dependent.Map as DM
 import qualified Data.Set as S
 import qualified Data.List as L
+import Data.Functor.Identity (Identity)
+import Control.Monad.Random
+import Data.Functor.Misc
 
 data Env t = Env {
   -- Unauth context's fields
@@ -91,6 +95,8 @@ data Env t = Env {
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
 , env'indexersEF      :: !(Event t (), IO ())
 , env'nodeConsRef     :: !(ExternalRef t (ConnMap t))
+, env'nodeReqSelector :: !(RequestSelector t)
+, env'nodeReqFire     :: !(Map Currency (Map BaseUrl NodeMessage) -> IO ())
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -228,6 +234,7 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
     nodeRef     <- asks env'nodeConsRef
     settingsRef <- asks env'settings
     authRef     <- asks env'authRef
+    sel         <- asks env'nodeReqSelector
     fmap updated $ widgetHold (pure ()) $ ffor updE $ \f -> do
       (diffMap, newcs) <- modifyExternalRef curRef $ \cs -> let
         cs' = f cs
@@ -245,7 +252,7 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
 
       writeExternalRef settingsRef set'
       storeSettings set'
-      writeExternalRef nodeRef =<< reinitNodes urls diffMap =<< readExternalRef nodeRef
+      writeExternalRef nodeRef =<< reinitNodes urls diffMap sel =<< readExternalRef nodeRef
 
   {-# INLINE updateActuveCurs #-}
   getAuthInfo = externalRefDynamic =<< asks env'authRef
@@ -259,6 +266,16 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getNodesByCurrencyD #-}
   getNodeConnectionsD = externalRefDynamic =<< asks env'nodeConsRef
   {-# INLINE getNodeConnectionsD #-}
+  requestFromNode reqE = do
+    nodeReqFire <- asks env'nodeReqFire
+    performFork_ $ ffor reqE $ \(u, req) ->
+      let cur = case req of
+            NodeReqBTC  _ -> BTC
+            NodeReqERGO _ -> ERGO
+      in liftIO . nodeReqFire $ M.singleton cur $ M.singleton u $ NodeMsgReq req
+  {-# INLINE requestFromNode #-}
+  getNodeRequestSelector = asks env'nodeReqSelector
+  {-# INLINE getNodeRequestSelector #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
@@ -331,6 +348,9 @@ liftAuth ma0 ma = mdo
         (indexersE, indexersF) <- newTriggerEvent
 
         -- Create data for Auth context
+        (reqE, reqFire) <- newTriggerEvent
+        let sel = fanMap reqE -- Node request selector :: RequestSelector t
+
         managerRef      <- liftIO newEmptyMVar
         activeCursRef   <- newExternalRef acurs
         headersStore    <- liftIO $ runReaderT openHeadersStorage (settingsStoreDir settings)
@@ -339,13 +359,13 @@ liftAuth ma0 ma = mdo
         blocksStore     <- liftIO $ runReaderT openBlocksStorage (settingsStoreDir settings)
         heightRef       <- newExternalRef mempty
         fsyncRef        <- newExternalRef mempty
-        consRef         <- newExternalRef =<< initializeNodes nodes
+        consRef         <- newExternalRef =<< initializeNodes sel nodes
         -- headersLoader
         let env = Env
               settingsRef backEF loading langRef storeDir alertsEF logsTrigger logsNameSpaces uiChan passModalEF passSetEF
               authRef (logoutFire ()) activeCursRef managerRef headersStore filtersStore blocksStore syncRef heightRef fsyncRef
               urlsArchive inactiveUrls activeUrlsRef reqUrlNumRef actUrlNumRef timeoutRef (indexersE, indexersF ())
-              consRef
+              consRef sel reqFire
 
         runOnUiThreadM $ runReaderT setupTlsManager env
 

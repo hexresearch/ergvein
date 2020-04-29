@@ -3,8 +3,10 @@
 -}
 module Ergvein.Wallet.Node.Types
   (
-    NodeConnection(..)
-  , ConnMap
+    ConnMap
+  , NodeConn(..)
+  -- * Reexports
+  , NodeConnection(..)
   , CurrencyRep(..)
   , CurrencyTag(..)
   , BTCType(..)
@@ -12,8 +14,10 @@ module Ergvein.Wallet.Node.Types
   , NodeBTC
   , NodeERG
   , HasNode(..)
-  , NodeConn(..)
   , NodeStatus(..)
+  , NodeReqG(..)
+  , NodeRespG(..)
+  , NodeMessage(..)
   ) where
 
 import Data.GADT.Compare

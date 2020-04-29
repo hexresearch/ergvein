@@ -34,8 +34,9 @@ import Ergvein.Wallet.Native
 requestBTCBlockNode :: MonadFront t m => NodeBTC t -> Event t BlockHash -> m (Event t (Maybe Block))
 requestBTCBlockNode node@NodeConnection{..} bhE = do
   -- Send a request when the connection is established
-  requestNodeWait node $ ffor bhE $ \bh ->
-    MGetData $ GetData [InvVector InvBlock $ getBlockHash bh]
+  -- TODO: Rewrite with new requester logic
+  -- requestNodeWait node $ ffor bhE $ \bh ->
+  --   MGetData $ GetData [InvVector InvBlock $ getBlockHash bh]
   fmap switchDyn $ widgetHold (pure never) $ ffor bhE $ \bh -> do
     let respE = fforMaybe nodeconRespE $ \case
           MBlock blk -> if headerHash (blockHeader blk) == bh   -- Check if it's the block we asked for
@@ -95,8 +96,9 @@ requestBTCBlocksWait :: MonadFront t m => NodeBTC t -> Event t [BlockHash] -> m 
 requestBTCBlocksWait node reqE = do
   let respE = nodeconRespE node
   -- Send a request when the connection is established
-  requestNodeWait node $ ffor reqE $ \bhs ->
-    MGetData $ GetData $ fmap (InvVector InvBlock . getBlockHash) bhs
+  -- TODO: Rewrite with new requester logic
+  -- requestNodeWait node $ ffor reqE $ \bhs ->
+  --   MGetData $ GetData $ fmap (InvVector InvBlock . getBlockHash) bhs
   fmap switchDyn $ widgetHold (pure never) $ ffor reqE $ \bhs -> do
     let updE = fforMaybe respE $ \case
           MBlock blk -> let
@@ -140,8 +142,9 @@ requestBTCBlocksListen :: MonadFront t m => NodeBTC t -> Event t [BlockHash] -> 
 requestBTCBlocksListen node reqE = do
   let respE = nodeconRespE node
   -- Send a request when the connection is established
-  requestNodeWait node $ ffor reqE $ \bhs ->
-    MGetData $ GetData $ fmap (InvVector InvBlock . getBlockHash) bhs
+  -- TODO: Rewrite with new requester logic
+  -- requestNodeWait node $ ffor reqE $ \bhs ->
+  --   MGetData $ GetData $ fmap (InvVector InvBlock . getBlockHash) bhs
   fmap switchDyn $ widgetHold (pure never) $ ffor reqE $ \bhs -> do
     pure $ fforMaybe respE $ \case
       MBlock blk -> let bh = headerHash $ blockHeader blk
