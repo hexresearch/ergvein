@@ -12,8 +12,8 @@ import Ergvein.Wallet.Native
 import Reflex
 
 class (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t m | m -> t where
-  getAddressByCurIx          :: Currency -> Int -> m Base58
-  getEncryptedPrivateStorage :: m EncryptedPrivateStorage
-  getWalletName              :: m Text
-  getPublicKeystore          :: m PublicKeystore
-  storeWallet                :: Event t () -> m ()
+  getAddressByCurIx      :: Currency -> Int -> m Base58
+  getEncryptedPrvStorage :: m EncryptedPrvStorage
+  getWalletName          :: m Text
+  getPubStorage          :: m PubStorage
+  storeWallet            :: Event t () -> m ()

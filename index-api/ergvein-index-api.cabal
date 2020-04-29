@@ -12,16 +12,13 @@ library
       Ergvein.Index.API
       Ergvein.Index.API.Types
       Ergvein.Index.API.V1
-      Ergvein.Types.Block
-      Ergvein.Types.Transaction
 
   build-depends:
         base                 >= 4.7  && < 4.13
-      , servant              >= 0.16 && < 0.17 
-      , text                 >= 1.2  && < 1.3 
+      , servant              >= 0.16 && < 0.17
+      , text                 >= 1.2  && < 1.3
       , ergvein-common
       , ergvein-wallet-types
-
 
   default-language:    Haskell2010
   default-extensions:

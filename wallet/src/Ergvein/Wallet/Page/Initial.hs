@@ -77,41 +77,41 @@ initialPage = do
 -- | Generates new private keys until their number is equal to the number of public keys.
 generateMissingPrvKeys :: MonadIO m => (AuthInfo, Password) -> m (Either StorageAlert AuthInfo)
 generateMissingPrvKeys (authInfo, pass) = do
-  let encryptedPrvStorage = view (authInfo'storage . storage'encryptedPrivateStorage) authInfo
-  case decryptPrivateStorage encryptedPrvStorage pass of
+  let encryptedPrvStorage = view (authInfo'storage . storage'encryptedPrvStorage) authInfo
+  case decryptPrvStorage encryptedPrvStorage pass of
     Left err -> pure $ Left err
-    Right decryptedPrivateStorage -> do
-      let updatedPrivateStorage = set privateStorage'privateKeys updatedPrvKeystore decryptedPrivateStorage
-      encryptPrivateStorageResult <- encryptPrivateStorage updatedPrivateStorage pass
-      case encryptPrivateStorageResult of
+    Right decryptedPrvStorage -> do
+      let updatedPrvStorage = set prvStorage'currencyPrvStorages updatedPrvKeystore decryptedPrvStorage
+      encryptPrvStorageResult <- encryptPrvStorage updatedPrvStorage pass
+      case encryptPrvStorageResult of
         Left err -> pure $ Left err
-        Right encryptedUpdatedPrivateStorage -> pure $ Right $ set (authInfo'storage . storage'encryptedPrivateStorage) encryptedUpdatedPrivateStorage authInfo
+        Right encryptedUpdatedPrvStorage -> pure $ Right $ set (authInfo'storage . storage'encryptedPrvStorage) encryptedUpdatedPrvStorage authInfo
       where
-        prvKeystore = view privateStorage'privateKeys decryptedPrivateStorage
-        pubKeystore = view (authInfo'storage . storage'publicKeys) authInfo
-        pubKeysNumber = M.map (\keychain -> (
-            MI.size $ egvPubKeyсhain'external keychain,
-            MI.size $ egvPubKeyсhain'internal keychain
-          )) pubKeystore
+        currencyPrvStorages = view prvStorage'currencyPrvStorages decryptedPrvStorage
+        currencyPubStorages = view (authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages) authInfo
+        pubKeysNumber = M.map (\currencyPubStorage -> (
+            MI.size $ pubKeystore'external (view currencyPubStorage'pubKeystore currencyPubStorage),
+            MI.size $ pubKeystore'internal (view currencyPubStorage'pubKeystore currencyPubStorage)
+          )) currencyPubStorages
         updatedPrvKeystore =
           MM.merge
           MM.dropMissing
           MM.dropMissing
           (MM.zipWithMatched generateMissingPrvKeysHelper)
-          prvKeystore
+          currencyPrvStorages
           pubKeysNumber
 
 generateMissingPrvKeysHelper ::
   Currency
-  -> EgvPrvKeyсhain -- ^ Private keychain
-  -> (Int, Int)     -- ^ Total number of external and internal private keys respectively that should be stored in keychain
-  -> EgvPrvKeyсhain -- ^ Updated private keychain
-generateMissingPrvKeysHelper currency prvKeychain (goalExternalKeysNum, goalInternalKeysNum) =
-  EgvPrvKeyсhain masterPrvKey updatedExternalPrvKeys updatedInternalPrvKeys
+  -> CurrencyPrvStorage -- ^ Private keystore
+  -> (Int, Int)         -- ^ Total number of external and internal private keys respectively that should be stored in keystore
+  -> CurrencyPrvStorage -- ^ Updated private keystore
+generateMissingPrvKeysHelper currency (CurrencyPrvStorage prvKeystore) (goalExternalKeysNum, goalInternalKeysNum) =
+  CurrencyPrvStorage $ PrvKeystore masterPrvKey updatedExternalPrvKeys updatedInternalPrvKeys
   where
-    currentExternalKeys = egvPrvKeyсhain'external prvKeychain
-    currentInternalKeys = egvPrvKeyсhain'internal prvKeychain
-    masterPrvKey = egvPrvKeyсhain'master prvKeychain
+    currentExternalKeys = prvKeystore'external prvKeystore
+    currentInternalKeys = prvKeystore'internal prvKeystore
+    masterPrvKey = prvKeystore'master prvKeystore
     updatedExternalPrvKeys = if MI.size currentExternalKeys >= goalExternalKeysNum
                              then currentExternalKeys
                              else MI.union currentExternalKeys

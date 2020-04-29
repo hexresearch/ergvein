@@ -4,7 +4,7 @@ module Ergvein.Types.Address (
     , EgvAddress(..)
     , pubKeyErgAddr
     , egvAddrToString
-    , stringToEgvAddr
+    , egvAddrFromString
     , egvAddrCurrency
   ) where
 
@@ -111,17 +111,17 @@ egvAddrToString :: EgvAddress -> Text
 egvAddrToString (BtcAddress addr) = btcAddrToString addr
 egvAddrToString (ErgAddress addr) = ergAddrToString addr
 
-stringToBtcAddr :: Text -> Maybe BtcAddress
-stringToBtcAddr = HA.stringToAddr net
+btcAddrFromString :: Text -> Maybe BtcAddress
+btcAddrFromString = HA.stringToAddr net
   where net = getBtcNetwork $ getCurrencyNetwork BTC
 
-stringToErgAddr :: Text -> Maybe ErgAddress
-stringToErgAddr bs = eitherToMaybe . runGet (base58GetErg net) =<< decodeBase58CheckErg bs
+ergAddrFromString :: Text -> Maybe ErgAddress
+ergAddrFromString t = eitherToMaybe . runGet (base58GetErg net) =<< decodeBase58CheckErg t
   where net = getErgNetwork $ getCurrencyNetwork ERGO
 
-stringToEgvAddr :: Currency -> Text -> Maybe EgvAddress
-stringToEgvAddr BTC  addr = BtcAddress <$> stringToBtcAddr addr
-stringToEgvAddr ERGO addr = ErgAddress <$> stringToErgAddr addr
+egvAddrFromString :: Currency -> Text -> Maybe EgvAddress
+egvAddrFromString BTC  addr = BtcAddress <$> btcAddrFromString addr
+egvAddrFromString ERGO addr = ErgAddress <$> ergAddrFromString addr
 
 egvAddrToJSON :: EgvAddress -> Value
 egvAddrToJSON = String . egvAddrToString
@@ -129,11 +129,11 @@ egvAddrToJSON = String . egvAddrToString
 egvAddrFromJSON :: Currency -> Value -> Parser EgvAddress
 egvAddrFromJSON cur
   | cur == BTC = withText "address" $ \t ->
-    case stringToBtcAddr t of
+    case btcAddrFromString t of
       Nothing -> fail "could not decode address"
       Just x  -> return $ BtcAddress x
   | cur == ERGO = withText "address" $ \t ->
-    case stringToErgAddr t of
+    case ergAddrFromString t of
       Nothing -> fail "could not decode address"
       Just x  -> return $ ErgAddress x
 
