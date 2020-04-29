@@ -77,6 +77,12 @@ addPeerEndpoint request = do
   pure $ peerValidationToResponce result
 
 peerValidationToResponce :: Either PeerValidationResult () -> AddPeerResp
-peerValidationToResponce = \case
-  Right () -> AddPeerResp True  Nothing
-  Left err -> AddPeerResp False $ Just "Error"
+peerValidationToResponce = \case 
+  Right ()   -> AddPeerResp True Nothing
+  Left error -> AddPeerResp True $ Just $ case error of
+    PeerConnectionError ->
+      "Unable to establish connection"
+    CurrencyOutOfSync outOfSync -> 
+      "Currency " <> show (outOfsyncCurrency outOfSync) <> "scanned height much less then " <> show (outOfSyncLocalHeight outOfSync)
+    CurrencyMissing currency ->
+      "Currency " <> show currency <> "is missing"

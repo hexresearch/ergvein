@@ -14,6 +14,7 @@ import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.Monad
 import qualified Data.Map.Strict as Map
 import Control.Monad.Trans.Except
+import Data.Either.Combinators
 
 instance MonadIO m => HasClientManager (ReaderT HC.Manager m) where
   getClientManager = ask
@@ -27,19 +28,25 @@ candidateInfo schema baseUrl = do
       Https -> getTlsManager
 
   info <- runReaderT (getInfoEndpoint baseUrl ()) connectionManager
-  except $ first (const Fail) info
+  except $ first (const PeerConnectionError) info
 
 candidateScanValidation :: InfoResponse -> ExceptT PeerValidationResult ServerM ()
 candidateScanValidation candidateInfo = do
   localInfo <- lift $ scanningInfo
-  let isCandidateScanMatchLocal = all isCurrencyScannedEnough localInfo
-  except $ if isCandidateScanMatchLocal then Right () else Left Fail
+  let isCandidateScanMatchLocal = void <$> sequence $ currencyScanValidation <$> localInfo
+  except $ isCandidateScanMatchLocal
   where
-   isCurrencyScannedEnough candidate = 
-    any (notLessThenOne (nfoScannedHeight candidate) . scanProgressScannedHeight) 
-    $ candidateInfoMap Map.!? nfoCurrency candidate
-   notLessThenOne local = (local <=) . succ
-   candidateInfoMap = Map.fromList $ (\scanInfo -> (scanProgressCurrency scanInfo, scanInfo)) 
+    notLessThenOne local = (local <=) . succ
+    currencyScanValidation localInfo = do
+      let localCurrency = nfoCurrency localInfo
+          localScannedHeight =  nfoScannedHeight localInfo
+      candidateNfo <- maybeToRight (CurrencyMissing localCurrency) $ candidateInfoMap Map.!? localCurrency
+      if notLessThenOne localScannedHeight (scanProgressScannedHeight candidateNfo) then
+        Right ()
+      else 
+        Left $ CurrencyOutOfSync $ CurrencyOutOfSyncInfo localCurrency localScannedHeight
+
+    candidateInfoMap = Map.fromList $ (\scanInfo -> (scanProgressCurrency scanInfo, scanInfo)) 
                                   <$> infoScanProgress candidateInfo
 
 considerPeerCandidate :: PeerCandidate -> ExceptT PeerValidationResult ServerM ()
