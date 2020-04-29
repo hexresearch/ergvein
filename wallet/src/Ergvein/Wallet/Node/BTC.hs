@@ -1,6 +1,7 @@
 {-
   Implementation of BTC connector
 -}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Wallet.Node.BTC
   (
     BTCType(..)
@@ -44,9 +45,6 @@ import Ergvein.Wallet.Node.Socket
 -- These two are for dummy stats
 import Control.Monad.Random
 import Ergvein.Text
-
-data BTCType = BTCType
-type NodeBTC t = NodeConnection t BTCType
 
 instance CurrencyRep BTCType where
   curRep _ = BTC

@@ -21,6 +21,7 @@ import Control.Concurrent.Chan
 import Control.Monad
 import Data.Foldable (traverse_)
 import Data.Functor (void)
+import Data.Functor.Misc (Const2)
 import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
@@ -86,6 +87,11 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   getNodesByCurrencyD :: Currency -> m (Dynamic t (Map BaseUrl (NodeConn t)))
   -- | Get connections map
   getNodeConnectionsD :: m (Dynamic t (ConnMap t))
+  -- | Send a request to a specific URL
+  -- It's up to the caller to ensure that the URL actually points to a correct currency node
+  requestFromNode :: Event t (BaseUrl, NodeReqG) -> m ()
+  -- | Get node request event
+  getNodeRequestSelector :: m (EventSelector t (Const2 Currency (Map BaseUrl NodeMessage)))
 
 class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   -- | Get current settings

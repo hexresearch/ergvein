@@ -56,8 +56,12 @@ import Ergvein.Wallet.Worker.Info
 import qualified Control.Immortal as I
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Map.Strict as M
+import qualified Data.Dependent.Map as DM
 import qualified Data.Set as S
 import qualified Data.List as L
+import Data.Functor.Identity (Identity)
+import Control.Monad.Random
+import Data.Functor.Misc
 
 data Env t = Env {
   -- Unauth context's fields
@@ -91,6 +95,8 @@ data Env t = Env {
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
 , env'indexersEF      :: !(Event t (), IO ())
 , env'nodeConsRef     :: !(ExternalRef t (ConnMap t))
+, env'nodeReqSelector :: !(EventSelector t (Const2 Currency (Map BaseUrl NodeMessage)))
+, env'nodeReqFire     :: !(Map Currency (Map BaseUrl NodeMessage) -> IO ())
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -259,6 +265,16 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getNodesByCurrencyD #-}
   getNodeConnectionsD = externalRefDynamic =<< asks env'nodeConsRef
   {-# INLINE getNodeConnectionsD #-}
+  requestFromNode reqE = do
+    nodeReqFire <- asks env'nodeReqFire
+    performFork_ $ ffor reqE $ \(u, req) ->
+      let cur = case req of
+            NodeReqBTC  _ -> BTC
+            NodeReqERGO _ -> ERGO
+      in liftIO . nodeReqFire $ M.singleton cur $ M.singleton u $ NodeMsgReq req
+  {-# INLINE requestFromNode #-}
+  getNodeRequestSelector = asks env'nodeReqSelector
+  {-# INLINE getNodeRequestSelector #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
@@ -340,12 +356,14 @@ liftAuth ma0 ma = mdo
         heightRef       <- newExternalRef mempty
         fsyncRef        <- newExternalRef mempty
         consRef         <- newExternalRef =<< initializeNodes nodes
+        (reqE, reqFire) <- newTriggerEvent
+        let sel = fanMap reqE
         -- headersLoader
         let env = Env
               settingsRef backEF loading langRef storeDir alertsEF logsTrigger logsNameSpaces uiChan passModalEF passSetEF
               authRef (logoutFire ()) activeCursRef managerRef headersStore filtersStore blocksStore syncRef heightRef fsyncRef
               urlsArchive inactiveUrls activeUrlsRef reqUrlNumRef actUrlNumRef timeoutRef (indexersE, indexersF ())
-              consRef
+              consRef sel reqFire
 
         runOnUiThreadM $ runReaderT setupTlsManager env
 

@@ -1,6 +1,7 @@
 {-
   Implementation of ERGO connector
 -}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Wallet.Node.ERGO
   (
     ERGOType(..)
@@ -17,9 +18,6 @@ import Servant.Client(BaseUrl)
 
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Node.Prim
-
-data ERGOType = ERGOType
-type NodeERG t = NodeConnection t ERGOType
 
 instance CurrencyRep ERGOType where
   curRep _ = ERGO
