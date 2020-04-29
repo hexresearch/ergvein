@@ -202,3 +202,6 @@ instance MonadRandom (WithJSContextSingleton x (RP.ProfiledM (SpiderHostFrame Gl
 
 instance F.MonadFail (WithJSContextSingleton x (SpiderHostFrame Global)) where
   fail = liftIO . F.fail
+
+instance F.MonadFail (WithJSContextSingleton x (RP.ProfiledM (SpiderHostFrame Global))) where
+  fail = liftIO . F.fail
