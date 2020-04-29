@@ -69,25 +69,6 @@ balancesPage = do
     syncWidget =<< getSyncProgress
     currenciesList anon_name
 
-nodeTestWidget :: MonadFront t m => m ()
-nodeTestWidget = do
-  conMapD <- getNodeConnectionsD
-  void . widgetHoldDyn $ ffor conMapD $ \cm -> do
-    let node   = head $ Map.elems $ fromJust $ DM.lookup BTCTag cm
-    let respE  = nodeconRespE node
-    let closeE = nodeconCloseE node
-    let fire   = nodeconReqFire node
-    logShowInfoMsg $ ("closeE" :: Text) <$ closeE
-    goE <- outlineButton ("Go" :: Text)
-    let bh :: BlockHash = "000000000000000000011e66c8f568558750ce1396630e1fa49d3ecd440b1e9b"
-    mblockE <- requestBTCBlockNode node $ bh <$ never
-    performEvent_ $ (logWrite . showt . maybe Nothing (Just . blockHeader)) <$> mblockE
-    insE <- performEvent $ fforMaybe mblockE $ \case
-      Nothing -> Nothing
-      Just blk -> Just $ insertBTCBlock blk
-    mblkE <- performEvent $ ffor goE $ const $ getBTCBlock bh
-    performEvent $ (logWrite . showt . maybe Nothing (Just . blockHeader)) <$> mblkE
-
 storeTestWidget :: MonadFront t m => m ()
 storeTestWidget = do
   goE <- outlineButton ("Rand" :: Text)
@@ -109,7 +90,6 @@ storeTestWidget = do
 
 currenciesList :: MonadFront t m => Text -> m ()
 currenciesList name = divClass "currency-content" $ do
-  nodeTestWidget
   storeTestWidget
   s <- getSettings
   historyE <- leftmost <$> traverse (currencyLine s) (getActiveCurrencies s)
