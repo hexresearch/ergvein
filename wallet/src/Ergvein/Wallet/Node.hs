@@ -8,6 +8,7 @@ module Ergvein.Wallet.Node
   , getAllConnByCurrency
   , initializeNodes
   , reinitNodes
+  , requestNodeWait
   , module Ergvein.Wallet.Node.Types
   ) where
 
@@ -93,3 +94,17 @@ reinitNodes urls cs sel conMap = foldlM updCurr conMap $ M.toList cs
           pure $ addMultipleConns cm conns
         (Just _, False) -> pure $ DM.delete ERGOTag cm
         _ -> pure cm
+
+-- Send a request to a node. Wait until the connection is up
+requestNodeWait :: (MonadFrontAuth t m, HasNode cur)
+  => NodeConnection t cur -> Event t NodeReqG -> m ()
+requestNodeWait NodeConnection{..} reqE = do
+  reqD <- holdDyn Nothing $ Just <$> reqE
+  let passValE = updated $ (,) <$> reqD <*> nodeconIsUp
+  reqE' <- fmap (fmapMaybe id) $ performEvent $ ffor passValE $ \case
+    (Just _, False) -> do
+      logWrite $ (nodeString nodeconCurrency nodeconUrl) <> "Connection is not active. Waiting."
+      pure Nothing
+    (Just v, True) -> pure $ Just (nodeconUrl, v)
+    _ -> pure Nothing
+  requestFromNode reqE'
