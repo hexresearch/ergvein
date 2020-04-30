@@ -4,6 +4,7 @@ module Ergvein.Wallet.Scan (
   ) where
 
 import Data.ByteString (ByteString)
+import Data.List
 import Ergvein.Aeson
 import Ergvein.Crypto.Keys
 import Ergvein.Types.Address
@@ -14,6 +15,7 @@ import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Blocks.BTC
+import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
@@ -71,34 +73,36 @@ applyScan currencyPubStorages currency =
 scanCurrency :: MonadFront t m => Currency -> CurrencyPubStorage -> m (Event t (Currency, CurrencyPubStorage))
 scanCurrency currency currencyPubStorage = mdo
   buildE <- getPostBuild
-  -- nextE <- waitFilters currency =<< delay 0 (leftmost [newE, buildE])
-  nextE <- delay 0 (leftmost [newE, buildE])
+  -- processKeyE <- waitFilters currency =<< delay 0 (leftmost [nextKeyE, buildE])
+  processKeyE <- delay 0 (leftmost [nextKeyE, (0, fstKey) <$ buildE])
   gapD <- holdDyn 0 gapE
-  nextKeyIndexD <- count nextKeyE
-  newKeystoreD <- foldDyn (addXPubKeyToKeystore External) emptyPubKeystore nextKeyE
-  newTxsD <- foldDyn M.union txs getTxsE
-  filterAddressE <- filterAddress ((\(i, pk) -> egvXPubKeyToEgvAddress pk) <$> nextKeyE)
+  currentKeyD <- holdDyn (0, fstKey) nextKeyE
+  newKeystoreD <- foldDyn (addXPubKeyToKeystore External) emptyPubKeystore processKeyE
+  newTxsD <- foldDyn M.union emptyTxs getTxsE
+  filterAddressE <- filterAddress $ (egvXPubKeyToEgvAddress . snd) <$> nextKeyE
   getBlocksE <- requestBTCBlocksWaitRN filterAddressE
-  getTxsE <- getTxs getBlocksE
-  let pubKeystore = _currencyPubStorage'pubKeystore currencyPubStorage
-      txs = _currencyPubStorage'transactions currencyPubStorage
+  getTxsE <- getTxs $ attachPromptlyDynWith (\(_, key) blocks -> (egvXPubKeyToEgvAddress key, blocks)) currentKeyD getBlocksE
+  let fstKey = derivePubKey masterPubKey External (fromIntegral 0)
+      pubKeystore = _currencyPubStorage'pubKeystore currencyPubStorage
       masterPubKey = pubKeystore'master pubKeystore
       emptyPubKeystore = PubKeystore masterPubKey MI.empty MI.empty
-      newE = flip push getTxsE $ \txs -> do
+      emptyTxs = M.empty
+      -- TODO: seems like nextKeyE and gapE fires simultaneously, this is confusing.
+      nextKeyE = flip push getTxsE $ \txs -> do
         gap <- sampleDyn gapD
-        pure $ if null txs && gap >= gapLimit then Nothing else Just ()
+        currentKeyIndex <- fmap fst (sampleDyn currentKeyD)
+        let nextKeyIndex = currentKeyIndex + 1
+        pure $ if null txs && gap >= gapLimit
+          then Nothing
+          else Just $ (nextKeyIndex, derivePubKey masterPubKey External (fromIntegral nextKeyIndex))
       gapE = flip pushAlways getTxsE $ \txs -> do
         gap <- sampleDyn gapD
         pure $ if null txs && gap < gapLimit then gap + 1 else 0
-      nextKeyE = flip push nextE $ \_ -> do
-        gap <- sampleDyn gapD
-        nextKeyIndex <- sampleDyn nextKeyIndexD
-        pure $ if gap >= gapLimit then Nothing else Just $ (nextKeyIndex, derivePubKey masterPubKey External (fromIntegral nextKeyIndex))
-      finishedE = traceEventWith (T.unpack . encodeJson) $ flip push gapE $ \g -> do
+      finishedE = traceEventWith (T.unpack . encodeJson) $ flip push gapE $ \gap -> do
       -- finishedE = flip push gapE $ \g -> do
         newKeystore <- sampleDyn newKeystoreD
         newTxs <- sampleDyn newTxsD
-        pure $ if g >= gapLimit then Just $ (currency, CurrencyPubStorage newKeystore newTxs) else Nothing
+        pure $ if gap >= gapLimit then Just $ (currency, CurrencyPubStorage newKeystore newTxs) else Nothing
   pure finishedE
 
 -- | If the given event fires and there is not fully synced filters. Wait for the synced filters and then fire the event.
@@ -118,46 +122,43 @@ waitFilters c e = mdo
       (Just a, True) -> Just a
       _ -> Nothing
 
--- | Gets a list of block hashes containing transactions related to provided address.
-filterAddress :: MonadFront t m => Event t EgvAddress -> m (Event t (EgvAddress, [HB.BlockHash]))
-filterAddress addrE = performFork $ ffor addrE $ \addr -> do
-  bhs <- Filters.filterAddress addr
-  pure(addr, bhs)
+-- | Gets a list of block hashes containing transactions related to given address.
+filterAddress :: MonadFront t m => Event t EgvAddress -> m (Event t [HB.BlockHash])
+filterAddress addrE = performFork $ ffor addrE Filters.filterAddress
 
--- FIXME
-getBlocks :: MonadFront t m => Event t (EgvAddress, [HB.BlockHash]) -> m (Event t (EgvAddress, [HB.Block]))
-getBlocks blockHashesE = pure $ getBlocksMock <$> blockHashesE
-  where getBlocksMock (addr, bhs) = if null bhs
-          then (addr, [])
-          else (addr, [HB.genesisBlock $ getBtcNetwork $ getCurrencyNetwork BTC])
-
--- | Gets transactions related to provided address from provided block list.
+-- | Gets transactions related to given address from given block list.
 getTxs :: MonadFront t m => Event t (EgvAddress, [HB.Block]) -> m (Event t (M.Map TxId EgvTx))
-getTxs blocksE = pure $ ffor blocksE(\(addr, blocks) -> do
-  if null blocks
-    then pure $ M.empty
-    else do
-      txMaps <- traverse (getAddrTxsFromBlock addr) blocks
-      pure $ foldr M.union M.empty txMaps
+getTxs = performEvent . fmap (uncurry getAddrTxsFromBlocks)
 
--- | Gets transactions related to provided address from provided block.
-getAddrTxsFromBlock :: HasStorage m => EgvAddress -> HB.Block -> m (M.Map TxId EgvTx)
-getAddrTxsFromBlock addr block = M.fromList [(HT.txHashToHex $ HT.txHash tx, BtcTx tx) | tx <- txs]
-  where txs = filter (addrTx addr) (HB.blockTxns block)
+-- | Gets transactions related to given address from given block.
+getAddrTxsFromBlocks :: HasBlocksStorage m => EgvAddress -> [HB.Block] -> m (M.Map TxId EgvTx)
+getAddrTxsFromBlocks addr blocks = do
+  txMaps <- traverse (getAddrTxsFromBlock addr) blocks
+  pure $ M.unions txMaps
 
--- | Checks given tx if there are some inputs or outputs containing provided address.
-addrTx :: EgvAddress -> HT.Tx -> m Bool
-addrTx addr tx = addrTxIn addr (HT.txIn tx) || addrTxOut addr (HT.txOut tx)
-  where addrTxIn addr txInputs = foldr (||) False [checkTxIn addr txIn | txIn <- txInputs]
-        addrTxOut addr txOutputs = foldr (||) False [checkTxOut addr txO | txO <- txOutputs]
+getAddrTxsFromBlock :: HasBlocksStorage m => EgvAddress -> HB.Block -> m (M.Map TxId EgvTx)
+getAddrTxsFromBlock addr block = do
+  checkResults <- traverse (checkAddrTx addr) txs
+  let filteredTxs = fst $ unzip $ filter (not . snd) (zip txs checkResults)
+  pure $ M.fromList [(HT.txHashToHex $ HT.txHash tx, BtcTx tx) | tx <- filteredTxs]
+  where txs = HB.blockTxns block
+
+-- | Checks given tx if there are some inputs or outputs containing given address.
+checkAddrTx :: HasBlocksStorage m => EgvAddress -> HT.Tx -> m Bool
+checkAddrTx addr tx = do
+  checkTxInputsResults <- traverse (checkTxIn addr) (HT.txIn tx)
+  let checkTxOutputsResults = map (checkTxOut addr) (HT.txOut tx)
+      concatResults = foldr (||) False
+  pure $ concatResults checkTxInputsResults || concatResults checkTxOutputsResults
 
 -- | Checks given TxIn wheather it contains given address.
 -- Native SegWit addresses are not presented in TxIns scriptSig.
-checkTxIn :: EgvAddress -> HT.TxIn -> Bool
+checkTxIn :: HasBlocksStorage m => EgvAddress -> HT.TxIn -> m Bool
 checkTxIn addr txIn = do
   let prevOutput = HT.prevOutput txIn
       txHash = HT.outPointHash prevOutput
       outputIndex = HT.outPointIndex prevOutput
+  -- TODO: get tx by id and analyze corresponding output.
   -- prevTx <- getTxById txHash
   pure False
 
@@ -168,7 +169,7 @@ checkTxOut (BtcAddress (HA.WitnessPubKeyAddress pkh)) txO = case HS.decodeOutput
   Right output -> case output of
     HS.PayWitnessPKHash h -> if h == pkh then True else False
     _ -> False
-checkTxO (BtcAddress (HA.WitnessScriptAddress pkh)) txO = case HS.decodeOutputBS $ HT.scriptOutput txO of
+checkTxOut (BtcAddress (HA.WitnessScriptAddress pkh)) txO = case HS.decodeOutputBS $ HT.scriptOutput txO of
   Left _ -> False -- TODO: show error here somehow?
   Right output -> case output of
     HS.PayWitnessScriptHash h -> if h == pkh then True else False
