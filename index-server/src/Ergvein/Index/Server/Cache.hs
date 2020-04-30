@@ -31,6 +31,7 @@ import Ergvein.Index.Server.Utils
 import Ergvein.Text
 import Database.LevelDB.Internal
 import Conversion
+import Ergvein.Index.Server.DB.Conversions
 
 import qualified Data.Conduit.Internal as DCI
 import qualified Data.Conduit.List as CL

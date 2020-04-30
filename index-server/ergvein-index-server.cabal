@@ -16,6 +16,7 @@ library
   exposed-modules:
     Ergvein.Index.Server.App
     Ergvein.Index.Server.BlockchainScanning.Bitcoin
+    Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
     Ergvein.Index.Server.BlockchainScanning.Common
     Ergvein.Index.Server.BlockchainScanning.Ergo
     Ergvein.Index.Server.BlockchainScanning.Types
@@ -24,18 +25,18 @@ library
     Ergvein.Index.Server.Cache.Queries
     Ergvein.Index.Server.Cache.Schema
     Ergvein.Index.Server.Config
+    Ergvein.Index.Server.DB.Conversions
     Ergvein.Index.Server.DB.Drv
     Ergvein.Index.Server.DB.Monad
     Ergvein.Index.Server.DB.Queries
     Ergvein.Index.Server.DB.Schema
     Ergvein.Index.Server.Environment
     Ergvein.Index.Server.Monad
+    Ergvein.Index.Server.PeerDiscovery.Discovery
+    Ergvein.Index.Server.PeerDiscovery.Types
     Ergvein.Index.Server.Server
     Ergvein.Index.Server.Server.V1
     Ergvein.Index.Server.Utils
-    Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
-    Ergvein.Index.Server.PeerDiscovery.Types
-    Ergvein.Index.Server.PeerDiscovery.Discovery
 
   build-depends:
         base                     >= 4.7     &&  < 4.13
@@ -93,6 +94,7 @@ library
       , wai-cors                 >= 0.2     &&  < 0.3
       , wai-extra                >= 3.0     &&  < 3.1
       , yaml                     >= 0.11    &&  < 0.12
+      , time
       , either
       , ergo-api
       , ergvein-common

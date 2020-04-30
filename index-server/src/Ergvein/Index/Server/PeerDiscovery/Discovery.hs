@@ -1,20 +1,18 @@
 module Ergvein.Index.Server.PeerDiscovery.Discovery where
 
-import Control.Monad.IO.Class
 import Control.Monad.Reader
-import Data.Bifunctor
-import Debug.Trace
-import Ergvein.Index.API.Types
-import Ergvein.Index.Client.V1
-import Ergvein.Index.Server.Environment
-import Ergvein.Index.Server.PeerDiscovery.Types
-import Servant.Client.Core
-import qualified Network.HTTP.Client as HC
-import Ergvein.Index.Server.BlockchainScanning.Common
-import Ergvein.Index.Server.Monad
-import qualified Data.Map.Strict as Map
 import Control.Monad.Trans.Except
 import Data.Either.Combinators
+import Ergvein.Index.API.Types
+import Ergvein.Index.Client.V1
+import Ergvein.Index.Server.BlockchainScanning.Common
+import Ergvein.Index.Server.Environment
+import Ergvein.Index.Server.Monad
+import Ergvein.Index.Server.PeerDiscovery.Types
+import Servant.Client.Core
+
+import qualified Data.Map.Strict as Map
+import qualified Network.HTTP.Client as HC
 
 instance MonadIO m => HasClientManager (ReaderT HC.Manager m) where
   getClientManager = ask
@@ -28,7 +26,7 @@ candidateInfo schema baseUrl = do
       Https -> getTlsManager
 
   info <- runReaderT (getInfoEndpoint baseUrl ()) connectionManager
-  except $ first (const PeerConnectionError) info
+  except $ mapLeft (const PeerConnectionError) info
 
 candidateScanValidation :: InfoResponse -> ExceptT PeerValidationResult ServerM ()
 candidateScanValidation candidateInfo = do
@@ -47,11 +45,13 @@ candidateScanValidation candidateInfo = do
         Left $ CurrencyOutOfSync $ CurrencyOutOfSyncInfo localCurrency localScannedHeight
 
     candidateInfoMap = Map.fromList $ (\scanInfo -> (scanProgressCurrency scanInfo, scanInfo)) 
-                                  <$> infoScanProgress candidateInfo
+                                   <$> infoScanProgress candidateInfo
 
 considerPeerCandidate :: PeerCandidate -> ExceptT PeerValidationResult ServerM ()
 considerPeerCandidate candidate = do
-  let candidateSchema = baseUrlScheme $ peerCandidateUrl candidate
-  infoResult <- candidateInfo candidateSchema $ peerCandidateUrl candidate
+  let baseUrl = peerCandidateUrl candidate
+  let candidateSchema = baseUrlScheme baseUrl
+  infoResult <- candidateInfo candidateSchema baseUrl
   candidateScanResult <- candidateScanValidation infoResult
   pure candidateScanResult
+

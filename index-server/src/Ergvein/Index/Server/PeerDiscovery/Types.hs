@@ -1,9 +1,10 @@
 module Ergvein.Index.Server.PeerDiscovery.Types where
 
-import Servant.Client.Core.BaseUrl
+import Data.Time
+import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Ergvein.Types.Block
+import Servant.Client.Core.BaseUrl
 
 data CurrencyOutOfSyncInfo = CurrencyOutOfSyncInfo
   { outOfsyncCurrency :: Currency
@@ -17,5 +18,11 @@ data PeerValidationResult = OK
   deriving Show
 
 data PeerCandidate = PeerCandidate 
-    { peerCandidateUrl :: BaseUrl 
-    }
+  { peerCandidateUrl :: BaseUrl 
+  }
+
+data DiscoveredPeer = DiscoveredPeer
+  { discPeerUrl :: BaseUrl
+  , discPeerLastValidatedAt :: UTCTime
+  , discPeerConnectionScheme :: Scheme
+  }
