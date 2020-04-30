@@ -41,6 +41,7 @@ import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node.Prim
 import Ergvein.Wallet.Node.Socket
+import Ergvein.Wallet.Platform
 
 -- These two are for dummy stats
 import Control.Monad.Random
@@ -63,7 +64,7 @@ initBTCNode url msgE = do
   bh <- liftIO randomIO
   let nstat = if b then Nothing else Just $ NodeStatus bh (realToFrac d)
 
-  let net = btc
+  let net = btcNetwork
       nodeLog :: MonadIO m => Text -> m ()
       nodeLog = logWrite . (nodeString BTC url <>)
 

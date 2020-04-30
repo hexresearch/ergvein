@@ -25,6 +25,7 @@ import Ergvein.Types.Currency
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Yaml(readYamlEither')
 import qualified Data.Map.Strict as M
 import Servant.Client(BaseUrl(..), parseBaseUrl)
@@ -101,14 +102,15 @@ defaultIndexers = [
 
 defaultNodes :: M.Map Currency [BaseUrl]
 defaultNodes = M.fromList $ [
-    (BTC, [ parse "119.17.151.61:8333"
-          , parse "144.76.13.207:8333"
-          ])
+    (BTC, btcUrls)
   , (ERGO, [
       parse "127.0.0.1"
     , parse "127.0.0.2"])]
   where
     parse = either (error . ("Failed to parse default indexer: " ++) . show) id . parseBaseUrl
+    btcUrls = fmap parse $ if isTestnet
+      then ["206.189.198.136:18333", "185.45.114.194:18333"]
+      else ["119.17.151.61:8333", "144.76.13.207:8333"]
 
 defaultIndexersNum :: (Int, Int)
 defaultIndexersNum = (2, 4)
