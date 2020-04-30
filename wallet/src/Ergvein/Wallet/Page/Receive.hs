@@ -19,7 +19,7 @@ instance LocalizedPrint RecieveTitle where
     Russian -> "Получить " <> currencyName c
 
 receivePage :: MonadFront t m => Currency -> m ()
-receivePage cur = wrapper (RecieveTitle cur) (Just $ pure $ receivePage cur) $ do
+receivePage cur = wrapper (RecieveTitle cur) (Just $ pure $ receivePage cur) False $ do
   let thisWidget = Just $ pure $ receivePage cur
   navbarWidget cur thisWidget NavbarReceive
   void $ divClass "centered-wrapper" $ divClass "centered-content" $ h3 $ localizedText $ RecieveTitle cur

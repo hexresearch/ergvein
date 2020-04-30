@@ -22,10 +22,9 @@ import Data.Time
 import Data.Text as T
 
 historyPage :: MonadFront t m => Currency -> m ()
-historyPage cur = divClass "base-container" $ do
+historyPage cur = wrapper (HistoryTitle cur) (Just $ pure $ historyPage cur) False $ do
   let thisWidget = Just $ pure $ historyPage cur
   let trHistoryList = mockTransHistory cur
-  headerWidget (HistoryTitle cur) thisWidget
   navbarWidget cur thisWidget NavbarHistory
   goE <- divClass "history-table-body" $ historyTableWidget trHistoryList
   void $ nextWidget $ ffor (leftmost goE) $ \tr -> Retractable {
@@ -35,9 +34,7 @@ historyPage cur = divClass "base-container" $ do
 
 #ifdef ANDROID
 transactionInfoPage :: MonadFront t m => Currency -> TransactionMock -> m ()
-transactionInfoPage cur tr@TransactionMock{..} = divClass "base-container" $ do
-  let thisWidget = Just $ pure $ transactionInfoPage cur tr
-  headerWidget HistoryTITitle thisWidget
+transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) False $ do
   divClass "transaction-info-body-andr" $ mdo
     hashD <- expD hashE hashD
     hashE <- expHead hashD HistoryTIHash
@@ -119,11 +116,9 @@ transactionInfoPage cur tr@TransactionMock{..} = divClass "base-container" $ do
         divClass "info-copy-button" $ text $ "⎘"
 #else
 transactionInfoPage :: MonadFront t m => Currency -> TransactionMock -> m ()
-transactionInfoPage cur tr@TransactionMock{..} = divClass "base-container" $ do
-  let thisWidget = Just $ pure $ transactionInfoPage cur tr
+transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) False $ do
   e <- delay 0.1 =<< getPostBuild
   showSuccessMsg $ CSCopied <$ e
-  headerWidget HistoryTITitle thisWidget
   divClass "transaction-info-body" $ do
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIHash
