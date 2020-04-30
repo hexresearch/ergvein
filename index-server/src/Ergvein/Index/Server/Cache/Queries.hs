@@ -6,23 +6,19 @@ import Data.Flat
 import Data.Maybe
 import Database.LevelDB
 import Database.LevelDB.Iterator
+import Conversion
 
 import Ergvein.Index.Server.Cache.Monad
 import Ergvein.Index.Server.Cache.Schema
 import Ergvein.Types.Transaction
 import Ergvein.Index.Server.BlockchainScanning.Types
-import Conversion
+import Ergvein.Index.Server.Cache.Conversions 
 
 import Data.ByteString as BS
 import qualified Data.Serialize as S
 import qualified Data.Map.Strict as Map
 import qualified Database.LevelDB as LDB
 import qualified Database.LevelDB.Streaming as LDBStreaming
-import Debug.Trace
-import Control.Monad.IO.Class
-
-instance Conversion TxInfo TxCacheRec where
-  convert txInfo = TxCacheRec (txHash txInfo) (txHexView txInfo) (txOutputsCount txInfo)
 
 safeEntrySlice :: (MonadLDB m , Ord k, S.Serialize k, Flat v) => BS.ByteString -> k -> m [(k,v)]
 safeEntrySlice startKey endKey = do

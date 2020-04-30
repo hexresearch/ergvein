@@ -30,14 +30,11 @@ import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.Utils
 import Ergvein.Text
 import Database.LevelDB.Internal
-import Conversion
 import Ergvein.Index.Server.DB.Conversions
 
 import qualified Data.Conduit.Internal as DCI
 import qualified Data.Conduit.List as CL
 import qualified Data.Map.Strict as Map
-
-
 
 cacheBlockMetaInfos :: MonadIO m => DB -> [BlockMetaInfo] -> m ()
 cacheBlockMetaInfos db infos = write db def $ putItems keySelector valueSelector infos

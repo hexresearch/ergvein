@@ -26,7 +26,7 @@ candidateInfo schema baseUrl = do
       Https -> getTlsManager
 
   info <- runReaderT (getInfoEndpoint baseUrl ()) connectionManager
-  except $ mapLeft (const PeerConnectionError) info
+  except $ const PeerConnectionError `mapLeft` info
 
 candidateScanValidation :: InfoResponse -> ExceptT PeerValidationResult ServerM ()
 candidateScanValidation candidateInfo = do
@@ -54,4 +54,3 @@ considerPeerCandidate candidate = do
   infoResult <- candidateInfo candidateSchema baseUrl
   candidateScanResult <- candidateScanValidation infoResult
   pure candidateScanResult
-

@@ -37,12 +37,12 @@ import Network.TLS
 import Network.TLS.Extra.Cipher
 
 data ServerEnv = ServerEnv 
-    { envServerConfig      :: !Config
-    , envLogger            :: !(Chan (Loc, LogSource, LogLevel, LogStr))
-    , envPersistencePool   :: !DBPool
-    , envLevelDBContext    :: !DB
+    { envServerConfig       :: !Config
+    , envLogger             :: !(Chan (Loc, LogSource, LogLevel, LogStr))
+    , envPersistencePool    :: !DBPool
+    , envLevelDBContext     :: !DB
     , envBitcoinNodeNetwork :: !HK.Network
-    , envErgoNodeClient    :: !ErgoApi.Client
+    , envErgoNodeClient     :: !ErgoApi.Client
     , envHttpManager        :: !HC.Manager
     , envTlsManager         :: !HC.Manager
     }

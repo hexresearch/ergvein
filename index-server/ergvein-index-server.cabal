@@ -21,6 +21,7 @@ library
     Ergvein.Index.Server.BlockchainScanning.Ergo
     Ergvein.Index.Server.BlockchainScanning.Types
     Ergvein.Index.Server.Cache
+    Ergvein.Index.Server.Cache.Conversions
     Ergvein.Index.Server.Cache.Monad
     Ergvein.Index.Server.Cache.Queries
     Ergvein.Index.Server.Cache.Schema
@@ -94,8 +95,7 @@ library
       , wai-cors                 >= 0.2     &&  < 0.3
       , wai-extra                >= 3.0     &&  < 3.1
       , yaml                     >= 0.11    &&  < 0.12
-      , time
-      , either
+      , either                   >= 5.0     &&  < 5.1
       , ergo-api
       , ergvein-common
       , ergvein-crypto

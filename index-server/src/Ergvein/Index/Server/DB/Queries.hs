@@ -1,24 +1,23 @@
 module Ergvein.Index.Server.DB.Queries where
 
+import Conduit
+import Control.Concurrent
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.Reader
+import Conversion
+import Data.Proxy
 import Data.Word
 import Database.Esqueleto
+import Database.Esqueleto.Pagination
 import Safe 
 
-import Database.Esqueleto.Pagination
 import Ergvein.Index.Server.BlockchainScanning.Types
+import Ergvein.Index.Server.DB.Conversions
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-
-import           Conduit
-import           Control.Concurrent
-import           Control.Monad
-import           Control.Monad.IO.Class
-import           Control.Monad.Reader
-import           Data.Proxy
 
 import qualified Data.Conduit.Internal as DCI
 import qualified Data.Conduit.List as CL
@@ -44,9 +43,7 @@ upsertScannedHeight :: MonadIO m => Currency -> Word64 -> QueryT m (Entity Scann
 upsertScannedHeight currency h = upsert (ScannedHeightRec currency h) [ScannedHeightRecHeight DT.=. h]
 
 insertBlock  :: MonadIO m  => BlockMetaInfo -> QueryT m (Key BlockMetaRec)
-insertBlock block = insert $ blockMetaRec block
-  where
-    blockMetaRec block = BlockMetaRec (blockMetaCurrency block) (blockMetaBlockHeight block) (blockMetaHeaderHashHexView block) (blockMetaAddressFilterHexView block)
+insertBlock block = insert $ convert block
 
 rowsCount :: forall record m . (BackendCompatible SqlBackend (PersistEntityBackend record),
                                 PersistEntity record, MonadIO m)
