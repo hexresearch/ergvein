@@ -27,17 +27,21 @@ import Data.ByteString (ByteString)
 import Data.Default
 import Data.Maybe
 import Data.Time
+import Ergvein.Text
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Native
-import Ergvein.Text
 import GHC.Generics
 import Reflex
+import System.Timeout (timeout)
 
 import qualified Control.Exception.Safe as Ex
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Builder as BB
-import qualified Network.Simple.TCP as N
+import qualified Data.ByteString.Lazy as BSL
+import qualified Data.List as List
+import qualified Network.Socket as N
+import qualified Network.Socket.ByteString as NSB
+import qualified Network.Socket.ByteString.Lazy as NSBL
 
 -- | Possible exceptions when read from socket
 type InboundException = Ex.SomeException
@@ -166,7 +170,7 @@ socket SocketConf{..} = do
         sendThread sock = forever $ do
           msgs <- atomically $ readAllTVar sendChan
           -- logWrite $ "Sending message"
-          N.sendLazy sock . BSL.fromChunks $ msgs
+          sendLazy sock . BSL.fromChunks $ msgs
         conCb (sock, _) = do
           -- logWrite $ "Connected"
           statusFire SocketOperational
@@ -183,7 +187,7 @@ socket SocketConf{..} = do
         Peer host port = _socketConfPeer
     -- logWrite $ "Connecting to " <> showt host <> ":" <> showt port
     statusFire SocketConnecting
-    N.connect host port conCb `Ex.catchAny` closeCb
+    connect host port conCb `Ex.catchAny` closeCb
   pure Socket {
       _socketInbound = inE
     , _socketClosed  = closeE
@@ -194,7 +198,7 @@ socket SocketConf{..} = do
 -- | Exception occured when receiving bytes from socket fails.
 data ReceiveException =
     ReceiveEndOfInput -- ^ Connection was closed from other side
-  | ReceiveInterrupted -- ^ Receiving was interrupted by our side 
+  | ReceiveInterrupted -- ^ Receiving was interrupted by our side
   deriving (Eq, Show, Generic)
 
 instance Ex.Exception ReceiveException
@@ -206,7 +210,7 @@ receiveExactly intVar sock n = go n mempty
     go i acc = do
       needExit <- liftIO . atomically $ readTVar intVar
       when needExit $ Ex.throw ReceiveInterrupted
-      mbs <- N.recv sock i
+      mbs <- recv sock i
       case mbs of
         Nothing -> Ex.throw ReceiveEndOfInput
         Just bs -> let
@@ -221,3 +225,110 @@ readAllTVar chan = go []
       a <- readTChan chan
       empty <- isEmptyTChan chan
       if empty then pure (a : acc) else go (a : acc)
+
+-- * Note
+-- We need to copy some functions from network-simple due problems with
+-- crosscompilation to android. `network-bsd` cannot be linked against it. See
+-- https://github.com/hexresearch/ergvein/issues/346
+
+-- | Connect to a TCP server and use the connection.
+--
+-- The connection socket is shut down and closed when done or in case of
+-- exceptions.
+--
+-- If you prefer to acquire and close the socket yourself, then use
+-- 'connectSock' and 'closeSock'.
+--
+-- Note: The 'N.NoDelay' and 'N.KeepAlive' options are set on the socket.
+connect
+  :: (MonadIO m, Ex.MonadMask m)
+  => N.HostName -- ^ Server hostname or IP address.
+  -> N.ServiceName -- ^ Server service port name or number.
+  -> ((N.Socket, N.SockAddr) -> m r)
+  -- ^ Computation taking the communication socket and the server address.
+  -> m r
+connect host port = Ex.bracket (connectSock host port) (closeSock . fst)
+
+-- | Obtain a 'N.Socket' connected to the given host and TCP service port.
+--
+-- The obtained 'N.Socket' should be closed manually using 'closeSock' when
+-- it's not needed anymore, otherwise you risk having the connection and socket
+-- open for much longer than needed.
+--
+-- Prefer to use 'connect' if you will be using the socket within a limited
+-- scope and would like it to be closed immediately after its usage or in case
+-- of exceptions.
+--
+-- Note: The 'N.NoDelay' and 'N.KeepAlive' options are set on the socket.
+connectSock
+  :: MonadIO m
+  => N.HostName -- ^ Server hostname or IP address.
+  -> N.ServiceName -- ^ Server service port name or number.
+  -> m (N.Socket, N.SockAddr) -- ^ Connected socket and server address.
+connectSock host port = liftIO $ do
+    addrs <- N.getAddrInfo (Just hints) (Just host) (Just port)
+    tryAddrs (happyEyeballSort addrs)
+  where
+    hints :: N.AddrInfo
+    hints = N.defaultHints
+      { N.addrFlags = [N.AI_ADDRCONFIG]
+      , N.addrSocketType = N.Stream }
+    tryAddrs :: [N.AddrInfo] -> IO (N.Socket, N.SockAddr)
+    tryAddrs = \case
+      [] -> fail "Network.Simple.TCP.connectSock: No addresses available"
+      [x] -> useAddr x
+      (x:xs) -> Ex.catch (useAddr x) (\(_ :: IOError) -> tryAddrs xs)
+    useAddr :: N.AddrInfo -> IO (N.Socket, N.SockAddr)
+    useAddr addr = do
+       yx <- timeout 3000000 $ do -- 3 seconds
+          Ex.bracketOnError (newSocket addr) closeSock $ \sock -> do
+             let sockAddr = N.addrAddress addr
+             N.setSocketOption sock N.NoDelay 1
+             N.setSocketOption sock N.KeepAlive 1
+             N.connect sock sockAddr
+             pure (sock, sockAddr)
+       case yx of
+          Nothing -> fail "Network.Simple.TCP.connectSock: Timeout on connect"
+          Just x -> pure x
+
+newSocket :: N.AddrInfo -> IO N.Socket
+newSocket addr = N.socket (N.addrFamily addr)
+                          (N.addrSocketType addr)
+                          (N.addrProtocol addr)
+
+-- | Shuts down and closes the 'N.Socket', silently ignoring any synchronous
+-- exception that might happen.
+closeSock :: MonadIO m => N.Socket -> m ()
+closeSock s = liftIO $ do
+  Ex.catch (Ex.finally (N.shutdown s N.ShutdownBoth)
+                       (N.close s))
+           (\(_ :: Ex.SomeException) -> pure ())
+
+-- | Writes a lazy 'BSL.ByteString' to the socket.
+--
+-- Note: This uses @writev(2)@ on POSIX.
+sendLazy :: MonadIO m => N.Socket -> BSL.ByteString -> m ()
+{-# INLINABLE sendLazy #-}
+sendLazy sock = \lbs -> liftIO (NSBL.sendAll sock lbs)
+
+-- | Read up to a limited number of bytes from a socket.
+--
+-- Returns `Nothing` if the remote end closed the connection or end-of-input was
+-- reached. The number of returned bytes might be less than the specified limit,
+-- but it will never 'BS.null'.
+recv :: MonadIO m => N.Socket -> Int -> m (Maybe BS.ByteString)
+recv sock nbytes = liftIO $ do
+  bs <- liftIO (NSB.recv sock nbytes)
+  if BS.null bs
+     then pure Nothing
+     else pure (Just bs)
+{-# INLINABLE recv #-}
+
+-- | Given a list of 'N.AddrInfo's, reorder it so that ipv6 and ipv4 addresses,
+-- when available, are intercalated, with a ipv6 address first.
+happyEyeballSort :: [N.AddrInfo] -> [N.AddrInfo]
+happyEyeballSort l =
+    concat (List.transpose ((\(a,b) -> [a,b]) (List.partition isIPv6addr l)))
+
+isIPv6addr :: N.AddrInfo -> Bool
+isIPv6addr x = N.addrFamily x == N.AF_INET6

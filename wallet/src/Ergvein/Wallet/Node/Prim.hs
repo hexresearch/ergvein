@@ -12,6 +12,16 @@ module Ergvein.Wallet.Node.Prim
   , Host
   , Port
   , nodeString
+  -- * Command message to a node
+  , NodeMessage(..)
+  -- * Generalized request-response types
+  , NodeReqG(..)
+  , NodeRespG(..)
+  -- * Currency types
+  , BTCType(..)
+  , NodeERG(..)
+  , NodeBTC
+  , ERGOType
   ) where
 
 import Data.Aeson
@@ -44,9 +54,6 @@ data NodeConnection t cur = NodeConnection {
 , nodeconStatus     :: !(ExternalRef t (Maybe NodeStatus))
 , nodeconOpensE     :: !(Event t ())
 , nodeconCloseE     :: !(Event t ())
-, nodeconCloseFire  :: !(IO ())
-, nodeconRestart    :: !(IO ())
-, nodeconReqFire    :: !(NodeReq cur -> IO ())
 , nodeconRespE      :: !(Event t (NodeResp cur))
 , nodeconExtra      :: !(NodeSpecific cur)
 , nodeconIsUp       :: !(Dynamic t Bool)
@@ -69,3 +76,14 @@ type Port = Int
 -- | Node string for logging
 nodeString :: Currency -> BaseUrl -> Text
 nodeString cur BaseUrl{..} = "[" <> showt cur <> "]<" <> pack baseUrlHost <> ":" <> showt baseUrlPort <> ">: "
+
+data BTCType = BTCType
+type NodeBTC t = NodeConnection t BTCType
+
+data ERGOType = ERGOType
+type NodeERG t = NodeConnection t ERGOType
+
+data NodeReqG = NodeReqBTC (NodeReq BTCType) | NodeReqERGO (NodeReq ERGOType)
+data NodeRespG = NodeRespBTC (NodeResp BTCType) | NodeRespERGO (NodeResp ERGOType)
+
+data NodeMessage = NodeMsgRestart | NodeMsgClose | NodeMsgReq NodeReqG

@@ -33,9 +33,9 @@ import Ergvein.Wallet.Native
 --   Returns Nothing if the blockhash is not found in the inventory
 requestBTCBlockNode :: MonadFront t m => NodeBTC t -> Event t BlockHash -> m (Event t (Maybe Block))
 requestBTCBlockNode node@NodeConnection{..} bhE = do
-  -- Send a request when the connection is established
+  -- Send a request once the connection is established
   requestNodeWait node $ ffor bhE $ \bh ->
-    MGetData $ GetData [InvVector InvBlock $ getBlockHash bh]
+    NodeReqBTC $ MGetData $ GetData [InvVector InvBlock $ getBlockHash bh]
   fmap switchDyn $ widgetHold (pure never) $ ffor bhE $ \bh -> do
     let respE = fforMaybe nodeconRespE $ \case
           MBlock blk -> if headerHash (blockHeader blk) == bh   -- Check if it's the block we asked for
@@ -94,9 +94,9 @@ requestBTCBlockRN reqE = do
 requestBTCBlocksWait :: MonadFront t m => NodeBTC t -> Event t [BlockHash] -> m (Event t [Block])
 requestBTCBlocksWait node reqE = do
   let respE = nodeconRespE node
-  -- Send a request when the connection is established
+  -- Send a request once the connection is established
   requestNodeWait node $ ffor reqE $ \bhs ->
-    MGetData $ GetData $ fmap (InvVector InvBlock . getBlockHash) bhs
+    NodeReqBTC $ MGetData $ GetData $ fmap (InvVector InvBlock . getBlockHash) bhs
   fmap switchDyn $ widgetHold (pure never) $ ffor reqE $ \bhs -> do
     let updE = fforMaybe respE $ \case
           MBlock blk -> let
@@ -139,9 +139,9 @@ requestBTCBlocksWaitRN reqE = do
 requestBTCBlocksListen :: MonadFront t m => NodeBTC t -> Event t [BlockHash] -> m (Event t Block)
 requestBTCBlocksListen node reqE = do
   let respE = nodeconRespE node
-  -- Send a request when the connection is established
+  -- Send a request once the connection is established
   requestNodeWait node $ ffor reqE $ \bhs ->
-    MGetData $ GetData $ fmap (InvVector InvBlock . getBlockHash) bhs
+    NodeReqBTC $ MGetData $ GetData $ fmap (InvVector InvBlock . getBlockHash) bhs
   fmap switchDyn $ widgetHold (pure never) $ ffor reqE $ \bhs -> do
     pure $ fforMaybe respE $ \case
       MBlock blk -> let bh = headerHash $ blockHeader blk

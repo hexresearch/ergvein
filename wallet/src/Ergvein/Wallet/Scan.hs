@@ -13,6 +13,7 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
+import Ergvein.Wallet.Blocks.BTC
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
@@ -77,7 +78,7 @@ scanCurrency currency currencyPubStorage = mdo
   newKeystoreD <- foldDyn (addXPubKeyToKeystore External) emptyPubKeystore nextKeyE
   newTxsD <- foldDyn M.union txs getTxsE
   filterAddressE <- filterAddress ((\(i, pk) -> egvXPubKeyToEgvAddress pk) <$> nextKeyE)
-  getBlocksE <- getBlocks filterAddressE
+  getBlocksE <- requestBTCBlocksWaitRN filterAddressE
   getTxsE <- getTxs getBlocksE
   let pubKeystore = _currencyPubStorage'pubKeystore currencyPubStorage
       txs = _currencyPubStorage'transactions currencyPubStorage
