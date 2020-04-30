@@ -74,14 +74,15 @@ scanCurrency currency currencyPubStorage = mdo
   nextE <- delay 0 (leftmost [newE, buildE])
   gapD <- holdDyn 0 gapE
   nextKeyIndexD <- count nextKeyE
-  newKeystoreD <- foldDyn (addXPubKeyToKeystore External) keystore nextKeyE
+  newKeystoreD <- foldDyn (addXPubKeyToKeystore External) emptyPubKeystore nextKeyE
   newTxsD <- foldDyn M.union txs getTxsE
-  filterAddressE <- filterAddress nextKeyE
-  getBlockE <- getBlocks filterAddressE
-  getTxsE <- getTxs getBlockE
-  let keystore = _currencyPubStorage'pubKeystore currencyPubStorage
+  filterAddressE <- filterAddress ((\(i, pk) -> egvXPubKeyToEgvAddress pk) <$> nextKeyE)
+  getBlocksE <- getBlocks filterAddressE
+  getTxsE <- getTxs getBlocksE
+  let pubKeystore = _currencyPubStorage'pubKeystore currencyPubStorage
       txs = _currencyPubStorage'transactions currencyPubStorage
-      masterPubKey = pubKeystore'master keystore
+      masterPubKey = pubKeystore'master pubKeystore
+      emptyPubKeystore = PubKeystore masterPubKey MI.empty MI.empty
       newE = flip push getTxsE $ \txs -> do
         gap <- sampleDyn gapD
         pure $ if null txs && gap >= gapLimit then Nothing else Just ()
@@ -116,47 +117,52 @@ waitFilters c e = mdo
       (Just a, True) -> Just a
       _ -> Nothing
 
--- | Gets a list of block hashes containing transactions related to provided extended public key.
-filterAddress :: MonadFront t m => Event t (Int, EgvXPubKey) -> m (Event t (EgvXPubKey, [HB.BlockHash]))
-filterAddress pubKeyE = performFork $ ffor pubKeyE $ \(_, pubKey) -> do
-  let address = egvXPubKeyToEgvAddress pubKey
-  bhs <- Filters.filterAddress address
-  pure (pubKey, bhs)
+-- | Gets a list of block hashes containing transactions related to provided address.
+filterAddress :: MonadFront t m => Event t EgvAddress -> m (Event t (EgvAddress, [HB.BlockHash]))
+filterAddress addrE = performFork $ ffor addrE $ \addr -> do
+  bhs <- Filters.filterAddress addr
+  pure(addr, bhs)
 
 -- FIXME
-getBlocks :: MonadFront t m => Event t (EgvXPubKey, [HB.BlockHash]) -> m (Event t (EgvXPubKey, [HB.Block]))
+getBlocks :: MonadFront t m => Event t (EgvAddress, [HB.BlockHash]) -> m (Event t (EgvAddress, [HB.Block]))
 getBlocks blockHashesE = pure $ getBlocksMock <$> blockHashesE
-  where getBlocksMock (pubKey, bhs) = if null bhs
-          then (pubKey, [])
-          else (pubKey, [HB.genesisBlock $ getBtcNetwork $ getCurrencyNetwork BTC])
+  where getBlocksMock (addr, bhs) = if null bhs
+          then (addr, [])
+          else (addr, [HB.genesisBlock $ getBtcNetwork $ getCurrencyNetwork BTC])
 
--- FIXME
-getTxs :: MonadFront t m => Event t (EgvXPubKey, [HB.Block])-> m (Event t (M.Map TxId EgvTx))
-getTxs blocksE = pure $ getTxsMock <$> blocksE
-  where getTxsMock (pubKey, blocks) = if null blocks then M.empty else M.empty
+-- | Gets transactions related to provided address from provided block list.
+getTxs :: MonadFront t m => Event t (EgvAddress, [HB.Block]) -> m (Event t (M.Map TxId EgvTx))
+getTxs blocksE = pure $ ffor blocksE(\(addr, blocks) -> do
+  if null blocks
+    then pure $ M.empty
+    else do
+      txMaps <- traverse (getAddrTxsFromBlock addr) blocks
+      pure $ foldr M.union M.empty txMaps
 
 -- | Gets transactions related to provided address from provided block.
-getAddrTxsFromBlock :: EgvXPubKey -> HB.Block -> M.Map TxId EgvTx
-getAddrTxsFromBlock pubKey block = M.fromList [(HT.txHashToHex $ HT.txHash tx, BtcTx tx) | tx <- txs]
-  where txs = filter (addrTx pubKey) (HB.blockTxns block)
+getAddrTxsFromBlock :: HasStorage m => EgvAddress -> HB.Block -> m (M.Map TxId EgvTx)
+getAddrTxsFromBlock addr block = M.fromList [(HT.txHashToHex $ HT.txHash tx, BtcTx tx) | tx <- txs]
+  where txs = filter (addrTx addr) (HB.blockTxns block)
 
 -- | Checks given tx if there are some inputs or outputs containing provided address.
-addrTx :: EgvXPubKey -> HT.Tx -> Bool
-addrTx pubKey tx = addrTxIn (egvXPubKeyToEgvAddress pubKey) (HT.txIn tx) ||
-                   addrTxOut (egvXPubKeyToEgvAddress pubKey) (HT.txOut tx) ||
-                   addrWitness pubKey (HT.txWitness tx, HT.txOut tx)
+addrTx :: EgvAddress -> HT.Tx -> m Bool
+addrTx addr tx = addrTxIn addr (HT.txIn tx) || addrTxOut addr (HT.txOut tx)
   where addrTxIn addr txInputs = foldr (||) False [checkTxIn addr txIn | txIn <- txInputs]
-        addrTxOut addr txOutputs = foldr (||) False [checkTxO addr txO | txO <- txOutputs]
-        addrWitness pubKey (witnessStacks, txOutputs) =
-          foldr (||) False [checkWitnessSatck pubKey stacksAndOutputs | stacksAndOutputs <- zip witnessStacks txOutputs]
+        addrTxOut addr txOutputs = foldr (||) False [checkTxOut addr txO | txO <- txOutputs]
 
 -- | Checks given TxIn wheather it contains given address.
+-- Native SegWit addresses are not presented in TxIns scriptSig.
 checkTxIn :: EgvAddress -> HT.TxIn -> Bool
-checkTxIn addr txIn = False -- Native SegWit addresses are not presented in TxIns scriptSig
+checkTxIn addr txIn = do
+  let prevOutput = HT.prevOutput txIn
+      txHash = HT.outPointHash prevOutput
+      outputIndex = HT.outPointIndex prevOutput
+  -- prevTx <- getTxById txHash
+  pure False
 
 -- | Checks given TxOut wheather it contains given address.
-checkTxO :: EgvAddress -> HT.TxOut -> Bool
-checkTxO (BtcAddress (HA.WitnessPubKeyAddress pkh)) txO = case HS.decodeOutputBS $ HT.scriptOutput txO of
+checkTxOut :: EgvAddress -> HT.TxOut -> Bool
+checkTxOut (BtcAddress (HA.WitnessPubKeyAddress pkh)) txO = case HS.decodeOutputBS $ HT.scriptOutput txO of
   Left _ -> False -- TODO: show error here somehow?
   Right output -> case output of
     HS.PayWitnessPKHash h -> if h == pkh then True else False
@@ -166,13 +172,3 @@ checkTxO (BtcAddress (HA.WitnessScriptAddress pkh)) txO = case HS.decodeOutputBS
   Right output -> case output of
     HS.PayWitnessScriptHash h -> if h == pkh then True else False
     _ -> False
-
-checkWitnessSatck :: EgvXPubKey -> (HT.WitnessStack, HT.TxOut) -> Bool
-checkWitnessSatck pubKey (ws, txO) = case HS.decodeOutputBS $ HT.scriptOutput txO of
-  Left _ -> False -- TODO: show error here somehow?
-  Right output -> case HTS.viewWitnessProgram (getBtcNetwork $ getCurrencyNetwork BTC) output ws of
-    Left _ -> False -- TODO: show error here somehow?
-    Right wp -> case wp of
-      HTS.EmptyWitnessProgram -> False
-      HTS.P2WPKH wp -> if wrapPubKey True (xPubKey $ egvXPubKey pubKey) == HTS.witnessPubKey wp then True else False
-      HTS.P2WSH wp -> False -- TODO: Parse witness here
