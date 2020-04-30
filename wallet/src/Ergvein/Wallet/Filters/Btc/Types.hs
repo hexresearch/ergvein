@@ -13,7 +13,9 @@ import Network.Haskoin.Crypto
 
 import Ergvein.Filters.Btc
 import Ergvein.Types.Block
+import Ergvein.Types.Currency
 import Ergvein.Wallet.Codec()
+import Ergvein.Wallet.Platform
 
 filtersDbName :: String
 filtersDbName = "btcfilters"
@@ -31,6 +33,11 @@ initBtcDbs = do
   hdb <- getBtcHeightsDb
   tdb <- getBtcTotalDb
   tdb `seq` hdb `seq` fdb `seq` pure ()
+  mtotal <- get tdb ()
+  let h = filterStartingHeight BTC
+  case mtotal of
+    Nothing -> put tdb () $ Just h
+    Just v -> if h > v then put tdb () $ Just h else pure ()
 
 getBtcFiltersDb :: Mode mode => Transaction mode (Database BlockHash ByteString)
 getBtcFiltersDb = getDatabase $ Just filtersDbName
