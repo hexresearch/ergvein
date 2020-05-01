@@ -388,6 +388,9 @@ balancesPageCss = do
     paddingRight $ rem 0.5
   ".currency-unit" ? do
     paddingRight $ rem 0.5
+  ".canvas-container" ? do
+    marginLeft $ px 120
+    marginTop $ px 50 
 
 sendPageCss :: Css
 sendPageCss = do
@@ -674,6 +677,9 @@ selectCss = do
   "option" ? do
     fontSize $ pt 18
     height   $ em 1.8
+  ".select-fiat" ? do
+    margin auto auto auto auto
+    width $ px 200
 
 buttonsToggleCss :: Css
 buttonsToggleCss = do

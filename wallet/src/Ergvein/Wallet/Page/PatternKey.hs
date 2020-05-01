@@ -4,6 +4,7 @@ module Ergvein.Wallet.Page.PatternKey(
   , patternAskWidget
   , patternSave
   , patternSaveWidget
+  , porfolioCanvas
 #ifdef ANDROID
   , loadCounter
   , saveCounter
@@ -367,3 +368,27 @@ lastSquarePosition (Clear, _) = (Clear,(0,0))
 lastSquarePosition (AddSquare,lst) = if null lst
   then (AddSquare,(0,0))
   else (AddSquare,lastSquareCenter lst)
+
+
+porfolioCanvas :: MonadFrontBase t m => m ()
+porfolioCanvas = divClass "canvas-container" $ mdo
+  buildE <- delay 0.1 =<< getPostBuild
+  canvasEl <- createCanvas cOpts
+  let elP = elementPosition $ _element_raw canvasEl
+      prepCoord (x,y) = fmap (\(a,b)-> (a, b)) $ fmap (\ClientRect{..} -> ((fromIntegral x) - crLeft, (fromIntegral y) - crTop)) elP
+      prepTCoord TouchEventResult{..} = fmap (\(a,b)-> (a, b)) $ fmap (\ClientRect{..} -> ((fromIntegral (_touchResult_screenX (head _touchEventResult_touches))) - crLeft, (fromIntegral (_touchResult_screenY (head _touchEventResult_touches)) - crTop - 35))) elP
+      tmoveE = domEvent Touchmove canvasEl
+      tdownE  = domEvent Touchstart canvasEl
+      tupE    = domEvent Touchend canvasEl
+      pressedE = leftmost [Pressed <$ tdownE, Unpressed <$ tupE]
+  tmovePrE <- performEvent $ ffor tmoveE prepTCoord
+  tdownPrE <- performEvent $ ffor tdownE prepTCoord
+  tupPrE   <- performEvent $ ffor tupE   prepTCoord
+  touchD <- holdDyn Unpressed pressedE
+  performEvent_ $ ffor buildE $ \_ -> do
+    rawJSCall (_element_raw canvasEl) $ drawRndT canvasW canvasH [0.6,0.4]
+  pure $ ()
+    where
+      canvasH = 240
+      canvasW = 240
+      cOpts = CanvasOptions canvasW canvasH "pattern" "pattern"

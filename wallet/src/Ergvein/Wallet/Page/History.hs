@@ -113,12 +113,10 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
 
       copyDiv copyD txt = divButton "info-hash-andr info-andr-element" $ do
         expDiv copyD txt
-        divClass "info-copy-button" $ text $ "⎘"
+        divClass "info-copy-button" $ text $ ""
 #else
 transactionInfoPage :: MonadFront t m => Currency -> TransactionMock -> m ()
 transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) False $ do
-  e <- delay 0.1 =<< getPostBuild
-  showSuccessMsg $ CSCopied <$ e
   divClass "transaction-info-body" $ do
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIHash

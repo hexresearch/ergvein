@@ -141,6 +141,7 @@ library
                         UndecidableInstances
     build-depends:
         aeson -any,
+        aeson-lens -any,
         async -any,
         base -any,
         base64-bytestring >=1 && <1.0.0.3,
@@ -206,7 +207,8 @@ library
         lmdb-simple >= 0.4 && < 0.5,
         serialise >= 0.2 && < 0.3,
         tls -any,
-        connection -any
+        connection -any,
+        wreq -any
 
     if flag(android)
         cpp-options: -DANDROID

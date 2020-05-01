@@ -49,6 +49,8 @@ data Settings = Settings {
 , settingsReqUrlNum         :: (Int, Int) -- ^ First is minimum required answers. Second is sufficient amount of answers from indexers.
 , settingsActUrlNum         :: Int
 , settingsNodes             :: M.Map Currency [BaseUrl]
+, settingsPortfolio         :: Bool
+, settingsFiatCurr          :: Fiat
 } deriving (Eq, Show)
 
 
@@ -73,6 +75,8 @@ instance FromJSON Settings where
             (Just [], Just [], Just []) -> (defaultIndexers, [], [])
             _ -> (fromMaybe [] mActiveUrls, fromMaybe [] mDeactivatedUrls, fromMaybe [] mPassiveUrls)
     settingsNodes             <- o .:? "nodes" .!= defaultNodes
+    settingsPortfolio         <- o .:? "portfolio" .!= False
+    settingsFiatCurr          <- o .:? "fiatCurr"  .!= USD
     pure Settings{..}
 
 instance ToJSON Settings where
@@ -89,6 +93,8 @@ instance ToJSON Settings where
     , "reqUrlNum"         .= toJSON settingsReqUrlNum
     , "actUrlNum"         .= toJSON settingsActUrlNum
     , "nodes"             .= toJSON settingsNodes
+    , "portfolio"         .= toJSON settingsPortfolio
+    , "fiatCurr"          .= toJSON settingsFiatCurr
    ]
 
 defaultIndexers :: [BaseUrl]
@@ -137,6 +143,8 @@ defaultSettings home =
       , settingsReqUrlNum         = defaultIndexersNum
       , settingsActUrlNum         = defaultActUrlNum
       , settingsNodes             = defaultNodes
+      , settingsPortfolio         = False
+      , settingsFiatCurr          = USD
       }
 
 -- | TODO: Implement some checks to see if the configPath folder is ok to write to

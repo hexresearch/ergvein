@@ -18,6 +18,7 @@ import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Settings
+import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Currencies
@@ -33,6 +34,7 @@ data SubPageSettings
   | GoCurrencies
   | GoUnits
   | GoNetwork
+  | GoPortfolio
 
 settingsPage :: MonadFront t m => m ()
 settingsPage = wrapper STPSTitle (Just $ pure settingsPage) True $ do
@@ -41,6 +43,7 @@ settingsPage = wrapper STPSTitle (Just $ pure settingsPage) True $ do
     goCurrE   <- fmap (GoCurrencies <$) $ outlineButton STPSButActiveCurrs
     goNetE    <- fmap (GoNetwork    <$) $ outlineButton STPSButNetwork
     goUnitsE  <- fmap (GoUnits      <$) $ outlineButton STPSButUnits
+    goUnitsE  <- fmap (GoPortfolio  <$) $ outlineButton STPSButPortfolio
     let goE = leftmost [goLangE, goCurrE, goNetE, goUnitsE]
     void $ nextWidget $ ffor goE $ \spg -> Retractable {
         retractableNext = case spg of
@@ -48,6 +51,7 @@ settingsPage = wrapper STPSTitle (Just $ pure settingsPage) True $ do
           GoCurrencies -> currenciesPage
           GoNetwork    -> networkSettingsPage
           GoUnits      -> unitsPage
+          GoPortfolio  -> portfolioPage
       , retractablePrev = Just $ pure settingsPage
       }
 
@@ -117,3 +121,41 @@ unitsPage = wrapper STPSTitle (Just $ pure unitsPage) True $ mdo
       fmap updated $ holdUniqDyn selD
 
     getSettingsUnits = fromMaybe defUnits . settingsUnits
+
+
+portfolioPage :: MonadFront t m => m ()
+portfolioPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
+  h3 $ localizedText STPSSetsPortfolio
+  divClass "initial-options" $ mdo
+    settings <- getSettings
+    let sFC = settingsFiatCurr settings
+    let sP  = settingsPortfolio settings
+    divClass "select-currencies-title" $ h4 $ localizedText STPSSetsPortfolioEnable
+    portD <- holdDyn (settingsPortfolio settings) $ poke pbtnE $ \_ -> do
+       portS <- sampleDyn portD
+       pure $ not portS
+    pbtnE <- divButton (fmap toggled portD) $ widgetHoldDyn $ ffor portD $ \pS ->
+      if pS
+        then localizedText CSOn
+        else localizedText CSOff
+    updateSettings $ ffor (updated portD) (\portS -> settings {settingsPortfolio = portS})
+    divClass "select-currencies-title" $ h4 $ localizedText STPSSetsFiatSelect
+    fiatE <- fiatDropdown sFC allFiats
+    updateSettings $ ffor fiatE (\fiat -> settings {settingsFiatCurr = fiat})
+    pure ()
+  where
+    toggled b = if b
+      then "button button-on"
+      else "button button-off"
+
+    fiatDropdown val allFiats = do
+      let fiatD = constDyn val
+      initKey <- sample . current $ fiatD
+      let listFiatsD = constDyn $ Map.fromList $ fmap (\f -> (f, showt f)) allFiats
+          ddnCfg = DropdownConfig {
+                _dropdownConfig_setValue   = updated fiatD
+              , _dropdownConfig_attributes = constDyn ("class" =: "select-lang")
+              }
+      dp <- divClass "select-fiat" $ dropdown initKey listFiatsD ddnCfg
+      let selD = _dropdown_value dp
+      fmap updated $ holdUniqDyn selD
