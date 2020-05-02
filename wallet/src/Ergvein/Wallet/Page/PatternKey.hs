@@ -4,7 +4,7 @@ module Ergvein.Wallet.Page.PatternKey(
   , patternAskWidget
   , patternSave
   , patternSaveWidget
-  , porfolioCanvas
+  , portfolioWidget
 #ifdef ANDROID
   , loadCounter
   , saveCounter
@@ -370,8 +370,8 @@ lastSquarePosition (AddSquare,lst) = if null lst
   else (AddSquare,lastSquareCenter lst)
 
 
-porfolioCanvas :: MonadFrontBase t m => m ()
-porfolioCanvas = divClass "canvas-container" $ mdo
+portfolioWidget :: MonadFrontBase t m => m ()
+portfolioWidget = divClass "canvas-container" $ mdo
   buildE <- delay 0.1 =<< getPostBuild
   canvasEl <- createCanvas cOpts
   let elP = elementPosition $ _element_raw canvasEl

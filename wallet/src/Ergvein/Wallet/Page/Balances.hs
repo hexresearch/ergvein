@@ -59,7 +59,7 @@ currenciesList name = divClass "currency-content" $ do
   historyE <- leftmost <$> traverse (currencyLine s) (getActiveCurrencies s)
   let lP = settingsPortfolio s
   if lP
-    then porfolioCanvas
+    then portfolioWidget
     else pure ()
 --  r <- liftIO $ get tempErgoUrl
 --  let f = r ^? responseBody . key "tickers" . _String
