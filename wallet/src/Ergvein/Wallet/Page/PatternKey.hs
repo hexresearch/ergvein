@@ -393,7 +393,7 @@ porfolioCanvas = divClass "canvas-container" $ mdo
   performEvent_ $ ffor (updated ringD) $ \lst -> do
     rawJSCall (_element_raw canvasEl) $ drawRndHovT canvasW canvasH lst
   performEvent_ $ ffor buildE $ \_ -> do
-    rawJSCall (_element_raw canvasEl) $ drawRndT canvasW canvasH [0.6,0.4]
+    rawJSCall (_element_raw canvasEl) $ drawRndHovT canvasW canvasH [(0.6,Unhovered),(0.4,Unhovered)]
   pure $ ()
     where
       canvasH = 240
