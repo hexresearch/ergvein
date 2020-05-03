@@ -14,7 +14,7 @@ module Ergvein.Wallet.Util(
 import Control.Monad.Except
 import Reflex.Dom
 
-import Ergvein.Wallet.Monad.Front
+import Ergvein.Wallet.Monad.Base
 
 -- | Same as 'widgetHold' but for dynamic
 widgetHoldDyn :: forall t m a . (DomBuilder t m, MonadHold t m) => Dynamic t (m a) -> m (Dynamic t a)
@@ -41,7 +41,7 @@ check :: MonadError a m => a -> Bool -> m ()
 check a False = throwError a
 check _ True = pure ()
 
-dbgPrintE :: (MonadFrontBase t m, Show a) => Event t a -> m ()
+dbgPrintE :: (MonadWidget t m, Show a) => Event t a -> m ()
 dbgPrintE = performEvent_ . fmap (liftIO . print)
 
 eventToNextFrame :: MonadWidget t m => Event t a -> m (Event t a)

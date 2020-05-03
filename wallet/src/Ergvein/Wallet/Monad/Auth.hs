@@ -33,6 +33,7 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Filters.Loader
 import Ergvein.Wallet.Filters.Storage
@@ -55,8 +56,12 @@ import Ergvein.Wallet.Worker.Info
 import qualified Control.Immortal as I
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Map.Strict as M
+import qualified Data.Dependent.Map as DM
 import qualified Data.Set as S
 import qualified Data.List as L
+import Data.Functor.Identity (Identity)
+import Control.Monad.Random
+import Data.Functor.Misc
 
 data Env t = Env {
   -- Unauth context's fields
@@ -78,6 +83,7 @@ data Env t = Env {
 , env'manager         :: !(MVar Manager)
 , env'headersStorage  :: !HeadersStorage
 , env'filtersStorage  :: !FiltersStorage
+, env'blocksStorage   :: !BlocksStorage
 , env'syncProgress    :: !(ExternalRef t SyncProgress)
 , env'heightRef       :: !(ExternalRef t (Map Currency Integer))
 , env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
@@ -89,6 +95,8 @@ data Env t = Env {
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
 , env'indexersEF      :: !(Event t (), IO ())
 , env'nodeConsRef     :: !(ExternalRef t (ConnMap t))
+, env'nodeReqSelector :: !(RequestSelector t)
+, env'nodeReqFire     :: !(Map Currency (Map BaseUrl NodeMessage) -> IO ())
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -104,6 +112,10 @@ instance Monad m => HasHeadersStorage (ErgveinM t m) where
 instance Monad m => HasFiltersStorage (ErgveinM t m) where
   getFiltersStorage = asks env'filtersStorage
   {-# INLINE getFiltersStorage #-}
+
+instance Monad m => HasBlocksStorage (ErgveinM t m) where
+  getBlocksStorage = asks env'blocksStorage
+  {-# INLINE getBlocksStorage #-}
 
 instance MonadIO m => HasClientManager (ErgveinM t m) where
   getClientMaganer = liftIO . readMVar =<< asks env'manager
@@ -201,9 +213,15 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getSyncProgressRef #-}
   getSyncProgress = externalRefDynamic =<< asks env'syncProgress
   {-# INLINE getSyncProgress #-}
-  setSyncProgress ev = do
-    ref <- asks env'syncProgress
-    performEvent_ $ writeExternalRef ref <$> ev
+  setSyncProgress spE = do
+    syncProgRef <- asks env'syncProgress
+    syncRef <- asks env'filtersSyncRef
+    performEvent_ $ ffor spE $ \sp -> do
+      writeExternalRef syncProgRef sp
+      case sp of
+        SyncMeta cur SyncFilters a t -> when (a >= t && t /= 0) $
+          modifyExternalRef syncRef $ \m -> (,()) $ M.insert cur True m
+        _ -> pure ()
   {-# INLINE setSyncProgress #-}
   getHeightRef = asks env'heightRef
   {-# INLINE getHeightRef #-}
@@ -216,6 +234,7 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
     nodeRef     <- asks env'nodeConsRef
     settingsRef <- asks env'settings
     authRef     <- asks env'authRef
+    sel         <- asks env'nodeReqSelector
     fmap updated $ widgetHold (pure ()) $ ffor updE $ \f -> do
       (diffMap, newcs) <- modifyExternalRef curRef $ \cs -> let
         cs' = f cs
@@ -233,7 +252,7 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
 
       writeExternalRef settingsRef set'
       storeSettings set'
-      writeExternalRef nodeRef =<< reinitNodes urls diffMap =<< readExternalRef nodeRef
+      writeExternalRef nodeRef =<< reinitNodes urls diffMap sel =<< readExternalRef nodeRef
 
   {-# INLINE updateActuveCurs #-}
   getAuthInfo = externalRefDynamic =<< asks env'authRef
@@ -247,6 +266,16 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getNodesByCurrencyD #-}
   getNodeConnectionsD = externalRefDynamic =<< asks env'nodeConsRef
   {-# INLINE getNodeConnectionsD #-}
+  requestFromNode reqE = do
+    nodeReqFire <- asks env'nodeReqFire
+    performFork_ $ ffor reqE $ \(u, req) ->
+      let cur = case req of
+            NodeReqBTC  _ -> BTC
+            NodeReqERGO _ -> ERGO
+      in liftIO . nodeReqFire $ M.singleton cur $ M.singleton u $ NodeMsgReq req
+  {-# INLINE requestFromNode #-}
+  getNodeRequestSelector = asks env'nodeReqSelector
+  {-# INLINE getNodeRequestSelector #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
@@ -319,27 +348,32 @@ liftAuth ma0 ma = mdo
         (indexersE, indexersF) <- newTriggerEvent
 
         -- Create data for Auth context
+        (reqE, reqFire) <- newTriggerEvent
+        let sel = fanMap reqE -- Node request selector :: RequestSelector t
+
         managerRef      <- liftIO newEmptyMVar
         activeCursRef   <- newExternalRef acurs
         headersStore    <- liftIO $ runReaderT openHeadersStorage (settingsStoreDir settings)
         syncRef         <- newExternalRef Synced
         filtersStore    <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
+        blocksStore     <- liftIO $ runReaderT openBlocksStorage (settingsStoreDir settings)
         heightRef       <- newExternalRef mempty
         fsyncRef        <- newExternalRef mempty
-        consRef         <- newExternalRef =<< initializeNodes nodes
+        consRef         <- newExternalRef =<< initializeNodes sel nodes
         -- headersLoader
         let env = Env
               settingsRef backEF loading langRef storeDir alertsEF logsTrigger logsNameSpaces uiChan passModalEF passSetEF
-              authRef (logoutFire ()) activeCursRef managerRef headersStore filtersStore syncRef heightRef fsyncRef
+              authRef (logoutFire ()) activeCursRef managerRef headersStore filtersStore blocksStore syncRef heightRef fsyncRef
               urlsArchive inactiveUrls activeUrlsRef reqUrlNumRef actUrlNumRef timeoutRef (indexersE, indexersF ())
-              consRef
+              consRef sel reqFire
+
+        runOnUiThreadM $ runReaderT setupTlsManager env
 
         flip runReaderT env $ do -- Workers and other routines go here
           filtersLoader
           infoWorker
-          -- heightAsking
+          heightAsking
           pure ()
-        runOnUiThreadM $ runReaderT setupTlsManager env
         runReaderT (wrapped ma) env
   let
     ma0' = maybe ma0 runAuthed mauth0
@@ -479,7 +513,7 @@ pingIndexerIO mng url = liftIO $ do
   t1 <- getCurrentTime
   case res of
     Left err -> do
-      logWrite $ "[InfoWorker][" <> T.pack (showBaseUrl url) <> "]: " <> showt err
+      logWrite $ "[pingIndexerIO][" <> T.pack (showBaseUrl url) <> "]: " <> showt err
       pure $ (url, Nothing)
     Right (InfoResponse vals) -> let
       curmap = M.fromList $ fmap (\(ScanProgressItem cur sh ah) -> (cur, (sh, ah))) vals

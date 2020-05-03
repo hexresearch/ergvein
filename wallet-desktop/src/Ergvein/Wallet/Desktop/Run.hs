@@ -5,6 +5,9 @@ module Ergvein.Wallet.Desktop.Run(
 
 import Ergvein.Wallet.Run
 import Ergvein.Wallet.Run.Callbacks
+import Control.Monad
+import Control.Concurrent
+import Data.Function
 
 #if defined(MIN_VERSION_jsaddle_warp)
 import Data.Maybe (maybe)
@@ -18,6 +21,10 @@ instance PlatformRun where
     port <- maybe 3003 read <$> lookupEnv "JSADDLE_WARP_PORT"
     putStrLn $ "Running jsaddle-warp server on port " <> show port
     cbs <- noOpRunCallbacks
+    void . forkIO $ fix $ \next -> do
+      io <- readChan $ runUiCallbacks cbs
+      io
+      next
     JW.run port $ jsm cbs
 #elif defined(MIN_VERSION_jsaddle_wkwebview)
 #if defined(ios_HOST_OS)
@@ -37,6 +44,10 @@ instance PlatformRun where
         return ""
       Just p -> return $ "file://" <> p <> "/index.html"
     cbs <- noOpRunCallbacks
+    void . forkIO $ fix $ \next -> do
+      io <- readChan $ runUiCallbacks cbs
+      io
+      next
     run' def $ jsaddleMainHTMLWithBaseURL indexHtml baseUrl $ jsm cbs
 #else
 import qualified Language.Javascript.JSaddle.WKWebView as WB (run)
@@ -52,5 +63,9 @@ import Language.Javascript.JSaddle.Types
 instance PlatformRun where
   run jsm = do
     cbs <- noOpRunCallbacks
+    void . forkIO $ fix $ \next -> do
+      io <- readChan $ runUiCallbacks cbs
+      io
+      next
     WB.run $ jsm cbs
 #endif

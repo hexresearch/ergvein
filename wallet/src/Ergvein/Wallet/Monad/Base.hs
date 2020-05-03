@@ -38,9 +38,8 @@ import Servant.Client(BaseUrl)
 import Foreign.JavaScript.TH (WithJSContextSingleton)
 import Reflex.Spider.Internal (SpiderHostFrame, Global)
 
-instance MonadRandom m => MonadRandom (ReaderT e m) where
-  getRandomBytes = lift . getRandomBytes
-  {-# INLINE getRandomBytes #-}
+import qualified Reflex.Profiled as RP
+import qualified Control.Monad.Fail as F
 
 -- | Type classes that we need from reflex-dom itself.
 type MonadBaseConstr t m = (MonadHold t m
@@ -52,6 +51,7 @@ type MonadBaseConstr t m = (MonadHold t m
   , MonadUnliftIO (Performable m)
   , MonadSample t (Performable m)
   , MonadJSM (Performable m)
+  , F.MonadFail (Performable m)
   , MonadIO m
   , TriggerEvent t m
   , MonadJSM m
@@ -137,9 +137,6 @@ class MonadBaseConstr t m => MonadAlertPoster t m | m -> t where
   -- | Get alert's event and trigger. Internal
   getAlertEventFire :: m (Event t AlertInfo, AlertInfo -> IO ())
 
-instance MonadRandom (WithJSContextSingleton x (SpiderHostFrame Global)) where
-  getRandomBytes = liftIO . getRandomBytes
-
 -- ===========================================================================
 --    Monad Client. Implements all required things for client operations
 -- ===========================================================================
@@ -188,3 +185,23 @@ data IndexerInfo = IndexerInfo {
   indInfoHeights :: Map Currency (BlockHeight,BlockHeight)
 , indInfoLatency :: NominalDiffTime
 } deriving (Show)
+
+-- ===========================================================================
+--    Helper instances for base monad
+-- ===========================================================================
+
+instance MonadRandom m => MonadRandom (ReaderT e m) where
+  getRandomBytes = lift . getRandomBytes
+  {-# INLINE getRandomBytes #-}
+
+instance MonadRandom (WithJSContextSingleton x (SpiderHostFrame Global)) where
+  getRandomBytes = liftIO . getRandomBytes
+
+instance MonadRandom (WithJSContextSingleton x (RP.ProfiledM (SpiderHostFrame Global))) where
+  getRandomBytes = liftIO . getRandomBytes
+
+instance F.MonadFail (WithJSContextSingleton x (SpiderHostFrame Global)) where
+  fail = liftIO . F.fail
+
+instance F.MonadFail (WithJSContextSingleton x (RP.ProfiledM (SpiderHostFrame Global))) where
+  fail = liftIO . F.fail

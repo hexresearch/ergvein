@@ -10,7 +10,7 @@
 , prefixName ? ""
 }:
 let
-  reflex-platform = import ../platform-overlay.nix;
+  reflex-platform = import ../platform-overlay.nix { profile = isProfile; };
   pkgs = reflex-platform.nixpkgs;
   project = import ../default.nix { release = true; };
 

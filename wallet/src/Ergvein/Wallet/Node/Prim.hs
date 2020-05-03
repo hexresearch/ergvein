@@ -8,15 +8,33 @@ module Ergvein.Wallet.Node.Prim
   , HasNode(..)
   , NodeConnection(..)
   , NodeStatus(..)
+  , HostPort
+  , Host
+  , Port
+  , nodeString
+  -- * Command message to a node
+  , NodeMessage(..)
+  -- * Generalized request-response types
+  , NodeReqG(..)
+  , NodeRespG(..)
+  -- * Currency types
+  , BTCType(..)
+  , NodeERG(..)
+  , NodeBTC
+  , ERGOType
   ) where
 
 import Data.Aeson
-import Data.Time
+import Data.Serialize
+import Data.Text (Text, pack)
+import Data.Time (NominalDiffTime)
 import Reflex
-import Servant.Client(BaseUrl)
+import Reflex.ExternalRef
+import Servant.Client(BaseUrl(..))
 
-import Ergvein.Types.Transaction
+import Ergvein.Text (showt)
 import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
 
 type JSON a = (FromJSON a, ToJSON a)
 
@@ -25,21 +43,47 @@ class CurrencyRep cur where
   curRep :: cur -> Currency
 
 -- Type family for request and response
-class (JSON (NodeReq cur), JSON (NodeResp cur), CurrencyRep cur) => HasNode cur where
+class (CurrencyRep cur) => HasNode cur where
   type NodeReq cur :: *
   type NodeResp cur :: *
+  type NodeSpecific cur :: *
 
 data NodeConnection t cur = NodeConnection {
-  nodeconCurrency :: Currency
-, nodeconUrl      :: BaseUrl
-, nodeconStatus   :: Maybe NodeStatus
-, nodeconOpensE   :: Event t ()
-, nodeconClosedE  :: Event t ()
-, nodeconReqE     :: NodeReq cur -> IO ()
-, nodeconRespE    :: Event t (NodeResp cur)
+  nodeconCurrency   :: !Currency
+, nodeconUrl        :: !BaseUrl
+, nodeconStatus     :: !(ExternalRef t (Maybe NodeStatus))
+, nodeconOpensE     :: !(Event t ())
+, nodeconCloseE     :: !(Event t ())
+, nodeconRespE      :: !(Event t (NodeResp cur))
+, nodeconExtra      :: !(NodeSpecific cur)
+, nodeconIsUp       :: !(Dynamic t Bool)
 }
 
 data NodeStatus = NodeStatus {
-  nodestatHeight :: BlockHeight
-, nodestatLat    :: NominalDiffTime
-}
+  nodestatHeight :: !BlockHeight
+, nodestatLat    :: !NominalDiffTime
+} deriving (Show)
+
+-- | Type alias for a combination of hostname and port.
+type HostPort = (Host, Port)
+
+-- | Type alias for a hostname.
+type Host = String
+
+-- | Type alias for a port number.
+type Port = Int
+
+-- | Node string for logging
+nodeString :: Currency -> BaseUrl -> Text
+nodeString cur BaseUrl{..} = "[" <> showt cur <> "]<" <> pack baseUrlHost <> ":" <> showt baseUrlPort <> ">: "
+
+data BTCType = BTCType
+type NodeBTC t = NodeConnection t BTCType
+
+data ERGOType = ERGOType
+type NodeERG t = NodeConnection t ERGOType
+
+data NodeReqG = NodeReqBTC (NodeReq BTCType) | NodeReqERGO (NodeReq ERGOType)
+data NodeRespG = NodeRespBTC (NodeResp BTCType) | NodeRespERGO (NodeResp ERGOType)
+
+data NodeMessage = NodeMsgRestart | NodeMsgClose | NodeMsgReq NodeReqG
