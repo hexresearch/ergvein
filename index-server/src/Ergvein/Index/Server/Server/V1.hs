@@ -79,7 +79,7 @@ addPeerEndpoint request = do
 peerValidationToResponce :: Either PeerValidationResult () -> AddPeerResp
 peerValidationToResponce = \case 
   Right ()   -> AddPeerResp True Nothing
-  Left error -> AddPeerResp True $ Just $ case error of
+  Left error -> AddPeerResp False $ Just $ case error of
     PeerConnectionError ->
       "Unable to establish connection"
     CurrencyOutOfSync outOfSync -> 

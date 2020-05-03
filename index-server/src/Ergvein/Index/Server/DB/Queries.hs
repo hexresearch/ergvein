@@ -16,6 +16,7 @@ import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Conversions
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema
+import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
@@ -41,6 +42,10 @@ getScannedHeight currency = fmap headMay $ select $ from $ \scannedHeight -> do
 
 upsertScannedHeight :: MonadIO m => Currency -> Word64 -> QueryT m (Entity ScannedHeightRec)
 upsertScannedHeight currency h = upsert (ScannedHeightRec currency h) [ScannedHeightRecHeight DT.=. h]
+
+upsertDiscoveredPeer :: MonadIO m => DiscoveredPeer -> QueryT m (Entity DiscoveredPeerRec)
+upsertDiscoveredPeer discoveredPeer = upsert (convert discoveredPeer) 
+  [DiscoveredPeerRecLastValidatedAt DT.=. (discPeerLastValidatedAt discoveredPeer)]
 
 insertBlock  :: MonadIO m  => BlockMetaInfo -> QueryT m (Key BlockMetaRec)
 insertBlock block = insert $ convert block
