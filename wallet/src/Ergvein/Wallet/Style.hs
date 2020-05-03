@@ -390,7 +390,7 @@ balancesPageCss = do
     paddingRight $ rem 0.5
   ".canvas-container" ? do
     marginLeft $ px 120
-    marginTop $ px 50
+    marginTop $ px 50 
 
 sendPageCss :: Css
 sendPageCss = do
