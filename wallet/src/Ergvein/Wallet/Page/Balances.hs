@@ -21,7 +21,10 @@ import Ergvein.Wallet.Sync.Widget
 import Ergvein.Wallet.Wrapper
 
 import Control.Monad.IO.Class
+import Data.Aeson.Lens  (key, nth)
+import Control.Lens
 import Data.Map.Strict as Map
+import Network.Wreq
 
 data BalancesStrings
   = BalancesTitle
@@ -54,6 +57,15 @@ currenciesList :: MonadFront t m => Text -> m ()
 currenciesList name = divClass "currency-content" $ do
   s <- getSettings
   historyE <- leftmost <$> traverse (currencyLine s) (getActiveCurrencies s)
+  let lP = settingsPortfolio s
+  if lP
+    then porfolioCanvas
+    else pure ()
+--  r <- liftIO $ get tempErgoUrl
+--  let f = r ^? responseBody . key "tickers" . _String
+--  divClass "test" $ text $ showt $ f
+  --getActiveCurrencies s
+
   let thisWidget = Just $ pure balancesPage
   void $ nextWidget $ ffor historyE $ \cur -> Retractable {
     retractableNext = historyPage cur
@@ -73,6 +85,9 @@ currenciesList name = divClass "currency-content" $ do
       pure $ cur <$ domEvent Click e
     getActiveCurrencies s = fromMaybe allCurrencies $ Map.lookup name $ activeCurrenciesMap $ settingsActiveCurrencies s
     getSettingsUnits = fromMaybe defUnits . settingsUnits
+
+tempErgoUrl :: String
+tempErgoUrl = "urltoapi"
 
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
 currencyBalance cur = pure $ pure $ Money cur 1

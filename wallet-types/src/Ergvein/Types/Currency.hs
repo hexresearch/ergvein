@@ -26,6 +26,8 @@ module Ergvein.Types.Currency (
   , defUnits
   , getUnitBTC
   , getUnitERGO
+  , Fiat(..)
+  , allFiats
   ) where
 
 import Data.Flat
@@ -33,7 +35,7 @@ import Data.Maybe (fromMaybe)
 import Data.Ratio
 import Data.String
 import Data.Text (Text, pack, unpack)
-import Data.Time 
+import Data.Time
 import Data.Time.Clock.POSIX
 import Data.Version
 import Data.Word
@@ -54,6 +56,19 @@ instance FromJSONKey Currency where
 -- | All supported currencies
 allCurrencies :: [Currency]
 allCurrencies = [minBound .. maxBound]
+
+-- | Supported fiat
+data Fiat = USD | EUR | RUB
+  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Flat, Serialize)
+$(deriveJSON aesonOptions ''Fiat)
+
+instance ToJSONKey Fiat where
+instance FromJSONKey Fiat where
+
+-- | All supported currencies
+allFiats :: [Fiat]
+allFiats = [minBound .. maxBound]
+
 
 -- | Display units for BTC
 data UnitBTC
@@ -135,20 +150,20 @@ currencyName c = case c of
 {-# INLINE currencyName #-}
 
 -- | Get time of genesis block of currency
-currencyGenesisTime :: Currency -> UTCTime 
-currencyGenesisTime c = case c of 
+currencyGenesisTime :: Currency -> UTCTime
+currencyGenesisTime c = case c of
   BTC -> fromEpoch (1231006505 :: Int)
   ERGO -> fromEpoch (1561998777 :: Int)
-  where 
+  where
     fromEpoch = posixSecondsToUTCTime . fromIntegral
 
 -- | Average duration between blocks
 currencyBlockDuration :: Currency -> NominalDiffTime
-currencyBlockDuration c = case c of 
+currencyBlockDuration c = case c of
   BTC -> fromIntegral 600
   ERGO -> fromIntegral 120
 
--- | Approx time of block 
+-- | Approx time of block
 currencyBlockTime :: Currency -> Int -> UTCTime
 currencyBlockTime c i = addUTCTime (fromIntegral i * currencyBlockDuration c) $ currencyGenesisTime c
 

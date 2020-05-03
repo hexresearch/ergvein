@@ -15,8 +15,12 @@ data SettingsPageStrings =
   | STPSButActiveCurrs
   | STPSButNetwork
   | STPSButUnits
+  | STPSButPortfolio
   | STPSSelectLanguage
   | STPSSetsActiveCurrs
+  | STPSSetsPortfolio
+  | STPSSetsPortfolioEnable
+  | STPSSetsFiatSelect
   | STPSSelectUnitsFor Currency
   | STPSSetsPinOn
   | STPSSetsPinOff
@@ -33,8 +37,12 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButActiveCurrs      -> "Currencies"
       STPSButNetwork          -> "Network"
       STPSButUnits            -> "Display units for cryptos"
+      STPSButPortfolio        -> "Portfolio"
       STPSSelectLanguage      -> "Select language:"
       STPSSetsActiveCurrs     -> "Settings for active currencies"
+      STPSSetsPortfolio       -> "Settings for fiat and ticks"
+      STPSSetsPortfolioEnable -> "Display portfolio"
+      STPSSetsFiatSelect      -> "Select fiat"
       STPSSelectUnitsFor cur  -> "Settings display units for " <> showt cur <> ":"
       STPSSetsPinOn           -> "Switch on PIN code"
       STPSSetsPinOff          -> "Switch off PIN code"
@@ -47,8 +55,12 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButActiveCurrs      -> "Валюты"
       STPSButNetwork          -> "Сеть"
       STPSButUnits            -> "Единицы отображения криптосистем"
+      STPSButPortfolio        -> "Портфель"
       STPSSelectLanguage      -> "Выберите язык:"
       STPSSetsActiveCurrs     -> "Настройки активных валют"
+      STPSSetsPortfolio       -> "Настройки отображения фиата и тиков"
+      STPSSetsPortfolioEnable -> "Отображение портфеля"
+      STPSSetsFiatSelect      -> "Выберите фиат"
       STPSSelectUnitsFor cur  -> "Выберите единиц отображения для " <> showt cur <> ":"
       STPSSetsPinOn           -> "Включить ПИН код"
       STPSSetsPinOff          -> "Выключить ПИН код"
