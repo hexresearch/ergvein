@@ -18,19 +18,18 @@ data PeerValidationResult = OK
   | CurrencyMissing Currency
   deriving Show
 
-data PeerCandidate = PeerCandidate 
-  { peerCandidateUrl :: BaseUrl 
+data PeerCandidate = PeerCandidate
+  { peerCandidateUrl :: BaseUrl
+  }
+
+data Peer = Peer
+  { peerId :: DiscoveredPeerRecId
+  , peerUrl :: BaseUrl
+  , peerLastValidatedAt :: UTCTime
+  , peerConnectionScheme :: Scheme
   }
 
 data NewPeer = NewPeer
-  { discPeerUrl :: BaseUrl
-  , discPeerLastValidatedAt :: UTCTime
-  , discPeerConnectionScheme :: Scheme
-  }
-
-data NNewPeer = NNewPeer
-  { ndiscId :: DiscoveredPeerRecId
-  , ndiscPeerUrl :: BaseUrl
-  , ndiscPeerLastValidatedAt :: UTCTime
-  , ndiscPeerConnectionScheme :: Scheme
+  { newPeerUrl :: BaseUrl
+  , newPeerConnectionScheme :: Scheme
   }

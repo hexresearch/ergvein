@@ -19,6 +19,7 @@ import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import Data.Time.Clock
 
 import qualified Data.Conduit.Internal as DCI
 import qualified Data.Conduit.List as CL
@@ -44,12 +45,13 @@ upsertScannedHeight :: MonadIO m => Currency -> Word64 -> QueryT m (Entity Scann
 upsertScannedHeight currency h = upsert (ScannedHeightRec currency h) [ScannedHeightRecHeight DT.=. h]
 
 upsertNewPeer :: MonadIO m => NewPeer -> QueryT m (Entity DiscoveredPeerRec)
-upsertNewPeer discoveredPeer = upsert (convert discoveredPeer) 
-  [DiscoveredPeerRecLastValidatedAt DT.=. (discPeerLastValidatedAt discoveredPeer)]
+upsertNewPeer discoveredPeer = do
+  currentTime <- liftIO getCurrentTime
+  upsert (convert (currentTime, discoveredPeer)) [DiscoveredPeerRecLastValidatedAt DT.=. currentTime]
 
 --updateNewPeer :: MonadIO m => NewPeer -> QueryT m (Entity DiscoveredPeerRec)
 
-getNewPeers :: MonadIO m => QueryT m [NNewPeer]
+getNewPeers :: MonadIO m => QueryT m [Peer]
 getNewPeers = fmap (convert @(Entity DiscoveredPeerRec)) <$> select (from pure)
 
 insertBlock  :: MonadIO m  => BlockMetaInfo -> QueryT m (Key BlockMetaRec)

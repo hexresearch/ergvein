@@ -63,8 +63,7 @@ considerPeerCandidate candidate = do
   let candidateSchema = baseUrlScheme baseUrl
   infoResult <- peerInfo candidateSchema baseUrl
   candidateScanResult <- peerScanValidation infoResult
-  currt <- liftIO getCurrentTime
-  let x = NewPeer baseUrl currt candidateSchema
+  let x = NewPeer baseUrl candidateSchema
   lift $ dbQuery $ upsertNewPeer x 
   pure ()
 
@@ -80,12 +79,11 @@ peerDiscoverActualization = do
       liftIO $ threadDelay $ configBlockchainScanDelay cfg
       pure ()
 
-    discoverIteration :: NNewPeer -> ServerM ()
+    discoverIteration :: Peer -> ServerM ()
     discoverIteration peer = void <$> runExceptT $ do
-        let baseUrl = ndiscPeerUrl peer
+        let baseUrl = peerUrl peer
         let candidateSchema = baseUrlScheme baseUrl
         infoResult <- peerInfo candidateSchema baseUrl
         candidateScanResult <- peerScanValidation infoResult
-        currt <- liftIO getCurrentTime
-        let x = NewPeer baseUrl currt candidateSchema
+        let x = NewPeer baseUrl candidateSchema
         lift $ dbQuery $ upsertNewPeer x 
