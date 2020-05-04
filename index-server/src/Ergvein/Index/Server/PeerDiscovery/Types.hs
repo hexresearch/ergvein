@@ -26,3 +26,10 @@ data DiscoveredPeer = DiscoveredPeer
   , discPeerLastValidatedAt :: UTCTime
   , discPeerConnectionScheme :: Scheme
   }
+
+data NDiscoveredPeer = NDiscoveredPeer
+  { ndiscId :: Int
+  , ndiscPeerUrl :: BaseUrl
+  , ndiscPeerLastValidatedAt :: UTCTime
+  , ndiscPeerConnectionScheme :: Scheme
+  }

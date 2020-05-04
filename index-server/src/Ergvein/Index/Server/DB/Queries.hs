@@ -47,6 +47,9 @@ upsertDiscoveredPeer :: MonadIO m => DiscoveredPeer -> QueryT m (Entity Discover
 upsertDiscoveredPeer discoveredPeer = upsert (convert discoveredPeer) 
   [DiscoveredPeerRecLastValidatedAt DT.=. (discPeerLastValidatedAt discoveredPeer)]
 
+getDiscoveredPeers :: MonadIO m => QueryT m [Entity DiscoveredPeerRec]
+getDiscoveredPeers = select $ from pure
+
 insertBlock  :: MonadIO m  => BlockMetaInfo -> QueryT m (Key BlockMetaRec)
 insertBlock block = insert $ convert block
 

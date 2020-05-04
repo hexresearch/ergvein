@@ -24,6 +24,7 @@ import Ergvein.Index.Server.Monad
 import qualified Network.Bitcoin.Api.Client                      as BitcoinApi
 import qualified Ergvein.Index.Server.BlockchainScanning.Bitcoin as BTCScanning
 import qualified Ergvein.Index.Server.BlockchainScanning.Ergo    as ERGOScanning
+import Database.Esqueleto
 
 data ScanProgressInfo = ScanProgressInfo
   { nfoCurrency      :: !Currency
@@ -45,6 +46,7 @@ scanningInfo = mapM nfo allCurrencies
 scannedBlockHeight :: (MonadIO m) => Currency -> QueryT m (Maybe BlockHeight)
 scannedBlockHeight currency = do
   entity <- getScannedHeight currency
+  let x = entityKey <$> entity::_
   pure $ scannedHeightRecHeight . entityVal <$> entity
 
 blockHeightsToScan :: Currency -> ServerM [BlockHeight]
@@ -89,8 +91,8 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
       traverse_ (blockIteration totalh) heights
       liftIO $ threadDelay $ configBlockchainScanDelay cfg
 
-startBlockchainScanner :: ServerM [Thread]
-startBlockchainScanner = sequenceA 
+blockchainScanning :: ServerM [Thread]
+blockchainScanning = sequenceA 
   [ scannerThread BTC  BTCScanning.blockInfo
   , scannerThread ERGO ERGOScanning.blockInfo
   ]

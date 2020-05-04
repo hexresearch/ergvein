@@ -12,6 +12,8 @@ import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Servant.Client.Core
 import Ergvein.Index.Server.DB.Queries
+import Control.Concurrent
+import Control.Immortal
 import Data.Foldable
 import Data.Time.Clock
 import Ergvein.Index.Server.DB.Monad
@@ -64,3 +66,17 @@ considerPeerCandidate candidate = do
   let x = DiscoveredPeer (peerCandidateUrl $ candidate) currt candidateSchema
   lift $ dbQuery $ upsertDiscoveredPeer x 
   pure ()
+
+peerDiscoverActualization :: ServerM Thread
+peerDiscoverActualization = do
+  create $ logOnException . scanIteration
+  where
+    scanIteration :: Thread -> ServerM ()
+    scanIteration thread = do
+      allPeers <- dbQuery getDiscoveredPeers
+      forM_ allPeers discoverIteration
+      pure ()
+
+    discoverIteration :: a -> ServerM ()
+    discoverIteration thread = do
+      pure ()
