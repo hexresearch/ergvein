@@ -5,17 +5,13 @@ module Ergvein.Wallet.Page.Balances(
 
 import Data.Maybe (fromMaybe)
 
-import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Settings
-import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.History
 import Ergvein.Wallet.Page.PatternKey
-import Ergvein.Wallet.Page.Send
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Sync.Widget
 import Ergvein.Wallet.Wrapper
@@ -76,11 +72,10 @@ currenciesList name = divClass "currency-content" $ do
       (e, _) <- divClass' "currency-row" $ do
         bal <- currencyBalance cur
         let setUs = getSettingsUnits settings
-        langD <- getLanguage
         divClass "currency-name"    $ text $ currencyName cur
         divClass "currency-balance" $ do
           elClass "span" "currency-value" $ dynText $ (\v -> showMoneyUnit v setUs) <$> bal
-          elClass "span" "currency-unit"  $ dynText $ ffor2 bal langD $ \(Money cur _) lang -> symbolUnit cur lang setUs
+          elClass "span" "currency-unit"  $ dynText $ ffor bal $ \(Money c _) -> symbolUnit c setUs
           elClass "span" "currency-arrow" $ text "〉"
       pure $ cur <$ domEvent Click e
     getActiveCurrencies s = fromMaybe allCurrencies $ Map.lookup name $ activeCurrenciesMap $ settingsActiveCurrencies s
@@ -92,8 +87,8 @@ tempErgoUrl = "urltoapi"
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
 currencyBalance cur = pure $ pure $ Money cur 1
 
-symbolUnit :: Currency -> Language -> Units -> Text
-symbolUnit cur lang units =
+symbolUnit :: Currency -> Units -> Text
+symbolUnit cur units =
   case cur of
     BTC  -> case getUnitBTC units of
               BtcWhole    -> "btc"

@@ -3,8 +3,10 @@
 -}
 module Ergvein.Wallet.Node.Types
   (
-    NodeConnection(..)
-  , ConnMap
+    ConnMap
+  , NodeConn(..)
+  -- * Reexports
+  , NodeConnection(..)
   , CurrencyRep(..)
   , CurrencyTag(..)
   , BTCType(..)
@@ -12,8 +14,10 @@ module Ergvein.Wallet.Node.Types
   , NodeBTC
   , NodeERG
   , HasNode(..)
-  , NodeConn(..)
   , NodeStatus(..)
+  , NodeReqG(..)
+  , NodeRespG(..)
+  , NodeMessage(..)
   ) where
 
 import Data.GADT.Compare
@@ -31,7 +35,7 @@ import Ergvein.Wallet.Node.Prim
 import Data.Map.Strict (Map)
 import Data.Dependent.Map (DMap)
 
-data NodeConn t = NodeConnBTC (NodeBTC t) | NodeConnERG (NodeERG t)
+data NodeConn t = NodeConnBTC !(NodeBTC t) | NodeConnERG !(NodeERG t)
 
 data CurrencyTag t a where
   BTCTag :: CurrencyTag t (NodeBTC t)
