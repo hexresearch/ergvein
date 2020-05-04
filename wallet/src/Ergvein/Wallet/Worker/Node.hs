@@ -57,15 +57,16 @@ btcNodeRefresher = do
       Nothing -> pure never
       Just n -> do
         btcLog $ "Getting extra nodes: " <> showt n
-        initNodes <- getRandomBTCNodesFromDNS sel firstTierNodeNum
-        es <- flip traverse initNodes $ \node -> do
-          buildE <- getPostBuild
-          let reqE = (NodeReqBTC MGetAddr) <$ buildE
-          requestNodeWait node reqE
-          pure $ fforMaybe (nodeconRespE node) $ \case
-                  MAddr (Addr urls) -> Just $ fmap (naAddress . snd) urls
-                  _ -> Nothing
-        pure $ leftmost es
+        initNodesE <- getRandomBTCNodesFromDNS sel firstTierNodeNum
+        fmap switchDyn $ widgetHold (pure never) $ ffor initNodesE $ \initNodes -> do
+          es <- flip traverse initNodes $ \node -> do
+            buildE <- getPostBuild
+            let reqE = (NodeReqBTC MGetAddr) <$ buildE
+            requestNodeWait node reqE
+            pure $ fforMaybe (nodeconRespE node) $ \case
+                    MAddr (Addr urls) -> Just $ fmap (naAddress . snd) urls
+                    _ -> Nothing
+          pure $ leftmost es
 
     urlsD <- foldDynMaybe handleSAStore S.empty $ leftmost [SAAdd <$> extraUrlsE, SAClear <$ reqExtraE]
 
@@ -96,14 +97,18 @@ handleSAStore sact um = case sact of
       SockAddrInet{} -> True
       _ -> False
 
-getRandomBTCNodesFromDNS :: MonadFrontConstr t m => RequestSelector t -> Int -> m [NodeBTC t]
+getRandomBTCNodesFromDNS :: MonadFrontConstr t m => RequestSelector t -> Int -> m (Event t [NodeBTC t])
 getRandomBTCNodesFromDNS sel n = do
+  buildE <- getPostBuild
   let dnsUrls = getSeeds btcNetwork
   i <- liftIO $ randomRIO (0, length dnsUrls - 1)
-  urls <- requestNodesFromBTCDNS (dnsUrls!!i) n
-  flip traverse urls $ \u -> let
+  urlsE <- performFork $ (requestNodesFromBTCDNS (dnsUrls!!i) n) <$ buildE
+  nodesD <- widgetHold (pure []) $ ffor urlsE $ \urls -> flip traverse urls $ \u -> let
     reqE = extractReq sel BTC u
     in initBTCNode u reqE
+  pure $ fforMaybe (updated nodesD) $ \case
+    [] -> Nothing
+    ns -> Just ns
 
 requestNodesFromBTCDNS :: MonadIO m => String -> Int -> m [BaseUrl]
 requestNodesFromBTCDNS dnsurl n = liftIO $ do
