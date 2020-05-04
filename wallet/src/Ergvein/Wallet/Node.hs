@@ -4,8 +4,10 @@
 module Ergvein.Wallet.Node
   (
     addNodeConn
+  , addMultipleConns
   , getNodeConn
   , getAllConnByCurrency
+  , initNode
   , initializeNodes
   , reinitNodes
   , requestNodeWait
