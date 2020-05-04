@@ -371,37 +371,40 @@ lastSquarePosition (AddSquare,lst) = if null lst
 
 
 portfolioWidget :: MonadFrontBase t m => m ()
-portfolioWidget = divClass "canvas-container" $ mdo
-  buildE <- delay 0.1 =<< getPostBuild
-  canvasEl <- createCanvas cOpts
-  let elP = elementPosition $ _element_raw canvasEl
-      prepCoord (x,y) = fmap (\(a,b)-> (a, b)) $ fmap (\ClientRect{..} -> ((fromIntegral x) - crLeft, (fromIntegral y) - crTop)) elP
-      prepTCoord TouchEventResult{..} = fmap (\(a,b)-> (a, b)) $ fmap (\ClientRect{..} -> ((fromIntegral (_touchResult_screenX (head _touchEventResult_touches))) - crLeft, (fromIntegral (_touchResult_screenY (head _touchEventResult_touches)) - crTop - 35))) elP
-      tmoveE = domEvent Touchmove canvasEl
-      tdownE = domEvent Touchstart canvasEl
-      tupE   = domEvent Touchend canvasEl
-      mmoveE = domEvent Mousemove canvasEl
-      pressedE = leftmost [Pressed <$ tdownE, Unpressed <$ tupE]
-  tmovePrE <- performEvent $ ffor tmoveE prepTCoord
-  tdownPrE <- performEvent $ ffor tdownE prepTCoord
-  tupPrE   <- performEvent $ ffor tupE   prepTCoord
-  mmovePrE <- performEvent $ ffor mmoveE prepCoord
-  touchD <- holdDyn Unpressed pressedE
-  ringD <- holdDyn [(0.6,Unhovered),(0.4,Unhovered)] $ poke mmovePrE $ \(x,y) -> do
-    ringS <- sampleDyn ringD
-    pure $ checkRingHover (x,y) (dW,dH) dr ringS
-  performEvent_ $ ffor (updated ringD) $ \lst -> do
-    rawJSCall (_element_raw canvasEl) $ drawRndHovT canvasW canvasH lst
-  performEvent_ $ ffor buildE $ \_ -> do
-    rawJSCall (_element_raw canvasEl) $ drawRndHovT canvasW canvasH [(0.6,Unhovered),(0.4,Unhovered)]
-  pure $ ()
-    where
-      canvasH = 240
-      canvasW = 240
-      dH = fromIntegral canvasH
-      dW = fromIntegral canvasW
-      dr = (dH/2)*0.98
-      cOpts = CanvasOptions canvasW canvasH "pattern" "pattern"
+portfolioWidget = divClass "portfolio-idget" $ do
+  divClass "canvas-container" $ mdo
+    buildE <- delay 0.1 =<< getPostBuild
+    canvasEl <- createCanvas cOpts
+    let elP = elementPosition $ _element_raw canvasEl
+        prepCoord (x,y) = fmap (\(a,b)-> (a, b)) $ fmap (\ClientRect{..} -> ((fromIntegral x) - crLeft, (fromIntegral y) - crTop)) elP
+        prepTCoord TouchEventResult{..} = fmap (\(a,b)-> (a, b)) $ fmap (\ClientRect{..} -> ((fromIntegral (_touchResult_screenX (head _touchEventResult_touches))) - crLeft, (fromIntegral (_touchResult_screenY (head _touchEventResult_touches)) - crTop - 35))) elP
+        tmoveE = domEvent Touchmove canvasEl
+        tdownE = domEvent Touchstart canvasEl
+        tupE   = domEvent Touchend canvasEl
+        mmoveE = domEvent Mousemove canvasEl
+        pressedE = leftmost [Pressed <$ tdownE, Unpressed <$ tupE]
+    tmovePrE <- performEvent $ ffor tmoveE prepTCoord
+    tdownPrE <- performEvent $ ffor tdownE prepTCoord
+    tupPrE   <- performEvent $ ffor tupE   prepTCoord
+    mmovePrE <- performEvent $ ffor mmoveE prepCoord
+    touchD <- holdDyn Unpressed pressedE
+    ringD <- holdDyn [(0.6,Unhovered),(0.4,Unhovered)] $ poke mmovePrE $ \(x,y) -> do
+      ringS <- sampleDyn ringD
+      pure $ checkRingHover (x,y) (dW,dH) dr ringS
+    performEvent_ $ ffor (updated ringD) $ \lst -> do
+      rawJSCall (_element_raw canvasEl) $ drawRndHovT canvasW canvasH lst
+    performEvent_ $ ffor buildE $ \_ -> do
+      rawJSCall (_element_raw canvasEl) $ drawRndHovT canvasW canvasH [(0.6,Unhovered),(0.4,Unhovered)]
+    pure $ ()
+  divClass "portfolio-legend" $ do
+    th
+      where
+        canvasH = 240
+        canvasW = 240
+        dH = fromIntegral canvasH
+        dW = fromIntegral canvasW
+        dr = (dH/2)*0.98
+        cOpts = CanvasOptions canvasW canvasH "pattern" "pattern"
 
 
 checkRingHover :: (Double, Double) -> (Double,Double) -> Double -> [(Double,HoverState)] -> [(Double,HoverState)]
