@@ -61,6 +61,7 @@ library
         Ergvein.Wallet.Localization.Currency
         Ergvein.Wallet.Localization.Info
         Ergvein.Wallet.Localization.Initial
+        Ergvein.Wallet.Localization.History
         Ergvein.Wallet.Localization.Native
         Ergvein.Wallet.Localization.Network
         Ergvein.Wallet.Localization.Password
@@ -69,6 +70,7 @@ library
         Ergvein.Wallet.Localization.Settings
         Ergvein.Wallet.Localization.Share
         Ergvein.Wallet.Localization.Storage
+        Ergvein.Wallet.Localization.Util
         Ergvein.Wallet.Log
         Ergvein.Wallet.Log.Page
         Ergvein.Wallet.Log.Reader
@@ -145,6 +147,7 @@ library
                         UndecidableInstances
     build-depends:
         aeson -any,
+        aeson-lens -any,
         async -any,
         base -any,
         base64-bytestring >=1 && <1.0.0.3,
@@ -212,7 +215,13 @@ library
         unliftio-core >= 0.1 && < 0.2,
         validation >=1 && < 1.2,
         vector -any,
-        yaml -any
+        yaml -any,
+        lmdb-simple >= 0.4 && < 0.5,
+        serialise >= 0.2 && < 0.3,
+        tls -any,
+        connection -any,
+        wreq -any
+
     if flag(android)
         cpp-options: -DANDROID
         build-depends:
