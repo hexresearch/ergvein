@@ -46,7 +46,6 @@ scanningInfo = mapM nfo allCurrencies
 scannedBlockHeight :: (MonadIO m) => Currency -> QueryT m (Maybe BlockHeight)
 scannedBlockHeight currency = do
   entity <- getScannedHeight currency
-  let x = entityKey <$> entity::_
   pure $ scannedHeightRecHeight . entityVal <$> entity
 
 blockHeightsToScan :: Currency -> ServerM [BlockHeight]

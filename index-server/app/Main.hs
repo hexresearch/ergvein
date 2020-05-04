@@ -11,6 +11,7 @@ import Ergvein.Index.Server.Monad
 import Network.Wai.Handler.Warp
 import Network.Wai.Middleware.RequestLogger
 import Options.Applicative
+import Ergvein.Index.Server.PeerDiscovery.Discovery
 
 import qualified Data.Text.IO as T
 import Data.Text (Text, pack)
@@ -49,6 +50,7 @@ startServer Options{..} = case optsCommand of
     CommandListen cfgPath ->  do
         cfg <- loadConfig cfgPath
         env <- runStdoutLoggingT $ newServerEnv cfg
+        runServerMIO env peerDiscoverActualization
         --runServerMIO env blockchainScanning
         T.putStrLn $ pack $ "Server started at " <> configDbHost cfg <> ":" <> (show . configServerPort $ cfg)
         let app = logStdoutDev $ indexServerApp env

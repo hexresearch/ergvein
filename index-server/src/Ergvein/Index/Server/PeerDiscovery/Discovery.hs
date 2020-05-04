@@ -17,6 +17,7 @@ import Control.Immortal
 import Data.Foldable
 import Data.Time.Clock
 import Ergvein.Index.Server.DB.Monad
+import Ergvein.Index.Server.Config
 
 import qualified Data.Map.Strict as Map
 import qualified Network.HTTP.Client as HC
@@ -63,8 +64,8 @@ considerPeerCandidate candidate = do
   infoResult <- peerInfo candidateSchema baseUrl
   candidateScanResult <- peerScanValidation infoResult
   currt <- liftIO getCurrentTime
-  let x = DiscoveredPeer (peerCandidateUrl $ candidate) currt candidateSchema
-  lift $ dbQuery $ upsertDiscoveredPeer x 
+  let x = NewPeer baseUrl currt candidateSchema
+  lift $ dbQuery $ upsertNewPeer x 
   pure ()
 
 peerDiscoverActualization :: ServerM Thread
@@ -73,10 +74,18 @@ peerDiscoverActualization = do
   where
     scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
-      allPeers <- dbQuery getDiscoveredPeers
+      cfg <- serverConfig
+      allPeers <- dbQuery getNewPeers
       forM_ allPeers discoverIteration
+      liftIO $ threadDelay $ configBlockchainScanDelay cfg
       pure ()
 
-    discoverIteration :: a -> ServerM ()
-    discoverIteration thread = do
-      pure ()
+    discoverIteration :: NNewPeer -> ServerM ()
+    discoverIteration peer = void <$> runExceptT $ do
+        let baseUrl = ndiscPeerUrl peer
+        let candidateSchema = baseUrlScheme baseUrl
+        infoResult <- peerInfo candidateSchema baseUrl
+        candidateScanResult <- peerScanValidation infoResult
+        currt <- liftIO getCurrentTime
+        let x = NewPeer baseUrl currt candidateSchema
+        lift $ dbQuery $ upsertNewPeer x 

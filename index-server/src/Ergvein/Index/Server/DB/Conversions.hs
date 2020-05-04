@@ -7,6 +7,7 @@ import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Servant.Client.Core
 import qualified Data.Text as T
+import Data.Maybe
 
 instance Conversion (Entity BlockMetaRec) BlockMetaInfo where
   convert entity = let 
@@ -26,7 +27,7 @@ instance Conversion BlockMetaInfo BlockMetaRec where
     , blockMetaRecAddressFilterHexView = blockMetaAddressFilterHexView block
     } 
 
-instance Conversion DiscoveredPeer DiscoveredPeerRec where
+instance Conversion NewPeer DiscoveredPeerRec where
   convert discoveredPeer = DiscoveredPeerRec
     { discoveredPeerRecUrl = T.pack $ showBaseUrl $ discPeerUrl discoveredPeer
     , discoveredPeerRecLastValidatedAt = discPeerLastValidatedAt discoveredPeer
@@ -34,4 +35,18 @@ instance Conversion DiscoveredPeer DiscoveredPeerRec where
         case discPeerConnectionScheme discoveredPeer of
           Https -> True
           Http  -> False
+    }
+
+instance Conversion (Entity DiscoveredPeerRec) NNewPeer where
+  convert entity = let
+    key = entityKey entity
+    value = entityVal entity
+    in NNewPeer
+    { ndiscId = key
+    , ndiscPeerUrl = fromJust $ parseBaseUrl $ T.unpack $ discoveredPeerRecUrl value
+    , ndiscPeerLastValidatedAt = discoveredPeerRecLastValidatedAt value
+    , ndiscPeerConnectionScheme =
+        case discoveredPeerRecIsSecureConnection value of
+            True  -> Https
+            False -> Http
     }

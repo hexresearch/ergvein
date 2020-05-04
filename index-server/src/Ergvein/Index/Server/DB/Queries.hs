@@ -43,12 +43,14 @@ getScannedHeight currency = fmap headMay $ select $ from $ \scannedHeight -> do
 upsertScannedHeight :: MonadIO m => Currency -> Word64 -> QueryT m (Entity ScannedHeightRec)
 upsertScannedHeight currency h = upsert (ScannedHeightRec currency h) [ScannedHeightRecHeight DT.=. h]
 
-upsertDiscoveredPeer :: MonadIO m => DiscoveredPeer -> QueryT m (Entity DiscoveredPeerRec)
-upsertDiscoveredPeer discoveredPeer = upsert (convert discoveredPeer) 
+upsertNewPeer :: MonadIO m => NewPeer -> QueryT m (Entity DiscoveredPeerRec)
+upsertNewPeer discoveredPeer = upsert (convert discoveredPeer) 
   [DiscoveredPeerRecLastValidatedAt DT.=. (discPeerLastValidatedAt discoveredPeer)]
 
-getDiscoveredPeers :: MonadIO m => QueryT m [Entity DiscoveredPeerRec]
-getDiscoveredPeers = select $ from pure
+--updateNewPeer :: MonadIO m => NewPeer -> QueryT m (Entity DiscoveredPeerRec)
+
+getNewPeers :: MonadIO m => QueryT m [NNewPeer]
+getNewPeers = fmap (convert @(Entity DiscoveredPeerRec)) <$> select (from pure)
 
 insertBlock  :: MonadIO m  => BlockMetaInfo -> QueryT m (Key BlockMetaRec)
 insertBlock block = insert $ convert block
