@@ -227,7 +227,7 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
       settings <- readExternalRef settingsRef
       login    <- fmap _authInfo'login $ readExternalRef authRef
       let urls = settingsNodes settings
-          ac   = activeCurrenciesMap $ settingsActiveCurrencies settings
+          ac   = settingsActiveCurrencies settings
           ac'  = M.insert login newcs ac
           set' = settings {settingsActiveCurrencies = ActiveCurrencies ac'}
 

@@ -92,6 +92,7 @@ type CurrencyPubStorages = M.Map Currency CurrencyPubStorage
 data PubStorage = PubStorage {
     _pubStorage'rootPubKey          :: EgvRootXPubKey
   , _pubStorage'currencyPubStorages :: CurrencyPubStorages
+  , _pubStorage'activeCurrencies    :: [Currency]
   }
 
 makeLenses ''PubStorage

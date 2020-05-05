@@ -23,9 +23,7 @@ import Ergvein.Types.Currency
 import Android.HaskellActivity
 #endif
 
-data ActiveCurrencies = ActiveCurrencies {
-  activeCurrenciesMap  :: Map.Map Text [Currency]
-} deriving (Eq, Show)
+data ActiveCurrencies = ActiveCurrencies [Currency] deriving (Eq, Show)
 
 $(deriveJSON (aesonOptionsStripPrefix "") ''ActiveCurrencies)
 
@@ -40,12 +38,12 @@ loadActiveCurrencies = liftIO $ do
       let acpath = path <> "/currencies.yaml"
       ex <- liftIO $ doesFileExist acpath
       if not ex
-        then pure (ActiveCurrencies (Map.fromList []))
+        then pure (ActiveCurrencies [])
         else do
           mPT <- liftIO $ decodeFileStrict' acpath
           case mPT of
             Just p -> pure p
-            Nothing -> pure (ActiveCurrencies (Map.fromList []))
+            Nothing -> pure (ActiveCurrencies [])
 
 saveActiveCurrencies :: MonadIO m => ActiveCurrencies -> m ()
 saveActiveCurrencies ac = do
@@ -64,12 +62,12 @@ loadActiveCurrencies = liftIO $ do
   let acpath = home <> "/.ergvein/currencies.yaml"
   ex <- doesFileExist acpath
   if not ex
-    then pure (ActiveCurrencies (Map.fromList []))
+    then pure (ActiveCurrencies [])
     else do
       mPT <- liftIO $ decodeFileStrict' acpath
       case mPT of
         Just p -> pure p
-        Nothing -> pure (ActiveCurrencies (Map.fromList []))
+        Nothing -> pure (ActiveCurrencies [])
 
 saveActiveCurrencies :: MonadIO m => ActiveCurrencies -> m ()
 saveActiveCurrencies ac = liftIO $ do

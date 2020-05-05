@@ -31,7 +31,7 @@ passwordPage mnemonic curs = wrapperSimple True $ do
   logPassE <- setupLoginPassword
   s <- getSettings
   updateSettings $ ffor logPassE $ \(l,_) -> s {settingsActiveCurrencies = acSet l s}
-  createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo mnemonic) logPassE
+  createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo mnemonic curs) logPassE
   authInfoE <- handleDangerMsg createStorageE
   void $ setAuthInfo $ Just <$> authInfoE
   where
@@ -57,7 +57,7 @@ setupPatternPage m l curs = wrapperSimple True $ do
   let logPassE = fmap (\p -> (l,p)) patE
   s <- getSettings
   updateSettings $ ffor logPassE $ \_ -> s {settingsActiveCurrencies = acSet l s}
-  createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo m) logPassE
+  createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo m curs) logPassE
   authInfoE <- handleDangerMsg createStorageE
   void $ setAuthInfo $ Just <$> authInfoE
   where
