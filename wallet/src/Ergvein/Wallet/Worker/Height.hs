@@ -3,18 +3,16 @@ module Ergvein.Wallet.Worker.Height
     heightAsking
   ) where
 
-import Control.Monad.IO.Class
 import Data.Time
-import Reflex.ExternalRef
 
 import Ergvein.Index.API.Types
 import Ergvein.Text
 import Ergvein.Types.Currency
-import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Client
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Util
+
 
 -- | Poll with the interval when everything is normal
 defaulHeightPoll :: NominalDiffTime
@@ -24,20 +22,22 @@ defaulHeightPoll = 60
 errorHeightPoll :: NominalDiffTime
 errorHeightPoll = 5
 
--- | TODO: stop using indexer and start quering nodes directly
 heightAsking :: (MonadFrontAuth t m, MonadClient t m) => m ()
-heightAsking = do
-  be <- getPostBuild
-  pollRef <- newExternalRef defaulHeightPoll
-  pollDyn <- externalRefDynamic pollRef
-  te <- fmap (switch . current) $ widgetHoldDyn $ tickLossyFromPostBuildTime <$> pollDyn
-  let e = leftmost [void te, be]
-      queryHeights c = do
-        resE <- getHeight $ HeightRequest c <$ e
-        performEvent_ $ fforMaybe resE $ \case
-          Left er -> Just $ logWrite $ "Height request for " <> showt c <> " is failed: " <> showt er
-          _ -> Nothing
-        performEvent_ $ ffor resE $ liftIO . writeExternalRef pollRef . either (const errorHeightPoll) (const defaulHeightPoll)
-        he <- handleDangerMsg resE
-        setCurrentHeight c $ fromIntegral . heightRespHeight <$> he
-  traverse_ queryHeights allCurrencies
+heightAsking = void . widgetHoldDyn . fmap (traverse_ heightAsker) =<< getActiveCursD
+
+heightAsker :: (MonadFrontAuth t m, MonadClient t m) => Currency -> m ()
+heightAsker cur = mdo
+  let logPref = "[heightAsking][" <> showt cur <> "]:"
+  logWrite $ logPref <> "Start worker"
+  buildE <- getPostBuild
+  timeD <- holdUniqDyn =<< holdDyn defaulHeightPoll timeE
+  tickE <- fmap switchDyn $ widgetHoldDyn $ tickLossyFromPostBuildTime <$> timeD
+  let goE = leftmost [() <$ tickE, buildE]
+  resE <- getHeightRandom $ HeightRequest cur <$ goE
+  let timeE = either (const errorHeightPoll) (const defaulHeightPoll) <$> resE
+  setCurrentHeight cur . fmapMaybe id =<< performEvent (ffor resE $ \case
+    Left err -> do
+      logWrite $ logPref <> "Height request has failed: " <> showt err
+      pure Nothing
+    Right v -> pure $ Just $ fromIntegral $ heightRespHeight v
+    )
