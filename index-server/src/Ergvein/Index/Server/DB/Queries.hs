@@ -44,12 +44,17 @@ getScannedHeight currency = fmap headMay $ select $ from $ \scannedHeight -> do
 upsertScannedHeight :: MonadIO m => Currency -> Word64 -> QueryT m (Entity ScannedHeightRec)
 upsertScannedHeight currency h = upsert (ScannedHeightRec currency h) [ScannedHeightRecHeight DT.=. h]
 
-upsertNewPeer :: MonadIO m => NewPeer -> QueryT m (Entity DiscoveredPeerRec)
-upsertNewPeer discoveredPeer = do
+addNewPeer :: MonadIO m => NewPeer -> QueryT m ()
+addNewPeer discoveredPeer = do
   currentTime <- liftIO getCurrentTime
-  upsert (convert (currentTime, discoveredPeer)) [DiscoveredPeerRecLastValidatedAt DT.=. currentTime]
+  insert_ $ convert @_ @DiscoveredPeerRec (currentTime, discoveredPeer)
 
---updateNewPeer :: MonadIO m => NewPeer -> QueryT m (Entity DiscoveredPeerRec)
+refreshPeerValidationTime :: MonadIO m => DiscoveredPeerRecId -> QueryT m ()
+refreshPeerValidationTime peerId = do
+  currentTime <- liftIO getCurrentTime
+  update $ \peer -> do 
+    where_ (peer ^. DiscoveredPeerRecId ==. val peerId)
+    set peer [DiscoveredPeerRecLastValidatedAt =. val currentTime]
 
 getNewPeers :: MonadIO m => QueryT m [Peer]
 getNewPeers = fmap (convert @(Entity DiscoveredPeerRec)) <$> select (from pure)
