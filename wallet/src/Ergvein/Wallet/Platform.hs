@@ -6,10 +6,14 @@ module Ergvein.Wallet.Platform(
   , isAndroid
   , isTestnet
   , btcNetwork
+  , filterStartingHeight
+  , avgTimePerBlock
   ) where
 
 import GHC.Generics (Generic)
 import Network.Haskoin.Constants
+import Network.Haskoin.Block
+import Ergvein.Types.Currency
 
 -- | Platform the wallet is compiled for.
 data Platform = DesktopLinux | Android
@@ -40,3 +44,18 @@ isTestnet = False
 -- | Network parameters for BTC blockchain. Depends on `isTestnet` flag.
 btcNetwork :: Network
 btcNetwork = if isTestnet then btcTest else btc
+{-# INLINE btcNetwork #-}
+
+-- | The starting height for filters downloader. Start from SegWit adoption
+filterStartingHeight :: Currency -> BlockHeight
+filterStartingHeight cur = case cur of
+  ERGO -> 0
+  BTC -> if isTestnet then 834624 else 481824
+{-# INLINE filterStartingHeight #-}
+
+-- | Average time it takes to mine a block. In minutes
+avgTimePerBlock :: Currency -> Double
+avgTimePerBlock cur = case cur of
+  ERGO -> 2
+  BTC -> 10
+{-# INLINE avgTimePerBlock #-}

@@ -110,6 +110,7 @@ frontendCss r = do
   selectCss
   buttonsToggleCss
   graphPinCodeCanvasCss
+  historyPageCss
   legoStyles
 
 textColor :: Color
@@ -387,6 +388,9 @@ balancesPageCss = do
     paddingRight $ rem 0.5
   ".currency-unit" ? do
     paddingRight $ rem 0.5
+  ".canvas-container" ? do
+    marginLeft $ px 120
+    marginTop $ px 50 
 
 sendPageCss :: Css
 sendPageCss = do
@@ -623,7 +627,7 @@ alertsCss = do
   ".alert-overlay" ? do
     pointerEvents none
     backgroundColor transparent
-    position absolute
+    position sticky
     bottom $ px 0
     right $ px 0
     width $ pct 100
@@ -673,6 +677,9 @@ selectCss = do
   "option" ? do
     fontSize $ pt 18
     height   $ em 1.8
+  ".select-fiat" ? do
+    margin auto auto auto auto
+    width $ px 200
 
 buttonsToggleCss :: Css
 buttonsToggleCss = do
@@ -689,6 +696,100 @@ buttonsToggleCss = do
   ".button-not-working" ? do
     visibility hidden
     pointerEvents none
+
+historyPageCss :: Css
+historyPageCss = do
+  ".history-table-header" ? do
+    marginTop (px 0)
+    borderTop solid (px 2) black
+    borderBottom solid (px 2) black
+    display grid
+    gridTemplateColumns [fr 5, fr 4, fr 1]
+  ".history-amount-header" ? do
+    borderRight solid (px 2) black
+    display block
+  ".history-date-header" ? do
+    borderRight solid (px 2) black
+    display block
+  ".history-status-header" ? do
+    display block
+  ".history-table-row" ? do
+    fontSize $ px 16
+    paddingTop $ px 20
+    paddingBottom $ px 20
+    display grid
+    gridTemplateColumns [fr 5, fr 4, fr 1]
+  ".history-table-row:hover" ? do
+    backgroundColor $ rgb 220 220 220
+  ".history-amount-transrefill" ? do
+    display block
+    color $ rgb 0 120 0
+  ".history-amount-transwithdraw" ? do
+    display block
+    color $ rgb 120 0 0
+  ".transaction-info-body" ? do
+    fontSize $ px 16
+    marginLeft $ px 20
+    marginRight $ px 20
+  ".transaction-info-element" ? do
+    display grid
+    gridTemplateColumns [fr 2, fr 8]
+    marginTop $ px 20
+  ".info-descr" ? do
+    fontWeight $ weight 600
+    fontSize $ px 18
+    textAlign $ alignSide sideLeft
+  ".info-body" ? do
+    textAlign $ alignSide sideLeft
+    overflow hidden
+    textOverflow overflowEllipsis
+  ".info-hash" ? do
+    wordWrap breakWord
+  ".info-raw" ? do
+    wordWrap breakWord
+  ".out-element" ? do
+    display grid
+    gridTemplateColumns [fr 2, fr 8]
+    marginBottom $ px 10
+  ".out-descr" ? do
+    fontWeight $ weight 600
+  ".transaction-info-body-andr" ? do
+    fontSize $ px 16
+    marginTop $ px 10
+    marginLeft $ px 10
+    marginRight $ px 10
+  ".info-descr-andr" ? do
+    marginTop $ px 10
+    fontWeight $ weight 600
+    textAlign $ alignSide sideLeft
+  ".info-andr-hash" ? do
+    cursor pointer
+  ".info-andr-element" ? do
+    display grid
+    gridTemplateColumns [fr 8, fr 2]
+  ".info-body-andr" ? do
+    overflow hidden
+    textOverflow overflowEllipsis
+    textAlign $ alignSide sideLeft
+  ".info-body-andr-expanded" ? do
+    overflow hidden
+    overflowWrap breakWord
+    textAlign $ alignSide sideLeft
+  ".info-copy-button" ? do
+    fontSize $ px 18
+    fontWeight $ weight 500
+    margin auto auto auto auto
+  ".currname" ? do
+    marginLeft $ px 10
+  ".expand-button" ? do
+    marginLeft $ px 10
+  ".info-exits-andr" ? do
+    marginTop $ px 5
+  ".out-body-andr" ? do
+    marginLeft $ px 10
+    overflow hidden
+    textOverflow overflowEllipsis
+    textAlign $ alignSide sideLeft
 
 legoStyles :: Css
 legoStyles = do
