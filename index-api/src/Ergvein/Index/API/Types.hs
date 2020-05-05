@@ -7,6 +7,7 @@ import Ergvein.Types.Block
 import GHC.Generics
 import Data.Word
 import Data.Maybe
+import Servant.Client.Core
 
 -- Height
 newtype HeightRequest = HeightRequest
@@ -44,13 +45,24 @@ $(deriveJSON (aesonOptionsStripPrefix "infoResp") ''InfoResponse)
 
 
 --Peer Discover
-data AddPeerReq = AddPeerReq
-    { addPeerReqUrl     :: !String
-    } deriving (Eq, Show, Generic)
-$(deriveJSON (aesonOptionsStripPrefix "addPeerReq") ''AddPeerReq)
 
-data AddPeerResp = AddPeerResp
-    { addPeerRespIsSuccess    :: !Bool
-    , addPeerRespErrorMessage :: !(Maybe String)
+data IntroducePeerReq = IntroducePeerReq
+    { introducePeerReqUrl     :: !String
     } deriving (Eq, Show, Generic)
-$(deriveJSON (aesonOptionsStripPrefix "addPeerResp") ''AddPeerResp)
+$(deriveJSON (aesonOptionsStripPrefix "introducePeerReq") ''IntroducePeerReq)
+
+data IntroducePeerResp = IntroducePeerResp
+    { addPeerRespIsSuccess    :: !Bool
+    , introducePeerRespErrorMessage :: !(Maybe String)
+    } deriving (Eq, Show, Generic)
+$(deriveJSON (aesonOptionsStripPrefix "introducePeerResp") ''IntroducePeerResp)
+
+data KnownPeersReq = KnownPeersReq
+    { knownPeersWithSecureConnectionOnly     :: !Bool
+    } deriving (Eq, Show, Generic)
+$(deriveJSON (aesonOptionsStripPrefix "knownPeersReq") ''KnownPeersReq)
+
+newtype KnownPeersResp = KnownPeersResp 
+    { knownPeersList :: [String]
+    } deriving (Eq, Show, Generic)
+$(deriveJSON (aesonOptionsStripPrefix "knownPeersResp") ''KnownPeersResp)

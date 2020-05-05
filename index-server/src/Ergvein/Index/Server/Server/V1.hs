@@ -39,7 +39,8 @@ indexServer = IndexApi
     { indexGetHeight = indexGetHeightEndpoint
     , indexGetBlockFilters = indexGetBlockFiltersEndpoint
     , indexGetInfo = indexGetInfoEndpoint
-    , indexAddPeer = addPeerEndpoint
+    , indexIntroducePeer = introducePeerEndpoint
+    , indexKnownPeers = knownPeersEndpoint
     }
 
 --Endpoints
@@ -70,19 +71,22 @@ indexGetInfoEndpoint = do
   where
     scanNfoItem nfo = ScanProgressItem (nfoCurrency nfo) (nfoScannedHeight nfo) (nfoActualHeight nfo)
 
-addPeerEndpoint :: AddPeerReq -> ServerM AddPeerResp
-addPeerEndpoint request = do
-  url <- PeerCandidate <$> (parseBaseUrl $ addPeerReqUrl $ request) 
+introducePeerEndpoint :: IntroducePeerReq -> ServerM IntroducePeerResp
+introducePeerEndpoint request = do
+  url <- PeerCandidate <$> (parseBaseUrl $ introducePeerReqUrl $ request) 
   result <- runExceptT $ considerPeerCandidate url
   pure $ peerValidationToResponce result
 
-peerValidationToResponce :: Either PeerValidationResult () -> AddPeerResp
+peerValidationToResponce :: Either PeerValidationResult () -> IntroducePeerResp
 peerValidationToResponce = \case 
-  Right ()   -> AddPeerResp True Nothing
-  Left error -> AddPeerResp False $ Just $ case error of
+  Right ()   -> IntroducePeerResp True Nothing
+  Left error -> IntroducePeerResp False $ Just $ case error of
     PeerConnectionError ->
       "Unable to establish connection"
     CurrencyOutOfSync outOfSync -> 
       "Currency " <> show (outOfsyncCurrency outOfSync) <> "scanned height much less then " <> show (outOfSyncLocalHeight outOfSync)
     CurrencyMissing currency ->
       "Currency " <> show currency <> "is missing"
+
+knownPeersEndpoint :: KnownPeersReq -> ServerM KnownPeersResp
+knownPeersEndpoint = undefined

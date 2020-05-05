@@ -1,27 +1,27 @@
 module Ergvein.Index.Server.PeerDiscovery.Discovery where
 
+import Control.Concurrent
+import Control.Immortal
 import Control.Monad.Reader
 import Control.Monad.Trans.Except
 import Data.Either.Combinators
-
+import Data.Foldable
+import Data.Hashable
+import Data.Time.Clock
 import Ergvein.Index.API.Types
 import Ergvein.Index.Client.V1
 import Ergvein.Index.Server.BlockchainScanning.Common
+import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.DB.Monad
+import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Servant.Client.Core
-import Ergvein.Index.Server.DB.Queries
-import Control.Concurrent
-import Control.Immortal
-import Data.Foldable
-import Data.Time.Clock
-import Ergvein.Index.Server.DB.Monad
-import Ergvein.Index.Server.Config
-import Data.Either.Combinators
 
 import qualified Data.Map.Strict as Map
 import qualified Network.HTTP.Client as HC
+import qualified Data.HashSet as Set
 
 instance MonadIO m => HasClientManager (ReaderT HC.Manager m) where
   getClientManager = ask
@@ -93,5 +93,18 @@ peerDiscoverActualization = do
       let z = currentTime `diffUTCTime` peerLastValidatedAt peer
       let s = if (z >= 86400) then Just Peer else Nothing
       rr <- runExceptT $ except $ Right  peer
-      r <- ((\x -> rightToMaybe <$> (runExceptT $ peerValidation (baseUrlScheme $ peerUrl x ) (peerUrl x))))  =<<   (pure peer)
+      r <- ((\x -> rightToMaybe <$> (runExceptT $ peerValidation (baseUrlScheme $ peerUrl x ) (peerUrl x))))  =<< (pure peer)
       dbQuery $ refreshPeerValidationTime $ peerId peer
+
+instance Hashable BaseUrl where
+  hashWithSalt salt = hashWithSalt salt . showBaseUrl
+
+--getList :: ServerM [PeerCandidate]
+
+peerIntroduce :: ServerM ()
+peerIntroduce = do
+  nfo <- getDiscoveryRequisites
+  let set = Set.fromList $ (peerDescReqOwnAddress nfo) : (peerDescReqKnownPeers nfo)
+  allPeers <- dbQuery getNewPeers
+
+  pure ()

@@ -78,6 +78,10 @@ instance HasTlsManager ServerM where
   getTlsManager = asks envTlsManager
   {-# INLINE getTlsManager #-}
 
+instance HasDiscoveryRequisites ServerM where
+  getDiscoveryRequisites = asks envPeerDiscoveryRequisites
+  {-# INLINE getDiscoveryRequisites #-}
+
 instance MonadUnliftIO ServerM where
   askUnliftIO = ServerM $ (\(UnliftIO run) -> UnliftIO $ run . unServerM) <$> askUnliftIO
   withRunInIO go = ServerM $ withRunInIO (\k -> go $ k . unServerM)

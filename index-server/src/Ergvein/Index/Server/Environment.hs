@@ -24,6 +24,8 @@ import Network.Bitcoin.Api.Types
 import Network.Bitcoin.Api.Misc
 import Network.HTTP.Client.TLS
 import Network.Connection
+import Servant.Client.Core
+import Data.Maybe
 
 import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 import qualified Network.Ergo.Api.Client     as ErgoApi
@@ -36,15 +38,22 @@ import Network.HTTP.Client.TLS (newTlsManagerWith, mkManagerSettings, newTlsMana
 import Network.TLS
 import Network.TLS.Extra.Cipher
 
+data PeerDiscoveryRequisites = PeerDiscoveryRequisites
+  { peerDescReqOwnAddress :: !BaseUrl
+  , peerDescReqKnownPeers :: ![BaseUrl]
+  }
+
+
 data ServerEnv = ServerEnv 
-    { envServerConfig       :: !Config
-    , envLogger             :: !(Chan (Loc, LogSource, LogLevel, LogStr))
-    , envPersistencePool    :: !DBPool
-    , envLevelDBContext     :: !DB
-    , envBitcoinNodeNetwork :: !HK.Network
-    , envErgoNodeClient     :: !ErgoApi.Client
-    , envHttpManager        :: !HC.Manager
-    , envTlsManager         :: !HC.Manager
+    { envServerConfig             :: !Config
+    , envLogger                   :: !(Chan (Loc, LogSource, LogLevel, LogStr))
+    , envPersistencePool          :: !DBPool
+    , envLevelDBContext           :: !DB
+    , envBitcoinNodeNetwork       :: !HK.Network
+    , envErgoNodeClient           :: !ErgoApi.Client
+    , envHttpManager              :: !HC.Manager
+    , envTlsManager               :: !HC.Manager
+    , envPeerDiscoveryRequisites  :: !PeerDiscoveryRequisites
     }
 
 class HasBitcoinNodeNetwork m where
@@ -56,10 +65,13 @@ class MonadIO m => HasHttpManager m where
 class MonadIO m => HasTlsManager m where
   getTlsManager  :: m Manager
 
+class HasDiscoveryRequisites m where
+  getDiscoveryRequisites  :: m PeerDiscoveryRequisites
+
 newServerEnv :: (MonadIO m, MonadLogger m) => Config -> m ServerEnv
 newServerEnv cfg = do
     logger <- liftIO newChan
-    void . liftIO . forkIO $ runStdoutLoggingT $ unChanLoggingT logger
+    liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
     persistencePool <- liftIO $ runStdoutLoggingT $ do
         let dbLog = configDbLog cfg
         persistencePool <- newDBPool dbLog $ fromString $ connectionStringFromConfig cfg
@@ -72,6 +84,10 @@ newServerEnv cfg = do
     httpManager <- liftIO $ HC.newManager HC.defaultManagerSettings
     tlsManager <- liftIO $ newTlsManager
 
+    let peerDiscoveryRequisites = PeerDiscoveryRequisites 
+                                  (fromJust $ parseBaseUrl $ configOwnPeerAddress cfg)
+                                  (fromJust . parseBaseUrl <$> configKnownPeers cfg)
+
     pure ServerEnv { envServerConfig       = cfg
                    , envLogger             = logger
                    , envPersistencePool    = persistencePool
@@ -80,6 +96,7 @@ newServerEnv cfg = do
                    , envErgoNodeClient     = ergoNodeClient
                    , envHttpManager        = httpManager
                    , envTlsManager         = tlsManager
+                   , envPeerDiscoveryRequisites = peerDiscoveryRequisites
                    }
 
 -- | Log exceptions at Error severity

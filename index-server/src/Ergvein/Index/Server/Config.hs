@@ -6,6 +6,8 @@ import Data.Yaml.Config
 import Ergvein.Aeson
 import GHC.Generics
 
+
+
 data Config = Config
   { configServerPort            :: !Int
   , configDbHost                :: !String
@@ -24,6 +26,8 @@ data Config = Config
   , configBTCNodePassword       :: !Text
   , configERGONodeHost          :: !String
   , configERGONodePort          :: !Int
+  , configOwnPeerAddress        :: !String
+  , configKnownPeers            :: ![String]
   } deriving (Show, Generic)
 deriveJSON (aesonOptionsStripPrefix "config") ''Config
 
