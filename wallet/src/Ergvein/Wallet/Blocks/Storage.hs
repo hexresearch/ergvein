@@ -1,7 +1,7 @@
-module Ergvein.Wallet.Headers.Storage(
-    HeadersStorage
-  , HasHeadersStorage(..)
-  , openHeadersStorage
+module Ergvein.Wallet.Blocks.Storage(
+    BlocksStorage
+  , HasBlocksStorage(..)
+  , openBlocksStorage
   ) where
 
 import Control.Monad.Catch
@@ -9,24 +9,24 @@ import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.Text (Text, unpack)
 import Database.LMDB.Simple
-import Ergvein.Wallet.Headers.Types
+import Ergvein.Wallet.Blocks.Types
 import Ergvein.Wallet.Native
 import System.Directory
 
-import qualified Ergvein.Wallet.Headers.Btc.Types as BTC
+import qualified Ergvein.Wallet.Blocks.BTC.Types as BTC
 
 -- | Name of filters sub storage folder in global storage folder
-headersStorageName :: Text
-headersStorageName = "filters"
+blocksStorageName :: Text
+blocksStorageName = "blocks"
 
-getHeadersStoragePath :: (Monad m, HasStoreDir m) => m Text
-getHeadersStoragePath = do
+getBlocksStoragePath :: (Monad m, HasStoreDir m) => m Text
+getBlocksStoragePath = do
   st <- getStoreDir
-  pure $ st <> "/" <> headersStorageName
+  pure $ st <> "/" <> blocksStorageName
 
-openHeadersStorage :: (MonadIO m, MonadMask m, HasStoreDir m) => m HeadersStorage
-openHeadersStorage = do
-  fn <- getHeadersStoragePath
+openBlocksStorage :: (MonadIO m, MonadMask m, HasStoreDir m) => m BlocksStorage
+openBlocksStorage = do
+  fn <- getBlocksStoragePath
   let path = unpack fn
   liftIO $ do
     storeEx <- doesDirectoryExist path

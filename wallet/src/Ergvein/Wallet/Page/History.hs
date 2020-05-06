@@ -135,12 +135,12 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
       divClass "info-descr" $ localizedText HistoryTIVolume
       divClass "info-body info-fee" $ do
         text $ showMoney $ txAmount
-        text $ showt cur
+        elClass "span" "currname" $ text $ showt cur
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIFee
       divClass "info-body info-fee" $ do
         text $ showMoney $ txFee txInfo
-        text $ showt cur
+        elClass "span" "currname" $ text $ showt cur
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIConfirmations
       divClass "info-body info-conf" $ text $ showt $ txConfirmations txInfo
@@ -157,7 +157,7 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
           divClass "out-descr" $ localizedText HistoryTIOutputsValue
           divClass "out-body"  $ do
             text $ showMoney $ oVal
-            text $ showt cur
+            elClass "span" "currname" $ text $ showt cur
           divClass "out-descr" $ localizedText HistoryTIOutputsAddress
           divClass "out-body"  $ text $ oHash
           divClass "out-descr" $ localizedText HistoryTIOutputsStatus
@@ -169,7 +169,7 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
           divClass "out-descr" $ localizedText HistoryTIOutputsValue
           divClass "out-body" $ do
             text $ showMoney $ oVal
-            text $ showt cur
+            elClass "span" "currname" $ text $ showt cur
           divClass "out-descr" $ localizedText HistoryTIOutputsAddress
           divClass "out-body"  $ text $ oHash
   pure ()

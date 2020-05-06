@@ -4,9 +4,11 @@ module Ergvein.Wallet.Monad.Front(
   , MonadFrontAuth(..)
   , AuthInfo(..)
   , Password
+  , RequestSelector
   , getCurrentHeight
   , setCurrentHeight
   , getFiltersSync
+  , extractReq
   -- * Reexports
   , Text
   , MonadJSM
@@ -21,6 +23,7 @@ import Control.Concurrent.Chan
 import Control.Monad
 import Data.Foldable (traverse_)
 import Data.Functor (void)
+import Data.Functor.Misc (Const2(..))
 import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
@@ -34,6 +37,7 @@ import Reflex.ExternalRef
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
+import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Headers.Storage
@@ -47,14 +51,22 @@ import Ergvein.Wallet.Sync.Status
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
+type RequestSelector t = EventSelector t (Const2 Currency (Map BaseUrl NodeMessage))
+
+extractReq :: Reflex t => RequestSelector t -> Currency -> BaseUrl -> Event t NodeMessage
+extractReq sel c u = select (fanMap (select sel $ Const2 c)) $ Const2 u
+
 -- | Authorized context. Has access to storage and indexer's functionality
 type MonadFront t m = (
     MonadFrontAuth t m
   , MonadStorage t m
   , MonadClient t m
   , HasHeadersStorage m
+  , HasHeadersStorage (Performable m)
   , HasFiltersStorage m
   , HasFiltersStorage (Performable m)
+  , HasBlocksStorage m
+  , HasBlocksStorage (Performable m)
   )
 
 class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
@@ -82,6 +94,11 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   getNodesByCurrencyD :: Currency -> m (Dynamic t (Map BaseUrl (NodeConn t)))
   -- | Get connections map
   getNodeConnectionsD :: m (Dynamic t (ConnMap t))
+  -- | Send a request to a specific URL
+  -- It's up to the caller to ensure that the URL actually points to a correct currency node
+  requestFromNode :: Event t (BaseUrl, NodeReqG) -> m ()
+  -- | Get node request event
+  getNodeRequestSelector :: m (RequestSelector t)
 
 class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   -- | Get current settings
