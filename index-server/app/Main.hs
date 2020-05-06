@@ -5,7 +5,6 @@ import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Ergvein.Index.Server.App
 import Ergvein.Index.Server.BlockchainScanning.Common
-import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Network.Wai.Handler.Warp

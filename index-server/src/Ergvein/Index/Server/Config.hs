@@ -6,8 +6,6 @@ import Data.Yaml.Config
 import Ergvein.Aeson
 import GHC.Generics
 
-
-
 data Config = Config
   { configServerPort            :: !Int
   , configDbHost                :: !String

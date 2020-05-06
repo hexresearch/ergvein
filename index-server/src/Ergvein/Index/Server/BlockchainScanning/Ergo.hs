@@ -7,7 +7,6 @@ import  Data.Serialize
 
 import Ergvein.Crypto.Hash
 import Ergvein.Index.Server.BlockchainScanning.Types
-import Ergvein.Index.Server.Environment
 import Ergvein.Interfaces.Ergo.Api
 import Ergvein.Interfaces.Ergo.It.Api.NodeApi
 import Ergvein.Interfaces.Ergo.Scorex.Core.Block

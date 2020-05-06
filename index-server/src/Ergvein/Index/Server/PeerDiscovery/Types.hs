@@ -33,3 +33,8 @@ data NewPeer = NewPeer
   { newPeerUrl :: BaseUrl
   , newPeerConnectionScheme :: Scheme
   }
+
+data PeerDiscoveryRequisites = PeerDiscoveryRequisites
+  { peerDescReqOwnAddress :: !BaseUrl
+  , peerDescReqKnownPeers :: ![BaseUrl]
+  }

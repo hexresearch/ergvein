@@ -16,12 +16,11 @@ import           Ergvein.Index.Server.BlockchainScanning.Types
 import           Ergvein.Index.Server.Cache.Monad
 import           Ergvein.Index.Server.Cache.Queries
 import           Ergvein.Index.Server.Cache.Schema
-import           Ergvein.Index.Server.Config
-import           Ergvein.Index.Server.Environment
 import           Ergvein.Index.Server.Utils
 import           Ergvein.Text
 import           Ergvein.Types.Currency
 import           Ergvein.Types.Transaction
+import           Ergvein.Index.Server.Dependencies
 
 import qualified Data.HashSet                       as Set
 import qualified Data.HexString                     as HS

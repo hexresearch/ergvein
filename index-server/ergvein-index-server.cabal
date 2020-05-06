@@ -38,6 +38,7 @@ library
     Ergvein.Index.Server.Server
     Ergvein.Index.Server.Server.V1
     Ergvein.Index.Server.Utils
+    Ergvein.Index.Server.Dependencies
 
   build-depends:
         base                     >= 4.7     &&  < 4.13

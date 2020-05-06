@@ -18,6 +18,7 @@ import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Servant.Client.Core
+import Ergvein.Index.Server.Dependencies
 
 import qualified Data.Map.Strict as Map
 import qualified Network.HTTP.Client as HC
