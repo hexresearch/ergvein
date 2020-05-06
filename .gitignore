@@ -8,3 +8,6 @@ android-release
 cabal.project.freeze
 stack.yaml.lock
 checkpoint-generator/btcHeadersTree
+ergvein.hp
+ergvein.aux
+ergvein.ps

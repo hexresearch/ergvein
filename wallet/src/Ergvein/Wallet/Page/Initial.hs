@@ -18,6 +18,7 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Initial
 import Ergvein.Wallet.Localization.Storage
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Page.Seed
 import Ergvein.Wallet.Password
@@ -34,10 +35,14 @@ import qualified Data.IntMap.Strict    as MI
 
 data GoPage = GoSeed | GoRestore
 
+data GoSwitch = GoPass Password | GoSwitchWallet
+
 initialPage :: MonadFrontBase t m => m ()
 initialPage = do
+  logWrite "Initial page rendering"
   ss <- listStorages
   if null ss then noWalletsPage else hasWalletsPage ss
+  logWrite "Finished initial page rendering"
   where
     noWalletsPage = wrapperSimple True $ divClass "initial-options grid1" $ noWallets
     noWallets = do
@@ -52,7 +57,15 @@ initialPage = do
         }
     hasWalletsPage ss = do
       mname <- getLastStorage
-      maybe (selectWalletsPage ss) loadWalletPage mname
+      selectTrougth ss mname
+    selectTrougth ss mname = do
+      buildE <-getPostBuild
+      case mname of
+        Just name -> void $ nextWidget $ ffor buildE $ const $ Retractable {
+                retractableNext = loadWalletPage name
+              , retractablePrev = Just $ pure $ selectWalletsPage ss
+              }
+        Nothing -> selectWalletsPage ss
     selectWalletsPage ss = wrapperSimple True $ divClass "initial-options grid1" $ do
       h4 $ localizedText IPSSelectWallet
       flip traverse_ ss $ \name -> do

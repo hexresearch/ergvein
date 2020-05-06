@@ -7,6 +7,8 @@
 -- handle*Msg logs all Left occurences (!)
 -- log*Msg :: Event (Either msg val) -> m (Event val)
 -- ^ simply logs the Left occurences w/o sending them to alert popup. Passes Right through
+-- logShow*Msg :: (Event msg) -> m ()
+-- ^ both shows as an alert and logs message
 -- This module also reexports common alert types and sets defaultMsgTimeout
 module Ergvein.Wallet.Alert
   (
@@ -32,6 +34,13 @@ module Ergvein.Wallet.Alert
   , logSecondaryMsg
   , logInfoMsg
   , logAlertWith
+  , logShowDangerMsg
+  , logShowWarnMsg
+  , logShowSuccessMsg
+  , logShowPrimaryMsg
+  , logShowSecondaryMsg
+  , logShowInfoMsg
+  , logShowWith
   , AlertHandler
   , module Ergvein.Wallet.Alert.Type
   ) where
@@ -52,27 +61,27 @@ defaultMsgTimeout = 10
 -- | Just an abbreviation
 type AlertHandler t m l = (MonadBaseConstr t m, MonadLocalized t m, MonadAlertPoster t m, MonadEgvLogger t m, LocalizedPrint l, Eq l)
 
--- | Display 'Left' occurences as error messages
+-- | Display localized value as error messages
 showDangerMsg :: AlertHandler t m l => Event t l -> m ()
 showDangerMsg = showMsg AlertTypeFail
 
--- | Display 'Left' occurences as warning messages
+-- | Display localized value as warning messages
 showWarnMsg :: AlertHandler t m l => Event t l -> m ()
 showWarnMsg = showMsg AlertTypeWarn
 
--- | Display 'Left' occurences as success messages
+-- | Display localized value as success messages
 showSuccessMsg :: AlertHandler t m l => Event t l -> m ()
 showSuccessMsg = showMsg AlertTypeSuccess
 
--- | Display 'Left' occurences as primary messages
+-- | Display localized value as primary messages
 showPrimaryMsg :: AlertHandler t m l => Event t l -> m ()
 showPrimaryMsg = showMsg AlertTypePrimary
 
--- | Display 'Left' occurences as secondary messages
+-- | Display localized value as secondary messages
 showSecondaryMsg :: AlertHandler t m l => Event t l -> m ()
 showSecondaryMsg = showMsg AlertTypeSecondary
 
--- | Display 'Left' occurences as info messages
+-- | Display localized value as info messages
 showInfoMsg :: AlertHandler t m l => Event t l -> m ()
 showInfoMsg = showMsg AlertTypeInfo
 
@@ -165,3 +174,44 @@ logAlertWith et e = do
     Right _ -> Nothing
   performEvent_ $ (liftIO . postLog) <$> logE
   pure $ fmapMaybe (either (const Nothing) Just) e
+
+
+-- | Display and log localized value as error message
+logShowDangerMsg :: (MonadAlertPoster t m, AlertLogger t m l) => Event t l -> m ()
+logShowDangerMsg = logShowWith AlertTypeFail
+
+-- | Display and log localized value as warning message
+logShowWarnMsg :: (MonadAlertPoster t m, AlertLogger t m l) => Event t l -> m ()
+logShowWarnMsg = logShowWith AlertTypeWarn
+
+-- | Display and log localized value as success message
+logShowSuccessMsg :: (MonadAlertPoster t m, AlertLogger t m l) => Event t l -> m ()
+logShowSuccessMsg = logShowWith AlertTypeSuccess
+
+-- | Display and log localized value as primary message
+logShowPrimaryMsg :: (MonadAlertPoster t m, AlertLogger t m l) => Event t l -> m ()
+logShowPrimaryMsg = logShowWith AlertTypePrimary
+
+-- | Display and log localized value as secondary message
+logShowSecondaryMsg :: (MonadAlertPoster t m, AlertLogger t m l) => Event t l -> m ()
+logShowSecondaryMsg = logShowWith AlertTypeSecondary
+
+-- | Display and log localized value as info message
+logShowInfoMsg :: (MonadAlertPoster t m, AlertLogger t m l) => Event t l -> m ()
+logShowInfoMsg = logShowWith AlertTypeInfo
+
+-- | Display and log localized value
+logShowWith :: (MonadAlertPoster t m, AlertLogger t m l) => AlertType -> Event t l -> m ()
+logShowWith et e = do
+    ns <- readExternalRef =<< getLogsNameSpacesRef
+    postLog <- fmap snd getLogsTrigger
+    e' <- performEvent $ ffor e $ \v -> do
+      t <- liftIO getCurrentTime
+      liftIO $ postLog $ LogEntry {
+          logTime = t
+        , logSeverity = alertTypeToSeverity et
+        , logMessage = localizedShow English v
+        , logNameSpace = ns
+        }
+      pure $ AlertInfo et defaultMsgTimeout ns t False v
+    postAlert e'

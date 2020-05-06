@@ -1,27 +1,16 @@
 module Ergvein.Wallet.Headers.Types(
-    Schema(..)
-  , emptySchema
-  , schemaBtc
-  , module Ergvein.Wallet.Headers.Btc.Types
+    HeadersStorage
+  , HasHeadersStorage(..)
   ) where
 
-import Control.Lens (Lens', lens)
-import Data.Binary (Binary(..))
-import Data.BTree.Primitives (Value)
-import Database.Haskey.Alloc.Concurrent (Root)
-import Ergvein.Wallet.Headers.Btc.Types
-import GHC.Generics (Generic)
+import Control.Monad.Reader
+import Database.LMDB.Simple
 
-data Schema = Schema {
-  _schemaBtc :: !SchemaBtc
-} deriving (Generic, Show)
+type HeadersStorage = Environment ReadWrite
 
-instance Binary Schema
-instance Value Schema
-instance Root Schema
+class Monad m => HasHeadersStorage m where
+  getHeadersStorage :: m HeadersStorage
 
-emptySchema :: Schema
-emptySchema = Schema emptySchemaBtc
-
-schemaBtc :: Lens' Schema SchemaBtc
-schemaBtc = lens _schemaBtc $ \s x -> s { _schemaBtc = x }
+instance Monad m => HasHeadersStorage (ReaderT HeadersStorage m) where
+  getHeadersStorage = ask
+  {-# INLINE getHeadersStorage #-}

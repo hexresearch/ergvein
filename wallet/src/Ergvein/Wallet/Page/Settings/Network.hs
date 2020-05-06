@@ -23,6 +23,7 @@ import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Wrapper
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
@@ -54,8 +55,7 @@ instance LocalizedPrint ParametersParseErrors where
       PPEInt -> "Некорректное значение. Только целые числа"
 
 networkSettingsPage :: MonadFront t m => m ()
-networkSettingsPage = divClass "base-container" $ do
-  headerWidget NSSTitle $ Just $ pure networkSettingsPage
+networkSettingsPage = wrapper NSSTitle (Just $ pure networkSettingsPage ) False $ do
   navD <- navbarWidget ActivePage
   void $ widgetHoldDyn $ ffor navD $ \case
     ActivePage      -> activePageWidget

@@ -1,8 +1,13 @@
 {-# LANGUAGE RecursiveDo #-}
 module Ergvein.Wallet.Client
   ( getHeight
+  , getHeightSolo
+  , getHeightRandom
   , getBlockFilters
+  , getBlockFiltersSolo
+  , getBlockFiltersRandom
   , ClientErr(..)
+  , module Ergvein.Index.API.Types
   ) where
 
 import Control.Concurrent
@@ -27,11 +32,21 @@ import qualified Data.Set as S
 import Ergvein.Index.API.Types
 import Ergvein.Index.Client
 import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Localization.Client
 
+import Ergvein.Wallet.Native
+import Ergvein.Text
+
 getHeight :: (MonadFrontBase t m, MonadClient t m) => Event t HeightRequest -> m (Event t (Either ClientErr HeightResponse))
-getHeight = requester meanHeight getHeightEndpoint
+getHeight = requester False meanHeight getHeightEndpoint
+
+getHeightSolo :: (MonadFrontBase t m, MonadClient t m) => Event t (BaseUrl, HeightRequest) -> m (Event t (Either ClientErr HeightResponse))
+getHeightSolo = requestSolo getHeightEndpoint
+
+getHeightRandom :: (MonadFrontBase t m, MonadClient t m) => Event t HeightRequest -> m (Event t (Either ClientErr HeightResponse))
+getHeightRandom = requestSoloRandom getHeightEndpoint
 
 meanHeight :: [HeightResponse] -> Either ClientMessage HeightResponse
 meanHeight [] = Left CMSEmpty
@@ -40,6 +55,12 @@ meanHeight xs = Right $ head $ drop (length xs `div` 2) $ sortOn heightRespHeigh
 
 getBlockFilters :: (MonadFrontBase t m, MonadClient t m) => Event t BlockFiltersRequest -> m (Event t (Either ClientErr BlockFiltersResponse))
 getBlockFilters = requesterEq getBlockFiltersEndpoint
+
+getBlockFiltersSolo :: (MonadFrontBase t m, MonadClient t m) => Event t (BaseUrl, BlockFiltersRequest) -> m (Event t (Either ClientErr BlockFiltersResponse))
+getBlockFiltersSolo = requestSolo getBlockFiltersEndpoint
+
+getBlockFiltersRandom :: (MonadFrontBase t m, MonadClient t m) => Event t BlockFiltersRequest -> m (Event t (Either ClientErr BlockFiltersResponse))
+getBlockFiltersRandom = requestSoloRandom getBlockFiltersEndpoint
 
 instance MonadIO m => HasClientManager (ReaderT Manager m) where
   getClientManager = ask
@@ -54,27 +75,46 @@ validateEq rs = case L.nub rs of
   x:[]  -> Right x
   _     -> Left CMSValidationError
 
+requestSoloRandom :: (MonadFrontBase t m, MonadClient t m, Eq a, Show a, Show b)
+  => (BaseUrl -> b -> ReaderT Manager IO (Either e a))
+  -> Event t b
+  -> m (Event t (Either ClientErr a))
+requestSoloRandom endpoint reqE = do
+  urls  <- fmap M.keys . readExternalRef =<< getActiveUrlsRef
+  i <- liftIO $ randomRIO (0, length urls - 1)
+  requestSolo endpoint $ (urls!!i, ) <$> reqE
+
+requestSolo :: (MonadFrontBase t m, MonadClient t m, Eq a, Show a, Show b)
+  => (BaseUrl -> b -> ReaderT Manager IO (Either e a))
+  -> Event t (BaseUrl, b)
+  -> m (Event t (Either ClientErr a))
+requestSolo endpoint reqE = do
+  mng <- getClientMaganer
+  resE <- performFork $ ffor reqE $ \(u, req) -> liftIO $ runReaderT (endpoint u req) mng
+  pure $ either (const $ Left ClientErrTimeOut) Right <$> resE
+
 -- Implements request logic:
 -- Request from n nodes and check if results are equal.
 requesterEq :: (MonadFrontBase t m, MonadClient t m, Eq a, Show a, Show b)
   => (BaseUrl -> b -> ReaderT Manager IO (Either e a))    -- ^ Request function
   -> Event t b                                            -- ^ Request event
   -> m (Event t (Either ClientErr a))                     -- ^ Result
-requesterEq = requester validateEq
+requesterEq = requester False validateEq
 
 -- Implements request logic:
 -- Request from n nodes and check if results are equal.
 requester :: (MonadFrontBase t m, MonadClient t m, Eq a, Show a, Show b)
-  => ([a] -> Either ClientMessage a)                      -- ^ Validation of inputs
+  => Bool                                                 -- ^ Show loading widget or not
+  -> ([a] -> Either ClientMessage a)                      -- ^ Validation of inputs
   -> (BaseUrl -> b -> ReaderT Manager IO (Either e a))    -- ^ Request function
   -> Event t b                                            -- ^ Request event
   -> m (Event t (Either ClientErr a))                     -- ^ Result
-requester validateRes endpoint reqE = mdo
+requester showLoad validateRes endpoint reqE = mdo
   uss  <- fmap M.keysSet . readExternalRef =<< getActiveUrlsRef
   let initReqE = ffor reqE (\req -> Just (req, [], uss))
   drawE <- delay 0.1 $ leftmost [initReqE, redrawE]
   respE <- fmap (switch . current) $ widgetHold (pure never) $ ffor drawE $ \case
-    Just (req, rs, urls) -> requesterBody validateRes urls endpoint rs req
+    Just (req, rs, urls) -> requesterBody showLoad validateRes urls endpoint rs req
     _ -> pure never
   let redrawE = ffor respE $ \case
         ReqTimeout req [] uss -> Just (req, [], uss)
@@ -87,13 +127,14 @@ requester validateRes endpoint reqE = mdo
     ReqTimeout {}     -> Nothing
 
 requesterBody :: forall t m e a b . ((MonadFrontBase t m, MonadClient t m), Show a)
-  => ([a] -> Either ClientMessage a)                      -- ^ Validation of inputs
+  => Bool                                                 -- ^ Show loading widget or not
+  -> ([a] -> Either ClientMessage a)                      -- ^ Validation of inputs
   -> S.Set BaseUrl
   -> (BaseUrl -> b -> ReaderT Manager IO (Either e a))
   -> [a]
   -> b
   -> m (Event t (ReqSignal a b))
-requesterBody validateRes uss endpoint initRes req = do
+requesterBody showLoad validateRes uss endpoint initRes req = do
   buildE        <- getPostBuild
   (minN, maxN)  <- readExternalRef =<< getRequiredUrlNumRef -- Required number of confirmations
   dt            <- readExternalRef =<< getRequestTimeoutRef -- Get a timeout
@@ -171,13 +212,14 @@ requesterBody validateRes uss endpoint initRes req = do
     gateB <- fmap current $ holdDyn True $ False <$ resE
 
   -- Handle messages for loading display
-  -- toggleLoadingWidget $ (True , CMSTimeout) <$ timeoutMsgE
-  -- toggleLoadingWidget $ (True , CMSError)   <$ failE
-  -- toggleLoadingWidget $ ffor resE $ \case
-  --   ReqTimeout{} -> (True, CMSRestarting)
-  --   _ -> (False, CMSDone)
-  -- toggleLoadingWidget =<< fmap ((True , CMSLoading 0 minN maxN) <$) getPostBuild
-  -- toggleLoadingWidget $ ffor (updated storeD) $ \store -> (True , CMSLoading (length store) minN maxN)
+  when showLoad $ do
+    toggleLoadingWidget $ (True , CMSTimeout) <$ timeoutMsgE
+    toggleLoadingWidget $ (True , CMSError)   <$ failE
+    toggleLoadingWidget $ ffor resE $ \case
+      ReqTimeout{} -> (True, CMSRestarting)
+      _ -> (False, CMSDone)
+    toggleLoadingWidget =<< fmap ((True , CMSLoading 0 minN maxN) <$) getPostBuild
+    toggleLoadingWidget $ ffor (updated storeD) $ \store -> (True , CMSLoading (length store) minN maxN)
 
   delay 0.1 resE
   where

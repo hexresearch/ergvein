@@ -22,15 +22,19 @@ flag testnet
 
 library
     exposed-modules:
-        Control.Monad.Haskey.Haskoin
-        Control.Monad.Haskey.State
         Ergvein.Wallet
         Ergvein.Wallet.Alert
         Ergvein.Wallet.Alert.Handler
         Ergvein.Wallet.Alert.Type
+        Ergvein.Wallet.Blocks.BTC
+        Ergvein.Wallet.Blocks.BTC.Queries
+        Ergvein.Wallet.Blocks.BTC.Types
+        Ergvein.Wallet.Blocks.Storage
+        Ergvein.Wallet.Blocks.Types
         Ergvein.Wallet.Camera
         Ergvein.Wallet.Client
         Ergvein.Wallet.Clipboard
+        Ergvein.Wallet.Codec
         Ergvein.Wallet.Currencies
         Ergvein.Wallet.Elements
         Ergvein.Wallet.Embed
@@ -57,6 +61,7 @@ library
         Ergvein.Wallet.Localization.Currency
         Ergvein.Wallet.Localization.Info
         Ergvein.Wallet.Localization.Initial
+        Ergvein.Wallet.Localization.History
         Ergvein.Wallet.Localization.Native
         Ergvein.Wallet.Localization.Network
         Ergvein.Wallet.Localization.Password
@@ -65,6 +70,7 @@ library
         Ergvein.Wallet.Localization.Settings
         Ergvein.Wallet.Localization.Share
         Ergvein.Wallet.Localization.Storage
+        Ergvein.Wallet.Localization.Util
         Ergvein.Wallet.Log
         Ergvein.Wallet.Log.Page
         Ergvein.Wallet.Log.Reader
@@ -89,6 +95,7 @@ library
         Ergvein.Wallet.Node.BTC
         Ergvein.Wallet.Node.ERGO
         Ergvein.Wallet.Node.Prim
+        Ergvein.Wallet.Node.Socket
         Ergvein.Wallet.Node.Types
         Ergvein.Wallet.Page.About
         Ergvein.Wallet.Page.Balances
@@ -126,6 +133,7 @@ library
         Ergvein.Wallet.Widget.GraphPinCode
         Ergvein.Wallet.Worker.Height
         Ergvein.Wallet.Worker.Info
+        Ergvein.Wallet.Worker.Node
         Ergvein.Wallet.Wrapper
         Ergvein.Wallet.Yaml
     hs-source-dirs: src
@@ -139,6 +147,7 @@ library
                         UndecidableInstances
     build-depends:
         aeson -any,
+        aeson-lens -any,
         async -any,
         base -any,
         base64-bytestring >=1 && <1.0.0.3,
@@ -147,10 +156,12 @@ library
         cereal >=0.5 && <0.6,
         clay >=0.14 && <0.15,
         composition-extra -any,
+        connection -any,
         containers >=0.6 && <0.7,
         data-default -any,
-        dependent-sum >= 0.6,
         dependent-map >= 0.3,
+        dependent-sum >= 0.6,
+        dns >= 4.0 && < 5.0,
         directory -any,
         ergvein-common >=1.0 && <1.1,
         ergvein-crypto >=0.1 && <0.2,
@@ -160,13 +171,11 @@ library
         ergvein-wallet-native >=0.1 && <0.2,
         ergvein-wallet-types >=0.1 && <0.2,
         exceptions -any,
+        safe-exceptions -any,
         file-embed >=0.0 && <0.1,
         filepath -any,
         ghcjs-dom -any,
-        haskey >=0.3 && <0.4,
-        haskey-btree >=0.3 && <0.4,
-        haskey-mtl >=0.3 && <0.4,
-        haskoin-core -any,
+        haskoin-core >= 0.8 && < 0.9,
         http-client >=0.5 && <0.7,
         http-client-tls >= 0.3 && < 0.4,
         immortal >= 0.3 && < 0.4,
@@ -174,9 +183,11 @@ library
         jsaddle -any,
         lens >=4.16 && <4.18,
         lifted-base >=0.2 && <0.3,
+        lmdb-simple >= 0.4 && < 0.5,
         memory >=0.14.16 && <0.15.1,
         MonadRandom -any,
         mtl >=2.2 && <2.3,
+        network >= 2.8 && < 3.0,
         parsec -any,
         process >=1.6 && <1.7,
         qrcode-core,
@@ -189,14 +200,18 @@ library
         reflex-localize -any,
         safe -any,
         semialign -any,
+        serialise >= 0.2 && < 0.3,
         servant -any,
         servant-client >=0.16 && <0.17,
         split >=0.2.3.3 && <0.3,
         stm >=2.4 && <2.6,
+        string-conversions >= 0.4 && < 0.5,
         template-haskell -any,
         text >=1.2 && <1.3,
         these -any,
         time -any,
+        tls -any,
+        unliftio >= 0.2 && < 0.3,
         unliftio-core >= 0.1 && < 0.2,
         validation >=1 && < 1.2,
         vector -any,
@@ -204,7 +219,8 @@ library
         lmdb-simple >= 0.4 && < 0.5,
         serialise >= 0.2 && < 0.3,
         tls -any,
-        connection -any
+        connection -any,
+        wreq -any
 
     if flag(android)
         cpp-options: -DANDROID
@@ -217,13 +233,13 @@ library
 
     if flag(testnet)
         cpp-options: -DTESTNET
-
+    ghc-options: -O2
 
 executable ergvein
   hs-source-dirs:
       app
   main-is:             Main.hs
-  ghc-options:         -threaded -rtsopts "-with-rtsopts=-N -A64m -AL256m -qn4"
+  ghc-options:         -O2 -threaded -rtsopts "-with-rtsopts=-N -A64m -AL256m -qn4"
   build-depends:
       base
     , data-default

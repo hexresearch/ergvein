@@ -17,6 +17,11 @@ module Ergvein.Wallet.Page.Canvas(
   , lineWidthT
   , moveToT
   , lineToT
+  , arcT
+  , strokeStyleCT
+  , drawRoundT
+  , drawRoundLstT
+  , drawRndT
   -- Auxiliary types
   , ClientRect(..)
   , Square(..)
@@ -143,6 +148,49 @@ moveToT mX mY = " ctx.moveTo(" <> (showt mX) <> "," <> (showt mY) <> "); "
 
 lineToT :: Double -> Double -> Text
 lineToT mX mY = " ctx.lineTo(" <> (showt mX) <> "," <> (showt mY) <> "); "
+
+arcT :: Double -> Double -> Double -> Double -> Double -> Bool -> Text
+arcT x y r start end b = " ctx.arc(" <> (showt x) <> "," <> (showt y) <> "," <> (showt r) <> "," <> (showt start) <> "," <> (showt end) <> "," <> ((T.toLower . showt) b) <> "); "
+
+fillT :: Text
+fillT = " ctx.fill(); "
+
+strokeStyleCT :: Text -> Text
+strokeStyleCT clr = " ctx.strokeStyle = " <> clr <> "; "
+
+drawRoundT :: Int -> Int -> Text
+drawRoundT w h  = beginPathT <> (strokeStyleCT "\"#bbbbbb\"")
+                   <> (arcT x y (r) 0 (pi*2) True)
+--                   <> (strokeT)
+--                   <> (fillT)
+  where
+    x = dw/2
+    y = dh/2
+    r = if (dw < dh)
+      then dw/2
+      else dh/2
+    dw = fromIntegral w
+    dh = fromIntegral h
+
+drawRoundLstT :: Int -> Int -> [Double] -> Text
+drawRoundLstT w h lst =  T.concat $ fmap res lred
+  where
+    l2 = zip ([0] <> lst) (lst<> [0])
+    lred = zip colorList $ fmap (\(a,b) -> (a*pi*2,a*pi*2+b*pi*2)) l2
+    res (col,(a,b)) =  (strokeStyleCT col)
+                       <> (arcT x y (r/2) a b False)
+--                       <> (strokeT)
+--                       <> (fillT)
+    x = dw/2
+    y = dh/2
+    r = if (dw < dh)
+      then dw/2
+      else dh/2
+    dw = fromIntegral w
+    dh = fromIntegral h
+    colorList = ["\"#AA8888\"","\"#88AA88\"","\"#8888AA\""]
+
+drawRndT w h lst = (drawRoundT w h) <> (drawRoundLstT w h lst) <> (fillT)
 
 drawLineT :: Int -> Int -> Double -> Double -> Double -> Double -> (DrawCommand,(Double,Double)) -> [(Maybe Int, Square)] -> Text
 drawLineT canvasW canvasH coordX coordY fromX fromY (a,(cntX,cntY)) r = case a of

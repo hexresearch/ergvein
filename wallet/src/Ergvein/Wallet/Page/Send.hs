@@ -47,9 +47,8 @@ instance LocalizedPrint SendStrings where
       BtnScanQRCode -> "Сканировать"
 
 sendPage :: MonadFront t m => Currency -> m ()
-sendPage cur = divClass "base-container" $ do
+sendPage cur = wrapper (SendTitle cur) (Just $ pure $ sendPage cur) False $ do
   let thisWidget = Just $ pure $ sendPage cur
-  headerWidget (SendTitle cur) thisWidget
   navbarWidget cur thisWidget NavbarSend
   divClass "centered-wrapper" $ divClass "centered-content" $ divClass "send-page" $ form $ fieldset $ mdo
     recipientErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing) . fst)

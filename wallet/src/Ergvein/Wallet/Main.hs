@@ -29,7 +29,6 @@ import Reflex.Dom.Main (mainWidgetWithCss)
 frontend :: MonadFrontBase t m => m ()
 frontend = do
   logWrite "Frontend started"
-  alertHandlerWidget
   loadingWidget
 #ifdef ANDROID
   askPatternModal
