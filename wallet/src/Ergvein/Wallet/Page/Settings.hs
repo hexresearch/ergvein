@@ -12,7 +12,9 @@ import Data.Maybe (fromMaybe)
 import Reflex.Dom
 
 import Ergvein.Text
+import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
+import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Elements
@@ -80,10 +82,24 @@ currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
   h3 $ localizedText STPSSetsActiveCurrs
   divClass "initial-options" $ do
     activeCursD <- getActiveCursD
+    showSuccessMsg $ STPSSuccess <$ (updated activeCursD)
     void $ widgetHoldDyn $ ffor activeCursD $ \currs -> do
       currListE <- selectCurrenciesWidget $ S.toList currs
       updE <- updateActuveCurs $ fmap (\cl -> const (S.fromList cl)) currListE
-      showSuccessMsg $ STPSSuccess <$ updE
+--      currListE' <- delay 0.5 currListE
+      authD <- getAuthInfo
+      widgetHold (divClass "test" $ text "lala") $ ffor currListE $ \cur -> divClass "test" $ text $ showt cur
+      let updatedAuthE = traceEventWith (const "Active currencies setted") <$>
+            flip pushAlways currListE $ \curs -> do
+              auth <- sample . current $ authD
+              pure $ Just $ auth
+                & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
+                & authInfo'isUpdate .~ True
+      setAuthInfoE <- setAuthInfo updatedAuthE
+      storeWallet setAuthInfoE
+      --showSuccessMsg $ STPSSuccess <$ currListE
+      --showSuccessMsg $ STPSSuccess <$ updE
+
 
 unitsPage :: MonadFront t m => m ()
 unitsPage = wrapper STPSTitle (Just $ pure unitsPage) True $ mdo

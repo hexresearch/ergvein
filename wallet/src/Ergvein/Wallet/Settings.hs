@@ -42,7 +42,6 @@ data Settings = Settings {
 , settingsStoreDir          :: Text
 , settingsConfigPath        :: Text
 , settingsUnits             :: Maybe Units
-, settingsActiveCurrencies  :: ActiveCurrencies
 , settingsReqTimeout        :: NominalDiffTime
 , settingsActiveUrls        :: [BaseUrl]
 , settingsDeactivatedUrls   :: [BaseUrl]
@@ -63,7 +62,6 @@ instance FromJSON Settings where
     settingsStoreDir          <- o .: "storeDir"
     settingsConfigPath        <- o .: "configPath"
     settingsUnits             <- o .: "units"
-    settingsActiveCurrencies  <- o .: "activeCurrencies"
     settingsReqTimeout        <- o .: "reqTimeout"
     mActiveUrls               <- o .: "activeUrls"
     mDeactivatedUrls          <- o .: "deactivatedUrls"
@@ -86,7 +84,6 @@ instance ToJSON Settings where
     , "storeDir"          .= toJSON settingsStoreDir
     , "configPath"        .= toJSON settingsConfigPath
     , "units"             .= toJSON settingsUnits
-    , "activeCurrencies"  .= toJSON settingsActiveCurrencies
     , "reqTimeout"        .= toJSON settingsReqTimeout
     , "activeUrls"        .= toJSON settingsActiveUrls
     , "deactivatedUrls"   .= toJSON settingsDeactivatedUrls
@@ -136,7 +133,6 @@ defaultSettings home =
       , settingsStoreDir          = pack storePath
       , settingsConfigPath        = pack configPath
       , settingsUnits             = Just defUnits
-      , settingsActiveCurrencies  = ActiveCurrencies []
       , settingsReqTimeout        = defaultIndexerTimeout
       , settingsActiveUrls        = defaultIndexers
       , settingsDeactivatedUrls   = []

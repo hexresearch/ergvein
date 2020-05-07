@@ -247,14 +247,13 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
       settings <- readExternalRef settingsRef
       login    <- fmap _authInfo'login $ readExternalRef authRef
       let urls = settingsNodes settings
-          ac   = settingsActiveCurrencies settings
-          ac'  = M.insert login newcs ac
-          set' = settings {settingsActiveCurrencies = ActiveCurrencies ac'}
+          set' = settings
 
       writeExternalRef settingsRef set'
       storeSettings set'
       writeExternalRef nodeRef =<< reinitNodes urls diffMap sel =<< readExternalRef nodeRef
 
+      pure ()
   {-# INLINE updateActuveCurs #-}
   getAuthInfo = externalRefDynamic =<< asks env'authRef
   {-# INLINE getAuthInfo #-}
@@ -331,11 +330,10 @@ liftAuth ma0 ma = mdo
         passModalEF     <- getPasswordModalEF
         passSetEF       <- getPasswordSetEF
         settingsRef     <- getSettingsRef
-
         -- Read settings to fill other refs
         settings        <- readExternalRef settingsRef
         let login = _authInfo'login auth
-            acurs = maybe S.empty S.fromList $ M.lookup login $ activeCurrenciesMap $ settingsActiveCurrencies settings
+            acurs = S.fromList [] -- $ _pubStorage'activeCurrencies ps
             nodes = M.restrictKeys (settingsNodes settings) acurs
 
         -- MonadClient refs
@@ -395,6 +393,9 @@ liftUnauthed ma = ReaderT $ const ma
 wrapped :: MonadFrontBase t m => ErgveinM t m a -> ErgveinM t m a
 wrapped ma = do
   storeWallet =<< getPostBuild
+  buildE <- getPostBuild
+  ac <- _pubStorage'activeCurrencies <$> getPubStorage
+  updE <- updateActuveCurs $ fmap (\cl -> const (S.fromList cl)) $ ac <$ buildE
   ma
 
 instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where

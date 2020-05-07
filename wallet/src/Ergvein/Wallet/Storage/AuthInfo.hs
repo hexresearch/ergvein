@@ -5,6 +5,7 @@ module Ergvein.Wallet.Storage.AuthInfo (
 
 import Control.Monad.Except
 import Ergvein.Crypto
+import Ergvein.Types.Currency
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Localization.AuthInfo

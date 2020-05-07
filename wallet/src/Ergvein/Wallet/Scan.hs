@@ -30,7 +30,8 @@ accountDiscovery :: MonadFront t m => m ()
 accountDiscovery = do
   logWrite "Account discovery started"
   pubStorages <- _pubStorage'currencyPubStorages <$> getPubStorage
-  updatedPubStoragesE <- scan pubStorages
+  ac <- _pubStorage'activeCurrencies <$> getPubStorage
+  updatedPubStoragesE <- scan pubStorages ac
   authD <- getAuthInfo
   let updatedAuthE = traceEventWith (const "Account discovery finished") <$>
         flip pushAlways updatedPubStoragesE $ \updatedPubStorages -> do
@@ -43,9 +44,9 @@ accountDiscovery = do
 
 -- Gets old CurrencyPubStorages, performs BIP44 account discovery algorithm for all currencies
 -- then returns event with updated PubStorage.
-scan :: MonadFront t m => CurrencyPubStorages -> m (Event t CurrencyPubStorages)
-scan currencyPubStorages = do
-  scanEvents <- traverse (applyScan currencyPubStorages) allCurrencies
+scan :: MonadFront t m => CurrencyPubStorages -> [Currency] -> m (Event t CurrencyPubStorages)
+scan currencyPubStorages curs = do
+  scanEvents <- traverse (applyScan currencyPubStorages) curs
   let scanEvents' = [(M.fromList . (: []) <$> e) | e <- scanEvents]
       scanEvents'' = mergeWith M.union scanEvents'
   scannedCurrencyPubStoragesD <- foldDyn M.union M.empty scanEvents''

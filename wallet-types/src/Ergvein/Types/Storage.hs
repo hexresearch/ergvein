@@ -81,7 +81,7 @@ instance FromJSON EncryptedPrvStorage where
 data CurrencyPubStorage = CurrencyPubStorage {
     _currencyPubStorage'pubKeystore  :: PubKeystore
   , _currencyPubStorage'transactions :: M.Map TxId EgvTx
-  }
+  } deriving (Show)
 
 makeLenses ''CurrencyPubStorage
 
@@ -93,7 +93,7 @@ data PubStorage = PubStorage {
     _pubStorage'rootPubKey          :: EgvRootXPubKey
   , _pubStorage'currencyPubStorages :: CurrencyPubStorages
   , _pubStorage'activeCurrencies    :: [Currency]
-  }
+  } deriving (Show)
 
 makeLenses ''PubStorage
 
