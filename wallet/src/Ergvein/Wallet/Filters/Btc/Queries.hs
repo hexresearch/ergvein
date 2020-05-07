@@ -57,14 +57,10 @@ getFilter k e = liftIO . readOnlyTransaction e $ do
     mview <- get fdb h
     pure $ maybe Nothing (either (const Nothing) Just . decodeBtcAddrFilter) mview
 
--- | We start to download filters for BTC when SegWit was activated and recently on the testnet.
-startHeight :: BlockHeight
-startHeight = if isTestnet then 1722763 else 481824
-
 getFiltersHeight :: MonadIO m => Environment ReadWrite -> m BlockHeight
 getFiltersHeight e = liftIO . readOnlyTransaction e $ do
   tdb <- getBtcTotalDb
-  fromMaybe startHeight <$> get tdb ()
+  fromMaybe (filterStartingHeight BTC) <$> get tdb ()
 
 -- | Right fold over all filters
 foldFilters :: forall a m . MonadIO m
