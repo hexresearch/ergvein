@@ -6,6 +6,7 @@ import Control.Monad.Logger
 import Ergvein.Index.Server.App
 import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.Environment
+import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Monad
 import Network.Wai.Handler.Warp
 import Network.Wai.Middleware.RequestLogger
@@ -43,15 +44,20 @@ main = do
         ( fullDesc
        <> progDesc "Starts Ergvein index server"
        <> header "ergvein-index-server - cryptocurrency index server for ergvein client" )
+onStartup :: ServerM ()
+onStartup = do
+  peerDiscoverActualization
+  --runServerMIO blockchainScanning
+  addDefaultPeersIfNoneDiscovered
+  peerIntroduce
 
 startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
     CommandListen cfgPath ->  do
-        cfg <- loadConfig cfgPath
-        env <- runStdoutLoggingT $ newServerEnv cfg
-        runServerMIO env peerDiscoverActualization
-        --runServerMIO env blockchainScanning
-        T.putStrLn $ pack $ "Server started at " <> configDbHost cfg <> ":" <> (show . configServerPort $ cfg)
-        let app = logStdoutDev $ indexServerApp env
-            warpSettings = setPort (configServerPort cfg) defaultSettings
-        runSettings warpSettings app
+      cfg <- loadConfig cfgPath
+      env <- runStdoutLoggingT $ newServerEnv cfg
+      runServerMIO env onStartup
+      T.putStrLn $ pack $ "Server started at " <> configDbHost cfg <> ":" <> (show . configServerPort $ cfg)
+      let app = logStdoutDev $ indexServerApp env
+          warpSettings = setPort (configServerPort cfg) defaultSettings
+      runSettings warpSettings app

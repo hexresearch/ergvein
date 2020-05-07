@@ -19,25 +19,15 @@ import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Servant.Client.Core
 import Ergvein.Index.Server.Dependencies
+import Ergvein.Index.Server.Monad
+import Data.Proxy
 
 import qualified Data.Map.Strict as Map
 import qualified Network.HTTP.Client as HC
 import qualified Data.HashSet as Set
 
-instance MonadIO m => HasClientManager (ReaderT HC.Manager m) where
-  getClientManager = ask
-  {-# INLINE getClientManager #-}
-
-peerConnectionValidation :: (HasHttpManager m, HasTlsManager m, HasClientManager m) =>
-                            Scheme -> BaseUrl -> ExceptT PeerValidationResult m InfoResponse
-peerConnectionValidation schema baseUrl = do
-  connectionManager <- lift $ 
-    case schema of  
-      Http  -> getHttpManager
-      Https -> getTlsManager
-
-  info <- runReaderT (getInfoEndpoint baseUrl ()) connectionManager
-  except $ const PeerConnectionError `mapLeft` info
+peerConnectionValidation ::  BaseUrl -> ExceptT PeerValidationResult ServerM InfoResponse
+peerConnectionValidation baseUrl =  ExceptT $ (const PeerConnectionError `mapLeft`) <$> getInfoEndpoint baseUrl ()
 
 peerScanValidation :: InfoResponse -> ExceptT PeerValidationResult ServerM InfoResponse
 peerScanValidation candidateInfo = do
@@ -57,12 +47,12 @@ peerScanValidation candidateInfo = do
       else 
         Left $ CurrencyOutOfSync $ CurrencyOutOfSyncInfo localCurrency localScannedHeight
 
-    candidateInfoMap = Map.fromList $ (\scanInfo -> (scanProgressCurrency scanInfo, scanInfo)) 
+    candidateInfoMap = Map.fromList $ (\scanInfo -> (scanProgressCurrency scanInfo, scanInfo))
                                    <$> infoScanProgress candidateInfo
 
 peerValidation :: Scheme -> BaseUrl -> ExceptT PeerValidationResult ServerM InfoResponse
 peerValidation scheme baseUrl = do
-  infoResult <- peerConnectionValidation scheme baseUrl
+  infoResult <- peerConnectionValidation baseUrl
   candidateScanResult <- peerScanValidation infoResult
   pure candidateScanResult
 
@@ -100,12 +90,23 @@ peerDiscoverActualization = do
 instance Hashable BaseUrl where
   hashWithSalt salt = hashWithSalt salt . showBaseUrl
 
---getList :: ServerM [PeerCandidate]
+introduceSelf :: BaseUrl -> ServerM ()
+introduceSelf toPeer = do
+  nfo <- getDiscoveryRequisites
+  let req = IntroducePeerReq (showBaseUrl $ peerDescOwnAddress nfo)
+  getIntroducePeerEndpoint toPeer req 
+  pure ()
 
 peerIntroduce :: ServerM ()
 peerIntroduce = do
-  nfo <- getDiscoveryRequisites
-  let set = Set.fromList $ (peerDescReqOwnAddress nfo) : (peerDescReqKnownPeers nfo)
   allPeers <- dbQuery getNewPeers
+  forM_ allPeers (introduceSelf . peerUrl)
 
-  pure ()
+addDefaultPeersIfNoneDiscovered :: ServerM ()
+addDefaultPeersIfNoneDiscovered = do
+  isNoneDiscovered <- dbQuery isNonePeersDiscovered
+  when isNoneDiscovered $ do
+    knownPeers <- peerDescKnownPeers <$> getDiscoveryRequisites
+    forM_ knownPeers (\knownPeerBaseUrl -> do
+      let newPeer = NewPeer knownPeerBaseUrl (baseUrlScheme knownPeerBaseUrl)
+      dbQuery $ addNewPeer newPeer )

@@ -62,6 +62,9 @@ getNewPeers = fmap (convert @(Entity DiscoveredPeerRec)) <$> select (from pure)
 insertBlock  :: MonadIO m  => BlockMetaInfo -> QueryT m (Key BlockMetaRec)
 insertBlock block = insert $ convert block
 
+isNonePeersDiscovered :: MonadIO m  => QueryT m Bool
+isNonePeersDiscovered = (0 == ) <$> rowsCount (Proxy :: Proxy DiscoveredPeerRec)
+
 rowsCount :: forall record m . (BackendCompatible SqlBackend (PersistEntityBackend record),
                                 PersistEntity record, MonadIO m)
                                  => Proxy record -> QueryT m Word64

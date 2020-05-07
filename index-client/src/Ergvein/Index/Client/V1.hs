@@ -4,6 +4,7 @@ module Ergvein.Index.Client.V1
   , getHeightEndpoint
   , getBlockFiltersEndpoint
   , getInfoEndpoint
+  , getIntroducePeerEndpoint
   ) where
 
 import Control.Monad.IO.Class
@@ -53,3 +54,8 @@ getInfoEndpoint :: HasClientManager m => BaseUrl -> () -> m (Either ClientError 
 getInfoEndpoint url _ = do
   cenv <- fmap (`mkClientEnv` url) getClientManager
   liftIO $ flip runClientM cenv $ indexGetInfo apiV1
+
+getIntroducePeerEndpoint :: HasClientManager m => BaseUrl -> IntroducePeerReq -> m (Either ClientError IntroducePeerResp)
+getIntroducePeerEndpoint url req = do
+  cenv <- fmap (`mkClientEnv` url) getClientManager
+  liftIO $ flip runClientM cenv $ indexIntroducePeer apiV1 req

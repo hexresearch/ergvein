@@ -69,16 +69,8 @@ instance BitcoinApiMonad ServerM where
      f
 
 instance HasClientManager ServerM where
-  getClientManager = asks envHttpManager
+  getClientManager = asks envClientManager
   {-# INLINE getClientManager #-}
-
-instance HasHttpManager ServerM where
-  getHttpManager = asks envHttpManager
-  {-# INLINE getHttpManager #-}
-
-instance HasTlsManager ServerM where
-  getTlsManager = asks envTlsManager
-  {-# INLINE getTlsManager #-}
 
 instance HasDiscoveryRequisites ServerM where
   getDiscoveryRequisites = asks envPeerDiscoveryRequisites

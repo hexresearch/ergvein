@@ -34,8 +34,7 @@ data ServerEnv = ServerEnv
     , envLevelDBContext           :: !DB
     , envBitcoinNodeNetwork       :: !HK.Network
     , envErgoNodeClient           :: !ErgoApi.Client
-    , envHttpManager              :: !HC.Manager
-    , envTlsManager               :: !HC.Manager
+    , envClientManager              :: !HC.Manager
     , envPeerDiscoveryRequisites  :: !PeerDiscoveryRequisites
     }
 
@@ -71,8 +70,7 @@ newServerEnv cfg = do
       , envLevelDBContext          = levelDBContext
       , envBitcoinNodeNetwork      = bitcoinNodeNetwork
       , envErgoNodeClient          = ergoNodeClient
-      , envHttpManager             = httpManager
-      , envTlsManager              = tlsManager
+      , envClientManager           = tlsManager
       , envPeerDiscoveryRequisites = peerDiscoveryRequisites
       }
 

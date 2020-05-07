@@ -35,6 +35,6 @@ data NewPeer = NewPeer
   }
 
 data PeerDiscoveryRequisites = PeerDiscoveryRequisites
-  { peerDescReqOwnAddress :: !BaseUrl
-  , peerDescReqKnownPeers :: ![BaseUrl]
+  { peerDescOwnAddress :: !BaseUrl
+  , peerDescKnownPeers :: ![BaseUrl]
   }
