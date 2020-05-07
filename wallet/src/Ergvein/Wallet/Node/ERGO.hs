@@ -12,9 +12,9 @@ module Ergvein.Wallet.Node.ERGO
 import Data.Text
 
 import Control.Monad.IO.Class
+import Network.Socket (SockAddr)
 import Reflex
 import Reflex.ExternalRef
-import Servant.Client(BaseUrl)
 
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Node.Prim
@@ -28,7 +28,7 @@ instance HasNode ERGOType where
   type NodeResp ERGOType = Text
   type NodeSpecific ERGOType = ()
 
-initErgoNode :: (Reflex t, TriggerEvent t m, MonadIO m) => BaseUrl -> Event t NodeMessage -> m (NodeERG t)
+initErgoNode :: (Reflex t, TriggerEvent t m, MonadIO m) => SockAddr -> Event t NodeMessage -> m (NodeERG t)
 initErgoNode url _ = do
   statRef <- newExternalRef Nothing
   pure $ NodeConnection {

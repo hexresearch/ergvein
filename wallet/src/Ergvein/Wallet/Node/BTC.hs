@@ -50,14 +50,13 @@ import Ergvein.Text
 instance CurrencyRep BTCType where
   curRep _ = BTC
 
--- | TODO: Change this once actual connection is implemented
 instance HasNode BTCType where
   type NodeReq BTCType = Message
   type NodeResp BTCType = Message
   type NodeSpecific BTCType = ()
 
-initBTCNode :: MonadBaseConstr t m => BaseUrl -> Event t NodeMessage -> m (NodeBTC t)
-initBTCNode url msgE = do
+initBTCNode :: MonadBaseConstr t m => SockAddr -> Event t NodeMessage -> m (NodeBTC t)
+initBTCNode sa msgE = do
   -- Dummy status TODO: Make status real later
   b  <- liftIO randomIO
   d :: Double <- liftIO $ randomRIO (0, 1.5)
@@ -66,7 +65,7 @@ initBTCNode url msgE = do
 
   let net = btcNetwork
       nodeLog :: MonadIO m => Text -> m ()
-      nodeLog = logWrite . (nodeString BTC url <>)
+      nodeLog = logWrite . (nodeString BTC sa <>)
 
   let restartE = fforMaybe msgE $ \case
         NodeMsgRestart -> Just ()
@@ -79,78 +78,63 @@ initBTCNode url msgE = do
         _ -> Nothing
   (closeSE, fireCloseS)     <- newTriggerEvent
   buildE                    <- getPostBuild
-  socadrs                   <- liftIO $ toSockAddr url
   statRef                   <- newExternalRef nstat
-  case socadrs of
-    [] -> do
-      nodeLog $ "Failed to convert BaseUrl to SockAddr: " <> T.pack (showBaseUrl url)
-      pure NodeConnection {
-          nodeconCurrency   = BTC
-        , nodeconUrl        = url
-        , nodeconStatus     = statRef
-        , nodeconOpensE     = never
-        , nodeconCloseE     = closeE
-        , nodeconRespE      = never
-        , nodeconExtra      = ()
-        , nodeconIsUp       = pure False
+  let startE = leftmost [buildE, restartE]
+
+  -- Resolve address
+  peerE <- performFork $ ffor startE $ const $ do
+    (Just sname, Just sport) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True sa
+    pure $ Peer sname sport
+
+  rec
+    -- Start the connection
+    s <- fmap switchSocket $ widgetHold (pure noSocket) $ ffor peerE $ \peer -> do
+      socket SocketConf {
+          _socketConfPeer   = peer
+        , _socketConfSend   = fmap (runPut . putMessage net) $ leftmost [reqE, handshakeE, hsRespE]
+        , _socketConfPeeker = peekMessage net sa
+        , _socketConfClose  = closeE
+        , _socketConfReopen = Just 10
         }
-    sa :_ -> do
-      let startE = leftmost [buildE, restartE]
 
-      -- Resolve address
-      peerE <- performFork $ ffor startE $ const $ do
-        (Just sname, Just sport) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True sa
-        pure $ Peer sname sport
+    let respE = _socketInbound s
+    -- Start the handshake
+    handshakeE <- performEvent $ ffor (socketConnected s) $ const $ mkVers net sa
+    -- Finalize the handshake by sending "verack" message as a response
+    -- Also, respond to ping messages by corrseponding pongs
+    hsRespE <- performEvent $ fforMaybe respE $ \case
+      MVersion Version{..} -> Just $ liftIO $ do
+        nodeLog $ "Received version at height: " <> showt startHeight
+        pure MVerAck
+      MPing (Ping v) -> Just $ pure $ MPong (Pong v)
+      _ -> Nothing
+    -- End rec
 
-      rec
-        -- Start the connection
-        s <- fmap switchSocket $ widgetHold (pure noSocket) $ ffor peerE $ \peer -> do
-          socket SocketConf {
-              _socketConfPeer   = peer
-            , _socketConfSend   = fmap (runPut . putMessage net) $ leftmost [reqE, handshakeE, hsRespE]
-            , _socketConfPeeker = peekMessage net url
-            , _socketConfClose  = closeE
-            , _socketConfReopen = Just 10
-            }
+  performEvent_ $ ffor (_socketRecvEr s) $ nodeLog . showt
 
-        let respE = _socketInbound s
-        -- Start the handshake
-        handshakeE <- performEvent $ ffor (socketConnected s) $ const $ mkVers net sa
-        -- Finalize the handshake by sending "verack" message as a response
-        -- Also, respond to ping messages by corrseponding pongs
-        hsRespE <- performEvent $ fforMaybe respE $ \case
-          MVersion Version{..} -> Just $ liftIO $ do
-            nodeLog $ "Received version at height: " <> showt startHeight
-            pure MVerAck
-          MPing (Ping v) -> Just $ pure $ MPong (Pong v)
-          _ -> Nothing
-        -- End rec
+  -- Track handshake status
+  let verAckE = fforMaybe respE $ \case
+        MVerAck -> Just True
+        _ -> Nothing
 
-      performEvent_ $ ffor (_socketRecvEr s) $ nodeLog . showt
-
-      -- Track handshake status
-      let verAckE = fforMaybe respE $ \case
-            MVerAck -> Just True
-            _ -> Nothing
-
-      shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
-      let openE = fmapMaybe (\b -> if b then Just () else Nothing) $ updated shakeD
-          closedE = () <$ _socketClosed s
-      pure $ NodeConnection {
-        nodeconCurrency   = BTC
-      , nodeconUrl        = url
-      , nodeconStatus     = statRef
-      , nodeconOpensE     = openE
-      , nodeconCloseE     = closedE
-      , nodeconRespE      = respE
-      , nodeconExtra      = ()
-      , nodeconIsUp       = shakeD
-      }
+  shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
+  let openE = fmapMaybe (\b -> if b then Just () else Nothing) $ updated shakeD
+      closedE = () <$ _socketClosed s
+  pure $ NodeConnection {
+    nodeconCurrency   = BTC
+  , nodeconUrl        = sa
+  , nodeconStatus     = statRef
+  , nodeconOpensE     = openE
+  , nodeconCloseE     = closedE
+  , nodeconRespE      = respE
+  , nodeconExtra      = ()
+  , nodeconIsUp       = shakeD
+  }
 
 -- | Internal peeker to parse messages coming from peer.
 peekMessage :: (MonadPeeker m, MonadIO m, MonadThrow m, PlatformNatives)
     => Network
-    -> BaseUrl
+    -> SockAddr
     -> m Message
 peekMessage net url = do
   x <- peek 24

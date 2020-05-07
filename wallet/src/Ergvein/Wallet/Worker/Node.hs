@@ -3,16 +3,16 @@ module Ergvein.Wallet.Worker.Node
     btcNodeRefresher
   ) where
 
+import Control.Concurrent
+import Control.Concurrent.Lifted (fork)
 import Control.Monad.Random
+import Data.IP
 import Data.Maybe (fromMaybe, catMaybes)
 import Network.DNS
 import Network.Haskoin.Constants
 import Network.Haskoin.Network
 import Network.Socket
 import Reflex.ExternalRef
-import Servant.Client(BaseUrl(..), showBaseUrl, parseBaseUrl)
-import Control.Concurrent
-import Control.Concurrent.Lifted (fork)
 
 import Ergvein.Text
 import Ergvein.Types.Currency
@@ -84,18 +84,12 @@ btcNodeRefresher = do
 
 data SAStorageAct = SAAdd [SockAddr] | SAClear
 
-handleSAStore :: SAStorageAct -> S.Set BaseUrl -> Maybe (S.Set BaseUrl)
+handleSAStore :: SAStorageAct -> S.Set SockAddr -> Maybe (S.Set SockAddr)
 handleSAStore sact um = case sact of
   SAClear -> Just S.empty
-  SAAdd sas -> if S.size um >= minNodeNum then Nothing else let
-    bus = catMaybes . fmap (parseBaseUrl . show) . filter isIPv4 $ sas
-    bum = S.fromList bus
-    in Just $ S.union um bum
-  where
-    isIPv4 :: SockAddr -> Bool
-    isIPv4 sa = case sa of
-      SockAddrInet{} -> True
-      _ -> False
+  SAAdd sas -> if S.size um >= minNodeNum
+    then Nothing
+    else Just $ S.union um $ S.fromList sas
 
 getRandomBTCNodesFromDNS :: MonadFrontConstr t m => RequestSelector t -> Int -> m (Event t [NodeBTC t])
 getRandomBTCNodesFromDNS sel n = do
@@ -110,15 +104,15 @@ getRandomBTCNodesFromDNS sel n = do
     [] -> Nothing
     ns -> Just ns
 
-requestNodesFromBTCDNS :: MonadIO m => String -> Int -> m [BaseUrl]
+requestNodesFromBTCDNS :: MonadIO m => String -> Int -> m [SockAddr]
 requestNodesFromBTCDNS dnsurl n = liftIO $ do
   rs <- makeResolvSeed defaultResolvConf
   res <- fmap (either (const []) id) $ withResolver rs $ \resolver -> lookupA resolver $ B8.pack dnsurl
   urls <- randomVals n res
-  pure $ catMaybes $ ffor urls $ \u -> let
-    h = show u
-    p = show $ getDefaultPort btcNetwork
-    in parseBaseUrl $ h <> ":" <> p
+  pure $ ffor urls $ \u -> let
+    h = toHostAddress u
+    p = fromIntegral $ getDefaultPort btcNetwork
+    in SockAddrInet p h
 
 randomVals :: MonadIO m => Int -> [a] -> m [a]
 randomVals l urls = if l >= n
