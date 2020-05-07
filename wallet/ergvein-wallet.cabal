@@ -133,6 +133,7 @@ library
         Ergvein.Wallet.Widget.GraphPinCode
         Ergvein.Wallet.Worker.Height
         Ergvein.Wallet.Worker.Info
+        Ergvein.Wallet.Worker.Node
         Ergvein.Wallet.Wrapper
         Ergvein.Wallet.Yaml
     hs-source-dirs: src
@@ -161,6 +162,7 @@ library
         dependent-map >= 0.3,
         dependent-sum >= 0.6,
         directory -any,
+        dns >= 4.0 && < 5.0,
         ergvein-common >=1.0 && <1.1,
         ergvein-crypto >=0.1 && <0.2,
         ergvein-index-api >=0.1 && <0.2,

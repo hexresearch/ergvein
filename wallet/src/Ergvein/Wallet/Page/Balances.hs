@@ -11,6 +11,7 @@ import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.History
+import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Sync.Widget
 import Ergvein.Wallet.Wrapper

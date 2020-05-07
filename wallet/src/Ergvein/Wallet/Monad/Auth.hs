@@ -52,6 +52,7 @@ import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Worker.Height
 import Ergvein.Wallet.Worker.Info
+import Ergvein.Wallet.Worker.Node
 
 import qualified Control.Immortal as I
 import qualified Data.IntMap.Strict as MI
@@ -359,8 +360,7 @@ liftAuth ma0 ma = mdo
         blocksStore     <- liftIO $ runReaderT openBlocksStorage (settingsStoreDir settings)
         heightRef       <- newExternalRef mempty
         fsyncRef        <- newExternalRef mempty
-        consRef         <- newExternalRef =<< initializeNodes sel nodes
-        -- headersLoader
+        consRef         <- newExternalRef mempty -- =<< initializeNodes sel nodes
         let env = Env
               settingsRef backEF loading langRef storeDir alertsEF logsTrigger logsNameSpaces uiChan passModalEF passSetEF
               authRef (logoutFire ()) activeCursRef managerRef headersStore filtersStore blocksStore syncRef heightRef fsyncRef
@@ -373,6 +373,7 @@ liftAuth ma0 ma = mdo
           filtersLoader
           infoWorker
           heightAsking
+          btcNodeRefresher
           pure ()
         runReaderT (wrapped ma) env
   let
