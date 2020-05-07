@@ -104,9 +104,9 @@ getRandomBTCNodesFromDNS sel n = do
     [] -> Nothing
     ns -> Just ns
 
-requestNodesFromBTCDNS :: MonadIO m => String -> Int -> m [SockAddr]
+requestNodesFromBTCDNS :: (MonadIO m, PlatformNatives) => String -> Int -> m [SockAddr]
 requestNodesFromBTCDNS dnsurl n = liftIO $ do
-  rs <- makeResolvSeed defaultResolvConf
+  rs <- makeResolvSeed nativeResolvConf
   res <- fmap (either (const []) id) $ withResolver rs $ \resolver -> lookupA resolver $ B8.pack dnsurl
   urls <- randomVals n res
   pure $ ffor urls $ \u -> let
