@@ -77,28 +77,52 @@ languagePage = wrapper STPSTitle (Just $ pure languagePage) True $ do
     showSuccessMsg $ STPSSuccess <$ updE
   pure ()
 
+currenciesPage2 :: MonadFront t m => m ()
+currenciesPage2 = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
+  h3 $ localizedText STPSSetsActiveCurrs
+  divClass "initial-options" $ do
+    ac <- _pubStorage'activeCurrencies <$> getPubStorage
+    currListE <- selectCurrenciesWidget $ ac
+    updE <- updateActuveCurs $ fmap (\cl -> const (S.fromList cl)) currListE
+    widgetHold (divClass "test" $ text "lala") $ ffor currListE $ \cur -> divClass "test" $ text $ showt cur
+    authD <- getAuthInfo
+    let updatedAuthE = traceEventWith (const "Active currencies setted") <$>
+          flip pushAlways currListE $ \curs -> do
+            auth <- sample . current $ authD
+            pure $ Just $ auth
+              & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
+              & authInfo'isUpdate .~ True
+    updatedAuthE2 <- delay 0.5 updatedAuthE
+    setAuthInfoE <- setAuthInfo updatedAuthE
+    storeWallet setAuthInfoE
+    setAuthInfoE2 <- setAuthInfo updatedAuthE2
+    storeWallet setAuthInfoE2
+    showSuccessMsg $ STPSSuccess <$ setAuthInfoE
+    showSuccessMsg $ STPSSuccess <$ setAuthInfoE2
+
 currenciesPage :: MonadFront t m => m ()
 currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
   h3 $ localizedText STPSSetsActiveCurrs
   divClass "initial-options" $ do
     activeCursD <- getActiveCursD
-    showSuccessMsg $ STPSSuccess <$ (updated activeCursD)
+    hD <- holdDyn [] currListE
     void $ widgetHoldDyn $ ffor activeCursD $ \currs -> do
       currListE <- selectCurrenciesWidget $ S.toList currs
-      updE <- updateActuveCurs $ fmap (\cl -> const (S.fromList cl)) currListE
---      currListE' <- delay 0.5 currListE
-      authD <- getAuthInfo
-      widgetHold (divClass "test" $ text "lala") $ ffor currListE $ \cur -> divClass "test" $ text $ showt cur
-      let updatedAuthE = traceEventWith (const "Active currencies setted") <$>
-            flip pushAlways currListE $ \curs -> do
-              auth <- sample . current $ authD
-              pure $ Just $ auth
-                & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
-                & authInfo'isUpdate .~ True
-      setAuthInfoE <- setAuthInfo updatedAuthE
-      storeWallet setAuthInfoE
-      --showSuccessMsg $ STPSSuccess <$ currListE
-      --showSuccessMsg $ STPSSuccess <$ updE
+      uac currListE
+    authD <- getAuthInfo
+    uac $ updated hd
+    let updatedAuthE = traceEventWith (const "Active currencies setted") <$>
+          flip pushAlways (S.toList <$> updated activeCursD) $ \cur -> do
+            auth <- sample . current $ authD
+            pure $ Just $ auth
+              & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ cur
+              & authInfo'isUpdate .~ True
+    setAuthInfoE <- setAuthInfo updatedAuthE
+    storeWallet setAuthInfoE
+    showSuccessMsg $ STPSSuccess <$ setAuthInfoE
+    where
+      uac cE =  updateActuveCurs $ fmap (\cl -> const (S.fromList cl)) $ cE
+
 
 
 unitsPage :: MonadFront t m => m ()
