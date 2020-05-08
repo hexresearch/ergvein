@@ -26,7 +26,7 @@ import Ergvein.Wallet.Util
 
 import qualified Data.Dependent.Map as DM
 import qualified Data.Map as M
-import qualified Data.Set as S
+import qualified Data.List as L
 import qualified Data.Text as T
 import qualified Data.Bits as BI
 import qualified Data.ByteString.Char8 as B8
@@ -67,15 +67,15 @@ btcNodeRefresher = do
                     _ -> Nothing
           pure $ leftmost es
 
-    urlsD <- foldDynMaybe handleSAStore S.empty $ leftmost [SAAdd <$> extraUrlsE, SAClear <$ reqExtraE]
-
-    let goE = fforMaybe (updated urlsD) $ \um -> if S.size um >= minNodeNum then Just um else Nothing
+    urlsD <- foldDynMaybe handleSAStore [] $ leftmost [SAAdd <$> extraUrlsE, SAClear <$ reqExtraE]
+    performEvent_ $ ffor extraUrlsE $ \v -> btcLog $ "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB: " <> showt (length v)
+    let goE = fforMaybe (updated urlsD) $ \um -> if length um >= minNodeNum then Just um else Nothing
 
     cntD <- foldDyn (\urls (n,_) -> (n + 1, Just urls)) (0, Nothing) goE
     let initNodesE = updated $ (uncurry M.singleton) <$> cntD
-
+  performEvent_ $ ffor extraE $ \v -> btcLog $ "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA: " <> showt v
   void $ listWithKeyShallowDiff mempty initNodesE $ \_ urls _ -> do
-    nodes <- flip traverse (S.toList urls) $ \u -> do
+    nodes <- flip traverse urls $ \u -> do
       let reqE = extractReq sel BTC u
       fmap NodeConnBTC $ initBTCNode u reqE
     modifyExternalRef nodeRef $ \cm -> (addMultipleConns cm nodes, ())
@@ -83,12 +83,18 @@ btcNodeRefresher = do
 
 data SAStorageAct = SAAdd [SockAddr] | SAClear
 
-handleSAStore :: SAStorageAct -> S.Set SockAddr -> Maybe (S.Set SockAddr)
+handleSAStore :: SAStorageAct -> [SockAddr] -> Maybe [SockAddr]
 handleSAStore sact um = case sact of
-  SAClear -> Just S.empty
-  SAAdd sas -> if S.size um >= minNodeNum
-    then Nothing
-    else Just $ S.union um $ S.fromList sas
+  SAClear -> Just []
+  SAAdd sas -> let
+    l = length um
+    l' = length sas
+    ltotal = l + l'
+    n = if ltotal <= minNodeNum then l' else ltotal - minNodeNum
+    sas' = take n sas
+    in if l >= minNodeNum
+      then Nothing
+      else Just $ take minNodeNum $ L.nub $ um <> sas'
 
 getRandomBTCNodesFromDNS :: MonadFrontConstr t m => RequestSelector t -> Int -> m (Event t [NodeBTC t])
 getRandomBTCNodesFromDNS sel n = do
