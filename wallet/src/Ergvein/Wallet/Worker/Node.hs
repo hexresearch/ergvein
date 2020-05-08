@@ -3,11 +3,10 @@ module Ergvein.Wallet.Worker.Node
     btcNodeRefresher
   ) where
 
-import Control.Concurrent
-import Control.Concurrent.Lifted (fork)
 import Control.Monad.Random
 import Data.IP
-import Data.Maybe (fromMaybe, catMaybes)
+import Data.Maybe (fromMaybe)
+import Data.Time
 import Network.DNS
 import Network.Haskoin.Constants
 import Network.Haskoin.Network
@@ -22,13 +21,10 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node
 import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Util
 
 import qualified Data.Dependent.Map as DM
 import qualified Data.Map as M
 import qualified Data.List as L
-import qualified Data.Text as T
-import qualified Data.Bits as BI
 import qualified Data.ByteString.Char8 as B8
 
 minNodeNum :: Int
@@ -40,18 +36,22 @@ firstTierNodeNum = 6
 btcLog :: (PlatformNatives, MonadIO m) => Text -> m ()
 btcLog v = logWrite $ "[nodeRefresher][" <> showt BTC <> "]: " <> v
 
+btcRefrTimeout :: NominalDiffTime
+btcRefrTimeout = 30
+
 btcNodeRefresher :: MonadFront t m => m ()
 btcNodeRefresher = do
   btcLog "Starting"
   sel     <- getNodeRequestSelector
   nodeRef <- getNodeConnRef
-  conMapE <- updatedWithInit =<< getNodeConnectionsD
-  let reqExtraE = fforMaybe conMapE $ \cm -> let
-        l = fromMaybe 0 $ fmap M.size $ DM.lookup BTCTag cm
-        in if l >= minNodeNum then Nothing else Just (minNodeNum - l)
-
+  conMapD <- getNodeConnectionsD
+  let btcLenD = ffor conMapD $ fromMaybe 0 . fmap M.size . DM.lookup BTCTag
+  buildE <- getPostBuild
+  te <- fmap void $ tickLossyFromPostBuildTime btcRefrTimeout
+  let reqExtraE = attachWithMaybe (\l _ -> if l >= minNodeNum then Nothing else Just (minNodeNum - l))
+                    (current btcLenD) $ leftmost [te, buildE]
   rec
-    let extraE = leftmost [Just <$> reqExtraE, Nothing <$ initNodesE]
+    let extraE = leftmost [Just <$> reqExtraE, Nothing <$ nodesE]
     extraUrlsE <- fmap switchDyn $ widgetHold (pure never) $ ffor extraE $ \case
       Nothing -> pure never
       Just n -> do
@@ -59,8 +59,7 @@ btcNodeRefresher = do
         initNodesE <- getRandomBTCNodesFromDNS sel firstTierNodeNum
         fmap switchDyn $ widgetHold (pure never) $ ffor initNodesE $ \initNodes -> do
           es <- flip traverse initNodes $ \node -> do
-            buildE <- getPostBuild
-            let reqE = (NodeReqBTC MGetAddr) <$ buildE
+            reqE <- fmap (NodeReqBTC MGetAddr <$) getPostBuild
             requestNodeWait node reqE
             pure $ fforMaybe (nodeconRespE node) $ \case
                     MAddr (Addr urls) -> Just $ fmap (naAddress . snd) urls
@@ -70,9 +69,9 @@ btcNodeRefresher = do
     urlsD <- foldDynMaybe handleSAStore [] $ leftmost [SAAdd <$> extraUrlsE, SAClear <$ reqExtraE]
     let goE = fforMaybe (updated urlsD) $ \um -> if length um >= minNodeNum then Just um else Nothing
 
-    cntD <- foldDyn (\urls (n,_) -> (n + 1, Just urls)) (0, Nothing) goE
-    let initNodesE = updated $ (uncurry M.singleton) <$> cntD
-  void $ listWithKeyShallowDiff mempty initNodesE $ \_ urls _ -> do
+    cntD <- foldDyn (\urls (n,_) -> (n + 1, Just urls)) ((0 :: Int), Nothing) goE
+    let nodesE = updated $ (uncurry M.singleton) <$> cntD
+  void $ listWithKeyShallowDiff mempty nodesE $ \_ urls _ -> do
     nodes <- flip traverse urls $ \u -> do
       let reqE = extractReq sel BTC u
       fmap NodeConnBTC $ initBTCNode u reqE
