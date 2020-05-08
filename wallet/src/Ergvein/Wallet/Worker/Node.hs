@@ -43,7 +43,6 @@ btcLog v = logWrite $ "[nodeRefresher][" <> showt BTC <> "]: " <> v
 btcNodeRefresher :: MonadFront t m => m ()
 btcNodeRefresher = do
   btcLog "Starting"
-  buildE  <- getPostBuild
   sel     <- getNodeRequestSelector
   nodeRef <- getNodeConnRef
   conMapE <- updatedWithInit =<< getNodeConnectionsD

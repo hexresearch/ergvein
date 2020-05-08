@@ -28,7 +28,6 @@ import Network.Socket (AddrInfo(..), getNameInfo, NameInfoFlag(..), SockAddr(..)
 import Reflex
 import Reflex.Dom
 import Reflex.ExternalRef
-import Servant.Client(BaseUrl(..), showBaseUrl)
 import UnliftIO hiding (atomically)
 
 import qualified Data.ByteString as B
@@ -175,20 +174,6 @@ mkVers net url = liftIO $ do
     , startHeight = 0
     , relay = True
     }
-
--- | Resolve a host and port to a list of 'SockAddr'. May do DNS lookups.
-toSockAddr :: MonadUnliftIO m => BaseUrl -> m [SockAddr]
-toSockAddr BaseUrl{..} = go `catch` e
-  where
-    go = fmap (fmap addrAddress) . liftIO $
-      getAddrInfo
-        (Just defaultHints {
-            addrFlags = [AI_ADDRCONFIG]
-          , addrSocketType = Stream
-          , addrFamily = AF_INET
-          }) (Just baseUrlHost) (Just (show baseUrlPort))
-    e :: Monad m => SomeException -> m [SockAddr]
-    e _ = return []
 
 -- | Reasons why a peer may stop working.
 data PeerException
