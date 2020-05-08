@@ -17,6 +17,7 @@ import qualified Data.ByteString               as BS
 import qualified Data.ByteString.Base16        as BS16
 import           Ergvein.Filters.Btc
 import           Ergvein.Text 
+import           Ergvein.Types.Address          (btcAddrToString')
 import           Data.Foldable
 
 -- import Debug.Trace
@@ -28,7 +29,7 @@ spec_filterPositive = forM_ samples $ \(block, txs, as) -> do
       bid     = blockHashToHex bhash
   -- traceShowM $ bs2Hex $ encodeBtcAddrFilter bfilter
   describe ("block " ++ show bid) $ forM_ as $ \a -> do
-    let at = unpack $ addrToString btcTest $ fromSegWit a
+    let at = unpack $ btcAddrToString' btcTest $ fromSegWit a
     it ("block filter contains address " ++ at)
       $          applyBtcFilter btcTest bhash bfilter a
       `shouldBe` True
@@ -39,7 +40,7 @@ spec_filterNegative = forM_ samples $ \(block, txs) -> do
   let bfilter = makeBtcFilter btcTest txs block
       bhash   = headerHash . blockHeader $ block
       bid     = blockHashToHex bhash
-      at      = unpack $ addrToString btcTest $ fromSegWit testAddress
+      at      = unpack $ btcAddrToString' btcTest $ fromSegWit testAddress
   describe ("block " ++ show bid)
     $          it ("block filter should not contain address " ++ at)
     $          applyBtcFilter btcTest bhash bfilter testAddress

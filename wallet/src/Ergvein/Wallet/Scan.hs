@@ -1,28 +1,39 @@
-{-# LANGUAGE NumericUnderscores #-}
 module Ergvein.Wallet.Scan (
     accountDiscovery
   ) where
 
-import Network.Haskoin.Block (Block, BlockHash, genesisBlock)
-
+import Control.Monad.IO.Class
+import Data.ByteString (ByteString)
+import Data.List
+import Ergvein.Aeson
+import Ergvein.Crypto.Keys
+import Ergvein.Text
+import Ergvein.Types.Address
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Blocks.BTC
+import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Constants
 import Ergvein.Wallet.Storage.Keys (derivePubKey, egvXPubKeyToEgvAddress)
 import Ergvein.Wallet.Storage.Util (addXPubKeyToKeystore)
+import Ergvein.Wallet.Util
 
-import qualified Data.IntMap.Strict          as MI
-import qualified Data.Map.Strict             as M
-import qualified Ergvein.Wallet.Filters.Scan as Filters
-import qualified Data.Text                   as T
-
+import qualified Data.IntMap.Strict                 as MI
+import qualified Data.Map.Strict                    as M
+import qualified Data.Text                          as T
+import qualified Ergvein.Wallet.Filters.Scan        as Filters
+import qualified Network.Haskoin.Block              as HB
+import qualified Network.Haskoin.Script             as HS
+import qualified Network.Haskoin.Transaction        as HT
+import qualified Network.Haskoin.Transaction.Segwit as HTS
+import qualified Network.Haskoin.Address            as HA
 
 -- | Loads current PubStorage, performs BIP44 account discovery algorithm and
 -- stores updated PubStorage to the wallet file.
@@ -34,14 +45,14 @@ accountDiscovery = do
   authD <- getAuthInfo
   let updatedAuthE = traceEventWith (const "Account discovery finished") <$>
         flip pushAlways updatedPubStoragesE $ \updatedPubStorages -> do
-          auth <- sample . current $ authD
+          auth <- sampleDyn authD
           pure $ Just $ auth
             & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages .~ updatedPubStorages
             & authInfo'isUpdate .~ True
   setAuthInfoE <- setAuthInfo updatedAuthE
   storeWallet setAuthInfoE
 
--- Gets old CurrencyPubStorages, performs BIP44 account discovery algorithm for all currencies
+-- | Gets old CurrencyPubStorages, performs BIP44 account discovery algorithm for all currencies
 -- then returns event with updated PubStorage.
 scan :: MonadFront t m => CurrencyPubStorages -> m (Event t CurrencyPubStorages)
 scan currencyPubStorages = do
@@ -53,7 +64,7 @@ scan currencyPubStorages = do
         pure $ if M.size updatedCurrencyPubStorage == length allCurrencies then Just $ updatedCurrencyPubStorage else Nothing
   pure allFinishedE
 
--- Applies scan for a certain currency then returns event with result.
+-- | Applies scan for a certain currency then returns event with result.
 applyScan :: MonadFront t m => CurrencyPubStorages -> Currency -> m (Event t (Currency, CurrencyPubStorage))
 applyScan currencyPubStorages currency =
   case M.lookup currency currencyPubStorages of
@@ -63,34 +74,37 @@ applyScan currencyPubStorages currency =
 scanCurrency :: MonadFront t m => Currency -> CurrencyPubStorage -> m (Event t (Currency, CurrencyPubStorage))
 scanCurrency currency currencyPubStorage = mdo
   buildE <- getPostBuild
-  nextE <- waitFilters currency =<< delay 0 (leftmost [newE, buildE])
+  processKeyE <- traceEvent "Scanning key" <$> (waitFilters currency =<< delay 0 (leftmost [nextKeyE, (0, fstKey) <$ buildE]))
   gapD <- holdDyn 0 gapE
-  nextKeyIndexD <- holdDyn (if initKeystoreSize > gapLimit then initKeystoreSize - gapLimit else 0) nextKeyIndexE
-  -- добавить сюда добавление транзакций в CurrencyPubStorage
-  -- newKeystoreD переименовать в newCurrencyPubStorageD
-  newKeystoreD <- foldDyn (addXPubKeyToKeystore External) keystore nextKeyE
-  filterAddressE <- filterAddress nextKeyE
-  getBlockE <- requestBTCBlocksWaitRN filterAddressE
-  storedE <- storeNewTransactions getBlockE
-  let keystore = _currencyPubStorage'pubKeystore currencyPubStorage
-      masterPubKey = pubKeystore'master keystore
-      initKeystoreSize = MI.size $ pubKeystore'external keystore
-      newE = flip push storedE $ \i -> do
-        gap <- sample . current $ gapD
-        pure $ if i == 0 && gap >= gapLimit then Nothing else Just ()
-      gapE = flip pushAlways storedE $ \i -> do
-        gap <- sample . current $ gapD
-        pure $ if i == 0 && gap < gapLimit then gap + 1 else 0
-      nextKeyE = flip push nextE $ \_ -> do
-        gap <- sample . current $ gapD
-        nextKeyIndex <- sample . current $ nextKeyIndexD
-        pure $ if gap >= gapLimit then Nothing else Just $ (nextKeyIndex, derivePubKey masterPubKey External (fromIntegral nextKeyIndex))
-      nextKeyIndexE = flip pushAlways nextKeyE $ \_ -> do
-        nextKeyIndex <- sample . current $ nextKeyIndexD
-        pure $ nextKeyIndex + 1
-      finishedE = flip push gapE $ \g -> do
-        newKeystore <- sample . current $ newKeystoreD
-        pure $ if g >= gapLimit then Just $ (currency, CurrencyPubStorage newKeystore M.empty) else Nothing
+  currentKeyD <- holdDyn (0, fstKey) nextKeyE
+  newKeystoreD <- foldDyn (addXPubKeyToKeystore External) emptyPubKeystore processKeyE
+  newTxsD <- foldDyn M.union emptyTxs getTxsE
+  filterAddressE <- filterAddress $ (egvXPubKeyToEgvAddress . snd) <$> processKeyE
+  getBlocksE <- requestBTCBlocksWaitRN filterAddressE
+  blocksD <- holdDyn [] getBlocksE
+  storedBlocksE <- storeMultipleBlocksByE getBlocksE
+  storedTxHashesE <- storeMultipleBlocksTxHashesByE $ tagPromptlyDyn blocksD storedBlocksE
+  getTxsE <- getTxs $ attachPromptlyDynWith (\(_, key) blocks ->
+    (egvXPubKeyToEgvAddress key, blocks)) currentKeyD $ tagPromptlyDyn blocksD storedTxHashesE
+  let fstKey = derivePubKey masterPubKey External (fromIntegral 0)
+      pubKeystore = _currencyPubStorage'pubKeystore currencyPubStorage
+      masterPubKey = pubKeystore'master pubKeystore
+      emptyPubKeystore = PubKeystore masterPubKey MI.empty MI.empty
+      emptyTxs = M.empty
+      gapE = flip pushAlways getTxsE $ \txs -> do
+        gap <- sampleDyn gapD
+        pure $ if null txs && gap < gapLimit then gap + 1 else 0
+      nextKeyE = flip push gapE $ \gap -> do
+        gap <- sampleDyn gapD
+        currentKeyIndex <- fmap fst (sampleDyn currentKeyD)
+        let nextKeyIndex = currentKeyIndex + 1
+        pure $ if gap >= gapLimit
+          then Nothing
+          else Just $ (nextKeyIndex, derivePubKey masterPubKey External (fromIntegral nextKeyIndex))
+      finishedE = flip push gapE $ \gap -> do
+        newKeystore <- sampleDyn newKeystoreD
+        newTxs <- sampleDyn newTxsD
+        pure $ if gap >= gapLimit then Just $ (currency, CurrencyPubStorage newKeystore newTxs) else Nothing
   pure finishedE
 
 -- | If the given event fires and there is not fully synced filters. Wait for the synced filters and then fire the event.
@@ -110,10 +124,70 @@ waitFilters c e = mdo
       (Just a, True) -> Just a
       _ -> Nothing
 
-filterAddress :: MonadFront t m => Event t (Int, EgvXPubKey) -> m (Event t [BlockHash])
-filterAddress e = performFork $ ffor e $ \(_, pk) -> Filters.filterAddress $ egvXPubKeyToEgvAddress pk
+-- | Gets a list of block hashes containing transactions related to given address.
+filterAddress :: MonadFront t m => Event t EgvAddress -> m (Event t [HB.BlockHash])
+filterAddress addrE = performFork $ ffor addrE Filters.filterAddress
 
--- FIXME
-storeNewTransactions :: MonadFront t m => Event t [Block] -> m (Event t Int)
-storeNewTransactions valE = pure $ storeNewTransactionsMock <$> valE
-  where storeNewTransactionsMock blocks = if null blocks then 0 else 1
+-- | Gets transactions related to given address from given block list.
+getTxs :: MonadFront t m => Event t (EgvAddress, [HB.Block]) -> m (Event t (M.Map TxId EgvTx))
+getTxs = performEvent . fmap (uncurry getAddrTxsFromBlocks)
+
+-- | Gets transactions related to given address from given block.
+getAddrTxsFromBlocks :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> [HB.Block] -> m (M.Map TxId EgvTx)
+getAddrTxsFromBlocks addr blocks = do
+  txMaps <- traverse (getAddrTxsFromBlock addr) blocks
+  pure $ M.unions txMaps
+
+getAddrTxsFromBlock :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> HB.Block -> m (M.Map TxId EgvTx)
+getAddrTxsFromBlock addr block = do
+  checkResults <- traverse (checkAddrTx addr) txs
+  let filteredTxs = fst $ unzip $ filter snd (zip txs checkResults)
+  pure $ M.fromList [(HT.txHashToHex $ HT.txHash tx, BtcTx tx) | tx <- filteredTxs]
+  where txs = HB.blockTxns block
+
+-- | Checks given tx if there are some inputs or outputs containing given address.
+checkAddrTx :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> HT.Tx -> m Bool
+checkAddrTx addr tx = do
+  checkTxInputsResults <- traverse (checkTxIn addr) (HT.txIn tx)
+  checkTxOutputsResults <- traverse (checkTxOut addr) (HT.txOut tx)
+  pure $ concatResults checkTxInputsResults || concatResults checkTxOutputsResults
+  where concatResults = foldr (||) False
+
+-- | Checks given TxIn wheather it contains given address.
+-- Native SegWit addresses are not presented in TxIns scriptSig.
+checkTxIn :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> HT.TxIn -> m Bool
+checkTxIn addr txIn = do
+  let spentOutput = HT.prevOutput txIn
+      spentTxHash = HT.outPointHash spentOutput
+      spentOutputIndex = HT.outPointIndex spentOutput
+  mBlockHash <- getBtcBlockHashByTxHash spentTxHash
+  case mBlockHash of
+    Nothing -> pure False
+    Just blockHash -> do
+      mBlock <- getBtcBlock blockHash
+      case mBlock of
+        Nothing -> fail $ "Could not get block from storage by block hash " <> (T.unpack $ HB.blockHashToHex blockHash)
+        Just block -> do
+          let mSpentTx = find (\tx -> HT.txHash tx == spentTxHash) (HB.blockTxns block)
+          case mSpentTx of
+            Nothing -> pure False
+            Just spentTx -> do
+              checkResult <- checkTxOut addr $ (HT.txOut spentTx) !! (fromIntegral spentOutputIndex)
+              pure checkResult
+
+-- | Checks given TxOut wheather it contains given address.
+checkTxOut :: (MonadIO m, PlatformNatives) => EgvAddress -> HT.TxOut -> m Bool
+checkTxOut (BtcAddress (HA.WitnessPubKeyAddress pkh)) txO = case HS.decodeOutputBS $ HT.scriptOutput txO of
+  Left e -> do
+    logWrite $ "Could not decode transaction output " <> (showt e)
+    pure False
+  Right output -> case output of
+    HS.PayWitnessPKHash h -> if h == pkh then pure True else pure False
+    _ -> pure False
+checkTxOut (BtcAddress (HA.WitnessScriptAddress sh)) txO = case HS.decodeOutputBS $ HT.scriptOutput txO of
+  Left e -> do
+    logWrite $ "Could not decode transaction output " <> (showt e)
+    pure False
+  Right output -> case output of
+    HS.PayWitnessScriptHash h -> if h == sh then pure True else pure False
+    _ -> pure False

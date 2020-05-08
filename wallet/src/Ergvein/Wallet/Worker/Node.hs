@@ -70,7 +70,7 @@ btcNodeRefresher = do
               _ -> Nothing
           pure $ leftmost es
 
-    urlsD <- foldDynMaybe handleSAStore [] $ leftmost [SAAdd <$> extraUrlsE, SAClear <$ reqExtraE]
+    urlsD <- foldDynMaybe handleSAStore [] $ leftmost [SAAdd . (map hostToSockAddr) <$> extraUrlsE, SAClear <$ reqExtraE]
     let goE = fforMaybe (updated urlsD) $ \um -> if length um >= minNodeNum then Just um else Nothing
 
     cntD <- foldDyn (\urls (n,_) -> (n + 1, Just urls)) ((0 :: Int), Nothing) goE
