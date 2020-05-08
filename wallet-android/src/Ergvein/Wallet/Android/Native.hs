@@ -11,6 +11,7 @@ import Ergvein.Wallet.Android.Native.Certs
 import Ergvein.Wallet.Native
 import Foreign
 import Foreign.C
+import Network.DNS.Resolver
 import System.Directory
 import System.Directory.Tree
 import System.FilePath.Posix
@@ -150,6 +151,12 @@ instance PlatformNatives where
   {-# INLINE logWrite #-}
 
   readSystemCertificates = getSystemCertificateStore additionalCertificates
+
+  nativeResolvConf = defaultResolvConf {
+      resolvInfo = RCHostNames ["8.8.8.8","8.8.4.4", "1.1.1.1"]
+    , resolvConcurrent = True
+    }
+  {-# INLINE nativeResolvConf #-}
 
 getFiles :: FilePath -> IO [FilePath]
 getFiles dir = do

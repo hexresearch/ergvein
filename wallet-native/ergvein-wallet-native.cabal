@@ -16,6 +16,7 @@ library
   build-depends:
       base
     , aeson
+    , dns
     , jsaddle
     , mtl
     , text
