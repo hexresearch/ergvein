@@ -25,6 +25,7 @@ import Ergvein.Wallet.Platform
 import qualified Data.Dependent.Map as DM
 import qualified Data.Map as M
 import qualified Data.List as L
+import qualified Data.Bits as BI
 import qualified Data.ByteString.Char8 as B8
 
 minNodeNum :: Int
@@ -62,8 +63,11 @@ btcNodeRefresher = do
             reqE <- fmap (NodeReqBTC MGetAddr <$) getPostBuild
             requestNodeWait node reqE
             pure $ fforMaybe (nodeconRespE node) $ \case
-                    MAddr (Addr urls) -> Just $ fmap (naAddress . snd) urls
-                    _ -> Nothing
+              MAddr (Addr nats) -> let
+                addrs = snd $ unzip nats
+                segwits = filter (\u -> BI.testBit (naServices u) 3) addrs
+                in Just $ fmap naAddress segwits
+              _ -> Nothing
           pure $ leftmost es
 
     urlsD <- foldDynMaybe handleSAStore [] $ leftmost [SAAdd <$> extraUrlsE, SAClear <$ reqExtraE]
