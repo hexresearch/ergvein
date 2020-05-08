@@ -17,6 +17,7 @@ import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Types
+import Control.Monad.Trans.Maybe
 import Servant.Client.Core
 import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Monad
@@ -91,11 +92,9 @@ instance Hashable BaseUrl where
   hashWithSalt salt = hashWithSalt salt . showBaseUrl
 
 introduceSelf :: BaseUrl -> ServerM ()
-introduceSelf toPeer = do
-  nfo <- getDiscoveryRequisites
-  let req = IntroducePeerReq (showBaseUrl $ peerDescOwnAddress nfo)
-  getIntroducePeerEndpoint toPeer req 
-  pure ()
+introduceSelf toPeer = void $ runMaybeT $ do
+  ownAddress <- MaybeT $ peerDescOwnAddress <$> getDiscoveryRequisites
+  lift $ getIntroducePeerEndpoint toPeer $ IntroducePeerReq $ showBaseUrl ownAddress
 
 peerIntroduce :: ServerM ()
 peerIntroduce = do

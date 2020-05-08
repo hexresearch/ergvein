@@ -34,7 +34,7 @@ data ServerEnv = ServerEnv
     , envLevelDBContext           :: !DB
     , envBitcoinNodeNetwork       :: !HK.Network
     , envErgoNodeClient           :: !ErgoApi.Client
-    , envClientManager              :: !HC.Manager
+    , envClientManager            :: !HC.Manager
     , envPeerDiscoveryRequisites  :: !PeerDiscoveryRequisites
     }
 
@@ -61,7 +61,7 @@ newServerEnv cfg = do
 
     let bitcoinNodeNetwork = if configBTCNodeIsTestnet cfg then HK.btcTest else HK.btc
         peerDiscoveryRequisites = PeerDiscoveryRequisites 
-                                  (fromJust $ parseBaseUrl $ configOwnPeerAddress cfg)
+                                  (parseBaseUrl @Maybe <=< configOwnPeerAddress $ cfg)
                                   (fromJust . parseBaseUrl <$> configKnownPeers cfg)
     pure ServerEnv 
       { envServerConfig            = cfg

@@ -24,7 +24,7 @@ data Config = Config
   , configBTCNodePassword       :: !Text
   , configERGONodeHost          :: !String
   , configERGONodePort          :: !Int
-  , configOwnPeerAddress        :: !String
+  , configOwnPeerAddress        :: !(Maybe String)
   , configKnownPeers            :: ![String]
   } deriving (Show, Generic)
 deriveJSON (aesonOptionsStripPrefix "config") ''Config
