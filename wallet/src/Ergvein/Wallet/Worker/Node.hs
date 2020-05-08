@@ -68,12 +68,10 @@ btcNodeRefresher = do
           pure $ leftmost es
 
     urlsD <- foldDynMaybe handleSAStore [] $ leftmost [SAAdd <$> extraUrlsE, SAClear <$ reqExtraE]
-    performEvent_ $ ffor extraUrlsE $ \v -> btcLog $ "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB: " <> showt (length v)
     let goE = fforMaybe (updated urlsD) $ \um -> if length um >= minNodeNum then Just um else Nothing
 
     cntD <- foldDyn (\urls (n,_) -> (n + 1, Just urls)) (0, Nothing) goE
     let initNodesE = updated $ (uncurry M.singleton) <$> cntD
-  performEvent_ $ ffor extraE $ \v -> btcLog $ "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA: " <> showt v
   void $ listWithKeyShallowDiff mempty initNodesE $ \_ urls _ -> do
     nodes <- flip traverse urls $ \u -> do
       let reqE = extractReq sel BTC u
