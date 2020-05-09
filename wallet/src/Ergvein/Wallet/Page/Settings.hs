@@ -103,14 +103,18 @@ currenciesPage2 = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
 currenciesPage :: MonadFront t m => m ()
 currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
   h3 $ localizedText STPSSetsActiveCurrs
-  divClass "initial-options" $ do
+  divClass "initial-options" $ mdo
     activeCursD <- getActiveCursD
-    hD <- holdDyn [] currListE
-    void $ widgetHoldDyn $ ffor activeCursD $ \currs -> do
+    pD <- holdDyn False $ poke (updated activeCursD) $ \crs -> mdo
+      pS <- sampleDyn pD
+      pure True
+    performEvent_ $ poke (updated pD) $ \_ -> do
+      uac (S.toList <$> updated activeCursD)
+    void <- widgetHoldDyn $ ffor activeCursD $ \currs -> do
       currListE <- selectCurrenciesWidget $ S.toList currs
       uac currListE
     authD <- getAuthInfo
-    uac $ updated hd
+    --uac $ updated hd
     let updatedAuthE = traceEventWith (const "Active currencies setted") <$>
           flip pushAlways (S.toList <$> updated activeCursD) $ \cur -> do
             auth <- sample . current $ authD
