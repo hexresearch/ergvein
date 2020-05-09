@@ -78,7 +78,7 @@ btcNodeRefresher = do
   void $ listWithKeyShallowDiff mempty nodesE $ \_ urls _ -> do
     nodes <- flip traverse urls $ \u -> do
       let reqE = extractReq sel BTC u
-      fmap NodeConnBTC $ initBTCNode u reqE
+      fmap NodeConnBTC $ initBTCNode True u reqE
     modifyExternalRef nodeRef $ \cm -> (addMultipleConns cm nodes, ())
 
 
@@ -105,7 +105,7 @@ getRandomBTCNodesFromDNS sel n = do
   urlsE <- performFork $ (requestNodesFromBTCDNS (dnsUrls!!i) n) <$ buildE
   nodesD <- widgetHold (pure []) $ ffor urlsE $ \urls -> flip traverse urls $ \u -> let
     reqE = extractReq sel BTC u
-    in initBTCNode u reqE
+    in initBTCNode False u reqE
   pure $ fforMaybe (updated nodesD) $ \case
     [] -> Nothing
     ns -> Just ns

@@ -63,7 +63,7 @@ initNode :: MonadBaseConstr t m
   -> RequestSelector t
   -> SockAddr -> m (NodeConn t)
 initNode cur sel url = case cur of
-  BTC   -> fmap NodeConnBTC $ initBTCNode url  reqE
+  BTC   -> fmap NodeConnBTC $ initBTCNode True url  reqE
   ERGO  -> fmap NodeConnERG $ initErgoNode url reqE
   where
     reqE = extractReq sel cur url
@@ -89,7 +89,7 @@ reinitNodes urls cs sel conMap = foldlM updCurr conMap $ M.toList cs
       BTC -> case (DM.lookup BTCTag cm, b) of
         (Nothing, True) -> do
           let conns0 = fromMaybe [] $ M.lookup BTC urls
-          conns <- flip traverse conns0 $ \u -> fmap NodeConnBTC $ initBTCNode u $ extractReq sel BTC u
+          conns <- flip traverse conns0 $ \u -> fmap NodeConnBTC $ initBTCNode True u $ extractReq sel BTC u
           pure $ addMultipleConns cm conns
         (Just _, False) -> pure $ DM.delete BTCTag cm
         _ -> pure cm
@@ -109,7 +109,8 @@ requestNodeWait NodeConnection{..} reqE = do
   let passValE = updated $ (,) <$> reqD <*> nodeconIsUp
   reqE' <- fmap (fmapMaybe id) $ performEvent $ ffor passValE $ \case
     (Just _, False) -> do
-      logWrite $ (nodeString nodeconCurrency nodeconUrl) <> "Connection is not active. Waiting."
+      when nodecondoLog $
+        logWrite $ (nodeString nodeconCurrency nodeconUrl) <> "Connection is not active. Waiting."
       pure Nothing
     (Just v, True) -> pure $ Just (nodeconUrl, v)
     _ -> pure Nothing
