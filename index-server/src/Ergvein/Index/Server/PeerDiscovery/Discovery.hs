@@ -19,6 +19,7 @@ import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Servant.Client.Core
+import Data.Maybe
 
 import qualified Data.Map.Strict as Map
 import qualified Network.HTTP.Client as HC
@@ -27,14 +28,18 @@ import qualified Data.HashSet as Set
 instance Hashable BaseUrl where
   hashWithSalt salt = hashWithSalt salt . showBaseUrl
 
-peerInfo ::  BaseUrl -> ExceptT PeerValidationResult ServerM InfoResponse
-peerInfo baseUrl =  ExceptT $ (const InfoConnectionError `mapLeft`) <$> getInfoEndpoint baseUrl ()
+peerInfoRequest :: BaseUrl -> ExceptT PeerValidationResult ServerM InfoResponse
+peerInfoRequest baseUrl =
+  ExceptT $ (const InfoConnectionError `mapLeft`) 
+         <$> getInfoEndpoint baseUrl ()
 
-peerKnownPeers ::  BaseUrl -> ExceptT PeerValidationResult ServerM KnownPeersResp
-peerKnownPeers baseUrl =  ExceptT $ (const KnownPeersConnectionError `mapLeft`) <$> getKnownPeersEndpoint baseUrl (KnownPeersReq False)
+peerKnownPeersRequest :: BaseUrl -> ExceptT PeerValidationResult ServerM KnownPeersResp
+peerKnownPeersRequest baseUrl =
+  ExceptT $ (const KnownPeersConnectionError `mapLeft`)
+         <$> getKnownPeersEndpoint baseUrl (KnownPeersReq False)
 
-peerScanValidation :: InfoResponse -> ExceptT PeerValidationResult ServerM InfoResponse
-peerScanValidation candidateInfo = do
+peerActualScan :: InfoResponse -> ExceptT PeerValidationResult ServerM InfoResponse
+peerActualScan candidateInfo = do
   localInfo <- lift $ scanningInfo
   let isCandidateScanMatchLocal = sequence $ currencyScanValidation <$> localInfo
   except $ candidateInfo <$ isCandidateScanMatchLocal
@@ -54,17 +59,24 @@ peerScanValidation candidateInfo = do
     candidateInfoMap = Map.fromList $ (\scanInfo -> (scanProgressCurrency scanInfo, scanInfo))
                                    <$> infoScanProgress candidateInfo
 
-peerValidation :: Scheme -> BaseUrl -> ExceptT PeerValidationResult ServerM InfoResponse
-peerValidation scheme baseUrl = do
-  infoResult <- peerInfo baseUrl
-  candidateScanResult <- peerScanValidation infoResult
-  pure candidateScanResult
+extractAddresses :: KnownPeersResp -> [NewPeer]
+extractAddresses = fmap newPeer . mapMaybe parseBaseUrl . knownPeersList
+  where
+    newPeer url = NewPeer  url (baseUrlScheme url)
+
+
+peerKnownPeers :: BaseUrl -> ExceptT PeerValidationResult ServerM [NewPeer]
+peerKnownPeers baseUrl = do
+  infoResult <- peerInfoRequest baseUrl
+  candidateScanResult <- peerActualScan infoResult
+  knownPeers <- peerKnownPeersRequest baseUrl
+  pure $ extractAddresses knownPeers
 
 considerPeerCandidate :: PeerCandidate -> ExceptT PeerValidationResult ServerM ()
 considerPeerCandidate candidate = do
   let baseUrl = peerCandidateUrl candidate
   let candidateSchema = baseUrlScheme baseUrl
-  candidateScanResult <- peerValidation candidateSchema baseUrl
+  candidateScanResult <- peerKnownPeers baseUrl
   let x = NewPeer baseUrl candidateSchema
   lift $ dbQuery $ addNewPeer x 
   pure ()
@@ -86,10 +98,15 @@ peerDiscoverActualization = do
       let url = peerUrl peer
       currentTime <- liftIO getCurrentTime
       let z = currentTime `diffUTCTime` peerLastValidatedAt peer
-      let s = if (z >= 86400) then Just Peer else Nothing
-      rr <- runExceptT $ except $ Right  peer
-      r <- ((\x -> rightToMaybe <$> (runExceptT $ peerValidation (baseUrlScheme $ peerUrl x ) (peerUrl x))))  =<< (pure peer)
-      dbQuery $ refreshPeerValidationTime $ peerId peer
+      if (z <= 86400) then do
+        runExceptT $ do
+          prs <- peerKnownPeers $ peerUrl peer
+          lift $ do
+            forM_ prs (\x -> dbQuery $ addNewPeer x)
+            dbQuery $ refreshPeerValidationTime $ peerId peer
+        pure ()
+      else
+        pure ()
 
 introduceSelf :: BaseUrl -> ServerM ()
 introduceSelf toPeer = void $ runMaybeT $ do
