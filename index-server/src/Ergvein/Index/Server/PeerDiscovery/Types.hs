@@ -6,6 +6,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Servant.Client.Core.BaseUrl
 import Ergvein.Index.Server.DB.Schema
+import Data.Time.Clock
 
 data CurrencyOutOfSyncInfo = CurrencyOutOfSyncInfo
   { outOfsyncCurrency :: Currency
@@ -36,6 +37,7 @@ data NewPeer = NewPeer
   }
 
 data PeerDiscoveryRequisites = PeerDiscoveryRequisites
-  { peerDescOwnAddress :: !(Maybe BaseUrl)
-  , peerDescKnownPeers :: ![BaseUrl]
+  { peerDescOwnAddress             :: !(Maybe BaseUrl)
+  , peerDescKnownPeers             :: ![BaseUrl]
+  , peerDescConnectionRetryTimeout :: !NominalDiffTime
   }

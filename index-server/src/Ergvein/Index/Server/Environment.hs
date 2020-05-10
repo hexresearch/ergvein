@@ -63,6 +63,7 @@ newServerEnv cfg = do
         peerDiscoveryRequisites = PeerDiscoveryRequisites 
                                   (parseBaseUrl @Maybe <=< configOwnPeerAddress $ cfg)
                                   (fromJust . parseBaseUrl <$> configKnownPeers cfg)
+                                  (configPeerConnectionRetryTimeout cfg)
     pure ServerEnv 
       { envServerConfig            = cfg
       , envLogger                  = logger

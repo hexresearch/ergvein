@@ -89,6 +89,7 @@ peerDiscoverActualization = do
     scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
       cfg <- serverConfig
+      discoveryRequisites <- getDiscoveryRequisites
       ownAddress <- peerDescOwnAddress <$> getDiscoveryRequisites
       discoveredPeers <- dbQuery getNewPeers
       let discoveredPeersSet = Set.fromList $ toList ownAddress <> (peerUrl <$> discoveredPeers)
@@ -98,14 +99,14 @@ peerDiscoverActualization = do
 
     discoverIteration :: Set.HashSet BaseUrl -> Peer -> ServerM ()
     discoverIteration discoveredPeersSet peer = do
-      let url = peerUrl peer
+      retryTimeout <- peerDescConnectionRetryTimeout <$> getDiscoveryRequisites
       currentTime <- liftIO getCurrentTime
-      let elapsedTime = currentTime `diffUTCTime` peerLastValidatedAt peer
-      if (elapsedTime <= 86400) then void <$> runExceptT $ do
-        prs <- peerKnownPeers $ peerUrl peer
-        let uniqPeers = filter (not . flip Set.member discoveredPeersSet . newPeerUrl)  prs
+      let fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt peer
+      if (fromLastSuccess <= retryTimeout) then void <$> runExceptT $ do
+        newPeers <- peerKnownPeers $ peerUrl peer
+        let uniqueNewPeers = filter (not . flip Set.member discoveredPeersSet . newPeerUrl)  newPeers
         lift $ do
-          forM_ uniqPeers (\x -> dbQuery $ addNewPeer x)
+          forM_ uniqueNewPeers (\x -> dbQuery $ addNewPeer x)
           dbQuery $ refreshPeerValidationTime $ peerId peer
       else
         pure ()
