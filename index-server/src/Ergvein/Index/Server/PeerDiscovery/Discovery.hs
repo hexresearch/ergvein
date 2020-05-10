@@ -20,6 +20,7 @@ import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Servant.Client.Core
 import Data.Maybe
+import Data.Foldable
 
 import qualified Data.Map.Strict as Map
 import qualified Network.HTTP.Client as HC
@@ -88,23 +89,24 @@ peerDiscoverActualization = do
     scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
       cfg <- serverConfig
-      allPeers <- dbQuery getNewPeers
-      forM_ allPeers discoverIteration
+      ownAddress <- peerDescOwnAddress <$> getDiscoveryRequisites
+      discoveredPeers <- dbQuery getNewPeers
+      let discoveredPeersSet = Set.fromList $ toList ownAddress <> (peerUrl <$> discoveredPeers)
+      forM_ discoveredPeers (discoverIteration discoveredPeersSet)
       liftIO $ threadDelay $ configBlockchainScanDelay cfg
       pure ()
 
-    discoverIteration :: Peer -> ServerM ()
-    discoverIteration peer = do
+    discoverIteration :: Set.HashSet BaseUrl -> Peer -> ServerM ()
+    discoverIteration discoveredPeersSet peer = do
       let url = peerUrl peer
       currentTime <- liftIO getCurrentTime
-      let z = currentTime `diffUTCTime` peerLastValidatedAt peer
-      if (z <= 86400) then do
-        runExceptT $ do
-          prs <- peerKnownPeers $ peerUrl peer
-          lift $ do
-            forM_ prs (\x -> dbQuery $ addNewPeer x)
-            dbQuery $ refreshPeerValidationTime $ peerId peer
-        pure ()
+      let elapsedTime = currentTime `diffUTCTime` peerLastValidatedAt peer
+      if (elapsedTime <= 86400) then void <$> runExceptT $ do
+        prs <- peerKnownPeers $ peerUrl peer
+        let uniqPeers = filter (not . flip Set.member discoveredPeersSet . newPeerUrl)  prs
+        lift $ do
+          forM_ uniqPeers (\x -> dbQuery $ addNewPeer x)
+          dbQuery $ refreshPeerValidationTime $ peerId peer
       else
         pure ()
 
