@@ -13,7 +13,8 @@ data CurrencyOutOfSyncInfo = CurrencyOutOfSyncInfo
   } deriving Show
 
 data PeerValidationResult = OK 
-  | PeerConnectionError 
+  | InfoConnectionError
+  | KnownPeersConnectionError
   | CurrencyOutOfSync CurrencyOutOfSyncInfo
   | CurrencyMissing Currency
   deriving Show

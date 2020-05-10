@@ -4,8 +4,8 @@ import Control.Concurrent
 import Control.Immortal
 import Control.Monad.Reader
 import Control.Monad.Trans.Except
+import Control.Monad.Trans.Maybe
 import Data.Either.Combinators
-import Data.Foldable
 import Data.Hashable
 import Data.Time.Clock
 import Ergvein.Index.API.Types
@@ -14,21 +14,24 @@ import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries
+import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Types
-import Control.Monad.Trans.Maybe
 import Servant.Client.Core
-import Ergvein.Index.Server.Dependencies
-import Ergvein.Index.Server.Monad
-import Data.Proxy
 
 import qualified Data.Map.Strict as Map
 import qualified Network.HTTP.Client as HC
 import qualified Data.HashSet as Set
 
-peerConnectionValidation ::  BaseUrl -> ExceptT PeerValidationResult ServerM InfoResponse
-peerConnectionValidation baseUrl =  ExceptT $ (const PeerConnectionError `mapLeft`) <$> getInfoEndpoint baseUrl ()
+instance Hashable BaseUrl where
+  hashWithSalt salt = hashWithSalt salt . showBaseUrl
+
+peerInfo ::  BaseUrl -> ExceptT PeerValidationResult ServerM InfoResponse
+peerInfo baseUrl =  ExceptT $ (const InfoConnectionError `mapLeft`) <$> getInfoEndpoint baseUrl ()
+
+peerKnownPeers ::  BaseUrl -> ExceptT PeerValidationResult ServerM KnownPeersResp
+peerKnownPeers baseUrl =  ExceptT $ (const KnownPeersConnectionError `mapLeft`) <$> getKnownPeersEndpoint baseUrl (KnownPeersReq False)
 
 peerScanValidation :: InfoResponse -> ExceptT PeerValidationResult ServerM InfoResponse
 peerScanValidation candidateInfo = do
@@ -53,7 +56,7 @@ peerScanValidation candidateInfo = do
 
 peerValidation :: Scheme -> BaseUrl -> ExceptT PeerValidationResult ServerM InfoResponse
 peerValidation scheme baseUrl = do
-  infoResult <- peerConnectionValidation baseUrl
+  infoResult <- peerInfo baseUrl
   candidateScanResult <- peerScanValidation infoResult
   pure candidateScanResult
 
@@ -87,9 +90,6 @@ peerDiscoverActualization = do
       rr <- runExceptT $ except $ Right  peer
       r <- ((\x -> rightToMaybe <$> (runExceptT $ peerValidation (baseUrlScheme $ peerUrl x ) (peerUrl x))))  =<< (pure peer)
       dbQuery $ refreshPeerValidationTime $ peerId peer
-
-instance Hashable BaseUrl where
-  hashWithSalt salt = hashWithSalt salt . showBaseUrl
 
 introduceSelf :: BaseUrl -> ServerM ()
 introduceSelf toPeer = void $ runMaybeT $ do
