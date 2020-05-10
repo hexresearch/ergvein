@@ -28,6 +28,7 @@ import Servant.Client(BaseUrl, showBaseUrl)
 import Ergvein.Crypto
 import Ergvein.Index.Client
 import Ergvein.Text
+import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Network
@@ -230,7 +231,7 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getFiltersSyncRef #-}
   getActiveCursD = externalRefDynamic =<< asks env'activeCursRef
   {-# INLINE getActiveCursD #-}
-  updateActuveCurs updE = do
+  updateActiveCurs crE updE = do
     curRef      <- asks env'activeCursRef
     nodeRef     <- asks env'nodeConsRef
     settingsRef <- asks env'settings
@@ -253,8 +254,18 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
       storeSettings set'
       writeExternalRef nodeRef =<< reinitNodes urls diffMap sel =<< readExternalRef nodeRef
 
+
+      authD <- getAuthInfo
+      let updatedAuthE = traceEventWith (const "Active currencies setted") <$>
+            flip pushAlways crE $ \cur -> do
+              auth <- sample . current $ authD
+              pure $ Just $ auth
+                & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ cur
+                & authInfo'isUpdate .~ True
+      setAuthInfoE <- setAuthInfo updatedAuthE
+      storeWallet setAuthInfoE
       pure ()
-  {-# INLINE updateActuveCurs #-}
+  {-# INLINE updateActiveCurs #-}
   getAuthInfo = externalRefDynamic =<< asks env'authRef
   {-# INLINE getAuthInfo #-}
   getLoginD = (fmap . fmap) _authInfo'login . externalRefDynamic =<< asks env'authRef
@@ -395,7 +406,7 @@ wrapped ma = do
   storeWallet =<< getPostBuild
   buildE <- getPostBuild
   ac <- _pubStorage'activeCurrencies <$> getPubStorage
-  updE <- updateActuveCurs $ fmap (\cl -> const (S.fromList cl)) $ ac <$ buildE
+  updE <- updateActiveCurs (ac <$ buildE) $ fmap (\cl -> const (S.fromList cl)) $ ac <$ buildE
   ma
 
 instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
