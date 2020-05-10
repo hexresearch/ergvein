@@ -23,7 +23,7 @@ library
       base
     , aeson
     , attoparsec        >= 0.13
-    , attoparsec-binary >= 0.2  && < 0.3
+    , attoparsec-binary >= 0.2    && < 0.3
     , binary            >= 0.8
     , bytestring        >= 0.10
     , cereal
@@ -31,8 +31,8 @@ library
     , dependent-sum     >= 0.6
     , ergvein-common
     , ergvein-wallet-types >= 0.1 && < 0.2
-    , golomb-rice       >= 0.1  && < 0.25
-    , haskoin-core      >= 0.8
+    , golomb-rice       >= 0.1    && < 0.25
+    , haskoin-core      >= 0.12.0 && < 0.12.1
     , memory            >= 0.11
     , text              >= 1.2
     , vector            >= 0.12
@@ -70,6 +70,7 @@ test-suite ergvein-wallet-filters-test
     , either
     , ergvein-common
     , ergvein-wallet-filters
+    , ergvein-wallet-types
     , haskoin-core
     , tasty
     , tasty-discover

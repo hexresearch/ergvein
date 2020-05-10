@@ -61,7 +61,7 @@ let
       iconPath = "@drawable/ic_launcher";
       runtimeSharedLibs = nixpkgs: [
         "${nixpkgs.zlibSys}/lib/libz.so"
-        "${nixpkgs.secp256k1}/lib/libsecp256k1.so"
+        "${nixpkgs.secp256k1Sys}/lib/libsecp256k1.so"
         "${nixpkgs.lmdbSys}/lib/liblmdb.so"
       ];
       /* additionalDependencies = ''

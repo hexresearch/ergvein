@@ -28,9 +28,9 @@ import Data.Aeson
 import Data.Serialize
 import Data.Text (Text, pack)
 import Data.Time (NominalDiffTime)
+import Network.Socket (SockAddr)
 import Reflex
 import Reflex.ExternalRef
-import Servant.Client(BaseUrl(..))
 
 import Ergvein.Text (showt)
 import Ergvein.Types.Currency
@@ -50,7 +50,7 @@ class (CurrencyRep cur) => HasNode cur where
 
 data NodeConnection t cur = NodeConnection {
   nodeconCurrency   :: !Currency
-, nodeconUrl        :: !BaseUrl
+, nodeconUrl        :: !SockAddr
 , nodeconStatus     :: !(ExternalRef t (Maybe NodeStatus))
 , nodeconOpensE     :: !(Event t ())
 , nodeconCloseE     :: !(Event t ())
@@ -74,8 +74,8 @@ type Host = String
 type Port = Int
 
 -- | Node string for logging
-nodeString :: Currency -> BaseUrl -> Text
-nodeString cur BaseUrl{..} = "[" <> showt cur <> "]<" <> pack baseUrlHost <> ":" <> showt baseUrlPort <> ">: "
+nodeString :: Currency -> SockAddr -> Text
+nodeString cur url = "[" <> showt cur <> "]<" <> showt url <> ">: "
 
 data BTCType = BTCType
 type NodeBTC t = NodeConnection t BTCType

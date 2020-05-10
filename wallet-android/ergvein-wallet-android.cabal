@@ -20,6 +20,7 @@ library
     , data-default
     , directory
     , directory-tree
+    , dns
     , ergvein-common
     , ergvein-wallet-native
     , filepath
