@@ -46,6 +46,13 @@ main = hakyll $ do
                 >>= loadAndApplyTemplate "templates/default.html" archiveCtx
                 >>= relativizeUrls
 
+    create ["docs.html"] $ do
+      route idRoute
+      compile $ do
+        makeItem ""
+            >>= applyAsTemplate defaultContext
+            >>= loadAndApplyTemplate "templates/docs.html" defaultContext
+            >>= relativizeUrls
 
     match "index.html" $ do
         route idRoute
@@ -62,13 +69,6 @@ main = hakyll $ do
 
     match "templates/*" $ compile templateBodyCompiler
 
-    create ["archive.html"] $ do
-      route idRoute
-      compile $ do
-        getResourceBody
-            >>= applyAsTemplate defaultContext
-            >>= loadAndApplyTemplate "templates/docs.html" defaultContext
-            >>= relativizeUrls
 
 --------------------------------------------------------------------------------
 postCtx :: Context String
