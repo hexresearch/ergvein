@@ -50,6 +50,7 @@ let
 
     shellToolOverrides = ghc: super: {
       inherit (pkgs) postgresql leveldb;
+      inherit (pkgs.haskellPackages) hakyll;
     };
 
     android.ergvein-wallet = {
