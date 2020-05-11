@@ -254,7 +254,6 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
       storeSettings set'
       writeExternalRef nodeRef =<< reinitNodes urls diffMap sel =<< readExternalRef nodeRef
 
-
       authD <- getAuthInfo
       let updatedAuthE = traceEventWith (const "Active currencies setted") <$>
             flip pushAlways crE $ \cur -> do

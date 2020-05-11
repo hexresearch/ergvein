@@ -107,11 +107,30 @@ currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
     activeCursD <- getActiveCursD
     divClass "test" $ dynText $ showt <$> activeCursD
     ps <- getPubStorage
+    authD <- getAuthInfo
+--    auth <- sample . current $ authD
     divClass "test" $ text $ showt $ _pubStorage'activeCurrencies ps
     void <- widgetHoldDyn $ ffor activeCursD $ \currs -> do
       currListE <- selectCurrenciesWidget $ S.toList currs
       tE <- uac currListE
-      showSuccessMsg $ STPSSuccess <$ tE
+      let updatedAuthE = traceEventWith (const "Active currencies setted") <$>
+            flip pushAlways currListE $ \curs -> do
+              auth <- sample . current $ authD
+              pure $ Just $ auth
+                & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
+                & authInfo'isUpdate .~ True
+      setAuthInfoE <- setAuthInfo updatedAuthE
+      performEvent_ $ ffor setAuthInfoE $ \a -> do
+        authInf <- readExternalRef =<< asks env'authRef
+        liftIO $ print "================================="
+        liftIO $ print "First: "
+        liftIO $ print $ show $ authInf
+          & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies
+  --      liftIO $ print "---------------------------------"
+  --      liftIO $ print $ show $ _authInfo'storage a
+        liftIO $ print "================================="
+      storeWallet setAuthInfoE
+      showSuccessMsg $ STPSSuccess <$ setAuthInfoE
     pure ()
     where
       uac cE =  updateActiveCurs cE $ fmap (\cl -> const (S.fromList cl)) $ cE
