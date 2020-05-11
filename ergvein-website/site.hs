@@ -15,6 +15,10 @@ main = hakyll $ do
         route   idRoute
         compile compressCssCompiler
 
+    match "js/*" $ do
+        route   idRoute
+        compile copyFileCompiler
+
     match (fromList ["about.rst", "contact.markdown"]) $ do
         route   $ setExtension "html"
         compile $ pandocCompiler
@@ -59,6 +63,13 @@ main = hakyll $ do
 
     match "templates/*" $ compile templateBodyCompiler
 
+    create ["archive.html"] $ do
+      route idRoute
+      compile $ do
+        getResourceBody
+            >>= applyAsTemplate defaultContext
+            >>= loadAndApplyTemplate "templates/docs.html" defaultContext
+            >>= relativizeUrls
 
 --------------------------------------------------------------------------------
 postCtx :: Context String

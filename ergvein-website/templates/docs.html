@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>Documentation - Focus Theme</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Goole fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Playfair+Display:400,600%7CFira+Sans:300,400,400i,600" rel="stylesheet">
+
+    <!-- Material icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="../assets/css/theme.css">
+    <!-- Prism (only for docs) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.19.0/themes/prism-okaidia.min.css">
+
+
+    <!-- JS -->
+    <script src="../assets/js/theme.js" defer></script>
+    <!-- Prism (only for docs) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.19.0/prism.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.19.0/plugins/normalize-whitespace/prism-normalize-whitespace.min.js" defer></script>
+
+</head>
+
+<body>
+<div class="container">
+    <div class="row py-4 py-lg-5">
+        <div class="col-lg-3">
+            <nav class="navbar navbar-expand-lg navbar-dark side-nav sticky-top mt-2" aria-label="Docs navigation">
+                <a class="collapsed btn-block d-lg-none btn btn-outline-white p-3 mb-4 text-center" href="#collapseOne" data-toggle="collapse" data-target="#navbarDocs" aria-expanded="false" aria-controls="navbarDocs" aria-label="Docs navigation">Navigation</a>
+
+                <div class="collapse navbar-collapse" id="navbarDocs">
+
+                    <dl class="navbar-nav flex-column">
+                        <dt class="text-uppercase mb-2">Getting Started</dt>
+                        <dd>
+                            <a href="index.html" class=active>Introduction</a>
+                        </dd>
+                        <dd>
+                            <a href="template.html" >Basic template</a>
+                        </dd>
+                        <dd>
+                            <a href="changelog.html" >Changelog</a>
+                        </dd>
+
+                        <dt class="text-uppercase mt-3 mb-2">Components</dt>
+                        <dd>
+                            <a href="avatars.html" >Avatars</a>
+                        </dd>
+                        <dd>
+                            <a href="buttons.html" >Buttons</a>
+                        </dd>
+                        <dd>
+                            <a href="carousel.html" >Carousel</a>
+                        </dd>
+                        <dd>
+                            <a href="forms.html" >Forms</a>
+                        </dd>
+                        <dd>
+                            <a href="icons.html" >Icons</a>
+                        </dd>
+                        <dd>
+                            <a href="images.html" >Images</a>
+                        </dd>
+                        <dd>
+                            <a href="navbar.html" >Navbar</a>
+                        </dd>
+                        <dd>
+                            <a href="pagination.html" >Pagination</a>
+                        </dd>
+
+                        <dt class="text-uppercase mt-3 mb-2">Utilities</dt>
+                        <dd>
+                            <a href="borders.html" >Borders</a>
+                        </dd>
+                        <dd>
+                            <a href="text.html" >Text</a>
+                        </dd>
+
+                        <dt class="text-uppercase mt-3 mb-2">Plugins</dt>
+                        <dd>
+                            <a href="zoom.html" >Zoom</a>
+                        </dd>
+                    </dl>
+                </div>
+            </nav>
+        </div>
+        <div class="col-lg-9">
+            <main id="main">
+
+<header class="site-header fixed-top bg-black border-bottom border-dark">
+    <a href="#content" class="sr-only sr-only-focusable">Skip to main content</a>
+    <div class="container">
+
+        <!-- Navbar -->
+        <nav class="navbar main-nav navbar-expand-lg navbar-dark" aria-label="Main navigation">
+            <a href="../index.html" class="navbar-brand d-inline-flex text-uppercase">Focus <i class="material-icons ml-2" aria-hidden="true">donut_large</i></a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse text-uppercase" id="navbarContent">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item">
+                        <a href="../pages.html" class="nav-link">Pages</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="../style.html" class="nav-link">Style</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="../docs/index.html" class="nav-link active">Docs</a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+    </div>
+</header>
+
+<h1>Introduction</h1>
+<p class="lead">A brief guide to get started with Focus theme.</p>
+
+<h2>Files structure</h2>
+
+<p>Unzip the theme folder and you'll see the next file structure:</p>
+<ul class="mb-4">
+    <li><code>dist</code> - production files</li>
+    <li><code>src</code>
+        <ul>
+            <li><code>assets</code></li>
+            <li><code>pages</code></li>
+            <li><code>templates</code></li>
+        </ul>
+    </li>
+    <li><code>gulpfile.js</code></li>
+    <li><code>package.json</code></li>
+    <li><code>README.md</code></li>
+</ul>
+
+<h2>Development setup</h2>
+
+<p>Theme's dev tools require Node and Gulp CLI. To install Node go to <a href="https://nodejs.org/en/" target="_blank" rel="noopener">Node.js </a> and follow the instructions. To install <a href="https://gulpjs.com/" target="_blank" rel="noopener">Gulp CLI</a> run the following command:</p>
+<pre class="mb-4"><code class="language-bash py-2">npm i gulp-cli -g</code></pre>
+<p>Then run the following npm command to install all the theme's dependencies:</p>
+<pre class="mb-4"><code class="language-bash py-2">npm i</code></pre>
+<p>Running <strong>gulp</strong> will compile the theme, copy all required files to the dist directory and will open a browser window to <code>dist/index.html</code>.</p>
+<pre class="mb-4"><code class="language-bash py-2">gulp</code></pre>
+
+<p>Other gulp tasks available:</p>
+<ul class="mb-4">
+    <li class="mb-2">
+        <code>gulp css</code>: Compiles and minifies <code>scss</code> files to <code>dist</code>.
+    </li>
+    <li class="mb-2">
+        <code>gulp watch</code>: Starts a local server and watch for changes.
+    </li>
+</ul>
+<p>The theme uses <a href="https://mozilla.github.io/nunjucks/" target="_blank" rel="noopener">Nunjucks</a> as a template engine, basically to include partials (header, footer...). Gulp renders Nunjucks templates to HTML.</p>
+
+<p><strong>Note:</strong> If you prefer, you can simply use the production files that are in the <strong>dist</strong> folder and bypass the gulp workflow.</p>
+
+<h3>Customization</h3>
+
+<p>There are two ways to customize your theme:</p>
+<ul>
+    <li class="mb-2"><strong>SCSS</strong>. If you use the gulp workflow to compile the scss files (recommended) then you can use the <code>_user-vars.scss</code> file to add your own variables and <code>_user.css</code> to add your own styles.</li>
+    <li class="mb-2"><strong>CSS</strong>. If you use the compiled files, you can simply add a <code>custom.css</code> file in the <code>assets/css</code> folder with your own styles and link it to the head of your pages.</li>
+</ul>
+
+<h3>Remove unused CSS</h3>
+
+<p>Once your files are ready for production, you can remove all unused CSS using <a href="https://www.purgecss.com/" target="_blank" rel="noopener">purgecss</a>. To do it just run the following command:</p>
+<figure class="mb-4">
+    <pre class="mb-4"><code class="language-bash py-2">gulp uncss</code></pre>
+</figure>
+<p>Purgecss analyzes the HTML and Bootstrap JS files and removes unused CSS. The CSS file size will be reduced and your website performance will improve.</p>
+</main>
+        </div>
+    </div>
+</div>
