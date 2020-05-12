@@ -50,8 +50,8 @@ main = hakyll $ do
       route idRoute
       compile $ do
         makeItem ""
-            >>= applyAsTemplate defaultContext
             >>= loadAndApplyTemplate "templates/docs.html" defaultContext
+            >>= loadAndApplyTemplate "templates/default.html" defaultContext
             >>= relativizeUrls
 
     match "index.html" $ do
