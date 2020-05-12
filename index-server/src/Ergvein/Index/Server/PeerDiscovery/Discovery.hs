@@ -8,8 +8,8 @@ import Control.Monad.Trans.Maybe
 import Data.Either.Combinators
 import Data.Foldable
 import Data.Hashable
-import Data.Maybe
 import Data.List
+import Data.Maybe
 import Data.Time.Clock
 import Ergvein.Index.API.Types
 import Ergvein.Index.Client.V1
@@ -27,17 +27,89 @@ import qualified Data.Map.Strict as Map
 import qualified Network.HTTP.Client as HC
 import qualified Data.HashSet as Set
 
+peerKnownPeers :: BaseUrl -> ExceptT PeerValidationResult ServerM [BaseUrl]
+peerKnownPeers baseUrl = do
+  infoResult <- peerInfoRequest baseUrl
+  candidateScanResult <- peerActualScan infoResult
+  knownPeers <- peerKnownPeersRequest baseUrl
+  pure $ extractAddresses knownPeers
+  where
+    extractAddresses :: KnownPeersResp -> [BaseUrl]
+    extractAddresses = mapMaybe parseBaseUrl . knownPeersList
+
+considerPeerCandidate :: PeerCandidate -> ExceptT PeerValidationResult ServerM ()
+considerPeerCandidate candidate = do
+  let baseUrl = peerCandidateUrl candidate   
+  candidateScanResult <- peerKnownPeers baseUrl
+  let newPeer = NewPeer baseUrl candidateSchema
+      candidateSchema = baseUrlScheme baseUrl
+  lift $ dbQuery $ addNewPeers [newPeer] 
+
+knownPeersActualization :: ServerM Thread
+knownPeersActualization = do
+  create $ logOnException . scanIteration
+  where
+    scanIteration :: Thread -> ServerM ()
+    scanIteration thread = do
+      cfg <- serverConfig
+      requisites <- getDiscoveryRequisites
+      currentTime <- liftIO getCurrentTime
+      knownPeers <- dbQuery $ getDiscoveredPeers False
+
+      let (outdatedPeers, peersToFetchFrom) = 
+            partition (isOutdated (peerDescConnectionRetryTimeout requisites) currentTime) knownPeers
+          knowPeersSet = Set.fromList $ (toList $ peerDescOwnAddress requisites) ++ (peerUrl <$> peersToFetchFrom)
+
+      (peersToRefresh, fetchedPeers) <- mconcat <$> mapM peersKnownTo peersToFetchFrom
+
+      let uniqueFetchedPeers = filter (not . flip Set.member knowPeersSet) fetchedPeers
+
+      dbQuery $ do
+        deleteExpiredPeers $ peerId <$> outdatedPeers
+        refreshPeerValidationTime $ peerId <$> peersToRefresh
+        addNewPeers $ newPeer <$> uniqueFetchedPeers
+      liftIO $ threadDelay $ configBlockchainScanDelay cfg
+
+    isOutdated :: NominalDiffTime -> UTCTime -> Peer -> Bool
+    isOutdated retryTimeout currentTime peer = let
+      fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt peer
+      in retryTimeout <= fromLastSuccess
+
+    peersKnownTo :: Peer -> ServerM ([Peer], [BaseUrl])
+    peersKnownTo peer = do
+      knownPeers <- runExceptT $ peerKnownPeers $ peerUrl peer
+      pure $ case knownPeers of
+        Right peers -> ([peer], peers)
+        _ -> mempty
+
+peerIntroduce :: ServerM ()
+peerIntroduce = void $ runMaybeT $ do
+  ownAddress <- MaybeT $ peerDescOwnAddress <$> getDiscoveryRequisites
+  lift $ do
+    allPeers <- dbQuery $ getDiscoveredPeers False
+    let introduceReq = IntroducePeerReq $ showBaseUrl ownAddress
+    forM_ allPeers (flip getIntroducePeerEndpoint introduceReq . peerUrl)
+
+addDefaultPeersIfNoneDiscovered :: ServerM ()
+addDefaultPeersIfNoneDiscovered = do
+  isNoneDiscovered <- dbQuery isNonePeersDiscovered
+  when isNoneDiscovered $ do
+    predefinedPeers <- peerDescPredefinedPeers <$> getDiscoveryRequisites
+    dbQuery $ addNewPeers $ newPeer <$> predefinedPeers
+
 instance Hashable BaseUrl where
   hashWithSalt salt = hashWithSalt salt . showBaseUrl
 
+newPeer peerUrl = NewPeer peerUrl (baseUrlScheme peerUrl)
+
 peerInfoRequest :: BaseUrl -> ExceptT PeerValidationResult ServerM InfoResponse
 peerInfoRequest baseUrl =
-  ExceptT $ (const InfoConnectionError `mapLeft`) 
+  ExceptT $ (const InfoEndpointConnectionError `mapLeft`) 
          <$> getInfoEndpoint baseUrl ()
 
 peerKnownPeersRequest :: BaseUrl -> ExceptT PeerValidationResult ServerM KnownPeersResp
 peerKnownPeersRequest baseUrl =
-  ExceptT $ (const KnownPeersConnectionError `mapLeft`)
+  ExceptT $ (const KnownPeersEndpointConnectionError `mapLeft`)
          <$> getKnownPeersEndpoint baseUrl (KnownPeersReq False)
 
 peerActualScan :: InfoResponse -> ExceptT PeerValidationResult ServerM InfoResponse
@@ -60,71 +132,3 @@ peerActualScan candidateInfo = do
 
     candidateInfoMap = Map.fromList $ (\scanInfo -> (scanProgressCurrency scanInfo, scanInfo))
                                    <$> infoScanProgress candidateInfo
-
-extractAddresses :: KnownPeersResp -> [BaseUrl]
-extractAddresses = mapMaybe parseBaseUrl . knownPeersList
-
-peerKnownPeers :: BaseUrl -> ExceptT PeerValidationResult ServerM [BaseUrl]
-peerKnownPeers baseUrl = do
-  infoResult <- peerInfoRequest baseUrl
-  candidateScanResult <- peerActualScan infoResult
-  knownPeers <- peerKnownPeersRequest baseUrl
-  pure $ extractAddresses knownPeers
-
-considerPeerCandidate :: PeerCandidate -> ExceptT PeerValidationResult ServerM ()
-considerPeerCandidate candidate = do
-  let baseUrl = peerCandidateUrl candidate   
-  candidateScanResult <- peerKnownPeers baseUrl
-  let newPeer = NewPeer baseUrl candidateSchema
-      candidateSchema = baseUrlScheme baseUrl
-  lift $ dbQuery $ addNewPeers [newPeer] 
-
-peerDiscoverActualization :: ServerM Thread
-peerDiscoverActualization = do
-  create $ logOnException . scanIteration
-  where
-    scanIteration :: Thread -> ServerM ()
-    scanIteration thread = do
-      cfg <- serverConfig
-      discoveryRequisites <- getDiscoveryRequisites
-      currentTime <- liftIO getCurrentTime
-      discoveredPeers <- dbQuery $ getDiscoveredPeers False
-      let (outdatedPeers, peersToFetchFrom) = partition (isOutdated (peerDescConnectionRetryTimeout discoveryRequisites) currentTime) discoveredPeers
-          discoveredPeersSet = Set.fromList $ (toList $ peerDescOwnAddress discoveryRequisites) ++ (peerUrl <$> peersToFetchFrom)
-
-      (peersToRefresh, fetchedPeers) <- mconcat <$> mapM peersKnownTo peersToFetchFrom
-
-      let uniqueFetchedPeers = filter (not . flip Set.member discoveredPeersSet) fetchedPeers
-      
-      dbQuery $ do
-        deleteExpiredPeers $ peerId <$> outdatedPeers
-        refreshPeerValidationTime $ peerId <$> peersToRefresh
-        addNewPeers $ (\knownPeerBaseUrl -> NewPeer knownPeerBaseUrl (baseUrlScheme knownPeerBaseUrl)) <$> uniqueFetchedPeers
-
-      liftIO $ threadDelay $ configBlockchainScanDelay cfg
-
-    isOutdated retryTimeout currentTime peer = let
-      fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt peer
-      in fromLastSuccess <= retryTimeout
-
-    peersKnownTo :: Peer -> ServerM ([Peer], [BaseUrl])
-    peersKnownTo peer = do
-      knownPeers <- runExceptT $ peerKnownPeers $ peerUrl peer
-      pure $ case knownPeers of
-        Right peers -> ([peer], peers)
-        _ -> mempty
-
-peerIntroduce :: ServerM ()
-peerIntroduce = void $ runMaybeT $ do
-  ownAddress <- MaybeT $ peerDescOwnAddress <$> getDiscoveryRequisites
-  lift $ do
-    allPeers <- dbQuery $ getDiscoveredPeers False
-    let introduceReq = IntroducePeerReq $ showBaseUrl ownAddress
-    forM_ allPeers (flip getIntroducePeerEndpoint introduceReq . peerUrl)
-
-addDefaultPeersIfNoneDiscovered :: ServerM ()
-addDefaultPeersIfNoneDiscovered = do
-  isNoneDiscovered <- dbQuery isNonePeersDiscovered
-  when isNoneDiscovered $ do
-    knownPeers <- peerDescKnownPeers <$> getDiscoveryRequisites
-    dbQuery $ addNewPeers $ (\knownPeerBaseUrl -> NewPeer knownPeerBaseUrl (baseUrlScheme knownPeerBaseUrl)) <$> knownPeers

@@ -7,10 +7,11 @@ import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Conversion
 import Data.Proxy
+import Data.Time.Clock
 import Data.Word
 import Database.Esqueleto
 import Database.Esqueleto.Pagination
-import Safe 
+import Safe
 
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Conversions
@@ -19,7 +20,6 @@ import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Data.Time.Clock
 
 import qualified Data.Conduit.Internal as DCI
 import qualified Data.Conduit.List as CL

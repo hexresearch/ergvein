@@ -81,9 +81,9 @@ peerValidationToResponce :: Either PeerValidationResult () -> IntroducePeerResp
 peerValidationToResponce = \case 
   Right ()   -> IntroducePeerResp True Nothing
   Left error -> IntroducePeerResp False $ Just $ case error of
-    InfoConnectionError ->
+    InfoEndpointConnectionError ->
       "Unable to establish connection to Info endpoint"
-    KnownPeersConnectionError ->
+    KnownPeersEndpointConnectionError ->
       "Unable to establish connection to knownPeers endpoint"
     CurrencyOutOfSync outOfSync -> 
       "Currency " <> show (outOfsyncCurrency outOfSync) <> "scanned height much less then " <> show (outOfSyncLocalHeight outOfSync)

@@ -9,13 +9,13 @@ import Ergvein.Index.Server.DB.Schema
 import Data.Time.Clock
 
 data CurrencyOutOfSyncInfo = CurrencyOutOfSyncInfo
-  { outOfsyncCurrency :: Currency
+  { outOfsyncCurrency    :: Currency
   , outOfSyncLocalHeight :: BlockHeight
   } deriving Show
 
 data PeerValidationResult = OK 
-  | InfoConnectionError
-  | KnownPeersConnectionError
+  | InfoEndpointConnectionError
+  | KnownPeersEndpointConnectionError
   | CurrencyOutOfSync CurrencyOutOfSyncInfo
   | CurrencyMissing Currency
   deriving Show
@@ -25,9 +25,9 @@ data PeerCandidate = PeerCandidate
   }
 
 data Peer = Peer
-  { peerId :: DiscoveredPeerRecId
-  , peerUrl :: BaseUrl
-  , peerLastValidatedAt :: UTCTime
+  { peerId               :: DiscoveredPeerRecId
+  , peerUrl              :: BaseUrl
+  , peerLastValidatedAt  :: UTCTime
   , peerConnectionScheme :: Scheme
   }
 
@@ -38,6 +38,6 @@ data NewPeer = NewPeer
 
 data PeerDiscoveryRequisites = PeerDiscoveryRequisites
   { peerDescOwnAddress             :: !(Maybe BaseUrl)
-  , peerDescKnownPeers             :: ![BaseUrl]
+  , peerDescPredefinedPeers        :: ![BaseUrl]
   , peerDescConnectionRetryTimeout :: !NominalDiffTime
   }
