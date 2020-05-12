@@ -61,8 +61,14 @@ deleteExpiredPeers peerIds =
   delete $ from $ \peer -> 
     where_ $ peer ^. DiscoveredPeerRecId `in_` valList peerIds
 
-getDiscoveredPeers :: MonadIO m => QueryT m [Peer]
-getDiscoveredPeers = fmap (convert @(Entity DiscoveredPeerRec)) <$> select (from pure)
+getDiscoveredPeers :: MonadIO m => Bool -> QueryT m [Peer]
+getDiscoveredPeers onlySecured = do
+  result <- select $ from $ \peer -> do
+    when onlySecured $ 
+      where_ $ peer ^. DiscoveredPeerRecIsSecureConnection ==. val onlySecured
+    pure peer
+  pure $ convert @(Entity DiscoveredPeerRec) <$> result
+
 
 insertBlock  :: MonadIO m  => BlockMetaInfo -> QueryT m (Key BlockMetaRec)
 insertBlock block = insert $ convert block
@@ -82,5 +88,5 @@ chunksCount :: forall record m . (BackendCompatible SqlBackend (PersistEntityBac
                                  => Proxy record -> QueryT m Word64
 chunksCount _ = do 
   rCount <- rowsCount (Proxy :: Proxy record)
-  let cCount = ceiling $ fromIntegral rCount / (fromIntegral $  unPageSize pageLoadSize)
+  let cCount = ceiling $ fromIntegral rCount / (fromIntegral $ unPageSize pageLoadSize)
   pure cCount

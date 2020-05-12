@@ -87,7 +87,7 @@ peerDiscoverActualization = do
       cfg <- serverConfig
       discoveryRequisites <- getDiscoveryRequisites
       ownAddress <- peerDescOwnAddress <$> getDiscoveryRequisites
-      discoveredPeers <- dbQuery getDiscoveredPeers
+      discoveredPeers <- dbQuery $ getDiscoveredPeers False
       let discoveredPeersSet = Set.fromList $ toList ownAddress ++ (peerUrl <$> discoveredPeers)
       sequenceA_ $ discoverIteration discoveredPeersSet <$> discoveredPeers
       liftIO $ threadDelay $ configBlockchainScanDelay cfg
@@ -110,7 +110,7 @@ peerIntroduce :: ServerM ()
 peerIntroduce = void $ runMaybeT $ do
   ownAddress <- MaybeT $ peerDescOwnAddress <$> getDiscoveryRequisites
   lift $ do
-    allPeers <- dbQuery getDiscoveredPeers
+    allPeers <- dbQuery $ getDiscoveredPeers False
     let introduceReq = IntroducePeerReq $ showBaseUrl ownAddress
     forM_ allPeers (flip getIntroducePeerEndpoint introduceReq . peerUrl)
 

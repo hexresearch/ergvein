@@ -58,7 +58,7 @@ data IntroducePeerResp = IntroducePeerResp
 $(deriveJSON (aesonOptionsStripPrefix "introducePeerResp") ''IntroducePeerResp)
 
 data KnownPeersReq = KnownPeersReq
-    { knownPeersWithSecureConnectionOnly     :: !Bool
+    { knownPeersWithSecuredOnly     :: !Bool
     } deriving (Eq, Show, Generic)
 $(deriveJSON (aesonOptionsStripPrefix "knownPeersReq") ''KnownPeersReq)
 

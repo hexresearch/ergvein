@@ -91,4 +91,6 @@ peerValidationToResponce = \case
       "Currency " <> show currency <> "is missing"
 
 knownPeersEndpoint :: KnownPeersReq -> ServerM KnownPeersResp
-knownPeersEndpoint = undefined
+knownPeersEndpoint request = do
+  result <- dbQuery $ getDiscoveredPeers $ knownPeersWithSecuredOnly request
+  pure $ KnownPeersResp $ showBaseUrl . peerUrl <$> result
