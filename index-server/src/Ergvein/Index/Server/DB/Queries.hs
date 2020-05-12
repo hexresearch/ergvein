@@ -44,20 +44,25 @@ getScannedHeight currency = fmap headMay $ select $ from $ \scannedHeight -> do
 upsertScannedHeight :: MonadIO m => Currency -> Word64 -> QueryT m (Entity ScannedHeightRec)
 upsertScannedHeight currency h = upsert (ScannedHeightRec currency h) [ScannedHeightRecHeight DT.=. h]
 
-addNewPeer :: MonadIO m => NewPeer -> QueryT m ()
-addNewPeer discoveredPeer = do
+addNewPeers :: MonadIO m => [NewPeer] -> QueryT m ()
+addNewPeers newPeers = do
   currentTime <- liftIO getCurrentTime
-  insert_ $ convert @_ @DiscoveredPeerRec (currentTime, discoveredPeer)
+  forM_ newPeers (insert_ . convert @_ @DiscoveredPeerRec . (currentTime, ))
 
-refreshPeerValidationTime :: MonadIO m => DiscoveredPeerRecId -> QueryT m ()
-refreshPeerValidationTime peerId = do
+refreshPeerValidationTime :: MonadIO m => [DiscoveredPeerRecId] -> QueryT m ()
+refreshPeerValidationTime peerIds = do
   currentTime <- liftIO getCurrentTime
   update $ \peer -> do 
-    where_ (peer ^. DiscoveredPeerRecId ==. val peerId)
+    where_ $ peer ^. DiscoveredPeerRecId `in_` valList peerIds
     set peer [DiscoveredPeerRecLastValidatedAt =. val currentTime]
 
-getNewPeers :: MonadIO m => QueryT m [Peer]
-getNewPeers = fmap (convert @(Entity DiscoveredPeerRec)) <$> select (from pure)
+deleteExpiredPeers :: MonadIO m => [DiscoveredPeerRecId] -> QueryT m ()
+deleteExpiredPeers peerIds =
+  delete $ from $ \peer -> 
+    where_ $ peer ^. DiscoveredPeerRecId `in_` valList peerIds
+
+getDiscoveredPeers :: MonadIO m => QueryT m [Peer]
+getDiscoveredPeers = fmap (convert @(Entity DiscoveredPeerRec)) <$> select (from pure)
 
 insertBlock  :: MonadIO m  => BlockMetaInfo -> QueryT m (Key BlockMetaRec)
 insertBlock block = insert $ convert block
