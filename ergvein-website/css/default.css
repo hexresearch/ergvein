@@ -5,3 +5,23 @@ footer .container {
 .body-logo-img{
   max-height: 360px;
 }
+
+.feature-img{
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+}
+
+.feature{
+  margin-bottom: 10px;
+}
+
+.feature-descr{
+  font-weight: 400;
+  margin-top: 20px;
+}
+
+th {
+  vertical-align: top;
+  text-align: center;
+}
