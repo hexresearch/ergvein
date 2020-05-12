@@ -49,6 +49,22 @@ th {
   padding-bottom: 50px;
 }
 
+.feature-btn{
+  background-color: #fff !important;
+  padding-left: 1em;
+}
+
+.feature-btn:hover{
+  border-color: #262626;
+}
+
+.feature-btn:focus{
+  box-shadow: none;
+}
+
+#featureDescBlock h2 {
+  background-color: #fff;
+}
 
 @media screen and (max-width:768px) {
   .feature-list {

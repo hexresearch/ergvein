@@ -71,6 +71,7 @@ main = hakyll $ do
                 >>= relativizeUrls
 
     match "templates/*" $ compile templateBodyCompiler
+    match "features/*" $ compile templateBodyCompiler
 
 
 --------------------------------------------------------------------------------
