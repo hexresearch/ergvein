@@ -9,6 +9,7 @@ import Data.Either.Combinators
 import Data.Foldable
 import Data.Hashable
 import Data.Maybe
+import Data.List
 import Data.Time.Clock
 import Ergvein.Index.API.Types
 import Ergvein.Index.Client.V1
@@ -86,25 +87,31 @@ peerDiscoverActualization = do
     scanIteration thread = do
       cfg <- serverConfig
       discoveryRequisites <- getDiscoveryRequisites
-      ownAddress <- peerDescOwnAddress <$> getDiscoveryRequisites
+      currentTime <- liftIO getCurrentTime
       discoveredPeers <- dbQuery $ getDiscoveredPeers False
-      let discoveredPeersSet = Set.fromList $ toList ownAddress ++ (peerUrl <$> discoveredPeers)
+      let (outdated, actual) = partition (isOutdated (peerDescConnectionRetryTimeout discoveryRequisites) currentTime) discoveredPeers
+          discoveredPeersSet = Set.fromList $ (toList $ peerDescOwnAddress discoveryRequisites) ++ (peerUrl <$> actual)
+
       sequenceA_ $ discoverIteration discoveredPeersSet <$> discoveredPeers
+
+      dbQuery $ deleteExpiredPeers $ peerId <$> outdated
       liftIO $ threadDelay $ configBlockchainScanDelay cfg
+
+    isOutdated retryTimeout currentTime peer = let
+      fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt peer
+      in fromLastSuccess <= retryTimeout
 
     discoverIteration :: Set.HashSet BaseUrl -> Peer -> ServerM ()
     discoverIteration discoveredPeersSet peer = do
       retryTimeout <- peerDescConnectionRetryTimeout <$> getDiscoveryRequisites
       currentTime <- liftIO getCurrentTime
       let fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt peer
-      if (fromLastSuccess <= retryTimeout) then void <$> runExceptT $ do
+      void <$> runExceptT $ do
         newPeers <- peerKnownPeers $ peerUrl peer
         let uniqueNewPeers = filter (not . flip Set.member discoveredPeersSet) newPeers
         lift $ dbQuery $ do
           addNewPeers $ (\newPeerUrl -> NewPeer newPeerUrl (baseUrlScheme newPeerUrl)) <$> uniqueNewPeers
           refreshPeerValidationTime [peerId peer]
-      else
-        dbQuery $ deleteExpiredPeers [peerId peer]
 
 peerIntroduce :: ServerM ()
 peerIntroduce = void $ runMaybeT $ do
