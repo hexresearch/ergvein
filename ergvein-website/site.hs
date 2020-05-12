@@ -49,9 +49,12 @@ main = hakyll $ do
     create ["docs.html"] $ do
       route idRoute
       compile $ do
+        let docsCtx =
+              constField "docspage" "" `mappend`
+              defaultContext
         makeItem ""
-            >>= loadAndApplyTemplate "templates/docs.html" defaultContext
-            >>= loadAndApplyTemplate "templates/default.html" defaultContext
+            >>= loadAndApplyTemplate "templates/docs.html" docsCtx
+            >>= loadAndApplyTemplate "templates/default.html" docsCtx
             >>= relativizeUrls
 
     match "index.html" $ do
