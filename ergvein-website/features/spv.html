@@ -1,8 +1,4 @@
-<p> SPV stands for Simplifed Payment Verification. </p>
-
-<p>Once you create a wallet and choose which currencies you want to add to the wallet, the app connects to indexers, downloads and stores filters for that currency.</p>
-
-<p>Indexers are a part of our project. They are open-sourced as well, so you can set up you own indexer and connect it to the network.</p>
-
-<p>Filters allow you </p>
-<p>Filters for BTC take up about 150 MB. They are shared between all wallets.</p>
+<p>SPV stands for Simplified Payment Verification.</p>
+<p>The app downloads filters for your cryptocurrencies from indexers and stores them. Filters follow <a href="https://github.com/bitcoin/bips/blob/master/bip-0158.mediawiki">BIP-158</a>.</p>
+<p>After syncing the storage will have one filter per block. Given an address and a filter the app checks if the corresponding block contains transactions relevant for the address. If it does, then the block can be requested directly from the blockchain's node. You don't need to store the entire chain to keep track of your balance.</p>
+<p>To ensure privacy, the app downloads filters for the whole chain. This way indexers don't know which addresses you are interested in. However, this means that the app will have to download a lot of data after the initial setup. Filters for Bitcoin's chain take up about 150MB. This data is shared among all wallets on the device.</p>
