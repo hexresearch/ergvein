@@ -21,7 +21,13 @@ footer .container {
   margin-top: 20px;
 }
 
+.feature-table{
+  width: 100%;
+  margin-bottom: 20px;
+}
+
 th {
   vertical-align: top;
   text-align: center;
+  width: 150px;
 }
