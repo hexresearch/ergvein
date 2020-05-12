@@ -89,29 +89,30 @@ peerDiscoverActualization = do
       discoveryRequisites <- getDiscoveryRequisites
       currentTime <- liftIO getCurrentTime
       discoveredPeers <- dbQuery $ getDiscoveredPeers False
-      let (outdated, actual) = partition (isOutdated (peerDescConnectionRetryTimeout discoveryRequisites) currentTime) discoveredPeers
-          discoveredPeersSet = Set.fromList $ (toList $ peerDescOwnAddress discoveryRequisites) ++ (peerUrl <$> actual)
+      let (outdatedPeers, peersToFetchFrom) = partition (isOutdated (peerDescConnectionRetryTimeout discoveryRequisites) currentTime) discoveredPeers
+          discoveredPeersSet = Set.fromList $ (toList $ peerDescOwnAddress discoveryRequisites) ++ (peerUrl <$> peersToFetchFrom)
 
-      sequenceA_ $ discoverIteration discoveredPeersSet <$> discoveredPeers
+      (peersToRefresh, fetchedPeers) <- mconcat <$> mapM peersKnownTo peersToFetchFrom
 
-      dbQuery $ deleteExpiredPeers $ peerId <$> outdated
+      let uniqueFetchedPeers = filter (not . flip Set.member discoveredPeersSet) fetchedPeers
+      
+      dbQuery $ do
+        deleteExpiredPeers $ peerId <$> outdatedPeers
+        refreshPeerValidationTime $ peerId <$> peersToRefresh
+        addNewPeers $ (\knownPeerBaseUrl -> NewPeer knownPeerBaseUrl (baseUrlScheme knownPeerBaseUrl)) <$> uniqueFetchedPeers
+
       liftIO $ threadDelay $ configBlockchainScanDelay cfg
 
     isOutdated retryTimeout currentTime peer = let
       fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt peer
       in fromLastSuccess <= retryTimeout
 
-    discoverIteration :: Set.HashSet BaseUrl -> Peer -> ServerM ()
-    discoverIteration discoveredPeersSet peer = do
-      retryTimeout <- peerDescConnectionRetryTimeout <$> getDiscoveryRequisites
-      currentTime <- liftIO getCurrentTime
-      let fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt peer
-      void <$> runExceptT $ do
-        newPeers <- peerKnownPeers $ peerUrl peer
-        let uniqueNewPeers = filter (not . flip Set.member discoveredPeersSet) newPeers
-        lift $ dbQuery $ do
-          addNewPeers $ (\newPeerUrl -> NewPeer newPeerUrl (baseUrlScheme newPeerUrl)) <$> uniqueNewPeers
-          refreshPeerValidationTime [peerId peer]
+    peersKnownTo :: Peer -> ServerM ([Peer], [BaseUrl])
+    peersKnownTo peer = do
+      knownPeers <- runExceptT $ peerKnownPeers $ peerUrl peer
+      pure $ case knownPeers of
+        Right peers -> ([peer], peers)
+        _ -> mempty
 
 peerIntroduce :: ServerM ()
 peerIntroduce = void $ runMaybeT $ do
