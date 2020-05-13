@@ -29,7 +29,7 @@ data Peer = Peer
   , peerUrl              :: BaseUrl
   , peerLastValidatedAt  :: UTCTime
   , peerConnectionScheme :: Scheme
-  }
+  } deriving Show
 
 data NewPeer = NewPeer
   { newPeerUrl :: BaseUrl

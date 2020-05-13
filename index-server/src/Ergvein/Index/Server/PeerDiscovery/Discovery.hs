@@ -27,6 +27,8 @@ import qualified Data.Map.Strict as Map
 import qualified Network.HTTP.Client as HC
 import qualified Data.HashSet as Set
 
+import Debug.Trace
+
 peerKnownPeers :: BaseUrl -> ExceptT PeerValidationResult ServerM [BaseUrl]
 peerKnownPeers baseUrl = do
   infoResult <- peerInfoRequest baseUrl
@@ -39,11 +41,20 @@ peerKnownPeers baseUrl = do
 
 considerPeerCandidate :: PeerCandidate -> ExceptT PeerValidationResult ServerM ()
 considerPeerCandidate candidate = do
-  let baseUrl = peerCandidateUrl candidate   
-  candidateScanResult <- peerKnownPeers baseUrl
-  let newPeer = NewPeer baseUrl candidateSchema
-      candidateSchema = baseUrlScheme baseUrl
-  lift $ dbQuery $ addNewPeers [newPeer] 
+  let baseUrl = peerCandidateUrl candidate
+  knownPeers <- lift $ dbQuery $ getDiscoveredPeers False
+  knowPeersSet <- lift $ knownPeersSet knownPeers
+  if not $ Set.member baseUrl knowPeersSet then do
+    _ <- peerKnownPeers baseUrl
+    let newPeer = NewPeer baseUrl $ baseUrlScheme baseUrl
+    lift $ dbQuery $ addNewPeers [newPeer]
+  else
+    ExceptT $ pure $ Left InfoEndpointConnectionError
+
+knownPeersSet :: [Peer] -> ServerM (Set.HashSet BaseUrl)
+knownPeersSet discoveredPeers = do
+  ownAddress <- peerDescOwnAddress <$> getDiscoveryRequisites
+  pure $ Set.fromList $ (toList ownAddress) ++ (peerUrl <$> discoveredPeers)
 
 knownPeersActualization :: ServerM Thread
 knownPeersActualization = do
@@ -58,11 +69,11 @@ knownPeersActualization = do
 
       let (outdatedPeers, peersToFetchFrom) = 
             partition (isOutdated (peerDescConnectionRetryTimeout requisites) currentTime) knownPeers
-          knowPeersSet = Set.fromList $ (toList $ peerDescOwnAddress requisites) ++ (peerUrl <$> peersToFetchFrom)
-
+      
+      knowPeersSet <- knownPeersSet peersToFetchFrom
       (peersToRefresh, fetchedPeers) <- mconcat <$> mapM peersKnownTo peersToFetchFrom
 
-      let uniqueFetchedPeers = filter (not . flip Set.member knowPeersSet) fetchedPeers
+      let uniqueFetchedPeers = filter (not . (`Set.member` knowPeersSet)) fetchedPeers
 
       dbQuery $ do
         deleteExpiredPeers $ peerId <$> outdatedPeers
@@ -82,6 +93,13 @@ knownPeersActualization = do
         Right peers -> ([peer], peers)
         _ -> mempty
 
+addDefaultPeersIfNoneDiscovered :: ServerM ()
+addDefaultPeersIfNoneDiscovered = do
+  isNoneDiscovered <- dbQuery isNonePeersDiscovered
+  when isNoneDiscovered $ do
+    predefinedPeers <- peerDescPredefinedPeers <$> getDiscoveryRequisites
+    dbQuery $ addNewPeers $ newPeer <$> predefinedPeers
+
 peerIntroduce :: ServerM ()
 peerIntroduce = void $ runMaybeT $ do
   ownAddress <- MaybeT $ peerDescOwnAddress <$> getDiscoveryRequisites
@@ -90,12 +108,6 @@ peerIntroduce = void $ runMaybeT $ do
     let introduceReq = IntroducePeerReq $ showBaseUrl ownAddress
     forM_ allPeers (flip getIntroducePeerEndpoint introduceReq . peerUrl)
 
-addDefaultPeersIfNoneDiscovered :: ServerM ()
-addDefaultPeersIfNoneDiscovered = do
-  isNoneDiscovered <- dbQuery isNonePeersDiscovered
-  when isNoneDiscovered $ do
-    predefinedPeers <- peerDescPredefinedPeers <$> getDiscoveryRequisites
-    dbQuery $ addNewPeers $ newPeer <$> predefinedPeers
 
 instance Hashable BaseUrl where
   hashWithSalt salt = hashWithSalt salt . showBaseUrl
