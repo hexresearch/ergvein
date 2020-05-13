@@ -21,6 +21,7 @@ import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Types
+import Ergvein.Index.Server.Utils
 import Servant.Client.Core
 
 import qualified Data.Map.Strict as Map
@@ -73,12 +74,12 @@ knownPeersActualization = do
       knowPeersSet <- knownPeersSet peersToFetchFrom
       (peersToRefresh, fetchedPeers) <- mconcat <$> mapM peersKnownTo peersToFetchFrom
 
-      let uniqueFetchedPeers = filter (not . (`Set.member` knowPeersSet)) fetchedPeers
+      let uniqueNotDiscoveredFetchedPeers = filter (not . (`Set.member` knowPeersSet)) $  uniqueElements fetchedPeers
 
       dbQuery $ do
         deleteExpiredPeers $ peerId <$> outdatedPeers
         refreshPeerValidationTime $ peerId <$> peersToRefresh
-        addNewPeers $ newPeer <$> uniqueFetchedPeers
+        addNewPeers $ newPeer <$> uniqueNotDiscoveredFetchedPeers
       liftIO $ threadDelay $ configBlockchainScanDelay cfg
 
     isOutdated :: NominalDiffTime -> UTCTime -> Peer -> Bool

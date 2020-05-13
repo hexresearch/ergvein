@@ -33,10 +33,8 @@ import qualified Network.Haskoin.Util               as HK
 blockTxInfos :: MonadLDB m => HK.Block -> BlockHeight -> HK.Network -> m BlockInfo
 blockTxInfos block txBlockHeight nodeNetwork = do 
   let (txInfos , spentTxsIds) = mconcat $ txInfo <$> HK.blockTxns block
-      
-      uniqueSpentTxIds = Set.toList $ Set.fromList spentTxsIds
   
-  uniqueSpentTxs <- mapM spentTxSource uniqueSpentTxIds
+  uniqueSpentTxs <- mapM spentTxSource $ uniqueElements spentTxsIds
 
   let blockHeaderHashHexView = HK.blockHashToHex $ HK.headerHash $ HK.blockHeader block
       blockAddressFilter = HK.encodeHex $ encodeBtcAddrFilter $ makeBtcFilter nodeNetwork uniqueSpentTxs block
