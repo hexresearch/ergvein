@@ -1,0 +1,20 @@
+<p>It is widely known that Bitcoin provides only pseudo-anonymity that allowes third
+parties to track history of coins and derive identity information. It is enough to
+pass KYC checks in some point of your financial history to deanonymize all your
+future transactions. So, we provide a built in P2P service for beating this
+issue called <a href="https://en.bitcoin.it/wiki/CoinJoin">CoinJoin</a> </p>
+
+<p>Consider Alice wants to pay Ted and Bob wants to pay Mike. Two transactions are
+created in typical scenario that allows to track backward who pays whom.
+
+<div class="coinjoin-wrap">
+  <img class="coinjoin-img" src="/images/regular_tx.png">
+</div>
+</p>
+
+<p>Instead, Cypra wallet merges transactions into single one. It becomes impossible
+to track back who actually pays Ted and Mike.
+<div class="coinjoin-wrap">
+  <img class="coinjoin-img" src="/images/coinjoin_tx.png">
+</div>
+</p>

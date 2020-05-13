@@ -19,3 +19,4 @@ packages:
   ./wallet-native
   ./wallet-types
   ./x509-android
+  ./ergvein-website
