@@ -50,6 +50,7 @@ onStartup = do
   addDefaultPeersIfNoneDiscovered
   peerIntroduce
   knownPeersActualization
+  pure ()
 
 startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
