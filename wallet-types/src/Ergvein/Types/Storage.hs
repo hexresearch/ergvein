@@ -25,7 +25,7 @@ type Password = Text
 
 data CurrencyPrvStorage = CurrencyPrvStorage {
     _currencyPrvStorage'prvKeystore :: PrvKeystore
-  }
+  } deriving (Eq, Show, Read)
 
 makeLenses ''CurrencyPrvStorage
 
@@ -37,7 +37,7 @@ data PrvStorage = PrvStorage {
     _prvStorage'seed                :: Seed
   , _prvStorage'rootPrvKey          :: EgvRootXPrvKey
   , _prvStorage'currencyPrvStorages :: CurrencyPrvStorages
-  }
+  } deriving (Eq, Show, Read)
 
 makeLenses ''PrvStorage
 
@@ -81,7 +81,7 @@ instance FromJSON EncryptedPrvStorage where
 data CurrencyPubStorage = CurrencyPubStorage {
     _currencyPubStorage'pubKeystore  :: PubKeystore
   , _currencyPubStorage'transactions :: M.Map TxId EgvTx
-  } deriving (Show)
+  } deriving (Eq, Show, Read)
 
 makeLenses ''CurrencyPubStorage
 
@@ -93,7 +93,7 @@ data PubStorage = PubStorage {
     _pubStorage'rootPubKey          :: EgvRootXPubKey
   , _pubStorage'currencyPubStorages :: CurrencyPubStorages
   , _pubStorage'activeCurrencies    :: [Currency]
-  } deriving (Show)
+  } deriving (Eq, Show, Read)
 
 makeLenses ''PubStorage
 

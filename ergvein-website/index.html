@@ -1,0 +1,141 @@
+---
+title: Home
+---
+
+<div class="container ergvein-content">
+<div class="">
+  <br>
+  <div class="row my-4">
+      <div class="col-lg-5 pr-lg-5">
+          <img src="/images/logo.png" class="body-logo-img"></img>
+      </div>
+      <div class="col-lg pl-lg-5">
+        <div class="mt-5">
+          <h1>CYPRA</h1>
+          <p class="lead border-lg-left border-dark border-2 pl-3">SEND, SPEND & EXCHANGE CRYPTO ASSETS INSTANTLY WITH NO INTERMEDIARIES AT THE LOWEST COST</p>
+          <button type="button" class="btn btn-outline-dark" disabled>Download (coming soon)</button>
+        </div>
+      </div>
+  </div>
+</div>
+
+<div class="feature-list">
+  <div class="feature-element">
+    <div class="feature-img">
+      <img class="feature-img" src="/images/privacylist.png" class="body-logo-img">
+    </div>
+    <div class="feature-descr"><b>Privacy first </b>  <br> light SPV wallet that doesn't expose your public keys to third parties.</div>
+  </div>
+  <div class="feature-element">
+    <div class="feature-img">
+      <img class="feature-img" src="/images/atom.png" class="body-logo-img">
+    </div>
+    <div class="feature-descr"><b>Atomic swapping </b>  <br> p2p atomic swaps for currencies.</div>
+  </div>
+  <div class="feature-element">
+    <div class="feature-img">
+      <img class="feature-img" src="/images/multicur.png" class="body-logo-img">
+    </div>
+    <div class="feature-descr"><b>Multicurrency </b>  <br> BTC, ERGO, USDT.</div>
+  </div>
+  <div class="feature-element">
+    <div class="feature-img">
+      <img class="feature-img" src="/images/coinjoin-3.png" class="body-logo-img">
+    </div>
+    <div class="feature-descr"><b>Coinjoin </b>  <br>  p2p coin mixing service integrated inside the wallet.</div>
+  </div>
+  <div class="feature-element">
+    <div class="feature-img">
+      <img class="feature-img" src="/images/multiplatform.png" class="body-logo-img">
+    </div>
+    <div class="feature-descr"><b>Multiplatform </b>  <br> desktop and mobile.</div>
+  </div>
+  <div class="feature-element">
+    <div class="feature-img">
+      <img class="feature-img" src="/images/decentralized.png" class="body-logo-img">
+    </div>
+    <div class="feature-descr"><b>Decentralized </b>  <br> deploy full node and start making money with us.</div>
+  </div>
+  <div class="feature-element">
+    <div class="feature-img">
+      <img class="feature-img" src="/images/minimalistic.png" class="body-logo-img">
+    </div>
+    <div class="feature-descr"><b>Minimalistic </b>  <br> lightweight, simple and convenient.</div>
+  </div>
+  <div class="feature-element">
+    <div class="feature-img">
+      <img class="feature-img" src="/images/opensource.png" class="body-logo-img">
+    </div>
+    <div class="feature-descr"><b>Opensource </b>  <br> sources are open for usage and security analysis.</div>
+  </div>
+</div>
+
+<br>
+
+<div class="pb-4">
+  <h2 class="text-center">In details</h2>
+  <div class="accordion" id="featureDescBlock">
+
+    <div class="">
+      <div class="card-header p-0" id="heading0">
+        <h2 class="mb-0">
+          <button class="btn feature-btn w-100 text-left text-dark" type="button" data-toggle="collapse" data-target="#collapse0" aria-expanded="true" aria-controls="collapse0">
+            Indexers and decentralization
+          </button>
+        </h2>
+      </div>
+      <div id="collapse0" class="collapse" aria-labelledby="heading0" data-parent="#featureDescBlock">
+        <div class="card-body">
+          $partial("features/decentralized.html")$
+        </div>
+      </div>
+    </div>
+
+    <div class="">
+      <div class="card-header p-0" id="heading1">
+        <h2 class="mb-0">
+          <button class="btn feature-btn w-100 text-left text-dark" type="button" data-toggle="collapse" data-target="#collapse1" aria-expanded="true" aria-controls="collapse1">
+            SPV & Filters
+          </button>
+        </h2>
+      </div>
+      <div id="collapse1" class="collapse" aria-labelledby="heading1" data-parent="#featureDescBlock">
+        <div class="card-body">
+          $partial("features/spv.html")$
+        </div>
+      </div>
+    </div>
+
+    <div class="">
+      <div class="card-header p-0" id="heading2">
+        <h2 class="mb-0">
+          <button class="btn feature-btn w-100 text-left text-dark" type="button" data-toggle="collapse" data-target="#collapse2" aria-expanded="true" aria-controls="collapse2">
+            Atomic swaps
+          </button>
+        </h2>
+      </div>
+      <div id="collapse2" class="collapse" aria-labelledby="heading2" data-parent="#featureDescBlock">
+        <div class="card-body">
+          $partial("features/swaps.html")$
+        </div>
+      </div>
+    </div>
+
+    <div class="">
+      <div class="card-header p-0" id="heading3">
+        <h2 class="mb-0">
+          <button class="btn feature-btn w-100 text-left text-dark" type="button" data-toggle="collapse" data-target="#collapse3" aria-expanded="true" aria-controls="collapse3">
+            Coinjoin
+          </button>
+        </h2>
+      </div>
+      <div id="collapse3" class="collapse" aria-labelledby="heading3" data-parent="#featureDescBlock">
+        <div class="card-body">
+          $partial("features/coinjoin.html")$
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>

@@ -11,17 +11,21 @@ module Ergvein.Wallet.Node
   , initializeNodes
   , reinitNodes
   , requestNodeWait
+  , requestRandomNode
   , module Ergvein.Wallet.Node.Types
   ) where
 
 import Control.Monad.IO.Class
-import Data.Map (Map)
-import Data.Maybe
+import Control.Monad.Random
 import Data.Foldable
 import Data.Functor.Misc
+import Data.Map (Map)
+import Data.Maybe
+import Network.Socket (SockAddr)
 import Servant.Client(BaseUrl)
 
 import Ergvein.Types.Currency
+import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node.BTC
@@ -46,10 +50,10 @@ addNodeConn nc cm = case nc of
 addMultipleConns :: Foldable f => ConnMap t -> f (NodeConn t) -> ConnMap t
 addMultipleConns = foldl' (flip addNodeConn)
 
-getNodeConn :: CurrencyTag t a -> BaseUrl -> ConnMap t -> Maybe a
+getNodeConn :: CurrencyTag t a -> SockAddr -> ConnMap t -> Maybe a
 getNodeConn t url cm = M.lookup url =<< DM.lookup t cm
 
-getAllConnByCurrency :: Currency -> ConnMap t -> Maybe (M.Map BaseUrl (NodeConn t))
+getAllConnByCurrency :: Currency -> ConnMap t -> Maybe (M.Map SockAddr (NodeConn t))
 getAllConnByCurrency cur cm = case cur of
   BTC  -> (fmap . fmap) NodeConnBTC $ DM.lookup BTCTag cm
   ERGO -> (fmap . fmap) NodeConnERG $ DM.lookup ERGOTag cm
@@ -57,7 +61,7 @@ getAllConnByCurrency cur cm = case cur of
 initNode :: MonadBaseConstr t m
   => Currency
   -> RequestSelector t
-  -> BaseUrl -> m (NodeConn t)
+  -> SockAddr -> m (NodeConn t)
 initNode cur sel url = case cur of
   BTC   -> fmap NodeConnBTC $ initBTCNode url  reqE
   ERGO  -> fmap NodeConnERG $ initErgoNode url reqE
@@ -66,14 +70,14 @@ initNode cur sel url = case cur of
 
 initializeNodes :: MonadBaseConstr t m
   => RequestSelector t
-  -> M.Map Currency [BaseUrl] -> m (ConnMap t)
+  -> M.Map Currency [SockAddr] -> m (ConnMap t)
 initializeNodes sel urlmap = do
   let ks = M.keys urlmap
   conns <- fmap join $ flip traverse ks $ \k -> traverse (initNode k sel) $ fromMaybe [] $ M.lookup k urlmap
   pure $ addMultipleConns DM.empty conns
 
 reinitNodes :: forall t m . MonadBaseConstr t m
-  => M.Map Currency [BaseUrl]   -- Map with all urls
+  => M.Map Currency [SockAddr]  -- Map with all urls
   -> M.Map Currency Bool        -- True -- initialize or keep existing conns. False -- remove conns
   -> RequestSelector t          -- Request selector
   -> ConnMap t                  -- Inital map of connections
@@ -110,3 +114,29 @@ requestNodeWait NodeConnection{..} reqE = do
     (Just v, True) -> pure $ Just (nodeconUrl, v)
     _ -> pure Nothing
   requestFromNode reqE'
+
+requestRandomNode :: forall t m. (MonadFrontAuth t m) => Event t NodeReqG -> m (Event t NodeRespG)
+requestRandomNode reqE = do
+  conMapD <- getNodeConnectionsD
+  mreqE <- performFork $ ffor reqE $ \req -> do
+    cm  <- sampleDyn conMapD
+    case req of
+      NodeReqBTC{} -> do
+        let nodes = M.elems $ fromMaybe M.empty $ DM.lookup BTCTag cm
+        mn <- randomOne nodes
+        pure $ fmap (\n -> ((nodeconUrl n, req), fmap NodeRespBTC $ nodeconRespE n)) mn
+      NodeReqERGO{} -> do
+        let nodes = M.elems $ fromMaybe M.empty $ DM.lookup ERGOTag cm
+        mn <- randomOne nodes
+        pure $ fmap (\n -> ((nodeconUrl n, req), fmap NodeRespERGO $ nodeconRespE n)) mn
+  let reqE' = fmapMaybe id mreqE
+  requestFromNode $ fmap fst reqE'
+  switchHold never $ fmap snd reqE'
+
+randomOne :: MonadIO m => [a] -> m (Maybe a)
+randomOne vals = case vals of
+  [] -> pure Nothing
+  _ -> do
+    let l = length vals
+    i <- liftIO $ randomRIO (0, l - 1)
+    pure $ Just $ vals!!i

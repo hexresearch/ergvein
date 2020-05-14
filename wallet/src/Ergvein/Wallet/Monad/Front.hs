@@ -27,7 +27,7 @@ import Data.Functor.Misc (Const2(..))
 import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Servant.Client(BaseUrl)
+import Network.Socket (SockAddr)
 import Language.Javascript.JSaddle
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
@@ -51,9 +51,9 @@ import Ergvein.Wallet.Sync.Status
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
-type RequestSelector t = EventSelector t (Const2 Currency (Map BaseUrl NodeMessage))
+type RequestSelector t = EventSelector t (Const2 Currency (Map SockAddr NodeMessage))
 
-extractReq :: Reflex t => RequestSelector t -> Currency -> BaseUrl -> Event t NodeMessage
+extractReq :: Reflex t => RequestSelector t -> Currency -> SockAddr -> Event t NodeMessage
 extractReq sel c u = select (fanMap (select sel $ Const2 c)) $ Const2 u
 
 -- | Authorized context. Has access to storage and indexer's functionality
@@ -91,12 +91,12 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   -- | Internal method to get connection map ref
   getNodeConnRef  :: m (ExternalRef t (ConnMap t))
   -- | Get nodes by currency. Basically useless, but who knows
-  getNodesByCurrencyD :: Currency -> m (Dynamic t (Map BaseUrl (NodeConn t)))
+  getNodesByCurrencyD :: Currency -> m (Dynamic t (Map SockAddr (NodeConn t)))
   -- | Get connections map
   getNodeConnectionsD :: m (Dynamic t (ConnMap t))
   -- | Send a request to a specific URL
   -- It's up to the caller to ensure that the URL actually points to a correct currency node
-  requestFromNode :: Event t (BaseUrl, NodeReqG) -> m ()
+  requestFromNode :: Event t (SockAddr, NodeReqG) -> m ()
   -- | Get node request event
   getNodeRequestSelector :: m (RequestSelector t)
 

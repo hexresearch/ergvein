@@ -73,7 +73,7 @@ instance FromJSON Settings where
             (Nothing, Nothing, Nothing) -> (defaultIndexers, [], [])
             (Just [], Just [], Just []) -> (defaultIndexers, [], [])
             _ -> (fromMaybe [] mActiveUrls, fromMaybe [] mDeactivatedUrls, fromMaybe [] mPassiveUrls)
-    settingsNodes             <- o .:? "nodes" .!= defaultNodes
+    settingsNodes             <- o .:? "nodes" .!= M.empty
     settingsPortfolio         <- o .:? "portfolio" .!= False
     settingsFiatCurr          <- o .:? "fiatCurr"  .!= USD
     pure Settings{..}
@@ -103,18 +103,6 @@ defaultIndexers = [
   where
     parse = either (error . ("Failed to parse default indexer: " ++) . show) id . parseBaseUrl
 
-defaultNodes :: M.Map Currency [BaseUrl]
-defaultNodes = M.fromList $ [
-    (BTC, btcUrls)
-  , (ERGO, [
-      parse "127.0.0.1"
-    , parse "127.0.0.2"])]
-  where
-    parse = either (error . ("Failed to parse default indexer: " ++) . show) id . parseBaseUrl
-    btcUrls = fmap parse $ if isTestnet
-      then ["206.189.198.136:18333", "185.45.114.194:18333"]
-      else ["119.17.151.61:8333", "144.76.13.207:8333"]
-
 defaultIndexersNum :: (Int, Int)
 defaultIndexersNum = (2, 4)
 
@@ -139,7 +127,7 @@ defaultSettings home =
       , settingsPassiveUrls       = []
       , settingsReqUrlNum         = defaultIndexersNum
       , settingsActUrlNum         = defaultActUrlNum
-      , settingsNodes             = defaultNodes
+      , settingsNodes             = M.empty
       , settingsPortfolio         = False
       , settingsFiatCurr          = USD
       }
