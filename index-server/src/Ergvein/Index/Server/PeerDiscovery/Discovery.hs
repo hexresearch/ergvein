@@ -50,7 +50,7 @@ considerPeerCandidate candidate = do
     let newPeer = NewPeer baseUrl $ baseUrlScheme baseUrl
     lift $ dbQuery $ addNewPeers [newPeer]
   else
-    ExceptT $ pure $ Left InfoEndpointConnectionError
+    ExceptT $ pure $ Left AlreadyKnown
 
 knownPeersSet :: [Peer] -> ServerM (Set.HashSet BaseUrl)
 knownPeersSet discoveredPeers = do

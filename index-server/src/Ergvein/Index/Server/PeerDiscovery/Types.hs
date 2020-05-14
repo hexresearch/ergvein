@@ -13,7 +13,8 @@ data CurrencyOutOfSyncInfo = CurrencyOutOfSyncInfo
   , outOfSyncLocalHeight :: BlockHeight
   } deriving Show
 
-data PeerValidationResult = OK 
+data PeerValidationResult = OK
+  | AlreadyKnown
   | InfoEndpointConnectionError
   | KnownPeersEndpointConnectionError
   | CurrencyOutOfSync CurrencyOutOfSyncInfo

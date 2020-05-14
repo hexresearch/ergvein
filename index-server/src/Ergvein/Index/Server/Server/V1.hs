@@ -81,14 +81,17 @@ peerValidationToResponce :: Either PeerValidationResult () -> IntroducePeerResp
 peerValidationToResponce = \case 
   Right ()   -> IntroducePeerResp True Nothing
   Left error -> IntroducePeerResp False $ Just $ case error of
+    AlreadyKnown ->
+      "Peer with such address already known"
     InfoEndpointConnectionError ->
       "Unable to establish connection to Info endpoint"
-    KnownPeersEndpointConnectionError ->
-      "Unable to establish connection to knownPeers endpoint"
     CurrencyOutOfSync outOfSync -> 
       "Currency " <> show (outOfsyncCurrency outOfSync) <> "scanned height much less then " <> show (outOfSyncLocalHeight outOfSync)
     CurrencyMissing currency ->
       "Currency " <> show currency <> "is missing"
+    KnownPeersEndpointConnectionError ->
+      "Unable to establish connection to knownPeers endpoint"
+
 
 knownPeersEndpoint :: KnownPeersReq -> ServerM KnownPeersResp
 knownPeersEndpoint request = do
