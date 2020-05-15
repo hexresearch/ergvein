@@ -78,20 +78,26 @@ scanCurrency currency currencyPubStorage = mdo
   gapD <- holdDyn 0 gapE
   currentKeyD <- holdDyn (0, fstKey) nextKeyE
   newKeystoreD <- foldDyn (addXPubKeyToKeystore External) emptyPubKeystore processKeyE
-  newTxsD <- foldDyn M.union emptyTxs getTxsE
-  filterAddressE <- filterAddress $ (egvXPubKeyToEgvAddress . snd) <$> processKeyE
-  getBlocksE <- requestBTCBlocksWaitRN filterAddressE
-  blocksD <- holdDyn [] getBlocksE
+  filterAddressE <- traceEvent "Scanned for blocks" <$> (filterAddress $ (egvXPubKeyToEgvAddress . snd) <$> processKeyE)
+  getBlocksE <- traceEvent "Blocks requested" <$> requestBTCBlocksWaitRN filterAddressE
   storedBlocksE <- storeMultipleBlocksByE getBlocksE
   storedTxHashesE <- storeMultipleBlocksTxHashesByE $ tagPromptlyDyn blocksD storedBlocksE
-  getTxsE <- getTxs $ attachPromptlyDynWith (\(_, key) blocks ->
+  let
+    noBlocksE = fforMaybe filterAddressE $ \case
+      [] -> Just []
+      _ -> Nothing
+    blocksE = leftmost [getBlocksE, noBlocksE]
+  blocksD <- holdDyn [] blocksE
+  getTxsE  <- getTxs $ attachPromptlyDynWith (\(_, key) blocks ->
     (egvXPubKeyToEgvAddress key, blocks)) currentKeyD $ tagPromptlyDyn blocksD storedTxHashesE
+  newTxsD <- foldDyn M.union emptyTxs getTxsE
+  let txsE = leftmost [getTxsE, mempty <$ noBlocksE]
   let fstKey = derivePubKey masterPubKey External (fromIntegral 0)
       pubKeystore = _currencyPubStorage'pubKeystore currencyPubStorage
       masterPubKey = pubKeystore'master pubKeystore
       emptyPubKeystore = PubKeystore masterPubKey MI.empty MI.empty
       emptyTxs = M.empty
-      gapE = flip pushAlways getTxsE $ \txs -> do
+      gapE = flip pushAlways txsE $ \txs -> do
         gap <- sampleDyn gapD
         pure $ if null txs && gap < gapLimit then gap + 1 else 0
       nextKeyE = flip push gapE $ \gap -> do

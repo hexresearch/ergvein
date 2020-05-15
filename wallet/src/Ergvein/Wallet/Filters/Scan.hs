@@ -10,6 +10,7 @@ import Ergvein.Types.Address
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Platform
 import Network.Haskoin.Block
+import Debug.Trace
 
 filterAddress :: (MonadIO m, HasFiltersStorage m) => EgvAddress -> m [BlockHash]
 filterAddress addr = foldFilters (egvAddrCurrency addr) f []
