@@ -51,7 +51,7 @@ nominalToBehind t
   | otherwise = SyncDays $ ceiling $ t / (24 * 3600)
 
 data SyncStage = SyncFilters | SyncAddress !Int | SyncHeaders | SyncBlocks
-  deriving (Show)
+  deriving (Show, Eq, Ord)
 
 instance LocalizedPrint SyncStage where
   localizedShow l v = case l of
@@ -74,7 +74,7 @@ data SyncProgress =
     , syncMetaTotal  :: !Int
     }
   | Synced
-  deriving (Show)
+  deriving (Show, Eq)
 
 syncProgressBehind :: SyncProgress -> Maybe SyncBehind
 syncProgressBehind v = case v of

@@ -23,6 +23,7 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Constants
 import Ergvein.Wallet.Storage.Keys (derivePubKey, egvXPubKeyToEgvAddress)
 import Ergvein.Wallet.Storage.Util (addXPubKeyToKeystore)
+import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Util
 
 import qualified Data.IntMap.Strict                 as MI
@@ -77,6 +78,9 @@ scanCurrency currency currencyPubStorage = mdo
   processKeyE <- traceEvent "Scanning key" <$> (waitFilters currency =<< delay 0 (leftmost [nextKeyE, (0, fstKey) <$ buildE]))
   gapD <- holdDyn 0 gapE
   currentKeyD <- holdDyn (0, fstKey) nextKeyE
+  postSync currency $ flip pushAlways gapE $ \cgap -> do
+    (ai, _) <- sample . current $ currentKeyD
+    pure (ai+1, cgap)
   newKeystoreD <- foldDyn (addXPubKeyToKeystore External) emptyPubKeystore processKeyE
   filterAddressE <- traceEvent "Scanned for blocks" <$> (filterAddress $ (egvXPubKeyToEgvAddress . snd) <$> processKeyE)
   getBlocksE <- traceEvent "Blocks requested" <$> requestBTCBlocksWaitRN filterAddressE
@@ -99,7 +103,7 @@ scanCurrency currency currencyPubStorage = mdo
       emptyTxs = M.empty
       gapE = flip pushAlways txsE $ \txs -> do
         gap <- sampleDyn gapD
-        pure $ if null txs && gap < gapLimit then gap + 1 else 0
+        pure $ if null txs && gap < gapLimit then gap + 1 else gapLimit
       nextKeyE = flip push gapE $ \gap -> do
         gap <- sampleDyn gapD
         currentKeyIndex <- fmap fst (sampleDyn currentKeyD)
@@ -112,6 +116,15 @@ scanCurrency currency currencyPubStorage = mdo
         newTxs <- sampleDyn newTxsD
         pure $ if gap >= gapLimit then Just $ (currency, CurrencyPubStorage newKeystore newTxs) else Nothing
   pure finishedE
+
+type CurrentGap = Int
+type AddressNum = Int
+
+-- | Show to user how far we are went in syncing addresses
+postSync :: MonadFront t m => Currency -> Event t (AddressNum, CurrentGap) -> m ()
+postSync cur e = setSyncProgress $ ffor e $ \(ai, gnum) -> if gnum >= gapLimit
+  then Synced
+  else SyncMeta cur (SyncAddress ai) (fromIntegral gnum) (fromIntegral gapLimit)
 
 -- | If the given event fires and there is not fully synced filters. Wait for the synced filters and then fire the event.
 waitFilters :: MonadFront t m => Currency -> Event t a -> m (Event t a)
