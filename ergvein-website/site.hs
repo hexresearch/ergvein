@@ -19,6 +19,10 @@ main = hakyll $ do
         route   idRoute
         compile copyFileCompiler
 
+    match "static/*" $ do
+        route   idRoute
+        compile copyFileCompiler
+
     create ["docs.html"] $ do
       route idRoute
       compile $ do
