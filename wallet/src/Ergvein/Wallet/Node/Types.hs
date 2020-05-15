@@ -22,7 +22,7 @@ module Ergvein.Wallet.Node.Types
 
 import Data.GADT.Compare
 import Data.Time(NominalDiffTime)
-import Servant.Client(BaseUrl)
+import Network.Socket (SockAddr)
 
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
@@ -52,4 +52,4 @@ instance GCompare (CurrencyTag t) where
   gcompare BTCTag   ERGOTag = GGT
   gcompare ERGOTag  BTCTag  = GLT
 
-type ConnMap t = DMap (CurrencyTag t) (Map BaseUrl)
+type ConnMap t = DMap (CurrencyTag t) (Map SockAddr)

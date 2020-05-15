@@ -18,6 +18,7 @@ import Network.HTTP.Client hiding (Proxy)
 import Network.HTTP.Client.TLS (newTlsManagerWith, mkManagerSettings, newTlsManager)
 import Network.TLS
 import Network.TLS.Extra.Cipher
+import Network.Socket (SockAddr)
 import Reflex
 import Reflex.Dom
 import Reflex.Dom.Retractable
@@ -97,7 +98,7 @@ data Env t = Env {
 , env'indexersEF      :: !(Event t (), IO ())
 , env'nodeConsRef     :: !(ExternalRef t (ConnMap t))
 , env'nodeReqSelector :: !(RequestSelector t)
-, env'nodeReqFire     :: !(Map Currency (Map BaseUrl NodeMessage) -> IO ())
+, env'nodeReqFire     :: !(Map Currency (Map SockAddr NodeMessage) -> IO ())
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -230,6 +231,7 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getFiltersSyncRef #-}
   getActiveCursD = externalRefDynamic =<< asks env'activeCursRef
   {-# INLINE getActiveCursD #-}
+  -- TODO: Rework this once #353 is closed
   updateActuveCurs updE = do
     curRef      <- asks env'activeCursRef
     nodeRef     <- asks env'nodeConsRef
@@ -253,7 +255,6 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
 
       writeExternalRef settingsRef set'
       storeSettings set'
-      writeExternalRef nodeRef =<< reinitNodes urls diffMap sel =<< readExternalRef nodeRef
 
   {-# INLINE updateActuveCurs #-}
   getAuthInfo = externalRefDynamic =<< asks env'authRef
@@ -360,7 +361,7 @@ liftAuth ma0 ma = mdo
         blocksStore     <- liftIO $ runReaderT openBlocksStorage (settingsStoreDir settings)
         heightRef       <- newExternalRef mempty
         fsyncRef        <- newExternalRef mempty
-        consRef         <- newExternalRef mempty -- =<< initializeNodes sel nodes
+        consRef         <- newExternalRef mempty
         let env = Env
               settingsRef backEF loading langRef storeDir alertsEF logsTrigger logsNameSpaces uiChan passModalEF passSetEF
               authRef (logoutFire ()) activeCursRef managerRef headersStore filtersStore blocksStore syncRef heightRef fsyncRef

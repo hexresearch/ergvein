@@ -1,6 +1,10 @@
 module Ergvein.Wallet.Blocks.BTC.Queries(
-    insertBTCBlock
-  , getBTCBlock
+    insertBtcBlock
+  , insertMultipleBtcBlocks
+  , getBtcBlock
+  , insertBtcBlockTxHashesToBlockHash
+  , insertMultipleBtcBlocksTxHashesToBlockHash
+  , getBtcBlockHashByTxHash
   ) where
 
 import Control.Monad.IO.Class
@@ -9,29 +13,54 @@ import Data.Foldable (traverse_)
 import Data.Maybe
 import Database.LMDB.Simple
 import Network.Haskoin.Block
+import Network.Haskoin.Transaction
 
 import Ergvein.Wallet.Blocks.BTC.Types
 import Ergvein.Wallet.Blocks.Types
 import Ergvein.Wallet.Platform
 
-insertBTCBlock :: (MonadIO m, HasBlocksStorage m) => Block -> m ()
-insertBTCBlock blk = do
+insertBtcBlock :: (MonadIO m, HasBlocksStorage m) => Block -> m ()
+insertBtcBlock blk = do
   e <- getBlocksStorage
   liftIO . readWriteTransaction e $ do
-    db <- getBTCBlocksDb
+    db <- getBtcBlocksDb
     put db (headerHash $ blockHeader blk) $ Just blk
 
-insertMultipleBTCBlocks :: (MonadIO m, HasBlocksStorage m) => [Block] -> m ()
-insertMultipleBTCBlocks blks = do
+insertMultipleBtcBlocks :: (MonadIO m, HasBlocksStorage m) => [Block] -> m ()
+insertMultipleBtcBlocks blks = do
   e <- getBlocksStorage
   liftIO . readWriteTransaction e $ do
-    db <- getBTCBlocksDb
+    db <- getBtcBlocksDb
     flip traverse_ blks $ \blk ->
       put db (headerHash $ blockHeader blk) $ Just blk
 
-getBTCBlock :: (MonadIO m, HasBlocksStorage m) => BlockHash -> m (Maybe Block)
-getBTCBlock bh = do
+getBtcBlock :: (MonadIO m, HasBlocksStorage m) => BlockHash -> m (Maybe Block)
+getBtcBlock bh = do
   e <- getBlocksStorage
   liftIO . readOnlyTransaction e $ do
-    db <- getBTCBlocksDb
+    db <- getBtcBlocksDb
     get db bh
+
+insertBtcBlockTxHashesToBlockHash :: (MonadIO m, HasBlocksStorage m) => Block -> m ()
+insertBtcBlockTxHashesToBlockHash blk = do
+  e <- getBlocksStorage
+  liftIO . readWriteTransaction e $ do
+    db <- getBtcTxsToBlocksDb
+    flip traverse_ (blockTxns blk) $ \tx ->
+      put db (txHash tx) $ Just (headerHash $ blockHeader blk)
+
+insertMultipleBtcBlocksTxHashesToBlockHash :: (MonadIO m, HasBlocksStorage m) => [Block] -> m ()
+insertMultipleBtcBlocksTxHashesToBlockHash blks = do
+  e <- getBlocksStorage
+  liftIO . readWriteTransaction e $ do
+    db <- getBtcTxsToBlocksDb
+    flip traverse_ blks $ \blk ->
+      flip traverse_ (blockTxns blk) $ \tx ->
+        put db (txHash tx) $ Just (headerHash $ blockHeader blk)
+
+getBtcBlockHashByTxHash :: (MonadIO m, HasBlocksStorage m) => TxHash -> m (Maybe BlockHash)
+getBtcBlockHashByTxHash txHash = do
+  e <- getBlocksStorage
+  liftIO . readOnlyTransaction e $ do
+    db <- getBtcTxsToBlocksDb
+    get db txHash

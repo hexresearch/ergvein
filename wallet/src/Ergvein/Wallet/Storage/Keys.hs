@@ -12,13 +12,18 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Network
 
-import qualified Data.ByteString as BS
+import qualified Data.ByteString       as BS
+import qualified Data.ByteString.Short as BSS
+import qualified Data.Serialize        as S
 
 xPubToBtcAddr :: XPubKey -> BtcAddress
-xPubToBtcAddr key = pubKeyWitnessAddr $ PubKeyI (xPubKey key) False
+xPubToBtcAddr key = pubKeyWitnessAddr $ wrapPubKey True (xPubKey key)
+
+pubKeyErgAddr :: PubKeyI -> ErgAddress
+pubKeyErgAddr = ErgPubKeyAddress . VLAddr . BSS.toShort . S.encode
 
 xPubToErgAddr :: XPubKey -> ErgAddress
-xPubToErgAddr key = pubKeyErgAddr $ PubKeyI (xPubKey key) False
+xPubToErgAddr key = pubKeyErgAddr $ wrapPubKey True (xPubKey key)
 
 egvXPubKeyToEgvAddress :: EgvXPubKey -> EgvAddress
 egvXPubKeyToEgvAddress key
