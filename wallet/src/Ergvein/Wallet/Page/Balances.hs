@@ -70,7 +70,7 @@ currenciesList name = divClass "currency-content" $ do
     getSettingsUnits = fromMaybe defUnits . settingsUnits
 
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
-currencyBalance cur = pure $ pure $ Money cur 1
+currencyBalance cur = pure $ pure $ Money cur 0
 
 symbolUnit :: Currency -> Units -> Text
 symbolUnit cur units =
