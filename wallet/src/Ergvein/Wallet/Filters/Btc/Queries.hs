@@ -17,6 +17,7 @@ import Network.Haskoin.Block
 import Ergvein.Filters.Btc
 import Ergvein.Text
 import Ergvein.Types.Block
+import Ergvein.Types.Currency
 import Ergvein.Wallet.Filters.Btc.Types
 import Ergvein.Wallet.Platform
 
