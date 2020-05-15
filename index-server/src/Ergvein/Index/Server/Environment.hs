@@ -26,6 +26,7 @@ import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 import qualified Network.Ergo.Api.Client     as ErgoApi
 import qualified Network.Haskoin.Constants   as HK
 import qualified Network.HTTP.Client         as HC
+import Debug.Trace
 
 data ServerEnv = ServerEnv 
     { envServerConfig             :: !Config
@@ -64,6 +65,7 @@ newServerEnv cfg = do
                                   (parseBaseUrl @Maybe <=< configOwnPeerAddress $ cfg)
                                   (fromJust . parseBaseUrl <$> configKnownPeers cfg)
                                   (configPeerConnectionRetryTimeout cfg)
+    traceShowM cfg
     pure ServerEnv 
       { envServerConfig            = cfg
       , envLogger                  = logger
