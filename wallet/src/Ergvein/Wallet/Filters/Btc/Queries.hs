@@ -17,7 +17,9 @@ import Network.Haskoin.Block
 import Ergvein.Filters.Btc
 import Ergvein.Text
 import Ergvein.Types.Block
+import Ergvein.Types.Currency
 import Ergvein.Wallet.Filters.Btc.Types
+import Ergvein.Wallet.Platform
 
 import qualified Database.LMDB.Simple.Extra as LMDB
 
@@ -59,7 +61,7 @@ getFilter k e = liftIO . readOnlyTransaction e $ do
 getFiltersHeight :: MonadIO m => Environment ReadWrite -> m BlockHeight
 getFiltersHeight e = liftIO . readOnlyTransaction e $ do
   tdb <- getBtcTotalDb
-  fromMaybe 0 <$> get tdb ()
+  fromMaybe (filterStartingHeight BTC) <$> get tdb ()
 
 -- | Right fold over all filters
 foldFilters :: forall a m . MonadIO m

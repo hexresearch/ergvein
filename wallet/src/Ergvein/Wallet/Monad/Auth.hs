@@ -371,7 +371,6 @@ liftAuth ma0 ma = mdo
         runOnUiThreadM $ runReaderT setupTlsManager env
 
         flip runReaderT env $ do -- Workers and other routines go here
-          -- Remove all three: works fine
           filtersLoader
           infoWorker
           heightAsking

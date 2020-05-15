@@ -58,13 +58,24 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
         pure ((), goE)
       else do
         logWrite "Sleeping, waiting for new filters ..."
-        de <- delay 120 buildE
+        let dt = if ch == 0 then 1 else 120
+        de <- delay dt buildE
         pure ((), go <$ de)
 
 postSync :: MonadFront t m => Currency -> BlockHeight -> BlockHeight -> m ()
 postSync cur ch fh = do
-  buildE <- getPostBuild
-  setSyncProgress $ SyncMeta cur SyncFilters (fromIntegral fh) (fromIntegral ch) <$ buildE
+  syncD <- getSyncProgress
+  sp <- sample . current $ syncD
+  let shouldUpdate = case sp of
+        Synced -> True
+        SyncMeta{..} -> syncMetaStage == SyncFilters
+  when shouldUpdate $ do
+    buildE <- getPostBuild
+    let val = if fh >= ch
+          then Synced
+          else SyncMeta cur SyncFilters (fromIntegral fh) (fromIntegral ch)
+    setFiltersSync cur $ val == Synced
+    setSyncProgress $ val <$ buildE
 
 getFilters :: MonadFront t m => Event t (Currency, BlockHeight, Int) -> m (Event t [(BlockHash, AddressFilterHexView)])
 getFilters e = do
