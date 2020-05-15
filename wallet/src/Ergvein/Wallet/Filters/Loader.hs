@@ -58,7 +58,8 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
         pure ((), goE)
       else do
         logWrite "Sleeping, waiting for new filters ..."
-        de <- delay 120 buildE
+        let dt = if ch == 0 then 1 else 120
+        de <- delay dt buildE
         pure ((), go <$ de)
 
 postSync :: MonadFront t m => Currency -> BlockHeight -> BlockHeight -> m ()
