@@ -10,6 +10,7 @@ import Control.Monad.Reader
 import Data.Aeson
 import Data.Text (Text)
 import Data.X509.CertificateStore (CertificateStore)
+import Network.DNS.Resolver (ResolvConf)
 
 class HasStoreDir m where
   getStoreDir :: m Text
@@ -70,3 +71,6 @@ class PlatformNatives where
 
   -- | Read system wide certificate store for TLS connections
   readSystemCertificates :: MonadIO m => m CertificateStore
+
+  -- | Get system-appropriate DNS resolv config
+  nativeResolvConf :: ResolvConf

@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="109"
+   height="128"
+   viewBox="0 0 109 128"
+   fill="none"
+   version="1.1"
+   id="svg7752"
+   sodipodi:docname="coinjoin.svg"
+   inkscape:version="0.92.4 (5da689c313, 2019-01-14)">
+  <metadata
+     id="metadata7758">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs7756">
+    <filter
+       style="color-interpolation-filters:sRGB;"
+       inkscape:label="Lightness-Contrast"
+       id="filter7806">
+      <feColorMatrix
+         values="0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 1 0"
+         id="feColorMatrix7804" />
+    </filter>
+    <filter
+       style="color-interpolation-filters:sRGB;"
+       inkscape:label="Lightness-Contrast"
+       id="filter7810">
+      <feColorMatrix
+         values="0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 1 0"
+         id="feColorMatrix7808" />
+    </filter>
+    <filter
+       style="color-interpolation-filters:sRGB;"
+       inkscape:label="Lightness-Contrast"
+       id="filter7814">
+      <feColorMatrix
+         values="0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 1 0"
+         id="feColorMatrix7812" />
+    </filter>
+    <filter
+       style="color-interpolation-filters:sRGB;"
+       inkscape:label="Lightness-Contrast"
+       id="filter7818">
+      <feColorMatrix
+         values="0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 1 0"
+         id="feColorMatrix7816" />
+    </filter>
+    <filter
+       style="color-interpolation-filters:sRGB;"
+       inkscape:label="Lightness-Contrast"
+       id="filter7822">
+      <feColorMatrix
+         values="0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 1 0"
+         id="feColorMatrix7820" />
+    </filter>
+    <filter
+       style="color-interpolation-filters:sRGB;"
+       inkscape:label="Lightness-Contrast"
+       id="filter7826">
+      <feColorMatrix
+         values="0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 1 0"
+         id="feColorMatrix7824" />
+    </filter>
+    <filter
+       style="color-interpolation-filters:sRGB;"
+       inkscape:label="Lightness-Contrast"
+       id="filter7830">
+      <feColorMatrix
+         values="0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 1 0"
+         id="feColorMatrix7828" />
+    </filter>
+    <filter
+       style="color-interpolation-filters:sRGB;"
+       inkscape:label="Lightness-Contrast"
+       id="filter7834">
+      <feColorMatrix
+         values="0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 1 0"
+         id="feColorMatrix7832" />
+    </filter>
+    <filter
+       style="color-interpolation-filters:sRGB;"
+       inkscape:label="Lightness-Contrast"
+       id="filter7838">
+      <feColorMatrix
+         values="0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 1 0"
+         id="feColorMatrix7836" />
+    </filter>
+    <filter
+       style="color-interpolation-filters:sRGB;"
+       inkscape:label="Lightness-Contrast"
+       id="filter7842">
+      <feColorMatrix
+         values="0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 1 0"
+         id="feColorMatrix7840" />
+    </filter>
+    <filter
+       style="color-interpolation-filters:sRGB;"
+       inkscape:label="Lightness-Contrast"
+       id="filter7846">
+      <feColorMatrix
+         values="0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 -0.5 0.5 0 0 0 1 0"
+         id="feColorMatrix7844" />
+    </filter>
+    <meshgradient
+       inkscape:collect="always"
+       id="meshgradient7848"
+       gradientUnits="userSpaceOnUse"
+       x="41.170181"
+       y="33.1367">
+      <meshrow
+         id="meshrow7850">
+        <meshpatch
+           id="meshpatch7852">
+          <stop
+             path="c 8.56256,0  17.1251,0  25.6877,0"
+             style="stop-color:#ffffff;stop-opacity:1"
+             id="stop7854" />
+          <stop
+             path="c 0,2.14067  0,4.28133  0,6.422"
+             style="stop-color:#2bcfcb;stop-opacity:1"
+             id="stop7856" />
+          <stop
+             path="c -8.56256,0  -17.1251,0  -25.6877,0"
+             style="stop-color:#ffffff;stop-opacity:1"
+             id="stop7858" />
+          <stop
+             path="c 0,-2.14067  0,-4.28133  0,-6.422"
+             style="stop-color:#2bcfcb;stop-opacity:1"
+             id="stop7860" />
+        </meshpatch>
+      </meshrow>
+    </meshgradient>
+  </defs>
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1916"
+     inkscape:window-height="1076"
+     id="namedview7754"
+     showgrid="false"
+     inkscape:zoom="3.6875"
+     inkscape:cx="186.41732"
+     inkscape:cy="52.556907"
+     inkscape:window-x="1680"
+     inkscape:window-y="0"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg7752" />
+  <path
+     d="M98.9988 107.808L97.7111 107.243L98.8243 106.387C101.283 104.51 102.696 101.677 102.696 98.6114C102.696 93.8263 99.2646 89.7722 94.546 88.9747L93.8564 88.8584V86.2333C93.8564 81.8137 90.2593 78.2165 85.8397 78.2165H54.9525V55.7988H53.075V78.2248H22.1795C17.7599 78.2248 14.1628 81.822 14.1628 86.2416V88.875L13.4733 88.9913C8.7463 89.7889 5.32362 93.8429 5.32362 98.628C5.32362 101.693 6.73589 104.526 9.1949 106.404L10.3081 107.259L9.02044 107.824C3.55412 110.234 0.0151367 115.65 0.0151367 121.607V127.854H30.1879V121.607C30.1879 115.642 26.6489 110.225 21.1743 107.808L19.8866 107.243L20.9998 106.387C23.4588 104.51 24.8711 101.677 24.8711 98.6114C24.8711 93.8263 21.4401 89.7722 16.7215 88.9747L16.032 88.8584V86.2333C16.032 82.8521 18.7817 80.094 22.1712 80.094H53.0667V88.8584L52.3772 88.9747C47.6585 89.7722 44.2275 93.8263 44.2275 98.6114C44.2275 101.677 45.6398 104.51 48.0988 106.387L49.212 107.243L47.9244 107.808C42.4497 110.225 38.9108 115.642 38.9108 121.607V127.854H69.0835V121.607C69.0835 115.642 65.5445 110.234 60.0699 107.808L58.7822 107.243L59.8955 106.387C62.3545 104.51 63.7667 101.677 63.7667 98.6114C63.7667 93.8263 60.3357 89.7722 55.6171 88.9747L54.9276 88.8584V80.1023H85.8231C89.2042 80.1023 91.9623 82.8521 91.9623 86.2416V88.875L91.2728 88.9913C86.5541 89.7889 83.1232 93.8429 83.1232 98.628C83.1232 101.693 84.5354 104.526 86.9944 106.404L88.1077 107.259L86.82 107.824C81.3454 110.242 77.8064 115.658 77.8064 121.623V127.854H108.012V121.607C108.012 115.65 104.473 110.234 98.9988 107.808ZM28.3104 121.607V125.976H23.1099V118.898H21.2324V125.976H8.96229V118.898H7.09311V125.976H1.89263V121.607C1.89263 114.321 7.81586 108.398 15.1015 108.398C22.3872 108.398 28.3104 114.321 28.3104 121.607ZM23.0102 98.6197C23.0102 102.981 19.4629 106.528 15.1015 106.528C10.7401 106.528 7.1928 102.981 7.1928 98.6197C7.1928 94.2583 10.7401 90.711 15.1015 90.711C19.4629 90.711 23.0102 94.2583 23.0102 98.6197ZM67.2226 121.607V125.976H62.0222V118.898H60.1447V125.976H47.8745V118.898H45.997V125.976H40.8049V121.607C40.8049 114.321 46.7281 108.398 54.0138 108.398C61.2994 108.398 67.2226 114.321 67.2226 121.607ZM61.9225 98.6197C61.9225 102.981 58.3752 106.528 54.0138 106.528C49.6523 106.528 46.105 102.981 46.105 98.6197C46.105 94.2583 49.6523 90.711 54.0138 90.711C58.3752 90.711 61.9225 94.2583 61.9225 98.6197ZM85.0173 98.6197C85.0173 94.2583 88.5646 90.711 92.926 90.711C97.2874 90.711 100.835 94.2583 100.835 98.6197C100.835 102.981 97.2874 106.528 92.926 106.528C88.5646 106.528 85.0173 102.973 85.0173 98.6197ZM106.135 125.976H100.934V118.898H99.0569V125.976H86.7868V118.898H84.9093V125.976H79.7088V121.607C79.7088 114.321 85.632 108.398 92.9177 108.398C100.203 108.398 106.127 114.321 106.127 121.607V125.976H106.135Z"
+     fill="white"
+     id="path7730"
+     style="filter:url(#filter7806)" />
+  <path
+     d="M67.3306 85.2944H65.4531V87.1719H67.3306V85.2944Z"
+     fill="white"
+     id="path7732"
+     style="filter:url(#filter7810)" />
+  <path
+     d="M74.4087 85.2944H72.5312V87.1719H74.4087V85.2944Z"
+     fill="white"
+     id="path7734"
+     style="filter:url(#filter7814)" />
+  <path
+     d="M81.4866 85.2944H79.6091V87.1719H81.4866V85.2944Z"
+     fill="white"
+     id="path7736"
+     style="filter:url(#filter7818)" />
+  <path
+     d="M28.4268 85.2944H26.5493V87.1719H28.4268V85.2944Z"
+     fill="white"
+     id="path7738"
+     style="filter:url(#filter7822)" />
+  <path
+     d="M35.4964 85.2944H33.6189V87.1719H35.4964V85.2944Z"
+     fill="white"
+     id="path7740"
+     style="filter:url(#filter7826)" />
+  <path
+     d="M42.5743 85.2944H40.6968V87.1719H42.5743V85.2944Z"
+     fill="white"
+     id="path7742"
+     style="filter:url(#filter7830)" />
+  <circle
+     cx="54.0139"
+     cy="28.3171"
+     r="27.239"
+     stroke="#2BCFCB"
+     stroke-width="2"
+     id="circle7744"
+     style="filter:url(#filter7834)" />
+  <path
+     d="M45.4507 22.4336C46.6329 22.4336 47.5913 21.4752 47.5913 20.293C47.5913 19.1107 46.6329 18.1523 45.4507 18.1523C44.2685 18.1523 43.3101 19.1107 43.3101 20.293C43.3101 21.4752 44.2685 22.4336 45.4507 22.4336Z"
+     fill="#2BCFCB"
+     id="path7746"
+     style="filter:url(#filter7838)" />
+  <path
+     d="M62.5759 22.4336C63.7582 22.4336 64.7166 21.4752 64.7166 20.293C64.7166 19.1107 63.7582 18.1523 62.5759 18.1523C61.3937 18.1523 60.4353 19.1107 60.4353 20.293C60.4353 21.4752 61.3937 22.4336 62.5759 22.4336Z"
+     fill="#2BCFCB"
+     id="path7748"
+     style="filter:url(#filter7842)" />
+  <path
+     d="m 54.0135,33.1367 h -0.0031 c -8.9924,0 -12.4824,4.5176 -12.6266,4.71 -0.3533,0.4704 -0.2582,1.134 0.2101,1.4905 0.4683,0.3554 1.1393,0.2644 1.4978,-0.2007 0.1213,-0.1579 3.071,-3.859 10.9188,-3.859 h 0.003 c 7.8498,10e-4 10.8005,3.7022 10.9176,3.8538 0.2101,0.2801 0.531,0.4274 0.8571,0.4274 0.2237,0 0.4484,-0.07 0.6418,-0.2142 0.4724,-0.3543 0.5687,-1.0254 0.2132,-1.4989 -0.1443,-0.1913 -3.6354,-4.7079 -12.6297,-4.7089 z"
+     id="path7750"
+     style="fill:url(#meshgradient7848);fill-opacity:1;filter:url(#filter7846)"
+     inkscape:connector-curvature="0"
+     transform="matrix(1,0,0,-1,0,72.6954)" />
+</svg>

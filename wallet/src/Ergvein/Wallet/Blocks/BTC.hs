@@ -4,12 +4,16 @@ module Ergvein.Wallet.Blocks.BTC
   , requestBTCBlockConfirm
   , requestBTCBlockRN
   , storeBlockByE
+  , storeMultipleBlocksByE
   , getBlockByE
+  , storeBlockTxHashesByE
+  , storeMultipleBlocksTxHashesByE
   , requestBTCBlocksWait
   , requestBTCBlocksWaitRN
   , requestBTCBlocksListen
   , requestBTCBlocksListenRN
   , BlockRequestMessage(..)
+  , module Ergvein.Wallet.Blocks.BTC.Queries
   ) where
 
 import Control.Monad.Random
@@ -28,6 +32,7 @@ import qualified Data.Map as M
 import qualified Data.List as L
 
 import Ergvein.Wallet.Native
+import Ergvein.Text
 
 -- | Request a block from a node
 --   Returns Nothing if the blockhash is not found in the inventory
@@ -163,7 +168,16 @@ requestBTCBlocksListenRN reqE = do
         requestBTCBlocksListen (btcs!!i) reqE
 
 storeBlockByE :: (MonadBaseConstr t m, HasBlocksStorage (Performable m)) => Event t Block -> m (Event t ())
-storeBlockByE = performEvent . fmap insertBTCBlock
+storeBlockByE = performEvent . fmap insertBtcBlock
+
+storeMultipleBlocksByE :: (MonadBaseConstr t m, HasBlocksStorage (Performable m)) => Event t [Block] -> m (Event t ())
+storeMultipleBlocksByE = performEvent . fmap insertMultipleBtcBlocks
 
 getBlockByE :: (MonadBaseConstr t m, HasBlocksStorage (Performable m)) => Event t BlockHash -> m (Event t (Maybe Block))
-getBlockByE = performEvent . fmap getBTCBlock
+getBlockByE = performEvent . fmap getBtcBlock
+
+storeBlockTxHashesByE :: (MonadBaseConstr t m, HasBlocksStorage (Performable m)) => Event t Block -> m (Event t ())
+storeBlockTxHashesByE = performEvent . fmap insertBtcBlockTxHashesToBlockHash
+
+storeMultipleBlocksTxHashesByE :: (MonadBaseConstr t m, HasBlocksStorage (Performable m)) => Event t [Block] -> m (Event t ())
+storeMultipleBlocksTxHashesByE = performEvent . fmap insertMultipleBtcBlocksTxHashesToBlockHash

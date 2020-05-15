@@ -50,7 +50,7 @@ btcNetwork = if isTestnet then btcTest else btc
 filterStartingHeight :: Currency -> BlockHeight
 filterStartingHeight cur = case cur of
   ERGO -> 0
-  BTC -> if isTestnet then 834624 else 481824
+  BTC -> if isTestnet then 1722763 else 481824
 {-# INLINE filterStartingHeight #-}
 
 -- | Average time it takes to mine a block. In minutes

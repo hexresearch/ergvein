@@ -7,6 +7,7 @@ import Data.Aeson
 import Data.Text(Text)
 import Ergvein.Aeson
 import Ergvein.Wallet.Native
+import Network.DNS.Resolver
 import System.Directory
 import System.Directory.Tree
 import System.FilePath.Posix
@@ -98,8 +99,11 @@ instance PlatformNatives where
   cameraGetResult = liftIO $ pure "TempDesktop"
 
   logWrite = liftIO . T.putStrLn
- 
+
   readSystemCertificates = liftIO getSystemCertificateStore
+
+  nativeResolvConf = defaultResolvConf
+  {-# INLINE nativeResolvConf #-}
 
 getFiles :: FilePath -> IO [FilePath]
 getFiles dir = do

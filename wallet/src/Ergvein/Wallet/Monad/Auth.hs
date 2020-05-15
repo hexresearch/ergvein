@@ -18,6 +18,7 @@ import Network.HTTP.Client hiding (Proxy)
 import Network.HTTP.Client.TLS (newTlsManagerWith, mkManagerSettings, newTlsManager)
 import Network.TLS
 import Network.TLS.Extra.Cipher
+import Network.Socket (SockAddr)
 import Reflex
 import Reflex.Dom
 import Reflex.Dom.Retractable
@@ -28,6 +29,7 @@ import Servant.Client(BaseUrl, showBaseUrl)
 import Ergvein.Crypto
 import Ergvein.Index.Client
 import Ergvein.Text
+import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Network
@@ -97,7 +99,7 @@ data Env t = Env {
 , env'indexersEF      :: !(Event t (), IO ())
 , env'nodeConsRef     :: !(ExternalRef t (ConnMap t))
 , env'nodeReqSelector :: !(RequestSelector t)
-, env'nodeReqFire     :: !(Map Currency (Map BaseUrl NodeMessage) -> IO ())
+, env'nodeReqFire     :: !(Map Currency (Map SockAddr NodeMessage) -> IO ())
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -230,7 +232,7 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getFiltersSyncRef #-}
   getActiveCursD = externalRefDynamic =<< asks env'activeCursRef
   {-# INLINE getActiveCursD #-}
-  updateActuveCurs updE = do
+  updateActiveCurs crE updE = do
     curRef      <- asks env'activeCursRef
     nodeRef     <- asks env'nodeConsRef
     settingsRef <- asks env'settings
@@ -247,15 +249,22 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
       settings <- readExternalRef settingsRef
       login    <- fmap _authInfo'login $ readExternalRef authRef
       let urls = settingsNodes settings
-          ac   = activeCurrenciesMap $ settingsActiveCurrencies settings
-          ac'  = M.insert login newcs ac
-          set' = settings {settingsActiveCurrencies = ActiveCurrencies ac'}
+          set' = settings
 
       writeExternalRef settingsRef set'
       storeSettings set'
-      writeExternalRef nodeRef =<< reinitNodes urls diffMap sel =<< readExternalRef nodeRef
 
-  {-# INLINE updateActuveCurs #-}
+      authD <- getAuthInfo
+      let updatedAuthE = traceEventWith (const "Active currencies setted") <$>
+            flip pushAlways crE $ \cur -> do
+              auth <- sample . current $ authD
+              pure $ Just $ auth
+                & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ cur
+                & authInfo'isUpdate .~ True
+      setAuthInfoE <- setAuthInfo updatedAuthE
+      storeWallet setAuthInfoE
+      pure ()
+  {-# INLINE updateActiveCurs #-}
   getAuthInfo = externalRefDynamic =<< asks env'authRef
   {-# INLINE getAuthInfo #-}
   getLoginD = (fmap . fmap) _authInfo'login . externalRefDynamic =<< asks env'authRef
@@ -331,11 +340,10 @@ liftAuth ma0 ma = mdo
         passModalEF     <- getPasswordModalEF
         passSetEF       <- getPasswordSetEF
         settingsRef     <- getSettingsRef
-
         -- Read settings to fill other refs
         settings        <- readExternalRef settingsRef
         let login = _authInfo'login auth
-            acurs = maybe S.empty S.fromList $ M.lookup login $ activeCurrenciesMap $ settingsActiveCurrencies settings
+            acurs = S.fromList [] -- $ _pubStorage'activeCurrencies ps
             nodes = M.restrictKeys (settingsNodes settings) acurs
 
         -- MonadClient refs
@@ -360,7 +368,7 @@ liftAuth ma0 ma = mdo
         blocksStore     <- liftIO $ runReaderT openBlocksStorage (settingsStoreDir settings)
         heightRef       <- newExternalRef mempty
         fsyncRef        <- newExternalRef mempty
-        consRef         <- newExternalRef mempty -- =<< initializeNodes sel nodes
+        consRef         <- newExternalRef mempty
         let env = Env
               settingsRef backEF loading langRef storeDir alertsEF logsTrigger logsNameSpaces uiChan passModalEF passSetEF
               authRef (logoutFire ()) activeCursRef managerRef headersStore filtersStore blocksStore syncRef heightRef fsyncRef
@@ -370,7 +378,6 @@ liftAuth ma0 ma = mdo
         runOnUiThreadM $ runReaderT setupTlsManager env
 
         flip runReaderT env $ do -- Workers and other routines go here
-          -- Remove all three: works fine
           filtersLoader
           infoWorker
           heightAsking
@@ -395,6 +402,9 @@ liftUnauthed ma = ReaderT $ const ma
 wrapped :: MonadFrontBase t m => ErgveinM t m a -> ErgveinM t m a
 wrapped ma = do
   storeWallet =<< getPostBuild
+  buildE <- getPostBuild
+  ac <- _pubStorage'activeCurrencies <$> getPubStorage
+  updE <- updateActiveCurs (ac <$ buildE) $ fmap (\cl -> const (S.fromList cl)) $ ac <$ buildE
   ma
 
 instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where

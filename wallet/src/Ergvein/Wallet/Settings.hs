@@ -42,7 +42,6 @@ data Settings = Settings {
 , settingsStoreDir          :: Text
 , settingsConfigPath        :: Text
 , settingsUnits             :: Maybe Units
-, settingsActiveCurrencies  :: ActiveCurrencies
 , settingsReqTimeout        :: NominalDiffTime
 , settingsActiveUrls        :: [BaseUrl]
 , settingsDeactivatedUrls   :: [BaseUrl]
@@ -63,7 +62,6 @@ instance FromJSON Settings where
     settingsStoreDir          <- o .: "storeDir"
     settingsConfigPath        <- o .: "configPath"
     settingsUnits             <- o .: "units"
-    settingsActiveCurrencies  <- o .: "activeCurrencies"
     settingsReqTimeout        <- o .: "reqTimeout"
     mActiveUrls               <- o .: "activeUrls"
     mDeactivatedUrls          <- o .: "deactivatedUrls"
@@ -75,7 +73,7 @@ instance FromJSON Settings where
             (Nothing, Nothing, Nothing) -> (defaultIndexers, [], [])
             (Just [], Just [], Just []) -> (defaultIndexers, [], [])
             _ -> (fromMaybe [] mActiveUrls, fromMaybe [] mDeactivatedUrls, fromMaybe [] mPassiveUrls)
-    settingsNodes             <- o .:? "nodes" .!= defaultNodes
+    settingsNodes             <- o .:? "nodes" .!= M.empty
     settingsPortfolio         <- o .:? "portfolio" .!= False
     settingsFiatCurr          <- o .:? "fiatCurr"  .!= USD
     pure Settings{..}
@@ -86,7 +84,6 @@ instance ToJSON Settings where
     , "storeDir"          .= toJSON settingsStoreDir
     , "configPath"        .= toJSON settingsConfigPath
     , "units"             .= toJSON settingsUnits
-    , "activeCurrencies"  .= toJSON settingsActiveCurrencies
     , "reqTimeout"        .= toJSON settingsReqTimeout
     , "activeUrls"        .= toJSON settingsActiveUrls
     , "deactivatedUrls"   .= toJSON settingsDeactivatedUrls
@@ -106,18 +103,6 @@ defaultIndexers = [
   where
     parse = either (error . ("Failed to parse default indexer: " ++) . show) id . parseBaseUrl
 
-defaultNodes :: M.Map Currency [BaseUrl]
-defaultNodes = M.fromList $ [
-    (BTC, btcUrls)
-  , (ERGO, [
-      parse "127.0.0.1"
-    , parse "127.0.0.2"])]
-  where
-    parse = either (error . ("Failed to parse default indexer: " ++) . show) id . parseBaseUrl
-    btcUrls = fmap parse $ if isTestnet
-      then ["206.189.198.136:18333", "185.45.114.194:18333"]
-      else ["119.17.151.61:8333", "144.76.13.207:8333"]
-
 defaultIndexersNum :: (Int, Int)
 defaultIndexersNum = (2, 4)
 
@@ -136,14 +121,13 @@ defaultSettings home =
       , settingsStoreDir          = pack storePath
       , settingsConfigPath        = pack configPath
       , settingsUnits             = Just defUnits
-      , settingsActiveCurrencies  = ActiveCurrencies mempty
       , settingsReqTimeout        = defaultIndexerTimeout
       , settingsActiveUrls        = defaultIndexers
       , settingsDeactivatedUrls   = []
       , settingsPassiveUrls       = []
       , settingsReqUrlNum         = defaultIndexersNum
       , settingsActUrlNum         = defaultActUrlNum
-      , settingsNodes             = defaultNodes
+      , settingsNodes             = M.empty
       , settingsPortfolio         = False
       , settingsFiatCurr          = USD
       }

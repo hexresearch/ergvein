@@ -5,11 +5,14 @@ module Ergvein.Wallet.Codec
 
 import Network.Haskoin.Block
 import Network.Haskoin.Crypto
+import Network.Haskoin.Transaction
 
 import Ergvein.Filters.Btc
 
 import qualified Codec.Serialise as S
 import qualified Data.Serialize as Cereal
+
+deriving instance S.Serialise TxHash
 
 deriving instance S.Serialise BlockHash
 

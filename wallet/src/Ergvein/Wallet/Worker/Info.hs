@@ -27,10 +27,11 @@ infoWorkerInterval = 60
 
 infoWorker :: MonadFront t m => m ()
 infoWorker = do
+  buildE <- getPostBuild
   indexerInfoRef  <- getActiveUrlsRef
   refreshE        <- fmap fst $ getIndexerInfoEF
   te <- fmap void $ tickLossyFromPostBuildTime infoWorkerInterval
-  let goE = leftmost [void te, refreshE]
+  let goE = leftmost [void te, refreshE, buildE]
   let chunkN = 3  -- Number of concurrent request threads
   performFork_ $ ffor goE $ const $ do
     urlChunks <- fmap (mkChunks chunkN . M.keys) $ readExternalRef indexerInfoRef
