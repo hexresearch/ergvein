@@ -5,6 +5,7 @@ module Ergvein.Wallet.Node
   (
     addNodeConn
   , addMultipleConns
+  , removeNodeConn
   , getNodeConn
   , getAllConnByCurrency
   , initNode
@@ -57,6 +58,9 @@ getAllConnByCurrency :: Currency -> ConnMap t -> Maybe (M.Map SockAddr (NodeConn
 getAllConnByCurrency cur cm = case cur of
   BTC  -> (fmap . fmap) NodeConnBTC $ DM.lookup BTCTag cm
   ERGO -> (fmap . fmap) NodeConnERG $ DM.lookup ERGOTag cm
+
+removeNodeConn :: forall t a . CurrencyTag t a -> SockAddr -> ConnMap t -> ConnMap t
+removeNodeConn tag url cm = DM.adjust (M.delete url) tag cm
 
 initNode :: MonadBaseConstr t m
   => Currency

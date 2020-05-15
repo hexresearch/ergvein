@@ -375,7 +375,7 @@ liftAuth ma0 ma = mdo
           filtersLoader
           infoWorker
           heightAsking
-          btcNodeRefresher
+          bctNodeController
           pure ()
         runReaderT (wrapped ma) env
   let
