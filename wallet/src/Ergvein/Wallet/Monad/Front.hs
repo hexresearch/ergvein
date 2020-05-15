@@ -8,6 +8,7 @@ module Ergvein.Wallet.Monad.Front(
   , getCurrentHeight
   , setCurrentHeight
   , getFiltersSync
+  , setFiltersSync
   , extractReq
   -- * Reexports
   , Text
@@ -158,3 +159,9 @@ getFiltersSync :: MonadFrontAuth t m => Currency -> m (Dynamic t Bool)
 getFiltersSync c = do
   d <- externalRefDynamic =<< getFiltersSyncRef
   pure $ fromMaybe False . M.lookup c <$> d
+
+-- | Set current value that tells you whether filters are fully in sync now or not
+setFiltersSync :: MonadFrontAuth t m => Currency -> Bool -> m ()
+setFiltersSync c v = do
+  r <- getFiltersSyncRef
+  modifyExternalRef r $ (, ()) . M.insert c v

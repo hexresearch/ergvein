@@ -32,6 +32,7 @@ import qualified Data.Map as M
 import qualified Data.List as L
 
 import Ergvein.Wallet.Native
+import Ergvein.Text
 
 -- | Request a block from a node
 --   Returns Nothing if the blockhash is not found in the inventory

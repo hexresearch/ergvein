@@ -18,9 +18,6 @@ import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Sync.Widget
 import Ergvein.Wallet.Wrapper
 
-import Control.Monad.IO.Class
-import Data.Aeson.Lens  (key, nth)
-import Control.Lens
 import Data.Map.Strict as Map
 import Network.Wreq
 
@@ -77,11 +74,8 @@ currenciesList name = divClass "currency-content" $ do
       pure $ cur <$ domEvent Click e
     getSettingsUnits = fromMaybe defUnits . settingsUnits
 
-tempErgoUrl :: String
-tempErgoUrl = "urltoapi"
-
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
-currencyBalance cur = pure $ pure $ Money cur 1
+currencyBalance cur = pure $ pure $ Money cur 0
 
 symbolUnit :: Currency -> Units -> Text
 symbolUnit cur units =
