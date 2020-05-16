@@ -3,10 +3,10 @@ module Ergvein.Wallet.Sync.Status(
   , SyncStage(..)
   , SyncProgress(..)
   , syncProgressBehind
-  ) where 
+  ) where
 
 
-import Data.Time 
+import Data.Time
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
@@ -26,9 +26,9 @@ instance LocalizedPrint SyncBehind where
         2 -> " дня..."
         3 -> " дня..."
         _ -> " дней..."
-      SyncDays d  -> "Отстаём на " <> showt (d `div` 365) <> yearsEnding <> showt (d `mod` 365) <> daysEnding 
-        where 
-          yearsEnding = case d `div` 365 of 
+      SyncDays d  -> "Отстаём на " <> showt (d `div` 365) <> yearsEnding <> showt (d `mod` 365) <> daysEnding
+        where
+          yearsEnding = case d `div` 365 of
             1 -> " год "
             2 -> " года "
             3 -> " года "
@@ -46,27 +46,27 @@ instance LocalizedPrint SyncBehind where
         _ -> " часов..."
 
 nominalToBehind :: NominalDiffTime -> SyncBehind
-nominalToBehind t 
+nominalToBehind t
   | t < 24 * 3600 = SyncHours $ ceiling $ t / 3600
   | otherwise = SyncDays $ ceiling $ t / (24 * 3600)
 
 data SyncStage = SyncFilters | SyncAddress !Int | SyncHeaders | SyncBlocks
-  deriving (Show)
+  deriving (Show, Eq, Ord)
 
-instance LocalizedPrint SyncStage where 
-  localizedShow l v = case l of 
-    English -> case v of 
+instance LocalizedPrint SyncStage where
+  localizedShow l v = case l of
+    English -> case v of
       SyncFilters -> "filters"
-      SyncAddress i -> "address " <> showt i 
+      SyncAddress i -> "address " <> showt i
       SyncHeaders -> "headers"
-      SyncBlocks  -> "blocks" 
-    Russian -> case v of 
+      SyncBlocks  -> "blocks"
+    Russian -> case v of
       SyncFilters -> "фильтров"
-      SyncAddress i -> "адрес " <> showt i 
+      SyncAddress i -> "адрес " <> showt i
       SyncHeaders -> "заголовков"
-      SyncBlocks  -> "блоков" 
+      SyncBlocks  -> "блоков"
 
-data SyncProgress = 
+data SyncProgress =
     SyncMeta {
       syncMetaCur    :: !Currency
     , syncMetaStage  :: !SyncStage
@@ -74,23 +74,22 @@ data SyncProgress =
     , syncMetaTotal  :: !Int
     }
   | Synced
-  deriving (Show)
+  deriving (Show, Eq)
 
 syncProgressBehind :: SyncProgress -> Maybe SyncBehind
-syncProgressBehind v = case v of 
+syncProgressBehind v = case v of
   SyncMeta{..} -> if syncMetaAmount >= syncMetaTotal then Nothing
     else Just $ nominalToBehind $ currencyBehind syncMetaCur syncMetaAmount syncMetaTotal
   Synced -> Nothing
 
-instance LocalizedPrint SyncProgress where 
-  localizedShow l v@SyncMeta{..} = case l of 
+instance LocalizedPrint SyncProgress where
+  localizedShow l v@SyncMeta{..} = case l of
     English -> "Syncing " <> localizedShow l syncMetaStage <> " of " <> showt syncMetaCur <> precentStr
     Russian -> "Синхронизация " <> localizedShow l syncMetaStage <> " " <> showt syncMetaCur <> precentStr
-    where 
+    where
       percent :: Int
-      percent = ceiling $ 100 * (fromIntegral syncMetaAmount :: Double) / fromIntegral syncMetaTotal
+      percent = if syncMetaTotal == 0 then 0 else ceiling $ 100 * (fromIntegral syncMetaAmount :: Double) / fromIntegral syncMetaTotal
       precentStr = " " <> showt percent <> "% "
-  localizedShow l Synced = case l of 
+  localizedShow l Synced = case l of
     English -> "Synced"
     Russian -> "Синхронизировано"
-  

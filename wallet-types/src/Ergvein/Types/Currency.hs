@@ -204,8 +204,7 @@ moneyFromRationalUnit cur units amount = Money cur val
 
 -- | Print amount of cryptocurrency
 showMoney :: Money -> Text
-showMoney m@(Money cur _) = T.pack $ printf ("%." <> show (currencyResolution cur) <> "f") (realToFrac (moneyToRational m) :: Double)
+showMoney m = T.pack $ printf "%f" (realToFrac (moneyToRational m) :: Double)
 
 showMoneyUnit :: Money -> Units -> Text
-showMoneyUnit m@(Money cur _) units =
-  T.pack $ printf ("%." <> show (currencyResolutionUnit cur units) <> "f") (realToFrac (moneyToRationalUnit m units) :: Double)
+showMoneyUnit m units = T.pack $ printf "%f" (realToFrac (moneyToRationalUnit m units) :: Double)
