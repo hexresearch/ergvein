@@ -84,7 +84,7 @@ modifyExternalRefM ExternalRef {..} f = do
   (a', b) <- f a
   liftIO $ do
     writeIORef externalRef a'
-    _ <- externalFire a
+    _ <- externalFire a'
     return ()
   return b
 
