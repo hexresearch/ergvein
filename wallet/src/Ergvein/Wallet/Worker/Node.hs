@@ -5,27 +5,38 @@ module Ergvein.Wallet.Worker.Node
 
 import Control.Exception
 import Control.Monad.Random
+import Control.Monad.Reader
 import Data.IP
 import Data.Maybe (fromMaybe, catMaybes, listToMaybe)
 import Data.Time
 import Network.DNS
 import Network.Haskoin.Constants
 import Network.Haskoin.Network
+import Network.Haskoin.Transaction
 import Network.Socket
 import Reflex.ExternalRef
 
 import Ergvein.Text
+import Ergvein.Types.Address
 import Ergvein.Types.Currency
+import Ergvein.Types.Keys
+import Ergvein.Types.Storage
+import Ergvein.Types.Transaction
+import Ergvein.Wallet.Blocks.Types
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
+import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node
 import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Platform
+import Ergvein.Wallet.Storage.Keys
+import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Util
 
 import qualified Data.Dependent.Map as DM
 import qualified Data.Map as M
+import qualified Data.IntMap as MI
 import qualified Data.Set as S
 import qualified Data.List as L
 import qualified Data.Bits as BI
@@ -66,8 +77,8 @@ bctNodeController = mdo
   (urlStoreD, fstRunE) <- mkUrlBatcher sel urlE
 
   let addNodeE = (\u -> M.singleton u $ Just ()) <$> urlE
-  let remNodeE = fmap (\u -> M.singleton u Nothing) $ switchDyn $ fmap (leftmost . M.elems) tmpD
-  let listActionE = leftmost [addNodeE, remNodeE]
+  let (remNodeE, txE) = switchTuple $ splitDynPure $ fmap (unzip . M.elems) tmpD
+  let listActionE = leftmost [addNodeE, never]
 
   tmpD <- listWithKeyShallowDiff M.empty listActionE $ \u _ _ -> do
     let reqE = extractReq sel BTC u
@@ -75,10 +86,52 @@ bctNodeController = mdo
     modifyExternalRef nodeRef $ \cm -> (addNodeConn (NodeConnBTC node) cm, ())
     closeE <- performEvent $ ffor (nodeconCloseE node) $ const $
       modifyExternalRef nodeRef $ \cm -> (removeNodeConn BTCTag u cm, ())
-    pure $ u <$ closeE
+    let respE = nodeconRespE node
+    let txInvsE = fforMaybe respE $ \case
+          MInv inv -> filterTxInvs inv
+          _ -> Nothing
+        reqE = fmap ((u,) . NodeReqBTC . MGetData . GetData) $ txInvsE
+    requestFromNode reqE
+    let txE = fforMaybe respE $ \case
+          MTx tx -> Just tx
+          _ -> Nothing
+    pure $ (u <$ closeE, txE)
+  pubStorageD <- getPubStorageD
+  let allBtcAddrsD = ffor pubStorageD $ \(PubStorage _ cm) -> case M.lookup BTC cm of
+        Nothing -> []
+        Just (CurrencyPubStorage keystore _) -> extractAddrs keystore
+
+  store <- getBlocksStorage
+  mtxE <- performFork $ ffor (current allBtcAddrsD `attach` txE) $ \(addrs, tx) -> do
+    liftIO $ flip runReaderT store $ do
+      b <- fmap or $ traverse (flip checkAddrTx tx) addrs
+      pure $ if b
+        then Just (txHashToHex $ txHash tx, BtcTx tx)
+        else Nothing
+  addTxToPubStorage $ fmapMaybe id mtxE
   -- dbgPrintE $ (showt . length) <$> (updated urlStoreD)
   -- dbgPrintE $ showt <$> listActionE
   pure ()
+  where
+    switchTuple (a, b) = (switchDyn . fmap leftmost $ a, switchDyn . fmap leftmost $ b)
+
+-- | Extract addresses from keystore
+extractAddrs :: PubKeystore -> [EgvAddress]
+extractAddrs (PubKeystore mast ext int) = mastadr:(extadrs <> intadrs)
+  where
+    mastadr = egvXPubKeyToEgvAddress mast
+    extadrs = fmap egvXPubKeyToEgvAddress $ MI.elems ext
+    intadrs = fmap egvXPubKeyToEgvAddress $ MI.elems int
+
+-- | Extract TxHashes from Inv vector. Return Nothing if no TxHashes are present
+filterTxInvs :: Inv -> Maybe [InvVector]
+filterTxInvs (Inv invs) = case txs of
+  [] -> Nothing
+  _ -> Just txs
+  where
+    txs = catMaybes $ ffor invs $ \iv -> case invType iv of
+      InvTx -> Just iv
+      _ -> Nothing
 
 data SAStorageAct = SAAdd [SockAddr] | SARemove SockAddr | SAClear
 

@@ -128,6 +128,7 @@ library
         Ergvein.Wallet.Style
         Ergvein.Wallet.Sync.Status
         Ergvein.Wallet.Sync.Widget
+        Ergvein.Wallet.Tx
         Ergvein.Wallet.Util
         Ergvein.Wallet.Validate
         Ergvein.Wallet.Widget.GraphPinCode
@@ -218,7 +219,7 @@ library
         vector -any,
         wreq -any,
         yaml -any
-        
+
     if flag(android)
         cpp-options: -DANDROID
         build-depends:
