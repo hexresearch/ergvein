@@ -397,7 +397,7 @@ portfolioWidget = divClass "portfolio-idget" $ do
       rawJSCall (_element_raw canvasEl) $ drawRndHovT canvasW canvasH [(0.6,Unhovered),(0.4,Unhovered)]
     pure $ ()
   divClass "portfolio-legend" $ do
-    th
+    pure ()
       where
         canvasH = 240
         canvasW = 240
