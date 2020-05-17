@@ -232,7 +232,7 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getFiltersSyncRef #-}
   getActiveCursD = externalRefDynamic =<< asks env'activeCursRef
   {-# INLINE getActiveCursD #-}
-  updateActiveCurs crE updE = do
+  updateActiveCurs updE = do
     curRef      <- asks env'activeCursRef
     nodeRef     <- asks env'nodeConsRef
     settingsRef <- asks env'settings
@@ -253,16 +253,6 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
 
       writeExternalRef settingsRef set'
       storeSettings set'
-
-      authD <- getAuthInfo
-      let updatedAuthE = traceEventWith (const "Active currencies setted") <$>
-            flip pushAlways crE $ \cur -> do
-              auth <- sample . current $ authD
-              pure $ Just $ auth
-                & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ cur
-                & authInfo'isUpdate .~ True
-      setAuthInfoE <- setAuthInfo updatedAuthE
-      storeWallet setAuthInfoE
       pure ()
   {-# INLINE updateActiveCurs #-}
   getAuthInfo = externalRefDynamic =<< asks env'authRef
@@ -405,7 +395,7 @@ wrapped ma = do
   storeWallet =<< getPostBuild
   buildE <- getPostBuild
   ac <- _pubStorage'activeCurrencies <$> getPubStorage
-  updE <- updateActiveCurs (ac <$ buildE) $ fmap (\cl -> const (S.fromList cl)) $ ac <$ buildE
+  updE <- updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ ac <$ buildE
   ma
 
 instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where

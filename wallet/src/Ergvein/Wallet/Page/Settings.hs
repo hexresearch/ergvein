@@ -89,7 +89,7 @@ currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
     authD <- getAuthInfo
     void $ widgetHoldDyn $ ffor activeCursD $ \currs -> do
       currListE <- selectCurrenciesWidget $ S.toList currs
-      tE <- uac currListE
+      uac currListE
       let updatedAuthE = traceEventWith (const "Active currencies setted") <$>
             flip pushAlways currListE $ \curs -> do
               auth <- sample . current $ authD
@@ -102,7 +102,7 @@ currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
       showSuccessMsg $ STPSSuccess <$ setAuthInfoE
     pure ()
     where
-      uac cE =  updateActiveCurs cE $ fmap (\cl -> const (S.fromList cl)) $ cE
+      uac cE =  updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ cE
 
 
 
