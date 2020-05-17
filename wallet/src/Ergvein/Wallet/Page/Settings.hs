@@ -79,40 +79,14 @@ languagePage = wrapper STPSTitle (Just $ pure languagePage) True $ do
     updE <- updateSettings $ ffor selE (\lng -> settings {settingsLang = lng})
     showSuccessMsg $ STPSSuccess <$ updE
   pure ()
-{-
-currenciesPage2 :: MonadFront t m => m ()
-currenciesPage2 = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
-  h3 $ localizedText STPSSetsActiveCurrs
-  divClass "initial-options" $ do
-    ac <- _pubStorage'activeCurrencies <$> getPubStorage
-    currListE <- selectCurrenciesWidget $ ac
-    updE <- updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) currListE
-    widgetHold (divClass "test" $ text "lala") $ ffor currListE $ \cur -> divClass "test" $ text $ showt cur
-    authD <- getAuthInfo
-    let updatedAuthE = traceEventWith (const "Active currencies setted") <$>
-          flip pushAlways currListE $ \curs -> do
-            auth <- sample . current $ authD
-            pure $ Just $ auth
-              & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
-              & authInfo'isUpdate .~ True
-    updatedAuthE2 <- delay 0.5 updatedAuthE
-    setAuthInfoE <- setAuthInfo updatedAuthE
-    storeWallet setAuthInfoE
-    setAuthInfoE2 <- setAuthInfo updatedAuthE2
-    storeWallet setAuthInfoE2
-    showSuccessMsg $ STPSSuccess <$ setAuthInfoE
-    showSuccessMsg $ STPSSuccess <$ setAuthInfoE2
--}
+
 currenciesPage :: MonadFront t m => m ()
 currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
   h3 $ localizedText STPSSetsActiveCurrs
   divClass "initial-options" $ mdo
     activeCursD <- getActiveCursD
-    divClass "test" $ dynText $ showt <$> activeCursD
     ps <- getPubStorage
     authD <- getAuthInfo
---    auth <- sample . current $ authD
-    divClass "test" $ text $ showt $ _pubStorage'activeCurrencies ps
     void $ widgetHoldDyn $ ffor activeCursD $ \currs -> do
       currListE <- selectCurrenciesWidget $ S.toList currs
       tE <- uac currListE
