@@ -312,11 +312,12 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   getPubStorage = fmap (_storage'pubStorage . _authInfo'storage) $ readExternalRef =<< asks env'authRef
   {-# INLINE getPubStorage #-}
   storeWallet e = do
-    authInfo <- readExternalRef =<< asks env'authRef
+    ref <-  asks env'authRef
     performEvent_ $ ffor e $ \_ -> do
-      let storage = _authInfo'storage authInfo
-      let eciesPubKey = _authInfo'eciesPubKey authInfo
-      saveStorageToFile eciesPubKey storage
+        authInfo <- readExternalRef ref
+        let storage = _authInfo'storage authInfo
+        let eciesPubKey = _authInfo'eciesPubKey authInfo
+        saveStorageToFile eciesPubKey storage
   {-# INLINE storeWallet #-}
 
 -- | Execute action under authorized context or return the given value as result

@@ -2,14 +2,15 @@ module Ergvein.Wallet.Page.Settings(
     settingsPage
   ) where
 
+import Control.Lens
 import Control.Monad.IO.Class (liftIO)
-import qualified Data.Map.Strict as Map
-import Data.Time
+import Control.Monad.Reader.Class
 import Data.Function.Flip (flip3)
-import Reflex.Host.Class
-import Reflex.Dom as RD
 import Data.Maybe (fromMaybe)
+import Data.Time
 import Reflex.Dom
+import Reflex.Dom as RD
+import Reflex.Host.Class
 
 import Ergvein.Text
 import Ergvein.Types.AuthInfo
@@ -23,12 +24,14 @@ import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Monad.Auth
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Settings.Network
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Widget.GraphPinCode
 import Ergvein.Wallet.Wrapper
 
+import qualified Data.Map.Strict as Map
 import qualified Data.Set as S
 
 data SubPageSettings
@@ -110,7 +113,7 @@ currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
     authD <- getAuthInfo
 --    auth <- sample . current $ authD
     divClass "test" $ text $ showt $ _pubStorage'activeCurrencies ps
-    void <- widgetHoldDyn $ ffor activeCursD $ \currs -> do
+    void $ widgetHoldDyn $ ffor activeCursD $ \currs -> do
       currListE <- selectCurrenciesWidget $ S.toList currs
       tE <- uac currListE
       let updatedAuthE = traceEventWith (const "Active currencies setted") <$>
@@ -120,16 +123,8 @@ currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
                 & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
                 & authInfo'isUpdate .~ True
       setAuthInfoE <- setAuthInfo updatedAuthE
-      performEvent_ $ ffor setAuthInfoE $ \a -> do
-        authInf <- readExternalRef =<< asks env'authRef
-        liftIO $ print "================================="
-        liftIO $ print "First: "
-        liftIO $ print $ show $ authInf
-          & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies
-  --      liftIO $ print "---------------------------------"
-  --      liftIO $ print $ show $ _authInfo'storage a
-        liftIO $ print "================================="
-      storeWallet setAuthInfoE
+      authInfD <- getAuthInfo
+      storeWallet (void $ updated authInfD)
       showSuccessMsg $ STPSSuccess <$ setAuthInfoE
     pure ()
     where
