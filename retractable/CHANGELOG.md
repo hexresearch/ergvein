@@ -1,3 +1,8 @@
+0.1.3.0
+=======
+
+* Bump version for `reflex-dom`.
+
 0.1.2.0
 =======
 
