@@ -21,7 +21,7 @@ before_script:
 script:
 - nix-build -A ghc.ergvein-wallet
 - nix-build -A ghc.ergvein-index-server
-- nix-build --arg isAndroid true -A android.ergvein-wallet
+- nix-build -A android.ergvein-wallet
 - cd nix && ./ci-build-docker.sh
 
 branches:
