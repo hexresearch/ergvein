@@ -2,6 +2,7 @@ module Ergvein.Wallet.Scan (
     accountDiscovery
   ) where
 
+import Control.Lens
 import Control.Monad.IO.Class
 import Data.ByteString (ByteString)
 import Data.List
@@ -53,16 +54,16 @@ accountDiscovery = do
   storeWallet setAuthInfoE
 
 -- | Gets old CurrencyPubStorages, performs BIP44 account discovery algorithm for all currencies
--- then returns event with updated PubStorage.
+-- then returns event with updated CurrencyPubStorages.
 scan :: MonadFront t m => CurrencyPubStorages -> m (Event t CurrencyPubStorages)
 scan currencyPubStorages = do
   scanEvents <- traverse (applyScan currencyPubStorages) allCurrencies
   let scanEvents' = [(M.fromList . (: []) <$> e) | e <- scanEvents]
       scanEvents'' = mergeWith M.union scanEvents'
   scannedCurrencyPubStoragesD <- foldDyn M.union M.empty scanEvents''
-  let allFinishedE = flip push (updated scannedCurrencyPubStoragesD) $ \updatedCurrencyPubStorage -> do
+  let finishedE = flip push (updated scannedCurrencyPubStoragesD) $ \updatedCurrencyPubStorage -> do
         pure $ if M.size updatedCurrencyPubStorage == length allCurrencies then Just $ updatedCurrencyPubStorage else Nothing
-  pure allFinishedE
+  pure finishedE
 
 -- | Applies scan for a certain currency then returns event with result.
 applyScan :: MonadFront t m => CurrencyPubStorages -> Currency -> m (Event t (Currency, CurrencyPubStorage))
@@ -71,27 +72,37 @@ applyScan currencyPubStorages currency =
     Nothing -> fail $ "Could not find currency: " ++ (T.unpack $ currencyName currency)
     Just currencyPubStorage -> scanCurrency currency currencyPubStorage
 
+-- | Scan external addresses first, then internal addresses.
 scanCurrency :: MonadFront t m => Currency -> CurrencyPubStorage -> m (Event t (Currency, CurrencyPubStorage))
-scanCurrency currency currencyPubStorage = mdo
+scanCurrency currency currencyPubStorage = do
+  -- Updates external keys and transactions in CurrencyPubStorage
+  externalKeysE <- scanExternalAddresses currency currencyPubStorage
+  -- Updates internal keys in CurrencyPubStorage
+  internalKeysE <- scanInternalAddresses externalKeysE
+  pure internalKeysE
+
+scanExternalAddresses :: MonadFront t m => Currency -> CurrencyPubStorage -> m (Event t (Currency, CurrencyPubStorage))
+scanExternalAddresses currency currencyPubStorage = mdo
+  let pubKeystore = currencyPubStorage ^. currencyPubStorage'pubKeystore
+      masterPubKey = pubKeystore'master pubKeystore
+      emptyPubKeyStore = PubKeystore masterPubKey MI.empty MI.empty
+      startKeyIndex = 0
+      startKey = derivePubKey masterPubKey External (fromIntegral $ startKeyIndex)
   buildE <- getPostBuild
-  processKeyE <- traceEvent "Scanning key" <$> (waitFilters currency =<< delay 0 (leftmost [nextKeyE, (0, fstKey) <$ buildE]))
+  processKeyE <- traceEvent "Scanning key" <$>
+    (waitFilters currency =<< delay 0 (leftmost [nextKeyE, (startKeyIndex, startKey) <$ buildE]))
   gapD <- holdDyn 0 gapE
-  currentKeyD <- holdDyn (0, fstKey) nextKeyE
-  newKeystoreD <- foldDyn (addXPubKeyToKeystore External) emptyPubKeystore processKeyE
-  newTxsD <- foldDyn M.union emptyTxs getTxsE
-  filterAddressE <- filterAddress $ (egvXPubKeyToEgvAddress . snd) <$> processKeyE
-  getBlocksE <- requestBTCBlocksWaitRN filterAddressE
+  currentKeyD <- holdDyn (startKeyIndex, startKey) nextKeyE
+  newKeystoreD <- foldDyn (addXPubKeyToKeystore External) emptyPubKeyStore processKeyE
+  newTxsD <- foldDyn M.union M.empty getTxsE
+  filterAddressE <- traceEvent "Filter address key" <$> (filterAddress $ (egvXPubKeyToEgvAddress . snd) <$> processKeyE)
+  getBlocksE <- traceEvent "Get blocks" <$> (requestBTCBlocksWaitRN filterAddressE)
   blocksD <- holdDyn [] getBlocksE
   storedBlocksE <- storeMultipleBlocksByE getBlocksE
-  storedTxHashesE <- storeMultipleBlocksTxHashesByE $ tagPromptlyDyn blocksD storedBlocksE
+  storedTxHashesE <- traceEvent "Storing txs" <$> (storeMultipleBlocksTxHashesByE $ tagPromptlyDyn blocksD storedBlocksE)
   getTxsE <- getTxs $ attachPromptlyDynWith (\(_, key) blocks ->
     (egvXPubKeyToEgvAddress key, blocks)) currentKeyD $ tagPromptlyDyn blocksD storedTxHashesE
-  let fstKey = derivePubKey masterPubKey External (fromIntegral 0)
-      pubKeystore = _currencyPubStorage'pubKeystore currencyPubStorage
-      masterPubKey = pubKeystore'master pubKeystore
-      emptyPubKeystore = PubKeystore masterPubKey MI.empty MI.empty
-      emptyTxs = M.empty
-      gapE = flip pushAlways getTxsE $ \txs -> do
+  let gapE = flip pushAlways getTxsE $ \txs -> do
         gap <- sampleDyn gapD
         pure $ if null txs && gap < gapLimit then gap + 1 else 0
       nextKeyE = flip push gapE $ \gap -> do
@@ -106,6 +117,37 @@ scanCurrency currency currencyPubStorage = mdo
         newTxs <- sampleDyn newTxsD
         pure $ if gap >= gapLimit then Just $ (currency, CurrencyPubStorage newKeystore newTxs) else Nothing
   pure finishedE
+
+scanInternalAddresses :: MonadFront t m => Event t (Currency, CurrencyPubStorage) -> m (Event t (Currency, CurrencyPubStorage))
+scanInternalAddresses = performEvent . fmap someFunc
+
+someFunc :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => (Currency, CurrencyPubStorage) -> m (Currency, CurrencyPubStorage)
+someFunc (currency, currencyPubStorage) = do
+  let startKeyIndex = 0
+  newKeystore <- loop currencyPubStorage startKeyIndex 0
+  pure (currency, newKeystore)
+
+loop :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => CurrencyPubStorage -> Int -> Int -> m CurrencyPubStorage
+loop currencyPubStorage keyIndex gap
+  | gap == gapLimit = pure currencyPubStorage
+  | otherwise = do
+    let pubKeystore = currencyPubStorage ^. currencyPubStorage'pubKeystore
+        masterPubKey = pubKeystore'master pubKeystore
+        key = derivePubKey masterPubKey Internal (fromIntegral keyIndex)
+        address = egvXPubKeyToEgvAddress key
+        txs = currencyPubStorage ^. currencyPubStorage'transactions
+        updatedPubKeystore = addXPubKeyToKeystore Internal (keyIndex, key) pubKeystore
+        updatedPubStorage = currencyPubStorage & currencyPubStorage'pubKeystore .~ updatedPubKeystore
+    results <- traverse (checkAddrTx address) $ egvTxsToBtcTxs txs -- TODO: use DMap instead of Map in CurrencyPubStorage
+    if (M.size $ M.filter id results) > 0
+      then loop updatedPubStorage (keyIndex + 1) 0
+      else loop updatedPubStorage (keyIndex + 1) (gap + 1)
+
+egvTxsToBtcTxs :: M.Map TxId EgvTx -> M.Map TxId BtcTx
+egvTxsToBtcTxs egvTxMap = M.mapMaybe egvTxToBtcTx egvTxMap
+  where egvTxToBtcTx tx = case tx of
+          BtcTx t -> Just t
+          _ -> Nothing
 
 -- | If the given event fires and there is not fully synced filters. Wait for the synced filters and then fire the event.
 waitFilters :: MonadFront t m => Currency -> Event t a -> m (Event t a)
@@ -154,7 +196,8 @@ checkAddrTx addr tx = do
   where concatResults = foldr (||) False
 
 -- | Checks given TxIn wheather it contains given address.
--- Native SegWit addresses are not presented in TxIns scriptSig.
+-- First, the block containing the spent output is loaded.
+-- Then we check the output for the address.
 checkTxIn :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> HT.TxIn -> m Bool
 checkTxIn addr txIn = do
   let spentOutput = HT.prevOutput txIn

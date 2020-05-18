@@ -50,5 +50,4 @@ library
     LambdaCase
     OverloadedStrings
     RecordWildCards
-    RecordWildCards
     TemplateHaskell
