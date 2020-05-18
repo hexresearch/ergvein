@@ -30,15 +30,6 @@ passwordPage mnemonic curs = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText PPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText PPSDescr
   logPassE <- setupLoginPassword
-  {-authD <- getAuthInfo
-  let updatedAuthE = traceEventWith (const "Active currencies setted") <$>
-        flip pushAlways logPassE $ \_ -> do
-          auth <- sample . current $ authD
-          pure $ Just $ auth
-            & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
-            & authInfo'isUpdate .~ True
-  setAuthInfoE <- setAuthInfo updatedAuthE
-  storeWallet setAuthInfoE  -}
   createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo mnemonic curs) logPassE
   authInfoE <- handleDangerMsg createStorageE
   void $ setAuthInfo $ Just <$> authInfoE

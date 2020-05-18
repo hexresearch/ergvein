@@ -90,15 +90,12 @@ currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
     void $ widgetHoldDyn $ ffor activeCursD $ \currs -> do
       currListE <- selectCurrenciesWidget $ S.toList currs
       uac currListE
-      let updatedAuthE = traceEventWith (const "Active currencies setted") <$>
-            flip pushAlways currListE $ \curs -> do
+      let updatedAuthE = flip pushAlways currListE $ \curs -> do
               auth <- sample . current $ authD
               pure $ Just $ auth
                 & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
-                & authInfo'isUpdate .~ True
       setAuthInfoE <- setAuthInfo updatedAuthE
-      authInfD <- getAuthInfo
-      storeWallet (void $ updated authInfD)
+      storeWallet (void $ updated authD)
       showSuccessMsg $ STPSSuccess <$ setAuthInfoE
     pure ()
     where
