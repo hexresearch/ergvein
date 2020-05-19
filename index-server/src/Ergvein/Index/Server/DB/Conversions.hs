@@ -32,8 +32,8 @@ instance Conversion (UTCTime , NewPeer) DiscoveredPeerRec where
   convert (t,discoveredPeer) = DiscoveredPeerRec
     { discoveredPeerRecUrl = T.pack $ showBaseUrl $ newPeerUrl discoveredPeer
     , discoveredPeerRecLastValidatedAt = t
-    , discoveredPeerRecIsSecureConnection = 
-        case newPeerConnectionScheme discoveredPeer of
+    , discoveredPeerRecIsSecureConn = 
+        case newPeerConnScheme discoveredPeer of
           Https -> True
           Http  -> False
     }
@@ -46,8 +46,8 @@ instance Conversion (Entity DiscoveredPeerRec) Peer where
     { peerId = key
     , peerUrl = fromJust $ parseBaseUrl $ T.unpack $ discoveredPeerRecUrl value
     , peerLastValidatedAt = discoveredPeerRecLastValidatedAt value
-    , peerConnectionScheme =
-        case discoveredPeerRecIsSecureConnection value of
+    , peerConnScheme =
+        case discoveredPeerRecIsSecureConn value of
             True  -> Https
             False -> Http
     }

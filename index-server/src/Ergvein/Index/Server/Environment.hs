@@ -51,21 +51,21 @@ newServerEnv cfg = do
     liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
 
     persistencePool <- liftIO $ runStdoutLoggingT $ do
-        persistencePool <- getPersistencePool (configDbLog cfg) (connectionStringFromConfig cfg)
+        persistencePool <- getPersistencePool (cfgDbLog cfg) (connectionStringFromConfig cfg)
         applyDatabaseMigration persistencePool
         pure persistencePool
 
-    levelDBContext <- openCacheDb (configCachePath cfg) persistencePool
-    ergoNodeClient <- liftIO $ ErgoApi.newClient (configERGONodeHost cfg) (configERGONodePort cfg)
+    levelDBContext <- openCacheDb (cfgCachePath cfg) persistencePool
+    ergoNodeClient <- liftIO $ ErgoApi.newClient (cfgERGONodeHost cfg) (cfgERGONodePort cfg)
     httpManager    <- liftIO $ HC.newManager HC.defaultManagerSettings
     tlsManager     <- liftIO $ newTlsManager
 
-    let bitcoinNodeNetwork = if configBTCNodeIsTestnet cfg then HK.btcTest else HK.btc
-        peerDiscoveryRequisites = PeerDiscoveryRequisites 
-                                  (parseBaseUrl @Maybe <=< configOwnPeerAddress $ cfg)
-                                  (fromJust . parseBaseUrl <$> configKnownPeers cfg)
-                                  (configPeerConnectionActualizationDelay cfg)
-                                  (configPeerConnectionRetryTimeout cfg)
+    let bitcoinNodeNetwork = if cfgBTCNodeIsTestnet cfg then HK.btcTest else HK.btc
+        descReqoveryRequisites = PeerDiscoveryRequisites 
+                                  (parseBaseUrl @Maybe <=< cfgOwnPeerAddress $ cfg)
+                                  (fromJust . parseBaseUrl <$> cfgKnownPeers cfg)
+                                  (cfgPeerActualizationDelay cfg)
+                                  (cfgPeerActualizationTimeout cfg)
     traceShowM cfg
     pure ServerEnv 
       { envServerConfig            = cfg
@@ -75,7 +75,7 @@ newServerEnv cfg = do
       , envBitcoinNodeNetwork      = bitcoinNodeNetwork
       , envErgoNodeClient          = ergoNodeClient
       , envClientManager           = tlsManager
-      , envPeerDiscoveryRequisites = peerDiscoveryRequisites
+      , envPeerDiscoveryRequisites = descReqoveryRequisites
       }
 
 -- | Log exceptions at Error severity

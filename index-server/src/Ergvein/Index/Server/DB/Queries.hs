@@ -65,7 +65,7 @@ getDiscoveredPeers :: MonadIO m => Bool -> QueryT m [Peer]
 getDiscoveredPeers onlySecured = do
   result <- select $ from $ \peer -> do
     when onlySecured $ 
-      where_ $ peer ^. DiscoveredPeerRecIsSecureConnection ==. val onlySecured
+      where_ $ peer ^. DiscoveredPeerRecIsSecureConn ==. val onlySecured
     pure peer
   pure $ convert @(Entity DiscoveredPeerRec) <$> result
 

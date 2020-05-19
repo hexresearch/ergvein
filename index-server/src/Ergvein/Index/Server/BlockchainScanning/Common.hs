@@ -37,10 +37,6 @@ scanningInfo = mapM nfo allCurrencies
   where
     nfo :: Currency -> ServerM ScanProgressInfo
     nfo currency = do
-      maybeScanned <- dbQuery $ scannedBlockHeight currency
-      let scanned = fromMaybe (currencyHeightStart currency) maybeScanned
-      actual  <- actualHeight currency
-      pure $ ScanProgressInfo currency scanned actual
 
 
 scannedBlockHeight :: (MonadIO m) => Currency -> QueryT m (Maybe BlockHeight)
@@ -88,7 +84,7 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
       totalh <-  actualHeight currency
       heights <- blockHeightsToScan currency
       traverse_ (blockIteration totalh) heights
-      liftIO $ threadDelay $ configBlockchainScanDelay cfg
+      liftIO $ threadDelay $ cfgBlockchainScanDelay cfg
 
 blockchainScanning :: ServerM [Thread]
 blockchainScanning = sequenceA 

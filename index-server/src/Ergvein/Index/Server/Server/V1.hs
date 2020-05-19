@@ -83,13 +83,13 @@ peerValidationToResponce = \case
   Left error -> IntroducePeerResp False $ Just $ case error of
     AlreadyKnown ->
       "Peer with such address already known"
-    InfoEndpointConnectionError ->
+    InfoEndpointError ->
       "Unable to establish connection to Info endpoint"
     CurrencyOutOfSync outOfSync -> 
       "Currency " <> show (outOfsyncCurrency outOfSync) <> "scanned height much less then " <> show (outOfSyncLocalHeight outOfSync)
     CurrencyMissing currency ->
       "Currency " <> show currency <> "is missing"
-    KnownPeersEndpointConnectionError ->
+    KnownPeersEndpointError ->
       "Unable to establish connection to knownPeers endpoint"
 
 

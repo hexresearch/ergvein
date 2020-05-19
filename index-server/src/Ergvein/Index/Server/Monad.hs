@@ -62,10 +62,10 @@ instance BitcoinApiMonad ServerM where
     cfg <- asks $ envServerConfig
 
     liftIO $ BitcoinApi.withClient 
-     (configBTCNodeHost     cfg)
-     (configBTCNodePort     cfg)
-     (configBTCNodeUser     cfg)
-     (configBTCNodePassword cfg)
+     (cfgBTCNodeHost     cfg)
+     (cfgBTCNodePort     cfg)
+     (cfgBTCNodeUser     cfg)
+     (cfgBTCNodePassword cfg)
      f
 
 instance HasClientManager ServerM where

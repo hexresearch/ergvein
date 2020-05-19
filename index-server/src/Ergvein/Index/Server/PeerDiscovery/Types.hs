@@ -15,8 +15,8 @@ data CurrencyOutOfSyncInfo = CurrencyOutOfSyncInfo
 
 data PeerValidationResult = OK
   | AlreadyKnown
-  | InfoEndpointConnectionError
-  | KnownPeersEndpointConnectionError
+  | InfoEndpointError
+  | KnownPeersEndpointError
   | CurrencyOutOfSync CurrencyOutOfSyncInfo
   | CurrencyMissing Currency
   deriving Show
@@ -29,17 +29,17 @@ data Peer = Peer
   { peerId               :: DiscoveredPeerRecId
   , peerUrl              :: BaseUrl
   , peerLastValidatedAt  :: UTCTime
-  , peerConnectionScheme :: Scheme
+  , peerConnScheme :: Scheme
   } deriving Show
 
 data NewPeer = NewPeer
-  { newPeerUrl :: BaseUrl
-  , newPeerConnectionScheme :: Scheme
+  { newPeerUrl              :: BaseUrl
+  , newPeerConnScheme :: Scheme
   }
 
 data PeerDiscoveryRequisites = PeerDiscoveryRequisites
-  { peerDescOwnAddress                     :: !(Maybe BaseUrl)
-  , peerDescPredefinedPeers                :: ![BaseUrl]
-  , peerDiscConnectionActualizationDelay   :: !Int
-  , peerDescConnectionRetryTimeout         :: !NominalDiffTime
+  { descReqOwnAddress           :: !(Maybe BaseUrl)
+  , descReqPredefinedPeers      :: ![BaseUrl]
+  , descReqActualizationDelay   :: !Int
+  , descReqActualizationTimeout :: !NominalDiffTime
   }

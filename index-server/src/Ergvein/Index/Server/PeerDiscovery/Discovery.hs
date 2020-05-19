@@ -54,7 +54,7 @@ considerPeerCandidate candidate = do
 
 knownPeersSet :: [Peer] -> ServerM (Set.HashSet BaseUrl)
 knownPeersSet discoveredPeers = do
-  ownAddress <- peerDescOwnAddress <$> getDiscoveryRequisites
+  ownAddress <- descReqOwnAddress <$> getDiscoveryRequisites
   pure $ Set.fromList $ (toList ownAddress) ++ (peerUrl <$> discoveredPeers)
 
 knownPeersActualization :: ServerM Thread
@@ -69,7 +69,7 @@ knownPeersActualization = do
       knownPeers <- dbQuery $ getDiscoveredPeers False
 
       let (outdatedPeers, peersToFetchFrom) = 
-            partition (isOutdated (peerDescConnectionRetryTimeout requisites) currentTime) knownPeers
+            partition (isOutdated (descReqActualizationTimeout requisites) currentTime) knownPeers
       
       knowPeersSet <- knownPeersSet peersToFetchFrom
       (peersToRefresh, fetchedPeers) <- mconcat <$> mapM peersKnownTo peersToFetchFrom
@@ -80,7 +80,7 @@ knownPeersActualization = do
         deleteExpiredPeers $ peerId <$> outdatedPeers
         refreshPeerValidationTime $ peerId <$> peersToRefresh
         addNewPeers $ newPeer <$> uniqueNotDiscoveredFetchedPeers
-      liftIO $ threadDelay $ peerDiscConnectionActualizationDelay requisites
+      liftIO $ threadDelay $ descReqActualizationDelay requisites
 
     isOutdated :: NominalDiffTime -> UTCTime -> Peer -> Bool
     isOutdated retryTimeout currentTime peer = let
@@ -98,12 +98,12 @@ addDefaultPeersIfNoneDiscovered :: ServerM ()
 addDefaultPeersIfNoneDiscovered = do
   isNoneDiscovered <- dbQuery isNonePeersDiscovered
   when isNoneDiscovered $ do
-    predefinedPeers <- peerDescPredefinedPeers <$> getDiscoveryRequisites
+    predefinedPeers <- descReqPredefinedPeers <$> getDiscoveryRequisites
     dbQuery $ addNewPeers $ newPeer <$> predefinedPeers
 
 peerIntroduce :: ServerM ()
 peerIntroduce = void $ runMaybeT $ do
-  ownAddress <- MaybeT $ peerDescOwnAddress <$> getDiscoveryRequisites
+  ownAddress <- MaybeT $ descReqOwnAddress <$> getDiscoveryRequisites
   lift $ do
     allPeers <- dbQuery $ getDiscoveredPeers False
     let introduceReq = IntroducePeerReq $ showBaseUrl ownAddress
@@ -117,12 +117,12 @@ newPeer peerUrl = NewPeer peerUrl (baseUrlScheme peerUrl)
 
 peerInfoRequest :: BaseUrl -> ExceptT PeerValidationResult ServerM InfoResponse
 peerInfoRequest baseUrl =
-  ExceptT $ (const InfoEndpointConnectionError `mapLeft`) 
+  ExceptT $ (const InfoEndpointError `mapLeft`) 
          <$> getInfoEndpoint baseUrl ()
 
 peerKnownPeersRequest :: BaseUrl -> ExceptT PeerValidationResult ServerM KnownPeersResp
 peerKnownPeersRequest baseUrl =
-  ExceptT $ (const KnownPeersEndpointConnectionError `mapLeft`)
+  ExceptT $ (const KnownPeersEndpointError `mapLeft`)
          <$> getKnownPeersEndpoint baseUrl (KnownPeersReq False)
 
 peerActualScan :: InfoResponse -> ExceptT PeerValidationResult ServerM InfoResponse

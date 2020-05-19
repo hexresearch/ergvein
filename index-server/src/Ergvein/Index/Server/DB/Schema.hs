@@ -25,6 +25,6 @@ BlockMetaRec
 DiscoveredPeerRec
   url Text
   lastValidatedAt UTCTime
-  isSecureConnection Bool
+  isSecureConn Bool
   UniqueUrl url
   |]

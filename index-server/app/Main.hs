@@ -58,7 +58,7 @@ startServer Options{..} = case optsCommand of
       cfg <- loadConfig cfgPath
       env <- runStdoutLoggingT $ newServerEnv cfg
       runServerMIO env onStartup
-      T.putStrLn $ pack $ "Server started at " <> configDbHost cfg <> ":" <> (show . configServerPort $ cfg)
+      T.putStrLn $ pack $ "Server started at " <> cfgDbHost cfg <> ":" <> (show . cfgServerPort $ cfg)
       let app = logStdoutDev $ indexServerApp env
-          warpSettings = setPort (configServerPort cfg) defaultSettings
+          warpSettings = setPort (cfgServerPort cfg) defaultSettings
       runSettings warpSettings app
