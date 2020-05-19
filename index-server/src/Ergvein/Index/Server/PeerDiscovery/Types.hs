@@ -38,7 +38,8 @@ data NewPeer = NewPeer
   }
 
 data PeerDiscoveryRequisites = PeerDiscoveryRequisites
-  { peerDescOwnAddress             :: !(Maybe BaseUrl)
-  , peerDescPredefinedPeers        :: ![BaseUrl]
-  , peerDescConnectionRetryTimeout :: !NominalDiffTime
+  { peerDescOwnAddress                     :: !(Maybe BaseUrl)
+  , peerDescPredefinedPeers                :: ![BaseUrl]
+  , peerDiscConnectionActualizationDelay   :: !Int
+  , peerDescConnectionRetryTimeout         :: !NominalDiffTime
   }

@@ -64,6 +64,7 @@ newServerEnv cfg = do
         peerDiscoveryRequisites = PeerDiscoveryRequisites 
                                   (parseBaseUrl @Maybe <=< configOwnPeerAddress $ cfg)
                                   (fromJust . parseBaseUrl <$> configKnownPeers cfg)
+                                  (configPeerConnectionActualizationDelay cfg)
                                   (configPeerConnectionRetryTimeout cfg)
     traceShowM cfg
     pure ServerEnv 

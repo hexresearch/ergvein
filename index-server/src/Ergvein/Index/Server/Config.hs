@@ -8,26 +8,27 @@ import GHC.Generics
 import Data.Time.Clock
 
 data Config = Config
-  { configServerPort                 :: !Int
-  , configDbHost                     :: !String
-  , configDbPort                     :: !Int
-  , configDbUser                     :: !String
-  , configDbPassword                 :: !String
-  , configDbName                     :: !String
-  , configCachePath                  :: !String
-  , configBlockchainScanDelay        :: !Int
-  , configDbLog                      :: !Bool
-  , configPubScriptHistoryScan       :: !Bool
-  , configBTCNodeIsTestnet           :: !Bool
-  , configBTCNodeHost                :: !String
-  , configBTCNodePort                :: !Int
-  , configBTCNodeUser                :: !Text
-  , configBTCNodePassword            :: !Text
-  , configERGONodeHost               :: !String
-  , configERGONodePort               :: !Int
-  , configOwnPeerAddress             :: !(Maybe String)
-  , configKnownPeers                 :: ![String]
-  , configPeerConnectionRetryTimeout :: !NominalDiffTime
+  { configServerPort                       :: !Int
+  , configDbHost                           :: !String
+  , configDbPort                           :: !Int
+  , configDbUser                           :: !String
+  , configDbPassword                       :: !String
+  , configDbName                           :: !String
+  , configCachePath                        :: !String
+  , configBlockchainScanDelay              :: !Int
+  , configDbLog                            :: !Bool
+  , configPubScriptHistoryScan             :: !Bool
+  , configBTCNodeIsTestnet                 :: !Bool
+  , configBTCNodeHost                      :: !String
+  , configBTCNodePort                      :: !Int
+  , configBTCNodeUser                      :: !Text
+  , configBTCNodePassword                  :: !Text
+  , configERGONodeHost                     :: !String
+  , configERGONodePort                     :: !Int
+  , configOwnPeerAddress                   :: !(Maybe String)
+  , configKnownPeers                       :: ![String]
+  , configPeerConnectionActualizationDelay :: !Int
+  , configPeerConnectionRetryTimeout       :: !NominalDiffTime
   } deriving (Show, Generic)
 deriveJSON (aesonOptionsStripPrefix "config") ''Config
 

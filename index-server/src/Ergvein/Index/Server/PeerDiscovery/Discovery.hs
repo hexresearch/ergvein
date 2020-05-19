@@ -74,13 +74,13 @@ knownPeersActualization = do
       knowPeersSet <- knownPeersSet peersToFetchFrom
       (peersToRefresh, fetchedPeers) <- mconcat <$> mapM peersKnownTo peersToFetchFrom
 
-      let uniqueNotDiscoveredFetchedPeers = filter (not . (`Set.member` knowPeersSet)) $  uniqueElements fetchedPeers
+      let uniqueNotDiscoveredFetchedPeers = filter (not . (`Set.member` knowPeersSet)) $ uniqueElements fetchedPeers
 
       dbQuery $ do
         deleteExpiredPeers $ peerId <$> outdatedPeers
         refreshPeerValidationTime $ peerId <$> peersToRefresh
         addNewPeers $ newPeer <$> uniqueNotDiscoveredFetchedPeers
-      liftIO $ threadDelay $ configBlockchainScanDelay cfg
+      liftIO $ threadDelay $ peerDiscConnectionActualizationDelay requisites
 
     isOutdated :: NominalDiffTime -> UTCTime -> Peer -> Bool
     isOutdated retryTimeout currentTime peer = let
