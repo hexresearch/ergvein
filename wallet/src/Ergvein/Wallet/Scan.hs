@@ -24,6 +24,7 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Constants
 import Ergvein.Wallet.Storage.Keys (derivePubKey, egvXPubKeyToEgvAddress)
 import Ergvein.Wallet.Storage.Util (addXPubKeyToKeystore)
+import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Util
 
 import qualified Data.IntMap.Strict                 as MI
@@ -93,18 +94,26 @@ scanExternalAddresses currency currencyPubStorage = mdo
     (waitFilters currency =<< delay 0 (leftmost [nextKeyE, (startKeyIndex, startKey) <$ buildE]))
   gapD <- holdDyn 0 gapE
   currentKeyD <- holdDyn (startKeyIndex, startKey) nextKeyE
+  postSync currency $ flip pushAlways gapE $ \currnetGap -> do
+    (keyIndex, _) <- sample . current $ currentKeyD
+    pure (keyIndex + 1, currnetGap)
   newKeystoreD <- foldDyn (addXPubKeyToKeystore External) emptyPubKeyStore processKeyE
   newTxsD <- foldDyn M.union M.empty getTxsE
-  filterAddressE <- traceEvent "Filter address key" <$> (filterAddress $ (egvXPubKeyToEgvAddress . snd) <$> processKeyE)
-  getBlocksE <- traceEvent "Get blocks" <$> (requestBTCBlocksWaitRN filterAddressE)
-  blocksD <- holdDyn [] getBlocksE
+  blocksD <- holdDyn [] blocksE
+  filterAddressE <- traceEvent "Scanned for blocks" <$> (filterAddress $ (egvXPubKeyToEgvAddress . snd) <$> processKeyE)
+  getBlocksE <- traceEvent "Blocks requested" <$> requestBTCBlocksWaitRN filterAddressE
   storedBlocksE <- storeMultipleBlocksByE getBlocksE
-  storedTxHashesE <- traceEvent "Storing txs" <$> (storeMultipleBlocksTxHashesByE $ tagPromptlyDyn blocksD storedBlocksE)
+  storedTxHashesE <- storeMultipleBlocksTxHashesByE $ tagPromptlyDyn blocksD storedBlocksE
   getTxsE <- getTxs $ attachPromptlyDynWith (\(_, key) blocks ->
     (egvXPubKeyToEgvAddress key, blocks)) currentKeyD $ tagPromptlyDyn blocksD storedTxHashesE
-  let gapE = flip pushAlways getTxsE $ \txs -> do
+  let noBlocksE = fforMaybe filterAddressE $ \case
+        [] -> Just []
+        _ -> Nothing
+      blocksE = leftmost [getBlocksE, noBlocksE]
+      txsE = leftmost [getTxsE, mempty <$ noBlocksE]
+      gapE = flip pushAlways txsE $ \txs -> do
         gap <- sampleDyn gapD
-        pure $ if null txs && gap < gapLimit then gap + 1 else 0
+        pure $ if null txs && gap < gapLimit then gap + 1 else gapLimit
       nextKeyE = flip push gapE $ \gap -> do
         gap <- sampleDyn gapD
         currentKeyIndex <- fmap fst (sampleDyn currentKeyD)
@@ -117,6 +126,15 @@ scanExternalAddresses currency currencyPubStorage = mdo
         newTxs <- sampleDyn newTxsD
         pure $ if gap >= gapLimit then Just $ (currency, CurrencyPubStorage newKeystore newTxs) else Nothing
   pure finishedE
+
+type CurrentGap = Int
+type AddressNum = Int
+
+-- | Show to user how far we are went in syncing addresses
+postSync :: MonadFront t m => Currency -> Event t (AddressNum, CurrentGap) -> m ()
+postSync cur e = setSyncProgress $ ffor e $ \(ai, gnum) -> if gnum >= gapLimit
+  then Synced
+  else SyncMeta cur (SyncAddress ai) (fromIntegral gnum) (fromIntegral gapLimit)
 
 scanInternalAddressesByE :: MonadFront t m => Event t (Currency, CurrencyPubStorage) -> m (Event t (Currency, CurrencyPubStorage))
 scanInternalAddressesByE = performEvent . fmap scanInternalAddresses
