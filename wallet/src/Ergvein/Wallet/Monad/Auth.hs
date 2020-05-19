@@ -48,6 +48,7 @@ import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node
+import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Settings (Settings(..), storeSettings, defaultIndexers)
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Sync.Status
@@ -372,9 +373,10 @@ liftAuth ma0 ma = mdo
 
         flip runReaderT env $ do -- Workers and other routines go here
           filtersLoader
-          infoWorker
-          heightAsking
+          accountDiscovery
           btcNodeRefresher
+          heightAsking
+          infoWorker
           pure ()
         runReaderT (wrapped ma) env
   let
