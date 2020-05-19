@@ -78,7 +78,7 @@ scanCurrency currency currencyPubStorage = do
   -- Updates external keys and transactions in CurrencyPubStorage
   externalKeysE <- scanExternalAddresses currency currencyPubStorage
   -- Updates internal keys in CurrencyPubStorage
-  internalKeysE <- scanInternalAddresses externalKeysE
+  internalKeysE <- scanInternalAddressesByE externalKeysE
   pure internalKeysE
 
 scanExternalAddresses :: MonadFront t m => Currency -> CurrencyPubStorage -> m (Event t (Currency, CurrencyPubStorage))
@@ -118,17 +118,17 @@ scanExternalAddresses currency currencyPubStorage = mdo
         pure $ if gap >= gapLimit then Just $ (currency, CurrencyPubStorage newKeystore newTxs) else Nothing
   pure finishedE
 
-scanInternalAddresses :: MonadFront t m => Event t (Currency, CurrencyPubStorage) -> m (Event t (Currency, CurrencyPubStorage))
-scanInternalAddresses = performEvent . fmap someFunc
+scanInternalAddressesByE :: MonadFront t m => Event t (Currency, CurrencyPubStorage) -> m (Event t (Currency, CurrencyPubStorage))
+scanInternalAddressesByE = performEvent . fmap scanInternalAddresses
 
-someFunc :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => (Currency, CurrencyPubStorage) -> m (Currency, CurrencyPubStorage)
-someFunc (currency, currencyPubStorage) = do
+scanInternalAddresses :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => (Currency, CurrencyPubStorage) -> m (Currency, CurrencyPubStorage)
+scanInternalAddresses (currency, currencyPubStorage) = do
   let startKeyIndex = 0
-  newKeystore <- loop currencyPubStorage startKeyIndex 0
+  newKeystore <- scanInternalAddressesLoop currencyPubStorage startKeyIndex 0
   pure (currency, newKeystore)
 
-loop :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => CurrencyPubStorage -> Int -> Int -> m CurrencyPubStorage
-loop currencyPubStorage keyIndex gap
+scanInternalAddressesLoop :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => CurrencyPubStorage -> Int -> Int -> m CurrencyPubStorage
+scanInternalAddressesLoop currencyPubStorage keyIndex gap
   | gap == gapLimit = pure currencyPubStorage
   | otherwise = do
     let pubKeystore = currencyPubStorage ^. currencyPubStorage'pubKeystore
@@ -138,11 +138,12 @@ loop currencyPubStorage keyIndex gap
         txs = currencyPubStorage ^. currencyPubStorage'transactions
         updatedPubKeystore = addXPubKeyToKeystore Internal (keyIndex, key) pubKeystore
         updatedPubStorage = currencyPubStorage & currencyPubStorage'pubKeystore .~ updatedPubKeystore
-    results <- traverse (checkAddrTx address) $ egvTxsToBtcTxs txs -- TODO: use DMap instead of Map in CurrencyPubStorage
-    if (M.size $ M.filter id results) > 0
-      then loop updatedPubStorage (keyIndex + 1) 0
-      else loop updatedPubStorage (keyIndex + 1) (gap + 1)
+    checkResults <- traverse (checkAddrTx address) $ egvTxsToBtcTxs txs -- TODO: use DMap instead of Map in CurrencyPubStorage
+    if (M.size $ M.filter id checkResults) > 0
+      then scanInternalAddressesLoop updatedPubStorage (keyIndex + 1) 0
+      else scanInternalAddressesLoop updatedPubStorage (keyIndex + 1) (gap + 1)
 
+-- TODO: This function will not be needed after using DMap as a CurrencyPubStorage
 egvTxsToBtcTxs :: M.Map TxId EgvTx -> M.Map TxId BtcTx
 egvTxsToBtcTxs egvTxMap = M.mapMaybe egvTxToBtcTx egvTxMap
   where egvTxToBtcTx tx = case tx of
