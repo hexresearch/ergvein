@@ -13,6 +13,8 @@ module Ergvein.Filters.Btc
   , decodeBtcAddrFilter
   , makeBtcFilter
   , applyBtcFilter
+  -- * Testing
+  , getSegWitAddr
   )
 where
 
@@ -99,11 +101,11 @@ decodeBtcAddrFilter = A.parseOnly (parser <* A.endOfInput)
       <*> fmap (decodeGcs btcDefP) A.takeByteString
 
 
-instance B.Binary BtcAddrFilter where 
+instance B.Binary BtcAddrFilter where
   put = B.put . encodeBtcAddrFilter
   {-# INLINE put #-}
-  get = do 
-    bs <- B.get 
+  get = do
+    bs <- B.get
     either fail pure $ decodeBtcAddrFilter bs
   {-# INLINE get #-}
 

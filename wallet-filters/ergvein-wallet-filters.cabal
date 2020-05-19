@@ -83,14 +83,19 @@ benchmark bench-btc-filters
   type:              exitcode-stdio-1.0
   main-is:           BTC.hs
   hs-source-dirs:    bench
+  ghc-options:       -threaded -O3
+  -- ghc-options:         -threaded -O3 -rtsopts "-with-rtsopts=-N -A64m -AL256m -qn4"
   build-depends:
      ergvein-wallet-filters
-   , ergvein-common
-   , cereal
-   , haskoin-core
    , base
    , bytestring
+   , cereal
    , criterion
+   , ergvein-common
+   , haskoin-core
+   , random
+   , text
+   , vector
 
 executable ergvein-filters-tx-fetcher
  hs-source-dirs:      app

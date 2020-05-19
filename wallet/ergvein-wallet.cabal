@@ -230,7 +230,6 @@ library
 
     if flag(testnet)
         cpp-options: -DTESTNET
-    ghc-options: -O2
 
 executable ergvein
   hs-source-dirs:
