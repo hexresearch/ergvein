@@ -86,7 +86,7 @@ scanExternalAddresses currency currencyPubStorage = mdo
   let pubKeystore = currencyPubStorage ^. currencyPubStorage'pubKeystore
       masterPubKey = pubKeystore'master pubKeystore
       emptyPubKeyStore = PubKeystore masterPubKey MI.empty MI.empty
-      startGap = 1
+      startGap = 0
       startKeyIndex = 0
       startKey = derivePubKey masterPubKey External (fromIntegral $ startKeyIndex)
   buildE <- getPostBuild
@@ -116,7 +116,6 @@ scanExternalAddresses currency currencyPubStorage = mdo
         gap <- sampleDyn gapD
         pure $ if null txs && gap < gapLimit then gap + 1 else startGap
       nextKeyE = flip push gapE $ \gap -> do
-        gap <- sampleDyn gapD
         currentKeyIndex <- fmap fst (sampleDyn currentKeyD)
         let nextKeyIndex = currentKeyIndex + 1
         pure $ if gap >= gapLimit
