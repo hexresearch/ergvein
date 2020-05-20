@@ -38,7 +38,6 @@ import qualified Data.Dependent.Map as DM
 import qualified Data.Map as M
 import qualified Data.IntMap as MI
 import qualified Data.Set as S
-import qualified Data.List as L
 import qualified Data.Bits as BI
 import qualified Data.ByteString.Char8 as B8
 
@@ -64,6 +63,15 @@ bctNodeController = mdo
   conMapD   <- getNodeConnectionsD
   nodeRef   <- getNodeConnRef
   te        <- fmap void $ tickLossyFromPostBuildTime btcRefrTimeout
+
+  pubStorageD <- getPubStorageD
+  let (allBtcAddrsD, txidsD) = splitDynPure $ ffor pubStorageD $ \(PubStorage _ cm) -> case M.lookup BTC cm of
+        Nothing -> ([], S.empty)
+        Just (CurrencyPubStorage keystore txmap) -> let
+          addrs = extractAddrs keystore
+          txids = S.fromList $ M.keys txmap
+          in (addrs, txids)
+
   let btcLenD = ffor conMapD $ fromMaybe 0 . fmap M.size . DM.lookup BTCTag
   let te' = current btcLenD `tag` te
   -- Get an url to connect if:
@@ -76,9 +84,10 @@ bctNodeController = mdo
         else fmap listToMaybe $ sampleDyn urlStoreD
   (urlStoreD, fstRunE) <- mkUrlBatcher sel urlE
 
+  let (remNodeUrlE, txE) = switchTuple $ splitDynPure $ fmap (unzip . M.elems) tmpD
+  let remNodeE = (\u -> M.singleton u Nothing) <$> remNodeUrlE
   let addNodeE = (\u -> M.singleton u $ Just ()) <$> urlE
-  let (remNodeE, txE) = switchTuple $ splitDynPure $ fmap (unzip . M.elems) tmpD
-  let listActionE = leftmost [addNodeE, never]
+  let listActionE = leftmost [addNodeE, remNodeE]
 
   tmpD <- listWithKeyShallowDiff M.empty listActionE $ \u _ _ -> do
     let reqE = extractReq sel BTC u
@@ -87,19 +96,17 @@ bctNodeController = mdo
     closeE <- performEvent $ ffor (nodeconCloseE node) $ const $
       modifyExternalRef nodeRef $ \cm -> (removeNodeConn BTCTag u cm, ())
     let respE = nodeconRespE node
-    let txInvsE = fforMaybe respE $ \case
-          MInv inv -> filterTxInvs inv
-          _ -> Nothing
-        reqE = fmap ((u,) . NodeReqBTC . MGetData . GetData) $ txInvsE
-    requestFromNode reqE
-    let txE = fforMaybe respE $ \case
+    let txInvsE = flip push respE $ \case
+          MInv inv -> do
+            txids <- sampleDyn txidsD
+            pure $ filterTxInvs txids inv
+          _ -> pure Nothing
+        reqTxE = fmap ((u,) . NodeReqBTC . MGetData . GetData) $ txInvsE
+    requestFromNode reqTxE
+    let newTxE = fforMaybe respE $ \case
           MTx tx -> Just tx
           _ -> Nothing
-    pure $ (u <$ closeE, txE)
-  pubStorageD <- getPubStorageD
-  let allBtcAddrsD = ffor pubStorageD $ \(PubStorage _ cm) -> case M.lookup BTC cm of
-        Nothing -> []
-        Just (CurrencyPubStorage keystore _) -> extractAddrs keystore
+    pure $ (u <$ closeE, newTxE)
 
   store <- getBlocksStorage
   mtxE <- performFork $ ffor (current allBtcAddrsD `attach` txE) $ \(addrs, tx) -> do
@@ -124,13 +131,16 @@ extractAddrs (PubKeystore mast ext int) = mastadr:(extadrs <> intadrs)
     intadrs = fmap egvXPubKeyToEgvAddress $ MI.elems int
 
 -- | Extract TxHashes from Inv vector. Return Nothing if no TxHashes are present
-filterTxInvs :: Inv -> Maybe [InvVector]
-filterTxInvs (Inv invs) = case txs of
+filterTxInvs :: S.Set TxId -> Inv -> Maybe [InvVector]
+filterTxInvs txids (Inv invs) = case txs of
   [] -> Nothing
   _ -> Just txs
   where
     txs = catMaybes $ ffor invs $ \iv -> case invType iv of
-      InvTx -> Just iv
+      InvTx -> let
+        txh = txHashToHex $ TxHash $ invHash iv
+        b = S.member txh txids
+        in if b then Nothing else Just iv
       _ -> Nothing
 
 data SAStorageAct = SAAdd [SockAddr] | SARemove SockAddr | SAClear
@@ -180,7 +190,6 @@ mkUrlBatcher sel remE = mdo
   sasE <- performFork $ ffor hostAddrsE $ \hs ->
     liftIO $ fmap (SAAdd . catMaybes) $ flip traverse hs $ \h ->
       catch (fmap Just $ evaluate $ hostToSockAddr h) (\(_ :: SomeException) -> pure Nothing)
-  let sactE = leftmost [sasE, SARemove <$> remE]
   urlsD <- foldDynMaybe handleSAStore S.empty $ leftmost [sasE, SARemove <$> remE]
   let actE = flip push (updated urlsD) $ \acc -> if S.size acc >= saStorageSize
         then pure $ Just Nothing          -- If the storage is full, stop connections
