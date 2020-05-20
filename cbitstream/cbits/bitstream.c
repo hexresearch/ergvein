@@ -27,6 +27,16 @@
 #include <string.h>
 #include "bitstream.h"
 
+struct bitstream_writer_t* bitstream_writer_new()
+{
+  return (struct bitstream_writer_t*)malloc(sizeof(struct bitstream_writer_t));
+}
+
+void bitstream_writer_delete(struct bitstream_writer_t *self_p)
+{
+  free(self_p);
+}
+
 void bitstream_writer_init(struct bitstream_writer_t *self_p,
                            uint8_t *buf_p)
 {
@@ -341,6 +351,16 @@ void bitstream_writer_seek(struct bitstream_writer_t *self_p,
     self_p->bit_offset = (offset % 8);
 }
 
+struct bitstream_writer_bounds_t* bitstream_writer_bounds_new()
+{
+  return (struct bitstream_writer_bounds_t*)malloc(sizeof(struct bitstream_writer_bounds_t));
+}
+
+void bitstream_writer_bounds_delete(struct bitstream_writer_bounds_t *self_p)
+{
+  free(self_p);
+}
+
 void bitstream_writer_bounds_save(struct bitstream_writer_bounds_t *self_p,
                                   struct bitstream_writer_t *writer_p,
                                   int bit_offset,
@@ -384,6 +404,16 @@ void bitstream_writer_bounds_restore(struct bitstream_writer_bounds_t *self_p)
     if (self_p->last_byte_offset != -1) {
         self_p->writer_p->buf_p[self_p->last_byte_offset] |= self_p->last_byte;
     }
+}
+
+struct bitstream_reader_t* bitstream_reader_new()
+{
+  return (struct bitstream_reader_t*)malloc(sizeof(struct bitstream_reader_t));
+}
+
+void bitstream_reader_delete(struct bitstream_reader_t *self_p)
+{
+  free(self_p);
 }
 
 void bitstream_reader_init(struct bitstream_reader_t *self_p,

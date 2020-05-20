@@ -55,6 +55,10 @@ struct bitstream_reader_t {
  * The writer.
  */
 
+struct bitstream_writer_t* bitstream_writer_new();
+
+void bitstream_writer_delete(struct bitstream_writer_t *self_p);
+
 void bitstream_writer_init(struct bitstream_writer_t *self_p,
                            uint8_t *buf_p);
 
@@ -126,6 +130,10 @@ void bitstream_writer_insert_u64_bits(struct bitstream_writer_t *self_p,
 void bitstream_writer_seek(struct bitstream_writer_t *self_p,
                            int offset);
 
+struct bitstream_writer_bounds_t* bitstream_writer_bounds_new();
+
+void bitstream_writer_bounds_delete(struct bitstream_writer_bounds_t *self_p);
+
 /* Save-restore first and last bytes in given range, so write can be
    used in given range. */
 void bitstream_writer_bounds_save(struct bitstream_writer_bounds_t *self_p,
@@ -138,6 +146,10 @@ void bitstream_writer_bounds_restore(struct bitstream_writer_bounds_t *self_p);
 /*
  * The reader.
  */
+
+struct bitstream_reader_t* bitstream_reader_new();
+
+void bitstream_reader_delete(struct bitstream_reader_t *self_p);
 
 void bitstream_reader_init(struct bitstream_reader_t *self_p,
                            const uint8_t *buf_p);

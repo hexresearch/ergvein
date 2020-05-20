@@ -23,7 +23,7 @@ import qualified Data.Bitstream                as BS
 -- | Big endian stream of bits
 type GolombStream =
 #ifdef CBITSTREAM
-  BS.BitstreamWriter
+  BS.Bitstream
 #else
   BS.Bitstream BS.Right
 #endif
