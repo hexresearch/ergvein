@@ -83,8 +83,8 @@ benchmark bench-btc-filters
   type:              exitcode-stdio-1.0
   main-is:           BTC.hs
   hs-source-dirs:    bench
-  ghc-options:       -threaded -O3
-  -- ghc-options:         -threaded -O3 -rtsopts "-with-rtsopts=-N -A64m -AL256m -qn4"
+  ghc-options:       -threaded -O3 "-with-rtsopts=-p"
+  -- ghc-options:         -threaded -O3 -rtsopts "-with-rtsopts=-N8 -qn1"
   build-depends:
      ergvein-wallet-filters
    , base
@@ -100,7 +100,8 @@ benchmark bench-btc-filters
 executable ergvein-filters-tx-fetcher
  hs-source-dirs:      app
  main-is:             TxFetcher.hs
- ghc-options:         -threaded -rtsopts "-with-rtsopts=-N -A64m -AL256m -qn4"
+ ghc-options:         -threaded -O3
+ -- ghc-options:         -threaded -rtsopts "-with-rtsopts=-N -A64m -AL256m -qn4"
  build-depends:
      base
    , bitcoin-api

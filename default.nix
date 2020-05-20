@@ -3,6 +3,7 @@ let
    reflex-platform = import ./platform-overlay.nix { inherit profile; };
    project = reflex-platform.project ({ pkgs, ... }: {
     packages = {
+      cbitstream = ./cbitstream;
       data-merkle-tree = ./data-merkle-tree;
       ergo-api = ./ergo-api;
       ergvein-checkpoint-generator = ./checkpoint-generator;
@@ -28,6 +29,7 @@ let
     };
     shells = {
       ghc = [
+        "cbitstream"
         "data-merkle-tree"
         "ergo-api"
         "ergvein-checkpoint-generator"

@@ -8,14 +8,25 @@ import           Data.Word
 import           GHC.Generics
 import           Prelude                 hiding ( null, head )
 import           Safe.Partial
-import qualified Data.Bitstream                as BS
+
 import qualified Data.Foldable                 as F
 import qualified Data.Vector.Generic           as V
 import qualified Data.Vector.Unboxed           as VU
 import qualified Prelude                       as P
 
+#ifdef CBITSTREAM
+import qualified Data.Bitstream.C              as BS
+#else
+import qualified Data.Bitstream                as BS
+#endif
+
 -- | Big endian stream of bits
-type GolombStream = BS.Bitstream BS.Right
+type GolombStream =
+#ifdef CBITSTREAM
+  BS.BitstreamWriter
+#else
+  BS.Bitstream BS.Right
+#endif
 
 -- | Stream of Golomb-Rice encoded bits.
 data GolombRice a = GolombRice {

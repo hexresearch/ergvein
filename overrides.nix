@@ -29,6 +29,7 @@ in (self: super: let
   dontProfile = drv: disableCabalFlag drv "profile-reflex";
   in {
     # Internal
+    cbitstream = ingnoreGarbage super.cbitstream;
     data-merkle-tree = ingnoreGarbage super.data-merkle-tree;
     ergvein-checkpoint-generator = ingnoreGarbage super.ergvein-checkpoint-generator;
     ergvein-common = ingnoreGarbage super.ergvein-common;
