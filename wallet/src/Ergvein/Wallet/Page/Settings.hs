@@ -5,6 +5,7 @@ module Ergvein.Wallet.Page.Settings(
 import Control.Lens
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Reader.Class
+import Data.List
 import Data.Function.Flip (flip3)
 import Data.Maybe (fromMaybe)
 import Data.Time
@@ -28,6 +29,9 @@ import Ergvein.Wallet.Monad.Auth
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Settings.Network
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Storage
+import Ergvein.Wallet.Storage.Keys
+import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Widget.GraphPinCode
 import Ergvein.Wallet.Wrapper
 
@@ -92,8 +96,14 @@ currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
       uac currListE
       let updatedAuthE = flip pushAlways currListE $ \curs -> do
               auth <- sample . current $ authD
-              pure $ Just $ auth
-                & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
+              let difC = curs \\ (_pubStorage'activeCurrencies ps)
+                  authNew = auth & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
+              au3 <- withWallet $ \prvStr -> do
+                    let mL = Map.fromList [
+                          (currency, CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency) (Map.fromList [])) |
+                          currency <- difC ]
+                    pure $ authNew & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages .~ mL
+              pure $ Just au3
       setAuthInfoE <- setAuthInfo updatedAuthE
       storeWallet (void $ updated authD)
       showSuccessMsg $ STPSSuccess <$ setAuthInfoE

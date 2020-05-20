@@ -5,6 +5,7 @@ module Ergvein.Wallet.Storage.Util(
   , decryptPrvStorage
   , passwordToECIESPrvKey
   , createPrvStorage
+  , createPubKeystore
   , createStorage
   , storageFilePrefix
   , saveStorageToFile
