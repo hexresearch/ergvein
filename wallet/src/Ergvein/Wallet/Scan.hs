@@ -24,6 +24,7 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Constants
 import Ergvein.Wallet.Storage.Keys (derivePubKey, egvXPubKeyToEgvAddress)
 import Ergvein.Wallet.Storage.Util (addXPubKeyToKeystore)
+import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Util
 
@@ -34,8 +35,6 @@ import qualified Ergvein.Wallet.Filters.Scan        as Filters
 import qualified Network.Haskoin.Block              as HB
 import qualified Network.Haskoin.Script             as HS
 import qualified Network.Haskoin.Transaction        as HT
-import qualified Network.Haskoin.Transaction.Segwit as HTS
-import qualified Network.Haskoin.Address            as HA
 
 -- | Loads current PubStorage, performs BIP44 account discovery algorithm and
 -- stores updated PubStorage to the wallet file.
@@ -92,7 +91,7 @@ scanExternalAddresses currency currencyPubStorage = mdo
       startKey = derivePubKey masterPubKey External (fromIntegral $ startKeyIndex)
   buildE <- getPostBuild
   processKeyE <- traceEventWith (\(keyIndex, key) ->
-    "Scanning external address #" ++ show keyIndex ++ ": \"" ++ (T.unpack $ egvAddrToString $ egvXPubKeyToEgvAddress key) ++ "\"") <$>
+    "Scanning external " ++ show currency ++ " address #" ++ show keyIndex ++ ": \"" ++ (T.unpack $ egvAddrToString $ egvXPubKeyToEgvAddress key) ++ "\"") <$>
     (waitFilters currency =<< delay 0 (leftmost [nextKeyE, (startKeyIndex, startKey) <$ buildE]))
   gapD <- holdDyn startGap gapE
   currentKeyD <- holdDyn (startKeyIndex, startKey) nextKeyE
@@ -102,7 +101,7 @@ scanExternalAddresses currency currencyPubStorage = mdo
   newKeystoreD <- foldDyn (addXPubKeyToKeystore External) emptyPubKeyStore processKeyE
   newTxsD <- foldDyn M.union M.empty getTxsE
   blocksD <- holdDyn [] blocksE
-  filterAddressE <- traceEvent "Scanned for blocks" <$> (filterAddress =<< delay 0 ((egvXPubKeyToEgvAddress . snd) <$> processKeyE))
+  filterAddressE <- traceEvent "Scanned for blocks" <$> (filterAddress $ (egvXPubKeyToEgvAddress . snd) <$> processKeyE)
   getBlocksE <- traceEvent "Blocks requested" <$> requestBTCBlocksWaitRN filterAddressE
   storedBlocksE <- storeMultipleBlocksByE getBlocksE
   storedTxHashesE <- storeMultipleBlocksTxHashesByE $ tagPromptlyDyn blocksD storedBlocksE
@@ -208,51 +207,3 @@ getAddrTxsFromBlock addr block = do
   let filteredTxs = fst $ unzip $ filter snd (zip txs checkResults)
   pure $ M.fromList [(HT.txHashToHex $ HT.txHash tx, BtcTx tx) | tx <- filteredTxs]
   where txs = HB.blockTxns block
-
--- | Checks given tx if there are some inputs or outputs containing given address.
-checkAddrTx :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> HT.Tx -> m Bool
-checkAddrTx addr tx = do
-  checkTxInputsResults <- traverse (checkTxIn addr) (HT.txIn tx)
-  checkTxOutputsResults <- traverse (checkTxOut addr) (HT.txOut tx)
-  pure $ concatResults checkTxInputsResults || concatResults checkTxOutputsResults
-  where concatResults = foldr (||) False
-
--- | Checks given TxIn wheather it contains given address.
--- First, the block containing the spent output is loaded.
--- Then we check the output for the address.
-checkTxIn :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> HT.TxIn -> m Bool
-checkTxIn addr txIn = do
-  let spentOutput = HT.prevOutput txIn
-      spentTxHash = HT.outPointHash spentOutput
-      spentOutputIndex = HT.outPointIndex spentOutput
-  mBlockHash <- getBtcBlockHashByTxHash spentTxHash
-  case mBlockHash of
-    Nothing -> pure False
-    Just blockHash -> do
-      mBlock <- getBtcBlock blockHash
-      case mBlock of
-        Nothing -> fail $ "Could not get block from storage by block hash " <> (T.unpack $ HB.blockHashToHex blockHash)
-        Just block -> do
-          let mSpentTx = find (\tx -> HT.txHash tx == spentTxHash) (HB.blockTxns block)
-          case mSpentTx of
-            Nothing -> pure False
-            Just spentTx -> do
-              checkResult <- checkTxOut addr $ (HT.txOut spentTx) !! (fromIntegral spentOutputIndex)
-              pure checkResult
-
--- | Checks given TxOut wheather it contains given address.
-checkTxOut :: (MonadIO m, PlatformNatives) => EgvAddress -> HT.TxOut -> m Bool
-checkTxOut (BtcAddress (HA.WitnessPubKeyAddress pkh)) txO = case HS.decodeOutputBS $ HT.scriptOutput txO of
-  Left e -> do
-    logWrite $ "Could not decode transaction output " <> (showt e)
-    pure False
-  Right output -> case output of
-    HS.PayWitnessPKHash h -> if h == pkh then pure True else pure False
-    _ -> pure False
-checkTxOut (BtcAddress (HA.WitnessScriptAddress sh)) txO = case HS.decodeOutputBS $ HT.scriptOutput txO of
-  Left e -> do
-    logWrite $ "Could not decode transaction output " <> (showt e)
-    pure False
-  Right output -> case output of
-    HS.PayWitnessScriptHash h -> if h == sh then pure True else pure False
-    _ -> pure False
