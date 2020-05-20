@@ -6,6 +6,7 @@ module Ergvein.Wallet.Monad.Auth(
 
 import Control.Concurrent
 import Control.Concurrent.Chan (Chan)
+import Control.Lens
 import Control.Monad.Random.Class
 import Control.Monad.Reader
 import Data.IORef
@@ -34,6 +35,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Currencies
@@ -309,7 +311,23 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
         let eciesPubKey = _authInfo'eciesPubKey authInfo
         saveStorageToFile eciesPubKey storage
   {-# INLINE storeWallet #-}
-
+  addTxToPubStorage txE = do
+    authRef <- asks env'authRef
+    performFork_ $ ffor txE $ \(txid, etx) -> do
+      let cur = case etx of
+            BtcTx{} -> BTC
+            ErgTx{} -> ERGO
+      modifyExternalRef_ authRef $ \ai -> ai
+        & authInfo'storage
+        . storage'pubStorage
+        . pubStorage'currencyPubStorages
+        . at cur . _Just                  -- TODO: Fix this part once there is a way to generate keys. Or signal an impposible situation
+        . currencyPubStorage'transactions . at txid .~ Just etx
+  {-# INLINE addTxToPubStorage #-}
+  getPubStorageD = do
+    authInfoD <- externalRefDynamic =<< asks env'authRef
+    pure $ ffor authInfoD $ \ai -> ai ^. authInfo'storage. storage'pubStorage
+  {-# INLINE getPubStorageD #-}
 -- | Execute action under authorized context or return the given value as result
 -- if user is not authorized. Each time the login info changes and authInfo'isUpdate flag is set to 'False'
 -- (user logs out or logs in) the widget is updated.
@@ -372,7 +390,7 @@ liftAuth ma0 ma = mdo
           filtersLoader
           infoWorker
           heightAsking
-          btcNodeRefresher
+          bctNodeController
           pure ()
         runReaderT (wrapped ma) env
   let
