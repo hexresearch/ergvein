@@ -87,12 +87,14 @@ scanExternalAddresses currency currencyPubStorage = mdo
   let pubKeystore = currencyPubStorage ^. currencyPubStorage'pubKeystore
       masterPubKey = pubKeystore'master pubKeystore
       emptyPubKeyStore = PubKeystore masterPubKey MI.empty MI.empty
+      startGap = 1
       startKeyIndex = 0
       startKey = derivePubKey masterPubKey External (fromIntegral $ startKeyIndex)
   buildE <- getPostBuild
-  processKeyE <- traceEvent "Scanning key" <$>
+  processKeyE <- traceEventWith (\(keyIndex, key) ->
+    "Scanning external address #" ++ show keyIndex ++ ": \"" ++ (T.unpack $ egvAddrToString $ egvXPubKeyToEgvAddress key) ++ "\"") <$>
     (waitFilters currency =<< delay 0 (leftmost [nextKeyE, (startKeyIndex, startKey) <$ buildE]))
-  gapD <- holdDyn 0 gapE
+  gapD <- holdDyn startGap gapE
   currentKeyD <- holdDyn (startKeyIndex, startKey) nextKeyE
   postSync currency $ flip pushAlways gapE $ \currnetGap -> do
     (keyIndex, _) <- sample . current $ currentKeyD
@@ -100,7 +102,7 @@ scanExternalAddresses currency currencyPubStorage = mdo
   newKeystoreD <- foldDyn (addXPubKeyToKeystore External) emptyPubKeyStore processKeyE
   newTxsD <- foldDyn M.union M.empty getTxsE
   blocksD <- holdDyn [] blocksE
-  filterAddressE <- traceEvent "Scanned for blocks" <$> (filterAddress $ (egvXPubKeyToEgvAddress . snd) <$> processKeyE)
+  filterAddressE <- traceEvent "Scanned for blocks" <$> (filterAddress =<< delay 0 ((egvXPubKeyToEgvAddress . snd) <$> processKeyE))
   getBlocksE <- traceEvent "Blocks requested" <$> requestBTCBlocksWaitRN filterAddressE
   storedBlocksE <- storeMultipleBlocksByE getBlocksE
   storedTxHashesE <- storeMultipleBlocksTxHashesByE $ tagPromptlyDyn blocksD storedBlocksE
@@ -113,7 +115,7 @@ scanExternalAddresses currency currencyPubStorage = mdo
       txsE = leftmost [getTxsE, mempty <$ noBlocksE]
       gapE = flip pushAlways txsE $ \txs -> do
         gap <- sampleDyn gapD
-        pure $ if null txs && gap < gapLimit then gap + 1 else gapLimit
+        pure $ if null txs && gap < gapLimit then gap + 1 else startGap
       nextKeyE = flip push gapE $ \gap -> do
         gap <- sampleDyn gapD
         currentKeyIndex <- fmap fst (sampleDyn currentKeyD)
@@ -156,6 +158,7 @@ scanInternalAddressesLoop currencyPubStorage keyIndex gap
         txs = currencyPubStorage ^. currencyPubStorage'transactions
         updatedPubKeystore = addXPubKeyToKeystore Internal (keyIndex, key) pubKeystore
         updatedPubStorage = currencyPubStorage & currencyPubStorage'pubKeystore .~ updatedPubKeystore
+    logWrite $ "Scanning internal address #" <> showt keyIndex <> ": \"" <> egvAddrToString address <> "\""
     checkResults <- traverse (checkAddrTx address) $ egvTxsToBtcTxs txs -- TODO: use DMap instead of Map in CurrencyPubStorage
     if (M.size $ M.filter id checkResults) > 0
       then scanInternalAddressesLoop updatedPubStorage (keyIndex + 1) 0
