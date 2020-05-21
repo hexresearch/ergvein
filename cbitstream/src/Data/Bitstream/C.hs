@@ -116,8 +116,10 @@ resize n bs = liftIO $ withForeignPtr (bitstreamWriter bs) $ \wp -> do
   l <- fmap fromIntegral $ bitstream_writer_size_in_bytes wp
   let n' = if n < l then l else n
   newBuff <- mallocForeignPtrBytes n'
-  withForeignPtr newBuff $ \newp -> withForeignPtr (bitstreamBuffer bs) $ \oldp ->
+  withForeignPtr newBuff $ \newp -> withForeignPtr (bitstreamBuffer bs) $ \oldp -> do
     copyBytes newp oldp l
+    withForeignPtr (bitstreamWriter bs) $ \wp -> bitstream_writer_update_buffer wp newp
+    withForeignPtr (bitstreamReader bs) $ \rp -> bitstream_reader_update_buffer rp newp
   pure $ Bitstream n' newBuff (bitstreamWriter bs) (bitstreamReader bs)
 {-# INLINABLE resize #-}
 

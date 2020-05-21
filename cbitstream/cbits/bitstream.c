@@ -24,6 +24,7 @@
  * SOFTWARE.
  */
 
+#include <stdlib.h>
 #include <string.h>
 #include "bitstream.h"
 
@@ -35,6 +36,11 @@ struct bitstream_writer_t* bitstream_writer_new()
 void bitstream_writer_delete(struct bitstream_writer_t *self_p)
 {
   free(self_p);
+}
+
+void bitstream_writer_update_buffer(struct bitstream_writer_t *self_p, uint8_t *buf_p)
+{
+  self_p->buf_p = buf_p;
 }
 
 void bitstream_writer_init(struct bitstream_writer_t *self_p,
@@ -414,6 +420,11 @@ struct bitstream_reader_t* bitstream_reader_new()
 void bitstream_reader_delete(struct bitstream_reader_t *self_p)
 {
   free(self_p);
+}
+
+void bitstream_reader_update_buffer(struct bitstream_reader_t *self_p, uint8_t *buf_p)
+{
+    self_p->buf_p = buf_p;
 }
 
 void bitstream_reader_init(struct bitstream_reader_t *self_p,
