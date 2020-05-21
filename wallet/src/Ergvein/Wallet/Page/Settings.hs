@@ -26,6 +26,7 @@ import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Monad.Auth
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Settings.Network
 import Ergvein.Wallet.Settings
@@ -94,17 +95,22 @@ currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
     void $ widgetHoldDyn $ ffor activeCursD $ \currs -> do
       currListE <- selectCurrenciesWidget $ S.toList currs
       uac currListE
-      let updatedAuthE = flip pushAlways currListE $ \curs -> do
-              auth <- sample . current $ authD
-              let difC = curs \\ (_pubStorage'activeCurrencies ps)
-                  authNew = auth & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
-              au3 <- withWallet $ \prvStr -> do
-                    let mL = Map.fromList [
-                          (currency, CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency) (Map.fromList [])) |
-                          currency <- difC ]
-                    pure $ authNew & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages .~ mL
-              pure $ Just au3
-      setAuthInfoE <- setAuthInfo updatedAuthE
+      updateAE <- withWallet $ ffor currListE $ \curs prvStr -> do
+          logWrite "======== Creating pub storage ======="
+          auth <- sample . current $ authD
+          let authNew = auth & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
+              difC = curs \\ (_pubStorage'activeCurrencies ps)
+              mL = Map.fromList [
+                      (currency, CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency) (Map.fromList [])) |
+                      currency <- difC ]
+              authN2 = authNew & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages .~ mL
+          logWrite $ (showt (authN2 ^. authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies ))
+          logWrite $ "======== Creating pub storage ======="
+          pure $ Just $ authN2
+      widgetHold (divClass "test" $ text "Empty") $ ffor updateAE $ \mauthTest -> case mauthTest of
+        Just authTest -> divClass "test" $ text $ showt $ authTest ^. authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies
+        Nothing -> divClass "test" $ text "Nothing"
+      setAuthInfoE <- setAuthInfo updateAE
       storeWallet (void $ updated authD)
       showSuccessMsg $ STPSSuccess <$ setAuthInfoE
     pure ()
