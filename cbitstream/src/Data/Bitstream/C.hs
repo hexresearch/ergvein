@@ -75,7 +75,7 @@ empty n = liftIO $ do
 
 -- | Return 'True' if given stream is empty
 null :: MonadIO m  => Bitstream -> m Bool
-null bs = (0 ==) <$> length bs
+null bs = (0 ==) <$> bits bs
 {-# INLINE null #-}
 
 -- | Get filled size in bytes of bitstream.
@@ -173,14 +173,10 @@ unsafeToByteString sw = liftIO $ withForeignPtr (bitstreamWriter sw) $ \wp -> do
 pack :: MonadIO m => [Bool] -> m Bitstream
 pack bs = liftIO $ do
   let n = ceiling $ (fromIntegral (P.length bs) :: Double) / 8
-  print n
   sw <- empty n
-  traceM "!!!!"
   withForeignPtr (bitstreamWriter sw) $ \wp ->
     flip traverse_ bs $ \i -> do
-      traceShowM i
       bitstream_writer_write_bit wp $ if i then 1 else 0
-      traceShowM "Done"
   pure sw
 {-# INLINEABLE pack #-}
 
@@ -320,7 +316,7 @@ class ReadBits a where
 instance ReadBits Bool where
   readBits sr = liftIO $ withForeignPtr (bitstreamReader sr) $ \rp -> do
     v <- bitstream_reader_read_bit rp
-    pure $ if v > 0 then False else True
+    pure $ if v > 0 then True else False
   {-# INLINABLE readBits #-}
 
 instance ReadBits Word8 where
