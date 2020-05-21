@@ -2,7 +2,7 @@
 -- that IT IS NOT exact BIP-158 as we don't put all public and redeem scripts
 -- inside the filter to save bandwidth.
 {-# LANGUAGE BangPatterns #-}
-module Ergvein.Filters.Btc
+module Ergvein.Filters.Btc.Mutable
   ( -- * SegWit address
     SegWitAddress(..)
   , guardSegWit
@@ -18,6 +18,7 @@ module Ergvein.Filters.Btc
   )
 where
 
+import           Control.Monad.IO.Class
 import           Data.ByteArray.Hash            ( SipKey(..) )
 import           Data.ByteString                ( ByteString )
 import           Data.Map.Strict                ( Map )
@@ -25,7 +26,7 @@ import           Data.Maybe
 import           Data.Serialize                 ( encode )
 import           Data.Word
 import           Ergvein.Filters.Btc.Address
-import           Ergvein.Filters.GCS
+import           Ergvein.Filters.GCS.Mutable
 import           Ergvein.Types.Address          (btcAddrToString')
 import           GHC.Generics
 import           Network.Haskoin.Address
@@ -61,31 +62,32 @@ btcDefM = 784931
 data BtcAddrFilter = BtcAddrFilter {
   btcAddrFilterN   :: !Word64 -- ^ the total amount of items in filter
 , btcAddrFilterGcs :: !GCS -- ^ Actual encoded golomb encoded set
-} deriving (Show, Generic)
+} deriving (Generic)
 
 -- | Encoding filter as simple <length><gcs>
-encodeBtcAddrFilter :: BtcAddrFilter -> ByteString
-encodeBtcAddrFilter BtcAddrFilter {..} =
-  BSL.toStrict . B.toLazyByteString $ B.word64BE btcAddrFilterN <> B.byteString
-    (encodeGcs btcAddrFilterGcs)
+encodeBtcAddrFilter :: MonadIO m => BtcAddrFilter -> m ByteString
+encodeBtcAddrFilter BtcAddrFilter {..} = do
+  bs <- encodeGcs btcAddrFilterGcs
+  pure $ BSL.toStrict . B.toLazyByteString $
+    B.word64BE btcAddrFilterN <> B.byteString bs
 
 -- | Decoding filter from raw bytes
-decodeBtcAddrFilter :: ByteString -> Either String BtcAddrFilter
-decodeBtcAddrFilter = A.parseOnly (parser <* A.endOfInput)
+decodeBtcAddrFilter :: MonadIO m =>  ByteString -> m (Either String BtcAddrFilter)
+decodeBtcAddrFilter bs = case A.parseOnly (parser <* A.endOfInput) bs of
+  Left er -> pure $ Left er
+  Right (w, gbs) -> do
+   gcs <- decodeGcs btcDefP gbs
+   pure . Right $ BtcAddrFilter w gcs
  where
-  parser =
-    BtcAddrFilter
-      <$> A.anyWord64be
-      <*> fmap (decodeGcs btcDefP) A.takeByteString
+  parser = (,) <$> A.anyWord64be <*> A.takeByteString
 
-
-instance B.Binary BtcAddrFilter where
-  put = B.put . encodeBtcAddrFilter
-  {-# INLINE put #-}
-  get = do
-    bs <- B.get
-    either fail pure $ decodeBtcAddrFilter bs
-  {-# INLINE get #-}
+-- instance B.Binary BtcAddrFilter where
+--   put = B.put . encodeBtcAddrFilter
+--   {-# INLINE put #-}
+--   get = do
+--     bs <- B.get
+--     either fail pure $ decodeBtcAddrFilter bs
+--   {-# INLINE get #-}
 
 -- | Contains each input tx for each tx in a block
 type InputTxs = [Tx]
@@ -95,11 +97,13 @@ type InputTxs = [Tx]
 -- in the given block.
 --
 -- Network argument controls whether we are in testnet or mainnet.
-makeBtcFilter :: Network -> InputTxs -> Block -> BtcAddrFilter
-makeBtcFilter net intxs block = BtcAddrFilter
-  { btcAddrFilterN   = n
-  , btcAddrFilterGcs = constructGcs btcDefP sipkey btcDefM totalSet
-  }
+makeBtcFilter :: MonadIO m => Network -> InputTxs -> Block -> m BtcAddrFilter
+makeBtcFilter net intxs block = do
+  gcs <- constructGcs btcDefP sipkey btcDefM totalSet
+  pure BtcAddrFilter
+      { btcAddrFilterN   = n
+      , btcAddrFilterGcs = gcs
+      }
  where
   makeSegWitSet = fmap (encodeSegWitAddress net) . catMaybes . concatMap
     (fmap getSegWitAddr . txOut)
@@ -121,7 +125,7 @@ blockSipHash = fromBs . BS.reverse . encode . getBlockHash
                      (toWord64 $ BS.unpack . BS.take 8 . BS.drop 8 $ bs)
 
 -- | Check that given address is located in the filter.
-applyBtcFilter :: Network -> BlockHash -> BtcAddrFilter -> SegWitAddress -> Bool
+applyBtcFilter :: MonadIO m => Network -> BlockHash -> BtcAddrFilter -> SegWitAddress -> m Bool
 applyBtcFilter net bhash BtcAddrFilter {..} addr = matchGcs btcDefP
                                                             sipkey
                                                             btcDefM

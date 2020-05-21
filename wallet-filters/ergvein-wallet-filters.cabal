@@ -16,7 +16,10 @@ library
   exposed-modules:
     Ergvein.Filters
     Ergvein.Filters.Btc
+    Ergvein.Filters.Btc.Address
+    Ergvein.Filters.Btc.Mutable
     Ergvein.Filters.GCS
+    Ergvein.Filters.GCS.Mutable
     Ergvein.Filters.Hash
   default-language:    Haskell2010
   build-depends:
@@ -83,7 +86,7 @@ benchmark bench-btc-filters
   type:              exitcode-stdio-1.0
   main-is:           BTC.hs
   hs-source-dirs:    bench
-  ghc-options:       -threaded -O3 "-with-rtsopts=-p"
+  ghc-options:       -threaded -O3
   -- ghc-options:         -threaded -O3 -rtsopts "-with-rtsopts=-N8 -qn1"
   build-depends:
      ergvein-wallet-filters
