@@ -103,7 +103,7 @@ currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
               mL = Map.fromList [
                       (currency, CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency) (Map.fromList [])) |
                       currency <- difC ]
-              authN2 = authNew & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages .~ mL
+              authN2 = authNew & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages %~ (Map.union mL)
           logWrite $ (showt (authN2 ^. authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies ))
           logWrite $ "======== Creating pub storage ======="
           pure $ Just $ authN2
