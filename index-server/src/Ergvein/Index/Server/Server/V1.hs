@@ -20,6 +20,7 @@ import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Index.Server.BlockchainScanning.Common
+import Ergvein.Index.Server.Dependencies
 
 import Data.Proxy
 import Servant.API
@@ -33,6 +34,7 @@ import Ergvein.Index.Server.PeerDiscovery.Types
 import Debug.Trace
 import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Except
+import Data.Time.Clock
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
@@ -95,5 +97,5 @@ peerValidationToResponce = \case
 
 knownPeersEndpoint :: KnownPeersReq -> ServerM KnownPeersResp
 knownPeersEndpoint request = do
-  result <- dbQuery $ getDiscoveredPeers $ knownPeersWithSecuredOnly request
+  result <- knownPeers $ knownPeersWithSecuredOnly request
   pure $ KnownPeersResp $ showBaseUrl . peerUrl <$> result

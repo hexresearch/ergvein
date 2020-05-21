@@ -61,14 +61,19 @@ deleteExpiredPeers peerIds =
   delete $ from $ \peer -> 
     where_ $ peer ^. DiscoveredPeerRecId `in_` valList peerIds
 
-getDiscoveredPeers :: MonadIO m => Bool -> QueryT m [Peer]
-getDiscoveredPeers onlySecured = do
+getDiscoveredFilteredPeers :: MonadIO m => Bool -> NominalDiffTime -> QueryT m [Peer]
+getDiscoveredFilteredPeers onlySecured actualizationDelay = do
+  currentTime <- liftIO getCurrentTime
+  let validDate = (-actualizationDelay) `addUTCTime` currentTime
   result <- select $ from $ \peer -> do
-    when onlySecured $ 
-      where_ $ peer ^. DiscoveredPeerRecIsSecureConn ==. val onlySecured
+    when onlySecured $
+      where_ $ peer ^. DiscoveredPeerRecIsSecureConn ==. val onlySecured 
+    where_ $ peer ^. DiscoveredPeerRecLastValidatedAt >=. val validDate
     pure peer
   pure $ convert @(Entity DiscoveredPeerRec) <$> result
 
+getDiscoveredPeers :: MonadIO m => QueryT m [Peer]
+getDiscoveredPeers = fmap (convert @(Entity DiscoveredPeerRec)) <$> (select $ from pure)
 
 insertBlock  :: MonadIO m  => BlockMetaInfo -> QueryT m (Key BlockMetaRec)
 insertBlock block = insert $ convert block

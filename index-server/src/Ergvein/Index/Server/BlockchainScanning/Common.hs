@@ -37,6 +37,10 @@ scanningInfo = mapM nfo allCurrencies
   where
     nfo :: Currency -> ServerM ScanProgressInfo
     nfo currency = do
+      --maybeScanned <- dbQuery $ scannedBlockHeight currency
+      --let scanned = fromMaybe (currencyHeightStart currency) maybeScanned
+      --actual  <- actualHeight currency
+      pure $ ScanProgressInfo currency 1 1
 
 
 scannedBlockHeight :: (MonadIO m) => Currency -> QueryT m (Maybe BlockHeight)

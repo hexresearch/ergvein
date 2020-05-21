@@ -28,7 +28,10 @@ import qualified Data.Map.Strict as Map
 import qualified Network.HTTP.Client as HC
 import qualified Data.HashSet as Set
 
-import Debug.Trace
+knownPeers :: Bool -> ServerM [Peer]
+knownPeers onlySecured = do
+  actualizationDelay <- (/1000000) . fromIntegral . descReqActualizationDelay <$> getDiscoveryRequisites
+  dbQuery $ getDiscoveredFilteredPeers onlySecured actualizationDelay
 
 peerKnownPeers :: BaseUrl -> ExceptT PeerValidationResult ServerM [BaseUrl]
 peerKnownPeers baseUrl = do
@@ -43,7 +46,7 @@ peerKnownPeers baseUrl = do
 considerPeerCandidate :: PeerCandidate -> ExceptT PeerValidationResult ServerM ()
 considerPeerCandidate candidate = do
   let baseUrl = peerCandidateUrl candidate
-  knownPeers <- lift $ dbQuery $ getDiscoveredPeers False
+  knownPeers <- lift $ dbQuery getDiscoveredPeers
   knowPeersSet <- lift $ knownPeersSet knownPeers
   if not $ Set.member baseUrl knowPeersSet then do
     _ <- peerKnownPeers baseUrl
@@ -66,7 +69,7 @@ knownPeersActualization = do
       cfg <- serverConfig
       requisites <- getDiscoveryRequisites
       currentTime <- liftIO getCurrentTime
-      knownPeers <- dbQuery $ getDiscoveredPeers False
+      knownPeers <- dbQuery getDiscoveredPeers
 
       let (outdatedPeers, peersToFetchFrom) = 
             partition (isOutdated (descReqActualizationTimeout requisites) currentTime) knownPeers
@@ -80,6 +83,7 @@ knownPeersActualization = do
         deleteExpiredPeers $ peerId <$> outdatedPeers
         refreshPeerValidationTime $ peerId <$> peersToRefresh
         addNewPeers $ newPeer <$> uniqueNotDiscoveredFetchedPeers
+
       liftIO $ threadDelay $ descReqActualizationDelay requisites
 
     isOutdated :: NominalDiffTime -> UTCTime -> Peer -> Bool
@@ -105,7 +109,7 @@ peerIntroduce :: ServerM ()
 peerIntroduce = void $ runMaybeT $ do
   ownAddress <- MaybeT $ descReqOwnAddress <$> getDiscoveryRequisites
   lift $ do
-    allPeers <- dbQuery $ getDiscoveredPeers False
+    allPeers <- dbQuery $ getDiscoveredPeers
     let introduceReq = IntroducePeerReq $ showBaseUrl ownAddress
     forM_ allPeers (flip getIntroducePeerEndpoint introduceReq . peerUrl)
 
