@@ -2,17 +2,21 @@ module Ergvein.Wallet.Page.Settings(
     settingsPage
   ) where
 
+import Control.Lens
 import Control.Monad.IO.Class (liftIO)
-import qualified Data.Map.Strict as Map
-import Data.Time
+import Control.Monad.Reader.Class
+import Data.List
 import Data.Function.Flip (flip3)
-import Reflex.Host.Class
-import Reflex.Dom as RD
 import Data.Maybe (fromMaybe)
+import Data.Time
 import Reflex.Dom
+import Reflex.Dom as RD
+import Reflex.Host.Class
 
 import Ergvein.Text
+import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
+import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Elements
@@ -21,12 +25,18 @@ import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Monad.Auth
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Settings.Network
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Storage
+import Ergvein.Wallet.Storage.Keys
+import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Widget.GraphPinCode
 import Ergvein.Wallet.Wrapper
 
+import qualified Data.Map.Strict as Map
 import qualified Data.Set as S
 
 data SubPageSettings
@@ -78,12 +88,30 @@ languagePage = wrapper STPSTitle (Just $ pure languagePage) True $ do
 currenciesPage :: MonadFront t m => m ()
 currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
   h3 $ localizedText STPSSetsActiveCurrs
-  divClass "initial-options" $ do
+  divClass "initial-options" $ mdo
     activeCursD <- getActiveCursD
-    void $ widgetHoldDyn $ ffor activeCursD $ \currs -> do
-      currListE <- selectCurrenciesWidget $ S.toList currs
-      updE <- updateActuveCurs $ fmap (\cl -> const (S.fromList cl)) currListE
-      showSuccessMsg $ STPSSuccess <$ updE
+    ps <- getPubStorage
+    authD <- getAuthInfo
+    currListE <- fmap switchDyn $ widgetHoldDyn $ ffor activeCursD $ \currs ->
+      selectCurrenciesWidget $ S.toList currs
+    uac currListE
+    updateAE <- withWallet $ ffor currListE $ \curs prvStr -> do
+        auth <- sample . current $ authD
+        let authNew = auth & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
+            difC = curs \\ (_pubStorage'activeCurrencies ps)
+            mL = Map.fromList [
+                    (currency, CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency) (Map.fromList [])) |
+                    currency <- difC ]
+            authN2 = authNew & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages %~ (Map.union mL)
+        pure $ Just $ authN2
+    setAuthInfoE <- setAuthInfo updateAE
+    storeWallet (void $ updated authD)
+    showSuccessMsg $ STPSSuccess <$ setAuthInfoE
+    pure ()
+    where
+      uac cE =  updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ cE
+
+
 
 unitsPage :: MonadFront t m => m ()
 unitsPage = wrapper STPSTitle (Just $ pure unitsPage) True $ mdo

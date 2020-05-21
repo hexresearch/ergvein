@@ -5,7 +5,9 @@ module Ergvein.Wallet.Page.Balances(
 
 import Data.Maybe (fromMaybe)
 
+import Ergvein.Text
 import Ergvein.Types.Currency
+import Ergvein.Types.Storage
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
@@ -53,7 +55,11 @@ balancesPage = do
 currenciesList :: MonadFront t m => Text -> m ()
 currenciesList name = divClass "currency-content" $ do
   s <- getSettings
-  historyE <- leftmost <$> traverse (currencyLine s) (getActiveCurrencies s)
+  ps <- getPubStorage
+  historyE <- leftmost <$> traverse (currencyLine s) (_pubStorage'activeCurrencies ps)
+  if (settingsPortfolio s)
+    then porfolioCanvas
+    else pure ()
   let thisWidget = Just $ pure balancesPage
   void $ nextWidget $ ffor historyE $ \cur -> Retractable {
     retractableNext = historyPage cur
@@ -70,7 +76,6 @@ currenciesList name = divClass "currency-content" $ do
           elClass "span" "currency-unit"  $ dynText $ ffor bal $ \(Money c _) -> symbolUnit c setUs
           elClass "span" "currency-arrow" $ text "〉"
       pure $ cur <$ domEvent Click e
-    getActiveCurrencies s = fromMaybe allCurrencies $ Map.lookup name $ activeCurrenciesMap $ settingsActiveCurrencies s
     getSettingsUnits = fromMaybe defUnits . settingsUnits
 
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)

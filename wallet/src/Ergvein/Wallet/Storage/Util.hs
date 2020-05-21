@@ -5,6 +5,7 @@ module Ergvein.Wallet.Storage.Util(
   , decryptPrvStorage
   , passwordToECIESPrvKey
   , createPrvStorage
+  , createPubKeystore
   , createStorage
   , storageFilePrefix
   , saveStorageToFile
@@ -46,8 +47,10 @@ addXPrvKeyToKeystore Internal (index, key) (PrvKeystore master external internal
 
 createPrvKeystore :: EgvXPrvKey -> PrvKeystore
 createPrvKeystore masterPrvKey =
-  let externalKeys = MI.fromList [(index, derivePrvKey masterPrvKey External (fromIntegral index)) | index <- [0..(gapLimit-1)]]
-      internalKeys = MI.fromList [(index, derivePrvKey masterPrvKey Internal (fromIntegral index)) | index <- [0..(gapLimit-1)]]
+  let externalKeys = MI.fromList [(index, derivePrvKey masterPrvKey External (fromIntegral index))
+        | index <- [0..(initialExternalAddressCount - 1)]]
+      internalKeys = MI.fromList [(index, derivePrvKey masterPrvKey Internal (fromIntegral index))
+        | index <- [0..(initialInternalAddressCount - 1)]]
   in PrvKeystore masterPrvKey externalKeys internalKeys
 
 createPrvStorage :: Seed -> EgvRootXPrvKey -> PrvStorage
@@ -65,25 +68,27 @@ addXPubKeyToKeystore Internal (index, key) (PubKeystore master external internal
 
 createPubKeystore :: EgvXPubKey -> PubKeystore
 createPubKeystore masterPubKey =
-  let externalKeys = MI.fromList [(index, derivePubKey masterPubKey External (fromIntegral index)) | index <- [0..(gapLimit-1)]]
-      internalKeys = MI.fromList [(index, derivePubKey masterPubKey Internal (fromIntegral index)) | index <- [0..(gapLimit-1)]]
+  let externalKeys = MI.fromList [(index, derivePubKey masterPubKey External (fromIntegral index))
+        | index <- [0..(initialExternalAddressCount-1)]]
+      internalKeys = MI.fromList [(index, derivePubKey masterPubKey Internal (fromIntegral index))
+        | index <- [0..(initialInternalAddressCount - 1)]]
   in PubKeystore masterPubKey externalKeys internalKeys
 
-createPubStorage :: EgvRootXPrvKey -> PubStorage
-createPubStorage rootPrvKey = PubStorage rootPubKey pubStorages
+createPubStorage :: EgvRootXPrvKey -> [Currency] -> PubStorage
+createPubStorage rootPrvKey cs = PubStorage rootPubKey pubStorages cs
   where rootPubKey = EgvRootXPubKey $ deriveXPubKey $ unEgvRootXPrvKey rootPrvKey
         pubStorages = M.fromList [
             (currency, CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey rootPrvKey currency) (M.fromList [])) |
-            currency <- allCurrencies
+            currency <- cs
           ]
 
-createStorage :: MonadIO m => Mnemonic -> (WalletName, Password) -> m (Either StorageAlert WalletStorage)
-createStorage mnemonic (login, pass) = case mnemonicToSeed "" mnemonic of
+createStorage :: MonadIO m => Mnemonic -> (WalletName, Password) -> [Currency] -> m (Either StorageAlert WalletStorage)
+createStorage mnemonic (login, pass) cs = case mnemonicToSeed "" mnemonic of
   Left err -> pure $ Left $ SAMnemonicFail $ showt err
   Right seed -> do
     let rootPrvKey = EgvRootXPrvKey $ makeXPrvKey seed
         prvStorage = createPrvStorage seed rootPrvKey
-        pubStorage = createPubStorage rootPrvKey
+        pubStorage = createPubStorage rootPrvKey cs
     encryptPrvStorageResult <- encryptPrvStorage prvStorage pass
     case encryptPrvStorageResult of
       Left err -> pure $ Left err

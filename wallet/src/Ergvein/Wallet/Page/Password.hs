@@ -11,6 +11,7 @@ import Data.Map as Map
 
 import Ergvein.Crypto.Keys     (Mnemonic)
 import Ergvein.Types.Currency
+import Ergvein.Types.Storage
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Settings
@@ -29,13 +30,9 @@ passwordPage mnemonic curs = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText PPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText PPSDescr
   logPassE <- setupLoginPassword
-  s <- getSettings
-  updateSettings $ ffor logPassE $ \(l,_) -> s {settingsActiveCurrencies = acSet l s}
-  createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo mnemonic) logPassE
+  createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo mnemonic curs) logPassE
   authInfoE <- handleDangerMsg createStorageE
   void $ setAuthInfo $ Just <$> authInfoE
-  where
-    acSet l s = ActiveCurrencies $ Map.insert l curs $ activeCurrenciesMap $ settingsActiveCurrencies s
 
 setupLoginPage :: MonadFrontBase t m => Mnemonic -> [Currency] -> m ()
 setupLoginPage m ac = wrapperSimple True $ do
@@ -55,13 +52,9 @@ setupPatternPage m l curs = wrapperSimple True $ do
   divClass "password-setup-descr" $ h5 $ localizedText PatPSDescr
   patE <- setupPattern
   let logPassE = fmap (\p -> (l,p)) patE
-  s <- getSettings
-  updateSettings $ ffor logPassE $ \_ -> s {settingsActiveCurrencies = acSet l s}
-  createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo m) logPassE
+  createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo m curs) logPassE
   authInfoE <- handleDangerMsg createStorageE
   void $ setAuthInfo $ Just <$> authInfoE
-  where
-    acSet l s = ActiveCurrencies $ Map.insert l curs $ activeCurrenciesMap $ settingsActiveCurrencies s
 
 askPasswordPage :: MonadFrontBase t m => Text -> m (Event t Password)
 askPasswordPage name = wrapperSimple True $ do
