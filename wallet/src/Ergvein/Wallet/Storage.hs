@@ -4,10 +4,12 @@ module Ergvein.Wallet.Storage
     withWallet
   ) where
 
+import Ergvein.Text
 import Ergvein.Wallet.Monad
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Util
 
 -- | Requests password, runs a callback against decoded wallet and returns the result
 -- The callback is in 'Performable m'. Basically 'MonadIO'

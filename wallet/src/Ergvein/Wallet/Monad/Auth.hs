@@ -198,12 +198,11 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   getPasswordSetEF = asks env'passSetEF
   {-# INLINE getPasswordSetEF #-}
   requestPasssword reqE = do
-    idE <- performEvent $ liftIO getRandom <$ reqE
-    idD <- holdDyn 0 idE
+    i <- liftIO getRandom
     (_, modalF) <- asks env'passModalEF
     (setE, _) <- asks env'passSetEF
-    performEvent_ $ fmap (liftIO . modalF) idE
-    pure $ attachWithMaybe (\i' (i,mp) -> if i == i' then mp else Nothing) (current idD) setE
+    performEvent_ $ (liftIO $ modalF i) <$ reqE
+    pure $ fforMaybe setE $ \(i', mp) -> if i == i' then mp else Nothing
   updateSettings setE = do
     settingsRef <- asks env'settings
     performEvent $ ffor setE $ \s -> do
@@ -234,8 +233,7 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getFiltersSyncRef #-}
   getActiveCursD = externalRefDynamic =<< asks env'activeCursRef
   {-# INLINE getActiveCursD #-}
-  -- TODO: Rework this once #353 is closed
-  updateActuveCurs updE = do
+  updateActiveCurs updE = do
     curRef      <- asks env'activeCursRef
     nodeRef     <- asks env'nodeConsRef
     settingsRef <- asks env'settings
@@ -252,14 +250,12 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
       settings <- readExternalRef settingsRef
       login    <- fmap _authInfo'login $ readExternalRef authRef
       let urls = settingsNodes settings
-          ac   = activeCurrenciesMap $ settingsActiveCurrencies settings
-          ac'  = M.insert login newcs ac
-          set' = settings {settingsActiveCurrencies = ActiveCurrencies ac'}
+          set' = settings
 
       writeExternalRef settingsRef set'
       storeSettings set'
-
-  {-# INLINE updateActuveCurs #-}
+      pure ()
+  {-# INLINE updateActiveCurs #-}
   getAuthInfo = externalRefDynamic =<< asks env'authRef
   {-# INLINE getAuthInfo #-}
   getLoginD = (fmap . fmap) _authInfo'login . externalRefDynamic =<< asks env'authRef
@@ -307,11 +303,12 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   getPubStorage = fmap (_storage'pubStorage . _authInfo'storage) $ readExternalRef =<< asks env'authRef
   {-# INLINE getPubStorage #-}
   storeWallet e = do
-    authInfo <- readExternalRef =<< asks env'authRef
+    ref <-  asks env'authRef
     performEvent_ $ ffor e $ \_ -> do
-      let storage = _authInfo'storage authInfo
-      let eciesPubKey = _authInfo'eciesPubKey authInfo
-      saveStorageToFile eciesPubKey storage
+        authInfo <- readExternalRef ref
+        let storage = _authInfo'storage authInfo
+        let eciesPubKey = _authInfo'eciesPubKey authInfo
+        saveStorageToFile eciesPubKey storage
   {-# INLINE storeWallet #-}
   addTxToPubStorage txE = do
     authRef <- asks env'authRef
@@ -351,11 +348,10 @@ liftAuth ma0 ma = mdo
         passModalEF     <- getPasswordModalEF
         passSetEF       <- getPasswordSetEF
         settingsRef     <- getSettingsRef
-
         -- Read settings to fill other refs
         settings        <- readExternalRef settingsRef
         let login = _authInfo'login auth
-            acurs = maybe S.empty S.fromList $ M.lookup login $ activeCurrenciesMap $ settingsActiveCurrencies settings
+            acurs = S.fromList [] -- $ _pubStorage'activeCurrencies ps
             nodes = M.restrictKeys (settingsNodes settings) acurs
 
         -- MonadClient refs
@@ -414,6 +410,9 @@ liftUnauthed ma = ReaderT $ const ma
 wrapped :: MonadFrontBase t m => ErgveinM t m a -> ErgveinM t m a
 wrapped ma = do
   storeWallet =<< getPostBuild
+  buildE <- getPostBuild
+  ac <- _pubStorage'activeCurrencies <$> getPubStorage
+  updE <- updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ ac <$ buildE
   ma
 
 instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
