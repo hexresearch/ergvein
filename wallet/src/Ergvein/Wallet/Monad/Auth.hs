@@ -198,12 +198,11 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   getPasswordSetEF = asks env'passSetEF
   {-# INLINE getPasswordSetEF #-}
   requestPasssword reqE = do
-    idE <- performEvent $ liftIO getRandom <$ reqE
-    idD <- holdDyn 0 idE
+    i <- liftIO getRandom
     (_, modalF) <- asks env'passModalEF
     (setE, _) <- asks env'passSetEF
-    performEvent_ $ fmap (liftIO . modalF) idE
-    pure $ attachWithMaybe (\i' (i,mp) -> if i == i' then mp else Nothing) (current idD) setE
+    performEvent_ $ (liftIO $ modalF i) <$ reqE
+    pure $ fforMaybe setE $ \(i', mp) -> if i == i' then mp else Nothing
   updateSettings setE = do
     settingsRef <- asks env'settings
     performEvent $ ffor setE $ \s -> do
