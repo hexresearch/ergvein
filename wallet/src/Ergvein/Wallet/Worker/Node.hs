@@ -54,7 +54,7 @@ btcLog :: (PlatformNatives, MonadIO m) => Text -> m ()
 btcLog v = logWrite $ "[nodeController][" <> showt BTC <> "]: " <> v
 
 btcRefrTimeout :: NominalDiffTime
-btcRefrTimeout = 10
+btcRefrTimeout = 30
 
 bctNodeController :: MonadFront t m => m ()
 bctNodeController = mdo
@@ -73,7 +73,11 @@ bctNodeController = mdo
           in (addrs, txids)
 
   let btcLenD = ffor conMapD $ fromMaybe 0 . fmap M.size . DM.lookup BTCTag
-  let te' = current btcLenD `tag` te
+  let te' = poke te $ const $ do
+        cm <- sample . current $ conMapD
+        let nodes = fromMaybe [] $ fmap M.elems $ DM.lookup BTCTag cm
+        stats <- traverse (sampleDyn . nodeconIsUp) nodes
+        pure $ length $ filter id stats
   -- Get an url to connect if:
   -- 1. BTC conMap is updated
   -- 2. The first minNodeNum times an urls is added to the storage
@@ -93,7 +97,8 @@ bctNodeController = mdo
     let reqE = extractReq sel BTC u
     node <- initBTCNode True u reqE
     modifyExternalRef nodeRef $ \cm -> (addNodeConn (NodeConnBTC node) cm, ())
-    closeE <- performEvent $ ffor (nodeconCloseE node) $ const $
+    closeE' <- delay 0.1 $ nodeconCloseE node
+    closeE <- performEvent $ ffor closeE' $ const $
       modifyExternalRef nodeRef $ \cm -> (removeNodeConn BTCTag u cm, ())
     let respE = nodeconRespE node
     let txInvsE = flip push respE $ \case

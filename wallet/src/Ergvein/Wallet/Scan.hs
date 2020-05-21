@@ -85,7 +85,7 @@ scanCurrency currency currencyPubStorage = mdo
     pure (ai+1, cgap)
   newKeystoreD <- foldDyn (addXPubKeyToKeystore External) emptyPubKeystore processKeyE
   filterAddressE <- traceEvent "Scanned for blocks" <$> (filterAddress $ (egvXPubKeyToEgvAddress . snd) <$> processKeyE)
-  getBlocksE <- traceEvent "Blocks requested" <$> requestBTCBlocksWaitRN filterAddressE
+  getBlocksE <- traceEvent "Blocks requested" <$> requestBTCBlocks filterAddressE
   storedBlocksE <- storeMultipleBlocksByE getBlocksE
   storedTxHashesE <- storeMultipleBlocksTxHashesByE $ tagPromptlyDyn blocksD storedBlocksE
   let
