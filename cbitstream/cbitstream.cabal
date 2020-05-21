@@ -25,3 +25,21 @@ library
   build-depends:
       base            >= 4.7  && < 4.13
     , bytestring      >= 0.10 && < 0.11
+
+test-suite cbitstream-test
+  default-language:    Haskell2010
+  type:                exitcode-stdio-1.0
+  main-is:             Driver.hs
+  hs-source-dirs:      test
+  other-modules:
+      Data.Bitstream.CTest
+  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base
+    , cbitstream
+    , bytestring
+    , quickcheck-instances
+    , tasty
+    , tasty-discover
+    , tasty-hspec
+    , tasty-quickcheck
