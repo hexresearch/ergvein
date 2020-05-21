@@ -93,7 +93,8 @@ bctNodeController = mdo
     let reqE = extractReq sel BTC u
     node <- initBTCNode True u reqE
     modifyExternalRef nodeRef $ \cm -> (addNodeConn (NodeConnBTC node) cm, ())
-    closeE <- performEvent $ ffor (nodeconCloseE node) $ const $
+    closeE' <- delay 0.1 $ nodeconCloseE node
+    closeE <- performEvent $ ffor closeE' $ const $
       modifyExternalRef nodeRef $ \cm -> (removeNodeConn BTCTag u cm, ())
     let respE = nodeconRespE node
     let txInvsE = flip push respE $ \case

@@ -167,6 +167,60 @@ requestBTCBlocksListenRN reqE = do
         i <- liftIO $ randomRIO (0, n - 1)
         requestBTCBlocksListen (btcs!!i) reqE
 
+data RBTCBlksAct = RASucc [Block] | RANoNode [BlockHash] | RANodeClosed [BlockHash]
+
+requestBTCBlocks :: MonadFront t m => Event t [BlockHash] -> m (Event t [Block])
+requestBTCBlocks reqE = mdo
+  conMapD <- getNodeConnectionsD
+  let goE = current conMapD `attach` (leftmost [reqE, noNodeE, nodeCloseE])
+  actE <- fmap switchDyn $ widgetHold (pure never) $ ffor goE $ \(cm, req) -> do
+    buildE <- getPostBuild
+    case DM.lookup BTCTag cm of
+      Nothing -> pure $ RANoNode req <$ buildE
+      Just btcsMap -> case M.elems btcsMap of
+        [] -> pure $ RANoNode req <$ buildE
+        btcs -> do
+          node <- liftIO $ fmap (btcs!!) $ randomRIO (0, length btcs - 1)
+          blocksRequester req node
+  noNodeE <- delay 0.5 $ fforMaybe actE $ \case
+    RANoNode bhs -> Just bhs
+    _ -> Nothing
+  nodeCloseE <- delay 0.05 $ fforMaybe actE $ \case
+    RANodeClosed bhs -> Just bhs
+    _ -> Nothing
+  pure $ fforMaybe actE $ \case
+    RASucc blks -> Just blks
+    _ -> Nothing
+
+blocksRequester :: MonadFront t m => [BlockHash] -> NodeBTC t -> m (Event t RBTCBlksAct)
+blocksRequester bhs NodeConnection{..} = do
+  buildE      <- getPostBuild
+  let upE     = leftmost [updated nodeconIsUp, current nodeconIsUp `tag` buildE]
+  let btcreq  = NodeReqBTC $ MGetData $ GetData $ fmap (InvVector InvBlock . getBlockHash) bhs
+  let reqE    = fforMaybe upE $ \b -> if b then Just (nodeconUrl, btcreq) else Nothing
+  let updE    = fforMaybe nodeconRespE $ \case
+        MBlock blk -> let
+          bh = headerHash $ blockHeader blk
+          in if bh `L.elem` bhs
+                then Just $ [(bh, Just blk)]
+                else Nothing
+        MNotFound (NotFound invs) -> case catMaybes $ (filt bhs) <$> invs of
+          [] -> Nothing
+          vals -> Just vals
+        _ -> Nothing
+
+  requestFromNode reqE
+  responsesD <- foldDyn (\vals m0 -> L.foldl' (\m (u,mv) -> M.insert u mv m) m0 vals) M.empty updE
+  let resE = fforMaybe (updated responsesD) $ \respMap -> if M.size respMap /= length bhs
+        then Nothing
+        else Just $ RASucc $ catMaybes $ M.elems respMap
+  pure $ leftmost [resE, RANodeClosed bhs <$ nodeconCloseE]
+  where
+    filt :: [BlockHash] -> InvVector -> Maybe (BlockHash, Maybe Block)
+    filt bhs (InvVector ivt ivh) = case ivt of
+      InvBlock -> let bh = BlockHash ivh
+        in if bh `L.elem` bhs then Just (bh, Nothing) else Nothing
+
 storeBlockByE :: (MonadBaseConstr t m, HasBlocksStorage (Performable m)) => Event t Block -> m (Event t ())
 storeBlockByE = performEvent . fmap insertBtcBlock
 
