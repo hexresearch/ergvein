@@ -5,6 +5,7 @@ module Ergvein.Wallet.Storage.AuthInfo (
 
 import Control.Monad.Except
 import Ergvein.Crypto
+import Ergvein.Types.Currency
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Localization.AuthInfo
@@ -12,9 +13,9 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Util
 
-initAuthInfo :: MonadIO m => Mnemonic -> WalletName -> Password -> m (Either AuthInfoAlert AuthInfo)
-initAuthInfo mnemonic login pass = do
-  mstorage <- createStorage mnemonic (login, pass)
+initAuthInfo :: MonadIO m => Mnemonic -> [Currency] -> WalletName -> Password -> m (Either AuthInfoAlert AuthInfo)
+initAuthInfo mnemonic curs login pass = do
+  mstorage <- createStorage mnemonic (login, pass) curs
   case mstorage of
     Left err -> pure $ Left $ CreateStorageAlert err
     Right s -> case passwordToECIESPrvKey pass of

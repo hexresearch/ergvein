@@ -1,0 +1,4 @@
+1.0.1.0
+=======
+
+Fix firing old value of external ref in modify.
