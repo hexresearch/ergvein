@@ -17,6 +17,7 @@ module Data.Bitstream.C(
   , toByteString
   , unsafeToByteString
   , pack
+  , unpack
   , WriteBits(..)
   , writeNBits
   , unsafeWriteNBits
@@ -166,6 +167,17 @@ pack bs = liftIO $ do
     flip traverse_ bs $ \i -> bitstream_writer_write_bit wp $ if i then 1 else 0
   pure sw
 {-# INLINEABLE pack #-}
+
+-- | Read all bits from bistream into list
+unpack :: MonadIO m => Bitstream -> m [Bool]
+unpack bs = fmap reverse $ liftIO $ go []
+  where
+    go acc = do
+      isnull <- null bs
+      if isnull then pure acc else do
+        v <- readBits bs
+        go $ v : acc
+{-# INLINABLE unpack #-}
 
 class WriteBits a where
   -- | Write down value to bitstream with boundary check.

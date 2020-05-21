@@ -7,8 +7,8 @@ module Data.Encoding.GolombRice.Strict.Mutable
   , singleton
     -- * Quering
   , null
-  , headMay
-  , head
+  , readMay
+  , read
     -- * Folding
   , Shortcut(..)
   , foldl
@@ -24,6 +24,6 @@ module Data.Encoding.GolombRice.Strict.Mutable
   )
 where
 
-import           Data.Encoding.GolombRice.Strict.Internal
+import           Data.Encoding.GolombRice.Strict.Mutable.Internal
 import           Data.Encoding.GolombRice.Item
 import           Prelude                        ( )

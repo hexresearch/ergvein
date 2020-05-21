@@ -51,6 +51,10 @@ test-suite golomb-rice-test
   hs-source-dirs:      test
   other-modules:
       Data.Encoding.GolombRiceTest
+      Data.Encoding.Mutable.GolombRiceTest
+  if flag(cbitstream)
+    cpp-options: -DCBITSTREAM
+    build-depends: cbitstream >= 0.1 && < 0.2
   ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
   default-extensions:
     NumDecimals
