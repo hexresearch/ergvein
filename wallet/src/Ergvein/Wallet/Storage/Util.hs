@@ -47,8 +47,10 @@ addXPrvKeyToKeystore Internal (index, key) (PrvKeystore master external internal
 
 createPrvKeystore :: EgvXPrvKey -> PrvKeystore
 createPrvKeystore masterPrvKey =
-  let externalKeys = MI.fromList [(index, derivePrvKey masterPrvKey External (fromIntegral index)) | index <- [0..(gapLimit-1)]]
-      internalKeys = MI.fromList [(index, derivePrvKey masterPrvKey Internal (fromIntegral index)) | index <- [0..(gapLimit-1)]]
+  let externalKeys = MI.fromList [(index, derivePrvKey masterPrvKey External (fromIntegral index))
+        | index <- [0..(initialExternalAddressCount - 1)]]
+      internalKeys = MI.fromList [(index, derivePrvKey masterPrvKey Internal (fromIntegral index))
+        | index <- [0..(initialInternalAddressCount - 1)]]
   in PrvKeystore masterPrvKey externalKeys internalKeys
 
 createPrvStorage :: Seed -> EgvRootXPrvKey -> PrvStorage
@@ -66,8 +68,10 @@ addXPubKeyToKeystore Internal (index, key) (PubKeystore master external internal
 
 createPubKeystore :: EgvXPubKey -> PubKeystore
 createPubKeystore masterPubKey =
-  let externalKeys = MI.fromList [(index, derivePubKey masterPubKey External (fromIntegral index)) | index <- [0..(gapLimit-1)]]
-      internalKeys = MI.fromList [(index, derivePubKey masterPubKey Internal (fromIntegral index)) | index <- [0..(gapLimit-1)]]
+  let externalKeys = MI.fromList [(index, derivePubKey masterPubKey External (fromIntegral index))
+        | index <- [0..(initialExternalAddressCount-1)]]
+      internalKeys = MI.fromList [(index, derivePubKey masterPubKey Internal (fromIntegral index))
+        | index <- [0..(initialInternalAddressCount - 1)]]
   in PubKeystore masterPubKey externalKeys internalKeys
 
 createPubStorage :: EgvRootXPrvKey -> [Currency] -> PubStorage
