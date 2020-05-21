@@ -1,10 +1,17 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RecordWildCards #-}
 module Data.Bitstream.C(
     Bitstream(..)
   , empty
   , null
   , length
+  , bits
+  , drop
+  , countWhile
+  , resize
+  , realloc
   , fromByteString
   , unsafeFromByteString
   , toByteString
@@ -12,11 +19,15 @@ module Data.Bitstream.C(
   , pack
   , WriteBits(..)
   , writeNBits
+  , unsafeWriteNBits
+  , replicateBits
+  , unsafeReplicateBits
   , ReadBits(..)
   , readByteString
   , readNBits
   ) where
 
+import Control.Monad
 import Control.Monad.IO.Class
 import Data.Bitstream.C.Raw
 import Data.ByteString (ByteString)
@@ -24,10 +35,11 @@ import Data.Foldable (traverse_)
 import Data.Word
 import Foreign.C.Types
 import Foreign.ForeignPtr
-import Foreign.Marshal.Alloc
+import Foreign.Marshal.Alloc hiding (realloc)
+import Foreign.Marshal.Utils
 import Foreign.Ptr
 import GHC.Generics
-import Prelude hiding (null, length)
+import Prelude hiding (null, length, drop)
 import Data.Bits
 
 import qualified Data.ByteString as BS
@@ -40,11 +52,11 @@ data Bitstream = Bitstream {
 , bitstreamBuffer :: !(ForeignPtr CUChar) -- ^ Buffer for bits
 , bitstreamWriter :: !(ForeignPtr BitstreamWriter) -- ^ Control structure for writing bits
 , bitstreamReader :: !(ForeignPtr BitstreamReader) -- ^ Control structure for reading bits
-} deriving (Show, Generic)
+} deriving (Generic)
 
 -- | Allocate new bitstream writer buffer
 empty :: MonadIO m
-  => Int -- ^ Size in bytes
+  => Int -- ^ Size in bytes (preallocated)
   -> m Bitstream
 empty n = liftIO $ Bitstream
   <$> pure n
@@ -55,15 +67,60 @@ empty n = liftIO $ Bitstream
 
 -- | Return 'True' if given stream is empty
 null :: MonadIO m  => Bitstream -> m Bool
-null Bitstream{..} = liftIO $ withForeignPtr bitstreamWriter $ \ptr -> do
-  n <- bitstream_writer_size_in_bytes ptr
-  pure $ n == 0
+null bs = (0 ==) <$> length bs
 {-# INLINE null #-}
 
 -- | Get filled size in bytes of bitstream.
 length :: MonadIO m => Bitstream -> m Int
-length Bitstream{..} = liftIO $ fmap fromIntegral $ withForeignPtr bitstreamWriter bitstream_writer_size_in_bytes
+length Bitstream{..} = liftIO $ fmap fromIntegral $ do
+  wn <- withForeignPtr bitstreamWriter bitstream_writer_size_in_bytes
+  rn <- withForeignPtr bitstreamReader bitstream_reader_tell
+  pure $ wn - (rn `div` 8)
 {-# INLINE length #-}
+
+-- | Get filled size in bits of bitstream.
+bits :: MonadIO m => Bitstream -> m Int
+bits Bitstream{..} = liftIO $ fmap fromIntegral $ do
+  wn <- withForeignPtr bitstreamWriter bitstream_writer_size_in_bits
+  rn <- withForeignPtr bitstreamReader bitstream_reader_tell
+  pure $ wn - rn
+{-# INLINE bits #-}
+
+-- | Drop given amount of bits from bitstream.
+drop :: MonadIO m => Int -> Bitstream -> m ()
+drop i Bitstream{..} = liftIO $ withForeignPtr bitstreamReader $ \rp ->
+  bitstream_reader_seek rp (fromIntegral i)
+{-# INLINE drop #-}
+
+-- | Count amount of bits that passes the predicate. Discard them.
+countWhile :: MonadIO m => (Bool -> Bool) -> Bitstream -> m Int
+countWhile f bs = go 0
+  where
+    go !acc = do
+      v <- readBits bs
+      if f v then go (acc+1) else pure acc
+{-# INLINABLE countWhile #-}
+
+-- | Reallocate internal buffer to the given size. If the size is smaller than
+-- amount of bytes clamps to that
+resize :: MonadIO m => Int -> Bitstream -> m Bitstream
+resize n bs = liftIO $ withForeignPtr (bitstreamWriter bs) $ \wp -> do
+  l <- fmap fromIntegral $ bitstream_writer_size_in_bytes wp
+  let n' = if n < l then l else n
+  newBuff <- mallocForeignPtrBytes n'
+  withForeignPtr newBuff $ \newp -> withForeignPtr (bitstreamBuffer bs) $ \oldp ->
+    copyBytes newp oldp l
+  pure $ Bitstream n' newBuff (bitstreamWriter bs) (bitstreamReader bs)
+{-# INLINABLE resize #-}
+
+-- | Reallocate if needed to handle given amount of additiona bytes.
+realloc :: MonadIO m => Int -> Bitstream -> m Bitstream
+realloc n bs = liftIO $ withForeignPtr (bitstreamWriter bs) $ \wp -> do
+  l <- fmap fromIntegral $ bitstream_writer_size_in_bytes wp
+  if (bitstreamSize bs <= l + n)
+    then resize (if l + n < 2*l then 2*l else l + n) bs
+    else pure bs
+{-# INLINEABLE realloc #-}
 
 -- | Convert bytes to stream of bits. O(n)
 fromByteString :: MonadIO m => ByteString -> m Bitstream
@@ -111,47 +168,122 @@ pack bs = liftIO $ do
 {-# INLINEABLE pack #-}
 
 class WriteBits a where
-  -- | Write down value to bitstream
-  writeBits :: MonadIO m => Bitstream -> a -> m ()
+  -- | Write down value to bitstream with boundary check.
+  writeBits :: MonadIO m => a -> Bitstream -> m Bitstream
+  -- | Write down value to bitstream without boundary checks.
+  unsafeWriteBits :: MonadIO m => a -> Bitstream -> m ()
 
 instance WriteBits Bool where
-  writeBits sw v = liftIO $ withForeignPtr (bitstreamWriter sw) $ \wp ->
-    bitstream_writer_write_bit wp (if v then 1 else 0)
+  writeBits v sw = liftIO $ do
+    li <- bits sw
+    sw' <- if (div (li + 1) 8 > bitstreamSize sw) then realloc 1 sw else pure sw
+    unsafeWriteBits v sw'
+    pure sw'
   {-# INLINABLE writeBits #-}
+
+  unsafeWriteBits v sw = liftIO $ withForeignPtr (bitstreamWriter sw) $ \wp ->
+      bitstream_writer_write_bit wp (if v then 1 else 0)
+  {-# INLINABLE unsafeWriteBits #-}
+
+instance WriteBits [Bool] where
+  writeBits v sw = liftIO $ do
+    let i = P.length v
+        ib = ceiling $ (fromIntegral i :: Double) / 8
+    li <- bits sw
+    sw' <- if (div (li + i) 8 > bitstreamSize sw) then realloc ib sw else pure sw
+    unsafeWriteBits v sw'
+    pure sw'
+  {-# INLINABLE writeBits #-}
+
+  unsafeWriteBits as sw = traverse_ (flip unsafeWriteBits sw) as
+  {-# INLINABLE unsafeWriteBits #-}
 
 instance WriteBits ByteString where
-  writeBits sw bs = liftIO $ BS.unsafeUseAsCStringLen bs $ \(ptr, l) ->
+  writeBits v sw = liftIO $ do
+    sw' <- realloc (BS.length v) sw
+    unsafeWriteBits v sw'
+    pure sw'
+  {-# INLINABLE writeBits #-}
+
+  unsafeWriteBits bs sw = liftIO $ BS.unsafeUseAsCStringLen bs $ \(ptr, l) ->
     withForeignPtr (bitstreamWriter sw) $ \wp ->
       bitstream_writer_write_bytes wp (castPtr ptr) (fromIntegral l)
-  {-# INLINABLE writeBits #-}
+  {-# INLINABLE unsafeWriteBits #-}
 
 instance WriteBits Word8 where
-  writeBits sw v = liftIO $ withForeignPtr (bitstreamWriter sw) $ \wp ->
-    bitstream_writer_write_u8 wp (fromIntegral v)
+  writeBits v sw = liftIO $ do
+    sw' <- realloc 1 sw
+    unsafeWriteBits v sw'
+    pure sw'
   {-# INLINABLE writeBits #-}
+
+  unsafeWriteBits v sw = liftIO $ withForeignPtr (bitstreamWriter sw) $ \wp ->
+    bitstream_writer_write_u8 wp (fromIntegral v)
+  {-# INLINABLE unsafeWriteBits #-}
 
 instance WriteBits Word16 where
-  writeBits sw v = liftIO $ withForeignPtr (bitstreamWriter sw) $ \wp ->
-    bitstream_writer_write_u16 wp (fromIntegral v)
+  writeBits v sw = liftIO $ do
+    sw' <- realloc 2 sw
+    unsafeWriteBits v sw'
+    pure sw'
   {-# INLINABLE writeBits #-}
+
+  unsafeWriteBits v sw = liftIO $ withForeignPtr (bitstreamWriter sw) $ \wp ->
+    bitstream_writer_write_u16 wp (fromIntegral v)
+  {-# INLINABLE unsafeWriteBits #-}
 
 instance WriteBits Word32 where
-  writeBits sw v = liftIO $ withForeignPtr (bitstreamWriter sw) $ \wp ->
-    bitstream_writer_write_u32 wp (fromIntegral v)
+  writeBits v sw = liftIO $ do
+    sw' <- realloc 4 sw
+    unsafeWriteBits v sw'
+    pure sw'
   {-# INLINABLE writeBits #-}
+
+  unsafeWriteBits v sw = liftIO $ withForeignPtr (bitstreamWriter sw) $ \wp ->
+    bitstream_writer_write_u32 wp (fromIntegral v)
+  {-# INLINABLE unsafeWriteBits #-}
 
 instance WriteBits Word64 where
-  writeBits sw v = liftIO $ withForeignPtr (bitstreamWriter sw) $ \wp ->
-    bitstream_writer_write_u64 wp (fromIntegral v)
+  writeBits v sw = liftIO $ do
+    sw' <- realloc 8 sw
+    unsafeWriteBits v sw'
+    pure sw'
   {-# INLINABLE writeBits #-}
 
+  unsafeWriteBits v sw = liftIO $ withForeignPtr (bitstreamWriter sw) $ \wp ->
+    bitstream_writer_write_u64 wp (fromIntegral v)
+  {-# INLINABLE unsafeWriteBits #-}
+
 -- | Write down only N lower bits from given word.
-writeNBits :: MonadIO m => Bitstream -> Word64 -> Int -> m ()
-writeNBits sw v i = liftIO $ withForeignPtr (bitstreamWriter sw) $ \wp -> do
+writeNBits :: MonadIO m => Int -> Word64 -> Bitstream -> m Bitstream
+writeNBits i v sw = liftIO $ do
+  sw' <- realloc 8 sw
+  unsafeWriteNBits i v sw'
+  pure sw'
+{-# INLINABLE writeNBits #-}
+
+-- | Write down only N lower bits from given word. Doesn't check boundaries.
+unsafeWriteNBits :: MonadIO m => Int -> Word64 -> Bitstream -> m ()
+unsafeWriteNBits i v sw = liftIO $ withForeignPtr (bitstreamWriter sw) $ \wp -> do
   let i' = 64-i
       v' = shiftR (shiftL v i') i'
   bitstream_writer_write_u64_bits wp (fromIntegral v') (fromIntegral i)
-{-# INLINABLE writeNBits #-}
+{-# INLINABLE unsafeWriteNBits #-}
+
+-- | Write down given amount of bits to stream.
+replicateBits :: MonadIO m => Int -> Bool -> Bitstream -> m Bitstream
+replicateBits i v sw = liftIO $ do
+  let ib = ceiling $ (fromIntegral i :: Double) / 8.0
+  sw' <- realloc ib sw
+  unsafeReplicateBits i v sw'
+  pure sw'
+{-# INLINABLE replicateBits #-}
+
+-- | Write down given amount of bits to stream. Doesn't check boundaries.
+unsafeReplicateBits :: MonadIO m => Int -> Bool -> Bitstream -> m ()
+unsafeReplicateBits i v sw = liftIO $ withForeignPtr (bitstreamWriter sw) $ \wp ->
+  bitstream_writer_write_repeated_bit wp (if v then 1 else 0) (fromIntegral i)
+{-# INLINABLE unsafeReplicateBits #-}
 
 class ReadBits a where
   -- | Read value from bitstream
@@ -184,8 +316,8 @@ instance ReadBits Word64 where
   {-# INLINABLE readBits #-}
 
 -- | Read given amount of bytes from the stream
-readByteString :: MonadIO m => Bitstream -> Int -> m ByteString
-readByteString sr i = liftIO $ do
+readByteString :: MonadIO m => Int -> Bitstream -> m ByteString
+readByteString i sr = liftIO $ do
   let bs = BS.replicate i 0
   BS.unsafeUseAsCString bs $ \bsptr ->
     withForeignPtr (bitstreamReader sr) $ \rp ->
@@ -194,7 +326,7 @@ readByteString sr i = liftIO $ do
 {-# INLINABLE readByteString #-}
 
 -- | Read given amount of bits and convert them into word considering them as low bits.
-readNBits :: MonadIO m => Bitstream -> Int -> m Word64
-readNBits sr i = liftIO $ withForeignPtr (bitstreamReader sr) $ \rp ->
+readNBits :: MonadIO m => Int -> Bitstream -> m Word64
+readNBits i sr = liftIO $ withForeignPtr (bitstreamReader sr) $ \rp ->
   fmap fromIntegral $ bitstream_reader_read_u64_bits rp (fromIntegral i)
 {-# INLINABLE readNBits #-}

@@ -145,3 +145,11 @@ foreign import ccall unsafe "bitstream_reader_read_u64"
 
 foreign import ccall unsafe "bitstream_reader_read_u64_bits"
   bitstream_reader_read_u64_bits :: Ptr BitstreamReader -> CInt -> IO CULong
+
+-- | Move read position.
+foreign import ccall unsafe "bitstream_reader_seek"
+  bitstream_reader_seek :: Ptr BitstreamReader -> CInt -> IO ()
+
+-- | Get read position.
+foreign import ccall unsafe "bitstream_reader_tell"
+  bitstream_reader_tell :: Ptr BitstreamReader -> IO CInt
