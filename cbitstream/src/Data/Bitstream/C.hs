@@ -47,6 +47,8 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Unsafe as BS
 import qualified Prelude as P
 
+import Debug.Trace
+
 -- | Wrapper around C object to track buffers.
 data Bitstream = Bitstream {
   bitstreamSize   :: !Int -- ^ Size of allocated buffer
@@ -59,11 +61,16 @@ data Bitstream = Bitstream {
 empty :: MonadIO m
   => Int -- ^ Size in bytes (preallocated)
   -> m Bitstream
-empty n = liftIO $ Bitstream
-  <$> pure n
-  <*> mallocForeignPtrBytes n
-  <*> (newForeignPtr bitstream_writer_delete_ptr =<< bitstream_writer_new)
-  <*> (newForeignPtr bitstream_reader_delete_ptr =<< bitstream_reader_new)
+empty n = liftIO $ do
+  buff <- mallocForeignPtrBytes n
+  wp <- bitstream_writer_new
+  rp <- bitstream_reader_new
+  bw <- newForeignPtr bitstream_writer_delete_ptr wp
+  br <- newForeignPtr bitstream_reader_delete_ptr rp
+  withForeignPtr buff $ \bp -> do
+    bitstream_writer_init wp bp
+    bitstream_reader_init rp bp
+    pure $ Bitstream n buff bw br
 {-# INLINE empty #-}
 
 -- | Return 'True' if given stream is empty
@@ -137,10 +144,14 @@ fromByteString bs = liftIO $ do
 -- afftected.
 unsafeFromByteString :: MonadIO m => ByteString -> m Bitstream
 unsafeFromByteString  bs = liftIO $ BS.unsafeUseAsCStringLen bs $ \(ptr, l) -> do
-  wpw <- newForeignPtr bitstream_writer_delete_ptr =<< bitstream_writer_new
-  wpr <- newForeignPtr bitstream_reader_delete_ptr =<< bitstream_reader_new
+  wp <- bitstream_writer_new
+  rp <- bitstream_reader_new
+  bw <- newForeignPtr bitstream_writer_delete_ptr wp
+  br <- newForeignPtr bitstream_reader_delete_ptr rp
+  bitstream_writer_init wp $ castPtr ptr
+  bitstream_reader_init rp $ castPtr ptr
   fptr <- newForeignPtr_ (castPtr ptr)
-  pure $ Bitstream (fromIntegral l) fptr wpw wpr
+  pure $ Bitstream (fromIntegral l) fptr bw br
 {-# INLINABLE unsafeFromByteString #-}
 
 -- | Convert stream of bits to bytestring. O(n)
@@ -162,9 +173,14 @@ unsafeToByteString sw = liftIO $ withForeignPtr (bitstreamWriter sw) $ \wp -> do
 pack :: MonadIO m => [Bool] -> m Bitstream
 pack bs = liftIO $ do
   let n = ceiling $ (fromIntegral (P.length bs) :: Double) / 8
+  print n
   sw <- empty n
+  traceM "!!!!"
   withForeignPtr (bitstreamWriter sw) $ \wp ->
-    flip traverse_ bs $ \i -> bitstream_writer_write_bit wp $ if i then 1 else 0
+    flip traverse_ bs $ \i -> do
+      traceShowM i
+      bitstream_writer_write_bit wp $ if i then 1 else 0
+      traceShowM "Done"
   pure sw
 {-# INLINEABLE pack #-}
 
