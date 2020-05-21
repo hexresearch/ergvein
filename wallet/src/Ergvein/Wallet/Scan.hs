@@ -102,7 +102,7 @@ scanExternalAddresses currency currencyPubStorage = mdo
   newTxsD <- foldDyn M.union M.empty getTxsE
   blocksD <- holdDyn [] blocksE
   filterAddressE <- traceEvent "Scanned for blocks" <$> (filterAddress $ (egvXPubKeyToEgvAddress . snd) <$> processKeyE)
-  getBlocksE <- traceEvent "Blocks requested" <$> requestBTCBlocksWaitRN filterAddressE
+  getBlocksE <- traceEvent "Blocks requested" <$> requestBTCBlocks filterAddressE
   storedBlocksE <- storeMultipleBlocksByE getBlocksE
   storedTxHashesE <- storeMultipleBlocksTxHashesByE $ tagPromptlyDyn blocksD storedBlocksE
   getTxsE <- getTxs $ attachPromptlyDynWith (\(_, key) blocks ->
