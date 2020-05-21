@@ -5,32 +5,31 @@ volumes:
   cache:
     name: ergvein-cache
 services:
-  ergvein-index-server:
-    image: ergvein/ergvein-index-server
-    container_name: ergvein-index-server
-    command: ["listen", "/config.yml"]
+  ergvein-index-server-0:
+    image: ergvein-index-server:develop
+    container_name: ergvein-index-server-0
+    command: ["listen", "/config-0.yml"]
     ports:
     - 8080:8080
     volumes:
-    - ./config.yml:/config.yml
-    - cache:/cache
+    - ./config-0.yml:/config-0.yml
+    - cache:/cache-0
     restart: always
     depends_on:
-    - "postgres"
+    - "postgres-0"
     logging: &log
       options:
         max-size: "10m"
         max-file: "10"
-  postgres:
+  postgres-0:
     image: postgres:12-alpine
-    container_name: postgres
+    container_name: postgres-0
     environment:
     - POSTGRES_DB=ergvein
     - POSTGRES_USER=ergvein
     - POSTGRES_PASSWORD=ergvein
     volumes:
-    - pgdata:/var/lib/postgresql/data
+    - pgdata:/var/lib/postgresql/data-0
     restart: always
     logging:
       <<: *log
-
