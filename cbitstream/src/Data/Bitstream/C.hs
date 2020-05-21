@@ -100,7 +100,8 @@ drop i Bitstream{..} = liftIO $ withForeignPtr bitstreamReader $ \rp ->
   bitstream_reader_seek rp (fromIntegral i)
 {-# INLINE drop #-}
 
--- | Count amount of bits that passes the predicate. Discard them.
+-- | Count amount of bits that passes the predicate. Discard them. The first
+-- failed item is also discarded.
 countWhile :: MonadIO m => (Bool -> Bool) -> Bitstream -> m Int
 countWhile f bs = go 0
   where

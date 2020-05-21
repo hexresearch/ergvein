@@ -1,4 +1,5 @@
 {-# LANGUAGE BinaryLiterals  #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Data.Bitstream.CTest where
 
 import           Control.Monad
@@ -75,11 +76,27 @@ spec_basicTests = describe "basic tests" $ do
     bs' <- BS.writeNBits 3 0b1001 =<< BS.writeNBits 3 0b1111 bs
     res <- BS.unpack bs'
     res `shouldBe` [True, True, True, False, False, True]
+  it "writeBits 524388" $ do
+    bs <- BS.empty 1
+    bs' <- BS.writeBits (524388 :: Word64) bs
+    res :: Word64 <- BS.readBits bs'
+    res `shouldBe` 524388
+  it "readNBits 3 0b1111" $ do
+    bs <- BS.empty 1
+    bs' <- BS.writeNBits 3 0b1111 bs
+    res <- BS.readNBits 3 bs'
+    res `shouldBe` 0b111
   it "drop 1" $ do
     bs <- BS.pack [True, True, False, True]
     BS.drop 1 bs
     res <- BS.unpack bs
     res `shouldBe` [True, False, True]
+  it "countWhile id" $ do
+    bs <- BS.pack [True, True, False, True]
+    res <- BS.countWhile id bs
+    leftover <- BS.unpack bs
+    res `shouldBe` 2
+    leftover `shouldBe` [True]
   it "reallocates" $ do
     let ws = [12,28,3,23,4,15,15,31,11,32,5,19,0,6,0,17,2] :: [Word64]
     bs <- BS.empty 16
@@ -101,8 +118,6 @@ prop_encodingDecodingWord (Small w) = idempotentIOProperty $ do
 prop_encodingDecodingWords :: [Small Word64] -> Property
 prop_encodingDecodingWords ws = idempotentIOProperty $ do
   let ws' = fmap (\(Small w) -> w) ws
-  print ws'
-  print $ length ws'
   bs <- BS.empty 16
   bs' <- foldM (flip BS.writeBits) bs ws'
   rw <- replicateM (length ws) $ BS.readBits bs'

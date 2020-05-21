@@ -164,7 +164,6 @@ decodeWord
   -> m Word64
 decodeWord p s = do
   q <- fromIntegral <$> BS.countWhile id s
-  BS.drop 1 s
   r <- BS.readNBits p s
   pure $ (q `shiftL` p) + r
 {-# INLINABLE decodeWord #-}
