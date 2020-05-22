@@ -9,6 +9,7 @@ import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
+import Ergvein.Wallet.Page.QRCode
 import Ergvein.Wallet.Wrapper
 
 newtype RecieveTitle = RecieveTitle Currency
@@ -22,4 +23,9 @@ receivePage :: MonadFront t m => Currency -> m ()
 receivePage cur = wrapper (RecieveTitle cur) (Just $ pure $ receivePage cur) False $ do
   let thisWidget = Just $ pure $ receivePage cur
   navbarWidget cur thisWidget NavbarReceive
-  void $ divClass "centered-wrapper" $ divClass "centered-content" $ h3 $ localizedText $ RecieveTitle cur
+  void $ divClass "centered-wrapper" $ divClass "centered-content" $ do
+    divClass "recieve-qr"   $ qrCodeWidget mockAddress cur
+    divClass "recieve-addr" $ text mockAddress
+    
+mockAddress :: Text
+mockAddress = "1BoatSLRHtKNngkdXEeobR76b53LETtpyT"
