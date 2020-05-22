@@ -54,6 +54,7 @@ test-suite ergvein-wallet-filters-test
   main-is:             Driver.hs
   hs-source-dirs:      test
   other-modules:
+      Ergvein.Filters.Btc.MutableTest
       Ergvein.Filters.BtcTest
   ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
   default-extensions:
