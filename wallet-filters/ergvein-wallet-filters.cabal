@@ -31,6 +31,7 @@ library
     , bytestring        >= 0.10
     , cereal
     , containers        >= 0.5
+    , deepseq           >= 1.4
     , dependent-sum     >= 0.6
     , ergvein-common
     , ergvein-wallet-types >= 0.1 && < 0.2

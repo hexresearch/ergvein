@@ -19,6 +19,7 @@ module Ergvein.Filters.Btc.Mutable
 where
 
 import           Control.Monad.IO.Class
+import           Control.DeepSeq
 import           Data.ByteArray.Hash            ( SipKey(..) )
 import           Data.ByteString                ( ByteString )
 import           Data.Map.Strict                ( Map )
@@ -63,6 +64,8 @@ data BtcAddrFilter = BtcAddrFilter {
   btcAddrFilterN   :: !Word64 -- ^ the total amount of items in filter
 , btcAddrFilterGcs :: !GCS -- ^ Actual encoded golomb encoded set
 } deriving (Generic)
+
+instance NFData BtcAddrFilter
 
 -- | Encoding filter as simple <length><gcs>
 encodeBtcAddrFilter :: MonadIO m => BtcAddrFilter -> m ByteString

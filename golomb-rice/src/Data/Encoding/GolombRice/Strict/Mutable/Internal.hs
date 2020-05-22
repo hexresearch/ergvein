@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 module Data.Encoding.GolombRice.Strict.Mutable.Internal where
 
+import           Control.DeepSeq
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Data.Bits
@@ -26,6 +27,8 @@ data GolombRice a = GolombRice {
   golombRiceP      :: !Int -- ^ Number of bits P in remainder part of encoding
 , golombRiceStream :: !GolombStream -- ^ Big endian stream of bits
 } deriving (Generic)
+
+instance NFData (GolombRice a)
 
 -- | Create empty gololmb rice stream
 empty

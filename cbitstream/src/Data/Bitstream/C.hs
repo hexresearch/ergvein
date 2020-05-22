@@ -28,6 +28,7 @@ module Data.Bitstream.C(
   , readNBits
   ) where
 
+import Control.DeepSeq
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Bitstream.C.Raw
@@ -56,6 +57,14 @@ data Bitstream = Bitstream {
 , bitstreamWriter :: !(ForeignPtr BitstreamWriter) -- ^ Control structure for writing bits
 , bitstreamReader :: !(ForeignPtr BitstreamReader) -- ^ Control structure for reading bits
 } deriving (Generic)
+
+instance NFData Bitstream where
+  rnf Bitstream{..} =
+    bitstreamSize `deepseq`
+    bitstreamBuffer `seq`
+    bitstreamWriter `seq`
+    bitstreamReader `seq` ()
+  {-# INLINE rnf #-}
 
 -- | Allocate new bitstream writer buffer
 empty :: MonadIO m
