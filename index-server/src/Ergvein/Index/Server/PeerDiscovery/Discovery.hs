@@ -11,6 +11,8 @@ import Data.Hashable
 import Data.List
 import Data.Maybe
 import Data.Time.Clock
+import Servant.Client.Core
+
 import Ergvein.Index.API.Types
 import Ergvein.Index.Client.V1
 import Ergvein.Index.Server.BlockchainScanning.Common
@@ -22,7 +24,7 @@ import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.Utils
-import Servant.Client.Core
+import Ergvein.Index.Server.Cache.Queries 
 
 import qualified Data.Map.Strict as Map
 import qualified Network.HTTP.Client as HC
@@ -52,6 +54,7 @@ considerPeerCandidate candidate = do
     _ <- peerKnownPeers baseUrl
     let newPeer = NewPeer baseUrl $ baseUrlScheme baseUrl
     lift $ dbQuery $ addNewPeers [newPeer]
+    lift $ refreshKnownPeersCache
   else
     ExceptT $ pure $ Left AlreadyKnown
 
@@ -83,6 +86,8 @@ knownPeersActualization = do
         deleteExpiredPeers $ peerId <$> outdatedPeers
         refreshPeerValidationTime $ peerId <$> peersToRefresh
         addNewPeers $ newPeer <$> uniqueNotDiscoveredFetchedPeers
+      
+      refreshKnownPeersCache
 
       liftIO $ threadDelay $ descReqActualizationDelay requisites
 
@@ -149,3 +154,8 @@ peerActualScan candidateInfo = do
 
     candidateInfoMap = Map.fromList $ (\scanInfo -> (scanProgressCurrency scanInfo, scanInfo))
                                    <$> infoScanProgress candidateInfo
+
+refreshKnownPeersCache :: ServerM ()
+refreshKnownPeersCache = do
+  stored <- dbQuery getDiscoveredPeers
+  updateKnownPeers stored

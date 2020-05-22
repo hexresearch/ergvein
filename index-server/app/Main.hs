@@ -46,8 +46,9 @@ main = do
        <> header "ergvein-index-server - cryptocurrency index server for ergvein client" )
 onStartup :: ServerM ()
 onStartup = do
-  --runServerMIO blockchainScanning
+  blockchainScanning
   addDefaultPeersIfNoneDiscovered
+  refreshKnownPeersCache
   peerIntroduce
   knownPeersActualization
   pure ()

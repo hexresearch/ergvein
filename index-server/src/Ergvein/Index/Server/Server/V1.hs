@@ -96,6 +96,6 @@ peerValidationToResponce = \case
 
 
 knownPeersEndpoint :: KnownPeersReq -> ServerM KnownPeersResp
-knownPeersEndpoint request = do
-  result <- knownPeers $ knownPeersWithSecuredOnly request
-  pure $ KnownPeersResp $ showBaseUrl . peerUrl <$> result
+knownPeersEndpoint request = do 
+  result <- getKnownPeers $ knownPeersWithSecuredOnly request
+  pure $ KnownPeersResp result
