@@ -1,24 +1,25 @@
 module Ergvein.Index.Server.DB.Queries where
 
+import Conduit
+import Control.Concurrent
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.Reader
+import Conversion
+import Data.Proxy
+import Data.Time.Clock
 import Data.Word
 import Database.Esqueleto
-import Safe 
-
 import Database.Esqueleto.Pagination
+import Safe
+
 import Ergvein.Index.Server.BlockchainScanning.Types
+import Ergvein.Index.Server.DB.Conversions
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema
+import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-
-import           Conduit
-import           Control.Concurrent
-import           Control.Monad
-import           Control.Monad.IO.Class
-import           Control.Monad.Reader
-import           Data.Proxy
 
 import qualified Data.Conduit.Internal as DCI
 import qualified Data.Conduit.List as CL
@@ -43,10 +44,42 @@ getScannedHeight currency = fmap headMay $ select $ from $ \scannedHeight -> do
 upsertScannedHeight :: MonadIO m => Currency -> Word64 -> QueryT m (Entity ScannedHeightRec)
 upsertScannedHeight currency h = upsert (ScannedHeightRec currency h) [ScannedHeightRecHeight DT.=. h]
 
+addNewPeers :: MonadIO m => [NewPeer] -> QueryT m ()
+addNewPeers newPeers = do
+  currentTime <- liftIO getCurrentTime
+  forM_ newPeers (insert_ . convert @_ @DiscoveredPeerRec . (currentTime, ))
+
+refreshPeerValidationTime :: MonadIO m => [DiscoveredPeerRecId] -> QueryT m ()
+refreshPeerValidationTime peerIds = do
+  currentTime <- liftIO getCurrentTime
+  update $ \peer -> do 
+    where_ $ peer ^. DiscoveredPeerRecId `in_` valList peerIds
+    set peer [DiscoveredPeerRecLastValidatedAt =. val currentTime]
+
+deleteExpiredPeers :: MonadIO m => [DiscoveredPeerRecId] -> QueryT m ()
+deleteExpiredPeers peerIds =
+  delete $ from $ \peer -> 
+    where_ $ peer ^. DiscoveredPeerRecId `in_` valList peerIds
+
+getDiscoveredFilteredPeers :: MonadIO m => Bool -> NominalDiffTime -> QueryT m [Peer]
+getDiscoveredFilteredPeers onlySecured actualizationDelay = do
+  currentTime <- liftIO getCurrentTime
+  let validDate = (-actualizationDelay) `addUTCTime` currentTime
+  result <- select $ from $ \peer -> do
+    when onlySecured $
+      where_ $ peer ^. DiscoveredPeerRecIsSecureConn ==. val onlySecured 
+    where_ $ peer ^. DiscoveredPeerRecLastValidatedAt >=. val validDate
+    pure peer
+  pure $ convert @(Entity DiscoveredPeerRec) <$> result
+
+getDiscoveredPeers :: MonadIO m => QueryT m [Peer]
+getDiscoveredPeers = fmap (convert @(Entity DiscoveredPeerRec)) <$> (select $ from pure)
+
 insertBlock  :: MonadIO m  => BlockMetaInfo -> QueryT m (Key BlockMetaRec)
-insertBlock block = insert $ blockMetaRec block
-  where
-    blockMetaRec block = BlockMetaRec (blockMetaCurrency block) (blockMetaBlockHeight block) (blockMetaHeaderHashHexView block) (blockMetaAddressFilterHexView block)
+insertBlock block = insert $ convert block
+
+isNonePeersDiscovered :: MonadIO m  => QueryT m Bool
+isNonePeersDiscovered = (0 == ) <$> rowsCount (Proxy :: Proxy DiscoveredPeerRec)
 
 rowsCount :: forall record m . (BackendCompatible SqlBackend (PersistEntityBackend record),
                                 PersistEntity record, MonadIO m)
@@ -60,5 +93,5 @@ chunksCount :: forall record m . (BackendCompatible SqlBackend (PersistEntityBac
                                  => Proxy record -> QueryT m Word64
 chunksCount _ = do 
   rCount <- rowsCount (Proxy :: Proxy record)
-  let cCount = ceiling $ fromIntegral rCount / (fromIntegral $  unPageSize pageLoadSize)
+  let cCount = ceiling $ fromIntegral rCount / (fromIntegral $ unPageSize pageLoadSize)
   pure cCount

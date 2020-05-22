@@ -6,6 +6,8 @@ import Ergvein.Types.Transaction
 import Ergvein.Types.Block
 import GHC.Generics
 import Data.Word
+import Data.Maybe
+import Servant.Client.Core
 
 -- Height
 newtype HeightRequest = HeightRequest
@@ -40,3 +42,27 @@ data InfoResponse = InfoResponse
     { infoScanProgress  :: [ScanProgressItem]
     } deriving (Eq, Show, Generic)
 $(deriveJSON (aesonOptionsStripPrefix "infoResp") ''InfoResponse)
+
+
+--Peer Discover
+
+data IntroducePeerReq = IntroducePeerReq
+    { introducePeerReqUrl     :: !String
+    } deriving (Eq, Show, Generic)
+$(deriveJSON (aesonOptionsStripPrefix "introducePeerReq") ''IntroducePeerReq)
+
+data IntroducePeerResp = IntroducePeerResp
+    { addPeerRespIsSuccess    :: !Bool
+    , introducePeerRespErrorMessage :: !(Maybe String)
+    } deriving (Eq, Show, Generic)
+$(deriveJSON (aesonOptionsStripPrefix "introducePeerResp") ''IntroducePeerResp)
+
+data KnownPeersReq = KnownPeersReq
+    { knownPeersWithSecuredOnly     :: !Bool
+    } deriving (Eq, Show, Generic)
+$(deriveJSON (aesonOptionsStripPrefix "knownPeersReq") ''KnownPeersReq)
+
+newtype KnownPeersResp = KnownPeersResp 
+    { knownPeersList :: [String]
+    } deriving (Eq, Show, Generic)
+$(deriveJSON (aesonOptionsStripPrefix "knownPeersResp") ''KnownPeersResp)

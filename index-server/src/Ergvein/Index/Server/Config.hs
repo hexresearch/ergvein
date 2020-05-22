@@ -5,38 +5,42 @@ import Data.Text
 import Data.Yaml.Config
 import Ergvein.Aeson
 import GHC.Generics
+import Data.Time.Clock
 
 data Config = Config
-  { configServerPort            :: !Int
-  , configDbHost                :: !String
-  , configDbPort                :: !Int
-  , configDbUser                :: !String
-  , configDbPassword            :: !String
-  , configDbName                :: !String
-  , configCachePath             :: !String
-  , configBlockchainScanDelay   :: !Int
-  , configDbLog                 :: !Bool
-  , configPubScriptHistoryScan  :: !Bool
-  , configBTCNodeIsTestnet      :: !Bool
-  , configBTCNodeHost           :: !String
-  , configBTCNodePort           :: !Int
-  , configBTCNodeUser           :: !Text
-  , configBTCNodePassword       :: !Text
-  , configERGONodeHost          :: !String
-  , configERGONodePort          :: !Int
+  { cfgServerPort               :: !Int
+  , cfgDbHost                   :: !String
+  , cfgDbPort                   :: !Int
+  , cfgDbUser                   :: !String
+  , cfgDbPassword               :: !String
+  , cfgDbName                   :: !String
+  , cfgCachePath                :: !String
+  , cfgBlockchainScanDelay      :: !Int
+  , cfgDbLog                    :: !Bool
+  , cfgBTCNodeIsTestnet         :: !Bool
+  , cfgBTCNodeHost              :: !String
+  , cfgBTCNodePort              :: !Int
+  , cfgBTCNodeUser              :: !Text
+  , cfgBTCNodePassword          :: !Text
+  , cfgERGONodeHost             :: !String
+  , cfgERGONodePort             :: !Int
+  , cfgOwnPeerAddress           :: !(Maybe String)
+  , cfgKnownPeers               :: ![String]
+  , cfgPeerActualizationDelay   :: !Int
+  , cfgPeerActualizationTimeout :: !NominalDiffTime
   } deriving (Show, Generic)
-deriveJSON (aesonOptionsStripPrefix "config") ''Config
+deriveJSON (aesonOptionsStripPrefix "cfg") ''Config
 
 class HasServerConfig m where
   serverConfig :: m Config
 
 connectionStringFromConfig :: Config -> String
 connectionStringFromConfig cfg = let
-  params = [ ("host", configDbHost)
-           , ("port", show . configDbPort)
-           , ("user", configDbUser)
-           , ("password", configDbPassword)
-           , ("dbname", configDbName)
+  params = [ ("host", cfgDbHost)
+           , ("port", show . cfgDbPort)
+           , ("user", cfgDbUser)
+           , ("password", cfgDbPassword)
+           , ("dbname", cfgDbName)
            ]
   in unpack $ intercalate " " $ segment <$> params
   where
