@@ -36,4 +36,3 @@ jobs:
       env:
         DOCKER_USERNAME: ergvein
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-    
