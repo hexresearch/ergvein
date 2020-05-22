@@ -89,7 +89,7 @@ requestSolo :: (MonadFrontBase t m, MonadClient t m, Eq a, Show a, Show b)
   -> Event t (BaseUrl, b)
   -> m (Event t (Either ClientErr a))
 requestSolo endpoint reqE = do
-  mng <- getClientMaganer
+  mng <- getClientManager
   resE <- performFork $ ffor reqE $ \(u, req) -> liftIO $ runReaderT (endpoint u req) mng
   pure $ either (const $ Left ClientErrTimeOut) Right <$> resE
 
