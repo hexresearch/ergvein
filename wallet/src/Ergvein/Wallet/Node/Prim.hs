@@ -57,6 +57,7 @@ data NodeConnection t cur = NodeConnection {
 , nodeconRespE      :: !(Event t (NodeResp cur))
 , nodeconExtra      :: !(NodeSpecific cur)
 , nodeconIsUp       :: !(Dynamic t Bool)
+, nodecondoLog      :: !Bool
 }
 
 data NodeStatus = NodeStatus {

@@ -12,13 +12,13 @@ data BlockMetaInfo = BlockMetaInfo
   }
 
 data TxInfo = TxInfo
-  { txHash      :: TxHash
-  , txHexView     :: TxHexView
+  { txHash         :: TxHash
+  , txHexView      :: TxHexView
   , txOutputsCount :: Word
   }
 
 data BlockInfo = BlockInfo
-  { blockInfoMeta    :: BlockMetaInfo
-  , spentTxsHash :: [TxHash]
+  { blockInfoMeta       :: BlockMetaInfo
+  , spentTxsHash        :: [TxHash]
   , blockContentTxInfos :: [TxInfo]
   }

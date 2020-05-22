@@ -1,13 +1,13 @@
 module Ergvein.Index.Server.DB.Schema where
 
+import Data.Text
+import Data.Time
 import Database.Persist.TH
+import Database.Persist.Types
+import Ergvein.Index.Server.DB.Drv
+import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Ergvein.Types.Block
-import Ergvein.Index.Server.DB.Drv
-import Ergvein.Index.Server.BlockchainScanning.Types
-import Conversion
-import Database.Persist.Types
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 ScannedHeightRec
@@ -20,10 +20,11 @@ BlockMetaRec
   height BlockHeight
   blockHeaderHashHexView BlockHeaderHashHexView
   addressFilterHexView AddressFilterHexView
+  UniqueCurrencyHeight currency height
   deriving Show
+DiscoveredPeerRec
+  url Text
+  lastValidatedAt UTCTime
+  isSecureConn Bool
+  UniqueUrl url
   |]
-
-instance Conversion (Entity BlockMetaRec) BlockMetaInfo where
-  convert entity = let 
-    value = entityVal entity 
-    in BlockMetaInfo (blockMetaRecCurrency value) (blockMetaRecHeight value) (blockMetaRecBlockHeaderHashHexView value) (blockMetaRecAddressFilterHexView value)

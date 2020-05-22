@@ -63,7 +63,7 @@ getBlockFiltersRandom :: (MonadFrontBase t m, MonadClient t m) => Event t BlockF
 getBlockFiltersRandom = requestSoloRandom getBlockFiltersEndpoint
 
 instance MonadIO m => HasClientManager (ReaderT Manager m) where
-  getClientMaganer = ask
+  getClientManager = ask
 
 data ResAct = ResActCheck | ResActTimeout | ResActNoUrls
 
@@ -89,7 +89,7 @@ requestSolo :: (MonadFrontBase t m, MonadClient t m, Eq a, Show a, Show b)
   -> Event t (BaseUrl, b)
   -> m (Event t (Either ClientErr a))
 requestSolo endpoint reqE = do
-  mng <- getClientMaganer
+  mng <- getClientManager
   resE <- performFork $ ffor reqE $ \(u, req) -> liftIO $ runReaderT (endpoint u req) mng
   pure $ either (const $ Left ClientErrTimeOut) Right <$> resE
 
@@ -141,7 +141,7 @@ requesterBody showLoad validateRes uss endpoint initRes req = do
   timeoutMsgE   <- delay dt buildE                          -- When to show a timeout message
   timeoutE      <- delay 1 timeoutMsgE                      -- When to actually signal a timeout
   urls          <- getRandUrls maxN uss                     -- Starting urls. Asked concurrently
-  mng           <- getClientMaganer                         -- Client manger for requests
+  mng           <- getClientManager                         -- Client manger for requests
   resCountRef   <- liftIO $ newTVarIO $ S.size uss          -- A counter of "visited" urls. Counts down till 0
 
   -- Request all staring urls concurrently and give back events and triggers

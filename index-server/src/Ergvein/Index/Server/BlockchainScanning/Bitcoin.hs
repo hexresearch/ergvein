@@ -17,12 +17,11 @@ import           Ergvein.Index.Server.BlockchainScanning.Types
 import           Ergvein.Index.Server.Cache.Monad
 import           Ergvein.Index.Server.Cache.Queries
 import           Ergvein.Index.Server.Cache.Schema
-import           Ergvein.Index.Server.Config
-import           Ergvein.Index.Server.Environment
 import           Ergvein.Index.Server.Utils
 import           Ergvein.Text
 import           Ergvein.Types.Currency
 import           Ergvein.Types.Transaction
+import           Ergvein.Index.Server.Dependencies
 
 import qualified Data.HashSet                       as Set
 import qualified Data.HexString                     as HS
@@ -38,9 +37,7 @@ blockTxInfos :: MonadLDB m => HK.Block -> BlockHeight -> HK.Network -> m BlockIn
 blockTxInfos block txBlockHeight nodeNetwork = do
   let (txInfos , spentTxsIds) = mconcat $ txInfo <$> HK.blockTxns block
 
-      uniqueSpentTxIds = Set.toList $ Set.fromList spentTxsIds
-
-  uniqueSpentTxs <- mapM spentTxSource uniqueSpentTxIds
+  uniqueSpentTxs <- mapM spentTxSource $ uniqueElements spentTxsIds
 
   let blockHeaderHashHexView = HK.blockHashToHex $ HK.headerHash $ HK.blockHeader block
   blockAddressFilter <- fmap HK.encodeHex $ encodeBtcAddrFilter =<< makeBtcFilter nodeNetwork uniqueSpentTxs block

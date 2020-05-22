@@ -13,6 +13,8 @@ module Reflex.ExternalRef(
   , writeExternalRef
   , modifyExternalRef
   , modifyExternalRefM
+  , modifyExternalRef_
+  , modifyExternalRefM_
   , externalRefBehavior
   , externalRefDynamic
   , externalFromDynamic
@@ -76,6 +78,14 @@ modifyExternalRef ExternalRef {..} f = do
   _ <- liftIO $ externalFire a
   return b
 
+-- | Atomically modify an external ref and notify FRP network.
+-- The function evaluates the value to WNF. Returns nothing
+modifyExternalRef_ :: MonadIO m => ExternalRef t a -> (a -> a) -> m ()
+modifyExternalRef_ ExternalRef {..} f = do
+  a <- liftIO $ atomicModifyIORef' externalRef $ \a ->
+    let a' = f a in (a', a')
+  liftIO $ externalFire a
+
 -- | Modify (not atomically) an external ref and notify FRP network.
 -- The function evaluates the value to WNF.
 modifyExternalRefM :: MonadIO m => ExternalRef t a -> (a -> m (a, b)) -> m b
@@ -84,9 +94,18 @@ modifyExternalRefM ExternalRef {..} f = do
   (a', b) <- f a
   liftIO $ do
     writeIORef externalRef a'
-    _ <- externalFire a
-    return ()
+    externalFire a'
   return b
+
+-- | Modify (not atomically) an external ref and notify FRP network.
+-- The function evaluates the value to WNF.
+modifyExternalRefM_ :: MonadIO m => ExternalRef t a -> (a -> m a) -> m ()
+modifyExternalRefM_ ExternalRef {..} f = do
+  a       <- liftIO $ readIORef externalRef
+  a'      <- f a
+  liftIO $ do
+    writeIORef externalRef a'
+    externalFire a'
 
 -- | Construct a behavior from external reference
 externalRefBehavior :: (MonadHold t m, MonadIO m) => ExternalRef t a -> m (Behavior t a)

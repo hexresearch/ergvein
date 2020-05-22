@@ -4,13 +4,13 @@ export LANG=C
 export LC_ALL=C
 
 if [ ! -d "$PGDATA" ]; then
-  initdb
-  pg_ctl -D $PGDATA -l $PGDATA.log start
+  /usr/lib/postgresql/12/bin/initdb
+  /usr/lib/postgresql/12/bin/pg_ctl -D $PGDATA -l $PGDATA.log start
   sleep 1
-  createuser localDb --superuser
-  createdb localDb -O localDb -w
+  /usr/lib/postgresql/12/bin/createuser localDb --superuser
+  /usr/lib/postgresql/12/bin/createdb localDb -O localDb -w
   sleep 2
 else
-  pg_ctl -D $PGDATA -l $PGDATA.log start
+  /usr/lib/postgresql/12/bin/pg_ctl -D $PGDATA -l $PGDATA.log start
   sleep 1
 fi
