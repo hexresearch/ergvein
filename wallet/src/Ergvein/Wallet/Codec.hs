@@ -7,7 +7,8 @@ import Network.Haskoin.Block
 import Network.Haskoin.Crypto
 import Network.Haskoin.Transaction
 
-import Ergvein.Filters.Btc
+import Ergvein.Filters.Btc.Mutable
+import System.IO.Unsafe (unsafePerformIO)
 
 import qualified Codec.Serialise as S
 import qualified Data.Serialize as Cereal
@@ -25,11 +26,11 @@ instance S.Serialise Hash256 where
   {-# INLINE decode #-}
 
 instance S.Serialise BtcAddrFilter where
-  encode = S.encode . encodeBtcAddrFilter
+  encode = S.encode . unsafePerformIO . encodeBtcAddrFilter
   {-# INLINE encode #-}
   decode = do
     bs <- S.decode
-    either fail pure $ decodeBtcAddrFilter bs
+    either fail pure $ unsafePerformIO $ decodeBtcAddrFilter bs
   {-# INLINE decode #-}
 
 instance S.Serialise BlockNode where

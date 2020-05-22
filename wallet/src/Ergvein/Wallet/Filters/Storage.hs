@@ -17,7 +17,7 @@ import Database.LMDB.Simple
 import Network.Haskoin.Block
 import System.Directory
 
-import Ergvein.Filters
+import Ergvein.Filters.Mutable
 import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Native
@@ -84,7 +84,7 @@ getFilter c bh = do
     BTC -> fmap (fmap AddrFilterBtc) $ BTC.getFilter bh e
 
 -- | Right fold over filters.
-foldFilters :: (MonadIO m, HasFiltersStorage m) => Currency -> (BlockHash -> AddrFilter -> a -> a) -> a -> m a
+foldFilters :: (MonadIO m, HasFiltersStorage m) => Currency -> (BlockHash -> AddrFilter -> a -> IO a) -> a -> m a
 foldFilters c f a0 = do
   e <- getFiltersStorage
   case c of

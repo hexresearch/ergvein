@@ -13,6 +13,8 @@ module Ergvein.Filters.Btc
   , decodeBtcAddrFilter
   , makeBtcFilter
   , applyBtcFilter
+  -- * Testing
+  , getSegWitAddr
   )
 where
 
@@ -22,6 +24,7 @@ import           Data.Map.Strict                ( Map )
 import           Data.Maybe
 import           Data.Serialize                 ( encode )
 import           Data.Word
+import           Ergvein.Filters.Btc.Address
 import           Ergvein.Filters.GCS
 import           Ergvein.Types.Address          (btcAddrToString')
 import           GHC.Generics
@@ -43,29 +46,6 @@ import qualified Data.ByteString.Lazy          as BSL
 import qualified Data.Map.Strict               as M
 import qualified Data.Text.Encoding            as T
 import qualified Data.Vector                   as V
-
--- | Special wrapper around SegWit address (P2WPKH or P2WSH) to distinct it from other types of addresses.
-data SegWitAddress = SegWitPubkey !Hash160 | SegWitScript !Hash256
-  deriving (Eq, Show, Generic)
-
--- | Nothing if the given address is not SegWit.
-guardSegWit :: Address -> Maybe SegWitAddress
-guardSegWit a = case a of
-  WitnessPubKeyAddress v -> Just $ SegWitPubkey v
-  WitnessScriptAddress v -> Just $ SegWitScript v
-  _                      -> Nothing
-
--- | Unwrap segwit to generic BTC address.
-fromSegWit :: SegWitAddress -> Address
-fromSegWit a = case a of
-  SegWitPubkey v -> WitnessPubKeyAddress v
-  SegWitScript v -> WitnessScriptAddress v
-
--- | Convert address to format that is passed to filter. Address is converted
--- to string and encoded as bytes. Network argument controls whether we are
--- in testnet or mainnet.
-encodeSegWitAddress :: Network -> SegWitAddress -> ByteString
-encodeSegWitAddress n = T.encodeUtf8 . btcAddrToString' n . fromSegWit
 
 -- | Default value for P parameter (amount of bits in golomb rice encoding).
 -- Set to fixed `19` according to BIP-158.
@@ -99,11 +79,11 @@ decodeBtcAddrFilter = A.parseOnly (parser <* A.endOfInput)
       <*> fmap (decodeGcs btcDefP) A.takeByteString
 
 
-instance B.Binary BtcAddrFilter where 
+instance B.Binary BtcAddrFilter where
   put = B.put . encodeBtcAddrFilter
   {-# INLINE put #-}
-  get = do 
-    bs <- B.get 
+  get = do
+    bs <- B.get
     either fail pure $ decodeBtcAddrFilter bs
   {-# INLINE get #-}
 
@@ -128,13 +108,6 @@ makeBtcFilter net intxs block = BtcAddrFilter
   totalSet  = V.fromList $ outputSet <> inputSet
   n         = fromIntegral $ V.length totalSet
   sipkey    = blockSipHash . headerHash . blockHeader $ block
-
--- | Extract segwit address from transaction output
-getSegWitAddr :: TxOut -> Maybe SegWitAddress
-getSegWitAddr tout = case decodeOutputBS $ scriptOutput tout of
-  Right (PayWitnessPKHash     h) -> Just $ SegWitPubkey h
-  Right (PayWitnessScriptHash h) -> Just $ SegWitScript h
-  _                              -> Nothing
 
 -- | Siphash key for filter is first 16 bytes of the hash (in standard little-endian representation)
 -- of the block for which the filter is constructed. This ensures the key is deterministic while
