@@ -11,7 +11,7 @@ import           Network.Bitcoin.Api.Blockchain
 import           Network.Bitcoin.Api.Client
 
 import           Ergvein.Crypto.Hash
-import           Ergvein.Filters.Btc
+import           Ergvein.Filters.Btc.Mutable
 import           Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import           Ergvein.Index.Server.BlockchainScanning.Types
 import           Ergvein.Index.Server.Cache.Monad
@@ -35,22 +35,22 @@ import qualified Network.Haskoin.Util               as HK
 
 
 blockTxInfos :: MonadLDB m => HK.Block -> BlockHeight -> HK.Network -> m BlockInfo
-blockTxInfos block txBlockHeight nodeNetwork = do 
+blockTxInfos block txBlockHeight nodeNetwork = do
   let (txInfos , spentTxsIds) = mconcat $ txInfo <$> HK.blockTxns block
-      
+
       uniqueSpentTxIds = Set.toList $ Set.fromList spentTxsIds
-  
+
   uniqueSpentTxs <- mapM spentTxSource uniqueSpentTxIds
 
   let blockHeaderHashHexView = HK.blockHashToHex $ HK.headerHash $ HK.blockHeader block
-      blockAddressFilter = HK.encodeHex $ encodeBtcAddrFilter $ makeBtcFilter nodeNetwork uniqueSpentTxs block
-      blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHashHexView blockAddressFilter
+  blockAddressFilter <- fmap HK.encodeHex $ encodeBtcAddrFilter =<< makeBtcFilter nodeNetwork uniqueSpentTxs block
+  let blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHashHexView blockAddressFilter
 
-  pure $ BlockInfo blockMeta spentTxsIds txInfos 
+  pure $ BlockInfo blockMeta spentTxsIds txInfos
   where
     blockTxMap = mapBy (HK.txHashToHex . HK.txHash) $ HK.blockTxns block
     spentTxSource :: MonadLDB m => TxHash -> m HK.Tx
-    spentTxSource txInId = 
+    spentTxSource txInId =
       case Map.lookup txInId blockTxMap of
         Just    sourceTx -> pure sourceTx
         Nothing          -> fromChache
@@ -64,7 +64,7 @@ blockTxInfos block txBlockHeight nodeNetwork = do
     txInfo tx = let
       withoutDataCarrier = none HK.isDataCarrier . HK.decodeOutputBS . HK.scriptOutput
       info = TxInfo { txHash = HK.txHashToHex $ HK.txHash tx
-                    , txHexView = HK.encodeHex $ encode tx 
+                    , txHexView = HK.encodeHex $ encode tx
                     , txOutputsCount = fromIntegral $ length $ filter withoutDataCarrier $  HK.txOut tx
                     }
       withoutCoinbaseTx = filter $ (/= HK.nullOutPoint)
@@ -84,7 +84,7 @@ blockInfo blockHeightToScan =  do
 
   currentNetwork <- currentBitcoinNetwork
 
-  blockTxInfos parsedBlock blockHeightToScan currentNetwork 
+  blockTxInfos parsedBlock blockHeightToScan currentNetwork
   where
     blockGettingError = error $ "Error getting BTC node at height " ++ show blockHeightToScan
     blockParsingError = error $ "Error parsing BTC node at height " ++ show blockHeightToScan

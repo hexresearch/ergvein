@@ -6,7 +6,6 @@ import Data.Foldable (traverse_)
 import Data.Maybe
 import Data.Text (Text, unpack, pack)
 import Data.Text.Encoding
-import Ergvein.Filters.Btc
 import Ergvein.Text
 import GHC.Generics
 import Network.Bitcoin.Api.Client

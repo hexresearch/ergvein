@@ -15,6 +15,7 @@ library
   hs-source-dirs:      src
   exposed-modules:
     Ergvein.Filters
+    Ergvein.Filters.Mutable
     Ergvein.Filters.Btc
     Ergvein.Filters.Btc.Address
     Ergvein.Filters.Btc.Mutable
