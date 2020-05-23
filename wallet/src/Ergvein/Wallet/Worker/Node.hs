@@ -34,12 +34,13 @@ import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Util
 
-import qualified Data.Dependent.Map as DM
-import qualified Data.Map as M
-import qualified Data.IntMap as MI
-import qualified Data.Set as S
 import qualified Data.Bits as BI
 import qualified Data.ByteString.Char8 as B8
+import qualified Data.Dependent.Map as DM
+import qualified Data.IntMap as MI
+import qualified Data.Map as M
+import qualified Data.Set as S
+import qualified Data.Vector as V
 
 minNodeNum :: Int
 minNodeNum = 3
@@ -132,7 +133,7 @@ extractAddrs :: PubKeystore -> [EgvAddress]
 extractAddrs (PubKeystore mast ext int) = mastadr:(extadrs <> intadrs)
   where
     mastadr = egvXPubKeyToEgvAddress mast
-    extadrs = fmap egvXPubKeyToEgvAddress $ MI.elems ext
+    extadrs = V.toList $ fmap (egvXPubKeyToEgvAddress . extKeyBox'key) ext
     intadrs = fmap egvXPubKeyToEgvAddress $ MI.elems int
 
 -- | Extract TxHashes from Inv vector. Return Nothing if no TxHashes are present

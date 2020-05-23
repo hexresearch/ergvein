@@ -32,6 +32,7 @@ import Ergvein.Wallet.Wrapper
 import qualified Data.Map.Strict       as M
 import qualified Data.Map.Merge.Strict as MM
 import qualified Data.IntMap.Strict    as MI
+import qualified Data.Vector           as V
 
 data GoPage = GoSeed | GoRestore
 
@@ -100,7 +101,7 @@ generateMissingPrvKeys (authInfo, pass) = do
         currencyPrvStorages = view prvStorage'currencyPrvStorages decryptedPrvStorage
         currencyPubStorages = view (authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages) authInfo
         pubKeysNumber = M.map (\currencyPubStorage -> (
-            MI.size $ pubKeystore'external (view currencyPubStorage'pubKeystore currencyPubStorage),
+            V.length $ pubKeystore'external (view currencyPubStorage'pubKeystore currencyPubStorage),
             MI.size $ pubKeystore'internal (view currencyPubStorage'pubKeystore currencyPubStorage)
           )) currencyPubStorages
         updatedPrvKeystore =

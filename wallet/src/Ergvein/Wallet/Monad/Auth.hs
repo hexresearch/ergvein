@@ -65,6 +65,8 @@ import qualified Data.Map.Strict as M
 import qualified Data.Dependent.Map as DM
 import qualified Data.Set as S
 import qualified Data.List as L
+import qualified Data.Vector as V
+
 import Data.Functor.Identity (Identity)
 import Control.Monad.Random
 import Data.Functor.Misc
@@ -294,10 +296,14 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   {-# INLINE getEncryptedPrvStorage #-}
   getAddressByCurIx cur i = do
     currMap <- fmap (_pubStorage'currencyPubStorages . _storage'pubStorage . _authInfo'storage) $ readExternalRef =<< asks env'authRef
-    let mXPubKey = (MI.lookup i) . pubKeystore'external . _currencyPubStorage'pubKeystore =<< M.lookup cur currMap
+    let mXPubKey = (flip (V.!?) i) . pubKeystore'external . _currencyPubStorage'pubKeystore =<< M.lookup cur currMap
     case mXPubKey of
       Nothing -> fail "NOT IMPLEMENTED" -- TODO: generate new address here
-      Just xPubKey -> pure $ xPubExport (getCurrencyNetwork cur) (egvXPubKey xPubKey)
+      Just (EgvExternalKeyBox key _ _) ->
+        let k = case key of
+              ErgXPubKey k' _ -> k'
+              BtcXPubKey k' _ -> k'
+        in pure $ xPubExport (getCurrencyNetwork cur) k
   {-# INLINE getAddressByCurIx #-}
   getWalletName = fmap (_storage'walletName . _authInfo'storage) $ readExternalRef =<< asks env'authRef
   {-# INLINE getWalletName #-}

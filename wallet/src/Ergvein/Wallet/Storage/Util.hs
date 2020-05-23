@@ -38,6 +38,7 @@ import qualified Data.ByteString as BS
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
+import qualified Data.Vector as V
 
 addXPrvKeyToKeystore :: KeyPurpose -> (Int, EgvXPrvKey) -> PrvKeystore -> PrvKeystore
 addXPrvKeyToKeystore External (index, key) (PrvKeystore master external internal) =
@@ -60,15 +61,16 @@ createPrvStorage seed rootPrvKey = PrvStorage seed rootPrvKey prvStorages
             currency <- allCurrencies
           ]
 
+-- | TODO: Think if index is needed here. Maybe split the function into two separate functions.
 addXPubKeyToKeystore :: KeyPurpose -> (Int, EgvXPubKey) -> PubKeystore -> PubKeystore
 addXPubKeyToKeystore External (index, key) (PubKeystore master external internal) =
-  PubKeystore master (MI.insert index key external) internal
+  PubKeystore master (V.snoc external (EgvExternalKeyBox key V.empty False)) internal
 addXPubKeyToKeystore Internal (index, key) (PubKeystore master external internal) =
   PubKeystore master external (MI.insert index key internal)
 
 createPubKeystore :: EgvXPubKey -> PubKeystore
 createPubKeystore masterPubKey =
-  let externalKeys = MI.fromList [(index, derivePubKey masterPubKey External (fromIntegral index))
+  let externalKeys = V.fromList [EgvExternalKeyBox (derivePubKey masterPubKey External (fromIntegral index)) V.empty False
         | index <- [0..(initialExternalAddressCount-1)]]
       internalKeys = MI.fromList [(index, derivePubKey masterPubKey Internal (fromIntegral index))
         | index <- [0..(initialInternalAddressCount - 1)]]
