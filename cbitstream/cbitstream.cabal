@@ -1,0 +1,46 @@
+name:                cbitstream
+version:             0.1.0.0
+synopsis:            Library to work with stream of bits. Bindings to C library https://github.com/eerimoq/bitstream
+description:         See README.md
+category:            Data
+build-type:          Simple
+cabal-version:       >=2.0
+license:             MIT
+license-file:        LICENSE
+copyright:           2020 ATUM SOLUTIONS AG
+author:              Anton Gushcha, Aminion, Vladimir Krutkin, Levon Oganyan, Sergey Ivanov
+maintainer:          Anton Gushcha <ncrashed@protonmail.com>
+
+library
+  other-extensions: ForeignFunctionInterface
+  c-sources:
+    cbits/bitstream.c
+    cbits/bitstream.h
+  build-tool-depends: hsc2hs:hsc2hs
+  hs-source-dirs: src
+  exposed-modules:
+    Data.Bitstream.C
+    Data.Bitstream.C.Raw
+  default-language:    Haskell2010
+  build-depends:
+      base            >= 4.7  && < 4.13
+    , bytestring      >= 0.10 && < 0.11
+    , deepseq         >= 1.1
+
+test-suite cbitstream-test
+  default-language:    Haskell2010
+  type:                exitcode-stdio-1.0
+  main-is:             Driver.hs
+  hs-source-dirs:      test
+  other-modules:
+      Data.Bitstream.CTest
+  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base
+    , cbitstream
+    , bytestring
+    , quickcheck-instances
+    , tasty
+    , tasty-discover
+    , tasty-hspec
+    , tasty-quickcheck

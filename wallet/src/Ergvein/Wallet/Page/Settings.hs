@@ -2,14 +2,16 @@ module Ergvein.Wallet.Page.Settings(
     settingsPage
   ) where
 
+import Control.Lens
 import Control.Monad.IO.Class (liftIO)
-import qualified Data.Map.Strict as Map
-import Data.Time
+import Control.Monad.Reader.Class
+import Data.List
 import Data.Function.Flip (flip3)
-import Reflex.Host.Class
-import Reflex.Dom as RD
 import Data.Maybe (fromMaybe)
+import Data.Time
 import Reflex.Dom
+import Reflex.Dom as RD
+import Reflex.Host.Class
 
 import Ergvein.Text
 import Ergvein.Types.AuthInfo
@@ -23,12 +25,18 @@ import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Monad.Auth
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Settings.Network
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Storage
+import Ergvein.Wallet.Storage.Keys
+import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Widget.GraphPinCode
 import Ergvein.Wallet.Wrapper
 
+import qualified Data.Map.Strict as Map
 import qualified Data.Set as S
 
 data SubPageSettings
@@ -105,35 +113,26 @@ currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
   h3 $ localizedText STPSSetsActiveCurrs
   divClass "initial-options" $ mdo
     activeCursD <- getActiveCursD
-    divClass "test" $ dynText $ showt <$> activeCursD
     ps <- getPubStorage
     authD <- getAuthInfo
---    auth <- sample . current $ authD
-    divClass "test" $ text $ showt $ _pubStorage'activeCurrencies ps
-    void <- widgetHoldDyn $ ffor activeCursD $ \currs -> do
-      currListE <- selectCurrenciesWidget $ S.toList currs
-      tE <- uac currListE
-      let updatedAuthE = traceEventWith (const "Active currencies setted") <$>
-            flip pushAlways currListE $ \curs -> do
-              auth <- sample . current $ authD
-              pure $ Just $ auth
-                & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
-                & authInfo'isUpdate .~ True
-      setAuthInfoE <- setAuthInfo updatedAuthE
-      performEvent_ $ ffor setAuthInfoE $ \a -> do
-        authInf <- readExternalRef =<< asks env'authRef
-        liftIO $ print "================================="
-        liftIO $ print "First: "
-        liftIO $ print $ show $ authInf
-          & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies
-  --      liftIO $ print "---------------------------------"
-  --      liftIO $ print $ show $ _authInfo'storage a
-        liftIO $ print "================================="
-      storeWallet setAuthInfoE
-      showSuccessMsg $ STPSSuccess <$ setAuthInfoE
+    currListE <- fmap switchDyn $ widgetHoldDyn $ ffor activeCursD $ \currs ->
+      selectCurrenciesWidget $ S.toList currs
+    uac currListE
+    updateAE <- withWallet $ ffor currListE $ \curs prvStr -> do
+        auth <- sample . current $ authD
+        let authNew = auth & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
+            difC = curs \\ (_pubStorage'activeCurrencies ps)
+            mL = Map.fromList [
+                    (currency, CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency) (Map.fromList [])) |
+                    currency <- difC ]
+            authN2 = authNew & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages %~ (Map.union mL)
+        pure $ Just $ authN2
+    setAuthInfoE <- setAuthInfo updateAE
+    storeWallet (void $ updated authD)
+    showSuccessMsg $ STPSSuccess <$ setAuthInfoE
     pure ()
     where
-      uac cE =  updateActiveCurs cE $ fmap (\cl -> const (S.fromList cl)) $ cE
+      uac cE =  updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ cE
 
 
 

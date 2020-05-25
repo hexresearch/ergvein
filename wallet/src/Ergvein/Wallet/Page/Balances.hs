@@ -21,6 +21,10 @@ import Ergvein.Wallet.Wrapper
 import Data.Map.Strict as Map
 import Network.Wreq
 
+#ifdef ANDROID
+import Control.Monad.IO.Class
+#endif
+
 data BalancesStrings
   = BalancesTitle
   | ButtonSend

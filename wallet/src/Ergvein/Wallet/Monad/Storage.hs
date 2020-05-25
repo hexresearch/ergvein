@@ -7,6 +7,7 @@ import Data.Text (Text)
 import Ergvein.Crypto
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Native
 import Reflex
@@ -16,4 +17,6 @@ class (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t m | m -> t where
   getEncryptedPrvStorage :: m EncryptedPrvStorage
   getWalletName          :: m Text
   getPubStorage          :: m PubStorage
+  getPubStorageD         :: m (Dynamic t PubStorage)
   storeWallet            :: Event t () -> m ()
+  addTxToPubStorage      :: Event t (TxId, EgvTx) -> m ()

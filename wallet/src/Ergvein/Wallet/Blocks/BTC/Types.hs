@@ -6,7 +6,6 @@ module Ergvein.Wallet.Blocks.BTC.Types(
   ) where
 
 import Database.LMDB.Simple
-import Ergvein.Filters.Btc
 import Network.Haskoin.Block
 import Network.Haskoin.Crypto
 import Network.Haskoin.Transaction

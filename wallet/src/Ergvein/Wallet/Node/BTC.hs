@@ -54,8 +54,8 @@ instance HasNode BTCType where
   type NodeResp BTCType = Message
   type NodeSpecific BTCType = ()
 
-initBTCNode :: MonadBaseConstr t m => SockAddr -> Event t NodeMessage -> m (NodeBTC t)
-initBTCNode sa msgE = do
+initBTCNode :: MonadBaseConstr t m => Bool -> SockAddr -> Event t NodeMessage -> m (NodeBTC t)
+initBTCNode doLog sa msgE = do
   -- Dummy status TODO: Make status real later
   b  <- liftIO randomIO
   d :: Double <- liftIO $ randomRIO (0, 1.5)
@@ -64,7 +64,7 @@ initBTCNode sa msgE = do
 
   let net = btcNetwork
       nodeLog :: MonadIO m => Text -> m ()
-      nodeLog = logWrite . (nodeString BTC sa <>)
+      nodeLog = if doLog then logWrite . (nodeString BTC sa <>) else const (pure ())
 
   let restartE = fforMaybe msgE $ \case
         NodeMsgRestart -> Just ()
@@ -128,6 +128,7 @@ initBTCNode sa msgE = do
   , nodeconRespE      = respE
   , nodeconExtra      = ()
   , nodeconIsUp       = shakeD
+  , nodecondoLog      = doLog
   }
 
 -- | Internal peeker to parse messages coming from peer.

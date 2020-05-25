@@ -17,7 +17,7 @@ import Crypto.Hash.SHA256
 import qualified Data.ByteString as BS
 import qualified Data.Serialize as S
 
-data KeyPrefix = Meta | Tx | SchemaVersion deriving Enum
+data KeyPrefix = Meta | Tx | Peer | SchemaVersion deriving Enum
 
 schemaVersion = hash $(embedFile "src/Ergvein/Index/Server/Cache/Schema.hs")
 
@@ -74,10 +74,20 @@ data BlockMetaCacheRec = BlockMetaCacheRec
   , blockMetaCacheRecAddressFilterHexView :: AddressFilterHexView
   } deriving (Generic, Show, Eq, Ord, Flat)
 
---BlockMeta
+--PeerDiscovery
+
+cachedKnownPeersKey :: ByteString
+cachedKnownPeersKey  = keyString Peer $ mempty @String
+
+data KnownPeersCacheRec = KnownPeersCacheRec [KnownPeerCacheRec] deriving (Generic, Show, Eq, Ord, Flat)
+
+data KnownPeerCacheRec = KnownPeerCacheRec
+  { knownPeerCacheRecIsSecureConn  :: Bool
+  , knownPeerCacheRecUrl           :: Text
+  } deriving (Generic, Show, Eq, Ord, Flat)
 
 cachedSchemaVersionKey :: ByteString
-cachedSchemaVersionKey  = keyString SchemaVersion (mempty @String)
+cachedSchemaVersionKey  = keyString SchemaVersion $ mempty @String
 
 data SchemaVersionCacheRec = Text  deriving (Generic, Show, Eq, Ord, Flat)
 

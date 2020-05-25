@@ -11,7 +11,7 @@ import Database.LMDB.Simple
 import Network.Haskoin.Block
 import Network.Haskoin.Crypto
 
-import Ergvein.Filters.Btc
+import Ergvein.Filters.Btc.Mutable
 import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Codec()

@@ -11,3 +11,4 @@ checkpoint-generator/btcHeadersTree
 ergvein.hp
 ergvein.aux
 ergvein.ps
+*.prof

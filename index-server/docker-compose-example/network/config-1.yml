@@ -1,0 +1,21 @@
+serverPort               : 8081
+dbHost                   : postgres-1
+dbPort                   : 5432
+dbUser                   : ergvein
+dbPassword               : ergvein
+dbName                   : ergvein
+BTCNodeIsTestnet         : true
+BTCNodeHost              : 172.17.0.1
+BTCNodePort              : 18332
+BTCNodeUser              : bitcoinrpcuser
+BTCNodePassword          : bitcoinrpcpassword
+ERGONodeHost             : 172.17.0.1
+ERGONodePort             : 9052
+blockchainScanDelay      : 1000000
+dbLog                    : false
+cachePath                : "/cache-1"
+ownPeerAddress           : "http://ergvein-index-server-1:8081"
+knownPeers               :
+                           - "http://ergvein-index-server-0:8080"
+peerActualizationDelay   : 10000000
+peerActualizationTimeout : 86400

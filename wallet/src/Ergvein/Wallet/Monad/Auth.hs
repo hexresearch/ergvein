@@ -6,6 +6,7 @@ module Ergvein.Wallet.Monad.Auth(
 
 import Control.Concurrent
 import Control.Concurrent.Chan (Chan)
+import Control.Lens
 import Control.Monad.Random.Class
 import Control.Monad.Reader
 import Data.IORef
@@ -34,6 +35,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Currencies
@@ -49,6 +51,7 @@ import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node
+import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Settings (Settings(..), storeSettings, defaultIndexers)
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Sync.Status
@@ -121,7 +124,7 @@ instance Monad m => HasBlocksStorage (ErgveinM t m) where
   {-# INLINE getBlocksStorage #-}
 
 instance MonadIO m => HasClientManager (ErgveinM t m) where
-  getClientMaganer = liftIO . readMVar =<< asks env'manager
+  getClientManager = liftIO . readMVar =<< asks env'manager
 
 instance MonadBaseConstr t m => MonadEgvLogger t (ErgveinM t m) where
   getLogsTrigger = asks env'logsTrigger
@@ -196,12 +199,11 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   getPasswordSetEF = asks env'passSetEF
   {-# INLINE getPasswordSetEF #-}
   requestPasssword reqE = do
-    idE <- performEvent $ liftIO getRandom <$ reqE
-    idD <- holdDyn 0 idE
+    i <- liftIO getRandom
     (_, modalF) <- asks env'passModalEF
     (setE, _) <- asks env'passSetEF
-    performEvent_ $ fmap (liftIO . modalF) idE
-    pure $ attachWithMaybe (\i' (i,mp) -> if i == i' then mp else Nothing) (current idD) setE
+    performEvent_ $ (liftIO $ modalF i) <$ reqE
+    pure $ fforMaybe setE $ \(i', mp) -> if i == i' then mp else Nothing
   updateSettings setE = do
     settingsRef <- asks env'settings
     performEvent $ ffor setE $ \s -> do
@@ -232,7 +234,7 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getFiltersSyncRef #-}
   getActiveCursD = externalRefDynamic =<< asks env'activeCursRef
   {-# INLINE getActiveCursD #-}
-  updateActiveCurs crE updE = do
+  updateActiveCurs updE = do
     curRef      <- asks env'activeCursRef
     nodeRef     <- asks env'nodeConsRef
     settingsRef <- asks env'settings
@@ -253,16 +255,6 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
 
       writeExternalRef settingsRef set'
       storeSettings set'
-
-      authD <- getAuthInfo
-      let updatedAuthE = traceEventWith (const "Active currencies setted") <$>
-            flip pushAlways crE $ \cur -> do
-              auth <- sample . current $ authD
-              pure $ Just $ auth
-                & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ cur
-                & authInfo'isUpdate .~ True
-      setAuthInfoE <- setAuthInfo updatedAuthE
-      storeWallet setAuthInfoE
       pure ()
   {-# INLINE updateActiveCurs #-}
   getAuthInfo = externalRefDynamic =<< asks env'authRef
@@ -312,13 +304,30 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   getPubStorage = fmap (_storage'pubStorage . _authInfo'storage) $ readExternalRef =<< asks env'authRef
   {-# INLINE getPubStorage #-}
   storeWallet e = do
-    authInfo <- readExternalRef =<< asks env'authRef
+    ref <-  asks env'authRef
     performEvent_ $ ffor e $ \_ -> do
-      let storage = _authInfo'storage authInfo
-      let eciesPubKey = _authInfo'eciesPubKey authInfo
-      saveStorageToFile eciesPubKey storage
+        authInfo <- readExternalRef ref
+        let storage = _authInfo'storage authInfo
+        let eciesPubKey = _authInfo'eciesPubKey authInfo
+        saveStorageToFile eciesPubKey storage
   {-# INLINE storeWallet #-}
-
+  addTxToPubStorage txE = do
+    authRef <- asks env'authRef
+    performFork_ $ ffor txE $ \(txid, etx) -> do
+      let cur = case etx of
+            BtcTx{} -> BTC
+            ErgTx{} -> ERGO
+      modifyExternalRef_ authRef $ \ai -> ai
+        & authInfo'storage
+        . storage'pubStorage
+        . pubStorage'currencyPubStorages
+        . at cur . _Just                  -- TODO: Fix this part once there is a way to generate keys. Or signal an impposible situation
+        . currencyPubStorage'transactions . at txid .~ Just etx
+  {-# INLINE addTxToPubStorage #-}
+  getPubStorageD = do
+    authInfoD <- externalRefDynamic =<< asks env'authRef
+    pure $ ffor authInfoD $ \ai -> ai ^. authInfo'storage. storage'pubStorage
+  {-# INLINE getPubStorageD #-}
 -- | Execute action under authorized context or return the given value as result
 -- if user is not authorized. Each time the login info changes and authInfo'isUpdate flag is set to 'False'
 -- (user logs out or logs in) the widget is updated.
@@ -378,10 +387,11 @@ liftAuth ma0 ma = mdo
         runOnUiThreadM $ runReaderT setupTlsManager env
 
         flip runReaderT env $ do -- Workers and other routines go here
+          accountDiscovery
+          bctNodeController
           filtersLoader
-          infoWorker
           heightAsking
-          btcNodeRefresher
+          infoWorker
           pure ()
         runReaderT (wrapped ma) env
   let
@@ -404,7 +414,7 @@ wrapped ma = do
   storeWallet =<< getPostBuild
   buildE <- getPostBuild
   ac <- _pubStorage'activeCurrencies <$> getPubStorage
-  updE <- updateActiveCurs (ac <$ buildE) $ fmap (\cl -> const (S.fromList cl)) $ ac <$ buildE
+  updE <- updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ ac <$ buildE
   ma
 
 instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
@@ -431,7 +441,7 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
     performEvent_ $ (liftIO fire) <$ e
   {-# INLINE refreshIndexerInfo #-}
   pingIndexer urlE = performFork $ ffor urlE $ \url -> do
-    mng <- getClientMaganer
+    mng <- getClientManager
     pingIndexerIO mng url
   activateURL urlE = do
     actRef  <- asks env'activeUrls
@@ -439,7 +449,7 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
     acrhRef <- asks env'urlsArchive
     setRef  <- asks env'settings
     performFork $ ffor urlE $ \url -> do
-      mng <- getClientMaganer
+      mng <- getClientManager
       res <- pingIndexerIO mng url
       ias <- modifyExternalRef iaRef $ \us ->
         let us' = S.delete url us in (us', S.toList us')

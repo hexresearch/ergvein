@@ -35,7 +35,7 @@ infoWorker = do
   let chunkN = 3  -- Number of concurrent request threads
   performFork_ $ ffor goE $ const $ do
     urlChunks <- fmap (mkChunks chunkN . M.keys) $ readExternalRef indexerInfoRef
-    mng <- getClientMaganer
+    mng <- getClientManager
     ress <- liftIO $ fmap mconcat $ flip mapConcurrently urlChunks $ \urls -> flip traverse urls $ \u -> do
       t0 <- getCurrentTime
       res <- runReaderT (getInfoEndpoint u ()) mng

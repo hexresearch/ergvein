@@ -84,7 +84,7 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   -- | Get activeCursRef Internal
   getActiveCursD :: m (Dynamic t (S.Set Currency))
   -- | Update active currencies
-  updateActiveCurs :: Event t [Currency] -> (Event t (S.Set Currency -> S.Set Currency)) -> m (Event t ())
+  updateActiveCurs :: (Event t (S.Set Currency -> S.Set Currency)) -> m (Event t ())
   -- | Get auth info. Not a Maybe since this is authorized context
   getAuthInfo :: m (Dynamic t AuthInfo)
   -- | Get login. Convenience function
