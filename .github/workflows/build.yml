@@ -29,11 +29,17 @@ jobs:
     - name: Build desktop wallet
       run: nix-build -A ghc.ergvein-wallet
 
+    - name: Extract branch name
+      shell: bash
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+      id: extract_branch
+      
     - name: Build and upload docker images 
       run: cd nix && ./ci-build-docker.sh
       env:
         DOCKER_USERNAME: ergvein
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        GITHUB_BRANCH: ${{ steps.extract_branch.outputs.branch }}
 
   build-android:
     name: Build android platform
