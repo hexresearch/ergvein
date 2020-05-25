@@ -111,7 +111,7 @@ frontendCss r = do
   buttonsToggleCss
   graphPinCodeCanvasCss
   historyPageCss
-  recieveCss
+  receiveCss
   legoStyles
 
 textColor :: Color
@@ -820,26 +820,27 @@ legoStyles = do
   ".padt-a" ? paddingTop     auto
   ".width-80" ? width (pct 80)
 
-recieveCss :: Css
-recieveCss = do
-  ".recieve-qr" ? do
+receiveCss :: Css
+receiveCss = do
+  ".receive-qr" ? do
     margin (px 20) auto (px 40) auto
-  ".recieve-adr" ? do
-    display flex
+  ".receive-adr" ? do
     margin (px 20) auto (px 40) auto
     fontSize $ px 16
     fontWeight $ weight 600
   ".label-block" ? do
-    display flex
-    maxWidth fitContent
+    display grid
+    gridTemplateColumns [fr 1, fr 1]
+    gridGap $ rem 1
   ".label-block-input" ? do
     display block
-    margin auto (px 20) auto auto
-  ".label-block-button" ? do
-    display block
-    margin auto auto auto auto
+    marginTop (px (-5))
   ".qrcode" ? do
     margin (px 0) auto (px 0) auto
+  ".receive-buttons-wrapper" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1]
+    gridGap $ rem 1
 
 graphPinCodeCanvasCss :: Css
 graphPinCodeCanvasCss = do

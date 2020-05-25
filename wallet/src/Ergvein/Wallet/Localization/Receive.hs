@@ -1,6 +1,6 @@
 module Ergvein.Wallet.Localization.Receive
   (
-    RecieveTitle(..)
+    ReceiveTitle(..)
    ,ReceivePageStrings(..)
   ) where
 
@@ -10,10 +10,10 @@ import Ergvein.Wallet.Language
 
 import Data.Text
 
-newtype RecieveTitle = RecieveTitle Currency
+newtype ReceiveTitle = ReceiveTitle Currency
 
-instance LocalizedPrint RecieveTitle where
-  localizedShow l (RecieveTitle c) = case l of
+instance LocalizedPrint ReceiveTitle where
+  localizedShow l (ReceiveTitle c) = case l of
     English -> "Receive " <> currencyName c
     Russian -> "Получить " <> currencyName c
 
@@ -21,14 +21,22 @@ instance LocalizedPrint RecieveTitle where
 data ReceivePageStrings =
     RPSTitle
   | RPSAddLabel
-
+  | RPSNewLabel
+  | RPSGenNew
+  | RPSCopy
 
 
 instance LocalizedPrint ReceivePageStrings where
   localizedShow l v = case l of
     English -> case v of
-      RPSTitle        -> "Receive"
-      RPSAddLabel         -> "Add label"
+      RPSTitle    -> "Receive"
+      RPSAddLabel -> "Add label"
+      RPSNewLabel -> "New label"
+      RPSGenNew   -> "Generate new"
+      RPSCopy     -> "Copy"
     Russian -> case v of
-      RPSTitle        -> "Получение"
-      RPSAddLabel         -> "Добавить название"
+      RPSTitle    -> "Получение"
+      RPSAddLabel -> "Добавить название"
+      RPSNewLabel -> "Изменить название"
+      RPSGenNew   -> "Создать новый"
+      RPSCopy     -> "Скопировать"
