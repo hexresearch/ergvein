@@ -102,7 +102,7 @@ generateMissingPrvKeys (authInfo, pass) = do
         currencyPubStorages = view (authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages) authInfo
         pubKeysNumber = M.map (\currencyPubStorage -> (
             V.length $ pubKeystore'external (view currencyPubStorage'pubKeystore currencyPubStorage),
-            MI.size $ pubKeystore'internal (view currencyPubStorage'pubKeystore currencyPubStorage)
+            V.length $ pubKeystore'internal (view currencyPubStorage'pubKeystore currencyPubStorage)
           )) currencyPubStorages
         updatedPrvKeystore =
           MM.merge

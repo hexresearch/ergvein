@@ -134,7 +134,7 @@ extractAddrs (PubKeystore mast ext int) = mastadr:(extadrs <> intadrs)
   where
     mastadr = egvXPubKeyToEgvAddress mast
     extadrs = V.toList $ fmap (egvXPubKeyToEgvAddress . extKeyBox'key) ext
-    intadrs = fmap egvXPubKeyToEgvAddress $ MI.elems int
+    intadrs = V.toList $ fmap egvXPubKeyToEgvAddress int
 
 -- | Extract TxHashes from Inv vector. Return Nothing if no TxHashes are present
 filterTxInvs :: S.Set TxId -> Inv -> Maybe [InvVector]

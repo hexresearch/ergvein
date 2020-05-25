@@ -309,7 +309,7 @@ data PubKeystore = PubKeystore {
   -- ^Map with BIP44 external extended public keys and corresponding indices.
   -- This addresses must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/0\/address_index/.
-, pubKeystore'internal :: MI.IntMap EgvXPubKey
+, pubKeystore'internal :: Vector EgvXPubKey
   -- ^Map with BIP44 internal extended public keys and corresponding indices.
   -- This addresses must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.
@@ -334,7 +334,7 @@ extractXPubKeyFromEgv :: EgvXPubKey -> XPubKey
 extractXPubKeyFromEgv key = case key of
   ErgXPubKey k _ -> k
   BtcXPubKey k _ -> k
-  
+
 -- | Supported key purposes. It represents /change/ field in BIP44 derivation path.
 -- External chain is used for addresses that are meant to be visible outside of the wallet (e.g. for receiving payments).
 -- Internal chain is used for addresses which are not meant to be visible outside of the wallet and is used for return transaction change.
