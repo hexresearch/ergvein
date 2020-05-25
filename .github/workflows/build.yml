@@ -61,7 +61,7 @@ jobs:
     - name: Cleanup disk space 
       run: |
         df -h
-        apt-get clean
+        sudo apt-get clean
         nix-collect-garbage -d
         df -h
 
