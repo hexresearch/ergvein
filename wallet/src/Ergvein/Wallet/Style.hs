@@ -822,10 +822,24 @@ legoStyles = do
 
 recieveCss :: Css
 recieveCss = do
-  "recieve-qr" ? do
+  ".recieve-qr" ? do
     margin (px 20) auto (px 40) auto
-  "recieve-addr" ? do
+  ".recieve-adr" ? do
+    display flex
     margin (px 20) auto (px 40) auto
+    fontSize $ px 16
+    fontWeight $ weight 600
+  ".label-block" ? do
+    display flex
+    maxWidth fitContent
+  ".label-block-input" ? do
+    display block
+    margin auto (px 20) auto auto
+  ".label-block-button" ? do
+    display block
+    margin auto auto auto auto
+  ".qrcode" ? do
+    margin (px 0) auto (px 0) auto
 
 graphPinCodeCanvasCss :: Css
 graphPinCodeCanvasCss = do
