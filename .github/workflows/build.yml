@@ -60,10 +60,11 @@ jobs:
     
     - name: Cleanup disk space 
       run: |
-        rm -rf /swapfile
+        df -h
+        sudo rm -rf /swapfile
         apt-get clean
+        df -h
 
     - name: Build android wallet 
       run: |
-        df -h
         nix-build -A android.ergvein-wallet
