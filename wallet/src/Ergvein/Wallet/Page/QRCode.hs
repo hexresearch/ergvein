@@ -38,7 +38,6 @@ genQrCodeBase64Image = do
   where
     canvasToBase64Image :: Text
     canvasToBase64Image = "(function(){var cnvs = document.getElementById('qrcode'); var textBase64 = cnvs.toDataURL('image/png'); return textBase64;})();"
-    --canvasToBase64Image = "(function(){return 'test'})();"
 
 qrcGen :: Text -> Currency -> Maybe QRImage
 qrcGen t cur = encodeText (defaultQRCodeOptions L) Utf8WithoutECI $ curprefix <> t
