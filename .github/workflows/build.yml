@@ -1,4 +1,4 @@
-name: CI
+name: Main
 on:
   push:
     branches: [ master ]
@@ -6,7 +6,8 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
+  build-desktop:
+    name: Build desktop platform
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -27,12 +28,31 @@ jobs:
     
     - name: Build desktop wallet
       run: nix-build -A ghc.ergvein-wallet
-    
-    - name: Build android wallet 
-      run: nix-build -A android.ergvein-wallet
 
     - name: Build and upload docker images 
       run: cd nix && ./ci-build-docker.sh
       env:
         DOCKER_USERNAME: ergvein
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+
+  build-android:
+    name: Build android platform
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    
+    - name: Install Nix
+      uses: cachix/install-nix-action@v8
+
+    - name: Setup cachix
+      uses: cachix/cachix-action@v6
+      with:
+        name: ergvein
+        signingKey: ${{ secrets.CACHIX_KEY }}
+    
+    - name: Build android wallet 
+      run: |
+        df -h
+        nix-build -A android.ergvein-wallet
