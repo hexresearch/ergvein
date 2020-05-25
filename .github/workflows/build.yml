@@ -58,6 +58,11 @@ jobs:
         name: ergvein
         signingKey: ${{ secrets.CACHIX_KEY }}
     
+    - name: Cleanup disk space 
+      run: |
+        rm -rf /swapfile
+        apt-get clean
+
     - name: Build android wallet 
       run: |
         df -h
