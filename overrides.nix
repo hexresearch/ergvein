@@ -29,6 +29,7 @@ in (self: super: let
   dontProfile = drv: disableCabalFlag drv "profile-reflex";
   in {
     # Internal
+    cbitstream = ingnoreGarbage super.cbitstream;
     data-merkle-tree = ingnoreGarbage super.data-merkle-tree;
     ergvein-checkpoint-generator = ingnoreGarbage super.ergvein-checkpoint-generator;
     ergvein-common = ingnoreGarbage super.ergvein-common;
@@ -75,5 +76,8 @@ in (self: super: let
     x509-validation = lib.dontCheck super.x509-validation;
     tls = lib.dontCheck super.tls;
     reflex = enableCabalFlag super.reflex "O2";
+    hp2any-core = self.callPackage ./derivations/hp2any-core.nix {};
+    hp2any-graph = self.callPackage ./derivations/hp2any-graph.nix {};
+    parseargs = lib.dontCheck super.parseargs;
   }
 )

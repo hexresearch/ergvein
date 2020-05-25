@@ -1,4 +1,5 @@
 packages:
+  ./cbitstream
   ./checkpoint-generator
   ./common
   ./crypto

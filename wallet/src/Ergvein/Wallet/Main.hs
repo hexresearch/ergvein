@@ -19,7 +19,6 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.Initial
 import Ergvein.Wallet.Password
-import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Util
 import Ergvein.Wallet.Worker.Info
 import Reflex.ExternalRef
@@ -37,4 +36,4 @@ frontend = do
 #endif
   logWriter =<< fmap fst getLogsTrigger
   logWrite "Entering initial page"
-  void $ retractStack initialPage `liftAuth` (accountDiscovery >> retractStack balancesPage)
+  void $ retractStack initialPage `liftAuth` retractStack balancesPage

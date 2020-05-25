@@ -2,7 +2,7 @@
 #!/usr/bin/env bash
 set -erv
 
-GIT_BRANCH=$TRAVIS_BRANCH
+GIT_BRANCH=$GITHUB_BRANCH
 GIT_HASH=$(git rev-parse HEAD)
 GIT_TAG=$(git tag -l --points-at HEAD)
 CONTAINER_TAG="$GIT_BRANCH"
@@ -13,7 +13,7 @@ if [ ! -z $GIT_TAG ]; then
   PUBLISH="true"
   echo "Publish with $GIT_TAG"
 else 
-  if [[ "$GIT_BRANCH" == "master" && "$TRAVIS_PULL_REQUEST" == "false" ]]; then
+  if [[ "$GIT_BRANCH" == "master" && "$GITHUB_EVENT_NAME" != "pull_request" ]]; then
     CONTAINER_TAG="latest"
     PUBLISH="true"
     echo "Publish with latest"

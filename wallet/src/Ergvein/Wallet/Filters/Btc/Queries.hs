@@ -14,7 +14,7 @@ import Data.Maybe
 import Database.LMDB.Simple
 import Network.Haskoin.Block
 
-import Ergvein.Filters.Btc
+import Ergvein.Filters.Btc.Mutable
 import Ergvein.Text
 import Ergvein.Types.Block
 import Ergvein.Types.Currency
@@ -56,7 +56,8 @@ getFilter k e = liftIO . readOnlyTransaction e $ do
   mh <- get hdb k
   ffor31 maybe mh (pure Nothing) $ \h -> do
     mview <- get fdb h
-    pure $ maybe Nothing (either (const Nothing) Just . decodeBtcAddrFilter) mview
+    mfilter <- traverse decodeBtcAddrFilter mview
+    pure $ maybe Nothing (either (const Nothing) Just) mfilter
 
 getFiltersHeight :: MonadIO m => Environment ReadWrite -> m BlockHeight
 getFiltersHeight e = liftIO . readOnlyTransaction e $ do
@@ -65,18 +66,22 @@ getFiltersHeight e = liftIO . readOnlyTransaction e $ do
 
 -- | Right fold over all filters
 foldFilters :: forall a m . MonadIO m
-  => (BlockHash -> BtcAddrFilter -> a -> a)
+  => (BlockHash -> BtcAddrFilter -> a -> IO a)
   -> a
   -> Environment ReadWrite
   -> m a
 foldFilters f a0 e = liftIO . readOnlyTransaction e $ do
   fdb <- getBtcFiltersDb
-  LMDB.foldrWithKey f' a0 fdb
+  io <- LMDB.foldrWithKey f' (pure a0) fdb
+  liftIO io
   where
-    f' :: BlockHash -> ByteString -> a -> a
-    f' k bs acc = case decodeBtcAddrFilter bs of
-      Left _ -> acc
-      Right a -> f k a acc
+    f' :: BlockHash -> ByteString -> IO a -> IO a
+    f' k bs calcAcc = do
+      acc <- calcAcc
+      res <- decodeBtcAddrFilter bs
+      case res of
+        Left _ -> pure acc
+        Right a -> f k a acc
 
 ffor31 :: (a -> b -> c -> d) -> c -> a -> b -> d
 ffor31 f c a b = f a b c
