@@ -111,6 +111,7 @@ frontendCss r = do
   buttonsToggleCss
   graphPinCodeCanvasCss
   historyPageCss
+  receiveCss
   legoStyles
 
 textColor :: Color
@@ -390,7 +391,7 @@ balancesPageCss = do
     paddingRight $ rem 0.5
   ".canvas-container" ? do
     marginLeft $ px 120
-    marginTop $ px 50 
+    marginTop $ px 50
 
 sendPageCss :: Css
 sendPageCss = do
@@ -575,6 +576,7 @@ sharePageCss = do
   ".qrcode-container" ? do
     width $ px 256
     height $ px 256
+    margin auto auto auto auto
   ".share-qrcode-container" ? do
     width $ px 256
     height $ px 256
@@ -817,6 +819,28 @@ legoStyles = do
   ".padr-a" ? paddingRight   auto
   ".padt-a" ? paddingTop     auto
   ".width-80" ? width (pct 80)
+
+receiveCss :: Css
+receiveCss = do
+  ".receive-qr" ? do
+    margin (px 20) auto (px 40) auto
+  ".receive-adr" ? do
+    margin (px 20) auto (px 40) auto
+    fontSize $ px 16
+    fontWeight $ weight 600
+  ".label-block" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1]
+    gridGap $ rem 1
+  ".label-block-input" ? do
+    display block
+    marginTop (px (-5))
+  ".qrcode" ? do
+    margin (px 0) auto (px 0) auto
+  ".receive-buttons-wrapper" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1]
+    gridGap $ rem 1
 
 graphPinCodeCanvasCss :: Css
 graphPinCodeCanvasCss = do
