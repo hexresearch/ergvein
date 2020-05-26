@@ -19,6 +19,7 @@ import Ergvein.Types.Transaction
 import Ergvein.Wallet.Blocks.BTC
 import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Filters.Storage
+import Ergvein.Wallet.Log.Event
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
@@ -26,8 +27,8 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Constants
 import Ergvein.Wallet.Storage.Keys (derivePubKey, egvXPubKeyToEgvAddress)
 import Ergvein.Wallet.Storage.Util (addXPubKeyToKeystore)
-import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Sync.Status
+import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Util
 
 import qualified Data.IntMap.Strict                 as MI
@@ -93,9 +94,10 @@ scanExternalAddresses currency currencyPubStorage = mdo
       startKeyIndex = 0
       startKey = derivePubKey masterPubKey External (fromIntegral $ startKeyIndex)
   buildE <- getPostBuild
-  processKeyE <- traceEventWith (\(keyIndex, key) ->
-    "Scanning external " ++ show currency ++ " address #" ++ show keyIndex ++ ": \"" ++ (T.unpack $ egvAddrToString $ egvXPubKeyToEgvAddress key) ++ "\"") <$>
-    (waitFilters currency =<< delay 0 (leftmost [nextKeyE, (startKeyIndex, startKey) <$ buildE]))
+  processKeyE <- logEventWith (\(keyIndex, key) ->
+    "Scanning external " <> showt currency <> " address #" <> showt keyIndex <>
+    ": \"" <> (egvAddrToString $ egvXPubKeyToEgvAddress key) <> "\"")
+    =<< waitFilters currency (leftmost [nextKeyE, (startKeyIndex, startKey) <$ buildE])
   gapD <- holdDyn startGap gapE
   currentKeyD <- holdDyn (startKeyIndex, startKey) nextKeyE
   postSync currency $ flip pushAlways gapE $ \currnetGap -> do
@@ -104,8 +106,8 @@ scanExternalAddresses currency currencyPubStorage = mdo
   newKeystoreD <- foldDyn (addXPubKeyToKeystore External) emptyPubKeyStore processKeyE
   newTxsD <- foldDyn M.union M.empty getTxsE
   blocksD <- holdDyn [] blocksE
-  filterAddressE <- traceEvent "Scanned for blocks" <$> (filterAddress $ (egvXPubKeyToEgvAddress . snd) <$> processKeyE)
-  getBlocksE <- traceEvent "Blocks requested" <$> requestBTCBlocks filterAddressE
+  filterAddressE <- logEvent "Scanned for blocks: " =<< (filterAddress $ (egvXPubKeyToEgvAddress . snd) <$> processKeyE)
+  getBlocksE <- logEvent "Blocks requested: " =<< requestBTCBlocks filterAddressE
   storedBlocksE <- storeMultipleBlocksByE getBlocksE
   storedTxHashesE <- storeMultipleBlocksTxHashesByE $ tagPromptlyDyn blocksD storedBlocksE
   getTxsE <- getTxs $ attachPromptlyDynWith (\(_, key) blocks ->
