@@ -40,18 +40,18 @@ import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Vector as V
 
-addXPrvKeyToKeystore :: KeyPurpose -> (Int, EgvXPrvKey) -> PrvKeystore -> PrvKeystore
-addXPrvKeyToKeystore External (index, key) (PrvKeystore master external internal) =
-   PrvKeystore master (MI.insert index key external) internal
-addXPrvKeyToKeystore Internal (index, key) (PrvKeystore master external internal) =
-   PrvKeystore master external (MI.insert index key internal)
+addXPrvKeyToKeystore :: KeyPurpose -> EgvXPrvKey -> PrvKeystore -> PrvKeystore
+addXPrvKeyToKeystore External key (PrvKeystore master external internal) =
+   PrvKeystore master (V.snoc external key) internal
+addXPrvKeyToKeystore Internal key (PrvKeystore master external internal) =
+   PrvKeystore master external (V.snoc internal key)
 
 createPrvKeystore :: EgvXPrvKey -> PrvKeystore
 createPrvKeystore masterPrvKey =
-  let externalKeys = MI.fromList [(index, derivePrvKey masterPrvKey External (fromIntegral index))
-        | index <- [0..(initialExternalAddressCount - 1)]]
-      internalKeys = MI.fromList [(index, derivePrvKey masterPrvKey Internal (fromIntegral index))
-        | index <- [0..(initialInternalAddressCount - 1)]]
+  let externalGen i = Just (derivePrvKey masterPrvKey External (fromIntegral i), i + 1)
+      internalGen i = Just (derivePrvKey masterPrvKey External (fromIntegral i), i + 1)
+      externalKeys  = V.unfoldrN initialExternalAddressCount externalGen 0
+      internalKeys  = V.unfoldrN initialInternalAddressCount internalGen 0
   in PrvKeystore masterPrvKey externalKeys internalKeys
 
 createPrvStorage :: Seed -> EgvRootXPrvKey -> PrvStorage

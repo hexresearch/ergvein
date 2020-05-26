@@ -282,11 +282,11 @@ instance Ord EgvXPubKey where
 data PrvKeystore = PrvKeystore {
   prvKeystore'master   :: EgvXPrvKey
   -- ^Extended private key with BIP44 derivation path /m\/purpose'\/coin_type'\/account'/.
-, prvKeystore'external :: MI.IntMap EgvXPrvKey
+, prvKeystore'external :: Vector EgvXPrvKey
   -- ^Map with BIP44 external extended private keys and corresponding indices.
   -- This private keys must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/0\/address_index/.
-, prvKeystore'internal :: MI.IntMap EgvXPrvKey
+, prvKeystore'internal :: Vector EgvXPrvKey
   -- ^Map with BIP44 internal extended private keys and corresponding indices.
   -- This private keys must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.
