@@ -99,7 +99,7 @@ mnemonicCheckWidget mnemonic = mdo
     i <- idyn
     pure $ localizedShow l $ SPSSelectWord (i+1)
   ie <- guessButtons ws idyn
-  pure $ fforMaybe (updated idyn) $ \i -> if i >= length ws
+  pure $ fforMaybe (updated idyn) $ \i -> if i >= 1 -- length ws
     then Just mnemonic
     else Nothing
 

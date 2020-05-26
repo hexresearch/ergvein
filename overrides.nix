@@ -18,6 +18,8 @@ let
     ignore-list = ''
       /.ghc.environment*
       /dist-newstyle
+      /android-release 
+      /android-result
     '';
     in { src = gitignore.gitignoreSourceAux ignore-list pkg.src; } );
 in (self: super: let
