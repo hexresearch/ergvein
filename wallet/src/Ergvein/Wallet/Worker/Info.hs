@@ -5,6 +5,7 @@ module Ergvein.Wallet.Worker.Info
 
 import Control.Concurrent.Async
 import Control.Monad.Reader
+import Data.List.Split
 import Data.Time
 import Network.HTTP.Client(Manager)
 import Reflex.ExternalRef
@@ -19,7 +20,7 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
 
 import qualified Data.List as L
-import qualified Data.Map as M
+import qualified Data.Map  as M
 import qualified Data.Text as T
 
 infoWorkerInterval :: NominalDiffTime
@@ -34,7 +35,7 @@ infoWorker = do
   let goE = leftmost [void te, refreshE, buildE]
   let chunkN = 3  -- Number of concurrent request threads
   performFork_ $ ffor goE $ const $ do
-    urlChunks <- fmap (mkChunks chunkN . M.keys) $ readExternalRef indexerInfoRef
+    urlChunks <- fmap (chunksOf chunkN . M.keys) $ readExternalRef indexerInfoRef
     mng <- getClientManager
     ress <- liftIO $ fmap mconcat $ flip mapConcurrently urlChunks $ \urls -> flip traverse urls $ \u -> do
       t0 <- getCurrentTime
@@ -48,13 +49,3 @@ infoWorker = do
           curmap = M.fromList $ fmap (\(ScanProgressItem cur sh ah) -> (cur, (sh, ah))) vals
           in pure $ (u,) $ Just $ IndexerInfo curmap $ diffUTCTime t1 t0
     writeExternalRef indexerInfoRef $ M.fromList ress
-
-mkChunks :: Int -> [a] -> [[a]]
-mkChunks n vals = splitter [fstChunk] rest
-  where
-    l = length vals
-    cl = l `div` n
-    (fstChunk, rest) = splitAt (cl + l `mod` n) vals
-    splitter acc xs = case xs of
-      [] -> acc
-      _  -> let (x,y) = splitAt cl xs in splitter (acc ++ [x]) y
