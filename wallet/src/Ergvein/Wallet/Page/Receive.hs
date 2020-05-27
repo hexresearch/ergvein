@@ -9,6 +9,8 @@ import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
+import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Language
@@ -49,10 +51,10 @@ receivePageWidget cur i EgvExternalKeyBox{..} = wrapper (ReceiveTitle cur) (Just
        newE  <- outlineButton RPSGenNew
        copyE <- outlineButton RPSCopy
        setFlatToExtPubKey $ (cur, i) <$ newE
-       -- pure (newE, copyE)
+       showInfoMsg =<< clipboardCopy (keyTxt <$ copyE)
     divClass "receive-adr" $ text $ "#" <> showt i <> ": " <> keyTxt
     divClass "label-block" $ do
-      labelD <- divClass "label-block-input" $ textFieldNoLabel $ getLabelFromEgvPubKey extKeyBox'key
+      labelD <- textFieldNoLabel $ getLabelFromEgvPubKey extKeyBox'key
       btnE <- buttonClass (pure "button button-outline label-block-button") RPSAddLabel
       setLabelToExtPubKey $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
       pure ()
