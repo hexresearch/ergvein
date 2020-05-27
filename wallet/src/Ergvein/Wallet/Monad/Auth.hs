@@ -50,7 +50,7 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
-import Ergvein.Wallet.Node
+import Ergvein.Wallet.Node hiding (BTCTag, ERGTag)
 import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Settings (Settings(..), storeSettings, defaultIndexers)
 import Ergvein.Wallet.Storage.Util
@@ -294,10 +294,17 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   {-# INLINE getEncryptedPrvStorage #-}
   getAddressByCurIx cur i = do
     currMap <- fmap (_pubStorage'currencyPubStorages . _storage'pubStorage . _authInfo'storage) $ readExternalRef =<< asks env'authRef
-    let mXPubKey = (MI.lookup i) . pubKeystore'external . _currencyPubStorage'pubKeystore =<< M.lookup cur currMap
-    case mXPubKey of
-      Nothing -> fail "NOT IMPLEMENTED" -- TODO: generate new address here
-      Just xPubKey -> pure $ xPubExport (getCurrencyNetwork cur) (egvXPubKey xPubKey)
+    case cur of
+      BTC -> do
+        let mXPubKey = (MI.lookup i) . pubKeystore'external . _currencyPubStorage'pubKeystore =<< DM.lookup BTCTag currMap
+        case mXPubKey of
+          Nothing -> fail "NOT IMPLEMENTED" -- TODO: generate new address here
+          Just xPubKey -> pure $ xPubExport (getCurrencyNetwork cur) (egvXPubKey xPubKey)
+      ERGO -> do
+        let mXPubKey = (MI.lookup i) . pubKeystore'external . _currencyPubStorage'pubKeystore =<< DM.lookup ERGTag currMap
+        case mXPubKey of
+            Nothing -> fail "NOT IMPLEMENTED" -- TODO: generate new address here
+            Just xPubKey -> pure $ xPubExport (getCurrencyNetwork cur) (egvXPubKey xPubKey)
   {-# INLINE getAddressByCurIx #-}
   getWalletName = fmap (_storage'walletName . _authInfo'storage) $ readExternalRef =<< asks env'authRef
   {-# INLINE getWalletName #-}

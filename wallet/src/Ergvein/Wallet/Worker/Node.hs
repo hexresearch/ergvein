@@ -20,7 +20,7 @@ import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
-import Ergvein.Types.Storage
+import Ergvein.Types.Storage hiding (BTCTag, ERGTag)
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Blocks.Types
 import Ergvein.Wallet.Monad.Async
@@ -31,15 +31,16 @@ import Ergvein.Wallet.Node
 import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Storage.Keys
-import Ergvein.Wallet.Tx
+import Ergvein.Wallet.Tx.BTC
 import Ergvein.Wallet.Util
 
-import qualified Data.Dependent.Map as DM
-import qualified Data.Map as M
-import qualified Data.IntMap as MI
-import qualified Data.Set as S
 import qualified Data.Bits as BI
 import qualified Data.ByteString.Char8 as B8
+import qualified Data.Dependent.Map as DM
+import qualified Data.IntMap as MI
+import qualified Data.Map as M
+import qualified Data.Set as S
+import qualified Ergvein.Types.Storage as ST (CurrencyTag(BTCTag), CurrencyTag(ERGTag))
 
 minNodeNum :: Int
 minNodeNum = 3
@@ -65,7 +66,7 @@ bctNodeController = mdo
   te        <- fmap void $ tickLossyFromPostBuildTime btcRefrTimeout
 
   pubStorageD <- getPubStorageD
-  let (allBtcAddrsD, txidsD) = splitDynPure $ ffor pubStorageD $ \(PubStorage _ cm _) -> case M.lookup BTC cm of
+  let (allBtcAddrsD, txidsD) = splitDynPure $ ffor pubStorageD $ \(PubStorage _ cm _) -> case DM.lookup ST.BTCTag cm of
         Nothing -> ([], S.empty)
         Just (CurrencyPubStorage keystore txmap) -> let
           addrs = extractAddrs keystore
