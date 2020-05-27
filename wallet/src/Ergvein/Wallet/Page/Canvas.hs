@@ -19,15 +19,16 @@ module Ergvein.Wallet.Page.Canvas(
   , lineToT
   , arcT
   , strokeStyleCT
-  , drawRoundT
-  , drawRoundLstT
   , drawRndT
+  , drawRoundLstT
+  , drawRndHovT
   -- Auxiliary types
   , ClientRect(..)
   , Square(..)
   , DrawCommand(..)
   , Position(..)
   , TouchState(..)
+  , HoverState(..)
   , PatternTry(..)
   -- Canvas Type
   , CanvasOptions(..)
@@ -57,6 +58,8 @@ type Position = (Double, Double)
 data DrawCommand = AddSquare | Clear deriving (Show, Eq)
 
 data TouchState = Pressed | Unpressed deriving (Show, Eq)
+
+data HoverState = Hovered | Unhovered deriving (Show, Eq)
 
 data PatternTry = FirstTry | SecondTry | ErrorTry | Done deriving (Show, Eq)
 
@@ -125,6 +128,9 @@ clearCanvasT cW cH = " ctx.clearRect(0,0," <> (showt cW) <> "," <> (showt cH) <>
 beginPathT :: Text
 beginPathT = " ctx.beginPath(); "
 
+closePathT :: Text
+closePathT = " ctx.closePath(); "
+
 strokeStyleT :: Text
 strokeStyleT = " ctx.strokeStyle = \"#000000\"; "
 
@@ -158,39 +164,64 @@ fillT = " ctx.fill(); "
 strokeStyleCT :: Text -> Text
 strokeStyleCT clr = " ctx.strokeStyle = " <> clr <> "; "
 
-drawRoundT :: Int -> Int -> Text
-drawRoundT w h  = beginPathT <> (strokeStyleCT "\"#bbbbbb\"")
-                   <> (arcT x y (r) 0 (pi*2) True)
---                   <> (strokeT)
---                   <> (fillT)
+fillStyleCT :: Text -> Text
+fillStyleCT clr = " ctx.fillStyle = " <> clr <> "; "
+
+drawRndHovT :: Int -> Int -> [(Double,HoverState)] -> Text
+drawRndHovT w h lst = T.concat $ [(clearCanvasT w h)] <> (fmap res lred)
   where
+    lred = zip colorList $ fmap (\((_,hs),(a,b)) -> (a,b,hs)) $ zip lst lok
+    res (col,(a,b,hs)) = beginPathT
+                    <> (arcT x y r a b False)
+                    <> (arcT x y (r/2) b a True)
+                    <> closePathT
+                    <> (lineWidthT 3)
+                    <> (fillStyleCT (colHs col hs))
+                    <> strokeT
+                    <> fillT
     x = dw/2
     y = dh/2
     r = if (dw < dh)
-      then dw/2
-      else dh/2
+      then 0.98*(dw/2)
+      else 0.98*(dh/2)
+    lunh = fmap fst lst
+    l3 = scanl (\x y -> x+y*2*pi) tp lunh
+    lok = zip (init l3) (tail l3)
     dw = fromIntegral w
     dh = fromIntegral h
+    tp = -pi/2
+    crcl = pi*2
+    colHs c h = case h of
+      Hovered -> "\"#000000\""
+      Unhovered -> c
+    colorList = ["\"#9e9e9e\"","\"#3e3e3e\"","\"#bebebe\""]
 
 drawRoundLstT :: Int -> Int -> [Double] -> Text
 drawRoundLstT w h lst =  T.concat $ fmap res lred
   where
-    l2 = zip ([0] <> lst) (lst<> [0])
-    lred = zip colorList $ fmap (\(a,b) -> (a*pi*2,a*pi*2+b*pi*2)) l2
-    res (col,(a,b)) =  (strokeStyleCT col)
-                       <> (arcT x y (r/2) a b False)
---                       <> (strokeT)
---                       <> (fillT)
+    lred = zip colorList $ fmap (\(a,b) -> (tp+a*crcl,tp+a*crcl+b*crcl)) lok
+    res (col,(a,b)) = beginPathT
+                    <> (arcT x y r a b False)
+                    <> (arcT x y (r/2) b a True)
+                    <> closePathT
+                    <> (lineWidthT 3)
+                    <> (fillStyleCT col)
+                    <> strokeT
+                    <> fillT
     x = dw/2
     y = dh/2
     r = if (dw < dh)
-      then dw/2
-      else dh/2
+      then 0.98*(dw/2)
+      else 0.98*(dh/2)
+    l3 = scanl (\x y -> x+y*2*pi) tp lst
+    lok = zip (init l3) (tail l3)
     dw = fromIntegral w
     dh = fromIntegral h
-    colorList = ["\"#AA8888\"","\"#88AA88\"","\"#8888AA\""]
+    tp = -pi/2
+    crcl = pi*2
+    colorList = ["\"#9e9e9e\"","\"#3e3e3e\"","\"#bebebe\""]
 
-drawRndT w h lst = (drawRoundT w h) <> (drawRoundLstT w h lst) <> (fillT)
+drawRndT w h lst = drawRoundLstT w h lst
 
 drawLineT :: Int -> Int -> Double -> Double -> Double -> Double -> (DrawCommand,(Double,Double)) -> [(Maybe Int, Square)] -> Text
 drawLineT canvasW canvasH coordX coordY fromX fromY (a,(cntX,cntY)) r = case a of

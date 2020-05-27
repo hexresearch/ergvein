@@ -73,6 +73,7 @@ library
         Ergvein.Wallet.Localization.Storage
         Ergvein.Wallet.Localization.Util
         Ergvein.Wallet.Log
+        Ergvein.Wallet.Log.Event
         Ergvein.Wallet.Log.Page
         Ergvein.Wallet.Log.Reader
         Ergvein.Wallet.Log.Types

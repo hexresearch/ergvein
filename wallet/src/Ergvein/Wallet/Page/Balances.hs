@@ -58,7 +58,7 @@ currenciesList name = divClass "currency-content" $ do
   ps <- getPubStorage
   historyE <- leftmost <$> traverse (currencyLine s) (_pubStorage'activeCurrencies ps)
   if (settingsPortfolio s)
-    then porfolioCanvas
+    then portfolioWidget
     else pure ()
   let thisWidget = Just $ pure balancesPage
   void $ nextWidget $ ffor historyE $ \cur -> Retractable {

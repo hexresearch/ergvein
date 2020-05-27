@@ -4,7 +4,7 @@ module Ergvein.Wallet.Page.PatternKey(
   , patternAskWidget
   , patternSave
   , patternSaveWidget
-  , porfolioCanvas
+  , portfolioWidget
 #ifdef ANDROID
   , loadCounter
   , saveCounter
@@ -370,25 +370,61 @@ lastSquarePosition (AddSquare,lst) = if null lst
   else (AddSquare,lastSquareCenter lst)
 
 
-porfolioCanvas :: MonadFrontBase t m => m ()
-porfolioCanvas = divClass "canvas-container" $ mdo
-  buildE <- delay 0.1 =<< getPostBuild
-  canvasEl <- createCanvas cOpts
-  let elP = elementPosition $ _element_raw canvasEl
-      prepCoord (x,y) = fmap (\(a,b)-> (a, b)) $ fmap (\ClientRect{..} -> ((fromIntegral x) - crLeft, (fromIntegral y) - crTop)) elP
-      prepTCoord TouchEventResult{..} = fmap (\(a,b)-> (a, b)) $ fmap (\ClientRect{..} -> ((fromIntegral (_touchResult_screenX (head _touchEventResult_touches))) - crLeft, (fromIntegral (_touchResult_screenY (head _touchEventResult_touches)) - crTop - 35))) elP
-      tmoveE = domEvent Touchmove canvasEl
-      tdownE  = domEvent Touchstart canvasEl
-      tupE    = domEvent Touchend canvasEl
-      pressedE = leftmost [Pressed <$ tdownE, Unpressed <$ tupE]
-  tmovePrE <- performEvent $ ffor tmoveE prepTCoord
-  tdownPrE <- performEvent $ ffor tdownE prepTCoord
-  tupPrE   <- performEvent $ ffor tupE   prepTCoord
-  touchD <- holdDyn Unpressed pressedE
-  performEvent_ $ ffor buildE $ \_ -> do
-    rawJSCall (_element_raw canvasEl) $ drawRndT canvasW canvasH [0.6,0.4]
-  pure $ ()
-    where
-      canvasH = 240
-      canvasW = 240
-      cOpts = CanvasOptions canvasW canvasH "pattern" "pattern"
+portfolioWidget :: MonadFrontBase t m => m ()
+portfolioWidget = divClass "portfolio-idget" $ do
+  divClass "canvas-container" $ mdo
+    buildE <- delay 0.1 =<< getPostBuild
+    canvasEl <- createCanvas cOpts
+    let elP = elementPosition $ _element_raw canvasEl
+        prepCoord (x,y) = fmap (\(a,b)-> (a, b)) $ fmap (\ClientRect{..} -> ((fromIntegral x) - crLeft, (fromIntegral y) - crTop)) elP
+        prepTCoord TouchEventResult{..} = fmap (\(a,b)-> (a, b)) $ fmap (\ClientRect{..} -> ((fromIntegral (_touchResult_screenX (head _touchEventResult_touches))) - crLeft, (fromIntegral (_touchResult_screenY (head _touchEventResult_touches)) - crTop - 35))) elP
+        tmoveE = domEvent Touchmove canvasEl
+        tdownE = domEvent Touchstart canvasEl
+        tupE   = domEvent Touchend canvasEl
+        mmoveE = domEvent Mousemove canvasEl
+        pressedE = leftmost [Pressed <$ tdownE, Unpressed <$ tupE]
+    tmovePrE <- performEvent $ ffor tmoveE prepTCoord
+    tdownPrE <- performEvent $ ffor tdownE prepTCoord
+    tupPrE   <- performEvent $ ffor tupE   prepTCoord
+    mmovePrE <- performEvent $ ffor mmoveE prepCoord
+    touchD <- holdDyn Unpressed pressedE
+    ringD <- holdDyn [(0.6,Unhovered),(0.4,Unhovered)] $ poke mmovePrE $ \(x,y) -> do
+      ringS <- sampleDyn ringD
+      pure $ checkRingHover (x,y) (dW,dH) dr ringS
+    performEvent_ $ ffor (updated ringD) $ \lst -> do
+      rawJSCall (_element_raw canvasEl) $ drawRndHovT canvasW canvasH lst
+    performEvent_ $ ffor buildE $ \_ -> do
+      rawJSCall (_element_raw canvasEl) $ drawRndHovT canvasW canvasH [(0.6,Unhovered),(0.4,Unhovered)]
+    pure $ ()
+  divClass "portfolio-legend" $ do
+    pure ()
+      where
+        canvasH = 240
+        canvasW = 240
+        dH = fromIntegral canvasH
+        dW = fromIntegral canvasW
+        dr = (dH/2)*0.98
+        cOpts = CanvasOptions canvasW canvasH "pattern" "pattern"
+
+
+checkRingHover :: (Double, Double) -> (Double,Double) -> Double -> [(Double,HoverState)] -> [(Double,HoverState)]
+checkRingHover (x,y) (w,h) r lst = if ringHitOrMiss
+    then arcHitOrMiss angle
+    else fmap (\(a,_) -> (a,Unhovered)) lst
+  where
+    ringHitOrMiss = (frml <= rs*rs) && (frml >= (rs/2)*(rs/2))
+    frml = (x - rs)*(x - rs) + (y - rs)*(y - rs)
+    anglePre = (pi) - atan2 (x - rs) (y - rs)
+    angle = if anglePre < 0
+      then anglePre + 2*pi
+      else anglePre
+    arcHitOrMiss ang = fmap (\(a,(st,end)) -> if ((ang > st) && (ang< end))
+      then (a,Hovered)
+      else (a,Unhovered)
+       ) $ zip lunh lok
+    tp = -pi/2
+    crcl = pi*2
+    rs = r/0.98
+    lunh = fmap fst lst
+    l3 = scanl (\x y -> x+y*2*pi) 0 lunh
+    lok = zip (init l3) (tail l3)
