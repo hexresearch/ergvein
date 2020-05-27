@@ -14,6 +14,7 @@ module Reflex.ExternalRef(
   , modifyExternalRef
   , modifyExternalRefM
   , modifyExternalRef_
+  , modifyExternalRefMaybe_
   , modifyExternalRefM_
   , externalRefBehavior
   , externalRefDynamic
@@ -85,6 +86,15 @@ modifyExternalRef_ ExternalRef {..} f = do
   a <- liftIO $ atomicModifyIORef' externalRef $ \a ->
     let a' = f a in (a', a')
   liftIO $ externalFire a
+
+-- | If the function evaluates to Just then
+-- Atomically modify an external ref and notify FRP network.
+-- The function evaluates the value to WNF. Returns nothing
+modifyExternalRefMaybe_ :: MonadIO m => ExternalRef t a -> (a -> Maybe a) -> m ()
+modifyExternalRefMaybe_ ExternalRef {..} f = do
+  ma <- liftIO $ atomicModifyIORef' externalRef $ \a ->
+    maybe (a, Nothing) (\a' -> (a', Just a')) $ f a
+  liftIO $ maybe (pure ()) externalFire ma
 
 -- | Modify (not atomically) an external ref and notify FRP network.
 -- The function evaluates the value to WNF.
