@@ -34,6 +34,7 @@ import Ergvein.Wallet.Util
 import qualified Data.IntMap.Strict                 as MI
 import qualified Data.Map.Strict                    as M
 import qualified Data.Text                          as T
+import qualified Data.Vector                        as V
 import qualified Ergvein.Wallet.Filters.Scan        as Filters
 import qualified Network.Haskoin.Block              as HB
 import qualified Network.Haskoin.Script             as HS
@@ -85,11 +86,13 @@ scanCurrency currency currencyPubStorage = do
   internalKeysE <- scanInternalAddressesByE externalKeysE
   pure internalKeysE
 
+-- | TODO: Revoke and minimize keyindex use
+-- Or at least make it consistent with pubKeystore's indexes
 scanExternalAddresses :: MonadFront t m => Currency -> CurrencyPubStorage -> m (Event t (Currency, CurrencyPubStorage))
 scanExternalAddresses currency currencyPubStorage = mdo
   let pubKeystore = currencyPubStorage ^. currencyPubStorage'pubKeystore
       masterPubKey = pubKeystore'master pubKeystore
-      emptyPubKeyStore = PubKeystore masterPubKey MI.empty MI.empty
+      emptyPubKeyStore = PubKeystore masterPubKey V.empty V.empty
       startGap = 0
       startKeyIndex = 0
       startKey = derivePubKey masterPubKey External (fromIntegral $ startKeyIndex)
@@ -103,7 +106,7 @@ scanExternalAddresses currency currencyPubStorage = mdo
   postSync currency $ flip pushAlways gapE $ \currnetGap -> do
     (keyIndex, _) <- sample . current $ currentKeyD
     pure (keyIndex + 1, currnetGap)
-  newKeystoreD <- foldDyn (addXPubKeyToKeystore External) emptyPubKeyStore processKeyE
+  newKeystoreD <- foldDyn (addXPubKeyToKeystore External . snd) emptyPubKeyStore processKeyE
   newTxsD <- foldDyn M.union M.empty getTxsE
   blocksD <- holdDyn [] blocksE
   filterAddressE <- logEvent "Scanned for blocks: " =<< (filterAddress $ (egvXPubKeyToEgvAddress . snd) <$> processKeyE)
@@ -159,7 +162,7 @@ scanInternalAddressesLoop currencyPubStorage keyIndex gap
         key = derivePubKey masterPubKey Internal (fromIntegral keyIndex)
         address = egvXPubKeyToEgvAddress key
         txs = currencyPubStorage ^. currencyPubStorage'transactions
-        updatedPubKeystore = addXPubKeyToKeystore Internal (keyIndex, key) pubKeystore
+        updatedPubKeystore = addXPubKeyToKeystore Internal key pubKeystore
         updatedPubStorage = currencyPubStorage & currencyPubStorage'pubKeystore .~ updatedPubKeystore
     logWrite $ "Scanning internal address #" <> showt keyIndex <> ": \"" <> egvAddrToString address <> "\""
     checkResults <- traverse (checkAddrTx address) $ egvTxsToBtcTxs txs -- TODO: use DMap instead of Map in CurrencyPubStorage

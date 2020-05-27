@@ -26,11 +26,9 @@ xPubToErgAddr :: XPubKey -> ErgAddress
 xPubToErgAddr key = pubKeyErgAddr $ wrapPubKey True (xPubKey key)
 
 egvXPubKeyToEgvAddress :: EgvXPubKey -> EgvAddress
-egvXPubKeyToEgvAddress key
-  | currency == BTC = BtcAddress $ xPubToBtcAddr xpk
-  | currency == ERGO = ErgAddress $ xPubToErgAddr xpk
-  where currency = egvXPubCurrency key
-        xpk = egvXPubKey key
+egvXPubKeyToEgvAddress key = case key of
+  ErgXPubKey k _ -> ErgAddress $ xPubToErgAddr k
+  BtcXPubKey k _ -> BtcAddress $ xPubToBtcAddr k
 
 -- | Derive a BIP44 compatible private key for a specific currency.
 -- Given a parent private key /m/
@@ -49,7 +47,9 @@ deriveCurrencyMasterPubKey rootPrvKey currency =
     let hardPath = [44, getCurrencyIndex currency, 0]
         derivedPrvKey = foldl hardSubKey (unEgvRootXPrvKey rootPrvKey) hardPath
         derivedPubKey = deriveXPubKey derivedPrvKey
-    in EgvXPubKey currency derivedPubKey
+    in case currency of
+      ERGO -> ErgXPubKey derivedPubKey ""
+      BTC -> BtcXPubKey derivedPubKey ""
 
 -- | Derive a BIP44 compatible private key with a given purpose (external or internal) and index.
 -- Given a parent private key /m/, purpose /p/ and an index /i/, this function will compute /m\/p\/i/.
@@ -70,10 +70,10 @@ derivePubKey :: EgvXPubKey -> KeyPurpose -> KeyIndex -> EgvXPubKey
 derivePubKey masterKey keyPurpose index =
   let pCode = if keyPurpose == External then 0 else 1
       path = [pCode, index]
-      mKey = egvXPubKey masterKey
-      currency = egvXPubCurrency masterKey
-      derivedKey = foldl pubSubKey mKey path
-  in EgvXPubKey currency derivedKey
+      derivedKey mk = foldl pubSubKey mk path
+  in case masterKey of
+    ErgXPubKey k _ -> ErgXPubKey (derivedKey k) ""
+    BtcXPubKey k _ -> BtcXPubKey (derivedKey k) ""
 
 example :: IO ()
 example = do
@@ -93,6 +93,6 @@ example = do
   putStrLn "\nExtended public key:"
   print xPubKey
   let currency = BTC
-  let address = fmap (egvXPubKeyToEgvAddress . EgvXPubKey currency) xPubKey
+  let address = fmap (egvXPubKeyToEgvAddress . flip BtcXPubKey "") xPubKey
   putStrLn "\nAddress:"
   print address
