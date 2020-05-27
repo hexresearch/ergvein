@@ -16,6 +16,8 @@ module Ergvein.Types.Keys (
   , getLastUnusedKey
   , egvXPubCurrency
   , getExternalPubKeyIndex
+  , extractXPubKeyFromEgv
+  , getLabelFromEgvPubKey
   ) where
 
 import Control.Monad
@@ -317,15 +319,15 @@ data PubKeystore = PubKeystore {
 
 $(deriveJSON aesonOptionsStripToApostroph ''PubKeystore)
 
-getLastUnusedKey :: PubKeystore -> Maybe EgvXPubKey
+getLastUnusedKey :: PubKeystore -> Maybe (Int, EgvExternalKeyBox)
 getLastUnusedKey (PubKeystore _ ext _) = go Nothing ext
   where
-    go :: Maybe EgvXPubKey -> Vector EgvExternalKeyBox -> Maybe EgvXPubKey
+    go :: Maybe (Int, EgvExternalKeyBox) -> Vector EgvExternalKeyBox -> Maybe (Int, EgvExternalKeyBox)
     go mk vec = if V.null vec then mk else let
-      EgvExternalKeyBox k txs m = V.last vec
+      kb@(EgvExternalKeyBox _ txs m) = V.last vec
       in if m || not (V.null txs)
         then mk
-        else go (Just k) $ V.init vec
+        else go (Just (V.length vec - 1, kb)) $ V.init vec
 
 getExternalPubKeyIndex :: PubKeystore -> Int
 getExternalPubKeyIndex = V.length . pubKeystore'external
@@ -334,6 +336,11 @@ extractXPubKeyFromEgv :: EgvXPubKey -> XPubKey
 extractXPubKeyFromEgv key = case key of
   ErgXPubKey k _ -> k
   BtcXPubKey k _ -> k
+
+getLabelFromEgvPubKey :: EgvXPubKey -> Text
+getLabelFromEgvPubKey key = case key of
+  ErgXPubKey _ l -> l
+  BtcXPubKey _ l -> l
 
 -- | Supported key purposes. It represents /change/ field in BIP44 derivation path.
 -- External chain is used for addresses that are meant to be visible outside of the wallet (e.g. for receiving payments).
