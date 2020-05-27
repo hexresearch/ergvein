@@ -1,3 +1,8 @@
+1.0.2.0
+=======
+
+Added extra modify functions: modifyExternalRef_, modifyExternalRefMaybe etc
+
 1.0.1.0
 =======
 

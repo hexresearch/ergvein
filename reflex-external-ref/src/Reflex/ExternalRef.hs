@@ -12,10 +12,13 @@ module Reflex.ExternalRef(
   , readExternalRef
   , writeExternalRef
   , modifyExternalRef
-  , modifyExternalRefM
   , modifyExternalRef_
+  , modifyExternalRefMaybe
   , modifyExternalRefMaybe_
+  , modifyExternalRefM
   , modifyExternalRefM_
+  , modifyExternalRefMaybeM
+  , modifyExternalRefMaybeM_
   , externalRefBehavior
   , externalRefDynamic
   , externalFromDynamic
@@ -89,7 +92,19 @@ modifyExternalRef_ ExternalRef {..} f = do
 
 -- | If the function evaluates to Just then
 -- Atomically modify an external ref and notify FRP network.
+-- The function evaluates the value to WNF.
+-- Return the Maybe result of function's evaluation
+modifyExternalRefMaybe :: MonadIO m => ExternalRef t a -> (a -> Maybe (a,b)) -> m (Maybe b)
+modifyExternalRefMaybe ExternalRef {..} f = do
+  mab <- liftIO $ atomicModifyIORef' externalRef $ \a ->
+    maybe (a, Nothing) (\ab-> (fst ab, Just ab)) $ f a
+  liftIO $ maybe (pure ()) (externalFire . fst) mab
+  pure $ snd <$> mab
+
+-- | If the function evaluates to Just then
+-- Atomically modify an external ref and notify FRP network.
 -- The function evaluates the value to WNF. Returns nothing
+-- The function discards the result
 modifyExternalRefMaybe_ :: MonadIO m => ExternalRef t a -> (a -> Maybe a) -> m ()
 modifyExternalRefMaybe_ ExternalRef {..} f = do
   ma <- liftIO $ atomicModifyIORef' externalRef $ \a ->
@@ -116,6 +131,34 @@ modifyExternalRefM_ ExternalRef {..} f = do
   liftIO $ do
     writeIORef externalRef a'
     externalFire a'
+
+-- | If the function evaluates to Just then
+-- Modify (not atomically) an external ref and notify FRP network.
+-- The function evaluates the value to WNF.
+modifyExternalRefMaybeM :: MonadIO m => ExternalRef t a -> (a -> m (Maybe (a, b))) -> m (Maybe b)
+modifyExternalRefMaybeM ExternalRef {..} f = do
+  a       <- liftIO $ readIORef externalRef
+  mab <- f a
+  case mab of
+    Nothing -> pure Nothing
+    Just (a',b) -> liftIO $ do
+      writeIORef externalRef a'
+      externalFire a'
+      return $ Just b
+
+-- | If the function evaluates to Just then
+-- Modify (not atomically) an external ref and notify FRP network.
+-- The function evaluates the value to WNF.
+-- The function discards the result
+modifyExternalRefMaybeM_ :: MonadIO m => ExternalRef t a -> (a -> m (Maybe a)) -> m ()
+modifyExternalRefMaybeM_ ExternalRef {..} f = do
+  a       <- liftIO $ readIORef externalRef
+  ma      <- f a
+  case ma of
+    Nothing -> pure ()
+    Just a' -> liftIO $ do
+      writeIORef externalRef a'
+      externalFire a'
 
 -- | Construct a behavior from external reference
 externalRefBehavior :: (MonadHold t m, MonadIO m) => ExternalRef t a -> m (Behavior t a)
