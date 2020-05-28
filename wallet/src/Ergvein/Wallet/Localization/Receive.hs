@@ -24,7 +24,7 @@ data ReceivePageStrings =
   | RPSNewLabel
   | RPSGenNew
   | RPSCopy
-
+  | RPSGap
 
 instance LocalizedPrint ReceivePageStrings where
   localizedShow l v = case l of
@@ -34,9 +34,11 @@ instance LocalizedPrint ReceivePageStrings where
       RPSNewLabel -> "New label"
       RPSGenNew   -> "Generate new"
       RPSCopy     -> "Copy"
+      RPSGap      -> "Exceeded gap limit"
     Russian -> case v of
       RPSTitle    -> "Получение"
       RPSAddLabel -> "Добавить название"
       RPSNewLabel -> "Изменить название"
       RPSGenNew   -> "Создать новый"
       RPSCopy     -> "Скопировать"
+      RPSGap      -> "Вышли за \"Gap limit\""

@@ -44,7 +44,10 @@ infoPage cur = wrapper (InfoTitle cur) (Just $ pure $ infoPage cur) False $ divC
   vertSpacer
 
   pubStorage <- getPubStorage
-  let masterPKeyMb = xPubExport (getCurrencyNetwork cur) . egvXPubKey . pubKeystore'master . _currencyPubStorage'pubKeystore
+  let egvXPubExport key = case key of
+        BtcXPubKey k _ -> xPubExport (getCurrencyNetwork BTC) k
+        ErgXPubKey k _ -> xPubExport (getCurrencyNetwork ERGO) k
+  let masterPKeyMb = egvXPubExport . pubKeystore'master . _currencyPubStorage'pubKeystore
         <$> M.lookup cur (_pubStorage'currencyPubStorages pubStorage)
       partsPKey = T.chunksOf 20 $ fromMaybe "" masterPKeyMb
   textLabel MasterPubKey $ mapM_ (\v -> text v >> br) partsPKey
