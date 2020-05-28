@@ -50,7 +50,7 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
-import Ergvein.Wallet.Node hiding (BTCTag, ERGTag)
+import Ergvein.Wallet.Node hiding (CurrencyTag(..))
 import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Settings (Settings(..), storeSettings, defaultIndexers)
 import Ergvein.Wallet.Storage.Util
@@ -63,6 +63,7 @@ import qualified Control.Immortal as I
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Map.Strict as M
 import qualified Data.Dependent.Map as DM
+import qualified Data.Dependent.Map.Lens as DM
 import qualified Data.Set as S
 import qualified Data.List as L
 import Data.Functor.Identity (Identity)
@@ -295,23 +296,20 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   getAddressByCurIx cur i = do
     currMap <- fmap (_pubStorage'currencyPubStorages . _storage'pubStorage . _authInfo'storage) $ readExternalRef =<< asks env'authRef
     case cur of
-      BTC -> do
-        let mXPubKey = (MI.lookup i) . pubKeystore'external . _currencyPubStorage'pubKeystore =<< DM.lookup BTCTag currMap
-        case mXPubKey of
-          Nothing -> fail "NOT IMPLEMENTED" -- TODO: generate new address here
-          Just xPubKey -> pure $ xPubExport (getCurrencyNetwork cur) (egvXPubKey xPubKey)
-      ERGO -> do
-        let mXPubKey = (MI.lookup i) . pubKeystore'external . _currencyPubStorage'pubKeystore =<< DM.lookup ERGTag currMap
-        case mXPubKey of
-            Nothing -> fail "NOT IMPLEMENTED" -- TODO: generate new address here
-            Just xPubKey -> pure $ xPubExport (getCurrencyNetwork cur) (egvXPubKey xPubKey)
+      -- TODO: generate new address here if getAddr returns Nothing
+      BTC -> maybe (fail "NOT IMPLEMENTED") pure (getAddr BTCTag i currMap)
+      ERGO -> maybe (fail "NOT IMPLEMENTED") pure (getAddr ERGTag i currMap)
+    where
+      getAddr :: CurrencyTag tx -> Int -> CurrencyPubStorages -> Maybe Base58
+      getAddr curTag i currMap = maybe Nothing (Just . (xPubExport $ getCurrencyNetwork cur) . egvXPubKey) mXPubKey
+        where mXPubKey = (MI.lookup i) . pubKeystore'external . _currencyPubStorage'pubKeystore =<< DM.lookup curTag currMap
   {-# INLINE getAddressByCurIx #-}
   getWalletName = fmap (_storage'walletName . _authInfo'storage) $ readExternalRef =<< asks env'authRef
   {-# INLINE getWalletName #-}
   getPubStorage = fmap (_storage'pubStorage . _authInfo'storage) $ readExternalRef =<< asks env'authRef
   {-# INLINE getPubStorage #-}
   storeWallet e = do
-    ref <-  asks env'authRef
+    ref <- asks env'authRef
     performEvent_ $ ffor e $ \_ -> do
         authInfo <- readExternalRef ref
         let storage = _authInfo'storage authInfo
@@ -320,16 +318,16 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   {-# INLINE storeWallet #-}
   addTxToPubStorage txE = do
     authRef <- asks env'authRef
-    performFork_ $ ffor txE $ \(txid, etx) -> do
-      let cur = case etx of
-            BtcTx{} -> BTC
-            ErgTx{} -> ERGO
-      modifyExternalRef_ authRef $ \ai -> ai
-        & authInfo'storage
+    performFork_ $ ffor txE $ \(txid, etx) -> case etx of
+      BtcTx tx -> modifyExternalRef_ authRef $ addTx BTCTag tx txid
+      ErgTx tx -> modifyExternalRef_ authRef $ addTx ERGTag tx txid
+    where
+      addTx :: CurrencyTag tx -> tx -> TxId -> AuthInfo -> AuthInfo
+      addTx curTag tx txid authInfo = authInfo & authInfo'storage
         . storage'pubStorage
         . pubStorage'currencyPubStorages
-        . at cur . _Just                  -- TODO: Fix this part once there is a way to generate keys. Or signal an impposible situation
-        . currencyPubStorage'transactions . at txid .~ Just etx
+        . DM.dmat curTag . _Just -- TODO: Fix this part once there is a way to generate keys. Or signal an impposible situation
+        . currencyPubStorage'transactions . at txid .~ Just tx
   {-# INLINE addTxToPubStorage #-}
   getPubStorageD = do
     authInfoD <- externalRefDynamic =<< asks env'authRef

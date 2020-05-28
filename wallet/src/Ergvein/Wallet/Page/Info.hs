@@ -3,6 +3,7 @@ module Ergvein.Wallet.Page.Info(
     infoPage
   ) where
 
+import Ergvein.Crypto.Util
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
@@ -18,6 +19,7 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
 
+import qualified Data.Dependent.Map as DM
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
@@ -44,12 +46,17 @@ infoPage cur = wrapper (InfoTitle cur) (Just $ pure $ infoPage cur) False $ divC
   vertSpacer
 
   pubStorage <- getPubStorage
-  let masterPKeyMb = xPubExport (getCurrencyNetwork cur) . egvXPubKey . pubKeystore'master . _currencyPubStorage'pubKeystore
-        <$> M.lookup cur (_pubStorage'currencyPubStorages pubStorage)
+  let masterPKeyMb = case cur of
+        BTC -> getMasterPKeyMb BTCTag pubStorage
+        ERGO -> getMasterPKeyMb ERGTag pubStorage
       partsPKey = T.chunksOf 20 $ fromMaybe "" masterPKeyMb
   textLabel MasterPubKey $ mapM_ (\v -> text v >> br) partsPKey
   pure ()
   where
+    getMasterPKeyMb :: CurrencyTag tx -> PubStorage -> Maybe Base58
+    getMasterPKeyMb curTag pubStorage = xPubExport (getCurrencyNetwork cur) . egvXPubKey . pubKeystore'master . _currencyPubStorage'pubKeystore
+        <$> DM.lookup curTag (_pubStorage'currencyPubStorages pubStorage)
+
     getSettingsUnits = fromMaybe defUnits . settingsUnits
 
 textLabel :: (MonadFrontBase t m, LocalizedPrint l)
