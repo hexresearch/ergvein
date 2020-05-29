@@ -41,5 +41,8 @@ import qualified Network.Haskoin.Block              as HB
 import qualified Network.Haskoin.Script             as HS
 import qualified Network.Haskoin.Transaction        as HT
 
+-- TODO: implement scan for ERGO
 scanERG :: MonadFront t m => CurrencyPubStorage ErgTx -> m (Event t (CurrencyPubStorage ErgTx))
-scanERG = undefined
+scanERG currencyPubStorage = do
+  buildE <- getPostBuild
+  pure (currencyPubStorage <$ buildE)

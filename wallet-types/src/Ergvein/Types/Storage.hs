@@ -108,6 +108,10 @@ instance GCompare CurrencyTag where
   gcompare BTCTag ERGTag = GGT
   gcompare ERGTag BTCTag = GLT
 
+currencyTagToCurrency :: CurrencyTag a -> Currency
+currencyTagToCurrency BTCTag = BTC
+currencyTagToCurrency ERGTag = ERGO
+
 type CurrencyPubStorages = DMap CurrencyTag CurrencyPubStorage
 
 instance ToJSON CurrencyPubStorages where
