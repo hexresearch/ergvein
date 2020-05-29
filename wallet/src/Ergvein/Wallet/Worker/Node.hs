@@ -41,6 +41,7 @@ import qualified Data.IntMap as MI
 import qualified Data.Map as M
 import qualified Data.Set as S
 import qualified Ergvein.Types.Storage as ST (CurrencyTag(BTCTag), CurrencyTag(ERGTag))
+import qualified Data.Vector as V
 
 minNodeNum :: Int
 minNodeNum = 3
@@ -133,8 +134,8 @@ extractAddrs :: PubKeystore -> [EgvAddress]
 extractAddrs (PubKeystore mast ext int) = mastadr:(extadrs <> intadrs)
   where
     mastadr = egvXPubKeyToEgvAddress mast
-    extadrs = fmap egvXPubKeyToEgvAddress $ MI.elems ext
-    intadrs = fmap egvXPubKeyToEgvAddress $ MI.elems int
+    extadrs = V.toList $ fmap (egvXPubKeyToEgvAddress . extKeyBox'key) ext
+    intadrs = V.toList $ fmap egvXPubKeyToEgvAddress int
 
 -- | Extract TxHashes from Inv vector. Return Nothing if no TxHashes are present
 filterTxInvs :: S.Set TxId -> Inv -> Maybe [InvVector]

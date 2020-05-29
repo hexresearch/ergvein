@@ -1,9 +1,9 @@
+{-# OPTIONS_GHC -Wall #-}
+
 module Ergvein.Wallet.Page.Initial(
     initialPage
   , initialAuthedPage
   ) where
-
-import Data.Text (unpack)
 
 import Control.Lens
 import Control.Monad.IO.Class
@@ -12,7 +12,6 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Initial
@@ -21,22 +20,17 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Page.Seed
-import Ergvein.Wallet.Password
-import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.AuthInfo
 import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Storage.Util
-import Ergvein.Wallet.Widget.GraphPinCode
 import Ergvein.Wallet.Wrapper
 
-import qualified Data.Dependent.Map as DM
-import qualified Data.IntMap.Strict    as MI
+import qualified Data.Dependent.Map    as DM
 import qualified Data.Map.Merge.Strict as MM
 import qualified Data.Map.Strict       as M
+import qualified Data.Vector           as V
 
 data GoPage = GoSeed | GoRestore
-
-data GoSwitch = GoPass Password | GoSwitchWallet
 
 initialPage :: MonadFrontBase t m => m ()
 initialPage = do
@@ -101,9 +95,9 @@ generateMissingPrvKeys (authInfo, pass) = do
         currencyPrvStorages = view prvStorage'currencyPrvStorages decryptedPrvStorage
         currencyPubStorages = view (authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages) authInfo
         pubKeysNumber = M.fromList $ map counteKeys $ DM.toList currencyPubStorages
-        counteKeys (tag DM.:=> currencyPubStorage) = (currencyTagToCurrency tag, (
-             MI.size $ pubKeystore'external (view currencyPubStorage'pubKeystore currencyPubStorage),
-             MI.size $ pubKeystore'internal (view currencyPubStorage'pubKeystore currencyPubStorage)
+        counteKeys (currencyTag DM.:=> currencyPubStorage) = (currencyTagToCurrency currencyTag, (
+             V.length $ pubKeystore'external (view currencyPubStorage'pubKeystore currencyPubStorage),
+             V.length $ pubKeystore'internal (view currencyPubStorage'pubKeystore currencyPubStorage)
            ))
         updatedPrvKeystore =
           MM.merge
@@ -118,22 +112,26 @@ generateMissingPrvKeysHelper ::
   -> CurrencyPrvStorage -- ^ Private keystore
   -> (Int, Int)         -- ^ Total number of external and internal private keys respectively that should be stored in keystore
   -> CurrencyPrvStorage -- ^ Updated private keystore
-generateMissingPrvKeysHelper currency (CurrencyPrvStorage prvKeystore) (goalExternalKeysNum, goalInternalKeysNum) =
+generateMissingPrvKeysHelper _ (CurrencyPrvStorage prvKeystore) (goalExternalKeysNum, goalInternalKeysNum) =
   CurrencyPrvStorage $ PrvKeystore masterPrvKey updatedExternalPrvKeys updatedInternalPrvKeys
   where
     currentExternalKeys = prvKeystore'external prvKeystore
     currentInternalKeys = prvKeystore'internal prvKeystore
     masterPrvKey = prvKeystore'master prvKeystore
-    updatedExternalPrvKeys = if MI.size currentExternalKeys >= goalExternalKeysNum
-                             then currentExternalKeys
-                             else MI.union currentExternalKeys
-                                    (MI.fromList [(keyIndex, derivePrvKey masterPrvKey External (fromIntegral keyIndex)) |
-                                    keyIndex <- [(MI.size currentExternalKeys)..(goalExternalKeysNum - 1)]])
-    updatedInternalPrvKeys = if MI.size currentInternalKeys >= goalInternalKeysNum
-                             then currentInternalKeys
-                             else MI.union currentInternalKeys
-                                    (MI.fromList [(keyIndex, derivePrvKey masterPrvKey Internal (fromIntegral keyIndex)) |
-                                    keyIndex <- [(MI.size currentInternalKeys)..(goalInternalKeysNum - 1)]])
+    extLength = V.length currentExternalKeys
+    intLength = V.length currentInternalKeys
+    updatedExternalPrvKeys = if extLength >= goalExternalKeysNum
+      then currentExternalKeys
+      else let
+        l = goalExternalKeysNum - extLength
+        v = V.unfoldrN l (\i -> Just (derivePrvKey masterPrvKey External (fromIntegral i), i+1)) extLength
+        in currentExternalKeys V.++ v
+    updatedInternalPrvKeys = if intLength >= goalInternalKeysNum
+      then currentInternalKeys
+      else let
+        l = goalInternalKeysNum - intLength
+        v = V.unfoldrN l (\i -> Just (derivePrvKey masterPrvKey Internal (fromIntegral i), i+1)) intLength
+        in currentInternalKeys V.++ v
 
 initialAuthedPage :: MonadFront t m => m ()
 initialAuthedPage = wrapperSimple True $ divClass "main-page" $ do

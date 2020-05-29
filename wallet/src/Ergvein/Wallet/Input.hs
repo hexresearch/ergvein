@@ -1,6 +1,7 @@
 module Ergvein.Wallet.Input(
     Password
   , textField
+  , textFieldNoLabel
   , validatedTextField
   , validatedTextFieldSetVal
   , textFieldSetValValidated
@@ -39,6 +40,14 @@ textField :: (MonadFrontBase t m, LocalizedPrint l)
   -> m (Dynamic t Text)
 textField lbl v0 = fmap _inputElement_value $ labeledTextInput lbl $ def
   & inputElementConfig_initialValue .~ v0
+
+textFieldNoLabel :: (MonadFrontBase t m)
+  => Text -- ^ Initial value
+  -> m (Dynamic t Text)
+textFieldNoLabel v0 = fmap _inputElement_value $ inputElement $ def
+  & inputElementConfig_initialValue .~ v0
+  & inputElementConfig_elementConfig . elementConfig_initialAttributes
+    %~ (\as -> "type" =: "text" <> as)
 
 validatedTextField :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPrint l1)
   => l0 -- ^ Label

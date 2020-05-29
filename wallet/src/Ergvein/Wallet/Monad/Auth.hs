@@ -66,6 +66,8 @@ import qualified Data.Dependent.Map as DM
 import qualified Data.Dependent.Map.Lens as DM
 import qualified Data.Set as S
 import qualified Data.List as L
+import qualified Data.Vector as V
+
 import Data.Functor.Identity (Identity)
 import Control.Monad.Random
 import Data.Functor.Misc
@@ -301,8 +303,12 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
       ERGO -> maybe (fail "NOT IMPLEMENTED") pure (getAddr ERGTag i currMap)
     where
       getAddr :: CurrencyTag tx -> Int -> CurrencyPubStorages -> Maybe Base58
-      getAddr curTag i currMap = maybe Nothing (Just . (xPubExport $ getCurrencyNetwork cur) . egvXPubKey) mXPubKey
-        where mXPubKey = (MI.lookup i) . pubKeystore'external . _currencyPubStorage'pubKeystore =<< DM.lookup curTag currMap
+      getAddr curTag i currMap = case mXPubKey of
+        Nothing -> Nothing
+        Just (EgvExternalKeyBox (BtcXPubKey key _) _ _) -> Just $ xPubExport (getCurrencyNetwork cur) key
+        Just (EgvExternalKeyBox (ErgXPubKey key _) _ _) -> Just $ xPubExport (getCurrencyNetwork cur) key
+        where
+          mXPubKey = (flip (V.!?) i) . pubKeystore'external . _currencyPubStorage'pubKeystore =<< DM.lookup curTag currMap
   {-# INLINE getAddressByCurIx #-}
   getWalletName = fmap (_storage'walletName . _authInfo'storage) $ readExternalRef =<< asks env'authRef
   {-# INLINE getWalletName #-}
@@ -333,6 +339,64 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
     authInfoD <- externalRefDynamic =<< asks env'authRef
     pure $ ffor authInfoD $ \ai -> ai ^. authInfo'storage. storage'pubStorage
   {-# INLINE getPubStorageD #-}
+  setLabelToExtPubKey reqE = do
+    authRef <- asks env'authRef
+    performFork_ $ ffor reqE $ \(cur, index, label) -> case cur of
+      BTC -> helper BTCTag index label authRef
+      ERGO -> helper ERGTag index label authRef
+      where helper curTag i l ar = modifyExternalRefMaybe_ ar $ \ai ->
+              let mk = ai ^.
+                      authInfo'storage
+                    . storage'pubStorage
+                    . pubStorage'currencyPubStorages
+                    . DM.dmat curTag
+                    & \mcps -> case mcps of
+                      Nothing -> Nothing
+                      Just cps -> cps ^. currencyPubStorage'pubKeystore
+                        & (\v -> (V.!?) (pubKeystore'external v) i)
+              in case mk of
+                Nothing -> Nothing
+                Just kb -> let kb' = kb {extKeyBox'key = updateKeyLabel l $ extKeyBox'key kb}
+                  in Just $ ai & authInfo'storage
+                      . storage'pubStorage
+                      . pubStorage'currencyPubStorages
+                      . DM.dmat curTag
+                      %~ \mcps -> case mcps of
+                        Nothing -> Nothing
+                        Just cps -> Just $ cps & currencyPubStorage'pubKeystore
+                          %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
+  setFlatToExtPubKey reqE = do
+    authRef <- asks env'authRef
+    performFork_ $ ffor reqE $ \(cur, index) -> case cur of
+      BTC -> helper BTCTag index authRef
+      ERGO -> helper ERGTag index authRef
+      where helper curTag i ar = modifyExternalRefMaybe_ ar $ \ai ->
+              let mk = ai ^.
+                      authInfo'storage
+                    . storage'pubStorage
+                    . pubStorage'currencyPubStorages
+                    . DM.dmat curTag
+                    & \mcps -> case mcps of
+                      Nothing -> Nothing
+                      Just cps -> cps ^. currencyPubStorage'pubKeystore
+                        & (\v -> (V.!?) (pubKeystore'external v) i)
+              in case mk of
+                Nothing -> Nothing
+                Just kb -> let kb' = kb {extKeyBox'manual = True}
+                  in Just $ ai & authInfo'storage
+                      . storage'pubStorage
+                      . pubStorage'currencyPubStorages
+                      . DM.dmat curTag
+                      %~ \mcps -> case mcps of
+                        Nothing -> Nothing
+                        Just cps -> Just $ cps & currencyPubStorage'pubKeystore
+                          %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
+
+updateKeyLabel :: Text -> EgvXPubKey -> EgvXPubKey
+updateKeyLabel l key = case key of
+  ErgXPubKey k _ -> ErgXPubKey k l
+  BtcXPubKey k _ -> BtcXPubKey k l
+
 -- | Execute action under authorized context or return the given value as result
 -- if user is not authorized. Each time the login info changes and authInfo'isUpdate flag is set to 'False'
 -- (user logs out or logs in) the widget is updated.

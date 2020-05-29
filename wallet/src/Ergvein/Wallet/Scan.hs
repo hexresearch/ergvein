@@ -37,6 +37,7 @@ import qualified Data.Dependent.Map                 as DM
 import qualified Data.IntMap.Strict                 as MI
 import qualified Data.Map.Strict                    as M
 import qualified Data.Text                          as T
+import qualified Data.Vector                        as V
 import qualified Ergvein.Wallet.Filters.Scan        as Filters
 import qualified Network.Haskoin.Block              as HB
 import qualified Network.Haskoin.Script             as HS

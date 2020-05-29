@@ -53,8 +53,11 @@ infoPage cur = wrapper (InfoTitle cur) (Just $ pure $ infoPage cur) False $ divC
   textLabel MasterPubKey $ mapM_ (\v -> text v >> br) partsPKey
   pure ()
   where
+    egvXPubExport key = case key of
+      BtcXPubKey k _ -> xPubExport (getCurrencyNetwork BTC) k
+      ErgXPubKey k _ -> xPubExport (getCurrencyNetwork ERGO) k
     getMasterPKeyMb :: CurrencyTag tx -> PubStorage -> Maybe Base58
-    getMasterPKeyMb curTag pubStorage = xPubExport (getCurrencyNetwork cur) . egvXPubKey . pubKeystore'master . _currencyPubStorage'pubKeystore
+    getMasterPKeyMb curTag pubStorage = egvXPubExport . pubKeystore'master . _currencyPubStorage'pubKeystore
         <$> DM.lookup curTag (_pubStorage'currencyPubStorages pubStorage)
 
     getSettingsUnits = fromMaybe defUnits . settingsUnits
