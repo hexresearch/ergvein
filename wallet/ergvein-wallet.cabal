@@ -137,6 +137,7 @@ library
         Ergvein.Wallet.Worker.Height
         Ergvein.Wallet.Worker.Info
         Ergvein.Wallet.Worker.Node
+        Ergvein.Wallet.Worker.PeerDiscover
         Ergvein.Wallet.Wrapper
         Ergvein.Wallet.Yaml
     hs-source-dirs: src

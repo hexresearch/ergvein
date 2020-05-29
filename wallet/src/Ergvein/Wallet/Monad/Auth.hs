@@ -245,9 +245,9 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
     fmap updated $ widgetHold (pure ()) $ ffor updE $ \f -> do
       (diffMap, newcs) <- modifyExternalRef curRef $ \cs -> let
         cs' = f cs
-        offUrls = S.map (\u -> (u, False)) $ S.difference cs cs'
-        onUrls  = S.map (\u -> (u, True))  $ S.difference cs' cs
-        onUrls' = S.map (\u -> (u, True))  $ S.intersection cs cs'
+        offUrls = S.map (, False) $ S.difference cs cs'
+        onUrls  = S.map (, True)  $ S.difference cs' cs
+        onUrls' = S.map (, True)  $ S.intersection cs cs'
         dm = M.fromList $ S.toList $ offUrls <> onUrls <> onUrls'
         in (cs',(dm, S.toList cs'))
       settings <- readExternalRef settingsRef
