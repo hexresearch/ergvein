@@ -36,17 +36,20 @@ infoWorker = do
   te <- void <$> tickLossyFromPostBuildTime infoWorkerInterval
   let goE = leftmost [void te, refreshE, buildE]
   let chunkN = 3  -- Number of concurrent request threads
-  actRef  <- getActiveUrlsRef
-  iaRef   <- getInactiveUrlsRef
-  acrhRef <- getArchivedUrlsRef
+  activeUrlsRef   <- getActiveUrlsRef
+  inactiveUrlsRef <- getInactiveUrlsRef
+  archivedUrlsRef <- getArchivedUrlsRef
   
-  eurls <- readExternalRef actRef
-  unurls <- readExternalRef iaRef
-  archUrls <- readExternalRef acrhRef
+  activeUrls <- readExternalRef activeUrlsRef
+  inactiveUrls <- readExternalRef inactiveUrlsRef 
+  archivedUrls <- readExternalRef archivedUrlsRef
   performFork_ $ ffor goE $ const $ do
     mng <- getClientManager
-    x <- fmap rights . (`runReaderT` mng) $ mapM (`getKnownPeersEndpoint` KnownPeersReq False) $ M.keys eurls
-    let x' = S.fromList $ fromJust . parseBaseUrl <$> (knownPeersList =<< x)
+    knownPeersResult <- fmap rights . (`runReaderT` mng) $ mapM (`getKnownPeersEndpoint` KnownPeersReq False) $ M.keys activeUrls
+    let fetchedUrls = S.fromList $ fromJust . parseBaseUrl <$> (knownPeersList =<< knownPeersResult)
+        filtered = fetchedUrls S.\\ inactiveUrls S.\\ archivedUrls
+    
+    
     pure ()
     {-urlChunks <- chunksOf chunkN . M.keys <$> readExternalRef indexerInfoRef
     mng <- getClientManager
