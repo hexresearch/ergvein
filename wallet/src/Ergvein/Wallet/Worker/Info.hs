@@ -21,6 +21,8 @@ import Ergvein.Wallet.Client
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
+import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
 
 import qualified Data.List as L
 import qualified Data.Map  as M
@@ -67,18 +69,31 @@ infoWorker = do
           in pure $ (u,) $ Just $ IndexerInfo curmap $ diffUTCTime t1 t0
     writeExternalRef indexerInfoRef $ M.fromList ress_-}
 
+groupMapBy :: Ord k => (v -> k) -> [v] -> M.Map k [v]
+groupMapBy keySelector = M.fromListWith (++) . fmap (\v-> (keySelector v , [v]))
+
 normUrls :: forall t m . MonadFront t m => Int -> [BaseUrl] -> S.Set BaseUrl -> m [BaseUrl]
 normUrls n discovered toAvoid  =
-  go [] discovered mempty
+  go mempty mempty
   where
-    go :: [BaseUrl] -> [BaseUrl] -> M.Map BaseUrl InfoResponse -> m [BaseUrl]
-    go acc disc nfo
+    go :: M.Map BaseUrl InfoResponse -> [BaseUrl] -> m [BaseUrl]
+    go acc disc
       | length acc == n || disc == [] = 
-        pure acc
+        pure $ M.keys acc
       | otherwise = do
         mng <- getClientManager
         let needed = n - length acc
             available = length disc
             (neededUrls, xs) = splitAt (min needed available) disc
         r <- mconcat . rights <$> ((`runReaderT` mng) $ mapM (\l -> fmap (M.singleton l) <$> getInfoEndpoint l ()) neededUrls)
-        go [] xs r
+        let rupd = acc `M.union` r
+            (scanned, actual) = median $ M.elems rupd
+        go rupd xs 
+    median :: [InfoResponse] -> (M.Map Currency BlockHeight, M.Map Currency BlockHeight)
+    median arr = let
+      nfo = infoScanProgress =<< arr
+      scanned = median' <$> (M.fromListWith (++) $ (\(ScanProgressItem cur sh _) ->  (cur, [sh])) <$> nfo)
+      actual  =  median' <$> (M.fromListWith (++) $ (\(ScanProgressItem cur _ ah) ->  (cur, [ah])) <$> nfo)
+      in (scanned, actual)
+      where
+        median' x =  x !! length x `div` 2 
