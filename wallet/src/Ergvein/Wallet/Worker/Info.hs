@@ -7,6 +7,7 @@ import Control.Concurrent.Async
 import Control.Monad.Reader
 import Data.List.Split
 import Data.Time
+import Data.List
 import Network.HTTP.Client(Manager)
 import Reflex.ExternalRef
 import Servant.Client
@@ -65,3 +66,19 @@ infoWorker = do
           curmap = M.fromList $ (\(ScanProgressItem cur sh ah) -> (cur, (sh, ah))) <$> vals
           in pure $ (u,) $ Just $ IndexerInfo curmap $ diffUTCTime t1 t0
     writeExternalRef indexerInfoRef $ M.fromList ress_-}
+
+normUrls :: forall t m . MonadFront t m => Int -> [BaseUrl] -> S.Set BaseUrl -> m [BaseUrl]
+normUrls n discovered toAvoid  =
+  go [] discovered mempty
+  where
+    go :: [BaseUrl] -> [BaseUrl] -> M.Map BaseUrl InfoResponse -> m [BaseUrl]
+    go acc disc nfo
+      | length acc == n || disc == [] = 
+        pure acc
+      | otherwise = do
+        mng <- getClientManager
+        let needed = n - length acc
+            available = length disc
+            (neededUrls, xs) = splitAt (min needed available) disc
+        r <- mconcat . rights <$> ((`runReaderT` mng) $ mapM (\l -> fmap (M.singleton l) <$> getInfoEndpoint l ()) neededUrls)
+        go [] xs r
