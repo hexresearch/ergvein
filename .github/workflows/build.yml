@@ -70,7 +70,7 @@ jobs:
         source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh 
         source /nix/var/nix/profiles/default/etc/profile.d/nix.sh
         echo "::add-path::/nix/var/nix/profiles/per-user/actions/profile/bin"
-        echo "trusted-users = root $USER\nmax-jobs = 4" | sudo tee -a /etc/nix/nix.conf && sudo pkill nix-daemon
+        echo "trusted-users = root $USER" | sudo tee -a /etc/nix/nix.conf && sudo pkill nix-daemon
     - name: set environment variables
       uses: allenevans/set-env@v1.0.0
       with:
@@ -84,4 +84,6 @@ jobs:
 
     - name: Build android wallet 
       run: |  
+        source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh 
+        source /nix/var/nix/profiles/default/etc/profile.d/nix.sh
         nix-build -A android.ergvein-wallet
