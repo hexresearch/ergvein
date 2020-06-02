@@ -81,11 +81,6 @@ jobs:
               sudo useradd -c "Nix build user $n" -d /var/empty -g nixbld -G nixbld -M -N -r -s "$(which nologin)" nixbld$n
           fi
         done
-  
-    - name: set environment variables
-      uses: allenevans/set-env@v1.0.0
-      with:
-        MY_ENV_VAR: 'my value'
           
     - name: Setup cachix
       uses: cachix/cachix-action@v6
