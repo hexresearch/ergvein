@@ -77,8 +77,6 @@ jobs:
           
     - name: Setup cachix
       uses: cachix/cachix-action@v6
-      env: 
-        PATH: ${{  }}
       with:
         name: ergvein
         signingKey: ${{ secrets.CACHIX_KEY }}
