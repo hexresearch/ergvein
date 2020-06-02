@@ -57,6 +57,7 @@ jobs:
         sudo systemctl disable nix-daemon.service	|| true
         sudo systemctl daemon-reload	|| true
         sudo mv /etc/profile.d/nix.sh.backup-before-nix /etc/profile.d/nix.sh	|| true
+        sudo rm -rf /etc/nix/nix.conf || true
         sudo rm -rf /etc/nix /nix /root/.nix-profile /root/.nix-defexpr /root/.nix-channels /home/actions/.nix-profile /home/actions/.nix-defexpr /home/actions/.nix-channels || true
     
     - name: Install Nix	
@@ -69,8 +70,7 @@ jobs:
         source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh 
         source /nix/var/nix/profiles/default/etc/profile.d/nix.sh
         echo "::add-path::/nix/var/nix/profiles/per-user/actions/profile/bin"
-        echo "trusted-users = root $USER" | sudo tee -a /etc/nix/nix.conf && sudo pkill nix-daemon
-        
+        echo "trusted-users = root $USER\nmax-jobs = 4" | sudo tee -a /etc/nix/nix.conf && sudo pkill nix-daemon
     - name: set environment variables
       uses: allenevans/set-env@v1.0.0
       with:
