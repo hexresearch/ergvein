@@ -51,13 +51,13 @@ jobs:
 
     - name: Remove Nix 	
       run: |	
-        sudo systemctl stop nix-daemon.socket	
-        sudo systemctl stop nix-daemon.service	
-        sudo systemctl disable nix-daemon.socket	
-        sudo systemctl disable nix-daemon.service	
-        sudo systemctl daemon-reload	
-        sudo mv /etc/profile.d/nix.sh.backup-before-nix /etc/profile.d/nix.sh	
-        sudo rm -rf /etc/nix /nix /root/.nix-profile /root/.nix-defexpr /root/.nix-channels /home/actions/.nix-profile /home/actions/.nix-defexpr /home/actions/.nix-channels	
+        sudo systemctl stop nix-daemon.socket	|| true
+        sudo systemctl stop nix-daemon.service	|| true
+        sudo systemctl disable nix-daemon.socket	|| true
+        sudo systemctl disable nix-daemon.service	|| true
+        sudo systemctl daemon-reload	|| true
+        sudo mv /etc/profile.d/nix.sh.backup-before-nix /etc/profile.d/nix.sh	|| true
+        sudo rm -rf /etc/nix /nix /root/.nix-profile /root/.nix-defexpr /root/.nix-channels /home/actions/.nix-profile /home/actions/.nix-defexpr /home/actions/.nix-channels || true
     
     - name: Install Nix	
       uses: cachix/install-nix-action@v9	
