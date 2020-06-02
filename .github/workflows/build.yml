@@ -66,5 +66,5 @@ jobs:
         df -h
 
     - name: Build android wallet 
-      run: |
+      run: | 
         nix-build -A android.ergvein-wallet
