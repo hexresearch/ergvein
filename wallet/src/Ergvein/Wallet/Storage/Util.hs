@@ -38,19 +38,20 @@ import qualified Data.ByteString as BS
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
+import qualified Data.Vector as V
 
-addXPrvKeyToKeystore :: KeyPurpose -> (Int, EgvXPrvKey) -> PrvKeystore -> PrvKeystore
-addXPrvKeyToKeystore External (index, key) (PrvKeystore master external internal) =
-   PrvKeystore master (MI.insert index key external) internal
-addXPrvKeyToKeystore Internal (index, key) (PrvKeystore master external internal) =
-   PrvKeystore master external (MI.insert index key internal)
+addXPrvKeyToKeystore :: KeyPurpose -> EgvXPrvKey -> PrvKeystore -> PrvKeystore
+addXPrvKeyToKeystore External key (PrvKeystore master external internal) =
+   PrvKeystore master (V.snoc external key) internal
+addXPrvKeyToKeystore Internal key (PrvKeystore master external internal) =
+   PrvKeystore master external (V.snoc internal key)
 
 createPrvKeystore :: EgvXPrvKey -> PrvKeystore
 createPrvKeystore masterPrvKey =
-  let externalKeys = MI.fromList [(index, derivePrvKey masterPrvKey External (fromIntegral index))
-        | index <- [0..(initialExternalAddressCount - 1)]]
-      internalKeys = MI.fromList [(index, derivePrvKey masterPrvKey Internal (fromIntegral index))
-        | index <- [0..(initialInternalAddressCount - 1)]]
+  let externalGen i = Just (derivePrvKey masterPrvKey External (fromIntegral i), i + 1)
+      internalGen i = Just (derivePrvKey masterPrvKey External (fromIntegral i), i + 1)
+      externalKeys  = V.unfoldrN initialExternalAddressCount externalGen 0
+      internalKeys  = V.unfoldrN initialInternalAddressCount internalGen 0
   in PrvKeystore masterPrvKey externalKeys internalKeys
 
 createPrvStorage :: Seed -> EgvRootXPrvKey -> PrvStorage
@@ -60,18 +61,18 @@ createPrvStorage seed rootPrvKey = PrvStorage seed rootPrvKey prvStorages
             currency <- allCurrencies
           ]
 
-addXPubKeyToKeystore :: KeyPurpose -> (Int, EgvXPubKey) -> PubKeystore -> PubKeystore
-addXPubKeyToKeystore External (index, key) (PubKeystore master external internal) =
-  PubKeystore master (MI.insert index key external) internal
-addXPubKeyToKeystore Internal (index, key) (PubKeystore master external internal) =
-  PubKeystore master external (MI.insert index key internal)
+addXPubKeyToKeystore :: KeyPurpose -> EgvXPubKey -> PubKeystore -> PubKeystore
+addXPubKeyToKeystore External key (PubKeystore master external internal) =
+  PubKeystore master (V.snoc external (EgvExternalKeyBox key V.empty False)) internal
+addXPubKeyToKeystore Internal key (PubKeystore master external internal) =
+  PubKeystore master external (V.snoc internal key)
 
 createPubKeystore :: EgvXPubKey -> PubKeystore
 createPubKeystore masterPubKey =
-  let externalKeys = MI.fromList [(index, derivePubKey masterPubKey External (fromIntegral index))
-        | index <- [0..(initialExternalAddressCount-1)]]
-      internalKeys = MI.fromList [(index, derivePubKey masterPubKey Internal (fromIntegral index))
-        | index <- [0..(initialInternalAddressCount - 1)]]
+  let extGen i = Just (EgvExternalKeyBox (derivePubKey masterPubKey External (fromIntegral i)) V.empty False, i + 1)
+      intGen i = Just (derivePubKey masterPubKey Internal (fromIntegral i), i + 1)
+      externalKeys = V.unfoldrN initialExternalAddressCount extGen 0
+      internalKeys = V.unfoldrN initialInternalAddressCount intGen 0
   in PubKeystore masterPubKey externalKeys internalKeys
 
 createPubStorage :: EgvRootXPrvKey -> [Currency] -> PubStorage

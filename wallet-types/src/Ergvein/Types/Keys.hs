@@ -5,6 +5,7 @@ module Ergvein.Types.Keys (
   , EgvRootXPubKey(..)
   , EgvXPrvKey(..)
   , EgvXPubKey(..)
+  , EgvExternalKeyBox(..)
   , PrvKeystore(..)
   , PubKeystore(..)
   , KeyPurpose(..)
@@ -12,6 +13,11 @@ module Ergvein.Types.Keys (
   , xPrvImport
   , xPubExport
   , xPubImport
+  , getLastUnusedKey
+  , egvXPubCurrency
+  , getExternalPubKeyIndex
+  , extractXPubKeyFromEgv
+  , getLabelFromEgvPubKey
   ) where
 
 import Control.Monad
@@ -20,14 +26,18 @@ import Data.Aeson.Types       (Parser)
 import Data.Serialize         (get, put)
 import Data.Serialize.Get     (Get, getWord32be, getWord8, runGet)
 import Data.Serialize.Put     (Putter, putWord32be, putWord8, runPut)
+import Data.Text
+import Data.Vector (Vector)
 import Ergvein.Aeson
 import Ergvein.Crypto.Keys
 import Ergvein.Crypto.Util
 import Ergvein.Types.Currency
 import Ergvein.Types.Network
+import Ergvein.Types.Transaction
 import Text.Read              (readMaybe)
 
 import qualified Data.IntMap.Strict as MI
+import qualified Data.Vector as V
 
 -- | Parse a binary extended private key.
 getXPrvKey :: EgvNetwork -> Get XPrvKey
@@ -211,10 +221,21 @@ instance Ord EgvXPrvKey where
     x -> x
 
 -- | Wrapper around XPubKey for easy to/from json manipulations
-data EgvXPubKey = EgvXPubKey {
-  egvXPubCurrency :: Currency
-, egvXPubKey      :: XPubKey
-} deriving (Eq, Show, Read)
+data EgvXPubKey =
+    ErgXPubKey {
+      ergXPubKey   :: XPubKey
+    , ergXPubLabel :: Text
+    }
+  | BtcXPubKey {
+      btcXPubKey   :: XPubKey
+    , btcXPubLabel :: Text
+    }
+  deriving (Eq, Show, Read)
+
+egvXPubCurrency :: EgvXPubKey -> Currency
+egvXPubCurrency val = case val of
+  ErgXPubKey{} -> ERGO
+  BtcXPubKey{} -> BTC
 
 -- | Get JSON 'Value' from 'XPubKey'.
 xPubToJSON :: EgvNetwork -> XPubKey -> Value
@@ -229,30 +250,45 @@ xPubFromJSON net =
             Just x  -> return x
 
 instance ToJSON EgvXPubKey where
-  toJSON (EgvXPubKey currency key) = object [
-      "currency" .= toJSON currency
-    , "pubKey"  .= xPubToJSON (getCurrencyNetwork currency) key
+  toJSON val = object [
+      "currency"  .= toJSON cur
+    , "pubKey"    .= xPubToJSON (getCurrencyNetwork cur) key
+    , "label"     .= toJSON label
     ]
+    where
+      (cur, key, label) =  case val of
+        ErgXPubKey k l -> (ERGO, k, l)
+        BtcXPubKey k l -> (BTC, k, l)
 
 instance FromJSON EgvXPubKey where
   parseJSON = withObject "EgvXPubKey" $ \o -> do
     currency <- o .: "currency"
     key <- xPubFromJSON (getCurrencyNetwork currency) =<< (o .: "pubKey")
-    pure $ EgvXPubKey currency key
+    label <- o .:? "label" .!= ""
+    pure $ case currency of
+      ERGO -> ErgXPubKey key label
+      BTC  -> BtcXPubKey key label
 
 instance Ord EgvXPubKey where
-  compare (EgvXPubKey currency1 key1) (EgvXPubKey currency2 key2) = case compare currency1 currency2 of
-    EQ -> compare (xPubExport (getCurrencyNetwork currency1) key1) (xPubExport (getCurrencyNetwork currency2) key2)
+  compare key1 key2 = case compare c1 c2 of
+    EQ -> compare (xPubExport (getCurrencyNetwork c1) k1) (xPubExport (getCurrencyNetwork c2) k2)
     x -> x
+    where
+      (c1, k1, l1) =  case key1 of
+        ErgXPubKey k l -> (ERGO, k, l)
+        BtcXPubKey k l -> (BTC, k, l)
+      (c2, k2, l2) =  case key2 of
+        ErgXPubKey k l -> (ERGO, k, l)
+        BtcXPubKey k l -> (BTC, k, l)
 
 data PrvKeystore = PrvKeystore {
   prvKeystore'master   :: EgvXPrvKey
   -- ^Extended private key with BIP44 derivation path /m\/purpose'\/coin_type'\/account'/.
-, prvKeystore'external :: MI.IntMap EgvXPrvKey
+, prvKeystore'external :: Vector EgvXPrvKey
   -- ^Map with BIP44 external extended private keys and corresponding indices.
   -- This private keys must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/0\/address_index/.
-, prvKeystore'internal :: MI.IntMap EgvXPrvKey
+, prvKeystore'internal :: Vector EgvXPrvKey
   -- ^Map with BIP44 internal extended private keys and corresponding indices.
   -- This private keys must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.
@@ -260,20 +296,51 @@ data PrvKeystore = PrvKeystore {
 
 $(deriveJSON aesonOptionsStripToApostroph ''PrvKeystore)
 
+data EgvExternalKeyBox = EgvExternalKeyBox {
+  extKeyBox'key    :: EgvXPubKey
+, extKeyBox'txs    :: Vector TxId
+, extKeyBox'manual :: Bool
+} deriving (Eq, Show, Read)
+
+$(deriveJSON aesonOptionsStripToApostroph ''EgvExternalKeyBox)
+
 data PubKeystore = PubKeystore {
   pubKeystore'master   :: EgvXPubKey
   -- ^Extended public key with BIP44 derivation path /m\/purpose'\/coin_type'\/account'/.
-, pubKeystore'external :: MI.IntMap EgvXPubKey
+, pubKeystore'external :: Vector EgvExternalKeyBox
   -- ^Map with BIP44 external extended public keys and corresponding indices.
   -- This addresses must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/0\/address_index/.
-, pubKeystore'internal :: MI.IntMap EgvXPubKey
+, pubKeystore'internal :: Vector EgvXPubKey
   -- ^Map with BIP44 internal extended public keys and corresponding indices.
   -- This addresses must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.
 } deriving (Eq, Show, Read)
 
 $(deriveJSON aesonOptionsStripToApostroph ''PubKeystore)
+
+getLastUnusedKey :: PubKeystore -> Maybe (Int, EgvExternalKeyBox)
+getLastUnusedKey (PubKeystore _ ext _) = go Nothing ext
+  where
+    go :: Maybe (Int, EgvExternalKeyBox) -> Vector EgvExternalKeyBox -> Maybe (Int, EgvExternalKeyBox)
+    go mk vec = if V.null vec then mk else let
+      kb@(EgvExternalKeyBox _ txs m) = V.last vec
+      in if m || not (V.null txs)
+        then mk
+        else go (Just (V.length vec - 1, kb)) $ V.init vec
+
+getExternalPubKeyIndex :: PubKeystore -> Int
+getExternalPubKeyIndex = V.length . pubKeystore'external
+
+extractXPubKeyFromEgv :: EgvXPubKey -> XPubKey
+extractXPubKeyFromEgv key = case key of
+  ErgXPubKey k _ -> k
+  BtcXPubKey k _ -> k
+
+getLabelFromEgvPubKey :: EgvXPubKey -> Text
+getLabelFromEgvPubKey key = case key of
+  ErgXPubKey _ l -> l
+  BtcXPubKey _ l -> l
 
 -- | Supported key purposes. It represents /change/ field in BIP44 derivation path.
 -- External chain is used for addresses that are meant to be visible outside of the wallet (e.g. for receiving payments).

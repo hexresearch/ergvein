@@ -65,6 +65,8 @@ import qualified Data.Map.Strict as M
 import qualified Data.Dependent.Map as DM
 import qualified Data.Set as S
 import qualified Data.List as L
+import qualified Data.Vector as V
+
 import Data.Functor.Identity (Identity)
 import Control.Monad.Random
 import Data.Functor.Misc
@@ -294,10 +296,14 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   {-# INLINE getEncryptedPrvStorage #-}
   getAddressByCurIx cur i = do
     currMap <- fmap (_pubStorage'currencyPubStorages . _storage'pubStorage . _authInfo'storage) $ readExternalRef =<< asks env'authRef
-    let mXPubKey = (MI.lookup i) . pubKeystore'external . _currencyPubStorage'pubKeystore =<< M.lookup cur currMap
+    let mXPubKey = (flip (V.!?) i) . pubKeystore'external . _currencyPubStorage'pubKeystore =<< M.lookup cur currMap
     case mXPubKey of
       Nothing -> fail "NOT IMPLEMENTED" -- TODO: generate new address here
-      Just xPubKey -> pure $ xPubExport (getCurrencyNetwork cur) (egvXPubKey xPubKey)
+      Just (EgvExternalKeyBox key _ _) ->
+        let k = case key of
+              ErgXPubKey k' _ -> k'
+              BtcXPubKey k' _ -> k'
+        in pure $ xPubExport (getCurrencyNetwork cur) k
   {-# INLINE getAddressByCurIx #-}
   getWalletName = fmap (_storage'walletName . _authInfo'storage) $ readExternalRef =<< asks env'authRef
   {-# INLINE getWalletName #-}
@@ -328,6 +334,58 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
     authInfoD <- externalRefDynamic =<< asks env'authRef
     pure $ ffor authInfoD $ \ai -> ai ^. authInfo'storage. storage'pubStorage
   {-# INLINE getPubStorageD #-}
+  setLabelToExtPubKey reqE = do
+    authRef <- asks env'authRef
+    performFork_ $ ffor reqE $ \(cur, i, l) -> modifyExternalRefMaybe_ authRef $ \ai ->
+      let mk = ai ^.
+              authInfo'storage
+            . storage'pubStorage
+            . pubStorage'currencyPubStorages
+            . at cur
+            & \mcps -> case mcps of
+              Nothing -> Nothing
+              Just cps -> cps ^. currencyPubStorage'pubKeystore
+                & (\v -> (V.!?) (pubKeystore'external v) i)
+      in case mk of
+        Nothing -> Nothing
+        Just kb -> let kb' = kb {extKeyBox'key = updateKeyLabel l $ extKeyBox'key kb}
+          in Just $ ai & authInfo'storage
+              . storage'pubStorage
+              . pubStorage'currencyPubStorages
+              . at cur
+              %~ \mcps -> case mcps of
+                Nothing -> Nothing
+                Just cps -> Just $ cps & currencyPubStorage'pubKeystore
+                  %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
+  setFlatToExtPubKey reqE = do
+    authRef <- asks env'authRef
+    performFork_ $ ffor reqE $ \(cur, i) -> modifyExternalRefMaybe_ authRef $ \ai ->
+      let mk = ai ^.
+              authInfo'storage
+            . storage'pubStorage
+            . pubStorage'currencyPubStorages
+            . at cur
+            & \mcps -> case mcps of
+              Nothing -> Nothing
+              Just cps -> cps ^. currencyPubStorage'pubKeystore
+                & (\v -> (V.!?) (pubKeystore'external v) i)
+      in case mk of
+        Nothing -> Nothing
+        Just kb -> let kb' = kb {extKeyBox'manual = True}
+          in Just $ ai & authInfo'storage
+              . storage'pubStorage
+              . pubStorage'currencyPubStorages
+              . at cur
+              %~ \mcps -> case mcps of
+                Nothing -> Nothing
+                Just cps -> Just $ cps & currencyPubStorage'pubKeystore
+                  %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
+
+updateKeyLabel :: Text -> EgvXPubKey -> EgvXPubKey
+updateKeyLabel l key = case key of
+  ErgXPubKey k _ -> ErgXPubKey k l
+  BtcXPubKey k _ -> BtcXPubKey k l
+
 -- | Execute action under authorized context or return the given value as result
 -- if user is not authorized. Each time the login info changes and authInfo'isUpdate flag is set to 'False'
 -- (user logs out or logs in) the widget is updated.
