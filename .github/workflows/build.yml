@@ -61,5 +61,5 @@ jobs:
         signingKey: ${{ secrets.CACHIX_KEY }}
 
     - name: Build android wallet 
-      run: | 
+      run: |  
         nix-build -A android.ergvein-wallet
