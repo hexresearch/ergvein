@@ -68,10 +68,17 @@ jobs:
       run: |	
         source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh 
         source /nix/var/nix/profiles/default/etc/profile.d/nix.sh
-        export PATH="/nix/var/nix/profiles/per-user/actions/profile/bin:$PATH"
+        echo "::add-path::/nix/var/nix/profiles/per-user/actions/profile/bin"
 
+    - name: set environment variables
+      uses: allenevans/set-env@v1.0.0
+      with:
+        MY_ENV_VAR: 'my value'
+          
     - name: Setup cachix
       uses: cachix/cachix-action@v6
+      env: 
+        PATH: ${{  }}
       with:
         name: ergvein
         signingKey: ${{ secrets.CACHIX_KEY }}
