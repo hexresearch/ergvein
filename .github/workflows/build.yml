@@ -65,7 +65,9 @@ jobs:
         nix_path: nixpkgs=channel:nixos-unstable
 
     - name: Reload shell 
-      run: source ~/.nix-profile/etc/profile.d/nix.sh
+      run: |
+        source /nix/var/nix/profiles/default/etc/profile.d/nix.sh
+        source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 
     - name: Setup cachix
       uses: cachix/cachix-action@v6
