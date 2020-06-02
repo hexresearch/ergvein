@@ -147,7 +147,7 @@ requesterBody showLoad validateRes uss endpoint initRes req = do
   -- Request all staring urls concurrently and give back events and triggers
   (ereses, triggers)  <- fmap unzip $ for (zip [1..] urls) $ \(i, u) -> do
     (ev, fire) <- newTriggerEvent
-    void $ liftIO $ forkIO $ do
+    void $ liftIO $ forkOnOther $ do
       fire =<< (pure . pure . (i,)) =<< runReaderT (endpoint u req) mng
     pure (ev, (i,fire))
 
@@ -189,7 +189,7 @@ requesterBody showLoad validateRes uss endpoint initRes req = do
   -- another request fails and fiers extraUrlE again, overriding control of the event
   -- At least this is a working theory
   performEvent_ $ ffor extraUrlsE $ \ius -> for_ ius $ \(i,url) -> whenJust (MI.lookup i fires) $
-    \fire -> void $ liftIO $ forkIO $ fire =<< (pure . pure . (i,)) =<< runReaderT (endpoint url req) mng
+    \fire -> void $ liftIO $ forkOnOther $ fire =<< (pure . pure . (i,)) =<< runReaderT (endpoint url req) mng
 
   storeD  <- foldDyn (++) initRes succE
   checkE  <- delay 0.05 succE
