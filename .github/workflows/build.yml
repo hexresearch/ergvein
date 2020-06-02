@@ -49,6 +49,25 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Remove Nix 	
+      run: |	
+        sudo systemctl stop nix-daemon.socket	
+        sudo systemctl stop nix-daemon.service	
+        sudo systemctl disable nix-daemon.socket	
+        sudo systemctl disable nix-daemon.service	
+        sudo systemctl daemon-reload	
+        sudo mv /etc/profile.d/nix.sh.backup-before-nix /etc/profile.d/nix.sh	
+        sudo rm -rf /etc/nix /nix /root/.nix-profile /root/.nix-defexpr /root/.nix-channels /home/actions/.nix-profile /home/actions/.nix-defexpr /home/actions/.nix-channels	
+    
+    - name: Install Nix	
+      uses: cachix/install-nix-action@v9	
+      with:	
+        nix_path: nixpkgs=channel:nixos-unstable	
+
+    - name: Reload shell 	
+      run: |	
+        source /home/actions/.nix-profile/etc/profile.d/nix.sh
+
     - name: Setup cachix
       uses: cachix/cachix-action@v6
       with:
