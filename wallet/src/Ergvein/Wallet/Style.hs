@@ -855,7 +855,9 @@ receiveCss = do
     fontWeight $ weight 600
     wordBreak breakAll
   ".button-receive" ? do
-    width $ pct 100
+    width $ pct 75
+    marginLeft auto
+    marginRight auto
 
 graphPinCodeCanvasCss :: Css
 graphPinCodeCanvasCss = do
