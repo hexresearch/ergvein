@@ -574,12 +574,13 @@ sharePageCss = do
   ".share-v-spacer" ? do
     height $ px 20
   ".qrcode-container" ? do
-    width $ px 256
-    height $ px 256
+    width $ px 232
+    height $ px 232
+    justifyContent center
     margin auto auto auto auto
   ".share-qrcode-container" ? do
-    width $ px 256
-    height $ px 256
+    width $ px 232
+    height $ px 232
     justifyContent center
     let px0 = px 0 in padding px0 px0 px0 $ px 8
     margin (px 0) auto (px 0) auto
@@ -824,10 +825,15 @@ receiveCss :: Css
 receiveCss = do
   ".receive-qr" ? do
     margin (px 20) auto (px 40) auto
+
+  ".receive-qr-andr" ? do
+    margin (px 20) auto (px 40) auto
+
   ".receive-adr" ? do
     margin (px 20) auto (px 40) auto
     fontSize $ px 16
     fontWeight $ weight 600
+    wordBreak breakAll
   ".label-block" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1]
@@ -841,6 +847,15 @@ receiveCss = do
     display grid
     gridTemplateColumns [fr 1, fr 1]
     gridGap $ rem 1
+--  ".receive-qr-andr" ? do
+--    backgroundColor red
+  ".receive-adr-andr" ? do
+    margin (px 20) (px 5) (px 40) (px 5)
+    fontSize $ px 16
+    fontWeight $ weight 600
+    wordBreak breakAll
+  ".button-receive" ? do
+    width $ pct 100
 
 graphPinCodeCanvasCss :: Css
 graphPinCodeCanvasCss = do

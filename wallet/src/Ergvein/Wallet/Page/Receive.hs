@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Ergvein.Wallet.Page.Receive (
     receivePage
   ) where
@@ -41,6 +42,25 @@ exceededGapLimit :: MonadFront t m => Currency -> m ()
 exceededGapLimit cur = wrapper (ReceiveTitle cur) (Just $ pure $ receivePage cur) False $ do
   h2 $ localizedText RPSGap
 
+#ifdef ANDROID
+receivePageWidget :: MonadFront t m => Currency -> Int -> EgvExternalKeyBox -> m ()
+receivePageWidget cur i EgvExternalKeyBox{..} = wrapper (ReceiveTitle cur) (Just $ pure $ receivePage cur) False $ do
+  let thisWidget = Just $ pure $ receivePage cur
+  navbarWidget cur thisWidget NavbarReceive
+  void $ divClass "centered-wrapper" $ divClass "centered-content" $ do
+    divClass "receive-qr-andr"   $ qrCodeWidget keyTxt cur
+    newE  <- buttonClass "button button-outline button-receive" RPSGenNew
+    copyE <- buttonClass "button button-outline button-receive" RPSCopy
+    setFlatToExtPubKey $ (cur, i) <$ newE
+    showInfoMsg =<< clipboardCopy (keyTxt <$ copyE)
+    divClass "receive-adr-andr" $ text $ "#" <> showt i <> ": " <> keyTxt
+    labelD <- textFieldNoLabel $ getLabelFromEgvPubKey extKeyBox'key
+    btnE <- buttonClass "button button-outline button-receive" RPSAddLabel
+    setLabelToExtPubKey $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
+  where
+    keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress extKeyBox'key
+
+#else
 receivePageWidget :: MonadFront t m => Currency -> Int -> EgvExternalKeyBox -> m ()
 receivePageWidget cur i EgvExternalKeyBox{..} = wrapper (ReceiveTitle cur) (Just $ pure $ receivePage cur) False $ do
   let thisWidget = Just $ pure $ receivePage cur
@@ -60,3 +80,4 @@ receivePageWidget cur i EgvExternalKeyBox{..} = wrapper (ReceiveTitle cur) (Just
       pure ()
   where
     keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress extKeyBox'key
+#endif
