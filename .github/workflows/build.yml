@@ -71,6 +71,9 @@ jobs:
         source /nix/var/nix/profiles/default/etc/profile.d/nix.sh
         echo "::add-path::/nix/var/nix/profiles/per-user/actions/profile/bin"
         echo "trusted-users = root $USER" | sudo tee -a /etc/nix/nix.conf && sudo pkill nix-daemon
+        for n in $(seq 5 10); do useradd -c "Nix build user $n" \
+          -d /var/empty -g nixbld -G nixbld -M -N -r -s "$(which nologin)" \
+          nixbld$n; done
     - name: set environment variables
       uses: allenevans/set-env@v1.0.0
       with:
