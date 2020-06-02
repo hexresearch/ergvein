@@ -1,5 +1,7 @@
 module Ergvein.Wallet.Monad.Async(
-    performFork
+    bindSelf
+  , forkOnOther
+  , performFork
   , performFork_
   ) where
 
@@ -22,6 +24,16 @@ import Control.Monad
 
 import qualified Reflex.Profiled as RP
 
+-- | Helper to bind main thread to capability. Simply calls `forkOn` and waits
+-- for finish.
+bindSelf :: IO () -> IO ()
+bindSelf io = do
+  var <- newEmptyMVar
+  n <- getNumCapabilities
+  if n == 1 then io else do
+    tid <- forkOn 0 $ io `finally` putMVar var ()
+    takeMVar var
+
 -- | Fork new thread and bind it to other capability than current thread.
 forkOnOther :: IO () -> IO ThreadId
 forkOnOther m = do
@@ -29,6 +41,7 @@ forkOnOther m = do
   n <- getNumCapabilities
   if n == 1 then forkIO m else do
     i <- uniform [i | i <- [0 .. n-1], i /= cap]
+    putStrLn $ "Our cap is " ++ show cap ++ ", forking on " ++ show i
     forkOn i m
 
 -- | Helper that runs action in event in new thread with respect for logging of errors.
