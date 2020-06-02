@@ -68,6 +68,7 @@ jobs:
       run: |	
         source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh 
         source /nix/var/nix/profiles/default/etc/profile.d/nix.sh
+        export PATH="/nix/var/nix/profiles/per-user/actions/profile/bin:$PATH"
 
     - name: Setup cachix
       uses: cachix/cachix-action@v6
