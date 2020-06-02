@@ -96,16 +96,17 @@ scanExternalAddress processKeyE currentKeyD = mdo
   let noBlocksE = fforMaybe filterAddressE $ \case
         [] -> Just []
         _ -> Nothing
-      blocksE = leftmost [getBlocksE, noBlocksE]
-      txsE = leftmost [getTxsE, mempty <$ noBlocksE]
-  blocksD <- holdDyn [] blocksE
+      someBlocksE = fforMaybe filterAddressE $ \case
+        [] -> Nothing
+        blocks -> Just blocks
+  blocksD <- holdDyn [] getBlocksE
   filterAddressE <- logEvent "Scanned for blocks: " =<< (filterAddress $ (egvXPubKeyToEgvAddress . snd) <$> processKeyE)
-  getBlocksE <- logEvent "Blocks requested: " =<< requestBTCBlocks filterAddressE
+  getBlocksE <- logEvent "Blocks requested: " =<< requestBTCBlocks someBlocksE
   storedBlocksE <- storeMultipleBlocksByE getBlocksE
   storedTxHashesE <- storeMultipleBlocksTxHashesByE $ tagPromptlyDyn blocksD storedBlocksE
   getTxsE <- getTxs $ attachPromptlyDynWith (\(_, key) blocks ->
     (egvXPubKeyToEgvAddress key, blocks)) currentKeyD $ tagPromptlyDyn blocksD storedTxHashesE
-  pure getTxsE
+  pure $ leftmost [getTxsE, mempty <$ noBlocksE]
 
 type CurrentGap = Int
 type AddressNum = Int
