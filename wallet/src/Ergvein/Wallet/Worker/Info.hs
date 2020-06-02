@@ -13,6 +13,7 @@ import Reflex.ExternalRef
 import Servant.Client
 import Data.Either
 import Data.Maybe
+import Control.Monad.Zip
 
 import Ergvein.Index.API.Types
 import Ergvein.Index.Client
@@ -76,7 +77,7 @@ normUrls :: forall t m . MonadFront t m => Int -> [BaseUrl] -> S.Set BaseUrl -> 
 normUrls n discovered toAvoid  =
   go mempty mempty
   where
-    go :: M.Map BaseUrl InfoResponse -> [BaseUrl] -> m [BaseUrl]
+    go :: M.Map BaseUrl (M.Map Currency (BlockHeight, BlockHeight)) -> [BaseUrl] -> m [BaseUrl]
     go acc disc
       | length acc == n || disc == [] = 
         pure $ M.keys acc
@@ -85,15 +86,20 @@ normUrls n discovered toAvoid  =
         let needed = n - length acc
             available = length disc
             (neededUrls, xs) = splitAt (min needed available) disc
-        r <- mconcat . rights <$> ((`runReaderT` mng) $ mapM (\l -> fmap (M.singleton l) <$> getInfoEndpoint l ()) neededUrls)
+        r <- mconcat . rights <$> ((`runReaderT` mng) $ mapM (\l -> fmap (M.singleton l . mapping) <$> getInfoEndpoint l ()) neededUrls)
         let rupd = acc `M.union` r
-            (scanned, actual) = median $ M.elems rupd
-        go rupd xs 
-    median :: [InfoResponse] -> (M.Map Currency BlockHeight, M.Map Currency BlockHeight)
-    median arr = let
-      nfo = infoScanProgress =<< arr
-      scanned = median' <$> (M.fromListWith (++) $ (\(ScanProgressItem cur sh _) ->  (cur, [sh])) <$> nfo)
-      actual  =  median' <$> (M.fromListWith (++) $ (\(ScanProgressItem cur _ ah) ->  (cur, [ah])) <$> nfo)
-      in (scanned, actual)
+            med = median $ M.elems rupd
+            i =  sf med <$>rupd
+
+        go rupd xs
+    sf :: M.Map Currency (BlockHeight, BlockHeight)-> M.Map Currency (BlockHeight, BlockHeight) -> Bool
+    sf a b = all (\x -> f (a  M.! x  ) (b M.! x)) $ M.keys a
       where
-        median' x =  x !! length x `div` 2 
+        f (sh, ah) (shm, ahm)= sh >= shm && ah == shm 
+    median :: [M.Map Currency (BlockHeight, BlockHeight)] -> M.Map Currency (BlockHeight, BlockHeight)
+    median arr = let
+      in (\(a, b)-> (median' a , median' b)) . unzip <$> ( M.unionsWith (<>) $ fmap (\x-> [x]) <$> arr)
+      where
+        median' :: [BlockHeight] -> BlockHeight
+        median' a =  a !! length a `div` 2
+    mapping = M.fromList . fmap (\(ScanProgressItem cur sh ah) -> (cur, (sh, ah))). infoScanProgress
