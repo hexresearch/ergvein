@@ -8,6 +8,7 @@ import Control.Concurrent.Async
 import Control.Exception
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
+import Control.Monad.Random.Strict
 import Data.Text (pack)
 import Data.Time
 import Ergvein.Text
@@ -21,11 +22,20 @@ import Control.Monad
 
 import qualified Reflex.Profiled as RP
 
+-- | Fork new thread and bind it to other capability than current thread.
+forkOnOther :: IO () -> IO ThreadId
+forkOnOther m = do
+  (cap, _) <- threadCapability =<< myThreadId
+  n <- getNumCapabilities
+  if n == 1 then forkIO m else do
+    i <- uniform [i | i <- [0 .. n-1], i /= cap]
+    forkOn i m
+
 -- | Helper that runs action in event in new thread with respect for logging of errors.
 performFork :: forall t m a . (PerformEvent t m, TriggerEvent t m, MonadUnliftIO (Performable m), PlatformNatives) => Event t (Performable m a) -> m (Event t a)
 performFork em = performEventAsync $ ffor em $ \ma fire -> do
   unlift <- askUnliftIO
-  void . liftIO . forkIO $ do
+  void . liftIO . forkOnOther $ do
     ea :: Either SomeException a <- try $ unliftIO unlift ma
     either (logWrite . ("Forked event failed: " <>) . showt) fire ea
 
@@ -33,7 +43,7 @@ performFork em = performEventAsync $ ffor em $ \ma fire -> do
 performFork_ :: forall t m . (PerformEvent t m, TriggerEvent t m, MonadUnliftIO (Performable m), PlatformNatives) => Event t (Performable m ()) -> m ()
 performFork_ em = performEvent_ $ ffor em $ \ma -> do
   unlift <- askUnliftIO
-  void . liftIO . forkIO $ do
+  void . liftIO . forkOnOther $ do
     ea :: Either SomeException () <- try $ unliftIO unlift ma
     either (logWrite . ("Forked event failed: " <>) . showt) pure ea
 
