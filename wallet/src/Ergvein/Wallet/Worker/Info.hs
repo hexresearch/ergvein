@@ -14,6 +14,7 @@ import Servant.Client
 import Data.Either
 import Data.Maybe
 import Control.Monad.Zip
+import qualified Data.Vector as V
 
 import Ergvein.Index.API.Types
 import Ergvein.Index.Client
@@ -24,6 +25,7 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import Data.Bifunctor
 
 import qualified Data.List as L
 import qualified Data.Map  as M
@@ -98,8 +100,8 @@ normUrls n discovered toAvoid  =
         f (sh, ah) (shm, ahm)= sh >= shm && ah == shm 
     median :: [M.Map Currency (BlockHeight, BlockHeight)] -> M.Map Currency (BlockHeight, BlockHeight)
     median arr = let
-      in (\(a, b)-> (median' a , median' b)) . unzip <$> ( M.unionsWith (<>) $ fmap (\x-> [x]) <$> arr)
+      in bimap median' median' . munzip <$> M.unionsWith (<>) (fmap pure <$> arr)
       where
-        median' :: [BlockHeight] -> BlockHeight
-        median' a =  a !! length a `div` 2
+        median' :: V.Vector BlockHeight -> BlockHeight
+        median' a =  a V.! length a `div` 2
     mapping = M.fromList . fmap (\(ScanProgressItem cur sh ah) -> (cur, (sh, ah))). infoScanProgress
