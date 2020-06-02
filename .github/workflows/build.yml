@@ -72,8 +72,11 @@ jobs:
         echo "::add-path::/nix/var/nix/profiles/per-user/actions/profile/bin"
         sudo ln -s /nix/var/nix/profiles/per-user/actions /nix/var/nix/profiles/per-user/runner
         echo "trusted-users = root $USER" | sudo tee -a /etc/nix/nix.conf && sudo pkill nix-daemon
-        for n in $(seq 5 10); do 
-          if getent passwd nixbld$n > /dev/null 2>&1; then
+        for n in $(seq 1 10)
+        do 
+          if getent passwd nixbld$n > /dev/null 2>&1
+          then
+              echo "User nixbld$n is already created"
           else
               sudo useradd -c "Nix build user $n" -d /var/empty -g nixbld -G nixbld -M -N -r -s "$(which nologin)" nixbld$n
           fi
