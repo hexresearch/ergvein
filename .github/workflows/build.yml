@@ -88,8 +88,22 @@ jobs:
         name: ergvein
         signingKey: ${{ secrets.CACHIX_KEY }}
 
+    - name: Git-Crypt Unlock
+      uses: zemuldo/git-crypt-unlock@v2.0
+      env: 
+        GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        GPG_KEY_GRIP: ${{ secrets.GPG_KEY_GRIP }}
+        GPG_KEY_PASS: ${{ secrets.GPG_KEY_PASS }}
+      
     - name: Build android wallet 
       run: |  
         source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh 
         source /nix/var/nix/profiles/default/etc/profile.d/nix.sh
-        nix-build -A android.ergvein-wallet
+        ./release-android.sh
+
+    - name: Upload Android Release to Play Store
+      uses: r0adkll/upload-google-play@v1.0.4
+      with:
+        serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_ERGVEIN_SECRET }}
+        packageName: org.ergvein.wallet
+        releaseFile: android-release/release/android-app.aab
