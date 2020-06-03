@@ -45,6 +45,7 @@ import Ergvein.Wallet.Headers.Loader
 import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
+import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
@@ -528,7 +529,7 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
     actRef  <- asks env'activeUrls
     iaRef   <- asks env'inactiveUrls
     setRef  <- asks env'settings
-    performEventAsync $ ffor urlE $ \url fire -> void $ liftIO $ forkIO $ do
+    performEventAsync $ ffor urlE $ \url fire -> void $ liftIO $ forkOnOther $ do
       acs <- modifyExternalRef actRef $ \as ->
         let as' = M.delete url as in (as', M.keys as')
       ias <- modifyExternalRef iaRef  $ \us ->
