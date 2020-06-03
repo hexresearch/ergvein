@@ -140,7 +140,7 @@ wrapperCss = do
   ".centered-content" ? do
     margin auto auto auto auto
   ".lr-centered-content" ? do
-    margin (em 1) auto (px 0) auto
+    margin (em 0) auto (em 0) auto
     paddingLeft $ em 1
     paddingRight $ em 1
 
@@ -484,7 +484,7 @@ networkPageCss = do
   ".network-line" ? do
     width $ pct 100
     maxWidth $ px 500
-    textAlign center
+    display inlineBlock
   ".network-name" ? do
     display flex
     width $ pct 100
@@ -526,24 +526,24 @@ networkPageCss = do
   ".net-refresh-btn" ? do
     height   $ em 3.8
     verticalAlign vAlignTop
-  ".net-header-btns-3" ? do
+  ".net-btns-3" ? do
     display grid
     width maxContent
     gridGap $ em 0.5
     marginLeft auto
     marginRight auto
-  ".net-header-btns-2" ? do
+  ".net-btns-2" ? do
     display grid
     width maxContent
     gridGap $ em 0.5
     marginLeft auto
     marginRight auto
-  query M.screen [M.minWidth (rem 60)] $ ".net-header-btns-3" ? do
+  query M.screen [M.minWidth (rem 60)] $ ".net-btns-3" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1, fr 1]
     gridGap $ em 0.5
     width maxContent
-  query M.screen [M.minWidth (rem 60)] $ ".net-header-btns-2" ? do
+  query M.screen [M.minWidth (rem 60)] $ ".net-btns-2" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1]
     gridGap $ em 0.5
