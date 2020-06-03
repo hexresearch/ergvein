@@ -175,7 +175,7 @@ socket SocketConf{..} = do
           -- logWrite $ "Connected"
           statusFire SocketOperational
           let env = PeekerEnv intVar sock
-          void $ forkIO $ sendThread sock
+          void $ forkOnOther $ sendThread sock
           fix $ \next -> do
             mma <- Ex.tryAny $ Ex.try $ runReaderT _socketConfPeeker env
             case mma of

@@ -4,6 +4,7 @@ module Main where
 import Data.Default
 import Ergvein.Wallet
 import Ergvein.Wallet.Currencies
+import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Run
 import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Style
@@ -28,7 +29,7 @@ instance ParseRecord Options
 main :: IO ()
 main = do
   opts <- getRecord "Ergvein cryptowallet"
-  run $ \cbs -> do
+  bindSelf $ run $ \cbs -> do
     css <- compileFrontendCss
     mainWidgetWithCss css $ do
       settings :: Settings <- loadSettings $ unHelpful $ config opts

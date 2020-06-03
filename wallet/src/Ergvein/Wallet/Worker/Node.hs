@@ -42,6 +42,7 @@ import qualified Data.Map as M
 import qualified Data.Set as S
 import qualified Ergvein.Types.Storage as ST (CurrencyTag(BTCTag), CurrencyTag(ERGTag))
 import qualified Data.Vector as V
+import qualified Network.Haskoin.Transaction        as HT
 
 minNodeNum :: Int
 minNodeNum = 3
@@ -118,24 +119,33 @@ bctNodeController = mdo
   store <- getBlocksStorage
   mtxE <- performFork $ ffor (current allBtcAddrsD `attach` txE) $ \(addrs, tx) -> do
     liftIO $ flip runReaderT store $ do
-      b <- fmap or $ traverse (flip checkAddrTx tx) addrs
+      (mi, b) <- checkAddrTx' addrs tx
       pure $ if b
-        then Just (txHashToHex $ txHash tx, BtcTx tx)
+        then Just (mi, (txHashToHex $ txHash tx, BtcTx tx))
         else Nothing
-  addTxToPubStorage $ fmapMaybe id mtxE
-  -- dbgPrintE $ (showt . length) <$> (updated urlStoreD)
-  -- dbgPrintE $ showt <$> listActionE
+  addTxToPubStorage $ fmapMaybe (fmap snd) mtxE
+  insertTxsInPubKeystore $ fforMaybe mtxE $ \mv -> join $ ffor mv $
+    \(mi, (txid, _)) -> ffor mi $ \i -> (BTC, i, [txid])
   pure ()
   where
     switchTuple (a, b) = (switchDyn . fmap leftmost $ a, switchDyn . fmap leftmost $ b)
 
+checkAddrTx' :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => [(Maybe Int, EgvAddress)] -> HT.Tx -> m (Maybe Int, Bool)
+checkAddrTx' vals tx = case vals of
+  [] -> pure (Nothing, False)
+  (mi, addr):xs -> do
+    b <- checkAddrTx addr tx
+    if b
+      then pure (mi, True)
+      else checkAddrTx' xs tx
+
 -- | Extract addresses from keystore
-extractAddrs :: PubKeystore -> [EgvAddress]
+extractAddrs :: PubKeystore -> [(Maybe Int, EgvAddress)]
 extractAddrs (PubKeystore mast ext int) = mastadr:(extadrs <> intadrs)
   where
-    mastadr = egvXPubKeyToEgvAddress mast
-    extadrs = V.toList $ fmap (egvXPubKeyToEgvAddress . extKeyBox'key) ext
-    intadrs = V.toList $ fmap egvXPubKeyToEgvAddress int
+    mastadr = (Nothing,) $ egvXPubKeyToEgvAddress mast
+    extadrs = V.toList $ V.imap (\i b -> (Just i, egvXPubKeyToEgvAddress $ extKeyBox'key b)) ext
+    intadrs = V.toList $ fmap ((Nothing,) . egvXPubKeyToEgvAddress) int
 
 -- | Extract TxHashes from Inv vector. Return Nothing if no TxHashes are present
 filterTxInvs :: S.Set TxId -> Inv -> Maybe [InvVector]

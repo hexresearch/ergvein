@@ -45,6 +45,7 @@ import Ergvein.Wallet.Headers.Loader
 import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
+import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
@@ -341,56 +342,50 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   {-# INLINE getPubStorageD #-}
   setLabelToExtPubKey reqE = do
     authRef <- asks env'authRef
-    performFork_ $ ffor reqE $ \(cur, index, label) -> case cur of
-      BTC -> helper BTCTag index label authRef
-      ERGO -> helper ERGTag index label authRef
-      where helper curTag i l ar = modifyExternalRefMaybe_ ar $ \ai ->
-              let mk = ai ^.
-                      authInfo'storage
-                    . storage'pubStorage
-                    . pubStorage'currencyPubStorages
-                    . DM.dmat curTag
-                    & \mcps -> case mcps of
-                      Nothing -> Nothing
-                      Just cps -> cps ^. currencyPubStorage'pubKeystore
-                        & (\v -> (V.!?) (pubKeystore'external v) i)
-              in case mk of
-                Nothing -> Nothing
-                Just kb -> let kb' = kb {extKeyBox'key = updateKeyLabel l $ extKeyBox'key kb}
-                  in Just $ ai & authInfo'storage
-                      . storage'pubStorage
-                      . pubStorage'currencyPubStorages
-                      . DM.dmat curTag
-                      %~ \mcps -> case mcps of
-                        Nothing -> Nothing
-                        Just cps -> Just $ cps & currencyPubStorage'pubKeystore
-                          %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
-  setFlatToExtPubKey reqE = do
+    performFork_ $ ffor reqE $ \(cur, i, label) -> modifyExternalRefMaybe_ authRef $ \ai ->
+      let f kb = kb {extKeyBox'key = updateKeyLabel label $ extKeyBox'key kb}
+      in case cur of
+        BTC -> updateKeyBoxWith BTCTag i f ai
+        ERGO -> updateKeyBoxWith ERGTag i f ai
+
+  setFlagToExtPubKey reqE = do
     authRef <- asks env'authRef
-    performFork_ $ ffor reqE $ \(cur, index) -> case cur of
-      BTC -> helper BTCTag index authRef
-      ERGO -> helper ERGTag index authRef
-      where helper curTag i ar = modifyExternalRefMaybe_ ar $ \ai ->
-              let mk = ai ^.
-                      authInfo'storage
-                    . storage'pubStorage
-                    . pubStorage'currencyPubStorages
-                    . DM.dmat curTag
-                    & \mcps -> case mcps of
-                      Nothing -> Nothing
-                      Just cps -> cps ^. currencyPubStorage'pubKeystore
-                        & (\v -> (V.!?) (pubKeystore'external v) i)
-              in case mk of
-                Nothing -> Nothing
-                Just kb -> let kb' = kb {extKeyBox'manual = True}
-                  in Just $ ai & authInfo'storage
-                      . storage'pubStorage
-                      . pubStorage'currencyPubStorages
-                      . DM.dmat curTag
-                      %~ \mcps -> case mcps of
-                        Nothing -> Nothing
-                        Just cps -> Just $ cps & currencyPubStorage'pubKeystore
-                          %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
+    performFork_ $ ffor reqE $ \(cur, i) -> modifyExternalRefMaybe_ authRef $ \ai ->
+      let f kb = kb {extKeyBox'manual = True}
+      in case cur of
+        BTC -> updateKeyBoxWith BTCTag i f ai
+        ERGO -> updateKeyBoxWith ERGTag i f ai
+
+  insertTxsInPubKeystore reqE = do
+    authRef <- asks env'authRef
+    performFork_ $ ffor reqE $ \(cur, i, txids) -> modifyExternalRefMaybe_ authRef $ \ai ->
+      let f = \kb -> kb {extKeyBox'txs = S.union (extKeyBox'txs kb) $ S.fromList txids}
+      in case cur of
+        BTC -> updateKeyBoxWith BTCTag i f ai
+        ERGO -> updateKeyBoxWith ERGTag i f ai
+
+updateKeyBoxWith :: CurrencyTag a -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> AuthInfo -> Maybe AuthInfo
+updateKeyBoxWith curTag i f ai =
+  let mk = ai ^.
+          authInfo'storage
+        . storage'pubStorage
+        . pubStorage'currencyPubStorages
+        . DM.dmat curTag
+        & \mcps -> case mcps of
+          Nothing -> Nothing
+          Just cps -> cps ^. currencyPubStorage'pubKeystore
+            & (\v -> (V.!?) (pubKeystore'external v) i)
+  in case mk of
+    Nothing -> Nothing
+    Just kb -> let kb' = f kb
+      in Just $ ai & authInfo'storage
+          . storage'pubStorage
+          . pubStorage'currencyPubStorages
+          . DM.dmat curTag
+          %~ \mcps -> case mcps of
+            Nothing -> Nothing
+            Just cps -> Just $ cps & currencyPubStorage'pubKeystore
+              %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
 
 updateKeyLabel :: Text -> EgvXPubKey -> EgvXPubKey
 updateKeyLabel l key = case key of
@@ -539,7 +534,7 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
     actRef  <- asks env'activeUrls
     iaRef   <- asks env'inactiveUrls
     setRef  <- asks env'settings
-    performEventAsync $ ffor urlE $ \url fire -> void $ liftIO $ forkIO $ do
+    performEventAsync $ ffor urlE $ \url fire -> void $ liftIO $ forkOnOther $ do
       acs <- modifyExternalRef actRef $ \as ->
         let as' = M.delete url as in (as', M.keys as')
       ias <- modifyExternalRef iaRef  $ \us ->

@@ -40,6 +40,7 @@ import qualified Data.ByteString as BS
 import qualified Data.Dependent.Map as DM
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
 
@@ -66,13 +67,13 @@ createPrvStorage seed rootPrvKey cs = PrvStorage seed rootPrvKey prvStorages
 
 addXPubKeyToKeystore :: KeyPurpose -> EgvXPubKey -> PubKeystore -> PubKeystore
 addXPubKeyToKeystore External key (PubKeystore master external internal) =
-  PubKeystore master (V.snoc external (EgvExternalKeyBox key V.empty False)) internal
+  PubKeystore master (V.snoc external (EgvExternalKeyBox key S.empty False)) internal
 addXPubKeyToKeystore Internal key (PubKeystore master external internal) =
   PubKeystore master external (V.snoc internal key)
 
 createPubKeystore :: EgvXPubKey -> PubKeystore
 createPubKeystore masterPubKey =
-  let extGen i = Just (EgvExternalKeyBox (derivePubKey masterPubKey External (fromIntegral i)) V.empty False, i + 1)
+  let extGen i = Just (EgvExternalKeyBox (derivePubKey masterPubKey External (fromIntegral i)) S.empty False, i + 1)
       intGen i = Just (derivePubKey masterPubKey Internal (fromIntegral i), i + 1)
       externalKeys = V.unfoldrN initialExternalAddressCount extGen 0
       internalKeys = V.unfoldrN initialInternalAddressCount intGen 0

@@ -55,7 +55,7 @@ receivePageWidget cur i EgvExternalKeyBox{..} = wrapper (ReceiveTitle cur) (Just
     divClass "receive-buttons-wrapper" $ do
        newE  <- outlineButton RPSGenNew
        copyE <- outlineButton RPSCopy
-       setFlatToExtPubKey $ (cur, i) <$ newE
+       setFlagToExtPubKey $ (cur, i) <$ newE
        showInfoMsg =<< clipboardCopy (keyTxt <$ copyE)
     divClass "receive-adr" $ text $ "#" <> showt i <> ": " <> keyTxt
     divClass "label-block" $ do
