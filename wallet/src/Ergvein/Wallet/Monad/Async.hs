@@ -41,7 +41,7 @@ forkOnOther m = do
   n <- getNumCapabilities
   if n == 1 then forkIO m else do
     i <- uniform [i | i <- [0 .. n-1], i /= cap]
-    putStrLn $ "Our cap is " ++ show cap ++ ", forking on " ++ show i
+    -- putStrLn $ "Our cap is " ++ show cap ++ ", forking on " ++ show i
     forkOn i m
 
 -- | Helper that runs action in event in new thread with respect for logging of errors.
