@@ -36,7 +36,7 @@ import Ergvein.Wallet.Sync.Status
 
 import qualified Data.Map as M
 
-filtersLoader :: (HasFiltersStorage m, MonadFront t m) => m ()
+filtersLoader :: MonadFront t m => m ()
 filtersLoader = nameSpace "filters loader" $ do
   sequence_ [filtersLoaderBtc]
 
@@ -45,7 +45,7 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
   where
     go = Workflow $ do
       buildE <- getPostBuild
-      ch <- fmap fromIntegral $ getCurrentHeight BTC
+      ch <- fmap fromIntegral $ sample . current =<< getCurrentHeight BTC
       fh <- getFiltersHeight BTC
       logWrite $ "Current height is " <> showt ch <> ", and filters are for height " <> showt fh
       postSync BTC ch fh

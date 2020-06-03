@@ -11,7 +11,7 @@ import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Platform
 import Network.Haskoin.Block
 
-filterAddress :: (MonadIO m, HasFiltersStorage m) => EgvAddress -> m [BlockHash]
+filterAddress :: (MonadIO m, HasFiltersStorage t m) => EgvAddress -> m [BlockHash]
 filterAddress addr = foldFilters (egvAddrCurrency addr) f []
   where
     f bhash gfilter acc = case matchAddrFilter addr gfilter of

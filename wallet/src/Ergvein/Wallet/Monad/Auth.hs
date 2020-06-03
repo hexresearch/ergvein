@@ -17,9 +17,9 @@ import Data.Time (NominalDiffTime, getCurrentTime, diffUTCTime)
 import Network.Connection
 import Network.HTTP.Client hiding (Proxy)
 import Network.HTTP.Client.TLS (newTlsManagerWith, mkManagerSettings, newTlsManager)
+import Network.Socket (SockAddr)
 import Network.TLS
 import Network.TLS.Extra.Cipher
-import Network.Socket (SockAddr)
 import Reflex
 import Reflex.Dom
 import Reflex.Dom.Retractable
@@ -60,6 +60,7 @@ import Ergvein.Wallet.Worker.Height
 import Ergvein.Wallet.Worker.Info
 import Ergvein.Wallet.Worker.Node
 
+import qualified Network.Haskoin.Block as HS (BlockHeight)
 import qualified Control.Immortal as I
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Map.Strict as M
@@ -92,6 +93,7 @@ data Env t = Env {
 , env'manager         :: !(MVar Manager)
 , env'headersStorage  :: !HeadersStorage
 , env'filtersStorage  :: !FiltersStorage
+, env'filtersHeights  :: !(ExternalRef t (Map Currency HS.BlockHeight))
 , env'blocksStorage   :: !BlocksStorage
 , env'syncProgress    :: !(ExternalRef t SyncProgress)
 , env'heightRef       :: !(ExternalRef t (Map Currency Integer))
@@ -118,9 +120,11 @@ instance Monad m => HasHeadersStorage (ErgveinM t m) where
   getHeadersStorage = asks env'headersStorage
   {-# INLINE getHeadersStorage #-}
 
-instance Monad m => HasFiltersStorage (ErgveinM t m) where
+instance Monad m => HasFiltersStorage t (ErgveinM t m) where
   getFiltersStorage = asks env'filtersStorage
   {-# INLINE getFiltersStorage #-}
+  getFiltersHeightRef = asks env'filtersHeights
+  {-# INLINE getFiltersHeightRef #-}
 
 instance Monad m => HasBlocksStorage (ErgveinM t m) where
   getBlocksStorage = asks env'blocksStorage
@@ -433,16 +437,45 @@ liftAuth ma0 ma = mdo
         headersStore    <- liftIO $ runReaderT openHeadersStorage (settingsStoreDir settings)
         syncRef         <- newExternalRef Synced
         filtersStore    <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
+        filtersHeights  <- newExternalRef mempty
         blocksStore     <- liftIO $ runReaderT openBlocksStorage (settingsStoreDir settings)
         heightRef       <- newExternalRef mempty
         fsyncRef        <- newExternalRef mempty
         consRef         <- newExternalRef mempty
-        let env = Env
-              settingsRef backEF loading langRef storeDir alertsEF logsTrigger logsNameSpaces uiChan passModalEF passSetEF
-              authRef (logoutFire ()) activeCursRef managerRef headersStore filtersStore blocksStore syncRef heightRef fsyncRef
-              urlsArchive inactiveUrls activeUrlsRef reqUrlNumRef actUrlNumRef timeoutRef (indexersE, indexersF ())
-              consRef sel reqFire
-
+        let env = Env {
+                env'settings = settingsRef
+              , env'backEF = backEF
+              , env'loading = loading
+              , env'langRef = langRef
+              , env'storeDir = storeDir
+              , env'alertsEF = alertsEF
+              , env'logsTrigger = logsTrigger
+              , env'logsNameSpaces = logsNameSpaces
+              , env'uiChan = uiChan
+              , env'passModalEF = passModalEF
+              , env'passSetEF = passSetEF
+              , env'authRef = authRef
+              , env'logoutFire = logoutFire ()
+              , env'activeCursRef = activeCursRef
+              , env'manager = managerRef
+              , env'headersStorage = headersStore
+              , env'filtersStorage = filtersStore
+              , env'filtersHeights = filtersHeights
+              , env'blocksStorage = blocksStore
+              , env'syncProgress = syncRef
+              , env'heightRef = heightRef
+              , env'filtersSyncRef = fsyncRef
+              , env'urlsArchive = urlsArchive
+              , env'inactiveUrls = inactiveUrls
+              , env'activeUrls = activeUrlsRef
+              , env'reqUrlNum = reqUrlNumRef
+              , env'actUrlNum = actUrlNumRef
+              , env'timeout = timeoutRef
+              , env'indexersEF = (indexersE, indexersF ())
+              , env'nodeConsRef = consRef
+              , env'nodeReqSelector = sel
+              , env'nodeReqFire = reqFire
+              }
         runOnUiThreadM $ runReaderT setupTlsManager env
 
         flip runReaderT env $ do -- Workers and other routines go here

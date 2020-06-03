@@ -33,6 +33,7 @@ import Ergvein.Wallet.Util
 
 import qualified Data.IntMap.Strict                 as MI
 import qualified Data.Map.Strict                    as M
+import qualified Data.Set                           as S
 import qualified Data.Text                          as T
 import qualified Data.Vector                        as V
 import qualified Ergvein.Wallet.Filters.Scan        as Filters
@@ -44,6 +45,21 @@ import qualified Network.Haskoin.Transaction        as HT
 -- updates transactions that are found.
 scanner :: MonadFront t m => m ()
 scanner = do
+  cursD <- getActiveCursD
+  void $ widgetHoldDyn $ ffor cursD $ traverse_ scannerFor . S.toList
+
+-- | Widget that continuously scans new filters agains all known public keys and
+-- updates transactions that are found. Specific for currency.
+scannerFor :: MonadFront t m => Currency -> m ()
+scannerFor cur = case cur of
+  BTC -> scannerBtc
+  _ -> pure ()
+
+-- | Widget that continuously scans new filters agains all known public keys and
+-- updates transactions that are found. Specific for Bitcoin.
+scannerBtc :: forall t m . MonadFront t m => m ()
+scannerBtc = do
+  hD <- watchFiltersHeight BTC
   pure ()
 
 -- | Loads current PubStorage, performs BIP44 account discovery algorithm and

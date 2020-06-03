@@ -64,8 +64,8 @@ type MonadFront t m = (
   , MonadClient t m
   , HasHeadersStorage m
   , HasHeadersStorage (Performable m)
-  , HasFiltersStorage m
-  , HasFiltersStorage (Performable m)
+  , HasFiltersStorage t m
+  , HasFiltersStorage t (Performable m)
   , HasBlocksStorage m
   , HasBlocksStorage (Performable m)
   )
@@ -142,11 +142,11 @@ class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   getAuthInfoRef :: m (ExternalRef t (Maybe AuthInfo))
 
 -- | Get current value of longest chain height for given currency.
-getCurrentHeight :: MonadFrontAuth t m => Currency -> m Integer
+getCurrentHeight :: MonadFrontAuth t m => Currency -> m (Dynamic t Integer)
 getCurrentHeight c = do
   r <- getHeightRef
-  m <- readExternalRef r
-  pure $ fromMaybe 0 $ M.lookup c m
+  md <- externalRefDynamic r
+  holdUniqDyn $ (fromMaybe 0 . M.lookup c) <$> md
 
 -- | Update current height of longest chain for given currency. TODO: migrate this to direct asking BTC nodes, not indexer.
 setCurrentHeight :: MonadFrontAuth t m => Currency -> Event t Integer -> m ()
