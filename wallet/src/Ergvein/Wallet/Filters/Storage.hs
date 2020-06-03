@@ -60,7 +60,7 @@ getFiltersHeight :: (MonadIO m, HasFiltersStorage m) => Currency -> m BlockHeigh
 getFiltersHeight cur = do
   e <- getFiltersStorage
   case cur of
-    BTC -> BTC.getFiltersHeight e
+    BTC -> BTC.readFiltersHeight e
 
 insertFilter :: (MonadIO m, HasFiltersStorage m) => Currency -> BlockHeight -> BlockHash -> AddressFilterHexView -> m ()
 insertFilter cur h bh f = do
@@ -81,7 +81,7 @@ getFilter :: (MonadIO m, HasFiltersStorage m) => Currency -> BlockHeight -> m (M
 getFilter c bh = do
   e <- getFiltersStorage
   case c of
-    BTC -> fmap (fmap AddrFilterBtc) $ BTC.getFilter bh e
+    BTC -> fmap (fmap AddrFilterBtc) $ BTC.readFilter bh e
 
 -- | Right fold over filters.
 foldFilters :: (MonadIO m, HasFiltersStorage m) => Currency -> (BlockHash -> AddrFilter -> a -> IO a) -> a -> m a
