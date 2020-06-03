@@ -104,8 +104,10 @@ scanExternalAddress processKeyE currentKeyD = mdo
   getBlocksE <- logEvent "Blocks requested: " =<< requestBTCBlocks someBlocksE
   storedBlocksE <- storeMultipleBlocksByE getBlocksE
   storedTxHashesE <- storeMultipleBlocksTxHashesByE $ tagPromptlyDyn blocksD storedBlocksE
-  getTxsE <- getTxs $ attachPromptlyDynWith (\(_, key) blocks ->
-    (egvXPubKeyToEgvAddress key, blocks)) currentKeyD $ tagPromptlyDyn blocksD storedTxHashesE
+  getTxsE' <- getTxs $ attachPromptlyDynWith (\(i, key) blocks ->
+    (i, egvXPubKeyToEgvAddress key, blocks)) currentKeyD $ tagPromptlyDyn blocksD storedTxHashesE
+  let getTxsE = snd <$> getTxsE'
+  insertTxsInPubKeystore $ ffor getTxsE' $ \(i, txmap) -> (BTC, i, M.keys txmap)
   pure $ leftmost [getTxsE, mempty <$ noBlocksE]
 
 type CurrentGap = Int
@@ -167,14 +169,14 @@ filterAddress :: MonadFront t m => Event t EgvAddress -> m (Event t [HB.BlockHas
 filterAddress addrE = performFork $ ffor addrE Filters.filterAddress
 
 -- | Gets transactions related to given address from given block list.
-getTxs :: MonadFront t m => Event t (EgvAddress, [HB.Block]) -> m (Event t (Map TxId BtcTx))
-getTxs = performEvent . fmap (uncurry getAddrTxsFromBlocks)
+getTxs :: MonadFront t m => Event t (AddressNum, EgvAddress, [HB.Block]) -> m (Event t (AddressNum, Map TxId BtcTx))
+getTxs = performFork . fmap getAddrTxsFromBlocks
 
 -- | Gets transactions related to given address from given block.
-getAddrTxsFromBlocks :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> [HB.Block] -> m (Map TxId BtcTx)
-getAddrTxsFromBlocks addr blocks = do
+getAddrTxsFromBlocks :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => (AddressNum, EgvAddress, [HB.Block]) -> m (AddressNum, Map TxId BtcTx)
+getAddrTxsFromBlocks (i, addr, blocks) = do
   txMaps <- traverse (getAddrTxsFromBlock addr) blocks
-  pure $ M.unions txMaps
+  pure $ (i,) $ M.unions txMaps
 
 getAddrTxsFromBlock :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> HB.Block -> m (Map TxId BtcTx)
 getAddrTxsFromBlock addr block = do
