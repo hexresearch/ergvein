@@ -10,7 +10,6 @@ module Ergvein.Wallet.Node.BTC
   , commandToText
   ) where
 
-import Control.Concurrent (forkIO)
 import Control.Monad.Catch (throwM, MonadThrow)
 import Control.Monad.IO.Class
 import Control.Monad.Reader

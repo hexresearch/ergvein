@@ -78,7 +78,7 @@ let
         "${project.ghc.x509-android.src}/java"
       ];
       version = {
-        code = "1";
+        code = "2";
         name = "Alpha";
       };
       releaseKey = let

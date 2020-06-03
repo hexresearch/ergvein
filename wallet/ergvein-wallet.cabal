@@ -238,7 +238,7 @@ executable ergvein
   hs-source-dirs:
       app
   main-is:             Main.hs
-  ghc-options: -O3 -threaded
+  ghc-options: -O3 -threaded -rtsopts "-with-rtsopts=-N -qm"
   build-depends:
       base
     , data-default
