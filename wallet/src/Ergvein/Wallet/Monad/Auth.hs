@@ -94,6 +94,7 @@ data Env t = Env {
 , env'headersStorage  :: !HeadersStorage
 , env'filtersStorage  :: !FiltersStorage
 , env'filtersHeights  :: !(ExternalRef t (Map Currency HS.BlockHeight))
+, env'scannedHeights  :: !(ExternalRef t (Map Currency HS.BlockHeight))
 , env'blocksStorage   :: !BlocksStorage
 , env'syncProgress    :: !(ExternalRef t SyncProgress)
 , env'heightRef       :: !(ExternalRef t (Map Currency Integer))
@@ -125,6 +126,8 @@ instance Monad m => HasFiltersStorage t (ErgveinM t m) where
   {-# INLINE getFiltersStorage #-}
   getFiltersHeightRef = asks env'filtersHeights
   {-# INLINE getFiltersHeightRef #-}
+  getScannedHeightRef = asks env'scannedHeights
+  {-# INLINE getScannedHeightRef #-}
 
 instance Monad m => HasBlocksStorage (ErgveinM t m) where
   getBlocksStorage = asks env'blocksStorage
@@ -438,6 +441,7 @@ liftAuth ma0 ma = mdo
         syncRef         <- newExternalRef Synced
         filtersStore    <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
         filtersHeights  <- newExternalRef mempty
+        scannedHeights  <- newExternalRef mempty
         blocksStore     <- liftIO $ runReaderT openBlocksStorage (settingsStoreDir settings)
         heightRef       <- newExternalRef mempty
         fsyncRef        <- newExternalRef mempty
@@ -461,6 +465,7 @@ liftAuth ma0 ma = mdo
               , env'headersStorage = headersStore
               , env'filtersStorage = filtersStore
               , env'filtersHeights = filtersHeights
+              , env'scannedHeights = scannedHeights
               , env'blocksStorage = blocksStore
               , env'syncProgress = syncRef
               , env'heightRef = heightRef

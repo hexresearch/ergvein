@@ -4,6 +4,8 @@ module Ergvein.Wallet.Filters.Storage(
   , openFiltersStorage
   , getFiltersHeight
   , watchFiltersHeight
+  , watchScannedHeight
+  , writeScannedHeight
   , insertFilter
   , insertMultipleFilters
   , getFilter
@@ -59,6 +61,7 @@ openFiltersStorage = do
 class Monad m => HasFiltersStorage t m | m -> t where
   getFiltersStorage :: m FiltersStorage
   getFiltersHeightRef :: m (ExternalRef t (Map Currency BlockHeight))
+  getScannedHeightRef :: m (ExternalRef t (Map Currency BlockHeight))
 
 getFiltersHeight :: (MonadIO m, HasFiltersStorage t m) => Currency -> m BlockHeight
 getFiltersHeight cur = do
@@ -75,6 +78,20 @@ watchFiltersHeight cur = do
 writeFiltersHeight :: (MonadIO m, HasFiltersStorage t m) => Currency -> BlockHeight -> m ()
 writeFiltersHeight cur h = do
   r <- getFiltersHeightRef
+  modifyExternalRef_ r $ M.insert cur h
+
+watchScannedHeight :: (MonadIO m, HasFiltersStorage t m, MonadHold t m, Reflex t, MonadFix m) => Currency -> m (Dynamic t BlockHeight)
+watchScannedHeight cur = do
+  md <- externalRefDynamic =<< getScannedHeightRef
+  holdUniqDyn $ (fromMaybe (filterStartingHeight cur) . M.lookup cur) <$> md
+
+writeScannedHeight :: (MonadIO m, HasFiltersStorage t m) => Currency -> BlockHeight -> m ()
+writeScannedHeight cur h = do
+  e <- getFiltersStorage
+  case cur of
+    BTC -> BTC.writeScannedHeight e h
+    ERGO -> pure () -- TODO: here
+  r <- getScannedHeightRef
   modifyExternalRef_ r $ M.insert cur h
 
 insertFilter :: (MonadIO m, HasFiltersStorage t m) => Currency -> BlockHeight -> BlockHash -> AddressFilterHexView -> m ()

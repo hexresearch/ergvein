@@ -59,7 +59,13 @@ scannerFor cur = case cur of
 -- updates transactions that are found. Specific for Bitcoin.
 scannerBtc :: forall t m . MonadFront t m => m ()
 scannerBtc = do
-  hD <- watchFiltersHeight BTC
+  fhD <- watchFiltersHeight BTC
+  scD <- watchScannedHeight BTC
+  let newFiltersE = ffilter id $ updated $ do
+        fh <- fhD
+        sc <- scD
+        pure $ sc < fh
+  performEvent_ $ ffor newFiltersE $ const $ liftIO $ putStrLn "New filters arrived! Need to scan!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
   pure ()
 
 -- | Loads current PubStorage, performs BIP44 account discovery algorithm and
