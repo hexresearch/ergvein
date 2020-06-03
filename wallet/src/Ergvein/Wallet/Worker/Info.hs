@@ -75,33 +75,47 @@ infoWorker = do
 groupMapBy :: Ord k => (v -> k) -> [v] -> M.Map k [v]
 groupMapBy keySelector = M.fromListWith (++) . fmap (\v-> (keySelector v , [v]))
 
-normUrls :: forall t m . MonadFront t m => Int -> [BaseUrl] -> S.Set BaseUrl -> m [BaseUrl]
-normUrls n discovered toAvoid  =
-  go mempty mempty
+type PeerScanInfoMap = M.Map Currency (BlockHeight, BlockHeight) -- (scanned, actual)
+
+extendWithNewPeers :: forall t m . MonadFront t m => Int -> (M.Map BaseUrl PeerScanInfoMap) -> [BaseUrl] -> S.Set BaseUrl -> m [BaseUrl]
+extendWithNewPeers n start discovered toAvoid  = do
+  go start discovered
   where
-    go :: M.Map BaseUrl (M.Map Currency (BlockHeight, BlockHeight)) -> [BaseUrl] -> m [BaseUrl]
+    go :: M.Map BaseUrl PeerScanInfoMap -> [BaseUrl] -> m [BaseUrl]
     go acc disc
       | length acc == n || disc == [] = 
         pure $ M.keys acc
       | otherwise = do
-        mng <- getClientManager
         let needed = n - length acc
             available = length disc
             (neededUrls, xs) = splitAt (min needed available) disc
-        r <- mconcat . rights <$> ((`runReaderT` mng) $ mapM (\l -> fmap (M.singleton l . mapping) <$> getInfoEndpoint l ()) neededUrls)
-        let rupd = acc `M.union` r
+        r <- peersInfo neededUrls
+        let rupd = acc `M.union` mempty
             med = median $ M.elems rupd
-            i =  sf med <$>rupd
+            i =  all (sf med) rupd
 
         go rupd xs
-    sf :: M.Map Currency (BlockHeight, BlockHeight)-> M.Map Currency (BlockHeight, BlockHeight) -> Bool
+    sf :: PeerScanInfoMap -> PeerScanInfoMap-> Bool
     sf a b = all (\x -> f (a  M.! x  ) (b M.! x)) $ M.keys a
       where
         f (sh, ah) (shm, ahm)= sh >= shm && ah == shm 
-    median :: [M.Map Currency (BlockHeight, BlockHeight)] -> M.Map Currency (BlockHeight, BlockHeight)
+    median :: [PeerScanInfoMap] -> PeerScanInfoMap
     median arr = let
       in bimap median' median' . munzip <$> M.unionsWith (<>) (fmap pure <$> arr)
       where
         median' :: V.Vector BlockHeight -> BlockHeight
         median' a =  a V.! length a `div` 2
     mapping = M.fromList . fmap (\(ScanProgressItem cur sh ah) -> (cur, (sh, ah))). infoScanProgress
+
+    peersInfo :: MonadFront t m  => [BaseUrl] -> m (M.Map BaseUrl PeerScanInfoMap)
+    peersInfo urls = do
+      mng <- getClientManager 
+      fmap mconcat $ (`runReaderT` mng) $ mapM peerInfo urls
+      where
+        peerInfo url = do
+          result <- getInfoEndpoint url ()
+          pure $ case result of
+            Right info -> M.singleton url $ mconcat $ mapping <$> infoScanProgress info
+            Left _ -> mempty
+        mapping :: ScanProgressItem -> PeerScanInfoMap
+        mapping (ScanProgressItem currency scanned actual) = M.singleton currency (scanned, actual)
