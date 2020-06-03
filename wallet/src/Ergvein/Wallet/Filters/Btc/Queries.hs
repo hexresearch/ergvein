@@ -3,6 +3,7 @@ module Ergvein.Wallet.Filters.Btc.Queries(
   , insertMultipleFilters
   , getFilter
   , getFiltersHeight
+  , getScannedHeight
   , foldFilters
   ) where
 
@@ -62,6 +63,11 @@ getFilter k e = liftIO . readOnlyTransaction e $ do
 getFiltersHeight :: MonadIO m => Environment ReadWrite -> m BlockHeight
 getFiltersHeight e = liftIO . readOnlyTransaction e $ do
   tdb <- getBtcTotalDb
+  fromMaybe (filterStartingHeight BTC) <$> get tdb ()
+
+getScannedHeight :: MonadIO m => Environment ReadWrite -> m BlockHeight
+getScannedHeight e = liftIO . readOnlyTransaction e $ do
+  tdb <- getBtcScannedDb
   fromMaybe (filterStartingHeight BTC) <$> get tdb ()
 
 -- | Right fold over all filters
