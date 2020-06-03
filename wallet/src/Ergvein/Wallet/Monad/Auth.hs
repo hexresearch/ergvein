@@ -446,7 +446,7 @@ liftAuth ma0 ma = mdo
         runOnUiThreadM $ runReaderT setupTlsManager env
 
         flip runReaderT env $ do -- Workers and other routines go here
-          accountDiscovery
+          scanner
           bctNodeController
           filtersLoader
           heightAsking

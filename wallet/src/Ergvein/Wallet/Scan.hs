@@ -1,5 +1,5 @@
 module Ergvein.Wallet.Scan (
-    accountDiscovery
+    scanner
   ) where
 
 import Control.Lens
@@ -39,6 +39,12 @@ import qualified Ergvein.Wallet.Filters.Scan        as Filters
 import qualified Network.Haskoin.Block              as HB
 import qualified Network.Haskoin.Script             as HS
 import qualified Network.Haskoin.Transaction        as HT
+
+-- | Widget that continuously scans new filters agains all known public keys and
+-- updates transactions that are found.
+scanner :: MonadFront t m => m ()
+scanner = do
+  pure ()
 
 -- | Loads current PubStorage, performs BIP44 account discovery algorithm and
 -- stores updated PubStorage to the wallet file.
