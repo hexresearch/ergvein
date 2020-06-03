@@ -58,7 +58,7 @@ jobs:
         sudo systemctl daemon-reload	|| true
         sudo mv /etc/profile.d/nix.sh.backup-before-nix /etc/profile.d/nix.sh	|| true
         sudo rm -rf /etc/nix/nix.conf || true
-        sudo rm -rf /etc/nix /root/.nix-profile /root/.nix-defexpr /root/.nix-channels /home/actions/.nix-profile /home/actions/.nix-defexpr /home/actions/.nix-channels || true
+        sudo rm -rf /etc/nix /nix /root/.nix-profile /root/.nix-defexpr /root/.nix-channels /home/actions/.nix-profile /home/actions/.nix-defexpr /home/actions/.nix-channels || true
     
     - name: Install Nix	
       uses: cachix/install-nix-action@v9	
