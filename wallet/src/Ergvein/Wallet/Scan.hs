@@ -6,6 +6,7 @@ import Control.Lens
 import Control.Monad.IO.Class
 import Data.ByteString (ByteString)
 import Data.List
+import Data.Maybe (fromMaybe)
 import Ergvein.Aeson
 import Ergvein.Crypto.Keys
 import Ergvein.Text
@@ -58,15 +59,23 @@ scannerFor cur = case cur of
 -- | Widget that continuously scans new filters agains all known public keys and
 -- updates transactions that are found. Specific for Bitcoin.
 scannerBtc :: forall t m . MonadFront t m => m ()
-scannerBtc = do
-  fhD <- watchFiltersHeight BTC
-  scD <- watchScannedHeight BTC
-  let newFiltersE = ffilter id $ updated $ do
-        fh <- fhD
-        sc <- scD
-        pure $ sc < fh
-  performEvent_ $ ffor newFiltersE $ const $ liftIO $ putStrLn "New filters arrived! Need to scan!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-  pure ()
+scannerBtc = void $ workflow waiting
+  where
+    waiting = Workflow $ do
+      fhD <- watchFiltersHeight BTC
+      scD <- watchScannedHeight BTC
+      let newFiltersE = ffilter id $ updated $ do
+            fh <- fhD
+            sc <- scD
+            pure $ sc < fh
+      pure ((), scanning <$ newFiltersE)
+
+    scanning = Workflow $  do
+      buildE <- getPostBuild
+      ps <- getPubStorage
+      let keys = getPublicKeys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "scannerBtc: not exsisting store!") . currencyPubStorage'pubKeystore
+      blocksE <- performFork $ ffor buildE $ const $ Filters.filterAddresses $ egvXPubKeyToEgvAddress <$> keys
+      pure ((), never)
 
 -- | Loads current PubStorage, performs BIP44 account discovery algorithm and
 -- stores updated PubStorage to the wallet file.

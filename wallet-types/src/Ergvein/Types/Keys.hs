@@ -14,6 +14,7 @@ module Ergvein.Types.Keys (
   , xPubExport
   , xPubImport
   , getLastUnusedKey
+  , getPublicKeys
   , egvXPubCurrency
   , getExternalPubKeyIndex
   , extractXPubKeyFromEgv
@@ -328,6 +329,10 @@ getLastUnusedKey (PubKeystore _ ext _) = go Nothing ext
       in if m || not (V.null txs)
         then mk
         else go (Just (V.length vec - 1, kb)) $ V.init vec
+
+-- | Get all public keys in storage (external and internal) to scan for new transactions for them.
+getPublicKeys :: PubKeystore -> Vector EgvXPubKey
+getPublicKeys PubKeystore{..} = fmap extKeyBox'key pubKeystore'external <> pubKeystore'internal
 
 getExternalPubKeyIndex :: PubKeystore -> Int
 getExternalPubKeyIndex = V.length . pubKeystore'external
