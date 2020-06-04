@@ -24,22 +24,28 @@ import Ergvein.Wallet.Share
 import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Wrapper
 
-import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
-import qualified Data.Text as T
 import Network.Haskoin.Address
 import Network.Haskoin.Address.Base58
 import Network.Haskoin.Keys
+import qualified Data.Dependent.Map as DM
+import qualified Data.Map.Strict as M
+import qualified Data.Text as T
 
 sharePage :: MonadFront t m => Currency -> m ()
 sharePage cur = wrapper (ShareTitle cur) (Just $ pure $ sharePage cur) False $ divClass "share-content" $ do
   pubStorage <- getPubStorage
-  let xPubKeyMb  = pubKeystore'master . _currencyPubStorage'pubKeystore
-        <$> M.lookup cur (_pubStorage'currencyPubStorages pubStorage)
-      addressMb  = egvXPubKeyToEgvAddress <$> xPubKeyMb
+  let xPubKeyMb = case cur of
+        BTC -> getXPubKeyMb BtcTxTag pubStorage
+        ERGO -> getXPubKeyMb ErgTxTag pubStorage
+      addressMb = egvXPubKeyToEgvAddress <$> xPubKeyMb
   maybe errorPage renderPage addressMb
   pure ()
   where
+    getXPubKeyMb :: CurrencyTxTag tx -> PubStorage -> Maybe EgvXPubKey
+    getXPubKeyMb curTag pubStorage = pubKeystore'master . _currencyPubStorage'pubKeystore
+      <$> DM.lookup curTag (_pubStorage'currencyPubStorages pubStorage)
+
     errorPage :: MonadFront t m => m ()
     errorPage = do
       pure ()

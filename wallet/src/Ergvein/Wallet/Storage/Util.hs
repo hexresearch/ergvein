@@ -6,6 +6,7 @@ module Ergvein.Wallet.Storage.Util(
   , passwordToECIESPrvKey
   , createPrvStorage
   , createPubKeystore
+  , createCurrencyPubStorage
   , createStorage
   , storageFilePrefix
   , saveStorageToFile
@@ -18,6 +19,7 @@ module Ergvein.Wallet.Storage.Util(
 import Control.Monad.IO.Class
 import Data.ByteArray           (convert)
 import Data.ByteString          (ByteString)
+import Data.Dependent.Map       (DSum((:=>)))
 import Data.Maybe
 import Data.Proxy
 import Data.Text                (Text)
@@ -35,6 +37,7 @@ import Ergvein.Wallet.Storage.Constants
 import Ergvein.Wallet.Storage.Keys
 
 import qualified Data.ByteString as BS
+import qualified Data.Dependent.Map as DM
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -55,11 +58,11 @@ createPrvKeystore masterPrvKey =
       internalKeys  = V.unfoldrN initialInternalAddressCount internalGen 0
   in PrvKeystore masterPrvKey externalKeys internalKeys
 
-createPrvStorage :: Seed -> EgvRootXPrvKey -> PrvStorage
-createPrvStorage seed rootPrvKey = PrvStorage seed rootPrvKey prvStorages
+createPrvStorage :: Seed -> EgvRootXPrvKey -> [Currency] -> PrvStorage
+createPrvStorage seed rootPrvKey cs = PrvStorage seed rootPrvKey prvStorages
   where prvStorages = M.fromList [
             (currency, CurrencyPrvStorage $ createPrvKeystore $ deriveCurrencyMasterPrvKey rootPrvKey currency) |
-            currency <- allCurrencies
+            currency <- cs
           ]
 
 addXPubKeyToKeystore :: KeyPurpose -> EgvXPubKey -> PubKeystore -> PubKeystore
@@ -76,20 +79,22 @@ createPubKeystore masterPubKey =
       internalKeys = V.unfoldrN initialInternalAddressCount intGen 0
   in PubKeystore masterPubKey externalKeys internalKeys
 
+createCurrencyPubStorage :: EgvRootXPrvKey -> Currency -> DSum CurrencyTxTag CurrencyPubStorage
+createCurrencyPubStorage rootPrvKey currency = case currency of
+  BTC -> BtcTxTag :=> CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey rootPrvKey currency) M.empty
+  ERGO -> ErgTxTag :=> CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey rootPrvKey currency) M.empty
+
 createPubStorage :: EgvRootXPrvKey -> [Currency] -> PubStorage
-createPubStorage rootPrvKey cs = PubStorage rootPubKey pubStorages cs
+createPubStorage rootPrvKey activeCurrencies = PubStorage rootPubKey currencyPubStorages activeCurrencies
   where rootPubKey = EgvRootXPubKey $ deriveXPubKey $ unEgvRootXPrvKey rootPrvKey
-        pubStorages = M.fromList [
-            (currency, CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey rootPrvKey currency) (M.fromList [])) |
-            currency <- cs
-          ]
+        currencyPubStorages = DM.fromList $ map (createCurrencyPubStorage rootPrvKey) activeCurrencies
 
 createStorage :: MonadIO m => Mnemonic -> (WalletName, Password) -> [Currency] -> m (Either StorageAlert WalletStorage)
 createStorage mnemonic (login, pass) cs = case mnemonicToSeed "" mnemonic of
   Left err -> pure $ Left $ SAMnemonicFail $ showt err
   Right seed -> do
     let rootPrvKey = EgvRootXPrvKey $ makeXPrvKey seed
-        prvStorage = createPrvStorage seed rootPrvKey
+        prvStorage = createPrvStorage seed rootPrvKey cs
         pubStorage = createPubStorage rootPrvKey cs
     encryptPrvStorageResult <- encryptPrvStorage prvStorage pass
     case encryptPrvStorageResult of

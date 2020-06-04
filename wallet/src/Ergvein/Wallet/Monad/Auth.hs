@@ -64,6 +64,7 @@ import qualified Control.Immortal as I
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Map.Strict as M
 import qualified Data.Dependent.Map as DM
+import qualified Data.Dependent.Map.Lens as DM
 import qualified Data.Set as S
 import qualified Data.List as L
 import qualified Data.Vector as V
@@ -297,21 +298,25 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   {-# INLINE getEncryptedPrvStorage #-}
   getAddressByCurIx cur i = do
     currMap <- fmap (_pubStorage'currencyPubStorages . _storage'pubStorage . _authInfo'storage) $ readExternalRef =<< asks env'authRef
-    let mXPubKey = (flip (V.!?) i) . pubKeystore'external . _currencyPubStorage'pubKeystore =<< M.lookup cur currMap
-    case mXPubKey of
-      Nothing -> fail "NOT IMPLEMENTED" -- TODO: generate new address here
-      Just (EgvExternalKeyBox key _ _) ->
-        let k = case key of
-              ErgXPubKey k' _ -> k'
-              BtcXPubKey k' _ -> k'
-        in pure $ xPubExport (getCurrencyNetwork cur) k
+    case cur of
+      -- TODO: generate new address here if getAddr returns Nothing
+      BTC -> maybe (fail "NOT IMPLEMENTED") pure (getAddr BtcTxTag i currMap)
+      ERGO -> maybe (fail "NOT IMPLEMENTED") pure (getAddr ErgTxTag i currMap)
+    where
+      getAddr :: CurrencyTxTag tx -> Int -> CurrencyPubStorages -> Maybe Base58
+      getAddr curTag i currMap = case mXPubKey of
+        Nothing -> Nothing
+        Just (EgvExternalKeyBox (BtcXPubKey key _) _ _) -> Just $ xPubExport (getCurrencyNetwork cur) key
+        Just (EgvExternalKeyBox (ErgXPubKey key _) _ _) -> Just $ xPubExport (getCurrencyNetwork cur) key
+        where
+          mXPubKey = (flip (V.!?) i) . pubKeystore'external . _currencyPubStorage'pubKeystore =<< DM.lookup curTag currMap
   {-# INLINE getAddressByCurIx #-}
   getWalletName = fmap (_storage'walletName . _authInfo'storage) $ readExternalRef =<< asks env'authRef
   {-# INLINE getWalletName #-}
   getPubStorage = fmap (_storage'pubStorage . _authInfo'storage) $ readExternalRef =<< asks env'authRef
   {-# INLINE getPubStorage #-}
   storeWallet e = do
-    ref <-  asks env'authRef
+    ref <- asks env'authRef
     performEvent_ $ ffor e $ \_ -> do
         authInfo <- readExternalRef ref
         let storage = _authInfo'storage authInfo
@@ -320,16 +325,16 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   {-# INLINE storeWallet #-}
   addTxToPubStorage txE = do
     authRef <- asks env'authRef
-    performFork_ $ ffor txE $ \(txid, etx) -> do
-      let cur = case etx of
-            BtcTx{} -> BTC
-            ErgTx{} -> ERGO
-      modifyExternalRef_ authRef $ \ai -> ai
-        & authInfo'storage
+    performFork_ $ ffor txE $ \(txid, etx) -> case etx of
+      BtcTx tx -> modifyExternalRef_ authRef $ addTx BtcTxTag tx txid
+      ErgTx tx -> modifyExternalRef_ authRef $ addTx ErgTxTag tx txid
+    where
+      addTx :: CurrencyTxTag tx -> tx -> TxId -> AuthInfo -> AuthInfo
+      addTx curTag tx txid authInfo = authInfo & authInfo'storage
         . storage'pubStorage
         . pubStorage'currencyPubStorages
-        . at cur . _Just                  -- TODO: Fix this part once there is a way to generate keys. Or signal an impposible situation
-        . currencyPubStorage'transactions . at txid .~ Just etx
+        . DM.dmat curTag . _Just -- TODO: Fix this part once there is a way to generate keys. Or signal an impposible situation
+        . currencyPubStorage'transactions . at txid .~ Just tx
   {-# INLINE addTxToPubStorage #-}
   getPubStorageD = do
     authInfoD <- externalRefDynamic =<< asks env'authRef
@@ -337,26 +342,35 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   {-# INLINE getPubStorageD #-}
   setLabelToExtPubKey reqE = do
     authRef <- asks env'authRef
-    performFork_ $ ffor reqE $ \(cur, i, l) -> modifyExternalRefMaybe_ authRef $
-      updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'key = updateKeyLabel l $ extKeyBox'key kb}
+    performFork_ $ ffor reqE $ \(cur, i, label) -> modifyExternalRefMaybe_ authRef $ \ai ->
+      let f kb = kb {extKeyBox'key = updateKeyLabel label $ extKeyBox'key kb}
+      in case cur of
+        BTC -> updateKeyBoxWith BtcTxTag i f ai
+        ERGO -> updateKeyBoxWith ErgTxTag i f ai
 
-  setFlatToExtPubKey reqE = do
+  setFlagToExtPubKey reqE = do
     authRef <- asks env'authRef
-    performFork_ $ ffor reqE $ \(cur, i) -> modifyExternalRefMaybe_ authRef $
-      updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'manual = True}
+    performFork_ $ ffor reqE $ \(cur, i) -> modifyExternalRefMaybe_ authRef $ \ai ->
+      let f kb = kb {extKeyBox'manual = True}
+      in case cur of
+        BTC -> updateKeyBoxWith BtcTxTag i f ai
+        ERGO -> updateKeyBoxWith ErgTxTag i f ai
 
   insertTxsInPubKeystore reqE = do
     authRef <- asks env'authRef
-    performFork_ $ ffor reqE $ \(cur, i, txids) -> modifyExternalRefMaybe_ authRef $
-      updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'txs = S.union (extKeyBox'txs kb) $ S.fromList txids}
+    performFork_ $ ffor reqE $ \(cur, i, txids) -> modifyExternalRefMaybe_ authRef $ \ai ->
+      let f = \kb -> kb {extKeyBox'txs = S.union (extKeyBox'txs kb) $ S.fromList txids}
+      in case cur of
+        BTC -> updateKeyBoxWith BtcTxTag i f ai
+        ERGO -> updateKeyBoxWith ErgTxTag i f ai
 
-updateKeyBoxWith :: Currency -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> AuthInfo -> Maybe AuthInfo
-updateKeyBoxWith cur i f ai =
+updateKeyBoxWith :: CurrencyTxTag a -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> AuthInfo -> Maybe AuthInfo
+updateKeyBoxWith curTag i f ai =
   let mk = ai ^.
           authInfo'storage
         . storage'pubStorage
         . pubStorage'currencyPubStorages
-        . at cur
+        . DM.dmat curTag
         & \mcps -> case mcps of
           Nothing -> Nothing
           Just cps -> cps ^. currencyPubStorage'pubKeystore
@@ -367,7 +381,7 @@ updateKeyBoxWith cur i f ai =
       in Just $ ai & authInfo'storage
           . storage'pubStorage
           . pubStorage'currencyPubStorages
-          . at cur
+          . DM.dmat curTag
           %~ \mcps -> case mcps of
             Nothing -> Nothing
             Just cps -> Just $ cps & currencyPubStorage'pubKeystore
