@@ -65,9 +65,21 @@ networkSettingsPage = wrapper NSSTitle (Just $ pure networkSettingsPage ) False 
 parametersPageWidget :: MonadFront t m => m ()
 parametersPageWidget = mdo
   setD <- getSettingsD
-  lineOption $ do
-    saveE <- buttonClass "button button-outline mt-1" NSSSave
-    defE <- buttonClass "button button-outline mt-1" NSSRestoreDef
+  valsD <- fmap join $ divClass "centered-wrapper" $ divClass "centered-content" $
+    widgetHoldDyn $ ffor setD $ \set@Settings{..} -> do
+      let dt0 :: Double = realToFrac settingsReqTimeout
+      dtD <- fmap2 realToFrac $ textFieldValidated NSSReqTimeout dt0 $
+        maybe (Left [PPENDT]) Right . readMaybe . T.unpack
+      actNumD <- textFieldValidated NSSActUrlNum settingsActUrlNum $
+        maybe (Left [PPEInt]) Right . readMaybe . T.unpack
+      rminD <- textFieldValidated NSSReqNumMin (fst settingsReqUrlNum) $
+        maybe (Left [PPEInt]) Right . readMaybe . T.unpack
+      rmaxD <- textFieldValidated NSSReqNumMax (snd settingsReqUrlNum) $
+        maybe (Left [PPEInt]) Right . readMaybe . T.unpack
+      pure $ (,,,) <$> dtD <*> actNumD <*> rminD <*> rmaxD
+  divClass "net-btns-2" $ do
+    saveE <- buttonClass "button button-outline" NSSSave
+    defE <- buttonClass "button button-outline" NSSRestoreDef
     updE <- updateSettings $ flip pushAlways defE $ const $ do
       set <- sample $ current setD
       pure $ set {
@@ -84,18 +96,6 @@ parametersPageWidget = mdo
           , settingsActUrlNum  = actNum
         }
     showSuccessMsg $ STPSSuccess <$ (leftmost [updE, updE'])
-  valsD <- fmap join $ divClass "centered-wrapper" $ divClass "centered-content" $
-    widgetHoldDyn $ ffor setD $ \set@Settings{..} -> do
-      let dt0 :: Double = realToFrac settingsReqTimeout
-      dtD <- fmap2 realToFrac $ textFieldValidated NSSReqTimeout dt0 $
-        maybe (Left [PPENDT]) Right . readMaybe . T.unpack
-      actNumD <- textFieldValidated NSSActUrlNum settingsActUrlNum $
-        maybe (Left [PPEInt]) Right . readMaybe . T.unpack
-      rminD <- textFieldValidated NSSReqNumMin (fst settingsReqUrlNum) $
-        maybe (Left [PPEInt]) Right . readMaybe . T.unpack
-      rmaxD <- textFieldValidated NSSReqNumMax (snd settingsReqUrlNum) $
-        maybe (Left [PPEInt]) Right . readMaybe . T.unpack
-      pure $ (,,,) <$> dtD <*> actNumD <*> rminD <*> rmaxD
   pure ()
   where
     fmap2 = fmap . fmap
@@ -118,14 +118,15 @@ addUrlWidget showD = mdo
 activePageWidget :: forall t m . MonadFront t m => m ()
 activePageWidget = mdo
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
-  tglE <- divClass "network-wrapper mt-1" $ divClass "net-header-btns-3" $ do
+  divClass "centered-wrapper" $ divClass "lr-centered-content" $
+    void . flip listWithKey renderActive =<< getIndexerInfoD
+  hideE <- activateURL =<< addUrlWidget showD
+  tglE <- divClass "network-wrapper mt-1" $ divClass "net-btns-3" $ do
     refreshIndexerInfo =<< buttonClass "button button-outline m-0" NSSRefresh
     restoreDefaultIndexers =<< buttonClass "button button-outline m-0" NSSRestoreUrls
     fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSClose else NSSAddUrl
-  hideE <- activateURL =<< addUrlWidget showD
-  divClass "centered-wrapper" $ divClass "lr-centered-content" $
-    void . flip listWithKey renderActive =<< getIndexerInfoD
+  pure ()
 
 renderActive :: MonadFront t m => BaseUrl -> Dynamic t (Maybe IndexerInfo) -> m ()
 renderActive url minfoD = mdo
@@ -151,12 +152,6 @@ inactivePageWidget :: forall t m . MonadFront t m => m ()
 inactivePageWidget = mdo
   urlsD <- (fmap . fmap) S.toList getInactiveUrlsD
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
-  (pingAllE, tglE) <- divClass "network-wrapper mt-1" $ divClass "net-header-btns-2" $ do
-    pingAllE <- buttonClass "button button-outline m-0" NSSPingAll
-    tglE <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
-      fmap (not b <$) $ buttonClass "m-0 button button-outline" $ if b then NSSClose else NSSAddUrl
-    pure (pingAllE, tglE)
-  hideE <- deactivateURL =<< addUrlWidget showD
   allResE <- fmap switchDyn $ widgetHoldDyn $ ffor urlsD $ \urls ->
     fmap (mergeMap . M.fromList) $ flip traverse urls $ \u -> do
       resE <- pingIndexer $ u <$ pingAllE
@@ -169,6 +164,13 @@ inactivePageWidget = mdo
     let pingE = switchDyn . fmap leftmost . join . fmap sequence $ a
     resE <- (fmap . fmap) (uncurry M.singleton) $ pingIndexer pingE
     pure ()
+  hideE <- deactivateURL =<< addUrlWidget showD
+  (pingAllE, tglE) <- divClass "network-wrapper mt-1" $ divClass "net-btns-2" $ do
+    pingAllE <- buttonClass "button button-outline m-0" NSSPingAll
+    tglE <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
+      fmap (not b <$) $ buttonClass "m-0 button button-outline" $ if b then NSSClose else NSSAddUrl
+    pure (pingAllE, tglE)
+  pure ()
 
 renderInactive :: MonadFront t m => BaseUrl -> Maybe (Maybe IndexerInfo) -> m (Event t BaseUrl)
 renderInactive url mminfo = mdo
