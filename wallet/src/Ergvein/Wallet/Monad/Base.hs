@@ -8,6 +8,7 @@ module Ergvein.Wallet.Monad.Base
   , AlertInfo(..)
   , MonadEgvLogger(..)
   , MonadClient(..)
+  , PeerScanInfoMap (..)
   , IndexerInfo(..)
   ) where
 
@@ -181,8 +182,10 @@ class (
 --    Frontend-wide types
 -- ===========================================================================
 
+type PeerScanInfoMap = Map Currency (BlockHeight, BlockHeight) -- (scanned, actual)
+
 data IndexerInfo = IndexerInfo {
-  indInfoHeights :: Map Currency (BlockHeight,BlockHeight)
+  indInfoHeights :: PeerScanInfoMap
 , indInfoLatency :: NominalDiffTime
 } deriving (Show)
 

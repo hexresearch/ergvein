@@ -15,6 +15,7 @@ import Data.Either
 import Data.Maybe
 import Control.Monad.Zip
 import qualified Data.Vector as V
+import Ergvein.Wallet.Monad.Base
 
 import Ergvein.Index.API.Types
 import Ergvein.Index.Client
@@ -26,6 +27,7 @@ import Ergvein.Wallet.Native
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Data.Bifunctor
+import System.Random.Shuffle
 
 import qualified Data.List as L
 import qualified Data.Map  as M
@@ -55,6 +57,9 @@ infoWorker = do
     let fetchedUrls = S.fromList $ fromJust . parseBaseUrl <$> (knownPeersList =<< knownPeersResult)
         filtered = fetchedUrls S.\\ inactiveUrls S.\\ archivedUrls
     
+    shFiltered <- liftIO $ shuffleM $ S.toList filtered
+
+    r <- extendWithNewPeers 16 shFiltered
     
     pure ()
     {-urlChunks <- chunksOf chunkN . M.keys <$> readExternalRef indexerInfoRef
@@ -72,24 +77,23 @@ infoWorker = do
           in pure $ (u,) $ Just $ IndexerInfo curmap $ diffUTCTime t1 t0
     writeExternalRef indexerInfoRef $ M.fromList ress_-}
 
-type PeerScanInfoMap = M.Map Currency (BlockHeight, BlockHeight) -- (scanned, actual)
-
-extendWithNewPeers :: forall t m . MonadFront t m => Int -> [BaseUrl] -> (M.Map BaseUrl PeerScanInfoMap) -> m [BaseUrl]
-extendWithNewPeers targetAmount newPeers initial = do
-  go newPeers initial
+extendWithNewPeers :: forall m . HasClientManager m => Int -> [BaseUrl] -> m (M.Map BaseUrl IndexerInfo)
+extendWithNewPeers targetAmount newPeers =
+  go newPeers mempty
   where
-    go :: [BaseUrl] -> M.Map BaseUrl PeerScanInfoMap ->  m [BaseUrl]
+    go :: [BaseUrl] -> M.Map BaseUrl IndexerInfo -> m (M.Map BaseUrl IndexerInfo)
     go newPeersRem acc
       | length acc == targetAmount || null newPeersRem = 
-        pure $ M.keys acc
+        pure acc
       | otherwise = do
         let needed = targetAmount - length acc
             available = length newPeersRem
             (peers, newPeersRem') = splitAt (min needed available) newPeersRem
-        peersInfo <- peersInfo peers
-        let newAcc = acc `M.union` peersInfo
-            median = medianScanInfoMap $ M.elems newAcc
-            filteredToMedianNewAcc =  M.filter (matchMedian median) newAcc
+        indexersInfo <- indexersInfo peers
+        let newAcc = acc `M.union` indexersInfo
+            indexersScanInfo = indInfoHeights <$> newAcc
+            median = medianScanInfoMap $ M.elems indexersScanInfo
+            filteredToMedianNewAcc =  M.filter (matchMedian median . indInfoHeights) newAcc
         go newPeersRem' filteredToMedianNewAcc
 
     matchMedian :: PeerScanInfoMap -> PeerScanInfoMap -> Bool
@@ -105,15 +109,20 @@ extendWithNewPeers targetAmount newPeers initial = do
         median' :: V.Vector BlockHeight -> BlockHeight
         median' v =  v V.! length v `div` 2
 
-    peersInfo :: MonadFront t m  => [BaseUrl] -> m (M.Map BaseUrl PeerScanInfoMap)
-    peersInfo urls = do
+    indexersInfo :: [BaseUrl] -> m (M.Map BaseUrl IndexerInfo)
+    indexersInfo urls = do
       mng <- getClientManager 
       fmap mconcat $ (`runReaderT` mng) $ mapM peerInfo urls
       where
         peerInfo url = do
+          t0 <- liftIO $ getCurrentTime
           result <- getInfoEndpoint url ()
+          t1 <- liftIO $ getCurrentTime
           pure $ case result of
-            Right info -> M.singleton url $ mconcat $ mapping <$> infoScanProgress info
-            Left _ -> mempty
+            Right info -> let
+              pingTime = diffUTCTime t1 t0
+              scanInfo = mconcat $ mapping <$> infoScanProgress info
+              in M.singleton url $ IndexerInfo scanInfo pingTime
+            otherwise -> mempty
         mapping :: ScanProgressItem -> PeerScanInfoMap
         mapping (ScanProgressItem currency scanned actual) = M.singleton currency (scanned, actual)
