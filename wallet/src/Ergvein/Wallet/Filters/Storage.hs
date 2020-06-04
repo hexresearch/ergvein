@@ -10,6 +10,8 @@ module Ergvein.Wallet.Filters.Storage(
   , insertMultipleFilters
   , getFilter
   , foldFilters
+  , scanFilters
+  , scanBtcFilters
   ) where
 
 import Control.Monad.Catch
@@ -127,3 +129,15 @@ foldFilters c f a0 = do
   case c of
     BTC -> BTC.foldFilters (\k -> f k . AddrFilterBtc) a0 e
     ERGO -> pure a0 -- ^ TODO: add ergo here
+
+-- | Fold over filters that are not scanned yet.
+scanFilters :: (MonadIO m, HasFiltersStorage t m) => Currency -> (BlockHeight -> BlockHash -> AddrFilter -> a -> IO a) -> a -> m a
+scanFilters c f a0 = case c of
+  BTC -> scanBtcFilters (\i k -> f i k . AddrFilterBtc) a0
+  ERGO -> pure a0 -- ^ TODO: add ergo here
+
+-- | Fold over filters that are not scanned yet.
+scanBtcFilters :: (MonadIO m, HasFiltersStorage t m) => (BlockHeight -> BlockHash -> BtcAddrFilter -> a -> IO a) -> a -> m a
+scanBtcFilters f a0 = do
+  e <- getFiltersStorage
+  BTC.scanFilters (\i k -> f i k) a0 e

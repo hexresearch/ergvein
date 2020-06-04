@@ -26,7 +26,7 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Constants
-import Ergvein.Wallet.Storage.Keys (derivePubKey, egvXPubKeyToEgvAddress)
+import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Storage.Util (addXPubKeyToKeystore)
 import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Tx
@@ -74,7 +74,8 @@ scannerBtc = void $ workflow waiting
       buildE <- getPostBuild
       ps <- getPubStorage
       let keys = getPublicKeys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "scannerBtc: not exsisting store!") . currencyPubStorage'pubKeystore
-      blocksE <- performFork $ ffor buildE $ const $ Filters.filterAddresses $ egvXPubKeyToEgvAddress <$> keys
+      blocksE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses $ xPubToBtcAddr . extractXPubKeyFromEgv <$> keys
+
       pure ((), never)
 
 -- | Loads current PubStorage, performs BIP44 account discovery algorithm and
@@ -154,7 +155,7 @@ scanExternalAddresses currency currencyPubStorage = mdo
     (i, egvXPubKeyToEgvAddress key, blocks)) currentKeyD $ tagPromptlyDyn blocksD storedTxHashesE
   let getTxsE = snd <$> getTxsE'
   insertTxsInPubKeystore $ ffor getTxsE' $ \(i, txmap) -> (currency, i, M.keys txmap)
-  
+
   let noBlocksE = fforMaybe filterAddressE $ \case
         [] -> Just []
         _ -> Nothing
