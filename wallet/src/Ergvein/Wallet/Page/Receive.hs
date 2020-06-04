@@ -30,8 +30,8 @@ receivePage :: MonadFront t m => Currency -> m ()
 receivePage cur = do
   pubStoreD <- getPubStorageD
   let keyD = case cur of
-        BTC -> ffor pubStoreD (getKey BTCTag)
-        ERGO -> ffor pubStoreD (getKey ERGTag)
+        BTC -> ffor pubStoreD (getKey BtcTxTag)
+        ERGO -> ffor pubStoreD (getKey ErgTxTag)
   widgetHoldDyn $ ffor keyD $ \case
     Nothing -> exceededGapLimit cur
     Just (i, key) -> receivePageWidget cur i key

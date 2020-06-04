@@ -36,13 +36,13 @@ sharePage :: MonadFront t m => Currency -> m ()
 sharePage cur = wrapper (ShareTitle cur) (Just $ pure $ sharePage cur) False $ divClass "share-content" $ do
   pubStorage <- getPubStorage
   let xPubKeyMb = case cur of
-        BTC -> getXPubKeyMb BTCTag pubStorage
-        ERGO -> getXPubKeyMb ERGTag pubStorage
+        BTC -> getXPubKeyMb BtcTxTag pubStorage
+        ERGO -> getXPubKeyMb ErgTxTag pubStorage
       addressMb = egvXPubKeyToEgvAddress <$> xPubKeyMb
   maybe errorPage renderPage addressMb
   pure ()
   where
-    getXPubKeyMb :: CurrencyTag tx -> PubStorage -> Maybe EgvXPubKey
+    getXPubKeyMb :: CurrencyTxTag tx -> PubStorage -> Maybe EgvXPubKey
     getXPubKeyMb curTag pubStorage = pubKeystore'master . _currencyPubStorage'pubKeystore
       <$> DM.lookup curTag (_pubStorage'currencyPubStorages pubStorage)
 

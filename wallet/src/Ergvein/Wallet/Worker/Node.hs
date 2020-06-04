@@ -20,7 +20,7 @@ import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
-import Ergvein.Types.Storage hiding (BTCTag, ERGTag)
+import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Blocks.Types
 import Ergvein.Wallet.Monad.Async
@@ -40,7 +40,6 @@ import qualified Data.Dependent.Map as DM
 import qualified Data.IntMap as MI
 import qualified Data.Map as M
 import qualified Data.Set as S
-import qualified Ergvein.Types.Storage as ST (CurrencyTag(BTCTag), CurrencyTag(ERGTag))
 import qualified Data.Vector as V
 import qualified Network.Haskoin.Transaction        as HT
 
@@ -68,17 +67,17 @@ bctNodeController = mdo
   te        <- fmap void $ tickLossyFromPostBuildTime btcRefrTimeout
 
   pubStorageD <- getPubStorageD
-  let (allBtcAddrsD, txidsD) = splitDynPure $ ffor pubStorageD $ \(PubStorage _ cm _) -> case DM.lookup ST.BTCTag cm of
+  let (allBtcAddrsD, txidsD) = splitDynPure $ ffor pubStorageD $ \(PubStorage _ cm _) -> case DM.lookup BtcTxTag cm of
         Nothing -> ([], S.empty)
         Just (CurrencyPubStorage keystore txmap) -> let
           addrs = extractAddrs keystore
           txids = S.fromList $ M.keys txmap
           in (addrs, txids)
 
-  let btcLenD = ffor conMapD $ fromMaybe 0 . fmap M.size . DM.lookup BTCTag
+  let btcLenD = ffor conMapD $ fromMaybe 0 . fmap M.size . DM.lookup BtcTag
   let te' = poke te $ const $ do
         cm <- sample . current $ conMapD
-        let nodes = fromMaybe [] $ fmap M.elems $ DM.lookup BTCTag cm
+        let nodes = fromMaybe [] $ fmap M.elems $ DM.lookup BtcTag cm
         stats <- traverse (sampleDyn . nodeconIsUp) nodes
         pure $ length $ filter id stats
   -- Get an url to connect if:
@@ -102,7 +101,7 @@ bctNodeController = mdo
     modifyExternalRef nodeRef $ \cm -> (addNodeConn (NodeConnBTC node) cm, ())
     closeE' <- delay 0.1 $ nodeconCloseE node
     closeE <- performEvent $ ffor closeE' $ const $
-      modifyExternalRef nodeRef $ \cm -> (removeNodeConn BTCTag u cm, ())
+      modifyExternalRef nodeRef $ \cm -> (removeNodeConn BtcTag u cm, ())
     let respE = nodeconRespE node
     let txInvsE = flip push respE $ \case
           MInv inv -> do

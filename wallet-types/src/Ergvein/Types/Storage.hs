@@ -93,39 +93,39 @@ makeLenses ''CurrencyPubStorage
 
 $(deriveJSON aesonOptionsStripToApostroph ''CurrencyPubStorage)
 
-data CurrencyTag a where
-  BTCTag :: CurrencyTag BtcTx
-  ERGTag :: CurrencyTag ErgTx
+data CurrencyTxTag a where
+  BtcTxTag :: CurrencyTxTag BtcTx
+  ErgTxTag :: CurrencyTxTag ErgTx
 
-instance GEq CurrencyTag where
-  geq BTCTag BTCTag = Just Refl
-  geq ERGTag ERGTag = Just Refl
+instance GEq CurrencyTxTag where
+  geq BtcTxTag BtcTxTag = Just Refl
+  geq ErgTxTag ErgTxTag = Just Refl
   geq _      _      = Nothing
 
-instance GCompare CurrencyTag where
-  gcompare BTCTag BTCTag = GEQ
-  gcompare ERGTag ERGTag = GEQ
-  gcompare BTCTag ERGTag = GGT
-  gcompare ERGTag BTCTag = GLT
+instance GCompare CurrencyTxTag where
+  gcompare BtcTxTag BtcTxTag = GEQ
+  gcompare ErgTxTag ErgTxTag = GEQ
+  gcompare BtcTxTag ErgTxTag = GGT
+  gcompare ErgTxTag BtcTxTag = GLT
 
-currencyTagToCurrency :: CurrencyTag a -> Currency
-currencyTagToCurrency BTCTag = BTC
-currencyTagToCurrency ERGTag = ERGO
+currencyTxTagToCurrency :: CurrencyTxTag a -> Currency
+currencyTxTagToCurrency BtcTxTag = BTC
+currencyTxTagToCurrency ErgTxTag = ERGO
 
-type CurrencyPubStorages = DMap CurrencyTag CurrencyPubStorage
+type CurrencyPubStorages = DMap CurrencyTxTag CurrencyPubStorage
 
 instance ToJSON CurrencyPubStorages where
   toJSON dmap = object $ flip fmap (DM.assocs dmap) $ \case
-    (BTCTag :=> v) -> "btc" .= toJSON v
-    (ERGTag :=> v) -> "erg" .= toJSON v
+    (BtcTxTag :=> v) -> "btc" .= toJSON v
+    (ErgTxTag :=> v) -> "erg" .= toJSON v
 
 instance FromJSON CurrencyPubStorages where
-  parseJSON = withObject "DMap CurrencyTag CurrencyPubStorage" $ \o -> do
+  parseJSON = withObject "DMap CurrencyTxTag CurrencyPubStorage" $ \o -> do
     mbtc <- o .:? "btc"
     merg <- o .:? "erg"
     pure $ DM.fromList $ catMaybes $ [
-        (:=>) BTCTag <$> mbtc
-      , (:=>) ERGTag <$> merg
+        (:=>) BtcTxTag <$> mbtc
+      , (:=>) ErgTxTag <$> merg
       ]
 
 data PubStorage = PubStorage {

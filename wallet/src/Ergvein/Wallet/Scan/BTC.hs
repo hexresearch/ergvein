@@ -128,7 +128,7 @@ scanInternalAddressesByE = performEvent . fmap (scanInternalAddresses startKeyIn
 -- scanInternalAddresses currencyPubStorage = do
 --   let startKeyIndex = 0
 --   newKeystore <- scanInternalAddressesLoop currencyPubStorage startKeyIndex 0
---   pure $ BTCTag :=> newKeystore
+--   pure $ BtcTxTag :=> newKeystore
 
 scanInternalAddresses :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => Int -> Int -> CurrencyPubStorage BtcTx -> m (CurrencyPubStorage BtcTx)
 scanInternalAddresses keyIndex gap currencyPubStorage

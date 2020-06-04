@@ -65,25 +65,25 @@ accountDiscovery = do
 -- Returns event with updated PubStorage as a result.
 scan :: MonadFront t m => CurrencyPubStorages -> [Currency] -> m (Event t CurrencyPubStorages)
 scan currencyPubStorages activeCurrencies = do
-  scanEvents <- traverse (applyScan currencyPubStorages) activeCurrencies -- [Event t (DSum CurrencyTag CurrencyPubStorage)]
-  let scanEvents' = map (fmap $ DM.fromList . (:[])) scanEvents -- [Event t (DMap CurrencyTag CurrencyPubStorage)]
-      scanEvents'' = mergeWith DM.union scanEvents' -- Event t (DMap CurrencyTag CurrencyPubStorage)
+  scanEvents <- traverse (applyScan currencyPubStorages) activeCurrencies -- [Event t (DSum CurrencyTxTag CurrencyPubStorage)]
+  let scanEvents' = map (fmap $ DM.fromList . (:[])) scanEvents -- [Event t (DMap CurrencyTxTag CurrencyPubStorage)]
+      scanEvents'' = mergeWith DM.union scanEvents' -- Event t (DMap CurrencyTxTag CurrencyPubStorage)
   scannedCurrencyPubStoragesD <- foldDyn DM.union DM.empty scanEvents''
   let finishedE = flip push (updated scannedCurrencyPubStoragesD) $ \updatedCurrencyPubStorage -> do
         pure $ if DM.size updatedCurrencyPubStorage == length activeCurrencies then Just $ updatedCurrencyPubStorage else Nothing
   pure finishedE
 
 -- | Applies scan for a certain currency then returns event with result.
-applyScan :: MonadFront t m => CurrencyPubStorages -> Currency -> m (Event t (DSum CurrencyTag CurrencyPubStorage))
+applyScan :: MonadFront t m => CurrencyPubStorages -> Currency -> m (Event t (DSum CurrencyTxTag CurrencyPubStorage))
 applyScan currencyPubStorages currency = case currency of
-  BTC -> case DM.lookup BTCTag currencyPubStorages of
+  BTC -> case DM.lookup BtcTxTag currencyPubStorages of
     Nothing -> err
     Just currencyPubStorage -> do
       scanE <- scanBTC currencyPubStorage
-      pure $ (BTCTag :=>) <$> scanE
-  ERGO -> case DM.lookup ERGTag currencyPubStorages of
+      pure $ (BtcTxTag :=>) <$> scanE
+  ERGO -> case DM.lookup ErgTxTag currencyPubStorages of
     Nothing -> err
     Just currencyPubStorage -> do
       scanE <- scanERG currencyPubStorage
-      pure $ (ERGTag :=>) <$> scanE
+      pure $ (ErgTxTag :=>) <$> scanE
   where err = fail $ "Could not find " ++ (T.unpack $ currencyName currency) ++ " in public storage"

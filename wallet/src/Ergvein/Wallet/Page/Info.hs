@@ -47,8 +47,8 @@ infoPage cur = wrapper (InfoTitle cur) (Just $ pure $ infoPage cur) False $ divC
 
   pubStorage <- getPubStorage
   let masterPKeyMb = case cur of
-        BTC -> getMasterPKeyMb BTCTag pubStorage
-        ERGO -> getMasterPKeyMb ERGTag pubStorage
+        BTC -> getMasterPKeyMb BtcTxTag pubStorage
+        ERGO -> getMasterPKeyMb ErgTxTag pubStorage
       partsPKey = T.chunksOf 20 $ fromMaybe "" masterPKeyMb
   textLabel MasterPubKey $ mapM_ (\v -> text v >> br) partsPKey
   pure ()
@@ -56,7 +56,7 @@ infoPage cur = wrapper (InfoTitle cur) (Just $ pure $ infoPage cur) False $ divC
     egvXPubExport key = case key of
       BtcXPubKey k _ -> xPubExport (getCurrencyNetwork BTC) k
       ErgXPubKey k _ -> xPubExport (getCurrencyNetwork ERGO) k
-    getMasterPKeyMb :: CurrencyTag tx -> PubStorage -> Maybe Base58
+    getMasterPKeyMb :: CurrencyTxTag tx -> PubStorage -> Maybe Base58
     getMasterPKeyMb curTag pubStorage = egvXPubExport . pubKeystore'master . _currencyPubStorage'pubKeystore
         <$> DM.lookup curTag (_pubStorage'currencyPubStorages pubStorage)
 

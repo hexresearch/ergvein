@@ -51,7 +51,7 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
-import Ergvein.Wallet.Node hiding (CurrencyTag(..))
+import Ergvein.Wallet.Node
 import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Settings (Settings(..), storeSettings, defaultIndexers)
 import Ergvein.Wallet.Storage.Util
@@ -300,10 +300,10 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
     currMap <- fmap (_pubStorage'currencyPubStorages . _storage'pubStorage . _authInfo'storage) $ readExternalRef =<< asks env'authRef
     case cur of
       -- TODO: generate new address here if getAddr returns Nothing
-      BTC -> maybe (fail "NOT IMPLEMENTED") pure (getAddr BTCTag i currMap)
-      ERGO -> maybe (fail "NOT IMPLEMENTED") pure (getAddr ERGTag i currMap)
+      BTC -> maybe (fail "NOT IMPLEMENTED") pure (getAddr BtcTxTag i currMap)
+      ERGO -> maybe (fail "NOT IMPLEMENTED") pure (getAddr ErgTxTag i currMap)
     where
-      getAddr :: CurrencyTag tx -> Int -> CurrencyPubStorages -> Maybe Base58
+      getAddr :: CurrencyTxTag tx -> Int -> CurrencyPubStorages -> Maybe Base58
       getAddr curTag i currMap = case mXPubKey of
         Nothing -> Nothing
         Just (EgvExternalKeyBox (BtcXPubKey key _) _ _) -> Just $ xPubExport (getCurrencyNetwork cur) key
@@ -326,10 +326,10 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   addTxToPubStorage txE = do
     authRef <- asks env'authRef
     performFork_ $ ffor txE $ \(txid, etx) -> case etx of
-      BtcTx tx -> modifyExternalRef_ authRef $ addTx BTCTag tx txid
-      ErgTx tx -> modifyExternalRef_ authRef $ addTx ERGTag tx txid
+      BtcTx tx -> modifyExternalRef_ authRef $ addTx BtcTxTag tx txid
+      ErgTx tx -> modifyExternalRef_ authRef $ addTx ErgTxTag tx txid
     where
-      addTx :: CurrencyTag tx -> tx -> TxId -> AuthInfo -> AuthInfo
+      addTx :: CurrencyTxTag tx -> tx -> TxId -> AuthInfo -> AuthInfo
       addTx curTag tx txid authInfo = authInfo & authInfo'storage
         . storage'pubStorage
         . pubStorage'currencyPubStorages
@@ -345,26 +345,26 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
     performFork_ $ ffor reqE $ \(cur, i, label) -> modifyExternalRefMaybe_ authRef $ \ai ->
       let f kb = kb {extKeyBox'key = updateKeyLabel label $ extKeyBox'key kb}
       in case cur of
-        BTC -> updateKeyBoxWith BTCTag i f ai
-        ERGO -> updateKeyBoxWith ERGTag i f ai
+        BTC -> updateKeyBoxWith BtcTxTag i f ai
+        ERGO -> updateKeyBoxWith ErgTxTag i f ai
 
   setFlagToExtPubKey reqE = do
     authRef <- asks env'authRef
     performFork_ $ ffor reqE $ \(cur, i) -> modifyExternalRefMaybe_ authRef $ \ai ->
       let f kb = kb {extKeyBox'manual = True}
       in case cur of
-        BTC -> updateKeyBoxWith BTCTag i f ai
-        ERGO -> updateKeyBoxWith ERGTag i f ai
+        BTC -> updateKeyBoxWith BtcTxTag i f ai
+        ERGO -> updateKeyBoxWith ErgTxTag i f ai
 
   insertTxsInPubKeystore reqE = do
     authRef <- asks env'authRef
     performFork_ $ ffor reqE $ \(cur, i, txids) -> modifyExternalRefMaybe_ authRef $ \ai ->
       let f = \kb -> kb {extKeyBox'txs = S.union (extKeyBox'txs kb) $ S.fromList txids}
       in case cur of
-        BTC -> updateKeyBoxWith BTCTag i f ai
-        ERGO -> updateKeyBoxWith ERGTag i f ai
+        BTC -> updateKeyBoxWith BtcTxTag i f ai
+        ERGO -> updateKeyBoxWith ErgTxTag i f ai
 
-updateKeyBoxWith :: CurrencyTag a -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> AuthInfo -> Maybe AuthInfo
+updateKeyBoxWith :: CurrencyTxTag a -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> AuthInfo -> Maybe AuthInfo
 updateKeyBoxWith curTag i f ai =
   let mk = ai ^.
           authInfo'storage

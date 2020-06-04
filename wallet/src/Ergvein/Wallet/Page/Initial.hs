@@ -95,7 +95,7 @@ generateMissingPrvKeys (authInfo, pass) = do
         currencyPrvStorages = view prvStorage'currencyPrvStorages decryptedPrvStorage
         currencyPubStorages = view (authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages) authInfo
         pubKeysNumber = M.fromList $ map counteKeys $ DM.toList currencyPubStorages
-        counteKeys (currencyTag DM.:=> currencyPubStorage) = (currencyTagToCurrency currencyTag, (
+        counteKeys (currencyTxTag DM.:=> currencyPubStorage) = (currencyTxTagToCurrency currencyTxTag, (
              V.length $ pubKeystore'external (view currencyPubStorage'pubKeystore currencyPubStorage),
              V.length $ pubKeystore'internal (view currencyPubStorage'pubKeystore currencyPubStorage)
            ))

@@ -79,10 +79,10 @@ createPubKeystore masterPubKey =
       internalKeys = V.unfoldrN initialInternalAddressCount intGen 0
   in PubKeystore masterPubKey externalKeys internalKeys
 
-createCurrencyPubStorage :: EgvRootXPrvKey -> Currency -> DSum CurrencyTag CurrencyPubStorage
+createCurrencyPubStorage :: EgvRootXPrvKey -> Currency -> DSum CurrencyTxTag CurrencyPubStorage
 createCurrencyPubStorage rootPrvKey currency = case currency of
-  BTC -> BTCTag :=> CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey rootPrvKey currency) M.empty
-  ERGO -> ERGTag :=> CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey rootPrvKey currency) M.empty
+  BTC -> BtcTxTag :=> CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey rootPrvKey currency) M.empty
+  ERGO -> ErgTxTag :=> CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey rootPrvKey currency) M.empty
 
 createPubStorage :: EgvRootXPrvKey -> [Currency] -> PubStorage
 createPubStorage rootPrvKey activeCurrencies = PubStorage rootPubKey currencyPubStorages activeCurrencies
