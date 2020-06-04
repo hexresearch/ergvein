@@ -72,40 +72,38 @@ infoWorker = do
           in pure $ (u,) $ Just $ IndexerInfo curmap $ diffUTCTime t1 t0
     writeExternalRef indexerInfoRef $ M.fromList ress_-}
 
-groupMapBy :: Ord k => (v -> k) -> [v] -> M.Map k [v]
-groupMapBy keySelector = M.fromListWith (++) . fmap (\v-> (keySelector v , [v]))
-
 type PeerScanInfoMap = M.Map Currency (BlockHeight, BlockHeight) -- (scanned, actual)
 
-extendWithNewPeers :: forall t m . MonadFront t m => Int -> (M.Map BaseUrl PeerScanInfoMap) -> [BaseUrl] -> S.Set BaseUrl -> m [BaseUrl]
-extendWithNewPeers n start discovered toAvoid  = do
-  go start discovered
+extendWithNewPeers :: forall t m . MonadFront t m => Int -> [BaseUrl] -> (M.Map BaseUrl PeerScanInfoMap) -> m [BaseUrl]
+extendWithNewPeers targetAmount newPeers initial = do
+  go newPeers initial
   where
-    go :: M.Map BaseUrl PeerScanInfoMap -> [BaseUrl] -> m [BaseUrl]
-    go acc disc
-      | length acc == n || disc == [] = 
+    go :: [BaseUrl] -> M.Map BaseUrl PeerScanInfoMap ->  m [BaseUrl]
+    go newPeersRem acc
+      | length acc == targetAmount || null newPeersRem = 
         pure $ M.keys acc
       | otherwise = do
-        let needed = n - length acc
-            available = length disc
-            (neededUrls, xs) = splitAt (min needed available) disc
-        r <- peersInfo neededUrls
-        let rupd = acc `M.union` mempty
-            med = median $ M.elems rupd
-            i =  all (sf med) rupd
+        let needed = targetAmount - length acc
+            available = length newPeersRem
+            (peers, newPeersRem') = splitAt (min needed available) newPeersRem
+        peersInfo <- peersInfo peers
+        let newAcc = acc `M.union` peersInfo
+            median = medianScanInfoMap $ M.elems newAcc
+            filteredToMedianNewAcc =  M.filter (matchMedian median) newAcc
+        go newPeersRem' filteredToMedianNewAcc
 
-        go rupd xs
-    sf :: PeerScanInfoMap -> PeerScanInfoMap-> Bool
-    sf a b = all (\x -> f (a  M.! x  ) (b M.! x)) $ M.keys a
+    matchMedian :: PeerScanInfoMap -> PeerScanInfoMap -> Bool
+    matchMedian peer median = all (\currency -> predicate (peer M.! currency) (median M.! currency)) $ M.keys peer
       where
-        f (sh, ah) (shm, ahm)= sh >= shm && ah == shm 
-    median :: [PeerScanInfoMap] -> PeerScanInfoMap
-    median arr = let
-      in bimap median' median' . munzip <$> M.unionsWith (<>) (fmap pure <$> arr)
+        predicate (peerScannedHeight, peerActualHeight) (medianScannedHeight, medianActualHeight) =
+          peerScannedHeight >= medianScannedHeight && peerActualHeight == medianActualHeight
+
+    medianScanInfoMap :: [PeerScanInfoMap] -> PeerScanInfoMap
+    medianScanInfoMap infos = let
+      in bimap median' median' . munzip <$> M.unionsWith (<>) (fmap pure <$> infos)
       where
         median' :: V.Vector BlockHeight -> BlockHeight
-        median' a =  a V.! length a `div` 2
-    mapping = M.fromList . fmap (\(ScanProgressItem cur sh ah) -> (cur, (sh, ah))). infoScanProgress
+        median' v =  v V.! length v `div` 2
 
     peersInfo :: MonadFront t m  => [BaseUrl] -> m (M.Map BaseUrl PeerScanInfoMap)
     peersInfo urls = do
