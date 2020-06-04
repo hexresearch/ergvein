@@ -356,6 +356,15 @@ passwordCss = do
     justifyContent center
     paddingLeft $ pct 25
     paddingRight $ pct 25
+  ".ask-pattern-modal" ? do
+    position absolute
+    top $ px 0
+    left $ px 0
+    width $ vw 100
+    height $ vh 100
+    zIndex 1
+    backgroundColor white
+    justifyContent center
 
 initialPageCss :: Css
 initialPageCss = do

@@ -17,12 +17,14 @@ import Ergvein.Text
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Localization.Password
+import Ergvein.Wallet.Localization.PatternKey
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Validate
 
 import Reflex.Dom
+import Reflex.Localize
 
 import qualified Data.Text as T
 import qualified Data.Map.Strict as Map
@@ -59,6 +61,23 @@ askPasswordModal = mdo
     Just i -> divClass "ask-password-modal" $ (fmap . fmap) ((i,) . Just) askPassword
     Nothing -> pure never
   performEvent_ $ (liftIO . fire) <$> passE
+
+askPattern2 :: MonadFrontBase t m => Text -> m (Event t Password)
+askPattern2 name = divClass "ask-pattern" $ form $ fieldset $ mdo
+  pD <- patternAskWidget
+  pDE <- delay 0.2 (updated pD)
+  pure pDE
+
+askPatternModal2 :: MonadFrontBase t m => m ()
+askPatternModal2 = mdo
+  goE  <- fmap fst getPasswordModalEF
+  fire <- fmap snd getPasswordSetEF
+  let redrawE = leftmost [Just <$> goE, Nothing <$ passE]
+  passE <- fmap (switch . current) $ widgetHold (pure never) $ ffor redrawE $ \case
+    Just i -> divClass "ask-pattern-modal" $ (fmap . fmap) ((i,) . Just) $ askPattern2 ""
+    Nothing -> pure never
+  performEvent_ $ (liftIO . fire) <$> passE
+
 
 #ifdef ANDROID
 
@@ -102,7 +121,9 @@ askPatternModal = mdo
   fire <- fmap snd getPasswordSetEF
   let redrawE = leftmost [Just <$> goE, Nothing <$ passE]
   passE <- fmap (switch . current) $ widgetHold (pure never) $ ffor redrawE $ \case
-    Just i -> divClass "ask-pattern-modal" $ (fmap . fmap) ((i,) . Just) $ askPattern ""
+    Just i -> divClass "ask-pattern-modal" $ (fmap . fmap) ((i,) . Just) $ do
+      localizedText PKSAsk
+      askPattern ""
     Nothing -> pure never
   performEvent_ $ (liftIO . fire) <$> passE
 
