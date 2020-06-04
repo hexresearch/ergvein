@@ -21,5 +21,5 @@ class (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t m | m -> t where
   storeWallet            :: Event t () -> m ()
   addTxToPubStorage      :: Event t (TxId, EgvTx) -> m ()
   setLabelToExtPubKey    :: Event t (Currency, Int, Text) -> m ()
-  setFlagToExtPubKey     :: Event t (Currency, Int) -> m ()
+  setFlatToExtPubKey     :: Event t (Currency, Int) -> m ()
   insertTxsInPubKeystore :: Event t (Currency, Int, [TxId]) -> m ()

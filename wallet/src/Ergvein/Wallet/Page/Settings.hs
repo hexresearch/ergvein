@@ -36,7 +36,6 @@ import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Widget.GraphPinCode
 import Ergvein.Wallet.Wrapper
 
-import qualified Data.Dependent.Map as DM
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as S
 
@@ -119,20 +118,23 @@ currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do
     currListE <- fmap switchDyn $ widgetHoldDyn $ ffor activeCursD $ \currs ->
       selectCurrenciesWidget $ S.toList currs
     uac currListE
-    updateAE <- withWallet $ ffor currListE $ \curs prvStorage -> do
+    updateAE <- withWallet $ ffor currListE $ \curs prvStr -> do
         auth <- sample . current $ authD
         let authNew = auth & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
             difC = curs \\ (_pubStorage'activeCurrencies ps)
-            rootPrvKey = _prvStorage'rootPrvKey prvStorage
-            mL = DM.fromList $ map (createCurrencyPubStorage rootPrvKey) difC
-            authN2 = authNew & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages %~ (DM.union mL)
+            mL = Map.fromList [
+                    (currency, CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency) (Map.fromList [])) |
+                    currency <- difC ]
+            authN2 = authNew & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages %~ (Map.union mL)
         pure $ Just $ authN2
     setAuthInfoE <- setAuthInfo updateAE
     storeWallet (void $ updated authD)
     showSuccessMsg $ STPSSuccess <$ setAuthInfoE
     pure ()
     where
-      uac cE = updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ cE
+      uac cE =  updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ cE
+
+
 
 unitsPage :: MonadFront t m => m ()
 unitsPage = wrapper STPSTitle (Just $ pure unitsPage) True $ mdo
@@ -170,6 +172,7 @@ unitsPage = wrapper STPSTitle (Just $ pure unitsPage) True $ mdo
       fmap updated $ holdUniqDyn selD
 
     getSettingsUnits = fromMaybe defUnits . settingsUnits
+
 
 portfolioPage :: MonadFront t m => m ()
 portfolioPage = wrapper STPSTitle (Just $ pure currenciesPage) True $ do

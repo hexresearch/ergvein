@@ -31,8 +31,6 @@ library
     , cereal
     , containers                >= 0.6      && < 0.7
     , cryptonite                >= 0.25     && < 0.26
-    , dependent-map             >= 0.3
-    , dependent-sum             >= 0.6
     , ergvein-common
     , ergvein-crypto
     , flat
@@ -50,8 +48,6 @@ library
   default-extensions:
     DeriveAnyClass
     DeriveGeneric
-    FlexibleInstances
-    GADTs
     LambdaCase
     OverloadedStrings
     RecordWildCards

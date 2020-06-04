@@ -40,7 +40,7 @@ requestBTCBlocks reqE = mdo
     Nothing -> pure never
     Just (cm, req) -> do
       buildE <- getPostBuild
-      case DM.lookup BtcTag cm of
+      case DM.lookup BTCTag cm of
         Nothing -> pure $ RANoNode req <$ buildE
         Just btcsMap -> case M.elems btcsMap of
           [] -> pure $ RANoNode req <$ buildE

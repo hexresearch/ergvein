@@ -8,11 +8,6 @@ import Crypto.Error
 import Data.Aeson
 import Data.ByteArray (convert, Bytes)
 import Data.ByteString (ByteString)
-import Data.Dependent.Map (DMap, DSum((:=>)))
-import Data.GADT.Compare
-import Data.GADT.Show
-import Data.Map.Strict (Map)
-import Data.Maybe
 import Data.Proxy
 import Data.Text
 import Ergvein.Aeson
@@ -22,8 +17,7 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Transaction
 import Network.Haskoin.Keys
 
-import qualified Data.Dependent.Map as DM
-import qualified Text.Read          as R
+import qualified Data.Map.Strict as M
 
 type WalletName = Text
 
@@ -37,7 +31,7 @@ makeLenses ''CurrencyPrvStorage
 
 $(deriveJSON aesonOptionsStripToApostroph ''CurrencyPrvStorage)
 
-type CurrencyPrvStorages = Map Currency CurrencyPrvStorage
+type CurrencyPrvStorages = M.Map Currency CurrencyPrvStorage
 
 data PrvStorage = PrvStorage {
     _prvStorage'seed                :: Seed
@@ -84,55 +78,22 @@ instance FromJSON EncryptedPrvStorage where
       Nothing -> fail "failed to read iv"
       Just iv' -> pure $ EncryptedPrvStorage ciphertext salt iv'
 
-data CurrencyPubStorage tx = CurrencyPubStorage {
+data CurrencyPubStorage = CurrencyPubStorage {
     _currencyPubStorage'pubKeystore  :: PubKeystore
-  , _currencyPubStorage'transactions :: Map TxId tx
+  , _currencyPubStorage'transactions :: M.Map TxId EgvTx
   } deriving (Eq, Show, Read)
 
 makeLenses ''CurrencyPubStorage
 
 $(deriveJSON aesonOptionsStripToApostroph ''CurrencyPubStorage)
 
-data CurrencyTxTag a where
-  BtcTxTag :: CurrencyTxTag BtcTx
-  ErgTxTag :: CurrencyTxTag ErgTx
-
-instance GEq CurrencyTxTag where
-  geq BtcTxTag BtcTxTag = Just Refl
-  geq ErgTxTag ErgTxTag = Just Refl
-  geq _      _      = Nothing
-
-instance GCompare CurrencyTxTag where
-  gcompare BtcTxTag BtcTxTag = GEQ
-  gcompare ErgTxTag ErgTxTag = GEQ
-  gcompare BtcTxTag ErgTxTag = GGT
-  gcompare ErgTxTag BtcTxTag = GLT
-
-currencyTxTagToCurrency :: CurrencyTxTag a -> Currency
-currencyTxTagToCurrency BtcTxTag = BTC
-currencyTxTagToCurrency ErgTxTag = ERGO
-
-type CurrencyPubStorages = DMap CurrencyTxTag CurrencyPubStorage
-
-instance ToJSON CurrencyPubStorages where
-  toJSON dmap = object $ flip fmap (DM.assocs dmap) $ \case
-    (BtcTxTag :=> v) -> "btc" .= toJSON v
-    (ErgTxTag :=> v) -> "erg" .= toJSON v
-
-instance FromJSON CurrencyPubStorages where
-  parseJSON = withObject "DMap CurrencyTxTag CurrencyPubStorage" $ \o -> do
-    mbtc <- o .:? "btc"
-    merg <- o .:? "erg"
-    pure $ DM.fromList $ catMaybes $ [
-        (:=>) BtcTxTag <$> mbtc
-      , (:=>) ErgTxTag <$> merg
-      ]
+type CurrencyPubStorages = M.Map Currency CurrencyPubStorage
 
 data PubStorage = PubStorage {
     _pubStorage'rootPubKey          :: EgvRootXPubKey
   , _pubStorage'currencyPubStorages :: CurrencyPubStorages
   , _pubStorage'activeCurrencies    :: [Currency]
-  }
+  } deriving (Eq, Show, Read)
 
 makeLenses ''PubStorage
 

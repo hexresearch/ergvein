@@ -59,9 +59,9 @@ library
         Ergvein.Wallet.Localization.Client
         Ergvein.Wallet.Localization.Currencies
         Ergvein.Wallet.Localization.Currency
-        Ergvein.Wallet.Localization.History
         Ergvein.Wallet.Localization.Info
         Ergvein.Wallet.Localization.Initial
+        Ergvein.Wallet.Localization.History
         Ergvein.Wallet.Localization.Native
         Ergvein.Wallet.Localization.Network
         Ergvein.Wallet.Localization.Password
@@ -120,8 +120,6 @@ library
         Ergvein.Wallet.Platform
         Ergvein.Wallet.Resize
         Ergvein.Wallet.Scan
-        Ergvein.Wallet.Scan.BTC
-        Ergvein.Wallet.Scan.ERGO
         Ergvein.Wallet.Settings
         Ergvein.Wallet.Share
         Ergvein.Wallet.Storage
@@ -132,8 +130,7 @@ library
         Ergvein.Wallet.Style
         Ergvein.Wallet.Sync.Status
         Ergvein.Wallet.Sync.Widget
-        Ergvein.Wallet.Tx.BTC
-        Ergvein.Wallet.Tx.ERGO
+        Ergvein.Wallet.Tx
         Ergvein.Wallet.Util
         Ergvein.Wallet.Validate
         Ergvein.Wallet.Widget.GraphPinCode

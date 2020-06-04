@@ -70,8 +70,8 @@ networkPageWidget cur = do
 
     lineOption $ lineOptionNoEdit NPSSyncStatus servCurInfoD NPSSyncDescr
     lineOption $ widgetHoldDyn $ ffor conmapD $ \cm -> case cur of
-      BTC  -> btcNetworkWidget $ maybe [] M.elems $ DM.lookup BtcTag cm
-      ERGO -> ergNetworkWidget $ maybe [] M.elems $ DM.lookup ErgTag cm
+      BTC  -> btcNetworkWidget $ maybe [] M.elems $ DM.lookup BTCTag cm
+      ERGO -> ergNetworkWidget $ maybe [] M.elems $ DM.lookup ERGOTag cm
     void $ nextWidget $ ffor listE $ \cur -> Retractable {
         retractableNext = serversInfoPage cur
       , retractablePrev = Just (pure $ networkPage (Just cur))

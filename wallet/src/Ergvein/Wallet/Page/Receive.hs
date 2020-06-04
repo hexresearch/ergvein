@@ -24,20 +24,15 @@ import Ergvein.Wallet.Page.QRCode
 import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Wrapper
 
-import qualified Data.Dependent.Map.Lens as DM
-
 receivePage :: MonadFront t m => Currency -> m ()
 receivePage cur = do
   pubStoreD <- getPubStorageD
-  let keyD = case cur of
-        BTC -> ffor pubStoreD (getKey BtcTxTag)
-        ERGO -> ffor pubStoreD (getKey ErgTxTag)
+  let keyD = ffor pubStoreD $ \ps ->
+        (getLastUnusedKey . _currencyPubStorage'pubKeystore) =<< (ps ^. pubStorage'currencyPubStorages . at cur)
   widgetHoldDyn $ ffor keyD $ \case
     Nothing -> exceededGapLimit cur
     Just (i, key) -> receivePageWidget cur i key
   pure ()
-  where
-    getKey curTag ps = (getLastUnusedKey . _currencyPubStorage'pubKeystore) =<< (ps ^. pubStorage'currencyPubStorages . DM.dmat curTag)
 
 mockAddress :: Text
 mockAddress = "1BoatSLRHtKNngkdXEeobR76b53LETtpyT"
@@ -55,7 +50,7 @@ receivePageWidget cur i EgvExternalKeyBox{..} = wrapper (ReceiveTitle cur) (Just
     divClass "receive-buttons-wrapper" $ do
        newE  <- outlineButton RPSGenNew
        copyE <- outlineButton RPSCopy
-       setFlagToExtPubKey $ (cur, i) <$ newE
+       setFlatToExtPubKey $ (cur, i) <$ newE
        showInfoMsg =<< clipboardCopy (keyTxt <$ copyE)
     divClass "receive-adr" $ text $ "#" <> showt i <> ": " <> keyTxt
     divClass "label-block" $ do
