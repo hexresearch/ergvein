@@ -107,3 +107,4 @@ jobs:
         serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_ERGVEIN_SECRET }}
         packageName: org.ergvein.wallet
         releaseFile: android-release/release/android-app.aab
+        track: "internal"
