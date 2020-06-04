@@ -26,8 +26,8 @@ qrCodeWidget addr cur = divClass "qrcode-container" $ mdo
     canvasEl <- createCanvas cOpts
     rawJSCall (_element_raw canvasEl) $ drawGridT canvasW canvasH (qrcPerCanvas qrData canvasW)
     where
-      canvasH = 256
-      canvasW = 256
+      canvasH = 232
+      canvasW = 232
       cOpts = CanvasOptions canvasW canvasH "qrcode" "qrcode"
       qrData = qrcGen addr cur
 
