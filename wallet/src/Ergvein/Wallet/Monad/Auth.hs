@@ -344,50 +344,41 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   {-# INLINE getPubStorageD #-}
   setLabelToExtPubKey reqE = do
     authRef <- asks env'authRef
-    performFork_ $ ffor reqE $ \(cur, i, l) -> modifyExternalRefMaybe_ authRef $ \ai ->
-      let mk = ai ^.
-              authInfo'storage
-            . storage'pubStorage
-            . pubStorage'currencyPubStorages
-            . at cur
-            & \mcps -> case mcps of
-              Nothing -> Nothing
-              Just cps -> cps ^. currencyPubStorage'pubKeystore
-                & (\v -> (V.!?) (pubKeystore'external v) i)
-      in case mk of
-        Nothing -> Nothing
-        Just kb -> let kb' = kb {extKeyBox'key = updateKeyLabel l $ extKeyBox'key kb}
-          in Just $ ai & authInfo'storage
-              . storage'pubStorage
-              . pubStorage'currencyPubStorages
-              . at cur
-              %~ \mcps -> case mcps of
-                Nothing -> Nothing
-                Just cps -> Just $ cps & currencyPubStorage'pubKeystore
-                  %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
+    performFork_ $ ffor reqE $ \(cur, i, l) -> modifyExternalRefMaybe_ authRef $
+      updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'key = updateKeyLabel l $ extKeyBox'key kb}
+
   setFlatToExtPubKey reqE = do
     authRef <- asks env'authRef
-    performFork_ $ ffor reqE $ \(cur, i) -> modifyExternalRefMaybe_ authRef $ \ai ->
-      let mk = ai ^.
-              authInfo'storage
-            . storage'pubStorage
-            . pubStorage'currencyPubStorages
-            . at cur
-            & \mcps -> case mcps of
-              Nothing -> Nothing
-              Just cps -> cps ^. currencyPubStorage'pubKeystore
-                & (\v -> (V.!?) (pubKeystore'external v) i)
-      in case mk of
-        Nothing -> Nothing
-        Just kb -> let kb' = kb {extKeyBox'manual = True}
-          in Just $ ai & authInfo'storage
-              . storage'pubStorage
-              . pubStorage'currencyPubStorages
-              . at cur
-              %~ \mcps -> case mcps of
-                Nothing -> Nothing
-                Just cps -> Just $ cps & currencyPubStorage'pubKeystore
-                  %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
+    performFork_ $ ffor reqE $ \(cur, i) -> modifyExternalRefMaybe_ authRef $
+      updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'manual = True}
+
+  insertTxsInPubKeystore reqE = do
+    authRef <- asks env'authRef
+    performFork_ $ ffor reqE $ \(cur, i, txids) -> modifyExternalRefMaybe_ authRef $
+      updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'txs = S.union (extKeyBox'txs kb) $ S.fromList txids}
+
+updateKeyBoxWith :: Currency -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> AuthInfo -> Maybe AuthInfo
+updateKeyBoxWith cur i f ai =
+  let mk = ai ^.
+          authInfo'storage
+        . storage'pubStorage
+        . pubStorage'currencyPubStorages
+        . at cur
+        & \mcps -> case mcps of
+          Nothing -> Nothing
+          Just cps -> cps ^. currencyPubStorage'pubKeystore
+            & (\v -> (V.!?) (pubKeystore'external v) i)
+  in case mk of
+    Nothing -> Nothing
+    Just kb -> let kb' = f kb
+      in Just $ ai & authInfo'storage
+          . storage'pubStorage
+          . pubStorage'currencyPubStorages
+          . at cur
+          %~ \mcps -> case mcps of
+            Nothing -> Nothing
+            Just cps -> Just $ cps & currencyPubStorage'pubKeystore
+              %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
 
 updateKeyLabel :: Text -> EgvXPubKey -> EgvXPubKey
 updateKeyLabel l key = case key of

@@ -170,7 +170,7 @@ lineOptionNoEdit name valD descr = do
   labelHorSep
 
 lineOption :: MonadFront t m => m a -> m a
-lineOption = divClass "network-wrapper" . divClass "network-line ml-a mr-a"
+lineOption = divClass "network-wrapper" . divClass "network-line"
 
 nameOption, descrOption, descrOptionNoBR :: (MonadFront t m, LocalizedPrint a) => a -> m ()
 nameOption = divClass "network-name"    . localizedText

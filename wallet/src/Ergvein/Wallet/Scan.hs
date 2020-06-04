@@ -150,8 +150,11 @@ scanExternalAddresses currency currencyPubStorage = mdo
   getBlocksE <- logEvent "Blocks requested: " =<< requestBTCBlocks filterAddressE
   storedBlocksE <- storeMultipleBlocksByE getBlocksE
   storedTxHashesE <- storeMultipleBlocksTxHashesByE $ tagPromptlyDyn blocksD storedBlocksE
-  getTxsE <- getTxs $ attachPromptlyDynWith (\(_, key) blocks ->
-    (egvXPubKeyToEgvAddress key, blocks)) currentKeyD $ tagPromptlyDyn blocksD storedTxHashesE
+  getTxsE' <- getTxs $ attachPromptlyDynWith (\(i, key) blocks ->
+    (i, egvXPubKeyToEgvAddress key, blocks)) currentKeyD $ tagPromptlyDyn blocksD storedTxHashesE
+  let getTxsE = snd <$> getTxsE'
+  insertTxsInPubKeystore $ ffor getTxsE' $ \(i, txmap) -> (currency, i, M.keys txmap)
+  
   let noBlocksE = fforMaybe filterAddressE $ \case
         [] -> Just []
         _ -> Nothing
@@ -236,14 +239,15 @@ filterAddress :: MonadFront t m => Event t EgvAddress -> m (Event t [HB.BlockHas
 filterAddress addrE = performFork $ ffor addrE Filters.filterAddress
 
 -- | Gets transactions related to given address from given block list.
-getTxs :: MonadFront t m => Event t (EgvAddress, [HB.Block]) -> m (Event t (M.Map TxId EgvTx))
-getTxs = performEvent . fmap (uncurry getAddrTxsFromBlocks)
+getTxs :: MonadFront t m => Event t (AddressNum, EgvAddress, [HB.Block]) -> m (Event t (AddressNum, M.Map TxId EgvTx))
+getTxs = performFork . fmap getAddrTxsFromBlocks
 
 -- | Gets transactions related to given address from given block.
-getAddrTxsFromBlocks :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> [HB.Block] -> m (M.Map TxId EgvTx)
-getAddrTxsFromBlocks addr blocks = do
+getAddrTxsFromBlocks :: (MonadIO m, HasBlocksStorage m, PlatformNatives)
+  => (AddressNum, EgvAddress, [HB.Block]) -> m (AddressNum, M.Map TxId EgvTx)
+getAddrTxsFromBlocks (i, addr, blocks) = do
   txMaps <- traverse (getAddrTxsFromBlock addr) blocks
-  pure $ M.unions txMaps
+  pure $ (i,) $ M.unions txMaps
 
 getAddrTxsFromBlock :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> HB.Block -> m (M.Map TxId EgvTx)
 getAddrTxsFromBlock addr block = do

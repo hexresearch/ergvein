@@ -38,6 +38,7 @@ import Ergvein.Types.Transaction
 import Text.Read              (readMaybe)
 
 import qualified Data.IntMap.Strict as MI
+import qualified Data.Set as S
 import qualified Data.Vector as V
 
 -- | Parse a binary extended private key.
@@ -299,7 +300,7 @@ $(deriveJSON aesonOptionsStripToApostroph ''PrvKeystore)
 
 data EgvExternalKeyBox = EgvExternalKeyBox {
   extKeyBox'key    :: EgvXPubKey
-, extKeyBox'txs    :: Vector TxId
+, extKeyBox'txs    :: S.Set TxId
 , extKeyBox'manual :: Bool
 } deriving (Eq, Show, Read)
 
@@ -326,7 +327,7 @@ getLastUnusedKey (PubKeystore _ ext _) = go Nothing ext
     go :: Maybe (Int, EgvExternalKeyBox) -> Vector EgvExternalKeyBox -> Maybe (Int, EgvExternalKeyBox)
     go mk vec = if V.null vec then mk else let
       kb@(EgvExternalKeyBox _ txs m) = V.last vec
-      in if m || not (V.null txs)
+      in if m || not (S.null txs)
         then mk
         else go (Just (V.length vec - 1, kb)) $ V.init vec
 
