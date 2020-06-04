@@ -74,8 +74,13 @@ scannerBtc = void $ workflow waiting
       buildE <- getPostBuild
       ps <- getPubStorage
       let keys = getPublicKeys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "scannerBtc: not exsisting store!") . currencyPubStorage'pubKeystore
-      blocksE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses $ xPubToBtcAddr . extractXPubKeyFromEgv <$> keys
-
+      scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses $ xPubToBtcAddr . extractXPubKeyFromEgv <$> keys
+      let hashesE = V.toList . snd <$> scanE
+          heightE = fst <$> scanE
+      performFork_ $ writeScannedHeight BTC <$> heightE
+      blocksE <- logEvent "Blocks requested: " =<< requestBTCBlocks hashesE
+      storedBlocksE <- storeMultipleBlocksByE blocksE
+      storedTxHashesE <- storeMultipleBlocksTxHashesByE blocksE
       pure ((), never)
 
 -- | Loads current PubStorage, performs BIP44 account discovery algorithm and
