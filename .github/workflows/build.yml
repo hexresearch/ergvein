@@ -31,7 +31,7 @@ jobs:
 
     - name: Extract branch name
       shell: bash
-      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/} | sed -r 's/\/+/-/g')"
       id: extract_branch
       
     - name: Build and upload docker images 
@@ -107,3 +107,4 @@ jobs:
         serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_ERGVEIN_SECRET }}
         packageName: org.ergvein.wallet
         releaseFile: android-release/release/android-app.aab
+        track: "Internal Alpha"
