@@ -5,7 +5,6 @@ module Ergvein.Wallet.Page.Initial(
   , initialAuthedPage
   ) where
 
-
 import Control.Lens
 import Control.Monad.IO.Class
 import Ergvein.Types.AuthInfo
@@ -26,8 +25,9 @@ import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Wrapper
 
-import qualified Data.Map.Strict       as M
+import qualified Data.Dependent.Map    as DM
 import qualified Data.Map.Merge.Strict as MM
+import qualified Data.Map.Strict       as M
 import qualified Data.Vector           as V
 
 data GoPage = GoSeed | GoRestore
@@ -94,10 +94,11 @@ generateMissingPrvKeys (authInfo, pass) = do
       where
         currencyPrvStorages = view prvStorage'currencyPrvStorages decryptedPrvStorage
         currencyPubStorages = view (authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages) authInfo
-        pubKeysNumber = M.map (\currencyPubStorage -> (
-            V.length $ pubKeystore'external (view currencyPubStorage'pubKeystore currencyPubStorage),
-            V.length $ pubKeystore'internal (view currencyPubStorage'pubKeystore currencyPubStorage)
-          )) currencyPubStorages
+        pubKeysNumber = M.fromList $ map counteKeys $ DM.toList currencyPubStorages
+        counteKeys (currencyTxTag DM.:=> currencyPubStorage) = (currencyTxTagToCurrency currencyTxTag, (
+             V.length $ pubKeystore'external (view currencyPubStorage'pubKeystore currencyPubStorage),
+             V.length $ pubKeystore'internal (view currencyPubStorage'pubKeystore currencyPubStorage)
+           ))
         updatedPrvKeystore =
           MM.merge
           MM.dropMissing

@@ -43,10 +43,10 @@ addNodeConn :: NodeConn t -> ConnMap t -> ConnMap t
 addNodeConn nc cm = case nc of
   NodeConnBTC conn -> let
     u = nodeconUrl conn
-    in DM.insertWith M.union BTCTag (M.singleton u conn) cm
+    in DM.insertWith M.union BtcTag (M.singleton u conn) cm
   NodeConnERG conn -> let
     u = nodeconUrl conn
-    in DM.insertWith M.union ERGOTag (M.singleton u conn) cm
+    in DM.insertWith M.union ErgTag (M.singleton u conn) cm
 
 addMultipleConns :: Foldable f => ConnMap t -> f (NodeConn t) -> ConnMap t
 addMultipleConns = foldl' (flip addNodeConn)
@@ -56,8 +56,8 @@ getNodeConn t url cm = M.lookup url =<< DM.lookup t cm
 
 getAllConnByCurrency :: Currency -> ConnMap t -> Maybe (M.Map SockAddr (NodeConn t))
 getAllConnByCurrency cur cm = case cur of
-  BTC  -> (fmap . fmap) NodeConnBTC $ DM.lookup BTCTag cm
-  ERGO -> (fmap . fmap) NodeConnERG $ DM.lookup ERGOTag cm
+  BTC  -> (fmap . fmap) NodeConnBTC $ DM.lookup BtcTag cm
+  ERGO -> (fmap . fmap) NodeConnERG $ DM.lookup ErgTag cm
 
 removeNodeConn :: forall t a . CurrencyTag t a -> SockAddr -> ConnMap t -> ConnMap t
 removeNodeConn tag url cm = DM.adjust (M.delete url) tag cm
@@ -90,19 +90,19 @@ reinitNodes urls cs sel conMap = foldlM updCurr conMap $ M.toList cs
   where
     updCurr :: MonadBaseConstr t m => ConnMap t -> (Currency, Bool) -> m (ConnMap t)
     updCurr cm (cur, b) = case cur of
-      BTC -> case (DM.lookup BTCTag cm, b) of
+      BTC -> case (DM.lookup BtcTag cm, b) of
         (Nothing, True) -> do
           let conns0 = fromMaybe [] $ M.lookup BTC urls
           conns <- flip traverse conns0 $ \u -> fmap NodeConnBTC $ initBTCNode True u $ extractReq sel BTC u
           pure $ addMultipleConns cm conns
-        (Just _, False) -> pure $ DM.delete BTCTag cm
+        (Just _, False) -> pure $ DM.delete BtcTag cm
         _ -> pure cm
-      ERGO -> case (DM.lookup ERGOTag cm, b) of
+      ERGO -> case (DM.lookup ErgTag cm, b) of
         (Nothing, True) -> do
           let conns0 = fromMaybe [] $ M.lookup ERGO urls
           conns <- flip traverse conns0 $ \u -> fmap NodeConnERG $ initErgoNode u $ extractReq sel ERGO u
           pure $ addMultipleConns cm conns
-        (Just _, False) -> pure $ DM.delete ERGOTag cm
+        (Just _, False) -> pure $ DM.delete ErgTag cm
         _ -> pure cm
 
 -- Send a request to a node. Wait until the connection is up
@@ -127,11 +127,11 @@ requestRandomNode reqE = do
     cm  <- sampleDyn conMapD
     case req of
       NodeReqBTC{} -> do
-        let nodes = M.elems $ fromMaybe M.empty $ DM.lookup BTCTag cm
+        let nodes = M.elems $ fromMaybe M.empty $ DM.lookup BtcTag cm
         mn <- randomOne nodes
         pure $ fmap (\n -> ((nodeconUrl n, req), fmap NodeRespBTC $ nodeconRespE n)) mn
       NodeReqERGO{} -> do
-        let nodes = M.elems $ fromMaybe M.empty $ DM.lookup ERGOTag cm
+        let nodes = M.elems $ fromMaybe M.empty $ DM.lookup ErgTag cm
         mn <- randomOne nodes
         pure $ fmap (\n -> ((nodeconUrl n, req), fmap NodeRespERGO $ nodeconRespE n)) mn
   let reqE' = fmapMaybe id mreqE
