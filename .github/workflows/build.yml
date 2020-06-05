@@ -45,6 +45,10 @@ jobs:
     name: Build android platform
     runs-on: self-hosted
     steps:
+    
+    - name: Restore permissions on repo 
+      run: chown -R actions /home/actions/_work/ergvein/ergvein
+  
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
@@ -101,8 +105,12 @@ jobs:
         source /nix/var/nix/profiles/default/etc/profile.d/nix.sh
         ./release-android.sh
 
+    - name: Git-Crypt Lock 
+      run: git-crypt lock 
+    
     - name: Upload Android Release to Play Store
       uses: r0adkll/upload-google-play@v1.0.4
+      if: github.ref == 'refs/heads/master'
       with:
         serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_ERGVEIN_SECRET }}
         packageName: org.ergvein.wallet
