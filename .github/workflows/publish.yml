@@ -41,7 +41,7 @@ jobs:
     steps:
     
     - name: Restore permissions on repo 
-      run: chown -R actions /home/actions/_work/ergvein/ergvein
+      run: sudo chown -R actions /home/actions/_work/ergvein/ergvein
   
     - uses: actions/checkout@v2
       with:
