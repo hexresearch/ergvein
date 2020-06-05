@@ -56,6 +56,7 @@ currenciesList :: MonadFront t m => Text -> m ()
 currenciesList name = divClass "currency-content" $ do
   s <- getSettings
   ps <- getPubStorage
+  pubSD <- getPubStorageD
   historyE <- leftmost <$> traverse (currencyLine s) (_pubStorage'activeCurrencies ps)
   if (settingsPortfolio s)
     then portfolioWidget
@@ -69,6 +70,7 @@ currenciesList name = divClass "currency-content" $ do
     currencyLine settings cur = do
       (e, _) <- divClass' "currency-row" $ do
         bal <- currencyBalance cur
+        testBalancesGetting cur
         let setUs = getSettingsUnits settings
         divClass "currency-name"    $ text $ currencyName cur
         divClass "currency-balance" $ do
@@ -77,6 +79,15 @@ currenciesList name = divClass "currency-content" $ do
           elClass "span" "currency-arrow" $ text "〉"
       pure $ cur <$ domEvent Click e
     getSettingsUnits = fromMaybe defUnits . settingsUnits
+
+testBalancesGetting :: MonadFront t m => Currency -> m ()
+testBalancesGetting cur = do
+  ps <- getPubStorage
+  pubSD <- getPubStorageD
+  widgetHold (testPub ps) $ ffor (updated pubSD) $ \pbs -> testPub pbs
+  pure ()
+  where
+    testPub pubS = divClass "test" $ text $ showt $ _currencyPubStorage'transactions <$> Map.lookup cur (_pubStorage'currencyPubStorages pubS)
 
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
 currencyBalance cur = pure $ pure $ Money cur 0
