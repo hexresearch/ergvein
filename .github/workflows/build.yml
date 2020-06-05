@@ -1,4 +1,4 @@
-name: Main
+name: Build all
 on:
   push:
     branches: [ master ]
@@ -29,26 +29,11 @@ jobs:
     - name: Build desktop wallet
       run: nix-build -A ghc.ergvein-wallet
 
-    - name: Extract branch name
-      shell: bash
-      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/} | sed -r 's/\/+/-/g')"
-      id: extract_branch
-      
-    - name: Build and upload docker images 
-      run: cd nix && ./ci-build-docker.sh
-      env:
-        DOCKER_USERNAME: ergvein
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-        GITHUB_BRANCH: ${{ steps.extract_branch.outputs.branch }}
-
   build-android:
     name: Build android platform
     runs-on: self-hosted
     steps:
-    
-    - name: Restore permissions on repo 
-      run: chown -R actions /home/actions/_work/ergvein/ergvein
-  
+      
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
@@ -91,28 +76,10 @@ jobs:
       with:
         name: ergvein
         signingKey: ${{ secrets.CACHIX_KEY }}
-
-    - name: Git-Crypt Unlock
-      uses: zemuldo/git-crypt-unlock@v2.0
-      env: 
-        GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-        GPG_KEY_GRIP: ${{ secrets.GPG_KEY_GRIP }}
-        GPG_KEY_PASS: ${{ secrets.GPG_KEY_PASS }}
       
     - name: Build android wallet 
       run: |  
         source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh 
         source /nix/var/nix/profiles/default/etc/profile.d/nix.sh
-        ./release-android.sh
+        ./make-android.sh
 
-    - name: Git-Crypt Lock 
-      run: git-crypt lock 
-    
-    - name: Upload Android Release to Play Store
-      uses: r0adkll/upload-google-play@v1.0.4
-      if: github.ref == 'refs/heads/master'
-      with:
-        serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_ERGVEIN_SECRET }}
-        packageName: org.ergvein.wallet
-        releaseFile: android-release/release/android-app.aab
-        track: "Internal Alpha"
