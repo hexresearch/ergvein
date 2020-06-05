@@ -8,6 +8,7 @@ import Control.Monad.Reader
 import Data.List.Split
 import Data.Time
 import Data.List
+import Data.Maybe
 import Network.HTTP.Client(Manager)
 import Reflex.ExternalRef
 import Servant.Client
@@ -43,7 +44,6 @@ infoWorker = do
   refreshE        <- fst <$> getIndexerInfoEF
   te <- void <$> tickLossyFromPostBuildTime infoWorkerInterval
   let goE = leftmost [void te, refreshE, buildE]
-  let chunkN = 3  -- Number of concurrent request threads
   activeUrlsRef   <- getActiveUrlsRef
   inactiveUrlsRef <- getInactiveUrlsRef
   archivedUrlsRef <- getArchivedUrlsRef
@@ -55,11 +55,14 @@ infoWorker = do
     mng <- getClientManager
     knownPeersResult <- fmap rights . (`runReaderT` mng) $ mapM (`getKnownPeersEndpoint` KnownPeersReq False) $ M.keys activeUrls
     let fetchedUrls = S.fromList $ fromJust . parseBaseUrl <$> (knownPeersList =<< knownPeersResult)
-        filtered = fetchedUrls S.\\ inactiveUrls S.\\ archivedUrls
+        filtered = M.keysSet activeUrls `S.union` fetchedUrls S.\\ inactiveUrls S.\\ archivedUrls
     
     shFiltered <- liftIO $ shuffleM $ S.toList filtered
 
-    r <- extendWithNewPeers 16 shFiltered
+    let min = 2
+        max = 16
+    
+    (newNetwork, networkInfoMap) <- indexersNetwork max shFiltered
     
     pure ()
     {-urlChunks <- chunksOf chunkN . M.keys <$> readExternalRef indexerInfoRef
@@ -77,24 +80,27 @@ infoWorker = do
           in pure $ (u,) $ Just $ IndexerInfo curmap $ diffUTCTime t1 t0
     writeExternalRef indexerInfoRef $ M.fromList ress_-}
 
-extendWithNewPeers :: forall m . HasClientManager m => Int -> [BaseUrl] -> m (M.Map BaseUrl IndexerInfo)
-extendWithNewPeers targetAmount newPeers =
-  go newPeers mempty
+indexersNetwork :: forall m . HasClientManager m => Int -> [BaseUrl] -> m (M.Map BaseUrl IndexerInfo, [BaseUrl])
+indexersNetwork targetAmount peers =
+  go peers mempty mempty
   where
-    go :: [BaseUrl] -> M.Map BaseUrl IndexerInfo -> m (M.Map BaseUrl IndexerInfo)
-    go newPeersRem acc
-      | length acc == targetAmount || null newPeersRem = 
-        pure acc
+    go :: [BaseUrl] -> M.Map BaseUrl IndexerInfo -> [BaseUrl] -> m (M.Map BaseUrl IndexerInfo, [BaseUrl])
+    go toExplore exploredInfoMap result
+      | length result == targetAmount || null toExplore = 
+        pure (exploredInfoMap, result)
       | otherwise = do
-        let needed = targetAmount - length acc
-            available = length newPeersRem
-            (peers, newPeersRem') = splitAt (min needed available) newPeersRem
-        indexersInfo <- indexersInfo peers
-        let newAcc = acc `M.union` indexersInfo
-            indexersScanInfo = indInfoHeights <$> newAcc
-            median = medianScanInfoMap $ M.elems indexersScanInfo
-            filteredToMedianNewAcc =  M.filter (matchMedian median . indInfoHeights) newAcc
-        go newPeersRem' filteredToMedianNewAcc
+        let needed = targetAmount - length result
+            available = length toExplore
+            (indexers, toExplore') = splitAt (min needed available) toExplore
+
+        newExploredInfoMap <- indexersInfo indexers
+
+        let exploredInfoMap' = exploredInfoMap `M.union` newExploredInfoMap
+            newWorkingIndexers = filter (`M.member` exploredInfoMap') indexers
+            median = medianScanInfoMap $ indInfoHeights <$> M.elems exploredInfoMap'
+            result' = filter (matchMedian median . indInfoHeights . (exploredInfoMap' M.!)) $ result ++ newWorkingIndexers
+
+        go toExplore' exploredInfoMap' result'
 
     matchMedian :: PeerScanInfoMap -> PeerScanInfoMap -> Bool
     matchMedian peer median = all (\currency -> predicate (peer M.! currency) (median M.! currency)) $ M.keys peer
