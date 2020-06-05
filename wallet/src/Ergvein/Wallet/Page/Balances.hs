@@ -8,6 +8,7 @@ import Data.Maybe (fromMaybe)
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
@@ -20,6 +21,7 @@ import Ergvein.Wallet.Wrapper
 
 import Data.Map.Strict as Map
 import Network.Wreq
+import Network.Haskoin.Transaction
 
 #ifdef ANDROID
 import Control.Monad.IO.Class
@@ -87,7 +89,15 @@ testBalancesGetting cur = do
   widgetHold (testPub ps) $ ffor (updated pubSD) $ \pbs -> testPub pbs
   pure ()
   where
-    testPub pubS = divClass "test" $ text $ showt $ _currencyPubStorage'transactions <$> Map.lookup cur (_pubStorage'currencyPubStorages pubS)
+    testPub pubS = case cur of
+      BTC  -> divClass "test" $ text $ calcBalance $ _currencyPubStorage'transactions <$> Map.lookup cur (_pubStorage'currencyPubStorages pubS)
+      ERGO -> divClass "test" $ text $ showt 0
+    calcBalance mTxs = case mTxs of
+      Nothing -> showt 0
+      Just txs -> showt $ fmap (\(_,tx) -> case tx of
+        BtcTx btx-> showt $ fmap outValue $ txOut btx
+        ErgTx etx -> showt 0
+        ) $ Map.toList txs
 
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
 currencyBalance cur = pure $ pure $ Money cur 0
