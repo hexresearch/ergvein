@@ -77,10 +77,7 @@ let
         ./wallet/java
         "${project.ghc.x509-android.src}/java"
       ];
-      version = {
-        code = "3";
-        name = "Alpha";
-      };
+      version = import ./android-version.nix;
       releaseKey = let
         readPassword = file: builtins.replaceStrings ["\n"] [""] (builtins.readFile file);
       in if release then {
