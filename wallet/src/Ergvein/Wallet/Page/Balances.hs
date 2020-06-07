@@ -78,8 +78,7 @@ currenciesList name = divClass "currency-content" $ do
   where
     currencyLine settings cur = do
       (e, _) <- divClass' "currency-row" $ do
-        bal <- currencyBalance cur
-        testBalancesGetting cur
+        bal <- balancesGetting cur
         let setUs = getSettingsUnits settings
         divClass "currency-name"    $ text $ currencyName cur
         divClass "currency-balance" $ do
@@ -89,8 +88,8 @@ currenciesList name = divClass "currency-content" $ do
       pure $ cur <$ domEvent Click e
     getSettingsUnits = fromMaybe defUnits . settingsUnits
 
-testBalancesGetting :: MonadFront t m => Currency -> m ()
-testBalancesGetting cur = do
+balancesGetting :: MonadFront t m => Currency -> m (Dynamic t Money)
+balancesGetting cur = do
   ps <- getPubStorage
   pubSD <- getPubStorageD
   let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _) -> case M.lookup BTC cm of
@@ -98,27 +97,31 @@ testBalancesGetting cur = do
         Just (CurrencyPubStorage keystore txmap) -> let
           addrs = extractAddrs keystore
           in addrs
-      testPub ac pubS = case cur of
-        BTC  -> divClass "test" $ text $ calcBalance ac $ _currencyPubStorage'transactions <$> Map.lookup cur (_pubStorage'currencyPubStorages pubS)
-        ERGO -> divClass "test" $ text $ showt 0
-      calcBalance ac mTxs = case mTxs of
-        Nothing -> showt 0
-        Just txs -> showt $ fmap (\(_,tx) -> case tx of
-          BtcTx btx -> showt $ fmap (\(_,a) -> Money cur (outValue a)) $ L.filter (cselem ac) $ L.filter csbool $ fmap (\txo -> (getSegWitAddr txo,txo)) $ txOut btx
-          ErgTx etx -> showt (Money cur 0)
-          ) $ Map.toList txs
-      csbool (a,_) = case a of
-        Just b -> True
-        Nothing -> False
-      cselem ac (a,_) = case a of
-        Just b -> (elem ((fromSegWit b)) ac)
-        Nothing -> False
 
-  widgetHold (text "0") $ ffor (updated pubSD) $ \pbs -> do
+  abS <- sampleDyn allBtcAddrsD
+
+  hD <- holdDyn (Money cur (calcSum (gbA abS) ps)) $ poke (updated pubSD) $ \pbs -> do
     allbtcAdrS <- sampleDyn allBtcAddrsD
-    let (allbtcaS :: [BtcAddress]) = fmap (\(_,a) -> getBtcAddr a) allbtcAdrS
-    testPub allbtcaS pbs
-  pure ()
+    pure $ Money cur $ calcSum (gbA allbtcAdrS) pbs
+
+  pure hD
+  where
+    calcSum ac pubS = case cur of
+      BTC  -> calcBalance ac $ _currencyPubStorage'transactions <$> Map.lookup cur (_pubStorage'currencyPubStorages pubS)
+      ERGO -> 0
+    calcBalance ac mTxs = case mTxs of
+      Nothing -> 0
+      Just txs -> sum $ fmap (\(_,tx) -> case tx of
+        BtcTx btx -> sum $ fmap (\(_,a) -> outValue a) $ L.filter (cselem ac) $ L.filter csbool $ fmap (\txo -> (getSegWitAddr txo,txo)) $ txOut btx
+        ErgTx etx -> 0
+        ) $ Map.toList txs
+    csbool (a,_) = case a of
+      Just b -> True
+      Nothing -> False
+    cselem ac (a,_) = case a of
+      Just b -> (elem ((fromSegWit b)) ac)
+      Nothing -> False
+    gbA s = fmap (\(_,a) -> getBtcAddr a) s
 
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
 currencyBalance cur = pure $ pure $ Money cur 0
