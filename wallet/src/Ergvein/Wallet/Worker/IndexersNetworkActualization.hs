@@ -1,4 +1,4 @@
-module Ergvein.Wallet.Worker.IndexersNetworkActualizationWorker
+module Ergvein.Wallet.Worker.IndexersNetworkActualization
   (
     indexersNetworkActualizationWorker
   ) where
