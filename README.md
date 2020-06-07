@@ -1,6 +1,6 @@
 # Ergvein
 
-[![Build Status](https://travis-ci.com/hexresearch/ergvein.svg?branch=master)](https://travis-ci.com/hexresearch/ergvein)
+![Build all](https://github.com/hexresearch/ergvein/workflows/Build%20all/badge.svg)
 
 Ergvein is MVP implementation for [Cypra](https://cypra.io) ecosystem. It is cryptocurrency [SPV](https://bitcoin.org/en/operating-modes-guide#simplified-payment-verification-spv) wallet that is focused on privacy, decentralized exchange and heavy usage of smart contracts. The wallet supports several currencies and provides means to perform atomic swaps between them. The project encourages users to host their own backend node. That allows node owner to get part of fees from atomic swaps and promotes privacy.
 
