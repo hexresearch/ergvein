@@ -135,7 +135,7 @@ library
         Ergvein.Wallet.Validate
         Ergvein.Wallet.Widget.GraphPinCode
         Ergvein.Wallet.Worker.Height
-        Ergvein.Wallet.Worker.Info
+        Ergvein.Wallet.Worker.IndexersNetworkActualization
         Ergvein.Wallet.Worker.Node
         Ergvein.Wallet.Worker.PeerDiscover
         Ergvein.Wallet.Wrapper

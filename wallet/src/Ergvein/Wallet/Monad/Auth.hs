@@ -441,7 +441,7 @@ liftAuth ma0 ma = mdo
           bctNodeController
           filtersLoader
           heightAsking
-          infoWorker
+          indexersNetworkActualizationWorker
           pure ()
         runReaderT (wrapped ma) env
   let

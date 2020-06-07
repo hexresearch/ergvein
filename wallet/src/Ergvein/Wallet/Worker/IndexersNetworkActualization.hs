@@ -1,6 +1,6 @@
-module Ergvein.Wallet.Worker.Info
+module Ergvein.Wallet.Worker.IndexersNetworkActualizationWorker
   (
-    infoWorker
+    indexersNetworkActualizationWorker
   ) where
 
 import Control.Concurrent.Async
@@ -114,8 +114,8 @@ indexersNetwork targetAmount peers =
         mapping :: ScanProgressItem -> PeerScanInfoMap
         mapping (ScanProgressItem currency scanned actual) = M.singleton currency (scanned, actual)
 
-infoWorker :: MonadFront t m => m ()
-infoWorker = do
+indexersNetworkActualizationWorker :: MonadFront t m => m ()
+indexersNetworkActualizationWorker = do
   buildE <- getPostBuild
   refreshE <- fst  <$> getIndexerInfoEF
   te       <- void <$> tickLossyFromPostBuildTime infoWorkerInterval
