@@ -57,7 +57,7 @@ import Ergvein.Wallet.Settings (Settings(..), storeSettings, defaultIndexers)
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Worker.Height
-import Ergvein.Wallet.Worker.Info
+import Ergvein.Wallet.Worker.IndexersNetworkActualization
 import Ergvein.Wallet.Worker.Node
 
 import qualified Control.Immortal as I
