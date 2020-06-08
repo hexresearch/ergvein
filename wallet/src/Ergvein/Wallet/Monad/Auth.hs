@@ -356,24 +356,24 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
     authRef <- asks env'authRef
     performFork_ $ ffor reqE $ \(cur, i, l) -> do
       mai <- modifyExternalRefMaybe authRef $
-        updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'key = updateKeyLabel l $ extKeyBox'key kb}
+        updateKeyBoxWith' cur i $ \kb -> kb {extKeyBox'key = updateKeyLabel l $ extKeyBox'key kb}
       storeWalletPure mai
 
   setFlagToExtPubKey reqE = do
     authRef <- asks env'authRef
     performFork_ $ ffor reqE $ \(cur, i) -> do
       mai <- modifyExternalRefMaybe authRef $
-        updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'manual = True}
+        updateKeyBoxWith' cur i $ \kb -> kb {extKeyBox'manual = True}
       storeWalletPure mai
 
   insertTxsInPubKeystore reqE = do
     authRef <- asks env'authRef
     performFork_ $ ffor reqE $ \(cur, i, txids) -> do
       mai <- modifyExternalRefMaybe authRef $
-        updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'txs = S.union (extKeyBox'txs kb) $ S.fromList txids}
+        updateKeyBoxWith' cur i $ \kb -> kb {extKeyBox'txs = S.union (extKeyBox'txs kb) $ S.fromList txids}
       storeWalletPure mai
 
-updateKeyBoxWith :: Currency -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> AuthInfo -> Maybe (AuthInfo, AuthInfo)
+updateKeyBoxWith :: Currency -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> AuthInfo -> Maybe AuthInfo
 updateKeyBoxWith cur i f ai =
   let mk = ai ^.
           authInfo'storage
@@ -386,17 +386,18 @@ updateKeyBoxWith cur i f ai =
             & (\v -> (V.!?) (pubKeystore'external v) i)
   in case mk of
     Nothing -> Nothing
-    Just kb ->
-      let kb' = f kb
-          ai' = ai & authInfo'storage
-              . storage'pubStorage
-              . pubStorage'currencyPubStorages
-              . at cur
-              %~ \mcps -> case mcps of
-                Nothing -> Nothing
-                Just cps -> Just $ cps & currencyPubStorage'pubKeystore
-                  %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
-      in Just (ai', ai')
+    Just kb -> let kb' = f kb
+      in Just $ ai & authInfo'storage
+        . storage'pubStorage
+        . pubStorage'currencyPubStorages
+        . at cur
+        %~ \mcps -> case mcps of
+          Nothing -> Nothing
+          Just cps -> Just $ cps & currencyPubStorage'pubKeystore
+            %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
+
+updateKeyBoxWith' :: Currency -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> AuthInfo -> Maybe (AuthInfo, AuthInfo)
+updateKeyBoxWith' cur i f ai = fmap (\ai' -> (ai', ai')) $ updateKeyBoxWith cur i f ai
 
 updateKeyLabel :: Text -> EgvXPubKey -> EgvXPubKey
 updateKeyLabel l key = case key of
