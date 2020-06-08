@@ -2,6 +2,7 @@ module Ergvein.Wallet.Desktop.Native(
 
   ) where
 
+import Control.Monad
 import Control.Monad.IO.Class
 import Data.Aeson
 import Data.Text(Text)
@@ -14,6 +15,7 @@ import System.FilePath.Posix
 import System.Hclip
 import System.IO
 import System.X509 (getSystemCertificateStore)
+import Web.Browser
 
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
@@ -91,6 +93,8 @@ instance PlatformNatives where
   copyStr = liftIO . setClipboard . T.unpack
 
   shareUrl = liftIO . setClipboard . T.unpack
+
+  openUrl = liftIO . void . openBrowser . T.unpack
 
   -- TODO: Fix later for desktop application
   cameraWork = liftIO . setClipboard . T.unpack

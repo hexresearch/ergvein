@@ -119,10 +119,10 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
         divClass "out-body-andr"  $ text $ oHash
     divClass "info-descr-andr" $ localizedText HistoryTIURL
     divClass "info-andr-element" $ do
-      divClass "info-body-andr info-url" $ elAttr "a" [("href",txUrl txInfoView)] $ text $ txUrl txInfoView
-    let copiedE = leftmost[(txId txInfoView) <$ copiedHashE,
-                           (txBlock txInfoView) <$ copiedBlockE,
-                           (txRaw txInfoView) <$ copiedRawE]
+      divClass "info-body-andr info-url" $ hyperlink "link" (txUrl txInfo) (txUrl txInfo)
+    let copiedE = leftmost[(txId txInfo) <$ copiedHashE,
+                           (txBlock txInfo) <$ copiedBlockE,
+                           (txRaw txInfo) <$ copiedRawE]
     cE <- clipboardCopy $ copiedE
     showSuccessMsg $ CSCopied <$ cE
     pure ()
@@ -162,7 +162,7 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
     divClass "transaction-info-element" $ do
       let url = txUrl txInfoView
       divClass "info-descr " $ localizedText HistoryTIURL
-      divClass "info-body info-url" $ elAttr "a" [("href",url)] $ text url
+      divClass "info-body info-url" $ hyperlink "link" url url
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIVolume
       divClass "info-body info-fee" $ do
