@@ -4,6 +4,7 @@ module Ergvein.Wallet.Monad.Storage
   ) where
 
 import Data.Text (Text)
+import Data.Map.Strict (Map)
 import Ergvein.Crypto
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
@@ -20,6 +21,7 @@ class (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t m | m -> t where
   getPubStorageD         :: m (Dynamic t PubStorage)
   storeWallet            :: Event t () -> m ()
   addTxToPubStorage      :: Event t (TxId, EgvTx) -> m ()
+  addTxMapToPubStorage   :: Event t (Currency, Map TxId EgvTx) -> m ()
   setLabelToExtPubKey    :: Event t (Currency, Int, Text) -> m ()
   setFlagToExtPubKey     :: Event t (Currency, Int) -> m ()
   insertTxsInPubKeystore :: Event t (Currency, Int, [TxId]) -> m ()

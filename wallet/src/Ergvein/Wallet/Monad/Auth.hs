@@ -27,7 +27,7 @@ import Reflex.ExternalRef
 import Reflex.Host.Class
 import Servant.Client(BaseUrl, showBaseUrl)
 
-import Ergvein.Crypto
+import Ergvein.Crypto as Crypto
 import Ergvein.Index.Client
 import Ergvein.Text
 import Ergvein.Types.AuthInfo
@@ -324,33 +324,56 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
       let cur = case etx of
             BtcTx{} -> BTC
             ErgTx{} -> ERGO
-      modifyExternalRef_ authRef $ \ai -> ai
-        & authInfo'storage
-        . storage'pubStorage
-        . pubStorage'currencyPubStorages
-        . at cur . _Just                  -- TODO: Fix this part once there is a way to generate keys. Or signal an impposible situation
-        . currencyPubStorage'transactions . at txid .~ Just etx
+      ai' <- modifyExternalRef authRef $ \ai ->
+        let ai' = ai
+              & authInfo'storage
+              . storage'pubStorage
+              . pubStorage'currencyPubStorages
+              . at cur . _Just                  -- TODO: Fix this part once there is a way to generate keys. Or signal an impposible situation
+              . currencyPubStorage'transactions . at txid .~ Just etx
+        in (ai', ai')
+      storeWalletPure $ Just ai'
   {-# INLINE addTxToPubStorage #-}
+  addTxMapToPubStorage txmapE = do
+    authRef <- asks env'authRef
+    performFork_ $ ffor txmapE $ \(cur, txm) -> do
+      ai' <- modifyExternalRef authRef $ \ai ->
+        let ai' = ai
+              & authInfo'storage
+              . storage'pubStorage
+              . pubStorage'currencyPubStorages
+              . at cur . _Just
+              . currencyPubStorage'transactions %~ (M.union txm)
+        in (ai', ai')
+
+      storeWalletPure $ Just ai'
+
   getPubStorageD = do
     authInfoD <- externalRefDynamic =<< asks env'authRef
     pure $ ffor authInfoD $ \ai -> ai ^. authInfo'storage. storage'pubStorage
   {-# INLINE getPubStorageD #-}
   setLabelToExtPubKey reqE = do
     authRef <- asks env'authRef
-    performFork_ $ ffor reqE $ \(cur, i, l) -> modifyExternalRefMaybe_ authRef $
-      updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'key = updateKeyLabel l $ extKeyBox'key kb}
+    performFork_ $ ffor reqE $ \(cur, i, l) -> do
+      mai <- modifyExternalRefMaybe authRef $
+        updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'key = updateKeyLabel l $ extKeyBox'key kb}
+      storeWalletPure mai
 
   setFlagToExtPubKey reqE = do
     authRef <- asks env'authRef
-    performFork_ $ ffor reqE $ \(cur, i) -> modifyExternalRefMaybe_ authRef $
-      updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'manual = True}
+    performFork_ $ ffor reqE $ \(cur, i) -> do
+      mai <- modifyExternalRefMaybe authRef $
+        updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'manual = True}
+      storeWalletPure mai
 
   insertTxsInPubKeystore reqE = do
     authRef <- asks env'authRef
-    performFork_ $ ffor reqE $ \(cur, i, txids) -> modifyExternalRefMaybe_ authRef $
-      updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'txs = S.union (extKeyBox'txs kb) $ S.fromList txids}
+    performFork_ $ ffor reqE $ \(cur, i, txids) -> do
+      mai <- modifyExternalRefMaybe authRef $
+        updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'txs = S.union (extKeyBox'txs kb) $ S.fromList txids}
+      storeWalletPure mai
 
-updateKeyBoxWith :: Currency -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> AuthInfo -> Maybe AuthInfo
+updateKeyBoxWith :: Currency -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> AuthInfo -> Maybe (AuthInfo, AuthInfo)
 updateKeyBoxWith cur i f ai =
   let mk = ai ^.
           authInfo'storage
@@ -363,20 +386,30 @@ updateKeyBoxWith cur i f ai =
             & (\v -> (V.!?) (pubKeystore'external v) i)
   in case mk of
     Nothing -> Nothing
-    Just kb -> let kb' = f kb
-      in Just $ ai & authInfo'storage
-          . storage'pubStorage
-          . pubStorage'currencyPubStorages
-          . at cur
-          %~ \mcps -> case mcps of
-            Nothing -> Nothing
-            Just cps -> Just $ cps & currencyPubStorage'pubKeystore
-              %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
+    Just kb ->
+      let kb' = f kb
+          ai' = ai & authInfo'storage
+              . storage'pubStorage
+              . pubStorage'currencyPubStorages
+              . at cur
+              %~ \mcps -> case mcps of
+                Nothing -> Nothing
+                Just cps -> Just $ cps & currencyPubStorage'pubKeystore
+                  %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
+      in Just (ai', ai')
 
 updateKeyLabel :: Text -> EgvXPubKey -> EgvXPubKey
 updateKeyLabel l key = case key of
   ErgXPubKey k _ -> ErgXPubKey k l
   BtcXPubKey k _ -> BtcXPubKey k l
+
+storeWalletPure :: (MonadIO m, Crypto.MonadRandom m, HasStoreDir m, PlatformNatives) => Maybe AuthInfo -> m ()
+storeWalletPure mai = case mai of
+  Nothing -> pure ()
+  Just ai -> do
+    let storage = _authInfo'storage ai
+    let eciesPubKey = _authInfo'eciesPubKey ai
+    saveStorageToFile eciesPubKey storage
 
 -- | Execute action under authorized context or return the given value as result
 -- if user is not authorized. Each time the login info changes and authInfo'isUpdate flag is set to 'False'
