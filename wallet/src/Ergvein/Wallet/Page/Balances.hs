@@ -3,7 +3,7 @@ module Ergvein.Wallet.Page.Balances(
     balancesPage
   ) where
 
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 
 import Ergvein.Text
 import Ergvein.Types.Address
@@ -94,15 +94,11 @@ balancesGetting cur = do
   pubSD <- getPubStorageD
   let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _) -> case M.lookup BTC cm of
         Nothing -> []
-        Just (CurrencyPubStorage keystore txmap) -> let
-          addrs = extractAddrs keystore
-          in addrs
-
+        Just (CurrencyPubStorage keystore txmap) -> extractAddrs keystore
   abS <- sampleDyn allBtcAddrsD
-
-  hD <- holdDyn (Money cur (calcSum (gbA abS) ps)) $ poke (updated pubSD) $ \pbs -> do
+  hD <- holdDyn (Money cur (calcSum (fmap (getBtcAddr . snd) abS) ps)) $ poke (updated pubSD) $ \pbs -> do
     allbtcAdrS <- sampleDyn allBtcAddrsD
-    pure $ Money cur $ calcSum (gbA allbtcAdrS) pbs
+    pure $ Money cur $ calcSum (fmap (getBtcAddr . snd) allbtcAdrS) pbs
 
   pure hD
   where
@@ -112,16 +108,9 @@ balancesGetting cur = do
     calcBalance ac mTxs = case mTxs of
       Nothing -> 0
       Just txs -> sum $ fmap (\(_,tx) -> case tx of
-        BtcTx btx -> sum $ fmap (\(_,a) -> outValue a) $ L.filter (cselem ac) $ L.filter csbool $ fmap (\txo -> (getSegWitAddr txo,txo)) $ txOut btx
+        BtcTx btx -> sum $ fmap (outValue . snd) $ L.filter (maybe False (flip elem ac . fromSegWit) . fst) $ fmap (\txo -> (getSegWitAddr txo,txo)) $ txOut btx
         ErgTx etx -> 0
         ) $ Map.toList txs
-    csbool (a,_) = case a of
-      Just b -> True
-      Nothing -> False
-    cselem ac (a,_) = case a of
-      Just b -> (elem ((fromSegWit b)) ac)
-      Nothing -> False
-    gbA s = fmap (\(_,a) -> getBtcAddr a) s
 
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
 currencyBalance cur = pure $ pure $ Money cur 0

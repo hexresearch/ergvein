@@ -4,9 +4,16 @@ module Ergvein.Wallet.Page.History(
     historyPage
   ) where
 
+import Control.Monad.Reader
+
+import Ergvein.Filters.Btc
 import Ergvein.Text
+import Ergvein.Types.Address
 import Ergvein.Types.Currency
+import Ergvein.Types.Storage
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Blocks.Types
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
@@ -14,19 +21,34 @@ import Ergvein.Wallet.Localization.History
 import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
+import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Wrapper
+import Ergvein.Wallet.Worker.Node
 
+import qualified Data.Map as M
+import Data.Map.Strict as Map
+import qualified Data.Set as S
+import qualified Data.Map as M
+import qualified Data.List as L
+import Network.Haskoin.Transaction
+import Network.Haskoin.Address
 import Data.Time
 import Data.Text as T
+import Data.Maybe (fromMaybe)
 
 historyPage :: MonadFront t m => Currency -> m ()
 historyPage cur = wrapper (HistoryTitle cur) (Just $ pure $ historyPage cur) False $ do
+  ps <- getPubStorage
+  pubSD <- getPubStorageD
   let thisWidget = Just $ pure $ historyPage cur
-  let trHistoryList = mockTransHistory cur
+      historyWidget = case cur of
+        BTC  -> divClass "history-table-body" $ historyTableWidget $ mockTransHistory cur
+        ERGO -> divClass "history-table-body" $ historyTableWidget $ mockTransHistory cur
   navbarWidget cur thisWidget NavbarHistory
-  goE <- divClass "history-table-body" $ historyTableWidget trHistoryList
+  goE <- historyWidget
   void $ nextWidget $ ffor (leftmost goE) $ \tr -> Retractable {
       retractableNext = transactionInfoPage cur tr
     , retractablePrev = thisWidget
@@ -177,6 +199,71 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
 
 historyTableWidget :: MonadFront t m => [TransactionMock] -> m ([Event t TransactionMock])
 historyTableWidget trList = do
+   txsD <- transactionsGetting BTC
+   divClass "test" $ text "lol"
+   txClickE <- traverse historyTableRow trList
+   pure txClickE
+    where
+      historyTableRow :: MonadFront t m => TransactionMock -> m (Event t TransactionMock)
+      historyTableRow tr@TransactionMock{..} = divButton "history-table-row" $ do
+        divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ text $ symb <> (showMoney txAmount)
+        divClass "history-date"   $ text $ txDate
+        divClass ("history-status-" <> ((T.toLower . showt) txInOut)) $ text $ stat
+        pure tr
+        where
+          symb :: Text
+          symb = case txInOut of
+            TransRefill   -> "+"
+            TransWithdraw -> "-"
+          stat :: Text
+          stat = case txStatus of
+            TransConfirmed -> "✓"
+            TransUncofirmed -> "?"
+
+transactionsGetting :: MonadFront t m => Currency -> m (Dynamic t [EgvTx])
+transactionsGetting cur = do
+  buildE <- delay 0.2 =<< getPostBuild
+  ps <- getPubStorage
+  pubSD <- getPubStorageD
+  let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _) -> case M.lookup BTC cm of
+        Nothing -> []
+        Just (CurrencyPubStorage keystore txmap) -> extractAddrs keystore
+  abS <- filtArd <$> sampleDyn allBtcAddrsD
+  store <- getBlocksStorage
+  let rawTxList = calcSum abS ps
+
+  hD <- holdDyn rawTxList $ poke (updated pubSD) $ \pbs -> do
+    allbtcAdrS <- filtArd <$> sampleDyn allBtcAddrsD
+    pure $ calcSum allbtcAdrS pbs
+
+  filtrTxListE <- performFork $ ffor (updated hD) $ \tx -> do
+    allbtcAdrS <- filtArd <$> sampleDyn allBtcAddrsD
+    liftIO $ flip runReaderT store $ do
+      b <- traverse (checkAddr allbtcAdrS) tx
+      pure $ fmap snd $ L.filter fst $ L.zip b tx
+  hS <- sampleDyn hD
+  filtrHD <- holdDyn hS filtrTxListE
+  pure filtrHD
+  --txfiltList <- L.filter (\tx -> checkAddr allbtcAdrS tx) txList
+  where
+    calcSum ac pubS = case cur of
+      BTC  -> fmap snd $ fromMaybe [] $ fmap Map.toList $ _currencyPubStorage'transactions <$> Map.lookup cur (_pubStorage'currencyPubStorages pubS)
+      ERGO -> []
+
+    checkAddr :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m Bool
+    checkAddr ac tx = do
+      bL <- traverse (flip checkAddrTx (getBtcTx tx)) ac
+      pure $ L.or bL
+
+    filtArd :: [(Maybe Int, EgvAddress)] -> [EgvAddress]
+    filtArd madr = fmap snd $ L.filter (\(mi,b) -> case mi of
+      Nothing -> False
+      Just mi -> True) madr
+
+    gbA s = fmap (\(_,a) -> getBtcAddr a) s
+
+historyTableWidget2 :: MonadFront t m => [TransactionMock] -> m ([Event t TransactionMock])
+historyTableWidget2 trList = do
    traverse historyTableRow trList
     where
       historyTableRow :: MonadFront t m => TransactionMock -> m (Event t TransactionMock)
