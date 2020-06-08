@@ -245,15 +245,15 @@ filterAddress :: MonadFront t m => Event t EgvAddress -> m (Event t [HB.BlockHas
 filterAddress addrE = performFork $ ffor addrE Filters.filterAddress
 
 -- | Gets transactions related to given address from given block list.
-getTxs :: MonadFront t m => Event t (AddressNum, EgvAddress, [HB.Block]) -> m (Event t (AddressNum, M.Map TxId EgvTx))
-getTxs = performFork . fmap getAddrTxsFromBlocks
+getTxs :: MonadFront t m => Event t (a, EgvAddress, [HB.Block]) -> m (Event t (a, M.Map TxId EgvTx))
+getTxs = performFork . fmap (\(a, addr, bls) -> fmap (a,) $ getAddrTxsFromBlocks addr bls)
 
 -- | Gets transactions related to given address from given block.
-getAddrTxsFromBlocks :: (MonadIO m, HasBlocksStorage m, PlatformNatives)
-  => (AddressNum, EgvAddress, [HB.Block]) -> m (AddressNum, M.Map TxId EgvTx)
-getAddrTxsFromBlocks (i, addr, blocks) = do
+getAddrTxsFromBlocks :: (MonadIO m, Traversable f, HasBlocksStorage m, PlatformNatives)
+  => EgvAddress -> f HB.Block -> m (M.Map TxId EgvTx)
+getAddrTxsFromBlocks addr blocks = do
   txMaps <- traverse (getAddrTxsFromBlock addr) blocks
-  pure $ (i,) $ M.unions txMaps
+  pure $ M.unions txMaps
 
 getAddrTxsFromBlock :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> HB.Block -> m (M.Map TxId EgvTx)
 getAddrTxsFromBlock addr block = do
