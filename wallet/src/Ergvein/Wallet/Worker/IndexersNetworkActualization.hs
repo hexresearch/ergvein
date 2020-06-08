@@ -52,12 +52,20 @@ indexersToExclude = do
   archivedUrls <- readExternalRef archivedUrlsRef
   pure $ inactiveUrls `S.union` archivedUrls
 
-newIndexers :: HasClientManager m => S.Set BaseUrl -> m (S.Set BaseUrl)
+newIndexers :: (PlatformNatives, MonadIO m, HasClientManager m) => S.Set BaseUrl -> m (S.Set BaseUrl)
 newIndexers knownIndexers = do
   mng <- getClientManager
-  successfulResponses <- (`runReaderT` mng) $ fmap rights <$> mapM (`getKnownPeersEndpoint` KnownPeersReq False) $ S.toList knownIndexers
-  let validIndexerUrls = S.fromList $ catMaybes $ parseBaseUrl <$> (knownPeersList =<< successfulResponses)
+  successfulResponses <- concat <$> ((`runReaderT` mng) $ mapM knownIndexersFrom $ S.toList knownIndexers)
+  let validIndexerUrls = S.fromList $ catMaybes $ parseBaseUrl <$> successfulResponses
   pure validIndexerUrls
+  where
+    knownIndexersFrom url = do
+      result <- getKnownPeersEndpoint url $ KnownPeersReq False
+      case result of
+        Right (KnownPeersResp list) -> pure list
+        Left err -> do
+          logWrite $ "[IndexersNetworkActualization][Getting peer list][" <> T.pack (showBaseUrl url) <> "]: " <> showt err
+          pure mempty
 
 indexersNetwork :: forall m . (PlatformNatives, MonadIO m, HasClientManager m) => Int -> [BaseUrl] -> m (M.Map BaseUrl IndexerInfo, S.Set BaseUrl)
 indexersNetwork targetAmount peers =
@@ -109,24 +117,25 @@ indexersNetwork targetAmount peers =
                   scanInfo = mconcat $ mapping <$> infoScanProgress info
               pure $  M.singleton url $ IndexerInfo scanInfo pingTime
             Left err ->  do
-              logWrite $ "[InfoWorker][" <> T.pack (showBaseUrl url) <> "]: " <> showt err
+              logWrite $ "[IndexersNetworkActualization][Getting info][" <> T.pack (showBaseUrl url) <> "]: " <> showt err
               pure mempty
         mapping :: ScanProgressItem -> PeerScanInfoMap
         mapping (ScanProgressItem currency scanned actual) = M.singleton currency (scanned, actual)
 
 indexersNetworkActualizationWorker :: MonadFront t m => m ()
 indexersNetworkActualizationWorker = do
-  buildE <- getPostBuild
+  buildE   <- getPostBuild
   refreshE <- fst  <$> getIndexerInfoEF
   te       <- void <$> tickLossyFromPostBuildTime infoWorkerInterval
 
   let goE = leftmost [void te, refreshE, buildE]
 
   activeUrlsRef          <- getActiveUrlsRef
-  currentNetworkInfoMap  <- readExternalRef activeUrlsRef
   indexersToExclude      <- indexersToExclude
 
   performFork_ $ ffor goE $ const $ do
+    currentNetworkInfoMap  <- readExternalRef activeUrlsRef
+
     let currentNetwork = M.keysSet currentNetworkInfoMap
 
     fetchedIndexers <- newIndexers currentNetwork
