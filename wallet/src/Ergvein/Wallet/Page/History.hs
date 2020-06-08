@@ -200,7 +200,6 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
 historyTableWidget :: MonadFront t m => [TransactionMock] -> m ([Event t TransactionMock])
 historyTableWidget trList = do
    txsD <- transactionsGetting BTC
-   divClass "test" $ text "lol"
    txClickE <- traverse historyTableRow trList
    pure txClickE
     where
