@@ -113,6 +113,7 @@ frontendCss r = do
   historyPageCss
   receiveCss
   legoStyles
+  linkCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -928,3 +929,12 @@ graphPinCodeCanvasCss = do
     borderTop solid (px 2) $ rgb 90 90 90
     height $ px 2
     zIndex 10
+
+linkCss :: Css
+linkCss = do
+  ".link" ? do
+    color textColor
+    cursor pointer
+    textDecoration underline
+  ".link:hover, .link:focus" ? do
+    color hoverColor
