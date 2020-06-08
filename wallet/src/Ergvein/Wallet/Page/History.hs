@@ -211,8 +211,8 @@ historyTableWidget :: MonadFront t m => [TransactionMock] -> m ([Event t Transac
 historyTableWidget trList = do
    txsD <- transactionsGetting BTC
    void $ widgetHoldDyn $ ffor txsD $ \tx -> do
-     divClass "tx-test" $ text $ showt $ fmap txInfo $ fmap (getBtcTx) tx
-     divClass "tx-test" $ text $ showt $ fmap getBtcBlockHashByTxHash $ fmap L.head $ fmap snd $ fmap txInfo $ fmap (getBtcTx) tx
+--     divClass "tx-test" $ text $ showt $ fmap txInfo $ fmap (getBtcTx) tx
+     divClass "tx-test" $ text $ showt $ tx
      divClass "test" $ text "lol"
    txClickE <- traverse historyTableRow trList
    pure txClickE
@@ -233,7 +233,7 @@ historyTableWidget trList = do
             TransConfirmed -> "✓"
             TransUncofirmed -> "?"
 
-transactionsGetting :: MonadFront t m => Currency -> m (Dynamic t [EgvTx])
+transactionsGetting :: MonadFront t m => Currency -> m (Dynamic t [(Maybe HK.BlockHash, EgvTx)])
 transactionsGetting cur = do
   buildE <- delay 0.2 =<< getPostBuild
   ps <- getPubStorage
@@ -249,15 +249,26 @@ transactionsGetting cur = do
     allbtcAdrS <- filtArd <$> sampleDyn allBtcAddrsD
     pure $ calcSum allbtcAdrS pbs
 
+  filtrTxListSE <- performFork $ ffor buildE $ \_ -> do
+    tx <- sampleDyn hD
+    allbtcAdrS <- filtArd <$> sampleDyn allBtcAddrsD
+    liftIO $ flip runReaderT store $ do
+      bl <- traverse getBtcBlockHashByTxHash $ fmap HK.txHash $ fmap (getBtcTx) tx
+      b <- traverse (checkAddr allbtcAdrS) tx
+      pure $ fmap snd $ L.filter fst $ L.zip b (L.zip bl tx)
+
   filtrTxListE <- performFork $ ffor (updated hD) $ \tx -> do
     allbtcAdrS <- filtArd <$> sampleDyn allBtcAddrsD
     liftIO $ flip runReaderT store $ do
+      bl <- traverse getBtcBlockHashByTxHash $ fmap HK.txHash $ fmap (getBtcTx) tx
       b <- traverse (checkAddr allbtcAdrS) tx
-      pure $ fmap snd $ L.filter fst $ L.zip b tx
-  hS <- sampleDyn hD
+      pure $ fmap snd $ L.filter fst $ L.zip b (L.zip bl tx)
+
+  sD <- holdDyn [] filtrTxListSE
+  hS <- sampleDyn $ sD
+
   filtrHD <- holdDyn hS filtrTxListE
   pure filtrHD
-  --txfiltList <- L.filter (\tx -> checkAddr allbtcAdrS tx) txList
   where
     calcSum ac pubS = case cur of
       BTC  -> fmap snd $ fromMaybe [] $ fmap Map.toList $ _currencyPubStorage'transactions <$> Map.lookup cur (_pubStorage'currencyPubStorages pubS)
@@ -352,7 +363,7 @@ data TransactionInfo = TransactionInfo {
  ,txInputs        :: [(Text,Money)]
 } deriving (Show)
 
-
+{-
 data BlockMetaInfo = BlockMetaInfo
   { blockMetaCurrency      :: Currency
   , blockMetaBlockHeight   :: BlockHeight
@@ -361,7 +372,7 @@ data BlockMetaInfo = BlockMetaInfo
   } deriving (Show)
 
 data TxInfo = TxInfo
-  { txHash         :: HK.TxHash
+  { txHash         :: TxHash
   , txHexView      :: TxHexView
   , txOutputsCount :: Word
   } deriving (Show)
@@ -371,14 +382,17 @@ data BlockInfo = BlockInfo
   , spentTxsHash        :: [TxHash]
   , blockContentTxInfos :: [TxInfo]
   } deriving (Show)
+-}
 
+{-
 txInfo :: HK.Tx -> ([TxInfo], [TxHash])
 txInfo tx = let
   withoutDataCarrier = none HK.isDataCarrier . HK.decodeOutputBS . HK.scriptOutput
-  info = TxInfo { txHash = HK.txHashToHex $ HK.txHash tx
+  info = TxInfo { txHash = HK.txHashToHex $ txHash tx
                 , txHexView = HK.encodeHex $ encode tx
                 , txOutputsCount = fromIntegral $ L.length $ L.filter withoutDataCarrier $  HK.txOut tx
                 }
   withoutCoinbaseTx = L.filter $ (/= HK.nullOutPoint)
   spentTxInfo = HK.txHashToHex . HK.outPointHash <$> (withoutCoinbaseTx $ HK.prevOutput <$> HK.txIn tx)
   in ([info], spentTxInfo)
+-}
