@@ -4,16 +4,20 @@ module Ergvein.Wallet.Page.History(
     historyPage
   ) where
 
+import Control.Lens.Combinators
 import Control.Monad.Reader
+
 
 import Ergvein.Filters.Btc
 import Ergvein.Text
 import Ergvein.Types.Address
+import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Blocks.Types
+import Ergvein.Wallet.Blocks.BTC.Queries
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
@@ -33,11 +37,17 @@ import Data.Map.Strict as Map
 import qualified Data.Set as S
 import qualified Data.Map as M
 import qualified Data.List as L
-import Network.Haskoin.Transaction
 import Network.Haskoin.Address
+import Data.Maybe (fromMaybe)
 import Data.Time
 import Data.Text as T
-import Data.Maybe (fromMaybe)
+import Data.Serialize
+
+import qualified Network.Haskoin.Block              as HK
+import qualified Network.Haskoin.Constants          as HK
+import qualified Network.Haskoin.Script             as HK
+import qualified Network.Haskoin.Transaction        as HK
+import qualified Network.Haskoin.Util               as HK
 
 historyPage :: MonadFront t m => Currency -> m ()
 historyPage cur = wrapper (HistoryTitle cur) (Just $ pure $ historyPage cur) False $ do
@@ -46,7 +56,7 @@ historyPage cur = wrapper (HistoryTitle cur) (Just $ pure $ historyPage cur) Fal
   let thisWidget = Just $ pure $ historyPage cur
       historyWidget = case cur of
         BTC  -> divClass "history-table-body" $ historyTableWidget $ mockTransHistory cur
-        ERGO -> divClass "history-table-body" $ historyTableWidget $ mockTransHistory cur
+        ERGO -> divClass "history-table-body" $ historyTableWidget2 $ mockTransHistory cur
   navbarWidget cur thisWidget NavbarHistory
   goE <- historyWidget
   void $ nextWidget $ ffor (leftmost goE) $ \tr -> Retractable {
@@ -60,8 +70,8 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
   divClass "transaction-info-body-andr" $ mdo
     hashD <- expD hashE hashD
     hashE <- expHead hashD HistoryTIHash
-    copiedHashE <- copyDiv hashD $ txId txInfo
-    case (txLabel txInfo) of
+    copiedHashE <- copyDiv hashD $ txId txInfoView
+    case (txLabel txInfoView) of
       Just lbl -> do
         divClass "info-descr-andr" $ localizedText HistoryTILabel
         divClass "info-andr-element" $ do
@@ -73,23 +83,23 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
       elClass "span" "currname" $ text $ showt cur
     divClass "info-descr-andr" $ localizedText HistoryTIFee
     divClass "info-body-andr" $ do
-      text $ showMoney $ txFee txInfo
+      text $ showMoney $ txFee txInfoView
       elClass "span" "currname" $ text $ showt cur
     divClass "info-descr-andr" $ localizedText HistoryTIConfirmations
     divClass "info-body-andr" $ do
-      text $ showt $ txConfirmations txInfo
+      text $ showt $ txConfirmations txInfoView
 
     blockD <- expD blockE blockD
     blockE <- expHead blockD HistoryTIBlock
-    copiedBlockE <- copyDiv blockD $ txBlock txInfo
+    copiedBlockE <- copyDiv blockD $ txBlock txInfoView
 
     rawD <- expD rawE rawD
     rawE <- expHead rawD HistoryTIRaw
-    copiedRawE <- copyDiv rawD $ txRaw txInfo
+    copiedRawE <- copyDiv rawD $ txRaw txInfoView
 
     divClass "info-descr-andr" $ localizedText HistoryTIOutputs
     divClass "info-body-andr info-exits-andr" $ do
-      flip traverse (txOutputs txInfo) $ \(oHash,oVal,oType) -> divClass "out-element" $ do
+      flip traverse (txOutputs txInfoView) $ \(oHash,oVal,oType) -> divClass "out-element" $ do
         divClass "out-descr-andr" $ localizedText HistoryTIOutputsValue
         divClass "out-body-andr"  $ do
           text $ showMoney $ oVal
@@ -100,7 +110,7 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
         divClass "out-body-andr"  $ localizedText oType
     divClass "info-descr-andr" $ localizedText HistoryTIInputs
     divClass "info-body-andr info-exits-andr" $ do
-      flip traverse (txInputs txInfo) $ \(oHash,oVal) -> divClass "out-element" $ do
+      flip traverse (txInputs txInfoView) $ \(oHash,oVal) -> divClass "out-element" $ do
         divClass "out-descr-andr" $ localizedText HistoryTIOutputsValue
         divClass "out-body-andr" $ do
           text $ showMoney $ oVal
@@ -109,10 +119,10 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
         divClass "out-body-andr"  $ text $ oHash
     divClass "info-descr-andr" $ localizedText HistoryTIURL
     divClass "info-andr-element" $ do
-      divClass "info-body-andr info-url" $ elAttr "a" [("href",txUrl txInfo)] $ text $ txUrl txInfo
-    let copiedE = leftmost[(txId txInfo) <$ copiedHashE,
-                           (txBlock txInfo) <$ copiedBlockE,
-                           (txRaw txInfo) <$ copiedRawE]
+      divClass "info-body-andr info-url" $ elAttr "a" [("href",txUrl txInfoView)] $ text $ txUrl txInfoView
+    let copiedE = leftmost[(txId txInfoView) <$ copiedHashE,
+                           (txBlock txInfoView) <$ copiedBlockE,
+                           (txRaw txInfoView) <$ copiedRawE]
     cE <- clipboardCopy $ copiedE
     showSuccessMsg $ CSCopied <$ cE
     pure ()
@@ -142,15 +152,15 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
   divClass "transaction-info-body" $ do
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIHash
-      divClass "info-body info-hash" $ text $ txId txInfo
-    case (txLabel txInfo) of
+      divClass "info-body info-hash" $ text $ txId txInfoView
+    case (txLabel txInfoView) of
       Just lbl -> do
         divClass "transaction-info-element" $ do
           divClass "info-descr" $ localizedText HistoryTILabel
           divClass "info-body info-label" $ text lbl
       Nothing -> pure ()
     divClass "transaction-info-element" $ do
-      let url = txUrl txInfo
+      let url = txUrl txInfoView
       divClass "info-descr " $ localizedText HistoryTIURL
       divClass "info-body info-url" $ elAttr "a" [("href",url)] $ text url
     divClass "transaction-info-element" $ do
@@ -161,21 +171,21 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIFee
       divClass "info-body info-fee" $ do
-        text $ showMoney $ txFee txInfo
+        text $ showMoney $ txFee txInfoView
         elClass "span" "currname" $ text $ showt cur
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIConfirmations
-      divClass "info-body info-conf" $ text $ showt $ txConfirmations txInfo
+      divClass "info-body info-conf" $ text $ showt $ txConfirmations txInfoView
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIBlock
-      divClass "info-body info-block" $ text $ txBlock txInfo
+      divClass "info-body info-block" $ text $ txBlock txInfoView
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIRaw
-      divClass "info-body info-raw" $ text $ txRaw txInfo
+      divClass "info-body info-raw" $ text $ txRaw txInfoView
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIOutputs
       divClass "info-body info-out" $ do
-        flip traverse (txOutputs txInfo) $ \(oHash,oVal,oType) -> divClass "out-element" $ do
+        flip traverse (txOutputs txInfoView) $ \(oHash,oVal,oType) -> divClass "out-element" $ do
           divClass "out-descr" $ localizedText HistoryTIOutputsValue
           divClass "out-body"  $ do
             text $ showMoney $ oVal
@@ -187,7 +197,7 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIInputs
       divClass "info-body info-in" $ do
-        flip traverse (txInputs txInfo) $ \(oHash,oVal) -> divClass "out-element" $ do
+        flip traverse (txInputs txInfoView) $ \(oHash,oVal) -> divClass "out-element" $ do
           divClass "out-descr" $ localizedText HistoryTIOutputsValue
           divClass "out-body" $ do
             text $ showMoney $ oVal
@@ -200,7 +210,10 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
 historyTableWidget :: MonadFront t m => [TransactionMock] -> m ([Event t TransactionMock])
 historyTableWidget trList = do
    txsD <- transactionsGetting BTC
-   divClass "test" $ text "lol"
+   void $ widgetHoldDyn $ ffor txsD $ \tx -> do
+     divClass "tx-test" $ text $ showt $ fmap txInfo $ fmap (getBtcTx) tx
+     divClass "tx-test" $ text $ showt $ fmap getBtcBlockHashByTxHash $ fmap L.head $ fmap snd $ fmap txInfo $ fmap (getBtcTx) tx
+     divClass "test" $ text "lol"
    txClickE <- traverse historyTableRow trList
    pure txClickE
     where
@@ -320,11 +333,11 @@ trMockInfo cur = TransactionInfo
   [("3Mx9XH35FrbpVjsDayKyvc6eSDZfjJAsx5",(moneyFromRational cur 0.13282286)),("3EVkfRx1cPWC8czue1RH4d6rTXghWyCXDS",(moneyFromRational cur 0.25622085)),("3EVkfRx1cPWC8czue1RH4d6rTXghWyCXDS",(moneyFromRational cur 0.25085875))]
 
 data TransactionMock = TransactionMock {
-  txAmount :: Money
- ,txDate   :: Text
- ,txInOut  :: TransType
- ,txInfo   :: TransactionInfo
- ,txStatus :: TransStatus
+  txAmount   :: Money
+ ,txDate     :: Text
+ ,txInOut    :: TransType
+ ,txInfoView :: TransactionInfo
+ ,txStatus   :: TransStatus
 } deriving (Show)
 
 data TransactionInfo = TransactionInfo {
@@ -338,3 +351,34 @@ data TransactionInfo = TransactionInfo {
  ,txOutputs       :: [(Text,Money,TransOutputType)]
  ,txInputs        :: [(Text,Money)]
 } deriving (Show)
+
+
+data BlockMetaInfo = BlockMetaInfo
+  { blockMetaCurrency      :: Currency
+  , blockMetaBlockHeight   :: BlockHeight
+  , blockMetaHeaderHashHexView :: BlockHeaderHashHexView
+  , blockMetaAddressFilterHexView :: AddressFilterHexView
+  } deriving (Show)
+
+data TxInfo = TxInfo
+  { txHash         :: HK.TxHash
+  , txHexView      :: TxHexView
+  , txOutputsCount :: Word
+  } deriving (Show)
+
+data BlockInfo = BlockInfo
+  { blockInfoMeta       :: BlockMetaInfo
+  , spentTxsHash        :: [TxHash]
+  , blockContentTxInfos :: [TxInfo]
+  } deriving (Show)
+
+txInfo :: HK.Tx -> ([TxInfo], [TxHash])
+txInfo tx = let
+  withoutDataCarrier = none HK.isDataCarrier . HK.decodeOutputBS . HK.scriptOutput
+  info = TxInfo { txHash = HK.txHashToHex $ HK.txHash tx
+                , txHexView = HK.encodeHex $ encode tx
+                , txOutputsCount = fromIntegral $ L.length $ L.filter withoutDataCarrier $  HK.txOut tx
+                }
+  withoutCoinbaseTx = L.filter $ (/= HK.nullOutPoint)
+  spentTxInfo = HK.txHashToHex . HK.outPointHash <$> (withoutCoinbaseTx $ HK.prevOutput <$> HK.txIn tx)
+  in ([info], spentTxInfo)
