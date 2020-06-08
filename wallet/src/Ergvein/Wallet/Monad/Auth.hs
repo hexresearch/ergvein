@@ -340,7 +340,7 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
     performFork_ $ ffor reqE $ \(cur, i, l) -> modifyExternalRefMaybe_ authRef $
       updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'key = updateKeyLabel l $ extKeyBox'key kb}
 
-  setFlatToExtPubKey reqE = do
+  setFlagToExtPubKey reqE = do
     authRef <- asks env'authRef
     performFork_ $ ffor reqE $ \(cur, i) -> modifyExternalRefMaybe_ authRef $
       updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'manual = True}
