@@ -26,8 +26,8 @@ aboutPage = wrapper AboutTitle (Just $ pure aboutPage) False $ do
         aboutCellValue $ text "MIT License"
       aboutRow $ do
         aboutCellLabel $ localizedText AboutHomepage
-        let homepaeUrl = "https://ergvein.org"
-        aboutCellValue $ elAttr "a" [("href", homepaeUrl)] $ text homepaeUrl
+        let homepageUrl = "https://cypra.io"
+        aboutCellValue $ hyperlink "link" homepageUrl homepageUrl
       aboutRow $ do
         aboutCellLabel $ localizedText AboutDevelopers
         aboutCellValue $ do

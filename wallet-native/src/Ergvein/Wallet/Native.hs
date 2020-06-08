@@ -60,6 +60,9 @@ class PlatformNatives where
   -- | Share URL string for other applications
   shareUrl :: MonadIO m => Text -> m ()
 
+  -- | Open URL in external browser
+  openUrl :: MonadIO m => Text -> m ()
+
   -- | Work for camera of device
   cameraWork :: MonadIO m => Text -> m ()
 
