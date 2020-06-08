@@ -61,31 +61,43 @@ scannerFor cur = case cur of
 scannerBtc :: forall t m . MonadFront t m => m ()
 scannerBtc = void $ workflow waiting
   where
+    keys ps = getPublicKeys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "scannerBtc: not exsisting store!") . currencyPubStorage'pubKeystore
+
     waiting = Workflow $ do
+      logWrite "Waiting for unscanned filters"
       fhD <- watchFiltersHeight BTC
       scD <- watchScannedHeight BTC
       let newFiltersE = ffilter id $ updated $ do
             fh <- fhD
             sc <- scD
             pure $ sc < fh
+      setSyncProgress $ flip pushAlways newFiltersE $ const $ do
+        fh <- sample . current $ fhD
+        sc <- sample . current $ scD
+        pure $ SyncMeta BTC (SyncAddress 0) (fromIntegral sc) (fromIntegral fh)
+      performEvent_ $ ffor newFiltersE $ const $ do
+        fh <- sample . current $ fhD
+        sc <- sample . current $ scD
+        logWrite $ "Start scanning for new " <> showt (fh - sc)
       pure ((), scanning <$ newFiltersE)
 
     scanning = Workflow $  do
+      logWrite "Scanning filters"
       buildE <- getPostBuild
       ps <- getPubStorage
-      let keys = getPublicKeys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "scannerBtc: not exsisting store!") . currencyPubStorage'pubKeystore
-          toAddr = xPubToBtcAddr . extractXPubKeyFromEgv
-      scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses $ xPubToBtcAddr . extractXPubKeyFromEgv <$> keys
+      let toAddr = xPubToBtcAddr . extractXPubKeyFromEgv
+      scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses $ xPubToBtcAddr . extractXPubKeyFromEgv <$> keys ps
+      performEvent_ $ ffor scanE $ liftIO . print
       let hashesE = V.toList . snd <$> scanE
           heightE = fst <$> scanE
       performFork_ $ writeScannedHeight BTC <$> heightE
       blocksE <- logEvent "Blocks requested: " =<< requestBTCBlocks hashesE
       storedBlocksE <- storeMultipleBlocksByE blocksE
       storedTxHashesE <- storeMultipleBlocksTxHashesByE blocksE
-      let keymap = M.fromList . V.toList . V.indexed . V.map (BtcAddress . toAddr) $ keys
+      let keymap = M.fromList . V.toList . V.indexed . V.map (BtcAddress . toAddr) $ keys ps
       txsE <- getAddressesTxs $ (keymap,) <$> blocksE
-      -- insertTxsInPubKeystore $
-      pure ((), never)
+      storedE <- insertTxsInPubKeystore $ (BTC,) . fmap M.keys <$> txsE
+      pure ((), waiting <$ storedE)
 
 -- | Loads current PubStorage, performs BIP44 account discovery algorithm and
 -- stores updated PubStorage to the wallet file.
