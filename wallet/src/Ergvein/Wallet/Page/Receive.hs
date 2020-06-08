@@ -51,7 +51,7 @@ receivePageWidget cur i EgvExternalKeyBox{..} = wrapper (ReceiveTitle cur) (Just
     divClass "receive-qr-andr"   $ qrCodeWidget keyTxt cur
     newE  <- buttonClass "button button-outline button-receive" RPSGenNew
     copyE <- buttonClass "button button-outline button-receive" RPSCopy
-    setFlatToExtPubKey $ (cur, i) <$ newE
+    setFlagToExtPubKey $ (cur, i) <$ newE
     showInfoMsg =<< clipboardCopy (keyTxt <$ copyE)
     divClass "receive-adr-andr" $ text $ "#" <> showt i <> ": " <> keyTxt
     labelD <- divClass "button-receive" $ textFieldNoLabel $ getLabelFromEgvPubKey extKeyBox'key
@@ -70,7 +70,7 @@ receivePageWidget cur i EgvExternalKeyBox{..} = wrapper (ReceiveTitle cur) (Just
     divClass "receive-buttons-wrapper" $ do
        newE  <- outlineButton RPSGenNew
        copyE <- outlineButton RPSCopy
-       setFlatToExtPubKey $ (cur, i) <$ newE
+       setFlagToExtPubKey $ (cur, i) <$ newE
        showInfoMsg =<< clipboardCopy (keyTxt <$ copyE)
     divClass "receive-adr" $ text $ "#" <> showt i <> ": " <> keyTxt
     divClass "label-block" $ do
