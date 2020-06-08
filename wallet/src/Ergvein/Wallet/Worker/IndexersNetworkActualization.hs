@@ -3,37 +3,30 @@ module Ergvein.Wallet.Worker.IndexersNetworkActualization
     indexersNetworkActualizationWorker
   ) where
 
-import Control.Concurrent.Async
 import Control.Monad.Reader
+import Control.Monad.Zip
+import Data.Bifunctor
 import Data.List.Split
-import Data.Time
-import Data.List
 import Data.Maybe
-import Network.HTTP.Client(Manager)
+import Data.Time
 import Reflex.ExternalRef
 import Servant.Client
-import Data.Either
-import Data.Maybe
-import Control.Monad.Zip
-import qualified Data.Vector as V
-import Ergvein.Wallet.Monad.Base
+import System.Random.Shuffle
 
 import Ergvein.Index.API.Types
 import Ergvein.Index.Client
 import Ergvein.Text
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Client
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
-import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
-import Data.Bifunctor
-import System.Random.Shuffle
 
-import qualified Data.List as L
-import qualified Data.Map  as M
-import qualified Data.Set  as S
-import qualified Data.Text as T
+import qualified Data.List   as L
+import qualified Data.Map    as M
+import qualified Data.Set    as S
+import qualified Data.Text   as T
+import qualified Data.Vector as V
 
 infoWorkerInterval :: NominalDiffTime
 infoWorkerInterval = 60
@@ -100,7 +93,7 @@ indexersNetwork targetAmount peers =
       in bimap median' median' . munzip <$> M.unionsWith (<>) (fmap pure <$> infos)
       where
         median' :: V.Vector BlockHeight -> BlockHeight
-        median' v =  v V.! length v `div` 2
+        median' v =  v V.! (length v `div` 2)
 
     indexersInfo :: [BaseUrl] -> m (M.Map BaseUrl IndexerInfo)
     indexersInfo urls = do
