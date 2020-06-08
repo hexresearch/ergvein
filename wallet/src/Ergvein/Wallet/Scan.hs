@@ -74,6 +74,7 @@ scannerBtc = void $ workflow waiting
       buildE <- getPostBuild
       ps <- getPubStorage
       let keys = getPublicKeys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "scannerBtc: not exsisting store!") . currencyPubStorage'pubKeystore
+          toAddr = xPubToBtcAddr . extractXPubKeyFromEgv
       scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses $ xPubToBtcAddr . extractXPubKeyFromEgv <$> keys
       let hashesE = V.toList . snd <$> scanE
           heightE = fst <$> scanE
@@ -81,6 +82,9 @@ scannerBtc = void $ workflow waiting
       blocksE <- logEvent "Blocks requested: " =<< requestBTCBlocks hashesE
       storedBlocksE <- storeMultipleBlocksByE blocksE
       storedTxHashesE <- storeMultipleBlocksTxHashesByE blocksE
+      let keymap = M.fromList . V.toList . V.indexed . V.map (BtcAddress . toAddr) $ keys
+      txsE <- getAddressesTxs $ (keymap,) <$> blocksE
+      -- insertTxsInPubKeystore $
       pure ((), never)
 
 -- | Loads current PubStorage, performs BIP44 account discovery algorithm and
@@ -159,7 +163,7 @@ scanExternalAddresses currency currencyPubStorage = mdo
   getTxsE' <- getTxs $ attachPromptlyDynWith (\(i, key) blocks ->
     (i, egvXPubKeyToEgvAddress key, blocks)) currentKeyD $ tagPromptlyDyn blocksD storedTxHashesE
   let getTxsE = snd <$> getTxsE'
-  insertTxsInPubKeystore $ ffor getTxsE' $ \(i, txmap) -> (currency, i, M.keys txmap)
+  insertTxsInPubKeystore $ ffor getTxsE' $ \(i, txmap) -> (currency, M.singleton i (M.keys txmap))
 
   let noBlocksE = fforMaybe filterAddressE $ \case
         [] -> Just []
@@ -247,6 +251,10 @@ filterAddress addrE = performFork $ ffor addrE Filters.filterAddress
 -- | Gets transactions related to given address from given block list.
 getTxs :: MonadFront t m => Event t (a, EgvAddress, [HB.Block]) -> m (Event t (a, M.Map TxId EgvTx))
 getTxs = performFork . fmap (\(a, addr, bls) -> fmap (a,) $ getAddrTxsFromBlocks addr bls)
+
+-- | Extract transactions that correspond to given address.
+getAddressesTxs :: MonadFront t m => Event t (M.Map a EgvAddress, [HB.Block]) -> m (Event t (M.Map a (M.Map TxId EgvTx)))
+getAddressesTxs e = performFork $ ffor e $ \(maddr, blocks) -> traverse (`getAddrTxsFromBlocks` blocks) maddr
 
 -- | Gets transactions related to given address from given block.
 getAddrTxsFromBlocks :: (MonadIO m, Traversable f, HasBlocksStorage m, PlatformNatives)

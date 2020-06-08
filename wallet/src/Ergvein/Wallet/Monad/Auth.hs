@@ -354,8 +354,11 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
 
   insertTxsInPubKeystore reqE = do
     authRef <- asks env'authRef
-    performFork_ $ ffor reqE $ \(cur, i, txids) -> modifyExternalRefMaybe_ authRef $
-      updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'txs = S.union (extKeyBox'txs kb) $ S.fromList txids}
+    performFork_ $ ffor reqE $ \(cur, mtx) -> modifyExternalRefMaybe_ authRef $ \auinfo -> do
+      let upd i txids = updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'txs = S.union (extKeyBox'txs kb) $ S.fromList txids}
+      let go !macc i txids = maybe (upd i txids auinfo) (upd i txids) macc
+      M.foldlWithKey' go Nothing mtx
+
 
 updateKeyBoxWith :: Currency -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> AuthInfo -> Maybe AuthInfo
 updateKeyBoxWith cur i f ai =
