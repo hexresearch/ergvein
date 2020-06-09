@@ -47,6 +47,7 @@ main = do
 onStartup :: ServerM ()
 onStartup = do
   blockchainScanning
+  feesScanning
   addDefaultPeersIfNoneDiscovered
   refreshKnownPeersCache
   peerIntroduce

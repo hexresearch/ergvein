@@ -17,10 +17,13 @@ type IndexIntroducePeer     = "introducePeer"   :> Body IntroducePeerReq :> Post
 
 type IndexKnownPeers        = "knownPeers" :> Body KnownPeersReq :> PostResp KnownPeersResp
 
+type IndexGetFees           = "fees"      :> PostResp IndexFeesResp
+
 data IndexApi route = IndexApi
     { indexGetHeight         :: route :- IndexGetHeight
     , indexGetBlockFilters   :: route :- IndexGetBlockFilters
     , indexGetInfo           :: route :- IndexGetInfo
     , indexIntroducePeer     :: route :- IndexIntroducePeer
     , indexKnownPeers        :: route :- IndexKnownPeers
+    , indexGetFees           :: route :- IndexGetFees
     } deriving Generic

@@ -1,40 +1,43 @@
 module Ergvein.Index.Server.Server.V1 where
 
+import Control.Concurrent.STM
+import Control.Monad.IO.Unlift
+import Control.Monad.Reader
+import Control.Monad.Trans.Except
 import Data.Flat
 import Data.List
+import Data.Map.Strict (Map)
 import Data.Maybe
 import Data.Monoid
+import Data.Proxy
+import Data.Time.Clock
 import Data.Word
 import Database.Persist.Sql
+import Servant.API
+import Servant.API.Generic
+import Servant.Client
 
 import Ergvein.Index.API
 import Ergvein.Index.API.Types
 import Ergvein.Index.API.V1
+import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.Cache.Queries
 import Ergvein.Index.Server.Cache.Schema
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema
-import Ergvein.Index.Server.Monad
-import Ergvein.Text
-import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
-import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.Dependencies
-
-import Data.Proxy
-import Servant.API
-import Servant.API.Generic
-import Servant.Client
-
-import qualified Network.Haskoin.Block as Btc
-import qualified Data.Serialize as S 
+import Ergvein.Index.Server.Environment
+import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Discovery
 import Ergvein.Index.Server.PeerDiscovery.Types
-import Debug.Trace
-import Control.Monad.IO.Unlift
-import Control.Monad.Trans.Except
-import Data.Time.Clock
+import Ergvein.Text
+import Ergvein.Types.Currency
+import Ergvein.Types.Fees
+import Ergvein.Types.Transaction
+
+import qualified Network.Haskoin.Block as Btc
+import qualified Data.Serialize as S
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
@@ -43,6 +46,7 @@ indexServer = IndexApi
     , indexGetInfo = indexGetInfoEndpoint
     , indexIntroducePeer = introducePeerEndpoint
     , indexKnownPeers = knownPeersEndpoint
+    , indexGetFees    = getFeesEndpoint
     }
 
 --Endpoints
@@ -99,3 +103,8 @@ knownPeersEndpoint :: KnownPeersReq -> ServerM KnownPeersResp
 knownPeersEndpoint request = do 
   result <- getKnownPeers $ knownPeersWithSecuredOnly request
   pure $ KnownPeersResp result
+
+getFeesEndpoint :: ServerM IndexFeesResp
+getFeesEndpoint = do
+  feeVar <- asks envFeeEstimates
+  liftIO $ fmap IndexFeesResp $ readTVarIO feeVar

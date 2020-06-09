@@ -1,14 +1,17 @@
 module Ergvein.Index.Server.BlockchainScanning.Bitcoin where
 
+import           Control.Concurrent
 import           Control.Lens.Combinators
 import           Control.Monad.Logger
 import           Control.Monad.Reader
 import           Data.Either
+import           Data.Fixed
 import           Data.List.Index
 import           Data.Maybe
 import           Data.Serialize
 import           Network.Bitcoin.Api.Blockchain
 import           Network.Bitcoin.Api.Client
+import           Network.Bitcoin.Api.Misc
 
 import           Ergvein.Crypto.Hash
 import           Ergvein.Filters.Btc.Mutable
@@ -17,11 +20,14 @@ import           Ergvein.Index.Server.BlockchainScanning.Types
 import           Ergvein.Index.Server.Cache.Monad
 import           Ergvein.Index.Server.Cache.Queries
 import           Ergvein.Index.Server.Cache.Schema
+import           Ergvein.Index.Server.Config
+import           Ergvein.Index.Server.Dependencies
+import           Ergvein.Index.Server.Monad
 import           Ergvein.Index.Server.Utils
 import           Ergvein.Text
 import           Ergvein.Types.Currency
+import           Ergvein.Types.Fees
 import           Ergvein.Types.Transaction
-import           Ergvein.Index.Server.Dependencies
 
 import qualified Data.HashSet                       as Set
 import qualified Data.HexString                     as HS
@@ -85,3 +91,22 @@ blockInfo blockHeightToScan =  do
   where
     blockGettingError = error $ "Error getting BTC node at height " ++ show blockHeightToScan
     blockParsingError = error $ "Error parsing BTC node at height " ++ show blockHeightToScan
+
+feeScaner :: ServerM ()
+feeScaner = feeScaner' 0
+  where
+    feeScaner' :: BlockHeight -> ServerM ()
+    feeScaner' h = do
+      cfg <- serverConfig
+      h'  <- actualHeight
+      when (h' /= h) $ do
+        res <- flip traverse [FeeFast, FeeModerate, FeeCheap] $ \lvl -> do
+          mco <- nodeRpcCall (\c -> estimateSmartFee c (fromIntegral $ feeTargetBlocks BTC lvl) Conservative)
+          mec <- nodeRpcCall (\c -> estimateSmartFee c (fromIntegral $ feeTargetBlocks BTC lvl) Economical)
+          case (estimateResFee mco, estimateResFee mec) of
+            (Just (MkFixed co), Just (MkFixed ec)) -> pure $ Just (lvl, (fromIntegral co, fromIntegral ec))
+            _ -> pure Nothing
+        let bundle = mkFeeBundle $ catMaybes res
+        setFees BTC bundle
+      liftIO $ threadDelay $ cfgBlockchainScanDelay cfg
+      feeScaner' h'
