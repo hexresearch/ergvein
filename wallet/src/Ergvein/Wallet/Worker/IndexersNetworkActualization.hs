@@ -21,6 +21,7 @@ import Ergvein.Wallet.Client
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Settings
 
 import qualified Data.List   as L
 import qualified Data.Map    as M
@@ -33,9 +34,6 @@ infoWorkerInterval = 60
 
 minIndexers :: Int
 minIndexers = 2
-
-maxIndexers :: Int
-maxIndexers = 16
 
 indexersToExclude :: MonadFront t m => m (S.Set BaseUrl)
 indexersToExclude = do
@@ -117,18 +115,19 @@ indexersNetwork targetAmount peers =
 
 indexersNetworkActualizationWorker :: MonadFront t m => m ()
 indexersNetworkActualizationWorker = do
-  buildE   <- getPostBuild
-  refreshE <- fst  <$> getIndexerInfoEF
-  te       <- void <$> tickLossyFromPostBuildTime infoWorkerInterval
+  buildE            <- getPostBuild
+  refreshE          <- fst  <$> getIndexerInfoEF
+  te                <- void <$> tickLossyFromPostBuildTime infoWorkerInterval
+  settingsRef       <- getSettingsRef
+  activeUrlsRef     <- getActiveUrlsRef
+  indexersToExclude <- indexersToExclude
 
   let goE = leftmost [void te, refreshE, buildE]
 
-  activeUrlsRef          <- getActiveUrlsRef
-  indexersToExclude      <- indexersToExclude
-
   performFork_ $ ffor goE $ const $ do
-    currentNetworkInfoMap  <- readExternalRef activeUrlsRef
-
+    settings              <- readExternalRef settingsRef
+    currentNetworkInfoMap <- readExternalRef activeUrlsRef
+    let maxIndexersToExplore = settingsActUrlNum settings
     let currentNetwork = M.keysSet currentNetworkInfoMap
 
     fetchedIndexers <- newIndexers currentNetwork
@@ -136,7 +135,7 @@ indexersNetworkActualizationWorker = do
     let filteredIndexers = currentNetwork `S.union` fetchedIndexers S.\\ indexersToExclude
     
     shuffledIndexers <- liftIO $ shuffleM $ S.toList filteredIndexers
-    (newNetworkInfoMap, newNetwork) <- indexersNetwork maxIndexers shuffledIndexers
+    (newNetworkInfoMap, newNetwork) <- indexersNetwork maxIndexersToExplore shuffledIndexers
 
     let resultingNetwork = if length newNetwork >= minIndexers then newNetwork else currentNetwork
         resultingNetworkInfoMap = M.fromSet (newNetworkInfoMap M.!?) resultingNetwork
