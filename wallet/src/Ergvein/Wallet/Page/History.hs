@@ -117,10 +117,10 @@ transactionInfoPage cur tr@TransactionView{..} = wrapper HistoryTITitle (Just $ 
         divClass "out-body-andr"  $ text $ oHash
     divClass "info-descr-andr" $ localizedText HistoryTIURL
     divClass "info-andr-element" $ do
-      divClass "info-body-andr info-url" $ hyperlink "link" (txUrl txInfo) (txUrl txInfo)
-    let copiedE = leftmost[(txId txInfo) <$ copiedHashE,
-                           (txBlock txInfo) <$ copiedBlockE,
-                           (txRaw txInfo) <$ copiedRawE]
+      divClass "info-body-andr info-url" $ hyperlink "link" (txUrl txInfoView) (txUrl txInfoView)
+    let copiedE = leftmost[(txId txInfoView) <$ copiedHashE,
+                           (txBlock txInfoView) <$ copiedBlockE,
+                           (txRaw txInfoView) <$ copiedRawE]
     cE <- clipboardCopy $ copiedE
     showSuccessMsg $ CSCopied <$ cE
     pure ()
