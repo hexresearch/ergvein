@@ -148,10 +148,11 @@ getCurrentHeight c = do
   md <- externalRefDynamic r
   holdUniqDyn $ (fromMaybe 0 . M.lookup c) <$> md
 
--- | Update current height of longest chain for given currency. TODO: migrate this to direct asking BTC nodes, not indexer.
-setCurrentHeight :: MonadFrontAuth t m => Currency -> Event t Integer -> m ()
+-- | Update current height of longest chain for given currency.
+setCurrentHeight :: (MonadFrontAuth t m, MonadStorage t m) => Currency -> Event t Integer -> m ()
 setCurrentHeight c e = do
   r <- getHeightRef
+  setLastSeenHeight c $ fromIntegral <$> e
   performEvent_ $ ffor e $ \h -> modifyExternalRef r ((, ()) . M.insert c h)
 
 -- | Get current value that tells you whether filters are fully in sync now or not

@@ -387,6 +387,7 @@ liftAuth ma0 ma = mdo
         -- Create data for Auth context
         (reqE, reqFire) <- newTriggerEvent
         let sel = fanMap reqE -- Node request selector :: RequestSelector t
+        let ps = auth ^. authInfo'storage . storage'pubStorage
 
         managerRef      <- liftIO newEmptyMVar
         activeCursRef   <- newExternalRef acurs
@@ -396,7 +397,7 @@ liftAuth ma0 ma = mdo
         filtersHeights  <- newExternalRef mempty
         scannedHeights  <- newExternalRef mempty
         blocksStore     <- liftIO $ runReaderT openBlocksStorage (settingsStoreDir settings)
-        heightRef       <- newExternalRef mempty
+        heightRef       <- newExternalRef (fmap (maybe 0 fromIntegral . _currencyPubStorage'height) . _pubStorage'currencyPubStorages $ ps)
         fsyncRef        <- newExternalRef mempty
         consRef         <- newExternalRef mempty
         let env = Env {

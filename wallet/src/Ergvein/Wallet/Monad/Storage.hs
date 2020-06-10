@@ -1,6 +1,7 @@
 module Ergvein.Wallet.Monad.Storage
   (
     MonadStorage(..)
+  , setLastSeenHeight
   , addTxToPubStorage
   , addTxMapToPubStorage
   , setLabelToExtPubKey
@@ -35,6 +36,10 @@ class (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t m | m -> t where
   getPubStorageD         :: m (Dynamic t PubStorage)
   storeWallet            :: Event t () -> m ()
   modifyPubStorage       :: Event t (PubStorage -> Maybe PubStorage) -> m (Event t ())
+
+setLastSeenHeight :: MonadStorage t m => Currency -> Event t BlockHeight -> m ()
+setLastSeenHeight cur e = void . modifyPubStorage $ ffor e $ \h ps -> Just $
+  ps & pubStorage'currencyPubStorages . at cur . _Just . currencyPubStorage'height ?~ h
 
 addTxToPubStorage :: MonadStorage t m => Event t (TxId, EgvTx) -> m ()
 addTxToPubStorage txE = void . modifyPubStorage $ ffor txE $ \(txid, etx) ps -> Just $ let
