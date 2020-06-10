@@ -55,7 +55,7 @@ instance LocalizedPrint ParametersParseErrors where
       PPEInt -> "Некорректное значение. Только целые числа"
 
 networkSettingsPage :: MonadFront t m => m ()
-networkSettingsPage = wrapper NSSTitle (Just $ pure networkSettingsPage ) False $ do
+networkSettingsPage = wrapper NSSTitle (Just $ pure networkSettingsPage ) WrapperAlignmentNone $ do
   navD <- navbarWidget ActivePage
   void $ widgetHoldDyn $ ffor navD $ \case
     ActivePage      -> activePageWidget
@@ -118,7 +118,7 @@ addUrlWidget showD = mdo
 activePageWidget :: forall t m . MonadFront t m => m ()
 activePageWidget = mdo
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
-  divClass "centered-wrapper" $ divClass "lr-centered-content" $
+  divClass "centered-wrapper" $ divClass "horizontally-centered-content" $
     void . flip listWithKey renderActive =<< getIndexerInfoD
   hideE <- activateURL =<< addUrlWidget showD
   tglE <- divClass "network-wrapper mt-1" $ divClass "net-btns-3" $ do
@@ -156,7 +156,7 @@ inactivePageWidget = mdo
     fmap (mergeMap . M.fromList) $ flip traverse urls $ \u -> do
       resE <- pingIndexer $ u <$ pingAllE
       pure (u, snd <$> resE)
-  divClass "centered-wrapper" $ divClass "lr-centered-content" $ mdo
+  divClass "centered-wrapper" $ divClass "horizontally-centered-content" $ mdo
     infomapD <- foldDyn M.union M.empty $ leftmost [resE, allResE]
     a :: Dynamic t [Dynamic t (Event t BaseUrl)] <- simpleList urlsD $ \urlD -> do
       let myInfoD = M.lookup <$> urlD <*> infomapD

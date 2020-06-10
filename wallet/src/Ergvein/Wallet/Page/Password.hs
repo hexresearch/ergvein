@@ -26,7 +26,7 @@ import Ergvein.Wallet.Storage.AuthInfo
 import Reflex.Localize
 
 passwordPage :: MonadFrontBase t m => Mnemonic -> [Currency] -> m ()
-passwordPage mnemonic curs = wrapperSimple True $ do
+passwordPage mnemonic curs = wrapperSimple WrapperAlignmentCenter $ do
   divClass "password-setup-title" $ h4 $ localizedText PPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText PPSDescr
   logPassE <- setupLoginPassword
@@ -35,7 +35,7 @@ passwordPage mnemonic curs = wrapperSimple True $ do
   void $ setAuthInfo $ Just <$> authInfoE
 
 setupLoginPage :: MonadFrontBase t m => Mnemonic -> [Currency] -> m ()
-setupLoginPage m ac = wrapperSimple True $ do
+setupLoginPage m ac = wrapperSimple WrapperAlignmentCenter $ do
   divClass "password-setup-title" $ h4 $ localizedText LPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText LPSDescr
   logE <- setupLogin
@@ -47,7 +47,7 @@ setupLoginPage m ac = wrapperSimple True $ do
   pure ()
 
 setupPatternPage :: MonadFrontBase t m => Mnemonic -> Text -> [Currency] -> m ()
-setupPatternPage m l curs = wrapperSimple True $ do
+setupPatternPage m l curs = wrapperSimple WrapperAlignmentCenter $ do
   divClass "password-setup-title" $ h4 $ localizedText PatPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText PatPSDescr
   patE <- setupPattern
@@ -57,7 +57,7 @@ setupPatternPage m l curs = wrapperSimple True $ do
   void $ setAuthInfo $ Just <$> authInfoE
 
 askPasswordPage :: MonadFrontBase t m => Text -> m (Event t Password)
-askPasswordPage name = wrapperSimple True $ do
+askPasswordPage name = wrapperSimple WrapperAlignmentCenter $ do
   divClass "password-ask-title" $ h4 $ localizedText PPSUnlock
 #ifdef ANDROID
   askPattern name

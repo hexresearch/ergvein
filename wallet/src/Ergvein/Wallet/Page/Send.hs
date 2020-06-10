@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Ergvein.Wallet.Page.Send (
     sendPage
   ) where
@@ -7,6 +8,7 @@ import Data.Either (isRight)
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Camera
+import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Language
@@ -47,21 +49,30 @@ instance LocalizedPrint SendStrings where
       BtnScanQRCode -> "Сканировать"
 
 sendPage :: MonadFront t m => Currency -> m ()
-sendPage cur = wrapper (SendTitle cur) (Just $ pure $ sendPage cur) False $ do
+sendPage cur = wrapper (SendTitle cur) (Just $ pure $ sendPage cur) WrapperAlignmentNone $ do
   let thisWidget = Just $ pure $ sendPage cur
   navbarWidget cur thisWidget NavbarSend
-  divClass "centered-wrapper" $ divClass "centered-content" $ divClass "send-page" $ form $ fieldset $ mdo
+  contentWrapper WrapperAlignmentVertical WrapperNoPadding $ formClass "send-page" $ mdo
     recipientErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing) . fst)
-    recipientD <- validatedTextFieldSetVal RecipientString "" recipientErrsD resQRcodeE
-    (qrE, pasteE, resQRcodeE) <- divClass "send-buttons-wrapper" $ do
-      qrE <- outlineButtonWithIcon BtnScanQRCode "fas fa-qrcode fa-lg"
+#ifdef ANDROID
+    recipientD <- validatedTextFieldSetVal RecipientString "" recipientErrsD (leftmost [resQRcodeE, pasteE])
+    (qrE, pasteE, resQRcodeE) <- divClass "send-page-buttons-wrapper" $ do
+      qrE <- outlineTextIconButton BtnScanQRCode "fas fa-qrcode fa-lg"
       openE <- delay 1.0 =<< openCamara qrE
       resQRcodeE <- waiterResultCamera openE
-      pasteE <- outlineButtonWithIcon BtnPasteString "fas fa-clipboard fa-lg"
+      pasteBtnE <- outlineTextIconButton BtnPasteString "fas fa-clipboard fa-lg"
+      pasteE <- clipboardPaste pasteBtnE
       pure (qrE, pasteE, resQRcodeE)
+#else
+    recipientD <- validatedTextFieldSetVal RecipientString "" recipientErrsD pasteE
+    pasteE <- divClass "send-page-buttons-wrapper" $ do
+      pasteBtnE <- outlineTextIconButton BtnPasteString "fas fa-clipboard fa-lg"
+      pasteE <- clipboardPaste pasteBtnE
+      pure pasteE
+#endif
     amountErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing) . snd)
     amountD <- validatedTextField AmountString "" amountErrsD
-    submitE <- submitClass "button button-outline send-submit" SendBtnString
+    submitE <- outlineSubmitTextIconButtonClass "w-100" SendBtnString "fas fa-paper-plane fa-lg"
     let validationE = poke submitE $ \_ -> do
           recipient <- sampleDyn recipientD
           amount <- sampleDyn amountD

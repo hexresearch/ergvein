@@ -13,7 +13,7 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Wrapper
 
 aboutPage :: MonadFront t m => m ()
-aboutPage = wrapper AboutTitle (Just $ pure aboutPage) False $ do
+aboutPage = wrapper AboutTitle (Just $ pure aboutPage) WrapperAlignmentNone $ do
   h3 $ localizedText $ AboutTitle
   elAttr "hr" [("class","about-hr-sep")] blank
   divClass "about-wrapper" $ do

@@ -127,6 +127,9 @@ majorBackground = rgb 255 255 255
 minorBackground :: Color
 minorBackground = rgb 59 78 122
 
+mobileBreakpoint :: Size LengthUnit
+mobileBreakpoint = rem 40
+
 wrapperCss :: Css
 wrapperCss = do
   ".base-container" ? do
@@ -134,16 +137,23 @@ wrapperCss = do
     flexDirection column
     height $ pct 100
   ".content-wrapper" ? do
-    padding (rem 1) (rem 1) (rem 1) (rem 1)
-  ".centered-wrapper" ? do
     flexGrow 1
     display flex
+    flexDirection column
+  ".content-wrapper-centered" ? do
+    flexGrow 1
+    display flex
+    flexDirection column
+    -- backgroundColor (rgb 255 0 0)
+  ".vertically-centered-content" ? do
+    margin auto (em 0) auto (em 0)
+    -- backgroundColor (rgb 0 255 0)
+  ".horizontally-centered-content" ? do
+    margin (em 0) auto (em 0) auto
+    -- backgroundColor (rgb 0 255 0)
   ".centered-content" ? do
     margin auto auto auto auto
-  ".lr-centered-content" ? do
-    margin (em 0) auto (em 0) auto
-    paddingLeft $ em 1
-    paddingRight $ em 1
+    -- backgroundColor (rgb 0 255 0)
 
 translatePctX :: Size Percentage -> Css
 translatePctX x = prefixed (browsers <> "transform") $ "translateX(" <> value x <> ")"
@@ -205,6 +215,8 @@ navbarCss = do
   ".navbar" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1, fr 1]
+    marginBottom $ rem 1
+    -- backgroundColor (rgb 0 0 255)
   ".navbar-item" ? do
     padding (rem 1) (rem 1) (rem 1) (rem 1)
     cursor pointer
@@ -375,7 +387,7 @@ initialPageCss = do
 balancesPageCss :: Css
 balancesPageCss = do
   ".balances-wrapper" ? do
-    maxWidth $ px 500
+    maxWidth mobileBreakpoint
     margin (px 0) auto (px 0) auto
     textAlign $ alignSide sideLeft
   ".sync-progress" ? do
@@ -406,23 +418,27 @@ balancesPageCss = do
 sendPageCss :: Css
 sendPageCss = do
   ".send-page" ? do
-    maxWidth $ px 500
     margin (px 0) auto (px 0) auto
+    maxWidth mobileBreakpoint
   ".send-page input" ? do
-    marginBottom $ em 0.5
+    marginBottom $ rem 1
   ".form-field-errors" ? do
     color red
     textAlign $ alignSide sideLeft
-    marginBottom $ em 0.5
-  ".send-buttons-wrapper" ? do
-    display grid
-    gridTemplateColumns [fr 1, fr 1]
-    gridGap $ rem 1
-  ".send-submit" ? do
-    width $ pct 100
+    marginBottom $ rem 1
+  ".send-page-buttons-wrapper" ? do
+    display flex
+    flexWrap F.wrap
+    marginLeft $ rem (-1)
+    marginRight $ rem (-1)
+  ".send-page-buttons-wrapper button" ? do
+    flexGrow 1
+    marginLeft $ rem 1
+    marginRight $ rem 1
   ".button-icon-wrapper" ? do
-    marginLeft $ rem 0.5
-  ".is-invalid input" ? border solid (rem 0.1) red
+    paddingLeft $ rem 1
+  ".is-invalid input" ? do
+    border solid (rem 0.1) red
 
 aboutPageCss :: Css
 aboutPageCss = do
@@ -432,7 +448,7 @@ aboutPageCss = do
     border solid (px 3) black
   ".about-line" ? do
     width $ pct 100
-    maxWidth $ px 500
+    maxWidth mobileBreakpoint
     display inlineBlock
     textAlign center
   ".about-content" ? do
@@ -462,7 +478,7 @@ networkPageCss = do
     textAlign center
   ".network-title" ? do
     width $ pct 100
-    maxWidth $ px 500
+    maxWidth mobileBreakpoint
     display inlineBlock
   ".network-title-table" ? do
     display displayTable
@@ -493,7 +509,7 @@ networkPageCss = do
     marginBottom $ em 0.5
   ".network-line" ? do
     width $ pct 100
-    maxWidth $ px 500
+    maxWidth mobileBreakpoint
     display inlineBlock
   ".network-name" ? do
     display flex
@@ -563,7 +579,7 @@ infoPageCss :: Css
 infoPageCss = do
   ".info-content" ? do
     width $ pct 100
-    maxWidth $ px 500
+    maxWidth mobileBreakpoint
     display inlineBlock
   ".info-v-spacer" ? do
     height $ px 25
@@ -579,7 +595,7 @@ sharePageCss :: Css
 sharePageCss = do
   ".share-content" ? do
     width $ pct 100
-    maxWidth $ px 500
+    maxWidth mobileBreakpoint
     display inlineBlock
   ".share-v-spacer" ? do
     height $ px 20
@@ -811,34 +827,35 @@ legoStyles = do
   ".mr-0" ? (marginRight  $ px 0)
   ".mt-0" ? (marginTop    $ px 0)
   ".m-0"  ? margin (px 0) (px 0) (px 0) (px 0)
-  ".mb-1" ? (marginBottom $ em 1)
-  ".ml-1" ? (marginLeft   $ em 1)
-  ".mr-1" ? (marginRight  $ em 1)
-  ".mt-1" ? (marginTop    $ em 1)
-  ".mt-2" ? (marginTop    $ em 2)
+  ".mb-1" ? (marginBottom $ rem 1)
+  ".ml-1" ? (marginLeft   $ rem 1)
+  ".mr-1" ? (marginRight  $ rem 1)
+  ".mt-1" ? (marginTop    $ rem 1)
+  ".mt-2" ? (marginTop    $ rem 2)
   ".mb-a" ? marginBottom  auto
   ".ml-a" ? marginLeft    auto
   ".mr-a" ? marginRight   auto
   ".mt-a" ? marginTop     auto
   ".mtb-a" ? (marginTop auto) >> (marginBottom auto)
-  ".padb-1" ? (paddingBottom $ em 1)
-  ".padl-1" ? (paddingLeft   $ em 1)
-  ".padr-1" ? (paddingRight  $ em 1)
-  ".padt-1" ? (paddingTop    $ em 1)
+  ".padb-1" ? (paddingBottom $ rem 1)
+  ".padl-1" ? (paddingLeft   $ rem 1)
+  ".padr-1" ? (paddingRight  $ rem 1)
+  ".padt-1" ? (paddingTop    $ rem 1)
+  ".pad-1" ? padding (rem 1) (rem 1) (rem 1) (rem 1)
   ".padb-a" ? paddingBottom  auto
   ".padl-a" ? paddingLeft    auto
   ".padr-a" ? paddingRight   auto
   ".padt-a" ? paddingTop     auto
-  ".width-80" ? width (pct 80)
+  ".pad-a"  ? padding auto auto auto auto
+  ".w-80" ? width (pct 80)
+  ".w-100" ? width (pct 100)
 
 receiveCss :: Css
 receiveCss = do
   ".receive-qr" ? do
     margin (px 20) auto (px 40) auto
-
   ".receive-qr-andr" ? do
     margin (px 20) auto (px 40) auto
-
   ".receive-adr" ? do
     margin (px 20) auto (px 40) auto
     fontSize $ px 16

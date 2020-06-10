@@ -23,7 +23,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 
 infoPage :: MonadFront t m => Currency -> m ()
-infoPage cur = wrapper (InfoTitle cur) (Just $ pure $ infoPage cur) False $ divClass "info-content" $ do
+infoPage cur = wrapper (InfoTitle cur) (Just $ pure $ infoPage cur) WrapperAlignmentNone $ divClass "info-content" $ do
   walName <- getWalletName
   textLabel NameWallet $ text walName
   vertSpacer

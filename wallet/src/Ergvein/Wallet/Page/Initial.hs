@@ -39,7 +39,7 @@ initialPage = do
   if null ss then noWalletsPage else hasWalletsPage ss
   logWrite "Finished initial page rendering"
   where
-    noWalletsPage = wrapperSimple True $ divClass "initial-options grid1" $ noWallets
+    noWalletsPage = wrapperSimple WrapperAlignmentCenter $ divClass "initial-options grid1" $ noWallets
     noWallets = do
       newE <- fmap (GoSeed <$) $ outlineButton IPSCreate
       restoreE <- fmap (GoRestore <$) $ outlineButton IPSRestore
@@ -61,7 +61,7 @@ initialPage = do
               , retractablePrev = Just $ pure $ selectWalletsPage ss
               }
         Nothing -> selectWalletsPage ss
-    selectWalletsPage ss = wrapperSimple True $ divClass "initial-options grid1" $ do
+    selectWalletsPage ss = wrapperSimple WrapperAlignmentCenter $ divClass "initial-options grid1" $ do
       h4 $ localizedText IPSSelectWallet
       flip traverse_ ss $ \name -> do
         btnE <- outlineButton name
@@ -133,7 +133,7 @@ generateMissingPrvKeysHelper _ (CurrencyPrvStorage prvKeystore) (goalExternalKey
         in currentInternalKeys V.++ v
 
 initialAuthedPage :: MonadFront t m => m ()
-initialAuthedPage = wrapperSimple True $ divClass "main-page" $ do
+initialAuthedPage = wrapperSimple WrapperAlignmentCenter $ divClass "main-page" $ do
   anon_name <- getWalletName
   h4 $ text $ "Congrats " <> anon_name <> "! You've made it!"
   logoutE <- row . outlineButton $ ("Logout" :: Text)

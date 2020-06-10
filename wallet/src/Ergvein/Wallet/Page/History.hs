@@ -22,7 +22,7 @@ import Data.Time
 import Data.Text as T
 
 historyPage :: MonadFront t m => Currency -> m ()
-historyPage cur = wrapper (HistoryTitle cur) (Just $ pure $ historyPage cur) False $ do
+historyPage cur = wrapper (HistoryTitle cur) (Just $ pure $ historyPage cur) WrapperAlignmentNone $ do
   let thisWidget = Just $ pure $ historyPage cur
   let trHistoryList = mockTransHistory cur
   navbarWidget cur thisWidget NavbarHistory
@@ -34,7 +34,7 @@ historyPage cur = wrapper (HistoryTitle cur) (Just $ pure $ historyPage cur) Fal
 
 #ifdef ANDROID
 transactionInfoPage :: MonadFront t m => Currency -> TransactionMock -> m ()
-transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) False $ do
+transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) WrapperAlignmentNone $ do
   divClass "transaction-info-body-andr" $ mdo
     hashD <- expD hashE hashD
     hashE <- expHead hashD HistoryTIHash
@@ -116,7 +116,7 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
         divClass "info-copy-button" $ text $ ""
 #else
 transactionInfoPage :: MonadFront t m => Currency -> TransactionMock -> m ()
-transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) False $ do
+transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) WrapperAlignmentNone $ do
   divClass "transaction-info-body" $ do
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIHash

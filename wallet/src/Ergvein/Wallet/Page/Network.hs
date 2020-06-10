@@ -31,7 +31,7 @@ import qualified Data.Text as T
 import Ergvein.Wallet.Native
 
 networkPage :: MonadFront t m => Maybe Currency -> m ()
-networkPage curMb = wrapper NPSTitle (Just $ pure $ networkPage curMb) False $ do
+networkPage curMb = wrapper NPSTitle (Just $ pure $ networkPage curMb) WrapperAlignmentNone $ do
   curD <- networkPageHeader curMb
   void $ widgetHoldDyn $ ffor curD $ \case
     Nothing -> pure ()
@@ -57,7 +57,7 @@ networkPageWidget cur = do
         avgL = if l == 0 then NPSNoServerAvail else NPSAvgLat $ sum lats / fromIntegral l
         in (NPSServerVal l, avgL)
 
-  divClass "centered-wrapper" $ divClass "lr-centered-content width-80" $ do
+  divClass "centered-wrapper" $ divClass "horizontally-centered-content w-80" $ do
     listE <- lineOption $ do
       nameOption NPSServer
       listE <- el "div" $ do
@@ -135,11 +135,11 @@ networkPageHeader minitCur = do
       (fmap . fmap) Just $ holdUniqDyn $ _dropdown_value dp
 
 serversInfoPage :: MonadFront t m => Currency -> m ()
-serversInfoPage initCur = wrapper NPSTitle (Just $ pure $ serversInfoPage initCur) False $ mdo
+serversInfoPage initCur = wrapper NPSTitle (Just $ pure $ serversInfoPage initCur) WrapperAlignmentNone $ mdo
   curD <- networkPageHeader $ Just initCur
   void $ widgetHoldDyn $ ffor curD $ \case
     Nothing -> pure ()
-    Just cur -> divClass "centered-wrapper" $ divClass "lr-centered-content" $ do
+    Just cur -> divClass "centered-wrapper" $ divClass "horizontally-centered-content" $ do
       allIndsD <- getIndexerInfoD
       let indMapD = fmap (M.filter (isJust . join . fmap (M.lookup cur . indInfoHeights))) allIndsD
       void $ listWithKey indMapD $ \url minfoD -> lineOption $ widgetHoldDyn $ ffor minfoD $ \minfo -> do
