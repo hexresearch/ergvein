@@ -4,9 +4,20 @@ module Ergvein.Wallet.Page.History(
     historyPage
   ) where
 
+import Control.Lens.Combinators
+import Control.Monad.Reader
+
+
+import Ergvein.Filters.Btc
 import Ergvein.Text
+import Ergvein.Types.Address
+import Ergvein.Types.Block
 import Ergvein.Types.Currency
+import Ergvein.Types.Storage
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Blocks.Types
+import Ergvein.Wallet.Blocks.BTC.Queries
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
@@ -14,32 +25,51 @@ import Ergvein.Wallet.Localization.History
 import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
+import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Wrapper
+import Ergvein.Wallet.Worker.Node
 
+import qualified Data.Map as M
+import Data.Map.Strict as Map
+import qualified Data.Set as S
+import qualified Data.Map as M
+import qualified Data.List as L
+import Network.Haskoin.Address
+import Data.Maybe (fromMaybe, isJust)
 import Data.Time
 import Data.Text as T
+import Data.Serialize
+
+import qualified Network.Haskoin.Block              as HK
+import qualified Network.Haskoin.Constants          as HK
+import qualified Network.Haskoin.Script             as HK
+import qualified Network.Haskoin.Transaction        as HK
+import qualified Network.Haskoin.Util               as HK
 
 historyPage :: MonadFront t m => Currency -> m ()
 historyPage cur = wrapper (HistoryTitle cur) (Just $ pure $ historyPage cur) False $ do
+  ps <- getPubStorage
+  pubSD <- getPubStorageD
   let thisWidget = Just $ pure $ historyPage cur
-  let trHistoryList = mockTransHistory cur
+      historyWidget = divClass "history-table-body" $ historyTableWidget cur $ mockTransHistory cur
   navbarWidget cur thisWidget NavbarHistory
-  goE <- divClass "history-table-body" $ historyTableWidget trHistoryList
-  void $ nextWidget $ ffor (leftmost goE) $ \tr -> Retractable {
+  goE <- historyWidget
+  void $ nextWidget $ ffor goE $ \tr -> Retractable {
       retractableNext = transactionInfoPage cur tr
     , retractablePrev = thisWidget
     }
 
 #ifdef ANDROID
-transactionInfoPage :: MonadFront t m => Currency -> TransactionMock -> m ()
-transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) False $ do
+transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
+transactionInfoPage cur tr@TransactionView{..} = wrapper HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) False $ do
   divClass "transaction-info-body-andr" $ mdo
     hashD <- expD hashE hashD
     hashE <- expHead hashD HistoryTIHash
-    copiedHashE <- copyDiv hashD $ txId txInfo
-    case (txLabel txInfo) of
+    copiedHashE <- copyDiv hashD $ txId txInfoView
+    case (txLabel txInfoView) of
       Just lbl -> do
         divClass "info-descr-andr" $ localizedText HistoryTILabel
         divClass "info-andr-element" $ do
@@ -51,23 +81,23 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
       elClass "span" "currname" $ text $ showt cur
     divClass "info-descr-andr" $ localizedText HistoryTIFee
     divClass "info-body-andr" $ do
-      text $ showMoney $ txFee txInfo
+      text $ showMoney $ txFee txInfoView
       elClass "span" "currname" $ text $ showt cur
     divClass "info-descr-andr" $ localizedText HistoryTIConfirmations
     divClass "info-body-andr" $ do
-      text $ showt $ txConfirmations txInfo
+      text $ showt $ txConfirmations txInfoView
 
     blockD <- expD blockE blockD
     blockE <- expHead blockD HistoryTIBlock
-    copiedBlockE <- copyDiv blockD $ txBlock txInfo
+    copiedBlockE <- copyDiv blockD $ txBlock txInfoView
 
     rawD <- expD rawE rawD
     rawE <- expHead rawD HistoryTIRaw
-    copiedRawE <- copyDiv rawD $ txRaw txInfo
+    copiedRawE <- copyDiv rawD $ txRaw txInfoView
 
     divClass "info-descr-andr" $ localizedText HistoryTIOutputs
     divClass "info-body-andr info-exits-andr" $ do
-      flip traverse (txOutputs txInfo) $ \(oHash,oVal,oType) -> divClass "out-element" $ do
+      flip traverse (txOutputs txInfoView) $ \(oHash,oVal,oType) -> divClass "out-element" $ do
         divClass "out-descr-andr" $ localizedText HistoryTIOutputsValue
         divClass "out-body-andr"  $ do
           text $ showMoney $ oVal
@@ -78,7 +108,7 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
         divClass "out-body-andr"  $ localizedText oType
     divClass "info-descr-andr" $ localizedText HistoryTIInputs
     divClass "info-body-andr info-exits-andr" $ do
-      flip traverse (txInputs txInfo) $ \(oHash,oVal) -> divClass "out-element" $ do
+      flip traverse (txInputs txInfoView) $ \(oHash,oVal) -> divClass "out-element" $ do
         divClass "out-descr-andr" $ localizedText HistoryTIOutputsValue
         divClass "out-body-andr" $ do
           text $ showMoney $ oVal
@@ -87,10 +117,10 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
         divClass "out-body-andr"  $ text $ oHash
     divClass "info-descr-andr" $ localizedText HistoryTIURL
     divClass "info-andr-element" $ do
-      divClass "info-body-andr info-url" $ hyperlink "link" (txUrl txInfo) (txUrl txInfo)
-    let copiedE = leftmost[(txId txInfo) <$ copiedHashE,
-                           (txBlock txInfo) <$ copiedBlockE,
-                           (txRaw txInfo) <$ copiedRawE]
+      divClass "info-body-andr info-url" $ hyperlink "link" (txUrl txInfoView) (txUrl txInfoView)
+    let copiedE = leftmost[(txId txInfoView) <$ copiedHashE,
+                           (txBlock txInfoView) <$ copiedBlockE,
+                           (txRaw txInfoView) <$ copiedRawE]
     cE <- clipboardCopy $ copiedE
     showSuccessMsg $ CSCopied <$ cE
     pure ()
@@ -115,20 +145,20 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
         expDiv copyD txt
         divClass "info-copy-button" $ text $ ""
 #else
-transactionInfoPage :: MonadFront t m => Currency -> TransactionMock -> m ()
-transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) False $ do
+transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
+transactionInfoPage cur tr@TransactionView{..} = wrapper HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) False $ do
   divClass "transaction-info-body" $ do
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIHash
-      divClass "info-body info-hash" $ text $ txId txInfo
-    case (txLabel txInfo) of
+      divClass "info-body info-hash" $ text $ txId txInfoView
+    case (txLabel txInfoView) of
       Just lbl -> do
         divClass "transaction-info-element" $ do
           divClass "info-descr" $ localizedText HistoryTILabel
           divClass "info-body info-label" $ text lbl
       Nothing -> pure ()
     divClass "transaction-info-element" $ do
-      let url = txUrl txInfo
+      let url = txUrl txInfoView
       divClass "info-descr " $ localizedText HistoryTIURL
       divClass "info-body info-url" $ hyperlink "link" url url
     divClass "transaction-info-element" $ do
@@ -139,21 +169,21 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIFee
       divClass "info-body info-fee" $ do
-        text $ showMoney $ txFee txInfo
+        text $ showMoney $ txFee txInfoView
         elClass "span" "currname" $ text $ showt cur
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIConfirmations
-      divClass "info-body info-conf" $ text $ showt $ txConfirmations txInfo
+      divClass "info-body info-conf" $ text $ showt $ txConfirmations txInfoView
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIBlock
-      divClass "info-body info-block" $ text $ txBlock txInfo
+      divClass "info-body info-block" $ text $ txBlock txInfoView
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIRaw
-      divClass "info-body info-raw" $ text $ txRaw txInfo
+      divClass "info-body info-raw" $ text $ txRaw txInfoView
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIOutputs
       divClass "info-body info-out" $ do
-        flip traverse (txOutputs txInfo) $ \(oHash,oVal,oType) -> divClass "out-element" $ do
+        flip traverse (txOutputs txInfoView) $ \(oHash,oVal,oType) -> divClass "out-element" $ do
           divClass "out-descr" $ localizedText HistoryTIOutputsValue
           divClass "out-body"  $ do
             text $ showMoney $ oVal
@@ -165,7 +195,7 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIInputs
       divClass "info-body info-in" $ do
-        flip traverse (txInputs txInfo) $ \(oHash,oVal) -> divClass "out-element" $ do
+        flip traverse (txInputs txInfoView) $ \(oHash,oVal) -> divClass "out-element" $ do
           divClass "out-descr" $ localizedText HistoryTIOutputsValue
           divClass "out-body" $ do
             text $ showMoney $ oVal
@@ -175,25 +205,123 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
   pure ()
 #endif
 
-historyTableWidget :: MonadFront t m => [TransactionMock] -> m ([Event t TransactionMock])
-historyTableWidget trList = do
-   traverse historyTableRow trList
-    where
-      historyTableRow :: MonadFront t m => TransactionMock -> m (Event t TransactionMock)
-      historyTableRow tr@TransactionMock{..} = divButton "history-table-row" $ do
-        divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ text $ symb <> (showMoney txAmount)
-        divClass "history-date"   $ text $ txDate
-        divClass ("history-status-" <> ((T.toLower . showt) txInOut)) $ text $ stat
-        pure tr
-        where
-          symb :: Text
-          symb = case txInOut of
-            TransRefill   -> "+"
-            TransWithdraw -> "-"
-          stat :: Text
-          stat = case txStatus of
-            TransConfirmed -> "✓"
-            TransUncofirmed -> "?"
+historyTableWidget :: MonadFront t m => Currency -> [TransactionView] -> m (Event t TransactionView)
+historyTableWidget cur trList = case cur of
+  BTC -> do
+    txsD <- transactionsGetting BTC
+    txClickDE <- widgetHoldDyn $ ffor txsD $ \txs -> do
+      txClickE <- traverse historyTableRow txs
+      pure $ leftmost txClickE
+    pure $ switchDyn txClickDE
+  ERGO -> do
+    txClickE <- traverse historyTableRow trList
+    pure $ leftmost txClickE
+  where
+    historyTableRow :: MonadFront t m => TransactionView -> m (Event t TransactionView)
+    historyTableRow tr@TransactionView{..} = divButton "history-table-row" $ do
+      divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ text $ symb <> (showMoney txAmount)
+      divClass "history-date"   $ text $ txDate
+      divClass ("history-status-" <> ((T.toLower . showt) txInOut)) $ text $ stat
+      pure tr
+      where
+        symb :: Text
+        symb = case txInOut of
+          TransRefill   -> "+"
+          TransWithdraw -> "-"
+        stat :: Text
+        stat = case txStatus of
+          TransConfirmed -> "✓"
+          TransUncofirmed -> "?"
+
+transactionsGetting :: MonadFront t m => Currency -> m (Dynamic t [TransactionView])
+transactionsGetting cur = do
+  buildE <- delay 0.2 =<< getPostBuild
+  ps <- getPubStorage
+  pubSD <- getPubStorageD
+  let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _) -> case M.lookup BTC cm of
+        Nothing -> []
+        Just (CurrencyPubStorage keystore txmap) -> extractAddrs keystore
+  abS <- filtArd <$> sampleDyn allBtcAddrsD
+  store <- getBlocksStorage
+  let rawTxList = filterTx abS ps
+
+  hD <- holdDyn rawTxList $ poke (updated pubSD) $ \pbs -> do
+    allbtcAdrS <- filtArd <$> sampleDyn allBtcAddrsD
+    pure $ filterTx allbtcAdrS pbs
+
+  filtrTxListSE <- performFork $ ffor buildE $ \_ -> do
+    let tx = filterTx abS ps
+    getAndFilterBlocks allBtcAddrsD tx store
+
+  filtrTxListE <- performFork $ ffor (updated hD) $ \tx -> do
+    getAndFilterBlocks allBtcAddrsD tx store
+
+  sD <- holdDyn [] filtrTxListSE
+  hS <- sampleDyn $ sD
+
+  filtrHD <- holdDyn [] $ leftmost [filtrTxListSE, filtrTxListE]
+  pure filtrHD
+  where
+    getAndFilterBlocks btcAddrsD tx store = do
+      allbtcAdrS <- filtArd <$> sampleDyn btcAddrsD
+      liftIO $ flip runReaderT store $ do
+        blh <- traverse getBtcBlockHashByTxHash $ fmap HK.txHash $ fmap (getBtcTx) tx
+        bl <- traverse getBlockFromHash blh
+        b <- traverse (checkAddr allbtcAdrS) tx
+        let txRefList = fmap (calcRefill (fmap getBtcAddr allbtcAdrS)) tx
+        pure $ fmap snd $ L.filter fst $ L.zip b (prepareTransactionView <$> txListRaw bl blh tx txRefList)
+
+    filterTx ac pubS = case cur of
+      BTC  -> fmap snd $ fromMaybe [] $ fmap Map.toList $ _currencyPubStorage'transactions <$> Map.lookup cur (_pubStorage'currencyPubStorages pubS)
+      ERGO -> []
+
+    calcRefill ac tx = case tx of
+        BtcTx btx -> Money cur $ sum $ fmap (HK.outValue . snd) $ L.filter (maybe False (flip elem ac . fromSegWit) . fst) $ fmap (\txo -> (getSegWitAddr txo,txo)) $ HK.txOut btx
+        ErgTx etx -> Money cur 0
+
+    checkAddr :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m Bool
+    checkAddr ac tx = do
+      bL <- traverse (flip checkAddrTx (getBtcTx tx)) ac
+      pure $ L.or bL
+
+    filtArd :: [(Maybe Int, EgvAddress)] -> [EgvAddress]
+    filtArd madr = fmap snd $ L.filter (isJust . fst) madr
+
+    txListRaw (a:as) (b:bs) (c:cs) (d:ds) = (TxRawInfo a b c d) : txListRaw as bs cs ds
+
+    getBlockFromHash :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => Maybe HK.BlockHash -> m (Maybe HK.Block)
+    getBlockFromHash mBlockHash = case mBlockHash of
+      Nothing -> pure Nothing
+      Just blockHash -> do
+        mBlock <- getBtcBlock blockHash
+        pure mBlock
+
+prepareTransactionView :: TxRawInfo -> TransactionView
+prepareTransactionView TxRawInfo{..} = TransactionView {
+    txAmount = txom
+  , txDate = "pending..."
+  , txInOut = TransRefill
+  , txInfoView = txInf
+  , txStatus = TransUncofirmed
+  }
+  where
+    txInf = TransactionViewInfo {
+      txId            = txHex
+     ,txLabel         = Nothing
+     ,txUrl           = "https://www.blockchain.com/btc/tx/" <> txHex
+     ,txFee           = Money BTC 0
+     ,txConfirmations = 0
+     ,txBlock         = ""
+     ,txRaw           = showt $ txHs
+     ,txOutputs       = txOuts
+     ,txInputs        = []
+    }
+    btx = getBtcTx txr
+    txHs = HK.txHash btx
+    txHex = HK.txHashToHex txHs
+    txOuts = fmap (\out -> (txOutAdr out,Money BTC (HK.outValue out), TOUnspent)) $ HK.txOut btx
+    txOutAdr out = maybe "undefined" (showt . fromSegWit) $ getSegWitAddr out
+
 
 -- Front types, should be moved to Utils
 data ExpStatus = Expanded | Hidden deriving (Eq, Show)
@@ -212,16 +340,16 @@ instance LocalizedPrint TransOutputType where
       TOSpent   -> "Потрачены"
       TOUnspent -> "Непотрачены"
 
-mockTransHistory :: Currency -> [TransactionMock]
+mockTransHistory :: Currency -> [TransactionView]
 mockTransHistory cur = [
-  TransactionMock (moneyFromRational cur 0.63919646) "2020-04-07 14:12" TransRefill   (trMockInfo cur) TransUncofirmed
- ,TransactionMock (moneyFromRational cur 0.20134303) "2020-04-07 12:30" TransWithdraw (trMockInfo cur) TransConfirmed
- ,TransactionMock (moneyFromRational cur 0.40213010) "2020-04-03 10:30" TransRefill   (trMockInfo cur) TransConfirmed
- ,TransactionMock (moneyFromRational cur 0.02142302) "2020-03-20 22:40" TransWithdraw (trMockInfo cur) TransConfirmed
- ,TransactionMock (moneyFromRational cur 0.10024245) "2020-03-05 09:05" TransRefill   (trMockInfo cur) TransConfirmed]
+  TransactionView (moneyFromRational cur 0.63919646) "2020-04-07 14:12" TransRefill   (trMockInfo cur) TransUncofirmed
+ ,TransactionView (moneyFromRational cur 0.20134303) "2020-04-07 12:30" TransWithdraw (trMockInfo cur) TransConfirmed
+ ,TransactionView (moneyFromRational cur 0.40213010) "2020-04-03 10:30" TransRefill   (trMockInfo cur) TransConfirmed
+ ,TransactionView (moneyFromRational cur 0.02142302) "2020-03-20 22:40" TransWithdraw (trMockInfo cur) TransConfirmed
+ ,TransactionView (moneyFromRational cur 0.10024245) "2020-03-05 09:05" TransRefill   (trMockInfo cur) TransConfirmed]
 
-trMockInfo :: Currency -> TransactionInfo
-trMockInfo cur = TransactionInfo
+trMockInfo :: Currency -> TransactionViewInfo
+trMockInfo cur = TransactionViewInfo
   "330ce5f20e63b97604fb6add4e4be53197363ac5ebf7342e1372212b7b49498e"
   (Just "s3")
   "https://www.blockchain.com/btc/tx/330ce5f20e63b97604fb6add4e4be53197363ac5ebf7342e1372212b7b49498e"
@@ -232,15 +360,22 @@ trMockInfo cur = TransactionInfo
   [("3MaebbZnWMXoxTWR7SHVGS3W6Xuw5FU164",(moneyFromRational cur 0.04848463),TOUnspent),("18BwS73Fq7D5HY8rGkYCsWNGXXRfEvDxW2",(moneyFromRational cur 0.59071183),TOSpent)]
   [("3Mx9XH35FrbpVjsDayKyvc6eSDZfjJAsx5",(moneyFromRational cur 0.13282286)),("3EVkfRx1cPWC8czue1RH4d6rTXghWyCXDS",(moneyFromRational cur 0.25622085)),("3EVkfRx1cPWC8czue1RH4d6rTXghWyCXDS",(moneyFromRational cur 0.25085875))]
 
-data TransactionMock = TransactionMock {
-  txAmount :: Money
- ,txDate   :: Text
- ,txInOut  :: TransType
- ,txInfo   :: TransactionInfo
- ,txStatus :: TransStatus
+data TxRawInfo = TxRawInfo {
+  txMBl :: Maybe HK.Block
+ ,txHBl :: Maybe HK.BlockHash
+ ,txr   :: EgvTx
+ ,txom  :: Money
 } deriving (Show)
 
-data TransactionInfo = TransactionInfo {
+data TransactionView = TransactionView {
+  txAmount   :: Money
+ ,txDate     :: Text
+ ,txInOut    :: TransType
+ ,txInfoView :: TransactionViewInfo
+ ,txStatus   :: TransStatus
+} deriving (Show)
+
+data TransactionViewInfo = TransactionViewInfo {
   txId            :: Text
  ,txLabel         :: Maybe Text
  ,txUrl           :: Text
@@ -251,3 +386,37 @@ data TransactionInfo = TransactionInfo {
  ,txOutputs       :: [(Text,Money,TransOutputType)]
  ,txInputs        :: [(Text,Money)]
 } deriving (Show)
+
+{-
+data BlockMetaInfo = BlockMetaInfo
+  { blockMetaCurrency      :: Currency
+  , blockMetaBlockHeight   :: BlockHeight
+  , blockMetaHeaderHashHexView :: BlockHeaderHashHexView
+  , blockMetaAddressFilterHexView :: AddressFilterHexView
+  } deriving (Show)
+
+data TxInfo = TxInfo
+  { txHash         :: TxHash
+  , txHexView      :: TxHexView
+  , txOutputsCount :: Word
+  } deriving (Show)
+
+data BlockInfo = BlockInfo
+  { blockInfoMeta       :: BlockMetaInfo
+  , spentTxsHash        :: [TxHash]
+  , blockContentTxInfos :: [TxInfo]
+  } deriving (Show)
+-}
+
+{-
+txInfo :: HK.Tx -> ([TxInfo], [TxHash])
+txInfo tx = let
+  withoutDataCarrier = none HK.isDataCarrier . HK.decodeOutputBS . HK.scriptOutput
+  info = TxInfo { txHash = HK.txHashToHex $ txHash tx
+                , txHexView = HK.encodeHex $ encode tx
+                , txOutputsCount = fromIntegral $ L.length $ L.filter withoutDataCarrier $  HK.txOut tx
+                }
+  withoutCoinbaseTx = L.filter $ (/= HK.nullOutPoint)
+  spentTxInfo = HK.txHashToHex . HK.outPointHash <$> (withoutCoinbaseTx $ HK.prevOutput <$> HK.txIn tx)
+  in ([info], spentTxInfo)
+-}
