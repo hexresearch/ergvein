@@ -30,12 +30,13 @@ filterAddress addr = foldFilters (egvAddrCurrency addr) f []
 
 -- | Scan through unprocessed filters and return scanned height and matches. The function
 -- expect that all addresses are for the same currency.
-filterBtcAddresses :: (MonadIO m, HasFiltersStorage t m) => Vector BtcAddress -> m (BlockHeight, Vector BlockHash)
-filterBtcAddresses as
+filterBtcAddresses :: (MonadIO m, HasFiltersStorage t m) => (BlockHeight -> BlockHeight -> IO ()) -> Vector BtcAddress -> m (BlockHeight, Vector BlockHash)
+filterBtcAddresses progCb as
   | V.null as = pure (0, mempty)
   | otherwise = scanBtcFilters f (filterStartingHeight BTC, mempty)
   where
-    f i bhash cfilter (!_, !acc) = do
+    f i n bhash cfilter (!_, !acc) = do
+      liftIO $ progCb i n
       res <- checkBtcAddresses bhash cfilter as
       let acc' = if res then V.cons bhash acc else acc
       pure (i, acc')

@@ -67,10 +67,10 @@ scannerBtc = void $ workflow waiting
       logWrite "Waiting for unscanned filters"
       fhD <- watchFiltersHeight BTC
       scD <- watchScannedHeight BTC
-      let newFiltersE = ffilter id $ updated $ do
+      let newFiltersE = fmap fst . ffilter (id . snd) $ updated $ do
             fh <- fhD
             sc <- scD
-            pure $ sc < fh
+            pure (sc, sc < fh)
       setSyncProgress $ flip pushAlways newFiltersE $ const $ do
         fh <- sample . current $ fhD
         sc <- sample . current $ scD
@@ -79,14 +79,17 @@ scannerBtc = void $ workflow waiting
         fh <- sample . current $ fhD
         sc <- sample . current $ scD
         logWrite $ "Start scanning for new " <> showt (fh - sc)
-      pure ((), scanning <$ newFiltersE)
+      pure ((), scanning <$> newFiltersE)
 
-    scanning = Workflow $  do
+    scanning i0 = Workflow $  do
       logWrite "Scanning filters"
       buildE <- getPostBuild
       ps <- getPubStorage
+      (updE, updFire) <- newTriggerEvent
+      setSyncProgress updE
+      let updSync i i1 = updFire $ SyncMeta BTC (SyncAddress 0) (fromIntegral (i - i0)) (fromIntegral (i1 - i0))
       let toAddr = xPubToBtcAddr . extractXPubKeyFromEgv
-      scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses $ xPubToBtcAddr . extractXPubKeyFromEgv <$> keys ps
+      scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses updSync $ xPubToBtcAddr . extractXPubKeyFromEgv <$> keys ps
       performEvent_ $ ffor scanE $ liftIO . print
       let hashesE = V.toList . snd <$> scanE
           heightE = fst <$> scanE

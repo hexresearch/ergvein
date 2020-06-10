@@ -114,7 +114,7 @@ foldFilters f a0 e = liftIO . readOnlyTransaction e $ do
 
 -- | Fold over filters that are not scanned yet
 scanFilters :: forall a m . MonadIO m
-  => (BlockHeight -> BlockHash -> BtcAddrFilter -> a -> IO a)
+  => (BlockHeight -> BlockHeight -> BlockHash -> BtcAddrFilter -> a -> IO a)
   -> a
   -> Environment ReadWrite
   -> m a
@@ -132,7 +132,7 @@ scanFilters f a0 e = liftIO . readOnlyTransaction e $ do
         case mfilter of
           Nothing -> go fdb hdb (i0+1) i1 acc
           Just (h, mf) -> do
-            !acc' <- liftIO $ f i0 h mf acc
+            !acc' <- liftIO $ f i0 i1 h mf acc
             go fdb hdb (i0+1) i1 acc'
 
 ffor31 :: (a -> b -> c -> d) -> c -> a -> b -> d
