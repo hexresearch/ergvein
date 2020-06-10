@@ -63,8 +63,8 @@ historyPage cur = wrapper (HistoryTitle cur) (Just $ pure $ historyPage cur) Wra
     }
 
 #ifdef ANDROID
-transactionInfoPage :: MonadFront t m => Currency -> TransactionMock -> m ()
-transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) WrapperAlignmentNone $ do
+transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
+transactionInfoPage cur tr@TransactionView{..} = wrapper HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) WrapperAlignmentNone $ do
   divClass "transaction-info-body-andr" $ mdo
     hashD <- expD hashE hashD
     hashE <- expHead hashD HistoryTIHash
@@ -145,8 +145,8 @@ transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ 
         expDiv copyD txt
         divClass "info-copy-button" $ text $ ""
 #else
-transactionInfoPage :: MonadFront t m => Currency -> TransactionMock -> m ()
-transactionInfoPage cur tr@TransactionMock{..} = wrapper HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) WrapperAlignmentNone $ do
+transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
+transactionInfoPage cur tr@TransactionView{..} = wrapper HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) WrapperAlignmentNone $ do
   divClass "transaction-info-body" $ do
     divClass "transaction-info-element" $ do
       divClass "info-descr" $ localizedText HistoryTIHash
