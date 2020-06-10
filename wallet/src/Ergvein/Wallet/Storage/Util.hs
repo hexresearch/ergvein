@@ -1,6 +1,7 @@
 module Ergvein.Wallet.Storage.Util(
     addXPrvKeyToKeystore
   , addXPubKeyToKeystore
+  , updateCurHeight
   , encryptPrvStorage
   , decryptPrvStorage
   , passwordToECIESPrvKey
@@ -15,6 +16,7 @@ module Ergvein.Wallet.Storage.Util(
   , setLastStorage
   ) where
 
+import Control.Lens
 import Control.Monad.IO.Class
 import Data.ByteArray           (convert)
 import Data.ByteString          (ByteString)
@@ -29,6 +31,7 @@ import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Localization.Native
 import Ergvein.Wallet.Localization.Storage
 import Ergvein.Wallet.Storage.Constants
@@ -67,6 +70,9 @@ addXPubKeyToKeystore External key (PubKeystore master external internal) =
   PubKeystore master (V.snoc external (EgvExternalKeyBox key S.empty False)) internal
 addXPubKeyToKeystore Internal key (PubKeystore master external internal) =
   PubKeystore master external (V.snoc internal key)
+
+updateCurHeight :: Currency -> BlockHeight -> PubStorage -> PubStorage
+updateCurHeight cur bh bs = bs & pubStorage'currencyPubStorages %~ M.update ((Just .) $ currencyPubStorage'height ?~ bh) cur 
 
 createPubKeystore :: EgvXPubKey -> PubKeystore
 createPubKeystore masterPubKey =
