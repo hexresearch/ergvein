@@ -6,8 +6,11 @@ module Ergvein.Wallet.Page.Balances(
 import Data.Maybe (fromMaybe)
 
 import Ergvein.Text
+import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
+import Ergvein.Types.Transaction
+import Ergvein.Filters.Btc
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
@@ -17,9 +20,15 @@ import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Sync.Widget
 import Ergvein.Wallet.Wrapper
+import Ergvein.Wallet.Worker.Node
 
 import Data.Map.Strict as Map
+import qualified Data.Set as S
+import qualified Data.Map as M
+import qualified Data.List as L
 import Network.Wreq
+import Network.Haskoin.Transaction
+import Network.Haskoin.Address
 
 #ifdef ANDROID
 import Control.Monad.IO.Class
@@ -56,6 +65,7 @@ currenciesList :: MonadFront t m => Text -> m ()
 currenciesList name = divClass "currency-content" $ do
   s <- getSettings
   ps <- getPubStorage
+  pubSD <- getPubStorageD
   historyE <- leftmost <$> traverse (currencyLine s) (_pubStorage'activeCurrencies ps)
   if (settingsPortfolio s)
     then portfolioWidget
@@ -68,7 +78,7 @@ currenciesList name = divClass "currency-content" $ do
   where
     currencyLine settings cur = do
       (e, _) <- divClass' "currency-row" $ do
-        bal <- currencyBalance cur
+        bal <- balancesGetting cur
         let setUs = getSettingsUnits settings
         divClass "currency-name"    $ text $ currencyName cur
         divClass "currency-balance" $ do
@@ -77,6 +87,30 @@ currenciesList name = divClass "currency-content" $ do
           elClass "span" "currency-arrow" $ text "〉"
       pure $ cur <$ domEvent Click e
     getSettingsUnits = fromMaybe defUnits . settingsUnits
+
+balancesGetting :: MonadFront t m => Currency -> m (Dynamic t Money)
+balancesGetting cur = do
+  ps <- getPubStorage
+  pubSD <- getPubStorageD
+  let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _) -> case M.lookup BTC cm of
+        Nothing -> []
+        Just (CurrencyPubStorage keystore txmap) -> extractAddrs keystore
+  abS <- sampleDyn allBtcAddrsD
+  hD <- holdDyn (Money cur (calcSum (fmap (getBtcAddr . snd) abS) ps)) $ poke (updated pubSD) $ \pbs -> do
+    allbtcAdrS <- sampleDyn allBtcAddrsD
+    pure $ Money cur $ calcSum (fmap (getBtcAddr . snd) allbtcAdrS) pbs
+
+  pure hD
+  where
+    calcSum ac pubS = case cur of
+      BTC  -> calcBalance ac $ _currencyPubStorage'transactions <$> Map.lookup cur (_pubStorage'currencyPubStorages pubS)
+      ERGO -> 0
+    calcBalance ac mTxs = case mTxs of
+      Nothing -> 0
+      Just txs -> sum $ fmap (\(_,tx) -> case tx of
+        BtcTx btx -> sum $ fmap (outValue . snd) $ L.filter (maybe False (flip elem ac . fromSegWit) . fst) $ fmap (\txo -> (getSegWitAddr txo,txo)) $ txOut btx
+        ErgTx etx -> 0
+        ) $ Map.toList txs
 
 currencyBalance :: MonadFront t m => Currency -> m (Dynamic t Money)
 currencyBalance cur = pure $ pure $ Money cur 0

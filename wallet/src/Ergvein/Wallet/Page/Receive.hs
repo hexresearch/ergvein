@@ -91,13 +91,13 @@ receivePageWidget cur i EgvExternalKeyBox{..} = wrapper (ReceiveTitle cur) (Just
 #endif
 
 newAddrBtn :: MonadFront t m => m (Event t ())
-newAddrBtn = outlineTextIconButtonClass "" RPSGenNew "fas fa-forward fa-lg"
+newAddrBtn = outlineTextIconButton RPSGenNew "fas fa-forward fa-lg"
 
 copyAddrBtn :: MonadFront t m => m (Event t ())
-copyAddrBtn = outlineTextIconButtonClass "" RPSCopy "fas fa-copy fa-lg"
+copyAddrBtn = outlineTextIconButton RPSCopy "fas fa-copy fa-lg"
 
 shareAddrBtn :: MonadFront t m => m (Event t ())
-shareAddrBtn = outlineTextIconButtonClass "" RPSShare "fas fa-share-alt fa-lg"
+shareAddrBtn = outlineTextIconButton RPSShare "fas fa-share-alt fa-lg"
 
 labelAddrBtn :: MonadFront t m => m (Event t ())
-labelAddrBtn = outlineTextIconButtonClass "" RPSAddLabel "fas fa-tag fa-lg"
+labelAddrBtn = outlineTextIconButton RPSAddLabel "fas fa-tag fa-lg"
