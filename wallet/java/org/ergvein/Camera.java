@@ -1,25 +1,7 @@
 package org.ergvein;
 
-import android.content.ClipboardManager;
-import android.content.ClipData;
-import android.content.ClipDescription;
-import android.content.Context;
 import android.content.Intent;
-import android.util.Log;
 import android.net.Uri;
-import android.net.Uri.Builder;
-import android.text.Html;
-
-import java.util.ArrayList;
-import java.io.File;
-import java.io.FileOutputStream;
-
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.util.Base64;
-import android.provider.MediaStore;
-
-import android.app.Fragment;
 
 import systems.obsidian.HaskellActivity;
 

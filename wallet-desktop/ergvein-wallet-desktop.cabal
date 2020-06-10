@@ -23,6 +23,7 @@ library
     , Hclip
     , jsaddle
     , jsaddle-webkit2gtk
+    , open-browser
     , text
     , x509-store
     , x509-system
