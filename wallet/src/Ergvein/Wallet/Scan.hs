@@ -197,7 +197,7 @@ scanExternalAddresses currency currencyPubStorage = mdo
       finishedE = flip push gapE $ \gap -> do
         newKeystore <- sampleDyn newKeystoreD
         newTxs <- sampleDyn newTxsD
-        pure $ if gap >= gapLimit then Just $ (currency, CurrencyPubStorage newKeystore newTxs) else Nothing
+        pure $ if gap >= gapLimit then Just $ (currency, CurrencyPubStorage newKeystore newTxs Nothing) else Nothing
   pure finishedE
 
 type CurrentGap = Int

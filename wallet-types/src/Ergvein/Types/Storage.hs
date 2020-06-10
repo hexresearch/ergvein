@@ -81,6 +81,7 @@ instance FromJSON EncryptedPrvStorage where
 data CurrencyPubStorage = CurrencyPubStorage {
     _currencyPubStorage'pubKeystore  :: PubKeystore
   , _currencyPubStorage'transactions :: M.Map TxId EgvTx
+  , _currencyPubStorage'height       :: !(Maybe BlockHeight) -- ^ Last height seen by the wallet
   } deriving (Eq, Show, Read)
 
 makeLenses ''CurrencyPubStorage

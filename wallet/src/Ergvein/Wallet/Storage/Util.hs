@@ -80,7 +80,7 @@ createPubStorage :: EgvRootXPrvKey -> [Currency] -> PubStorage
 createPubStorage rootPrvKey cs = PubStorage rootPubKey pubStorages cs
   where rootPubKey = EgvRootXPubKey $ deriveXPubKey $ unEgvRootXPrvKey rootPrvKey
         pubStorages = M.fromList [
-            (currency, CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey rootPrvKey currency) (M.fromList [])) |
+            (currency, CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey rootPrvKey currency) (M.fromList []) Nothing) |
             currency <- cs
           ]
 
