@@ -1,9 +1,12 @@
 module Ergvein.Wallet.Filters.Btc.Queries(
     insertFilter
   , insertMultipleFilters
-  , getFilter
-  , getFiltersHeight
+  , readFilter
+  , readFiltersHeight
+  , readScannedHeight
+  , writeScannedHeight
   , foldFilters
+  , scanFilters
   ) where
 
 import Control.Monad
@@ -49,20 +52,46 @@ insertMultipleFilters fs e = liftIO . readWriteTransaction e $ do
       Just total | total >= h -> pure ()
       _ -> put tdb () $ Just h
 
-getFilter :: MonadIO m => BlockHeight -> Environment ReadWrite -> m (Maybe BtcAddrFilter)
-getFilter k e = liftIO . readOnlyTransaction e $ do
+readFilter :: MonadIO m => BlockHeight -> Environment ReadWrite -> m (Maybe BtcAddrFilter)
+readFilter k e = liftIO . readOnlyTransaction e $ getFilter k
+
+getFilter :: Mode mode => BlockHeight -> Transaction mode (Maybe BtcAddrFilter)
+getFilter k = do
   fdb <- getBtcFiltersDb
   hdb <- getBtcHeightsDb
+  fmap snd <$> getFilterImpl fdb hdb k
+
+getFilterImpl :: Database BlockHash ByteString -> Database BlockHeight BlockHash ->  BlockHeight -> Transaction mode (Maybe (BlockHash, BtcAddrFilter))
+getFilterImpl fdb hdb k = do
   mh <- get hdb k
   ffor31 maybe mh (pure Nothing) $ \h -> do
     mview <- get fdb h
     mfilter <- traverse decodeBtcAddrFilter mview
-    pure $ maybe Nothing (either (const Nothing) Just) mfilter
+    pure $ maybe Nothing (either (const Nothing) (Just . (h,))) mfilter
 
-getFiltersHeight :: MonadIO m => Environment ReadWrite -> m BlockHeight
-getFiltersHeight e = liftIO . readOnlyTransaction e $ do
+readFiltersHeight :: MonadIO m => Environment ReadWrite -> m BlockHeight
+readFiltersHeight e = liftIO $ readOnlyTransaction e getFiltersHeight
+
+getFiltersHeight :: Mode mode => Transaction mode BlockHeight
+getFiltersHeight = do
   tdb <- getBtcTotalDb
   fromMaybe (filterStartingHeight BTC) <$> get tdb ()
+
+readScannedHeight :: MonadIO m => Environment ReadWrite -> m BlockHeight
+readScannedHeight e = liftIO $ readOnlyTransaction e getScannedHeight
+
+getScannedHeight :: Mode mode => Transaction mode BlockHeight
+getScannedHeight = do
+  tdb <- getBtcScannedDb
+  fromMaybe (filterStartingHeight BTC) <$> get tdb ()
+
+writeScannedHeight :: MonadIO m => Environment ReadWrite -> BlockHeight -> m ()
+writeScannedHeight e = liftIO . readWriteTransaction e . putScannedHeight
+
+putScannedHeight :: BlockHeight -> Transaction ReadWrite ()
+putScannedHeight h = do
+  tdb <- getBtcScannedDb
+  put tdb () (Just h)
 
 -- | Right fold over all filters
 foldFilters :: forall a m . MonadIO m
@@ -82,6 +111,29 @@ foldFilters f a0 e = liftIO . readOnlyTransaction e $ do
       case res of
         Left _ -> pure acc
         Right a -> f k a acc
+
+-- | Fold over filters that are not scanned yet
+scanFilters :: forall a m . MonadIO m
+  => (BlockHeight -> BlockHeight -> BlockHash -> BtcAddrFilter -> a -> IO a)
+  -> a
+  -> Environment ReadWrite
+  -> m a
+scanFilters f a0 e = liftIO . readOnlyTransaction e $ do
+  fdb <- getBtcFiltersDb
+  hdb <- getBtcHeightsDb
+  i0 <- getScannedHeight
+  i1 <- getFiltersHeight
+  go fdb hdb i0 i1 a0
+  where
+    go fdb hdb !i0 i1 !acc
+      | i0 > i1 = pure acc
+      | otherwise = do
+        mfilter <- getFilterImpl fdb hdb i0
+        case mfilter of
+          Nothing -> go fdb hdb (i0+1) i1 acc
+          Just (h, mf) -> do
+            !acc' <- liftIO $ f i0 i1 h mf acc
+            go fdb hdb (i0+1) i1 acc'
 
 ffor31 :: (a -> b -> c -> d) -> c -> a -> b -> d
 ffor31 f c a b = f a b c

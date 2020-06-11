@@ -1,11 +1,12 @@
 module Ergvein.Wallet.Scan (
-    accountDiscovery
+    scanner
   ) where
 
 import Control.Lens
 import Control.Monad.IO.Class
 import Data.ByteString (ByteString)
 import Data.List
+import Data.Maybe (fromMaybe)
 import Ergvein.Aeson
 import Ergvein.Crypto.Keys
 import Ergvein.Text
@@ -25,7 +26,7 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Constants
-import Ergvein.Wallet.Storage.Keys (derivePubKey, egvXPubKeyToEgvAddress)
+import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Storage.Util (addXPubKeyToKeystore)
 import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Tx
@@ -33,12 +34,73 @@ import Ergvein.Wallet.Util
 
 import qualified Data.IntMap.Strict                 as MI
 import qualified Data.Map.Strict                    as M
+import qualified Data.Set                           as S
 import qualified Data.Text                          as T
 import qualified Data.Vector                        as V
 import qualified Ergvein.Wallet.Filters.Scan        as Filters
 import qualified Network.Haskoin.Block              as HB
 import qualified Network.Haskoin.Script             as HS
 import qualified Network.Haskoin.Transaction        as HT
+
+-- | Widget that continuously scans new filters agains all known public keys and
+-- updates transactions that are found.
+scanner :: MonadFront t m => m ()
+scanner = do
+  cursD <- getActiveCursD
+  void $ widgetHoldDyn $ ffor cursD $ traverse_ scannerFor . S.toList
+
+-- | Widget that continuously scans new filters agains all known public keys and
+-- updates transactions that are found. Specific for currency.
+scannerFor :: MonadFront t m => Currency -> m ()
+scannerFor cur = case cur of
+  BTC -> scannerBtc
+  _ -> pure ()
+
+-- | Widget that continuously scans new filters agains all known public keys and
+-- updates transactions that are found. Specific for Bitcoin.
+scannerBtc :: forall t m . MonadFront t m => m ()
+scannerBtc = void $ workflow waiting
+  where
+    keys ps = getPublicKeys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "scannerBtc: not exsisting store!") . currencyPubStorage'pubKeystore
+
+    waiting = Workflow $ do
+      logWrite "Waiting for unscanned filters"
+      fhD <- watchFiltersHeight BTC
+      scD <- watchScannedHeight BTC
+      let newFiltersE = fmap fst . ffilter (id . snd) $ updated $ do
+            fh <- fhD
+            sc <- scD
+            pure (sc, sc < fh)
+      setSyncProgress $ flip pushAlways newFiltersE $ const $ do
+        fh <- sample . current $ fhD
+        sc <- sample . current $ scD
+        pure $ SyncMeta BTC (SyncAddress 0) (fromIntegral sc) (fromIntegral fh)
+      performEvent_ $ ffor newFiltersE $ const $ do
+        fh <- sample . current $ fhD
+        sc <- sample . current $ scD
+        logWrite $ "Start scanning for new " <> showt (fh - sc)
+      pure ((), scanning <$> newFiltersE)
+
+    scanning i0 = Workflow $  do
+      logWrite "Scanning filters"
+      buildE <- getPostBuild
+      ps <- getPubStorage
+      (updE, updFire) <- newTriggerEvent
+      setSyncProgress updE
+      let updSync i i1 = updFire $ SyncMeta BTC (SyncAddress 0) (fromIntegral (i - i0)) (fromIntegral (i1 - i0))
+      let toAddr = xPubToBtcAddr . extractXPubKeyFromEgv
+      scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses updSync $ xPubToBtcAddr . extractXPubKeyFromEgv <$> keys ps
+      performEvent_ $ ffor scanE $ liftIO . print
+      let hashesE = V.toList . snd <$> scanE
+          heightE = fst <$> scanE
+      performFork_ $ writeScannedHeight BTC <$> heightE
+      blocksE <- logEvent "Blocks requested: " =<< requestBTCBlocks hashesE
+      storedBlocksE <- storeMultipleBlocksByE blocksE
+      storedTxHashesE <- storeMultipleBlocksTxHashesByE blocksE
+      let keymap = M.fromList . V.toList . V.indexed . V.map (BtcAddress . toAddr) $ keys ps
+      txsE <- getAddressesTxs $ (keymap,) <$> blocksE
+      storedE <- insertTxsInPubKeystore $ (BTC,) . fmap M.keys <$> txsE
+      pure ((), waiting <$ storedE)
 
 -- | Loads current PubStorage, performs BIP44 account discovery algorithm and
 -- stores updated PubStorage to the wallet file.
@@ -116,8 +178,8 @@ scanExternalAddresses currency currencyPubStorage = mdo
   getTxsE' <- getTxs $ attachPromptlyDynWith (\(i, key) blocks ->
     (i, egvXPubKeyToEgvAddress key, blocks)) currentKeyD $ tagPromptlyDyn blocksD storedTxHashesE
   let getTxsE = snd <$> getTxsE'
-  insertTxsInPubKeystore $ ffor getTxsE' $ \(i, txmap) -> (currency, i, M.keys txmap)
-  
+  insertTxsInPubKeystore $ ffor getTxsE' $ \(i, txmap) -> (currency, M.singleton i (M.keys txmap))
+
   let noBlocksE = fforMaybe filterAddressE $ \case
         [] -> Just []
         _ -> Nothing
@@ -135,7 +197,7 @@ scanExternalAddresses currency currencyPubStorage = mdo
       finishedE = flip push gapE $ \gap -> do
         newKeystore <- sampleDyn newKeystoreD
         newTxs <- sampleDyn newTxsD
-        pure $ if gap >= gapLimit then Just $ (currency, CurrencyPubStorage newKeystore newTxs) else Nothing
+        pure $ if gap >= gapLimit then Just $ (currency, CurrencyPubStorage newKeystore newTxs Nothing) else Nothing
   pure finishedE
 
 type CurrentGap = Int
@@ -202,15 +264,19 @@ filterAddress :: MonadFront t m => Event t EgvAddress -> m (Event t [HB.BlockHas
 filterAddress addrE = performFork $ ffor addrE Filters.filterAddress
 
 -- | Gets transactions related to given address from given block list.
-getTxs :: MonadFront t m => Event t (AddressNum, EgvAddress, [HB.Block]) -> m (Event t (AddressNum, M.Map TxId EgvTx))
-getTxs = performFork . fmap getAddrTxsFromBlocks
+getTxs :: MonadFront t m => Event t (a, EgvAddress, [HB.Block]) -> m (Event t (a, M.Map TxId EgvTx))
+getTxs = performFork . fmap (\(a, addr, bls) -> fmap (a,) $ getAddrTxsFromBlocks addr bls)
+
+-- | Extract transactions that correspond to given address.
+getAddressesTxs :: MonadFront t m => Event t (M.Map a EgvAddress, [HB.Block]) -> m (Event t (M.Map a (M.Map TxId EgvTx)))
+getAddressesTxs e = performFork $ ffor e $ \(maddr, blocks) -> traverse (`getAddrTxsFromBlocks` blocks) maddr
 
 -- | Gets transactions related to given address from given block.
-getAddrTxsFromBlocks :: (MonadIO m, HasBlocksStorage m, PlatformNatives)
-  => (AddressNum, EgvAddress, [HB.Block]) -> m (AddressNum, M.Map TxId EgvTx)
-getAddrTxsFromBlocks (i, addr, blocks) = do
+getAddrTxsFromBlocks :: (MonadIO m, Traversable f, HasBlocksStorage m, PlatformNatives)
+  => EgvAddress -> f HB.Block -> m (M.Map TxId EgvTx)
+getAddrTxsFromBlocks addr blocks = do
   txMaps <- traverse (getAddrTxsFromBlock addr) blocks
-  pure $ (i,) $ M.unions txMaps
+  pure $ M.unions txMaps
 
 getAddrTxsFromBlock :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> HB.Block -> m (M.Map TxId EgvTx)
 getAddrTxsFromBlock addr block = do
