@@ -10,6 +10,7 @@ import Data.Foldable
 import Data.Hashable
 import Data.List
 import Data.Maybe
+import Data.Set (Set)
 import Data.Time.Clock
 import Servant.Client.Core
 
@@ -25,7 +26,7 @@ import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.Utils
 import Ergvein.Index.Server.Cache.Queries
-import Data.Set (Set)
+
 
 import qualified Data.Map.Strict as Map
 import qualified Network.HTTP.Client as HC
@@ -105,8 +106,10 @@ knownPeersActualization = do
 
 addDefaultPeersIfNoneDiscovered :: ServerM ()
 addDefaultPeersIfNoneDiscovered = do
-  isNoneDiscovered <- dbQuery isNonePeersDiscovered
-  when isNoneDiscovered $ do
+  discoveredPeers <- dbQuery getDiscoveredPeers
+  predefinedPeers <- descReqPredefinedPeers <$> getDiscoveryRequisites
+  let discoveredPeersSet = Set.fromList $ peerUrl <$> discoveredPeers
+  when True $ do
     predefinedPeers <- descReqPredefinedPeers <$> getDiscoveryRequisites
     dbQuery $ addNewPeers $ newPeer <$> (Set.toList $ predefinedPeers)
 

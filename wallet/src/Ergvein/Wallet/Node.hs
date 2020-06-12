@@ -35,7 +35,7 @@ import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Util
 
 import qualified Data.Dependent.Map as DM
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
 addNodeConn :: NodeConn t -> ConnMap t -> ConnMap t

@@ -6,7 +6,6 @@ module Ergvein.Wallet.Worker.IndexersNetworkActualization
 import Control.Monad.Reader
 import Control.Monad.Zip
 import Data.Bifunctor
-import Data.List.Split
 import Data.Maybe
 import Data.Time
 import Reflex.ExternalRef
@@ -26,11 +25,11 @@ import Ergvein.Wallet.Settings
 import Data.Set (Set)
 import Data.Map.Strict (Map)
 
-import qualified Data.List   as L
+import qualified Data.List       as L
 import qualified Data.Map.Strict as Map
-import qualified Data.Set    as Set
-import qualified Data.Text   as T
-import qualified Data.Vector as Vector
+import qualified Data.Set        as Set
+import qualified Data.Text       as T
+import qualified Data.Vector     as Vector
 
 infoWorkerInterval :: NominalDiffTime
 infoWorkerInterval = 60

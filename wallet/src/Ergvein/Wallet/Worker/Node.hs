@@ -39,7 +39,7 @@ import qualified Data.Bits as BI
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Dependent.Map as DM
 import qualified Data.IntMap as MI
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
 import qualified Network.Haskoin.Transaction        as HT

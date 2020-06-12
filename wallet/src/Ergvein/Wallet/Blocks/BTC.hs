@@ -20,7 +20,7 @@ import Ergvein.Wallet.Blocks.BTC.Queries
 import Ergvein.Wallet.Blocks.Storage
 
 import qualified Data.Dependent.Map as DM
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import qualified Data.List as L
 
 data RBTCBlksAct = RASucc [Block] | RANoNode [BlockHash] | RANodeClosed [BlockHash]
