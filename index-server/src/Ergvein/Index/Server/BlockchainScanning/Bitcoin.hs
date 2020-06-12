@@ -23,7 +23,7 @@ import           Ergvein.Types.Currency
 import           Ergvein.Types.Transaction
 import           Ergvein.Index.Server.Dependencies
 
-import qualified Data.HashSet                       as Set
+import qualified Data.Set                           as Set
 import qualified Data.HexString                     as HS
 import qualified Data.Map.Strict                    as Map
 import qualified Network.Haskoin.Block              as HK

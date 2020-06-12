@@ -17,7 +17,7 @@ import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Control.Monad.Reader
 import Control.Monad.Ref
-import Data.Map
+import Data.Map.Strict
 import Data.Text (Text)
 import Data.Time(UTCTime, NominalDiffTime)
 import Ergvein.Crypto

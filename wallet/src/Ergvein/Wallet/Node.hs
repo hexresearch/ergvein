@@ -20,7 +20,6 @@ import Control.Monad.IO.Class
 import Control.Monad.Random
 import Data.Foldable
 import Data.Functor.Misc
-import Data.Map (Map)
 import Data.Maybe
 import Network.Socket (SockAddr)
 import Servant.Client(BaseUrl)

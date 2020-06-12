@@ -23,11 +23,14 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings
 
+import Data.Set (Set)
+import Data.Map.Strict (Map)
+
 import qualified Data.List   as L
-import qualified Data.Map    as M
-import qualified Data.Set    as S
+import qualified Data.Map.Strict as Map
+import qualified Data.Set    as Set
 import qualified Data.Text   as T
-import qualified Data.Vector as V
+import qualified Data.Vector as Vector
 
 infoWorkerInterval :: NominalDiffTime
 infoWorkerInterval = 60
@@ -35,19 +38,19 @@ infoWorkerInterval = 60
 minIndexers :: Int
 minIndexers = 2
 
-indexersToExclude :: MonadFront t m => m (S.Set BaseUrl)
+indexersToExclude :: MonadFront t m => m (Set BaseUrl)
 indexersToExclude = do
   inactiveUrlsRef <- getInactiveUrlsRef
   archivedUrlsRef <- getArchivedUrlsRef
   inactiveUrls <- readExternalRef inactiveUrlsRef 
   archivedUrls <- readExternalRef archivedUrlsRef
-  pure $ inactiveUrls `S.union` archivedUrls
+  pure $ inactiveUrls `Set.union` archivedUrls
 
-newIndexers :: (PlatformNatives, MonadIO m, HasClientManager m) => S.Set BaseUrl -> m (S.Set BaseUrl)
+newIndexers :: (PlatformNatives, MonadIO m, HasClientManager m) => Set BaseUrl -> m (Set BaseUrl)
 newIndexers knownIndexers = do
   mng <- getClientManager
-  successfulResponses <- concat <$> ((`runReaderT` mng) $ mapM knownIndexersFrom $ S.toList knownIndexers)
-  let validIndexerUrls = S.fromList $ catMaybes $ parseBaseUrl <$> successfulResponses
+  successfulResponses <- concat <$> ((`runReaderT` mng) $ mapM knownIndexersFrom $ Set.toList knownIndexers)
+  let validIndexerUrls = Set.fromList $ catMaybes $ parseBaseUrl <$> successfulResponses
   pure validIndexerUrls
   where
     knownIndexersFrom url = do
@@ -58,11 +61,11 @@ newIndexers knownIndexers = do
           logWrite $ "[IndexersNetworkActualization][Getting peer list][" <> T.pack (showBaseUrl url) <> "]: " <> showt err
           pure mempty
 
-indexersNetwork :: forall m . (PlatformNatives, MonadIO m, HasClientManager m) => Int -> [BaseUrl] -> m (M.Map BaseUrl IndexerInfo, S.Set BaseUrl)
+indexersNetwork :: forall m . (PlatformNatives, MonadIO m, HasClientManager m) => Int -> [BaseUrl] -> m (Map BaseUrl IndexerInfo, Set BaseUrl)
 indexersNetwork targetAmount peers =
   go peers mempty mempty
   where
-    go :: [BaseUrl] -> M.Map BaseUrl IndexerInfo -> S.Set BaseUrl -> m (M.Map BaseUrl IndexerInfo, S.Set BaseUrl)
+    go :: [BaseUrl] -> Map BaseUrl IndexerInfo -> Set BaseUrl -> m (Map BaseUrl IndexerInfo, Set BaseUrl)
     go toExplore exploredInfoMap result
       | length result == targetAmount || null toExplore = 
         pure (exploredInfoMap, result)
@@ -73,27 +76,27 @@ indexersNetwork targetAmount peers =
 
         newExploredInfoMap <- indexersInfo indexers
 
-        let exploredInfoMap' = exploredInfoMap `M.union` newExploredInfoMap
-            newWorkingIndexers = S.filter (`M.member` exploredInfoMap') $ S.fromList indexers
-            median = medianScanInfoMap $ indInfoHeights <$> M.elems exploredInfoMap'
-            result' = S.filter (matchMedian median . indInfoHeights . (exploredInfoMap' M.!)) $ result `S.union` newWorkingIndexers
+        let exploredInfoMap' = exploredInfoMap `Map.union` newExploredInfoMap
+            newWorkingIndexers = Set.filter (`Map.member` exploredInfoMap') $ Set.fromList indexers
+            median = medianScanInfoMap $ indInfoHeights <$> Map.elems exploredInfoMap'
+            result' = Set.filter (matchMedian median . indInfoHeights . (exploredInfoMap' Map.!)) $ result `Set.union` newWorkingIndexers
 
         go toExplore' exploredInfoMap' result'
 
     matchMedian :: PeerScanInfoMap -> PeerScanInfoMap -> Bool
-    matchMedian peer median = all (\currency -> predicate (peer M.! currency) (median M.! currency)) $ M.keys peer
+    matchMedian peer median = all (\currency -> predicate (peer Map.! currency) (median Map.! currency)) $ Map.keys peer
       where
         predicate (peerScannedHeight, peerActualHeight) (medianScannedHeight, medianActualHeight) =
           peerScannedHeight >= medianScannedHeight && peerActualHeight == medianActualHeight
 
     medianScanInfoMap :: [PeerScanInfoMap] -> PeerScanInfoMap
     medianScanInfoMap infos = let
-      in bimap median' median' . munzip <$> M.unionsWith (<>) (fmap pure <$> infos)
+      in bimap median' median' . munzip <$> Map.unionsWith (<>) (fmap pure <$> infos)
       where
-        median' :: V.Vector BlockHeight -> BlockHeight
-        median' v =  v V.! (length v `div` 2)
+        median' :: Vector.Vector BlockHeight -> BlockHeight
+        median' v =  v Vector.! (length v `div` 2)
 
-    indexersInfo :: [BaseUrl] -> m (M.Map BaseUrl IndexerInfo)
+    indexersInfo :: [BaseUrl] -> m (Map BaseUrl IndexerInfo)
     indexersInfo urls = do
       mng <- getClientManager 
       fmap mconcat $ (`runReaderT` mng) $ mapM peerInfo urls
@@ -106,12 +109,12 @@ indexersNetwork targetAmount peers =
             Right info -> do
               let pingTime = diffUTCTime t1 t0
                   scanInfo = mconcat $ mapping <$> infoScanProgress info
-              pure $  M.singleton url $ IndexerInfo scanInfo pingTime
+              pure $  Map.singleton url $ IndexerInfo scanInfo pingTime
             Left err ->  do
               logWrite $ "[IndexersNetworkActualization][Getting info][" <> T.pack (showBaseUrl url) <> "]: " <> showt err
               pure mempty
         mapping :: ScanProgressItem -> PeerScanInfoMap
-        mapping (ScanProgressItem currency scanned actual) = M.singleton currency (scanned, actual)
+        mapping (ScanProgressItem currency scanned actual) = Map.singleton currency (scanned, actual)
 
 indexersNetworkActualizationWorker :: MonadFront t m => m ()
 indexersNetworkActualizationWorker = do
@@ -128,16 +131,16 @@ indexersNetworkActualizationWorker = do
     settings              <- readExternalRef settingsRef
     currentNetworkInfoMap <- readExternalRef activeUrlsRef
     let maxIndexersToExplore = settingsActUrlNum settings
-    let currentNetwork = M.keysSet currentNetworkInfoMap
+    let currentNetwork = Map.keysSet currentNetworkInfoMap
 
     fetchedIndexers <- newIndexers currentNetwork
 
-    let filteredIndexers = currentNetwork `S.union` fetchedIndexers S.\\ indexersToExclude
+    let filteredIndexers = currentNetwork `Set.union` fetchedIndexers Set.\\ indexersToExclude
     
-    shuffledIndexers <- liftIO $ shuffleM $ S.toList filteredIndexers
+    shuffledIndexers <- liftIO $ shuffleM $ Set.toList filteredIndexers
     (newNetworkInfoMap, newNetwork) <- indexersNetwork maxIndexersToExplore shuffledIndexers
 
     let resultingNetwork = if length newNetwork >= minIndexers then newNetwork else currentNetwork
-        resultingNetworkInfoMap = M.fromSet (newNetworkInfoMap M.!?) resultingNetwork
+        resultingNetworkInfoMap = Map.fromSet (newNetworkInfoMap Map.!?) resultingNetwork
 
     writeExternalRef activeUrlsRef resultingNetworkInfoMap

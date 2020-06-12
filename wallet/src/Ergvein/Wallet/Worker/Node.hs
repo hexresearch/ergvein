@@ -92,8 +92,8 @@ bctNodeController = mdo
   (urlStoreD, fstRunE) <- mkUrlBatcher sel urlE
 
   let (remNodeUrlE, txE) = switchTuple $ splitDynPure $ fmap (unzip . M.elems) tmpD
-  let remNodeE = (\u -> M.singleton u Nothing) <$> remNodeUrlE
-  let addNodeE = (\u -> M.singleton u $ Just ()) <$> urlE
+  let remNodeE = (`M.singleton`Nothing) <$> remNodeUrlE
+  let addNodeE = (`M.singleton` Just ()) <$> urlE
   let listActionE = leftmost [addNodeE, remNodeE]
 
   tmpD <- listWithKeyShallowDiff M.empty listActionE $ \u _ _ -> do
