@@ -110,8 +110,9 @@ feeScaner = feeScaner' 0
               (Just (MkFixed co), Just (MkFixed ec)) -> pure $ Just (lvl, (fromIntegral co, fromIntegral ec))
               _ -> pure Nothing
           setFees BTC $ mkFeeBundle res
+          logInfoN $ showt res
           pure $ case res of
             [] -> h
             _  -> h'
-      liftIO $ threadDelay $ cfgBlockchainScanDelay cfg
+      liftIO $ threadDelay $ cfgFeeEstimateDelay cfg
       feeScaner' h''
