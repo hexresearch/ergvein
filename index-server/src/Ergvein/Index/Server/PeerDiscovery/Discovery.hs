@@ -109,9 +109,9 @@ addDefaultPeersIfNoneDiscovered = do
   discoveredPeers <- dbQuery getDiscoveredPeers
   predefinedPeers <- descReqPredefinedPeers <$> getDiscoveryRequisites
   let discoveredPeersSet = Set.fromList $ peerUrl <$> discoveredPeers
-  when True $ do
-    predefinedPeers <- descReqPredefinedPeers <$> getDiscoveryRequisites
-    dbQuery $ addNewPeers $ newPeer <$> (Set.toList $ predefinedPeers)
+      toAdd = newPeer <$> (Set.toList $ predefinedPeers Set.\\ discoveredPeersSet)
+  predefinedPeers <- descReqPredefinedPeers <$> getDiscoveryRequisites
+  dbQuery $ addNewPeers toAdd
 
 peerIntroduce :: ServerM ()
 peerIntroduce = void $ runMaybeT $ do
