@@ -99,14 +99,19 @@ feeScaner = feeScaner' 0
     feeScaner' h = do
       cfg <- serverConfig
       h'  <- actualHeight
-      when (h' /= h) $ do
-        res <- flip traverse [FeeFast, FeeModerate, FeeCheap] $ \lvl -> do
-          mco <- nodeRpcCall (\c -> estimateSmartFee c (fromIntegral $ feeTargetBlocks BTC lvl) Conservative)
-          mec <- nodeRpcCall (\c -> estimateSmartFee c (fromIntegral $ feeTargetBlocks BTC lvl) Economical)
-          case (estimateResFee mco, estimateResFee mec) of
-            (Just (MkFixed co), Just (MkFixed ec)) -> pure $ Just (lvl, (fromIntegral co, fromIntegral ec))
-            _ -> pure Nothing
-        let bundle = mkFeeBundle $ catMaybes res
-        setFees BTC bundle
+      h'' <- if h' == h
+        then pure h'
+        else do
+          res <- fmap catMaybes $ flip traverse [FeeFast, FeeModerate, FeeCheap] $ \lvl -> do
+            let req mode c = estimateSmartFee c (fromIntegral $ feeTargetBlocks BTC lvl) mode
+            mco <- nodeRpcCall $ req Conservative
+            mec <- nodeRpcCall $ req Economical
+            case (estimateResFee mco, estimateResFee mec) of
+              (Just (MkFixed co), Just (MkFixed ec)) -> pure $ Just (lvl, (fromIntegral co, fromIntegral ec))
+              _ -> pure Nothing
+          setFees BTC $ mkFeeBundle res
+          pure $ case res of
+            [] -> h
+            _  -> h'
       liftIO $ threadDelay $ cfgBlockchainScanDelay cfg
-      feeScaner' h'
+      feeScaner' h''
