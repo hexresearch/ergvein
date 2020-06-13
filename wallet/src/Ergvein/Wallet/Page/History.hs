@@ -32,7 +32,6 @@ import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Wrapper
 import Ergvein.Wallet.Worker.Node
 
-import qualified Data.Map as M
 import Data.Map.Strict as Map
 import qualified Data.Set as S
 import qualified Data.Map as M
@@ -240,7 +239,7 @@ transactionsGetting cur = do
   pubSD <- getPubStorageD
   let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _) -> case M.lookup BTC cm of
         Nothing -> []
-        Just (CurrencyPubStorage keystore txmap) -> extractAddrs keystore
+        Just (CurrencyPubStorage keystore _ _) -> extractAddrs keystore
   abS <- filtArd <$> sampleDyn allBtcAddrsD
   store <- getBlocksStorage
   let rawTxList = filterTx abS ps
@@ -311,7 +310,7 @@ prepareTransactionView TxRawInfo{..} = TransactionView {
      ,txUrl           = "https://www.blockchain.com/btc/tx/" <> txHex
      ,txFee           = Money BTC 0
      ,txConfirmations = 0
-     ,txBlock         = ""
+     ,txBlock         = txBlockDebug
      ,txRaw           = showt $ txHs
      ,txOutputs       = txOuts
      ,txInputs        = []
@@ -321,7 +320,7 @@ prepareTransactionView TxRawInfo{..} = TransactionView {
     txHex = HK.txHashToHex txHs
     txOuts = fmap (\out -> (txOutAdr out,Money BTC (HK.outValue out), TOUnspent)) $ HK.txOut btx
     txOutAdr out = maybe "undefined" (showt . fromSegWit) $ getSegWitAddr out
-
+    txBlockDebug = (showt txMBl) <> (showt txHBl)
 
 -- Front types, should be moved to Utils
 data ExpStatus = Expanded | Hidden deriving (Eq, Show)
@@ -386,37 +385,3 @@ data TransactionViewInfo = TransactionViewInfo {
  ,txOutputs       :: [(Text,Money,TransOutputType)]
  ,txInputs        :: [(Text,Money)]
 } deriving (Show)
-
-{-
-data BlockMetaInfo = BlockMetaInfo
-  { blockMetaCurrency      :: Currency
-  , blockMetaBlockHeight   :: BlockHeight
-  , blockMetaHeaderHashHexView :: BlockHeaderHashHexView
-  , blockMetaAddressFilterHexView :: AddressFilterHexView
-  } deriving (Show)
-
-data TxInfo = TxInfo
-  { txHash         :: TxHash
-  , txHexView      :: TxHexView
-  , txOutputsCount :: Word
-  } deriving (Show)
-
-data BlockInfo = BlockInfo
-  { blockInfoMeta       :: BlockMetaInfo
-  , spentTxsHash        :: [TxHash]
-  , blockContentTxInfos :: [TxInfo]
-  } deriving (Show)
--}
-
-{-
-txInfo :: HK.Tx -> ([TxInfo], [TxHash])
-txInfo tx = let
-  withoutDataCarrier = none HK.isDataCarrier . HK.decodeOutputBS . HK.scriptOutput
-  info = TxInfo { txHash = HK.txHashToHex $ txHash tx
-                , txHexView = HK.encodeHex $ encode tx
-                , txOutputsCount = fromIntegral $ L.length $ L.filter withoutDataCarrier $  HK.txOut tx
-                }
-  withoutCoinbaseTx = L.filter $ (/= HK.nullOutPoint)
-  spentTxInfo = HK.txHashToHex . HK.outPointHash <$> (withoutCoinbaseTx $ HK.prevOutput <$> HK.txIn tx)
-  in ([info], spentTxInfo)
--}
