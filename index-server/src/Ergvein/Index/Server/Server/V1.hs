@@ -6,7 +6,7 @@ import Control.Monad.Reader
 import Control.Monad.Trans.Except
 import Data.Flat
 import Data.List
-import Data.Map.Strict (Map)
+import Data.Map.Strict (Map, restrictKeys)
 import Data.Maybe
 import Data.Monoid
 import Data.Proxy
@@ -38,6 +38,7 @@ import Ergvein.Types.Transaction
 
 import qualified Network.Haskoin.Block as Btc
 import qualified Data.Serialize as S
+import qualified Data.Set as Set
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
@@ -57,7 +58,7 @@ indexGetHeightEndpoint (HeightRequest currency) = do
 
 getBlockMetaSlice :: Currency -> BlockHeight -> BlockHeight -> ServerM [BlockMetaCacheRec]
 getBlockMetaSlice currency startHeight endHeight = do
-  let start = cachedMetaKey (currency, startHeight) 
+  let start = cachedMetaKey (currency, startHeight)
       end   = BlockMetaCacheRecKey currency $ startHeight + pred endHeight
   slice <- safeEntrySlice start end
   let metaSlice = snd <$> slice
@@ -70,7 +71,7 @@ indexGetBlockFiltersEndpoint request = do
     pure blockFilters
 
 indexGetInfoEndpoint :: ServerM InfoResponse
-indexGetInfoEndpoint = do 
+indexGetInfoEndpoint = do
   scanInfo <- scanningInfo
   let mappedScanInfo = scanNfoItem <$> scanInfo
   pure $ InfoResponse mappedScanInfo
@@ -79,19 +80,19 @@ indexGetInfoEndpoint = do
 
 introducePeerEndpoint :: IntroducePeerReq -> ServerM IntroducePeerResp
 introducePeerEndpoint request = do
-  url <- PeerCandidate <$> (parseBaseUrl $ introducePeerReqUrl $ request) 
+  url <- PeerCandidate <$> (parseBaseUrl $ introducePeerReqUrl $ request)
   result <- runExceptT $ considerPeerCandidate url
   pure $ peerValidationToResponce result
 
 peerValidationToResponce :: Either PeerValidationResult () -> IntroducePeerResp
-peerValidationToResponce = \case 
+peerValidationToResponce = \case
   Right ()   -> IntroducePeerResp True Nothing
   Left error -> IntroducePeerResp False $ Just $ case error of
     AlreadyKnown ->
       "Peer with such address already known"
     InfoEndpointError ->
       "Unable to establish connection to Info endpoint"
-    CurrencyOutOfSync outOfSync -> 
+    CurrencyOutOfSync outOfSync ->
       "Currency " <> show (outOfsyncCurrency outOfSync) <> "scanned height much less then " <> show (outOfSyncLocalHeight outOfSync)
     CurrencyMissing currency ->
       "Currency " <> show currency <> "is missing"
@@ -100,11 +101,12 @@ peerValidationToResponce = \case
 
 
 knownPeersEndpoint :: KnownPeersReq -> ServerM KnownPeersResp
-knownPeersEndpoint request = do 
+knownPeersEndpoint request = do
   result <- getKnownPeers $ knownPeersWithSecuredOnly request
   pure $ KnownPeersResp result
 
-getFeesEndpoint :: ServerM IndexFeesResp
-getFeesEndpoint = do
+getFeesEndpoint :: [Currency] -> ServerM IndexFeesResp
+getFeesEndpoint curs = do
   feeVar <- asks envFeeEstimates
-  liftIO $ fmap IndexFeesResp $ readTVarIO feeVar
+  fees <- liftIO $ readTVarIO feeVar
+  pure $ IndexFeesResp $ restrictKeys fees $ Set.fromList curs 
