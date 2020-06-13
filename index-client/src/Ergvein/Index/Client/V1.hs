@@ -6,6 +6,7 @@ module Ergvein.Index.Client.V1
   , getInfoEndpoint
   , getIntroducePeerEndpoint
   , getKnownPeersEndpoint
+  , getFeeEstimatesEndpoint
   ) where
 
 import Control.Monad.IO.Class
@@ -65,3 +66,8 @@ getKnownPeersEndpoint :: HasClientManager m => BaseUrl -> KnownPeersReq -> m (Ei
 getKnownPeersEndpoint url req = do
   cenv <- fmap (`mkClientEnv` url) getClientManager
   liftIO $ flip runClientM cenv $ indexKnownPeers apiV1 req
+
+getFeeEstimatesEndpoint :: HasClientManager m => BaseUrl -> () -> m (Either ClientError IndexFeesResp)
+getFeeEstimatesEndpoint url _ = do
+  cenv <- fmap (`mkClientEnv` url) getClientManager
+  liftIO $ flip runClientM cenv $ indexGetFees apiV1

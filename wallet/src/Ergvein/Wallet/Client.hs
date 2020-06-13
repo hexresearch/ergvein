@@ -6,6 +6,7 @@ module Ergvein.Wallet.Client
   , getBlockFilters
   , getBlockFiltersSolo
   , getBlockFiltersRandom
+  , getFeeEstimatesRandom
   , ClientErr(..)
   , module Ergvein.Index.API.Types
   ) where
@@ -61,6 +62,10 @@ getBlockFiltersSolo = requestSolo getBlockFiltersEndpoint
 
 getBlockFiltersRandom :: (MonadFrontBase t m, MonadClient t m) => Event t BlockFiltersRequest -> m (Event t (Either ClientErr BlockFiltersResponse))
 getBlockFiltersRandom = requestSoloRandom getBlockFiltersEndpoint
+
+-- | TODO: Request from multiple indexers and return average fees
+getFeeEstimatesRandom :: (MonadFrontBase t m, MonadClient t m) => Event t () -> m (Event t (Either ClientErr IndexFeesResp))
+getFeeEstimatesRandom = requestSoloRandom getFeeEstimatesEndpoint
 
 instance MonadIO m => HasClientManager (ReaderT Manager m) where
   getClientManager = ask
