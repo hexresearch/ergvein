@@ -6,7 +6,10 @@ import Data.Flat
 import Data.Maybe
 import Database.LevelDB
 import Database.LevelDB.Iterator
+import Control.Monad.Logger
 import Conversion
+import Data.Time.Clock
+import Control.Monad.IO.Class
 
 import Ergvein.Index.Server.Cache.Monad
 import Ergvein.Index.Server.Cache.Schema
@@ -41,17 +44,18 @@ getParsed key = do
   let maybeParsedResult = unflatExact <$> maybeResult
   pure maybeParsedResult
 
-getParsedExact :: (MonadLDB m, Flat v) => BS.ByteString -> m v
+getParsedExact :: (MonadLDB m, MonadLogger m, Flat v) => BS.ByteString -> m v
 getParsedExact key = do
   db <- getDb
   maybeResult <- get db def key
-  let result = fromMaybe notFoundErr maybeResult
-      parsedResult = unflatExact result
-  pure parsedResult
-  where
-    notFoundErr = error $ "getParsedExact: not found" ++ show key
+  case maybeResult of
+    Just result -> pure $ unflatExact result
+    Nothing -> do
+      currentTime <- liftIO getCurrentTime
+      logErrorN $ "[Cache miss][getParsedExact] Entity with key " <> (T.pack $ show key) <> " not found at time:" <> (T.pack $ show currentTime)
+      error $ "getParsedExact: not found" ++ show key
 
-getManyParsedExact :: (MonadLDB m, Flat v) => [BS.ByteString] -> m [v]
+getManyParsedExact :: (MonadLDB m, MonadLogger m, Flat v) => [BS.ByteString] -> m [v]
 getManyParsedExact keys = do
   db <- getDb
   result <- mapM getParsedExact keys
@@ -61,7 +65,7 @@ putItems :: (Flat v) => (a -> BS.ByteString) -> (a -> v) -> [a] -> LDB.WriteBatc
 putItems keySelector valueSelector items = putI <$> items
   where putI item = LDB.Put (keySelector item) $ flat $ valueSelector item
 
-updateTxSpends  :: (MonadLDB m) => [TxHash] -> [TxInfo] -> m ()
+updateTxSpends  :: (MonadLDB m, MonadLogger m) => [TxHash] -> [TxInfo] -> m ()
 updateTxSpends spentTxsHash newTxInfos = do
   db <- getDb
   write db def $ putItems (cachedTxKey . txHash) (convert @_ @TxCacheRec) newTxInfos
@@ -81,7 +85,7 @@ updateKnownPeers peers = do
   db <- getDb
   put db def cachedKnownPeersKey $ flat $ KnownPeersCacheRec $ convert <$> peers
 
-getKnownPeers :: (MonadLDB m) => Bool -> m [String]
+getKnownPeers :: (MonadLDB m, MonadLogger m) => Bool -> m [String]
 getKnownPeers onlySecured = do
   db <- getDb
   knownPeers <- getParsedExact cachedKnownPeersKey
