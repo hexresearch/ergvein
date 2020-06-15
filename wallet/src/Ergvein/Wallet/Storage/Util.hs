@@ -83,21 +83,21 @@ createPubKeystore masterPubKey =
       internalKeys = V.unfoldrN initialInternalAddressCount intGen 0
   in PubKeystore masterPubKey externalKeys internalKeys
 
-createPubStorage :: EgvRootXPrvKey -> [Currency] -> PubStorage
-createPubStorage rootPrvKey cs = PubStorage rootPubKey pubStorages cs
+createPubStorage :: Bool -> EgvRootXPrvKey -> [Currency] -> PubStorage
+createPubStorage isRestored rootPrvKey cs = PubStorage rootPubKey pubStorages cs isRestored
   where rootPubKey = EgvRootXPubKey $ deriveXPubKey $ unEgvRootXPrvKey rootPrvKey
         pubStorages = M.fromList [
             (currency, CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey rootPrvKey currency) (M.fromList []) Nothing) |
             currency <- cs
           ]
 
-createStorage :: MonadIO m => Mnemonic -> (WalletName, Password) -> [Currency] -> m (Either StorageAlert WalletStorage)
-createStorage mnemonic (login, pass) cs = case mnemonicToSeed "" mnemonic of
+createStorage :: MonadIO m => Bool -> Mnemonic -> (WalletName, Password) -> [Currency] -> m (Either StorageAlert WalletStorage)
+createStorage isRestored mnemonic (login, pass) cs = case mnemonicToSeed "" mnemonic of
   Left err -> pure $ Left $ SAMnemonicFail $ showt err
   Right seed -> do
     let rootPrvKey = EgvRootXPrvKey $ makeXPrvKey seed
         prvStorage = createPrvStorage seed rootPrvKey
-        pubStorage = createPubStorage rootPrvKey cs
+        pubStorage = createPubStorage isRestored rootPrvKey cs
     encryptPrvStorageResult <- encryptPrvStorage prvStorage pass
     case encryptPrvStorageResult of
       Left err -> pure $ Left err

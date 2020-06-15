@@ -31,7 +31,7 @@ passwordPage wt mnemonic curs = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText PPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText PPSDescr
   logPassE <- setupLoginPassword
-  createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo mnemonic curs) logPassE
+  createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo wt mnemonic curs) logPassE
   authInfoE <- handleDangerMsg createStorageE
   void $ setAuthInfo $ Just <$> authInfoE
 
@@ -53,7 +53,7 @@ setupPatternPage wt m l curs = wrapperSimple True $ do
   divClass "password-setup-descr" $ h5 $ localizedText PatPSDescr
   patE <- setupPattern
   let logPassE = fmap (\p -> (l,p)) patE
-  createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo m curs) logPassE
+  createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo wt m curs) logPassE
   authInfoE <- handleDangerMsg createStorageE
   void $ setAuthInfo $ Just <$> authInfoE
 

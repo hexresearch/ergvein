@@ -92,7 +92,7 @@ balancesGetting :: MonadFront t m => Currency -> m (Dynamic t Money)
 balancesGetting cur = do
   ps <- getPubStorage
   pubSD <- getPubStorageD
-  let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _) -> case M.lookup BTC cm of
+  let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _ _) -> case M.lookup BTC cm of
         Nothing -> []
         Just (CurrencyPubStorage keystore txmap _) -> extractAddrs keystore
   abS <- sampleDyn allBtcAddrsD

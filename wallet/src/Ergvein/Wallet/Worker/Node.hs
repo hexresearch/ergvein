@@ -68,7 +68,7 @@ bctNodeController = mdo
   te        <- fmap void $ tickLossyFromPostBuildTime btcRefrTimeout
 
   pubStorageD <- getPubStorageD
-  let (allBtcAddrsD, txidsD) = splitDynPure $ ffor pubStorageD $ \(PubStorage _ cm _) -> case M.lookup BTC cm of
+  let (allBtcAddrsD, txidsD) = splitDynPure $ ffor pubStorageD $ \(PubStorage _ cm _ _) -> case M.lookup BTC cm of
         Nothing -> ([], S.empty)
         Just (CurrencyPubStorage keystore txmap _) -> let
           addrs = extractAddrs keystore
