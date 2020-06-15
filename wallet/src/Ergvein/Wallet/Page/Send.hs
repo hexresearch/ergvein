@@ -5,6 +5,7 @@ module Ergvein.Wallet.Page.Send (
 import Control.Monad.Except
 import Data.Either (isRight)
 import Ergvein.Text
+import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Elements
@@ -46,9 +47,9 @@ instance LocalizedPrint SendStrings where
       BtnPasteString -> "Вставить"
       BtnScanQRCode -> "Сканировать"
 
-sendPage :: MonadFront t m => Currency -> m ()
-sendPage cur = wrapper (SendTitle cur) (Just $ pure $ sendPage cur) False $ do
-  let thisWidget = Just $ pure $ sendPage cur
+sendPage :: MonadFront t m => Currency -> Maybe (EgvAddress, Rational) -> m ()
+sendPage cur minit = wrapper (SendTitle cur) (Just $ pure $ sendPage cur Nothing) False $ do
+  let thisWidget = Just $ pure $ sendPage cur minit
   navbarWidget cur thisWidget NavbarSend
   divClass "centered-wrapper" $ divClass "centered-content" $ divClass "send-page" $ form $ fieldset $ mdo
     recipientErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing) . fst)
@@ -67,5 +68,17 @@ sendPage cur = wrapper (SendTitle cur) (Just $ pure $ sendPage cur) False $ do
           amount <- sampleDyn amountD
           pure (V.toEither $ validateRecipient cur (T.unpack recipient),
                 V.toEither $ validateAmount $ T.unpack amount)
-        validatedE = fforMaybe validationE (\x -> if (isRight $ fst x) && (isRight $ snd x) then Just x else Nothing)
+        goE = fforMaybe validationE $ \(a,b) -> either (const Nothing) Just $ (,) <$> a <*> b
+    nextWidget $ ffor goE $ \v -> Retractable {
+        retractableNext = feesDispatch v
+      , retractablePrev = Just $ pure $ sendPage cur $ Just v
+      }
     pure ()
+
+feesDispatch :: MonadFront t m => (EgvAddress, Rational) -> m ()
+feesDispatch (adr, rat) = case adr of
+  BtcAddress ba -> btcFees ba rat
+  ErgAddress ea -> pure ()
+
+btcFees :: MonadFront t m => BtcAddress -> Rational -> m ()
+btcFees adr val = pure ()
