@@ -2,7 +2,6 @@
 
 module Ergvein.Wallet.Page.Initial(
     initialPage
-  , initialAuthedPage
   ) where
 
 
@@ -131,10 +130,3 @@ generateMissingPrvKeysHelper _ (CurrencyPrvStorage prvKeystore) (goalExternalKey
         l = goalInternalKeysNum - intLength
         v = V.unfoldrN l (\i -> Just (derivePrvKey masterPrvKey Internal (fromIntegral i), i+1)) intLength
         in currentInternalKeys V.++ v
-
-initialAuthedPage :: MonadFront t m => m ()
-initialAuthedPage = wrapperSimple True $ divClass "main-page" $ do
-  anon_name <- getWalletName
-  h4 $ text $ "Congrats " <> anon_name <> "! You've made it!"
-  logoutE <- row . outlineButton $ ("Logout" :: Text)
-  void $ setAuthInfo $ Nothing <$ logoutE

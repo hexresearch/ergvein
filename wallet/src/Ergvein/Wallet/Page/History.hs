@@ -240,7 +240,7 @@ transactionsGetting cur = do
   pubSD <- getPubStorageD
   let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _) -> case M.lookup BTC cm of
         Nothing -> []
-        Just (CurrencyPubStorage keystore txmap) -> extractAddrs keystore
+        Just (CurrencyPubStorage keystore txmap _) -> extractAddrs keystore
   abS <- filtArd <$> sampleDyn allBtcAddrsD
   store <- getBlocksStorage
   let rawTxList = filterTx abS ps
