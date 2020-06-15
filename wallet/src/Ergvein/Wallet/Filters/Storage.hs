@@ -3,7 +3,9 @@ module Ergvein.Wallet.Filters.Storage(
   , HasFiltersStorage(..)
   , openFiltersStorage
   , getFiltersHeight
+  , getScannedHeight
   , watchFiltersHeight
+  , writeFiltersHeight
   , watchScannedHeight
   , writeScannedHeight
   , insertFilter
@@ -81,6 +83,13 @@ writeFiltersHeight :: (MonadIO m, HasFiltersStorage t m) => Currency -> BlockHei
 writeFiltersHeight cur h = do
   r <- getFiltersHeightRef
   modifyExternalRef_ r $ M.insert cur h
+
+getScannedHeight :: (MonadIO m, HasFiltersStorage t m, MonadHold t m, Reflex t, MonadFix m) => Currency -> m BlockHeight
+getScannedHeight cur = do
+  e <- getFiltersStorage
+  case cur of
+    BTC -> BTC.readScannedHeight e
+    ERGO -> pure $ filterStartingHeight ERGO -- TODO: here
 
 watchScannedHeight :: (MonadIO m, HasFiltersStorage t m, MonadHold t m, Reflex t, MonadFix m) => Currency -> m (Dynamic t BlockHeight)
 watchScannedHeight cur = do

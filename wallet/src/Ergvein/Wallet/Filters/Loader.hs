@@ -46,7 +46,9 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
     go = Workflow $ do
       buildE <- getPostBuild
       ch <- fmap fromIntegral $ sample . current =<< getCurrentHeight BTC
-      fh <- getFiltersHeight BTC
+      fh' <- getFiltersHeight BTC
+      sh <- getScannedHeight BTC
+      let fh = max fh' sh
       logWrite $ "Current height is " <> showt ch <> ", and filters are for height " <> showt fh
       -- postSync BTC ch fh
       if ch > fh then do

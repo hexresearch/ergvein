@@ -65,8 +65,10 @@ scannerBtc = void $ workflow waiting
 
     waiting = Workflow $ do
       logWrite "Waiting for unscanned filters"
+      buildE <- getPostBuild
       fhD <- watchFiltersHeight BTC
       scD <- watchScannedHeight BTC
+      setSyncProgress $ ffor buildE $ const $ Synced
       let newFiltersE = fmap fst . ffilter (id . snd) $ updated $ do
             fh <- fhD
             sc <- scD
@@ -90,8 +92,9 @@ scannerBtc = void $ workflow waiting
       let updSync i i1 = updFire $ SyncMeta BTC (SyncAddress 0) (fromIntegral (i - i0)) (fromIntegral (i1 - i0))
       let toAddr = xPubToBtcAddr . extractXPubKeyFromEgv
       scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses updSync $ xPubToBtcAddr . extractXPubKeyFromEgv <$> keys ps
-      performEvent_ $ ffor scanE $ liftIO . print
-      let hashesE = V.toList . snd <$> scanE
+      performEvent_ $ ffor scanE $ \(h, bls) -> logWrite $ "Scanned up to " <> showt h <> ", blocks to check: " <> showt bls
+      let noScanE = fforMaybe scanE $ \(_, bls) -> if null bls then Just () else Nothing
+          hashesE = V.toList . snd <$> scanE
           heightE = fst <$> scanE
       performFork_ $ writeScannedHeight BTC <$> heightE
       blocksE <- logEvent "Blocks requested: " =<< requestBTCBlocks hashesE
@@ -100,7 +103,8 @@ scannerBtc = void $ workflow waiting
       let keymap = M.fromList . V.toList . V.indexed . V.map (BtcAddress . toAddr) $ keys ps
       txsE <- getAddressesTxs $ (keymap,) <$> blocksE
       storedE <- insertTxsInPubKeystore $ (BTC,) . fmap M.keys <$> txsE
-      pure ((), waiting <$ storedE)
+      let waitingE = leftmost [storedE, noScanE]
+      pure ((), waiting <$ waitingE)
 
 -- | Loads current PubStorage, performs BIP44 account discovery algorithm and
 -- stores updated PubStorage to the wallet file.
