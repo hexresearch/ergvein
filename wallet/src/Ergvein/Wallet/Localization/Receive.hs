@@ -17,28 +17,30 @@ instance LocalizedPrint ReceiveTitle where
     English -> "Receive " <> currencyName c
     Russian -> "Получить " <> currencyName c
 
-
 data ReceivePageStrings =
     RPSTitle
   | RPSAddLabel
-  | RPSNewLabel
-  | RPSGenNew
   | RPSCopy
   | RPSGap
+  | RPSGenNew
+  | RPSNewLabel
+  | RPSShare
 
 instance LocalizedPrint ReceivePageStrings where
   localizedShow l v = case l of
     English -> case v of
-      RPSTitle    -> "Receive"
       RPSAddLabel -> "Add label"
-      RPSNewLabel -> "New label"
-      RPSGenNew   -> "Generate new"
       RPSCopy     -> "Copy"
       RPSGap      -> "Exceeded gap limit"
+      RPSGenNew   -> "Generate new"
+      RPSNewLabel -> "New label"
+      RPSShare    -> "Share"
+      RPSTitle    -> "Receive"
     Russian -> case v of
-      RPSTitle    -> "Получение"
       RPSAddLabel -> "Добавить название"
-      RPSNewLabel -> "Изменить название"
-      RPSGenNew   -> "Создать новый"
       RPSCopy     -> "Скопировать"
       RPSGap      -> "Вышли за \"Gap limit\""
+      RPSGenNew   -> "Создать новый"
+      RPSNewLabel -> "Изменить название"
+      RPSShare    -> "Поделиться"
+      RPSTitle    -> "Получение"

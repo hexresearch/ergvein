@@ -201,7 +201,7 @@ divButton = mkButton "div" []
 -- Usage example:
 -- >>> outlineButtonWithIcon BtnPasteString "fas fa-clipboard"
 -- As a result, such an element will be created:
--- <button class="button button-outline href="javascript:void(0)">
+-- <button class="button button-outline href="return false;">
 --   Scan QR code
 --   <span class="button-icon-wrapper">
 --     <i class="fas fa-qrcode"></i>

@@ -1,6 +1,7 @@
 module Ergvein.Wallet.Worker.Node
   (
     bctNodeController
+  , extractAddrs
   ) where
 
 import Control.Exception
