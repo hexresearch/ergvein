@@ -2,9 +2,7 @@
 
 module Ergvein.Wallet.Page.Initial(
     initialPage
-  , initialAuthedPage
   ) where
-
 
 import Control.Lens
 import Control.Monad.IO.Class
@@ -39,7 +37,7 @@ initialPage = do
   if null ss then noWalletsPage else hasWalletsPage ss
   logWrite "Finished initial page rendering"
   where
-    noWalletsPage = wrapperSimple WrapperAlignmentCenter $ divClass "initial-options grid1" $ noWallets
+    noWalletsPage = wrapperSimple $ divClass "initial-page" $ divClass "container p-1 initial-page-content" $ divClass "initial-page-options" $ noWallets
     noWallets = do
       newE <- fmap (GoSeed <$) $ outlineButton IPSCreate
       restoreE <- fmap (GoRestore <$) $ outlineButton IPSRestore
@@ -61,7 +59,7 @@ initialPage = do
               , retractablePrev = Just $ pure $ selectWalletsPage ss
               }
         Nothing -> selectWalletsPage ss
-    selectWalletsPage ss = wrapperSimple WrapperAlignmentCenter $ divClass "initial-options grid1" $ do
+    selectWalletsPage ss = wrapperSimple $ divClass "initial-page" $ divClass "container p-1 initial-page-content" $ divClass "initial-page-options" $ do
       h4 $ localizedText IPSSelectWallet
       flip traverse_ ss $ \name -> do
         btnE <- outlineButton name
@@ -131,10 +129,3 @@ generateMissingPrvKeysHelper _ (CurrencyPrvStorage prvKeystore) (goalExternalKey
         l = goalInternalKeysNum - intLength
         v = V.unfoldrN l (\i -> Just (derivePrvKey masterPrvKey Internal (fromIntegral i), i+1)) intLength
         in currentInternalKeys V.++ v
-
-initialAuthedPage :: MonadFront t m => m ()
-initialAuthedPage = wrapperSimple WrapperAlignmentCenter $ divClass "main-page" $ do
-  anon_name <- getWalletName
-  h4 $ text $ "Congrats " <> anon_name <> "! You've made it!"
-  logoutE <- row . outlineButton $ ("Logout" :: Text)
-  void $ setAuthInfo $ Nothing <$ logoutE

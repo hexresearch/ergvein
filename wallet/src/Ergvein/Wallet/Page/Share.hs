@@ -32,7 +32,7 @@ import Network.Haskoin.Address.Base58
 import Network.Haskoin.Keys
 
 sharePage :: MonadFront t m => Currency -> m ()
-sharePage cur = wrapper (ShareTitle cur) (Just $ pure $ sharePage cur) WrapperAlignmentNone $ divClass "share-content" $ do
+sharePage cur = wrapper (ShareTitle cur) (Just $ pure $ sharePage cur) $ divClass "share-content" $ do
   pubStorage <- getPubStorage
   let xPubKeyMb  = pubKeystore'master . _currencyPubStorage'pubKeystore
         <$> M.lookup cur (_pubStorage'currencyPubStorages pubStorage)

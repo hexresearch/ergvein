@@ -31,7 +31,7 @@ import qualified Data.Text as T
 import Ergvein.Wallet.Native
 
 networkPage :: MonadFront t m => Maybe Currency -> m ()
-networkPage curMb = wrapper NPSTitle (Just $ pure $ networkPage curMb) WrapperAlignmentNone $ do
+networkPage curMb = wrapper NPSTitle (Just $ pure $ networkPage curMb) $ do
   curD <- networkPageHeader curMb
   void $ widgetHoldDyn $ ffor curD $ \case
     Nothing -> pure ()
@@ -135,7 +135,7 @@ networkPageHeader minitCur = do
       (fmap . fmap) Just $ holdUniqDyn $ _dropdown_value dp
 
 serversInfoPage :: MonadFront t m => Currency -> m ()
-serversInfoPage initCur = wrapper NPSTitle (Just $ pure $ serversInfoPage initCur) WrapperAlignmentNone $ mdo
+serversInfoPage initCur = wrapper NPSTitle (Just $ pure $ serversInfoPage initCur) $ mdo
   curD <- networkPageHeader $ Just initCur
   void $ widgetHoldDyn $ ffor curD $ \case
     Nothing -> pure ()

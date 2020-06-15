@@ -47,7 +47,7 @@ data SubPageSettings
   | GoPortfolio
 
 settingsPage :: MonadFront t m => m ()
-settingsPage = wrapper STPSTitle (Just $ pure settingsPage) WrapperAlignmentCenter $ do
+settingsPage = wrapper STPSTitle (Just $ pure settingsPage)  $ do
   divClass "initial-options grid1" $ do
     goLangE   <- fmap (GoLanguage   <$) $ outlineButton STPSButLanguage
     goCurrE   <- fmap (GoCurrencies <$) $ outlineButton STPSButActiveCurrs
@@ -66,7 +66,7 @@ settingsPage = wrapper STPSTitle (Just $ pure settingsPage) WrapperAlignmentCent
       }
 
 languagePage :: MonadFront t m => m ()
-languagePage = wrapper STPSTitle (Just $ pure languagePage) WrapperAlignmentCenter $ do
+languagePage = wrapper STPSTitle (Just $ pure languagePage)  $ do
   h3 $ localizedText $ STPSSelectLanguage
   divClass "initial-options grid1" $ do
     langD <- getLanguage
@@ -86,7 +86,7 @@ languagePage = wrapper STPSTitle (Just $ pure languagePage) WrapperAlignmentCent
   pure ()
 {-
 currenciesPage2 :: MonadFront t m => m ()
-currenciesPage2 = wrapper STPSTitle (Just $ pure currenciesPage) WrapperAlignmentCenter $ do
+currenciesPage2 = wrapper STPSTitle (Just $ pure currenciesPage)  $ do
   h3 $ localizedText STPSSetsActiveCurrs
   divClass "initial-options" $ do
     ac <- _pubStorage'activeCurrencies <$> getPubStorage
@@ -109,7 +109,7 @@ currenciesPage2 = wrapper STPSTitle (Just $ pure currenciesPage) WrapperAlignmen
     showSuccessMsg $ STPSSuccess <$ setAuthInfoE2
 -}
 currenciesPage :: MonadFront t m => m ()
-currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) WrapperAlignmentCenter $ do
+currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage)  $ do
   h3 $ localizedText STPSSetsActiveCurrs
   divClass "initial-options" $ mdo
     activeCursD <- getActiveCursD
@@ -136,7 +136,7 @@ currenciesPage = wrapper STPSTitle (Just $ pure currenciesPage) WrapperAlignment
 
 
 unitsPage :: MonadFront t m => m ()
-unitsPage = wrapper STPSTitle (Just $ pure unitsPage) WrapperAlignmentCenter $ mdo
+unitsPage = wrapper STPSTitle (Just $ pure unitsPage)  $ mdo
   cntED <- widgetHold content $ content <$ switchDyn cntED
   pure ()
   where
@@ -174,7 +174,7 @@ unitsPage = wrapper STPSTitle (Just $ pure unitsPage) WrapperAlignmentCenter $ m
 
 
 portfolioPage :: MonadFront t m => m ()
-portfolioPage = wrapper STPSTitle (Just $ pure currenciesPage) WrapperAlignmentCenter $ do
+portfolioPage = wrapper STPSTitle (Just $ pure currenciesPage)  $ do
   h3 $ localizedText STPSSetsPortfolio
   divClass "initial-options" $ mdo
     settings <- getSettings

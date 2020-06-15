@@ -49,10 +49,10 @@ instance LocalizedPrint SendStrings where
       BtnScanQRCode -> "Сканировать"
 
 sendPage :: MonadFront t m => Currency -> m ()
-sendPage cur = wrapper (SendTitle cur) (Just $ pure $ sendPage cur) WrapperAlignmentNone $ do
+sendPage cur = wrapper (SendTitle cur) (Just $ pure $ sendPage cur) $ do
   let thisWidget = Just $ pure $ sendPage cur
   navbarWidget cur thisWidget NavbarSend
-  contentWrapper WrapperAlignmentVertical WrapperNoPadding $ formClass "send-page" $ mdo
+  divClass "container p-1 send-page" $ formClass "send-page-content" $ mdo
     recipientErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing) . fst)
 #ifdef ANDROID
     recipientD <- validatedTextFieldSetVal RecipientString "" recipientErrsD (leftmost [resQRcodeE, pasteE])

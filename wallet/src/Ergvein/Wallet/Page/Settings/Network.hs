@@ -55,7 +55,7 @@ instance LocalizedPrint ParametersParseErrors where
       PPEInt -> "Некорректное значение. Только целые числа"
 
 networkSettingsPage :: MonadFront t m => m ()
-networkSettingsPage = wrapper NSSTitle (Just $ pure networkSettingsPage ) WrapperAlignmentNone $ do
+networkSettingsPage = wrapper NSSTitle (Just $ pure networkSettingsPage ) $ do
   navD <- navbarWidget ActivePage
   void $ widgetHoldDyn $ ffor navD $ \case
     ActivePage      -> activePageWidget

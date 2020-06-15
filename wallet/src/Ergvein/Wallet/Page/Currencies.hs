@@ -27,7 +27,7 @@ import Ergvein.Wallet.Util
 import Reflex.Localize
 
 selectCurrenciesPage :: MonadFrontBase t m => Mnemonic -> m ()
-selectCurrenciesPage m = wrapperSimple WrapperAlignmentCenter $ do
+selectCurrenciesPage m = wrapperSimple  $ do
   e <- selectCurrenciesWidget []
   nextWidget $ ffor e $ \ac -> Retractable {
 #ifdef ANDROID

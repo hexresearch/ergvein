@@ -130,30 +130,20 @@ minorBackground = rgb 59 78 122
 mobileBreakpoint :: Size LengthUnit
 mobileBreakpoint = rem 40
 
+tabletBreakpoint :: Size LengthUnit
+tabletBreakpoint = rem 80
+
+desktopBreakpoint :: Size LengthUnit
+desktopBreakpoint = rem 120
+
 wrapperCss :: Css
 wrapperCss = do
-  ".base-container" ? do
-    display flex
-    flexDirection column
+  ".wrapper" ? do
     height $ pct 100
-  ".content-wrapper" ? do
-    flexGrow 1
     display flex
     flexDirection column
-  ".content-wrapper-centered" ? do
-    flexGrow 1
-    display flex
-    flexDirection column
-    -- backgroundColor (rgb 255 0 0)
-  ".vertically-centered-content" ? do
-    margin auto (em 0) auto (em 0)
-    -- backgroundColor (rgb 0 255 0)
-  ".horizontally-centered-content" ? do
-    margin (em 0) auto (em 0) auto
-    -- backgroundColor (rgb 0 255 0)
-  ".centered-content" ? do
-    margin auto auto auto auto
-    -- backgroundColor (rgb 0 255 0)
+  ".wrapper .container" ? do
+    maxWidth tabletBreakpoint
 
 translatePctX :: Size Percentage -> Css
 translatePctX x = prefixed (browsers <> "transform") $ "translateX(" <> value x <> ")"
@@ -215,8 +205,7 @@ navbarCss = do
   ".navbar" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1, fr 1]
-    marginBottom $ rem 1
-    -- backgroundColor (rgb 0 0 255)
+    padding (rem 1) (rem 1) (rem 0) (rem 1)
   ".navbar-item" ? do
     padding (rem 1) (rem 1) (rem 1) (rem 1)
     cursor pointer
@@ -381,15 +370,21 @@ passwordCss = do
 
 initialPageCss :: Css
 initialPageCss = do
+  ".initial-page" ? do
+    display flex
+    flexGrow 1
+  ".initial-page-content" ? do
+    margin auto auto auto auto
+    width $ pct 100
+  ".initial-page-options" ? do
+    display grid
+    width maxContent
+    margin (rem 0) auto (rem 0) auto
   ".text-pin-code-error" ? do
     color $ rgb 190 0 0
 
 balancesPageCss :: Css
 balancesPageCss = do
-  ".balances-wrapper" ? do
-    maxWidth mobileBreakpoint
-    margin (px 0) auto (px 0) auto
-    textAlign $ alignSide sideLeft
   ".sync-progress" ? do
     fontSize $ pt 14
   ".currency-content" ? do
@@ -402,6 +397,7 @@ balancesPageCss = do
   ".currency-row:hover" ? do
     color hoverColor
   ".currency-name" ? do
+    textAlign $ alignSide sideLeft
     display tableCell
     paddingRight $ rem 1
   ".currency-balance" ? do
@@ -418,8 +414,11 @@ balancesPageCss = do
 sendPageCss :: Css
 sendPageCss = do
   ".send-page" ? do
-    margin (px 0) auto (px 0) auto
-    maxWidth mobileBreakpoint
+    flexGrow 1
+    display flex
+  ".send-page-content" ? do
+    margin auto (rem 0) auto (rem 0)
+    width $ pct 100
   ".send-page input" ? do
     marginBottom $ rem 1
   ".form-field-errors" ? do
@@ -733,7 +732,7 @@ historyPageCss = do
     borderTop solid (px 2) black
     borderBottom solid (px 2) black
     display grid
-    gridTemplateColumns [fr 5, fr 4, fr 1]
+    gridTemplateColumns [fr 3, fr 3, fr 1]
   ".history-amount-header" ? do
     borderRight solid (px 2) black
     display block
@@ -742,32 +741,46 @@ historyPageCss = do
     display block
   ".history-status-header" ? do
     display block
+  ".history-status-transrefill" ? do
+    display flex
+    alignItems center
+    justifyContent flexEnd
+  ".history-status-transwithdraw" ? do
+    display flex
+    alignItems center
+    justifyContent flexEnd
   ".history-table-row" ? do
     fontSize $ px 16
-    paddingTop $ px 20
-    paddingBottom $ px 20
+    paddingTop $ rem 1.5
+    paddingBottom $ rem 1.5
     display grid
-    gridTemplateColumns [fr 5, fr 4, fr 1]
+    gridTemplateColumns [fr 3, fr 3, fr 1]
   ".history-table-row:hover" ? do
     backgroundColor $ rgb 220 220 220
   ".history-amount-transrefill" ? do
-    display block
+    display flex
+    alignItems center
     color $ rgb 0 120 0
+    textAlign $ alignSide sideLeft
   ".history-amount-transwithdraw" ? do
-    display block
+    display flex
+    alignItems center
     color $ rgb 120 0 0
-  ".transaction-info-body" ? do
-    fontSize $ px 16
-    marginLeft $ px 20
-    marginRight $ px 20
-  ".transaction-info-element" ? do
-    display grid
-    gridTemplateColumns [fr 2, fr 8]
-    marginTop $ px 20
+    textAlign $ alignSide sideLeft
+  ".history-page-sign-icon" ? do
+    fontSize $ pt 7
+    paddingRight $ rem 0.3
+  ".history-page-status-icon" ? do
+    fontSize $ pt 9
+  ".tx-info-page-element" ? do
+    display flex
+    marginTop $ rem 1
+    paddingRight $ rem 1
   ".info-descr" ? do
     fontWeight $ weight 600
-    fontSize $ px 18
+    fontSize $ pt 14
     textAlign $ alignSide sideLeft
+    paddingRight $ rem 1
   ".info-body" ? do
     textAlign $ alignSide sideLeft
     overflow hidden
@@ -782,7 +795,8 @@ historyPageCss = do
     marginBottom $ px 10
   ".out-descr" ? do
     fontWeight $ weight 600
-  ".transaction-info-body-andr" ? do
+    paddingRight $ rem 1
+  ".tx-info-page-andr" ? do
     fontSize $ px 16
     marginTop $ px 10
     marginLeft $ px 10
@@ -814,19 +828,20 @@ historyPageCss = do
     marginLeft $ px 10
   ".info-exits-andr" ? do
     marginTop $ px 5
+  ".out-body" ? do
+    wordBreak breakAll
   ".out-body-andr" ? do
     marginLeft $ px 10
-    overflow hidden
-    textOverflow overflowEllipsis
+    wordBreak breakAll
     textAlign $ alignSide sideLeft
 
 legoStyles :: Css
 legoStyles = do
-  ".mb-0" ? (marginBottom $ px 0)
-  ".ml-0" ? (marginLeft   $ px 0)
-  ".mr-0" ? (marginRight  $ px 0)
-  ".mt-0" ? (marginTop    $ px 0)
-  ".m-0"  ? margin (px 0) (px 0) (px 0) (px 0)
+  ".mb-0" ? (marginBottom $ rem 0)
+  ".ml-0" ? (marginLeft   $ rem 0)
+  ".mr-0" ? (marginRight  $ rem 0)
+  ".mt-0" ? (marginTop    $ rem 0)
+  ".m-0"  ? margin (rem 0) (rem 0) (rem 0) (rem 0)
   ".mb-1" ? (marginBottom $ rem 1)
   ".ml-1" ? (marginLeft   $ rem 1)
   ".mr-1" ? (marginRight  $ rem 1)
@@ -837,27 +852,28 @@ legoStyles = do
   ".mr-a" ? marginRight   auto
   ".mt-a" ? marginTop     auto
   ".mtb-a" ? (marginTop auto) >> (marginBottom auto)
-  ".padb-1" ? (paddingBottom $ rem 1)
-  ".padl-1" ? (paddingLeft   $ rem 1)
-  ".padr-1" ? (paddingRight  $ rem 1)
-  ".padt-1" ? (paddingTop    $ rem 1)
-  ".pad-1" ? padding (rem 1) (rem 1) (rem 1) (rem 1)
-  ".padb-a" ? paddingBottom  auto
-  ".padl-a" ? paddingLeft    auto
-  ".padr-a" ? paddingRight   auto
-  ".padt-a" ? paddingTop     auto
-  ".pad-a"  ? padding auto auto auto auto
+  ".pb-1" ? (paddingBottom $ rem 1)
+  ".pl-1" ? (paddingLeft   $ rem 1)
+  ".pr-1" ? (paddingRight  $ rem 1)
+  ".pt-1" ? (paddingTop    $ rem 1)
+  ".p-1" ? padding (rem 1) (rem 1) (rem 1) (rem 1)
+  ".pb-a" ? paddingBottom  auto
+  ".pl-a" ? paddingLeft    auto
+  ".pr-a" ? paddingRight   auto
+  ".pt-a" ? paddingTop     auto
+  ".p-a"  ? padding auto auto auto auto
   ".w-80" ? width (pct 80)
   ".w-100" ? width (pct 100)
+  ".h-100" ? height (pct 100)
 
 receiveCss :: Css
 receiveCss = do
   ".receive-qr" ? do
-    margin (px 20) auto (px 40) auto
+    margin (rem 2) auto (rem 2) auto
   ".receive-qr-andr" ? do
-    margin (px 20) auto (px 40) auto
+    margin (rem 2) auto (rem 2) auto
   ".receive-adr" ? do
-    margin (px 20) auto (px 40) auto
+    margin (rem 2) auto (rem 2) auto
     fontSize $ px 16
     fontWeight $ weight 600
     wordBreak breakAll
@@ -865,9 +881,6 @@ receiveCss = do
     display grid
     gridTemplateColumns [fr 1, fr 1]
     gridGap $ rem 1
-  ".label-block-input" ? do
-    display block
-    marginTop (px (-5))
   ".qrcode" ? do
     margin (px 0) auto (px 0) auto
   ".receive-buttons-wrapper" ? do
