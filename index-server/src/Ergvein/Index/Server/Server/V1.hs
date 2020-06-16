@@ -75,8 +75,7 @@ indexGetInfoEndpoint = do
 
 introducePeerEndpoint :: IntroducePeerReq -> ServerM IntroducePeerResp
 introducePeerEndpoint request = do
-  url <- PeerCandidate <$> (parseBaseUrl $ introducePeerReqUrl $ request) 
-  result <- runExceptT $ considerPeerCandidate url
+  result <- runExceptT $ considerPeerCandidate $ PeerCandidate $ introducePeerReqUrl $ request
   pure $ peerValidationToResponce result
 
 peerValidationToResponce :: Either PeerValidationResult () -> IntroducePeerResp

@@ -24,7 +24,7 @@ data PeerValidationResult = OK
   deriving Show
 
 data PeerCandidate = PeerCandidate
-  { peerCandidateUrl :: BaseUrl
+  { peerCandidateUrl :: String
   }
 
 data Peer = Peer

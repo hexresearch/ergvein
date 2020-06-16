@@ -49,7 +49,7 @@ peerKnownPeers baseUrl = do
 
 considerPeerCandidate :: PeerCandidate -> ExceptT PeerValidationResult ServerM ()
 considerPeerCandidate candidate = do
-  let baseUrl = peerCandidateUrl candidate
+  baseUrl <- peerBaseUrl $ peerCandidateUrl candidate
   knownPeers <- lift $ dbQuery getDiscoveredPeers
   knowPeersSet <- lift $ knownPeersSet knownPeers
   if not $ Set.member baseUrl knowPeersSet then do
@@ -104,8 +104,8 @@ knownPeersActualization = do
         Right peers -> ([peer], peers)
         _ -> mempty
 
-addDefaultPeersIfNoneDiscovered :: ServerM ()
-addDefaultPeersIfNoneDiscovered = do
+syncWithDefaultPeers :: ServerM ()
+syncWithDefaultPeers = do
   discoveredPeers <- dbQuery getDiscoveredPeers
   predefinedPeers <- descReqPredefinedPeers <$> getDiscoveryRequisites
   let discoveredPeersSet = Set.fromList $ peerUrl <$> discoveredPeers
@@ -126,6 +126,9 @@ instance Hashable BaseUrl where
   hashWithSalt salt = hashWithSalt salt . showBaseUrl
 
 newPeer peerUrl = NewPeer peerUrl (baseUrlScheme peerUrl)
+
+peerBaseUrl :: String -> ExceptT PeerValidationResult ServerM BaseUrl
+peerBaseUrl url = ExceptT $ pure $ maybeToRight InfoEndpointError $ parseBaseUrl url 
 
 peerInfoRequest :: BaseUrl -> ExceptT PeerValidationResult ServerM InfoResponse
 peerInfoRequest baseUrl =
