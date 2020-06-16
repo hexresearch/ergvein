@@ -16,6 +16,7 @@ data CurrencyOutOfSyncInfo = CurrencyOutOfSyncInfo
   } deriving Show
 
 data PeerValidationResult = OK
+  | UrlFormatError
   | AlreadyKnown
   | InfoEndpointError
   | KnownPeersEndpointError

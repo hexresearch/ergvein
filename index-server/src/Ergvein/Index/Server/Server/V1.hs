@@ -82,6 +82,8 @@ peerValidationToResponce :: Either PeerValidationResult () -> IntroducePeerResp
 peerValidationToResponce = \case 
   Right ()   -> IntroducePeerResp True Nothing
   Left error -> IntroducePeerResp False $ Just $ case error of
+    UrlFormatError ->
+      "Do not able to parse address"
     AlreadyKnown ->
       "Peer with such address already known"
     InfoEndpointError ->
