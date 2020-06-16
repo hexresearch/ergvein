@@ -55,7 +55,7 @@ discoveryRequisites cfg = let
     otherwise    -> knownPeers
   in PeerDiscoveryRequisites
       ownPeerAddress
-      undefined
+      filteredKnownPeers
       (cfgPeerActualizationDelay cfg)
       (cfgPeerActualizationTimeout cfg)
   where
