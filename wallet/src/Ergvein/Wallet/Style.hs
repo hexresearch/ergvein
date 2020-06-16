@@ -90,30 +90,31 @@ frontendCss r = do
     backgroundColor majorBackground
     fontFamily ["Roboto"] []
     overflowY auto
-  wrapperCss
-  headerCss
-  navbarCss
-  buttonCss
-  inputCss
-  mnemonicWidgetCss
-  validateCss
-  passwordCss
-  initialPageCss
-  balancesPageCss
-  sendPageCss
-  networkPageCss
-  infoPageCss
-  sharePageCss
   aboutPageCss
-  loadingWidgetCss
   alertsCss
-  selectCss
+  balancesPageCss
+  buttonCss
   buttonsToggleCss
   graphPinCodeCanvasCss
+  headerCss
   historyPageCss
-  receiveCss
+  infoPageCss
+  initialPageCss
+  inputCss
   legoStyles
   linkCss
+  loadingWidgetCss
+  mnemonicWidgetCss
+  navbarCss
+  networkPageCss
+  passwordCss
+  receiveCss
+  selectCss
+  sendPageCss
+  settingsCss
+  sharePageCss
+  validateCss
+  wrapperCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -144,6 +145,11 @@ wrapperCss = do
     flexDirection column
   ".wrapper .container" ? do
     maxWidth tabletBreakpoint
+  ".centered-container" ? do
+    display flex
+    flexGrow 1
+  ".centered-content" ? do
+    margin auto auto auto auto
 
 translatePctX :: Size Percentage -> Css
 translatePctX x = prefixed (browsers <> "transform") $ "translateX(" <> value x <> ")"
@@ -157,7 +163,6 @@ translatePctXY x y = prefixed (browsers <> "transform") $ "translate(" <> value 
 headerCss :: Css
 headerCss = do
   ".header-wrapper" ? do
-    width $ pct 100
     position relative
   ".header" ? do
     display flex
@@ -205,7 +210,7 @@ navbarCss = do
   ".navbar" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1, fr 1]
-    padding (rem 1) (rem 1) (rem 0) (rem 1)
+    paddingBottom $ rem 1
   ".navbar-item" ? do
     padding (rem 1) (rem 1) (rem 1) (rem 1)
     cursor pointer
@@ -314,11 +319,16 @@ mnemonicWidgetCss = do
   ".grid3" ? do
     display grid
     width maxContent
-  query M.screen [M.minWidth (rem 40)] $ ".grid3" ? do
+  query M.screen [M.minWidth mobileBreakpoint] $ ".grid3" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1, fr 1]
     gridGap $ rem 1
     width maxContent
+
+settingsCss :: Css
+settingsCss = do
+  ".initial-options" ? do
+    margin (rem 0) auto (rem 0) auto
 
 validateCss :: Css
 validateCss = do
@@ -370,12 +380,8 @@ passwordCss = do
 
 initialPageCss :: Css
 initialPageCss = do
-  ".initial-page" ? do
-    display flex
-    flexGrow 1
   ".initial-page-content" ? do
     margin auto auto auto auto
-    width $ pct 100
   ".initial-page-options" ? do
     display grid
     width maxContent
@@ -413,12 +419,6 @@ balancesPageCss = do
 
 sendPageCss :: Css
 sendPageCss = do
-  ".send-page" ? do
-    flexGrow 1
-    display flex
-  ".send-page-content" ? do
-    margin auto (rem 0) auto (rem 0)
-    width $ pct 100
   ".send-page input" ? do
     marginBottom $ rem 1
   ".form-field-errors" ? do
@@ -445,11 +445,6 @@ aboutPageCss = do
     textAlign center
   ".about-hr-sep" ? do
     border solid (px 3) black
-  ".about-line" ? do
-    width $ pct 100
-    maxWidth mobileBreakpoint
-    display inlineBlock
-    textAlign center
   ".about-content" ? do
     display displayTable
     marginTop $ px 10
@@ -475,10 +470,6 @@ networkPageCss :: Css
 networkPageCss = do
   ".network-wrapper" ? do
     textAlign center
-  ".network-title" ? do
-    width $ pct 100
-    maxWidth mobileBreakpoint
-    display inlineBlock
   ".network-title-table" ? do
     display displayTable
   ".network-title-row" ? do
@@ -506,10 +497,6 @@ networkPageCss = do
     border none none none
     marginTop $ em 0.5
     marginBottom $ em 0.5
-  ".network-line" ? do
-    width $ pct 100
-    maxWidth mobileBreakpoint
-    display inlineBlock
   ".network-name" ? do
     display flex
     width $ pct 100
@@ -563,12 +550,12 @@ networkPageCss = do
     gridGap $ em 0.5
     marginLeft auto
     marginRight auto
-  query M.screen [M.minWidth (rem 60)] $ ".net-btns-3" ? do
+  query M.screen [M.minWidth tabletBreakpoint] $ ".net-btns-3" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1, fr 1]
     gridGap $ em 0.5
     width maxContent
-  query M.screen [M.minWidth (rem 60)] $ ".net-btns-2" ? do
+  query M.screen [M.minWidth tabletBreakpoint] $ ".net-btns-2" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1]
     gridGap $ em 0.5
@@ -576,10 +563,6 @@ networkPageCss = do
 
 infoPageCss :: Css
 infoPageCss = do
-  ".info-content" ? do
-    width $ pct 100
-    maxWidth mobileBreakpoint
-    display inlineBlock
   ".info-v-spacer" ? do
     height $ px 25
   ".info-block-value" ? do
@@ -592,10 +575,6 @@ infoPageCss = do
 
 sharePageCss :: Css
 sharePageCss = do
-  ".share-content" ? do
-    width $ pct 100
-    maxWidth mobileBreakpoint
-    display inlineBlock
   ".share-v-spacer" ? do
     height $ px 20
   ".qrcode-container" ? do
@@ -701,13 +680,22 @@ selectCss :: Css
 selectCss = do
   ".select-lang" ? do
     fontSize $ pt 18
-    height   $ em 1.8
+    height $ rem 5
   "option" ? do
     fontSize $ pt 18
-    height   $ em 1.8
+    height $ rem 5
   ".select-fiat" ? do
     margin auto auto auto auto
     width $ px 200
+  "select" ? do
+    borderColor textColor
+    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" height=\\\"14\\\" viewBox=\\\"0 0 30 8\\\" width=\\\"30\\\"><path fill=\\\"#000000\\\" d=\\\"M0,0l6,8l6-8\\\"/></svg>"
+  "select:hover" ? do
+    cursor pointer
+  "select:hover, select:focus" ? do
+    color hoverColor
+    borderColor hoverColor
+    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" height=\\\"14\\\" viewBox=\\\"0 0 30 8\\\" width=\\\"30\\\"><path fill=\\\"#707070\\\" d=\\\"M0,0l6,8l6-8\\\"/></svg>"
 
 buttonsToggleCss :: Css
 buttonsToggleCss = do
@@ -796,11 +784,6 @@ historyPageCss = do
   ".out-descr" ? do
     fontWeight $ weight 600
     paddingRight $ rem 1
-  ".tx-info-page-andr" ? do
-    fontSize $ px 16
-    marginTop $ px 10
-    marginLeft $ px 10
-    marginRight $ px 10
   ".info-descr-andr" ? do
     marginTop $ px 10
     fontWeight $ weight 600

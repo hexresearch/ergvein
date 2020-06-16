@@ -40,15 +40,15 @@ mockAddress :: Text
 mockAddress = "1BoatSLRHtKNngkdXEeobR76b53LETtpyT"
 
 exceededGapLimit :: MonadFront t m => Currency -> m ()
-exceededGapLimit cur = wrapper (ReceiveTitle cur) (Just $ pure $ receivePage cur) $ do
+exceededGapLimit cur = wrapper True (ReceiveTitle cur) (Just $ pure $ receivePage cur) $ do
   h2 $ localizedText RPSGap
 
 #ifdef ANDROID
 receivePageWidget :: MonadFront t m => Currency -> Int -> EgvExternalKeyBox -> m ()
-receivePageWidget cur i EgvExternalKeyBox{..} = wrapper (ReceiveTitle cur) (Just $ pure $ receivePage cur) $ do
+receivePageWidget cur i EgvExternalKeyBox{..} = wrapper False (ReceiveTitle cur) (Just $ pure $ receivePage cur) $ do
   let thisWidget = Just $ pure $ receivePage cur
   navbarWidget cur thisWidget NavbarReceive
-  void $ divClass "container p-1 receive-page" $ do
+  void $ do
     divClass "receive-qr-andr" $ qrCodeWidget keyTxt cur
     newE  <- newAddrBtn
     copyE <- copyAddrBtn
@@ -70,7 +70,7 @@ receivePageWidget cur i EgvExternalKeyBox{..} = wrapper (ReceiveTitle cur) (Just
 
 #else
 receivePageWidget :: MonadFront t m => Currency -> Int -> EgvExternalKeyBox -> m ()
-receivePageWidget cur i EgvExternalKeyBox{..} = wrapper (ReceiveTitle cur) (Just $ pure $ receivePage cur) $ do
+receivePageWidget cur i EgvExternalKeyBox{..} = wrapper False (ReceiveTitle cur) (Just $ pure $ receivePage cur) $ do
   let thisWidget = Just $ pure $ receivePage cur
   navbarWidget cur thisWidget NavbarReceive
   void $ divClass "container p-1 receive-page" $ do

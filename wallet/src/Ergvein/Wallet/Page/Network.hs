@@ -31,7 +31,7 @@ import qualified Data.Text as T
 import Ergvein.Wallet.Native
 
 networkPage :: MonadFront t m => Maybe Currency -> m ()
-networkPage curMb = wrapper NPSTitle (Just $ pure $ networkPage curMb) $ do
+networkPage curMb = wrapper False NPSTitle (Just $ pure $ networkPage curMb) $ do
   curD <- networkPageHeader curMb
   void $ widgetHoldDyn $ ffor curD $ \case
     Nothing -> pure ()
@@ -57,25 +57,24 @@ networkPageWidget cur = do
         avgL = if l == 0 then NPSNoServerAvail else NPSAvgLat $ sum lats / fromIntegral l
         in (NPSServerVal l, avgL)
 
-  divClass "centered-wrapper" $ divClass "horizontally-centered-content w-80" $ do
-    listE <- lineOption $ do
-      nameOption NPSServer
-      listE <- el "div" $ do
-        valueOptionDyn servNumD
-        divClass "network-name-edit" $ fmap (cur <$) $ outlineButton NPSServerListView
-      descrOption NPSServerDescr
-      descrOptionDyn avgLatD
-      labelHorSep
-      pure listE
+  listE <- lineOption $ do
+    nameOption NPSServer
+    listE <- el "div" $ do
+      valueOptionDyn servNumD
+      divClass "network-name-edit" $ fmap (cur <$) $ outlineButton NPSServerListView
+    descrOption NPSServerDescr
+    descrOptionDyn avgLatD
+    labelHorSep
+    pure listE
 
-    lineOption $ lineOptionNoEdit NPSSyncStatus servCurInfoD NPSSyncDescr
-    lineOption $ widgetHoldDyn $ ffor conmapD $ \cm -> case cur of
-      BTC  -> btcNetworkWidget $ maybe [] M.elems $ DM.lookup BTCTag cm
-      ERGO -> ergNetworkWidget $ maybe [] M.elems $ DM.lookup ERGOTag cm
-    void $ nextWidget $ ffor listE $ \cur -> Retractable {
-        retractableNext = serversInfoPage cur
-      , retractablePrev = Just (pure $ networkPage (Just cur))
-      }
+  lineOption $ lineOptionNoEdit NPSSyncStatus servCurInfoD NPSSyncDescr
+  lineOption $ widgetHoldDyn $ ffor conmapD $ \cm -> case cur of
+    BTC  -> btcNetworkWidget $ maybe [] M.elems $ DM.lookup BTCTag cm
+    ERGO -> ergNetworkWidget $ maybe [] M.elems $ DM.lookup ERGOTag cm
+  void $ nextWidget $ ffor listE $ \cur -> Retractable {
+      retractableNext = serversInfoPage cur
+    , retractablePrev = Just (pure $ networkPage (Just cur))
+    }
 
 btcNetworkWidget :: MonadFront t m => [NodeBTC t] -> m ()
 btcNetworkWidget nodes = do
@@ -119,7 +118,7 @@ networkPageHeader minitCur = do
   baseHorSep
   pure curD
   where
-    titleWrap  = divClass "network-title" . divClass "network-title-table" . divClass "network-title-row"
+    titleWrap  = divClass "network-title-table" . divClass "network-title-row"
     baseHorSep = elAttr "hr" [("class","network-hr-sep"   )] blank
     currenciesDropdown :: MonadFrontBase t m => Maybe Currency -> [Currency] -> m (Dynamic t (Maybe Currency))
     currenciesDropdown minitKey currs = do
@@ -135,11 +134,11 @@ networkPageHeader minitCur = do
       (fmap . fmap) Just $ holdUniqDyn $ _dropdown_value dp
 
 serversInfoPage :: MonadFront t m => Currency -> m ()
-serversInfoPage initCur = wrapper NPSTitle (Just $ pure $ serversInfoPage initCur) $ mdo
+serversInfoPage initCur = wrapper False NPSTitle (Just $ pure $ serversInfoPage initCur) $ mdo
   curD <- networkPageHeader $ Just initCur
   void $ widgetHoldDyn $ ffor curD $ \case
     Nothing -> pure ()
-    Just cur -> divClass "centered-wrapper" $ divClass "horizontally-centered-content" $ do
+    Just cur -> do
       allIndsD <- getIndexerInfoD
       let indMapD = fmap (M.filter (isJust . join . fmap (M.lookup cur . indInfoHeights))) allIndsD
       void $ listWithKey indMapD $ \url minfoD -> lineOption $ widgetHoldDyn $ ffor minfoD $ \minfo -> do
@@ -170,7 +169,7 @@ lineOptionNoEdit name valD descr = do
   labelHorSep
 
 lineOption :: MonadFront t m => m a -> m a
-lineOption = divClass "network-wrapper" . divClass "network-line"
+lineOption = divClass "network-wrapper"
 
 nameOption, descrOption, descrOptionNoBR :: (MonadFront t m, LocalizedPrint a) => a -> m ()
 nameOption = divClass "network-name"    . localizedText
