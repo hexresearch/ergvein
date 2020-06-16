@@ -3,6 +3,7 @@ module Ergvein.Index.Server.PeerDiscovery.Discovery where
 import Control.Concurrent
 import Control.Immortal
 import Control.Monad.Reader
+import Control.Monad.Logger
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.Maybe
 import Data.Either.Combinators
@@ -120,7 +121,6 @@ peerIntroduce = void $ runMaybeT $ do
     allPeers <- dbQuery $ getDiscoveredPeers
     let introduceReq = IntroducePeerReq $ showBaseUrl ownAddress
     forM_ allPeers (flip getIntroducePeerEndpoint introduceReq . peerUrl)
-
 
 instance Hashable BaseUrl where
   hashWithSalt salt = hashWithSalt salt . showBaseUrl
