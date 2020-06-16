@@ -504,6 +504,8 @@ wrapped ma = do
 instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
   getArchivedUrlsRef = asks env'urlsArchive
   {-# INLINE getArchivedUrlsRef #-}
+  getArchivedUrlsD = externalRefDynamic =<< asks env'urlsArchive
+  {-# INLINE getArchivedUrlsD #-}
   getActiveUrlsRef = asks env'activeUrls
   {-# INLINE getActiveUrlsRef #-}
   getInactiveUrlsRef = asks env'inactiveUrls

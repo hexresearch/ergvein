@@ -37,14 +37,6 @@ infoWorkerInterval = 60
 minIndexers :: Int
 minIndexers = 2
 
-indexersToExclude :: MonadFront t m => m (Set BaseUrl)
-indexersToExclude = do
-  inactiveUrlsRef <- getInactiveUrlsRef
-  archivedUrlsRef <- getArchivedUrlsRef
-  inactiveUrls <- readExternalRef inactiveUrlsRef 
-  archivedUrls <- readExternalRef archivedUrlsRef
-  pure $ inactiveUrls `Set.union` archivedUrls
-
 newIndexers :: (PlatformNatives, MonadIO m, HasClientManager m) => Set BaseUrl -> m (Set BaseUrl)
 newIndexers knownIndexers = do
   mng <- getClientManager
@@ -122,15 +114,20 @@ indexersNetworkActualizationWorker = do
   te                <- void <$> tickLossyFromPostBuildTime infoWorkerInterval
   settingsRef       <- getSettingsRef
   activeUrlsRef     <- getActiveUrlsRef
-  indexersToExclude <- indexersToExclude
+  inactiveUrlsRef   <- getInactiveUrlsRef
+  archivedUrlsRef   <- getArchivedUrlsRef
 
   let goE = leftmost [void te, refreshE, buildE]
 
   performFork_ $ ffor goE $ const $ do
+    inactiveUrls          <- readExternalRef inactiveUrlsRef 
+    archivedUrls          <- readExternalRef archivedUrlsRef
     settings              <- readExternalRef settingsRef
     currentNetworkInfoMap <- readExternalRef activeUrlsRef
+
     let maxIndexersToExplore = settingsActUrlNum settings
-    let currentNetwork = Map.keysSet currentNetworkInfoMap
+        indexersToExclude = inactiveUrls `Set.union` archivedUrls
+        currentNetwork = Map.keysSet currentNetworkInfoMap
 
     fetchedIndexers <- newIndexers currentNetwork
 
@@ -142,4 +139,7 @@ indexersNetworkActualizationWorker = do
     let resultingNetwork = if length newNetwork >= minIndexers then newNetwork else currentNetwork
         resultingNetworkInfoMap = Map.fromSet (newNetworkInfoMap Map.!?) resultingNetwork
 
-    writeExternalRef activeUrlsRef resultingNetworkInfoMap
+    modifyExternalRefMaybe_ activeUrlsRef (\previous -> 
+      if previous /= resultingNetworkInfoMap then
+        Just resultingNetworkInfoMap 
+      else Nothing)

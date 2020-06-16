@@ -149,6 +149,8 @@ class (
   ) => MonadClient t m | m -> t where
   -- | Get passive urls' reference. Internal
   getArchivedUrlsRef :: m (ExternalRef t (S.Set BaseUrl))
+  -- | Get deactivated urls dynamic
+  getArchivedUrlsD :: m (Dynamic t (S.Set BaseUrl))
   -- | Internal method to get reference to indexers
   getActiveUrlsRef :: m (ExternalRef t (Map BaseUrl (Maybe IndexerInfo)))
   -- | Get deactivated urls' reference. Internal
@@ -187,7 +189,7 @@ type PeerScanInfoMap = Map Currency (BlockHeight, BlockHeight) -- (scanned, actu
 data IndexerInfo = IndexerInfo {
   indInfoHeights :: PeerScanInfoMap
 , indInfoLatency :: NominalDiffTime
-} deriving (Show)
+} deriving (Show, Eq)
 
 -- ===========================================================================
 --    Helper instances for base monad
