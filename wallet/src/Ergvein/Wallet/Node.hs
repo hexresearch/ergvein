@@ -20,7 +20,6 @@ import Control.Monad.IO.Class
 import Control.Monad.Random
 import Data.Foldable
 import Data.Functor.Misc
-import Data.Map (Map)
 import Data.Maybe
 import Network.Socket (SockAddr)
 import Servant.Client(BaseUrl)
@@ -36,7 +35,7 @@ import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Util
 
 import qualified Data.Dependent.Map as DM
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
 addNodeConn :: NodeConn t -> ConnMap t -> ConnMap t

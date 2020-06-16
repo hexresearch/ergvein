@@ -32,10 +32,8 @@ import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Wrapper
 import Ergvein.Wallet.Worker.Node
 
-import qualified Data.Map as M
 import Data.Map.Strict as Map
 import qualified Data.Set as S
-import qualified Data.Map as M
 import qualified Data.List as L
 import Network.Haskoin.Address
 import Data.Maybe (fromMaybe, isJust)
@@ -238,7 +236,7 @@ transactionsGetting cur = do
   buildE <- delay 0.2 =<< getPostBuild
   ps <- getPubStorage
   pubSD <- getPubStorageD
-  let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _) -> case M.lookup BTC cm of
+  let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _) -> case Map.lookup BTC cm of
         Nothing -> []
         Just (CurrencyPubStorage keystore txmap) -> extractAddrs keystore
   abS <- filtArd <$> sampleDyn allBtcAddrsD

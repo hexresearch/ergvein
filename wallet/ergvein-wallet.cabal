@@ -136,7 +136,7 @@ library
         Ergvein.Wallet.Validate
         Ergvein.Wallet.Widget.GraphPinCode
         Ergvein.Wallet.Worker.Height
-        Ergvein.Wallet.Worker.Info
+        Ergvein.Wallet.Worker.IndexersNetworkActualization
         Ergvein.Wallet.Worker.Node
         Ergvein.Wallet.Wrapper
         Ergvein.Wallet.Yaml
@@ -221,7 +221,8 @@ library
         validation >=1 && < 1.2,
         vector -any,
         wreq -any,
-        yaml -any
+        yaml -any,
+        random-shuffle
 
     if flag(android)
         cpp-options: -DANDROID

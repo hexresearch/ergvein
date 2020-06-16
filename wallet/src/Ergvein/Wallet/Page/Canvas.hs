@@ -45,7 +45,7 @@ import           Data.Aeson.Types as A
 import           Data.List  (find)
 import           Data.List.Split
 import           Data.Maybe
-import           Data.Map   (fromList)
+import           Data.Map.Strict   (fromList)
 import qualified Data.Text        as T
 
 import Language.Javascript.JSaddle hiding ((!!))

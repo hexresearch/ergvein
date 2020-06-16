@@ -46,7 +46,7 @@ cacheTxInfos :: MonadIO m => DB -> [TxInfo] -> m ()
 cacheTxInfos db infos = do
   write db def $ putItems (cachedTxKey . txHash) (convert @TxInfo @TxCacheRec) infos
 
-addToCache :: (MonadLDB m) => BlockInfo -> m ()
+addToCache :: (MonadLDB m, MonadLogger m) => BlockInfo -> m ()
 addToCache update = do
   db <- getDb
   updateTxSpends (spentTxsHash update) $ blockContentTxInfos update

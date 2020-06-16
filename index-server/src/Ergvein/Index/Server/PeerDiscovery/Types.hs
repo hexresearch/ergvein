@@ -8,6 +8,7 @@ import Servant.Client.Core.BaseUrl
 import Ergvein.Index.Server.DB.Schema
 import Data.Time.Clock
 import Data.Text
+import Data.Set (Set)
 
 data CurrencyOutOfSyncInfo = CurrencyOutOfSyncInfo
   { outOfsyncCurrency    :: Currency
@@ -30,17 +31,17 @@ data Peer = Peer
   { peerId               :: DiscoveredPeerRecId
   , peerUrl              :: BaseUrl
   , peerLastValidatedAt  :: UTCTime
-  , peerConnScheme :: Scheme
+  , peerConnScheme       :: Scheme
   } deriving Show
 
 data NewPeer = NewPeer
-  { newPeerUrl              :: BaseUrl
+  { newPeerUrl        :: BaseUrl
   , newPeerConnScheme :: Scheme
   }
 
 data PeerDiscoveryRequisites = PeerDiscoveryRequisites
   { descReqOwnAddress           :: !(Maybe BaseUrl)
-  , descReqPredefinedPeers      :: ![BaseUrl]
+  , descReqPredefinedPeers      :: !(Set BaseUrl)
   , descReqActualizationDelay   :: !Int
   , descReqActualizationTimeout :: !NominalDiffTime
   }
