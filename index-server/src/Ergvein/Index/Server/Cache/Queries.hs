@@ -89,4 +89,5 @@ getKnownPeers :: (MonadLDB m, MonadLogger m) => Bool -> m [String]
 getKnownPeers onlySecured = do
   db <- getDb
   knownPeers <- getParsedExact cachedKnownPeersKey
-  pure $ T.unpack . knownPeerCacheRecUrl <$> filter ((onlySecured == ) . knownPeerCacheRecIsSecureConn) knownPeers
+  pure $ T.unpack . knownPeerCacheRecUrl <$>
+    if onlySecured then filter knownPeerCacheRecIsSecureConn knownPeers else knownPeers
