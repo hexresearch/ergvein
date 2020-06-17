@@ -1,12 +1,15 @@
 module Ergvein.Wallet.Scan (
     scanner
+  , scanningBtcKey
   ) where
 
 import Control.Lens
 import Control.Monad.IO.Class
+import Data.Bifunctor (second)
 import Data.ByteString (ByteString)
 import Data.List
 import Data.Maybe (fromMaybe)
+import Data.Vector (Vector)
 import Ergvein.Aeson
 import Ergvein.Crypto.Keys
 import Ergvein.Text
@@ -61,18 +64,18 @@ scannerFor cur = case cur of
 scannerBtc :: forall t m . MonadFront t m => m ()
 scannerBtc = void $ workflow waiting
   where
-    keys ps = getPublicKeys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "scannerBtc: not exsisting store!") . currencyPubStorage'pubKeystore
-
     waiting = Workflow $ do
       logWrite "Waiting for unscanned filters"
       buildE <- getPostBuild
       fhD <- watchFiltersHeight BTC
       scD <- watchScannedHeight BTC
+      rsD <- fmap _pubStorage'walletRestored <$> getPubStorageD
       setSyncProgress $ ffor buildE $ const $ Synced
       let newFiltersE = fmap fst . ffilter (id . snd) $ updated $ do
             fh <- fhD
             sc <- scD
-            pure (sc, sc < fh)
+            rs <- rsD
+            pure (sc, sc < fh && not rs)
       setSyncProgress $ flip pushAlways newFiltersE $ const $ do
         fh <- sample . current $ fhD
         sc <- sample . current $ scD
@@ -85,26 +88,52 @@ scannerBtc = void $ workflow waiting
 
     scanning i0 = Workflow $  do
       logWrite "Scanning filters"
-      buildE <- getPostBuild
-      ps <- getPubStorage
-      (updE, updFire) <- newTriggerEvent
-      setSyncProgress updE
-      let updSync i i1 = updFire $ SyncMeta BTC (SyncAddress 0) (fromIntegral (i - i0)) (fromIntegral (i1 - i0))
-      let toAddr = xPubToBtcAddr . extractXPubKeyFromEgv
-      scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses updSync $ xPubToBtcAddr . extractXPubKeyFromEgv <$> keys ps
-      performEvent_ $ ffor scanE $ \(h, bls) -> logWrite $ "Scanned up to " <> showt h <> ", blocks to check: " <> showt bls
-      let noScanE = fforMaybe scanE $ \(_, bls) -> if null bls then Just () else Nothing
-          hashesE = V.toList . snd <$> scanE
-          heightE = fst <$> scanE
-      performFork_ $ writeScannedHeight BTC <$> heightE
-      blocksE <- logEvent "Blocks requested: " =<< requestBTCBlocks hashesE
-      storedBlocksE <- storeMultipleBlocksByE blocksE
-      storedTxHashesE <- storeMultipleBlocksTxHashesByE blocksE
-      let keymap = M.fromList . V.toList . V.indexed . V.map (BtcAddress . toAddr) $ keys ps
-      txsE <- getAddressesTxs $ (keymap,) <$> blocksE
-      storedE <- insertTxsInPubKeystore $ (BTC,) . fmap M.keys <$> txsE
-      let waitingE = leftmost [storedE, noScanE]
+      waitingE <- scanningAllBtcKeys i0
       pure ((), waiting <$ waitingE)
+
+-- | Check all keys stored in public storage agains unscanned filters and return 'True' if we found any tx (stored in public storage).
+scanningAllBtcKeys :: MonadFront t m => HB.BlockHeight -> m (Event t Bool)
+scanningAllBtcKeys i0 = do
+  buildE <- getPostBuild
+  ps <- getPubStorage
+  let keys = getPublicKeys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "scannerBtc: not exsisting store!") . currencyPubStorage'pubKeystore
+  (updE, updFire) <- newTriggerEvent
+  setSyncProgress updE
+  let updSync i i1 = updFire $ SyncMeta BTC (SyncAddress (-1)) (fromIntegral (i - i0)) (fromIntegral (i1 - i0))
+  scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses updSync $ xPubToBtcAddr . extractXPubKeyFromEgv <$> keys
+  let heightE = fst <$> scanE
+      hashesE = V.toList . snd <$> scanE
+  performFork_ $ writeScannedHeight BTC <$> heightE
+  performEvent_ $ ffor scanE $ \(h, bls) -> logWrite $ "Scanned all keys up to " <> showt h <> ", blocks to check: " <> showt bls
+  scanningBtcBlocks (V.indexed keys) hashesE
+
+-- | Check all keys stored in public storage agains unscanned filters and return 'True' if we found any tx (stored in public storage).
+scanningBtcKey :: MonadFront t m => HB.BlockHeight -> Int -> EgvXPubKey -> m (Event t Bool)
+scanningBtcKey i0 keyNum pubkey = do
+  (updE, updFire) <- newTriggerEvent
+  setSyncProgress updE
+  let updSync i i1 = if i `mod` 100 == 0
+        then updFire $ SyncMeta BTC (SyncAddress keyNum) (fromIntegral (i - i0)) (fromIntegral (i1 - i0))
+        else pure ()
+  buildE <- getPostBuild
+  scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddress updSync $ xPubToBtcAddr . extractXPubKeyFromEgv $ pubkey
+  let hashesE = V.toList . snd <$> scanE
+  performEvent_ $ ffor scanE $ \(h, bls) -> logWrite $ "Scanned key # " <> showt keyNum <> " " <> showt pubkey <> " up to " <> showt h <> ", blocks to check: " <> showt bls
+  scanningBtcBlocks (V.singleton (keyNum, pubkey)) hashesE
+
+-- | Check given blocks for transactions that are related to given set of keys and store txs into storage.
+-- Return event that fires 'True' if we found any transaction and fires 'False' if not.
+scanningBtcBlocks :: MonadFront t m => Vector (Int, EgvXPubKey) -> Event t [HB.BlockHash] -> m (Event t Bool)
+scanningBtcBlocks keys hashesE = do
+  let noScanE = fforMaybe hashesE $ \bls -> if null bls then Just () else Nothing
+  blocksE <- logEvent "Blocks requested: " =<< requestBTCBlocks hashesE
+  storedBlocksE <- storeMultipleBlocksByE blocksE
+  storedTxHashesE <- storeMultipleBlocksTxHashesByE blocksE
+  let toAddr = xPubToBtcAddr . extractXPubKeyFromEgv
+      keymap = M.fromList . V.toList . V.map (second (BtcAddress . toAddr)) $ keys
+  txsE <- getAddressesTxs $ (keymap,) <$> blocksE
+  storedE <- insertTxsInPubKeystore $ (BTC,) . fmap M.keys <$> txsE
+  pure $ leftmost [True <$ storedE, False <$ noScanE]
 
 -- | Loads current PubStorage, performs BIP44 account discovery algorithm and
 -- stores updated PubStorage to the wallet file.

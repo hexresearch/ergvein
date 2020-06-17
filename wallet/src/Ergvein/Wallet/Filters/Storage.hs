@@ -132,11 +132,11 @@ getFilter c bh = do
     ERGO -> pure Nothing -- TODO: here
 
 -- | Right fold over filters.
-foldFilters :: (MonadIO m, HasFiltersStorage t m) => Currency -> (BlockHash -> AddrFilter -> a -> IO a) -> a -> m a
+foldFilters :: (MonadIO m, HasFiltersStorage t m) => Currency -> (BlockHeight -> BlockHeight ->  BlockHash -> AddrFilter -> a -> IO a) -> a -> m a
 foldFilters c f a0 = do
   e <- getFiltersStorage
   case c of
-    BTC -> BTC.foldFilters (\k -> f k . AddrFilterBtc) a0 e
+    BTC -> BTC.foldFilters (\i n k -> f i n k . AddrFilterBtc) a0 e
     ERGO -> pure a0 -- ^ TODO: add ergo here
 
 -- | Fold over filters that are not scanned yet.

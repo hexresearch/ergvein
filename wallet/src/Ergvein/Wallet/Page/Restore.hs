@@ -3,9 +3,11 @@ module Ergvein.Wallet.Page.Restore(
   ) where
 
 import Ergvein.Text
+import Data.Foldable (foldl')
 import Ergvein.Filters.Btc
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
+import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Currencies
@@ -13,14 +15,23 @@ import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Native
+import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.History
 import Ergvein.Wallet.Page.PatternKey
+import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Storage.Constants
+import Ergvein.Wallet.Storage.Keys
+import Ergvein.Wallet.Storage.Util
+import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Sync.Widget
 import Ergvein.Wallet.Worker.Node
 import Ergvein.Wallet.Wrapper
 
-restorePage :: MonadFront t m =>  m ()
+import qualified Data.Vector as V
+
+restorePage :: forall t m . MonadFront t m =>  m ()
 restorePage = wrapperSimple True $ void $ workflow heightAsking
   where
     heightAsking = Workflow $ do
@@ -41,4 +52,59 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
         let pct = fromIntegral filters / fromIntegral height :: Float
         -- pure $ showt filters <> "/" <> showt height <> " " <> showf 2 (100 * pct) <> "%"
         pure $ showf 2 (100 * pct) <> "%"
+      nextE <- updatedWithInit $ do
+        filters <- filtersD
+        height <- heightD
+        pure $ filters >= fromIntegral height
+      pure ((), scanKeys 0 0 <$ nextE)
+
+    scanKeys :: Int -> Int -> Workflow t m ()
+    scanKeys gapN keyNum = Workflow $ do
+      syncWidget =<< getSyncProgress
+      buildE <- getPostBuild
+      keys <- pubStorageKeys BTC <$> getPubStorage
+      heightD <- getCurrentHeight BTC
+      setSyncProgress $ flip pushAlways buildE $ const $ do
+        h <- sample . current $ heightD
+        pure $ SyncMeta BTC (SyncAddress keyNum) 0 (fromIntegral h)
+      if keyNum >= V.length keys then
+        if gapN >= gapLimit then pure ((), finishScanning <$ buildE)
+        else do
+          logWrite "Generating next portion of BTC keys..."
+          deriveNewBtcKeys gapLimit
+          pure ((), scanKeys gapN keyNum <$ buildE)
+      else do
+        logWrite $ "Scanning BTC key " <> showt keyNum
+        h0 <- sample . current =<< watchScannedHeight BTC
+        scannedE <- scanningBtcKey h0 keyNum (keys V.! keyNum)
+        let nextE = ffor scannedE $ \hastxs -> let
+              gapN' = if hastxs then 0 else gapN+1
+              in scanKeys gapN' (keyNum+1)
+        pure ((), nextE)
+
+    finishScanning = Workflow $ do
+      logWrite "Finished scanning BTC keys..."
+      buildE <- getPostBuild
+      h <- sample . current =<< getCurrentHeight BTC
+      performFork_ $ writeScannedHeight BTC (fromIntegral h) <$ buildE
+      modifyPubStorage $ ffor buildE $ const $ \ps -> Just $ ps {
+          _pubStorage'walletRestored = False
+        }
+      _ <- nextWidget $ ffor buildE $ const $ Retractable {
+          retractableNext = balancesPage
+        , retractablePrev = Nothing
+        }
       pure ((), never)
+
+-- | Generate next public keys for bitcoin and put them to storage
+deriveNewBtcKeys :: MonadFront t m => Int -> m (Event t ())
+deriveNewBtcKeys n = do
+  buildE <- getPostBuild
+  ps <- getPubStorage
+  let keys = pubStorageKeys BTC ps
+      keysN = V.length keys
+      masterPubKey = maybe (error "No BTC master key!") id $ pubStoragePubMaster BTC ps
+      newKeys = derivePubKey masterPubKey External . fromIntegral <$> [keysN .. keysN+n-1]
+      ks = maybe (error "No BTC key storage!") id $ pubStorageKeyStorage BTC ps
+      ks' = foldl' (flip $ addXPubKeyToKeystore External) ks newKeys
+  modifyPubStorage $ (Just . pubStorageSetKeyStorage BTC ks') <$ buildE

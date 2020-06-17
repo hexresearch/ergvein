@@ -10,6 +10,7 @@ import Data.ByteArray (convert, Bytes)
 import Data.ByteString (ByteString)
 import Data.Proxy
 import Data.Text
+import Data.Vector (Vector)
 import Ergvein.Aeson
 import Ergvein.Text
 import Ergvein.Types.Currency
@@ -100,6 +101,25 @@ data PubStorage = PubStorage {
 makeLenses ''PubStorage
 
 $(deriveJSON aesonOptionsStripToApostroph ''PubStorage)
+
+-- | Get external pub storage keys
+pubStorageKeys :: Currency -> PubStorage -> Vector EgvXPubKey
+pubStorageKeys c = maybe mempty externalKeys . fmap _currencyPubStorage'pubKeystore . M.lookup c . _pubStorage'currencyPubStorages
+
+pubStoragePubMaster :: Currency -> PubStorage -> Maybe EgvXPubKey
+pubStoragePubMaster c = fmap pubKeystore'master . pubStorageKeyStorage c
+
+pubStorageKeyStorage :: Currency -> PubStorage -> Maybe PubKeystore
+pubStorageKeyStorage c = fmap _currencyPubStorage'pubKeystore . M.lookup c . _pubStorage'currencyPubStorages
+
+pubStorageSetKeyStorage :: Currency -> PubKeystore -> PubStorage -> PubStorage
+pubStorageSetKeyStorage c ks ps = ps {
+    _pubStorage'currencyPubStorages = M.adjust f c $ _pubStorage'currencyPubStorages ps
+  }
+  where
+    f cps = cps {
+        _currencyPubStorage'pubKeystore = ks
+      }
 
 data WalletStorage = WalletStorage {
     _storage'encryptedPrvStorage :: EncryptedPrvStorage
