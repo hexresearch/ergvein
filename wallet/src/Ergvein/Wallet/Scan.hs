@@ -69,13 +69,13 @@ scannerBtc = void $ workflow waiting
       buildE <- getPostBuild
       fhD <- watchFiltersHeight BTC
       scD <- watchScannedHeight BTC
-      rsD <- fmap _pubStorage'walletRestored <$> getPubStorageD
+      rsD <- fmap _pubStorage'restoring <$> getPubStorageD
       setSyncProgress $ ffor buildE $ const $ Synced
       let newFiltersE = fmap fst . ffilter (id . snd) $ updated $ do
             fh <- fhD
             sc <- scD
             rs <- rsD
-            pure (sc, sc < fh && isNothing rs)
+            pure (sc, sc < fh && not rs)
       setSyncProgress $ flip pushAlways newFiltersE $ const $ do
         fh <- sample . current $ fhD
         sc <- sample . current $ scD
@@ -133,7 +133,7 @@ scanningBtcBlocks keys hashesE = do
       keymap = M.fromList . V.toList . V.map (second (BtcAddress . toAddr)) $ keys
   txsE <- getAddressesTxs $ (keymap,) <$> blocksE
   storedE <- insertTxsInPubKeystore $ (BTC,) . fmap M.keys <$> txsE
-  pure $ leftmost [True <$ storedE, False <$ noScanE]
+  pure $ leftmost [not . M.null <$> txsE, False <$ noScanE]
 
 type CurrentGap = Int
 type AddressNum = Int

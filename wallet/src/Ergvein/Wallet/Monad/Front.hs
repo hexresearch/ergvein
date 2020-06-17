@@ -152,12 +152,12 @@ getCurrentHeight c = do
 setCurrentHeight :: MonadFront t m => Currency -> Event t Integer -> m ()
 setCurrentHeight c e = do
   r <- getHeightRef
-  restoredD <- fmap _pubStorage'walletRestored <$> getPubStorageD
+  restoredD <- fmap _pubStorage'restoring <$> getPubStorageD
   setLastSeenHeight c $ fromIntegral <$> e
   performFork_ $ ffor e $ \h -> do
     h0 <- fromMaybe 0 . M.lookup c <$> readExternalRef r
     restored <- sample . current $ restoredD
-    when (h0 == 0 && isNothing restored) $ writeScannedHeight c $ fromIntegral (h-1) -- ^ Start filtering from the first seen height
+    when (h0 == 0 && not restored) $ writeScannedHeight c $ fromIntegral (h-1) -- ^ Start filtering from the first seen height
     modifyExternalRef r ((, ()) . M.insert c h)
 
 -- | Get current value that tells you whether filters are fully in sync now or not

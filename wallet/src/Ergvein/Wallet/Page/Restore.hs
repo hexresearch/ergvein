@@ -59,8 +59,11 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
         pure $ filters >= fromIntegral height
       psD <- getPubStorageD
       let nextE = flip pushAlways filtersE $ const $ do
-            r <- sample . current $ _pubStorage'walletRestored <$> psD
-            pure $ scanKeys 0 (fromMaybe 0 r)
+            ps <- sample . current $ psD
+            let r = pubStorageScannedKeys BTC ps
+                unused = maybe 0 fst $ pubStorageLastUnused BTC ps
+                gap = r - unused
+            pure $ scanKeys gap r
       pure ((), nextE)
 
     scanKeys :: Int -> Int -> Workflow t m ()
@@ -72,12 +75,11 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
       setSyncProgress $ flip pushAlways buildE $ const $ do
         h <- sample . current $ heightD
         pure $ SyncMeta BTC (SyncAddress keyNum) 0 (fromIntegral h)
-      if keyNum >= V.length keys then
-        if gapN >= gapLimit then pure ((), finishScanning <$ buildE)
-        else do
-          logWrite "Generating next portion of BTC keys..."
-          deriveNewBtcKeys gapLimit
-          pure ((), scanKeys gapN keyNum <$ buildE)
+      if gapN >= gapLimit then pure ((), finishScanning <$ buildE)
+      else if keyNum >= V.length keys then do
+        logWrite "Generating next portion of BTC keys..."
+        deriveNewBtcKeys gapLimit
+        pure ((), scanKeys gapN keyNum <$ buildE)
       else do
         logWrite $ "Scanning BTC key " <> showt keyNum
         h0 <- sample . current =<< watchScannedHeight BTC
@@ -85,9 +87,7 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
         let nextE = ffor scannedE $ \hastxs -> let
               gapN' = if hastxs then 0 else gapN+1
               in scanKeys gapN' (keyNum+1)
-        modifyPubStorage $ ffor scannedE $ const $ \ps -> Just $ ps {
-            _pubStorage'walletRestored = Just keyNum
-          }
+        modifyPubStorage $ ffor scannedE $ const $ Just . pubStorageSetKeyScanned BTC (Just keyNum)
         pure ((), nextE)
 
     finishScanning = Workflow $ do
@@ -96,7 +96,7 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
       h <- sample . current =<< getCurrentHeight BTC
       performFork_ $ writeScannedHeight BTC (fromIntegral h) <$ buildE
       modifyPubStorage $ ffor buildE $ const $ \ps -> Just $ ps {
-          _pubStorage'walletRestored = Nothing
+          _pubStorage'restoring = False
         }
       _ <- nextWidget $ ffor buildE $ const $ Retractable {
           retractableNext = balancesPage

@@ -371,7 +371,7 @@ liftAuth ma0 ma = mdo
         -- Read settings to fill other refs
         settings        <- readExternalRef settingsRef
         let login = _authInfo'login auth
-            acurs = S.fromList [] -- $ _pubStorage'activeCurrencies ps
+            acurs = mempty
             nodes = M.restrictKeys (settingsNodes settings) acurs
 
         -- MonadClient refs
@@ -438,6 +438,8 @@ liftAuth ma0 ma = mdo
         runOnUiThreadM $ runReaderT setupTlsManager env
 
         flip runReaderT env $ do -- Workers and other routines go here
+          initScannedHeights scannedHeights
+          initFiltersHeights filtersHeights
           scanner
           bctNodeController
           filtersLoader
@@ -450,6 +452,26 @@ liftAuth ma0 ma = mdo
     newAuthInfoE = ffilter isMauthUpdate $ updated mauthD
     redrawE = leftmost [newAuthInfoE, Nothing <$ logoutE]
   widgetHold ma0' $ ffor redrawE $ maybe ma0 runAuthed
+
+-- | Query initial values for scanned heights and write down them to the external ref
+initScannedHeights :: MonadFront t m => ExternalRef t (Map Currency HS.BlockHeight) -> m ()
+initScannedHeights ref = do
+  ps <- getPubStorage
+  let curs =  _pubStorage'activeCurrencies ps
+  scms <- flip traverse curs $ \cur -> do
+    h <- getScannedHeight cur
+    pure (cur, h)
+  writeExternalRef ref $ M.fromList scms
+
+-- | Query initial values for filters heights and write down them to the external ref
+initFiltersHeights :: MonadFront t m => ExternalRef t (Map Currency HS.BlockHeight) -> m ()
+initFiltersHeights ref = do
+  ps <- getPubStorage
+  let curs =  _pubStorage'activeCurrencies ps
+  scms <- flip traverse curs $ \cur -> do
+    h <- getFiltersHeight cur
+    pure (cur, h)
+  writeExternalRef ref $ M.fromList scms
 
 isMauthUpdate :: Maybe AuthInfo -> Bool
 isMauthUpdate mauth = case mauth of
