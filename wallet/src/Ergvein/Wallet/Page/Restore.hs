@@ -4,6 +4,7 @@ module Ergvein.Wallet.Page.Restore(
 
 import Ergvein.Text
 import Data.Foldable (foldl')
+import Data.Maybe (fromMaybe)
 import Ergvein.Filters.Btc
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
@@ -52,16 +53,20 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
         let pct = fromIntegral filters / fromIntegral height :: Float
         -- pure $ showt filters <> "/" <> showt height <> " " <> showf 2 (100 * pct) <> "%"
         pure $ showf 2 (100 * pct) <> "%"
-      nextE <- updatedWithInit $ do
+      filtersE <- fmap (ffilter id) $ updatedWithInit $ do
         filters <- filtersD
         height <- heightD
         pure $ filters >= fromIntegral height
-      pure ((), scanKeys 0 0 <$ nextE)
+      psD <- getPubStorageD
+      let nextE = flip pushAlways filtersE $ const $ do
+            r <- sample . current $ _pubStorage'walletRestored <$> psD
+            pure $ scanKeys 0 (fromMaybe 0 r)
+      pure ((), nextE)
 
     scanKeys :: Int -> Int -> Workflow t m ()
     scanKeys gapN keyNum = Workflow $ do
       syncWidget =<< getSyncProgress
-      buildE <- getPostBuild
+      buildE <- delay 0.1 =<< getPostBuild
       keys <- pubStorageKeys BTC <$> getPubStorage
       heightD <- getCurrentHeight BTC
       setSyncProgress $ flip pushAlways buildE $ const $ do
@@ -80,6 +85,9 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
         let nextE = ffor scannedE $ \hastxs -> let
               gapN' = if hastxs then 0 else gapN+1
               in scanKeys gapN' (keyNum+1)
+        modifyPubStorage $ ffor scannedE $ const $ \ps -> Just $ ps {
+            _pubStorage'walletRestored = Just keyNum
+          }
         pure ((), nextE)
 
     finishScanning = Workflow $ do
@@ -88,7 +96,7 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
       h <- sample . current =<< getCurrentHeight BTC
       performFork_ $ writeScannedHeight BTC (fromIntegral h) <$ buildE
       modifyPubStorage $ ffor buildE $ const $ \ps -> Just $ ps {
-          _pubStorage'walletRestored = False
+          _pubStorage'walletRestored = Nothing
         }
       _ <- nextWidget $ ffor buildE $ const $ Retractable {
           retractableNext = balancesPage

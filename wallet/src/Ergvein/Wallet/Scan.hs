@@ -8,7 +8,7 @@ import Control.Monad.IO.Class
 import Data.Bifunctor (second)
 import Data.ByteString (ByteString)
 import Data.List
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isNothing)
 import Data.Vector (Vector)
 import Ergvein.Aeson
 import Ergvein.Crypto.Keys
@@ -75,7 +75,7 @@ scannerBtc = void $ workflow waiting
             fh <- fhD
             sc <- scD
             rs <- rsD
-            pure (sc, sc < fh && not rs)
+            pure (sc, sc < fh && isNothing rs)
       setSyncProgress $ flip pushAlways newFiltersE $ const $ do
         fh <- sample . current $ fhD
         sc <- sample . current $ scD
@@ -135,112 +135,8 @@ scanningBtcBlocks keys hashesE = do
   storedE <- insertTxsInPubKeystore $ (BTC,) . fmap M.keys <$> txsE
   pure $ leftmost [True <$ storedE, False <$ noScanE]
 
--- | Loads current PubStorage, performs BIP44 account discovery algorithm and
--- stores updated PubStorage to the wallet file.
-accountDiscovery :: MonadFront t m => m ()
-accountDiscovery = do
-  logWrite "Account discovery started"
-  pubStorages <- _pubStorage'currencyPubStorages <$> getPubStorage
-  ac <- _pubStorage'activeCurrencies <$> getPubStorage
-  updatedPubStoragesE <- scan pubStorages ac
-  authD <- getAuthInfo
-  let updatedAuthE = traceEventWith (const "Account discovery finished") <$>
-        flip pushAlways updatedPubStoragesE $ \updatedPubStorages -> do
-          auth <- sampleDyn authD
-          pure $ Just $ auth
-            & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages .~ updatedPubStorages
-            & authInfo'isUpdate .~ True
-  setAuthInfoE <- setAuthInfo updatedAuthE
-  storeWallet setAuthInfoE
-
--- | Gets old CurrencyPubStorages, performs BIP44 account discovery algorithm for all currencies
--- then returns event with updated PubStorage.
-scan :: MonadFront t m => CurrencyPubStorages -> [Currency] -> m (Event t CurrencyPubStorages)
-scan currencyPubStorages curs = do
-  scanEvents <- traverse (applyScan currencyPubStorages) curs
-  let scanEvents' = [(M.fromList . (: []) <$> e) | e <- scanEvents]
-      scanEvents'' = mergeWith M.union scanEvents'
-  scannedCurrencyPubStoragesD <- foldDyn M.union M.empty scanEvents''
-  let finishedE = flip push (updated scannedCurrencyPubStoragesD) $ \updatedCurrencyPubStorage -> do
-        pure $ if M.size updatedCurrencyPubStorage == length allCurrencies then Just $ updatedCurrencyPubStorage else Nothing
-  pure finishedE
-
--- | Applies scan for a certain currency then returns event with result.
-applyScan :: MonadFront t m => CurrencyPubStorages -> Currency -> m (Event t (Currency, CurrencyPubStorage))
-applyScan currencyPubStorages currency =
-  case M.lookup currency currencyPubStorages of
-    Nothing -> fail $ "Could not find currency: " ++ (T.unpack $ currencyName currency)
-    Just currencyPubStorage -> scanCurrency currency currencyPubStorage
-
--- | Scan external addresses first, then internal addresses.
-scanCurrency :: MonadFront t m => Currency -> CurrencyPubStorage -> m (Event t (Currency, CurrencyPubStorage))
-scanCurrency currency currencyPubStorage = do
-  -- Updates external keys and transactions in CurrencyPubStorage
-  externalKeysE <- scanExternalAddresses currency currencyPubStorage
-  -- Updates internal keys in CurrencyPubStorage
-  internalKeysE <- scanInternalAddressesByE externalKeysE
-  pure internalKeysE
-
--- | TODO: Revoke and minimize keyindex use
--- Or at least make it consistent with pubKeystore's indexes
-scanExternalAddresses :: MonadFront t m => Currency -> CurrencyPubStorage -> m (Event t (Currency, CurrencyPubStorage))
-scanExternalAddresses currency currencyPubStorage = mdo
-  let pubKeystore = currencyPubStorage ^. currencyPubStorage'pubKeystore
-      masterPubKey = pubKeystore'master pubKeystore
-      emptyPubKeyStore = PubKeystore masterPubKey V.empty V.empty
-      startGap = 0
-      startKeyIndex = 0
-      startKey = derivePubKey masterPubKey External (fromIntegral $ startKeyIndex)
-  buildE <- getPostBuild
-  processKeyE <- logEventWith (\(keyIndex, key) ->
-    "Scanning external " <> showt currency <> " address #" <> showt keyIndex <>
-    ": \"" <> (egvAddrToString $ egvXPubKeyToEgvAddress key) <> "\"")
-    =<< waitFilters currency (leftmost [nextKeyE, (startKeyIndex, startKey) <$ buildE])
-  gapD <- holdDyn startGap gapE
-  currentKeyD <- holdDyn (startKeyIndex, startKey) nextKeyE
-  postSync currency $ flip pushAlways gapE $ \currnetGap -> do
-    (keyIndex, _) <- sample . current $ currentKeyD
-    pure (keyIndex + 1, currnetGap)
-  newKeystoreD <- foldDyn (addXPubKeyToKeystore External . snd) emptyPubKeyStore processKeyE
-  newTxsD <- foldDyn M.union M.empty getTxsE
-  blocksD <- holdDyn [] blocksE
-  filterAddressE <- logEvent "Scanned for blocks: " =<< (filterAddress $ (egvXPubKeyToEgvAddress . snd) <$> processKeyE)
-  getBlocksE <- logEvent "Blocks requested: " =<< requestBTCBlocks filterAddressE
-  storedBlocksE <- storeMultipleBlocksByE getBlocksE
-  storedTxHashesE <- storeMultipleBlocksTxHashesByE $ tagPromptlyDyn blocksD storedBlocksE
-  getTxsE' <- getTxs $ attachPromptlyDynWith (\(i, key) blocks ->
-    (i, egvXPubKeyToEgvAddress key, blocks)) currentKeyD $ tagPromptlyDyn blocksD storedTxHashesE
-  let getTxsE = snd <$> getTxsE'
-  insertTxsInPubKeystore $ ffor getTxsE' $ \(i, txmap) -> (currency, M.singleton i (M.keys txmap))
-
-  let noBlocksE = fforMaybe filterAddressE $ \case
-        [] -> Just []
-        _ -> Nothing
-      blocksE = leftmost [getBlocksE, noBlocksE]
-      txsE = leftmost [getTxsE, mempty <$ noBlocksE]
-      gapE = flip pushAlways txsE $ \txs -> do
-        gap <- sampleDyn gapD
-        pure $ if null txs && gap < gapLimit then gap + 1 else startGap
-      nextKeyE = flip push gapE $ \gap -> do
-        currentKeyIndex <- fmap fst (sampleDyn currentKeyD)
-        let nextKeyIndex = currentKeyIndex + 1
-        pure $ if gap >= gapLimit
-          then Nothing
-          else Just $ (nextKeyIndex, derivePubKey masterPubKey External (fromIntegral nextKeyIndex))
-      finishedE = flip push gapE $ \gap -> do
-        newKeystore <- sampleDyn newKeystoreD
-        newTxs <- sampleDyn newTxsD
-        pure $ if gap >= gapLimit then Just $ (currency, CurrencyPubStorage newKeystore newTxs Nothing) else Nothing
-  pure finishedE
-
 type CurrentGap = Int
 type AddressNum = Int
-
--- | Show to user how far we are went in syncing addresses
-postSync :: MonadFront t m => Currency -> Event t (AddressNum, CurrentGap) -> m ()
-postSync cur e = setSyncProgress $ ffor e $ \(ai, gnum) -> if gnum >= gapLimit
-  then Synced
-  else SyncMeta cur (SyncAddress ai) (fromIntegral gnum) (fromIntegral gapLimit)
 
 scanInternalAddressesByE :: MonadFront t m => Event t (Currency, CurrencyPubStorage) -> m (Event t (Currency, CurrencyPubStorage))
 scanInternalAddressesByE = performEvent . fmap scanInternalAddresses

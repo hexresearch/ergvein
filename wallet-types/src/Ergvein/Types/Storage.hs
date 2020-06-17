@@ -92,10 +92,10 @@ $(deriveJSON aesonOptionsStripToApostroph ''CurrencyPubStorage)
 type CurrencyPubStorages = M.Map Currency CurrencyPubStorage
 
 data PubStorage = PubStorage {
-    _pubStorage'rootPubKey          :: EgvRootXPubKey
-  , _pubStorage'currencyPubStorages :: CurrencyPubStorages
+    _pubStorage'rootPubKey          :: !EgvRootXPubKey
+  , _pubStorage'currencyPubStorages :: !CurrencyPubStorages
   , _pubStorage'activeCurrencies    :: [Currency]
-  , _pubStorage'walletRestored      :: !Bool
+  , _pubStorage'walletRestored      :: !(Maybe Int)
   } deriving (Eq, Show, Read)
 
 makeLenses ''PubStorage

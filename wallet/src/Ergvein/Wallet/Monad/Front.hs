@@ -27,7 +27,7 @@ import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Functor.Misc (Const2(..))
 import Data.Map (Map)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isNothing)
 import Data.Text (Text)
 import Network.Socket (SockAddr)
 import Language.Javascript.JSaddle
@@ -157,7 +157,7 @@ setCurrentHeight c e = do
   performFork_ $ ffor e $ \h -> do
     h0 <- fromMaybe 0 . M.lookup c <$> readExternalRef r
     restored <- sample . current $ restoredD
-    when (h0 == 0 && not restored) $ writeScannedHeight c $ fromIntegral (h-1) -- ^ Start filtering from the first seen height
+    when (h0 == 0 && isNothing restored) $ writeScannedHeight c $ fromIntegral (h-1) -- ^ Start filtering from the first seen height
     modifyExternalRef r ((, ()) . M.insert c h)
 
 -- | Get current value that tells you whether filters are fully in sync now or not

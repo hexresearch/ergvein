@@ -5,6 +5,7 @@ module Ergvein.Wallet.Main(
   ) where
 
 import Control.Monad.IO.Class
+import Data.Maybe (isJust)
 import Data.Time
 import Ergvein.Index.API.Types
 import Ergvein.Text
@@ -43,6 +44,6 @@ frontend = do
 startPage :: MonadFront t m => m ()
 startPage = do
   ps <- getPubStorage
-  if _pubStorage'walletRestored ps
+  if isJust $ _pubStorage'walletRestored ps
     then restorePage
     else balancesPage
