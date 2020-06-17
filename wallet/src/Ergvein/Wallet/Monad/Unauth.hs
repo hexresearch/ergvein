@@ -10,7 +10,6 @@ import Control.Monad.Random.Class
 import Control.Monad.Reader
 import Data.Default
 import Data.IORef
-import Data.Map (Map)
 import Data.Text (Text)
 import Data.Time(NominalDiffTime, getCurrentTime, diffUTCTime)
 import Ergvein.Index.Client
@@ -37,10 +36,6 @@ import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Servant.Client(BaseUrl)
 import Ergvein.Wallet.Client
-
-import qualified Data.Set as S
-import qualified Data.Map as M
-import qualified Data.List as L
 
 data UnauthEnv t = UnauthEnv {
   unauth'settings        :: !(ExternalRef t Settings)

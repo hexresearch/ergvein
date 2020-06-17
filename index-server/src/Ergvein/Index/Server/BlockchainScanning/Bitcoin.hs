@@ -29,7 +29,7 @@ import           Ergvein.Types.Currency
 import           Ergvein.Types.Fees
 import           Ergvein.Types.Transaction
 
-import qualified Data.HashSet                       as Set
+import qualified Data.Set                           as Set
 import qualified Data.HexString                     as HS
 import qualified Data.Map.Strict                    as Map
 import qualified Network.Haskoin.Block              as HK
@@ -39,7 +39,7 @@ import qualified Network.Haskoin.Transaction        as HK
 import qualified Network.Haskoin.Util               as HK
 
 
-blockTxInfos :: MonadLDB m => HK.Block -> BlockHeight -> HK.Network -> m BlockInfo
+blockTxInfos :: (MonadLDB m, MonadLogger m) => HK.Block -> BlockHeight -> HK.Network -> m BlockInfo
 blockTxInfos block txBlockHeight nodeNetwork = do
   let (txInfos , spentTxsIds) = mconcat $ txInfo <$> HK.blockTxns block
 
@@ -52,7 +52,7 @@ blockTxInfos block txBlockHeight nodeNetwork = do
   pure $ BlockInfo blockMeta spentTxsIds txInfos
   where
     blockTxMap = mapBy (HK.txHashToHex . HK.txHash) $ HK.blockTxns block
-    spentTxSource :: MonadLDB m => TxHash -> m HK.Tx
+    spentTxSource :: (MonadLDB m, MonadLogger m) => TxHash -> m HK.Tx
     spentTxSource txInId =
       case Map.lookup txInId blockTxMap of
         Just    sourceTx -> pure sourceTx
@@ -77,7 +77,7 @@ blockTxInfos block txBlockHeight nodeNetwork = do
 actualHeight :: (Monad m, BitcoinApiMonad m) => m BlockHeight
 actualHeight = fromIntegral <$> nodeRpcCall getBlockCount
 
-blockInfo :: (BitcoinApiMonad m,  HasBitcoinNodeNetwork m, MonadLDB m) => BlockHeight -> m BlockInfo
+blockInfo :: (BitcoinApiMonad m,  HasBitcoinNodeNetwork m, MonadLDB m, MonadLogger m) => BlockHeight -> m BlockInfo
 blockInfo blockHeightToScan =  do
   blockHash <- nodeRpcCall $ (`getBlockHash` fromIntegral blockHeightToScan)
   maybeRawBlock <- nodeRpcCall $ (`getBlockRaw` blockHash)

@@ -30,11 +30,9 @@ foreign import ccall safe "read_paste_str" androidReadPasteStr :: JString -> IO 
 foreign import ccall safe "release_paste_str" androidReleasePasteStr :: JString -> CString -> IO ()
 foreign import ccall safe "android_copy_str" androidCopyStr :: HaskellActivity -> CString -> IO ()
 foreign import ccall safe "android_log_write" androidLogWrite :: CString -> IO ()
-
 foreign import ccall safe "android_timezone_offset" androidTimezoneOffset :: IO Int
-
 foreign import ccall safe "android_share_url" androidShareUrl :: HaskellActivity -> CString -> IO ()
-
+foreign import ccall safe "android_open_url" androidOpenUrl :: HaskellActivity -> CString -> IO ()
 foreign import ccall safe "android_camera_open" androidCameraOpen :: HaskellActivity -> CString -> IO ()
 foreign import ccall safe "android_camera_get_result" androidCameraGetResult :: HaskellActivity -> IO CString
 
@@ -137,6 +135,10 @@ instance PlatformNatives where
   shareUrl v = liftIO $ encodeText v $ \s -> do
     a <- getHaskellActivity
     androidShareUrl a s
+
+  openUrl v = liftIO $ encodeText v $ \s -> do
+    a <- getHaskellActivity
+    androidOpenUrl a s
 
   cameraWork v = liftIO $ encodeText v $ \s -> do
     a <- getHaskellActivity

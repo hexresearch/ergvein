@@ -43,12 +43,16 @@ module Ergvein.Wallet.Elements(
   , spanButton
   , outlineButtonWithIcon
   , outlineButtonWithIconNoText
+  , hyperlink
   , module Ergvein.Wallet.Util
   ) where
 
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Text (Text)
+import Ergvein.Wallet.Monad.Front
+import Ergvein.Wallet.Native
+import Ergvein.Wallet.OpenUrl
 import Ergvein.Wallet.Util
 import Reflex
 import Reflex.Dom
@@ -197,7 +201,7 @@ divButton = mkButton "div" []
 -- Usage example:
 -- >>> outlineButtonWithIcon BtnPasteString "fas fa-clipboard"
 -- As a result, such an element will be created:
--- <button class="button button-outline href="javascript:void(0)">
+-- <button class="button button-outline href="return false;">
 --   Scan QR code
 --   <span class="button-icon-wrapper">
 --     <i class="fas fa-qrcode"></i>
@@ -213,3 +217,11 @@ outlineButtonWithIcon lbl i =
 outlineButtonWithIconNoText :: (DomBuilder t m, PostBuild t m) => Text -> m (Event t ())
 outlineButtonWithIconNoText i =
   mkButton "button" [("onclick", "return false;")] "button button-outline" $ elClass "i" i blank
+
+-- | Link with custom click handler which opens link in external browser
+hyperlink :: (MonadFrontBase t m, PlatformNatives, MonadLocalized t m)
+  => Dynamic t Text -> Text -> Text -> m ()
+hyperlink classValD lbl url = do
+  clickeE <- spanButton classValD lbl
+  _ <- openOpenUrl $ url <$ clickeE
+  pure ()
