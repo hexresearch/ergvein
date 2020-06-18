@@ -13,26 +13,18 @@ import Ergvein.Wallet.Monad
 wrapper :: (MonadFront t m, LocalizedPrint l) => Bool -> l -> Maybe (Dynamic t (m ())) -> m a -> m a
 wrapper isCentered titleVal prevWidget ma = divClass "wrapper" $ do
   headerWidget titleVal prevWidget
-  if isCentered
-    then do
-      a <- divClass "centered-container" $ divClass "centered-content container p-1" ma
-      alertHandlerWidget
-      pure a
-    else do
-      a <- divClass "container p-1" ma
-      alertHandlerWidget
-      pure a
+  a <- if isCentered
+    then divClass "centered-container" $ divClass "centered-content container p-1" ma
+    else divClass "container p-1" ma
+  alertHandlerWidget
+  pure a
 
 -- | Simplified page wrapper. Contains header with back button only.
 wrapperSimple :: MonadFrontBase t m => Bool -> m a -> m a
 wrapperSimple isCentered ma = divClass "wrapper" $ do
   headerWidgetOnlyBackBtn
-  if isCentered
-    then do
-      a <- divClass "centered-container" $ divClass "centered-content container p-1" ma
-      alertHandlerWidget
-      pure a
-    else do
-      a <- divClass "container p-1" ma
-      alertHandlerWidget
-      pure a
+  a <- if isCentered
+    then divClass "centered-container" $ divClass "centered-content container p-1" ma
+    else divClass "container p-1" ma
+  alertHandlerWidget
+  pure a
