@@ -50,7 +50,7 @@ main = do
 onStartup :: ServerEnv -> ServerM ()
 onStartup env = do
   scanningThreads <- blockchainScanning
-  addDefaultPeersIfNoneDiscovered
+  syncWithDefaultPeers
   refreshKnownPeersCache
   peerIntroduce
   knownPeersActualization

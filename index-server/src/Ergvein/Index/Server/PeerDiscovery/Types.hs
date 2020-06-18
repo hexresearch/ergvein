@@ -16,6 +16,7 @@ data CurrencyOutOfSyncInfo = CurrencyOutOfSyncInfo
   } deriving Show
 
 data PeerValidationResult = OK
+  | UrlFormatError
   | AlreadyKnown
   | InfoEndpointError
   | KnownPeersEndpointError
@@ -24,7 +25,7 @@ data PeerValidationResult = OK
   deriving Show
 
 data PeerCandidate = PeerCandidate
-  { peerCandidateUrl :: BaseUrl
+  { peerCandidateUrl :: String
   }
 
 data Peer = Peer

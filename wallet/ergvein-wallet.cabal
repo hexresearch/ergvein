@@ -105,7 +105,6 @@ library
         Ergvein.Wallet.Page.Canvas
         Ergvein.Wallet.Page.Currencies
         Ergvein.Wallet.Page.History
-        Ergvein.Wallet.Page.Info
         Ergvein.Wallet.Page.Initial
         Ergvein.Wallet.Page.Network
         Ergvein.Wallet.Page.Password
