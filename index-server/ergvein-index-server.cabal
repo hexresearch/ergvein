@@ -39,6 +39,7 @@ library
     Ergvein.Index.Server.Server.V1
     Ergvein.Index.Server.Utils
     Ergvein.Index.Server.Dependencies
+    Ergvein.Index.Server.PosixSingalHandlers
 
   build-depends:
         base                     >= 4.7     &&  < 4.13
@@ -97,7 +98,8 @@ library
       , wai-cors                 >= 0.2     &&  < 0.3
       , wai-extra                >= 3.0     &&  < 3.1
       , yaml                     >= 0.11    &&  < 0.12
-      , hashable
+      , unix                     >= 2.7     &&  < 2.8
+      , hashable                 >= 1.2     &&  < 1.3
       , ergo-api
       , ergvein-common
       , ergvein-crypto
@@ -153,6 +155,7 @@ executable ergvein-index-server
     , wai
     , wai-extra
     , warp
+
 
     , ergvein-index-api
     , ergvein-index-server

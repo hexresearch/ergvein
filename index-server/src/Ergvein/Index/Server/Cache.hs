@@ -29,7 +29,6 @@ import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.Utils
 import Ergvein.Text
-import Database.LevelDB.Internal
 import Ergvein.Index.Server.DB.Conversions
 
 import qualified Data.Conduit.Internal as DCI
