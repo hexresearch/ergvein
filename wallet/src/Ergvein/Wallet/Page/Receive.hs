@@ -50,9 +50,11 @@ receivePageWidget cur i EgvExternalKeyBox{..} = wrapper False (ReceiveTitle cur)
   navbarWidget cur thisWidget NavbarReceive
   void $ do
     divClass "receive-qr-andr" $ qrCodeWidget keyTxt cur
-    newE  <- newAddrBtn
-    copyE <- copyAddrBtn
-    shareE <- fmap (shareUrl <$) shareAddrBtn
+    (newE, copyE, shareE) <- divClass "receive-buttons-wrapper" $ do
+      nE  <- newAddrBtn
+      cE <- copyAddrBtn
+      sE <- fmap (shareUrl <$) shareAddrBtn
+      pure (nE, cE, sE)
     _ <- shareShareUrl shareE
     setFlagToExtPubKey $ (cur, i) <$ newE
     showInfoMsg =<< clipboardCopy (keyTxt <$ copyE)
@@ -91,13 +93,13 @@ receivePageWidget cur i EgvExternalKeyBox{..} = wrapper False (ReceiveTitle cur)
 #endif
 
 newAddrBtn :: MonadFront t m => m (Event t ())
-newAddrBtn = outlineTextIconButton RPSGenNew "fas fa-forward fa-lg"
+newAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton RPSGenNew "fas fa-forward fa-lg"
 
 copyAddrBtn :: MonadFront t m => m (Event t ())
-copyAddrBtn = outlineTextIconButton RPSCopy "fas fa-copy fa-lg"
+copyAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton RPSCopy "fas fa-copy fa-lg"
 
 shareAddrBtn :: MonadFront t m => m (Event t ())
-shareAddrBtn = outlineTextIconButton RPSShare "fas fa-share-alt fa-lg"
+shareAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton RPSShare "fas fa-share-alt fa-lg"
 
 labelAddrBtn :: MonadFront t m => m (Event t ())
 labelAddrBtn = outlineTextIconButton RPSAddLabel "fas fa-tag fa-lg"

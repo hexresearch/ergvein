@@ -866,11 +866,14 @@ receiveCss = do
   ".qrcode" ? do
     margin (px 0) auto (px 0) auto
   ".receive-buttons-wrapper" ? do
-    display grid
-    gridTemplateColumns [fr 1, fr 1]
-    gridGap $ rem 1
---  ".receive-qr-andr" ? do
---    backgroundColor red
+    display flex
+    flexWrap F.wrap
+    marginLeft $ rem (-1)
+    marginRight $ rem (-1)
+    justifyContent center
+  ".receive-btn-wrapper" ? do
+    paddingLeft $ rem 0.5
+    paddingRight $ rem 0.5
   ".receive-adr-andr" ? do
     margin (px 20) (px 5) (px 40) (px 5)
     fontSize $ px 16
