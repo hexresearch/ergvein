@@ -110,7 +110,7 @@ feeScaner = feeScaner' 0
               (Just (MkFixed co), Just (MkFixed ec)) -> pure $ Just (lvl, (fromIntegral co, fromIntegral ec))
               _ -> pure Nothing
           setFees BTC $ mkFeeBundle res
-          logInfoN $ showt res
+          logInfoN $ "[BTC]: " <> showt res
           pure $ case res of
             [] -> h
             _  -> h'
