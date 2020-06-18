@@ -13,7 +13,7 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Wrapper
 
 aboutPage :: MonadFront t m => m ()
-aboutPage = wrapper AboutTitle (Just $ pure aboutPage) False $ do
+aboutPage = wrapper False AboutTitle (Just $ pure aboutPage) $ do
   h3 $ localizedText $ AboutTitle
   elAttr "hr" [("class","about-hr-sep")] blank
   divClass "about-wrapper" $ do
@@ -36,10 +36,10 @@ aboutPage = wrapper AboutTitle (Just $ pure aboutPage) False $ do
           text "Two Two"
           elBR
           text "Three Three"
-    divClass "about-line" $ divClass "about-distrib" $ localizedText AboutDistrib
+    divClass "about-distrib" $ localizedText AboutDistrib
   pure ()
   where
-    aboutContent   = divClass "about-line" . divClass "about-content"
+    aboutContent   = divClass "about-content"
     aboutRow       = divClass "about-content-row"
     aboutCellLabel = divClass "about-content-cell-label"
     aboutCellValue = divClass "about-content-cell-value"

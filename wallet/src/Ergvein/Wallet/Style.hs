@@ -90,30 +90,31 @@ frontendCss r = do
     backgroundColor majorBackground
     fontFamily ["Roboto"] []
     overflowY auto
-  wrapperCss
-  headerCss
-  navbarCss
-  buttonCss
-  inputCss
-  mnemonicWidgetCss
-  validateCss
-  passwordCss
-  initialPageCss
-  balancesPageCss
-  sendPageCss
-  networkPageCss
-  infoPageCss
-  sharePageCss
   aboutPageCss
-  loadingWidgetCss
   alertsCss
-  selectCss
+  balancesPageCss
+  buttonCss
   buttonsToggleCss
   graphPinCodeCanvasCss
+  headerCss
   historyPageCss
-  receiveCss
+  infoPageCss
+  initialPageCss
+  inputCss
   legoStyles
   linkCss
+  loadingWidgetCss
+  mnemonicWidgetCss
+  navbarCss
+  networkPageCss
+  passwordCss
+  receiveCss
+  selectCss
+  sendPageCss
+  settingsCss
+  sharePageCss
+  validateCss
+  wrapperCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -127,23 +128,28 @@ majorBackground = rgb 255 255 255
 minorBackground :: Color
 minorBackground = rgb 59 78 122
 
+mobileBreakpoint :: Size LengthUnit
+mobileBreakpoint = rem 40
+
+tabletBreakpoint :: Size LengthUnit
+tabletBreakpoint = rem 80
+
+desktopBreakpoint :: Size LengthUnit
+desktopBreakpoint = rem 120
+
 wrapperCss :: Css
 wrapperCss = do
-  ".base-container" ? do
+  ".wrapper" ? do
+    height $ pct 100
     display flex
     flexDirection column
-    height $ pct 100
-  ".content-wrapper" ? do
-    padding (rem 1) (rem 1) (rem 1) (rem 1)
-  ".centered-wrapper" ? do
-    flexGrow 1
+  ".wrapper .container" ? do
+    maxWidth tabletBreakpoint
+  ".centered-container" ? do
     display flex
+    flexGrow 1
   ".centered-content" ? do
     margin auto auto auto auto
-  ".lr-centered-content" ? do
-    margin (em 0) auto (em 0) auto
-    paddingLeft $ em 1
-    paddingRight $ em 1
 
 translatePctX :: Size Percentage -> Css
 translatePctX x = prefixed (browsers <> "transform") $ "translateX(" <> value x <> ")"
@@ -157,7 +163,6 @@ translatePctXY x y = prefixed (browsers <> "transform") $ "translate(" <> value 
 headerCss :: Css
 headerCss = do
   ".header-wrapper" ? do
-    width $ pct 100
     position relative
   ".header" ? do
     display flex
@@ -205,6 +210,7 @@ navbarCss = do
   ".navbar" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1, fr 1]
+    paddingBottom $ rem 1
   ".navbar-item" ? do
     padding (rem 1) (rem 1) (rem 1) (rem 1)
     cursor pointer
@@ -313,11 +319,16 @@ mnemonicWidgetCss = do
   ".grid3" ? do
     display grid
     width maxContent
-  query M.screen [M.minWidth (rem 40)] $ ".grid3" ? do
+  query M.screen [M.minWidth mobileBreakpoint] $ ".grid3" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1, fr 1]
     gridGap $ rem 1
     width maxContent
+
+settingsCss :: Css
+settingsCss = do
+  ".initial-options" ? do
+    margin (rem 0) auto (rem 0) auto
 
 validateCss :: Css
 validateCss = do
@@ -369,15 +380,17 @@ passwordCss = do
 
 initialPageCss :: Css
 initialPageCss = do
+  ".initial-page-content" ? do
+    margin auto auto auto auto
+  ".initial-page-options" ? do
+    display grid
+    width maxContent
+    margin (rem 0) auto (rem 0) auto
   ".text-pin-code-error" ? do
     color $ rgb 190 0 0
 
 balancesPageCss :: Css
 balancesPageCss = do
-  ".balances-wrapper" ? do
-    maxWidth $ px 500
-    margin (px 0) auto (px 0) auto
-    textAlign $ alignSide sideLeft
   ".sync-progress" ? do
     fontSize $ pt 14
   ".currency-content" ? do
@@ -390,6 +403,7 @@ balancesPageCss = do
   ".currency-row:hover" ? do
     color hoverColor
   ".currency-name" ? do
+    textAlign $ alignSide sideLeft
     display tableCell
     paddingRight $ rem 1
   ".currency-balance" ? do
@@ -405,24 +419,25 @@ balancesPageCss = do
 
 sendPageCss :: Css
 sendPageCss = do
-  ".send-page" ? do
-    maxWidth $ px 500
-    margin (px 0) auto (px 0) auto
   ".send-page input" ? do
-    marginBottom $ em 0.5
+    marginBottom $ rem 1
   ".form-field-errors" ? do
     color red
     textAlign $ alignSide sideLeft
-    marginBottom $ em 0.5
-  ".send-buttons-wrapper" ? do
-    display grid
-    gridTemplateColumns [fr 1, fr 1]
-    gridGap $ rem 1
-  ".send-submit" ? do
-    width $ pct 100
+    marginBottom $ rem 1
+  ".send-page-buttons-wrapper" ? do
+    display flex
+    flexWrap F.wrap
+    marginLeft $ rem (-1)
+    marginRight $ rem (-1)
+  ".send-page-buttons-wrapper button" ? do
+    flexGrow 1
+    marginLeft $ rem 1
+    marginRight $ rem 1
   ".button-icon-wrapper" ? do
-    marginLeft $ rem 0.5
-  ".is-invalid input" ? border solid (rem 0.1) red
+    paddingLeft $ rem 1
+  ".is-invalid input" ? do
+    border solid (rem 0.1) red
 
 aboutPageCss :: Css
 aboutPageCss = do
@@ -430,11 +445,6 @@ aboutPageCss = do
     textAlign center
   ".about-hr-sep" ? do
     border solid (px 3) black
-  ".about-line" ? do
-    width $ pct 100
-    maxWidth $ px 500
-    display inlineBlock
-    textAlign center
   ".about-content" ? do
     display displayTable
     marginTop $ px 10
@@ -445,12 +455,10 @@ aboutPageCss = do
     display tableCell
     let px' = px 5 in padding px' (px 20) px' px'
     textAlign $ alignSide sideLeft
-    verticalAlign vAlignBottom
   ".about-content-cell-value" ? do
     display tableCell
     let px' = px 5 in padding px' px' px' px'
     textAlign $ alignSide sideLeft
-    verticalAlign vAlignBottom
     width $ pct 1
   ".about-distrib" ? do
     paddingTop $ px 45
@@ -460,10 +468,6 @@ networkPageCss :: Css
 networkPageCss = do
   ".network-wrapper" ? do
     textAlign center
-  ".network-title" ? do
-    width $ pct 100
-    maxWidth $ px 500
-    display inlineBlock
   ".network-title-table" ? do
     display displayTable
   ".network-title-row" ? do
@@ -491,10 +495,6 @@ networkPageCss = do
     border none none none
     marginTop $ em 0.5
     marginBottom $ em 0.5
-  ".network-line" ? do
-    width $ pct 100
-    maxWidth $ px 500
-    display inlineBlock
   ".network-name" ? do
     display flex
     width $ pct 100
@@ -548,12 +548,12 @@ networkPageCss = do
     gridGap $ em 0.5
     marginLeft auto
     marginRight auto
-  query M.screen [M.minWidth (rem 60)] $ ".net-btns-3" ? do
+  query M.screen [M.minWidth tabletBreakpoint] $ ".net-btns-3" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1, fr 1]
     gridGap $ em 0.5
     width maxContent
-  query M.screen [M.minWidth (rem 60)] $ ".net-btns-2" ? do
+  query M.screen [M.minWidth tabletBreakpoint] $ ".net-btns-2" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1]
     gridGap $ em 0.5
@@ -561,10 +561,6 @@ networkPageCss = do
 
 infoPageCss :: Css
 infoPageCss = do
-  ".info-content" ? do
-    width $ pct 100
-    maxWidth $ px 500
-    display inlineBlock
   ".info-v-spacer" ? do
     height $ px 25
   ".info-block-value" ? do
@@ -577,10 +573,6 @@ infoPageCss = do
 
 sharePageCss :: Css
 sharePageCss = do
-  ".share-content" ? do
-    width $ pct 100
-    maxWidth $ px 500
-    display inlineBlock
   ".share-v-spacer" ? do
     height $ px 20
   ".qrcode-container" ? do
@@ -685,14 +677,23 @@ patternKeyCss = do
 selectCss :: Css
 selectCss = do
   ".select-lang" ? do
-    fontSize $ pt 18
-    height   $ em 1.8
+    fontSize $ pt 14
+    height $ rem 4.2
   "option" ? do
-    fontSize $ pt 18
-    height   $ em 1.8
+    fontSize $ pt 14
+    height $ rem 4.2
   ".select-fiat" ? do
     margin auto auto auto auto
     width $ px 200
+  "select" ? do
+    borderColor textColor
+    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" height=\\\"14\\\" viewBox=\\\"0 0 24 8\\\" width=\\\"24\\\"><path fill=\\\"#000000\\\" d=\\\"M0,0l6,8l6-8\\\"/></svg>"
+  "select:hover" ? do
+    cursor pointer
+  "select:hover, select:focus" ? do
+    color hoverColor
+    borderColor hoverColor
+    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" height=\\\"14\\\" viewBox=\\\"0 0 24 8\\\" width=\\\"24\\\"><path fill=\\\"#707070\\\" d=\\\"M0,0l6,8l6-8\\\"/></svg>"
 
 buttonsToggleCss :: Css
 buttonsToggleCss = do
@@ -717,7 +718,7 @@ historyPageCss = do
     borderTop solid (px 2) black
     borderBottom solid (px 2) black
     display grid
-    gridTemplateColumns [fr 5, fr 4, fr 1]
+    gridTemplateColumns [fr 3, fr 3, fr 1]
   ".history-amount-header" ? do
     borderRight solid (px 2) black
     display block
@@ -726,32 +727,46 @@ historyPageCss = do
     display block
   ".history-status-header" ? do
     display block
+  ".history-status-transrefill" ? do
+    display flex
+    alignItems center
+    justifyContent flexEnd
+  ".history-status-transwithdraw" ? do
+    display flex
+    alignItems center
+    justifyContent flexEnd
   ".history-table-row" ? do
     fontSize $ px 16
-    paddingTop $ px 20
-    paddingBottom $ px 20
+    paddingTop $ rem 1.5
+    paddingBottom $ rem 1.5
     display grid
-    gridTemplateColumns [fr 5, fr 4, fr 1]
+    gridTemplateColumns [fr 3, fr 3, fr 1]
   ".history-table-row:hover" ? do
     backgroundColor $ rgb 220 220 220
   ".history-amount-transrefill" ? do
-    display block
+    display flex
+    alignItems center
     color $ rgb 0 120 0
+    textAlign $ alignSide sideLeft
   ".history-amount-transwithdraw" ? do
-    display block
+    display flex
+    alignItems center
     color $ rgb 120 0 0
-  ".transaction-info-body" ? do
-    fontSize $ px 16
-    marginLeft $ px 20
-    marginRight $ px 20
-  ".transaction-info-element" ? do
-    display grid
-    gridTemplateColumns [fr 2, fr 8]
-    marginTop $ px 20
+    textAlign $ alignSide sideLeft
+  ".history-page-sign-icon" ? do
+    fontSize $ pt 7
+    paddingRight $ rem 0.3
+  ".history-page-status-icon" ? do
+    fontSize $ pt 9
+  ".tx-info-page-element" ? do
+    display flex
+    marginTop $ rem 1
+    paddingRight $ rem 1
   ".info-descr" ? do
     fontWeight $ weight 600
-    fontSize $ px 18
+    fontSize $ pt 14
     textAlign $ alignSide sideLeft
+    paddingRight $ rem 1
   ".info-body" ? do
     textAlign $ alignSide sideLeft
     overflow hidden
@@ -766,11 +781,7 @@ historyPageCss = do
     marginBottom $ px 10
   ".out-descr" ? do
     fontWeight $ weight 600
-  ".transaction-info-body-andr" ? do
-    fontSize $ px 16
-    marginTop $ px 10
-    marginLeft $ px 10
-    marginRight $ px 10
+    paddingRight $ rem 1
   ".info-descr-andr" ? do
     marginTop $ px 10
     fontWeight $ weight 600
@@ -798,49 +809,53 @@ historyPageCss = do
     marginLeft $ px 10
   ".info-exits-andr" ? do
     marginTop $ px 5
+  ".out-body" ? do
+    wordBreak breakAll
   ".out-body-andr" ? do
     marginLeft $ px 10
-    overflow hidden
-    textOverflow overflowEllipsis
+    wordBreak breakAll
     textAlign $ alignSide sideLeft
 
 legoStyles :: Css
 legoStyles = do
-  ".mb-0" ? (marginBottom $ px 0)
-  ".ml-0" ? (marginLeft   $ px 0)
-  ".mr-0" ? (marginRight  $ px 0)
-  ".mt-0" ? (marginTop    $ px 0)
-  ".m-0"  ? margin (px 0) (px 0) (px 0) (px 0)
-  ".mb-1" ? (marginBottom $ em 1)
-  ".ml-1" ? (marginLeft   $ em 1)
-  ".mr-1" ? (marginRight  $ em 1)
-  ".mt-1" ? (marginTop    $ em 1)
-  ".mt-2" ? (marginTop    $ em 2)
+  ".mb-0" ? (marginBottom $ rem 0)
+  ".ml-0" ? (marginLeft   $ rem 0)
+  ".mr-0" ? (marginRight  $ rem 0)
+  ".mt-0" ? (marginTop    $ rem 0)
+  ".m-0"  ? margin (rem 0) (rem 0) (rem 0) (rem 0)
+  ".mb-1" ? (marginBottom $ rem 1)
+  ".ml-1" ? (marginLeft   $ rem 1)
+  ".mr-1" ? (marginRight  $ rem 1)
+  ".mt-1" ? (marginTop    $ rem 1)
+  ".mt-2" ? (marginTop    $ rem 2)
+  ".mt-3" ? (marginTop    $ rem 3)
   ".mb-a" ? marginBottom  auto
   ".ml-a" ? marginLeft    auto
   ".mr-a" ? marginRight   auto
   ".mt-a" ? marginTop     auto
   ".mtb-a" ? (marginTop auto) >> (marginBottom auto)
-  ".padb-1" ? (paddingBottom $ em 1)
-  ".padl-1" ? (paddingLeft   $ em 1)
-  ".padr-1" ? (paddingRight  $ em 1)
-  ".padt-1" ? (paddingTop    $ em 1)
-  ".padb-a" ? paddingBottom  auto
-  ".padl-a" ? paddingLeft    auto
-  ".padr-a" ? paddingRight   auto
-  ".padt-a" ? paddingTop     auto
-  ".width-80" ? width (pct 80)
+  ".pb-1" ? (paddingBottom $ rem 1)
+  ".pl-1" ? (paddingLeft   $ rem 1)
+  ".pr-1" ? (paddingRight  $ rem 1)
+  ".pt-1" ? (paddingTop    $ rem 1)
+  ".p-1" ? padding (rem 1) (rem 1) (rem 1) (rem 1)
+  ".pb-a" ? paddingBottom  auto
+  ".pl-a" ? paddingLeft    auto
+  ".pr-a" ? paddingRight   auto
+  ".pt-a" ? paddingTop     auto
+  ".p-a"  ? padding auto auto auto auto
+  ".w-80" ? width (pct 80)
+  ".w-100" ? width (pct 100)
+  ".h-100" ? height (pct 100)
 
 receiveCss :: Css
 receiveCss = do
   ".receive-qr" ? do
-    margin (px 20) auto (px 40) auto
-
+    margin (rem 2) auto (rem 2) auto
   ".receive-qr-andr" ? do
-    margin (px 20) auto (px 40) auto
-
+    margin (rem 2) auto (rem 2) auto
   ".receive-adr" ? do
-    margin (px 20) auto (px 40) auto
+    margin (rem 2) auto (rem 2) auto
     fontSize $ px 16
     fontWeight $ weight 600
     wordBreak breakAll
@@ -848,9 +863,6 @@ receiveCss = do
     display grid
     gridTemplateColumns [fr 1, fr 1]
     gridGap $ rem 1
-  ".label-block-input" ? do
-    display block
-    marginTop (px (-5))
   ".qrcode" ? do
     margin (px 0) auto (px 0) auto
   ".receive-buttons-wrapper" ? do

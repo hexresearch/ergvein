@@ -40,25 +40,25 @@ mockAddress :: Text
 mockAddress = "1BoatSLRHtKNngkdXEeobR76b53LETtpyT"
 
 exceededGapLimit :: MonadFront t m => Currency -> m ()
-exceededGapLimit cur = wrapper (ReceiveTitle cur) (Just $ pure $ receivePage cur) False $ do
+exceededGapLimit cur = wrapper True (ReceiveTitle cur) (Just $ pure $ receivePage cur) $ do
   h2 $ localizedText RPSGap
 
 #ifdef ANDROID
 receivePageWidget :: MonadFront t m => Currency -> Int -> EgvExternalKeyBox -> m ()
-receivePageWidget cur i EgvExternalKeyBox{..} = wrapper (ReceiveTitle cur) (Just $ pure $ receivePage cur) False $ do
+receivePageWidget cur i EgvExternalKeyBox{..} = wrapper False (ReceiveTitle cur) (Just $ pure $ receivePage cur) $ do
   let thisWidget = Just $ pure $ receivePage cur
   navbarWidget cur thisWidget NavbarReceive
-  void $ divClass "centered-wrapper" $ divClass "centered-content" $ do
+  void $ do
     divClass "receive-qr-andr" $ qrCodeWidget keyTxt cur
-    newE  <- buttonClass "button button-outline button-receive" RPSGenNew
-    copyE <- buttonClass "button button-outline button-receive" RPSCopy
-    shareE <- fmap (shareUrl <$) $ buttonClass "button button-outline button-receive" RPSShare
+    newE  <- newAddrBtn
+    copyE <- copyAddrBtn
+    shareE <- fmap (shareUrl <$) shareAddrBtn
     _ <- shareShareUrl shareE
     setFlagToExtPubKey $ (cur, i) <$ newE
     showInfoMsg =<< clipboardCopy (keyTxt <$ copyE)
     divClass "receive-adr-andr" $ text $ "#" <> showt i <> ": " <> keyTxt
     labelD <- divClass "button-receive" $ textFieldNoLabel $ getLabelFromEgvPubKey extKeyBox'key
-    btnE <- buttonClass "button button-outline button-receive" RPSAddLabel
+    btnE <- labelAddrBtn
     setLabelToExtPubKey $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
   where
     keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress extKeyBox'key
@@ -70,22 +70,34 @@ receivePageWidget cur i EgvExternalKeyBox{..} = wrapper (ReceiveTitle cur) (Just
 
 #else
 receivePageWidget :: MonadFront t m => Currency -> Int -> EgvExternalKeyBox -> m ()
-receivePageWidget cur i EgvExternalKeyBox{..} = wrapper (ReceiveTitle cur) (Just $ pure $ receivePage cur) False $ do
+receivePageWidget cur i EgvExternalKeyBox{..} = wrapper False (ReceiveTitle cur) (Just $ pure $ receivePage cur) $ do
   let thisWidget = Just $ pure $ receivePage cur
   navbarWidget cur thisWidget NavbarReceive
-  void $ divClass "centered-wrapper" $ divClass "centered-content" $ do
+  void $ divClass "container p-1 receive-page" $ do
     divClass "receive-qr" $ qrCodeWidget keyTxt cur
     divClass "receive-buttons-wrapper" $ do
-      newE  <- outlineButton RPSGenNew
-      copyE <- outlineButton RPSCopy
+      newE  <- newAddrBtn
+      copyE <- copyAddrBtn
       setFlagToExtPubKey $ (cur, i) <$ newE
       showInfoMsg =<< clipboardCopy (keyTxt <$ copyE)
     divClass "receive-adr" $ text $ "#" <> showt i <> ": " <> keyTxt
     divClass "label-block" $ do
       labelD <- textFieldNoLabel $ getLabelFromEgvPubKey extKeyBox'key
-      btnE <- buttonClass (pure "button button-outline label-block-button") RPSAddLabel
+      btnE <- labelAddrBtn
       setLabelToExtPubKey $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
       pure ()
   where
     keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress extKeyBox'key
 #endif
+
+newAddrBtn :: MonadFront t m => m (Event t ())
+newAddrBtn = outlineTextIconButton RPSGenNew "fas fa-forward fa-lg"
+
+copyAddrBtn :: MonadFront t m => m (Event t ())
+copyAddrBtn = outlineTextIconButton RPSCopy "fas fa-copy fa-lg"
+
+shareAddrBtn :: MonadFront t m => m (Event t ())
+shareAddrBtn = outlineTextIconButton RPSShare "fas fa-share-alt fa-lg"
+
+labelAddrBtn :: MonadFront t m => m (Event t ())
+labelAddrBtn = outlineTextIconButton RPSAddLabel "fas fa-tag fa-lg"
