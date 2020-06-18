@@ -50,10 +50,11 @@ receivePageWidget cur i EgvExternalKeyBox{..} = wrapper False (ReceiveTitle cur)
   navbarWidget cur thisWidget NavbarReceive
   void $ do
     divClass "receive-qr-andr" $ qrCodeWidget keyTxt cur
-    divClass "receive-buttons-wrapper" $ do
-      newE  <- newAddrBtn
-      copyE <- copyAddrBtn
-      shareE <- fmap (shareUrl <$) shareAddrBtn
+    (newE, copyE, shareE) <- divClass "receive-buttons-wrapper" $ do
+      nE  <- newAddrBtn
+      cE <- copyAddrBtn
+      sE <- fmap (shareUrl <$) shareAddrBtn
+      pure (nE, cE, sE)
     _ <- shareShareUrl shareE
     setFlagToExtPubKey $ (cur, i) <$ newE
     showInfoMsg =<< clipboardCopy (keyTxt <$ copyE)
