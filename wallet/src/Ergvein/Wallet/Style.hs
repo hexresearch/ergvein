@@ -687,19 +687,13 @@ selectCss = do
     width $ px 200
   "select" ? do
     borderColor textColor
-    backgroundImage $ url (if isAndroid
-      then "data:image/svg+xml;utf8,<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" height=\\\"14\\\" viewBox=\\\"0 0 24 8\\\" width=\\\"24\\\"><path fill=\\\"#000000\\\" d=\\\"M0,0l6,8l6-8\\\"/></svg>"
-      -- FIXME
-      else "data:image/svg+xml;utf8,<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" height=\\\"14\\\" viewBox=\\\"0 0 30 8\\\" width=\\\"30\\\"><path fill=\\\"#000000\\\" d=\\\"M0,0l6,8l6-8\\\"/></svg>")
+    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" height=\\\"14\\\" viewBox=\\\"0 0 24 8\\\" width=\\\"24\\\"><path fill=\\\"#000000\\\" d=\\\"M0,0l6,8l6-8\\\"/></svg>"
   "select:hover" ? do
     cursor pointer
   "select:hover, select:focus" ? do
     color hoverColor
     borderColor hoverColor
-    backgroundImage $ url (if isAndroid
-      then "data:image/svg+xml;utf8,<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" height=\\\"14\\\" viewBox=\\\"0 0 24 8\\\" width=\\\"24\\\"><path fill=\\\"#707070\\\" d=\\\"M0,0l6,8l6-8\\\"/></svg>"
-      -- FIXME
-      else "data:image/svg+xml;utf8,<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" height=\\\"14\\\" viewBox=\\\"0 0 30 8\\\" width=\\\"30\\\"><path fill=\\\"#707070\\\" d=\\\"M0,0l6,8l6-8\\\"/></svg>")
+    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" height=\\\"14\\\" viewBox=\\\"0 0 24 8\\\" width=\\\"24\\\"><path fill=\\\"#707070\\\" d=\\\"M0,0l6,8l6-8\\\"/></svg>"
 
 buttonsToggleCss :: Css
 buttonsToggleCss = do

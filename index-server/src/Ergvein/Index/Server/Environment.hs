@@ -26,6 +26,7 @@ import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 import qualified Network.Ergo.Api.Client     as ErgoApi
 import qualified Network.Haskoin.Constants   as HK
 import qualified Network.HTTP.Client         as HC
+import qualified Data.Set as Set
 import Debug.Trace
 
 data ServerEnv = ServerEnv 
@@ -45,6 +46,30 @@ getPersistencePool isLogEnabled connectionString = newDBPool isLogEnabled $ from
 applyDatabaseMigration :: DBPool -> LoggingT IO ()
 applyDatabaseMigration persistencePool = flip runReaderT persistencePool $ dbQuery $ runMigration migrateAll
 
+discoveryRequisites :: Config -> PeerDiscoveryRequisites
+discoveryRequisites cfg = let
+  ownPeerAddress = parsedOwnAddress <$> cfgOwnPeerAddress cfg
+  knownPeers = Set.fromList $ parseKnownPeer <$> cfgKnownPeers cfg
+  filteredKnownPeers = case ownPeerAddress of
+    Just address -> Set.delete address knownPeers 
+    otherwise    -> knownPeers
+  in PeerDiscoveryRequisites
+      ownPeerAddress
+      filteredKnownPeers
+      (cfgPeerActualizationDelay cfg)
+      (cfgPeerActualizationTimeout cfg)
+  where
+
+    parsedOwnAddress :: String -> BaseUrl
+    parsedOwnAddress address = let
+      err = error $ "Error cannot parse ownPeerAddress setting"
+      in fromMaybe err $ parseBaseUrl address
+
+    parseKnownPeer :: String -> BaseUrl
+    parseKnownPeer address = let
+      err = error $ "Error cannot parse peer '" <> address <> "'"
+      in fromMaybe err $ parseBaseUrl address
+
 newServerEnv :: (MonadIO m, MonadLogger m) => Config -> m ServerEnv
 newServerEnv cfg = do
     logger <- liftIO newChan
@@ -61,11 +86,7 @@ newServerEnv cfg = do
     tlsManager     <- liftIO $ newTlsManager
 
     let bitcoinNodeNetwork = if cfgBTCNodeIsTestnet cfg then HK.btcTest else HK.btc
-        descReqoveryRequisites = PeerDiscoveryRequisites 
-                                  (parseBaseUrl @Maybe <=< cfgOwnPeerAddress $ cfg)
-                                  (fromJust . parseBaseUrl <$> cfgKnownPeers cfg)
-                                  (cfgPeerActualizationDelay cfg)
-                                  (cfgPeerActualizationTimeout cfg)
+        descDiscoveryRequisites = discoveryRequisites cfg
     traceShowM cfg
     pure ServerEnv 
       { envServerConfig            = cfg
@@ -75,7 +96,7 @@ newServerEnv cfg = do
       , envBitcoinNodeNetwork      = bitcoinNodeNetwork
       , envErgoNodeClient          = ergoNodeClient
       , envClientManager           = tlsManager
-      , envPeerDiscoveryRequisites = descReqoveryRequisites
+      , envPeerDiscoveryRequisites = descDiscoveryRequisites
       }
 
 -- | Log exceptions at Error severity

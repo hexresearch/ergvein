@@ -3,7 +3,7 @@ module Ergvein.Wallet.Page.Balances(
     balancesPage
   ) where
 
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 
 import Ergvein.Text
 import Ergvein.Types.Address
@@ -24,7 +24,6 @@ import Ergvein.Wallet.Worker.Node
 
 import Data.Map.Strict as Map
 import qualified Data.Set as S
-import qualified Data.Map as M
 import qualified Data.List as L
 import Network.Wreq
 import Network.Haskoin.Transaction
@@ -92,7 +91,7 @@ balancesGetting :: MonadFront t m => Currency -> m (Dynamic t Money)
 balancesGetting cur = do
   ps <- getPubStorage
   pubSD <- getPubStorageD
-  let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _) -> case M.lookup BTC cm of
+  let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _) -> case Map.lookup BTC cm of
         Nothing -> []
         Just (CurrencyPubStorage keystore txmap) -> extractAddrs keystore
   abS <- sampleDyn allBtcAddrsD

@@ -34,8 +34,6 @@ import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Sync.Status
 
-import qualified Data.Map as M
-
 filtersLoader :: (HasFiltersStorage m, MonadFront t m) => m ()
 filtersLoader = nameSpace "filters loader" $ do
   sequence_ [filtersLoaderBtc]

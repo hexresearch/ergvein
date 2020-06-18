@@ -20,7 +20,6 @@ import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.Initial
 import Ergvein.Wallet.Password
 import Ergvein.Wallet.Util
-import Ergvein.Wallet.Worker.Info
 import Reflex.ExternalRef
 
 import Reflex.Dom.Main (mainWidgetWithCss)
