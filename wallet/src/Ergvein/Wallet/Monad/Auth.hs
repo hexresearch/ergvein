@@ -32,6 +32,7 @@ import Ergvein.Index.Client
 import Ergvein.Text
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
+import Ergvein.Types.Fees
 import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
@@ -56,6 +57,7 @@ import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Settings (Settings(..), storeSettings, defaultIndexers)
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Sync.Status
+import Ergvein.Wallet.Worker.Fees
 import Ergvein.Wallet.Worker.Height
 import Ergvein.Wallet.Worker.IndexersNetworkActualization
 import Ergvein.Wallet.Worker.Node
@@ -106,6 +108,7 @@ data Env t = Env {
 , env'nodeConsRef     :: !(ExternalRef t (ConnMap t))
 , env'nodeReqSelector :: !(RequestSelector t)
 , env'nodeReqFire     :: !(Map Currency (Map SockAddr NodeMessage) -> IO ())
+, env'feesStore       :: !(ExternalRef t (Map Currency FeeBundle))
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -281,6 +284,10 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE requestFromNode #-}
   getNodeRequestSelector = asks env'nodeReqSelector
   {-# INLINE getNodeRequestSelector #-}
+  getFeesRef = asks env'feesStore
+  {-# INLINE getFeesRef #-}
+  getFeesD = externalRefDynamic =<< asks env'feesStore
+  {-# INLINE getFeesD #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
@@ -462,11 +469,12 @@ liftAuth ma0 ma = mdo
         heightRef       <- newExternalRef mempty
         fsyncRef        <- newExternalRef mempty
         consRef         <- newExternalRef mempty
+        feesRef         <- newExternalRef mempty
         let env = Env
               settingsRef backEF loading langRef storeDir alertsEF logsTrigger logsNameSpaces uiChan passModalEF passSetEF
               authRef (logoutFire ()) activeCursRef managerRef headersStore filtersStore blocksStore syncRef heightRef fsyncRef
               urlsArchive inactiveUrls activeUrlsRef reqUrlNumRef actUrlNumRef timeoutRef (indexersE, indexersF ())
-              consRef sel reqFire
+              consRef sel reqFire feesRef
 
         runOnUiThreadM $ runReaderT setupTlsManager env
 
@@ -476,6 +484,7 @@ liftAuth ma0 ma = mdo
           filtersLoader
           heightAsking
           indexersNetworkActualizationWorker
+          feesWorker
           pure ()
         runReaderT (wrapped ma) env
   let

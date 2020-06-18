@@ -32,13 +32,13 @@ import qualified Data.Set as S
 
 import Ergvein.Index.API.Types
 import Ergvein.Index.Client
+import Ergvein.Text
+import Ergvein.Types.Currency
 import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Localization.Client
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
-import Ergvein.Wallet.Localization.Client
-
-import Ergvein.Wallet.Native
-import Ergvein.Text
+import Ergvein.Wallet.Native 
 
 getHeight :: (MonadFrontBase t m, MonadClient t m) => Event t HeightRequest -> m (Event t (Either ClientErr HeightResponse))
 getHeight = requester False meanHeight getHeightEndpoint
@@ -64,7 +64,7 @@ getBlockFiltersRandom :: (MonadFrontBase t m, MonadClient t m) => Event t BlockF
 getBlockFiltersRandom = requestSoloRandom getBlockFiltersEndpoint
 
 -- | TODO: Request from multiple indexers and return average fees
-getFeeEstimatesRandom :: (MonadFrontBase t m, MonadClient t m) => Event t () -> m (Event t (Either ClientErr IndexFeesResp))
+getFeeEstimatesRandom :: (MonadFrontBase t m, MonadClient t m) => Event t [Currency] -> m (Event t (Either ClientErr IndexFeesResp))
 getFeeEstimatesRandom = requestSoloRandom getFeeEstimatesEndpoint
 
 instance MonadIO m => HasClientManager (ReaderT Manager m) where
