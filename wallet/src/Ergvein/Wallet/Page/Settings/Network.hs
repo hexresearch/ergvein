@@ -120,7 +120,7 @@ activePageWidget = mdo
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   void . flip listWithKey renderActive =<< getIndexerInfoD
   hideE <- activateURL =<< addUrlWidget showD
-  tglE <- divClass "network-wrapper mt-1" $ divClass "net-btns-3" $ do
+  tglE <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refreshIndexerInfo =<< buttonClass "button button-outline m-0" NSSRefresh
     restoreDefaultIndexers =<< buttonClass "button button-outline m-0" NSSRestoreUrls
     fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
@@ -188,7 +188,7 @@ renderInactive url mminfo = mdo
     pure tglE'
   pingE <- fmap switchDyn $ widgetHoldDyn $ ffor tglD $ \b -> if not b
     then pure never
-    else divClass "network-wrapper mt-2" $ do
+    else divClass "network-wrapper mt-1" $ divClass "net-btns-3" $ do
       activateURL . (url <$) =<< outlineButton NSSEnable
       pingE <- fmap (url <$) $ outlineButton NSSPing
       forgetURL . (url <$) =<< outlineButton NSSForget

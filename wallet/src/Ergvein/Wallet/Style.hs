@@ -455,12 +455,10 @@ aboutPageCss = do
     display tableCell
     let px' = px 5 in padding px' (px 20) px' px'
     textAlign $ alignSide sideLeft
-    verticalAlign vAlignBottom
   ".about-content-cell-value" ? do
     display tableCell
     let px' = px 5 in padding px' px' px' px'
     textAlign $ alignSide sideLeft
-    verticalAlign vAlignBottom
     width $ pct 1
   ".about-distrib" ? do
     paddingTop $ px 45
@@ -830,6 +828,7 @@ legoStyles = do
   ".mr-1" ? (marginRight  $ rem 1)
   ".mt-1" ? (marginTop    $ rem 1)
   ".mt-2" ? (marginTop    $ rem 2)
+  ".mt-3" ? (marginTop    $ rem 3)
   ".mb-a" ? marginBottom  auto
   ".ml-a" ? marginLeft    auto
   ".mr-a" ? marginRight   auto
