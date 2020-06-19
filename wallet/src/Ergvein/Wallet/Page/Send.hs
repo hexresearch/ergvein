@@ -1,11 +1,11 @@
+{-# LANGUAGE OverloadedLists #-}
+
 module Ergvein.Wallet.Page.Send (
     sendPage
   ) where
 
 import Control.Monad.Except
-import Data.Either (isRight)
-import Data.Word
-import Network.Bitcoin.Api.Misc
+import Text.Read
 
 import Ergvein.Text
 import Ergvein.Types.Address
@@ -15,9 +15,7 @@ import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Validate
@@ -67,7 +65,7 @@ sendPage cur minit = wrapper (SendTitle cur) (Just $ pure $ sendPage cur Nothing
       pure (qrE, pasteE, resQRcodeE)
     amountErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing) . snd)
     amountD <- validatedTextField AmountString "" amountErrsD
-    feeD <- btcFeeSelectionWidget
+    feeD <- btcFeeSelectionWidget submitE
     submitE <- submitClass "button button-outline send-submit" SendBtnString
     let validationE = poke submitE $ \_ -> do
           recipient <- sampleDyn recipientD
@@ -76,121 +74,77 @@ sendPage cur minit = wrapper (SendTitle cur) (Just $ pure $ sendPage cur Nothing
                 V.toEither $ validateAmount $ T.unpack amount)
     pure ()
 
-data BTCFeeMode = BFMCons | BFMEcon | BFMManual
+data BTCFeeMode = BFMLow | BFMMid | BFMHigh | BFMManual
   deriving (Eq)
 
 instance LocalizedPrint BTCFeeMode where
   localizedShow l v = case l of
     English -> case v of
-      BFMCons   -> "Conservative"
-      BFMEcon   -> "Economical"
+      BFMLow    -> "Low"
+      BFMMid    -> "Mid"
+      BFMHigh   -> "High"
       BFMManual -> "Manual"
     Russian -> case v of
-      BFMCons   -> "Консервативная"
-      BFMEcon   -> "Эконом"
+      BFMLow    -> "Низкий"
+      BFMMid    -> "Средний"
+      BFMHigh   -> "Высокий"
       BFMManual -> "Вручную"
 
-instance LocalizedPrint FeeLevel where
-  localizedShow l v = case l of
-    English -> case v of
-      FeeFast     -> "High"
-      FeeModerate -> "Mid"
-      FeeCheap    -> "Low"
-    Russian -> case v of
-      FeeFast     -> "Высокий"
-      FeeModerate -> "Средний"
-      FeeCheap    -> "Низкий"
-
 data FeeStrings
-  = FSMode
-  | FSLevel
+  = FSLevel
   | FSSelect
-  | FSMModeDesc EstimateMode
-  | FSMLevelDesc FeeLevel
-  | FSMFee Word64
-  | FSMInvalid
-  | FSMNoFees
+  | FSLevelDesc (FeeLevel, Int)
+  | FSFee Int
+  | FSInvalid
+  | FSNoFees
 
 instance LocalizedPrint FeeStrings where
   localizedShow l v = case l of
     English -> case v of
-      FSMode  -> "Fee mode"
       FSLevel -> "Fee level"
-      FSSelect -> "Select fee mode and level"
-      FSMModeDesc Conservative -> "Conservative estimate satisfies a longer history. More likely to be sufficient, but might miss short term drops in fees."
-      FSMModeDesc Economical -> "Economical estimate satisfies a shorter history. It is usually lower than the conservative estimate but might not be sufficient for the target."
-      FSMLevelDesc l -> let t = "Tx is to be accepted within next " <> showt (feeTargetBlocks BTC l) <> " blocks." in case l of
-        FeeFast -> "High fee. " <> t
-        FeeModerate -> "Moderate fee. " <> t
-        FeeCheap -> "Low fee. " <> t
-      FSMFee f -> "~" <> showt f <> " satoshi/vbyte"
-      FSMInvalid -> "Enter valid integer fee in satoshi/vbyte"
-      FSMNoFees -> "Fees not found in the cache. Please enter the fee manually."
+      FSSelect -> "Select fee level"
+      FSLevelDesc (lvl,f) -> "~" <> showt f <> " satoshi/vbyte. <" <> showt (feeTargetBlocks BTC lvl) <> " blocks."
+      FSFee f -> "~" <> showt f <> " satoshi/vbyte"
+      FSInvalid -> "Enter valid integer fee in satoshi/vbyte"
+      FSNoFees -> "Fees not found in the cache. Please enter the fee manually."
     Russian -> case v of
-      FSMode  -> "Тип комиссии"
       FSLevel -> "Уровень комиссии"
-      FSSelect -> "Выберите тип и уровень комиссии"
-      FSMModeDesc Conservative -> "Консервативная оценка использует более долгую историю транзакций. Выше вероятность попадания в нужные рамки блоков, но может не учесть резкие снижения комисии."
-      FSMModeDesc Economical -> "Экономная оценка использует короткую историю транзакций. Дешевле консервативной, но может быть недостаточной для попадания в нужные сроки."
-      FSMLevelDesc l -> let t = "Ожидается принятие транзакции в течение следующих " <> showt (feeTargetBlocks BTC l) <> " блоков." in case l of
-        FeeFast -> "Высокая комиссия. " <> t
-        FeeModerate -> "Умеренная комиссия. " <> t
-        FeeCheap -> "Низкая комиссия. " <> t
-      FSMFee f -> "~" <> showt f <> " satoshi/vbyte"
-      FSMInvalid -> "Введите комиссию. Целое число, satoshi/vbyte"
-      FSMNoFees -> "Уровень комиссий не найден в кэше. Пожалуйста, введите комиссию вручную."
+      FSSelect -> "Выберите уровень комиссии"
+      FSLevelDesc (lvl,f) -> "~" <> showt f <> " satoshi/vbyte. <" <> showt (feeTargetBlocks BTC lvl) <> " блоков."
+      FSFee f -> "~" <> showt f <> " satoshi/vbyte"
+      FSInvalid -> "Введите комиссию. Целое число, satoshi/vbyte"
+      FSNoFees -> "Уровень комиссий не найден в кэше. Пожалуйста, введите комиссию вручную."
 
-btcFeeSelectionWidget :: forall t m . MonadFront t m => m (Dynamic t (Maybe Int))
-btcFeeSelectionWidget = do
+data FeeSelectorStatus = FSSNoEntry | FSSNoCache | FSSNoManual | FSSManual Int | FSSLvl (FeeLevel, Int)
+
+btcFeeSelectionWidget :: forall t m . MonadFront t m => Event t () -> m (Dynamic t (Maybe Int))
+btcFeeSelectionWidget sendE = do
   feesD <- getFeesD
-  valD <- divClass "fee-widget" $ do
-    modeD <- divClass "fee-mode" $ mdo
-      el "label" $ localizedText FSMode
-      let modeE = leftmost [consE, econE, manE]
-      modeD <- holdDyn Nothing modeE
-      let attrD m = ffor modeD $ \m' -> if m' == Just m then "button button-outline btn-fee-on" else "button button-outline"
-      consE <- fmap (Just BFMCons <$)   $ buttonClass (attrD BFMCons) BFMCons
-      econE <- fmap (Just BFMEcon <$)   $ buttonClass (attrD BFMEcon) BFMEcon
-      manE  <- fmap (Just BFMManual <$) $ buttonClass (attrD BFMManual) BFMManual
-      holdUniqDyn modeD
-    lvlD <- divClass "fee-level" $ fmap join $ widgetHoldDyn $ ffor modeD $ \case
-      Nothing -> pure (pure Nothing)
-      Just BFMManual -> (fmap . fmap) (Just . Left) manualFeeSelector
-      _ -> mdo
-        el "label" $ localizedText FSLevel
-        let lvlE = leftmost [chpE, midE, fastE]
-        lvlD' <- holdDyn Nothing lvlE
-        let attrD m = ffor lvlD' $ \m' -> if m' == Just m then "button button-outline btn-fee-on" else "button button-outline"
-        chpE  <- fmap (Just FeeCheap <$)    $ buttonClass (attrD FeeCheap) FeeCheap
-        midE  <- fmap (Just FeeModerate <$) $ buttonClass (attrD FeeModerate) FeeModerate
-        fastE <- fmap (Just FeeFast <$)     $ buttonClass (attrD FeeFast) FeeFast
-        pure $ (fmap . fmap) Right lvlD'
-    pure $ do
-      mmode <- modeD
-      mlvl  <- lvlD
-      pure $ case (,) <$> mmode <*> mlvl of
-        Nothing -> Nothing
-        Just (BFMManual, Left v) -> Just (Left v)
-        Just (BFMCons, Right v) -> Just $ Right (Conservative, v)
-        Just (BFMEcon, Right v) -> Just $ Right (Economical, v)
-        _ -> Nothing
-  feeD <- divClass "fee-descr" $ widgetHoldDyn $ ffor valD $ \case
-    Nothing -> el "label" $ localizedText FSSelect >> pure (pure Nothing)
-    Just (Left Nothing) -> el "label" $ localizedText FSMInvalid >> pure (pure Nothing)
-    Just (Left (Just f)) -> (el "div" $ localizedText $ FSMFee $ fromIntegral f) >> pure (pure $ Just f)
-    Just (Right (md, lvl)) -> do
-      el "div" $ localizedText $ FSMModeDesc md
-      fD <- el "div" $ widgetHoldDyn $ ffor feesD $ \fm -> case M.lookup BTC fm of
-        Nothing -> localizedText FSMNoFees >> pure Nothing
-        Just fb -> let
-          (c,e) = extractFee lvl fb
-          f = case md of
-            Conservative -> c
-            Economical -> e
-          in (localizedText $ FSMFee f) >> pure (Just $ fromIntegral f)
-      el "div" $ localizedText $ FSMLevelDesc lvl
-      pure fD
-  pure $ join feeD
+  divClass "fee-widget" $ mdo
+    el "label" $ localizedText FSLevel
+    let lvlE = leftmost [lowE, midE, highE, manE]
+    lvlD <- holdDyn Nothing lvlE
+    let attrD' m = ffor lvlD $ \m' -> if m' == Just m then "button button-outline btn-fee-on" else "button button-outline"
+    lowE  <- fmap (Just BFMLow <$)    $ buttonClass (attrD' BFMLow)    BFMLow
+    midE  <- fmap (Just BFMMid <$)    $ buttonClass (attrD' BFMMid)    BFMMid
+    highE <- fmap (Just BFMHigh <$)   $ buttonClass (attrD' BFMHigh)   BFMHigh
+    manE  <- fmap (Just BFMManual <$) $ buttonClass (attrD' BFMManual) BFMManual
+    statD <- fmap join $ widgetHoldDyn $ ffor lvlD $ \case
+      Nothing         -> pure (pure FSSNoEntry)
+      Just BFMManual  -> manualFeeSelector
+      Just BFMLow     -> pure $ extractFeeD feesD FeeCheap
+      Just BFMMid     -> pure $ extractFeeD feesD FeeModerate
+      Just BFMHigh    -> pure $ extractFeeD feesD FeeFast
+    attrD <- holdDyn [] $ leftmost [[("class", "lbl-red")] <$ sendE, [] <$ updated statD]
+    divClass "fee-descr" $ el "label" $ widgetHoldDyn $ ffor statD $ \case
+      FSSNoEntry  -> elDynAttr "label" attrD (localizedText FSSelect)   >> pure Nothing
+      FSSNoCache  -> elDynAttr "label" attrD (localizedText FSNoFees)   >> pure Nothing
+      FSSNoManual -> elDynAttr "label" attrD (localizedText FSInvalid)  >> pure Nothing
+      FSSManual f -> el "label" (localizedText $ FSFee f)               >> pure (Just f)
+      FSSLvl lf   -> el "label" (localizedText $ FSLevelDesc lf)        >> pure (Just $ snd lf)
+  where
+    extractFeeD feesD lvl = ffor feesD $
+      maybe FSSNoCache (FSSLvl . (lvl,) . fromIntegral . fst . extractFee lvl) . M.lookup BTC
 
-manualFeeSelector :: MonadFront t m => m (Dynamic t (Maybe Int))
-manualFeeSelector = pure $ pure Nothing
+manualFeeSelector :: MonadFront t m => m (Dynamic t FeeSelectorStatus)
+manualFeeSelector = (fmap . fmap) (maybe FSSNoManual FSSManual . readMaybe . T.unpack) $ textFieldNoLabel ""

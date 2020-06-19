@@ -432,7 +432,8 @@ sendPageCss = do
   ".btn-fee-on" `with` focus ? do
     important $ backgroundColor gray
     important $ color white
-
+  ".lbl-red" ? color red
+  
 aboutPageCss :: Css
 aboutPageCss = do
   ".about-wrapper" ? do
