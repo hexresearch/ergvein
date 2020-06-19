@@ -27,7 +27,7 @@ feesWorker = do
   cursD   <- getActiveCursD
   buildE  <- getPostBuild
   te      <- fmap void $ tickLossyFromPostBuildTime feesTimeout
-  let tickE = leftmost [te, buildE]
-  efeesE <- getFeeEstimatesRandom $ attachWith (\cs _ -> S.toList cs) (current cursD) tickE
+  tickE   <- delay 0.1 $ leftmost [te, void $ updated cursD, buildE]
+  efeesE  <- getFeeEstimatesRandom $ attachWith (\cs _ -> S.toList cs) (current cursD) tickE
   let feesE = fmapMaybe (either (const Nothing) (Just . indexFeesRespFees)) efeesE
   performFork_ $ ffor feesE $ \fm -> modifyExternalRef_ feeRef $ \fm' -> M.union fm fm'
