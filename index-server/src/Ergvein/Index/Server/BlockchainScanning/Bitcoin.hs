@@ -107,7 +107,7 @@ feeScaner = feeScaner' 0
             mco <- nodeRpcCall $ req Conservative
             mec <- nodeRpcCall $ req Economical
             case (estimateResFee mco, estimateResFee mec) of
-              (Just (MkFixed co), Just (MkFixed ec)) -> pure $ Just (lvl, (fromIntegral co, fromIntegral ec))
+              (Just (MkFixed co), Just (MkFixed ec)) -> pure $ Just (lvl, (fromIntegral co `div` 1000 , fromIntegral ec `div` 1000))
               _ -> pure Nothing
           setFees BTC $ mkFeeBundle res
           logInfoN $ "[BTC]: " <> showt res
