@@ -39,7 +39,7 @@ import qualified Network.Haskoin.Transaction as HK
 type BtcTx = HK.Tx
 
 btcTxToString :: BtcTx -> Text
-btcTxToString = showt. show
+btcTxToString = encodeHex . S.encode
 
 btcTxFromString :: Text -> Maybe BtcTx
 btcTxFromString = eitherToMaybe . S.decode <=< decodeHex
@@ -80,13 +80,13 @@ egvTxToJSON = String . egvTxToString
 
 egvTxFromJSON :: Currency -> Value -> Parser EgvTx
 egvTxFromJSON cur
-  | cur == BTC = withText "transaction" $ \t ->
+  | cur == BTC = withText "Bitcoin transaction" $ \t ->
     case btcTxFromString t of
-      Nothing -> fail "could not decode transaction"
+      Nothing -> fail "could not decode Bitcoin transaction"
       Just x  -> return $ BtcTx x
-  | cur == ERGO = withText "transaction" $ \t ->
+  | cur == ERGO = withText "Ergo transaction" $ \t ->
     case ergTxFromString t of
-      Nothing -> fail "could not decode transaction"
+      Nothing -> fail "could not decode Ergo transaction"
       Just x  -> return $ ErgTx x
 
 instance ToJSON EgvTx where
