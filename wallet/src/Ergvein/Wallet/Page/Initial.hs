@@ -4,7 +4,6 @@ module Ergvein.Wallet.Page.Initial(
     initialPage
   ) where
 
-
 import Control.Lens
 import Control.Monad.IO.Class
 import Ergvein.Types.AuthInfo
@@ -38,7 +37,7 @@ initialPage = do
   if null ss then noWalletsPage else hasWalletsPage ss
   logWrite "Finished initial page rendering"
   where
-    noWalletsPage = wrapperSimple True $ divClass "initial-options grid1" $ noWallets
+    noWalletsPage = wrapperSimple True $ divClass "initial-page-options" $ noWallets
     noWallets = do
       newE <- fmap (GoSeed <$) $ outlineButton IPSCreate
       restoreE <- fmap (GoRestore <$) $ outlineButton IPSRestore
@@ -60,7 +59,7 @@ initialPage = do
               , retractablePrev = Just $ pure $ selectWalletsPage ss
               }
         Nothing -> selectWalletsPage ss
-    selectWalletsPage ss = wrapperSimple True $ divClass "initial-options grid1" $ do
+    selectWalletsPage ss = wrapperSimple True $ divClass "initial-page-options" $ do
       h4 $ localizedText IPSSelectWallet
       flip traverse_ ss $ \name -> do
         btnE <- outlineButton name

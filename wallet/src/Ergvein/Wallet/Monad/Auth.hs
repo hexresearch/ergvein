@@ -57,7 +57,7 @@ import Ergvein.Wallet.Settings (Settings(..), storeSettings, defaultIndexers)
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Worker.Height
-import Ergvein.Wallet.Worker.Info
+import Ergvein.Wallet.Worker.IndexersNetworkActualization
 import Ergvein.Wallet.Worker.Node
 
 import qualified Network.Haskoin.Block as HS (BlockHeight)
@@ -253,9 +253,9 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
     fmap updated $ widgetHold (pure ()) $ ffor updE $ \f -> do
       (diffMap, newcs) <- modifyExternalRef curRef $ \cs -> let
         cs' = f cs
-        offUrls = S.map (\u -> (u, False)) $ S.difference cs cs'
-        onUrls  = S.map (\u -> (u, True))  $ S.difference cs' cs
-        onUrls' = S.map (\u -> (u, True))  $ S.intersection cs cs'
+        offUrls = S.map (, False) $ S.difference cs cs'
+        onUrls  = S.map (, True)  $ S.difference cs' cs
+        onUrls' = S.map (, True)  $ S.intersection cs cs'
         dm = M.fromList $ S.toList $ offUrls <> onUrls <> onUrls'
         in (cs',(dm, S.toList cs'))
       settings <- readExternalRef settingsRef
@@ -444,7 +444,7 @@ liftAuth ma0 ma = mdo
           bctNodeController
           filtersLoader
           heightAsking
-          infoWorker
+          indexersNetworkActualizationWorker
           pure ()
         runReaderT (wrapped ma) env
   let
@@ -493,6 +493,8 @@ wrapped ma = do
 instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
   getArchivedUrlsRef = asks env'urlsArchive
   {-# INLINE getArchivedUrlsRef #-}
+  getArchivedUrlsD = externalRefDynamic =<< asks env'urlsArchive
+  {-# INLINE getArchivedUrlsD #-}
   getActiveUrlsRef = asks env'activeUrls
   {-# INLINE getActiveUrlsRef #-}
   getInactiveUrlsRef = asks env'inactiveUrls

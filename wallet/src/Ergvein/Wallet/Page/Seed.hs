@@ -31,7 +31,7 @@ import qualified Data.List as L
 mnemonicPage :: MonadFrontBase t m => m ()
 mnemonicPage = go Nothing
   where
-    go mnemonic = wrapperSimple False $ do
+    go mnemonic = wrapperSimple True $ do
       (e, md) <- mnemonicWidget mnemonic
       nextWidget $ ffor e $ \mn -> Retractable {
           retractableNext = checkPage mn

@@ -32,7 +32,7 @@ import Network.Haskoin.Address.Base58
 import Network.Haskoin.Keys
 
 sharePage :: MonadFront t m => Currency -> m ()
-sharePage cur = wrapper (ShareTitle cur) (Just $ pure $ sharePage cur) False $ divClass "share-content" $ do
+sharePage cur = wrapper False (ShareTitle cur) (Just $ pure $ sharePage cur) $ do
   pubStorage <- getPubStorage
   let xPubKeyMb  = pubKeystore'master . _currencyPubStorage'pubKeystore
         <$> M.lookup cur (_pubStorage'currencyPubStorages pubStorage)
@@ -59,10 +59,10 @@ sharePage cur = wrapper (ShareTitle cur) (Just $ pure $ sharePage cur) False $ d
 #else
       divClass "" $ do
 #endif
-        copyButE <- fmap (shareUrl <$) $ outlineButtonWithIcon ShareCopy "fas fa-copy"
+        copyButE <- fmap (shareUrl <$) $ outlineTextIconButton ShareCopy "fas fa-copy"
         _ <- clipboardCopy $ leftmost [copyLineE, copyButE]
 #ifdef ANDROID
-        shareE <- fmap (shareUrl <$) $ outlineButtonWithIcon ShareShare "fas fa-share-alt"
+        shareE <- fmap (shareUrl <$) $ outlineTextIconButton ShareShare "fas fa-share-alt"
         _ <- shareShareUrl shareE
 #endif
         pure ()

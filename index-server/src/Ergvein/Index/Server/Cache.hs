@@ -29,7 +29,6 @@ import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.Utils
 import Ergvein.Text
-import Database.LevelDB.Internal
 import Ergvein.Index.Server.DB.Conversions
 
 import qualified Data.Conduit.Internal as DCI
@@ -46,7 +45,7 @@ cacheTxInfos :: MonadIO m => DB -> [TxInfo] -> m ()
 cacheTxInfos db infos = do
   write db def $ putItems (cachedTxKey . txHash) (convert @TxInfo @TxCacheRec) infos
 
-addToCache :: (MonadLDB m) => BlockInfo -> m ()
+addToCache :: (MonadLDB m, MonadLogger m) => BlockInfo -> m ()
 addToCache update = do
   db <- getDb
   updateTxSpends (spentTxsHash update) $ blockContentTxInfos update

@@ -7,7 +7,6 @@ module Ergvein.Wallet.Page.Password(
   ) where
 
 import Control.Monad.IO.Class
-import Data.Map as Map
 
 import Ergvein.Crypto.Keys     (Mnemonic)
 import Ergvein.Types.Currency

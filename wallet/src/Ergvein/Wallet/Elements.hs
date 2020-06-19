@@ -31,7 +31,9 @@ module Ergvein.Wallet.Elements(
   , ul
   , par
   , form
+  , formClass
   , fieldset
+  , fieldsetClass
   , label
   , imgClass
   , colonize
@@ -41,8 +43,10 @@ module Ergvein.Wallet.Elements(
   , clearButton
   , divButton
   , spanButton
-  , outlineButtonWithIcon
-  , outlineButtonWithIconNoText
+  , outlineTextIconButton
+  , outlineTextIconButtonClass
+  , outlineSubmitTextIconButtonClass
+  , outlineIconButtonClass
   , hyperlink
   , module Ergvein.Wallet.Util
   ) where
@@ -131,8 +135,14 @@ par = el "p"
 form :: DomBuilder t m => m a -> m a
 form = elAttr "form" [("onsubmit", "return false;")]
 
+formClass :: DomBuilder t m => Text -> m a -> m a
+formClass classVal = elAttr "form" [("onsubmit", "return false;"), ("class", classVal)]
+
 fieldset :: DomBuilder t m => m a -> m a
 fieldset = el "fieldset"
+
+fieldsetClass :: DomBuilder t m => Text -> m a -> m a
+fieldsetClass classVal = elAttr "fieldset" [("class", classVal)]
 
 label :: DomBuilder t m => Text -> m a -> m a
 label i = elAttr "label" ("for" =: i)
@@ -199,7 +209,7 @@ divButton = mkButton "div" []
 -- The first parameter is the button text
 -- The second parameter is the icon class
 -- Usage example:
--- >>> outlineButtonWithIcon BtnPasteString "fas fa-clipboard"
+-- >>> outlineTextIconButton BtnPasteString "fas fa-clipboard"
 -- As a result, such an element will be created:
 -- <button class="button button-outline href="return false;">
 --   Scan QR code
@@ -207,16 +217,30 @@ divButton = mkButton "div" []
 --     <i class="fas fa-qrcode"></i>
 --   </span>
 -- </button>
-outlineButtonWithIcon :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
+outlineTextIconButtonClass :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
+  => Dynamic t Text -> lbl -> Text -> m (Event t ())
+outlineTextIconButtonClass classValD lbl i =
+  mkButton "button" [("onclick", "return false;")] (("button button-outline " <>) <$> classValD) $ do
+    dynText =<< localized lbl
+    elClass "span" "button-icon-wrapper" $ elClass "i" i blank
+
+outlineTextIconButton :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
   => lbl -> Text -> m (Event t ())
-outlineButtonWithIcon lbl i =
+outlineTextIconButton lbl i =
   mkButton "button" [("onclick", "return false;")] "button button-outline" $ do
     dynText =<< localized lbl
     elClass "span" "button-icon-wrapper" $ elClass "i" i blank
 
-outlineButtonWithIconNoText :: (DomBuilder t m, PostBuild t m) => Text -> m (Event t ())
-outlineButtonWithIconNoText i =
-  mkButton "button" [("onclick", "return false;")] "button button-outline" $ elClass "i" i blank
+outlineIconButtonClass :: (DomBuilder t m, PostBuild t m) => Dynamic t Text -> Text -> m (Event t ())
+outlineIconButtonClass classValD i =
+  mkButton "button" [("onclick", "return false;")] (("button button-outline " <>) <$> classValD) $ elClass "i" i blank
+
+outlineSubmitTextIconButtonClass :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
+  => Dynamic t Text -> lbl -> Text -> m (Event t ())
+outlineSubmitTextIconButtonClass classValD lbl i =
+  mkButton "button" [("onclick", "return false;"), ("type", "submit")] (("button button-outline " <>) <$> classValD) $ do
+    dynText =<< localized lbl
+    elClass "span" "button-icon-wrapper" $ elClass "i" i blank
 
 -- | Link with custom click handler which opens link in external browser
 hyperlink :: (MonadFrontBase t m, PlatformNatives, MonadLocalized t m)
