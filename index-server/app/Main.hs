@@ -52,6 +52,7 @@ onStartup env = do
   scanningThreads <- blockchainScanning
   syncWithDefaultPeers
   refreshKnownPeersCache
+  feesScanning
   peerIntroduce
   knownPeersActualization
   liftIO $ onSigTERMHandler env scanningThreads

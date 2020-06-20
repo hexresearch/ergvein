@@ -1,40 +1,44 @@
 module Ergvein.Index.Server.Server.V1 where
 
+import Control.Concurrent.STM
+import Control.Monad.IO.Unlift
+import Control.Monad.Reader
+import Control.Monad.Trans.Except
 import Data.Flat
 import Data.List
+import Data.Map.Strict (Map, restrictKeys)
 import Data.Maybe
 import Data.Monoid
+import Data.Proxy
+import Data.Time.Clock
 import Data.Word
 import Database.Persist.Sql
+import Servant.API
+import Servant.API.Generic
+import Servant.Client
 
 import Ergvein.Index.API
 import Ergvein.Index.API.Types
 import Ergvein.Index.API.V1
+import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.Cache.Queries
 import Ergvein.Index.Server.Cache.Schema
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema
-import Ergvein.Index.Server.Monad
-import Ergvein.Text
-import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
-import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.Dependencies
-
-import Data.Proxy
-import Servant.API
-import Servant.API.Generic
-import Servant.Client
-
-import qualified Network.Haskoin.Block as Btc
-import qualified Data.Serialize as S 
+import Ergvein.Index.Server.Environment
+import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Discovery
 import Ergvein.Index.Server.PeerDiscovery.Types
-import Debug.Trace
-import Control.Monad.IO.Unlift
-import Control.Monad.Trans.Except
-import Data.Time.Clock
+import Ergvein.Text
+import Ergvein.Types.Currency
+import Ergvein.Types.Fees
+import Ergvein.Types.Transaction
+
+import qualified Network.Haskoin.Block as Btc
+import qualified Data.Serialize as S
+import qualified Data.Set as Set
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
@@ -43,6 +47,7 @@ indexServer = IndexApi
     , indexGetInfo = indexGetInfoEndpoint
     , indexIntroducePeer = introducePeerEndpoint
     , indexKnownPeers = knownPeersEndpoint
+    , indexGetFees    = getFeesEndpoint
     }
 
 --Endpoints
@@ -53,7 +58,7 @@ indexGetHeightEndpoint (HeightRequest currency) = do
 
 getBlockMetaSlice :: Currency -> BlockHeight -> BlockHeight -> ServerM [BlockMetaCacheRec]
 getBlockMetaSlice currency startHeight endHeight = do
-  let start = cachedMetaKey (currency, startHeight) 
+  let start = cachedMetaKey (currency, startHeight)
       end   = BlockMetaCacheRecKey currency $ startHeight + pred endHeight
   slice <- safeEntrySlice start end
   let metaSlice = snd <$> slice
@@ -66,7 +71,7 @@ indexGetBlockFiltersEndpoint request = do
     pure blockFilters
 
 indexGetInfoEndpoint :: ServerM InfoResponse
-indexGetInfoEndpoint = do 
+indexGetInfoEndpoint = do
   scanInfo <- scanningInfo
   let mappedScanInfo = scanNfoItem <$> scanInfo
   pure $ InfoResponse mappedScanInfo
@@ -79,7 +84,7 @@ introducePeerEndpoint request = do
   pure $ peerValidationToResponce result
 
 peerValidationToResponce :: Either PeerValidationResult () -> IntroducePeerResp
-peerValidationToResponce = \case 
+peerValidationToResponce = \case
   Right ()   -> IntroducePeerResp True Nothing
   Left error -> IntroducePeerResp False $ Just $ case error of
     UrlFormatError ->
@@ -88,7 +93,7 @@ peerValidationToResponce = \case
       "Peer with such address already known"
     InfoEndpointError ->
       "Unable to establish connection to Info endpoint"
-    CurrencyOutOfSync outOfSync -> 
+    CurrencyOutOfSync outOfSync ->
       "Currency " <> show (outOfsyncCurrency outOfSync) <> "scanned height much less then " <> show (outOfSyncLocalHeight outOfSync)
     CurrencyMissing currency ->
       "Currency " <> show currency <> "is missing"
@@ -97,6 +102,12 @@ peerValidationToResponce = \case
 
 
 knownPeersEndpoint :: KnownPeersReq -> ServerM KnownPeersResp
-knownPeersEndpoint request = do 
+knownPeersEndpoint request = do
   result <- getKnownPeers $ knownPeersWithSecuredOnly request
   pure $ KnownPeersResp result
+
+getFeesEndpoint :: [Currency] -> ServerM IndexFeesResp
+getFeesEndpoint curs = do
+  feeVar <- asks envFeeEstimates
+  fees <- liftIO $ readTVarIO feeVar
+  pure $ IndexFeesResp $ restrictKeys fees $ Set.fromList curs

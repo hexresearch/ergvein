@@ -1,13 +1,16 @@
 module Ergvein.Index.API.Types where
 
-import Ergvein.Aeson
-import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
-import Ergvein.Types.Block
-import GHC.Generics
-import Data.Word
+import Data.Map.Strict (Map)
 import Data.Maybe
+import Data.Word
+import GHC.Generics
 import Servant.Client.Core
+
+import Ergvein.Aeson
+import Ergvein.Types.Block
+import Ergvein.Types.Currency
+import Ergvein.Types.Fees
+import Ergvein.Types.Transaction
 
 -- Height
 newtype HeightRequest = HeightRequest
@@ -62,7 +65,14 @@ data KnownPeersReq = KnownPeersReq
     } deriving (Eq, Show, Generic)
 $(deriveJSON (aesonOptionsStripPrefix "knownPeersReq") ''KnownPeersReq)
 
-newtype KnownPeersResp = KnownPeersResp 
+newtype KnownPeersResp = KnownPeersResp
     { knownPeersList :: [String]
     } deriving (Eq, Show, Generic)
 $(deriveJSON (aesonOptionsStripPrefix "knownPeersResp") ''KnownPeersResp)
+
+-- Fees
+
+newtype IndexFeesResp = IndexFeesResp
+  { indexFeesRespFees :: Map Currency FeeBundle
+  } deriving (Eq, Show, Generic)
+$(deriveJSON (aesonOptionsStripPrefix "indexFeesResp") ''IndexFeesResp)

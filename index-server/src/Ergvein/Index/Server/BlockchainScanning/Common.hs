@@ -91,7 +91,15 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
       liftIO $ threadDelay $ cfgBlockchainScanDelay cfg
 
 blockchainScanning :: ServerM [Thread]
-blockchainScanning = sequenceA 
+blockchainScanning = sequenceA
   [ scannerThread BTC  BTCScanning.blockInfo
   , scannerThread ERGO ERGOScanning.blockInfo
+  ]
+
+feesThread :: ServerM () -> ServerM Thread
+feesThread feescan = create $ logOnException . const feescan
+
+feesScanning :: ServerM [Thread]
+feesScanning = sequenceA
+  [ feesThread BTCScanning.feeScaner
   ]
