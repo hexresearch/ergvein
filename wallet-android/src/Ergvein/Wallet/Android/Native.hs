@@ -147,7 +147,8 @@ instance PlatformNatives where
   cameraGetResult = liftIO $ do
     a <- getHaskellActivity
     r <- androidCameraGetResult a
-    decodeText r
+    t <- decodeText r
+    pure $ T.takeWhileEnd (/= ':') t
 
   logWrite v = liftIO $ encodeText v androidLogWrite
   {-# INLINE logWrite #-}

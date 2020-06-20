@@ -3,7 +3,7 @@ module Ergvein.Wallet.Page.Balances(
     balancesPage
   ) where
 
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 
 import Ergvein.Text
 import Ergvein.Types.Address
@@ -56,7 +56,7 @@ balancesPage = do
   c <- liftIO $ loadCounter
   liftIO $ saveCounter $ PatternTries $ Map.insert anon_name 0 (patterntriesCount c)
 #endif
-  wrapper BalancesTitle (Just $ pure balancesPage) False $ divClass "balances-wrapper" $ do
+  wrapper False BalancesTitle (Just $ pure balancesPage) $ do
     syncWidget =<< getSyncProgress
     currenciesList anon_name
 
