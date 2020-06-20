@@ -433,7 +433,10 @@ sendPageCss = do
     important $ backgroundColor gray
     important $ color white
   ".lbl-red" ? color red
-  
+  ".btn-fee" ? do
+    marginLeft $ rem 0.5
+    marginRight $ rem 0.5
+
 aboutPageCss :: Css
 aboutPageCss = do
   ".about-wrapper" ? do

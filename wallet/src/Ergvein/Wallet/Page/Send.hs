@@ -120,21 +120,24 @@ data FeeSelectorStatus = FSSNoEntry | FSSNoCache | FSSNoManual | FSSManual Int |
 btcFeeSelectionWidget :: forall t m . MonadFront t m => Event t () -> m (Dynamic t (Maybe Int))
 btcFeeSelectionWidget sendE = do
   feesD <- getFeesD
-  divClass "fee-widget" $ mdo
+  divClass "fee-widget" $ do
     el "label" $ localizedText FSLevel
-    let lvlE = leftmost [lowE, midE, highE, manE]
-    lvlD <- holdDyn Nothing lvlE
-    let attrD' m = ffor lvlD $ \m' -> if m' == Just m then "button button-outline btn-fee-on" else "button button-outline"
-    lowE  <- fmap (Just BFMLow <$)    $ buttonClass (attrD' BFMLow)    BFMLow
-    midE  <- fmap (Just BFMMid <$)    $ buttonClass (attrD' BFMMid)    BFMMid
-    highE <- fmap (Just BFMHigh <$)   $ buttonClass (attrD' BFMHigh)   BFMHigh
-    manE  <- fmap (Just BFMManual <$) $ buttonClass (attrD' BFMManual) BFMManual
-    statD <- fmap join $ widgetHoldDyn $ ffor lvlD $ \case
-      Nothing         -> pure (pure FSSNoEntry)
-      Just BFMManual  -> manualFeeSelector
-      Just BFMLow     -> pure $ extractFeeD feesD FeeCheap
-      Just BFMMid     -> pure $ extractFeeD feesD FeeModerate
-      Just BFMHigh    -> pure $ extractFeeD feesD FeeFast
+    statD <- el "div" $ mdo
+      let lvlE = leftmost [lowE, midE, highE, manE]
+      lvlD <- holdDyn Nothing lvlE
+      let attrD m = ffor lvlD $ \m' -> if m' == Just m
+            then "button button-outline btn-fee btn-fee-on"
+            else "button button-outline btn-fee"
+      lowE  <- fmap (Just BFMLow <$)    $ buttonClass (attrD BFMLow)    BFMLow
+      midE  <- fmap (Just BFMMid <$)    $ buttonClass (attrD BFMMid)    BFMMid
+      highE <- fmap (Just BFMHigh <$)   $ buttonClass (attrD BFMHigh)   BFMHigh
+      manE  <- fmap (Just BFMManual <$) $ buttonClass (attrD BFMManual) BFMManual
+      fmap join $ widgetHoldDyn $ ffor lvlD $ \case
+        Nothing         -> pure (pure FSSNoEntry)
+        Just BFMManual  -> manualFeeSelector
+        Just BFMLow     -> pure $ extractFeeD feesD FeeCheap
+        Just BFMMid     -> pure $ extractFeeD feesD FeeModerate
+        Just BFMHigh    -> pure $ extractFeeD feesD FeeFast
     attrD <- holdDyn [] $ leftmost [[("class", "lbl-red")] <$ sendE, [] <$ updated statD]
     divClass "fee-descr" $ el "label" $ widgetHoldDyn $ ffor statD $ \case
       FSSNoEntry  -> elDynAttr "label" attrD (localizedText FSSelect)   >> pure Nothing
@@ -147,4 +150,4 @@ btcFeeSelectionWidget sendE = do
       maybe FSSNoCache (FSSLvl . (lvl,) . fromIntegral . fst . extractFee lvl) . M.lookup BTC
 
 manualFeeSelector :: MonadFront t m => m (Dynamic t FeeSelectorStatus)
-manualFeeSelector = (fmap . fmap) (maybe FSSNoManual FSSManual . readMaybe . T.unpack) $ textFieldNoLabel ""
+manualFeeSelector = (fmap . fmap) (maybe FSSNoManual FSSManual . readMaybe . T.unpack) $ el "div" $ textFieldNoLabel ""
