@@ -1,5 +1,6 @@
 module Ergvein.Index.Server.Monad where
 
+import Control.Concurrent.STM
 import Control.Monad.Catch hiding (Handler)
 import Control.Monad.Except
 import Control.Monad.IO.Unlift
@@ -15,7 +16,10 @@ import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
+import Ergvein.Types.Currency
+import Ergvein.Types.Fees
 
+import qualified Data.Map.Strict as M
 import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 import qualified Network.Ergo.Api.Client     as ErgoApi
 
@@ -58,10 +62,10 @@ instance HasServerConfig ServerM where
   {-# INLINE serverConfig #-}
 
 instance BitcoinApiMonad ServerM where
-  nodeRpcCall f = do 
+  nodeRpcCall f = do
     cfg <- asks $ envServerConfig
 
-    liftIO $ BitcoinApi.withClient 
+    liftIO $ BitcoinApi.withClient
      (cfgBTCNodeHost     cfg)
      (cfgBTCNodePort     cfg)
      (cfgBTCNodeUser     cfg)
@@ -79,3 +83,16 @@ instance HasDiscoveryRequisites ServerM where
 instance MonadUnliftIO ServerM where
   askUnliftIO = ServerM $ (\(UnliftIO run) -> UnliftIO $ run . unServerM) <$> askUnliftIO
   withRunInIO go = ServerM $ withRunInIO (\k -> go $ k . unServerM)
+
+-- Fee functionality
+class MonadFees m where
+  getFees :: m (M.Map Currency FeeBundle)
+  setFees :: Currency -> FeeBundle -> m ()
+
+instance MonadFees ServerM where
+  getFees = do
+    feeVar <- asks envFeeEstimates
+    liftIO $ readTVarIO feeVar
+  setFees cur fb = do
+    feeVar <- asks envFeeEstimates
+    liftIO $ atomically $ modifyTVar feeVar $ M.insert cur fb

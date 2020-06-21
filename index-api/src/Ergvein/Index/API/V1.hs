@@ -3,6 +3,7 @@ module Ergvein.Index.API.V1 where
 import Servant.API
 import Servant.API.Generic
 import Ergvein.Index.API.Types
+import Ergvein.Types.Currency
 
 type Body a = ReqBody '[JSON] a
 type PostResp a = Post '[JSON] a
@@ -17,10 +18,13 @@ type IndexIntroducePeer     = "introducePeer"   :> Body IntroducePeerReq :> Post
 
 type IndexKnownPeers        = "knownPeers" :> Body KnownPeersReq :> PostResp KnownPeersResp
 
+type IndexGetFees           = "fees"      :> Body [Currency] :> PostResp IndexFeesResp
+
 data IndexApi route = IndexApi
     { indexGetHeight         :: route :- IndexGetHeight
     , indexGetBlockFilters   :: route :- IndexGetBlockFilters
     , indexGetInfo           :: route :- IndexGetInfo
     , indexIntroducePeer     :: route :- IndexIntroducePeer
     , indexKnownPeers        :: route :- IndexKnownPeers
+    , indexGetFees           :: route :- IndexGetFees
     } deriving Generic
