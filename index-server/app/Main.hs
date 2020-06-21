@@ -14,7 +14,6 @@ import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Discovery
-import Ergvein.Index.Server.PosixSingalHandlers
 
 import qualified Data.Text.IO as T
 import Data.Text (Text, pack)
@@ -47,7 +46,8 @@ main = do
         ( fullDesc
        <> progDesc "Starts Ergvein index server"
        <> header "ergvein-index-server - cryptocurrency index server for ergvein client" )
-onStartup :: ServerEnv -> ServerM ()
+
+onStartup :: ServerEnv -> ServerM [Thread]
 onStartup env = do
   scanningThreads <- blockchainScanning
   syncWithDefaultPeers
@@ -55,16 +55,17 @@ onStartup env = do
   feesScanning
   peerIntroduce
   knownPeersActualization
-  liftIO $ onSigTERMHandler env scanningThreads
-  pure ()
+  pure scanningThreads
 
 startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
     CommandListen cfgPath ->  do
       cfg <- loadConfig cfgPath
       env <- runStdoutLoggingT $ newServerEnv cfg
-      runServerMIO env $ onStartup env
+      workerThreads <- runServerMIO env $ onStartup env
       T.putStrLn $ pack $ "Server started at " <> cfgDbHost cfg <> ":" <> (show . cfgServerPort $ cfg)
-      let app = logStdoutDev $ indexServerApp env
-          warpSettings = setPort (cfgServerPort cfg) defaultSettings
+
+      let settings = appSettings $ onShutdown env workerThreads
+          app = logStdoutDev $ indexServerApp env
+          warpSettings = setPort (cfgServerPort cfg) settings
       runSettings warpSettings app
