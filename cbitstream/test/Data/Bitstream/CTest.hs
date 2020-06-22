@@ -111,7 +111,25 @@ spec_basicTests = describe "basic tests" $ do
     isnull <- BS.null bs'
     rw `shouldBe` ws
     isnull `shouldBe` True
-  it "encodes 0 to bs" $ do
+  it "encodes 8 bit 0 to bs" $ do
+    let ws = [0] :: [Word8]
+    bs <- BS.empty 1
+    bs' <- foldM (flip BS.writeBits) bs ws
+    v <- BS.toByteString bs'
+    v `shouldBe` ByteString.pack (replicate 1 (0 :: Word8))
+  it "encodes 16 bit 0 to bs" $ do
+    let ws = [0] :: [Word16]
+    bs <- BS.empty 1
+    bs' <- foldM (flip BS.writeBits) bs ws
+    v <- BS.toByteString bs'
+    v `shouldBe` ByteString.pack (replicate 2 (0 :: Word8))
+  it "encodes 32 bit 0 to bs" $ do
+    let ws = [0] :: [Word32]
+    bs <- BS.empty 1
+    bs' <- foldM (flip BS.writeBits) bs ws
+    v <- BS.toByteString bs'
+    v `shouldBe` ByteString.pack (replicate 4 (0 :: Word8))
+  it "encodes 64 bit 0 to bs" $ do
     let ws = [0] :: [Word64]
     bs <- BS.empty 1
     bs' <- foldM (flip BS.writeBits) bs ws
@@ -146,5 +164,4 @@ prop_encodingDecodingWordsBs ws = idempotentIOProperty $ do
   bs' <- foldM (flip BS.writeBits) bs ws'
   v1 <- BS.toByteString bs'
   v2 <- BS.toByteString =<< BS.fromByteString v1
-  print (v1, v2)
   pure $ v1 == v2
