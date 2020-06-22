@@ -60,6 +60,7 @@ onStartup env = do
 startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
     CommandListen cfgPath ->  do
+      T.putStrLn $ pack "Server starting"
       cfg <- loadConfig cfgPath
       env <- runStdoutLoggingT $ newServerEnv cfg
       workerThreads <- runServerMIO env $ onStartup env
