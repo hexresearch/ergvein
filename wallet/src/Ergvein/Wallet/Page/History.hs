@@ -238,7 +238,7 @@ transactionsGetting cur = do
   buildE <- delay 0.2 =<< getPostBuild
   ps <- getPubStorage
   pubSD <- getPubStorageD
-  let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _ _) -> case M.lookup BTC cm of
+  let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _ _) -> case Map.lookup BTC cm of
         Nothing -> []
         Just (CurrencyPubStorage keystore txmap _ _) -> extractAddrs keystore
   abS <- filtArd <$> sampleDyn allBtcAddrsD
