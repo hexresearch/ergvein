@@ -332,7 +332,7 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
 
   modifyPubStorage fe = do
     authRef <- asks env'authRef
-    performFork $ ffor fe $ \f -> do
+    performEvent $ ffor fe $ \f -> do
       ai' <- modifyExternalRefMaybe authRef $ \ai ->
         let mps' = f (ai ^. authInfo'storage . storage'pubStorage)
         in (\a -> (a, a)) . (\ps' -> ai & authInfo'storage . storage'pubStorage .~ ps') <$> mps'
