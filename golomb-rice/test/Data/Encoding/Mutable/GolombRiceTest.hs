@@ -71,6 +71,14 @@ prop_encodingDecodingWords wss = idempotentIOProperty $ do
   res <- G.toList =<< G.fromList p ws
   pure $ res == ws
 
+prop_encodingDecodingWordsBs :: [Small Word64] -> Property
+prop_encodingDecodingWordsBs wss = idempotentIOProperty $ do
+  let ws = fmap (\(Small a) -> a) wss
+  gs1 <- G.fromList p ws
+  bs1 <- G.toByteString gs1
+  gs2 :: GRWord <- G.fromByteString (golombRiceP gs1) bs1
+  bs2 <- G.toByteString gs2
+  pure $ bs1 == bs2
 #else
 
 spec_basicEncoding :: Spec
@@ -87,5 +95,8 @@ prop_singletonHeadWord = const True
 
 prop_encodingDecodingWords :: [Small Word64] -> Bool
 prop_encodingDecodingWords = const True
+
+prop_encodingDecodingWordsBs :: [Small Word64] -> Property
+prop_encodingDecodingWordsBs = const True
 
 #endif
