@@ -104,9 +104,10 @@ makeLenses ''PubStorage
 
 $(deriveJSON aesonOptionsStripToApostroph ''PubStorage)
 
--- | Get external pub storage keys
-pubStorageKeys :: Currency -> PubStorage -> Vector EgvXPubKey
-pubStorageKeys c = maybe mempty externalKeys . fmap _currencyPubStorage'pubKeystore . M.lookup c . _pubStorage'currencyPubStorages
+-- | Get pub storage keys
+pubStorageKeys :: Currency -> KeyPurpose -> PubStorage -> Vector EgvXPubKey
+pubStorageKeys c p = maybe mempty keys . fmap _currencyPubStorage'pubKeystore . M.lookup c . _pubStorage'currencyPubStorages
+  where keys = if p == External then externalKeys else pubKeystore'internal
 
 pubStoragePubMaster :: Currency -> PubStorage -> Maybe EgvXPubKey
 pubStoragePubMaster c = fmap pubKeystore'master . pubStorageKeyStorage c
@@ -137,6 +138,9 @@ pubStorageSetKeyScanned c v ps = ps {
     f cps = cps {
         _currencyPubStorage'scannedKey = v
       }
+
+pubStorageTxs :: Currency -> PubStorage -> Maybe (M.Map TxId EgvTx)
+pubStorageTxs c = fmap _currencyPubStorage'transactions . M.lookup c . _pubStorage'currencyPubStorages
 
 data WalletStorage = WalletStorage {
     _storage'encryptedPrvStorage :: EncryptedPrvStorage
