@@ -10,6 +10,7 @@ import           Test.Tasty.Hspec
 import           Test.Tasty.QuickCheck
 
 import qualified Data.Bitstream.C as BS
+import qualified Data.ByteString as ByteString
 
 spec_basicTests :: Spec
 spec_basicTests = describe "basic tests" $ do
@@ -76,6 +77,11 @@ spec_basicTests = describe "basic tests" $ do
     bs' <- BS.writeNBits 3 0b1001 =<< BS.writeNBits 3 0b1111 bs
     res <- BS.unpack bs'
     res `shouldBe` [True, True, True, False, False, True]
+  it "writeBits 0" $ do
+    bs <- BS.empty 1
+    bs' <- BS.writeBits (0 :: Word64) bs
+    res :: Word64 <- BS.readBits bs'
+    res `shouldBe` 0
   it "writeBits 524388" $ do
     bs <- BS.empty 1
     bs' <- BS.writeBits (524388 :: Word64) bs
@@ -105,7 +111,16 @@ spec_basicTests = describe "basic tests" $ do
     isnull <- BS.null bs'
     rw `shouldBe` ws
     isnull `shouldBe` True
-
+  it "encodes 0 to bs" $ do
+    let ws = [0] :: [Word64]
+    bs <- BS.empty 1
+    bs' <- foldM (flip BS.writeBits) bs ws
+    v <- BS.toByteString bs'
+    v `shouldBe` ByteString.pack (replicate 8 (0 :: Word8))
+  it "decodes 0 from bs" $ do
+    bs <- BS.fromByteString $ ByteString.pack [0 :: Word8]
+    ws <- BS.unpack bs
+    ws `shouldBe` (replicate 8 False)
 
 prop_encodingDecodingWord :: Small Word64 -> Property
 prop_encodingDecodingWord (Small w) = idempotentIOProperty $ do
@@ -123,3 +138,13 @@ prop_encodingDecodingWords ws = idempotentIOProperty $ do
   rw <- replicateM (length ws) $ BS.readBits bs'
   isnull <- BS.null bs'
   pure $ rw == ws' && isnull
+
+prop_encodingDecodingWordsBs :: [Small Word64] -> Property
+prop_encodingDecodingWordsBs ws = idempotentIOProperty $ do
+  let ws' = fmap (\(Small w) -> w) ws
+  bs <- BS.empty 16
+  bs' <- foldM (flip BS.writeBits) bs ws'
+  v1 <- BS.toByteString bs'
+  v2 <- BS.toByteString =<< BS.fromByteString v1
+  print (v1, v2)
+  pure $ v1 == v2
