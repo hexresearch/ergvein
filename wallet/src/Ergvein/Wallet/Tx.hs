@@ -5,6 +5,8 @@ module Ergvein.Wallet.Tx
 
 import Control.Monad.IO.Class
 import Data.List
+import Network.Haskoin.Transaction (Tx(..), TxIn, TxOut)
+
 import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Wallet.Blocks.BTC
@@ -18,7 +20,7 @@ import qualified Network.Haskoin.Transaction        as HT
 import qualified Network.Haskoin.Address            as HA
 
 -- | Checks given tx if there are some inputs or outputs containing given address.
-checkAddrTx :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> HT.Tx -> m Bool
+checkAddrTx :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> Tx -> m Bool
 checkAddrTx addr tx = do
   checkTxInputsResults <- traverse (checkTxIn addr) (HT.txIn tx)
   checkTxOutputsResults <- traverse (checkTxOut addr) (HT.txOut tx)
@@ -27,7 +29,7 @@ checkAddrTx addr tx = do
 
 -- | Checks given TxIn wheather it contains given address.
 -- Native SegWit addresses are not presented in TxIns scriptSig.
-checkTxIn :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> HT.TxIn -> m Bool
+checkTxIn :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> TxIn -> m Bool
 checkTxIn addr txIn = do
   let spentOutput = HT.prevOutput txIn
       spentTxHash = HT.outPointHash spentOutput
@@ -53,7 +55,7 @@ checkTxIn addr txIn = do
 --           (BtcAddress (HA.PubKeyAddress _)) _
 --           (BtcAddress (HA.ScriptAddress _)) _
 --           (ErgAddress _) _
-checkTxOut :: (MonadIO m, PlatformNatives) => EgvAddress -> HT.TxOut -> m Bool
+checkTxOut :: (MonadIO m, PlatformNatives) => EgvAddress -> TxOut -> m Bool
 checkTxOut (BtcAddress (HA.WitnessPubKeyAddress pkh)) txO = case HS.decodeOutputBS $ HT.scriptOutput txO of
   Left e -> do
     logWrite $ "Could not decode transaction output " <> (showt e)
