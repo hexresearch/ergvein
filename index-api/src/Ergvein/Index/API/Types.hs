@@ -36,7 +36,7 @@ type BlockFiltersResponse = [(BlockHash, AddressFilterHexView)]
 --Info
 data ScanProgressItem = ScanProgressItem
     { scanProgressCurrency      :: !Currency
-    , scanProgressScannedHeight :: !BlockHeight
+    , scanProgressScannedHeight :: !(Maybe BlockHeight)
     , scanProgressActualHeight  :: !BlockHeight
     } deriving (Eq, Show, Generic)
 $(deriveJSON (aesonOptionsStripPrefix "infoRespScanProgressItem") ''ScanProgressItem)
