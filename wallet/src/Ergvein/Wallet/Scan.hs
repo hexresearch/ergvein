@@ -107,7 +107,7 @@ scanningAllBtcKeys i0 = do
   performEvent_ $ ffor scanE $ \(h, bls) -> logWrite $ "Scanned all keys up to " <> showt h <> ", blocks to check: " <> showt bls
   scanningBtcBlocks (V.indexed keys) hashesE
 
--- | Check all keys stored in public storage agains unscanned filters and return 'True' if we found any tx (stored in public storage).
+-- | Check single key against unscanned filters and return 'True' if we found any tx (stored in public storage).
 scanningBtcKey :: MonadFront t m => HB.BlockHeight -> Int -> EgvXPubKey -> m (Event t Bool)
 scanningBtcKey i0 keyNum pubkey = do
   (updE, updFire) <- newTriggerEvent
@@ -134,67 +134,6 @@ scanningBtcBlocks keys hashesE = do
   txsE <- getAddressesTxs $ (keymap,) <$> blocksE
   storedE <- insertTxsInPubKeystore $ (BTC,) . fmap M.keys <$> txsE
   pure $ leftmost [not . M.null <$> txsE, False <$ noScanE]
-
-type CurrentGap = Int
-type AddressNum = Int
-
-scanInternalAddressesByE :: MonadFront t m => Event t (Currency, CurrencyPubStorage) -> m (Event t (Currency, CurrencyPubStorage))
-scanInternalAddressesByE = performEvent . fmap scanInternalAddresses
-
-scanInternalAddresses :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => (Currency, CurrencyPubStorage) -> m (Currency, CurrencyPubStorage)
-scanInternalAddresses (currency, currencyPubStorage) = do
-  let startKeyIndex = 0
-  newKeystore <- scanInternalAddressesLoop currencyPubStorage startKeyIndex 0
-  pure (currency, newKeystore)
-
-scanInternalAddressesLoop :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => CurrencyPubStorage -> Int -> Int -> m CurrencyPubStorage
-scanInternalAddressesLoop currencyPubStorage keyIndex gap
-  | gap == gapLimit = pure currencyPubStorage
-  | otherwise = do
-    let pubKeystore = currencyPubStorage ^. currencyPubStorage'pubKeystore
-        masterPubKey = pubKeystore'master pubKeystore
-        key = derivePubKey masterPubKey Internal (fromIntegral keyIndex)
-        address = egvXPubKeyToEgvAddress key
-        txs = currencyPubStorage ^. currencyPubStorage'transactions
-        updatedPubKeystore = addXPubKeyToKeystore Internal key pubKeystore
-        updatedPubStorage = currencyPubStorage & currencyPubStorage'pubKeystore .~ updatedPubKeystore
-    logWrite $ "Scanning internal address #" <> showt keyIndex <> ": \"" <> egvAddrToString address <> "\""
-    checkResults <- traverse (checkAddrTx address) $ egvTxsToBtcTxs txs -- TODO: use DMap instead of Map in CurrencyPubStorage
-    if (M.size $ M.filter id checkResults) > 0
-      then scanInternalAddressesLoop updatedPubStorage (keyIndex + 1) 0
-      else scanInternalAddressesLoop updatedPubStorage (keyIndex + 1) (gap + 1)
-
--- TODO: This function will not be needed after using DMap as a CurrencyPubStorage
-egvTxsToBtcTxs :: M.Map TxId EgvTx -> M.Map TxId BtcTx
-egvTxsToBtcTxs egvTxMap = M.mapMaybe egvTxToBtcTx egvTxMap
-  where egvTxToBtcTx tx = case tx of
-          BtcTx t -> Just t
-          _ -> Nothing
-
--- | If the given event fires and there is not fully synced filters. Wait for the synced filters and then fire the event.
-waitFilters :: MonadFront t m => Currency -> Event t a -> m (Event t a)
-waitFilters c e = mdo
-  eD <- holdDyn Nothing $ leftmost [Just <$> e, Nothing <$ passValE']
-  syncedD <- getFiltersSync c
-  let passValE = fmapMaybe id $ updated $ foo <$> eD <*> syncedD
-      notSyncE = attachWithMaybe
-        (\b _ -> if b then Nothing else Just "Waiting filters sync...") (current syncedD) e
-  performEvent_ $ logWrite <$> notSyncE
-  passValE' <- delay 0.01 passValE
-  pure passValE
-  where
-    foo :: Maybe a -> Bool -> Maybe a
-    foo ma b = case (ma,b) of
-      (Just a, True) -> Just a
-      _ -> Nothing
-
--- | Gets a list of block hashes containing transactions related to given address.
-filterAddress :: MonadFront t m => Event t EgvAddress -> m (Event t [HB.BlockHash])
-filterAddress addrE = performFork $ ffor addrE Filters.filterAddress
-
--- | Gets transactions related to given address from given block list.
-getTxs :: MonadFront t m => Event t (a, EgvAddress, [HB.Block]) -> m (Event t (a, M.Map TxId EgvTx))
-getTxs = performFork . fmap (\(a, addr, bls) -> fmap (a,) $ getAddrTxsFromBlocks addr bls)
 
 -- | Extract transactions that correspond to given address.
 getAddressesTxs :: MonadFront t m => Event t (M.Map a EgvAddress, [HB.Block]) -> m (Event t (M.Map a (M.Map TxId EgvTx)))

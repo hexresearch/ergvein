@@ -27,7 +27,7 @@ import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Functor.Misc (Const2(..))
 import Data.Map (Map)
-import Data.Maybe (fromMaybe, isNothing)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Network.Socket (SockAddr)
 import Language.Javascript.JSaddle
