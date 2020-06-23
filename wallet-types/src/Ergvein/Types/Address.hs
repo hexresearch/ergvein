@@ -7,6 +7,7 @@ module Ergvein.Types.Address (
     , egvAddrFromString
     , egvAddrCurrency
     , btcAddrToString'
+    , btcAddrToString
   ) where
 
 import Data.Aeson
