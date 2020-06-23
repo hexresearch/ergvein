@@ -86,7 +86,7 @@ spec_specificFilter1 = do
       , "tb1qms2h0994zyywf2jvr6gez4nwtqg8xc0fz70260"
       ]
 
-    filterHex = "0000000000000015408ff51142000000370000000600000020000000000000006500000000000000e868ec7ff97f000000000000000000003661633835346630"
+    filterHex = "0000000000000015024a80000098066800004cd26bc68db000000000030cdd70db52ff43c6000000fa9ea8d5fac400001dc73c000000000137e4b8d5e647dc38"
 
     getFilter :: IO BtcAddrFilter
     getFilter = either (fail "Failed to decode filter1!") pure =<< decodeBtcAddrFilter (hex2bs filterHex)
