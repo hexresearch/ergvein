@@ -28,7 +28,7 @@ import Database.Esqueleto
 
 data ScanProgressInfo = ScanProgressInfo
   { nfoCurrency      :: !Currency
-  , nfoScannedHeight :: !BlockHeight
+  , nfoScannedHeight :: !(Maybe BlockHeight)
   , nfoActualHeight  :: !BlockHeight
   }
 
@@ -38,9 +38,8 @@ scanningInfo = mapM nfo allCurrencies
     nfo :: Currency -> ServerM ScanProgressInfo
     nfo currency = do
       maybeScanned <- dbQuery $ scannedBlockHeight currency
-      let scanned = fromMaybe (currencyHeightStart currency) maybeScanned
       actual <- actualHeight currency
-      pure $ ScanProgressInfo currency scanned actual
+      pure $ ScanProgressInfo currency maybeScanned actual
 
 
 scannedBlockHeight :: (MonadIO m) => Currency -> QueryT m (Maybe BlockHeight)
@@ -91,7 +90,15 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
       liftIO $ threadDelay $ cfgBlockchainScanDelay cfg
 
 blockchainScanning :: ServerM [Thread]
-blockchainScanning = sequenceA 
+blockchainScanning = sequenceA
   [ scannerThread BTC  BTCScanning.blockInfo
   , scannerThread ERGO ERGOScanning.blockInfo
+  ]
+
+feesThread :: ServerM () -> ServerM Thread
+feesThread feescan = create $ logOnException . const feescan
+
+feesScanning :: ServerM [Thread]
+feesScanning = sequenceA
+  [ feesThread BTCScanning.feeScaner
   ]

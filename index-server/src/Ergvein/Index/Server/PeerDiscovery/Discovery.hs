@@ -14,6 +14,7 @@ import Data.Maybe
 import Data.Set (Set)
 import Data.Time.Clock
 import Servant.Client.Core
+import Control.Applicative
 
 import Ergvein.Index.API.Types
 import Ergvein.Index.Client.V1
@@ -153,7 +154,8 @@ peerActualScan candidateInfo = do
       let localCurrency = nfoCurrency localInfo
           localScannedHeight =  nfoScannedHeight localInfo
       candidateNfo <- maybeToRight (CurrencyMissing localCurrency) $ candidateInfoMap Map.!? localCurrency
-      if notLessThenOne localScannedHeight (scanProgressScannedHeight candidateNfo) then
+      let currencyInSync = and $ notLessThenOne <$> localScannedHeight <*> scanProgressScannedHeight candidateNfo
+      if currencyInSync then
         Right ()
       else 
         Left $ CurrencyOutOfSync $ CurrencyOutOfSyncInfo localCurrency localScannedHeight

@@ -38,6 +38,7 @@ import Reflex.ExternalRef
 
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
+import Ergvein.Types.Fees
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Currencies
@@ -100,6 +101,10 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   requestFromNode :: Event t (SockAddr, NodeReqG) -> m ()
   -- | Get node request event
   getNodeRequestSelector :: m (RequestSelector t)
+  -- | Get fees ref. Internal
+  getFeesRef :: m (ExternalRef t (Map Currency FeeBundle))
+  -- | Get fees dynamic
+  getFeesD :: m (Dynamic t (Map Currency FeeBundle))
 
 class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   -- | Get current settings
