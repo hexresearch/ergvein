@@ -117,7 +117,7 @@ scanExternalAddresses currency currencyPubStorage = mdo
     (i, egvXPubKeyToEgvAddress key, blocks)) currentKeyD $ tagPromptlyDyn blocksD storedTxHashesE
   let getTxsE = snd <$> getTxsE'
   insertTxsInPubKeystore $ ffor getTxsE' $ \(i, txmap) -> (currency, i, M.keys txmap)
-  
+
   let noBlocksE = fforMaybe filterAddressE $ \case
         [] -> Just []
         _ -> Nothing
@@ -135,7 +135,8 @@ scanExternalAddresses currency currencyPubStorage = mdo
       finishedE = flip push gapE $ \gap -> do
         newKeystore <- sampleDyn newKeystoreD
         newTxs <- sampleDyn newTxsD
-        pure $ if gap >= gapLimit then Just $ (currency, CurrencyPubStorage newKeystore newTxs) else Nothing
+        -- TODO: Implement scanner
+        pure $ if gap >= gapLimit then Just $ (currency, CurrencyPubStorage newKeystore newTxs M.empty) else Nothing
   pure finishedE
 
 type CurrentGap = Int

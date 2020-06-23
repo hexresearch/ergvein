@@ -93,7 +93,7 @@ balancesGetting cur = do
   pubSD <- getPubStorageD
   let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _) -> case Map.lookup BTC cm of
         Nothing -> []
-        Just (CurrencyPubStorage keystore txmap) -> extractAddrs keystore
+        Just (CurrencyPubStorage keystore txmap _) -> extractAddrs keystore
   abS <- sampleDyn allBtcAddrsD
   hD <- holdDyn (Money cur (calcSum (fmap (getBtcAddr . snd) abS) ps)) $ poke (updated pubSD) $ \pbs -> do
     allbtcAdrS <- sampleDyn allBtcAddrsD

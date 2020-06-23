@@ -1,18 +1,25 @@
 module Ergvein.Wallet.Tx
   (
     checkAddrTx
+  , getSpentOutputs
+  , getUnspentOutputs
+  , getUtxoUpdates
   ) where
 
 import Control.Monad.IO.Class
 import Data.List
-import Network.Haskoin.Transaction (Tx(..), TxIn, TxOut)
+import Data.Maybe
+import Data.Word
+import Network.Haskoin.Transaction (Tx(..), TxIn(..), TxOut(..), OutPoint(..), txHash)
 
 import Ergvein.Text
 import Ergvein.Types.Address
+import Ergvein.Types.Utxo
 import Ergvein.Wallet.Blocks.BTC
 import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Native
 
+import qualified Data.Map.Strict                    as M
 import qualified Data.Text                          as T
 import qualified Network.Haskoin.Block              as HB
 import qualified Network.Haskoin.Script             as HS
@@ -26,6 +33,27 @@ checkAddrTx addr tx = do
   checkTxOutputsResults <- traverse (checkTxOut addr) (HT.txOut tx)
   pure $ concatResults checkTxInputsResults || concatResults checkTxOutputsResults
   where concatResults = foldr (||) False
+
+getSpentOutputs :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> Tx -> m ([OutPoint])
+getSpentOutputs addr Tx{..} = fmap catMaybes $ flip traverse txIn $ \ti -> do
+  b <- checkTxIn addr ti
+  pure $ if b then Just (prevOutput ti) else Nothing
+
+getUnspentOutputs :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> Tx -> m [(OutPoint, Word64)]
+getUnspentOutputs addr tx = fmap catMaybes $ flip traverse (zip [0..] $ txOut tx) $ \(i,o) -> do
+  b <- checkTxOut addr o
+  pure $ if b then Just (OutPoint th i, outValue o) else Nothing
+  where
+    th = txHash tx
+
+getUtxoUpdates :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvUtxoStatus -> [EgvAddress] -> Tx -> m (BtxUtxoSet, [OutPoint])
+getUtxoUpdates stat addrs tx = do
+  (unsps, sps) <- fmap unzip $ flip traverse addrs $ \addr -> do
+    unsp <- getUnspentOutputs addr tx
+    sp   <- getSpentOutputs addr tx
+    pure (unsp, sp)
+  let unspentMap = fmap (, stat) $ M.fromList $ mconcat unsps
+  pure (unspentMap, mconcat sps)
 
 -- | Checks given TxIn wheather it contains given address.
 -- Native SegWit addresses are not presented in TxIns scriptSig.

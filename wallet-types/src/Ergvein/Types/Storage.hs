@@ -10,12 +10,14 @@ import Data.ByteArray (convert, Bytes)
 import Data.ByteString (ByteString)
 import Data.Proxy
 import Data.Text
+import Network.Haskoin.Keys
+
 import Ergvein.Aeson
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Transaction
-import Network.Haskoin.Keys
+import Ergvein.Types.Utxo
 
 import qualified Data.Map.Strict as M
 
@@ -81,6 +83,7 @@ instance FromJSON EncryptedPrvStorage where
 data CurrencyPubStorage = CurrencyPubStorage {
     _currencyPubStorage'pubKeystore  :: PubKeystore
   , _currencyPubStorage'transactions :: M.Map TxId EgvTx
+  , _currencyPrvStorage'utxos        :: EgvUtxoSetStorage
   } deriving (Eq, Show, Read)
 
 makeLenses ''CurrencyPubStorage
