@@ -6,6 +6,7 @@ module Ergvein.Types.Utxo
   , EgvUtxoSetStorage
   , getBtcUtxoSetFromStore
   , isUtxoConfirmed
+  , updateBtcUtxoSetPure
   ) where
 
 import Data.Aeson
@@ -16,6 +17,7 @@ import Ergvein.Aeson
 import Ergvein.Types.Currency
 
 import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 
 data EgvUtxoStatus = EUtxoConfirmed | EUtxoSending | EUtxoReceiving
   deriving (Eq, Show, Read)
@@ -41,3 +43,6 @@ getBtcUtxoSetFromStore :: EgvUtxoSetStorage -> Maybe BtxUtxoSet
 getBtcUtxoSetFromStore st = case M.lookup BTC st of
   Just (BtcSet s) -> Just s
   _ -> Nothing
+
+updateBtcUtxoSetPure :: (BtxUtxoSet, [OutPoint]) -> BtxUtxoSet -> BtxUtxoSet
+updateBtcUtxoSetPure (outs, ins) s = M.withoutKeys (M.union outs s) (S.fromList ins)

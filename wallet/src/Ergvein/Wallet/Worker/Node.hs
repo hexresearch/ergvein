@@ -24,6 +24,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
+import Ergvein.Types.Utxo
 import Ergvein.Wallet.Blocks.Types
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
@@ -118,13 +119,17 @@ bctNodeController = mdo
     pure $ (u <$ closeE, newTxE)
 
   store <- getBlocksStorage
-  txListE <- fmap (fmapMaybe id) $ performFork $ ffor (current allBtcAddrsD `attach` txE) $ \(addrs, tx) -> do
-    v <- liftIO $ flip runReaderT store $ checkAddrTx' addrs tx
-    pure $ case v of
-      [] -> Nothing
-      _ -> Just v
-  addTxMapToPubStorage $ ((BTC, ) . M.fromList . snd . unzip) <$> txListE
-  insertTxsInPubKeystore $ ffor txListE $ \vals -> (BTC, prepareToInsertTxs vals)
+  valsE <- performFork $ ffor (current allBtcAddrsD `attach` txE) $ \(addrs, tx) ->
+    liftIO $ flip runReaderT store $ do
+      v <- checkAddrTx' addrs tx
+      u <- getUtxoUpdates EUtxoReceiving (snd . unzip $ addrs) tx
+      pure (v,u)
+
+  addTxMapToPubStorage $ fforMaybe valsE $ \(vals,_) -> case vals of
+    [] -> Nothing
+    _ -> Just . (BTC, ) . M.fromList . snd . unzip $ vals
+  insertTxsInPubKeystore $ ffor valsE $ \(vals,_) -> (BTC, prepareToInsertTxs vals)
+  updateBtcUtxoSet $ snd <$> valsE
   pure ()
   where
     switchTuple (a, b) = (switchDyn . fmap leftmost $ a, switchDyn . fmap leftmost $ b)

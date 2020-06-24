@@ -37,6 +37,7 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
+import Ergvein.Types.Utxo
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Currencies
@@ -394,6 +395,19 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
           %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'pubKeystore
             %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) upds}
         in ffor mai' $ \ai' -> (ai',ai')
+      storeWalletPure mai
+  updateBtcUtxoSet reqE = do
+    authRef <- asks env'authRef
+    performFork_ $ ffor reqE $ \upds -> do
+      mai <- modifyExternalRefMaybe authRef $ \ai -> let
+        mnews = ai ^.
+            authInfo'storage
+          . storage'pubStorage
+          . pubStorage'currencyPubStorages
+          . at BTC
+          & \mcps -> join $ ffor mcps $ \cps -> cps ^. currencyPrvStorage'utxos & getBtcUtxoSetFromStore
+            & \ms -> updateBtcUtxoSetPure upds <$> ms
+        in Nothing
       storeWalletPure mai
 
 updateKeyBoxWith :: Currency -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> AuthInfo -> Maybe AuthInfo
