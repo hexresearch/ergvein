@@ -116,7 +116,7 @@ scanExternalAddresses currency currencyPubStorage = mdo
   getTxsE' <- getTxs $ attachPromptlyDynWith (\(i, key) blocks ->
     (i, egvXPubKeyToEgvAddress key, blocks)) currentKeyD $ tagPromptlyDyn blocksD storedTxHashesE
   let getTxsE = snd <$> getTxsE'
-  insertTxsInPubKeystore $ ffor getTxsE' $ \(i, txmap) -> (currency, i, M.keys txmap)
+  insertTxsInPubKeystore $ ffor getTxsE' $ \(i, txmap) -> (currency, M.singleton i $ M.keys txmap)
 
   let noBlocksE = fforMaybe filterAddressE $ \case
         [] -> Just []

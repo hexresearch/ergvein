@@ -375,9 +375,25 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
 
   insertTxsInPubKeystore reqE = do
     authRef <- asks env'authRef
-    performFork_ $ ffor reqE $ \(cur, i, txids) -> do
-      mai <- modifyExternalRefMaybe authRef $
-        updateKeyBoxWith' cur i $ \kb -> kb {extKeyBox'txs = S.union (extKeyBox'txs kb) $ S.fromList txids}
+    performFork_ $ ffor reqE $ \(cur, txm) -> do
+      mai <- modifyExternalRefMaybe authRef $ \ai -> let
+        mupds = ai ^.
+            authInfo'storage
+          . storage'pubStorage
+          . pubStorage'currencyPubStorages
+          . at cur
+          & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'pubKeystore & pubKeystore'external
+            & \v -> ffor (M.toList txm) $ \(i,txids) -> let
+              kb = (V.!) v i
+              kb' = kb {extKeyBox'txs = S.union (extKeyBox'txs kb) $ S.fromList txids}
+              in (i, kb')
+        mai' = ffor mupds $ \upds -> ai & authInfo'storage
+          . storage'pubStorage
+          . pubStorage'currencyPubStorages
+          . at cur
+          %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'pubKeystore
+            %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) upds}
+        in ffor mai' $ \ai' -> (ai',ai')
       storeWalletPure mai
 
 updateKeyBoxWith :: Currency -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> AuthInfo -> Maybe AuthInfo

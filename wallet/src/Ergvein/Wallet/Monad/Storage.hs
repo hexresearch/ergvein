@@ -24,4 +24,4 @@ class (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t m | m -> t where
   addTxMapToPubStorage   :: Event t (Currency, Map TxId EgvTx) -> m ()
   setLabelToExtPubKey    :: Event t (Currency, Int, Text) -> m ()
   setFlagToExtPubKey     :: Event t (Currency, Int) -> m ()
-  insertTxsInPubKeystore :: Event t (Currency, Int, [TxId]) -> m ()
+  insertTxsInPubKeystore :: Event t (Currency, Map Int [TxId]) -> m ()

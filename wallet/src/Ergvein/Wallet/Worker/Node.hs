@@ -8,6 +8,7 @@ import Control.Exception
 import Control.Monad.Random
 import Control.Monad.Reader
 import Data.IP
+import Data.List (foldl')
 import Data.Maybe (fromMaybe, catMaybes, listToMaybe)
 import Data.Time
 import Network.DNS
@@ -118,26 +119,27 @@ bctNodeController = mdo
 
   store <- getBlocksStorage
   mtxE <- performFork $ ffor (current allBtcAddrsD `attach` txE) $ \(addrs, tx) -> do
-    liftIO $ flip runReaderT store $ do
-      (mi, b) <- checkAddrTx' addrs tx
-      pure $ if b
-        then Just (mi, (txHashToHex $ txHash tx, BtcTx tx))
-        else Nothing
-  addTxToPubStorage $ fmapMaybe (fmap snd) mtxE
-  insertTxsInPubKeystore $ fforMaybe mtxE $ \mv -> join $ ffor mv $
-    \(mi, (txid, _)) -> ffor mi $ \i -> (BTC, i, [txid])
+    liftIO $ flip runReaderT store $ checkAddrTx' addrs tx
+  -- addTxToPubStorage $ fmapMaybe (fmap snd) mtxE
+  insertTxsInPubKeystore $ fforMaybe mtxE $ \case
+    [] -> Nothing
+    vals -> Just $ (BTC, prepareToInsertTxs vals)
   pure ()
   where
     switchTuple (a, b) = (switchDyn . fmap leftmost $ a, switchDyn . fmap leftmost $ b)
 
-checkAddrTx' :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => [(Maybe Int, EgvAddress)] -> HT.Tx -> m (Maybe Int, Bool)
-checkAddrTx' vals tx = case vals of
-  [] -> pure (Nothing, False)
-  (mi, addr):xs -> do
-    b <- checkAddrTx addr tx
-    if b
-      then pure (mi, True)
-      else checkAddrTx' xs tx
+checkAddrTx' :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => [(Maybe Int, EgvAddress)] -> HT.Tx -> m [(Maybe Int, (Text, EgvTx))]
+checkAddrTx' iaddrs tx = fmap catMaybes $ flip traverse iaddrs $ \(mi,addr) -> do
+  b <- checkAddrTx addr tx
+  pure $ if b then Just (mi, (th, BtcTx tx)) else Nothing
+  where
+    th = txHashToHex $ txHash tx
+
+prepareToInsertTxs :: [(Maybe Int, (Text, EgvTx))] -> M.Map Int [TxId]
+prepareToInsertTxs = foo M.empty $ \m (mi, (tid,_)) -> case mi of
+  Nothing -> m
+  Just i -> M.insertWith (<>) i [tid] m
+  where foo b f ta = foldl' f b ta
 
 -- | Extract addresses from keystore
 extractAddrs :: PubKeystore -> [(Maybe Int, EgvAddress)]
