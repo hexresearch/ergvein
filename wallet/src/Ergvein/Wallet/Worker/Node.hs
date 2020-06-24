@@ -129,7 +129,8 @@ bctNodeController = mdo
     [] -> Nothing
     _ -> Just . (BTC, ) . M.fromList . snd . unzip $ vals
   insertTxsInPubKeystore $ ffor valsE $ \(vals,_) -> (BTC, prepareToInsertTxs vals)
-  updateBtcUtxoSet $ snd <$> valsE
+  let storeE = fforMaybe valsE $ \(_,(o,i)) -> if not (M.null o && null i) then Just (o,i) else Nothing
+  updateBtcUtxoSet storeE
   pure ()
   where
     switchTuple (a, b) = (switchDyn . fmap leftmost $ a, switchDyn . fmap leftmost $ b)

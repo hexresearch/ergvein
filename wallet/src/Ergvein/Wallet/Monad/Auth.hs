@@ -378,11 +378,7 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
     authRef <- asks env'authRef
     performFork_ $ ffor reqE $ \(cur, txm) -> do
       mai <- modifyExternalRefMaybe authRef $ \ai -> let
-        mupds = ai ^.
-            authInfo'storage
-          . storage'pubStorage
-          . pubStorage'currencyPubStorages
-          . at cur
+        mupds = ai ^. pubStorageLens cur
           & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'pubKeystore & pubKeystore'external
             & \v -> ffor (M.toList txm) $ \(i,txids) -> let
               kb = (V.!) v i
@@ -400,38 +396,29 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
     authRef <- asks env'authRef
     performFork_ $ ffor reqE $ \upds -> do
       mai <- modifyExternalRefMaybe authRef $ \ai -> let
-        mnews = ai ^.
-            authInfo'storage
-          . storage'pubStorage
-          . pubStorage'currencyPubStorages
-          . at BTC
-          & \mcps -> join $ ffor mcps $ \cps -> cps ^. currencyPrvStorage'utxos & getBtcUtxoSetFromStore
-            & \ms -> updateBtcUtxoSetPure upds <$> ms
-        in Nothing
+        mnews = ai ^. pubStorageLens BTC
+          & \mcps -> ffor mcps $ \cps -> cps ^. currencyPrvStorage'utxos & getBtcUtxoSetFromStore
+            & \ms -> updateBtcUtxoSetPure upds $ fromMaybe M.empty $ ms
+        mai' = ffor mnews $ \news -> ai & pubStorageLens BTC
+          %~ \mcps -> ffor mcps $ \cps -> cps & currencyPrvStorage'utxos
+            %~ \us -> M.insert BTC (BtcSet news) us
+        in ffor mai' $ \ai' -> (ai',ai')
       storeWalletPure mai
+
+-- I'm too lazy to figure out a type of this
+pubStorageLens cur = authInfo'storage
+  . storage'pubStorage
+  . pubStorage'currencyPubStorages
+  . at cur
 
 updateKeyBoxWith :: Currency -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> AuthInfo -> Maybe AuthInfo
 updateKeyBoxWith cur i f ai =
-  let mk = ai ^.
-          authInfo'storage
-        . storage'pubStorage
-        . pubStorage'currencyPubStorages
-        . at cur
-        & \mcps -> case mcps of
-          Nothing -> Nothing
-          Just cps -> cps ^. currencyPubStorage'pubKeystore
-            & (\v -> (V.!?) (pubKeystore'external v) i)
-  in case mk of
-    Nothing -> Nothing
-    Just kb -> let kb' = f kb
-      in Just $ ai & authInfo'storage
-        . storage'pubStorage
-        . pubStorage'currencyPubStorages
-        . at cur
-        %~ \mcps -> case mcps of
-          Nothing -> Nothing
-          Just cps -> Just $ cps & currencyPubStorage'pubKeystore
-            %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
+  let mk = ai ^. pubStorageLens cur & \mcps -> join $ ffor mcps $ \cps ->
+        cps ^. currencyPubStorage'pubKeystore & (\v -> (V.!?) (pubKeystore'external v) i)
+  in ffor mk $ \kb -> let kb' = f kb
+    in ai & pubStorageLens cur
+      %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'pubKeystore
+        %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
 
 updateKeyBoxWith' :: Currency -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> AuthInfo -> Maybe (AuthInfo, AuthInfo)
 updateKeyBoxWith' cur i f ai = fmap (\ai' -> (ai', ai')) $ updateKeyBoxWith cur i f ai
