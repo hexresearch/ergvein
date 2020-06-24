@@ -105,13 +105,13 @@ library
         Ergvein.Wallet.Page.Canvas
         Ergvein.Wallet.Page.Currencies
         Ergvein.Wallet.Page.History
-        Ergvein.Wallet.Page.Info
         Ergvein.Wallet.Page.Initial
         Ergvein.Wallet.Page.Network
         Ergvein.Wallet.Page.Password
         Ergvein.Wallet.Page.PatternKey
         Ergvein.Wallet.Page.QRCode
         Ergvein.Wallet.Page.Receive
+        Ergvein.Wallet.Page.Restore
         Ergvein.Wallet.Page.Seed
         Ergvein.Wallet.Page.Send
         Ergvein.Wallet.Page.Settings
@@ -135,8 +135,9 @@ library
         Ergvein.Wallet.Util
         Ergvein.Wallet.Validate
         Ergvein.Wallet.Widget.GraphPinCode
+        Ergvein.Wallet.Worker.Fees
         Ergvein.Wallet.Worker.Height
-        Ergvein.Wallet.Worker.Info
+        Ergvein.Wallet.Worker.IndexersNetworkActualization
         Ergvein.Wallet.Worker.Node
         Ergvein.Wallet.Wrapper
         Ergvein.Wallet.Yaml
@@ -156,6 +157,7 @@ library
         base -any,
         base64-bytestring >=1 && <1.0.0.3,
         binary >=0.8 && <0.9,
+        bitcoin-api >= 0.13 && < 0.14,
         bytestring >=0.10 && <0.11,
         cereal >=0.5 && <0.6,
         clay >=0.14 && <0.15,
@@ -220,8 +222,10 @@ library
         unliftio-core >= 0.1 && < 0.2,
         validation >=1 && < 1.2,
         vector -any,
+        vector-algorithms,
         wreq -any,
-        yaml -any
+        yaml -any,
+        random-shuffle
 
     if flag(android)
         cpp-options: -DANDROID

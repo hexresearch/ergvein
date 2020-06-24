@@ -22,10 +22,10 @@ defaulHeightPoll = 60
 errorHeightPoll :: NominalDiffTime
 errorHeightPoll = 5
 
-heightAsking :: (MonadFrontAuth t m, MonadClient t m, MonadStorage t m) => m ()
+heightAsking :: (MonadFront t m) => m ()
 heightAsking = void . widgetHoldDyn . fmap (traverse_ heightAsker) =<< getActiveCursD
 
-heightAsker :: (MonadFrontAuth t m, MonadClient t m, MonadStorage t m) => Currency -> m ()
+heightAsker :: (MonadFront t m) => Currency -> m ()
 heightAsker cur = mdo
   let logPref = "[heightAsking][" <> showt cur <> "]:"
   logWrite $ logPref <> "Start worker"

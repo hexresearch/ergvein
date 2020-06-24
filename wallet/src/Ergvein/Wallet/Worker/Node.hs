@@ -39,7 +39,7 @@ import qualified Data.Bits as BI
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Dependent.Map as DM
 import qualified Data.IntMap as MI
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
 import qualified Network.Haskoin.Transaction        as HT
@@ -68,9 +68,9 @@ bctNodeController = mdo
   te        <- fmap void $ tickLossyFromPostBuildTime btcRefrTimeout
 
   pubStorageD <- getPubStorageD
-  let (allBtcAddrsD, txidsD) = splitDynPure $ ffor pubStorageD $ \(PubStorage _ cm _) -> case M.lookup BTC cm of
+  let (allBtcAddrsD, txidsD) = splitDynPure $ ffor pubStorageD $ \(PubStorage _ cm _ _) -> case M.lookup BTC cm of
         Nothing -> ([], S.empty)
-        Just (CurrencyPubStorage keystore txmap _) -> let
+        Just (CurrencyPubStorage keystore txmap _ _) -> let
           addrs = extractAddrs keystore
           txids = S.fromList $ M.keys txmap
           in (addrs, txids)
@@ -92,8 +92,8 @@ bctNodeController = mdo
   (urlStoreD, fstRunE) <- mkUrlBatcher sel urlE
 
   let (remNodeUrlE, txE) = switchTuple $ splitDynPure $ fmap (unzip . M.elems) tmpD
-  let remNodeE = (\u -> M.singleton u Nothing) <$> remNodeUrlE
-  let addNodeE = (\u -> M.singleton u $ Just ()) <$> urlE
+  let remNodeE = (`M.singleton`Nothing) <$> remNodeUrlE
+  let addNodeE = (`M.singleton` Just ()) <$> urlE
   let listActionE = leftmost [addNodeE, remNodeE]
 
   tmpD <- listWithKeyShallowDiff M.empty listActionE $ \u _ _ -> do

@@ -16,6 +16,7 @@ import Ergvein.Aeson
 import Ergvein.Crypto.Keys
 import Ergvein.Text
 import Ergvein.Types.Currency
+import Ergvein.Types.Restore
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Localization.Currencies
@@ -26,16 +27,16 @@ import Ergvein.Wallet.Wrapper
 import Ergvein.Wallet.Util
 import Reflex.Localize
 
-selectCurrenciesPage :: MonadFrontBase t m => Mnemonic -> m ()
-selectCurrenciesPage m = wrapperSimple True $ do
+selectCurrenciesPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> m ()
+selectCurrenciesPage wt m = wrapperSimple True $ do
   e <- selectCurrenciesWidget []
   nextWidget $ ffor e $ \ac -> Retractable {
 #ifdef ANDROID
-      retractableNext = setupLoginPage m ac
+      retractableNext = setupLoginPage wt m ac
 #else
-      retractableNext = passwordPage m ac
+      retractableNext = passwordPage wt m ac
 #endif
-    , retractablePrev = Just $ pure $ selectCurrenciesPage m
+    , retractablePrev = Just $ pure $ selectCurrenciesPage wt m
     }
   pure ()
 

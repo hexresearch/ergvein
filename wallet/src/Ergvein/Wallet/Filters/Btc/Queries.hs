@@ -95,22 +95,26 @@ putScannedHeight h = do
 
 -- | Right fold over all filters
 foldFilters :: forall a m . MonadIO m
-  => (BlockHash -> BtcAddrFilter -> a -> IO a)
+  => (BlockHeight -> BlockHeight -> BlockHash -> BtcAddrFilter -> a -> IO a)
   -> a
   -> Environment ReadWrite
   -> m a
 foldFilters f a0 e = liftIO . readOnlyTransaction e $ do
   fdb <- getBtcFiltersDb
-  io <- LMDB.foldrWithKey f' (pure a0) fdb
-  liftIO io
+  i1 <- getFiltersHeight
+  io <- LMDB.foldrWithKey (f' i1) (pure (0, a0)) fdb
+  fmap snd $ liftIO io
   where
-    f' :: BlockHash -> ByteString -> IO a -> IO a
-    f' k bs calcAcc = do
-      acc <- calcAcc
+    f' :: BlockHeight -> BlockHash -> ByteString -> IO (Int, a) -> IO (Int, a)
+    f' i1 k bs calcAcc = do
+      (!i0, !acc) <- calcAcc
       res <- decodeBtcAddrFilter bs
       case res of
-        Left _ -> pure acc
-        Right a -> f k a acc
+        Left _ -> pure (i0, acc)
+        Right a -> do
+          acc' <- f (fromIntegral i0) i1 k a acc
+          pure (i0+1, acc')
+    {-# INLINABLE f' #-}
 
 -- | Fold over filters that are not scanned yet
 scanFilters :: forall a m . MonadIO m

@@ -1,5 +1,6 @@
 module Ergvein.Wallet.Filters.Scan(
     filterAddress
+  , filterBtcAddress
   , filterBtcAddresses
   ) where
 
@@ -19,7 +20,7 @@ import qualified Data.Vector as V
 filterAddress :: (MonadIO m, HasFiltersStorage t m) => EgvAddress -> m [BlockHash]
 filterAddress addr = foldFilters (egvAddrCurrency addr) f []
   where
-    f bhash gfilter acc = case matchAddrFilter addr gfilter of
+    f _ _ bhash gfilter acc = case matchAddrFilter addr gfilter of
       Just (AFBtc :=> Identity (caddr, cfilter)) -> case guardSegWit caddr of
         Nothing -> pure acc
         Just saddr -> do
@@ -27,6 +28,18 @@ filterAddress addr = foldFilters (egvAddrCurrency addr) f []
           pure $ if res then bhash : acc else acc
       Just (AFErgo :=> _) -> pure acc -- TODO: add ergo hree
       _ -> pure acc
+
+-- | Scan through unprocessed filters and return scanned height and matches.
+filterBtcAddress :: (MonadIO m, HasFiltersStorage t m) => (BlockHeight -> BlockHeight -> IO ()) -> BtcAddress -> m (BlockHeight, Vector BlockHash)
+filterBtcAddress progCb ba = case guardSegWit ba of
+    Nothing -> pure (filterStartingHeight BTC, mempty)
+    Just saddr -> scanBtcFilters (f saddr) (filterStartingHeight BTC, mempty)
+  where
+    f saddr i n bhash cfilter (!_, !acc) = do
+      liftIO $ progCb i n
+      res <- applyBtcFilter btcNetwork bhash cfilter saddr
+      let acc' = if res then V.cons bhash acc else acc
+      pure (i, acc')
 
 -- | Scan through unprocessed filters and return scanned height and matches. The function
 -- expect that all addresses are for the same currency.

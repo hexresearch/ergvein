@@ -9,16 +9,17 @@ import Control.Monad.Random.Strict
 import Data.Bifunctor
 import Data.List (permutations)
 import Ergvein.Crypto.Keys
-import Ergvein.Crypto.WordLists
 import Ergvein.Crypto.Util
+import Ergvein.Crypto.WordLists
 import Ergvein.Text
+import Ergvein.Types.Restore
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Localization.Seed
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Page.Canvas
 import Ergvein.Wallet.Page.Currencies
+import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Resize
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
@@ -30,7 +31,7 @@ import qualified Data.List as L
 mnemonicPage :: MonadFrontBase t m => m ()
 mnemonicPage = go Nothing
   where
-    go mnemonic = wrapperSimple False $ do
+    go mnemonic = wrapperSimple True $ do
       (e, md) <- mnemonicWidget mnemonic
       nextWidget $ ffor e $ \mn -> Retractable {
           retractableNext = checkPage mn
@@ -42,7 +43,7 @@ checkPage :: MonadFrontBase t m => Mnemonic -> m ()
 checkPage mn = wrapperSimple True $ do
   e <- mnemonicCheckWidget mn
   nextWidget $ ffor e $ \m -> Retractable {
-      retractableNext = selectCurrenciesPage m
+      retractableNext = selectCurrenciesPage WalletGenerated m
     , retractablePrev = Just $ pure $ checkPage m
     }
   pure ()
@@ -133,7 +134,7 @@ seedRestorePage = wrapperSimple True $ do
   resetE <- buttonClass (pure "button button-outline") SPSReset
   mnemE <- fmap (switch . current) $ widgetHold seedRestoreWidget $ seedRestoreWidget <$ resetE
   void $ nextWidget $ ffor mnemE $ \m -> Retractable {
-      retractableNext = selectCurrenciesPage m
+      retractableNext = selectCurrenciesPage WalletRestored m
     , retractablePrev = Just $ pure seedRestorePage
     }
 

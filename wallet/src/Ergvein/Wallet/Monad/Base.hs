@@ -8,6 +8,7 @@ module Ergvein.Wallet.Monad.Base
   , AlertInfo(..)
   , MonadEgvLogger(..)
   , MonadClient(..)
+  , PeerScanInfoMap (..)
   , IndexerInfo(..)
   ) where
 
@@ -16,7 +17,7 @@ import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Control.Monad.Reader
 import Control.Monad.Ref
-import Data.Map
+import Data.Map.Strict
 import Data.Text (Text)
 import Data.Time(UTCTime, NominalDiffTime)
 import Ergvein.Crypto
@@ -148,6 +149,8 @@ class (
   ) => MonadClient t m | m -> t where
   -- | Get passive urls' reference. Internal
   getArchivedUrlsRef :: m (ExternalRef t (S.Set BaseUrl))
+  -- | Get deactivated urls dynamic
+  getArchivedUrlsD :: m (Dynamic t (S.Set BaseUrl))
   -- | Internal method to get reference to indexers
   getActiveUrlsRef :: m (ExternalRef t (Map BaseUrl (Maybe IndexerInfo)))
   -- | Get deactivated urls' reference. Internal
@@ -181,10 +184,12 @@ class (
 --    Frontend-wide types
 -- ===========================================================================
 
+type PeerScanInfoMap = Map Currency (Maybe BlockHeight, BlockHeight) -- (scanned, actual)
+
 data IndexerInfo = IndexerInfo {
-  indInfoHeights :: Map Currency (BlockHeight,BlockHeight)
+  indInfoHeights :: PeerScanInfoMap
 , indInfoLatency :: NominalDiffTime
-} deriving (Show)
+} deriving (Show, Eq)
 
 -- ===========================================================================
 --    Helper instances for base monad

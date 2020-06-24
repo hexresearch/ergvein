@@ -32,6 +32,7 @@ import Ergvein.Index.Client
 import Ergvein.Text
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
+import Ergvein.Types.Fees
 import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
@@ -56,8 +57,9 @@ import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Settings (Settings(..), storeSettings, defaultIndexers)
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Sync.Status
+import Ergvein.Wallet.Worker.Fees
 import Ergvein.Wallet.Worker.Height
-import Ergvein.Wallet.Worker.Info
+import Ergvein.Wallet.Worker.IndexersNetworkActualization
 import Ergvein.Wallet.Worker.Node
 
 import qualified Network.Haskoin.Block as HS (BlockHeight)
@@ -109,6 +111,7 @@ data Env t = Env {
 , env'nodeConsRef     :: !(ExternalRef t (ConnMap t))
 , env'nodeReqSelector :: !(RequestSelector t)
 , env'nodeReqFire     :: !(Map Currency (Map SockAddr NodeMessage) -> IO ())
+, env'feesStore       :: !(ExternalRef t (Map Currency FeeBundle))
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -253,9 +256,9 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
     fmap updated $ widgetHold (pure ()) $ ffor updE $ \f -> do
       (diffMap, newcs) <- modifyExternalRef curRef $ \cs -> let
         cs' = f cs
-        offUrls = S.map (\u -> (u, False)) $ S.difference cs cs'
-        onUrls  = S.map (\u -> (u, True))  $ S.difference cs' cs
-        onUrls' = S.map (\u -> (u, True))  $ S.intersection cs cs'
+        offUrls = S.map (, False) $ S.difference cs cs'
+        onUrls  = S.map (, True)  $ S.difference cs' cs
+        onUrls' = S.map (, True)  $ S.intersection cs cs'
         dm = M.fromList $ S.toList $ offUrls <> onUrls <> onUrls'
         in (cs',(dm, S.toList cs'))
       settings <- readExternalRef settingsRef
@@ -288,6 +291,10 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE requestFromNode #-}
   getNodeRequestSelector = asks env'nodeReqSelector
   {-# INLINE getNodeRequestSelector #-}
+  getFeesRef = asks env'feesStore
+  {-# INLINE getFeesRef #-}
+  getFeesD = externalRefDynamic =<< asks env'feesStore
+  {-# INLINE getFeesD #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
@@ -332,7 +339,7 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
 
   modifyPubStorage fe = do
     authRef <- asks env'authRef
-    performFork $ ffor fe $ \f -> do
+    performEvent $ ffor fe $ \f -> do
       ai' <- modifyExternalRefMaybe authRef $ \ai ->
         let mps' = f (ai ^. authInfo'storage . storage'pubStorage)
         in (\a -> (a, a)) . (\ps' -> ai & authInfo'storage . storage'pubStorage .~ ps') <$> mps'
@@ -371,7 +378,7 @@ liftAuth ma0 ma = mdo
         -- Read settings to fill other refs
         settings        <- readExternalRef settingsRef
         let login = _authInfo'login auth
-            acurs = S.fromList [] -- $ _pubStorage'activeCurrencies ps
+            acurs = mempty
             nodes = M.restrictKeys (settingsNodes settings) acurs
 
         -- MonadClient refs
@@ -400,6 +407,7 @@ liftAuth ma0 ma = mdo
         heightRef       <- newExternalRef (fmap (maybe 0 fromIntegral . _currencyPubStorage'height) . _pubStorage'currencyPubStorages $ ps)
         fsyncRef        <- newExternalRef mempty
         consRef         <- newExternalRef mempty
+        feesRef         <- newExternalRef mempty
         let env = Env {
                 env'settings = settingsRef
               , env'backEF = backEF
@@ -434,15 +442,19 @@ liftAuth ma0 ma = mdo
               , env'nodeConsRef = consRef
               , env'nodeReqSelector = sel
               , env'nodeReqFire = reqFire
+              , env'feesStore = feesRef
               }
         runOnUiThreadM $ runReaderT setupTlsManager env
 
         flip runReaderT env $ do -- Workers and other routines go here
+          initScannedHeights scannedHeights
+          initFiltersHeights filtersHeights
           scanner
           bctNodeController
           filtersLoader
           heightAsking
-          infoWorker
+          indexersNetworkActualizationWorker
+          feesWorker
           pure ()
         runReaderT (wrapped ma) env
   let
@@ -450,6 +462,26 @@ liftAuth ma0 ma = mdo
     newAuthInfoE = ffilter isMauthUpdate $ updated mauthD
     redrawE = leftmost [newAuthInfoE, Nothing <$ logoutE]
   widgetHold ma0' $ ffor redrawE $ maybe ma0 runAuthed
+
+-- | Query initial values for scanned heights and write down them to the external ref
+initScannedHeights :: MonadFront t m => ExternalRef t (Map Currency HS.BlockHeight) -> m ()
+initScannedHeights ref = do
+  ps <- getPubStorage
+  let curs =  _pubStorage'activeCurrencies ps
+  scms <- flip traverse curs $ \cur -> do
+    h <- getScannedHeight cur
+    pure (cur, h)
+  writeExternalRef ref $ M.fromList scms
+
+-- | Query initial values for filters heights and write down them to the external ref
+initFiltersHeights :: MonadFront t m => ExternalRef t (Map Currency HS.BlockHeight) -> m ()
+initFiltersHeights ref = do
+  ps <- getPubStorage
+  let curs =  _pubStorage'activeCurrencies ps
+  scms <- flip traverse curs $ \cur -> do
+    h <- getFiltersHeight cur
+    pure (cur, h)
+  writeExternalRef ref $ M.fromList scms
 
 isMauthUpdate :: Maybe AuthInfo -> Bool
 isMauthUpdate mauth = case mauth of
@@ -471,6 +503,8 @@ wrapped ma = do
 instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
   getArchivedUrlsRef = asks env'urlsArchive
   {-# INLINE getArchivedUrlsRef #-}
+  getArchivedUrlsD = externalRefDynamic =<< asks env'urlsArchive
+  {-# INLINE getArchivedUrlsD #-}
   getActiveUrlsRef = asks env'activeUrls
   {-# INLINE getActiveUrlsRef #-}
   getInactiveUrlsRef = asks env'inactiveUrls

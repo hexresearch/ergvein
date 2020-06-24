@@ -53,3 +53,8 @@ cachix use ergvein
 
 If the page turns to blank when you open the element inspector or resize the window try exporting
 `export WEBKIT_DISABLE_COMPOSITING_MODE=1` before running the app.
+
+## pg_ctl failed to start
+
+Error: `could not create lock file "/var/run/postgresql/.s.PGSQL.5434.lock": Permission denied`
+Solution: `sudo chmod a+w /var/run/postgresql`

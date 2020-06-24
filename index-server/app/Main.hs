@@ -1,16 +1,18 @@
 module Main where
 
+import Control.Concurrent
 import Control.Immortal
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
-import Ergvein.Index.Server.App
-import Ergvein.Index.Server.BlockchainScanning.Common
-import Ergvein.Index.Server.Environment
-import Ergvein.Index.Server.Config
-import Ergvein.Index.Server.Monad
 import Network.Wai.Handler.Warp
 import Network.Wai.Middleware.RequestLogger
 import Options.Applicative
+
+import Ergvein.Index.Server.App
+import Ergvein.Index.Server.BlockchainScanning.Common
+import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.Environment
+import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Discovery
 
 import qualified Data.Text.IO as T
@@ -44,22 +46,27 @@ main = do
         ( fullDesc
        <> progDesc "Starts Ergvein index server"
        <> header "ergvein-index-server - cryptocurrency index server for ergvein client" )
-onStartup :: ServerM ()
-onStartup = do
-  blockchainScanning
-  addDefaultPeersIfNoneDiscovered
+
+onStartup :: ServerEnv -> ServerM [Thread]
+onStartup env = do
+  scanningThreads <- blockchainScanning
+  syncWithDefaultPeers
   refreshKnownPeersCache
+  feesScanning
   peerIntroduce
   knownPeersActualization
-  pure ()
+  pure scanningThreads
 
 startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
     CommandListen cfgPath ->  do
+      T.putStrLn $ pack "Server starting"
       cfg <- loadConfig cfgPath
       env <- runStdoutLoggingT $ newServerEnv cfg
-      runServerMIO env onStartup
+      workerThreads <- runServerMIO env $ onStartup env
       T.putStrLn $ pack $ "Server started at " <> cfgDbHost cfg <> ":" <> (show . cfgServerPort $ cfg)
-      let app = logStdoutDev $ indexServerApp env
-          warpSettings = setPort (cfgServerPort cfg) defaultSettings
+
+      let settings = appSettings $ onShutdown env workerThreads
+          app = logStdoutDev $ indexServerApp env
+          warpSettings = setPort (cfgServerPort cfg) settings
       runSettings warpSettings app

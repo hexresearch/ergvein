@@ -18,7 +18,6 @@ import qualified Data.Vector.Unboxed              as UV
 import           Codec.QRCode
 import           Control.Lens                     (to, (^.))
 import           Control.Monad.IO.Class           (liftIO)
-import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 
 qrCodeWidget :: MonadFrontBase t m => Text -> Currency -> m ()

@@ -1,8 +1,10 @@
 module Ergvein.Index.Server.Environment where
 
 import Control.Concurrent
+import Control.Concurrent.STM
 import Control.Exception (SomeException(..),AsyncException(..))
 import Control.Monad.Catch
+import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Reader
 import Data.ByteString.UTF8
@@ -13,7 +15,6 @@ import Database.Persist.Sql
 import Network.Bitcoin.Api.Types
 import Network.HTTP.Client.TLS
 import Servant.Client.Core
-import Control.Monad.IO.Unlift
 
 import Ergvein.Index.Server.Cache
 import Ergvein.Index.Server.Config
@@ -21,14 +22,19 @@ import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Text
+import Ergvein.Types.Currency
+import Ergvein.Types.Fees
 
+import qualified Data.Map.Strict             as M
 import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 import qualified Network.Ergo.Api.Client     as ErgoApi
 import qualified Network.Haskoin.Constants   as HK
 import qualified Network.HTTP.Client         as HC
+import qualified Data.Set                    as Set
+
 import Debug.Trace
 
-data ServerEnv = ServerEnv 
+data ServerEnv = ServerEnv
     { envServerConfig             :: !Config
     , envLogger                   :: !(Chan (Loc, LogSource, LogLevel, LogStr))
     , envPersistencePool          :: !DBPool
@@ -37,6 +43,7 @@ data ServerEnv = ServerEnv
     , envErgoNodeClient           :: !ErgoApi.Client
     , envClientManager            :: !HC.Manager
     , envPeerDiscoveryRequisites  :: !PeerDiscoveryRequisites
+    , envFeeEstimates             :: !(TVar (M.Map Currency FeeBundle))
     }
 
 getPersistencePool :: MonadUnliftIO m => Bool -> String ->  LoggingT m DBPool
@@ -44,6 +51,30 @@ getPersistencePool isLogEnabled connectionString = newDBPool isLogEnabled $ from
 
 applyDatabaseMigration :: DBPool -> LoggingT IO ()
 applyDatabaseMigration persistencePool = flip runReaderT persistencePool $ dbQuery $ runMigration migrateAll
+
+discoveryRequisites :: Config -> PeerDiscoveryRequisites
+discoveryRequisites cfg = let
+  ownPeerAddress = parsedOwnAddress <$> cfgOwnPeerAddress cfg
+  knownPeers = Set.fromList $ parseKnownPeer <$> cfgKnownPeers cfg
+  filteredKnownPeers = case ownPeerAddress of
+    Just address -> Set.delete address knownPeers
+    otherwise    -> knownPeers
+  in PeerDiscoveryRequisites
+      ownPeerAddress
+      filteredKnownPeers
+      (cfgPeerActualizationDelay cfg)
+      (cfgPeerActualizationTimeout cfg)
+  where
+
+    parsedOwnAddress :: String -> BaseUrl
+    parsedOwnAddress address = let
+      err = error $ "Error cannot parse ownPeerAddress setting"
+      in fromMaybe err $ parseBaseUrl address
+
+    parseKnownPeer :: String -> BaseUrl
+    parseKnownPeer address = let
+      err = error $ "Error cannot parse peer '" <> address <> "'"
+      in fromMaybe err $ parseBaseUrl address
 
 newServerEnv :: (MonadIO m, MonadLogger m) => Config -> m ServerEnv
 newServerEnv cfg = do
@@ -59,15 +90,11 @@ newServerEnv cfg = do
     ergoNodeClient <- liftIO $ ErgoApi.newClient (cfgERGONodeHost cfg) (cfgERGONodePort cfg)
     httpManager    <- liftIO $ HC.newManager HC.defaultManagerSettings
     tlsManager     <- liftIO $ newTlsManager
-
+    feeEstimates   <- liftIO $ newTVarIO M.empty
     let bitcoinNodeNetwork = if cfgBTCNodeIsTestnet cfg then HK.btcTest else HK.btc
-        descReqoveryRequisites = PeerDiscoveryRequisites 
-                                  (parseBaseUrl @Maybe <=< cfgOwnPeerAddress $ cfg)
-                                  (fromJust . parseBaseUrl <$> cfgKnownPeers cfg)
-                                  (cfgPeerActualizationDelay cfg)
-                                  (cfgPeerActualizationTimeout cfg)
+        descDiscoveryRequisites = discoveryRequisites cfg
     traceShowM cfg
-    pure ServerEnv 
+    pure ServerEnv
       { envServerConfig            = cfg
       , envLogger                  = logger
       , envPersistencePool         = persistencePool
@@ -75,7 +102,8 @@ newServerEnv cfg = do
       , envBitcoinNodeNetwork      = bitcoinNodeNetwork
       , envErgoNodeClient          = ergoNodeClient
       , envClientManager           = tlsManager
-      , envPeerDiscoveryRequisites = descReqoveryRequisites
+      , envPeerDiscoveryRequisites = descDiscoveryRequisites
+      , envFeeEstimates            = feeEstimates
       }
 
 -- | Log exceptions at Error severity

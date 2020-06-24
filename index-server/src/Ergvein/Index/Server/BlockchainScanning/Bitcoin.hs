@@ -1,14 +1,17 @@
 module Ergvein.Index.Server.BlockchainScanning.Bitcoin where
 
+import           Control.Concurrent
 import           Control.Lens.Combinators
 import           Control.Monad.Logger
 import           Control.Monad.Reader
 import           Data.Either
+import           Data.Fixed
 import           Data.List.Index
 import           Data.Maybe
 import           Data.Serialize
 import           Network.Bitcoin.Api.Blockchain
 import           Network.Bitcoin.Api.Client
+import           Network.Bitcoin.Api.Misc
 
 import           Ergvein.Crypto.Hash
 import           Ergvein.Filters.Btc.Mutable
@@ -17,13 +20,16 @@ import           Ergvein.Index.Server.BlockchainScanning.Types
 import           Ergvein.Index.Server.Cache.Monad
 import           Ergvein.Index.Server.Cache.Queries
 import           Ergvein.Index.Server.Cache.Schema
+import           Ergvein.Index.Server.Config
+import           Ergvein.Index.Server.Dependencies
+import           Ergvein.Index.Server.Monad
 import           Ergvein.Index.Server.Utils
 import           Ergvein.Text
 import           Ergvein.Types.Currency
+import           Ergvein.Types.Fees
 import           Ergvein.Types.Transaction
-import           Ergvein.Index.Server.Dependencies
 
-import qualified Data.HashSet                       as Set
+import qualified Data.Set                           as Set
 import qualified Data.HexString                     as HS
 import qualified Data.Map.Strict                    as Map
 import qualified Network.Haskoin.Block              as HK
@@ -33,7 +39,7 @@ import qualified Network.Haskoin.Transaction        as HK
 import qualified Network.Haskoin.Util               as HK
 
 
-blockTxInfos :: MonadLDB m => HK.Block -> BlockHeight -> HK.Network -> m BlockInfo
+blockTxInfos :: (MonadLDB m, MonadLogger m) => HK.Block -> BlockHeight -> HK.Network -> m BlockInfo
 blockTxInfos block txBlockHeight nodeNetwork = do
   let (txInfos , spentTxsIds) = mconcat $ txInfo <$> HK.blockTxns block
 
@@ -46,7 +52,7 @@ blockTxInfos block txBlockHeight nodeNetwork = do
   pure $ BlockInfo blockMeta spentTxsIds txInfos
   where
     blockTxMap = mapBy (HK.txHashToHex . HK.txHash) $ HK.blockTxns block
-    spentTxSource :: MonadLDB m => TxHash -> m HK.Tx
+    spentTxSource :: (MonadLDB m, MonadLogger m) => TxHash -> m HK.Tx
     spentTxSource txInId =
       case Map.lookup txInId blockTxMap of
         Just    sourceTx -> pure sourceTx
@@ -71,7 +77,7 @@ blockTxInfos block txBlockHeight nodeNetwork = do
 actualHeight :: (Monad m, BitcoinApiMonad m) => m BlockHeight
 actualHeight = fromIntegral <$> nodeRpcCall getBlockCount
 
-blockInfo :: (BitcoinApiMonad m,  HasBitcoinNodeNetwork m, MonadLDB m) => BlockHeight -> m BlockInfo
+blockInfo :: (BitcoinApiMonad m,  HasBitcoinNodeNetwork m, MonadLDB m, MonadLogger m) => BlockHeight -> m BlockInfo
 blockInfo blockHeightToScan =  do
   blockHash <- nodeRpcCall $ (`getBlockHash` fromIntegral blockHeightToScan)
   maybeRawBlock <- nodeRpcCall $ (`getBlockRaw` blockHash)
@@ -85,3 +91,28 @@ blockInfo blockHeightToScan =  do
   where
     blockGettingError = error $ "Error getting BTC node at height " ++ show blockHeightToScan
     blockParsingError = error $ "Error parsing BTC node at height " ++ show blockHeightToScan
+
+feeScaner :: ServerM ()
+feeScaner = feeScaner' 0
+  where
+    feeScaner' :: BlockHeight -> ServerM ()
+    feeScaner' h = do
+      cfg <- serverConfig
+      h'  <- actualHeight
+      h'' <- if h' == h
+        then pure h'
+        else do
+          res <- fmap catMaybes $ flip traverse [FeeFast, FeeModerate, FeeCheap] $ \lvl -> do
+            let req mode c = estimateSmartFee c (fromIntegral $ feeTargetBlocks BTC lvl) mode
+            mco <- nodeRpcCall $ req Conservative
+            mec <- nodeRpcCall $ req Economical
+            case (estimateResFee mco, estimateResFee mec) of
+              (Just (MkFixed co), Just (MkFixed ec)) -> pure $ Just (lvl, (fromIntegral co `div` 1000 , fromIntegral ec `div` 1000))
+              _ -> pure Nothing
+          setFees BTC $ mkFeeBundle res
+          logInfoN $ "[BTC]: " <> showt res
+          pure $ case res of
+            [] -> h
+            _  -> h'
+      liftIO $ threadDelay $ cfgFeeEstimateDelay cfg
+      feeScaner' h''

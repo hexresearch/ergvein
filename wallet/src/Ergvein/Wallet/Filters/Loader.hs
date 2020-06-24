@@ -46,7 +46,9 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
     go = Workflow $ do
       buildE <- getPostBuild
       ch <- fmap fromIntegral $ sample . current =<< getCurrentHeight BTC
-      fh <- getFiltersHeight BTC
+      fh' <- getFiltersHeight BTC
+      sh <- getScannedHeight BTC
+      let fh = max fh' sh
       logWrite $ "Current height is " <> showt ch <> ", and filters are for height " <> showt fh
       -- postSync BTC ch fh
       if ch > fh then do
@@ -60,7 +62,8 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
         logWrite "Sleeping, waiting for new filters ..."
         let dt = if ch == 0 then 1 else 120
         de <- delay dt buildE
-        pure ((), go <$ de)
+        upde <- updated <$> getCurrentHeight BTC
+        pure ((), go <$ leftmost [de, void upde])
 
 postSync :: MonadFront t m => Currency -> BlockHeight -> BlockHeight -> m ()
 postSync cur ch fh = do
