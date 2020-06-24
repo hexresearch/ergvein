@@ -118,24 +118,25 @@ bctNodeController = mdo
     pure $ (u <$ closeE, newTxE)
 
   store <- getBlocksStorage
-  mtxE <- performFork $ ffor (current allBtcAddrsD `attach` txE) $ \(addrs, tx) -> do
-    liftIO $ flip runReaderT store $ checkAddrTx' addrs tx
-  -- addTxToPubStorage $ fmapMaybe (fmap snd) mtxE
-  insertTxsInPubKeystore $ fforMaybe mtxE $ \case
-    [] -> Nothing
-    vals -> Just $ (BTC, prepareToInsertTxs vals)
+  txListE <- fmap (fmapMaybe id) $ performFork $ ffor (current allBtcAddrsD `attach` txE) $ \(addrs, tx) -> do
+    v <- liftIO $ flip runReaderT store $ checkAddrTx' addrs tx
+    pure $ case v of
+      [] -> Nothing
+      _ -> Just v
+  addTxMapToPubStorage $ ((BTC, ) . M.fromList . snd . unzip) <$> txListE
+  insertTxsInPubKeystore $ ffor txListE $ \vals -> (BTC, prepareToInsertTxs vals)
   pure ()
   where
     switchTuple (a, b) = (switchDyn . fmap leftmost $ a, switchDyn . fmap leftmost $ b)
 
-checkAddrTx' :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => [(Maybe Int, EgvAddress)] -> HT.Tx -> m [(Maybe Int, (Text, EgvTx))]
+checkAddrTx' :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => [(Maybe Int, EgvAddress)] -> HT.Tx -> m [(Maybe Int, (TxId, EgvTx))]
 checkAddrTx' iaddrs tx = fmap catMaybes $ flip traverse iaddrs $ \(mi,addr) -> do
   b <- checkAddrTx addr tx
   pure $ if b then Just (mi, (th, BtcTx tx)) else Nothing
   where
     th = txHashToHex $ txHash tx
 
-prepareToInsertTxs :: [(Maybe Int, (Text, EgvTx))] -> M.Map Int [TxId]
+prepareToInsertTxs :: [(Maybe Int, (TxId, EgvTx))] -> M.Map Int [TxId]
 prepareToInsertTxs = foo M.empty $ \m (mi, (tid,_)) -> case mi of
   Nothing -> m
   Just i -> M.insertWith (<>) i [tid] m
