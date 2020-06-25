@@ -12,7 +12,7 @@ import Data.Set (Set)
 
 data CurrencyOutOfSyncInfo = CurrencyOutOfSyncInfo
   { outOfsyncCurrency    :: Currency
-  , outOfSyncLocalHeight :: BlockHeight
+  , outOfSyncLocalHeight :: Maybe BlockHeight
   } deriving Show
 
 data PeerValidationResult = OK

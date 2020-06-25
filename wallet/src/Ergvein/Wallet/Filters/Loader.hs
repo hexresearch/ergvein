@@ -53,7 +53,9 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
       -- postSync BTC ch fh
       if ch > fh then do
         let n = 500
+        logWrite $ "Getting next filters ..." <> showt n
         fse <- getFilters ((BTC, fh+1, n) <$ buildE)
+        performEvent_ $ ffor fse $ const $ logWrite "Got filters!"
         we <- performFork $ ffor fse $ \fs ->
           insertMultipleFilters BTC $ zipWith (\h (bh,f) -> (h,bh,f)) [fh+1..] fs
         goE <- fmap (go <$) $ delay 1 we

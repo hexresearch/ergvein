@@ -81,8 +81,8 @@ instance FromJSON EncryptedPrvStorage where
       Just iv' -> pure $ EncryptedPrvStorage ciphertext salt iv'
 
 data CurrencyPubStorage = CurrencyPubStorage {
-    _currencyPubStorage'pubKeystore   :: PubKeystore
-  , _currencyPubStorage'transactions  :: M.Map TxId EgvTx
+    _currencyPubStorage'pubKeystore   :: !PubKeystore
+  , _currencyPubStorage'transactions  :: !(M.Map TxId EgvTx)
   , _currencyPubStorage'height        :: !(Maybe BlockHeight) -- ^ Last height seen by the wallet
   , _currencyPubStorage'scannedKey    :: !(Maybe Int) -- ^ When restoring here we put which keys are we already scanned
   } deriving (Eq, Show, Read)
@@ -131,13 +131,14 @@ pubStorageSetKeyStorage c ks ps = ps {
       }
 
 pubStorageSetKeyScanned :: Currency -> Maybe Int -> PubStorage -> PubStorage
-pubStorageSetKeyScanned c v ps = ps {
+pubStorageSetKeyScanned c v = modifyCurrStorage c $ \cps -> cps {
+    _currencyPubStorage'scannedKey = v
+  }
+
+modifyCurrStorage :: Currency -> (CurrencyPubStorage  -> CurrencyPubStorage) -> PubStorage -> PubStorage
+modifyCurrStorage c f ps = ps {
     _pubStorage'currencyPubStorages = M.adjust f c $ _pubStorage'currencyPubStorages ps
   }
-  where
-    f cps = cps {
-        _currencyPubStorage'scannedKey = v
-      }
 
 pubStorageTxs :: Currency -> PubStorage -> Maybe (M.Map TxId EgvTx)
 pubStorageTxs c = fmap _currencyPubStorage'transactions . M.lookup c . _pubStorage'currencyPubStorages

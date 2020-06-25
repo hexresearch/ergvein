@@ -19,7 +19,7 @@ data NetworkPageStrings
   | NPSCurHeight Int
   | NPSSyncStatus
   | NPSNoServerAvail
-  | NPSSyncInfo (BlockHeight, BlockHeight)
+  | NPSSyncInfo (Maybe BlockHeight, BlockHeight)
   | NPSDesync
   | NPSSyncDescr
   | NPSRefresh
@@ -32,7 +32,7 @@ data NetworkPageStrings
   | NPSAvgLat NominalDiffTime
   | NPSOffline
   | NPSNoIndex Currency
-  | NPSHeightInfo1 BlockHeight
+  | NPSHeightInfo1 (Maybe BlockHeight)
   | NPSHeightInfo2 BlockHeight
   | NPSNodes
   | NPSNodesNum Int
@@ -63,7 +63,10 @@ instance LocalizedPrint NetworkPageStrings where
       NPSAvgLat lat         -> "Average latency: " <> showt lat
       NPSOffline            -> "Offline"
       NPSNoIndex c          -> "Has no index for " <> showt c
-      NPSHeightInfo1 ch     -> "Index height: " <> showt ch
+      NPSHeightInfo1 ch     -> 
+        case ch of 
+          Just h  -> "Index height: " <> showt h
+          Nothing -> "Not indexed"
       NPSHeightInfo2 ah     -> "Blockchain height: " <> showt ah
       NPSNodes              -> "Blockchain nodes: "
       NPSNodesNum n         -> "Total nodes: " <> showt n
@@ -97,7 +100,10 @@ instance LocalizedPrint NetworkPageStrings where
       NPSAvgLat lat         -> "Средняя задержка : " <> showt lat
       NPSOffline            -> "Оффлайн"
       NPSNoIndex c          -> "Нет индекса для " <> showt c
-      NPSHeightInfo1 ch     -> "Высота индекса: " <> showt ch
+      NPSHeightInfo1 ch     -> 
+        case ch of 
+          Just h  -> "Высота индекса: " <> showt h
+          Nothing -> "Не индексировалась"
       NPSHeightInfo2 ah     -> "Высота блокчейна: " <> showt ah
       NPSNodes              -> "Блокчейн-узлы: "
       NPSNodesNum n         -> "Всего узлов: " <> showt n

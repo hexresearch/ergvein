@@ -443,8 +443,20 @@ sendPageCss = do
     marginRight $ rem 1
   ".button-icon-wrapper" ? do
     paddingLeft $ rem 1
-  ".is-invalid input" ? do
-    border solid (rem 0.1) red
+  ".is-invalid input" ? border solid (rem 0.1) red
+  ".btn-fee-on" ? do
+    important $ backgroundColor gray
+    important $ color white
+  ".btn-fee-on" `with` hover ? do
+    important $ backgroundColor gray
+    important $ color white
+  ".btn-fee-on" `with` focus ? do
+    important $ backgroundColor gray
+    important $ color white
+  ".lbl-red" ? color red
+  ".btn-fee" ? do
+    marginLeft $ rem 0.5
+    marginRight $ rem 0.5
 
 aboutPageCss :: Css
 aboutPageCss = do

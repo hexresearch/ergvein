@@ -6,11 +6,13 @@ module Ergvein.Index.Client.V1
   , getInfoEndpoint
   , getIntroducePeerEndpoint
   , getKnownPeersEndpoint
+  , getFeeEstimatesEndpoint
   ) where
 
 import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.Proxy
+import Network.HTTP.Client hiding (Proxy)
 import Servant.API
 import Servant.API.Generic
 import Servant.Client
@@ -19,9 +21,8 @@ import Ergvein.Index.API
 import Ergvein.Index.API.Types
 import Ergvein.Index.API.V1
 import Ergvein.Text
+import Ergvein.Types.Currency
 import Ergvein.Wallet.Native
-import Network.HTTP.Client hiding (Proxy)
-import Control.Monad.IO.Class
 
 data AsClient
 
@@ -65,3 +66,8 @@ getKnownPeersEndpoint :: HasClientManager m => BaseUrl -> KnownPeersReq -> m (Ei
 getKnownPeersEndpoint url req = do
   cenv <- fmap (`mkClientEnv` url) getClientManager
   liftIO $ flip runClientM cenv $ indexKnownPeers apiV1 req
+
+getFeeEstimatesEndpoint :: HasClientManager m => BaseUrl -> [Currency] -> m (Either ClientError IndexFeesResp)
+getFeeEstimatesEndpoint url curs = do
+  cenv <- fmap (`mkClientEnv` url) getClientManager
+  liftIO $ flip runClientM cenv $ indexGetFees apiV1 curs

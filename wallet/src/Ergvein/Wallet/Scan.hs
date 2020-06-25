@@ -71,20 +71,16 @@ scannerBtc = void $ workflow waiting
       scD <- watchScannedHeight BTC
       rsD <- fmap _pubStorage'restoring <$> getPubStorageD
       setSyncProgress $ ffor buildE $ const $ Synced
-      let newFiltersE = fmap fst . ffilter (id . snd) $ updated $ do
+      let newFiltersE = fmapMaybe id $ updated $ do
             fh <- fhD
             sc <- scD
             rs <- rsD
-            pure (sc, sc < fh && not rs)
-      setSyncProgress $ flip pushAlways newFiltersE $ const $ do
-        fh <- sample . current $ fhD
-        sc <- sample . current $ scD
-        pure $ SyncMeta BTC (SyncAddress 0) (fromIntegral sc) (fromIntegral fh)
-      performEvent_ $ ffor newFiltersE $ const $ do
-        fh <- sample . current $ fhD
-        sc <- sample . current $ scD
+            pure $ if sc < fh && not rs then Just (fh, sc) else Nothing
+      setSyncProgress $ ffor newFiltersE $ \(fh, sc) -> do
+        SyncMeta BTC (SyncAddress 0) (fromIntegral sc) (fromIntegral fh)
+      performEvent_ $ ffor newFiltersE $  \(fh, sc) -> do
         logWrite $ "Start scanning for new " <> showt (fh - sc)
-      pure ((), scanning <$> newFiltersE)
+      pure ((), scanning . snd <$> newFiltersE)
 
     scanning i0 = Workflow $  do
       logWrite "Scanning filters"
@@ -132,9 +128,9 @@ scanningBtcBlocks keys hashesE = do
   storedTxHashesE <- storeMultipleBlocksTxHashesByE blocksE
   let toAddr = xPubToBtcAddr . extractXPubKeyFromEgv
       keymap = M.fromList . V.toList . V.map (second (BtcAddress . toAddr)) $ keys
-  txsE <- getAddressesTxs $ (keymap,) <$> blocksE
-  storedE <- insertTxsInPubKeystore $ (BTC,) . fmap M.keys <$> txsE
-  pure $ leftmost [not . M.null <$> txsE, False <$ noScanE]
+  txsE <- logEvent "Transactions got: " =<< getAddressesTxs ((keymap,) <$> blocksE)
+  storedE <- insertTxsInPubKeystore $ (BTC,) . fmap M.elems <$> txsE
+  pure $ leftmost [any (not . M.null) <$> txsE, False <$ noScanE]
 
 -- | Extract transactions that correspond to given address.
 getAddressesTxs :: MonadFront t m => Event t (M.Map a EgvAddress, [HB.Block]) -> m (Event t (M.Map a (M.Map TxId EgvTx)))

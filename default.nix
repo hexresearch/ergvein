@@ -42,6 +42,7 @@ let
         "ergvein-wallet-desktop"
         "ergvein-wallet-filters"
         "ergvein-wallet-native"
+        "ergvein-wallet-types"
         "ergvein-wallet"
         "ergvein-website"
         "golomb-rice"
@@ -53,7 +54,7 @@ let
     overrides = import ./overrides.nix { inherit reflex-platform; };
 
     shellToolOverrides = ghc: super: {
-      inherit (pkgs) postgresql leveldb;
+      inherit (pkgs) leveldb;
       inherit (pkgs.haskellPackages) hakyll;
       hp2any-graph = if profile then ghc.hp2any-graph else null;
     };

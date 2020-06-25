@@ -18,6 +18,6 @@ switchNavbar cur prevWidget e = void $ nextWidget $ fforMaybe e $ \go -> let
   , retractablePrev = Just $ pure balancesPage
   }
   in case go of
-    NavbarSend    -> Just $ mkNext $ sendPage cur
+    NavbarSend    -> Just $ mkNext $ sendPage cur Nothing
     NavbarHistory -> Just $ mkNext $ historyPage cur
     NavbarReceive -> Just $ mkNext $ receivePage cur
