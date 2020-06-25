@@ -57,16 +57,16 @@ sendPage cur = wrapper False (SendTitle cur) (Just $ pure $ sendPage cur) $ do
 #ifdef ANDROID
     recipientD <- validatedTextFieldSetVal RecipientString "" recipientErrsD (leftmost [resQRcodeE, pasteE])
     (qrE, pasteE, resQRcodeE) <- divClass "send-page-buttons-wrapper" $ do
-      qrE <- outlineTextIconButton BtnScanQRCode "fas fa-qrcode fa-lg"
+      qrE <- outlineTextIconButtonTypeButton BtnScanQRCode "fas fa-qrcode fa-lg"
       openE <- delay 1.0 =<< openCamara qrE
       resQRcodeE <- waiterResultCamera openE
-      pasteBtnE <- outlineTextIconButton BtnPasteString "fas fa-clipboard fa-lg"
+      pasteBtnE <- outlineTextIconButtonTypeButton BtnPasteString "fas fa-clipboard fa-lg"
       pasteE <- clipboardPaste pasteBtnE
       pure (qrE, pasteE, resQRcodeE)
 #else
     recipientD <- validatedTextFieldSetVal RecipientString "" recipientErrsD pasteE
     pasteE <- divClass "send-page-buttons-wrapper" $ do
-      pasteBtnE <- outlineTextIconButton BtnPasteString "fas fa-clipboard fa-lg"
+      pasteBtnE <- outlineTextIconButtonTypeButton BtnPasteString "fas fa-clipboard fa-lg"
       pasteE <- clipboardPaste pasteBtnE
       pure pasteE
 #endif

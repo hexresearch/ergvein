@@ -7,6 +7,7 @@ module Ergvein.Wallet.Page.Seed(
 
 import Control.Monad.Random.Strict
 import Data.Bifunctor
+import Data.Either (either)
 import Data.List (permutations)
 import Ergvein.Crypto.Keys
 import Ergvein.Crypto.Util
@@ -95,7 +96,7 @@ mnemonicCheckWidget mnemonic = mdo
   langD <- getLanguage
   divClass "mnemonic-verify-title" $ h4 $ localizedText SPSVerifyTitle
   idyn <- holdDyn 0 ie
-  divClass "mnemonic-verify-n" $ h4 $ dynText $ do
+  h4 $ dynText $ do
     l <- langD
     i <- idyn
     pure $ localizedShow l $ SPSSelectWord (i+1)
@@ -142,18 +143,31 @@ seedRestoreWidget :: forall t m . MonadFrontBase t m => m (Event t Mnemonic)
 seedRestoreWidget = mdo
   langD <- getLanguage
   ixD <- foldDyn (\_ i -> i + 1) 1 wordE
-  divClass "mnemonic-verify-n" $ h4 $ dynText $
+  h4 $ dynText $
     localizedShow <$> langD <*> (SPSEnterWord <$> ixD)
-  wordE <- fmap (switch . current) $ widgetHold waiting $ ffor (updated inpD) $ \t -> if t == ""
+  btnE <- fmap (switch . current) $ widgetHold waiting $ ffor (updated inputD) $ \t -> if t == ""
     then waiting
-    else fmap leftmost $ colonize 3 (take 9 $ getWordsWithPrefix $ T.toLower t) $ \w -> do
-       btnE <- buttonClass (pure "button button-outline guess-button restore-word") w
-       pure $ w <$ btnE
+    else divClass "restore-seed-buttons-wrapper" $ fmap leftmost $ (flip traverse) (take 6 $ getWordsWithPrefix $ T.toLower t) $ \w -> do
+      btnClickE <- buttonClass (pure "button button-outline") w
+      pure $ w <$ btnClickE
+  wordErrsD <- holdDyn Nothing $ ffor (leftmost [validationE, Right <$> btnE]) (either Just (const Nothing))
   let emptyStr :: Text = ""
-  inpD <- fmap join $ widgetHold (textField emptyStr "") $ ffor wordE $ const $ textField emptyStr ""
+      enterPressedE = keypress Enter txtInput
+      inputD = _inputElement_value txtInput
+      validationE = poke enterPressedE $ \_ -> do
+        input <- sampleDyn inputD
+        pure $ validateSeedWord input
+      enterE = fmapMaybe (\x -> either (const Nothing) Just x) validationE
+      wordE = leftmost [btnE, enterE]
+  txtInput <- validatedTextInput (def & inputElementConfig_setValue .~ fmap (const "") wordE) wordErrsD
   mnemD <- foldDyn (\w m -> let p = if m == "" then "" else " " in m <> p <> w) "" wordE
   goE <- delay 0.1 (updated ixD)
   pure $ attachWithMaybe (\mnem i -> if i == 25 then Just mnem else Nothing) (current mnemD) goE
   where
     waiting :: m (Event t Text)
     waiting = (h4 $ localizedText SPSWaiting) >> pure never
+
+validateSeedWord :: Text -> Either [SeedPageStrings] Text
+validateSeedWord word = if wordTrieElem word
+  then Right word
+  else Left [SPSInvalidWord]

@@ -305,8 +305,15 @@ mnemonicWidgetCss = do
     margin (px 0) auto (px 0) auto
   ".guess-button" ? do
     width $ pct 100
-  ".restore-word" ? do
-    minWidth $ px 120
+  ".restore-seed-buttons-wrapper" ? do
+    display flex
+    flexWrap F.wrap
+    marginLeft $ rem (-0.5)
+    marginRight $ rem (-0.5)
+    justifyContent center
+  ".restore-seed-buttons-wrapper button" ? do
+    marginLeft $ rem 0.5
+    marginRight $ rem 0.5
   let mkGuess cl c = do
         cl ? backgroundColor c
         cl `with` hover ? backgroundColor c
