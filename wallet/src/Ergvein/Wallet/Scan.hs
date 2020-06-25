@@ -20,6 +20,7 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
+import Ergvein.Types.Utxo
 import Ergvein.Wallet.Blocks.BTC
 import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Filters.Storage
@@ -127,24 +128,37 @@ scanningBtcBlocks keys hashesE = do
   storedTxHashesE <- storeMultipleBlocksTxHashesByE blocksE
   let toAddr = xPubToBtcAddr . extractXPubKeyFromEgv
       keymap = M.fromList . V.toList . V.map (second (BtcAddress . toAddr)) $ keys
-  txsE <- logEvent "Transactions got: " =<< getAddressesTxs ((keymap,) <$> blocksE)
+  txsUpdsE <- logEvent "Transactions got: " =<< getAddressesTxs ((keymap,) <$> blocksE)
+  let txsE = fmap fst txsUpdsE
+  let updE = fforMaybe txsUpdsE $ \(_,(o,i)) -> if not (M.null o && null i) then Just (o,i) else Nothing
+  updateBtcUtxoSet updE
   storedE <- insertTxsInPubKeystore $ (BTC,) . fmap M.elems <$> txsE
   pure $ leftmost [any (not . M.null) <$> txsE, False <$ noScanE]
 
+type BtcUtxoUpdate = (BtcUtxoSet, [HT.OutPoint])
+
 -- | Extract transactions that correspond to given address.
-getAddressesTxs :: MonadFront t m => Event t (M.Map a EgvAddress, [HB.Block]) -> m (Event t (M.Map a (M.Map TxId EgvTx)))
-getAddressesTxs e = performFork $ ffor e $ \(maddr, blocks) -> traverse (`getAddrTxsFromBlocks` blocks) maddr
+getAddressesTxs :: MonadFront t m => Event t (M.Map Int EgvAddress, [HB.Block]) -> m (Event t (M.Map Int (M.Map TxId EgvTx), BtcUtxoUpdate))
+getAddressesTxs e = performFork $ ffor e $ \(maddr, blocks) -> do
+  a <- traverse (`getAddrTxsFromBlocks` blocks) maddr
+  let b = fmap fst a
+  let (outs,ins) = unzip $ fmap snd $ M.elems a
+  let upds :: BtcUtxoUpdate = (M.unions outs, mconcat ins)
+  pure (b, upds)
 
 -- | Gets transactions related to given address from given block.
-getAddrTxsFromBlocks :: (MonadIO m, Traversable f, HasBlocksStorage m, PlatformNatives)
-  => EgvAddress -> f HB.Block -> m (M.Map TxId EgvTx)
+getAddrTxsFromBlocks :: (MonadIO m, HasBlocksStorage m, PlatformNatives)
+  => EgvAddress -> [HB.Block] -> m (M.Map TxId EgvTx, BtcUtxoUpdate)
 getAddrTxsFromBlocks addr blocks = do
-  txMaps <- traverse (getAddrTxsFromBlock addr) blocks
-  pure $ M.unions txMaps
+  (txMaps, uts) <- fmap unzip $ traverse (getAddrTxsFromBlock addr) blocks
+  let (outs,ins) = unzip uts
+  let upds = (M.unions outs, mconcat ins)
+  pure $ (M.unions txMaps, upds)
 
-getAddrTxsFromBlock :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> HB.Block -> m (M.Map TxId EgvTx)
+getAddrTxsFromBlock :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> HB.Block -> m (M.Map TxId EgvTx, BtcUtxoUpdate)
 getAddrTxsFromBlock addr block = do
   checkResults <- traverse (checkAddrTx addr) txs
   let filteredTxs = fst $ unzip $ filter snd (zip txs checkResults)
-  pure $ M.fromList [(HT.txHashToHex $ HT.txHash tx, BtcTx tx) | tx <- filteredTxs]
+  utxo <- getUtxoUpdatesFromTxs EUtxoConfirmed addr filteredTxs
+  pure $ (, utxo) $ M.fromList [(HT.txHashToHex $ HT.txHash tx, BtcTx tx) | tx <- filteredTxs]
   where txs = HB.blockTxns block
