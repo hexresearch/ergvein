@@ -7,9 +7,11 @@ module Ergvein.Wallet.Monad.Storage
   , setLabelToExtPubKey
   , setFlagToExtPubKey
   , insertTxsInPubKeystore
+  , updateBtcUtxoSet
   ) where
 
 import Control.Lens
+import Control.Monad
 import Data.Functor (void)
 import Data.Map (Map)
 import Data.Map.Strict (Map)
@@ -83,23 +85,24 @@ insertTxsInPubKeystore reqE = modifyPubStorage $ ffor reqE $ \(cur, mtx) ps -> l
 
 updateKeyBoxWith :: Currency -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> PubStorage -> Maybe PubStorage
 updateKeyBoxWith cur i f ps =
-  let mk = ps ^.
-          pubStorage'currencyPubStorages
-        . at cur
-        & \mcps -> case mcps of
-          Nothing -> Nothing
-          Just cps -> cps ^. currencyPubStorage'pubKeystore
-            & (\v -> (V.!?) (pubKeystore'external v) i)
-  in case mk of
-    Nothing -> Nothing
-    Just kb -> let kb' = f kb
-      in Just $ ps & pubStorage'currencyPubStorages . at cur
-        %~ \mcps -> case mcps of
-          Nothing -> Nothing
-          Just cps -> Just $ cps & currencyPubStorage'pubKeystore
-            %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
+  let mk = ps ^. pubStorage'currencyPubStorages . at cur
+        & \mcps -> join $ ffor mcps $ \cps -> cps ^. currencyPubStorage'pubKeystore
+          & (\v -> (V.!?) (pubKeystore'external v) i)
+  in ffor mk $ \kb -> let kb' = f kb
+    in ps & pubStorage'currencyPubStorages . at cur
+      %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'pubKeystore
+        %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
 
 updateKeyLabel :: Text -> EgvXPubKey -> EgvXPubKey
 updateKeyLabel l key = case key of
   ErgXPubKey k _ -> ErgXPubKey k l
   BtcXPubKey k _ -> BtcXPubKey k l
+
+updateBtcUtxoSet :: MonadStorage t m => Event t (BtxUtxoSet, [OutPoint]) -> m ()
+updateBtcUtxoSet reqE = void . modifyPubStorage $ ffor reqE $ \upds ps -> let
+  mnews = ps ^. pubStorage'currencyPubStorages . at BTC
+    & \mcps -> ffor mcps $ \cps -> cps ^. currencyPrvStorage'utxos & getBtcUtxoSetFromStore
+      & \ms -> updateBtcUtxoSetPure upds $ fromMaybe M.empty $ ms
+  in ffor mnews $ \news -> ps & pubStorage'currencyPubStorages . at BTC
+    %~ \mcps -> ffor mcps $ \cps -> cps & currencyPrvStorage'utxos
+      %~ \us -> M.insert BTC (BtcSet news) us
