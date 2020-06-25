@@ -2,7 +2,7 @@ module Ergvein.Types.Utxo
   (
     EgvUtxoSet(..)
   , EgvUtxoStatus(..)
-  , BtxUtxoSet
+  , BtcUtxoSet
   , EgvUtxoSetStorage
   , getBtcUtxoSetFromStore
   , isUtxoConfirmed
@@ -28,9 +28,9 @@ isUtxoConfirmed v = case v of
   EUtxoConfirmed -> True
   _ -> False
 
-type BtxUtxoSet = M.Map OutPoint (Word64, EgvUtxoStatus)
+type BtcUtxoSet = M.Map OutPoint (Word64, EgvUtxoStatus)
 
-data EgvUtxoSet = BtcSet BtxUtxoSet | ErgoSet ()
+data EgvUtxoSet = BtcSet BtcUtxoSet | ErgoSet ()
   deriving (Eq, Show, Read)
 $(deriveJSON defaultOptions ''EgvUtxoSet)
 
@@ -39,10 +39,10 @@ instance ToJSONKey OutPoint
 
 type EgvUtxoSetStorage = M.Map Currency EgvUtxoSet
 
-getBtcUtxoSetFromStore :: EgvUtxoSetStorage -> Maybe BtxUtxoSet
+getBtcUtxoSetFromStore :: EgvUtxoSetStorage -> Maybe BtcUtxoSet
 getBtcUtxoSetFromStore st = case M.lookup BTC st of
   Just (BtcSet s) -> Just s
   _ -> Nothing
 
-updateBtcUtxoSetPure :: (BtxUtxoSet, [OutPoint]) -> BtxUtxoSet -> BtxUtxoSet
+updateBtcUtxoSetPure :: (BtcUtxoSet, [OutPoint]) -> BtcUtxoSet -> BtcUtxoSet
 updateBtcUtxoSetPure (outs, ins) s = M.withoutKeys (M.union outs s) (S.fromList ins)

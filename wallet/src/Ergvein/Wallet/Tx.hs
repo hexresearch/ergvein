@@ -46,7 +46,7 @@ getUnspentOutputs addr tx = fmap catMaybes $ flip traverse (zip [0..] $ txOut tx
   where
     th = txHash tx
 
-getUtxoUpdates :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvUtxoStatus -> [EgvAddress] -> Tx -> m (BtxUtxoSet, [OutPoint])
+getUtxoUpdates :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvUtxoStatus -> [EgvAddress] -> Tx -> m (BtcUtxoSet, [OutPoint])
 getUtxoUpdates stat addrs tx = do
   (unsps, sps) <- fmap unzip $ flip traverse addrs $ \addr -> do
     unsp <- getUnspentOutputs addr tx

@@ -61,11 +61,12 @@ testPage = do
   aiD <- getAuthInfo
   -- el "div" $ text "AAAAAAAAAA"
   let op = OutPoint {outPointHash = "a0819d01cb5de6586a2b6ecdcee2a83a5f59f1f73a1152478aa117eff2765bfe", outPointIndex = 0}
-  let aaaa = (fromList [(OutPoint {outPointHash = "a0819d01cb5de6586a2b6ecdcee2a83a5f59f1f73a1152478aa117eff2765bfe", outPointIndex = 0},(10000,EUtxoReceiving))],[])
+  let aaaa = (fromList [(op,(10000,EUtxoReceiving))],[])
   let del = (Map.empty, [op])
+  addE <- fmap (aaaa <$) $ outlineButton ("addE" :: Text)
   goE <- fmap ((Map.empty, [op]) <$) $ outlineButton ("goE" :: Text)
   -- performFork_ $ (logWrite . showt) <$> goE
-  -- updateBtcUtxoSet goE
+  updateBtcUtxoSet $ leftmost [addE, goE]
   widgetHoldDyn $ ffor aiD $ \ai -> do
     let pts = ai ^.
             authInfo'storage
