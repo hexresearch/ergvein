@@ -75,16 +75,12 @@ scannerBtc = void $ workflow waiting
             fh <- fhD
             sc <- scD
             rs <- rsD
-            pure (sc, sc < fh && not rs)
-      setSyncProgress $ flip pushAlways newFiltersE $ const $ do
-        fh <- sample . current $ fhD
-        sc <- sample . current $ scD
-        pure $ SyncMeta BTC (SyncAddress 0) (fromIntegral sc) (fromIntegral fh)
-      performEvent_ $ ffor newFiltersE $ const $ do
-        fh <- sample . current $ fhD
-        sc <- sample . current $ scD
+            pure ((fh, sc), sc < fh && not rs)
+      setSyncProgress $ ffor newFiltersE $ \(fh, sc) -> do
+        SyncMeta BTC (SyncAddress 0) (fromIntegral sc) (fromIntegral fh)
+      performEvent_ $ ffor newFiltersE $  \(fh, sc) -> do
         logWrite $ "Start scanning for new " <> showt (fh - sc)
-      pure ((), scanning <$> newFiltersE)
+      pure ((), scanning . snd <$> newFiltersE)
 
     scanning i0 = Workflow $  do
       logWrite "Scanning filters"

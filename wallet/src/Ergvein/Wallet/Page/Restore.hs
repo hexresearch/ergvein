@@ -98,7 +98,6 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
           hastxs <- sample . current $ hasTxsD
           when hastxs $ do
             ps <- sample . current $ psD
-            liftIO $ print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
             logWrite $ "We have txs: " <> showt (pubStorageTxs BTC ps)
         pure ((), nextE)
 
