@@ -125,7 +125,7 @@ bctNodeController = mdo
         else Nothing
   addTxToPubStorage $ fmapMaybe (fmap snd) mtxE
   insertTxsInPubKeystore $ fforMaybe mtxE $ \mv -> join $ ffor mv $
-    \(mi, (txid, _)) -> ffor mi $ \i -> (BTC, M.singleton i [txid])
+    \(mi, (_, tx)) -> ffor mi $ \i -> (BTC, M.singleton i [tx])
   pure ()
   where
     switchTuple (a, b) = (switchDyn . fmap leftmost $ a, switchDyn . fmap leftmost $ b)

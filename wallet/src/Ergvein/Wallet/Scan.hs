@@ -132,7 +132,7 @@ scanningBtcBlocks keys hashesE = do
   let toAddr = xPubToBtcAddr . extractXPubKeyFromEgv
       keymap = M.fromList . V.toList . V.map (second (BtcAddress . toAddr)) $ keys
   txsE <- logEvent "Transactions got: " =<< getAddressesTxs ((keymap,) <$> blocksE)
-  storedE <- insertTxsInPubKeystore $ (BTC,) . fmap M.keys <$> txsE
+  storedE <- insertTxsInPubKeystore $ (BTC,) . fmap M.elems <$> txsE
   pure $ leftmost [any (not . M.null) <$> txsE, False <$ noScanE]
 
 -- | Extract transactions that correspond to given address.

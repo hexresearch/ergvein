@@ -42,6 +42,7 @@ let
         "ergvein-wallet-desktop"
         "ergvein-wallet-filters"
         "ergvein-wallet-native"
+        "ergvein-wallet-types"
         "ergvein-wallet"
         "ergvein-website"
         "golomb-rice"
