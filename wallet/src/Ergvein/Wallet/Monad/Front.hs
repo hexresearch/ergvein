@@ -22,10 +22,11 @@ module Ergvein.Wallet.Monad.Front(
 
 import Control.Concurrent.Chan
 import Control.Monad
+import Control.Monad.IO.Class
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Functor.Misc (Const2(..))
-import Data.Map.Strict (Map)
+import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Network.Socket (SockAddr)
@@ -44,6 +45,7 @@ import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Node.Types
@@ -63,10 +65,8 @@ type MonadFront t m = (
     MonadFrontAuth t m
   , MonadStorage t m
   , MonadClient t m
-  , HasHeadersStorage m
-  , HasHeadersStorage (Performable m)
-  , HasFiltersStorage m
-  , HasFiltersStorage (Performable m)
+  , HasFiltersStorage t m
+  , HasFiltersStorage t (Performable m)
   , HasBlocksStorage m
   , HasBlocksStorage (Performable m)
   )
@@ -147,17 +147,23 @@ class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   getAuthInfoRef :: m (ExternalRef t (Maybe AuthInfo))
 
 -- | Get current value of longest chain height for given currency.
-getCurrentHeight :: MonadFrontAuth t m => Currency -> m Integer
+getCurrentHeight :: MonadFrontAuth t m => Currency -> m (Dynamic t Integer)
 getCurrentHeight c = do
   r <- getHeightRef
-  m <- readExternalRef r
-  pure $ fromMaybe 0 $ M.lookup c m
+  md <- externalRefDynamic r
+  holdUniqDyn $ (fromMaybe 0 . M.lookup c) <$> md
 
--- | Update current height of longest chain for given currency. TODO: migrate this to direct asking BTC nodes, not indexer.
-setCurrentHeight :: MonadFrontAuth t m => Currency -> Event t Integer -> m ()
+-- | Update current height of longest chain for given currency.
+setCurrentHeight :: MonadFront t m => Currency -> Event t Integer -> m ()
 setCurrentHeight c e = do
   r <- getHeightRef
-  performEvent_ $ ffor e $ \h -> modifyExternalRef r ((, ()) . M.insert c h)
+  restoredD <- fmap _pubStorage'restoring <$> getPubStorageD
+  setLastSeenHeight c $ fromIntegral <$> e
+  performFork_ $ ffor e $ \h -> do
+    h0 <- fromMaybe 0 . M.lookup c <$> readExternalRef r
+    restored <- sample . current $ restoredD
+    when (h0 == 0 && not restored) $ writeScannedHeight c $ fromIntegral (h-1) -- ^ Start filtering from the first seen height
+    modifyExternalRef r ((, ()) . M.insert c h)
 
 -- | Get current value that tells you whether filters are fully in sync now or not
 getFiltersSync :: MonadFrontAuth t m => Currency -> m (Dynamic t Bool)

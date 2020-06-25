@@ -4,6 +4,8 @@ module Ergvein.Wallet.Storage.Keys (
   , deriveCurrencyMasterPubKey
   , derivePrvKey
   , derivePubKey
+  , xPubToBtcAddr
+  , xPubToErgAddr
   ) where
 
 import Ergvein.Crypto

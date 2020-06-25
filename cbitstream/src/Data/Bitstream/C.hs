@@ -168,9 +168,9 @@ unsafeFromByteString  bs = liftIO $ BS.unsafeUseAsCStringLen bs $ \(ptr, l) -> d
 
 -- | Convert stream of bits to bytestring. O(n)
 toByteString :: MonadIO m => Bitstream -> m ByteString
-toByteString sw = liftIO $ withForeignPtr (bitstreamWriter sw) $ \wp -> do
+toByteString sw = liftIO $ withForeignPtr (bitstreamWriter sw) $ \wp -> withForeignPtr (bitstreamBuffer sw) $ \buff -> do
   l <- bitstream_writer_size_in_bytes wp
-  BS.packCStringLen (castPtr wp, fromIntegral l)
+  BS.packCStringLen (castPtr buff, fromIntegral l)
 {-# INLINABLE toByteString #-}
 
 -- | Convert stream of bits to bytestring. O(1). Doesn't copy internal buffer,

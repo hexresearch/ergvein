@@ -16,7 +16,7 @@ import           Data.ByteString                ( ByteString )
 import qualified Data.ByteString               as BS
 import qualified Data.ByteString.Base16        as BS16
 import           Ergvein.Filters.Btc
-import           Ergvein.Text 
+import           Ergvein.Text
 import           Ergvein.Types.Address          (btcAddrToString')
 import           Data.Foldable
 
@@ -24,15 +24,21 @@ import           Data.Foldable
 
 spec_filterPositive :: Spec
 spec_filterPositive = forM_ samples $ \(block, txs, as) -> do
-  let bfilter = makeBtcFilter btcTest txs block 
+  let bfilter = makeBtcFilter btcTest txs block
       bhash   = headerHash . blockHeader $ block
       bid     = blockHashToHex bhash
   -- traceShowM $ bs2Hex $ encodeBtcAddrFilter bfilter
-  describe ("block " ++ show bid) $ forM_ as $ \a -> do
-    let at = unpack $ btcAddrToString' btcTest $ fromSegWit a
-    it ("block filter contains address " ++ at)
-      $          applyBtcFilter btcTest bhash bfilter a
-      `shouldBe` True
+  describe ("block " ++ show bid) $ do
+    it "block filter encodes-decods to same" $ do
+      let hx1 = bs2Hex $ encodeBtcAddrFilter bfilter
+      let bfilter2 = either (error "decode error") id $ decodeBtcAddrFilter (hex2bs hx1)
+      let hx2 = bs2Hex $ encodeBtcAddrFilter bfilter2
+      hx1 `shouldBe` hx2
+    forM_ as $ \a -> do
+      let at = unpack $ btcAddrToString' btcTest $ fromSegWit a
+      it ("block filter contains address " ++ at)
+        $          applyBtcFilter btcTest bhash bfilter a
+        `shouldBe` True
   where samples = zip3 testBlocks testInputTxs testAddresses
 
 spec_filterNegative :: Spec
@@ -57,7 +63,7 @@ testBlocks = fmap
 
 testInputTxs :: [[Tx]]
 testInputTxs = (fmap . fmap)
-  loadTx 
+  loadTx
   [ [ "01000000000101cb6d6ca7e36725d98592c142bc8e54b53e81d1079d0a45fca91ae9640f4faf2f0000000000ffffffff020000000000000000536a4c50000228120002ca4f86db7d73e73ba71e587a6b46f7ec375c2fecc374ac668de79ec5c018b1cfc9a811cf32c7ddfd8f1c31bfb5db5e00f2230405f5e153929d764f75662be062df035a8aa8c6f56dba3094591900000000001600148765bf25275f6e034e5c61cfadf7a76a7e5dbca90247304402207f1cdcf37a5f7fb04a2e989f390bad38dd31536899388fcb39ea877ac662a39a02205835f15cc37d89a3f92cf3a0a006c27bb662f2eda93791a66fd31b97069cdd24012102916c6da5139821053bd5145a052d5bb803da5b588425882ddce9c9194afb722a00000000"
   , "01000000000101f54d73a0eb37ac94f4d630d11dd5665bb7762affec377de13a55bc0445e182350000000000ffffffff02d1f6340000000000160014728227dfd4dfe62eb788fac48917df9ff235fccf0000000000000000536a4c50000228120002ca4f86db7d73e73ba71e587a6b46f7ec375c2fecc374ac668de79ec5c018b1cfc9a811cf32c7ddfd8f1c31bfb5db5e00f2230405f5e153929d764f75662be062df035a8aa8c6f56dba300247304402206d747cb0da86f6a140c5e685f4c926932ced93bcd3726b68b0d9f50fbe87682502207cadaabd39882109c76302d6eab003b87ca90d81ed15f2231b7c17e9bf13e36b01210259c87de12afef1bee19ed3e1380a73236a9d774a9c107fdd35e04ae346b7a57600000000"
     ]
@@ -88,5 +94,3 @@ loadAddress t =
 
 loadTx :: Text -> Tx
 loadTx = either error id . S.decode @Tx . hex2bs
-
-

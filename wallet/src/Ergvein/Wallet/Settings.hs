@@ -97,8 +97,7 @@ instance ToJSON Settings where
 
 defaultIndexers :: [BaseUrl]
 defaultIndexers = [
-    parse "https://ergvein-indexer1.hxr.team"
-  , parse "https://ergvein-indexer2.hxr.team"
+    parse "https://ergvein-indexer3.hxr.team"
   ]
   where
     parse = either (error . ("Failed to parse default indexer: " ++) . show) id . parseBaseUrl

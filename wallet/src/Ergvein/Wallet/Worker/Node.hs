@@ -68,9 +68,9 @@ bctNodeController = mdo
   te        <- fmap void $ tickLossyFromPostBuildTime btcRefrTimeout
 
   pubStorageD <- getPubStorageD
-  let (allBtcAddrsD, txidsD) = splitDynPure $ ffor pubStorageD $ \(PubStorage _ cm _) -> case M.lookup BTC cm of
+  let (allBtcAddrsD, txidsD) = splitDynPure $ ffor pubStorageD $ \(PubStorage _ cm _ _) -> case M.lookup BTC cm of
         Nothing -> ([], S.empty)
-        Just (CurrencyPubStorage keystore txmap) -> let
+        Just (CurrencyPubStorage keystore txmap _ _) -> let
           addrs = extractAddrs keystore
           txids = S.fromList $ M.keys txmap
           in (addrs, txids)
@@ -125,7 +125,7 @@ bctNodeController = mdo
         else Nothing
   addTxToPubStorage $ fmapMaybe (fmap snd) mtxE
   insertTxsInPubKeystore $ fforMaybe mtxE $ \mv -> join $ ffor mv $
-    \(mi, (txid, _)) -> ffor mi $ \i -> (BTC, i, [txid])
+    \(mi, (_, tx)) -> ffor mi $ \i -> (BTC, M.singleton i [tx])
   pure ()
   where
     switchTuple (a, b) = (switchDyn . fmap leftmost $ a, switchDyn . fmap leftmost $ b)

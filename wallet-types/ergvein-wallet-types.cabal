@@ -14,6 +14,7 @@ flag testnet
 library
   hs-source-dirs:      src
   exposed-modules:
+    Ergvein.Types
     Ergvein.Types.Address
     Ergvein.Types.AuthInfo
     Ergvein.Types.Block
@@ -21,6 +22,7 @@ library
     Ergvein.Types.Fees
     Ergvein.Types.Keys
     Ergvein.Types.Network
+    Ergvein.Types.Restore
     Ergvein.Types.Storage
     Ergvein.Types.Transaction
   default-language:    Haskell2010

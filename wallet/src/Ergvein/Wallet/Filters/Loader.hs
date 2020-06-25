@@ -34,7 +34,9 @@ import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Sync.Status
 
-filtersLoader :: (HasFiltersStorage m, MonadFront t m) => m ()
+import qualified Data.Map as M
+
+filtersLoader :: MonadFront t m => m ()
 filtersLoader = nameSpace "filters loader" $ do
   sequence_ [filtersLoaderBtc]
 
@@ -43,13 +45,17 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
   where
     go = Workflow $ do
       buildE <- getPostBuild
-      ch <- fmap fromIntegral $ getCurrentHeight BTC
-      fh <- getFiltersHeight BTC
+      ch <- fmap fromIntegral $ sample . current =<< getCurrentHeight BTC
+      fh' <- getFiltersHeight BTC
+      sh <- getScannedHeight BTC
+      let fh = max fh' sh
       logWrite $ "Current height is " <> showt ch <> ", and filters are for height " <> showt fh
-      postSync BTC ch fh
+      -- postSync BTC ch fh
       if ch > fh then do
         let n = 500
+        logWrite $ "Getting next filters ..." <> showt n
         fse <- getFilters ((BTC, fh+1, n) <$ buildE)
+        performEvent_ $ ffor fse $ const $ logWrite "Got filters!"
         we <- performFork $ ffor fse $ \fs ->
           insertMultipleFilters BTC $ zipWith (\h (bh,f) -> (h,bh,f)) [fh+1..] fs
         goE <- fmap (go <$) $ delay 1 we
@@ -58,7 +64,8 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
         logWrite "Sleeping, waiting for new filters ..."
         let dt = if ch == 0 then 1 else 120
         de <- delay dt buildE
-        pure ((), go <$ de)
+        upde <- updated <$> getCurrentHeight BTC
+        pure ((), go <$ leftmost [de, void upde])
 
 postSync :: MonadFront t m => Currency -> BlockHeight -> BlockHeight -> m ()
 postSync cur ch fh = do

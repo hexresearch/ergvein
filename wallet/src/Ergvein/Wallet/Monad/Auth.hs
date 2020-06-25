@@ -17,9 +17,9 @@ import Data.Time (NominalDiffTime, getCurrentTime, diffUTCTime)
 import Network.Connection
 import Network.HTTP.Client hiding (Proxy)
 import Network.HTTP.Client.TLS (newTlsManagerWith, mkManagerSettings, newTlsManager)
+import Network.Socket (SockAddr)
 import Network.TLS
 import Network.TLS.Extra.Cipher
-import Network.Socket (SockAddr)
 import Reflex
 import Reflex.Dom
 import Reflex.Dom.Retractable
@@ -62,6 +62,7 @@ import Ergvein.Wallet.Worker.Height
 import Ergvein.Wallet.Worker.IndexersNetworkActualization
 import Ergvein.Wallet.Worker.Node
 
+import qualified Network.Haskoin.Block as HS (BlockHeight)
 import qualified Control.Immortal as I
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Map.Strict as M
@@ -94,6 +95,8 @@ data Env t = Env {
 , env'manager         :: !(MVar Manager)
 , env'headersStorage  :: !HeadersStorage
 , env'filtersStorage  :: !FiltersStorage
+, env'filtersHeights  :: !(ExternalRef t (Map Currency HS.BlockHeight))
+, env'scannedHeights  :: !(ExternalRef t (Map Currency HS.BlockHeight))
 , env'blocksStorage   :: !BlocksStorage
 , env'syncProgress    :: !(ExternalRef t SyncProgress)
 , env'heightRef       :: !(ExternalRef t (Map Currency Integer))
@@ -121,9 +124,13 @@ instance Monad m => HasHeadersStorage (ErgveinM t m) where
   getHeadersStorage = asks env'headersStorage
   {-# INLINE getHeadersStorage #-}
 
-instance Monad m => HasFiltersStorage (ErgveinM t m) where
+instance Monad m => HasFiltersStorage t (ErgveinM t m) where
   getFiltersStorage = asks env'filtersStorage
   {-# INLINE getFiltersStorage #-}
+  getFiltersHeightRef = asks env'filtersHeights
+  {-# INLINE getFiltersHeightRef #-}
+  getScannedHeightRef = asks env'scannedHeights
+  {-# INLINE getScannedHeightRef #-}
 
 instance Monad m => HasBlocksStorage (ErgveinM t m) where
   getBlocksStorage = asks env'blocksStorage
@@ -317,6 +324,10 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   {-# INLINE getWalletName #-}
   getPubStorage = fmap (_storage'pubStorage . _authInfo'storage) $ readExternalRef =<< asks env'authRef
   {-# INLINE getPubStorage #-}
+  getPubStorageD = do
+    authInfoD <- externalRefDynamic =<< asks env'authRef
+    pure $ ffor authInfoD $ \ai -> ai ^. authInfo'storage. storage'pubStorage
+  {-# INLINE getPubStorageD #-}
   storeWallet e = do
     ref <-  asks env'authRef
     performEvent_ $ ffor e $ \_ -> do
@@ -325,91 +336,15 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
         let eciesPubKey = _authInfo'eciesPubKey authInfo
         saveStorageToFile eciesPubKey storage
   {-# INLINE storeWallet #-}
-  addTxToPubStorage txE = do
+
+  modifyPubStorage fe = do
     authRef <- asks env'authRef
-    performFork_ $ ffor txE $ \(txid, etx) -> do
-      let cur = case etx of
-            BtcTx{} -> BTC
-            ErgTx{} -> ERGO
-      ai' <- modifyExternalRef authRef $ \ai ->
-        let ai' = ai
-              & authInfo'storage
-              . storage'pubStorage
-              . pubStorage'currencyPubStorages
-              . at cur . _Just                  -- TODO: Fix this part once there is a way to generate keys. Or signal an impposible situation
-              . currencyPubStorage'transactions . at txid .~ Just etx
-        in (ai', ai')
-      storeWalletPure $ Just ai'
-  {-# INLINE addTxToPubStorage #-}
-  addTxMapToPubStorage txmapE = do
-    authRef <- asks env'authRef
-    performFork_ $ ffor txmapE $ \(cur, txm) -> do
-      ai' <- modifyExternalRef authRef $ \ai ->
-        let ai' = ai
-              & authInfo'storage
-              . storage'pubStorage
-              . pubStorage'currencyPubStorages
-              . at cur . _Just
-              . currencyPubStorage'transactions %~ (M.union txm)
-        in (ai', ai')
-
-      storeWalletPure $ Just ai'
-
-  getPubStorageD = do
-    authInfoD <- externalRefDynamic =<< asks env'authRef
-    pure $ ffor authInfoD $ \ai -> ai ^. authInfo'storage. storage'pubStorage
-  {-# INLINE getPubStorageD #-}
-  setLabelToExtPubKey reqE = do
-    authRef <- asks env'authRef
-    performFork_ $ ffor reqE $ \(cur, i, l) -> do
-      mai <- modifyExternalRefMaybe authRef $
-        updateKeyBoxWith' cur i $ \kb -> kb {extKeyBox'key = updateKeyLabel l $ extKeyBox'key kb}
-      storeWalletPure mai
-
-  setFlagToExtPubKey reqE = do
-    authRef <- asks env'authRef
-    performFork_ $ ffor reqE $ \(cur, i) -> do
-      mai <- modifyExternalRefMaybe authRef $
-        updateKeyBoxWith' cur i $ \kb -> kb {extKeyBox'manual = True}
-      storeWalletPure mai
-
-  insertTxsInPubKeystore reqE = do
-    authRef <- asks env'authRef
-    performFork_ $ ffor reqE $ \(cur, i, txids) -> do
-      mai <- modifyExternalRefMaybe authRef $
-        updateKeyBoxWith' cur i $ \kb -> kb {extKeyBox'txs = S.union (extKeyBox'txs kb) $ S.fromList txids}
-      storeWalletPure mai
-
-updateKeyBoxWith :: Currency -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> AuthInfo -> Maybe AuthInfo
-updateKeyBoxWith cur i f ai =
-  let mk = ai ^.
-          authInfo'storage
-        . storage'pubStorage
-        . pubStorage'currencyPubStorages
-        . at cur
-        & \mcps -> case mcps of
-          Nothing -> Nothing
-          Just cps -> cps ^. currencyPubStorage'pubKeystore
-            & (\v -> (V.!?) (pubKeystore'external v) i)
-  in case mk of
-    Nothing -> Nothing
-    Just kb -> let kb' = f kb
-      in Just $ ai & authInfo'storage
-        . storage'pubStorage
-        . pubStorage'currencyPubStorages
-        . at cur
-        %~ \mcps -> case mcps of
-          Nothing -> Nothing
-          Just cps -> Just $ cps & currencyPubStorage'pubKeystore
-            %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
-
-updateKeyBoxWith' :: Currency -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> AuthInfo -> Maybe (AuthInfo, AuthInfo)
-updateKeyBoxWith' cur i f ai = fmap (\ai' -> (ai', ai')) $ updateKeyBoxWith cur i f ai
-
-updateKeyLabel :: Text -> EgvXPubKey -> EgvXPubKey
-updateKeyLabel l key = case key of
-  ErgXPubKey k _ -> ErgXPubKey k l
-  BtcXPubKey k _ -> BtcXPubKey k l
+    performEvent $ ffor fe $ \f -> do
+      ai' <- modifyExternalRefMaybe authRef $ \ai ->
+        let mps' = f (ai ^. authInfo'storage . storage'pubStorage)
+        in (\a -> (a, a)) . (\ps' -> ai & authInfo'storage . storage'pubStorage .~ ps') <$> mps'
+      storeWalletPure ai'
+  {-# INLINE modifyPubStorage #-}
 
 storeWalletPure :: (MonadIO m, Crypto.MonadRandom m, HasStoreDir m, PlatformNatives) => Maybe AuthInfo -> m ()
 storeWalletPure mai = case mai of
@@ -443,7 +378,7 @@ liftAuth ma0 ma = mdo
         -- Read settings to fill other refs
         settings        <- readExternalRef settingsRef
         let login = _authInfo'login auth
-            acurs = S.fromList [] -- $ _pubStorage'activeCurrencies ps
+            acurs = mempty
             nodes = M.restrictKeys (settingsNodes settings) acurs
 
         -- MonadClient refs
@@ -459,27 +394,62 @@ liftAuth ma0 ma = mdo
         -- Create data for Auth context
         (reqE, reqFire) <- newTriggerEvent
         let sel = fanMap reqE -- Node request selector :: RequestSelector t
+        let ps = auth ^. authInfo'storage . storage'pubStorage
 
         managerRef      <- liftIO newEmptyMVar
         activeCursRef   <- newExternalRef acurs
         headersStore    <- liftIO $ runReaderT openHeadersStorage (settingsStoreDir settings)
         syncRef         <- newExternalRef Synced
         filtersStore    <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
+        filtersHeights  <- newExternalRef mempty
+        scannedHeights  <- newExternalRef mempty
         blocksStore     <- liftIO $ runReaderT openBlocksStorage (settingsStoreDir settings)
-        heightRef       <- newExternalRef mempty
+        heightRef       <- newExternalRef (fmap (maybe 0 fromIntegral . _currencyPubStorage'height) . _pubStorage'currencyPubStorages $ ps)
         fsyncRef        <- newExternalRef mempty
         consRef         <- newExternalRef mempty
         feesRef         <- newExternalRef mempty
-        let env = Env
-              settingsRef backEF loading langRef storeDir alertsEF logsTrigger logsNameSpaces uiChan passModalEF passSetEF
-              authRef (logoutFire ()) activeCursRef managerRef headersStore filtersStore blocksStore syncRef heightRef fsyncRef
-              urlsArchive inactiveUrls activeUrlsRef reqUrlNumRef actUrlNumRef timeoutRef (indexersE, indexersF ())
-              consRef sel reqFire feesRef
-
+        let env = Env {
+                env'settings = settingsRef
+              , env'backEF = backEF
+              , env'loading = loading
+              , env'langRef = langRef
+              , env'storeDir = storeDir
+              , env'alertsEF = alertsEF
+              , env'logsTrigger = logsTrigger
+              , env'logsNameSpaces = logsNameSpaces
+              , env'uiChan = uiChan
+              , env'passModalEF = passModalEF
+              , env'passSetEF = passSetEF
+              , env'authRef = authRef
+              , env'logoutFire = logoutFire ()
+              , env'activeCursRef = activeCursRef
+              , env'manager = managerRef
+              , env'headersStorage = headersStore
+              , env'filtersStorage = filtersStore
+              , env'filtersHeights = filtersHeights
+              , env'scannedHeights = scannedHeights
+              , env'blocksStorage = blocksStore
+              , env'syncProgress = syncRef
+              , env'heightRef = heightRef
+              , env'filtersSyncRef = fsyncRef
+              , env'urlsArchive = urlsArchive
+              , env'inactiveUrls = inactiveUrls
+              , env'activeUrls = activeUrlsRef
+              , env'reqUrlNum = reqUrlNumRef
+              , env'actUrlNum = actUrlNumRef
+              , env'timeout = timeoutRef
+              , env'indexersEF = (indexersE, indexersF ())
+              , env'nodeConsRef = consRef
+              , env'nodeReqSelector = sel
+              , env'nodeReqFire = reqFire
+              , env'feesStore = feesRef
+              }
         runOnUiThreadM $ runReaderT setupTlsManager env
 
         flip runReaderT env $ do -- Workers and other routines go here
-          accountDiscovery
+          initScannedHeights scannedHeights
+          initFiltersHeights filtersHeights
+          scanner
           bctNodeController
           filtersLoader
           heightAsking
@@ -492,6 +462,26 @@ liftAuth ma0 ma = mdo
     newAuthInfoE = ffilter isMauthUpdate $ updated mauthD
     redrawE = leftmost [newAuthInfoE, Nothing <$ logoutE]
   widgetHold ma0' $ ffor redrawE $ maybe ma0 runAuthed
+
+-- | Query initial values for scanned heights and write down them to the external ref
+initScannedHeights :: MonadFront t m => ExternalRef t (Map Currency HS.BlockHeight) -> m ()
+initScannedHeights ref = do
+  ps <- getPubStorage
+  let curs =  _pubStorage'activeCurrencies ps
+  scms <- flip traverse curs $ \cur -> do
+    h <- getScannedHeight cur
+    pure (cur, h)
+  writeExternalRef ref $ M.fromList scms
+
+-- | Query initial values for filters heights and write down them to the external ref
+initFiltersHeights :: MonadFront t m => ExternalRef t (Map Currency HS.BlockHeight) -> m ()
+initFiltersHeights ref = do
+  ps <- getPubStorage
+  let curs =  _pubStorage'activeCurrencies ps
+  scms <- flip traverse curs $ \cur -> do
+    h <- getFiltersHeight cur
+    pure (cur, h)
+  writeExternalRef ref $ M.fromList scms
 
 isMauthUpdate :: Maybe AuthInfo -> Bool
 isMauthUpdate mauth = case mauth of

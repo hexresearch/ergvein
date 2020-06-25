@@ -111,6 +111,7 @@ library
         Ergvein.Wallet.Page.PatternKey
         Ergvein.Wallet.Page.QRCode
         Ergvein.Wallet.Page.Receive
+        Ergvein.Wallet.Page.Restore
         Ergvein.Wallet.Page.Seed
         Ergvein.Wallet.Page.Send
         Ergvein.Wallet.Page.Settings

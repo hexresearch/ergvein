@@ -1,3 +1,5 @@
 db/
 db.log
 ergveinCache/
+ncrashed-config.yaml
+runNC.sh

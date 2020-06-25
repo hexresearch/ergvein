@@ -4,6 +4,7 @@ module Ergvein.Wallet.Filters.Btc.Types(
   , getBtcFiltersDb
   , getBtcHeightsDb
   , getBtcTotalDb
+  , getBtcScannedDb
   ) where
 
 import Data.ByteString
@@ -26,18 +27,32 @@ heightsDbName = "btcheights"
 totalDbName :: String
 totalDbName = "btctotal"
 
+scannedDbName :: String
+scannedDbName = "btcscanned"
+
 -- | Force creation of datab
 initBtcDbs :: Transaction ReadWrite ()
 initBtcDbs = do
   fdb <- getBtcFiltersDb
   hdb <- getBtcHeightsDb
   tdb <- getBtcTotalDb
-  tdb `seq` hdb `seq` fdb `seq` pure ()
-  mtotal <- get tdb ()
-  let h = filterStartingHeight BTC
-  case mtotal of
-    Nothing -> put tdb () $ Just h
-    Just v -> if h > v then put tdb () $ Just h else pure ()
+  sdb <- getBtcScannedDb
+  tdb `seq` hdb `seq` fdb `seq` sdb `seq` pure ()
+  initTotal tdb
+  initScaned sdb
+  where
+    initTotal tdb = do
+      mtotal <- get tdb ()
+      let h = filterStartingHeight BTC
+      case mtotal of
+        Nothing -> put tdb () $ Just h
+        Just v -> if h > v then put tdb () $ Just h else pure ()
+    initScaned sdb = do
+      scanned <- get sdb ()
+      let h = filterStartingHeight BTC
+      case scanned of
+        Nothing -> put sdb () $ Just h
+        Just v -> if h > v then put sdb () $ Just h else pure ()
 
 getBtcFiltersDb :: Mode mode => Transaction mode (Database BlockHash ByteString)
 getBtcFiltersDb = getDatabase $ Just filtersDbName
@@ -47,3 +62,6 @@ getBtcHeightsDb = getDatabase $ Just heightsDbName
 
 getBtcTotalDb :: Mode mode => Transaction mode (Database () BlockHeight)
 getBtcTotalDb = getDatabase $ Just totalDbName
+
+getBtcScannedDb :: Mode mode => Transaction mode (Database () BlockHeight)
+getBtcScannedDb = getDatabase $ Just scannedDbName
