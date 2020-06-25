@@ -98,7 +98,7 @@ updateKeyLabel l key = case key of
   ErgXPubKey k _ -> ErgXPubKey k l
   BtcXPubKey k _ -> BtcXPubKey k l
 
-updateBtcUtxoSet :: MonadStorage t m => Event t (BtcUtxoSet, [OutPoint]) -> m ()
+updateBtcUtxoSet :: MonadStorage t m => Event t BtcUtxoUpdate -> m ()
 updateBtcUtxoSet reqE = void . modifyPubStorage $ ffor reqE $ \upds ps -> let
   mnews = ps ^. pubStorage'currencyPubStorages . at BTC
     & \mcps -> ffor mcps $ \cps -> cps ^. currencyPrvStorage'utxos & getBtcUtxoSetFromStore

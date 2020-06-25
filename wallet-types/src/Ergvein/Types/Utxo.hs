@@ -4,12 +4,14 @@ module Ergvein.Types.Utxo
   , EgvUtxoStatus(..)
   , BtcUtxoSet
   , EgvUtxoSetStorage
+  , BtcUtxoUpdate
   , getBtcUtxoSetFromStore
   , isUtxoConfirmed
   , updateBtcUtxoSetPure
   ) where
 
 import Data.Aeson
+import Data.List (foldl')
 import Data.Word
 import Network.Haskoin.Transaction
 
@@ -30,6 +32,11 @@ isUtxoConfirmed v = case v of
 
 type BtcUtxoSet = M.Map OutPoint (Word64, EgvUtxoStatus)
 
+-- fst -- wallet's unspent outputs
+-- snd -- wallet's spent outputs
+-- snd's bool: True - confirmed, must be deleted from UTXO set, False - set status to EUtxoSending
+type BtcUtxoUpdate = (BtcUtxoSet, [(OutPoint, Bool)])
+
 data EgvUtxoSet = BtcSet BtcUtxoSet | ErgoSet ()
   deriving (Eq, Show, Read)
 $(deriveJSON defaultOptions ''EgvUtxoSet)
@@ -44,5 +51,7 @@ getBtcUtxoSetFromStore st = case M.lookup BTC st of
   Just (BtcSet s) -> Just s
   _ -> Nothing
 
-updateBtcUtxoSetPure :: (BtcUtxoSet, [OutPoint]) -> BtcUtxoSet -> BtcUtxoSet
-updateBtcUtxoSetPure (outs, ins) s = M.withoutKeys (M.union outs s) (S.fromList ins)
+updateBtcUtxoSetPure :: BtcUtxoUpdate -> BtcUtxoSet -> BtcUtxoSet
+updateBtcUtxoSetPure (outs, ins) s = foo (M.union outs s) ins $ \m (op, b) ->
+  M.update (\(val, _) -> if b then Nothing else Just (val, EUtxoSending)) op m
+  where foo b ta f = foldl' f b ta

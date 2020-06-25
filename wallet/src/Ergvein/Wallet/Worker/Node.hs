@@ -122,7 +122,7 @@ bctNodeController = mdo
   valsE <- performFork $ ffor (current allBtcAddrsD `attach` txE) $ \(addrs, tx) ->
     liftIO $ flip runReaderT store $ do
       v <- checkAddrTx' addrs tx
-      u <- getUtxoUpdates EUtxoReceiving (snd . unzip $ addrs) tx
+      u <- getUtxoUpdates False (snd . unzip $ addrs) tx
       pure (v,u)
   addTxMapToPubStorage $ fforMaybe valsE $ \(vals,_) -> case vals of
     [] -> Nothing

@@ -135,7 +135,10 @@ scanningBtcBlocks keys hashesE = do
   storedE <- insertTxsInPubKeystore $ (BTC,) . fmap M.elems <$> txsE
   pure $ leftmost [any (not . M.null) <$> txsE, False <$ noScanE]
 
-type BtcUtxoUpdate = (BtcUtxoSet, [HT.OutPoint])
+-- Left here for clarity
+-- type BtcUtxoSet = M.Map OutPoint (Word64, EgvUtxoStatus)
+--
+-- type BtcUtxoUpdate = (BtcUtxoSet, [(OutPoint, Bool)])
 
 -- | Extract transactions that correspond to given address.
 getAddressesTxs :: MonadFront t m => Event t (M.Map Int EgvAddress, [HB.Block]) -> m (Event t (M.Map Int (M.Map TxId EgvTx), BtcUtxoUpdate))
@@ -159,6 +162,6 @@ getAddrTxsFromBlock :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAd
 getAddrTxsFromBlock addr block = do
   checkResults <- traverse (checkAddrTx addr) txs
   let filteredTxs = fst $ unzip $ filter snd (zip txs checkResults)
-  utxo <- getUtxoUpdatesFromTxs EUtxoConfirmed addr filteredTxs
+  utxo <- getUtxoUpdatesFromTxs True addr filteredTxs
   pure $ (, utxo) $ M.fromList [(HT.txHashToHex $ HT.txHash tx, BtcTx tx) | tx <- filteredTxs]
   where txs = HB.blockTxns block

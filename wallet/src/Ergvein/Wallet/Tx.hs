@@ -35,34 +35,43 @@ checkAddrTx addr tx = do
   pure $ concatResults checkTxInputsResults || concatResults checkTxOutputsResults
   where concatResults = foldr (||) False
 
-getSpentOutputs :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> Tx -> m ([OutPoint])
-getSpentOutputs addr Tx{..} = fmap catMaybes $ flip traverse txIn $ \ti -> do
+-- | Gets spent output (they are inputs for a tx) for a given address from a transaction
+-- Bool specifies if the Tx was confirmed (True) or not
+getSpentOutputs :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => Bool -> EgvAddress -> Tx -> m ([(OutPoint, Bool)])
+getSpentOutputs c addr Tx{..} = fmap catMaybes $ flip traverse txIn $ \ti -> do
   b <- checkTxIn addr ti
-  pure $ if b then Just (prevOutput ti) else Nothing
+  pure $ if b then Just (prevOutput ti, c) else Nothing
 
-getUnspentOutputs :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> Tx -> m [(OutPoint, Word64)]
-getUnspentOutputs addr tx = fmap catMaybes $ flip traverse (zip [0..] $ txOut tx) $ \(i,o) -> do
+-- | Gets unspent output for a given address from a transaction
+-- Bool specifies if the Tx was confirmed (True) or not
+getUnspentOutputs :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => Bool -> EgvAddress -> Tx -> m [(OutPoint, (Word64, EgvUtxoStatus))]
+getUnspentOutputs c addr tx = fmap catMaybes $ flip traverse (zip [0..] $ txOut tx) $ \(i,o) -> do
   b <- checkTxOut addr o
-  pure $ if b then Just (OutPoint th i, outValue o) else Nothing
+  pure $ if b then Just (OutPoint th i, (outValue o, stat)) else Nothing
   where
     th = txHash tx
+    stat = if c then EUtxoConfirmed else EUtxoReceiving
 
-getUtxoUpdates :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvUtxoStatus -> [EgvAddress] -> Tx -> m (BtcUtxoSet, [OutPoint])
-getUtxoUpdates stat addrs tx = do
+-- | Construct UTXO update for a list of addresses based on a transaction
+-- Bool specifies if the Tx was confirmed (True) or not
+getUtxoUpdates :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => Bool -> [EgvAddress] -> Tx -> m BtcUtxoUpdate
+getUtxoUpdates isConfirmed addrs tx = do
   (unsps, sps) <- fmap unzip $ flip traverse addrs $ \addr -> do
-    unsp <- getUnspentOutputs addr tx
-    sp   <- getSpentOutputs addr tx
+    unsp <- getUnspentOutputs isConfirmed addr tx
+    sp   <- getSpentOutputs isConfirmed addr tx
     pure (unsp, sp)
-  let unspentMap = fmap (, stat) $ M.fromList $ mconcat unsps
+  let unspentMap = M.fromList $ mconcat unsps
   pure (unspentMap, mconcat sps)
 
-getUtxoUpdatesFromTxs :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvUtxoStatus -> EgvAddress -> [Tx] -> m (BtcUtxoSet, [OutPoint])
-getUtxoUpdatesFromTxs stat addr txs = do
+-- | Construct UTXO update for an address and a batch of transactions
+-- Bool specifies if the batch was confirmed (True) or not
+getUtxoUpdatesFromTxs :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => Bool -> EgvAddress -> [Tx] -> m BtcUtxoUpdate
+getUtxoUpdatesFromTxs isConfirmed addr txs = do
   (unsps, sps) <- fmap unzip $ flip traverse txs $ \tx -> do
-    unsp <- getUnspentOutputs addr tx
-    sp   <- getSpentOutputs addr tx
+    unsp <- getUnspentOutputs isConfirmed addr tx
+    sp   <- getSpentOutputs isConfirmed addr tx
     pure (unsp, sp)
-  let unspentMap = fmap (, stat) $ M.fromList $ mconcat unsps
+  let unspentMap = M.fromList $ mconcat unsps
   pure (unspentMap, mconcat sps)
 
 -- | Checks given TxIn wheather it contains given address.
