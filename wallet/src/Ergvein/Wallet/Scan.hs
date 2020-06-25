@@ -71,11 +71,11 @@ scannerBtc = void $ workflow waiting
       scD <- watchScannedHeight BTC
       rsD <- fmap _pubStorage'restoring <$> getPubStorageD
       setSyncProgress $ ffor buildE $ const $ Synced
-      let newFiltersE = fmap fst . ffilter (id . snd) $ updated $ do
+      let newFiltersE = fmapMaybe id $ updated $ do
             fh <- fhD
             sc <- scD
             rs <- rsD
-            pure ((fh, sc), sc < fh && not rs)
+            pure $ if sc < fh && not rs then Just (fh, sc) else Nothing
       setSyncProgress $ ffor newFiltersE $ \(fh, sc) -> do
         SyncMeta BTC (SyncAddress 0) (fromIntegral sc) (fromIntegral fh)
       performEvent_ $ ffor newFiltersE $  \(fh, sc) -> do
