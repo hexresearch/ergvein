@@ -4,6 +4,7 @@ module Ergvein.Wallet.Tx
   , getSpentOutputs
   , getUnspentOutputs
   , getUtxoUpdates
+  , getUtxoUpdatesFromTxs
   ) where
 
 import Control.Monad.IO.Class
@@ -49,6 +50,15 @@ getUnspentOutputs addr tx = fmap catMaybes $ flip traverse (zip [0..] $ txOut tx
 getUtxoUpdates :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvUtxoStatus -> [EgvAddress] -> Tx -> m (BtcUtxoSet, [OutPoint])
 getUtxoUpdates stat addrs tx = do
   (unsps, sps) <- fmap unzip $ flip traverse addrs $ \addr -> do
+    unsp <- getUnspentOutputs addr tx
+    sp   <- getSpentOutputs addr tx
+    pure (unsp, sp)
+  let unspentMap = fmap (, stat) $ M.fromList $ mconcat unsps
+  pure (unspentMap, mconcat sps)
+
+getUtxoUpdatesFromTxs :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvUtxoStatus -> EgvAddress -> [Tx] -> m (BtcUtxoSet, [OutPoint])
+getUtxoUpdatesFromTxs stat addr txs = do
+  (unsps, sps) <- fmap unzip $ flip traverse txs $ \tx -> do
     unsp <- getUnspentOutputs addr tx
     sp   <- getSpentOutputs addr tx
     pure (unsp, sp)
