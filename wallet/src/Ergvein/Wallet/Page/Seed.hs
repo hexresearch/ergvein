@@ -168,6 +168,6 @@ seedRestoreWidget = mdo
     waiting = (h4 $ localizedText SPSWaiting) >> pure never
 
 validateSeedWord :: Text -> Either [SeedPageStrings] Text
-validateSeedWord word = if wordTrieElem word
+validateSeedWord word = if wordTrieElem $ T.toLower word
   then Right word
   else Left [SPSInvalidWord]
