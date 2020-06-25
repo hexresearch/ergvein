@@ -2,10 +2,7 @@ module Ergvein.Wallet.Page.Restore(
     restorePage
   ) where
 
-<<<<<<< HEAD
-=======
 import Control.Monad.IO.Class
->>>>>>> master
 import Data.Foldable (foldl')
 import Data.Maybe (fromMaybe)
 import Ergvein.Filters.Btc
@@ -57,10 +54,6 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
         filters <- filtersD
         height <- heightD
         let pct = fromIntegral filters / fromIntegral height :: Float
-<<<<<<< HEAD
-        -- pure $ showt filters <> "/" <> showt height <> " " <> showf 2 (100 * pct) <> "%"
-=======
->>>>>>> master
         pure $ showf 2 (100 * pct) <> "%"
       filtersE <- fmap (ffilter id) $ updatedWithInit $ do
         filters <- filtersD
