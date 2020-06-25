@@ -25,12 +25,12 @@ import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 
-import qualified Data.Map.Strict as M
+import qualified Data.Map.Strict             as M
 import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 import qualified Network.Ergo.Api.Client     as ErgoApi
 import qualified Network.Haskoin.Constants   as HK
 import qualified Network.HTTP.Client         as HC
-import qualified Data.Set as Set
+import qualified Data.Set                    as Set
 
 import Debug.Trace
 

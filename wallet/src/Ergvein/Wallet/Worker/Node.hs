@@ -70,9 +70,9 @@ bctNodeController = mdo
   te        <- fmap void $ tickLossyFromPostBuildTime btcRefrTimeout
 
   pubStorageD <- getPubStorageD
-  let (allBtcAddrsD, txidsD) = splitDynPure $ ffor pubStorageD $ \(PubStorage _ cm _) -> case M.lookup BTC cm of
+  let (allBtcAddrsD, txidsD) = splitDynPure $ ffor pubStorageD $ \(PubStorage _ cm _ _) -> case M.lookup BTC cm of
         Nothing -> ([], S.empty)
-        Just (CurrencyPubStorage keystore txmap _) -> let
+        Just (CurrencyPubStorage keystore txmap _ _ _) -> let
           addrs = extractAddrs keystore
           txids = S.fromList $ M.keys txmap
           in (addrs, txids)
@@ -121,16 +121,15 @@ bctNodeController = mdo
   store <- getBlocksStorage
   valsE <- performFork $ ffor (current allBtcAddrsD `attach` txE) $ \(addrs, tx) ->
     liftIO $ flip runReaderT store $ do
-      v <- checkAddrTx' addrs tx
-      u <- getUtxoUpdates EUtxoReceiving (snd . unzip $ addrs) tx
-      pure (v,u)
-
-  addTxMapToPubStorage $ fforMaybe valsE $ \(vals,_) -> case vals of
-    [] -> Nothing
-    _ -> Just . (BTC, ) . M.fromList . snd . unzip $ vals
-  insertTxsInPubKeystore $ ffor valsE $ \(vals,_) -> (BTC, prepareToInsertTxs vals)
-  let storeE = fforMaybe valsE $ \(_,(o,i)) -> if not (M.null o && null i) then Just (o,i) else Nothing
-  updateBtcUtxoSet storeE
+      pure Nothing
+      -- (mi, b) <- checkAddrTx' addrs tx
+      -- pure $ if b
+      --   then Just (mi, (txHashToHex $ txHash tx, BtcTx tx))
+      --   else Nothing
+  let mtxE = never
+  addTxToPubStorage $ fmapMaybe (fmap snd) mtxE
+  insertTxsInPubKeystore $ fforMaybe mtxE $ \mv -> join $ ffor mv $
+    \(mi, (_, tx)) -> ffor mi $ \i -> (BTC, M.singleton i [tx])
   pure ()
   where
     switchTuple (a, b) = (switchDyn . fmap leftmost $ a, switchDyn . fmap leftmost $ b)

@@ -28,7 +28,7 @@ import Database.Esqueleto
 
 data ScanProgressInfo = ScanProgressInfo
   { nfoCurrency      :: !Currency
-  , nfoScannedHeight :: !BlockHeight
+  , nfoScannedHeight :: !(Maybe BlockHeight)
   , nfoActualHeight  :: !BlockHeight
   }
 
@@ -38,9 +38,8 @@ scanningInfo = mapM nfo allCurrencies
     nfo :: Currency -> ServerM ScanProgressInfo
     nfo currency = do
       maybeScanned <- dbQuery $ scannedBlockHeight currency
-      let scanned = fromMaybe (currencyHeightStart currency) maybeScanned
       actual <- actualHeight currency
-      pure $ ScanProgressInfo currency scanned actual
+      pure $ ScanProgressInfo currency maybeScanned actual
 
 
 scannedBlockHeight :: (MonadIO m) => Currency -> QueryT m (Maybe BlockHeight)

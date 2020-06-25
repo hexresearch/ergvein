@@ -10,9 +10,9 @@ import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Client
 import Ergvein.Wallet.Monad.Front
+import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Util
-
 
 -- | Poll with the interval when everything is normal
 defaulHeightPoll :: NominalDiffTime
@@ -22,10 +22,10 @@ defaulHeightPoll = 60
 errorHeightPoll :: NominalDiffTime
 errorHeightPoll = 5
 
-heightAsking :: (MonadFrontAuth t m, MonadClient t m) => m ()
+heightAsking :: (MonadFront t m) => m ()
 heightAsking = void . widgetHoldDyn . fmap (traverse_ heightAsker) =<< getActiveCursD
 
-heightAsker :: (MonadFrontAuth t m, MonadClient t m) => Currency -> m ()
+heightAsker :: (MonadFront t m) => Currency -> m ()
 heightAsker cur = mdo
   let logPref = "[heightAsking][" <> showt cur <> "]:"
   logWrite $ logPref <> "Start worker"

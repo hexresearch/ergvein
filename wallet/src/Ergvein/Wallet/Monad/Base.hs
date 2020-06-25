@@ -184,7 +184,7 @@ class (
 --    Frontend-wide types
 -- ===========================================================================
 
-type PeerScanInfoMap = Map Currency (BlockHeight, BlockHeight) -- (scanned, actual)
+type PeerScanInfoMap = Map Currency (Maybe BlockHeight, BlockHeight) -- (scanned, actual)
 
 data IndexerInfo = IndexerInfo {
   indInfoHeights :: PeerScanInfoMap

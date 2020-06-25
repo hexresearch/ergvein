@@ -49,12 +49,12 @@ data SubPageSettings
 settingsPage :: MonadFront t m => m ()
 settingsPage = wrapper True STPSTitle (Just $ pure settingsPage) $ do
   divClass "initial-options grid1" $ do
-    goLangE   <- fmap (GoLanguage   <$) $ outlineButton STPSButLanguage
-    goCurrE   <- fmap (GoCurrencies <$) $ outlineButton STPSButActiveCurrs
-    goNetE    <- fmap (GoNetwork    <$) $ outlineButton STPSButNetwork
-    goUnitsE  <- fmap (GoUnits      <$) $ outlineButton STPSButUnits
-    goUnitsE  <- fmap (GoPortfolio  <$) $ outlineButton STPSButPortfolio
-    let goE = leftmost [goLangE, goCurrE, goNetE, goUnitsE]
+    goLangE      <- fmap (GoLanguage   <$) $ outlineButton STPSButLanguage
+    goCurrE      <- fmap (GoCurrencies <$) $ outlineButton STPSButActiveCurrs
+    goNetE       <- fmap (GoNetwork    <$) $ outlineButton STPSButNetwork
+    goUnitsE     <- fmap (GoUnits      <$) $ outlineButton STPSButUnits
+    goPortfolioE <- fmap (GoPortfolio  <$) $ outlineButton STPSButPortfolio
+    let goE = leftmost [goLangE, goCurrE, goNetE, goUnitsE, goPortfolioE]
     void $ nextWidget $ ffor goE $ \spg -> Retractable {
         retractableNext = case spg of
           GoLanguage   -> languagePage
@@ -123,7 +123,7 @@ currenciesPage = wrapper True STPSTitle (Just $ pure currenciesPage) $ do
         let authNew = auth & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
             difC = curs \\ (_pubStorage'activeCurrencies ps)
             mL = Map.fromList [
-                    (currency, CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency) Map.empty Map.empty) |
+                    (currency, CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency) Map.empty Nothing (Just 0) Map.empty) |
                     currency <- difC ]
             authN2 = authNew & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages %~ (Map.union mL)
         pure $ Just $ authN2

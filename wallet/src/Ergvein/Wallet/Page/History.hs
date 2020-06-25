@@ -7,7 +7,6 @@ module Ergvein.Wallet.Page.History(
 import Control.Lens.Combinators
 import Control.Monad.Reader
 
-
 import Ergvein.Filters.Btc
 import Ergvein.Text
 import Ergvein.Types.Address
@@ -16,8 +15,8 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Blocks.Types
 import Ergvein.Wallet.Blocks.BTC.Queries
+import Ergvein.Wallet.Blocks.Types
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
@@ -28,9 +27,10 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Tx
-import Ergvein.Wallet.Wrapper
 import Ergvein.Wallet.Worker.Node
+import Ergvein.Wallet.Wrapper
 
 import Data.Map.Strict as Map
 import qualified Data.Set as S
@@ -238,9 +238,9 @@ transactionsGetting cur = do
   buildE <- delay 0.2 =<< getPostBuild
   ps <- getPubStorage
   pubSD <- getPubStorageD
-  let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _) -> case Map.lookup BTC cm of
+  let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _ _) -> case Map.lookup BTC cm of
         Nothing -> []
-        Just (CurrencyPubStorage keystore txmap _) -> extractAddrs keystore
+        Just (CurrencyPubStorage keystore txmap _ _ _) -> extractAddrs keystore
   abS <- filtArd <$> sampleDyn allBtcAddrsD
   store <- getBlocksStorage
   let rawTxList = filterTx abS ps
@@ -308,7 +308,9 @@ prepareTransactionView TxRawInfo{..} = TransactionView {
     txInf = TransactionViewInfo {
       txId            = txHex
      ,txLabel         = Nothing
-     ,txUrl           = "https://www.blockchain.com/btc/tx/" <> txHex
+     ,txUrl           = if isTestnet
+       then "https://www.blockchain.com/btc-testnet/tx/" <> txHex
+       else "https://www.blockchain.com/btc/tx/" <> txHex
      ,txFee           = Money BTC 0
      ,txConfirmations = 0
      ,txBlock         = ""

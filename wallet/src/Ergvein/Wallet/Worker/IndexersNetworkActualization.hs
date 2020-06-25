@@ -25,11 +25,10 @@ import Ergvein.Wallet.Settings
 import Data.Set (Set)
 import Data.Map.Strict (Map)
 
-import qualified Data.List       as L
-import qualified Data.Map.Strict as Map
-import qualified Data.Set        as Set
-import qualified Data.Text       as T
-import qualified Data.Vector     as Vector
+import qualified Data.List          as L
+import qualified Data.Map.Strict    as Map
+import qualified Data.Set           as Set
+import qualified Data.Text          as T
 
 infoWorkerInterval :: NominalDiffTime
 infoWorkerInterval = 60
@@ -84,8 +83,8 @@ indexersNetwork targetAmount peers =
     medianScanInfoMap infos = let
       in bimap median' median' . munzip <$> Map.unionsWith (<>) (fmap pure <$> infos)
       where
-        median' :: Vector.Vector BlockHeight -> BlockHeight
-        median' v =  v Vector.! (length v `div` 2)
+        median' :: (Ord a) => [a] -> a
+        median' v = L.sort v !! (length v `div` 2)
 
     indexersInfo :: [BaseUrl] -> m (Map BaseUrl IndexerInfo)
     indexersInfo urls = do
@@ -100,7 +99,7 @@ indexersNetwork targetAmount peers =
             Right info -> do
               let pingTime = diffUTCTime t1 t0
                   scanInfo = mconcat $ mapping <$> infoScanProgress info
-              pure $  Map.singleton url $ IndexerInfo scanInfo pingTime
+              pure $ Map.singleton url $ IndexerInfo scanInfo pingTime
             Left err ->  do
               logWrite $ "[IndexersNetworkActualization][Getting info][" <> T.pack (showBaseUrl url) <> "]: " <> showt err
               pure mempty

@@ -8,8 +8,10 @@ import Crypto.Error
 import Data.Aeson
 import Data.ByteArray (convert, Bytes)
 import Data.ByteString (ByteString)
+import Data.Maybe (fromMaybe)
 import Data.Proxy
 import Data.Text
+import Data.Vector (Vector)
 import Network.Haskoin.Keys
 
 import Ergvein.Aeson
@@ -81,9 +83,11 @@ instance FromJSON EncryptedPrvStorage where
       Just iv' -> pure $ EncryptedPrvStorage ciphertext salt iv'
 
 data CurrencyPubStorage = CurrencyPubStorage {
-    _currencyPubStorage'pubKeystore  :: PubKeystore
-  , _currencyPubStorage'transactions :: M.Map TxId EgvTx
-  , _currencyPrvStorage'utxos        :: EgvUtxoSetStorage
+    _currencyPubStorage'pubKeystore   :: !PubKeystore
+  , _currencyPubStorage'transactions  :: !(M.Map TxId EgvTx)
+  , _currencyPubStorage'height        :: !(Maybe BlockHeight) -- ^ Last height seen by the wallet
+  , _currencyPubStorage'scannedKey    :: !(Maybe Int) -- ^ When restoring here we put which keys are we already scanned
+  , _currencyPrvStorage'utxos         :: EgvUtxoSetStorage
   } deriving (Eq, Show, Read)
 
 makeLenses ''CurrencyPubStorage
@@ -93,14 +97,54 @@ $(deriveJSON aesonOptionsStripToApostroph ''CurrencyPubStorage)
 type CurrencyPubStorages = M.Map Currency CurrencyPubStorage
 
 data PubStorage = PubStorage {
-    _pubStorage'rootPubKey          :: EgvRootXPubKey
-  , _pubStorage'currencyPubStorages :: CurrencyPubStorages
+    _pubStorage'rootPubKey          :: !EgvRootXPubKey
+  , _pubStorage'currencyPubStorages :: !CurrencyPubStorages
   , _pubStorage'activeCurrencies    :: [Currency]
+  , _pubStorage'restoring           :: !Bool -- ^ Flag to track unfinished process of restoration
   } deriving (Eq, Show, Read)
 
 makeLenses ''PubStorage
 
 $(deriveJSON aesonOptionsStripToApostroph ''PubStorage)
+
+-- | Get pub storage keys
+pubStorageKeys :: Currency -> KeyPurpose -> PubStorage -> Vector EgvXPubKey
+pubStorageKeys c p = maybe mempty keys . fmap _currencyPubStorage'pubKeystore . M.lookup c . _pubStorage'currencyPubStorages
+  where keys = if p == External then externalKeys else pubKeystore'internal
+
+pubStoragePubMaster :: Currency -> PubStorage -> Maybe EgvXPubKey
+pubStoragePubMaster c = fmap pubKeystore'master . pubStorageKeyStorage c
+
+pubStorageLastUnused :: Currency -> PubStorage -> Maybe (Int, EgvExternalKeyBox)
+pubStorageLastUnused c ps = getLastUnusedKey . _currencyPubStorage'pubKeystore =<< M.lookup c (_pubStorage'currencyPubStorages ps)
+
+pubStorageScannedKeys :: Currency -> PubStorage -> Int
+pubStorageScannedKeys c ps = fromMaybe 0 $ _currencyPubStorage'scannedKey =<< M.lookup c (_pubStorage'currencyPubStorages ps)
+
+pubStorageKeyStorage :: Currency -> PubStorage -> Maybe PubKeystore
+pubStorageKeyStorage c = fmap _currencyPubStorage'pubKeystore . M.lookup c . _pubStorage'currencyPubStorages
+
+pubStorageSetKeyStorage :: Currency -> PubKeystore -> PubStorage -> PubStorage
+pubStorageSetKeyStorage c ks ps = ps {
+    _pubStorage'currencyPubStorages = M.adjust f c $ _pubStorage'currencyPubStorages ps
+  }
+  where
+    f cps = cps {
+        _currencyPubStorage'pubKeystore = ks
+      }
+
+pubStorageSetKeyScanned :: Currency -> Maybe Int -> PubStorage -> PubStorage
+pubStorageSetKeyScanned c v = modifyCurrStorage c $ \cps -> cps {
+    _currencyPubStorage'scannedKey = v
+  }
+
+modifyCurrStorage :: Currency -> (CurrencyPubStorage  -> CurrencyPubStorage) -> PubStorage -> PubStorage
+modifyCurrStorage c f ps = ps {
+    _pubStorage'currencyPubStorages = M.adjust f c $ _pubStorage'currencyPubStorages ps
+  }
+
+pubStorageTxs :: Currency -> PubStorage -> Maybe (M.Map TxId EgvTx)
+pubStorageTxs c = fmap _currencyPubStorage'transactions . M.lookup c . _pubStorage'currencyPubStorages
 
 data WalletStorage = WalletStorage {
     _storage'encryptedPrvStorage :: EncryptedPrvStorage
