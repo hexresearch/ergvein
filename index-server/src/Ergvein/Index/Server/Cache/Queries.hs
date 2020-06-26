@@ -37,14 +37,14 @@ safeEntrySlice startKey endKey = do
       Right parsedKey -> compare parsedKey endKey
       _ -> GT
 
-getParsed :: (MonadLDB m, Flat v) => BS.ByteString -> m (Maybe v)
+getParsed :: (Flat v, MonadLDB m) => BS.ByteString -> m (Maybe v)
 getParsed key = do
   db <- getDb
   maybeResult <- get db def key
   let maybeParsedResult = unflatExact <$> maybeResult
   pure maybeParsedResult
 
-getParsedExact :: (MonadLDB m, MonadLogger m, Flat v) => BS.ByteString -> m v
+getParsedExact :: (Flat v, MonadLDB m, MonadLogger m) => BS.ByteString -> m v
 getParsedExact key = do
   db <- getDb
   maybeResult <- get db def key
@@ -80,14 +80,20 @@ updateTxSpends spentTxsHash newTxInfos = do
          else
           LDB.Put (cachedTxKey $ txCacheRecHash info) (flat $ info { txCacheRecUnspentOutputsCount = outputsLeft })
 
-updateKnownPeers :: (MonadLDB m) => [Peer] -> m ()
-updateKnownPeers peers = do
-  db <- getDb
-  put db def cachedKnownPeersKey $ flat $ KnownPeersCacheRec $ convert <$> peers
-
 getKnownPeers :: (MonadLDB m, MonadLogger m) => Bool -> m [String]
 getKnownPeers onlySecured = do
   db <- getDb
   knownPeers <- getParsedExact cachedKnownPeersKey
   pure $ T.unpack . knownPeerCacheRecUrl <$>
     if onlySecured then filter knownPeerCacheRecIsSecureConn knownPeers else knownPeers
+
+getKnownPeersList :: (MonadLDB m, MonadLogger m) => m [Peer]
+getKnownPeersList = do
+  db <- getDb
+  peers <- getParsedExact @[KnownPeerCacheRecItem] cachedKnownPeersKey
+  pure $ convert <$> peers
+
+setKnownPeersList :: (MonadLDB m, MonadLogger m) => [Peer] -> m ()
+setKnownPeersList peers = do
+  db <- getDb
+  put db def cachedKnownPeersKey $ flat $ convert @_ @KnownPeerCacheRecItem <$> peers

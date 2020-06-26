@@ -43,8 +43,7 @@ instance Conversion (Entity DiscoveredPeerRec) Peer where
     key = entityKey entity
     value = entityVal entity
     in Peer
-    { peerId = key
-    , peerUrl = fromJust $ parseBaseUrl $ T.unpack $ discoveredPeerRecUrl value
+    { peerUrl = fromJust $ parseBaseUrl $ T.unpack $ discoveredPeerRecUrl value
     , peerLastValidatedAt = discoveredPeerRecLastValidatedAt value
     , peerConnScheme =
         case discoveredPeerRecIsSecureConn value of

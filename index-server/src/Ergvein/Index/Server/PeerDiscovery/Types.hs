@@ -29,8 +29,7 @@ data PeerCandidate = PeerCandidate
   }
 
 data Peer = Peer
-  { peerId               :: DiscoveredPeerRecId
-  , peerUrl              :: BaseUrl
+  { peerUrl              :: BaseUrl
   , peerLastValidatedAt  :: UTCTime
   , peerConnScheme       :: Scheme
   } deriving Show

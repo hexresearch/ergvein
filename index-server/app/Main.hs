@@ -51,7 +51,6 @@ onStartup :: ServerEnv -> ServerM [Thread]
 onStartup env = do
   scanningThreads <- blockchainScanning
   syncWithDefaultPeers
-  refreshKnownPeersCache
   feesScanning
   peerIntroduce
   knownPeersActualization

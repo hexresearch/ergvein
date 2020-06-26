@@ -58,7 +58,6 @@ considerPeerCandidate candidate = do
     _ <- peerKnownPeers baseUrl
     let newPeer = NewPeer baseUrl $ baseUrlScheme baseUrl
     lift $ dbQuery $ addNewPeers [newPeer]
-    lift $ refreshKnownPeersCache
   else
     ExceptT $ pure $ Left AlreadyKnown
 
@@ -77,21 +76,16 @@ knownPeersActualization = do
       currentTime <- liftIO getCurrentTime
       knownPeers <- dbQuery getDiscoveredPeers
 
-      let (outdatedPeers, peersToFetchFrom) = 
-            partition ( isOutdated (descReqPredefinedPeers requisites) (descReqActualizationTimeout requisites) currentTime) knownPeers
+      let peersToFetchFrom = 
+            filter (not . isOutdated (descReqPredefinedPeers requisites) (descReqActualizationTimeout requisites) currentTime) knownPeers
       
       knowPeersSet <- knownPeersSet peersToFetchFrom
       (peersToRefresh, fetchedPeers) <- mconcat <$> mapM peersKnownTo peersToFetchFrom
+      currentTime <- liftIO getCurrentTime
+      let uniqueNotDiscoveredFetchedPeers = (\x-> Peer x currentTime (baseUrlScheme x)) <$> (filter (not . (`Set.member` knowPeersSet)) $ uniqueElements fetchedPeers)
 
-      let uniqueNotDiscoveredFetchedPeers = filter (not . (`Set.member` knowPeersSet)) $ uniqueElements fetchedPeers
-
-      dbQuery $ do
-        deleteExpiredPeers $ peerId <$> outdatedPeers
-        refreshPeerValidationTime $ peerId <$> peersToRefresh
-        addNewPeers $ newPeer <$> uniqueNotDiscoveredFetchedPeers
-      
-      refreshKnownPeersCache
-
+      let r = (\x-> x {peerLastValidatedAt = currentTime} )<$> peersToRefresh
+      setKnownPeersList $ r ++ uniqueNotDiscoveredFetchedPeers
       liftIO $ threadDelay $ descReqActualizationDelay requisites
 
     isOutdated :: Set BaseUrl -> NominalDiffTime -> UTCTime -> Peer -> Bool
@@ -162,8 +156,3 @@ peerActualScan candidateInfo = do
 
     candidateInfoMap = Map.fromList $ (\scanInfo -> (scanProgressCurrency scanInfo, scanInfo))
                                    <$> infoScanProgress candidateInfo
-
-refreshKnownPeersCache :: ServerM ()
-refreshKnownPeersCache = do
-  stored <- dbQuery getDiscoveredPeers
-  updateKnownPeers stored

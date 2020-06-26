@@ -76,9 +76,6 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
       logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
       do
         blockInfo <- scanInfo blockHeight
-        dbQuery $ do
-          storeInfo blockInfo
-          storeScannedHeight currency blockHeight
         addToCache blockInfo
 
     scanIteration :: Thread -> ServerM ()

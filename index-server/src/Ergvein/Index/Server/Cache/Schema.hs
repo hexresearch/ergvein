@@ -13,6 +13,7 @@ import Ergvein.Types.Transaction
 import System.ByteOrder
 import Data.FileEmbed
 import Crypto.Hash.SHA256
+import Data.Time
 
 import qualified Data.ByteString as BS
 import qualified Data.Serialize as S
@@ -79,15 +80,15 @@ data BlockMetaCacheRec = BlockMetaCacheRec
 cachedKnownPeersKey :: ByteString
 cachedKnownPeersKey  = keyString Peer $ mempty @String
 
-data KnownPeersCacheRec = KnownPeersCacheRec [KnownPeerCacheRec] deriving (Generic, Show, Eq, Ord, Flat)
+data KnownPeersCacheRec = KnownPeersCacheRec [KnownPeerCacheRecItem] deriving (Generic, Show, Eq, Ord, Flat)
 
-data KnownPeerCacheRec = KnownPeerCacheRec
-  { knownPeerCacheRecIsSecureConn  :: Bool
-  , knownPeerCacheRecUrl           :: Text
+data KnownPeerCacheRecItem = KnownPeerCacheRecItem
+  { knownPeerCacheRecUrl             :: Text
+  , knownPeerCacheRecIsSecureConn    :: Bool
+  , knownPeerCacheRecLastValidatedAt :: Text
   } deriving (Generic, Show, Eq, Ord, Flat)
 
 cachedSchemaVersionKey :: ByteString
 cachedSchemaVersionKey  = keyString SchemaVersion $ mempty @String
 
 data SchemaVersionCacheRec = Text  deriving (Generic, Show, Eq, Ord, Flat)
-
