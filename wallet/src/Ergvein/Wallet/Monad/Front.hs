@@ -32,7 +32,7 @@ import Data.Text (Text)
 import Network.Socket (SockAddr)
 import Language.Javascript.JSaddle
 import Reflex
-import Reflex.Dom hiding (run, mainWidgetWithCss)
+import Reflex.Dom hiding (run, mainWidgetWithCss, textInput)
 import Reflex.Dom.Retractable.Class
 import Reflex.ExternalRef
 

@@ -18,6 +18,7 @@ data SeedPageStrings =
   | SPSReset
   | SPSEnterWord Int
   | SPSWaiting
+  | SPSInvalidWord
 
 numSuffix :: Int -> Text
 numSuffix n = case (n `mod` 10) of
@@ -38,6 +39,7 @@ instance LocalizedPrint SeedPageStrings where
       SPSReset        -> "Reset and start again"
       SPSEnterWord n  -> "Enter the " <> showt n <> numSuffix n <> " word"
       SPSWaiting      -> "Waiting for input..."
+      SPSInvalidWord  -> "Invalid word"
     Russian -> case v of
       SPSTitle        -> "Слова мнемоники от вашего кошелька"
       SPSWarn         -> "Эта мнемоника — единственный способ восстановить ваш кошелёк. Запишите их, иначе вы можете потерять свои деньги. Навсегда."
@@ -48,3 +50,4 @@ instance LocalizedPrint SeedPageStrings where
       SPSReset        -> "Сбросить и начать заново"
       SPSEnterWord n  -> "Введите " <> showt n <> "-е слово"
       SPSWaiting      -> "Ожидаю ввода..."
+      SPSInvalidWord  -> "Недопустимое слово"
