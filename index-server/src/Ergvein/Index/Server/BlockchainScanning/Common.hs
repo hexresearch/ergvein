@@ -8,7 +8,7 @@ import Data.Foldable (traverse_)
 import Data.Maybe
 
 import Ergvein.Index.Server.BlockchainScanning.Types
-import Ergvein.Index.Server.Cache
+import Ergvein.Index.Server.DB
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Environment
 import Ergvein.Types.Currency
@@ -16,7 +16,7 @@ import Ergvein.Types.Transaction
 import Ergvein.Text
 import Control.Monad.Reader
 import Ergvein.Index.Server.Monad
-import Ergvein.Index.Server.Cache.Queries
+import Ergvein.Index.Server.DB.Queries
 
 import qualified Network.Bitcoin.Api.Client                      as BitcoinApi
 import qualified Ergvein.Index.Server.BlockchainScanning.Bitcoin as BTCScanning

@@ -1,4 +1,4 @@
-module Ergvein.Index.Server.Cache.Queries where
+module Ergvein.Index.Server.DB.Queries where
 
 import Control.Lens
 import Data.Default
@@ -12,11 +12,11 @@ import Data.Time.Clock
 import Control.Monad.IO.Class
 import Ergvein.Index.Server.Dependencies
 
-import Ergvein.Index.Server.Cache.Monad
-import Ergvein.Index.Server.Cache.Schema
+import Ergvein.Index.Server.DB.Monad
+import Ergvein.Index.Server.DB.Schema
 import Ergvein.Types.Transaction
 import Ergvein.Index.Server.BlockchainScanning.Types
-import Ergvein.Index.Server.Cache.Conversions
+import Ergvein.Index.Server.DB.Conversions
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Types.Block
 import Ergvein.Types.Currency
@@ -72,45 +72,45 @@ putItems keySelector valueSelector items = putI <$> items
 updateTxSpends  :: (MonadLDB m, MonadLogger m) => [TxHash] -> [TxInfo] -> m ()
 updateTxSpends spentTxsHash newTxInfos = do
   db <- getDb
-  write db def $ putItems (cachedTxKey . txHash) (convert @_ @TxCacheRec) newTxInfos
-  cachedInfo <- getManyParsedExact @_ @TxCacheRec  $ cachedTxKey <$> Map.keys outSpendsAmountByTx 
-  write db def $ infoUpdate <$> cachedInfo
+  write db def $ putItems (txRecKey . txHash) (convert @_ @TxRec) newTxInfos
+  info <- getManyParsedExact @_ @TxRec  $ txRecKey <$> Map.keys outSpendsAmountByTx 
+  write db def $ infoUpdate <$> info
   where
     outSpendsAmountByTx = Map.fromListWith (+) $ (,1) <$> spentTxsHash
     infoUpdate info = let 
-      outputsLeft = txCacheRecUnspentOutputsCount info - outSpendsAmountByTx Map.! (txCacheRecHash info)
+      outputsLeft = txRecUnspentOutputsCount info - outSpendsAmountByTx Map.! (txRecHash info)
       in if outputsLeft == 0 then 
-          LDB.Del $ cachedTxKey $ txCacheRecHash info
+          LDB.Del $ txRecKey $ txRecHash info
          else
-          LDB.Put (cachedTxKey $ txCacheRecHash info) (flat $ info { txCacheRecUnspentOutputsCount = outputsLeft })
+          LDB.Put (txRecKey $ txRecHash info) (flat $ info { txRecUnspentOutputsCount = outputsLeft })
 
 getKnownPeers :: (MonadLDB m, MonadLogger m, HasDiscoveryRequisites m) => Bool -> m [String]
 getKnownPeers onlySecured = do
   db <- getDb
-  knownPeers <- getParsedExact cachedKnownPeersKey
+  knownPeers <- getParsedExact knownPeersRecKey
   currentTime <- liftIO getCurrentTime
   actualizationDelay <- (/1000000) . fromIntegral . descReqActualizationDelay <$> getDiscoveryRequisites
   let validDate = (-actualizationDelay) `addUTCTime` currentTime
-  pure $ T.unpack . knownPeerCacheRecUrl <$>
-    if onlySecured then filter knownPeerCacheRecIsSecureConn knownPeers else knownPeers
+  pure $ T.unpack . knownPeerRecUrl <$>
+    if onlySecured then filter knownPeerRecIsSecureConn knownPeers else knownPeers
 
 getKnownPeersList :: (MonadLDB m, MonadLogger m) => m [Peer]
 getKnownPeersList = do
   db <- getDb
-  peers <- getParsedExact @[KnownPeerCacheRecItem] cachedKnownPeersKey
+  peers <- getParsedExact @[KnownPeerRecItem] knownPeersRecKey
   pure $ convert <$> peers
 
 setKnownPeersList :: (MonadLDB m, MonadLogger m) => [Peer] -> m ()
 setKnownPeersList peers = do
   db <- getDb
-  put db def cachedKnownPeersKey $ flat $ convert @_ @KnownPeerCacheRecItem <$> peers
+  put db def knownPeersRecKey $ flat $ convert @_ @KnownPeerRecItem <$> peers
 
 addKnownPeers :: (MonadLDB m, MonadLogger m) => [Peer] -> m ()
 addKnownPeers peers = do
   db <- getDb
-  let mapped = convert @_ @KnownPeerCacheRecItem <$> peers
-  stored <- getParsedExact @[KnownPeerCacheRecItem] cachedKnownPeersKey
-  put db def cachedKnownPeersKey $ flat $ mapped ++ stored
+  let mapped = convert @_ @KnownPeerRecItem <$> peers
+  stored <- getParsedExact @[KnownPeerRecItem] knownPeersRecKey
+  put db def knownPeersRecKey $ flat $ mapped ++ stored
 
 getScannedHeightCache :: (MonadLDB m, MonadLogger m) => Currency -> m (Maybe BlockHeight)
 getScannedHeightCache currency = do
@@ -121,4 +121,4 @@ getScannedHeightCache currency = do
 setScannedHeightCache :: (MonadLDB m, MonadLogger m) => Currency -> BlockHeight -> m ()
 setScannedHeightCache currency height = do
   db <- getDb
-  put db def (scannedHeightTxKey currency )$ flat $ ScannedHeightCacheRec height
+  put db def (scannedHeightTxKey currency )$ flat $ ScannedHeightRec height

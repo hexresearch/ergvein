@@ -6,6 +6,7 @@ import Control.Exception (SomeException(..),AsyncException(..))
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
+import Control.Monad.Reader
 import Data.ByteString.UTF8
 import Data.Maybe
 import Data.Typeable
@@ -14,7 +15,7 @@ import Network.Bitcoin.Api.Types
 import Network.HTTP.Client.TLS
 import Servant.Client.Core
 
-import Ergvein.Index.Server.Cache
+import Ergvein.Index.Server.DB
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Text

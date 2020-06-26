@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
-module Ergvein.Index.Server.Cache where
+module Ergvein.Index.Server.DB where
 
 import Conduit
 import Control.Concurrent.Async
@@ -20,9 +20,9 @@ import System.Directory
 import System.FilePath
 
 import Ergvein.Index.Server.BlockchainScanning.Types
-import Ergvein.Index.Server.Cache.Monad
-import Ergvein.Index.Server.Cache.Queries
-import Ergvein.Index.Server.Cache.Schema
+import Ergvein.Index.Server.DB.Monad
+import Ergvein.Index.Server.DB.Queries
+import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.Utils
 import Ergvein.Text
 
@@ -33,12 +33,12 @@ import qualified Data.Map.Strict as Map
 cacheBlockMetaInfos :: MonadIO m => DB -> [BlockMetaInfo] -> m ()
 cacheBlockMetaInfos db infos = write db def $ putItems keySelector valueSelector infos
   where
-    keySelector   info = cachedMetaKey (blockMetaCurrency info, blockMetaBlockHeight info)
-    valueSelector info = BlockMetaCacheRec (blockMetaHeaderHashHexView info) (blockMetaAddressFilterHexView info)
+    keySelector   info = metaRecKey (blockMetaCurrency info, blockMetaBlockHeight info)
+    valueSelector info = BlockMetaRec (blockMetaHeaderHashHexView info) (blockMetaAddressFilterHexView info)
 
 cacheTxInfos :: MonadIO m => DB -> [TxInfo] -> m ()
 cacheTxInfos db infos = do
-  write db def $ putItems (cachedTxKey . txHash) (convert @TxInfo @TxCacheRec) infos
+  write db def $ putItems (txRecKey . txHash) (convert @TxInfo @TxRec) infos
 
 addToCache :: (MonadLDB m, MonadLogger m) => BlockInfo -> m ()
 addToCache update = do
@@ -63,7 +63,7 @@ openCacheDb cacheDirectory = do
   pure levelDBContext
   where
     dbSchemaVersion db = do
-      maybeDbSchemaVersion <- get db def cachedSchemaVersionKey 
+      maybeDbSchemaVersion <- get db def schemaVersionRecKey 
       pure $ unflatExact <$> maybeDbSchemaVersion
     clearDirectoryContent path = do
       content <- listDirectory path
@@ -74,5 +74,5 @@ openCacheDb cacheDirectory = do
     restoreCache pt = do
        clearDirectoryContent pt
        ctx <- open pt def {createIfMissing = True }
-       put ctx def cachedSchemaVersionKey (flat schemaVersion) 
+       put ctx def schemaVersionRecKey (flat schemaVersion) 
        pure ctx

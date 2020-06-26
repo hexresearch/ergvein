@@ -17,9 +17,9 @@ import           Ergvein.Crypto.Hash
 import           Ergvein.Filters.Btc.Mutable
 import           Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import           Ergvein.Index.Server.BlockchainScanning.Types
-import           Ergvein.Index.Server.Cache.Monad
-import           Ergvein.Index.Server.Cache.Queries
-import           Ergvein.Index.Server.Cache.Schema
+import           Ergvein.Index.Server.DB.Monad
+import           Ergvein.Index.Server.DB.Queries
+import           Ergvein.Index.Server.DB.Schema
 import           Ergvein.Index.Server.Config
 import           Ergvein.Index.Server.Dependencies
 import           Ergvein.Index.Server.Monad
@@ -60,8 +60,8 @@ blockTxInfos block txBlockHeight nodeNetwork = do
       where
         decodeError = "error decoding btc txIn source transaction " <> show txInId
         fromChache = do
-          src <- getParsedExact $ cachedTxKey txInId
-          pure $ fromRight (error decodeError) $ decode $ fromJust $ HK.decodeHex $ txCacheRecHexView src
+          src <- getParsedExact $ txRecKey txInId
+          pure $ fromRight (error decodeError) $ decode $ fromJust $ HK.decodeHex $ txRecHexView src
 
     txInfo :: HK.Tx -> ([TxInfo], [TxHash])
     txInfo tx = let

@@ -25,7 +25,7 @@ import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.Utils
-import Ergvein.Index.Server.Cache.Queries
+import Ergvein.Index.Server.DB.Queries
 
 
 import qualified Data.Map.Strict as Map
