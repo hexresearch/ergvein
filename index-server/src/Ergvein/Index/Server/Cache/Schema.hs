@@ -18,7 +18,7 @@ import Data.Time
 import qualified Data.ByteString as BS
 import qualified Data.Serialize as S
 
-data KeyPrefix = Meta | Tx | Peer | SchemaVersion deriving Enum
+data KeyPrefix = ScannedHeight | Meta | Tx | Peer | SchemaVersion deriving Enum
 
 schemaVersion = hash $(embedFile "src/Ergvein/Index/Server/Cache/Schema.hs")
 
@@ -44,6 +44,19 @@ unPrefixedKey key = BS.tail key
 
 parsedCacheKey :: Serialize k => ByteString -> k
 parsedCacheKey = fromRight (error "ser") . S.decode . unPrefixedKey
+
+--ScannedHeight
+
+scannedHeightTxKey :: Currency -> ByteString
+scannedHeightTxKey = keyString ScannedHeight . ScannedHeightCacheRecKey
+
+data ScannedHeightCacheRecKey = ScannedHeightCacheRecKey
+  { scannedHeightRecKey      :: Currency
+  } deriving (Generic, Show, Eq, Ord, Serialize)
+
+data ScannedHeightCacheRec = ScannedHeightCacheRec
+  { scannedHeightRecHeight   :: BlockHeight
+  } deriving (Generic, Show, Eq, Ord, Flat)
 
 --Tx
 

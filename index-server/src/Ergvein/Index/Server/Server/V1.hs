@@ -53,7 +53,7 @@ indexServer = IndexApi
 --Endpoints
 indexGetHeightEndpoint :: HeightRequest -> ServerM HeightResponse
 indexGetHeightEndpoint (HeightRequest currency) = do
-  mh <- dbQuery $ fmap (scannedHeightRecHeight . entityVal) <$> getScannedHeight currency
+  mh <- getScannedHeightCache currency
   pure $ HeightResponse $ fromMaybe 0 mh
 
 getBlockMetaSlice :: Currency -> BlockHeight -> BlockHeight -> ServerM [BlockMetaCacheRec]

@@ -18,6 +18,9 @@ import Ergvein.Types.Transaction
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.Cache.Conversions
 import Ergvein.Index.Server.PeerDiscovery.Types
+import Ergvein.Types.Block
+import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
 
 import qualified Data.Text as T
 import qualified Data.ByteString as BS
@@ -108,3 +111,9 @@ addKnownPeers peers = do
   let mapped = convert @_ @KnownPeerCacheRecItem <$> peers
   stored <- getParsedExact @[KnownPeerCacheRecItem] cachedKnownPeersKey
   put db def cachedKnownPeersKey $ flat $ mapped ++ stored
+
+getScannedHeightCache :: (MonadLDB m, MonadLogger m) => Currency -> m (Maybe BlockHeight)
+getScannedHeightCache currency = do
+  db <- getDb
+  stored <- getParsed $ scannedHeightTxKey currency
+  pure $ scannedHeightRecHeight <$> stored
