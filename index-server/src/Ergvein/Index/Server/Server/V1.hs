@@ -12,7 +12,6 @@ import Data.Monoid
 import Data.Proxy
 import Data.Time.Clock
 import Data.Word
-import Database.Persist.Sql
 import Servant.API
 import Servant.API.Generic
 import Servant.Client

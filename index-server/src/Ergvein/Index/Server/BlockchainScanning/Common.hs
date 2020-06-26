@@ -6,7 +6,6 @@ import Control.Monad.Catch
 import Control.Monad.Logger
 import Data.Foldable (traverse_)
 import Data.Maybe
-import Database.Persist.Sql
 
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.Cache

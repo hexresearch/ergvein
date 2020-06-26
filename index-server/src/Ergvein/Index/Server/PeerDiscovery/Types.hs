@@ -5,7 +5,6 @@ import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Servant.Client.Core.BaseUrl
-import Ergvein.Index.Server.DB.Schema
 import Data.Time.Clock
 import Data.Text
 import Data.Set (Set)

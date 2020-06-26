@@ -6,20 +6,16 @@ import Control.Exception (SomeException(..),AsyncException(..))
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
-import Control.Monad.Reader
 import Data.ByteString.UTF8
 import Data.Maybe
 import Data.Typeable
 import Database.LevelDB.Base
-import Database.Persist.Sql
 import Network.Bitcoin.Api.Types
 import Network.HTTP.Client.TLS
 import Servant.Client.Core
 
 import Ergvein.Index.Server.Cache
 import Ergvein.Index.Server.Config
-import Ergvein.Index.Server.DB.Monad
-import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Text
 import Ergvein.Types.Currency
@@ -37,7 +33,6 @@ import Debug.Trace
 data ServerEnv = ServerEnv
     { envServerConfig             :: !Config
     , envLogger                   :: !(Chan (Loc, LogSource, LogLevel, LogStr))
-    , envPersistencePool          :: !DBPool
     , envLevelDBContext           :: !DB
     , envBitcoinNodeNetwork       :: !HK.Network
     , envErgoNodeClient           :: !ErgoApi.Client
@@ -45,12 +40,6 @@ data ServerEnv = ServerEnv
     , envPeerDiscoveryRequisites  :: !PeerDiscoveryRequisites
     , envFeeEstimates             :: !(TVar (M.Map Currency FeeBundle))
     }
-
-getPersistencePool :: MonadUnliftIO m => Bool -> String ->  LoggingT m DBPool
-getPersistencePool isLogEnabled connectionString = newDBPool isLogEnabled $ fromString connectionString
-
-applyDatabaseMigration :: DBPool -> LoggingT IO ()
-applyDatabaseMigration persistencePool = flip runReaderT persistencePool $ dbQuery $ runMigration migrateAll
 
 discoveryRequisites :: Config -> PeerDiscoveryRequisites
 discoveryRequisites cfg = let
@@ -81,12 +70,8 @@ newServerEnv cfg = do
     logger <- liftIO newChan
     liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
 
-    persistencePool <- liftIO $ runStdoutLoggingT $ do
-        persistencePool <- getPersistencePool (cfgDbLog cfg) (connectionStringFromConfig cfg)
-        applyDatabaseMigration persistencePool
-        pure persistencePool
 
-    levelDBContext <- openCacheDb (cfgCachePath cfg) persistencePool
+    levelDBContext <- openCacheDb (cfgCachePath cfg)
     ergoNodeClient <- liftIO $ ErgoApi.newClient (cfgERGONodeHost cfg) (cfgERGONodePort cfg)
     httpManager    <- liftIO $ HC.newManager HC.defaultManagerSettings
     tlsManager     <- liftIO $ newTlsManager
@@ -97,7 +82,6 @@ newServerEnv cfg = do
     pure ServerEnv
       { envServerConfig            = cfg
       , envLogger                  = logger
-      , envPersistencePool         = persistencePool
       , envLevelDBContext          = levelDBContext
       , envBitcoinNodeNetwork      = bitcoinNodeNetwork
       , envErgoNodeClient          = ergoNodeClient
