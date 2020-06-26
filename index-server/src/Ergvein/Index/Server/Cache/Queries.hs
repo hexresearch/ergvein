@@ -10,6 +10,7 @@ import Control.Monad.Logger
 import Conversion
 import Data.Time.Clock
 import Control.Monad.IO.Class
+import Ergvein.Index.Server.Dependencies
 
 import Ergvein.Index.Server.Cache.Monad
 import Ergvein.Index.Server.Cache.Schema
@@ -80,10 +81,13 @@ updateTxSpends spentTxsHash newTxInfos = do
          else
           LDB.Put (cachedTxKey $ txCacheRecHash info) (flat $ info { txCacheRecUnspentOutputsCount = outputsLeft })
 
-getKnownPeers :: (MonadLDB m, MonadLogger m) => Bool -> m [String]
+getKnownPeers :: (MonadLDB m, MonadLogger m, HasDiscoveryRequisites m) => Bool -> m [String]
 getKnownPeers onlySecured = do
   db <- getDb
   knownPeers <- getParsedExact cachedKnownPeersKey
+  currentTime <- liftIO getCurrentTime
+  actualizationDelay <- (/1000000) . fromIntegral . descReqActualizationDelay <$> getDiscoveryRequisites
+  let validDate = (-actualizationDelay) `addUTCTime` currentTime
   pure $ T.unpack . knownPeerCacheRecUrl <$>
     if onlySecured then filter knownPeerCacheRecIsSecureConn knownPeers else knownPeers
 
@@ -97,3 +101,10 @@ setKnownPeersList :: (MonadLDB m, MonadLogger m) => [Peer] -> m ()
 setKnownPeersList peers = do
   db <- getDb
   put db def cachedKnownPeersKey $ flat $ convert @_ @KnownPeerCacheRecItem <$> peers
+
+addKnownPeers :: (MonadLDB m, MonadLogger m) => [Peer] -> m ()
+addKnownPeers peers = do
+  db <- getDb
+  let mapped = convert @_ @KnownPeerCacheRecItem <$> peers
+  stored <- getParsedExact @[KnownPeerCacheRecItem] cachedKnownPeersKey
+  put db def cachedKnownPeersKey $ flat $ mapped ++ stored
