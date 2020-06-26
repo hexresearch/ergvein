@@ -23,9 +23,6 @@ import Ergvein.Index.API.V1
 import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.Cache.Queries
 import Ergvein.Index.Server.Cache.Schema
-import Ergvein.Index.Server.DB.Monad
-import Ergvein.Index.Server.DB.Queries
-import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad

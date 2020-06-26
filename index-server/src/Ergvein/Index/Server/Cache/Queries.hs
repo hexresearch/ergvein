@@ -117,3 +117,8 @@ getScannedHeightCache currency = do
   db <- getDb
   stored <- getParsed $ scannedHeightTxKey currency
   pure $ scannedHeightRecHeight <$> stored
+
+setScannedHeightCache :: (MonadLDB m, MonadLogger m) => Currency -> BlockHeight -> m ()
+setScannedHeightCache currency height = do
+  db <- getDb
+  put db def (scannedHeightTxKey currency )$ flat $ ScannedHeightCacheRec height
