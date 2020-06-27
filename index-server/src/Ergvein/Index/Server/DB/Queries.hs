@@ -121,4 +121,8 @@ getScannedHeightCache currency = do
 setScannedHeightCache :: (MonadLDB m, MonadLogger m) => Currency -> BlockHeight -> m ()
 setScannedHeightCache currency height = do
   db <- getDb
-  put db def (scannedHeightTxKey currency )$ flat $ ScannedHeightRec height
+  put db def (scannedHeightTxKey currency) $ flat $ ScannedHeightRec height
+
+initDb :: DB -> IO ()
+initDb db = do
+  put db def knownPeersRecKey $ flat $ convert @Peer @KnownPeerRecItem <$> []

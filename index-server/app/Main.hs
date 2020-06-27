@@ -54,7 +54,7 @@ onStartup env = do
   feesScanning
   peerIntroduce
   knownPeersActualization
-  pure scanningThreads
+  pure []
 
 startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of

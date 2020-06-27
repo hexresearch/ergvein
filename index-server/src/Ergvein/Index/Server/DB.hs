@@ -45,6 +45,7 @@ addToCache update = do
   db <- getDb
   updateTxSpends (spentTxsHash update) $ blockContentTxInfos update
   cacheBlockMetaInfos db $ [blockInfoMeta update]
+  setScannedHeightCache (blockMetaCurrency $ blockInfoMeta update) (blockMetaBlockHeight $ blockInfoMeta update)
 
 openCacheDb :: (MonadLogger m, MonadIO m) => FilePath -> m DB
 openCacheDb cacheDirectory = do
@@ -63,7 +64,7 @@ openCacheDb cacheDirectory = do
   pure levelDBContext
   where
     dbSchemaVersion db = do
-      maybeDbSchemaVersion <- get db def schemaVersionRecKey 
+      maybeDbSchemaVersion <- get db def schemaVersionRecKey
       pure $ unflatExact <$> maybeDbSchemaVersion
     clearDirectoryContent path = do
       content <- listDirectory path
@@ -74,5 +75,6 @@ openCacheDb cacheDirectory = do
     restoreCache pt = do
        clearDirectoryContent pt
        ctx <- open pt def {createIfMissing = True }
-       put ctx def schemaVersionRecKey (flat schemaVersion) 
+       put ctx def schemaVersionRecKey (flat schemaVersion)
+       initDb ctx
        pure ctx

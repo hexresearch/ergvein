@@ -42,6 +42,7 @@ blockHeightsToScan :: Currency -> ServerM [BlockHeight]
 blockHeightsToScan currency = do
   actual  <- actualHeight currency
   scanned <- getScannedHeightCache currency
+  
   let start = maybe (currencyHeightStart currency) succ scanned
   pure [start..actual]
 

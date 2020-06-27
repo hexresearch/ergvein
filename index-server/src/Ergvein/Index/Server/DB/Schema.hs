@@ -57,6 +57,7 @@ data ScannedHeightRecKey = ScannedHeightRecKey
 data ScannedHeightRec = ScannedHeightRec
   { scannedHeightRecHeight   :: BlockHeight
   } deriving (Generic, Show, Eq, Ord, Flat)
+  
 
 --Tx
 
