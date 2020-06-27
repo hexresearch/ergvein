@@ -1,20 +1,26 @@
 module Ergvein.Crypto.WordLists (
     wordTrie
+  , wordTrieElem
   , getWordsWithPrefix
   , wordListEnglish
   ) where
 
+import Data.Maybe (isJust)
 import Data.Text
 import Data.Vector                  as V
 
 import qualified Data.Text.Encoding as TE
 import qualified Data.Trie          as DT
 
--- | Dictionary as a Trie for fast lookup by prefix
+-- | Dictionary as a Trie for fast lookup by prefix.
 wordTrie :: DT.Trie Text
 wordTrie = DT.fromList $ V.toList $ V.map (\v -> (TE.encodeUtf8 v, v)) wordListEnglish
 
--- | Return all words with given prefix
+-- | Returns True if the word is in the wordTrie and False otherwise.
+wordTrieElem :: Text -> Bool
+wordTrieElem word = isJust $ DT.lookup (TE.encodeUtf8 word) wordTrie
+
+-- | Return all words with given prefix.
 getWordsWithPrefix :: Text -> [Text]
 getWordsWithPrefix p = DT.elems $ DT.submap (TE.encodeUtf8 p) wordTrie
 

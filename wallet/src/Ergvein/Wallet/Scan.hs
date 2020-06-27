@@ -112,10 +112,11 @@ scanningBtcKey i0 keyNum pubkey = do
   let updSync i i1 = if i `mod` 100 == 0
         then updFire $ SyncMeta BTC (SyncAddress keyNum) (fromIntegral (i - i0)) (fromIntegral (i1 - i0))
         else pure ()
+      address = xPubToBtcAddr $ extractXPubKeyFromEgv pubkey
   buildE <- getPostBuild
   scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddress i0 updSync $ xPubToBtcAddr . extractXPubKeyFromEgv $ pubkey
   let hashesE = V.toList . snd <$> scanE
-  performEvent_ $ ffor scanE $ \(h, bls) -> logWrite $ "Scanned key # " <> showt keyNum <> " " <> showt pubkey <> " up to " <> showt h <> ", blocks to check: " <> showt bls
+  performEvent_ $ ffor scanE $ \(h, bls) -> logWrite $ "Scanned key #" <> showt keyNum <> " " <> btcAddrToString address <> " up to " <> showt h <> ", blocks to check: " <> showt bls
   scanningBtcBlocks (V.singleton (keyNum, pubkey)) hashesE
 
 -- | Check given blocks for transactions that are related to given set of keys and store txs into storage.

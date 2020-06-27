@@ -112,7 +112,7 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
         deriveNewBtcKeys Internal gapLimit
         pure ((), scanInternalKeys gapN keyNum <$ buildE)
       else do
-        logWrite $ "Scanning internal BTC key " <> showt keyNum
+        logWrite $ "Scanning internal BTC key #" <> showt keyNum
         let txs = maybe (error "No BTC tx storage!") id $ pubStorageTxs BTC ps
             address = egvXPubKeyToEgvAddress $ keys V.! keyNum
         checkResults <- traverse (checkAddrTx address) $ egvTxsToBtcTxs txs

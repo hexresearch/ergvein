@@ -43,8 +43,6 @@ import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Filters.Loader
 import Ergvein.Wallet.Filters.Storage
-import Ergvein.Wallet.Headers.Loader
-import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Async
@@ -94,7 +92,6 @@ data Env t = Env {
 , env'logoutFire      :: !(IO ())
 , env'activeCursRef   :: !(ExternalRef t (S.Set Currency))
 , env'manager         :: !(MVar Manager)
-, env'headersStorage  :: !HeadersStorage
 , env'filtersStorage  :: !FiltersStorage
 , env'filtersHeights  :: !(ExternalRef t (Map Currency HS.BlockHeight))
 , env'blocksStorage   :: !BlocksStorage
@@ -119,10 +116,6 @@ type ErgveinM t m = ReaderT (Env t) m
 instance Monad m => HasStoreDir (ErgveinM t m) where
   getStoreDir = asks env'storeDir
   {-# INLINE getStoreDir #-}
-
-instance Monad m => HasHeadersStorage (ErgveinM t m) where
-  getHeadersStorage = asks env'headersStorage
-  {-# INLINE getHeadersStorage #-}
 
 instance Monad m => HasFiltersStorage t (ErgveinM t m) where
   getFiltersStorage = asks env'filtersStorage
@@ -396,7 +389,6 @@ liftAuth ma0 ma = mdo
 
         managerRef      <- liftIO newEmptyMVar
         activeCursRef   <- newExternalRef acurs
-        headersStore    <- liftIO $ runReaderT openHeadersStorage (settingsStoreDir settings)
         syncRef         <- newExternalRef Synced
         filtersStore    <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
         filtersHeights  <- newExternalRef mempty
@@ -421,7 +413,6 @@ liftAuth ma0 ma = mdo
               , env'logoutFire = logoutFire ()
               , env'activeCursRef = activeCursRef
               , env'manager = managerRef
-              , env'headersStorage = headersStore
               , env'filtersStorage = filtersStore
               , env'filtersHeights = filtersHeights
               , env'blocksStorage = blocksStore

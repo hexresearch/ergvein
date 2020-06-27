@@ -32,7 +32,7 @@ import Data.Text (Text)
 import Network.Socket (SockAddr)
 import Language.Javascript.JSaddle
 import Reflex
-import Reflex.Dom hiding (run, mainWidgetWithCss)
+import Reflex.Dom hiding (run, mainWidgetWithCss, textInput)
 import Reflex.Dom.Retractable.Class
 import Reflex.ExternalRef
 
@@ -43,7 +43,6 @@ import Ergvein.Types.Storage
 import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Filters.Storage
-import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Base

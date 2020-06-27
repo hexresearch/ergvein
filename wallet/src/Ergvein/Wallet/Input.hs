@@ -1,5 +1,8 @@
 module Ergvein.Wallet.Input(
     Password
+  , textInput
+  , validatedTextInput
+  , textInputValidated
   , textField
   , textFieldNoLabel
   , validatedTextField
@@ -12,16 +15,51 @@ module Ergvein.Wallet.Input(
   , textInputTypeDyn
   ) where
 
-import Control.Monad (join)
 import Control.Lens
+import Control.Monad (join)
 import Data.Text (Text)
 import Ergvein.Text
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Id
 import Ergvein.Wallet.Monad
+import GHCJS.DOM.HTMLInputElement (HTMLInputElement)
+import Language.Javascript.JSaddle
 import Reflex.Localize
 
 import qualified Data.Text as T
+
+textInput :: MonadFrontBase t m
+  => InputElementConfig EventResult t (DomBuilderSpace m)
+  -> m (InputElement EventResult (DomBuilderSpace m) t)
+textInput cfg = do
+  i <- genId
+  inputElement $ cfg
+    & inputElementConfig_elementConfig . elementConfig_initialAttributes
+      %~ (\as -> "id" =: i <> "type" =: "text" <> as)
+
+validatedTextInput :: (MonadFrontBase t m, LocalizedPrint l)
+  => InputElementConfig EventResult t (DomBuilderSpace m)
+  -> Dynamic t (Maybe [l]) -- ^ List of errors
+  -> m (InputElement EventResult (DomBuilderSpace m) t)
+validatedTextInput cfg mErrsD = do
+  tInput <- inputField
+  divClass "form-field-errors" $ simpleList errsD displayError
+  pure tInput
+  where
+    errsD = fmap (maybe [] id) mErrsD
+    isInvalidD = fmap (maybe "" (const "is-invalid")) mErrsD
+    inputField = divClassDyn isInvalidD $ textInput cfg
+
+textInputValidated :: (MonadFrontBase t m, LocalizedPrint l)
+  => InputElementConfig EventResult t (DomBuilderSpace m)
+  -> (Text -> Either [l] a) -- ^ Validator
+  -> m (InputElement EventResult (DomBuilderSpace m) t) -- ^ Only valid values get through
+textInputValidated cfg f = mdo
+  mErrsD <- holdDyn Nothing $ fmap (either Just (const Nothing)) rawE
+  ti <- validatedTextInput cfg mErrsD
+  let txtD = _inputElement_value ti
+      rawE = updated $ f <$> txtD
+  pure ti
 
 labeledTextInput :: (MonadFrontBase t m, LocalizedPrint l)
   => l -- ^ Label
