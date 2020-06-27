@@ -57,10 +57,4 @@ setupPatternPage wt m l curs = wrapperSimple True $ do
   void $ setAuthInfo $ Just <$> authInfoE
 
 askPasswordPage :: MonadFrontBase t m => Text -> m (Event t Password)
-askPasswordPage name = wrapperSimple True $ do
-  divClass "password-ask-title" $ h4 $ localizedText PPSUnlock
-#ifdef ANDROID
-  askPattern name
-#else
-  askPassword
-#endif
+askPasswordPage name = wrapperSimple True $ askPassword name

@@ -7,30 +7,38 @@ module Ergvein.Wallet.Monad.Storage
   , setLabelToExtPubKey
   , setFlagToExtPubKey
   , insertTxsInPubKeystore
+  , updateBtcUtxoSet
+  , getWalletsScannedHeightD
+  , writeWalletsScannedHeight
   ) where
 
 import Control.Lens
+import Control.Monad
 import Data.Functor (void)
 import Data.Map (Map)
 import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
+import Network.Haskoin.Transaction (OutPoint)
+import Reflex
+
 import Ergvein.Crypto
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
+import Ergvein.Types.Utxo
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Native
-import Reflex
+import Ergvein.Wallet.Platform
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
 
 class (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t m | m -> t where
-  getAddressByCurIx      :: Currency -> Int -> m Base58
+  getAddressByCurIx :: Currency -> Int -> m Base58
   getEncryptedPrvStorage :: m EncryptedPrvStorage
   getWalletName          :: m Text
   getPubStorage          :: m PubStorage
@@ -80,23 +88,37 @@ insertTxsInPubKeystore reqE = modifyPubStorage $ ffor reqE $ \(cur, mtx) ps -> l
 
 updateKeyBoxWith :: Currency -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> PubStorage -> Maybe PubStorage
 updateKeyBoxWith cur i f ps =
-  let mk = ps ^.
-          pubStorage'currencyPubStorages
-        . at cur
-        & \mcps -> case mcps of
-          Nothing -> Nothing
-          Just cps -> cps ^. currencyPubStorage'pubKeystore
-            & (\v -> (V.!?) (pubKeystore'external v) i)
-  in case mk of
-    Nothing -> Nothing
-    Just kb -> let kb' = f kb
-      in Just $ ps & pubStorage'currencyPubStorages . at cur
-        %~ \mcps -> case mcps of
-          Nothing -> Nothing
-          Just cps -> Just $ cps & currencyPubStorage'pubKeystore
-            %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
+  let mk = ps ^. pubStorage'currencyPubStorages . at cur
+        & \mcps -> join $ ffor mcps $ \cps -> cps ^. currencyPubStorage'pubKeystore
+          & (\v -> (V.!?) (pubKeystore'external v) i)
+  in ffor mk $ \kb -> let kb' = f kb
+    in ps & pubStorage'currencyPubStorages . at cur
+      %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'pubKeystore
+        %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
 
 updateKeyLabel :: Text -> EgvXPubKey -> EgvXPubKey
 updateKeyLabel l key = case key of
   ErgXPubKey k _ -> ErgXPubKey k l
   BtcXPubKey k _ -> BtcXPubKey k l
+
+updateBtcUtxoSet :: MonadStorage t m => Event t BtcUtxoUpdate -> m ()
+updateBtcUtxoSet reqE = void . modifyPubStorage $ ffor reqE $ \upds ps -> let
+  mnews = ps ^. pubStorage'currencyPubStorages . at BTC
+    & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'utxos & getBtcUtxoSetFromStore
+      & \ms -> updateBtcUtxoSetPure upds $ fromMaybe M.empty $ ms
+  in ffor mnews $ \news -> ps & pubStorage'currencyPubStorages . at BTC
+    %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'utxos
+      %~ \us -> M.insert BTC (BtcSet news) us
+
+getWalletsScannedHeightD :: MonadStorage t m => Currency -> m (Dynamic t BlockHeight)
+getWalletsScannedHeightD cur = do
+  psD <- getPubStorageD
+  pure $ ffor psD $ \ps -> fromMaybe h0 $ join $ ps ^. pubStorage'currencyPubStorages . at cur
+    & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'scannedHeight
+  where h0 = fromIntegral $ filterStartingHeight cur
+
+writeWalletsScannedHeight :: MonadStorage t m => Event t (Currency, BlockHeight) -> m ()
+writeWalletsScannedHeight reqE = void . modifyPubStorage $ ffor reqE $ \(cur, h) ps -> let
+  mcp = ps ^. pubStorage'currencyPubStorages . at cur
+  in ffor mcp $ const $ ps & pubStorage'currencyPubStorages . at cur
+    %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'scannedHeight .~ Just h

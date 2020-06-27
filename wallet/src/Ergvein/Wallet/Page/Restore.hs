@@ -88,8 +88,8 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
         deriveNewBtcKeys External gapLimit
         pure ((), scanKeys gapN keyNum <$ buildE)
       else do
-        logWrite $ "Scanning external BTC key #" <> showt keyNum
-        h0 <- sample . current =<< watchScannedHeight BTC
+        logWrite $ "Scanning external BTC key " <> showt keyNum
+        h0 <- fmap fromIntegral . sample . current =<< getWalletsScannedHeightD BTC
         scannedE <- scanningBtcKey h0 keyNum (keys V.! keyNum)
         hasTxsD <- holdDyn False scannedE
         storedE <- modifyPubStorage $ ffor scannedE $ const $ Just . pubStorageSetKeyScanned BTC (Just keyNum)
@@ -128,7 +128,7 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
       logWrite "Finished scanning BTC keys..."
       buildE <- getPostBuild
       h <- sample . current =<< getCurrentHeight BTC
-      performFork_ $ writeScannedHeight BTC (fromIntegral h) <$ buildE
+      writeWalletsScannedHeight $ (BTC, fromIntegral h) <$ buildE
       modifyPubStorage $ ffor buildE $ const $ \ps -> Just $ ps {
           _pubStorage'restoring = False
         }

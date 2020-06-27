@@ -6,6 +6,8 @@ module Ergvein.Wallet.Localization.Password
   , PatternPageStrings(..)
   ) where
 
+import Data.Text (Text)
+
 import Ergvein.Wallet.Language
 
 data LoginPageStrings = LPSTitle | LPSDescr
@@ -37,18 +39,19 @@ instance LocalizedPrint PasswordPageStrings where
     English -> case v of
       PPSTitle  -> "Setup encryption password for your wallet"
       PPSDescr  -> "The password is used every time you perform an operation with your money. Leave the fields empty to set no password for your wallet."
-      PPSUnlock -> "Unlock your private keys with password"
+      PPSUnlock -> "Enter the password to unlock private keys"
     Russian -> case v of
       PPSTitle  -> "Установите пароль шифрования для кошелька"
       PPSDescr  -> "Этот пароль используется для каждой операции с вашими деньгами. Можете оставить поле пустым, если хотите (не рекомендуется)"
       PPSUnlock -> "Введите пароль для расшифровки приватных ключей"
 
-data PasswordWidgetStrings = PWSPassword | PWSRepeat | PWSSet | PWSNoMatch | PWSGo | PWSLogin | PWSEmptyLogin | PWSEmptyPassword | PWSEmptyPattern
+data PasswordWidgetStrings = PWSPassword | PWSPassNamed Text | PWSRepeat | PWSSet | PWSNoMatch | PWSGo | PWSLogin | PWSEmptyLogin | PWSEmptyPassword | PWSEmptyPattern
 
 instance LocalizedPrint PasswordWidgetStrings where
   localizedShow l v = case l of
     English -> case v of
       PWSPassword      -> "Password"
+      PWSPassNamed n   -> "Password for " <> n
       PWSRepeat        -> "Repeat password"
       PWSSet           -> "Set"
       PWSNoMatch       -> "Passwords do not match!"
@@ -59,6 +62,7 @@ instance LocalizedPrint PasswordWidgetStrings where
       PWSEmptyPattern  -> ""
     Russian -> case v of
       PWSPassword      -> "Пароль"
+      PWSPassNamed n   -> "Пароль от " <> n
       PWSRepeat        -> "Повторите пароль"
       PWSSet           -> "Установить"
       PWSNoMatch       -> "Пароли не совпадают!"
