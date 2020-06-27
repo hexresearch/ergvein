@@ -97,7 +97,7 @@ scanningAllBtcKeys i0 = do
   (updE, updFire) <- newTriggerEvent
   setSyncProgress updE
   let updSync i i1 = updFire $ SyncMeta BTC (SyncAddress (-1)) (fromIntegral (i - i0)) (fromIntegral (i1 - i0))
-  scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses updSync $ xPubToBtcAddr . extractXPubKeyFromEgv <$> keys
+  scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses i0 updSync $ xPubToBtcAddr . extractXPubKeyFromEgv <$> keys
   let heightE = fst <$> scanE
       hashesE = V.toList . snd <$> scanE
   writeWalletsScannedHeight $ ((BTC, ) . fromIntegral) <$> heightE
@@ -113,7 +113,7 @@ scanningBtcKey i0 keyNum pubkey = do
         then updFire $ SyncMeta BTC (SyncAddress keyNum) (fromIntegral (i - i0)) (fromIntegral (i1 - i0))
         else pure ()
   buildE <- getPostBuild
-  scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddress updSync $ xPubToBtcAddr . extractXPubKeyFromEgv $ pubkey
+  scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddress i0 updSync $ xPubToBtcAddr . extractXPubKeyFromEgv $ pubkey
   let hashesE = V.toList . snd <$> scanE
   performEvent_ $ ffor scanE $ \(h, bls) -> logWrite $ "Scanned key # " <> showt keyNum <> " " <> showt pubkey <> " up to " <> showt h <> ", blocks to check: " <> showt bls
   scanningBtcBlocks (V.singleton (keyNum, pubkey)) hashesE

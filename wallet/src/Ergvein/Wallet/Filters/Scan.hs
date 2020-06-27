@@ -30,10 +30,10 @@ filterAddress addr = foldFilters (egvAddrCurrency addr) f []
       _ -> pure acc
 
 -- | Scan through unprocessed filters and return scanned height and matches.
-filterBtcAddress :: (MonadIO m, HasFiltersStorage t m) => (BlockHeight -> BlockHeight -> IO ()) -> BtcAddress -> m (BlockHeight, Vector BlockHash)
-filterBtcAddress progCb ba = case guardSegWit ba of
+filterBtcAddress :: (MonadIO m, HasFiltersStorage t m) => BlockHeight -> (BlockHeight -> BlockHeight -> IO ()) -> BtcAddress -> m (BlockHeight, Vector BlockHash)
+filterBtcAddress i0 progCb ba = case guardSegWit ba of
     Nothing -> pure (filterStartingHeight BTC, mempty)
-    Just saddr -> scanBtcFilters (f saddr) (filterStartingHeight BTC, mempty)
+    Just saddr -> scanBtcFilters i0 (f saddr) (filterStartingHeight BTC, mempty)
   where
     f saddr i n bhash cfilter (!_, !acc) = do
       liftIO $ progCb i n
@@ -43,10 +43,10 @@ filterBtcAddress progCb ba = case guardSegWit ba of
 
 -- | Scan through unprocessed filters and return scanned height and matches. The function
 -- expect that all addresses are for the same currency.
-filterBtcAddresses :: (MonadIO m, HasFiltersStorage t m) => (BlockHeight -> BlockHeight -> IO ()) -> Vector BtcAddress -> m (BlockHeight, Vector BlockHash)
-filterBtcAddresses progCb as
+filterBtcAddresses :: (MonadIO m, HasFiltersStorage t m) => BlockHeight -> (BlockHeight -> BlockHeight -> IO ()) -> Vector BtcAddress -> m (BlockHeight, Vector BlockHash)
+filterBtcAddresses i0 progCb as
   | V.null as = pure (0, mempty)
-  | otherwise = scanBtcFilters f (filterStartingHeight BTC, mempty)
+  | otherwise = scanBtcFilters i0 f (filterStartingHeight BTC, mempty)
   where
     f i n bhash cfilter (!_, !acc) = do
       liftIO $ progCb i n

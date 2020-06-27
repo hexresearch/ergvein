@@ -3,8 +3,6 @@ module Ergvein.Wallet.Filters.Btc.Queries(
   , insertMultipleFilters
   , readFilter
   , readFiltersHeight
-  , readScannedHeight
-  , writeScannedHeight
   , foldFilters
   , scanFilters
   ) where
@@ -77,22 +75,6 @@ getFiltersHeight = do
   tdb <- getBtcTotalDb
   fromMaybe (filterStartingHeight BTC) <$> get tdb ()
 
-readScannedHeight :: MonadIO m => Environment ReadWrite -> m BlockHeight
-readScannedHeight e = liftIO $ readOnlyTransaction e getScannedHeight
-
-getScannedHeight :: Mode mode => Transaction mode BlockHeight
-getScannedHeight = do
-  tdb <- getBtcScannedDb
-  fromMaybe (filterStartingHeight BTC) <$> get tdb ()
-
-writeScannedHeight :: MonadIO m => Environment ReadWrite -> BlockHeight -> m ()
-writeScannedHeight e = liftIO . readWriteTransaction e . putScannedHeight
-
-putScannedHeight :: BlockHeight -> Transaction ReadWrite ()
-putScannedHeight h = do
-  tdb <- getBtcScannedDb
-  put tdb () (Just h)
-
 -- | Right fold over all filters
 foldFilters :: forall a m . MonadIO m
   => (BlockHeight -> BlockHeight -> BlockHash -> BtcAddrFilter -> a -> IO a)
@@ -118,14 +100,14 @@ foldFilters f a0 e = liftIO . readOnlyTransaction e $ do
 
 -- | Fold over filters that are not scanned yet
 scanFilters :: forall a m . MonadIO m
-  => (BlockHeight -> BlockHeight -> BlockHash -> BtcAddrFilter -> a -> IO a)
+  => BlockHeight
+  -> (BlockHeight -> BlockHeight -> BlockHash -> BtcAddrFilter -> a -> IO a)
   -> a
   -> Environment ReadWrite
   -> m a
-scanFilters f a0 e = liftIO . readOnlyTransaction e $ do
+scanFilters i0 f a0 e = liftIO . readOnlyTransaction e $ do
   fdb <- getBtcFiltersDb
   hdb <- getBtcHeightsDb
-  i0 <- getScannedHeight
   i1 <- getFiltersHeight
   go fdb hdb i0 i1 a0
   where

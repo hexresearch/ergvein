@@ -97,7 +97,6 @@ data Env t = Env {
 , env'headersStorage  :: !HeadersStorage
 , env'filtersStorage  :: !FiltersStorage
 , env'filtersHeights  :: !(ExternalRef t (Map Currency HS.BlockHeight))
-, env'scannedHeights  :: !(ExternalRef t (Map Currency HS.BlockHeight))
 , env'blocksStorage   :: !BlocksStorage
 , env'syncProgress    :: !(ExternalRef t SyncProgress)
 , env'heightRef       :: !(ExternalRef t (Map Currency Integer))
@@ -130,8 +129,6 @@ instance Monad m => HasFiltersStorage t (ErgveinM t m) where
   {-# INLINE getFiltersStorage #-}
   getFiltersHeightRef = asks env'filtersHeights
   {-# INLINE getFiltersHeightRef #-}
-  getScannedHeightRef = asks env'scannedHeights
-  {-# INLINE getScannedHeightRef #-}
 
 instance Monad m => HasBlocksStorage (ErgveinM t m) where
   getBlocksStorage = asks env'blocksStorage
@@ -403,7 +400,6 @@ liftAuth ma0 ma = mdo
         syncRef         <- newExternalRef Synced
         filtersStore    <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
         filtersHeights  <- newExternalRef mempty
-        scannedHeights  <- newExternalRef mempty
         blocksStore     <- liftIO $ runReaderT openBlocksStorage (settingsStoreDir settings)
         heightRef       <- newExternalRef (fmap (maybe 0 fromIntegral . _currencyPubStorage'height) . _pubStorage'currencyPubStorages $ ps)
         fsyncRef        <- newExternalRef mempty
@@ -428,7 +424,6 @@ liftAuth ma0 ma = mdo
               , env'headersStorage = headersStore
               , env'filtersStorage = filtersStore
               , env'filtersHeights = filtersHeights
-              , env'scannedHeights = scannedHeights
               , env'blocksStorage = blocksStore
               , env'syncProgress = syncRef
               , env'heightRef = heightRef
@@ -448,7 +443,6 @@ liftAuth ma0 ma = mdo
         runOnUiThreadM $ runReaderT setupTlsManager env
 
         flip runReaderT env $ do -- Workers and other routines go here
-          initScannedHeights scannedHeights
           initFiltersHeights filtersHeights
           scanner
           bctNodeController
@@ -463,16 +457,6 @@ liftAuth ma0 ma = mdo
     newAuthInfoE = ffilter isMauthUpdate $ updated mauthD
     redrawE = leftmost [newAuthInfoE, Nothing <$ logoutE]
   widgetHold ma0' $ ffor redrawE $ maybe ma0 runAuthed
-
--- | Query initial values for scanned heights and write down them to the external ref
-initScannedHeights :: MonadFront t m => ExternalRef t (Map Currency HS.BlockHeight) -> m ()
-initScannedHeights ref = do
-  ps <- getPubStorage
-  let curs =  _pubStorage'activeCurrencies ps
-  scms <- flip traverse curs $ \cur -> do
-    -- h <- getScannedHeight cur
-    pure (cur, 0)
-  writeExternalRef ref $ M.fromList scms
 
 -- | Query initial values for filters heights and write down them to the external ref
 initFiltersHeights :: MonadFront t m => ExternalRef t (Map Currency HS.BlockHeight) -> m ()
