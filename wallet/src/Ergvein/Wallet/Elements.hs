@@ -44,6 +44,7 @@ module Ergvein.Wallet.Elements(
   , divButton
   , spanButton
   , outlineTextIconButton
+  , outlineTextIconButtonTypeButton
   , outlineTextIconButtonClass
   , outlineSubmitTextIconButtonClass
   , outlineIconButtonClass
@@ -228,6 +229,13 @@ outlineTextIconButton :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, Loc
   => lbl -> Text -> m (Event t ())
 outlineTextIconButton lbl i =
   mkButton "button" [("onclick", "return false;")] "button button-outline" $ do
+    dynText =<< localized lbl
+    elClass "span" "button-icon-wrapper" $ elClass "i" i blank
+
+outlineTextIconButtonTypeButton :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
+  => lbl -> Text -> m (Event t ())
+outlineTextIconButtonTypeButton lbl i =
+  mkButton "button" [("onclick", "return false;"), ("type", "button")] "button button-outline" $ do
     dynText =<< localized lbl
     elClass "span" "button-icon-wrapper" $ elClass "i" i blank
 

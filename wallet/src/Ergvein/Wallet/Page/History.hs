@@ -31,6 +31,7 @@ import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Worker.Node
 import Ergvein.Wallet.Wrapper
+import Ergvein.Wallet.Headers.Types
 
 import Data.Map.Strict as Map
 import qualified Data.Set as S
@@ -267,6 +268,7 @@ transactionsGetting cur = do
       liftIO $ flip runReaderT store $ do
         blh <- traverse getBtcBlockHashByTxHash $ fmap HK.txHash $ fmap (getBtcTx) tx
         bl <- traverse getBlockFromHash blh
+        --blN <- traverse getBlockNodeFromHash blh
         b <- traverse (checkAddr allbtcAdrS) tx
         let txRefList = fmap (calcRefill (fmap getBtcAddr allbtcAdrS)) tx
         pure $ fmap snd $ L.filter fst $ L.zip b (prepareTransactionView <$> txListRaw bl blh tx txRefList)
@@ -295,11 +297,18 @@ transactionsGetting cur = do
       Just blockHash -> do
         mBlock <- getBtcBlock blockHash
         pure mBlock
+{-
+    getBlockNodeFromHash :: (MonadIO m, HasBlocksStorage m, HasHeadersStorage m, PlatformNatives) => Maybe HK.BlockHash -> m (Maybe HK.BlockNode)
+    getBlockNodeFromHash mBlockHash = case mBlockHash of
+      Nothing -> pure Nothing
+      Just blockHash -> do
+        mBlockNode <- HK.getBlockHeader blockHash
+        pure mBlockNode-}
 
 prepareTransactionView :: TxRawInfo -> TransactionView
 prepareTransactionView TxRawInfo{..} = TransactionView {
     txAmount = txom
-  , txDate = "pending..."
+  , txDate = "pending"--blTime
   , txInOut = TransRefill
   , txInfoView = txInf
   , txStatus = TransUncofirmed
@@ -324,6 +333,7 @@ prepareTransactionView TxRawInfo{..} = TransactionView {
     txOuts = fmap (\out -> (txOutAdr out,Money BTC (HK.outValue out), TOUnspent)) $ HK.txOut btx
     txOutAdr out = maybe "undefined" (showt . fromSegWit) $ getSegWitAddr out
     txBlockDebug = (showt txMBl) <> (showt txHBl)
+    blTime = maybe "pending.." (showt . HK.blockTimestamp . HK.blockHeader) txMBl
 
 -- Front types, should be moved to Utils
 data ExpStatus = Expanded | Hidden deriving (Eq, Show)

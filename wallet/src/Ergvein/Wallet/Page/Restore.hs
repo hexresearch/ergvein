@@ -2,6 +2,7 @@ module Ergvein.Wallet.Page.Restore(
     restorePage
   ) where
 
+import Control.Monad.IO.Class
 import Data.Foldable (foldl')
 import Data.Maybe (fromMaybe)
 import Ergvein.Filters.Btc
@@ -53,7 +54,6 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
         filters <- filtersD
         height <- heightD
         let pct = fromIntegral filters / fromIntegral height :: Float
-        -- pure $ showt filters <> "/" <> showt height <> " " <> showf 2 (100 * pct) <> "%"
         pure $ showf 2 (100 * pct) <> "%"
       filtersE <- fmap (ffilter id) $ updatedWithInit $ do
         filters <- filtersD
@@ -70,6 +70,7 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
 
     scanKeys :: Int -> Int -> Workflow t m ()
     scanKeys gapN keyNum = Workflow $ do
+      logWrite "We are at scan stage"
       syncWidget =<< getSyncProgress
       buildE <- delay 0.1 =<< getPostBuild
       keys <- pubStorageKeys BTC External <$> getPubStorage
@@ -83,13 +84,21 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
         deriveNewBtcKeys External gapLimit
         pure ((), scanKeys gapN keyNum <$ buildE)
       else do
-        logWrite $ "Scanning external BTC key " <> showt keyNum
+        logWrite $ "Scanning external BTC key #" <> showt keyNum
         h0 <- sample . current =<< watchScannedHeight BTC
         scannedE <- scanningBtcKey h0 keyNum (keys V.! keyNum)
-        let nextE = ffor scannedE $ \hastxs -> let
-              gapN' = if hastxs then 0 else gapN+1
-              in scanKeys gapN' (keyNum+1)
-        modifyPubStorage $ ffor scannedE $ const $ Just . pubStorageSetKeyScanned BTC (Just keyNum)
+        hasTxsD <- holdDyn False scannedE
+        storedE <- modifyPubStorage $ ffor scannedE $ const $ Just . pubStorageSetKeyScanned BTC (Just keyNum)
+        let nextE = flip pushAlways storedE $ const $ do
+              hastxs <- sample . current $ hasTxsD
+              let gapN' = if hastxs then 0 else gapN+1
+              pure $ scanKeys gapN' (keyNum+1)
+        psD <- getPubStorageD
+        performEvent_ $ ffor storedE $ const $ do
+          hastxs <- sample . current $ hasTxsD
+          when hastxs $ do
+            ps <- sample . current $ psD
+            logWrite $ "We have txs: " <> showt (pubStorageTxs BTC ps)
         pure ((), nextE)
 
     scanInternalKeys :: MonadFront t m => Int -> Int -> Workflow t m ()
@@ -103,7 +112,7 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
         deriveNewBtcKeys Internal gapLimit
         pure ((), scanInternalKeys gapN keyNum <$ buildE)
       else do
-        logWrite $ "Scanning internal BTC key " <> showt keyNum
+        logWrite $ "Scanning internal BTC key #" <> showt keyNum
         let txs = maybe (error "No BTC tx storage!") id $ pubStorageTxs BTC ps
             address = egvXPubKeyToEgvAddress $ keys V.! keyNum
         checkResults <- traverse (checkAddrTx address) $ egvTxsToBtcTxs txs

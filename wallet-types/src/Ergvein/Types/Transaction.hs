@@ -8,6 +8,7 @@ module Ergvein.Types.Transaction (
     , EgvTx(..)
     , egvTxToString
     , egvTxFromString
+    , egvTxId
     , TxId
     , TxHexView
     , BlockHeight
@@ -74,6 +75,10 @@ egvTxToString (ErgTx tx) = ergTxToString tx
 egvTxFromString :: Currency -> Text -> Maybe EgvTx
 egvTxFromString BTC  t = BtcTx <$> btcTxFromString t
 egvTxFromString ERGO t = ErgTx <$> ergTxFromString t
+
+egvTxId :: EgvTx -> TxId
+egvTxId (BtcTx tx) = HK.txHashToHex $ HK.txHash tx
+egvTxId (ErgTx tx) = error "egvTxId: implement for Ergo!"
 
 egvTxToJSON :: EgvTx -> Value
 egvTxToJSON = String . egvTxToString
