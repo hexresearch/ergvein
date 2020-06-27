@@ -470,8 +470,8 @@ initScannedHeights ref = do
   ps <- getPubStorage
   let curs =  _pubStorage'activeCurrencies ps
   scms <- flip traverse curs $ \cur -> do
-    h <- getScannedHeight cur
-    pure (cur, h)
+    -- h <- getScannedHeight cur
+    pure (cur, 0)
   writeExternalRef ref $ M.fromList scms
 
 -- | Query initial values for filters heights and write down them to the external ref

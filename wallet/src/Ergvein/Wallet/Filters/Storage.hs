@@ -3,11 +3,10 @@ module Ergvein.Wallet.Filters.Storage(
   , HasFiltersStorage(..)
   , openFiltersStorage
   , getFiltersHeight
-  , getScannedHeight
   , watchFiltersHeight
   , writeFiltersHeight
-  , watchScannedHeight
-  , writeScannedHeight
+  -- , watchScannedHeight
+  -- , writeScannedHeight
   , insertFilter
   , insertMultipleFilters
   , getFilter

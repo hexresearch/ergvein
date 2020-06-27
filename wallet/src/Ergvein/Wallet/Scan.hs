@@ -69,7 +69,7 @@ scannerBtc = void $ workflow waiting
       logWrite "Waiting for unscanned filters"
       buildE <- getPostBuild
       fhD <- watchFiltersHeight BTC
-      scD <- watchScannedHeight BTC
+      scD <- (fmap . fmap) fromIntegral $ getWalletsScannedHeightD BTC
       rsD <- fmap _pubStorage'restoring <$> getPubStorageD
       setSyncProgress $ ffor buildE $ const $ Synced
       let newFiltersE = fmapMaybe id $ updated $ do
@@ -100,7 +100,7 @@ scanningAllBtcKeys i0 = do
   scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses updSync $ xPubToBtcAddr . extractXPubKeyFromEgv <$> keys
   let heightE = fst <$> scanE
       hashesE = V.toList . snd <$> scanE
-  performFork_ $ writeScannedHeight BTC <$> heightE
+  writeWalletsScannedHeight $ ((BTC, ) . fromIntegral) <$> heightE
   performEvent_ $ ffor scanE $ \(h, bls) -> logWrite $ "Scanned all keys up to " <> showt h <> ", blocks to check: " <> showt bls
   scanningBtcBlocks (V.indexed keys) hashesE
 

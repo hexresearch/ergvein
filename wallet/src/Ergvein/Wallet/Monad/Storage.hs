@@ -8,6 +8,8 @@ module Ergvein.Wallet.Monad.Storage
   , setFlagToExtPubKey
   , insertTxsInPubKeystore
   , updateBtcUtxoSet
+  , getWalletsScannedHeightD
+  , writeWalletsScannedHeight
   ) where
 
 import Control.Lens
@@ -29,6 +31,7 @@ import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Platform
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -106,3 +109,16 @@ updateBtcUtxoSet reqE = void . modifyPubStorage $ ffor reqE $ \upds ps -> let
   in ffor mnews $ \news -> ps & pubStorage'currencyPubStorages . at BTC
     %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'utxos
       %~ \us -> M.insert BTC (BtcSet news) us
+
+getWalletsScannedHeightD :: MonadStorage t m => Currency -> m (Dynamic t BlockHeight)
+getWalletsScannedHeightD cur = do
+  psD <- getPubStorageD
+  pure $ ffor psD $ \ps -> fromMaybe h0 $ join $ ps ^. pubStorage'currencyPubStorages . at cur
+    & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'scannedHeight
+  where h0 = fromIntegral $ filterStartingHeight cur
+
+writeWalletsScannedHeight :: MonadStorage t m => Event t (Currency, BlockHeight) -> m ()
+writeWalletsScannedHeight reqE = void . modifyPubStorage $ ffor reqE $ \(cur, h) ps -> let
+  mcp = ps ^. pubStorage'currencyPubStorages . at cur
+  in ffor mcp $ const $ ps & pubStorage'currencyPubStorages . at cur
+    %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'scannedHeight .~ Just h
