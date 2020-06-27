@@ -101,8 +101,8 @@ updateKeyLabel l key = case key of
 updateBtcUtxoSet :: MonadStorage t m => Event t BtcUtxoUpdate -> m ()
 updateBtcUtxoSet reqE = void . modifyPubStorage $ ffor reqE $ \upds ps -> let
   mnews = ps ^. pubStorage'currencyPubStorages . at BTC
-    & \mcps -> ffor mcps $ \cps -> cps ^. currencyPrvStorage'utxos & getBtcUtxoSetFromStore
+    & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'utxos & getBtcUtxoSetFromStore
       & \ms -> updateBtcUtxoSetPure upds $ fromMaybe M.empty $ ms
   in ffor mnews $ \news -> ps & pubStorage'currencyPubStorages . at BTC
-    %~ \mcps -> ffor mcps $ \cps -> cps & currencyPrvStorage'utxos
+    %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'utxos
       %~ \us -> M.insert BTC (BtcSet news) us
