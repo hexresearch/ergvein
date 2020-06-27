@@ -43,7 +43,6 @@ import Ergvein.Types.Storage
 import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Filters.Storage
-import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Base
