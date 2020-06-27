@@ -100,11 +100,11 @@ foldFilters f a0 e = liftIO . readOnlyTransaction e $ do
 
 -- | Fold over filters that are not scanned yet
 scanFilters :: forall a m . MonadIO m
-  => BlockHeight
-  -> (BlockHeight -> BlockHeight -> BlockHash -> BtcAddrFilter -> a -> IO a)
-  -> a
-  -> Environment ReadWrite
-  -> m a
+  => BlockHeight -- ^ Starting height
+  -> (BlockHeight -> BlockHeight -> BlockHash -> BtcAddrFilter -> a -> IO a)  -- ^ Scanner function
+  -> a -- ^ initial value. Returned unchanged if there is no filters to scan
+  -> Environment ReadWrite -- ^ Env with the DB
+  -> m a -- ^ Result
 scanFilters i0 f a0 e = liftIO . readOnlyTransaction e $ do
   fdb <- getBtcFiltersDb
   hdb <- getBtcHeightsDb

@@ -32,7 +32,7 @@ isUtxoConfirmed v = case v of
 
 type BtcUtxoSet = M.Map OutPoint (Word64, EgvUtxoStatus)
 
--- fst -- wallet's unspent outputs
+-- | fst -- wallet's unspent outputs
 -- snd -- wallet's spent outputs
 -- snd's bool: True - confirmed, must be deleted from UTXO set, False - set status to EUtxoSending
 type BtcUtxoUpdate = (BtcUtxoSet, [(OutPoint, Bool)])

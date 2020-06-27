@@ -140,7 +140,8 @@ seedRestorePage = wrapperSimple True $ do
     , retractablePrev = Just $ pure seedRestorePage
     }
 
--- For debug purposes. Instead of writing the phrase one word at a time, paste the whole phrase instantly
+-- | For debug purposes. Instead of writing the phrase one word at a time, paste the whole phrase instantly
+-- Switch seedRestorePage to seedRestorePageText at Ergvein.Wallet.Page.Initial:48 to enable.
 seedRestorePageText :: MonadFrontBase t m => m ()
 seedRestorePageText = wrapperSimple True $ do
   h4 $ localizedText SPSRestoreTitle

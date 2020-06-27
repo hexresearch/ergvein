@@ -87,7 +87,7 @@ data CurrencyPubStorage = CurrencyPubStorage {
   , _currencyPubStorage'transactions  :: !(M.Map TxId EgvTx)
   , _currencyPubStorage'height        :: !(Maybe BlockHeight) -- ^ Last height seen by the wallet
   , _currencyPubStorage'scannedKey    :: !(Maybe Int) -- ^ When restoring here we put which keys are we already scanned
-  , _currencyPubStorage'utxos         :: EgvUtxoSetStorage
+  , _currencyPubStorage'utxos         :: !EgvUtxoSetStorage
   , _currencyPubStorage'scannedHeight :: !(Maybe BlockHeight)
   } deriving (Eq, Show, Read)
 
