@@ -84,7 +84,7 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
         deriveNewBtcKeys External gapLimit
         pure ((), scanKeys gapN keyNum <$ buildE)
       else do
-        logWrite $ "Scanning external BTC key " <> showt keyNum
+        logWrite $ "Scanning external BTC key #" <> showt keyNum
         h0 <- sample . current =<< watchScannedHeight BTC
         scannedE <- scanningBtcKey h0 keyNum (keys V.! keyNum)
         hasTxsD <- holdDyn False scannedE
@@ -112,7 +112,7 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
         deriveNewBtcKeys Internal gapLimit
         pure ((), scanInternalKeys gapN keyNum <$ buildE)
       else do
-        logWrite $ "Scanning internal BTC key " <> showt keyNum
+        logWrite $ "Scanning internal BTC key #" <> showt keyNum
         let txs = maybe (error "No BTC tx storage!") id $ pubStorageTxs BTC ps
             address = egvXPubKeyToEgvAddress $ keys V.! keyNum
         checkResults <- traverse (checkAddrTx address) $ egvTxsToBtcTxs txs
