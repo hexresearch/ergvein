@@ -87,7 +87,7 @@ data Env t = Env {
 , env'logsTrigger     :: (Event t LogEntry, LogEntry -> IO ())
 , env'logsNameSpaces  :: !(ExternalRef t [Text])
 , env'uiChan          :: !(Chan (IO ()))
-, env'passModalEF     :: !(Event t Int, Int -> IO ())
+, env'passModalEF     :: !(Event t (Int, Text), (Int, Text) -> IO ())
 , env'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
 -- Auth context
 , env'authRef         :: !(ExternalRef t AuthInfo)
@@ -216,7 +216,7 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
     i <- liftIO getRandom
     (_, modalF) <- asks env'passModalEF
     (setE, _) <- asks env'passSetEF
-    performEvent_ $ (liftIO $ modalF i) <$ reqE
+    performEvent_ $ (liftIO . modalF . (i,)) <$> reqE
     pure $ fforMaybe setE $ \(i', mp) -> if i == i' then mp else Nothing
   updateSettings setE = do
     settingsRef <- asks env'settings

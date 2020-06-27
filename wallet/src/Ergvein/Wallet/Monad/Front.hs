@@ -137,12 +137,12 @@ class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   -- values if their semantic require persistent authorisation.
   setAuthInfo :: Event t (Maybe AuthInfo) -> m (Event t ())
   -- | Get event and trigger for pasword requesting modal. Int -- id of the request.
-  getPasswordModalEF :: m (Event t Int, Int -> IO ())
+  getPasswordModalEF :: m (Event t (Int, Text), (Int, Text) -> IO ())
   -- | Get event and trigger for the event that the password was submitted from modal. Internal
   -- Nothing value means that the modal was dismissed
   getPasswordSetEF :: m (Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
-  -- | Proper requester of passwords. Use
-  requestPasssword :: Event t () -> m (Event t Password)
+  -- | Proper requester of passwords. Send wallet's name
+  requestPasssword :: Event t Text -> m (Event t Password)
   -- | Internal method to get storage of auth info
   getAuthInfoRef :: m (ExternalRef t (Maybe AuthInfo))
 
