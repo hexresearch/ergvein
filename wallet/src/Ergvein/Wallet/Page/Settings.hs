@@ -123,7 +123,7 @@ currenciesPage = wrapper True STPSTitle (Just $ pure currenciesPage) $ do
         let authNew = auth & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
             difC = curs \\ (_pubStorage'activeCurrencies ps)
             mL = Map.fromList [
-                    (currency, CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency) (Map.fromList []) Nothing (Just 0)) |
+                    (currency, CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency) Map.empty Nothing (Just 0) Map.empty Nothing) |
                     currency <- difC ]
             authN2 = authNew & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages %~ (Map.union mL)
         pure $ Just $ authN2

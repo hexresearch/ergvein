@@ -12,12 +12,14 @@ import Data.Maybe (fromMaybe)
 import Data.Proxy
 import Data.Text
 import Data.Vector (Vector)
+import Network.Haskoin.Keys
+
 import Ergvein.Aeson
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Transaction
-import Network.Haskoin.Keys
+import Ergvein.Types.Utxo
 
 import qualified Data.Map.Strict as M
 
@@ -85,6 +87,8 @@ data CurrencyPubStorage = CurrencyPubStorage {
   , _currencyPubStorage'transactions  :: !(M.Map TxId EgvTx)
   , _currencyPubStorage'height        :: !(Maybe BlockHeight) -- ^ Last height seen by the wallet
   , _currencyPubStorage'scannedKey    :: !(Maybe Int) -- ^ When restoring here we put which keys are we already scanned
+  , _currencyPubStorage'utxos         :: !EgvUtxoSetStorage
+  , _currencyPubStorage'scannedHeight :: !(Maybe BlockHeight)
   } deriving (Eq, Show, Read)
 
 makeLenses ''CurrencyPubStorage

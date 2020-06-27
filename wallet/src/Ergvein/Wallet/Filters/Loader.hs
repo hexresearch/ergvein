@@ -30,6 +30,7 @@ import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Client
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad.Front
+import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Sync.Status
@@ -45,9 +46,9 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
   where
     go = Workflow $ do
       buildE <- getPostBuild
-      ch <- fmap fromIntegral $ sample . current =<< getCurrentHeight BTC
+      ch  <- fmap fromIntegral . sample . current =<< getCurrentHeight BTC
+      sh  <- fmap fromIntegral . sample . current =<< getWalletsScannedHeightD BTC
       fh' <- getFiltersHeight BTC
-      sh <- getScannedHeight BTC
       let fh = max fh' sh
       logWrite $ "Current height is " <> showt ch <> ", and filters are for height " <> showt fh
       -- postSync BTC ch fh

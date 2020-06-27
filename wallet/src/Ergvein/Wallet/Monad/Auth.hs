@@ -37,6 +37,7 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
+import Ergvein.Types.Utxo
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Currencies
@@ -84,7 +85,7 @@ data Env t = Env {
 , env'logsTrigger     :: (Event t LogEntry, LogEntry -> IO ())
 , env'logsNameSpaces  :: !(ExternalRef t [Text])
 , env'uiChan          :: !(Chan (IO ()))
-, env'passModalEF     :: !(Event t Int, Int -> IO ())
+, env'passModalEF     :: !(Event t (Int, Text), (Int, Text) -> IO ())
 , env'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
 -- Auth context
 , env'authRef         :: !(ExternalRef t AuthInfo)
@@ -93,7 +94,6 @@ data Env t = Env {
 , env'manager         :: !(MVar Manager)
 , env'filtersStorage  :: !FiltersStorage
 , env'filtersHeights  :: !(ExternalRef t (Map Currency HS.BlockHeight))
-, env'scannedHeights  :: !(ExternalRef t (Map Currency HS.BlockHeight))
 , env'blocksStorage   :: !BlocksStorage
 , env'syncProgress    :: !(ExternalRef t SyncProgress)
 , env'heightRef       :: !(ExternalRef t (Map Currency Integer))
@@ -122,8 +122,6 @@ instance Monad m => HasFiltersStorage t (ErgveinM t m) where
   {-# INLINE getFiltersStorage #-}
   getFiltersHeightRef = asks env'filtersHeights
   {-# INLINE getFiltersHeightRef #-}
-  getScannedHeightRef = asks env'scannedHeights
-  {-# INLINE getScannedHeightRef #-}
 
 instance Monad m => HasBlocksStorage (ErgveinM t m) where
   getBlocksStorage = asks env'blocksStorage
@@ -208,7 +206,7 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
     i <- liftIO getRandom
     (_, modalF) <- asks env'passModalEF
     (setE, _) <- asks env'passSetEF
-    performEvent_ $ (liftIO $ modalF i) <$ reqE
+    performEvent_ $ (liftIO . modalF . (i,)) <$> reqE
     pure $ fforMaybe setE $ \(i', mp) -> if i == i' then mp else Nothing
   updateSettings setE = do
     settingsRef <- asks env'settings
@@ -394,7 +392,6 @@ liftAuth ma0 ma = mdo
         syncRef         <- newExternalRef Synced
         filtersStore    <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
         filtersHeights  <- newExternalRef mempty
-        scannedHeights  <- newExternalRef mempty
         blocksStore     <- liftIO $ runReaderT openBlocksStorage (settingsStoreDir settings)
         heightRef       <- newExternalRef (fmap (maybe 0 fromIntegral . _currencyPubStorage'height) . _pubStorage'currencyPubStorages $ ps)
         fsyncRef        <- newExternalRef mempty
@@ -418,7 +415,6 @@ liftAuth ma0 ma = mdo
               , env'manager = managerRef
               , env'filtersStorage = filtersStore
               , env'filtersHeights = filtersHeights
-              , env'scannedHeights = scannedHeights
               , env'blocksStorage = blocksStore
               , env'syncProgress = syncRef
               , env'heightRef = heightRef
@@ -438,7 +434,6 @@ liftAuth ma0 ma = mdo
         runOnUiThreadM $ runReaderT setupTlsManager env
 
         flip runReaderT env $ do -- Workers and other routines go here
-          initScannedHeights scannedHeights
           initFiltersHeights filtersHeights
           scanner
           bctNodeController
@@ -453,16 +448,6 @@ liftAuth ma0 ma = mdo
     newAuthInfoE = ffilter isMauthUpdate $ updated mauthD
     redrawE = leftmost [newAuthInfoE, Nothing <$ logoutE]
   widgetHold ma0' $ ffor redrawE $ maybe ma0 runAuthed
-
--- | Query initial values for scanned heights and write down them to the external ref
-initScannedHeights :: MonadFront t m => ExternalRef t (Map Currency HS.BlockHeight) -> m ()
-initScannedHeights ref = do
-  ps <- getPubStorage
-  let curs =  _pubStorage'activeCurrencies ps
-  scms <- flip traverse curs $ \cur -> do
-    h <- getScannedHeight cur
-    pure (cur, h)
-  writeExternalRef ref $ M.fromList scms
 
 -- | Query initial values for filters heights and write down them to the external ref
 initFiltersHeights :: MonadFront t m => ExternalRef t (Map Currency HS.BlockHeight) -> m ()

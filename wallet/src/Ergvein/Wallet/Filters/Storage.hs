@@ -3,11 +3,8 @@ module Ergvein.Wallet.Filters.Storage(
   , HasFiltersStorage(..)
   , openFiltersStorage
   , getFiltersHeight
-  , getScannedHeight
   , watchFiltersHeight
   , writeFiltersHeight
-  , watchScannedHeight
-  , writeScannedHeight
   , insertFilter
   , insertMultipleFilters
   , getFilter
@@ -65,7 +62,6 @@ openFiltersStorage = do
 class Monad m => HasFiltersStorage t m | m -> t where
   getFiltersStorage :: m FiltersStorage
   getFiltersHeightRef :: m (ExternalRef t (Map Currency BlockHeight))
-  getScannedHeightRef :: m (ExternalRef t (Map Currency BlockHeight))
 
 getFiltersHeight :: (MonadIO m, HasFiltersStorage t m) => Currency -> m BlockHeight
 getFiltersHeight cur = do
@@ -82,27 +78,6 @@ watchFiltersHeight cur = do
 writeFiltersHeight :: (MonadIO m, HasFiltersStorage t m) => Currency -> BlockHeight -> m ()
 writeFiltersHeight cur h = do
   r <- getFiltersHeightRef
-  modifyExternalRef_ r $ M.insert cur h
-
-getScannedHeight :: (MonadIO m, HasFiltersStorage t m, MonadHold t m, Reflex t, MonadFix m) => Currency -> m BlockHeight
-getScannedHeight cur = do
-  e <- getFiltersStorage
-  case cur of
-    BTC -> BTC.readScannedHeight e
-    ERGO -> pure $ filterStartingHeight ERGO -- TODO: here
-
-watchScannedHeight :: (MonadIO m, HasFiltersStorage t m, MonadHold t m, Reflex t, MonadFix m) => Currency -> m (Dynamic t BlockHeight)
-watchScannedHeight cur = do
-  md <- externalRefDynamic =<< getScannedHeightRef
-  holdUniqDyn $ (fromMaybe (filterStartingHeight cur) . M.lookup cur) <$> md
-
-writeScannedHeight :: (MonadIO m, HasFiltersStorage t m) => Currency -> BlockHeight -> m ()
-writeScannedHeight cur h = do
-  e <- getFiltersStorage
-  case cur of
-    BTC -> BTC.writeScannedHeight e h
-    ERGO -> pure () -- TODO: here
-  r <- getScannedHeightRef
   modifyExternalRef_ r $ M.insert cur h
 
 insertFilter :: (MonadIO m, HasFiltersStorage t m) => Currency -> BlockHeight -> BlockHash -> AddressFilterHexView -> m ()
@@ -140,13 +115,13 @@ foldFilters c f a0 = do
     ERGO -> pure a0 -- ^ TODO: add ergo here
 
 -- | Fold over filters that are not scanned yet.
-scanFilters :: (MonadIO m, HasFiltersStorage t m) => Currency -> (BlockHeight -> BlockHeight -> BlockHash -> AddrFilter -> a -> IO a) -> a -> m a
-scanFilters c f a0 = case c of
-  BTC -> scanBtcFilters (\i n k -> f i n k . AddrFilterBtc) a0
+scanFilters :: (MonadIO m, HasFiltersStorage t m) => Currency -> BlockHeight -> (BlockHeight -> BlockHeight -> BlockHash -> AddrFilter -> a -> IO a) -> a -> m a
+scanFilters c i0 f a0 = case c of
+  BTC -> scanBtcFilters i0 (\i n k -> f i n k . AddrFilterBtc) a0
   ERGO -> pure a0 -- ^ TODO: add ergo here
 
 -- | Fold over filters that are not scanned yet.
-scanBtcFilters :: (MonadIO m, HasFiltersStorage t m) => (BlockHeight -> BlockHeight -> BlockHash -> BtcAddrFilter -> a -> IO a) -> a -> m a
-scanBtcFilters f a0 = do
+scanBtcFilters :: (MonadIO m, HasFiltersStorage t m) => BlockHeight -> (BlockHeight -> BlockHeight -> BlockHash -> BtcAddrFilter -> a -> IO a) -> a -> m a
+scanBtcFilters i0 f a0 = do
   e <- getFiltersStorage
-  BTC.scanFilters (\i n k -> f i n k) a0 e
+  BTC.scanFilters i0 (\i n k -> f i n k) a0 e
