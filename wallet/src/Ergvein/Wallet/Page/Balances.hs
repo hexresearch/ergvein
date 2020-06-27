@@ -33,13 +33,6 @@ import Network.Haskoin.Address
 import Control.Monad.IO.Class
 #endif
 
--- Debug imports
-import Control.Lens
-import Data.Maybe
-import Ergvein.Types.AuthInfo
-import Ergvein.Types.Utxo
-import Ergvein.Wallet.Native
-
 data BalancesStrings
   = BalancesTitle
   | ButtonSend
@@ -56,36 +49,9 @@ instance LocalizedPrint BalancesStrings where
       ButtonSend ->  "Отправить"
       ButtonReceive -> "Получить"
 
-testPage :: MonadFront t m => m ()
-testPage = do
-  aiD <- getAuthInfo
-  -- el "div" $ text "AAAAAAAAAA"
-  let op = OutPoint {outPointHash = "a0819d01cb5de6586a2b6ecdcee2a83a5f59f1f73a1152478aa117eff2765bfe", outPointIndex = 0}
-  let aaaa = (fromList [(op,(10000,EUtxoReceiving))],[])
-  let del = (Map.empty, [op])
-  addE <- fmap (aaaa <$) $ outlineButton ("addE" :: Text)
-  goE <- fmap ((Map.empty, [op]) <$) $ outlineButton ("goE" :: Text)
-  -- performFork_ $ (logWrite . showt) <$> goE
-  updateBtcUtxoSet $ leftmost [addE, goE]
-  widgetHoldDyn $ ffor aiD $ \ai -> do
-    let pts = ai ^.
-            authInfo'storage
-          . storage'pubStorage
-          . pubStorage'currencyPubStorages
-          . at BTC
-          & fmap (getBtcUtxoSetFromStore . _currencyPrvStorage'utxos)
-          & Map.toList . fromMaybe Map.empty . join
-    flip traverse pts $ \(OutPoint h i, (v,s)) -> el "div" $ do
-      el "div" $ text $ "h: " <> showt h <> " i: " <> showt i
-      el "div" $ text $ "v: " <> showt v <> " s: " <> showt s
-      el "div" $ text "---------------------------------------------------"
-    pure ()
-  pure ()
-
 balancesPage :: MonadFront t m => m ()
 balancesPage = do
   anon_name <- getWalletName
-  testPage
 #ifdef ANDROID
   c <- liftIO $ loadCounter
   liftIO $ saveCounter $ PatternTries $ Map.insert anon_name 0 (patterntriesCount c)
@@ -127,7 +93,7 @@ balancesGetting cur = do
   pubSD <- getPubStorageD
   let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _ _) -> case Map.lookup BTC cm of
         Nothing -> []
-        Just (CurrencyPubStorage keystore txmap _ _ _) -> extractAddrs keystore
+        Just (CurrencyPubStorage keystore txmap _ _) -> extractAddrs keystore
   abS <- sampleDyn allBtcAddrsD
   hD <- holdDyn (Money cur (calcSum (fmap (getBtcAddr . snd) abS) ps)) $ poke (updated pubSD) $ \pbs -> do
     allbtcAdrS <- sampleDyn allBtcAddrsD
