@@ -3,6 +3,7 @@ module Ergvein.Wallet.Page.Seed(
     mnemonicPage
   , mnemonicWidget
   , seedRestorePage
+  , seedRestorePageText
   ) where
 
 import Control.Monad.Random.Strict
@@ -136,6 +137,21 @@ seedRestorePage = wrapperSimple True $ do
   void $ nextWidget $ ffor mnemE $ \m -> Retractable {
       retractableNext = selectCurrenciesPage WalletRestored m
     , retractablePrev = Just $ pure seedRestorePage
+    }
+
+-- For debug purposes. Instead of writing the phrase one word at a time, paste the whole phrase instantly
+seedRestorePageText :: MonadFrontBase t m => m ()
+seedRestorePageText = wrapperSimple True $ do
+  h4 $ localizedText SPSRestoreTitle
+  textD <- textFieldNoLabel ""
+  mnemE <- fmap (switch . current) $ widgetHoldDyn $ ffor textD $ \t -> if length (T.words t) == 24
+    then do
+      goE <- buttonClass (pure "button button-outline") ("Restore" :: Text)
+      pure $ t <$ goE
+    else pure never
+  void $ nextWidget $ ffor mnemE $ \m -> Retractable {
+      retractableNext = selectCurrenciesPage WalletRestored m
+    , retractablePrev = Just $ pure seedRestorePageText
     }
 
 seedRestoreWidget :: forall t m . MonadFrontBase t m => m (Event t Mnemonic)
