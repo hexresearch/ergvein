@@ -8,7 +8,6 @@ BTCNodePassword          : password
 ERGONodeHost             : localhost
 ERGONodePort             : 9052
 blockchainScanDelay      : 1000000
-dbLog                    : false
 ownPeerAddress           : null
 knownPeers               :
                            - "https://ergvein-indexer1.hxr.team"

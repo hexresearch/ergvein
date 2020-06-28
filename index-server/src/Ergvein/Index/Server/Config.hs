@@ -13,7 +13,6 @@ data Config = Config
   { cfgServerPort               :: !Int
   , cfgDBPath                   :: !String
   , cfgBlockchainScanDelay      :: !Int
-  , cfgDbLog                    :: !Bool
   , cfgBTCNodeIsTestnet         :: !Bool
   , cfgBTCNodeHost              :: !String
   , cfgBTCNodePort              :: !Int
@@ -37,8 +36,7 @@ loadConfig path = liftIO $ loadYamlSettings [path] [] useEnv
 instance FromJSON Config where
   parseJSON = withObject "Config" $ \o -> do
     cfgServerPort               <- o .: "serverPort"
-    cfgDBPath                <- o .:? "dbPath" .!= "./ergveinDb"
-    cfgDbLog                    <- o .: "dbLog"
+    cfgDBPath                   <- o .:? "dbPath" .!= "./ergveinDb"
     cfgBTCNodeIsTestnet         <- o .: "BTCNodeIsTestnet"
     cfgBTCNodeHost              <- o .: "BTCNodeHost"
     cfgBTCNodePort              <- o .: "BTCNodePort"
