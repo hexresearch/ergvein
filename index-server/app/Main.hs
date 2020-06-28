@@ -49,12 +49,12 @@ main = do
 
 onStartup :: ServerEnv -> ServerM [Thread]
 onStartup env = do
-  scanningThreads <- blockchainScanning
+  scanningWorkers <- blockchainScanning
   syncWithDefaultPeers
-  feesScanning
+  feeWorkers <- feesScanning
   peerIntroduce
   knownPeersActualization
-  pure []
+  pure $ scanningWorkers ++ feeWorkers
 
 startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
