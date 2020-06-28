@@ -21,6 +21,7 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.History
 import Ergvein.Wallet.Page.PatternKey
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Constants
@@ -51,9 +52,10 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
       filtersD <- watchFiltersHeight BTC
       heightD <- getCurrentHeight BTC
       el "h4" $ dynText $ do
+        let h0 = filterStartingHeight BTC
         filters <- filtersD
         height <- heightD
-        let pct = fromIntegral filters / fromIntegral height :: Float
+        let pct = fromIntegral (filters - h0) / (fromIntegral $ fromIntegral height - h0) :: Float
         pure $ showf 2 (100 * pct) <> "%"
       filtersE <- fmap (ffilter id) $ updatedWithInit $ do
         filters <- filtersD
@@ -66,7 +68,9 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
                 unused = maybe 0 fst $ pubStorageLastUnused BTC ps
                 gap = r - unused
             pure $ scanKeys gap r
-      pure ((), nextE)
+      performEvent_ $ ffor nextE $ const $ logWrite "Going to scan stage!"
+      nextE' <- delay 0.1 nextE
+      pure ((), nextE')
 
     scanKeys :: Int -> Int -> Workflow t m ()
     scanKeys gapN keyNum = Workflow $ do
@@ -84,8 +88,8 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
         deriveNewBtcKeys External gapLimit
         pure ((), scanKeys gapN keyNum <$ buildE)
       else do
-        logWrite $ "Scanning external BTC key #" <> showt keyNum
-        h0 <- sample . current =<< watchScannedHeight BTC
+        logWrite $ "Scanning external BTC key " <> showt keyNum
+        h0 <- fmap fromIntegral . sample . current =<< getWalletsScannedHeightD BTC
         scannedE <- scanningBtcKey h0 keyNum (keys V.! keyNum)
         hasTxsD <- holdDyn False scannedE
         storedE <- modifyPubStorage $ ffor scannedE $ const $ Just . pubStorageSetKeyScanned BTC (Just keyNum)
@@ -99,7 +103,8 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
           when hastxs $ do
             ps <- sample . current $ psD
             logWrite $ "We have txs: " <> showt (pubStorageTxs BTC ps)
-        pure ((), nextE)
+        nextE' <- delay 0.1 nextE
+        pure ((), nextE')
 
     scanInternalKeys :: MonadFront t m => Int -> Int -> Workflow t m ()
     scanInternalKeys gapN keyNum = Workflow $ do
@@ -123,7 +128,7 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
       logWrite "Finished scanning BTC keys..."
       buildE <- getPostBuild
       h <- sample . current =<< getCurrentHeight BTC
-      performFork_ $ writeScannedHeight BTC (fromIntegral h) <$ buildE
+      writeWalletsScannedHeight $ (BTC, fromIntegral h) <$ buildE
       modifyPubStorage $ ffor buildE $ const $ \ps -> Just $ ps {
           _pubStorage'restoring = False
         }
