@@ -63,7 +63,7 @@ startServer Options{..} = case optsCommand of
       cfg <- loadConfig cfgPath
       env <- runStdoutLoggingT $ newServerEnv cfg
       workerThreads <- runServerMIO env $ onStartup env
-      T.putStrLn $ pack $ "Server started at " <> cfgDbHost cfg <> ":" <> (show . cfgServerPort $ cfg)
+      T.putStrLn $ pack $ "Server started at:" <> (show . cfgServerPort $ cfg)
 
       let settings = appSettings $ onShutdown env workerThreads
           app = logStdoutDev $ indexServerApp env

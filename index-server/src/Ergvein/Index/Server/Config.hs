@@ -11,12 +11,7 @@ import Ergvein.Aeson
 
 data Config = Config
   { cfgServerPort               :: !Int
-  , cfgDbHost                   :: !String
-  , cfgDbPort                   :: !Int
-  , cfgDbUser                   :: !String
-  , cfgDbPassword               :: !String
-  , cfgDbName                   :: !String
-  , cfgCachePath                :: !String
+  , cfgDBPath                   :: !String
   , cfgBlockchainScanDelay      :: !Int
   , cfgDbLog                    :: !Bool
   , cfgBTCNodeIsTestnet         :: !Bool
@@ -36,30 +31,13 @@ data Config = Config
 class HasServerConfig m where
   serverConfig :: m Config
 
-connectionStringFromConfig :: Config -> String
-connectionStringFromConfig cfg = let
-  params = [ ("host", cfgDbHost)
-           , ("port", show . cfgDbPort)
-           , ("user", cfgDbUser)
-           , ("password", cfgDbPassword)
-           , ("dbname", cfgDbName)
-           ]
-  in unpack $ intercalate " " $ segment <$> params
-  where
-    segment (label, accessor) = mconcat [label, "=", pack $ accessor cfg]
-
 loadConfig :: MonadIO m => FilePath -> m Config
 loadConfig path = liftIO $ loadYamlSettings [path] [] useEnv
 
 instance FromJSON Config where
   parseJSON = withObject "Config" $ \o -> do
     cfgServerPort               <- o .: "serverPort"
-    cfgDbHost                   <- o .: "dbHost"
-    cfgDbPort                   <- o .: "dbPort"
-    cfgDbUser                   <- o .: "dbUser"
-    cfgDbPassword               <- o .: "dbPassword"
-    cfgDbName                   <- o .: "dbName"
-    cfgCachePath                <- o .:? "cachePath" .!= "./ergveinCache"
+    cfgDBPath                <- o .:? "dbPath" .!= "./ergveinDb"
     cfgDbLog                    <- o .: "dbLog"
     cfgBTCNodeIsTestnet         <- o .: "BTCNodeIsTestnet"
     cfgBTCNodeHost              <- o .: "BTCNodeHost"

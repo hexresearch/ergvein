@@ -1,10 +1,5 @@
 serverPort               : 8085
-dbHost                   : localhost
-dbPort                   : 5432
-dbUser                   : index_user
-dbPassword               : "1234321"
-dbName                   : index_db
-cachePath                : "./ergveinCache"
+dbPath                : "./ergveinDb"
 BTCNodeIsTestnet         : true
 BTCNodeHost              : localhost
 BTCNodePort              : 18332

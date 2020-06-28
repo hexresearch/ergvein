@@ -72,7 +72,7 @@ newServerEnv cfg = do
     liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
 
 
-    levelDBContext <- openCacheDb (cfgCachePath cfg)
+    levelDBContext <- openCacheDb (cfgDBPath cfg)
     ergoNodeClient <- liftIO $ ErgoApi.newClient (cfgERGONodeHost cfg) (cfgERGONodePort cfg)
     httpManager    <- liftIO $ HC.newManager HC.defaultManagerSettings
     tlsManager     <- liftIO $ newTlsManager
