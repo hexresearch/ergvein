@@ -1,9 +1,4 @@
 serverPort               : 8080
-dbHost                   : postgres
-dbPort                   : 5432
-dbUser                   : ergvein
-dbPassword               : ergvein
-dbName                   : ergvein
 BTCNodeIsTestnet         : true
 BTCNodeHost              : 127.0.0.1
 BTCNodePort              : 18332
@@ -12,8 +7,7 @@ BTCNodePassword          : bitcoinrpcpassword
 ERGONodeHost             : 127.0.0.1
 ERGONodePort             : 9052
 blockchainScanDelay      : 1000000
-dbLog                    : false
-cachePath                : "/cache-0"
+dbPath                   : "/db-0"
 ownPeerAddress           : "http://ergvein-index-server-0:8080"
 knownPeers               : []
 peerActualizationDelay   : 10000000
