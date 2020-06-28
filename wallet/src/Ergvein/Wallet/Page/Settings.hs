@@ -122,9 +122,7 @@ currenciesPage = wrapper True STPSTitle (Just $ pure currenciesPage) $ do
         auth <- sample . current $ authD
         let authNew = auth & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
             difC = curs \\ (_pubStorage'activeCurrencies ps)
-            mL = Map.fromList [
-                    (currency, CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency) Map.empty Nothing (Just 0) Map.empty Nothing) |
-                    currency <- difC ]
+            mL = Map.fromList [(currency, mkStore prvStr currency) | currency <- difC ]
             authN2 = authNew & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages %~ (Map.union mL)
         pure $ Just $ authN2
     setAuthInfoE <- setAuthInfo updateAE
@@ -133,7 +131,13 @@ currenciesPage = wrapper True STPSTitle (Just $ pure currenciesPage) $ do
     pure ()
     where
       uac cE =  updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ cE
-
+      mkStore prvStr currency = CurrencyPubStorage
+        (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency)
+        Map.empty
+        Nothing
+        (Just 0, Just 0)
+        Map.empty
+        Nothing
 
 unitsPage :: MonadFront t m => m ()
 unitsPage = wrapper True STPSTitle (Just $ pure unitsPage) $ mdo

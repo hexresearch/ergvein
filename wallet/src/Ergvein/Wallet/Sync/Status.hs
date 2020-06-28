@@ -50,18 +50,22 @@ nominalToBehind t
   | t < 24 * 3600 = SyncHours $ ceiling $ t / 3600
   | otherwise = SyncDays $ ceiling $ t / (24 * 3600)
 
-data SyncStage = SyncFilters | SyncAddress !Int | SyncHeaders | SyncBlocks
+data SyncStage = SyncFilters | SyncAddress !Int | SyncAddressInternal !Int | SyncAddressExternal !Int | SyncHeaders | SyncBlocks
   deriving (Show, Eq, Ord)
 
 instance LocalizedPrint SyncStage where
   localizedShow l v = case l of
     English -> case v of
       SyncFilters -> "filters"
+      SyncAddressInternal i -> "internal key address " <> showt i
+      SyncAddressExternal i -> "external key address " <> showt i
       SyncAddress i -> "address " <> showt i
       SyncHeaders -> "headers"
       SyncBlocks  -> "blocks"
     Russian -> case v of
       SyncFilters -> "фильтров"
+      SyncAddressInternal i -> "адрес внутреннего ключа " <> showt i
+      SyncAddressExternal i -> "адрес внешнего ключа " <> showt i
       SyncAddress i -> "адрес " <> showt i
       SyncHeaders -> "заголовков"
       SyncBlocks  -> "блоков"
