@@ -56,7 +56,7 @@ getParsedExact key = do
     Just result -> pure $ unflatExact result
     Nothing -> do
       currentTime <- liftIO getCurrentTime
-      logErrorN $ "[Cache miss][getParsedExact] Entity with key " <> (T.pack $ show key) <> " not found at time:" <> (T.pack $ show currentTime)
+      logErrorN $ "[Db read miss][getParsedExact] Entity with key " <> (T.pack $ show key) <> " not found at time:" <> (T.pack $ show currentTime)
       error $ "getParsedExact: not found" ++ show key
 
 getManyParsedExact :: (MonadLDB m, MonadLogger m, Flat v) => [BS.ByteString] -> m [v]
@@ -112,17 +112,32 @@ addKnownPeers peers = do
   stored <- getParsedExact @[KnownPeerRecItem] knownPeersRecKey
   put db def knownPeersRecKey $ flat $ mapped ++ stored
 
-getScannedHeightCache :: (MonadLDB m, MonadLogger m) => Currency -> m (Maybe BlockHeight)
-getScannedHeightCache currency = do
+getScannedHeight :: (MonadLDB m, MonadLogger m) => Currency -> m (Maybe BlockHeight)
+getScannedHeight currency = do
   db <- getDb
   stored <- getParsed $ scannedHeightTxKey currency
   pure $ scannedHeightRecHeight <$> stored
 
-setScannedHeightCache :: (MonadLDB m, MonadLogger m) => Currency -> BlockHeight -> m ()
-setScannedHeightCache currency height = do
+setScannedHeight :: (MonadLDB m, MonadLogger m) => Currency -> BlockHeight -> m ()
+setScannedHeight currency height = do
   db <- getDb
   put db def (scannedHeightTxKey currency) $ flat $ ScannedHeightRec height
 
 initDb :: DB -> IO ()
 initDb db = do
   put db def knownPeersRecKey $ flat $ convert @Peer @KnownPeerRecItem <$> []
+
+addBlockInfo :: (MonadLDB m, MonadLogger m) => BlockInfo -> m ()
+addBlockInfo update = do
+  db <- getDb
+  updateTxSpends (spentTxsHash update) $ blockContentTxInfos update
+  addBlockMetaInfos [blockInfoMeta update]
+  setScannedHeight (blockMetaCurrency $ blockInfoMeta update) (blockMetaBlockHeight $ blockInfoMeta update)
+
+addBlockMetaInfos :: (MonadLDB m, MonadLogger m) => [BlockMetaInfo] -> m ()
+addBlockMetaInfos infos = do
+  db <- getDb
+  write db def $ putItems keySelector valueSelector infos
+  where
+    keySelector   info = metaRecKey (blockMetaCurrency info, blockMetaBlockHeight info)
+    valueSelector info = BlockMetaRec (blockMetaHeaderHashHexView info) (blockMetaAddressFilterHexView info)

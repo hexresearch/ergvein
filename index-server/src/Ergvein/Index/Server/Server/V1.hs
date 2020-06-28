@@ -49,7 +49,7 @@ indexServer = IndexApi
 --Endpoints
 indexGetHeightEndpoint :: HeightRequest -> ServerM HeightResponse
 indexGetHeightEndpoint (HeightRequest currency) = do
-  mh <- getScannedHeightCache currency
+  mh <- getScannedHeight currency
   pure $ HeightResponse $ fromMaybe 0 mh
 
 getBlockMetaSlice :: Currency -> BlockHeight -> BlockHeight -> ServerM [BlockMetaRec]

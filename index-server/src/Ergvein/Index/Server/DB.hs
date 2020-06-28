@@ -30,26 +30,9 @@ import qualified Data.Conduit.Internal as DCI
 import qualified Data.Conduit.List as CL
 import qualified Data.Map.Strict as Map
 
-cacheBlockMetaInfos :: MonadIO m => DB -> [BlockMetaInfo] -> m ()
-cacheBlockMetaInfos db infos = write db def $ putItems keySelector valueSelector infos
-  where
-    keySelector   info = metaRecKey (blockMetaCurrency info, blockMetaBlockHeight info)
-    valueSelector info = BlockMetaRec (blockMetaHeaderHashHexView info) (blockMetaAddressFilterHexView info)
-
-cacheTxInfos :: MonadIO m => DB -> [TxInfo] -> m ()
-cacheTxInfos db infos = do
-  write db def $ putItems (txRecKey . txHash) (convert @TxInfo @TxRec) infos
-
-addToCache :: (MonadLDB m, MonadLogger m) => BlockInfo -> m ()
-addToCache update = do
-  db <- getDb
-  updateTxSpends (spentTxsHash update) $ blockContentTxInfos update
-  cacheBlockMetaInfos db $ [blockInfoMeta update]
-  setScannedHeightCache (blockMetaCurrency $ blockInfoMeta update) (blockMetaBlockHeight $ blockInfoMeta update)
-
-openCacheDb :: (MonadLogger m, MonadIO m) => FilePath -> m DB
-openCacheDb cacheDirectory = do
-  canonicalPathDirectory <- liftIO $ canonicalizePath cacheDirectory
+openDb :: (MonadLogger m, MonadIO m) => FilePath -> m DB
+openDb dbDirectory = do
+  canonicalPathDirectory <- liftIO $ canonicalizePath dbDirectory
   isDbDirExist <- liftIO $ doesDirectoryExist canonicalPathDirectory
   liftIO $ unless isDbDirExist $ createDirectory canonicalPathDirectory
   levelDBContext <- liftIO $ do
@@ -59,8 +42,8 @@ openCacheDb cacheDirectory = do
       pure db
     else do
       unsafeClose db
-      restoreCache canonicalPathDirectory
-    `catch` (\(SomeException _) -> restoreCache canonicalPathDirectory)
+      restoreDb canonicalPathDirectory
+    `catch` (\(SomeException _) -> restoreDb canonicalPathDirectory)
   pure levelDBContext
   where
     dbSchemaVersion db = do
@@ -71,8 +54,8 @@ openCacheDb cacheDirectory = do
       let contentFullPaths = (path </>) <$> content
       forM_ contentFullPaths removePathForcibly
 
-    restoreCache :: FilePath -> IO DB
-    restoreCache pt = do
+    restoreDb :: FilePath -> IO DB
+    restoreDb pt = do
        clearDirectoryContent pt
        ctx <- open pt def {createIfMissing = True }
        put ctx def schemaVersionRecKey (flat schemaVersion)

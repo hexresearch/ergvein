@@ -34,14 +34,14 @@ scanningInfo = mapM nfo allCurrencies
   where
     nfo :: Currency -> ServerM ScanProgressInfo
     nfo currency = do
-      maybeScanned <- getScannedHeightCache currency
+      maybeScanned <- getScannedHeight currency
       actual <- actualHeight currency
       pure $ ScanProgressInfo currency maybeScanned actual
 
 blockHeightsToScan :: Currency -> ServerM [BlockHeight]
 blockHeightsToScan currency = do
   actual  <- actualHeight currency
-  scanned <- getScannedHeightCache currency
+  scanned <- getScannedHeight currency
   
   let start = maybe (currencyHeightStart currency) succ scanned
   pure [start..actual]
@@ -60,7 +60,7 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
       logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
       do
         blockInfo <- scanInfo blockHeight
-        addToCache blockInfo
+        addBlockInfo blockInfo
 
     scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
