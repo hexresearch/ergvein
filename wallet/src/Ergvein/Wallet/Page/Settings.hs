@@ -46,19 +46,26 @@ data SubPageSettings
   | GoNetwork
   | GoPortfolio
 
+-- TODO: uncomment commented lines when ERGO is ready
 settingsPage :: MonadFront t m => m ()
 settingsPage = wrapper True STPSTitle (Just $ pure settingsPage) $ do
   divClass "initial-options grid1" $ do
     goLangE      <- fmap (GoLanguage   <$) $ outlineButton STPSButLanguage
-    goCurrE      <- fmap (GoCurrencies <$) $ outlineButton STPSButActiveCurrs
+    -- goCurrE      <- fmap (GoCurrencies <$) $ outlineButton STPSButActiveCurrs
     goNetE       <- fmap (GoNetwork    <$) $ outlineButton STPSButNetwork
     goUnitsE     <- fmap (GoUnits      <$) $ outlineButton STPSButUnits
     goPortfolioE <- fmap (GoPortfolio  <$) $ outlineButton STPSButPortfolio
-    let goE = leftmost [goLangE, goCurrE, goNetE, goUnitsE, goPortfolioE]
+    let goE = leftmost [
+            goLangE
+          -- , goCurrE
+          , goNetE
+          , goUnitsE
+          , goPortfolioE
+          ] 
     void $ nextWidget $ ffor goE $ \spg -> Retractable {
         retractableNext = case spg of
           GoLanguage   -> languagePage
-          GoCurrencies -> currenciesPage
+          -- GoCurrencies -> currenciesPage
           GoNetwork    -> networkSettingsPage
           GoUnits      -> unitsPage
           GoPortfolio  -> portfolioPage
