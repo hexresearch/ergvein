@@ -142,14 +142,14 @@ unitsPage = wrapper True STPSTitle (Just $ pure unitsPage) $ mdo
   where
     content = do
       h3 $ localizedText $ STPSSelectUnitsFor BTC
-      ubE <- divClass "initial-options" $ do
+      ubE <- divClass "initial-options grid1" $ do
         settings <- getSettings
         let setUs = getSettingsUnits settings
         unitBtcE <- unitsDropdown (getUnitBTC setUs) allUnitsBTC
         updateSettings $ ffor unitBtcE (\ubtc -> settings {settingsUnits = Just $ setUs {unitBTC = Just ubtc}})
         delay 0.1 (() <$ unitBtcE)
       h3 $ localizedText $ STPSSelectUnitsFor ERGO
-      ueE <- divClass "initial-options" $ do
+      ueE <- divClass "initial-options grid1" $ do
         settings <- getSettings
         let setUs = getSettingsUnits settings
         unitErgoE <- unitsDropdown (getUnitERGO setUs) allUnitsERGO
