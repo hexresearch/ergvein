@@ -1,9 +1,7 @@
 version: "2.4"
 volumes:
-  pgdata:
-    name: pgdata
-  cache:
-    name: ergvein-cache
+  db:
+    name: ergvein-db
 services:
   ergvein-index-server:
     image: ergvein-index-server:develop
@@ -13,23 +11,9 @@ services:
     - 8085:8085
     volumes:
     - ./config.yml:/config.yml
-    - cache:/cache
+    - db:/db
     restart: always
-    depends_on:
-    - "postgres"
     logging: &log
       options:
         max-size: "10m"
         max-file: "10"
-  postgres:
-    image: postgres:12-alpine
-    container_name: postgres
-    environment:
-    - POSTGRES_DB=ergvein
-    - POSTGRES_USER=ergvein
-    - POSTGRES_PASSWORD=ergvein
-    volumes:
-    - pgdata:/var/lib/postgresql/data
-    restart: always
-    logging:
-      <<: *log
