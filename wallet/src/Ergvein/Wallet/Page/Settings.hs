@@ -141,7 +141,7 @@ currenciesPage = wrapper True STPSTitle (Just $ pure currenciesPage) $ do
     where
       uac cE =  updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ cE
 
-
+-- TODO: uncomment commented lines when ERGO is ready
 unitsPage :: MonadFront t m => m ()
 unitsPage = wrapper True STPSTitle (Just $ pure unitsPage) $ mdo
   cntED <- widgetHold content $ content <$ switchDyn cntED
@@ -155,14 +155,17 @@ unitsPage = wrapper True STPSTitle (Just $ pure unitsPage) $ mdo
         unitBtcE <- unitsDropdown (getUnitBTC setUs) allUnitsBTC
         updateSettings $ ffor unitBtcE (\ubtc -> settings {settingsUnits = Just $ setUs {unitBTC = Just ubtc}})
         delay 0.1 (() <$ unitBtcE)
-      h3 $ localizedText $ STPSSelectUnitsFor ERGO
-      ueE <- divClass "initial-options grid1" $ do
-        settings <- getSettings
-        let setUs = getSettingsUnits settings
-        unitErgoE <- unitsDropdown (getUnitERGO setUs) allUnitsERGO
-        updateSettings $ ffor unitErgoE (\uergo -> settings {settingsUnits = Just $ setUs {unitERGO = Just uergo}})
-        delay 0.1 (() <$ unitErgoE)
-      pure $ leftmost [ubE, ueE]
+      -- h3 $ localizedText $ STPSSelectUnitsFor ERGO
+      -- ueE <- divClass "initial-options grid1" $ do
+      --   settings <- getSettings
+      --   let setUs = getSettingsUnits settings
+      --   unitErgoE <- unitsDropdown (getUnitERGO setUs) allUnitsERGO
+      --   updateSettings $ ffor unitErgoE (\uergo -> settings {settingsUnits = Just $ setUs {unitERGO = Just uergo}})
+      --   delay 0.1 (() <$ unitErgoE)
+      pure $ leftmost [
+          ubE
+        -- , ueE
+        ]
 
     unitsDropdown val allUnits = do
       langD <- getLanguage
