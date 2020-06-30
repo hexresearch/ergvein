@@ -133,11 +133,7 @@ currenciesPage = wrapper True STPSTitle (Just $ pure currenciesPage) $ do
       uac cE =  updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ cE
       mkStore prvStr currency = CurrencyPubStorage
         (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency)
-        Map.empty
-        Nothing
-        (Just 0, Just 0)
-        Map.empty
-        Nothing
+        Map.empty Nothing (Just 0, Just 0) Map.empty Nothing Map.empty
 
 unitsPage :: MonadFront t m => m ()
 unitsPage = wrapper True STPSTitle (Just $ pure unitsPage) $ mdo

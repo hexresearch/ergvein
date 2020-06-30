@@ -133,14 +133,16 @@ scanningBtcBlocks keys hashesE = do
   let noScanE = fforMaybe hashesE $ \bls -> if null bls then Just () else Nothing
   heightMapD <- holdDyn M.empty $ M.fromList <$> hashesE
   blocksE <- logEvent "Blocks requested: " =<< requestBTCBlocks (nub . fst . unzip <$> hashesE)
-  storedBlocksE <- storeMultipleBlocksByE blocksE
-  storedTxHashesE <- storeMultipleBlocksTxHashesByE blocksE
   let toAddr = xPubToBtcAddr . extractXPubKeyFromEgv
       keymap = M.fromList . V.toList . V.map (second (BtcAddress . toAddr)) $ keys
       blkHeightE = current heightMapD `attach` blocksE
   txsUpdsE <- logEvent "Transactions got: " =<< getAddressesTxs ((\(a,b) -> (keymap,a,b)) <$> blkHeightE)
   let txsE = fmap fst txsUpdsE
   let updE = fforMaybe txsUpdsE $ \(_,(o,i)) -> if not (M.null o && null i) then Just (o,i) else Nothing
+  
+  insertBlockHeaders BTC blocksE
+  storedBlocksE <- storeMultipleBlocksByE blocksE
+  storedTxHashesE <- storeMultipleBlocksTxHashesByE blocksE
   updateBtcUtxoSet updE
   storedE <- insertTxsInPubKeystore $ (BTC,) . fmap M.elems <$> txsE
   pure $ leftmost [any (not . M.null) <$> txsE, False <$ noScanE]
@@ -182,8 +184,9 @@ getAddrTxsFromBlock addr heights block = do
   checkResults <- traverse (checkAddrTx addr) txs
   let filteredTxs = fst $ unzip $ filter snd (zip txs checkResults)
   utxo <- getUtxoUpdatesFromTxs mh addr filteredTxs
-  pure $ (, utxo) $ M.fromList [(HT.txHashToHex $ HT.txHash tx, BtcTx tx mh) | tx <- filteredTxs]
+  pure $ (, utxo) $ M.fromList [(HT.txHashToHex $ HT.txHash tx, BtcTx tx mheha) | tx <- filteredTxs]
   where
     txs = HB.blockTxns block
     bhash = HB.headerHash . HB.blockHeader $ block
     mh = Just $ maybe 0 fromIntegral $ M.lookup bhash heights
+    mheha = (, bhash) <$> mh
