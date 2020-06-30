@@ -58,15 +58,8 @@ filterBtcAddresses i0 progCb as
   where
     bas = V.mapMaybe guardSegWit as
     f i n bhash cfilter (!_, !acc) = do
+      bs <- encodeBtcAddrFilter cfilter
       liftIO $ progCb i n
-      res <- checkBtcAddresses bhash cfilter bas
+      res <- applyBtcFilterMany btcNetwork bhash cfilter $ V.toList bas
       let acc' = if res then V.cons bhash acc else acc
       pure (i, acc')
-
-checkBtcAddresses :: MonadIO m => BlockHash -> BtcAddrFilter -> Vector SegWitAddress -> m Bool
-checkBtcAddresses bhash cfilter cas
-  | V.null cas = pure False
-  | otherwise = do
-    let caddr = V.head cas
-    res <- applyBtcFilter btcNetwork bhash cfilter caddr
-    if res then pure True else checkBtcAddresses bhash cfilter (V.drop 1 cas)

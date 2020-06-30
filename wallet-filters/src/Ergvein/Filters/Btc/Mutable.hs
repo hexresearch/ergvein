@@ -13,6 +13,7 @@ module Ergvein.Filters.Btc.Mutable
   , decodeBtcAddrFilter
   , makeBtcFilter
   , applyBtcFilter
+  , applyBtcFilterMany
   -- * Testing
   , getSegWitAddr
   )
@@ -127,7 +128,7 @@ blockSipHash = fromBs . BS.reverse . encode . getBlockHash
   fromBs bs = SipKey (toWord64 $ BS.unpack . BS.take 8 $ bs)
                      (toWord64 $ BS.unpack . BS.take 8 . BS.drop 8 $ bs)
 
--- | Check that given address is located in the filter.
+-- | Check that given address is located in the filter. Note that filter is destroyed after the opeeration.
 applyBtcFilter :: MonadIO m => Network -> BlockHash -> BtcAddrFilter -> SegWitAddress -> m Bool
 applyBtcFilter net bhash BtcAddrFilter {..} addr = matchGcs btcDefP
                                                             sipkey
@@ -137,4 +138,16 @@ applyBtcFilter net bhash BtcAddrFilter {..} addr = matchGcs btcDefP
                                                             item
  where
   item   = encodeSegWitAddress net addr
+  sipkey = blockSipHash bhash
+
+-- | Check that given address is located in the filter. Note that filter is destroyed after the operation.
+applyBtcFilterMany :: MonadIO m => Network -> BlockHash -> BtcAddrFilter -> [SegWitAddress] -> m Bool
+applyBtcFilterMany net bhash BtcAddrFilter {..} addrs = matchGcsMany btcDefP
+                                                            sipkey
+                                                            btcDefM
+                                                            btcAddrFilterN
+                                                            btcAddrFilterGcs
+                                                            items
+ where
+  items  = fmap (encodeSegWitAddress net) addrs
   sipkey = blockSipHash bhash
