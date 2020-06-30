@@ -112,6 +112,9 @@ addKnownPeers peers = do
   stored <- getParsedExact @[KnownPeerRecItem] knownPeersRecKey
   put db def knownPeersRecKey $ flat $ mapped ++ stored
 
+emptyKnownPeers :: (MonadLDB m, MonadLogger m) => m ()
+emptyKnownPeers = setKnownPeersList []
+
 getScannedHeight :: (MonadLDB m, MonadLogger m) => Currency -> m (Maybe BlockHeight)
 getScannedHeight currency = do
   db <- getDb
