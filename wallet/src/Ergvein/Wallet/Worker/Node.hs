@@ -122,7 +122,7 @@ bctNodeController = mdo
   valsE <- performFork $ ffor (current allBtcAddrsD `attach` txE) $ \(addrs, tx) ->
     liftIO $ flip runReaderT store $ do
       v <- checkAddrTx' addrs tx
-      u <- getUtxoUpdates False (snd . unzip $ addrs) tx
+      u <- getUtxoUpdates Nothing (snd . unzip $ addrs) tx
       pure (v,u)
   addTxMapToPubStorage $ fforMaybe valsE $ \(vals,_) -> case vals of
     [] -> Nothing
@@ -137,7 +137,7 @@ bctNodeController = mdo
 checkAddrTx' :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => [(Maybe Int, EgvAddress)] -> HT.Tx -> m [(Maybe Int, (TxId, EgvTx))]
 checkAddrTx' iaddrs tx = fmap catMaybes $ flip traverse iaddrs $ \(mi,addr) -> do
   b <- checkAddrTx addr tx
-  pure $ if b then Just (mi, (th, BtcTx tx)) else Nothing
+  pure $ if b then Just (mi, (th, BtcTx tx Nothing)) else Nothing
   where
     th = txHashToHex $ txHash tx
 

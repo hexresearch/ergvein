@@ -276,8 +276,8 @@ transactionsGetting cur = do
       ERGO -> []
 
     calcRefill ac tx = case tx of
-        BtcTx btx -> Money cur $ sum $ fmap (HK.outValue . snd) $ L.filter (maybe False (flip elem ac . fromSegWit) . fst) $ fmap (\txo -> (getSegWitAddr txo,txo)) $ HK.txOut btx
-        ErgTx etx -> Money cur 0
+        BtcTx btx _ -> Money cur $ sum $ fmap (HK.outValue . snd) $ L.filter (maybe False (flip elem ac . fromSegWit) . fst) $ fmap (\txo -> (getSegWitAddr txo,txo)) $ HK.txOut btx
+        ErgTx etx _ -> Money cur 0
 
     checkAddr :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m Bool
     checkAddr ac tx = do
