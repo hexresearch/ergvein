@@ -12,7 +12,6 @@ import Data.Monoid
 import Data.Proxy
 import Data.Time.Clock
 import Data.Word
-import Database.Persist.Sql
 import Servant.API
 import Servant.API.Generic
 import Servant.Client
@@ -21,9 +20,6 @@ import Ergvein.Index.API
 import Ergvein.Index.API.Types
 import Ergvein.Index.API.V1
 import Ergvein.Index.Server.BlockchainScanning.Common
-import Ergvein.Index.Server.Cache.Queries
-import Ergvein.Index.Server.Cache.Schema
-import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.Dependencies
@@ -53,13 +49,13 @@ indexServer = IndexApi
 --Endpoints
 indexGetHeightEndpoint :: HeightRequest -> ServerM HeightResponse
 indexGetHeightEndpoint (HeightRequest currency) = do
-  mh <- dbQuery $ fmap (scannedHeightRecHeight . entityVal) <$> getScannedHeight currency
+  mh <- getScannedHeight currency
   pure $ HeightResponse $ fromMaybe 0 mh
 
-getBlockMetaSlice :: Currency -> BlockHeight -> BlockHeight -> ServerM [BlockMetaCacheRec]
+getBlockMetaSlice :: Currency -> BlockHeight -> BlockHeight -> ServerM [BlockMetaRec]
 getBlockMetaSlice currency startHeight endHeight = do
-  let start = cachedMetaKey (currency, startHeight)
-      end   = BlockMetaCacheRecKey currency $ startHeight + pred endHeight
+  let start = metaRecKey (currency, startHeight)
+      end   = BlockMetaRecKey currency $ startHeight + pred endHeight
   slice <- safeEntrySlice start end
   let metaSlice = snd <$> slice
   pure metaSlice
@@ -67,7 +63,7 @@ getBlockMetaSlice currency startHeight endHeight = do
 indexGetBlockFiltersEndpoint :: BlockFiltersRequest -> ServerM BlockFiltersResponse
 indexGetBlockFiltersEndpoint request = do
     slice <- getBlockMetaSlice (filtersReqCurrency request) (filtersReqStartHeight request) (filtersReqAmount request)
-    let blockFilters = (\s -> (blockMetaCacheRecHeaderHashHexView s, blockMetaCacheRecAddressFilterHexView s)) <$> slice
+    let blockFilters = (\s -> (blockMetaRecHeaderHashHexView s, blockMetaRecAddressFilterHexView s)) <$> slice
     pure blockFilters
 
 indexGetInfoEndpoint :: ServerM InfoResponse

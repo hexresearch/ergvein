@@ -3,9 +3,10 @@ module Ergvein.Wallet.Localization.PatternKey
     PatternKeyStrings(..)
   ) where
 
+import Data.Text (Text)
 import Ergvein.Wallet.Language
 
-data PatternKeyStrings = PKSFirstTry | PKSSecondTry | PKSErrorTry | PKSDone | PKSAsk
+data PatternKeyStrings = PKSFirstTry | PKSSecondTry | PKSErrorTry | PKSDone | PKSAsk | PKSUnlock | PKSFor Text
 
 instance LocalizedPrint PatternKeyStrings where
   localizedShow l v = case l of
@@ -15,9 +16,13 @@ instance LocalizedPrint PatternKeyStrings where
       PKSErrorTry -> "Keys don't match. Enter pattern key."
       PKSDone -> "Keys match."
       PKSAsk -> "Sign settings changes by your key."
+      PKSUnlock -> "Enter the pattern to unlock private keys"
+      PKSFor n -> "Pattern for " <> n
     Russian -> case v of
       PKSFirstTry -> "Введите графический ключ."
       PKSSecondTry -> "Повторите графический ключ. Ключи должны совпадать."
       PKSErrorTry -> "Ключи не совпадают. Введите графический ключ."
       PKSDone -> "Ключи совпадают."
       PKSAsk -> "Подпишите изменения настроек своим ключом."
+      PKSUnlock -> "Введите графический ключ для расшифровки приватных ключей"
+      PKSFor n -> "Графический ключ для " <> n

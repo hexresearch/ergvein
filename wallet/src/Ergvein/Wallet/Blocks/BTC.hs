@@ -18,6 +18,7 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Node
 import Ergvein.Wallet.Blocks.BTC.Queries
 import Ergvein.Wallet.Blocks.Storage
+import Ergvein.Wallet.Util
 
 import qualified Data.Dependent.Map as DM
 import qualified Data.Map.Strict as M
@@ -39,7 +40,7 @@ requestBTCBlocks reqE = mdo
   actE <- fmap switchDyn $ widgetHold (pure never) $ ffor goE' $ \case
     Nothing -> pure never
     Just (cm, req) -> do
-      buildE <- getPostBuild
+      buildE <- eventToNextFrame =<< getPostBuild
       case DM.lookup BTCTag cm of
         Nothing -> pure $ RANoNode req <$ buildE
         Just btcsMap -> case M.elems btcsMap of

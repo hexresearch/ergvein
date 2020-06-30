@@ -11,9 +11,8 @@ import Servant.Server.Generic
 
 import Ergvein.Index.Client
 import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
-import Ergvein.Index.Server.Cache.Monad
-import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
+import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
 import Ergvein.Types.Currency
@@ -40,10 +39,6 @@ runServerMIO env m = do
   case ea of
     Left e -> fail $ "runServerMIO: " <> show e
     Right a -> return a
-
-instance MonadDB ServerM where
-  getDbPool = asks envPersistencePool
-  {-# INLINE getDbPool #-}
 
 instance MonadLDB ServerM where
   getDb = asks envLevelDBContext

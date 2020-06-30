@@ -240,7 +240,7 @@ transactionsGetting cur = do
   pubSD <- getPubStorageD
   let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _ _) -> case Map.lookup BTC cm of
         Nothing -> []
-        Just (CurrencyPubStorage keystore txmap _ _) -> extractAddrs keystore
+        Just (CurrencyPubStorage keystore txmap _ _ _ _) -> extractAddrs keystore
   abS <- filtArd <$> sampleDyn allBtcAddrsD
   store <- getBlocksStorage
   let rawTxList = filterTx abS ps
@@ -313,8 +313,8 @@ prepareTransactionView TxRawInfo{..} = TransactionView {
        else "https://www.blockchain.com/btc/tx/" <> txHex
      ,txFee           = Money BTC 0
      ,txConfirmations = 0
-     ,txBlock         = ""
-     ,txRaw           = showt $ txHs
+     ,txBlock         = blockHash
+     ,txRaw           = btcTxToString btx
      ,txOutputs       = txOuts
      ,txInputs        = []
     }
@@ -322,7 +322,8 @@ prepareTransactionView TxRawInfo{..} = TransactionView {
     txHs = HK.txHash btx
     txHex = HK.txHashToHex txHs
     txOuts = fmap (\out -> (txOutAdr out,Money BTC (HK.outValue out), TOUnspent)) $ HK.txOut btx
-    txOutAdr out = maybe "undefined" (showt . fromSegWit) $ getSegWitAddr out
+    txOutAdr out = maybe "undefined" (btcAddrToString . fromSegWit) $ getSegWitAddr out
+    blockHash = maybe "undefined" HK.blockHashToHex txHBl
 
 
 -- Front types, should be moved to Utils

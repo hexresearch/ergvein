@@ -1,6 +1,6 @@
 module Ergvein.Types.Storage where
 
-import Control.Lens (makeLenses)
+import Control.Lens (makeLenses, (&), (%~))
 import Crypto.Cipher.AES
 import Crypto.Cipher.Types
 import Crypto.ECC (Curve_X25519, Point, encodePoint, decodePoint)
@@ -12,12 +12,14 @@ import Data.Maybe (fromMaybe)
 import Data.Proxy
 import Data.Text
 import Data.Vector (Vector)
+import Network.Haskoin.Keys
+
 import Ergvein.Aeson
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Transaction
-import Network.Haskoin.Keys
+import Ergvein.Types.Utxo
 
 import qualified Data.Map.Strict as M
 
@@ -83,8 +85,10 @@ instance FromJSON EncryptedPrvStorage where
 data CurrencyPubStorage = CurrencyPubStorage {
     _currencyPubStorage'pubKeystore   :: !PubKeystore
   , _currencyPubStorage'transactions  :: !(M.Map TxId EgvTx)
-  , _currencyPubStorage'height        :: !(Maybe BlockHeight) -- ^ Last height seen by the wallet
-  , _currencyPubStorage'scannedKey    :: !(Maybe Int) -- ^ When restoring here we put which keys are we already scanned
+  , _currencyPubStorage'height        :: !(Maybe BlockHeight)     -- ^ Last height seen by the wallet
+  , _currencyPubStorage'scannedKey    :: !(Maybe Int, Maybe Int)  -- ^ When restoring here we put which keys are we already scanned
+  , _currencyPubStorage'utxos         :: !EgvUtxoSetStorage
+  , _currencyPubStorage'scannedHeight :: !(Maybe BlockHeight)
   } deriving (Eq, Show, Read)
 
 makeLenses ''CurrencyPubStorage
@@ -115,8 +119,12 @@ pubStoragePubMaster c = fmap pubKeystore'master . pubStorageKeyStorage c
 pubStorageLastUnused :: Currency -> PubStorage -> Maybe (Int, EgvExternalKeyBox)
 pubStorageLastUnused c ps = getLastUnusedKey . _currencyPubStorage'pubKeystore =<< M.lookup c (_pubStorage'currencyPubStorages ps)
 
-pubStorageScannedKeys :: Currency -> PubStorage -> Int
-pubStorageScannedKeys c ps = fromMaybe 0 $ _currencyPubStorage'scannedKey =<< M.lookup c (_pubStorage'currencyPubStorages ps)
+pubStorageScannedKeys :: Currency -> KeyPurpose -> PubStorage -> Int
+pubStorageScannedKeys c p ps = fromMaybe 0 $ f . _currencyPubStorage'scannedKey =<< M.lookup c (_pubStorage'currencyPubStorages ps)
+  where
+    f = case p of
+      Internal -> fst
+      External -> snd
 
 pubStorageKeyStorage :: Currency -> PubStorage -> Maybe PubKeystore
 pubStorageKeyStorage c = fmap _currencyPubStorage'pubKeystore . M.lookup c . _pubStorage'currencyPubStorages
@@ -130,10 +138,11 @@ pubStorageSetKeyStorage c ks ps = ps {
         _currencyPubStorage'pubKeystore = ks
       }
 
-pubStorageSetKeyScanned :: Currency -> Maybe Int -> PubStorage -> PubStorage
-pubStorageSetKeyScanned c v = modifyCurrStorage c $ \cps -> cps {
-    _currencyPubStorage'scannedKey = v
-  }
+pubStorageSetKeyScanned :: Currency -> KeyPurpose -> Maybe Int -> PubStorage -> PubStorage
+pubStorageSetKeyScanned c p v = modifyCurrStorage c $ \cps ->
+  cps & currencyPubStorage'scannedKey %~ \(i,e) -> case p of
+    Internal -> (v,e)
+    External -> (i,v)
 
 modifyCurrStorage :: Currency -> (CurrencyPubStorage  -> CurrencyPubStorage) -> PubStorage -> PubStorage
 modifyCurrStorage c f ps = ps {

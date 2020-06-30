@@ -6,20 +6,17 @@ import Control.Monad.Catch
 import Control.Monad.Logger
 import Data.Foldable (traverse_)
 import Data.Maybe
-import Database.Persist.Sql
 
 import Ergvein.Index.Server.BlockchainScanning.Types
-import Ergvein.Index.Server.Cache
+import Ergvein.Index.Server.DB
 import Ergvein.Index.Server.Config
-import Ergvein.Index.Server.DB.Monad
-import Ergvein.Index.Server.DB.Queries
-import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.Environment
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Text
 import Control.Monad.Reader
 import Ergvein.Index.Server.Monad
+import Ergvein.Index.Server.DB.Queries
 
 import qualified Network.Bitcoin.Api.Client                      as BitcoinApi
 import qualified Ergvein.Index.Server.BlockchainScanning.Bitcoin as BTCScanning
@@ -37,20 +34,15 @@ scanningInfo = mapM nfo allCurrencies
   where
     nfo :: Currency -> ServerM ScanProgressInfo
     nfo currency = do
-      maybeScanned <- dbQuery $ scannedBlockHeight currency
+      maybeScanned <- getScannedHeight currency
       actual <- actualHeight currency
       pure $ ScanProgressInfo currency maybeScanned actual
-
-
-scannedBlockHeight :: (MonadIO m) => Currency -> QueryT m (Maybe BlockHeight)
-scannedBlockHeight currency = do
-  entity <- getScannedHeight currency
-  pure $ scannedHeightRecHeight . entityVal <$> entity
 
 blockHeightsToScan :: Currency -> ServerM [BlockHeight]
 blockHeightsToScan currency = do
   actual  <- actualHeight currency
-  scanned <- dbQuery $ scannedBlockHeight currency
+  scanned <- getScannedHeight currency
+  
   let start = maybe (currencyHeightStart currency) succ scanned
   pure [start..actual]
 
@@ -58,14 +50,6 @@ actualHeight :: Currency -> ServerM BlockHeight
 actualHeight currency = case currency of
   BTC  -> BTCScanning.actualHeight
   ERGO -> ERGOScanning.actualHeight 
-
-storeInfo :: (MonadIO m) => BlockInfo -> QueryT m ()
-storeInfo blockInfo = do
-  insertBlock $ blockInfoMeta blockInfo
-  pure ()
-
-storeScannedHeight :: (MonadIO m) => Currency -> BlockHeight -> QueryT m ()
-storeScannedHeight currency scannedHeight = void $ upsertScannedHeight currency scannedHeight
 
 scannerThread :: Currency -> (BlockHeight -> ServerM BlockInfo) -> ServerM Thread
 scannerThread currency scanInfo = create $ logOnException . scanIteration
@@ -76,10 +60,7 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
       logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
       do
         blockInfo <- scanInfo blockHeight
-        dbQuery $ do
-          storeInfo blockInfo
-          storeScannedHeight currency blockHeight
-        addToCache blockInfo
+        addBlockInfo blockInfo
 
     scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
