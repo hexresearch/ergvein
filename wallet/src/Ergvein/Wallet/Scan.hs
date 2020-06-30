@@ -92,7 +92,7 @@ scannerBtc = void $ workflow waiting
         logWrite $ "Start scanning for new " <> showt (fh - sc)
       pure ((), scanning . snd <$> newFiltersE)
 
-    scanning i0 = Workflow $  do
+    scanning i0 = Workflow $ do
       logWrite "Scanning filters"
       waitingE <- scanningAllBtcKeys i0
       pure ((), waiting <$ waitingE)
