@@ -11,6 +11,7 @@ import Conversion
 import Data.Time.Clock
 import Control.Monad.IO.Class
 import Ergvein.Index.Server.Dependencies
+import Servant.Client.Core
 
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema
@@ -87,12 +88,21 @@ updateTxSpends spentTxsHash newTxInfos = do
 getKnownPeers :: (MonadLDB m, MonadLogger m, HasDiscoveryRequisites m) => Bool -> m [String]
 getKnownPeers onlySecured = do
   db <- getDb
-  knownPeers <- getParsedExact knownPeersRecKey
+  knownPeers <- fmap convert <$> getParsedExact @[KnownPeerRecItem]  knownPeersRecKey
   currentTime <- liftIO getCurrentTime
   actualizationDelay <- (/1000000) . fromIntegral . descReqActualizationDelay <$> getDiscoveryRequisites
   let validDate = (-actualizationDelay) `addUTCTime` currentTime
-  pure $ T.unpack . knownPeerRecUrl <$>
-    if onlySecured then filter knownPeerRecIsSecureConn knownPeers else knownPeers
+      filteredByOnlySecured = 
+        if onlySecured then
+          filter (\p -> 
+            case peerConnScheme p of
+              Https -> True
+              _     -> False)
+          knownPeers 
+        else 
+          knownPeers
+      filteredByLastValidatedAt = filter ((validDate <=) . peerLastValidatedAt) filteredByOnlySecured 
+  pure $ showBaseUrl . peerUrl <$> filteredByLastValidatedAt
 
 getKnownPeersList :: (MonadLDB m, MonadLogger m) => m [Peer]
 getKnownPeersList = do
