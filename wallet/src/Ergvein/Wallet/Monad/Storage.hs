@@ -10,6 +10,7 @@ module Ergvein.Wallet.Monad.Storage
   , updateBtcUtxoSet
   , getWalletsScannedHeightD
   , writeWalletsScannedHeight
+  , reconfirmBtxUtxoSet
   ) where
 
 import Control.Lens
@@ -109,6 +110,15 @@ updateBtcUtxoSet reqE = void . modifyPubStorage $ ffor reqE $ \upds ps -> let
   in ffor mnews $ \news -> ps & pubStorage'currencyPubStorages . at BTC
     %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'utxos
       %~ \us -> M.insert BTC (BtcSet news) us
+
+reconfirmBtxUtxoSet :: MonadStorage t m => Event t BlockHeight -> m ()
+reconfirmBtxUtxoSet reqE = void . modifyPubStorage $ ffor reqE $ \bh ps ->
+  Just $ ps & pubStorage'currencyPubStorages . at BTC
+    %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'utxos
+      %~ \us -> foo BTC us $ \case
+        BtcSet bs -> BtcSet $ reconfirmBtxUtxoSetPure bh bs
+        ErgoSet v -> ErgoSet v
+  where foo b c a = M.adjust a b c
 
 getWalletsScannedHeightD :: MonadStorage t m => Currency -> m (Dynamic t BlockHeight)
 getWalletsScannedHeightD cur = do

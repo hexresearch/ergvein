@@ -167,5 +167,5 @@ deriveNewBtcKeys keyPurpose n = do
 egvTxsToBtcTxs :: M.Map TxId EgvTx -> M.Map TxId BtcTx
 egvTxsToBtcTxs egvTxMap = M.mapMaybe egvTxToBtcTx egvTxMap
   where egvTxToBtcTx tx = case tx of
-          BtcTx t -> Just t
+          BtcTx t _ -> Just t
           _ -> Nothing
