@@ -101,7 +101,11 @@ scanningAllBtcKeys i0 = do
   (updE, updFire) <- newTriggerEvent
   setSyncProgress updE
   let updSync i i1 = updFire $ SyncMeta BTC (SyncAddress (-1)) (fromIntegral (i - i0)) (fromIntegral (i1 - i0))
-  scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses i0 updSync $ xPubToBtcAddr . extractXPubKeyFromEgv <$> keys
+  scanE <- performFork $ ffor buildE $ const $ do
+    (hs, hshs) <- fmap unzip $ flip traverse (V.toList keys) $ \k ->
+      Filters.filterBtcAddress i0 updSync $ xPubToBtcAddr . extractXPubKeyFromEgv $ k
+    pure (head hs, mconcat hshs)
+
   let heightE = fst <$> scanE
       hashesE = V.toList . snd <$> scanE
   writeWalletsScannedHeight $ ((BTC, ) . fromIntegral) <$> heightE
@@ -139,7 +143,7 @@ scanningBtcBlocks keys hashesE = do
   txsUpdsE <- logEvent "Transactions got: " =<< getAddressesTxs ((\(a,b) -> (keymap,a,b)) <$> blkHeightE)
   let txsE = fmap fst txsUpdsE
   let updE = fforMaybe txsUpdsE $ \(_,(o,i)) -> if not (M.null o && null i) then Just (o,i) else Nothing
-  
+
   insertBlockHeaders BTC blocksE
   storedBlocksE <- storeMultipleBlocksByE blocksE
   storedTxHashesE <- storeMultipleBlocksTxHashesByE blocksE
