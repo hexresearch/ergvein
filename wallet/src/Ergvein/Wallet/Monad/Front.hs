@@ -43,7 +43,6 @@ import Ergvein.Types.Storage
 import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Filters.Storage
-import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Base
@@ -137,12 +136,12 @@ class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   -- values if their semantic require persistent authorisation.
   setAuthInfo :: Event t (Maybe AuthInfo) -> m (Event t ())
   -- | Get event and trigger for pasword requesting modal. Int -- id of the request.
-  getPasswordModalEF :: m (Event t Int, Int -> IO ())
+  getPasswordModalEF :: m (Event t (Int, Text), (Int, Text) -> IO ())
   -- | Get event and trigger for the event that the password was submitted from modal. Internal
   -- Nothing value means that the modal was dismissed
   getPasswordSetEF :: m (Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
-  -- | Proper requester of passwords. Use
-  requestPasssword :: Event t () -> m (Event t Password)
+  -- | Proper requester of passwords. Send wallet's name
+  requestPasssword :: Event t Text -> m (Event t Password)
   -- | Internal method to get storage of auth info
   getAuthInfoRef :: m (ExternalRef t (Maybe AuthInfo))
 
@@ -159,11 +158,12 @@ setCurrentHeight c e = do
   r <- getHeightRef
   restoredD <- fmap _pubStorage'restoring <$> getPubStorageD
   setLastSeenHeight c $ fromIntegral <$> e
-  performFork_ $ ffor e $ \h -> do
+  mE <- performFork $ ffor e $ \h -> do
     h0 <- fromMaybe 0 . M.lookup c <$> readExternalRef r
     restored <- sample . current $ restoredD
-    when (h0 == 0 && not restored) $ writeScannedHeight c $ fromIntegral (h-1) -- ^ Start filtering from the first seen height
     modifyExternalRef r ((, ()) . M.insert c h)
+    pure $ if (h0 == 0 && not restored) then Just (c, fromIntegral (h-1)) else Nothing
+  writeWalletsScannedHeight $ fmapMaybe id mE
 
 -- | Get current value that tells you whether filters are fully in sync now or not
 getFiltersSync :: MonadFrontAuth t m => Currency -> m (Dynamic t Bool)

@@ -122,9 +122,7 @@ currenciesPage = wrapper True STPSTitle (Just $ pure currenciesPage) $ do
         auth <- sample . current $ authD
         let authNew = auth & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
             difC = curs \\ (_pubStorage'activeCurrencies ps)
-            mL = Map.fromList [
-                    (currency, CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency) (Map.fromList []) Nothing (Just 0)) |
-                    currency <- difC ]
+            mL = Map.fromList [(currency, mkStore prvStr currency) | currency <- difC ]
             authN2 = authNew & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages %~ (Map.union mL)
         pure $ Just $ authN2
     setAuthInfoE <- setAuthInfo updateAE
@@ -133,7 +131,13 @@ currenciesPage = wrapper True STPSTitle (Just $ pure currenciesPage) $ do
     pure ()
     where
       uac cE =  updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ cE
-
+      mkStore prvStr currency = CurrencyPubStorage
+        (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency)
+        Map.empty
+        Nothing
+        (Just 0, Just 0)
+        Map.empty
+        Nothing
 
 unitsPage :: MonadFront t m => m ()
 unitsPage = wrapper True STPSTitle (Just $ pure unitsPage) $ mdo
@@ -142,14 +146,14 @@ unitsPage = wrapper True STPSTitle (Just $ pure unitsPage) $ mdo
   where
     content = do
       h3 $ localizedText $ STPSSelectUnitsFor BTC
-      ubE <- divClass "initial-options" $ do
+      ubE <- divClass "initial-options grid1" $ do
         settings <- getSettings
         let setUs = getSettingsUnits settings
         unitBtcE <- unitsDropdown (getUnitBTC setUs) allUnitsBTC
         updateSettings $ ffor unitBtcE (\ubtc -> settings {settingsUnits = Just $ setUs {unitBTC = Just ubtc}})
         delay 0.1 (() <$ unitBtcE)
       h3 $ localizedText $ STPSSelectUnitsFor ERGO
-      ueE <- divClass "initial-options" $ do
+      ueE <- divClass "initial-options grid1" $ do
         settings <- getSettings
         let setUs = getSettingsUnits settings
         unitErgoE <- unitsDropdown (getUnitERGO setUs) allUnitsERGO

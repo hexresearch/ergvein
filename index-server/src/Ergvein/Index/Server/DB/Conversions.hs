@@ -1,53 +1,32 @@
 module Ergvein.Index.Server.DB.Conversions where
 
 import Conversion
-import Database.Persist.Types
-import Ergvein.Index.Server.DB.Schema
-import Ergvein.Index.Server.BlockchainScanning.Types
-import Ergvein.Index.Server.PeerDiscovery.Types
-import Servant.Client.Core
-import qualified Data.Text as T
+import Data.Text
 import Data.Maybe
-import Data.Time.Clock
+import Servant.Client.Core
+import Ergvein.Index.Server.BlockchainScanning.Types
+import Ergvein.Index.Server.DB.Schema
+import Ergvein.Index.Server.PeerDiscovery.Types as DiscoveryTypes
 
-instance Conversion (Entity BlockMetaRec) BlockMetaInfo where
-  convert entity = let 
-    value = entityVal entity 
-    in BlockMetaInfo
-      { blockMetaCurrency = blockMetaRecCurrency value
-      , blockMetaBlockHeight = blockMetaRecHeight value
-      , blockMetaHeaderHashHexView = blockMetaRecBlockHeaderHashHexView value
-      , blockMetaAddressFilterHexView = blockMetaRecAddressFilterHexView value
-      }
+instance Conversion TxInfo TxRec where
+  convert txInfo = TxRec (txHash txInfo) (txHexView txInfo) (txOutputsCount txInfo)
 
-instance Conversion BlockMetaInfo BlockMetaRec where
-  convert block = BlockMetaRec
-    { blockMetaRecCurrency = blockMetaCurrency block 
-    , blockMetaRecHeight = blockMetaBlockHeight block
-    , blockMetaRecBlockHeaderHashHexView = blockMetaHeaderHashHexView block
-    , blockMetaRecAddressFilterHexView = blockMetaAddressFilterHexView block
-    } 
-
-instance Conversion (UTCTime , NewPeer) DiscoveredPeerRec where
-  convert (t,discoveredPeer) = DiscoveredPeerRec
-    { discoveredPeerRecUrl = T.pack $ showBaseUrl $ newPeerUrl discoveredPeer
-    , discoveredPeerRecLastValidatedAt = t
-    , discoveredPeerRecIsSecureConn = 
-        case newPeerConnScheme discoveredPeer of
-          Https -> True
-          Http  -> False
+instance Conversion DiscoveryTypes.Peer KnownPeerRecItem where
+  convert peer = KnownPeerRecItem
+    { knownPeerRecUrl = pack $ showBaseUrl $ peerUrl peer
+    , knownPeerRecLastValidatedAt = pack $ show $ peerLastValidatedAt peer 
+    , knownPeerRecIsSecureConn =  
+        case peerConnScheme peer of
+              Https -> True
+              Http -> False
     }
 
-instance Conversion (Entity DiscoveredPeerRec) Peer where
-  convert entity = let
-    key = entityKey entity
-    value = entityVal entity
-    in Peer
-    { peerId = key
-    , peerUrl = fromJust $ parseBaseUrl $ T.unpack $ discoveredPeerRecUrl value
-    , peerLastValidatedAt = discoveredPeerRecLastValidatedAt value
-    , peerConnScheme =
-        case discoveredPeerRecIsSecureConn value of
-            True  -> Https
-            False -> Http
+instance Conversion KnownPeerRecItem Peer where
+  convert peer = DiscoveryTypes.Peer
+    { peerUrl = fromJust $ parseBaseUrl $ unpack $ knownPeerRecUrl peer
+    , peerLastValidatedAt = read $ unpack $ knownPeerRecLastValidatedAt peer
+    , peerConnScheme = 
+        case knownPeerRecIsSecureConn peer of
+                True  -> Https
+                False -> Http
     }

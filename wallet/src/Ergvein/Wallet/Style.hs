@@ -783,7 +783,6 @@ historyPageCss = do
     paddingRight $ rem 1
   ".info-descr" ? do
     fontWeight $ weight 600
-    fontSize $ pt 14
     textAlign $ alignSide sideLeft
     paddingRight $ rem 1
   ".info-body" ? do

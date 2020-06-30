@@ -17,7 +17,6 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Filters.Storage
-import Ergvein.Wallet.Headers.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Base
@@ -48,7 +47,7 @@ data UnauthEnv t = UnauthEnv {
 , unauth'logsNameSpaces  :: !(ExternalRef t [Text])
 , unauth'uiChan          :: !(Chan (IO ()))
 , unauth'authRef         :: !(ExternalRef t (Maybe AuthInfo))
-, unauth'passModalEF     :: !(Event t Int, Int -> IO ())
+, unauth'passModalEF     :: !(Event t (Int, Text), (Int, Text) -> IO ())
 , unauth'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
 }
 
@@ -125,12 +124,11 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   getPasswordSetEF = asks unauth'passSetEF
   {-# INLINE getPasswordSetEF #-}
   requestPasssword reqE = do
-    idE <- performEvent $ liftIO getRandom <$ reqE
-    idD <- holdDyn 0 idE
+    i <- liftIO getRandom
     (_, modalF) <- asks unauth'passModalEF
     (setE, _) <- asks unauth'passSetEF
-    performEvent_ $ fmap (liftIO . modalF) idE
-    pure $ attachWithMaybe (\i' (i,mp) -> if i == i' then mp else Nothing) (current idD) setE
+    performEvent_ $ (liftIO . modalF . (i,)) <$> reqE
+    pure $ fforMaybe setE $ \(i', mp) -> if i == i' then mp else Nothing
   updateSettings setE = do
     settingsRef <- asks unauth'settings
     performEvent $ ffor setE $ \s -> do

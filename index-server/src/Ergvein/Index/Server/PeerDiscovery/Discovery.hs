@@ -20,24 +20,17 @@ import Ergvein.Index.API.Types
 import Ergvein.Index.Client.V1
 import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.Config
-import Ergvein.Index.Server.DB.Monad
-import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.Utils
-import Ergvein.Index.Server.Cache.Queries
+import Ergvein.Index.Server.DB.Queries
 
 
 import qualified Data.Map.Strict as Map
 import qualified Network.HTTP.Client as HC
 import qualified Data.Set as Set
-
-knownPeers :: Bool -> ServerM [Peer]
-knownPeers onlySecured = do
-  actualizationDelay <- (/1000000) . fromIntegral . descReqActualizationDelay <$> getDiscoveryRequisites
-  dbQuery $ getDiscoveredFilteredPeers onlySecured actualizationDelay
 
 peerKnownPeers :: BaseUrl -> ExceptT PeerValidationResult ServerM [BaseUrl]
 peerKnownPeers baseUrl = do
@@ -52,13 +45,13 @@ peerKnownPeers baseUrl = do
 considerPeerCandidate :: PeerCandidate -> ExceptT PeerValidationResult ServerM ()
 considerPeerCandidate candidate = do
   baseUrl <- peerBaseUrl $ peerCandidateUrl candidate
-  knownPeers <- lift $ dbQuery getDiscoveredPeers
+  knownPeers <- lift $ getKnownPeersList
   knowPeersSet <- lift $ knownPeersSet knownPeers
   if not $ Set.member baseUrl knowPeersSet then do
     _ <- peerKnownPeers baseUrl
-    let newPeer = NewPeer baseUrl $ baseUrlScheme baseUrl
-    lift $ dbQuery $ addNewPeers [newPeer]
-    lift $ refreshKnownPeersCache
+    currentTime <- liftIO getCurrentTime
+    let newPeer = Peer baseUrl currentTime $ baseUrlScheme baseUrl
+    lift $ addKnownPeers [newPeer]
   else
     ExceptT $ pure $ Left AlreadyKnown
 
@@ -75,23 +68,17 @@ knownPeersActualization = do
     scanIteration thread = do
       requisites <- getDiscoveryRequisites
       currentTime <- liftIO getCurrentTime
-      knownPeers <- dbQuery getDiscoveredPeers
+      knownPeers <- getKnownPeersList
 
-      let (outdatedPeers, peersToFetchFrom) = 
-            partition ( isOutdated (descReqPredefinedPeers requisites) (descReqActualizationTimeout requisites) currentTime) knownPeers
+      let peersToFetchFrom = 
+            filter (not . isOutdated (descReqPredefinedPeers requisites) (descReqActualizationTimeout requisites) currentTime) knownPeers
       
       knowPeersSet <- knownPeersSet peersToFetchFrom
       (peersToRefresh, fetchedPeers) <- mconcat <$> mapM peersKnownTo peersToFetchFrom
-
-      let uniqueNotDiscoveredFetchedPeers = filter (not . (`Set.member` knowPeersSet)) $ uniqueElements fetchedPeers
-
-      dbQuery $ do
-        deleteExpiredPeers $ peerId <$> outdatedPeers
-        refreshPeerValidationTime $ peerId <$> peersToRefresh
-        addNewPeers $ newPeer <$> uniqueNotDiscoveredFetchedPeers
-      
-      refreshKnownPeersCache
-
+      currentTime <- liftIO getCurrentTime
+      let uniqueNotDiscoveredFetchedPeers = (\x-> Peer x currentTime (baseUrlScheme x)) <$> (filter (not . (`Set.member` knowPeersSet)) $ uniqueElements fetchedPeers)
+      let r = (\x-> x {peerLastValidatedAt = currentTime} )<$> peersToRefresh
+      setKnownPeersList $ r ++ uniqueNotDiscoveredFetchedPeers
       liftIO $ threadDelay $ descReqActualizationDelay requisites
 
     isOutdated :: Set BaseUrl -> NominalDiffTime -> UTCTime -> Peer -> Bool
@@ -108,18 +95,19 @@ knownPeersActualization = do
 
 syncWithDefaultPeers :: ServerM ()
 syncWithDefaultPeers = do
-  discoveredPeers <- dbQuery getDiscoveredPeers
+  discoveredPeers <- getKnownPeersList
   predefinedPeers <- descReqPredefinedPeers <$> getDiscoveryRequisites
+  currentTime <- liftIO getCurrentTime
   let discoveredPeersSet = Set.fromList $ peerUrl <$> discoveredPeers
-      toAdd = newPeer <$> (Set.toList $ predefinedPeers Set.\\ discoveredPeersSet)
+      toAdd = (\x -> Peer x currentTime (baseUrlScheme x)) <$> (Set.toList $ predefinedPeers Set.\\ discoveredPeersSet)
   predefinedPeers <- descReqPredefinedPeers <$> getDiscoveryRequisites
-  dbQuery $ addNewPeers toAdd
+  addKnownPeers toAdd
 
 peerIntroduce :: ServerM ()
 peerIntroduce = void $ runMaybeT $ do
   ownAddress <- MaybeT $ descReqOwnAddress <$> getDiscoveryRequisites
   lift $ do
-    allPeers <- dbQuery $ getDiscoveredPeers
+    allPeers <- getKnownPeersList
     let introduceReq = IntroducePeerReq $ showBaseUrl ownAddress
     forM_ allPeers (flip getIntroducePeerEndpoint introduceReq . peerUrl)
 
@@ -162,8 +150,3 @@ peerActualScan candidateInfo = do
 
     candidateInfoMap = Map.fromList $ (\scanInfo -> (scanProgressCurrency scanInfo, scanInfo))
                                    <$> infoScanProgress candidateInfo
-
-refreshKnownPeersCache :: ServerM ()
-refreshKnownPeersCache = do
-  stored <- dbQuery getDiscoveredPeers
-  updateKnownPeers stored
