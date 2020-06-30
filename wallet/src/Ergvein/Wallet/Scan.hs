@@ -105,12 +105,15 @@ scanningAllBtcKeys i0 = do
   scanningBtcBlocks (V.indexed keys) hashesE
 
 -- | Check single key against unscanned filters and return 'True' if we found any tx (stored in public storage).
-scanningBtcKey :: MonadFront t m => HB.BlockHeight -> Int -> EgvXPubKey -> m (Event t Bool)
-scanningBtcKey i0 keyNum pubkey = do
+scanningBtcKey :: MonadFront t m => KeyPurpose -> HB.BlockHeight -> Int -> EgvXPubKey -> m (Event t Bool)
+scanningBtcKey kp i0 keyNum pubkey = do
   (updE, updFire) <- newTriggerEvent
   setSyncProgress updE
+  let sp = case kp of
+        Internal -> SyncAddressInternal keyNum
+        External -> SyncAddressExternal keyNum
   let updSync i i1 = if i `mod` 100 == 0
-        then updFire $ SyncMeta BTC (SyncAddress keyNum) (fromIntegral (i - i0)) (fromIntegral (i1 - i0))
+        then updFire $ SyncMeta BTC sp (fromIntegral (i - i0)) (fromIntegral (i1 - i0))
         else pure ()
       address = xPubToBtcAddr $ extractXPubKeyFromEgv pubkey
   buildE <- getPostBuild
