@@ -85,7 +85,7 @@ createPubKeystore masterPubKey =
 
 createPubStorage :: Bool -> EgvRootXPrvKey -> [Currency] -> PubStorage
 createPubStorage isRestored rootPrvKey cs = PubStorage rootPubKey pubStorages cs isRestored
-  where restState = if isRestored then Just 0 else Nothing
+  where restState = if isRestored then (Just 0, Just 0) else (Nothing, Nothing)
         rootPubKey = EgvRootXPubKey $ deriveXPubKey $ unEgvRootXPrvKey rootPrvKey
         pubStorages = M.fromList [
             (currency, CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey rootPrvKey currency) M.empty Nothing restState M.empty Nothing) |

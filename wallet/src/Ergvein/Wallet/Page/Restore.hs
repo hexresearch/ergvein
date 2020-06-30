@@ -64,7 +64,7 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
       psD <- getPubStorageD
       let nextE = flip pushAlways filtersE $ const $ do
             ps <- sample . current $ psD
-            let r = pubStorageScannedKeys BTC ps
+            let r = pubStorageScannedKeys BTC External ps
                 unused = maybe 0 fst $ pubStorageLastUnused BTC ps
                 gap = r - unused
             pure $ scanKeys gap r
@@ -81,8 +81,10 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
       heightD <- getCurrentHeight BTC
       setSyncProgress $ flip pushAlways buildE $ const $ do
         h <- sample . current $ heightD
-        pure $ SyncMeta BTC (SyncAddress keyNum) 0 (fromIntegral h)
-      if gapN >= gapLimit then pure((), scanInternalKeys 0 0 <$ buildE)
+        pure $ SyncMeta BTC (SyncAddressExternal keyNum) 0 (fromIntegral h)
+      if gapN >= gapLimit then do
+        n <- sample . current . fmap (pubStorageScannedKeys BTC Internal) =<< getPubStorageD
+        pure((), scanInternalKeys 0 n <$ buildE)
       else if keyNum >= V.length keys then do
         logWrite "Generating next portion of external BTC keys..."
         deriveNewBtcKeys External gapLimit
@@ -90,9 +92,9 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
       else do
         logWrite $ "Scanning external BTC key " <> showt keyNum
         h0 <- fmap fromIntegral . sample . current =<< getWalletsScannedHeightD BTC
-        scannedE <- scanningBtcKey h0 keyNum (keys V.! keyNum)
+        scannedE <- scanningBtcKey External h0 keyNum (keys V.! keyNum)
         hasTxsD <- holdDyn False scannedE
-        storedE <- modifyPubStorage $ ffor scannedE $ const $ Just . pubStorageSetKeyScanned BTC (Just keyNum)
+        storedE <- modifyPubStorage $ ffor scannedE $ const $ Just . pubStorageSetKeyScanned BTC External (Just keyNum)
         let nextE = flip pushAlways storedE $ const $ do
               hastxs <- sample . current $ hasTxsD
               let gapN' = if hastxs then 0 else gapN+1
@@ -111,6 +113,11 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
       buildE <- delay 0.1 =<< getPostBuild
       ps <- getPubStorage
       keys <- pubStorageKeys BTC Internal <$> getPubStorage
+      syncWidget =<< getSyncProgress
+      heightD <- getCurrentHeight BTC
+      setSyncProgress $ flip pushAlways buildE $ const $ do
+        h <- sample . current $ heightD
+        pure $ SyncMeta BTC (SyncAddressInternal keyNum) 0 (fromIntegral h)
       if gapN >= gapLimit then pure ((), finishScanning <$ buildE)
       else if keyNum >= V.length keys then do
         logWrite "Generating next portion of internal BTC keys..."
@@ -118,11 +125,16 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
         pure ((), scanInternalKeys gapN keyNum <$ buildE)
       else do
         logWrite $ "Scanning internal BTC key #" <> showt keyNum
-        let txs = maybe (error "No BTC tx storage!") id $ pubStorageTxs BTC ps
-            address = egvXPubKeyToEgvAddress $ keys V.! keyNum
-        checkResults <- traverse (checkAddrTx address) $ egvTxsToBtcTxs txs
-        let gapN' = if (M.size $ M.filter id checkResults) > 0 then 0 else gapN+1
-        pure ((), scanInternalKeys gapN' (keyNum + 1) <$ buildE)
+        h0 <- fmap fromIntegral . sample . current =<< getWalletsScannedHeightD BTC
+        scannedE <- scanningBtcKey Internal h0 keyNum (keys V.! keyNum)
+        hasTxsD <- holdDyn False scannedE
+        storedE <- modifyPubStorage $ ffor scannedE $ const $ Just . pubStorageSetKeyScanned BTC Internal (Just keyNum)
+        let nextE = flip pushAlways scannedE $ const $ do
+              hastxs <- sample . current $ hasTxsD
+              let gapN' = if hastxs then 0 else gapN+1
+              pure $ scanInternalKeys gapN' (keyNum + 1)
+        nextE' <- delay 0.1 nextE
+        pure ((), nextE')
 
     finishScanning = Workflow $ do
       logWrite "Finished scanning BTC keys..."
@@ -155,5 +167,5 @@ deriveNewBtcKeys keyPurpose n = do
 egvTxsToBtcTxs :: M.Map TxId EgvTx -> M.Map TxId BtcTx
 egvTxsToBtcTxs egvTxMap = M.mapMaybe egvTxToBtcTx egvTxMap
   where egvTxToBtcTx tx = case tx of
-          BtcTx t -> Just t
+          BtcTx t _ -> Just t
           _ -> Nothing
