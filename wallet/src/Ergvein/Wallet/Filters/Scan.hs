@@ -32,7 +32,7 @@ filterAddress addr = foldFilters (egvAddrCurrency addr) f []
 -- | Scan through unprocessed filters and return scanned height and matches.
 filterBtcAddress :: (MonadIO m, HasFiltersStorage t m)
   => BlockHeight                              -- ^ Starting height
-  -> (BlockHeight -> BlockHeight -> IO ())    -- ^ Filter function
+  -> (BlockHeight -> BlockHeight -> IO ())    -- ^ Progress logging callback
   -> BtcAddress                               -- ^ Address to match
   -> m (BlockHeight, Vector BlockHash)        -- ^ Scanned height and matches
 filterBtcAddress i0 progCb ba = case guardSegWit ba of
@@ -49,7 +49,7 @@ filterBtcAddress i0 progCb ba = case guardSegWit ba of
 -- expect that all addresses are for the same currency.
 filterBtcAddresses :: (MonadIO m, HasFiltersStorage t m)
   => BlockHeight                              -- ^ Starting height
-  -> (BlockHeight -> BlockHeight -> IO ())    -- ^ Filter function
+  -> (BlockHeight -> BlockHeight -> IO ())    -- ^ Progress logging callback
   -> Vector BtcAddress                        -- ^ Addresses to match
   -> m (BlockHeight, Vector BlockHash)        -- ^ Scanned height and matches
 filterBtcAddresses i0 progCb as

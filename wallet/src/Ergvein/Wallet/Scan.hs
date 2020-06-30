@@ -105,7 +105,7 @@ scanningAllBtcKeys i0 = do
   scanningBtcBlocks (V.indexed keys) hashesE
 
 -- | Check single key against unscanned filters and return 'True' if we found any tx (stored in public storage).
-scanningBtcKey :: MonadFront t m => KeyPurpose ->HB.BlockHeight -> Int -> EgvXPubKey -> m (Event t Bool)
+scanningBtcKey :: MonadFront t m => KeyPurpose -> HB.BlockHeight -> Int -> EgvXPubKey -> m (Event t Bool)
 scanningBtcKey kp i0 keyNum pubkey = do
   (updE, updFire) <- newTriggerEvent
   setSyncProgress updE
