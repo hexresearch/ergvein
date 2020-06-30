@@ -115,6 +115,7 @@ frontendCss r = do
   sharePageCss
   validateCss
   wrapperCss
+  testnetDisclaimerCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -971,3 +972,10 @@ linkCss = do
     textDecoration underline
   ".link:hover, .link:focus" ? do
     color hoverColor
+
+testnetDisclaimerCss :: Css
+testnetDisclaimerCss = do
+  ".testnet-disclaimer-label" ? do
+    marginBottom $ rem 1
+  ".testnet-disclaimer-text" ? do
+    marginBottom $ rem 1
