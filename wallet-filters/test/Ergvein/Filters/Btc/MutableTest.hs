@@ -70,11 +70,16 @@ spec_specificFilter1 = do
       fstr <- bs2Hex <$> encodeBtcAddrFilter bfilter
       fstr' <- fmap bs2Hex $ encodeBtcAddrFilter =<< getFilter
       fstr `shouldBe` fstr'
-  describe "block 000000000000017c36b1c7c70f467244009c552e1732604a0f779fc6ff2d6112 filter tests" $ forM_ addrs $ \addr -> do
-    let addrstr = unpack . TE.decodeUtf8 $ encodeSegWitAddress btcTest addr
-    it ("has address " <> addrstr) $ do
+  describe "block 000000000000017c36b1c7c70f467244009c552e1732604a0f779fc6ff2d6112 filter tests" $ do
+    forM_ addrs $ \addr -> do
+      let addrstr = unpack . TE.decodeUtf8 $ encodeSegWitAddress btcTest addr
+      it ("has address " <> addrstr) $ do
+        bfilter <- getFilter
+        res <- applyBtcFilter btcTest bhash bfilter addr
+        res `shouldBe` True
+    it ("has any of prev addresses") $ do
       bfilter <- getFilter
-      res <- applyBtcFilter btcTest bhash bfilter addr
+      res <- applyBtcFilterMany btcTest bhash bfilter addrs
       res `shouldBe` True
   where
     bhash = "000000000000017c36b1c7c70f467244009c552e1732604a0f779fc6ff2d6112"

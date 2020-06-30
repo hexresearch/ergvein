@@ -15,6 +15,7 @@ import Network.Haskoin.Transaction (Tx(..), TxIn(..), TxOut(..), OutPoint(..), t
 
 import Ergvein.Text
 import Ergvein.Types.Address
+import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
 import Ergvein.Wallet.Blocks.BTC
 import Ergvein.Wallet.Blocks.Storage
@@ -43,36 +44,38 @@ getSpentOutputs c addr Tx{..} = fmap catMaybes $ flip traverse txIn $ \ti -> do
   pure $ if b then Just (prevOutput ti, c) else Nothing
 
 -- | Gets unspent output for a given address from a transaction
--- Bool specifies if the Tx was confirmed (True) or not
-getUnspentOutputs :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => Bool -> EgvAddress -> Tx -> m [(OutPoint, (Word64, EgvUtxoStatus))]
+-- Maybe BlockHeight: Nothing -- unconfirmed Tx. Just n -> confirmed at height n
+getUnspentOutputs :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => Maybe BlockHeight -> EgvAddress -> Tx -> m [(OutPoint, (Word64, EgvUtxoStatus))]
 getUnspentOutputs c addr tx = fmap catMaybes $ flip traverse (zip [0..] $ txOut tx) $ \(i,o) -> do
   b <- checkTxOut addr o
   pure $ if b then Just (OutPoint th i, (outValue o, stat)) else Nothing
   where
     th = txHash tx
-    stat = if c then EUtxoConfirmed else EUtxoReceiving
+    stat = maybe EUtxoReceiving EUtxoSemiConfirmed c
 
 -- | Construct UTXO update for a list of addresses based on a transaction
--- Bool specifies if the Tx was confirmed (True) or not
-getUtxoUpdates :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => Bool -> [EgvAddress] -> Tx -> m BtcUtxoUpdate
-getUtxoUpdates isConfirmed addrs tx = do
+-- Maybe BlockHeight: Nothing -- unconfirmed Tx. Just n -> confirmed at height n
+getUtxoUpdates :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => Maybe BlockHeight -> [EgvAddress] -> Tx -> m BtcUtxoUpdate
+getUtxoUpdates mheight addrs tx = do
   (unsps, sps) <- fmap unzip $ flip traverse addrs $ \addr -> do
-    unsp <- getUnspentOutputs isConfirmed addr tx
-    sp   <- getSpentOutputs isConfirmed addr tx
+    unsp <- getUnspentOutputs mheight addr tx
+    sp   <- getSpentOutputs isMempool addr tx
     pure (unsp, sp)
   let unspentMap = M.fromList $ mconcat unsps
   pure (unspentMap, mconcat sps)
+  where isMempool = maybe True (const False) mheight
 
 -- | Construct UTXO update for an address and a batch of transactions
--- Bool specifies if the batch was confirmed (True) or not
-getUtxoUpdatesFromTxs :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => Bool -> EgvAddress -> [Tx] -> m BtcUtxoUpdate
-getUtxoUpdatesFromTxs isConfirmed addr txs = do
+-- Maybe BlockHeight: Nothing -- unconfirmed Tx. Just n -> confirmed at height n
+getUtxoUpdatesFromTxs :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => Maybe BlockHeight -> EgvAddress -> [Tx] -> m BtcUtxoUpdate
+getUtxoUpdatesFromTxs mheight addr txs = do
   (unsps, sps) <- fmap unzip $ flip traverse txs $ \tx -> do
-    unsp <- getUnspentOutputs isConfirmed addr tx
-    sp   <- getSpentOutputs isConfirmed addr tx
+    unsp <- getUnspentOutputs mheight addr tx
+    sp   <- getSpentOutputs isMempool addr tx
     pure (unsp, sp)
   let unspentMap = M.fromList $ mconcat unsps
   pure (unspentMap, mconcat sps)
+  where isMempool = maybe True (const False) mheight
 
 -- | Checks given TxIn wheather it contains given address.
 -- Native SegWit addresses are not presented in TxIns scriptSig.
