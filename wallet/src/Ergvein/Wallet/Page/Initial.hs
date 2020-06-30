@@ -36,46 +36,57 @@ initialPage = do
   ss <- listStorages
   if null ss then noWalletsPage else hasWalletsPage ss
   logWrite "Finished initial page rendering"
-  where
-    noWalletsPage = wrapperSimple True $ divClass "initial-page-options" $ noWallets
-    noWallets = do
-      newE <- fmap (GoSeed <$) $ outlineButton IPSCreate
-      restoreE <- fmap (GoRestore <$) $ outlineButton IPSRestore
-      let goE = leftmost [newE, restoreE]
-      void $ nextWidget $ ffor goE $ \go -> Retractable {
-          retractableNext = case go of
-            GoSeed -> mnemonicPage
-            GoRestore -> seedRestorePage
-        , retractablePrev = Just $ pure initialPage
-        }
-    hasWalletsPage ss = do
-      mname <- getLastStorage
-      selectTrougth ss mname
-    selectTrougth ss mname = do
-      buildE <-getPostBuild
-      case mname of
-        Just name -> void $ nextWidget $ ffor buildE $ const $ Retractable {
-                retractableNext = loadWalletPage name
-              , retractablePrev = Just $ pure $ selectWalletsPage ss
-              }
-        Nothing -> selectWalletsPage ss
-    selectWalletsPage ss = wrapperSimple True $ divClass "initial-page-options" $ do
-      h4 $ localizedText IPSSelectWallet
-      flip traverse_ ss $ \name -> do
-        btnE <- outlineButton name
-        void $ nextWidget $ ffor btnE $ const $ Retractable {
+
+noWalletsPage :: MonadFrontBase t m => m ()
+noWalletsPage = wrapperSimple True $ divClass "initial-page-options" $ createRestore
+
+createRestore :: MonadFrontBase t m => m ()
+createRestore = do
+  newE <- fmap (GoSeed <$) $ outlineButton IPSCreate
+  restoreE <- fmap (GoRestore <$) $ outlineButton IPSRestore
+  let goE = leftmost [newE, restoreE]
+  void $ nextWidget $ ffor goE $ \go -> Retractable {
+      retractableNext = case go of
+        GoSeed -> mnemonicPage
+        GoRestore -> seedRestorePage
+    , retractablePrev = Just $ pure initialPage
+    }
+
+hasWalletsPage :: MonadFrontBase t m => [WalletName] -> m ()
+hasWalletsPage ss = do
+  mname <- getLastStorage
+  selectTrougth ss mname
+
+selectTrougth :: MonadFrontBase t m => [WalletName] -> Maybe WalletName -> m ()
+selectTrougth ss mname = do
+  buildE <- getPostBuild
+  case mname of
+    Just name -> void $ nextWidget $ ffor buildE $ const $ Retractable {
             retractableNext = loadWalletPage name
           , retractablePrev = Just $ pure $ selectWalletsPage ss
           }
-      h4 $ localizedText IPSOtherOptions
-      noWallets
-    loadWalletPage name = do
-      passE <- askPasswordPage name
-      mOldAuthE <- performEvent $ loadAuthInfo name <$> passE
-      oldAuthE <- handleDangerMsg mOldAuthE
-      mAuthE <- performEvent $ generateMissingPrvKeys <$> oldAuthE
-      authE <- handleDangerMsg mAuthE
-      void $ setAuthInfo $ Just <$> authE
+    Nothing -> selectWalletsPage ss
+
+selectWalletsPage :: MonadFrontBase t m => [WalletName] -> m ()
+selectWalletsPage ss = wrapperSimple True $ divClass "initial-page-options" $ do
+  h4 $ localizedText IPSSelectWallet
+  flip traverse_ ss $ \name -> do
+    btnE <- outlineButton name
+    void $ nextWidget $ ffor btnE $ const $ Retractable {
+        retractableNext = loadWalletPage name
+      , retractablePrev = Just $ pure $ selectWalletsPage ss
+      }
+  h4 $ localizedText IPSOtherOptions
+  createRestore
+
+loadWalletPage :: MonadFrontBase t m => WalletName -> m ()
+loadWalletPage name = do
+  passE <- askPasswordPage name
+  mOldAuthE <- performEvent $ loadAuthInfo name <$> passE
+  oldAuthE <- handleDangerMsg mOldAuthE
+  mAuthE <- performEvent $ generateMissingPrvKeys <$> oldAuthE
+  authE <- handleDangerMsg mAuthE
+  void $ setAuthInfo $ Just <$> authE
 
 -- | Generates new private keys until their number is equal to the number of public keys.
 generateMissingPrvKeys :: MonadIO m => (AuthInfo, Password) -> m (Either StorageAlert AuthInfo)

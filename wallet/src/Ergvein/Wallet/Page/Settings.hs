@@ -46,19 +46,26 @@ data SubPageSettings
   | GoNetwork
   | GoPortfolio
 
+-- TODO: uncomment commented lines when ERGO is ready
 settingsPage :: MonadFront t m => m ()
 settingsPage = wrapper True STPSTitle (Just $ pure settingsPage) $ do
   divClass "initial-options grid1" $ do
     goLangE      <- fmap (GoLanguage   <$) $ outlineButton STPSButLanguage
-    goCurrE      <- fmap (GoCurrencies <$) $ outlineButton STPSButActiveCurrs
+    -- goCurrE      <- fmap (GoCurrencies <$) $ outlineButton STPSButActiveCurrs
     goNetE       <- fmap (GoNetwork    <$) $ outlineButton STPSButNetwork
     goUnitsE     <- fmap (GoUnits      <$) $ outlineButton STPSButUnits
     goPortfolioE <- fmap (GoPortfolio  <$) $ outlineButton STPSButPortfolio
-    let goE = leftmost [goLangE, goCurrE, goNetE, goUnitsE, goPortfolioE]
+    let goE = leftmost [
+            goLangE
+          -- , goCurrE
+          , goNetE
+          , goUnitsE
+          , goPortfolioE
+          ] 
     void $ nextWidget $ ffor goE $ \spg -> Retractable {
         retractableNext = case spg of
           GoLanguage   -> languagePage
-          GoCurrencies -> currenciesPage
+          -- GoCurrencies -> currenciesPage
           GoNetwork    -> networkSettingsPage
           GoUnits      -> unitsPage
           GoPortfolio  -> portfolioPage
@@ -139,6 +146,7 @@ currenciesPage = wrapper True STPSTitle (Just $ pure currenciesPage) $ do
         Map.empty
         Nothing
 
+-- TODO: uncomment commented lines when ERGO is ready
 unitsPage :: MonadFront t m => m ()
 unitsPage = wrapper True STPSTitle (Just $ pure unitsPage) $ mdo
   cntED <- widgetHold content $ content <$ switchDyn cntED
@@ -152,14 +160,17 @@ unitsPage = wrapper True STPSTitle (Just $ pure unitsPage) $ mdo
         unitBtcE <- unitsDropdown (getUnitBTC setUs) allUnitsBTC
         updateSettings $ ffor unitBtcE (\ubtc -> settings {settingsUnits = Just $ setUs {unitBTC = Just ubtc}})
         delay 0.1 (() <$ unitBtcE)
-      h3 $ localizedText $ STPSSelectUnitsFor ERGO
-      ueE <- divClass "initial-options grid1" $ do
-        settings <- getSettings
-        let setUs = getSettingsUnits settings
-        unitErgoE <- unitsDropdown (getUnitERGO setUs) allUnitsERGO
-        updateSettings $ ffor unitErgoE (\uergo -> settings {settingsUnits = Just $ setUs {unitERGO = Just uergo}})
-        delay 0.1 (() <$ unitErgoE)
-      pure $ leftmost [ubE, ueE]
+      -- h3 $ localizedText $ STPSSelectUnitsFor ERGO
+      -- ueE <- divClass "initial-options grid1" $ do
+      --   settings <- getSettings
+      --   let setUs = getSettingsUnits settings
+      --   unitErgoE <- unitsDropdown (getUnitERGO setUs) allUnitsERGO
+      --   updateSettings $ ffor unitErgoE (\uergo -> settings {settingsUnits = Just $ setUs {unitERGO = Just uergo}})
+      --   delay 0.1 (() <$ unitErgoE)
+      pure $ leftmost [
+          ubE
+        -- , ueE
+        ]
 
     unitsDropdown val allUnits = do
       langD <- getLanguage

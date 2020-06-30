@@ -29,7 +29,10 @@ import Reflex.Localize
 
 selectCurrenciesPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> m ()
 selectCurrenciesPage wt m = wrapperSimple True $ do
-  e <- selectCurrenciesWidget []
+  -- TODO: remove this when ERGO is ready
+  e <- fmap ([BTC] <$) getPostBuild
+  -- uncomment this when ERGO is ready
+  -- e <- selectCurrenciesWidget []
   nextWidget $ ffor e $ \ac -> Retractable {
 #ifdef ANDROID
       retractableNext = setupLoginPage wt m ac

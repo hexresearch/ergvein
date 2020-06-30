@@ -69,6 +69,11 @@ scannerFor cur = case cur of
 scannerBtc :: forall t m . MonadFront t m => m ()
 scannerBtc = void $ workflow waiting
   where
+    -- dbgStage = Workflow $ do
+    --   buildE <- delay 0.1 =<< getPostBuild
+    --   e <- writeWalletsScannedHeight $ (BTC, 1774599) <$ buildE
+    --   pure ((), waiting <$ e)
+
     waiting = Workflow $ do
       logWrite "Waiting for unscanned filters"
       buildE <- getPostBuild
@@ -87,7 +92,7 @@ scannerBtc = void $ workflow waiting
         logWrite $ "Start scanning for new " <> showt (fh - sc)
       pure ((), scanning . snd <$> newFiltersE)
 
-    scanning i0 = Workflow $  do
+    scanning i0 = Workflow $ do
       logWrite "Scanning filters"
       waitingE <- scanningAllBtcKeys i0
       pure ((), waiting <$ waitingE)
@@ -132,12 +137,11 @@ scanningBtcBlocks :: MonadFront t m => Vector (Int, EgvXPubKey) -> Event t [(HB.
 scanningBtcBlocks keys hashesE = do
   let noScanE = fforMaybe hashesE $ \bls -> if null bls then Just () else Nothing
   heightMapD <- holdDyn M.empty $ M.fromList <$> hashesE
-  blocksE <- logEvent "Blocks requested: " =<< requestBTCBlocks (fst . unzip <$> hashesE)
-  storedBlocksE <- storeMultipleBlocksByE blocksE
-  storedTxHashesE <- storeMultipleBlocksTxHashesByE blocksE
+  blocksE <- logEvent "Blocks requested: " =<< requestBTCBlocks (nub . fst . unzip <$> hashesE)
+  storedBlocks <- storeMultipleBlocksTxHashesByE =<< storeMultipleBlocksByE blocksE
   let toAddr = xPubToBtcAddr . extractXPubKeyFromEgv
       keymap = M.fromList . V.toList . V.map (second (BtcAddress . toAddr)) $ keys
-      blkHeightE = current heightMapD `attach` blocksE
+      blkHeightE = current heightMapD `attach` storedBlocks
   txsUpdsE <- logEvent "Transactions got: " =<< getAddressesTxs ((\(a,b) -> (keymap,a,b)) <$> blkHeightE)
   let txsE = fmap fst txsUpdsE
   let updE = fforMaybe txsUpdsE $ \(_,(o,i)) -> if not (M.null o && null i) then Just (o,i) else Nothing
