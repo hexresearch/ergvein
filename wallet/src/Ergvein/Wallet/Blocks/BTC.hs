@@ -93,8 +93,8 @@ blocksRequester bhs NodeConnection{..} = do
 storeBlockByE :: (MonadBaseConstr t m, HasBlocksStorage (Performable m)) => Event t Block -> m (Event t ())
 storeBlockByE = performEvent . fmap insertBtcBlock
 
-storeMultipleBlocksByE :: (MonadBaseConstr t m, HasBlocksStorage (Performable m)) => Event t [Block] -> m (Event t ())
-storeMultipleBlocksByE = performEvent . fmap insertMultipleBtcBlocks
+storeMultipleBlocksByE :: (MonadBaseConstr t m, HasBlocksStorage (Performable m)) => Event t [Block] -> m (Event t [Block])
+storeMultipleBlocksByE e = performEvent $ ffor e $ \blocks -> insertMultipleBtcBlocks blocks >> pure blocks
 
 getBlockByE :: (MonadBaseConstr t m, HasBlocksStorage (Performable m)) => Event t BlockHash -> m (Event t (Maybe Block))
 getBlockByE = performEvent . fmap getBtcBlock
@@ -102,5 +102,5 @@ getBlockByE = performEvent . fmap getBtcBlock
 storeBlockTxHashesByE :: (MonadBaseConstr t m, HasBlocksStorage (Performable m)) => Event t Block -> m (Event t ())
 storeBlockTxHashesByE = performEvent . fmap insertBtcBlockTxHashesToBlockHash
 
-storeMultipleBlocksTxHashesByE :: (MonadBaseConstr t m, HasBlocksStorage (Performable m)) => Event t [Block] -> m (Event t ())
-storeMultipleBlocksTxHashesByE = performEvent . fmap insertMultipleBtcBlocksTxHashesToBlockHash
+storeMultipleBlocksTxHashesByE :: (MonadBaseConstr t m, HasBlocksStorage (Performable m)) => Event t [Block] -> m (Event t [Block])
+storeMultipleBlocksTxHashesByE e = performEvent $ ffor e $ \blocks -> insertMultipleBtcBlocksTxHashesToBlockHash blocks >> pure blocks
