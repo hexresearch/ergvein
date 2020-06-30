@@ -8,6 +8,7 @@ module Ergvein.Types.Utxo
   , getBtcUtxoSetFromStore
   , isUtxoConfirmed
   , updateBtcUtxoSetPure
+  , reconfirmBtxUtxoSetPure
   ) where
 
 import Data.Aeson
@@ -17,11 +18,12 @@ import Network.Haskoin.Transaction
 
 import Ergvein.Aeson
 import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
-data EgvUtxoStatus = EUtxoConfirmed | EUtxoSending | EUtxoReceiving
+data EgvUtxoStatus = EUtxoConfirmed | EUtxoSemiConfirmed BlockHeight | EUtxoSending | EUtxoReceiving
   deriving (Eq, Show, Read)
 $(deriveJSON defaultOptions ''EgvUtxoStatus)
 
@@ -55,3 +57,11 @@ updateBtcUtxoSetPure :: BtcUtxoUpdate -> BtcUtxoSet -> BtcUtxoSet
 updateBtcUtxoSetPure (outs, ins) s = foo (M.union outs s) ins $ \m (op, b) ->
   M.update (\(val, _) -> if b then Nothing else Just (val, EUtxoSending)) op m
   where foo b ta f = foldl' f b ta
+
+confirmationGap :: Word64
+confirmationGap = 3
+
+reconfirmBtxUtxoSetPure :: BlockHeight -> BtcUtxoSet -> BtcUtxoSet
+reconfirmBtxUtxoSetPure bh = fmap $ \(v, stat) -> case stat of
+  EUtxoSemiConfirmed bh0 -> if bh - bh0 >= confirmationGap - 1 then (v, EUtxoConfirmed) else (v,stat)
+  _ -> (v,stat)

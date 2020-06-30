@@ -34,7 +34,7 @@ filterBtcAddress :: (MonadIO m, HasFiltersStorage t m)
   => BlockHeight                              -- ^ Starting height
   -> (BlockHeight -> BlockHeight -> IO ())    -- ^ Progress logging callback
   -> BtcAddress                               -- ^ Address to match
-  -> m (BlockHeight, Vector BlockHash)        -- ^ Scanned height and matches
+  -> m (BlockHeight, Vector (BlockHash, BlockHeight))        -- ^ Scanned height and matches
 filterBtcAddress i0 progCb ba = case guardSegWit ba of
     Nothing -> pure (filterStartingHeight BTC, mempty)
     Just saddr -> scanBtcFilters i0 (f saddr) (filterStartingHeight BTC, mempty)
@@ -42,7 +42,7 @@ filterBtcAddress i0 progCb ba = case guardSegWit ba of
     f saddr i n bhash cfilter (!_, !acc) = do
       liftIO $ progCb i n
       res <- applyBtcFilter btcNetwork bhash cfilter saddr
-      let acc' = if res then V.cons bhash acc else acc
+      let acc' = if res then V.cons (bhash, i) acc else acc
       pure (i, acc')
 
 -- | Scan through unprocessed filters and return scanned height and matches. The function
