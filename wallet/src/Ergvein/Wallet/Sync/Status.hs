@@ -50,7 +50,7 @@ nominalToBehind t
   | t < 24 * 3600 = SyncHours $ ceiling $ t / 3600
   | otherwise = SyncDays $ ceiling $ t / (24 * 3600)
 
-data SyncStage = SyncFilters | SyncAddress !Int | SyncAddressInternal !Int | SyncAddressExternal !Int | SyncHeaders | SyncBlocks
+data SyncStage = SyncFilters | SyncAddress !Int | SyncAddressInternal !Int | SyncAddressExternal !Int | SyncHeaders | SyncBlocks !Int !Int
   deriving (Show, Eq, Ord)
 
 instance LocalizedPrint SyncStage where
@@ -61,14 +61,18 @@ instance LocalizedPrint SyncStage where
       SyncAddressExternal i -> "external key address " <> showt i
       SyncAddress i -> "address " <> showt i
       SyncHeaders -> "headers"
-      SyncBlocks  -> "blocks"
+      SyncBlocks i j -> showt i <> " of " <> showt j <> case j of
+        1 -> " new block"
+        _ -> " new blocks"
     Russian -> case v of
       SyncFilters -> "фильтров"
       SyncAddressInternal i -> "адрес внутреннего ключа " <> showt i
       SyncAddressExternal i -> "адрес внешнего ключа " <> showt i
       SyncAddress i -> "адрес " <> showt i
       SyncHeaders -> "заголовков"
-      SyncBlocks  -> "блоков"
+      SyncBlocks i j -> showt i <> " из " <> showt j <> case j of
+        1 -> " новго блока"
+        _ -> "новых блоков"
 
 data SyncProgress =
     SyncMeta {
@@ -88,12 +92,12 @@ syncProgressBehind v = case v of
 
 instance LocalizedPrint SyncProgress where
   localizedShow l v@SyncMeta{..} = case l of
-    English -> "Syncing " <> localizedShow l syncMetaStage <> " of " <> showt syncMetaCur <> precentStr
-    Russian -> "Синхронизация " <> localizedShow l syncMetaStage <> " " <> showt syncMetaCur <> precentStr
+    English -> "Syncing " <> localizedShow l syncMetaStage <> " of " <> showt syncMetaCur <> ". " <> showt percent <> "% complete."
+    Russian -> "Синхронизация " <> localizedShow l syncMetaStage <> " " <> showt syncMetaCur <> ". Завершено на " <> showt percent <> "%."
     where
       percent :: Int
       percent = if syncMetaTotal == 0 then 0 else ceiling $ 100 * (fromIntegral syncMetaAmount :: Double) / fromIntegral syncMetaTotal
-      precentStr = " " <> showt percent <> "% "
+
   localizedShow l Synced = case l of
     English -> "Synced"
     Russian -> "Синхронизировано"
