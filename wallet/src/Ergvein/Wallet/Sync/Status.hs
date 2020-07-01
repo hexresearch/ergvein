@@ -72,7 +72,7 @@ instance LocalizedPrint SyncStage where
       SyncHeaders -> "заголовков"
       SyncBlocks i j -> showt i <> " из " <> showt j <> case j of
         1 -> " новго блока"
-        _ -> "новых блоков"
+        _ -> " новых блоков"
 
 data SyncProgress =
     SyncMeta {
