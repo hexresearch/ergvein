@@ -12,7 +12,10 @@ import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Alert.Handler
 import Ergvein.Wallet.Client
+import Ergvein.Wallet.Elements
+import Ergvein.Wallet.Language
 import Ergvein.Wallet.Loading
+import Ergvein.Wallet.Localization.TestnetDisclaimer
 import Ergvein.Wallet.Log.Writer
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
@@ -21,6 +24,7 @@ import Ergvein.Wallet.Page.Initial
 import Ergvein.Wallet.Page.Restore
 import Ergvein.Wallet.Password
 import Ergvein.Wallet.Util
+import Ergvein.Wallet.Wrapper
 import Reflex.ExternalRef
 
 import Reflex.Dom.Main (mainWidgetWithCss)
@@ -32,7 +36,7 @@ frontend = do
   askPasswordModal
   logWriter =<< fmap fst getLogsTrigger
   logWrite "Entering initial page"
-  void $ retractStack initialPage `liftAuth` retractStack startPage
+  testnetDisclaimerPage
 
 startPage :: MonadFront t m => m ()
 startPage = do
@@ -40,3 +44,16 @@ startPage = do
   if _pubStorage'restoring ps
     then restorePage
     else balancesPage
+
+-- TODO: remove this disclaimer when ERGO is ready
+testnetDisclaimerPage :: MonadFrontBase t m => m ()
+testnetDisclaimerPage = void $ workflow testnetDisclaimer
+  where
+    testnetDisclaimer = Workflow $ wrapperSimple True $ do
+      elClass "h4" "testnet-disclaimer-label" $ dynText =<< localized TestnetDisclaimerLabel
+      elClass "p" "testnet-disclaimer-text" $ dynText =<< localized TestnetDisclaimerText
+      closeE <- outlineButton TestnetDisclaimerClose
+      pure ((), startWallet <$ closeE)
+    startWallet = Workflow $ do
+      void $ retractStack initialPage `liftAuth` retractStack startPage
+      pure ((), never)

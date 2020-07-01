@@ -14,6 +14,7 @@ import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Discovery
+import Ergvein.Index.Server.DB.Queries
 
 import qualified Data.Text.IO as T
 import Data.Text (Text, pack)
@@ -24,15 +25,19 @@ data Options = Options {
 
 type ServerUrl = Text
 
-data Command =
-    CommandListen FilePath
+data Command =  CleanKnownPeers FilePath | CommandListen FilePath
 
 options :: Parser Options
 options = Options
   <$> subparser (
-       command "listen" (info (listenCmd <**> helper) $ progDesc "Start server")
+       command "listen" (info (listenCmd <**> helper) $ progDesc "Start server") <>
+       command "clean-known-peers" (info (cleanKnownPeers <**> helper) $ progDesc "resetting peers")
   )
   where
+    cleanKnownPeers = CleanKnownPeers
+      <$> strArgument (
+          metavar "CONFIG_PATH"
+        )
     listenCmd = CommandListen
       <$> strArgument (
           metavar "CONFIG_PATH"
@@ -58,7 +63,7 @@ onStartup env = do
 
 startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
-    CommandListen cfgPath ->  do
+    CommandListen cfgPath -> do
       T.putStrLn $ pack "Server starting"
       cfg <- loadConfig cfgPath
       env <- runStdoutLoggingT $ newServerEnv cfg
@@ -69,3 +74,8 @@ startServer Options{..} = case optsCommand of
           app = logStdoutDev $ indexServerApp env
           warpSettings = setPort (cfgServerPort cfg) settings
       runSettings warpSettings app
+    CleanKnownPeers cfgPath -> do
+      cfg <- loadConfig cfgPath
+      env <- runStdoutLoggingT $ newServerEnv cfg
+      runServerMIO env emptyKnownPeers
+      T.putStrLn $ pack "knownPeers cleared"

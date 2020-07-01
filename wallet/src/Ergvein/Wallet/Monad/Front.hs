@@ -153,7 +153,7 @@ getCurrentHeight c = do
   holdUniqDyn $ (fromMaybe 0 . M.lookup c) <$> md
 
 -- | Update current height of longest chain for given currency.
-setCurrentHeight :: MonadFront t m => Currency -> Event t Integer -> m ()
+setCurrentHeight :: MonadFront t m => Currency -> Event t Integer -> m (Event t ())
 setCurrentHeight c e = do
   r <- getHeightRef
   restoredD <- fmap _pubStorage'restoring <$> getPubStorageD
