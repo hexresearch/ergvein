@@ -33,6 +33,7 @@ import Ergvein.Types.Currency
 import Data.String (IsString, fromString)
 
 import           Data.Serialize              as S
+import qualified Network.Haskoin.Block as HB
 import qualified Network.Haskoin.Transaction as HK
 
 type BtcTx = HK.Tx
@@ -62,8 +63,8 @@ instance ToJSON ErgTx where
   toJSON = String . ergTxToString
 
 data EgvTx
-  = BtcTx { getBtcTx :: !BtcTx, getBtcHeight :: !(Maybe BlockHeight) }
-  | ErgTx { getErgTx :: !ErgTx, getErgHeight :: !(Maybe BlockHeight) }
+  = BtcTx { getBtcTx :: !BtcTx, getBtcHeHa :: !(Maybe (BlockHeight, HB.BlockHash))}
+  | ErgTx { getErgTx :: !ErgTx, getErgHeHa :: !(Maybe (BlockHeight, HB.BlockHash))}
   deriving (Eq, Show, Read)
 
 egvTxToString :: EgvTx -> Text
@@ -73,9 +74,6 @@ egvTxToString (ErgTx tx _) = ergTxToString tx
 egvTxId :: EgvTx -> TxId
 egvTxId (BtcTx tx _) = HK.txHashToHex $ HK.txHash tx
 egvTxId (ErgTx tx _) = error "egvTxId: implement for Ergo!"
-
-egvTxToJSON :: EgvTx -> Value
-egvTxToJSON = String . egvTxToString
 
 egvTxFromJSON :: Currency -> Value -> Parser EgvTx
 egvTxFromJSON cur
@@ -88,29 +86,32 @@ egvTxFromJSON cur
       Nothing -> fail "could not decode Ergo transaction"
       Just x  -> return $ ErgTx x Nothing
 
-setEgvTxHeight :: EgvTx -> Maybe BlockHeight -> EgvTx
-setEgvTxHeight etx mh = case etx of
+setEgvTxHeHa :: EgvTx -> Maybe (BlockHeight, HB.BlockHash) -> EgvTx
+setEgvTxHeHa etx mh = case etx of
   BtcTx tx _ -> BtcTx tx mh
   ErgTx tx _ -> ErgTx tx mh
 
 instance ToJSON EgvTx where
-  toJSON egvTx@(BtcTx tx h) = object [
+  toJSON egvTx@(BtcTx tx heha) = object [
       "currency"  .= toJSON BTC
     , "tx"        .= btcTxToString tx
-    , "height"    .= toJSON h
+    , "height"    .= toJSON (fst <$> heha)
+    , "block"     .= toJSON (snd <$> heha)
     ]
-  toJSON egvTx@(ErgTx tx h) = object [
+  toJSON egvTx@(ErgTx tx heha) = object [
       "currency"  .= toJSON ERGO
     , "tx"        .= ergTxToString tx
-    , "height"    .= toJSON h
+    , "height"    .= toJSON (fst <$> heha)
+    , "block"     .= toJSON (snd <$> heha)
     ]
 
 instance FromJSON EgvTx where
   parseJSON = withObject "EgvTx" $ \o -> do
     cur  <- o .: "currency"
-    h    <- o .:? "height"
+    he   <- o .:? "height"
+    ha   <- o .:? "block"
     tx   <- egvTxFromJSON cur =<< (o .: "tx")
-    pure $ setEgvTxHeight tx h
+    pure $ setEgvTxHeHa tx $ (,) <$> he <*> ha
 
 -- | Hexadecimal representation of transaction id
 type TxId = Text
