@@ -13,7 +13,6 @@ import Data.Proxy
 import Data.Text
 import Data.Vector (Vector)
 import Network.Haskoin.Keys
-import qualified Network.Haskoin.Block as HB
 
 import Ergvein.Aeson
 import Ergvein.Text
@@ -90,13 +89,9 @@ data CurrencyPubStorage = CurrencyPubStorage {
   , _currencyPubStorage'scannedKey    :: !(Maybe Int, Maybe Int)  -- ^ When restoring here we put which keys are we already scanned
   , _currencyPubStorage'utxos         :: !EgvUtxoSetStorage
   , _currencyPubStorage'scannedHeight :: !(Maybe BlockHeight)
-  , _currencyPubStorage'headers       :: !(M.Map HB.BlockHash HB.BlockHeader)
   } deriving (Eq, Show, Read)
 
 makeLenses ''CurrencyPubStorage
-
-instance FromJSONKey HB.BlockHash where
-instance ToJSONKey HB.BlockHash where
 
 $(deriveJSON aesonOptionsStripToApostroph ''CurrencyPubStorage)
 

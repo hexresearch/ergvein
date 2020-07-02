@@ -140,7 +140,11 @@ currenciesPage = wrapper True STPSTitle (Just $ pure currenciesPage) $ do
       uac cE =  updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ cE
       mkStore prvStr currency = CurrencyPubStorage
         (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency)
-        Map.empty Nothing (Just 0, Just 0) Map.empty Nothing Map.empty
+        Map.empty
+        Nothing
+        (Just 0, Just 0)
+        Map.empty
+        Nothing
 
 -- TODO: uncomment commented lines when ERGO is ready
 unitsPage :: MonadFront t m => m ()
