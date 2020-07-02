@@ -87,7 +87,15 @@ createPubStorage :: Bool -> EgvRootXPrvKey -> [Currency] -> PubStorage
 createPubStorage isRestored rootPrvKey cs = PubStorage rootPubKey pubStorages cs isRestored
   where restState = if isRestored then (Just 0, Just 0) else (Nothing, Nothing)
         rootPubKey = EgvRootXPubKey $ deriveXPubKey $ unEgvRootXPrvKey rootPrvKey
-        mkStore c = CurrencyPubStorage (createPubKeystore $ deriveCurrencyMasterPubKey rootPrvKey c) M.empty Nothing restState M.empty Nothing M.empty
+        mkStore c = CurrencyPubStorage {
+            _currencyPubStorage'pubKeystore   = (createPubKeystore $ deriveCurrencyMasterPubKey rootPrvKey c)
+          , _currencyPubStorage'transactions  = M.empty
+          , _currencyPubStorage'height        = Nothing
+          , _currencyPubStorage'scannedKey    = restState
+          , _currencyPubStorage'utxos         = M.empty
+          , _currencyPubStorage'scannedHeight = Nothing
+          , _currencyPubStorage'headers       = M.empty
+          }
         pubStorages = M.fromList [(currency, mkStore currency) | currency <- cs]
 
 createStorage :: MonadIO m => Bool -> Mnemonic -> (WalletName, Password) -> [Currency] -> m (Either StorageAlert WalletStorage)

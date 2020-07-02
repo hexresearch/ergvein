@@ -191,4 +191,4 @@ getAddrTxsFromBlock addr heights block = do
     txs = HB.blockTxns block
     bhash = HB.headerHash . HB.blockHeader $ block
     mh = Just $ maybe 0 fromIntegral $ M.lookup bhash heights
-    mheha = (, bhash) <$> mh
+    mheha = (\h -> EgvTxMeta h bhash) <$> mh
