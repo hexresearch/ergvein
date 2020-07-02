@@ -5,11 +5,11 @@ module Ergvein.Wallet.Sync.Status(
   , syncProgressBehind
   ) where
 
-
 import Data.Time
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Platform
 import Reflex.Localize
 
 data SyncBehind = SyncDays !Int | SyncHours !Int
@@ -50,25 +50,21 @@ nominalToBehind t
   | t < 24 * 3600 = SyncHours $ ceiling $ t / 3600
   | otherwise = SyncDays $ ceiling $ t / (24 * 3600)
 
-data SyncStage = SyncFilters | SyncAddress !Int | SyncAddressInternal !Int | SyncAddressExternal !Int | SyncHeaders | SyncBlocks
+data SyncStage = SyncFilters | SyncAddressInternal !Int | SyncAddressExternal !Int | SyncBlocks !Int !Int
   deriving (Show, Eq, Ord)
 
 instance LocalizedPrint SyncStage where
   localizedShow l v = case l of
     English -> case v of
       SyncFilters -> "filters"
-      SyncAddressInternal i -> "internal key address " <> showt i
-      SyncAddressExternal i -> "external key address " <> showt i
-      SyncAddress i -> "address " <> showt i
-      SyncHeaders -> "headers"
-      SyncBlocks  -> "blocks"
+      SyncAddressInternal i -> "#" <> showt i
+      SyncAddressExternal i -> "#" <> showt i
+      SyncBlocks i j -> showt i <> " of " <> showt j
     Russian -> case v of
       SyncFilters -> "фильтров"
-      SyncAddressInternal i -> "адрес внутреннего ключа " <> showt i
-      SyncAddressExternal i -> "адрес внешнего ключа " <> showt i
-      SyncAddress i -> "адрес " <> showt i
-      SyncHeaders -> "заголовков"
-      SyncBlocks  -> "блоков"
+      SyncAddressInternal i -> "#" <> showt i
+      SyncAddressExternal i -> "#" <> showt i
+      SyncBlocks i j -> showt i <> " из " <> showt j
 
 data SyncProgress =
     SyncMeta {
@@ -87,13 +83,29 @@ syncProgressBehind v = case v of
   Synced -> Nothing
 
 instance LocalizedPrint SyncProgress where
-  localizedShow l v@SyncMeta{..} = case l of
-    English -> "Syncing " <> localizedShow l syncMetaStage <> " of " <> showt syncMetaCur <> precentStr
-    Russian -> "Синхронизация " <> localizedShow l syncMetaStage <> " " <> showt syncMetaCur <> precentStr
-    where
-      percent :: Int
-      percent = if syncMetaTotal == 0 then 0 else ceiling $ 100 * (fromIntegral syncMetaAmount :: Double) / fromIntegral syncMetaTotal
-      precentStr = " " <> showt percent <> "% "
+  localizedShow l SyncMeta{syncMetaStage = syncMetaStage@SyncFilters, ..} = case l of
+    English -> "Syncing " <> localizedShow l syncMetaStage <> " of " <> showt syncMetaCur <> ": " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
+    Russian -> "Синхронизация " <> localizedShow l syncMetaStage <> " " <> showt syncMetaCur <> ": " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
+
+  localizedShow l SyncMeta{syncMetaStage = syncMetaStage@(SyncAddressInternal _), ..} = case l of
+    English -> "Syncing " <> showt syncMetaCur <> " change address " <> localizedShow l syncMetaStage <> ", " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
+    Russian -> "Синхронизация " <> showt syncMetaCur <> " адреса для сдачи " <> localizedShow l syncMetaStage <> ", " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
+
+  localizedShow l SyncMeta{syncMetaStage = syncMetaStage@(SyncAddressExternal _), ..} = case l of
+    English -> "Syncing " <> showt syncMetaCur <> " receiving address " <> localizedShow l syncMetaStage <> ", " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
+    Russian -> "Синхронизация " <> showt syncMetaCur <> " адреса для получения " <> localizedShow l syncMetaStage <> ", " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
+
+  localizedShow l SyncMeta{syncMetaStage = syncMetaStage@(SyncBlocks _ _), ..} = if isAndroid
+    then case l of
+      English -> "Syncing new blocks of " <> showt syncMetaCur <> ": " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
+      Russian -> "Синхронизация новых блоков " <> showt syncMetaCur <> ": " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
+     else case l of
+      English -> "Syncing new blocks of " <> showt syncMetaCur <> ": " <> localizedShow l syncMetaStage <> ", " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
+      Russian -> "Синхронизация новых блоков " <> showt syncMetaCur <> ": " <> localizedShow l syncMetaStage <> ", " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
+
   localizedShow l Synced = case l of
     English -> "Synced"
     Russian -> "Синхронизировано"
+
+percent :: Int -> Int -> Int
+percent amount total = if total == 0 then 0 else ceiling $ 100 * (fromIntegral amount :: Double) / fromIntegral total

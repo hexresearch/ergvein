@@ -42,7 +42,7 @@ instance LocalizedPrint PasswordPageStrings where
       PPSUnlock -> "Enter the password to unlock private keys"
     Russian -> case v of
       PPSTitle  -> "Установите пароль шифрования для кошелька"
-      PPSDescr  -> "Этот пароль используется для каждой операции с вашими деньгами. Можете оставить поле пустым, если хотите (не рекомендуется)"
+      PPSDescr  -> "Этот пароль используется для каждой операции с вашими деньгами. Можете оставить поле пустым, если хотите (не рекомендуется)."
       PPSUnlock -> "Введите пароль для расшифровки приватных ключей"
 
 data PasswordWidgetStrings = PWSPassword | PWSPassNamed Text | PWSRepeat | PWSSet | PWSNoMatch | PWSGo | PWSLogin | PWSEmptyLogin | PWSEmptyPassword | PWSEmptyPattern
