@@ -54,14 +54,14 @@ instance LocalizedPrint BalancesStrings where
 
 balancesPage :: MonadFront t m => m ()
 balancesPage = do
-  anon_name <- getWalletName
+  walletName <- getWalletName
 #ifdef ANDROID
   c <- liftIO $ loadCounter
-  liftIO $ saveCounter $ PatternTries $ M.insert anon_name 0 (patterntriesCount c)
+  liftIO $ saveCounter $ PatternTries $ M.insert walletName 0 (patterntriesCount c)
 #endif
-  wrapper False BalancesTitle (Just $ pure balancesPage) $ do
+  wrapper False walletName (Just $ pure balancesPage) $ do
     syncWidget =<< getSyncProgress
-    currenciesList anon_name
+    currenciesList walletName
 
 currenciesList :: MonadFront t m => Text -> m ()
 currenciesList name = divClass "currency-content" $ do
