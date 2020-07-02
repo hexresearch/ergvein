@@ -15,19 +15,19 @@ import Network.Bitcoin.Api.Types
 import Network.HTTP.Client.TLS
 import Servant.Client.Core
 
-import Ergvein.Index.Server.DB
 import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.DB
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 
 import qualified Data.Map.Strict             as M
+import qualified Data.Set                    as Set
 import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 import qualified Network.Ergo.Api.Client     as ErgoApi
-import qualified Network.Haskoin.Constants   as HK
 import qualified Network.HTTP.Client         as HC
-import qualified Data.Set                    as Set
+import qualified Network.Haskoin.Constants   as HK
 
 import Debug.Trace
 
@@ -40,6 +40,7 @@ data ServerEnv = ServerEnv
     , envClientManager            :: !HC.Manager
     , envPeerDiscoveryRequisites  :: !PeerDiscoveryRequisites
     , envFeeEstimates             :: !(TVar (M.Map Currency FeeBundle))
+    , envShutdownFlag             :: !(TVar Bool)
     }
 
 discoveryRequisites :: Config -> PeerDiscoveryRequisites
@@ -71,12 +72,12 @@ newServerEnv cfg = do
     logger <- liftIO newChan
     liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
 
-
     levelDBContext <- openDb (cfgDBPath cfg)
     ergoNodeClient <- liftIO $ ErgoApi.newClient (cfgERGONodeHost cfg) (cfgERGONodePort cfg)
     httpManager    <- liftIO $ HC.newManager HC.defaultManagerSettings
     tlsManager     <- liftIO $ newTlsManager
     feeEstimates   <- liftIO $ newTVarIO M.empty
+    shutdown       <- liftIO $ newTVarIO False
     let bitcoinNodeNetwork = if cfgBTCNodeIsTestnet cfg then HK.btcTest else HK.btc
         descDiscoveryRequisites = discoveryRequisites cfg
     traceShowM cfg
@@ -89,6 +90,7 @@ newServerEnv cfg = do
       , envClientManager           = tlsManager
       , envPeerDiscoveryRequisites = descDiscoveryRequisites
       , envFeeEstimates            = feeEstimates
+      , envShutdownFlag            = shutdown
       }
 
 -- | Log exceptions at Error severity
