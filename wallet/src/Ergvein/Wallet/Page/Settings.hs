@@ -61,7 +61,7 @@ settingsPage = wrapper True STPSTitle (Just $ pure settingsPage) $ do
           , goNetE
           , goUnitsE
           , goPortfolioE
-          ] 
+          ]
     void $ nextWidget $ ffor goE $ \spg -> Retractable {
         retractableNext = case spg of
           GoLanguage   -> languagePage
@@ -138,13 +138,15 @@ currenciesPage = wrapper True STPSTitle (Just $ pure currenciesPage) $ do
     pure ()
     where
       uac cE =  updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ cE
-      mkStore prvStr currency = CurrencyPubStorage
-        (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency)
-        Map.empty
-        Nothing
-        (Just 0, Just 0)
-        Map.empty
-        Nothing
+      mkStore prvStr currency = CurrencyPubStorage {
+          _currencyPubStorage'pubKeystore   = (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency)
+        , _currencyPubStorage'transactions  = Map.empty
+        , _currencyPubStorage'height        = Nothing
+        , _currencyPubStorage'scannedKey    = (Just 0, Just 0)
+        , _currencyPubStorage'utxos         = Map.empty
+        , _currencyPubStorage'scannedHeight = Nothing
+        , _currencyPubStorage'headers       = Map.empty
+        }
 
 -- TODO: uncomment commented lines when ERGO is ready
 unitsPage :: MonadFront t m => m ()

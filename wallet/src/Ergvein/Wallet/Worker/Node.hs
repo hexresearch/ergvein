@@ -72,9 +72,9 @@ bctNodeController = mdo
   pubStorageD <- getPubStorageD
   let (allBtcAddrsD, txidsD) = splitDynPure $ ffor pubStorageD $ \(PubStorage _ cm _ _) -> case M.lookup BTC cm of
         Nothing -> ([], S.empty)
-        Just (CurrencyPubStorage keystore txmap _ _ _ _) -> let
-          addrs = extractAddrs keystore
-          txids = S.fromList $ M.keys txmap
+        Just CurrencyPubStorage{..} -> let
+          addrs = extractAddrs _currencyPubStorage'pubKeystore
+          txids = S.fromList $ M.keys _currencyPubStorage'transactions
           in (addrs, txids)
 
   let btcLenD = ffor conMapD $ fromMaybe 0 . fmap M.size . DM.lookup BTCTag

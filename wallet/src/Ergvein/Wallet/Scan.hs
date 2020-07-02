@@ -186,8 +186,9 @@ getAddrTxsFromBlock addr heights block = do
   checkResults <- traverse (checkAddrTx addr) txs
   let filteredTxs = fst $ unzip $ filter snd (zip txs checkResults)
   utxo <- getUtxoUpdatesFromTxs mh addr filteredTxs
-  pure $ (, utxo) $ M.fromList [(HT.txHashToHex $ HT.txHash tx, BtcTx tx mh) | tx <- filteredTxs]
+  pure $ (, utxo) $ M.fromList [(HT.txHashToHex $ HT.txHash tx, BtcTx tx mheha) | tx <- filteredTxs]
   where
     txs = HB.blockTxns block
     bhash = HB.headerHash . HB.blockHeader $ block
     mh = Just $ maybe 0 fromIntegral $ M.lookup bhash heights
+    mheha = (\h -> EgvTxMeta h bhash) <$> mh
