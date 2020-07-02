@@ -11,6 +11,7 @@ module Ergvein.Wallet.Monad.Storage
   , getWalletsScannedHeightD
   , writeWalletsScannedHeight
   , reconfirmBtxUtxoSet
+  , insertBlockHeaders
   ) where
 
 import Control.Lens
@@ -37,6 +38,7 @@ import Ergvein.Wallet.Platform
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
+import qualified Network.Haskoin.Block as HB
 
 class (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t m | m -> t where
   getAddressByCurIx :: Currency -> Int -> m Base58
@@ -132,3 +134,9 @@ writeWalletsScannedHeight reqE = modifyPubStorage $ ffor reqE $ \(cur, h) ps -> 
   mcp = ps ^. pubStorage'currencyPubStorages . at cur
   in ffor mcp $ const $ ps & pubStorage'currencyPubStorages . at cur
     %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'scannedHeight .~ Just h
+
+insertBlockHeaders :: MonadStorage t m => Currency -> Event t [HB.Block] -> m ()
+insertBlockHeaders cur reqE = void . modifyPubStorage $ ffor reqE $ \blocks ps -> case blocks of
+  [] -> Nothing
+  _ -> let blkmap = M.fromList $ (\blk -> let bhead = HB.blockHeader blk in (HB.headerHash bhead, bhead)) <$> blocks
+    in Just $ ps & pubStorage'currencyPubStorages . at cur %~ fmap (currencyPubStorage'headers %~ M.union blkmap)
