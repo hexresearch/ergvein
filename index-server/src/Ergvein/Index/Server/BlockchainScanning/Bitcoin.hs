@@ -12,15 +12,16 @@ import           Data.Serialize
 import           Network.Bitcoin.Api.Blockchain
 import           Network.Bitcoin.Api.Client
 import           Network.Bitcoin.Api.Misc
+import           Control.Concurrent.STM.TVar
 
 import           Ergvein.Crypto.Hash
 import           Ergvein.Filters.Btc.Mutable
 import           Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import           Ergvein.Index.Server.BlockchainScanning.Types
+import           Ergvein.Index.Server.Config
 import           Ergvein.Index.Server.DB.Monad
 import           Ergvein.Index.Server.DB.Queries
 import           Ergvein.Index.Server.DB.Schema
-import           Ergvein.Index.Server.Config
 import           Ergvein.Index.Server.Dependencies
 import           Ergvein.Index.Server.Monad
 import           Ergvein.Index.Server.Utils
@@ -114,5 +115,7 @@ feeScaner = feeScaner' 0
           pure $ case res of
             [] -> h
             _  -> h'
-      liftIO $ threadDelay $ cfgFeeEstimateDelay cfg
-      feeScaner' h''
+      shutdownFlagVar <- getShutdownFlag
+      liftIO $ cancelableDelay shutdownFlagVar $ cfgFeeEstimateDelay cfg
+      shutdownFlag <- liftIO $ readTVarIO shutdownFlagVar
+      unless shutdownFlag $ feeScaner' h''
