@@ -21,7 +21,7 @@ instance Conversion DiscoveryTypes.Peer KnownPeerRecItem where
               Http -> False
     }
 
-instance Conversion KnownPeerRecItem Peer where
+instance Conversion KnownPeerRecItem DiscoveryTypes.Peer where
   convert peer = DiscoveryTypes.Peer
     { peerUrl = fromJust $ parseBaseUrl $ unpack $ knownPeerRecUrl peer
     , peerLastValidatedAt = read $ unpack $ knownPeerRecLastValidatedAt peer

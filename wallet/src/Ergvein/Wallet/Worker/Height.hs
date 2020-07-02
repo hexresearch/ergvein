@@ -35,7 +35,7 @@ heightAsker cur = mdo
   let goE = leftmost [() <$ tickE, buildE]
   resE <- getHeightRandom $ HeightRequest cur <$ goE
   let timeE = either (const errorHeightPoll) (const defaulHeightPoll) <$> resE
-  setCurrentHeight cur . fmapMaybe id =<< performEvent (ffor resE $ \case
+  void $ setCurrentHeight cur . fmapMaybe id =<< performEvent (ffor resE $ \case
     Left err -> do
       logWrite $ logPref <> "Height request has failed: " <> showt err
       pure Nothing
