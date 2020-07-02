@@ -69,6 +69,11 @@ scannerFor cur = case cur of
 scannerBtc :: forall t m . MonadFront t m => m ()
 scannerBtc = void $ workflow waiting
   where
+    -- dbgStage = Workflow $ do
+    --   buildE <- delay 0.1 =<< getPostBuild
+    --   e <- writeWalletsScannedHeight $ (BTC, 1774599) <$ buildE
+    --   pure ((), waiting <$ e)
+
     waiting = Workflow $ do
       logWrite "Waiting for unscanned filters"
       buildE <- getPostBuild

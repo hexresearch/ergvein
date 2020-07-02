@@ -1,27 +1,31 @@
 module Ergvein.Index.Server.BlockchainScanning.Common where
 
 import Control.Concurrent
+import Control.Concurrent.STM
+import Control.Concurrent.STM.TVar
 import Control.Immortal
 import Control.Monad.Catch
 import Control.Monad.Logger
-import Data.Foldable (traverse_)
+import Data.Foldable
 import Data.Maybe
+import System.Exit
 
+import Control.Monad.Reader
 import Ergvein.Index.Server.BlockchainScanning.Types
-import Ergvein.Index.Server.DB
 import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.DB
+import Ergvein.Index.Server.DB.Queries
+import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
+import Ergvein.Index.Server.Monad
+import Ergvein.Index.Server.Utils
+import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Ergvein.Text
-import Control.Monad.Reader
-import Ergvein.Index.Server.Monad
-import Ergvein.Index.Server.DB.Queries
 
 import qualified Network.Bitcoin.Api.Client                      as BitcoinApi
 import qualified Ergvein.Index.Server.BlockchainScanning.Bitcoin as BTCScanning
 import qualified Ergvein.Index.Server.BlockchainScanning.Ergo    as ERGOScanning
-import Database.Esqueleto
 
 data ScanProgressInfo = ScanProgressInfo
   { nfoCurrency      :: !Currency
@@ -37,14 +41,6 @@ scanningInfo = mapM nfo allCurrencies
       maybeScanned <- getScannedHeight currency
       actual <- actualHeight currency
       pure $ ScanProgressInfo currency maybeScanned actual
-
-blockHeightsToScan :: Currency -> ServerM [BlockHeight]
-blockHeightsToScan currency = do
-  actual  <- actualHeight currency
-  scanned <- getScannedHeight currency
-  
-  let start = maybe (currencyHeightStart currency) succ scanned
-  pure [start..actual]
 
 actualHeight :: Currency -> ServerM BlockHeight
 actualHeight currency = case currency of
@@ -65,10 +61,24 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
     scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
       cfg <- serverConfig
-      totalh <-  actualHeight currency
-      heights <- blockHeightsToScan currency
-      traverse_ (blockIteration totalh) heights
-      liftIO $ threadDelay $ cfgBlockchainScanDelay cfg
+      actual  <- actualHeight currency
+      scanned <- getScannedHeight currency
+      let toScanFrom = maybe (currencyHeightStart currency) succ scanned
+      go toScanFrom actual
+      shutdownFlag <- getShutdownFlag
+      liftIO $ cancelableDelay shutdownFlag $ cfgBlockchainScanDelay cfg
+      stopThreadIfShutdown thread
+      where
+        go from to = do
+          shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
+          when (not shutdownFlag && from <= to) $ do
+            blockIteration to from 
+            go (succ from) to 
+
+stopThreadIfShutdown :: Thread -> ServerM ()
+stopThreadIfShutdown thread = do
+  shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
+  when shutdownFlag $ liftIO $ stop thread
 
 blockchainScanning :: ServerM [Thread]
 blockchainScanning = sequenceA
@@ -77,7 +87,9 @@ blockchainScanning = sequenceA
   ]
 
 feesThread :: ServerM () -> ServerM Thread
-feesThread feescan = create $ logOnException . const feescan
+feesThread feescan = create $ logOnException . \thread -> do
+  feescan
+  stopThreadIfShutdown thread
 
 feesScanning :: ServerM [Thread]
 feesScanning = sequenceA

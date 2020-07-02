@@ -12,6 +12,8 @@ import Servant.API.Generic
 import System.Posix.Signals
 import qualified Data.Text.IO as T
 import Data.Text (Text, pack)
+import Control.Concurrent.STM.TVar
+import Control.Monad.STM
 
 import Ergvein.Index.API
 import Ergvein.Index.Server.Monad
@@ -30,7 +32,7 @@ onShutdown :: ServerEnv -> [Thread] -> IO ()
 onShutdown env workerTreads = do
   T.putStrLn $ pack "Server stop signal recivied..."
   T.putStrLn $ pack "service is stopping"
-  sequenceA $ mortalize <$> workerTreads
+  atomically $ writeTVar (envShutdownFlag env) True
   sequence_ $ wait <$> workerTreads
   T.putStrLn $ pack "service is stopped"
 
