@@ -51,24 +51,15 @@ filterBtcAddresses :: (MonadIO m, HasFiltersStorage t m)
   => BlockHeight                              -- ^ Starting height
   -> (BlockHeight -> BlockHeight -> IO ())    -- ^ Progress logging callback
   -> Vector BtcAddress                        -- ^ Addresses to match
-  -> m (BlockHeight, Vector BlockHash)        -- ^ Scanned height and matches
+  -> m (BlockHeight, Vector (BlockHash, BlockHeight))        -- ^ Scanned height and matches
 filterBtcAddresses i0 progCb as
-  | V.null as = pure (0, mempty)
+  | V.null bas = pure (0, mempty)
   | otherwise = scanBtcFilters i0 f (filterStartingHeight BTC, mempty)
   where
+    bas = V.mapMaybe guardSegWit as
     f i n bhash cfilter (!_, !acc) = do
+      bs <- encodeBtcAddrFilter cfilter
       liftIO $ progCb i n
-      res <- checkBtcAddresses bhash cfilter as
-      let acc' = if res then V.cons bhash acc else acc
+      res <- applyBtcFilterMany btcNetwork bhash cfilter $ V.toList bas
+      let acc' = if res then V.cons (bhash, i) acc else acc
       pure (i, acc')
-
-checkBtcAddresses :: MonadIO m => BlockHash -> BtcAddrFilter -> Vector BtcAddress -> m Bool
-checkBtcAddresses bhash cfilter cas
-  | V.null cas = pure False
-  | otherwise = let
-    caddr = V.head cas
-    in case guardSegWit caddr of
-          Nothing -> pure False
-          Just saddr -> do
-            res <- applyBtcFilter btcNetwork bhash cfilter saddr
-            if res then pure True else checkBtcAddresses bhash cfilter (V.drop 1 cas)

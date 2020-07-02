@@ -66,32 +66,31 @@ knownPeersActualization = do
   where
     scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
-      requisites <- getDiscoveryRequisites
+      requisites  <- getDiscoveryRequisites
       currentTime <- liftIO getCurrentTime
-      knownPeers <- getKnownPeersList
+      knownPeers  <- getKnownPeersList
 
-      let peersToFetchFrom = 
-            filter (not . isOutdated (descReqPredefinedPeers requisites) (descReqActualizationTimeout requisites) currentTime) knownPeers
+      let peersToFetchFrom = (isNotOutdated (descReqPredefinedPeers requisites) (descReqActualizationTimeout requisites) currentTime) `filter` knownPeers
       
       knowPeersSet <- knownPeersSet peersToFetchFrom
-      (peersToRefresh, fetchedPeers) <- mconcat <$> mapM peersKnownTo peersToFetchFrom
-      currentTime <- liftIO getCurrentTime
-      let uniqueNotDiscoveredFetchedPeers = (\x-> Peer x currentTime (baseUrlScheme x)) <$> (filter (not . (`Set.member` knowPeersSet)) $ uniqueElements fetchedPeers)
-      let r = (\x-> x {peerLastValidatedAt = currentTime} )<$> peersToRefresh
-      setKnownPeersList $ r ++ uniqueNotDiscoveredFetchedPeers
+      (failed, successful, fetched) <- mconcat <$> mapM queryKnownPeersTo peersToFetchFrom
+      let uniqueFetchedUrls = (not . (`Set.member` knowPeersSet)) `filter` uniqueElements fetched
+          uniqueFetched = (\x-> Peer x currentTime (baseUrlScheme x)) <$> uniqueFetchedUrls
+      let refreshedSuccessful = (\x-> x {peerLastValidatedAt = currentTime}) <$> successful
+      setKnownPeersList $ failed ++ refreshedSuccessful ++ uniqueFetched
       liftIO $ threadDelay $ descReqActualizationDelay requisites
 
-    isOutdated :: Set BaseUrl -> NominalDiffTime -> UTCTime -> Peer -> Bool
-    isOutdated predefined retryTimeout currentTime peer = 
+    isNotOutdated :: Set BaseUrl -> NominalDiffTime -> UTCTime -> Peer -> Bool
+    isNotOutdated predefined retryTimeout currentTime peer = 
       let fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt peer
-      in (not $ Set.member (peerUrl peer) predefined) && retryTimeout <= fromLastSuccess
+      in Set.member (peerUrl peer) predefined || retryTimeout >= fromLastSuccess
 
-    peersKnownTo :: Peer -> ServerM ([Peer], [BaseUrl])
-    peersKnownTo peer = do
+    queryKnownPeersTo :: Peer -> ServerM ([Peer], [Peer], [BaseUrl])
+    queryKnownPeersTo peer = do
       knownPeers <- runExceptT $ peerKnownPeers $ peerUrl peer
       pure $ case knownPeers of
-        Right peers -> ([peer], peers)
-        _ -> mempty
+        Right peers -> ([]     , [peer] , peers)
+        otherwise   -> ([peer] , []     , []   )
 
 syncWithDefaultPeers :: ServerM ()
 syncWithDefaultPeers = do
@@ -100,7 +99,6 @@ syncWithDefaultPeers = do
   currentTime <- liftIO getCurrentTime
   let discoveredPeersSet = Set.fromList $ peerUrl <$> discoveredPeers
       toAdd = (\x -> Peer x currentTime (baseUrlScheme x)) <$> (Set.toList $ predefinedPeers Set.\\ discoveredPeersSet)
-  predefinedPeers <- descReqPredefinedPeers <$> getDiscoveryRequisites
   addKnownPeers toAdd
 
 peerIntroduce :: ServerM ()

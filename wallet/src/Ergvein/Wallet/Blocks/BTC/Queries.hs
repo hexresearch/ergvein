@@ -31,7 +31,8 @@ insertMultipleBtcBlocks blks = do
   e <- getBlocksStorage
   liftIO . readWriteTransaction e $ do
     db <- getBtcBlocksDb
-    flip traverse_ blks $ \blk ->
+    flip traverse_ blks $ \blk -> do
+      -- liftIO $ putStrLn $ "Inserting block: " <> show (headerHash $ blockHeader blk)
       put db (headerHash $ blockHeader blk) $ Just blk
 
 getBtcBlock :: (MonadIO m, HasBlocksStorage m) => BlockHash -> m (Maybe Block)
@@ -55,7 +56,8 @@ insertMultipleBtcBlocksTxHashesToBlockHash blks = do
   liftIO . readWriteTransaction e $ do
     db <- getBtcTxsToBlocksDb
     flip traverse_ blks $ \blk ->
-      flip traverse_ (blockTxns blk) $ \tx ->
+      flip traverse_ (blockTxns blk) $ \tx -> do
+        -- liftIO $ putStrLn $ "Inserting tx " <> show (txHash tx) <> " for block " <> show (headerHash $ blockHeader blk)
         put db (txHash tx) $ Just (headerHash $ blockHeader blk)
 
 getBtcBlockHashByTxHash :: (MonadIO m, HasBlocksStorage m) => TxHash -> m (Maybe BlockHash)

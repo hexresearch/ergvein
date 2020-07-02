@@ -129,8 +129,8 @@ getWalletsScannedHeightD cur = do
     & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'scannedHeight
   where h0 = fromIntegral $ filterStartingHeight cur
 
-writeWalletsScannedHeight :: MonadStorage t m => Event t (Currency, BlockHeight) -> m ()
-writeWalletsScannedHeight reqE = void . modifyPubStorage $ ffor reqE $ \(cur, h) ps -> let
+writeWalletsScannedHeight :: MonadStorage t m => Event t (Currency, BlockHeight) -> m (Event t ())
+writeWalletsScannedHeight reqE = modifyPubStorage $ ffor reqE $ \(cur, h) ps -> let
   mcp = ps ^. pubStorage'currencyPubStorages . at cur
   in ffor mcp $ const $ ps & pubStorage'currencyPubStorages . at cur
     %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'scannedHeight .~ Just h

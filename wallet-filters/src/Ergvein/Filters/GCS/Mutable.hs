@@ -20,6 +20,7 @@ module Ergvein.Filters.GCS.Mutable(
   , decodeGcs
   , constructGcs
   , matchGcs
+  , matchGcsMany
   ) where
 
 import Control.Monad.IO.Class
@@ -77,6 +78,9 @@ constructGcs p k m ls = G.fromVectorUnboxed p ids
 -- set. The queried item is hashed in the same way as the set members and compared
 -- against the reconstructed values. Note that querying does not require the
 -- entire decompressed set be held in memory at once.
+--
+-- Note: the filter is consumed after the operation. Use 'matchGcsMany' to match
+-- against several targets at once.
 matchGcs :: MonadIO m
   => Int -- ^ the bit P parameter of the Golomb-Rice coding
   -> SipKey -- ^ k the 128-bit key used to randomize the SipHash outputs
@@ -93,3 +97,23 @@ matchGcs p k m n gcs target = fmap fst $ G.foldl f (False, 0) gcs
       in if | setItem == targetHash -> G.Stop (True, setItem)
             | setItem > targetHash -> G.Stop (False, setItem)
             | otherwise -> G.Next (False, setItem)
+
+-- | Same as `matchGcs` but allows to check several targets against the GCS.
+-- Note that the filter is consumed after the operation.
+matchGcsMany :: (MonadIO m)
+  => Int -- ^ the bit P parameter of the Golomb-Rice coding
+  -> SipKey -- ^ k the 128-bit key used to randomize the SipHash outputs
+  -> Word64 -- ^ M the target false positive rate
+  -> Word64 -- ^ N the total amount of items in set
+  -> GCS -- ^ Filter set
+  -> [ByteString] -- ^ Targets to test against Gcs
+  -> m Bool
+matchGcsMany p k m n gcs targets = fmap (\(v,_,_)->v) $ G.foldl f (False, targetHashes, 0) gcs
+  where
+    targetHashes = fmap (hashToRange (n * m) k) targets
+    f (!_, !hs, !lastValue) delta = pure $ let
+      setItem = lastValue + delta
+      hs' = filter (setItem <) hs
+      in if | any (setItem ==) hs -> G.Stop (True, hs, setItem)
+            | null hs' -> G.Stop (False, hs, setItem)
+            | otherwise -> G.Next (False, hs', setItem)
