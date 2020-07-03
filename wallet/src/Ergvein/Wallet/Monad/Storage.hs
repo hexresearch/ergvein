@@ -72,25 +72,25 @@ addTxMapToPubStorage txmapE = void . modifyPubStorage $ ffor txmapE $ \(cur, txm
 
 setLabelToExtPubKey :: MonadStorage t m => Event t (Currency, Int, Text) -> m ()
 setLabelToExtPubKey reqE = void . modifyPubStorage $ ffor reqE $ \(cur, i, l) ->
-  updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'key = updateKeyLabel l $ extKeyBox'key kb}
+  updateKeyBoxWith cur i $ \kb -> kb {pubKeyBox'key = updateKeyLabel l $ pubKeyBox'key kb}
 
 setFlagToExtPubKey :: MonadStorage t m => Event t (Currency, Int) -> m ()
 setFlagToExtPubKey reqE = void . modifyPubStorage $ ffor reqE $ \(cur, i) ->
-  updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'manual = True}
+  updateKeyBoxWith cur i $ \kb -> kb {pubKeyBox'manual = True}
 
 insertTxsInPubKeystore :: MonadStorage t m => Event t (Currency, Map Int [EgvTx]) -> m (Event t())
 insertTxsInPubKeystore reqE = modifyPubStorage $ ffor reqE $ \(cur, mtx) ps -> let
   upd i txs ps = do
     let txids = fmap egvTxId txs
         txmap = M.fromList $ fmap egvTxId txs `zip` txs
-    ps' <- updateKeyBoxWith cur i (\kb -> kb {extKeyBox'txs = S.union (extKeyBox'txs kb) $ S.fromList txids}) ps
+    ps' <- updateKeyBoxWith cur i (\kb -> kb {pubKeyBox'txs = S.union (pubKeyBox'txs kb) $ S.fromList txids}) ps
     pure $ modifyCurrStorage cur (currencyPubStorage'transactions %~ M.union txmap) ps'
   go !macc i txids = case macc of
     Nothing -> upd i txids ps
     Just acc -> maybe (Just acc) Just $ upd i txids acc
   in M.foldlWithKey' go Nothing mtx
 
-updateKeyBoxWith :: Currency -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> PubStorage -> Maybe PubStorage
+updateKeyBoxWith :: Currency -> Int -> (EgvPubKeyBox -> EgvPubKeyBox) -> PubStorage -> Maybe PubStorage
 updateKeyBoxWith cur i f ps =
   let mk = ps ^. pubStorage'currencyPubStorages . at cur
         & \mcps -> join $ ffor mcps $ \cps -> cps ^. currencyPubStorage'pubKeystore

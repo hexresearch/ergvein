@@ -305,7 +305,7 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
     let mXPubKey = (flip (V.!?) i) . pubKeystore'external . _currencyPubStorage'pubKeystore =<< M.lookup cur currMap
     case mXPubKey of
       Nothing -> fail "NOT IMPLEMENTED" -- TODO: generate new address here
-      Just (EgvExternalKeyBox key _ _) ->
+      Just (EgvPubKeyBox key _ _) ->
         let k = case key of
               ErgXPubKey k' _ -> k'
               BtcXPubKey k' _ -> k'

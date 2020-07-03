@@ -5,7 +5,7 @@ module Ergvein.Types.Keys (
   , EgvRootXPubKey(..)
   , EgvXPrvKey(..)
   , EgvXPubKey(..)
-  , EgvExternalKeyBox(..)
+  , EgvPubKeyBox(..)
   , PrvKeystore(..)
   , PubKeystore(..)
   , KeyPurpose(..)
@@ -15,7 +15,6 @@ module Ergvein.Types.Keys (
   , xPubImport
   , getLastUnusedKey
   , getPublicKeys
-  , externalKeys
   , egvXPubCurrency
   , getExternalPubKeyIndex
   , extractXPubKeyFromEgv
@@ -299,22 +298,22 @@ data PrvKeystore = PrvKeystore {
 
 $(deriveJSON aesonOptionsStripToApostroph ''PrvKeystore)
 
-data EgvExternalKeyBox = EgvExternalKeyBox {
-  extKeyBox'key    :: EgvXPubKey
-, extKeyBox'txs    :: S.Set TxId
-, extKeyBox'manual :: Bool
+data EgvPubKeyBox = EgvPubKeyBox {
+  pubKeyBox'key    :: EgvXPubKey
+, pubKeyBox'txs    :: S.Set TxId
+, pubKeyBox'manual :: Bool
 } deriving (Eq, Show, Read)
 
-$(deriveJSON aesonOptionsStripToApostroph ''EgvExternalKeyBox)
+$(deriveJSON aesonOptionsStripToApostroph ''EgvPubKeyBox)
 
 data PubKeystore = PubKeystore {
   pubKeystore'master   :: EgvXPubKey
   -- ^Extended public key with BIP44 derivation path /m\/purpose'\/coin_type'\/account'/.
-, pubKeystore'external :: Vector EgvExternalKeyBox
+, pubKeystore'external :: Vector EgvPubKeyBox
   -- ^Map with BIP44 external extended public keys and corresponding indices.
   -- This addresses must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/0\/address_index/.
-, pubKeystore'internal :: Vector EgvXPubKey
+, pubKeystore'internal :: Vector EgvPubKeyBox
   -- ^Map with BIP44 internal extended public keys and corresponding indices.
   -- This addresses must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.
@@ -322,22 +321,22 @@ data PubKeystore = PubKeystore {
 
 $(deriveJSON aesonOptionsStripToApostroph ''PubKeystore)
 
-getLastUnusedKey :: PubKeystore -> Maybe (Int, EgvExternalKeyBox)
-getLastUnusedKey (PubKeystore _ ext _) = go Nothing ext
+getLastUnusedKey :: KeyPurpose -> PubKeystore -> Maybe (Int, EgvPubKeyBox)
+getLastUnusedKey kp PubKeystore{..} = go Nothing vec
   where
-    go :: Maybe (Int, EgvExternalKeyBox) -> Vector EgvExternalKeyBox -> Maybe (Int, EgvExternalKeyBox)
+    vec = case kp of
+      Internal -> pubKeystore'internal
+      External -> pubKeystore'external
+    go :: Maybe (Int, EgvPubKeyBox) -> Vector EgvPubKeyBox -> Maybe (Int, EgvPubKeyBox)
     go mk vec = if V.null vec then mk else let
-      kb@(EgvExternalKeyBox _ txs m) = V.last vec
+      kb@(EgvPubKeyBox _ txs m) = V.last vec
       in if m || not (S.null txs)
         then mk
         else go (Just (V.length vec - 1, kb)) $ V.init vec
 
 -- | Get all public keys in storage (external and internal) to scan for new transactions for them.
 getPublicKeys :: PubKeystore -> Vector EgvXPubKey
-getPublicKeys ps = externalKeys ps <> pubKeystore'internal ps
-
-externalKeys :: PubKeystore -> Vector EgvXPubKey
-externalKeys PubKeystore{..} = fmap extKeyBox'key pubKeystore'external
+getPublicKeys PubKeystore{..} = fmap pubKeyBox'key $ pubKeystore'external <> pubKeystore'internal
 
 getExternalPubKeyIndex :: PubKeystore -> Int
 getExternalPubKeyIndex = V.length . pubKeystore'external

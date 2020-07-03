@@ -65,7 +65,7 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
       let nextE = flip pushAlways filtersE $ const $ do
             ps <- sample . current $ psD
             let r = pubStorageScannedKeys BTC External ps
-                unused = maybe 0 fst $ pubStorageLastUnused BTC ps
+                unused = maybe 0 fst $ pubStorageLastUnused BTC External ps
                 gap = r - unused
             pure $ scanKeys gap r
       performEvent_ $ ffor nextE $ const $ logWrite "Going to scan stage!"
