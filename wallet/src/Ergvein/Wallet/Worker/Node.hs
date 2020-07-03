@@ -70,7 +70,7 @@ bctNodeController = mdo
   te        <- fmap void $ tickLossyFromPostBuildTime btcRefrTimeout
 
   pubStorageD <- getPubStorageD
-  let (allBtcAddrsD, txidsD) = splitDynPure $ ffor pubStorageD $ \(PubStorage _ cm _ _) -> case M.lookup BTC cm of
+  let (allBtcAddrsD, txidsD) :: _ = splitDynPure $ ffor pubStorageD $ \(PubStorage _ cm _ _) -> case M.lookup BTC cm of
         Nothing -> ([], S.empty)
         Just CurrencyPubStorage{..} -> let
           addrs = extractAddrs _currencyPubStorage'pubKeystore
@@ -127,12 +127,17 @@ bctNodeController = mdo
   addTxMapToPubStorage $ fforMaybe valsE $ \(vals,_) -> case vals of
     [] -> Nothing
     _ -> Just . (BTC, ) . M.fromList . snd . unzip $ vals
-  insertTxsInPubKeystore $ ffor valsE $ \(vals,_) -> (BTC, prepareToInsertTxs vals)
-  let storeE = fforMaybe valsE $ \(_,(o,i)) -> if not (M.null o && null i) then Just (o,i) else Nothing
-  updateBtcUtxoSet storeE
+  -- insertTxsInPubKeystore $ ffor valsE $ \(vals,_) -> (BTC, prepareToInsertTxs vals)
+  -- let storeE = fforMaybe valsE $ \(_,(o,i)) -> if not (M.null o && null i) then Just (o,i) else Nothing
+  -- updateBtcUtxoSet storeE
   pure ()
   where
     switchTuple (a, b) = (switchDyn . fmap leftmost $ a, switchDyn . fmap leftmost $ b)
+
+-- insertTxsUtxoInPubKeystore :: MonadStorage t m
+--   => Currency
+--   -> Event t (V.Vector (ScanKeyBox, M.Map TxId EgvTx), BtcUtxoUpdate)
+--   -> m (Event  t ())
 
 checkAddrTx' :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => [(Maybe Int, EgvAddress)] -> HT.Tx -> m [(Maybe Int, (TxId, EgvTx))]
 checkAddrTx' iaddrs tx = fmap catMaybes $ flip traverse iaddrs $ \(mi,addr) -> do
