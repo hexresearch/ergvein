@@ -63,6 +63,7 @@ library
         Ergvein.Wallet.Localization.PatternKey
         Ergvein.Wallet.Localization.Receive
         Ergvein.Wallet.Localization.Seed
+        Ergvein.Wallet.Localization.Send
         Ergvein.Wallet.Localization.Settings
         Ergvein.Wallet.Localization.Share
         Ergvein.Wallet.Localization.Storage

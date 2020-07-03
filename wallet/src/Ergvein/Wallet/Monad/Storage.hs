@@ -12,6 +12,7 @@ module Ergvein.Wallet.Monad.Storage
   , writeWalletsScannedHeight
   , reconfirmBtxUtxoSet
   , insertBlockHeaders
+  , getBtcUtxoD
   ) where
 
 import Control.Lens
@@ -140,3 +141,9 @@ insertBlockHeaders cur reqE = void . modifyPubStorage $ ffor reqE $ \blocks ps -
   [] -> Nothing
   _ -> let blkmap = M.fromList $ (\blk -> let bhead = HB.blockHeader blk in (HB.headerHash bhead, bhead)) <$> blocks
     in Just $ ps & pubStorage'currencyPubStorages . at cur %~ fmap (currencyPubStorage'headers %~ M.union blkmap)
+
+getBtcUtxoD :: MonadStorage t m => m (Dynamic t BtcUtxoSet)
+getBtcUtxoD = do
+  pubD <- getPubStorageD
+  pure $ ffor pubD $ \ps -> fromMaybe M.empty $ join $
+    ps ^. pubStorage'currencyPubStorages . at BTC & fmap (getBtcUtxoSetFromStore . view currencyPubStorage'utxos)

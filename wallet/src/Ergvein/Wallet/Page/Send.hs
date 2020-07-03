@@ -6,6 +6,9 @@ module Ergvein.Wallet.Page.Send (
   ) where
 
 import Control.Monad.Except
+import Data.Ratio ((%))
+import Data.Word
+import Network.Haskoin.Address
 import Text.Read
 
 import Ergvein.Text
@@ -17,43 +20,34 @@ import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Localization.Send
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
 
+import qualified Data.List as L
+import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Validation as V
-import qualified Data.Map.Strict as M
+import qualified Network.Haskoin.Transaction as HT
 
-data SendStrings
-  = SendTitle Currency
-  | SendBtnString
-  | RecipientString
-  | AmountString
-  | BtnPasteString
-  | BtnScanQRCode
-
-instance LocalizedPrint SendStrings where
-  localizedShow l v = case l of
-    English -> case v of
-      SendTitle c -> "Send " <> currencyName c
-      SendBtnString -> "Send"
-      RecipientString -> "Recipient"
-      AmountString -> "Amount"
-      BtnPasteString -> "Paste"
-      BtnScanQRCode -> "Scan"
-    Russian -> case v of
-      SendTitle c -> "Отправить " <> currencyName c
-      SendBtnString -> "Отправить"
-      RecipientString -> "Получатель"
-      AmountString -> "Сумма"
-      BtnPasteString -> "Вставить"
-      BtnScanQRCode -> "Сканировать"
+import Control.Lens
+import Ergvein.Types.Storage
+import Ergvein.Types.Utxo
+import Data.Maybe
 
 sendPage :: MonadFront t m => Currency -> Maybe (EgvAddress, Rational) -> m ()
-sendPage cur minit = wrapper False (SendTitle cur) (Just $ pure $ sendPage cur Nothing) $ do
+sendPage cur minit = do
+  buildE <- delay 0.05 =<< getPostBuild
+  void $ nextWidget $ ffor buildE $ const $ Retractable {
+    retractableNext = btcSendConfirmationWidget debugVals
+  , retractablePrev = Nothing
+  }
+
+sendPage' :: MonadFront t m => Currency -> Maybe (EgvAddress, Rational) -> m ()
+sendPage' cur minit = wrapper False (SendTitle cur) (Just $ pure $ sendPage cur Nothing) $ do
   let thisWidget = Just $ pure $ sendPage cur minit
   navbarWidget cur thisWidget NavbarSend
   form $ mdo
@@ -83,52 +77,66 @@ sendPage cur minit = wrapper False (SendTitle cur) (Just $ pure $ sendPage cur N
           amount <- sampleDyn amountD
           pure (V.toEither $ validateRecipient cur (T.unpack recipient),
                 V.toEither $ validateAmount $ T.unpack amount)
+        goE = flip push validationE $ \(a,b) -> do
+          mfee <- sampleDyn feeD
+          pure $ join $ ffor mfee $ \fee -> either (const Nothing) Just $ (fee,,) <$> a <*> b
     pure ()
 
-data BTCFeeMode = BFMLow | BFMMid | BFMHigh | BFMManual
-  deriving (Eq)
+data FeeSelectorStatus = FSSNoEntry | FSSNoCache | FSSNoManual | FSSManual Word64 | FSSLvl (FeeLevel, Word64)
 
-instance LocalizedPrint BTCFeeMode where
-  localizedShow l v = case l of
-    English -> case v of
-      BFMLow    -> "Low"
-      BFMMid    -> "Mid"
-      BFMHigh   -> "High"
-      BFMManual -> "Manual"
-    Russian -> case v of
-      BFMLow    -> "Низкий"
-      BFMMid    -> "Средний"
-      BFMHigh   -> "Высокий"
-      BFMManual -> "Вручную"
+debugVals :: (Word64, Word64, EgvAddress)
+debugVals = (1000, 1, BtcAddress {getBtcAddr = WitnessPubKeyAddress {getAddrHash160 = "50beb79f500060a3faaf466d388732c0ebecc6f8"}})
 
-data FeeStrings
-  = FSLevel
-  | FSSelect
-  | FSLevelDesc (FeeLevel, Int)
-  | FSFee Int
-  | FSInvalid
-  | FSNoFees
+data UtxoPoint = UtxoPoint {upPoint :: !HT.OutPoint, upValue :: !Word64}
+  deriving (Show)
 
-instance LocalizedPrint FeeStrings where
-  localizedShow l v = case l of
-    English -> case v of
-      FSLevel -> "Fee level"
-      FSSelect -> "Select fee level"
-      FSLevelDesc (lvl,f) -> "~" <> showt f <> " satoshi/vbyte. <" <> showt (feeTargetBlocks BTC lvl) <> " blocks."
-      FSFee f -> "~" <> showt f <> " satoshi/vbyte"
-      FSInvalid -> "Enter valid integer fee in satoshi/vbyte"
-      FSNoFees -> "Fees not found in the cache. Please enter the fee manually."
-    Russian -> case v of
-      FSLevel -> "Уровень комиссии"
-      FSSelect -> "Выберите уровень комиссии"
-      FSLevelDesc (lvl,f) -> "~" <> showt f <> " satoshi/vbyte. <" <> showt (feeTargetBlocks BTC lvl) <> " блоков."
-      FSFee f -> "~" <> showt f <> " satoshi/vbyte"
-      FSInvalid -> "Введите комиссию. Целое число, satoshi/vbyte"
-      FSNoFees -> "Уровень комиссий не найден в кэше. Пожалуйста, введите комиссию вручную."
+instance Eq UtxoPoint where
+  (UtxoPoint _ a) == (UtxoPoint _ b) = a == b
 
-data FeeSelectorStatus = FSSNoEntry | FSSNoCache | FSSNoManual | FSSManual Int | FSSLvl (FeeLevel, Int)
+-- | We need to sort in desc order to reduce Tx size
+instance Ord UtxoPoint where
+  (UtxoPoint _ a) `compare` (UtxoPoint _ b) = b `compare` a
 
-btcFeeSelectionWidget :: forall t m . MonadFront t m => Event t () -> m (Dynamic t (Maybe Int))
+instance HT.Coin UtxoPoint where
+  coinValue (UtxoPoint _ v) = v
+
+btcSendConfirmationWidget :: MonadFront t m => (Word64, Word64, EgvAddress) -> m ()
+btcSendConfirmationWidget v@(amount, fee, addr) = wrapper False (SendTitle BTC) (Just $ pure $ btcSendConfirmationWidget v) $ do
+  let thisWidget = Just $ pure $ btcSendConfirmationWidget v
+  navbarWidget BTC thisWidget NavbarSend
+  el "div" $ text $ showt v
+  psD <- getPubStorageD
+  widgetHoldDyn $ ffor psD $ \ps -> do
+    let utxomap = fromMaybe M.empty $ join $ ps ^. pubStorage'currencyPubStorages . at BTC
+          & fmap (getBtcUtxoSetFromStore . view currencyPubStorage'utxos)
+        (confs, unconfs) = partition' $ M.toList utxomap
+        firstpick = HT.chooseCoins amount fee 2 True $ L.sort confs
+        finalpick = case firstpick of
+          Right v -> Right v
+          Left err -> HT.chooseCoins amount fee 2 True $ L.sort $ confs <> unconfs
+    case finalpick of
+      Left _ -> el "div" $ text $ showt "No solution found. Not enough money"
+      Right (pick, change) -> do
+        let n = length pick
+        let ops = upPoint <$> pick
+        let estFee = HT.guessTxFee fee 2 n
+        el "div" $ text $ "Fee estimate: " <> showt estFee
+        el "div" $ text $ "Change: " <> showt change
+        void $ traverse (el "div" . text . showt) ops
+
+    pure ()
+
+  pure ()
+  where
+    foo b f ta = L.foldl' f b ta
+    partition' :: [(HT.OutPoint, (Word64, EgvUtxoStatus))] -> ([UtxoPoint], [UtxoPoint])
+    partition' = foo ([], []) $ \(cs, ucs) (op, (v, stat)) -> let upoint = UtxoPoint op v in case stat of
+      EUtxoConfirmed -> (upoint:cs, ucs)
+      EUtxoSemiConfirmed _ -> (upoint:cs, ucs)
+      EUtxoSending -> (cs, ucs)
+      EUtxoReceiving -> (cs, upoint:ucs)
+
+btcFeeSelectionWidget :: forall t m . MonadFront t m => Event t () -> m (Dynamic t (Maybe Word64))
 btcFeeSelectionWidget sendE = do
   feesD <- getFeesD
   divClass "fee-widget" $ do
