@@ -1,11 +1,8 @@
 module Ergvein.Types.Utxo
   (
-    EgvUtxoSet(..)
-  , EgvUtxoStatus(..)
+    EgvUtxoStatus(..)
   , BtcUtxoSet
-  , EgvUtxoSetStorage
   , BtcUtxoUpdate
-  , getBtcUtxoSetFromStore
   , isUtxoConfirmed
   , updateBtcUtxoSetPure
   , reconfirmBtxUtxoSetPure
@@ -39,19 +36,8 @@ type BtcUtxoSet = M.Map OutPoint (Word64, EgvUtxoStatus)
 -- snd's bool: True - confirmed, must be deleted from UTXO set, False - set status to EUtxoSending
 type BtcUtxoUpdate = (BtcUtxoSet, [(OutPoint, Bool)])
 
-data EgvUtxoSet = BtcSet BtcUtxoSet | ErgoSet ()
-  deriving (Eq, Show, Read)
-$(deriveJSON defaultOptions ''EgvUtxoSet)
-
 instance FromJSONKey OutPoint
 instance ToJSONKey OutPoint
-
-type EgvUtxoSetStorage = M.Map Currency EgvUtxoSet
-
-getBtcUtxoSetFromStore :: EgvUtxoSetStorage -> Maybe BtcUtxoSet
-getBtcUtxoSetFromStore st = case M.lookup BTC st of
-  Just (BtcSet s) -> Just s
-  _ -> Nothing
 
 updateBtcUtxoSetPure :: BtcUtxoUpdate -> BtcUtxoSet -> BtcUtxoSet
 updateBtcUtxoSetPure (outs, ins) s = foo (M.union outs s) ins $ \m (op, b) ->

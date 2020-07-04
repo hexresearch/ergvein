@@ -102,8 +102,7 @@ btcBalances :: MonadFront t m => m (Dynamic t Money)
 btcBalances = do
   pubSD <- getPubStorageD
   pure $ ffor pubSD $ \ps -> let
-    utxo = M.elems $ fromMaybe M.empty $ join $ ps ^. pubStorage'currencyPubStorages . at BTC
-      & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'utxos & getBtcUtxoSetFromStore
+    utxo = M.elems $ fromMaybe M.empty $ ps ^. pubStorage'currencyPubStorages . at BTC & fmap (view currencyPubStorage'utxos)
     in Money BTC $ foo 0 utxo $ \s (v,_) -> s + v
   where foo b ta f = L.foldl' f b ta
 

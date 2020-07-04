@@ -93,15 +93,11 @@ insertTxsUtxoInPubKeystore cur reqE = modifyPubStorage $ ffor reqE $ \(vec, upds
   go !macc val = case macc of
     Nothing -> upd val ps1
     Just acc -> maybe (Just acc) Just $ upd val acc
-  in V.foldl' go (Just ps) vec
+  in V.foldl' go (Just ps2) vec
 
 updateBtcUtxoSet :: BtcUtxoUpdate -> PubStorage -> PubStorage
 updateBtcUtxoSet upds@(o,i) ps = if (M.null o && null i) then ps else
-  modifyCurrStorage BTC (\cps -> cps & currencyPubStorage'utxos %~ M.adjust f BTC) ps
-  where
-    f set = case set of
-      ErgoSet _ -> set
-      BtcSet old -> BtcSet (updateBtcUtxoSetPure upds old)
+  modifyCurrStorage BTC (\cps -> cps & currencyPubStorage'utxos %~ updateBtcUtxoSetPure upds) ps
 
 updateKeyBoxWith :: Currency -> KeyPurpose -> Int -> (EgvPubKeyBox -> EgvPubKeyBox) -> PubStorage -> Maybe PubStorage
 updateKeyBoxWith cur kp i f ps =
@@ -127,12 +123,7 @@ updateKeyLabel l key = case key of
 
 reconfirmBtxUtxoSet :: MonadStorage t m => Event t BlockHeight -> m ()
 reconfirmBtxUtxoSet reqE = void . modifyPubStorage $ ffor reqE $ \bh ps ->
-  Just $ ps & pubStorage'currencyPubStorages . at BTC
-    %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'utxos
-      %~ \us -> foo BTC us $ \case
-        BtcSet bs -> BtcSet $ reconfirmBtxUtxoSetPure bh bs
-        ErgoSet v -> ErgoSet v
-  where foo b c a = M.adjust a b c
+  Just $ modifyCurrStorage BTC (\cps -> cps & currencyPubStorage'utxos %~ reconfirmBtxUtxoSetPure bh) ps
 
 getWalletsScannedHeightD :: MonadStorage t m => Currency -> m (Dynamic t BlockHeight)
 getWalletsScannedHeightD cur = do
@@ -156,5 +147,5 @@ insertBlockHeaders cur reqE = void . modifyPubStorage $ ffor reqE $ \blocks ps -
 getBtcUtxoD :: MonadStorage t m => m (Dynamic t BtcUtxoSet)
 getBtcUtxoD = do
   pubD <- getPubStorageD
-  pure $ ffor pubD $ \ps -> fromMaybe M.empty $ join $
-    ps ^. pubStorage'currencyPubStorages . at BTC & fmap (getBtcUtxoSetFromStore . view currencyPubStorage'utxos)
+  pure $ ffor pubD $ \ps -> fromMaybe M.empty $
+    ps ^. pubStorage'currencyPubStorages . at BTC & fmap (view currencyPubStorage'utxos)

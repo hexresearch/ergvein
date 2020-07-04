@@ -88,7 +88,7 @@ data CurrencyPubStorage = CurrencyPubStorage {
   , _currencyPubStorage'transactions  :: !(M.Map TxId EgvTx)
   , _currencyPubStorage'height        :: !(Maybe BlockHeight)     -- ^ Last height seen by the wallet
   , _currencyPubStorage'scannedKey    :: !(Maybe Int, Maybe Int)  -- ^ When restoring here we put which keys are we already scanned
-  , _currencyPubStorage'utxos         :: !EgvUtxoSetStorage
+  , _currencyPubStorage'utxos         :: !BtcUtxoSet              -- ^ TODO: Change to a generalized one, after we switch to DMaps
   , _currencyPubStorage'scannedHeight :: !(Maybe BlockHeight)
   , _currencyPubStorage'headers       :: !(M.Map HB.BlockHash HB.BlockHeader)
   } deriving (Eq, Show, Read)

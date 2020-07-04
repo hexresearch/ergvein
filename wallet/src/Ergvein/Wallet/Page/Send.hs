@@ -107,8 +107,7 @@ btcSendConfirmationWidget v@(amount, fee, addr) = wrapper False (SendTitle BTC) 
   el "div" $ text $ showt v
   psD <- getPubStorageD
   widgetHoldDyn $ ffor psD $ \ps -> do
-    let utxomap = fromMaybe M.empty $ join $ ps ^. pubStorage'currencyPubStorages . at BTC
-          & fmap (getBtcUtxoSetFromStore . view currencyPubStorage'utxos)
+    let utxomap = fromMaybe M.empty $ ps ^. pubStorage'currencyPubStorages . at BTC & fmap (view currencyPubStorage'utxos)
         (confs, unconfs) = partition' $ M.toList utxomap
         firstpick = HT.chooseCoins amount fee 2 True $ L.sort confs
         finalpick = case firstpick of
