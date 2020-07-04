@@ -31,7 +31,6 @@ import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Worker.Node
 import Ergvein.Wallet.Wrapper
-import Ergvein.Wallet.Headers.Types
 
 import Data.Map.Strict as Map
 import qualified Data.Set as S
@@ -39,8 +38,11 @@ import qualified Data.List as L
 import Network.Haskoin.Address
 import Data.Maybe (fromMaybe, isJust)
 import Data.Time
+import Data.Time.Clock.POSIX
+import Data.Time.Format
 import Data.Text as T
 import Data.Serialize
+import Data.Word
 
 import qualified Network.Haskoin.Block              as HK
 import qualified Network.Haskoin.Constants          as HK
@@ -205,22 +207,27 @@ transactionInfoPage cur tr@TransactionView{..} = wrapper False HistoryTITitle (J
 historyTableWidget :: MonadFront t m => Currency -> [TransactionView] -> m (Event t TransactionView)
 historyTableWidget cur trList = case cur of
   BTC -> do
-    txsD <- transactionsGetting BTC
+    (txsD,hghtD) <- transactionsGetting BTC
     txClickDE <- widgetHoldDyn $ ffor txsD $ \txs -> do
-      txClickE <- traverse historyTableRow txs
+      hght <- sampleDyn hghtD
+      txClickE <- traverse (historyTableRow hght) txs
       pure $ leftmost txClickE
     pure $ switchDyn txClickDE
   ERGO -> do
-    txClickE <- traverse historyTableRow trList
+    txClickE <- traverse (historyTableRow 0) trList
     pure $ leftmost txClickE
   where
-    historyTableRow :: MonadFront t m => TransactionView -> m (Event t TransactionView)
-    historyTableRow tr@TransactionView{..} = divButton "history-table-row" $ do
+    historyTableRow :: MonadFront t m =>  Word64 -> TransactionView -> m (Event t TransactionView)
+    historyTableRow hght tr@TransactionView{..} = divButton "history-table-row" $ do
       divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ symb $ text $ showMoney txAmount
       divClass "history-date" $ text $ txDate
-      divClass ("history-status-" <> ((T.toLower . showt) txInOut)) $ stat
+      divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> confsClass) $ text $ showt confs
       pure tr
       where
+        confs = txConfirmations txInfoView
+        confsClass = if (confs == 0)
+          then "unconfirmed"
+          else "confirmed"
         symb :: MonadFront t m => m a -> m a
         symb ma = case txInOut of
           TransRefill -> do
@@ -234,11 +241,13 @@ historyTableWidget cur trList = case cur of
           TransConfirmed -> spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" $ blank
           TransUncofirmed -> spanClass "history-page-status-icon" $ elClass "i" "fas fa-question fa-fw" $ blank
 
-transactionsGetting :: MonadFront t m => Currency -> m (Dynamic t [TransactionView])
+transactionsGetting :: MonadFront t m => Currency -> m (Dynamic t [TransactionView],Dynamic t Word64)
 transactionsGetting cur = do
   buildE <- delay 0.2 =<< getPostBuild
   ps <- getPubStorage
   pubSD <- getPubStorageD
+  let mStor psBS = fromMaybe 0 $ maybe (Just 0) _currencyPubStorage'height $ Map.lookup cur (_pubStorage'currencyPubStorages psBS)
+  heightD <- holdDyn (mStor ps) $ poke (updated pubSD) $ \pbs -> pure $ mStor pbs
   let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _ _) -> case Map.lookup BTC cm of
         Nothing -> []
         Just (CurrencyPubStorage keystore txmap _ _ _ _) -> extractAddrs keystore
@@ -252,26 +261,27 @@ transactionsGetting cur = do
 
   filtrTxListSE <- performFork $ ffor buildE $ \_ -> do
     let tx = filterTx abS ps
-    getAndFilterBlocks allBtcAddrsD tx store
+    getAndFilterBlocks heightD allBtcAddrsD tx store
 
   filtrTxListE <- performFork $ ffor (updated hD) $ \tx -> do
-    getAndFilterBlocks allBtcAddrsD tx store
+    getAndFilterBlocks heightD allBtcAddrsD tx store
 
   sD <- holdDyn [] filtrTxListSE
   hS <- sampleDyn $ sD
 
   filtrHD <- holdDyn [] $ leftmost [filtrTxListSE, filtrTxListE]
-  pure filtrHD
+  pure (filtrHD, heightD)
   where
-    getAndFilterBlocks btcAddrsD tx store = do
+    getAndFilterBlocks heightD btcAddrsD tx store = do
       allbtcAdrS <- filtArd <$> sampleDyn btcAddrsD
+      hght <- sampleDyn heightD
       liftIO $ flip runReaderT store $ do
         blh <- traverse getBtcBlockHashByTxHash $ fmap HK.txHash $ fmap (getBtcTx) tx
         bl <- traverse getBlockFromHash blh
         --blN <- traverse getBlockNodeFromHash blh
         b <- traverse (checkAddr allbtcAdrS) tx
         let txRefList = fmap (calcRefill (fmap getBtcAddr allbtcAdrS)) tx
-        pure $ fmap snd $ L.filter fst $ L.zip b (prepareTransactionView <$> txListRaw bl blh tx txRefList)
+        pure $ fmap snd $ L.filter fst $ L.zip b (prepareTransactionView hght <$> txListRaw bl blh tx txRefList)
 
     filterTx ac pubS = case cur of
       BTC  -> fmap snd $ fromMaybe [] $ fmap Map.toList $ _currencyPubStorage'transactions <$> Map.lookup cur (_pubStorage'currencyPubStorages pubS)
@@ -297,18 +307,11 @@ transactionsGetting cur = do
       Just blockHash -> do
         mBlock <- getBtcBlock blockHash
         pure mBlock
-{-
-    getBlockNodeFromHash :: (MonadIO m, HasBlocksStorage m, HasHeadersStorage m, PlatformNatives) => Maybe HK.BlockHash -> m (Maybe HK.BlockNode)
-    getBlockNodeFromHash mBlockHash = case mBlockHash of
-      Nothing -> pure Nothing
-      Just blockHash -> do
-        mBlockNode <- HK.getBlockHeader blockHash
-        pure mBlockNode-}
 
-prepareTransactionView :: TxRawInfo -> TransactionView
-prepareTransactionView TxRawInfo{..} = TransactionView {
+prepareTransactionView :: Word64 -> TxRawInfo -> TransactionView
+prepareTransactionView hght TxRawInfo{..} = TransactionView {
     txAmount = txom
-  , txDate = "pending"--blTime
+  , txDate = blTime
   , txInOut = TransRefill
   , txInfoView = txInf
   , txStatus = TransUncofirmed
@@ -321,19 +324,25 @@ prepareTransactionView TxRawInfo{..} = TransactionView {
        then "https://www.blockchain.com/btc-testnet/tx/" <> txHex
        else "https://www.blockchain.com/btc/tx/" <> txHex
      ,txFee           = Money BTC 0
-     ,txConfirmations = 0
+     ,txConfirmations = bHeight
      ,txBlock         = txBlockDebug
      ,txRaw           = showt $ txHs
      ,txOutputs       = txOuts
      ,txInputs        = []
     }
     btx = getBtcTx txr
+    blHght = (fromMaybe 0 $ getBtcHeight txr)
+    bHeight = if (blHght == 0)
+      then 0
+      else hght - blHght
     txHs = HK.txHash btx
     txHex = HK.txHashToHex txHs
     txOuts = fmap (\out -> (txOutAdr out,Money BTC (HK.outValue out), TOUnspent)) $ HK.txOut btx
-    txOutAdr out = maybe "undefined" (showt . fromSegWit) $ getSegWitAddr out
-    txBlockDebug = (showt txMBl) <> (showt txHBl)
-    blTime = maybe "pending.." (showt . HK.blockTimestamp . HK.blockHeader) txMBl
+    txOutAdr out = maybe "undefined" (showt . getAddrHash160 . fromSegWit) $ getSegWitAddr out
+    txBlockDebug = (showt txHBl)
+    blTime = maybe "pending.." (T.pack . secToTimestamp . HK.blockTimestamp . HK.blockHeader) txMBl
+
+    secToTimestamp t = formatTime defaultTimeLocale "%Y/%m/%d %H:%M:%S" $ posixSecondsToUTCTime $ fromIntegral t
 
 -- Front types, should be moved to Utils
 data ExpStatus = Expanded | Hidden deriving (Eq, Show)
@@ -392,7 +401,7 @@ data TransactionViewInfo = TransactionViewInfo {
  ,txLabel         :: Maybe Text
  ,txUrl           :: Text
  ,txFee           :: Money
- ,txConfirmations :: Int
+ ,txConfirmations :: Word64
  ,txBlock         :: Text
  ,txRaw           :: Text
  ,txOutputs       :: [(Text,Money,TransOutputType)]

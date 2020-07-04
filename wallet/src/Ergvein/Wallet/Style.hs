@@ -755,6 +755,10 @@ historyPageCss = do
     display flex
     alignItems center
     justifyContent flexEnd
+  ".history-unconfirmed" ? do
+    color $ rgb 120 0 0
+  ".history-confirmed" ? do
+    color $ rgb 0 120 0
   ".history-table-row" ? do
     fontSize $ px 16
     paddingTop $ rem 1.5
