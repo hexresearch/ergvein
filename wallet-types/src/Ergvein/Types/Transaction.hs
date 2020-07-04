@@ -6,6 +6,7 @@ module Ergvein.Types.Transaction (
     , ergTxToString
     , ergTxFromString
     , EgvTx(..)
+    , EgvTxMeta(..)
     , egvTxId
     , TxId
     , TxHexView
@@ -19,6 +20,7 @@ module Ergvein.Types.Transaction (
     , TxHash
     , TxOutIndex
     , currencyHeightStart
+    , setEgvTxMeta
   ) where
 
 import Control.Monad (mzero, (<=<))
@@ -27,12 +29,14 @@ import Data.Aeson.Types (Parser)
 import Data.ByteString (ByteString)
 import Data.Text
 import Data.Word
+import Ergvein.Aeson
 import Ergvein.Text
 import Ergvein.Crypto.Util
 import Ergvein.Types.Currency
 import Data.String (IsString, fromString)
 
 import           Data.Serialize              as S
+import qualified Network.Haskoin.Block as HB
 import qualified Network.Haskoin.Transaction as HK
 
 type BtcTx = HK.Tx
@@ -62,8 +66,8 @@ instance ToJSON ErgTx where
   toJSON = String . ergTxToString
 
 data EgvTx
-  = BtcTx { getBtcTx :: !BtcTx, getBtcHeight :: !(Maybe BlockHeight) }
-  | ErgTx { getErgTx :: !ErgTx, getErgHeight :: !(Maybe BlockHeight) }
+  = BtcTx { getBtcTx :: !BtcTx, getBtcTxMeta :: !(Maybe EgvTxMeta)}
+  | ErgTx { getErgTx :: !ErgTx, getErgTxMeta :: !(Maybe EgvTxMeta)}
   deriving (Eq, Show, Read)
 
 egvTxToString :: EgvTx -> Text
@@ -73,9 +77,6 @@ egvTxToString (ErgTx tx _) = ergTxToString tx
 egvTxId :: EgvTx -> TxId
 egvTxId (BtcTx tx _) = HK.txHashToHex $ HK.txHash tx
 egvTxId (ErgTx tx _) = error "egvTxId: implement for Ergo!"
-
-egvTxToJSON :: EgvTx -> Value
-egvTxToJSON = String . egvTxToString
 
 egvTxFromJSON :: Currency -> Value -> Parser EgvTx
 egvTxFromJSON cur
@@ -88,29 +89,29 @@ egvTxFromJSON cur
       Nothing -> fail "could not decode Ergo transaction"
       Just x  -> return $ ErgTx x Nothing
 
-setEgvTxHeight :: EgvTx -> Maybe BlockHeight -> EgvTx
-setEgvTxHeight etx mh = case etx of
+setEgvTxMeta :: EgvTx -> Maybe EgvTxMeta -> EgvTx
+setEgvTxMeta etx mh = case etx of
   BtcTx tx _ -> BtcTx tx mh
   ErgTx tx _ -> ErgTx tx mh
 
 instance ToJSON EgvTx where
-  toJSON egvTx@(BtcTx tx h) = object [
+  toJSON egvTx@(BtcTx tx meta) = object [
       "currency"  .= toJSON BTC
     , "tx"        .= btcTxToString tx
-    , "height"    .= toJSON h
+    , "meta"      .= toJSON meta
     ]
-  toJSON egvTx@(ErgTx tx h) = object [
+  toJSON egvTx@(ErgTx tx meta) = object [
       "currency"  .= toJSON ERGO
     , "tx"        .= ergTxToString tx
-    , "height"    .= toJSON h
+    , "meta"      .= toJSON meta
     ]
 
 instance FromJSON EgvTx where
   parseJSON = withObject "EgvTx" $ \o -> do
     cur  <- o .: "currency"
-    h    <- o .:? "height"
+    meta <- o .:? "meta"
     tx   <- egvTxFromJSON cur =<< (o .: "tx")
-    pure $ setEgvTxHeight tx h
+    pure $ setEgvTxMeta tx meta
 
 -- | Hexadecimal representation of transaction id
 type TxId = Text
@@ -150,3 +151,10 @@ type TxOutIndex = Word
 currencyHeightStart :: Currency -> BlockHeight
 currencyHeightStart = \case BTC  -> 0
                             ERGO -> 1
+
+data EgvTxMeta = EgvTxMeta {
+  etxMetaHeight :: !BlockHeight
+, etxMetaHash   :: !HB.BlockHash
+} deriving (Eq, Show, Read)
+
+$(deriveJSON (aesonOptionsStripPrefix "etxMeta") ''EgvTxMeta)

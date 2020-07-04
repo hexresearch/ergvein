@@ -87,7 +87,7 @@ scannerBtc = void $ workflow waiting
             rs <- rsD
             pure $ if sc < fh && not rs then Just (fh, sc) else Nothing
       setSyncProgress $ ffor newFiltersE $ \(fh, sc) -> do
-        SyncMeta BTC (SyncAddress 0) (fromIntegral sc) (fromIntegral fh)
+        SyncMeta BTC (SyncBlocks 0 (fromIntegral (fh - sc))) 0 (fromIntegral (fh - sc))
       performEvent_ $ ffor newFiltersE $  \(fh, sc) -> do
         logWrite $ "Start scanning for new " <> showt (fh - sc)
       pure ((), scanning . snd <$> newFiltersE)
@@ -105,7 +105,7 @@ scanningAllBtcKeys i0 = do
   let keys = getPublicKeys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "scannerBtc: not exsisting store!") . currencyPubStorage'pubKeystore
   (updE, updFire) <- newTriggerEvent
   setSyncProgress updE
-  let updSync i i1 = updFire $ SyncMeta BTC (SyncAddress (-1)) (fromIntegral (i - i0)) (fromIntegral (i1 - i0))
+  let updSync i i1 = updFire $ SyncMeta BTC (SyncBlocks (fromIntegral (i - i0)) (fromIntegral (i1 - i0))) (fromIntegral (i - i0)) (fromIntegral (i1 - i0))
   scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses i0 updSync $ xPubToBtcAddr . extractXPubKeyFromEgv <$> keys
   let heightE = fst <$> scanE
       hashesE = V.toList . snd <$> scanE
@@ -186,8 +186,9 @@ getAddrTxsFromBlock addr heights block = do
   checkResults <- traverse (checkAddrTx addr) txs
   let filteredTxs = fst $ unzip $ filter snd (zip txs checkResults)
   utxo <- getUtxoUpdatesFromTxs mh addr filteredTxs
-  pure $ (, utxo) $ M.fromList [(HT.txHashToHex $ HT.txHash tx, BtcTx tx mh) | tx <- filteredTxs]
+  pure $ (, utxo) $ M.fromList [(HT.txHashToHex $ HT.txHash tx, BtcTx tx mheha) | tx <- filteredTxs]
   where
     txs = HB.blockTxns block
     bhash = HB.headerHash . HB.blockHeader $ block
     mh = Just $ maybe 0 fromIntegral $ M.lookup bhash heights
+    mheha = (\h -> EgvTxMeta h bhash) <$> mh

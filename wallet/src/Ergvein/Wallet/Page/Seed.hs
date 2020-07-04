@@ -177,7 +177,7 @@ seedRestoreWidget = mdo
       enterE = fmapMaybe (\x -> either (const Nothing) Just x) validationE
       wordE = leftmost [btnE, enterE]
   txtInput <- validatedTextInput (def & inputElementConfig_setValue .~ fmap (const "") wordE) wordErrsD
-  mnemD <- foldDyn (\w m -> let p = if m == "" then "" else " " in m <> p <> w) "" wordE
+  mnemD <- foldDyn (\w m -> let p = if m == "" then "" else " " in m <> p <> (T.toLower w)) "" wordE
   goE <- delay 0.1 (updated ixD)
   pure $ attachWithMaybe (\mnem i -> if i == 25 then Just mnem else Nothing) (current mnemD) goE
   where

@@ -6,6 +6,7 @@ import Control.Monad.IO.Unlift
 import Network.HTTP.Client
 import Servant.Client.Core
 import Ergvein.Index.Server.PeerDiscovery.Types
+import Control.Concurrent.STM.TVar
 
 class HasBitcoinNodeNetwork m where
   currentBitcoinNetwork :: m HK.Network
@@ -18,3 +19,6 @@ class MonadIO m => HasTlsManager m where
 
 class HasDiscoveryRequisites m where
   getDiscoveryRequisites  :: m PeerDiscoveryRequisites
+
+class HasShutdownFlag m where
+  getShutdownFlag  :: m (TVar Bool)
