@@ -788,7 +788,7 @@ txInfoPageCss = do
     marginBottom $ rem 0
   ".tx-info-page-element" ? do
     marginBottom $ rem 1
-  ".break-all" ? do
+  ".tx-info-page-expanded" ? do
     wordBreak breakAll
   ".tx-info-page-minified" ? do
     overflow hidden
@@ -797,25 +797,32 @@ txInfoPageCss = do
     display grid
     gridTemplateColumns [maxContent, fr 1]
     marginBottom $ rem (-1)
-
--- delete ?
-  ".out-descr" ? do
-    paddingRight $ rem 1
-  ".info-andr-hash" ? do
+  ".tx-info-page-expand-buttton-wrapper" ? do
     cursor pointer
-  ".info-copy-button" ? do
-    fontSize $ px 18
-    fontWeight $ weight 500
-    margin auto auto auto auto
-  ".expand-button" ? do
-    marginLeft $ px 10
-  ".info-exits-andr" ? do
-    marginTop $ px 5
-  ".out-body" ? do
-    wordBreak breakAll
-  ".out-body-andr" ? do
-    marginLeft $ px 10
-    wordBreak breakAll
+    display inlineBlock
+  ".tx-info-page-expand-buttton" ? do
+    paddingLeft $ rem 0.5
+    paddingRight $ rem 0.5
+  ".tx-info-page-copy" ? do
+    cursor pointer
+
+  -- ".out-descr" ? do
+  --   paddingRight $ rem 1
+  -- ".info-andr-hash" ? do
+  --   cursor pointer
+  -- ".info-copy-button" ? do
+  --   fontSize $ px 18
+  --   fontWeight $ weight 500
+  --   margin auto auto auto auto
+  -- ".expand-button" ? do
+  --   marginLeft $ px 10
+  -- ".info-exits-andr" ? do
+  --   marginTop $ px 5
+  -- ".out-body" ? do
+  --   wordBreak breakAll
+  -- ".out-body-andr" ? do
+  --   marginLeft $ px 10
+  --   wordBreak breakAll
 
 legoStyles :: Css
 legoStyles = do

@@ -62,91 +62,88 @@ historyPage cur = wrapper False (HistoryTitle cur) (Just $ pure $ historyPage cu
 
 #ifdef ANDROID
 transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
-transactionInfoPage cur tr@TransactionView{..} = wrapper False HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) $ divClass "tx-info-page" $ mdo
-  hashD <- expD hashE hashD
-  hashE <- expHead hashD HistoryTIHash
-  copiedHashE <- copyDiv hashD $ txId txInfoView
+transactionInfoPage cur tr@TransactionView{..} = wrapper False HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) $ divClass "tx-info-page" $ do
+  (hashD, hashE, copiedHashE) <- divClass "tx-info-page-element" $ mdo
+    hashD' <- expD hashE' hashD'
+    hashE' <- expHead hashD' HistoryTIHash
+    copiedHashE' <- copyDiv hashD' $ txId txInfoView
+    pure (hashD', hashE', copiedHashE')
   case (txLabel txInfoView) of
-    Just lbl -> do
-      bold $ localizedText HistoryTILabel
-      divClass "tx-info-page-element" $ do
-        divClass "info-body info-label" $ text lbl
+    Just lbl -> divClass "tx-info-page-element" $ do
+      par $ bold $ localizedText HistoryTILabel
+      par $ text lbl
     Nothing -> pure ()
-  bold $ localizedText HistoryTIVolume
-  divClass "tx-info-page-element-value" $ do
-    text $ showMoney $ txAmount
-    elClass "span" "currname" $ text $ showt cur
-  bold $ localizedText HistoryTIFee
-  divClass "tx-info-page-element-value" $ do
-    text $ showMoney $ txFee txInfoView
-    elClass "span" "currname" $ text $ showt cur
-  bold $ localizedText HistoryTIConfirmations
-  divClass "tx-info-page-element-value" $ do
-    text $ showt $ txConfirmations txInfoView
-
-  blockD <- expD blockE blockD
-  blockE <- expHead blockD HistoryTIBlock
-  copiedBlockE <- copyDiv blockD $ txBlock txInfoView
-
-  rawD <- expD rawE rawD
-  rawE <- expHead rawD HistoryTIRaw
-  copiedRawE <- copyDiv rawD $ txRaw txInfoView
-
-  bold $ localizedText HistoryTIOutputs
-  divClass "tx-info-page-element-value info-exits-andr" $ do
-    flip traverse (txOutputs txInfoView) $ \(oHash,oVal,oType) -> divClass "out-element" $ do
-      divClass "out-descr-andr" $ localizedText HistoryTIOutputsValue
-      divClass "out-body-andr"  $ do
-        text $ showMoney $ oVal
-        text $ showt cur
-      divClass "out-descr-andr" $ localizedText HistoryTIOutputsAddress
-      divClass "out-body-andr"  $ text $ oHash
-      divClass "out-descr-andr" $ localizedText HistoryTIOutputsStatus
-      divClass "out-body-andr"  $ localizedText oType
-  bold $ localizedText HistoryTIInputs
-  divClass "tx-info-page-element-value info-exits-andr" $ do
-    flip traverse (txInputs txInfoView) $ \(oHash,oVal) -> divClass "out-element" $ do
-      divClass "out-descr-andr" $ localizedText HistoryTIOutputsValue
-      divClass "out-body-andr" $ do
-        text $ showMoney $ oVal
-        text $ showt cur
-      divClass "out-descr-andr-anrd" $ localizedText HistoryTIOutputsAddress
-      divClass "out-body-andr"  $ text $ oHash
-  bold $ localizedText HistoryTIURL
   divClass "tx-info-page-element" $ do
-    divClass "tx-info-page-element-value" $ hyperlink "link" (txUrl txInfoView) (txUrl txInfoView)
-  let copiedE = leftmost[(txId txInfoView) <$ copiedHashE,
-                          (txBlock txInfoView) <$ copiedBlockE,
-                          (txRaw txInfoView) <$ copiedRawE]
+    let url = txUrl txInfoView
+    par $ bold $ localizedText HistoryTIURL
+    parClass "tx-info-page-expanded" $ hyperlink "link" url url
+  divClass "tx-info-page-element" $ do
+    par $ bold $ localizedText HistoryTIVolume
+    par $ text $ showMoney txAmount <> " " <> showt cur
+  divClass "tx-info-page-element" $ do
+    par $ bold $ localizedText HistoryTIFee
+    par $ text $ (showMoney $ txFee txInfoView) <> " " <> showt cur
+  divClass "tx-info-page-element" $ do
+    par $ bold $ localizedText HistoryTIConfirmations
+    par $ text $ showt $ txConfirmations txInfoView
+  (blockD, blockE, copiedBlockE) <- divClass "tx-info-page-element" $ mdo
+    blockD' <- expD blockE' blockD'
+    blockE' <- expHead blockD' HistoryTIBlock
+    copiedBlockE' <- copyDiv blockD' $ txBlock txInfoView
+    pure (blockD', blockE', copiedBlockE')
+  (rawD, rawE, copiedRawE) <- divClass "tx-info-page-element" $ mdo
+    rawD' <- expD rawE' rawD'
+    rawE' <- expHead rawD' HistoryTIRaw
+    copiedRawE' <- copyDiv rawD' $ txRaw txInfoView
+    pure (rawD', rawE', copiedRawE')
+  divClass "tx-info-page-element" $ do
+    par $ bold $ localizedText HistoryTIOutputs
+    divClass "tx-info-page-outputs-inputs" $ do
+      flip traverse (txOutputs txInfoView) $ \(oAddress, oValue, oStatus) -> do
+        divClass "pr-1" $ localizedText HistoryTIOutputsValue
+        divClass "" $ text $ showMoney oValue <> " " <> showt cur
+        divClass "pr-1" $ localizedText HistoryTIOutputsAddress
+        divClass "tx-info-page-expanded" $ text $ oAddress
+        divClass "mb-1 pr-1" $ localizedText HistoryTIOutputsStatus
+        divClass "mb-1" $ localizedText oStatus
+  divClass "tx-info-page-element" $ do
+    par $ bold $ localizedText HistoryTIInputs
+    divClass "tx-info-page-outputs-inputs" $ do
+      flip traverse (txInputs txInfoView) $ \(oAddress, oValue) -> do
+        divClass "pr-1" $ localizedText HistoryTIOutputsValue
+        divClass "" $ text $ showMoney oValue <> " " <> showt cur
+        divClass "pr-1 mb-1" $ localizedText HistoryTIOutputsAddress
+        divClass "tx-info-page-expanded mb-1" $ text $ oAddress
+  let copiedE = leftmost[
+          (txId txInfoView) <$ copiedHashE
+        , (txBlock txInfoView) <$ copiedBlockE
+        , (txRaw txInfoView) <$ copiedRawE
+        ]
   cE <- clipboardCopy $ copiedE
   showSuccessMsg $ CSCopied <$ cE
   pure ()
   where
-    expD expE expD = holdDyn Minified $ poke expE $ \_ -> do
-          st <- sampleDyn expD
-          case st of
-            Minified -> pure Expanded
-            Expanded -> pure Minified
-
-    expDiv statD txt = widgetHoldDyn $ ffor statD $ \exStatus -> case exStatus of
-      Minified   -> divClass "tx-info-page-element-value" $ text txt
-      Expanded -> divClass "tx-info-page-element-value-expanded" $ text txt
-
-    expHead statD txt = divButton "tx-info-page-element-label" $ do
-        localizedText txt
-        elClass "span" "expand-button" $ widgetHoldDyn $ ffor statD $ \exStatus -> case exStatus of
-          Minified   -> text $ "▼"
-          Expanded -> text $ "▲"  -- ▼▲ ▾▴
-
-    copyDiv copyD txt = divButton "info-hash-andr tx-info-page-element" $ do
-      expDiv copyD txt
-      divClass "info-copy-button" $ text $ ""
+    expD expE expD' = holdDyn Minified $ poke expE $ \_ -> do
+      st <- sampleDyn expD'
+      case st of
+        Minified -> pure Expanded
+        Expanded -> pure Minified
+    expPar statD txt = widgetHoldDyn $ ffor statD $ \exStatus -> case exStatus of
+      Minified -> parClass "tx-info-page-minified" $ text txt
+      Expanded -> parClass "tx-info-page-expanded" $ text txt
+    expHead statD txt = divButton "tx-info-page-expand-buttton-wrapper" $ par $ bold $ do
+      localizedText txt
+      widgetHoldDyn $ ffor statD $ \exStatus -> case exStatus of
+        Minified -> elClass "i" "tx-info-page-expand-buttton fas fa-caret-down" $ blank
+        Expanded -> elClass "i" "tx-info-page-expand-buttton fas fa-caret-up" $ blank
+    copyDiv copyD txt = divButton "tx-info-page-copy" $ do
+      expPar copyD txt
 #else
 transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
 transactionInfoPage cur tr@TransactionView{..} = wrapper False HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) $ divClass "tx-info-page" $ do
   divClass "tx-info-page-element" $ do
     par $ bold $ localizedText HistoryTIHash
-    parClass "break-all" $ text $ txId txInfoView
+    parClass "tx-info-page-expanded" $ text $ txId txInfoView
   case (txLabel txInfoView) of
     Just lbl -> do
       divClass "tx-info-page-element" $ do
@@ -156,7 +153,7 @@ transactionInfoPage cur tr@TransactionView{..} = wrapper False HistoryTITitle (J
   divClass "tx-info-page-element" $ do
     let url = txUrl txInfoView
     par $ bold $ localizedText HistoryTIURL
-    parClass "break-all" $ hyperlink "link" url url
+    parClass "tx-info-page-expanded" $ hyperlink "link" url url
   divClass "tx-info-page-element" $ do
     par $ bold $ localizedText HistoryTIVolume
     par $ text $ showMoney txAmount <> " " <> showt cur
@@ -168,10 +165,10 @@ transactionInfoPage cur tr@TransactionView{..} = wrapper False HistoryTITitle (J
     par $ text $ showt $ txConfirmations txInfoView
   divClass "tx-info-page-element" $ do
     par $ bold $ localizedText HistoryTIBlock
-    parClass "break-all" $ text $ txBlock txInfoView
+    parClass "tx-info-page-expanded" $ text $ txBlock txInfoView
   divClass "tx-info-page-element" $ do
     par $ bold $ localizedText HistoryTIRaw
-    parClass "break-all" $ text $ txRaw txInfoView
+    parClass "tx-info-page-expanded" $ text $ txRaw txInfoView
   divClass "tx-info-page-element" $ do
     par $ bold $ localizedText HistoryTIOutputs
     divClass "tx-info-page-outputs-inputs" $ do
@@ -179,7 +176,7 @@ transactionInfoPage cur tr@TransactionView{..} = wrapper False HistoryTITitle (J
         divClass "pr-1" $ localizedText HistoryTIOutputsValue
         divClass "" $ text $ showMoney oValue <> " " <> showt cur
         divClass "pr-1" $ localizedText HistoryTIOutputsAddress
-        divClass "break-all" $ text $ oAddress
+        divClass "tx-info-page-expanded" $ text $ oAddress
         divClass "mb-1 pr-1" $ localizedText HistoryTIOutputsStatus
         divClass "mb-1" $ localizedText oStatus
   divClass "tx-info-page-element" $ do
@@ -189,7 +186,7 @@ transactionInfoPage cur tr@TransactionView{..} = wrapper False HistoryTITitle (J
         divClass "pr-1" $ localizedText HistoryTIOutputsValue
         divClass "" $ text $ showMoney oValue <> " " <> showt cur
         divClass "pr-1 mb-1" $ localizedText HistoryTIOutputsAddress
-        divClass "break-all mb-1" $ text $ oAddress
+        divClass "tx-info-page-expanded mb-1" $ text $ oAddress
   pure ()
 #endif
 
