@@ -11,8 +11,9 @@ module Ergvein.Wallet.Blocks.BTC
 
 import Control.Monad.Random
 import Data.Maybe (catMaybes)
-import Network.Haskoin.Network
+import Data.Time
 import Network.Haskoin.Block
+import Network.Haskoin.Network
 
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Node
@@ -26,6 +27,9 @@ import qualified Data.List as L
 
 data RBTCBlksAct = RASucc [Block] | RANoNode [BlockHash] | RANodeClosed [BlockHash]
 
+-- | Amount of seconds we give a node to send us blocks either retry.
+blockTimeout :: NominalDiffTime
+blockTimeout = 20
 
 -- | Request a number of blocks from a random node.
 -- waits for a reply about all blocks before firing the resulting event
@@ -35,7 +39,10 @@ data RBTCBlksAct = RASucc [Block] | RANoNode [BlockHash] | RANodeClosed [BlockHa
 requestBTCBlocks :: MonadFront t m => Event t [BlockHash] -> m (Event t [Block])
 requestBTCBlocks reqE = mdo
   conMapD <- getNodeConnectionsD
-  let goE =  attach (current conMapD) $ leftmost [reqE, noNodeE, nodeCloseE]
+  timeE <- tickLossyFromPostBuildTime blockTimeout
+  blksD <- holdDyn [] reqE
+  let timeHE = tag (current blksD) timeE
+  let goE =  attach (current conMapD) $ leftmost [reqE, noNodeE, nodeCloseE, timeHE]
   let goE' = leftmost [Just <$> goE, Nothing <$ resE]
   actE <- fmap switchDyn $ widgetHold (pure never) $ ffor goE' $ \case
     Nothing -> pure never

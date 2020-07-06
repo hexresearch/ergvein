@@ -137,7 +137,9 @@ scanningBtcBlocks :: MonadFront t m => Vector (Int, EgvXPubKey) -> Event t [(HB.
 scanningBtcBlocks keys hashesE = do
   let noScanE = fforMaybe hashesE $ \bls -> if null bls then Just () else Nothing
   heightMapD <- holdDyn M.empty $ M.fromList <$> hashesE
-  blocksE <- logEvent "Blocks requested: " =<< requestBTCBlocks (nub . fst . unzip <$> hashesE)
+  let rhashesE = fmap (nub . fst . unzip) $ hashesE
+  _ <-logEvent "Blocks requested: " rhashesE
+  blocksE <- requestBTCBlocks rhashesE
   storedBlocks <- storeMultipleBlocksTxHashesByE =<< storeMultipleBlocksByE blocksE
   let toAddr = xPubToBtcAddr . extractXPubKeyFromEgv
       keymap = M.fromList . V.toList . V.map (second (BtcAddress . toAddr)) $ keys
