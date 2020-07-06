@@ -12,6 +12,7 @@ library
       Ergvein.Index.API
       Ergvein.Index.API.Types
       Ergvein.Index.API.V1
+      Ergvein.Index.API.BinaryTypes
 
   build-depends:
         base                 >= 4.7  && < 4.13
