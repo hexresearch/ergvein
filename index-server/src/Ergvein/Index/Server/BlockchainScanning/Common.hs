@@ -34,18 +34,18 @@ data ScanProgressInfo = ScanProgressInfo
   }
 
 scanningInfo :: ServerM [ScanProgressInfo]
-scanningInfo = mapM nfo allCurrencies
+scanningInfo = catMaybes <$> mapM nfo allCurrencies
   where
-    nfo :: Currency -> ServerM ScanProgressInfo
+    nfo :: Currency -> ServerM (Maybe ScanProgressInfo)
     nfo currency = do
       maybeScanned <- getScannedHeight currency
-      actual <- actualHeight currency
-      pure $ ScanProgressInfo currency maybeScanned actual
+      maybeActual <- (Just <$> actualHeight currency) `catch` (\(SomeException _) -> pure Nothing)
+      pure $ ScanProgressInfo currency maybeScanned <$> maybeActual
 
 actualHeight :: Currency -> ServerM BlockHeight
 actualHeight currency = case currency of
   BTC  -> BTCScanning.actualHeight
-  ERGO -> ERGOScanning.actualHeight 
+  ERGO -> ERGOScanning.actualHeight
 
 scannerThread :: Currency -> (BlockHeight -> ServerM BlockInfo) -> ServerM Thread
 scannerThread currency scanInfo = create $ logOnException . scanIteration
