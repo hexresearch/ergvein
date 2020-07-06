@@ -139,9 +139,10 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
     finishScanning = Workflow $ do
       logWrite "Finished scanning BTC keys..."
       buildE <- getPostBuild
+      setSyncProgress $ Synced <$ buildE
       h <- sample . current =<< getCurrentHeight BTC
-      writeWalletsScannedHeight $ (BTC, fromIntegral h) <$ buildE
-      modifyPubStorage $ ffor buildE $ const $ \ps -> Just $ ps {
+      scanhE <- writeWalletsScannedHeight $ (BTC, fromIntegral h) <$ buildE
+      modifyPubStorage $ ffor scanhE $ const $ \ps -> Just $ ps {
           _pubStorage'restoring = False
         }
       _ <- nextWidget $ ffor buildE $ const $ Retractable {
