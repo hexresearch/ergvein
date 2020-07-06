@@ -332,7 +332,7 @@ prepareTransactionView hght TxRawInfo{..} = TransactionView {
      ,txInputs        = []
     }
     btx = getBtcTx txr
-    blHght = (fromMaybe 0 $ getBtcHeight txr)
+    blHght = maybe 0 etxMetaHeight $ getBtcTxMeta txr
     bHeight = if (blHght == 0)
       then 0
       else hght - blHght
