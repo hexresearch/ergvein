@@ -268,10 +268,9 @@ transactionsGetting cur = do
       liftIO $ flip runReaderT store $ do
         blh <- traverse getBtcBlockHashByTxHash $ fmap HK.txHash $ fmap (getBtcTx) tx
         bl <- traverse getBlockFromHash blh
-        --blN <- traverse getBlockNodeFromHash blh
         b <- traverse (checkAddr allbtcAdrS) tx
         let txRefList = fmap (calcRefill (fmap getBtcAddr allbtcAdrS)) tx
-        pure $ fmap snd $ L.filter fst $ L.zip b (prepareTransactionView hght <$> txListRaw bl blh tx txRefList)
+        pure $ L.sortOn (\tx -> txDate tx) $ fmap snd $ L.filter fst $ L.zip b (prepareTransactionView hght <$> txListRaw bl blh tx txRefList)
 
     filterTx ac pubS = case cur of
       BTC  -> fmap snd $ fromMaybe [] $ fmap Map.toList $ _currencyPubStorage'transactions <$> Map.lookup cur (_pubStorage'currencyPubStorages pubS)
