@@ -142,7 +142,8 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
       setSyncProgress $ Synced <$ buildE
       h <- sample . current =<< getCurrentHeight BTC
       scanhE <- writeWalletsScannedHeight $ (BTC, fromIntegral h) <$ buildE
-      modifyPubStorage $ ffor scanhE $ const $ \ps -> Just $ ps {
+      clearedE <- performEvent $ clearFilters BTC <$ scanhE
+      modifyPubStorage $ ffor clearedE $ const $ \ps -> Just $ ps {
           _pubStorage'restoring = False
         }
       _ <- nextWidget $ ffor buildE $ const $ Retractable {
