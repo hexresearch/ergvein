@@ -20,6 +20,7 @@ module Ergvein.Types.Keys (
   , getExternalPubKeyIndex
   , extractXPubKeyFromEgv
   , getLabelFromEgvPubKey
+  , unEgvXPrvKey
   ) where
 
 import Control.Monad
@@ -189,10 +190,13 @@ instance FromJSON EgvRootXPubKey where
       _ -> fail "failed to read chain code or key"
 
 -- | Wrapper around XPrvKey for easy to/from json manipulations
-data EgvXPrvKey = EgvXPrvKey {
-  egvXPrvCurrency :: Currency
-, egvXPrvKey      :: XPrvKey
-} deriving (Eq, Show, Read)
+data EgvXPrvKey = BtcXPrvKey { btcXPrvKey :: !XPrvKey} | ErgXPrvKey {ergXPrvKey :: !XPrvKey}
+  deriving (Eq, Show, Read)
+
+unEgvXPrvKey :: EgvXPrvKey -> XPrvKey
+unEgvXPrvKey key = case key of
+  BtcXPrvKey k -> k
+  ErgXPrvKey k -> k
 
 -- | Get JSON 'Value' from 'XPrvKey'.
 xPrvToJSON :: EgvNetwork -> XPrvKey -> Value
@@ -207,21 +211,28 @@ xPrvFromJSON net =
             Just x  -> return x
 
 instance ToJSON EgvXPrvKey where
-  toJSON (EgvXPrvKey currency key) = object [
-      "currency" .= toJSON currency
-    , "prvKey"   .= xPrvToJSON (getCurrencyNetwork currency) key
-    ]
+  toJSON k = case k of
+    BtcXPrvKey key -> object [
+        "currency" .= toJSON BTC
+      , "prvKey"   .= xPrvToJSON (getCurrencyNetwork BTC) key
+      ]
+    ErgXPrvKey key -> object [
+        "currency" .= toJSON ERGO
+      , "prvKey"   .= xPrvToJSON (getCurrencyNetwork ERGO) key
+      ]
 
 instance FromJSON EgvXPrvKey where
   parseJSON = withObject "EgvXPrvKey" $ \o -> do
     currency <- o .: "currency"
     key <- xPrvFromJSON (getCurrencyNetwork currency) =<< (o .: "prvKey")
-    pure $ EgvXPrvKey currency key
+    pure $ case currency of
+      BTC -> BtcXPrvKey key
+      ERGO -> ErgXPrvKey key
 
-instance Ord EgvXPrvKey where
-  compare (EgvXPrvKey currency1 key1) (EgvXPrvKey currency2 key2) = case compare currency1 currency2 of
-    EQ -> compare (xPrvExport (getCurrencyNetwork currency1) key1) (xPrvExport (getCurrencyNetwork currency2) key2)
-    x -> x
+-- instance Ord EgvXPrvKey where
+--   compare (EgvXPrvKey currency1 key1) (EgvXPrvKey currency2 key2) = case compare currency1 currency2 of
+--     EQ -> compare (xPrvExport (getCurrencyNetwork currency1) key1) (xPrvExport (getCurrencyNetwork currency2) key2)
+--     x -> x
 
 -- | Wrapper around XPubKey for easy to/from json manipulations
 data EgvXPubKey =
