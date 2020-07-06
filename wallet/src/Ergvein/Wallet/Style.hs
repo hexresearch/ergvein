@@ -806,24 +806,6 @@ txInfoPageCss = do
   ".tx-info-page-copy" ? do
     cursor pointer
 
-  -- ".out-descr" ? do
-  --   paddingRight $ rem 1
-  -- ".info-andr-hash" ? do
-  --   cursor pointer
-  -- ".info-copy-button" ? do
-  --   fontSize $ px 18
-  --   fontWeight $ weight 500
-  --   margin auto auto auto auto
-  -- ".expand-button" ? do
-  --   marginLeft $ px 10
-  -- ".info-exits-andr" ? do
-  --   marginTop $ px 5
-  -- ".out-body" ? do
-  --   wordBreak breakAll
-  -- ".out-body-andr" ? do
-  --   marginLeft $ px 10
-  --   wordBreak breakAll
-
 legoStyles :: Css
 legoStyles = do
   ".mb-0" ? (marginBottom $ rem 0)
