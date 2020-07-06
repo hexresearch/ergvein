@@ -12,6 +12,7 @@ module Ergvein.Types.Utxo
 import Data.Aeson
 import Data.List (foldl')
 import Data.Word
+import Network.Haskoin.Script
 import Network.Haskoin.Transaction
 
 import Ergvein.Aeson
@@ -35,6 +36,7 @@ data UtxoMeta = UtxoMeta {
   utxoMeta'index   :: !Int
 , utxoMeta'purpose :: !KeyPurpose
 , utxoMeta'amount  :: !Word64
+, utxoMeta'script  :: !ScriptOutput
 , utxoMeta'status  :: !EgvUtxoStatus
 } deriving (Eq, Show, Read)
 

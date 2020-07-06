@@ -32,6 +32,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Validation as V
 import qualified Network.Haskoin.Transaction as HT
+import qualified Network.Haskoin.Script as HS
 import qualified Data.Vector as Ve
 
 import Control.Lens
@@ -42,6 +43,7 @@ import Ergvein.Wallet.Storage.Keys
 import Ergvein.Types.Keys
 import Network.Haskoin.Constants
 import Ergvein.Wallet.Platform
+import Ergvein.Wallet.Storage
 
 sendPage :: MonadFront t m => Currency -> Maybe (EgvAddress, Rational) -> m ()
 sendPage cur minit = do
@@ -93,20 +95,19 @@ debugVals :: (Word64, Word64, EgvAddress)
 debugVals = (1000, 1, BtcAddress {getBtcAddr = WitnessPubKeyAddress {getAddrHash160 = "50beb79f500060a3faaf466d388732c0ebecc6f8"}})
 
 data UtxoPoint = UtxoPoint {
-  upIndex :: !Int
-, upPoint :: !HT.OutPoint
-, upValue :: !Word64
+  upPoint :: !HT.OutPoint
+, upMeta  :: !UtxoMeta
 } deriving (Show)
 
 instance Eq UtxoPoint where
-  a == b = upValue a == upValue b
+  a == b = (utxoMeta'amount $ upMeta a) == (utxoMeta'amount $ upMeta b)
 
 -- | We need to sort in desc order to reduce Tx size
 instance Ord UtxoPoint where
-  a `compare` b = upValue b `compare` upValue a
+  a `compare` b = (utxoMeta'amount $ upMeta b) `compare` (utxoMeta'amount $ upMeta a)
 
 instance HT.Coin UtxoPoint where
-  coinValue = upValue
+  coinValue = utxoMeta'amount . upMeta
 
 btcSendConfirmationWidget :: MonadFront t m => (Word64, Word64, EgvAddress) -> m ()
 btcSendConfirmationWidget v@(amount, fee, addr) = wrapper False (SendTitle BTC) (Just $ pure $ btcSendConfirmationWidget v) $ do
@@ -138,12 +139,16 @@ btcSendConfirmationWidget v@(amount, fee, addr) = wrapper False (SendTitle BTC) 
           Nothing -> el "div" $ text "Something bad happend. No key -- no Tx"
           Just (_, key) -> do
             let keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress $ pubKeyBox'key key
-            -- flip traverse (Ve.indexed keys) $ el "div" . text . showt . fmap (addrToString btcTest . xPubToBtcAddr . extractXPubKeyFromEgv . pubKeyBox'key)
             let outs = [(egvAddrToString addr, amount), (keyTxt, change)]
             let etx = HT.buildAddrTx btcNetwork (upPoint <$> pick) outs
+            let sis = ffor pick $ \(UtxoPoint op UtxoMeta{..}) ->
+                  (utxoMeta'index, utxoMeta'purpose, HT.SigInput utxoMeta'script utxoMeta'amount op HS.sigHashAll Nothing)
             case etx of
               Left err -> el "div" $ text $ showt err
-              Right tx -> el "div" $ text $ showt tx
+              Right tx -> do
+                signE <- outlineButton ("Sign tx" :: Text)
+                -- withWallet $ ffor signE $ \prv -> do
+                pure ()
         pure ()
     pure ()
 
@@ -151,8 +156,8 @@ btcSendConfirmationWidget v@(amount, fee, addr) = wrapper False (SendTitle BTC) 
   where
     foo b f ta = L.foldl' f b ta
     partition' :: [(HT.OutPoint, UtxoMeta)] -> ([UtxoPoint], [UtxoPoint])
-    partition' = foo ([], []) $ \(cs, ucs) (op, UtxoMeta{..}) ->
-      let upoint = UtxoPoint utxoMeta'index op utxoMeta'amount in
+    partition' = foo ([], []) $ \(cs, ucs) (op, meta@UtxoMeta{..}) ->
+      let upoint = UtxoPoint op meta in
       case utxoMeta'status of
         EUtxoConfirmed -> (upoint:cs, ucs)
         EUtxoSemiConfirmed _ -> (upoint:cs, ucs)

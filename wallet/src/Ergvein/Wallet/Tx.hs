@@ -52,7 +52,11 @@ getUnspentOutputs :: (MonadIO m, HasBlocksStorage m, PlatformNatives)
   => Maybe BlockHeight -> ScanKeyBox -> Tx -> m [(OutPoint, UtxoMeta)]
 getUnspentOutputs c ScanKeyBox{..} tx = fmap catMaybes $ flip traverse (zip [0..] $ txOut tx) $ \(i,o) -> do
   b <- checkTxOut addr o
-  pure $ if b then Just (OutPoint th i, UtxoMeta scanBox'index scanBox'purpose (outValue o) stat) else Nothing
+  let escript = HS.decodeOutputBS $ scriptOutput o
+  either (\e -> logWrite $ "Failed to decode scriptOutput: " <> showt o <> ". Error: " <> showt e) (const $ pure ()) escript
+  pure $ case (b, escript) of
+    (True, Right scr) -> Just (OutPoint th i, UtxoMeta scanBox'index scanBox'purpose (outValue o) scr stat)
+    _ -> Nothing
   where
     th = txHash tx
     stat = maybe EUtxoReceiving EUtxoSemiConfirmed c
