@@ -24,7 +24,10 @@ insertBtcBlock blk = do
   e <- getBlocksStorage
   liftIO . readWriteTransaction e $ do
     db <- getBtcBlocksDb
-    put db (headerHash $ blockHeader blk) $ Just blk
+    dbh <- getBtcBlocksHeightDb
+    put db blkhs $ Just blk
+    where
+      blkhs = headerHash $ blockHeader blk
 
 insertMultipleBtcBlocks :: (MonadIO m, HasBlocksStorage m) => [Block] -> m ()
 insertMultipleBtcBlocks blks = do
