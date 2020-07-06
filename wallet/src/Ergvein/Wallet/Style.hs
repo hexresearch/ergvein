@@ -98,6 +98,7 @@ frontendCss r = do
   graphPinCodeCanvasCss
   headerCss
   historyPageCss
+  txInfoPageCss
   infoPageCss
   initialPageCss
   inputCss
@@ -778,52 +779,34 @@ historyPageCss = do
     paddingRight $ rem 0.3
   ".history-page-status-icon" ? do
     fontSize $ pt 9
+  
+txInfoPageCss :: Css
+txInfoPageCss = do
+  ".tx-info-page" ? do
+    textAlign $ alignSide sideLeft
+  ".tx-info-page p" ? do
+    marginBottom $ rem 0
   ".tx-info-page-element" ? do
-    display flex
-    marginTop $ rem 1
-    paddingRight $ rem 1
-  ".info-descr" ? do
-    fontWeight $ weight 600
-    textAlign $ alignSide sideLeft
-    paddingRight $ rem 1
-  ".info-body" ? do
-    textAlign $ alignSide sideLeft
+    marginBottom $ rem 1
+  ".break-all" ? do
+    wordBreak breakAll
+  ".tx-info-page-minified" ? do
     overflow hidden
     textOverflow overflowEllipsis
-  ".info-hash" ? do
-    wordWrap breakWord
-  ".info-raw" ? do
-    wordWrap breakWord
-  ".out-element" ? do
+  ".tx-info-page-outputs-inputs" ? do
     display grid
-    gridTemplateColumns [fr 2, fr 8]
-    marginBottom $ px 10
+    gridTemplateColumns [maxContent, fr 1]
+    marginBottom $ rem (-1)
+
+-- delete ?
   ".out-descr" ? do
-    fontWeight $ weight 600
     paddingRight $ rem 1
-  ".info-descr-andr" ? do
-    marginTop $ px 10
-    fontWeight $ weight 600
-    textAlign $ alignSide sideLeft
   ".info-andr-hash" ? do
     cursor pointer
-  ".info-andr-element" ? do
-    display grid
-    gridTemplateColumns [fr 8, fr 2]
-  ".info-body-andr" ? do
-    overflow hidden
-    textOverflow overflowEllipsis
-    textAlign $ alignSide sideLeft
-  ".info-body-andr-expanded" ? do
-    overflow hidden
-    overflowWrap breakWord
-    textAlign $ alignSide sideLeft
   ".info-copy-button" ? do
     fontSize $ px 18
     fontWeight $ weight 500
     margin auto auto auto auto
-  ".currname" ? do
-    marginLeft $ px 10
   ".expand-button" ? do
     marginLeft $ px 10
   ".info-exits-andr" ? do
@@ -833,7 +816,6 @@ historyPageCss = do
   ".out-body-andr" ? do
     marginLeft $ px 10
     wordBreak breakAll
-    textAlign $ alignSide sideLeft
 
 legoStyles :: Css
 legoStyles = do
