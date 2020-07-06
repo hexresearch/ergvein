@@ -87,7 +87,8 @@ data CurrencyPubStorage = CurrencyPubStorage {
     _currencyPubStorage'pubKeystore   :: !PubKeystore
   , _currencyPubStorage'transactions  :: !(M.Map TxId EgvTx)
   , _currencyPubStorage'height        :: !(Maybe BlockHeight)     -- ^ Last height seen by the wallet
-  , _currencyPubStorage'scannedKey    :: !(Maybe Int, Maybe Int)  -- ^ When restoring here we put which keys are we already scanned
+  -- | Used at restore. First is scanned external chain and second is scanned internal chain
+  , _currencyPubStorage'scannedKey    :: !(Maybe Int, Maybe Int) 
   , _currencyPubStorage'utxos         :: !EgvUtxoSetStorage
   , _currencyPubStorage'scannedHeight :: !(Maybe BlockHeight)
   , _currencyPubStorage'headers       :: !(M.Map HB.BlockHash HB.BlockHeader)
