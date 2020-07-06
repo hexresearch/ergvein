@@ -20,6 +20,8 @@ library
       , servant              >= 0.16 && < 0.17
       , servant-client-core  >= 0.16 && < 0.17
       , text                 >= 1.2  && < 1.3
+      , vector
+      , bytestring
       , ergvein-common
       , ergvein-wallet-types
 
