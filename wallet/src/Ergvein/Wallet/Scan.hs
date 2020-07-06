@@ -167,23 +167,23 @@ getAddrTxsFromBlocks :: (MonadIO m, HasBlocksStorage m, PlatformNatives)
   -> ScanKeyBox
   -> m ((ScanKeyBox, M.Map TxId EgvTx), BtcUtxoUpdate)
 getAddrTxsFromBlocks heights blocks box = do
-  let addr = egvXPubKeyToEgvAddress . scanBox'key $ box
-  (txMaps, uts) <- fmap unzip $ traverse (getAddrTxsFromBlock addr heights) blocks
+  (txMaps, uts) <- fmap unzip $ traverse (getAddrTxsFromBlock box heights) blocks
   let (outs,ins) = unzip uts
   let upds = (M.unions outs, mconcat ins)
   pure $ ((box, M.unions txMaps), upds)
 
 getAddrTxsFromBlock :: (MonadIO m, HasBlocksStorage m, PlatformNatives)
-  => EgvAddress
+  => ScanKeyBox
   -> M.Map HB.BlockHash HB.BlockHeight
   -> HB.Block
   -> m (M.Map TxId EgvTx, BtcUtxoUpdate)
-getAddrTxsFromBlock addr heights block = do
+getAddrTxsFromBlock box heights block = do
   checkResults <- traverse (checkAddrTx addr) txs
   let filteredTxs = fst $ unzip $ filter snd (zip txs checkResults)
-  utxo <- getUtxoUpdatesFromTxs mh addr filteredTxs
+  utxo <- getUtxoUpdatesFromTxs mh box filteredTxs
   pure $ (, utxo) $ M.fromList [(HT.txHashToHex $ HT.txHash tx, BtcTx tx mheha) | tx <- filteredTxs]
   where
+    addr = egvXPubKeyToEgvAddress $ scanBox'key box
     txs = HB.blockTxns block
     bhash = HB.headerHash . HB.blockHeader $ block
     mh = Just $ maybe 0 fromIntegral $ M.lookup bhash heights

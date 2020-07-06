@@ -103,7 +103,7 @@ btcBalances = do
   pubSD <- getPubStorageD
   pure $ ffor pubSD $ \ps -> let
     utxo = M.elems $ fromMaybe M.empty $ ps ^. pubStorage'currencyPubStorages . at BTC & fmap (view currencyPubStorage'utxos)
-    in Money BTC $ foo 0 utxo $ \s (v,_) -> s + v
+    in Money BTC $ foo 0 utxo $ \s UtxoMeta{..} -> s + utxoMeta'amount
   where foo b ta f = L.foldl' f b ta
 
 symbolUnit :: Currency -> Units -> Text

@@ -366,3 +366,4 @@ getLabelFromEgvPubKey key = case key of
 -- Internal chain is used for addresses which are not meant to be visible outside of the wallet and is used for return transaction change.
 data KeyPurpose = External | Internal
   deriving (Eq, Ord, Show, Read)
+$(deriveJSON defaultOptions ''KeyPurpose)

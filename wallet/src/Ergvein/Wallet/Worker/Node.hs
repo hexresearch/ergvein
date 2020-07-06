@@ -118,9 +118,8 @@ bctNodeController = mdo
   store <- getBlocksStorage
   valsE <- performFork $ ffor (current keysD `attach` txE) $ \(keys, tx) ->
     liftIO $ flip runReaderT store $ do
-      let addrs = V.toList $ (egvXPubKeyToEgvAddress . scanBox'key) <$> keys
       v <- checkAddrTx' keys tx
-      u <- getUtxoUpdates Nothing addrs tx
+      u <- getUtxoUpdates Nothing keys tx
       pure (v,u)
 
   insertTxsUtxoInPubKeystore BTC valsE

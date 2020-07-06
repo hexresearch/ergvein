@@ -32,11 +32,16 @@ import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Validation as V
 import qualified Network.Haskoin.Transaction as HT
+import qualified Data.Vector as Ve
 
 import Control.Lens
 import Ergvein.Types.Storage
 import Ergvein.Types.Utxo
 import Data.Maybe
+import Ergvein.Wallet.Storage.Keys
+import Ergvein.Types.Keys
+import Network.Haskoin.Constants
+import Ergvein.Wallet.Platform
 
 sendPage :: MonadFront t m => Currency -> Maybe (EgvAddress, Rational) -> m ()
 sendPage cur minit = do
@@ -87,18 +92,21 @@ data FeeSelectorStatus = FSSNoEntry | FSSNoCache | FSSNoManual | FSSManual Word6
 debugVals :: (Word64, Word64, EgvAddress)
 debugVals = (1000, 1, BtcAddress {getBtcAddr = WitnessPubKeyAddress {getAddrHash160 = "50beb79f500060a3faaf466d388732c0ebecc6f8"}})
 
-data UtxoPoint = UtxoPoint {upPoint :: !HT.OutPoint, upValue :: !Word64}
-  deriving (Show)
+data UtxoPoint = UtxoPoint {
+  upIndex :: !Int
+, upPoint :: !HT.OutPoint
+, upValue :: !Word64
+} deriving (Show)
 
 instance Eq UtxoPoint where
-  (UtxoPoint _ a) == (UtxoPoint _ b) = a == b
+  a == b = upValue a == upValue b
 
 -- | We need to sort in desc order to reduce Tx size
 instance Ord UtxoPoint where
-  (UtxoPoint _ a) `compare` (UtxoPoint _ b) = b `compare` a
+  a `compare` b = upValue b `compare` upValue a
 
 instance HT.Coin UtxoPoint where
-  coinValue (UtxoPoint _ v) = v
+  coinValue = upValue
 
 btcSendConfirmationWidget :: MonadFront t m => (Word64, Word64, EgvAddress) -> m ()
 btcSendConfirmationWidget v@(amount, fee, addr) = wrapper False (SendTitle BTC) (Just $ pure $ btcSendConfirmationWidget v) $ do
@@ -113,6 +121,8 @@ btcSendConfirmationWidget v@(amount, fee, addr) = wrapper False (SendTitle BTC) 
         finalpick = case firstpick of
           Right v -> Right v
           Left err -> HT.chooseCoins amount fee 2 True $ L.sort $ confs <> unconfs
+        mkey = getLastUnusedKey Internal =<< pubStorageKeyStorage BTC ps
+        keys = fromMaybe Ve.empty $ fmap pubKeystore'internal $ pubStorageKeyStorage BTC ps
     case finalpick of
       Left _ -> el "div" $ text $ showt "No solution found. Not enough money"
       Right (pick, change) -> do
@@ -122,18 +132,32 @@ btcSendConfirmationWidget v@(amount, fee, addr) = wrapper False (SendTitle BTC) 
         el "div" $ text $ "Fee estimate: " <> showt estFee
         el "div" $ text $ "Change: " <> showt change
         void $ traverse (el "div" . text . showt) ops
-
+        el "div" $ text $ maybe "No key" (showt . fmap (addrToString btcTest . xPubToBtcAddr . extractXPubKeyFromEgv . pubKeyBox'key)) mkey
+        el "div" $ text $ "--------------------------------------------------------------------------"
+        case mkey of
+          Nothing -> el "div" $ text "Something bad happend. No key -- no Tx"
+          Just (_, key) -> do
+            let keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress $ pubKeyBox'key key
+            -- flip traverse (Ve.indexed keys) $ el "div" . text . showt . fmap (addrToString btcTest . xPubToBtcAddr . extractXPubKeyFromEgv . pubKeyBox'key)
+            let outs = [(egvAddrToString addr, amount), (keyTxt, change)]
+            let etx = HT.buildAddrTx btcNetwork (upPoint <$> pick) outs
+            case etx of
+              Left err -> el "div" $ text $ showt err
+              Right tx -> el "div" $ text $ showt tx
+        pure ()
     pure ()
 
   pure ()
   where
     foo b f ta = L.foldl' f b ta
-    partition' :: [(HT.OutPoint, (Word64, EgvUtxoStatus))] -> ([UtxoPoint], [UtxoPoint])
-    partition' = foo ([], []) $ \(cs, ucs) (op, (v, stat)) -> let upoint = UtxoPoint op v in case stat of
-      EUtxoConfirmed -> (upoint:cs, ucs)
-      EUtxoSemiConfirmed _ -> (upoint:cs, ucs)
-      EUtxoSending -> (cs, ucs)
-      EUtxoReceiving -> (cs, upoint:ucs)
+    partition' :: [(HT.OutPoint, UtxoMeta)] -> ([UtxoPoint], [UtxoPoint])
+    partition' = foo ([], []) $ \(cs, ucs) (op, UtxoMeta{..}) ->
+      let upoint = UtxoPoint utxoMeta'index op utxoMeta'amount in
+      case utxoMeta'status of
+        EUtxoConfirmed -> (upoint:cs, ucs)
+        EUtxoSemiConfirmed _ -> (upoint:cs, ucs)
+        EUtxoSending -> (cs, ucs)
+        EUtxoReceiving -> (cs, upoint:ucs)
 
 btcFeeSelectionWidget :: forall t m . MonadFront t m => Event t () -> m (Dynamic t (Maybe Word64))
 btcFeeSelectionWidget sendE = do
