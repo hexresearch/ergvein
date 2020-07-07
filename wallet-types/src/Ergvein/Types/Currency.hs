@@ -1,6 +1,8 @@
 module Ergvein.Types.Currency (
     Currency(..)
   , allCurrencies
+  , btcResolution
+  , ergoResolution
   , currencyResolution
   , currencyResolutionUnit
   , currencyName
@@ -8,6 +10,9 @@ module Ergvein.Types.Currency (
   , currencyBlockDuration
   , currencyBlockTime
   , currencyBehind
+  , btcSymbolUnit
+  , ergoSymbolUnit
+  , symbolUnit
   , MoneyUnit
   , Money(..)
   , moneyToRational
@@ -86,6 +91,20 @@ defUnitBTC = BtcWhole
 allUnitsBTC :: [UnitBTC]
 allUnitsBTC = [minBound .. maxBound]
 
+btcResolution :: UnitBTC -> Int
+btcResolution u = case u of
+  BtcWhole -> 8
+  BtcMilli -> 5
+  BtcSat   -> 0
+{-# INLINE btcResolution #-}
+
+btcSymbolUnit :: UnitBTC -> Text
+btcSymbolUnit u = case u of
+  BtcWhole    -> "btc"
+  BtcMilli    -> "mbtc"
+  BtcSat      -> "sat"
+{-# INLINE btcSymbolUnit #-}
+
 -- | Display units for ERGO
 data UnitERGO
   = ErgWhole
@@ -102,6 +121,20 @@ defUnitERGO = ErgWhole
 
 allUnitsERGO :: [UnitERGO]
 allUnitsERGO = [minBound .. maxBound]
+
+ergoResolution :: UnitERGO -> Int
+ergoResolution u = case u of
+  ErgWhole -> 9
+  ErgMilli -> 6
+  ErgNano  -> 0
+{-# INLINE ergoResolution #-}
+
+ergoSymbolUnit :: UnitERGO -> Text
+ergoSymbolUnit u = case u of
+  ErgWhole    -> "erg"
+  ErgMilli    -> "merg"
+  ErgNano     -> "nerg"
+{-# INLINE ergoSymbolUnit #-}
 
 -- | Union units
 data Units = Units {
@@ -132,15 +165,14 @@ currencyResolution c = currencyResolutionUnit c defUnits
 
 currencyResolutionUnit :: Currency -> Units -> Int
 currencyResolutionUnit c Units{..} = case c of
-  BTC  -> case fromMaybe defUnitBTC unitBTC of
-            BtcWhole -> 8
-            BtcMilli -> 5
-            BtcSat   -> 0
-  ERGO -> case fromMaybe defUnitERGO unitERGO of
-            ErgWhole -> 9
-            ErgMilli -> 6
-            ErgNano  -> 0
+  BTC  -> btcResolution $ fromMaybe defUnitBTC unitBTC
+  ERGO -> ergoResolution $ fromMaybe defUnitERGO unitERGO
 {-# INLINE currencyResolutionUnit #-}
+
+symbolUnit :: Currency -> Units -> Text
+symbolUnit cur Units{..} = case cur of
+  BTC  -> btcSymbolUnit $ fromMaybe defUnitBTC unitBTC
+  ERGO -> ergoSymbolUnit $ fromMaybe defUnitERGO unitERGO
 
 currencyName :: Currency -> Text
 currencyName c = case c of
