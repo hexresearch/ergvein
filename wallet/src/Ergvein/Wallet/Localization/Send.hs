@@ -3,6 +3,7 @@ module Ergvein.Wallet.Localization.Send
     SendStrings(..)
   , BTCFeeMode(..)
   , FeeStrings(..)
+  , ConfirmationErrorMessage(..)
   ) where
 
 import Data.Word
@@ -19,6 +20,8 @@ data SendStrings
   | AmountString
   | BtnPasteString
   | BtnScanQRCode
+  | SignSendBtn
+  | ErrBackBtn
 
 instance LocalizedPrint SendStrings where
   localizedShow l v = case l of
@@ -29,6 +32,8 @@ instance LocalizedPrint SendStrings where
       AmountString -> "Amount"
       BtnPasteString -> "Paste"
       BtnScanQRCode -> "Scan"
+      SignSendBtn -> "Sign and send"
+      ErrBackBtn -> "Back"
     Russian -> case v of
       SendTitle c -> "Отправить " <> currencyName c
       SendBtnString -> "Отправить"
@@ -36,6 +41,8 @@ instance LocalizedPrint SendStrings where
       AmountString -> "Сумма"
       BtnPasteString -> "Вставить"
       BtnScanQRCode -> "Сканировать"
+      SignSendBtn -> "Подписать и отправить"
+      ErrBackBtn -> "Назад"
 
 data BTCFeeMode = BFMLow | BFMMid | BFMHigh | BFMManual
   deriving (Eq)
@@ -77,3 +84,25 @@ instance LocalizedPrint FeeStrings where
       FSFee f -> "~" <> showt f <> " satoshi/vbyte"
       FSInvalid -> "Введите комиссию. Целое число, satoshi/vbyte"
       FSNoFees -> "Уровень комиссий не найден в кэше. Пожалуйста, введите комиссию вручную."
+
+data ConfirmationErrorMessage
+  = CEMEmptyUTXO
+  | CEMNoChangeKey
+  | CEMNoSolution
+  | CEMSignFail
+  | CEMTxBuildFail
+
+instance LocalizedPrint ConfirmationErrorMessage where
+  localizedShow l v = case l of
+    English -> case v of
+      CEMEmptyUTXO    -> "Empty UTXO set"
+      CEMNoChangeKey  -> "Failed to get an address for the change"
+      CEMNoSolution   -> "No solution found. Probably not enough money"
+      CEMSignFail     -> "Failed to sign the transaction"
+      CEMTxBuildFail  -> "Failed to build a transaction"
+    Russian -> case v of
+      CEMEmptyUTXO    -> "Нет непотраченных выходов"
+      CEMNoChangeKey  -> "Не смог получить адрес для сдачи"
+      CEMNoSolution   -> "Нет решения. Возможно недостаточно денег"
+      CEMSignFail     -> "Не удалось подписать транзакцию"
+      CEMTxBuildFail  -> "Не удалось создать транзакцию"

@@ -458,6 +458,10 @@ sendPageCss = do
   ".btn-fee" ? do
     marginLeft $ rem 0.5
     marginRight $ rem 0.5
+  ".send-confirm-row" ? do
+    textAlign $ alignSide sideLeft
+  ".send-confirm-box" ? do
+    pure ()
 
 aboutPageCss :: Css
 aboutPageCss = do
@@ -866,6 +870,9 @@ legoStyles = do
   ".w-80" ? width (pct 80)
   ".w-100" ? width (pct 100)
   ".h-100" ? height (pct 100)
+  ".ta-l" ? textAlign (alignSide sideLeft)
+  ".ta-r" ? textAlign (alignSide sideRight)
+  ".ta-c" ? textAlign center
 
 receiveCss :: Css
 receiveCss = do

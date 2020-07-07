@@ -15,6 +15,7 @@ import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
+import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
@@ -111,65 +112,38 @@ instance HT.Coin UtxoPoint where
   coinValue = utxoMeta'amount . upMeta
 
 btcSendConfirmationWidget :: MonadFront t m => (Word64, Word64, EgvAddress) -> m ()
-btcSendConfirmationWidget v@(amount, fee, addr) = wrapper False (SendTitle BTC) (Just $ pure $ btcSendConfirmationWidget v) $ do
+btcSendConfirmationWidget v@(amount, fee, addr) = wrapper False (SendTitle BTC) (Just $ pure $ btcSendConfirmationWidget v) $ divClass "send-confirm-box" $ do
   let thisWidget = Just $ pure $ btcSendConfirmationWidget v
   navbarWidget BTC thisWidget NavbarSend
-  el "div" $ text $ showt v
   psD <- getPubStorageD
-  widgetHoldDyn $ ffor psD $ \ps -> do
-    let utxomap = fromMaybe M.empty $ ps ^. pubStorage'currencyPubStorages . at BTC & fmap (view currencyPubStorage'utxos)
-        (confs, unconfs) = partition' $ M.toList utxomap
-        firstpick = HT.chooseCoins amount fee 2 True $ L.sort confs
-        finalpick = case firstpick of
-          Right v -> Right v
-          Left err -> HT.chooseCoins amount fee 2 True $ L.sort $ confs <> unconfs
+  utxoKeyD <- holdUniqDyn $ do
+    ps <- psD
+    let utxo = ps ^. pubStorage'currencyPubStorages . at BTC & fmap (view currencyPubStorage'utxos)
         mkey = getLastUnusedKey Internal =<< pubStorageKeyStorage BTC ps
-        keys = fromMaybe V.empty $ fmap pubKeystore'internal $ pubStorageKeyStorage BTC ps
-    case finalpick of
-      Left _ -> el "div" $ text $ showt "No solution found. Not enough money"
-      Right (pick, change) -> do
-        let n = length pick
-        let ops = upPoint <$> pick
-        let estFee = HT.guessTxFee fee 2 n
-        el "div" $ text $ "Fee estimate: " <> showt estFee
-        el "div" $ text $ "Change: " <> showt change
-        void $ traverse (el "div" . text . showt) ops
-        el "div" $ text $ maybe "No key" (showt . fmap (addrToString btcTest . xPubToBtcAddr . extractXPubKeyFromEgv . pubKeyBox'key)) mkey
-        el "div" $ text $ "--------------------------------------------------------------------------"
-        case mkey of
-          Nothing -> el "div" $ text "Something bad happend. No key -- no Tx"
-          Just (_, key) -> do
-            let keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress $ pubKeyBox'key key
-            let outs = [(egvAddrToString addr, amount), (keyTxt, change)]
-            let etx = HT.buildAddrTx btcNetwork (upPoint <$> pick) outs
-            case etx of
-              Left err -> el "div" $ text $ showt err
-              Right tx -> do
-                signE <- outlineButton ("Sign tx" :: Text)
-                mvalE <- fmap (fmapMaybe id) $ withWallet $ ffor signE $ const $ \prv -> do
-                  let PrvKeystore _ ext int = prv ^. prvStorage'currencyPrvStorages
-                        . at BTC . non (error "btcSendConfirmationWidget: not exsisting store!")
-                        . currencyPrvStorage'prvKeystore
-                  fmap (fmap unzip . sequence) $ flip traverse pick $ \(UtxoPoint op UtxoMeta{..}) -> do
-                    let sig = HT.SigInput utxoMeta'script utxoMeta'amount op HS.sigHashAll Nothing
-                    let errMsg = "Failed to get a corresponding secret key: " <> showt utxoMeta'purpose <> " #" <> showt utxoMeta'index
-                    let msec = case utxoMeta'purpose of
-                          Internal -> fmap (xPrvKey . unEgvXPrvKey) $ (V.!?) int utxoMeta'index
-                          External -> fmap (xPrvKey . unEgvXPrvKey) $ (V.!?) ext utxoMeta'index
-                    maybe (logWrite errMsg >> pure Nothing) (pure . Just . (sig,)) msec
-                widgetHold (pure ()) $ ffor mvalE $ \(sigs, secs) -> do
-                  case HT.signTx btcNetwork tx sigs secs of
-                    Left err' -> el "div" $ text $ "Failed to sign TX"
-                    Right stx -> do
-                      logWrite $ showt stx
-                      logWrite $ ""
-                      logWrite $ showt tx
-                pure ()
-        pure ()
-    pure ()
+    pure (utxo, mkey)
 
+  stxE <- fmap switchDyn $ widgetHoldDyn $ ffor utxoKeyD $ \case
+    (Nothing, _) -> confirmationErrorWidget CEMEmptyUTXO
+    (_, Nothing) -> confirmationErrorWidget CEMNoChangeKey
+    (Just utxomap, Just (_, changeKey)) -> do
+      let (confs, unconfs) = partition' $ M.toList utxomap
+          firstpick = HT.chooseCoins amount fee 2 True $ L.sort confs
+          finalpick = either (const $ HT.chooseCoins amount fee 2 True $ L.sort $ confs <> unconfs) Right firstpick
+      either' finalpick (const $ confirmationErrorWidget CEMNoSolution) $ \(pick, change) -> do
+        let keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress $ pubKeyBox'key changeKey
+        let outs = [(egvAddrToString addr, amount), (keyTxt, change)]
+        let etx = HT.buildAddrTx btcNetwork (upPoint <$> pick) outs
+        let estFee = HT.guessTxFee fee 2 $ length pick
+        confirmationInfoWidget amount estFee addr
+        either' etx (const $ confirmationErrorWidget CEMTxBuildFail) $ \tx -> do
+          signE <- outlineButton ("Sign tx" :: Text)
+          etxE <- fmap (fmapMaybe id) $ withWallet $ (signTxWithWallet tx pick) <$ signE
+          widgetHold (pure ()) $ ffor etxE $ either (const $ void $ confirmationErrorWidget CEMSignFail) (const $ pure ())
+          handleDangerMsg $ (either (Left . T.pack) Right) <$> etxE
   pure ()
   where
+    maybe' m n j = maybe n j m
+    either' e l r = either l r e
     foo b f ta = L.foldl' f b ta
     partition' :: [(HT.OutPoint, UtxoMeta)] -> ([UtxoPoint], [UtxoPoint])
     partition' = foo ([], []) $ \(cs, ucs) (op, meta@UtxoMeta{..}) ->
@@ -179,6 +153,38 @@ btcSendConfirmationWidget v@(amount, fee, addr) = wrapper False (SendTitle BTC) 
         EUtxoSemiConfirmed _ -> (upoint:cs, ucs)
         EUtxoSending -> (cs, ucs)
         EUtxoReceiving -> (cs, upoint:ucs)
+
+confirmationInfoWidget :: MonadFront t m => Word64 -> Word64 -> EgvAddress -> m ()
+confirmationInfoWidget amount estFee addr = divClass "send-confirm-info" $ do
+  h4  $ text "Confirm the transaction"
+  mkrow "Send :" $ showt amount <> " " <> showt (egvAddrCurrency addr)
+  mkrow "To   :" $ egvAddrToString addr
+  mkrow "Fee  :" $ showt estFee
+  mkrow "Total:" $ showt (amount + estFee)
+  where
+    mkrow :: MonadFront t m => Text -> Text -> m ()
+    mkrow a b = divClass "row" $ do
+      divClass "col-2 mr-1" $ localizedText a
+      divClass "col-10 ta-l ml-1" $ localizedText b
+confirmationErrorWidget :: MonadFront t m => ConfirmationErrorMessage -> m (Event t a)
+confirmationErrorWidget cem = do
+  el "h4" $ localizedText cem
+  el "div" $ retract =<< outlineButton ErrBackBtn
+  pure never
+
+signTxWithWallet :: (MonadIO m, PlatformNatives) => HT.Tx -> [UtxoPoint] -> PrvStorage -> m (Maybe (Either String HT.Tx))
+signTxWithWallet tx pick prv = do
+  let PrvKeystore _ ext int = prv ^. prvStorage'currencyPrvStorages
+        . at BTC . non (error "btcSendConfirmationWidget: not exsisting store!")
+        . currencyPrvStorage'prvKeystore
+  mvals <- fmap (fmap unzip . sequence) $ flip traverse pick $ \(UtxoPoint op UtxoMeta{..}) -> do
+    let sig = HT.SigInput utxoMeta'script utxoMeta'amount op HS.sigHashAll Nothing
+    let errMsg = "Failed to get a corresponding secret key: " <> showt utxoMeta'purpose <> " #" <> showt utxoMeta'index
+    let msec = case utxoMeta'purpose of
+          Internal -> fmap (xPrvKey . unEgvXPrvKey) $ (V.!?) int utxoMeta'index
+          External -> fmap (xPrvKey . unEgvXPrvKey) $ (V.!?) ext utxoMeta'index
+    maybe (logWrite errMsg >> pure Nothing) (pure . Just . (sig,)) msec
+  pure $ (uncurry $ HT.signTx btcNetwork tx) <$> mvals
 
 btcFeeSelectionWidget :: forall t m . MonadFront t m => Event t () -> m (Dynamic t (Maybe Word64))
 btcFeeSelectionWidget sendE = do
