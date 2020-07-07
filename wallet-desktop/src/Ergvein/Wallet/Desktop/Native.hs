@@ -6,6 +6,7 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.Aeson
 import Data.Text(Text)
+import Data.Time.LocalTime (getCurrentTimeZone)
 import Ergvein.Aeson
 import Ergvein.Wallet.Native
 import Network.DNS.Resolver
@@ -91,6 +92,8 @@ instance PlatformNatives where
   pasteStr = liftIO $ fmap T.pack getClipboard
 
   copyStr = liftIO . setClipboard . T.unpack
+
+  getTimeZone = liftIO getCurrentTimeZone
 
   shareUrl = liftIO . setClipboard . T.unpack
 

@@ -9,6 +9,7 @@ import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.Aeson
 import Data.Text (Text)
+import Data.Time.LocalTime (TimeZone)
 import Data.X509.CertificateStore (CertificateStore)
 import Network.DNS.Resolver (ResolvConf)
 
@@ -56,6 +57,9 @@ class PlatformNatives where
 
   -- | Put string into clipboard
   copyStr :: MonadIO m => Text -> m ()
+
+  -- | Get the current time-zone.
+  getTimeZone :: MonadIO m => m TimeZone
 
   -- | Share URL string for other applications
   shareUrl :: MonadIO m => Text -> m ()

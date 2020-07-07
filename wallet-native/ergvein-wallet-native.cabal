@@ -20,6 +20,7 @@ library
     , jsaddle
     , mtl
     , text
+    , time
     , x509-store >= 1.6
   default-extensions:
     MultiParamTypeClasses
