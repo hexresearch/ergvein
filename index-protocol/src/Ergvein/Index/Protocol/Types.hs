@@ -1,4 +1,4 @@
-module Ergvein.Index.BinaryAPI.Types where
+module Ergvein.Index.Protocol.Types where
 
 import Data.Word
 import Data.ByteString

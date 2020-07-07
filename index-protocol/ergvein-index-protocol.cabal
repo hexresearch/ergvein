@@ -1,4 +1,4 @@
-name:                ergvein-index-binary-api
+name:                ergvein-index-protocol
 version:             0.1.0.0
 synopsis:            Shared api contract for ergvein wallet cryptocurrencies index server
 description:         See README.md
@@ -9,7 +9,7 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:
-    Ergvein.Index.BinaryAPI.Types
+    Ergvein.Index.Protocol.Types
 
   build-depends:
       base                 >= 4.7  && < 4.13

@@ -7,7 +7,7 @@ packages:
   ./ergo-api
   ./golomb-rice
   ./index-api
-  ./index-binary-api
+  ./index-protocol
   ./index-client
   ./index-server
   ./interfaces/ergo
