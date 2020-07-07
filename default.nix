@@ -10,6 +10,7 @@ let
       ergvein-common = ./common;
       ergvein-crypto = ./crypto;
       ergvein-index-api = ./index-api;
+      ergvein-index-binary-api = ./index-binary-api;
       ergvein-index-client = ./index-client;
       ergvein-index-server = ./index-server;
       ergvein-interface-ergo = ./interfaces/ergo;
@@ -36,6 +37,7 @@ let
         "ergvein-common"
         "ergvein-crypto"
         "ergvein-index-api"
+        "ergvein-index-binary-api"
         "ergvein-index-client"
         "ergvein-index-server"
         "ergvein-interface-ergo"

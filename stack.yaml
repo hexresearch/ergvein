@@ -32,6 +32,7 @@ packages:
 - common
 - crypto
 - index-api
+- index-binary-api
 - index-client
 - index-server
 - checkpoint-generator

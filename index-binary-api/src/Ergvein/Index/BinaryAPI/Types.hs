@@ -1,4 +1,4 @@
-module Ergvein.Index.API.BinaryTypes where
+module Ergvein.Index.BinaryAPI.Types where
 
 import Data.Word
 import Data.ByteString
@@ -22,6 +22,22 @@ data MessageType = Version
                  | Reject
                  | Ping
                  | Pong
+
+messageTypeTag :: MessageType -> Word32
+messageTypeTag = \case
+  Version         -> 0
+  VersionACK      -> 1
+  FiltersRequest  -> 2
+  FiltersResponse -> 3
+  FilterEvent     -> 4
+  PeerRequest     -> 5
+  PeerResponse    -> 6
+  FeeRequest      -> 7
+  FeeResponse     -> 8
+  IntroducePeer   -> 9
+  Reject          -> 10 
+  Ping            -> 11
+  Pong            -> 12
 
 data CurrencyCode = BTC
                   | TBTC
@@ -66,33 +82,30 @@ scanBlock currency version scanHeight height = word32BE (currencyTag currency)
 
 verMsg :: Word32 ->  Word64 -> Word64 -> V.Vector Builder -> Builder
 verMsg version time nonce scanBlocks = 
-  msg msgType msgSize $ word32BE version
+  msg Version msgSize $ word32BE version
                      <> word64BE time
                      <> word64BE nonce
                      <> word32BE currenciesAmount <> V.foldl (<>) mempty scanBlocks
   where
-    msgType = 0
+    msgType = messageTypeTag Version
     scanBlockSize = 24
     currenciesAmount = fromIntegral $ V.length scanBlocks
     msgSize = genericSizeOf time + genericSizeOf nonce + currenciesAmount * scanBlockSize
 
 verACKMsg :: Builder
-verACKMsg = msg msgType msgSize mempty
+verACKMsg = msg VersionACK msgSize mempty
   where
-    msgType = 1
     msgSize = 0
 
 pingMsg :: Word64 -> Builder
-pingMsg nonce = msg msgType msgSize $ word64BE nonce
+pingMsg nonce = msg Ping msgSize $ word64BE nonce
   where
-    msgType = genericSizeOf nonce
-    msgSize = 4
-
-pongMsg :: Word64 -> Builder
-pongMsg nonce = msg msgType msgSize $ word64BE nonce
-  where
-    msgType = 12
     msgSize = genericSizeOf nonce
 
-msg :: Word32 -> Word32 -> Builder -> Builder
-msg msgType msgLength payload = word32BE msgType <> word32BE msgLength <> payload 
+pongMsg :: Word64 -> Builder
+pongMsg nonce = msg Pong msgSize $ word64BE nonce
+  where
+    msgSize = genericSizeOf nonce
+
+msg :: MessageType -> Word32 -> Builder -> Builder
+msg msgType msgLength payload = word32BE (messageTypeTag msgType) <> word32BE msgLength <> payload 
