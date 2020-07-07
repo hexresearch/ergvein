@@ -29,6 +29,7 @@ import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Tx
+import Ergvein.Wallet.TimeZone
 import Ergvein.Wallet.Worker.Node
 import Ergvein.Wallet.Wrapper
 
@@ -94,11 +95,6 @@ transactionInfoPage cur tr@TransactionView{..} = wrapper False HistoryTITitle (J
     blockE' <- expHead blockD' HistoryTIBlock
     copiedBlockE' <- copyDiv blockD' $ txBlock txInfoView
     pure (blockD', blockE', copiedBlockE')
-  (rawD, rawE, copiedRawE) <- divClass "tx-info-page-element" $ mdo
-    rawD' <- expD rawE' rawD'
-    rawE' <- expHead rawD' HistoryTIRaw
-    copiedRawE' <- copyDiv rawD' $ txRaw txInfoView
-    pure (rawD', rawE', copiedRawE')
   divClass "tx-info-page-element" $ do
     par $ bold $ localizedText HistoryTIOutputs
     divClass "tx-info-page-outputs-inputs" $ do
@@ -120,7 +116,6 @@ transactionInfoPage cur tr@TransactionView{..} = wrapper False HistoryTITitle (J
   let copiedE = leftmost[
           (txId txInfoView) <$ copiedHashE
         , (txBlock txInfoView) <$ copiedBlockE
-        , (txRaw txInfoView) <$ copiedRawE
         ]
   cE <- clipboardCopy $ copiedE
   showSuccessMsg $ CSCopied <$ cE
@@ -169,9 +164,6 @@ transactionInfoPage cur tr@TransactionView{..} = wrapper False HistoryTITitle (J
   divClass "tx-info-page-element" $ do
     par $ bold $ localizedText HistoryTIBlock
     parClass "tx-info-page-expanded" $ text $ txBlock txInfoView
-  divClass "tx-info-page-element" $ do
-    par $ bold $ localizedText HistoryTIRaw
-    parClass "tx-info-page-expanded" $ text $ txRaw txInfoView
   divClass "tx-info-page-element" $ do
     par $ bold $ localizedText HistoryTIOutputs
     divClass "tx-info-page-outputs-inputs" $ do
@@ -243,18 +235,24 @@ transactionsGetting cur = do
 
   abS <- filtArd <$> sampleDyn allBtcAddrsD
   store <- getBlocksStorage
+  tzE <- getGetTimeZone buildE
+
+  tzD <- holdDyn utc tzE
+
   let rawTxList = filterTx abS ps
 
   hD <- holdDyn rawTxList $ poke (updated pubSD) $ \pbs -> do
     allbtcAdrS <- filtArd <$> sampleDyn allBtcAddrsD
     pure $ filterTx allbtcAdrS pbs
 
-  filtrTxListSE <- performFork $ ffor buildE $ \_ -> do
+  filtrTxListSE <- performFork $ ffor tzE $ \_ -> do
     let tx = filterTx abS ps
-    getAndFilterBlocks heightD allBtcAddrsD tx store
+    tz <- sampleDyn tzD
+    getAndFilterBlocks heightD allBtcAddrsD tz tx store
 
   filtrTxListE <- performFork $ ffor (updated hD) $ \tx -> do
-    getAndFilterBlocks heightD allBtcAddrsD tx store
+    tz <- sampleDyn tzD
+    getAndFilterBlocks heightD allBtcAddrsD tz tx store
 
   sD <- holdDyn [] filtrTxListSE
   hS <- sampleDyn $ sD
@@ -262,7 +260,7 @@ transactionsGetting cur = do
   filtrHD <- holdDyn [] $ leftmost [filtrTxListSE, filtrTxListE]
   pure (filtrHD, heightD)
   where
-    getAndFilterBlocks heightD btcAddrsD tx store = do
+    getAndFilterBlocks heightD btcAddrsD tz tx store = do
       allbtcAdrS <- filtArd <$> sampleDyn btcAddrsD
       hght <- sampleDyn heightD
       liftIO $ flip runReaderT store $ do
@@ -270,7 +268,7 @@ transactionsGetting cur = do
         bl <- traverse getBlockFromHash blh
         b <- traverse (checkAddr allbtcAdrS) tx
         let txRefList = fmap (calcRefill (fmap getBtcAddr allbtcAdrS)) tx
-        pure $ L.reverse $ L.sortOn (\tx -> txDate tx) $ fmap snd $ L.filter fst $ L.zip b (prepareTransactionView hght <$> txListRaw bl blh tx txRefList)
+        pure $ L.reverse $ L.sortOn (\tx -> txDate tx) $ fmap snd $ L.filter fst $ L.zip b (prepareTransactionView hght tz <$> txListRaw bl blh tx txRefList)
 
     filterTx ac pubS = case cur of
       BTC  -> fmap snd $ fromMaybe [] $ fmap Map.toList $ _currencyPubStorage'transactions <$> Map.lookup cur (_pubStorage'currencyPubStorages pubS)
@@ -297,8 +295,8 @@ transactionsGetting cur = do
         mBlock <- getBtcBlock blockHash
         pure mBlock
 
-prepareTransactionView :: Word64 -> TxRawInfo -> TransactionView
-prepareTransactionView hght TxRawInfo{..} = TransactionView {
+prepareTransactionView :: Word64 -> TimeZone -> TxRawInfo -> TransactionView
+prepareTransactionView hght tz TxRawInfo{..} = TransactionView {
     txAmount = txom
   , txDate = blTime
   , txInOut = TransRefill
@@ -315,7 +313,6 @@ prepareTransactionView hght TxRawInfo{..} = TransactionView {
      ,txFee           = Nothing
      ,txConfirmations = bHeight
      ,txBlock         = txBlockDebug
-     ,txRaw           = showt $ txHs
      ,txOutputs       = txOuts
      ,txInputs        = []
     }
@@ -323,16 +320,16 @@ prepareTransactionView hght TxRawInfo{..} = TransactionView {
     blHght = maybe 0 etxMetaHeight $ getBtcTxMeta txr
     bHeight = if (blHght == 0)
       then 0
-      else hght - blHght
+      else hght - blHght + 1
     txHs = HK.txHash btx
     txHex = HK.txHashToHex txHs
     txOuts = fmap (\out -> (txOutAdr out,Money BTC (HK.outValue out), TOUnspent)) $ HK.txOut btx
     txIns = fmap (\out -> (txOutAdr out,Money BTC (HK.outValue out), TOUnspent)) $ HK.txOut btx
-    txOutAdr out = maybe "undefined" (showt . getAddrHash160 . fromSegWit) $ getSegWitAddr out
-    txBlockDebug = (showt txHBl)
+    txOutAdr out = maybe "undefined" (fromMaybe "unknown" . (addrToString HK.btcTest) . fromSegWit) $ getSegWitAddr out
+    txBlockDebug = maybe "unknown" HK.blockHashToHex txHBl
     blTime = maybe "pending.." (T.pack . secToTimestamp . HK.blockTimestamp . HK.blockHeader) txMBl
 
-    secToTimestamp t = formatTime defaultTimeLocale "%Y/%m/%d %H:%M:%S" $ posixSecondsToUTCTime $ fromIntegral t
+    secToTimestamp t = formatTime defaultTimeLocale "%Y/%m/%d %H:%M:%S" $ utcToZonedTime tz $ posixSecondsToUTCTime $ fromIntegral t
 
 -- Front types, should be moved to Utils
 data ExpStatus = Expanded | Minified deriving (Eq, Show)
@@ -367,7 +364,6 @@ trMockInfo cur = TransactionViewInfo
   (Just $ moneyFromRational cur 0.000706)
   11
   "00000000000000000005119aeee8d2550c5875ff0569583d0ca543ed0c06b2d4"
-  "010000000001033a049aac743259959d6202adbd69e533d0107f83ca21f278e2514ed3b160a80f03000000171600144ba622ca5a3babce0198b4b575ae5e23fbafa04affffffff6d5734b3d1289aaad6a6edce643c0d8c1d32408e4122c7915c4c979a100a377b0700000017160014d0050eb0fa0afa74876883971d194843aef8c3b8fffffffff7d510428b37b663a744b4e37d0c16dfaaffe2386dbb5fb5c77b6780acff4e8e0100000017160014d0050eb0fa0afa74876883971d194843aef8c3b8ffffffff024ffb49000000000017a914da2e37a0ac8f61fc60833fe4eb82f619992dc42887cf5a8503000000001976a9144eda7a74a3712d81fb0167d97e1119d673edf87b88ac02483045022100c687cb59f9d49e2b086a7fc17074f87612be3b7865e63add8f709384db8b34eb022016789c26d323c57acd590a6ad6db959d89cc9fbb8478b396e551666316264619012102f2246a7f2dd810498aa4f18fe86a6aef1e7856634d18e785b1eeda32712df96f02473044022004c6f0e07ee78f1bee6d20991ca1d237a139463d9612ca3df752296b3f1576c102205fd8d26e4c911aed931e0c0f8c006c0a94b13161d9a815a4809b525d3ae3754b012102e20a411a55d4e399dda618529c95b5a4fcdbd861dba466b38aa04e5b8f7324880247304402206ed672ce4e4b5db99461375afffcb393a29c8a5a959f21a3eb5a97b1bd4e4c3902204bab74dfca7b97f965c37ff34a6462aa391609f3793c561db27e141b312610f7012102e20a411a55d4e399dda618529c95b5a4fcdbd861dba466b38aa04e5b8f73248800000000"
   [("3MaebbZnWMXoxTWR7SHVGS3W6Xuw5FU164",(moneyFromRational cur 0.04848463),TOUnspent),("18BwS73Fq7D5HY8rGkYCsWNGXXRfEvDxW2",(moneyFromRational cur 0.59071183),TOSpent)]
   [("3Mx9XH35FrbpVjsDayKyvc6eSDZfjJAsx5",(moneyFromRational cur 0.13282286)),("3EVkfRx1cPWC8czue1RH4d6rTXghWyCXDS",(moneyFromRational cur 0.25622085)),("3EVkfRx1cPWC8czue1RH4d6rTXghWyCXDS",(moneyFromRational cur 0.25085875))]
 
@@ -393,7 +389,6 @@ data TransactionViewInfo = TransactionViewInfo {
  ,txFee           :: Maybe Money
  ,txConfirmations :: Word64
  ,txBlock         :: Text
- ,txRaw           :: Text
  ,txOutputs       :: [(Text,Money,TransOutputType)]
  ,txInputs        :: [(Text,Money)]
 } deriving (Show)
