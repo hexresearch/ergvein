@@ -127,6 +127,7 @@ library
         Ergvein.Wallet.Style
         Ergvein.Wallet.Sync.Status
         Ergvein.Wallet.Sync.Widget
+        Ergvein.Wallet.TimeZone
         Ergvein.Wallet.Tx
         Ergvein.Wallet.Util
         Ergvein.Wallet.Validate

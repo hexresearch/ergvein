@@ -3,6 +3,7 @@ module Ergvein.Wallet.Blocks.BTC.Types(
     initBtcDbs
   , getBtcBlocksDb
   , getBtcTxsToBlocksDb
+  , getBtcBlocksHeightDb
   ) where
 
 import Database.LMDB.Simple
@@ -15,6 +16,9 @@ import Ergvein.Wallet.Codec()
 blocksDbName :: String
 blocksDbName = "btcblocks"
 
+blocksHeightDbName :: String
+blocksHeightDbName = "btcblocksheight"
+
 txsToBlocksDbName :: String
 txsToBlocksDbName = "btcTxsToBlocks"
 
@@ -23,7 +27,11 @@ initBtcDbs :: Transaction ReadWrite ()
 initBtcDbs = do
   bdb <- getBtcBlocksDb
   tdb <- getBtcTxsToBlocksDb
-  bdb `seq` tdb `seq` pure ()
+  bhb <- getBtcBlocksHeightDb
+  bdb `seq` tdb `seq` bhb `seq` pure ()
+
+getBtcBlocksHeightDb :: Mode mode => Transaction mode (Database BlockHash BlockHeight)
+getBtcBlocksHeightDb = getDatabase $ Just blocksHeightDbName
 
 getBtcBlocksDb :: Mode mode => Transaction mode (Database BlockHash Block)
 getBtcBlocksDb = getDatabase $ Just blocksDbName

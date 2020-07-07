@@ -41,6 +41,7 @@ indexServer = IndexApi
     { indexGetHeight = indexGetHeightEndpoint
     , indexGetBlockFilters = indexGetBlockFiltersEndpoint
     , indexGetInfo = indexGetInfoEndpoint
+    , indexPing = indexPingEndpoint
     , indexIntroducePeer = introducePeerEndpoint
     , indexKnownPeers = knownPeersEndpoint
     , indexGetFees    = getFeesEndpoint
@@ -65,6 +66,9 @@ indexGetBlockFiltersEndpoint request = do
     slice <- getBlockMetaSlice (filtersReqCurrency request) (filtersReqStartHeight request) (filtersReqAmount request)
     let blockFilters = (\s -> (blockMetaRecHeaderHashHexView s, blockMetaRecAddressFilterHexView s)) <$> slice
     pure blockFilters
+
+indexPingEndpoint :: ServerM ()
+indexPingEndpoint = void $ getParsedExact @SchemaVersionRec schemaVersionRecKey
 
 indexGetInfoEndpoint :: ServerM InfoResponse
 indexGetInfoEndpoint = do

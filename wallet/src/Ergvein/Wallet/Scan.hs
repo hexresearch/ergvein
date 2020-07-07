@@ -95,7 +95,11 @@ scannerBtc = void $ workflow waiting
     scanning i0 = Workflow $ do
       logWrite "Scanning filters"
       waitingE <- scanningAllBtcKeys i0
-      pure ((), waiting <$ waitingE)
+      scD <- getWalletsScannedHeightD BTC
+      cleanedE <- performFork $ ffor waitingE $ const $ do
+        i1 <- fmap fromIntegral . sample . current $ scD
+        clearFiltersRange BTC i0 i1
+      pure ((), waiting <$ cleanedE)
 
 -- | Check all keys stored in public storage agains unscanned filters and return 'True' if we found any tx (stored in public storage).
 scanningAllBtcKeys :: MonadFront t m => HB.BlockHeight -> m (Event t Bool)
@@ -137,7 +141,9 @@ scanningBtcBlocks :: MonadFront t m => Vector (Int, EgvXPubKey) -> Event t [(HB.
 scanningBtcBlocks keys hashesE = do
   let noScanE = fforMaybe hashesE $ \bls -> if null bls then Just () else Nothing
   heightMapD <- holdDyn M.empty $ M.fromList <$> hashesE
-  blocksE <- logEvent "Blocks requested: " =<< requestBTCBlocks (nub . fst . unzip <$> hashesE)
+  let rhashesE = fmap (nub . fst . unzip) $ hashesE
+  _ <-logEvent "Blocks requested: " rhashesE
+  blocksE <- requestBTCBlocks rhashesE
   storedBlocks <- storeMultipleBlocksTxHashesByE =<< storeMultipleBlocksByE blocksE
   let toAddr = xPubToBtcAddr . extractXPubKeyFromEgv
       keymap = M.fromList . V.toList . V.map (second (BtcAddress . toAddr)) $ keys
@@ -147,7 +153,8 @@ scanningBtcBlocks keys hashesE = do
   let updE = fforMaybe txsUpdsE $ \(_,(o,i)) -> if not (M.null o && null i) then Just (o,i) else Nothing
   updateBtcUtxoSet updE
   storedE <- insertTxsInPubKeystore $ (BTC,) . fmap M.elems <$> txsE
-  pure $ leftmost [any (not . M.null) <$> txsE, False <$ noScanE]
+  let hasTxsE = leftmost [any (not . M.null) <$> txsE, False <$ noScanE]
+  pure hasTxsE
 
 -- Left here for clarity
 -- type BtcUtxoSet = M.Map OutPoint (Word64, EgvUtxoStatus)

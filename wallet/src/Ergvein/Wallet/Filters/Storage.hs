@@ -2,6 +2,8 @@ module Ergvein.Wallet.Filters.Storage(
     FiltersStorage
   , HasFiltersStorage(..)
   , openFiltersStorage
+  , clearFilters
+  , clearFiltersRange
   , getFiltersHeight
   , watchFiltersHeight
   , writeFiltersHeight
@@ -54,7 +56,7 @@ openFiltersStorage = do
     storeEx <- doesDirectoryExist path
     unless storeEx $ createDirectory path
   e <- liftIO $ openEnvironment path $ defaultLimits {
-      maxDatabases = 6 -- TODO: update when we need more dbs for new currencies
+      maxDatabases = 32 -- TODO: update when we need more dbs for new currencies
     , mapSize = 1024 * 1024 * 4 * 1024 } -- 4 GB max size
   liftIO $ readWriteTransaction e BTC.initBtcDbs
   pure e
@@ -62,6 +64,19 @@ openFiltersStorage = do
 class Monad m => HasFiltersStorage t m | m -> t where
   getFiltersStorage :: m FiltersStorage
   getFiltersHeightRef :: m (ExternalRef t (Map Currency BlockHeight))
+
+clearFilters :: (MonadIO m, HasFiltersStorage t m) => Currency -> m ()
+clearFilters cur = do
+  e <- getFiltersStorage
+  case cur of
+    BTC -> liftIO $ readWriteTransaction e BTC.cleanBtcDbs
+    _ -> pure ()
+
+clearFiltersRange :: (MonadIO m, HasFiltersStorage t m) => Currency -> BlockHeight -> BlockHeight -> m ()
+clearFiltersRange cur i0 i1 = do
+  e <- getFiltersStorage
+  case cur of
+    BTC -> liftIO $ readWriteTransaction e $ BTC.clearFiltersRange i0 i1
 
 getFiltersHeight :: (MonadIO m, HasFiltersStorage t m) => Currency -> m BlockHeight
 getFiltersHeight cur = do
