@@ -22,6 +22,7 @@ import Ergvein.Wallet.Input
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Send
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Validate
@@ -30,10 +31,10 @@ import Ergvein.Wallet.Wrapper
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import qualified Data.Validation as V
+import Data.Validation (toEither)
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Script as HS
-import qualified Data.Vector as Ve
+import qualified Data.Vector as V
 
 import Control.Lens
 import Ergvein.Types.Storage
@@ -82,8 +83,8 @@ sendPage' cur minit = wrapper False (SendTitle cur) (Just $ pure $ sendPage cur 
     let validationE = poke submitE $ \_ -> do
           recipient <- sampleDyn recipientD
           amount <- sampleDyn amountD
-          pure (V.toEither $ validateRecipient cur (T.unpack recipient),
-                V.toEither $ validateAmount $ T.unpack amount)
+          pure (toEither $ validateRecipient cur (T.unpack recipient),
+                toEither $ validateAmount $ T.unpack amount)
         goE = flip push validationE $ \(a,b) -> do
           mfee <- sampleDyn feeD
           pure $ join $ ffor mfee $ \fee -> either (const Nothing) Just $ (fee,,) <$> a <*> b
@@ -123,7 +124,7 @@ btcSendConfirmationWidget v@(amount, fee, addr) = wrapper False (SendTitle BTC) 
           Right v -> Right v
           Left err -> HT.chooseCoins amount fee 2 True $ L.sort $ confs <> unconfs
         mkey = getLastUnusedKey Internal =<< pubStorageKeyStorage BTC ps
-        keys = fromMaybe Ve.empty $ fmap pubKeystore'internal $ pubStorageKeyStorage BTC ps
+        keys = fromMaybe V.empty $ fmap pubKeystore'internal $ pubStorageKeyStorage BTC ps
     case finalpick of
       Left _ -> el "div" $ text $ showt "No solution found. Not enough money"
       Right (pick, change) -> do
@@ -141,13 +142,28 @@ btcSendConfirmationWidget v@(amount, fee, addr) = wrapper False (SendTitle BTC) 
             let keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress $ pubKeyBox'key key
             let outs = [(egvAddrToString addr, amount), (keyTxt, change)]
             let etx = HT.buildAddrTx btcNetwork (upPoint <$> pick) outs
-            let sis = ffor pick $ \(UtxoPoint op UtxoMeta{..}) ->
-                  (utxoMeta'index, utxoMeta'purpose, HT.SigInput utxoMeta'script utxoMeta'amount op HS.sigHashAll Nothing)
             case etx of
               Left err -> el "div" $ text $ showt err
               Right tx -> do
                 signE <- outlineButton ("Sign tx" :: Text)
-                -- withWallet $ ffor signE $ \prv -> do
+                mvalE <- fmap (fmapMaybe id) $ withWallet $ ffor signE $ const $ \prv -> do
+                  let PrvKeystore _ ext int = prv ^. prvStorage'currencyPrvStorages
+                        . at BTC . non (error "btcSendConfirmationWidget: not exsisting store!")
+                        . currencyPrvStorage'prvKeystore
+                  fmap (fmap unzip . sequence) $ flip traverse pick $ \(UtxoPoint op UtxoMeta{..}) -> do
+                    let sig = HT.SigInput utxoMeta'script utxoMeta'amount op HS.sigHashAll Nothing
+                    let errMsg = "Failed to get a corresponding secret key: " <> showt utxoMeta'purpose <> " #" <> showt utxoMeta'index
+                    let msec = case utxoMeta'purpose of
+                          Internal -> fmap (xPrvKey . unEgvXPrvKey) $ (V.!?) int utxoMeta'index
+                          External -> fmap (xPrvKey . unEgvXPrvKey) $ (V.!?) ext utxoMeta'index
+                    maybe (logWrite errMsg >> pure Nothing) (pure . Just . (sig,)) msec
+                widgetHold (pure ()) $ ffor mvalE $ \(sigs, secs) -> do
+                  case HT.signTx btcNetwork tx sigs secs of
+                    Left err' -> el "div" $ text $ "Failed to sign TX"
+                    Right stx -> do
+                      logWrite $ showt stx
+                      logWrite $ ""
+                      logWrite $ showt tx
                 pure ()
         pure ()
     pure ()
