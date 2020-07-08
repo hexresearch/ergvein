@@ -15,6 +15,7 @@ import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Discovery
 import Ergvein.Index.Server.DB.Queries
+import Ergvein.Index.Server.TCPService.Server
 
 import qualified Data.Text.IO as T
 import Data.Text (Text, pack)
@@ -59,6 +60,7 @@ onStartup env = do
   feeWorkers <- feesScanning
   peerIntroduce
   knownPeersActualization
+  liftIO $ forkIO tcpSrv
   pure $ scanningWorkers ++ feeWorkers
 
 startServer :: Options -> IO ()

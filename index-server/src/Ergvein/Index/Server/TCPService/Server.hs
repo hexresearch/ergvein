@@ -5,6 +5,8 @@ import Network.Socket
 import Control.Concurrent
 import System.IO
 import qualified Network.Socket.ByteString as NS
+import qualified Data.ByteString as BS
+import Data.ByteString.Builder
 
 tcpSrv = withSocketsDo $ do
   sock <- socket AF_INET Stream 0
@@ -21,5 +23,7 @@ mainLoop sock = do
 
 runConn :: (Socket, SockAddr) -> IO ()
 runConn (sock, _) = do
-    NS.send sock "Hello!\n"
-    close sock
+  hdl <- socketToHandle sock ReadWriteMode
+  let msg = pingMsg 1 
+  hPutBuilder hdl msg
+  hClose hdl
