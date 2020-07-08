@@ -156,7 +156,7 @@ public class HaskellActivity extends Activity {
   @Override
   protected void onActivityResult(int requestCode, int resultCode, Intent data) {
     super.onActivityResult(requestCode, resultCode, data);
-    if(requestCode == 450) {
+    if (resultCode == Activity.RESULT_OK && data != null) {
       synchronized(syncResultScanQR) {
         resultScanQR = data.getStringExtra("SCAN_RESULT");
       }
