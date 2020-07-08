@@ -280,6 +280,14 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
             NodeReqERGO _ -> ERGO
       in liftIO . nodeReqFire $ M.singleton cur $ M.singleton u $ NodeMsgReq req
   {-# INLINE requestFromNode #-}
+  requestManyFromNode reqE = do
+    nodeReqFire <- asks env'nodeReqFire
+    performFork_ $ ffor reqE $ \(u, reqs) -> flip traverse_ reqs $ \req ->
+      let cur = case req of
+            NodeReqBTC  _ -> BTC
+            NodeReqERGO _ -> ERGO
+      in liftIO . nodeReqFire $ M.singleton cur $ M.singleton u $ NodeMsgReq req
+  {-# INLINE requestManyFromNode #-}
   getNodeRequestSelector = asks env'nodeReqSelector
   {-# INLINE getNodeRequestSelector #-}
   getFeesRef = asks env'feesStore

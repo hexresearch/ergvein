@@ -41,6 +41,7 @@ import qualified Data.Bits as BI
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Dependent.Map as DM
 import qualified Data.IntMap as MI
+import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
@@ -113,6 +114,7 @@ bctNodeController = mdo
     let newTxE = fforMaybe respE $ \case
           MTx tx -> Just tx
           _ -> Nothing
+    myTxSender u respE
     pure $ (u <$ closeE, newTxE)
 
   btcMempoolTxInserter txE
@@ -120,7 +122,36 @@ bctNodeController = mdo
   where
     switchTuple (a, b) = (switchDyn . fmap leftmost $ a, switchDyn . fmap leftmost $ b)
 
--- | Extract TxHashes from Inv vector. Return Nothing if no TxHashes are present
+myTxSender :: MonadFront t m => SockAddr -> Event t Message -> m ()
+myTxSender addr msgE = do
+  pubD <- getPubStorageD
+  let txsD = do
+        ps <- pubD
+        let store = ps ^. pubStorage'currencyPubStorages . at BTC . non (error "bctNodeController: not exsisting store!")
+        let txids = store ^. currencyPubStorage'outgoing
+        let txmap = store ^. currencyPubStorage'transactions
+        pure (txids, txmap)
+  requestManyFromNode $ flip push msgE $ \case
+    MGetData (GetData invs) -> fmap (Just . (addr,) . uncurry (mkTxMessages invs)) $ sampleDyn txsD
+    _ -> pure Nothing
+  pure ()
+
+-- | Filter TxHashes from Inv vector. Return Nothing if no TxHashes are present
+mkTxMessages :: [InvVector] -> S.Set TxId -> M.Map TxId EgvTx -> [NodeReqG]
+mkTxMessages invs txids txmap = foo invs [] $ \acc iv -> case invType iv of
+  InvTx -> let
+    txid    = txHashToHex $ TxHash $ invHash iv
+    b       = S.member txid txids
+    metx    = if b then M.lookup txid txmap else Nothing
+    mbtctx  = join $ ffor metx $ \case
+      BtcTx tx _ -> Just $ NodeReqBTC $ MTx tx
+      _ -> Nothing
+    in maybe acc (\t -> t:acc) mbtctx
+  _ -> acc
+  where
+    foo ta b f = L.foldl' f b ta
+
+-- | Filter TxHashes from Inv vector. Return Nothing if no TxHashes are present
 filterTxInvs :: S.Set TxId -> Inv -> Maybe [InvVector]
 filterTxInvs txids (Inv invs) = case txs of
   [] -> Nothing
