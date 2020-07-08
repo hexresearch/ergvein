@@ -14,6 +14,7 @@ module Ergvein.Wallet.Monad.Storage
   , getBtcUtxoD
   , insertTxsUtxoInPubKeystore
   , addOutgoingTx
+  , removeOutgoingTxs
   ) where
 
 import Control.Lens
@@ -154,3 +155,10 @@ getBtcUtxoD = do
 addOutgoingTx :: MonadStorage t m => Event t EgvTx -> m ()
 addOutgoingTx reqE =  void . modifyPubStorage $ ffor reqE $ \etx ->
   Just . modifyCurrStorage (egvTxCurrency etx) (currencyPubStorage'outgoing %~ S.insert (egvTxId etx))
+
+removeOutgoingTxs :: MonadStorage t m => Currency -> Event t [EgvTx] -> m ()
+removeOutgoingTxs cur reqE = void . modifyPubStorage $ ffor reqE $ \etxs ps -> let
+  remset = S.fromList $ egvTxId <$> etxs
+  outs = ps ^. pubStorage'currencyPubStorages . at cur . non (error "removeOutgoingTxs: not exsisting store!") . currencyPubStorage'outgoing
+  uni = S.intersection outs remset
+  in if S.null uni then Nothing else Just $ modifyCurrStorage cur (currencyPubStorage'outgoing %~ flip S.difference remset) ps
