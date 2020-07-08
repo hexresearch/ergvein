@@ -13,6 +13,7 @@ module Ergvein.Wallet.Monad.Storage
   , insertBlockHeaders
   , getBtcUtxoD
   , insertTxsUtxoInPubKeystore
+  , addOutgoingTx
   ) where
 
 import Control.Lens
@@ -149,3 +150,7 @@ getBtcUtxoD = do
   pubD <- getPubStorageD
   pure $ ffor pubD $ \ps -> fromMaybe M.empty $
     ps ^. pubStorage'currencyPubStorages . at BTC & fmap (view currencyPubStorage'utxos)
+
+addOutgoingTx :: MonadStorage t m => Event t EgvTx -> m ()
+addOutgoingTx reqE =  void . modifyPubStorage $ ffor reqE $ \etx ->
+  Just . modifyCurrStorage (egvTxCurrency etx) (currencyPubStorage'outgoing %~ S.insert (egvTxId etx))

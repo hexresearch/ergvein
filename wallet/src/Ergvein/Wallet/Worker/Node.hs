@@ -115,26 +115,10 @@ bctNodeController = mdo
           _ -> Nothing
     pure $ (u <$ closeE, newTxE)
 
-  store <- getBlocksStorage
-  valsE <- performFork $ ffor (current keysD `attach` txE) $ \(keys, tx) ->
-    liftIO $ flip runReaderT store $ do
-      v <- checkAddrTx' keys tx
-      u <- getUtxoUpdates Nothing keys tx
-      pure (v,u)
-
-  insertTxsUtxoInPubKeystore BTC valsE
+  btcMempoolTxInserter txE
   pure ()
   where
     switchTuple (a, b) = (switchDyn . fmap leftmost $ a, switchDyn . fmap leftmost $ b)
-
-checkAddrTx' :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => V.Vector ScanKeyBox -> HT.Tx -> m (V.Vector (ScanKeyBox, M.Map TxId EgvTx))
-checkAddrTx' vec tx = do
-  vec' <- flip traverse vec $ \kb -> do
-    b <- checkAddrTx (egvXPubKeyToEgvAddress . scanBox'key $ kb) tx
-    pure $ if b then Just (kb, M.singleton th (BtcTx tx Nothing)) else Nothing
-  pure $ V.mapMaybe id vec'
-  where
-    th = txHashToHex $ txHash tx
 
 -- | Extract TxHashes from Inv vector. Return Nothing if no TxHashes are present
 filterTxInvs :: S.Set TxId -> Inv -> Maybe [InvVector]

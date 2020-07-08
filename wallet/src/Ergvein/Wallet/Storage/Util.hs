@@ -94,6 +94,7 @@ createPubStorage isRestored rootPrvKey cs = PubStorage rootPubKey pubStorages cs
           , _currencyPubStorage'utxos         = M.empty
           , _currencyPubStorage'scannedHeight = Nothing
           , _currencyPubStorage'headers       = M.empty
+          , _currencyPubStorage'outgoing      = S.empty
           }
         pubStorages = M.fromList [(currency, mkStore currency) | currency <- cs]
 

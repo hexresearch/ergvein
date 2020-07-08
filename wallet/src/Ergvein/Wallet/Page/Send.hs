@@ -5,16 +5,14 @@ module Ergvein.Wallet.Page.Send (
     sendPage
   ) where
 
+import Control.Lens
 import Control.Monad.Except
-import Data.Ratio ((%))
+import Data.Maybe
 import Data.Word
-import Network.Haskoin.Address
 import Text.Read
 
 import Ergvein.Text
-import Ergvein.Types.Address
-import Ergvein.Types.Currency
-import Ergvein.Types.Fees
+import Ergvein.Types
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Clipboard
@@ -22,32 +20,26 @@ import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Send
+import Ergvein.Wallet.Localization.Settings()
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
-import Ergvein.Wallet.Validate
-import Ergvein.Wallet.Wrapper
-
-import qualified Data.List as L
-import qualified Data.Map.Strict as M
-import qualified Data.Text as T
-import Data.Validation (toEither)
-import qualified Network.Haskoin.Transaction as HT
-import qualified Network.Haskoin.Script as HS
-import qualified Data.Vector as V
-
-import Control.Lens
-import Ergvein.Types.Storage
-import Ergvein.Types.Utxo
-import Data.Maybe
-import Ergvein.Wallet.Storage.Keys
-import Ergvein.Types.Keys
-import Network.Haskoin.Constants
+import Ergvein.Wallet.Node
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage
-import Ergvein.Wallet.Localization.Settings
+import Ergvein.Wallet.Storage.Keys
+import Ergvein.Wallet.Validate
+import Ergvein.Wallet.Wrapper
+
+import Data.Validation (toEither)
+import qualified Data.List as L
+import qualified Data.Map.Strict as M
+import qualified Data.Text as T
+import qualified Data.Vector as V
+import qualified Network.Haskoin.Script as HS
+import qualified Network.Haskoin.Transaction as HT
 
 sendPage :: MonadFront t m => Currency -> Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), EgvAddress) -> m ()
 sendPage cur minit = wrapper False (SendTitle cur) (Just $ pure $ sendPage cur Nothing) $ mdo
@@ -70,9 +62,7 @@ sendPage cur minit = wrapper False (SendTitle cur) (Just $ pure $ sendPage cur N
 #else
     recipientD <- validatedTextFieldSetVal RecipientString recipientInit recipientErrsD pasteE
     pasteE <- divClass "send-page-buttons-wrapper" $ do
-      pasteBtnE <- outlineTextIconButtonTypeButton BtnPasteString "fas fa-clipboard fa-lg"
-      pasteE <- clipboardPaste pasteBtnE
-      pure pasteE
+      clipboardPaste =<< outlineTextIconButtonTypeButton BtnPasteString "fas fa-clipboard fa-lg"
 #endif
     amountD <- sendAmountWidget amountInit $ () <$ validationE
     feeD    <- btcFeeSelectionWidget feeInit submitE
@@ -123,7 +113,7 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr) = wrapper False (SendTit
   stxE <- fmap switchDyn $ widgetHoldDyn $ ffor utxoKeyD $ \case
     (Nothing, _) -> confirmationErrorWidget CEMEmptyUTXO
     (_, Nothing) -> confirmationErrorWidget CEMNoChangeKey
-    (Just utxomap, Just (_, changeKey)) -> do
+    (Just utxomap, Just (changeIndex, changeKey)) -> do
       let (confs, unconfs) = partition' $ M.toList utxomap
           firstpick = HT.chooseCoins amount fee 2 True $ L.sort confs
           finalpick = either (const $ HT.chooseCoins amount fee 2 True $ L.sort $ confs <> unconfs) Right firstpick
@@ -138,6 +128,8 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr) = wrapper False (SendTit
           etxE <- fmap (fmapMaybe id) $ withWallet $ (signTxWithWallet tx pick) <$ signE
           widgetHold (pure ()) $ ffor etxE $ either (const $ void $ confirmationErrorWidget CEMSignFail) (const $ pure ())
           handleDangerMsg $ (either (Left . T.pack) Right) <$> etxE
+  addOutgoingTx $ (flip BtcTx Nothing) <$> stxE
+  btcMempoolTxInserter stxE
   pure ()
   where
     maybe' m n j = maybe n j m

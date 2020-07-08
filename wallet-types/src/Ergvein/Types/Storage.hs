@@ -23,6 +23,7 @@ import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
 
 import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 
 type WalletName = Text
 
@@ -91,6 +92,7 @@ data CurrencyPubStorage = CurrencyPubStorage {
   , _currencyPubStorage'utxos         :: !BtcUtxoSet              -- ^ TODO: Change to a generalized one, after we switch to DMaps
   , _currencyPubStorage'scannedHeight :: !(Maybe BlockHeight)
   , _currencyPubStorage'headers       :: !(M.Map HB.BlockHash HB.BlockHeader)
+  , _currencyPubStorage'outgoing      :: !(S.Set TxId)
   } deriving (Eq, Show, Read)
 
 makeLenses ''CurrencyPubStorage

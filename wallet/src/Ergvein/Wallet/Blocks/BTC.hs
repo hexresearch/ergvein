@@ -15,7 +15,7 @@ import Network.Haskoin.Network
 import Network.Haskoin.Block
 
 import Ergvein.Wallet.Monad.Front
-import Ergvein.Wallet.Node
+import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Blocks.BTC.Queries
 import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Util
