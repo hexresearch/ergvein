@@ -34,6 +34,8 @@ import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
 
 import Data.Validation (toEither)
+import Network.Haskoin.Network (Inv(..), InvVector(..), InvType(..), Message(..))
+
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
@@ -128,8 +130,14 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr) = wrapper False (SendTit
           etxE <- fmap (fmapMaybe id) $ withWallet $ (signTxWithWallet tx pick) <$ signE
           widgetHold (pure ()) $ ffor etxE $ either (const $ void $ confirmationErrorWidget CEMSignFail) (const $ pure ())
           handleDangerMsg $ (either (Left . T.pack) Right) <$> etxE
+  widgetHold (pure ()) $ ffor stxE $ el "h4" . text . (<>) "TxId: " . HT.txHashToHex . HT.txHash
+
+  txD <- holdDyn Nothing $ Just <$> stxE
   addOutgoingTx $ (flip BtcTx Nothing) <$> stxE
-  btcMempoolTxInserter stxE
+  storedE <- btcMempoolTxInserter stxE
+  requestBroadcast $ attachWithMaybe (\m _ ->
+    fmap (NodeReqBTC . MInv . Inv . pure . InvVector InvTx . HT.getTxHash . HT.txHash) m
+    ) (current txD) storedE
   pure ()
   where
     maybe' m n j = maybe n j m
