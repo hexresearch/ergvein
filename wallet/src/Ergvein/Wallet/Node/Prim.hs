@@ -12,6 +12,7 @@ module Ergvein.Wallet.Node.Prim
   , Host
   , Port
   , nodeString
+  , getNodeReqCurrency
   -- * Command message to a node
   , NodeMessage(..)
   -- * Generalized request-response types
@@ -88,3 +89,8 @@ data NodeReqG = NodeReqBTC (NodeReq BTCType) | NodeReqERGO (NodeReq ERGOType)
 data NodeRespG = NodeRespBTC (NodeResp BTCType) | NodeRespERGO (NodeResp ERGOType)
 
 data NodeMessage = NodeMsgRestart | NodeMsgClose | NodeMsgReq NodeReqG
+
+getNodeReqCurrency :: NodeReqG -> Currency
+getNodeReqCurrency req = case req of
+  NodeReqBTC  {} -> BTC
+  NodeReqERGO {} -> ERGO

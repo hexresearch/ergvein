@@ -110,12 +110,12 @@ scanningAllBtcKeys i0 = do
   (updE, updFire) <- newTriggerEvent
   setSyncProgress updE
   let updSync i i1 = updFire $ SyncMeta BTC (SyncBlocks (fromIntegral (i - i0)) (fromIntegral (i1 - i0))) (fromIntegral (i - i0)) (fromIntegral (i1 - i0))
-  scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses i0 updSync $ xPubToBtcAddr . extractXPubKeyFromEgv <$> keys
+  scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses i0 updSync $ xPubToBtcAddr . extractXPubKeyFromEgv . scanBox'key <$> keys
   let heightE = fst <$> scanE
       hashesE = V.toList . snd <$> scanE
   writeWalletsScannedHeight $ ((BTC, ) . fromIntegral) <$> heightE
   performEvent_ $ ffor scanE $ \(h, bls) -> logWrite $ "Scanned all keys up to " <> showt h <> ", blocks to check: " <> showt bls
-  scanningBtcBlocks (V.indexed keys) hashesE
+  scanningBtcBlocks keys hashesE
 
 -- | Check single key against unscanned filters and return 'True' if we found any tx (stored in public storage).
 scanningBtcKey :: MonadFront t m => KeyPurpose -> HB.BlockHeight -> Int -> EgvXPubKey -> m (Event t Bool)
@@ -133,11 +133,11 @@ scanningBtcKey kp i0 keyNum pubkey = do
   scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddress i0 updSync $ xPubToBtcAddr . extractXPubKeyFromEgv $ pubkey
   let hashesE = V.toList . snd <$> scanE
   performEvent_ $ ffor scanE $ \(h, bls) -> logWrite $ "Scanned key #" <> showt keyNum <> " " <> btcAddrToString address <> " up to " <> showt h <> ", blocks to check: " <> showt bls
-  scanningBtcBlocks (V.singleton (keyNum, pubkey)) hashesE
+  scanningBtcBlocks (V.singleton (ScanKeyBox pubkey kp keyNum)) hashesE
 
 -- | Check given blocks for transactions that are related to given set of keys and store txs into storage.
 -- Return event that fires 'True' if we found any transaction and fires 'False' if not.
-scanningBtcBlocks :: MonadFront t m => Vector (Int, EgvXPubKey) -> Event t [(HB.BlockHash, HB.BlockHeight)] -> m (Event t Bool)
+scanningBtcBlocks :: MonadFront t m => Vector ScanKeyBox -> Event t [(HB.BlockHash, HB.BlockHeight)] -> m (Event t Bool)
 scanningBtcBlocks keys hashesE = do
   let noScanE = fforMaybe hashesE $ \bls -> if null bls then Just () else Nothing
   heightMapD <- holdDyn M.empty $ M.fromList <$> hashesE
@@ -146,55 +146,46 @@ scanningBtcBlocks keys hashesE = do
   blocksE <- requestBTCBlocks rhashesE
   storedBlocks <- storeMultipleBlocksTxHashesByE =<< storeMultipleBlocksByE blocksE
   let toAddr = xPubToBtcAddr . extractXPubKeyFromEgv
-      keymap = M.fromList . V.toList . V.map (second (BtcAddress . toAddr)) $ keys
       blkHeightE = current heightMapD `attach` storedBlocks
-  txsUpdsE <- logEvent "Transactions got: " =<< getAddressesTxs ((\(a,b) -> (keymap,a,b)) <$> blkHeightE)
-  let txsE = fmap fst txsUpdsE
-  let updE = fforMaybe txsUpdsE $ \(_,(o,i)) -> if not (M.null o && null i) then Just (o,i) else Nothing
-  updateBtcUtxoSet updE
-  storedE <- insertTxsInPubKeystore $ (BTC,) . fmap M.elems <$> txsE
-  let hasTxsE = leftmost [any (not . M.null) <$> txsE, False <$ noScanE]
-  pure hasTxsE
-
--- Left here for clarity
--- type BtcUtxoSet = M.Map OutPoint (Word64, EgvUtxoStatus)
---
--- type BtcUtxoUpdate = (BtcUtxoSet, [(OutPoint, Bool)])
+  txsUpdsE <- logEvent "Transactions got: " =<< getAddressesTxs ((\(a,b) -> (keys,a,b)) <$> blkHeightE)
+  insertTxsUtxoInPubKeystore BTC txsUpdsE
+  removeOutgoingTxs BTC $ (M.elems . M.unions . V.toList . snd . V.unzip . fst) <$> txsUpdsE
+  pure $ leftmost [(V.any (not . M.null . snd)) . fst <$> txsUpdsE, False <$ noScanE]
 
 -- | Extract transactions that correspond to given address.
 getAddressesTxs :: MonadFront t m
-  => Event t (M.Map Int EgvAddress, M.Map HB.BlockHash HB.BlockHeight, [HB.Block])
-  -> m (Event t (M.Map Int (M.Map TxId EgvTx), BtcUtxoUpdate))
-getAddressesTxs e = performFork $ ffor e $ \(maddr, heights, blocks) -> do
-  a <- traverse (\a -> getAddrTxsFromBlocks a heights blocks) maddr
-  let b = fmap fst a
-  let (outs,ins) = unzip $ fmap snd $ M.elems a
-  let upds :: BtcUtxoUpdate = (M.unions outs, mconcat ins)
-  pure (b, upds)
+  => Event t (Vector ScanKeyBox, M.Map HB.BlockHash HB.BlockHeight, [HB.Block])
+  -> m (Event t (Vector (ScanKeyBox, M.Map TxId EgvTx), BtcUtxoUpdate))
+getAddressesTxs e = performFork $ ffor e $ \(addrs, heights, blocks) -> do
+  (vec, b) <- fmap V.unzip $ traverse (getAddrTxsFromBlocks heights blocks) addrs
+  let (outs, ins) = V.unzip b
+  let upds :: BtcUtxoUpdate = (M.unions $ V.toList outs, mconcat $ V.toList ins)
+  pure (vec, upds)
 
 -- | Gets transactions related to given address from given block.
 getAddrTxsFromBlocks :: (MonadIO m, HasBlocksStorage m, PlatformNatives)
-  => EgvAddress
-  -> M.Map HB.BlockHash HB.BlockHeight
+  => M.Map HB.BlockHash HB.BlockHeight
   -> [HB.Block]
-  -> m (M.Map TxId EgvTx, BtcUtxoUpdate)
-getAddrTxsFromBlocks addr heights blocks = do
-  (txMaps, uts) <- fmap unzip $ traverse (getAddrTxsFromBlock addr heights) blocks
+  -> ScanKeyBox
+  -> m ((ScanKeyBox, M.Map TxId EgvTx), BtcUtxoUpdate)
+getAddrTxsFromBlocks heights blocks box = do
+  (txMaps, uts) <- fmap unzip $ traverse (getAddrTxsFromBlock box heights) blocks
   let (outs,ins) = unzip uts
   let upds = (M.unions outs, mconcat ins)
-  pure $ (M.unions txMaps, upds)
+  pure $ ((box, M.unions txMaps), upds)
 
 getAddrTxsFromBlock :: (MonadIO m, HasBlocksStorage m, PlatformNatives)
-  => EgvAddress
+  => ScanKeyBox
   -> M.Map HB.BlockHash HB.BlockHeight
   -> HB.Block
   -> m (M.Map TxId EgvTx, BtcUtxoUpdate)
-getAddrTxsFromBlock addr heights block = do
+getAddrTxsFromBlock box heights block = do
   checkResults <- traverse (checkAddrTx addr) txs
   let filteredTxs = fst $ unzip $ filter snd (zip txs checkResults)
-  utxo <- getUtxoUpdatesFromTxs mh addr filteredTxs
+  utxo <- getUtxoUpdatesFromTxs mh box filteredTxs
   pure $ (, utxo) $ M.fromList [(HT.txHashToHex $ HT.txHash tx, BtcTx tx mheha) | tx <- filteredTxs]
   where
+    addr = egvXPubKeyToEgvAddress $ scanBox'key box
     txs = HB.blockTxns block
     bhash = HB.headerHash . HB.blockHeader $ block
     mh = Just $ maybe 0 fromIntegral $ M.lookup bhash heights

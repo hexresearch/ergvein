@@ -1,10 +1,10 @@
 module Ergvein.Wallet.Worker.Node
   (
     bctNodeController
-  , extractAddrs
   ) where
 
 import Control.Exception
+import Control.Lens
 import Control.Monad.Random
 import Control.Monad.Reader
 import Data.IP
@@ -41,6 +41,7 @@ import qualified Data.Bits as BI
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Dependent.Map as DM
 import qualified Data.IntMap as MI
+import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
@@ -70,12 +71,9 @@ bctNodeController = mdo
   te        <- fmap void $ tickLossyFromPostBuildTime btcRefrTimeout
 
   pubStorageD <- getPubStorageD
-  let (allBtcAddrsD, txidsD) = splitDynPure $ ffor pubStorageD $ \(PubStorage _ cm _ _) -> case M.lookup BTC cm of
-        Nothing -> ([], S.empty)
-        Just CurrencyPubStorage{..} -> let
-          addrs = extractAddrs _currencyPubStorage'pubKeystore
-          txids = S.fromList $ M.keys _currencyPubStorage'transactions
-          in (addrs, txids)
+
+  let keysD = ffor pubStorageD $ \ps -> getPublicKeys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "bctNodeController: not exsisting store!") . currencyPubStorage'pubKeystore
+  let txidsD = ffor pubStorageD $ \ps -> S.fromList $ M.keys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "bctNodeController: not exsisting store!") . currencyPubStorage'transactions
 
   let btcLenD = ffor conMapD $ fromMaybe 0 . fmap M.size . DM.lookup BTCTag
   let te' = poke te $ const $ do
@@ -116,46 +114,44 @@ bctNodeController = mdo
     let newTxE = fforMaybe respE $ \case
           MTx tx -> Just tx
           _ -> Nothing
+    myTxSender u respE
     pure $ (u <$ closeE, newTxE)
 
-  store <- getBlocksStorage
-  valsE <- performFork $ ffor (current allBtcAddrsD `attach` txE) $ \(addrs, tx) ->
-    liftIO $ flip runReaderT store $ do
-      v <- checkAddrTx' addrs tx
-      u <- getUtxoUpdates Nothing (snd . unzip $ addrs) tx
-      pure (v,u)
-  addTxMapToPubStorage $ fforMaybe valsE $ \(vals,_) -> case vals of
-    [] -> Nothing
-    _ -> Just . (BTC, ) . M.fromList . snd . unzip $ vals
-  insertTxsInPubKeystore $ ffor valsE $ \(vals,_) -> (BTC, prepareToInsertTxs vals)
-  let storeE = fforMaybe valsE $ \(_,(o,i)) -> if not (M.null o && null i) then Just (o,i) else Nothing
-  updateBtcUtxoSet storeE
+  btcMempoolTxInserter txE
   pure ()
   where
     switchTuple (a, b) = (switchDyn . fmap leftmost $ a, switchDyn . fmap leftmost $ b)
 
-checkAddrTx' :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => [(Maybe Int, EgvAddress)] -> HT.Tx -> m [(Maybe Int, (TxId, EgvTx))]
-checkAddrTx' iaddrs tx = fmap catMaybes $ flip traverse iaddrs $ \(mi,addr) -> do
-  b <- checkAddrTx addr tx
-  pure $ if b then Just (mi, (th, BtcTx tx Nothing)) else Nothing
+myTxSender :: MonadFront t m => SockAddr -> Event t Message -> m ()
+myTxSender addr msgE = do
+  pubD <- getPubStorageD
+  let txsD = do
+        ps <- pubD
+        let store = ps ^. pubStorage'currencyPubStorages . at BTC . non (error "bctNodeController: not exsisting store!")
+        let txids = store ^. currencyPubStorage'outgoing
+        let txmap = store ^. currencyPubStorage'transactions
+        pure (txids, txmap)
+  requestManyFromNode $ flip push msgE $ \case
+    MGetData (GetData invs) -> fmap (Just . (addr,) . uncurry (mkTxMessages invs)) $ sampleDyn txsD
+    _ -> pure Nothing
+  pure ()
+
+-- | Filter TxHashes from Inv vector. Return Nothing if no TxHashes are present
+mkTxMessages :: [InvVector] -> S.Set TxId -> M.Map TxId EgvTx -> [NodeReqG]
+mkTxMessages invs txids txmap = foo invs [] $ \acc iv -> case invType iv of
+  InvTx -> let
+    txid    = txHashToHex $ TxHash $ invHash iv
+    b       = S.member txid txids
+    metx    = if b then M.lookup txid txmap else Nothing
+    mbtctx  = join $ ffor metx $ \case
+      BtcTx tx _ -> Just $ NodeReqBTC $ MTx tx
+      _ -> Nothing
+    in maybe acc (\t -> t:acc) mbtctx
+  _ -> acc
   where
-    th = txHashToHex $ txHash tx
+    foo ta b f = L.foldl' f b ta
 
-prepareToInsertTxs :: [(Maybe Int, (TxId, EgvTx))] -> M.Map Int [EgvTx]
-prepareToInsertTxs = foo M.empty $ \m (mi, (_,tx)) -> case mi of
-  Nothing -> m
-  Just i -> M.insertWith (<>) i [tx] m
-  where foo b f ta = foldl' f b ta
-
--- | Extract addresses from keystore
-extractAddrs :: PubKeystore -> [(Maybe Int, EgvAddress)]
-extractAddrs (PubKeystore mast ext int) = mastadr:(extadrs <> intadrs)
-  where
-    mastadr = (Nothing,) $ egvXPubKeyToEgvAddress mast
-    extadrs = V.toList $ V.imap (\i b -> (Just i, egvXPubKeyToEgvAddress $ extKeyBox'key b)) ext
-    intadrs = V.toList $ fmap ((Nothing,) . egvXPubKeyToEgvAddress) int
-
--- | Extract TxHashes from Inv vector. Return Nothing if no TxHashes are present
+-- | Filter TxHashes from Inv vector. Return Nothing if no TxHashes are present
 filterTxInvs :: S.Set TxId -> Inv -> Maybe [InvVector]
 filterTxInvs txids (Inv invs) = case txs of
   [] -> Nothing
