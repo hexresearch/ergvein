@@ -191,7 +191,7 @@ instance FromJSON EgvRootXPubKey where
 
 -- | Wrapper around XPrvKey for easy to/from json manipulations
 data EgvXPrvKey = BtcXPrvKey { btcXPrvKey :: !XPrvKey} | ErgXPrvKey {ergXPrvKey :: !XPrvKey}
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Show, Read)
 
 unEgvXPrvKey :: EgvXPrvKey -> XPrvKey
 unEgvXPrvKey key = case key of
@@ -307,7 +307,7 @@ $(deriveJSON aesonOptionsStripToApostroph ''PrvKeystore)
 
 data EgvPubKeyBox = EgvPubKeyBox {
   pubKeyBox'key    :: !EgvXPubKey
-, pubKeyBox'txs    :: !S.Set TxId
+, pubKeyBox'txs    :: !(S.Set TxId)
 , pubKeyBox'manual :: !Bool
 } deriving (Eq, Show, Read)
 
