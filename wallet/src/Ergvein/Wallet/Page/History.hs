@@ -12,6 +12,7 @@ import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Block
 import Ergvein.Types.Currency
+import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Alert
@@ -28,6 +29,7 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Platform
+import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Tx
 import Ergvein.Wallet.TimeZone
 import Ergvein.Wallet.Worker.Node
@@ -35,6 +37,7 @@ import Ergvein.Wallet.Wrapper
 
 import Data.Map.Strict as Map
 import qualified Data.Set as S
+import qualified Data.Vector as V
 import qualified Data.List as L
 import Network.Haskoin.Address
 import Data.Maybe (fromMaybe, isJust)
@@ -221,6 +224,14 @@ historyTableWidget cur trList = case cur of
         stat = case txStatus of
           TransConfirmed -> spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" $ blank
           TransUncofirmed -> spanClass "history-page-status-icon" $ elClass "i" "fas fa-question fa-fw" $ blank
+
+-- | Extract addresses from keystore
+extractAddrs :: PubKeystore -> [(Maybe Int, EgvAddress)]
+extractAddrs (PubKeystore mast ext int) = mastadr:(extadrs <> intadrs)
+  where
+    mastadr = (Nothing,) $ egvXPubKeyToEgvAddress mast
+    extadrs = V.toList $ V.imap (\i b -> (Just i, egvXPubKeyToEgvAddress $ pubKeyBox'key b)) ext
+    intadrs = V.toList $ V.imap (\i b -> (Nothing, egvXPubKeyToEgvAddress $ pubKeyBox'key b)) int
 
 transactionsGetting :: MonadFront t m => Currency -> m (Dynamic t [TransactionView],Dynamic t Word64)
 transactionsGetting cur = do

@@ -146,6 +146,7 @@ currenciesPage = wrapper True STPSTitle (Just $ pure currenciesPage) $ do
         , _currencyPubStorage'utxos         = Map.empty
         , _currencyPubStorage'scannedHeight = Nothing
         , _currencyPubStorage'headers       = Map.empty
+        , _currencyPubStorage'outgoing      = S.empty
         }
 
 -- TODO: uncomment commented lines when ERGO is ready

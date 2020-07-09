@@ -15,14 +15,17 @@ import Network.Haskoin.Transaction (Tx(..), TxIn(..), TxOut(..), OutPoint(..), t
 
 import Ergvein.Text
 import Ergvein.Types.Address
+import Ergvein.Types.Keys
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
 import Ergvein.Wallet.Blocks.BTC
 import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Storage.Keys
 
 import qualified Data.Map.Strict                    as M
 import qualified Data.Text                          as T
+import qualified Data.Vector                        as V
 import qualified Network.Haskoin.Block              as HB
 import qualified Network.Haskoin.Script             as HS
 import qualified Network.Haskoin.Transaction        as HT
@@ -45,37 +48,48 @@ getSpentOutputs c addr Tx{..} = fmap catMaybes $ flip traverse txIn $ \ti -> do
 
 -- | Gets unspent output for a given address from a transaction
 -- Maybe BlockHeight: Nothing -- unconfirmed Tx. Just n -> confirmed at height n
-getUnspentOutputs :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => Maybe BlockHeight -> EgvAddress -> Tx -> m [(OutPoint, (Word64, EgvUtxoStatus))]
-getUnspentOutputs c addr tx = fmap catMaybes $ flip traverse (zip [0..] $ txOut tx) $ \(i,o) -> do
+getUnspentOutputs :: (MonadIO m, HasBlocksStorage m, PlatformNatives)
+  => Maybe BlockHeight -> ScanKeyBox -> Tx -> m [(OutPoint, UtxoMeta)]
+getUnspentOutputs c ScanKeyBox{..} tx = fmap catMaybes $ flip traverse (zip [0..] $ txOut tx) $ \(i,o) -> do
   b <- checkTxOut addr o
-  pure $ if b then Just (OutPoint th i, (outValue o, stat)) else Nothing
+  let escript = HS.decodeOutputBS $ scriptOutput o
+  either (\e -> logWrite $ "Failed to decode scriptOutput: " <> showt o <> ". Error: " <> showt e) (const $ pure ()) escript
+  pure $ case (b, escript) of
+    (True, Right scr) -> Just (OutPoint th i, UtxoMeta scanBox'index scanBox'purpose (outValue o) scr stat)
+    _ -> Nothing
   where
     th = txHash tx
     stat = maybe EUtxoReceiving EUtxoSemiConfirmed c
+    addr = egvXPubKeyToEgvAddress scanBox'key
 
 -- | Construct UTXO update for a list of addresses based on a transaction
 -- Maybe BlockHeight: Nothing -- unconfirmed Tx. Just n -> confirmed at height n
-getUtxoUpdates :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => Maybe BlockHeight -> [EgvAddress] -> Tx -> m BtcUtxoUpdate
-getUtxoUpdates mheight addrs tx = do
-  (unsps, sps) <- fmap unzip $ flip traverse addrs $ \addr -> do
-    unsp <- getUnspentOutputs mheight addr tx
+getUtxoUpdates :: (MonadIO m, HasBlocksStorage m, PlatformNatives)
+  => Maybe BlockHeight -> V.Vector ScanKeyBox -> Tx -> m BtcUtxoUpdate
+getUtxoUpdates mheight boxes tx = do
+  (unsps, sps) <- fmap V.unzip $ flip traverse boxes $ \box -> do
+    let addr = egvXPubKeyToEgvAddress $ scanBox'key box
+    unsp <- getUnspentOutputs mheight box tx
     sp   <- getSpentOutputs isMempool addr tx
     pure (unsp, sp)
-  let unspentMap = M.fromList $ mconcat unsps
-  pure (unspentMap, mconcat sps)
+  let unspentMap = M.fromList $ mconcat $ V.toList unsps
+  pure (unspentMap, mconcat $ V.toList $ sps)
   where isMempool = maybe True (const False) mheight
 
 -- | Construct UTXO update for an address and a batch of transactions
 -- Maybe BlockHeight: Nothing -- unconfirmed Tx. Just n -> confirmed at height n
-getUtxoUpdatesFromTxs :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => Maybe BlockHeight -> EgvAddress -> [Tx] -> m BtcUtxoUpdate
-getUtxoUpdatesFromTxs mheight addr txs = do
+getUtxoUpdatesFromTxs :: (MonadIO m, HasBlocksStorage m, PlatformNatives)
+  => Maybe BlockHeight -> ScanKeyBox -> [Tx] -> m BtcUtxoUpdate
+getUtxoUpdatesFromTxs mheight box txs = do
   (unsps, sps) <- fmap unzip $ flip traverse txs $ \tx -> do
-    unsp <- getUnspentOutputs mheight addr tx
+    unsp <- getUnspentOutputs mheight box tx
     sp   <- getSpentOutputs isMempool addr tx
     pure (unsp, sp)
   let unspentMap = M.fromList $ mconcat unsps
   pure (unspentMap, mconcat sps)
-  where isMempool = maybe True (const False) mheight
+  where
+    isMempool = maybe True (const False) mheight
+    addr = egvXPubKeyToEgvAddress $ scanBox'key box
 
 -- | Checks given TxIn wheather it contains given address.
 -- Native SegWit addresses are not presented in TxIns scriptSig.

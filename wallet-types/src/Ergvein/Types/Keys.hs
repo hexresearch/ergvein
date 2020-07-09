@@ -5,21 +5,22 @@ module Ergvein.Types.Keys (
   , EgvRootXPubKey(..)
   , EgvXPrvKey(..)
   , EgvXPubKey(..)
-  , EgvExternalKeyBox(..)
+  , EgvPubKeyBox(..)
   , PrvKeystore(..)
   , PubKeystore(..)
   , KeyPurpose(..)
+  , ScanKeyBox(..)
   , xPrvExport
   , xPrvImport
   , xPubExport
   , xPubImport
   , getLastUnusedKey
   , getPublicKeys
-  , externalKeys
   , egvXPubCurrency
   , getExternalPubKeyIndex
   , extractXPubKeyFromEgv
   , getLabelFromEgvPubKey
+  , unEgvXPrvKey
   ) where
 
 import Control.Monad
@@ -189,10 +190,13 @@ instance FromJSON EgvRootXPubKey where
       _ -> fail "failed to read chain code or key"
 
 -- | Wrapper around XPrvKey for easy to/from json manipulations
-data EgvXPrvKey = EgvXPrvKey {
-  egvXPrvCurrency :: Currency
-, egvXPrvKey      :: XPrvKey
-} deriving (Eq, Show, Read)
+data EgvXPrvKey = BtcXPrvKey { btcXPrvKey :: !XPrvKey} | ErgXPrvKey {ergXPrvKey :: !XPrvKey}
+  deriving (Eq, Show, Read)
+
+unEgvXPrvKey :: EgvXPrvKey -> XPrvKey
+unEgvXPrvKey key = case key of
+  BtcXPrvKey k -> k
+  ErgXPrvKey k -> k
 
 -- | Get JSON 'Value' from 'XPrvKey'.
 xPrvToJSON :: EgvNetwork -> XPrvKey -> Value
@@ -207,21 +211,23 @@ xPrvFromJSON net =
             Just x  -> return x
 
 instance ToJSON EgvXPrvKey where
-  toJSON (EgvXPrvKey currency key) = object [
-      "currency" .= toJSON currency
-    , "prvKey"   .= xPrvToJSON (getCurrencyNetwork currency) key
-    ]
+  toJSON k = case k of
+    BtcXPrvKey key -> object [
+        "currency" .= toJSON BTC
+      , "prvKey"   .= xPrvToJSON (getCurrencyNetwork BTC) key
+      ]
+    ErgXPrvKey key -> object [
+        "currency" .= toJSON ERGO
+      , "prvKey"   .= xPrvToJSON (getCurrencyNetwork ERGO) key
+      ]
 
 instance FromJSON EgvXPrvKey where
   parseJSON = withObject "EgvXPrvKey" $ \o -> do
     currency <- o .: "currency"
     key <- xPrvFromJSON (getCurrencyNetwork currency) =<< (o .: "prvKey")
-    pure $ EgvXPrvKey currency key
-
-instance Ord EgvXPrvKey where
-  compare (EgvXPrvKey currency1 key1) (EgvXPrvKey currency2 key2) = case compare currency1 currency2 of
-    EQ -> compare (xPrvExport (getCurrencyNetwork currency1) key1) (xPrvExport (getCurrencyNetwork currency2) key2)
-    x -> x
+    pure $ case currency of
+      BTC -> BtcXPrvKey key
+      ERGO -> ErgXPrvKey key
 
 -- | Wrapper around XPubKey for easy to/from json manipulations
 data EgvXPubKey =
@@ -285,13 +291,13 @@ instance Ord EgvXPubKey where
         BtcXPubKey k l -> (BTC, k, l)
 
 data PrvKeystore = PrvKeystore {
-  prvKeystore'master   :: EgvXPrvKey
+  prvKeystore'master   :: !EgvXPrvKey
   -- ^Extended private key with BIP44 derivation path /m\/purpose'\/coin_type'\/account'/.
-, prvKeystore'external :: Vector EgvXPrvKey
+, prvKeystore'external :: !(Vector EgvXPrvKey)
   -- ^Map with BIP44 external extended private keys and corresponding indices.
   -- This private keys must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/0\/address_index/.
-, prvKeystore'internal :: Vector EgvXPrvKey
+, prvKeystore'internal :: !(Vector EgvXPrvKey)
   -- ^Map with BIP44 internal extended private keys and corresponding indices.
   -- This private keys must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.
@@ -299,22 +305,22 @@ data PrvKeystore = PrvKeystore {
 
 $(deriveJSON aesonOptionsStripToApostroph ''PrvKeystore)
 
-data EgvExternalKeyBox = EgvExternalKeyBox {
-  extKeyBox'key    :: EgvXPubKey
-, extKeyBox'txs    :: S.Set TxId
-, extKeyBox'manual :: Bool
+data EgvPubKeyBox = EgvPubKeyBox {
+  pubKeyBox'key    :: !EgvXPubKey
+, pubKeyBox'txs    :: !(S.Set TxId)
+, pubKeyBox'manual :: !Bool
 } deriving (Eq, Show, Read)
 
-$(deriveJSON aesonOptionsStripToApostroph ''EgvExternalKeyBox)
+$(deriveJSON aesonOptionsStripToApostroph ''EgvPubKeyBox)
 
 data PubKeystore = PubKeystore {
-  pubKeystore'master   :: EgvXPubKey
+  pubKeystore'master   :: !EgvXPubKey
   -- ^Extended public key with BIP44 derivation path /m\/purpose'\/coin_type'\/account'/.
-, pubKeystore'external :: Vector EgvExternalKeyBox
+, pubKeystore'external :: !(Vector EgvPubKeyBox)
   -- ^Map with BIP44 external extended public keys and corresponding indices.
   -- This addresses must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/0\/address_index/.
-, pubKeystore'internal :: Vector EgvXPubKey
+, pubKeystore'internal :: !(Vector EgvPubKeyBox)
   -- ^Map with BIP44 internal extended public keys and corresponding indices.
   -- This addresses must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.
@@ -322,22 +328,31 @@ data PubKeystore = PubKeystore {
 
 $(deriveJSON aesonOptionsStripToApostroph ''PubKeystore)
 
-getLastUnusedKey :: PubKeystore -> Maybe (Int, EgvExternalKeyBox)
-getLastUnusedKey (PubKeystore _ ext _) = go Nothing ext
+getLastUnusedKey :: KeyPurpose -> PubKeystore -> Maybe (Int, EgvPubKeyBox)
+getLastUnusedKey kp PubKeystore{..} = go Nothing vec
   where
-    go :: Maybe (Int, EgvExternalKeyBox) -> Vector EgvExternalKeyBox -> Maybe (Int, EgvExternalKeyBox)
+    vec = case kp of
+      Internal -> pubKeystore'internal
+      External -> pubKeystore'external
+    go :: Maybe (Int, EgvPubKeyBox) -> Vector EgvPubKeyBox -> Maybe (Int, EgvPubKeyBox)
     go mk vec = if V.null vec then mk else let
-      kb@(EgvExternalKeyBox _ txs m) = V.last vec
+      kb@(EgvPubKeyBox _ txs m) = V.last vec
       in if m || not (S.null txs)
         then mk
         else go (Just (V.length vec - 1, kb)) $ V.init vec
 
--- | Get all public keys in storage (external and internal) to scan for new transactions for them.
-getPublicKeys :: PubKeystore -> Vector EgvXPubKey
-getPublicKeys ps = externalKeys ps <> pubKeystore'internal ps
+data ScanKeyBox = ScanKeyBox {
+  scanBox'key     :: !EgvXPubKey
+, scanBox'purpose :: !KeyPurpose
+, scanBox'index   :: !Int
+} deriving (Show)
 
-externalKeys :: PubKeystore -> Vector EgvXPubKey
-externalKeys PubKeystore{..} = fmap extKeyBox'key pubKeystore'external
+-- | Get all public keys in storage (external and internal) to scan for new transactions for them.
+getPublicKeys :: PubKeystore -> Vector ScanKeyBox
+getPublicKeys PubKeystore{..} = ext <> int
+  where
+    ext = V.imap (\i kb -> ScanKeyBox (pubKeyBox'key kb) External i) pubKeystore'external
+    int = V.imap (\i kb -> ScanKeyBox (pubKeyBox'key kb) Internal i) pubKeystore'internal
 
 getExternalPubKeyIndex :: PubKeystore -> Int
 getExternalPubKeyIndex = V.length . pubKeystore'external
@@ -357,3 +372,4 @@ getLabelFromEgvPubKey key = case key of
 -- Internal chain is used for addresses which are not meant to be visible outside of the wallet and is used for return transaction change.
 data KeyPurpose = External | Internal
   deriving (Eq, Ord, Show, Read)
+$(deriveJSON defaultOptions ''KeyPurpose)

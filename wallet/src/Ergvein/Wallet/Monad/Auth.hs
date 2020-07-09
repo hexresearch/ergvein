@@ -52,6 +52,7 @@ import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node
+import Ergvein.Wallet.Node.Prim
 import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Settings (Settings(..), storeSettings, defaultIndexers)
 import Ergvein.Wallet.Storage.Util
@@ -275,11 +276,23 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   requestFromNode reqE = do
     nodeReqFire <- asks env'nodeReqFire
     performFork_ $ ffor reqE $ \(u, req) ->
-      let cur = case req of
-            NodeReqBTC  _ -> BTC
-            NodeReqERGO _ -> ERGO
+      let cur = getNodeReqCurrency req
       in liftIO . nodeReqFire $ M.singleton cur $ M.singleton u $ NodeMsgReq req
   {-# INLINE requestFromNode #-}
+  requestManyFromNode reqE = do
+    nodeReqFire <- asks env'nodeReqFire
+    performFork_ $ ffor reqE $ \(u, reqs) -> flip traverse_ reqs $ \req ->
+      let cur = getNodeReqCurrency req
+      in liftIO . nodeReqFire $ M.singleton cur $ M.singleton u $ NodeMsgReq req
+  {-# INLINE requestManyFromNode #-}
+  requestBroadcast reqE = do
+    nodeReqFire <- asks env'nodeReqFire
+    nodeConnRef <- asks env'nodeConsRef
+    performFork_ $ ffor reqE $ \req -> do
+      let cur = getNodeReqCurrency req
+      reqs <- fmap ((<$) (NodeMsgReq req) . fromMaybe (M.empty) . getAllConnByCurrency cur) $ readExternalRef nodeConnRef
+      liftIO . nodeReqFire $ M.singleton cur reqs
+
   getNodeRequestSelector = asks env'nodeReqSelector
   {-# INLINE getNodeRequestSelector #-}
   getFeesRef = asks env'feesStore
@@ -305,7 +318,7 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
     let mXPubKey = (flip (V.!?) i) . pubKeystore'external . _currencyPubStorage'pubKeystore =<< M.lookup cur currMap
     case mXPubKey of
       Nothing -> fail "NOT IMPLEMENTED" -- TODO: generate new address here
-      Just (EgvExternalKeyBox key _ _) ->
+      Just (EgvPubKeyBox key _ _) ->
         let k = case key of
               ErgXPubKey k' _ -> k'
               BtcXPubKey k' _ -> k'

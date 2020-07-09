@@ -98,6 +98,11 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   -- | Send a request to a specific URL
   -- It's up to the caller to ensure that the URL actually points to a correct currency node
   requestFromNode :: Event t (SockAddr, NodeReqG) -> m ()
+  -- | Send a multiple requests a specific URL
+  -- It's up to the caller to ensure that the URL actually points to a correct currency node
+  requestManyFromNode :: Event t (SockAddr, [NodeReqG]) -> m ()
+  -- | Send the same requests to all URLs
+  requestBroadcast :: Event t NodeReqG -> m ()
   -- | Get node request event
   getNodeRequestSelector :: m (RequestSelector t)
   -- | Get fees ref. Internal

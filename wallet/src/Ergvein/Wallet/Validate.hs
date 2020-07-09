@@ -3,6 +3,7 @@ module Ergvein.Wallet.Validate (
   , validateNow
   , validateAmount
   , validateRecipient
+  , validateBtcWithUnits
   , VError(..)
   , Validation(..)
   ) where
@@ -16,15 +17,18 @@ import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
 import Text.Parsec
+import Data.Word
 
 import qualified Data.Text as T
 
 newtype NonEmptyString = NonEmptyString String deriving (Show)
 newtype PositiveRational = PositiveRational Rational deriving (Show)
+newtype PositiveWord64 = PositiveWord64 Word64 deriving (Show)
 
 data VError = MustNotBeEmpty
             | MustBeRational
             | MustBePositive
+            | MustBeIntegral
             | InvalidAddress
   deriving (Show)
 
@@ -34,10 +38,12 @@ instance LocalizedPrint VError where
       MustNotBeEmpty -> "This field is required."
       MustBeRational -> "Enter a valid amount (example: 1.23)."
       MustBePositive -> "Value must be positive."
+      MustBeIntegral -> "Enter a valid integer"
       InvalidAddress -> "Invalid address."
     Russian -> case v of
       MustNotBeEmpty -> "Заполните это поле."
       MustBeRational -> "Введите корректное значение (пример: 1.23)."
+      MustBeIntegral -> "Введите корректное целочисленное значение."
       MustBePositive -> "Значение должно быть положительным."
       InvalidAddress -> "Неверный адрес."
 
@@ -51,10 +57,20 @@ validateRational x = case parse rational "" x of
   Left err -> _Failure # [MustBeRational]
   Right result -> _Success # result
 
-validatePositiveRational :: Rational -> Validation [VError] PositiveRational
+validatePositiveRational :: (Rational) -> Validation [VError] PositiveRational
 validatePositiveRational x = if x > 0
   then _Success # PositiveRational x
   else _Failure # [MustBePositive]
+
+validatePositiveWord64 :: Word64 -> Validation [VError] PositiveWord64
+validatePositiveWord64 x = if x > 0
+  then _Success # PositiveWord64 x
+  else _Failure # [MustBePositive]
+
+validateWord64 :: String -> Validation [VError] Word64
+validateWord64 x = case parse word64 "" x of
+  Left err -> _Failure # [MustBeIntegral]
+  Right res -> _Success # res
 
 validateAmount :: String -> Validation [VError] Rational
 validateAmount x = case validateNonEmptyString x of
@@ -64,6 +80,21 @@ validateAmount x = case validateNonEmptyString x of
     Success result' -> case validatePositiveRational result' of
       Failure errs'' -> _Failure # errs''
       Success (PositiveRational result'') -> _Success # result''
+
+validateBtcWithUnits :: UnitBTC -> String -> Validation [VError] Word64
+validateBtcWithUnits unit x = case validateNonEmptyString x of
+  Failure errs -> _Failure # errs
+  Success (NonEmptyString result) -> case unit of
+    BtcSat -> case validateWord64 result of
+      Failure errs' -> _Failure # errs'
+      Success result' -> case validatePositiveWord64 result' of
+        Failure errs'' -> _Failure # errs''
+        Success (PositiveWord64 result'') -> _Success # result''
+    _ -> case validateRational result of
+      Failure errs' -> _Failure # errs'
+      Success result' -> case validatePositiveRational result' of
+        Failure errs'' -> _Failure # errs''
+        Success (PositiveRational result'') -> _Success # (floor $ result'' * 10 ^ btcResolution unit)
 
 validateAddress :: Currency -> String -> Validation [VError] EgvAddress
 validateAddress currency addrStr = case egvAddrFromString currency (T.pack addrStr) of
@@ -112,11 +143,14 @@ plus = char '+' *> number
 minus :: Stream s m Char => ParsecT s u m String
 minus = char '-' <:> number
 
-integer :: Stream s m Char => ParsecT s u m String
-integer = plus <|> minus <|> number
+integerStr :: Stream s m Char => ParsecT s u m String
+integerStr = plus <|> minus <|> number
 
-fractional :: Stream s m Char => ParsecT s u m String
-fractional = option "" $ char '.' *> number
+word64 :: Stream s m Char => ParsecT s u m Word64
+word64 = fmap read integerStr
+
+fractionalStr :: Stream s m Char => ParsecT s u m String
+fractionalStr = option "" $ char '.' *> number
 
 intFracToRational :: String -> String -> Rational
 intFracToRational intStr fracStr = if null fracStr
@@ -129,4 +163,4 @@ intFracToRational intStr fracStr = if null fracStr
 
 rational :: Stream s m Char => ParsecT s u m Rational
 rational = fmap (uncurry intFracToRational) intFrac
-  where intFrac = (,) <$> integer <*> fractional <* eof
+  where intFrac = (,) <$> integerStr <*> fractionalStr <* eof

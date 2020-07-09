@@ -6,12 +6,15 @@ module Ergvein.Wallet.Monad.Storage
   , addTxMapToPubStorage
   , setLabelToExtPubKey
   , setFlagToExtPubKey
-  , insertTxsInPubKeystore
   , updateBtcUtxoSet
   , getWalletsScannedHeightD
   , writeWalletsScannedHeight
   , reconfirmBtxUtxoSet
   , insertBlockHeaders
+  , getBtcUtxoD
+  , insertTxsUtxoInPubKeystore
+  , addOutgoingTx
+  , removeOutgoingTxs
   ) where
 
 import Control.Lens
@@ -71,56 +74,58 @@ addTxMapToPubStorage txmapE = void . modifyPubStorage $ ffor txmapE $ \(cur, txm
 
 setLabelToExtPubKey :: MonadStorage t m => Event t (Currency, Int, Text) -> m ()
 setLabelToExtPubKey reqE = void . modifyPubStorage $ ffor reqE $ \(cur, i, l) ->
-  updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'key = updateKeyLabel l $ extKeyBox'key kb}
+  updateKeyBoxWith cur External i $ \kb -> kb {pubKeyBox'key = updateKeyLabel l $ pubKeyBox'key kb}
 
 setFlagToExtPubKey :: MonadStorage t m => Event t (Currency, Int) -> m ()
 setFlagToExtPubKey reqE = void . modifyPubStorage $ ffor reqE $ \(cur, i) ->
-  updateKeyBoxWith cur i $ \kb -> kb {extKeyBox'manual = True}
+  updateKeyBoxWith cur External i $ \kb -> kb {pubKeyBox'manual = True}
 
-insertTxsInPubKeystore :: MonadStorage t m => Event t (Currency, Map Int [EgvTx]) -> m (Event t())
-insertTxsInPubKeystore reqE = modifyPubStorage $ ffor reqE $ \(cur, mtx) ps -> let
-  upd i txs ps = do
-    let txids = fmap egvTxId txs
-        txmap = M.fromList $ fmap egvTxId txs `zip` txs
-    ps' <- updateKeyBoxWith cur i (\kb -> kb {extKeyBox'txs = S.union (extKeyBox'txs kb) $ S.fromList txids}) ps
-    pure $ modifyCurrStorage cur (currencyPubStorage'transactions %~ M.union txmap) ps'
-  go !macc i txids = case macc of
-    Nothing -> upd i txids ps
-    Just acc -> maybe (Just acc) Just $ upd i txids acc
-  in M.foldlWithKey' go Nothing mtx
+insertTxsUtxoInPubKeystore :: MonadStorage t m
+  => Currency
+  -> Event t (V.Vector (ScanKeyBox, M.Map TxId EgvTx), BtcUtxoUpdate)
+  -> m (Event  t ())
+insertTxsUtxoInPubKeystore cur reqE = modifyPubStorage $ ffor reqE $ \(vec, upds) ps -> let
+  txmap = M.unions $ V.toList $ snd $ V.unzip vec
+  ps1 = modifyCurrStorage cur (currencyPubStorage'transactions %~ M.union txmap) ps
+  ps2 = case cur of
+    BTC -> updateBtcUtxoSet upds ps1
+    _ -> ps1
+  upd (ScanKeyBox{..}, txm) ps' = let txs = M.elems txm in updateKeyBoxWith cur scanBox'purpose scanBox'index
+    (\kb -> kb {pubKeyBox'txs = S.union (pubKeyBox'txs kb) $ S.fromList (fmap egvTxId txs)}) ps'
+  go !macc val = case macc of
+    Nothing -> upd val ps1
+    Just acc -> maybe (Just acc) Just $ upd val acc
+  in V.foldl' go (Just ps2) vec
 
-updateKeyBoxWith :: Currency -> Int -> (EgvExternalKeyBox -> EgvExternalKeyBox) -> PubStorage -> Maybe PubStorage
-updateKeyBoxWith cur i f ps =
+updateBtcUtxoSet :: BtcUtxoUpdate -> PubStorage -> PubStorage
+updateBtcUtxoSet upds@(o,i) ps = if (M.null o && null i) then ps else
+  modifyCurrStorage BTC (\cps -> cps & currencyPubStorage'utxos %~ updateBtcUtxoSetPure upds) ps
+
+updateKeyBoxWith :: Currency -> KeyPurpose -> Int -> (EgvPubKeyBox -> EgvPubKeyBox) -> PubStorage -> Maybe PubStorage
+updateKeyBoxWith cur kp i f ps =
   let mk = ps ^. pubStorage'currencyPubStorages . at cur
         & \mcps -> join $ ffor mcps $ \cps -> cps ^. currencyPubStorage'pubKeystore
-          & (\v -> (V.!?) (pubKeystore'external v) i)
+          & (\v -> (V.!?) (keyGetter v) i)
   in ffor mk $ \kb -> let kb' = f kb
     in ps & pubStorage'currencyPubStorages . at cur
       %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'pubKeystore
-        %~ \pk -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
+        %~ \pk -> case kp of
+          Internal -> pk {pubKeystore'internal = (V.//) (pubKeystore'internal pk) [(i, kb')]}
+          External -> pk {pubKeystore'external = (V.//) (pubKeystore'external pk) [(i, kb')]}
+  where
+    keyGetter = case kp of
+      Internal -> pubKeystore'internal
+      External -> pubKeystore'external
 
 updateKeyLabel :: Text -> EgvXPubKey -> EgvXPubKey
 updateKeyLabel l key = case key of
   ErgXPubKey k _ -> ErgXPubKey k l
   BtcXPubKey k _ -> BtcXPubKey k l
 
-updateBtcUtxoSet :: MonadStorage t m => Event t BtcUtxoUpdate -> m ()
-updateBtcUtxoSet reqE = void . modifyPubStorage $ ffor reqE $ \upds ps -> let
-  mnews = ps ^. pubStorage'currencyPubStorages . at BTC
-    & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'utxos & getBtcUtxoSetFromStore
-      & \ms -> updateBtcUtxoSetPure upds $ fromMaybe M.empty $ ms
-  in ffor mnews $ \news -> ps & pubStorage'currencyPubStorages . at BTC
-    %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'utxos
-      %~ \us -> M.insert BTC (BtcSet news) us
 
 reconfirmBtxUtxoSet :: MonadStorage t m => Event t BlockHeight -> m ()
 reconfirmBtxUtxoSet reqE = void . modifyPubStorage $ ffor reqE $ \bh ps ->
-  Just $ ps & pubStorage'currencyPubStorages . at BTC
-    %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'utxos
-      %~ \us -> foo BTC us $ \case
-        BtcSet bs -> BtcSet $ reconfirmBtxUtxoSetPure bh bs
-        ErgoSet v -> ErgoSet v
-  where foo b c a = M.adjust a b c
+  Just $ modifyCurrStorage BTC (\cps -> cps & currencyPubStorage'utxos %~ reconfirmBtxUtxoSetPure bh) ps
 
 getWalletsScannedHeightD :: MonadStorage t m => Currency -> m (Dynamic t BlockHeight)
 getWalletsScannedHeightD cur = do
@@ -140,3 +145,20 @@ insertBlockHeaders cur reqE = void . modifyPubStorage $ ffor reqE $ \blocks ps -
   [] -> Nothing
   _ -> let blkmap = M.fromList $ (\blk -> let bhead = HB.blockHeader blk in (HB.headerHash bhead, bhead)) <$> blocks
     in Just $ ps & pubStorage'currencyPubStorages . at cur %~ fmap (currencyPubStorage'headers %~ M.union blkmap)
+
+getBtcUtxoD :: MonadStorage t m => m (Dynamic t BtcUtxoSet)
+getBtcUtxoD = do
+  pubD <- getPubStorageD
+  pure $ ffor pubD $ \ps -> fromMaybe M.empty $
+    ps ^. pubStorage'currencyPubStorages . at BTC & fmap (view currencyPubStorage'utxos)
+
+addOutgoingTx :: MonadStorage t m => Event t EgvTx -> m ()
+addOutgoingTx reqE =  void . modifyPubStorage $ ffor reqE $ \etx ->
+  Just . modifyCurrStorage (egvTxCurrency etx) (currencyPubStorage'outgoing %~ S.insert (egvTxId etx))
+
+removeOutgoingTxs :: MonadStorage t m => Currency -> Event t [EgvTx] -> m ()
+removeOutgoingTxs cur reqE = void . modifyPubStorage $ ffor reqE $ \etxs ps -> let
+  remset = S.fromList $ egvTxId <$> etxs
+  outs = ps ^. pubStorage'currencyPubStorages . at cur . non (error "removeOutgoingTxs: not exsisting store!") . currencyPubStorage'outgoing
+  uni = S.intersection outs remset
+  in if S.null uni then Nothing else Just $ modifyCurrStorage cur (currencyPubStorage'outgoing %~ flip S.difference remset) ps
