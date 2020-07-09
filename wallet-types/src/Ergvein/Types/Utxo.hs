@@ -66,7 +66,7 @@ confirmationGap :: Word64
 confirmationGap = 3
 
 staleGap :: Word64
-staleGap = 15     -- ~1 blk / 10 min. 14 days * 24 h * 6 blocks/h.
+staleGap = 2016     -- ~1 blk / 10 min. 14 days * 24 h * 6 blocks/h.
 
 reconfirmBtxUtxoSetPure :: BlockHeight -> BtcUtxoSet -> BtcUtxoSet
 reconfirmBtxUtxoSetPure bh bs = flip M.mapMaybe bs $ \meta -> case utxoMeta'status meta of
