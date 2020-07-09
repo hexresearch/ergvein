@@ -27,9 +27,12 @@ module Ergvein.Wallet.Elements(
   , h3
   , h4
   , h5
+  , h6
   , li
   , ul
   , par
+  , parClass
+  , bold
   , form
   , formClass
   , fieldset
@@ -124,6 +127,9 @@ h4 = el "h4"
 h5 :: DomBuilder t m => m a -> m a
 h5 = el "h5"
 
+h6 :: DomBuilder t m => m a -> m a
+h6 = el "h6"
+
 li :: DomBuilder t m => m a -> m a
 li = el "li"
 
@@ -132,6 +138,12 @@ ul = el "ul"
 
 par :: DomBuilder t m => m a -> m a
 par = el "p"
+
+parClass :: DomBuilder t m => Text -> m a -> m a
+parClass = elClass "p"
+
+bold :: DomBuilder t m => m a -> m a
+bold = el "b"
 
 form :: DomBuilder t m => m a -> m a
 form = elAttr "form" [("onsubmit", "return false;")]

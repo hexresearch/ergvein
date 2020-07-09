@@ -1,5 +1,6 @@
 module Ergvein.Wallet.Filters.Btc.Queries(
-    insertFilter
+    clearFiltersRange
+  , insertFilter
   , insertMultipleFilters
   , readFilter
   , readFiltersHeight
@@ -13,6 +14,7 @@ import Data.ByteString
 import Data.Foldable (traverse_)
 import Data.Maybe
 import Database.LMDB.Simple
+import Database.LMDB.Simple.Extra
 import Network.Haskoin.Block
 
 import Ergvein.Filters.Btc.Mutable
@@ -23,6 +25,19 @@ import Ergvein.Wallet.Filters.Btc.Types
 import Ergvein.Wallet.Platform
 
 import qualified Database.LMDB.Simple.Extra as LMDB
+
+clearFiltersRange :: BlockHeight -> BlockHeight -> Transaction ReadWrite ()
+clearFiltersRange i0 i1 = do
+  fdb <- getBtcFiltersDb
+  hdb <- getBtcHeightsDb
+  flip traverse_ [i0 .. i1] $ \i -> do
+    mh <- get hdb i
+    case mh of
+      Nothing -> pure ()
+      Just h -> do
+        delete i hdb
+        delete h fdb
+        pure ()
 
 insertFilter :: MonadIO m => BlockHeight -> BlockHash -> AddressFilterHexView -> Environment ReadWrite -> m ()
 insertFilter h bh fview e = liftIO . readWriteTransaction e $ do

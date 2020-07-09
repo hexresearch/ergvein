@@ -7,7 +7,7 @@ Ergvein is MVP implementation for [Cypra](https://cypra.io) ecosystem. It is cry
 **Wallet is not finished yet! Consider the product as alpha quality and subject for changes.**
 
 Features:
-* Supported currencies: [Bitcoin](https://bitcoin.org/en/), [Ergo](https://ergoplatform.org/en/), [ZCash](https://z.cash/), [USDT](https://tether.to/), [EOS](https://eos.io/), [ETH](https://ethereum.org/).
+* Supported currencies: [Bitcoin](https://bitcoin.org/en/), [Ergo](https://ergoplatform.org/en/), [Litecoin](https://litecoin.org/), [ZCash](https://z.cash/), [USDT](https://tether.to/) (Omni protocol).
 * We use [SPV](https://bitcoin.org/en/operating-modes-guide#simplified-payment-verification-spv) design. Wallet doesn't trust nodes. All data is double checked: the wallet samples multiple nodes and checks results for consistency.
 * Private keys are stored in encrypted storage and never leave your device. All wallet data is encrypted and protected by your password.
 * Built-in atomic swaps, exchange your crypto in one click.

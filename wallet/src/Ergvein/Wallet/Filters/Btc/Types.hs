@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Wallet.Filters.Btc.Types(
     initBtcDbs
+  , cleanBtcDbs
   , getBtcFiltersDb
   , getBtcHeightsDb
   , getBtcTotalDb
@@ -41,6 +42,12 @@ initBtcDbs = do
   case mtotal of
     Nothing -> put tdb () $ Just h
     Just v -> if h > v then put tdb () $ Just h else pure ()
+
+cleanBtcDbs :: Transaction ReadWrite ()
+cleanBtcDbs = do
+  clear =<< getBtcFiltersDb
+  clear =<< getBtcHeightsDb
+  clear =<< getBtcTotalDb
 
 getBtcFiltersDb :: Mode mode => Transaction mode (Database BlockHash ByteString)
 getBtcFiltersDb = getDatabase $ Just filtersDbName

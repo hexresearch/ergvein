@@ -3,6 +3,7 @@ module Ergvein.Index.Client.V1
     HasClientManager(..)
   , getHeightEndpoint
   , getBlockFiltersEndpoint
+  , pingEndpoint
   , getInfoEndpoint
   , getIntroducePeerEndpoint
   , getKnownPeersEndpoint
@@ -51,6 +52,11 @@ getBlockFiltersEndpoint :: HasClientManager m => BaseUrl -> BlockFiltersRequest 
 getBlockFiltersEndpoint url req = do
   cenv <- fmap (`mkClientEnv` url) getClientManager
   liftIO $ flip runClientM cenv $ indexGetBlockFilters apiV1 req
+
+pingEndpoint :: HasClientManager m => BaseUrl -> () -> m (Either ClientError InfoResponse)
+pingEndpoint url _ = do
+  cenv <- fmap (`mkClientEnv` url) getClientManager
+  liftIO $ flip runClientM cenv $ indexGetInfo apiV1
 
 getInfoEndpoint :: HasClientManager m => BaseUrl -> () -> m (Either ClientError InfoResponse)
 getInfoEndpoint url _ = do

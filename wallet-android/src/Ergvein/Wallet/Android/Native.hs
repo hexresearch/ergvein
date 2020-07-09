@@ -17,6 +17,7 @@ import System.Directory.Tree
 import System.FilePath.Posix
 import System.IO
 import System.X509.Android
+import Data.Time (TimeZone(..))
 
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
@@ -30,7 +31,8 @@ foreign import ccall safe "read_paste_str" androidReadPasteStr :: JString -> IO 
 foreign import ccall safe "release_paste_str" androidReleasePasteStr :: JString -> CString -> IO ()
 foreign import ccall safe "android_copy_str" androidCopyStr :: HaskellActivity -> CString -> IO ()
 foreign import ccall safe "android_log_write" androidLogWrite :: CString -> IO ()
-foreign import ccall safe "android_timezone_offset" androidTimezoneOffset :: IO Int
+foreign import ccall safe "android_timezone_offset" androidTimeZoneOffset :: IO Int
+foreign import ccall safe "android_timezone_id" androidTimeZoneId :: IO CString
 foreign import ccall safe "android_share_url" androidShareUrl :: HaskellActivity -> CString -> IO ()
 foreign import ccall safe "android_open_url" androidOpenUrl :: HaskellActivity -> CString -> IO ()
 foreign import ccall safe "android_camera_open" androidCameraOpen :: HaskellActivity -> CString -> IO ()
@@ -131,6 +133,12 @@ instance PlatformNatives where
   copyStr v = liftIO $ encodeText v $ \s -> do
     a <- getHaskellActivity
     androidCopyStr a s
+
+  getTimeZone = liftIO $ do
+    offset <- androidTimeZoneOffset
+    id' <- androidTimeZoneId
+    id <- decodeText id'
+    pure $ TimeZone offset False (T.unpack id)
 
   shareUrl v = liftIO $ encodeText v $ \s -> do
     a <- getHaskellActivity
