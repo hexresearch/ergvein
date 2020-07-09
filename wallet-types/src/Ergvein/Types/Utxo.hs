@@ -23,7 +23,12 @@ import Ergvein.Types.Transaction
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
-data EgvUtxoStatus = EUtxoConfirmed | EUtxoSemiConfirmed BlockHeight | EUtxoSending | EUtxoReceiving
+data EgvUtxoStatus
+  = EUtxoConfirmed
+  | EUtxoSemiConfirmed !BlockHeight
+  | EUtxoSending !(Maybe BlockHeight)
+  | EUtxoReceiving !(Maybe BlockHeight)
+
   deriving (Eq, Show, Read)
 $(deriveJSON defaultOptions ''EgvUtxoStatus)
 
@@ -54,13 +59,25 @@ instance ToJSONKey OutPoint
 
 updateBtcUtxoSetPure :: BtcUtxoUpdate -> BtcUtxoSet -> BtcUtxoSet
 updateBtcUtxoSetPure (outs, ins) s = foo (M.union outs s) ins $ \m (op, b) ->
-  M.update (\meta -> if b then Nothing else Just meta {utxoMeta'status = EUtxoSending}) op m
+  M.update (\meta -> if b then Nothing else Just meta {utxoMeta'status = EUtxoSending Nothing}) op m
   where foo b ta f = foldl' f b ta
 
 confirmationGap :: Word64
 confirmationGap = 3
 
+staleGap :: Word64
+staleGap = 15     -- ~1 blk / 10 min. 14 days * 24 h * 6 blocks/h.
+
 reconfirmBtxUtxoSetPure :: BlockHeight -> BtcUtxoSet -> BtcUtxoSet
-reconfirmBtxUtxoSetPure bh = fmap $ \meta -> case utxoMeta'status meta of
-  EUtxoSemiConfirmed bh0 -> if bh - bh0 >= confirmationGap - 1 then meta {utxoMeta'status = EUtxoConfirmed} else meta
-  _ -> meta
+reconfirmBtxUtxoSetPure bh bs = flip M.mapMaybe bs $ \meta -> case utxoMeta'status meta of
+  EUtxoConfirmed -> Just $ meta
+  EUtxoSemiConfirmed bh0 -> Just $ if bh - bh0 >= confirmationGap - 1 then meta {utxoMeta'status = EUtxoConfirmed} else meta
+  EUtxoSending mh -> case mh of
+    Nothing -> Just $ meta {utxoMeta'status = EUtxoSending $ Just bh}
+    Just bh0 -> if bh - bh0 >= staleGap - 1 then Nothing else Just meta
+  EUtxoReceiving mh -> case mh of
+    Nothing -> Just $ meta {utxoMeta'status = EUtxoSending $ Just bh}
+    Just bh0 -> if bh - bh0 >= staleGap - 1 then Nothing else Just meta
+  where
+    keys = M.keys bs
+    foo b ta f = foldl' f b ta

@@ -59,7 +59,7 @@ getUnspentOutputs c ScanKeyBox{..} tx = fmap catMaybes $ flip traverse (zip [0..
     _ -> Nothing
   where
     th = txHash tx
-    stat = maybe EUtxoReceiving EUtxoSemiConfirmed c
+    stat = maybe (EUtxoReceiving Nothing) EUtxoSemiConfirmed c
     addr = egvXPubKeyToEgvAddress scanBox'key
 
 -- | Construct UTXO update for a list of addresses based on a transaction
