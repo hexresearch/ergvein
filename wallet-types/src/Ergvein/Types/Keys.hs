@@ -191,7 +191,7 @@ instance FromJSON EgvRootXPubKey where
 
 -- | Wrapper around XPrvKey for easy to/from json manipulations
 data EgvXPrvKey = BtcXPrvKey { btcXPrvKey :: !XPrvKey} | ErgXPrvKey {ergXPrvKey :: !XPrvKey}
-  deriving (Eq, Show, Read)
+  deriving (Eq, Ord, Show, Read)
 
 unEgvXPrvKey :: EgvXPrvKey -> XPrvKey
 unEgvXPrvKey key = case key of
@@ -228,11 +228,6 @@ instance FromJSON EgvXPrvKey where
     pure $ case currency of
       BTC -> BtcXPrvKey key
       ERGO -> ErgXPrvKey key
-
--- instance Ord EgvXPrvKey where
---   compare (EgvXPrvKey currency1 key1) (EgvXPrvKey currency2 key2) = case compare currency1 currency2 of
---     EQ -> compare (xPrvExport (getCurrencyNetwork currency1) key1) (xPrvExport (getCurrencyNetwork currency2) key2)
---     x -> x
 
 -- | Wrapper around XPubKey for easy to/from json manipulations
 data EgvXPubKey =
@@ -296,13 +291,13 @@ instance Ord EgvXPubKey where
         BtcXPubKey k l -> (BTC, k, l)
 
 data PrvKeystore = PrvKeystore {
-  prvKeystore'master   :: EgvXPrvKey
+  prvKeystore'master   :: !EgvXPrvKey
   -- ^Extended private key with BIP44 derivation path /m\/purpose'\/coin_type'\/account'/.
-, prvKeystore'external :: Vector EgvXPrvKey
+, prvKeystore'external :: !(Vector EgvXPrvKey)
   -- ^Map with BIP44 external extended private keys and corresponding indices.
   -- This private keys must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/0\/address_index/.
-, prvKeystore'internal :: Vector EgvXPrvKey
+, prvKeystore'internal :: !(Vector EgvXPrvKey)
   -- ^Map with BIP44 internal extended private keys and corresponding indices.
   -- This private keys must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.
@@ -311,21 +306,21 @@ data PrvKeystore = PrvKeystore {
 $(deriveJSON aesonOptionsStripToApostroph ''PrvKeystore)
 
 data EgvPubKeyBox = EgvPubKeyBox {
-  pubKeyBox'key    :: EgvXPubKey
-, pubKeyBox'txs    :: S.Set TxId
-, pubKeyBox'manual :: Bool
+  pubKeyBox'key    :: !EgvXPubKey
+, pubKeyBox'txs    :: !S.Set TxId
+, pubKeyBox'manual :: !Bool
 } deriving (Eq, Show, Read)
 
 $(deriveJSON aesonOptionsStripToApostroph ''EgvPubKeyBox)
 
 data PubKeystore = PubKeystore {
-  pubKeystore'master   :: EgvXPubKey
+  pubKeystore'master   :: !EgvXPubKey
   -- ^Extended public key with BIP44 derivation path /m\/purpose'\/coin_type'\/account'/.
-, pubKeystore'external :: Vector EgvPubKeyBox
+, pubKeystore'external :: !(Vector EgvPubKeyBox)
   -- ^Map with BIP44 external extended public keys and corresponding indices.
   -- This addresses must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/0\/address_index/.
-, pubKeystore'internal :: Vector EgvPubKeyBox
+, pubKeystore'internal :: !(Vector EgvPubKeyBox)
   -- ^Map with BIP44 internal extended public keys and corresponding indices.
   -- This addresses must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.

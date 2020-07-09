@@ -152,11 +152,6 @@ scanningBtcBlocks keys hashesE = do
   removeOutgoingTxs BTC $ (M.elems . M.unions . V.toList . snd . V.unzip . fst) <$> txsUpdsE
   pure $ leftmost [(V.any (not . M.null . snd)) . fst <$> txsUpdsE, False <$ noScanE]
 
--- Left here for clarity
--- type BtcUtxoSet = M.Map OutPoint (Word64, EgvUtxoStatus)
---
--- type BtcUtxoUpdate = (BtcUtxoSet, [(OutPoint, Bool)])
-
 -- | Extract transactions that correspond to given address.
 getAddressesTxs :: MonadFront t m
   => Event t (Vector ScanKeyBox, M.Map HB.BlockHash HB.BlockHeight, [HB.Block])
