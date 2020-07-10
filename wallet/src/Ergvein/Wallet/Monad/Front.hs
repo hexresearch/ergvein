@@ -14,10 +14,11 @@ module Ergvein.Wallet.Monad.Front(
   , Text
   , MonadJSM
   , traverse_
-  , module Ergvein.Wallet.Monad.Base
+  , module Ergvein.Wallet.Monad.Prim
   , module Reflex.Dom
   , module Reflex.Dom.Retractable.Class
   , module Control.Monad
+  , module Ergvein.Wallet.Monad.Client
   ) where
 
 import Control.Concurrent.Chan
@@ -45,7 +46,8 @@ import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Async
-import Ergvein.Wallet.Monad.Base
+import Ergvein.Wallet.Monad.Client
+import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Settings
@@ -117,8 +119,6 @@ class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   getSettingsD :: m (Dynamic t Settings)
   -- | Update app's settings. Sets settings to provided value and stores them
   updateSettings :: Event t Settings -> m (Event t ())
-  -- | Get settings ref. Internal
-  getSettingsRef :: m (ExternalRef t Settings)
   -- | Get loading widget trigger and fire. This is internal stuff
   getLoadingWidgetTF :: m (Event t (Bool, Text), (Bool, Text) -> IO ())
   -- | Request displaying the loading widget

@@ -46,7 +46,8 @@ import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Async
-import Ergvein.Wallet.Monad.Base
+import Ergvein.Wallet.Monad.Client
+import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Monad.Util
@@ -215,6 +216,9 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
       writeExternalRef settingsRef s
       storeSettings s
   {-# INLINE updateSettings #-}
+
+
+instance MonadBaseConstr t m => MonadHasSettings t (ErgveinM t m) where
   getSettingsRef = asks env'settings
   {-# INLINE getSettingsRef #-}
 
@@ -492,128 +496,18 @@ wrapped ma = do
 instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
   getArchivedUrlsRef = asks env'urlsArchive
   {-# INLINE getArchivedUrlsRef #-}
-  getArchivedUrlsD = externalRefDynamic =<< asks env'urlsArchive
-  {-# INLINE getArchivedUrlsD #-}
   getActiveUrlsRef = asks env'activeUrls
   {-# INLINE getActiveUrlsRef #-}
   getInactiveUrlsRef = asks env'inactiveUrls
   {-# INLINE getInactiveUrlsRef #-}
-  getInactiveUrlsD = externalRefDynamic =<< asks env'inactiveUrls
-  {-# INLINE getInactiveUrlsD #-}
   getActiveUrlsNumRef = asks env'actUrlNum
   {-# INLINE getActiveUrlsNumRef #-}
   getRequiredUrlNumRef = asks env'reqUrlNum
   {-# INLINE getRequiredUrlNumRef #-}
   getRequestTimeoutRef = asks env'timeout
   {-# INLINE getRequestTimeoutRef #-}
-  getIndexerInfoD = externalRefDynamic =<< asks env'activeUrls
-  {-# INLINE getIndexerInfoD #-}
   getIndexerInfoEF = asks env'indexersEF
   {-# INLINE getIndexerInfoEF #-}
-  refreshIndexerInfo e = do
-    fire <- asks (snd . env'indexersEF)
-    performEvent_ $ (liftIO fire) <$ e
-  {-# INLINE refreshIndexerInfo #-}
-  pingIndexer urlE = performFork $ ffor urlE $ \url -> do
-    mng <- getClientManager
-    pingIndexerIO mng url
-  activateURL urlE = do
-    actRef  <- asks env'activeUrls
-    iaRef   <- asks env'inactiveUrls
-    acrhRef <- asks env'urlsArchive
-    setRef  <- asks env'settings
-    performFork $ ffor urlE $ \url -> do
-      mng <- getClientManager
-      res <- pingIndexerIO mng url
-      ias <- modifyExternalRef iaRef $ \us ->
-        let us' = S.delete url us in (us', S.toList us')
-      ars <- modifyExternalRef acrhRef $ \as ->
-        let as' = S.delete url as in  (as', S.toList as')
-      acs <- modifyExternalRef actRef $ \as ->
-        let as' = uncurry M.insert res as in (as', M.keys as')
-      s <- modifyExternalRef setRef $ \s -> let
-        s' = s {
-            settingsActiveUrls      = acs
-          , settingsDeactivatedUrls = ias
-          , settingsPassiveUrls     = ars
-          }
-        in (s', s')
-      storeSettings s
-      pure ()
-  deactivateURL urlE = do
-    actRef  <- asks env'activeUrls
-    iaRef   <- asks env'inactiveUrls
-    setRef  <- asks env'settings
-    performEventAsync $ ffor urlE $ \url fire -> void $ liftIO $ forkOnOther $ do
-      acs <- modifyExternalRef actRef $ \as ->
-        let as' = M.delete url as in (as', M.keys as')
-      ias <- modifyExternalRef iaRef  $ \us ->
-        let us' = S.insert url us in (us', S.toList us')
-      s <- modifyExternalRef setRef $ \s -> let
-        s' = s {
-            settingsActiveUrls      = acs
-          , settingsDeactivatedUrls = ias
-          }
-        in (s', s')
-      storeSettings s
-      fire ()
-
-  forgetURL urlE = do
-    actRef  <- asks env'activeUrls
-    iaRef   <- asks env'inactiveUrls
-    acrhRef <- asks env'urlsArchive
-    setRef  <- asks env'settings
-    performEvent $ ffor urlE $ \url -> do
-      ias <- modifyExternalRef iaRef $ \us ->
-        let us' = S.delete url us in (us', S.toList us')
-      ars <- modifyExternalRef acrhRef $ \as ->
-        let as' = S.delete url as in  (as', S.toList as')
-      acs <- modifyExternalRef actRef $ \as ->
-        let as' = M.delete url as in (as', M.keys as')
-      s <- modifyExternalRef setRef $ \s -> let
-        s' = s {
-            settingsActiveUrls      = acs
-          , settingsDeactivatedUrls = ias
-          , settingsPassiveUrls     = ars
-          }
-        in (s', s')
-      storeSettings s
-  restoreDefaultIndexers reqE = do
-    actRef  <- asks env'activeUrls
-    iaRef   <- asks env'inactiveUrls
-    acrhRef <- asks env'urlsArchive
-    setRef  <- asks env'settings
-    let defSet = S.fromList defaultIndexers
-    performEvent $ ffor reqE $ const $ do
-      ias <- modifyExternalRef iaRef $ \us ->
-        let us' = us `S.difference` defSet in (us', S.toList us')
-      ars <- modifyExternalRef acrhRef $ \as ->
-        let as' = as `S.difference` defSet in  (as', S.toList as')
-      acs <- modifyExternalRef actRef $ \as ->
-        let as' = L.foldl' (\m u -> M.insert u Nothing m) as defaultIndexers
-        in (as', M.keys as')
-      s <- modifyExternalRef setRef $ \s -> let
-        s' = s {
-            settingsActiveUrls      = acs
-          , settingsDeactivatedUrls = ias
-          , settingsPassiveUrls     = ars
-          }
-        in (s', s')
-      storeSettings s
-      pure ()
-
-pingIndexerIO :: (MonadIO m, PlatformNatives) => Manager -> BaseUrl -> m (BaseUrl, Maybe IndexerInfo)
-pingIndexerIO mng url = liftIO $ do
-  t0 <- getCurrentTime
-  res <- runReaderT (getInfoEndpoint url ()) mng
-  t1 <- getCurrentTime
-  case res of
-    Left err -> do
-      logWrite $ "[pingIndexerIO][" <> T.pack (showBaseUrl url) <> "]: " <> showt err
-      pure $ (url, Nothing)
-    Right (InfoResponse vals) -> let
-      curmap = M.fromList $ fmap (\(ScanProgressItem cur sh ah) -> (cur, (sh, ah))) vals
-      in pure $ (url, Just $ IndexerInfo curmap $ diffUTCTime t1 t0)
 
 mkTlsSettings :: (MonadIO m, PlatformNatives) => m TLSSettings
 mkTlsSettings = do

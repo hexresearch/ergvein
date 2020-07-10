@@ -82,7 +82,8 @@ library
         Ergvein.Wallet.Monad
         Ergvein.Wallet.Monad.Async
         Ergvein.Wallet.Monad.Auth
-        Ergvein.Wallet.Monad.Base
+        Ergvein.Wallet.Monad.Client
+        Ergvein.Wallet.Monad.Prim
         Ergvein.Wallet.Monad.Front
         Ergvein.Wallet.Monad.Storage
         Ergvein.Wallet.Monad.Unauth

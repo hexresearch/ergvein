@@ -19,7 +19,7 @@ import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
-import Ergvein.Wallet.Monad.Base
+import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
@@ -135,6 +135,8 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
       writeExternalRef settingsRef s
       storeSettings s
   {-# INLINE updateSettings #-}
+
+instance MonadBaseConstr t m => MonadHasSettings t (UnauthM t m) where
   getSettingsRef = asks unauth'settings
   {-# INLINE getSettingsRef #-}
 
