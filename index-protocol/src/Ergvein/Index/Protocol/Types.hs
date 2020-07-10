@@ -22,6 +22,7 @@ data MessageType = Version
                  | Reject
                  | Ping
                  | Pong
+                  deriving Enum
 
 messageTypeTag :: MessageType -> Word32
 messageTypeTag = \case
@@ -53,29 +54,13 @@ data CurrencyCode = BTC
                   | TCPR
                   | DASH
                   | TDASH
-
-currencyTag :: CurrencyCode -> Word32
-currencyTag = \case
-  BTC    -> 0
-  TBTC   -> 1
-  ERGO   -> 2
-  TERGO  -> 3
-  USDTO  -> 4
-  TUSDTO -> 5
-  LTC    -> 6
-  TLTC   -> 7
-  ZEC    -> 8
-  TZEC   -> 9
-  CPR    -> 10
-  TCPR   -> 11
-  DASH   -> 12
-  TDASH  -> 13
+                  deriving Enum
 
 genericSizeOf :: (Storable a, Integral b) => a -> b
 genericSizeOf = fromIntegral . sizeOf
 
 scanBlock :: CurrencyCode -> Word32 -> Word64 -> Word64 -> Builder
-scanBlock currency version scanHeight height = word32BE (currencyTag currency)
+scanBlock currency version scanHeight height = word32BE (fromIntegral $ fromEnum currency)
                                             <> word32BE version
                                             <> word64BE scanHeight
                                             <> word64BE height
