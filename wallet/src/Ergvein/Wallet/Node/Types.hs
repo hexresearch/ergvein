@@ -18,6 +18,7 @@ module Ergvein.Wallet.Node.Types
   , NodeReqG(..)
   , NodeRespG(..)
   , NodeMessage(..)
+  , getAllConnByCurrency
   ) where
 
 import Data.GADT.Compare
@@ -34,6 +35,7 @@ import Ergvein.Wallet.Node.Prim
 
 import Data.Map.Strict (Map)
 import Data.Dependent.Map (DMap)
+import qualified Data.Dependent.Map as DM
 
 data NodeConn t = NodeConnBTC !(NodeBTC t) | NodeConnERG !(NodeERG t)
 
@@ -53,3 +55,8 @@ instance GCompare (CurrencyTag t) where
   gcompare ERGOTag  BTCTag  = GLT
 
 type ConnMap t = DMap (CurrencyTag t) (Map SockAddr)
+
+getAllConnByCurrency :: Currency -> ConnMap t -> Maybe (Map SockAddr (NodeConn t))
+getAllConnByCurrency cur cm = case cur of
+  BTC  -> (fmap . fmap) NodeConnBTC $ DM.lookup BTCTag cm
+  ERGO -> (fmap . fmap) NodeConnERG $ DM.lookup ERGOTag cm
