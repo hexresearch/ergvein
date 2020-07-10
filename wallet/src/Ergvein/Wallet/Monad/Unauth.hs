@@ -76,42 +76,16 @@ instance MonadBaseConstr t m => MonadLocalized t (UnauthM t m) where
   {-# INLINE getLanguage #-}
 
 instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontBase t (UnauthM t m) where
-  getSettings = readExternalRef =<< asks unauth'settings
-  {-# INLINE getSettings #-}
-  getSettingsD = externalRefDynamic =<< asks unauth'settings
-  {-# INLINE getSettingsD #-}
   getLoadingWidgetTF = asks unauth'loading
   {-# INLINE getLoadingWidgetTF #-}
-  toggleLoadingWidget reqE = do
-    fire <- asks (snd . unauth'loading)
-    langRef <- asks unauth'langRef
-    performEvent_ $ ffor reqE $ \(b,lbl) -> liftIO $ do
-      lang <- readExternalRef langRef
-      fire (b,localizedShow lang lbl)
-  {-# INLINE toggleLoadingWidget #-}
-  loadingWidgetDyn reqD = do
-    fire <- asks (snd . unauth'loading)
-    langRef <- asks unauth'langRef
-    performEvent_ $ ffor (updated reqD) $ \(b,lbl) -> liftIO $ do
-      lang <- readExternalRef langRef
-      fire (b,localizedShow lang lbl)
-  {-# INLINE loadingWidgetDyn #-}
   getBackEventFire = asks unauth'backEF
   {-# INLINE getBackEventFire #-}
   getUiChan = asks unauth'uiChan
   {-# INLINE getUiChan #-}
   getLangRef = asks unauth'langRef
   {-# INLINE getLangRef #-}
-  isAuthorized = do
-    authd <- getAuthInfoMaybe
-    pure $ ffor authd $ \case
-      Just _ -> True
-      Nothing -> False
-  {-# INLINE isAuthorized #-}
-  getAuthInfoMaybe = externalRefDynamic =<< asks unauth'authRef
-  {-# INLINE getAuthInfoMaybe #-}
-  getAuthInfoRef = asks unauth'authRef
-  {-# INLINE getAuthInfoRef #-}
+  getAuthInfoMaybeRef = asks unauth'authRef
+  {-# INLINE getAuthInfoMaybeRef #-}
   setAuthInfo e = do
     authRef <- asks unauth'authRef
     performEvent $ ffor e $ \v -> do
@@ -123,18 +97,6 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontB
   {-# INLINE getPasswordModalEF #-}
   getPasswordSetEF = asks unauth'passSetEF
   {-# INLINE getPasswordSetEF #-}
-  requestPasssword reqE = do
-    i <- liftIO getRandom
-    (_, modalF) <- asks unauth'passModalEF
-    (setE, _) <- asks unauth'passSetEF
-    performEvent_ $ (liftIO . modalF . (i,)) <$> reqE
-    pure $ fforMaybe setE $ \(i', mp) -> if i == i' then mp else Nothing
-  updateSettings setE = do
-    settingsRef <- asks unauth'settings
-    performEvent $ ffor setE $ \s -> do
-      writeExternalRef settingsRef s
-      storeSettings s
-  {-# INLINE updateSettings #-}
 
 instance MonadBaseConstr t m => MonadHasSettings t (UnauthM t m) where
   getSettingsRef = asks unauth'settings

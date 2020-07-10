@@ -10,6 +10,9 @@ module Ergvein.Wallet.Monad.Prim
   , PeerScanInfoMap (..)
   , IndexerInfo(..)
   , MonadHasSettings(..)
+  , getSettings
+  , getSettingsD
+  , updateSettings
   ) where
 
 import Control.Monad.Fix
@@ -94,6 +97,25 @@ type MonadFrontConstr t m = (PlatformNatives
 class MonadBaseConstr t m => MonadHasSettings t m where
   -- | Get settings ref
   getSettingsRef :: m (ExternalRef t Settings)
+
+-- | Get current settings
+getSettings :: MonadHasSettings t m => m Settings
+getSettings = readExternalRef =<< getSettingsRef
+{-# INLINE getSettings #-}
+
+-- | Get current settings dynamic
+getSettingsD :: MonadHasSettings t m => m (Dynamic t Settings)
+getSettingsD = externalRefDynamic =<< getSettingsRef
+{-# INLINE getSettingsD #-}
+
+-- | Update app's settings. Sets settings to provided value and stores them
+updateSettings :: MonadHasSettings t m => Event t Settings -> m (Event t ())
+updateSettings setE = do
+  settingsRef <- getSettingsRef
+  performEvent $ ffor setE $ \s -> do
+    writeExternalRef settingsRef s
+    storeSettings s
+{-# INLINE updateSettings #-}
 
 -- ===========================================================================
 --           Monad EgvLogger. Implements Ervgein's logging

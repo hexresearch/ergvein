@@ -7,7 +7,6 @@ module Ergvein.Wallet.Node
   , addMultipleConns
   , removeNodeConn
   , getNodeConn
-  , getAllConnByCurrency
   , initNode
   , initializeNodes
   , reinitNodes
@@ -61,11 +60,6 @@ addMultipleConns = foldl' (flip addNodeConn)
 
 getNodeConn :: CurrencyTag t a -> SockAddr -> ConnMap t -> Maybe a
 getNodeConn t url cm = M.lookup url =<< DM.lookup t cm
-
-getAllConnByCurrency :: Currency -> ConnMap t -> Maybe (M.Map SockAddr (NodeConn t))
-getAllConnByCurrency cur cm = case cur of
-  BTC  -> (fmap . fmap) NodeConnBTC $ DM.lookup BTCTag cm
-  ERGO -> (fmap . fmap) NodeConnERG $ DM.lookup ERGOTag cm
 
 removeNodeConn :: forall t a . CurrencyTag t a -> SockAddr -> ConnMap t -> ConnMap t
 removeNodeConn tag url cm = DM.adjust (M.delete url) tag cm
