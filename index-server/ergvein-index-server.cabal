@@ -94,6 +94,7 @@ library
       , yaml                     >= 0.11    &&  < 0.12
       , network
       , attoparsec
+      , attoparsec-binary
       , binary
       , ergo-api
       , ergvein-common

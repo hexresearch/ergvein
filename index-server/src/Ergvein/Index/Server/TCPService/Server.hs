@@ -11,6 +11,7 @@ import Data.ByteString.Builder
 import Data.Attoparsec.ByteString
 import qualified Data.Attoparsec.ByteString as ABS
 import Data.Word
+import Data.Attoparsec.Binary
 
 import Data.Binary.Get
 
@@ -29,6 +30,7 @@ mainLoop sock = do
 
 runConn :: (Socket, SockAddr) -> IO ()
 runConn (sock, _) = do
+  h <- maybeResult . readMessageInfo <$> NS.recv sock 8
   hdl <- socketToHandle sock ReadWriteMode
   let msg = pingMsg 1 
   hPutBuilder hdl msg
@@ -36,13 +38,30 @@ runConn (sock, _) = do
 
 readMessageInfo :: BS.ByteString -> Result (MessageType, Word32)
 readMessageInfo str = (`parse` str) $ do
-    t <- sizeP2
-    s <- sizeP1
-    pure (t, s)
+    messageType <- messageTypeParser
+    messageSize <- anyWord32be
+    pure (messageType, messageSize)
 
+messageTypeParser :: Parser MessageType
+messageTypeParser = do
+  w32 <- anyWord32be
+  case word32toMessageType w32 of
+   Just messageType -> pure messageType
+   _                -> fail "out of message type bounds"
 
-sizeP2 :: Parser MessageType
-sizeP2 = toEnum . fromIntegral <$> sizeP1
-
-sizeP1 :: Parser Word32
-sizeP1 = runGet getWord32be . BSL.fromStrict <$> ABS.take 4
+word32toMessageType :: Word32 -> Maybe MessageType 
+word32toMessageType = \case
+  0  -> Just Version
+  1  -> Just VersionACK
+  2  -> Just FiltersRequest
+  3  -> Just FiltersResponse
+  4  -> Just FilterEvent
+  5  -> Just PeerRequest
+  6  -> Just PeerResponse
+  7  -> Just FeeRequest
+  8  -> Just FeeResponse
+  9  -> Just IntroducePeer
+  10 -> Just Reject 
+  11 -> Just Ping
+  12 -> Just Pong
+  _  -> Nothing
