@@ -10,11 +10,15 @@ library
   hs-source-dirs:      src
   exposed-modules:
     Ergvein.Index.Protocol.Types
+    Ergvein.Index.Protocol.Serialization
+    Ergvein.Index.Protocol.Deserialization
 
   build-depends:
       base                 >= 4.7  && < 4.13
     , vector
     , bytestring
+    , attoparsec
+    , attoparsec-binary
 
   default-language:    Haskell2010
   default-extensions:
