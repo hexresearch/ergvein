@@ -195,10 +195,3 @@ forgetURL urlE = do
         }
       in (s', s')
     storeSettings s
-
--- ===========================================================================
---    Misc
--- ===========================================================================
-
-instance MonadIO m => HasClientManager (ReaderT Manager m) where
-  getClientManager = ask

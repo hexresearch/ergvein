@@ -39,6 +39,9 @@ apiV1 = fromServant $ indexVersionedApi'v1 api
 class MonadIO m => HasClientManager m where
   getClientManager  :: m Manager
 
+instance MonadIO m => HasClientManager (ReaderT Manager m) where
+  getClientManager = ask
+
 getHeightEndpoint :: (HasClientManager m, PlatformNatives) => BaseUrl -> HeightRequest -> m (Either ClientError HeightResponse)
 getHeightEndpoint url req = do
   cenv <- (`mkClientEnv` url) <$> getClientManager

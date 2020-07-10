@@ -72,11 +72,7 @@ type MonadBaseConstr t m = (MonadHold t m
   , PlatformNatives
   , MonadReflexCreateTrigger t m
   )
-{-
-instance MonadReflexCreateTrigger t m => MonadReflexCreateTrigger t (ErgveinM t m) where
-  newEventWithTrigger = lift . newEventWithTrigger
-  newFanEventWithTrigger f = lift $ newFanEventWithTrigger f
--}
+
 -- Context for unauthed widgets
 -- Only to be used to request password and open the local storage
 type MonadFrontConstr t m = (PlatformNatives
