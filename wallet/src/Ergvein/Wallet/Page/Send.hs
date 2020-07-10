@@ -149,8 +149,8 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr) = wrapper False (SendTit
       case utxoMeta'status of
         EUtxoConfirmed -> (upoint:cs, ucs)
         EUtxoSemiConfirmed _ -> (upoint:cs, ucs)
-        EUtxoSending -> (cs, ucs)
-        EUtxoReceiving -> (cs, upoint:ucs)
+        EUtxoSending _ -> (cs, ucs)
+        EUtxoReceiving _ -> (cs, upoint:ucs)
 
 -- | TODO: modify to accomodate Ergo
 confirmationInfoWidget :: MonadFront t m => (UnitBTC, Word64) -> Word64 -> EgvAddress -> m ()
