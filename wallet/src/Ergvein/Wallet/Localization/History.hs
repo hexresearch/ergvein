@@ -32,6 +32,7 @@ data HistoryPageStrings =
   | HistoryTIOutputsAddress
   | HistoryTIOutputsValue
   | HistoryTIOutputsStatus
+  | HistoryTIBalance
   deriving (Eq)
 
 instance LocalizedPrint HistoryPageStrings where
@@ -51,6 +52,7 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTIOutputsAddress -> "Address"
       HistoryTIOutputsValue   -> "Value"
       HistoryTIOutputsStatus  -> "Status"
+      HistoryTIBalance        -> "Balance"
     Russian -> case v of
       HistoryTITitle          -> "Информация о транзакции"
       HistoryTIVolume         -> "Объем"
@@ -66,3 +68,4 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTIOutputsAddress -> "Адрес"
       HistoryTIOutputsValue   -> "Объем"
       HistoryTIOutputsStatus  -> "Статус"
+      HistoryTIBalance        -> "Баланс"

@@ -132,6 +132,7 @@ library
         Ergvein.Wallet.Tx
         Ergvein.Wallet.Util
         Ergvein.Wallet.Validate
+        Ergvein.Wallet.Widget.Balance
         Ergvein.Wallet.Widget.GraphPinCode
         Ergvein.Wallet.Worker.Fees
         Ergvein.Wallet.Worker.Height

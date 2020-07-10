@@ -31,11 +31,13 @@ import qualified Data.Text as T
 import Ergvein.Wallet.Native
 
 networkPage :: MonadFront t m => Maybe Currency -> m ()
-networkPage curMb = wrapper False NPSTitle (Just $ pure $ networkPage curMb) $ do
-  curD <- networkPageHeader curMb
-  void $ widgetHoldDyn $ ffor curD $ \case
-    Nothing -> pure ()
-    Just cur -> networkPageWidget cur
+networkPage curMb = do
+  title <- localized NPSTitle
+  wrapper False title (Just $ pure $ networkPage curMb) $ do
+    curD <- networkPageHeader curMb
+    void $ widgetHoldDyn $ ffor curD $ \case
+      Nothing -> pure ()
+      Just cur -> networkPageWidget cur
 
 
 networkPageWidget :: MonadFront t m => Currency -> m ()
@@ -134,28 +136,30 @@ networkPageHeader minitCur = do
       (fmap . fmap) Just $ holdUniqDyn $ _dropdown_value dp
 
 serversInfoPage :: MonadFront t m => Currency -> m ()
-serversInfoPage initCur = wrapper False NPSTitle (Just $ pure $ serversInfoPage initCur) $ mdo
-  curD <- networkPageHeader $ Just initCur
-  void $ widgetHoldDyn $ ffor curD $ \case
-    Nothing -> pure ()
-    Just cur -> do
-      allIndsD <- getIndexerInfoD
-      let indMapD = fmap (M.filter (isJust . join . fmap (M.lookup cur . indInfoHeights))) allIndsD
-      void $ listWithKey indMapD $ \url minfoD -> lineOption $ widgetHoldDyn $ ffor minfoD $ \minfo -> do
-        divClass "network-name" $ do
-          let cls = if isJust minfo then "mt-a mb-a indexer-online" else "mt-a mb-a indexer-offline"
-          elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
-          text $ T.pack . showBaseUrl $ url
-        maybe (pure ()) (descrOptionNoBR . NPSLatency . indInfoLatency) minfo
-        case minfo of
-          Nothing -> descrOptionNoBR NPSOffline
-          Just ii -> case M.lookup cur $ indInfoHeights ii of
-            Nothing -> descrOptionNoBR $ NPSNoIndex cur
-            Just (ch, ah) -> do
-              descrOptionNoBR $ NPSHeightInfo1 ch
-              descrOptionNoBR $ NPSHeightInfo2 ah
-        -- descrOptionNoBR $ maybe NPSOffline (maybe (NPSNoIndex cur) NPSHeightInfo . M.lookup cur . indInfoHeights) minfo
-        labelHorSep
+serversInfoPage initCur = do
+  title <- localized NPSTitle
+  wrapper False title (Just $ pure $ serversInfoPage initCur) $ mdo
+    curD <- networkPageHeader $ Just initCur
+    void $ widgetHoldDyn $ ffor curD $ \case
+      Nothing -> pure ()
+      Just cur -> do
+        allIndsD <- getIndexerInfoD
+        let indMapD = fmap (M.filter (isJust . join . fmap (M.lookup cur . indInfoHeights))) allIndsD
+        void $ listWithKey indMapD $ \url minfoD -> lineOption $ widgetHoldDyn $ ffor minfoD $ \minfo -> do
+          divClass "network-name" $ do
+            let cls = if isJust minfo then "mt-a mb-a indexer-online" else "mt-a mb-a indexer-offline"
+            elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
+            text $ T.pack . showBaseUrl $ url
+          maybe (pure ()) (descrOptionNoBR . NPSLatency . indInfoLatency) minfo
+          case minfo of
+            Nothing -> descrOptionNoBR NPSOffline
+            Just ii -> case M.lookup cur $ indInfoHeights ii of
+              Nothing -> descrOptionNoBR $ NPSNoIndex cur
+              Just (ch, ah) -> do
+                descrOptionNoBR $ NPSHeightInfo1 ch
+                descrOptionNoBR $ NPSHeightInfo2 ah
+          -- descrOptionNoBR $ maybe NPSOffline (maybe (NPSNoIndex cur) NPSHeightInfo . M.lookup cur . indInfoHeights) minfo
+          labelHorSep
 
 lineOptionNoEdit :: MonadFront t m
                  => NetworkPageStrings

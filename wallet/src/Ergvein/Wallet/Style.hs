@@ -176,7 +176,7 @@ headerCss = do
     display flex
     alignItems stretch
     fontSize $ pt 14
-  ".header-wallet-name" ? do
+  ".header-wallet-text" ? do
     width $ pct 100
     padding (rem 1) (rem 0) (rem 1) (rem 0)
   ".header-button" ? do
