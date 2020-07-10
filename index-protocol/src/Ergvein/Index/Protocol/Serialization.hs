@@ -23,7 +23,7 @@ messageTypeToWord32 = \case
 
 
 scanBlock :: CurrencyCode -> Word32 -> Word64 -> Word64 -> Builder
-scanBlock currency version scanHeight height = word32BE (fromIntegral $ fromEnum currency)
+scanBlock currency version scanHeight height = word32BE (undefined currency)
                                             <> word32BE version
                                             <> word64BE scanHeight
                                             <> word64BE height

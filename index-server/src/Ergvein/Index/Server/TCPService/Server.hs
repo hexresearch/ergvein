@@ -5,6 +5,7 @@ import Data.Attoparsec.ByteString
 import Data.ByteString.Builder
 import Network.Socket
 import System.IO
+import Data.Word
 
 import Ergvein.Index.Protocol.Deserialization
 import Ergvein.Index.Protocol.Serialization
@@ -27,13 +28,12 @@ mainLoop sock = do
 
 runConn :: (Socket, SockAddr) -> IO ()
 runConn (sock, _) = do
-  h <- maybeResult . readMessageInfo <$> NS.recv sock 8
+  h <- maybeResult . (parse messageHeaderParser) <$> NS.recv sock 8
   case h of
-    Just (t,s)-> do
+    Just MessageHeader {..} -> do
+      msg <- maybeResult . (parse $ messageParser msgType) <$> (NS.recv sock $ fromIntegral msgSize)
       hdl <- socketToHandle sock ReadWriteMode
-      cnt <- NS.recv sock $ fromIntegral s
-      let msg = pingMsg 1 
-      hPutBuilder hdl msg
+      --hPutBuilder hdl msg
       hClose hdl
       pure ()
     Nothing -> do
