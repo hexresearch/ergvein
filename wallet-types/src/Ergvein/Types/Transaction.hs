@@ -21,6 +21,7 @@ module Ergvein.Types.Transaction (
     , TxHash
     , TxOutIndex
     , currencyHeightStart
+    , getEgvTxMeta
     , setEgvTxMeta
   ) where
 
@@ -95,10 +96,16 @@ egvTxFromJSON cur
       Nothing -> fail "could not decode Ergo transaction"
       Just x  -> return $ ErgTx x Nothing
 
+getEgvTxMeta :: EgvTx -> Maybe EgvTxMeta
+getEgvTxMeta etx= case etx of
+  BtcTx _ m -> m
+  ErgTx _ m -> m
+
 setEgvTxMeta :: EgvTx -> Maybe EgvTxMeta -> EgvTx
 setEgvTxMeta etx mh = case etx of
   BtcTx tx _ -> BtcTx tx mh
   ErgTx tx _ -> ErgTx tx mh
+
 
 instance ToJSON EgvTx where
   toJSON egvTx@(BtcTx tx meta) = object [
