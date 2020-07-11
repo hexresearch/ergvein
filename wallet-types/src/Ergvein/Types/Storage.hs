@@ -23,6 +23,7 @@ import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
 
 import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 
 type WalletName = Text
 
@@ -87,11 +88,11 @@ data CurrencyPubStorage = CurrencyPubStorage {
     _currencyPubStorage'pubKeystore   :: !PubKeystore
   , _currencyPubStorage'transactions  :: !(M.Map TxId EgvTx)
   , _currencyPubStorage'height        :: !(Maybe BlockHeight)     -- ^ Last height seen by the wallet
-  -- | Used at restore. First is scanned external chain and second is scanned internal chain
-  , _currencyPubStorage'scannedKey    :: !(Maybe Int, Maybe Int) 
-  , _currencyPubStorage'utxos         :: !EgvUtxoSetStorage
+  , _currencyPubStorage'scannedKey    :: !(Maybe Int, Maybe Int)  -- ^ When restoring here we put which keys are we already scanned
+  , _currencyPubStorage'utxos         :: !BtcUtxoSet              -- ^ TODO: Change to a generalized one, after we switch to DMaps
   , _currencyPubStorage'scannedHeight :: !(Maybe BlockHeight)
   , _currencyPubStorage'headers       :: !(M.Map HB.BlockHash HB.BlockHeader)
+  , _currencyPubStorage'outgoing      :: !(S.Set TxId)
   } deriving (Eq, Show, Read)
 
 makeLenses ''CurrencyPubStorage
@@ -116,14 +117,17 @@ $(deriveJSON aesonOptionsStripToApostroph ''PubStorage)
 
 -- | Get pub storage keys
 pubStorageKeys :: Currency -> KeyPurpose -> PubStorage -> Vector EgvXPubKey
-pubStorageKeys c p = maybe mempty keys . fmap _currencyPubStorage'pubKeystore . M.lookup c . _pubStorage'currencyPubStorages
-  where keys = if p == External then externalKeys else pubKeystore'internal
+pubStorageKeys c kp = fmap pubKeyBox'key . maybe mempty keys . fmap _currencyPubStorage'pubKeystore . M.lookup c . _pubStorage'currencyPubStorages
+  where
+    keys = case kp of
+      External -> pubKeystore'external
+      Internal -> pubKeystore'internal
 
 pubStoragePubMaster :: Currency -> PubStorage -> Maybe EgvXPubKey
 pubStoragePubMaster c = fmap pubKeystore'master . pubStorageKeyStorage c
 
-pubStorageLastUnused :: Currency -> PubStorage -> Maybe (Int, EgvExternalKeyBox)
-pubStorageLastUnused c ps = getLastUnusedKey . _currencyPubStorage'pubKeystore =<< M.lookup c (_pubStorage'currencyPubStorages ps)
+pubStorageLastUnused :: Currency -> KeyPurpose -> PubStorage -> Maybe (Int, EgvPubKeyBox)
+pubStorageLastUnused c kp ps = getLastUnusedKey kp . _currencyPubStorage'pubKeystore =<< M.lookup c (_pubStorage'currencyPubStorages ps)
 
 pubStorageScannedKeys :: Currency -> KeyPurpose -> PubStorage -> Int
 pubStorageScannedKeys c p ps = fromMaybe 0 $ f . _currencyPubStorage'scannedKey =<< M.lookup c (_pubStorage'currencyPubStorages ps)

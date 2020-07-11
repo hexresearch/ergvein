@@ -30,7 +30,7 @@ receivePage :: MonadFront t m => Currency -> m ()
 receivePage cur = do
   pubStoreD <- getPubStorageD
   let keyD = ffor pubStoreD $ \ps ->
-        (getLastUnusedKey . _currencyPubStorage'pubKeystore) =<< (ps ^. pubStorage'currencyPubStorages . at cur)
+        (getLastUnusedKey External . _currencyPubStorage'pubKeystore) =<< (ps ^. pubStorage'currencyPubStorages . at cur)
   widgetHoldDyn $ ffor keyD $ \case
     Nothing -> exceededGapLimit cur
     Just (i, key) -> receivePageWidget cur i key
@@ -44,8 +44,8 @@ exceededGapLimit cur = wrapper True (ReceiveTitle cur) (Just $ pure $ receivePag
   h2 $ localizedText RPSGap
 
 #ifdef ANDROID
-receivePageWidget :: MonadFront t m => Currency -> Int -> EgvExternalKeyBox -> m ()
-receivePageWidget cur i EgvExternalKeyBox{..} = wrapper False (ReceiveTitle cur) (Just $ pure $ receivePage cur) $ do
+receivePageWidget :: MonadFront t m => Currency -> Int -> EgvPubKeyBox -> m ()
+receivePageWidget cur i EgvPubKeyBox{..} = wrapper False (ReceiveTitle cur) (Just $ pure $ receivePage cur) $ do
   let thisWidget = Just $ pure $ receivePage cur
   navbarWidget cur thisWidget NavbarReceive
   void $ do
@@ -59,11 +59,11 @@ receivePageWidget cur i EgvExternalKeyBox{..} = wrapper False (ReceiveTitle cur)
     setFlagToExtPubKey $ (cur, i) <$ newE
     showInfoMsg =<< clipboardCopy (keyTxt <$ copyE)
     divClass "receive-adr-andr" $ text $ "#" <> showt i <> ": " <> keyTxt
-    labelD <- divClass "button-receive" $ textFieldNoLabel $ getLabelFromEgvPubKey extKeyBox'key
+    labelD <- divClass "button-receive" $ textFieldNoLabel $ getLabelFromEgvPubKey pubKeyBox'key
     btnE <- labelAddrBtn
     setLabelToExtPubKey $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
   where
-    keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress extKeyBox'key
+    keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress pubKeyBox'key
     shareUrl = generateURL keyTxt
     generateURL :: Text -> Text
     generateURL addr = case cur of
@@ -71,8 +71,8 @@ receivePageWidget cur i EgvExternalKeyBox{..} = wrapper False (ReceiveTitle cur)
       ERGO -> "ergo://" <> addr
 
 #else
-receivePageWidget :: MonadFront t m => Currency -> Int -> EgvExternalKeyBox -> m ()
-receivePageWidget cur i EgvExternalKeyBox{..} = wrapper False (ReceiveTitle cur) (Just $ pure $ receivePage cur) $ do
+receivePageWidget :: MonadFront t m => Currency -> Int -> EgvPubKeyBox -> m ()
+receivePageWidget cur i EgvPubKeyBox{..} = wrapper False (ReceiveTitle cur) (Just $ pure $ receivePage cur) $ do
   let thisWidget = Just $ pure $ receivePage cur
   navbarWidget cur thisWidget NavbarReceive
   void $ divClass "container p-1 receive-page" $ do
@@ -84,12 +84,12 @@ receivePageWidget cur i EgvExternalKeyBox{..} = wrapper False (ReceiveTitle cur)
       showInfoMsg =<< clipboardCopy (keyTxt <$ copyE)
     divClass "receive-adr" $ text $ "#" <> showt i <> ": " <> keyTxt
     divClass "label-block" $ do
-      labelD <- textFieldNoLabel $ getLabelFromEgvPubKey extKeyBox'key
+      labelD <- textFieldNoLabel $ getLabelFromEgvPubKey pubKeyBox'key
       btnE <- labelAddrBtn
       setLabelToExtPubKey $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
       pure ()
   where
-    keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress extKeyBox'key
+    keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress pubKeyBox'key
 #endif
 
 newAddrBtn :: MonadFront t m => m (Event t ())

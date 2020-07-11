@@ -37,8 +37,9 @@ import Ergvein.Types.Currency
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Localization.Client
 import Ergvein.Wallet.Monad.Async
+import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Front
-import Ergvein.Wallet.Native 
+import Ergvein.Wallet.Native
 
 getHeight :: (MonadFrontBase t m, MonadClient t m) => Event t HeightRequest -> m (Event t (Either ClientErr HeightResponse))
 getHeight = requester False meanHeight getHeightEndpoint
@@ -67,8 +68,6 @@ getBlockFiltersRandom = requestSoloRandom getBlockFiltersEndpoint
 getFeeEstimatesRandom :: (MonadFrontBase t m, MonadClient t m) => Event t [Currency] -> m (Event t (Either ClientErr IndexFeesResp))
 getFeeEstimatesRandom = requestSoloRandom getFeeEstimatesEndpoint
 
-instance MonadIO m => HasClientManager (ReaderT Manager m) where
-  getClientManager = ask
 
 data ResAct = ResActCheck | ResActTimeout | ResActNoUrls
 

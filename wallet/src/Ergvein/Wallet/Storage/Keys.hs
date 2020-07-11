@@ -39,7 +39,9 @@ deriveCurrencyMasterPrvKey :: EgvRootXPrvKey -> Currency -> EgvXPrvKey
 deriveCurrencyMasterPrvKey rootPrvKey currency =
     let hardPath = [44, getCurrencyIndex currency, 0]
         derivedPrvKey = foldl hardSubKey (unEgvRootXPrvKey rootPrvKey) hardPath
-    in EgvXPrvKey currency derivedPrvKey
+    in case currency of
+      BTC -> BtcXPrvKey derivedPrvKey
+      ERGO -> ErgXPrvKey derivedPrvKey
 
 -- | Derive a BIP44 compatible public key for a specific currency.
 -- Given a parent private key /m/
@@ -60,10 +62,11 @@ derivePrvKey :: EgvXPrvKey -> KeyPurpose -> KeyIndex -> EgvXPrvKey
 derivePrvKey masterKey keyPurpose index =
   let pCode = if keyPurpose == External then 0 else 1
       path = [pCode, index]
-      mKey = egvXPrvKey masterKey
-      currency = egvXPrvCurrency masterKey
+      mKey = unEgvXPrvKey masterKey
       derivedKey = foldl prvSubKey mKey path
-  in EgvXPrvKey currency derivedKey
+  in case masterKey of
+    BtcXPrvKey _ -> BtcXPrvKey derivedKey
+    ErgXPrvKey _ -> ErgXPrvKey derivedKey
 
 -- | Derive a BIP44 compatible public key with a given purpose (external or internal) and index.
 -- Given a parent public key /m/, purpose /p/ and an index /i/, this function will compute /m\/p\/i/.

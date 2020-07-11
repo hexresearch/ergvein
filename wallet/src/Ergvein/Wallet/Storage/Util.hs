@@ -68,19 +68,18 @@ createPrvStorage seed rootPrvKey = PrvStorage seed rootPrvKey prvStorages
 
 addXPubKeyToKeystore :: KeyPurpose -> EgvXPubKey -> PubKeystore -> PubKeystore
 addXPubKeyToKeystore External key (PubKeystore master external internal) =
-  PubKeystore master (V.snoc external (EgvExternalKeyBox key S.empty False)) internal
+  PubKeystore master (V.snoc external (EgvPubKeyBox key S.empty False)) internal
 addXPubKeyToKeystore Internal key (PubKeystore master external internal) =
-  PubKeystore master external (V.snoc internal key)
+  PubKeystore master external (V.snoc internal (EgvPubKeyBox key S.empty False))
 
 getLastSeenHeight :: Currency -> PubStorage -> Maybe BlockHeight
 getLastSeenHeight cur bs = join . (fmap _currencyPubStorage'height) $ bs ^. pubStorage'currencyPubStorages . at cur
 
 createPubKeystore :: EgvXPubKey -> PubKeystore
 createPubKeystore masterPubKey =
-  let extGen i = Just (EgvExternalKeyBox (derivePubKey masterPubKey External (fromIntegral i)) S.empty False, i + 1)
-      intGen i = Just (derivePubKey masterPubKey Internal (fromIntegral i), i + 1)
-      externalKeys = V.unfoldrN initialExternalAddressCount extGen 0
-      internalKeys = V.unfoldrN initialInternalAddressCount intGen 0
+  let keygen kp i = Just (EgvPubKeyBox (derivePubKey masterPubKey kp (fromIntegral i)) S.empty False, i + 1)
+      externalKeys = V.unfoldrN initialExternalAddressCount (keygen External) 0
+      internalKeys = V.unfoldrN initialInternalAddressCount (keygen Internal) 0
   in PubKeystore masterPubKey externalKeys internalKeys
 
 createPubStorage :: Bool -> EgvRootXPrvKey -> [Currency] -> PubStorage
@@ -95,6 +94,7 @@ createPubStorage isRestored rootPrvKey cs = PubStorage rootPubKey pubStorages cs
           , _currencyPubStorage'utxos         = M.empty
           , _currencyPubStorage'scannedHeight = Nothing
           , _currencyPubStorage'headers       = M.empty
+          , _currencyPubStorage'outgoing      = S.empty
           }
         pubStorages = M.fromList [(currency, mkStore currency) | currency <- cs]
 

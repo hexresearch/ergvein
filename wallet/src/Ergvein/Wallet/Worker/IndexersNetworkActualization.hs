@@ -18,6 +18,7 @@ import Ergvein.Text
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Client
 import Ergvein.Wallet.Monad.Async
+import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings
@@ -57,7 +58,7 @@ indexersNetwork targetAmount peers =
   where
     go :: [BaseUrl] -> Map BaseUrl IndexerInfo -> Set BaseUrl -> m (Map BaseUrl IndexerInfo, Set BaseUrl)
     go toExplore exploredInfoMap result
-      | length result == targetAmount || null toExplore = 
+      | length result == targetAmount || null toExplore =
         pure (exploredInfoMap, result)
       | otherwise = do
         let needed = targetAmount - length result
@@ -88,7 +89,7 @@ indexersNetwork targetAmount peers =
 
     indexersInfo :: [BaseUrl] -> m (Map BaseUrl IndexerInfo)
     indexersInfo urls = do
-      mng <- getClientManager 
+      mng <- getClientManager
       fmap mconcat $ (`runReaderT` mng) $ mapM peerInfo urls
       where
         peerInfo url = do
@@ -119,7 +120,7 @@ indexersNetworkActualizationWorker = do
   let goE = leftmost [void te, refreshE, buildE]
 
   performFork_ $ ffor goE $ const $ do
-    inactiveUrls          <- readExternalRef inactiveUrlsRef 
+    inactiveUrls          <- readExternalRef inactiveUrlsRef
     archivedUrls          <- readExternalRef archivedUrlsRef
     settings              <- readExternalRef settingsRef
     currentNetworkInfoMap <- readExternalRef activeUrlsRef
@@ -131,14 +132,14 @@ indexersNetworkActualizationWorker = do
     fetchedIndexers <- newIndexers currentNetwork
 
     let filteredIndexers = currentNetwork `Set.union` fetchedIndexers Set.\\ indexersToExclude
-    
+
     shuffledIndexers <- liftIO $ shuffleM $ Set.toList filteredIndexers
     (newNetworkInfoMap, newNetwork) <- indexersNetwork maxIndexersToExplore shuffledIndexers
 
     let resultingNetwork = if length newNetwork >= minIndexers then newNetwork else currentNetwork
         resultingNetworkInfoMap = Map.fromSet (newNetworkInfoMap Map.!?) resultingNetwork
 
-    modifyExternalRefMaybe_ activeUrlsRef (\previous -> 
+    modifyExternalRefMaybe_ activeUrlsRef (\previous ->
       if previous /= resultingNetworkInfoMap then
-        Just resultingNetworkInfoMap 
+        Just resultingNetworkInfoMap
       else Nothing)

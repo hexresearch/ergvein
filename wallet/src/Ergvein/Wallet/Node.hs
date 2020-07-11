@@ -7,36 +7,44 @@ module Ergvein.Wallet.Node
   , addMultipleConns
   , removeNodeConn
   , getNodeConn
-  , getAllConnByCurrency
   , initNode
   , initializeNodes
   , reinitNodes
   , requestNodeWait
   , requestRandomNode
+  , btcMempoolTxInserter
   , module Ergvein.Wallet.Node.Types
   ) where
 
+import Control.Lens
 import Control.Monad.IO.Class
 import Control.Monad.Random
+import Control.Monad.Reader
 import Data.Foldable
 import Data.Functor.Misc
 import Data.Maybe
 import Network.Socket (SockAddr)
 import Servant.Client(BaseUrl)
 
-import Ergvein.Types.Currency
+import Ergvein.Types
+import Ergvein.Wallet.Blocks.Types
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
+import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Node.ERGO
 import Ergvein.Wallet.Node.Prim
 import Ergvein.Wallet.Node.Types
+import Ergvein.Wallet.Storage.Keys
+import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Util
 
 import qualified Data.Dependent.Map as DM
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+import qualified Data.Vector as V
+import qualified Network.Haskoin.Transaction as HT
 
 addNodeConn :: NodeConn t -> ConnMap t -> ConnMap t
 addNodeConn nc cm = case nc of
@@ -52,11 +60,6 @@ addMultipleConns = foldl' (flip addNodeConn)
 
 getNodeConn :: CurrencyTag t a -> SockAddr -> ConnMap t -> Maybe a
 getNodeConn t url cm = M.lookup url =<< DM.lookup t cm
-
-getAllConnByCurrency :: Currency -> ConnMap t -> Maybe (M.Map SockAddr (NodeConn t))
-getAllConnByCurrency cur cm = case cur of
-  BTC  -> (fmap . fmap) NodeConnBTC $ DM.lookup BTCTag cm
-  ERGO -> (fmap . fmap) NodeConnERG $ DM.lookup ERGOTag cm
 
 removeNodeConn :: forall t a . CurrencyTag t a -> SockAddr -> ConnMap t -> ConnMap t
 removeNodeConn tag url cm = DM.adjust (M.delete url) tag cm
@@ -144,3 +147,24 @@ randomOne vals = case vals of
     let l = length vals
     i <- liftIO $ randomRIO (0, l - 1)
     pure $ Just $ vals!!i
+
+btcMempoolTxInserter :: MonadFront t m => Event t HT.Tx -> m (Event t ())
+btcMempoolTxInserter txE = do
+  store <- getBlocksStorage
+  pubStorageD <- getPubStorageD
+  let keysD = ffor pubStorageD $ \ps -> getPublicKeys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "bctNodeController: not exsisting store!") . currencyPubStorage'pubKeystore
+  valsE <- performFork $ ffor (current keysD `attach` txE) $ \(keys, tx) ->
+    liftIO $ flip runReaderT store $ do
+      v <- checkAddrTx' keys tx
+      u <- getUtxoUpdates Nothing keys tx
+      pure (v,u)
+  insertTxsUtxoInPubKeystore BTC valsE
+
+checkAddrTx' :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => V.Vector ScanKeyBox -> HT.Tx -> m (V.Vector (ScanKeyBox, M.Map TxId EgvTx))
+checkAddrTx' vec tx = do
+  vec' <- flip traverse vec $ \kb -> do
+    b <- checkAddrTx (egvXPubKeyToEgvAddress . scanBox'key $ kb) tx
+    pure $ if b then Just (kb, M.singleton th (BtcTx tx Nothing)) else Nothing
+  pure $ V.mapMaybe id vec'
+  where
+    th = HT.txHashToHex $ HT.txHash tx

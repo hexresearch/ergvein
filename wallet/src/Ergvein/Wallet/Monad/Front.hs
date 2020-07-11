@@ -1,26 +1,40 @@
 module Ergvein.Wallet.Monad.Front(
-    MonadFront(..)
+    MonadFront
   , MonadFrontBase(..)
   , MonadFrontAuth(..)
   , AuthInfo(..)
   , Password
   , RequestSelector
-  , getCurrentHeight
-  , setCurrentHeight
-  , getFiltersSync
-  , setFiltersSync
+  -- * Helpers
   , extractReq
+  , getActiveCursD
+  , getAuthInfo
+  , getCurrentHeight
+  , getFeesD
+  , getFiltersSync
+  , getLoginD
+  , getNodeConnectionsD
+  , getNodesByCurrencyD
+  , getSyncProgress
+  , requestBroadcast
+  , requestFromNode
+  , requestManyFromNode
+  , setCurrentHeight
+  , setFiltersSync
+  , setSyncProgress
+  , updateActiveCurs
   -- * Reexports
   , Text
   , MonadJSM
   , traverse_
+  , module Ergvein.Wallet.Monad.Prim
   , module Ergvein.Wallet.Monad.Base
   , module Reflex.Dom
   , module Reflex.Dom.Retractable.Class
   , module Control.Monad
+  , module Ergvein.Wallet.Monad.Client
   ) where
 
-import Control.Concurrent.Chan
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Foldable (traverse_)
@@ -41,13 +55,14 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Blocks.Storage
-import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Filters.Storage
-import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Base
+import Ergvein.Wallet.Monad.Client
+import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Node.Types
+import Ergvein.Wallet.Node.Prim
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Sync.Status
 
@@ -71,10 +86,6 @@ type MonadFront t m = (
   )
 
 class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
-  -- | Set global sync process value each time the event is fired
-  setSyncProgress :: Event t SyncProgress -> m ()
-  -- | Get global sync process value
-  getSyncProgress :: m (Dynamic t SyncProgress)
   -- | Internal method.
   getSyncProgressRef :: m (ExternalRef t SyncProgress)
   -- | Internal method to get reference with known heights per currency.
@@ -82,68 +93,121 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   -- | Internal method to get flag if we has fully synced filters at the moment.
   getFiltersSyncRef :: m (ExternalRef t (Map Currency Bool))
   -- | Get activeCursRef Internal
-  getActiveCursD :: m (Dynamic t (S.Set Currency))
-  -- | Update active currencies
-  updateActiveCurs :: (Event t (S.Set Currency -> S.Set Currency)) -> m (Event t ())
-  -- | Get auth info. Not a Maybe since this is authorized context
-  getAuthInfo :: m (Dynamic t AuthInfo)
-  -- | Get login. Convenience function
-  getLoginD :: m (Dynamic t Text)
+  getActiveCursRef :: m (ExternalRef t (S.Set Currency))
   -- | Internal method to get connection map ref
   getNodeConnRef  :: m (ExternalRef t (ConnMap t))
-  -- | Get nodes by currency. Basically useless, but who knows
-  getNodesByCurrencyD :: Currency -> m (Dynamic t (Map SockAddr (NodeConn t)))
-  -- | Get connections map
-  getNodeConnectionsD :: m (Dynamic t (ConnMap t))
-  -- | Send a request to a specific URL
-  -- It's up to the caller to ensure that the URL actually points to a correct currency node
-  requestFromNode :: Event t (SockAddr, NodeReqG) -> m ()
   -- | Get node request event
   getNodeRequestSelector :: m (RequestSelector t)
   -- | Get fees ref. Internal
   getFeesRef :: m (ExternalRef t (Map Currency FeeBundle))
-  -- | Get fees dynamic
-  getFeesD :: m (Dynamic t (Map Currency FeeBundle))
+  -- | Get node request trigger
+  getNodeReqFire :: m (Map Currency (Map SockAddr NodeMessage) -> IO ())
+  -- | Get authed info
+  getAuthInfoRef :: m (ExternalRef t AuthInfo)
 
-class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
-  -- | Get current settings
-  getSettings :: m Settings
-  -- | Get current settings dynamic
-  getSettingsD :: m (Dynamic t Settings)
-  -- | Update app's settings. Sets settings to provided value and stores them
-  updateSettings :: Event t Settings -> m (Event t ())
-  -- | Get settings ref. Internal
-  getSettingsRef :: m (ExternalRef t Settings)
-  -- | Get loading widget trigger and fire. This is internal stuff
-  getLoadingWidgetTF :: m (Event t (Bool, Text), (Bool, Text) -> IO ())
-  -- | Request displaying the loading widget
-  toggleLoadingWidget :: forall l . LocalizedPrint l => Event t (Bool, l) -> m ()
-  -- | Display loading via Dynamic
-  loadingWidgetDyn :: forall l . LocalizedPrint l => Dynamic t (Bool, l) -> m ()
-  -- | System back button event
-  getBackEventFire :: m (Event t (), IO ())
-  -- | Internal method of getting channel where you can post actions that must be
-  -- executed in main UI thread.
-  getUiChan :: m (Chan (IO ()))
-  -- | Get langRef Internal
-  getLangRef :: m (ExternalRef t Language)
-  -- | Return flag that comes 'True' as soon as user passes authoristion on server
-  isAuthorized :: m (Dynamic t Bool)
-  -- | Get authorization information that can be updated if user logs or logouts
-  getAuthInfoMaybe :: m (Dynamic t (Maybe AuthInfo))
-  -- | Manually set authorisation information for context. Used by widgets that
-  -- implement actual login/logout. Some implementations may ingore 'Nothing'
-  -- values if their semantic require persistent authorisation.
-  setAuthInfo :: Event t (Maybe AuthInfo) -> m (Event t ())
-  -- | Get event and trigger for pasword requesting modal. Int -- id of the request.
-  getPasswordModalEF :: m (Event t (Int, Text), (Int, Text) -> IO ())
-  -- | Get event and trigger for the event that the password was submitted from modal. Internal
-  -- Nothing value means that the modal was dismissed
-  getPasswordSetEF :: m (Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
-  -- | Proper requester of passwords. Send wallet's name
-  requestPasssword :: Event t Text -> m (Event t Password)
-  -- | Internal method to get storage of auth info
-  getAuthInfoRef :: m (ExternalRef t (Maybe AuthInfo))
+
+-- | Get connections map
+getNodeConnectionsD :: MonadFrontAuth t m => m (Dynamic t (ConnMap t))
+getNodeConnectionsD = externalRefDynamic =<< getNodeConnRef
+{-# INLINE getNodeConnectionsD #-}
+
+-- | Get the login. Convenience function
+getLoginD :: MonadFrontAuth t m => m (Dynamic t Text)
+getLoginD = (fmap . fmap) _authInfo'login . externalRefDynamic =<< getAuthInfoRef
+{-# INLINE getLoginD #-}
+
+-- | Get nodes by currency. Basically useless, but who knows
+getNodesByCurrencyD :: MonadFrontAuth t m => Currency -> m (Dynamic t (Map SockAddr (NodeConn t)))
+getNodesByCurrencyD cur =
+  (fmap . fmap) (fromMaybe (M.empty) . getAllConnByCurrency cur) . externalRefDynamic =<< getNodeConnRef
+{-# INLINE getNodesByCurrencyD #-}
+
+-- | Send a request to a specific URL
+-- It's up to the caller to ensure that the URL actually points to a correct currency node
+requestFromNode :: MonadFrontAuth t m => Event t (SockAddr, NodeReqG) -> m ()
+requestFromNode reqE = do
+  nodeReqFire <- getNodeReqFire
+  performFork_ $ ffor reqE $ \(u, req) ->
+    let cur = getNodeReqCurrency req
+    in liftIO . nodeReqFire $ M.singleton cur $ M.singleton u $ NodeMsgReq req
+{-# INLINE requestFromNode #-}
+
+-- | Send a multiple requests a specific URL
+-- It's up to the caller to ensure that the URL actually points to a correct currency node
+requestManyFromNode :: MonadFrontAuth t m => Event t (SockAddr, [NodeReqG]) -> m ()
+requestManyFromNode reqE = do
+  nodeReqFire <- getNodeReqFire
+  performFork_ $ ffor reqE $ \(u, reqs) -> flip traverse_ reqs $ \req ->
+    let cur = getNodeReqCurrency req
+    in liftIO . nodeReqFire $ M.singleton cur $ M.singleton u $ NodeMsgReq req
+{-# INLINE requestManyFromNode #-}
+
+-- | Get global sync process value
+getSyncProgress :: MonadFrontAuth t m => m (Dynamic t SyncProgress)
+getSyncProgress = externalRefDynamic =<< getSyncProgressRef
+{-# INLINE getSyncProgress #-}
+
+-- | Set global sync process value each time the event is fired
+setSyncProgress :: MonadFrontAuth t m => Event t SyncProgress -> m ()
+setSyncProgress spE = do
+  syncProgRef <- getSyncProgressRef
+  syncRef <- getFiltersSyncRef
+  performEvent_ $ ffor spE $ \sp -> do
+    writeExternalRef syncProgRef sp
+    case sp of
+      SyncMeta cur SyncFilters a t -> when (a >= t && t /= 0) $
+        modifyExternalRef syncRef $ \m -> (,()) $ M.insert cur True m
+      _ -> pure ()
+{-# INLINE setSyncProgress #-}
+
+-- | Get auth info. Not a Maybe since this is authorized context
+getAuthInfo :: MonadFrontAuth t m => m (Dynamic t AuthInfo)
+getAuthInfo = externalRefDynamic =<< getAuthInfoRef
+
+-- | Get activeCursRef Internal
+getActiveCursD :: MonadFrontAuth t m => m (Dynamic t (S.Set Currency))
+getActiveCursD = externalRefDynamic =<< getActiveCursRef
+
+-- | Update active currencies
+-- TODO: This one clearly does nothing. Fix it sometime
+updateActiveCurs :: MonadFrontAuth t m => Event t (S.Set Currency -> S.Set Currency) -> m (Event t ())
+updateActiveCurs updE = do
+  curRef      <- getActiveCursRef
+  nodeRef     <- getNodeConnRef
+  settingsRef <- getSettingsRef
+  authRef     <- getAuthInfoRef
+  sel         <- getNodeRequestSelector
+  fmap updated $ widgetHold (pure ()) $ ffor updE $ \f -> do
+    (diffMap, newcs) <- modifyExternalRef curRef $ \cs -> let
+      cs' = f cs
+      offUrls = S.map (, False) $ S.difference cs cs'
+      onUrls  = S.map (, True)  $ S.difference cs' cs
+      onUrls' = S.map (, True)  $ S.intersection cs cs'
+      dm = M.fromList $ S.toList $ offUrls <> onUrls <> onUrls'
+      in (cs',(dm, S.toList cs'))
+    settings <- readExternalRef settingsRef
+    login    <- fmap _authInfo'login $ readExternalRef authRef
+    let urls = settingsNodes settings
+        set' = settings
+
+    writeExternalRef settingsRef set'
+    storeSettings set'
+    pure ()
+{-# INLINE updateActiveCurs #-}
+
+-- | Send the same requests to all URLs
+requestBroadcast :: MonadFrontAuth t m => Event t NodeReqG -> m ()
+requestBroadcast reqE = do
+  nodeReqFire <- getNodeReqFire
+  nodeConnRef <- getNodeConnRef
+  performFork_ $ ffor reqE $ \req -> do
+    let cur = getNodeReqCurrency req
+    reqs <- fmap ((<$) (NodeMsgReq req) . fromMaybe (M.empty) . getAllConnByCurrency cur) $ readExternalRef nodeConnRef
+    liftIO . nodeReqFire $ M.singleton cur reqs
+
+-- | Get fees dynamic
+getFeesD :: MonadFrontAuth t m => m (Dynamic t (Map Currency FeeBundle))
+getFeesD = externalRefDynamic =<< getFeesRef
 
 -- | Get current value of longest chain height for given currency.
 getCurrentHeight :: MonadFrontAuth t m => Currency -> m (Dynamic t Integer)

@@ -459,6 +459,10 @@ sendPageCss = do
   ".btn-fee" ? do
     marginLeft $ rem 0.5
     marginRight $ rem 0.5
+  ".send-confirm-row" ? do
+    textAlign $ alignSide sideLeft
+  ".send-confirm-box" ? do
+    pure ()
 
 aboutPageCss :: Css
 aboutPageCss = do
@@ -746,6 +750,9 @@ historyPageCss = do
   ".history-date-header" ? do
     borderRight solid (px 2) black
     display block
+  "history-date" ? do
+    marginLeft auto
+    marginRight auto
   ".history-status-header" ? do
     display block
   ".history-status-transrefill" ? do
@@ -783,7 +790,7 @@ historyPageCss = do
     paddingRight $ rem 0.3
   ".history-page-status-icon" ? do
     fontSize $ pt 9
-  
+
 txInfoPageCss :: Css
 txInfoPageCss = do
   ".tx-info-page" ? do
@@ -841,6 +848,9 @@ legoStyles = do
   ".w-80" ? width (pct 80)
   ".w-100" ? width (pct 100)
   ".h-100" ? height (pct 100)
+  ".ta-l" ? textAlign (alignSide sideLeft)
+  ".ta-r" ? textAlign (alignSide sideRight)
+  ".ta-c" ? textAlign center
 
 receiveCss :: Css
 receiveCss = do
