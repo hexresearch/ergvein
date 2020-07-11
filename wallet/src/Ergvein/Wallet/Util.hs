@@ -14,7 +14,7 @@ module Ergvein.Wallet.Util(
 import Control.Monad.Except
 import Reflex.Dom
 
-import Ergvein.Wallet.Monad.Base
+import Ergvein.Wallet.Monad.Prim
 
 -- | Same as 'widgetHold' but for dynamic
 widgetHoldDyn :: forall t m a . (DomBuilder t m, MonadHold t m) => Dynamic t (m a) -> m (Dynamic t a)

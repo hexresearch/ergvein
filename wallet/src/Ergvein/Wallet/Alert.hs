@@ -50,7 +50,7 @@ import Data.Time (getCurrentTime)
 import Ergvein.Wallet.Alert.Type
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
-import Ergvein.Wallet.Monad.Base
+import Ergvein.Wallet.Monad.Prim
 import Reflex
 import Reflex.ExternalRef (readExternalRef)
 

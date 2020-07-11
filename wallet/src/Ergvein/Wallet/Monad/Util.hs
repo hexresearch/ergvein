@@ -27,7 +27,7 @@ import Data.Time
 import Ergvein.Text
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Async
-import Ergvein.Wallet.Monad.Base
+import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
 import Foreign.JavaScript.TH (WithJSContextSingleton(..))

@@ -5,7 +5,7 @@ module Ergvein.Wallet.Log.Event(
 
 import Data.Text (Text)
 import Ergvein.Text
-import Ergvein.Wallet.Monad.Base
+import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Native
 import Reflex
 
