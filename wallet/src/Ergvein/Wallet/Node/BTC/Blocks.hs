@@ -1,12 +1,6 @@
-module Ergvein.Wallet.Blocks.BTC
+module Ergvein.Wallet.Node.BTC.Blocks
   (
-    storeBlockByE
-  , storeMultipleBlocksByE
-  , getBlockByE
-  , storeBlockTxHashesByE
-  , storeMultipleBlocksTxHashesByE
-  , requestBTCBlocks
-  , module Ergvein.Wallet.Blocks.BTC.Queries
+    requestBTCBlocks
   ) where
 
 import Control.Monad.Random
@@ -17,8 +11,6 @@ import Network.Haskoin.Network
 
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Node.Types
-import Ergvein.Wallet.Blocks.BTC.Queries
-import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Util
 
 import qualified Data.Dependent.Map as DM
@@ -96,18 +88,3 @@ blocksRequester bhs NodeConnection{..} = do
       InvBlock -> let bh = BlockHash ivh
         in if bh `L.elem` bhs then Just (bh, Nothing) else Nothing
       _ -> Nothing
-
-storeBlockByE :: (MonadBaseConstr t m, HasBlocksStorage (Performable m)) => Event t Block -> m (Event t ())
-storeBlockByE = performEvent . fmap insertBtcBlock
-
-storeMultipleBlocksByE :: (MonadBaseConstr t m, HasBlocksStorage (Performable m)) => Event t [Block] -> m (Event t [Block])
-storeMultipleBlocksByE e = performEvent $ ffor e $ \blocks -> insertMultipleBtcBlocks blocks >> pure blocks
-
-getBlockByE :: (MonadBaseConstr t m, HasBlocksStorage (Performable m)) => Event t BlockHash -> m (Event t (Maybe Block))
-getBlockByE = performEvent . fmap getBtcBlock
-
-storeBlockTxHashesByE :: (MonadBaseConstr t m, HasBlocksStorage (Performable m)) => Event t Block -> m (Event t ())
-storeBlockTxHashesByE = performEvent . fmap insertBtcBlockTxHashesToBlockHash
-
-storeMultipleBlocksTxHashesByE :: (MonadBaseConstr t m, HasBlocksStorage (Performable m)) => Event t [Block] -> m (Event t [Block])
-storeMultipleBlocksTxHashesByE e = performEvent $ ffor e $ \blocks -> insertMultipleBtcBlocksTxHashesToBlockHash blocks >> pure blocks

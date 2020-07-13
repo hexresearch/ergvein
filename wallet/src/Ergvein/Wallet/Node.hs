@@ -27,7 +27,6 @@ import Network.Socket (SockAddr)
 import Servant.Client(BaseUrl)
 
 import Ergvein.Types
-import Ergvein.Wallet.Blocks.Types
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
@@ -150,17 +149,16 @@ randomOne vals = case vals of
 
 btcMempoolTxInserter :: MonadFront t m => Event t HT.Tx -> m (Event t ())
 btcMempoolTxInserter txE = do
-  store <- getBlocksStorage
   pubStorageD <- getPubStorageD
-  let keysD = ffor pubStorageD $ \ps -> getPublicKeys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "bctNodeController: not exsisting store!") . currencyPubStorage'pubKeystore
-  valsE <- performFork $ ffor (current keysD `attach` txE) $ \(keys, tx) ->
-    liftIO $ flip runReaderT store $ do
+  valsE <- performFork $ ffor (current pubStorageD `attach` txE) $ \(ps, tx) -> do
+    let keys = getPublicKeys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "bctNodeController: not exsisting store!") . currencyPubStorage'pubKeystore
+    liftIO $ flip runReaderT ps $ do
       v <- checkAddrTx' keys tx
       u <- getUtxoUpdates Nothing keys tx
       pure (v,u)
   insertTxsUtxoInPubKeystore BTC valsE
 
-checkAddrTx' :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => V.Vector ScanKeyBox -> HT.Tx -> m (V.Vector (ScanKeyBox, M.Map TxId EgvTx))
+checkAddrTx' :: (HasPubStorage m, PlatformNatives) => V.Vector ScanKeyBox -> HT.Tx -> m (V.Vector (ScanKeyBox, M.Map TxId EgvTx))
 checkAddrTx' vec tx = do
   vec' <- flip traverse vec $ \kb -> do
     b <- checkAddrTx (egvXPubKeyToEgvAddress . scanBox'key $ kb) tx

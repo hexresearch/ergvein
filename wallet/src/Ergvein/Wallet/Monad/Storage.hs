@@ -1,6 +1,7 @@
 module Ergvein.Wallet.Monad.Storage
   (
     MonadStorage(..)
+  , HasPubStorage(..)
   , setLastSeenHeight
   , addTxToPubStorage
   , addTxMapToPubStorage
@@ -15,10 +16,16 @@ module Ergvein.Wallet.Monad.Storage
   , insertTxsUtxoInPubKeystore
   , addOutgoingTx
   , removeOutgoingTxs
+  , getBtcBlockHashByTxHash
+  , getTxById
+  , getBlockHeaderByHash
+  , storeBlockHeadersE
   ) where
 
 import Control.Lens
 import Control.Monad
+import Control.Monad.IO.Class
+import Control.Monad.Reader
 import Data.Functor (void)
 import Data.Map (Map)
 import Data.Map.Strict (Map)
@@ -37,11 +44,19 @@ import Ergvein.Types.Utxo
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Platform
+import Ergvein.Wallet.Util
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
 import qualified Network.Haskoin.Block as HB
+import qualified Network.Haskoin.Transaction as HT
+
+class MonadIO m => HasPubStorage m where
+  askPubStorage :: m PubStorage
+
+instance MonadIO m => HasPubStorage (ReaderT PubStorage m) where
+  askPubStorage = ask
 
 class (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t m | m -> t where
   getAddressByCurIx :: Currency -> Int -> m Base58
@@ -51,6 +66,10 @@ class (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t m | m -> t where
   getPubStorageD         :: m (Dynamic t PubStorage)
   storeWallet            :: Event t () -> m ()
   modifyPubStorage       :: Event t (PubStorage -> Maybe PubStorage) -> m (Event t ())
+
+-- ===========================================================================
+--           MonadStorage helpers
+-- ===========================================================================
 
 setLastSeenHeight :: MonadStorage t m => Currency -> Event t BlockHeight -> m ()
 setLastSeenHeight cur e = void . modifyPubStorage $ ffor e $ \h ps -> Just $
@@ -122,7 +141,6 @@ updateKeyLabel l key = case key of
   ErgXPubKey k _ -> ErgXPubKey k l
   BtcXPubKey k _ -> BtcXPubKey k l
 
-
 reconfirmBtxUtxoSet :: MonadStorage t m => Event t BlockHeight -> m ()
 reconfirmBtxUtxoSet reqE = void . modifyPubStorage $ ffor reqE $ \bh ps ->
   Just $ modifyCurrStorage BTC (\cps -> cps & currencyPubStorage'utxos %~ reconfirmBtxUtxoSetPure bh) ps
@@ -162,3 +180,35 @@ removeOutgoingTxs cur reqE = void . modifyPubStorage $ ffor reqE $ \etxs ps -> l
   outs = ps ^. pubStorage'currencyPubStorages . at cur . non (error "removeOutgoingTxs: not exsisting store!") . currencyPubStorage'outgoing
   uni = S.intersection outs remset
   in if S.null uni then Nothing else Just $ modifyCurrStorage cur (currencyPubStorage'outgoing %~ flip S.difference remset) ps
+
+storeBlockHeadersE :: MonadStorage t m => Currency -> Event t [HB.Block] -> m (Event t [HB.Block])
+storeBlockHeadersE cur reqE = do
+  reqD <- holdDyn Nothing $ Just <$> reqE
+  storedE <- modifyPubStorage $ ffor reqE $ \blks ps -> let
+    mmap = if null blks then Nothing
+            else Just $ M.fromList $ fmap (\b -> (HB.headerHash $ HB.blockHeader $ b, HB.blockHeader b)) blks
+    in ffor mmap $ \m -> modifyCurrStorage cur (currencyPubStorage'headers %~ M.union m) ps
+  pure $ attachWithMaybe (\a _ -> a) (current reqD) storedE
+
+-- ===========================================================================
+--           HasPubStorage helpers
+-- ===========================================================================
+
+getBtcBlockHashByTxHash :: HasPubStorage m => HT.TxHash -> m (Maybe HB.BlockHash)
+getBtcBlockHashByTxHash bth = do
+  ps <- askPubStorage
+  pure $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "getBtcBlockHashByTxHash: not exsisting store!")
+    . currencyPubStorage'transactions . at th & fmap (getEgvTxMeta) & fmap etxMetaHash . join
+  where th = HT.txHashToHex bth
+
+getTxById :: HasPubStorage m => TxId -> m (Maybe EgvTx)
+getTxById tid = do
+  ps <- askPubStorage
+  pure $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "getBtcBlockHashByTxHash: not exsisting store!")
+    . currencyPubStorage'transactions . at tid
+
+getBlockHeaderByHash :: HasPubStorage m => HB.BlockHash -> m (Maybe HB.BlockHeader)
+getBlockHeaderByHash bh = do
+  ps <- askPubStorage
+  pure $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "getBtcBlockHashByTxHash: not exsisting store!")
+    . currencyPubStorage'headers . at bh

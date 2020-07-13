@@ -54,7 +54,6 @@ import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Base
@@ -81,8 +80,6 @@ type MonadFront t m = (
   , MonadClient t m
   , HasFiltersStorage t m
   , HasFiltersStorage t (Performable m)
-  , HasBlocksStorage m
-  , HasBlocksStorage (Performable m)
   )
 
 class MonadFrontBase t m => MonadFrontAuth t m | m -> t where

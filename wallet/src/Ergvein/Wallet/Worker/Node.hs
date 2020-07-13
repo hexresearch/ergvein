@@ -25,7 +25,6 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
-import Ergvein.Wallet.Blocks.Types
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
