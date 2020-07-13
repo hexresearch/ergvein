@@ -45,47 +45,51 @@ import qualified Network.Haskoin.Script as HS
 import qualified Network.Haskoin.Transaction as HT
 
 sendPage :: MonadFront t m => Currency -> Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), EgvAddress) -> m ()
-sendPage cur minit = do
+sendPage cur minit = mdo
   title <- balanceTitleWidget cur
-  wrapper False title (Just $ pure $ sendPage cur Nothing) $ mdo
-    let thisWidget = Just $ sendPage cur <$> retInfoD
-    let recipientInit = maybe "" (\(_,_,a) -> egvAddrToString a) minit
-    let amountInit = (\(a,_,_) -> a) <$> minit
-    let feeInit = (\(_,f,_) -> f) <$> minit
-    navbarWidget cur thisWidget NavbarSend
-    retInfoD <- form $ mdo
-      recipientErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing))
+  let navbar = navbarWidget cur thisWidget NavbarSend
+      thisWidget = Just $ sendPage cur <$> retInfoD
+  retInfoD <- sendWidget cur minit title navbar thisWidget
+  pure ()
+  where
+    -- TODO: write type annotation here
+    sendWidget cur minit title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ mdo
+      let recipientInit = maybe "" (\(_,_,a) -> egvAddrToString a) minit
+          amountInit = (\(a,_,_) -> a) <$> minit
+          feeInit = (\(_,f,_) -> f) <$> minit
+      retInfoD <- form $ mdo
+        recipientErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing))
 #ifdef ANDROID
-      recipientD <- validatedTextFieldSetVal RecipientString recipientInit recipientErrsD (leftmost [resQRcodeE, pasteE])
-      (qrE, pasteE, resQRcodeE) <- divClass "send-page-buttons-wrapper" $ do
-        qrE <- outlineTextIconButtonTypeButton BtnScanQRCode "fas fa-qrcode fa-lg"
-        openE <- delay 1.0 =<< openCamara qrE
-        resQRcodeE <- waiterResultCamera openE
-        pasteBtnE <- outlineTextIconButtonTypeButton BtnPasteString "fas fa-clipboard fa-lg"
-        pasteE <- clipboardPaste pasteBtnE
-        pure (qrE, pasteE, resQRcodeE)
+        recipientD <- validatedTextFieldSetVal RecipientString recipientInit recipientErrsD (leftmost [resQRcodeE, pasteE])
+        (qrE, pasteE, resQRcodeE) <- divClass "send-page-buttons-wrapper" $ do
+          qrE <- outlineTextIconButtonTypeButton BtnScanQRCode "fas fa-qrcode fa-lg"
+          openE <- delay 1.0 =<< openCamara qrE
+          resQRcodeE <- waiterResultCamera openE
+          pasteBtnE <- outlineTextIconButtonTypeButton BtnPasteString "fas fa-clipboard fa-lg"
+          pasteE <- clipboardPaste pasteBtnE
+          pure (qrE, pasteE, resQRcodeE)
 #else
-      recipientD <- validatedTextFieldSetVal RecipientString recipientInit recipientErrsD pasteE
-      pasteE <- divClass "send-page-buttons-wrapper" $ do
-        clipboardPaste =<< outlineTextIconButtonTypeButton BtnPasteString "fas fa-clipboard fa-lg"
+        recipientD <- validatedTextFieldSetVal RecipientString recipientInit recipientErrsD pasteE
+        pasteE <- divClass "send-page-buttons-wrapper" $ do
+          clipboardPaste =<< outlineTextIconButtonTypeButton BtnPasteString "fas fa-clipboard fa-lg"
 #endif
-      amountD <- sendAmountWidget amountInit $ () <$ validationE
-      feeD    <- btcFeeSelectionWidget feeInit submitE
-      submitE <- outlineSubmitTextIconButtonClass "w-100" SendBtnString "fas fa-paper-plane fa-lg"
-      let validationE = poke submitE $ \_ -> do
-            recipient <- sampleDyn recipientD
-            pure (toEither $ validateRecipient cur (T.unpack recipient))
-          goE = flip push validationE $ \erecipient -> do
-            mfee <- sampleDyn feeD
-            mamount <- sampleDyn amountD
-            let mrecipient = either (const Nothing) Just erecipient
-            pure $ (,,) <$> mamount <*> mfee <*> mrecipient
-      nextWidget $ ffor goE $ \v@(uam, (m, fee), addr) -> Retractable {
-          retractableNext = btcSendConfirmationWidget (uam, fee, addr)
-        , retractablePrev = Just $ pure $ sendPage cur $ Just v
-        }
-      holdDyn minit $ Just <$> goE
-    pure ()
+        amountD <- sendAmountWidget amountInit $ () <$ validationE
+        feeD    <- btcFeeSelectionWidget feeInit submitE
+        submitE <- outlineSubmitTextIconButtonClass "w-100" SendBtnString "fas fa-paper-plane fa-lg"
+        let validationE = poke submitE $ \_ -> do
+              recipient <- sampleDyn recipientD
+              pure (toEither $ validateRecipient cur (T.unpack recipient))
+            goE = flip push validationE $ \erecipient -> do
+              mfee <- sampleDyn feeD
+              mamount <- sampleDyn amountD
+              let mrecipient = either (const Nothing) Just erecipient
+              pure $ (,,) <$> mamount <*> mfee <*> mrecipient
+        nextWidget $ ffor goE $ \v@(uam, (m, fee), addr) -> Retractable {
+            retractableNext = btcSendConfirmationWidget (uam, fee, addr)
+          , retractablePrev = Just $ pure $ sendPage cur $ Just v
+          }
+        holdDyn minit $ Just <$> goE
+      pure retInfoD
 
 data FeeSelectorStatus = FSSNoEntry | FSSNoCache | FSSNoManual | FSSManual Word64 | FSSLvl (FeeLevel, Word64)
 
@@ -107,9 +111,9 @@ instance HT.Coin UtxoPoint where
 btcSendConfirmationWidget :: MonadFront t m => ((UnitBTC, Word64), Word64, EgvAddress) -> m ()
 btcSendConfirmationWidget v@((unit, amount), fee, addr) = do
   title <- balanceTitleWidget BTC
-  wrapper False title (Just $ pure $ btcSendConfirmationWidget v) $ divClass "send-confirm-box" $ do
-    let thisWidget = Just $ pure $ btcSendConfirmationWidget v
-    navbarWidget BTC thisWidget NavbarSend
+  let thisWidget = Just $ pure $ btcSendConfirmationWidget v
+      navbar = navbarWidget BTC thisWidget NavbarSend
+  wrapperNavbar False title thisWidget navbar $ divClass "send-confirm-box" $ do
     psD <- getPubStorageD
     utxoKeyD <- holdUniqDyn $ do
       ps <- psD

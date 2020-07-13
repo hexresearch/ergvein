@@ -50,23 +50,22 @@ exceededGapLimit cur = do
 receivePageWidget :: MonadFront t m => Currency -> Int -> EgvPubKeyBox -> m ()
 receivePageWidget cur i EgvPubKeyBox{..} = do
   title <- balanceTitleWidget cur
-  wrapper False title (Just $ pure $ receivePage cur) $ do
-    let thisWidget = Just $ pure $ receivePage cur
-    navbarWidget cur thisWidget NavbarReceive
-    void $ do
-      divClass "receive-qr-andr" $ qrCodeWidget keyTxt cur
-      (newE, copyE, shareE) <- divClass "receive-buttons-wrapper" $ do
-        nE  <- newAddrBtn
-        cE <- copyAddrBtn
-        sE <- fmap (shareUrl <$) shareAddrBtn
-        pure (nE, cE, sE)
-      _ <- shareShareUrl shareE
-      setFlagToExtPubKey $ (cur, i) <$ newE
-      showInfoMsg =<< clipboardCopy (keyTxt <$ copyE)
-      divClass "receive-adr-andr" $ text $ "#" <> showt i <> ": " <> keyTxt
-      labelD <- divClass "button-receive" $ textFieldNoLabel $ getLabelFromEgvPubKey pubKeyBox'key
-      btnE <- labelAddrBtn
-      setLabelToExtPubKey $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
+  let thisWidget = Just $ pure $ receivePage cur
+      navbar = navbarWidget cur thisWidget NavbarReceive
+  wrapperNavbar False title thisWidget navbar $ void $ divClass "receive-page" $ do
+    divClass "receive-qr-andr" $ qrCodeWidget keyTxt cur
+    (newE, copyE, shareE) <- divClass "receive-buttons-wrapper" $ do
+      nE  <- newAddrBtn
+      cE <- copyAddrBtn
+      sE <- fmap (shareUrl <$) shareAddrBtn
+      pure (nE, cE, sE)
+    _ <- shareShareUrl shareE
+    setFlagToExtPubKey $ (cur, i) <$ newE
+    showInfoMsg =<< clipboardCopy (keyTxt <$ copyE)
+    divClass "receive-adr-andr" $ text $ "#" <> showt i <> ": " <> keyTxt
+    labelD <- divClass "button-receive" $ textFieldNoLabel $ getLabelFromEgvPubKey pubKeyBox'key
+    btnE <- labelAddrBtn
+    setLabelToExtPubKey $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
   where
     keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress pubKeyBox'key
     shareUrl = generateURL keyTxt
@@ -79,22 +78,21 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
 receivePageWidget :: MonadFront t m => Currency -> Int -> EgvPubKeyBox -> m ()
 receivePageWidget cur i EgvPubKeyBox{..} = do
   title <- balanceTitleWidget cur
-  wrapper False title (Just $ pure $ receivePage cur) $ do
-    let thisWidget = Just $ pure $ receivePage cur
-    navbarWidget cur thisWidget NavbarReceive
-    void $ divClass "container p-1 receive-page" $ do
-      divClass "receive-qr" $ qrCodeWidget keyTxt cur
-      divClass "receive-buttons-wrapper" $ do
-        newE  <- newAddrBtn
-        copyE <- copyAddrBtn
-        setFlagToExtPubKey $ (cur, i) <$ newE
-        showInfoMsg =<< clipboardCopy (keyTxt <$ copyE)
-      divClass "receive-adr" $ text $ "#" <> showt i <> ": " <> keyTxt
-      divClass "label-block" $ do
-        labelD <- textFieldNoLabel $ getLabelFromEgvPubKey pubKeyBox'key
-        btnE <- labelAddrBtn
-        setLabelToExtPubKey $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
-        pure ()
+  let thisWidget = Just $ pure $ receivePage cur
+      navbar = navbarWidget cur thisWidget NavbarReceive
+  wrapperNavbar False title thisWidget navbar $ void $ divClass "receive-page" $ do
+    divClass "receive-qr" $ qrCodeWidget keyTxt cur
+    divClass "receive-buttons-wrapper" $ do
+      newE  <- newAddrBtn
+      copyE <- copyAddrBtn
+      setFlagToExtPubKey $ (cur, i) <$ newE
+      showInfoMsg =<< clipboardCopy (keyTxt <$ copyE)
+    divClass "receive-adr" $ text $ "#" <> showt i <> ": " <> keyTxt
+    divClass "label-block" $ do
+      labelD <- textFieldNoLabel $ getLabelFromEgvPubKey pubKeyBox'key
+      btnE <- labelAddrBtn
+      setLabelToExtPubKey $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
+      pure ()
   where
     keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress pubKeyBox'key
 #endif

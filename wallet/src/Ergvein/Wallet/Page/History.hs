@@ -58,12 +58,10 @@ import qualified Network.Haskoin.Util               as HK
 historyPage :: MonadFront t m => Currency -> m ()
 historyPage cur = do
   title <- balanceTitleWidget cur
-  wrapper False title (Just $ pure $ historyPage cur) $ do
-    ps <- getPubStorage
-    pubSD <- getPubStorageD
-    let thisWidget = Just $ pure $ historyPage cur
-        historyWidget = historyTableWidget cur $ mockTransHistory cur
-    navbarWidget cur thisWidget NavbarHistory
+  let thisWidget = Just $ pure $ historyPage cur
+      navbar = navbarWidget cur thisWidget NavbarHistory
+      historyWidget = historyTableWidget cur $ mockTransHistory cur
+  wrapperNavbar False title thisWidget navbar $ do
     goE <- historyWidget
     void $ nextWidget $ ffor goE $ \tr -> Retractable {
         retractableNext = transactionInfoPage cur tr
@@ -199,10 +197,15 @@ historyTableWidget :: MonadFront t m => Currency -> [TransactionView] -> m (Even
 historyTableWidget cur trList = case cur of
   BTC -> do
     (txsD,hghtD) <- transactionsGetting BTC
-    txClickDE <- widgetHoldDyn $ ffor txsD $ \txs -> do
-      hght <- sampleDyn hghtD
-      txClickE <- traverse (historyTableRow hght) txs
-      pure $ leftmost txClickE
+    txClickDE <- widgetHoldDyn $ ffor txsD $ \txs ->
+      if L.null txs
+        then do
+          localizedText HistoryNoTxs
+          pure never
+        else do
+          hght <- sampleDyn hghtD
+          txClickE <- traverse (historyTableRow hght) txs
+          pure $ leftmost txClickE
     pure $ switchDyn txClickDE
   ERGO -> do
     txClickE <- traverse (historyTableRow 0) trList

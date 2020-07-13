@@ -212,7 +212,7 @@ navbarCss = do
   ".navbar" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1, fr 1]
-    paddingBottom $ rem 1
+    padding (rem 0) (rem 1) (rem 0) (rem 1)
   ".navbar-item" ? do
     padding (rem 1) (rem 1) (rem 1) (rem 1)
     cursor pointer

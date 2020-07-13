@@ -37,7 +37,7 @@ balanceTitleWidget :: MonadFront t m => Currency -> m (Dynamic t Text)
 balanceTitleWidget cur = do
   bal <- balancesWidget cur
   settings <- getSettings
-  titleText <- localized $ HistoryTIBalance
+  titleText <- localized $ HistoryBalance
   let getSettingsUnits = fromMaybe defUnits . settingsUnits
       setUs = getSettingsUnits settings
       titleVal = ffor bal (\v -> showMoneyUnit v setUs)
