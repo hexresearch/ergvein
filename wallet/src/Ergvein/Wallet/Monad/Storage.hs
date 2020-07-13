@@ -108,18 +108,19 @@ insertTxsUtxoInPubKeystore :: MonadStorage t m
   => Text -> Currency
   -> Event t (V.Vector (ScanKeyBox, M.Map TxId EgvTx), BtcUtxoUpdate)
   -> m (Event  t ())
-insertTxsUtxoInPubKeystore caller cur reqE = modifyPubStorage clr $ ffor reqE $ \(vec, upds) ps -> let
-  txmap = M.unions $ V.toList $ snd $ V.unzip vec
-  ps1 = modifyCurrStorage cur (currencyPubStorage'transactions %~ M.union txmap) ps
-  ps2 = case cur of
-    BTC -> updateBtcUtxoSet upds ps1
-    _ -> ps1
-  upd (ScanKeyBox{..}, txm) ps' = let txs = M.elems txm in updateKeyBoxWith cur scanBox'purpose scanBox'index
-    (\kb -> kb {pubKeyBox'txs = S.union (pubKeyBox'txs kb) $ S.fromList (fmap egvTxId txs)}) ps'
-  go !macc val = case macc of
-    Nothing -> upd val ps1
-    Just acc -> maybe (Just acc) Just $ upd val acc
-  in V.foldl' go (Just ps2) vec
+insertTxsUtxoInPubKeystore caller cur reqE = modifyPubStorage clr $ ffor reqE $ \(vec, (o,i)) ps ->
+  if (V.null vec && M.null o && null i) then Nothing else let
+    txmap = M.unions $ V.toList $ snd $ V.unzip vec
+    ps1 = modifyCurrStorage cur (currencyPubStorage'transactions %~ M.union txmap) ps
+    ps2 = case cur of
+      BTC -> updateBtcUtxoSet (o,i) ps1
+      _ -> ps1
+    upd (ScanKeyBox{..}, txm) ps' = let txs = M.elems txm in updateKeyBoxWith cur scanBox'purpose scanBox'index
+      (\kb -> kb {pubKeyBox'txs = S.union (pubKeyBox'txs kb) $ S.fromList (fmap egvTxId txs)}) ps'
+    go !macc val = case macc of
+      Nothing -> upd val ps1
+      Just acc -> maybe (Just acc) Just $ upd val acc
+    in V.foldl' go (Just ps2) vec
   where clr = caller <> ":" <> "insertTxsUtxoInPubKeystore"
 
 updateBtcUtxoSet :: BtcUtxoUpdate -> PubStorage -> PubStorage
