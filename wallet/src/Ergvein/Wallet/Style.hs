@@ -766,8 +766,7 @@ historyPageCss = do
     color $ rgb 0 120 0
   ".history-table-row" ? do
     fontSize $ px 16
-    paddingTop $ rem 1.5
-    paddingBottom $ rem 1.5
+    padding (rem 1.5) (rem 1) (rem 1.5) (rem 1)
     display grid
     gridTemplateColumns [fr 3, fr 3, fr 1]
   ".history-table-row:hover" ? do

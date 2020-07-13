@@ -60,13 +60,53 @@ historyPage cur = do
   title <- balanceTitleWidget cur
   let thisWidget = Just $ pure $ historyPage cur
       navbar = navbarWidget cur thisWidget NavbarHistory
-      historyWidget = historyTableWidget cur $ mockTransHistory cur
-  wrapperNavbar False title thisWidget navbar $ do
-    goE <- historyWidget
-    void $ nextWidget $ ffor goE $ \tr -> Retractable {
-        retractableNext = transactionInfoPage cur tr
-      , retractablePrev = thisWidget
-      }
+  (txsD, hghtD) <- transactionsGetting BTC
+  goE <- case cur of
+    BTC -> do
+      (txsD, hghtD) <- transactionsGetting BTC
+      txClickDE <- widgetHoldDyn $ ffor txsD $ \txs ->
+        if L.null txs
+          then
+            wrapperNavbar True title thisWidget navbar $ do
+              localizedText HistoryNoTxs
+              pure never
+          else
+            wrapperNavbar False title thisWidget navbar $ do
+              hght <- sampleDyn hghtD
+              txClickE <- traverse (historyTableRow hght) txs
+              pure $ leftmost txClickE
+      pure $ switchDyn txClickDE
+    ERGO -> do
+      txClickE <- traverse (historyTableRow 0) (mockTransHistory cur)
+      pure $ leftmost txClickE
+  void $ nextWidget $ ffor goE $ \tr -> Retractable {
+      retractableNext = transactionInfoPage cur tr
+    , retractablePrev = thisWidget
+    }
+  where
+    historyTableRow :: MonadFront t m =>  Word64 -> TransactionView -> m (Event t TransactionView)
+    historyTableRow hght tr@TransactionView{..} = divButton "history-table-row" $ do
+      divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ symb $ text $ showMoney txAmount
+      divClass "history-date" $ text $ txDate
+      divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> confsClass) $ text $ showt confs
+      pure tr
+      where
+        confs = txConfirmations txInfoView
+        confsClass = if (confs == 0)
+          then "unconfirmed"
+          else "confirmed"
+        symb :: MonadFront t m => m a -> m a
+        symb ma = case txInOut of
+          TransRefill -> do
+            spanClass "history-page-sign-icon" $ elClass "i" "fas fa-plus fa-fw" blank
+            ma
+          TransWithdraw -> do
+            spanClass "history-page-sign-icon" $ elClass "i" "fas fa-minus fa-fw" blank
+            ma
+        stat :: MonadFront t m => m ()
+        stat = case txStatus of
+          TransConfirmed -> spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" $ blank
+          TransUncofirmed -> spanClass "history-page-status-icon" $ elClass "i" "fas fa-question fa-fw" $ blank
 
 #ifdef ANDROID
 transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
@@ -192,48 +232,6 @@ transactionInfoPage cur tr@TransactionView{..} = do
           divClass "tx-info-page-expanded mb-1" $ text $ oAddress
     pure ()
 #endif
-
-historyTableWidget :: MonadFront t m => Currency -> [TransactionView] -> m (Event t TransactionView)
-historyTableWidget cur trList = case cur of
-  BTC -> do
-    (txsD,hghtD) <- transactionsGetting BTC
-    txClickDE <- widgetHoldDyn $ ffor txsD $ \txs ->
-      if L.null txs
-        then do
-          localizedText HistoryNoTxs
-          pure never
-        else do
-          hght <- sampleDyn hghtD
-          txClickE <- traverse (historyTableRow hght) txs
-          pure $ leftmost txClickE
-    pure $ switchDyn txClickDE
-  ERGO -> do
-    txClickE <- traverse (historyTableRow 0) trList
-    pure $ leftmost txClickE
-  where
-    historyTableRow :: MonadFront t m =>  Word64 -> TransactionView -> m (Event t TransactionView)
-    historyTableRow hght tr@TransactionView{..} = divButton "history-table-row" $ do
-      divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ symb $ text $ showMoney txAmount
-      divClass "history-date" $ text $ txDate
-      divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> confsClass) $ text $ showt confs
-      pure tr
-      where
-        confs = txConfirmations txInfoView
-        confsClass = if (confs == 0)
-          then "unconfirmed"
-          else "confirmed"
-        symb :: MonadFront t m => m a -> m a
-        symb ma = case txInOut of
-          TransRefill -> do
-            spanClass "history-page-sign-icon" $ elClass "i" "fas fa-plus fa-fw" blank
-            ma
-          TransWithdraw -> do
-            spanClass "history-page-sign-icon" $ elClass "i" "fas fa-minus fa-fw" blank
-            ma
-        stat :: MonadFront t m => m ()
-        stat = case txStatus of
-          TransConfirmed -> spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" $ blank
-          TransUncofirmed -> spanClass "history-page-status-icon" $ elClass "i" "fas fa-question fa-fw" $ blank
 
 -- | Extract addresses from keystore
 extractAddrs :: PubKeystore -> [(Maybe Int, EgvAddress)]
