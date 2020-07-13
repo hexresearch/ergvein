@@ -70,15 +70,15 @@ instance LocalizedPrint SettingsPageStrings where
 
 instance LocalizedPrint UnitBTC where
   localizedShow _ v = case v of
-    BtcWhole    -> "btc"
-    BtcMilli    -> "mbtc"
+    BtcWhole    -> "BTC"
+    BtcMilli    -> "mBTC"
     BtcSat      -> "sat"
 
 instance LocalizedPrint UnitERGO where
   localizedShow _ v = case v of
-    ErgWhole -> "erg"
-    ErgMilli -> "merg"
-    ErgNano  -> "nerg"
+    ErgWhole -> "ERG"
+    ErgMilli -> "mERG"
+    ErgNano  -> "nERG"
 
 data NetSetupStrings
   = NSSTitle

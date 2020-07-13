@@ -32,13 +32,15 @@ import Network.Haskoin.Address.Base58
 import Network.Haskoin.Keys
 
 sharePage :: MonadFront t m => Currency -> m ()
-sharePage cur = wrapper False (ShareTitle cur) (Just $ pure $ sharePage cur) $ do
-  pubStorage <- getPubStorage
-  let xPubKeyMb  = pubKeystore'master . _currencyPubStorage'pubKeystore
-        <$> M.lookup cur (_pubStorage'currencyPubStorages pubStorage)
-      addressMb  = egvXPubKeyToEgvAddress <$> xPubKeyMb
-  maybe errorPage renderPage addressMb
-  pure ()
+sharePage cur = do
+  title <- localized $ ShareTitle cur
+  wrapper False title (Just $ pure $ sharePage cur) $ do
+    pubStorage <- getPubStorage
+    let xPubKeyMb  = pubKeystore'master . _currencyPubStorage'pubKeystore
+          <$> M.lookup cur (_pubStorage'currencyPubStorages pubStorage)
+        addressMb  = egvXPubKeyToEgvAddress <$> xPubKeyMb
+    maybe errorPage renderPage addressMb
+    pure ()
   where
     errorPage :: MonadFront t m => m ()
     errorPage = do
