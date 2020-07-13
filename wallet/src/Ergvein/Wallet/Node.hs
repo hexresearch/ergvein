@@ -156,7 +156,7 @@ btcMempoolTxInserter txE = do
       v <- checkAddrTx' keys tx
       u <- getUtxoUpdates Nothing keys tx
       pure (v,u)
-  insertTxsUtxoInPubKeystore BTC valsE
+  insertTxsUtxoInPubKeystore "btcMempoolTxInserter" BTC valsE
 
 checkAddrTx' :: (HasPubStorage m, PlatformNatives) => V.Vector ScanKeyBox -> HT.Tx -> m (V.Vector (ScanKeyBox, M.Map TxId EgvTx))
 checkAddrTx' vec tx = do

@@ -141,7 +141,7 @@ currenciesPage = do
               authN2 = authNew & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages %~ (Map.union mL)
           pure $ Just $ authN2
       setAuthInfoE <- setAuthInfo updateAE
-      storeWallet (void $ updated authD)
+      storeWallet "currenciesPage" (void $ updated authD)
       showSuccessMsg $ STPSSuccess <$ setAuthInfoE
       pure ()
   where

@@ -193,10 +193,10 @@ storageFilePrefix :: Text
 storageFilePrefix = "wallet_"
 
 saveStorageToFile :: (MonadIO m, MonadRandom m, HasStoreDir m, PlatformNatives)
-  => ECIESPubKey -> WalletStorage -> m ()
-saveStorageToFile pubKey storage = do
+  => Text -> ECIESPubKey -> WalletStorage -> m ()
+saveStorageToFile caller pubKey storage = do
   let fname = storageFilePrefix <> T.replace " " "_" (_storage'walletName storage)
-  logWrite $ "Storing storage to the " <> fname
+  logWrite $ "[" <> caller <> "]: Storing to " <> fname
   encryptedStorage <- encryptStorage storage pubKey
   case encryptedStorage of
     Left _ -> fail "Failed to encrypt storage"

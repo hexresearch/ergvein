@@ -94,7 +94,7 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
         h0 <- fmap fromIntegral . sample . current =<< getWalletsScannedHeightD BTC
         scannedE <- scanningBtcKey External h0 keyNum (keys V.! keyNum)
         hasTxsD <- holdDyn False scannedE
-        storedE <- modifyPubStorage $ ffor scannedE $ const $ Just . pubStorageSetKeyScanned BTC External (Just keyNum)
+        storedE <- modifyPubStorage "scanKeys" $ ffor scannedE $ const $ Just . pubStorageSetKeyScanned BTC External (Just keyNum)
         let nextE = flip pushAlways storedE $ const $ do
               hastxs <- sample . current $ hasTxsD
               let gapN' = if hastxs then 0 else gapN+1
@@ -128,7 +128,7 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
         h0 <- fmap fromIntegral . sample . current =<< getWalletsScannedHeightD BTC
         scannedE <- scanningBtcKey Internal h0 keyNum (keys V.! keyNum)
         hasTxsD <- holdDyn False scannedE
-        storedE <- modifyPubStorage $ ffor scannedE $ const $ Just . pubStorageSetKeyScanned BTC Internal (Just keyNum)
+        storedE <- modifyPubStorage "scanInternalKeys" $ ffor scannedE $ const $ Just . pubStorageSetKeyScanned BTC Internal (Just keyNum)
         let nextE = flip pushAlways scannedE $ const $ do
               hastxs <- sample . current $ hasTxsD
               let gapN' = if hastxs then 0 else gapN+1
@@ -141,9 +141,9 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
       buildE <- getPostBuild
       setSyncProgress $ Synced <$ buildE
       h <- sample . current =<< getCurrentHeight BTC
-      scanhE <- writeWalletsScannedHeight $ (BTC, fromIntegral h) <$ buildE
+      scanhE <- writeWalletsScannedHeight "finishScanning" $ (BTC, fromIntegral h) <$ buildE
       clearedE <- performEvent $ clearFilters BTC <$ scanhE
-      modifyPubStorage $ ffor clearedE $ const $ \ps -> Just $ ps {
+      modifyPubStorage "finishScanning" $ ffor clearedE $ const $ \ps -> Just $ ps {
           _pubStorage'restoring = False
         }
       _ <- nextWidget $ ffor buildE $ const $ Retractable {
@@ -163,7 +163,7 @@ deriveNewBtcKeys keyPurpose n = do
       newKeys = derivePubKey masterPubKey keyPurpose . fromIntegral <$> [keysN .. keysN+n-1]
       ks = maybe (error "No BTC key storage!") id $ pubStorageKeyStorage BTC ps
       ks' = foldl' (flip $ addXPubKeyToKeystore keyPurpose) ks newKeys
-  modifyPubStorage $ (Just . pubStorageSetKeyStorage BTC ks') <$ buildE
+  modifyPubStorage "deriveNewBtcKeys" $ (Just . pubStorageSetKeyStorage BTC ks') <$ buildE
 
 -- TODO: This function will not be needed after using DMap as a CurrencyPubStorage
 egvTxsToBtcTxs :: M.Map TxId EgvTx -> M.Map TxId BtcTx
