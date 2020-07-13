@@ -55,8 +55,8 @@ import qualified Network.Haskoin.Script             as HK
 import qualified Network.Haskoin.Transaction        as HK
 import qualified Network.Haskoin.Util               as HK
 
-historyPageOld :: MonadFront t m => Currency -> m ()
-historyPageOld cur = wrapper False (HistoryTitle cur) (Just $ pure $ historyPage cur) $ do
+historyPage :: MonadFront t m => Currency -> m ()
+historyPage cur = wrapper False (HistoryTitle cur) (Just $ pure $ historyPage cur) $ do
   ps <- getPubStorage
   pubSD <- getPubStorageD
   let thisWidget = Just $ pure $ historyPage cur
@@ -68,8 +68,8 @@ historyPageOld cur = wrapper False (HistoryTitle cur) (Just $ pure $ historyPage
     , retractablePrev = thisWidget
     }
 
-historyPage :: MonadFront t m => Currency -> m ()
-historyPage cur = wrapper False (HistoryTitle cur) (Just $ pure $ historyPage cur) $ do
+historyPage2 :: MonadFront t m => Currency -> m ()
+historyPage2 cur = wrapper False (HistoryTitle cur) (Just $ pure $ historyPage cur) $ do
   ps <- getPubStorage
   pubSD <- getPubStorageD
   let thisWidget = Just $ pure $ historyPage cur
