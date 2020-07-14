@@ -5,10 +5,13 @@ module Ergvein.Wallet.Menu(
 
 import Data.Text (Text)
 import {-# SOURCE #-} Ergvein.Wallet.Menu.Switcher
+import Ergvein.Types.Storage
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu.Types
 import Ergvein.Wallet.Monad
+
+import qualified Data.List as L
 
 headerWidget :: MonadFront t m => Dynamic t Text -> Maybe (Dynamic t (m ())) -> m ()
 headerWidget titleVal prevWidget = divClass "header-wrapper" $ mdo
@@ -18,17 +21,28 @@ headerWidget titleVal prevWidget = divClass "header-wrapper" $ mdo
     divClass "header-wallet-text" $ dynText titleVal
     divButton "header-button header-menu-dropdown-button" $ elClassDyn "i" menuDropdownButtonIconClassD blank
   dropdownIsHiddenD <- toggle True btnE
+  ps <- getPubStorage
   let dropdownClassesD = visibilityClass "header-menu-dropdown" <$> dropdownIsHiddenD
-  let menuDropdownButtonIconClassD = menuDropdownButtonIconClass <$> dropdownIsHiddenD
+      menuDropdownButtonIconClassD = menuDropdownButtonIconClass <$> dropdownIsHiddenD
+      currencies = _pubStorage'activeCurrencies ps
   divClassDyn dropdownClassesD $ do
     let menuBtn v = (v <$) <$> clearButton v
-    balE <- menuBtn MenuBalances
-    netE <- menuBtn MenuNetwork
-    setE <- menuBtn MenuSettings
-    abtE <- menuBtn MenuAbout
-    logE <- menuBtn MenuLogs
-    switchE <- menuBtn MenuSwitch
-    switchMenu prevWidget $ leftmost [balE, netE, setE, abtE, logE, switchE]
+    if (L.length currencies == 1)
+      then do
+        netE <- menuBtn MenuNetwork
+        setE <- menuBtn MenuSettings
+        abtE <- menuBtn MenuAbout
+        logE <- menuBtn MenuLogs
+        switchE <- menuBtn MenuSwitch
+        switchMenu prevWidget $ leftmost [netE, setE, abtE, logE, switchE]
+      else do
+        balE <- menuBtn MenuBalances
+        netE <- menuBtn MenuNetwork
+        setE <- menuBtn MenuSettings
+        abtE <- menuBtn MenuAbout
+        logE <- menuBtn MenuLogs
+        switchE <- menuBtn MenuSwitch
+        switchMenu prevWidget $ leftmost [balE, netE, setE, abtE, logE, switchE]
 
 headerWidgetOnlyBackBtn :: MonadFrontBase t m => m ()
 headerWidgetOnlyBackBtn = divClass "header-wrapper" $ divClass "header-only-back-btn" $ do
