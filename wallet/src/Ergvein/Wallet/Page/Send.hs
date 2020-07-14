@@ -124,7 +124,7 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr) = do
       pure $ (utxo, mkey)
     utxoKey0 <- fmap Left $ sampleDyn utxoKeyD
     stxE' <- eventToNextFrame stxE
-    valD <- foldDyn mergeVals utxoKey0 $ leftmost [Left <$> (updated utxoKeyD), Right <$> stxE']
+    valD <- foldDynMaybe mergeVals utxoKey0 $ leftmost [Left <$> (updated utxoKeyD), Right <$> stxE']
     stxE <- fmap switchDyn $ widgetHoldDyn $ ffor valD $ \case
       Left (Nothing, _) -> confirmationErrorWidget CEMEmptyUTXO
       Left (_, Nothing) -> confirmationErrorWidget CEMNoChangeKey
@@ -156,9 +156,10 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr) = do
     foo b f ta = L.foldl' f b ta
     -- Left -- utxo updates, Right -- stored tx
     mergeVals newval origval = case (newval, origval) of
-      (Left a, Left _) -> Left a
-      (Right a, _) -> Right a
-      (Left _, Right a) -> Right a
+      (Left a, Left _)    -> Just $ Left a
+      (Left _, Right _)   -> Nothing
+      (Right a, Left _)   -> Just $ Right a
+      (Right _, Right _)  -> Nothing
 
     -- | Split utxo set into confirmed and unconfirmed points
     partition' :: [(HT.OutPoint, UtxoMeta)] -> ([UtxoPoint], [UtxoPoint])
