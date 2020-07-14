@@ -60,7 +60,7 @@ scanner = do
 scannerFor :: MonadFront t m => Currency -> m ()
 scannerFor cur = case cur of
   BTC -> do
-    reconfirmBtxUtxoSet . updated . fmap fromIntegral =<< watchFiltersHeight BTC
+    reconfirmBtxUtxoSet "scannerFor" . updated . fmap fromIntegral =<< watchFiltersHeight BTC
     scannerBtc
   _ -> pure ()
 
@@ -113,7 +113,7 @@ scanningAllBtcKeys i0 = do
   scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses i0 updSync $ xPubToBtcAddr . extractXPubKeyFromEgv . scanBox'key <$> keys
   let heightE = fst <$> scanE
       hashesE = V.toList . snd <$> scanE
-  writeWalletsScannedHeight $ ((BTC, ) . fromIntegral) <$> heightE
+  writeWalletsScannedHeight "scanningAllBtcKeys" $ ((BTC, ) . fromIntegral) <$> heightE
   performEvent_ $ ffor scanE $ \(h, bls) -> logWrite $ "Scanned all keys up to " <> showt h <> ", blocks to check: " <> showt bls
   scanningBtcBlocks keys hashesE
 
@@ -144,12 +144,12 @@ scanningBtcBlocks keys hashesE = do
   let rhashesE = fmap (nub . fst . unzip) $ hashesE
   _ <-logEvent "Blocks requested: " rhashesE
   blocksE <- requestBTCBlocks rhashesE
-  storedBlocks <- storeBlockHeadersE BTC blocksE
+  storedBlocks <- storeBlockHeadersE "scanningBtcBlocks" BTC blocksE
   let toAddr = xPubToBtcAddr . extractXPubKeyFromEgv
       blkHeightE = current heightMapD `attach` storedBlocks
   txsUpdsE <- logEvent "Transactions got: " =<< getAddressesTxs ((\(a,b) -> (keys,a,b)) <$> blkHeightE)
-  insertTxsUtxoInPubKeystore BTC txsUpdsE
-  removeOutgoingTxs BTC $ (M.elems . M.unions . V.toList . snd . V.unzip . fst) <$> txsUpdsE
+  insertTxsUtxoInPubKeystore "scanningBtcBlocks" BTC txsUpdsE
+  removeOutgoingTxs "scanningBtcBlocks" BTC $ (M.elems . M.unions . V.toList . snd . V.unzip . fst) <$> txsUpdsE
   pure $ leftmost [(V.any (not . M.null . snd)) . fst <$> txsUpdsE, False <$ noScanE]
 
 -- | Extract transactions that correspond to given address.

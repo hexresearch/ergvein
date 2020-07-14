@@ -142,7 +142,7 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr) = do
     widgetHold (pure ()) $ ffor stxE $ el "h4" . text . (<>) "TxId: " . HT.txHashToHex . HT.txHash
 
     txD <- holdDyn Nothing $ Just <$> stxE
-    addOutgoingTx $ (flip BtcTx Nothing) <$> stxE
+    addOutgoingTx "btcSendConfirmationWidget" $ (flip BtcTx Nothing) <$> stxE
     storedE <- btcMempoolTxInserter stxE
     requestBroadcast $ attachWithMaybe (\m _ ->
       fmap (NodeReqBTC . MInv . Inv . pure . InvVector InvTx . HT.getTxHash . HT.txHash) m
