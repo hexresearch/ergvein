@@ -24,6 +24,7 @@ import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Page.QRCode
 import Ergvein.Wallet.Share
 import Ergvein.Wallet.Storage.Keys
+import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
 
 receivePage :: MonadFront t m => Currency -> m ()
@@ -40,15 +41,18 @@ mockAddress :: Text
 mockAddress = "1BoatSLRHtKNngkdXEeobR76b53LETtpyT"
 
 exceededGapLimit :: MonadFront t m => Currency -> m ()
-exceededGapLimit cur = wrapper True (ReceiveTitle cur) (Just $ pure $ receivePage cur) $ do
-  h2 $ localizedText RPSGap
+exceededGapLimit cur = do
+  title <- balanceTitleWidget cur
+  wrapper True title (Just $ pure $ receivePage cur) $ do
+    h2 $ localizedText RPSGap
 
 #ifdef ANDROID
 receivePageWidget :: MonadFront t m => Currency -> Int -> EgvPubKeyBox -> m ()
-receivePageWidget cur i EgvPubKeyBox{..} = wrapper False (ReceiveTitle cur) (Just $ pure $ receivePage cur) $ do
+receivePageWidget cur i EgvPubKeyBox{..} = do
+  title <- balanceTitleWidget cur
   let thisWidget = Just $ pure $ receivePage cur
-  navbarWidget cur thisWidget NavbarReceive
-  void $ do
+      navbar = navbarWidget cur thisWidget NavbarReceive
+  wrapperNavbar False title thisWidget navbar $ void $ divClass "receive-page" $ do
     divClass "receive-qr-andr" $ qrCodeWidget keyTxt cur
     (newE, copyE, shareE) <- divClass "receive-buttons-wrapper" $ do
       nE  <- newAddrBtn
@@ -72,21 +76,22 @@ receivePageWidget cur i EgvPubKeyBox{..} = wrapper False (ReceiveTitle cur) (Jus
 
 #else
 receivePageWidget :: MonadFront t m => Currency -> Int -> EgvPubKeyBox -> m ()
-receivePageWidget cur i EgvPubKeyBox{..} = wrapper False (ReceiveTitle cur) (Just $ pure $ receivePage cur) $ do
+receivePageWidget cur i EgvPubKeyBox{..} = do
+  title <- balanceTitleWidget cur
   let thisWidget = Just $ pure $ receivePage cur
-  navbarWidget cur thisWidget NavbarReceive
-  void $ divClass "container p-1 receive-page" $ do
+      navbar = navbarWidget cur thisWidget NavbarReceive
+  wrapperNavbar False title thisWidget navbar $ void $ divClass "receive-page" $ do
     divClass "receive-qr" $ qrCodeWidget keyTxt cur
     divClass "receive-buttons-wrapper" $ do
       newE  <- newAddrBtn
       copyE <- copyAddrBtn
-      setFlagToExtPubKey $ (cur, i) <$ newE
+      setFlagToExtPubKey "receivePageWidget:1" $ (cur, i) <$ newE
       showInfoMsg =<< clipboardCopy (keyTxt <$ copyE)
     divClass "receive-adr" $ text $ "#" <> showt i <> ": " <> keyTxt
     divClass "label-block" $ do
       labelD <- textFieldNoLabel $ getLabelFromEgvPubKey pubKeyBox'key
       btnE <- labelAddrBtn
-      setLabelToExtPubKey $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
+      setLabelToExtPubKey "receivePageWidget:2" $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
       pure ()
   where
     keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress pubKeyBox'key

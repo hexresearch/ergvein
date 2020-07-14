@@ -25,6 +25,7 @@ import Ergvein.Wallet.Page.History
 import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Sync.Widget
+import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Worker.Node
 import Ergvein.Wallet.Wrapper
 
@@ -55,11 +56,12 @@ instance LocalizedPrint BalancesStrings where
 balancesPage :: MonadFront t m => m ()
 balancesPage = do
   walletName <- getWalletName
+  title <- localized walletName
 #ifdef ANDROID
   c <- liftIO $ loadCounter
   liftIO $ saveCounter $ PatternTries $ M.insert walletName 0 (patterntriesCount c)
 #endif
-  wrapper False walletName (Just $ pure balancesPage) $ do
+  wrapper False title (Just $ pure balancesPage) $ do
     syncWidget =<< getSyncProgress
     currenciesList walletName
 
@@ -68,15 +70,24 @@ currenciesList name = divClass "currency-content" $ do
   s <- getSettings
   ps <- getPubStorage
   pubSD <- getPubStorageD
-  historyE <- leftmost <$> traverse (currencyLine s) (_pubStorage'activeCurrencies ps)
-  if (settingsPortfolio s)
-    then portfolioWidget
-    else pure ()
-  let thisWidget = Just $ pure balancesPage
-  void $ nextWidget $ ffor historyE $ \cur -> Retractable {
-    retractableNext = historyPage cur
-  , retractablePrev = thisWidget
-  }
+  let currencies = _pubStorage'activeCurrencies ps
+      thisWidget = Just $ pure balancesPage
+  if L.length currencies == 1
+    then do
+      buildE <- getPostBuild
+      void $ nextWidget $ ffor buildE $ \_ -> Retractable {
+        retractableNext = historyPage $ L.head currencies
+      , retractablePrev = Nothing
+      }
+    else do
+      historyE <- leftmost <$> traverse (currencyLine s) currencies
+      if (settingsPortfolio s)
+        then portfolioWidget
+        else pure ()
+      void $ nextWidget $ ffor historyE $ \cur -> Retractable {
+        retractableNext = historyPage cur
+      , retractablePrev = thisWidget
+      }
   where
     currencyLine settings cur = do
       (e, _) <- divClass' "currency-row" $ do
@@ -89,19 +100,3 @@ currenciesList name = divClass "currency-content" $ do
           elClass "span" "currency-arrow" $ text "〉"
       pure $ cur <$ domEvent Click e
     getSettingsUnits = fromMaybe defUnits . settingsUnits
-
-balancesWidget :: MonadFront t m => Currency -> m (Dynamic t Money)
-balancesWidget cur = case cur of
-  ERGO -> balancesErgo
-  BTC  -> btcBalances
-
-balancesErgo :: MonadFront t m => m (Dynamic t Money)
-balancesErgo = pure $ pure $ Money ERGO 0
-
-btcBalances :: MonadFront t m => m (Dynamic t Money)
-btcBalances = do
-  pubSD <- getPubStorageD
-  pure $ ffor pubSD $ \ps -> let
-    utxo = M.elems $ fromMaybe M.empty $ ps ^. pubStorage'currencyPubStorages . at BTC & fmap (view currencyPubStorage'utxos)
-    in Money BTC $ foo 0 utxo $ \s UtxoMeta{..} -> s + utxoMeta'amount
-  where foo b ta f = L.foldl' f b ta

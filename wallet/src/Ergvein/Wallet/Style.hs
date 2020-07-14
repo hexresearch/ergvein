@@ -176,7 +176,7 @@ headerCss = do
     display flex
     alignItems stretch
     fontSize $ pt 14
-  ".header-wallet-name" ? do
+  ".header-wallet-text" ? do
     width $ pct 100
     padding (rem 1) (rem 0) (rem 1) (rem 0)
   ".header-button" ? do
@@ -212,7 +212,7 @@ navbarCss = do
   ".navbar" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1, fr 1]
-    paddingBottom $ rem 1
+    padding (rem 0) (rem 1) (rem 0) (rem 1)
   ".navbar-item" ? do
     padding (rem 1) (rem 1) (rem 1) (rem 1)
     cursor pointer
@@ -769,8 +769,7 @@ historyPageCss = do
     color $ rgb 0 120 0
   ".history-table-row" ? do
     fontSize $ px 16
-    paddingTop $ rem 1.5
-    paddingBottom $ rem 1.5
+    padding (rem 1.5) (rem 1) (rem 1.5) (rem 1)
     display grid
     gridTemplateColumns [fr 3, fr 3, fr 1]
   ".history-table-row:hover" ? do

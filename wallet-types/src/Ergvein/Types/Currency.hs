@@ -100,8 +100,8 @@ btcResolution u = case u of
 
 btcSymbolUnit :: UnitBTC -> Text
 btcSymbolUnit u = case u of
-  BtcWhole    -> "btc"
-  BtcMilli    -> "mbtc"
+  BtcWhole    -> "BTC"
+  BtcMilli    -> "mBTC"
   BtcSat      -> "sat"
 {-# INLINE btcSymbolUnit #-}
 
@@ -131,9 +131,9 @@ ergoResolution u = case u of
 
 ergoSymbolUnit :: UnitERGO -> Text
 ergoSymbolUnit u = case u of
-  ErgWhole    -> "erg"
-  ErgMilli    -> "merg"
-  ErgNano     -> "nerg"
+  ErgWhole    -> "ERG"
+  ErgMilli    -> "mERG"
+  ErgNano     -> "nERG"
 {-# INLINE ergoSymbolUnit #-}
 
 -- | Union units

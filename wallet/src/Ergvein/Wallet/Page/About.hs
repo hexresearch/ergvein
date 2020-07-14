@@ -13,31 +13,33 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Wrapper
 
 aboutPage :: MonadFront t m => m ()
-aboutPage = wrapper False AboutTitle (Just $ pure aboutPage) $ do
-  h3 $ localizedText $ AboutTitle
-  elAttr "hr" [("class","about-hr-sep")] blank
-  divClass "about-wrapper" $ do
-    aboutContent $ do
-      aboutRow $ do
-        aboutCellLabel $ localizedText AboutVersion
-        aboutCellValue $ text "0.0.1"
-      aboutRow $ do
-        aboutCellLabel $ localizedText AboutLicence
-        aboutCellValue $ text "MIT License"
-      aboutRow $ do
-        aboutCellLabel $ localizedText AboutHomepage
-        let homepageUrl = "https://cypra.io"
-        aboutCellValue $ hyperlink "link" homepageUrl homepageUrl
-      aboutRow $ do
-        aboutCellLabel $ localizedText AboutDevelopers
-        aboutCellValue $ do
-          text "One One"
-          elBR
-          text "Two Two"
-          elBR
-          text "Three Three"
-    divClass "about-distrib" $ localizedText AboutDistrib
-  pure ()
+aboutPage = do
+  title <- localized AboutTitle
+  wrapper False title (Just $ pure aboutPage) $ do
+    h3 $ localizedText $ AboutTitle
+    elAttr "hr" [("class","about-hr-sep")] blank
+    divClass "about-wrapper" $ do
+      aboutContent $ do
+        aboutRow $ do
+          aboutCellLabel $ localizedText AboutVersion
+          aboutCellValue $ text "0.0.1"
+        aboutRow $ do
+          aboutCellLabel $ localizedText AboutLicence
+          aboutCellValue $ text "MIT License"
+        aboutRow $ do
+          aboutCellLabel $ localizedText AboutHomepage
+          let homepageUrl = "https://cypra.io"
+          aboutCellValue $ hyperlink "link" homepageUrl homepageUrl
+        aboutRow $ do
+          aboutCellLabel $ localizedText AboutDevelopers
+          aboutCellValue $ do
+            text "One One"
+            elBR
+            text "Two Two"
+            elBR
+            text "Three Three"
+      divClass "about-distrib" $ localizedText AboutDistrib
+    pure ()
   where
     aboutContent   = divClass "about-content"
     aboutRow       = divClass "about-content-row"

@@ -48,112 +48,122 @@ data SubPageSettings
 
 -- TODO: uncomment commented lines when ERGO is ready
 settingsPage :: MonadFront t m => m ()
-settingsPage = wrapper True STPSTitle (Just $ pure settingsPage) $ do
-  divClass "initial-options grid1" $ do
-    goLangE      <- fmap (GoLanguage   <$) $ outlineButton STPSButLanguage
-    -- goCurrE      <- fmap (GoCurrencies <$) $ outlineButton STPSButActiveCurrs
-    goNetE       <- fmap (GoNetwork    <$) $ outlineButton STPSButNetwork
-    goUnitsE     <- fmap (GoUnits      <$) $ outlineButton STPSButUnits
-    goPortfolioE <- fmap (GoPortfolio  <$) $ outlineButton STPSButPortfolio
-    let goE = leftmost [
-            goLangE
-          -- , goCurrE
-          , goNetE
-          , goUnitsE
-          , goPortfolioE
-          ]
-    void $ nextWidget $ ffor goE $ \spg -> Retractable {
-        retractableNext = case spg of
-          GoLanguage   -> languagePage
-          -- GoCurrencies -> currenciesPage
-          GoNetwork    -> networkSettingsPage
-          GoUnits      -> unitsPage
-          GoPortfolio  -> portfolioPage
-      , retractablePrev = Just $ pure settingsPage
-      }
+settingsPage = do
+  title <- localized STPSTitle
+  wrapper True title (Just $ pure settingsPage) $ do
+    divClass "initial-options grid1" $ do
+      goLangE      <- fmap (GoLanguage   <$) $ outlineButton STPSButLanguage
+      -- goCurrE      <- fmap (GoCurrencies <$) $ outlineButton STPSButActiveCurrs
+      goNetE       <- fmap (GoNetwork    <$) $ outlineButton STPSButNetwork
+      goUnitsE     <- fmap (GoUnits      <$) $ outlineButton STPSButUnits
+      goPortfolioE <- fmap (GoPortfolio  <$) $ outlineButton STPSButPortfolio
+      let goE = leftmost [
+              goLangE
+            -- , goCurrE
+            , goNetE
+            , goUnitsE
+            , goPortfolioE
+            ]
+      void $ nextWidget $ ffor goE $ \spg -> Retractable {
+          retractableNext = case spg of
+            GoLanguage   -> languagePage
+            -- GoCurrencies -> currenciesPage
+            GoNetwork    -> networkSettingsPage
+            GoUnits      -> unitsPage
+            GoPortfolio  -> portfolioPage
+        , retractablePrev = Just $ pure settingsPage
+        }
 
 languagePage :: MonadFront t m => m ()
-languagePage = wrapper True STPSTitle (Just $ pure languagePage) $ do
-  h3 $ localizedText $ STPSSelectLanguage
-  divClass "initial-options grid1" $ do
-    langD <- getLanguage
-    initKey <- sample . current $ langD
-    let listLangsD = ffor langD $ \l -> Map.fromList $ fmap (\v -> (v, localizedShow l v)) allLanguages
-        ddnCfg = DropdownConfig {
-              _dropdownConfig_setValue   = updated langD
-            , _dropdownConfig_attributes = constDyn ("class" =: "select-lang")
-            }
-    dp <- dropdown initKey listLangsD ddnCfg
-    let selD = _dropdown_value dp
-    selE <- fmap updated $ holdUniqDyn selD
-    widgetHold (pure ()) $ setLanguage <$> selE
-    settings <- getSettings
-    updE <- updateSettings $ ffor selE (\lng -> settings {settingsLang = lng})
-    showSuccessMsg $ STPSSuccess <$ updE
-  pure ()
+languagePage = do
+  title <- localized STPSTitle
+  wrapper True title (Just $ pure languagePage) $ do
+    h3 $ localizedText $ STPSSelectLanguage
+    divClass "initial-options grid1" $ do
+      langD <- getLanguage
+      initKey <- sample . current $ langD
+      let listLangsD = ffor langD $ \l -> Map.fromList $ fmap (\v -> (v, localizedShow l v)) allLanguages
+          ddnCfg = DropdownConfig {
+                _dropdownConfig_setValue   = updated langD
+              , _dropdownConfig_attributes = constDyn ("class" =: "select-lang")
+              }
+      dp <- dropdown initKey listLangsD ddnCfg
+      let selD = _dropdown_value dp
+      selE <- fmap updated $ holdUniqDyn selD
+      widgetHold (pure ()) $ setLanguage <$> selE
+      settings <- getSettings
+      updE <- updateSettings $ ffor selE (\lng -> settings {settingsLang = lng})
+      showSuccessMsg $ STPSSuccess <$ updE
+    pure ()
 {-
 currenciesPage2 :: MonadFront t m => m ()
-currenciesPage2 = wrapper True STPSTitle (Just $ pure currenciesPage)  $ do
-  h3 $ localizedText STPSSetsActiveCurrs
-  divClass "initial-options" $ do
-    ac <- _pubStorage'activeCurrencies <$> getPubStorage
-    currListE <- selectCurrenciesWidget $ ac
-    updE <- updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) currListE
-    widgetHold (divClass "test" $ text "lala") $ ffor currListE $ \cur -> divClass "test" $ text $ showt cur
-    authD <- getAuthInfo
-    let updatedAuthE = traceEventWith (const "Active currencies setted") <$>
-          flip pushAlways currListE $ \curs -> do
-            auth <- sample . current $ authD
-            pure $ Just $ auth
-              & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
-              & authInfo'isUpdate .~ True
-    updatedAuthE2 <- delay 0.5 updatedAuthE
-    setAuthInfoE <- setAuthInfo updatedAuthE
-    storeWallet setAuthInfoE
-    setAuthInfoE2 <- setAuthInfo updatedAuthE2
-    storeWallet setAuthInfoE2
-    showSuccessMsg $ STPSSuccess <$ setAuthInfoE
-    showSuccessMsg $ STPSSuccess <$ setAuthInfoE2
+currenciesPage2 = do
+  title <- localized STPSTitle
+  wrapper True title (Just $ pure currenciesPage) $ do
+    h3 $ localizedText STPSSetsActiveCurrs
+    divClass "initial-options" $ do
+      ac <- _pubStorage'activeCurrencies <$> getPubStorage
+      currListE <- selectCurrenciesWidget $ ac
+      updE <- updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) currListE
+      widgetHold (divClass "test" $ text "lala") $ ffor currListE $ \cur -> divClass "test" $ text $ showt cur
+      authD <- getAuthInfo
+      let updatedAuthE = traceEventWith (const "Active currencies setted") <$>
+            flip pushAlways currListE $ \curs -> do
+              auth <- sample . current $ authD
+              pure $ Just $ auth
+                & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
+                & authInfo'isUpdate .~ True
+      updatedAuthE2 <- delay 0.5 updatedAuthE
+      setAuthInfoE <- setAuthInfo updatedAuthE
+      storeWallet setAuthInfoE
+      setAuthInfoE2 <- setAuthInfo updatedAuthE2
+      storeWallet setAuthInfoE2
+      showSuccessMsg $ STPSSuccess <$ setAuthInfoE
+      showSuccessMsg $ STPSSuccess <$ setAuthInfoE2
 -}
 currenciesPage :: MonadFront t m => m ()
-currenciesPage = wrapper True STPSTitle (Just $ pure currenciesPage) $ do
-  h3 $ localizedText STPSSetsActiveCurrs
-  divClass "initial-options" $ mdo
-    activeCursD <- getActiveCursD
-    ps <- getPubStorage
-    authD <- getAuthInfo
-    currListE <- fmap switchDyn $ widgetHoldDyn $ ffor activeCursD $ \currs ->
-      selectCurrenciesWidget $ S.toList currs
-    uac currListE
-    updateAE <- withWallet $ ffor currListE $ \curs prvStr -> do
-        auth <- sample . current $ authD
-        let authNew = auth & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
-            difC = curs \\ (_pubStorage'activeCurrencies ps)
-            mL = Map.fromList [(currency, mkStore prvStr currency) | currency <- difC ]
-            authN2 = authNew & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages %~ (Map.union mL)
-        pure $ Just $ authN2
-    setAuthInfoE <- setAuthInfo updateAE
-    storeWallet (void $ updated authD)
-    showSuccessMsg $ STPSSuccess <$ setAuthInfoE
-    pure ()
-    where
-      uac cE =  updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ cE
-      mkStore prvStr currency = CurrencyPubStorage {
-          _currencyPubStorage'pubKeystore   = (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency)
-        , _currencyPubStorage'transactions  = Map.empty
-        , _currencyPubStorage'height        = Nothing
-        , _currencyPubStorage'scannedKey    = (Just 0, Just 0)
-        , _currencyPubStorage'utxos         = Map.empty
-        , _currencyPubStorage'scannedHeight = Nothing
-        , _currencyPubStorage'headers       = Map.empty
-        , _currencyPubStorage'outgoing      = S.empty
-        }
+currenciesPage = do
+  title <- localized STPSTitle
+  wrapper True title (Just $ pure currenciesPage) $ do
+    h3 $ localizedText STPSSetsActiveCurrs
+    divClass "initial-options" $ mdo
+      activeCursD <- getActiveCursD
+      ps <- getPubStorage
+      authD <- getAuthInfo
+      currListE <- fmap switchDyn $ widgetHoldDyn $ ffor activeCursD $ \currs ->
+        selectCurrenciesWidget $ S.toList currs
+      uac currListE
+      updateAE <- withWallet $ ffor currListE $ \curs prvStr -> do
+          auth <- sample . current $ authD
+          let authNew = auth & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
+              difC = curs \\ (_pubStorage'activeCurrencies ps)
+              mL = Map.fromList [(currency, mkStore prvStr currency) | currency <- difC ]
+              authN2 = authNew & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages %~ (Map.union mL)
+          pure $ Just $ authN2
+      setAuthInfoE <- setAuthInfo updateAE
+      storeWallet "currenciesPage" (void $ updated authD)
+      showSuccessMsg $ STPSSuccess <$ setAuthInfoE
+      pure ()
+  where
+    uac cE =  updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ cE
+    mkStore prvStr currency = CurrencyPubStorage {
+        _currencyPubStorage'pubKeystore   = (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency)
+      , _currencyPubStorage'transactions  = Map.empty
+      , _currencyPubStorage'height        = Nothing
+      , _currencyPubStorage'scannedKey    = (Just 0, Just 0)
+      , _currencyPubStorage'utxos         = Map.empty
+      , _currencyPubStorage'scannedHeight = Nothing
+      , _currencyPubStorage'headers       = Map.empty
+      , _currencyPubStorage'outgoing      = S.empty
+      }
 
 -- TODO: uncomment commented lines when ERGO is ready
 unitsPage :: MonadFront t m => m ()
-unitsPage = wrapper True STPSTitle (Just $ pure unitsPage) $ mdo
-  cntED <- widgetHold content $ content <$ switchDyn cntED
-  pure ()
+unitsPage = do
+  title <- localized STPSTitle
+  wrapper True title (Just $ pure unitsPage) $ mdo
+    cntED <- widgetHold content $ content <$ switchDyn cntED
+    pure ()
   where
     content = do
       h3 $ localizedText $ STPSSelectUnitsFor BTC
@@ -192,25 +202,27 @@ unitsPage = wrapper True STPSTitle (Just $ pure unitsPage) $ mdo
 
 
 portfolioPage :: MonadFront t m => m ()
-portfolioPage = wrapper True STPSTitle (Just $ pure currenciesPage) $ do
-  h3 $ localizedText STPSSetsPortfolio
-  divClass "initial-options" $ mdo
-    settings <- getSettings
-    let sFC = settingsFiatCurr settings
-    let sP  = settingsPortfolio settings
-    divClass "select-currencies-title" $ h4 $ localizedText STPSSetsPortfolioEnable
-    portD <- holdDyn (settingsPortfolio settings) $ poke pbtnE $ \_ -> do
-       portS <- sampleDyn portD
-       pure $ not portS
-    pbtnE <- divButton (fmap toggled portD) $ widgetHoldDyn $ ffor portD $ \pS ->
-      if pS
-        then localizedText CSOn
-        else localizedText CSOff
-    updateSettings $ ffor (updated portD) (\portS -> settings {settingsPortfolio = portS})
-    divClass "select-currencies-title" $ h4 $ localizedText STPSSetsFiatSelect
-    fiatE <- fiatDropdown sFC allFiats
-    updateSettings $ ffor fiatE (\fiat -> settings {settingsFiatCurr = fiat})
-    pure ()
+portfolioPage = do
+  title <- localized STPSTitle
+  wrapper True title (Just $ pure currenciesPage) $ do
+    h3 $ localizedText STPSSetsPortfolio
+    divClass "initial-options" $ mdo
+      settings <- getSettings
+      let sFC = settingsFiatCurr settings
+      let sP  = settingsPortfolio settings
+      divClass "select-currencies-title" $ h4 $ localizedText STPSSetsPortfolioEnable
+      portD <- holdDyn (settingsPortfolio settings) $ poke pbtnE $ \_ -> do
+        portS <- sampleDyn portD
+        pure $ not portS
+      pbtnE <- divButton (fmap toggled portD) $ widgetHoldDyn $ ffor portD $ \pS ->
+        if pS
+          then localizedText CSOn
+          else localizedText CSOff
+      updateSettings $ ffor (updated portD) (\portS -> settings {settingsPortfolio = portS})
+      divClass "select-currencies-title" $ h4 $ localizedText STPSSetsFiatSelect
+      fiatE <- fiatDropdown sFC allFiats
+      updateSettings $ ffor fiatE (\fiat -> settings {settingsFiatCurr = fiat})
+      pure ()
   where
     toggled b = if b
       then "button button-on"

@@ -18,21 +18,22 @@ import Ergvein.Types.Address
 import Ergvein.Types.Keys
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
-import Ergvein.Wallet.Blocks.BTC
-import Ergvein.Wallet.Blocks.Storage
+import Ergvein.Wallet.Monad.Prim
+import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Node.BTC.Blocks
 import Ergvein.Wallet.Storage.Keys
 
 import qualified Data.Map.Strict                    as M
 import qualified Data.Text                          as T
 import qualified Data.Vector                        as V
+import qualified Network.Haskoin.Address            as HA
 import qualified Network.Haskoin.Block              as HB
 import qualified Network.Haskoin.Script             as HS
 import qualified Network.Haskoin.Transaction        as HT
-import qualified Network.Haskoin.Address            as HA
 
 -- | Checks given tx if there are some inputs or outputs containing given address.
-checkAddrTx :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> Tx -> m Bool
+checkAddrTx :: (HasPubStorage m, PlatformNatives) => EgvAddress -> Tx -> m Bool
 checkAddrTx addr tx = do
   checkTxInputsResults <- traverse (checkTxIn addr) (HT.txIn tx)
   checkTxOutputsResults <- traverse (checkTxOut addr) (HT.txOut tx)
@@ -41,14 +42,14 @@ checkAddrTx addr tx = do
 
 -- | Gets spent output (they are inputs for a tx) for a given address from a transaction
 -- Bool specifies if the Tx was confirmed (True) or not
-getSpentOutputs :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => Bool -> EgvAddress -> Tx -> m ([(OutPoint, Bool)])
+getSpentOutputs :: (HasPubStorage m, PlatformNatives) => Bool -> EgvAddress -> Tx -> m ([(OutPoint, Bool)])
 getSpentOutputs c addr Tx{..} = fmap catMaybes $ flip traverse txIn $ \ti -> do
   b <- checkTxIn addr ti
   pure $ if b then Just (prevOutput ti, c) else Nothing
 
 -- | Gets unspent output for a given address from a transaction
 -- Maybe BlockHeight: Nothing -- unconfirmed Tx. Just n -> confirmed at height n
-getUnspentOutputs :: (MonadIO m, HasBlocksStorage m, PlatformNatives)
+getUnspentOutputs :: (HasPubStorage m, PlatformNatives)
   => Maybe BlockHeight -> ScanKeyBox -> Tx -> m [(OutPoint, UtxoMeta)]
 getUnspentOutputs c ScanKeyBox{..} tx = fmap catMaybes $ flip traverse (zip [0..] $ txOut tx) $ \(i,o) -> do
   b <- checkTxOut addr o
@@ -64,7 +65,7 @@ getUnspentOutputs c ScanKeyBox{..} tx = fmap catMaybes $ flip traverse (zip [0..
 
 -- | Construct UTXO update for a list of addresses based on a transaction
 -- Maybe BlockHeight: Nothing -- unconfirmed Tx. Just n -> confirmed at height n
-getUtxoUpdates :: (MonadIO m, HasBlocksStorage m, PlatformNatives)
+getUtxoUpdates :: (HasPubStorage m, PlatformNatives)
   => Maybe BlockHeight -> V.Vector ScanKeyBox -> Tx -> m BtcUtxoUpdate
 getUtxoUpdates mheight boxes tx = do
   (unsps, sps) <- fmap V.unzip $ flip traverse boxes $ \box -> do
@@ -78,7 +79,7 @@ getUtxoUpdates mheight boxes tx = do
 
 -- | Construct UTXO update for an address and a batch of transactions
 -- Maybe BlockHeight: Nothing -- unconfirmed Tx. Just n -> confirmed at height n
-getUtxoUpdatesFromTxs :: (MonadIO m, HasBlocksStorage m, PlatformNatives)
+getUtxoUpdatesFromTxs :: (HasPubStorage m, PlatformNatives)
   => Maybe BlockHeight -> ScanKeyBox -> [Tx] -> m BtcUtxoUpdate
 getUtxoUpdatesFromTxs mheight box txs = do
   (unsps, sps) <- fmap unzip $ flip traverse txs $ \tx -> do
@@ -93,25 +94,16 @@ getUtxoUpdatesFromTxs mheight box txs = do
 
 -- | Checks given TxIn wheather it contains given address.
 -- Native SegWit addresses are not presented in TxIns scriptSig.
-checkTxIn :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => EgvAddress -> TxIn -> m Bool
+checkTxIn :: (HasPubStorage m, PlatformNatives) => EgvAddress -> TxIn -> m Bool
 checkTxIn addr txIn = do
   let spentOutput = HT.prevOutput txIn
       spentTxHash = HT.outPointHash spentOutput
       spentOutputIndex = HT.outPointIndex spentOutput
-  mBlockHash <- getBtcBlockHashByTxHash spentTxHash
-  case mBlockHash of
+  mtx <- getTxById $ HT.txHashToHex spentTxHash
+  case mtx of
     Nothing -> pure False
-    Just blockHash -> do
-      mBlock <- getBtcBlock blockHash
-      case mBlock of
-        Nothing -> fail $ "Could not get block from storage by block hash " <> (T.unpack $ HB.blockHashToHex blockHash)
-        Just block -> do
-          let mSpentTx = find (\tx -> HT.txHash tx == spentTxHash) (HB.blockTxns block)
-          case mSpentTx of
-            Nothing -> pure False
-            Just spentTx -> do
-              checkResult <- checkTxOut addr $ (HT.txOut spentTx) !! (fromIntegral spentOutputIndex)
-              pure checkResult
+    Just ErgTx{} -> pure False -- TODO: impl for Ergo
+    Just BtcTx{..} -> checkTxOut addr $ (HT.txOut getBtcTx) !! (fromIntegral spentOutputIndex)
 
 -- | Checks given TxOut wheather it contains given address.
 -- TODO: Pattern match(es) are non-exhaustive:

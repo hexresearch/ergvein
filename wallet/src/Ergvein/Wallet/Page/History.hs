@@ -16,8 +16,6 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Blocks.BTC.Queries
-import Ergvein.Wallet.Blocks.Types
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
@@ -30,8 +28,9 @@ import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Storage.Keys
-import Ergvein.Wallet.Tx
 import Ergvein.Wallet.TimeZone
+import Ergvein.Wallet.Tx
+import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Worker.Node
 import Ergvein.Wallet.Wrapper
 
@@ -54,6 +53,35 @@ import qualified Network.Haskoin.Constants          as HK
 import qualified Network.Haskoin.Script             as HK
 import qualified Network.Haskoin.Transaction        as HK
 import qualified Network.Haskoin.Util               as HK
+{-
+historyPageWeird :: MonadFront t m => Currency -> m ()
+historyPageWeird cur = do
+  title <- balanceTitleWidget cur
+  let thisWidget = Just $ pure $ historyPage cur
+      navbar = navbarWidget cur thisWidget NavbarHistory
+  (txsD, hghtD) <- transactionsGetting BTC
+  goE <- case cur of
+    BTC -> do
+      (txsD, hghtD) <- transactionsGetting BTC
+      txClickDE <- widgetHoldDyn $ ffor txsD $ \txs ->
+        if L.null txs
+          then
+            wrapperNavbar True title thisWidget navbar $ do
+              localizedText HistoryNoTxs
+              pure never
+          else
+            wrapperNavbar False title thisWidget navbar $ do
+              hght <- sampleDyn hghtD
+              txClickE <- traverse (historyTableRow hght) txs
+              pure $ leftmost txClickE
+      pure $ switchDyn txClickDE
+    ERGO -> do
+      txClickE <- traverse (historyTableRow 0) (mockTransHistory cur)
+      pure $ leftmost txClickE
+  void $ nextWidget $ ffor goE $ \tr -> Retractable {
+      retractableNext = transactionInfoPage cur tr
+    , retractablePrev = thisWidget
+    } -}
 
 historyPage :: MonadFront t m => Currency -> m ()
 historyPage cur = wrapper False (HistoryTitle cur) (Just $ pure $ historyPage cur) $ do
@@ -362,7 +390,6 @@ transactionsGetting cur = do
         Just CurrencyPubStorage{..} -> extractAddrs _currencyPubStorage'pubKeystore
 
   abS <- filtArd <$> sampleDyn allBtcAddrsD
-  store <- getBlocksStorage
   tzE <- getGetTimeZone buildE
 
   tzD <- holdDyn utc tzE
@@ -376,11 +403,13 @@ transactionsGetting cur = do
   filtrTxListSE <- performFork $ ffor tzE $ \_ -> do
     let tx = filterTx abS ps
     tz <- sampleDyn tzD
-    getAndFilterBlocks heightD allBtcAddrsD tz tx store
+    ps' <- sampleDyn pubSD
+    getAndFilterBlocks heightD allBtcAddrsD tz tx ps'
 
   filtrTxListE <- performFork $ ffor (updated hD) $ \tx -> do
     tz <- sampleDyn tzD
-    getAndFilterBlocks heightD allBtcAddrsD tz tx store
+    ps' <- sampleDyn pubSD
+    getAndFilterBlocks heightD allBtcAddrsD tz tx ps'
 
   sD <- holdDyn [] filtrTxListSE
   hS <- sampleDyn $ sD
@@ -393,7 +422,7 @@ transactionsGetting cur = do
       hght <- sampleDyn heightD
       liftIO $ flip runReaderT store $ do
         blh <- traverse getBtcBlockHashByTxHash $ fmap HK.txHash $ fmap (getBtcTx) tx
-        bl <- traverse getBlockFromHash blh
+        bl <- traverse (maybe (pure Nothing) getBlockHeaderByHash) blh
         b <- traverse (checkAddr allbtcAdrS) tx
         let txRefList = fmap (calcRefill (fmap getBtcAddr allbtcAdrS)) tx
         pure $ L.reverse $ L.sortOn (\tx -> txDate tx) $ fmap snd $ L.filter fst $ L.zip b (prepareTransactionView hght tz <$> txListRaw bl blh tx txRefList)
@@ -406,7 +435,7 @@ transactionsGetting cur = do
         BtcTx btx _ -> Money cur $ sum $ fmap (HK.outValue . snd) $ L.filter (maybe False (flip elem ac . fromSegWit) . fst) $ fmap (\txo -> (getSegWitAddr txo,txo)) $ HK.txOut btx
         ErgTx etx _ -> Money cur 0
 
-    checkAddr :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m Bool
+    checkAddr :: (HasPubStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m Bool
     checkAddr ac tx = do
       bL <- traverse (flip checkAddrTx (getBtcTx tx)) ac
       pure $ L.or bL
@@ -415,13 +444,6 @@ transactionsGetting cur = do
     filtArd madr = fmap snd $ L.filter (isJust . fst) madr
 
     txListRaw (a:as) (b:bs) (c:cs) (d:ds) = (TxRawInfo a b c d) : txListRaw as bs cs ds
-
-    getBlockFromHash :: (MonadIO m, HasBlocksStorage m, PlatformNatives) => Maybe HK.BlockHash -> m (Maybe HK.Block)
-    getBlockFromHash mBlockHash = case mBlockHash of
-      Nothing -> pure Nothing
-      Just blockHash -> do
-        mBlock <- getBtcBlock blockHash
-        pure mBlock
 
 prepareTransactionView :: Word64 -> TimeZone -> TxRawInfo -> TransactionView
 prepareTransactionView hght tz TxRawInfo{..} = TransactionView {
@@ -455,7 +477,7 @@ prepareTransactionView hght tz TxRawInfo{..} = TransactionView {
     txIns = fmap (\out -> (txOutAdr out,Money BTC (HK.outValue out), TOUnspent)) $ HK.txOut btx
     txOutAdr out = maybe "undefined" (fromMaybe "unknown" . (addrToString HK.btcTest) . fromSegWit) $ getSegWitAddr out
     txBlockDebug = maybe "unknown" HK.blockHashToHex txHBl
-    blTime = maybe "pending.." (T.pack . secToTimestamp . HK.blockTimestamp . HK.blockHeader) txMBl
+    blTime = maybe "pending.." (T.pack . secToTimestamp . HK.blockTimestamp) txMBl
 
     secToTimestamp t = formatTime defaultTimeLocale "%Y/%m/%d %H:%M:%S" $ utcToZonedTime tz $ posixSecondsToUTCTime $ fromIntegral t
 
@@ -496,7 +518,7 @@ trMockInfo cur = TransactionViewInfo
   [("3Mx9XH35FrbpVjsDayKyvc6eSDZfjJAsx5",(moneyFromRational cur 0.13282286)),("3EVkfRx1cPWC8czue1RH4d6rTXghWyCXDS",(moneyFromRational cur 0.25622085)),("3EVkfRx1cPWC8czue1RH4d6rTXghWyCXDS",(moneyFromRational cur 0.25085875))]
 
 data TxRawInfo = TxRawInfo {
-  txMBl :: Maybe HK.Block
+  txMBl :: Maybe HK.BlockHeader
  ,txHBl :: Maybe HK.BlockHash
  ,txr   :: EgvTx
  ,txom  :: Money
