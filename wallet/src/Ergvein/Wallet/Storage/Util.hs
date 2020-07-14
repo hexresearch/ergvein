@@ -54,7 +54,7 @@ addXPrvKeyToKeystore Internal key (PrvKeystore master external internal) =
 createPrvKeystore :: EgvXPrvKey -> PrvKeystore
 createPrvKeystore masterPrvKey =
   let externalGen i = Just (derivePrvKey masterPrvKey External (fromIntegral i), i + 1)
-      internalGen i = Just (derivePrvKey masterPrvKey External (fromIntegral i), i + 1)
+      internalGen i = Just (derivePrvKey masterPrvKey Internal (fromIntegral i), i + 1)
       externalKeys  = V.unfoldrN initialExternalAddressCount externalGen 0
       internalKeys  = V.unfoldrN initialInternalAddressCount internalGen 0
   in PrvKeystore masterPrvKey externalKeys internalKeys
