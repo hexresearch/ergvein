@@ -5,6 +5,7 @@ import Control.Concurrent.STM.TVar
 import Control.Monad
 import Data.Foldable
 import Data.Hashable
+import System.Timeout
 
 import qualified Data.Map.Strict as Map
 import qualified Data.HashSet as Set
@@ -19,11 +20,4 @@ uniqueElements :: (Eq a, Hashable a) => [a] -> [a]
 uniqueElements = Set.toList . Set.fromList
 
 cancelableDelay :: TVar Bool -> Int -> IO ()
-cancelableDelay cancellationToken delay = do
-  delay <- registerDelay delay
-  atomically $ asum
-    [ readTVar delay >>= check'
-    , readTVar cancellationToken >>= check'
-    ]
-  where
-    check' var' = when var' retry
+cancelableDelay cancellationToken delay = void $ timeout delay $ atomically $ readTVar cancellationToken >>= (`unless` retry)
