@@ -4,6 +4,8 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Types.Block
 
+import Data.Word
+
 data BlockMetaInfo = BlockMetaInfo
   { blockMetaCurrency      :: Currency
   , blockMetaBlockHeight   :: BlockHeight
@@ -14,7 +16,7 @@ data BlockMetaInfo = BlockMetaInfo
 data TxInfo = TxInfo
   { txHash         :: TxHash
   , txHexView      :: TxHexView
-  , txOutputsCount :: Word
+  , txOutputsCount :: Word32
   }
 
 data BlockInfo = BlockInfo

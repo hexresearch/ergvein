@@ -29,6 +29,7 @@ import qualified Data.Serialize as S
 import qualified Data.Map.Strict as Map
 import qualified Database.LevelDB as LDB
 import qualified Database.LevelDB.Streaming as LDBStreaming
+import qualified Data.Sequence as Seq
 
 safeEntrySlice :: (MonadLDB m , Ord k, S.Serialize k, Flat v) => BS.ByteString -> k -> m [(k,v)]
 safeEntrySlice startKey endKey = do
@@ -60,7 +61,7 @@ getParsedExact key = do
       logErrorN $ "[Db read miss][getParsedExact] Entity with key " <> (T.pack $ show key) <> " not found at time:" <> (T.pack $ show currentTime)
       error $ "getParsedExact: not found" ++ show key
 
-getManyParsedExact :: (MonadLDB m, MonadLogger m, Flat v) => [BS.ByteString] -> m [v]
+getManyParsedExact :: (Flat v, MonadLDB m, MonadLogger m) => [BS.ByteString] -> m [v]
 getManyParsedExact keys = do
   db <- getDb
   result <- mapM getParsedExact keys
@@ -70,16 +71,28 @@ putItems :: (Flat v) => (a -> BS.ByteString) -> (a -> v) -> [a] -> LDB.WriteBatc
 putItems keySelector valueSelector items = putI <$> items
   where putI item = LDB.Put (keySelector item) $ flat $ valueSelector item
 
-updateTxSpends  :: (MonadLDB m, MonadLogger m) => [TxHash] -> [TxInfo] -> m ()
-updateTxSpends spentTxsHash newTxInfos = do
+updateTxSpends  :: (MonadLDB m, MonadLogger m) => BlockHeaderHashHexView -> [TxHash] -> [TxInfo] -> m ()
+updateTxSpends blockHash spentTxsHash newTxInfos = do
   db <- getDb
   write db def $ putItems (txRecKey . txHash) (convert @_ @TxRec) newTxInfos
-  info <- getManyParsedExact @_ @TxRec  $ txRecKey <$> Map.keys outSpendsAmountByTx 
-  write db def $ infoUpdate <$> info
+
+  let newTxIds = txHash <$> newTxInfos
+      outSpendsAmountByTx = Map.fromListWith (+) $ (,1) <$> spentTxsHash
+      historyItem = ScannedContentHistoryRecItem  outSpendsAmountByTx newTxIds
+  history <- getParsedExact @ScannedContentHistoryRec scannedContentHistoryRecKey
+
+  if (Seq.length $ scannedContentHistoryRecItems history) < 64 then do
+    let updatedHistory = ScannedContentHistoryRec blockHash (scannedContentHistoryRecItems history Seq.|> historyItem)
+    put db def scannedContentHistoryRecKey $ flat updatedHistory
+  else do
+    let oldest Seq.:< xs = Seq.viewl $ scannedContentHistoryRecItems history
+        updatedHistory = ScannedContentHistoryRec blockHash (xs Seq.|> historyItem)
+    info <- getManyParsedExact @TxRec $ txRecKey <$> (Map.keys $ scannedContentHistoryRecItemSpentTxOuts oldest)
+    write db def $ infoUpdate (scannedContentHistoryRecItemSpentTxOuts oldest) <$> info
+    put db def scannedContentHistoryRecKey $ flat updatedHistory
   where
-    outSpendsAmountByTx = Map.fromListWith (+) $ (,1) <$> spentTxsHash
-    infoUpdate info = let 
-      outputsLeft = txRecUnspentOutputsCount info - outSpendsAmountByTx Map.! (txRecHash info)
+    infoUpdate spendsMap info = let 
+      outputsLeft = txRecUnspentOutputsCount info - spendsMap Map.! (txRecHash info)
       in if outputsLeft == 0 then 
           LDB.Del $ txRecKey $ txRecHash info
          else
@@ -143,7 +156,7 @@ initDb db = do
 addBlockInfo :: (MonadLDB m, MonadLogger m) => BlockInfo -> m ()
 addBlockInfo update = do
   db <- getDb
-  updateTxSpends (spentTxsHash update) $ blockContentTxInfos update
+  updateTxSpends (blockMetaHeaderHashHexView $ blockInfoMeta update) (spentTxsHash update) (blockContentTxInfos update)
   addBlockMetaInfos [blockInfoMeta update]
   setScannedHeight (blockMetaCurrency $ blockInfoMeta update) (blockMetaBlockHeight $ blockInfoMeta update)
 

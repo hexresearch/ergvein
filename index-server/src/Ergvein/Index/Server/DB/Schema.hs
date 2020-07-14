@@ -14,11 +14,14 @@ import System.ByteOrder
 import Data.FileEmbed
 import Crypto.Hash.SHA256
 import Data.Time
+import Data.Word
 
 import qualified Data.ByteString as BS
 import qualified Data.Serialize as S
+import qualified Data.Sequence as Seq
+import qualified Data.Map.Strict as Map
 
-data KeyPrefix = ScannedHeight | Meta | Tx | Peer | SchemaVersion deriving Enum
+data KeyPrefix = ScannedHeight | Meta | Tx | Peer | ContentHistory | SchemaVersion deriving Enum
 
 schemaVersion = hash $(embedFile "src/Ergvein/Index/Server/DB/Schema.hs")
 
@@ -71,7 +74,7 @@ data TxRecKey = TxRecKey
 data TxRec = TxRec
   { txRecHash         :: TxHash
   , txRecHexView      :: TxHexView
-  , txRecUnspentOutputsCount :: Word
+  , txRecUnspentOutputsCount :: Word32
   } deriving (Generic, Show, Eq, Ord, Flat)
 
 --BlockMeta
@@ -100,6 +103,21 @@ data KnownPeerRecItem = KnownPeerRecItem
   { knownPeerRecUrl             :: Text
   , knownPeerRecIsSecureConn    :: Bool
   , knownPeerRecLastValidatedAt :: Text
+  } deriving (Generic, Show, Eq, Ord, Flat)
+
+--ScannedContentHistory
+
+scannedContentHistoryRecKey :: ByteString
+scannedContentHistoryRecKey  = keyString ContentHistory $ mempty @String
+
+data ScannedContentHistoryRec = ScannedContentHistoryRec
+  { scannedContentHistoryRecLastBlock    :: BlockHeaderHashHexView
+  , scannedContentHistoryRecItems :: Seq.Seq ScannedContentHistoryRecItem
+  } deriving (Generic, Show, Eq, Ord, Flat)
+
+data ScannedContentHistoryRecItem = ScannedContentHistoryRecItem
+  { scannedContentHistoryRecItemSpentTxOuts :: Map.Map TxHash Word32
+  , scannedContentHistoryRecItemAddedTxsHash :: [TxHash]
   } deriving (Generic, Show, Eq, Ord, Flat)
 
 schemaVersionRecKey :: ByteString
