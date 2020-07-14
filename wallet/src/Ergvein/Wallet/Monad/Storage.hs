@@ -180,8 +180,8 @@ getBtcUtxoD = do
   pure $ ffor pubD $ \ps -> fromMaybe M.empty $
     ps ^. pubStorage'currencyPubStorages . at BTC & fmap (view currencyPubStorage'utxos)
 
-addOutgoingTx :: MonadStorage t m => Text -> Event t EgvTx -> m ()
-addOutgoingTx caller reqE =  void . modifyPubStorage clr $ ffor reqE $ \etx ->
+addOutgoingTx :: MonadStorage t m => Text -> Event t EgvTx -> m (Event t ())
+addOutgoingTx caller reqE =  modifyPubStorage clr $ ffor reqE $ \etx ->
   Just . modifyCurrStorage (egvTxCurrency etx) (currencyPubStorage'outgoing %~ S.insert (egvTxId etx))
   where clr = caller <> ":" <> "addOutgoingTx"
 
