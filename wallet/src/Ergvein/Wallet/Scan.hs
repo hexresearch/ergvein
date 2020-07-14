@@ -90,7 +90,7 @@ scannerBtc = void $ workflow waiting
         SyncMeta BTC (SyncBlocks 0 (fromIntegral (fh - sc))) 0 (fromIntegral (fh - sc))
       performEvent_ $ ffor newFiltersE $  \(fh, sc) -> do
         logWrite $ "Start scanning for new " <> showt (fh - sc)
-      pure ((), scanning . snd <$> newFiltersE)
+      pure ((), scanning . (+1) . snd <$> newFiltersE)
 
     scanning i0 = Workflow $ do
       logWrite "Scanning filters"
