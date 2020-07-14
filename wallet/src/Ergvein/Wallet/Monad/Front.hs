@@ -193,11 +193,11 @@ updateActiveCurs updE = do
 {-# INLINE updateActiveCurs #-}
 
 -- | Send the same requests to all URLs
-requestBroadcast :: MonadFrontAuth t m => Event t NodeReqG -> m ()
+requestBroadcast :: MonadFrontAuth t m => Event t NodeReqG -> m (Event t ())
 requestBroadcast reqE = do
   nodeReqFire <- getNodeReqFire
   nodeConnRef <- getNodeConnRef
-  performFork_ $ ffor reqE $ \req -> do
+  performFork $ ffor reqE $ \req -> do
     let cur = getNodeReqCurrency req
     reqs <- fmap ((<$) (NodeMsgReq req) . fromMaybe (M.empty) . getAllConnByCurrency cur) $ readExternalRef nodeConnRef
     liftIO . nodeReqFire $ M.singleton cur reqs

@@ -26,6 +26,7 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Node
+import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage
@@ -108,50 +109,59 @@ instance Ord UtxoPoint where
 instance HT.Coin UtxoPoint where
   coinValue = utxoMeta'amount . upMeta
 
+-- | Main confirmation & sign & send widget
 btcSendConfirmationWidget :: MonadFront t m => ((UnitBTC, Word64), Word64, EgvAddress) -> m ()
 btcSendConfirmationWidget v@((unit, amount), fee, addr) = do
   title <- balanceTitleWidget BTC
   let thisWidget = Just $ pure $ btcSendConfirmationWidget v
       navbar = navbarWidget BTC thisWidget NavbarSend
-  wrapperNavbar False title thisWidget navbar $ divClass "send-confirm-box" $ do
+  wrapperNavbar False title thisWidget navbar $ divClass "send-confirm-box" $ mdo
     psD <- getPubStorageD
     utxoKeyD <- holdUniqDyn $ do
       ps <- psD
       let utxo = ps ^. pubStorage'currencyPubStorages . at BTC & fmap (view currencyPubStorage'utxos)
           mkey = getLastUnusedKey Internal =<< pubStorageKeyStorage BTC ps
-      pure (utxo, mkey)
-
-    stxE <- fmap switchDyn $ widgetHoldDyn $ ffor utxoKeyD $ \case
-      (Nothing, _) -> confirmationErrorWidget CEMEmptyUTXO
-      (_, Nothing) -> confirmationErrorWidget CEMNoChangeKey
-      (Just utxomap, Just (changeIndex, changeKey)) -> do
+      pure $ (utxo, mkey)
+    utxoKey0 <- fmap Left $ sampleDyn utxoKeyD
+    stxE' <- eventToNextFrame stxE
+    valD <- foldDynMaybe mergeVals utxoKey0 $ leftmost [Left <$> (updated utxoKeyD), Right <$> stxE']
+    stxE <- fmap switchDyn $ widgetHoldDyn $ ffor valD $ \case
+      Left (Nothing, _) -> confirmationErrorWidget CEMEmptyUTXO
+      Left (_, Nothing) -> confirmationErrorWidget CEMNoChangeKey
+      Left (Just utxomap, Just (changeIndex, changeKey)) -> do
         let (confs, unconfs) = partition' $ M.toList utxomap
             firstpick = HT.chooseCoins amount fee 2 True $ L.sort confs
             finalpick = either (const $ HT.chooseCoins amount fee 2 True $ L.sort $ confs <> unconfs) Right firstpick
-        either' finalpick (const $ confirmationErrorWidget CEMNoSolution) $ \(pick, change) -> do
-          let keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress $ pubKeyBox'key changeKey
-          let outs = [(egvAddrToString addr, amount), (keyTxt, change)]
-          let etx = HT.buildAddrTx btcNetwork (upPoint <$> pick) outs
-          let estFee = HT.guessTxFee fee 2 $ length pick
-          confirmationInfoWidget (unit, amount) estFee addr
-          either' etx (const $ confirmationErrorWidget CEMTxBuildFail) $ \tx -> do
-            signE <- outlineButton ("Sign tx" :: Text)
-            etxE <- fmap (fmapMaybe id) $ withWallet $ (signTxWithWallet tx pick) <$ signE
-            widgetHold (pure ()) $ ffor etxE $ either (const $ void $ confirmationErrorWidget CEMSignFail) (const $ pure ())
-            handleDangerMsg $ (either (Left . T.pack) Right) <$> etxE
-    widgetHold (pure ()) $ ffor stxE $ el "h4" . text . (<>) "TxId: " . HT.txHashToHex . HT.txHash
-
-    txD <- holdDyn Nothing $ Just <$> stxE
-    addOutgoingTx "btcSendConfirmationWidget" $ (flip BtcTx Nothing) <$> stxE
-    storedE <- btcMempoolTxInserter stxE
-    requestBroadcast $ attachWithMaybe (\m _ ->
-      fmap (NodeReqBTC . MInv . Inv . pure . InvVector InvTx . HT.getTxHash . HT.txHash) m
-      ) (current txD) storedE
+        either' finalpick (const $ confirmationErrorWidget CEMNoSolution) $ \(pick, change) ->
+          txSignSendWidget addr unit amount fee changeKey change pick
+      Right (tx, unit, amount, estFee, addr) -> do
+        confirmationInfoWidget (unit, amount) estFee addr
+        el "h4" . text . (<>) "TxId: " . HT.txHashToHex . HT.txHash $ tx
+        pure never
+    widgetHold (pure ()) $ ffor stxE $ \(tx, _, _, _, _) -> do
+      sendE <- getPostBuild
+      addedE <- addOutgoingTx "btcSendConfirmationWidget" $ (BtcTx tx Nothing) <$ sendE
+      storedE <- btcMempoolTxInserter $ tx <$ addedE
+      reqE <- requestBroadcast $ ffor storedE $ const $
+        NodeReqBTC . MInv . Inv . pure . InvVector InvTx . HT.getTxHash . HT.txHash $ tx
+      goE <- el "div" $ delay 1 =<< outlineButton SendBtnBack
+      void $ nextWidget $ ffor goE $ const $ Retractable {
+            retractableNext = balancesPage
+          , retractablePrev = Nothing
+        }
     pure ()
   where
     maybe' m n j = maybe n j m
     either' e l r = either l r e
     foo b f ta = L.foldl' f b ta
+    -- Left -- utxo updates, Right -- stored tx
+    mergeVals newval origval = case (newval, origval) of
+      (Left a, Left _)    -> Just $ Left a
+      (Left _, Right _)   -> Nothing
+      (Right a, Left _)   -> Just $ Right a
+      (Right _, Right _)  -> Nothing
+
+    -- | Split utxo set into confirmed and unconfirmed points
     partition' :: [(HT.OutPoint, UtxoMeta)] -> ([UtxoPoint], [UtxoPoint])
     partition' = foo ([], []) $ \(cs, ucs) (op, meta@UtxoMeta{..}) ->
       let upoint = UtxoPoint op meta in
@@ -161,29 +171,61 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr) = do
         EUtxoSending _ -> (cs, ucs)
         EUtxoReceiving _ -> (cs, upoint:ucs)
 
--- | TODO: modify to accomodate Ergo
+-- | Simply displays the relevant information about a transaction
+-- TODO: modify to accomodate Ergo
 confirmationInfoWidget :: MonadFront t m => (UnitBTC, Word64) -> Word64 -> EgvAddress -> m ()
 confirmationInfoWidget (unit, amount) estFee addr = divClass "send-confirm-info" $ do
-  h4  $ text "Confirm the transaction"
-  mkrow "Send :" $ showMoneyUnit (mkMoney amount) us <> " " <> symbolUnit cur us
-  mkrow "To   :" $ egvAddrToString addr
-  mkrow "Fee  :" $ showt estFee <> " " <> symbolUnit cur (Units (Just BtcSat) Nothing)
-  mkrow "Total:" $ showMoneyUnit (mkMoney $ amount + estFee) us
+  h4  $ localizedText SSConfirm
+  mkrow AmountString $ showMoneyUnit (mkMoney amount) us <> " " <> symbolUnit cur us
+  mkrow RecipientString $ egvAddrToString addr
+  mkrow SSFee $ showt estFee <> " " <> symbolUnit cur (Units (Just BtcSat) Nothing)
+  mkrow SSTotal $ showMoneyUnit (mkMoney $ amount + estFee) us <> " " <> symbolUnit cur us
   where
     cur = egvAddrCurrency addr
     mkMoney = Money cur
     us = Units (Just unit) Nothing
-    mkrow :: MonadFront t m => Text -> Text -> m ()
+    mkrow :: (MonadFront t m, LocalizedPrint l) => l -> Text -> m ()
     mkrow a b = divClass "row" $ do
       divClass "col-2 mr-1" $ localizedText a
-      divClass "col-10 ta-l ml-1" $ localizedText b
+      divClass "col-10 ta-l ml-1" $ text $  ": " <> b
 
+-- | A handy patch to display various errors
 confirmationErrorWidget :: MonadFront t m => ConfirmationErrorMessage -> m (Event t a)
 confirmationErrorWidget cem = do
   el "h4" $ localizedText cem
-  el "div" $ retract =<< outlineButton ErrBackBtn
+  el "div" $ retract =<< outlineButton SendBtnBack
   pure never
 
+-- | This widget builds & signs the transaction
+txSignSendWidget :: MonadFront t m
+  => EgvAddress     -- ^ The recipient
+  -> UnitBTC        -- ^ BTC Unit to send
+  -> Word64         -- ^ Amount of BTC in the units
+  -> Word64         -- ^ Fee rate satoshi/vbyte
+  -> EgvPubKeyBox   -- ^ Keybox to send the change to
+  -> Word64         -- ^ Change
+  -> [UtxoPoint]    -- ^ List of utxo points used as inputs
+  -> m (Event t (HT.Tx, UnitBTC, Word64, Word64, EgvAddress)) -- ^ Return the Tx + all relevant information for display
+txSignSendWidget addr unit amount fee changeKey change pick = mdo
+  let keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress $ pubKeyBox'key changeKey
+  let outs = [(egvAddrToString addr, amount), (keyTxt, change)]
+  let etx = HT.buildAddrTx btcNetwork (upPoint <$> pick) outs
+  let estFee = HT.guessTxFee fee 2 $ length pick
+  confirmationInfoWidget (unit, amount) estFee addr
+  showSignD <- holdDyn True . (False <$) =<< eventToNextFrame etxE
+  etxE <- either' etx (const $ confirmationErrorWidget CEMTxBuildFail >> pure never) $ \tx -> do
+    fmap switchDyn $ widgetHoldDyn $ ffor showSignD $ \b -> if not b then pure never else do
+      signE <- outlineButton SendBtnSign
+      etxE <- fmap (fmapMaybe id) $ withWallet $ (signTxWithWallet tx pick) <$ signE
+      widgetHold (pure ()) $ ffor etxE $ either (const $ void $ confirmationErrorWidget CEMSignFail) (const $ pure ())
+      handleDangerMsg $ (either (Left . T.pack) Right) <$> etxE
+  fmap switchDyn $ widgetHold (pure never) $ ffor etxE $ \tx -> do
+    sendE <- el "div" $ outlineButton SendBtnSend
+    pure $ (tx, unit, amount, estFee, addr) <$ sendE
+  where either' e l r = either l r e
+
+-- | Sign function which has access to the private storage
+-- TODO: generate missing private keys
 signTxWithWallet :: (MonadIO m, PlatformNatives) => HT.Tx -> [UtxoPoint] -> PrvStorage -> m (Maybe (Either String HT.Tx))
 signTxWithWallet tx pick prv = do
   let PrvKeystore _ ext int = prv ^. prvStorage'currencyPrvStorages
@@ -198,9 +240,10 @@ signTxWithWallet tx pick prv = do
     maybe (logWrite errMsg >> pure Nothing) (pure . Just . (sig,)) msec
   pure $ (uncurry $ HT.signTx btcNetwork tx) <$> mvals
 
+-- | Btc fee selector
 btcFeeSelectionWidget :: forall t m . MonadFront t m
-  => Maybe (BTCFeeMode, Word64)
-  -> Event t ()
+  => Maybe (BTCFeeMode, Word64)                 -- ^ Inital mode and value
+  -> Event t ()                                 -- ^ Send event. Triggers fileds validation
   -> m (Dynamic t (Maybe (BTCFeeMode, Word64)))
 btcFeeSelectionWidget minit sendE = do
   feesD <- getFeesD
@@ -241,6 +284,7 @@ btcFeeSelectionWidget minit sendE = do
 manualFeeSelector :: MonadFront t m => Text -> m (Dynamic t FeeSelectorStatus)
 manualFeeSelector = (fmap . fmap) (maybe FSSNoManual FSSManual . readMaybe . T.unpack) . el "div" . textFieldNoLabel
 
+-- | Input field with units. Converts everything to satoshis and returns the unit
 sendAmountWidget :: MonadFront t m => Maybe (UnitBTC, Word64) -> Event t () -> m (Dynamic t (Maybe (UnitBTC, Word64)))
 sendAmountWidget minit validateE = mdo
   setUs <- fmap (fromMaybe defUnits . settingsUnits) getSettings
