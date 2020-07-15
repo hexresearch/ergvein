@@ -70,17 +70,29 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
         go current to = do
           shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
           when (not shutdownFlag && current <= to) $ do
-            blockInfo <- blockIteration to current
-            maybeLastScannedBlock <- getLastScannedBlock currency
-            if flip all maybeLastScannedBlock (== (blockMetaPreviousHeaderBlockHashHexView $ blockInfoMeta blockInfo)) then do --fork detection
-              addBlockInfo blockInfo
-              go (succ current) to
-            else do
-              revertedBlocksCount <- fromIntegral <$> revertContentHistory currency
-              logInfoN $ "Fork detected at " 
-                      <> showt current <> " " <> showt currency
-                      <> ", performing rollback of " <> showt revertedBlocksCount <> " previous blocks"
-              go (current - revertedBlocksCount) to 
+            tryBlockInfo <- (Right <$> blockIteration to current)  `catch` (\(SomeException ex) -> pure $ Left $ show ex)
+            case tryBlockInfo of
+              Right blockInfo -> do
+                maybeLastScannedBlock <- getLastScannedBlock currency
+                if flip all maybeLastScannedBlock (== (blockMetaPreviousHeaderBlockHashHexView $ blockInfoMeta blockInfo)) then do --fork detection
+                  addBlockInfo blockInfo
+                  go (succ current) to
+                else do
+                  revertedBlocksCount <- fromIntegral <$> revertContentHistory currency
+                  logInfoN $ "Fork detected at " 
+                          <> showt current <> " " <> showt currency
+                          <> ", performing rollback of " <> showt revertedBlocksCount <> " previous blocks"
+                  let restart = (current - revertedBlocksCount)
+                  setScannedHeight currency restart
+                  go restart to
+              Left errMsg -> do
+                 revertedBlocksCount <- fromIntegral <$> revertContentHistory currency
+                 logInfoN $ "Error scanning " <> showt current <> " " <> showt currency
+                 logInfoN $ showt errMsg
+                 logInfoN $ "Performing rollback of " <> showt revertedBlocksCount <> " previous blocks"
+                 let restart = (current - revertedBlocksCount)
+                 setScannedHeight currency restart
+                 go (current - revertedBlocksCount) to
 
 stopThreadIfShutdown :: Thread -> ServerM ()
 stopThreadIfShutdown thread = do

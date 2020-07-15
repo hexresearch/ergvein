@@ -30,7 +30,6 @@ import qualified Data.Serialize as S
 import qualified Data.Text as T
 import qualified Database.LevelDB as LDB
 import qualified Database.LevelDB.Streaming as LDBStreaming
-import Debug.Trace
 
 safeEntrySlice :: (MonadLDB m , Ord k, S.Serialize k, Flat v) => BS.ByteString -> k -> m [(k,v)]
 safeEntrySlice startKey endKey = do
@@ -165,12 +164,10 @@ updateContentHistory currency spentTxsHash newTxIds = do
   maybeHistory <- getParsed $ contentHistoryRecKey currency
   case maybeHistory of
     Just history | (Seq.length $ contentHistoryRecItems history) < contentHistorySize -> do
-      traceM "1"
       let updatedHistory = ContentHistoryRec (contentHistoryRecItems history Seq.|> newItem)
 
       upsertItem (contentHistoryRecKey currency) updatedHistory
     Just history -> do
-      traceM "2"
       let oldest Seq.:< restHistory = Seq.viewl $ contentHistoryRecItems history
           updatedHistory = ContentHistoryRec (restHistory Seq.|> newItem)
       
@@ -179,7 +176,6 @@ updateContentHistory currency spentTxsHash newTxIds = do
 
       upsertItem (contentHistoryRecKey currency) updatedHistory
     Nothing -> do
-      traceM "3"
       let newHistory = ContentHistoryRec $ Seq.singleton newItem
       upsertItem (contentHistoryRecKey currency) newHistory
 
@@ -197,10 +193,10 @@ revertContentHistory currency = do
   history <- getParsedExact $ contentHistoryRecKey currency
   
   let txsDeletion = LDB.Del . txRecKey <$> (contentHistoryRecItemAddedTxsHash =<< (toList $ contentHistoryRecItems history))
-      historyDeletion = LDB.Del $ contentHistoryRecKey currency
+      newHistory = LDB.Put (contentHistoryRecKey currency) $ flat (ContentHistoryRec mempty)
       lastScannedDeletion = LDB.Del $ lastScannedBlockHeaderHashRecKey currency
       blocksRestored = Seq.length $ contentHistoryRecItems history
 
-  write db def $ lastScannedDeletion : historyDeletion : txsDeletion
+  write db def $ lastScannedDeletion : newHistory : txsDeletion
 
   pure blocksRestored
