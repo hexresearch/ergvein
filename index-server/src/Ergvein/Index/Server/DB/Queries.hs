@@ -8,6 +8,7 @@ import Database.LevelDB
 import Database.LevelDB.Iterator
 import Control.Monad.Logger
 import Conversion
+import Data.Foldable
 import Data.Time.Clock
 import Control.Monad.IO.Class
 import Ergvein.Index.Server.Dependencies
@@ -98,6 +99,15 @@ updateTxSpends currency blockHash spentTxsHash newTxInfos = do
          else
           LDB.Put (txRecKey $ txRecHash info) (flat $ info { txRecUnspentOutputsCount = outputsLeft })
 
+revertContentHistory :: (MonadLDB m, MonadLogger m, HasDiscoveryRequisites m) => Currency -> m ()
+revertContentHistory currency = do
+  db <- getDb
+  history <- getParsedExact @ContentHistoryRec $ contentHistoryRecKey currency
+  let txsDeletion = LDB.Del . txRecKey <$> (contentHistoryRecItemAddedTxsHash =<< (toList $ contentHistoryRecItems history))
+      historyDeletion = LDB.Del $ contentHistoryRecKey currency
+  write db def $ historyDeletion : txsDeletion
+
+
 getKnownPeers :: (MonadLDB m, MonadLogger m, HasDiscoveryRequisites m) => Bool -> m [String]
 getKnownPeers onlySecured = do
   db <- getDb
@@ -156,7 +166,7 @@ initDb db = do
 addBlockInfo :: (MonadLDB m, MonadLogger m) => BlockInfo -> m ()
 addBlockInfo update = do
   db <- getDb
-  updateTxSpends  (blockMetaCurrency $ blockInfoMeta update)  (blockMetaHeaderHashHexView $ blockInfoMeta update) (spentTxsHash update) (blockContentTxInfos update)
+  updateTxSpends (blockMetaCurrency $ blockInfoMeta update) (blockMetaHeaderHashHexView $ blockInfoMeta update) (spentTxsHash update) (blockContentTxInfos update)
   addBlockMetaInfos [blockInfoMeta update]
   setScannedHeight (blockMetaCurrency $ blockInfoMeta update) (blockMetaBlockHeight $ blockInfoMeta update)
 
