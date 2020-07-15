@@ -21,7 +21,7 @@ import qualified Data.Serialize as S
 import qualified Data.Sequence as Seq
 import qualified Data.Map.Strict as Map
 
-data KeyPrefix = ScannedHeight | Meta | Tx | Peer | ContentHistory | SchemaVersion deriving Enum
+data KeyPrefix = ScannedHeight | Meta | Tx | Peer | LastBlockHash | ContentHistory | SchemaVersion deriving Enum
 
 schemaVersion = hash $(embedFile "src/Ergvein/Index/Server/DB/Schema.hs")
 
@@ -105,6 +105,19 @@ data KnownPeerRecItem = KnownPeerRecItem
   , knownPeerRecLastValidatedAt :: Text
   } deriving (Generic, Show, Eq, Ord, Flat)
 
+--lastScannedBlockHeaderHash
+
+lastScannedBlockHeaderHashRecKey :: Currency -> ByteString
+lastScannedBlockHeaderHashRecKey  = keyString LastBlockHash . LastScannedBlockHeaderHashRecKey
+
+data LastScannedBlockHeaderHashRecKey = LastScannedBlockHeaderHashRecKey
+  { lastScannedBlockHeaderHashRecKeyCurrency :: Currency
+  } deriving (Generic, Show, Eq, Ord, Serialize)
+
+data LastScannedBlockHeaderHashRec = LastScannedBlockHeaderHashRec
+  { lastScannedBlockHeaderHashRecHash :: BlockHeaderHashHexView
+  } deriving (Generic, Show, Eq, Ord, Flat)
+
 --ScannedContentHistory
 
 contentHistoryRecKey :: Currency -> ByteString
@@ -115,14 +128,16 @@ data ContentHistoryRecKey = ContentHistoryRecKey
   } deriving (Generic, Show, Eq, Ord, Serialize)
 
 data ContentHistoryRec = ContentHistoryRec
-  { contentHistoryRecLastBlock    :: BlockHeaderHashHexView
-  , contentHistoryRecItems        :: Seq.Seq ContentHistoryRecItem
+  { contentHistoryRecItems :: Seq.Seq ContentHistoryRecItem
   } deriving (Generic, Show, Eq, Ord, Flat)
 
 data ContentHistoryRecItem = ContentHistoryRecItem
   { contentHistoryRecItemSpentTxOuts  :: Map.Map TxHash Word32
   , contentHistoryRecItemAddedTxsHash :: [TxHash]
   } deriving (Generic, Show, Eq, Ord, Flat)
+
+contentHistorySize :: Int
+contentHistorySize = 64
 
 --SchemaVersion
 

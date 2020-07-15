@@ -10,6 +10,7 @@ data BlockMetaInfo = BlockMetaInfo
   { blockMetaCurrency      :: Currency
   , blockMetaBlockHeight   :: BlockHeight
   , blockMetaHeaderHashHexView :: BlockHeaderHashHexView
+  , blockMetaPreviousHeaderBlockHashHexView :: BlockHeaderHashHexView
   , blockMetaAddressFilterHexView :: AddressFilterHexView
   }
 
