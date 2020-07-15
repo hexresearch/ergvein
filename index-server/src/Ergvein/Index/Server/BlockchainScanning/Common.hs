@@ -50,15 +50,11 @@ actualHeight currency = case currency of
 scannerThread :: Currency -> (BlockHeight -> ServerM BlockInfo) -> ServerM Thread
 scannerThread currency scanInfo = create $ logOnException . scanIteration
   where
-    blockIteration :: BlockHeight -> BlockHeight -> ServerM ()
+    blockIteration :: BlockHeight -> BlockHeight -> ServerM BlockInfo
     blockIteration totalh blockHeight = do
       let percent = fromIntegral blockHeight / fromIntegral totalh :: Double
       logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
-      do
-        blockInfo <- scanInfo blockHeight
-        
-
-        addBlockInfo blockInfo
+      scanInfo blockHeight
 
     scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
@@ -71,11 +67,17 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
       liftIO $ cancelableDelay shutdownFlag $ cfgBlockchainScanDelay cfg
       stopThreadIfShutdown thread
       where
-        go from to = do
+        go current to = do
           shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
-          when (not shutdownFlag && from <= to) $ do
-            blockIteration to from 
-            go (succ from) to 
+          when (not shutdownFlag && current <= to) $ do
+            blockInfo <- blockIteration to current
+            maybeLastScannedBlock <- getLastScannedBlock currency
+            if flip all maybeLastScannedBlock (== (blockMetaPreviousHeaderBlockHashHexView $ blockInfoMeta blockInfo)) then do --fork detection
+              addBlockInfo blockInfo
+              go (succ current) to
+            else do
+              revertedBlocksCount <- fromIntegral <$> revertContentHistory currency
+              go (current - revertedBlocksCount) to 
 
 stopThreadIfShutdown :: Thread -> ServerM ()
 stopThreadIfShutdown thread = do
