@@ -77,6 +77,9 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
               go (succ current) to
             else do
               revertedBlocksCount <- fromIntegral <$> revertContentHistory currency
+              logInfoN $ "Fork detected at " 
+                      <> showt current <> " " <> showt currency
+                      <> ", performing rollback of " <> showt revertedBlocksCount <> " previous blocks"
               go (current - revertedBlocksCount) to 
 
 stopThreadIfShutdown :: Thread -> ServerM ()

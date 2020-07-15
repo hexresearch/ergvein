@@ -30,6 +30,7 @@ import qualified Data.Serialize as S
 import qualified Data.Text as T
 import qualified Database.LevelDB as LDB
 import qualified Database.LevelDB.Streaming as LDBStreaming
+import Debug.Trace
 
 safeEntrySlice :: (MonadLDB m , Ord k, S.Serialize k, Flat v) => BS.ByteString -> k -> m [(k,v)]
 safeEntrySlice startKey endKey = do
@@ -79,18 +80,7 @@ upsertItem key item = do
   db <- getDb
   put db def key $ flat item
 
-revertContentHistory :: (MonadLDB m, MonadLogger m, HasDiscoveryRequisites m) => Currency -> m Int
-revertContentHistory currency = do
-  db <- getDb
-  history <- getParsedExact @ContentHistoryRec $ contentHistoryRecKey currency
-  
-  let txsDeletion = LDB.Del . txRecKey <$> (contentHistoryRecItemAddedTxsHash =<< (toList $ contentHistoryRecItems history))
-      historyDeletion = LDB.Del $ contentHistoryRecKey currency
-      blocksRestored = Seq.length $ contentHistoryRecItems history
 
-  write db def $ historyDeletion : txsDeletion
-
-  pure blocksRestored
 
 getKnownPeers :: (MonadLDB m, MonadLogger m, HasDiscoveryRequisites m) => Bool -> m [String]
 getKnownPeers onlySecured = do
@@ -155,8 +145,9 @@ setLastScannedBlock currency blockHash = upsertItem (lastScannedBlockHeaderHashR
 
 getLastScannedBlock :: (MonadLDB m, MonadLogger m) => Currency -> m (Maybe BlockHeaderHashHexView)
 getLastScannedBlock currency = do
-  maybeLastScannedBlock <- getParsed @LastScannedBlockHeaderHashRec (lastScannedBlockHeaderHashRecKey currency)
+  maybeLastScannedBlock <- getParsed $ lastScannedBlockHeaderHashRecKey currency
   pure $ lastScannedBlockHeaderHashRecHash <$> maybeLastScannedBlock
+  
 
 addBlockMetaInfos :: (MonadLDB m, MonadLogger m) => [BlockMetaInfo] -> m ()
 addBlockMetaInfos infos = do
@@ -171,22 +162,25 @@ updateContentHistory currency spentTxsHash newTxIds = do
   db <- getDb
   let outSpendsAmountByTx = Map.fromListWith (+) $ (,1) <$> spentTxsHash
       newItem = ContentHistoryRecItem  outSpendsAmountByTx newTxIds
-  maybeHistory <- getParsed @ContentHistoryRec $ contentHistoryRecKey currency
+  maybeHistory <- getParsed $ contentHistoryRecKey currency
   case maybeHistory of
     Just history | (Seq.length $ contentHistoryRecItems history) < contentHistorySize -> do
+      traceM "1"
       let updatedHistory = ContentHistoryRec (contentHistoryRecItems history Seq.|> newItem)
 
       upsertItem (contentHistoryRecKey currency) updatedHistory
     Just history -> do
+      traceM "2"
       let oldest Seq.:< restHistory = Seq.viewl $ contentHistoryRecItems history
           updatedHistory = ContentHistoryRec (restHistory Seq.|> newItem)
       
-      txToUpdate <- getManyParsedExact @TxRec $ txRecKey <$> (Map.keys $ contentHistoryRecItemSpentTxOuts oldest)
+      txToUpdate <- getManyParsedExact $ txRecKey <$> (Map.keys $ contentHistoryRecItemSpentTxOuts oldest)
       write db def $ infoUpdate (contentHistoryRecItemSpentTxOuts oldest) <$> txToUpdate
 
       upsertItem (contentHistoryRecKey currency) updatedHistory
     Nothing -> do
-      let newHistory = ContentHistoryRec $ Seq.singleton newItem   
+      traceM "3"
+      let newHistory = ContentHistoryRec $ Seq.singleton newItem
       upsertItem (contentHistoryRecKey currency) newHistory
 
   where
@@ -196,3 +190,17 @@ updateContentHistory currency spentTxsHash newTxIds = do
           LDB.Del $ txRecKey $ txRecHash info
          else
           LDB.Put (txRecKey $ txRecHash info) (flat $ info { txRecUnspentOutputsCount = outputsLeft })
+
+revertContentHistory :: (MonadLDB m, MonadLogger m) => Currency -> m Int
+revertContentHistory currency = do
+  db <- getDb
+  history <- getParsedExact $ contentHistoryRecKey currency
+  
+  let txsDeletion = LDB.Del . txRecKey <$> (contentHistoryRecItemAddedTxsHash =<< (toList $ contentHistoryRecItems history))
+      historyDeletion = LDB.Del $ contentHistoryRecKey currency
+      lastScannedDeletion = LDB.Del $ lastScannedBlockHeaderHashRecKey currency
+      blocksRestored = Seq.length $ contentHistoryRecItems history
+
+  write db def $ lastScannedDeletion : historyDeletion : txsDeletion
+
+  pure blocksRestored
