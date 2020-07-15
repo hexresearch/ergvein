@@ -107,18 +107,24 @@ data KnownPeerRecItem = KnownPeerRecItem
 
 --ScannedContentHistory
 
-scannedContentHistoryRecKey :: ByteString
-scannedContentHistoryRecKey  = keyString ContentHistory $ mempty @String
+contentHistoryRecKey :: Currency -> ByteString
+contentHistoryRecKey  = keyString ContentHistory . ContentHistoryRecKey
 
-data ScannedContentHistoryRec = ScannedContentHistoryRec
-  { scannedContentHistoryRecLastBlock    :: BlockHeaderHashHexView
-  , scannedContentHistoryRecItems :: Seq.Seq ScannedContentHistoryRecItem
+data ContentHistoryRecKey = ContentHistoryRecKey
+  { contentHistoryRecKeyCurrency :: Currency
+  } deriving (Generic, Show, Eq, Ord, Serialize)
+
+data ContentHistoryRec = ContentHistoryRec
+  { contentHistoryRecLastBlock    :: BlockHeaderHashHexView
+  , contentHistoryRecItems        :: Seq.Seq ContentHistoryRecItem
   } deriving (Generic, Show, Eq, Ord, Flat)
 
-data ScannedContentHistoryRecItem = ScannedContentHistoryRecItem
-  { scannedContentHistoryRecItemSpentTxOuts :: Map.Map TxHash Word32
-  , scannedContentHistoryRecItemAddedTxsHash :: [TxHash]
+data ContentHistoryRecItem = ContentHistoryRecItem
+  { contentHistoryRecItemSpentTxOuts  :: Map.Map TxHash Word32
+  , contentHistoryRecItemAddedTxsHash :: [TxHash]
   } deriving (Generic, Show, Eq, Ord, Flat)
+
+--SchemaVersion
 
 schemaVersionRecKey :: ByteString
 schemaVersionRecKey  = keyString SchemaVersion $ mempty @String

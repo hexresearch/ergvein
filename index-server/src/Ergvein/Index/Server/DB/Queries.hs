@@ -71,25 +71,25 @@ putItems :: (Flat v) => (a -> BS.ByteString) -> (a -> v) -> [a] -> LDB.WriteBatc
 putItems keySelector valueSelector items = putI <$> items
   where putI item = LDB.Put (keySelector item) $ flat $ valueSelector item
 
-updateTxSpends  :: (MonadLDB m, MonadLogger m) => BlockHeaderHashHexView -> [TxHash] -> [TxInfo] -> m ()
-updateTxSpends blockHash spentTxsHash newTxInfos = do
+updateTxSpends  :: (MonadLDB m, MonadLogger m) => Currency ->  BlockHeaderHashHexView -> [TxHash] -> [TxInfo] -> m ()
+updateTxSpends currency blockHash spentTxsHash newTxInfos = do
   db <- getDb
   write db def $ putItems (txRecKey . txHash) (convert @_ @TxRec) newTxInfos
 
   let newTxIds = txHash <$> newTxInfos
       outSpendsAmountByTx = Map.fromListWith (+) $ (,1) <$> spentTxsHash
-      historyItem = ScannedContentHistoryRecItem  outSpendsAmountByTx newTxIds
-  history <- getParsedExact @ScannedContentHistoryRec scannedContentHistoryRecKey
+      historyItem = ContentHistoryRecItem  outSpendsAmountByTx newTxIds
+  history <- getParsedExact @ContentHistoryRec $ contentHistoryRecKey currency
 
-  if (Seq.length $ scannedContentHistoryRecItems history) < 64 then do
-    let updatedHistory = ScannedContentHistoryRec blockHash (scannedContentHistoryRecItems history Seq.|> historyItem)
-    put db def scannedContentHistoryRecKey $ flat updatedHistory
+  if (Seq.length $ contentHistoryRecItems history) < 64 then do
+    let updatedHistory = ContentHistoryRec blockHash (contentHistoryRecItems history Seq.|> historyItem)
+    put db def (contentHistoryRecKey currency) $ flat updatedHistory
   else do
-    let oldest Seq.:< xs = Seq.viewl $ scannedContentHistoryRecItems history
-        updatedHistory = ScannedContentHistoryRec blockHash (xs Seq.|> historyItem)
-    info <- getManyParsedExact @TxRec $ txRecKey <$> (Map.keys $ scannedContentHistoryRecItemSpentTxOuts oldest)
-    write db def $ infoUpdate (scannedContentHistoryRecItemSpentTxOuts oldest) <$> info
-    put db def scannedContentHistoryRecKey $ flat updatedHistory
+    let oldest Seq.:< xs = Seq.viewl $ contentHistoryRecItems history
+        updatedHistory = ContentHistoryRec blockHash (xs Seq.|> historyItem)
+    info <- getManyParsedExact @TxRec $ txRecKey <$> (Map.keys $ contentHistoryRecItemSpentTxOuts oldest)
+    write db def $ infoUpdate (contentHistoryRecItemSpentTxOuts oldest) <$> info
+    put db def (contentHistoryRecKey currency) $ flat updatedHistory
   where
     infoUpdate spendsMap info = let 
       outputsLeft = txRecUnspentOutputsCount info - spendsMap Map.! (txRecHash info)
@@ -156,7 +156,7 @@ initDb db = do
 addBlockInfo :: (MonadLDB m, MonadLogger m) => BlockInfo -> m ()
 addBlockInfo update = do
   db <- getDb
-  updateTxSpends (blockMetaHeaderHashHexView $ blockInfoMeta update) (spentTxsHash update) (blockContentTxInfos update)
+  updateTxSpends  (blockMetaCurrency $ blockInfoMeta update)  (blockMetaHeaderHashHexView $ blockInfoMeta update) (spentTxsHash update) (blockContentTxInfos update)
   addBlockMetaInfos [blockInfoMeta update]
   setScannedHeight (blockMetaCurrency $ blockInfoMeta update) (blockMetaBlockHeight $ blockInfoMeta update)
 
