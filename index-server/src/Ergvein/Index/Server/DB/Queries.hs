@@ -85,6 +85,7 @@ revertContentHistory currency = do
       blocksRestored = Seq.length $ contentHistoryRecItems history
 
   write db def $ historyDeletion : txsDeletion
+
   pure blocksRestored
 
 getKnownPeers :: (MonadLDB m, MonadLogger m, HasDiscoveryRequisites m) => Bool -> m [String]
@@ -151,7 +152,7 @@ addBlockInfo update = do
   updateContentHistory targetCurrency (spentTxsHash update) (txHash <$> blockContentTxInfos update)
   addBlockMetaInfos [blockInfoMeta update]
   setLastScannedBlock targetCurrency newBlockHash
-  setScannedHeight (blockMetaCurrency $ blockInfoMeta update) (blockMetaBlockHeight $ blockInfoMeta update)
+  setScannedHeight targetCurrency (blockMetaBlockHeight $ blockInfoMeta update)
 
 setLastScannedBlock :: (MonadLDB m, MonadLogger m) => Currency -> BlockHeaderHashHexView -> m ()
 setLastScannedBlock currency blockHash = do
@@ -176,21 +177,25 @@ updateContentHistory  :: (MonadLDB m, MonadLogger m) => Currency -> [TxHash] -> 
 updateContentHistory currency spentTxsHash newTxIds = do
   db <- getDb
   let outSpendsAmountByTx = Map.fromListWith (+) $ (,1) <$> spentTxsHash
-      historyItem = ContentHistoryRecItem  outSpendsAmountByTx newTxIds
+      newItem = ContentHistoryRecItem  outSpendsAmountByTx newTxIds
   maybeHistory <- getParsed @ContentHistoryRec $ contentHistoryRecKey currency
   case maybeHistory of
     Just history | (Seq.length $ contentHistoryRecItems history) < contentHistorySize -> do
-      let updatedHistory = ContentHistoryRec (contentHistoryRecItems history Seq.|> historyItem)
+      let updatedHistory = ContentHistoryRec (contentHistoryRecItems history Seq.|> newItem)
+
       write db def $ putItem (contentHistoryRecKey currency) updatedHistory
     Just history -> do
-      let oldest Seq.:< xs = Seq.viewl $ contentHistoryRecItems history
-          updatedHistory = ContentHistoryRec (xs Seq.|> historyItem)
-      info <- getManyParsedExact @TxRec $ txRecKey <$> (Map.keys $ contentHistoryRecItemSpentTxOuts oldest)
-      write db def $ infoUpdate (contentHistoryRecItemSpentTxOuts oldest) <$> info
+      let oldest Seq.:< restHistory = Seq.viewl $ contentHistoryRecItems history
+          updatedHistory = ContentHistoryRec (restHistory Seq.|> newItem)
+      
+      txToUpdate <- getManyParsedExact @TxRec $ txRecKey <$> (Map.keys $ contentHistoryRecItemSpentTxOuts oldest)
+      write db def $ infoUpdate (contentHistoryRecItemSpentTxOuts oldest) <$> txToUpdate
+
       write db def $ putItem (contentHistoryRecKey currency) updatedHistory
     Nothing -> do
-      let emptyHistory = ContentHistoryRec mempty
-      write db def $ putItem (contentHistoryRecKey currency) emptyHistory
+      let newHistory = ContentHistoryRec $ Seq.singleton newItem
+      
+      write db def $ putItem (contentHistoryRecKey currency) newHistory
 
   where
     infoUpdate spendsMap info = let 
