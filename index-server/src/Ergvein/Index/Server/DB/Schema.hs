@@ -1,20 +1,20 @@
 {-# LANGUAGE DeriveAnyClass #-}
 module Ergvein.Index.Server.DB.Schema where
 
+import Crypto.Hash.SHA256
 import Data.ByteString (ByteString)
 import Data.Either
+import Data.FileEmbed
 import Data.Flat
 import Data.Serialize (Serialize) 
 import Data.Text
 import Data.Text.Encoding
+import Data.Time
+import Data.Word
 import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import System.ByteOrder
-import Data.FileEmbed
-import Crypto.Hash.SHA256
-import Data.Time
-import Data.Word
 
 import qualified Data.ByteString as BS
 import qualified Data.Serialize as S

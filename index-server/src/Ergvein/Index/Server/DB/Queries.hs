@@ -1,36 +1,35 @@
 module Ergvein.Index.Server.DB.Queries where
 
 import Control.Lens
-import Data.Default
-import Data.Flat
-import Data.Maybe
-import Database.LevelDB
-import Database.LevelDB.Iterator
+import Control.Monad.IO.Class
 import Control.Monad.Logger
 import Conversion
+import Data.Default
+import Data.Flat
 import Data.Foldable
+import Data.Maybe
 import Data.Time.Clock
-import Control.Monad.IO.Class
+import Database.LevelDB
+import Database.LevelDB.Iterator
 import Ergvein.Index.Server.Dependencies
 import Servant.Client.Core
 
-import Ergvein.Index.Server.DB.Monad
-import Ergvein.Index.Server.DB.Schema
-import Ergvein.Types.Transaction
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Conversions
+import Ergvein.Index.Server.DB.Monad
+import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
-import qualified Data.Text as T
 import qualified Data.ByteString as BS
-import qualified Data.Serialize as S
 import qualified Data.Map.Strict as Map
+import qualified Data.Sequence as Seq
+import qualified Data.Serialize as S
+import qualified Data.Text as T
 import qualified Database.LevelDB as LDB
 import qualified Database.LevelDB.Streaming as LDBStreaming
-import qualified Data.Sequence as Seq
 
 safeEntrySlice :: (MonadLDB m , Ord k, S.Serialize k, Flat v) => BS.ByteString -> k -> m [(k,v)]
 safeEntrySlice startKey endKey = do
@@ -73,7 +72,12 @@ putItems keySelector valueSelector items = putI <$> items
   where putI item = LDB.Put (keySelector item) $ flat $ valueSelector item
 
 putItem :: (Flat v) => BS.ByteString -> v -> LDB.WriteBatch
-putItem key item = [LDB.Put key $ flat item]  
+putItem key item = [LDB.Put key $ flat item]
+
+upsertItem :: (Flat v, MonadLDB m, MonadLogger m) => BS.ByteString -> v -> m ()
+upsertItem key item = do
+  db <- getDb
+  put db def key $ flat item
 
 revertContentHistory :: (MonadLDB m, MonadLogger m, HasDiscoveryRequisites m) => Currency -> m Int
 revertContentHistory currency = do
@@ -90,7 +94,6 @@ revertContentHistory currency = do
 
 getKnownPeers :: (MonadLDB m, MonadLogger m, HasDiscoveryRequisites m) => Bool -> m [String]
 getKnownPeers onlySecured = do
-  db <- getDb
   knownPeers <- fmap convert <$> getParsedExact @[KnownPeerRecItem]  knownPeersRecKey
   currentTime <- liftIO getCurrentTime
   actualizationDelay <- (/1000000) . fromIntegral . descReqActualizationDelay <$> getDiscoveryRequisites
@@ -109,35 +112,28 @@ getKnownPeers onlySecured = do
 
 getKnownPeersList :: (MonadLDB m, MonadLogger m) => m [Peer]
 getKnownPeersList = do
-  db <- getDb
   peers <- getParsedExact @[KnownPeerRecItem] knownPeersRecKey
   pure $ convert <$> peers
 
 setKnownPeersList :: (MonadLDB m, MonadLogger m) => [Peer] -> m ()
-setKnownPeersList peers = do
-  db <- getDb
-  write db def $ putItem knownPeersRecKey $ convert @_ @KnownPeerRecItem <$> peers
+setKnownPeersList peers = upsertItem knownPeersRecKey $ convert @_ @KnownPeerRecItem <$> peers
 
 addKnownPeers :: (MonadLDB m, MonadLogger m) => [Peer] -> m ()
 addKnownPeers peers = do
-  db <- getDb
   let mapped = convert @_ @KnownPeerRecItem <$> peers
   stored <- getParsedExact @[KnownPeerRecItem] knownPeersRecKey
-  write db def $ putItem knownPeersRecKey $ mapped ++ stored
+  upsertItem knownPeersRecKey $ mapped ++ stored
 
 emptyKnownPeers :: (MonadLDB m, MonadLogger m) => m ()
 emptyKnownPeers = setKnownPeersList []
 
 getScannedHeight :: (MonadLDB m, MonadLogger m) => Currency -> m (Maybe BlockHeight)
 getScannedHeight currency = do
-  db <- getDb
   stored <- getParsed $ scannedHeightTxKey currency
   pure $ scannedHeightRecHeight <$> stored
 
 setScannedHeight :: (MonadLDB m, MonadLogger m) => Currency -> BlockHeight -> m ()
-setScannedHeight currency height = do
-  db <- getDb
-  write db def $ putItem (scannedHeightTxKey currency) $ ScannedHeightRec height
+setScannedHeight currency height = upsertItem (scannedHeightTxKey currency) $ ScannedHeightRec height
 
 initDb :: DB -> IO ()
 initDb db = do
@@ -155,13 +151,10 @@ addBlockInfo update = do
   setScannedHeight targetCurrency (blockMetaBlockHeight $ blockInfoMeta update)
 
 setLastScannedBlock :: (MonadLDB m, MonadLogger m) => Currency -> BlockHeaderHashHexView -> m ()
-setLastScannedBlock currency blockHash = do
-  db <- getDb
-  write db def $ putItem (lastScannedBlockHeaderHashRecKey currency) blockHash
+setLastScannedBlock currency blockHash = upsertItem (lastScannedBlockHeaderHashRecKey currency) blockHash
 
 getLastScannedBlock :: (MonadLDB m, MonadLogger m) => Currency -> m (Maybe BlockHeaderHashHexView)
 getLastScannedBlock currency = do
-  db <- getDb
   maybeLastScannedBlock <- getParsed @LastScannedBlockHeaderHashRec (lastScannedBlockHeaderHashRecKey currency)
   pure $ lastScannedBlockHeaderHashRecHash <$> maybeLastScannedBlock
 
@@ -183,7 +176,7 @@ updateContentHistory currency spentTxsHash newTxIds = do
     Just history | (Seq.length $ contentHistoryRecItems history) < contentHistorySize -> do
       let updatedHistory = ContentHistoryRec (contentHistoryRecItems history Seq.|> newItem)
 
-      write db def $ putItem (contentHistoryRecKey currency) updatedHistory
+      upsertItem (contentHistoryRecKey currency) updatedHistory
     Just history -> do
       let oldest Seq.:< restHistory = Seq.viewl $ contentHistoryRecItems history
           updatedHistory = ContentHistoryRec (restHistory Seq.|> newItem)
@@ -191,11 +184,10 @@ updateContentHistory currency spentTxsHash newTxIds = do
       txToUpdate <- getManyParsedExact @TxRec $ txRecKey <$> (Map.keys $ contentHistoryRecItemSpentTxOuts oldest)
       write db def $ infoUpdate (contentHistoryRecItemSpentTxOuts oldest) <$> txToUpdate
 
-      write db def $ putItem (contentHistoryRecKey currency) updatedHistory
+      upsertItem (contentHistoryRecKey currency) updatedHistory
     Nothing -> do
-      let newHistory = ContentHistoryRec $ Seq.singleton newItem
-      
-      write db def $ putItem (contentHistoryRecKey currency) newHistory
+      let newHistory = ContentHistoryRec $ Seq.singleton newItem   
+      upsertItem (contentHistoryRecKey currency) newHistory
 
   where
     infoUpdate spendsMap info = let 

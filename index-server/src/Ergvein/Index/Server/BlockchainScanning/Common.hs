@@ -23,9 +23,9 @@ import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
-import qualified Network.Bitcoin.Api.Client                      as BitcoinApi
 import qualified Ergvein.Index.Server.BlockchainScanning.Bitcoin as BTCScanning
 import qualified Ergvein.Index.Server.BlockchainScanning.Ergo    as ERGOScanning
+import qualified Network.Bitcoin.Api.Client                      as BitcoinApi
 
 data ScanProgressInfo = ScanProgressInfo
   { nfoCurrency      :: !Currency
