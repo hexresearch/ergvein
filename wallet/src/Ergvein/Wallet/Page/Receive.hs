@@ -60,12 +60,12 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
       sE <- fmap (shareUrl <$) shareAddrBtn
       pure (nE, cE, sE)
     _ <- shareShareUrl shareE
-    setFlagToExtPubKey "receivePageWidget:1" $ (cur, i) <$ newE
+    setFlagToExtPubKey $ (cur, i) <$ newE
     showInfoMsg =<< clipboardCopy (keyTxt <$ copyE)
     divClass "receive-adr-andr" $ text $ "#" <> showt i <> ": " <> keyTxt
     labelD <- divClass "button-receive" $ textFieldNoLabel $ getLabelFromEgvPubKey pubKeyBox'key
     btnE <- labelAddrBtn
-    setLabelToExtPubKey "receivePageWidget:2" $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
+    setLabelToExtPubKey $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
   where
     keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress pubKeyBox'key
     shareUrl = generateURL keyTxt
