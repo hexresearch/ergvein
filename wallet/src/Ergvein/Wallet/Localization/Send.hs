@@ -20,8 +20,12 @@ data SendStrings
   | AmountString
   | BtnPasteString
   | BtnScanQRCode
-  | SignSendBtn
-  | ErrBackBtn
+  | SendBtnSign
+  | SendBtnSend
+  | SendBtnBack
+  | SSFee
+  | SSTotal
+  | SSConfirm
 
 instance LocalizedPrint SendStrings where
   localizedShow l v = case l of
@@ -32,8 +36,12 @@ instance LocalizedPrint SendStrings where
       AmountString -> "Amount"
       BtnPasteString -> "Paste"
       BtnScanQRCode -> "Scan"
-      SignSendBtn -> "Sign and send"
-      ErrBackBtn -> "Back"
+      SendBtnSign -> "Sign Tx"
+      SendBtnSend -> "Send Tx"
+      SendBtnBack -> "Back"
+      SSFee -> "Fee"
+      SSTotal -> "Total"
+      SSConfirm -> "Confirm the transaction"
     Russian -> case v of
       SendTitle c -> "Отправить " <> currencyName c
       SendBtnString -> "Отправить"
@@ -41,8 +49,12 @@ instance LocalizedPrint SendStrings where
       AmountString -> "Сумма"
       BtnPasteString -> "Вставить"
       BtnScanQRCode -> "Сканировать"
-      SignSendBtn -> "Подписать и отправить"
-      ErrBackBtn -> "Назад"
+      SendBtnSign -> "Подписать транзакцию"
+      SendBtnSend -> "Отправить транзакцию"
+      SendBtnBack -> "Назад"
+      SSFee -> "Комиссия"
+      SSTotal -> "Итого"
+      SSConfirm -> "Обзор транзакции"
 
 data BTCFeeMode = BFMLow | BFMMid | BFMHigh | BFMManual
   deriving (Eq)

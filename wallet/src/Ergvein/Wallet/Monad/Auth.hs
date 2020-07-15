@@ -225,31 +225,31 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
     authInfoD <- externalRefDynamic =<< asks env'authRef
     pure $ ffor authInfoD $ \ai -> ai ^. authInfo'storage. storage'pubStorage
   {-# INLINE getPubStorageD #-}
-  storeWallet e = do
+  storeWallet caller e = do
     ref <-  asks env'authRef
     performEvent_ $ ffor e $ \_ -> do
         authInfo <- readExternalRef ref
         let storage = _authInfo'storage authInfo
         let eciesPubKey = _authInfo'eciesPubKey authInfo
-        saveStorageToFile eciesPubKey storage
+        saveStorageToFile caller eciesPubKey storage
   {-# INLINE storeWallet #-}
 
-  modifyPubStorage fe = do
+  modifyPubStorage caller fe = do
     authRef <- asks env'authRef
     performEvent $ ffor fe $ \f -> do
       ai' <- modifyExternalRefMaybe authRef $ \ai ->
         let mps' = f (ai ^. authInfo'storage . storage'pubStorage)
         in (\a -> (a, a)) . (\ps' -> ai & authInfo'storage . storage'pubStorage .~ ps') <$> mps'
-      storeWalletPure ai'
+      storeWalletPure caller ai'
   {-# INLINE modifyPubStorage #-}
 
-storeWalletPure :: (MonadIO m, Crypto.MonadRandom m, HasStoreDir m, PlatformNatives) => Maybe AuthInfo -> m ()
-storeWalletPure mai = case mai of
+storeWalletPure :: (MonadIO m, Crypto.MonadRandom m, HasStoreDir m, PlatformNatives) => Text -> Maybe AuthInfo -> m ()
+storeWalletPure caller mai = case mai of
   Nothing -> pure ()
   Just ai -> do
     let storage = _authInfo'storage ai
     let eciesPubKey = _authInfo'eciesPubKey ai
-    saveStorageToFile eciesPubKey storage
+    saveStorageToFile caller eciesPubKey storage
 
 -- | Execute action under authorized context or return the given value as result
 -- if user is not authorized. Each time the login info changes and authInfo'isUpdate flag is set to 'False'
@@ -343,7 +343,7 @@ liftAuth ma0 ma = mdo
           indexersNetworkActualizationWorker
           feesWorker
           pure ()
-        runReaderT (wrapped ma) env
+        runReaderT (wrapped "liftAuth" ma) env
   let
     ma0' = maybe ma0 runAuthed mauth0
     newAuthInfoE = ffilter isMauthUpdate $ updated mauthD
@@ -369,13 +369,14 @@ isMauthUpdate mauth = case mauth of
 liftUnauthed :: m a -> ErgveinM t m a
 liftUnauthed ma = ReaderT $ const ma
 
-wrapped :: MonadFrontBase t m => ErgveinM t m a -> ErgveinM t m a
-wrapped ma = do
-  storeWallet =<< getPostBuild
+wrapped :: MonadFrontBase t m => Text -> ErgveinM t m a -> ErgveinM t m a
+wrapped caller ma = do
+  storeWallet clr =<< getPostBuild
   buildE <- getPostBuild
   ac <- _pubStorage'activeCurrencies <$> getPubStorage
   void . updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ ac <$ buildE
   ma
+  where clr = caller <> ":" <> "wrapped"
 
 mkTlsSettings :: (MonadIO m, PlatformNatives) => m TLSSettings
 mkTlsSettings = do

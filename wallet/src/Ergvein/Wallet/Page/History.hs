@@ -15,6 +15,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
+import Ergvein.Types.Utxo
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
@@ -30,6 +31,7 @@ import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.TimeZone
 import Ergvein.Wallet.Tx
+
 import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Worker.Node
 import Ergvein.Wallet.Wrapper
@@ -86,13 +88,19 @@ historyPage cur = do
     historyTableRow hght tr@TransactionView{..} = divButton "history-table-row" $ do
       divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ symb $ text $ showMoney txAmount
       divClass "history-date" $ text $ txDate
-      divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> confsClass) $ text $ showt confs
+      divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> confsClass) $ confsText
       pure tr
       where
         confs = txConfirmations txInfoView
-        confsClass = if (confs == 0)
-          then "unconfirmed"
+        confsClass =
+          if (confs == 0)
+            then "unconfirmed"
+          else if (confs > 0 && confs < confirmationGap)
+            then "partially-confirmed"
           else "confirmed"
+        confsText = if confs < confirmationGap
+          then text $ showt confs <> "/" <> showt confirmationGap
+          else spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" $ blank
         symb :: MonadFront t m => m a -> m a
         symb ma = case txInOut of
           TransRefill -> do
@@ -101,10 +109,6 @@ historyPage cur = do
           TransWithdraw -> do
             spanClass "history-page-sign-icon" $ elClass "i" "fas fa-minus fa-fw" blank
             ma
-        stat :: MonadFront t m => m ()
-        stat = case txStatus of
-          TransConfirmed -> spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" $ blank
-          TransUncofirmed -> spanClass "history-page-status-icon" $ elClass "i" "fas fa-question fa-fw" $ blank
 
 #ifdef ANDROID
 transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()

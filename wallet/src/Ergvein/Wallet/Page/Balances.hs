@@ -70,15 +70,24 @@ currenciesList name = divClass "currency-content" $ do
   s <- getSettings
   ps <- getPubStorage
   pubSD <- getPubStorageD
-  historyE <- leftmost <$> traverse (currencyLine s) (_pubStorage'activeCurrencies ps)
-  if (settingsPortfolio s)
-    then portfolioWidget
-    else pure ()
-  let thisWidget = Just $ pure balancesPage
-  void $ nextWidget $ ffor historyE $ \cur -> Retractable {
-    retractableNext = historyPage cur
-  , retractablePrev = thisWidget
-  }
+  let currencies = _pubStorage'activeCurrencies ps
+      thisWidget = Just $ pure balancesPage
+  if L.length currencies == 1
+    then do
+      buildE <- getPostBuild
+      void $ nextWidget $ ffor buildE $ \_ -> Retractable {
+        retractableNext = historyPage $ L.head currencies
+      , retractablePrev = Nothing
+      }
+    else do
+      historyE <- leftmost <$> traverse (currencyLine s) currencies
+      if (settingsPortfolio s)
+        then portfolioWidget
+        else pure ()
+      void $ nextWidget $ ffor historyE $ \cur -> Retractable {
+        retractableNext = historyPage cur
+      , retractablePrev = thisWidget
+      }
   where
     currencyLine settings cur = do
       (e, _) <- divClass' "currency-row" $ do

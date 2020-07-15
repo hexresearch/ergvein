@@ -60,12 +60,12 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
       sE <- fmap (shareUrl <$) shareAddrBtn
       pure (nE, cE, sE)
     _ <- shareShareUrl shareE
-    setFlagToExtPubKey $ (cur, i) <$ newE
+    setFlagToExtPubKey "receivePageWidget:1" $ (cur, i) <$ newE
     showInfoMsg =<< clipboardCopy (keyTxt <$ copyE)
     divClass "receive-adr-andr" $ text $ "#" <> showt i <> ": " <> keyTxt
     labelD <- divClass "button-receive" $ textFieldNoLabel $ getLabelFromEgvPubKey pubKeyBox'key
     btnE <- labelAddrBtn
-    setLabelToExtPubKey $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
+    setLabelToExtPubKey "receivePageWidget:2" $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
   where
     keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress pubKeyBox'key
     shareUrl = generateURL keyTxt
@@ -85,13 +85,13 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
     divClass "receive-buttons-wrapper" $ do
       newE  <- newAddrBtn
       copyE <- copyAddrBtn
-      setFlagToExtPubKey $ (cur, i) <$ newE
+      setFlagToExtPubKey "receivePageWidget:1" $ (cur, i) <$ newE
       showInfoMsg =<< clipboardCopy (keyTxt <$ copyE)
     divClass "receive-adr" $ text $ "#" <> showt i <> ": " <> keyTxt
     divClass "label-block" $ do
       labelD <- textFieldNoLabel $ getLabelFromEgvPubKey pubKeyBox'key
       btnE <- labelAddrBtn
-      setLabelToExtPubKey $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
+      setLabelToExtPubKey "receivePageWidget:2" $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
       pure ()
   where
     keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress pubKeyBox'key
