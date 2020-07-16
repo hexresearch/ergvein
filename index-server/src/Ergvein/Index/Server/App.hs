@@ -28,16 +28,21 @@ indexServerApp e = gzip def . appCors $ serve indexApi $ hoistServer indexApi (r
             , corsMethods = "PUT" : simpleMethods 
             }
 
-onShutdown :: ServerEnv -> [Thread] -> IO ()
-onShutdown env workerTreads = do
+beforeShutdown :: ServerEnv -> [Thread] -> IO ()
+beforeShutdown env workerTreads = do
   T.putStrLn $ pack "Server stop signal recivied..."
   T.putStrLn $ pack "service is stopping"
   atomically $ writeTVar (envShutdownFlag env) True
+
+afterShutdown :: ServerEnv -> [Thread] -> IO ()
+afterShutdown env workerTreads = do
   sequence_ $ wait <$> workerTreads
   T.putStrLn $ pack "service is stopped"
 
-appSettings :: IO () -> Settings
-appSettings shutdownAction = setInstallShutdownHandler shutdownHandler defaultSettings
+appSettings :: IO () -> IO () -> Settings
+appSettings beforeShutdown afterShutdown = setGracefulShutdownTimeout gracefulShutdownTimeout 
+                           $ setInstallShutdownHandler shutdownHandler defaultSettings
   where
+    gracefulShutdownTimeout = Just 4 --seconds
     shutdownHandler closeSocket =
-      void $ installHandler sigTERM (Catch $ shutdownAction >> closeSocket) Nothing
+      void $ installHandler sigTERM (Catch $ beforeShutdown >> closeSocket >> afterShutdown) Nothing
