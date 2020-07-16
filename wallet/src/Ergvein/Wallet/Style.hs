@@ -797,6 +797,9 @@ historyPageCss = do
     paddingRight $ rem 0.3
   ".history-page-status-icon" ? do
     fontSize $ pt 9
+  ".history-page-status-text-icon" ? do
+    fontSize $ pt 9
+    paddingLeft $ rem 0.5
   
 txInfoPageCss :: Css
 txInfoPageCss = do

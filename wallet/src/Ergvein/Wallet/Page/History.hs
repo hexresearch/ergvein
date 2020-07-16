@@ -60,7 +60,6 @@ historyPage cur = do
   title <- balanceTitleWidget cur
   let thisWidget = Just $ pure $ historyPage cur
       navbar = navbarWidget cur thisWidget NavbarHistory
-  (txsD, hghtD) <- transactionsGetting BTC
   goE <- case cur of
     BTC -> do
       (txsD, hghtD) <- transactionsGetting BTC
@@ -92,15 +91,21 @@ historyPage cur = do
       pure tr
       where
         confs = txConfirmations txInfoView
+        unconfirmedParents = txUnconfirmedParents
         confsClass =
           if (confs == 0)
             then "unconfirmed"
           else if (confs > 0 && confs < confirmationGap)
             then "partially-confirmed"
           else "confirmed"
-        confsText = if confs < confirmationGap
-          then text $ showt confs <> "/" <> showt confirmationGap
-          else spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" $ blank
+        confsText =
+          if confs >= confirmationGap
+            then spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" $ blank
+          else if unconfirmedParents
+            then do
+              text $ showt confs <> "/" <> showt confirmationGap
+              spanClass "history-page-status-text-icon" $ elClass "i" "fas fa-exclamation-triangle fa-fw" $ blank
+          else text $ showt confs <> "/" <> showt confirmationGap
         symb :: MonadFront t m => m a -> m a
         symb ma = case txInOut of
           TransRefill -> do
@@ -243,7 +248,7 @@ extractAddrs (PubKeystore mast ext int) = mastadr:(extadrs <> intadrs)
     extadrs = V.toList $ V.imap (\i b -> (Just i, egvXPubKeyToEgvAddress $ pubKeyBox'key b)) ext
     intadrs = V.toList $ V.imap (\i b -> (Nothing, egvXPubKeyToEgvAddress $ pubKeyBox'key b)) int
 
-transactionsGetting :: MonadFront t m => Currency -> m (Dynamic t [TransactionView],Dynamic t Word64)
+transactionsGetting :: MonadFront t m => Currency -> m (Dynamic t [TransactionView], Dynamic t Word64)
 transactionsGetting cur = do
   buildE <- delay 0.2 =<< getPostBuild
   ps <- getPubStorage
@@ -266,15 +271,15 @@ transactionsGetting cur = do
     pure $ filterTx allbtcAdrS pbs
 
   filtrTxListSE <- performFork $ ffor tzE $ \_ -> do
-    let tx = filterTx abS ps
+    let txs = filterTx abS ps
     tz <- sampleDyn tzD
     ps' <- sampleDyn pubSD
-    getAndFilterBlocks heightD allBtcAddrsD tz tx ps'
+    getAndFilterBlocks heightD allBtcAddrsD tz txs ps'
 
-  filtrTxListE <- performFork $ ffor (updated hD) $ \tx -> do
+  filtrTxListE <- performFork $ ffor (updated hD) $ \txs -> do
     tz <- sampleDyn tzD
     ps' <- sampleDyn pubSD
-    getAndFilterBlocks heightD allBtcAddrsD tz tx ps'
+    getAndFilterBlocks heightD allBtcAddrsD tz txs ps'
 
   sD <- holdDyn [] filtrTxListSE
   hS <- sampleDyn $ sD
@@ -282,15 +287,23 @@ transactionsGetting cur = do
   filtrHD <- holdDyn [] $ leftmost [filtrTxListSE, filtrTxListE]
   pure (filtrHD, heightD)
   where
-    getAndFilterBlocks heightD btcAddrsD tz tx store = do
+    getAndFilterBlocks heightD btcAddrsD tz txs store = do
       allbtcAdrS <- filtArd <$> sampleDyn btcAddrsD
       hght <- sampleDyn heightD
       liftIO $ flip runReaderT store $ do
-        blh <- traverse getBtcBlockHashByTxHash $ fmap HK.txHash $ fmap (getBtcTx) tx
+        let txHashes = fmap (HK.txHash . getBtcTx) txs
+            txsRefList = fmap (calcRefill (fmap getBtcAddr allbtcAdrS)) txs
+            parentTxsIds = (fmap . fmap) (HK.txHashToHex . HK.outPointHash . HK.prevOutput) (fmap (HK.txIn . getBtcTx) txs)
+        blh <- traverse getBtcBlockHashByTxHash txHashes
         bl <- traverse (maybe (pure Nothing) getBlockHeaderByHash) blh
-        b <- traverse (checkAddr allbtcAdrS) tx
-        let txRefList = fmap (calcRefill (fmap getBtcAddr allbtcAdrS)) tx
-        pure $ L.reverse $ L.sortOn (\tx -> txDate tx) $ fmap snd $ L.filter fst $ L.zip b (prepareTransactionView hght tz <$> txListRaw bl blh tx txRefList)
+        b <- traverse (checkAddr allbtcAdrS) txs
+        parentTxs <- sequenceA $ fmap (traverse getTxById) parentTxsIds
+        let getTxConfirmations mTx = case mTx of
+              Nothing -> 0
+              Just tx -> maybe 0 (hght -) (fmap etxMetaHeight $ getBtcTxMeta tx)
+            txParentsConfirmations = (fmap . fmap) getTxConfirmations parentTxs
+            hasUnconfirmedParents = fmap (L.any (== 0)) txParentsConfirmations
+        pure $ L.reverse $ L.sortOn (\tx -> txDate tx) $ fmap snd $ L.filter fst $ L.zip b (prepareTransactionView hght tz <$> txListRaw bl blh txs txsRefList hasUnconfirmedParents)
 
     filterTx ac pubS = case cur of
       BTC  -> fmap snd $ fromMaybe [] $ fmap Map.toList $ _currencyPubStorage'transactions <$> Map.lookup cur (_pubStorage'currencyPubStorages pubS)
@@ -308,7 +321,7 @@ transactionsGetting cur = do
     filtArd :: [(Maybe Int, EgvAddress)] -> [EgvAddress]
     filtArd madr = fmap snd $ L.filter (isJust . fst) madr
 
-    txListRaw (a:as) (b:bs) (c:cs) (d:ds) = (TxRawInfo a b c d) : txListRaw as bs cs ds
+    txListRaw (a:as) (b:bs) (c:cs) (d:ds) (e:es) = (TxRawInfo a b c d e) : txListRaw as bs cs ds es
 
 prepareTransactionView :: Word64 -> TimeZone -> TxRawInfo -> TransactionView
 prepareTransactionView hght tz TxRawInfo{..} = TransactionView {
@@ -317,6 +330,7 @@ prepareTransactionView hght tz TxRawInfo{..} = TransactionView {
   , txInOut = TransRefill
   , txInfoView = txInf
   , txStatus = TransUncofirmed
+  , txUnconfirmedParents = txUnconfParents
   }
   where
     txInf = TransactionViewInfo {
@@ -360,16 +374,16 @@ instance LocalizedPrint TransOutputType where
       TOSpent   -> "Spent"
       TOUnspent -> "Unspent"
     Russian -> case v of
-      TOSpent   -> "Потрачены"
-      TOUnspent -> "Непотрачены"
+      TOSpent   -> "Потрачен"
+      TOUnspent -> "Не потрачен"
 
 mockTransHistory :: Currency -> [TransactionView]
 mockTransHistory cur = [
-  TransactionView (moneyFromRational cur 0.63919646) "2020-04-07 14:12" TransRefill   (trMockInfo cur) TransUncofirmed
- ,TransactionView (moneyFromRational cur 0.20134303) "2020-04-07 12:30" TransWithdraw (trMockInfo cur) TransConfirmed
- ,TransactionView (moneyFromRational cur 0.40213010) "2020-04-03 10:30" TransRefill   (trMockInfo cur) TransConfirmed
- ,TransactionView (moneyFromRational cur 0.02142302) "2020-03-20 22:40" TransWithdraw (trMockInfo cur) TransConfirmed
- ,TransactionView (moneyFromRational cur 0.10024245) "2020-03-05 09:05" TransRefill   (trMockInfo cur) TransConfirmed]
+  TransactionView (moneyFromRational cur 0.63919646) "2020-04-07 14:12" TransRefill   (trMockInfo cur) TransUncofirmed False
+ ,TransactionView (moneyFromRational cur 0.20134303) "2020-04-07 12:30" TransWithdraw (trMockInfo cur) TransConfirmed False
+ ,TransactionView (moneyFromRational cur 0.40213010) "2020-04-03 10:30" TransRefill   (trMockInfo cur) TransConfirmed False
+ ,TransactionView (moneyFromRational cur 0.02142302) "2020-03-20 22:40" TransWithdraw (trMockInfo cur) TransConfirmed False
+ ,TransactionView (moneyFromRational cur 0.10024245) "2020-03-05 09:05" TransRefill   (trMockInfo cur) TransConfirmed False]
 
 trMockInfo :: Currency -> TransactionViewInfo
 trMockInfo cur = TransactionViewInfo
@@ -383,18 +397,20 @@ trMockInfo cur = TransactionViewInfo
   [("3Mx9XH35FrbpVjsDayKyvc6eSDZfjJAsx5",(moneyFromRational cur 0.13282286)),("3EVkfRx1cPWC8czue1RH4d6rTXghWyCXDS",(moneyFromRational cur 0.25622085)),("3EVkfRx1cPWC8czue1RH4d6rTXghWyCXDS",(moneyFromRational cur 0.25085875))]
 
 data TxRawInfo = TxRawInfo {
-  txMBl :: Maybe HK.BlockHeader
- ,txHBl :: Maybe HK.BlockHash
- ,txr   :: EgvTx
- ,txom  :: Money
+  txMBl                :: Maybe HK.BlockHeader
+ ,txHBl                :: Maybe HK.BlockHash
+ ,txr                  :: EgvTx
+ ,txom                 :: Money
+ ,txUnconfParents      :: Bool
 } deriving (Show)
 
 data TransactionView = TransactionView {
-  txAmount   :: Money
- ,txDate     :: Text
- ,txInOut    :: TransType
- ,txInfoView :: TransactionViewInfo
- ,txStatus   :: TransStatus
+  txAmount             :: Money
+ ,txDate               :: Text
+ ,txInOut              :: TransType
+ ,txInfoView           :: TransactionViewInfo
+ ,txStatus             :: TransStatus
+ ,txUnconfirmedParents :: Bool
 } deriving (Show)
 
 data TransactionViewInfo = TransactionViewInfo {
