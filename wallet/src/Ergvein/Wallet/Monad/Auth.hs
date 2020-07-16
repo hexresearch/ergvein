@@ -31,7 +31,6 @@ import Ergvein.Types.Fees
 import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Filters.Loader
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Language
@@ -76,7 +75,6 @@ data Env t = Env {
 , env'manager         :: !(MVar Manager)
 , env'filtersStorage  :: !FiltersStorage
 , env'filtersHeights  :: !(ExternalRef t (Map Currency HS.BlockHeight))
-, env'blocksStorage   :: !BlocksStorage
 , env'syncProgress    :: !(ExternalRef t SyncProgress)
 , env'heightRef       :: !(ExternalRef t (Map Currency Integer))
 , env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
@@ -104,10 +102,6 @@ instance Monad m => HasFiltersStorage t (ErgveinM t m) where
   {-# INLINE getFiltersStorage #-}
   getFiltersHeightRef = asks env'filtersHeights
   {-# INLINE getFiltersHeightRef #-}
-
-instance Monad m => HasBlocksStorage (ErgveinM t m) where
-  getBlocksStorage = asks env'blocksStorage
-  {-# INLINE getBlocksStorage #-}
 
 instance MonadIO m => HasClientManager (ErgveinM t m) where
   getClientManager = liftIO . readMVar =<< asks env'manager
@@ -231,31 +225,31 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
     authInfoD <- externalRefDynamic =<< asks env'authRef
     pure $ ffor authInfoD $ \ai -> ai ^. authInfo'storage. storage'pubStorage
   {-# INLINE getPubStorageD #-}
-  storeWallet e = do
+  storeWallet caller e = do
     ref <-  asks env'authRef
     performEvent_ $ ffor e $ \_ -> do
         authInfo <- readExternalRef ref
         let storage = _authInfo'storage authInfo
         let eciesPubKey = _authInfo'eciesPubKey authInfo
-        saveStorageToFile eciesPubKey storage
+        saveStorageToFile caller eciesPubKey storage
   {-# INLINE storeWallet #-}
 
-  modifyPubStorage fe = do
+  modifyPubStorage caller fe = do
     authRef <- asks env'authRef
     performEvent $ ffor fe $ \f -> do
       ai' <- modifyExternalRefMaybe authRef $ \ai ->
         let mps' = f (ai ^. authInfo'storage . storage'pubStorage)
         in (\a -> (a, a)) . (\ps' -> ai & authInfo'storage . storage'pubStorage .~ ps') <$> mps'
-      storeWalletPure ai'
+      storeWalletPure caller ai'
   {-# INLINE modifyPubStorage #-}
 
-storeWalletPure :: (MonadIO m, Crypto.MonadRandom m, HasStoreDir m, PlatformNatives) => Maybe AuthInfo -> m ()
-storeWalletPure mai = case mai of
+storeWalletPure :: (MonadIO m, Crypto.MonadRandom m, HasStoreDir m, PlatformNatives) => Text -> Maybe AuthInfo -> m ()
+storeWalletPure caller mai = case mai of
   Nothing -> pure ()
   Just ai -> do
     let storage = _authInfo'storage ai
     let eciesPubKey = _authInfo'eciesPubKey ai
-    saveStorageToFile eciesPubKey storage
+    saveStorageToFile caller eciesPubKey storage
 
 -- | Execute action under authorized context or return the given value as result
 -- if user is not authorized. Each time the login info changes and authInfo'isUpdate flag is set to 'False'
@@ -301,7 +295,6 @@ liftAuth ma0 ma = mdo
         syncRef         <- newExternalRef Synced
         filtersStore    <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
         filtersHeights  <- newExternalRef mempty
-        blocksStore     <- liftIO $ runReaderT openBlocksStorage (settingsStoreDir settings)
         heightRef       <- newExternalRef (fmap (maybe 0 fromIntegral . _currencyPubStorage'height) . _pubStorage'currencyPubStorages $ ps)
         fsyncRef        <- newExternalRef mempty
         consRef         <- newExternalRef mempty
@@ -324,7 +317,6 @@ liftAuth ma0 ma = mdo
               , env'manager = managerRef
               , env'filtersStorage = filtersStore
               , env'filtersHeights = filtersHeights
-              , env'blocksStorage = blocksStore
               , env'syncProgress = syncRef
               , env'heightRef = heightRef
               , env'filtersSyncRef = fsyncRef
@@ -351,7 +343,7 @@ liftAuth ma0 ma = mdo
           indexersNetworkActualizationWorker
           feesWorker
           pure ()
-        runReaderT (wrapped ma) env
+        runReaderT (wrapped "liftAuth" ma) env
   let
     ma0' = maybe ma0 runAuthed mauth0
     newAuthInfoE = ffilter isMauthUpdate $ updated mauthD
@@ -377,13 +369,14 @@ isMauthUpdate mauth = case mauth of
 liftUnauthed :: m a -> ErgveinM t m a
 liftUnauthed ma = ReaderT $ const ma
 
-wrapped :: MonadFrontBase t m => ErgveinM t m a -> ErgveinM t m a
-wrapped ma = do
-  storeWallet =<< getPostBuild
+wrapped :: MonadFrontBase t m => Text -> ErgveinM t m a -> ErgveinM t m a
+wrapped caller ma = do
+  storeWallet clr =<< getPostBuild
   buildE <- getPostBuild
   ac <- _pubStorage'activeCurrencies <$> getPubStorage
   void . updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ ac <$ buildE
   ma
+  where clr = caller <> ":" <> "wrapped"
 
 mkTlsSettings :: (MonadIO m, PlatformNatives) => m TLSSettings
 mkTlsSettings = do

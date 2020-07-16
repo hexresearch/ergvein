@@ -7,6 +7,7 @@ module Ergvein.Types.Utxo
   , isUtxoConfirmed
   , updateBtcUtxoSetPure
   , reconfirmBtxUtxoSetPure
+  , confirmationGap
   ) where
 
 import Data.Aeson

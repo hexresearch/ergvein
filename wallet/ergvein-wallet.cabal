@@ -26,16 +26,12 @@ library
         Ergvein.Wallet.Alert
         Ergvein.Wallet.Alert.Handler
         Ergvein.Wallet.Alert.Type
-        Ergvein.Wallet.Blocks.BTC
-        Ergvein.Wallet.Blocks.BTC.Queries
-        Ergvein.Wallet.Blocks.BTC.Types
-        Ergvein.Wallet.Blocks.Storage
-        Ergvein.Wallet.Blocks.Types
         Ergvein.Wallet.Camera
         Ergvein.Wallet.Client
         Ergvein.Wallet.Clipboard
         Ergvein.Wallet.Codec
         Ergvein.Wallet.Currencies
+        Ergvein.Wallet.Debug
         Ergvein.Wallet.Elements
         Ergvein.Wallet.Embed
         Ergvein.Wallet.Embed.TH
@@ -94,6 +90,7 @@ library
         Ergvein.Wallet.Navbar.Types
         Ergvein.Wallet.Node
         Ergvein.Wallet.Node.BTC
+        Ergvein.Wallet.Node.BTC.Blocks
         Ergvein.Wallet.Node.ERGO
         Ergvein.Wallet.Node.Prim
         Ergvein.Wallet.Node.Socket
@@ -134,6 +131,7 @@ library
         Ergvein.Wallet.Tx
         Ergvein.Wallet.Util
         Ergvein.Wallet.Validate
+        Ergvein.Wallet.Widget.Balance
         Ergvein.Wallet.Widget.GraphPinCode
         Ergvein.Wallet.Worker.Fees
         Ergvein.Wallet.Worker.Height

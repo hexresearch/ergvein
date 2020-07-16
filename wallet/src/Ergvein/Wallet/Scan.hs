@@ -5,11 +5,14 @@ module Ergvein.Wallet.Scan (
 
 import Control.Lens
 import Control.Monad.IO.Class
+import Control.Monad.Reader
 import Data.Bifunctor (second)
 import Data.ByteString (ByteString)
 import Data.List
 import Data.Maybe (fromMaybe, isNothing)
 import Data.Vector (Vector)
+import Network.Haskoin.Address (addrToString)
+
 import Ergvein.Aeson
 import Ergvein.Crypto.Keys
 import Ergvein.Text
@@ -21,14 +24,13 @@ import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
-import Ergvein.Wallet.Blocks.BTC
-import Ergvein.Wallet.Blocks.Storage
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Log.Event
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Node.BTC.Blocks
 import Ergvein.Wallet.Storage.Constants
 import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Storage.Util (addXPubKeyToKeystore)
@@ -46,8 +48,6 @@ import qualified Network.Haskoin.Block              as HB
 import qualified Network.Haskoin.Script             as HS
 import qualified Network.Haskoin.Transaction        as HT
 
-import Network.Haskoin.Address (addrToString)
-
 -- | Widget that continuously scans new filters agains all known public keys and
 -- updates transactions that are found.
 scanner :: MonadFront t m => m ()
@@ -60,7 +60,7 @@ scanner = do
 scannerFor :: MonadFront t m => Currency -> m ()
 scannerFor cur = case cur of
   BTC -> do
-    reconfirmBtxUtxoSet . updated . fmap fromIntegral =<< watchFiltersHeight BTC
+    reconfirmBtxUtxoSet "scannerFor" . updated . fmap fromIntegral =<< watchFiltersHeight BTC
     scannerBtc
   _ -> pure ()
 
@@ -113,7 +113,7 @@ scanningAllBtcKeys i0 = do
   scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses i0 updSync $ xPubToBtcAddr . extractXPubKeyFromEgv . scanBox'key <$> keys
   let heightE = fst <$> scanE
       hashesE = V.toList . snd <$> scanE
-  writeWalletsScannedHeight $ ((BTC, ) . fromIntegral) <$> heightE
+  writeWalletsScannedHeight "scanningAllBtcKeys" $ ((BTC, ) . fromIntegral) <$> heightE
   performEvent_ $ ffor scanE $ \(h, bls) -> logWrite $ "Scanned all keys up to " <> showt h <> ", blocks to check: " <> showt bls
   scanningBtcBlocks keys hashesE
 
@@ -144,26 +144,28 @@ scanningBtcBlocks keys hashesE = do
   let rhashesE = fmap (nub . fst . unzip) $ hashesE
   _ <-logEvent "Blocks requested: " rhashesE
   blocksE <- requestBTCBlocks rhashesE
-  storedBlocks <- storeMultipleBlocksTxHashesByE =<< storeMultipleBlocksByE blocksE
+  storedBlocks <- storeBlockHeadersE "scanningBtcBlocks" BTC blocksE
   let toAddr = xPubToBtcAddr . extractXPubKeyFromEgv
       blkHeightE = current heightMapD `attach` storedBlocks
   txsUpdsE <- logEvent "Transactions got: " =<< getAddressesTxs ((\(a,b) -> (keys,a,b)) <$> blkHeightE)
-  insertTxsUtxoInPubKeystore BTC txsUpdsE
-  removeOutgoingTxs BTC $ (M.elems . M.unions . V.toList . snd . V.unzip . fst) <$> txsUpdsE
+  insertTxsUtxoInPubKeystore "scanningBtcBlocks" BTC txsUpdsE
+  removeOutgoingTxs "scanningBtcBlocks" BTC $ (M.elems . M.unions . V.toList . snd . V.unzip . fst) <$> txsUpdsE
   pure $ leftmost [(V.any (not . M.null . snd)) . fst <$> txsUpdsE, False <$ noScanE]
 
 -- | Extract transactions that correspond to given address.
 getAddressesTxs :: MonadFront t m
   => Event t (Vector ScanKeyBox, M.Map HB.BlockHash HB.BlockHeight, [HB.Block])
   -> m (Event t (Vector (ScanKeyBox, M.Map TxId EgvTx), BtcUtxoUpdate))
-getAddressesTxs e = performFork $ ffor e $ \(addrs, heights, blocks) -> do
-  (vec, b) <- fmap V.unzip $ traverse (getAddrTxsFromBlocks heights blocks) addrs
-  let (outs, ins) = V.unzip b
-  let upds :: BtcUtxoUpdate = (M.unions $ V.toList outs, mconcat $ V.toList ins)
-  pure (vec, upds)
+getAddressesTxs e = do
+  psD <- getPubStorageD
+  performFork $ ffor (current psD `attach` e) $ \(ps, (addrs, heights, blocks)) -> liftIO $ flip runReaderT ps $ do
+    (vec, b) <- fmap V.unzip $ traverse (getAddrTxsFromBlocks heights blocks) addrs
+    let (outs, ins) = V.unzip b
+    let upds :: BtcUtxoUpdate = (M.unions $ V.toList outs, mconcat $ V.toList ins)
+    pure (vec, upds)
 
 -- | Gets transactions related to given address from given block.
-getAddrTxsFromBlocks :: (MonadIO m, HasBlocksStorage m, PlatformNatives)
+getAddrTxsFromBlocks :: (HasPubStorage m, PlatformNatives)
   => M.Map HB.BlockHash HB.BlockHeight
   -> [HB.Block]
   -> ScanKeyBox
@@ -174,7 +176,7 @@ getAddrTxsFromBlocks heights blocks box = do
   let upds = (M.unions outs, mconcat ins)
   pure $ ((box, M.unions txMaps), upds)
 
-getAddrTxsFromBlock :: (MonadIO m, HasBlocksStorage m, PlatformNatives)
+getAddrTxsFromBlock :: (HasPubStorage m, PlatformNatives)
   => ScanKeyBox
   -> M.Map HB.BlockHash HB.BlockHeight
   -> HB.Block

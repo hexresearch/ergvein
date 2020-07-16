@@ -124,6 +124,15 @@ textColor = rgb 0 0 0
 hoverColor :: Color
 hoverColor = rgb 112 112 112
 
+textSuccess :: Color
+textSuccess = rgb 40 167 69
+
+textWarning :: Color
+textWarning = rgb 255 193 7
+
+textDanger :: Color
+textDanger = rgb 220 53 69
+
 majorBackground :: Color
 majorBackground = rgb 255 255 255
 
@@ -176,7 +185,7 @@ headerCss = do
     display flex
     alignItems stretch
     fontSize $ pt 14
-  ".header-wallet-name" ? do
+  ".header-wallet-text" ? do
     width $ pct 100
     padding (rem 1) (rem 0) (rem 1) (rem 0)
   ".header-button" ? do
@@ -212,7 +221,7 @@ navbarCss = do
   ".navbar" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1, fr 1]
-    paddingBottom $ rem 1
+    padding (rem 0) (rem 1) (rem 0) (rem 1)
   ".navbar-item" ? do
     padding (rem 1) (rem 1) (rem 1) (rem 1)
     cursor pointer
@@ -396,7 +405,7 @@ initialPageCss = do
     width maxContent
     margin (rem 0) auto (rem 0) auto
   ".text-pin-code-error" ? do
-    color $ rgb 190 0 0
+    color textDanger
 
 balancesPageCss :: Css
 balancesPageCss = do
@@ -559,7 +568,7 @@ networkPageCss = do
     marginRight $ em 0.5
     color red
   ".net-refresh-btn" ? do
-    height   $ em 3.8
+    height $ em 3.8
     verticalAlign vAlignTop
   ".net-btns-3" ? do
     display grid
@@ -761,13 +770,14 @@ historyPageCss = do
     alignItems center
     justifyContent flexEnd
   ".history-unconfirmed" ? do
-    color $ rgb 120 0 0
+    color textDanger
+  ".history-partially-confirmed" ? do
+    color textWarning
   ".history-confirmed" ? do
-    color $ rgb 0 120 0
+    color textSuccess
   ".history-table-row" ? do
     fontSize $ px 16
-    paddingTop $ rem 1.5
-    paddingBottom $ rem 1.5
+    padding (rem 1.5) (rem 1) (rem 1.5) (rem 1)
     display grid
     gridTemplateColumns [fr 3, fr 3, fr 1]
   ".history-table-row:hover" ? do
@@ -775,12 +785,12 @@ historyPageCss = do
   ".history-amount-transrefill" ? do
     display flex
     alignItems center
-    color $ rgb 0 120 0
+    color textSuccess
     textAlign $ alignSide sideLeft
   ".history-amount-transwithdraw" ? do
     display flex
     alignItems center
-    color $ rgb 120 0 0
+    color textDanger
     textAlign $ alignSide sideLeft
   ".history-page-sign-icon" ? do
     fontSize $ pt 7
@@ -901,7 +911,7 @@ graphPinCodeCanvasCss = do
   ".graph-pin-code-canvas-error" ? do
     position relative
     backgroundColor $ rgb 255 230 230
-    border solid (px 1) $ rgb 190 0 0
+    border solid (px 1) textDanger
     borderRadius (px 5) (px 5) (px 5) (px 5)
     let px' = px 0 in padding px' px' px' px'
     marginLeft auto
