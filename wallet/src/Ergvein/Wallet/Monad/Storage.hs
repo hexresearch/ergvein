@@ -22,6 +22,7 @@ module Ergvein.Wallet.Monad.Storage
   , storeBlockHeadersE
   ) where
 
+import Control.Concurrent.MVar
 import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
@@ -66,6 +67,7 @@ class (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t m | m -> t where
   getPubStorageD         :: m (Dynamic t PubStorage)
   storeWallet            :: Text -> Event t () -> m ()
   modifyPubStorage       :: Text -> Event t (PubStorage -> Maybe PubStorage) -> m (Event t ())
+  getStoreMutex          :: m (MVar ())
 
 -- ===========================================================================
 --           MonadStorage helpers
