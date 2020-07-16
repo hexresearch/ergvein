@@ -800,6 +800,16 @@ input[type='text']:focus
   text-align : center;
 }
 
+.word-break-all
+{
+  word-break : break-all;
+}
+
+.font-bold
+{
+  font-weight : bold;
+}
+
 .link
 {
   color           : #000000;
