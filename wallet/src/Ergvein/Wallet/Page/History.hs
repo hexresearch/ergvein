@@ -15,6 +15,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
+import Ergvein.Types.Utxo
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
@@ -30,6 +31,7 @@ import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.TimeZone
 import Ergvein.Wallet.Tx
+
 import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Worker.Node
 import Ergvein.Wallet.Wrapper
@@ -84,18 +86,17 @@ historyPageWeird cur = do
     } -}
 
 historyPage :: MonadFront t m => Currency -> m ()
-historyPage cur = wrapper False (HistoryTitle cur) (Just $ pure $ historyPage cur) $ do
-  ps <- getPubStorage
-  pubSD <- getPubStorageD
+historyPage cur = do
+  title <- balanceTitleWidget cur
   let thisWidget = Just $ pure $ historyPage cur
-      historyWidget = historyTableWidget cur $ mockTransHistory cur
+      navbar = navbarWidget cur thisWidget NavbarHistory
   navbarWidget cur thisWidget NavbarHistory
-  goE <- historyWidget
+  goE <- historyTableWidget cur $ mockTransHistory cur
   void $ nextWidget $ ffor goE $ \tr -> Retractable {
       retractableNext = transactionInfoPage cur tr
     , retractablePrev = thisWidget
     }
-
+{-
 historyPage2 :: MonadFront t m => Currency -> m ()
 historyPage2 cur = wrapper False (HistoryTitle cur) (Just $ pure $ historyPage cur) $ do
   ps <- getPubStorage
@@ -108,6 +109,7 @@ historyPage2 cur = wrapper False (HistoryTitle cur) (Just $ pure $ historyPage c
       retractableNext = transactionInfoPageD cur tr
     , retractablePrev = thisWidget
     }
+-}
 
 #ifdef ANDROID
 transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
@@ -313,8 +315,11 @@ historyTableRow tr@TransactionView{..} = divButton "history-table-row" $ do
   pure tr
   where
     confs = txConfirmations txInfoView
-    confsClass = if (confs == 0)
-      then "unconfirmed"
+    confsClass =
+      if (confs == 0)
+        then "unconfirmed"
+      else if (confs > 0 && confs < confirmationGap)
+        then "partially-confirmed"
       else "confirmed"
     symb :: MonadFront t m => m a -> m a
     symb ma = case txInOut of

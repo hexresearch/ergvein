@@ -22,6 +22,7 @@ module Ergvein.Wallet.Monad.Storage
   , storeBlockHeadersE
   ) where
 
+import Control.Concurrent.MVar
 import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
@@ -66,6 +67,7 @@ class (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t m | m -> t where
   getPubStorageD         :: m (Dynamic t PubStorage)
   storeWallet            :: Text -> Event t () -> m ()
   modifyPubStorage       :: Text -> Event t (PubStorage -> Maybe PubStorage) -> m (Event t ())
+  getStoreMutex          :: m (MVar ())
 
 -- ===========================================================================
 --           MonadStorage helpers
@@ -180,8 +182,8 @@ getBtcUtxoD = do
   pure $ ffor pubD $ \ps -> fromMaybe M.empty $
     ps ^. pubStorage'currencyPubStorages . at BTC & fmap (view currencyPubStorage'utxos)
 
-addOutgoingTx :: MonadStorage t m => Text -> Event t EgvTx -> m ()
-addOutgoingTx caller reqE =  void . modifyPubStorage clr $ ffor reqE $ \etx ->
+addOutgoingTx :: MonadStorage t m => Text -> Event t EgvTx -> m (Event t ())
+addOutgoingTx caller reqE =  modifyPubStorage clr $ ffor reqE $ \etx ->
   Just . modifyCurrStorage (egvTxCurrency etx) (currencyPubStorage'outgoing %~ S.insert (egvTxId etx))
   where clr = caller <> ":" <> "addOutgoingTx"
 

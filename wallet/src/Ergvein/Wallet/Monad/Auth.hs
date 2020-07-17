@@ -89,6 +89,7 @@ data Env t = Env {
 , env'nodeReqSelector :: !(RequestSelector t)
 , env'nodeReqFire     :: !(Map Currency (Map SockAddr NodeMessage) -> IO ())
 , env'feesStore       :: !(ExternalRef t (Map Currency FeeBundle))
+, env'storeMutex      :: !(MVar ())
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -235,21 +236,25 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   {-# INLINE storeWallet #-}
 
   modifyPubStorage caller fe = do
-    authRef <- asks env'authRef
+    authRef   <- asks env'authRef
+    mutex     <- asks env'storeMutex
+    storeDir  <- asks env'storeDir
     performEvent $ ffor fe $ \f -> do
-      ai' <- modifyExternalRefMaybe authRef $ \ai ->
+      mai <- modifyExternalRefMaybe authRef $ \ai ->
         let mps' = f (ai ^. authInfo'storage . storage'pubStorage)
         in (\a -> (a, a)) . (\ps' -> ai & authInfo'storage . storage'pubStorage .~ ps') <$> mps'
-      storeWalletPure caller ai'
+      liftIO $ storeWalletIO caller storeDir mutex mai
   {-# INLINE modifyPubStorage #-}
+  getStoreMutex = asks env'storeMutex
+  {-# INLINE getStoreMutex #-}
 
-storeWalletPure :: (MonadIO m, Crypto.MonadRandom m, HasStoreDir m, PlatformNatives) => Text -> Maybe AuthInfo -> m ()
-storeWalletPure caller mai = case mai of
+storeWalletIO :: PlatformNatives => Text -> Text -> MVar () -> Maybe AuthInfo -> IO ()
+storeWalletIO caller storeDir mutex mai = case mai of
   Nothing -> pure ()
   Just ai -> do
     let storage = _authInfo'storage ai
     let eciesPubKey = _authInfo'eciesPubKey ai
-    saveStorageToFile caller eciesPubKey storage
+    withMVar mutex $ const $ flip runReaderT storeDir $ saveStorageToFile caller eciesPubKey storage
 
 -- | Execute action under authorized context or return the given value as result
 -- if user is not authorized. Each time the login info changes and authInfo'isUpdate flag is set to 'False'
@@ -299,6 +304,7 @@ liftAuth ma0 ma = mdo
         fsyncRef        <- newExternalRef mempty
         consRef         <- newExternalRef mempty
         feesRef         <- newExternalRef mempty
+        storeMvar       <- liftIO $ newMVar ()
         let env = Env {
                 env'settings = settingsRef
               , env'backEF = backEF
@@ -331,6 +337,7 @@ liftAuth ma0 ma = mdo
               , env'nodeReqSelector = sel
               , env'nodeReqFire = reqFire
               , env'feesStore = feesRef
+              , env'storeMutex = storeMvar
               }
         runOnUiThreadM $ runReaderT setupTlsManager env
 
