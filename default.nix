@@ -26,6 +26,7 @@ let
       reflex-dom-retractable = ./retractable;
       reflex-external-ref = ./reflex-external-ref;
       reflex-localize = ./reflex-localize;
+      ui-playground = ./ui-playground;
       x509-android = ./x509-android;
     };
     shells = {
@@ -51,6 +52,7 @@ let
         "reflex-dom-retractable"
         "reflex-external-ref"
         "reflex-localize"
+        "ui-playground"
       ];
     };
     overrides = import ./overrides.nix { inherit reflex-platform; };

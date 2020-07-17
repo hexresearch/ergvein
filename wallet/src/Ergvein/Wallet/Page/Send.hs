@@ -176,18 +176,22 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr) = do
 confirmationInfoWidget :: MonadFront t m => (UnitBTC, Word64) -> Word64 -> EgvAddress -> m ()
 confirmationInfoWidget (unit, amount) estFee addr = divClass "send-confirm-info" $ do
   h4  $ localizedText SSConfirm
-  mkrow AmountString $ showMoneyUnit (mkMoney amount) us <> " " <> symbolUnit cur us
-  mkrow RecipientString $ egvAddrToString addr
-  mkrow SSFee $ showt estFee <> " " <> symbolUnit cur (Units (Just BtcSat) Nothing)
-  mkrow SSTotal $ showMoneyUnit (mkMoney $ amount + estFee) us <> " " <> symbolUnit cur us
+  divClass "mb-1 ml-1 mr-1" $ do
+    mkrow AmountString $ showMoneyUnit (mkMoney amount) us <> " " <> symbolUnit cur us
+    mkrow RecipientString $ egvAddrToString addr
+    mkrow SSFee $ showt estFee <> " " <> symbolUnit cur (Units (Just BtcSat) Nothing)
+    mkrow SSTotal $ showMoneyUnit (mkMoney $ amount + estFee) us <> " " <> symbolUnit cur us
   where
     cur = egvAddrCurrency addr
     mkMoney = Money cur
     us = Units (Just unit) Nothing
     mkrow :: (MonadFront t m, LocalizedPrint l) => l -> Text -> m ()
-    mkrow a b = divClass "row" $ do
-      divClass "col-2 mr-1" $ localizedText a
-      divClass "col-10 ta-l ml-1" $ text $  ": " <> b
+    mkrow a b = divClass "ta-l" $ do
+      lD <- getLanguage
+      elClass "span" "font-bold" $ dynText $ do
+        l <- lD
+        pure $ localizedShow l a <> ":"
+      elClass "span" "word-break-all ml-1" $ text b
 
 -- | A handy patch to display various errors
 confirmationErrorWidget :: MonadFront t m => ConfirmationErrorMessage -> m (Event t a)

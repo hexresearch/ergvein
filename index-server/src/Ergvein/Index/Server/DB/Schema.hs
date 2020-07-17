@@ -1,24 +1,27 @@
 {-# LANGUAGE DeriveAnyClass #-}
 module Ergvein.Index.Server.DB.Schema where
 
+import Crypto.Hash.SHA256
 import Data.ByteString (ByteString)
 import Data.Either
+import Data.FileEmbed
 import Data.Flat
 import Data.Serialize (Serialize) 
 import Data.Text
 import Data.Text.Encoding
+import Data.Time
+import Data.Word
 import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import System.ByteOrder
-import Data.FileEmbed
-import Crypto.Hash.SHA256
-import Data.Time
 
 import qualified Data.ByteString as BS
 import qualified Data.Serialize as S
+import qualified Data.Sequence as Seq
+import qualified Data.Map.Strict as Map
 
-data KeyPrefix = ScannedHeight | Meta | Tx | Peer | SchemaVersion deriving Enum
+data KeyPrefix = ScannedHeight | Meta | Tx | Peer | LastBlockHash | ContentHistory | SchemaVersion deriving Enum
 
 schemaVersion = hash $(embedFile "src/Ergvein/Index/Server/DB/Schema.hs")
 
@@ -71,7 +74,7 @@ data TxRecKey = TxRecKey
 data TxRec = TxRec
   { txRecHash         :: TxHash
   , txRecHexView      :: TxHexView
-  , txRecUnspentOutputsCount :: Word
+  , txRecUnspentOutputsCount :: Word32
   } deriving (Generic, Show, Eq, Ord, Flat)
 
 --BlockMeta
@@ -101,6 +104,42 @@ data KnownPeerRecItem = KnownPeerRecItem
   , knownPeerRecIsSecureConn    :: Bool
   , knownPeerRecLastValidatedAt :: Text
   } deriving (Generic, Show, Eq, Ord, Flat)
+
+--lastScannedBlockHeaderHash
+
+lastScannedBlockHeaderHashRecKey :: Currency -> ByteString
+lastScannedBlockHeaderHashRecKey  = keyString LastBlockHash . LastScannedBlockHeaderHashRecKey
+
+data LastScannedBlockHeaderHashRecKey = LastScannedBlockHeaderHashRecKey
+  { lastScannedBlockHeaderHashRecKeyCurrency :: Currency
+  } deriving (Generic, Show, Eq, Ord, Serialize)
+
+data LastScannedBlockHeaderHashRec = LastScannedBlockHeaderHashRec
+  { lastScannedBlockHeaderHashRecHash :: BlockHeaderHashHexView
+  } deriving (Generic, Show, Eq, Ord, Flat)
+
+--ScannedContentHistory
+
+contentHistoryRecKey :: Currency -> ByteString
+contentHistoryRecKey  = keyString ContentHistory . ContentHistoryRecKey
+
+data ContentHistoryRecKey = ContentHistoryRecKey
+  { contentHistoryRecKeyCurrency :: Currency
+  } deriving (Generic, Show, Eq, Ord, Serialize)
+
+data ContentHistoryRec = ContentHistoryRec
+  { contentHistoryRecItems :: Seq.Seq ContentHistoryRecItem
+  } deriving (Generic, Show, Eq, Ord, Flat)
+
+data ContentHistoryRecItem = ContentHistoryRecItem
+  { contentHistoryRecItemSpentTxOuts  :: Map.Map TxHash Word32
+  , contentHistoryRecItemAddedTxsHash :: [TxHash]
+  } deriving (Generic, Show, Eq, Ord, Flat)
+
+contentHistorySize :: Int
+contentHistorySize = 64
+
+--SchemaVersion
 
 schemaVersionRecKey :: ByteString
 schemaVersionRecKey  = keyString SchemaVersion $ mempty @String

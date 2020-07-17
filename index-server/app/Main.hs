@@ -72,7 +72,7 @@ startServer Options{..} = case optsCommand of
       workerThreads <- runServerMIO env $ onStartup env
       T.putStrLn $ pack $ "Server started at:" <> (show . cfgServerPort $ cfg)
 
-      let settings = appSettings $ onShutdown env workerThreads
+      let settings = appSettings (beforeShutdown env workerThreads) (afterShutdown env workerThreads)
           app = logStdoutDev $ indexServerApp env
           warpSettings = setPort (cfgServerPort cfg) settings
       runSettings warpSettings app

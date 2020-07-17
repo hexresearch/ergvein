@@ -45,10 +45,10 @@ blockTxInfos block txBlockHeight nodeNetwork = do
   let (txInfos , spentTxsIds) = mconcat $ txInfo <$> HK.blockTxns block
 
   uniqueSpentTxs <- mapM spentTxSource $ uniqueElements spentTxsIds
-
-  let blockHeaderHashHexView = HK.blockHashToHex $ HK.headerHash $ HK.blockHeader block
   blockAddressFilter <- fmap HK.encodeHex $ encodeBtcAddrFilter =<< makeBtcFilter nodeNetwork uniqueSpentTxs block
-  let blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHashHexView blockAddressFilter
+  let blockHeaderHashHexView = HK.blockHashToHex $ HK.headerHash $ HK.blockHeader block
+      prevBlockHeaderHashHexView = HK.blockHashToHex $ HK.prevBlock $ HK.blockHeader block
+      blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHashHexView prevBlockHeaderHashHexView blockAddressFilter
 
   pure $ BlockInfo blockMeta spentTxsIds txInfos
   where
