@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedLists #-}
-module Ergvein.Wallet.Style(
-    compileFrontendCss
+{-# LANGUAGE CPP #-}
+
+module Style (
+    compileFrontendText
   ) where
 
 import Clay
@@ -8,18 +10,15 @@ import Clay.Selector
 import Clay.Display
 import Clay.Stylesheet (prefixed)
 import Control.Monad
-import Data.ByteString (ByteString)
-import Data.ByteString.Lazy (toStrict)
 import Data.Text (Text)
-import Data.Text.Lazy.Encoding (encodeUtf8)
-import Ergvein.Wallet.Embed
-import Ergvein.Wallet.Embed.TH
-import Ergvein.Wallet.Platform
-import Language.Javascript.JSaddle hiding ((#))
+import Data.Text.Lazy (toStrict)
 import Prelude hiding ((**), rem)
 
 import qualified Clay.Media as M
 import qualified Clay.Flexbox as F
+
+isAndroid :: Bool
+isAndroid = True
 
 data Resources = Resources {
   robotoBlackUrl       :: !Text
@@ -43,37 +42,30 @@ data Resources = Resources {
 , fasolid900woff2Url   :: !Text
 }
 
-embedResources :: MonadJSM m => m Resources
+embedResources :: Resources
 embedResources = Resources
-  <$> createObjectURL robotBlack
-  <*> createObjectURL robotoBold
-  <*> createObjectURL robotoMedium
-  <*> createObjectURL robotoRegular
-  <*> createObjectURL fabrands400eot
-  <*> createObjectURL fabrands400svg
-  <*> createObjectURL fabrands400ttf
-  <*> createObjectURL fabrands400woff
-  <*> createObjectURL fabrands400woff2
-  <*> createObjectURL faregular400eot
-  <*> createObjectURL faregular400svg
-  <*> createObjectURL faregular400ttf
-  <*> createObjectURL faregular400woff
-  <*> createObjectURL faregular400woff2
-  <*> createObjectURL fasolid900eot
-  <*> createObjectURL fasolid900svg
-  <*> createObjectURL fasolid900ttf
-  <*> createObjectURL fasolid900woff
-  <*> createObjectURL fasolid900woff2
+  "fonts/Roboto-Black.ttf"
+  "fonts/Roboto-Bold.ttf"
+  "fonts/Roboto-Medium.ttf"
+  "fonts/Roboto-Regular.ttf"
+  "fonts/fa-brands-400.eot"
+  "fonts/fa-brands-400.svg"
+  "fonts/fa-brands-400.ttf"
+  "fonts/fa-brands-400.woff"
+  "fonts/fa-brands-400.woff2"
+  "fonts/fa-regular-400.eot"
+  "fonts/fa-regular-400.svg"
+  "fonts/fa-regular-400.ttf"
+  "fonts/fa-regular-400.woff"
+  "fonts/fa-regular-400.woff2"
+  "fonts/fa-solid-900.eot"
+  "fonts/fa-solid-900.svg"
+  "fonts/fa-solid-900.ttf"
+  "fonts/fa-solid-900.woff"
+  "fonts/fa-solid-900.woff2"
 
-compileFrontendCss :: MonadJSM m => m ByteString
-compileFrontendCss = do
-  r <- embedResources
-  pure $ frontendCssBS r
-
-frontendCssBS :: Resources -> ByteString
-frontendCssBS r = let
-  selfcss = toStrict . encodeUtf8 . renderWith compact [] $ frontendCss r
-  in milligramCss <> tooltipCss <> fontawesomeCss <> selfcss
+compileFrontendText :: Text
+compileFrontendText = toStrict . render . frontendCss $ embedResources
 
 frontendCss :: Resources -> Css
 frontendCss r = do
@@ -797,10 +789,7 @@ historyPageCss = do
     paddingRight $ rem 0.3
   ".history-page-status-icon" ? do
     fontSize $ pt 9
-  ".history-page-status-text-icon" ? do
-    fontSize $ pt 9
-    paddingLeft $ rem 0.5
-  
+
 txInfoPageCss :: Css
 txInfoPageCss = do
   ".tx-info-page" ? do
