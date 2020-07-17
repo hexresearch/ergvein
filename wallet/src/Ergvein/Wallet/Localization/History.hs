@@ -22,8 +22,9 @@ data HistoryPageStrings =
   | HistoryNoTxs
   | HistoryUnconfirmed
   | HistoryUnconfirmedParents
-  | HistoryUnknown
-  | HistoryUndefined
+  | HistoryTIBlockUndefined
+  | HistoryTIAddressUndefined
+  | HistoryTIFeeUndefined
   | HistoryTITitle
   | HistoryTIVolume
   | HistoryTIHash
@@ -48,8 +49,9 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryNoTxs              -> "No transactions yet"
       HistoryUnconfirmed        -> "Unconfirmed"
       HistoryUnconfirmedParents -> "Unconfirmed parents"
-      HistoryUnknown            -> "Unknown"
-      HistoryUndefined          -> "Undefined"
+      HistoryTIBlockUndefined   -> "The transaction is not yet included in a block"
+      HistoryTIAddressUndefined -> "Failed to decode address"
+      HistoryTIFeeUndefined     -> "Unknown"
       HistoryTITitle            -> "Transaction info"
       HistoryTIVolume           -> "Volume"
       HistoryTIHash             -> "Hash"
@@ -69,8 +71,9 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryNoTxs              -> "Транзакций нет"
       HistoryUnconfirmed        -> "Не подтверждена"
       HistoryUnconfirmedParents -> "Родительские транзакции не подтверждены"
-      HistoryUnknown            -> "Не известен"
-      HistoryUndefined          -> "Не определен"
+      HistoryTIBlockUndefined   -> "Транзакция еще не включена в блок"
+      HistoryTIAddressUndefined -> "Не удалось декодировать адрес"
+      HistoryTIFeeUndefined     -> "Неизвестно"
       HistoryTITitle            -> "Информация о транзакции"
       HistoryTIVolume           -> "Объем"
       HistoryTIHash             -> "Хэш"
