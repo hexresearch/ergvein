@@ -323,7 +323,7 @@ transactionsGetting cur = do
         parentTxs <- sequenceA $ fmap (traverse getTxById) parentTxsIds
         let getTxConfirmations mTx = case mTx of
               Nothing -> 0
-              Just tx -> maybe 0 (hght -) (fmap etxMetaHeight $ getBtcTxMeta tx)
+              Just tx -> maybe 0 (\x -> hght - x + 1) (fmap etxMetaHeight $ getBtcTxMeta tx)
             txParentsConfirmations = (fmap . fmap) getTxConfirmations parentTxs
             hasUnconfirmedParents = fmap (L.any (== 0)) txParentsConfirmations
         pure $ L.reverse $ L.sortOn txDate $ fmap snd $ L.filter fst $ L.zip b (prepareTransactionView hght tz <$> txListRaw bl blh txs txsRefList hasUnconfirmedParents)
