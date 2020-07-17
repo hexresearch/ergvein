@@ -113,7 +113,7 @@ historyPage2 cur = wrapper False (HistoryTitle cur) (Just $ pure $ historyPage c
 
 #ifdef ANDROID
 transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
-transactionInfoPage cur tr@TransactionView{..} = wrapper False HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) $ divClass "tx-info-page" $ do
+transactionInfoPage cur tr@TransactionView{..} = wrapperTitle False HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) $ divClass "tx-info-page" $ do
   (hashD, hashE, copiedHashE) <- divClass "tx-info-page-element" $ mdo
     hashD' <- expD hashE' hashD'
     hashE' <- expHead hashD' HistoryTIHash
@@ -185,7 +185,7 @@ transactionInfoPage cur tr@TransactionView{..} = wrapper False HistoryTITitle (J
       expPar copyD txt
 #else
 transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
-transactionInfoPage cur tr@TransactionView{..} = wrapper False HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) $ divClass "tx-info-page" $ do
+transactionInfoPage cur tr@TransactionView{..} = wrapperTitle False HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) $ divClass "tx-info-page" $ do
   infoPageElementExp HistoryTIHash $ txId txInfoView
   case (txLabel txInfoView) of
     Just lbl -> infoPageElement HistoryTILabel lbl
@@ -213,7 +213,7 @@ transactionInfoPage cur tr@TransactionView{..} = wrapper False HistoryTITitle (J
     pure ()
 
 transactionInfoPageD :: MonadFront t m => Currency -> Dynamic t TransactionView -> m ()
-transactionInfoPageD cur trD = void $ widgetHoldDyn $ ffor trD $ \tr@TransactionView{..} -> wrapper False HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) $ divClass "tx-info-page" $ do
+transactionInfoPageD cur trD = void $ widgetHoldDyn $ ffor trD $ \tr@TransactionView{..} -> wrapperTitle False HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) $ divClass "tx-info-page" $ do
   infoPageElementExp HistoryTIHash $ txId txInfoView
   case (txLabel txInfoView) of
     Just lbl -> infoPageElement HistoryTILabel lbl
