@@ -288,7 +288,8 @@ transactionsGetting cur = do
       liftIO $ flip runReaderT store $ do
         blh <- traverse getBtcBlockHashByTxHash $ fmap HK.txHash $ fmap (getBtcTx) tx
         bl <- traverse (maybe (pure Nothing) getBlockHeaderByHash) blh
-        b <- traverse (checkAddr allbtcAdrS) tx
+        txStore <- getTxStorage cur
+        b <- flip runReaderT txStore $ traverse (checkAddr allbtcAdrS) tx
         let txRefList = fmap (calcRefill (fmap getBtcAddr allbtcAdrS)) tx
         pure $ L.reverse $ L.sortOn (\tx -> txDate tx) $ fmap snd $ L.filter fst $ L.zip b (prepareTransactionView hght tz <$> txListRaw bl blh tx txRefList)
 
@@ -300,7 +301,7 @@ transactionsGetting cur = do
         BtcTx btx _ -> Money cur $ sum $ fmap (HK.outValue . snd) $ L.filter (maybe False (flip elem ac . fromSegWit) . fst) $ fmap (\txo -> (getSegWitAddr txo,txo)) $ HK.txOut btx
         ErgTx etx _ -> Money cur 0
 
-    checkAddr :: (HasPubStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m Bool
+    checkAddr :: (HasTxStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m Bool
     checkAddr ac tx = do
       bL <- traverse (flip checkAddrTx (getBtcTx tx)) ac
       pure $ L.or bL
