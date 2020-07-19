@@ -12,24 +12,40 @@ import Ergvein.Index.Protocol.Serialization
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Server.Monad
 import Control.Monad.IO.Unlift
+import Control.Immortal
+import Control.Monad.Logger
+import Ergvein.Index.Server.Environment
+import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.Dependencies
+import Control.Concurrent.STM
 
 import qualified Network.Socket.ByteString as NS
 
-tcpSrv :: ServerM ()
-tcpSrv = do
+runTcpSrv :: ServerM Thread
+runTcpSrv = create $ logOnException . tcpSrv
+
+tcpSrv :: Thread -> ServerM ()
+tcpSrv thread = do
+  port <- fromIntegral . cfgServerTcpPort <$> serverConfig
   unlift <- askUnliftIO
   liftIO $ withSocketsDo $ do
     sock <- socket AF_INET Stream 0
     setSocketOption sock ReuseAddr 1
-    bind sock (SockAddrInet 4242 iNADDR_ANY)
+    bind sock (SockAddrInet port iNADDR_ANY)
     listen sock 2
-    unliftIO unlift $ mainLoop sock
+    unliftIO unlift $ mainLoop thread sock
 
-mainLoop :: Socket -> ServerM ()
-mainLoop sock = do
-  conn <- liftIO $ accept sock
-  forkIO <$> (toIO $ runConn conn)
-  mainLoop sock
+mainLoop :: Thread -> Socket -> ServerM ()
+mainLoop thread sock = go sock
+  where 
+  go s = do
+    conn <- liftIO $ accept sock
+    forkIO <$> (toIO $ runConn conn)
+    shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
+    if shutdownFlag then
+      go s
+    else
+      liftIO $ stop thread
 
 runConn :: (Socket, SockAddr) -> ServerM ()
 runConn (sock, _) = do

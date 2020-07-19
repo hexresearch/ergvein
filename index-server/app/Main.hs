@@ -60,8 +60,8 @@ onStartup env = do
   feeWorkers <- feesScanning
   peerIntroduce
   knownPeersActualization
-  liftIO $ forkIO tcpSrv
-  pure $ scanningWorkers ++ feeWorkers
+  tcpServerThread <- runTcpSrv
+  pure $ tcpServerThread : scanningWorkers ++ feeWorkers
 
 startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of

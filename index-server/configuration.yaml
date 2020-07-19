@@ -1,4 +1,5 @@
 serverPort               : 8085
+serverTcpPort            : 8667
 dbPath                   : "./ergveinDb"
 BTCNodeIsTestnet         : true
 BTCNodeHost              : localhost

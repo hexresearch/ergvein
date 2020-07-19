@@ -14,6 +14,7 @@ import Database.LevelDB.Base
 import Network.Bitcoin.Api.Types
 import Network.HTTP.Client.TLS
 import Servant.Client.Core
+import Control.Immortal
 
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB
@@ -105,3 +106,4 @@ logOnException = handle logE
             logErrorN $ "Killed by " <> showt (typeOf eTy) <> showt eTy
             liftIO $ threadDelay 1000000
             throwM e
+

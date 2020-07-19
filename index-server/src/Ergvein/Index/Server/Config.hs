@@ -11,6 +11,7 @@ import Ergvein.Aeson
 
 data Config = Config
   { cfgServerPort               :: !Int
+  , cfgServerTcpPort            :: !Int
   , cfgDBPath                   :: !String
   , cfgBlockchainScanDelay      :: !Int
   , cfgBTCNodeIsTestnet         :: !Bool
@@ -36,6 +37,7 @@ loadConfig path = liftIO $ loadYamlSettings [path] [] useEnv
 instance FromJSON Config where
   parseJSON = withObject "Config" $ \o -> do
     cfgServerPort               <- o .: "serverPort"
+    cfgServerTcpPort            <- o .: "serverTcpPort"
     cfgDBPath                   <- o .:? "dbPath" .!= "./ergveinDb"
     cfgBTCNodeIsTestnet         <- o .: "BTCNodeIsTestnet"
     cfgBTCNodeHost              <- o .: "BTCNodeHost"

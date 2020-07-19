@@ -94,11 +94,6 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
                  setScannedHeight currency restart
                  go (current - revertedBlocksCount) to
 
-stopThreadIfShutdown :: Thread -> ServerM ()
-stopThreadIfShutdown thread = do
-  shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
-  when shutdownFlag $ liftIO $ stop thread
-
 blockchainScanning :: ServerM [Thread]
 blockchainScanning = sequenceA
   [ scannerThread BTC  BTCScanning.blockInfo

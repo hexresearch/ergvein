@@ -17,6 +17,7 @@ import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
+import Control.Immortal
 
 import qualified Data.Map.Strict as M
 import qualified Network.Bitcoin.Api.Client  as BitcoinApi
@@ -95,3 +96,9 @@ instance MonadFees ServerM where
   setFees cur fb = do
     feeVar <- asks envFeeEstimates
     liftIO $ atomically $ modifyTVar feeVar $ M.insert cur fb
+
+
+stopThreadIfShutdown :: Thread -> ServerM ()
+stopThreadIfShutdown thread = do
+  shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
+  when shutdownFlag $ liftIO $ stop thread
