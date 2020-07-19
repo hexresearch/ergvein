@@ -55,190 +55,110 @@ import qualified Network.Haskoin.Constants          as HK
 import qualified Network.Haskoin.Script             as HK
 import qualified Network.Haskoin.Transaction        as HK
 import qualified Network.Haskoin.Util               as HK
-{-
-historyPageWeird :: MonadFront t m => Currency -> m ()
-historyPageWeird cur = do
-  title <- balanceTitleWidget cur
-  let thisWidget = Just $ pure $ historyPage cur
-      navbar = navbarWidget cur thisWidget NavbarHistory
-  (txsD, hghtD) <- transactionsGetting BTC
-  goE <- case cur of
-    BTC -> do
-      (txsD, hghtD) <- transactionsGetting BTC
-      txClickDE <- widgetHoldDyn $ ffor txsD $ \txs ->
-        if L.null txs
-          then
-            wrapperNavbar True title thisWidget navbar $ do
-              localizedText HistoryNoTxs
-              pure never
-          else
-            wrapperNavbar False title thisWidget navbar $ do
-              hght <- sampleDyn hghtD
-              txClickE <- traverse (historyTableRow hght) txs
-              pure $ leftmost txClickE
-      pure $ switchDyn txClickDE
-    ERGO -> do
-      txClickE <- traverse (historyTableRow 0) (mockTransHistory cur)
-      pure $ leftmost txClickE
-  void $ nextWidget $ ffor goE $ \tr -> Retractable {
-      retractableNext = transactionInfoPage cur tr
-    , retractablePrev = thisWidget
-    } -}
 
 historyPage :: MonadFront t m => Currency -> m ()
 historyPage cur = do
   title <- balanceTitleWidget cur
   let thisWidget = Just $ pure $ historyPage cur
       navbar = navbarWidget cur thisWidget NavbarHistory
-  navbarWidget cur thisWidget NavbarHistory
-  goE <- historyTableWidget cur $ mockTransHistory cur
+  goE <- wrapperNavbar False title thisWidget navbar $ historyTableWidget cur $ mockTransHistory cur
   void $ nextWidget $ ffor goE $ \tr -> Retractable {
       retractableNext = transactionInfoPage cur tr
     , retractablePrev = thisWidget
     }
-{-
-historyPage2 :: MonadFront t m => Currency -> m ()
-historyPage2 cur = wrapper False (HistoryTitle cur) (Just $ pure $ historyPage cur) $ do
-  ps <- getPubStorage
-  pubSD <- getPubStorageD
-  let thisWidget = Just $ pure $ historyPage cur
-      historyWidget = historyTableWidgetD cur $ mockTransHistory cur
-  navbarWidget cur thisWidget NavbarHistory
-  goE <- historyWidget
-  void $ nextWidget $ ffor goE $ \tr -> Retractable {
-      retractableNext = transactionInfoPageD cur tr
-    , retractablePrev = thisWidget
-    }
--}
 
 #ifdef ANDROID
 transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
-transactionInfoPage cur tr@TransactionView{..} = wrapperTitle False HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) $ divClass "tx-info-page" $ do
-  (hashD, hashE, copiedHashE) <- divClass "tx-info-page-element" $ mdo
-    hashD' <- expD hashE' hashD'
-    hashE' <- expHead hashD' HistoryTIHash
-    copiedHashE' <- copyDiv hashD' $ txId txInfoView
-    pure (hashD', hashE', copiedHashE')
-  case (txLabel txInfoView) of
-    Just lbl -> divClass "tx-info-page-element" $ do
-      par $ bold $ localizedText HistoryTILabel
-      par $ text lbl
-    Nothing -> pure ()
-  divClass "tx-info-page-element" $ do
-    let url = txUrl txInfoView
-    par $ bold $ localizedText HistoryTIURL
-    parClass "tx-info-page-expanded" $ hyperlink "link" url url
-  divClass "tx-info-page-element" $ do
-    par $ bold $ localizedText HistoryTIVolume
-    par $ text $ showMoney txAmount <> " " <> showt cur
-  divClass "tx-info-page-element" $ do
-    par $ bold $ localizedText HistoryTIFee
-    par $ text $ maybe "unknown" (\a -> (showMoney a) <> " " <> showt cur) $ txFee txInfoView
-  divClass "tx-info-page-element" $ do
-    par $ bold $ localizedText HistoryTIConfirmations
-    par $ text $ showt $ txConfirmations txInfoView
-  (blockD, blockE, copiedBlockE) <- divClass "tx-info-page-element" $ mdo
-    blockD' <- expD blockE' blockD'
-    blockE' <- expHead blockD' HistoryTIBlock
-    copiedBlockE' <- copyDiv blockD' $ txBlock txInfoView
-    pure (blockD', blockE', copiedBlockE')
-  divClass "tx-info-page-element" $ do
-    par $ bold $ localizedText HistoryTIOutputs
-    divClass "tx-info-page-outputs-inputs" $ do
-      flip traverse (txOutputs txInfoView) $ \(oAddress, oValue, oStatus) -> do
-        divClass "pr-1" $ localizedText HistoryTIOutputsValue
-        divClass "" $ text $ showMoney oValue <> " " <> showt cur
-        divClass "pr-1" $ localizedText HistoryTIOutputsAddress
-        divClass "tx-info-page-expanded" $ text $ oAddress
-        divClass "mb-1 pr-1" $ localizedText HistoryTIOutputsStatus
-        divClass "mb-1" $ localizedText oStatus
-  divClass "tx-info-page-element" $ do
-    par $ bold $ localizedText HistoryTIInputs
-    divClass "tx-info-page-outputs-inputs" $ do
+transactionInfoPage cur tr@TransactionView{..} = do
+  title <- localized HistoryTITitle
+  wrapper False title (Just $ pure $ transactionInfoPage cur tr) $ divClass "tx-info-page" $ do
+    (hashD, hashE, copiedHashE) <- divClass "tx-info-page-element" $ mdo
+      hashD' <- expD hashE' hashD'
+      hashE' <- expHead hashD' HistoryTIHash
+      copiedHashE' <- copyDiv hashD' $ txId txInfoView
+      pure (hashD', hashE', copiedHashE')
+    case (txLabel txInfoView) of
+        Just lbl -> infoPageElement HistoryTILabel lbl
+        Nothing -> pure ()
+    infoPageElementExpEl HistoryTIURL $ hyperlink "link" (txUrl txInfoView) (txUrl txInfoView)
+    infoPageElement HistoryTIVolume $ showMoney txAmount <> " " <> showt cur
+    infoPageElement HistoryTIFee $ maybe "unknown" (\a -> (showMoney a) <> " " <> showt cur) $ txFee txInfoView
+    infoPageElement HistoryTIConfirmations $ showt $ txConfirmations txInfoView
+    (blockD, blockE, copiedBlockE) <- divClass "tx-info-page-element" $ mdo
+      blockD' <- expD blockE' blockD'
+      blockE' <- expHead blockD' HistoryTIBlock
+      copiedBlockE' <- copyDiv blockD' $ txBlock txInfoView
+      pure (blockD', blockE', copiedBlockE')
+    infoPageElementEl HistoryTIOutputs $ divClass "tx-info-page-outputs-inputs" $ do
+        flip traverse (txOutputs txInfoView) $ \(oAddress, oValue, oStatus) -> do
+          divClass "pr-1" $ localizedText HistoryTIOutputsValue
+          divClass "" $ text $ showMoney oValue <> " " <> showt cur
+          divClass "pr-1" $ localizedText HistoryTIOutputsAddress
+          divClass "tx-info-page-expanded" $ text $ oAddress
+          divClass "mb-1 pr-1" $ localizedText HistoryTIOutputsStatus
+          divClass "mb-1" $ localizedText oStatus
+        pure ()
+    infoPageElementEl HistoryTIInputs $ divClass "tx-info-page-outputs-inputs" $ do
+        flip traverse (txInputs txInfoView) $ \(oAddress, oValue) -> do
+          divClass "pr-1" $ localizedText HistoryTIOutputsValue
+          divClass "" $ text $ showMoney oValue <> " " <> showt cur
+          divClass "pr-1 mb-1" $ localizedText HistoryTIOutputsAddress
+          divClass "tx-info-page-expanded mb-1" $ text $ oAddress
+        pure ()
+    let copiedE = leftmost[
+            (txId txInfoView) <$ copiedHashE
+          , (txBlock txInfoView) <$ copiedBlockE
+          ]
+    cE <- clipboardCopy $ copiedE
+    showSuccessMsg $ CSCopied <$ cE
+    pure ()
+    where
+      expD expE expD' = holdDyn Minified $ poke expE $ \_ -> do
+        st <- sampleDyn expD'
+        case st of
+          Minified -> pure Expanded
+          Expanded -> pure Minified
+      expPar statD txt = widgetHoldDyn $ ffor statD $ \exStatus -> case exStatus of
+        Minified -> parClass "tx-info-page-minified" $ text txt
+        Expanded -> parClass "tx-info-page-expanded" $ text txt
+      expHead statD txt = divButton "tx-info-page-expand-buttton-wrapper" $ par $ bold $ do
+        localizedText txt
+        widgetHoldDyn $ ffor statD $ \exStatus -> case exStatus of
+          Minified -> elClass "i" "tx-info-page-expand-buttton fas fa-caret-down" $ blank
+          Expanded -> elClass "i" "tx-info-page-expand-buttton fas fa-caret-up" $ blank
+      copyDiv copyD txt = divButton "tx-info-page-copy" $ do
+        expPar copyD txt
+#else
+transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
+transactionInfoPage cur tr@TransactionView{..} = do
+  title <- localized HistoryTITitle
+  wrapper False title (Just $ pure $ transactionInfoPage cur tr) $ divClass "tx-info-page" $ do
+    infoPageElementExp HistoryTIHash $ txId txInfoView
+    case (txLabel txInfoView) of
+      Just lbl -> infoPageElement HistoryTILabel lbl
+      Nothing -> pure ()
+    infoPageElementExpEl HistoryTIURL $ hyperlink "link" (txUrl txInfoView) (txUrl txInfoView)
+    infoPageElement HistoryTIVolume $ showMoney txAmount <> " " <> showt cur
+    infoPageElement HistoryTIFee $ maybe "unknown" (\a -> (showMoney a) <> " " <> showt cur) $ txFee txInfoView
+    infoPageElement HistoryTIConfirmations $ showt $ txConfirmations txInfoView
+    infoPageElementExp HistoryTIBlock $ txBlock txInfoView
+    infoPageElementEl HistoryTIOutputs $ divClass "tx-info-page-outputs-inputs" $ do
+        flip traverse (txOutputs txInfoView) $ \(oAddress, oValue, oStatus) -> do
+          divClass "pr-1" $ localizedText HistoryTIOutputsValue
+          divClass "" $ text $ showMoney oValue <> " " <> showt cur
+          divClass "pr-1" $ localizedText HistoryTIOutputsAddress
+          divClass "tx-info-page-expanded" $ text $ oAddress
+          divClass "mb-1 pr-1" $ localizedText HistoryTIOutputsStatus
+          divClass "mb-1" $ localizedText oStatus
+        pure ()
+    infoPageElementEl HistoryTIInputs $ divClass "tx-info-page-outputs-inputs" $ do
       flip traverse (txInputs txInfoView) $ \(oAddress, oValue) -> do
         divClass "pr-1" $ localizedText HistoryTIOutputsValue
         divClass "" $ text $ showMoney oValue <> " " <> showt cur
         divClass "pr-1 mb-1" $ localizedText HistoryTIOutputsAddress
         divClass "tx-info-page-expanded mb-1" $ text $ oAddress
-  let copiedE = leftmost[
-          (txId txInfoView) <$ copiedHashE
-        , (txBlock txInfoView) <$ copiedBlockE
-        ]
-  cE <- clipboardCopy $ copiedE
-  showSuccessMsg $ CSCopied <$ cE
-  pure ()
-  where
-    expD expE expD' = holdDyn Minified $ poke expE $ \_ -> do
-      st <- sampleDyn expD'
-      case st of
-        Minified -> pure Expanded
-        Expanded -> pure Minified
-    expPar statD txt = widgetHoldDyn $ ffor statD $ \exStatus -> case exStatus of
-      Minified -> parClass "tx-info-page-minified" $ text txt
-      Expanded -> parClass "tx-info-page-expanded" $ text txt
-    expHead statD txt = divButton "tx-info-page-expand-buttton-wrapper" $ par $ bold $ do
-      localizedText txt
-      widgetHoldDyn $ ffor statD $ \exStatus -> case exStatus of
-        Minified -> elClass "i" "tx-info-page-expand-buttton fas fa-caret-down" $ blank
-        Expanded -> elClass "i" "tx-info-page-expand-buttton fas fa-caret-up" $ blank
-    copyDiv copyD txt = divButton "tx-info-page-copy" $ do
-      expPar copyD txt
-#else
-transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
-transactionInfoPage cur tr@TransactionView{..} = wrapperTitle False HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) $ divClass "tx-info-page" $ do
-  infoPageElementExp HistoryTIHash $ txId txInfoView
-  case (txLabel txInfoView) of
-    Just lbl -> infoPageElement HistoryTILabel lbl
-    Nothing -> pure ()
-  infoPageElementExpEl HistoryTIURL $ hyperlink "link" (txUrl txInfoView) (txUrl txInfoView)
-  infoPageElement HistoryTIVolume $ showMoney txAmount <> " " <> showt cur
-  infoPageElement HistoryTIFee $ maybe "unknown" (\a -> (showMoney a) <> " " <> showt cur) $ txFee txInfoView
-  infoPageElement HistoryTIConfirmations $ showt $ txConfirmations txInfoView
-  infoPageElementExp HistoryTIBlock $ txBlock txInfoView
-  infoPageElementEl HistoryTIOutputs $ divClass "tx-info-page-outputs-inputs" $ do
-      flip traverse (txOutputs txInfoView) $ \(oAddress, oValue, oStatus) -> do
-        divClass "pr-1" $ localizedText HistoryTIOutputsValue
-        divClass "" $ text $ showMoney oValue <> " " <> showt cur
-        divClass "pr-1" $ localizedText HistoryTIOutputsAddress
-        divClass "tx-info-page-expanded" $ text $ oAddress
-        divClass "mb-1 pr-1" $ localizedText HistoryTIOutputsStatus
-        divClass "mb-1" $ localizedText oStatus
       pure ()
-  infoPageElementEl HistoryTIInputs $ divClass "tx-info-page-outputs-inputs" $ do
-    flip traverse (txInputs txInfoView) $ \(oAddress, oValue) -> do
-      divClass "pr-1" $ localizedText HistoryTIOutputsValue
-      divClass "" $ text $ showMoney oValue <> " " <> showt cur
-      divClass "pr-1 mb-1" $ localizedText HistoryTIOutputsAddress
-      divClass "tx-info-page-expanded mb-1" $ text $ oAddress
-    pure ()
 
-transactionInfoPageD :: MonadFront t m => Currency -> Dynamic t TransactionView -> m ()
-transactionInfoPageD cur trD = void $ widgetHoldDyn $ ffor trD $ \tr@TransactionView{..} -> wrapperTitle False HistoryTITitle (Just $ pure $ transactionInfoPage cur tr) $ divClass "tx-info-page" $ do
-  infoPageElementExp HistoryTIHash $ txId txInfoView
-  case (txLabel txInfoView) of
-    Just lbl -> infoPageElement HistoryTILabel lbl
-    Nothing -> pure ()
-  infoPageElementExpEl HistoryTIURL $ hyperlink "link" (txUrl txInfoView) (txUrl txInfoView)
-  infoPageElement HistoryTIVolume $ showMoney txAmount <> " " <> showt cur
-  infoPageElement HistoryTIFee $ maybe "unknown" (\a -> (showMoney a) <> " " <> showt cur) $ txFee txInfoView
-  infoPageElement HistoryTIConfirmations $ showt $ txConfirmations txInfoView
-  infoPageElementExp HistoryTIBlock $ txBlock txInfoView
-  infoPageElementEl HistoryTIOutputs $ divClass "tx-info-page-outputs-inputs" $ do
-      flip traverse (txOutputs txInfoView) $ \(oAddress, oValue, oStatus) -> do
-        divClass "pr-1" $ localizedText HistoryTIOutputsValue
-        divClass "" $ text $ showMoney oValue <> " " <> showt cur
-        divClass "pr-1" $ localizedText HistoryTIOutputsAddress
-        divClass "tx-info-page-expanded" $ text $ oAddress
-        divClass "mb-1 pr-1" $ localizedText HistoryTIOutputsStatus
-        divClass "mb-1" $ localizedText oStatus
-      pure ()
-  infoPageElementEl HistoryTIInputs $ divClass "tx-info-page-outputs-inputs" $ do
-    flip traverse (txInputs txInfoView) $ \(oAddress, oValue) -> do
-      divClass "pr-1" $ localizedText HistoryTIOutputsValue
-      divClass "" $ text $ showMoney oValue <> " " <> showt cur
-      divClass "pr-1 mb-1" $ localizedText HistoryTIOutputsAddress
-      divClass "tx-info-page-expanded mb-1" $ text $ oAddress
-    pure ()
 #endif
 
 infoPageElement :: MonadFront t m => HistoryPageStrings -> Text -> m ()
@@ -261,57 +181,24 @@ infoPageElementExpEl hps el = divClass "tx-info-page-element" $ do
   par $ bold $ localizedText hps
   parClass "tx-info-page-expanded" $ el
 
-historyTableWidgetOld :: MonadFront t m => Currency -> [TransactionView] -> m (Event t TransactionView)
-historyTableWidgetOld cur trList = case cur of
-  BTC -> do
-    (txsD,hghtD) <- transactionsGetting BTC
-    txClickDE <- widgetHoldDyn $ ffor txsD $ \txs -> do
-      hght <- sampleDyn hghtD
-      txClickE <- traverse historyTableRow txs
-      pure $ leftmost txClickE
-    pure $ switchDyn txClickDE
-  ERGO -> do
-    txClickE <- traverse historyTableRow trList
-    pure $ leftmost txClickE
-
 historyTableWidget :: MonadFront t m => Currency -> [TransactionView] -> m (Event t TransactionView)
 historyTableWidget cur trList = case cur of
   BTC -> do
     (txsD,hghtD) <- transactionsGetting BTC
     let txMapD = Map.fromList . L.zip [0..] <$> txsD
-    mapED <- listWithKey txMapD (\_ -> historyTableRowD1 hghtD)
+    mapED <- listWithKey txMapD (\_ -> historyTableRowD hghtD)
     let txClickE = switchDyn $ mergeMap <$> mapED
     pure $ fmapMaybe id $ headMay . Map.elems <$> txClickE
   ERGO -> do
     txClickE <- traverse historyTableRow trList
     pure $ leftmost txClickE
 
-historyTableWidgetD :: MonadFront t m => Currency -> [TransactionView] -> m (Event t (Dynamic t TransactionView))
-historyTableWidgetD cur trList = case cur of
-  _ -> do
-    (txsD,hghtD) <- transactionsGetting BTC
-    let dynTList  = fmap (L.zip [0..]) txsD
-        dynTList2 = fmap (\z -> fmap (\(a,b) -> fmap (\h -> h !! a) txsD) z) dynTList
-        --dyn2 = sequenceA txsD
-    txDE <- widgetHoldDyn $ ffor dynTList2 $ \listTxD -> do
-      txCliListE <- traverse historyTableRowD listTxD
-      pure $ leftmost txCliListE
-    pure $ switchDyn txDE
-{-
-historyTableWidgetD :: MonadFront t m => Currency -> [TransactionView] -> m (Event t (Dynamic t TransactionView))
-historyTableWidgetD cur trList = case cur of
-  _ -> do
-    (txsD,hghtD) <- transactionsGetting BTC
-    txDE <- widgetHoldDyn $ ffor txsD $ \listTxD -> do
-      txCliListE <- fmap historyTableRowD listTxD
-      pure $ leftmost txCliListE
-    pure $ switchDyn txDE -}
 
 historyTableRow :: MonadFront t m => TransactionView -> m (Event t TransactionView)
 historyTableRow tr@TransactionView{..} = divButton "history-table-row" $ do
   divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ symb $ text $ showMoney txAmount
   divClass "history-date" $ text $ txDate
-  divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> confsClass) $ text $ showt confs
+  divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> confsClass) confsText
   pure tr
   where
     confs = txConfirmations txInfoView
@@ -321,6 +208,9 @@ historyTableRow tr@TransactionView{..} = divButton "history-table-row" $ do
       else if (confs > 0 && confs < confirmationGap)
         then "partially-confirmed"
       else "confirmed"
+    confsText = if confs < confirmationGap
+          then text $ showt confs <> "/" <> showt confirmationGap
+          else spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" $ blank
     symb :: MonadFront t m => m a -> m a
     symb ma = case txInOut of
       TransRefill -> do
@@ -334,38 +224,23 @@ historyTableRow tr@TransactionView{..} = divButton "history-table-row" $ do
       TransConfirmed -> spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" $ blank
       TransUncofirmed -> spanClass "history-page-status-icon" $ elClass "i" "fas fa-question fa-fw" $ blank
 
-historyTableRowD1 :: MonadFront t m => Dynamic t Word64 -> Dynamic t TransactionView -> m (Event t TransactionView)
-historyTableRowD1 _ trD = fmap switchDyn $ widgetHoldDyn $ ffor trD $ \tr@TransactionView{..} -> divButton "history-table-row" $ do
+historyTableRowD :: MonadFront t m => Dynamic t Word64 -> Dynamic t TransactionView -> m (Event t TransactionView)
+historyTableRowD _ trD = fmap switchDyn $ widgetHoldDyn $ ffor trD $ \tr@TransactionView{..} -> divButton "history-table-row" $ do
     divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ symb txInOut $ text $ showMoney txAmount
     divClass "history-date" $ text $ txDate
-    divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> (confsClass tr)) $ text $ showt $ confs tr
+    divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> (confsClass tr)) $ confsText tr
     pure tr
   where
     confs tr = txConfirmations $ txInfoView tr
-    confsClass tr = if (confs tr == 0)
-      then "unconfirmed"
+    confsClass tr =
+      if ((confs tr) == 0)
+        then "unconfirmed"
+      else if ((confs tr) > 0 && (confs tr) < confirmationGap)
+        then "partially-confirmed"
       else "confirmed"
-    symb :: MonadFront t m => TransType -> m a -> m a
-    symb trInOut ma = case trInOut of
-      TransRefill -> do
-        spanClass "history-page-sign-icon" $ elClass "i" "fas fa-plus fa-fw" blank
-        ma
-      TransWithdraw -> do
-        spanClass "history-page-sign-icon" $ elClass "i" "fas fa-minus fa-fw" blank
-        ma
-
-historyTableRowD :: MonadFront t m => Dynamic t TransactionView -> m (Event t (Dynamic t TransactionView))
-historyTableRowD trD = divButton "history-table-row" $ do
-  tD <- widgetHoldDyn $ ffor trD $ \tr@TransactionView{..} -> do
-    divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ symb txInOut $ text $ showMoney txAmount
-    divClass "history-date" $ text $ txDate
-    divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> (confsClass tr)) $ text $ showt $ confs tr
-  pure trD
-  where
-    confs tr = txConfirmations $ txInfoView tr
-    confsClass tr = if (confs tr == 0)
-      then "unconfirmed"
-      else "confirmed"
+    confsText tr = if (confs tr) < confirmationGap
+          then text $ showt (confs tr) <> "/" <> showt confirmationGap
+          else spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" $ blank
     symb :: MonadFront t m => TransType -> m a -> m a
     symb trInOut ma = case trInOut of
       TransRefill -> do
