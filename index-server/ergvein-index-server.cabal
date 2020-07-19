@@ -36,6 +36,7 @@ library
     Ergvein.Index.Server.Server.V1
     Ergvein.Index.Server.Utils
     Ergvein.Index.Server.TCPService.Server
+    Ergvein.Index.Server.TCPService.MessageHandler
 
   build-depends:
         base                     >= 4.7     &&  < 4.13

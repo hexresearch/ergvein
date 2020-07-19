@@ -18,6 +18,7 @@ import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Dependencies
 import Control.Concurrent.STM
+import Ergvein.Index.Server.TCPService.MessageHandler
 
 import qualified Network.Socket.ByteString as NS
 
@@ -30,9 +31,8 @@ tcpSrv thread = do
   unlift <- askUnliftIO
   liftIO $ withSocketsDo $ do
     sock <- socket AF_INET Stream 0
-    setSocketOption sock ReuseAddr 1
     bind sock (SockAddrInet port iNADDR_ANY)
-    listen sock 2
+    listen sock 5
     unliftIO unlift $ mainLoop thread sock
 
 mainLoop :: Thread -> Socket -> ServerM ()
@@ -61,6 +61,3 @@ runConn (sock, _) = do
     Nothing -> do
       liftIO $ close sock
       pure ()
-
-handleMsg :: Message -> ServerM Message
-handleMsg = undefined

@@ -2,6 +2,8 @@ module Ergvein.Index.Protocol.Types where
 
 import Data.Word
 
+import qualified Data.Vector as V
+
 import Foreign.Storable
 
 data MessageType = Version
@@ -18,10 +20,9 @@ data MessageType = Version
                  | Ping
                  | Pong
 
-data CurrencyCode = BTC | TBTC | ERGO | TERGO | USDTO | TUSDTO | LTC | TLTC | ZEC | TZEC | CPR | TCPR | DASH | TDASH
+data RejectCode = MessageHeaderParsing | MessageParsing
 
-genericSizeOf :: (Storable a, Integral b) => a -> b
-genericSizeOf = fromIntegral . sizeOf
+data CurrencyCode = BTC | TBTC | ERGO | TERGO | USDTO | TUSDTO | LTC | TLTC | ZEC | TZEC | CPR | TCPR | DASH | TDASH
 
 data MessageHeader = MessageHeader
   { msgType :: MessageType
@@ -32,5 +33,13 @@ type PingMessage = Word64
 
 type PongMessage = Word64
 
-data Message = PingMessage PingMessage
-             | PongMessage PongMessage
+data RejectMessage = RejectMessage
+  { rejectMsgCode    :: RejectCode
+  }
+
+data Message = PingMsg   PingMessage
+             | PongMsg   PongMessage
+             | RejectMsg RejectMessage
+
+genericSizeOf :: (Storable a, Integral b) => a -> b
+genericSizeOf = fromIntegral . sizeOf

@@ -24,6 +24,12 @@ word32toMessageType = \case
   12 -> Just Pong
   _  -> Nothing
 
+word32toRejectType :: Word32 -> Maybe RejectCode 
+word32toRejectType = \case
+  0  -> Just MessageHeaderParsing
+  1  -> Just MessageParsing
+  _  -> Nothing
+
 messageHeaderParser ::  Parser MessageHeader
 messageHeaderParser = do
     messageType <- messageTypeParser
@@ -45,5 +51,5 @@ pongMessageParser = anyWord64be
 
 messageParser :: MessageType -> Parser Message
 messageParser t = case t of 
-  Ping -> PingMessage <$> pingMessageParser
-  Pong -> PongMessage <$> pongMessageParser
+  Ping -> PingMsg <$> pingMessageParser
+  Pong -> PongMsg <$> pongMessageParser

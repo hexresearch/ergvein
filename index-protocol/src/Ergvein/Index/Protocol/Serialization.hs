@@ -21,6 +21,11 @@ messageTypeToWord32 = \case
   Ping            -> 11
   Pong            -> 12
 
+rejectTypeToWord32 :: RejectCode -> Word32 
+rejectTypeToWord32 = \case
+  MessageHeaderParsing -> 0
+  MessageParsing       -> 1
+
 
 scanBlock :: CurrencyCode -> Word32 -> Word64 -> Word64 -> Builder
 scanBlock currency version scanHeight height = word32BE (undefined currency)
