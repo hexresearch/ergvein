@@ -1,6 +1,7 @@
 module Ergvein.Wallet.Tx
   (
     checkAddrTx
+  , filterTxsForAddress
   , getSpentOutputs
   , getUnspentOutputs
   , getUtxoUpdates
@@ -32,8 +33,15 @@ import qualified Network.Haskoin.Block              as HB
 import qualified Network.Haskoin.Script             as HS
 import qualified Network.Haskoin.Transaction        as HT
 
+
+-- | Filter txs for ones, relevant to an address
+filterTxsForAddress :: (HasTxStorage m, PlatformNatives) => EgvAddress -> [Tx] -> m [Tx]
+filterTxsForAddress addr txs = fmap catMaybes $ flip traverse txs $ \tx -> do
+  b <- checkAddrTx addr tx
+  pure $ if b then Just tx else Nothing
+  
 -- | Checks given tx if there are some inputs or outputs containing given address.
-checkAddrTx :: (HasPubStorage m, PlatformNatives) => EgvAddress -> Tx -> m Bool
+checkAddrTx :: (HasTxStorage m, PlatformNatives) => EgvAddress -> Tx -> m Bool
 checkAddrTx addr tx = do
   checkTxInputsResults <- traverse (checkTxIn addr) (HT.txIn tx)
   checkTxOutputsResults <- traverse (checkTxOut addr) (HT.txOut tx)
@@ -42,14 +50,14 @@ checkAddrTx addr tx = do
 
 -- | Gets spent output (they are inputs for a tx) for a given address from a transaction
 -- Bool specifies if the Tx was confirmed (True) or not
-getSpentOutputs :: (HasPubStorage m, PlatformNatives) => Bool -> EgvAddress -> Tx -> m ([(OutPoint, Bool)])
+getSpentOutputs :: (HasTxStorage m, PlatformNatives) => Bool -> EgvAddress -> Tx -> m ([(OutPoint, Bool)])
 getSpentOutputs c addr Tx{..} = fmap catMaybes $ flip traverse txIn $ \ti -> do
   b <- checkTxIn addr ti
   pure $ if b then Just (prevOutput ti, c) else Nothing
 
 -- | Gets unspent output for a given address from a transaction
 -- Maybe BlockHeight: Nothing -- unconfirmed Tx. Just n -> confirmed at height n
-getUnspentOutputs :: (HasPubStorage m, PlatformNatives)
+getUnspentOutputs :: (MonadIO m, PlatformNatives)
   => Maybe BlockHeight -> ScanKeyBox -> Tx -> m [(OutPoint, UtxoMeta)]
 getUnspentOutputs c ScanKeyBox{..} tx = fmap catMaybes $ flip traverse (zip [0..] $ txOut tx) $ \(i,o) -> do
   b <- checkTxOut addr o
@@ -65,36 +73,36 @@ getUnspentOutputs c ScanKeyBox{..} tx = fmap catMaybes $ flip traverse (zip [0..
 
 -- | Construct UTXO update for a list of addresses based on a transaction
 -- Maybe BlockHeight: Nothing -- unconfirmed Tx. Just n -> confirmed at height n
-getUtxoUpdates :: (HasPubStorage m, PlatformNatives)
+getUtxoUpdates :: (HasTxStorage m, PlatformNatives)
   => Maybe BlockHeight -> V.Vector ScanKeyBox -> Tx -> m BtcUtxoUpdate
 getUtxoUpdates mheight boxes tx = do
   (unsps, sps) <- fmap V.unzip $ flip traverse boxes $ \box -> do
     let addr = egvXPubKeyToEgvAddress $ scanBox'key box
     unsp <- getUnspentOutputs mheight box tx
-    sp   <- getSpentOutputs isMempool addr tx
+    sp   <- getSpentOutputs isConfirmed addr tx
     pure (unsp, sp)
   let unspentMap = M.fromList $ mconcat $ V.toList unsps
   pure (unspentMap, mconcat $ V.toList $ sps)
-  where isMempool = maybe True (const False) mheight
+  where isConfirmed = maybe False (const True) mheight
 
 -- | Construct UTXO update for an address and a batch of transactions
 -- Maybe BlockHeight: Nothing -- unconfirmed Tx. Just n -> confirmed at height n
-getUtxoUpdatesFromTxs :: (HasPubStorage m, PlatformNatives)
+getUtxoUpdatesFromTxs :: (HasTxStorage m, PlatformNatives)
   => Maybe BlockHeight -> ScanKeyBox -> [Tx] -> m BtcUtxoUpdate
 getUtxoUpdatesFromTxs mheight box txs = do
   (unsps, sps) <- fmap unzip $ flip traverse txs $ \tx -> do
     unsp <- getUnspentOutputs mheight box tx
-    sp   <- getSpentOutputs isMempool addr tx
+    sp   <- getSpentOutputs isConfirmed addr tx
     pure (unsp, sp)
   let unspentMap = M.fromList $ mconcat unsps
   pure (unspentMap, mconcat sps)
   where
-    isMempool = maybe True (const False) mheight
+    isConfirmed = maybe False (const True) mheight
     addr = egvXPubKeyToEgvAddress $ scanBox'key box
 
 -- | Checks given TxIn wheather it contains given address.
 -- Native SegWit addresses are not presented in TxIns scriptSig.
-checkTxIn :: (HasPubStorage m, PlatformNatives) => EgvAddress -> TxIn -> m Bool
+checkTxIn :: (HasTxStorage m, PlatformNatives) => EgvAddress -> TxIn -> m Bool
 checkTxIn addr txIn = do
   let spentOutput = HT.prevOutput txIn
       spentTxHash = HT.outPointHash spentOutput
