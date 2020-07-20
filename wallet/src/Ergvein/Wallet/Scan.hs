@@ -182,11 +182,18 @@ getAddrTxsFromBlock :: (HasPubStorage m, PlatformNatives)
   -> HB.Block
   -> m (M.Map TxId EgvTx, BtcUtxoUpdate)
 getAddrTxsFromBlock box heights block = do
-  checkResults <- traverse (checkAddrTx addr) txs
-  let filteredTxs = fst $ unzip $ filter snd (zip txs checkResults)
-  utxo <- getUtxoUpdatesFromTxs mh box filteredTxs
-  pure $ (, utxo) $ M.fromList [(HT.txHashToHex $ HT.txHash tx, BtcTx tx mheha) | tx <- filteredTxs]
+  ps <- askPubStorage
+  let origtxMap = ps ^. pubStorage'currencyPubStorages . at BTC . non (error "getAddrTxsFromBlock: BTC store does not exist") . currencyPubStorage'transactions
+      newtxmap = M.fromList $ (\tx -> (mkTxId tx, BtcTx tx mheha)) <$> txs
+      txmap = M.union newtxmap origtxMap
+  liftIO $ flip runReaderT txmap $ do
+    filteredTxs <- filterTxsForAddress addr txs
+    let filteredIds = S.fromList $ mkTxId <$> filteredTxs
+        filteredTxMap = M.restrictKeys newtxmap filteredIds
+    utxo <- getUtxoUpdatesFromTxs mh box filteredTxs
+    pure $ (filteredTxMap, utxo)
   where
+    mkTxId = HT.txHashToHex . HT.txHash
     addr = egvXPubKeyToEgvAddress $ scanBox'key box
     txs = HB.blockTxns block
     bhash = HB.headerHash . HB.blockHeader $ block

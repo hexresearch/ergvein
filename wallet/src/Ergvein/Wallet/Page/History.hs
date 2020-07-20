@@ -319,14 +319,16 @@ transactionsGetting cur = do
             parentTxsIds = (fmap . fmap) (HK.txHashToHex . HK.outPointHash . HK.prevOutput) (fmap (HK.txIn . getBtcTx) txs)
         blh <- traverse getBtcBlockHashByTxHash txHashes
         bl <- traverse (maybe (pure Nothing) getBlockHeaderByHash) blh
-        b <- traverse (checkAddr allbtcAdrS) txs
-        parentTxs <- sequenceA $ fmap (traverse getTxById) parentTxsIds
-        let getTxConfirmations mTx = case mTx of
-              Nothing -> 0
-              Just tx -> maybe 0 (\x -> hght - x + 1) (fmap etxMetaHeight $ getBtcTxMeta tx)
-            txParentsConfirmations = (fmap . fmap) getTxConfirmations parentTxs
-            hasUnconfirmedParents = fmap (L.any (== 0)) txParentsConfirmations
-        pure $ L.reverse $ L.sortOn txDate $ fmap snd $ L.filter fst $ L.zip b (prepareTransactionView hght tz <$> txListRaw bl blh txs txsRefList hasUnconfirmedParents)
+        txStore <- getTxStorage cur
+        flip runReaderT txStore $ do
+          b <- traverse (checkAddr allbtcAdrS) txs
+          parentTxs <- sequenceA $ fmap (traverse getTxById) parentTxsIds
+          let getTxConfirmations mTx = case mTx of
+                Nothing -> 0
+                Just tx -> maybe 0 (\x -> hght - x + 1) (fmap etxMetaHeight $ getBtcTxMeta tx)
+              txParentsConfirmations = (fmap . fmap) getTxConfirmations parentTxs
+              hasUnconfirmedParents = fmap (L.any (== 0)) txParentsConfirmations
+          pure $ L.reverse $ L.sortOn txDate $ fmap snd $ L.filter fst $ L.zip b (prepareTransactionView hght tz <$> txListRaw bl blh txs txsRefList hasUnconfirmedParents)
 
     filterTx ac pubS = case cur of
       BTC  -> fmap snd $ fromMaybe [] $ fmap Map.toList $ _currencyPubStorage'transactions <$> Map.lookup cur (_pubStorage'currencyPubStorages pubS)
@@ -336,7 +338,7 @@ transactionsGetting cur = do
         BtcTx btx _ -> Money cur $ sum $ fmap (HK.outValue . snd) $ L.filter (maybe False (flip elem ac . fromSegWit) . fst) $ fmap (\txo -> (getSegWitAddr txo,txo)) $ HK.txOut btx
         ErgTx etx _ -> Money cur 0
 
-    checkAddr :: (HasPubStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m Bool
+    checkAddr :: (HasTxStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m Bool
     checkAddr ac tx = do
       bL <- traverse (flip checkAddrTx (getBtcTx tx)) ac
       pure $ L.or bL
@@ -352,7 +354,7 @@ prepareTransactionView hght tz TxRawInfo{..} = TransactionView {
   , txDate = blockTime
   , txInOut = TransRefill
   , txInfoView = txInf
-  , txStatus = 
+  , txStatus =
       if txHasUnconfirmedParents
         then TransUncofirmedParents
       else if (bHeight == 0)

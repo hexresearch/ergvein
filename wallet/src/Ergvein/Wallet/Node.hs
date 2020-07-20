@@ -151,14 +151,16 @@ btcMempoolTxInserter :: MonadFront t m => Event t HT.Tx -> m (Event t ())
 btcMempoolTxInserter txE = do
   pubStorageD <- getPubStorageD
   valsE <- performFork $ ffor (current pubStorageD `attach` txE) $ \(ps, tx) -> do
-    let keys = getPublicKeys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "bctNodeController: not exsisting store!") . currencyPubStorage'pubKeystore
-    liftIO $ flip runReaderT ps $ do
+    let btcps = ps ^. pubStorage'currencyPubStorages . at BTC . non (error $ "btcMempoolTxInserter: BTC storage does not exist!")
+    let keys = getPublicKeys $ btcps ^. currencyPubStorage'pubKeystore
+        txStore = btcps ^. currencyPubStorage'transactions
+    liftIO $ flip runReaderT txStore $ do
       v <- checkAddrTx' keys tx
       u <- getUtxoUpdates Nothing keys tx
       pure (v,u)
   insertTxsUtxoInPubKeystore "btcMempoolTxInserter" BTC valsE
 
-checkAddrTx' :: (HasPubStorage m, PlatformNatives) => V.Vector ScanKeyBox -> HT.Tx -> m (V.Vector (ScanKeyBox, M.Map TxId EgvTx))
+checkAddrTx' :: (HasTxStorage m, PlatformNatives) => V.Vector ScanKeyBox -> HT.Tx -> m (V.Vector (ScanKeyBox, M.Map TxId EgvTx))
 checkAddrTx' vec tx = do
   vec' <- flip traverse vec $ \kb -> do
     b <- checkAddrTx (egvXPubKeyToEgvAddress . scanBox'key $ kb) tx
