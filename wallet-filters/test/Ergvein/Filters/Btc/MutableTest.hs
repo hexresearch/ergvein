@@ -81,6 +81,18 @@ spec_specificFilter1 = do
       bfilter <- getFilter
       res <- applyBtcFilterMany btcTest bhash bfilter addrs
       res `shouldBe` True
+    it ("works when not all match filter first") $ do
+      bfilter <- getFilter
+      res <- applyBtcFilterMany btcTest bhash bfilter $ [head addrs] ++ negaddrs
+      res `shouldBe` True
+    it ("works when not all match filter middle") $ do
+      bfilter <- getFilter
+      res <- applyBtcFilterMany btcTest bhash bfilter $ [head negaddrs] ++ [head addrs] ++ [last negaddrs]
+      res `shouldBe` True
+    it ("works when not all match filter last") $ do
+      bfilter <- getFilter
+      res <- applyBtcFilterMany btcTest bhash bfilter $ negaddrs ++ [head addrs]
+      res `shouldBe` True
   where
     bhash = "000000000000017c36b1c7c70f467244009c552e1732604a0f779fc6ff2d6112"
 
@@ -89,6 +101,12 @@ spec_specificFilter1 = do
         "tb1qjx8u3dz6dnxcnwmpwdcd2c8hzugzt8jap9enpu"
       , "tb1q0fql9yduelq8lxyrlrajlxewj09zg2st3ufyf7"
       , "tb1qms2h0994zyywf2jvr6gez4nwtqg8xc0fz70260"
+      ]
+
+    negaddrs :: [SegWitAddress]
+    negaddrs = fmap loadAddress [
+        "tb1q8tkcrwr0ejssk4xhchmge0dmpuqvd3rdu93srh"
+      , "tb1q2z49tgch3fdjs7ye9swx5t6n824zqh2zaazw94"
       ]
 
     filterHex = "0000000000000015024a80000098066800004cd26bc68db000000000030cdd70db52ff43c6000000fa9ea8d5fac400001dc73c000000000137e4b8d5e647dc38"
