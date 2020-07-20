@@ -6,6 +6,7 @@ module Ergvein.Wallet.Storage.Keys (
   , derivePubKey
   , xPubToBtcAddr
   , xPubToErgAddr
+  , extractAddrs
   ) where
 
 import Ergvein.Crypto
@@ -17,6 +18,7 @@ import Ergvein.Types.Network
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Short as BSS
 import qualified Data.Serialize        as S
+import qualified Data.Vector           as V
 
 xPubToBtcAddr :: XPubKey -> BtcAddress
 xPubToBtcAddr key = pubKeyWitnessAddr $ wrapPubKey True (xPubKey key)
@@ -79,6 +81,14 @@ derivePubKey masterKey keyPurpose index =
   in case masterKey of
     ErgXPubKey k _ -> ErgXPubKey (derivedKey k) ""
     BtcXPubKey k _ -> BtcXPubKey (derivedKey k) ""
+
+-- | Extract addresses from keystore
+extractAddrs :: PubKeystore -> [(Maybe Int, EgvAddress)]
+extractAddrs (PubKeystore mast ext int) = mastadr:(extadrs <> intadrs)
+  where
+    mastadr = (Nothing,) $ egvXPubKeyToEgvAddress mast
+    extadrs = V.toList $ V.imap (\i b -> (Just i, egvXPubKeyToEgvAddress $ pubKeyBox'key b)) ext
+    intadrs = V.toList $ V.imap (\i b -> (Nothing, egvXPubKeyToEgvAddress $ pubKeyBox'key b)) int
 
 example :: IO ()
 example = do

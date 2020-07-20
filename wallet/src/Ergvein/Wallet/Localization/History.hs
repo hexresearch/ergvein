@@ -26,8 +26,9 @@ data HistoryPageStrings =
   | HistoryTIAddressUndefined
   | HistoryTIFeeUndefined
   | HistoryTITitle
-  | HistoryTIVolume
+  | HistoryTIAmount
   | HistoryTIHash
+  | HistoryTITransactionId
   | HistoryTILabel
   | HistoryTIURL
   | HistoryTIFee
@@ -53,8 +54,9 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTIAddressUndefined -> "Failed to decode address"
       HistoryTIFeeUndefined     -> "Unknown"
       HistoryTITitle            -> "Transaction info"
-      HistoryTIVolume           -> "Volume"
+      HistoryTIAmount           -> "Amount"
       HistoryTIHash             -> "Hash"
+      HistoryTITransactionId    -> "Transaction id"
       HistoryTILabel            -> "Label"
       HistoryTIURL              -> "Block Explorer"
       HistoryTIFee              -> "Fee"
@@ -75,8 +77,9 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTIAddressUndefined -> "Не удалось декодировать адрес"
       HistoryTIFeeUndefined     -> "Неизвестно"
       HistoryTITitle            -> "Информация о транзакции"
-      HistoryTIVolume           -> "Объем"
+      HistoryTIAmount           -> "Объем"
       HistoryTIHash             -> "Хэш"
+      HistoryTITransactionId    -> "Id транзакции"
       HistoryTILabel            -> "Описание"
       HistoryTIURL              -> "Block Explorer"
       HistoryTIFee              -> "Комиссия"
