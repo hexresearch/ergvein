@@ -338,7 +338,7 @@ transactionsGetting cur = do
           b <- traverse (checkAddr allbtcAdrS) txs
           parentTxs <- sequenceA $ fmap (traverse getTxById) parentTxsIds
           let getTxConfirmations mTx = case mTx of
-                Nothing -> 0
+                Nothing -> 1 -- If tx is not found we put 1 just to indicate that the transaction is confirmed
                 Just tx -> maybe 0 (\x -> hght - x + 1) (fmap etxMetaHeight $ getBtcTxMeta tx)
               txParentsConfirmations = (fmap . fmap) getTxConfirmations parentTxs
               hasUnconfirmedParents = fmap (L.any (== 0)) txParentsConfirmations
