@@ -89,26 +89,26 @@ transactionInfoPage cur tr@TransactionView{..} = do
       blockD' <- expD blockE' blockD'
       blockE' <- expHead blockD' HistoryTIBlock
       copiedBlockE' <- case txBlock txInfoView of
-        Nothing -> copyDiv blockD' HistoryTIBlockUndefined
+        Nothing -> copyDivLoc blockD' HistoryTIBlockUndefined
         Just blockHash -> copyDiv blockD' blockHash
       pure (blockD', blockE', copiedBlockE')
     infoPageElementEl HistoryTIOutputs $ divClass "tx-info-page-outputs-inputs" $ do
         flip traverse (txOutputs txInfoView) $ \(oAddress, oValue, oStatus) -> do
           divClass "pr-1" $ localizedText HistoryTIOutputsValue
-          divClass "" $ text $ showMoney HK.outValue <> " " <> showt cur
+          divClass "" $ text $ showMoney oValue <> " " <> showt cur
           divClass "pr-1" $ localizedText HistoryTIOutputsAddress
-          divClass "tx-info-page-expanded" $ case outAddress of
+          divClass "tx-info-page-expanded" $ case oAddress of
             Nothing -> localizedText HistoryTIAddressUndefined
             Just address -> text $ address
           divClass "mb-1 pr-1" $ localizedText HistoryTIOutputsStatus
           divClass "mb-1" $ localizedText oStatus
         pure ()
     infoPageElementEl HistoryTIInputs $ divClass "tx-info-page-outputs-inputs" $ do
-        flip traverse (txInputs txInfoView) $ \(oAddress, oValue) -> do
+        flip traverse (txInputs txInfoView) $ \(oAddress, inValue) -> do
           divClass "pr-1" $ localizedText HistoryTIOutputsValue
           divClass "" $ text $ showMoney inValue <> " " <> showt cur
           divClass "pr-1 mb-1" $ localizedText HistoryTIOutputsAddress
-          divClass "tx-info-page-expanded mb-1" $ text $ oAddress
+          divClass "tx-info-page-expanded mb-1" $ text $ showt oAddress
         pure ()
     let copiedE = leftmost[
             (txId txInfoView) <$ copiedHashE
@@ -126,6 +126,9 @@ transactionInfoPage cur tr@TransactionView{..} = do
       expPar statD txt = widgetHoldDyn $ ffor statD $ \exStatus -> case exStatus of
         Minified -> parClass "tx-info-page-minified" $ text txt
         Expanded -> parClass "tx-info-page-expanded" $ text txt
+      expParLoc statD ltxt = widgetHoldDyn $ ffor statD $ \exStatus -> case exStatus of
+        Minified -> parClass "tx-info-page-minified" $ localizedText ltxt
+        Expanded -> parClass "tx-info-page-expanded" $ localizedText ltxt
       expHead statD txt = divButton "tx-info-page-expand-buttton-wrapper" $ par $ bold $ do
         localizedText txt
         widgetHoldDyn $ ffor statD $ \exStatus -> case exStatus of
@@ -133,6 +136,8 @@ transactionInfoPage cur tr@TransactionView{..} = do
           Expanded -> elClass "i" "tx-info-page-expand-buttton fas fa-caret-up" $ blank
       copyDiv copyD txt = divButton "tx-info-page-copy" $ do
         expPar copyD txt
+      copyDivLoc copyD ltxt = divButton "tx-info-page-copy" $ do
+        expParLoc copyD ltxt
 #else
 transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
 transactionInfoPage cur tr@TransactionView{..} = do
@@ -167,6 +172,13 @@ transactionInfoPage cur tr@TransactionView{..} = do
       pure ()
 
 #endif
+
+showTime :: MonadFront t m => TransactionView -> m ()
+showTime tr@TransactionView{..} = case txDate of
+  TxTime Nothing -> do
+    localizedText $ if (txStatus==TransUncofirmedParents) then HistoryUnconfirmedParents else HistoryUnconfirmed
+  TxTime (Just date) -> do
+    text $ T.pack $ formatTime defaultTimeLocale "%H:%M:%S %d/%m/%Y" $ date
 
 infoPageElement :: MonadFront t m => HistoryPageStrings -> Text -> m ()
 infoPageElement hps txt = divClass "tx-info-page-element" $ do
@@ -204,7 +216,7 @@ historyTableWidget cur trList = case cur of
 historyTableRow :: MonadFront t m => TransactionView -> m (Event t TransactionView)
 historyTableRow tr@TransactionView{..} = divButton "history-table-row" $ do
   divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ symb $ text $ showMoney txAmount
-  divClass "history-date" $ text $ showt txDate
+  divClass "history-date" $ showTime tr
   divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> confsClass) confsText
   pure tr
   where
@@ -234,7 +246,7 @@ historyTableRow tr@TransactionView{..} = divButton "history-table-row" $ do
 historyTableRowD :: MonadFront t m => Dynamic t Word64 -> Dynamic t TransactionView -> m (Event t TransactionView)
 historyTableRowD _ trD = fmap switchDyn $ widgetHoldDyn $ ffor trD $ \tr@TransactionView{..} -> divButton "history-table-row" $ do
     divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ symb txInOut $ text $ showMoney txAmount
-    divClass "history-date" $ text $ showt txDate
+    divClass "history-date" $ showTime tr
     divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> (confsClass tr)) $ confsText tr
     pure tr
   where
@@ -428,7 +440,7 @@ data TxRawInfo = TxRawInfo {
   , txHasUnconfirmedParents :: Bool
 } deriving (Show)
 
-newtype TxTime = TxTime (Maybe ZonedTime) deriving Show
+newtype TxTime = TxTime (Maybe ZonedTime) deriving (Show)
 
 instance Eq TxTime where
   TxTime Nothing == TxTime Nothing = True
@@ -448,7 +460,7 @@ data TransactionView = TransactionView {
   , txInfoView :: TransactionViewInfo
   , txStatus   :: TransStatus
 } deriving (Show)
-i
+
 data TransactionViewInfo = TransactionViewInfo {
     txId            :: Text
   , txLabel         :: Maybe Text
