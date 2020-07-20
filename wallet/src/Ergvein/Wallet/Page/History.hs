@@ -176,7 +176,7 @@ transactionInfoPage cur tr@TransactionView{..} = do
 showTime :: MonadFront t m => TransactionView -> m ()
 showTime tr@TransactionView{..} = case txDate of
   TxTime Nothing -> do
-    localizedText $ if (txStatus==TransUncofirmedParents) then HistoryUnconfirmedParents else HistoryUnconfirmed
+    localizedText $ if txStatus == TransUncofirmedParents then HistoryUnconfirmedParents else HistoryUnconfirmed
   TxTime (Just date) -> do
     text $ T.pack $ formatTime defaultTimeLocale "%H:%M:%S %d/%m/%Y" $ date
 
@@ -251,15 +251,23 @@ historyTableRowD _ trD = fmap switchDyn $ widgetHoldDyn $ ffor trD $ \tr@Transac
     pure tr
   where
     confs tr = txConfirmations $ txInfoView tr
+    unconfirmedParents tr = case txStatus tr of
+      TransUncofirmedParents -> True
+      _ -> False
     confsClass tr =
       if ((confs tr) == 0)
         then "unconfirmed"
       else if ((confs tr) > 0 && (confs tr) < confirmationGap)
         then "partially-confirmed"
       else "confirmed"
-    confsText tr = if (confs tr) < confirmationGap
-          then text $ showt (confs tr) <> "/" <> showt confirmationGap
-          else spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" $ blank
+    confsText tr =
+      if (confs tr)>= confirmationGap
+        then spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" $ blank
+      else if unconfirmedParents tr
+        then do
+          text $ showt (confs tr) <> "/" <> showt confirmationGap
+          spanClass "history-page-status-text-icon" $ elClass "i" "fas fa-exclamation-triangle fa-fw" $ blank
+      else text $ showt (confs tr) <> "/" <> showt confirmationGap
     symb :: MonadFront t m => TransType -> m a -> m a
     symb trInOut ma = case trInOut of
       TransRefill -> do
