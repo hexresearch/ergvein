@@ -60,4 +60,12 @@ pongMsg nonce = msg Pong msgSize $ word64BE nonce
     msgSize = genericSizeOf nonce
 
 msg :: MessageType -> Word32 -> Builder -> Builder
-msg msgType msgLength payload = word32BE (messageTypeToWord32 msgType) <> word32BE msgLength <> payload 
+msg msgType msgLength payload = word32BE (messageTypeToWord32 msgType) <> word32BE msgLength <> payload
+
+messageBuilder :: Message -> Builder
+
+messageBuilder (PingMsg   msg) = word64BE msg
+
+messageBuilder (PongMsg   msg) = word64BE msg
+
+messageBuilder (RejectMsg msg) = word32BE $ rejectTypeToWord32 $ rejectMsgCode msg

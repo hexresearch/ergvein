@@ -43,13 +43,16 @@ messageTypeParser = do
    Just messageType -> pure messageType
    _                -> fail "out of message type bounds"
 
-pingMessageParser :: Parser PingMessage
-pingMessageParser = anyWord64be
-
-pongMessageParser :: Parser PongMessage
-pongMessageParser = anyWord64be
+rejectCodeParser :: Parser RejectCode
+rejectCodeParser = do
+  w32 <- anyWord32be
+  case word32toRejectType w32 of
+   Just messageType -> pure messageType
+   _                -> fail "out of message type bounds"
 
 messageParser :: MessageType -> Parser Message
-messageParser t = case t of 
-  Ping -> PingMsg <$> pingMessageParser
-  Pong -> PongMsg <$> pongMessageParser
+messageParser Ping = PingMsg <$> anyWord64be
+
+messageParser Pong = PongMsg <$> anyWord64be
+
+messageParser Reject = RejectMsg . RejectMessage <$> rejectCodeParser

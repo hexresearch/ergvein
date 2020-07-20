@@ -1,9 +1,7 @@
 module Ergvein.Index.Protocol.Types where
 
 import Data.Word
-
 import qualified Data.Vector as V
-
 import Foreign.Storable
 
 data MessageType = Version
@@ -34,7 +32,7 @@ type PingMessage = Word64
 type PongMessage = Word64
 
 data RejectMessage = RejectMessage
-  { rejectMsgCode    :: RejectCode
+  { rejectMsgCode :: RejectCode
   }
 
 data Message = PingMsg   PingMessage
