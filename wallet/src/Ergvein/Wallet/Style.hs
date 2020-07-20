@@ -759,6 +759,9 @@ historyPageCss = do
   ".history-date-header" ? do
     borderRight solid (px 2) black
     display block
+  "history-date" ? do
+    marginLeft auto
+    marginRight auto
   ".history-status-header" ? do
     display block
   ".history-status-transrefill" ? do
