@@ -49,15 +49,17 @@ mainLoop thread sock = go sock
 
 runConn :: (Socket, SockAddr) -> ServerM ()
 runConn (sock, _) = do
-  messageHeader <- liftIO $ maybeResult . (parse messageHeaderParser) <$> NS.recv sock 8
-  case messageHeader of
-    Just MessageHeader {..} -> do
-      msg <- liftIO $ fromJust <$> maybeResult . (parse $ messageParser msgType) <$> (NS.recv sock $ fromIntegral msgSize)
-      resp <- handleMsg msg
-      liftIO $ do
-        hdl <- socketToHandle sock ReadWriteMode
-        hPutBuilder hdl $ messageBuilder resp
-        hClose hdl
-    Nothing -> do
-      liftIO $ close sock
-      pure ()
+  messageHeaderBytes <- liftIO $ NS.recv sock 8
+  let messageHeaderParsingResult = parse messageHeaderParser messageHeaderBytes
+  hdl <- liftIO $ socketToHandle sock ReadWriteMode
+  case messageHeaderParsingResult of
+    Done _ MessageHeader {..} -> do
+      messageBytes <- liftIO $ NS.recv sock $ fromIntegral msgSize
+      let messageParsingResult = (parse $ messageParser msgType) messageBytes
+      case messageParsingResult of
+        Done _ msg -> do
+          resp <- handleMsg msg
+          liftIO $ hPutBuilder hdl $ messageBuilder resp
+        _ -> liftIO $ hPutBuilder hdl $ messageBuilder $ RejectMsg $ RejectMessage MessageParsing
+    _ -> liftIO $ hPutBuilder hdl $ messageBuilder $ RejectMsg $ RejectMessage MessageHeaderParsing
+  liftIO $ hClose hdl
