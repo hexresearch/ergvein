@@ -32,7 +32,6 @@ import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.TimeZone
 import Ergvein.Wallet.Tx
-
 import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Worker.Node
 import Ergvein.Wallet.Wrapper
@@ -57,16 +56,21 @@ import qualified Network.Haskoin.Script             as HK
 import qualified Network.Haskoin.Transaction        as HK
 import qualified Network.Haskoin.Util               as HK
 
+
 historyPage :: MonadFront t m => Currency -> m ()
 historyPage cur = do
-  title <- balanceTitleWidget cur
+  walletName <- getWalletName
+  title <- localized walletName
   let thisWidget = Just $ pure $ historyPage cur
-      navbar = navbarWidget cur thisWidget NavbarHistory
-  goE <- wrapperNavbar False title thisWidget navbar $ historyTableWidget cur $ mockTransHistory cur
-  void $ nextWidget $ ffor goE $ \tr -> Retractable {
-      retractableNext = transactionInfoPage cur tr
-    , retractablePrev = thisWidget
-    }
+      navbar = if isAndroid
+        then navbarWidgetAndroid cur thisWidget
+        else navbarWidget cur thisWidget NavbarHistory
+  wrapperNavbar False title thisWidget navbar $ do
+    goE <- historyTableWidget cur $ mockTransHistory cur
+    void $ nextWidget $ ffor goE $ \tr -> Retractable {
+        retractableNext = transactionInfoPage cur tr
+      , retractablePrev = thisWidget
+      }
 
 #ifdef ANDROID
 transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()

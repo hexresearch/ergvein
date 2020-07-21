@@ -15,6 +15,7 @@ import Ergvein.Wallet.Language
 
 data SendStrings
   = SendTitle Currency
+  | SendAvailableBalance
   | SendBtnString
   | RecipientString
   | AmountString
@@ -31,6 +32,7 @@ instance LocalizedPrint SendStrings where
   localizedShow l v = case l of
     English -> case v of
       SendTitle c -> "Send " <> currencyName c
+      SendAvailableBalance -> "Available"
       SendBtnString -> "Send"
       RecipientString -> "Recipient"
       AmountString -> "Amount"
@@ -44,6 +46,7 @@ instance LocalizedPrint SendStrings where
       SSConfirm -> "Confirm the transaction"
     Russian -> case v of
       SendTitle c -> "Отправить " <> currencyName c
+      SendAvailableBalance -> "Доступно"
       SendBtnString -> "Отправить"
       RecipientString -> "Получатель"
       AmountString -> "Сумма"
