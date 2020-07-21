@@ -224,7 +224,7 @@ transactionsGetting cur = do
               txParentsConfirmations = (fmap . fmap) getTxConfirmations parentTxs
               hasUnconfirmedParents = fmap (L.any (== 0)) txParentsConfirmations
           let rawTxsL = L.filter (\(a,b) -> a/=Nothing) $ L.zip bInOut $ txListRaw bl blh txs txsRefList hasUnconfirmedParents parentTxs
-              prepTxs = L.sortOn txDate $ (prepareTransactionView allbtcAdrS hght tz (settingsExplorerUrl s) <$> rawTxsL)
+              prepTxs = L.sortOn txDate $ (prepareTransactionView allbtcAdrS hght tz (maybe btcDefaultExplorerUrls id $ Map.lookup cur (settingsExplorerUrl s)) <$> rawTxsL)
           pure $ L.reverse $ addWalletState prepTxs
 
     filterTx ac pubS = case cur of
@@ -260,8 +260,8 @@ addWalletState txs = fmap calcPrev $ fmap (\(a,txView) -> (txView, calcAmount a 
     calcAmount a txs = sum $ fmap (\(Money _ am) -> am ) $ fmap txAmount $ L.take a txs
     calcPrev (tr, prAm) = tr {txPrevAm = (Just (Money BTC prAm))}
 
-prepareTransactionView :: [EgvAddress] -> Word64 -> TimeZone -> Text -> (Maybe TransType, TxRawInfo) -> TransactionView
-prepareTransactionView addrs hght tz blUrl (mTT, TxRawInfo{..}) = TransactionView {
+prepareTransactionView :: [EgvAddress] -> Word64 -> TimeZone -> ExplorerUrls -> (Maybe TransType, TxRawInfo) -> TransactionView
+prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = TransactionView {
     txAmount = txAmountCalc
   , txPrevAm = Nothing
   , txDate = blockTime
@@ -320,6 +320,8 @@ prepareTransactionView addrs hght tz blUrl (mTT, TxRawInfo{..}) = TransactionVie
       Nothing -> txom
       Just TransRefill -> txom
       Just TransWithdraw -> Money BTC $ sum txOutsOurAm
+
+    blUrl = if isTestnet then testnetUrl sblUrl else mainnetUrl sblUrl
 
 -- Front types, should be moved to Utils
 data ExpStatus = Expanded | Minified deriving (Eq, Show)
