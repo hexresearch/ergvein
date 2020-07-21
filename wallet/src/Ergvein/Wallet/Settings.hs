@@ -49,6 +49,7 @@ data Settings = Settings {
 , settingsReqUrlNum         :: (Int, Int) -- ^ First is minimum required answers. Second is sufficient amount of answers from indexers.
 , settingsActUrlNum         :: Int
 , settingsNodes             :: M.Map Currency [BaseUrl]
+, settingsExplorerUrl       :: Text
 , settingsPortfolio         :: Bool
 , settingsFiatCurr          :: Fiat
 } deriving (Eq, Show)
@@ -74,6 +75,7 @@ instance FromJSON Settings where
             (Just [], Just [], Just []) -> (defaultIndexers, [], [])
             _ -> (fromMaybe [] mActiveUrls, fromMaybe [] mDeactivatedUrls, fromMaybe [] mPassiveUrls)
     settingsNodes             <- o .:? "nodes" .!= M.empty
+    settingsExplorerUrl       <- o .:? "explorerUrl" .!= defaultExplorerUrl
     settingsPortfolio         <- o .:? "portfolio" .!= False
     settingsFiatCurr          <- o .:? "fiatCurr"  .!= USD
     pure Settings{..}
@@ -91,6 +93,7 @@ instance ToJSON Settings where
     , "reqUrlNum"         .= toJSON settingsReqUrlNum
     , "actUrlNum"         .= toJSON settingsActUrlNum
     , "nodes"             .= toJSON settingsNodes
+    , "explorerUrl"       .= toJSON settingsExplorerUrl
     , "portfolio"         .= toJSON settingsPortfolio
     , "fiatCurr"          .= toJSON settingsFiatCurr
    ]
@@ -103,6 +106,9 @@ defaultIndexers = [
   ]
   where
     parse = either (error . ("Failed to parse default indexer: " ++) . show) id . parseBaseUrl
+
+defaultExplorerUrl :: Text
+defaultExplorerUrl = "https://www.blockchain.com/btc-testnet"
 
 defaultIndexersNum :: (Int, Int)
 defaultIndexersNum = (2, 4)
@@ -129,6 +135,7 @@ defaultSettings home =
       , settingsReqUrlNum         = defaultIndexersNum
       , settingsActUrlNum         = defaultActUrlNum
       , settingsNodes             = M.empty
+      , settingsExplorerUrl       = defaultExplorerUrl
       , settingsPortfolio         = False
       , settingsFiatCurr          = USD
       }

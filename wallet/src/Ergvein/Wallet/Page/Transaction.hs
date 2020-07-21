@@ -40,6 +40,7 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Platform
+import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.TimeZone
 import Ergvein.Wallet.Tx
@@ -51,6 +52,7 @@ import Ergvein.Wallet.Wrapper
 import Data.Map.Strict as Map
 import qualified Data.Set as S
 import qualified Data.List as L
+import qualified Data.Vector as V
 import Network.Haskoin.Address
 import Data.Maybe (fromMaybe, isJust, catMaybes)
 import Data.Time
@@ -166,15 +168,16 @@ stat txStatus = case txStatus of
 transactionsGetting :: MonadFront t m => Currency -> m (Dynamic t [TransactionView], Dynamic t Word64)
 transactionsGetting cur = do
   buildE <- delay 0.2 =<< getPostBuild
+  s <- getSettings
   ps <- getPubStorage
   pubSD <- getPubStorageD
   let mStor psBS = fromMaybe 0 $ maybe (Just 0) _currencyPubStorage'height $ Map.lookup cur (_pubStorage'currencyPubStorages psBS)
   heightD <- holdDyn (mStor ps) $ poke (updated pubSD) $ \pbs -> pure $ mStor pbs
   let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _ _) -> case Map.lookup BTC cm of
         Nothing -> []
-        Just CurrencyPubStorage{..} -> extractAddrs _currencyPubStorage'pubKeystore
+        Just CurrencyPubStorage{..} -> V.toList $ extractAddrs _currencyPubStorage'pubKeystore
 
-  abS <- filtArd <$> sampleDyn allBtcAddrsD
+  abS <- sampleDyn allBtcAddrsD
   tzE <- getGetTimeZone buildE
 
   tzD <- holdDyn utc tzE
@@ -182,19 +185,19 @@ transactionsGetting cur = do
   let rawTxList = filterTx abS ps
 
   hD <- holdDyn rawTxList $ poke (updated pubSD) $ \pbs -> do
-    allbtcAdrS <- filtArd <$> sampleDyn allBtcAddrsD
+    allbtcAdrS <- sampleDyn allBtcAddrsD
     pure $ filterTx allbtcAdrS pbs
 
   filtrTxListSE <- performFork $ ffor tzE $ \_ -> do
     let txs = filterTx abS ps
     tz <- sampleDyn tzD
     ps' <- sampleDyn pubSD
-    getAndFilterBlocks heightD allBtcAddrsD tz txs ps'
+    getAndFilterBlocks heightD allBtcAddrsD tz txs ps' s
 
   filtrTxListE <- performFork $ ffor (updated hD) $ \txs -> do
     tz <- sampleDyn tzD
     ps' <- sampleDyn pubSD
-    getAndFilterBlocks heightD allBtcAddrsD tz txs ps'
+    getAndFilterBlocks heightD allBtcAddrsD tz txs ps' s
 
   sD <- holdDyn [] filtrTxListSE
   hS <- sampleDyn $ sD
@@ -202,8 +205,8 @@ transactionsGetting cur = do
   filtrHD <- holdDyn [] $ leftmost [filtrTxListSE, filtrTxListE]
   pure (filtrHD, heightD)
   where
-    getAndFilterBlocks heightD btcAddrsD tz txs store = do
-      allbtcAdrS <- filtArd <$> sampleDyn btcAddrsD
+    getAndFilterBlocks heightD btcAddrsD tz txs store s = do
+      allbtcAdrS <- sampleDyn btcAddrsD
       hght <- sampleDyn heightD
       liftIO $ flip runReaderT store $ do
         let txHashes = fmap (HK.txHash . getBtcTx) txs
@@ -221,7 +224,7 @@ transactionsGetting cur = do
               txParentsConfirmations = (fmap . fmap) getTxConfirmations parentTxs
               hasUnconfirmedParents = fmap (L.any (== 0)) txParentsConfirmations
           let rawTxsL = L.filter (\(a,b) -> a/=Nothing) $ L.zip bInOut $ txListRaw bl blh txs txsRefList hasUnconfirmedParents parentTxs
-              prepTxs = L.sortOn txDate $ (prepareTransactionView allbtcAdrS hght tz <$> rawTxsL)
+              prepTxs = L.sortOn txDate $ (prepareTransactionView allbtcAdrS hght tz (settingsExplorerUrl s) <$> rawTxsL)
           pure $ L.reverse $ addWalletState prepTxs
 
     filterTx ac pubS = case cur of
@@ -249,9 +252,6 @@ transactionsGetting cur = do
           then pure $ Just TransWithdraw
           else pure $ Just TransRefill
 
-    filtArd :: [(Maybe Int, EgvAddress)] -> [EgvAddress]
-    filtArd madr = fmap snd $ L.filter (isJust . fst) madr
-
     txListRaw (a:as) (b:bs) (c:cs) (d:ds) (e:es) (f:fs) = (TxRawInfo a b c d e f) : txListRaw as bs cs ds es fs
 
 addWalletState :: [TransactionView] -> [TransactionView]
@@ -260,8 +260,8 @@ addWalletState txs = fmap calcPrev $ fmap (\(a,txView) -> (txView, calcAmount a 
     calcAmount a txs = sum $ fmap (\(Money _ am) -> am ) $ fmap txAmount $ L.take a txs
     calcPrev (tr, prAm) = tr {txPrevAm = (Just (Money BTC prAm))}
 
-prepareTransactionView :: [EgvAddress] -> Word64 -> TimeZone -> (Maybe TransType, TxRawInfo) -> TransactionView
-prepareTransactionView addrs hght tz (mTT, TxRawInfo{..}) = TransactionView {
+prepareTransactionView :: [EgvAddress] -> Word64 -> TimeZone -> Text -> (Maybe TransType, TxRawInfo) -> TransactionView
+prepareTransactionView addrs hght tz blUrl (mTT, TxRawInfo{..}) = TransactionView {
     txAmount = txAmountCalc
   , txPrevAm = Nothing
   , txDate = blockTime
@@ -278,9 +278,7 @@ prepareTransactionView addrs hght tz (mTT, TxRawInfo{..}) = TransactionView {
     txInf = TransactionViewInfo {
       txId            = txHex
      ,txLabel         = Nothing
-     ,txUrl           = if isTestnet
-       then "https://www.blockchain.com/btc-testnet/tx/" <> txHex
-       else "https://www.blockchain.com/btc/tx/" <> txHex
+     ,txUrl           = blUrl <> "/tx/" <> txHex
      ,txFee           = txFeeCalc
      ,txConfirmations = bHeight
      ,txBlock         = txBlockLink
@@ -309,7 +307,7 @@ prepareTransactionView addrs hght tz (mTT, TxRawInfo{..}) = TransactionView {
     network = getBtcNetwork $ getCurrencyNetwork BTC
 
     txBlockM = maybe Nothing (Just . HK.blockHashToHex) txHBl
-    txBlockLink = maybe Nothing (\a -> Just (blPrefix <> a, a)) txBlockM
+    txBlockLink = maybe Nothing (\a -> Just (blUrl <> "/block/" <> a, a)) txBlockM
 
     blockTime = TxTime $ maybe Nothing (Just . secToTimestamp . HK.blockTimestamp) txMBl
     secToTimestamp t = utcToZonedTime tz $ posixSecondsToUTCTime $ fromIntegral t
@@ -322,8 +320,6 @@ prepareTransactionView addrs hght tz (mTT, TxRawInfo{..}) = TransactionView {
       Nothing -> txom
       Just TransRefill -> txom
       Just TransWithdraw -> Money BTC $ sum txOutsOurAm
-
-    blPrefix = if isTestnet then "https://www.blockchain.com/btc-testnet/block/" else "https://www.blockchain.com/btc/block/"
 
 -- Front types, should be moved to Utils
 data ExpStatus = Expanded | Minified deriving (Eq, Show)
