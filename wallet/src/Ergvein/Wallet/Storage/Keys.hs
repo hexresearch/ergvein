@@ -1,11 +1,8 @@
 module Ergvein.Wallet.Storage.Keys (
-    egvXPubKeyToEgvAddress
-  , deriveCurrencyMasterPrvKey
+    deriveCurrencyMasterPrvKey
   , deriveCurrencyMasterPubKey
   , derivePrvKey
   , derivePubKey
-  , xPubToBtcAddr
-  , xPubToErgAddr
   ) where
 
 import Ergvein.Crypto
@@ -15,22 +12,6 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Network
 
 import qualified Data.ByteString       as BS
-import qualified Data.ByteString.Short as BSS
-import qualified Data.Serialize        as S
-
-xPubToBtcAddr :: XPubKey -> BtcAddress
-xPubToBtcAddr key = pubKeyWitnessAddr $ wrapPubKey True (xPubKey key)
-
-pubKeyErgAddr :: PubKeyI -> ErgAddress
-pubKeyErgAddr = ErgPubKeyAddress . VLAddr . BSS.toShort . S.encode
-
-xPubToErgAddr :: XPubKey -> ErgAddress
-xPubToErgAddr key = pubKeyErgAddr $ wrapPubKey True (xPubKey key)
-
-egvXPubKeyToEgvAddress :: EgvXPubKey -> EgvAddress
-egvXPubKeyToEgvAddress key = case key of
-  ErgXPubKey k _ -> ErgAddress $ xPubToErgAddr k
-  BtcXPubKey k _ -> BtcAddress $ xPubToBtcAddr k
 
 -- | Derive a BIP44 compatible private key for a specific currency.
 -- Given a parent private key /m/

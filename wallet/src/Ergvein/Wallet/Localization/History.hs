@@ -26,8 +26,10 @@ data HistoryPageStrings =
   | HistoryTIAddressUndefined
   | HistoryTIFeeUndefined
   | HistoryTITitle
-  | HistoryTIVolume
+  | HistoryTIAmount
+  | HistoryTIWalletChanges
   | HistoryTIHash
+  | HistoryTITransactionId
   | HistoryTILabel
   | HistoryTIURL
   | HistoryTIFee
@@ -37,6 +39,7 @@ data HistoryPageStrings =
   | HistoryTIOutputs
   | HistoryTIInputs
   | HistoryTIOutputsAddress
+  | HistoryTIOutputsOurAddress
   | HistoryTIOutputsValue
   | HistoryTIOutputsStatus
 
@@ -45,46 +48,52 @@ data HistoryPageStrings =
 instance LocalizedPrint HistoryPageStrings where
   localizedShow l v = case l of
     English -> case v of
-      HistoryBalance            -> "Balance"
-      HistoryNoTxs              -> "No transactions yet"
-      HistoryUnconfirmed        -> "Unconfirmed"
-      HistoryUnconfirmedParents -> "Unconfirmed parents"
-      HistoryTIBlockUndefined   -> "The transaction is not yet included in a block"
-      HistoryTIAddressUndefined -> "Failed to decode address"
-      HistoryTIFeeUndefined     -> "Unknown"
-      HistoryTITitle            -> "Transaction info"
-      HistoryTIVolume           -> "Volume"
-      HistoryTIHash             -> "Hash"
-      HistoryTILabel            -> "Label"
-      HistoryTIURL              -> "Block Explorer"
-      HistoryTIFee              -> "Fee"
-      HistoryTIConfirmations    -> "Confirmations"
-      HistoryTIBlock            -> "Block"
-      HistoryTIRaw              -> "Raw"
-      HistoryTIOutputs          -> "Outputs"
-      HistoryTIInputs           -> "Inputs"
-      HistoryTIOutputsAddress   -> "Address"
-      HistoryTIOutputsValue     -> "Value"
-      HistoryTIOutputsStatus    -> "Status"
+      HistoryBalance             -> "Balance"
+      HistoryNoTxs               -> "No transactions yet"
+      HistoryUnconfirmed         -> "Unconfirmed"
+      HistoryUnconfirmedParents  -> "Unconfirmed parents"
+      HistoryTIBlockUndefined    -> "The transaction is not yet included in a block"
+      HistoryTIAddressUndefined  -> "Failed to decode address"
+      HistoryTIFeeUndefined      -> "Unknown"
+      HistoryTITitle             -> "Transaction info"
+      HistoryTIAmount            -> "Amount"
+      HistoryTIWalletChanges     -> "Wallet changes"
+      HistoryTIHash              -> "Hash"
+      HistoryTITransactionId     -> "Transaction id"
+      HistoryTILabel             -> "Label"
+      HistoryTIURL               -> "Block Explorer"
+      HistoryTIFee               -> "Fee"
+      HistoryTIConfirmations     -> "Confirmations"
+      HistoryTIBlock             -> "Block"
+      HistoryTIRaw               -> "Raw"
+      HistoryTIOutputs           -> "Outputs"
+      HistoryTIInputs            -> "Inputs"
+      HistoryTIOutputsAddress    -> "Address"
+      HistoryTIOutputsOurAddress -> "Our address"
+      HistoryTIOutputsValue      -> "Value"
+      HistoryTIOutputsStatus     -> "Status"
     Russian -> case v of
-      HistoryBalance            -> "Баланс"
-      HistoryNoTxs              -> "Транзакций нет"
-      HistoryUnconfirmed        -> "Не подтверждена"
-      HistoryUnconfirmedParents -> "Родительские транзакции не подтверждены"
-      HistoryTIBlockUndefined   -> "Транзакция еще не включена в блок"
-      HistoryTIAddressUndefined -> "Не удалось декодировать адрес"
-      HistoryTIFeeUndefined     -> "Неизвестно"
-      HistoryTITitle            -> "Информация о транзакции"
-      HistoryTIVolume           -> "Объем"
-      HistoryTIHash             -> "Хэш"
-      HistoryTILabel            -> "Описание"
-      HistoryTIURL              -> "Block Explorer"
-      HistoryTIFee              -> "Комиссия"
-      HistoryTIConfirmations    -> "Подтверждения"
-      HistoryTIBlock            -> "Блок"
-      HistoryTIRaw              -> "Код"
-      HistoryTIOutputs          -> "Выходы"
-      HistoryTIInputs           -> "Входы"
-      HistoryTIOutputsAddress   -> "Адрес"
-      HistoryTIOutputsValue     -> "Объем"
-      HistoryTIOutputsStatus    -> "Статус"
+      HistoryBalance             -> "Баланс"
+      HistoryNoTxs               -> "Транзакций нет"
+      HistoryUnconfirmed         -> "Не подтверждена"
+      HistoryUnconfirmedParents  -> "Родительские транзакции не подтверждены"
+      HistoryTIBlockUndefined    -> "Транзакция еще не включена в блок"
+      HistoryTIAddressUndefined  -> "Не удалось декодировать адрес"
+      HistoryTIFeeUndefined      -> "Неизвестно"
+      HistoryTITitle             -> "Информация о транзакции"
+      HistoryTIAmount            -> "Объем"
+      HistoryTIWalletChanges     -> "Изменения в кошельке"
+      HistoryTIHash              -> "Хэш"
+      HistoryTITransactionId     -> "Id транзакции"
+      HistoryTILabel             -> "Описание"
+      HistoryTIURL               -> "Block Explorer"
+      HistoryTIFee               -> "Комиссия"
+      HistoryTIConfirmations     -> "Подтверждения"
+      HistoryTIBlock             -> "Блок"
+      HistoryTIRaw               -> "Код"
+      HistoryTIOutputs           -> "Выходы"
+      HistoryTIInputs            -> "Входы"
+      HistoryTIOutputsAddress    -> "Адрес"
+      HistoryTIOutputsOurAddress -> "Наш адрес"
+      HistoryTIOutputsValue      -> "Объем"
+      HistoryTIOutputsStatus     -> "Статус"
