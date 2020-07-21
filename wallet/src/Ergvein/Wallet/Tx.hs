@@ -1,6 +1,8 @@
 module Ergvein.Wallet.Tx
   (
     checkAddrTx
+  , checkAddrTxIn
+  , checkAddrTxOut
   , filterTxsForAddress
   , getSpentOutputs
   , getUnspentOutputs
@@ -39,13 +41,27 @@ filterTxsForAddress :: (HasTxStorage m, PlatformNatives) => EgvAddress -> [Tx] -
 filterTxsForAddress addr txs = fmap catMaybes $ flip traverse txs $ \tx -> do
   b <- checkAddrTx addr tx
   pure $ if b then Just tx else Nothing
-  
+
 -- | Checks given tx if there are some inputs or outputs containing given address.
 checkAddrTx :: (HasTxStorage m, PlatformNatives) => EgvAddress -> Tx -> m Bool
 checkAddrTx addr tx = do
   checkTxInputsResults <- traverse (checkTxIn addr) (HT.txIn tx)
   checkTxOutputsResults <- traverse (checkTxOut addr) (HT.txOut tx)
   pure $ concatResults checkTxInputsResults || concatResults checkTxOutputsResults
+  where concatResults = foldr (||) False
+
+-- | Checks given tx if there are some inputs or outputs containing given address.
+checkAddrTxIn :: (HasTxStorage m, PlatformNatives) => EgvAddress -> Tx -> m Bool
+checkAddrTxIn addr tx = do
+  checkTxInputsResults <- traverse (checkTxIn addr) (HT.txIn tx)
+  pure $ concatResults checkTxInputsResults
+  where concatResults = foldr (||) False
+
+-- | Checks given tx if there are some inputs or outputs containing given address.
+checkAddrTxOut :: (HasTxStorage m, PlatformNatives) => EgvAddress -> Tx -> m Bool
+checkAddrTxOut addr tx = do
+  checkTxOutputsResults <- traverse (checkTxOut addr) (HT.txOut tx)
+  pure $ concatResults checkTxOutputsResults
   where concatResults = foldr (||) False
 
 -- | Gets spent output (they are inputs for a tx) for a given address from a transaction

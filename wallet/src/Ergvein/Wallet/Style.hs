@@ -803,7 +803,7 @@ historyPageCss = do
   ".history-page-status-text-icon" ? do
     fontSize $ pt 9
     paddingLeft $ rem 0.5
-  
+
 txInfoPageCss :: Css
 txInfoPageCss = do
   ".tx-info-page" ? do
@@ -829,6 +829,8 @@ txInfoPageCss = do
     paddingRight $ rem 0.5
   ".tx-info-page-copy" ? do
     cursor pointer
+  ".tx-info-our-address" ? do
+    fontWeight bold
 
 legoStyles :: Css
 legoStyles = do
@@ -866,7 +868,7 @@ legoStyles = do
   ".ta-c" ? textAlign center
   ".word-break-all" ? wordBreak breakAll
   ".font-bold" ? fontWeight bold
-  
+
 receiveCss :: Css
 receiveCss = do
   ".receive-qr" ? do

@@ -53,7 +53,7 @@ import Data.Map.Strict as Map
 import qualified Data.Set as S
 import qualified Data.List as L
 import Network.Haskoin.Address
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (fromMaybe, isJust, catMaybes)
 import Data.Time
 import Data.Time.Clock.POSIX
 import Data.Time.Format
@@ -93,7 +93,7 @@ transactionInfoPage cur tr@TransactionView{..} = do
         Just blockHash -> copyDiv blockD' blockHash
       pure (blockD', blockE', copiedBlockE')
     infoPageElementEl HistoryTIOutputs $ divClass "tx-info-page-outputs-inputs" $ do
-        flip traverse (txOutputs txInfoView) $ \(oAddress, oValue, oStatus) -> do
+        flip traverse (txOutputs txInfoView) $ \(oAddress, oValue, oStatus, isOur) -> do
           divClass "pr-1" $ localizedText HistoryTIOutputsValue
           divClass "" $ text $ showMoney oValue <> " " <> showt cur
           divClass "pr-1" $ localizedText HistoryTIOutputsAddress
@@ -151,9 +151,9 @@ transactionInfoPageOld cur tr@TransactionView{..} = do
     infoPageElement HistoryTIAmount $ showMoney txAmount <> " " <> showt cur
     infoPageElement HistoryTIFee $ maybe "unknown" (\a -> (showMoney a) <> " " <> showt cur) $ txFee txInfoView
     infoPageElement HistoryTIConfirmations $ showt $ txConfirmations txInfoView
-    infoPageElementExp HistoryTIBlock $ maybe "unknown" showt $ txBlock txInfoView
+    infoPageElementExp HistoryTIBlock $ maybe "unknown" id $ txBlock txInfoView
     infoPageElementEl HistoryTIOutputs $ divClass "tx-info-page-outputs-inputs" $ do
-        flip traverse (txOutputs txInfoView) $ \(oAddress, oValue, oStatus) -> do
+        flip traverse (txOutputs txInfoView) $ \(oAddress, oValue, oStatus, isOur) -> do
           divClass "pr-1" $ localizedText HistoryTIOutputsValue
           divClass "" $ text $ showMoney oValue <> " " <> showt cur
           divClass "pr-1" $ localizedText HistoryTIOutputsAddress
@@ -181,7 +181,7 @@ transactionInfoPage cur tr@TransactionView{..} = do
       TransRefill -> pure ()
       TransWithdraw -> infoPageElement HistoryTIFee $ maybe "unknown" (\a -> (showMoney a) <> " " <> showt cur) $ txFee txInfoView
     infoPageElement HistoryTIConfirmations $ showt $ txConfirmations txInfoView
-    infoPageElementExp HistoryTIBlock $ maybe "unknown" showt $ txBlock txInfoView
+    infoPageElementExp HistoryTIBlock $ maybe "unknown" id $ txBlock txInfoView
     case txInOut of
       TransRefill -> pure ()
       TransWithdraw -> infoPageElementEl HistoryTIInputs $ divClass "tx-info-page-outputs-inputs" $ do
@@ -192,16 +192,20 @@ transactionInfoPage cur tr@TransactionView{..} = do
           divClass "tx-info-page-expanded mb-1" $ text $ showt oAddress
         pure ()
     infoPageElementEl HistoryTIOutputs $ divClass "tx-info-page-outputs-inputs" $ do
-      flip traverse (txOutputs txInfoView) $ \(oAddress, oValue, oStatus) -> do
-        divClass "pr-1" $ localizedText HistoryTIOutputsValue
-        divClass "" $ text $ showMoney oValue <> " " <> showt cur
-        divClass "pr-1" $ localizedText HistoryTIOutputsAddress
-        divClass "tx-info-page-expanded" $ case oAddress of
+      flip traverse (txOutputs txInfoView) $ \(oAddress, oValue, oStatus, isOur) -> do
+        divClass (oBld "pr-1" isOur) $ localizedText HistoryTIOutputsValue
+        divClass (oBld "" isOur) $ text $ showMoney oValue <> " " <> showt cur
+        if isOur
+          then divClass (oBld "pr-1" isOur) $ localizedText HistoryTIOutputsOurAddress
+          else divClass (oBld "pr-1" isOur) $ localizedText HistoryTIOutputsAddress
+        divClass (oBld "tx-info-page-expanded" isOur) $ case oAddress of
           Nothing -> localizedText HistoryTIAddressUndefined
           Just address -> text address
-        divClass "mb-1 pr-1" $ localizedText HistoryTIOutputsStatus
-        divClass "mb-1" $ localizedText oStatus
+        divClass (oBld "mb-1 pr-1" isOur) $ localizedText HistoryTIOutputsStatus
+        divClass (oBld "mb-1" isOur) $ localizedText oStatus
       pure ()
+      where
+        oBld txt isOur = if isOur then (txt <> " tx-info-our-address") else txt
 
 #endif
 
@@ -306,14 +310,16 @@ transactionsGetting cur = do
         bl <- traverse (maybe (pure Nothing) getBlockHeaderByHash) blh
         txStore <- getTxStorage cur
         flip runReaderT txStore $ do
-          b <- traverse (checkAddr allbtcAdrS) txs
+          bInOut <- traverse (checkAddrInOut allbtcAdrS) txs
           parentTxs <- sequenceA $ fmap (traverse getTxById) parentTxsIds
           let getTxConfirmations mTx = case mTx of
                 Nothing -> 1 -- If tx is not found we put 1 just to indicate that the transaction is confirmed
                 Just tx -> maybe 0 (\x -> hght - x + 1) (fmap etxMetaHeight $ getBtcTxMeta tx)
               txParentsConfirmations = (fmap . fmap) getTxConfirmations parentTxs
               hasUnconfirmedParents = fmap (L.any (== 0)) txParentsConfirmations
-          pure $ L.reverse $ L.sortOn txDate $ fmap snd $ L.filter fst $ L.zip b (prepareTransactionView hght tz <$> txListRaw bl blh txs txsRefList hasUnconfirmedParents)
+          let rawTxs  = txListRaw bl blh txs txsRefList hasUnconfirmedParents
+              rawTxsL = L.filter (\(a,b) -> a/=Nothing) $ L.zip bInOut $ txListRaw bl blh txs txsRefList hasUnconfirmedParents parentTxs
+          pure $ L.reverse $ L.sortOn txDate $ (prepareTransactionView allbtcAdrS hght tz <$> rawTxsL)
 
     filterTx ac pubS = case cur of
       BTC  -> fmap snd $ fromMaybe [] $ fmap Map.toList $ _currencyPubStorage'transactions <$> Map.lookup cur (_pubStorage'currencyPubStorages pubS)
@@ -328,16 +334,28 @@ transactionsGetting cur = do
       bL <- traverse (flip checkAddrTx (getBtcTx tx)) ac
       pure $ L.or bL
 
+    checkAddrInOut :: (HasTxStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m (Maybe TransType)
+    checkAddrInOut ac tx = do
+      bLIn <- traverse (flip checkAddrTxIn (getBtcTx tx)) ac
+      bLOut <- traverse (flip checkAddrTxOut (getBtcTx tx)) ac
+      let isIn = L.or bLIn
+          isOut = L.or bLOut
+      if (not (isIn || isOut))
+        then pure Nothing
+        else if isIn
+          then pure $ Just TransWithdraw
+          else pure $ Just TransRefill
+
     filtArd :: [(Maybe Int, EgvAddress)] -> [EgvAddress]
     filtArd madr = fmap snd $ L.filter (isJust . fst) madr
 
-    txListRaw (a:as) (b:bs) (c:cs) (d:ds) (e:es) = (TxRawInfo a b c d e) : txListRaw as bs cs ds es
+    txListRaw (a:as) (b:bs) (c:cs) (d:ds) (e:es) (f:fs) = (TxRawInfo a b c d e f) : txListRaw as bs cs ds es fs
 
-prepareTransactionView :: Word64 -> TimeZone -> TxRawInfo -> TransactionView
-prepareTransactionView hght tz TxRawInfo{..} = TransactionView {
+prepareTransactionView :: [EgvAddress] -> Word64 -> TimeZone -> (Maybe TransType, TxRawInfo) -> TransactionView
+prepareTransactionView addrs hght tz (mTT, TxRawInfo{..}) = TransactionView {
     txAmount = txom
   , txDate = blockTime
-  , txInOut = TransRefill
+  , txInOut = fromMaybe TransRefill mTT
   , txInfoView = txInf
   , txStatus =
       if txHasUnconfirmedParents
@@ -353,11 +371,11 @@ prepareTransactionView hght tz TxRawInfo{..} = TransactionView {
      ,txUrl           = if isTestnet
        then "https://www.blockchain.com/btc-testnet/tx/" <> txHex
        else "https://www.blockchain.com/btc/tx/" <> txHex
-     ,txFee           = Nothing
+     ,txFee           = txFeeCalc
      ,txConfirmations = bHeight
      ,txBlock         = txBlockDebug
      ,txOutputs       = txOuts
-     ,txInputs        = []
+     ,txInputs        = txInsOuts
     }
     btx = getBtcTx txr
     blHght = maybe 0 etxMetaHeight $ getBtcTxMeta txr
@@ -366,14 +384,22 @@ prepareTransactionView hght tz TxRawInfo{..} = TransactionView {
       else hght - blHght + 1
     txHs = HK.txHash btx
     txHex = HK.txHashToHex txHs
-    txOuts = fmap (\out -> (txOutAdr out, Money BTC (HK.outValue out), TOUnspent)) $ HK.txOut btx
-    txIns = fmap (\out -> (txOutAdr out, Money BTC (HK.outValue out), TOUnspent)) $ HK.txOut btx
+    txOuts = fmap (\out -> (txOutAdr out, Money BTC (HK.outValue out), TOUnspent, txOurArdCheck out)) $ HK.txOut btx
+    txOutsAm = fmap (\out -> HK.outValue out) $ HK.txOut btx
+    txInsOuts = fmap fst $ L.filter snd $ fmap (\out -> ((txOutAdr out, Money BTC (HK.outValue out)), txOurArdCheck out)) $ L.concat $ fmap (HK.txOut . getBtcTx) $ catMaybes txParents
+    txInsOutsAm = fmap fst $ L.filter snd $ fmap (\out -> (HK.outValue out,txOurArdCheck out)) $ L.concat $ fmap (HK.txOut . getBtcTx) $ catMaybes txParents
     network = getBtcNetwork $ getCurrencyNetwork BTC
     txOutAdr out = either (const Nothing) id $ (addrToString network) <$> (scriptToAddressBS $ HK.scriptOutput out)
+    txOurArdCheck out = either (\_ -> False) (\a -> a `L.elem` btcAddrs) $ (scriptToAddressBS $ HK.scriptOutput out)
     txBlockDebug = maybe Nothing (Just . HK.blockHashToHex) txHBl
     blockTime = TxTime $ maybe Nothing (Just . secToTimestamp . HK.blockTimestamp) txMBl
     secToTimestamp t = utcToZonedTime tz $ posixSecondsToUTCTime $ fromIntegral t
-
+    btcAddrs = fmap getBtcAddr addrs
+    txFeeCalc = case mTT of
+      Nothing -> Nothing
+      Just TransRefill -> Nothing
+      Just TransWithdraw -> Just $ Money BTC $ (sum txInsOutsAm) - (sum txOutsAm)
+    txAmountCalc = 0
 
 -- Front types, should be moved to Utils
 data ExpStatus = Expanded | Minified deriving (Eq, Show)
@@ -399,6 +425,7 @@ data TxRawInfo = TxRawInfo {
   , txr                     :: EgvTx
   , txom                    :: Money
   , txHasUnconfirmedParents :: Bool
+  , txParents                :: [Maybe EgvTx]
 } deriving (Show)
 
 newtype TxTime = TxTime (Maybe ZonedTime) deriving (Show)
@@ -429,6 +456,6 @@ data TransactionViewInfo = TransactionViewInfo {
   , txFee           :: Maybe Money
   , txConfirmations :: Word64
   , txBlock         :: Maybe Text
-  , txOutputs       :: [(Maybe Text, Money, TransOutputType)]
+  , txOutputs       :: [(Maybe Text, Money, TransOutputType, Bool)]
   , txInputs        :: [(Maybe Text, Money)]
 } deriving (Show)
