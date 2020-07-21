@@ -205,7 +205,7 @@ infoPageElementExpEl hps el = divClass "tx-info-page-element" $ do
   parClass "tx-info-page-expanded" $ el
 
 historyTableWidget :: MonadFront t m => Currency -> [TransactionView] -> m (Event t TransactionView)
-historyTableWidget cur trList = case cur of
+historyTableWidget cur trList = divClass "history-table" $ case cur of
   BTC -> do
     (txsD, hghtD) <- transactionsGetting BTC
     let txMapD = Map.fromList . L.zip [0..] <$> txsD
@@ -215,7 +215,6 @@ historyTableWidget cur trList = case cur of
   ERGO -> do
     txClickE <- traverse historyTableRow trList
     pure $ leftmost txClickE
-
 
 historyTableRow :: MonadFront t m => TransactionView -> m (Event t TransactionView)
 historyTableRow tr@TransactionView{..} = divButton "history-table-row" $ do

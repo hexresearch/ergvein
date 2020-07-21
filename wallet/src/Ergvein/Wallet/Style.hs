@@ -824,7 +824,9 @@ historyPageCss = do
     display grid
     gridTemplateColumns [fr 2, fr 3, fr 1]
   ".history-table-row:hover" ? do
-    backgroundColor $ rgb 220 220 220
+    backgroundColor $ rgb 215 215 219
+  ".history-table-row:not(:last-child)" ? do
+    borderBottom solid (rem 0.1) (rgb 215 215 219)
   ".history-amount-transrefill" ? do
     display flex
     alignItems center
