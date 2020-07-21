@@ -88,7 +88,7 @@ extractAddrs (PubKeystore mast ext int) = mastadr:(extadrs <> intadrs)
   where
     mastadr = (Nothing,) $ egvXPubKeyToEgvAddress mast
     extadrs = V.toList $ V.imap (\i b -> (Just i, egvXPubKeyToEgvAddress $ pubKeyBox'key b)) ext
-    intadrs = V.toList $ V.imap (\i b -> (Nothing, egvXPubKeyToEgvAddress $ pubKeyBox'key b)) int
+    intadrs = V.toList $ V.imap (\i b -> (Just i, egvXPubKeyToEgvAddress $ pubKeyBox'key b)) int
 
 example :: IO ()
 example = do
