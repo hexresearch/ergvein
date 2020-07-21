@@ -2,6 +2,7 @@ module Ergvein.Wallet.Monad.Storage
   (
     MonadStorage(..)
   , HasPubStorage(..)
+  , HasTxStorage(..)
   , setLastSeenHeight
   , addTxToPubStorage
   , addTxMapToPubStorage
@@ -17,6 +18,7 @@ module Ergvein.Wallet.Monad.Storage
   , addOutgoingTx
   , removeOutgoingTxs
   , getBtcBlockHashByTxHash
+  , getTxStorage
   , getTxById
   , getBlockHeaderByHash
   , storeBlockHeadersE
@@ -36,6 +38,7 @@ import Network.Haskoin.Transaction (OutPoint)
 import Reflex
 
 import Ergvein.Crypto
+import Ergvein.Text
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
@@ -53,12 +56,6 @@ import qualified Data.Vector as V
 import qualified Network.Haskoin.Block as HB
 import qualified Network.Haskoin.Transaction as HT
 
-class MonadIO m => HasPubStorage m where
-  askPubStorage :: m PubStorage
-
-instance MonadIO m => HasPubStorage (ReaderT PubStorage m) where
-  askPubStorage = ask
-
 class (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t m | m -> t where
   getAddressByCurIx :: Currency -> Int -> m Base58
   getEncryptedPrvStorage :: m EncryptedPrvStorage
@@ -68,6 +65,18 @@ class (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t m | m -> t where
   storeWallet            :: Text -> Event t () -> m ()
   modifyPubStorage       :: Text -> Event t (PubStorage -> Maybe PubStorage) -> m (Event t ())
   getStoreMutex          :: m (MVar ())
+
+class MonadIO m => HasPubStorage m where
+  askPubStorage :: m PubStorage
+
+instance MonadIO m => HasPubStorage (ReaderT PubStorage m) where
+  askPubStorage = ask
+
+class MonadIO m => HasTxStorage m where
+  askTxStorage :: m (M.Map TxId EgvTx)
+
+instance MonadIO m => HasTxStorage (ReaderT (M.Map TxId EgvTx) m) where
+  askTxStorage = ask
 
 -- ===========================================================================
 --           MonadStorage helpers
@@ -216,11 +225,14 @@ getBtcBlockHashByTxHash bth = do
     . currencyPubStorage'transactions . at th & fmap (getEgvTxMeta) & fmap etxMetaHash . join
   where th = HT.txHashToHex bth
 
-getTxById :: HasPubStorage m => TxId -> m (Maybe EgvTx)
-getTxById tid = do
+getTxStorage :: HasPubStorage m => Currency -> m (M.Map TxId EgvTx)
+getTxStorage cur = do
   ps <- askPubStorage
-  pure $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "getBtcBlockHashByTxHash: not exsisting store!")
-    . currencyPubStorage'transactions . at tid
+  pure $ ps ^. pubStorage'currencyPubStorages . at cur . non (error $ "getTxStorage: " <> show cur <> " storage does not exist!")
+    . currencyPubStorage'transactions
+
+getTxById :: HasTxStorage m => TxId -> m (Maybe EgvTx)
+getTxById tid = fmap (M.lookup tid) askTxStorage
 
 getBlockHeaderByHash :: HasPubStorage m => HB.BlockHash -> m (Maybe HB.BlockHeader)
 getBlockHeaderByHash bh = do
