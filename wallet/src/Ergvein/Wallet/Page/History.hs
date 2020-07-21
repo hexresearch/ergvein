@@ -203,7 +203,7 @@ infoPageElementExpEl hps el = divClass "tx-info-page-element" $ do
 historyTableWidget :: MonadFront t m => Currency -> [TransactionView] -> m (Event t TransactionView)
 historyTableWidget cur trList = case cur of
   BTC -> do
-    (txsD,hghtD) <- transactionsGetting BTC
+    (txsD, hghtD) <- transactionsGetting BTC
     let txMapD = Map.fromList . L.zip [0..] <$> txsD
     mapED <- listWithKey txMapD (\_ -> historyTableRowD hghtD)
     let txClickE = switchDyn $ mergeMap <$> mapED

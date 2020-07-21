@@ -174,7 +174,9 @@ translatePctXY x y = prefixed (browsers <> "transform") $ "translate(" <> value 
 headerCss :: Css
 headerCss = do
   ".header-wrapper" ? do
-    position relative
+    position sticky
+    top $ rem 0
+    zIndex 1
   ".header" ? do
     display flex
     alignItems stretch
@@ -752,7 +754,7 @@ historyPageCss = do
     borderTop solid (px 2) black
     borderBottom solid (px 2) black
     display grid
-    gridTemplateColumns [fr 3, fr 3, fr 1]
+    gridTemplateColumns [fr 2, fr 3, fr 1]
   ".history-amount-header" ? do
     borderRight solid (px 2) black
     display block
@@ -782,7 +784,7 @@ historyPageCss = do
     fontSize $ px 16
     padding (rem 1.5) (rem 1) (rem 1.5) (rem 1)
     display grid
-    gridTemplateColumns [fr 3, fr 3, fr 1]
+    gridTemplateColumns [fr 2, fr 3, fr 1]
   ".history-table-row:hover" ? do
     backgroundColor $ rgb 220 220 220
   ".history-amount-transrefill" ? do
