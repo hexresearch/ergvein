@@ -18,7 +18,7 @@ data MessageType = Version
                  | Ping
                  | Pong
 
-data RejectCode = MessageHeaderParsing | MessageParsing
+data RejectCode = MessageHeaderParsing | MessageParsing | InternalServerError
 
 data CurrencyCode = BTC | TBTC | ERGO | TERGO | USDTO | TUSDTO | LTC | TLTC | ZEC | TZEC | CPR | TCPR | DASH | TDASH
 

@@ -19,6 +19,7 @@ import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Dependencies
 import Control.Concurrent.STM
 import Ergvein.Index.Server.TCPService.MessageHandler
+import Control.Monad.Catch
 
 import qualified Network.Socket.ByteString as NS
 
@@ -58,7 +59,7 @@ runConn (sock, _) = do
       let messageParsingResult = (parse $ messageParser msgType) messageBytes
       case messageParsingResult of
         Done _ msg -> do
-          resp <- handleMsg msg
+          resp <- handleMsg msg `catch` (\(SomeException ex) -> pure $ RejectMsg $ RejectMessage $ InternalServerError)
           liftIO $ hPutBuilder hdl $ messageBuilder resp
         _ -> liftIO $ hPutBuilder hdl $ messageBuilder $ RejectMsg $ RejectMessage MessageParsing
     _ -> liftIO $ hPutBuilder hdl $ messageBuilder $ RejectMsg $ RejectMessage MessageHeaderParsing
