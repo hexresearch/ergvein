@@ -15,8 +15,8 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Page.Transaction
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Storage.Keys
-
 import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
 
@@ -28,9 +28,12 @@ import Safe
 
 historyPage :: MonadFront t m => Currency -> m ()
 historyPage cur = do
-  title <- balanceTitleWidget cur
+  walletName <- getWalletName
+  title <- localized walletName
   let thisWidget = Just $ pure $ historyPage cur
-      navbar = navbarWidget cur thisWidget NavbarHistory
+      navbar = if isAndroid
+        then navbarWidgetAndroid cur thisWidget
+        else navbarWidget cur thisWidget NavbarHistory
   goE <- wrapperNavbar False title thisWidget navbar $ historyTableWidget cur
   void $ nextWidget $ ffor goE $ \tr -> Retractable {
       retractableNext = transactionInfoPage cur tr
@@ -38,9 +41,9 @@ historyPage cur = do
     }
 
 historyTableWidget :: MonadFront t m => Currency -> m (Event t TransactionView)
-historyTableWidget cur = case cur of
+historyTableWidget cur = divClass "history-table" $ case cur of
   BTC -> do
-    (txsD,hghtD) <- transactionsGetting BTC
+    (txsD, hghtD) <- transactionsGetting BTC
     let txMapD = Map.fromList . L.zip [0..] <$> txsD
     mapED <- listWithKey txMapD (\_ -> historyTableRowD hghtD)
     let txClickE = switchDyn $ mergeMap <$> mapED
@@ -48,7 +51,6 @@ historyTableWidget cur = case cur of
   ERGO -> do
     txClickE <- traverse historyTableRow []
     pure $ leftmost txClickE
-
 
 historyTableRow :: MonadFront t m => TransactionView -> m (Event t TransactionView)
 historyTableRow tr@TransactionView{..} = divButton "history-table-row" $ do

@@ -22,6 +22,8 @@ data HistoryPageStrings =
   | HistoryNoTxs
   | HistoryUnconfirmed
   | HistoryUnconfirmedParents
+  | HistorySend
+  | HistoryReceive
   | HistoryTIBlockUndefined
   | HistoryTIAddressUndefined
   | HistoryTIFeeUndefined
@@ -52,6 +54,8 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryNoTxs               -> "No transactions yet"
       HistoryUnconfirmed         -> "Unconfirmed"
       HistoryUnconfirmedParents  -> "Unconfirmed parents"
+      HistorySend                -> "Send"
+      HistoryReceive             -> "Receive"
       HistoryTIBlockUndefined    -> "The transaction is not yet included in a block"
       HistoryTIAddressUndefined  -> "Failed to decode address"
       HistoryTIFeeUndefined      -> "Unknown"
@@ -77,6 +81,8 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryNoTxs               -> "Транзакций нет"
       HistoryUnconfirmed         -> "Не подтверждена"
       HistoryUnconfirmedParents  -> "Родительские транзакции не подтверждены"
+      HistorySend                -> "Отправить"
+      HistoryReceive             -> "Получить"
       HistoryTIBlockUndefined    -> "Транзакция еще не включена в блок"
       HistoryTIAddressUndefined  -> "Не удалось декодировать адрес"
       HistoryTIFeeUndefined      -> "Неизвестно"
