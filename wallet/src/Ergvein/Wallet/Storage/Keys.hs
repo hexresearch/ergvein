@@ -60,25 +60,3 @@ derivePubKey masterKey keyPurpose index =
   in case masterKey of
     ErgXPubKey k _ -> ErgXPubKey (derivedKey k) ""
     BtcXPubKey k _ -> BtcXPubKey (derivedKey k) ""
-
-example :: IO ()
-example = do
-  ent <- getEntropy
-  putStrLn "Entropy:"
-  print ent
-  let mnemonic = toMnemonic ent
-  putStrLn "\nMnemonic:"
-  print mnemonic
-  let seed = mnemonic >>= mnemonicToSeed BS.empty
-  putStrLn "\nSeed:"
-  print seed
-  let xPrvKey = fmap makeXPrvKey seed
-  putStrLn "\nExtended private key:"
-  print xPrvKey
-  let xPubKey = fmap deriveXPubKey xPrvKey
-  putStrLn "\nExtended public key:"
-  print xPubKey
-  let currency = BTC
-  let address = fmap (egvXPubKeyToEgvAddress . flip BtcXPubKey "") xPubKey
-  putStrLn "\nAddress:"
-  print address
