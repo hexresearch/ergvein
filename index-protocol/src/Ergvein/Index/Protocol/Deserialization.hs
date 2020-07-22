@@ -3,6 +3,7 @@ module Ergvein.Index.Protocol.Deserialization where
 import Data.Attoparsec.Binary
 import Data.Attoparsec.ByteString
 import Data.Word
+import Control.Monad
 import Ergvein.Index.Protocol.Types
 import qualified Data.ByteString as BS
 import qualified Data.Vector.Unboxed as V
@@ -65,7 +66,7 @@ messageParser Version = do
   time          <- fromIntegral <$> anyWord64be
   nonce         <- anyWord64be
   currencies    <- anyWord32be
-  versionBlocks <- V.fromList <$> (sequence $ replicate (fromIntegral currencies) versionBlocksParser)
+  versionBlocks <- V.fromList <$> replicateM (fromIntegral currencies) versionBlocksParser
 
   pure $ VersionMsg $ VersionMessage  
     { versionMsgVersion    = version

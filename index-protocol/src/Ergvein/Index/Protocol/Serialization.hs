@@ -26,7 +26,7 @@ rejectTypeToWord32 = \case
   MessageHeaderParsing -> 0
   MessageParsing       -> 1
 
-
+{-
 scanBlock :: CurrencyCode -> Word32 -> Word64 -> Word64 -> Builder
 scanBlock currency version scanHeight height = word32BE (undefined currency)
                                             <> word32BE version
@@ -57,15 +57,21 @@ pingMsg nonce = msg Ping msgSize $ word64BE nonce
 pongMsg :: Word64 -> Builder
 pongMsg nonce = msg Pong msgSize $ word64BE nonce
   where
-    msgSize = genericSizeOf nonce
+    msgSize = genericSizeOf nonce-}
 
-msg :: MessageType -> Word32 -> Builder -> Builder
-msg msgType msgLength payload = word32BE (messageTypeToWord32 msgType) <> word32BE msgLength <> payload
+messageBase :: MessageType -> Word32 -> Builder -> Builder
+messageBase msgType msgLength payload = word32BE (messageTypeToWord32 msgType) <> word32BE msgLength <> payload
 
 messageBuilder :: Message -> Builder
 
-messageBuilder (PingMsg   msg) = word64BE msg
+messageBuilder (PingMsg msg) = messageBase Ping msgSize $ word64BE msg
+  where
+    msgSize = genericSizeOf msg
 
-messageBuilder (PongMsg   msg) = word64BE msg
+messageBuilder (PongMsg   msg) = messageBase Pong msgSize $ word64BE msg
+  where
+    msgSize = genericSizeOf msg
 
-messageBuilder (RejectMsg msg) = word32BE $ rejectTypeToWord32 $ rejectMsgCode msg
+messageBuilder (RejectMsg msg) = messageBase Reject msgSize $ word32BE $ rejectTypeToWord32 $ rejectMsgCode msg
+  where
+    msgSize = genericSizeOf $ rejectTypeToWord32 $ rejectMsgCode msg

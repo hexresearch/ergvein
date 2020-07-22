@@ -63,6 +63,11 @@ word32ToCurrencyCode = \case
   12 -> DASH
   13 -> TDASH
 
+derivingUnbox "CurrencyCode"
+  [t| CurrencyCode -> Word32 |]
+  [| currencyCodeToWord32    |]
+  [| word32ToCurrencyCode    |]
+
 data MessageHeader = MessageHeader
   { msgType :: MessageType
   , msgSize :: Word32
@@ -82,11 +87,6 @@ data ScanBlock = ScanBlock
   , scanBlockScanHeight :: Word64
   , scanBlockHeight     :: Word64
   }
-
-derivingUnbox "CurrencyCode"
-  [t| CurrencyCode -> Word32 |]
-  [| currencyCodeToWord32    |]
-  [| word32ToCurrencyCode    |]
 
 derivingUnbox "ScanBlock"
   [t| ScanBlock -> (CurrencyCode, Word32, Word64, Word64) |]
