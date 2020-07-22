@@ -2,10 +2,10 @@ module Ergvein.Index.Protocol.Deserialization where
 
 import Data.Attoparsec.Binary
 import Data.Attoparsec.ByteString
-import Data.ByteString
 import Data.Word
 import Ergvein.Index.Protocol.Types
 import qualified Data.ByteString as BS
+import qualified Data.Vector.Unboxed as V
 
 word32toMessageType :: Word32 -> Maybe MessageType 
 word32toMessageType = \case
@@ -50,9 +50,29 @@ rejectCodeParser = do
    Just messageType -> pure messageType
    _                -> fail "out of message type bounds"
 
+versionBlocksParser ::  Parser ScanBlock
+versionBlocksParser = undefined
+
 messageParser :: MessageType -> Parser Message
 messageParser Ping = PingMsg <$> anyWord64be
 
 messageParser Pong = PongMsg <$> anyWord64be
 
 messageParser Reject = RejectMsg . RejectMessage <$> rejectCodeParser
+
+messageParser Version = do
+  version       <- anyWord32be
+  time          <- fromIntegral <$> anyWord64be
+  nonce         <- anyWord64be
+  currencies    <- anyWord32be
+  versionBlocks <- V.fromList <$> (sequence $ replicate (fromIntegral currencies) versionBlocksParser)
+
+  pure $ VersionMsg $ VersionMessage  
+    { versionMsgVersion    = version
+    , versionMsgTime       = time
+    , versionMsgNonce      = nonce
+    , versionMsgCurrencies = currencies
+    , versionMsgScanBlocks = versionBlocks
+    }
+
+messageParser VersionACK = pure $ VersionACKMsg VersionACKMessage
