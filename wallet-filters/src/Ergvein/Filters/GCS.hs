@@ -52,7 +52,8 @@ decodeGcs p = G.fromByteString p
 -- referred to as deltas, are encoded sequentially to a bit stream with
 -- Golomb-Rice coding.
 --
--- The result is a byte vector with a minimum size of N * (P + 1) bits.
+-- We add an aditional optimization that drops repeated elements from the set.
+-- The result is a byte vector with a minimum size of (uniq elems count) * (P + 1) bits.
 constructGcs :: Int -- ^ the bit P parameter of the Golomb-Rice coding
   -> SipKey -- ^ k the 128-bit key used to randomize the SipHash outputs
   -> Word64 -- ^ M the target false positive rate
@@ -65,7 +66,7 @@ constructGcs p k m ls = gs
       mv <- VU.unsafeThaw is
       V.sort mv
       VU.unsafeFreeze mv
-    ids = VU.zipWith (-) iss (VU.cons 0 iss)
+    ids = VU.zipWith (-) iss (VU.cons 0 $ VU.uniq iss)
     gs = G.fromVectorUnboxed p ids :: G.GolombRice Word64
 
 -- | To check membership of an item in a compressed GCS, one must reconstruct

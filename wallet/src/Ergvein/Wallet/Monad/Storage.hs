@@ -221,8 +221,8 @@ storeBlockHeadersE caller cur reqE = do
 getBtcBlockHashByTxHash :: HasPubStorage m => HT.TxHash -> m (Maybe HB.BlockHash)
 getBtcBlockHashByTxHash bth = do
   ps <- askPubStorage
-  pure $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "getBtcBlockHashByTxHash: not exsisting store!")
-    . currencyPubStorage'transactions . at th & fmap (getEgvTxMeta) & fmap etxMetaHash . join
+  pure $ join $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "getBtcBlockHashByTxHash: not exsisting store!")
+    . currencyPubStorage'transactions . at th & fmap getEgvTxMeta & fmap etxMetaHash . join
   where th = HT.txHashToHex bth
 
 getTxStorage :: HasPubStorage m => Currency -> m (M.Map TxId EgvTx)

@@ -5,9 +5,9 @@ mkDerivation {
   pname = "clay";
   version = "0.14.0";
   src = fetchgit {
-    url = "https://github.com/hexresearch/clay.git";
-    sha256 = "01jz1aqrrrg6x5q108axa3n7yhfrd1c72gj67xkjbpj35hwja1y9";
-    rev = "50572e48fc616b4aeb9f121167106e41c243025b";
+    url = "https://github.com/sebastiaanvisser/clay.git";
+    sha256 = "18g00q2xmqpxpzcw4dikxjm3lkcsrvrimhksc5pkw153mkspxawj";
+    rev = "1f4e38b9d66ec46b266e75e09cbd5de33fed26b1";
     fetchSubmodules = true;
   };
   libraryHaskellDepends = [ base mtl text ];

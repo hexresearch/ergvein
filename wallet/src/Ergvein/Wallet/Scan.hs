@@ -9,6 +9,7 @@ import Control.Monad.Reader
 import Data.Bifunctor (second)
 import Data.ByteString (ByteString)
 import Data.List
+import Data.Time.Clock.POSIX
 import Data.Maybe (fromMaybe, isNothing)
 import Data.Vector (Vector)
 import Network.Haskoin.Address (addrToString)
@@ -68,10 +69,13 @@ scannerFor cur = case cur of
 -- updates transactions that are found. Specific for Bitcoin.
 scannerBtc :: forall t m . MonadFront t m => m ()
 scannerBtc = void $ workflow waiting
+-- scannerBtc = void $ workflow dbgStage
   where
     -- dbgStage = Workflow $ do
     --   buildE <- delay 0.1 =<< getPostBuild
-    --   e <- writeWalletsScannedHeight $ (BTC, 1774599) <$ buildE
+    --   rsD <- fmap _pubStorage'restoring <$> getPubStorageD
+    --   let setE = ffilter not $ leftmost [updated rsD, tag (current rsD) buildE]
+    --   e <- writeWalletsScannedHeight "setting dbg scan" $ (BTC, 1781221) <$ setE
     --   pure ((), waiting <$ e)
 
     waiting = Workflow $ do
@@ -98,6 +102,7 @@ scannerBtc = void $ workflow waiting
       scD <- getWalletsScannedHeightD BTC
       cleanedE <- performFork $ ffor waitingE $ const $ do
         i1 <- fmap fromIntegral . sample . current $ scD
+        logWrite $ "Cleaning filters from " <> showt i0 <> " to " <> showt i1
         clearFiltersRange BTC i0 i1
       pure ((), waiting <$ cleanedE)
 
@@ -196,6 +201,8 @@ getAddrTxsFromBlock box heights block = do
     mkTxId = HT.txHashToHex . HT.txHash
     addr = egvXPubKeyToEgvAddress $ scanBox'key box
     txs = HB.blockTxns block
+    blockTime = secToTimestamp . HB.blockTimestamp $ HB.blockHeader $ block
     bhash = HB.headerHash . HB.blockHeader $ block
     mh = Just $ maybe 0 fromIntegral $ M.lookup bhash heights
-    mheha = (\h -> EgvTxMeta h bhash) <$> mh
+    mheha = (\h -> EgvTxMeta (Just h) (Just bhash) blockTime) <$> mh
+    secToTimestamp t = posixSecondsToUTCTime $ fromIntegral t

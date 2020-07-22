@@ -7,6 +7,7 @@ import           Network.Haskoin.Address
 import           Network.Haskoin.Block
 import           Network.Haskoin.Constants
 import           Network.Haskoin.Transaction
+import           Control.Monad
 import qualified Data.Serialize                as S
 import           Data.Text                      ( Text
                                                 , unpack
@@ -24,7 +25,7 @@ import           Ergvein.Types.Address          (btcAddrToString')
 import           Data.Foldable
 import           System.IO.Unsafe (unsafePerformIO)
 
--- import Debug.Trace
+import Debug.Trace
 
 spec_filterPositive :: Spec
 spec_filterPositive = forM_ samples $ \(block, txs, as) -> do
@@ -60,41 +61,69 @@ spec_filterNegative = forM_ samples $ \(block, txs) -> do
 spec_specificFilter1 :: Spec
 spec_specificFilter1 = do
   describe "filter encode-decode" $ it "idepontent" $ do
-    hx <- fmap bs2Hex $ encodeBtcAddrFilter =<< getFilter
+    let filterHex = "0000000000000015024a80000098066800004cd26bc68db000000000030cdd70db52ff43c6000000fa9ea8d5fac400001dc73c000000000137e4b8d5e647dc38"
+    hx <- fmap bs2Hex $ encodeBtcAddrFilter =<< getFilter filterHex
     hx `shouldBe` filterHex
   describe "block 000000000000017c36b1c7c70f467244009c552e1732604a0f779fc6ff2d6112 generate filters" $ do
     let bhash   = headerHash . blockHeader $ block1
         bid     = blockHashToHex bhash
+        filterHex = "0000000000000015024a80000098066800004cd26bc68db0000030cdd70db52ff43c6000000fa9ea8d5fac400001dc73c0000137e4b8d5e647dc38"
     it "generates right filter" $ do
       bfilter <- makeBtcFilter btcTest block1Txs block1
       fstr <- bs2Hex <$> encodeBtcAddrFilter bfilter
-      fstr' <- fmap bs2Hex $ encodeBtcAddrFilter =<< getFilter
+      fstr' <- fmap bs2Hex $ encodeBtcAddrFilter =<< getFilter filterHex
       fstr `shouldBe` fstr'
   describe "block 000000000000017c36b1c7c70f467244009c552e1732604a0f779fc6ff2d6112 filter tests" $ do
+    let bhash = "000000000000017c36b1c7c70f467244009c552e1732604a0f779fc6ff2d6112"
+        addrs :: [SegWitAddress]
+        addrs = fmap loadAddress [
+            "tb1qjx8u3dz6dnxcnwmpwdcd2c8hzugzt8jap9enpu"
+          , "tb1q0fql9yduelq8lxyrlrajlxewj09zg2st3ufyf7"
+          , "tb1qms2h0994zyywf2jvr6gez4nwtqg8xc0fz70260"
+          ]
+        negaddrs :: [SegWitAddress]
+        negaddrs = fmap loadAddress [
+            "tb1q8tkcrwr0ejssk4xhchmge0dmpuqvd3rdu93srh"
+          , "tb1q2z49tgch3fdjs7ye9swx5t6n824zqh2zaazw94"
+          ]
+        filterHex = "0000000000000015024a80000098066800004cd26bc68db000000000030cdd70db52ff43c6000000fa9ea8d5fac400001dc73c000000000137e4b8d5e647dc38"
+
     forM_ addrs $ \addr -> do
       let addrstr = unpack . TE.decodeUtf8 $ encodeSegWitAddress btcTest addr
-      it ("has address " <> addrstr) $ do
-        bfilter <- getFilter
+      it ("has address " <> addrstr) $ void $ replicateM 1000 $ do
+        bfilter <- getFilter filterHex
         res <- applyBtcFilter btcTest bhash bfilter addr
         res `shouldBe` True
-    it ("has any of prev addresses") $ do
-      bfilter <- getFilter
+    it ("has any of prev addresses") $ void $ replicateM 1000 $ do
+      bfilter <- getFilter filterHex
+      res <- applyBtcFilterMany btcTest bhash bfilter addrs
+      res `shouldBe` True
+    it ("works when not all match filter first") $ do
+      bfilter <- getFilter filterHex
+      res <- applyBtcFilterMany btcTest bhash bfilter $ [head addrs] ++ negaddrs
+      res `shouldBe` True
+    it ("works when not all match filter middle") $ do
+      bfilter <- getFilter filterHex
+      res <- applyBtcFilterMany btcTest bhash bfilter $ [head negaddrs] ++ [head addrs] ++ [last negaddrs]
+      res `shouldBe` True
+    it ("works when not all match filter last") $ do
+      bfilter <- getFilter filterHex
+      res <- applyBtcFilterMany btcTest bhash bfilter $ negaddrs ++ [head addrs]
+      res `shouldBe` True
+  describe "block 00000000a23765a02274f860841fef247233bd92b3cd98f6ee40f513937129c4 filter tests" $ do
+    let bhash = "00000000a23765a02274f860841fef247233bd92b3cd98f6ee40f513937129c4"
+        addrs = fmap loadAddress
+            ["tb1q6np2kl9j7w5lrhw4wccqzh8gdgxapvwtdu46eg","tb1qjx8u3dz6dnxcnwmpwdcd2c8hzugzt8jap9enpu","tb1qg0etkg3447p0d6vce3dxg8czr2zpnt203n67ap","tb1q4r9qsfugzz8zvfw00a9ez9mhhpal20lvnz06aw","tb1qelkhsjgm4y6mlfn9tcc80nsuj9sjavp27v4sv2","tb1q8cv0j5mhcc2mv9ugqacqpmq6f7w8749fsh75te","tb1qrr8ztdep2zg9pz8udlfvtjqr6zura9uanxhr3h","tb1qtaufhn6ryjeq37epkfn03crmsjuds7kuhs7tqv","tb1q2zlt086sqps28740gekn3pejcr47e3hcau3qgw","tb1qtd5d7evhhjumm9vv04e690pdm8xrhxac2cu9md","tb1qthrcedzd34r5mz0ycwqtp0y4yk4s4y4p4a6d4n","tb1q4q457pyf9g5ngfpxm4tftlg06vckkdcrmg3gtl","tb1q9yyvzhek2mzdqv4j7za7pawrn2vqruqn2f0xwq","tb1q68r5uk5e45vnqecc5ayf92drcdy0d4fmrxjrrv","tb1qhuvzhvjmtspqxd69vl9y27k9clp5yrqufnywgq","tb1qkp0qdcwz533d397pa402vkrvqupa75m2ukadwu","tb1qt5p89dkhxq050uld0te4m23yu9nsp9dk0raewx","tb1qrudkcdae3jgww8xd6ydcrum4e7d83lv7nat0nd","tb1qjq3cyuzwmngzn8r85w87skxz2c9zyl32lvjjks","tb1q5n8vuaq8f0yrxa7vkfsqctfgqlfp6c83exkgge","tb1qwn2u4pkwsuu9gffv33c9gwepdz2m33rlvn3vcm","tb1q8vz4xa8gtxw55ct6ze6h85e8w5y3u9puccydus","tb1qxwaqacv7acjfrjjernxrtkgvgekxsuzz80cmak","tb1qs8vj2jp8a9astkt8qqq5g5yj4q25z2gn36mdey","tb1q700ay3f0pqjfsnv3ypyfpr7ghvx0jhr0x90njz","tb1qz7a4lqtnrr6dm8ztglq0acafmmf5f4pncwk2kk","tb1qj35g4gs8gtremtqz2t60am6xexm8p0qpelyz83","tb1qp8ckmhd9sjf8fky90560va77q9gacdkrwd98ts","tb1qm4gexe3q9sw48fazmfcqmxfv6fqwfe5tj9cp4r","tb1ql4xdr2jr3zzjn9lxsdwzjvg3t9q2s8l24zg0j6","tb1qxfpxygp7vrrczpw98fgmykdme504nzw9teshlx","tb1qgfqpymsqt8pqgr329xx8xdsj5vlcezh28hcxhu","tb1qjr4e3u3x9tuw35zsy5yqyc8nvktxwmzxsfnejl","tb1qyx8se3ne5l3hfkahss9lzcpt47nr2nfxlv06dt","tb1q8046gny6vnhr6sdyta2cww48zsm55cjh8yzt9n","tb1q8pajpyux77mzc3ru68ck0eazrn7nrqmjcht8l6","tb1qaq7erxv6ph9e7gzkdt23zplahxrnuxkcgsunpl","tb1qauw2gcees2kn3tzrwj3shz43pzzjqdnun7n9kr","tb1q0pgzdc4dsmkl8e9ctrdguma3xtyy6lqlre2ytr","tb1qqa2y7ynak7qcn9g55ras4qcv2xd4p7zxxsp6x0","tb1qjv5725suqy0untvsgtjyf35c9d9p498yqcghy0","tb1qxrqyw7ycs5w8u2fyzgycmmdurv4snwrlxrwyw4","tb1qsyr9zlk97tpruyr65pt4necmyezpp34u0gttdc","tb1qe7dn7607py20hhy04msqjhc7jc25zyrhfzq5kz","tb1qm46s63fa3xf7m3lf998duahp8fqseyj2v4hx7d","tb1qyfqetcg94g8lwm96h6y2h8tn9s5r3rl94hz6rj","tb1qaaerc67qamc2g4pplz0ex969p87lutjy39lne6","tb1q4srewz3u3hrmleywxcguzjwxkdytwtkwm4qhk4","tb1q7s9zta79hrzrwhcuk2t6krgys9ey3uedcya0hu","tb1qyjyq2d3mvzm8y07gydsredlsr65dfkdge4z7ed","tb1q2uk8vv54sfhkjt6m7zxvdu9y7sthqn5w8lshh4","tb1qwgz5ff07vhs25yx7jny5wsldrmus8u6at85cle","tb1qc037ylsk37q95ym6lrc5w2h2cmugxg7jwavttf","tb1qgmc5syxe49w696qgjq2azmfr00q5wn8c9qlkft","tb1q8ra5rznzws85yh3a42vegpx9wfccu6v3ucae68","tb1qs60d9lzrypwtrcuc9uh4h96utlw7p727snphtv","tb1qjejrqpkgv6kum54snjlwe3hj9tug705fx5ru3j","tb1q67ctqwz4kvrd3xah5pty9r9d3fgyjxl0a8tw49","tb1qxsnjrtkjegtygc9wznawxrq70rkyex0ace4q9c","tb1q65pk5ssknc2ut67y3jp749u4fsuy395sawa2vz","tb1qmdrzrmsyn4dvsket0sezj7dsqltm62tts609t2","tb1qrm5xfau08kd5wnmh2yu9lfmfzcgcvpkkq7lxfh","tb1qclz8nnuf3cw9caxt709c8mkrqa6j049gm03evh","tb1q3j0cfgv57slmh6gu9xckwt7fwxayv567j7ctvn","tb1qd9s324p7cg8ssdh70q3mzskp50qayjfu68uy6d","tb1qgchg72f7c5uvklp4jgskhhunvlkj6aq8jlt4xg"]
+        filterHex =
+          "00000000000000e32c544012d9dcda9018b23997122067e1ae2d01b19c37d6b1c08300000eeb34a1f65cd034f3cc4fac2f90000060278a42e4a3309a000005756c621e000001367b1013ece3589dfe2951f25551d6ff70ff240df66da9f17f17989b211a000000167080000334ab0000057c0e25f00000000f22c627b78d6620388d2a30c000001162cae28ffa8c3d909567d0ac5fc12cfde960747631f64684d84a17bbf5800000701bf0f343f465f50ba18ad1dfdf242b50f7f75ce4b244cf25397094be01aed815e9f6d2d2bbad4fd09a10fa3fdf2a9400000c15a49f706293e27dba318d3c9eee78000015427be5d2afba6aa9b3800000ac318000071bdfea66bd85d82086cd80000774058efae43fb06e9e8825c01f193379f88a8e8000007b9931da10da14d316680bfc44374ba800d410205e5d8743d6e00000e2a0f78358295292e3352fb06ca9550c00000501a18d5f67a2acf917e00000063e61ef6607e13aa7b1f055f8112942ee4f1e4000000000000001d99664000006ac683ddb40000229d626bdc87cd560000066ef28bd1a9f717ee5c2b917bc6009f0a70e2495c5c4a87c00002ece81ffe01767ea5d4400001c4e7e40000288bdf3108399650800007eb1c257f758fa0fdc62e6b643380db079c06f6c00000683174ff6cb91c09285c9e7a468b5bc45e2bce648fe21ca2bacbc11c26db87c141aa8797600000b36cd467d3000009b38f037e9972755482b295c89a88717d8b074e806bfa4f8b48a8733f47a8005e41a454b6de09a4937d108839522cfb9fd36e9b929b2d264549a5d2d5d0e0de1200001f640f5da8c160e58c700b383fdecc1077c300840"
+
+    it ("filters given addresses") $ do
+      bfilter <- getFilter filterHex
       res <- applyBtcFilterMany btcTest bhash bfilter addrs
       res `shouldBe` True
   where
-    bhash = "000000000000017c36b1c7c70f467244009c552e1732604a0f779fc6ff2d6112"
-
-    addrs :: [SegWitAddress]
-    addrs = fmap loadAddress [
-        "tb1qjx8u3dz6dnxcnwmpwdcd2c8hzugzt8jap9enpu"
-      , "tb1q0fql9yduelq8lxyrlrajlxewj09zg2st3ufyf7"
-      , "tb1qms2h0994zyywf2jvr6gez4nwtqg8xc0fz70260"
-      ]
-
-    filterHex = "0000000000000015024a80000098066800004cd26bc68db000000000030cdd70db52ff43c6000000fa9ea8d5fac400001dc73c000000000137e4b8d5e647dc38"
-
-    getFilter :: IO BtcAddrFilter
-    getFilter = either (fail "Failed to decode filter1!") pure =<< decodeBtcAddrFilter (hex2bs filterHex)
+    getFilter :: Text -> IO BtcAddrFilter
+    getFilter v = either (fail "Failed to decode filter1!") pure =<< decodeBtcAddrFilter (hex2bs v)
 
 
 testBlocks :: [Block]

@@ -1,11 +1,8 @@
 module Ergvein.Wallet.Storage.Keys (
-    egvXPubKeyToEgvAddress
-  , deriveCurrencyMasterPrvKey
+    deriveCurrencyMasterPrvKey
   , deriveCurrencyMasterPubKey
   , derivePrvKey
   , derivePubKey
-  , xPubToBtcAddr
-  , xPubToErgAddr
   ) where
 
 import Ergvein.Crypto
@@ -15,22 +12,6 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Network
 
 import qualified Data.ByteString       as BS
-import qualified Data.ByteString.Short as BSS
-import qualified Data.Serialize        as S
-
-xPubToBtcAddr :: XPubKey -> BtcAddress
-xPubToBtcAddr key = pubKeyWitnessAddr $ wrapPubKey True (xPubKey key)
-
-pubKeyErgAddr :: PubKeyI -> ErgAddress
-pubKeyErgAddr = ErgPubKeyAddress . VLAddr . BSS.toShort . S.encode
-
-xPubToErgAddr :: XPubKey -> ErgAddress
-xPubToErgAddr key = pubKeyErgAddr $ wrapPubKey True (xPubKey key)
-
-egvXPubKeyToEgvAddress :: EgvXPubKey -> EgvAddress
-egvXPubKeyToEgvAddress key = case key of
-  ErgXPubKey k _ -> ErgAddress $ xPubToErgAddr k
-  BtcXPubKey k _ -> BtcAddress $ xPubToBtcAddr k
 
 -- | Derive a BIP44 compatible private key for a specific currency.
 -- Given a parent private key /m/
@@ -79,25 +60,3 @@ derivePubKey masterKey keyPurpose index =
   in case masterKey of
     ErgXPubKey k _ -> ErgXPubKey (derivedKey k) ""
     BtcXPubKey k _ -> BtcXPubKey (derivedKey k) ""
-
-example :: IO ()
-example = do
-  ent <- getEntropy
-  putStrLn "Entropy:"
-  print ent
-  let mnemonic = toMnemonic ent
-  putStrLn "\nMnemonic:"
-  print mnemonic
-  let seed = mnemonic >>= mnemonicToSeed BS.empty
-  putStrLn "\nSeed:"
-  print seed
-  let xPrvKey = fmap makeXPrvKey seed
-  putStrLn "\nExtended private key:"
-  print xPrvKey
-  let xPubKey = fmap deriveXPubKey xPrvKey
-  putStrLn "\nExtended public key:"
-  print xPubKey
-  let currency = BTC
-  let address = fmap (egvXPubKeyToEgvAddress . flip BtcXPubKey "") xPubKey
-  putStrLn "\nAddress:"
-  print address

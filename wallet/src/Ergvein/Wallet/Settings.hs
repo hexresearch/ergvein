@@ -8,6 +8,9 @@ module Ergvein.Wallet.Settings (
   , defaultIndexersNum
   , defaultIndexerTimeout
   , defaultActUrlNum
+  , ExplorerUrls(..)
+  , defaultExplorerUrl
+  , btcDefaultExplorerUrls
   ) where
 
 import Control.Lens hiding ((.=))
@@ -37,6 +40,32 @@ import qualified Data.Text as T
 import Android.HaskellActivity
 #endif
 
+data ExplorerUrls = ExplorerUrls {
+  testnetUrl :: !Text
+, mainnetUrl :: !Text
+} deriving (Eq, Show)
+
+instance ToJSON ExplorerUrls where
+  toJSON ExplorerUrls{..} = object [
+      "testnetUrl"  .= toJSON testnetUrl
+    , "mainnetUrl"  .= toJSON mainnetUrl
+   ]
+
+instance FromJSON ExplorerUrls where
+  parseJSON = withObject "ExplorerUrls" $ \o -> do
+    testnetUrl          <- o .: "testnetUrl"
+    mainnetUrl          <- o .: "mainnetUrl"
+    pure ExplorerUrls{..}
+
+defaultExplorerUrl :: M.Map Currency ExplorerUrls
+defaultExplorerUrl = M.fromList $ btcDefaultUrls <> ergoDefaultUrls
+  where
+    btcDefaultUrls  = [(BTC, btcDefaultExplorerUrls)]
+    ergoDefaultUrls = [(ERGO, ExplorerUrls "" "")]
+
+btcDefaultExplorerUrls :: ExplorerUrls
+btcDefaultExplorerUrls = ExplorerUrls "https://www.blockchain.com/btc-testnet" "https://www.blockchain.com/btc"
+
 data Settings = Settings {
   settingsLang              :: Language
 , settingsStoreDir          :: Text
@@ -49,6 +78,7 @@ data Settings = Settings {
 , settingsReqUrlNum         :: (Int, Int) -- ^ First is minimum required answers. Second is sufficient amount of answers from indexers.
 , settingsActUrlNum         :: Int
 , settingsNodes             :: M.Map Currency [BaseUrl]
+, settingsExplorerUrl       :: M.Map Currency ExplorerUrls
 , settingsPortfolio         :: Bool
 , settingsFiatCurr          :: Fiat
 } deriving (Eq, Show)
@@ -74,6 +104,7 @@ instance FromJSON Settings where
             (Just [], Just [], Just []) -> (defaultIndexers, [], [])
             _ -> (fromMaybe [] mActiveUrls, fromMaybe [] mDeactivatedUrls, fromMaybe [] mPassiveUrls)
     settingsNodes             <- o .:? "nodes" .!= M.empty
+    settingsExplorerUrl       <- o .:? "explorerUrl" .!= defaultExplorerUrl
     settingsPortfolio         <- o .:? "portfolio" .!= False
     settingsFiatCurr          <- o .:? "fiatCurr"  .!= USD
     pure Settings{..}
@@ -91,6 +122,7 @@ instance ToJSON Settings where
     , "reqUrlNum"         .= toJSON settingsReqUrlNum
     , "actUrlNum"         .= toJSON settingsActUrlNum
     , "nodes"             .= toJSON settingsNodes
+    , "explorerUrl"       .= toJSON settingsExplorerUrl
     , "portfolio"         .= toJSON settingsPortfolio
     , "fiatCurr"          .= toJSON settingsFiatCurr
    ]
@@ -129,6 +161,7 @@ defaultSettings home =
       , settingsReqUrlNum         = defaultIndexersNum
       , settingsActUrlNum         = defaultActUrlNum
       , settingsNodes             = M.empty
+      , settingsExplorerUrl       = defaultExplorerUrl
       , settingsPortfolio         = False
       , settingsFiatCurr          = USD
       }

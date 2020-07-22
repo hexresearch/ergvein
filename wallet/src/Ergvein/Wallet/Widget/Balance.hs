@@ -1,6 +1,7 @@
 module Ergvein.Wallet.Widget.Balance(
     balancesWidget
   , balanceTitleWidget
+  , balanceTitleWidgetSimple
   ) where
 
 import Control.Lens
@@ -43,4 +44,15 @@ balanceTitleWidget cur = do
       titleVal = ffor bal (\v -> showMoneyUnit v setUs)
       curSymbol = symbolUnit cur setUs
       title = zipDynWith (\x y -> x <> ": " <> y <> " " <> curSymbol) titleText titleVal
+  pure title
+
+balanceTitleWidgetSimple :: MonadFront t m => Currency -> m (Dynamic t Text)
+balanceTitleWidgetSimple cur = do
+  bal <- balancesWidget cur
+  settings <- getSettings
+  let getSettingsUnits = fromMaybe defUnits . settingsUnits
+      setUs = getSettingsUnits settings
+      titleVal = ffor bal (\v -> showMoneyUnit v setUs)
+      curSymbol = symbolUnit cur setUs
+      title = (\x -> x <> " " <> curSymbol) <$> titleVal
   pure title
