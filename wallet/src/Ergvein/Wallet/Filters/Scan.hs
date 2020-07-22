@@ -59,7 +59,6 @@ filterBtcAddresses i0 progCb as
   where
     bas = V.mapMaybe guardSegWit as
     f i n bhash cfilter (!_, !acc) = do
-      v <- encodeBtcAddrFilter cfilter
       liftIO $ progCb i n
       res <- applyBtcFilterMany btcNetwork bhash cfilter $ V.toList bas
       let acc' = if res then V.cons (bhash, i) acc else acc
