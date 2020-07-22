@@ -14,6 +14,7 @@ import Ergvein.Types.Currency
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Platform
 import Network.Haskoin.Block
+import Ergvein.Text
 
 import qualified Data.Vector as V
 
@@ -58,7 +59,7 @@ filterBtcAddresses i0 progCb as
   where
     bas = V.mapMaybe guardSegWit as
     f i n bhash cfilter (!_, !acc) = do
-      bs <- encodeBtcAddrFilter cfilter
+      v <- encodeBtcAddrFilter cfilter
       liftIO $ progCb i n
       res <- applyBtcFilterMany btcNetwork bhash cfilter $ V.toList bas
       let acc' = if res then V.cons (bhash, i) acc else acc

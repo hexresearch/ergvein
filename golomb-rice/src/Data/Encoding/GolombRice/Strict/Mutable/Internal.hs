@@ -8,6 +8,7 @@ import           Data.Bits
 import           Data.ByteString                (ByteString)
 import           Data.Encoding.GolombRice.Item
 import           Data.Word
+import           Foreign.ForeignPtr
 import           GHC.Generics
 import           Prelude                 hiding ( null, read )
 import           Safe.Partial
@@ -135,7 +136,7 @@ toByteString (GolombRice _ s) = BS.toByteString s
 
 -- | Foldl over elements with shortcutting that allows to skip rest of set.
 foldl :: (GolombItem a, MonadIO m)
-  => (b -> a -> m (Shortcut b)) -- ^ Folding function with shorcutting
+  => (b -> a -> IO (Shortcut b)) -- ^ Folding function with shorcutting
   -> b -- ^ Starting accumulator
   -> GolombRice a
   -> m b
@@ -194,11 +195,11 @@ data Shortcut a = Next !a | Stop !a
 foldWords
   :: MonadIO m
   => Int -- ^ Number of bits P in reminder of each element
-  -> (a -> Word64 -> m (Shortcut a)) -- ^ Folding function with stop condition
+  -> (a -> Word64 -> IO (Shortcut a)) -- ^ Folding function with stop condition
   -> a -- ^ Start accumulator
   -> GolombStream
   -> m a -- ^ End accumulator
-foldWords p f a0 s = go a0
+foldWords p f a0 !s = liftIO $ withForeignPtr (BS.bitstreamBuffer s) $ const $ go a0
   where
     go !a = do
       empty <- BS.null s

@@ -90,7 +90,7 @@ matchGcs :: MonadIO m
   -> GCS -- ^ Filter set
   -> ByteString -- ^ Target to test against Gcs
   -> m Bool
-matchGcs p k m n gcs target = fmap fst $ G.foldl f (False, 0) gcs
+matchGcs p k m n !gcs !target = fmap fst $ G.foldl f (False, 0) gcs
   where
     targetHash = hashToRange (n * m) k target
     f (!_, !lastValue) delta = pure $ let
