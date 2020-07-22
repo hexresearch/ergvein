@@ -70,7 +70,7 @@ constructGcs p k m ls = G.fromVectorUnboxed p ids
       mv <- VU.unsafeThaw is
       V.sort mv
       VU.unsafeFreeze mv
-    ids = VU.zipWith (-) iss (VU.cons 0 $ VU.uniq iss)
+    ids = VU.uniq $ VU.zipWith (-) iss (VU.cons 0 iss)
 
 -- | To check membership of an item in a compressed GCS, one must reconstruct
 -- the hashed set members from the encoded deltas. The procedure to do so is
