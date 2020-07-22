@@ -30,6 +30,7 @@ import Data.Aeson
 import Data.Aeson.Types (Parser)
 import Data.ByteString (ByteString)
 import Data.Text
+import Data.Time
 import Data.Word
 import Ergvein.Aeson
 import Ergvein.Text
@@ -166,8 +167,9 @@ currencyHeightStart = \case BTC  -> 0
                             ERGO -> 1
 
 data EgvTxMeta = EgvTxMeta {
-  etxMetaHeight :: !BlockHeight
-, etxMetaHash   :: !HB.BlockHash
+  etxMetaHeight :: !(Maybe BlockHeight)
+, etxMetaHash   :: !(Maybe HB.BlockHash)
+, etxMetaTime   :: !UTCTime
 } deriving (Eq, Show, Read)
 
 $(deriveJSON (aesonOptionsStripPrefix "etxMeta") ''EgvTxMeta)

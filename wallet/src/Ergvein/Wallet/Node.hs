@@ -23,6 +23,7 @@ import Control.Monad.Reader
 import Data.Foldable
 import Data.Functor.Misc
 import Data.Maybe
+import Data.Time.Clock.System
 import Network.Socket (SockAddr)
 import Servant.Client(BaseUrl)
 
@@ -160,11 +161,14 @@ btcMempoolTxInserter txE = do
       pure (v,u)
   insertTxsUtxoInPubKeystore "btcMempoolTxInserter" BTC valsE
 
+
 checkAddrTx' :: (HasTxStorage m, PlatformNatives) => V.Vector ScanKeyBox -> HT.Tx -> m (V.Vector (ScanKeyBox, M.Map TxId EgvTx))
 checkAddrTx' vec tx = do
   vec' <- flip traverse vec $ \kb -> do
     b <- checkAddrTx (egvXPubKeyToEgvAddress . scanBox'key $ kb) tx
-    pure $ if b then Just (kb, M.singleton th (BtcTx tx Nothing)) else Nothing
+    st <- liftIO $ systemToUTCTime <$> getSystemTime
+    let meta = (Just (EgvTxMeta Nothing Nothing st))
+    pure $ if b then Just (kb, M.singleton th (BtcTx tx meta)) else Nothing
   pure $ V.mapMaybe id vec'
   where
     th = HT.txHashToHex $ HT.txHash tx

@@ -37,7 +37,7 @@ data HistoryPageStrings =
   | HistoryTIFee
   | HistoryTIConfirmations
   | HistoryTIBlock
-  | HistoryTIRaw
+  | HistoryTITime
   | HistoryTIOutputs
   | HistoryTIInputs
   | HistoryTIOutputsAddress
@@ -69,7 +69,7 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTIFee               -> "Fee"
       HistoryTIConfirmations     -> "Confirmations"
       HistoryTIBlock             -> "Block"
-      HistoryTIRaw               -> "Raw"
+      HistoryTITime              -> "Time"
       HistoryTIOutputs           -> "Outputs"
       HistoryTIInputs            -> "Inputs"
       HistoryTIOutputsAddress    -> "Address"
@@ -96,7 +96,7 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTIFee               -> "Комиссия"
       HistoryTIConfirmations     -> "Подтверждения"
       HistoryTIBlock             -> "Блок"
-      HistoryTIRaw               -> "Код"
+      HistoryTITime              -> "Время"
       HistoryTIOutputs           -> "Выходы"
       HistoryTIInputs            -> "Входы"
       HistoryTIOutputsAddress    -> "Адрес"

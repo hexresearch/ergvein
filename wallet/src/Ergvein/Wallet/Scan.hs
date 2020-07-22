@@ -9,6 +9,7 @@ import Control.Monad.Reader
 import Data.Bifunctor (second)
 import Data.ByteString (ByteString)
 import Data.List
+import Data.Time.Clock.POSIX
 import Data.Maybe (fromMaybe, isNothing)
 import Data.Vector (Vector)
 import Network.Haskoin.Address (addrToString)
@@ -196,6 +197,8 @@ getAddrTxsFromBlock box heights block = do
     mkTxId = HT.txHashToHex . HT.txHash
     addr = egvXPubKeyToEgvAddress $ scanBox'key box
     txs = HB.blockTxns block
+    blockTime = secToTimestamp . HB.blockTimestamp $ HB.blockHeader $ block
     bhash = HB.headerHash . HB.blockHeader $ block
     mh = Just $ maybe 0 fromIntegral $ M.lookup bhash heights
-    mheha = (\h -> EgvTxMeta h bhash) <$> mh
+    mheha = (\h -> EgvTxMeta (Just h) (Just bhash) blockTime) <$> mh
+    secToTimestamp t = posixSecondsToUTCTime $ fromIntegral t
