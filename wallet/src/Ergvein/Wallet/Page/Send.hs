@@ -47,17 +47,20 @@ import qualified Network.Haskoin.Transaction as HT
 
 sendPage :: MonadFront t m => Currency -> Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), EgvAddress) -> m ()
 sendPage cur minit = mdo
-  title <- balanceTitleWidget cur
-  let navbar = navbarWidget cur thisWidget NavbarSend
+  walletName <- getWalletName
+  title <- localized walletName
+  let navbar = if isAndroid
+        then blank
+        else navbarWidget cur thisWidget NavbarSend
       thisWidget = Just $ sendPage cur <$> retInfoD
   retInfoD <- sendWidget cur minit title navbar thisWidget
   pure ()
   where
     -- TODO: write type annotation here
     sendWidget cur minit title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ mdo
-      let recipientInit = maybe "" (\(_,_,a) -> egvAddrToString a) minit
-          amountInit = (\(a,_,_) -> a) <$> minit
-          feeInit = (\(_,f,_) -> f) <$> minit
+      let recipientInit = maybe "" (\(_, _, a) -> egvAddrToString a) minit
+          amountInit = (\(a, _, _) -> a) <$> minit
+          feeInit = (\(_, f, _) -> f) <$> minit
       retInfoD <- form $ mdo
         recipientErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing))
 #ifdef ANDROID
@@ -112,9 +115,12 @@ instance HT.Coin UtxoPoint where
 -- | Main confirmation & sign & send widget
 btcSendConfirmationWidget :: MonadFront t m => ((UnitBTC, Word64), Word64, EgvAddress) -> m ()
 btcSendConfirmationWidget v@((unit, amount), fee, addr) = do
-  title <- balanceTitleWidget BTC
+  walletName <- getWalletName
+  title <- localized walletName
   let thisWidget = Just $ pure $ btcSendConfirmationWidget v
-      navbar = navbarWidget BTC thisWidget NavbarSend
+      navbar = if isAndroid
+        then blank
+        else navbarWidget BTC thisWidget NavbarSend
   wrapperNavbar False title thisWidget navbar $ divClass "send-confirm-box" $ mdo
     psD <- getPubStorageD
     utxoKeyD <- holdUniqDyn $ do
@@ -296,14 +302,21 @@ sendAmountWidget minit validateE = mdo
         in (us, showMoneyUnit (Money BTC a) us)) minit
   let errsD = fmap (maybe [] id) amountErrsD
   let isInvalidD = fmap (maybe "" (const "is-invalid")) amountErrsD
-  amountValD <- el "div" $ do
+  amountValD <- el "div" $ mdo
     textInputValueD <- (fmap . fmap) T.unpack $ divClassDyn isInvalidD $ textField AmountString txtInit
+    when isAndroid (availableBalanceWidget unitD)
     unitD <- unitsDropdown (getUnitBTC unitInit) allUnitsBTC
     pure $ zipDynWith (\u v -> fmap (u,) $ toEither $ validateBtcWithUnits u v) unitD textInputValueD
   divClass "form-field-errors" $ simpleList errsD displayError
   amountErrsD <- holdDyn Nothing $ ffor (current amountValD `tag` validateE) (either Just (const Nothing))
   pure $ (either (const Nothing) Just) <$> amountValD
   where
+    availableBalanceWidget uD = do
+      balanceValue <- balancesWidget BTC
+      balanceText <- localized SendAvailableBalance
+      let balanceVal = zipDynWith (\x y -> showMoneyUnit x (Units (Just y) Nothing) <> " " <> btcSymbolUnit y) balanceValue uD
+          balanceTxt = zipDynWith (\x y -> x <> ": " <> y) balanceText balanceVal
+      divClass "send-page-available-balance" $ dynText balanceTxt
     unitsDropdown val allUnits = do
       langD <- getLanguage
       let unitD = constDyn val
