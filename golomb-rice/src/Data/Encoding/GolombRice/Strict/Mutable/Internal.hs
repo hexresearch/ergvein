@@ -199,7 +199,7 @@ foldWords
   -> a -- ^ Start accumulator
   -> GolombStream
   -> m a -- ^ End accumulator
-foldWords p f a0 !s = liftIO $ withForeignPtr (BS.bitstreamBuffer s) $ const $ go a0
+foldWords p f a0 !s = liftIO $ withForeignPtr (BS.bitstreamBuffer s) $ const $ go a0 -- Fixes https://github.com/hexresearch/ergvein/issues/558
   where
     go !a = do
       empty <- BS.null s
