@@ -55,7 +55,8 @@ decodeGcs p = G.fromByteString p
 -- referred to as deltas, are encoded sequentially to a bit stream with
 -- Golomb-Rice coding.
 --
--- The result is a byte vector with a minimum size of N * (P + 1) bits.
+-- We add an aditional optimization that drops repeated elements from the set.
+-- The result is a byte vector with a minimum size of (uniq elems count) * (P + 1) bits.
 constructGcs :: MonadIO m
   => Int -- ^ the bit P parameter of the Golomb-Rice coding
   -> SipKey -- ^ k the 128-bit key used to randomize the SipHash outputs
@@ -69,7 +70,7 @@ constructGcs p k m ls = G.fromVectorUnboxed p ids
       mv <- VU.unsafeThaw is
       V.sort mv
       VU.unsafeFreeze mv
-    ids = VU.zipWith (-) iss (VU.cons 0 iss)
+    ids = VU.uniq $ VU.zipWith (-) iss (VU.cons 0 iss)
 
 -- | To check membership of an item in a compressed GCS, one must reconstruct
 -- the hashed set members from the encoded deltas. The procedure to do so is
@@ -89,7 +90,7 @@ matchGcs :: MonadIO m
   -> GCS -- ^ Filter set
   -> ByteString -- ^ Target to test against Gcs
   -> m Bool
-matchGcs p k m n gcs target = fmap fst $ G.foldl f (False, 0) gcs
+matchGcs p k m n !gcs !target = fmap fst $ G.foldl f (False, 0) gcs
   where
     targetHash = hashToRange (n * m) k target
     f (!_, !lastValue) delta = pure $ let
