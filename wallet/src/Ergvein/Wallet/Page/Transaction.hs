@@ -81,6 +81,7 @@ transactionInfoPage cur tr@TransactionView{..} = do
     case txInOut of
       TransRefill -> pure ()
       TransWithdraw -> infoPageElement HistoryTIFee $ maybe "unknown" (\a -> (showMoney a) <> " " <> showt cur) $ txFee txInfoView
+    infoPageElementEl HistoryTITime $ showTime tr
     infoPageElement HistoryTIConfirmations $ showt $ txConfirmations txInfoView
     infoPageElementExpEl HistoryTIBlock $ maybe (text "unknown") (\(bllink,bl) -> hyperlink "link" bl bllink) $ txBlock txInfoView
     case txInOut of
@@ -220,7 +221,7 @@ transactionsGetting cur = do
           parentTxs <- sequenceA $ fmap (traverse getTxById) parentTxsIds
           let getTxConfirmations mTx = case mTx of
                 Nothing -> 1 -- If tx is not found we put 1 just to indicate that the transaction is confirmed
-                Just tx -> maybe 0 (\x -> hght - x + 1) (fmap etxMetaHeight $ getBtcTxMeta tx)
+                Just tx -> maybe 0 (\x -> hght - (fromMaybe 0 x) + 1) $  (fmap etxMetaHeight $ getBtcTxMeta tx)
               txParentsConfirmations = (fmap . fmap) getTxConfirmations parentTxs
               hasUnconfirmedParents = fmap (L.any (== 0)) txParentsConfirmations
           let rawTxsL = L.filter (\(a,b) -> a/=Nothing) $ L.zip bInOut $ txListRaw bl blh txs txsRefList hasUnconfirmedParents parentTxs
@@ -286,7 +287,7 @@ prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = TransactionVi
      ,txInputs        = txInsOuts
     }
     btx = getBtcTx txr
-    blHght = maybe 0 etxMetaHeight $ getBtcTxMeta txr
+    blHght = fromMaybe 0 $ maybe (Just 0) etxMetaHeight $ getBtcTxMeta txr
     bHeight = if ((blHght == 0) || (hght == 0))
       then 0
       else hght - blHght + 1
@@ -309,7 +310,8 @@ prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = TransactionVi
     txBlockM = maybe Nothing (Just . HK.blockHashToHex) txHBl
     txBlockLink = maybe Nothing (\a -> Just (blUrl <> "/block/" <> a, a)) txBlockM
 
-    blockTime = TxTime $ maybe Nothing (Just . secToTimestamp . HK.blockTimestamp) txMBl
+    blockTime = TxTime trTime -- $ maybe Nothing (Just . secToTimestamp . HK.blockTimestamp) txMBl
+    trTime = fmap ((utcToZonedTime tz) . etxMetaTime ) $ getBtcTxMeta txr
     secToTimestamp t = utcToZonedTime tz $ posixSecondsToUTCTime $ fromIntegral t
     btcAddrs = fmap getBtcAddr addrs
     txFeeCalc = case mTT of
