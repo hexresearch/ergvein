@@ -174,7 +174,9 @@ translatePctXY x y = prefixed (browsers <> "transform") $ "translate(" <> value 
 headerCss :: Css
 headerCss = do
   ".header-wrapper" ? do
-    position relative
+    position sticky
+    top $ rem 0
+    zIndex 1
   ".header" ? do
     display flex
     alignItems stretch
@@ -231,6 +233,41 @@ navbarCss = do
     borderBottom solid (px 4) textColor
   ".navbar-item.active:hover" ? do
     borderColor hoverColor
+  ".navbar-black" ? do
+    backgroundColor black
+    color white
+  ".navbar-balance" ? do
+    display flex
+    justifyContent center
+    fontSize $ pt 20
+    marginBottom $ rem 1
+  ".navbar-android-controls-wrapper" ? do
+    display flex
+    justifyContent center
+  ".navbar-android-controls" ? do
+    display flex
+    justifyContent spaceBetween
+    paddingBottom $ rem 2
+    maxWidth $ rem 22
+    width $ pct 100
+  ".navbar-android-controls-button" ? do
+    display flex
+    flexDirection column
+    justifyContent center
+    alignItems center
+    fontSize $ pt 14
+    cursor pointer
+  ".navbar-android-controls-button:hover" ? do
+    opacity 0.7
+  ".navbar-android-controls-button-icon" ? do
+    display inlineFlex
+    justifyContent center
+    alignItems center
+    borderRadius (pct 50) (pct 50) (pct 50) (pct 50)
+    backgroundColor $ rgb 50 50 50
+    width $ rem 6
+    height $ rem 6
+    fontSize $ pt 16
 
 buttonCss :: Css
 buttonCss = do
@@ -452,6 +489,9 @@ sendPageCss = do
     flexGrow 1
     marginLeft $ rem 1
     marginRight $ rem 1
+  ".send-page-available-balance" ? do
+    paddingBottom $ rem 1
+    textAlign $ alignSide sideLeft
   ".button-icon-wrapper" ? do
     paddingLeft $ rem 1
   ".is-invalid input" ? border solid (rem 0.1) red
@@ -752,7 +792,7 @@ historyPageCss = do
     borderTop solid (px 2) black
     borderBottom solid (px 2) black
     display grid
-    gridTemplateColumns [fr 3, fr 3, fr 1]
+    gridTemplateColumns [fr 2, fr 3, fr 1]
   ".history-amount-header" ? do
     borderRight solid (px 2) black
     display block
@@ -782,9 +822,11 @@ historyPageCss = do
     fontSize $ px 16
     padding (rem 1.5) (rem 1) (rem 1.5) (rem 1)
     display grid
-    gridTemplateColumns [fr 3, fr 3, fr 1]
+    gridTemplateColumns [fr 2, fr 3, fr 1]
   ".history-table-row:hover" ? do
-    backgroundColor $ rgb 220 220 220
+    backgroundColor $ rgb 215 215 219
+  ".history-table-row:not(:last-child)" ? do
+    borderBottom solid (rem 0.1) (rgb 215 215 219)
   ".history-amount-transrefill" ? do
     display flex
     alignItems center
@@ -803,7 +845,7 @@ historyPageCss = do
   ".history-page-status-text-icon" ? do
     fontSize $ pt 9
     paddingLeft $ rem 0.5
-  
+
 txInfoPageCss :: Css
 txInfoPageCss = do
   ".tx-info-page" ? do
@@ -829,6 +871,8 @@ txInfoPageCss = do
     paddingRight $ rem 0.5
   ".tx-info-page-copy" ? do
     cursor pointer
+  ".tx-info-our-address" ? do
+    fontWeight bold
 
 legoStyles :: Css
 legoStyles = do
@@ -841,8 +885,15 @@ legoStyles = do
   ".ml-1" ? (marginLeft   $ rem 1)
   ".mr-1" ? (marginRight  $ rem 1)
   ".mt-1" ? (marginTop    $ rem 1)
+  ".m-1" ? margin (rem 1) (rem 1) (rem 1) (rem 1)
+  ".mlr-1" ? margin (rem 0) (rem 1) (rem 0) (rem 1)
+  ".mb-2" ? (marginBottom $ rem 2)
+  ".ml-2" ? (marginLeft   $ rem 2)
+  ".mr-2" ? (marginRight  $ rem 2)
   ".mt-2" ? (marginTop    $ rem 2)
+  ".m-2" ? margin (rem 2) (rem 2) (rem 2) (rem 2)
   ".mt-3" ? (marginTop    $ rem 3)
+  ".mr-6" ? (marginRight  $ rem 6)
   ".mb-a" ? marginBottom  auto
   ".ml-a" ? marginLeft    auto
   ".mr-a" ? marginRight   auto
@@ -866,7 +917,7 @@ legoStyles = do
   ".ta-c" ? textAlign center
   ".word-break-all" ? wordBreak breakAll
   ".font-bold" ? fontWeight bold
-  
+
 receiveCss :: Css
 receiveCss = do
   ".receive-qr" ? do

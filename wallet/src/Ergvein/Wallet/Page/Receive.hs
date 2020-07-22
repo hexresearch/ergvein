@@ -42,16 +42,18 @@ mockAddress = "1BoatSLRHtKNngkdXEeobR76b53LETtpyT"
 
 exceededGapLimit :: MonadFront t m => Currency -> m ()
 exceededGapLimit cur = do
-  title <- balanceTitleWidget cur
+  walletName <- getWalletName
+  title <- localized walletName
   wrapper True title (Just $ pure $ receivePage cur) $ do
     h2 $ localizedText RPSGap
 
 #ifdef ANDROID
 receivePageWidget :: MonadFront t m => Currency -> Int -> EgvPubKeyBox -> m ()
 receivePageWidget cur i EgvPubKeyBox{..} = do
-  title <- balanceTitleWidget cur
+  walletName <- getWalletName
+  title <- localized walletName
   let thisWidget = Just $ pure $ receivePage cur
-      navbar = navbarWidget cur thisWidget NavbarReceive
+      navbar = blank
   wrapperNavbar False title thisWidget navbar $ void $ divClass "receive-page" $ do
     divClass "receive-qr-andr" $ qrCodeWidget keyTxt cur
     (newE, copyE, shareE) <- divClass "receive-buttons-wrapper" $ do
@@ -77,7 +79,8 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
 #else
 receivePageWidget :: MonadFront t m => Currency -> Int -> EgvPubKeyBox -> m ()
 receivePageWidget cur i EgvPubKeyBox{..} = do
-  title <- balanceTitleWidget cur
+  walletName <- getWalletName
+  title <- localized walletName
   let thisWidget = Just $ pure $ receivePage cur
       navbar = navbarWidget cur thisWidget NavbarReceive
   wrapperNavbar False title thisWidget navbar $ void $ divClass "receive-page" $ do

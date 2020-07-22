@@ -21,6 +21,10 @@ module Ergvein.Types.Keys (
   , extractXPubKeyFromEgv
   , getLabelFromEgvPubKey
   , unEgvXPrvKey
+  , egvXPubKeyToEgvAddress
+  , xPubToBtcAddr
+  , xPubToErgAddr
+  , extractAddrs
   ) where
 
 import Control.Monad
@@ -34,6 +38,7 @@ import Data.Vector (Vector)
 import Ergvein.Aeson
 import Ergvein.Crypto.Keys
 import Ergvein.Crypto.Util
+import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Network
 import Ergvein.Types.Transaction
@@ -42,6 +47,8 @@ import Text.Read              (readMaybe)
 import qualified Data.IntMap.Strict as MI
 import qualified Data.Set as S
 import qualified Data.Vector as V
+import qualified Data.ByteString.Short as BSS
+import qualified Data.Serialize        as SE
 
 -- | Parse a binary extended private key.
 getXPrvKey :: EgvNetwork -> Get XPrvKey
@@ -366,6 +373,25 @@ getLabelFromEgvPubKey :: EgvXPubKey -> Text
 getLabelFromEgvPubKey key = case key of
   ErgXPubKey _ l -> l
   BtcXPubKey _ l -> l
+
+
+xPubToBtcAddr :: XPubKey -> BtcAddress
+xPubToBtcAddr key = pubKeyWitnessAddr $ wrapPubKey True (xPubKey key)
+
+xPubToErgAddr :: XPubKey -> ErgAddress
+xPubToErgAddr key = pubKeyErgAddr $ wrapPubKey True (xPubKey key)
+
+pubKeyErgAddr :: PubKeyI -> ErgAddress
+pubKeyErgAddr = ErgPubKeyAddress . VLAddr . BSS.toShort . SE.encode
+
+egvXPubKeyToEgvAddress :: EgvXPubKey -> EgvAddress
+egvXPubKeyToEgvAddress key = case key of
+  ErgXPubKey k _ -> ErgAddress $ xPubToErgAddr k
+  BtcXPubKey k _ -> BtcAddress $ xPubToBtcAddr k
+
+-- | Extract addresses from keystore
+extractAddrs :: PubKeystore -> Vector EgvAddress
+extractAddrs pks = fmap (egvXPubKeyToEgvAddress . scanBox'key) $ getPublicKeys pks
 
 -- | Supported key purposes. It represents /change/ field in BIP44 derivation path.
 -- External chain is used for addresses that are meant to be visible outside of the wallet (e.g. for receiving payments).

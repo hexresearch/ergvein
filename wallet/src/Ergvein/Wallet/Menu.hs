@@ -50,7 +50,7 @@ headerWidgetSimple titleVal prevWidget = divClass "header-wrapper" $ mdo
   btnE <- divClass "header" $ do
     stD <- getRetractStack
     backButton "header-button header-back-button" $ null <$> stD
-    divClass "header-wallet-name" $ localizedText titleVal -- "Default wallet"
+    divClass "header-wallet-text" $ localizedText titleVal -- "Default wallet"
     divButton "header-button header-menu-dropdown-button" $ elClassDyn "i" menuDropdownButtonIconClassD blank
   dropdownIsHiddenD <- toggle True btnE
   ps <- getPubStorage

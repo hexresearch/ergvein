@@ -15,7 +15,7 @@ switchNavbar :: MonadFront t m => Currency -> Maybe (Dynamic t (m ())) -> Event 
 switchNavbar cur prevWidget e = void $ nextWidget $ fforMaybe e $ \go -> let
   mkNext n = Retractable {
     retractableNext = n
-  , retractablePrev = Just $ pure balancesPage
+  , retractablePrev = prevWidget
   }
   in case go of
     NavbarSend    -> Just $ mkNext $ sendPage cur Nothing
