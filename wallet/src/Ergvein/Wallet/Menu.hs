@@ -14,15 +14,15 @@ import Ergvein.Wallet.Monad
 import qualified Data.List as L
 
 headerWidget :: MonadFront t m => Dynamic t Text -> Maybe (Dynamic t (m ())) -> m ()
-headerWidget titleVal prevWidget = mdo
+headerWidget titleVal prevWidget = divClass "header-wrapper" $ mdo
   btnE <- divClass "header header-black" $ do
     stD <- getRetractStack
-    backButton "header-button header-back-button" $ null <$> stD
+    backButton "header-button" $ null <$> stD
     divClass "header-wallet-text" $ dynText titleVal
-    divButton "header-button header-menu-dropdown-button" $ elClassDyn "i" menuDropdownButtonIconClassD blank
+    divButton "header-button" $ elClassDyn "i" menuDropdownButtonIconClassD blank
   dropdownIsHiddenD <- toggle True btnE
   ps <- getPubStorage
-  let dropdownClassesD = visibilityClass "header-menu-dropdown" <$> dropdownIsHiddenD
+  let dropdownClassesD = visibilityClass "menu" <$> dropdownIsHiddenD
       menuDropdownButtonIconClassD = menuDropdownButtonIconClass <$> dropdownIsHiddenD
       currencies = _pubStorage'activeCurrencies ps
   divClassDyn dropdownClassesD $ do
@@ -47,7 +47,7 @@ headerWidget titleVal prevWidget = mdo
 headerWidgetOnlyBackBtn :: MonadFrontBase t m => m ()
 headerWidgetOnlyBackBtn = divClass "header" $ do
   stD <- getRetractStack
-  void $ backButton "header-button header-back-button" $ null <$> stD
+  void $ backButton "header-button" $ null <$> stD
 
 -- | Button for going back on widget history
 backButton :: MonadFrontBase t m => Text -> Dynamic t Bool -> m ()

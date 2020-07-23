@@ -170,10 +170,11 @@ wrapperCss = do
 
 headerCss :: Css
 headerCss = do
-  ".header" ? do
+  ".header-wrapper" ? do
     position sticky
     top $ rem 0
     zIndex 1
+  ".header" ? do
     display flex
     fontSize $ pt 14
   ".header-black" ? do
@@ -188,14 +189,12 @@ headerCss = do
   ".header-button:hover" ? do
     cursor pointer
     color hoverColor
-  ".header-menu-dropdown" ? do
+  ".menu" ? do
     position absolute
-    right $ px 0
+    right $ rem 0
     backgroundColor black
-    zIndex 1
-    minWidth $ px 160
     boxShadow [bsColor (rgba 0 0 0 0.2) $ shadowWithSpread (px 0) (px 8) (px 16) (px 0)]
-  ".header-menu-dropdown .button.button-clear" ? do
+  ".menu .button.button-clear" ? do
     color white
     fontSize $ pt 14
     display block
@@ -203,9 +202,9 @@ headerCss = do
     width $ pct 100
     borderRadius (px 0) (px 0) (px 0) (px 0)
     marginBottom $ px 0
-  ".header-back-button.hidden" ? do
+  ".header-button.hidden" ? do
     visibility hidden
-  ".header-menu-dropdown.hidden" ? do
+  ".menu.hidden" ? do
     display displayNone
 
 navbarCss :: Css

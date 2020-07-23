@@ -14,16 +14,16 @@ import Ergvein.Wallet.Monad
 wrapper :: MonadFront t m => Bool -> Dynamic t Text -> Maybe (Dynamic t (m ())) -> m a -> m a
 wrapper isCentered titleVal prevWidget ma = divClass "wrapper" $ do
   headerWidget titleVal prevWidget
-  a <- if isCentered
-    then divClass "centered-container" $ divClass "centered-content container p-1" ma
-    else divClass "container p-1" ma
-  alertHandlerWidget
-  pure a
+  contentContainer isCentered ma
 
-wrapperNavbar :: MonadFront t m => Bool -> Dynamic t Text -> Maybe (Dynamic t (m ())) -> m a -> m b -> m b
+wrapperNavbar :: MonadFront t m => Bool -> Dynamic t Text -> Maybe (Dynamic t (m ())) -> m b -> m a -> m a
 wrapperNavbar isCentered titleVal prevWidget navbar ma = divClass "wrapper" $ do
   headerWidget titleVal prevWidget
   navbar
+  contentContainer isCentered ma
+
+contentContainer :: MonadFront t m => Bool -> m a -> m a
+contentContainer isCentered ma = do
   a <- if isCentered
     then divClass "centered-container" $ divClass "centered-content container p-1" ma
     else divClass "container p-1" ma
