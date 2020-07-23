@@ -179,13 +179,13 @@ headerCss = do
     zIndex 1
   ".header" ? do
     display flex
-    alignItems stretch
+    alignItems center
     backgroundColor black
     color white
     fontSize $ pt 14
   ".header-only-back-btn" ? do
     display flex
-    alignItems stretch
+    alignItems center
     fontSize $ pt 14
   ".header-wallet-text" ? do
     width $ pct 100
@@ -194,7 +194,7 @@ headerCss = do
     fontSize $ pt 20
     padding (rem 1) (rem 1) (rem 1) (rem 1)
     display flex
-    alignItems stretch
+    alignItems center
   ".header-button:hover" ? do
     cursor pointer
     color hoverColor
