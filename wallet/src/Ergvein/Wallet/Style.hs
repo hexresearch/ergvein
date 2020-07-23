@@ -79,17 +79,8 @@ frontendCss :: Resources -> Css
 frontendCss r = do
   fontFamilies r
   faFontFamilies r
-  html ? do
-    margin (px 0) (px 0) (px 0) (px 0)
-    padding (px 0) (px 0) (px 0) (px 0)
-    textAlign center
-  body ? do
-    margin (px 0) (px 0) (px 0) (px 0)
-    padding (px 0) (px 0) (px 0) (px 0)
-    color textColor
-    backgroundColor majorBackground
-    fontFamily ["Roboto"] []
-    overflowY auto
+  htmlCss
+  bodyCss
   aboutPageCss
   alertsCss
   balancesPageCss
@@ -148,10 +139,25 @@ tabletBreakpoint = rem 80
 desktopBreakpoint :: Size LengthUnit
 desktopBreakpoint = rem 120
 
+htmlCss :: Css
+htmlCss = html ? do
+  margin (px 0) (px 0) (px 0) (px 0)
+  padding (px 0) (px 0) (px 0) (px 0)
+  textAlign center
+
+bodyCss :: Css
+bodyCss = body ? do
+  margin (px 0) (px 0) (px 0) (px 0)
+  padding (px 0) (px 0) (px 0) (px 0)
+  color textColor
+  backgroundColor majorBackground
+  fontFamily ["Roboto"] []
+  overflowY auto
+
 wrapperCss :: Css
 wrapperCss = do
   ".wrapper" ? do
-    height $ pct 100
+    minHeight $ vh 100
     display flex
     flexDirection column
   ".wrapper .container" ? do
@@ -162,39 +168,23 @@ wrapperCss = do
   ".centered-content" ? do
     margin auto auto auto auto
 
-translatePctX :: Size Percentage -> Css
-translatePctX x = prefixed (browsers <> "transform") $ "translateX(" <> value x <> ")"
-
-translatePctY :: Size Percentage -> Css
-translatePctY y = prefixed (browsers <> "transform") $ "translateY(" <> value y <> ")"
-
-translatePctXY :: Size Percentage -> Size Percentage -> Css
-translatePctXY x y = prefixed (browsers <> "transform") $ "translate(" <> value x <> ", " <> value y <> ")"
-
 headerCss :: Css
 headerCss = do
-  ".header-wrapper" ? do
+  ".header" ? do
     position sticky
     top $ rem 0
     zIndex 1
-  ".header" ? do
     display flex
-    alignItems center
+    fontSize $ pt 14
+  ".header-black" ? do
     backgroundColor black
     color white
-    fontSize $ pt 14
-  ".header-only-back-btn" ? do
-    display flex
-    alignItems center
-    fontSize $ pt 14
   ".header-wallet-text" ? do
     width $ pct 100
-    padding (rem 1) (rem 0) (rem 1) (rem 0)
+    padding (rem 1) (rem 1) (rem 1) (rem 1)
   ".header-button" ? do
     fontSize $ pt 20
     padding (rem 1) (rem 1) (rem 1) (rem 1)
-    display flex
-    alignItems center
   ".header-button:hover" ? do
     cursor pointer
     color hoverColor

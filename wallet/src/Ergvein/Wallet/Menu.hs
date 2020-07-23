@@ -14,8 +14,8 @@ import Ergvein.Wallet.Monad
 import qualified Data.List as L
 
 headerWidget :: MonadFront t m => Dynamic t Text -> Maybe (Dynamic t (m ())) -> m ()
-headerWidget titleVal prevWidget = divClass "header-wrapper" $ mdo
-  btnE <- divClass "header" $ do
+headerWidget titleVal prevWidget = mdo
+  btnE <- divClass "header header-black" $ do
     stD <- getRetractStack
     backButton "header-button header-back-button" $ null <$> stD
     divClass "header-wallet-text" $ dynText titleVal
@@ -45,7 +45,7 @@ headerWidget titleVal prevWidget = divClass "header-wrapper" $ mdo
         switchMenu prevWidget $ leftmost [balE, netE, setE, abtE, logE, switchE]
 
 headerWidgetOnlyBackBtn :: MonadFrontBase t m => m ()
-headerWidgetOnlyBackBtn = divClass "header-wrapper" $ divClass "header-only-back-btn" $ do
+headerWidgetOnlyBackBtn = divClass "header" $ do
   stD <- getRetractStack
   void $ backButton "header-button header-back-button" $ null <$> stD
 
