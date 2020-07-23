@@ -12,13 +12,13 @@ import Ergvein.Wallet.Monad
 
 -- | Common page wrapper. Contains header menu with back button.
 wrapper :: MonadFront t m => Bool -> Dynamic t Text -> Maybe (Dynamic t (m ())) -> m a -> m a
-wrapper isCentered titleVal prevWidget ma = divClass "wrapper" $ do
-  headerWidget titleVal prevWidget
+wrapper isCentered titleVal thisWidget ma = divClass "wrapper" $ do
+  headerWidget titleVal thisWidget
   contentContainer isCentered ma
 
 wrapperNavbar :: MonadFront t m => Bool -> Dynamic t Text -> Maybe (Dynamic t (m ())) -> m b -> m a -> m a
-wrapperNavbar isCentered titleVal prevWidget navbar ma = divClass "wrapper" $ do
-  headerWidget titleVal prevWidget
+wrapperNavbar isCentered titleVal thisWidget navbar ma = divClass "wrapper" $ do
+  headerWidget titleVal thisWidget
   navbar
   contentContainer isCentered ma
 

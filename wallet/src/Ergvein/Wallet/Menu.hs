@@ -13,56 +13,54 @@ import Ergvein.Wallet.Monad
 
 import qualified Data.List as L
 
-headerWidget :: MonadFront t m => Dynamic t Text -> Maybe (Dynamic t (m ())) -> m ()
-headerWidget titleVal prevWidget = divClass "header-wrapper" $ mdo
-  btnE <- divClass "header header-black" $ do
-    stD <- getRetractStack
-    backButton "header-button" $ null <$> stD
-    divClass "header-wallet-text" $ dynText titleVal
-    divButton "header-button" $ elClassDyn "i" menuDropdownButtonIconClassD blank
-  dropdownIsHiddenD <- toggle True btnE
-  ps <- getPubStorage
-  let dropdownClassesD = visibilityClass "menu" <$> dropdownIsHiddenD
-      menuDropdownButtonIconClassD = menuDropdownButtonIconClass <$> dropdownIsHiddenD
-      currencies = _pubStorage'activeCurrencies ps
-  divClassDyn dropdownClassesD $ do
-    let menuBtn v = (v <$) <$> clearButton v
-    if (L.length currencies == 1)
-      then do
-        netE <- menuBtn MenuNetwork
-        setE <- menuBtn MenuSettings
-        abtE <- menuBtn MenuAbout
-        logE <- menuBtn MenuLogs
-        switchE <- menuBtn MenuSwitch
-        switchMenu prevWidget $ leftmost [netE, setE, abtE, logE, switchE]
-      else do
-        balE <- menuBtn MenuBalances
-        netE <- menuBtn MenuNetwork
-        setE <- menuBtn MenuSettings
-        abtE <- menuBtn MenuAbout
-        logE <- menuBtn MenuLogs
-        switchE <- menuBtn MenuSwitch
-        switchMenu prevWidget $ leftmost [balE, netE, setE, abtE, logE, switchE]
-
 headerWidgetOnlyBackBtn :: MonadFrontBase t m => m ()
 headerWidgetOnlyBackBtn = divClass "header" $ do
   stD <- getRetractStack
   void $ backButton "header-button" $ null <$> stD
 
+headerWidget :: MonadFront t m => Dynamic t Text -> Maybe (Dynamic t (m ())) -> m ()
+headerWidget titleD thisWidget = divClass "header-wrapper" $ mdo
+  menuIsHiddenD <- header titleD
+  menu menuIsHiddenD thisWidget
+
+header :: MonadFront t m => Dynamic t Text -> m (Dynamic t Bool)
+header titleD = divClass "header header-black" $ mdo
+  stD <- getRetractStack
+  backButton "header-button" $ null <$> stD
+  divClass "header-wallet-text" $ dynText titleD
+  menuBtnE <- divButton "header-button" $ elClassDyn "i" menuButtonIconClassD blank
+  let menuButtonIconClassD = menuButtonIconClass <$> menuIsHiddenD
+  menuIsHiddenD <- toggle True menuBtnE
+  pure menuIsHiddenD
+
+menu :: MonadFront t m => Dynamic t Bool -> Maybe (Dynamic t (m ())) -> m ()
+menu menuIsHiddenD thisWidget = do
+  let menuClassesD = visibilityClass "menu" <$> menuIsHiddenD
+  divClassDyn menuClassesD $ do
+    ps <- getPubStorage
+    let activeCurrencies = _pubStorage'activeCurrencies ps
+    if (L.length activeCurrencies == 1)
+      then menuButtons [              MenuNetwork, MenuSettings, MenuAbout, MenuLogs, MenuSwitch] thisWidget
+      else menuButtons [MenuBalances, MenuNetwork, MenuSettings, MenuAbout, MenuLogs, MenuSwitch] thisWidget
+
 -- | Button for going back on widget history
 backButton :: MonadFrontBase t m => Text -> Dynamic t Bool -> m ()
-backButton c visibilityD = do
-  let backButtonVisibleD = visibilityClass c <$> visibilityD
-  e <- divButton backButtonVisibleD $ elClass "i" "fas fa-arrow-left fa-fw" blank
+backButton classes isHiddenD = do
+  let backButtonClassesD = visibilityClass classes <$> isHiddenD
+  e <- divButton backButtonClassesD $ elClass "i" "fas fa-arrow-left fa-fw" blank
   void $ retract e
 
--- | Adds "hidden" class to the given classes if predicate is True
-visibilityClass :: Text -> Bool -> Text
-visibilityClass c isHidden = c <> " " <> toClass isHidden
-  where
-    toClass True = "hidden"
-    toClass _    = ""
+menuButtonIconClass :: Bool -> Text
+menuButtonIconClass True = "fas fa-bars fa-fw"
+menuButtonIconClass False = "fas fa-times fa-fw"
 
-menuDropdownButtonIconClass :: Bool -> Text
-menuDropdownButtonIconClass True = "fas fa-bars fa-fw"
-menuDropdownButtonIconClass _    = "fas fa-times fa-fw"
+-- | Appends "hidden" class to the given classes if the second argument equals True
+visibilityClass :: Text -> Bool -> Text
+visibilityClass classes True = classes <> " hidden"
+visibilityClass classes False = classes
+
+menuButtons :: MonadFront t m => [MenuItem] -> Maybe (Dynamic t (m ())) -> m ()
+menuButtons menuItems thisWidget = do
+  btnsEvents <- sequenceA $ menuBtn <$> menuItems
+  switchMenu thisWidget $ leftmost btnsEvents
+  where menuBtn v = (v <$) <$> clearButton v
