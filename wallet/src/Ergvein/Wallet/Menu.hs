@@ -1,6 +1,5 @@
 module Ergvein.Wallet.Menu(
     headerWidget
-  , headerWidgetSimple
   , headerWidgetOnlyBackBtn
   ) where
 
@@ -20,37 +19,6 @@ headerWidget titleVal prevWidget = divClass "header-wrapper" $ mdo
     stD <- getRetractStack
     backButton "header-button header-back-button" $ null <$> stD
     divClass "header-wallet-text" $ dynText titleVal
-    divButton "header-button header-menu-dropdown-button" $ elClassDyn "i" menuDropdownButtonIconClassD blank
-  dropdownIsHiddenD <- toggle True btnE
-  ps <- getPubStorage
-  let dropdownClassesD = visibilityClass "header-menu-dropdown" <$> dropdownIsHiddenD
-      menuDropdownButtonIconClassD = menuDropdownButtonIconClass <$> dropdownIsHiddenD
-      currencies = _pubStorage'activeCurrencies ps
-  divClassDyn dropdownClassesD $ do
-    let menuBtn v = (v <$) <$> clearButton v
-    if (L.length currencies == 1)
-      then do
-        netE <- menuBtn MenuNetwork
-        setE <- menuBtn MenuSettings
-        abtE <- menuBtn MenuAbout
-        logE <- menuBtn MenuLogs
-        switchE <- menuBtn MenuSwitch
-        switchMenu prevWidget $ leftmost [netE, setE, abtE, logE, switchE]
-      else do
-        balE <- menuBtn MenuBalances
-        netE <- menuBtn MenuNetwork
-        setE <- menuBtn MenuSettings
-        abtE <- menuBtn MenuAbout
-        logE <- menuBtn MenuLogs
-        switchE <- menuBtn MenuSwitch
-        switchMenu prevWidget $ leftmost [balE, netE, setE, abtE, logE, switchE]
-
-headerWidgetSimple :: (MonadFront t m, LocalizedPrint a) => a -> Maybe (Dynamic t (m ())) -> m ()
-headerWidgetSimple titleVal prevWidget = divClass "header-wrapper" $ mdo
-  btnE <- divClass "header" $ do
-    stD <- getRetractStack
-    backButton "header-button header-back-button" $ null <$> stD
-    divClass "header-wallet-text" $ localizedText titleVal -- "Default wallet"
     divButton "header-button header-menu-dropdown-button" $ elClassDyn "i" menuDropdownButtonIconClassD blank
   dropdownIsHiddenD <- toggle True btnE
   ps <- getPubStorage
