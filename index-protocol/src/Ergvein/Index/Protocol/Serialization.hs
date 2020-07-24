@@ -28,43 +28,8 @@ rejectTypeToWord32 = \case
   MessageHeaderParsing -> 0
   MessageParsing       -> 1
 
-{-
-scanBlock :: CurrencyCode -> Word32 -> Word64 -> Word64 -> Builder
-scanBlock currency version scanHeight height = word32BE (undefined currency)
-                                            <> word32BE version
-                                            <> word64BE scanHeight
-                                            <> word64BE height
-
-verMsg :: Word32 ->  Word64 -> Word64 -> V.Vector Builder -> Builder
-verMsg version time nonce scanBlocks = 
-  msg Version msgSize $ word32BE version
-                     <> word64BE time
-                     <> word64BE nonce
-                     <> word32BE currenciesAmount <> V.foldl (<>) mempty scanBlocks
-  where
-    scanBlockSize = 24
-    currenciesAmount = fromIntegral $ V.length scanBlocks
-    msgSize = genericSizeOf time + genericSizeOf nonce + currenciesAmount * scanBlockSize
-
-verACKMsg :: Builder
-verACKMsg = msg VersionACK msgSize mempty
-  where
-    msgSize = 0
-
-pingMsg :: Word64 -> Builder
-pingMsg nonce = msg Ping msgSize $ word64BE nonce
-  where
-    msgSize = genericSizeOf nonce
-
-pongMsg :: Word64 -> Builder
-pongMsg nonce = msg Pong msgSize $ word64BE nonce
-  where
-    msgSize = genericSizeOf nonce-}
-
 messageBase :: MessageType -> Word32 -> Builder -> Builder
 messageBase msgType msgLength payload = word32BE (messageTypeToWord32 msgType) <> word32BE msgLength <> payload
-
-
 
 scanBlockBuilder :: ScanBlock -> (Sum Word32, Builder)
 scanBlockBuilder (ScanBlock {..}) = (scanBlockSize, scanBlock)
@@ -101,7 +66,7 @@ messageBuilder (VersionACKMsg msg) = messageBase VersionACK msgSize $ mempty
   where
     msgSize = 0
 
-messageBuilder (VersionMsg (VersionMessage {..})) = let 
+messageBuilder (VersionMsg VersionMessage {..}) = let 
   (scanBlocksSizeSum, scanBlocks) = mconcat $ (scanBlockBuilder <$> V.toList versionMsgScanBlocks)
   scanBlocksSize = getSum scanBlocksSizeSum
   time = round versionMsgTime
@@ -109,7 +74,6 @@ messageBuilder (VersionMsg (VersionMessage {..})) = let
           + genericSizeOf time
           + genericSizeOf versionMsgNonce
           + genericSizeOf versionMsgCurrencies
-          + genericSizeOf scanBlocksSize
           + scanBlocksSize
 
   in messageBase Version msgSize 
@@ -117,5 +81,4 @@ messageBuilder (VersionMsg (VersionMessage {..})) = let
     <> word64BE time
     <> word64BE versionMsgNonce
     <> word32BE versionMsgCurrencies
-    <> word32BE scanBlocksSize
     <> scanBlocks
