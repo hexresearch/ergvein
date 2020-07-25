@@ -6,6 +6,7 @@ module Ergvein.Wallet.Menu(
 
 import {-# SOURCE #-} Ergvein.Wallet.Menu.Switcher
 import Data.Text (Text)
+import Ergvein.Types.Currency
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
@@ -53,9 +54,9 @@ menuDesktop menuIsHiddenD thisWidget = do
   divClassDyn menuClassesD $ do
     ps <- getPubStorage
     let activeCurrencies = _pubStorage'activeCurrencies ps
-    if (L.length activeCurrencies == 1)
-      then menuButtons [              MenuNetwork, MenuSettings, MenuAbout, MenuLogs, MenuSwitch] thisWidget
-      else menuButtons [MenuBalances, MenuNetwork, MenuSettings, MenuAbout, MenuLogs, MenuSwitch] thisWidget
+    menuButtonsDesktop thisWidget $ case activeCurrencies of
+      cur:[] -> Just cur
+      _ -> Nothing
 
 menuAndroid :: MonadFront t m => Event t () -> Maybe (Dynamic t (m ())) -> m ()
 menuAndroid menuOpenE thisWidget = mdo
@@ -66,22 +67,9 @@ menuAndroid menuOpenE thisWidget = mdo
     ps <- getPubStorage
     let activeCurrencies = _pubStorage'activeCurrencies ps
     menuBtnE <- divClass "menu-android-header" $ divButton "menu-android-close-button header-button" $ elClass "i" "fas fa-times fa-fw" blank
-    divClass "menu-android-buttons-wrapper" $ if (L.length activeCurrencies == 1)
-      then menuButtonsAndroid [
-              (MenuNetwork, "fas fa-network-wired fa-fw")
-            , (MenuSettings, "fas fa-cog fa-fw")
-            , (MenuAbout, "fas fa-info-circle fa-fw")
-            , (MenuLogs, "fas fa-file-alt fa-fw")
-            , (MenuSwitch, "fas fa-sign-out-alt fa-fw")
-            ] thisWidget
-      else menuButtonsAndroid [
-              (MenuBalances, "fas fa-wallet fa-fw")
-            , (MenuNetwork, "fas fa-network-wired fa-fw")
-            , (MenuSettings, "fas fa-cog fa-fw")
-            , (MenuAbout, "fas fa-info-circle fa-fw")
-            , (MenuLogs, "fas fa-file-alt fa-fw")
-            , (MenuSwitch, "fas fa-sign-out-alt fa-fw")
-            ] thisWidget
+    divClass "menu-android-buttons-wrapper" $ menuButtonsAndroid thisWidget $ case activeCurrencies of
+      cur:[] -> Just cur
+      _ -> Nothing
     pure menuBtnE
   pure ()
 
@@ -101,17 +89,27 @@ visibilityClass :: Text -> Bool -> Text
 visibilityClass classes True = classes <> " hidden"
 visibilityClass classes False = classes
 
-menuButtons :: MonadFront t m => [MenuItem] -> Maybe (Dynamic t (m ())) -> m ()
-menuButtons menuItems thisWidget = do
-  btnsEvents <- sequenceA $ menuBtn <$> menuItems
-  switchMenu thisWidget $ leftmost btnsEvents
-  where menuBtn v = (v <$) <$> clearButton v
+menuButtonsDesktop :: MonadFront t m => Maybe (Dynamic t (m ())) -> Maybe Currency -> m ()
+menuButtonsDesktop thisWidget mCur = do
+  let menuBtn v = (v <$) <$> clearButton v
+  balE <- menuBtn $ maybe MenuBalances MenuSingleBalance mCur
+  netE <- menuBtn MenuNetwork
+  setE <- menuBtn MenuSettings
+  abtE <- menuBtn MenuAbout
+  logE <- menuBtn MenuLogs
+  switchE <- menuBtn MenuSwitch
+  switchMenu thisWidget $ leftmost [balE, netE, setE, abtE, logE, switchE]
 
-menuButtonsAndroid :: MonadFront t m => [(MenuItem, Text)] -> Maybe (Dynamic t (m ())) -> m ()
-menuButtonsAndroid menuItems thisWidget = do
-  btnsEvents <- sequenceA $ menuBtn <$> menuItems
-  switchMenu thisWidget $ leftmost btnsEvents
-  where menuBtn (v, i) = divButton "menu-android-button" $ do
-          elClass "i" (i <> " menu-android-button-icon") blank
-          localizedText v
-          pure v
+menuButtonsAndroid :: MonadFront t m => Maybe (Dynamic t (m ())) -> Maybe Currency -> m ()
+menuButtonsAndroid thisWidget mCur = do
+  let menuBtn (v, i) = divButton "menu-android-button" $ do
+        elClass "i" (i <> " menu-android-button-icon") blank
+        localizedText v
+        pure v
+  balE <- menuBtn $ (maybe MenuBalances MenuSingleBalance mCur, "fas fa-wallet fa-fw")
+  netE <- menuBtn (MenuNetwork, "fas fa-network-wired fa-fw")
+  setE <- menuBtn (MenuSettings, "fas fa-cog fa-fw")
+  abtE <- menuBtn (MenuAbout, "fas fa-info-circle fa-fw")
+  logE <- menuBtn (MenuLogs, "fas fa-file-alt fa-fw")
+  switchE <- menuBtn (MenuSwitch, "fas fa-sign-out-alt fa-fw")
+  switchMenu thisWidget $ leftmost [balE, netE, setE, abtE, logE, switchE]
