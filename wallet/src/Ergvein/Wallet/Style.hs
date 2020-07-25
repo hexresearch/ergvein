@@ -152,7 +152,6 @@ bodyCss = body ? do
   color textColor
   backgroundColor majorBackground
   fontFamily ["Roboto"] []
-  overflowY auto
 
 wrapperCss :: Css
 wrapperCss = do
@@ -189,10 +188,13 @@ headerCss = do
   ".header-button:hover" ? do
     cursor pointer
     color hoverColor
+  ".header-button.hidden" ? do
+    visibility hidden
   ".menu" ? do
     position absolute
     right $ rem 0
     backgroundColor black
+    color white
     boxShadow [bsColor (rgba 0 0 0 0.2) $ shadowWithSpread (px 0) (px 8) (px 16) (px 0)]
   ".menu .button.button-clear" ? do
     color white
@@ -202,10 +204,57 @@ headerCss = do
     width $ pct 100
     borderRadius (px 0) (px 0) (px 0) (px 0)
     marginBottom $ px 0
-  ".header-button.hidden" ? do
-    visibility hidden
   ".menu.hidden" ? do
     display displayNone
+  ".menu-android-wrapper" ? do
+    position fixed
+    top $ rem 0
+    left $ rem 0
+    width $ pct 100
+    height $ pct 100
+    zIndex 1
+    overflowY auto
+    overflowX hidden
+    backgroundColor $ rgba 0 0 0 0.5
+    transition "" (sec 0.3) easeOut (sec 0)
+  ".menu-android-wrapper.hidden" ? do
+    zIndex (-1)
+    backgroundColor $ rgba 0 0 0 0
+  ".menu-android" ? do
+    position absolute
+    top $ rem 0
+    left $ pct 20
+    width $ pct 80
+    height $ pct 100
+    backgroundColor black
+    color white
+    transition "" (sec 0.3) easeOut (sec 0)
+    zIndex 2
+    display flex
+    flexDirection column
+  ".menu-android.hidden" ? do
+    left $ pct 100
+    width $ pct 0
+  ".menu-android-buttons-wrapper" ? do
+    display flex
+    flexDirection column
+    alignItems flexStart
+    padding (rem 0) (rem 1) (rem 0) (rem 4)
+  ".menu-android-header" ? do
+    display flex
+  ".menu-android-close-button" ? do
+    marginLeft auto
+  ".menu-android-button" ? do
+    marginBottom $ rem 2
+    fontSize $ pt 16
+    paddingBottom $ rem 0.3
+    borderBottom solid (rem 0.1) hoverColor
+    whiteSpace nowrap
+  ".menu-android-button-icon" ? do
+    marginRight $ rem 0.7
+  ".menu-android-button:hover" ? do
+    cursor pointer
+    color hoverColor
 
 navbarCss :: Css
 navbarCss = do

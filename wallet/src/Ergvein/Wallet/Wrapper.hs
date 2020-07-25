@@ -9,16 +9,21 @@ import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Platform
 
 -- | Common page wrapper. Contains header menu with back button.
 wrapper :: MonadFront t m => Bool -> Dynamic t Text -> Maybe (Dynamic t (m ())) -> m a -> m a
 wrapper isCentered titleVal thisWidget ma = divClass "wrapper" $ do
-  headerWidget titleVal thisWidget
+  if isAndroid
+    then headerWidgetAndroid titleVal thisWidget
+    else headerWidgetDesktop titleVal thisWidget
   contentContainer isCentered ma
 
 wrapperNavbar :: MonadFront t m => Bool -> Dynamic t Text -> Maybe (Dynamic t (m ())) -> m b -> m a -> m a
 wrapperNavbar isCentered titleVal thisWidget navbar ma = divClass "wrapper" $ do
-  headerWidget titleVal thisWidget
+  if isAndroid
+    then headerWidgetAndroid titleVal thisWidget
+    else headerWidgetDesktop titleVal thisWidget
   navbar
   contentContainer isCentered ma
 
