@@ -7,7 +7,7 @@ import Foreign.Storable
 import Language.Haskell.TH
 import Data.ByteString
 import qualified Data.Vector.Unboxed as UV
-import qualified Data.Vector.Unboxed as V
+import qualified Data.Vector as V
 
 data MessageType = Version
                  | VersionACK
@@ -111,15 +111,12 @@ data FilterRequestMessage = FilterRequestMessage
   }
 
 data BlockFilter = BlockFilter
-  { blockFilterBlockIdLength :: Word32
-  , blockFilterBlockId       :: ByteString
-  , blockFilterLength        :: Word32
+  { blockFilterBlockId       :: ByteString
   , blockFilterFilter        :: ByteString
   }
 
 data FilterResponseMessage = FilterResponseMessage
   { filterResponseCurrency :: CurrencyCode
-  , filterResponseAmount   :: Word32
   , filterResponseFilters  :: V.Vector BlockFilter
   }
 

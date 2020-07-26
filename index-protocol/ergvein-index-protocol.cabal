@@ -21,6 +21,7 @@ library
     , attoparsec
     , attoparsec-binary
     , vector-th-unbox
+    , zlib
     , template-haskell
 
   default-language:    Haskell2010

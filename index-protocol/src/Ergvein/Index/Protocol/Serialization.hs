@@ -4,9 +4,12 @@ import Data.ByteString.Builder
 import Data.Monoid
 import Data.Word
 import Ergvein.Index.Protocol.Types
+import qualified Data.ByteString as BS
+import Codec.Compression.GZip
 
-import qualified Data.Vector.Unboxed as V
+import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
+import qualified Data.ByteString.Lazy as LBS
 
 messageTypeToWord32 :: MessageType -> Word32 
 messageTypeToWord32 = \case
@@ -33,7 +36,7 @@ messageBase :: MessageType -> Word32 -> Builder -> Builder
 messageBase msgType msgLength payload = word32BE (messageTypeToWord32 msgType) <> word32BE msgLength <> payload
 
 scanBlockBuilder :: ScanBlock -> (Sum Word32, Builder)
-scanBlockBuilder (ScanBlock {..}) = (scanBlockSize, scanBlock)
+scanBlockBuilder ScanBlock {..} = (scanBlockSize, scanBlock)
   where
     scanBlockSize = Sum $
         genericSizeOf (currencyCodeToWord32 scanBlockCurrency) 
@@ -47,6 +50,21 @@ scanBlockBuilder (ScanBlock {..}) = (scanBlockSize, scanBlock)
       <> word64BE scanBlockScanHeight
       <> word64BE scanBlockHeight
 
+blockFilterBuilder :: BlockFilter -> (Sum Word32, Builder)
+blockFilterBuilder BlockFilter {..} = (filterSize, filterBuilder)
+  where
+    idLength = fromIntegral $ BS.length blockFilterBlockId
+    filterLength = fromIntegral $ BS.length blockFilterFilter
+    filterSize = Sum $
+        genericSizeOf idLength 
+      + idLength * 8
+      + genericSizeOf filterLength
+      + filterLength * 8
+    filterBuilder = 
+         word32BE idLength
+      <> byteString blockFilterBlockId
+      <> word32BE filterLength
+      <> byteString blockFilterFilter
 
 
 messageBuilder :: Message -> Builder
@@ -85,6 +103,26 @@ messageBuilder (VersionMsg VersionMessage {..}) = let
     <> word32BE scanBlocksCount
     <> scanBlocks
 
-messageBuilder (FiltersRequestMsg FilterRequestMessage {..}) = undefined
+messageBuilder (FiltersRequestMsg FilterRequestMessage {..}) =
+  messageBase FiltersRequest msgSize 
+    $  word32BE (currencyCodeToWord32 filterRequestMsgCurrency)
+    <> word64BE filterRequestMsgStart
+    <> word64BE filterRequestMsgAmount
+  where
+    msgSize = genericSizeOf (currencyCodeToWord32 filterRequestMsgCurrency)
+            + genericSizeOf filterRequestMsgStart
+            + genericSizeOf filterRequestMsgAmount
 
-messageBuilder (FiltersResponseMsg FilterResponseMessage {..}) = undefined
+messageBuilder (FiltersResponseMsg FilterResponseMessage {..}) = let
+  (filtersSizeSum, filters) = mconcat $ (blockFilterBuilder <$> V.toList filterResponseFilters)
+  filtersCount = fromIntegral $ V.length filterResponseFilters
+  filtersSize = getSum filtersSizeSum
+  zippedFilters = compress $ toLazyByteString filters
+
+  msgSize = genericSizeOf (currencyCodeToWord32 filterResponseCurrency)
+          + genericSizeOf filtersCount
+          + fromIntegral (LBS.length zippedFilters)
+  in messageBase FiltersResponse msgSize
+    $  word32BE (currencyCodeToWord32 filterResponseCurrency)
+    <> word32BE filtersCount
+    <> lazyByteString zippedFilters
