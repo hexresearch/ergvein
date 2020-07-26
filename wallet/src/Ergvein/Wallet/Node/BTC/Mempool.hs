@@ -28,32 +28,20 @@ blockTimeout = 20
 -- Retries after a second if there are no active nodes
 -- Retries after 0.05s if the node disconnected (picks another one)
 -- Once the result is returned, close the blocksRequester widget and stop paying attention to the node
-requestBTCMempool :: MonadFront t m => Event t [BlockHash] -> m (Event t ())
+requestBTCMempool :: MonadFront t m => Event t () -> m (Event t ())
 requestBTCMempool reqE = mdo
   conMapD <- getNodeConnectionsD
-  timeE <- tickLossyFromPostBuildTime blockTimeout
-  blksD <- holdDyn [] reqE
-  let timeHE = tag (current blksD) timeE
-  let goE =  attach (current conMapD) $ leftmost [reqE, noNodeE, nodeCloseE, timeHE]
-  let goE' = leftmost [Just <$> goE, Nothing <$ resE]
-  actE <- fmap switchDyn $ widgetHold (pure never) $ ffor goE' $ \case
-    Nothing -> pure never
-    Just (cm, req) -> do
-      buildE <- eventToNextFrame =<< getPostBuild
-      case DM.lookup BTCTag cm of
-        Nothing -> pure $ RANoNode req <$ buildE
-        Just btcsMap -> case M.elems btcsMap of
-          [] -> pure $ RANoNode req <$ buildE
-          btcs -> do
-            node <- liftIO $ fmap (btcs!!) $ randomRIO (0, length btcs - 1)
-            blocksRequester req node
-  noNodeE <- delay 1 $ fforMaybe actE $ \case
-    RANoNode bhs -> Just bhs
-    _ -> Nothing
-  nodeCloseE <- delay 0.05 $ fforMaybe actE $ \case
-    RANodeClosed bhs -> Just bhs
-    _ -> Nothing
-  let resE = fmap (\_ -> ()) actE 
+  actE <- map switchDyn $ widgetHold (pure never) $ ffor reqE $ do
+    cm <- sampleDyn conMapD
+    buildE <- eventToNextFrame =<< getPostBuild
+    case DM.lookup BTCTag cm of
+      Nothing -> pure $ Nothing
+      Just btcsMap -> case M.elems btcsMap of
+        [] -> pure $ Nothing
+        btcs -> do
+          node <- liftIO $ fmap (btcs!!) $ randomRIO (0, length btcs - 1)
+          mempoolRequester node
+  let resE = fmap (\_ -> ()) actE
   pure resE
 
 -- | Requester for requestBTCBlocks
@@ -86,3 +74,16 @@ blocksRequester bhs NodeConnection{..} = do
       InvBlock -> let bh = BlockHash ivh
         in if bh `L.elem` bhs then Just (bh, Nothing) else Nothing
       _ -> Nothing
+
+
+
+-- | Requester for requestBTCBlocks
+mempoolRequester :: MonadFront t m => NodeBTC t -> m (Event t Message)
+mempoolRequester NodeConnection{..} = do
+  buildE      <- getPostBuild
+  let upE     = leftmost [updated nodeconIsUp, current nodeconIsUp `tag` buildE]
+  let btcreq  = NodeReqBTC $ MMempool
+  let reqE    = fforMaybe upE $ \b -> if b then Just (nodeconUrl, btcreq) else Nothing
+  let updE    = nodeconRespE
+  requestFromNode reqE
+  pure $ updE
