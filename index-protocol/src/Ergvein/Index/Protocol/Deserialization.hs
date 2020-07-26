@@ -72,8 +72,11 @@ messageParser Version = do
     { versionMsgVersion    = version
     , versionMsgTime       = time
     , versionMsgNonce      = nonce
-    , versionMsgCurrencies = currencies
     , versionMsgScanBlocks = versionBlocks
     }
 
 messageParser VersionACK = pure $ VersionACKMsg VersionACKMessage
+
+messageParser FiltersRequest = undefined
+
+messageParser FiltersResponse = undefined

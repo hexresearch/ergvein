@@ -5,6 +5,8 @@ import Data.Vector.Unboxed.Deriving
 import Data.Word
 import Foreign.Storable
 import Language.Haskell.TH
+import Data.ByteString
+import qualified Data.Vector.Unboxed as UV
 import qualified Data.Vector.Unboxed as V
 
 data MessageType = Version
@@ -97,10 +99,8 @@ data VersionMessage = VersionMessage
   { versionMsgVersion    :: Word32
   , versionMsgTime       :: POSIXTime
   , versionMsgNonce      :: Word64
-  , versionMsgCurrencies :: Word32
-  , versionMsgScanBlocks :: V.Vector ScanBlock
+  , versionMsgScanBlocks :: UV.Vector ScanBlock
   }
-  
 
 data VersionACKMessage = VersionACKMessage
 
@@ -110,11 +110,26 @@ data FilterRequestMessage = FilterRequestMessage
   , filterRequestMsgAmount   :: Word64
   }
 
-data Message = PingMsg       PingMessage
-             | PongMsg       PongMessage
-             | VersionMsg    VersionMessage
-             | VersionACKMsg VersionACKMessage
-             | RejectMsg     RejectMessage
+data BlockFilter = BlockFilter
+  { blockFilterBlockIdLength :: Word32
+  , blockFilterBlockId       :: ByteString
+  , blockFilterLength        :: Word32
+  , blockFilterFilter        :: ByteString
+  }
+
+data FilterResponseMessage = FilterResponseMessage
+  { filterResponseCurrency :: CurrencyCode
+  , filterResponseAmount   :: Word32
+  , filterResponseFilters  :: V.Vector BlockFilter
+  }
+
+data Message = PingMsg            PingMessage
+             | PongMsg            PongMessage
+             | VersionMsg         VersionMessage
+             | VersionACKMsg      VersionACKMessage
+             | RejectMsg          RejectMessage
+             | FiltersRequestMsg  FilterRequestMessage
+             | FiltersResponseMsg FilterResponseMessage
 
 genericSizeOf :: (Storable a, Integral b) => a -> b
 genericSizeOf = fromIntegral . sizeOf

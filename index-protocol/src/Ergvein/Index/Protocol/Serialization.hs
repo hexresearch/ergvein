@@ -6,6 +6,7 @@ import Data.Word
 import Ergvein.Index.Protocol.Types
 
 import qualified Data.Vector.Unboxed as V
+import qualified Data.Vector.Unboxed as UV
 
 messageTypeToWord32 :: MessageType -> Word32 
 messageTypeToWord32 = \case
@@ -67,18 +68,23 @@ messageBuilder (VersionACKMsg msg) = messageBase VersionACK msgSize $ mempty
     msgSize = 0
 
 messageBuilder (VersionMsg VersionMessage {..}) = let 
-  (scanBlocksSizeSum, scanBlocks) = mconcat $ (scanBlockBuilder <$> V.toList versionMsgScanBlocks)
+  (scanBlocksSizeSum, scanBlocks) = mconcat $ (scanBlockBuilder <$> UV.toList versionMsgScanBlocks)
+  scanBlocksCount = fromIntegral $ UV.length versionMsgScanBlocks
   scanBlocksSize = getSum scanBlocksSizeSum
   time = round versionMsgTime
   msgSize = genericSizeOf versionMsgVersion
           + genericSizeOf time
           + genericSizeOf versionMsgNonce
-          + genericSizeOf versionMsgCurrencies
+          + genericSizeOf scanBlocksCount
           + scanBlocksSize
 
   in messageBase Version msgSize 
     $  word32BE versionMsgVersion
     <> word64BE time
     <> word64BE versionMsgNonce
-    <> word32BE versionMsgCurrencies
+    <> word32BE scanBlocksCount
     <> scanBlocks
+
+messageBuilder (FiltersRequestMsg FilterRequestMessage {..}) = undefined
+
+messageBuilder (FiltersResponseMsg FilterResponseMessage {..}) = undefined
