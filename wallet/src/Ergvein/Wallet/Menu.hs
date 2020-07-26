@@ -6,6 +6,7 @@ module Ergvein.Wallet.Menu(
 
 import Data.Text (Text)
 import {-# SOURCE #-} Ergvein.Wallet.Menu.Switcher
+import Ergvein.Types.Currency
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
@@ -26,24 +27,9 @@ headerWidget titleVal prevWidget = divClass "header-wrapper" $ mdo
   let dropdownClassesD = visibilityClass "header-menu-dropdown" <$> dropdownIsHiddenD
       menuDropdownButtonIconClassD = menuDropdownButtonIconClass <$> dropdownIsHiddenD
       currencies = _pubStorage'activeCurrencies ps
-  divClassDyn dropdownClassesD $ do
-    let menuBtn v = (v <$) <$> clearButton v
-    if (L.length currencies == 1)
-      then do
-        netE <- menuBtn MenuNetwork
-        setE <- menuBtn MenuSettings
-        abtE <- menuBtn MenuAbout
-        logE <- menuBtn MenuLogs
-        switchE <- menuBtn MenuSwitch
-        switchMenu prevWidget $ leftmost [netE, setE, abtE, logE, switchE]
-      else do
-        balE <- menuBtn MenuBalances
-        netE <- menuBtn MenuNetwork
-        setE <- menuBtn MenuSettings
-        abtE <- menuBtn MenuAbout
-        logE <- menuBtn MenuLogs
-        switchE <- menuBtn MenuSwitch
-        switchMenu prevWidget $ leftmost [balE, netE, setE, abtE, logE, switchE]
+  headerDropdown prevWidget dropdownClassesD $ case currencies of
+    cur:[] -> Just cur
+    _ -> Nothing
 
 headerWidgetSimple :: (MonadFront t m, LocalizedPrint a) => a -> Maybe (Dynamic t (m ())) -> m ()
 headerWidgetSimple titleVal prevWidget = divClass "header-wrapper" $ mdo
@@ -57,24 +43,20 @@ headerWidgetSimple titleVal prevWidget = divClass "header-wrapper" $ mdo
   let dropdownClassesD = visibilityClass "header-menu-dropdown" <$> dropdownIsHiddenD
       menuDropdownButtonIconClassD = menuDropdownButtonIconClass <$> dropdownIsHiddenD
       currencies = _pubStorage'activeCurrencies ps
-  divClassDyn dropdownClassesD $ do
-    let menuBtn v = (v <$) <$> clearButton v
-    if (L.length currencies == 1)
-      then do
-        netE <- menuBtn MenuNetwork
-        setE <- menuBtn MenuSettings
-        abtE <- menuBtn MenuAbout
-        logE <- menuBtn MenuLogs
-        switchE <- menuBtn MenuSwitch
-        switchMenu prevWidget $ leftmost [netE, setE, abtE, logE, switchE]
-      else do
-        balE <- menuBtn MenuBalances
-        netE <- menuBtn MenuNetwork
-        setE <- menuBtn MenuSettings
-        abtE <- menuBtn MenuAbout
-        logE <- menuBtn MenuLogs
-        switchE <- menuBtn MenuSwitch
-        switchMenu prevWidget $ leftmost [balE, netE, setE, abtE, logE, switchE]
+  headerDropdown prevWidget dropdownClassesD $ case currencies of
+    cur:[] -> Just cur
+    _ -> Nothing
+
+headerDropdown :: MonadFront t m => Maybe (Dynamic t (m ())) -> Dynamic t Text -> Maybe Currency -> m ()
+headerDropdown prevWidget dropdownClassesD mcur = divClassDyn dropdownClassesD $ do
+  let menuBtn v = (v <$) <$> clearButton v
+  balE <- menuBtn $ maybe MenuBalances MenuSingleBalance mcur
+  netE <- menuBtn MenuNetwork
+  setE <- menuBtn MenuSettings
+  abtE <- menuBtn MenuAbout
+  logE <- menuBtn MenuLogs
+  switchE <- menuBtn MenuSwitch
+  switchMenu prevWidget $ leftmost [balE, netE, setE, abtE, logE, switchE]
 
 headerWidgetOnlyBackBtn :: MonadFrontBase t m => m ()
 headerWidgetOnlyBackBtn = divClass "header-wrapper" $ divClass "header-only-back-btn" $ do
