@@ -77,6 +77,15 @@ messageParser Version = do
 
 messageParser VersionACK = pure $ VersionACKMsg VersionACKMessage
 
-messageParser FiltersRequest = undefined
+messageParser FiltersRequest = do
+  currency <- word32ToCurrencyCode <$> anyWord32be
+  start    <- anyWord64be
+  amount   <- anyWord64be
+
+  pure $ FiltersRequestMsg $ FilterRequestMessage  
+    { filterRequestMsgCurrency = currency
+    , filterRequestMsgStart    = start
+    , filterRequestMsgAmount   = amount
+    }
 
 messageParser FiltersResponse = undefined
