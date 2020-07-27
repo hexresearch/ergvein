@@ -120,6 +120,13 @@ data FilterResponseMessage = FilterResponseMessage
   , filterResponseFilters  :: V.Vector BlockFilter
   }
 
+data FilterResponseIncrementalMessage = FilterResponseIncrementalMessage
+  { filterResponseIncrementalCurrency :: CurrencyCode
+  , filterResponseIncrementalFilters  :: V.Vector BlockFilter
+  }
+
+
+
 data Message = PingMsg            PingMessage
              | PongMsg            PongMessage
              | VersionMsg         VersionMessage
