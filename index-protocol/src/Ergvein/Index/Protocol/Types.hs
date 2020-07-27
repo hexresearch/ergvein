@@ -8,6 +8,7 @@ import Language.Haskell.TH
 import Data.ByteString
 import qualified Data.Vector.Unboxed as UV
 import qualified Data.Vector as V
+import qualified Data.ByteString.Lazy as LBS
 
 data MessageType = Version
                  | VersionACK
@@ -122,18 +123,18 @@ data FilterResponseMessage = FilterResponseMessage
 
 data FilterResponseIncrementalMessage = FilterResponseIncrementalMessage
   { filterResponseIncrementalCurrency :: CurrencyCode
-  , filterResponseIncrementalFilters  :: V.Vector BlockFilter
+  , filterResponseIncrementalAmount   :: Word32
+  , filterResponseIncrementalFilters  :: [BlockFilter]
   }
 
-
-
-data Message = PingMsg            PingMessage
-             | PongMsg            PongMessage
-             | VersionMsg         VersionMessage
-             | VersionACKMsg      VersionACKMessage
-             | RejectMsg          RejectMessage
-             | FiltersRequestMsg  FilterRequestMessage
-             | FiltersResponseMsg FilterResponseMessage
+data Message = PingMsg                       PingMessage
+             | PongMsg                       PongMessage
+             | VersionMsg                    VersionMessage
+             | VersionACKMsg                 VersionACKMessage
+             | RejectMsg                     RejectMessage
+             | FiltersRequestMsg             FilterRequestMessage
+             | FiltersResponseMsg            FilterResponseMessage
+             | FiltersResponseIncrementalMsg FilterResponseIncrementalMessage
 
 genericSizeOf :: (Storable a, Integral b) => a -> b
 genericSizeOf = fromIntegral . sizeOf

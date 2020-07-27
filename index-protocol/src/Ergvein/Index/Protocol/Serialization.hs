@@ -4,11 +4,11 @@ import Data.ByteString.Builder
 import Data.Monoid
 import Data.Word
 import Ergvein.Index.Protocol.Types
-import qualified Data.ByteString as BS
 import Codec.Compression.GZip
 
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 
 messageTypeToWord32 :: MessageType -> Word32 

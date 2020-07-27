@@ -2,11 +2,15 @@ module Ergvein.Index.Protocol.Deserialization where
 
 import Data.Attoparsec.Binary
 import Data.Attoparsec.ByteString
+import qualified Data.Attoparsec.ByteString as Parse
 import Data.Word
 import Control.Monad
 import Ergvein.Index.Protocol.Types
+import Codec.Compression.GZip
+import Data.List
 import qualified Data.ByteString as BS
 import qualified Data.Vector.Unboxed as V
+import qualified Data.ByteString.Lazy as LBS
 
 word32toMessageType :: Word32 -> Maybe MessageType 
 word32toMessageType = \case
@@ -88,4 +92,33 @@ messageParser FiltersRequest = do
     , filterRequestMsgAmount   = amount
     }
 
-messageParser FiltersResponse = undefined
+messageParser FiltersResponse = do
+  currency <- word32ToCurrencyCode <$> anyWord32be
+  amount <- anyWord32be
+  filtersString <- takeLazyByteString
+  let unzippedFilters = decompress filtersString
+      parsedFilters = parseFilters $ LBS.toStrict unzippedFilters
+
+  pure $ FiltersResponseIncrementalMsg $ FilterResponseIncrementalMessage  
+    { filterResponseIncrementalCurrency = currency
+    , filterResponseIncrementalAmount   = amount
+    , filterResponseIncrementalFilters  = parsedFilters
+    }
+
+parseFilters :: BS.ByteString -> [BlockFilter]
+parseFilters = unfoldr (\source -> 
+  case parse filterParser source of
+    Done rest filter -> Just (filter, rest)
+    _ -> Nothing)
+
+filterParser :: Parser BlockFilter
+filterParser = do
+  blockIdLength <- fromIntegral <$> anyWord32be
+  blockId <- Parse.take blockIdLength
+  blockFilterLength <- fromIntegral <$> anyWord32be
+  blockFilter <- Parse.take blockFilterLength
+
+  pure $ BlockFilter 
+    { blockFilterBlockId = blockId
+    , blockFilterFilter  = blockFilter
+    } 

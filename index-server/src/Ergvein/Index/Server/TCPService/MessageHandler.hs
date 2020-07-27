@@ -9,5 +9,3 @@ handleMsg (PingMsg msg) = pure $ Just $ PongMsg msg
 handleMsg (VersionMsg msg) = undefined
 
 handleMsg (FiltersRequestMsg msg) = undefined
-
-handleMsg (FiltersResponseMsg msg) = undefined
