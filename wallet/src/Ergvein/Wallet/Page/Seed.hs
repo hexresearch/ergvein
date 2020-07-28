@@ -162,21 +162,23 @@ seedRestoreWidget = mdo
   ixD <- foldDyn (\_ i -> i + 1) 1 wordE
   h4 $ dynText $
     localizedShow <$> langD <*> (SPSEnterWord <$> ixD)
-  btnE <- fmap (switch . current) $ widgetHold waiting $ ffor (updated inputD) $ \t -> if t == ""
-    then waiting
-    else divClass "restore-seed-buttons-wrapper" $ fmap leftmost $ (flip traverse) (take 6 $ getWordsWithPrefix $ T.toLower t) $ \w -> do
+  suggestionsD <- holdDyn Nothing $ ffor (updated inputD) $ \t -> if t == ""
+    then Nothing else Just $ take 6 $ getWordsWithPrefix $ T.toLower t
+  btnE <- fmap switchDyn $ widgetHoldDyn $ ffor suggestionsD $ \case
+    Nothing -> waiting
+    Just ws -> divClass "restore-seed-buttons-wrapper" $ fmap leftmost $ flip traverse ws $ \w -> do
       btnClickE <- buttonClass (pure "button button-outline") w
       pure $ w <$ btnClickE
-  wordErrsD <- holdDyn Nothing $ ffor (leftmost [validationE, Right <$> btnE]) (either Just (const Nothing))
   let emptyStr :: Text = ""
       enterPressedE = keypress Enter txtInput
       inputD = _inputElement_value txtInput
-      validationE = poke enterPressedE $ \_ -> do
-        input <- sampleDyn inputD
-        pure $ validateSeedWord input
-      enterE = fmapMaybe (\x -> either (const Nothing) Just x) validationE
+      enterE = flip push enterPressedE $ const $ do
+        sugs <- sampleDyn suggestionsD
+        pure $ case sugs of
+          Just (w:[]) -> Just w
+          _ -> Nothing
       wordE = leftmost [btnE, enterE]
-  txtInput <- validatedTextInput (def & inputElementConfig_setValue .~ fmap (const "") wordE) wordErrsD
+  txtInput <- textInput $ def & inputElementConfig_setValue .~ fmap (const "") wordE
   mnemD <- foldDyn (\w m -> let p = if m == "" then "" else " " in m <> p <> (T.toLower w)) "" wordE
   goE <- delay 0.1 (updated ixD)
   pure $ attachWithMaybe (\mnem i -> if i == 25 then Just mnem else Nothing) (current mnemD) goE
