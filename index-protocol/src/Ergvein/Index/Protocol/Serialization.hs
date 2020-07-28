@@ -38,33 +38,30 @@ messageBase msgType msgLength payload = word32BE (messageTypeToWord32 msgType) <
 scanBlockBuilder :: ScanBlock -> (Sum Word32, Builder)
 scanBlockBuilder ScanBlock {..} = (scanBlockSize, scanBlock)
   where
-    scanBlockSize = Sum $
-        genericSizeOf (currencyCodeToWord32 scanBlockCurrency) 
-      + genericSizeOf scanBlockVersion
-      + genericSizeOf scanBlockScanHeight
-      + genericSizeOf scanBlockHeight
+    currencyCode = currencyCodeToWord32 scanBlockCurrency
+    scanBlockSize = Sum $ genericSizeOf currencyCode
+                        + genericSizeOf scanBlockVersion
+                        + genericSizeOf scanBlockScanHeight
+                        + genericSizeOf scanBlockHeight
 
-    scanBlock = 
-        (word32BE $ currencyCodeToWord32 scanBlockCurrency)
-      <> word32BE scanBlockVersion
-      <> word64BE scanBlockScanHeight
-      <> word64BE scanBlockHeight
+    scanBlock = word32BE currencyCode
+             <> word32BE scanBlockVersion
+             <> word64BE scanBlockScanHeight
+             <> word64BE scanBlockHeight
 
 blockFilterBuilder :: BlockFilter -> (Sum Word32, Builder)
 blockFilterBuilder BlockFilter {..} = (filterSize, filterBuilder)
   where
     idLength = fromIntegral $ BS.length blockFilterBlockId
     filterLength = fromIntegral $ BS.length blockFilterFilter
-    filterSize = Sum $
-        genericSizeOf idLength 
-      + idLength * 8
-      + genericSizeOf filterLength
-      + filterLength * 8
-    filterBuilder = 
-         word32BE idLength
-      <> byteString blockFilterBlockId
-      <> word32BE filterLength
-      <> byteString blockFilterFilter
+    filterSize = Sum $ genericSizeOf idLength 
+                     + idLength
+                     + genericSizeOf filterLength
+                     + filterLength
+    filterBuilder = word32BE idLength
+                 <> byteString blockFilterBlockId
+                 <> word32BE filterLength
+                 <> byteString blockFilterFilter
 
 
 messageBuilder :: Message -> Builder
@@ -77,16 +74,17 @@ messageBuilder (PongMsg msg) = messageBase Pong msgSize $ word64BE msg
   where
     msgSize = genericSizeOf msg
 
-messageBuilder (RejectMsg msg) = messageBase Reject msgSize $ word32BE $ rejectTypeToWord32 $ rejectMsgCode msg
+messageBuilder (RejectMsg msg) = messageBase Reject msgSize $ word32BE rejectType
   where
-    msgSize = genericSizeOf $ rejectTypeToWord32 $ rejectMsgCode msg
+    rejectType = rejectTypeToWord32 $ rejectMsgCode msg
+    msgSize = genericSizeOf rejectType
 
 messageBuilder (VersionACKMsg msg) = messageBase VersionACK msgSize $ mempty
   where
     msgSize = 0
 
 messageBuilder (VersionMsg VersionMessage {..}) = let 
-  (scanBlocksSizeSum, scanBlocks) = mconcat $ (scanBlockBuilder <$> UV.toList versionMsgScanBlocks)
+  (scanBlocksSizeSum, scanBlocks) = mconcat $ scanBlockBuilder <$> UV.toList versionMsgScanBlocks
   scanBlocksCount = fromIntegral $ UV.length versionMsgScanBlocks
   scanBlocksSize = getSum scanBlocksSizeSum
   time = round versionMsgTime
