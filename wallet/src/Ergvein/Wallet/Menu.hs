@@ -96,9 +96,8 @@ menuButtonsDesktop thisWidget mCur = do
   netE <- menuBtn MenuNetwork
   setE <- menuBtn MenuSettings
   abtE <- menuBtn MenuAbout
-  logE <- menuBtn MenuLogs
   switchE <- menuBtn MenuSwitch
-  switchMenu thisWidget $ leftmost [balE, netE, setE, abtE, logE, switchE]
+  switchMenu thisWidget $ leftmost [balE, netE, setE, abtE, switchE]
 
 menuButtonsAndroid :: MonadFront t m => Maybe (Dynamic t (m ())) -> Maybe Currency -> m ()
 menuButtonsAndroid thisWidget mCur = do
@@ -110,6 +109,5 @@ menuButtonsAndroid thisWidget mCur = do
   netE <- menuBtn (MenuNetwork, "fas fa-network-wired fa-fw")
   setE <- menuBtn (MenuSettings, "fas fa-cog fa-fw")
   abtE <- menuBtn (MenuAbout, "fas fa-info-circle fa-fw")
-  logE <- menuBtn (MenuLogs, "fas fa-file-alt fa-fw")
   switchE <- menuBtn (MenuSwitch, "fas fa-sign-out-alt fa-fw")
-  switchMenu thisWidget $ leftmost [balE, netE, setE, abtE, logE, switchE]
+  switchMenu thisWidget $ leftmost [balE, netE, setE, abtE, switchE]
