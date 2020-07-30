@@ -52,10 +52,13 @@ prop_encdec_MsgHeader_Eq mh = maybe False (mh ==) decMsg
     encMsg = serializeMessageHeader mh
     decMsg = AP.maybeResult $ deserializeMessageHeader $ BL.toStrict encMsg
 
-prop_encdec_Msg_Valid msg = maybe False (const True) decMsg
+prop_encdec_Msg_Valid msg = whenFail dbgPrint $ maybe False (const True) decMsg
   where
     encMsg = serializeMessage msg
     decMsg = AP.maybeResult $ deserializeMessage $ BL.toStrict encMsg
+    dbgPrint = do
+      print $ "encMsg: " <> (show encMsg)
+      print $ "decMsg: " <> (show decMsg)
 
 prop_encdec_Msg_Eq msg = maybe False (msg ==) decMsg
   where
