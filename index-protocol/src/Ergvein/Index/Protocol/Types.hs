@@ -72,8 +72,8 @@ derivingUnbox "CurrencyCode"
   [| word32ToCurrencyCode    |]
 
 data MessageHeader = MessageHeader
-  { msgType :: MessageType
-  , msgSize :: Word32
+  { msgType :: !MessageType
+  , msgSize :: !Word32
   }
 
 type PingMessage = Word64
@@ -81,14 +81,14 @@ type PingMessage = Word64
 type PongMessage = Word64
 
 data RejectMessage = RejectMessage
-  { rejectMsgCode :: RejectCode
+  { rejectMsgCode :: !RejectCode
   }
 
 data ScanBlock = ScanBlock
-  { scanBlockCurrency   :: CurrencyCode
-  , scanBlockVersion    :: Word32
-  , scanBlockScanHeight :: Word64
-  , scanBlockHeight     :: Word64
+  { scanBlockCurrency   :: !CurrencyCode
+  , scanBlockVersion    :: !Word32
+  , scanBlockScanHeight :: !Word64
+  , scanBlockHeight     :: !Word64
   }
 
 derivingUnbox "ScanBlock"
@@ -97,47 +97,47 @@ derivingUnbox "ScanBlock"
   [| \(c, v, s, h) -> ScanBlock c v s h |]
 
 data VersionMessage = VersionMessage
-  { versionMsgVersion    :: Word32
-  , versionMsgTime       :: POSIXTime
-  , versionMsgNonce      :: Word64
+  { versionMsgVersion    :: !Word32
+  , versionMsgTime       :: !POSIXTime
+  , versionMsgNonce      :: !Word64
  -- versionMsgCurrencies :: uint32 Amount of currencies blocks following the field. For clients it is 0. 
-  , versionMsgScanBlocks :: UV.Vector ScanBlock
+  , versionMsgScanBlocks :: !(UV.Vector ScanBlock)
   }
 
 data VersionACKMessage = VersionACKMessage
 
 data FilterRequestMessage = FilterRequestMessage
-  { filterRequestMsgCurrency :: CurrencyCode
-  , filterRequestMsgStart    :: Word64
-  , filterRequestMsgAmount   :: Word64
+  { filterRequestMsgCurrency :: !CurrencyCode
+  , filterRequestMsgStart    :: !Word64
+  , filterRequestMsgAmount   :: !Word64
   }
 
 data BlockFilter = BlockFilter
   { -- blockFilterBlockIdLength :: uint32 Length of block hash
-    blockFilterBlockId       :: ByteString
+    blockFilterBlockId       :: !ByteString
  -- blockFilterLength :: uint32 Size in bytes of filter
-  , blockFilterFilter        :: ByteString
+  , blockFilterFilter        :: !ByteString
   }
 
 data FilterResponseMessage = FilterResponseMessage
-  { filterResponseCurrency :: CurrencyCode
-  , filterResponseFilters  :: V.Vector BlockFilter
+  { filterResponseCurrency :: !CurrencyCode
+  , filterResponseFilters  :: !(V.Vector BlockFilter)
   }
 
 data FilterResponseIncrementalMessage = FilterResponseIncrementalMessage
-  { filterResponseIncrementalCurrency :: CurrencyCode
-  , filterResponseIncrementalAmount   :: Word32
-  , filterResponseIncrementalFilters  :: [BlockFilter]
+  { filterResponseIncrementalCurrency :: !CurrencyCode
+  , filterResponseIncrementalAmount   :: !Word32
+  , filterResponseIncrementalFilters  :: ![BlockFilter]
   }
 
-data Message = PingMsg                       PingMessage
-             | PongMsg                       PongMessage
-             | VersionMsg                    VersionMessage
-             | VersionACKMsg                 VersionACKMessage
-             | RejectMsg                     RejectMessage
-             | FiltersRequestMsg             FilterRequestMessage
-             | FiltersResponseMsg            FilterResponseMessage
-             | FiltersResponseIncrementalMsg FilterResponseIncrementalMessage
+data Message = PingMsg                       !PingMessage
+             | PongMsg                       !PongMessage
+             | VersionMsg                    !VersionMessage
+             | VersionACKMsg                 !VersionACKMessage
+             | RejectMsg                     !RejectMessage
+             | FiltersRequestMsg             !FilterRequestMessage
+             | FiltersResponseMsg            !FilterResponseMessage
+             | FiltersResponseIncrementalMsg !FilterResponseIncrementalMessage
 
 genericSizeOf :: (Storable a, Integral b) => a -> b
 genericSizeOf = fromIntegral . sizeOf

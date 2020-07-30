@@ -49,6 +49,27 @@ messageTypeParser = guardJust "out of message type bounds" . word32toMessageType
 rejectCodeParser :: Parser RejectCode
 rejectCodeParser = guardJust "out of reject type bounds" . word32toRejectType =<< anyWord32be
 
+versionBlocksParser ::  Parser ScanBlock
+versionBlocksParser = undefined
+
+parseFilters :: BS.ByteString -> [BlockFilter]
+parseFilters = unfoldr (\source -> 
+  case parse filterParser source of
+    Done rest parsedFilter -> Just (parsedFilter, rest)
+    _ -> Nothing)
+
+filterParser :: Parser BlockFilter
+filterParser = do
+  blockIdLength <- fromIntegral <$> anyWord32be
+  blockId <- Parse.take blockIdLength
+  blockFilterLength <- fromIntegral <$> anyWord32be
+  blockFilter <- Parse.take blockFilterLength
+
+  pure $ BlockFilter 
+    { blockFilterBlockId = blockId
+    , blockFilterFilter  = blockFilter
+    } 
+
 messageParser :: MessageType -> Parser Message
 messageParser Ping = PingMsg <$> anyWord64be
 
@@ -95,21 +116,3 @@ messageParser FiltersResponse = do
     , filterResponseIncrementalAmount   = amount
     , filterResponseIncrementalFilters  = parsedFilters
     }
-
-parseFilters :: BS.ByteString -> [BlockFilter]
-parseFilters = unfoldr (\source -> 
-  case parse filterParser source of
-    Done rest filter -> Just (filter, rest)
-    _ -> Nothing)
-
-filterParser :: Parser BlockFilter
-filterParser = do
-  blockIdLength <- fromIntegral <$> anyWord32be
-  blockId <- Parse.take blockIdLength
-  blockFilterLength <- fromIntegral <$> anyWord32be
-  blockFilter <- Parse.take blockFilterLength
-
-  pure $ BlockFilter 
-    { blockFilterBlockId = blockId
-    , blockFilterFilter  = blockFilter
-    } 
