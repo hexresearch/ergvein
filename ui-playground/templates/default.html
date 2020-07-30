@@ -23,22 +23,52 @@
         <script src="/js/theme.js" defer></script>
     </head>
     <body>
-      <div class="wrapper">
-        <div class="header-wrapper">
+      <div class="content">
+        <div class="wrapper">
           <div class="header">
-            <div class="header-button header-back-button hidden"><i class="fas fa-arrow-left fa-fw"></i></div>
+            <div class="header-button header-back"><i class="fas fa-arrow-left fa-fw"></i></div>
             <div class="header-wallet-text">Balance: 0.00108348 BTC</div>
-            <div class="header-button header-menu-dropdown-button"><i class="fas fa-bars fa-fw"></i></div>
+            <div class="header-button header-sliding-menu-open"><i class="fas fa-bars fa-fw"></i></div>
           </div>
-          <div class="header-menu-dropdown hidden">
-            <button class="button button-clear" onclick="return false">Network</button>
-            <button class="button button-clear" onclick="return false">Settings</button>
-            <button class="button button-clear" onclick="return false">About</button>
-            <button class="button button-clear" onclick="return false">Logs</button>
-            <button class="button button-clear" onclick="return false">Switch wallet</button>
+          $body$
+        </div>
+        <div class="sliding-menu hidden">
+          <div class="sliding-menu-header">
+            <div class="sliding-menu-header"></div>
+            <div class="sliding-menu-header-text">Menu</div>
+            <div class="sliding-menu-close"><i class="fas fa-times fa-fw"></i></div>
+          </div>
+          <div class="sliding-menu-buttons">
+            <div class="sliding-menu-button"><i class="fas fa-network-wired"></i>Network</div>
+            <div class="sliding-menu-button"><i class="fas fa-cog"></i>Settings</div>
+            <div class="sliding-menu-button"><i class="fas fa-info-circle"></i>About</div>
+            <div class="sliding-menu-button"><i class="far fa-file-alt"></i>Logs</div>
+            <div class="sliding-menu-button"><i class="fas fa-sign-out-alt"></i>Switch Wallet</div>
           </div>
         </div>
+        <div class="dark-overlay hidden"></div>
       </div>
-      $body$
+      <script>
+        document.querySelector('.header-sliding-menu-open').addEventListener('click', function() {
+          document.querySelector('.sliding-menu').classList.toggle('hidden');
+        });
+        document.querySelector('.header-sliding-menu-open').addEventListener('click', function() {
+          document.querySelector('.dark-overlay').classList.toggle('hidden');
+        });
+
+        document.querySelector('.sliding-menu-close').addEventListener('click', function() {
+          document.querySelector('.sliding-menu').classList.toggle('hidden');
+        });
+        document.querySelector('.sliding-menu-close').addEventListener('click', function() {
+          document.querySelector('.dark-overlay').classList.toggle('hidden');
+        });
+
+        document.querySelector('.dark-overlay').addEventListener('click', function() {
+          document.querySelector('.dark-overlay').classList.toggle('hidden');
+        });
+        document.querySelector('.dark-overlay').addEventListener('click', function() {
+          document.querySelector('.sliding-menu').classList.toggle('hidden');
+        });
+      </script>
     </body>
 </html>

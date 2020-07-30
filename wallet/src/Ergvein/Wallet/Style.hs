@@ -79,17 +79,8 @@ frontendCss :: Resources -> Css
 frontendCss r = do
   fontFamilies r
   faFontFamilies r
-  html ? do
-    margin (px 0) (px 0) (px 0) (px 0)
-    padding (px 0) (px 0) (px 0) (px 0)
-    textAlign center
-  body ? do
-    margin (px 0) (px 0) (px 0) (px 0)
-    padding (px 0) (px 0) (px 0) (px 0)
-    color textColor
-    backgroundColor majorBackground
-    fontFamily ["Roboto"] []
-    overflowY auto
+  htmlCss
+  bodyCss
   aboutPageCss
   alertsCss
   balancesPageCss
@@ -148,10 +139,24 @@ tabletBreakpoint = rem 80
 desktopBreakpoint :: Size LengthUnit
 desktopBreakpoint = rem 120
 
+htmlCss :: Css
+htmlCss = html ? do
+  margin (px 0) (px 0) (px 0) (px 0)
+  padding (px 0) (px 0) (px 0) (px 0)
+  textAlign center
+
+bodyCss :: Css
+bodyCss = body ? do
+  margin (px 0) (px 0) (px 0) (px 0)
+  padding (px 0) (px 0) (px 0) (px 0)
+  color textColor
+  backgroundColor majorBackground
+  fontFamily ["Roboto"] []
+
 wrapperCss :: Css
 wrapperCss = do
   ".wrapper" ? do
-    height $ pct 100
+    minHeight $ vh 100
     display flex
     flexDirection column
   ".wrapper .container" ? do
@@ -162,15 +167,6 @@ wrapperCss = do
   ".centered-content" ? do
     margin auto auto auto auto
 
-translatePctX :: Size Percentage -> Css
-translatePctX x = prefixed (browsers <> "transform") $ "translateX(" <> value x <> ")"
-
-translatePctY :: Size Percentage -> Css
-translatePctY y = prefixed (browsers <> "transform") $ "translateY(" <> value y <> ")"
-
-translatePctXY :: Size Percentage -> Size Percentage -> Css
-translatePctXY x y = prefixed (browsers <> "transform") $ "translate(" <> value x <> ", " <> value y <> ")"
-
 headerCss :: Css
 headerCss = do
   ".header-wrapper" ? do
@@ -179,33 +175,28 @@ headerCss = do
     zIndex 1
   ".header" ? do
     display flex
-    alignItems stretch
+    fontSize $ pt 14
+  ".header-black" ? do
     backgroundColor black
     color white
-    fontSize $ pt 14
-  ".header-only-back-btn" ? do
-    display flex
-    alignItems stretch
-    fontSize $ pt 14
   ".header-wallet-text" ? do
     width $ pct 100
-    padding (rem 1) (rem 0) (rem 1) (rem 0)
+    padding (rem 1) (rem 1) (rem 1) (rem 1)
   ".header-button" ? do
     fontSize $ pt 20
     padding (rem 1) (rem 1) (rem 1) (rem 1)
-    display flex
-    alignItems stretch
   ".header-button:hover" ? do
     cursor pointer
     color hoverColor
-  ".header-menu-dropdown" ? do
+  ".header-button.hidden" ? do
+    visibility hidden
+  ".menu" ? do
     position absolute
-    right $ px 0
+    right $ rem 0
     backgroundColor black
-    zIndex 1
-    minWidth $ px 160
+    color white
     boxShadow [bsColor (rgba 0 0 0 0.2) $ shadowWithSpread (px 0) (px 8) (px 16) (px 0)]
-  ".header-menu-dropdown .button.button-clear" ? do
+  ".menu .button.button-clear" ? do
     color white
     fontSize $ pt 14
     display block
@@ -213,10 +204,57 @@ headerCss = do
     width $ pct 100
     borderRadius (px 0) (px 0) (px 0) (px 0)
     marginBottom $ px 0
-  ".header-back-button.hidden" ? do
-    visibility hidden
-  ".header-menu-dropdown.hidden" ? do
+  ".menu.hidden" ? do
     display displayNone
+  ".menu-android-wrapper" ? do
+    position fixed
+    top $ rem 0
+    left $ rem 0
+    width $ pct 100
+    height $ pct 100
+    zIndex 1
+    overflowY auto
+    overflowX hidden
+    backgroundColor $ rgba 0 0 0 0.5
+    transition "" (sec 0.3) easeOut (sec 0)
+  ".menu-android-wrapper.hidden" ? do
+    zIndex (-1)
+    backgroundColor $ rgba 0 0 0 0
+  ".menu-android" ? do
+    position absolute
+    top $ rem 0
+    left $ pct 20
+    width $ pct 80
+    height $ pct 100
+    backgroundColor black
+    color white
+    transition "" (sec 0.3) easeOut (sec 0)
+    zIndex 2
+    display flex
+    flexDirection column
+  ".menu-android.hidden" ? do
+    left $ pct 100
+    width $ pct 0
+  ".menu-android-buttons-wrapper" ? do
+    display flex
+    flexDirection column
+    alignItems flexStart
+    padding (rem 0) (rem 1) (rem 0) (rem 4)
+  ".menu-android-header" ? do
+    display flex
+  ".menu-android-close-button" ? do
+    marginLeft auto
+  ".menu-android-button" ? do
+    marginBottom $ rem 2
+    fontSize $ pt 16
+    paddingBottom $ rem 0.3
+    borderBottom solid (rem 0.1) hoverColor
+    whiteSpace nowrap
+  ".menu-android-button-icon" ? do
+    marginRight $ rem 0.7
+  ".menu-android-button:hover" ? do
+    cursor pointer
+    color hoverColor
 
 navbarCss :: Css
 navbarCss = do

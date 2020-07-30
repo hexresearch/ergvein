@@ -1,33 +1,160 @@
-
-{
-  margin-bottom : auto;
+html, body {
+  height:  100%;
 }
+
+.content {
+  position: relative;
+  height: 100%;
+  overflow-x: hidden;
+}
+
+.wrapper
+{
+  min-height: 100vh;
+  display        : flex;
+  flex-direction : column;
+}
+
+.wrapper .container
+{
+  max-width : 80rem;
+}
+
+.dark-overlay {
+  position: fixed;
+  display: block;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0,0,0,0.5);
+  z-index: 1;
+}
+
+.dark-overlay.hidden {
+  background-color: rgba(0,0,0,0);
+  transition: background-color 0.3s ease-out;
+  z-index: -1;
+}
+
+.sliding-menu
+{
+  position           : absolute;
+  bottom: 0;
+  left: 20%;
+  width: 80%;
+  height: 100%;
+  background-color : black;
+  transition: 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+  z-index: 2;
+}
+
+.sliding-menu.hidden
+{
+  left: 100%;
+  width: 0;
+}
+
+.sliding-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color            : #ffffff;
+  font-size        : 14pt;
+  padding: 1rem;
+}
+
+.sliding-menu-header-text {
+  padding: 0 1rem;
+  font-size: 14pt;
+  font-weight: 600;
+}
+
+
+.sliding-menu-close {
+  font-size   : 20pt;
+  display     : flex;
+  align-items : center;
+  color         : #ffffff;
+  cursor: pointer;
+}
+
+.sliding-menu-close:hover {
+  color: rgb(112, 112, 112)
+}
+
+.sliding-menu-buttons
+{
+  display: grid;
+  grid-template-columns: max-content;
+  margin-left: 4rem;
+  justify-items: start;
+}
+
+.sliding-menu-button {
+  color: white;
+  font-size: 16pt;
+  margin-bottom: 2rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid rgb(112, 112, 112);
+}
+
+.sliding-menu-button:hover {
+  cursor: pointer;
+  color: rgb(112, 112, 112)
+}
+
+.sliding-menu-button i {
+  font-size: 14pt;
+  padding-right: 1rem;
+}
+
+.button.button-white {
+  background-color: white;
+  border-color: white;
+}
+
+.button.button-white.button-outline
+{
+  background-color:transparent;
+  color: white;
+}
+
+.header-back.hidden
+{
+  visibility : hidden;
+}
+
 
 @font-face
 {
   font-family : "Roboto";
-  src         : url("fonts/Roboto-Regular.ttf")format("truetype");
+  src         : url("../fonts/Roboto-Regular.ttf")format("truetype");
   font-weight : 400;
 }
 
 @font-face
 {
   font-family : "Roboto-Bold";
-  src         : url("fonts/Roboto-Bold.ttf")format("truetype");
+  src         : url("../fonts/Roboto-Bold.ttf")format("truetype");
   font-weight : 400;
 }
 
 @font-face
 {
   font-family : "Roboto-Black";
-  src         : url("fonts/Roboto-Black.ttf")format("truetype");
+  src         : url("../fonts/Roboto-Black.ttf")format("truetype");
   font-weight : 400;
 }
 
 @font-face
 {
   font-family : "Roboto-Medium";
-  src         : url("fonts/Roboto-Medium.ttf")format("truetype");
+  src         : url("../fonts/Roboto-Medium.ttf")format("truetype");
   font-weight : 400;
 }
 
@@ -35,7 +162,7 @@
 {
   font-family : "Font Awesome 5 Brands";
   font-style  : normal;
-  src         : url("fonts/fa-brands-400.eot")format("embedded-opentype"),url("fonts/fa-brands-400.eot")format("svg"),url("fonts/fa-brands-400.eot")format("truetype"),url("fonts/fa-brands-400.eot")format("woff"),url("fonts/fa-brands-400.eot")format("woff2"),url("fonts/fa-brands-400.svg")format("embedded-opentype"),url("fonts/fa-brands-400.svg")format("svg"),url("fonts/fa-brands-400.svg")format("truetype"),url("fonts/fa-brands-400.svg")format("woff"),url("fonts/fa-brands-400.svg")format("woff2"),url("fonts/fa-brands-400.ttf")format("embedded-opentype"),url("fonts/fa-brands-400.ttf")format("svg"),url("fonts/fa-brands-400.ttf")format("truetype"),url("fonts/fa-brands-400.ttf")format("woff"),url("fonts/fa-brands-400.ttf")format("woff2"),url("fonts/fa-brands-400.woff")format("embedded-opentype"),url("fonts/fa-brands-400.woff")format("svg"),url("fonts/fa-brands-400.woff")format("truetype"),url("fonts/fa-brands-400.woff")format("woff"),url("fonts/fa-brands-400.woff")format("woff2"),url("fonts/fa-brands-400.woff2")format("embedded-opentype"),url("fonts/fa-brands-400.woff2")format("svg"),url("fonts/fa-brands-400.woff2")format("truetype"),url("fonts/fa-brands-400.woff2")format("woff"),url("fonts/fa-brands-400.woff2")format("woff2");
+  src         : url("../fonts/fa-brands-400.eot")format("embedded-opentype"),url("../fonts/fa-brands-400.eot")format("svg"),url("../fonts/fa-brands-400.eot")format("truetype"),url("../fonts/fa-brands-400.eot")format("woff"),url("../fonts/fa-brands-400.eot")format("woff2"),url("../fonts/fa-brands-400.svg")format("embedded-opentype"),url("../fonts/fa-brands-400.svg")format("svg"),url("../fonts/fa-brands-400.svg")format("truetype"),url("../fonts/fa-brands-400.svg")format("woff"),url("../fonts/fa-brands-400.svg")format("woff2"),url("../fonts/fa-brands-400.ttf")format("embedded-opentype"),url("../fonts/fa-brands-400.ttf")format("svg"),url("../fonts/fa-brands-400.ttf")format("truetype"),url("../fonts/fa-brands-400.ttf")format("woff"),url("../fonts/fa-brands-400.ttf")format("woff2"),url("../fonts/fa-brands-400.woff")format("embedded-opentype"),url("../fonts/fa-brands-400.woff")format("svg"),url("../fonts/fa-brands-400.woff")format("truetype"),url("../fonts/fa-brands-400.woff")format("woff"),url("../fonts/fa-brands-400.woff")format("woff2"),url("../fonts/fa-brands-400.woff2")format("embedded-opentype"),url("../fonts/fa-brands-400.woff2")format("svg"),url("../fonts/fa-brands-400.woff2")format("truetype"),url("../fonts/fa-brands-400.woff2")format("woff"),url("../fonts/fa-brands-400.woff2")format("woff2");
   font-weight : 400;
 }
 
@@ -43,7 +170,7 @@
 {
   font-family : "Font Awesome 5 Free";
   font-style  : normal;
-  src         : url("fonts/fa-regular-400.eot")format("embedded-opentype"),url("fonts/fa-regular-400.eot")format("svg"),url("fonts/fa-regular-400.eot")format("truetype"),url("fonts/fa-regular-400.eot")format("woff"),url("fonts/fa-regular-400.eot")format("woff2"),url("fonts/fa-regular-400.svg")format("embedded-opentype"),url("fonts/fa-regular-400.svg")format("svg"),url("fonts/fa-regular-400.svg")format("truetype"),url("fonts/fa-regular-400.svg")format("woff"),url("fonts/fa-regular-400.svg")format("woff2"),url("fonts/fa-regular-400.ttf")format("embedded-opentype"),url("fonts/fa-regular-400.ttf")format("svg"),url("fonts/fa-regular-400.ttf")format("truetype"),url("fonts/fa-regular-400.ttf")format("woff"),url("fonts/fa-regular-400.ttf")format("woff2"),url("fonts/fa-regular-400.woff")format("embedded-opentype"),url("fonts/fa-regular-400.woff")format("svg"),url("fonts/fa-regular-400.woff")format("truetype"),url("fonts/fa-regular-400.woff")format("woff"),url("fonts/fa-regular-400.woff")format("woff2"),url("fonts/fa-regular-400.woff2")format("embedded-opentype"),url("fonts/fa-regular-400.woff2")format("svg"),url("fonts/fa-regular-400.woff2")format("truetype"),url("fonts/fa-regular-400.woff2")format("woff"),url("fonts/fa-regular-400.woff2")format("woff2");
+  src         : url("../fonts/fa-regular-400.eot")format("embedded-opentype"),url("../fonts/fa-regular-400.eot")format("svg"),url("../fonts/fa-regular-400.eot")format("truetype"),url("../fonts/fa-regular-400.eot")format("woff"),url("../fonts/fa-regular-400.eot")format("woff2"),url("../fonts/fa-regular-400.svg")format("embedded-opentype"),url("../fonts/fa-regular-400.svg")format("svg"),url("../fonts/fa-regular-400.svg")format("truetype"),url("../fonts/fa-regular-400.svg")format("woff"),url("../fonts/fa-regular-400.svg")format("woff2"),url("../fonts/fa-regular-400.ttf")format("embedded-opentype"),url("../fonts/fa-regular-400.ttf")format("svg"),url("../fonts/fa-regular-400.ttf")format("truetype"),url("../fonts/fa-regular-400.ttf")format("woff"),url("../fonts/fa-regular-400.ttf")format("woff2"),url("../fonts/fa-regular-400.woff")format("embedded-opentype"),url("../fonts/fa-regular-400.woff")format("svg"),url("../fonts/fa-regular-400.woff")format("truetype"),url("../fonts/fa-regular-400.woff")format("woff"),url("../fonts/fa-regular-400.woff")format("woff2"),url("../fonts/fa-regular-400.woff2")format("embedded-opentype"),url("../fonts/fa-regular-400.woff2")format("svg"),url("../fonts/fa-regular-400.woff2")format("truetype"),url("../fonts/fa-regular-400.woff2")format("woff"),url("../fonts/fa-regular-400.woff2")format("woff2");
   font-weight : 400;
 }
 
@@ -51,7 +178,7 @@
 {
   font-family : "Font Awesome 5 Free";
   font-style  : normal;
-  src         : url("fonts/fa-solid-900.eot")format("embedded-opentype"),url("fonts/fa-solid-900.eot")format("svg"),url("fonts/fa-solid-900.eot")format("truetype"),url("fonts/fa-solid-900.eot")format("woff"),url("fonts/fa-solid-900.eot")format("woff2"),url("fonts/fa-solid-900.svg")format("embedded-opentype"),url("fonts/fa-solid-900.svg")format("svg"),url("fonts/fa-solid-900.svg")format("truetype"),url("fonts/fa-solid-900.svg")format("woff"),url("fonts/fa-solid-900.svg")format("woff2"),url("fonts/fa-solid-900.ttf")format("embedded-opentype"),url("fonts/fa-solid-900.ttf")format("svg"),url("fonts/fa-solid-900.ttf")format("truetype"),url("fonts/fa-solid-900.ttf")format("woff"),url("fonts/fa-solid-900.ttf")format("woff2"),url("fonts/fa-solid-900.woff")format("embedded-opentype"),url("fonts/fa-solid-900.woff")format("svg"),url("fonts/fa-solid-900.woff")format("truetype"),url("fonts/fa-solid-900.woff")format("woff"),url("fonts/fa-solid-900.woff")format("woff2"),url("fonts/fa-solid-900.woff2")format("embedded-opentype"),url("fonts/fa-solid-900.woff2")format("svg"),url("fonts/fa-solid-900.woff2")format("truetype"),url("fonts/fa-solid-900.woff2")format("woff"),url("fonts/fa-solid-900.woff2")format("woff2");
+  src         : url("../fonts/fa-solid-900.eot")format("embedded-opentype"),url("../fonts/fa-solid-900.eot")format("svg"),url("../fonts/fa-solid-900.eot")format("truetype"),url("../fonts/fa-solid-900.eot")format("woff"),url("../fonts/fa-solid-900.eot")format("woff2"),url("../fonts/fa-solid-900.svg")format("embedded-opentype"),url("../fonts/fa-solid-900.svg")format("svg"),url("../fonts/fa-solid-900.svg")format("truetype"),url("../fonts/fa-solid-900.svg")format("woff"),url("../fonts/fa-solid-900.svg")format("woff2"),url("../fonts/fa-solid-900.ttf")format("embedded-opentype"),url("../fonts/fa-solid-900.ttf")format("svg"),url("../fonts/fa-solid-900.ttf")format("truetype"),url("../fonts/fa-solid-900.ttf")format("woff"),url("../fonts/fa-solid-900.ttf")format("woff2"),url("../fonts/fa-solid-900.woff")format("embedded-opentype"),url("../fonts/fa-solid-900.woff")format("svg"),url("../fonts/fa-solid-900.woff")format("truetype"),url("../fonts/fa-solid-900.woff")format("woff"),url("../fonts/fa-solid-900.woff")format("woff2"),url("../fonts/fa-solid-900.woff2")format("embedded-opentype"),url("../fonts/fa-solid-900.woff2")format("svg"),url("../fonts/fa-solid-900.woff2")format("truetype"),url("../fonts/fa-solid-900.woff2")format("woff"),url("../fonts/fa-solid-900.woff2")format("woff2");
   font-weight : 900;
 }
 
@@ -119,6 +246,7 @@ body
 {
   pointer-events   : none;
   background-color : rgba(0,0,0,0.0);
+  position         : -webkit-sticky;
   position         : sticky;
   bottom           : 0px;
   right            : 0px;
@@ -377,18 +505,17 @@ input[type='submit']
   z-index             : 10;
 }
 
-.header-wrapper
-{
-  position : relative;
-}
-
 .header
 {
+  position: sticky;
+  position: -webkit-sticky;
+  top: 0;
   display          : flex;
   align-items      : stretch;
   background-color : #000000;
   color            : #ffffff;
   font-size        : 14pt;
+  padding: 1rem;
 }
 
 .header-only-back-btn
@@ -401,13 +528,12 @@ input[type='submit']
 .header-wallet-text
 {
   width   : 100%;
-  padding : 1rem 0rem 1rem 0rem;
+  padding : 0rem 1rem 0rem 1rem;
 }
 
 .header-button
 {
   font-size   : 20pt;
-  padding     : 1rem 1rem 1rem 1rem;
   display     : flex;
   align-items : stretch;
 }
@@ -416,41 +542,6 @@ input[type='submit']
 {
   cursor : pointer;
   color  : #707070;
-}
-
-.header-menu-dropdown
-{
-  position           : absolute;
-  right              : 0px;
-  background-color   : #000000;
-  z-index            : 1;
-  min-width          : 160px;
-  -webkit-box-shadow : 0px 8px 16px 0px rgba(0,0,0,0.2);
-  -moz-box-shadow    : 0px 8px 16px 0px rgba(0,0,0,0.2);
-  -ms-box-shadow     : 0px 8px 16px 0px rgba(0,0,0,0.2);
-  -o-box-shadow      : 0px 8px 16px 0px rgba(0,0,0,0.2);
-  box-shadow         : 0px 8px 16px 0px rgba(0,0,0,0.2);
-}
-
-.header-menu-dropdown .button.button-clear
-{
-  color         : #ffffff;
-  font-size     : 14pt;
-  display       : block;
-  border        : solid 0.1rem #ffffff;
-  width         : 100%;
-  border-radius : 0px 0px 0px 0px;
-  margin-bottom : 0px;
-}
-
-.header-back-button.hidden
-{
-  visibility : hidden;
-}
-
-.header-menu-dropdown.hidden
-{
-  display : none;
 }
 
 .history-table-header
@@ -1402,18 +1493,6 @@ select:hover, select:focus
 .validate-error
 {
   font-size : 14pt;
-}
-
-.wrapper
-{
-  height         : 100%;
-  display        : flex;
-  flex-direction : column;
-}
-
-.wrapper .container
-{
-  max-width : 80rem;
 }
 
 .centered-container

@@ -109,3 +109,4 @@ jobs:
         packageName: org.ergvein.wallet
         releaseFile: android-release/release/android-app.aab
         track: "Internal Alpha"
+        whatsNewDirectory: whatsnew

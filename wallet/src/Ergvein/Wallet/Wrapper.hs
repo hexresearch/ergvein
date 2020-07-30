@@ -1,7 +1,6 @@
 module Ergvein.Wallet.Wrapper(
     wrapper
   , wrapperNavbar
-  , wrapperTitle
   , wrapperSimple
   ) where
 
@@ -10,30 +9,26 @@ import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Platform
 
 -- | Common page wrapper. Contains header menu with back button.
 wrapper :: MonadFront t m => Bool -> Dynamic t Text -> Maybe (Dynamic t (m ())) -> m a -> m a
-wrapper isCentered titleVal prevWidget ma = divClass "wrapper" $ do
-  headerWidget titleVal prevWidget
-  a <- if isCentered
-    then divClass "centered-container" $ divClass "centered-content container p-1" ma
-    else divClass "container p-1" ma
-  alertHandlerWidget
-  pure a
+wrapper isCentered titleVal thisWidget ma = divClass "wrapper" $ do
+  if isAndroid
+    then headerWidgetAndroid titleVal thisWidget
+    else headerWidgetDesktop titleVal thisWidget
+  contentContainer isCentered ma
 
-wrapperNavbar :: MonadFront t m => Bool -> Dynamic t Text -> Maybe (Dynamic t (m ())) -> m a -> m b -> m b
-wrapperNavbar isCentered titleVal prevWidget navbar ma = divClass "wrapper" $ do
-  headerWidget titleVal prevWidget
+wrapperNavbar :: MonadFront t m => Bool -> Dynamic t Text -> Maybe (Dynamic t (m ())) -> m b -> m a -> m a
+wrapperNavbar isCentered titleVal thisWidget navbar ma = divClass "wrapper" $ do
+  if isAndroid
+    then headerWidgetAndroid titleVal thisWidget
+    else headerWidgetDesktop titleVal thisWidget
   navbar
-  a <- if isCentered
-    then divClass "centered-container" $ divClass "centered-content container p-1" ma
-    else divClass "container p-1" ma
-  alertHandlerWidget
-  pure a
+  contentContainer isCentered ma
 
-wrapperTitle :: (MonadFront t m, LocalizedPrint l) => Bool -> l -> Maybe (Dynamic t (m ())) -> m a -> m a
-wrapperTitle isCentered titleVal prevWidget ma = divClass "wrapper" $ do
-  headerWidgetSimple titleVal prevWidget
+contentContainer :: MonadFront t m => Bool -> m a -> m a
+contentContainer isCentered ma = do
   a <- if isCentered
     then divClass "centered-container" $ divClass "centered-content container p-1" ma
     else divClass "container p-1" ma

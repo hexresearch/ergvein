@@ -4,7 +4,9 @@ module Ergvein.Wallet.Input(
   , validatedTextInput
   , textInputValidated
   , textField
+  , textFieldAttr
   , textFieldNoLabel
+  , textFieldAttrNoLabel
   , validatedTextField
   , validatedTextFieldSetVal
   , textFieldSetValValidated
@@ -16,17 +18,14 @@ module Ergvein.Wallet.Input(
   ) where
 
 import Control.Lens
-import Control.Monad (join)
 import Data.Text (Text)
 import Ergvein.Text
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Id
 import Ergvein.Wallet.Monad
-import GHCJS.DOM.HTMLInputElement (HTMLInputElement)
-import Language.Javascript.JSaddle
 import Reflex.Localize
 
-import qualified Data.Text as T
+import qualified Data.Map.Strict as M
 
 textInput :: MonadFrontBase t m
   => InputElementConfig EventResult t (DomBuilderSpace m)
@@ -43,7 +42,7 @@ validatedTextInput :: (MonadFrontBase t m, LocalizedPrint l)
   -> m (InputElement EventResult (DomBuilderSpace m) t)
 validatedTextInput cfg mErrsD = do
   tInput <- inputField
-  divClass "form-field-errors" $ simpleList errsD displayError
+  void $ divClass "form-field-errors" $ simpleList errsD displayError
   pure tInput
   where
     errsD = fmap (maybe [] id) mErrsD
@@ -63,20 +62,29 @@ textInputValidated cfg f = mdo
 
 labeledTextInput :: (MonadFrontBase t m, LocalizedPrint l)
   => l -- ^ Label
+  -> M.Map AttributeName Text
   -> InputElementConfig EventResult t (DomBuilderSpace m)
   -> m (InputElement EventResult (DomBuilderSpace m) t)
-labeledTextInput lbl cfg = do
+labeledTextInput lbl attrs cfg = do
   i <- genId
   label i $ localizedText lbl
   inputElement $ cfg
     & inputElementConfig_elementConfig . elementConfig_initialAttributes
-      %~ (\as -> "id" =: i <> "type" =: "text" <> as)
+      %~ \as -> "id" =: i <> "type" =: "text" <> attrs <> as
 
 textField :: (MonadFrontBase t m, LocalizedPrint l)
   => l -- ^ Label
   -> Text -- ^ Initial value
   -> m (Dynamic t Text)
-textField lbl v0 = fmap _inputElement_value $ labeledTextInput lbl $ def
+textField lbl v0 = fmap _inputElement_value $ labeledTextInput lbl M.empty $ def
+  & inputElementConfig_initialValue .~ v0
+
+textFieldAttr :: (MonadFrontBase t m, LocalizedPrint l)
+  => l -- ^ Label
+  -> M.Map AttributeName Text
+  -> Text -- ^ Initial value
+  -> m (Dynamic t Text)
+textFieldAttr lbl attrs v0 = fmap _inputElement_value $ labeledTextInput lbl attrs $ def
   & inputElementConfig_initialValue .~ v0
 
 textFieldNoLabel :: (MonadFrontBase t m)
@@ -87,6 +95,15 @@ textFieldNoLabel v0 = fmap _inputElement_value $ inputElement $ def
   & inputElementConfig_elementConfig . elementConfig_initialAttributes
     %~ (\as -> "type" =: "text" <> as)
 
+textFieldAttrNoLabel :: (MonadFrontBase t m)
+  => M.Map AttributeName Text
+  -> Text -- ^ Initial value
+  -> m (Dynamic t Text)
+textFieldAttrNoLabel attrs v0 = fmap _inputElement_value $ inputElement $ def
+  & inputElementConfig_initialValue .~ v0
+  & inputElementConfig_elementConfig . elementConfig_initialAttributes
+    %~ (\as -> attrs <> "type" =: "text" <> as)
+
 validatedTextField :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPrint l1)
   => l0 -- ^ Label
   -> Text -- ^ Initial value
@@ -94,7 +111,7 @@ validatedTextField :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPrint l1)
   -> m (Dynamic t Text)
 validatedTextField lbl v0 mErrsD = do
   textInputValueD <- inputField
-  divClass "form-field-errors" $ simpleList errsD displayError
+  void $ divClass "form-field-errors" $ simpleList errsD displayError
   pure textInputValueD
   where
     errsD = fmap (maybe [] id) mErrsD
@@ -109,12 +126,12 @@ validatedTextFieldSetVal :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPri
   -> m (Dynamic t Text)
 validatedTextFieldSetVal lbl v0 mErrsD setValE = do
   textInputValueD <- inputField
-  divClass "form-field-errors" $ simpleList errsD displayError
+  void $ divClass "form-field-errors" $ simpleList errsD displayError
   pure textInputValueD
   where
     errsD = fmap (maybe [] id) mErrsD
     isInvalidD = fmap (maybe "" (const "is-invalid")) mErrsD
-    inputField = divClassDyn isInvalidD $ fmap _inputElement_value $ labeledTextInput lbl $ def
+    inputField = divClassDyn isInvalidD $ fmap _inputElement_value $ labeledTextInput lbl M.empty $ def
       & inputElementConfig_initialValue .~ v0
       & inputElementConfig_setValue .~ setValE
 
@@ -151,8 +168,7 @@ displayError errD = do
 passField :: (MonadFrontBase t m, LocalizedPrint l)
   => l -- ^ Label
   -> m (Dynamic t Text)
-passField lbl = fmap _inputElement_value $ labeledTextInput lbl $ def
-  & inputElementConfig_elementConfig . elementConfig_initialAttributes %~ ((<>) ("type" =: "password"))
+passField lbl = fmap _inputElement_value $ labeledTextInput lbl ("type" =: "password") def
 
 -- | Password field with toggleable visibility
 passFieldWithEye :: (MonadFrontBase t m, LocalizedPrint l) => l -> m (Dynamic t Password)
@@ -164,7 +180,7 @@ passFieldWithEye lbl = mdo
     v <- sampleDyn typeD
     pure $ if v == "password" then "text" else "password"
   (valD, eyeE) <- divClass "password-field" $ do
-    valD <- textInputTypeDyn (updated typeD) (def &
+    valD' <- textInputTypeDyn (updated typeD) (def &
       inputElementConfig_elementConfig . elementConfig_initialAttributes .~
         (  "id"          =: i
         <> "class"       =: "eyed-field"
@@ -174,8 +190,8 @@ passFieldWithEye lbl = mdo
         ))
     passwordVisibleD <- toggle False eyeE
     let eyeButtonIconClassD = eyeButtonIconClass <$> passwordVisibleD
-    eyeE <- divButton "small-eye" $ elClassDyn "i" eyeButtonIconClassD blank
-    pure (valD, eyeE)
+    eyeE' <- divButton "small-eye" $ elClassDyn "i" eyeButtonIconClassD blank
+    pure (valD', eyeE')
   pure valD
 
 eyeButtonIconClass :: Bool -> Text
@@ -188,10 +204,10 @@ submitClass classD lbl = do
   lblD <- localized lbl
   let classesD = do
         classVal <- classD
-        lbl <- lblD
+        lbl' <- lblD
         pure $ "class" =: classVal
             <> "type"  =: "submit"
-            <> "value" =: lbl
+            <> "value" =: lbl'
             <> "onclick" =: "return false;"
   (e, _) <- elDynAttr' "input" classesD blank
   return $ domEvent Click e
