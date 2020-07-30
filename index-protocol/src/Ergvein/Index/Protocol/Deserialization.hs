@@ -83,7 +83,7 @@ filterParser = do
   pure $ BlockFilter 
     { blockFilterBlockId = blockId
     , blockFilterFilter  = blockFilter
-    } 
+    }
 
 messageParser :: MessageType -> Parser Message
 messageParser Ping = PingMsg <$> anyWord64be

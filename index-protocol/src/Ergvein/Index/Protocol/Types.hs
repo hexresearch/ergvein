@@ -1,14 +1,15 @@
 module Ergvein.Index.Protocol.Types where
 
+import Data.ByteString
 import Data.Time.Clock.POSIX
 import Data.Vector.Unboxed.Deriving
 import Data.Word
 import Foreign.Storable
 import Language.Haskell.TH
-import Data.ByteString
-import qualified Data.Vector.Unboxed as UV
-import qualified Data.Vector as V
+
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as UV
 
 data MessageType = Version
                  | VersionACK

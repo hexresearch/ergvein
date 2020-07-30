@@ -1,15 +1,15 @@
 module Ergvein.Index.Protocol.Serialization where
 
+import Codec.Compression.GZip
 import Data.ByteString.Builder
 import Data.Monoid
 import Data.Word
 import Ergvein.Index.Protocol.Types
-import Codec.Compression.GZip
 
-import qualified Data.Vector as V
-import qualified Data.Vector.Unboxed as UV
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as UV
 
 messageTypeToWord32 :: MessageType -> Word32 
 messageTypeToWord32 = \case
