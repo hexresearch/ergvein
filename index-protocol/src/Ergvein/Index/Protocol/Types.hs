@@ -1,14 +1,15 @@
 module Ergvein.Index.Protocol.Types where
 
+import Data.ByteString
 import Data.Time.Clock.POSIX
 import Data.Vector.Unboxed.Deriving
 import Data.Word
 import Foreign.Storable
 import Language.Haskell.TH
-import Data.ByteString
-import qualified Data.Vector.Unboxed as UV
-import qualified Data.Vector as V
+
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as UV
 
 data MessageType = Version
                  | VersionACK
@@ -75,8 +76,8 @@ derivingUnbox "CurrencyCode"
   [| word32ToCurrencyCode    |]
 
 data MessageHeader = MessageHeader
-  { msgType :: MessageType
-  , msgSize :: Word32
+  { msgType :: !MessageType
+  , msgSize :: !Word32
   }
 
 type PingMessage = Word64
@@ -84,14 +85,14 @@ type PingMessage = Word64
 type PongMessage = Word64
 
 data RejectMessage = RejectMessage
-  { rejectMsgCode :: RejectCode
+  { rejectMsgCode :: !RejectCode
   } deriving (Show, Eq)
 
 data ScanBlock = ScanBlock
-  { scanBlockCurrency   :: CurrencyCode
-  , scanBlockVersion    :: Word32
-  , scanBlockScanHeight :: Word64
-  , scanBlockHeight     :: Word64
+  { scanBlockCurrency   :: !CurrencyCode
+  , scanBlockVersion    :: !Word32
+  , scanBlockScanHeight :: !Word64
+  , scanBlockHeight     :: !Word64
   } deriving (Show, Eq)
 
 derivingUnbox "ScanBlock"
@@ -100,48 +101,48 @@ derivingUnbox "ScanBlock"
   [| \(c, v, s, h) -> ScanBlock c v s h |]
 
 data VersionMessage = VersionMessage
-  { versionMsgVersion    :: Word32
-  , versionMsgTime       :: POSIXTime
-  , versionMsgNonce      :: Word64
+  { versionMsgVersion    :: !Word32
+  , versionMsgTime       :: !POSIXTime
+  , versionMsgNonce      :: !Word64
  -- versionMsgCurrencies :: uint32 Amount of currencies blocks following the field. For clients it is 0.
-  , versionMsgScanBlocks :: UV.Vector ScanBlock
+  , versionMsgScanBlocks :: !(UV.Vector ScanBlock)
   } deriving (Show, Eq)
 
 data VersionACKMessage = VersionACKMessage
   deriving (Show, Eq)
 
 data FilterRequestMessage = FilterRequestMessage
-  { filterRequestMsgCurrency :: CurrencyCode
-  , filterRequestMsgStart    :: Word64
-  , filterRequestMsgAmount   :: Word64
+  { filterRequestMsgCurrency :: !CurrencyCode
+  , filterRequestMsgStart    :: !Word64
+  , filterRequestMsgAmount   :: !Word64
   } deriving (Show, Eq)
 
 data BlockFilter = BlockFilter
   { -- blockFilterBlockIdLength :: uint32 Length of block hash
-    blockFilterBlockId       :: ByteString
+    blockFilterBlockId       :: !ByteString
  -- blockFilterLength :: uint32 Size in bytes of filter
-  , blockFilterFilter        :: ByteString
+  , blockFilterFilter        :: !ByteString
   } deriving (Show, Eq)
 
 data FilterResponseMessage = FilterResponseMessage
-  { filterResponseCurrency :: CurrencyCode
-  , filterResponseFilters  :: V.Vector BlockFilter
+  { filterResponseCurrency :: !CurrencyCode
+  , filterResponseFilters  :: !(V.Vector BlockFilter)
   } deriving (Show, Eq)
 
 data FilterResponseIncrementalMessage = FilterResponseIncrementalMessage
-  { filterResponseIncrementalCurrency :: CurrencyCode
-  , filterResponseIncrementalAmount   :: Word32
-  , filterResponseIncrementalFilters  :: [BlockFilter]
+  { filterResponseIncrementalCurrency :: !CurrencyCode
+  , filterResponseIncrementalAmount   :: !Word32
+  , filterResponseIncrementalFilters  :: ![BlockFilter]
   } deriving (Show, Eq)
 
-data Message = PingMsg                       PingMessage
-             | PongMsg                       PongMessage
-             | VersionMsg                    VersionMessage
-             | VersionACKMsg                 VersionACKMessage
-             | RejectMsg                     RejectMessage
-             | FiltersRequestMsg             FilterRequestMessage
-             | FiltersResponseMsg            FilterResponseMessage
-             | FiltersResponseIncrementalMsg FilterResponseIncrementalMessage
+data Message = PingMsg                       !PingMessage
+             | PongMsg                       !PongMessage
+             | VersionMsg                    !VersionMessage
+             | VersionACKMsg                 !VersionACKMessage
+             | RejectMsg                     !RejectMessage
+             | FiltersRequestMsg             !FilterRequestMessage
+             | FiltersResponseMsg            !FilterResponseMessage
+             | FiltersResponseIncrementalMsg !FilterResponseIncrementalMessage
   deriving (Show, Eq)
 
 genericSizeOf :: (Storable a, Integral b) => a -> b

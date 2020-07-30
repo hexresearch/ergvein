@@ -1,16 +1,18 @@
 module Ergvein.Index.Protocol.Deserialization where
 
+import Codec.Compression.GZip
+import Control.Monad
 import Data.Attoparsec.Binary
 import Data.Attoparsec.ByteString
-import qualified Data.Attoparsec.ByteString as Parse
-import Data.Word
-import Control.Monad
-import Ergvein.Index.Protocol.Types
-import Codec.Compression.GZip
 import Data.List
+import Data.Word
+import Ergvein.Index.Protocol.Types
+import Ergvein.Index.Protocol.Utils
+
+import qualified Data.Attoparsec.ByteString as Parse
 import qualified Data.ByteString as BS
-import qualified Data.Vector.Unboxed as V
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.Vector.Unboxed as V
 
 word32toMessageType :: Word32 -> Maybe MessageType 
 word32toMessageType = \case
@@ -29,6 +31,10 @@ word32toMessageType = \case
   12 -> Just Pong
   _  -> Nothing
 
+currencyCodeParser :: Parser CurrencyCode
+currencyCodeParser = fmap word32ToCurrencyCode anyWord32be
+
+
 word32toRejectType :: Word32 -> Maybe RejectCode 
 word32toRejectType = \case
   0  -> Just MessageHeaderParsing
@@ -42,21 +48,42 @@ messageHeaderParser = do
     pure $ MessageHeader messageType messageSize
 
 messageTypeParser :: Parser MessageType
-messageTypeParser = do
-  w32 <- anyWord32be
-  case word32toMessageType w32 of
-   Just messageType -> pure messageType
-   _                -> fail "out of message type bounds"
+messageTypeParser = guardJust "out of message type bounds" . word32toMessageType =<< anyWord32be
 
 rejectCodeParser :: Parser RejectCode
-rejectCodeParser = do
-  w32 <- anyWord32be
-  case word32toRejectType w32 of
-   Just messageType -> pure messageType
-   _                -> fail "out of message type bounds"
+rejectCodeParser = guardJust "out of reject type bounds" . word32toRejectType =<< anyWord32be
 
-versionBlocksParser ::  Parser ScanBlock
-versionBlocksParser = undefined
+versionBlockParser ::  Parser ScanBlock
+versionBlockParser = do
+  currency   <- currencyCodeParser
+  version    <- anyWord32be
+  scanHeight <- anyWord64be
+  height     <- anyWord64be
+  
+  pure $ ScanBlock
+    { scanBlockCurrency   = currency
+    , scanBlockVersion    = version
+    , scanBlockScanHeight = scanHeight
+    , scanBlockHeight     = height
+    }
+
+parseFilters :: BS.ByteString -> [BlockFilter]
+parseFilters = unfoldr (\source -> 
+  case parse filterParser source of
+    Done rest parsedFilter -> Just (parsedFilter, rest)
+    _ -> Nothing)
+
+filterParser :: Parser BlockFilter
+filterParser = do
+  blockIdLength <- fromIntegral <$> anyWord32be
+  blockId <- Parse.take blockIdLength
+  blockFilterLength <- fromIntegral <$> anyWord32be
+  blockFilter <- Parse.take blockFilterLength
+
+  pure $ BlockFilter 
+    { blockFilterBlockId = blockId
+    , blockFilterFilter  = blockFilter
+    }
 
 messageParser :: MessageType -> Parser Message
 messageParser Ping = PingMsg <$> anyWord64be
@@ -70,7 +97,7 @@ messageParser Version = do
   time          <- fromIntegral <$> anyWord64be
   nonce         <- anyWord64be
   currencies    <- anyWord32be
-  versionBlocks <- V.fromList <$> replicateM (fromIntegral currencies) versionBlocksParser
+  versionBlocks <- V.fromList <$> replicateM (fromIntegral currencies) versionBlockParser
 
   pure $ VersionMsg $ VersionMessage  
     { versionMsgVersion    = version
@@ -82,7 +109,7 @@ messageParser Version = do
 messageParser VersionACK = pure $ VersionACKMsg VersionACKMessage
 
 messageParser FiltersRequest = do
-  currency <- word32ToCurrencyCode <$> anyWord32be
+  currency <- currencyCodeParser
   start    <- anyWord64be
   amount   <- anyWord64be
 
@@ -93,7 +120,7 @@ messageParser FiltersRequest = do
     }
 
 messageParser FiltersResponse = do
-  currency <- word32ToCurrencyCode <$> anyWord32be
+  currency <- currencyCodeParser
   amount <- anyWord32be
   filtersString <- takeLazyByteString
   let unzippedFilters = decompress filtersString
@@ -104,21 +131,3 @@ messageParser FiltersResponse = do
     , filterResponseIncrementalAmount   = amount
     , filterResponseIncrementalFilters  = parsedFilters
     }
-
-parseFilters :: BS.ByteString -> [BlockFilter]
-parseFilters = unfoldr (\source -> 
-  case parse filterParser source of
-    Done rest filter -> Just (filter, rest)
-    _ -> Nothing)
-
-filterParser :: Parser BlockFilter
-filterParser = do
-  blockIdLength <- fromIntegral <$> anyWord32be
-  blockId <- Parse.take blockIdLength
-  blockFilterLength <- fromIntegral <$> anyWord32be
-  blockFilter <- Parse.take blockFilterLength
-
-  pure $ BlockFilter 
-    { blockFilterBlockId = blockId
-    , blockFilterFilter  = blockFilter
-    } 
