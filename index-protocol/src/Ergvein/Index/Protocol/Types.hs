@@ -78,7 +78,7 @@ derivingUnbox "CurrencyCode"
 data MessageHeader = MessageHeader
   { msgType :: !MessageType
   , msgSize :: !Word32
-  }
+  } deriving (Show, Eq)
 
 type PingMessage = Word64
 

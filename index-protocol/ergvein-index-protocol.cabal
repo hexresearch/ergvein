@@ -59,6 +59,7 @@ test-suite ergvein-index-protocol-test
   Default-language: Haskell2010
   hs-source-dirs: tests
   main-is: ProtocolTest.hs
+  other-modules: ProtocolTest.Generators
   build-depends:
       base
     , attoparsec
@@ -67,3 +68,6 @@ test-suite ergvein-index-protocol-test
     , quickcheck-instances
     , vector
     , ergvein-index-protocol
+  default-extensions:
+    RecordWildCards
+    OverloadedStrings

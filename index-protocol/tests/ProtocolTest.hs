@@ -7,6 +7,7 @@ module Main where
 import Control.Monad (replicateM)
 import Test.QuickCheck
 import Test.QuickCheck.Instances
+import ProtocolTest.Generators
 
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Protocol.Serialization
@@ -20,80 +21,25 @@ import qualified Data.ByteString.Builder    as BB
 import qualified Data.Attoparsec.ByteString as AP
 
 --------------------------------------------------------------------------
--- generators
-
-getRandBounded :: (Enum a, Bounded a) => Gen a
-getRandBounded = oneof $ pure <$> [minBound .. maxBound]
-
-instance Arbitrary ScanBlock where
-  arbitrary = ScanBlock <$> getRandBounded <*> arbitrary <*> arbitrary <*> arbitrary
-
-instance Arbitrary VersionMessage where
-  arbitrary = sized $ \n ->
-    VersionMessage <$> arbitrary <*> arbitrary <*> arbitrary <*> (UV.replicateM n arbitrary)
-
-instance Arbitrary FilterRequestMessage where
-  arbitrary = FilterRequestMessage <$> getRandBounded <*> arbitrary <*> arbitrary
-
-instance Arbitrary BlockFilter where
-  arbitrary = BlockFilter <$> arbitrary <*> arbitrary
-
-instance Arbitrary FilterResponseMessage where
-  arbitrary = sized $ \n -> FilterResponseMessage <$> getRandBounded <*> (V.replicateM n arbitrary)
-
-instance Arbitrary FilterResponseIncrementalMessage where
-  arbitrary = sized $ \n -> FilterResponseIncrementalMessage <$> getRandBounded <*> arbitrary <*> (replicateM n arbitrary)
-
-unimplementedMessageTypes :: [MessageType]
-unimplementedMessageTypes =
-  [ FilterEvent
-  , PeerRequest
-  , PeerResponse
-  , FeeRequest
-  , FeeResponse
-  , IntroducePeer
-  ]
-
-fullyImplementedMessageTypes :: [MessageType]
-fullyImplementedMessageTypes =
-  [ Ping
-  , Pong
-  , Reject
-  , VersionACK
-  ]
-
-instance Arbitrary Message where
-  arbitrary = do
-    -- msgType <- oneof $ fmap pure $ filter (\t -> not $ t `elem` unimplementedMessageTypes) [minBound .. maxBound]
-    msgType <- oneof $ fmap pure fullyImplementedMessageTypes
-    case msgType of
-      Version -> VersionMsg <$> arbitrary
-      VersionACK -> pure $ VersionACKMsg VersionACKMessage
-      FiltersRequest -> FiltersRequestMsg <$> arbitrary
-      FiltersResponse -> do
-        b <- arbitrary
-        if b then FiltersResponseMsg <$> arbitrary else FiltersResponseIncrementalMsg <$> arbitrary
-      Reject -> (RejectMsg . RejectMessage) <$> getRandBounded
-      Ping -> PingMsg <$> arbitrary
-      Pong -> PongMsg <$> arbitrary
-      FilterEvent   -> error "Message type: FilterEvent is not implemented"
-      PeerRequest   -> error "Message type: PeerRequest is not implemented"
-      PeerResponse  -> error "Message type: PeerResponse is not implemented"
-      FeeRequest    -> error "Message type: FeeRequest is not implemented"
-      FeeResponse   -> error "Message type: FeeResponse is not implemented"
-      IntroducePeer -> error "Message type: IntroducePeer is not implemented"
-
---------------------------------------------------------------------------
 -- Serialize-deserialize helpers
 
 serializeMessage :: Message -> BL.ByteString
 serializeMessage = BB.toLazyByteString . messageBuilder
 
--- deserializeMessage :: BL.ByteString -> Message
--- deserializeMessage = undefined
-
 deserializeMessage :: BS.ByteString -> AP.Result Message
 deserializeMessage bs = flip AP.parse bs $ messageParser . msgType =<< messageHeaderParser
+
+serializeScanBlock :: ScanBlock -> BL.ByteString
+serializeScanBlock = BB.toLazyByteString . snd . scanBlockBuilder
+
+deserializeScanBlock :: BS.ByteString -> AP.Result ScanBlock
+deserializeScanBlock = AP.parse versionBlockParser
+
+serializeMessageHeader :: MessageHeader -> BL.ByteString
+serializeMessageHeader MessageHeader{..} = BB.toLazyByteString $ messageBase msgType msgSize (BB.byteString "")
+
+deserializeMessageHeader :: BS.ByteString -> AP.Result MessageHeader
+deserializeMessageHeader = AP.parse messageHeaderParser
 
 --------------------------------------------------------------------------
 -- Special case only for implemented messages
@@ -101,16 +47,35 @@ deserializeMessage bs = flip AP.parse bs $ messageParser . msgType =<< messageHe
 --------------------------------------------------------------------------
 -- Serialize-deserialize
 
-prop_encdec_Valid msg = maybe False (const True) decMsg
+prop_encdec_MsgHeader_Eq mh = maybe False (mh ==) decMsg
+  where
+    encMsg = serializeMessageHeader mh
+    decMsg = AP.maybeResult $ deserializeMessageHeader $ BL.toStrict encMsg
+
+prop_encdec_Msg_Valid msg = maybe False (const True) decMsg
   where
     encMsg = serializeMessage msg
     decMsg = AP.maybeResult $ deserializeMessage $ BL.toStrict encMsg
 
-prop_encdec_Eq msg = maybe False (msg ==) decMsg
+prop_encdec_Msg_Eq msg = maybe False (msg ==) decMsg
   where
     encMsg = serializeMessage msg
     decMsg = AP.maybeResult $ deserializeMessage $ BL.toStrict encMsg
 
+prop_encdec_ScanBlock_Valid sb = maybe False (const True) decMsg
+  where
+    encMsg = serializeScanBlock sb
+    decMsg = AP.maybeResult $ deserializeScanBlock $ BL.toStrict encMsg
+
+prop_encdec_ScanBlock_Eq sb = maybe False (sb ==) decMsg
+  where
+    encMsg = serializeScanBlock sb
+    decMsg = AP.maybeResult $ deserializeScanBlock $ BL.toStrict encMsg
+
+prop_encdec_MultFilters_Valid bfs = bfs == decMsg
+  where
+    encMsg = BB.toLazyByteString $ mconcat $ snd $ unzip $ blockFilterBuilder <$> bfs
+    decMsg = parseFilters $ BL.toStrict encMsg
 --------------------------------------------------------------------------
 -- main
 
