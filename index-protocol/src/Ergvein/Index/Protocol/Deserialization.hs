@@ -39,6 +39,7 @@ word32toRejectType :: Word32 -> Maybe RejectCode
 word32toRejectType = \case
   0  -> Just MessageHeaderParsing
   1  -> Just MessageParsing
+  2  -> Just InternalServerError
   _  -> Nothing
 
 messageHeaderParser ::  Parser MessageHeader

@@ -31,6 +31,7 @@ rejectTypeToWord32 :: RejectCode -> Word32
 rejectTypeToWord32 = \case
   MessageHeaderParsing -> 0
   MessageParsing       -> 1
+  InternalServerError  -> 2
 
 messageBase :: MessageType -> Word32 -> Builder -> Builder
 messageBase msgType msgLength payload = word32BE (messageTypeToWord32 msgType) <> word32BE msgLength <> payload
