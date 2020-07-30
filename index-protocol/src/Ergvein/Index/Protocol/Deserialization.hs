@@ -31,6 +31,10 @@ word32toMessageType = \case
   12 -> Just Pong
   _  -> Nothing
 
+currencyCodeParser :: Parser CurrencyCode
+currencyCodeParser = fmap word32ToCurrencyCode anyWord32be
+
+
 word32toRejectType :: Word32 -> Maybe RejectCode 
 word32toRejectType = \case
   0  -> Just MessageHeaderParsing
@@ -49,8 +53,19 @@ messageTypeParser = guardJust "out of message type bounds" . word32toMessageType
 rejectCodeParser :: Parser RejectCode
 rejectCodeParser = guardJust "out of reject type bounds" . word32toRejectType =<< anyWord32be
 
-versionBlocksParser ::  Parser ScanBlock
-versionBlocksParser = undefined
+versionBlockParser ::  Parser ScanBlock
+versionBlockParser = do
+  currency   <- currencyCodeParser
+  version    <- anyWord32be
+  scanHeight <- anyWord64be
+  height     <- anyWord64be
+  
+  pure $ ScanBlock
+    { scanBlockCurrency   = currency
+    , scanBlockVersion    = version
+    , scanBlockScanHeight = scanHeight
+    , scanBlockHeight     = height
+    }
 
 parseFilters :: BS.ByteString -> [BlockFilter]
 parseFilters = unfoldr (\source -> 
@@ -82,7 +97,7 @@ messageParser Version = do
   time          <- fromIntegral <$> anyWord64be
   nonce         <- anyWord64be
   currencies    <- anyWord32be
-  versionBlocks <- V.fromList <$> replicateM (fromIntegral currencies) versionBlocksParser
+  versionBlocks <- V.fromList <$> replicateM (fromIntegral currencies) versionBlockParser
 
   pure $ VersionMsg $ VersionMessage  
     { versionMsgVersion    = version
@@ -94,7 +109,7 @@ messageParser Version = do
 messageParser VersionACK = pure $ VersionACKMsg VersionACKMessage
 
 messageParser FiltersRequest = do
-  currency <- word32ToCurrencyCode <$> anyWord32be
+  currency <- currencyCodeParser
   start    <- anyWord64be
   amount   <- anyWord64be
 
@@ -105,7 +120,7 @@ messageParser FiltersRequest = do
     }
 
 messageParser FiltersResponse = do
-  currency <- word32ToCurrencyCode <$> anyWord32be
+  currency <- currencyCodeParser
   amount <- anyWord32be
   filtersString <- takeLazyByteString
   let unzippedFilters = decompress filtersString
