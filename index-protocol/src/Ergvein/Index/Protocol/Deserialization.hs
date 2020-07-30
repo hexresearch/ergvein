@@ -1,16 +1,18 @@
 module Ergvein.Index.Protocol.Deserialization where
 
+import Codec.Compression.GZip
+import Control.Monad
 import Data.Attoparsec.Binary
 import Data.Attoparsec.ByteString
-import qualified Data.Attoparsec.ByteString as Parse
-import Data.Word
-import Control.Monad
-import Ergvein.Index.Protocol.Types
-import Codec.Compression.GZip
 import Data.List
+import Data.Word
+import Ergvein.Index.Protocol.Types
+import Ergvein.Index.Protocol.Utils
+
+import qualified Data.Attoparsec.ByteString as Parse
 import qualified Data.ByteString as BS
-import qualified Data.Vector.Unboxed as V
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.Vector.Unboxed as V
 
 word32toMessageType :: Word32 -> Maybe MessageType 
 word32toMessageType = \case
@@ -42,21 +44,10 @@ messageHeaderParser = do
     pure $ MessageHeader messageType messageSize
 
 messageTypeParser :: Parser MessageType
-messageTypeParser = do
-  w32 <- anyWord32be
-  case word32toMessageType w32 of
-   Just messageType -> pure messageType
-   _                -> fail "out of message type bounds"
+messageTypeParser = guardJust "out of message type bounds" . word32toMessageType =<< anyWord32be
 
 rejectCodeParser :: Parser RejectCode
-rejectCodeParser = do
-  w32 <- anyWord32be
-  case word32toRejectType w32 of
-   Just messageType -> pure messageType
-   _                -> fail "out of message type bounds"
-
-versionBlocksParser ::  Parser ScanBlock
-versionBlocksParser = undefined
+rejectCodeParser = guardJust "out of reject type bounds" . word32toRejectType =<< anyWord32be
 
 messageParser :: MessageType -> Parser Message
 messageParser Ping = PingMsg <$> anyWord64be

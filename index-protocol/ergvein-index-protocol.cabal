@@ -12,6 +12,7 @@ library
     Ergvein.Index.Protocol.Types
     Ergvein.Index.Protocol.Serialization
     Ergvein.Index.Protocol.Deserialization
+    Ergvein.Index.Protocol.Utils
 
   build-depends:
       base                 >= 4.7  && < 4.13
