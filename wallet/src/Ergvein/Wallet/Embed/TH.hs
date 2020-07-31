@@ -1,4 +1,4 @@
--- | Module that contains embedded resources for CSS and other resources
+-- | Module that contains embedded resources for CSS and other resources 
 module Ergvein.Wallet.Embed.TH where
 
 import Data.FileEmbed

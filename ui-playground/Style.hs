@@ -295,6 +295,10 @@ mnemonicWidgetCss = do
     fontFamily ["Roboto-Medium"] []
     fontSize $ pt 18
     textAlign $ alignSide sideLeft
+  ".mnemonic-word-md" ? do
+    fontFamily ["Roboto-Medium"] []
+    fontSize $ pt 18
+    textAlign $ alignSide sideLeft
   ".mnemonic-word-mb" ? do
     fontFamily ["Roboto-Medium"] []
     fontSize $ pt 18
@@ -852,7 +856,7 @@ legoStyles = do
   ".ta-c" ? textAlign center
   ".word-break-all" ? wordBreak breakAll
   ".font-bold" ? fontWeight bold
-  
+
 receiveCss :: Css
 receiveCss = do
   ".receive-qr" ? do

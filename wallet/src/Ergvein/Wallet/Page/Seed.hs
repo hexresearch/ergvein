@@ -63,7 +63,7 @@ mnemonicWidget mnemonic = do
     Nothing -> pure (never, pure Nothing)
     Just phrase -> mdo
       divClass "mnemonic-title" $ h4 $ localizedText SPSTitle
-      divClass "mnemonic-colony" $ adaptive (mobileMnemonic phrase) (desktopMnemonic phrase)
+      divClass "mnemonic-colony" $ adaptive3 (smallMnemonic phrase) (mediumMnemonic phrase) (desktopMnemonic phrase)
       divClass "mnemonic-warn" $ h4 $ localizedText SPSWarn
       btnE <- outlineButton SPSWrote
       pure (phrase <$ btnE, pure $ Just phrase)
@@ -75,7 +75,8 @@ mnemonicWidget mnemonic = do
       elClass "span" "mnemonic-word-ix" $ text $ showt i
       text w
 
-    mobileMnemonic phrase = flip traverse_ (zip [1..] . T.words $ phrase) $ uncurry (wordColumn "mnemonic-word-mb")
+    smallMnemonic phrase = flip traverse_ (zip [1..] . T.words $ phrase) $ uncurry (wordColumn "mnemonic-word-mb")
+    mediumMnemonic phrase =  void $ colonize 2 (prepareMnemonic 2 phrase) $ uncurry (wordColumn "mnemonic-word-md")
     desktopMnemonic phrase = void $ colonize 4 (prepareMnemonic 4 phrase) $ uncurry (wordColumn "mnemonic-word-dx")
 
 -- | Helper to cut a list into column-length chunks
