@@ -132,3 +132,10 @@ messageParser FiltersResponse = do
     , filterResponseIncrementalAmount   = amount
     , filterResponseIncrementalFilters  = parsedFilters
     }
+
+parseMessage :: MessageType -> BS.ByteString -> Either String (Message, BS.ByteString)
+parseMessage msgType source = 
+  case parse (messageParser msgType) source of
+    Done rest message -> Right (message, rest)
+    Partial _ -> Left "source too short"
+    Fail _ _ err -> Left err
