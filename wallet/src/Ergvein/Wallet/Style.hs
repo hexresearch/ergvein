@@ -378,6 +378,10 @@ mnemonicWidgetCss = do
     fontFamily ["Roboto-Medium"] []
     fontSize $ pt 18
     textAlign $ alignSide sideLeft
+  ".mnemonic-word-md" ? do
+    fontFamily ["Roboto-Medium"] []
+    fontSize $ pt 18
+    textAlign $ alignSide sideLeft
   ".mnemonic-word-mb" ? do
     fontFamily ["Roboto-Medium"] []
     fontSize $ pt 18
