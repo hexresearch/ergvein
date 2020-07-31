@@ -59,6 +59,7 @@ fullyImplementedMessageTypes =
   , Pong
   , Reject
   , VersionACK
+  , Version
   ]
 
 instance Arbitrary Message where

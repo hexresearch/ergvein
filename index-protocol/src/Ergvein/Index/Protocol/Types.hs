@@ -1,11 +1,12 @@
 module Ergvein.Index.Protocol.Types where
 
 import Data.ByteString
-import Data.Time.Clock.POSIX
 import Data.Vector.Unboxed.Deriving
 import Data.Word
+import Foreign.C.Types
 import Foreign.Storable
 import Language.Haskell.TH
+
 
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Vector as V
@@ -102,7 +103,7 @@ derivingUnbox "ScanBlock"
 
 data VersionMessage = VersionMessage
   { versionMsgVersion    :: !Word32
-  , versionMsgTime       :: !POSIXTime
+  , versionMsgTime       :: !CTime
   , versionMsgNonce      :: !Word64
  -- versionMsgCurrencies :: uint32 Amount of currencies blocks following the field. For clients it is 0.
   , versionMsgScanBlocks :: !(UV.Vector ScanBlock)

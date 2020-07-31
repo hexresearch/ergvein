@@ -7,7 +7,7 @@ import Control.Monad.Logger
 import Network.Wai.Handler.Warp
 import Network.Wai.Middleware.RequestLogger
 import Options.Applicative
-
+import Data.Time.Clock.POSIX
 import Ergvein.Index.Server.App
 import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.Config
@@ -16,6 +16,7 @@ import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Discovery
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.TCPService.Server
+import Data.Word
 
 import qualified Data.Text.IO as T
 import Data.Text (Text, pack)
@@ -66,6 +67,11 @@ onStartup env = do
 startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
     CommandListen cfgPath -> do
+      t <- getPOSIXTime
+     
+      let s = (round t) :: Word64
+          ds = (fromIntegral s) :: POSIXTime
+      error $ (show t ++ "/" ++show ds)
       T.putStrLn $ pack "Server starting"
       cfg <- loadConfig cfgPath
       env <- runStdoutLoggingT $ newServerEnv cfg

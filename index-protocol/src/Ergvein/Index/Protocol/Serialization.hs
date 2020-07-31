@@ -5,6 +5,7 @@ import Data.ByteString.Builder
 import Data.Monoid
 import Data.Word
 import Ergvein.Index.Protocol.Types
+import Foreign.C.Types
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
@@ -88,16 +89,15 @@ messageBuilder (VersionMsg VersionMessage {..}) = let
   (scanBlocksSizeSum, scanBlocks) = mconcat $ scanBlockBuilder <$> UV.toList versionMsgScanBlocks
   scanBlocksCount = fromIntegral $ UV.length versionMsgScanBlocks
   scanBlocksSize = getSum scanBlocksSizeSum
-  time = round versionMsgTime
   msgSize = genericSizeOf versionMsgVersion
-          + genericSizeOf time
+          + genericSizeOf versionMsgTime
           + genericSizeOf versionMsgNonce
           + genericSizeOf scanBlocksCount
           + scanBlocksSize
-
+  (CTime time) = versionMsgTime
   in messageBase Version msgSize 
     $  word32BE versionMsgVersion
-    <> word64BE time
+    <> word64BE (fromIntegral time)
     <> word64BE versionMsgNonce
     <> word32BE scanBlocksCount
     <> scanBlocks

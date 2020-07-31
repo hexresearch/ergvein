@@ -152,6 +152,7 @@ executable ergvein-index-server
     , wai
     , wai-extra
     , warp
+    , time
 
 
     , ergvein-index-api
