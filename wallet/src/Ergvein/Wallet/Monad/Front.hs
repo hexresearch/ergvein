@@ -18,6 +18,8 @@ module Ergvein.Wallet.Monad.Front(
   , getSyncProgress
   , requestBroadcast
   , requestFromNode
+  , postNodeMessage
+  , broadcastNodeMessage
   , requestManyFromNode
   , setCurrentHeight
   , setFiltersSync
@@ -128,6 +130,22 @@ requestFromNode reqE = do
     let cur = getNodeReqCurrency req
     in liftIO . nodeReqFire $ M.singleton cur $ M.singleton u $ NodeMsgReq req
 {-# INLINE requestFromNode #-}
+
+postNodeMessage :: MonadFrontAuth t m => Currency -> Event t (SockAddr, NodeMessage) -> m ()
+postNodeMessage cur reqE = do
+  nodeReqFire <- getNodeReqFire
+  performFork_ $ ffor reqE $ \(u, msg) ->
+    liftIO . nodeReqFire $ M.singleton cur $ M.singleton u msg
+{-# INLINE postNodeMessage #-}
+
+broadcastNodeMessage :: MonadFrontAuth t m => Currency -> Event t NodeMessage -> m ()
+broadcastNodeMessage cur reqE = do
+  nodeReqFire <- getNodeReqFire
+  nodeConnRef <- getNodeConnRef
+  performFork_ $ ffor reqE $ \msg -> do
+    reqs <- fmap ((<$) msg . fromMaybe (M.empty) . getAllConnByCurrency cur) $ readExternalRef nodeConnRef
+    liftIO . nodeReqFire $ M.singleton cur reqs
+{-# INLINE broadcastNodeMessage #-}
 
 -- | Send a multiple requests a specific URL
 -- It's up to the caller to ensure that the URL actually points to a correct currency node

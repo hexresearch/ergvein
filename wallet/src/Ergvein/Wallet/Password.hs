@@ -29,7 +29,7 @@ import           Control.Monad.IO.Class
 
 setupLoginPassword :: MonadFrontBase t m => m (Event t (Text, Password))
 setupLoginPassword = divClass "setup-password" $ form $ fieldset $ mdo
-  loginD <- textField PWSLogin ""
+  loginD <- textFieldAttr PWSLogin ("placeholder" =: "my wallet name") ""
   p1D <- passFieldWithEye PWSPassword
   p2D <- passFieldWithEye PWSRepeat
   e <- submitClass "button button-outline" PWSSet

@@ -78,7 +78,7 @@ data SocketConf t a = SocketConf {
 , _socketConfSend   :: !(Event t ByteString)
 -- | Function that peeks bytes from socket and parses them into user side messages
 , _socketConfPeeker :: !(ReaderT PeekerEnv IO a)
--- | Event that closes the connection
+-- | Event that externaly closes the connection
 , _socketConfClose  :: !(Event t ())
 -- | Timeout after which we try to reconnect. `Nothing` means to not reconnect.
 , _socketConfReopen :: !(Maybe NominalDiffTime)
@@ -158,16 +158,18 @@ socket SocketConf{..} = do
   -- performEvent_ $ ffor closeE $ logWrite . showt
   -- performEvent_ $ ffor reconnectE $ logWrite . showt
   let connectE = leftmost [reconnectE, buildE]
+  let closeCb :: Maybe CloseException -> IO ()
+      closeCb e = do
+        statusFire SocketClosed
+        closeFire $ maybe CloseGracefull (CloseError doReconnecting) e
   intVar <- liftIO $ newTVarIO False
   sendChan <- liftIO newTChanIO
   performEvent_ $ ffor closeE $ const $ liftIO $ atomically $ writeTVar intVar True
   performEvent_ $ ffor reconnectE $ const $ liftIO $ atomically $ writeTVar intVar False
   performEvent_ $ ffor _socketConfSend $ liftIO . atomically . writeTChan sendChan
+  performEvent_ $ ffor _socketConfClose $ const $ liftIO $ closeCb Nothing
   performFork_ $ ffor connectE $ const $ liftIO $ do
-    let closeCb e = do
-          statusFire SocketClosed
-          closeFire $ CloseError doReconnecting e
-        sendThread sock = forever $ do
+    let sendThread sock = forever $ do
           msgs <- atomically $ readAllTVar sendChan
           -- logWrite $ "Sending message"
           sendLazy sock . BSL.fromChunks $ msgs
@@ -182,12 +184,12 @@ socket SocketConf{..} = do
               Left e -> readErFire e >> next
               Right (Left (e :: ReceiveException)) -> do
                 readErFire $ Ex.SomeException e
-                closeCb $ Ex.SomeException e
+                closeCb $ Just $ Ex.SomeException e
               Right (Right a) -> inFire a >> next
         Peer host port = _socketConfPeer
     -- logWrite $ "Connecting to " <> showt host <> ":" <> showt port
     statusFire SocketConnecting
-    connect host port conCb `Ex.catchAny` closeCb
+    connect host port conCb `Ex.catchAny` (closeCb . Just)
   pure Socket {
       _socketInbound = inE
     , _socketClosed  = closeE
