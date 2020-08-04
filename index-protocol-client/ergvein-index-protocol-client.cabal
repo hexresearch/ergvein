@@ -1,0 +1,62 @@
+name:                ergvein-index-protocol-client
+version:             0.1.0.0
+synopsis:            Shared api contract for ergvein wallet cryptocurrencies index server
+description:         See README.md
+category:            Cryptocurrency
+build-type:          Simple
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+    Ergvein.Index.Protocol.Client.V1
+
+  build-depends:
+      base                 >= 4.7  && < 4.13
+
+  default-language:    Haskell2010
+  default-extensions:
+    BangPatterns
+    ConstraintKinds
+    DataKinds
+    DeriveAnyClass
+    DeriveDataTypeable
+    DeriveGeneric
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    LambdaCase
+    MultiParamTypeClasses
+    OverloadedStrings
+    RankNTypes
+    RecordWildCards
+    RecursiveDo
+    ScopedTypeVariables
+    StandaloneDeriving
+    TemplateHaskell
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeOperators
+    DeriveAnyClass
+    MultiParamTypeClasses
+
+test-suite ergvein-index-protocol-test
+  type: exitcode-stdio-1.0
+  Default-language: Haskell2010
+  hs-source-dirs: tests
+  main-is: ProtocolTest.hs
+  other-modules: ProtocolTest.Generators
+  build-depends:
+      base
+    , attoparsec
+    , bytestring
+    , QuickCheck
+    , quickcheck-instances
+    , vector
+    , ergvein-index-protocol
+  default-extensions:
+    RecordWildCards
+    OverloadedStrings

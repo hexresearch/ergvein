@@ -8,6 +8,7 @@ packages:
   ./golomb-rice
   ./index-api
   ./index-protocol
+  ./index-protocol-client
   ./index-client
   ./index-server
   ./interfaces/ergo
