@@ -8,6 +8,7 @@ import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Run
 import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Style
+import Ergvein.Wallet.Version
 import Ergvein.Wallet.Yaml
 import GHC.Generics
 import Options.Generic
@@ -28,6 +29,8 @@ instance ParseRecord Options
 
 main :: IO ()
 main = do
+  vstr <- getVersionRaw
+  putStrLn $ "Ergvein version: " <> vstr
   opts <- getRecord "Ergvein cryptowallet"
   bindSelf $ run $ \cbs -> do
     css <- compileFrontendCss

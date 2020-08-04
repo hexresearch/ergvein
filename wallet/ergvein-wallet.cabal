@@ -20,6 +20,11 @@ flag testnet
     description:
         Compile for testnet blockchains.
 
+flag embed-version
+    description:
+        Link version string into resulted binary.
+    default: True
+
 library
     exposed-modules:
         Ergvein.Wallet
@@ -80,8 +85,8 @@ library
         Ergvein.Wallet.Monad.Auth
         Ergvein.Wallet.Monad.Base
         Ergvein.Wallet.Monad.Client
-        Ergvein.Wallet.Monad.Prim
         Ergvein.Wallet.Monad.Front
+        Ergvein.Wallet.Monad.Prim
         Ergvein.Wallet.Monad.Storage
         Ergvein.Wallet.Monad.Unauth
         Ergvein.Wallet.Monad.Util
@@ -132,6 +137,7 @@ library
         Ergvein.Wallet.Tx
         Ergvein.Wallet.Util
         Ergvein.Wallet.Validate
+        Ergvein.Wallet.Version
         Ergvein.Wallet.Widget.Balance
         Ergvein.Wallet.Widget.GraphPinCode
         Ergvein.Wallet.Worker.Fees
@@ -142,6 +148,7 @@ library
         Ergvein.Wallet.Yaml
     hs-source-dirs: src
     default-language: Haskell2010
+    c-sources: cbits/version.c
     default-extensions: BangPatterns ConstraintKinds DataKinds
                         DeriveDataTypeable DeriveGeneric FlexibleContexts FlexibleInstances
                         FunctionalDependencies GADTs GeneralizedNewtypeDeriving LambdaCase
@@ -237,6 +244,10 @@ library
 
     if flag(testnet)
         cpp-options: -DTESTNET
+
+    if flag(embed-version)
+        cpp-options: -DEMBEDED_VERSION
+        cc-options: -DEMBEDED_VERSION
 
 executable ergvein
   hs-source-dirs:
