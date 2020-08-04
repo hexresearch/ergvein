@@ -53,17 +53,31 @@ runConn (sock, _) = do
   messageHeaderBytes <- liftIO $ NS.recv sock 8
   let messageHeaderParsingResult = parse messageHeaderParser messageHeaderBytes
   hdl <- liftIO $ socketToHandle sock ReadWriteMode
+  lp hdl
+  liftIO $ hClose hdl
+  where
+    lp hdl = do
+      msg <- evalMsg sock
+      case msg of
+        Right m -> do
+          liftIO $ hPutBuilder hdl $ messageBuilder m
+          lp hdl
+        Left rM -> liftIO $ hPutBuilder hdl $ messageBuilder $ RejectMsg rM
+
+
+evalMsg :: Socket -> ServerM (Either RejectMessage Message)
+evalMsg sock = do
+  messageHeaderBytes <- liftIO $ NS.recv sock 8
+  let messageHeaderParsingResult = parse messageHeaderParser messageHeaderBytes
   case messageHeaderParsingResult of
     Done _ MessageHeader {..} -> do
       messageBytes <- liftIO $ NS.recv sock $ fromIntegral msgSize
       let messageParsingResult = (parse $ messageParser msgType) messageBytes
       case messageParsingResult of
         Done _ msg -> do
-          resp <- handleMsg msg `catch` (\(SomeException ex) -> pure $ Just $ RejectMsg $ RejectMessage $ InternalServerError)
+          resp <- handleMsg msg `catch` (\(SomeException ex) -> pure $ Nothing)
           case resp of 
-            Just msg -> liftIO $  hPutBuilder hdl $ messageBuilder msg
-            _ -> pure ()
-          
-        _ -> liftIO $ hPutBuilder hdl $ messageBuilder $ RejectMsg $ RejectMessage MessageParsing
-    _ -> liftIO $ hPutBuilder hdl $ messageBuilder $ RejectMsg $ RejectMessage MessageHeaderParsing
-  liftIO $ hClose hdl
+            Just msg -> pure $ Right msg
+            _ -> pure $ Left $ RejectMessage $ InternalServerError
+        _ -> pure $ Left $ RejectMessage MessageParsing
+    _ -> pure $ Left $ RejectMessage MessageHeaderParsing
