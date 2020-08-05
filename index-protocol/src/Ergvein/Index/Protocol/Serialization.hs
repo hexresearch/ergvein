@@ -85,46 +85,50 @@ messageBuilder (VersionACKMsg msg) = messageBase VersionACK msgSize $ mempty
   where
     msgSize = 0
 
-messageBuilder (VersionMsg VersionMessage {..}) = let 
-  (scanBlocksSizeSum, scanBlocks) = mconcat $ scanBlockBuilder <$> UV.toList versionMsgScanBlocks
-  scanBlocksCount = fromIntegral $ UV.length versionMsgScanBlocks
-  scanBlocksSize = getSum scanBlocksSizeSum
-  msgSize = genericSizeOf versionMsgVersion
-          + genericSizeOf versionMsgTime
-          + genericSizeOf versionMsgNonce
-          + genericSizeOf scanBlocksCount
-          + scanBlocksSize
-  (CTime time) = versionMsgTime
-  in messageBase Version msgSize 
-    $  word32BE versionMsgVersion
-    <> word64BE (fromIntegral time)
-    <> word64BE versionMsgNonce
-    <> word32BE scanBlocksCount
-    <> scanBlocks
+messageBuilder (VersionMsg VersionMessage {..}) =
+  messageBase Version msgSize 
+  $  word32BE versionMsgVersion
+  <> word64BE (fromIntegral time)
+  <> word64BE versionMsgNonce
+  <> word32BE scanBlocksCount
+  <> scanBlocks
+  where
+    (scanBlocksSizeSum, scanBlocks) = mconcat $ scanBlockBuilder <$> UV.toList versionMsgScanBlocks
+    scanBlocksCount = fromIntegral $ UV.length versionMsgScanBlocks
+    scanBlocksSize = getSum scanBlocksSizeSum
+    msgSize = genericSizeOf versionMsgVersion
+            + genericSizeOf versionMsgTime
+            + genericSizeOf versionMsgNonce
+            + genericSizeOf scanBlocksCount
+            + scanBlocksSize
+    (CTime time) = versionMsgTime
 
 messageBuilder (FiltersRequestMsg FilterRequestMessage {..}) =
   messageBase FiltersRequest msgSize 
-    $  word32BE (currencyCodeToWord32 filterRequestMsgCurrency)
-    <> word64BE filterRequestMsgStart
-    <> word64BE filterRequestMsgAmount
+  $  word32BE currency
+  <> word64BE filterRequestMsgStart
+  <> word64BE filterRequestMsgAmount
   where
-    msgSize = genericSizeOf (currencyCodeToWord32 filterRequestMsgCurrency)
+    currency = currencyCodeToWord32 filterRequestMsgCurrency
+
+    msgSize = genericSizeOf currency
             + genericSizeOf filterRequestMsgStart
             + genericSizeOf filterRequestMsgAmount
 
-messageBuilder (FiltersResponseMsg FilterResponseMessage {..}) = let
-  (filtersSizeSum, filters) = mconcat $ (blockFilterBuilder <$> V.toList filterResponseFilters)
-  filtersCount = fromIntegral $ V.length filterResponseFilters
-  filtersSize = getSum filtersSizeSum
-  zippedFilters = compress $ toLazyByteString filters
+messageBuilder (FiltersResponseMsg FilterResponseMessage {..}) = 
+  messageBase FiltersResponse msgSize
+  $  word32BE (currencyCodeToWord32 filterResponseCurrency)
+  <> word32BE filtersCount
+  <> lazyByteString zippedFilters
+  where
+    (filtersSizeSum, filters) = mconcat $ blockFilterBuilder <$> V.toList filterResponseFilters
+    filtersCount = fromIntegral $ V.length filterResponseFilters
+    filtersSize = getSum filtersSizeSum
+    zippedFilters = compress $ toLazyByteString filters
 
-  msgSize = genericSizeOf (currencyCodeToWord32 filterResponseCurrency)
-          + genericSizeOf filtersCount
-          + fromIntegral (LBS.length zippedFilters)
-  in messageBase FiltersResponse msgSize
-    $  word32BE (currencyCodeToWord32 filterResponseCurrency)
-    <> word32BE filtersCount
-    <> lazyByteString zippedFilters
+    msgSize = genericSizeOf (currencyCodeToWord32 filterResponseCurrency)
+            + genericSizeOf filtersCount
+            + fromIntegral (LBS.length zippedFilters)
 
 messageBuilder (FiltersEventMsg FilterEventMessage {..}) = 
   messageBase FiltersResponse msgSize
