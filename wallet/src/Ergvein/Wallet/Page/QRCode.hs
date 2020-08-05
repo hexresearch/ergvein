@@ -20,10 +20,11 @@ import           Control.Lens                     (to, (^.))
 import           Control.Monad.IO.Class           (liftIO)
 import           Data.Maybe (fromMaybe)
 
-qrCodeWidget :: MonadFrontBase t m => Text -> Currency -> m ()
+qrCodeWidget :: MonadFrontBase t m => Text -> Currency -> m (Element EventResult GhcjsDomSpace t, CanvasOptions)
 qrCodeWidget addr cur = divClass "qrcode-container" $ mdo
     canvasEl <- createCanvas cOpts
     rawJSCall (_element_raw canvasEl) $ drawGridT canvasW canvasH (qrcPerCanvas qrData canvasW)
+    pure (canvasEl, cOpts)
     where
       canvasH = 232
       canvasW = 232

@@ -81,3 +81,6 @@ class PlatformNatives where
 
   -- | Get system-appropriate DNS resolv config
   nativeResolvConf :: ResolvConf
+
+  -- | Share a jpeg image. Implement for android only
+  nativeShareJpeg :: MonadIO m => Text -> m ()

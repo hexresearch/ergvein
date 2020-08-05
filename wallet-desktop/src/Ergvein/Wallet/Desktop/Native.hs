@@ -112,6 +112,8 @@ instance PlatformNatives where
   nativeResolvConf = defaultResolvConf
   {-# INLINE nativeResolvConf #-}
 
+  nativeShareJpeg _ = pure ()
+
 getFiles :: FilePath -> IO [FilePath]
 getFiles dir = do
   _ :/ tree <- build dir

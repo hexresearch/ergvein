@@ -27,6 +27,10 @@ import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
 
+import Ergvein.Wallet.Page.Canvas
+
+import qualified Data.ByteString.Lazy as BS
+
 receivePage :: MonadFront t m => Currency -> m ()
 receivePage cur = do
   pubStoreD <- getPubStorageD
@@ -55,11 +59,14 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
   let thisWidget = Just $ pure $ receivePage cur
       navbar = blank
   wrapperNavbar False title thisWidget navbar $ void $ divClass "receive-page" $ do
-    divClass "receive-qr-andr" $ qrCodeWidget keyTxt cur
+    (canvasEl, cOpts) <- divClass "receive-qr" $ qrCodeWidget keyTxt cur
     (newE, copyE, shareE) <- divClass "receive-buttons-wrapper" $ do
       nE  <- newAddrBtn
       cE <- copyAddrBtn
       sE <- fmap (shareUrl <$) shareAddrBtn
+      shareQRE <- outlineButton RPSShareQR
+      mshareE <- performEvent $ ffor shareQRE $ const $ rawGetCanvasJpeg (_element_raw canvasEl) cOpts
+      shareShareQR $ fmapMaybe id mshareE
       pure (nE, cE, sE)
     _ <- shareShareUrl shareE
     setFlagToExtPubKey "receivePageWidget:1" $ (cur, i) <$ newE
@@ -84,7 +91,7 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
   let thisWidget = Just $ pure $ receivePage cur
       navbar = navbarWidget cur thisWidget NavbarReceive
   wrapperNavbar False title thisWidget navbar $ void $ divClass "receive-page" $ do
-    divClass "receive-qr" $ qrCodeWidget keyTxt cur
+    void $ divClass "receive-qr" $ qrCodeWidget keyTxt cur
     divClass "receive-buttons-wrapper" $ do
       newE  <- newAddrBtn
       copyE <- copyAddrBtn

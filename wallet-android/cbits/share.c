@@ -29,3 +29,28 @@ void android_share_url(jobject activity, const char* str) {
     (*env)->ExceptionDescribe(env);
   }
 }
+
+void android_share_jpeg(jobject activity, const char* str) {
+  JNIEnv *env;
+  jint attachResult = (*HaskellActivity_jvm)->AttachCurrentThread(HaskellActivity_jvm, (void **)&env, NULL);
+  assert(attachResult == JNI_OK);
+  __android_log_write(ANDROID_LOG_DEBUG, "android_share_jpeg", "attached to jvm");
+
+  jclass shareClass = (*env)->FindClass(env, "org/ergvein/Share");
+  assert(shareClass);
+  __android_log_write(ANDROID_LOG_DEBUG, "android_share_jpeg", "got Share class");
+
+  jmethodID shareJpeg = (*env)->GetStaticMethodID(env, shareClass, "shareJpeg", "(Lsystems/obsidian/HaskellActivity;Ljava/lang/String;)V");
+  assert(shareJpeg);
+  __android_log_write(ANDROID_LOG_DEBUG, "android_share_jpeg", "got method shareJpeg");
+
+  jstring imgString = (*env)->NewStringUTF(env, str);
+  assert(imgString);
+  __android_log_write(ANDROID_LOG_DEBUG, "android_share_jpeg", "created string for share");
+
+  (*env)->CallStaticVoidMethod(env, shareClass, shareJpeg, activity, imgString);
+  if((*env)->ExceptionOccurred(env)) {
+    __android_log_write(ANDROID_LOG_DEBUG, "android_share_jpeg", "Failed to call shareImage");
+    (*env)->ExceptionDescribe(env);
+  }
+}

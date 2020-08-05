@@ -25,6 +25,7 @@ data ReceivePageStrings =
   | RPSGenNew
   | RPSNewLabel
   | RPSShare
+  | RPSShareQR
 
 instance LocalizedPrint ReceivePageStrings where
   localizedShow l v = case l of
@@ -35,6 +36,7 @@ instance LocalizedPrint ReceivePageStrings where
       RPSGenNew   -> "Generate new"
       RPSNewLabel -> "New label"
       RPSShare    -> "Share"
+      RPSShareQR  -> "Share QR-code"
       RPSTitle    -> "Receive"
     Russian -> case v of
       RPSAddLabel -> "Добавить название"
@@ -43,4 +45,5 @@ instance LocalizedPrint ReceivePageStrings where
       RPSGenNew   -> "Создать новый"
       RPSNewLabel -> "Изменить название"
       RPSShare    -> "Поделиться"
+      RPSShareQR  -> "Поделиться QR-кодом"
       RPSTitle    -> "Получение"
