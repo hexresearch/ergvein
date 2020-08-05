@@ -1,6 +1,6 @@
 module Ergvein.Wallet.Page.QRCode(
     qrCodeWidget
-  , genQrCodeBase64Image
+  , qrCodeWidgetWithData
   ) where
 
 import Ergvein.Text
@@ -31,13 +31,12 @@ qrCodeWidget addr cur = divClass "qrcode-container" $ mdo
       cOpts = CanvasOptions canvasW canvasH "qrcode" "qrcode"
       qrData = qrcGen addr cur
 
-genQrCodeBase64Image :: MonadFrontBase t m => m Text
-genQrCodeBase64Image = do
-  textRes <- liftJSM $ valToText $ eval $ canvasToBase64Image
-  pure textRes
-  where
-    canvasToBase64Image :: Text
-    canvasToBase64Image = "(function(){var cnvs = document.getElementById('qrcode'); var textBase64 = cnvs.toDataURL('image/png'); return textBase64;})();"
+qrCodeWidgetWithData :: MonadFrontBase t m => Text -> Currency -> m (Dynamic t (Maybe Text))
+qrCodeWidgetWithData addr cur = do
+  buildE <- getPostBuild
+  (canvasEl, cOpts) <- qrCodeWidget addr cur
+  dataE <- performEvent $ ffor buildE $ const $ rawGetCanvasJpeg (_element_raw canvasEl) cOpts
+  holdDyn Nothing dataE
 
 qrcGen :: Text -> Currency -> Maybe QRImage
 qrcGen t cur = encodeText (defaultQRCodeOptions L) Utf8WithoutECI $ curprefix <> t

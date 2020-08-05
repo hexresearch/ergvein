@@ -59,14 +59,13 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
   let thisWidget = Just $ pure $ receivePage cur
       navbar = blank
   wrapperNavbar False title thisWidget navbar $ void $ divClass "receive-page" $ do
-    (canvasEl, cOpts) <- divClass "receive-qr" $ qrCodeWidget keyTxt cur
+    base64D <- divClass "receive-qr" $ qrCodeWidgetWithData keyTxt cur
     (newE, copyE, shareE) <- divClass "receive-buttons-wrapper" $ do
       nE  <- newAddrBtn
       cE <- copyAddrBtn
       sE <- fmap (shareUrl <$) shareAddrBtn
       shareQRE <- outlineButton RPSShareQR
-      mshareE <- performEvent $ ffor shareQRE $ const $ rawGetCanvasJpeg (_element_raw canvasEl) cOpts
-      shareShareQR $ fmapMaybe id mshareE
+      shareShareQR $ attachWithMaybe (\m _ -> (, keyTxt) <$> m) (current base64D) shareQRE
       pure (nE, cE, sE)
     _ <- shareShareUrl shareE
     setFlagToExtPubKey "receivePageWidget:1" $ (cur, i) <$ newE

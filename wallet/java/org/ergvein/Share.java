@@ -1,13 +1,13 @@
 package org.ergvein;
 
 import android.content.ContentProvider;
-import androidx.core.content.FileProvider;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.util.Base64;
+import androidx.core.content.FileProvider;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -28,7 +28,7 @@ public class Share {
     a.startActivity(chooserIntent);
   }
 
-  private static void shareJpeg(final HaskellActivity a, String imageString) {
+  private static void shareJpeg(final HaskellActivity a, String imageString, String imageName) {
     Context context = a.getApplicationContext();
 
     // Make the bitmap from the image string
@@ -36,11 +36,17 @@ public class Share {
     byte[] decodedString = Base64.decode(pureBase64Encoded, Base64.DEFAULT);
 
     // Store the image bitmap to internal storage
-    File path= new File(context.getFilesDir(), File.separator + "images");
-    if(!path.exists()){
-        path.mkdirs();
+    File dirPath= new File(context.getFilesDir(), File.separator + "images" + File.separator + "qr-codes");
+    if(!dirPath.exists()){
+        dirPath.mkdirs();
     }
-    File outFile = new File(path, "ergvein_qr_share" + ".jpeg");
+    try {
+      for (File child : dirPath.listFiles()) {child.delete();}
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+
+    File outFile = new File(dirPath, imageName + ".jpeg");
     FileOutputStream fos = null;
     try {
         fos = new FileOutputStream(outFile);
