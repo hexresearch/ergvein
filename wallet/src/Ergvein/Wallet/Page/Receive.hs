@@ -64,7 +64,7 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
       nE  <- newAddrBtn
       cE <- copyAddrBtn
       sE <- fmap (shareUrl <$) shareAddrBtn
-      shareQRE <- outlineButton RPSShareQR
+      shareQRE <- shareQRBtn
       shareShareQR $ attachWithMaybe (\m _ -> (, keyTxt) <$> m) (current base64D) shareQRE
       pure (nE, cE, sE)
     _ <- shareShareUrl shareE
@@ -114,6 +114,9 @@ copyAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton RPSCopy "fa
 
 shareAddrBtn :: MonadFront t m => m (Event t ())
 shareAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton RPSShare "fas fa-share-alt fa-lg"
+
+shareQRBtn :: MonadFront t m => m (Event t ())
+shareQRBtn = divClass "receive-btn-wrapper" $ outlineTextIconButtonTypeButton RPSShareQR "fas fa-qrcode fa-lg"
 
 labelAddrBtn :: MonadFront t m => m (Event t ())
 labelAddrBtn = outlineTextIconButton RPSAddLabel "fas fa-tag fa-lg"
