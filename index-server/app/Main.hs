@@ -67,11 +67,6 @@ onStartup env = do
 startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
     CommandListen cfgPath -> do
-      t <- getPOSIXTime
-     
-      let s = (round t) :: Word64
-          ds = (fromIntegral s) :: POSIXTime
-      error $ (show t ++ "/" ++show ds)
       T.putStrLn $ pack "Server starting"
       cfg <- loadConfig cfgPath
       env <- runStdoutLoggingT $ newServerEnv cfg
