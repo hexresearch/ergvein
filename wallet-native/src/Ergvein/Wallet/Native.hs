@@ -83,4 +83,5 @@ class PlatformNatives where
   nativeResolvConf :: ResolvConf
 
   -- | Share a jpeg image. Implement for android only
+  -- MonadIO m => jpegInBase64 -> Filename (w/o .jpeg) -> m ()
   nativeShareJpeg :: MonadIO m => Text -> Text -> m ()
