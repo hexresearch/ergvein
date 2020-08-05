@@ -125,3 +125,23 @@ messageBuilder (FiltersResponseMsg FilterResponseMessage {..}) = let
     $  word32BE (currencyCodeToWord32 filterResponseCurrency)
     <> word32BE filtersCount
     <> lazyByteString zippedFilters
+
+messageBuilder (FiltersEventMsg FilterEventMessage {..}) = 
+  messageBase FiltersResponse msgSize
+  $  word32BE currency
+  <> word64BE filterEventHeight
+  <> word32BE filterEventBlockIdLength
+  <> byteString filterEventBlockId
+  <> word32BE filterEventBlockFilterLength
+  <> byteString filterEventBlockFilter
+  where
+    currency = currencyCodeToWord32 filterEventCurrency
+    filterEventBlockIdLength = fromIntegral $ BS.length filterEventBlockId
+    filterEventBlockFilterLength = fromIntegral $ BS.length filterEventBlockFilter
+
+    msgSize = genericSizeOf currency
+            + genericSizeOf filterEventHeight
+            + genericSizeOf filterEventBlockIdLength
+            + filterEventBlockIdLength
+            + genericSizeOf filterEventBlockFilterLength
+            + filterEventBlockFilterLength

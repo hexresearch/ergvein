@@ -133,6 +133,21 @@ messageParser FiltersResponse = do
     , filterResponseIncrementalFilters  = parsedFilters
     }
 
+messageParser FilterEvent = do
+  currency <- currencyCodeParser
+  height <- anyWord64be
+  blockIdLength <- fromIntegral <$> anyWord32be
+  blockId <- Parse.take blockIdLength
+  blockFilterLength <- fromIntegral <$> anyWord32be
+  blockFilter <- Parse.take blockFilterLength
+
+  pure $ FiltersEventMsg $ FilterEventMessage
+    { filterEventCurrency    = currency
+    , filterEventHeight      = height
+    , filterEventBlockId     = blockId
+    , filterEventBlockFilter = blockFilter
+    }
+
 parseMessage :: MessageType -> BS.ByteString -> Either String (Message, BS.ByteString)
 parseMessage msgType source = 
   case parse (messageParser msgType) source of
