@@ -64,7 +64,7 @@ btcRefrTimeout = 30
 bctNodeController :: MonadFront t m => m ()
 bctNodeController = mdo
   btcLog "Starting"
-  sel       <- getNodeRequestSelector
+  sel       <- getNodeNodeReqSelector
   conMapD   <- getNodeConnectionsD
   nodeRef   <- getNodeConnRef
   te        <- fmap void $ tickLossyFromPostBuildTime btcRefrTimeout
@@ -186,7 +186,7 @@ handleSAStore sact acc = case sact of
 -- Returns the storage and an event which fires first minNodeNum times
 -- That event allows the controller to connect to nodes immediately once there is at least 1 connection
 mkUrlBatcher :: MonadFrontAuth t m
-  => RequestSelector t -> Event t SockAddr -> m (Dynamic t [SockAddr], Event t ())
+  => NodeReqSelector t -> Event t SockAddr -> m (Dynamic t [SockAddr], Event t ())
 mkUrlBatcher sel remE = mdo
   buildE <- getPostBuild
   remCntD <- count remE
@@ -226,7 +226,7 @@ mkUrlBatcher sel remE = mdo
   pure $ (S.toList <$> urlsD, fstRunE)
 
 -- | Connects to DNS servers, gets n urls and initializes connection to those nodes
-getRandomBTCNodesFromDNS :: MonadFrontConstr t m => RequestSelector t -> Int -> m (Event t [NodeBTC t])
+getRandomBTCNodesFromDNS :: MonadFrontConstr t m => NodeReqSelector t -> Int -> m (Event t [NodeBTC t])
 getRandomBTCNodesFromDNS sel n = do
   buildE <- getPostBuild
   let dnsUrls = getSeeds btcNetwork

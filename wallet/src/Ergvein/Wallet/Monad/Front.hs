@@ -4,7 +4,7 @@ module Ergvein.Wallet.Monad.Front(
   , MonadFrontAuth(..)
   , AuthInfo(..)
   , Password
-  , RequestSelector
+  , NodeReqSelector
   -- * Helpers
   , extractReq
   , getActiveCursD
@@ -70,9 +70,9 @@ import Ergvein.Wallet.Sync.Status
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
-type RequestSelector t = EventSelector t (Const2 Currency (Map SockAddr NodeMessage))
+type NodeReqSelector t = EventSelector t (Const2 Currency (Map SockAddr NodeMessage))
 
-extractReq :: Reflex t => RequestSelector t -> Currency -> SockAddr -> Event t NodeMessage
+extractReq :: Reflex t => NodeReqSelector t -> Currency -> SockAddr -> Event t NodeMessage
 extractReq sel c u = select (fanMap (select sel $ Const2 c)) $ Const2 u
 
 -- | Authorized context. Has access to storage and indexer's functionality
@@ -96,7 +96,7 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   -- | Internal method to get connection map ref
   getNodeConnRef  :: m (ExternalRef t (ConnMap t))
   -- | Get node request event
-  getNodeRequestSelector :: m (RequestSelector t)
+  getNodeNodeReqSelector :: m (NodeReqSelector t)
   -- | Get fees ref. Internal
   getFeesRef :: m (ExternalRef t (Map Currency FeeBundle))
   -- | Get node request trigger
@@ -191,7 +191,7 @@ updateActiveCurs updE = do
   nodeRef     <- getNodeConnRef
   settingsRef <- getSettingsRef
   authRef     <- getAuthInfoRef
-  sel         <- getNodeRequestSelector
+  sel         <- getNodeNodeReqSelector
   fmap updated $ widgetHold (pure ()) $ ffor updE $ \f -> do
     (diffMap, newcs) <- modifyExternalRef curRef $ \cs -> let
       cs' = f cs

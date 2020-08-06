@@ -42,6 +42,8 @@ library
         Ergvein.Wallet.Filters.Storage
         Ergvein.Wallet.Filters.Types
         Ergvein.Wallet.Id
+        Ergvein.Wallet.Indexer.Socket
+        Ergvein.Wallet.Indexer.Monad
         Ergvein.Wallet.Input
         Ergvein.Wallet.Language
         Ergvein.Wallet.Loading
@@ -136,6 +138,7 @@ library
         Ergvein.Wallet.Widget.GraphPinCode
         Ergvein.Wallet.Worker.Fees
         Ergvein.Wallet.Worker.Height
+        Ergvein.Wallet.Worker.Indexer
         Ergvein.Wallet.Worker.IndexersNetworkActualization
         Ergvein.Wallet.Worker.Node
         Ergvein.Wallet.Wrapper
@@ -152,6 +155,7 @@ library
     build-depends:
         aeson -any,
         aeson-lens -any,
+        attoparsec >= 0.13 && < 0.14,
         async -any,
         base -any,
         base64-bytestring >=1 && <1.0.0.3,
@@ -172,6 +176,7 @@ library
         ergvein-crypto >=0.1 && <0.2,
         ergvein-index-api >=0.1 && <0.2,
         ergvein-index-client >=0.1 && <0.2,
+        ergvein-index-protocol >= 0.1 && < 0.2,
         ergvein-wallet-filters >= 0.1 && < 0.2,
         ergvein-wallet-native >=0.1 && <0.2,
         ergvein-wallet-types >=0.1 && <0.2,

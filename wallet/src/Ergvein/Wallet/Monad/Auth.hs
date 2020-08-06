@@ -86,7 +86,7 @@ data Env t = Env {
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
 , env'indexersEF      :: !(Event t (), IO ())
 , env'nodeConsRef     :: !(ExternalRef t (ConnMap t))
-, env'nodeReqSelector :: !(RequestSelector t)
+, env'nodeReqSelector :: !(NodeReqSelector t)
 , env'nodeReqFire     :: !(Map Currency (Map SockAddr NodeMessage) -> IO ())
 , env'feesStore       :: !(ExternalRef t (Map Currency FeeBundle))
 , env'storeMutex      :: !(MVar ())
@@ -171,8 +171,8 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getAuthInfoRef #-}
   getNodeConnRef = asks env'nodeConsRef
   {-# INLINE getNodeConnRef #-}
-  getNodeRequestSelector = asks env'nodeReqSelector
-  {-# INLINE getNodeRequestSelector #-}
+  getNodeNodeReqSelector = asks env'nodeReqSelector
+  {-# INLINE getNodeNodeReqSelector #-}
   getFeesRef = asks env'feesStore
   {-# INLINE getFeesRef #-}
   getNodeReqFire = asks env'nodeReqFire
@@ -292,7 +292,7 @@ liftAuth ma0 ma = mdo
 
         -- Create data for Auth context
         (reqE, reqFire) <- newTriggerEvent
-        let sel = fanMap reqE -- Node request selector :: RequestSelector t
+        let sel = fanMap reqE -- Node request selector :: NodeReqSelector t
         let ps = auth ^. authInfo'storage . storage'pubStorage
 
         managerRef      <- liftIO newEmptyMVar

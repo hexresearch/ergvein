@@ -16,11 +16,15 @@ module Ergvein.Wallet.Settings (
 import Control.Lens hiding ((.=))
 import Control.Monad.IO.Class
 import Data.Aeson hiding (encodeFile)
-import Data.Maybe
 import Data.Default
+import Data.Maybe
 import Data.Text(Text, pack, unpack)
 import Data.Time (NominalDiffTime)
 import Data.Yaml (encodeFile)
+import Network.Socket
+import Servant.Client(BaseUrl(..), parseBaseUrl)
+import System.Directory
+
 import Ergvein.Aeson
 import Ergvein.Lens
 import Ergvein.Text
@@ -30,10 +34,8 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Yaml(readYamlEither')
-import qualified Data.Map.Strict as M
-import Servant.Client(BaseUrl(..), parseBaseUrl)
-import System.Directory
 
+import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 
 #ifdef ANDROID
@@ -75,6 +77,9 @@ data Settings = Settings {
 , settingsActiveUrls        :: [BaseUrl]
 , settingsDeactivatedUrls   :: [BaseUrl]
 , settingsPassiveUrls       :: [BaseUrl]
+, settingsActiveSockAddrs   :: [SockAddr]
+, settingsDeactivSockAddrs  :: [SockAddr]
+, settingsPassiveSockAddrs  :: [SockAddr]
 , settingsReqUrlNum         :: (Int, Int) -- ^ First is minimum required answers. Second is sufficient amount of answers from indexers.
 , settingsActUrlNum         :: Int
 , settingsNodes             :: M.Map Currency [BaseUrl]
@@ -85,6 +90,9 @@ data Settings = Settings {
 
 
 makeLensesWith humbleFields ''Settings
+
+$(deriveJSON defaultOptions ''PortNumber)
+$(deriveJSON defaultOptions ''SockAddr)
 
 instance FromJSON Settings where
   parseJSON = withObject "Settings" $ \o -> do
@@ -107,6 +115,9 @@ instance FromJSON Settings where
     settingsExplorerUrl       <- o .:? "explorerUrl" .!= defaultExplorerUrl
     settingsPortfolio         <- o .:? "portfolio" .!= False
     settingsFiatCurr          <- o .:? "fiatCurr"  .!= USD
+    settingsActiveSockAddrs   <- o .:? "activeSockAddrs" .!= []
+    settingsDeactivSockAddrs  <- o .:? "deactivSockAddrs" .!= []
+    settingsPassiveSockAddrs  <- o .:? "passiveSockAddrs" .!= []
     pure Settings{..}
 
 instance ToJSON Settings where
@@ -125,6 +136,9 @@ instance ToJSON Settings where
     , "explorerUrl"       .= toJSON settingsExplorerUrl
     , "portfolio"         .= toJSON settingsPortfolio
     , "fiatCurr"          .= toJSON settingsFiatCurr
+    , "activeSockAddrs"   .= toJSON settingsActiveSockAddrs
+    , "deactivSockAddrs"  .= toJSON settingsDeactivSockAddrs
+    , "passiveSockAddrs"  .= toJSON settingsPassiveSockAddrs
    ]
 
 defaultIndexers :: [BaseUrl]
@@ -164,6 +178,9 @@ defaultSettings home =
       , settingsExplorerUrl       = defaultExplorerUrl
       , settingsPortfolio         = False
       , settingsFiatCurr          = USD
+      , settingsActiveSockAddrs   = []
+      , settingsDeactivSockAddrs  = []
+      , settingsPassiveSockAddrs  = []
       }
 
 -- | TODO: Implement some checks to see if the configPath folder is ok to write to
