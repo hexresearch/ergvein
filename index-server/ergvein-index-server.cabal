@@ -94,6 +94,7 @@ library
       , wai-extra                >= 3.0     &&  < 3.1
       , warp                     >= 3.2     &&  < 3.3
       , yaml                     >= 0.11    &&  < 0.12
+      , safe-exceptions
       , network
       , attoparsec
       , attoparsec-binary

@@ -92,9 +92,3 @@ evalMsg sock = do
             _ -> pure $ Left $ RejectMessage $ InternalServerError
         _ -> pure $ Left $ RejectMessage MessageParsing
     _ -> pure $ Left $ RejectMessage MessageHeaderParsing
-
-
--- Note: This uses @writev(2)@ on POSIX.
-sendLazy :: MonadIO m => Socket -> LBS.ByteString -> m ()
-{-# INLINABLE sendLazy #-}
-sendLazy sock = \lbs -> liftIO (sendAll sock lbs)
