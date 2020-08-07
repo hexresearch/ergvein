@@ -1,25 +1,29 @@
 module Ergvein.Index.Server.TCPService.Server where
 
 import Control.Concurrent
+import Control.Concurrent.STM
+import Control.Immortal
+import Control.Monad.Catch
+import Control.Monad.IO.Unlift
+import Control.Monad.Logger
 import Data.Attoparsec.ByteString
 import Data.ByteString.Builder
-import Network.Socket
-import System.IO
-import Data.Word
 import Data.Maybe
+import Data.Word
 import Ergvein.Index.Protocol.Deserialization
 import Ergvein.Index.Protocol.Serialization
 import Ergvein.Index.Protocol.Types
-import Ergvein.Index.Server.Monad
-import Control.Monad.IO.Unlift
-import Control.Immortal
-import Control.Monad.Logger
-import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Dependencies
-import Control.Concurrent.STM
+import Ergvein.Index.Server.Environment
+import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.TCPService.MessageHandler
-import Control.Monad.Catch
+import Ergvein.Index.Server.TCPService.Socket
+import Network.Socket
+import System.IO
+import Control.Monad
+import Network.Socket.ByteString.Lazy
+import qualified Data.ByteString.Lazy as LBS
 
 import qualified Network.Socket.ByteString as NS
 
@@ -53,16 +57,23 @@ runConn (sock, _) = do
   messageHeaderBytes <- liftIO $ NS.recv sock 8
   let messageHeaderParsingResult = parse messageHeaderParser messageHeaderBytes
   hdl <- liftIO $ socketToHandle sock ReadWriteMode
-  lp hdl
-  liftIO $ hClose hdl
+  sendChan <- liftIO newTChanIO
+  liftIO $ forkIO $ forever $ do
+    msgs <- atomically $ readAllTVar sendChan
+    sendLazy sock $ mconcat msgs
+  unlift <- askUnliftIO
+  liftIO $ forkIO $ unliftIO unlift $ listenLoop sendChan
+  pure ()
   where
-    lp hdl = do
-      msg <- evalMsg sock
-      case msg of
-        Right m -> do
-          liftIO $ hPutBuilder hdl $ messageBuilder m
-          lp hdl
-        Left rM -> liftIO $ hPutBuilder hdl $ messageBuilder $ RejectMsg rM
+    listenLoop :: TChan LBS.ByteString -> ServerM ()
+    listenLoop destinationChan = do
+      evalResult <- evalMsg sock
+      let messageBytes = toLazyByteString $ messageBuilder $ 
+            case evalResult of
+              Right answer -> answer
+              Left reject  -> RejectMsg reject
+      liftIO $ atomically $ writeTChan destinationChan messageBytes
+      listenLoop destinationChan
 
 
 evalMsg :: Socket -> ServerM (Either RejectMessage Message)
@@ -81,3 +92,9 @@ evalMsg sock = do
             _ -> pure $ Left $ RejectMessage $ InternalServerError
         _ -> pure $ Left $ RejectMessage MessageParsing
     _ -> pure $ Left $ RejectMessage MessageHeaderParsing
+
+
+-- Note: This uses @writev(2)@ on POSIX.
+sendLazy :: MonadIO m => Socket -> LBS.ByteString -> m ()
+{-# INLINABLE sendLazy #-}
+sendLazy sock = \lbs -> liftIO (sendAll sock lbs)
