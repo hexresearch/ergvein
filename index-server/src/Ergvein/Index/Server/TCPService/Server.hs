@@ -55,27 +55,24 @@ mainLoop thread sock = do
 
 runConn :: (Socket, SockAddr) -> ServerM ()
 runConn (sock, _) = do
-  messageHeaderBytes <- liftIO $ NS.recv sock 8
-  let messageHeaderParsingResult = parse messageHeaderParser messageHeaderBytes
-  hdl <- liftIO $ socketToHandle sock ReadWriteMode
-  sendChan <- liftIO newTChanIO
-  liftIO $ forkIO $ forever $ do
-    msgs <- atomically $ readAllTVar sendChan
-    sendLazy sock $ mconcat msgs
   unlift <- askUnliftIO
-  liftIO $ forkIO $ unliftIO unlift $ listenLoop sendChan
+  liftIO $ do
+    hdl <- socketToHandle sock ReadWriteMode
+    sendChan <- newTChanIO
+    forkIO $ forever $ do
+      msgs <- atomically $ readAllTVar sendChan
+      sendLazy sock $ mconcat msgs
+    unliftIO unlift $ listenLoop sendChan
   pure ()
   where
     listenLoop :: TChan LBS.ByteString -> ServerM ()
-    listenLoop destinationChan = do
+    listenLoop destinationChan = forever $ do
       evalResult <- evalMsg sock
       let messageBytes = toLazyByteString $ messageBuilder $ 
             case evalResult of
               Right answer -> answer
               Left reject  -> RejectMsg reject
       liftIO $ atomically $ writeTChan destinationChan messageBytes
-      listenLoop destinationChan
-
 
 evalMsg :: Socket -> ServerM (Either RejectMessage Message)
 evalMsg sock = do
@@ -88,7 +85,7 @@ evalMsg sock = do
       case messageParsingResult of
         Done _ msg -> do
           resp <- handleMsg msg `catch` (\(SomeException ex) -> pure $ Nothing)
-          case resp of 
+          case resp of
             Just msg -> pure $ Right msg
             _ -> pure $ Left $ RejectMessage $ InternalServerError
         _ -> pure $ Left $ RejectMessage MessageParsing
