@@ -1,8 +1,10 @@
 module Ergvein.Index.Server.TCPService.Server where
 
 import Control.Concurrent
+import Control.Concurrent.Lifted (fork)
 import Control.Concurrent.STM
 import Control.Immortal
+import Control.Monad
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
@@ -10,6 +12,10 @@ import Data.Attoparsec.ByteString
 import Data.ByteString.Builder
 import Data.Maybe
 import Data.Word
+import Network.Socket
+import Network.Socket.ByteString.Lazy
+import System.IO
+
 import Ergvein.Index.Protocol.Deserialization
 import Ergvein.Index.Protocol.Serialization
 import Ergvein.Index.Protocol.Types
@@ -19,12 +25,8 @@ import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.TCPService.MessageHandler
 import Ergvein.Index.Server.TCPService.Socket
-import Network.Socket
-import System.IO
-import Control.Monad
-import Network.Socket.ByteString.Lazy
-import qualified Data.ByteString.Lazy as LBS
 
+import qualified Data.ByteString.Lazy as LBS
 import qualified Network.Socket.ByteString as NS
 
 runTcpSrv :: ServerM Thread
@@ -41,16 +43,15 @@ tcpSrv thread = do
     unliftIO unlift $ mainLoop thread sock
 
 mainLoop :: Thread -> Socket -> ServerM ()
-mainLoop thread sock = go sock
-  where 
-  go s = do
+mainLoop thread sock = do
+  flagVar <- getShutdownFlag
+  fork $ forever $ do
     conn <- liftIO $ accept sock
-    forkIO <$> (toIO $ runConn conn)
-    shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
-    if shutdownFlag then
-      go s
-    else
-      liftIO $ stop thread
+    fork $ runConn conn
+  forever $ liftIO $ do
+    shutdownFlag <- readTVarIO flagVar
+    when shutdownFlag $ stop thread
+    threadDelay 1000000
 
 runConn :: (Socket, SockAddr) -> ServerM ()
 runConn (sock, _) = do
