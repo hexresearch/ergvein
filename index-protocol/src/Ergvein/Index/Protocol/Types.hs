@@ -136,6 +136,15 @@ data FilterResponseIncrementalMessage = FilterResponseIncrementalMessage
   , filterResponseIncrementalFilters  :: ![BlockFilter]
   } deriving (Show, Eq)
 
+data FilterEventMessage = FilterEventMessage
+  { filterEventCurrency      :: !CurrencyCode
+  , filterEventHeight        :: !Word64
+ -- filterEventBlockIdLength :: uint32 Length of block hash
+  , filterEventBlockId       :: !ByteString
+ -- filterEventFilterLength  :: uint32 Length of filter
+  , filterEventBlockFilter   :: !ByteString
+  } deriving (Show, Eq)
+
 data Message = PingMsg                       !PingMessage
              | PongMsg                       !PongMessage
              | VersionMsg                    !VersionMessage
@@ -144,6 +153,7 @@ data Message = PingMsg                       !PingMessage
              | FiltersRequestMsg             !FilterRequestMessage
              | FiltersResponseMsg            !FilterResponseMessage
              | FiltersResponseIncrementalMsg !FilterResponseIncrementalMessage
+             | FiltersEventMsg               !FilterEventMessage
   deriving (Show, Eq)
 
 genericSizeOf :: (Storable a, Integral b) => a -> b

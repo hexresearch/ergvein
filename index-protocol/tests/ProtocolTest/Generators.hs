@@ -43,6 +43,9 @@ instance Arbitrary FilterResponseMessage where
 instance Arbitrary FilterResponseIncrementalMessage where
   arbitrary = sized $ \n -> FilterResponseIncrementalMessage <$> getRandBounded <*> arbitrary <*> (replicateM n arbitrary)
 
+instance Arbitrary FilterEventMessage where
+  arbitrary = sized $ \n -> FilterEventMessage <$> getRandBounded <*> arbitrary <*> arbitrary <*> arbitrary
+
 unimplementedMessageTypes :: [MessageType]
 unimplementedMessageTypes =
   [ FilterEvent
