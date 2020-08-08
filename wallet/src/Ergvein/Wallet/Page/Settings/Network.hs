@@ -9,6 +9,7 @@ import Control.Lens
 import Data.Bifunctor
 import Data.Maybe (isJust, fromJust)
 import Data.Time
+import Network.Socket (SockAddr(..))
 import Reflex.Dom
 import Servant.Client(BaseUrl, showBaseUrl, parseBaseUrl)
 import Text.Read
@@ -118,6 +119,9 @@ addUrlWidget showD = mdo
   pure hideE
 
 activePageWidget :: forall t m . MonadFront t m => m ()
+activePageWidget = pure ()
+{-
+activePageWidget :: forall t m . MonadFront t m => m ()
 activePageWidget = mdo
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   void . flip listWithKey renderActive =<< getIndexerInfoD
@@ -128,15 +132,15 @@ activePageWidget = mdo
     fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSClose else NSSAddUrl
   pure ()
-
-renderActive :: MonadFront t m => BaseUrl -> Dynamic t (Maybe IndexerInfo) -> m ()
+-}
+renderActive :: MonadFront t m => SockAddr -> Dynamic t (Maybe IndexerInfo) -> m ()
 renderActive url minfoD = mdo
   tglD <- holdDyn False tglE
   tglE <- fmap switchDyn $ widgetHoldDyn $ ffor minfoD $ \minfo -> lineOption $ do
     tglE' <- divClass "network-name" $ do
       let cls = if isJust minfo then "mt-a mb-a indexer-online" else "mt-a mb-a indexer-offline"
       elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
-      divClass "mt-a mb-a network-name-txt" $ text $ T.pack . showBaseUrl $ url
+      divClass "mt-a mb-a network-name-txt" $ text $ showt url
       fmap switchDyn $ widgetHoldDyn $ ffor tglD $ \b ->
         fmap (not b <$) $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a" $ if b then NSSClose else NSSEdit
     descrOption $ maybe NSSOffline (NSSLatency . indInfoLatency) minfo
@@ -151,30 +155,30 @@ renderActive url minfoD = mdo
 
 inactivePageWidget :: forall t m . MonadFront t m => m ()
 inactivePageWidget = mdo
-  urlsD <- (fmap . fmap) S.toList getInactiveUrlsD
-  showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
-  allResE <- fmap switchDyn $ widgetHoldDyn $ ffor urlsD $ \urls ->
-    fmap (mergeMap . M.fromList) $ flip traverse urls $ \u -> do
-      resE <- pingIndexer $ u <$ pingAllE
-      pure (u, snd <$> resE)
-  
-  infomapD <- foldDyn M.union M.empty $ leftmost [resE, allResE]
-  a :: Dynamic t [Dynamic t (Event t BaseUrl)] <- simpleList urlsD $ \urlD -> do
-    let myInfoD = M.lookup <$> urlD <*> infomapD
-    widgetHoldDyn $ renderInactive <$> urlD <*> myInfoD
-  let pingE = switchDyn . fmap leftmost . join . fmap sequence $ a
-  resE <- (fmap . fmap) (uncurry M.singleton) $ pingIndexer pingE
-  hideE <- deactivateURL =<< addUrlWidget showD
-  (pingAllE, tglE) <- divClass "network-wrapper mt-1" $ divClass "net-btns-2" $ do
-    pingAllE <- buttonClass "button button-outline m-0" NSSPingAll
-    tglE <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
-      fmap (not b <$) $ buttonClass "m-0 button button-outline" $ if b then NSSClose else NSSAddUrl
-    pure (pingAllE, tglE)
+  -- urlsD <- (fmap . fmap) S.toList getInactiveUrlsD
+  -- showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
+  -- allResE <- fmap switchDyn $ widgetHoldDyn $ ffor urlsD $ \urls ->
+  --   fmap (mergeMap . M.fromList) $ flip traverse urls $ \u -> do
+  --     resE <- pingIndexer $ u <$ pingAllE
+  --     pure (u, snd <$> resE)
+  --
+  -- infomapD <- foldDyn M.union M.empty $ leftmost [resE, allResE]
+  -- a :: Dynamic t [Dynamic t (Event t BaseUrl)] <- simpleList urlsD $ \urlD -> do
+  --   let myInfoD = M.lookup <$> urlD <*> infomapD
+  --   widgetHoldDyn $ renderInactive <$> urlD <*> myInfoD
+  -- let pingE = switchDyn . fmap leftmost . join . fmap sequence $ a
+  -- resE <- (fmap . fmap) (uncurry M.singleton) $ pingIndexer pingE
+  -- hideE <- deactivateURL =<< addUrlWidget showD
+  -- (pingAllE, tglE) <- divClass "network-wrapper mt-1" $ divClass "net-btns-2" $ do
+  --   pingAllE <- buttonClass "button button-outline m-0" NSSPingAll
+  --   tglE <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
+  --     fmap (not b <$) $ buttonClass "m-0 button button-outline" $ if b then NSSClose else NSSAddUrl
+  --   pure (pingAllE, tglE)
   pure ()
 
-renderInactive :: MonadFront t m => BaseUrl -> Maybe (Maybe IndexerInfo) -> m (Event t BaseUrl)
+renderInactive :: MonadFront t m => SockAddr -> Maybe (Maybe IndexerInfo) -> m (Event t SockAddr)
 renderInactive url mminfo = mdo
-  let urlTxt = T.pack $ showBaseUrl url
+  let urlTxt = showt url
   tglD <- holdDyn False tglE
   tglE <- lineOption $ do
     tglE' <- divClass "network-name" $ do

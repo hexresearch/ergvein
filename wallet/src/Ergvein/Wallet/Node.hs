@@ -66,7 +66,7 @@ removeNodeConn tag url cm = DM.adjust (M.delete url) tag cm
 
 initNode :: MonadBaseConstr t m
   => Currency
-  -> RequestSelector t
+  -> NodeReqSelector t
   -> SockAddr -> m (NodeConn t)
 initNode cur sel url = case cur of
   BTC   -> fmap NodeConnBTC $ initBTCNode True url  reqE
@@ -75,7 +75,7 @@ initNode cur sel url = case cur of
     reqE = extractReq sel cur url
 
 initializeNodes :: MonadBaseConstr t m
-  => RequestSelector t
+  => NodeReqSelector t
   -> M.Map Currency [SockAddr] -> m (ConnMap t)
 initializeNodes sel urlmap = do
   let ks = M.keys urlmap
@@ -85,7 +85,7 @@ initializeNodes sel urlmap = do
 reinitNodes :: forall t m . MonadBaseConstr t m
   => M.Map Currency [SockAddr]  -- Map with all urls
   -> M.Map Currency Bool        -- True -- initialize or keep existing conns. False -- remove conns
-  -> RequestSelector t          -- Request selector
+  -> NodeReqSelector t          -- Request selector
   -> ConnMap t                  -- Inital map of connections
   -> m (ConnMap t)
 reinitNodes urls cs sel conMap = foldlM updCurr conMap $ M.toList cs

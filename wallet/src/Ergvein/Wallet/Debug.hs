@@ -19,6 +19,7 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage
 import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Wrapper
+import Ergvein.Index.Protocol.Types (Message(..))
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -40,6 +41,9 @@ debugWidget = el "div" $ do
   pubExtE <- fmap (DbgPubExt <$) $ outlineButton ("Pub Externals" :: Text)
   prvIntE <- fmap (DbgPrvInt <$) $ outlineButton ("Priv Internals" :: Text)
   prvExtE <- fmap (DbgPrvExt <$) $ outlineButton ("Priv Externals" :: Text)
+  pingE <- outlineButton ("Ping" :: Text)
+  -- performEvent $ ffor pingE $ const $ do
+  broadcastIndexerMessage $ ffor pingE $ const $ IndexerMsg $ PingMsg 123
   let goE = leftmost [utxoE, pubIntE, pubExtE, prvIntE, prvExtE]
   void $ nextWidget $ ffor goE $ \sel -> Retractable {
       retractableNext = case sel of

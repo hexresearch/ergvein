@@ -1,14 +1,19 @@
 {-# LANGUAGE RecursiveDo #-}
 module Ergvein.Wallet.Client
-  ( getHeight
-  , getHeightSolo
-  , getHeightRandom
-  , getBlockFilters
-  , getBlockFiltersSolo
-  , getBlockFiltersRandom
-  , getFeeEstimatesRandom
-  , ClientErr(..)
-  , module Ergvein.Index.API.Types
+  -- ( getHeight
+  -- , getHeightSolo
+  -- , getHeightRandom
+  -- , getBlockFilters
+  -- , getBlockFiltersSolo
+  -- , getBlockFiltersRandom
+  -- , getFeeEstimatesRandom
+  -- , ClientErr(..)
+  -- , module Ergvein.Index.API.Types
+  -- ) where
+  (
+  --   getHeightRandom
+  -- , getBlockFiltersRandom
+  -- , getFeeEstimatesRandom
   ) where
 
 import Control.Concurrent
@@ -37,10 +42,20 @@ import Ergvein.Types.Currency
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Localization.Client
 import Ergvein.Wallet.Monad.Async
-import Ergvein.Wallet.Monad.Client
+--import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
 
+getHeightRandom :: (MonadFrontBase t m) => Event t HeightRequest -> m (Event t (Either ClientErr HeightResponse))
+getHeightRandom = undefined
+
+getBlockFiltersRandom :: (MonadFrontBase t m) => Event t BlockFiltersRequest -> m (Event t (Either ClientErr BlockFiltersResponse))
+getBlockFiltersRandom = undefined
+
+getFeeEstimatesRandom :: (MonadFrontBase t m) => Event t [Currency] -> m (Event t (Either ClientErr IndexFeesResp))
+getFeeEstimatesRandom = undefined
+
+{-
 getHeight :: (MonadFrontBase t m, MonadClient t m) => Event t HeightRequest -> m (Event t (Either ClientErr HeightResponse))
 getHeight = requester False meanHeight getHeightEndpoint
 
@@ -246,3 +261,5 @@ requesterBody showLoad validateRes uss endpoint initRes req = do
     whenJust mv f = case mv of
       Nothing -> pure ()
       Just v  -> f v
+
+-}

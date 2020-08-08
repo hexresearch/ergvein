@@ -3,6 +3,8 @@ module Ergvein.Wallet.Worker.IndexersNetworkActualization
     indexersNetworkActualizationWorker
   ) where
 
+indexersNetworkActualizationWorker = undefined
+{-}
 import Control.Monad.Reader
 import Control.Monad.Zip
 import Data.Bifunctor
@@ -143,3 +145,4 @@ indexersNetworkActualizationWorker = do
       if previous /= resultingNetworkInfoMap then
         Just resultingNetworkInfoMap
       else Nothing)
+-}

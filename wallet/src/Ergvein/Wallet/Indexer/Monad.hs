@@ -1,4 +1,4 @@
-module Ergvein.Wallet.Monad.Client (
+module Ergvein.Wallet.Indexer.Monad (
     MonadIndexClient(..)
   , IndexerConnection(..)
   , IndexerMsg(..)
@@ -8,7 +8,6 @@ module Ergvein.Wallet.Monad.Client (
   , activateURL
   , deactivateURL
   , forgetURL
-  , broadcastIndexerMessage
   ) where
 
 import Control.Monad
@@ -152,11 +151,3 @@ forgetURL addrE = do
       in (s', s')
     storeSettings s
     fire ()
-
-broadcastIndexerMessage :: (MonadIndexClient t m) => Event t IndexerMsg -> m ()
-broadcastIndexerMessage reqE = do
-  connsRef  <- getActiveConnsRef
-  fire <- getIndexReqFire
-  performEvent_ $ ffor reqE $ \req -> do
-    cm <- readExternalRef connsRef
-    liftIO $ fire $ req <$ cm

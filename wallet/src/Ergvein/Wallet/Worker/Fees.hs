@@ -22,6 +22,10 @@ feesTimeout :: NominalDiffTime
 feesTimeout = 60
 
 feesWorker :: MonadFront t m => m ()
+feesWorker = pure ()
+
+{-
+feesWorker :: MonadFront t m => m ()
 feesWorker = do
   feeRef  <- getFeesRef
   cursD   <- getActiveCursD
@@ -31,3 +35,4 @@ feesWorker = do
   efeesE  <- getFeeEstimatesRandom $ attachWith (\cs _ -> S.toList cs) (current cursD) tickE
   let feesE = fmapMaybe (either (const Nothing) (Just . indexFeesRespFees)) efeesE
   performFork_ $ ffor feesE $ \fm -> modifyExternalRef_ feeRef $ \fm' -> M.union fm fm'
+-}

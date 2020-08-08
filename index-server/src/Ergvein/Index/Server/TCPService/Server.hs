@@ -16,6 +16,7 @@ import Network.Socket
 import Network.Socket.ByteString.Lazy
 import System.IO
 
+import Ergvein.Text
 import Ergvein.Index.Protocol.Deserialization
 import Ergvein.Index.Protocol.Serialization
 import Ergvein.Index.Protocol.Types
@@ -27,6 +28,7 @@ import Ergvein.Index.Server.TCPService.MessageHandler
 import Ergvein.Index.Server.TCPService.Socket
 
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString as BS
 import qualified Network.Socket.ByteString as NS
 
 runTcpSrv :: ServerM Thread
@@ -54,29 +56,38 @@ mainLoop thread sock = do
     threadDelay 1000000
 
 runConn :: (Socket, SockAddr) -> ServerM ()
-runConn (sock, _) = do
-  unlift <- askUnliftIO
-  liftIO $ do
-    hdl <- socketToHandle sock ReadWriteMode
-    sendChan <- newTChanIO
-    forkIO $ forever $ do
+runConn (sock, addr) = do
+  sendChan <- liftIO newTChanIO
+  -- Spawn message sender thread
+  fork $ sendLoop sendChan
+  -- Start message listener
+  listenLoop sendChan
+  where
+    sendLoop :: TChan LBS.ByteString -> ServerM ()
+    sendLoop sendChan = liftIO $ forever $ do
       msgs <- atomically $ readAllTVar sendChan
       sendLazy sock $ mconcat msgs
-    unliftIO unlift $ listenLoop sendChan
-  pure ()
-  where
-    listenLoop :: TChan LBS.ByteString -> ServerM ()
-    listenLoop destinationChan = forever $ do
-      evalResult <- evalMsg sock
-      let messageBytes = toLazyByteString $ messageBuilder $ 
-            case evalResult of
-              Right answer -> answer
-              Left reject  -> RejectMsg reject
-      liftIO $ atomically $ writeTChan destinationChan messageBytes
 
-evalMsg :: Socket -> ServerM (Either RejectMessage Message)
-evalMsg sock = do
-  messageHeaderBytes <- liftIO $ NS.recv sock 8
+    listenLoop :: TChan LBS.ByteString -> ServerM ()
+    listenLoop destinationChan = do
+      let writeMsg = liftIO . atomically . writeTChan destinationChan . toLazyByteString . messageBuilder
+      -- Try to get the header. Empty string means that the client closed the connection
+      messageHeaderBytes <- liftIO $ NS.recv sock 8
+      if BS.null messageHeaderBytes
+        then do
+          logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
+          liftIO $ close sock
+        else do
+          evalResult <- evalMsg sock messageHeaderBytes
+          case evalResult of
+            Right msg -> writeMsg msg
+            Left err -> do
+              logInfoN $ "failed to handle msg: " <> showt err
+              writeMsg $ RejectMsg err
+          listenLoop destinationChan
+
+evalMsg :: Socket -> BS.ByteString -> ServerM (Either RejectMessage Message)
+evalMsg sock messageHeaderBytes = do
   let messageHeaderParsingResult = parse messageHeaderParser messageHeaderBytes
   case messageHeaderParsingResult of
     Done _ MessageHeader {..} -> do
