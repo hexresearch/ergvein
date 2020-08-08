@@ -36,13 +36,24 @@ runTcpSrv = create $ logOnException . tcpSrv
 
 tcpSrv :: Thread -> ServerM ()
 tcpSrv thread = do
-  port <- fromIntegral . cfgServerTcpPort <$> serverConfig
+  port <- show . cfgServerTcpPort <$> serverConfig
   unlift <- askUnliftIO
   liftIO $ withSocketsDo $ do
-    sock <- socket AF_INET Stream 0
-    bind sock (SockAddrInet port iNADDR_ANY)
+    addr <- resolve port
+    sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+    bind sock (addrAddress addr)
     listen sock 5
     unliftIO unlift $ mainLoop thread sock
+  where
+    resolve port = do
+      let hints = defaultHints {
+              addrFlags = [AI_PASSIVE]
+            , addrSocketType = Stream
+            , addrFamily = AF_INET
+            , addrProtocol = 0
+            }
+      addr:_ <- getAddrInfo (Just hints) Nothing (Just port)
+      pure addr
 
 mainLoop :: Thread -> Socket -> ServerM ()
 mainLoop thread sock = do
