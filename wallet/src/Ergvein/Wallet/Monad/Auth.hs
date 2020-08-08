@@ -48,6 +48,7 @@ import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Worker.Fees
 import Ergvein.Wallet.Worker.Height
 import Ergvein.Wallet.Worker.IndexersNetworkActualization
+import Ergvein.Wallet.Worker.Indexer
 import Ergvein.Wallet.Worker.Node
 
 import qualified Data.Map.Strict as M
@@ -78,18 +79,21 @@ data Env t = Env {
 , env'syncProgress    :: !(ExternalRef t SyncProgress)
 , env'heightRef       :: !(ExternalRef t (Map Currency Integer))
 , env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
-, env'urlsArchive     :: !(ExternalRef t (S.Set BaseUrl))
-, env'inactiveUrls    :: !(ExternalRef t (S.Set BaseUrl))
-, env'activeUrls      :: !(ExternalRef t (Map BaseUrl (Maybe IndexerInfo)))
-, env'reqUrlNum       :: !(ExternalRef t (Int, Int))
-, env'actUrlNum       :: !(ExternalRef t Int)
-, env'timeout         :: !(ExternalRef t NominalDiffTime)
-, env'indexersEF      :: !(Event t (), IO ())
 , env'nodeConsRef     :: !(ExternalRef t (ConnMap t))
 , env'nodeReqSelector :: !(NodeReqSelector t)
 , env'nodeReqFire     :: !(Map Currency (Map SockAddr NodeMessage) -> IO ())
 , env'feesStore       :: !(ExternalRef t (Map Currency FeeBundle))
 , env'storeMutex      :: !(MVar ())
+-- Client context
+, env'urlsArchive     :: !(ExternalRef t (S.Set SockAddr))
+, env'inactiveUrls    :: !(ExternalRef t (S.Set SockAddr))
+, env'activeUrls      :: !(ExternalRef t (Map SockAddr (IndexerConnection t)))
+, env'reqUrlNum       :: !(ExternalRef t (Int, Int))
+, env'actUrlNum       :: !(ExternalRef t Int)
+, env'timeout         :: !(ExternalRef t NominalDiffTime)
+, env'indexReqSel     :: !(IndexReqSelector t)
+, env'indexReqFire    :: !(Map SockAddr IndexerMsg -> IO ())
+, env'activateIndexEF :: !(Event t SockAddr, SockAddr -> IO ())
 }
 
 type ErgveinM t m = ReaderT (Env t) m
@@ -178,11 +182,11 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   getNodeReqFire = asks env'nodeReqFire
   {-# INLINE getNodeReqFire #-}
 
-instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
+instance MonadBaseConstr t m => MonadIndexClient t (ErgveinM t m) where
   getArchivedUrlsRef = asks env'urlsArchive
   {-# INLINE getArchivedUrlsRef #-}
-  getActiveUrlsRef = asks env'activeUrls
-  {-# INLINE getActiveUrlsRef #-}
+  getActiveConnsRef = asks env'activeUrls
+  {-# INLINE getActiveConnsRef #-}
   getInactiveUrlsRef = asks env'inactiveUrls
   {-# INLINE getInactiveUrlsRef #-}
   getActiveUrlsNumRef = asks env'actUrlNum
@@ -191,8 +195,12 @@ instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
   {-# INLINE getRequiredUrlNumRef #-}
   getRequestTimeoutRef = asks env'timeout
   {-# INLINE getRequestTimeoutRef #-}
-  getIndexerInfoEF = asks env'indexersEF
-  {-# INLINE getIndexerInfoEF #-}
+  getIndexReqSelector = asks env'indexReqSel
+  {-# INLINE getIndexReqSelector #-}
+  getIndexReqFire = asks env'indexReqFire
+  {-# INLINE getIndexReqFire #-}
+  getActivationEF = asks env'activateIndexEF
+  {-# INLINE getActivationEF #-}
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
@@ -282,17 +290,22 @@ liftAuth ma0 ma = mdo
 
         -- MonadClient refs
         authRef         <- newExternalRef auth
-        urlsArchive     <- newExternalRef $ S.fromList $ settingsPassiveUrls settings
-        inactiveUrls    <- newExternalRef $ S.fromList $ settingsDeactivatedUrls settings
-        activeUrlsRef   <- newExternalRef $ M.fromList $ fmap (,Nothing) $ settingsActiveUrls settings
+        urlsArchive     <- newExternalRef $ S.fromList $ settingsPassiveSockAddrs settings
+        inactiveUrls    <- newExternalRef $ S.fromList $ settingsDeactivSockAddrs settings
+        activeUrlsRef   <- newExternalRef $ M.empty
         reqUrlNumRef    <- newExternalRef $ settingsReqUrlNum settings
         actUrlNumRef    <- newExternalRef $ settingsActUrlNum settings
         timeoutRef      <- newExternalRef $ settingsReqTimeout settings
         (indexersE, indexersF) <- newTriggerEvent
 
         -- Create data for Auth context
-        (reqE, reqFire) <- newTriggerEvent
-        let sel = fanMap reqE -- Node request selector :: NodeReqSelector t
+        (nReqE, nReqFire) <- newTriggerEvent
+        let nodeSel = fanMap nReqE -- Node request selector :: NodeReqSelector t
+
+        (iReqE, iReqFire) <- newTriggerEvent
+        let indexSel = fanMap iReqE -- Node request selector :: NodeReqSelector t
+        indexEF <- newTriggerEvent
+
         let ps = auth ^. authInfo'storage . storage'pubStorage
 
         managerRef      <- liftIO newEmptyMVar
@@ -326,29 +339,33 @@ liftAuth ma0 ma = mdo
               , env'syncProgress = syncRef
               , env'heightRef = heightRef
               , env'filtersSyncRef = fsyncRef
+              , env'nodeConsRef = consRef
+              , env'nodeReqSelector = nodeSel
+              , env'nodeReqFire = nReqFire
+              , env'feesStore = feesRef
+              , env'storeMutex = storeMvar
+
               , env'urlsArchive = urlsArchive
               , env'inactiveUrls = inactiveUrls
               , env'activeUrls = activeUrlsRef
               , env'reqUrlNum = reqUrlNumRef
               , env'actUrlNum = actUrlNumRef
               , env'timeout = timeoutRef
-              , env'indexersEF = (indexersE, indexersF ())
-              , env'nodeConsRef = consRef
-              , env'nodeReqSelector = sel
-              , env'nodeReqFire = reqFire
-              , env'feesStore = feesRef
-              , env'storeMutex = storeMvar
+              , env'indexReqSel = indexSel
+              , env'indexReqFire = iReqFire
+              , env'activateIndexEF = indexEF
               }
         runOnUiThreadM $ runReaderT setupTlsManager env
 
         flip runReaderT env $ do -- Workers and other routines go here
           initFiltersHeights filtersHeights
           scanner
-          bctNodeController
-          filtersLoader
-          heightAsking
-          indexersNetworkActualizationWorker
-          feesWorker
+          -- bctNodeController
+          indexerNodeController $ settingsActiveSockAddrs settings
+          -- filtersLoader
+          -- heightAsking
+          -- indexersNetworkActualizationWorker
+          -- feesWorker
           pure ()
         runReaderT (wrapped "liftAuth" ma) env
   let

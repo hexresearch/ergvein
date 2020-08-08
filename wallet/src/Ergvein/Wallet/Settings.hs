@@ -108,14 +108,14 @@ instance FromJSON Settings where
     settingsActUrlNum         <- o .:? "actUrlNum"  .!= 10
     let (settingsActiveUrls, settingsDeactivatedUrls, settingsPassiveUrls) =
           case (mActiveUrls, mDeactivatedUrls, mPassiveUrls) of
-            (Nothing, Nothing, Nothing) -> (defaultIndexers, [], [])
-            (Just [], Just [], Just []) -> (defaultIndexers, [], [])
+            (Nothing, Nothing, Nothing) -> (defaultIndexers', [], [])
+            (Just [], Just [], Just []) -> (defaultIndexers', [], [])
             _ -> (fromMaybe [] mActiveUrls, fromMaybe [] mDeactivatedUrls, fromMaybe [] mPassiveUrls)
     settingsNodes             <- o .:? "nodes" .!= M.empty
     settingsExplorerUrl       <- o .:? "explorerUrl" .!= defaultExplorerUrl
     settingsPortfolio         <- o .:? "portfolio" .!= False
     settingsFiatCurr          <- o .:? "fiatCurr"  .!= USD
-    settingsActiveSockAddrs   <- o .:? "activeSockAddrs" .!= []
+    settingsActiveSockAddrs   <- o .:? "activeSockAddrs" .!= defaultIndexers
     settingsDeactivSockAddrs  <- o .:? "deactivSockAddrs" .!= []
     settingsPassiveSockAddrs  <- o .:? "passiveSockAddrs" .!= []
     pure Settings{..}
@@ -141,14 +141,17 @@ instance ToJSON Settings where
     , "passiveSockAddrs"  .= toJSON settingsPassiveSockAddrs
    ]
 
-defaultIndexers :: [BaseUrl]
-defaultIndexers = [
+defaultIndexers' :: [BaseUrl]
+defaultIndexers' = [
     parse "https://ergvein-indexer1.hxr.team"
   , parse "https://ergvein-indexer2.hxr.team"
   , parse "https://ergvein-indexer3.hxr.team"
   ]
   where
     parse = either (error . ("Failed to parse default indexer: " ++) . show) id . parseBaseUrl
+
+defaultIndexers :: [SockAddr]
+defaultIndexers = [SockAddrInet 8667 (tupleToHostAddress (127,0,0,1))]
 
 defaultIndexersNum :: (Int, Int)
 defaultIndexersNum = (2, 4)
@@ -169,7 +172,7 @@ defaultSettings home =
       , settingsConfigPath        = pack configPath
       , settingsUnits             = Just defUnits
       , settingsReqTimeout        = defaultIndexerTimeout
-      , settingsActiveUrls        = defaultIndexers
+      , settingsActiveUrls        = defaultIndexers'
       , settingsDeactivatedUrls   = []
       , settingsPassiveUrls       = []
       , settingsReqUrlNum         = defaultIndexersNum

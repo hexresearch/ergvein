@@ -25,7 +25,7 @@ import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Protocol.Deserialization
 import Ergvein.Index.Protocol.Serialization
 import Ergvein.Text
-import Ergvein.Wallet.Indexer.Monad
+import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Native
@@ -53,7 +53,7 @@ initIndexerConnection sa msgE = do
   rec
     s <- socket SocketConf {
         _socketConfPeer   = peer
-      , _socketConfSend   = fmap serializeMessage $ leftmost [reqE, handshakeE, hsRespE]
+      , _socketConfSend   = fmap serializeMessage sendE
       , _socketConfPeeker = peekMessage sa
       , _socketConfClose  = closeE
       , _socketConfReopen = Just 10
@@ -66,6 +66,8 @@ initIndexerConnection sa msgE = do
         pure $ VersionACKMsg VersionACKMessage
       PingMsg nonce -> Just $ pure $ PongMsg nonce
       _ -> Nothing
+    let sendE = leftmost [reqE, handshakeE, hsRespE]
+
   performEvent_ $ ffor (_socketRecvEr s) $ nodeLog sa . showt
 
   -- Track handshake status
@@ -75,6 +77,9 @@ initIndexerConnection sa msgE = do
   shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
   let openE = fmapMaybe (\b -> if b then Just () else Nothing) $ updated shakeD
       closedE = () <$ _socketClosed s
+  performEvent_ $ (\v -> nodeLog sa $ "reqE: " <> showt v) <$> reqE
+  performEvent_ $ (\v -> nodeLog sa $ "respE: " <> showt v) <$> respE
+  performEvent_ $ (\v -> nodeLog sa $ "sendE: " <> showt v) <$> sendE
   pure $ IndexerConnection {
       indexConAddr = sa
     , indexConClosedE = () <$ _socketClosed s

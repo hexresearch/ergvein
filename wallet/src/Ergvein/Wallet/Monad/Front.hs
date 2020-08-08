@@ -79,7 +79,7 @@ extractReq sel c u = select (fanMap (select sel $ Const2 c)) $ Const2 u
 type MonadFront t m = (
     MonadFrontAuth t m
   , MonadStorage t m
-  , MonadClient t m
+  , MonadIndexClient t m
   , HasFiltersStorage t m
   , HasFiltersStorage t (Performable m)
   )

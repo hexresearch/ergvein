@@ -26,6 +26,10 @@ heightAsking :: (MonadFront t m) => m ()
 heightAsking = void . widgetHoldDyn . fmap (traverse_ heightAsker) =<< getActiveCursD
 
 heightAsker :: (MonadFront t m) => Currency -> m ()
+heightAsker cur = pure ()
+
+{-
+heightAsker :: (MonadFront t m) => Currency -> m ()
 heightAsker cur = mdo
   let logPref = "[heightAsking][" <> showt cur <> "]:"
   logWrite $ logPref <> "Start worker"
@@ -41,3 +45,4 @@ heightAsker cur = mdo
       pure Nothing
     Right v -> pure $ Just $ fromIntegral $ heightRespHeight v
     )
+-}

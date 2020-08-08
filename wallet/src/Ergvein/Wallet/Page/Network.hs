@@ -41,6 +41,9 @@ networkPage curMb = do
 
 
 networkPageWidget :: MonadFront t m => Currency -> m ()
+networkPageWidget cur = pure ()
+{-
+networkPageWidget :: MonadFront t m => Currency -> m ()
 networkPageWidget cur = do
   allIndsD <- getIndexerInfoD
   conmapD <- getNodeConnectionsD
@@ -77,6 +80,7 @@ networkPageWidget cur = do
       retractableNext = serversInfoPage cur
     , retractablePrev = Just (pure $ networkPage (Just cur))
     }
+-}
 
 btcNetworkWidget :: MonadFront t m => [NodeBTC t] -> m ()
 btcNetworkWidget nodes = do
@@ -110,12 +114,12 @@ networkPageHeader minitCur = do
       pure $ pure Nothing
     cur:[] -> do
       divClass "network-title-name" $ h3 $ localizedText $ NPSTitleCur cur
-      divClass "network-title-cur" $ refreshIndexerInfo =<< buttonClass "button button-outline net-refresh-btn" NPSRefresh
+      -- divClass "network-title-cur" $ refreshIndexerInfo =<< buttonClass "button button-outline net-refresh-btn" NPSRefresh
       pure $ pure (Just cur)
     curs -> do
       divClass "network-title-name" $ h3 $ localizedText $ NPSTitle
       curD <- divClass "network-title-cur" $ currenciesDropdown minitCur curs
-      divClass "network-title-cur" $ refreshIndexerInfo =<< buttonClass "button button-outline net-refresh-btn" NPSRefresh
+      -- divClass "network-title-cur" $ refreshIndexerInfo =<< buttonClass "button button-outline net-refresh-btn" NPSRefresh
       pure curD
   baseHorSep
   pure curD
@@ -135,6 +139,7 @@ networkPageHeader minitCur = do
         dropdownConfig_attributes .~ constDyn ("class" =: "select-lang")
       (fmap . fmap) Just $ holdUniqDyn $ _dropdown_value dp
 
+{-
 serversInfoPage :: MonadFront t m => Currency -> m ()
 serversInfoPage initCur = do
   title <- localized NPSTitle
@@ -160,6 +165,7 @@ serversInfoPage initCur = do
                 descrOptionNoBR $ NPSHeightInfo2 ah
           -- descrOptionNoBR $ maybe NPSOffline (maybe (NPSNoIndex cur) NPSHeightInfo . M.lookup cur . indInfoHeights) minfo
           labelHorSep
+-}
 
 lineOptionNoEdit :: MonadFront t m
                  => NetworkPageStrings

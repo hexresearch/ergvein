@@ -33,6 +33,8 @@ import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
+import Ergvein.Wallet.Debug
+
 #ifdef ANDROID
 import Control.Monad.IO.Class
 #endif
@@ -72,7 +74,8 @@ currenciesList name = divClass "currency-content" $ do
   pubSD <- getPubStorageD
   let currencies = _pubStorage'activeCurrencies ps
       thisWidget = Just $ pure balancesPage
-  if L.length currencies == 1
+  debugWidget
+  if L.length currencies == 10
     then do
       buildE <- getPostBuild
       void $ nextWidget $ ffor buildE $ \_ -> Retractable {

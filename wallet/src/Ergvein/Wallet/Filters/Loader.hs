@@ -84,9 +84,11 @@ postSync cur ch fh = do
     setSyncProgress $ val <$ buildE
 
 getFilters :: MonadFront t m => Event t (Currency, BlockHeight, Int) -> m (Event t [(BlockHash, AddressFilterHexView)])
-getFilters e = do
-  resE <- getBlockFiltersRandom $ ffor e $ \(cur, h, n) ->
-    BlockFiltersRequest cur (fromIntegral h) (fromIntegral n)
-  hexE <- handleDangerMsg resE
-  let mkPair (a, b) = (, b) <$> hexToBlockHash a
-  pure $ fmap (catMaybes .  fmap mkPair) hexE
+getFilters e = pure never
+
+-- do
+--   resE <- getBlockFiltersRandom $ ffor e $ \(cur, h, n) ->
+--     BlockFiltersRequest cur (fromIntegral h) (fromIntegral n)
+--   hexE <- handleDangerMsg resE
+--   let mkPair (a, b) = (, b) <$> hexToBlockHash a
+--   pure $ fmap (catMaybes .  fmap mkPair) hexE
