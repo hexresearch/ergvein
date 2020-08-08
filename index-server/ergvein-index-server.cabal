@@ -74,6 +74,7 @@ library
       , monad-extras             >= 0.6     &&  < 0.7
       , monad-logger             >= 0.3     &&  < 0.4
       , mtl                      >= 2.2     &&  < 2.3
+      , network                  >= 2.8     &&  < 2.9
       , resource-pool            >= 0.2     &&  < 0.3
       , resourcet                >= 1.2     &&  < 1.3
       , safe                     >= 0.3     &&  < 0.4
@@ -98,7 +99,6 @@ library
       , warp                     >= 3.2     &&  < 3.3
       , yaml                     >= 0.11    &&  < 0.12
       , safe-exceptions
-      , network
       , attoparsec
       , attoparsec-binary
       , binary
