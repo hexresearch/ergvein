@@ -15,8 +15,11 @@ import Data.Word
 import Network.Socket
 import Network.Socket.ByteString.Lazy
 import System.IO
+import Data.Either.Combinators
+import Control.Monad.Trans.Except
+import Ergvein.Index.Server.Monad
+import Control.Monad.Trans.Class
 
-import Ergvein.Text
 import Ergvein.Index.Protocol.Deserialization
 import Ergvein.Index.Protocol.Serialization
 import Ergvein.Index.Protocol.Types
@@ -26,9 +29,10 @@ import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.TCPService.MessageHandler
 import Ergvein.Index.Server.TCPService.Socket
+import Ergvein.Text
 
-import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as LBS
 import qualified Network.Socket.ByteString as NS
 
 runTcpSrv :: ServerM Thread
@@ -83,32 +87,31 @@ runConn (sock, addr) = do
     listenLoop destinationChan = do
       let writeMsg = liftIO . atomically . writeTChan destinationChan . toLazyByteString . messageBuilder
       -- Try to get the header. Empty string means that the client closed the connection
-      messageHeaderBytes <- liftIO $ NS.recv sock 8
+      messageHeaderBytes <-  liftIO $ NS.recv sock 8
       if BS.null messageHeaderBytes
         then do
           logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
           liftIO $ close sock
         else do
-          evalResult <- evalMsg sock messageHeaderBytes
+          evalResult <- runExceptT $ evalMsg sock messageHeaderBytes
           case evalResult of
-            Right msg -> writeMsg msg
-            Left err -> do
+            Right Nothing    -> pure ()
+            Right (Just msg) -> writeMsg msg
+            Left err         -> do
               logInfoN $ "failed to handle msg: " <> showt err
               writeMsg $ RejectMsg err
           listenLoop destinationChan
 
-evalMsg :: Socket -> BS.ByteString -> ServerM (Either RejectMessage Message)
-evalMsg sock messageHeaderBytes = do
-  let messageHeaderParsingResult = parse messageHeaderParser messageHeaderBytes
-  case messageHeaderParsingResult of
-    Done _ MessageHeader {..} -> do
+evalMsg :: Socket -> BS.ByteString -> ExceptT RejectMessage ServerM (Maybe Message)
+evalMsg sock messageHeaderBytes = response =<< request =<< messageHeader 
+  where
+    messageHeader :: ExceptT RejectMessage ServerM MessageHeader
+    messageHeader = ExceptT . pure . mapLeft (\_-> RejectMessage MessageHeaderParsing) . eitherResult $ parse messageHeaderParser messageHeaderBytes
+
+    request :: MessageHeader -> ExceptT RejectMessage ServerM Message
+    request MessageHeader {..} = do
       messageBytes <- liftIO $ NS.recv sock $ fromIntegral msgSize
-      let messageParsingResult = (parse $ messageParser msgType) messageBytes
-      case messageParsingResult of
-        Done _ msg -> do
-          resp <- handleMsg msg `catch` (\(SomeException ex) -> pure $ Nothing)
-          case resp of
-            Just msg -> pure $ Right msg
-            _ -> pure $ Left $ RejectMessage $ InternalServerError
-        _ -> pure $ Left $ RejectMessage MessageParsing
-    _ -> pure $ Left $ RejectMessage MessageHeaderParsing
+      ExceptT $ pure $ mapLeft (\_-> RejectMessage MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
+
+    response :: Message -> ExceptT RejectMessage ServerM (Maybe Message)
+    response msg = ExceptT $ (Right <$> handleMsg msg) `catch` (\(SomeException ex) -> pure $ Left $ RejectMessage $ InternalServerError)

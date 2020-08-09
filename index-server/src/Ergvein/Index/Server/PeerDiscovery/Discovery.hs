@@ -14,7 +14,6 @@ import Data.Maybe
 import Data.Set (Set)
 import Data.Time.Clock
 import Servant.Client.Core
-import Control.Applicative
 
 import Ergvein.Index.API.Types
 import Ergvein.Index.Client.V1
