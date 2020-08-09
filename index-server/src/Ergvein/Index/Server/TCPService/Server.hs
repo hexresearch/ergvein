@@ -8,14 +8,11 @@ import Control.Monad
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
+import Control.Monad.Reader
 import Control.Monad.Trans.Except
 import Data.Attoparsec.ByteString
 import Data.ByteString.Builder
 import Data.Either.Combinators
-import Network.Socket
-import Control.Monad.Reader
-import Data.Attoparsec.ByteString
-import Data.ByteString.Builder
 import Data.Foldable (traverse_)
 import Data.Maybe
 import Data.Word
@@ -50,10 +47,10 @@ tcpSrv thread = do
     addr <- resolve port
     sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
     bind sock (addrAddress addr)
-    listen sock 4
+    listen sock 5
     unliftIO unlift $ mainLoop thread sock
   where
-    numberOfQueuedConnections = 4
+    numberOfQueuedConnections = 5
     resolve port = do
       let hints = defaultHints {
               addrFlags = [AI_PASSIVE]
@@ -66,25 +63,27 @@ tcpSrv thread = do
 
 mainLoop :: Thread -> Socket -> ServerM ()
 mainLoop thread sock = do
-  flagVar <- getShutdownFlag
-  connRef <- asks envOpenConnections
-  connTid <- fork $ forever $ do
-    conn <- liftIO $ accept sock
-    tid <- fork $ runConn conn
-    liftIO $ atomically $ modifyTVar connRef (M.insert tid (fst conn))
+  openedConnectionsRef <- asks envOpenConnections
+  mainLoopId <- fork $ forever $ do
+    connection <- liftIO $ accept sock
+    connectionThreadId <- fork $ runConnection connection
+    liftIO $ atomically $ modifyTVar openedConnectionsRef (M.insert connectionThreadId $ fst connection)
+  shutdownFlagRef <- getShutdownFlag
   forever $ liftIO $ do
-    shutdownFlag <- readTVarIO flagVar
-    when shutdownFlag $ do
-      (tids, conns) <- fmap (unzip . M.toList) $ liftIO $ readTVarIO connRef
-      traverse_ close conns
-      traverse_ killThread tids
-      killThread connTid
-      atomically $ writeTVar connRef M.empty
-      stop thread
+    shutdownFlag <- readTVarIO shutdownFlagRef
+    when shutdownFlag $ performShutdown openedConnectionsRef mainLoopId
     threadDelay 1000000
+  where
+   performShutdown openedConnectionsRef mainLoopId = do
+    (connectionThreadIds, connections) <- unzip . M.toList <$> (liftIO $ readTVarIO openedConnectionsRef)
+    traverse_ close connections
+    traverse_ killThread connectionThreadIds
+    killThread mainLoopId
+    atomically $ writeTVar openedConnectionsRef M.empty
+    stop thread
 
-runConn :: (Socket, SockAddr) -> ServerM ()
-runConn (sock, addr) = do
+runConnection :: (Socket, SockAddr) -> ServerM ()
+runConnection (sock, addr) = do
   sendChan <- liftIO newTChanIO
   -- Spawn message sender thread
   fork $ sendLoop sendChan
@@ -101,31 +100,29 @@ runConn (sock, addr) = do
       let writeMsg = liftIO . atomically . writeTChan destinationChan . toLazyByteString . messageBuilder
       -- Try to get the header. Empty string means that the client closed the connection
       messageHeaderBytes <- liftIO $ NS.recv sock 8
-      if BS.null messageHeaderBytes
-        then do
+      if BS.null messageHeaderBytes then do
           logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
           liftIO $ close sock
-        else do
-          evalResult <- evalMsg sock messageHeaderBytes
-          case evalResult of
-            Right msg -> writeMsg msg
-            Left err -> do
-              logInfoN $ "failed to handle msg: " <> showt err
-              writeMsg $ RejectMsg err
-          listenLoop destinationChan
+      else do
+        evalResult <- runExceptT $ evalMsg sock messageHeaderBytes
+        case evalResult of
+          Right Nothing    -> pure ()
+          Right (Just msg) -> writeMsg msg
+          Left err         -> do
+            logInfoN $ "failed to handle msg: " <> showt err
+            writeMsg $ RejectMsg err
+        listenLoop destinationChan
 
-evalMsg :: Socket -> BS.ByteString -> ServerM (Either RejectMessage Message)
-evalMsg sock messageHeaderBytes = do
-  let messageHeaderParsingResult = parse messageHeaderParser messageHeaderBytes
-  case messageHeaderParsingResult of
-    Done _ MessageHeader {..} -> do
+evalMsg :: Socket -> BS.ByteString -> ExceptT RejectMessage ServerM (Maybe Message)
+evalMsg sock messageHeaderBytes = response =<< request =<< messageHeader 
+  where
+    messageHeader :: ExceptT RejectMessage ServerM MessageHeader
+    messageHeader = ExceptT . pure . mapLeft (\_-> RejectMessage MessageHeaderParsing) . eitherResult $ parse messageHeaderParser messageHeaderBytes
+
+    request :: MessageHeader -> ExceptT RejectMessage ServerM Message
+    request MessageHeader {..} = do
       messageBytes <- liftIO $ NS.recv sock $ fromIntegral msgSize
-      let messageParsingResult = (parse $ messageParser msgType) messageBytes
-      case messageParsingResult of
-        Done _ msg -> do
-          resp <- handleMsg msg `catch` (\(SomeException ex) -> pure $ Nothing)
-          case resp of
-            Just msg -> pure $ Right msg
-            _ -> pure $ Left $ RejectMessage $ InternalServerError
-        _ -> pure $ Left $ RejectMessage MessageParsing
-    _ -> pure $ Left $ RejectMessage MessageHeaderParsing
+      ExceptT $ pure $ mapLeft (\_-> RejectMessage MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
+
+    response :: Message -> ExceptT RejectMessage ServerM (Maybe Message)
+    response msg = ExceptT $ (Right <$> handleMsg msg) `catch` (\(SomeException ex) -> pure $ Left $ RejectMessage $ InternalServerError)
