@@ -27,6 +27,10 @@ import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
 
+import Ergvein.Wallet.Page.Canvas
+
+import qualified Data.ByteString.Lazy as BS
+
 receivePage :: MonadFront t m => Currency -> m ()
 receivePage cur = do
   pubStoreD <- getPubStorageD
@@ -55,11 +59,13 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
   let thisWidget = Just $ pure $ receivePage cur
       navbar = blank
   wrapperNavbar False title thisWidget navbar $ void $ divClass "receive-page" $ do
-    divClass "receive-qr-andr" $ qrCodeWidget keyTxt cur
+    base64D <- divClass "receive-qr" $ qrCodeWidgetWithData keyTxt cur
     (newE, copyE, shareE) <- divClass "receive-buttons-wrapper" $ do
       nE  <- newAddrBtn
       cE <- copyAddrBtn
       sE <- fmap (shareUrl <$) shareAddrBtn
+      shareQRE <- shareQRBtn
+      shareShareQR $ attachWithMaybe (\m _ -> (, keyTxt) <$> m) (current base64D) shareQRE
       pure (nE, cE, sE)
     _ <- shareShareUrl shareE
     setFlagToExtPubKey "receivePageWidget:1" $ (cur, i) <$ newE
@@ -84,7 +90,7 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
   let thisWidget = Just $ pure $ receivePage cur
       navbar = navbarWidget cur thisWidget NavbarReceive
   wrapperNavbar False title thisWidget navbar $ void $ divClass "receive-page" $ do
-    divClass "receive-qr" $ qrCodeWidget keyTxt cur
+    void $ divClass "receive-qr" $ qrCodeWidget keyTxt cur
     divClass "receive-buttons-wrapper" $ do
       newE  <- newAddrBtn
       copyE <- copyAddrBtn
@@ -108,6 +114,9 @@ copyAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton RPSCopy "fa
 
 shareAddrBtn :: MonadFront t m => m (Event t ())
 shareAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton RPSShare "fas fa-share-alt fa-lg"
+
+shareQRBtn :: MonadFront t m => m (Event t ())
+shareQRBtn = divClass "receive-btn-wrapper" $ outlineTextIconButtonTypeButton RPSShareQR "fas fa-qrcode fa-lg"
 
 labelAddrBtn :: MonadFront t m => m (Event t ())
 labelAddrBtn = outlineTextIconButton RPSAddLabel "fas fa-tag fa-lg"
