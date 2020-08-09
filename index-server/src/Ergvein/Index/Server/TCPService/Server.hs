@@ -8,17 +8,11 @@ import Control.Monad
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
+import Control.Monad.Trans.Except
 import Data.Attoparsec.ByteString
 import Data.ByteString.Builder
-import Data.Maybe
-import Data.Word
-import Network.Socket
-import Network.Socket.ByteString.Lazy
-import System.IO
 import Data.Either.Combinators
-import Control.Monad.Trans.Except
-import Ergvein.Index.Server.Monad
-import Control.Monad.Trans.Class
+import Network.Socket
 
 import Ergvein.Index.Protocol.Deserialization
 import Ergvein.Index.Protocol.Serialization
@@ -46,9 +40,10 @@ tcpSrv thread = do
     addr <- resolve port
     sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
     bind sock (addrAddress addr)
-    listen sock 5
+    listen sock 4
     unliftIO unlift $ mainLoop thread sock
   where
+    numberOfQueuedConnections = 4
     resolve port = do
       let hints = defaultHints {
               addrFlags = [AI_PASSIVE]
@@ -61,10 +56,10 @@ tcpSrv thread = do
 
 mainLoop :: Thread -> Socket -> ServerM ()
 mainLoop thread sock = do
-  flagVar <- getShutdownFlag
   fork $ forever $ do
     conn <- liftIO $ accept sock
     fork $ runConn conn
+  flagVar <- getShutdownFlag
   forever $ liftIO $ do
     shutdownFlag <- readTVarIO flagVar
     when shutdownFlag $ stop thread
@@ -87,7 +82,7 @@ runConn (sock, addr) = do
     listenLoop destinationChan = do
       let writeMsg = liftIO . atomically . writeTChan destinationChan . toLazyByteString . messageBuilder
       -- Try to get the header. Empty string means that the client closed the connection
-      messageHeaderBytes <-  liftIO $ NS.recv sock 8
+      messageHeaderBytes <- liftIO $ NS.recv sock 8
       if BS.null messageHeaderBytes
         then do
           logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
