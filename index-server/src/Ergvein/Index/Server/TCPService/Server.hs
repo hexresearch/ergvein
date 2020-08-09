@@ -13,7 +13,17 @@ import Data.Attoparsec.ByteString
 import Data.ByteString.Builder
 import Data.Either.Combinators
 import Network.Socket
+import Control.Monad.Reader
+import Data.Attoparsec.ByteString
+import Data.ByteString.Builder
+import Data.Foldable (traverse_)
+import Data.Maybe
+import Data.Word
+import Network.Socket
+import Network.Socket.ByteString.Lazy
+import System.IO
 
+import Ergvein.Text
 import Ergvein.Index.Protocol.Deserialization
 import Ergvein.Index.Protocol.Serialization
 import Ergvein.Index.Protocol.Types
@@ -23,10 +33,10 @@ import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.TCPService.MessageHandler
 import Ergvein.Index.Server.TCPService.Socket
-import Ergvein.Text
 
-import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString as BS
+import qualified Data.Map.Strict as M
 import qualified Network.Socket.ByteString as NS
 
 runTcpSrv :: ServerM Thread
@@ -56,13 +66,21 @@ tcpSrv thread = do
 
 mainLoop :: Thread -> Socket -> ServerM ()
 mainLoop thread sock = do
-  fork $ forever $ do
-    conn <- liftIO $ accept sock
-    fork $ runConn conn
   flagVar <- getShutdownFlag
+  connRef <- asks envOpenConnections
+  connTid <- fork $ forever $ do
+    conn <- liftIO $ accept sock
+    tid <- fork $ runConn conn
+    liftIO $ atomically $ modifyTVar connRef (M.insert tid (fst conn))
   forever $ liftIO $ do
     shutdownFlag <- readTVarIO flagVar
-    when shutdownFlag $ stop thread
+    when shutdownFlag $ do
+      (tids, conns) <- fmap (unzip . M.toList) $ liftIO $ readTVarIO connRef
+      traverse_ close conns
+      traverse_ killThread tids
+      killThread connTid
+      atomically $ writeTVar connRef M.empty
+      stop thread
     threadDelay 1000000
 
 runConn :: (Socket, SockAddr) -> ServerM ()
@@ -88,25 +106,26 @@ runConn (sock, addr) = do
           logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
           liftIO $ close sock
         else do
-          evalResult <- runExceptT $ evalMsg sock messageHeaderBytes
+          evalResult <- evalMsg sock messageHeaderBytes
           case evalResult of
-            Right Nothing    -> pure ()
-            Right (Just msg) -> writeMsg msg
-            Left err         -> do
+            Right msg -> writeMsg msg
+            Left err -> do
               logInfoN $ "failed to handle msg: " <> showt err
               writeMsg $ RejectMsg err
           listenLoop destinationChan
 
-evalMsg :: Socket -> BS.ByteString -> ExceptT RejectMessage ServerM (Maybe Message)
-evalMsg sock messageHeaderBytes = response =<< request =<< messageHeader 
-  where
-    messageHeader :: ExceptT RejectMessage ServerM MessageHeader
-    messageHeader = ExceptT . pure . mapLeft (\_-> RejectMessage MessageHeaderParsing) . eitherResult $ parse messageHeaderParser messageHeaderBytes
-
-    request :: MessageHeader -> ExceptT RejectMessage ServerM Message
-    request MessageHeader {..} = do
+evalMsg :: Socket -> BS.ByteString -> ServerM (Either RejectMessage Message)
+evalMsg sock messageHeaderBytes = do
+  let messageHeaderParsingResult = parse messageHeaderParser messageHeaderBytes
+  case messageHeaderParsingResult of
+    Done _ MessageHeader {..} -> do
       messageBytes <- liftIO $ NS.recv sock $ fromIntegral msgSize
-      ExceptT $ pure $ mapLeft (\_-> RejectMessage MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
-
-    response :: Message -> ExceptT RejectMessage ServerM (Maybe Message)
-    response msg = ExceptT $ (Right <$> handleMsg msg) `catch` (\(SomeException ex) -> pure $ Left $ RejectMessage $ InternalServerError)
+      let messageParsingResult = (parse $ messageParser msgType) messageBytes
+      case messageParsingResult of
+        Done _ msg -> do
+          resp <- handleMsg msg `catch` (\(SomeException ex) -> pure $ Nothing)
+          case resp of
+            Just msg -> pure $ Right msg
+            _ -> pure $ Left $ RejectMessage $ InternalServerError
+        _ -> pure $ Left $ RejectMessage MessageParsing
+    _ -> pure $ Left $ RejectMessage MessageHeaderParsing
