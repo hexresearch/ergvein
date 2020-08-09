@@ -8,8 +8,10 @@ import Control.Monad
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
+import Control.Monad.Reader
 import Data.Attoparsec.ByteString
 import Data.ByteString.Builder
+import Data.Foldable (traverse_)
 import Data.Maybe
 import Data.Word
 import Network.Socket
@@ -29,6 +31,7 @@ import Ergvein.Index.Server.TCPService.Socket
 
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString as BS
+import qualified Data.Map.Strict as M
 import qualified Network.Socket.ByteString as NS
 
 runTcpSrv :: ServerM Thread
@@ -58,12 +61,20 @@ tcpSrv thread = do
 mainLoop :: Thread -> Socket -> ServerM ()
 mainLoop thread sock = do
   flagVar <- getShutdownFlag
-  fork $ forever $ do
+  connRef <- asks envOpenConnections
+  connTid <- fork $ forever $ do
     conn <- liftIO $ accept sock
-    fork $ runConn conn
+    tid <- fork $ runConn conn
+    liftIO $ atomically $ modifyTVar connRef (M.insert tid (fst conn))
   forever $ liftIO $ do
     shutdownFlag <- readTVarIO flagVar
-    when shutdownFlag $ stop thread
+    when shutdownFlag $ do
+      (tids, conns) <- fmap (unzip . M.toList) $ liftIO $ readTVarIO connRef
+      traverse_ close conns
+      traverse_ killThread tids
+      killThread connTid
+      atomically $ writeTVar connRef M.empty
+      stop thread
     threadDelay 1000000
 
 runConn :: (Socket, SockAddr) -> ServerM ()
