@@ -1,6 +1,6 @@
 module Ergvein.Wallet.Page.QRCode(
     qrCodeWidget
-  , genQrCodeBase64Image
+  , qrCodeWidgetWithData
   ) where
 
 import Ergvein.Text
@@ -20,23 +20,23 @@ import           Control.Lens                     (to, (^.))
 import           Control.Monad.IO.Class           (liftIO)
 import           Data.Maybe (fromMaybe)
 
-qrCodeWidget :: MonadFrontBase t m => Text -> Currency -> m ()
+qrCodeWidget :: MonadFrontBase t m => Text -> Currency -> m (Element EventResult GhcjsDomSpace t, CanvasOptions)
 qrCodeWidget addr cur = divClass "qrcode-container" $ mdo
     canvasEl <- createCanvas cOpts
     rawJSCall (_element_raw canvasEl) $ drawGridT canvasW canvasH (qrcPerCanvas qrData canvasW)
+    pure (canvasEl, cOpts)
     where
       canvasH = 232
       canvasW = 232
       cOpts = CanvasOptions canvasW canvasH "qrcode" "qrcode"
       qrData = qrcGen addr cur
 
-genQrCodeBase64Image :: MonadFrontBase t m => m Text
-genQrCodeBase64Image = do
-  textRes <- liftJSM $ valToText $ eval $ canvasToBase64Image
-  pure textRes
-  where
-    canvasToBase64Image :: Text
-    canvasToBase64Image = "(function(){var cnvs = document.getElementById('qrcode'); var textBase64 = cnvs.toDataURL('image/png'); return textBase64;})();"
+qrCodeWidgetWithData :: MonadFrontBase t m => Text -> Currency -> m (Dynamic t (Maybe Text))
+qrCodeWidgetWithData addr cur = do
+  buildE <- getPostBuild
+  (canvasEl, cOpts) <- qrCodeWidget addr cur
+  dataE <- performEvent $ ffor buildE $ const $ rawGetCanvasJpeg (_element_raw canvasEl) cOpts
+  holdDyn Nothing dataE
 
 qrcGen :: Text -> Currency -> Maybe QRImage
 qrcGen t cur = encodeText (defaultQRCodeOptions L) Utf8WithoutECI $ curprefix <> t
