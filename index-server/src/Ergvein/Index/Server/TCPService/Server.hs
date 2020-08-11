@@ -67,7 +67,7 @@ mainLoop thread sock = do
   mainLoopId <- fork $ forever $ do
     connection <- liftIO $ accept sock
     connectionThreadId <- fork $ runConnection connection
-    liftIO $ atomically $ modifyTVar openedConnectionsRef (M.insert connectionThreadId $ fst connection)
+    liftIO $ atomically $ modifyTVar openedConnectionsRef $ M.insert (snd connection) (connectionThreadId , fst connection)
   shutdownFlagRef <- getShutdownFlag
   forever $ liftIO $ do
     shutdownFlag <- readTVarIO shutdownFlagRef
@@ -75,12 +75,13 @@ mainLoop thread sock = do
     threadDelay 1000000
   where
    performShutdown openedConnectionsRef mainLoopId = do
-    (connectionThreadIds, connections) <- unzip . M.toList <$> (liftIO $ readTVarIO openedConnectionsRef)
-    traverse_ close connections
-    traverse_ killThread connectionThreadIds
+    traverse closeConnection =<< M.elems <$> readTVarIO openedConnectionsRef
     killThread mainLoopId
     atomically $ writeTVar openedConnectionsRef M.empty
     stop thread
+
+closeConnection :: (ThreadId, Socket) -> IO ()
+closeConnection (connectionThreadId, connectionSocket) = close connectionSocket >> killThread connectionThreadId
 
 runConnection :: (Socket, SockAddr) -> ServerM ()
 runConnection (sock, addr) = do
@@ -110,7 +111,8 @@ runConnection (sock, addr) = do
       headerBytes <- liftIO $ messageHeaderBytes
       if BS.null headerBytes then do
           logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
-          liftIO $ close sock
+          openedConnectionsRef <- asks envOpenConnections
+          liftIO $ closeConnection =<< (M.! addr) <$> readTVarIO openedConnectionsRef
       else do
         evalResult <- runExceptT $ evalMsg sock headerBytes
         case evalResult of
@@ -120,7 +122,6 @@ runConnection (sock, addr) = do
             logInfoN $ "failed to handle msg: " <> showt err
             writeMsg $ RejectMsg err
         listenLoop destinationChan
-
 
 fetchMessage :: Socket -> BS.ByteString -> ExceptT RejectMessage ServerM Message
 fetchMessage sock messageHeaderBytes = request =<< messageHeader 

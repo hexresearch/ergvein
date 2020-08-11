@@ -43,7 +43,7 @@ data ServerEnv = ServerEnv
     , envPeerDiscoveryRequisites  :: !PeerDiscoveryRequisites
     , envFeeEstimates             :: !(TVar (M.Map Currency FeeBundle))
     , envShutdownFlag             :: !(TVar Bool)
-    , envOpenConnections          :: !(TVar (M.Map ThreadId Socket))
+    , envOpenConnections          :: !(TVar (M.Map SockAddr (ThreadId, Socket)))
     }
 
 discoveryRequisites :: Config -> PeerDiscoveryRequisites
