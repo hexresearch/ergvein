@@ -4,6 +4,7 @@ import Control.Monad (replicateM)
 import Test.QuickCheck
 import Test.QuickCheck.Instances
 
+import Ergvein.Types.Fees
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Protocol.Serialization
 import Ergvein.Index.Protocol.Deserialization
@@ -46,6 +47,9 @@ instance Arbitrary FilterResponseIncrementalMessage where
 instance Arbitrary FilterEventMessage where
   arbitrary = sized $ \n -> FilterEventMessage <$> getRandBounded <*> arbitrary <*> arbitrary <*> arbitrary
 
+instance Arbitrary FeeRequestMessage where
+  arbitrary = FeeRequestMessage <$> getRandBounded <*> getRandBounded
+
 unimplementedMessageTypes :: [MessageType]
 unimplementedMessageTypes =
   [ FilterEvent
@@ -63,6 +67,7 @@ fullyImplementedMessageTypes =
   , Reject
   , VersionACK
   , Version
+  , FeeRequest
   ]
 
 instance Arbitrary Message where
@@ -82,7 +87,7 @@ instance Arbitrary Message where
       FilterEvent   -> error "Message type: FilterEvent is not implemented"
       PeerRequest   -> error "Message type: PeerRequest is not implemented"
       PeerResponse  -> error "Message type: PeerResponse is not implemented"
-      FeeRequest    -> error "Message type: FeeRequest is not implemented"
+      FeeRequest    -> FeeRequestMsg <$> arbitrary
       FeeResponse   -> error "Message type: FeeResponse is not implemented"
       IntroducePeer -> error "Message type: IntroducePeer is not implemented"
 

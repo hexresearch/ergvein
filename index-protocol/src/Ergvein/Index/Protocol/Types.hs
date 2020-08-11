@@ -7,6 +7,7 @@ import Foreign.C.Types
 import Foreign.Storable
 import Language.Haskell.TH
 
+import Ergvein.Types.Fees
 
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Vector as V
@@ -145,6 +146,11 @@ data FilterEventMessage = FilterEventMessage
   , filterEventBlockFilter   :: !ByteString
   } deriving (Show, Eq)
 
+data FeeRequestMessage = FeeRequestMessage {
+  feeRequestCurrency :: CurrencyCode
+, feeRequestLevel :: FeeLevel
+} deriving (Show, Eq)
+
 data Message = PingMsg                       !PingMessage
              | PongMsg                       !PongMessage
              | VersionMsg                    !VersionMessage
@@ -154,6 +160,7 @@ data Message = PingMsg                       !PingMessage
              | FiltersResponseMsg            !FilterResponseMessage
              | FiltersResponseIncrementalMsg !FilterResponseIncrementalMessage
              | FiltersEventMsg               !FilterEventMessage
+             | FeeRequestMsg                 !FeeRequestMessage
   deriving (Show, Eq)
 
 genericSizeOf :: (Storable a, Integral b) => a -> b
