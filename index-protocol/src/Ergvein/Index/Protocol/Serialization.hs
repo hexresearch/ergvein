@@ -166,3 +166,15 @@ messageBuilder (FeeRequestMsg FeeRequestMessage{..}) =
     lvl = feeLevelToWord8 feeRequestLevel
     msgSize = genericSizeOf currency
             + genericSizeOf lvl
+
+messageBuilder (FeeResponseMsg msg) = case msg of
+  FeeResponseBTC c e -> let
+    cur = currencyCodeToWord32 BTC
+    msgSize = genericSizeOf cur + genericSizeOf c + genericSizeOf e
+    in messageBase FeeResponse msgSize
+      $ word32BE cur <> word64BE c <> word64BE e
+  FeeResponseGeneric cur f -> let
+    currency = currencyCodeToWord32 cur
+    msgSize = genericSizeOf currency + genericSizeOf f
+    in messageBase FeeResponse msgSize
+      $ word32BE currency <> word64BE f

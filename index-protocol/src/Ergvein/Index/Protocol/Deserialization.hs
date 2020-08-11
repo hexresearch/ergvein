@@ -164,6 +164,12 @@ messageParser FeeRequest = fmap FeeRequestMsg $ FeeRequestMessage
   <$> currencyCodeParser
   <*> feeLevelParser
 
+messageParser FeeResponse = do
+  cur <- currencyCodeParser
+  fmap FeeResponseMsg $ case cur of
+    BTC -> FeeResponseBTC <$> anyWord64be <*> anyWord64be
+    _ -> FeeResponseGeneric cur <$> anyWord64be
+
 parseMessage :: MessageType -> BS.ByteString -> Either String (Message, BS.ByteString)
 parseMessage msgType source = 
   case parse (messageParser msgType) source of

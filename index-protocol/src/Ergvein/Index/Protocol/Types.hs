@@ -151,6 +151,13 @@ data FeeRequestMessage = FeeRequestMessage {
 , feeRequestLevel :: FeeLevel
 } deriving (Show, Eq)
 
+data FeeResponseMessage
+  = FeeResponseBTC {
+    feeBtcConservative :: Word64
+  , feeBtcEconomical :: Word64
+  } | FeeResponseGeneric CurrencyCode Word64
+  deriving (Show, Eq)
+
 data Message = PingMsg                       !PingMessage
              | PongMsg                       !PongMessage
              | VersionMsg                    !VersionMessage
@@ -161,6 +168,7 @@ data Message = PingMsg                       !PingMessage
              | FiltersResponseIncrementalMsg !FilterResponseIncrementalMessage
              | FiltersEventMsg               !FilterEventMessage
              | FeeRequestMsg                 !FeeRequestMessage
+             | FeeResponseMsg                !FeeResponseMessage
   deriving (Show, Eq)
 
 genericSizeOf :: (Storable a, Integral b) => a -> b

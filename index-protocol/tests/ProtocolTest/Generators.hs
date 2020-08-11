@@ -22,6 +22,9 @@ import qualified Data.Attoparsec.ByteString as AP
 getRandBounded :: (Enum a, Bounded a) => Gen a
 getRandBounded = oneof $ pure <$> [minBound .. maxBound]
 
+getRandBoundedExcluding :: (Eq a, Enum a, Bounded a) => [a] -> Gen a
+getRandBoundedExcluding exs = oneof $ fmap pure $ filter (\e -> not $ e `elem` exs) $ [minBound .. maxBound]
+
 instance Arbitrary MessageHeader where
   arbitrary = MessageHeader <$> getRandBounded <*> arbitrary
 
@@ -50,6 +53,12 @@ instance Arbitrary FilterEventMessage where
 instance Arbitrary FeeRequestMessage where
   arbitrary = FeeRequestMessage <$> getRandBounded <*> getRandBounded
 
+instance Arbitrary FeeResponseMessage where
+  arbitrary = let
+    gen1 = FeeResponseBTC <$> arbitrary <*> arbitrary
+    gen2 = FeeResponseGeneric <$> getRandBoundedExcluding [BTC, TBTC] <*> arbitrary
+    in oneof [gen1, gen2]
+
 unimplementedMessageTypes :: [MessageType]
 unimplementedMessageTypes =
   [ FilterEvent
@@ -68,6 +77,7 @@ fullyImplementedMessageTypes =
   , VersionACK
   , Version
   , FeeRequest
+  , FeeResponse
   ]
 
 instance Arbitrary Message where
@@ -88,7 +98,7 @@ instance Arbitrary Message where
       PeerRequest   -> error "Message type: PeerRequest is not implemented"
       PeerResponse  -> error "Message type: PeerResponse is not implemented"
       FeeRequest    -> FeeRequestMsg <$> arbitrary
-      FeeResponse   -> error "Message type: FeeResponse is not implemented"
+      FeeResponse   -> FeeResponseMsg <$> arbitrary
       IntroducePeer -> error "Message type: IntroducePeer is not implemented"
 
 --------------------------------------------------------------------------
