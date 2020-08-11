@@ -4,6 +4,7 @@ import Control.Monad (replicateM)
 import Test.QuickCheck
 import Test.QuickCheck.Instances
 
+import Ergvein.Types.Fees
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Protocol.Serialization
 import Ergvein.Index.Protocol.Deserialization
@@ -20,6 +21,9 @@ import qualified Data.Attoparsec.ByteString as AP
 
 getRandBounded :: (Enum a, Bounded a) => Gen a
 getRandBounded = oneof $ pure <$> [minBound .. maxBound]
+
+getRandBoundedExcluding :: (Eq a, Enum a, Bounded a) => [a] -> Gen a
+getRandBoundedExcluding exs = oneof $ fmap pure $ filter (\e -> not $ e `elem` exs) $ [minBound .. maxBound]
 
 instance Arbitrary MessageHeader where
   arbitrary = MessageHeader <$> getRandBounded <*> arbitrary
@@ -46,6 +50,15 @@ instance Arbitrary FilterResponseIncrementalMessage where
 instance Arbitrary FilterEventMessage where
   arbitrary = sized $ \n -> FilterEventMessage <$> getRandBounded <*> arbitrary <*> arbitrary <*> arbitrary
 
+instance Arbitrary FeeRequestMessage where
+  arbitrary = FeeRequestMessage <$> getRandBounded <*> getRandBounded
+
+instance Arbitrary FeeResponseMessage where
+  arbitrary = let
+    gen1 = FeeResponseBTC <$> arbitrary <*> arbitrary
+    gen2 = FeeResponseGeneric <$> getRandBoundedExcluding [BTC, TBTC] <*> arbitrary
+    in oneof [gen1, gen2]
+
 unimplementedMessageTypes :: [MessageType]
 unimplementedMessageTypes =
   [ FilterEvent
@@ -63,6 +76,8 @@ fullyImplementedMessageTypes =
   , Reject
   , VersionACK
   , Version
+  , FeeRequest
+  , FeeResponse
   ]
 
 instance Arbitrary Message where
@@ -82,8 +97,8 @@ instance Arbitrary Message where
       FilterEvent   -> error "Message type: FilterEvent is not implemented"
       PeerRequest   -> error "Message type: PeerRequest is not implemented"
       PeerResponse  -> error "Message type: PeerResponse is not implemented"
-      FeeRequest    -> error "Message type: FeeRequest is not implemented"
-      FeeResponse   -> error "Message type: FeeResponse is not implemented"
+      FeeRequest    -> FeeRequestMsg <$> arbitrary
+      FeeResponse   -> FeeResponseMsg <$> arbitrary
       IntroducePeer -> error "Message type: IntroducePeer is not implemented"
 
 --------------------------------------------------------------------------

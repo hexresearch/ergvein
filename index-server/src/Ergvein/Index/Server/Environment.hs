@@ -17,6 +17,7 @@ import Network.HTTP.Client.TLS
 import Network.Socket
 import Servant.Client.Core
 
+import Ergvein.Index.Protocol.Types (CurrencyCode)
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB
 import Ergvein.Index.Server.PeerDiscovery.Types
@@ -41,7 +42,7 @@ data ServerEnv = ServerEnv
     , envErgoNodeClient           :: !ErgoApi.Client
     , envClientManager            :: !HC.Manager
     , envPeerDiscoveryRequisites  :: !PeerDiscoveryRequisites
-    , envFeeEstimates             :: !(TVar (M.Map Currency FeeBundle))
+    , envFeeEstimates             :: !(TVar (M.Map CurrencyCode FeeBundle))
     , envShutdownFlag             :: !(TVar Bool)
     , envOpenConnections          :: !(TVar (M.Map SockAddr (ThreadId, Socket)))
     }

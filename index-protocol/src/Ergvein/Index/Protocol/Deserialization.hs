@@ -6,6 +6,8 @@ import Data.Attoparsec.Binary
 import Data.Attoparsec.ByteString
 import Data.List
 import Data.Word
+
+import Ergvein.Types.Fees
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Protocol.Utils
 
@@ -42,6 +44,13 @@ word32toRejectType = \case
   2  -> Just InternalServerError
   _  -> Nothing
 
+word8toFeeLevel :: Word8 -> Maybe FeeLevel
+word8toFeeLevel w = case w of
+  0 -> Just FeeFast
+  1 -> Just FeeModerate
+  2 -> Just FeeCheap
+  _ -> Nothing
+
 messageHeaderParser ::  Parser MessageHeader
 messageHeaderParser = do
     messageType <- messageTypeParser
@@ -53,6 +62,9 @@ messageTypeParser = guardJust "out of message type bounds" . word32toMessageType
 
 rejectCodeParser :: Parser RejectCode
 rejectCodeParser = guardJust "out of reject type bounds" . word32toRejectType =<< anyWord32be
+
+feeLevelParser :: Parser FeeLevel
+feeLevelParser = guardJust "out of reject type bounds" . word8toFeeLevel =<< anyWord8
 
 versionBlockParser ::  Parser ScanBlock
 versionBlockParser = do
@@ -147,6 +159,16 @@ messageParser FilterEvent = do
     , filterEventBlockId     = blockId
     , filterEventBlockFilter = blockFilter
     }
+
+messageParser FeeRequest = fmap FeeRequestMsg $ FeeRequestMessage
+  <$> currencyCodeParser
+  <*> feeLevelParser
+
+messageParser FeeResponse = do
+  cur <- currencyCodeParser
+  fmap FeeResponseMsg $ case cur of
+    BTC -> FeeResponseBTC <$> anyWord64be <*> anyWord64be
+    _ -> FeeResponseGeneric cur <$> anyWord64be
 
 parseMessage :: MessageType -> BS.ByteString -> Either String (Message, BS.ByteString)
 parseMessage msgType source = 

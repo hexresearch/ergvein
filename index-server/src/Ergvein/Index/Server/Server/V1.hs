@@ -32,9 +32,11 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 import Ergvein.Types.Transaction
 
-import qualified Network.Haskoin.Block as Btc
+import qualified Ergvein.Index.Protocol.Types as IPT
+import qualified Data.Map.Strict as M
 import qualified Data.Serialize as S
 import qualified Data.Set as Set
+import qualified Network.Haskoin.Block as Btc
 
 indexServer :: IndexApi AsServerM
 indexServer = IndexApi
@@ -106,8 +108,19 @@ knownPeersEndpoint request = do
   result <- getKnownPeers $ knownPeersWithSecuredOnly request
   pure $ KnownPeersResp result
 
+currencyToCurrencyCode :: Currency -> IPT.CurrencyCode
+currencyToCurrencyCode c = case c of
+  BTC -> IPT.BTC
+  ERGO -> IPT.ERGO
+
+currencyCodeToCurrency :: IPT.CurrencyCode -> Currency
+currencyCodeToCurrency c = case c of
+  IPT.BTC -> BTC
+  IPT.ERGO -> ERGO
+
 getFeesEndpoint :: [Currency] -> ServerM IndexFeesResp
 getFeesEndpoint curs = do
   feeVar <- asks envFeeEstimates
   fees <- liftIO $ readTVarIO feeVar
-  pure $ IndexFeesResp $ restrictKeys fees $ Set.fromList curs
+  let fees' = M.mapKeys currencyCodeToCurrency fees
+  pure $ IndexFeesResp $ restrictKeys fees' $ Set.fromList curs

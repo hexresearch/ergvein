@@ -12,6 +12,7 @@ import Servant.Server
 import Servant.Server.Generic
 
 import Ergvein.Index.Client
+import Ergvein.Index.Protocol.Types (CurrencyCode)
 import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.Config
@@ -95,8 +96,8 @@ instance MonadUnliftIO ServerM where
 
 -- Fee functionality
 class MonadFees m where
-  getFees :: m (M.Map Currency FeeBundle)
-  setFees :: Currency -> FeeBundle -> m ()
+  getFees :: m (M.Map CurrencyCode FeeBundle)
+  setFees :: CurrencyCode -> FeeBundle -> m ()
 
 instance MonadFees ServerM where
   getFees = do

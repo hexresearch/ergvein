@@ -30,6 +30,7 @@ import           Ergvein.Types.Currency
 import           Ergvein.Types.Fees
 import           Ergvein.Types.Transaction
 
+import qualified Ergvein.Index.Protocol.Types       as IPT
 import qualified Data.Set                           as Set
 import qualified Data.HexString                     as HS
 import qualified Data.Map.Strict                    as Map
@@ -110,7 +111,7 @@ feeScaner = feeScaner' 0
             case (estimateResFee mco, estimateResFee mec) of
               (Just (MkFixed co), Just (MkFixed ec)) -> pure $ Just (lvl, (fromIntegral co `div` 1000 , fromIntegral ec `div` 1000))
               _ -> pure Nothing
-          setFees BTC $ mkFeeBundle res
+          setFees IPT.BTC $ mkFeeBundle res
           logInfoN $ "[BTC]: " <> showt res
           pure $ case res of
             [] -> h

@@ -4,8 +4,10 @@ import Codec.Compression.GZip
 import Data.ByteString.Builder
 import Data.Monoid
 import Data.Word
-import Ergvein.Index.Protocol.Types
 import Foreign.C.Types
+
+import Ergvein.Index.Protocol.Types
+import Ergvein.Types.Fees
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
@@ -65,6 +67,11 @@ blockFilterBuilder BlockFilter {..} = (filterSize, filterBuilder)
                  <> word32BE filterLength
                  <> byteString blockFilterFilter
 
+feeLevelToWord8 :: FeeLevel -> Word8
+feeLevelToWord8 fl = case fl of
+  FeeFast     -> 0
+  FeeModerate -> 1
+  FeeCheap    -> 2
 
 messageBuilder :: Message -> Builder
 
@@ -149,3 +156,25 @@ messageBuilder (FiltersEventMsg FilterEventMessage {..}) =
             + filterEventBlockIdLength
             + genericSizeOf filterEventBlockFilterLength
             + filterEventBlockFilterLength
+
+messageBuilder (FeeRequestMsg FeeRequestMessage{..}) =
+  messageBase FeeRequest msgSize
+  $ word32BE currency
+  <> word8 lvl
+  where
+    currency = currencyCodeToWord32 feeRequestCurrency
+    lvl = feeLevelToWord8 feeRequestLevel
+    msgSize = genericSizeOf currency
+            + genericSizeOf lvl
+
+messageBuilder (FeeResponseMsg msg) = case msg of
+  FeeResponseBTC c e -> let
+    cur = currencyCodeToWord32 BTC
+    msgSize = genericSizeOf cur + genericSizeOf c + genericSizeOf e
+    in messageBase FeeResponse msgSize
+      $ word32BE cur <> word64BE c <> word64BE e
+  FeeResponseGeneric cur f -> let
+    currency = currencyCodeToWord32 cur
+    msgSize = genericSizeOf currency + genericSizeOf f
+    in messageBase FeeResponse msgSize
+      $ word32BE currency <> word64BE f
