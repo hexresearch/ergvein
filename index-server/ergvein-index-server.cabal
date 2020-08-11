@@ -37,6 +37,7 @@ library
     Ergvein.Index.Server.TCPService.Server
     Ergvein.Index.Server.TCPService.MessageHandler
     Ergvein.Index.Server.TCPService.Socket
+    Ergvein.Index.Server.TCPService.Conversions
 
   build-depends:
         base                     >= 4.7     &&  < 4.13
@@ -100,6 +101,7 @@ library
       , yaml                     >= 0.11    &&  < 0.12
       , safe-exceptions
       , attoparsec
+      , vector
       , attoparsec-binary
       , binary
       , ergo-api
