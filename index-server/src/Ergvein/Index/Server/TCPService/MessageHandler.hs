@@ -17,6 +17,7 @@ import Ergvein.Types.Fees
 import Ergvein.Types.Transaction
 
 import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 import qualified Data.Vector as V
 
 getBlockMetaSlice :: Currency -> BlockHeight -> BlockHeight -> ServerM [BlockMetaRec]
@@ -41,9 +42,12 @@ handleMsg (FiltersRequestMsg FilterRequestMessage {..}) = do
     , filterResponseFilters = filters
     }
 
-handleMsg (FeeRequestMsg FeeRequestMessage{..}) = do
+handleMsg (FeeRequestMsg curs) = do
   fees <- liftIO . readTVarIO =<< asks envFeeEstimates
-  let mfee = fmap (extractFee feeRequestLevel) $ M.lookup feeRequestCurrency fees
-  pure $ flip fmap mfee $ \(c,e) -> FeeResponseMsg $ case feeRequestCurrency of
-    IPT.BTC -> FeeResponseBTC c e
-    _ -> FeeResponseGeneric feeRequestCurrency e
+  let selCurs = M.restrictKeys fees $ S.fromList curs
+  let resps = flip M.mapWithKey selCurs $ \cur fb -> case cur of
+        IPT.BTC -> FeeRespBTC False fb
+        IPT.TBTC -> FeeRespBTC True fb
+        _ -> let FeeBundle (_, h) (_, m) (_, l) = fb
+          in FeeRespGeneric cur h m l
+  pure $ Just $ FeeResponseMsg $ M.elems resps

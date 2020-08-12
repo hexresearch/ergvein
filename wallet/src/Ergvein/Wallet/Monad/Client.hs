@@ -9,10 +9,12 @@ module Ergvein.Wallet.Monad.Client (
   , deactivateURL
   , forgetURL
   , broadcastIndexerMessage
+  , requestRandomIndexer
   ) where
 
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.Random
 import Control.Monad.Reader
 import Data.Map.Strict (Map)
 import Data.Set (Set)
@@ -160,3 +162,18 @@ broadcastIndexerMessage reqE = do
   performEvent_ $ ffor reqE $ \req -> do
     cm <- readExternalRef connsRef
     liftIO $ fire $ req <$ cm
+
+requestRandomIndexer :: MonadIndexClient t m => Event t Message -> m (Event t Message)
+requestRandomIndexer reqE = do
+  connsRef  <- getActiveConnsRef
+  fireReq   <- getIndexReqFire
+  preE <- performEvent $ ffor reqE $ \req -> do
+    cons <- fmap M.toList $ readExternalRef connsRef
+    case cons of
+      [] -> pure $ Nothing
+      _ -> do
+        i <- liftIO $ randomRIO (0, length cons - 1)
+        let (sa, conn) = cons!!i
+        liftIO $ fireReq $ M.singleton sa $ IndexerMsg req
+        pure $ Just $ indexConRespE conn
+  switchHold never $ fmapMaybe id preE

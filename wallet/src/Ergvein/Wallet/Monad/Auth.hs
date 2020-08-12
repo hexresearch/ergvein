@@ -365,7 +365,7 @@ liftAuth ma0 ma = mdo
           -- filtersLoader
           -- heightAsking
           -- indexersNetworkActualizationWorker
-          -- feesWorker
+          feesWorker
           pure ()
         runReaderT (wrapped "liftAuth" ma) env
   let
