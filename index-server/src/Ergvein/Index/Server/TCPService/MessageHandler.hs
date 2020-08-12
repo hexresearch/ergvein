@@ -31,6 +31,8 @@ getBlockMetaSlice currency startHeight endHeight = do
 handleMsg :: Message -> ServerM (Maybe Message)
 handleMsg (PingMsg msg) = pure $ Just $ PongMsg msg
 
+handleMsg (PongMsg _) = pure Nothing
+
 handleMsg (VersionMsg msg) = undefined
 
 handleMsg (FiltersRequestMsg FilterRequestMessage {..}) = do
