@@ -146,17 +146,13 @@ data FilterEventMessage = FilterEventMessage
   , filterEventBlockFilter   :: !ByteString
   } deriving (Show, Eq)
 
-data FeeRequestMessage = FeeRequestMessage {
-  feeRequestCurrency :: CurrencyCode
-, feeRequestLevel :: FeeLevel
-} deriving (Show, Eq)
-
-data FeeResponseMessage
-  = FeeResponseBTC {
-    feeBtcConservative :: Word64
-  , feeBtcEconomical :: Word64
-  } | FeeResponseGeneric CurrencyCode Word64
+data FeeResp
+  = FeeRespBTC !Bool !FeeBundle         -- Bool -- isTestnet
+  | FeeRespGeneric !CurrencyCode !Word64 !Word64 !Word64
   deriving (Show, Eq)
+
+type FeeResponseMessage = [FeeResp]
+type FeeRequestMessage = [CurrencyCode]
 
 data Message = PingMsg                       !PingMessage
              | PongMsg                       !PongMessage

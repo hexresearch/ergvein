@@ -56,14 +56,23 @@ prop_encdec_Msg_Valid msg = whenFail dbgPrint $ maybe False (const True) decMsg
   where
     encMsg = serializeMessage msg
     decMsg = AP.maybeResult $ deserializeMessage $ BL.toStrict encMsg
+    decMsg' = AP.eitherResult $ deserializeMessage $ BL.toStrict encMsg
     dbgPrint = do
-      print $ "encMsg: " <> (show encMsg)
+      print $ show msg
+      print $ "encMsg: " <> (show $ BL.unpack encMsg)
       print $ "decMsg: " <> (show decMsg)
+      print $ "decMsg: " <> (show decMsg')
 
-prop_encdec_Msg_Eq msg = maybe False (msg ==) decMsg
+prop_encdec_Msg_Eq msg = whenFail dbgPrint $ maybe False (msg ==) decMsg
   where
     encMsg = serializeMessage msg
     decMsg = AP.maybeResult $ deserializeMessage $ BL.toStrict encMsg
+    decMsg' = AP.eitherResult $ deserializeMessage $ BL.toStrict encMsg
+    dbgPrint = do
+      print $ show msg
+      print $ "encMsg: " <> (show $ BL.unpack encMsg)
+      print $ "decMsg: " <> (show decMsg)
+      print $ "decMsg: " <> (show decMsg')
 
 prop_encdec_ScanBlock_Valid sb = maybe False (const True) decMsg
   where

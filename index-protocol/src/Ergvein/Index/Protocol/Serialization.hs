@@ -157,24 +157,31 @@ messageBuilder (FiltersEventMsg FilterEventMessage {..}) =
             + genericSizeOf filterEventBlockFilterLength
             + filterEventBlockFilterLength
 
-messageBuilder (FeeRequestMsg FeeRequestMessage{..}) =
-  messageBase FeeRequest msgSize
-  $ word32BE currency
-  <> word8 lvl
-  where
-    currency = currencyCodeToWord32 feeRequestCurrency
-    lvl = feeLevelToWord8 feeRequestLevel
-    msgSize = genericSizeOf currency
-            + genericSizeOf lvl
+messageBuilder (FeeRequestMsg curs) = let
+  amount = fromIntegral $ length curs
+  msgSize = case curs of
+    [] -> genericSizeOf amount
+    c:_ -> genericSizeOf amount + amount * genericSizeOf (currencyCodeToWord32 c)
+  cursBS = mconcat $ (word32BE . currencyCodeToWord32) <$> curs
+  msg = word32BE amount <> cursBS <> cursBS
+  in messageBase FeeRequest msgSize msg
 
-messageBuilder (FeeResponseMsg msg) = case msg of
-  FeeResponseBTC c e -> let
-    cur = currencyCodeToWord32 BTC
-    msgSize = genericSizeOf cur + genericSizeOf c + genericSizeOf e
-    in messageBase FeeResponse msgSize
-      $ word32BE cur <> word64BE c <> word64BE e
-  FeeResponseGeneric cur f -> let
-    currency = currencyCodeToWord32 cur
-    msgSize = genericSizeOf currency + genericSizeOf f
-    in messageBase FeeResponse msgSize
-      $ word32BE currency <> word64BE f
+messageBuilder (FeeResponseMsg msgs) = let
+  amount = fromIntegral $ length msgs
+  (respSum, resps) = mconcat $ feeRespBuilder <$> msgs
+  msgSize = genericSizeOf amount + (getSum respSum)
+  msg = word32BE amount <> resps
+  in messageBase FeeResponse msgSize msg
+
+feeRespBuilder :: FeeResp -> (Sum Word32, Builder)
+feeRespBuilder (FeeRespBTC isTest (FeeBundle (a,b) (c,d) (e,f))) = let
+  cur = currencyCodeToWord32 $ if isTest then TBTC else BTC
+  msgSize = genericSizeOf cur + 6 * genericSizeOf a
+  msg = word32BE cur <> word64BE a <> word64BE b <> word64BE c <> word64BE d <> word64BE e <> word64BE f
+  in (Sum msgSize, msg)
+
+feeRespBuilder (FeeRespGeneric cur h m l) = let
+  currency = currencyCodeToWord32 cur
+  msgSize = genericSizeOf currency + 3 * genericSizeOf h
+  msg = word32BE currency <> word64BE h <> word64BE m <> word64BE l
+  in (Sum msgSize, msg)

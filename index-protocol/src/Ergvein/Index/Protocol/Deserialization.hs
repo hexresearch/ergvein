@@ -160,15 +160,33 @@ messageParser FilterEvent = do
     , filterEventBlockFilter = blockFilter
     }
 
-messageParser FeeRequest = fmap FeeRequestMsg $ FeeRequestMessage
-  <$> currencyCodeParser
-  <*> feeLevelParser
+messageParser FeeRequest = do
+  amount <- anyWord32be
+  curs <- replicateM (fromIntegral amount) currencyCodeParser
+  pure $ FeeRequestMsg curs
 
 messageParser FeeResponse = do
-  cur <- currencyCodeParser
-  fmap FeeResponseMsg $ case cur of
-    BTC -> FeeResponseBTC <$> anyWord64be <*> anyWord64be
-    _ -> FeeResponseGeneric cur <$> anyWord64be
+  amount <- anyWord32be
+  resps <- replicateM (fromIntegral amount) parseFeeResp
+  pure $ FeeResponseMsg resps
+
+parseFeeResp :: Parser FeeResp
+parseFeeResp = do
+  currency <- currencyCodeParser
+  case currency of
+    BTC -> btcParser False
+    TBTC -> btcParser True
+    _ -> genericParser currency
+  where
+    btcParser isTest = do
+      h <- (,) <$> anyWord64be <*> anyWord64be
+      m <- (,) <$> anyWord64be <*> anyWord64be
+      l <- (,) <$> anyWord64be <*> anyWord64be
+      pure $ FeeRespBTC isTest $ FeeBundle h m l
+    genericParser cur = FeeRespGeneric cur
+      <$> anyWord64be
+      <*> anyWord64be
+      <*> anyWord64be
 
 parseMessage :: MessageType -> BS.ByteString -> Either String (Message, BS.ByteString)
 parseMessage msgType source = 

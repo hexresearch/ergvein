@@ -50,22 +50,20 @@ instance Arbitrary FilterResponseIncrementalMessage where
 instance Arbitrary FilterEventMessage where
   arbitrary = sized $ \n -> FilterEventMessage <$> getRandBounded <*> arbitrary <*> arbitrary <*> arbitrary
 
-instance Arbitrary FeeRequestMessage where
-  arbitrary = FeeRequestMessage <$> getRandBounded <*> getRandBounded
-
-instance Arbitrary FeeResponseMessage where
+instance Arbitrary FeeResp where
   arbitrary = let
-    gen1 = FeeResponseBTC <$> arbitrary <*> arbitrary
-    gen2 = FeeResponseGeneric <$> getRandBoundedExcluding [BTC, TBTC] <*> arbitrary
+    gen1 = FeeRespBTC <$> arbitrary <*> (FeeBundle <$> arbitrary <*> arbitrary <*> arbitrary)
+    gen2 = FeeRespGeneric <$> getRandBoundedExcluding [BTC, TBTC] <*> arbitrary <*> arbitrary <*> arbitrary
     in oneof [gen1, gen2]
+
+instance Arbitrary CurrencyCode where
+  arbitrary = getRandBounded
 
 unimplementedMessageTypes :: [MessageType]
 unimplementedMessageTypes =
   [ FilterEvent
   , PeerRequest
   , PeerResponse
-  , FeeRequest
-  , FeeResponse
   , IntroducePeer
   ]
 
