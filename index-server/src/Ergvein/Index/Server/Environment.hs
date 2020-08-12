@@ -17,7 +17,7 @@ import Network.HTTP.Client.TLS
 import Network.Socket
 import Servant.Client.Core
 
-import Ergvein.Index.Protocol.Types (CurrencyCode)
+import Ergvein.Index.Protocol.Types (CurrencyCode, Message)
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB
 import Ergvein.Index.Server.PeerDiscovery.Types
@@ -45,6 +45,7 @@ data ServerEnv = ServerEnv
     , envFeeEstimates             :: !(TVar (M.Map CurrencyCode FeeBundle))
     , envShutdownFlag             :: !(TVar Bool)
     , envOpenConnections          :: !(TVar (M.Map SockAddr (ThreadId, Socket)))
+    , envBroadcastChannel         :: !(TChan Message)
     }
 
 discoveryRequisites :: Config -> PeerDiscoveryRequisites
@@ -83,6 +84,7 @@ newServerEnv cfg = do
     feeEstimates   <- liftIO $ newTVarIO M.empty
     shutdown       <- liftIO $ newTVarIO False
     openConns      <- liftIO $ newTVarIO M.empty
+    broadChan      <- liftIO newBroadcastTChanIO
     let bitcoinNodeNetwork = if cfgBTCNodeIsTestnet cfg then HK.btcTest else HK.btc
         descDiscoveryRequisites = discoveryRequisites cfg
     traceShowM cfg
@@ -97,6 +99,7 @@ newServerEnv cfg = do
       , envFeeEstimates            = feeEstimates
       , envShutdownFlag            = shutdown
       , envOpenConnections         = openConns
+      , envBroadcastChannel        = broadChan
       }
 
 -- | Log exceptions at Error severity

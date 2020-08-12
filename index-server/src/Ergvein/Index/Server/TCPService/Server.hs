@@ -8,6 +8,7 @@ import Control.Monad
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
+import Control.Monad.Random
 import Control.Monad.Reader
 import Control.Monad.Trans.Except
 import Data.Attoparsec.ByteString
@@ -35,6 +36,15 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString as BS
 import qualified Data.Map.Strict as M
 import qualified Network.Socket.ByteString as NS
+
+-- Pinger thread
+runPinger :: ServerM Thread
+runPinger = create $ const $ logOnException $ do
+  broadChan <- liftIO . atomically . dupTChan =<< asks envBroadcastChannel
+  forever $ liftIO $ do
+    threadDelay 5000000
+    msg <- PingMsg <$> randomIO
+    atomically $ writeTChan broadChan msg
 
 runTcpSrv :: ServerM Thread
 runTcpSrv = create $ logOnException . tcpSrv
@@ -88,9 +98,21 @@ runConnection (sock, addr) = do
   sendChan <- liftIO newTChanIO
   -- Spawn message sender thread
   fork $ sendLoop sendChan
+  -- Spawn broadcaster loop
+  fork $ broadcastLoop sendChan
   -- Start message listener
   listenLoop sendChan
   where
+    writeMsg :: TChan LBS.ByteString -> Message -> ServerM ()
+    writeMsg destinationChan = liftIO . atomically . writeTChan destinationChan . toLazyByteString . messageBuilder
+
+    broadcastLoop :: TChan LBS.ByteString -> ServerM ()
+    broadcastLoop destinationChan = do
+      broadChan <- liftIO . atomically . dupTChan =<< asks envBroadcastChannel
+      forever $ do
+        msg <- liftIO $ atomically $ readTChan broadChan
+        writeMsg destinationChan msg
+
     handshake :: ServerM Bool
     handshake = do
       headerBytes <- liftIO $ messageHeaderBytes
@@ -106,7 +128,6 @@ runConnection (sock, addr) = do
 
     listenLoop :: TChan LBS.ByteString -> ServerM ()
     listenLoop destinationChan = do
-      let writeMsg = liftIO . atomically . writeTChan destinationChan . toLazyByteString . messageBuilder
       -- Try to get the header. Empty string means that the client closed the connection
       headerBytes <- liftIO $ messageHeaderBytes
       if BS.null headerBytes then do
@@ -117,14 +138,14 @@ runConnection (sock, addr) = do
         evalResult <- runExceptT $ evalMsg sock headerBytes
         case evalResult of
           Right Nothing    -> pure ()
-          Right (Just msg) -> writeMsg msg
+          Right (Just msg) -> writeMsg destinationChan msg
           Left err         -> do
             logInfoN $ "failed to handle msg: " <> showt err
-            writeMsg $ RejectMsg err
+            writeMsg destinationChan $ RejectMsg err
         listenLoop destinationChan
 
 fetchMessage :: Socket -> BS.ByteString -> ExceptT RejectMessage ServerM Message
-fetchMessage sock messageHeaderBytes = request =<< messageHeader 
+fetchMessage sock messageHeaderBytes = request =<< messageHeader
   where
     messageHeader :: ExceptT RejectMessage ServerM MessageHeader
     messageHeader = ExceptT . pure . mapLeft (\_-> RejectMessage MessageHeaderParsing) . eitherResult $ parse messageHeaderParser messageHeaderBytes
@@ -136,7 +157,7 @@ fetchMessage sock messageHeaderBytes = request =<< messageHeader
 
 
 evalMsg :: Socket -> BS.ByteString -> ExceptT RejectMessage ServerM (Maybe Message)
-evalMsg sock messageHeaderBytes = response =<< request =<< messageHeader 
+evalMsg sock messageHeaderBytes = response =<< request =<< messageHeader
   where
     messageHeader :: ExceptT RejectMessage ServerM MessageHeader
     messageHeader = ExceptT . pure . mapLeft (\_-> RejectMessage MessageHeaderParsing) . eitherResult $ parse messageHeaderParser messageHeaderBytes
