@@ -26,20 +26,20 @@ import qualified Data.Attoparsec.ByteString as AP
 serializeMessage :: Message -> BL.ByteString
 serializeMessage = BB.toLazyByteString . messageBuilder
 
-deserializeMessage :: BS.ByteString -> AP.Result Message
-deserializeMessage bs = flip AP.parse bs $ messageParser . msgType =<< messageHeaderParser
+deserializeMessage :: BS.ByteString -> Either String Message
+deserializeMessage bs = flip AP.parseOnly bs $ messageParser . msgType =<< messageHeaderParser
 
 serializeScanBlock :: ScanBlock -> BL.ByteString
 serializeScanBlock = BB.toLazyByteString . snd . scanBlockBuilder
 
-deserializeScanBlock :: BS.ByteString -> AP.Result ScanBlock
-deserializeScanBlock = AP.parse versionBlockParser
+deserializeScanBlock :: BS.ByteString -> Either String ScanBlock
+deserializeScanBlock = AP.parseOnly versionBlockParser
 
 serializeMessageHeader :: MessageHeader -> BL.ByteString
 serializeMessageHeader MessageHeader{..} = BB.toLazyByteString $ messageBase msgType msgSize (BB.byteString "")
 
-deserializeMessageHeader :: BS.ByteString -> AP.Result MessageHeader
-deserializeMessageHeader = AP.parse messageHeaderParser
+deserializeMessageHeader :: BS.ByteString -> Either String MessageHeader
+deserializeMessageHeader = AP.parseOnly messageHeaderParser
 
 --------------------------------------------------------------------------
 -- Special case only for implemented messages
@@ -47,42 +47,38 @@ deserializeMessageHeader = AP.parse messageHeaderParser
 --------------------------------------------------------------------------
 -- Serialize-deserialize
 
-prop_encdec_MsgHeader_Eq mh = maybe False (mh ==) decMsg
+prop_encdec_MsgHeader_Eq mh = either (const False) (mh ==) decMsg
   where
     encMsg = serializeMessageHeader mh
-    decMsg = AP.maybeResult $ deserializeMessageHeader $ BL.toStrict encMsg
+    decMsg = deserializeMessageHeader $ BL.toStrict encMsg
 
-prop_encdec_Msg_Valid msg = whenFail dbgPrint $ maybe False (const True) decMsg
+prop_encdec_Msg_Valid msg = whenFail dbgPrint $ either (const False) (const True) decMsg
   where
     encMsg = serializeMessage msg
-    decMsg = AP.maybeResult $ deserializeMessage $ BL.toStrict encMsg
-    decMsg' = AP.eitherResult $ deserializeMessage $ BL.toStrict encMsg
+    decMsg = deserializeMessage $ BL.toStrict encMsg
     dbgPrint = do
       print $ show msg
       print $ "encMsg: " <> (show $ BL.unpack encMsg)
       print $ "decMsg: " <> (show decMsg)
-      print $ "decMsg: " <> (show decMsg')
 
-prop_encdec_Msg_Eq msg = whenFail dbgPrint $ maybe False (msg ==) decMsg
+prop_encdec_Msg_Eq msg = whenFail dbgPrint $ either (const False) (msg ==) decMsg
   where
     encMsg = serializeMessage msg
-    decMsg = AP.maybeResult $ deserializeMessage $ BL.toStrict encMsg
-    decMsg' = AP.eitherResult $ deserializeMessage $ BL.toStrict encMsg
+    decMsg = deserializeMessage $ BL.toStrict encMsg
     dbgPrint = do
       print $ show msg
       print $ "encMsg: " <> (show $ BL.unpack encMsg)
       print $ "decMsg: " <> (show decMsg)
-      print $ "decMsg: " <> (show decMsg')
 
-prop_encdec_ScanBlock_Valid sb = maybe False (const True) decMsg
+prop_encdec_ScanBlock_Valid sb = either (const False) (const True) decMsg
   where
     encMsg = serializeScanBlock sb
-    decMsg = AP.maybeResult $ deserializeScanBlock $ BL.toStrict encMsg
+    decMsg = deserializeScanBlock $ BL.toStrict encMsg
 
-prop_encdec_ScanBlock_Eq sb = maybe False (sb ==) decMsg
+prop_encdec_ScanBlock_Eq sb = either (const False) (sb ==) decMsg
   where
     encMsg = serializeScanBlock sb
-    decMsg = AP.maybeResult $ deserializeScanBlock $ BL.toStrict encMsg
+    decMsg = deserializeScanBlock $ BL.toStrict encMsg
 
 prop_encdec_MultFilters_Valid bfs = bfs == decMsg
   where

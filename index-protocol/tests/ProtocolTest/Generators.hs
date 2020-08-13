@@ -73,11 +73,12 @@ fullyImplementedMessageTypes =
   , Version
   , FeeRequest
   , FeeResponse
+  , FiltersRequest
+  , FiltersResponse
   ]
 
 instance Arbitrary Message where
   arbitrary = do
-    -- msgType <- oneof $ fmap pure $ filter (\t -> not $ t `elem` unimplementedMessageTypes) [minBound .. maxBound]
     msgType <- oneof $ fmap pure fullyImplementedMessageTypes
     case msgType of
       Version -> VersionMsg <$> arbitrary
