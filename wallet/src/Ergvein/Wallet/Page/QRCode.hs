@@ -39,12 +39,7 @@ qrCodeWidgetWithData addr cur = do
   holdDyn Nothing dataE
 
 qrcGen :: Text -> Currency -> Maybe QRImage
-qrcGen t cur = encodeText (defaultQRCodeOptions L) Utf8WithoutECI $ curprefix <> t
-  where
-    curprefix :: Text
-    curprefix = case cur of
-      BTC ->  "bitcoin://"
-      ERGO -> "ergo://"
+qrcGen t cur = encodeText (defaultQRCodeOptions L) Utf8WithoutECI $ curprefix cur <> t
 
 qrcPerCanvas :: Maybe QRImage -> Int -> [(Maybe Int, Square)]
 qrcPerCanvas mqrI cW = case mqrI of

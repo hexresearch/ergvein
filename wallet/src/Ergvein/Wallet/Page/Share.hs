@@ -71,9 +71,7 @@ sharePage cur = do
       pure ()
 
     generateURL :: Base58 -> Text
-    generateURL addrB58 = case cur of
-      BTC   -> "bitcoin://" <> addrB58
-      ERGO  -> "ergo://" <> addrB58
+    generateURL addrB58 = curprefix cur <> addrB58
 
     units :: Units
     units = Units {
