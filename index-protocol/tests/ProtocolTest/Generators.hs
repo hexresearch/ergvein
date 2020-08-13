@@ -58,8 +58,7 @@ instance Arbitrary CurrencyCode where
 
 unimplementedMessageTypes :: [MessageType]
 unimplementedMessageTypes =
-  [ FilterEvent
-  , PeerRequest
+  [ PeerRequest
   , PeerResponse
   , IntroducePeer
   ]
@@ -75,6 +74,7 @@ fullyImplementedMessageTypes =
   , FeeResponse
   , FiltersRequest
   , FiltersResponse
+  , FilterEvent
   ]
 
 instance Arbitrary Message where
@@ -88,7 +88,7 @@ instance Arbitrary Message where
       Reject -> (RejectMsg . RejectMessage) <$> getRandBounded
       Ping -> PingMsg <$> arbitrary
       Pong -> PongMsg <$> arbitrary
-      FilterEvent   -> error "Message type: FilterEvent is not implemented"
+      FilterEvent   -> FiltersEventMsg <$> arbitrary
       PeerRequest   -> error "Message type: PeerRequest is not implemented"
       PeerResponse  -> error "Message type: PeerResponse is not implemented"
       FeeRequest    -> FeeRequestMsg <$> arbitrary

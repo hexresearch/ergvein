@@ -137,7 +137,7 @@ messageBuilder (FiltersResponseMsg FilterResponseMessage {..}) =
             + fromIntegral (LBS.length zippedFilters)
 
 messageBuilder (FiltersEventMsg FilterEventMessage {..}) = 
-  messageBase FiltersResponse msgSize
+  messageBase FilterEvent msgSize
   $  word32BE currency
   <> word64BE filterEventHeight
   <> word32BE filterEventBlockIdLength
