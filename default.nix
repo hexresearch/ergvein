@@ -1,6 +1,11 @@
-{ release ? false, profile ? false }:
+{ release ? false
+, profile ? false
+, gitHash
+ }:
 let
    reflex-platform = import ./platform-overlay.nix { inherit profile; };
+   version = import ./android-version.nix;
+   versionTag = version.code;
    project = reflex-platform.project ({ pkgs, ... }: {
     packages = {
       cbitstream = ./cbitstream;
@@ -55,7 +60,7 @@ let
         "ui-playground"
       ];
     };
-    overrides = import ./overrides.nix { inherit reflex-platform; };
+    overrides = import ./overrides.nix { inherit reflex-platform gitHash versionTag; };
 
     shellToolOverrides = ghc: super: {
       inherit (pkgs) leveldb;
@@ -82,7 +87,7 @@ let
         ./wallet/java
         "${project.ghc.x509-android.src}/java"
       ];
-      version = import ./android-version.nix;
+      version = version;
       releaseKey = let
         readPassword = file: builtins.replaceStrings ["\n"] [""] (builtins.readFile file);
       in if release then {
