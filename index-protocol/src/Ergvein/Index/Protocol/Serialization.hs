@@ -125,16 +125,12 @@ messageBuilder (FiltersRequestMsg FilterRequestMessage {..}) =
 messageBuilder (FiltersResponseMsg FilterResponseMessage {..}) = 
   messageBase FiltersResponse msgSize
   $  word32BE (currencyCodeToWord32 filterResponseCurrency)
-  <> word32BE filtersCount
   <> lazyByteString zippedFilters
   where
     (filtersSizeSum, filters) = mconcat $ blockFilterBuilder <$> V.toList filterResponseFilters
-    filtersCount = fromIntegral $ V.length filterResponseFilters
-    filtersSize = getSum filtersSizeSum
     zippedFilters = compress $ toLazyByteString filters
 
     msgSize = genericSizeOf (currencyCodeToWord32 filterResponseCurrency)
-            + genericSizeOf filtersCount
             + fromIntegral (LBS.length zippedFilters)
 
 messageBuilder (FiltersEventMsg FilterEventMessage {..}) = 

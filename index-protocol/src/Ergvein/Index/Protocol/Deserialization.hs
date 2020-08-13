@@ -37,7 +37,6 @@ word32toMessageType = \case
 currencyCodeParser :: Parser CurrencyCode
 currencyCodeParser = fmap word32ToCurrencyCode anyWord32be
 
-
 word32toRejectType :: Word32 -> Maybe RejectCode 
 word32toRejectType = \case
   0  -> Just MessageHeaderParsing
@@ -46,7 +45,7 @@ word32toRejectType = \case
   _  -> Nothing
 
 word8toFeeLevel :: Word8 -> Maybe FeeLevel
-word8toFeeLevel w = case w of
+word8toFeeLevel = \case
   0 -> Just FeeFast
   1 -> Just FeeModerate
   2 -> Just FeeCheap
@@ -65,7 +64,7 @@ rejectCodeParser :: Parser RejectCode
 rejectCodeParser = guardJust "out of reject type bounds" . word32toRejectType =<< anyWord32be
 
 feeLevelParser :: Parser FeeLevel
-feeLevelParser = guardJust "out of reject type bounds" . word8toFeeLevel =<< anyWord8
+feeLevelParser = guardJust "out of feeLevel type bounds" . word8toFeeLevel =<< anyWord8
 
 versionBlockParser ::  Parser ScanBlock
 versionBlockParser = do
@@ -135,7 +134,6 @@ messageParser FiltersRequest = do
 
 messageParser FiltersResponse = do
   currency <- currencyCodeParser
-  amount <- anyWord32be
   filtersString <- takeLazyByteString
   let unzippedFilters = decompress filtersString
       parsedFilters = V.fromList $ parseFilters $ LBS.toStrict unzippedFilters
