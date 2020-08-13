@@ -42,21 +42,3 @@ library
     TypeOperators
     DeriveAnyClass
     MultiParamTypeClasses
-
-test-suite ergvein-index-protocol-test
-  type: exitcode-stdio-1.0
-  Default-language: Haskell2010
-  hs-source-dirs: tests
-  main-is: ProtocolTest.hs
-  other-modules: ProtocolTest.Generators
-  build-depends:
-      base
-    , attoparsec
-    , bytestring
-    , QuickCheck
-    , quickcheck-instances
-    , vector
-    , ergvein-index-protocol
-  default-extensions:
-    RecordWildCards
-    OverloadedStrings
