@@ -1,9 +1,11 @@
-{-# OPTIONS_GHC -Wall #-}
+{-# LANGUAGE CPP #-}
 
 module Ergvein.Wallet.Page.Initial(
     initialPage
   ) where
 
+import Control.Monad.IO.Class
+import Data.Either (isLeft)
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
@@ -12,10 +14,13 @@ import Ergvein.Wallet.Localization.Initial
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.Password
+import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Page.Seed
 import Ergvein.Wallet.Storage.AuthInfo
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Wrapper
+
+import qualified Data.Map.Strict as M
 
 data GoPage = GoSeed | GoRestore
 
@@ -75,4 +80,14 @@ loadWalletPage name = do
   oldAuthE <- handleDangerMsg mOldAuthE
   mAuthE <- performEvent $ generateMissingPrvKeys <$> oldAuthE
   authE <- handleDangerMsg mAuthE
+#ifdef ANDROID
+  performEvent_ $ resetPasswordTimer name <$ authE
+#endif
   void $ setAuthInfo $ Just <$> authE
+
+#ifdef ANDROID
+resetPasswordTimer :: MonadIO m => WalletName -> m ()
+resetPasswordTimer walletName = do
+  c <- liftIO $ loadCounter
+  liftIO $ saveCounter $ PatternTries $ M.insert walletName 0 (patterntriesCount c)
+#endif

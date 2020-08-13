@@ -29,12 +29,11 @@ import Reflex.Dom
 
 import qualified Data.Map.Strict as Map
 import           Data.Maybe (catMaybes, fromMaybe)
-import           Data.List  (find)
+import           Data.List (find)
 import           Data.List.Split
 import qualified Data.Text as T
-import           Data.Time   (UTCTime, getCurrentTime)
+import           Data.Time (UTCTime, getCurrentTime)
 import           System.Directory
-
 
 import Language.Javascript.JSaddle hiding ((!!))
 
@@ -285,7 +284,7 @@ saveCounter pt = do
       ex <- liftIO $ doesFileExist triespath
       liftIO $ encodeFile triespath $ pt
 
-loadCounter ::MonadIO m => m PatternTries
+loadCounter :: MonadIO m => m PatternTries
 loadCounter = do
   mpath <- liftIO $ getFilesDir =<< getHaskellActivity
   case mpath of

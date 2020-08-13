@@ -45,22 +45,18 @@ data BalancesStrings
 instance LocalizedPrint BalancesStrings where
   localizedShow l v = case l of
     English -> case v of
-      BalancesTitle  -> "Default wallet"
-      ButtonSend ->  "Send"
+      BalancesTitle -> "Default wallet"
+      ButtonSend    -> "Send"
       ButtonReceive -> "Receive"
     Russian -> case v of
-      BalancesTitle  -> "Стандартный кошелек"
-      ButtonSend ->  "Отправить"
+      BalancesTitle -> "Стандартный кошелек"
+      ButtonSend    -> "Отправить"
       ButtonReceive -> "Получить"
 
 balancesPage :: MonadFront t m => m ()
 balancesPage = do
   walletName <- getWalletName
   title <- localized walletName
-#ifdef ANDROID
-  c <- liftIO $ loadCounter
-  liftIO $ saveCounter $ PatternTries $ M.insert walletName 0 (patterntriesCount c)
-#endif
   wrapper False title (Just $ pure balancesPage) $ do
     syncWidget =<< getSyncProgress
     currenciesList walletName
