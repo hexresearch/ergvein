@@ -248,6 +248,7 @@ library
     if flag(embed-version)
         cpp-options: -DEMBEDED_VERSION
         cc-options: -DEMBEDED_VERSION
+        ld-options: version.o
 
 executable ergvein
   hs-source-dirs:
