@@ -134,14 +134,19 @@ messageParser FiltersRequest = do
 
 messageParser FiltersResponse = do
   currency <- currencyCodeParser
+  amount <- anyWord32be
   filtersString <- takeLazyByteString
-  let unzippedFilters = decompress filtersString
-      parsedFilters = V.fromList $ parseFilters $ LBS.toStrict unzippedFilters
+  
+  let unzippedFilters = LBS.toStrict $ decompress filtersString
+      parser = V.fromList <$> replicateM (fromIntegral amount) filterParser
 
-  pure $ FiltersResponseMsg $ FilterResponseMessage  
-    { filterResponseCurrency = currency
-    , filterResponseFilters  = parsedFilters
-    }
+  case parseOnly parser unzippedFilters of
+    Right parsedFilters -> pure $ FiltersResponseMsg $ FilterResponseMessage  
+      { filterResponseCurrency = currency
+      , filterResponseFilters  = parsedFilters
+      }
+    _ -> fail "fail to parse response filters"
+
 
 messageParser FilterEvent = do
   currency <- currencyCodeParser
