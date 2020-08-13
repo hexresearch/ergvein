@@ -56,7 +56,7 @@ sendPage cur minit = mdo
   retInfoD <- sendWidget cur minit title navbar thisWidget
   pure ()
   where
-    stripCurPrefix t = fromMaybe t $ T.stripPrefix (curprefix cur) t
+    stripCurPrefix t = T.dropWhile (== '/') $ fromMaybe t $ T.stripPrefix (curprefix cur) t
     -- TODO: write type annotation here
     sendWidget cur minit title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ mdo
       let recipientInit = maybe "" (\(_, _, a) -> egvAddrToString a) minit
@@ -69,7 +69,7 @@ sendPage cur minit = mdo
         (qrE, pasteE, resQRcodeE) <- divClass "send-page-buttons-wrapper" $ do
           qrE <- outlineTextIconButtonTypeButton BtnScanQRCode "fas fa-qrcode fa-lg"
           openE <- delay 1.0 =<< openCamara qrE
-          resQRcodeE <- waiterResultCamera openE
+          resQRcodeE <- (fmap . fmap) stripCurPrefix $ waiterResultCamera openE
           pasteBtnE <- outlineTextIconButtonTypeButton BtnPasteString "fas fa-clipboard fa-lg"
           pasteE <- clipboardPaste pasteBtnE
           pure (qrE, pasteE, resQRcodeE)
