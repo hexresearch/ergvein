@@ -1,1 +1,2 @@
-nix-shell -A shells.ghc "$@"
+gitHash=$(git rev-parse --short HEAD)
+nix-shell --arg gitHash "\"$gitHash\"" -A shells.ghc "$@"

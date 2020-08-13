@@ -45,6 +45,7 @@ import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Settings (Settings(..))
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Sync.Status
+import Ergvein.Wallet.Version
 import Ergvein.Wallet.Worker.Fees
 import Ergvein.Wallet.Worker.Height
 import Ergvein.Wallet.Worker.IndexersNetworkActualization
@@ -125,7 +126,7 @@ instance MonadBaseConstr t m => MonadLocalized t (ErgveinM t m) where
   getLanguage = externalRefDynamic =<< asks env'langRef
   {-# INLINE getLanguage #-}
 
-instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontBase t (ErgveinM t m) where
+instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives, HasVersion) => MonadFrontBase t (ErgveinM t m) where
   getLoadingWidgetTF = asks env'loading
   {-# INLINE getLoadingWidgetTF #-}
   getBackEventFire = asks env'backEF

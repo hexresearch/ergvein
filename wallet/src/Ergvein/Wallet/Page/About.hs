@@ -10,6 +10,7 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.About
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Version
 import Ergvein.Wallet.Wrapper
 
 aboutPage :: MonadFront t m => m ()
@@ -22,7 +23,7 @@ aboutPage = do
       aboutContent $ do
         aboutRow $ do
           aboutCellLabel $ localizedText AboutVersion
-          aboutCellValue $ text "0.0.1"
+          aboutCellValue $ text $ makeVersionString version
         aboutRow $ do
           aboutCellLabel $ localizedText AboutLicence
           aboutCellValue $ text "MIT License"
@@ -33,11 +34,11 @@ aboutPage = do
         aboutRow $ do
           aboutCellLabel $ localizedText AboutDevelopers
           aboutCellValue $ do
-            text "One One"
+            text "Hexresearch team"
             elBR
-            text "Two Two"
+            text "Anton Gushcha ncrashed@protonmail.com"
             elBR
-            text "Three Three"
+            text "Dmitry Zuikov dzuikov@gmail.com"
       divClass "about-distrib" $ localizedText AboutDistrib
     pure ()
   where
