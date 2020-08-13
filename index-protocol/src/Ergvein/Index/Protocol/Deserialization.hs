@@ -134,7 +134,6 @@ messageParser FiltersRequest = do
 
 messageParser FiltersResponse = do
   currency <- currencyCodeParser
-  amount <- anyWord32be
   filtersString <- takeLazyByteString
   let unzippedFilters = decompress filtersString
       parsedFilters = V.fromList $ parseFilters $ LBS.toStrict unzippedFilters
