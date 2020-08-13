@@ -458,8 +458,10 @@ passwordCss = do
     left $ px 0
     width $ vw 100
     height $ vh 100
-    zIndex 1
+    zIndex 2
     backgroundColor white
+  ".ask-password-modal-content" ? do
+    height $ pct 100
     display flex
     flexDirection column
     justifyContent center
@@ -471,7 +473,7 @@ passwordCss = do
     left $ px 0
     width $ vw 100
     height $ vh 100
-    zIndex 1
+    zIndex 2
     backgroundColor white
     justifyContent center
 
