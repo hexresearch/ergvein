@@ -78,9 +78,7 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
     keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress pubKeyBox'key
     shareUrl = generateURL keyTxt
     generateURL :: Text -> Text
-    generateURL addr = case cur of
-      BTC  -> "bitcoin://" <> addr
-      ERGO -> "ergo://" <> addr
+    generateURL addr = curprefix cur <> addr
 
 #else
 receivePageWidget :: MonadFront t m => Currency -> Int -> EgvPubKeyBox -> m ()

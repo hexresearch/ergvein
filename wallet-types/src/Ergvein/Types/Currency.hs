@@ -33,6 +33,7 @@ module Ergvein.Types.Currency (
   , getUnitERGO
   , Fiat(..)
   , allFiats
+  , curprefix
   ) where
 
 import Data.Flat
@@ -239,3 +240,8 @@ showMoney m = T.pack $ printf "%f" (realToFrac (moneyToRational m) :: Double)
 
 showMoneyUnit :: Money -> Units -> Text
 showMoneyUnit m units = T.pack $ printf "%f" (realToFrac (moneyToRationalUnit m units) :: Double)
+
+curprefix :: Currency -> Text
+curprefix cur = case cur of
+  BTC ->  "bitcoin://"
+  ERGO -> "ergo://"

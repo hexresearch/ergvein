@@ -56,6 +56,7 @@ sendPage cur minit = mdo
   retInfoD <- sendWidget cur minit title navbar thisWidget
   pure ()
   where
+    stripCurPrefix t = fromMaybe t $ T.stripPrefix (curprefix cur) t
     -- TODO: write type annotation here
     sendWidget cur minit title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ mdo
       let recipientInit = maybe "" (\(_, _, a) -> egvAddrToString a) minit
@@ -82,7 +83,7 @@ sendPage cur minit = mdo
         submitE <- outlineSubmitTextIconButtonClass "w-100" SendBtnString "fas fa-paper-plane fa-lg"
         let validationE = poke submitE $ \_ -> do
               recipient <- sampleDyn recipientD
-              pure (toEither $ validateRecipient cur (T.unpack recipient))
+              pure (toEither $ validateRecipient cur (T.unpack $ stripCurPrefix recipient))
             goE = flip push validationE $ \erecipient -> do
               mfee <- sampleDyn feeD
               mamount <- sampleDyn amountD
