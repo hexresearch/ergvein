@@ -7,14 +7,15 @@ import Data.Attoparsec.ByteString
 import Data.List
 import Data.Word
 
-import Ergvein.Types.Fees
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Protocol.Utils
+import Ergvein.Types.Fees
 
 import qualified Data.Attoparsec.ByteString as Parse
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
-import qualified Data.Vector.Unboxed as V
+import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as UV
 
 word32toMessageType :: Word32 -> Maybe MessageType 
 word32toMessageType = \case
@@ -110,7 +111,7 @@ messageParser Version = do
   time          <- fromIntegral <$> anyWord64be
   nonce         <- anyWord64be
   currencies    <- anyWord32be
-  versionBlocks <- V.fromList <$> replicateM (fromIntegral currencies) versionBlockParser
+  versionBlocks <- UV.fromList <$> replicateM (fromIntegral currencies) versionBlockParser
 
   pure $ VersionMsg $ VersionMessage  
     { versionMsgVersion    = version
@@ -137,12 +138,11 @@ messageParser FiltersResponse = do
   amount <- anyWord32be
   filtersString <- takeLazyByteString
   let unzippedFilters = decompress filtersString
-      parsedFilters = parseFilters $ LBS.toStrict unzippedFilters
+      parsedFilters = V.fromList $ parseFilters $ LBS.toStrict unzippedFilters
 
-  pure $ FiltersResponseIncrementalMsg $ FilterResponseIncrementalMessage  
-    { filterResponseIncrementalCurrency = currency
-    , filterResponseIncrementalAmount   = amount
-    , filterResponseIncrementalFilters  = parsedFilters
+  pure $ FiltersResponseMsg $ FilterResponseMessage  
+    { filterResponseCurrency = currency
+    , filterResponseFilters  = parsedFilters
     }
 
 messageParser FilterEvent = do

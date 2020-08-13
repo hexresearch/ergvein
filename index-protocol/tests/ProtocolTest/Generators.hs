@@ -44,9 +44,6 @@ instance Arbitrary BlockFilter where
 instance Arbitrary FilterResponseMessage where
   arbitrary = sized $ \n -> FilterResponseMessage <$> getRandBounded <*> (V.replicateM n arbitrary)
 
-instance Arbitrary FilterResponseIncrementalMessage where
-  arbitrary = sized $ \n -> FilterResponseIncrementalMessage <$> getRandBounded <*> arbitrary <*> (replicateM n arbitrary)
-
 instance Arbitrary FilterEventMessage where
   arbitrary = sized $ \n -> FilterEventMessage <$> getRandBounded <*> arbitrary <*> arbitrary <*> arbitrary
 
@@ -86,9 +83,7 @@ instance Arbitrary Message where
       Version -> VersionMsg <$> arbitrary
       VersionACK -> pure $ VersionACKMsg VersionACKMessage
       FiltersRequest -> FiltersRequestMsg <$> arbitrary
-      FiltersResponse -> do
-        b <- arbitrary
-        if b then FiltersResponseMsg <$> arbitrary else FiltersResponseIncrementalMsg <$> arbitrary
+      FiltersResponse -> FiltersResponseMsg <$> arbitrary
       Reject -> (RejectMsg . RejectMessage) <$> getRandBounded
       Ping -> PingMsg <$> arbitrary
       Pong -> PongMsg <$> arbitrary

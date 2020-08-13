@@ -131,12 +131,6 @@ data FilterResponseMessage = FilterResponseMessage
   , filterResponseFilters  :: !(V.Vector BlockFilter)
   } deriving (Show, Eq)
 
-data FilterResponseIncrementalMessage = FilterResponseIncrementalMessage
-  { filterResponseIncrementalCurrency :: !CurrencyCode
-  , filterResponseIncrementalAmount   :: !Word32
-  , filterResponseIncrementalFilters  :: ![BlockFilter]
-  } deriving (Show, Eq)
-
 data FilterEventMessage = FilterEventMessage
   { filterEventCurrency      :: !CurrencyCode
   , filterEventHeight        :: !Word64
@@ -161,7 +155,6 @@ data Message = PingMsg                       !PingMessage
              | RejectMsg                     !RejectMessage
              | FiltersRequestMsg             !FilterRequestMessage
              | FiltersResponseMsg            !FilterResponseMessage
-             | FiltersResponseIncrementalMsg !FilterResponseIncrementalMessage
              | FiltersEventMsg               !FilterEventMessage
              | FeeRequestMsg                 !FeeRequestMessage
              | FeeResponseMsg                !FeeResponseMessage
