@@ -20,11 +20,6 @@ flag testnet
     description:
         Compile for testnet blockchains.
 
-flag embed-version
-    description:
-        Link version string into resulted binary.
-    default: True
-
 library
     exposed-modules:
         Ergvein.Wallet
@@ -137,7 +132,6 @@ library
         Ergvein.Wallet.Tx
         Ergvein.Wallet.Util
         Ergvein.Wallet.Validate
-        Ergvein.Wallet.Version
         Ergvein.Wallet.Widget.Balance
         Ergvein.Wallet.Widget.GraphPinCode
         Ergvein.Wallet.Worker.Fees
@@ -148,7 +142,6 @@ library
         Ergvein.Wallet.Yaml
     hs-source-dirs: src
     default-language: Haskell2010
-    c-sources: cbits/version.c
     default-extensions: BangPatterns ConstraintKinds DataKinds
                         DeriveDataTypeable DeriveGeneric FlexibleContexts FlexibleInstances
                         FunctionalDependencies GADTs GeneralizedNewtypeDeriving LambdaCase
@@ -182,6 +175,7 @@ library
         ergvein-wallet-filters >= 0.1 && < 0.2,
         ergvein-wallet-native >=0.1 && <0.2,
         ergvein-wallet-types >=0.1 && <0.2,
+        ergvein-wallet-version >= 0.1 && < 0.2,
         exceptions -any,
         file-embed >=0.0 && <0.1,
         filepath -any,
@@ -245,11 +239,6 @@ library
     if flag(testnet)
         cpp-options: -DTESTNET
 
-    if flag(embed-version)
-        cpp-options: -DEMBEDED_VERSION
-        cc-options: -DEMBEDED_VERSION
-        ld-options: version.o
-
 executable ergvein
   hs-source-dirs:
       app
@@ -261,9 +250,11 @@ executable ergvein
     , directory
     , ergvein-wallet
     , ergvein-wallet-native
+    , ergvein-wallet-version
     , optparse-generic  >= 1.3      && < 1.4
     , reflex
     , reflex-dom
+    , text
   if flag(android)
     build-depends: ergvein-wallet-android
     cpp-options: -DANDROID

@@ -18,7 +18,7 @@ let
     ignore-list = ''
       /.ghc.environment*
       /dist-newstyle
-      /android-release 
+      /android-release
       /android-result
     '';
     in { src = gitignore.gitignoreSourceAux ignore-list pkg.src; } );
@@ -46,6 +46,7 @@ in (self: super: let
     ergvein-wallet-filters = ingnoreGarbage super.ergvein-wallet-filters;
     ergvein-wallet-native = ingnoreGarbage super.ergvein-wallet-native;
     ergvein-wallet-types = ingnoreGarbage super.ergvein-wallet-types;
+    ergvein-wallet-version = ingnoreGarbage super.ergvein-wallet-version;
     ergo-api = lib.dontCheck (ingnoreGarbage super.ergo-api);
     golomb-rice = ingnoreGarbage super.golomb-rice;
     reflex-dom-retractable = ingnoreGarbage super.reflex-dom-retractable;

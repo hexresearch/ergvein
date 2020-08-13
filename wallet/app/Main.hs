@@ -2,6 +2,7 @@
 module Main where
 
 import Data.Default
+import Data.Text (unpack)
 import Ergvein.Wallet
 import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Monad.Async
@@ -27,10 +28,13 @@ data Options = Options {
 
 instance ParseRecord Options
 
+instance HasVersion where
+  version = $embedVersion
+  {-# NOINLINE version #-}
+
 main :: IO ()
 main = do
-  vstr <- getVersionRaw
-  putStrLn $ "Ergvein version: " <> vstr
+  putStrLn $ "Ergvein version: " <> unpack (makeVersionString version)
   opts <- getRecord "Ergvein cryptowallet"
   bindSelf $ run $ \cbs -> do
     css <- compileFrontendCss
