@@ -76,7 +76,7 @@ askPassword name = do
     performEvent_ $ ffor (updated counterD) $ \cS -> do
       liftIO $ saveCounter $ PatternTries $ Map.insert name cS (patterntriesCount c)
       pure ()
-    pure $ traceEvent "Ask password fired" $ attachPromptlyDynWithMaybe (\freeze p -> if not freeze then Just p else Nothing) freezeD (updated pD)
+    pure $ attachPromptlyDynWithMaybe (\freeze p -> if not freeze then Just p else Nothing) freezeD (updated pD)
 
 askPasswordModal :: MonadFrontBase t m => m ()
 askPasswordModal = mdo
