@@ -112,7 +112,7 @@ peekMessage url = do
         nodeLog url "Payload too large"
         throwM (PayloadTooLarge len)
       y <- peek (fromIntegral len)
-      let emsg = AP.eitherResult $ AP.parse (messageParser msgType) y
+      let emsg = AP.parseOnly (messageParser msgType) y
       case emsg of
         Left e -> do
           nodeLog url $ "Cannot decode payload: " <> showt e
