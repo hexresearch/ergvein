@@ -157,14 +157,23 @@ fetchMessage sock messageHeaderBytes = request =<< messageHeader
 
 
 evalMsg :: Socket -> BS.ByteString -> ExceptT RejectMessage ServerM (Maybe Message)
-evalMsg sock messageHeaderBytes = response =<< request =<< messageHeader
+evalMsg sock messageHeaderBytes = do
+  printDelim
+  let hdr = eitherResult $ parse messageHeaderParser messageHeaderBytes
+  liftIO $ print $ BS.unpack messageHeaderBytes
+  liftIO $ print hdr
+  response =<< request =<< messageHeader
   where
+    printDelim = liftIO $ print "===================================================="
     messageHeader :: ExceptT RejectMessage ServerM MessageHeader
     messageHeader = ExceptT . pure . mapLeft (\_-> RejectMessage MessageHeaderParsing) . eitherResult $ parse messageHeaderParser messageHeaderBytes
 
     request :: MessageHeader -> ExceptT RejectMessage ServerM Message
     request MessageHeader {..} = do
       messageBytes <- liftIO $ NS.recv sock $ fromIntegral msgSize
+      liftIO $ print $ show msgType <> ": " <> show (msgSize, BS.length messageBytes)
+      liftIO $ print $ "Parse     :" <> show (eitherResult $ parse (messageParser msgType) messageBytes)
+      liftIO $ print $ "ParseOnly :" <> show (parseOnly (messageParser msgType) messageBytes)
       ExceptT $ pure $ mapLeft (\_-> RejectMessage MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
 
     response :: Message -> ExceptT RejectMessage ServerM (Maybe Message)

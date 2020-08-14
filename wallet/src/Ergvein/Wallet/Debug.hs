@@ -25,6 +25,8 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
 import qualified Network.Haskoin.Keys as HK
+import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
+import qualified Ergvein.Index.Protocol.Types as IPT
 
 data DebugBtns
   = DbgUtxo
@@ -34,15 +36,21 @@ data DebugBtns
   | DbgPrvExt
 
 
+mkTxt :: Text -> Text
+mkTxt = id
+
+backTxt :: Text
+backTxt = "Back"
+
 debugWidget :: MonadFront t m => m ()
 debugWidget = el "div" $ do
   utxoE <- fmap (DbgUtxo <$) $ outlineButton ("UTXO" :: Text)
-  pubIntE <- fmap (DbgPubInt <$) $ outlineButton ("Pub Internals" :: Text)
-  pubExtE <- fmap (DbgPubExt <$) $ outlineButton ("Pub Externals" :: Text)
-  prvIntE <- fmap (DbgPrvInt <$) $ outlineButton ("Priv Internals" :: Text)
-  prvExtE <- fmap (DbgPrvExt <$) $ outlineButton ("Priv Externals" :: Text)
+  pubIntE <- fmap (DbgPubInt <$) $ outlineButton $ mkTxt "Pub Internals"
+  pubExtE <- fmap (DbgPubExt <$) $ outlineButton $ mkTxt "Pub Externals"
+  prvIntE <- fmap (DbgPrvInt <$) $ outlineButton $ mkTxt "Priv Internals"
+  prvExtE <- fmap (DbgPrvExt <$) $ outlineButton $ mkTxt "Priv Externals"
   pingE <- outlineButton ("Ping" :: Text)
-  -- performEvent $ ffor pingE $ const $ do
+  dbgFiltersTest
   broadcastIndexerMessage $ ffor pingE $ const $ IndexerMsg $ PingMsg 123
   let goE = leftmost [utxoE, pubIntE, pubExtE, prvIntE, prvExtE]
   void $ nextWidget $ ffor goE $ \sel -> Retractable {
@@ -57,7 +65,7 @@ debugWidget = el "div" $ do
 
 dbgUtxoPage :: MonadFront t m => m ()
 dbgUtxoPage = wrapper False "UTXO" (Just $ pure dbgUtxoPage) $ divClass "currency-content" $ do
-  void . el "div" $ retract =<< outlineButton ("Back" :: Text)
+  void . el "div" $ retract =<< outlineButton backTxt
   pubSD <- getPubStorageD
   let utxoD = ffor pubSD $ \ps -> M.toList $ fromMaybe M.empty $ ps ^. pubStorage'currencyPubStorages . at BTC & fmap (view currencyPubStorage'utxos)
   void $ widgetHoldDyn $ ffor utxoD $ \utxo -> divClass "" $ do
@@ -70,7 +78,7 @@ dbgUtxoPage = wrapper False "UTXO" (Just $ pure dbgUtxoPage) $ divClass "currenc
 
 dbgPubInternalsPage :: MonadFront t m => m ()
 dbgPubInternalsPage = wrapper False "Public internal keys" (Just $ pure dbgPubInternalsPage) $ divClass "currency-content" $ do
-  void . el "div" $ retract =<< outlineButton ("Back" :: Text)
+  void . el "div" $ retract =<< outlineButton backTxt
   pubSD <- getPubStorageD
   let intsD = ffor pubSD $ \ps -> V.indexed $ fromMaybe V.empty $ ps ^. pubStorage'currencyPubStorages . at BTC & fmap (\a -> a ^. currencyPubStorage'pubKeystore & pubKeystore'internal)
   void $ widgetHoldDyn $ ffor intsD $ \ints -> divClass "" $ do
@@ -80,7 +88,7 @@ dbgPubInternalsPage = wrapper False "Public internal keys" (Just $ pure dbgPubIn
 
 dbgPubExternalsPage :: MonadFront t m => m ()
 dbgPubExternalsPage = wrapper False "Public external keys" (Just $ pure dbgPubExternalsPage) $ divClass "currency-content" $ do
-  void . el "div" $ retract =<< outlineButton ("Back" :: Text)
+  void . el "div" $ retract =<< outlineButton backTxt
   pubSD <- getPubStorageD
   let intsD = ffor pubSD $ \ps -> V.indexed $ fromMaybe V.empty $ ps ^. pubStorage'currencyPubStorages . at BTC & fmap (\a -> a ^. currencyPubStorage'pubKeystore & pubKeystore'external)
   void $ widgetHoldDyn $ ffor intsD $ \ints -> divClass "" $ do
@@ -90,7 +98,7 @@ dbgPubExternalsPage = wrapper False "Public external keys" (Just $ pure dbgPubEx
 
 dbgPrivInternalsPage :: MonadFront t m => m ()
 dbgPrivInternalsPage = wrapper False "Private internal keys" (Just $ pure dbgPrivInternalsPage) $ divClass "currency-content" $ do
-  void . el "div" $ retract =<< outlineButton ("Back" :: Text)
+  void . el "div" $ retract =<< outlineButton backTxt
   buildE <- getPostBuild
   intE <- withWallet $ ffor buildE $ \_ prv -> do
     let PrvKeystore _ _ int = prv ^. prvStorage'currencyPrvStorages
@@ -107,7 +115,7 @@ dbgPrivInternalsPage = wrapper False "Private internal keys" (Just $ pure dbgPri
 
 dbgPrivExternalsPage :: MonadFront t m => m ()
 dbgPrivExternalsPage = wrapper False "Private external keys" (Just $ pure dbgPrivExternalsPage) $ divClass "currency-content" $ do
-  void . el "div" $ retract =<< outlineButton ("Back" :: Text)
+  void . el "div" $ retract =<< outlineButton backTxt
   buildE <- getPostBuild
   extE <- withWallet $ ffor buildE $ \_ prv -> do
     let PrvKeystore _ ext _ = prv ^. prvStorage'currencyPrvStorages
@@ -121,3 +129,14 @@ dbgPrivExternalsPage = wrapper False "Private external keys" (Just $ pure dbgPri
       el "div" $ text $ showt i <> " ------------------------------------------"
       el "div" $ text $ showt $ k'
       el "div" $ text $ p
+
+dbgFiltersTest :: MonadFront t m => m ()
+dbgFiltersTest = do
+  getE <- outlineButton $ mkTxt "Getfilt"
+  let msg = FiltersRequestMsg $ FilterRequestMessage IPT.BTC 1 1
+  respE <- requestRandomIndexer $ msg <$ getE
+  let filtE = fforMaybe respE $ \case
+        FiltersResponseMsg f -> Just f
+        _ -> Nothing
+  performEvent $ (logWrite . showt) <$> filtE
+  pure ()

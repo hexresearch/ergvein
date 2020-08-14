@@ -53,7 +53,7 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
     blockIteration :: BlockHeight -> BlockHeight -> ServerM BlockInfo
     blockIteration totalh blockHeight = do
       let percent = fromIntegral blockHeight / fromIntegral totalh :: Double
-      logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
+      -- logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
       scanInfo blockHeight
 
     scanIteration :: Thread -> ServerM ()
