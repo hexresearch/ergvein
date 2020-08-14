@@ -162,7 +162,7 @@ messageBuilder (FeeRequestMsg curs) = let
     [] -> genericSizeOf amount
     c:_ -> genericSizeOf amount + amount * genericSizeOf (currencyCodeToWord32 c)
   cursBS = mconcat $ (word32BE . currencyCodeToWord32) <$> curs
-  msg = word32BE amount <> cursBS <> cursBS
+  msg = word32BE amount <> cursBS
   in messageBase FeeRequest msgSize msg
 
 messageBuilder (FeeResponseMsg msgs) = let
