@@ -43,6 +43,8 @@ aboutPage = do
             text "Aleksandr Chekanin aminion@protonmail.com"
             elBR
             text "Vladimir Krutkin krutkinvs@gmail.com"
+            elBR
+            text "Levon Oganyan lemarwin42@protonmail.com"
       divClass "about-distrib" $ localizedText AboutDistrib
     pure ()
   where
