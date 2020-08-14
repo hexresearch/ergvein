@@ -36,7 +36,8 @@ handleMsg (PongMsg _) = pure Nothing
 handleMsg (VersionMsg msg) = undefined
 
 handleMsg (FiltersRequestMsg FilterRequestMessage {..}) = do
-  slice <- getBlockMetaSlice undefined filterRequestMsgStart filterRequestMsgAmount
+  let currency = convert filterRequestMsgCurrency
+  slice <- getBlockMetaSlice currency filterRequestMsgStart filterRequestMsgAmount
   let filters = V.fromList $ convert <$> slice
 
   pure $ Just $ FiltersResponseMsg $ FilterResponseMessage
