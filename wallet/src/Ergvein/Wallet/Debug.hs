@@ -16,6 +16,7 @@ import Ergvein.Types.Utxo
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage
 import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Wrapper
@@ -49,7 +50,11 @@ debugWidget = el "div" $ do
   pubExtE <- fmap (DbgPubExt <$) $ outlineButton $ mkTxt "Pub Externals"
   prvIntE <- fmap (DbgPrvInt <$) $ outlineButton $ mkTxt "Priv Internals"
   prvExtE <- fmap (DbgPrvExt <$) $ outlineButton $ mkTxt "Priv Externals"
-  pingE <- outlineButton ("Ping" :: Text)
+  pingE <- outlineButton $ mkTxt "Ping"
+  pingD <- indexerPingerWidget (head defaultIndexers) pingE
+  h5 . dynText $ do
+    p <- pingD
+    pure $ "Def.indexer ping: " <> showt p
   dbgFiltersTest
   broadcastIndexerMessage $ ffor pingE $ const $ IndexerMsg $ PingMsg 123
   let goE = leftmost [utxoE, pubIntE, pubExtE, prvIntE, prvExtE]

@@ -10,15 +10,19 @@ module Ergvein.Wallet.Monad.Client (
   , forgetURL
   , broadcastIndexerMessage
   , requestRandomIndexer
+  , requestSpecificIndexer
+  , indexerPingerWidget
   ) where
 
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Random
 import Control.Monad.Reader
+import Data.Function (on)
 import Data.Map.Strict (Map)
 import Data.Set (Set)
-import Data.Time(NominalDiffTime, getCurrentTime, diffUTCTime)
+import Data.Time(NominalDiffTime, UTCTime, getCurrentTime, diffUTCTime)
+import Data.Word (Word64)
 import Network.HTTP.Client hiding (Proxy)
 import Reflex
 import Reflex.ExternalRef
@@ -26,7 +30,7 @@ import Reflex.ExternalRef
 import Network.Socket (SockAddr)
 import Data.Functor.Misc (Const2(..))
 
-import Ergvein.Index.Protocol.Types (Message, ScanBlock)
+import Ergvein.Index.Protocol.Types (Message(..), ScanBlock)
 import Ergvein.Index.Client
 import Ergvein.Text
 import Ergvein.Types.Currency
@@ -34,6 +38,7 @@ import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Util
 
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
@@ -177,3 +182,48 @@ requestRandomIndexer reqE = do
         liftIO $ fireReq $ M.singleton sa $ IndexerMsg req
         pure $ Just $ indexConRespE conn
   switchHold never $ fmapMaybe id preE
+
+requestSpecificIndexer :: MonadIndexClient t m => Event t (SockAddr, Message) -> m (Event t Message)
+requestSpecificIndexer saMsgE = do
+  connsRef  <- getActiveConnsRef
+  fireReq   <- getIndexReqFire
+  mrespE <- performFork $ ffor saMsgE $ \(sa, req) -> do
+    mcon <- fmap (M.lookup sa) $ readExternalRef connsRef
+    case mcon of
+      Nothing -> pure Nothing
+      Just con -> do
+        liftIO $ fireReq $ M.singleton sa $ IndexerMsg req
+        pure $ Just $ indexConRespE con
+  switchHold never $ fmapMaybe id mrespE
+
+data PingStore = PingSent (Word64, UTCTime) | PongRec (Word64, UTCTime) | LatRes NominalDiffTime
+
+indexerPingerWidget :: MonadIndexClient t m
+  => SockAddr                       -- Which indexer to ping
+  -> Event t ()                     -- Manual refresh event
+  -> m (Dynamic t NominalDiffTime)  -- Dynamic with the latency. Starting value 0
+indexerPingerWidget addr refrE = do
+  connmD  <- holdUniqDynBy eq =<< pure . fmap (M.lookup addr) =<< externalRefDynamic =<< getActiveConnsRef
+  fmap join $ widgetHoldDyn $ ffor connmD $ \case
+    Nothing -> pure $ pure 0
+    Just conn -> do
+      buildE <- getPostBuild
+      fireReq <- getIndexReqFire
+      te     <- fmap void $ tickLossyFromPostBuildTime 10
+      let tickE = leftmost [te, buildE, refrE]
+      pingE <- performFork $ ffor tickE $ const $ liftIO $ do
+        p <- randomIO
+        t <- getCurrentTime
+        fireReq $ M.singleton addr $ (IndexerMsg $ PingMsg p)
+        pure (p,t)
+      pingD <- holdDyn Nothing $ Just <$> pingE
+      pongE <- performFork $ ffor (indexConRespE conn) $ \case
+        PongMsg p -> do
+          t <- liftIO $ getCurrentTime
+          mpt <- sampleDyn pingD
+          pure $ join $ ffor mpt $ \(p',t') -> if (p == p') then Just (diffUTCTime t t') else Nothing
+        _ -> pure Nothing
+      holdDyn 0 $ fmapMaybe id pongE
+  where
+    eq :: Maybe (IndexerConnection t) -> Maybe (IndexerConnection t) -> Bool
+    eq = (==) `on` (fmap indexConAddr)
