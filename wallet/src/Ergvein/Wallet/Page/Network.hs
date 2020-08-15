@@ -20,6 +20,7 @@ import Ergvein.Wallet.Localization.Network
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Node
+import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Dependent.Map as DM
@@ -34,34 +35,19 @@ networkPage :: MonadFront t m => Maybe Currency -> m ()
 networkPage curMb = do
   title <- localized NPSTitle
   wrapper False title (Just $ pure $ networkPage curMb) $ do
-    curD <- networkPageHeader curMb
-    void $ widgetHoldDyn $ ffor curD $ \case
+    valD <- networkPageHeader curMb
+    void $ widgetHoldDyn $ ffor valD $ \case
       Nothing -> pure ()
-      Just cur -> networkPageWidget cur
+      Just (cur, refrE) -> networkPageWidget cur refrE
 
 
-networkPageWidget :: MonadFront t m => Currency -> m ()
-networkPageWidget cur = pure ()
-{-
-networkPageWidget :: MonadFront t m => Currency -> m ()
-networkPageWidget cur = do
-  allIndsD <- getIndexerInfoD
+networkPageWidget :: MonadFront t m => Currency -> Event t () -> m ()
+networkPageWidget cur refrE = do
+  lenlatD <- indexersAverageLatNumWidget refrE
   conmapD <- getNodeConnectionsD
-  let currInfoD = ffor allIndsD $ \im -> let
-        act = catMaybes $ M.elems im
-        in catMaybes $ ffor act $ \IndexerInfo{..} -> (indInfoLatency,) <$> M.lookup cur indInfoHeights
-      servCurInfoD = ffor currInfoD $ \xys -> let
-        act = (\(_,ys) -> L.nub ys) $ unzip xys
-        in case act of
-            [] ->  NPSNoServerAvail
-            v:[] -> NPSSyncInfo v
-            _ -> NPSDesync
-      (servNumD, avgLatD) = splitDynPure $ ffor currInfoD $ \xys -> let
-        l = length xys
-        lats = fst $ unzip xys
-        avgL = if l == 0 then NPSNoServerAvail else NPSAvgLat $ sum lats / fromIntegral l
-        in (NPSServerVal l, avgL)
-
+  let (servNumD, avgLatD) = splitDynPure $ ffor lenlatD $ \(len, lat) -> let
+        avgL = if len == 0 then NPSNoServerAvail else NPSAvgLat lat
+        in (NPSServerVal len, avgL)
   listE <- lineOption $ do
     nameOption NPSServer
     listE <- el "div" $ do
@@ -71,8 +57,7 @@ networkPageWidget cur = do
     descrOptionDyn avgLatD
     labelHorSep
     pure listE
-
-  lineOption $ lineOptionNoEdit NPSSyncStatus servCurInfoD NPSSyncDescr
+  -- lineOption $ lineOptionNoEdit NPSSyncStatus servCurInfoD NPSSyncDescr
   lineOption $ widgetHoldDyn $ ffor conmapD $ \cm -> case cur of
     BTC  -> btcNetworkWidget $ maybe [] M.elems $ DM.lookup BTCTag cm
     ERGO -> ergNetworkWidget $ maybe [] M.elems $ DM.lookup ERGOTag cm
@@ -80,7 +65,7 @@ networkPageWidget cur = do
       retractableNext = serversInfoPage cur
     , retractablePrev = Just (pure $ networkPage (Just cur))
     }
--}
+  pure ()
 
 btcNetworkWidget :: MonadFront t m => [NodeBTC t] -> m ()
 btcNetworkWidget nodes = do
@@ -104,25 +89,25 @@ ergNetworkWidget nodes = do
   descrOptionDyn avgLatD
   labelHorSep
 
-networkPageHeader :: MonadFront t m => Maybe Currency -> m (Dynamic t (Maybe Currency))
+networkPageHeader :: MonadFront t m => Maybe Currency -> m (Dynamic t (Maybe (Currency, Event t ())))
 networkPageHeader minitCur = do
   activeCursD <- getActiveCursD
   langD <- getLanguage
-  curD <- fmap join $ titleWrap $ widgetHoldDyn $ ffor activeCursD $ \curSet -> case S.toList curSet of
+  resD <- fmap join $ titleWrap $ widgetHoldDyn $ ffor activeCursD $ \curSet -> case S.toList curSet of
     [] -> do
       divClass "network-title-name" $ h3 $ localizedText NPSNoCurrencies
-      pure $ pure Nothing
+      pure $ pure $ Nothing
     cur:[] -> do
       divClass "network-title-name" $ h3 $ localizedText $ NPSTitleCur cur
-      -- divClass "network-title-cur" $ refreshIndexerInfo =<< buttonClass "button button-outline net-refresh-btn" NPSRefresh
-      pure $ pure (Just cur)
+      refrE <- divClass "network-title-cur" $ buttonClass "button button-outline net-refresh-btn" NPSRefresh
+      pure $ pure $ Just (cur, refrE)
     curs -> do
       divClass "network-title-name" $ h3 $ localizedText $ NPSTitle
       curD <- divClass "network-title-cur" $ currenciesDropdown minitCur curs
-      -- divClass "network-title-cur" $ refreshIndexerInfo =<< buttonClass "button button-outline net-refresh-btn" NPSRefresh
-      pure curD
+      refrE <- divClass "network-title-cur" $ buttonClass "button button-outline net-refresh-btn" NPSRefresh
+      pure $ (fmap . fmap) (, refrE) curD
   baseHorSep
-  pure curD
+  pure resD
   where
     titleWrap  = divClass "network-title-table" . divClass "network-title-row"
     baseHorSep = elAttr "hr" [("class","network-hr-sep"   )] blank
@@ -139,33 +124,27 @@ networkPageHeader minitCur = do
         dropdownConfig_attributes .~ constDyn ("class" =: "select-lang")
       (fmap . fmap) Just $ holdUniqDyn $ _dropdown_value dp
 
-{-
 serversInfoPage :: MonadFront t m => Currency -> m ()
 serversInfoPage initCur = do
   title <- localized NPSTitle
   wrapper False title (Just $ pure $ serversInfoPage initCur) $ mdo
     curD <- networkPageHeader $ Just initCur
-    void $ widgetHoldDyn $ ffor curD $ \case
-      Nothing -> pure ()
-      Just cur -> do
-        allIndsD <- getIndexerInfoD
-        let indMapD = fmap (M.filter (isJust . join . fmap (M.lookup cur . indInfoHeights))) allIndsD
-        void $ listWithKey indMapD $ \url minfoD -> lineOption $ widgetHoldDyn $ ffor minfoD $ \minfo -> do
-          divClass "network-name" $ do
-            let cls = if isJust minfo then "mt-a mb-a indexer-online" else "mt-a mb-a indexer-offline"
-            elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
-            text $ T.pack . showBaseUrl $ url
-          maybe (pure ()) (descrOptionNoBR . NPSLatency . indInfoLatency) minfo
-          case minfo of
-            Nothing -> descrOptionNoBR NPSOffline
-            Just ii -> case M.lookup cur $ indInfoHeights ii of
-              Nothing -> descrOptionNoBR $ NPSNoIndex cur
-              Just (ch, ah) -> do
-                descrOptionNoBR $ NPSHeightInfo1 ch
-                descrOptionNoBR $ NPSHeightInfo2 ah
-          -- descrOptionNoBR $ maybe NPSOffline (maybe (NPSNoIndex cur) NPSHeightInfo . M.lookup cur . indInfoHeights) minfo
-          labelHorSep
--}
+    void $ widgetHoldDyn $ ffor curD $ maybe (pure ()) $ \(cur, refrE) -> do
+      connsD  <- externalRefDynamic =<< getActiveConnsRef
+      setsD <- (fmap . fmap) settingsActiveSockAddrs getSettingsD
+      let valD = (,) <$> connsD <*> setsD
+      widgetHoldDyn $ ffor valD $ \(conmap, urls) -> flip traverse urls $ \sa -> do
+        let mconn = M.lookup sa conmap
+        divClass "network-name" $ do
+          let cls = if isJust mconn then "mt-a mb-a indexer-online" else "mt-a mb-a indexer-offline"
+          elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
+          text $ showt sa
+        case mconn of
+          Nothing -> pure ()
+          Just conn -> do
+            latD <- indexerConnPingerWidget conn refrE
+            descrOptionDynNoBR $ NPSLatency <$> latD
+      pure ()
 
 lineOptionNoEdit :: MonadFront t m
                  => NetworkPageStrings
@@ -186,9 +165,10 @@ nameOption = divClass "network-name"    . localizedText
 descrOption = (>>) elBR . divClass "network-descr" . localizedText
 descrOptionNoBR = divClass "network-descr" . localizedText
 
-valueOptionDyn, descrOptionDyn :: (MonadFront t m, LocalizedPrint a) => Dynamic t a -> m ()
+valueOptionDyn, descrOptionDyn, descrOptionDynNoBR :: (MonadFront t m, LocalizedPrint a) => Dynamic t a -> m ()
 valueOptionDyn v = getLanguage >>= \langD -> divClass "network-value" $ dynText $ ffor2 langD v localizedShow
 descrOptionDyn v = getLanguage >>= \langD -> (>>) elBR (divClass "network-descr" $ dynText $ ffor2 langD v localizedShow)
+descrOptionDynNoBR v = getLanguage >>= \langD -> divClass "network-descr" $ dynText $ ffor2 langD v localizedShow
 
 labelHorSep, elBR :: MonadFront t m => m ()
 labelHorSep = elAttr "hr" [("class","network-hr-sep-lb")] blank

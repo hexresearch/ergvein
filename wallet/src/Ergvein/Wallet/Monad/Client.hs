@@ -14,6 +14,7 @@ module Ergvein.Wallet.Monad.Client (
   , indexerPingerWidget
   , indexerConnPingerWidget
   , indexersAverageLatencyWidget
+  , indexersAverageLatNumWidget
   ) where
 
 import Control.Monad
@@ -235,7 +236,10 @@ indexerConnPingerWidget IndexerConnection{..} refrE = do
   holdDyn 0 $ fmapMaybe id pongE
 
 indexersAverageLatencyWidget :: forall t m . MonadIndexClient t m => Event t () -> m (Dynamic t NominalDiffTime)
-indexersAverageLatencyWidget refrE = do
+indexersAverageLatencyWidget = (fmap . fmap) snd . indexersAverageLatNumWidget
+
+indexersAverageLatNumWidget :: forall t m . MonadIndexClient t m => Event t () -> m (Dynamic t (Int, NominalDiffTime))
+indexersAverageLatNumWidget refrE = do
   connsD  <- externalRefDynamic =<< getActiveConnsRef
   fireReq <- getIndexReqFire
   te      <- fmap void $ tickLossyFromPostBuildTime 10
@@ -258,6 +262,7 @@ indexersAverageLatencyWidget refrE = do
       _ -> pure Nothing
     holdDyn 0 $ fmapMaybe id pongE
   pure $ ffor (joinDynThroughMap pongsD) $ \pongmap -> let
-    len = fromIntegral $ M.size pongmap
+    len = M.size pongmap
     pongs = sum $ M.elems pongmap
-    in if len == 0 then 0 else pongs / len
+    avg = if len == 0 then 0 else pongs / (fromIntegral $ len)
+    in (len, avg)
