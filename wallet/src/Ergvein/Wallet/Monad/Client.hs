@@ -12,6 +12,8 @@ module Ergvein.Wallet.Monad.Client (
   , requestRandomIndexer
   , requestSpecificIndexer
   , indexerPingerWidget
+  , indexerConnPingerWidget
+  , indexersAverageLatencyWidget
   ) where
 
 import Control.Monad
@@ -206,24 +208,56 @@ indexerPingerWidget addr refrE = do
   connmD  <- holdUniqDynBy eq =<< pure . fmap (M.lookup addr) =<< externalRefDynamic =<< getActiveConnsRef
   fmap join $ widgetHoldDyn $ ffor connmD $ \case
     Nothing -> pure $ pure 0
-    Just conn -> do
-      buildE <- getPostBuild
-      fireReq <- getIndexReqFire
-      te     <- fmap void $ tickLossyFromPostBuildTime 10
-      let tickE = leftmost [te, buildE, refrE]
-      pingE <- performFork $ ffor tickE $ const $ liftIO $ do
-        p <- randomIO
-        t <- getCurrentTime
-        fireReq $ M.singleton addr $ (IndexerMsg $ PingMsg p)
-        pure (p,t)
-      pingD <- holdDyn Nothing $ Just <$> pingE
-      pongE <- performFork $ ffor (indexConRespE conn) $ \case
-        PongMsg p -> do
-          t <- liftIO $ getCurrentTime
-          mpt <- sampleDyn pingD
-          pure $ join $ ffor mpt $ \(p',t') -> if (p == p') then Just (diffUTCTime t t') else Nothing
-        _ -> pure Nothing
-      holdDyn 0 $ fmapMaybe id pongE
+    Just conn -> indexerConnPingerWidget conn refrE
   where
     eq :: Maybe (IndexerConnection t) -> Maybe (IndexerConnection t) -> Bool
     eq = (==) `on` (fmap indexConAddr)
+
+indexerConnPingerWidget :: MonadIndexClient t m
+  => IndexerConnection t -> Event t () -> m (Dynamic t NominalDiffTime)
+indexerConnPingerWidget IndexerConnection{..} refrE = do
+  buildE <- getPostBuild
+  fireReq <- getIndexReqFire
+  te     <- fmap void $ tickLossyFromPostBuildTime 10
+  let tickE = leftmost [te, buildE, refrE]
+  pingE <- performFork $ ffor tickE $ const $ liftIO $ do
+    p <- randomIO
+    t <- getCurrentTime
+    fireReq $ M.singleton indexConAddr $ (IndexerMsg $ PingMsg p)
+    pure (p,t)
+  pingD <- holdDyn Nothing $ Just <$> pingE
+  pongE <- performFork $ ffor indexConRespE $ \case
+    PongMsg p -> do
+      t <- liftIO $ getCurrentTime
+      mpt <- sampleDyn pingD
+      pure $ join $ ffor mpt $ \(p',t') -> if (p == p') then Just (diffUTCTime t t') else Nothing
+    _ -> pure Nothing
+  holdDyn 0 $ fmapMaybe id pongE
+
+indexersAverageLatencyWidget :: forall t m . MonadIndexClient t m => Event t () -> m (Dynamic t NominalDiffTime)
+indexersAverageLatencyWidget refrE = do
+  connsD  <- externalRefDynamic =<< getActiveConnsRef
+  fireReq <- getIndexReqFire
+  te      <- fmap void $ tickLossyFromPostBuildTime 10
+  buildE <- getPostBuild
+  let tickE = leftmost [te, buildE, refrE]
+  pingE <- performFork $ ffor tickE $ const $ do
+    conns <- sampleDyn connsD
+    p <- liftIO $ randomIO
+    t <- liftIO $ getCurrentTime
+    liftIO $ fireReq $ (IndexerMsg $ PingMsg p) <$ conns
+    pure (p,t)
+  pingD <- holdDyn Nothing $ Just <$> pingE
+  pongsD <- list connsD $ \connD -> do
+    let respE = switchDyn $ indexConRespE <$> connD
+    pongE <- performFork $ ffor respE $ \case
+      PongMsg p -> do
+        t <- liftIO $ getCurrentTime
+        mpt <- sampleDyn pingD
+        pure $ join $ ffor mpt $ \(p',t') -> if (p == p') then Just (diffUTCTime t t') else Nothing
+      _ -> pure Nothing
+    holdDyn 0 $ fmapMaybe id pongE
+  pure $ ffor (joinDynThroughMap pongsD) $ \pongmap -> let
+    len = fromIntegral $ M.size pongmap
+    pongs = sum $ M.elems pongmap
+    in if len == 0 then 0 else pongs / len
