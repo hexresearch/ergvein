@@ -1,5 +1,8 @@
 # Here you can put overrides of dependencies
-{ reflex-platform }:
+{ reflex-platform
+, gitHash
+, versionTag
+}:
 let
   pkgs = reflex-platform.nixpkgs;
   overrideCabal = pkgs.haskell.lib.overrideCabal;
@@ -18,10 +21,16 @@ let
     ignore-list = ''
       /.ghc.environment*
       /dist-newstyle
-      /android-release 
+      /android-release
       /android-result
     '';
     in { src = gitignore.gitignoreSourceAux ignore-list pkg.src; } );
+  addVersions = drv: pkgs.haskell.lib.overrideCabal drv (drv: {
+    preConfigure = (drv.preConfigure or "") + ''
+      export GIT_HASH=${gitHash}
+      export VERSION_TAG=${versionTag}
+    '';
+  });
 in (self: super: let
   # Internal packages (depends on production or dev environment)
   callInternal = name: path: args: (
@@ -40,12 +49,13 @@ in (self: super: let
     ergvein-index-client = ingnoreGarbage super.ergvein-index-client;
     ergvein-index-server = ingnoreGarbage super.ergvein-index-server;
     ergvein-interface-ergo = ingnoreGarbage super.ergvein-interface-ergo;
-    ergvein-wallet = ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-wallet" ./wallet walletOpts {});
+    ergvein-wallet = addVersions (ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-wallet" ./wallet walletOpts {}));
     ergvein-wallet-android = ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-wallet-android" ./wallet-android walletOpts {});
     ergvein-wallet-desktop = ingnoreGarbage super.ergvein-wallet-desktop;
     ergvein-wallet-filters = ingnoreGarbage super.ergvein-wallet-filters;
     ergvein-wallet-native = ingnoreGarbage super.ergvein-wallet-native;
     ergvein-wallet-types = ingnoreGarbage super.ergvein-wallet-types;
+    ergvein-wallet-version = ingnoreGarbage super.ergvein-wallet-version;
     ergo-api = lib.dontCheck (ingnoreGarbage super.ergo-api);
     golomb-rice = ingnoreGarbage super.golomb-rice;
     reflex-dom-retractable = ingnoreGarbage super.reflex-dom-retractable;

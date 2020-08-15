@@ -100,7 +100,7 @@ jobs:
         ./release-android.sh
 
     - name: Git-Crypt Lock
-      run: sudo git-crypt lock 
+      run: sudo git-crypt lock
 
     - name: Upload Android Release to Play Store
       uses: r0adkll/upload-google-play@v1.0.4

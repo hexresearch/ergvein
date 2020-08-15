@@ -19,14 +19,15 @@ import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
-import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Front
+import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Sync.Status
+import Ergvein.Wallet.Version
 import Network.Connection
 import Network.HTTP.Client hiding (Proxy)
 import Network.TLS
@@ -75,7 +76,7 @@ instance MonadBaseConstr t m => MonadLocalized t (UnauthM t m) where
   getLanguage = externalRefDynamic =<< asks unauth'langRef
   {-# INLINE getLanguage #-}
 
-instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives) => MonadFrontBase t (UnauthM t m) where
+instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives, HasVersion) => MonadFrontBase t (UnauthM t m) where
   getLoadingWidgetTF = asks unauth'loading
   {-# INLINE getLoadingWidgetTF #-}
   getBackEventFire = asks unauth'backEF
@@ -143,7 +144,7 @@ newEnv settings uiChan = do
     , unauth'passSetEF      = passSetEF
     }
 
-runEnv :: (MonadBaseConstr t m, PlatformNatives)
+runEnv :: (MonadBaseConstr t m, PlatformNatives, HasVersion)
   => RunCallbacks -> UnauthEnv t -> ReaderT (UnauthEnv t) (RetractT t m) a -> m a
 runEnv cbs e ma = do
   liftIO $ writeIORef (runBackCallback cbs) $ (snd . unauth'backEF) e
