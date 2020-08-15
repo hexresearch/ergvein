@@ -25,7 +25,7 @@ indexerNodeController initAddrs = mdo
   initE <- fmap (initMap <$) getPostBuild
   let closedE = switchDyn $ ffor valD $ leftmost . M.elems
   let delE = (\u -> M.singleton u Nothing) <$> closedE
-  let addE = (\u -> M.singleton u (Just ())) <$> addrE
+  let addE = (\us -> M.fromList $ (, Just ()) <$> us) <$> addrE
   let actE = leftmost [delE, addE]
   valD <- listWithKeyShallowDiff initMap actE $ \u _ _ -> do
     nodeLog $ "<" <> showt u <> ">: Connect"

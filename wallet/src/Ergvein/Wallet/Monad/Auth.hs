@@ -93,7 +93,7 @@ data Env t = Env {
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
 , env'indexReqSel     :: !(IndexReqSelector t)
 , env'indexReqFire    :: !(Map SockAddr IndexerMsg -> IO ())
-, env'activateIndexEF :: !(Event t SockAddr, SockAddr -> IO ())
+, env'activateIndexEF :: !(Event t [SockAddr], [SockAddr] -> IO ())
 }
 
 type ErgveinM t m = ReaderT (Env t) m

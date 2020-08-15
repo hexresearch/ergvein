@@ -6,6 +6,7 @@ module Ergvein.Wallet.Monad.Client (
   , getArchivedUrlsD
   , getInactiveUrlsD
   , activateURL
+  , activateURLList
   , deactivateURL
   , forgetURL
   , broadcastIndexerMessage
@@ -82,7 +83,7 @@ class MonadBaseConstr t m => MonadIndexClient t m | m -> t where
   -- | Get indexer request trigger
   getIndexReqFire :: m (Map SockAddr IndexerMsg -> IO ())
   -- | Get activation event and trigger
-  getActivationEF :: m (Event t SockAddr, SockAddr -> IO ())
+  getActivationEF :: m (Event t [SockAddr], [SockAddr] -> IO ())
 
 -- | Get deactivated urls dynamic
 getArchivedUrlsD :: MonadIndexClient t m => m (Dynamic t (Set SockAddr))
@@ -105,10 +106,36 @@ activateURL addrE = do
     ars <- modifyExternalRef acrhRef $ \as ->
       let as' = S.delete url as in  (as', S.toList as')
     acs <- fmap M.keys $ readExternalRef connsRef
-    f url
+    f [url]
     s <- modifyExternalRef setRef $ \s -> let
       s' = s {
           settingsActiveSockAddrs  = L.nub $ url:acs
+        , settingsDeactivSockAddrs = ias
+        , settingsPassiveSockAddrs = ars
+        }
+      in (s', s')
+    storeSettings s
+    fire ()
+
+-- | Activate an URL
+activateURLList :: (MonadIndexClient t m, MonadHasSettings t m) => Event t [SockAddr] -> m (Event t ())
+activateURLList addrE = do
+  (_, f)    <- getActivationEF
+  iaRef     <- getInactiveUrlsRef
+  acrhRef   <- getArchivedUrlsRef
+  setRef    <- getSettingsRef
+  connsRef  <- getActiveConnsRef
+  performEventAsync $ ffor addrE $ \urls fire -> void $ liftIO $ forkOnOther $ do
+    let urls' = S.fromList urls
+    ias <- modifyExternalRef iaRef $ \us ->
+      let us' = S.difference us urls' in (us', S.toList us')
+    ars <- modifyExternalRef acrhRef $ \as ->
+      let as' = S.difference as urls' in  (as', S.toList as')
+    acs <- fmap M.keys $ readExternalRef connsRef
+    f urls
+    s <- modifyExternalRef setRef $ \s -> let
+      s' = s {
+          settingsActiveSockAddrs  = L.nub $ urls <> acs
         , settingsDeactivSockAddrs = ias
         , settingsPassiveSockAddrs = ars
         }

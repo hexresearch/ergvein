@@ -137,12 +137,13 @@ activePageWidget = mdo
   widgetHoldDyn $ ffor valsD $ \(conmap, urls) ->
     flip traverse urls $ \sa -> renderActive sa refrE $ M.lookup sa conmap
   hideE <- activateURL =<< addUrlWidget showD
-  (refrE, tglE, restoreE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
+  (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE <- buttonClass "button button-outline m-0" NSSRefresh
     restoreE <- buttonClass "button button-outline m-0" NSSRestoreUrls
+    activateURLList $ defaultIndexers <$ restoreE
     tglE <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSClose else NSSAddUrl
-    pure (refrE, tglE, restoreE)
+    pure (refrE, tglE)
   pure ()
 
 renderActive :: MonadFront t m
