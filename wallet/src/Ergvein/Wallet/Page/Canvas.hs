@@ -105,8 +105,9 @@ concatMyLists a b = (\((mi1,f1),(mi2,f2)) -> case mi1 of
   ) <$> (zip a b)
 
 drawGridT :: Int -> Int -> [(Maybe Int, Square)] -> Text
-drawGridT cW cH r = (clearCanvasT cW cH)
+drawGridT cWOld cHOld r = (clearCanvasT cW cH)
                     <> beginPathT
+                  --  <> " ctx.fillStyle = \"#FF0000\";"
                     <> " ctx.fillStyle = \"#FFFFFF\";"
                     <> " ctx.fillRect(0,0," <> (showt cW) <> "," <> (showt cH) <> "); "
                     <> beginPathT
@@ -115,10 +116,16 @@ drawGridT cW cH r = (clearCanvasT cW cH)
                     <> strokeStyleT
                     <> strokeT
   where
-    fillRects (mN, (a,b,c,d)) = case mN of
+    cW = cWOld+10
+    cH = cHOld+10
+    fillRects (mN, (a1,b1,c1,d1)) = case mN of
       Just _ -> fillRectT a b c d
       Nothing -> rectT a b c d
-
+      where
+        a = a1 + 10
+        b = b1 + 10
+        c = c1
+        d = d1
 drawGridBorderT :: Int -> Int -> [(Maybe Int, Square)] -> Text
 drawGridBorderT cW cH r = (clearCanvasT cW cH)
                     <> beginPathT
@@ -129,7 +136,8 @@ drawGridBorderT cW cH r = (clearCanvasT cW cH)
   where
     fillRects (mN, (a,b,c,d)) = case mN of
       Just _ -> fillRectT a b c d
-      Nothing -> rectT a b c d
+      Nothing -> ""
+      --      Nothing -> rectT a b c d
 
 clearCanvasT :: Int -> Int -> Text
 clearCanvasT cW cH = " ctx.clearRect(0,0," <> (showt cW) <> "," <> (showt cH) <> "); "
