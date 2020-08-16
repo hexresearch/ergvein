@@ -1,4 +1,4 @@
-module Ergvein.Wallet.Node.BTC.Mempool
+  module Ergvein.Wallet.Node.BTC.Mempool
   (
     requestBTCMempool
   ) where
@@ -28,21 +28,20 @@ blockTimeout = 20
 -- Retries after a second if there are no active nodes
 -- Retries after 0.05s if the node disconnected (picks another one)
 -- Once the result is returned, close the blocksRequester widget and stop paying attention to the node
-requestBTCMempool :: MonadFront t m => Event t () -> m (Event t ())
+requestBTCMempool :: MonadFront t m => Event t () -> m (Event t (Maybe Message))
 requestBTCMempool reqE = mdo
   conMapD <- getNodeConnectionsD
-  actE <- map switchDyn $ widgetHold (pure never) $ ffor reqE $ do
-    cm <- sampleDyn conMapD
-    buildE <- eventToNextFrame =<< getPostBuild
+  let goE =  attach (current conMapD) $ reqE
+  actE <- fmap switchDyn $ widgetHold (pure never) $ ffor goE $ \(cm, req) -> do
+    buildE <- getPostBuild
     case DM.lookup BTCTag cm of
-      Nothing -> pure $ Nothing
+      Nothing -> pure $ Nothing <$ buildE
       Just btcsMap -> case M.elems btcsMap of
-        [] -> pure $ Nothing
+        [] -> pure $ Nothing <$ buildE
         btcs -> do
           node <- liftIO $ fmap (btcs!!) $ randomRIO (0, length btcs - 1)
           mempoolRequester node
-  let resE = fmap (\_ -> ()) actE
-  pure resE
+  pure actE
 
 -- | Requester for requestBTCBlocks
 blocksRequester :: MonadFront t m => [BlockHash] -> NodeBTC t -> m (Event t RBTCBlksAct)
@@ -61,7 +60,6 @@ blocksRequester bhs NodeConnection{..} = do
           [] -> Nothing
           vals -> Just vals
         _ -> Nothing
-
   requestFromNode reqE
   responsesD <- foldDyn (\vals m0 -> L.foldl' (\m (u,mv) -> M.insert u mv m) m0 vals) M.empty updE
   let resE = fforMaybe (updated responsesD) $ \respMap -> if M.size respMap /= length bhs
@@ -78,12 +76,12 @@ blocksRequester bhs NodeConnection{..} = do
 
 
 -- | Requester for requestBTCBlocks
-mempoolRequester :: MonadFront t m => NodeBTC t -> m (Event t Message)
+mempoolRequester :: MonadFront t m => NodeBTC t -> m (Event t (Maybe Message))
 mempoolRequester NodeConnection{..} = do
   buildE      <- getPostBuild
   let upE     = leftmost [updated nodeconIsUp, current nodeconIsUp `tag` buildE]
   let btcreq  = NodeReqBTC $ MMempool
   let reqE    = fforMaybe upE $ \b -> if b then Just (nodeconUrl, btcreq) else Nothing
-  let updE    = nodeconRespE
+  let updE    = fmap (\a -> Just a) nodeconRespE
   requestFromNode reqE
   pure $ updE

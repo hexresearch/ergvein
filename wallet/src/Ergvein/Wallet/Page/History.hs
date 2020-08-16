@@ -14,6 +14,8 @@ import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
+import Ergvein.Wallet.Node.BTC.Mempool
+import Ergvein.Wallet.Node.BTC.Blocks
 import Ergvein.Wallet.Page.Transaction
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Storage.Keys
@@ -43,6 +45,12 @@ historyPage cur = do
 historyTableWidget :: MonadFront t m => Currency -> m (Event t TransactionView)
 historyTableWidget cur = divClass "history-table" $ case cur of
   BTC -> do
+    divClass "testlol" $ text "testlol"
+    lE <- delay 0.1 =<< getPostBuild
+    --respE <- requestBTCMempool lE
+    respE <- requestBTCBlocks $ [] <$ lE
+    widgetHold (divClass "lol" $ text "lol") $ ffor respE $ \a ->
+      divClass "lol" $ text $ showt a
     (txsD, hghtD) <- transactionsGetting BTC
     let txMapD = Map.fromList . L.zip [0..] <$> txsD
     mapED <- listWithKey txMapD (\_ -> historyTableRowD hghtD)
