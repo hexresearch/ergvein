@@ -1,6 +1,11 @@
-{ release ? false, profile ? false }:
+{ release ? false
+, profile ? false
+, gitHash
+ }:
 let
    reflex-platform = import ./platform-overlay.nix { inherit profile; };
+   version = import ./android-version.nix;
+   versionTag = version.code;
    project = reflex-platform.project ({ pkgs, ... }: {
     packages = {
       cbitstream = ./cbitstream;
@@ -21,6 +26,7 @@ let
       ergvein-wallet-filters = ./wallet-filters;
       ergvein-wallet-native = ./wallet-native;
       ergvein-wallet-types = ./wallet-types;
+      ergvein-wallet-version = ./wallet-version;
       ergvein-website = ./ergvein-website;
       golomb-rice = ./golomb-rice;
       reflex-dom-canvas = ./reflex-dom-canvas;
@@ -48,6 +54,7 @@ let
         "ergvein-wallet-filters"
         "ergvein-wallet-native"
         "ergvein-wallet-types"
+        "ergvein-wallet-version"
         "ergvein-wallet"
         "ergvein-website"
         "golomb-rice"
@@ -57,7 +64,7 @@ let
         "ui-playground"
       ];
     };
-    overrides = import ./overrides.nix { inherit reflex-platform; };
+    overrides = import ./overrides.nix { inherit reflex-platform gitHash versionTag; };
 
     shellToolOverrides = ghc: super: {
       inherit (pkgs) leveldb;
@@ -84,7 +91,7 @@ let
         ./wallet/java
         "${project.ghc.x509-android.src}/java"
       ];
-      version = import ./android-version.nix;
+      version = version;
       releaseKey = let
         readPassword = file: builtins.replaceStrings ["\n"] [""] (builtins.readFile file);
       in if release then {
@@ -93,6 +100,17 @@ let
         keyAlias = "ergvein_releasekey";
         keyPassword = readPassword ./release/password;
       } else null;
+      services = ''
+      <provider
+          android:name="androidx.core.content.FileProvider"
+          android:authorities="org.ergvein.fileprovider"
+          android:exported="false"
+          android:grantUriPermissions="true">
+          <meta-data
+              android:name="android.support.FILE_PROVIDER_PATHS"
+              android:resource="@xml/file_paths" />
+      </provider>
+      '';
     };
 
   });

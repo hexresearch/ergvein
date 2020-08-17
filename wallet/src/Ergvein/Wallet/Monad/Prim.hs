@@ -41,6 +41,7 @@ import Ergvein.Types.Transaction
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Version
 
 import qualified Data.Set as S
 import qualified Reflex.Profiled as RP
@@ -84,6 +85,7 @@ type MonadFrontConstr t m = (PlatformNatives
   , MonadHasSettings t m
   , MonadLocalized t m
   , MonadRetract t m
+  , HasVersion
   )
 
 -- ===========================================================================

@@ -22,6 +22,7 @@ import Ergvein.Index.Server.Utils
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import System.DiskSpace
 
 import qualified Ergvein.Index.Server.BlockchainScanning.Bitcoin as BTCScanning
 import qualified Ergvein.Index.Server.BlockchainScanning.Ergo    as ERGOScanning
@@ -71,8 +72,9 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
           shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
           when (not shutdownFlag && current <= to) $ do
             tryBlockInfo <- (Right <$> blockIteration to current)  `catch` (\(SomeException ex) -> pure $ Left $ show ex)
+            enoughSpace <- isEnoughSpace
             case tryBlockInfo of
-              Right blockInfo -> do
+              Right blockInfo | enoughSpace -> do
                 maybeLastScannedBlock <- getLastScannedBlock currency
                 if flip all maybeLastScannedBlock (== (blockMetaPreviousHeaderBlockHashHexView $ blockInfoMeta blockInfo)) then do --fork detection
                   addBlockInfo blockInfo
@@ -85,6 +87,10 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
                   let restart = (current - revertedBlocksCount)
                   setScannedHeight currency restart
                   go restart to
+
+              _ | not enoughSpace -> 
+                logInfoN $ "Not enough available disc space to store block scan result"
+
               Left errMsg -> do
                  revertedBlocksCount <- fromIntegral <$> revertContentHistory currency
                  logInfoN $ "Error scanning " <> showt current <> " " <> showt currency
@@ -97,13 +103,20 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
 blockchainScanning :: ServerM [Thread]
 blockchainScanning = sequenceA
   [ scannerThread BTC  BTCScanning.blockInfo
-  , scannerThread ERGO ERGOScanning.blockInfo
   ]
 
 feesThread :: ServerM () -> ServerM Thread
 feesThread feescan = create $ logOnException . \thread -> do
   feescan
   stopThreadIfShutdown thread
+
+isEnoughSpace :: ServerM Bool
+isEnoughSpace = do
+  path <- cfgDBPath <$> serverConfig
+  availSpace <- liftIO $ getAvailSpace path
+  pure $ requiredAvailSpace <= availSpace 
+ where
+  requiredAvailSpace = 2^30 -- 1Gb
 
 feesScanning :: ServerM [Thread]
 feesScanning = sequenceA

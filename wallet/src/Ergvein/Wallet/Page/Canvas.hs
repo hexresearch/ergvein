@@ -22,6 +22,7 @@ module Ergvein.Wallet.Page.Canvas(
   , drawRndT
   , drawRoundLstT
   , drawRndHovT
+  , rawGetCanvasJpeg
   -- Auxiliary types
   , ClientRect(..)
   , Square(..)
@@ -51,6 +52,11 @@ import qualified Data.Text        as T
 import Language.Javascript.JSaddle hiding ((!!))
 
 import qualified GHCJS.DOM.Types as JS
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BSL
+
+import Control.Monad.IO.Class
+import Data.Word
 
 type Square  = (Double, Double, Double, Double)
 type Position = (Double, Double)
@@ -101,7 +107,10 @@ concatMyLists a b = (\((mi1,f1),(mi2,f2)) -> case mi1 of
 drawGridT :: Int -> Int -> [(Maybe Int, Square)] -> Text
 drawGridT cW cH r = (clearCanvasT cW cH)
                     <> beginPathT
---                    <> (rectZeroT cW cH)
+                    <> " ctx.fillStyle = \"#FFFFFF\";"
+                    <> " ctx.fillRect(0,0," <> (showt cW) <> "," <> (showt cH) <> "); "
+                    <> beginPathT
+                    <> " ctx.fillStyle = \"#000000\";"
                     <> (T.concat  (fmap fillRects r))
                     <> strokeStyleT
                     <> strokeT
@@ -315,3 +324,13 @@ rawJSCall el t = liftJSM $ do
   where
     (func2 :: Text) = "ergvein_drawgrid"
     (func1 :: Text) = " ergvein_drawgrid = function(cnv) { " <> " var ctx = cnv.getContext(\"2d\");" <> t <> " }"
+
+rawGetCanvasJpeg :: MonadJSM m => RawElement GhcjsDomSpace -> CanvasOptions -> m (Maybe Text)
+rawGetCanvasJpeg canvEl CanvasOptions{..} = liftJSM $ do
+  eval func
+  fromJSVal =<< jsg1 funcName (toJSVal canvEl)
+  where
+    (funcName :: Text) = "ergvein_canvas_image_data"
+    (func :: Text) = " ergvein_canvas_image_data = function(cnv) {"
+                  <> " return cnv.toDataURL(\"image/jpeg\"); "
+                  <> "}"
