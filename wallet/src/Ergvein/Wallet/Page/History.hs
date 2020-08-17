@@ -14,6 +14,8 @@ import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
+import Ergvein.Wallet.Node.BTC.Mempool
+import Ergvein.Wallet.Node.BTC.Blocks
 import Ergvein.Wallet.Page.Transaction
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
