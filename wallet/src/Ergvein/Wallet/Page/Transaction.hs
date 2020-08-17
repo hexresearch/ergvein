@@ -77,7 +77,7 @@ transactionInfoPage cur tr@TransactionView{..} = do
     infoPageElementEl HistoryTIAmount $ (symbCol txInOut) $ text $ showMoney txAmount <> " " <> showt cur
     infoPageElementEl HistoryTIWalletChanges $ (transTypeCol txInOut) $ text $ case txInOut of
       TransRefill -> (showMoney (Money BTC (maybe 0 moneyAmount txPrevAm))) <> " -> " <> (showMoney (Money BTC ((maybe 0 moneyAmount txPrevAm) + (moneyAmount txAmount)))) <> " " <> showt cur
-      TransWithdraw -> (showMoney (Money BTC (maybe 0 moneyAmount txPrevAm))) <>  " -> " <> (showMoney (Money BTC ((maybe 0 moneyAmount txPrevAm) - (moneyAmount txAmount) - (maybe 0 moneyAmount (txFee txInfoView))))) <> " " <> showt cur
+      TransWithdraw -> (showMoney (Money BTC (maybe 0 moneyAmount txPrevAm))) <> " -> " <> (showMoney (Money BTC ((maybe 0 moneyAmount txPrevAm) - (moneyAmount txAmount) - (maybe 0 moneyAmount (txFee txInfoView))))) <> " " <> showt cur
     case txInOut of
       TransRefill -> pure ()
       TransWithdraw -> infoPageElement HistoryTIFee $ maybe "unknown" (\a -> (showMoney a) <> " " <> showt cur) $ txFee txInfoView
@@ -169,44 +169,25 @@ stat txStatus = case txStatus of
 transactionsGetting :: MonadFront t m => Currency -> m (Dynamic t [TransactionView], Dynamic t Word64)
 transactionsGetting cur = do
   buildE <- delay 0.2 =<< getPostBuild
-  s <- getSettings
-  ps <- getPubStorage
-  pubSD <- getPubStorageD
-  let mStor psBS = fromMaybe 0 $ maybe (Just 0) _currencyPubStorage'height $ Map.lookup cur (_pubStorage'currencyPubStorages psBS)
-  heightD <- holdDyn (mStor ps) $ poke (updated pubSD) $ \pbs -> pure $ mStor pbs
-  let allBtcAddrsD = ffor pubSD $ \(PubStorage _ cm _ _) -> case Map.lookup BTC cm of
+  settings <- getSettings
+  pubStorageD <- getPubStorageD
+  let getHeight pubStorage' = fromMaybe 0 $ _currencyPubStorage'height =<< Map.lookup cur (_pubStorage'currencyPubStorages pubStorage')
+      heightD = getHeight <$> pubStorageD
+      allBtcAddrsD = ffor pubStorageD $ \(PubStorage _ cm _ _) -> case Map.lookup BTC cm of
         Nothing -> []
         Just CurrencyPubStorage{..} -> V.toList $ extractAddrs _currencyPubStorage'pubKeystore
-
-  abS <- sampleDyn allBtcAddrsD
-  tzE <- getGetTimeZone buildE
-
-  tzD <- holdDyn utc tzE
-
-  let rawTxList = filterTx abS ps
-
-  hD <- holdDyn rawTxList $ poke (updated pubSD) $ \pbs -> do
-    allbtcAdrS <- sampleDyn allBtcAddrsD
-    pure $ filterTx allbtcAdrS pbs
-
-  filtrTxListSE <- performFork $ ffor tzE $ \_ -> do
-    let txs = filterTx abS ps
-    tz <- sampleDyn tzD
-    ps' <- sampleDyn pubSD
-    getAndFilterBlocks heightD allBtcAddrsD tz txs ps' s
-
-  filtrTxListE <- performFork $ ffor (updated hD) $ \txs -> do
-    tz <- sampleDyn tzD
-    ps' <- sampleDyn pubSD
-    getAndFilterBlocks heightD allBtcAddrsD tz txs ps' s
-
-  sD <- holdDyn [] filtrTxListSE
-  hS <- sampleDyn $ sD
-
-  filtrHD <- holdDyn [] $ leftmost [filtrTxListSE, filtrTxListE]
-  pure (filtrHD, heightD)
+  timeZoneE <- getGetTimeZone buildE
+  timeZoneD <- holdDyn utc timeZoneE
+  let txListD = ffor2 allBtcAddrsD pubStorageD filterTx
+      filterE = leftmost [tagPromptlyDyn txListD timeZoneE, updated txListD]
+  filteredTxListE <- performFork $ ffor filterE $ \txs -> do
+    timeZone <- sampleDyn timeZoneD
+    pubStorage' <- sampleDyn pubStorageD
+    getAndFilterBlocks heightD allBtcAddrsD timeZone txs pubStorage' settings
+  filteredTxListD <- holdDyn [] filteredTxListE
+  pure (filteredTxListD, heightD)
   where
-    getAndFilterBlocks heightD btcAddrsD tz txs store s = do
+    getAndFilterBlocks heightD btcAddrsD timeZone txs store settings = do
       allbtcAdrS <- sampleDyn btcAddrsD
       hght <- sampleDyn heightD
       liftIO $ flip runReaderT store $ do
@@ -221,11 +202,11 @@ transactionsGetting cur = do
           parentTxs <- sequenceA $ fmap (traverse getTxById) parentTxsIds
           let getTxConfirmations mTx = case mTx of
                 Nothing -> 1 -- If tx is not found we put 1 just to indicate that the transaction is confirmed
-                Just tx -> maybe 0 (\x -> hght - (fromMaybe 0 x) + 1) $  (fmap etxMetaHeight $ getBtcTxMeta tx)
+                Just tx -> maybe 0 (\x -> hght - (fromMaybe 0 x) + 1) $ (fmap etxMetaHeight $ getBtcTxMeta tx)
               txParentsConfirmations = (fmap . fmap) getTxConfirmations parentTxs
               hasUnconfirmedParents = fmap (L.any (== 0)) txParentsConfirmations
           let rawTxsL = L.filter (\(a,b) -> a/=Nothing) $ L.zip bInOut $ txListRaw bl blh txs txsRefList hasUnconfirmedParents parentTxs
-              prepTxs = L.sortOn txDate $ (prepareTransactionView allbtcAdrS hght tz (maybe btcDefaultExplorerUrls id $ Map.lookup cur (settingsExplorerUrl s)) <$> rawTxsL)
+              prepTxs = L.sortOn txDate $ (prepareTransactionView allbtcAdrS hght timeZone (maybe btcDefaultExplorerUrls id $ Map.lookup cur (settingsExplorerUrl settings)) <$> rawTxsL)
           pure $ L.reverse $ addWalletState prepTxs
 
     filterTx ac pubS = case cur of
