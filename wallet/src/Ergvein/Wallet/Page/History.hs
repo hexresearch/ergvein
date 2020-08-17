@@ -47,10 +47,14 @@ historyTableWidget cur = divClass "history-table" $ case cur of
   BTC -> do
     divClass "testlol" $ text "testlol"
     lE <- delay 0.1 =<< getPostBuild
-    --respE <- requestBTCMempool lE
-    respE <- requestBTCBlocks $ [] <$ lE
+    lE2 <- delay 1 =<< getPostBuild
+    respE <- requestBTCMempool lE
+    respE2 <- requestBTCMempool lE2
+--    respE <- requestBTCBlocks $ [] <$ lE
     widgetHold (divClass "lol" $ text "lol") $ ffor respE $ \a ->
-      divClass "lol" $ text $ showt a
+      divClass "lol2 " $ text $ showt a
+    widgetHold (divClass "lol" $ text "lol") $ ffor respE2 $ \a ->
+      divClass "lol2 " $ text $ showt a
     (txsD, hghtD) <- transactionsGetting BTC
     let txMapD = Map.fromList . L.zip [0..] <$> txsD
     mapED <- listWithKey txMapD (\_ -> historyTableRowD hghtD)

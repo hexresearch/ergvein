@@ -19,6 +19,7 @@ import qualified Data.List as L
 
 data RBTCBlksAct = RASucc [Block] | RANoNode [BlockHash] | RANodeClosed [BlockHash]
 
+data MempoolAnsvers = MANoNode | MAEmpty | MAAnswer Message deriving (Show, Eq)
 -- | Amount of seconds we give a node to send us blocks either retry.
 blockTimeout :: NominalDiffTime
 blockTimeout = 20
@@ -28,16 +29,16 @@ blockTimeout = 20
 -- Retries after a second if there are no active nodes
 -- Retries after 0.05s if the node disconnected (picks another one)
 -- Once the result is returned, close the blocksRequester widget and stop paying attention to the node
-requestBTCMempool :: MonadFront t m => Event t () -> m (Event t (Maybe Message))
+requestBTCMempool :: MonadFront t m => Event t () -> m (Event t MempoolAnsvers)
 requestBTCMempool reqE = mdo
   conMapD <- getNodeConnectionsD
   let goE =  attach (current conMapD) $ reqE
   actE <- fmap switchDyn $ widgetHold (pure never) $ ffor goE $ \(cm, req) -> do
     buildE <- getPostBuild
     case DM.lookup BTCTag cm of
-      Nothing -> pure $ Nothing <$ buildE
+      Nothing -> pure $ MANoNode <$ buildE
       Just btcsMap -> case M.elems btcsMap of
-        [] -> pure $ Nothing <$ buildE
+        [] -> pure $ MAEmpty <$ buildE
         btcs -> do
           node <- liftIO $ fmap (btcs!!) $ randomRIO (0, length btcs - 1)
           mempoolRequester node
@@ -76,12 +77,12 @@ blocksRequester bhs NodeConnection{..} = do
 
 
 -- | Requester for requestBTCBlocks
-mempoolRequester :: MonadFront t m => NodeBTC t -> m (Event t (Maybe Message))
+mempoolRequester :: MonadFront t m => NodeBTC t -> m (Event t MempoolAnsvers)
 mempoolRequester NodeConnection{..} = do
   buildE      <- getPostBuild
   let upE     = leftmost [updated nodeconIsUp, current nodeconIsUp `tag` buildE]
   let btcreq  = NodeReqBTC $ MMempool
   let reqE    = fforMaybe upE $ \b -> if b then Just (nodeconUrl, btcreq) else Nothing
-  let updE    = fmap (\a -> Just a) nodeconRespE
+  let updE    = fmap (\a -> MAAnswer a) nodeconRespE
   requestFromNode reqE
   pure $ updE
