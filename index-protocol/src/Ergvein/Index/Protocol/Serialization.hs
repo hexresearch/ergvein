@@ -88,9 +88,9 @@ messageBuilder (MReject msg) = messageBase MRejectType msgSize $ word32BE reject
     rejectType = rejectTypeToWord32 $ rejectMsgCode msg
     msgSize = genericSizeOf rejectType
 
-messageBuilder (MVersionACK msg) = messageBase MVersionACKType msgSize $ mempty
+messageBuilder (MVersionACK msg) = messageBase MVersionACKType msgSize $ word16BE 0
   where
-    msgSize = 0
+    msgSize = genericSizeOf (0 :: Word16)
 
 messageBuilder (MVersion Version {..}) =
   messageBase MVersionType msgSize

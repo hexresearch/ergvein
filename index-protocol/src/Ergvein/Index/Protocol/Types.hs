@@ -13,6 +13,9 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 
+protocolVersion :: Word32
+protocolVersion = 1
+
 data MessageType = MVersionType
                  | MVersionACKType
                  | MFiltersRequestType

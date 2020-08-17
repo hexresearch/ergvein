@@ -251,7 +251,7 @@ indexerConnPingerWidget IndexerConnection{..} refrE = do
   pingE <- performFork $ ffor tickE $ const $ liftIO $ do
     p <- randomIO
     t <- getCurrentTime
-    fireReq $ M.singleton indexConAddr $ (IndexerMsg $ MPing p)
+    --fireReq $ M.singleton indexConAddr $ (IndexerMsg $ MPing p)
     pure (p,t)
   pingD <- holdDyn Nothing $ Just <$> pingE
   pongE <- performFork $ ffor indexConRespE $ \case
@@ -276,7 +276,7 @@ indexersAverageLatNumWidget refrE = do
     conns <- sampleDyn connsD
     p <- liftIO $ randomIO
     t <- liftIO $ getCurrentTime
-    liftIO $ fireReq $ (IndexerMsg $ MPing p) <$ conns
+    --liftIO $ fireReq $ (IndexerMsg $ MPing p) <$ conns
     pure (p,t)
   pingD <- holdDyn Nothing $ Just <$> pingE
   pongsD <- list connsD $ \connD -> do

@@ -30,7 +30,7 @@ import qualified Network.Bitcoin.Api.Client                      as BitcoinApi
 
 data ScanProgressInfo = ScanProgressInfo
   { nfoCurrency      :: !Currency
-  , nfoScannedHeight :: !(Maybe BlockHeight)
+  , nfoScannedHeight :: !BlockHeight
   , nfoActualHeight  :: !BlockHeight
   }
 
@@ -41,7 +41,7 @@ scanningInfo = catMaybes <$> mapM nfo allCurrencies
     nfo currency = do
       maybeScanned <- getScannedHeight currency
       maybeActual <- (Just <$> actualHeight currency) `catch` (\(SomeException _) -> pure Nothing)
-      pure $ ScanProgressInfo currency maybeScanned <$> maybeActual
+      pure $ ScanProgressInfo currency <$> maybeScanned <*> maybeActual
 
 actualHeight :: Currency -> ServerM BlockHeight
 actualHeight currency = case currency of

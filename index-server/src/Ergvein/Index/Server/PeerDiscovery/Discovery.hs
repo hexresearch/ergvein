@@ -139,7 +139,7 @@ peerActualScan candidateInfo = do
       let localCurrency = nfoCurrency localInfo
           localScannedHeight =  nfoScannedHeight localInfo
       candidateNfo <- maybeToRight (CurrencyMissing localCurrency) $ candidateInfoMap Map.!? localCurrency
-      let currencyInSync = and $ notLessThenOne <$> localScannedHeight <*> scanProgressScannedHeight candidateNfo
+      let currencyInSync = and $ notLessThenOne localScannedHeight <$> scanProgressScannedHeight candidateNfo
       if currencyInSync then
         Right ()
       else 

@@ -58,8 +58,7 @@ initIndexerConnection sa msgE = do
       , _socketConfClose  = closeE
       , _socketConfReopen = Just 10
       }
-    -- handshakeE <- performEvent $ ffor (socketConnected s) $ const $ mkVers
-    let handshakeE = never
+    handshakeE <- performEvent $ ffor (socketConnected s) $ const $ mkVers
     let respE = _socketInbound s
     hsRespE <- performEvent $ fforMaybe respE $ \case
       MVersion Version{..} -> Just $ liftIO $ do
@@ -67,7 +66,7 @@ initIndexerConnection sa msgE = do
         pure $ MVersionACK VersionACK
       MPing nonce -> Just $ pure $ MPong nonce
       _ -> Nothing
-    let sendE = leftmost [reqE, handshakeE, hsRespE]
+    let sendE = leftmost [handshakeE, reqE, hsRespE]
 
   performEvent_ $ ffor (_socketRecvEr s) $ nodeLog sa . showt
 
@@ -126,7 +125,7 @@ mkVers = liftIO $ do
   nonce <- randomIO
   t <- fmap (fromIntegral . floor) getPOSIXTime
   pure $ MVersion $ Version {
-      versionVersion    = 1
+      versionVersion    = protocolVersion
     , versionTime       = t
     , versionNonce      = nonce
     , versionScanBlocks = mempty
