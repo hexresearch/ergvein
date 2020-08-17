@@ -161,7 +161,6 @@ btcMempoolTxInserter txE = do
       pure (v,u)
   insertTxsUtxoInPubKeystore "btcMempoolTxInserter" BTC valsE
 
-
 checkAddrTx' :: (HasTxStorage m, PlatformNatives) => V.Vector ScanKeyBox -> HT.Tx -> m (V.Vector (ScanKeyBox, M.Map TxId EgvTx))
 checkAddrTx' vec tx = do
   vec' <- flip traverse vec $ \kb -> do
