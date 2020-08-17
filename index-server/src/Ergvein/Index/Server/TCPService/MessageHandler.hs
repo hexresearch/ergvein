@@ -61,7 +61,6 @@ handleMsg (MFeeRequest curs) = do
           in FeeRespGeneric cur h m l
   pure $ Just $ MFeeResponse $ M.elems resps
 
- -- | Create version data message
 ownVersion :: ServerM Version
 ownVersion = do
   now   <- liftIO $ round <$> getPOSIXTime
