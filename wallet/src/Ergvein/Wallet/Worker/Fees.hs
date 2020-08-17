@@ -26,16 +26,6 @@ feesTimeout = 60
 feesWorker' :: MonadFront t m => m ()
 feesWorker' = pure ()
 
-currencyToCurrencyCode :: ETC.Currency -> CurrencyCode
-currencyToCurrencyCode c = case c of
-  ETC.BTC -> BTC
-  ETC.ERGO -> ERGO
-
-currencyCodeToCurrency :: CurrencyCode -> ETC.Currency
-currencyCodeToCurrency c = case c of
-  BTC -> ETC.BTC
-  ERGO -> ETC.ERGO
-
 feesWorker :: MonadFront t m => m ()
 feesWorker = do
   feeRef  <- getFeesRef

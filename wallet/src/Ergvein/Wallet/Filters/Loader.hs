@@ -23,6 +23,7 @@ import Reflex.ExternalRef
 
 import Ergvein.Filters
 import Ergvein.Index.API.Types
+import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
 import Ergvein.Text
 import Ergvein.Types.Block
 import Ergvein.Types.Currency
@@ -34,8 +35,10 @@ import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Sync.Status
+import Ergvein.Wallet.Util
 
 import qualified Data.Map as M
+import qualified Data.Vector as V
 
 filtersLoader :: MonadFront t m => m ()
 filtersLoader = nameSpace "filters loader" $ do
@@ -55,7 +58,7 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
       if ch > fh then do
         let n = 500
         logWrite $ "Getting next filters ..." <> showt n
-        fse <- getFilters ((BTC, fh+1, n) <$ buildE)
+        fse <- getFilters BTC $ (fh+1, n) <$ buildE
         performEvent_ $ ffor fse $ const $ logWrite "Got filters!"
         we <- performFork $ ffor fse $ \fs ->
           insertMultipleFilters BTC $ zipWith (\h (bh,f) -> (h,bh,f)) [fh+1..] fs
@@ -83,12 +86,17 @@ postSync cur ch fh = do
     setFiltersSync cur $ val == Synced
     setSyncProgress $ val <$ buildE
 
-getFilters :: MonadFront t m => Event t (Currency, BlockHeight, Int) -> m (Event t [(BlockHash, AddressFilterHexView)])
-getFilters e = pure never
-
--- do
---   resE <- getBlockFiltersRandom $ ffor e $ \(cur, h, n) ->
---     BlockFiltersRequest cur (fromIntegral h) (fromIntegral n)
---   hexE <- handleDangerMsg resE
---   let mkPair (a, b) = (, b) <$> hexToBlockHash a
---   pure $ fmap (catMaybes .  fmap mkPair) hexE
+getFilters :: MonadFront t m => Currency -> Event t (BlockHeight, Int) -> m (Event t [(BlockHash, AddressFilterHexView)])
+getFilters cur e = do
+  respE <- requestRandomIndexer $ ffor e $ \(h, n) ->
+    FiltersRequestMsg $ FilterRequestMessage curcode (fromIntegral h) (fromIntegral n)
+  pure $ fforMaybe respE $ \case
+    FiltersResponseMsg (FilterResponseMessage{..}) -> if filterResponseCurrency /= curcode
+      then Nothing
+      else Just $ catMaybes $ V.toList $ ffor filterResponseFilters $ \(BlockFilter bid filt) -> let
+        mbh = hexToBlockHash $ bs2Hex bid
+        fview = bs2Hex filt
+        in (, fview) <$> mbh
+    _ -> Nothing
+  where
+    curcode = currencyToCurrencyCode cur
