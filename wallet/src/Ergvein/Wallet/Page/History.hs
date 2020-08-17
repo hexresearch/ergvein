@@ -16,15 +16,18 @@ import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Page.Transaction
 import Ergvein.Wallet.Platform
+import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
 
 import Data.Map.Strict as Map
-import qualified Data.List as L
+import Data.Maybe
 import Data.Text as T
 import Data.Word
 import Safe
+
+import qualified Data.List as L
 
 historyPage :: MonadFront t m => Currency -> m ()
 historyPage cur = do
@@ -54,7 +57,8 @@ historyTableWidget cur = divClass "history-table" $ case cur of
 
 historyTableRow :: MonadFront t m => TransactionView -> m (Event t TransactionView)
 historyTableRow tr@TransactionView{..} = divButton "history-table-row" $ do
-  divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ (symb txInOut) $ text $ showMoney txAmount
+  moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
+  divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ (symb txInOut) $ text $ showMoneyUnit txAmount moneyUnits
   divClass "history-date" $ showTime tr
   divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> confsClass) confsText
   pure tr
@@ -72,7 +76,8 @@ historyTableRow tr@TransactionView{..} = divButton "history-table-row" $ do
 
 historyTableRowD :: MonadFront t m => Dynamic t Word64 -> Dynamic t TransactionView -> m (Event t TransactionView)
 historyTableRowD _ trD = fmap switchDyn $ widgetHoldDyn $ ffor trD $ \tr@TransactionView{..} -> divButton "history-table-row" $ do
-    divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ symb txInOut $ text $ showMoney txAmount
+    moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
+    divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ symb txInOut $ text $ showMoneyUnit txAmount moneyUnits
     divClass "history-date" $ showTime tr
     divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> (confsClass tr)) $ confsText tr
     pure tr

@@ -72,15 +72,16 @@ import qualified Network.Haskoin.Util               as HK
 transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
 transactionInfoPage cur tr@TransactionView{..} = do
   title <- localized HistoryTITitle
+  moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
   wrapper False title (Just $ pure $ transactionInfoPage cur tr) $ divClass "tx-info-page" $ do
     infoPageElementExpEl HistoryTITransactionId $ hyperlink "link" (txId txInfoView) (txUrl txInfoView)
-    infoPageElementEl HistoryTIAmount $ (symbCol txInOut) $ text $ showMoney txAmount <> " " <> showt cur
+    infoPageElementEl HistoryTIAmount $ (symbCol txInOut) $ text $ showMoneyUnit txAmount moneyUnits <> " " <> symbolUnit cur moneyUnits
     infoPageElementEl HistoryTIWalletChanges $ (transTypeCol txInOut) $ text $ case txInOut of
-      TransRefill -> (showMoney (Money BTC (maybe 0 moneyAmount txPrevAm))) <> " -> " <> (showMoney (Money BTC ((maybe 0 moneyAmount txPrevAm) + (moneyAmount txAmount)))) <> " " <> showt cur
-      TransWithdraw -> (showMoney (Money BTC (maybe 0 moneyAmount txPrevAm))) <> " -> " <> (showMoney (Money BTC ((maybe 0 moneyAmount txPrevAm) - (moneyAmount txAmount) - (maybe 0 moneyAmount (txFee txInfoView))))) <> " " <> showt cur
+      TransRefill -> (showMoneyUnit (Money BTC (maybe 0 moneyAmount txPrevAm)) moneyUnits) <> " -> " <> (showMoneyUnit (Money BTC ((maybe 0 moneyAmount txPrevAm) + (moneyAmount txAmount))) moneyUnits) <> " " <> symbolUnit cur moneyUnits
+      TransWithdraw -> (showMoneyUnit (Money BTC (maybe 0 moneyAmount txPrevAm)) moneyUnits) <> " -> " <> (showMoneyUnit (Money BTC ((maybe 0 moneyAmount txPrevAm) - (moneyAmount txAmount) - (maybe 0 moneyAmount (txFee txInfoView)))) moneyUnits) <> " " <> symbolUnit cur moneyUnits
     case txInOut of
       TransRefill -> pure ()
-      TransWithdraw -> infoPageElement HistoryTIFee $ maybe "unknown" (\a -> (showMoney a) <> " " <> showt cur) $ txFee txInfoView
+      TransWithdraw -> infoPageElement HistoryTIFee $ maybe "unknown" (\a -> (showMoneyUnit a moneyUnits) <> " " <> symbolUnit cur moneyUnits) $ txFee txInfoView
     infoPageElementEl HistoryTITime $ showTime tr
     infoPageElement HistoryTIConfirmations $ showt $ txConfirmations txInfoView
     infoPageElementExpEl HistoryTIBlock $ maybe (text "unknown") (\(bllink,bl) -> hyperlink "link" bl bllink) $ txBlock txInfoView
@@ -89,7 +90,7 @@ transactionInfoPage cur tr@TransactionView{..} = do
       TransWithdraw -> infoPageElementEl HistoryTIInputs $ divClass "tx-info-page-outputs-inputs" $ do
         flip traverse (txInputs txInfoView) $ \(oAddress, oValue) -> do
           divClass "pr-1" $ localizedText HistoryTIOutputsValue
-          divClass "" $ text $ showMoney oValue <> " " <> showt cur
+          divClass "" $ text $ showMoneyUnit oValue moneyUnits <> " " <> symbolUnit cur moneyUnits
           divClass "pr-1 mb-1" $ localizedText HistoryTIOutputsAddress
           divClass "tx-info-page-expanded mb-1" $ case oAddress of
             Nothing -> localizedText HistoryTIAddressUndefined
@@ -98,7 +99,7 @@ transactionInfoPage cur tr@TransactionView{..} = do
     infoPageElementEl HistoryTIOutputs $ divClass "tx-info-page-outputs-inputs" $ do
       flip traverse (txOutputs txInfoView) $ \(oAddress, oValue, oStatus, isOur) -> do
         divClass (oBld "pr-1" isOur) $ localizedText HistoryTIOutputsValue
-        divClass (oBld "" isOur) $ text $ showMoney oValue <> " " <> showt cur
+        divClass (oBld "" isOur) $ text $ showMoneyUnit oValue moneyUnits <> " " <> symbolUnit cur moneyUnits
         if isOur
           then divClass (oBld "pr-1" isOur) $ localizedText HistoryTIOutputsOurAddress
           else divClass (oBld "pr-1" isOur) $ localizedText HistoryTIOutputsAddress
