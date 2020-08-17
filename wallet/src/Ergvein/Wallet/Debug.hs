@@ -4,7 +4,9 @@ module Ergvein.Wallet.Debug
   ) where
 
 import Control.Lens
-import Data.Maybe (fromMaybe)
+import Control.Monad.IO.Class
+import Data.Maybe (fromMaybe, listToMaybe, catMaybes)
+import Network.Haskoin.Block
 import Network.Haskoin.Transaction
 
 import Ergvein.Text
@@ -21,13 +23,18 @@ import Ergvein.Wallet.Storage
 import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Wrapper
 import Ergvein.Index.Protocol.Types (Message(..))
+import Ergvein.Types.Block
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
+import qualified Data.Text as T
 import qualified Network.Haskoin.Keys as HK
 import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
 import qualified Ergvein.Index.Protocol.Types as IPT
+
+import Network.Socket
+import qualified Control.Exception.Safe as Ex
 
 data DebugBtns
   = DbgUtxo
@@ -55,8 +62,12 @@ debugWidget = el "div" $ do
   h5 . dynText $ do
     p <- pingD
     pure $ "Def.indexer ping: " <> showt p
+  avgD <- indexersAverageLatencyWidget =<< delay 1 pingE
+  h5 . dynText $ do
+    p <- avgD
+    pure $ "Avg.indexer ping: " <> showt p
   dbgFiltersTest
-  broadcastIndexerMessage $ ffor pingE $ const $ IndexerMsg $ PingMsg 123
+  performEvent $ (logWrite . showt) <$> urlE
   let goE = leftmost [utxoE, pubIntE, pubExtE, prvIntE, prvExtE]
   void $ nextWidget $ ffor goE $ \sel -> Retractable {
       retractableNext = case sel of
@@ -67,6 +78,25 @@ debugWidget = el "div" $ do
         DbgPrvExt -> dbgPrivExternalsPage
     , retractablePrev = Nothing
     }
+
+addUrlWidget :: forall t m . MonadFront t m => Dynamic t Bool -> m (Event t SockAddr)
+addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not b then pure never else do
+  murlE <- el "div" $ do
+    textD <- fmap _inputElement_value $ inputElement $ def
+      & inputElementConfig_elementConfig . elementConfig_initialAttributes .~ ("type" =: "text")
+    goE <- outlineButton $ mkTxt "Addurl"
+    performFork $ ffor goE $ const $ do
+      t <- sampleDyn textD
+      let (h,p) = fmap (T.drop 1) $ T.span (/= ':') t
+      let hints = defaultHints { addrFlags = [AI_ALL] , addrSocketType = Stream }
+      addrs <- liftIO $ Ex.catch (
+          getAddrInfo (Just hints) (Just $ T.unpack h) (Just $ T.unpack p)
+        ) (\(_ :: Ex.SomeException) -> pure [])
+      pure $ fmap addrAddress $ listToMaybe addrs
+  widgetHold (pure ()) $ ffor murlE $ \case
+    Nothing -> divClass "form-field-errors" $ text "Falied to parse URL"
+    _ -> pure ()
+  pure $ fmapMaybe id murlE
 
 dbgUtxoPage :: MonadFront t m => m ()
 dbgUtxoPage = wrapper False "UTXO" (Just $ pure dbgUtxoPage) $ divClass "currency-content" $ do
@@ -137,11 +167,24 @@ dbgPrivExternalsPage = wrapper False "Private external keys" (Just $ pure dbgPri
 
 dbgFiltersTest :: MonadFront t m => m ()
 dbgFiltersTest = do
-  getE <- outlineButton $ mkTxt "Getfilt"
-  let msg = FiltersRequestMsg $ FilterRequestMessage IPT.BTC 1 1
-  respE <- requestRandomIndexer $ msg <$ getE
-  let filtE = fforMaybe respE $ \case
-        FiltersResponseMsg f -> Just f
-        _ -> Nothing
-  performEvent $ (logWrite . showt) <$> filtE
-  pure ()
+  getE <- outlineButton $ mkTxt "dbgFiltersTest"
+  filtsE <- getFilters BTC $ (1, 10) <$ getE
+  performEvent_ $ ffor filtsE $ \filts -> void $ flip traverse filts $ \(bh, filt) -> do
+    logWrite "====================================="
+    logWrite $ showt bh
+    logWrite filt
+
+getFilters :: MonadFront t m => Currency -> Event t (BlockHeight, Int) -> m (Event t [(BlockHash, AddressFilterHexView)])
+getFilters cur e = do
+  respE <- requestRandomIndexer $ ffor e $ \(h, n) ->
+    FiltersRequestMsg $ FilterRequestMessage curcode (fromIntegral h) (fromIntegral n)
+  pure $ fforMaybe respE $ \case
+    FiltersResponseMsg (FilterResponseMessage{..}) -> if filterResponseCurrency /= curcode
+      then Nothing
+      else Just $ catMaybes $ V.toList $ ffor filterResponseFilters $ \(BlockFilter bid filt) -> let
+        mbh = hexToBlockHash $ bs2Hex bid
+        fview = bs2Hex filt
+        in (, fview) <$> mbh
+    _ -> Nothing
+  where
+    curcode = currencyToCurrencyCode cur
