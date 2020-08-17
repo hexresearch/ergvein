@@ -1,4 +1,4 @@
-* Sharing QR code
-* Fix pattern lock timer bug
-* Add version info in about page
-* Add check for free space in indexer 
+* Fix restore to remember stage with change addresses
+* Fix QR code recognition with dark backgrounds. White frame is added.
+* Detect incoming transactions from mempool on startup.
+* Fix balance calculation for outgoing unconfirmed transactions.
