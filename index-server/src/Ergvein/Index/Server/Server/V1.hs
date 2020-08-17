@@ -78,7 +78,7 @@ indexGetInfoEndpoint = do
   let mappedScanInfo = scanNfoItem <$> scanInfo
   pure $ InfoResponse mappedScanInfo
   where
-    scanNfoItem nfo = ScanProgressItem (nfoCurrency nfo) (nfoScannedHeight nfo) (nfoActualHeight nfo)
+    scanNfoItem nfo = ScanProgressItem (nfoCurrency nfo) undefined (nfoActualHeight nfo)
 
 introducePeerEndpoint :: IntroducePeerReq -> ServerM IntroducePeerResp
 introducePeerEndpoint request = do

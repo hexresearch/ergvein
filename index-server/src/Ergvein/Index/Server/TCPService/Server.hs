@@ -15,6 +15,7 @@ import Data.Attoparsec.ByteString
 import Data.ByteString.Builder
 import Data.Either.Combinators
 import Data.Foldable (traverse_)
+import Data.Time.Clock.POSIX
 import Data.Maybe
 import Data.Word
 import Network.Socket
@@ -95,13 +96,23 @@ closeConnection (connectionThreadId, connectionSocket) = close connectionSocket 
 
 runConnection :: (Socket, SockAddr) -> ServerM ()
 runConnection (sock, addr) = do
-  sendChan <- liftIO newTChanIO
-  -- Spawn message sender thread
-  fork $ sendLoop sendChan
-  -- Spawn broadcaster loop
-  fork $ broadcastLoop sendChan
-  -- Start message listener
-  listenLoop sendChan
+  handshakeStatus <- handshake
+  if handshakeStatus then do
+    sendChan <- liftIO newTChanIO
+    -- report handshake success
+    writeMsg sendChan $ MVersionACK VersionACK
+    ver <- ownVersion
+    writeMsg sendChan $ MVersion ver
+    
+    -- Spawn message sender thread
+    fork $ sendLoop sendChan
+    -- Spawn broadcaster loop
+    fork $ broadcastLoop sendChan
+    -- Start message listener
+    listenLoop sendChan
+  else do
+    openedConnectionsRef <- asks envOpenConnections
+    liftIO $ closeConnection =<< (M.! addr) <$> readTVarIO openedConnectionsRef
   where
     writeMsg :: TChan LBS.ByteString -> Message -> ServerM ()
     writeMsg destinationChan = liftIO . atomically . writeTChan destinationChan . toLazyByteString . messageBuilder
@@ -117,7 +128,9 @@ runConnection (sock, addr) = do
     handshake = do
       headerBytes <- liftIO $ messageHeaderBytes
       message     <- runExceptT $ fetchMessage sock headerBytes
-      pure True
+      pure $ case message of
+        Right (MVersion Version {..}) | protocolVersion == versionVersion -> True
+        _ -> False
 
     messageHeaderBytes = NS.recv sock 8
 

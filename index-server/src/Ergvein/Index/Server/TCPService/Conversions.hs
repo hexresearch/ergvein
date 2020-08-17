@@ -4,6 +4,7 @@ import Conversion
 
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Server.DB.Schema
+import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Text
 
 import qualified Ergvein.Types.Currency as C
@@ -22,4 +23,12 @@ instance Conversion BlockMetaRec BlockFilter where
   convert BlockMetaRec {..} = BlockFilter
     { blockFilterBlockId = hex2bs blockMetaRecHeaderHashHexView
     , blockFilterFilter  = hex2bs blockMetaRecAddressFilterHexView
+    }
+
+instance Conversion ScanProgressInfo ScanBlock where
+  convert ScanProgressInfo {..} = ScanBlock
+    { scanBlockCurrency   = convert nfoCurrency
+    , scanBlockVersion    = 1
+    , scanBlockScanHeight = nfoScannedHeight
+    , scanBlockHeight     = nfoActualHeight
     }
