@@ -13,19 +13,19 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 
-data MessageType = Version
-                 | VersionACK
-                 | FiltersRequest
-                 | FiltersResponse
-                 | FilterEvent
-                 | PeerRequest
-                 | PeerResponse
-                 | FeeRequest
-                 | FeeResponse
-                 | IntroducePeer
-                 | Reject
-                 | Ping
-                 | Pong
+data MessageType = MVersionType
+                 | MVersionACKType
+                 | MFiltersRequestType
+                 | MFiltersResponseType
+                 | MFilterEventType
+                 | MPeerRequestType
+                 | MPeerResponseType
+                 | MFeeRequestType
+                 | MFeeResponseType
+                 | MIntroducePeerType
+                 | MRejectType
+                 | MPingType
+                 | MPongType
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 data RejectCode = MessageHeaderParsing | MessageParsing | InternalServerError
@@ -82,11 +82,11 @@ data MessageHeader = MessageHeader
   , msgSize :: !Word32
   } deriving (Show, Eq)
 
-type PingMessage = Word64
+type Ping = Word64
 
-type PongMessage = Word64
+type Pong = Word64
 
-data RejectMessage = RejectMessage
+data Reject = Reject
   { rejectMsgCode :: !RejectCode
   } deriving (Show, Eq)
 
@@ -102,18 +102,18 @@ derivingUnbox "ScanBlock"
   [| \(ScanBlock c v s h) -> (c, v, s, h) |]
   [| \(c, v, s, h) -> ScanBlock c v s h |]
 
-data VersionMessage = VersionMessage
-  { versionMsgVersion    :: !Word32
-  , versionMsgTime       :: !CTime
-  , versionMsgNonce      :: !Word64
- -- versionMsgCurrencies :: uint32 Amount of currencies blocks following the field. For clients it is 0.
-  , versionMsgScanBlocks :: !(UV.Vector ScanBlock)
+data Version = Version
+  { versionVersion    :: !Word32
+  , versionTime       :: !CTime
+  , versionNonce      :: !Word64
+ -- versionCurrencies :: uint32 Amount of currencies blocks following the field. For clients it is 0.
+  , versionScanBlocks :: !(UV.Vector ScanBlock)
   } deriving (Show, Eq)
 
-data VersionACKMessage = VersionACKMessage
+data VersionACK = VersionACK
   deriving (Show, Eq)
 
-data FilterRequestMessage = FilterRequestMessage
+data FilterRequest = FilterRequest
   { filterRequestMsgCurrency :: !CurrencyCode
   , filterRequestMsgStart    :: !Word64
   , filterRequestMsgAmount   :: !Word64
@@ -126,12 +126,12 @@ data BlockFilter = BlockFilter
   , blockFilterFilter        :: !ByteString
   } deriving (Show, Eq)
 
-data FilterResponseMessage = FilterResponseMessage
+data FilterResponse = FilterResponse
   { filterResponseCurrency :: !CurrencyCode
   , filterResponseFilters  :: !(V.Vector BlockFilter)
   } deriving (Show, Eq)
 
-data FilterEventMessage = FilterEventMessage
+data FilterEvent = FilterEvent
   { filterEventCurrency      :: !CurrencyCode
   , filterEventHeight        :: !Word64
  -- filterEventBlockIdLength :: uint32 Length of block hash
@@ -145,19 +145,19 @@ data FeeResp
   | FeeRespGeneric !CurrencyCode !Word64 !Word64 !Word64
   deriving (Show, Eq)
 
-type FeeResponseMessage = [FeeResp]
-type FeeRequestMessage = [CurrencyCode]
+type FeeResponse = [FeeResp]
+type FeeRequest = [CurrencyCode]
 
-data Message = PingMsg                       !PingMessage
-             | PongMsg                       !PongMessage
-             | VersionMsg                    !VersionMessage
-             | VersionACKMsg                 !VersionACKMessage
-             | RejectMsg                     !RejectMessage
-             | FiltersRequestMsg             !FilterRequestMessage
-             | FiltersResponseMsg            !FilterResponseMessage
-             | FiltersEventMsg               !FilterEventMessage
-             | FeeRequestMsg                 !FeeRequestMessage
-             | FeeResponseMsg                !FeeResponseMessage
+data Message = MPing                       !Ping
+             | MPong                       !Pong
+             | MVersion                    !Version
+             | MVersionACK                 !VersionACK
+             | MReject                     !Reject
+             | MFiltersRequest             !FilterRequest
+             | MFiltersResponse            !FilterResponse
+             | MFiltersEvent               !FilterEvent
+             | MFeeRequest                 !FeeRequest
+             | MFeeResponse                !FeeResponse
   deriving (Show, Eq)
 
 genericSizeOf :: (Storable a, Integral b) => a -> b

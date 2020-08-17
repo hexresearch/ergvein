@@ -14,23 +14,23 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 
-messageTypeToWord32 :: MessageType -> Word32 
+messageTypeToWord32 :: MessageType -> Word32
 messageTypeToWord32 = \case
-  Version         -> 0 
-  VersionACK      -> 1 
-  FiltersRequest  -> 2 
-  FiltersResponse -> 3 
-  FilterEvent     -> 4 
-  PeerRequest     -> 5 
-  PeerResponse    -> 6 
-  FeeRequest      -> 7 
-  FeeResponse     -> 8 
-  IntroducePeer   -> 9 
-  Reject          -> 10 
-  Ping            -> 11
-  Pong            -> 12
+  MVersionType         -> 0
+  MVersionACKType      -> 1
+  MFiltersRequestType  -> 2
+  MFiltersResponseType -> 3
+  MFilterEventType     -> 4
+  MPeerRequestType     -> 5
+  MPeerResponseType    -> 6
+  MFeeRequestType      -> 7
+  MFeeResponseType     -> 8
+  MIntroducePeerType   -> 9
+  MRejectType          -> 10
+  MPingType            -> 11
+  MPongType            -> 12
 
-rejectTypeToWord32 :: RejectCode -> Word32 
+rejectTypeToWord32 :: RejectCode -> Word32
 rejectTypeToWord32 = \case
   MessageHeaderParsing -> 0
   MessageParsing       -> 1
@@ -58,7 +58,7 @@ blockFilterBuilder BlockFilter {..} = (filterSize, filterBuilder)
   where
     idLength = fromIntegral $ BS.length blockFilterBlockId
     filterLength = fromIntegral $ BS.length blockFilterFilter
-    filterSize = Sum $ genericSizeOf idLength 
+    filterSize = Sum $ genericSizeOf idLength
                      + idLength
                      + genericSizeOf filterLength
                      + filterLength
@@ -75,43 +75,43 @@ feeLevelToWord8 fl = case fl of
 
 messageBuilder :: Message -> Builder
 
-messageBuilder (PingMsg msg) = messageBase Ping msgSize $ word64BE msg
+messageBuilder (MPing msg) = messageBase MPingType msgSize $ word64BE msg
   where
     msgSize = genericSizeOf msg
 
-messageBuilder (PongMsg msg) = messageBase Pong msgSize $ word64BE msg
+messageBuilder (MPong msg) = messageBase MPongType msgSize $ word64BE msg
   where
     msgSize = genericSizeOf msg
 
-messageBuilder (RejectMsg msg) = messageBase Reject msgSize $ word32BE rejectType
+messageBuilder (MReject msg) = messageBase MRejectType msgSize $ word32BE rejectType
   where
     rejectType = rejectTypeToWord32 $ rejectMsgCode msg
     msgSize = genericSizeOf rejectType
 
-messageBuilder (VersionACKMsg msg) = messageBase VersionACK msgSize $ mempty
+messageBuilder (MVersionACK msg) = messageBase MVersionACKType msgSize $ mempty
   where
     msgSize = 0
 
-messageBuilder (VersionMsg VersionMessage {..}) =
-  messageBase Version msgSize 
-  $  word32BE versionMsgVersion
+messageBuilder (MVersion Version {..}) =
+  messageBase MVersionType msgSize
+  $  word32BE versionVersion
   <> word64BE (fromIntegral time)
-  <> word64BE versionMsgNonce
+  <> word64BE versionNonce
   <> word32BE scanBlocksCount
   <> scanBlocks
   where
-    (scanBlocksSizeSum, scanBlocks) = mconcat $ scanBlockBuilder <$> UV.toList versionMsgScanBlocks
-    scanBlocksCount = fromIntegral $ UV.length versionMsgScanBlocks
+    (scanBlocksSizeSum, scanBlocks) = mconcat $ scanBlockBuilder <$> UV.toList versionScanBlocks
+    scanBlocksCount = fromIntegral $ UV.length versionScanBlocks
     scanBlocksSize = getSum scanBlocksSizeSum
-    msgSize = genericSizeOf versionMsgVersion
-            + genericSizeOf versionMsgTime
-            + genericSizeOf versionMsgNonce
+    msgSize = genericSizeOf versionVersion
+            + genericSizeOf versionTime
+            + genericSizeOf versionNonce
             + genericSizeOf scanBlocksCount
             + scanBlocksSize
-    (CTime time) = versionMsgTime
+    (CTime time) = versionTime
 
-messageBuilder (FiltersRequestMsg FilterRequestMessage {..}) =
-  messageBase FiltersRequest msgSize 
+messageBuilder (MFiltersRequest FilterRequest {..}) =
+  messageBase MFiltersRequestType msgSize
   $  word32BE currency
   <> word64BE filterRequestMsgStart
   <> word64BE filterRequestMsgAmount
@@ -122,8 +122,8 @@ messageBuilder (FiltersRequestMsg FilterRequestMessage {..}) =
             + genericSizeOf filterRequestMsgStart
             + genericSizeOf filterRequestMsgAmount
 
-messageBuilder (FiltersResponseMsg FilterResponseMessage {..}) = 
-  messageBase FiltersResponse msgSize
+messageBuilder (MFiltersResponse FilterResponse {..}) =
+  messageBase MFiltersResponseType msgSize
   $  word32BE (currencyCodeToWord32 filterResponseCurrency)
   <> word32BE filtersCount
   <> lazyByteString zippedFilters
@@ -133,11 +133,11 @@ messageBuilder (FiltersResponseMsg FilterResponseMessage {..}) =
     zippedFilters = compress $ toLazyByteString filters
 
     msgSize = genericSizeOf (currencyCodeToWord32 filterResponseCurrency)
-            + genericSizeOf filtersCount 
+            + genericSizeOf filtersCount
             + fromIntegral (LBS.length zippedFilters)
 
-messageBuilder (FiltersEventMsg FilterEventMessage {..}) = 
-  messageBase FilterEvent msgSize
+messageBuilder (MFiltersEvent FilterEvent {..}) =
+  messageBase MFilterEventType msgSize
   $  word32BE currency
   <> word64BE filterEventHeight
   <> word32BE filterEventBlockIdLength
@@ -156,21 +156,21 @@ messageBuilder (FiltersEventMsg FilterEventMessage {..}) =
             + genericSizeOf filterEventBlockFilterLength
             + filterEventBlockFilterLength
 
-messageBuilder (FeeRequestMsg curs) = let
+messageBuilder (MFeeRequest curs) = let
   amount = fromIntegral $ length curs
   msgSize = case curs of
     [] -> genericSizeOf amount
     c:_ -> genericSizeOf amount + amount * genericSizeOf (currencyCodeToWord32 c)
   cursBS = mconcat $ (word32BE . currencyCodeToWord32) <$> curs
   msg = word32BE amount <> cursBS
-  in messageBase FeeRequest msgSize msg
+  in messageBase MFeeRequestType msgSize msg
 
-messageBuilder (FeeResponseMsg msgs) = let
+messageBuilder (MFeeResponse msgs) = let
   amount = fromIntegral $ length msgs
   (respSum, resps) = mconcat $ feeRespBuilder <$> msgs
   msgSize = genericSizeOf amount + (getSum respSum)
   msg = word32BE amount <> resps
-  in messageBase FeeResponse msgSize msg
+  in messageBase MFeeResponseType msgSize msg
 
 feeRespBuilder :: FeeResp -> (Sum Word32, Builder)
 feeRespBuilder (FeeRespBTC isTest (FeeBundle (a,b) (c,d) (e,f))) = let

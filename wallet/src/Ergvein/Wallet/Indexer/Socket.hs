@@ -62,10 +62,10 @@ initIndexerConnection sa msgE = do
     let handshakeE = never
     let respE = _socketInbound s
     hsRespE <- performEvent $ fforMaybe respE $ \case
-      VersionMsg VersionMessage{..} -> Just $ liftIO $ do
-        nodeLog sa $ "Received version: " <> showt versionMsgVersion
-        pure $ VersionACKMsg VersionACKMessage
-      PingMsg nonce -> Just $ pure $ PongMsg nonce
+      MVersion Version{..} -> Just $ liftIO $ do
+        nodeLog sa $ "Received version: " <> showt versionVersion
+        pure $ MVersionACK VersionACK
+      MPing nonce -> Just $ pure $ MPong nonce
       _ -> Nothing
     let sendE = leftmost [reqE, handshakeE, hsRespE]
 
@@ -73,7 +73,7 @@ initIndexerConnection sa msgE = do
 
   -- Track handshake status
   let verAckE = fforMaybe respE $ \case
-        VersionACKMsg _ -> Just True
+        MVersionACK _ -> Just True
         _ -> Nothing
   shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
   let openE = fmapMaybe (\b -> if b then Just () else Nothing) $ updated shakeD
@@ -125,11 +125,11 @@ mkVers = liftIO $ do
   now   <- round <$> getPOSIXTime
   nonce <- randomIO
   t <- fmap (fromIntegral . floor) getPOSIXTime
-  pure $ VersionMsg $ VersionMessage {
-      versionMsgVersion    = 1
-    , versionMsgTime       = t
-    , versionMsgNonce      = nonce
-    , versionMsgScanBlocks = mempty
+  pure $ MVersion $ Version {
+      versionVersion    = 1
+    , versionTime       = t
+    , versionNonce      = nonce
+    , versionScanBlocks = mempty
     }
 
 -- | Node string for logging

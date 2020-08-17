@@ -43,7 +43,7 @@ runPinger = create $ const $ logOnException $ do
   broadChan <- liftIO . atomically . dupTChan =<< asks envBroadcastChannel
   forever $ liftIO $ do
     threadDelay 5000000
-    msg <- PingMsg <$> randomIO
+    msg <- MPing <$> randomIO
     atomically $ writeTChan broadChan msg
 
 runTcpSrv :: ServerM Thread
@@ -141,22 +141,22 @@ runConnection (sock, addr) = do
           Right (Just msg) -> writeMsg destinationChan msg
           Left err         -> do
             logInfoN $ "failed to handle msg: " <> showt err
-            writeMsg destinationChan $ RejectMsg err
+            writeMsg destinationChan $ MReject err
         listenLoop destinationChan
 
-fetchMessage :: Socket -> BS.ByteString -> ExceptT RejectMessage ServerM Message
+fetchMessage :: Socket -> BS.ByteString -> ExceptT Reject ServerM Message
 fetchMessage sock messageHeaderBytes = request =<< messageHeader
   where
-    messageHeader :: ExceptT RejectMessage ServerM MessageHeader
-    messageHeader = ExceptT . pure . mapLeft (\_-> RejectMessage MessageHeaderParsing) . eitherResult $ parse messageHeaderParser messageHeaderBytes
+    messageHeader :: ExceptT Reject ServerM MessageHeader
+    messageHeader = ExceptT . pure . mapLeft (\_-> Reject MessageHeaderParsing) . eitherResult $ parse messageHeaderParser messageHeaderBytes
 
-    request :: MessageHeader -> ExceptT RejectMessage ServerM Message
+    request :: MessageHeader -> ExceptT Reject ServerM Message
     request MessageHeader {..} = do
       messageBytes <- liftIO $ NS.recv sock $ fromIntegral msgSize
-      ExceptT $ pure $ mapLeft (\_-> RejectMessage MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
+      ExceptT $ pure $ mapLeft (\_-> Reject MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
 
 
-evalMsg :: Socket -> BS.ByteString -> ExceptT RejectMessage ServerM (Maybe Message)
+evalMsg :: Socket -> BS.ByteString -> ExceptT Reject ServerM (Maybe Message)
 evalMsg sock messageHeaderBytes = do
   printDelim
   let hdr = eitherResult $ parse messageHeaderParser messageHeaderBytes
@@ -165,16 +165,16 @@ evalMsg sock messageHeaderBytes = do
   response =<< request =<< messageHeader
   where
     printDelim = liftIO $ print "===================================================="
-    messageHeader :: ExceptT RejectMessage ServerM MessageHeader
-    messageHeader = ExceptT . pure . mapLeft (\_-> RejectMessage MessageHeaderParsing) . eitherResult $ parse messageHeaderParser messageHeaderBytes
+    messageHeader :: ExceptT Reject ServerM MessageHeader
+    messageHeader = ExceptT . pure . mapLeft (\_-> Reject MessageHeaderParsing) . eitherResult $ parse messageHeaderParser messageHeaderBytes
 
-    request :: MessageHeader -> ExceptT RejectMessage ServerM Message
+    request :: MessageHeader -> ExceptT Reject ServerM Message
     request MessageHeader {..} = do
       messageBytes <- liftIO $ NS.recv sock $ fromIntegral msgSize
       liftIO $ print $ show msgType <> ": " <> show (msgSize, BS.length messageBytes)
       liftIO $ print $ "Parse     :" <> show (eitherResult $ parse (messageParser msgType) messageBytes)
       liftIO $ print $ "ParseOnly :" <> show (parseOnly (messageParser msgType) messageBytes)
-      ExceptT $ pure $ mapLeft (\_-> RejectMessage MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
+      ExceptT $ pure $ mapLeft (\_-> Reject MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
 
-    response :: Message -> ExceptT RejectMessage ServerM (Maybe Message)
-    response msg = ExceptT $ (Right <$> handleMsg msg) `catch` (\(SomeException ex) -> pure $ Left $ RejectMessage $ InternalServerError)
+    response :: Message -> ExceptT Reject ServerM (Maybe Message)
+    response msg = ExceptT $ (Right <$> handleMsg msg) `catch` (\(SomeException ex) -> pure $ Left $ Reject $ InternalServerError)

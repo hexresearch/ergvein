@@ -176,9 +176,9 @@ dbgFiltersTest = do
 getFilters :: MonadFront t m => Currency -> Event t (BlockHeight, Int) -> m (Event t [(BlockHash, AddressFilterHexView)])
 getFilters cur e = do
   respE <- requestRandomIndexer $ ffor e $ \(h, n) ->
-    FiltersRequestMsg $ FilterRequestMessage curcode (fromIntegral h) (fromIntegral n)
+    MFiltersRequest $ FilterRequest curcode (fromIntegral h) (fromIntegral n)
   pure $ fforMaybe respE $ \case
-    FiltersResponseMsg (FilterResponseMessage{..}) -> if filterResponseCurrency /= curcode
+    MFiltersResponse (FilterResponse{..}) -> if filterResponseCurrency /= curcode
       then Nothing
       else Just $ catMaybes $ V.toList $ ffor filterResponseFilters $ \(BlockFilter bid filt) -> let
         mbh = hexToBlockHash $ bs2Hex bid

@@ -29,23 +29,23 @@ getBlockMetaSlice currency startHeight endHeight = do
   pure metaSlice
 
 handleMsg :: Message -> ServerM (Maybe Message)
-handleMsg (PingMsg msg) = pure $ Just $ PongMsg msg
+handleMsg (MPing msg) = pure $ Just $ MPong msg
 
-handleMsg (PongMsg _) = pure Nothing
+handleMsg (MPong _) = pure Nothing
 
-handleMsg (VersionMsg msg) = undefined
+handleMsg (MVersion msg) = undefined
 
-handleMsg (FiltersRequestMsg FilterRequestMessage {..}) = do
+handleMsg (MFiltersRequest FilterRequest {..}) = do
   let currency = convert filterRequestMsgCurrency
   slice <- getBlockMetaSlice currency filterRequestMsgStart filterRequestMsgAmount
   let filters = V.fromList $ convert <$> slice
 
-  pure $ Just $ FiltersResponseMsg $ FilterResponseMessage
+  pure $ Just $ MFiltersResponse $ FilterResponse
     { filterResponseCurrency = filterRequestMsgCurrency
     , filterResponseFilters = filters
     }
 
-handleMsg (FeeRequestMsg curs) = do
+handleMsg (MFeeRequest curs) = do
   fees <- liftIO . readTVarIO =<< asks envFeeEstimates
   let selCurs = M.restrictKeys fees $ S.fromList curs
   let resps = flip M.mapWithKey selCurs $ \cur fb -> case cur of
@@ -53,4 +53,4 @@ handleMsg (FeeRequestMsg curs) = do
         IPT.TBTC -> FeeRespBTC True fb
         _ -> let FeeBundle (_, h) (_, m) (_, l) = fb
           in FeeRespGeneric cur h m l
-  pure $ Just $ FeeResponseMsg $ M.elems resps
+  pure $ Just $ MFeeResponse $ M.elems resps

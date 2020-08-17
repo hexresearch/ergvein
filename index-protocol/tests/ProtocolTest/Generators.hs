@@ -31,21 +31,21 @@ instance Arbitrary MessageHeader where
 instance Arbitrary ScanBlock where
   arbitrary = ScanBlock <$> getRandBounded <*> arbitrary <*> arbitrary <*> arbitrary
 
-instance Arbitrary VersionMessage where
+instance Arbitrary Version where
   arbitrary = sized $ \n ->
-    VersionMessage <$> arbitrary <*> arbitrary <*> arbitrary <*> (UV.replicateM n arbitrary)
+    Version <$> arbitrary <*> arbitrary <*> arbitrary <*> (UV.replicateM n arbitrary)
 
-instance Arbitrary FilterRequestMessage where
-  arbitrary = FilterRequestMessage <$> getRandBounded <*> arbitrary <*> arbitrary
+instance Arbitrary FilterRequest where
+  arbitrary = FilterRequest <$> getRandBounded <*> arbitrary <*> arbitrary
 
 instance Arbitrary BlockFilter where
   arbitrary = BlockFilter <$> arbitrary <*> arbitrary
 
-instance Arbitrary FilterResponseMessage where
-  arbitrary = sized $ \n -> FilterResponseMessage <$> getRandBounded <*> (V.replicateM n arbitrary)
+instance Arbitrary FilterResponse where
+  arbitrary = sized $ \n -> FilterResponse <$> getRandBounded <*> (V.replicateM n arbitrary)
 
-instance Arbitrary FilterEventMessage where
-  arbitrary = sized $ \n -> FilterEventMessage <$> getRandBounded <*> arbitrary <*> arbitrary <*> arbitrary
+instance Arbitrary FilterEvent where
+  arbitrary = sized $ \n -> FilterEvent <$> getRandBounded <*> arbitrary <*> arbitrary <*> arbitrary
 
 instance Arbitrary FeeResp where
   arbitrary = let
@@ -58,42 +58,42 @@ instance Arbitrary CurrencyCode where
 
 unimplementedMessageTypes :: [MessageType]
 unimplementedMessageTypes =
-  [ PeerRequest
-  , PeerResponse
-  , IntroducePeer
+  [ MPeerRequestType
+  , MPeerResponseType
+  , MIntroducePeerType
   ]
 
 fullyImplementedMessageTypes :: [MessageType]
 fullyImplementedMessageTypes =
-  [ Ping
-  , Pong
-  , Reject
-  , VersionACK
-  , Version
-  , FeeRequest
-  , FeeResponse
-  , FiltersRequest
-  , FiltersResponse
-  , FilterEvent
+  [ MPingType
+  , MPongType
+  , MRejectType
+  , MVersionACKType
+  , MVersionType
+  , MFeeRequestType
+  , MFeeResponseType
+  , MFiltersRequestType
+  , MFiltersResponseType
+  , MFilterEventType
   ]
 
 instance Arbitrary Message where
   arbitrary = do
     msgType <- oneof $ fmap pure fullyImplementedMessageTypes
     case msgType of
-      Version -> VersionMsg <$> arbitrary
-      VersionACK -> pure $ VersionACKMsg VersionACKMessage
-      FiltersRequest -> FiltersRequestMsg <$> arbitrary
-      FiltersResponse -> FiltersResponseMsg <$> arbitrary
-      Reject -> (RejectMsg . RejectMessage) <$> getRandBounded
-      Ping -> PingMsg <$> arbitrary
-      Pong -> PongMsg <$> arbitrary
-      FilterEvent   -> FiltersEventMsg <$> arbitrary
-      PeerRequest   -> error "Message type: PeerRequest is not implemented"
-      PeerResponse  -> error "Message type: PeerResponse is not implemented"
-      FeeRequest    -> FeeRequestMsg <$> arbitrary
-      FeeResponse   -> FeeResponseMsg <$> arbitrary
-      IntroducePeer -> error "Message type: IntroducePeer is not implemented"
+      MVersionType          -> MVersion <$> arbitrary
+      MVersionACKType       -> pure $ MVersionACK VersionACK
+      MFiltersRequestType   -> MFiltersRequest <$> arbitrary
+      MFiltersResponseType  -> MFiltersResponse <$> arbitrary
+      MRejectType           -> (MReject . Reject) <$> getRandBounded
+      MPingType             -> MPing <$> arbitrary
+      MPongType             -> MPong <$> arbitrary
+      MFilterEventType      -> MFiltersEvent <$> arbitrary
+      MPeerRequestType      -> error "Message type: PeerRequest is not implemented"
+      MPeerResponseType     -> error "Message type: PeerResponse is not implemented"
+      MFeeRequestType       -> MFeeRequest <$> arbitrary
+      MFeeResponseType      -> MFeeResponse <$> arbitrary
+      MIntroducePeerType    -> error "Message type: IntroducePeer is not implemented"
 
 --------------------------------------------------------------------------
 -- newtype wrappers

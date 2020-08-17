@@ -34,9 +34,9 @@ feesWorker = do
   te      <- fmap void $ tickLossyFromPostBuildTime feesTimeout
   tickE   <- delay 1 $ leftmost [te, void $ updated cursD, buildE]
   let goE = attachWith (\cs _ -> fmap currencyToCurrencyCode $ S.toList cs) (current cursD) tickE
-  respE <- requestRandomIndexer $ FeeRequestMsg <$> goE
+  respE <- requestRandomIndexer $ MFeeRequest <$> goE
   let feesE = fforMaybe respE $ \case
-        FeeResponseMsg fees -> Just $ repack fees
+        MFeeResponse fees -> Just $ repack fees
         _ -> Nothing
   performEvent $ (logWrite . showt) <$> feesE
   performFork_ $ ffor feesE $ \fm -> modifyExternalRef_ feeRef $ \fm' -> M.union fm fm'

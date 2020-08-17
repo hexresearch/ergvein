@@ -17,27 +17,27 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 
-word32toMessageType :: Word32 -> Maybe MessageType 
+word32toMessageType :: Word32 -> Maybe MessageType
 word32toMessageType = \case
-  0  -> Just Version
-  1  -> Just VersionACK
-  2  -> Just FiltersRequest
-  3  -> Just FiltersResponse
-  4  -> Just FilterEvent
-  5  -> Just PeerRequest
-  6  -> Just PeerResponse
-  7  -> Just FeeRequest
-  8  -> Just FeeResponse
-  9  -> Just IntroducePeer
-  10 -> Just Reject 
-  11 -> Just Ping
-  12 -> Just Pong
+  0  -> Just MVersionType
+  1  -> Just MVersionACKType
+  2  -> Just MFiltersRequestType
+  3  -> Just MFiltersResponseType
+  4  -> Just MFilterEventType
+  5  -> Just MPeerRequestType
+  6  -> Just MPeerResponseType
+  7  -> Just MFeeRequestType
+  8  -> Just MFeeResponseType
+  9  -> Just MIntroducePeerType
+  10 -> Just MRejectType
+  11 -> Just MPingType
+  12 -> Just MPongType
   _  -> Nothing
 
 currencyCodeParser :: Parser CurrencyCode
 currencyCodeParser = fmap word32ToCurrencyCode anyWord32be
 
-word32toRejectType :: Word32 -> Maybe RejectCode 
+word32toRejectType :: Word32 -> Maybe RejectCode
 word32toRejectType = \case
   0  -> Just MessageHeaderParsing
   1  -> Just MessageParsing
@@ -72,7 +72,7 @@ versionBlockParser = do
   version    <- anyWord32be
   scanHeight <- anyWord64be
   height     <- anyWord64be
-  
+
   pure $ ScanBlock
     { scanBlockCurrency   = currency
     , scanBlockVersion    = version
@@ -81,7 +81,7 @@ versionBlockParser = do
     }
 
 parseFilters :: BS.ByteString -> [BlockFilter]
-parseFilters = unfoldr (\source -> 
+parseFilters = unfoldr (\source ->
   case parse filterParser source of
     Done rest parsedFilter -> Just (parsedFilter, rest)
     _ -> Nothing)
@@ -93,62 +93,62 @@ filterParser = do
   blockFilterLength <- fromIntegral <$> anyWord32be
   blockFilter <- Parse.take blockFilterLength
 
-  pure $ BlockFilter 
+  pure $ BlockFilter
     { blockFilterBlockId = blockId
     , blockFilterFilter  = blockFilter
     }
 
 messageParser :: MessageType -> Parser Message
-messageParser Ping = PingMsg <$> anyWord64be
+messageParser MPingType = MPing <$> anyWord64be
 
-messageParser Pong = PongMsg <$> anyWord64be
+messageParser MPongType = MPong <$> anyWord64be
 
-messageParser Reject = RejectMsg . RejectMessage <$> rejectCodeParser
+messageParser MRejectType = MReject . Reject <$> rejectCodeParser
 
-messageParser Version = do
+messageParser MVersionType = do
   version       <- anyWord32be
   time          <- fromIntegral <$> anyWord64be
   nonce         <- anyWord64be
   currencies    <- anyWord32be
   versionBlocks <- UV.fromList <$> replicateM (fromIntegral currencies) versionBlockParser
 
-  pure $ VersionMsg $ VersionMessage  
-    { versionMsgVersion    = version
-    , versionMsgTime       = time
-    , versionMsgNonce      = nonce
-    , versionMsgScanBlocks = versionBlocks
+  pure $ MVersion $ Version
+    { versionVersion    = version
+    , versionTime       = time
+    , versionNonce      = nonce
+    , versionScanBlocks = versionBlocks
     }
 
-messageParser VersionACK = pure $ VersionACKMsg VersionACKMessage
+messageParser MVersionACKType = pure $ MVersionACK VersionACK
 
-messageParser FiltersRequest = do
+messageParser MFiltersRequestType = do
   currency <- currencyCodeParser
   start    <- anyWord64be
   amount   <- anyWord64be
 
-  pure $ FiltersRequestMsg $ FilterRequestMessage  
+  pure $ MFiltersRequest $ FilterRequest
     { filterRequestMsgCurrency = currency
     , filterRequestMsgStart    = start
     , filterRequestMsgAmount   = amount
     }
 
-messageParser FiltersResponse = do
+messageParser MFiltersResponseType = do
   currency <- currencyCodeParser
   amount <- anyWord32be
   filtersString <- takeLazyByteString
-  
+
   let unzippedFilters = LBS.toStrict $ decompress filtersString
       parser = V.fromList <$> replicateM (fromIntegral amount) filterParser
 
   case parseOnly parser unzippedFilters of
-    Right parsedFilters -> pure $ FiltersResponseMsg $ FilterResponseMessage  
+    Right parsedFilters -> pure $ MFiltersResponse $ FilterResponse
       { filterResponseCurrency = currency
       , filterResponseFilters  = parsedFilters
       }
     _ -> fail "fail to parse response filters"
 
 
-messageParser FilterEvent = do
+messageParser MFilterEventType = do
   currency <- currencyCodeParser
   height <- anyWord64be
   blockIdLength <- fromIntegral <$> anyWord32be
@@ -156,22 +156,22 @@ messageParser FilterEvent = do
   blockFilterLength <- fromIntegral <$> anyWord32be
   blockFilter <- Parse.take blockFilterLength
 
-  pure $ FiltersEventMsg $ FilterEventMessage
+  pure $ MFiltersEvent $ FilterEvent
     { filterEventCurrency    = currency
     , filterEventHeight      = height
     , filterEventBlockId     = blockId
     , filterEventBlockFilter = blockFilter
     }
 
-messageParser FeeRequest = do
+messageParser MFeeRequestType = do
   amount <- anyWord32be
   curs <- replicateM (fromIntegral amount) currencyCodeParser
-  pure $ FeeRequestMsg curs
+  pure $ MFeeRequest curs
 
-messageParser FeeResponse = do
+messageParser MFeeResponseType = do
   amount <- anyWord32be
   resps <- replicateM (fromIntegral amount) parseFeeResp
-  pure $ FeeResponseMsg resps
+  pure $ MFeeResponse resps
 
 parseFeeResp :: Parser FeeResp
 parseFeeResp = do
@@ -192,7 +192,7 @@ parseFeeResp = do
       <*> anyWord64be
 
 parseMessage :: MessageType -> BS.ByteString -> Either String (Message, BS.ByteString)
-parseMessage msgType source = 
+parseMessage msgType source =
   case parse (messageParser msgType) source of
     Done rest message -> Right (message, rest)
     Partial _ -> Left "source too short"
