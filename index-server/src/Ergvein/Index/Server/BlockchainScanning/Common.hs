@@ -6,11 +6,14 @@ import Control.Concurrent.STM.TVar
 import Control.Immortal
 import Control.Monad.Catch
 import Control.Monad.Logger
+import Control.Monad.Reader
+import Conversion
 import Data.Foldable
 import Data.Maybe
+import System.DiskSpace
 import System.Exit
 
-import Control.Monad.Reader
+import Ergvein.Index.Protocol.Types (Message(..), FilterEvent(..))
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB
@@ -18,11 +21,11 @@ import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
+import Ergvein.Index.Server.TCPService.Conversions
 import Ergvein.Index.Server.Utils
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import System.DiskSpace
 
 import qualified Ergvein.Index.Server.BlockchainScanning.Bitcoin as BTCScanning
 import qualified Ergvein.Index.Server.BlockchainScanning.Ergo    as ERGOScanning
@@ -78,6 +81,13 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
                 maybeLastScannedBlock <- getLastScannedBlock currency
                 if flip all maybeLastScannedBlock (== (blockMetaPreviousHeaderBlockHashHexView $ blockInfoMeta blockInfo)) then do --fork detection
                   addBlockInfo blockInfo
+                  let BlockMetaInfo{..} = blockInfoMeta blockInfo
+                  when (current == to) $ broadcastSocketMessage $ MFiltersEvent $ FilterEvent {
+                      filterEventCurrency     = convert blockMetaCurrency
+                    , filterEventHeight       = blockMetaBlockHeight
+                    , filterEventBlockId      = hex2bs blockMetaHeaderHashHexView
+                    , filterEventBlockFilter  = hex2bs blockMetaAddressFilterHexView
+                    }
                   go (succ current) to
                 else do
                   revertedBlocksCount <- fromIntegral <$> revertContentHistory currency

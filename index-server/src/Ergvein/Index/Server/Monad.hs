@@ -12,7 +12,7 @@ import Servant.Server
 import Servant.Server.Generic
 
 import Ergvein.Index.Client
-import Ergvein.Index.Protocol.Types (CurrencyCode)
+import Ergvein.Index.Protocol.Types (CurrencyCode, Message)
 import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.Config
@@ -112,3 +112,6 @@ stopThreadIfShutdown :: Thread -> ServerM ()
 stopThreadIfShutdown thread = do
   shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
   when shutdownFlag $ liftIO $ stop thread
+
+broadcastSocketMessage :: Message -> ServerM ()
+broadcastSocketMessage msg = liftIO . atomically . flip writeTChan msg =<< asks envBroadcastChannel
