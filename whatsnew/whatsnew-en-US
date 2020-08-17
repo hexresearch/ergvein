@@ -1,1 +1,4 @@
-* Redesigned main menu 
+* Sharing QR code
+* Fix pattern lock timer bug
+* Add version info in about page
+* Add check for free space in indexer 
