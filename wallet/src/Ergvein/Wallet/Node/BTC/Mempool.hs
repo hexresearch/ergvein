@@ -1,4 +1,4 @@
-  module Ergvein.Wallet.Node.BTC.Mempool
+module Ergvein.Wallet.Node.BTC.Mempool
   (
     requestBTCMempool
   ) where
@@ -41,7 +41,7 @@ mempoolRequester :: MonadFront t m => NodeBTC t -> m (Event t MempoolAnswers)
 mempoolRequester NodeConnection{..} = do
   buildE      <- getPostBuild
   let upE     = leftmost [updated nodeconIsUp, current nodeconIsUp `tag` buildE]
-  let btcreq  = NodeReqBTC $ MMempool
+  let btcreq  = NodeReqBTC MMempool
   let reqE    = fforMaybe upE $ \b -> if b then Just (nodeconUrl, btcreq) else Nothing
   let updE    = fmap (\a -> MAAnswer a) nodeconRespE
   requestFromNode reqE

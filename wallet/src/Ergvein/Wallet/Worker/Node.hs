@@ -117,8 +117,7 @@ bctNodeController = mdo
     myTxSender u respE
     pure $ (u <$ closeE, newTxE)
 
-  buildE <- delay 1 =<< getPostBuild
-  _ <- requestBTCMempool buildE
+  _ <- requestBTCMempool =<< delay 1 =<< getPostBuild
   btcMempoolTxInserter txE
   pure ()
   where
