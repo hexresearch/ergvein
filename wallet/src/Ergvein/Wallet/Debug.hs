@@ -67,7 +67,6 @@ debugWidget = el "div" $ do
     p <- avgD
     pure $ "Avg.indexer ping: " <> showt p
   dbgFiltersTest
-  performEvent $ (logWrite . showt) <$> urlE
   let goE = leftmost [utxoE, pubIntE, pubExtE, prvIntE, prvExtE]
   void $ nextWidget $ ffor goE $ \sel -> Retractable {
       retractableNext = case sel of
