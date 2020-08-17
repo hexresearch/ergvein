@@ -238,10 +238,11 @@ transactionsGetting cur = do
     txListRaw (a:as) (b:bs) (c:cs) (d:ds) (e:es) (f:fs) = (TxRawInfo a b c d e f) : txListRaw as bs cs ds es fs
 
 addWalletState :: [TransactionView] -> [TransactionView]
-addWalletState txs = fmap calcPrev $ fmap (\(a,txView) -> (txView, calcAmount a txs)) $ L.zip [0..] txs
+addWalletState txs = fmap setPrev $ fmap (\(prevTxCount, txView) -> (txView, calcAmount prevTxCount txs)) $ L.zip [0..] txs
   where
-    calcAmount a txs = sum $ fmap (\(Money _ am) -> am ) $ fmap txAmount $ L.take a txs
-    calcPrev (tr, prAm) = tr {txPrevAm = (Just (Money BTC prAm))}
+    setPrev (tr, prAm) = tr {txPrevAm = (Just (Money BTC prAm))}
+    calcAmount n txs' = L.foldl' calc 0 $ L.take n txs'
+    calc acc TransactionView{..} = if txInOut == TransRefill then acc + moneyAmount txAmount else acc - moneyAmount txAmount - (fromMaybe 0 $ moneyAmount <$> txFee txInfoView)
 
 prepareTransactionView :: [EgvAddress] -> Word64 -> TimeZone -> ExplorerUrls -> (Maybe TransType, TxRawInfo) -> TransactionView
 prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = TransactionView {
