@@ -50,7 +50,7 @@ instance LocalizedPrint NetworkPageStrings where
       NPSServerDescr        -> "Number of servers in the list"
       NPSSyncStatus         -> "Height status: "
       NPSNoServerAvail      -> "No indexer available"
-      NPSSyncInfo (ch,ah)   -> "Indexers are in sync: " <> showt ch <> "/" <> showt ah
+      NPSSyncInfo (ch,ah)   -> "Indexers are in sync: " <> (maybe "loading..." showt ch) <> "/" <> showt ah
       NPSDesync             -> "Indexers are not in sync"
       NPSSyncDescr          -> "Indexed height / actual blockchain height"
       NPSRefresh            -> "Refresh"
@@ -63,8 +63,8 @@ instance LocalizedPrint NetworkPageStrings where
       NPSAvgLat lat         -> "Average latency: " <> showt lat
       NPSOffline            -> "Offline"
       NPSNoIndex c          -> "Has no index for " <> showt c
-      NPSHeightInfo1 ch     -> 
-        case ch of 
+      NPSHeightInfo1 ch     ->
+        case ch of
           Just h  -> "Index height: " <> showt h
           Nothing -> "Not indexed"
       NPSHeightInfo2 ah     -> "Blockchain height: " <> showt ah
@@ -100,8 +100,8 @@ instance LocalizedPrint NetworkPageStrings where
       NPSAvgLat lat         -> "Средняя задержка : " <> showt lat
       NPSOffline            -> "Оффлайн"
       NPSNoIndex c          -> "Нет индекса для " <> showt c
-      NPSHeightInfo1 ch     -> 
-        case ch of 
+      NPSHeightInfo1 ch     ->
+        case ch of
           Just h  -> "Высота индекса: " <> showt h
           Nothing -> "Не индексировалась"
       NPSHeightInfo2 ah     -> "Высота блокчейна: " <> showt ah
