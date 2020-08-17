@@ -10,9 +10,9 @@
 , prefixName ? ""
 }:
 let
-  reflex-platform = import ../platform-overlay.nix { profile = isProfile; inherit gitHash; };
+  reflex-platform = import ../platform-overlay.nix { profile = isProfile; };
   pkgs = reflex-platform.nixpkgs;
-  project = import ../default.nix { release = true; };
+  project = import ../default.nix { release = true; inherit gitHash; };
 
   baseImage = pkgs.dockerTools.pullImage {
       imageName = "alpine";
