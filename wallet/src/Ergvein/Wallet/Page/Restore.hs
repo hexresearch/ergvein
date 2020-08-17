@@ -64,10 +64,11 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
       psD <- getPubStorageD
       let nextE = flip pushAlways filtersE $ const $ do
             ps <- sample . current $ psD
-            let r = pubStorageScannedKeys BTC External ps
-                unused = maybe 0 fst $ pubStorageLastUnused BTC External ps
-                gap = r - unused
-            pure $ scanKeys gap r
+            let (er, egap) = calcNumGap ps BTC External
+                (ir, igap) = calcNumGap ps BTC Internal
+            pure $ if egap >= gapLimit
+              then scanInternalKeys igap ir
+              else scanKeys egap er
       performEvent_ $ ffor nextE $ const $ logWrite "Going to scan stage!"
       nextE' <- delay 0.1 nextE
       pure ((), nextE')
@@ -83,8 +84,10 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
         h <- sample . current $ heightD
         pure $ SyncMeta BTC (SyncAddressExternal keyNum) 0 (fromIntegral h)
       if gapN >= gapLimit then do
-        n <- sample . current . fmap (pubStorageScannedKeys BTC Internal) =<< getPubStorageD
-        pure((), scanInternalKeys 0 n <$ buildE)
+        ps <- sample . current =<< getPubStorageD
+        storedE <- modifyPubStorage "scanKeys" $ ffor buildE $ const $ Just . pubStorageSetKeyScanned BTC External (Just (keyNum + 1))
+        let (ir, igap) = calcNumGap ps BTC Internal
+        pure((), scanInternalKeys igap ir <$ storedE)
       else if keyNum >= V.length keys then do
         logWrite "Generating next portion of external BTC keys..."
         deriveNewBtcKeys External gapLimit
@@ -151,6 +154,15 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
         , retractablePrev = Nothing
         }
       pure ((), never)
+
+-- | Calculate number of last restore key and gap that indicates how many unused
+-- keys we are scanned already.
+calcNumGap :: PubStorage -> Currency -> KeyPurpose -> (Int, Int)
+calcNumGap ps cur s = let
+    r = pubStorageScannedKeys cur s ps
+    unused = maybe 0 fst $ pubStorageLastUnused cur s ps
+    gap = r - unused
+  in (r, gap)
 
 -- | Generate next public keys for bitcoin and put them to storage
 deriveNewBtcKeys :: MonadFront t m => KeyPurpose -> Int -> m (Event t ())
