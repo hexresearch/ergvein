@@ -20,6 +20,7 @@ import Ergvein.Index.API
 import Ergvein.Index.API.Types
 import Ergvein.Index.API.V1
 import Ergvein.Index.Server.BlockchainScanning.Common
+import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema
 import Ergvein.Index.Server.Dependencies

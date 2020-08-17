@@ -18,6 +18,7 @@ import Servant.Client.Core
 import Ergvein.Index.API.Types
 import Ergvein.Index.Client.V1
 import Ergvein.Index.Server.BlockchainScanning.Common
+import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment

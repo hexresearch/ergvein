@@ -25,3 +25,9 @@ data BlockInfo = BlockInfo
   , spentTxsHash        :: [TxHash]
   , blockContentTxInfos :: [TxInfo]
   }
+
+data ScanProgressInfo = ScanProgressInfo
+  { nfoCurrency      :: !Currency
+  , nfoScannedHeight :: !BlockHeight
+  , nfoActualHeight  :: !BlockHeight
+  }  

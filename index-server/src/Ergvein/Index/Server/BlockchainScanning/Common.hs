@@ -31,12 +31,6 @@ import qualified Ergvein.Index.Server.BlockchainScanning.Bitcoin as BTCScanning
 import qualified Ergvein.Index.Server.BlockchainScanning.Ergo    as ERGOScanning
 import qualified Network.Bitcoin.Api.Client                      as BitcoinApi
 
-data ScanProgressInfo = ScanProgressInfo
-  { nfoCurrency      :: !Currency
-  , nfoScannedHeight :: !BlockHeight
-  , nfoActualHeight  :: !BlockHeight
-  }
-
 scanningInfo :: ServerM [ScanProgressInfo]
 scanningInfo = catMaybes <$> mapM nfo allCurrencies
   where

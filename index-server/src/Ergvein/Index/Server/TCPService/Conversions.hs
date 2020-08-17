@@ -4,7 +4,7 @@ import Conversion
 
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Server.DB.Schema
-import Ergvein.Index.Server.BlockchainScanning.Common
+import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Text
 
 import qualified Ergvein.Types.Currency as C
