@@ -1,48 +1,50 @@
 module Ergvein.Index.Server.App where
 
+import Control.Concurrent.STM.TVar
 import Control.Immortal
 import Control.Monad
-import Database.LevelDB.Internal
-import Network.Wai
-import Network.Wai.Handler.Warp
-import Network.Wai.Middleware.Cors
-import Network.Wai.Middleware.Gzip
-import Servant
-import Servant.API.Generic
-import System.Posix.Signals
-import qualified Data.Text.IO as T
-import Data.Text (Text, pack)
-import Control.Concurrent.STM.TVar
 import Control.Monad.STM
+import Data.Text (Text, pack)
+import System.Posix.Signals
+import Control.Monad.IO.Unlift
+import Control.Monad.Logger
 
-import Ergvein.Index.API
-import Ergvein.Index.Server.Monad
+import Ergvein.Index.Server.BlockchainScanning.Common
+import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Environment
-import Ergvein.Index.Server.Server.V1
+import Ergvein.Index.Server.Monad
+import Ergvein.Index.Server.PeerDiscovery.Discovery
+import Ergvein.Index.Server.TCPService.Server
+import Ergvein.Index.Server.Utils
+import Ergvein.Text
 
-indexServerApp :: ServerEnv -> Application
-indexServerApp e = gzip def . appCors $ serve indexApi $ hoistServer indexApi (runServerM e) $ toServant indexServer
-    where
-        appCors = cors $ const $ Just simpleCorsResourcePolicy 
-            { corsRequestHeaders = ["Content-Type"]
-            , corsMethods = "PUT" : simpleMethods 
-            }
+import qualified Data.Text.IO as T
 
-beforeShutdown :: ServerEnv -> [Thread] -> IO ()
-beforeShutdown env workerTreads = do
-  T.putStrLn $ pack "Server stop signal recivied..."
-  T.putStrLn $ pack "service is stopping"
+onStartup :: ServerEnv -> ServerM [Thread]
+onStartup env = do
+  scanningWorkers <- blockchainScanning
+  syncWithDefaultPeers
+  feeWorkers <- feesScanning
+  peerIntroduce
+  knownPeersActualization
+  tcpServerThread <- runTcpSrv
+  pure $ tcpServerThread : scanningWorkers ++ feeWorkers
+
+onShutdown :: ServerEnv -> [Thread] -> IO ()
+onShutdown env workerTreads = do
+  T.putStrLn $ showt "Server stop signal recivied..."
+  T.putStrLn $ showt "service is stopping"
   atomically $ writeTVar (envShutdownFlag env) True
 
-afterShutdown :: ServerEnv -> [Thread] -> IO ()
-afterShutdown env workerTreads = do
-  sequence_ $ wait <$> workerTreads
-  T.putStrLn $ pack "service is stopped"
+finalize :: (MonadIO m, MonadLogger m) => [Thread] -> m ()
+finalize workerTreads = do
+  liftIO $ sequence_ $ wait <$> workerTreads
+  logInfoN "service is stopped"
 
-appSettings :: IO () -> IO () -> Settings
-appSettings beforeShutdown afterShutdown = setGracefulShutdownTimeout gracefulShutdownTimeout 
-                           $ setInstallShutdownHandler shutdownHandler defaultSettings
-  where
-    gracefulShutdownTimeout = Just 4 --seconds
-    shutdownHandler closeSocket =
-      void $ installHandler sigTERM (Catch $ beforeShutdown >> closeSocket >> afterShutdown) Nothing
+app :: (MonadIO m, MonadLogger m) => Config -> ServerEnv -> m ()
+app cfg env = do
+  workerThreads <- liftIO $ runServerMIO env $ onStartup env
+  logInfoN $ "Server started at:" <> (showt . cfgServerPort $ cfg)
+  liftIO $ installHandler sigTERM (Catch $ onShutdown env workerThreads) Nothing
+  liftIO $ cancelableDelay (envShutdownFlag env) (-1)
+  finalize workerThreads
