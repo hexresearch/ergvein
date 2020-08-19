@@ -23,11 +23,14 @@ ergoBalances = pure $ pure $ Money ERGO 0
 
 btcBalances :: MonadFront t m => m (Dynamic t Money)
 btcBalances = do
-  pubSD <- getPubStorageD
-  pure $ ffor pubSD $ \ps -> let
-    utxo = M.elems $ fromMaybe M.empty $ ps ^. pubStorage'currencyPubStorages . at BTC & fmap (view currencyPubStorage'utxos)
-    in Money BTC $ foo 0 utxo $ \s UtxoMeta{..} -> s + utxoMeta'amount
-  where foo b ta f = L.foldl' f b ta
+  pubStorageD <- getPubStorageD
+  pure $ ffor pubStorageD $ \pubStorage -> let
+    utxos = M.elems $ fromMaybe M.empty $ pubStorage ^. pubStorage'currencyPubStorages . at BTC & fmap (view currencyPubStorage'utxos)
+    in Money BTC $ L.foldl' helper 0 utxos
+  where
+    helper :: MoneyUnit -> UtxoMeta -> MoneyUnit
+    helper balance UtxoMeta{utxoMeta'status = EUtxoSending _} = balance
+    helper balance UtxoMeta{..} = balance + utxoMeta'amount
 
 balancesWidget :: MonadFront t m => Currency -> m (Dynamic t Money)
 balancesWidget cur = case cur of

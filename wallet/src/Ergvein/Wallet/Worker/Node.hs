@@ -31,6 +31,7 @@ import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node
 import Ergvein.Wallet.Node.BTC
+import Ergvein.Wallet.Node.BTC.Mempool
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Tx
@@ -116,6 +117,7 @@ bctNodeController = mdo
     myTxSender u respE
     pure $ (u <$ closeE, newTxE)
 
+  _ <- requestBTCMempool =<< delay 1 =<< getPostBuild
   btcMempoolTxInserter txE
   pure ()
   where

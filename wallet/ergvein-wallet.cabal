@@ -93,6 +93,7 @@ library
         Ergvein.Wallet.Node
         Ergvein.Wallet.Node.BTC
         Ergvein.Wallet.Node.BTC.Blocks
+        Ergvein.Wallet.Node.BTC.Mempool
         Ergvein.Wallet.Node.ERGO
         Ergvein.Wallet.Node.Prim
         Ergvein.Wallet.Node.Socket
