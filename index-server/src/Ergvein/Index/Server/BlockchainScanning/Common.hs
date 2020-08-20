@@ -96,6 +96,7 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
           let restart = (from - revertedBlocksCount)
           setScannedHeight currency restart
           go restart to
+
         blockScanningError errorMessage from to = do
           logInfoN $ "Error scanning " <> showt from <> " " <> showt currency
           previousBlockChanged from to

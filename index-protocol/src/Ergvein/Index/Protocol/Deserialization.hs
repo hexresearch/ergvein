@@ -35,7 +35,7 @@ word32toMessageType = \case
   _  -> Nothing
 
 currencyCodeParser :: Parser CurrencyCode
-currencyCodeParser = fmap word32ToCurrencyCode anyWord32be
+currencyCodeParser = fmap word32ToCurrencyCode anyWord32le
 
 word32toRejectType :: Word32 -> Maybe RejectCode
 word32toRejectType = \case
@@ -54,14 +54,14 @@ word8toFeeLevel = \case
 messageHeaderParser ::  Parser MessageHeader
 messageHeaderParser = do
     messageType <- messageTypeParser
-    messageSize <- anyWord32be
+    messageSize <- anyWord32le
     pure $ MessageHeader messageType messageSize
 
 messageTypeParser :: Parser MessageType
-messageTypeParser = guardJust "out of message type bounds" . word32toMessageType =<< anyWord32be
+messageTypeParser = guardJust "out of message type bounds" . word32toMessageType =<< anyWord32le
 
 rejectCodeParser :: Parser RejectCode
-rejectCodeParser = guardJust "out of reject type bounds" . word32toRejectType =<< anyWord32be
+rejectCodeParser = guardJust "out of reject type bounds" . word32toRejectType =<< anyWord32le
 
 feeLevelParser :: Parser FeeLevel
 feeLevelParser = guardJust "out of feeLevel type bounds" . word8toFeeLevel =<< anyWord8
@@ -69,9 +69,9 @@ feeLevelParser = guardJust "out of feeLevel type bounds" . word8toFeeLevel =<< a
 versionBlockParser ::  Parser ScanBlock
 versionBlockParser = do
   currency   <- currencyCodeParser
-  version    <- anyWord32be
-  scanHeight <- anyWord64be
-  height     <- anyWord64be
+  version    <- anyWord32le
+  scanHeight <- anyWord64le
+  height     <- anyWord64le
 
   pure $ ScanBlock
     { scanBlockCurrency   = currency
@@ -80,17 +80,11 @@ versionBlockParser = do
     , scanBlockHeight     = height
     }
 
-parseFilters :: BS.ByteString -> [BlockFilter]
-parseFilters = unfoldr (\source ->
-  case parse filterParser source of
-    Done rest parsedFilter -> Just (parsedFilter, rest)
-    _ -> Nothing)
-
 filterParser :: Parser BlockFilter
 filterParser = do
-  blockIdLength <- fromIntegral <$> anyWord32be
+  blockIdLength <- fromIntegral <$> anyWord32le
   blockId <- Parse.take blockIdLength
-  blockFilterLength <- fromIntegral <$> anyWord32be
+  blockFilterLength <- fromIntegral <$> anyWord32le
   blockFilter <- Parse.take blockFilterLength
 
   pure $ BlockFilter
@@ -98,18 +92,28 @@ filterParser = do
     , blockFilterFilter  = blockFilter
     }
 
-messageParser :: MessageType -> Parser Message
-messageParser MPingType = MPing <$> anyWord64be
+addressParser = do
+  addrType <- word8ToIPType <$> anyWord8
+  addrPort <- anyWord16le
+  addr <- Parse.take (if addrType == IPV4 then 4 else 16)
+  pure $ Address
+    { addressType    = addrType
+    , addressPort    = addrPort
+    , addressAddress = addr
+    }
 
-messageParser MPongType = MPong <$> anyWord64be
+messageParser :: MessageType -> Parser Message
+messageParser MPingType = MPing <$> anyWord64le
+
+messageParser MPongType = MPong <$> anyWord64le
 
 messageParser MRejectType = MReject . Reject <$> rejectCodeParser
 
 messageParser MVersionType = do
-  version       <- anyWord32be
-  time          <- fromIntegral <$> anyWord64be
-  nonce         <- anyWord64be
-  currencies    <- anyWord32be
+  version       <- anyWord32le
+  time          <- fromIntegral <$> anyWord64le
+  nonce         <- anyWord64le
+  currencies    <- anyWord32le
   versionBlocks <- UV.fromList <$> replicateM (fromIntegral currencies) versionBlockParser
 
   pure $ MVersion $ Version
@@ -119,12 +123,12 @@ messageParser MVersionType = do
     , versionScanBlocks = versionBlocks
     }
 
-messageParser MVersionACKType = MVersionACK VersionACK <$ anyWord16be
+messageParser MVersionACKType = MVersionACK VersionACK <$ anyWord16le
 
 messageParser MFiltersRequestType = do
   currency <- currencyCodeParser
-  start    <- anyWord64be
-  amount   <- anyWord64be
+  start    <- anyWord64le
+  amount   <- anyWord64le
 
   pure $ MFiltersRequest $ FilterRequest
     { filterRequestMsgCurrency = currency
@@ -134,7 +138,7 @@ messageParser MFiltersRequestType = do
 
 messageParser MFiltersResponseType = do
   currency <- currencyCodeParser
-  amount <- anyWord32be
+  amount <- anyWord32le
   filtersString <- takeLazyByteString
 
   let unzippedFilters = LBS.toStrict $ decompress filtersString
@@ -150,10 +154,10 @@ messageParser MFiltersResponseType = do
 
 messageParser MFilterEventType = do
   currency <- currencyCodeParser
-  height <- anyWord64be
-  blockIdLength <- fromIntegral <$> anyWord32be
+  height <- anyWord64le
+  blockIdLength <- fromIntegral <$> anyWord32le
   blockId <- Parse.take blockIdLength
-  blockFilterLength <- fromIntegral <$> anyWord32be
+  blockFilterLength <- fromIntegral <$> anyWord32le
   blockFilter <- Parse.take blockFilterLength
 
   pure $ MFiltersEvent $ FilterEvent
@@ -164,14 +168,21 @@ messageParser MFilterEventType = do
     }
 
 messageParser MFeeRequestType = do
-  amount <- anyWord32be
+  amount <- anyWord32le
   curs <- replicateM (fromIntegral amount) currencyCodeParser
   pure $ MFeeRequest curs
 
 messageParser MFeeResponseType = do
-  amount <- anyWord32be
+  amount <- anyWord32le
   resps <- replicateM (fromIntegral amount) parseFeeResp
   pure $ MFeeResponse resps
+
+messageParser MPeerRequestType = do
+  amount <- anyWord32le
+  addresses <- V.fromList <$> replicateM (fromIntegral amount) addressParser
+  pure $ MPeerResponse $  PeerResponse
+    { peerResponseAddresses = addresses
+    }
 
 parseFeeResp :: Parser FeeResp
 parseFeeResp = do
@@ -182,14 +193,14 @@ parseFeeResp = do
     _ -> genericParser currency
   where
     btcParser isTest = do
-      h <- (,) <$> anyWord64be <*> anyWord64be
-      m <- (,) <$> anyWord64be <*> anyWord64be
-      l <- (,) <$> anyWord64be <*> anyWord64be
+      h <- (,) <$> anyWord64le <*> anyWord64le
+      m <- (,) <$> anyWord64le <*> anyWord64le
+      l <- (,) <$> anyWord64le <*> anyWord64le
       pure $ FeeRespBTC isTest $ FeeBundle h m l
     genericParser cur = FeeRespGeneric cur
-      <$> anyWord64be
-      <*> anyWord64be
-      <*> anyWord64be
+      <$> anyWord64le
+      <*> anyWord64le
+      <*> anyWord64le
 
 parseMessage :: MessageType -> BS.ByteString -> Either String (Message, BS.ByteString)
 parseMessage msgType source =

@@ -80,10 +80,6 @@ prop_encdec_ScanBlock_Eq sb = either (const False) (sb ==) decMsg
     encMsg = serializeScanBlock sb
     decMsg = deserializeScanBlock $ BL.toStrict encMsg
 
-prop_encdec_MultFilters_Valid bfs = bfs == decMsg
-  where
-    encMsg = BB.toLazyByteString $ mconcat $ snd $ unzip $ blockFilterBuilder <$> bfs
-    decMsg = parseFilters $ BL.toStrict encMsg
 --------------------------------------------------------------------------
 -- main
 

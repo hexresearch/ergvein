@@ -36,8 +36,25 @@ rejectTypeToWord32 = \case
   MessageParsing       -> 1
   InternalServerError  -> 2
 
+feeLevelToWord8 :: FeeLevel -> Word8
+feeLevelToWord8 fl = case fl of
+  FeeFast     -> 0
+  FeeModerate -> 1
+  FeeCheap    -> 2
+
+addressBuilder :: Address -> (Sum Word32, Builder)
+addressBuilder Address {..} = (addrSize, addrBuilder)
+  where
+    addrType = ipTypeToWord8 addressType
+    addrSize = Sum $ genericSizeOf addrType
+                   + genericSizeOf addressPort
+                   + (if addressType == IPV4 then 4 else 16)
+    addrBuilder = word8 addrType
+               <> word16LE addressPort
+               <> byteString addressAddress
+
 messageBase :: MessageType -> Word32 -> Builder -> Builder
-messageBase msgType msgLength payload = word32BE (messageTypeToWord32 msgType) <> word32BE msgLength <> payload
+messageBase msgType msgLength payload = word32LE (messageTypeToWord32 msgType) <> word32LE msgLength <> payload
 
 scanBlockBuilder :: ScanBlock -> (Sum Word32, Builder)
 scanBlockBuilder ScanBlock {..} = (scanBlockSize, scanBlock)
@@ -48,10 +65,10 @@ scanBlockBuilder ScanBlock {..} = (scanBlockSize, scanBlock)
                         + genericSizeOf scanBlockScanHeight
                         + genericSizeOf scanBlockHeight
 
-    scanBlock = word32BE currencyCode
-             <> word32BE scanBlockVersion
-             <> word64BE scanBlockScanHeight
-             <> word64BE scanBlockHeight
+    scanBlock = word32LE currencyCode
+             <> word32LE scanBlockVersion
+             <> word64LE scanBlockScanHeight
+             <> word64LE scanBlockHeight
 
 blockFilterBuilder :: BlockFilter -> (Sum Word32, Builder)
 blockFilterBuilder BlockFilter {..} = (filterSize, filterBuilder)
@@ -62,42 +79,36 @@ blockFilterBuilder BlockFilter {..} = (filterSize, filterBuilder)
                      + idLength
                      + genericSizeOf filterLength
                      + filterLength
-    filterBuilder = word32BE idLength
+    filterBuilder = word32LE idLength
                  <> byteString blockFilterBlockId
-                 <> word32BE filterLength
+                 <> word32LE filterLength
                  <> byteString blockFilterFilter
-
-feeLevelToWord8 :: FeeLevel -> Word8
-feeLevelToWord8 fl = case fl of
-  FeeFast     -> 0
-  FeeModerate -> 1
-  FeeCheap    -> 2
 
 messageBuilder :: Message -> Builder
 
-messageBuilder (MPing msg) = messageBase MPingType msgSize $ word64BE msg
+messageBuilder (MPing msg) = messageBase MPingType msgSize $ word64LE msg
   where
     msgSize = genericSizeOf msg
 
-messageBuilder (MPong msg) = messageBase MPongType msgSize $ word64BE msg
+messageBuilder (MPong msg) = messageBase MPongType msgSize $ word64LE msg
   where
     msgSize = genericSizeOf msg
 
-messageBuilder (MReject msg) = messageBase MRejectType msgSize $ word32BE rejectType
+messageBuilder (MReject msg) = messageBase MRejectType msgSize $ word32LE rejectType
   where
     rejectType = rejectTypeToWord32 $ rejectMsgCode msg
     msgSize = genericSizeOf rejectType
 
-messageBuilder (MVersionACK msg) = messageBase MVersionACKType msgSize $ word16BE 0
+messageBuilder (MVersionACK msg) = messageBase MVersionACKType msgSize $ word16LE 0
   where
     msgSize = genericSizeOf (0 :: Word16)
 
 messageBuilder (MVersion Version {..}) =
   messageBase MVersionType msgSize
-  $  word32BE versionVersion
-  <> word64BE (fromIntegral time)
-  <> word64BE versionNonce
-  <> word32BE scanBlocksCount
+  $  word32LE versionVersion
+  <> word64LE (fromIntegral time)
+  <> word64LE versionNonce
+  <> word32LE scanBlocksCount
   <> scanBlocks
   where
     (scanBlocksSizeSum, scanBlocks) = mconcat $ scanBlockBuilder <$> UV.toList versionScanBlocks
@@ -112,9 +123,9 @@ messageBuilder (MVersion Version {..}) =
 
 messageBuilder (MFiltersRequest FilterRequest {..}) =
   messageBase MFiltersRequestType msgSize
-  $  word32BE currency
-  <> word64BE filterRequestMsgStart
-  <> word64BE filterRequestMsgAmount
+  $  word32LE currency
+  <> word64LE filterRequestMsgStart
+  <> word64LE filterRequestMsgAmount
   where
     currency = currencyCodeToWord32 filterRequestMsgCurrency
 
@@ -124,8 +135,8 @@ messageBuilder (MFiltersRequest FilterRequest {..}) =
 
 messageBuilder (MFiltersResponse FilterResponse {..}) =
   messageBase MFiltersResponseType msgSize
-  $  word32BE (currencyCodeToWord32 filterResponseCurrency)
-  <> word32BE filtersCount
+  $  word32LE (currencyCodeToWord32 filterResponseCurrency)
+  <> word32LE filtersCount
   <> lazyByteString zippedFilters
   where
     (filtersSizeSum, filters) = mconcat $ blockFilterBuilder <$> V.toList filterResponseFilters
@@ -138,11 +149,11 @@ messageBuilder (MFiltersResponse FilterResponse {..}) =
 
 messageBuilder (MFiltersEvent FilterEvent {..}) =
   messageBase MFilterEventType msgSize
-  $  word32BE currency
-  <> word64BE filterEventHeight
-  <> word32BE filterEventBlockIdLength
+  $  word32LE currency
+  <> word64LE filterEventHeight
+  <> word32LE filterEventBlockIdLength
   <> byteString filterEventBlockId
-  <> word32BE filterEventBlockFilterLength
+  <> word32LE filterEventBlockFilterLength
   <> byteString filterEventBlockFilter
   where
     currency = currencyCodeToWord32 filterEventCurrency
@@ -161,26 +172,39 @@ messageBuilder (MFeeRequest curs) = let
   msgSize = case curs of
     [] -> genericSizeOf amount
     c:_ -> genericSizeOf amount + amount * genericSizeOf (currencyCodeToWord32 c)
-  cursBS = mconcat $ (word32BE . currencyCodeToWord32) <$> curs
-  msg = word32BE amount <> cursBS
+  cursBS = mconcat $ (word32LE . currencyCodeToWord32) <$> curs
+  msg = word32LE amount <> cursBS
   in messageBase MFeeRequestType msgSize msg
 
 messageBuilder (MFeeResponse msgs) = let
   amount = fromIntegral $ length msgs
   (respSum, resps) = mconcat $ feeRespBuilder <$> msgs
-  msgSize = genericSizeOf amount + (getSum respSum)
-  msg = word32BE amount <> resps
+  msgSize = genericSizeOf amount + getSum respSum
+  msg = word32LE amount <> resps
   in messageBase MFeeResponseType msgSize msg
+
+messageBuilder (MPeerRequest _) = messageBase MIntroducePeerType msgSize $ word16LE 0
+  where
+    msgSize = genericSizeOf (0 :: Word16)
+
+messageBuilder (MPeerResponse PeerResponse{..}) = let
+  (addressesSize, addresses) = mconcat $ addressBuilder <$> V.toList peerResponseAddresses
+  addrAmount = fromIntegral $ V.length peerResponseAddresses
+  msgSize = genericSizeOf addrAmount
+          + getSum addressesSize
+  in messageBase MPeerResponseType msgSize 
+  $  word32LE addrAmount
+  <> addresses
 
 feeRespBuilder :: FeeResp -> (Sum Word32, Builder)
 feeRespBuilder (FeeRespBTC isTest (FeeBundle (a,b) (c,d) (e,f))) = let
   cur = currencyCodeToWord32 $ if isTest then TBTC else BTC
   msgSize = genericSizeOf cur + 6 * genericSizeOf a
-  msg = word32BE cur <> word64BE a <> word64BE b <> word64BE c <> word64BE d <> word64BE e <> word64BE f
+  msg = word32LE cur <> word64LE a <> word64LE b <> word64LE c <> word64LE d <> word64LE e <> word64LE f
   in (Sum msgSize, msg)
 
 feeRespBuilder (FeeRespGeneric cur h m l) = let
   currency = currencyCodeToWord32 cur
   msgSize = genericSizeOf currency + 3 * genericSizeOf h
-  msg = word32BE currency <> word64BE h <> word64BE m <> word64BE l
+  msg = word32LE currency <> word64LE h <> word64LE m <> word64LE l
   in (Sum msgSize, msg)

@@ -151,6 +151,37 @@ data FeeResp
 type FeeResponse = [FeeResp]
 type FeeRequest = [CurrencyCode]
 
+data IPType = IPV4 | IPV6
+  deriving (Eq, Ord, Enum, Bounded, Show)
+
+
+ipTypeToWord8 :: IPType -> Word8
+ipTypeToWord8 = \case
+  IPV4 -> 0
+  IPV6 -> 1
+
+word8ToIPType :: Word8 -> IPType
+word8ToIPType = \case
+  0 -> IPV4
+  1 -> IPV6
+
+data Address = Address
+  { addressType    :: !IPType
+  , addressPort    :: !Word16
+  , addressAddress :: !ByteString
+  } deriving (Show, Eq) 
+
+data PeerRequest = PeerRequest
+  deriving (Show, Eq) 
+
+data PeerResponse = PeerResponse
+  { peerResponseAddresses :: !(V.Vector Address)
+  } deriving (Show, Eq) 
+
+data PeerIntroduce = PeerIntroduce
+  { peerIntroduceAddresses :: !(V.Vector Address)
+  } deriving (Show, Eq) 
+
 data Message = MPing                       !Ping
              | MPong                       !Pong
              | MVersion                    !Version
@@ -161,6 +192,9 @@ data Message = MPing                       !Ping
              | MFiltersEvent               !FilterEvent
              | MFeeRequest                 !FeeRequest
              | MFeeResponse                !FeeResponse
+             | MPeerRequest                !PeerRequest
+             | MPeerResponse               !PeerResponse
+             | MPeerIntroduce              !PeerIntroduce
   deriving (Show, Eq)
 
 genericSizeOf :: (Storable a, Integral b) => a -> b
