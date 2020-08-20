@@ -197,41 +197,54 @@ passwordToECIESPrvKey password = case secretKey passwordHash of
 storageFilePrefix :: Text
 storageFilePrefix = "wallet_"
 
+storageFileBackupSuffix :: Text
+storageFileBackupSuffix = "_backup"
+
 saveStorageToFile :: (MonadIO m, MonadRandom m, HasStoreDir m, PlatformNatives)
   => Text -> ECIESPubKey -> WalletStorage -> m ()
 saveStorageToFile caller pubKey storage = do
   let fname = storageFilePrefix <> T.replace " " "_" (_storage'walletName storage)
+      backupFname = fname <> storageFileBackupSuffix
   logWrite $ "[" <> caller <> "]: Storing to " <> fname
   encryptedStorage <- encryptStorage storage pubKey
   case encryptedStorage of
     Left _ -> fail "Failed to encrypt storage"
-    Right encStorage -> storeValue fname encStorage
+    Right encStorage -> do
+      moveStoredFile fname backupFname
+      storeValue fname encStorage
 
 -- | The same as saveStorageToFile, but does not fail and returns the error instead
 saveStorageSafelyToFile :: (MonadIO m, MonadRandom m, HasStoreDir m, PlatformNatives)
   => Text -> ECIESPubKey -> WalletStorage -> m (Either StorageAlert ())
 saveStorageSafelyToFile caller pubKey storage = do
   let fname = storageFilePrefix <> T.replace " " "_" (_storage'walletName storage)
+      backupFname = fname <> storageFileBackupSuffix
   logWrite $ "[" <> caller <> "]: Storing to " <> fname
   encryptedStorage <- encryptStorage storage pubKey
   case encryptedStorage of
     Left err -> pure $ Left err
-    Right encStorage -> fmap Right $ storeValue fname encStorage
+    Right encStorage -> do
+      moveStoredFile fname backupFname
+      fmap Right $ storeValue fname encStorage
 
 loadStorageFromFile :: (MonadIO m, HasStoreDir m, PlatformNatives)
   => WalletName -> Password -> m (Either StorageAlert WalletStorage)
 loadStorageFromFile login pass = do
   let fname = storageFilePrefix <> T.replace " " "_" login
+      backupFname = fname <> storageFileBackupSuffix
   storageResp <- readStoredFile fname
   case storageResp of
     Left err -> pure $ Left $ SANativeAlert err
     Right storageText -> case decodeJson $ T.concat storageText of
-      Left err -> pure $ Left $ SADecodeError err
-      Right storage -> case passwordToECIESPrvKey pass of
-        Left err -> pure $ Left err
-        Right pubKey -> case decryptStorage storage pubKey of
-          Left err -> pure $ Left err
-          Right s -> pure $ Right s
+      Left err -> do
+        logWrite $ "Failed to decode wallet from: " <> fname <> "\nReading from backup: " <> backupFname
+        backupStorageResp <- readStoredFile backupFname
+        case backupStorageResp of
+            Left err -> pure $ Left $ SANativeAlert err
+            Right backupStorageText -> case decodeJson $ T.concat backupStorageText of
+              Left err -> pure $ Left $ SADecodeError err
+              Right backupStorage -> pure $ passwordToECIESPrvKey pass >>= decryptStorage backupStorage
+      Right storage -> pure $ passwordToECIESPrvKey pass >>= decryptStorage storage
 
 -- | Scan storage folder for all wallets
 listStorages :: (MonadIO m, HasStoreDir m, PlatformNatives)
