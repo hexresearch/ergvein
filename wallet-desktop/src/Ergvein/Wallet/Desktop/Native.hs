@@ -25,15 +25,19 @@ import qualified Data.Text.IO as T
 instance PlatformNatives where
   resUrl = id
 
-  storeValue k v = do
+  storeValue k v atomicMode = do
     path <- getStoreDir
+    logWrite $ "Writing file " <> path <> "/" <> k
     liftIO $ do
       let fpath = T.unpack $ path <> "/" <> k
       createDirectoryIfMissing True $ takeDirectory fpath
-      writeJson fpath v
+      case atomicMode of
+        True -> writeJsonAtomic fpath v
+        False -> writeJson fpath v
 
   retrieveValue k a0 = do
     path <- getStoreDir
+    logWrite $ "Reading file " <> path <> "/" <> k
     liftIO $ do
       let fpath = T.unpack $ path <> "/" <> k
       ex <- doesFileExist fpath

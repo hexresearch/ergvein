@@ -197,41 +197,41 @@ passwordToECIESPrvKey password = case secretKey passwordHash of
 storageFilePrefix :: Text
 storageFilePrefix = "wallet_"
 
-storageFileBackupSuffix :: Text
-storageFileBackupSuffix = "_backup"
+storageBackupFilePrefix :: Text
+storageBackupFilePrefix = "backup_" <> storageFilePrefix
 
 saveStorageToFile :: (MonadIO m, MonadRandom m, HasStoreDir m, PlatformNatives)
   => Text -> ECIESPubKey -> WalletStorage -> m ()
 saveStorageToFile caller pubKey storage = do
   let fname = storageFilePrefix <> T.replace " " "_" (_storage'walletName storage)
-      backupFname = fname <> storageFileBackupSuffix
+      backupFname = storageBackupFilePrefix <> fname
   logWrite $ "[" <> caller <> "]: Storing to " <> fname
   encryptedStorage <- encryptStorage storage pubKey
   case encryptedStorage of
     Left _ -> fail "Failed to encrypt storage"
     Right encStorage -> do
       moveStoredFile fname backupFname
-      storeValue fname encStorage
+      storeValue fname encStorage True
 
 -- | The same as saveStorageToFile, but does not fail and returns the error instead
 saveStorageSafelyToFile :: (MonadIO m, MonadRandom m, HasStoreDir m, PlatformNatives)
   => Text -> ECIESPubKey -> WalletStorage -> m (Either StorageAlert ())
 saveStorageSafelyToFile caller pubKey storage = do
   let fname = storageFilePrefix <> T.replace " " "_" (_storage'walletName storage)
-      backupFname = fname <> storageFileBackupSuffix
+      backupFname = storageBackupFilePrefix <> fname
   logWrite $ "[" <> caller <> "]: Storing to " <> fname
   encryptedStorage <- encryptStorage storage pubKey
   case encryptedStorage of
     Left err -> pure $ Left err
     Right encStorage -> do
       moveStoredFile fname backupFname
-      fmap Right $ storeValue fname encStorage
+      fmap Right $ storeValue fname encStorage True
 
 loadStorageFromFile :: (MonadIO m, HasStoreDir m, PlatformNatives)
   => WalletName -> Password -> m (Either StorageAlert WalletStorage)
 loadStorageFromFile login pass = do
   let fname = storageFilePrefix <> T.replace " " "_" login
-      backupFname = fname <> storageFileBackupSuffix
+      backupFname = fname <> storageBackupFilePrefix
   storageResp <- readStoredFile fname
   case storageResp of
     Left err -> pure $ Left $ SANativeAlert err
@@ -272,9 +272,9 @@ getLastStorage = do
 -- | Try to write `.last-wallet` file to set name of wallet
 setLastStorage :: (MonadIO m, HasStoreDir m, PlatformNatives)
   => Maybe WalletName -> m ()
-setLastStorage mnane = do
+setLastStorage mname = do
   logWrite $ "Writing last storage file " <> lastWalletFile
-  storeValue lastWalletFile mnane
+  storeValue lastWalletFile mname False
 
 -- | Generates new private keys until their number is equal to the number of public keys.
 generateMissingPrvKeys :: MonadIO m => (AuthInfo, Password) -> m (Either StorageAlert AuthInfo)
