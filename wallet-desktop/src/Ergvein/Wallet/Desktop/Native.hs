@@ -69,15 +69,13 @@ instance PlatformNatives where
 
   moveStoredFile filename1 filename2 = do
     path <- getStoreDir
+    logWrite $ "Moving file " <> path <> "/" <> filename1 <> " to " <> path <> "/" <> filename2
     liftIO $ do
       let fpath1 = T.unpack $ path <> "/" <> filename1
           fpath2 = T.unpack $ path <> "/" <> filename2
       ex <- doesFileExist fpath1
       if ex
-        then do
-          T.writeFile fpath2 =<< T.readFile fpath1
-          T.writeFile fpath1 ""
-          pure $ Right ()
+        then Right <$> renameFile fpath1 fpath2
         else pure $ Left $ NAFileDoesNotExist filename1
 
   getStoreFileSize filename = do
