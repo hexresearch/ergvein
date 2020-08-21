@@ -198,7 +198,7 @@ storageFilePrefix :: Text
 storageFilePrefix = "wallet_"
 
 storageBackupFilePrefix :: Text
-storageBackupFilePrefix = "backup_" <> storageFilePrefix
+storageBackupFilePrefix = "backup_"
 
 saveStorageToFile :: (MonadIO m, MonadRandom m, HasStoreDir m, PlatformNatives)
   => Text -> ECIESPubKey -> WalletStorage -> m ()
