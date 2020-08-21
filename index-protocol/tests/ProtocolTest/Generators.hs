@@ -59,6 +59,9 @@ instance Arbitrary Address where
 instance Arbitrary PeerResponse where
   arbitrary = sized $ \n -> PeerResponse <$> arbitrary
 
+instance Arbitrary PeerIntroduce where
+  arbitrary = sized $ \n -> PeerIntroduce <$> arbitrary
+
 instance Arbitrary CurrencyCode where
   arbitrary = getRandBounded
 
@@ -100,9 +103,10 @@ instance Arbitrary Message where
       MFilterEventType      -> MFiltersEvent <$> arbitrary
       MPeerRequestType      -> pure $ MPeerRequest PeerRequest
       MPeerResponseType     -> MPeerResponse <$> arbitrary
+      MIntroducePeerType    -> MPeerIntroduce <$> arbitrary
       MFeeRequestType       -> MFeeRequest <$> arbitrary
       MFeeResponseType      -> MFeeResponse <$> arbitrary
-      MIntroducePeerType    -> error "Message type: IntroducePeer is not implemented"
+
 
 --------------------------------------------------------------------------
 -- newtype wrappers

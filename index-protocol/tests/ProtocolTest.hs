@@ -79,7 +79,6 @@ prop_encdec_ScanBlock_Eq sb = either (const False) (sb ==) decMsg
   where
     encMsg = serializeScanBlock sb
     decMsg = deserializeScanBlock $ BL.toStrict encMsg
-
 --------------------------------------------------------------------------
 -- main
 

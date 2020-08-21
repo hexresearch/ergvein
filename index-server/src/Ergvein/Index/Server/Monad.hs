@@ -21,6 +21,8 @@ import Ergvein.Index.Server.Environment
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 import Control.Immortal
+import Control.Concurrent
+import Network.Socket
 
 import qualified Data.Map.Strict as M
 import qualified Network.Bitcoin.Api.Client  as BitcoinApi
@@ -115,3 +117,11 @@ stopThreadIfShutdown thread = do
 
 broadcastSocketMessage :: Message -> ServerM ()
 broadcastSocketMessage msg = liftIO . atomically . flip writeTChan msg =<< asks envBroadcastChannel
+
+closeConnection :: (ThreadId, Socket) -> IO ()
+closeConnection (connectionThreadId, connectionSocket) = close connectionSocket >> killThread connectionThreadId
+
+closePeerConnection :: SockAddr -> ServerM ()
+closePeerConnection addr = do
+  openedConnectionsRef <- asks envOpenConnections
+  liftIO $ closeConnection =<< (M.! addr) <$> readTVarIO openedConnectionsRef

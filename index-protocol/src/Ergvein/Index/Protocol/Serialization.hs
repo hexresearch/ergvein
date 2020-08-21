@@ -99,9 +99,10 @@ messageBuilder (MReject msg) = messageBase MRejectType msgSize $ word32LE reject
     rejectType = rejectTypeToWord32 $ rejectMsgCode msg
     msgSize = genericSizeOf rejectType
 
-messageBuilder (MVersionACK msg) = messageBase MVersionACKType msgSize $ word16LE 0
+messageBuilder (MVersionACK msg) = messageBase MVersionACKType msgSize $ word8 msg
   where
-    msgSize = genericSizeOf (0 :: Word16)
+    msg = 0 :: Word8
+    msgSize = genericSizeOf msg
 
 messageBuilder (MVersion Version {..}) =
   messageBase MVersionType msgSize
@@ -183,13 +184,23 @@ messageBuilder (MFeeResponse msgs) = let
   msg = word32LE amount <> resps
   in messageBase MFeeResponseType msgSize msg
 
-messageBuilder (MPeerRequest _) = messageBase MIntroducePeerType msgSize $ word16LE 0
+messageBuilder (MPeerRequest _) = messageBase MIntroducePeerType msgSize $ word8 msg
   where
-    msgSize = genericSizeOf (0 :: Word16)
+    msg = 0 :: Word8
+    msgSize = genericSizeOf msg
 
 messageBuilder (MPeerResponse PeerResponse{..}) = let
   (addressesSize, addresses) = mconcat $ addressBuilder <$> V.toList peerResponseAddresses
   addrAmount = fromIntegral $ V.length peerResponseAddresses
+  msgSize = genericSizeOf addrAmount
+          + getSum addressesSize
+  in messageBase MPeerResponseType msgSize 
+  $  word32LE addrAmount
+  <> addresses
+
+messageBuilder (MPeerIntroduce PeerIntroduce{..}) = let
+  (addressesSize, addresses) = mconcat $ addressBuilder <$> V.toList peerIntroduceAddresses
+  addrAmount = fromIntegral $ V.length peerIntroduceAddresses
   msgSize = genericSizeOf addrAmount
           + getSum addressesSize
   in messageBase MPeerResponseType msgSize 

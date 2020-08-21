@@ -92,6 +92,7 @@ filterParser = do
     , blockFilterFilter  = blockFilter
     }
 
+addressParser :: Parser Address
 addressParser = do
   addrType <- word8ToIPType <$> anyWord8
   addrPort <- anyWord16le
@@ -123,7 +124,7 @@ messageParser MVersionType = do
     , versionScanBlocks = versionBlocks
     }
 
-messageParser MVersionACKType = MVersionACK VersionACK <$ anyWord16le
+messageParser MVersionACKType = MVersionACK VersionACK <$ word8 0
 
 messageParser MFiltersRequestType = do
   currency <- currencyCodeParser
@@ -177,11 +178,20 @@ messageParser MFeeResponseType = do
   resps <- replicateM (fromIntegral amount) parseFeeResp
   pure $ MFeeResponse resps
 
-messageParser MPeerRequestType = do
+messageParser MPeerRequestType = MPeerRequest PeerRequest <$ word8 0
+
+messageParser MPeerResponseType = do
   amount <- anyWord32le
   addresses <- V.fromList <$> replicateM (fromIntegral amount) addressParser
   pure $ MPeerResponse $  PeerResponse
     { peerResponseAddresses = addresses
+    }
+
+messageParser MIntroducePeerType = do
+  amount <- anyWord32le
+  addresses <- V.fromList <$> replicateM (fromIntegral amount) addressParser
+  pure $ MPeerIntroduce $ PeerIntroduce
+    { peerIntroduceAddresses = addresses
     }
 
 parseFeeResp :: Parser FeeResp

@@ -19,6 +19,7 @@ import Ergvein.Types.Fees
 import Ergvein.Types.Transaction
 import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.BlockchainScanning.Types
+import Network.Socket
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -33,16 +34,16 @@ getBlockMetaSlice currency startHeight endHeight = do
   let metaSlice = snd <$> slice
   pure metaSlice
 
-handleMsg :: Message -> ServerM (Maybe Message)
-handleMsg (MPing msg) = pure $ Just $ MPong msg
+handleMsg :: SockAddr -> Message -> ServerM (Maybe Message)
+handleMsg address (MPing msg) = pure $ Just $ MPong msg
 
-handleMsg (MPong _) = pure Nothing
+handleMsg address (MPong _) = pure Nothing
 
-handleMsg (MVersionACK _) = pure Nothing
+handleMsg address (MVersionACK _) = pure Nothing
 
-handleMsg (MVersion msg) = pure Nothing
+handleMsg address (MVersion msg) = pure Nothing
 
-handleMsg (MFiltersRequest FilterRequest {..}) = do
+handleMsg address (MFiltersRequest FilterRequest {..}) = do
   let currency = convert filterRequestMsgCurrency
   slice <- getBlockMetaSlice currency filterRequestMsgStart filterRequestMsgAmount
   let filters = V.fromList $ convert <$> slice
@@ -52,7 +53,7 @@ handleMsg (MFiltersRequest FilterRequest {..}) = do
     , filterResponseFilters = filters
     }
 
-handleMsg (MFeeRequest curs) = do
+handleMsg address (MFeeRequest curs) = do
   fees <- liftIO . readTVarIO =<< asks envFeeEstimates
   let selCurs = M.restrictKeys fees $ S.fromList curs
   let resps =  (`M.mapWithKey` selCurs) $ \cur fb -> case cur of
