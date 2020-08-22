@@ -12,7 +12,6 @@ module Ergvein.Wallet.Monad.Storage
   , getWalletsScannedHeightD
   , writeWalletsScannedHeight
   , reconfirmBtxUtxoSet
-  , insertBlockHeaders
   , getBtcUtxoD
   , insertTxsUtxoInPubKeystore
   , addOutgoingTx
@@ -177,13 +176,6 @@ writeWalletsScannedHeight caller reqE = modifyPubStorage clr $ ffor reqE $ \(cur
   in ffor mcp $ const $ ps & pubStorage'currencyPubStorages . at cur
     %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'scannedHeight .~ Just h
   where clr = caller <> ":" <> "writeWalletsScannedHeight"
-
-insertBlockHeaders :: MonadStorage t m => Text -> Currency -> Event t [HB.Block] -> m ()
-insertBlockHeaders caller cur reqE = void . modifyPubStorage clr $ ffor reqE $ \blocks ps -> case blocks of
-  [] -> Nothing
-  _ -> let blkmap = M.fromList $ (\blk -> let bhead = HB.blockHeader blk in (HB.headerHash bhead, bhead)) <$> blocks
-    in Just $ ps & pubStorage'currencyPubStorages . at cur %~ fmap (currencyPubStorage'headers %~ M.union blkmap)
-  where clr = caller <> ":" <> "insertBlockHeaders"
 
 getBtcUtxoD :: MonadStorage t m => m (Dynamic t BtcUtxoSet)
 getBtcUtxoD = do

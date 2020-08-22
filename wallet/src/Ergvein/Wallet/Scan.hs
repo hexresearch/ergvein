@@ -144,6 +144,7 @@ scanningBtcKey kp i0 keyNum pubkey = do
 -- Return event that fires 'True' if we found any transaction and fires 'False' if not.
 scanningBtcBlocks :: MonadFront t m => Vector ScanKeyBox -> Event t [(HB.BlockHash, HB.BlockHeight)] -> m (Event t Bool)
 scanningBtcBlocks keys hashesE = do
+  performEvent $ ffor hashesE $ \hs -> flip traverse hs $ \(_,a) -> logWrite $ showt a 
   let noScanE = fforMaybe hashesE $ \bls -> if null bls then Just () else Nothing
   heightMapD <- holdDyn M.empty $ M.fromList <$> hashesE
   let rhashesE = fmap (nub . fst . unzip) $ hashesE

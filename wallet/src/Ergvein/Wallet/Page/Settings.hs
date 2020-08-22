@@ -38,6 +38,7 @@ import Ergvein.Wallet.Wrapper
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as S
+import qualified Data.Vector as V
 
 data SubPageSettings
   = GoLanguage
@@ -155,6 +156,7 @@ currenciesPage = do
       , _currencyPubStorage'scannedHeight = Nothing
       , _currencyPubStorage'headers       = Map.empty
       , _currencyPubStorage'outgoing      = S.empty
+      , _currencyPubStorage'headerSeq     = V.empty
       }
 
 -- TODO: uncomment commented lines when ERGO is ready

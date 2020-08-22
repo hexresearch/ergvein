@@ -51,7 +51,7 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
     blockIteration :: BlockHeight -> BlockHeight -> ServerM BlockInfo
     blockIteration totalh blockHeight = do
       let percent = fromIntegral blockHeight / fromIntegral totalh :: Double
-      -- logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
+      logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
       scanInfo blockHeight
 
     scanIteration :: Thread -> ServerM ()
@@ -85,14 +85,14 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
                   go (succ current) to
                 else do
                   revertedBlocksCount <- fromIntegral <$> revertContentHistory currency
-                  logInfoN $ "Fork detected at " 
+                  logInfoN $ "Fork detected at "
                           <> showt current <> " " <> showt currency
                           <> ", performing rollback of " <> showt revertedBlocksCount <> " previous blocks"
                   let restart = (current - revertedBlocksCount)
                   setScannedHeight currency restart
                   go restart to
 
-              _ | not enoughSpace -> 
+              _ | not enoughSpace ->
                 logInfoN $ "Not enough available disc space to store block scan result"
 
               Left errMsg -> do
@@ -118,7 +118,7 @@ isEnoughSpace :: ServerM Bool
 isEnoughSpace = do
   path <- cfgDBPath <$> serverConfig
   availSpace <- liftIO $ getAvailSpace path
-  pure $ requiredAvailSpace <= availSpace 
+  pure $ requiredAvailSpace <= availSpace
  where
   requiredAvailSpace = 2^30 -- 1Gb
 

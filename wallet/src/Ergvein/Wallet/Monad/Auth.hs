@@ -361,9 +361,9 @@ liftAuth ma0 ma = mdo
         flip runReaderT env $ do -- Workers and other routines go here
           initFiltersHeights filtersHeights
           scanner
-          -- bctNodeController
+          bctNodeController
           indexerNodeController $ settingsActiveSockAddrs settings
-          -- filtersLoader
+          filtersLoader
           -- heightAsking
           -- indexersNetworkActualizationWorker
           feesWorker

@@ -66,7 +66,8 @@ debugWidget = el "div" $ do
   h5 . dynText $ do
     p <- avgD
     pure $ "Avg.indexer ping: " <> showt p
-  dbgFiltersTest
+  -- dbgFiltersTest
+  h5 . dynText . fmap showt =<< getCurrentHeight BTC
   let goE = leftmost [utxoE, pubIntE, pubExtE, prvIntE, prvExtE]
   void $ nextWidget $ ffor goE $ \sel -> Retractable {
       retractableNext = case sel of

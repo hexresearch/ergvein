@@ -24,6 +24,7 @@ import Ergvein.Types.Utxo
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+import qualified Data.Vector as V
 
 type WalletName = Text
 
@@ -93,6 +94,7 @@ data CurrencyPubStorage = CurrencyPubStorage {
   , _currencyPubStorage'scannedHeight :: !(Maybe BlockHeight)
   , _currencyPubStorage'headers       :: !(M.Map HB.BlockHash HB.BlockHeader)
   , _currencyPubStorage'outgoing      :: !(S.Set TxId)
+  , _currencyPubStorage'headerSeq     :: !(V.Vector HB.BlockHeader)
   } deriving (Eq, Show, Read)
 
 makeLenses ''CurrencyPubStorage

@@ -11,6 +11,7 @@ import Data.IP
 import Data.List (foldl')
 import Data.Maybe (fromMaybe, catMaybes, listToMaybe)
 import Data.Time
+import Data.Word
 import Network.DNS
 import Network.Haskoin.Constants
 import Network.Haskoin.Network
@@ -115,6 +116,7 @@ bctNodeController = mdo
           MTx tx -> Just tx
           _ -> Nothing
     myTxSender u respE
+    heightListenerWidget node
     pure $ (u <$ closeE, newTxE)
 
   _ <- requestBTCMempool =<< delay 1 =<< getPostBuild
@@ -122,6 +124,20 @@ bctNodeController = mdo
   pure ()
   where
     switchTuple (a, b) = (switchDyn . fmap leftmost $ a, switchDyn . fmap leftmost $ b)
+
+heightListenerWidget :: MonadFront t m => NodeBTC t -> m ()
+heightListenerWidget NodeConnection{..} = do
+  curhD <- getCurrentHeight BTC
+  h0 <- sampleDyn curhD
+  hD <- foldDyn foo h0 $ fforMaybe nodeconRespE $ \case
+    MVersion (Version{..}) -> Just $ Just startHeight
+    MBlock _ -> Just Nothing
+    _ -> Nothing
+  let updE = attachWithMaybe (\h h' -> if h' > h then Just h' else Nothing) (current curhD) (updated hD)
+  void $ setCurrentHeight BTC updE
+  where
+    foo :: Maybe Word32 -> Integer -> Integer
+    foo mw i = maybe (i + 1) fromIntegral mw
 
 myTxSender :: MonadFront t m => SockAddr -> Event t Message -> m ()
 myTxSender addr msgE = do

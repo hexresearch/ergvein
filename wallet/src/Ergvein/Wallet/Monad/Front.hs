@@ -235,13 +235,20 @@ getCurrentHeight c = do
 setCurrentHeight :: MonadFront t m => Currency -> Event t Integer -> m (Event t ())
 setCurrentHeight c e = do
   r <- getHeightRef
+  e' <- fmap (fmapMaybe id) $ performFork $ ffor e $ \h -> do
+    h0 <- fromMaybe 0 . M.lookup c <$> readExternalRef r
+    pure $ if h > h0 then Just h else Nothing
+
   restoredD <- fmap _pubStorage'restoring <$> getPubStorageD
-  setLastSeenHeight "setCurrentHeight" c $ fromIntegral <$> e
-  mE <- performFork $ ffor e $ \h -> do
+  setLastSeenHeight "setCurrentHeight" c $ fromIntegral <$> e'
+  mE <- performFork $ ffor e' $ \h -> do
     h0 <- fromMaybe 0 . M.lookup c <$> readExternalRef r
     restored <- sample . current $ restoredD
-    modifyExternalRef r ((, ()) . M.insert c h)
-    pure $ if (h0 == 0 && not restored) then Just (c, fromIntegral (h-1)) else Nothing
+    if h > h0
+      then do
+        modifyExternalRef r ((, ()) . M.insert c h)
+        pure $ if (h0 == 0 && not restored) then Just (c, fromIntegral (h-1)) else Nothing
+      else pure Nothing
   writeWalletsScannedHeight "setCurrentHeight" $ fmapMaybe id mE
 
 -- | Get current value that tells you whether filters are fully in sync now or not
