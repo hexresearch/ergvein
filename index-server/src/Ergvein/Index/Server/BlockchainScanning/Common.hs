@@ -51,7 +51,7 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
     blockIteration :: BlockHeight -> BlockHeight -> ServerM BlockInfo
     blockIteration totalh blockHeight = do
       let percent = fromIntegral blockHeight / fromIntegral totalh :: Double
-      logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
+      -- logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
       scanInfo blockHeight
 
     scanIteration :: Thread -> ServerM ()
@@ -68,41 +68,47 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
         go current to = do
           shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
           when (not shutdownFlag && current <= to) $ do
-            tryBlockInfo <- (Right <$> blockIteration to current)  `catch` (\(SomeException ex) -> pure $ Left $ show ex)
+            tryBlockInfo <- (Right <$> blockIteration to current) `catch` (\(SomeException ex) -> pure $ Left $ show ex)
             enoughSpace <- isEnoughSpace
             case tryBlockInfo of
               Right blockInfo | enoughSpace -> do
-                maybeLastScannedBlock <- getLastScannedBlock currency
-                if flip all maybeLastScannedBlock (== (blockMetaPreviousHeaderBlockHashHexView $ blockInfoMeta blockInfo)) then do --fork detection
+                previousBlockSame <- isPreviousBlockSame $ blockMetaPreviousHeaderBlockHashHexView $ blockInfoMeta blockInfo
+                if previousBlockSame then do --fork detection
                   addBlockInfo blockInfo
-                  let BlockMetaInfo{..} = blockInfoMeta blockInfo
-                  when (current == to) $ broadcastSocketMessage $ MFiltersEvent $ FilterEvent {
-                      filterEventCurrency     = convert blockMetaCurrency
-                    , filterEventHeight       = blockMetaBlockHeight
-                    , filterEventBlockId      = hex2bs blockMetaHeaderHashHexView
-                    , filterEventBlockFilter  = hex2bs blockMetaAddressFilterHexView
-                    }
+                  when (current == to) $ broadcastFilter $ blockInfoMeta blockInfo
                   go (succ current) to
-                else do
-                  revertedBlocksCount <- fromIntegral <$> revertContentHistory currency
-                  logInfoN $ "Fork detected at "
-                          <> showt current <> " " <> showt currency
-                          <> ", performing rollback of " <> showt revertedBlocksCount <> " previous blocks"
-                  let restart = (current - revertedBlocksCount)
-                  setScannedHeight currency restart
-                  go restart to
+                else previousBlockChanged current to
 
-              _ | not enoughSpace ->
+              _ | not enoughSpace -> 
                 logInfoN $ "Not enough available disc space to store block scan result"
 
-              Left errMsg -> do
-                 revertedBlocksCount <- fromIntegral <$> revertContentHistory currency
-                 logInfoN $ "Error scanning " <> showt current <> " " <> showt currency
-                 logInfoN $ showt errMsg
-                 logInfoN $ "Performing rollback of " <> showt revertedBlocksCount <> " previous blocks"
-                 let restart = (current - revertedBlocksCount)
-                 setScannedHeight currency restart
-                 go (current - revertedBlocksCount) to
+              Left errMsg -> blockScanningError errMsg current to
+
+        isPreviousBlockSame proposedPreviousBlockId = do
+          maybeLastScannedBlock <- getLastScannedBlock currency
+          pure $ flip all maybeLastScannedBlock (== proposedPreviousBlockId)
+
+        previousBlockChanged from to = do
+          revertedBlocksCount <- fromIntegral <$> revertContentHistory currency
+          logInfoN $ "Fork detected at " 
+                  <> showt from <> " " <> showt currency
+                  <> ", performing rollback of " <> showt revertedBlocksCount <> " previous blocks"
+          let restart = (from - revertedBlocksCount)
+          setScannedHeight currency restart
+          go restart to
+
+        blockScanningError errorMessage from to = do
+          logInfoN $ "Error scanning " <> showt from <> " " <> showt currency
+          previousBlockChanged from to
+
+broadcastFilter :: BlockMetaInfo -> ServerM ()
+broadcastFilter BlockMetaInfo{..} = 
+  broadcastSocketMessage $ MFiltersEvent $ FilterEvent 
+  { filterEventCurrency     = convert blockMetaCurrency
+  , filterEventHeight       = blockMetaBlockHeight
+  , filterEventBlockId      = hex2bs blockMetaHeaderHashHexView
+  , filterEventBlockFilter  = hex2bs blockMetaAddressFilterHexView
+  }
 
 blockchainScanning :: ServerM [Thread]
 blockchainScanning = sequenceA
@@ -118,7 +124,7 @@ isEnoughSpace :: ServerM Bool
 isEnoughSpace = do
   path <- cfgDBPath <$> serverConfig
   availSpace <- liftIO $ getAvailSpace path
-  pure $ requiredAvailSpace <= availSpace
+  pure $ requiredAvailSpace <= availSpace 
  where
   requiredAvailSpace = 2^30 -- 1Gb
 

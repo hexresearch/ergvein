@@ -53,7 +53,19 @@ instance Arbitrary FeeResp where
     gen2 = FeeRespGeneric <$> getRandBoundedExcluding [BTC, TBTC] <*> arbitrary <*> arbitrary <*> arbitrary
     in oneof [gen1, gen2]
 
+instance Arbitrary Address where
+  arbitrary = sized $ \n -> Address <$> arbitrary <*> arbitrary <*> arbitrary
+
+instance Arbitrary PeerResponse where
+  arbitrary = sized $ \n -> PeerResponse <$> arbitrary
+
+instance Arbitrary PeerIntroduce where
+  arbitrary = sized $ \n -> PeerIntroduce <$> arbitrary
+
 instance Arbitrary CurrencyCode where
+  arbitrary = getRandBounded
+
+instance Arbitrary IPType where
   arbitrary = getRandBounded
 
 unimplementedMessageTypes :: [MessageType]
@@ -89,11 +101,12 @@ instance Arbitrary Message where
       MPingType             -> MPing <$> arbitrary
       MPongType             -> MPong <$> arbitrary
       MFilterEventType      -> MFiltersEvent <$> arbitrary
-      MPeerRequestType      -> error "Message type: PeerRequest is not implemented"
-      MPeerResponseType     -> error "Message type: PeerResponse is not implemented"
+      MPeerRequestType      -> pure $ MPeerRequest PeerRequest
+      MPeerResponseType     -> MPeerResponse <$> arbitrary
+      MIntroducePeerType    -> MPeerIntroduce <$> arbitrary
       MFeeRequestType       -> MFeeRequest <$> arbitrary
       MFeeResponseType      -> MFeeResponse <$> arbitrary
-      MIntroducePeerType    -> error "Message type: IntroducePeer is not implemented"
+
 
 --------------------------------------------------------------------------
 -- newtype wrappers

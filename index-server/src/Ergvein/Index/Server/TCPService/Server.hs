@@ -91,9 +91,6 @@ mainLoop thread sock = do
     atomically $ writeTVar openedConnectionsRef M.empty
     stop thread
 
-closeConnection :: (ThreadId, Socket) -> IO ()
-closeConnection (connectionThreadId, connectionSocket) = close connectionSocket >> killThread connectionThreadId
-
 runConnection :: (Socket, SockAddr) -> ServerM ()
 runConnection (sock, addr) = do
   handshakeStatus <- handshake
@@ -103,16 +100,13 @@ runConnection (sock, addr) = do
     writeMsg sendChan $ MVersionACK VersionACK
     ver <- ownVersion
     writeMsg sendChan $ MVersion ver
-    
     -- Spawn message sender thread
     fork $ sendLoop sendChan
     -- Spawn broadcaster loop
     fork $ broadcastLoop sendChan
     -- Start message listener
     listenLoop sendChan
-  else do
-    openedConnectionsRef <- asks envOpenConnections
-    liftIO $ closeConnection =<< (M.! addr) <$> readTVarIO openedConnectionsRef
+  else closePeerConnection addr
   where
     writeMsg :: TChan LBS.ByteString -> Message -> ServerM ()
     writeMsg destinationChan = liftIO . atomically . writeTChan destinationChan . toLazyByteString . messageBuilder
@@ -145,10 +139,9 @@ runConnection (sock, addr) = do
       headerBytes <- liftIO $ messageHeaderBytes
       if BS.null headerBytes then do
           logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
-          openedConnectionsRef <- asks envOpenConnections
-          liftIO $ closeConnection =<< (M.! addr) <$> readTVarIO openedConnectionsRef
+          closePeerConnection addr
       else do
-        evalResult <- runExceptT $ evalMsg sock headerBytes
+        evalResult <- runExceptT $ evalMsg addr sock headerBytes
         case evalResult of
           Right Nothing    -> pure ()
           Right (Just msg) -> writeMsg destinationChan msg
@@ -169,8 +162,8 @@ fetchMessage sock messageHeaderBytes = request =<< messageHeader
       ExceptT $ pure $ mapLeft (\_-> Reject MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
 
 
-evalMsg :: Socket -> BS.ByteString -> ExceptT Reject ServerM (Maybe Message)
-evalMsg sock messageHeaderBytes = do
+evalMsg :: SockAddr -> Socket -> BS.ByteString -> ExceptT Reject ServerM (Maybe Message)
+evalMsg addr sock messageHeaderBytes = do
   printDelim
   let hdr = eitherResult $ parse messageHeaderParser messageHeaderBytes
   liftIO $ print $ BS.unpack messageHeaderBytes
@@ -190,4 +183,4 @@ evalMsg sock messageHeaderBytes = do
       ExceptT $ pure $ mapLeft (\_-> Reject MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
 
     response :: Message -> ExceptT Reject ServerM (Maybe Message)
-    response msg = ExceptT $ (Right <$> handleMsg msg) `catch` (\(SomeException ex) -> pure $ Left $ Reject $ InternalServerError)
+    response msg = ExceptT $ (Right <$> handleMsg addr msg) `catch` (\(SomeException ex) -> pure $ Left $ Reject $ InternalServerError)
