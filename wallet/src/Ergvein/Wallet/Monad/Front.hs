@@ -37,6 +37,7 @@ module Ergvein.Wallet.Monad.Front(
   , module Ergvein.Wallet.Monad.Client
   ) where
 
+import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Foldable (traverse_)
@@ -56,6 +57,7 @@ import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 import Ergvein.Types.Storage
+import Ergvein.Types.Transaction (BlockHeight)
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Base
@@ -69,6 +71,7 @@ import Ergvein.Wallet.Sync.Status
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+import Network.Haskoin.Block (BlockHash, Timestamp)
 
 type NodeReqSelector t = EventSelector t (Const2 Currency (Map SockAddr NodeMessage))
 
@@ -225,13 +228,14 @@ getFeesD :: MonadFrontAuth t m => m (Dynamic t (Map Currency FeeBundle))
 getFeesD = externalRefDynamic =<< getFeesRef
 
 -- | Get current value of longest chain height for given currency.
-getCurrentHeight :: MonadFrontAuth t m => Currency -> m (Dynamic t Integer)
+getCurrentHeight :: (MonadFrontAuth t m, MonadStorage t m) => Currency -> m (Dynamic t Integer)
 getCurrentHeight c = do
-  r <- getHeightRef
-  md <- externalRefDynamic r
-  holdUniqDyn $ (fromMaybe 0 . M.lookup c) <$> md
+  psD <- getPubStorageD
+  pure $ ffor psD $ \ps -> fromIntegral $ fromMaybe 0 $ join $ ps ^. pubStorage'currencyPubStorages . at c
+    & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'height
 
 -- | Update current height of longest chain for given currency.
+-- DEPRECATED! getCurrentHeight reads directly from pubStorage
 setCurrentHeight :: MonadFront t m => Currency -> Event t Integer -> m (Event t ())
 setCurrentHeight c e = do
   r <- getHeightRef

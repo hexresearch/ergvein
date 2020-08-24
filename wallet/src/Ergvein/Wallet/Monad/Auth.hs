@@ -364,7 +364,7 @@ liftAuth ma0 ma = mdo
           bctNodeController
           indexerNodeController $ settingsActiveSockAddrs settings
           filtersLoader
-          -- heightAsking
+          heightAsking
           -- indexersNetworkActualizationWorker
           feesWorker
           pure ()

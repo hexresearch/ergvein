@@ -86,25 +86,10 @@ postSync cur ch fh = do
     setFiltersSync cur $ val == Synced
     setSyncProgress $ val <$ buildE
 
-msgToText :: Message -> Text
-msgToText m = case m of
-  MPing{} -> "MPing"
-  MPong{} -> "MPong"
-  MVersion{} -> "MVersion"
-  MVersionACK{} -> "MVersionACK"
-  MReject{} -> "MReject"
-  MFiltersRequest{} -> "MFiltersRequest"
-  MFiltersResponse{} -> "MFiltersResponse"
-  MFiltersEvent{} -> "MFiltersEvent"
-  MFeeRequest{} -> "MFeeRequest"
-  MFeeResponse{} -> "MFeeResponse"
-
 getFilters :: MonadFront t m => Currency -> Event t (BlockHeight, Int) -> m (Event t [(BlockHash, AddressFilterHexView)])
 getFilters cur e = do
   respE <- requestRandomIndexer $ ffor e $ \(h, n) ->
     MFiltersRequest $ FilterRequest curcode (fromIntegral h) (fromIntegral n)
-  performEvent $ (logWrite "EEEEEEEEEEEEEEEEEEEE") <$ e
-  performEvent_ $ (logWrite . msgToText) <$> respE
   pure $ fforMaybe respE $ \case
     MFiltersResponse (FilterResponse{..}) -> if filterResponseCurrency /= curcode
       then Nothing

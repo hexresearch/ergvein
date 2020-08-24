@@ -29,6 +29,7 @@ import Ergvein.Wallet.Monad.Auth
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Settings.Network
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage
 import Ergvein.Wallet.Storage.Keys
@@ -156,7 +157,7 @@ currenciesPage = do
       , _currencyPubStorage'scannedHeight = Nothing
       , _currencyPubStorage'headers       = Map.empty
       , _currencyPubStorage'outgoing      = S.empty
-      , _currencyPubStorage'headerSeq     = V.empty
+      , _currencyPubStorage'headerSeq     = btcCheckpoints
       }
 
 -- TODO: uncomment commented lines when ERGO is ready

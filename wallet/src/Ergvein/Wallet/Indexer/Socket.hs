@@ -77,11 +77,6 @@ initIndexerConnection sa msgE = do
   shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
   let openE = fmapMaybe (\b -> if b then Just () else Nothing) $ updated shakeD
       closedE = () <$ _socketClosed s
-  -- performEvent_ $ (\v -> nodeLog sa $ "reqE: " <> showt v) <$> reqE
-  performEvent_ $ (\v -> nodeLog sa $ "respE: " <> showt v) <$> respE
-  performEvent_ $ ffor sendE $ \v -> do
-    nodeLog sa $ "sendE: " <> showt v
-    nodeLog sa $ "sendE: " <> showt (B.unpack $ serializeMessage v)
   pure $ IndexerConnection {
       indexConAddr = sa
     , indexConClosedE = () <$ _socketClosed s
