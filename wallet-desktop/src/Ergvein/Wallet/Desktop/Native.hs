@@ -21,6 +21,7 @@ import Web.Browser
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.IO as T
+import qualified Turtle
 
 instance PlatformNatives where
   resUrl = id
@@ -32,7 +33,12 @@ instance PlatformNatives where
       let fpath = T.unpack $ path <> "/" <> k
       createDirectoryIfMissing True $ takeDirectory fpath
       case atomicMode of
-        True -> writeJsonAtomic fpath v
+        True -> do
+          tmpDir <- T.pack <$> getTemporaryDirectory
+          let tmpFilePath = T.unpack $ tmpDir <> "/ergvein/" <> k
+          createDirectoryIfMissing True $ takeDirectory tmpFilePath
+          writeJsonAtomic tmpFilePath v
+          Turtle.mv (Turtle.fromText $ T.pack tmpFilePath) (Turtle.fromText $ T.pack fpath)
         False -> writeJson fpath v
 
   retrieveValue k a0 = do
