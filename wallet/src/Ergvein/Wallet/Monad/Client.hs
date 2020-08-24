@@ -29,6 +29,7 @@ import Data.Time(NominalDiffTime, UTCTime, getCurrentTime, diffUTCTime)
 import Data.Word (Word64)
 import Network.HTTP.Client hiding (Proxy)
 import Reflex
+import Reflex.Dom
 import Reflex.ExternalRef
 
 import Network.Socket (SockAddr)
@@ -199,19 +200,28 @@ broadcastIndexerMessage reqE = do
     liftIO $ fire $ req <$ cm
 
 requestRandomIndexer :: MonadIndexClient t m => Event t Message -> m (Event t Message)
-requestRandomIndexer reqE = do
-  connsRef  <- getActiveConnsRef
+requestRandomIndexer reqE = mdo
+  connsD  <- fmap (fmap M.elems) $ externalRefDynamic =<< getActiveConnsRef
   fireReq   <- getIndexReqFire
-  preE <- performEvent $ ffor reqE $ \req -> do
-    cons <- fmap M.toList $ readExternalRef connsRef
-    case cons of
-      [] -> pure $ Nothing
-      _ -> do
+  let actE = leftmost [Just <$> reqE, Nothing <$ sentE]
+  sentE <- fmap switchDyn $ widgetHold (pure never) $ ffor actE $ \case
+    Nothing -> pure never
+    Just req -> fmap switchDyn $ widgetHoldDyn $ ffor connsD $ \case
+      [] -> pure never
+      cons -> do
         i <- liftIO $ randomRIO (0, length cons - 1)
-        let (sa, conn) = cons!!i
-        liftIO $ fireReq $ M.singleton sa $ IndexerMsg req
-        pure $ Just $ indexConRespE conn
-  switchHold never $ fmapMaybe id preE
+        let conn = cons!!i
+        sentE <- requestWhenOpen conn req
+        pure $ (indexConRespE conn) <$ sentE
+  switchHold never sentE
+
+requestWhenOpen :: MonadIndexClient t m => IndexerConnection t -> Message -> m (Event t ())
+requestWhenOpen IndexerConnection{..} msg = do
+  fire  <- getIndexReqFire
+  initE <- fmap (gate (current indexConIsUp)) $ getPostBuild
+  let reqE = leftmost [initE, indexConOpensE]
+  performEvent $ ffor reqE $ const $
+    liftIO $ fire $ M.singleton indexConAddr $ IndexerMsg msg
 
 requestSpecificIndexer :: MonadIndexClient t m => Event t (SockAddr, Message) -> m (Event t Message)
 requestSpecificIndexer saMsgE = do
