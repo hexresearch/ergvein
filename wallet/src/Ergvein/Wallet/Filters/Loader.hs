@@ -19,16 +19,11 @@ module Ergvein.Wallet.Filters.Loader (
 import Control.Monad
 import Data.Maybe
 import Network.Haskoin.Block
-import Reflex.ExternalRef
 
-import Ergvein.Filters
-import Ergvein.Index.API.Types
 import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
 import Ergvein.Text
 import Ergvein.Types.Block
 import Ergvein.Types.Currency
-import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Client
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
@@ -37,7 +32,6 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Util
 
-import qualified Data.Map as M
 import qualified Data.Vector as V
 
 filtersLoader :: MonadFront t m => m ()
@@ -54,7 +48,7 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
       fh' <- getFiltersHeight BTC
       let fh = max fh' sh
       logWrite $ "Current height is " <> showt ch <> ", and filters are for height " <> showt fh
-      -- postSync BTC ch fh
+      postSync BTC ch fh
       if ch > fh then do
         let n = 500
         logWrite $ "Getting next filters ..." <> showt n

@@ -6,12 +6,9 @@ module Ergvein.Wallet.Worker.Node
 import Control.Exception
 import Control.Lens
 import Control.Monad.Random
-import Control.Monad.Reader
 import Data.IP
-import Data.List (foldl')
 import Data.Maybe (fromMaybe, catMaybes, listToMaybe)
 import Data.Time
-import Data.Word
 import Network.DNS
 import Network.Haskoin.Constants
 import Network.Haskoin.Network
@@ -20,12 +17,9 @@ import Network.Socket
 import Reflex.ExternalRef
 
 import Ergvein.Text
-import Ergvein.Types.Address
 import Ergvein.Types.Currency
-import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
-import Ergvein.Types.Utxo
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
@@ -34,19 +28,14 @@ import Ergvein.Wallet.Node
 import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Node.BTC.Mempool
 import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Storage.Keys
-import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Util
 
 import qualified Data.Bits as BI
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Dependent.Map as DM
-import qualified Data.IntMap as MI
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
-import qualified Data.Vector as V
-import qualified Network.Haskoin.Transaction        as HT
 
 minNodeNum :: Int
 minNodeNum = 3
@@ -73,7 +62,6 @@ bctNodeController = mdo
 
   pubStorageD <- getPubStorageD
 
-  let keysD = ffor pubStorageD $ \ps -> getPublicKeys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "bctNodeController: not exsisting store!") . currencyPubStorage'pubKeystore
   let txidsD = ffor pubStorageD $ \ps -> S.fromList $ M.keys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "bctNodeController: not exsisting store!") . currencyPubStorage'transactions
 
   let btcLenD = ffor conMapD $ fromMaybe 0 . fmap M.size . DM.lookup BTCTag
@@ -119,8 +107,7 @@ bctNodeController = mdo
     pure $ (u <$ closeE, newTxE)
 
   _ <- requestBTCMempool =<< delay 1 =<< getPostBuild
-  btcMempoolTxInserter txE
-  pure ()
+  void $ btcMempoolTxInserter txE
   where
     switchTuple (a, b) = (switchDyn . fmap leftmost $ a, switchDyn . fmap leftmost $ b)
 

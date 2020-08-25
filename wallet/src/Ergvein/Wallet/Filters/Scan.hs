@@ -14,7 +14,6 @@ import Ergvein.Types.Currency
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Platform
 import Network.Haskoin.Block
-import Ergvein.Text
 
 import qualified Data.Vector as V
 

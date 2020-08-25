@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 module Ergvein.Wallet.Debug
   (
     debugWidget
@@ -20,9 +21,9 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage
-import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Wrapper
 import Ergvein.Index.Protocol.Types (Message(..))
+import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
 import Ergvein.Types.Block
 
 import qualified Data.Map.Strict as M
@@ -30,8 +31,6 @@ import qualified Data.Set as S
 import qualified Data.Vector as V
 import qualified Data.Text as T
 import qualified Network.Haskoin.Keys as HK
-import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
-import qualified Ergvein.Index.Protocol.Types as IPT
 
 import Network.Socket
 import qualified Control.Exception.Safe as Ex
@@ -93,7 +92,7 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
           getAddrInfo (Just hints) (Just $ T.unpack h) (Just $ T.unpack p)
         ) (\(_ :: Ex.SomeException) -> pure [])
       pure $ fmap addrAddress $ listToMaybe addrs
-  widgetHold (pure ()) $ ffor murlE $ \case
+  void $ widgetHold (pure ()) $ ffor murlE $ \case
     Nothing -> divClass "form-field-errors" $ text "Falied to parse URL"
     _ -> pure ()
   pure $ fmapMaybe id murlE
@@ -104,12 +103,11 @@ dbgUtxoPage = wrapper False "UTXO" (Just $ pure dbgUtxoPage) $ divClass "currenc
   pubSD <- getPubStorageD
   let utxoD = ffor pubSD $ \ps -> M.toList $ fromMaybe M.empty $ ps ^. pubStorage'currencyPubStorages . at BTC & fmap (view currencyPubStorage'utxos)
   void $ widgetHoldDyn $ ffor utxoD $ \utxo -> divClass "" $ do
-    flip traverse utxo $ \(o, UtxoMeta{..}) -> do
+    void $ flip traverse utxo $ \(o, UtxoMeta{..}) -> do
       el "div" $ text $ showt $ outPointHash o
       el "div" $ text $ showt (utxoMeta'purpose, utxoMeta'index) <> " amount: " <> showt utxoMeta'amount <> " " <> showt utxoMeta'status
       el "div" $ text $ showt utxoMeta'script
       el "div" $ text $ "------------------------------------------"
-    pure ()
 
 dbgPubInternalsPage :: MonadFront t m => m ()
 dbgPubInternalsPage = wrapper False "Public internal keys" (Just $ pure dbgPubInternalsPage) $ divClass "currency-content" $ do

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
 module Ergvein.Wallet.Worker.IndexersNetworkActualization
   (
     indexersNetworkActualizationWorker

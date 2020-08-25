@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Ergvein.Wallet.Util(
     widgetHoldDyn
   , updatedWithInit
@@ -16,7 +17,6 @@ module Ergvein.Wallet.Util(
 import Control.Monad.Except
 import Reflex.Dom
 
-import Ergvein.Wallet.Monad.Prim
 import qualified Ergvein.Types.Currency as ETC
 import Ergvein.Index.Protocol.Types
 

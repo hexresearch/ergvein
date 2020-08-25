@@ -19,7 +19,6 @@ module Ergvein.Wallet.Monad.Util
 
 import Control.Concurrent
 import Control.Concurrent.Async
-import Control.Exception
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Data.Text (pack)
@@ -30,9 +29,7 @@ import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
-import Foreign.JavaScript.TH (WithJSContextSingleton(..))
 import Reflex.ExternalRef
-import Reflex.Spider.Internal (SpiderHostFrame(..), EventM(..))
 
 import qualified Control.Immortal as I
 

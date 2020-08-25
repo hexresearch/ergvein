@@ -12,9 +12,6 @@ import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu.Types
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Platform
-
-import qualified Data.List as L
 
 headerWidgetOnlyBackBtn :: MonadFrontBase t m => m ()
 headerWidgetOnlyBackBtn = divClass "header" $ do

@@ -31,16 +31,12 @@ import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.Functor (void)
 import Data.Map (Map)
-import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Network.Haskoin.Transaction (OutPoint)
 import Network.Haskoin.Block (Timestamp)
 import Reflex
 
 import Ergvein.Crypto
-import Ergvein.Text
-import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
@@ -49,7 +45,6 @@ import Ergvein.Types.Utxo
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Util
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -193,7 +188,7 @@ attachNewBtcHeader caller reqE = modifyPubStorage clr $ ffor reqE $ \(he, ts, ha
     clr = caller <> ":" <> "attachNewBtcHeader"
     consifNEq (he, ha) vs = if V.null vs
       then Just $ V.singleton (he, ha)
-      else let (vhe, vha) = V.head vs in
+      else let (vhe, _) = V.head vs in
         if vhe >= he
           then Nothing
           else Just $ V.cons (he, ha) vs

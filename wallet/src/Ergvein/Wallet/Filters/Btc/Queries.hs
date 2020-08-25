@@ -35,8 +35,8 @@ clearFiltersRange i0 i1 = do
     case mh of
       Nothing -> pure ()
       Just h -> do
-        delete i hdb
-        delete h fdb
+        void $ delete i hdb
+        void $ delete h fdb
         pure ()
 
 insertFilter :: MonadIO m => BlockHeight -> BlockHash -> AddressFilterHexView -> Environment ReadWrite -> m ()
@@ -79,8 +79,8 @@ getFilterImpl fdb hdb k = do
   mh <- get hdb k
   ffor31 maybe mh (pure Nothing) $ \h -> do
     mview <- get fdb h
-    mfilter <- traverse decodeBtcAddrFilter mview
-    pure $ maybe Nothing (either (const Nothing) (Just . (h,))) mfilter
+    mfilt <- traverse decodeBtcAddrFilter mview
+    pure $ maybe Nothing (either (const Nothing) (Just . (h,))) mfilt
 
 readFiltersHeight :: MonadIO m => Environment ReadWrite -> m BlockHeight
 readFiltersHeight e = liftIO $ readOnlyTransaction e getFiltersHeight
@@ -120,17 +120,17 @@ scanFilters :: forall a m . MonadIO m
   -> a -- ^ initial value. Returned unchanged if there is no filters to scan
   -> Environment ReadWrite -- ^ Env with the DB
   -> m a -- ^ Result
-scanFilters i0 f a0 e = liftIO . readOnlyTransaction e $ do
+scanFilters i0' f a0' e = liftIO . readOnlyTransaction e $ do
   fdb <- getBtcFiltersDb
   hdb <- getBtcHeightsDb
   i1 <- getFiltersHeight
-  go fdb hdb i0 i1 a0
+  go fdb hdb i0' i1 a0'
   where
     go fdb hdb !i0 i1 !acc
       | i0 > i1 = pure acc
       | otherwise = do
-        mfilter <- getFilterImpl fdb hdb i0
-        case mfilter of
+        mfilt <- getFilterImpl fdb hdb i0
+        case mfilt of
           Nothing -> go fdb hdb (i0+1) i1 acc
           Just (h, mf) -> do
             !acc' <- liftIO $ f i0 i1 h mf acc

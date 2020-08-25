@@ -21,13 +21,10 @@ module Ergvein.Wallet.Monad.Client (
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Random
-import Control.Monad.Reader
 import Data.Function (on)
 import Data.Map.Strict (Map)
 import Data.Set (Set)
-import Data.Time(NominalDiffTime, UTCTime, getCurrentTime, diffUTCTime)
-import Data.Word (Word64)
-import Network.HTTP.Client hiding (Proxy)
+import Data.Time(NominalDiffTime, getCurrentTime, diffUTCTime)
 import Reflex
 import Reflex.Dom
 import Reflex.ExternalRef
@@ -35,20 +32,15 @@ import Reflex.ExternalRef
 import Network.Socket (SockAddr)
 import Data.Functor.Misc (Const2(..))
 
-import Ergvein.Index.Protocol.Types (Message(..), ScanBlock)
-import Ergvein.Index.Client
-import Ergvein.Text
-import Ergvein.Types.Currency
+import Ergvein.Index.Protocol.Types (Message(..))
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Prim
-import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Util
 
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
-import qualified Data.Text as T
 
 data IndexerConnection t = IndexerConnection {
   indexConAddr :: !SockAddr
@@ -110,9 +102,9 @@ activateURL addrE = do
     f [url]
     s <- modifyExternalRef setRef $ \s -> let
       s' = s {
-          settingsActiveSockAddrs  = L.nub $ url:acs
-        , settingsDeactivSockAddrs = ias
-        , settingsPassiveSockAddrs = ars
+          settingsActiveAddrs  = L.nub $ url:acs
+        , settingsDeactivatedAddrs = ias
+        , settingsArchivedAddrs = ars
         }
       in (s', s')
     storeSettings s
@@ -136,9 +128,9 @@ activateURLList addrE = do
     f urls
     s <- modifyExternalRef setRef $ \s -> let
       s' = s {
-          settingsActiveSockAddrs  = L.nub $ urls <> acs
-        , settingsDeactivSockAddrs = ias
-        , settingsPassiveSockAddrs = ars
+          settingsActiveAddrs  = L.nub $ urls <> acs
+        , settingsDeactivatedAddrs = ias
+        , settingsArchivedAddrs = ars
         }
       in (s', s')
     storeSettings s
@@ -159,8 +151,8 @@ deactivateURL addrE = do
     req $ M.singleton url IndexerClose
     s <- modifyExternalRef setRef $ \s -> let
       s' = s {
-          settingsActiveSockAddrs  = L.filter (/= url) acs
-        , settingsDeactivSockAddrs = ias
+          settingsActiveAddrs  = L.filter (/= url) acs
+        , settingsDeactivatedAddrs = ias
         }
       in (s', s')
     storeSettings s
@@ -183,9 +175,9 @@ forgetURL addrE = do
     req $ M.singleton url IndexerClose
     s <- modifyExternalRef setRef $ \s -> let
       s' = s {
-          settingsActiveSockAddrs  = L.filter (/= url) acs
-        , settingsDeactivSockAddrs = ias
-        , settingsPassiveSockAddrs = ars
+          settingsActiveAddrs  = L.filter (/= url) acs
+        , settingsDeactivatedAddrs = ias
+        , settingsArchivedAddrs = ars
         }
       in (s', s')
     storeSettings s
@@ -202,7 +194,6 @@ broadcastIndexerMessage reqE = do
 requestRandomIndexer :: MonadIndexClient t m => Event t Message -> m (Event t Message)
 requestRandomIndexer reqE = mdo
   connsD  <- fmap (fmap M.elems) $ externalRefDynamic =<< getActiveConnsRef
-  fireReq   <- getIndexReqFire
   let actE = leftmost [Just <$> reqE, Nothing <$ sentE]
   sentE <- fmap switchDyn $ widgetHold (pure never) $ ffor actE $ \case
     Nothing -> pure never
@@ -211,8 +202,8 @@ requestRandomIndexer reqE = mdo
       cons -> do
         i <- liftIO $ randomRIO (0, length cons - 1)
         let conn = cons!!i
-        sentE <- requestWhenOpen conn req
-        pure $ (indexConRespE conn) <$ sentE
+        sentE' <- requestWhenOpen conn req
+        pure $ (indexConRespE conn) <$ sentE'
   switchHold never sentE
 
 requestWhenOpen :: MonadIndexClient t m => IndexerConnection t -> Message -> m (Event t ())
@@ -235,8 +226,6 @@ requestSpecificIndexer saMsgE = do
         liftIO $ fireReq $ M.singleton sa $ IndexerMsg req
         pure $ Just $ indexConRespE con
   switchHold never $ fmapMaybe id mrespE
-
-data PingStore = PingSent (Word64, UTCTime) | PongRec (Word64, UTCTime) | LatRes NominalDiffTime
 
 indexerPingerWidget :: MonadIndexClient t m
   => SockAddr                       -- Which indexer to ping
@@ -261,7 +250,7 @@ indexerConnPingerWidget IndexerConnection{..} refrE = do
   pingE <- performFork $ ffor tickE $ const $ liftIO $ do
     p <- randomIO
     t <- getCurrentTime
-    --fireReq $ M.singleton indexConAddr $ (IndexerMsg $ MPing p)
+    fireReq $ M.singleton indexConAddr $ (IndexerMsg $ MPing p)
     pure (p,t)
   pingD <- holdDyn Nothing $ Just <$> pingE
   pongE <- performFork $ ffor indexConRespE $ \case
@@ -286,7 +275,7 @@ indexersAverageLatNumWidget refrE = do
     conns <- sampleDyn connsD
     p <- liftIO $ randomIO
     t <- liftIO $ getCurrentTime
-    --liftIO $ fireReq $ (IndexerMsg $ MPing p) <$ conns
+    liftIO $ fireReq $ (IndexerMsg $ MPing p) <$ conns
     pure (p,t)
   pingD <- holdDyn Nothing $ Just <$> pingE
   pongsD <- list connsD $ \connD -> do

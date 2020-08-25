@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-all #-}
 module Ergvein.Wallet.Indexer.Socket
   (
     initIndexerConnection
@@ -9,16 +10,12 @@ module Ergvein.Wallet.Indexer.Socket
 import Control.Monad.Catch (throwM, MonadThrow)
 import Control.Monad.IO.Class
 import Control.Monad.Random
-import Control.Monad.Reader
-import Control.Monad.STM
 import Data.Maybe
 import Data.Text
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Data.Word
-import Foreign.C.Types
 import Network.Socket hiding (socket)
 import Reflex
-import Reflex.ExternalRef
 import UnliftIO hiding (atomically)
 
 import Ergvein.Index.Protocol.Types
@@ -26,11 +23,9 @@ import Ergvein.Index.Protocol.Deserialization
 import Ergvein.Index.Protocol.Serialization
 import Ergvein.Text
 import Ergvein.Wallet.Monad.Client
-import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node.Socket
-import Ergvein.Wallet.Settings
 
 import qualified Data.Attoparsec.ByteString as AP
 import qualified Data.ByteString as B
@@ -38,7 +33,7 @@ import qualified Data.ByteString.Builder    as BB
 import qualified Data.ByteString.Lazy       as BL
 
 initIndexerConnection :: MonadBaseConstr t m => SockAddr -> Event t IndexerMsg ->  m (IndexerConnection t)
-initIndexerConnection sa msgE = do
+initIndexerConnection sa msgE = mdo
   (msname, msport) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True sa
   let peer = fromJust $ Peer <$> msname <*> msport
   let restartE = fforMaybe msgE $ \case
@@ -50,23 +45,22 @@ initIndexerConnection sa msgE = do
       reqE = fforMaybe msgE $ \case
         IndexerMsg req -> Just req
         _ -> Nothing
-  rec
-    s <- socket SocketConf {
-        _socketConfPeer   = peer
-      , _socketConfSend   = fmap serializeMessage sendE
-      , _socketConfPeeker = peekMessage sa
-      , _socketConfClose  = closeE
-      , _socketConfReopen = Just 10
-      }
-    handshakeE <- performEvent $ ffor (socketConnected s) $ const $ mkVers
-    let respE = _socketInbound s
-    hsRespE <- performEvent $ fforMaybe respE $ \case
-      MVersion Version{..} -> Just $ liftIO $ do
-        nodeLog sa $ "Received version: " <> showt versionVersion
-        pure $ MVersionACK VersionACK
-      MPing nonce -> Just $ pure $ MPong nonce
-      _ -> Nothing
-    let sendE = leftmost [handshakeE, reqE, hsRespE]
+  s <- socket SocketConf {
+      _socketConfPeer   = peer
+    , _socketConfSend   = fmap serializeMessage sendE
+    , _socketConfPeeker = peekMessage sa
+    , _socketConfClose  = closeE
+    , _socketConfReopen = Just 10
+    }
+  handshakeE <- performEvent $ ffor (socketConnected s) $ const $ mkVers
+  let respE = _socketInbound s
+  hsRespE <- performEvent $ fforMaybe respE $ \case
+    MVersion Version{..} -> Just $ liftIO $ do
+      nodeLog sa $ "Received version: " <> showt versionVersion
+      pure $ MVersionACK VersionACK
+    MPing nonce -> Just $ pure $ MPong nonce
+    _ -> Nothing
+  let sendE = leftmost [handshakeE, hsRespE, gate (current shakeD) reqE]
 
   performEvent_ $ ffor (_socketRecvEr s) $ nodeLog sa . showt
 
@@ -76,7 +70,6 @@ initIndexerConnection sa msgE = do
         _ -> Nothing
   shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
   let openE = fmapMaybe (\b -> if b then Just () else Nothing) $ updated shakeD
-      closedE = () <$ _socketClosed s
   pure $ IndexerConnection {
       indexConAddr = sa
     , indexConClosedE = () <$ _socketClosed s
@@ -116,7 +109,6 @@ peekMessage url = do
 -- | Create version data message
 mkVers :: MonadIO m => m Message
 mkVers = liftIO $ do
-  now   <- round <$> getPOSIXTime
   nonce <- randomIO
   t <- fmap (fromIntegral . floor) getPOSIXTime
   pure $ MVersion $ Version {

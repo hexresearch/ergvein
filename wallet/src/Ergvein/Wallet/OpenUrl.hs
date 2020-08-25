@@ -3,7 +3,6 @@ module Ergvein.Wallet.OpenUrl(
   ) where
 
 import Data.Text (Text)
-import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 

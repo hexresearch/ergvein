@@ -6,22 +6,14 @@ module Ergvein.Wallet.Scan (
 import Control.Lens
 import Control.Monad.IO.Class
 import Control.Monad.Reader
-import Data.Bifunctor (second)
-import Data.ByteString (ByteString)
 import Data.List
 import Data.Time.Clock.POSIX
-import Data.Maybe (fromMaybe, isNothing)
 import Data.Vector (Vector)
-import Network.Haskoin.Address (addrToString)
 
-import Ergvein.Aeson
-import Ergvein.Crypto.Keys
 import Ergvein.Text
 import Ergvein.Types.Address
-import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
-import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
@@ -32,21 +24,15 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node.BTC.Blocks
-import Ergvein.Wallet.Storage.Constants
-import Ergvein.Wallet.Storage.Keys
-import Ergvein.Wallet.Storage.Util (addXPubKeyToKeystore)
 import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Util
 
-import qualified Data.IntMap.Strict                 as MI
 import qualified Data.Map.Strict                    as M
 import qualified Data.Set                           as S
-import qualified Data.Text                          as T
 import qualified Data.Vector                        as V
 import qualified Ergvein.Wallet.Filters.Scan        as Filters
 import qualified Network.Haskoin.Block              as HB
-import qualified Network.Haskoin.Script             as HS
 import qualified Network.Haskoin.Transaction        as HT
 
 -- | Widget that continuously scans new filters agains all known public keys and
@@ -118,7 +104,7 @@ scanningAllBtcKeys i0 = do
   scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses i0 updSync $ xPubToBtcAddr . extractXPubKeyFromEgv . scanBox'key <$> keys
   let heightE = fst <$> scanE
       hashesE = V.toList . snd <$> scanE
-  writeWalletsScannedHeight "scanningAllBtcKeys" $ ((BTC, ) . fromIntegral) <$> heightE
+  void $ writeWalletsScannedHeight "scanningAllBtcKeys" $ ((BTC, ) . fromIntegral) <$> heightE
   performEvent_ $ ffor scanE $ \(h, bls) -> logWrite $ "Scanned all keys up to " <> showt h <> ", blocks to check: " <> showt bls
   scanningBtcBlocks keys hashesE
 
@@ -144,17 +130,16 @@ scanningBtcKey kp i0 keyNum pubkey = do
 -- Return event that fires 'True' if we found any transaction and fires 'False' if not.
 scanningBtcBlocks :: MonadFront t m => Vector ScanKeyBox -> Event t [(HB.BlockHash, HB.BlockHeight)] -> m (Event t Bool)
 scanningBtcBlocks keys hashesE = do
-  performEvent $ ffor hashesE $ \hs -> flip traverse hs $ \(_,a) -> logWrite $ showt a 
+  performEvent_ $ ffor hashesE $ \hs -> flip traverse_ hs $ \(_,a) -> logWrite $ showt a
   let noScanE = fforMaybe hashesE $ \bls -> if null bls then Just () else Nothing
   heightMapD <- holdDyn M.empty $ M.fromList <$> hashesE
   let rhashesE = fmap (nub . fst . unzip) $ hashesE
   _ <-logEvent "Blocks requested: " rhashesE
   blocksE <- requestBTCBlocks rhashesE
   storedBlocks <- storeBlockHeadersE "scanningBtcBlocks" BTC blocksE
-  let toAddr = xPubToBtcAddr . extractXPubKeyFromEgv
-      blkHeightE = current heightMapD `attach` storedBlocks
+  let blkHeightE = current heightMapD `attach` storedBlocks
   txsUpdsE <- logEvent "Transactions got: " =<< getAddressesTxs ((\(a,b) -> (keys,a,b)) <$> blkHeightE)
-  insertTxsUtxoInPubKeystore "scanningBtcBlocks" BTC txsUpdsE
+  void $ insertTxsUtxoInPubKeystore "scanningBtcBlocks" BTC txsUpdsE
   removeOutgoingTxs "scanningBtcBlocks" BTC $ (M.elems . M.unions . V.toList . snd . V.unzip . fst) <$> txsUpdsE
   pure $ leftmost [(V.any (not . M.null . snd)) . fst <$> txsUpdsE, False <$ noScanE]
 

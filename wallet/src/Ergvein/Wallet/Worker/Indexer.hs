@@ -22,7 +22,6 @@ indexerNodeController initAddrs = mdo
   (addrE, _) <- getActivationEF
   connRef <- getActiveConnsRef
   let initMap = M.fromList $ ((, ())) <$> initAddrs
-  initE <- fmap (initMap <$) getPostBuild
   let closedE = switchDyn $ ffor valD $ leftmost . M.elems
   let delE = (\u -> M.singleton u Nothing) <$> closedE
   let addE = (\us -> M.fromList $ (, Just ()) <$> us) <$> addrE
@@ -42,9 +41,6 @@ indexerNodeController initAddrs = mdo
 
 connectionWidget :: MonadIndexClient t m => IndexerConnection t -> m ()
 connectionWidget IndexerConnection{..} = do
-  performEvent $ (nodeLog . showt) <$> indexConRespE
-  performEvent $ (nodeLog "OPENED") <$ indexConOpensE
-
-  pure ()
+  performEvent_ $ (nodeLog "Connected") <$ indexConOpensE
   where
-    nodeLog t = logWrite $ "[connectionWidget]<" <> showt indexConAddr <> ">: " <> t
+    nodeLog t = logWrite $ "[indexerNodeController]<" <> showt indexConAddr <> ">: " <> t

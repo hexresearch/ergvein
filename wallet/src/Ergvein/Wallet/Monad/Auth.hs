@@ -11,20 +11,12 @@ import Control.Monad.Reader
 import Data.Map.Strict (Map)
 import Data.Text as T
 import Data.Time (NominalDiffTime)
-import Network.Connection
-import Network.HTTP.Client hiding (Proxy)
-import Network.HTTP.Client.TLS (newTlsManagerWith, mkManagerSettings)
 import Network.Socket (SockAddr)
-import Network.TLS
-import Network.TLS.Extra.Cipher
 import Reflex
 import Reflex.Dom
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
-import Servant.Client(BaseUrl)
 
-import Ergvein.Crypto as Crypto
-import Ergvein.Index.Client
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
@@ -38,7 +30,6 @@ import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
-import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node
 import Ergvein.Wallet.Scan
@@ -48,7 +39,6 @@ import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Version
 import Ergvein.Wallet.Worker.Fees
 import Ergvein.Wallet.Worker.Height
-import Ergvein.Wallet.Worker.IndexersNetworkActualization
 import Ergvein.Wallet.Worker.Indexer
 import Ergvein.Wallet.Worker.Node
 
@@ -74,7 +64,6 @@ data Env t = Env {
 , env'authRef         :: !(ExternalRef t AuthInfo)
 , env'logoutFire      :: !(IO ())
 , env'activeCursRef   :: !(ExternalRef t (S.Set Currency))
-, env'manager         :: !(MVar Manager)
 , env'filtersStorage  :: !FiltersStorage
 , env'filtersHeights  :: !(ExternalRef t (Map Currency HS.BlockHeight))
 , env'syncProgress    :: !(ExternalRef t SyncProgress)
@@ -108,9 +97,6 @@ instance Monad m => HasFiltersStorage t (ErgveinM t m) where
   {-# INLINE getFiltersStorage #-}
   getFiltersHeightRef = asks env'filtersHeights
   {-# INLINE getFiltersHeightRef #-}
-
-instance MonadIO m => HasClientManager (ErgveinM t m) where
-  getClientManager = liftIO . readMVar =<< asks env'manager
 
 instance MonadBaseConstr t m => MonadEgvLogger t (ErgveinM t m) where
   getLogsTrigger = asks env'logsTrigger
@@ -291,13 +277,12 @@ liftAuth ma0 ma = mdo
 
         -- MonadClient refs
         authRef         <- newExternalRef auth
-        urlsArchive     <- newExternalRef $ S.fromList $ settingsPassiveSockAddrs settings
-        inactiveUrls    <- newExternalRef $ S.fromList $ settingsDeactivSockAddrs settings
+        urlsArchive     <- newExternalRef $ S.fromList $ settingsArchivedAddrs settings
+        inactiveUrls    <- newExternalRef $ S.fromList $ settingsDeactivatedAddrs settings
         activeUrlsRef   <- newExternalRef $ M.empty
         reqUrlNumRef    <- newExternalRef $ settingsReqUrlNum settings
         actUrlNumRef    <- newExternalRef $ settingsActUrlNum settings
         timeoutRef      <- newExternalRef $ settingsReqTimeout settings
-        (indexersE, indexersF) <- newTriggerEvent
 
         -- Create data for Auth context
         (nReqE, nReqFire) <- newTriggerEvent
@@ -309,7 +294,6 @@ liftAuth ma0 ma = mdo
 
         let ps = auth ^. authInfo'storage . storage'pubStorage
 
-        managerRef      <- liftIO newEmptyMVar
         activeCursRef   <- newExternalRef mempty
         syncRef         <- newExternalRef Synced
         filtersStore    <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
@@ -334,7 +318,6 @@ liftAuth ma0 ma = mdo
               , env'authRef = authRef
               , env'logoutFire = logoutFire ()
               , env'activeCursRef = activeCursRef
-              , env'manager = managerRef
               , env'filtersStorage = filtersStore
               , env'filtersHeights = filtersHeights
               , env'syncProgress = syncRef
@@ -356,13 +339,12 @@ liftAuth ma0 ma = mdo
               , env'indexReqFire = iReqFire
               , env'activateIndexEF = indexEF
               }
-        runOnUiThreadM $ runReaderT setupTlsManager env
 
         flip runReaderT env $ do -- Workers and other routines go here
           initFiltersHeights filtersHeights
           scanner
           bctNodeController
-          indexerNodeController $ settingsActiveSockAddrs settings
+          indexerNodeController $ settingsActiveAddrs settings
           filtersLoader
           heightAsking
           -- indexersNetworkActualizationWorker
@@ -402,25 +384,3 @@ wrapped caller ma = do
   void . updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ ac <$ buildE
   ma
   where clr = caller <> ":" <> "wrapped"
-
-mkTlsSettings :: (MonadIO m, PlatformNatives) => m TLSSettings
-mkTlsSettings = do
-  store <- readSystemCertificates
-  pure $ TLSSettings $ defParams {
-      clientShared = (clientShared defParams) {
-        sharedCAStore = store
-      }
-    , clientSupported = def {
-        supportedCiphers = ciphersuite_strong
-      }
-    }
-  where
-    defParams = defaultParamsClient "localhost" ""
-
-setupTlsManager :: (MonadIO m, MonadReader (Env t) m, PlatformNatives) => m ()
-setupTlsManager = do
-  e <- ask
-  sett <- mkTlsSettings
-  liftIO $ do
-    manager <- newTlsManagerWith $ mkManagerSettings sett Nothing
-    putMVar (env'manager e) manager

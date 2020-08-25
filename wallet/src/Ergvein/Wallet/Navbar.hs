@@ -29,6 +29,7 @@ navbarBtn :: (DomBuilder t m, MonadLocalized t m) => NavbarItem -> NavbarItem-> 
 navbarBtn item activeItem
   | item == activeItem = (item <$) <$> spanButton "navbar-item active" item
   | item /= activeItem = (item <$) <$> spanButton "navbar-item" item
+navbarBtn _ _ = pure never
 
 data HeaderNavigationButtonType = HeaderNavigationSend | HeaderNavigationReceive
 

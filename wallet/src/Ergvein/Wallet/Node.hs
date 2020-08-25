@@ -21,11 +21,9 @@ import Control.Monad.IO.Class
 import Control.Monad.Random
 import Control.Monad.Reader
 import Data.Foldable
-import Data.Functor.Misc
 import Data.Maybe
 import Data.Time.Clock.System
 import Network.Socket (SockAddr)
-import Servant.Client(BaseUrl)
 
 import Ergvein.Types
 import Ergvein.Wallet.Monad.Async
@@ -36,13 +34,11 @@ import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Node.ERGO
 import Ergvein.Wallet.Node.Prim
 import Ergvein.Wallet.Node.Types
-import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Util
 
 import qualified Data.Dependent.Map as DM
 import qualified Data.Map.Strict as M
-import qualified Data.Set as S
 import qualified Data.Vector as V
 import qualified Network.Haskoin.Transaction as HT
 
@@ -62,7 +58,7 @@ getNodeConn :: CurrencyTag t a -> SockAddr -> ConnMap t -> Maybe a
 getNodeConn t url cm = M.lookup url =<< DM.lookup t cm
 
 removeNodeConn :: forall t a . CurrencyTag t a -> SockAddr -> ConnMap t -> ConnMap t
-removeNodeConn tag url cm = DM.adjust (M.delete url) tag cm
+removeNodeConn curtag url cm = DM.adjust (M.delete url) curtag cm
 
 initNode :: MonadBaseConstr t m
   => Currency

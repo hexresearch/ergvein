@@ -3,15 +3,9 @@ module Ergvein.Wallet.Main(
   , mainWidgetWithCss
   ) where
 
-import Control.Monad.IO.Class
-import Data.Time
-import Ergvein.Index.API.Types
-import Ergvein.Text
-import Ergvein.Types.Currency
+import Reflex.Dom.Main (mainWidgetWithCss)
+
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Alert.Handler
-import Ergvein.Wallet.Client
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Loading
@@ -23,11 +17,7 @@ import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.Initial
 import Ergvein.Wallet.Page.Restore
 import Ergvein.Wallet.Password
-import Ergvein.Wallet.Util
 import Ergvein.Wallet.Wrapper
-import Reflex.ExternalRef
-
-import Reflex.Dom.Main (mainWidgetWithCss)
 
 frontend :: MonadFrontBase t m => m ()
 frontend = do

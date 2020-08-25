@@ -5,7 +5,6 @@ module Ergvein.Wallet.Menu.Types(
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Monad
 
 data MenuItem
   = MenuBalances

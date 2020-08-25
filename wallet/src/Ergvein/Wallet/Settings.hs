@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Wallet.Settings (
     Settings(..)
   , loadSettings
@@ -16,23 +17,17 @@ module Ergvein.Wallet.Settings (
 import Control.Lens hiding ((.=))
 import Control.Monad.IO.Class
 import Data.Aeson hiding (encodeFile)
-import Data.Default
 import Data.Maybe
 import Data.Text(Text, pack, unpack)
 import Data.Time (NominalDiffTime)
 import Data.Yaml (encodeFile)
 import Network.Socket
-import Servant.Client(BaseUrl(..), parseBaseUrl)
 import System.Directory
 
 import Ergvein.Aeson
 import Ergvein.Lens
-import Ergvein.Text
 import Ergvein.Types.Currency
-import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Native
-import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Yaml(readYamlEither')
 
 import qualified Data.Map.Strict as M
@@ -40,6 +35,7 @@ import qualified Data.Text as T
 
 #ifdef ANDROID
 import Android.HaskellActivity
+import Ergvein.Wallet.Native
 #endif
 
 data ExplorerUrls = ExplorerUrls {
@@ -74,15 +70,11 @@ data Settings = Settings {
 , settingsConfigPath        :: Text
 , settingsUnits             :: Maybe Units
 , settingsReqTimeout        :: NominalDiffTime
-, settingsActiveUrls        :: [BaseUrl]
-, settingsDeactivatedUrls   :: [BaseUrl]
-, settingsPassiveUrls       :: [BaseUrl]
-, settingsActiveSockAddrs   :: [SockAddr]
-, settingsDeactivSockAddrs  :: [SockAddr]
-, settingsPassiveSockAddrs  :: [SockAddr]
+, settingsActiveAddrs       :: [SockAddr]
+, settingsDeactivatedAddrs  :: [SockAddr]
+, settingsArchivedAddrs     :: [SockAddr]
 , settingsReqUrlNum         :: (Int, Int) -- ^ First is minimum required answers. Second is sufficient amount of answers from indexers.
 , settingsActUrlNum         :: Int
-, settingsNodes             :: M.Map Currency [BaseUrl]
 , settingsExplorerUrl       :: M.Map Currency ExplorerUrls
 , settingsPortfolio         :: Bool
 , settingsFiatCurr          :: Fiat
@@ -101,23 +93,19 @@ instance FromJSON Settings where
     settingsConfigPath        <- o .: "configPath"
     settingsUnits             <- o .: "units"
     settingsReqTimeout        <- o .: "reqTimeout"
-    mActiveUrls               <- o .: "activeUrls"
-    mDeactivatedUrls          <- o .: "deactivatedUrls"
-    mPassiveUrls              <- o .: "passiveUrls"
+    mActiveAddrs              <- o .: "activeAddrs"
+    mDeactivatedAddrs         <- o .: "deactivatedAddrs"
+    mArchivedAddrs            <- o .: "archivedAddrs"
     settingsReqUrlNum         <- o .:? "reqUrlNum"  .!= defaultIndexersNum
     settingsActUrlNum         <- o .:? "actUrlNum"  .!= 10
-    let (settingsActiveUrls, settingsDeactivatedUrls, settingsPassiveUrls) =
-          case (mActiveUrls, mDeactivatedUrls, mPassiveUrls) of
-            (Nothing, Nothing, Nothing) -> (defaultIndexers', [], [])
-            (Just [], Just [], Just []) -> (defaultIndexers', [], [])
-            _ -> (fromMaybe [] mActiveUrls, fromMaybe [] mDeactivatedUrls, fromMaybe [] mPassiveUrls)
-    settingsNodes             <- o .:? "nodes" .!= M.empty
+    let (settingsActiveAddrs, settingsDeactivatedAddrs, settingsArchivedAddrs) =
+          case (mActiveAddrs, mDeactivatedAddrs, mArchivedAddrs) of
+            (Nothing, Nothing, Nothing) -> (defaultIndexers, [], [])
+            (Just [], Just [], Just []) -> (defaultIndexers, [], [])
+            _ -> (fromMaybe [] mActiveAddrs, fromMaybe [] mDeactivatedAddrs, fromMaybe [] mArchivedAddrs)
     settingsExplorerUrl       <- o .:? "explorerUrl" .!= defaultExplorerUrl
     settingsPortfolio         <- o .:? "portfolio" .!= False
     settingsFiatCurr          <- o .:? "fiatCurr"  .!= USD
-    settingsActiveSockAddrs   <- o .:? "activeSockAddrs" .!= defaultIndexers
-    settingsDeactivSockAddrs  <- o .:? "deactivSockAddrs" .!= []
-    settingsPassiveSockAddrs  <- o .:? "passiveSockAddrs" .!= []
     pure Settings{..}
 
 instance ToJSON Settings where
@@ -127,28 +115,15 @@ instance ToJSON Settings where
     , "configPath"        .= toJSON settingsConfigPath
     , "units"             .= toJSON settingsUnits
     , "reqTimeout"        .= toJSON settingsReqTimeout
-    , "activeUrls"        .= toJSON settingsActiveUrls
-    , "deactivatedUrls"   .= toJSON settingsDeactivatedUrls
-    , "passiveUrls"       .= toJSON settingsPassiveUrls
+    , "activeAddrs"       .= toJSON settingsActiveAddrs
+    , "deactivatedAddrs"  .= toJSON settingsDeactivatedAddrs
+    , "archivedAddrs"     .= toJSON settingsArchivedAddrs
     , "reqUrlNum"         .= toJSON settingsReqUrlNum
     , "actUrlNum"         .= toJSON settingsActUrlNum
-    , "nodes"             .= toJSON settingsNodes
     , "explorerUrl"       .= toJSON settingsExplorerUrl
     , "portfolio"         .= toJSON settingsPortfolio
     , "fiatCurr"          .= toJSON settingsFiatCurr
-    , "activeSockAddrs"   .= toJSON settingsActiveSockAddrs
-    , "deactivSockAddrs"  .= toJSON settingsDeactivSockAddrs
-    , "passiveSockAddrs"  .= toJSON settingsPassiveSockAddrs
    ]
-
-defaultIndexers' :: [BaseUrl]
-defaultIndexers' = [
-    parse "https://ergvein-indexer1.hxr.team"
-  , parse "https://ergvein-indexer2.hxr.team"
-  , parse "https://ergvein-indexer3.hxr.team"
-  ]
-  where
-    parse = either (error . ("Failed to parse default indexer: " ++) . show) id . parseBaseUrl
 
 defaultIndexers :: [SockAddr]
 defaultIndexers = [SockAddrInet 8667 (tupleToHostAddress (127,0,0,1))]
@@ -172,18 +147,14 @@ defaultSettings home =
       , settingsConfigPath        = pack configPath
       , settingsUnits             = Just defUnits
       , settingsReqTimeout        = defaultIndexerTimeout
-      , settingsActiveUrls        = defaultIndexers'
-      , settingsDeactivatedUrls   = []
-      , settingsPassiveUrls       = []
       , settingsReqUrlNum         = defaultIndexersNum
       , settingsActUrlNum         = defaultActUrlNum
-      , settingsNodes             = M.empty
       , settingsExplorerUrl       = defaultExplorerUrl
       , settingsPortfolio         = False
       , settingsFiatCurr          = USD
-      , settingsActiveSockAddrs   = []
-      , settingsDeactivSockAddrs  = []
-      , settingsPassiveSockAddrs  = []
+      , settingsActiveAddrs       = defaultIndexers
+      , settingsDeactivatedAddrs  = []
+      , settingsArchivedAddrs     = []
       }
 
 -- | TODO: Implement some checks to see if the configPath folder is ok to write to
@@ -205,7 +176,6 @@ loadSettings = const $ liftIO $ do
       cfg <- if not ex
         then pure $ defaultSettings path
         else fmap (either (const $ defaultSettings path) id) $ readYamlEither' configPath
-      logWrite $ "Loaded settings: " <> showt cfg
       createDirectoryIfMissing True (unpack $ settingsStoreDir cfg)
       encodeFile (unpack $ settingsConfigPath cfg) cfg
       pure cfg

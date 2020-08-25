@@ -57,7 +57,6 @@ import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 import Ergvein.Types.Storage
-import Ergvein.Types.Transaction (BlockHeight)
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Base
@@ -71,7 +70,6 @@ import Ergvein.Wallet.Sync.Status
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
-import Network.Haskoin.Block (BlockHash, Timestamp)
 
 type NodeReqSelector t = EventSelector t (Const2 Currency (Map SockAddr NodeMessage))
 
@@ -191,12 +189,9 @@ getActiveCursD = externalRefDynamic =<< getActiveCursRef
 updateActiveCurs :: MonadFrontAuth t m => Event t (S.Set Currency -> S.Set Currency) -> m (Event t ())
 updateActiveCurs updE = do
   curRef      <- getActiveCursRef
-  nodeRef     <- getNodeConnRef
   settingsRef <- getSettingsRef
-  authRef     <- getAuthInfoRef
-  sel         <- getNodeNodeReqSelector
   fmap updated $ widgetHold (pure ()) $ ffor updE $ \f -> do
-    (diffMap, newcs) <- modifyExternalRef curRef $ \cs -> let
+    (_, _) <- modifyExternalRef curRef $ \cs -> let
       cs' = f cs
       offUrls = S.map (, False) $ S.difference cs cs'
       onUrls  = S.map (, True)  $ S.difference cs' cs
@@ -204,12 +199,8 @@ updateActiveCurs updE = do
       dm = M.fromList $ S.toList $ offUrls <> onUrls <> onUrls'
       in (cs',(dm, S.toList cs'))
     settings <- readExternalRef settingsRef
-    login    <- fmap _authInfo'login $ readExternalRef authRef
-    let urls = settingsNodes settings
-        set' = settings
-
-    writeExternalRef settingsRef set'
-    storeSettings set'
+    writeExternalRef settingsRef settings
+    storeSettings settings
     pure ()
 {-# INLINE updateActiveCurs #-}
 

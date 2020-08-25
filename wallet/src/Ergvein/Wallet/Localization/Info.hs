@@ -2,11 +2,8 @@ module Ergvein.Wallet.Localization.Info(
     InfoPageStrings(..)
   ) where
 
-import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
-
-import Data.Text
 
 data InfoPageStrings =
     InfoTitle !Currency

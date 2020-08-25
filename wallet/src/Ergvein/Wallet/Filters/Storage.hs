@@ -77,6 +77,7 @@ clearFiltersRange cur i0 i1 = do
   e <- getFiltersStorage
   case cur of
     BTC -> liftIO $ readWriteTransaction e $ BTC.clearFiltersRange i0 i1
+    _ -> pure ()
 
 getFiltersHeight :: (MonadIO m, HasFiltersStorage t m) => Currency -> m BlockHeight
 getFiltersHeight cur = do

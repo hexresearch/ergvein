@@ -10,39 +10,29 @@ import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Receive
-import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Page.QRCode
-import Ergvein.Wallet.Share
-import Ergvein.Wallet.Storage.Keys
-import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
 
-import Ergvein.Wallet.Page.Canvas
-
-import qualified Data.ByteString.Lazy as BS
+#ifdef ANDROID
+import Ergvein.Wallet.Share
+#endif
 
 receivePage :: MonadFront t m => Currency -> m ()
 receivePage cur = do
   pubStoreD <- getPubStorageD
   let keyD = ffor pubStoreD $ \ps ->
         (getLastUnusedKey External . _currencyPubStorage'pubKeystore) =<< (ps ^. pubStorage'currencyPubStorages . at cur)
-  widgetHoldDyn $ ffor keyD $ \case
+  void $ widgetHoldDyn $ ffor keyD $ \case
     Nothing -> exceededGapLimit cur
     Just (i, key) -> receivePageWidget cur i key
-  pure ()
-
-mockAddress :: Text
-mockAddress = "1BoatSLRHtKNngkdXEeobR76b53LETtpyT"
 
 exceededGapLimit :: MonadFront t m => Currency -> m ()
 exceededGapLimit cur = do
@@ -80,6 +70,12 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
     generateURL :: Text -> Text
     generateURL addr = curprefix cur <> addr
 
+shareAddrBtn :: MonadFront t m => m (Event t ())
+shareAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton RPSShare "fas fa-share-alt fa-lg"
+
+shareQRBtn :: MonadFront t m => m (Event t ())
+shareQRBtn = divClass "receive-btn-wrapper" $ outlineTextIconButtonTypeButton RPSShareQR "fas fa-qrcode fa-lg"
+
 #else
 receivePageWidget :: MonadFront t m => Currency -> Int -> EgvPubKeyBox -> m ()
 receivePageWidget cur i EgvPubKeyBox{..} = do
@@ -89,7 +85,7 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
       navbar = navbarWidget cur thisWidget NavbarReceive
   wrapperNavbar False title thisWidget navbar $ void $ divClass "receive-page" $ do
     void $ divClass "receive-qr" $ qrCodeWidget keyTxt cur
-    divClass "receive-buttons-wrapper" $ do
+    void $ divClass "receive-buttons-wrapper" $ do
       newE  <- newAddrBtn
       copyE <- copyAddrBtn
       setFlagToExtPubKey "receivePageWidget:1" $ (cur, i) <$ newE
@@ -109,12 +105,6 @@ newAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton RPSGenNew "f
 
 copyAddrBtn :: MonadFront t m => m (Event t ())
 copyAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton RPSCopy "fas fa-copy fa-lg"
-
-shareAddrBtn :: MonadFront t m => m (Event t ())
-shareAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton RPSShare "fas fa-share-alt fa-lg"
-
-shareQRBtn :: MonadFront t m => m (Event t ())
-shareQRBtn = divClass "receive-btn-wrapper" $ outlineTextIconButtonTypeButton RPSShareQR "fas fa-qrcode fa-lg"
 
 labelAddrBtn :: MonadFront t m => m (Event t ())
 labelAddrBtn = outlineTextIconButton RPSAddLabel "fas fa-tag fa-lg"

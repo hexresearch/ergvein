@@ -20,14 +20,13 @@ module Ergvein.Wallet.Node.Prim
   , NodeRespG(..)
   -- * Currency types
   , BTCType(..)
-  , NodeERG(..)
+  , NodeERG
   , NodeBTC
-  , ERGOType
+  , ERGOType(..)
   ) where
 
 import Data.Aeson
-import Data.Serialize
-import Data.Text (Text, pack)
+import Data.Text (Text)
 import Data.Time (NominalDiffTime)
 import Network.Socket (SockAddr)
 import Reflex

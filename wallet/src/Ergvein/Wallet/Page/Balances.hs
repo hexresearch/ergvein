@@ -3,21 +3,10 @@ module Ergvein.Wallet.Page.Balances(
     balancesPage
   ) where
 
-import Control.Lens
-import Data.Maybe (fromMaybe, isJust)
-import Data.Word
-import Network.Haskoin.Address
-import Network.Haskoin.Transaction
-import Network.Wreq
+import Data.Maybe (fromMaybe)
 
-import Ergvein.Filters.Btc
-import Ergvein.Text
-import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
-import Ergvein.Types.Transaction
-import Ergvein.Types.Utxo
-import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
@@ -26,18 +15,9 @@ import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Sync.Widget
 import Ergvein.Wallet.Widget.Balance
-import Ergvein.Wallet.Worker.Node
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.List as L
-import qualified Data.Map.Strict as M
-import qualified Data.Set as S
-
-import Ergvein.Wallet.Debug
-
-#ifdef ANDROID
-import Control.Monad.IO.Class
-#endif
 
 data BalancesStrings
   = BalancesTitle
@@ -64,14 +44,12 @@ balancesPage = do
     currenciesList walletName
 
 currenciesList :: MonadFront t m => Text -> m ()
-currenciesList name = divClass "currency-content" $ do
+currenciesList _ = divClass "currency-content" $ do
   s <- getSettings
   ps <- getPubStorage
-  pubSD <- getPubStorageD
   let currencies = _pubStorage'activeCurrencies ps
       thisWidget = Just $ pure balancesPage
-  debugWidget
-  if L.length currencies == 10
+  if L.length currencies == 1
     then do
       buildE <- getPostBuild
       void $ nextWidget $ ffor buildE $ \_ -> Retractable {

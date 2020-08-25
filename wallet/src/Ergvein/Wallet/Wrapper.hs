@@ -5,8 +5,6 @@ module Ergvein.Wallet.Wrapper(
   ) where
 
 import Ergvein.Wallet.Alert.Handler
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Platform
@@ -24,7 +22,7 @@ wrapperNavbar isCentered titleVal thisWidget navbar ma = divClass "wrapper" $ do
   if isAndroid
     then headerWidgetAndroid titleVal thisWidget
     else headerWidgetDesktop titleVal thisWidget
-  navbar
+  void navbar
   contentContainer isCentered ma
 
 contentContainer :: MonadFront t m => Bool -> m a -> m a

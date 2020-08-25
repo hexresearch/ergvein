@@ -3,33 +3,23 @@ module Ergvein.Wallet.Page.Network(
     networkPage
   ) where
 
-import Control.Monad.IO.Class
-import Data.Maybe (fromMaybe, catMaybes, isJust)
+import Data.Maybe (catMaybes, isJust)
 import Reflex.ExternalRef
-import Servant.Client (BaseUrl, parseBaseUrl, showBaseUrl)
 
-import Ergvein.Index.API.Types
 import Ergvein.Text
 import Ergvein.Types.Currency
-import Ergvein.Types.Transaction (BlockHeight)
-import Ergvein.Wallet.Client
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Currency
+import Ergvein.Wallet.Localization.Currency()
 import Ergvein.Wallet.Localization.Network
-import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Node
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Dependent.Map as DM
-import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
-import qualified Data.Text as T
-
-import Ergvein.Wallet.Native
 
 networkPage :: MonadFront t m => Maybe Currency -> m ()
 networkPage curMb = do
@@ -58,12 +48,12 @@ networkPageWidget cur refrE = do
     labelHorSep
     pure listE
   -- lineOption $ lineOptionNoEdit NPSSyncStatus servCurInfoD NPSSyncDescr
-  lineOption $ widgetHoldDyn $ ffor conmapD $ \cm -> case cur of
+  void $ lineOption $ widgetHoldDyn $ ffor conmapD $ \cm -> case cur of
     BTC  -> btcNetworkWidget $ maybe [] M.elems $ DM.lookup BTCTag cm
     ERGO -> ergNetworkWidget $ maybe [] M.elems $ DM.lookup ERGOTag cm
-  void $ nextWidget $ ffor listE $ \cur -> Retractable {
-      retractableNext = serversInfoPage cur
-    , retractablePrev = Just (pure $ networkPage (Just cur))
+  void $ nextWidget $ ffor listE $ \с -> Retractable {
+      retractableNext = serversInfoPage с
+    , retractablePrev = Just (pure $ networkPage (Just с))
     }
   pure ()
 
@@ -92,7 +82,6 @@ ergNetworkWidget nodes = do
 networkPageHeader :: MonadFront t m => Maybe Currency -> m (Dynamic t (Maybe (Currency, Event t ())))
 networkPageHeader minitCur = do
   activeCursD <- getActiveCursD
-  langD <- getLanguage
   resD <- fmap join $ titleWrap $ widgetHoldDyn $ ffor activeCursD $ \curSet -> case S.toList curSet of
     [] -> do
       divClass "network-title-name" $ h3 $ localizedText NPSNoCurrencies
@@ -129,11 +118,11 @@ serversInfoPage initCur = do
   title <- localized NPSTitle
   wrapper False title (Just $ pure $ serversInfoPage initCur) $ mdo
     curD <- networkPageHeader $ Just initCur
-    void $ widgetHoldDyn $ ffor curD $ maybe (pure ()) $ \(cur, refrE) -> do
+    void $ widgetHoldDyn $ ffor curD $ maybe (pure ()) $ \(_, refrE) -> do
       connsD  <- externalRefDynamic =<< getActiveConnsRef
-      setsD <- (fmap . fmap) settingsActiveSockAddrs getSettingsD
+      setsD <- (fmap . fmap) settingsActiveAddrs getSettingsD
       let valD = (,) <$> connsD <*> setsD
-      widgetHoldDyn $ ffor valD $ \(conmap, urls) -> flip traverse urls $ \sa -> do
+      void $ widgetHoldDyn $ ffor valD $ \(conmap, urls) -> flip traverse urls $ \sa -> do
         let mconn = M.lookup sa conmap
         divClass "network-name" $ do
           let cls = if isJust mconn then "mt-a mb-a indexer-online" else "mt-a mb-a indexer-offline"
@@ -146,24 +135,12 @@ serversInfoPage initCur = do
             descrOptionDynNoBR $ NPSLatency <$> latD
       pure ()
 
-lineOptionNoEdit :: MonadFront t m
-                 => NetworkPageStrings
-                 -> Dynamic t NetworkPageStrings
-                 -> NetworkPageStrings
-                 -> m ()
-lineOptionNoEdit name valD descr = do
-  nameOption name
-  valueOptionDyn valD
-  descrOption descr
-  labelHorSep
-
 lineOption :: MonadFront t m => m a -> m a
 lineOption = divClass "network-wrapper"
 
-nameOption, descrOption, descrOptionNoBR :: (MonadFront t m, LocalizedPrint a) => a -> m ()
+nameOption, descrOption :: (MonadFront t m, LocalizedPrint a) => a -> m ()
 nameOption = divClass "network-name"    . localizedText
 descrOption = (>>) elBR . divClass "network-descr" . localizedText
-descrOptionNoBR = divClass "network-descr" . localizedText
 
 valueOptionDyn, descrOptionDyn, descrOptionDynNoBR :: (MonadFront t m, LocalizedPrint a) => Dynamic t a -> m ()
 valueOptionDyn v = getLanguage >>= \langD -> divClass "network-value" $ dynText $ ffor2 langD v localizedShow

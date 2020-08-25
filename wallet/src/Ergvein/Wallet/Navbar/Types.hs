@@ -3,7 +3,6 @@ module Ergvein.Wallet.Navbar.Types (
   ) where
 
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Monad
 
 data NavbarItem
   = NavbarSend

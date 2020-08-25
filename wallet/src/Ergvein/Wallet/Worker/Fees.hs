@@ -7,14 +7,10 @@ import Data.Time
 import Reflex.ExternalRef
 
 import Ergvein.Index.Protocol.Types
-import Ergvein.Text
 import Ergvein.Types.Fees
-import Ergvein.Wallet.Client
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
-import Ergvein.Wallet.Native
 import Ergvein.Wallet.Util
-
 
 import qualified Ergvein.Types.Currency as ETC
 import qualified Data.Set as S
@@ -22,9 +18,6 @@ import qualified Data.Map.Strict as M
 
 feesTimeout :: NominalDiffTime
 feesTimeout = 60
-
-feesWorker' :: MonadFront t m => m ()
-feesWorker' = pure ()
 
 feesWorker :: MonadFront t m => m ()
 feesWorker = do
@@ -38,7 +31,6 @@ feesWorker = do
   let feesE = fforMaybe respE $ \case
         MFeeResponse fees -> Just $ repack fees
         _ -> Nothing
-  performEvent $ (logWrite . showt) <$> feesE
   performFork_ $ ffor feesE $ \fm -> modifyExternalRef_ feeRef $ \fm' -> M.union fm fm'
   where
     repack :: [FeeResp] -> M.Map ETC.Currency FeeBundle
