@@ -9,9 +9,10 @@ import Control.Concurrent.Chan (Chan)
 import Control.Lens
 import Control.Monad.Reader
 import Data.Map.Strict (Map)
+import Data.Maybe(listToMaybe, catMaybes)
 import Data.Text as T
 import Data.Time (NominalDiffTime)
-import Network.Socket (SockAddr)
+import Network.Socket
 import Reflex
 import Reflex.Dom
 import Reflex.Dom.Retractable
@@ -42,6 +43,7 @@ import Ergvein.Wallet.Worker.Height
 import Ergvein.Wallet.Worker.Indexer
 import Ergvein.Wallet.Worker.Node
 
+import qualified Control.Exception.Safe as Ex
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
@@ -75,9 +77,10 @@ data Env t = Env {
 , env'feesStore       :: !(ExternalRef t (Map Currency FeeBundle))
 , env'storeMutex      :: !(MVar ())
 -- Client context
-, env'urlsArchive     :: !(ExternalRef t (S.Set SockAddr))
-, env'inactiveUrls    :: !(ExternalRef t (S.Set SockAddr))
-, env'activeUrls      :: !(ExternalRef t (Map SockAddr (IndexerConnection t)))
+, env'addrsArchive    :: !(ExternalRef t (S.Set SockAddr))
+, env'inactiveAddrs   :: !(ExternalRef t (S.Set SockAddr))
+, env'activeAddrs     :: !(ExternalRef t (S.Set SockAddr))
+, env'indexConmap     :: !(ExternalRef t (Map SockAddr (IndexerConnection t)))
 , env'reqUrlNum       :: !(ExternalRef t (Int, Int))
 , env'actUrlNum       :: !(ExternalRef t Int)
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
@@ -170,12 +173,14 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getNodeReqFire #-}
 
 instance MonadBaseConstr t m => MonadIndexClient t (ErgveinM t m) where
-  getArchivedUrlsRef = asks env'urlsArchive
-  {-# INLINE getArchivedUrlsRef #-}
-  getActiveConnsRef = asks env'activeUrls
+  getActiveAddrsRef = asks env'activeAddrs
+  {-# INLINE getActiveAddrsRef #-}
+  getArchivedAddrsRef = asks env'addrsArchive
+  {-# INLINE getArchivedAddrsRef #-}
+  getActiveConnsRef = asks env'indexConmap
   {-# INLINE getActiveConnsRef #-}
-  getInactiveUrlsRef = asks env'inactiveUrls
-  {-# INLINE getInactiveUrlsRef #-}
+  getInactiveAddrsRef = asks env'inactiveAddrs
+  {-# INLINE getInactiveAddrsRef #-}
   getActiveUrlsNumRef = asks env'actUrlNum
   {-# INLINE getActiveUrlsNumRef #-}
   getRequiredUrlNumRef = asks env'reqUrlNum
@@ -276,10 +281,12 @@ liftAuth ma0 ma = mdo
         settings        <- readExternalRef settingsRef
 
         -- MonadClient refs
+        socadrs <- parseSockAddrs (settingsActiveAddrs settings)
         authRef         <- newExternalRef auth
-        urlsArchive     <- newExternalRef $ S.fromList $ settingsArchivedAddrs settings
-        inactiveUrls    <- newExternalRef $ S.fromList $ settingsDeactivatedAddrs settings
-        activeUrlsRef   <- newExternalRef $ M.empty
+        urlsArchive     <- newExternalRef . S.fromList =<< parseSockAddrs (settingsArchivedAddrs settings)
+        inactiveUrls    <- newExternalRef . S.fromList =<< parseSockAddrs (settingsDeactivatedAddrs settings)
+        actvieAddrsRef  <- newExternalRef $ S.fromList socadrs
+        indexConmapRef  <- newExternalRef $ M.empty
         reqUrlNumRef    <- newExternalRef $ settingsReqUrlNum settings
         actUrlNumRef    <- newExternalRef $ settingsActUrlNum settings
         timeoutRef      <- newExternalRef $ settingsReqTimeout settings
@@ -329,9 +336,10 @@ liftAuth ma0 ma = mdo
               , env'feesStore = feesRef
               , env'storeMutex = storeMvar
 
-              , env'urlsArchive = urlsArchive
-              , env'inactiveUrls = inactiveUrls
-              , env'activeUrls = activeUrlsRef
+              , env'addrsArchive = urlsArchive
+              , env'inactiveAddrs = inactiveUrls
+              , env'activeAddrs = actvieAddrsRef
+              , env'indexConmap = indexConmapRef
               , env'reqUrlNum = reqUrlNumRef
               , env'actUrlNum = actUrlNumRef
               , env'timeout = timeoutRef
@@ -344,7 +352,7 @@ liftAuth ma0 ma = mdo
           initFiltersHeights filtersHeights
           scanner
           bctNodeController
-          indexerNodeController $ settingsActiveAddrs settings
+          indexerNodeController socadrs
           filtersLoader
           heightAsking
           -- indexersNetworkActualizationWorker
@@ -384,3 +392,15 @@ wrapped caller ma = do
   void . updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ ac <$ buildE
   ma
   where clr = caller <> ":" <> "wrapped"
+
+parseSockAddrs :: MonadIO m => [Text] -> m [SockAddr]
+parseSockAddrs = fmap catMaybes . traverse parseSingle
+  where
+    parseSingle t = do
+      let (h,p) = fmap (T.drop 1) $ T.span (/= ':') t
+      let p' = if p == "" then Nothing else Just $ T.unpack p
+      let hints = defaultHints { addrFlags = [AI_ALL] , addrSocketType = Stream }
+      addrs <- liftIO $ Ex.catch (
+          getAddrInfo (Just hints) (Just $ T.unpack h) p'
+        ) (\(_ :: Ex.SomeException) -> pure [])
+      pure $ fmap addrAddress $ listToMaybe addrs

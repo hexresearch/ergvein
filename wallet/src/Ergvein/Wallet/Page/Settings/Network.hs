@@ -126,7 +126,7 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
 activePageWidget :: forall t m . MonadFront t m => m ()
 activePageWidget = mdo
   connsD  <- externalRefDynamic =<< getActiveConnsRef
-  addrsD <- (fmap . fmap) settingsActiveAddrs getSettingsD
+  addrsD  <- (fmap . fmap) S.toList $ externalRefDynamic =<< getActiveAddrsRef
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   let valsD = (,) <$> connsD <*> addrsD
   void $ widgetHoldDyn $ ffor valsD $ \(conmap, urls) ->
@@ -135,7 +135,7 @@ activePageWidget = mdo
   (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
     restoreE <- buttonClass "button button-outline m-0" NSSRestoreUrls
-    void $ activateURLList $ defaultIndexers <$ restoreE
+    void $ activateURLList $ defaultIndexersSockAddrs <$ restoreE
     tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSClose else NSSAddUrl
     pure (refrE', tglE')
@@ -169,7 +169,7 @@ renderActive addr refrE mconn = mdo
 
 inactivePageWidget :: forall t m . MonadFront t m => m ()
 inactivePageWidget = mdo
-  addrsD <- externalRefDynamic =<< getInactiveUrlsRef
+  addrsD <- externalRefDynamic =<< getInactiveAddrsRef
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   hideE <- deactivateURL =<< addUrlWidget showD
   let addrsMapD = (M.fromList . fmap (,()) . S.toList) <$> addrsD

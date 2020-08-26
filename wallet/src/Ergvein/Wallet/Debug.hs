@@ -57,7 +57,7 @@ debugWidget = el "div" $ do
   prvIntE <- fmap (DbgPrvInt <$) $ outlineButton $ mkTxt "Priv Internals"
   prvExtE <- fmap (DbgPrvExt <$) $ outlineButton $ mkTxt "Priv Externals"
   pingE <- outlineButton $ mkTxt "Ping"
-  pingD <- indexerPingerWidget (head defaultIndexers) pingE
+  pingD <- indexerPingerWidget (head defaultIndexersSockAddrs) pingE
   h5 . dynText $ do
     p <- pingD
     pure $ "Def.indexer ping: " <> showt p

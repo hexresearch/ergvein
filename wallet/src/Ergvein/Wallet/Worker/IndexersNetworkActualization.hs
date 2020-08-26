@@ -117,8 +117,8 @@ indexersNetworkActualizationWorker = do
   te                <- void <$> tickLossyFromPostBuildTime infoWorkerInterval
   settingsRef       <- getSettingsRef
   activeUrlsRef     <- getActiveUrlsRef
-  inactiveUrlsRef   <- getInactiveUrlsRef
-  archivedUrlsRef   <- getArchivedUrlsRef
+  inactiveUrlsRef   <- getInactiveAddrsRef
+  archivedUrlsRef   <- getArchivedAddrsRef
 
   let goE = leftmost [void te, refreshE, buildE]
 

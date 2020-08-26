@@ -6,6 +6,7 @@ module Ergvein.Wallet.Settings (
   , storeSettings
   , defaultSettings
   , defaultIndexers
+  , defaultIndexersSockAddrs
   , defaultIndexersNum
   , defaultIndexerTimeout
   , defaultActUrlNum
@@ -70,9 +71,9 @@ data Settings = Settings {
 , settingsConfigPath        :: Text
 , settingsUnits             :: Maybe Units
 , settingsReqTimeout        :: NominalDiffTime
-, settingsActiveAddrs       :: [SockAddr]
-, settingsDeactivatedAddrs  :: [SockAddr]
-, settingsArchivedAddrs     :: [SockAddr]
+, settingsActiveAddrs       :: [Text]
+, settingsDeactivatedAddrs  :: [Text]
+, settingsArchivedAddrs     :: [Text]
 , settingsReqUrlNum         :: (Int, Int) -- ^ First is minimum required answers. Second is sufficient amount of answers from indexers.
 , settingsActUrlNum         :: Int
 , settingsExplorerUrl       :: M.Map Currency ExplorerUrls
@@ -125,8 +126,11 @@ instance ToJSON Settings where
     , "fiatCurr"          .= toJSON settingsFiatCurr
    ]
 
-defaultIndexers :: [SockAddr]
-defaultIndexers = [SockAddrInet 8667 (tupleToHostAddress (127,0,0,1))]
+defaultIndexers :: [Text]
+defaultIndexers = ["127.0.0.1:8667"]
+
+defaultIndexersSockAddrs :: [SockAddr]
+defaultIndexersSockAddrs = [SockAddrInet 8667 (tupleToHostAddress (127,0,0,1))]
 
 defaultIndexersNum :: (Int, Int)
 defaultIndexersNum = (2, 4)

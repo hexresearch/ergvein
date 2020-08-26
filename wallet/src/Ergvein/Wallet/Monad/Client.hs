@@ -22,17 +22,17 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Random
 import Data.Function (on)
+import Data.Functor.Misc (Const2(..))
 import Data.Map.Strict (Map)
 import Data.Set (Set)
 import Data.Time(NominalDiffTime, getCurrentTime, diffUTCTime)
+import Network.Socket (SockAddr)
 import Reflex
 import Reflex.Dom
 import Reflex.ExternalRef
 
-import Network.Socket (SockAddr)
-import Data.Functor.Misc (Const2(..))
-
 import Ergvein.Index.Protocol.Types (Message(..))
+import Ergvein.Text
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Settings
@@ -59,12 +59,14 @@ type IndexReqSelector t = EventSelector t (Const2 SockAddr IndexerMsg)
 -- ===========================================================================
 
 class MonadBaseConstr t m => MonadIndexClient t m | m -> t where
+  -- | Get active addrs ref
+  getActiveAddrsRef :: m (ExternalRef t (Set SockAddr))
   -- | Get passive urls' reference. Internal
-  getArchivedUrlsRef :: m (ExternalRef t (Set SockAddr))
+  getArchivedAddrsRef :: m (ExternalRef t (Set SockAddr))
   -- | Internal method to get reference to indexers
   getActiveConnsRef :: m (ExternalRef t (Map SockAddr (IndexerConnection t)))
   -- | Get deactivated urls' reference. Internal
-  getInactiveUrlsRef :: m (ExternalRef t (Set SockAddr))
+  getInactiveAddrsRef :: m (ExternalRef t (Set SockAddr))
   -- | Get reference to the minimal number of active urls. Internal
   getActiveUrlsNumRef :: m (ExternalRef t Int)
   -- | Get num reference. Internal
@@ -80,31 +82,32 @@ class MonadBaseConstr t m => MonadIndexClient t m | m -> t where
 
 -- | Get deactivated urls dynamic
 getArchivedUrlsD :: MonadIndexClient t m => m (Dynamic t (Set SockAddr))
-getArchivedUrlsD = externalRefDynamic =<< getArchivedUrlsRef
+getArchivedUrlsD = externalRefDynamic =<< getArchivedAddrsRef
 -- | Get deactivated urls dynamic
 getInactiveUrlsD :: MonadIndexClient t m => m (Dynamic t (Set SockAddr))
-getInactiveUrlsD = externalRefDynamic =<< getInactiveUrlsRef
+getInactiveUrlsD = externalRefDynamic =<< getInactiveAddrsRef
 
 -- | Activate an URL
 activateURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t SockAddr -> m (Event t ())
 activateURL addrE = do
   (_, f)    <- getActivationEF
-  iaRef     <- getInactiveUrlsRef
-  acrhRef   <- getArchivedUrlsRef
+  iaRef     <- getInactiveAddrsRef
+  acrhRef   <- getArchivedAddrsRef
   setRef    <- getSettingsRef
-  connsRef  <- getActiveConnsRef
+  activsRef <- getActiveAddrsRef
   performEventAsync $ ffor addrE $ \url fire -> void $ liftIO $ forkOnOther $ do
     ias <- modifyExternalRef iaRef $ \us ->
       let us' = S.delete url us in (us', S.toList us')
     ars <- modifyExternalRef acrhRef $ \as ->
       let as' = S.delete url as in  (as', S.toList as')
-    acs <- fmap M.keys $ readExternalRef connsRef
+    acs <- modifyExternalRef activsRef $ \as ->
+      let as' = S.insert url as in  (as', S.toList as')
     f [url]
     s <- modifyExternalRef setRef $ \s -> let
       s' = s {
-          settingsActiveAddrs  = L.nub $ url:acs
-        , settingsDeactivatedAddrs = ias
-        , settingsArchivedAddrs = ars
+          settingsActiveAddrs       = showt <$> acs
+        , settingsDeactivatedAddrs  = showt <$> ias
+        , settingsArchivedAddrs     = showt <$> ars
         }
       in (s', s')
     storeSettings s
@@ -114,23 +117,24 @@ activateURL addrE = do
 activateURLList :: (MonadIndexClient t m, MonadHasSettings t m) => Event t [SockAddr] -> m (Event t ())
 activateURLList addrE = do
   (_, f)    <- getActivationEF
-  iaRef     <- getInactiveUrlsRef
-  acrhRef   <- getArchivedUrlsRef
+  iaRef     <- getInactiveAddrsRef
+  acrhRef   <- getArchivedAddrsRef
   setRef    <- getSettingsRef
-  connsRef  <- getActiveConnsRef
+  activsRef <- getActiveAddrsRef
   performEventAsync $ ffor addrE $ \urls fire -> void $ liftIO $ forkOnOther $ do
     let urls' = S.fromList urls
     ias <- modifyExternalRef iaRef $ \us ->
       let us' = S.difference us urls' in (us', S.toList us')
     ars <- modifyExternalRef acrhRef $ \as ->
       let as' = S.difference as urls' in  (as', S.toList as')
-    acs <- fmap M.keys $ readExternalRef connsRef
+    acs <- modifyExternalRef activsRef $ \as ->
+      let as' = S.union urls' as in  (as', S.toList as')
     f urls
     s <- modifyExternalRef setRef $ \s -> let
       s' = s {
-          settingsActiveAddrs  = L.nub $ urls <> acs
-        , settingsDeactivatedAddrs = ias
-        , settingsArchivedAddrs = ars
+          settingsActiveAddrs      = showt <$> acs
+        , settingsDeactivatedAddrs = showt <$> ias
+        , settingsArchivedAddrs    = showt <$> ars
         }
       in (s', s')
     storeSettings s
@@ -140,19 +144,20 @@ activateURLList addrE = do
 deactivateURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t SockAddr -> m (Event t ())
 deactivateURL addrE = do
   req       <- getIndexReqFire
-  iaRef     <- getInactiveUrlsRef
+  iaRef     <- getInactiveAddrsRef
   setRef    <- getSettingsRef
-  connsRef  <- getActiveConnsRef
+  activsRef <- getActiveAddrsRef
   performEventAsync $ ffor addrE $ \url fire -> void $ liftIO $ forkOnOther $ do
-    acs <- fmap M.keys $ readExternalRef connsRef
+    acs <- modifyExternalRef activsRef $ \as ->
+      let as' = S.delete url as in  (as', S.toList as')
     ias <- modifyExternalRef iaRef  $ \us ->
       let us' = S.insert url us in (us', S.toList us')
 
     req $ M.singleton url IndexerClose
     s <- modifyExternalRef setRef $ \s -> let
       s' = s {
-          settingsActiveAddrs  = L.filter (/= url) acs
-        , settingsDeactivatedAddrs = ias
+          settingsActiveAddrs  = showt <$> acs
+        , settingsDeactivatedAddrs = showt <$> ias
         }
       in (s', s')
     storeSettings s
@@ -162,22 +167,23 @@ deactivateURL addrE = do
 forgetURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t SockAddr -> m (Event t ())
 forgetURL addrE = do
   req       <- getIndexReqFire
-  iaRef     <- getInactiveUrlsRef
-  acrhRef   <- getArchivedUrlsRef
+  iaRef     <- getInactiveAddrsRef
+  acrhRef   <- getArchivedAddrsRef
   setRef    <- getSettingsRef
-  connsRef  <- getActiveConnsRef
+  activsRef <- getActiveAddrsRef
   performEventAsync $ ffor addrE $ \url fire -> void $ liftIO $ forkOnOther $ do
     ias <- modifyExternalRef iaRef $ \us ->
       let us' = S.delete url us in (us', S.toList us')
     ars <- modifyExternalRef acrhRef $ \as ->
       let as' = S.delete url as in  (as', S.toList as')
-    acs <- fmap M.keys $ readExternalRef connsRef
+    acs <- modifyExternalRef activsRef $ \as ->
+      let as' = S.delete url as in  (as', S.toList as')
     req $ M.singleton url IndexerClose
     s <- modifyExternalRef setRef $ \s -> let
       s' = s {
-          settingsActiveAddrs  = L.filter (/= url) acs
-        , settingsDeactivatedAddrs = ias
-        , settingsArchivedAddrs = ars
+          settingsActiveAddrs  = showt <$> acs
+        , settingsDeactivatedAddrs = showt <$> ias
+        , settingsArchivedAddrs = showt <$> ars
         }
       in (s', s')
     storeSettings s
