@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module Ergvein.Index.Server.DB where
 
 import Conduit

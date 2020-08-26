@@ -43,6 +43,8 @@ handleMsg address (MVersionACK _) = pure Nothing
 
 handleMsg address (MVersion msg) = pure Nothing
 
+handleMsg address (MPeerRequest _) = pure Nothing
+
 handleMsg address (MFiltersRequest FilterRequest {..}) = do
   let currency = convert filterRequestMsgCurrency
   slice <- getBlockMetaSlice currency filterRequestMsgStart filterRequestMsgAmount

@@ -105,6 +105,16 @@ data KnownPeerRecItem = KnownPeerRecItem
   , knownPeerRecLastValidatedAt :: Text
   } deriving (Generic, Show, Eq, Ord, Flat)
 
+data PeerAddress = V4 Word32
+                 | V6 (Word32, Word32, Word32, Word32)
+  deriving (Generic, Show, Eq, Ord, Flat)
+
+data KnownPeerRecItem1 = KnownPeerRecItem1
+  { knownPeerRecIP               :: PeerAddress
+  , knownPeerRecPort             :: Word16
+  , knownPeerRecLastValidatedAt1 :: Text
+  } deriving (Generic, Show, Eq, Ord, Flat)
+
 --lastScannedBlockHeaderHash
 
 lastScannedBlockHeaderHashRecKey :: Currency -> ByteString

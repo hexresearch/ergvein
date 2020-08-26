@@ -8,6 +8,7 @@ import Servant.Client.Core.BaseUrl
 import Data.Time.Clock
 import Data.Text
 import Data.Set (Set)
+import Network.Socket
 
 data CurrencyOutOfSyncInfo = CurrencyOutOfSyncInfo
   { outOfsyncCurrency    :: Currency
@@ -31,6 +32,11 @@ data Peer = Peer
   { peerUrl              :: BaseUrl
   , peerLastValidatedAt  :: UTCTime
   , peerConnScheme       :: Scheme
+  } deriving Show
+
+data Peer1 = Peer1
+  { peerAddress           :: SockAddr
+  , peerLastValidatedAt1  :: UTCTime
   } deriving Show
 
 data NewPeer = NewPeer
