@@ -22,6 +22,7 @@ import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import Ergvein.Index.Protocol.Types
 
 import qualified Data.ByteString as BS
 import qualified Data.Map.Strict as Map
@@ -79,39 +80,28 @@ upsertItem key item = do
   db <- getDb
   put db def key $ flat item
 
-
-
-getKnownPeers :: (MonadLDB m, MonadLogger m, HasDiscoveryRequisites m) => Bool -> m [String]
-getKnownPeers onlySecured = do
-  knownPeers <- fmap convert <$> getParsedExact @[KnownPeerRecItem]  knownPeersRecKey
+getKnownPeers :: (MonadLDB m, MonadLogger m, HasDiscoveryRequisites m) => m [Address]
+getKnownPeers = do
+  knownPeers <- getParsedExact @[KnownPeerRecItem] knownPeersRecKey
   currentTime <- liftIO getCurrentTime
   actualizationDelay <- (/1000000) . fromIntegral . descReqActualizationDelay <$> getDiscoveryRequisites
   let validDate = (-actualizationDelay) `addUTCTime` currentTime
-      filteredByOnlySecured = 
-        if onlySecured then
-          filter (\p -> 
-            case peerConnScheme p of
-              Https -> True
-              _     -> False)
-          knownPeers 
-        else 
-          knownPeers
-      filteredByLastValidatedAt = filter ((validDate <=) . peerLastValidatedAt) filteredByOnlySecured 
-  pure $ showBaseUrl . peerUrl <$> filteredByLastValidatedAt
+      filteredByLastValidatedAt = filter ((validDate <=) . read . T.unpack . knownPeerRecLastValidatedAt) knownPeers 
+  pure $ convert <$> filteredByLastValidatedAt
 
-getKnownPeersList :: (MonadLDB m, MonadLogger m) => m [Peer]
+getKnownPeersList1 :: (MonadLDB m, MonadLogger m) => m [Peer]
+getKnownPeersList1 = undefined
+
+getKnownPeersList :: (MonadLDB m, MonadLogger m) => m [Peer1]
 getKnownPeersList = do
   peers <- getParsedExact @[KnownPeerRecItem] knownPeersRecKey
   pure $ convert <$> peers
 
 setKnownPeersList :: (MonadLDB m, MonadLogger m) => [Peer] -> m ()
-setKnownPeersList peers = upsertItem knownPeersRecKey $ convert @_ @KnownPeerRecItem <$> peers
+setKnownPeersList peers = undefined
 
 addKnownPeers :: (MonadLDB m, MonadLogger m) => [Peer] -> m ()
-addKnownPeers peers = do
-  let mapped = convert @_ @KnownPeerRecItem <$> peers
-  stored <- getParsedExact @[KnownPeerRecItem] knownPeersRecKey
-  upsertItem knownPeersRecKey $ mapped ++ stored
+addKnownPeers peers = undefined
 
 emptyKnownPeers :: (MonadLDB m, MonadLogger m) => m ()
 emptyKnownPeers = setKnownPeersList []
@@ -125,8 +115,7 @@ setScannedHeight :: (MonadLDB m, MonadLogger m) => Currency -> BlockHeight -> m 
 setScannedHeight currency height = upsertItem (scannedHeightTxKey currency) $ ScannedHeightRec height
 
 initDb :: DB -> IO ()
-initDb db = do
-  write db def $ putItem knownPeersRecKey $ convert @Peer @KnownPeerRecItem <$> []
+initDb db = pure ()
 
 addBlockInfo :: (MonadLDB m, MonadLogger m) => BlockInfo -> m ()
 addBlockInfo update = do

@@ -45,7 +45,7 @@ peerKnownPeers baseUrl = do
 considerPeerCandidate :: PeerCandidate -> ExceptT PeerValidationResult ServerM ()
 considerPeerCandidate candidate = do
   baseUrl <- peerBaseUrl $ peerCandidateUrl candidate
-  knownPeers <- lift $ getKnownPeersList
+  knownPeers <- lift $ getKnownPeersList1
   knowPeersSet <- lift $ knownPeersSet knownPeers
   if not $ Set.member baseUrl knowPeersSet then do
     _ <- peerKnownPeers baseUrl
@@ -68,7 +68,7 @@ knownPeersActualization = do
     scanIteration thread = do
       requisites  <- getDiscoveryRequisites
       currentTime <- liftIO getCurrentTime
-      knownPeers  <- getKnownPeersList
+      knownPeers  <- getKnownPeersList1
 
       let peersToFetchFrom = (isNotOutdated (descReqPredefinedPeers requisites) (descReqActualizationTimeout requisites) currentTime) `filter` knownPeers
       
@@ -94,7 +94,7 @@ knownPeersActualization = do
 
 syncWithDefaultPeers :: ServerM ()
 syncWithDefaultPeers = do
-  discoveredPeers <- getKnownPeersList
+  discoveredPeers <- getKnownPeersList1
   predefinedPeers <- descReqPredefinedPeers <$> getDiscoveryRequisites
   currentTime <- liftIO getCurrentTime
   let discoveredPeersSet = Set.fromList $ peerUrl <$> discoveredPeers
@@ -105,7 +105,7 @@ peerIntroduce :: ServerM ()
 peerIntroduce = void $ runMaybeT $ do
   ownAddress <- MaybeT $ descReqOwnAddress <$> getDiscoveryRequisites
   lift $ do
-    allPeers <- getKnownPeersList
+    allPeers <- getKnownPeersList1
     let introduceReq = IntroducePeerReq $ showBaseUrl ownAddress
     forM_ allPeers (flip getIntroducePeerEndpoint introduceReq . peerUrl)
 
