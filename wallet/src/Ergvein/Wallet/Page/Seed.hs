@@ -27,8 +27,9 @@ import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
 import Reflex.Localize
 
-import qualified Data.Text as T
-import qualified Data.List as L
+import qualified Data.List   as L
+import qualified Data.Text   as T
+import qualified Data.Vector as V
 
 mnemonicPage :: MonadFrontBase t m => m ()
 mnemonicPage = go Nothing
@@ -111,25 +112,27 @@ guessButtons :: forall t m . MonadFrontBase t m => [Text] -> Dynamic t Int -> m 
 guessButtons ws idyn = do
   resD <- widgetHoldDyn $ ffor idyn $ \i -> if i >= length ws
     then pure never else divClass "guess-buttons grid3" $ do
-      fake1 <- randomPick [i]
-      fake2 <- randomPick [i, fake1]
-      is <- shuffle [i, fake1, fake2]
-      fmap leftmost $ traverse (guessButton i) is
+      let correctWord = ws !! i
+      fakeWord1 <- randomPick [correctWord]
+      fakeWord2 <- randomPick [correctWord, fakeWord1]
+      wordsList <- shuffle [correctWord, fakeWord1, fakeWord2]
+      fmap leftmost $ traverse (guessButton i (correctWord)) wordsList
   pure $ switch . current $ resD
   where
     fact i = product [1 .. i]
     randomPick bs = do
-      i <- liftIO $ getRandomR (0, length ws - 1)
-      if i `elem` bs then randomPick bs else pure i
+      i <- liftIO $ getRandomR (0, length wordListEnglish - 1)
+      let word = wordListEnglish V.! i
+      if word `elem` bs then randomPick bs else pure word
     shuffle is = liftIO $ do
       i <- getRandomR (0, fact (length is) - 1)
       pure $ permutations is !! i
-    guessButton :: Int -> Int -> m (Event t Int)
-    guessButton reali i = mdo
+    guessButton :: Int -> Text -> Text -> m (Event t Int)
+    guessButton i correctWord buttonWord = mdo
       classeD <- holdDyn "button button-outline guess-button" $ ffor btnE $ const $
-        "button guess-button " <> if reali == i then "guess-true" else "guess-false"
-      btnE <- buttonClass classeD $ ws !! i
-      delay 1 $ fforMaybe btnE $ const $ if reali == i then Just (i+1) else Nothing
+        "button guess-button " <> if buttonWord == correctWord then "guess-true" else "guess-false"
+      btnE <- buttonClass classeD $ buttonWord
+      delay 1 $ fforMaybe btnE $ const $ if buttonWord == correctWord then Just (i + 1) else Nothing
 
 seedRestorePage :: forall t m . MonadFrontBase t m => m ()
 seedRestorePage = wrapperSimple True $ do
