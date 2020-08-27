@@ -26,7 +26,10 @@ import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.Utils
 import Ergvein.Index.Server.DB.Queries
+import Ergvein.Index.Server.TCPService.Server
 import Network.Socket
+import qualified Data.Map.Strict as M
+import Control.Concurrent.STM
 
 
 import qualified Data.Map.Strict as Map
@@ -67,10 +70,15 @@ knownPeersActualization1 = do
   where
     scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
-     PeerDiscoveryRequisites {..} <- undefined
+     PeerDiscoveryRequisites {..} <- getDiscoveryRequisites
      currentTime <- liftIO getCurrentTime
-     knownPeers <- getKnownPeersList
+     knownPeers <- getKnownPeersList1
      let peersToFetchFrom = isNotOutdated descReqPredefinedPeers descReqActualizationTimeout currentTime `filter` knownPeers
+     setKnownPeersList1 peersToFetchFrom
+     openedConnectionsRef <- asks envOpenConnections
+     opened <- liftIO $ M.keysSet <$> readTVarIO openedConnectionsRef
+     let toOpen = Set.toList $ opened Set.\\ (Set.fromList $ peerAddress <$> peersToFetchFrom)
+     forM_ toOpen newConnection
      pure ()
     isNotOutdated :: Set SockAddr -> NominalDiffTime -> UTCTime -> Peer1 -> Bool
     isNotOutdated predefined retryTimeout currentTime peer = 
@@ -111,7 +119,7 @@ knownPeersActualization = do
 
 syncWithDefaultPeers :: ServerM ()
 syncWithDefaultPeers = do
-  discoveredPeers <- getKnownPeersList1
+  discoveredPeers <- getKnownPeersList
   predefinedPeers <- descReqPredefinedPeers <$> getDiscoveryRequisites
   currentTime <- liftIO getCurrentTime
   let discoveredPeersSet = Set.fromList $ peerUrl <$> discoveredPeers
@@ -122,7 +130,7 @@ peerIntroduce :: ServerM ()
 peerIntroduce = void $ runMaybeT $ do
   ownAddress <- MaybeT $ descReqOwnAddress <$> getDiscoveryRequisites
   lift $ do
-    allPeers <- getKnownPeersList1
+    allPeers <- getKnownPeersList
     let introduceReq = IntroducePeerReq $ showBaseUrl undefined--ownAddress
     forM_ allPeers (flip getIntroducePeerEndpoint introduceReq . peerUrl)
 

@@ -89,16 +89,21 @@ getKnownPeers = do
       filteredByLastValidatedAt = filter ((validDate <=) . read . T.unpack . knownPeerRecLastValidatedAt) knownPeers 
   pure $ convert <$> filteredByLastValidatedAt
 
-getKnownPeersList1 :: (MonadLDB m, MonadLogger m) => m [Peer]
-getKnownPeersList1 = undefined
 
-getKnownPeersList :: (MonadLDB m, MonadLogger m) => m [Peer1]
-getKnownPeersList = do
-  peers <- getParsedExact @[KnownPeerRecItem] knownPeersRecKey
-  pure $ convert <$> peers
+
+getKnownPeersList :: (MonadLDB m, MonadLogger m) => m [Peer]
+getKnownPeersList = undefined
 
 setKnownPeersList :: (MonadLDB m, MonadLogger m) => [Peer] -> m ()
 setKnownPeersList peers = undefined
+
+setKnownPeersList1 :: (MonadLDB m, MonadLogger m) => [Peer1] -> m ()
+setKnownPeersList1 peers = upsertItem knownPeersRecKey $ convert @_ @KnownPeerRecItem <$> peers
+
+getKnownPeersList1 :: (MonadLDB m, MonadLogger m) => m [Peer1]
+getKnownPeersList1 = do
+  peers <- getParsedExact @[KnownPeerRecItem] knownPeersRecKey
+  pure $ convert <$> peers
 
 addKnownPeers :: (MonadLDB m, MonadLogger m) => [Peer] -> m ()
 addKnownPeers peers = undefined

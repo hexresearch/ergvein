@@ -29,9 +29,9 @@ onStartup env = do
   syncWithDefaultPeers
   feeWorkers <- feesScanning
   peerIntroduce
-  knownPeersActualization
+  peerActThread <- knownPeersActualization1
   tcpServerThread <- runTcpSrv
-  pure $ tcpServerThread : scanningWorkers ++ feeWorkers
+  pure $ peerActThread : tcpServerThread : scanningWorkers ++ feeWorkers
 
 onShutdown :: ServerEnv -> [Thread] -> IO ()
 onShutdown env workerTreads = do

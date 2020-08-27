@@ -31,7 +31,7 @@ import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.TCPService.MessageHandler
-import Ergvein.Index.Server.TCPService.Socket
+import Ergvein.Index.Server.TCPService.Socket as S
 
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString as BS
@@ -77,7 +77,7 @@ mainLoop thread sock = do
   openedConnectionsRef <- asks envOpenConnections
   mainLoopId <- fork $ forever $ do
     connection <- liftIO $ accept sock
-    connectionThreadId <- fork $ runConnection connection
+    connectionThreadId <- fork $ registerConnection connection
     liftIO $ atomically $ modifyTVar openedConnectionsRef $ M.insert (snd connection) (connectionThreadId , fst connection)
   shutdownFlagRef <- getShutdownFlag
   forever $ liftIO $ do
@@ -90,6 +90,18 @@ mainLoop thread sock = do
     killThread mainLoopId
     atomically $ writeTVar openedConnectionsRef M.empty
     stop thread
+
+
+newConnection :: SockAddr -> ServerM ()
+newConnection addr = do
+  (maybeHost, maybePort) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True addr
+  registerConnection =<< connectSock (fromJust maybeHost) (fromJust maybePort)
+
+registerConnection :: (Socket, SockAddr) -> ServerM ()
+registerConnection (sock, addr) = do
+  openedConnectionsRef <- asks envOpenConnections
+  connectionThreadId <- fork $ runConnection (sock, addr)
+  liftIO $ atomically $ modifyTVar openedConnectionsRef $ M.insert addr (connectionThreadId , sock)
 
 runConnection :: (Socket, SockAddr) -> ServerM ()
 runConnection (sock, addr) = do
