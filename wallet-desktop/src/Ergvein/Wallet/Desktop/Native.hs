@@ -21,19 +21,29 @@ import Web.Browser
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.IO as T
+import qualified Turtle
 
 instance PlatformNatives where
   resUrl = id
 
-  storeValue k v = do
+  storeValue k v atomicMode = do
     path <- getStoreDir
+    logWrite $ "Writing file " <> path <> "/" <> k
     liftIO $ do
       let fpath = T.unpack $ path <> "/" <> k
       createDirectoryIfMissing True $ takeDirectory fpath
-      writeJson fpath v
+      case atomicMode of
+        True -> do
+          tmpDir <- T.pack <$> getTemporaryDirectory
+          let tmpFilePath = T.unpack $ tmpDir <> "/ergvein/" <> k
+          createDirectoryIfMissing True $ takeDirectory tmpFilePath
+          writeJsonAtomic tmpFilePath v
+          Turtle.mv (Turtle.fromText $ T.pack tmpFilePath) (Turtle.fromText $ T.pack fpath)
+        False -> writeJson fpath v
 
   retrieveValue k a0 = do
     path <- getStoreDir
+    logWrite $ "Reading file " <> path <> "/" <> k
     liftIO $ do
       let fpath = T.unpack $ path <> "/" <> k
       ex <- doesFileExist fpath
@@ -69,15 +79,13 @@ instance PlatformNatives where
 
   moveStoredFile filename1 filename2 = do
     path <- getStoreDir
+    logWrite $ "Moving file " <> path <> "/" <> filename1 <> " to " <> path <> "/" <> filename2
     liftIO $ do
       let fpath1 = T.unpack $ path <> "/" <> filename1
           fpath2 = T.unpack $ path <> "/" <> filename2
       ex <- doesFileExist fpath1
       if ex
-        then do
-          T.writeFile fpath2 =<< T.readFile fpath1
-          T.writeFile fpath1 ""
-          pure $ Right ()
+        then Right <$> renameFile fpath1 fpath2
         else pure $ Left $ NAFileDoesNotExist filename1
 
   getStoreFileSize filename = do

@@ -23,6 +23,7 @@ module Ergvein.Aeson(
   , decodeJson
   -- * IO
   , writeJson
+  , writeJsonAtomic
   , readJson
   , readJsonLazy
   ) where
@@ -36,6 +37,7 @@ import Data.List (findIndex)
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8With, encodeUtf8)
 import Data.Text.Encoding.Error (lenientDecode)
+import System.AtomicWrite.Writer.ByteString
 
 import Ergvein.IO
 
@@ -179,6 +181,9 @@ statusAesonOptions prefix =
 
 writeJson :: ToJSON a => FilePath -> a -> IO ()
 writeJson filename root = B.writeFile filename $ LB.toStrict $ encode root
+
+writeJsonAtomic :: ToJSON a => FilePath -> a -> IO ()
+writeJsonAtomic filename root = atomicWriteFile filename $ LB.toStrict $ encode root
 
 readJsonLazy :: FromJSON a => FilePath -> IO (Maybe a)
 readJsonLazy = fmap (decode =<<) . readLazyByteStringSafe

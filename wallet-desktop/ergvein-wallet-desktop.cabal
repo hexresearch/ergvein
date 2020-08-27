@@ -12,8 +12,8 @@ library
     Ergvein.Wallet.Desktop.Native
     Ergvein.Wallet.Desktop.Run
   build-depends:
-      base
-    , aeson
+      aeson
+    , base
     , directory
     , directory-tree
     , dns
@@ -26,6 +26,7 @@ library
     , open-browser
     , text
     , time
+    , turtle
     , x509-store
     , x509-system
   default-language:    Haskell2010

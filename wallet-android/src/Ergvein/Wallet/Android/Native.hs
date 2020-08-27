@@ -51,13 +51,15 @@ encodeText text cont =
 instance PlatformNatives where
   resUrl = (<>) "file:///android_res/"
 
-  storeValue k v = do
+  storeValue k v atomicMode = do
     path <- getStoreDir
     logWrite $ "Writing file " <> path <> "/" <> k
     liftIO $ do
       let fpath = T.unpack $ path <> "/" <> k
       createDirectoryIfMissing True $ takeDirectory fpath
-      writeJson fpath v
+      case atomicMode of
+        True -> writeJsonAtomic fpath v
+        False -> writeJson fpath v
 
   retrieveValue k a0 = do
     path <- getStoreDir
@@ -105,10 +107,7 @@ instance PlatformNatives where
           fpath2 = T.unpack $ path <> "/" <> filename2
       ex <- doesFileExist fpath1
       if ex
-        then do
-          T.writeFile fpath2 =<< T.readFile fpath1
-          T.writeFile fpath1 ""
-          pure $ Right ()
+        then Right <$> renameFile fpath1 fpath2
         else pure $ Left $ NAFileDoesNotExist filename1
 
   getStoreFileSize filename = do

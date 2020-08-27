@@ -22,6 +22,7 @@ import Reflex.Dom
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Servant.Client(BaseUrl)
+import System.Directory
 
 import Ergvein.Crypto as Crypto
 import Ergvein.Index.Client
@@ -41,6 +42,7 @@ import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Settings (Settings(..))
 import Ergvein.Wallet.Storage.Util
@@ -51,6 +53,7 @@ import Ergvein.Wallet.Worker.Height
 import Ergvein.Wallet.Worker.IndexersNetworkActualization
 import Ergvein.Wallet.Worker.Node
 
+import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
@@ -343,6 +346,7 @@ liftAuth ma0 ma = mdo
         runOnUiThreadM $ runReaderT setupTlsManager env
 
         flip runReaderT env $ do -- Workers and other routines go here
+          when isAndroid (deleteTmpFiles storeDir)
           initFiltersHeights filtersHeights
           scanner
           bctNodeController
@@ -407,3 +411,10 @@ setupTlsManager = do
   liftIO $ do
     manager <- newTlsManagerWith $ mkManagerSettings sett Nothing
     putMVar (env'manager e) manager
+
+-- Deletes files created with 'atomicWriteFile' from specified directiry
+deleteTmpFiles :: MonadIO m => Text -> m ()
+deleteTmpFiles dir = liftIO $ do
+  entries <- listDirectory $ T.unpack dir
+  traverse_ removeFile $ L.filter isTmpFile entries
+  where isTmpFile filePath = "atomic" `L.isPrefixOf` filePath && ".write" `L.isSuffixOf` filePath
