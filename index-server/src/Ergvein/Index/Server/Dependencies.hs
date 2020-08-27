@@ -1,12 +1,15 @@
 module Ergvein.Index.Server.Dependencies where
 
-import qualified Network.Haskoin.Constants   as HK
-import qualified Network.HTTP.Client as HC
+import Control.Concurrent.STM.TVar
+import Ergvein.Index.Protocol.Types
 import Control.Monad.IO.Unlift
+import Ergvein.Index.Server.PeerDiscovery.Types
 import Network.HTTP.Client
 import Servant.Client.Core
-import Ergvein.Index.Server.PeerDiscovery.Types
-import Control.Concurrent.STM.TVar
+import qualified Network.HTTP.Client as HC
+import qualified Network.Haskoin.Constants   as HK
+import qualified Data.Map.Strict     as Map
+import Ergvein.Types.Fees
 
 class HasBitcoinNodeNetwork m where
   currentBitcoinNetwork :: m HK.Network
@@ -22,3 +25,7 @@ class HasDiscoveryRequisites m where
 
 class HasShutdownFlag m where
   getShutdownFlag  :: m (TVar Bool)
+
+class MonadFees m where
+  getFees :: m (Map.Map CurrencyCode FeeBundle)
+  setFees :: CurrencyCode -> FeeBundle -> m ()

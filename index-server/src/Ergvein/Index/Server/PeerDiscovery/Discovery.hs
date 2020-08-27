@@ -1,40 +1,36 @@
 module Ergvein.Index.Server.PeerDiscovery.Discovery where
 
 import Control.Concurrent
+import Control.Concurrent.STM
 import Control.Immortal
-import Control.Monad.Reader
 import Control.Monad.Logger
+import Control.Monad.Reader
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.Maybe
 import Data.Either.Combinators
 import Data.Foldable
-import Data.Hashable
 import Data.List
 import Data.Maybe
 import Data.Set (Set)
 import Data.Time.Clock
-import Servant.Client.Core
 
 import Ergvein.Index.API.Types
 import Ergvein.Index.Client.V1
+import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Types
-import Ergvein.Index.Server.Utils
-import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.TCPService.Server
 import Network.Socket
-import qualified Data.Map.Strict as M
-import Control.Concurrent.STM
+import Servant.Client.Core
 
-
-import qualified Data.Map.Strict as Map
-import qualified Network.HTTP.Client as HC
-import qualified Data.Set as Set
+import qualified Data.Map.Strict     as Map
+import qualified Data.Set            as Set
 
 peerKnownPeers :: BaseUrl -> ExceptT PeerValidationResult ServerM [BaseUrl]
 peerKnownPeers baseUrl = do
@@ -76,10 +72,10 @@ knownPeersActualization1 = do
      let peersToFetchFrom = isNotOutdated descReqPredefinedPeers descReqActualizationTimeout currentTime `filter` knownPeers
      setKnownPeersList1 peersToFetchFrom
      openedConnectionsRef <- asks envOpenConnections
-     opened <- liftIO $ M.keysSet <$> readTVarIO openedConnectionsRef
+     opened <- liftIO $ Map.keysSet <$> readTVarIO openedConnectionsRef
      let toOpen = Set.toList $ opened Set.\\ (Set.fromList $ peerAddress <$> peersToFetchFrom)
      forM_ toOpen newConnection
-     pure ()
+     broadcastSocketMessage $ MPeerRequest PeerRequest
     isNotOutdated :: Set SockAddr -> NominalDiffTime -> UTCTime -> Peer1 -> Bool
     isNotOutdated predefined retryTimeout currentTime peer = 
        let fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt1 peer
@@ -133,9 +129,6 @@ peerIntroduce = void $ runMaybeT $ do
     allPeers <- getKnownPeersList
     let introduceReq = IntroducePeerReq $ showBaseUrl undefined--ownAddress
     forM_ allPeers (flip getIntroducePeerEndpoint introduceReq . peerUrl)
-
-instance Hashable BaseUrl where
-  hashWithSalt salt = hashWithSalt salt . showBaseUrl
 
 newPeer peerUrl = NewPeer peerUrl (baseUrlScheme peerUrl)
 

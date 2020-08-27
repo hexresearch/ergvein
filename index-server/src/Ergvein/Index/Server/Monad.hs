@@ -96,10 +96,6 @@ instance MonadUnliftIO ServerM where
   askUnliftIO = ServerM $ (\(UnliftIO run) -> UnliftIO $ run . unServerM) <$> askUnliftIO
   withRunInIO go = ServerM $ withRunInIO (\k -> go $ k . unServerM)
 
--- Fee functionality
-class MonadFees m where
-  getFees :: m (M.Map CurrencyCode FeeBundle)
-  setFees :: CurrencyCode -> FeeBundle -> m ()
 
 instance MonadFees ServerM where
   getFees = do
