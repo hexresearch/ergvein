@@ -71,7 +71,7 @@ knownPeersActualization = do
       knownPeers  <- getKnownPeersList
 
       let peersToFetchFrom = (isNotOutdated (descReqPredefinedPeers requisites) (descReqActualizationTimeout requisites) currentTime) `filter` knownPeers
-      
+
       knowPeersSet <- knownPeersSet peersToFetchFrom
       (failed, successful, fetched) <- mconcat <$> mapM queryKnownPeersTo peersToFetchFrom
       let uniqueFetchedUrls = (not . (`Set.member` knowPeersSet)) `filter` uniqueElements fetched
@@ -81,7 +81,7 @@ knownPeersActualization = do
       liftIO $ threadDelay $ descReqActualizationDelay requisites
 
     isNotOutdated :: Set BaseUrl -> NominalDiffTime -> UTCTime -> Peer -> Bool
-    isNotOutdated predefined retryTimeout currentTime peer = 
+    isNotOutdated predefined retryTimeout currentTime peer =
       let fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt peer
       in Set.member (peerUrl peer) predefined || retryTimeout >= fromLastSuccess
 
@@ -115,11 +115,11 @@ instance Hashable BaseUrl where
 newPeer peerUrl = NewPeer peerUrl (baseUrlScheme peerUrl)
 
 peerBaseUrl :: String -> ExceptT PeerValidationResult ServerM BaseUrl
-peerBaseUrl url = ExceptT $ pure $ maybeToRight InfoEndpointError $ parseBaseUrl url 
+peerBaseUrl url = ExceptT $ pure $ maybeToRight InfoEndpointError $ parseBaseUrl url
 
 peerInfoRequest :: BaseUrl -> ExceptT PeerValidationResult ServerM InfoResponse
 peerInfoRequest baseUrl =
-  ExceptT $ (const InfoEndpointError `mapLeft`) 
+  ExceptT $ (const InfoEndpointError `mapLeft`)
          <$> getInfoEndpoint baseUrl ()
 
 peerKnownPeersRequest :: BaseUrl -> ExceptT PeerValidationResult ServerM KnownPeersResp
@@ -143,7 +143,7 @@ peerActualScan candidateInfo = do
       let currencyInSync = and $ notLessThenOne localScannedHeight <$> scanProgressScannedHeight candidateNfo
       if currencyInSync then
         Right ()
-      else 
+      else
         Left $ CurrencyOutOfSync $ CurrencyOutOfSyncInfo localCurrency localScannedHeight
 
     candidateInfoMap = Map.fromList $ (\scanInfo -> (scanProgressCurrency scanInfo, scanInfo))

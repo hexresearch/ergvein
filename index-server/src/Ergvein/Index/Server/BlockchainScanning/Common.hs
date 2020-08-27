@@ -51,11 +51,12 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
     blockIteration :: BlockHeight -> BlockHeight -> ServerM BlockInfo
     blockIteration totalh blockHeight = do
       let percent = fromIntegral blockHeight / fromIntegral totalh :: Double
-      -- logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
+      logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
       scanInfo blockHeight
 
     scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
+      logInfoN "Start scan iteration"
       cfg <- serverConfig
       actual  <- actualHeight currency
       scanned <- getScannedHeight currency
@@ -66,6 +67,7 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
       stopThreadIfShutdown thread
       where
         go current to = do
+          logInfoN $ "[go current to]: " <> showt current <> "/" <> showt to
           shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
           when (not shutdownFlag && current <= to) $ do
             tryBlockInfo <- (Right <$> blockIteration to current) `catch` (\(SomeException ex) -> pure $ Left $ show ex)
@@ -79,7 +81,7 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
                   go (succ current) to
                 else previousBlockChanged current to
 
-              _ | not enoughSpace -> 
+              _ | not enoughSpace ->
                 logInfoN $ "Not enough available disc space to store block scan result"
 
               Left errMsg -> blockScanningError errMsg current to
@@ -90,7 +92,7 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
 
         previousBlockChanged from to = do
           revertedBlocksCount <- fromIntegral <$> revertContentHistory currency
-          logInfoN $ "Fork detected at " 
+          logInfoN $ "Fork detected at "
                   <> showt from <> " " <> showt currency
                   <> ", performing rollback of " <> showt revertedBlocksCount <> " previous blocks"
           let restart = (from - revertedBlocksCount)
@@ -102,8 +104,8 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
           previousBlockChanged from to
 
 broadcastFilter :: BlockMetaInfo -> ServerM ()
-broadcastFilter BlockMetaInfo{..} = 
-  broadcastSocketMessage $ MFiltersEvent $ FilterEvent 
+broadcastFilter BlockMetaInfo{..} =
+  broadcastSocketMessage $ MFiltersEvent $ FilterEvent
   { filterEventCurrency     = convert blockMetaCurrency
   , filterEventHeight       = blockMetaBlockHeight
   , filterEventBlockId      = hex2bs blockMetaHeaderHashHexView
@@ -122,9 +124,9 @@ feesThread feescan = create $ logOnException . \thread -> do
 
 isEnoughSpace :: ServerM Bool
 isEnoughSpace = do
-  path <- cfgDBPath <$> serverConfig
+  path <- cfgFiltersDbPath <$> serverConfig
   availSpace <- liftIO $ getAvailSpace path
-  pure $ requiredAvailSpace <= availSpace 
+  pure $ requiredAvailSpace <= availSpace
  where
   requiredAvailSpace = 2^30 -- 1Gb
 

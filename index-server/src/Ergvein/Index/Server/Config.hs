@@ -12,7 +12,8 @@ import Ergvein.Aeson
 data Config = Config
   { cfgServerPort               :: !Int
   , cfgServerTcpPort            :: !Int
-  , cfgDBPath                   :: !String
+  , cfgFiltersDbPath            :: !String
+  , cfgIndexerDbPath            :: !String
   , cfgBlockchainScanDelay      :: !Int
   , cfgBTCNodeIsTestnet         :: !Bool
   , cfgBTCNodeHost              :: !String
@@ -38,7 +39,8 @@ instance FromJSON Config where
   parseJSON = withObject "Config" $ \o -> do
     cfgServerPort               <- o .: "serverPort"
     cfgServerTcpPort            <- o .: "serverTcpPort"
-    cfgDBPath                   <- o .:? "dbPath" .!= "./ergveinDb"
+    cfgFiltersDbPath            <- o .:? "filtersDbPath" .!= "./ergveinDb"
+    cfgIndexerDbPath            <- o .:? "indexerDbPath" .!= "./indexerDb"
     cfgBTCNodeIsTestnet         <- o .: "BTCNodeIsTestnet"
     cfgBTCNodeHost              <- o .: "BTCNodeHost"
     cfgBTCNodePort              <- o .: "BTCNodePort"

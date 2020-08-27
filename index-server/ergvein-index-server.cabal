@@ -22,16 +22,18 @@ library
     Ergvein.Index.Server.Config
     Ergvein.Index.Server.DB
     Ergvein.Index.Server.DB.Conversions
+    Ergvein.Index.Server.DB.Schema.Filters
+    Ergvein.Index.Server.DB.Schema.Indexer
     Ergvein.Index.Server.DB.Monad
     Ergvein.Index.Server.DB.Queries
-    Ergvein.Index.Server.DB.Schema
+    Ergvein.Index.Server.DB.Utils
     Ergvein.Index.Server.Dependencies
     Ergvein.Index.Server.Environment
     Ergvein.Index.Server.Monad
     Ergvein.Index.Server.PeerDiscovery.Discovery
     Ergvein.Index.Server.PeerDiscovery.Types
-    Ergvein.Index.Server.Utils
     Ergvein.Index.Server.TCPService.Server
+    Ergvein.Index.Server.Utils
     Ergvein.Index.Server.TCPService.MessageHandler
     Ergvein.Index.Server.TCPService.Socket
     Ergvein.Index.Server.TCPService.Conversions
