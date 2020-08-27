@@ -26,6 +26,7 @@ import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.Utils
 import Ergvein.Index.Server.DB.Queries
+import Network.Socket
 
 
 import qualified Data.Map.Strict as Map
@@ -46,7 +47,7 @@ considerPeerCandidate :: PeerCandidate -> ExceptT PeerValidationResult ServerM (
 considerPeerCandidate candidate = do
   baseUrl <- peerBaseUrl $ peerCandidateUrl candidate
   knownPeers <- lift $ getKnownPeersList1
-  knowPeersSet <- lift $ knownPeersSet knownPeers
+  knowPeersSet <- undefined
   if not $ Set.member baseUrl knowPeersSet then do
     _ <- peerKnownPeers baseUrl
     currentTime <- liftIO getCurrentTime
@@ -55,10 +56,26 @@ considerPeerCandidate candidate = do
   else
     ExceptT $ pure $ Left AlreadyKnown
 
-knownPeersSet :: [Peer] -> ServerM (Set BaseUrl)
+knownPeersSet :: [Peer1] -> ServerM (Set SockAddr)
 knownPeersSet discoveredPeers = do
   ownAddress <- descReqOwnAddress <$> getDiscoveryRequisites
-  pure $ Set.fromList $ (toList ownAddress) ++ (peerUrl <$> discoveredPeers)
+  pure $ Set.fromList $ (toList ownAddress) ++ (peerAddress <$> discoveredPeers)
+
+knownPeersActualization1 :: ServerM Thread
+knownPeersActualization1 = do
+  create $ logOnException . scanIteration
+  where
+    scanIteration :: Thread -> ServerM ()
+    scanIteration thread = do
+     PeerDiscoveryRequisites {..} <- undefined
+     currentTime <- liftIO getCurrentTime
+     knownPeers <- getKnownPeersList
+     let peersToFetchFrom = isNotOutdated descReqPredefinedPeers descReqActualizationTimeout currentTime `filter` knownPeers
+     pure ()
+    isNotOutdated :: Set SockAddr -> NominalDiffTime -> UTCTime -> Peer1 -> Bool
+    isNotOutdated predefined retryTimeout currentTime peer = 
+       let fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt1 peer
+       in Set.member (peerAddress peer) predefined || retryTimeout >= fromLastSuccess
 
 knownPeersActualization :: ServerM Thread
 knownPeersActualization = do
@@ -70,11 +87,11 @@ knownPeersActualization = do
       currentTime <- liftIO getCurrentTime
       knownPeers  <- getKnownPeersList1
 
-      let peersToFetchFrom = (isNotOutdated (descReqPredefinedPeers requisites) (descReqActualizationTimeout requisites) currentTime) `filter` knownPeers
+      let peersToFetchFrom = undefined --(isNotOutdated (descReqPredefinedPeers requisites) (descReqActualizationTimeout requisites) currentTime) `filter` knownPeers
       
       knowPeersSet <- knownPeersSet peersToFetchFrom
       (failed, successful, fetched) <- mconcat <$> mapM queryKnownPeersTo peersToFetchFrom
-      let uniqueFetchedUrls = (not . (`Set.member` knowPeersSet)) `filter` uniqueElements fetched
+      let uniqueFetchedUrls = undefined --(not . (`Set.member` knowPeersSet)) `filter` uniqueElements fetched
           uniqueFetched = (\x-> Peer x currentTime (baseUrlScheme x)) <$> uniqueFetchedUrls
       let refreshedSuccessful = (\x-> x {peerLastValidatedAt = currentTime}) <$> successful
       setKnownPeersList $ failed ++ refreshedSuccessful ++ uniqueFetched
@@ -98,7 +115,7 @@ syncWithDefaultPeers = do
   predefinedPeers <- descReqPredefinedPeers <$> getDiscoveryRequisites
   currentTime <- liftIO getCurrentTime
   let discoveredPeersSet = Set.fromList $ peerUrl <$> discoveredPeers
-      toAdd = (\x -> Peer x currentTime (baseUrlScheme x)) <$> (Set.toList $ predefinedPeers Set.\\ discoveredPeersSet)
+      toAdd = undefined --(\x -> Peer x currentTime (baseUrlScheme x)) <$> (Set.toList $ predefinedPeers Set.\\ discoveredPeersSet)
   addKnownPeers toAdd
 
 peerIntroduce :: ServerM ()
@@ -106,7 +123,7 @@ peerIntroduce = void $ runMaybeT $ do
   ownAddress <- MaybeT $ descReqOwnAddress <$> getDiscoveryRequisites
   lift $ do
     allPeers <- getKnownPeersList1
-    let introduceReq = IntroducePeerReq $ showBaseUrl ownAddress
+    let introduceReq = IntroducePeerReq $ showBaseUrl undefined--ownAddress
     forM_ allPeers (flip getIntroducePeerEndpoint introduceReq . peerUrl)
 
 instance Hashable BaseUrl where

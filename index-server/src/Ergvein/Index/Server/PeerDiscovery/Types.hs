@@ -45,8 +45,8 @@ data NewPeer = NewPeer
   }
 
 data PeerDiscoveryRequisites = PeerDiscoveryRequisites
-  { descReqOwnAddress           :: !(Maybe BaseUrl)
-  , descReqPredefinedPeers      :: !(Set BaseUrl)
+  { descReqOwnAddress           :: !(Maybe SockAddr)
+  , descReqPredefinedPeers      :: !(Set SockAddr)
   , descReqActualizationDelay   :: !Int
   , descReqActualizationTimeout :: !NominalDiffTime
   }

@@ -32,6 +32,8 @@ import qualified Network.Ergo.Api.Client     as ErgoApi
 import qualified Network.Haskoin.Constants   as HK
 import qualified Network.HTTP.Client         as HC
 
+import Network.Socket
+
 import Debug.Trace
 
 data ServerEnv = ServerEnv
@@ -50,8 +52,8 @@ data ServerEnv = ServerEnv
 
 discoveryRequisites :: Config -> PeerDiscoveryRequisites
 discoveryRequisites cfg = let
-  ownPeerAddress = parsedOwnAddress <$> cfgOwnPeerAddress cfg
-  knownPeers = Set.fromList $ parseKnownPeer <$> cfgKnownPeers cfg
+  ownPeerAddress = SockAddrUnix <$> cfgOwnPeerAddress cfg
+  knownPeers = Set.fromList $ SockAddrUnix <$> cfgKnownPeers cfg
   filteredKnownPeers = case ownPeerAddress of
     Just address -> Set.delete address knownPeers
     otherwise    -> knownPeers
