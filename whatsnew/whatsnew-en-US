@@ -1,4 +1,2 @@
-* Fix restore to remember stage with change addresses
-* Fix QR code recognition with dark backgrounds. White frame is added.
-* Detect incoming transactions from mempool on startup.
-* Fix balance calculation for outgoing unconfirmed transactions.
+* Fix bug with corrupted wallet files on emergency shutdowns (#625)
+* Fix bug with duplicated words in mnemonic checks (#629)
