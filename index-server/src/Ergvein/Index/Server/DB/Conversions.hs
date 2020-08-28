@@ -6,10 +6,11 @@ import Data.Maybe
 import Data.Text
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Server.BlockchainScanning.Types
-import Ergvein.Index.Server.DB.Schema
+import Ergvein.Index.Server.DB.Schema.Filters
 import Ergvein.Index.Server.PeerDiscovery.Types as DiscoveryTypes
 import Network.Socket
 import Servant.Client.Core
+import Ergvein.Index.Server.DB.Schema.Indexer
 import qualified Data.ByteString.Lazy as BSL
 
 instance Conversion TxInfo TxRec where

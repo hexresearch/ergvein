@@ -39,7 +39,8 @@ import Debug.Trace
 data ServerEnv = ServerEnv
     { envServerConfig             :: !Config
     , envLogger                   :: !(Chan (Loc, LogSource, LogLevel, LogStr))
-    , envLevelDBContext           :: !DB
+    , envFiltersDBContext         :: !DB
+    , envIndexerDBContext         :: !DB
     , envBitcoinNodeNetwork       :: !HK.Network
     , envErgoNodeClient           :: !ErgoApi.Client
     , envClientManager            :: !HC.Manager
@@ -74,12 +75,13 @@ discoveryRequisites cfg = let
       err = error $ "Error cannot parse peer '" <> address <> "'"
       in fromMaybe err $ parseBaseUrl address
 
-newServerEnv :: (MonadIO m, MonadLogger m) => Config -> m ServerEnv
-newServerEnv cfg = do
+newServerEnv :: (MonadIO m, MonadLogger m) => Bool -> Config -> m ServerEnv
+newServerEnv noDropFilters cfg = do
     logger <- liftIO newChan
     liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
 
-    levelDBContext <- openDb (cfgDBPath cfg)
+    filtersDBCntx  <- openDb noDropFilters DBFilters (cfgFiltersDbPath cfg)
+    indexerDBCntx  <- openDb noDropFilters DBIndexer (cfgIndexerDbPath cfg)
     ergoNodeClient <- liftIO $ ErgoApi.newClient (cfgERGONodeHost cfg) (cfgERGONodePort cfg)
     httpManager    <- liftIO $ HC.newManager HC.defaultManagerSettings
     tlsManager     <- liftIO $ newTlsManager
@@ -93,7 +95,8 @@ newServerEnv cfg = do
     pure ServerEnv
       { envServerConfig            = cfg
       , envLogger                  = logger
-      , envLevelDBContext          = levelDBContext
+      , envFiltersDBContext        = filtersDBCntx
+      , envIndexerDBContext        = indexerDBCntx
       , envBitcoinNodeNetwork      = bitcoinNodeNetwork
       , envErgoNodeClient          = ergoNodeClient
       , envClientManager           = tlsManager

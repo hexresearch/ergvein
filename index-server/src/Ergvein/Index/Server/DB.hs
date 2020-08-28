@@ -1,4 +1,9 @@
-module Ergvein.Index.Server.DB where
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
+module Ergvein.Index.Server.DB
+  (
+    DBTag(..)
+  , openDb
+  ) where
 
 import Conduit
 import Control.Concurrent.Async
@@ -6,6 +11,7 @@ import Control.Monad
 import Control.Monad.Catch
 import Control.Monad.Logger
 import Conversion
+import Data.ByteString
 import Data.Default
 import Data.Flat
 import Data.List
@@ -20,31 +26,39 @@ import System.FilePath
 
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Monad
-import Ergvein.Index.Server.DB.Queries
-import Ergvein.Index.Server.DB.Schema
+import Ergvein.Index.Server.DB.Queries (initIndexerDb)
+import Ergvein.Index.Server.DB.Utils
 import Ergvein.Index.Server.Utils
 import Ergvein.Text
 
+import qualified Ergvein.Index.Server.DB.Schema.Filters as DBF
+import qualified Ergvein.Index.Server.DB.Schema.Indexer as DBI
 import qualified Data.Conduit.Internal as DCI
 import qualified Data.Conduit.List as CL
 import qualified Data.Map.Strict as Map
 
-openDb :: (MonadLogger m, MonadIO m) => FilePath -> m DB
-openDb dbDirectory = do
+openDb :: (MonadLogger m, MonadIO m) => Bool -> DBTag -> FilePath -> m DB
+openDb noDropFilters dbtag dbDirectory = do
   canonicalPathDirectory <- liftIO $ canonicalizePath dbDirectory
   isDbDirExist <- liftIO $ doesDirectoryExist canonicalPathDirectory
   liftIO $ unless isDbDirExist $ createDirectory canonicalPathDirectory
   levelDBContext <- liftIO $ do
-    db <- open canonicalPathDirectory def
-    dbSchemaVersion <- dbSchemaVersion db
-    if dbSchemaVersion == Just schemaVersion then do
+    db <- open canonicalPathDirectory def {createIfMissing = True }
+    if (noDropFilters && dbtag == DBFilters) then do
+      put db def schemaVersionRecKey (flat schemaVersion)
       pure db
-    else do
-      unsafeClose db
-      restoreDb canonicalPathDirectory
+      else do
+        dbSchemaVersion <- dbSchemaVersion db
+        if dbSchemaVersion == Just schemaVersion then pure db
+          else do
+            unsafeClose db
+            restoreDb canonicalPathDirectory
     `catch` (\(SomeException _) -> restoreDb canonicalPathDirectory)
   pure levelDBContext
   where
+    (schemaVersionRecKey, schemaVersion) = case dbtag of
+      DBFilters -> (DBF.schemaVersionRecKey, DBF.schemaVersion)
+      DBIndexer -> (DBI.schemaVersionRecKey, DBI.schemaVersion)
     dbSchemaVersion db = do
       maybeDbSchemaVersion <- get db def schemaVersionRecKey
       pure $ unflatExact <$> maybeDbSchemaVersion
@@ -58,5 +72,5 @@ openDb dbDirectory = do
        clearDirectoryContent pt
        ctx <- open pt def {createIfMissing = True }
        put ctx def schemaVersionRecKey (flat schemaVersion)
-       initDb ctx
+       when (dbtag == DBIndexer) $ initIndexerDb ctx
        pure ctx

@@ -53,9 +53,13 @@ runServerMIO env m = do
     Left e -> fail $ "runServerMIO: " <> show e
     Right a -> return a
 
-instance MonadLDB ServerM where
-  getDb = asks envLevelDBContext
-  {-# INLINE getDb #-}
+instance HasFiltersDB ServerM where
+  getFiltersDb = asks envFiltersDBContext
+  {-# INLINE getFiltersDb #-}
+
+instance HasIndexerDB ServerM where
+  getIndexerDb = asks envIndexerDBContext
+  {-# INLINE getIndexerDb #-}
 
 instance ErgoApi.ApiMonad ServerM where
   getClient = asks envErgoNodeClient
