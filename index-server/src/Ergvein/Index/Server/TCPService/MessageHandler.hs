@@ -21,6 +21,7 @@ import Ergvein.Types.Transaction
 import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Network.Socket
+import Ergvein.Index.Server.DB.Queries
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S

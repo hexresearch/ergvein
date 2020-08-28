@@ -5,6 +5,7 @@ module Ergvein.Index.Server.DB.Schema.Indexer
   , LastScannedBlockHeaderHashRec(..)
   , ContentHistoryRec(..)
   , ContentHistoryRecItem(..)
+  , PeerAddress (..)
   , knownPeersRecKey
   , lastScannedBlockHeaderHashRecKey
   , contentHistoryRecKey
