@@ -15,7 +15,7 @@ import qualified Data.Text.IO as T
 
 data Options = Options {
   optsCommand :: Command
-, optsNoDropFlag :: Bool
+, optsNoDropFilters :: Bool
 }
 
 type ServerUrl = Text
@@ -27,7 +27,7 @@ options = Options
   <$> subparser (
        command "listen" (info (listenCmd <**> helper) $ progDesc "Start server") <>
        command "clean-known-peers" (info (cleanKnownPeers <**> helper) $ progDesc "resetting peers")
-  ) <*> flag True False (long "nodrop-dbs")
+  ) <*> flag False True (long "no-drop-filters")
   where
     cleanKnownPeers = CleanKnownPeers
       <$> strArgument (
@@ -51,12 +51,11 @@ startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
     CommandListen cfgPath -> do
       T.putStrLn $ pack "Server starting"
-      T.putStrLn $ pack $ show optsNoDropFlag
       cfg <- loadConfig cfgPath
-      env <- runStdoutLoggingT $ newServerEnv optsNoDropFlag cfg
+      env <- runStdoutLoggingT $ newServerEnv optsNoDropFilters cfg
       runStdoutLoggingT $ app cfg env
     CleanKnownPeers cfgPath -> do
       cfg <- loadConfig cfgPath
-      env <- runStdoutLoggingT $ newServerEnv optsNoDropFlag cfg
+      env <- runStdoutLoggingT $ newServerEnv optsNoDropFilters cfg
       runServerMIO env emptyKnownPeers
       T.putStrLn $ pack "knownPeers cleared"

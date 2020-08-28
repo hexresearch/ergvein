@@ -91,19 +91,19 @@ getParsed db key = do
   let maybeParsedResult = unflatExact <$> maybeResult
   pure maybeParsedResult
 
-getParsedExact :: (Flat v, MonadIO m, MonadLogger m) => DB -> BS.ByteString -> m v
-getParsedExact db key = do
+getParsedExact :: (Flat v, MonadIO m, MonadLogger m) => Text -> DB -> BS.ByteString -> m v
+getParsedExact caller db key = do
   maybeResult <- get db def key
   case maybeResult of
     Just result -> pure $ unflatExact result
     Nothing -> do
       currentTime <- liftIO getCurrentTime
       props <- getProperty db Stats
-      logErrorN $ "[Db read miss][getParsedExact] Entity with key " <> (T.pack $ show key) <> " not found at time:" <> (T.pack $ show currentTime)
+      logErrorN $ "[Db read miss][getParsedExact]" <> "["<> caller <>"]"<> " Entity with key " <> (T.pack $ show key) <> " not found at time:" <> (T.pack $ show currentTime)
       error $ "getParsedExact: not found" ++ show key ++ " " ++ show props
 
-getManyParsedExact :: (Flat v, MonadIO m, MonadLogger m) => DB -> [BS.ByteString] -> m [v]
-getManyParsedExact db keys = mapM (getParsedExact db) keys
+getManyParsedExact :: (Flat v, MonadIO m, MonadLogger m) => Text -> DB -> [BS.ByteString] -> m [v]
+getManyParsedExact caller db keys = mapM (getParsedExact caller db) keys
 
 putItems :: (Flat v) => (a -> BS.ByteString) -> (a -> v) -> [a] -> LDB.WriteBatch
 putItems keySelector valueSelector items = putI <$> items

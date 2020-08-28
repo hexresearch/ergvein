@@ -74,12 +74,12 @@ discoveryRequisites cfg = let
       in fromMaybe err $ parseBaseUrl address
 
 newServerEnv :: (MonadIO m, MonadLogger m) => Bool -> Config -> m ServerEnv
-newServerEnv noDropDbs cfg = do
+newServerEnv noDropFilters cfg = do
     logger <- liftIO newChan
     liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
 
-    filtersDBCntx  <- openDb noDropDbs DBFilters (cfgFiltersDbPath cfg)
-    indexerDBCntx  <- openDb noDropDbs DBIndexer (cfgIndexerDbPath cfg)
+    filtersDBCntx  <- openDb noDropFilters DBFilters (cfgFiltersDbPath cfg)
+    indexerDBCntx  <- openDb noDropFilters DBIndexer (cfgIndexerDbPath cfg)
     ergoNodeClient <- liftIO $ ErgoApi.newClient (cfgERGONodeHost cfg) (cfgERGONodePort cfg)
     httpManager    <- liftIO $ HC.newManager HC.defaultManagerSettings
     tlsManager     <- liftIO $ newTlsManager

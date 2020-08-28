@@ -55,7 +55,7 @@ import qualified Database.LevelDB.Streaming as LDBStreaming
 getKnownPeers :: (HasIndexerDB m, MonadLogger m, HasDiscoveryRequisites m) => Bool -> m [String]
 getKnownPeers onlySecured = do
   db <- getIndexerDb
-  knownPeers <- fmap convert <$> getParsedExact @[KnownPeerRecItem] db knownPeersRecKey
+  knownPeers <- fmap convert <$> getParsedExact @[KnownPeerRecItem] "getKnownPeers" db knownPeersRecKey
   currentTime <- liftIO getCurrentTime
   actualizationDelay <- (/1000000) . fromIntegral . descReqActualizationDelay <$> getDiscoveryRequisites
   let validDate = (-actualizationDelay) `addUTCTime` currentTime
@@ -74,7 +74,7 @@ getKnownPeers onlySecured = do
 getKnownPeersList :: (HasIndexerDB m, MonadLogger m) => m [Peer]
 getKnownPeersList = do
   db <- getIndexerDb
-  peers <- getParsedExact @[KnownPeerRecItem] db knownPeersRecKey
+  peers <- getParsedExact @[KnownPeerRecItem] "getKnownPeersList" db knownPeersRecKey
   pure $ convert <$> peers
 
 setKnownPeersList :: (HasIndexerDB m, MonadLogger m) => [Peer] -> m ()
@@ -86,7 +86,7 @@ addKnownPeers :: (HasIndexerDB m, MonadLogger m) => [Peer] -> m ()
 addKnownPeers peers = do
   db <- getIndexerDb
   let mapped = convert @_ @KnownPeerRecItem <$> peers
-  stored <- getParsedExact @[KnownPeerRecItem] db knownPeersRecKey
+  stored <- getParsedExact @[KnownPeerRecItem] "addKnownPeers" db knownPeersRecKey
   upsertItem db knownPeersRecKey $ mapped ++ stored
 
 emptyKnownPeers :: (HasIndexerDB m, MonadLogger m) => m ()
@@ -153,7 +153,7 @@ updateContentHistory currency spentTxsHash newTxIds = do
       let oldest Seq.:< restHistory = Seq.viewl $ contentHistoryRecItems history
           updatedHistory = ContentHistoryRec (restHistory Seq.|> newItem)
 
-      txToUpdate <- getManyParsedExact fdb $ txRecKey <$> (Map.keys $ contentHistoryRecItemSpentTxOuts oldest)
+      txToUpdate <- getManyParsedExact "updateContentHistory" fdb $ txRecKey <$> (Map.keys $ contentHistoryRecItemSpentTxOuts oldest)
       write idb def $ infoUpdate (contentHistoryRecItemSpentTxOuts oldest) <$> txToUpdate
 
       upsertItem idb (contentHistoryRecKey currency) updatedHistory
@@ -172,7 +172,7 @@ updateContentHistory currency spentTxsHash newTxIds = do
 revertContentHistory :: (HasIndexerDB m, MonadLogger m) => Currency -> m Int
 revertContentHistory currency = do
   db <- getIndexerDb
-  history <- getParsedExact db $ contentHistoryRecKey currency
+  history <- getParsedExact "revertContentHistory" db $ contentHistoryRecKey currency
 
   let txsDeletion = LDB.Del . txRecKey <$> (contentHistoryRecItemAddedTxsHash =<< (toList $ contentHistoryRecItems history))
       newHistory = LDB.Put (contentHistoryRecKey currency) $ flat (ContentHistoryRec mempty)

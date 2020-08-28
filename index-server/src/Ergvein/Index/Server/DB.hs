@@ -26,6 +26,7 @@ import System.FilePath
 
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Monad
+import Ergvein.Index.Server.DB.Queries (initIndexerDb)
 import Ergvein.Index.Server.DB.Utils
 import Ergvein.Index.Server.Utils
 import Ergvein.Text
@@ -37,25 +38,21 @@ import qualified Data.Conduit.List as CL
 import qualified Data.Map.Strict as Map
 
 openDb :: (MonadLogger m, MonadIO m) => Bool -> DBTag -> FilePath -> m DB
-openDb noDropDbs dbtag dbDirectory = do
+openDb noDropFilters dbtag dbDirectory = do
   canonicalPathDirectory <- liftIO $ canonicalizePath dbDirectory
   isDbDirExist <- liftIO $ doesDirectoryExist canonicalPathDirectory
   liftIO $ unless isDbDirExist $ createDirectory canonicalPathDirectory
   levelDBContext <- liftIO $ do
     db <- open canonicalPathDirectory def {createIfMissing = True }
-    dbSchemaVersion <- dbSchemaVersion db
-    print schemaVersion
-    if dbSchemaVersion == Just schemaVersion then do
-      print "dbSchemaVersion == Just schemaVersion"
-      pure db
-    else if noDropDbs then do
-      print "noDropDbs"
+    if (noDropFilters && dbtag == DBFilters) then do
       put db def schemaVersionRecKey (flat schemaVersion)
       pure db
       else do
-        print "dropDbs"
-        unsafeClose db
-        restoreDb canonicalPathDirectory
+        dbSchemaVersion <- dbSchemaVersion db
+        if dbSchemaVersion == Just schemaVersion then pure db
+          else do
+            unsafeClose db
+            restoreDb canonicalPathDirectory
     `catch` (\(SomeException _) -> restoreDb canonicalPathDirectory)
   pure levelDBContext
   where
@@ -75,5 +72,5 @@ openDb noDropDbs dbtag dbDirectory = do
        clearDirectoryContent pt
        ctx <- open pt def {createIfMissing = True }
        put ctx def schemaVersionRecKey (flat schemaVersion)
-       -- when (dbtag == DBFilters) $ DBF.initDb ctx
+       when (dbtag == DBIndexer) $ initIndexerDb ctx
        pure ctx

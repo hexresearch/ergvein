@@ -51,7 +51,7 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
     blockIteration :: BlockHeight -> BlockHeight -> ServerM BlockInfo
     blockIteration totalh blockHeight = do
       let percent = fromIntegral blockHeight / fromIntegral totalh :: Double
-      logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " (" <> showf 2 (100*percent) <> "%)"
+      logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " / " <> showt totalh <> " (" <> showf 2 (100*percent) <> "%)"
       scanInfo blockHeight
 
     scanIteration :: Thread -> ServerM ()
@@ -67,7 +67,6 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
       stopThreadIfShutdown thread
       where
         go current to = do
-          logInfoN $ "[go current to]: " <> showt current <> "/" <> showt to
           shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
           when (not shutdownFlag && current <= to) $ do
             tryBlockInfo <- (Right <$> blockIteration to current) `catch` (\(SomeException ex) -> pure $ Left $ show ex)
