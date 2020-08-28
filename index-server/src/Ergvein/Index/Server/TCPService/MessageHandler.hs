@@ -9,8 +9,9 @@ import Control.Monad.Random
 
 import Ergvein.Index.API.Types
 import Ergvein.Index.Protocol.Types as IPT
-import Ergvein.Index.Server.DB.Queries
-import Ergvein.Index.Server.DB.Schema
+import Ergvein.Index.Server.DB.Monad
+import Ergvein.Index.Server.DB.Schema.Filters
+import Ergvein.Index.Server.DB.Utils
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.TCPService.Conversions
@@ -28,9 +29,10 @@ import qualified Data.Vector.Unboxed as UV
 
 getBlockMetaSlice :: Currency -> BlockHeight -> BlockHeight -> ServerM [BlockMetaRec]
 getBlockMetaSlice currency startHeight endHeight = do
+  db <- getFiltersDb
   let start = metaRecKey (currency, startHeight)
       end   = BlockMetaRecKey currency $ startHeight + pred endHeight
-  slice <- safeEntrySlice start end
+  slice <- safeEntrySlice db start end
   let metaSlice = snd <$> slice
   pure metaSlice
 
@@ -68,7 +70,7 @@ ownVersion = do
   now   <- liftIO $ round <$> getPOSIXTime
   nonce <- liftIO $ randomIO
   time  <- liftIO $ fromIntegral . floor <$> getPOSIXTime
-  
+
   scanNfo <- UV.fromList . fmap convert <$> scanningInfo
 
   pure $ Version {
