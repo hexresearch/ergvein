@@ -28,6 +28,10 @@ data PeerCandidate = PeerCandidate
   { peerCandidateUrl :: String
   }
 
+data PeerCandidate1 = PeerCandidate1
+  { peerCandidateAddress :: SockAddr
+  }
+
 data Peer = Peer
   { peerUrl              :: BaseUrl
   , peerLastValidatedAt  :: UTCTime

@@ -31,7 +31,7 @@ data MessageType = MVersionType
                  | MPongType
   deriving (Eq, Ord, Enum, Bounded, Show)
 
-data RejectCode = MessageHeaderParsing | MessageParsing | InternalServerError
+data RejectCode = MessageHeaderParsing | MessageParsing | InternalServerError | ZeroBytesReceived
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 data CurrencyCode = BTC   | TBTC

@@ -104,21 +104,19 @@ registerConnection (sock, addr) = do
   liftIO $ atomically $ modifyTVar openedConnectionsRef $ M.insert addr (connectionThreadId , sock)
 
 runConnection :: (Socket, SockAddr) -> ServerM ()
-runConnection (sock, addr) = do
-  handshakeStatus <- handshake
-  if handshakeStatus then do
-    sendChan <- liftIO newTChanIO
-    -- report handshake success
-    writeMsg sendChan $ MVersionACK VersionACK
-    ver <- ownVersion
-    writeMsg sendChan $ MVersion ver
-    -- Spawn message sender thread
-    fork $ sendLoop sendChan
-    -- Spawn broadcaster loop
-    fork $ broadcastLoop sendChan
-    -- Start message listener
-    listenLoop sendChan
-  else closePeerConnection addr
+runConnection (sock, addr) =  do
+  evalResult <- runExceptT $ evalMsg
+  case evalResult of
+    Right (Just (MVersionACK _)) -> do --peer version match ours
+      sendChan <- liftIO newTChanIO
+      writeMsg sendChan $ MVersionACK VersionACK
+      -- Spawn message sender thread
+      fork $ sendLoop sendChan
+      -- Spawn broadcaster loop
+      fork $ broadcastLoop sendChan
+      -- Start message listener
+      listenLoop sendChan
+    _ -> closePeerConnection addr 
   where
     writeMsg :: TChan LBS.ByteString -> Message -> ServerM ()
     writeMsg destinationChan = liftIO . atomically . writeTChan destinationChan . toLazyByteString . messageBuilder
@@ -130,69 +128,53 @@ runConnection (sock, addr) = do
         msg <- liftIO $ atomically $ readTChan broadChan
         writeMsg destinationChan msg
 
-    handshake :: ServerM Bool
-    handshake = do
-      headerBytes <- liftIO $ messageHeaderBytes
-      message     <- runExceptT $ fetchMessage sock headerBytes
-      pure $ case message of
-        Right (MVersion Version {..}) | protocolVersion == versionVersion -> True
-        _ -> False
-
-    messageHeaderBytes = NS.recv sock 8
-
     sendLoop :: TChan LBS.ByteString -> ServerM ()
     sendLoop sendChan = liftIO $ forever $ do
       msgs <- atomically $ readAllTVar sendChan
       sendLazy sock $ mconcat msgs
 
     listenLoop :: TChan LBS.ByteString -> ServerM ()
-    listenLoop destinationChan = do
-      -- Try to get the header. Empty string means that the client closed the connection
-      headerBytes <- liftIO $ messageHeaderBytes
-      if BS.null headerBytes then do
-          logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
-          closePeerConnection addr
-      else do
-        evalResult <- runExceptT $ evalMsg addr sock headerBytes
-        case evalResult of
-          Right Nothing    -> pure ()
-          Right (Just msg) -> writeMsg destinationChan msg
-          Left err         -> do
-            logInfoN $ "failed to handle msg: " <> showt err
-            writeMsg destinationChan $ MReject err
-        listenLoop destinationChan
+    listenLoop destinationChan = listenLoop'
+      where
+        listenLoop' = do
+          evalResult <- runExceptT $ evalMsg
+          case evalResult of
+            Right (Just msg) -> do
+              writeMsg destinationChan msg
+              listenLoop'
+            Right Nothing -> 
+              listenLoop'
+            Left Reject {..} | rejectMsgCode == ZeroBytesReceived -> do
+              logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
+              closePeerConnection addr
+            Left err -> do
+              logInfoN $ "failed to handle msg: " <> showt err
+              writeMsg destinationChan $ MReject err
+          
 
-fetchMessage :: Socket -> BS.ByteString -> ExceptT Reject ServerM Message
-fetchMessage sock messageHeaderBytes = request =<< messageHeader
-  where
-    messageHeader :: ExceptT Reject ServerM MessageHeader
-    messageHeader = ExceptT . pure . mapLeft (\_-> Reject MessageHeaderParsing) . eitherResult $ parse messageHeaderParser messageHeaderBytes
+    evalMsg :: ExceptT Reject ServerM (Maybe Message)
+    evalMsg = response =<< request =<< messageHeader =<< messageHeaderBytes
+      where
+        messageHeaderBytesFetch = NS.recv sock 8
 
-    request :: MessageHeader -> ExceptT Reject ServerM Message
-    request MessageHeader {..} = do
-      messageBytes <- liftIO $ NS.recv sock $ fromIntegral msgSize
-      ExceptT $ pure $ mapLeft (\_-> Reject MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
+        messageHeaderBytes :: ExceptT Reject ServerM BS.ByteString
+        messageHeaderBytes = do
+          fetchedBytes <- lift $ liftIO messageHeaderBytesFetch
+          if BS.null fetchedBytes then
+            except $ Right fetchedBytes
+          else
+            except $ Left $ Reject MessageParsing
 
-
-evalMsg :: SockAddr -> Socket -> BS.ByteString -> ExceptT Reject ServerM (Maybe Message)
-evalMsg addr sock messageHeaderBytes = do
-  printDelim
-  let hdr = eitherResult $ parse messageHeaderParser messageHeaderBytes
-  liftIO $ print $ BS.unpack messageHeaderBytes
-  liftIO $ print hdr
-  response =<< request =<< messageHeader
-  where
-    printDelim = liftIO $ print "===================================================="
-    messageHeader :: ExceptT Reject ServerM MessageHeader
-    messageHeader = ExceptT . pure . mapLeft (\_-> Reject MessageHeaderParsing) . eitherResult $ parse messageHeaderParser messageHeaderBytes
-
-    request :: MessageHeader -> ExceptT Reject ServerM Message
-    request MessageHeader {..} = do
-      messageBytes <- liftIO $ NS.recv sock $ fromIntegral msgSize
-      liftIO $ print $ show msgType <> ": " <> show (msgSize, BS.length messageBytes)
-      liftIO $ print $ "Parse     :" <> show (eitherResult $ parse (messageParser msgType) messageBytes)
-      liftIO $ print $ "ParseOnly :" <> show (parseOnly (messageParser msgType) messageBytes)
-      ExceptT $ pure $ mapLeft (\_-> Reject MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
-
-    response :: Message -> ExceptT Reject ServerM (Maybe Message)
-    response msg = ExceptT $ (Right <$> handleMsg addr msg) `catch` (\(SomeException ex) -> pure $ Left $ Reject $ InternalServerError)
+        messageHeader :: BS.ByteString -> ExceptT Reject ServerM MessageHeader
+        messageHeader = ExceptT . pure . mapLeft (\_-> Reject MessageHeaderParsing) . eitherResult . parse messageHeaderParser
+    
+        request :: MessageHeader -> ExceptT Reject ServerM Message
+        request MessageHeader {..} = do
+          messageBytes <- liftIO $ NS.recv sock $ fromIntegral msgSize
+          liftIO $ print $ show msgType <> ": " <> show (msgSize, BS.length messageBytes)
+          liftIO $ print $ "Parse     :" <> show (eitherResult $ parse (messageParser msgType) messageBytes)
+          liftIO $ print $ "ParseOnly :" <> show (parseOnly (messageParser msgType) messageBytes)
+          except $ mapLeft (\_-> Reject MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
+    
+        response :: Message -> ExceptT Reject ServerM (Maybe Message)
+        response msg = (lift $ handleMsg addr msg) `catch` (\(SomeException ex) -> except $ Left $ Reject InternalServerError)
