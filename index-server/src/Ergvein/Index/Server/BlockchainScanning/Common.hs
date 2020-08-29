@@ -10,6 +10,7 @@ import Control.Monad.Reader
 import Conversion
 import Data.Foldable
 import Data.Maybe
+import Data.Time
 import System.DiskSpace
 import System.Exit
 
@@ -50,8 +51,9 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
   where
     blockIteration :: BlockHeight -> BlockHeight -> ServerM BlockInfo
     blockIteration totalh blockHeight = do
+      now <- liftIO $ getCurrentTime
       let percent = fromIntegral blockHeight / fromIntegral totalh :: Double
-      logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " / " <> showt totalh <> " (" <> showf 2 (100*percent) <> "%)"
+      logInfoN $ "["<> showt now <> "] Scanning height for " <> showt currency <> " " <> showt blockHeight <> " / " <> showt totalh <> " (" <> showf 2 (100*percent) <> "%)"
       scanInfo blockHeight
 
     scanIteration :: Thread -> ServerM ()

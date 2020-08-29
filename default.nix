@@ -70,6 +70,7 @@ let
       inherit (pkgs) leveldb;
       inherit (pkgs.haskellPackages) hakyll;
       hp2any-graph = if profile then ghc.hp2any-graph else null;
+      ghc-prof-flamegraph = if profile then ghc.ghc-prof-flamegraph else null;
     };
 
     android.ergvein-wallet = {
