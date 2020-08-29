@@ -44,7 +44,11 @@ handleMsg address (MPong _) = pure Nothing
 
 handleMsg address (MVersionACK _) = pure Nothing
 
-handleMsg address (MVersion msg) = pure Nothing
+handleMsg address (MVersion Version{..}) = do
+  if protocolVersion == versionVersion then do
+    Just . MVersion <$> ownVersion
+  else
+    pure Nothing
 
 handleMsg address (MPeerRequest _) = do
   knownPeers <- getKnownPeers

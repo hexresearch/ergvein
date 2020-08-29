@@ -55,6 +55,10 @@ considerPeerCandidate candidate = do
   else
     ExceptT $ pure $ Left AlreadyKnown
 
+considerPeerCandidate1 :: PeerCandidate1 -> ExceptT PeerValidationResult ServerM ()
+considerPeerCandidate1 candidate = undefined
+   
+
 knownPeersSet :: [Peer1] -> ServerM (Set SockAddr)
 knownPeersSet discoveredPeers = do
   ownAddress <- descReqOwnAddress <$> getDiscoveryRequisites

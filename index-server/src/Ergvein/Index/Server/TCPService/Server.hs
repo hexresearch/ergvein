@@ -15,8 +15,8 @@ import Data.Attoparsec.ByteString
 import Data.ByteString.Builder
 import Data.Either.Combinators
 import Data.Foldable (traverse_)
-import Data.Time.Clock.POSIX
 import Data.Maybe
+import Data.Time.Clock.POSIX
 import Data.Word
 import Network.Socket
 import Network.Socket.ByteString.Lazy
@@ -139,8 +139,9 @@ runConnection (sock, addr) =  do
         listenLoop' = do
           evalResult <- runExceptT $ evalMsg
           case evalResult of
-            Right (Just msg) -> do
-              writeMsg destinationChan msg
+            Right (Just (MVersion msg)) -> do
+              writeMsg destinationChan $ MVersionACK VersionACK
+              writeMsg destinationChan $ MVersion msg
               listenLoop'
             Right Nothing -> 
               listenLoop'
