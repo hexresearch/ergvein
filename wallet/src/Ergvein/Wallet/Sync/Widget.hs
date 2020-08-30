@@ -14,9 +14,9 @@ import Reflex.Localize
 syncWidget :: MonadFront t m => Dynamic t SyncProgress -> m ()
 syncWidget progressD = divClass "currency-wrapper" $ do
   void $ widgetHoldDyn $ ffor progressD $ \sp -> case sp of
-    Synced -> pure ()
+    Synced -> divClass "sync-progress1" $ localizedText sp
     SyncMeta{..} -> do
-      divClass "sync-progress" $ localizedText sp
+      divClass "sync-progress1" $ localizedText sp
       case syncMetaStage of
-        SyncFilters -> traverse_ (divClass "sync-progress" . localizedText) $ syncProgressBehind sp
-        _ -> pure ()
+        _ -> traverse_ (divClass "sync-progress1" . localizedText) $ syncProgressBehind sp
+        --_ -> pure ()

@@ -104,8 +104,8 @@ instance LocalizedPrint SyncProgress where
       Russian -> "Синхронизация новых блоков " <> showt syncMetaCur <> ": " <> localizedShow l syncMetaStage <> ", " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
 
   localizedShow l Synced = case l of
-    English -> "Synced"
-    Russian -> "Синхронизировано"
+    English -> "Fully synced"
+    Russian -> "Полностью синхронизировано"
 
 percent :: Int -> Int -> Int
 percent amount total = if total == 0 then 0 else ceiling $ 100 * (fromIntegral amount :: Double) / fromIntegral total
