@@ -107,9 +107,9 @@ runConnection :: (Socket, SockAddr) -> ServerM ()
 runConnection (sock, addr) =  do
   evalResult <- runExceptT $ evalMsg
   case evalResult of
-    Right (Just (MVersionACK _)) -> do --peer version match ours
+    Right (msgs@(MVersionACK _ : _)) -> do --peer version match ours
       sendChan <- liftIO newTChanIO
-      writeMsg sendChan $ MVersionACK VersionACK
+      forM msgs $ writeMsg sendChan
       -- Spawn message sender thread
       fork $ sendLoop sendChan
       -- Spawn broadcaster loop
@@ -139,11 +139,8 @@ runConnection (sock, addr) =  do
         listenLoop' = do
           evalResult <- runExceptT $ evalMsg
           case evalResult of
-            Right (Just (MVersion msg)) -> do
-              writeMsg destinationChan $ MVersionACK VersionACK
-              writeMsg destinationChan $ MVersion msg
-              listenLoop'
-            Right Nothing -> 
+            Right msgs -> do
+              forM msgs $ writeMsg destinationChan
               listenLoop'
             Left Reject {..} | rejectMsgCode == ZeroBytesReceived -> do
               logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
@@ -153,7 +150,7 @@ runConnection (sock, addr) =  do
               writeMsg destinationChan $ MReject err
           
 
-    evalMsg :: ExceptT Reject ServerM (Maybe Message)
+    evalMsg :: ExceptT Reject ServerM [Message]
     evalMsg = response =<< request =<< messageHeader =<< messageHeaderBytes
       where
         messageHeaderBytesFetch = NS.recv sock 8
@@ -177,5 +174,5 @@ runConnection (sock, addr) =  do
           liftIO $ print $ "ParseOnly :" <> show (parseOnly (messageParser msgType) messageBytes)
           except $ mapLeft (\_-> Reject MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
     
-        response :: Message -> ExceptT Reject ServerM (Maybe Message)
+        response :: Message -> ExceptT Reject ServerM [Message]
         response msg = (lift $ handleMsg addr msg) `catch` (\(SomeException ex) -> except $ Left $ Reject InternalServerError)

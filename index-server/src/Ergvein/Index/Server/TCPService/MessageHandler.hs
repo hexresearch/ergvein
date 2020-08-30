@@ -37,29 +37,30 @@ getBlockMetaSlice currency startHeight endHeight = do
   let metaSlice = snd <$> slice
   pure metaSlice
 
-handleMsg :: SockAddr -> Message -> ServerM (Maybe Message)
-handleMsg address (MPing msg) = pure $ Just $ MPong msg
+handleMsg :: SockAddr -> Message -> ServerM [Message]
+handleMsg address (MPing msg) = pure $ pure $ MPong msg
 
-handleMsg address (MPong _) = pure Nothing
+handleMsg address (MPong _) = pure mempty
 
-handleMsg address (MVersionACK _) = pure Nothing
+handleMsg address (MVersionACK _) = pure mempty
 
 handleMsg address (MVersion Version{..}) = do
   if protocolVersion == versionVersion then do
-    Just . MVersion <$> ownVersion
+    ownVer <- ownVersion
+    pure [ MVersionACK $ VersionACK, MVersion ownVer ]
   else
-    pure Nothing
+    pure mempty
 
 handleMsg address (MPeerRequest _) = do
   knownPeers <- getKnownPeers
-  pure $ Just $ MPeerResponse $ PeerResponse $ V.fromList knownPeers
+  pure $ pure $ MPeerResponse $ PeerResponse $ V.fromList knownPeers
 
 handleMsg address (MFiltersRequest FilterRequest {..}) = do
   let currency = convert filterRequestMsgCurrency
   slice <- getBlockMetaSlice currency filterRequestMsgStart filterRequestMsgAmount
   let filters = V.fromList $ convert <$> slice
 
-  pure $ Just $ MFiltersResponse $ FilterResponse
+  pure $ pure $ MFiltersResponse $ FilterResponse
     { filterResponseCurrency = filterRequestMsgCurrency
     , filterResponseFilters = filters
     }
@@ -72,7 +73,7 @@ handleMsg address (MFeeRequest curs) = do
         IPT.TBTC -> FeeRespBTC True fb
         _ -> let FeeBundle (_, h) (_, m) (_, l) = fb
           in FeeRespGeneric cur h m l
-  pure $ Just $ MFeeResponse $ M.elems resps
+  pure $ pure $ MFeeResponse $ M.elems resps
 
 ownVersion :: ServerM Version
 ownVersion = do
