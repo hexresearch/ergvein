@@ -28,6 +28,7 @@ import qualified Data.Vector                        as V
 import qualified Network.Haskoin.Address            as HA
 import qualified Network.Haskoin.Script             as HS
 import qualified Network.Haskoin.Transaction        as HT
+import qualified Network.Haskoin.Crypto             as HT
 
 -- | Filter txs for ones, relevant to an address
 filterTxsForAddress :: (HasTxStorage m, PlatformNatives) => EgvAddress -> [Tx] -> m [Tx]
@@ -116,7 +117,7 @@ checkTxIn addr txIn = do
   let spentOutput = HT.prevOutput txIn
       spentTxHash = HT.outPointHash spentOutput
       spentOutputIndex = HT.outPointIndex spentOutput
-  mtx <- getTxById $ HT.txHashToHex spentTxHash
+  mtx <- getTxById $ TxId $ HT.getHash256 $ HT.getTxHash spentTxHash
   case mtx of
     Nothing -> pure False
     Just ErgTx{} -> pure False -- TODO: impl for Ergo

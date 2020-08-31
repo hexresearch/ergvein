@@ -41,7 +41,8 @@ data ServerEnv = ServerEnv
     , envIndexerDBContext         :: !DB
     , envBitcoinNodeNetwork       :: !HK.Network
     , envErgoNodeClient           :: !ErgoApi.Client
-    , envClientManager            :: !HC.Manager
+    , envClientManager            :: HC.Manager
+    , envBitcoinClient            :: !BitcoinApi.Client
     , envPeerDiscoveryRequisites  :: !PeerDiscoveryRequisites
     , envFeeEstimates             :: !(TVar (M.Map CurrencyCode FeeBundle))
     , envShutdownFlag             :: !(TVar Bool)
@@ -73,15 +74,14 @@ discoveryRequisites cfg = let
       err = error $ "Error cannot parse peer '" <> address <> "'"
       in fromMaybe err $ parseBaseUrl address
 
-newServerEnv :: (MonadIO m, MonadLogger m) => Bool -> Config -> m ServerEnv
-newServerEnv noDropFilters cfg = do
+newServerEnv :: (MonadIO m, MonadLogger m) => Bool -> BitcoinApi.Client -> Config -> m ServerEnv
+newServerEnv noDropFilters btcClient cfg = do
     logger <- liftIO newChan
     liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
 
     filtersDBCntx  <- openDb noDropFilters DBFilters (cfgFiltersDbPath cfg)
     indexerDBCntx  <- openDb noDropFilters DBIndexer (cfgIndexerDbPath cfg)
     ergoNodeClient <- liftIO $ ErgoApi.newClient (cfgERGONodeHost cfg) (cfgERGONodePort cfg)
-    httpManager    <- liftIO $ HC.newManager HC.defaultManagerSettings
     tlsManager     <- liftIO $ newTlsManager
     feeEstimates   <- liftIO $ newTVarIO M.empty
     shutdown       <- liftIO $ newTVarIO False
@@ -98,6 +98,7 @@ newServerEnv noDropFilters cfg = do
       , envBitcoinNodeNetwork      = bitcoinNodeNetwork
       , envErgoNodeClient          = ergoNodeClient
       , envClientManager           = tlsManager
+      , envBitcoinClient           = btcClient
       , envPeerDiscoveryRequisites = descDiscoveryRequisites
       , envFeeEstimates            = feeEstimates
       , envShutdownFlag            = shutdown

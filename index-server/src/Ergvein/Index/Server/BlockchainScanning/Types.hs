@@ -4,19 +4,21 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Types.Block
 
+import Data.ByteString
+import Data.ByteString.Short (ShortByteString)
 import Data.Word
 
 data BlockMetaInfo = BlockMetaInfo
   { blockMetaCurrency      :: Currency
   , blockMetaBlockHeight   :: BlockHeight
-  , blockMetaHeaderHashHexView :: BlockHeaderHashHexView
-  , blockMetaPreviousHeaderBlockHashHexView :: BlockHeaderHashHexView
-  , blockMetaAddressFilterHexView :: AddressFilterHexView
+  , blockMetaHeaderHashHexView :: ShortByteString
+  , blockMetaPreviousHeaderBlockHashHexView :: ShortByteString
+  , blockMetaAddressFilterHexView :: ByteString
   }
 
 data TxInfo = TxInfo
   { txHash         :: TxHash
-  , txHexView      :: TxHexView
+  , txBytes        :: ByteString
   , txOutputsCount :: Word32
   }
 
@@ -30,4 +32,4 @@ data ScanProgressInfo = ScanProgressInfo
   { nfoCurrency      :: !Currency
   , nfoScannedHeight :: !BlockHeight
   , nfoActualHeight  :: !BlockHeight
-  }  
+  }

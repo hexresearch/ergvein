@@ -40,6 +40,7 @@ import qualified Network.Haskoin.Constants          as HK
 import qualified Network.Haskoin.Script             as HK
 import qualified Network.Haskoin.Transaction        as HK
 import qualified Network.Haskoin.Util               as HK
+import qualified Network.Haskoin.Crypto             as HK
 
 
 blockTxInfos :: (HasFiltersDB m, MonadLogger m) => HK.Block -> BlockHeight -> HK.Network -> m BlockInfo
@@ -47,14 +48,14 @@ blockTxInfos block txBlockHeight nodeNetwork = do
   let (txInfos , spentTxsIds) = mconcat $ txInfo <$> HK.blockTxns block
 
   uniqueSpentTxs <- mapM spentTxSource $ uniqueElements spentTxsIds
-  blockAddressFilter <- fmap HK.encodeHex $ encodeBtcAddrFilter =<< makeBtcFilter nodeNetwork uniqueSpentTxs block
-  let blockHeaderHashHexView = HK.blockHashToHex $ HK.headerHash $ HK.blockHeader block
-      prevBlockHeaderHashHexView = HK.blockHashToHex $ HK.prevBlock $ HK.blockHeader block
+  blockAddressFilter <- encodeBtcAddrFilter =<< makeBtcFilter nodeNetwork uniqueSpentTxs block
+  let blockHeaderHashHexView = HK.getHash256 $ HK.getBlockHash $ HK.headerHash $ HK.blockHeader block
+      prevBlockHeaderHashHexView = HK.getHash256 $ HK.getBlockHash $ HK.prevBlock $ HK.blockHeader block
       blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHashHexView prevBlockHeaderHashHexView blockAddressFilter
 
   pure $ BlockInfo blockMeta spentTxsIds txInfos
   where
-    blockTxMap = mapBy (HK.txHashToHex . HK.txHash) $ HK.blockTxns block
+    blockTxMap = mapBy (hkTxHashToEgv . HK.txHash) $ HK.blockTxns block
     spentTxSource :: (HasFiltersDB m, MonadLogger m) => TxHash -> m HK.Tx
     spentTxSource txInId =
       case Map.lookup txInId blockTxMap of
@@ -65,17 +66,17 @@ blockTxInfos block txBlockHeight nodeNetwork = do
         fromChache = do
           db <- getFiltersDb
           src <- getParsedExact "blockTxInfos" db $ txRecKey txInId
-          pure $ fromRight (error decodeError) $ decode $ fromJust $ HK.decodeHex $ txRecHexView src
+          pure $ fromRight (error decodeError) $ decode $ txRecBytes src
 
     txInfo :: HK.Tx -> ([TxInfo], [TxHash])
     txInfo tx = let
       withoutDataCarrier = none HK.isDataCarrier . HK.decodeOutputBS . HK.scriptOutput
-      info = TxInfo { txHash = HK.txHashToHex $ HK.txHash tx
-                    , txHexView = HK.encodeHex $ encode tx
+      info = TxInfo { txHash = hkTxHashToEgv $ HK.txHash tx
+                    , txBytes = encode tx
                     , txOutputsCount = fromIntegral $ length $ filter withoutDataCarrier $  HK.txOut tx
                     }
       withoutCoinbaseTx = filter $ (/= HK.nullOutPoint)
-      spentTxInfo = HK.txHashToHex . HK.outPointHash <$> (withoutCoinbaseTx $ HK.prevOutput <$> HK.txIn tx)
+      spentTxInfo = hkTxHashToEgv . HK.outPointHash <$> (withoutCoinbaseTx $ HK.prevOutput <$> HK.txIn tx)
       in ([info], spentTxInfo)
 
 actualHeight :: (Monad m, BitcoinApiMonad m) => m BlockHeight

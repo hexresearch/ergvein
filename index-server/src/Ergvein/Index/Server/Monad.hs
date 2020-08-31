@@ -74,15 +74,7 @@ instance HasServerConfig ServerM where
   {-# INLINE serverConfig #-}
 
 instance BitcoinApiMonad ServerM where
-  nodeRpcCall f = do
-    cfg <- asks $ envServerConfig
-
-    liftIO $ BitcoinApi.withClient
-     (cfgBTCNodeHost     cfg)
-     (cfgBTCNodePort     cfg)
-     (cfgBTCNodeUser     cfg)
-     (cfgBTCNodePassword cfg)
-     f
+  nodeRpcCall f = liftIO . f =<< asks envBitcoinClient
 
 instance HasClientManager ServerM where
   getClientManager = asks envClientManager

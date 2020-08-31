@@ -10,7 +10,7 @@ import Ergvein.Index.Server.DB.Schema.Indexer (KnownPeerRecItem(..))
 import Ergvein.Index.Server.PeerDiscovery.Types as DiscoveryTypes
 
 instance Conversion TxInfo TxRec where
-  convert txInfo = TxRec (txHash txInfo) (txHexView txInfo) (txOutputsCount txInfo)
+  convert txInfo = TxRec (txHash txInfo) (txBytes txInfo) (txOutputsCount txInfo)
 
 instance Conversion DiscoveryTypes.Peer KnownPeerRecItem where
   convert peer = KnownPeerRecItem

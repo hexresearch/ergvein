@@ -12,6 +12,7 @@ import Ergvein.Index.Server.App
 import Data.Text (Text, pack)
 
 import qualified Data.Text.IO as T
+import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 
 data Options = Options {
   optsCommand :: Command
@@ -51,11 +52,13 @@ startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
     CommandListen cfgPath -> do
       T.putStrLn $ pack "Server starting"
-      cfg <- loadConfig cfgPath
-      env <- runStdoutLoggingT $ newServerEnv optsNoDropFilters cfg
-      runStdoutLoggingT $ app cfg env
+      cfg@Config{..} <- loadConfig cfgPath
+      BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
+        env <- runStdoutLoggingT $ newServerEnv optsNoDropFilters client cfg
+        runStdoutLoggingT $ app cfg env
     CleanKnownPeers cfgPath -> do
-      cfg <- loadConfig cfgPath
-      env <- runStdoutLoggingT $ newServerEnv optsNoDropFilters cfg
-      runServerMIO env emptyKnownPeers
+      cfg@Config{..} <- loadConfig cfgPath
+      BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
+        env <- runStdoutLoggingT $ newServerEnv optsNoDropFilters client cfg
+        runServerMIO env emptyKnownPeers
       T.putStrLn $ pack "knownPeers cleared"

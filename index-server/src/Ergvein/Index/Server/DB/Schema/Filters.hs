@@ -17,6 +17,7 @@ module Ergvein.Index.Server.DB.Schema.Filters
 
 import Crypto.Hash.SHA256
 import Data.ByteString (ByteString)
+import Data.ByteString.Short (ShortByteString)
 import Data.FileEmbed
 import Data.Flat
 import Data.Serialize (Serialize)
@@ -44,11 +45,11 @@ scannedHeightTxKey :: Currency -> ByteString
 scannedHeightTxKey = keyString ScannedHeight . ScannedHeightRecKey
 
 data ScannedHeightRecKey = ScannedHeightRecKey
-  { scannedHeightRecKey      :: Currency
+  { scannedHeightRecKey      :: !Currency
   } deriving (Generic, Show, Eq, Ord, Serialize)
 
 data ScannedHeightRec = ScannedHeightRec
-  { scannedHeightRecHeight   :: BlockHeight
+  { scannedHeightRecHeight   :: !BlockHeight
   } deriving (Generic, Show, Eq, Ord, Flat)
 
 
@@ -58,13 +59,13 @@ txRecKey:: TxHash -> ByteString
 txRecKey = keyString Tx . TxRecKey
 
 data TxRecKey = TxRecKey
-  { txRecKeyHash      :: TxHash
+  { txRecKeyHash      :: !TxHash
   } deriving (Generic, Show, Eq, Ord, Serialize)
 
 data TxRec = TxRec
-  { txRecHash         :: TxHash
-  , txRecHexView      :: TxHexView
-  , txRecUnspentOutputsCount :: Word32
+  { txRecHash                 :: !TxHash
+  , txRecBytes                :: !ByteString
+  , txRecUnspentOutputsCount  :: !Word32
   } deriving (Generic, Show, Eq, Ord, Flat)
 
 --BlockMeta
@@ -73,13 +74,13 @@ metaRecKey :: (Currency, BlockHeight) -> ByteString
 metaRecKey = keyString Meta . uncurry BlockMetaRecKey
 
 data BlockMetaRecKey = BlockMetaRecKey
-  { blockMetaRecKeyCurrency     :: Currency
-  , blockMetaRecKeyBlockHeight  :: BlockHeight
+  { blockMetaRecKeyCurrency     :: !Currency
+  , blockMetaRecKeyBlockHeight  :: !BlockHeight
   } deriving (Generic, Show, Eq, Ord, Serialize)
 
 data BlockMetaRec = BlockMetaRec
-  { blockMetaRecHeaderHashHexView  :: BlockHeaderHashHexView
-  , blockMetaRecAddressFilterHexView :: AddressFilterHexView
+  { blockMetaRecHeaderHashHexView     :: !ShortByteString
+  , blockMetaRecAddressFilterHexView  :: !ByteString
   } deriving (Generic, Show, Eq, Ord, Flat)
 
 --SchemaVersion

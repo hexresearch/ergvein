@@ -231,7 +231,7 @@ getBtcBlockHashByTxHash bth = do
   ps <- askPubStorage
   pure $ join $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "getBtcBlockHashByTxHash: not exsisting store!")
     . currencyPubStorage'transactions . at th & fmap getEgvTxMeta & fmap etxMetaHash . join
-  where th = HT.txHashToHex bth
+  where th = TxId $ getHash256 $ HT.getTxHash bth
 
 getTxStorage :: HasPubStorage m => Currency -> m (M.Map TxId EgvTx)
 getTxStorage cur = do

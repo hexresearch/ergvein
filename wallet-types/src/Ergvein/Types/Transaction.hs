@@ -9,7 +9,7 @@ module Ergvein.Types.Transaction (
     , EgvTxMeta(..)
     , egvTxId
     , egvTxCurrency
-    , TxId
+    , TxId(..)
     , TxHexView
     , BlockHeight
     , BlockHash
@@ -18,7 +18,8 @@ module Ergvein.Types.Transaction (
     , TxMerkleProof
     , TxFee
     , PubKeyScriptHash
-    , TxHash
+    , TxHash(..)
+    , hkTxHashToEgv
     , TxOutIndex
     , currencyHeightStart
     , getEgvTxMeta
@@ -26,22 +27,29 @@ module Ergvein.Types.Transaction (
   ) where
 
 import Control.Monad (mzero, (<=<))
-import Data.Aeson
+import Data.Aeson as A
 import Data.Aeson.Types (Parser)
 import Data.ByteString (ByteString)
-import Data.Text
-import Data.Time
-import Data.Word
-import Ergvein.Aeson
-import Ergvein.Text
-import Ergvein.Crypto.Util
-import Ergvein.Types.Currency
+import Data.ByteString.Short (ShortByteString)
 import Data.String (IsString, fromString)
+import Data.Text as T
+import Data.Time
+import Data.Flat
+import Data.Word
+import Network.Haskoin.Crypto (getHash256)
+import           Data.Hashable           (Hashable)
+import           GHC.Generics            (Generic)
+import qualified Data.ByteString.Short   as BSS
+import           Text.Read               as R
+import           Data.String.Conversions (cs)
+import Ergvein.Aeson
+import Ergvein.Crypto.Util
+import Ergvein.Text
+import Ergvein.Types.Currency
 
 import           Data.Serialize              as S
 import qualified Network.Haskoin.Block as HB
 import qualified Network.Haskoin.Transaction as HK
-
 type BtcTx = HK.Tx
 
 btcTxToString :: BtcTx -> Text
@@ -66,7 +74,7 @@ instance FromJSON ErgTx where
       Just x  -> return x
 
 instance ToJSON ErgTx where
-  toJSON = String . ergTxToString
+  toJSON = A.String . ergTxToString
 
 data EgvTx
   = BtcTx { getBtcTx :: !BtcTx, getBtcTxMeta :: !(Maybe EgvTxMeta)}
@@ -78,7 +86,7 @@ egvTxToString (BtcTx tx _) = btcTxToString tx
 egvTxToString (ErgTx tx _) = ergTxToString tx
 
 egvTxId :: EgvTx -> TxId
-egvTxId (BtcTx tx _) = HK.txHashToHex $ HK.txHash tx
+egvTxId (BtcTx tx _) = TxId $ getHash256 $ HK.getTxHash $ HK.txHash tx
 egvTxId (ErgTx tx _) = error "egvTxId: implement for Ergo!"
 
 egvTxCurrency :: EgvTx -> Currency
@@ -127,11 +135,32 @@ instance FromJSON EgvTx where
     tx   <- egvTxFromJSON cur =<< (o .: "tx")
     pure $ setEgvTxMeta tx meta
 
--- | Hexadecimal representation of transaction id
-type TxId = Text
+-- | Internal representation of transaction id
+newtype TxId = TxId {getTxId :: ShortByteString}
+  deriving (Eq, Ord, Hashable, Generic, Flat, Serialize)
+
+instance Show TxId where
+    showsPrec _ = shows . encodeHex . BSS.fromShort . getTxId
+
+instance Read TxId where
+    readPrec = do
+        R.String str <- lexP
+        maybe pfail return $ TxId . BSS.toShort <$> decodeHex (cs str)
+
+instance FromJSON TxId where
+  parseJSON = withText "TxId" $
+    maybe (fail "Failed to parse TxId") (pure . TxId) . readMaybe . T.unpack
+  {-# INLINE parseJSON #-}
+
+instance ToJSON TxId where
+  toJSON = A.String . showt
+  {-# INLINE toJSON #-}
+
+instance FromJSONKey TxId where
+instance ToJSONKey TxId where
 
 -- | Hexadecimal representation of transaction
-type TxHexView = Text
+type TxHexView = ByteString
 
 -- | Number of blocks before current one, from the starting from Genesis block with height of zero
 type BlockHeight = Word64
@@ -156,7 +185,28 @@ type TxFee = MoneyUnit
 type PubKeyScriptHash = Text
 
 -- | Hexadecimal representation of transaction hash
-type TxHash = Text
+newtype TxHash = TxHash {getTxHash :: ShortByteString}
+  deriving (Eq, Ord, Hashable, Generic, Flat, Serialize)
+
+instance Show TxHash where
+    showsPrec _ = shows . encodeHex . BSS.fromShort . getTxHash
+
+instance Read TxHash where
+    readPrec = do
+        R.String str <- lexP
+        maybe pfail return $ TxHash . BSS.toShort <$> decodeHex (cs str)
+
+instance FromJSON TxHash where
+  parseJSON = withText "TxHash" $
+    maybe (fail "Failed to parse TxHash") (pure . TxHash) . readMaybe . T.unpack
+  {-# INLINE parseJSON #-}
+
+instance ToJSON TxHash where
+  toJSON = A.String . showt
+  {-# INLINE toJSON #-}
+
+hkTxHashToEgv :: HK.TxHash -> TxHash
+hkTxHashToEgv = TxHash . getHash256 . HK.getTxHash
 
 -- | Index of the UTXO
 type TxOutIndex = Word

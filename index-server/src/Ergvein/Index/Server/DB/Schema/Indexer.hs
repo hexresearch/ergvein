@@ -15,6 +15,7 @@ module Ergvein.Index.Server.DB.Schema.Indexer
 
 import Crypto.Hash.SHA256
 import Data.ByteString (ByteString)
+import Data.ByteString.Short (ShortByteString)
 import Data.FileEmbed
 import Data.Flat
 import Data.Serialize (Serialize)
@@ -26,6 +27,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Short as BSS
 import qualified Data.Serialize as S
 import qualified Data.Sequence as Seq
 import qualified Data.Map.Strict as Map
@@ -46,9 +48,9 @@ knownPeersRecKey  = keyString Peer $ mempty @String
 data KnownPeersRec = KnownPeersRec [KnownPeerRecItem] deriving (Generic, Show, Eq, Ord, Flat)
 
 data KnownPeerRecItem = KnownPeerRecItem
-  { knownPeerRecUrl             :: Text
-  , knownPeerRecIsSecureConn    :: Bool
-  , knownPeerRecLastValidatedAt :: Text
+  { knownPeerRecUrl             :: !Text
+  , knownPeerRecIsSecureConn    :: !Bool
+  , knownPeerRecLastValidatedAt :: !Text
   } deriving (Generic, Show, Eq, Ord, Flat)
 
 --lastScannedBlockHeaderHash
@@ -57,11 +59,11 @@ lastScannedBlockHeaderHashRecKey :: Currency -> ByteString
 lastScannedBlockHeaderHashRecKey  = keyString LastBlockHash . LastScannedBlockHeaderHashRecKey
 
 data LastScannedBlockHeaderHashRecKey = LastScannedBlockHeaderHashRecKey
-  { lastScannedBlockHeaderHashRecKeyCurrency :: Currency
+  { lastScannedBlockHeaderHashRecKeyCurrency :: !Currency
   } deriving (Generic, Show, Eq, Ord, Serialize)
 
 data LastScannedBlockHeaderHashRec = LastScannedBlockHeaderHashRec
-  { lastScannedBlockHeaderHashRecHash :: BlockHeaderHashHexView
+  { lastScannedBlockHeaderHashRecHash :: !ShortByteString
   } deriving (Generic, Show, Eq, Ord, Flat)
 
 --ScannedContentHistory
@@ -70,7 +72,7 @@ contentHistoryRecKey :: Currency -> ByteString
 contentHistoryRecKey  = keyString ContentHistory . ContentHistoryRecKey
 
 data ContentHistoryRecKey = ContentHistoryRecKey
-  { contentHistoryRecKeyCurrency :: Currency
+  { contentHistoryRecKeyCurrency :: !Currency
   } deriving (Generic, Show, Eq, Ord, Serialize)
 
 data ContentHistoryRec = ContentHistoryRec

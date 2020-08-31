@@ -23,6 +23,8 @@ import Control.Lens
 import Control.Monad.IO.Class
 import Control.Monad.Logger
 import Conversion
+import Data.ByteString (ByteString)
+import Data.ByteString.Short (ShortByteString)
 import Data.Default
 import Data.Flat
 import Data.Foldable
@@ -39,12 +41,14 @@ import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema.Filters
 import Ergvein.Index.Server.DB.Schema.Indexer
 import Ergvein.Index.Server.DB.Utils
+import Ergvein.Index.Server.DB.Instances
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Short as BSS
 import qualified Data.Map.Strict as Map
 import qualified Data.Sequence as Seq
 import qualified Data.Serialize as S
@@ -118,12 +122,12 @@ addBlockInfo update = do
   setLastScannedBlock targetCurrency newBlockHash
   setScannedHeight targetCurrency (blockMetaBlockHeight $ blockInfoMeta update)
 
-setLastScannedBlock :: (HasIndexerDB m, MonadLogger m) => Currency -> BlockHeaderHashHexView -> m ()
+setLastScannedBlock :: (HasIndexerDB m, MonadLogger m) => Currency -> ShortByteString -> m ()
 setLastScannedBlock currency blockHash = do
   db <- getIndexerDb
-  upsertItem db (lastScannedBlockHeaderHashRecKey currency) blockHash
+  upsertItem db (lastScannedBlockHeaderHashRecKey currency) $ BSS.fromShort blockHash
 
-getLastScannedBlock :: (HasIndexerDB m, MonadLogger m) => Currency -> m (Maybe BlockHeaderHashHexView)
+getLastScannedBlock :: (HasIndexerDB m, MonadLogger m) => Currency -> m (Maybe ShortByteString)
 getLastScannedBlock currency = do
   db <- getIndexerDb
   maybeLastScannedBlock <- getParsed db $ lastScannedBlockHeaderHashRecKey currency

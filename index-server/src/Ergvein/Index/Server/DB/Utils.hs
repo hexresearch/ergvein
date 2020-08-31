@@ -98,12 +98,11 @@ getParsedExact caller db key = do
     Just result -> pure $ unflatExact result
     Nothing -> do
       currentTime <- liftIO getCurrentTime
-      props <- getProperty db Stats
       logErrorN $ "[Db read miss][getParsedExact]" <> "["<> caller <>"]"<> " Entity with key " <> (T.pack $ show key) <> " not found at time:" <> (T.pack $ show currentTime)
-      error $ "getParsedExact: not found" ++ show key ++ " " ++ show props
+      error $ "getParsedExact: not found" ++ show key
 
 getManyParsedExact :: (Flat v, MonadIO m, MonadLogger m) => Text -> DB -> [BS.ByteString] -> m [v]
-getManyParsedExact caller db keys = mapM (getParsedExact caller db) keys
+getManyParsedExact caller db keys = traverse (getParsedExact caller db) keys
 
 putItems :: (Flat v) => (a -> BS.ByteString) -> (a -> v) -> [a] -> LDB.WriteBatch
 putItems keySelector valueSelector items = putI <$> items

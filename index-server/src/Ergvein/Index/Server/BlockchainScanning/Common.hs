@@ -53,8 +53,12 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
     blockIteration totalh blockHeight = do
       now <- liftIO $ getCurrentTime
       let percent = fromIntegral blockHeight / fromIntegral totalh :: Double
-      logInfoN $ "["<> showt now <> "] Scanning height for " <> showt currency <> " " <> showt blockHeight <> " / " <> showt totalh <> " (" <> showf 2 (100*percent) <> "%)"
-      scanInfo blockHeight
+      bi <- scanInfo blockHeight
+      logInfoN $ "["<> showt now <> "] "
+        <> "Scanning height for " <> showt currency <> " "
+        <> showt blockHeight <> " / " <> showt totalh <> " (" <> showf 2 (100*percent) <> "%): "
+        <> showt (length $ blockContentTxInfos bi)
+      pure bi
 
     scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
@@ -109,8 +113,8 @@ broadcastFilter BlockMetaInfo{..} =
   broadcastSocketMessage $ MFiltersEvent $ FilterEvent
   { filterEventCurrency     = convert blockMetaCurrency
   , filterEventHeight       = blockMetaBlockHeight
-  , filterEventBlockId      = hex2bs blockMetaHeaderHashHexView
-  , filterEventBlockFilter  = hex2bs blockMetaAddressFilterHexView
+  , filterEventBlockId      = blockMetaHeaderHashHexView
+  , filterEventBlockFilter  = blockMetaAddressFilterHexView
   }
 
 blockchainScanning :: ServerM [Thread]
