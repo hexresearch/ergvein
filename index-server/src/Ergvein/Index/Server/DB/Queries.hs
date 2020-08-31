@@ -6,6 +6,7 @@ module Ergvein.Index.Server.DB.Queries
   , setKnownPeersList
   , getKnownPeersList1
   , setKnownPeersList1
+  , addPeer1
   , addKnownPeers
   , emptyKnownPeers
   , initIndexerDb
@@ -71,6 +72,12 @@ getKnownPeersList = undefined
 
 setKnownPeersList :: (HasIndexerDB m, MonadLogger m) => [Peer] -> m ()
 setKnownPeersList peers = undefined
+
+addPeer1 :: (HasIndexerDB m, MonadLogger m) => Peer1 -> m ()
+addPeer1 peer = do
+  idb <- getIndexerDb
+  peerList <- getKnownPeersList1
+  setKnownPeersList1 $ peer : peerList 
 
 setKnownPeersList1 :: (HasIndexerDB m, MonadLogger m) => [Peer1] -> m ()
 setKnownPeersList1 peers = do

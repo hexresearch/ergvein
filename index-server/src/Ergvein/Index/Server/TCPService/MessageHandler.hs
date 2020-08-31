@@ -20,6 +20,7 @@ import Ergvein.Types.Fees
 import Ergvein.Types.Transaction
 import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.BlockchainScanning.Types
+import Ergvein.Index.Server.PeerDiscovery.Types
 import Network.Socket
 import Ergvein.Index.Server.DB.Queries
 
@@ -38,7 +39,7 @@ getBlockMetaSlice currency startHeight endHeight = do
   pure metaSlice
 
 handleMsg :: SockAddr -> Message -> ServerM [Message]
-handleMsg address (MPing msg) = pure $ pure $ MPong msg
+handleMsg address (MPing msg) = pure [MPong msg]
 
 handleMsg address (MPong _) = pure mempty
 
@@ -46,6 +47,8 @@ handleMsg address (MVersionACK _) = pure mempty
 
 handleMsg address (MVersion Version{..}) = do
   if protocolVersion == versionVersion then do
+    currentTime <- liftIO getCurrentTime
+    addPeer1 $ Peer1 address currentTime
     ownVer <- ownVersion
     pure [ MVersionACK $ VersionACK, MVersion ownVer ]
   else

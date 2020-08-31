@@ -23,7 +23,7 @@ data PeerValidationResult = OK
   | CurrencyOutOfSync CurrencyOutOfSyncInfo
   | CurrencyMissing Currency
   deriving Show
-
+ 
 data PeerCandidate = PeerCandidate
   { peerCandidateUrl :: String
   }
@@ -42,6 +42,10 @@ data Peer1 = Peer1
   { peerAddress           :: SockAddr
   , peerLastValidatedAt1  :: UTCTime
   } deriving Show
+
+data NewPeer1 = NewPeer1
+  { newPeerAddress :: SockAddr
+  }
 
 data NewPeer = NewPeer
   { newPeerUrl        :: BaseUrl
