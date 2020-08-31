@@ -2,6 +2,7 @@
 module Ergvein.Index.Server.DB.Schema.Indexer
   (
     KnownPeerRecItem(..)
+  , KnownPeersRec(..)
   , LastScannedBlockHeaderHashRec(..)
   , ContentHistoryRec(..)
   , ContentHistoryRecItem(..)
@@ -45,13 +46,13 @@ keyString keyPrefix key = (fromIntegral $ fromEnum keyPrefix) `BS.cons` S.encode
 knownPeersRecKey :: ByteString
 knownPeersRecKey  = keyString Peer $ mempty @String
 
-data KnownPeersRec = KnownPeersRec [KnownPeerRecItem] deriving (Generic, Show, Eq, Ord, Flat)
+data KnownPeersRec = KnownPeersRec [KnownPeerRecItem] deriving (Generic, Show, Eq, Ord)
 
 data KnownPeerRecItem = KnownPeerRecItem
   { knownPeerRecUrl             :: !Text
   , knownPeerRecIsSecureConn    :: !Bool
   , knownPeerRecLastValidatedAt :: !Text
-  } deriving (Generic, Show, Eq, Ord, Flat)
+  } deriving (Generic, Show, Eq, Ord)
 
 --lastScannedBlockHeaderHash
 
@@ -64,7 +65,7 @@ data LastScannedBlockHeaderHashRecKey = LastScannedBlockHeaderHashRecKey
 
 data LastScannedBlockHeaderHashRec = LastScannedBlockHeaderHashRec
   { lastScannedBlockHeaderHashRecHash :: !ShortByteString
-  } deriving (Generic, Show, Eq, Ord, Flat)
+  } deriving (Generic, Show, Eq, Ord)
 
 --ScannedContentHistory
 
@@ -77,12 +78,12 @@ data ContentHistoryRecKey = ContentHistoryRecKey
 
 data ContentHistoryRec = ContentHistoryRec
   { contentHistoryRecItems :: Seq.Seq ContentHistoryRecItem
-  } deriving (Generic, Show, Eq, Ord, Flat)
+  } deriving (Generic, Show, Eq, Ord)
 
 data ContentHistoryRecItem = ContentHistoryRecItem
   { contentHistoryRecItemSpentTxOuts  :: Map.Map TxHash Word32
   , contentHistoryRecItemAddedTxsHash :: [TxHash]
-  } deriving (Generic, Show, Eq, Ord, Flat)
+  } deriving (Generic, Show, Eq, Ord)
 
 contentHistorySize :: Int
 contentHistorySize = 64
@@ -92,4 +93,4 @@ contentHistorySize = 64
 schemaVersionRecKey :: ByteString
 schemaVersionRecKey  = keyString SchemaVersion $ mempty @String
 
-data SchemaVersionRec = Text  deriving (Generic, Show, Eq, Ord, Flat)
+data SchemaVersionRec = Text  deriving (Generic, Show, Eq, Ord)

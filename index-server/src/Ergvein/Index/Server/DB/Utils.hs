@@ -38,7 +38,7 @@ import Ergvein.Index.Server.Dependencies
 import Servant.Client.Core
 import System.ByteOrder
 
--- import Ergvein.Index.Server.DB.Monad
+import Ergvein.Index.Server.DB.Serialize.Class
 import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction

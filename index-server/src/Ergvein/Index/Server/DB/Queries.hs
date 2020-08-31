@@ -116,7 +116,8 @@ addBlockInfo update = do
   db <- getFiltersDb
   let targetCurrency = blockMetaCurrency $ blockInfoMeta update
   let newBlockHash = blockMetaHeaderHashHexView $ blockInfoMeta update
-  write db def $ putItems (txRecKey . txHash) (convert @_ @TxRec) (blockContentTxInfos update)
+  write db def $ putTxInfosAsRecs (blockContentTxInfos update)
+  -- write db def $ putItems (txRecKey . txHash) (convert @_ @TxRec) (blockContentTxInfos update)
   updateContentHistory targetCurrency (spentTxsHash update) (txHash <$> blockContentTxInfos update)
   addBlockMetaInfos [blockInfoMeta update]
   setLastScannedBlock targetCurrency newBlockHash
@@ -157,7 +158,8 @@ updateContentHistory currency spentTxsHash newTxIds = do
       let oldest Seq.:< restHistory = Seq.viewl $ contentHistoryRecItems history
           updatedHistory = ContentHistoryRec (restHistory Seq.|> newItem)
 
-      txToUpdate <- getManyParsedExact "updateContentHistory" fdb $ txRecKey <$> (Map.keys $ contentHistoryRecItemSpentTxOuts oldest)
+      txToUpdate <- getTxRecs "updateContentHistory" fdb $ txRecKey <$> (Map.keys $ contentHistoryRecItemSpentTxOuts oldest)
+      -- txToUpdate <- getManyParsedExact "updateContentHistory" fdb $ txRecKey <$> (Map.keys $ contentHistoryRecItemSpentTxOuts oldest)
       write idb def $ infoUpdate (contentHistoryRecItemSpentTxOuts oldest) <$> txToUpdate
 
       upsertItem idb (contentHistoryRecKey currency) updatedHistory
@@ -171,7 +173,8 @@ updateContentHistory currency spentTxsHash newTxIds = do
       in if outputsLeft == 0 then
           LDB.Del $ txRecKey $ txRecHash info
          else
-          LDB.Put (txRecKey $ txRecHash info) (flat $ info { txRecUnspentOutputsCount = outputsLeft })
+          LDB.Put (txRecKey $ txRecHash info) (serializeTxRec $ info { txRecUnspentOutputsCount = outputsLeft })
+          -- LDB.Put (txRecKey $ txRecHash info) (flat $ info { txRecUnspentOutputsCount = outputsLeft })
 
 revertContentHistory :: (HasIndexerDB m, MonadLogger m) => Currency -> m Int
 revertContentHistory currency = do

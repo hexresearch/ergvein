@@ -24,7 +24,6 @@ import Data.Serialize (Serialize)
 import Data.Word
 
 import Ergvein.Index.Server.DB.Utils
-import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
@@ -50,7 +49,7 @@ data ScannedHeightRecKey = ScannedHeightRecKey
 
 data ScannedHeightRec = ScannedHeightRec
   { scannedHeightRecHeight   :: !BlockHeight
-  } deriving (Generic, Show, Eq, Ord, Flat)
+  } deriving (Generic, Show, Eq, Ord)
 
 
 --Tx
@@ -66,7 +65,7 @@ data TxRec = TxRec
   { txRecHash                 :: !TxHash
   , txRecBytes                :: !ByteString
   , txRecUnspentOutputsCount  :: !Word32
-  } deriving (Generic, Show, Eq, Ord, Flat)
+  } deriving (Generic, Show, Eq, Ord)
 
 --BlockMeta
 
@@ -81,11 +80,11 @@ data BlockMetaRecKey = BlockMetaRecKey
 data BlockMetaRec = BlockMetaRec
   { blockMetaRecHeaderHashHexView     :: !ShortByteString
   , blockMetaRecAddressFilterHexView  :: !ByteString
-  } deriving (Generic, Show, Eq, Ord, Flat)
+  } deriving (Generic, Show, Eq, Ord)
 
 --SchemaVersion
 
 schemaVersionRecKey :: ByteString
 schemaVersionRecKey  = keyString SchemaVersion $ mempty @String
 
-data SchemaVersionRec = Text  deriving (Generic, Show, Eq, Ord, Flat)
+data SchemaVersionRec = Text  deriving (Generic, Show, Eq, Ord)

@@ -1,11 +1,11 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Index.Server.DB.Instances
   (
-  --   getTxRec
-  -- , getTxRecs
-  -- , putTxInfosAsRecs
-  -- , serializeToTxRec
-  -- , serializeTxRec
+    getTxRec
+  , getTxRecs
+  , putTxInfosAsRecs
+  , serializeToTxRec
+  , serializeTxRec
   ) where
 
 import Control.Lens
