@@ -20,6 +20,7 @@ import Ergvein.Wallet.Localization.Network
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Node
+import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Dependent.Map as DM
@@ -110,12 +111,16 @@ networkPageHeader minitCur = do
       pure $ pure Nothing
     cur:[] -> do
       divClass "network-title-name" $ h3 $ localizedText $ NPSTitleCur cur
-      divClass "network-title-cur" $ refreshIndexerInfo =<< buttonClass "button button-outline net-refresh-btn" NPSRefresh
+      refreshE <- buttonClass "button button-outline net-refresh-btn" NPSRefresh
+      setSyncProgressSimple $ ConnectionIndexer <$ refreshE
+      divClass "network-title-cur" $ refreshIndexerInfo refreshE
       pure $ pure (Just cur)
     curs -> do
       divClass "network-title-name" $ h3 $ localizedText $ NPSTitle
       curD <- divClass "network-title-cur" $ currenciesDropdown minitCur curs
-      divClass "network-title-cur" $ refreshIndexerInfo =<< buttonClass "button button-outline net-refresh-btn" NPSRefresh
+      refreshE <- buttonClass "button button-outline net-refresh-btn" NPSRefresh
+      setSyncProgressSimple $ ConnectionIndexer <$ refreshE
+      divClass "network-title-cur" $ refreshIndexerInfo refreshE
       pure curD
   baseHorSep
   pure curD

@@ -24,6 +24,7 @@ module Ergvein.Wallet.Monad.Front(
   , setCurrentHeight
   , setFiltersSync
   , setSyncProgress
+  , setSyncProgressSimple
   , updateActiveCurs
   -- * Reexports
   , Text
@@ -174,6 +175,15 @@ setSyncProgress spE = do
         modifyExternalRef syncRef $ \m -> (,()) $ M.insert cur True m
       _ -> pure ()
 {-# INLINE setSyncProgress #-}
+
+-- | Set global sync process value each time the event is fired
+setSyncProgressSimple :: MonadFrontAuth t m => Event t SyncProgress -> m ()
+setSyncProgressSimple spE = do
+  syncProgRef <- getSyncProgressRef
+  performEvent_ $ ffor spE $ \sp -> do
+    writeExternalRef syncProgRef sp
+{-# INLINE setSyncProgressSimple #-}
+
 
 -- | Get auth info. Not a Maybe since this is authorized context
 getAuthInfo :: MonadFrontAuth t m => m (Dynamic t AuthInfo)

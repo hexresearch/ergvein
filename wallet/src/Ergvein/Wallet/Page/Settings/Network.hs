@@ -23,6 +23,7 @@ import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Map.Strict as M
@@ -123,7 +124,9 @@ activePageWidget = mdo
   void . flip listWithKey renderActive =<< getIndexerInfoD
   hideE <- activateURL =<< addUrlWidget showD
   tglE <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
-    refreshIndexerInfo =<< buttonClass "button button-outline m-0" NSSRefresh
+    refreshE <- buttonClass "button button-outline m-0" NSSRefresh
+    setSyncProgressSimple $ ConnectionIndexer <$ refreshE
+    refreshIndexerInfo refreshE
     restoreDefaultIndexers =<< buttonClass "button button-outline m-0" NSSRestoreUrls
     fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSClose else NSSAddUrl
@@ -157,7 +160,7 @@ inactivePageWidget = mdo
     fmap (mergeMap . M.fromList) $ flip traverse urls $ \u -> do
       resE <- pingIndexer $ u <$ pingAllE
       pure (u, snd <$> resE)
-  
+
   infomapD <- foldDyn M.union M.empty $ leftmost [resE, allResE]
   a :: Dynamic t [Dynamic t (Event t BaseUrl)] <- simpleList urlsD $ \urlD -> do
     let myInfoD = M.lookup <$> urlD <*> infomapD

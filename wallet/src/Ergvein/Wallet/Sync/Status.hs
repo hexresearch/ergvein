@@ -73,7 +73,7 @@ data SyncProgress =
     , syncMetaAmount :: !Int
     , syncMetaTotal  :: !Int
     }
-  | Synced
+  | Synced | GettingNodeAddresses | ConnectingToPeers | GettingHeight | ConnectionIndexer | NoIndexer
   deriving (Show, Eq)
 
 syncProgressBehind :: SyncProgress -> Maybe SyncBehind
@@ -104,8 +104,28 @@ instance LocalizedPrint SyncProgress where
       Russian -> "Синхронизация новых блоков " <> showt syncMetaCur <> ": " <> localizedShow l syncMetaStage <> ", " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
 
   localizedShow l Synced = case l of
-    English -> "Fully synced"
-    Russian -> "Полностью синхронизировано"
+    English -> "Synced"
+    Russian -> "Синхронизировано"
+
+  localizedShow l GettingNodeAddresses = case l of
+    English -> "Getting node addresses"
+    Russian -> "Получение адреса ноды"
+
+  localizedShow l ConnectingToPeers = case l of
+    English -> "Connecting to peers"
+    Russian -> "Подключение к узлу"
+
+  localizedShow l GettingHeight = case l of
+    English -> "Getting height"
+    Russian -> "Получение высоты"
+
+  localizedShow l ConnectionIndexer = case l of
+    English -> "Connection to indexer"
+    Russian -> "Подключение к индексатору"
+
+  localizedShow l NoIndexer = case l of
+    English -> "Can't connect to indexer"
+    Russian -> "Ошибка подключения к индексатору"
 
 percent :: Int -> Int -> Int
 percent amount total = if total == 0 then 0 else ceiling $ 100 * (fromIntegral amount :: Double) / fromIntegral total

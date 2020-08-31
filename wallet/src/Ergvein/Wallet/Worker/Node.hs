@@ -34,6 +34,7 @@ import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Node.BTC.Mempool
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Storage.Keys
+import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Util
 
@@ -228,12 +229,14 @@ mkUrlBatcher sel remE = mdo
   pure $ (S.toList <$> urlsD, fstRunE)
 
 -- | Connects to DNS servers, gets n urls and initializes connection to those nodes
-getRandomBTCNodesFromDNS :: MonadFrontConstr t m => RequestSelector t -> Int -> m (Event t [NodeBTC t])
+getRandomBTCNodesFromDNS :: MonadFrontAuth t m => RequestSelector t -> Int -> m (Event t [NodeBTC t])
 getRandomBTCNodesFromDNS sel n = do
   buildE <- getPostBuild
   let dnsUrls = getSeeds btcNetwork
   i <- liftIO $ randomRIO (0, length dnsUrls - 1)
+  setSyncProgressSimple $ GettingNodeAddresses <$ buildE
   urlsE <- performFork $ (requestNodesFromBTCDNS (dnsUrls!!i) n) <$ buildE
+  setSyncProgressSimple $ ConnectingToPeers <$ urlsE
   nodesD <- widgetHold (pure []) $ ffor urlsE $ \urls -> flip traverse urls $ \u -> let
     reqE = extractReq sel BTC u
     in initBTCNode False u reqE

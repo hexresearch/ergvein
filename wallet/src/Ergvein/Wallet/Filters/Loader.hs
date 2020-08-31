@@ -51,7 +51,7 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
       fh' <- getFiltersHeight BTC
       let fh = max fh' sh
       logWrite $ "Current height is " <> showt ch <> ", and filters are for height " <> showt fh
-      -- postSync BTC ch fh
+      postSync BTC ch fh
       if ch > fh then do
         let n = 500
         logWrite $ "Getting next filters ..." <> showt n
