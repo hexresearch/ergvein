@@ -50,7 +50,15 @@ nominalToBehind t
   | t < 24 * 3600 = SyncHours $ ceiling $ t / 3600
   | otherwise = SyncDays $ ceiling $ t / (24 * 3600)
 
-data SyncStage = SyncFilters | SyncAddressInternal !Int | SyncAddressExternal !Int | SyncBlocks !Int !Int
+data SyncStage = SyncFilters
+               | SyncAddressInternal !Int
+               | SyncAddressExternal !Int
+               | SyncBlocks !Int !Int
+               | SyncGettingNodeAddresses
+               | SyncConnectingToPeers
+               | SyncGettingHeight
+               | SyncConnectionIndexer
+               | SyncNoIndexer
   deriving (Show, Eq, Ord)
 
 instance LocalizedPrint SyncStage where
@@ -60,11 +68,21 @@ instance LocalizedPrint SyncStage where
       SyncAddressInternal i -> "#" <> showt i
       SyncAddressExternal i -> "#" <> showt i
       SyncBlocks i j -> showt i <> " of " <> showt j
+      SyncGettingNodeAddresses -> "Getting node addresses"
+      SyncConnectingToPeers -> "Connecting to peers"
+      SyncGettingHeight -> "Getting height"
+      SyncConnectionIndexer -> "Connection to indexer"
+      SyncNoIndexer -> "All indexers are down"
     Russian -> case v of
       SyncFilters -> "фильтров"
       SyncAddressInternal i -> "#" <> showt i
       SyncAddressExternal i -> "#" <> showt i
       SyncBlocks i j -> showt i <> " из " <> showt j
+      SyncGettingNodeAddresses -> "Получение адреса ноды"
+      SyncConnectingToPeers -> "Подключение к узлу"
+      SyncGettingHeight -> "Получение высоты"
+      SyncConnectionIndexer -> "Подключение к индексатору"
+      SyncNoIndexer -> "Все индексаторы недоступны"
 
 data SyncProgress =
     SyncMeta {
@@ -73,7 +91,7 @@ data SyncProgress =
     , syncMetaAmount :: !Int
     , syncMetaTotal  :: !Int
     }
-  | Synced | GettingNodeAddresses | ConnectingToPeers | GettingHeight | ConnectionIndexer | NoIndexer
+  | Synced
   deriving (Show, Eq)
 
 syncProgressBehind :: SyncProgress -> Maybe SyncBehind
@@ -103,29 +121,11 @@ instance LocalizedPrint SyncProgress where
       English -> "Syncing new blocks of " <> showt syncMetaCur <> ": " <> localizedShow l syncMetaStage <> ", " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
       Russian -> "Синхронизация новых блоков " <> showt syncMetaCur <> ": " <> localizedShow l syncMetaStage <> ", " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
 
+  localizedShow l SyncMeta{syncMetaStage = syncMetaStage@(_), ..} = localizedShow l syncMetaStage
+
   localizedShow l Synced = case l of
     English -> "Synced"
     Russian -> "Синхронизировано"
-
-  localizedShow l GettingNodeAddresses = case l of
-    English -> "Getting node addresses"
-    Russian -> "Получение адреса ноды"
-
-  localizedShow l ConnectingToPeers = case l of
-    English -> "Connecting to peers"
-    Russian -> "Подключение к узлу"
-
-  localizedShow l GettingHeight = case l of
-    English -> "Getting height"
-    Russian -> "Получение высоты"
-
-  localizedShow l ConnectionIndexer = case l of
-    English -> "Connection to indexer"
-    Russian -> "Подключение к индексатору"
-
-  localizedShow l NoIndexer = case l of
-    English -> "Can't connect to indexer"
-    Russian -> "Ошибка подключения к индексатору"
 
 percent :: Int -> Int -> Int
 percent amount total = if total == 0 then 0 else ceiling $ 100 * (fromIntegral amount :: Double) / fromIntegral total

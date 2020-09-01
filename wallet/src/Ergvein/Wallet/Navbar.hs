@@ -39,6 +39,7 @@ navbarWidgetAndroid :: MonadFront t m => Currency -> Maybe (Dynamic t (m ())) ->
 navbarWidgetAndroid cur prevWidget = divClass "navbar-black" $ do
     balance <- balanceTitleWidgetSimple cur
     divClass "navbar-balance" $ dynText balance
+    divClass "navbar-status"  $ syncWidget =<< getSyncProgress
     divClass "navbar-android-controls-wrapper" $ divClass "navbar-android-controls" $ do
       sendE <- divButton "navbar-android-controls-button mlr-1" $ headerNavigationButton HeaderNavigationSend
       receiveE <- divButton "navbar-android-controls-button mlr-1" $ headerNavigationButton HeaderNavigationReceive

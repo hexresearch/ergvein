@@ -112,14 +112,14 @@ networkPageHeader minitCur = do
     cur:[] -> do
       divClass "network-title-name" $ h3 $ localizedText $ NPSTitleCur cur
       refreshE <- buttonClass "button button-outline net-refresh-btn" NPSRefresh
-      setSyncProgressSimple $ ConnectionIndexer <$ refreshE
+      setSyncProgress $ ConnectionIndexer <$ refreshE
       divClass "network-title-cur" $ refreshIndexerInfo refreshE
       pure $ pure (Just cur)
     curs -> do
       divClass "network-title-name" $ h3 $ localizedText $ NPSTitle
       curD <- divClass "network-title-cur" $ currenciesDropdown minitCur curs
       refreshE <- buttonClass "button button-outline net-refresh-btn" NPSRefresh
-      setSyncProgressSimple $ ConnectionIndexer <$ refreshE
+      setSyncProgress $ ConnectionIndexer <$ refreshE
       divClass "network-title-cur" $ refreshIndexerInfo refreshE
       pure curD
   baseHorSep

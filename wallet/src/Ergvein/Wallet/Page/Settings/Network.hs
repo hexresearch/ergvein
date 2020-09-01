@@ -125,7 +125,7 @@ activePageWidget = mdo
   hideE <- activateURL =<< addUrlWidget showD
   tglE <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refreshE <- buttonClass "button button-outline m-0" NSSRefresh
-    setSyncProgressSimple $ ConnectionIndexer <$ refreshE
+    setSyncProgress $ ConnectionIndexer <$ refreshE
     refreshIndexerInfo refreshE
     restoreDefaultIndexers =<< buttonClass "button button-outline m-0" NSSRestoreUrls
     fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
