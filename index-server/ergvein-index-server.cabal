@@ -38,6 +38,7 @@ library
     Ergvein.Index.Server.TCPService.Socket
     Ergvein.Index.Server.TCPService.Conversions
     Ergvein.Index.Server.App
+    Ergvein.Index.Server.TCPService.Connections
 
   build-depends:
         base                     >= 4.7     &&  < 4.13

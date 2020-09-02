@@ -15,7 +15,6 @@ import Data.Attoparsec.ByteString
 import Data.ByteString.Builder
 import Data.Either.Combinators
 import Data.Foldable (traverse_)
-import Data.Maybe
 import Data.Time.Clock.POSIX
 import Data.Word
 import Network.Socket
@@ -32,16 +31,16 @@ import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.TCPService.MessageHandler
 import Ergvein.Index.Server.TCPService.Socket as S
+import Ergvein.Index.Server.TCPService.Connections 
 
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString as BS
-import qualified Data.Map.Strict as M
 import qualified Network.Socket.ByteString as NS
 
 -- Pinger thread
 runPinger :: ServerM Thread
 runPinger = create $ const $ logOnException $ do
-  broadChan <- liftIO . atomically . dupTChan =<< asks envBroadcastChannel
+  broadChan <- liftIO . atomically . dupTChan =<< broadcastChannel
   forever $ liftIO $ do
     threadDelay 5000000
     msg <- MPing <$> randomIO
@@ -74,34 +73,29 @@ tcpSrv thread = do
 
 mainLoop :: Thread -> Socket -> ServerM ()
 mainLoop thread sock = do
-  openedConnectionsRef <- asks envOpenConnections
+  openedConnectionsRef <- openConnections
   mainLoopId <- fork $ forever $ do
-    connection <- liftIO $ accept sock
-    connectionThreadId <- fork $ registerConnection connection
-    liftIO $ atomically $ modifyTVar openedConnectionsRef $ M.insert (snd connection) (connectionThreadId , fst connection)
+    (newSock, newSockAddr) <- liftIO $ accept sock
+    connectionThreadId <- fork $ registerConnection (newSock, newSockAddr)
+    openConnection connectionThreadId newSockAddr newSock
   shutdownFlagRef <- getShutdownFlag
-  forever $ liftIO $ do
-    shutdownFlag <- readTVarIO shutdownFlagRef
-    when shutdownFlag $ performShutdown openedConnectionsRef mainLoopId
-    threadDelay 1000000
+  forever $ do
+    shutdownFlag <- liftIO $ readTVarIO shutdownFlagRef
+    when shutdownFlag $ performShutdown mainLoopId
+    liftIO $ threadDelay 1000000
   where
-   performShutdown openedConnectionsRef mainLoopId = do
-    traverse closeConnection =<< M.elems <$> readTVarIO openedConnectionsRef
-    killThread mainLoopId
-    atomically $ writeTVar openedConnectionsRef M.empty
-    stop thread
-
-
-newConnection :: SockAddr -> ServerM ()
-newConnection addr = do
-  (maybeHost, maybePort) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True addr
-  registerConnection =<< connectSock (fromJust maybeHost) (fromJust maybePort)
+   performShutdown :: HasConnectionsManagement m => ThreadId -> m ()
+   performShutdown mainLoopId = do
+    closeAllConnections
+    liftIO $ do 
+      killThread mainLoopId
+      stop thread
 
 registerConnection :: (Socket, SockAddr) -> ServerM ()
 registerConnection (sock, addr) = do
-  openedConnectionsRef <- asks envOpenConnections
+  openedConnectionsRef <- openConnections
   connectionThreadId <- fork $ runConnection (sock, addr)
-  liftIO $ atomically $ modifyTVar openedConnectionsRef $ M.insert addr (connectionThreadId , sock)
+  openConnection connectionThreadId addr  sock
 
 runConnection :: (Socket, SockAddr) -> ServerM ()
 runConnection (sock, addr) =  do
@@ -109,23 +103,24 @@ runConnection (sock, addr) =  do
   case evalResult of
     Right (msgs@(MVersionACK _ : _)) -> do --peer version match ours
       sendChan <- liftIO newTChanIO
-      forM msgs $ writeMsg sendChan
+      forM msgs $ (liftIO . writeMsg sendChan) 
       -- Spawn message sender thread
       fork $ sendLoop sendChan
       -- Spawn broadcaster loop
       fork $ broadcastLoop sendChan
       -- Start message listener
       listenLoop sendChan
-    _ -> closePeerConnection addr 
+    _ -> closeConnection addr 
   where
-    writeMsg :: TChan LBS.ByteString -> Message -> ServerM ()
-    writeMsg destinationChan = liftIO . atomically . writeTChan destinationChan . toLazyByteString . messageBuilder
+    writeMsg :: TChan LBS.ByteString -> Message -> IO ()
+    writeMsg destinationChan = atomically . writeTChan destinationChan . toLazyByteString . messageBuilder
 
-    broadcastLoop :: TChan LBS.ByteString -> ServerM ()
+    broadcastLoop :: HasBroadcastChannel m => TChan LBS.ByteString -> m ()
     broadcastLoop destinationChan = do
-      broadChan <- liftIO . atomically . dupTChan =<< asks envBroadcastChannel
-      forever $ do
-        msg <- liftIO $ atomically $ readTChan broadChan
+      channel <- broadcastChannel
+      broadChan <- liftIO $ atomically $ dupTChan channel
+      liftIO $ forever $ do
+        msg <- atomically $ readTChan broadChan
         writeMsg destinationChan msg
 
     sendLoop :: TChan LBS.ByteString -> ServerM ()
@@ -140,15 +135,14 @@ runConnection (sock, addr) =  do
           evalResult <- runExceptT $ evalMsg
           case evalResult of
             Right msgs -> do
-              forM msgs $ writeMsg destinationChan
+              forM msgs $ (liftIO . writeMsg destinationChan)
               listenLoop'
             Left Reject {..} | rejectMsgCode == ZeroBytesReceived -> do
               logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
-              closePeerConnection addr
+              closeConnection addr
             Left err -> do
               logInfoN $ "failed to handle msg: " <> showt err
-              writeMsg destinationChan $ MReject err
-          
+              liftIO $ writeMsg destinationChan $ MReject err
 
     evalMsg :: ExceptT Reject ServerM [Message]
     evalMsg = response =<< request =<< messageHeader =<< messageHeaderBytes

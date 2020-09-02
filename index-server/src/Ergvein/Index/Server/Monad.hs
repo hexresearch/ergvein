@@ -23,6 +23,7 @@ import Ergvein.Types.Fees
 import Control.Immortal
 import Control.Concurrent
 import Network.Socket
+import Ergvein.Index.Server.TCPService.Connections 
 
 import qualified Data.Map.Strict as M
 import qualified Network.Bitcoin.Api.Client  as BitcoinApi
@@ -110,6 +111,14 @@ instance MonadFees ServerM where
     liftIO $ atomically $ modifyTVar feeVar $ M.insert cur fb
 
 
+instance HasConnectionsManagement ServerM where
+  openConnections = asks envOpenConnections
+  {-# INLINE openConnections #-}
+
+instance HasBroadcastChannel ServerM where
+  broadcastChannel = asks envBroadcastChannel
+  {-# INLINE broadcastChannel #-}
+
 stopThreadIfShutdown :: Thread -> ServerM ()
 stopThreadIfShutdown thread = do
   shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
@@ -117,11 +126,3 @@ stopThreadIfShutdown thread = do
 
 broadcastSocketMessage :: Message -> ServerM ()
 broadcastSocketMessage msg = liftIO . atomically . flip writeTChan msg =<< asks envBroadcastChannel
-
-closeConnection :: (ThreadId, Socket) -> IO ()
-closeConnection (connectionThreadId, connectionSocket) = close connectionSocket >> killThread connectionThreadId
-
-closePeerConnection :: SockAddr -> ServerM ()
-closePeerConnection addr = do
-  openedConnectionsRef <- asks envOpenConnections
-  liftIO $ closeConnection =<< (M.! addr) <$> readTVarIO openedConnectionsRef

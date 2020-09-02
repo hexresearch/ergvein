@@ -13,6 +13,7 @@ import Data.List
 import Data.Maybe
 import Data.Set (Set)
 import Data.Time.Clock
+import Ergvein.Index.Server.TCPService.Connections
 
 import Ergvein.Index.API.Types
 import Ergvein.Index.Client.V1
@@ -83,7 +84,7 @@ knownPeersActualization1 = do
      openedConnectionsRef <- asks envOpenConnections
      opened <- liftIO $ Map.keysSet <$> readTVarIO openedConnectionsRef
      let toOpen = Set.toList $ opened Set.\\ (Set.fromList $ peerAddress <$> peersToFetchFrom)
-     forM_ toOpen newConnection
+     liftIO $ forM_ toOpen newConnection
      broadcastSocketMessage $ MPeerRequest PeerRequest
     isNotOutdated :: Set SockAddr -> NominalDiffTime -> UTCTime -> Peer1 -> Bool
     isNotOutdated predefined retryTimeout currentTime peer = 
