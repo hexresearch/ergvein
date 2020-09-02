@@ -17,6 +17,8 @@ module Ergvein.Wallet.Storage.Util(
   , setLastStorage
   , generateMissingPrvKeys
   , generateMissingPrvKeysHelper
+  , getMissingPubKeysCount
+  , derivePubKeys
   ) where
 
 import Control.Lens
@@ -24,6 +26,7 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.ByteArray           (convert)
 import Data.ByteString          (ByteString)
+import Data.List                (foldl')
 import Data.Maybe
 import Data.Proxy
 import Data.Text                (Text)
@@ -315,3 +318,29 @@ generateMissingPrvKeysHelper _ (CurrencyPrvStorage prvKeystore) (goalExternalKey
         l = goalInternalKeysNum - intLength
         v = V.unfoldrN l (\i -> Just (derivePrvKey masterPrvKey Internal (fromIntegral i), i+1)) intLength
         in currentInternalKeys V.++ v
+
+getMissingPubKeysCount :: Currency -> KeyPurpose -> PubStorage -> Int
+getMissingPubKeysCount currency keyPurpose pubStorage = missingKeysCount
+  where
+    keysCount = V.length $ pubStorageKeys currency keyPurpose pubStorage
+    lastUnusedKeyIndex = fst <$> pubStorageLastUnusedKey currency keyPurpose pubStorage
+    missingKeysCount = calcMissingKeys keyPurpose lastUnusedKeyIndex keysCount
+
+derivePubKeys :: Currency -> PubStorage -> (KeyPurpose, Int) -> PubKeystore
+derivePubKeys currency pubStorage (keyPurpose, n) = ks'
+  where
+    keysCount = V.length $ pubStorageKeys currency keyPurpose pubStorage
+    masterPubKey = maybe (error $ "No " <> currencyStr <> " master key!") id $ pubStoragePubMaster currency pubStorage
+    newKeys = derivePubKey masterPubKey keyPurpose . fromIntegral <$> [keysCount .. keysCount + n - 1]
+    ks = maybe (error $ "No " <> currencyStr <> " key storage!") id $ pubStorageKeyStorage currency pubStorage
+    ks' = foldl' (flip $ addXPubKeyToKeystore keyPurpose) ks newKeys
+    currencyStr = T.unpack $ currencyName currency
+
+calcMissingKeys :: KeyPurpose -> Maybe Int -> Int -> Int
+calcMissingKeys keyPurpose (Just lastUnusedKeyIndex) keysCount = (spareKeysCount keyPurpose) - (keysCount - lastUnusedKeyIndex)
+calcMissingKeys keyPurpose Nothing _ = spareKeysCount keyPurpose
+
+spareKeysCount :: KeyPurpose -> Int
+spareKeysCount keyPurpose = if keyPurpose == External
+  then initialExternalAddressCount
+  else initialInternalAddressCount

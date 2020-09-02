@@ -21,28 +21,24 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
+import Ergvein.Wallet.Page.Canvas
 import Ergvein.Wallet.Page.QRCode
 import Ergvein.Wallet.Share
 import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
 
-import Ergvein.Wallet.Page.Canvas
-
 import qualified Data.ByteString.Lazy as BS
 
 receivePage :: MonadFront t m => Currency -> m ()
 receivePage cur = do
   pubStoreD <- getPubStorageD
-  let keyD = ffor pubStoreD $ \ps ->
+  let lastUnusedKeyD = ffor pubStoreD $ \ps ->
         (getLastUnusedKey External . _currencyPubStorage'pubKeystore) =<< (ps ^. pubStorage'currencyPubStorages . at cur)
-  widgetHoldDyn $ ffor keyD $ \case
+  widgetHoldDyn $ ffor lastUnusedKeyD $ \case
     Nothing -> exceededGapLimit cur
     Just (i, key) -> receivePageWidget cur i key
   pure ()
-
-mockAddress :: Text
-mockAddress = "1BoatSLRHtKNngkdXEeobR76b53LETtpyT"
 
 exceededGapLimit :: MonadFront t m => Currency -> m ()
 exceededGapLimit cur = do
