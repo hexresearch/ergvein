@@ -32,8 +32,6 @@ import qualified Network.Ergo.Api.Client     as ErgoApi
 import qualified Network.Haskoin.Constants   as HK
 import qualified Network.HTTP.Client         as HC
 
-import Network.Socket
-
 import Debug.Trace
 
 data ServerEnv = ServerEnv

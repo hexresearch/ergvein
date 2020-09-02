@@ -46,6 +46,8 @@ handleMsg address (MPong _) = pure mempty
 handleMsg address (MVersionACK _) = pure mempty
 
 handleMsg address (MVersion Version{..}) = do
+
+ -- pMatch <- isProgressMatch
   if protocolVersion == versionVersion then do
     currentTime <- liftIO getCurrentTime
     addPeer1 $ Peer1 address currentTime

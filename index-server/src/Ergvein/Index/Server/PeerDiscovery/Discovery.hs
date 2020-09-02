@@ -28,6 +28,12 @@ import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.TCPService.Server
 import Network.Socket
 import Servant.Client.Core
+import qualified Data.Vector as V 
+import Ergvein.Types.Currency
+import qualified Data.Vector.Unboxed as UV
+import Ergvein.Types.Transaction
+import Conversion
+import Ergvein.Types.Block
 
 import qualified Data.Map.Strict     as Map
 import qualified Data.Set            as Set
@@ -35,7 +41,6 @@ import qualified Data.Set            as Set
 peerKnownPeers :: BaseUrl -> ExceptT PeerValidationResult ServerM [BaseUrl]
 peerKnownPeers baseUrl = do
   infoResult <- peerInfoRequest baseUrl
-  candidateScanResult <- peerActualScan infoResult
   knownPeers <- peerKnownPeersRequest baseUrl
   pure $ extractAddresses knownPeers
   where
@@ -152,7 +157,7 @@ peerKnownPeersRequest baseUrl =
 peerActualScan :: InfoResponse -> ExceptT PeerValidationResult ServerM InfoResponse
 peerActualScan candidateInfo = do
   localInfo <- lift $ scanningInfo
-  let isCandidateScanMatchLocal = sequence $ currencyScanValidation <$> localInfo
+  let isCandidateScanMatchLocal = mapM currencyScanValidation localInfo
   except $ candidateInfo <$ isCandidateScanMatchLocal
   where
     notLessThenOne local = (local <=) . succ
@@ -170,3 +175,18 @@ peerActualScan candidateInfo = do
 
     candidateInfoMap = Map.fromList $ (\scanInfo -> (scanProgressCurrency scanInfo, scanInfo))
                                    <$> infoScanProgress candidateInfo
+
+isProgressMatch :: Version -> ServerM Bool
+isProgressMatch ver = do
+  ourProgress <- scanningInfo
+  let res = all currencyScanValidation ourProgress
+  pure res
+  where
+    currencyScanValidation :: ScanProgressInfo -> Bool
+    currencyScanValidation ScanProgressInfo {..} = 
+      let candidateNfo = candidateInfoMap Map.!? nfoCurrency
+      in any (notLessThenOne nfoScannedHeight) candidateNfo
+
+    notLessThenOne local = (local <=) . succ
+    candidateInfoMap:: Map.Map Currency BlockHeight
+    candidateInfoMap = Map.fromList $ (\x-> (convert $ scanBlockCurrency x,  scanBlockHeight x)) <$> (UV.toList $ versionScanBlocks ver)
