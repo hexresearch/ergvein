@@ -14,6 +14,7 @@ import Servant.Client(BaseUrl, showBaseUrl, parseBaseUrl)
 import Text.Read
 
 import Ergvein.Text
+import Ergvein.Types.Currency
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
@@ -25,6 +26,7 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Wrapper
+
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
@@ -125,7 +127,7 @@ activePageWidget = mdo
   hideE <- activateURL =<< addUrlWidget showD
   tglE <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refreshE <- buttonClass "button button-outline m-0" NSSRefresh
-    setSyncProgress $ ConnectionIndexer <$ refreshE
+    setSyncProgress $ (SyncMeta BTC SyncConnectionIndexer 0 0) <$ refreshE
     refreshIndexerInfo refreshE
     restoreDefaultIndexers =<< buttonClass "button button-outline m-0" NSSRestoreUrls
     fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->

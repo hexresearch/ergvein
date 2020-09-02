@@ -234,9 +234,9 @@ getRandomBTCNodesFromDNS sel n = do
   buildE <- getPostBuild
   let dnsUrls = getSeeds btcNetwork
   i <- liftIO $ randomRIO (0, length dnsUrls - 1)
-  setSyncProgress $ GettingNodeAddresses <$ buildE
+  setSyncProgress $ (SyncMeta BTC SyncGettingNodeAddresses 0 0) <$ buildE
   urlsE <- performFork $ (requestNodesFromBTCDNS (dnsUrls!!i) n) <$ buildE
-  setSyncProgress $ ConnectingToPeers <$ urlsE
+  setSyncProgress $ (SyncMeta BTC SyncConnectingToPeers 0 0) <$ urlsE
   nodesD <- widgetHold (pure []) $ ffor urlsE $ \urls -> flip traverse urls $ \u -> let
     reqE = extractReq sel BTC u
     in initBTCNode False u reqE

@@ -20,4 +20,3 @@ syncWidget progressD = divClass "currency-wrapper" $ do
       case syncMetaStage of
         _ -> traverse_ localizedText $ syncProgressBehind sp
         --_ -> pure ()
-    _ -> localizedText sp
