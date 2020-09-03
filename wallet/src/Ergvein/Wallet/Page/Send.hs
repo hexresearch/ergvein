@@ -31,8 +31,10 @@ import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage
 import Ergvein.Wallet.Storage.Keys
+import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Widget.Balance
+import Ergvein.Wallet.Worker.PubKeysGenerator
 import Ergvein.Wallet.Wrapper
 
 import Data.Validation (toEither)
@@ -151,6 +153,8 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr) = do
       storedE <- btcMempoolTxInserter $ tx <$ addedE
       reqE <- requestBroadcast $ ffor storedE $ const $
         NodeReqBTC . MInv . Inv . pure . InvVector InvTx . HT.getTxHash . HT.txHash $ tx
+      let derivePubKeysE = fforMaybe (tagPromptlyDyn psD reqE) (nothingIf (< 1) . getMissingPubKeysCount BTC Internal)
+      generateNewPubKeysByE BTC $ (Internal,) <$> derivePubKeysE
       goE <- el "div" $ delay 1 =<< outlineButton SendBtnBack
       void $ nextWidget $ ffor goE $ const $ Retractable {
             retractableNext = balancesPage
