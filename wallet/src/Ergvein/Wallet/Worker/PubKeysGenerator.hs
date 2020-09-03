@@ -1,6 +1,6 @@
 module Ergvein.Wallet.Worker.PubKeysGenerator
   (
-    externalPubKeysGenerator
+    pubKeysGenerator
   , generateNewPubKeysByE
   ) where
 
@@ -12,11 +12,14 @@ import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Util
 
-externalPubKeysGenerator :: MonadFront t m => m ()
-externalPubKeysGenerator = do
+pubKeysGenerator :: MonadFront t m => m ()
+pubKeysGenerator = do
   pubStoreD <- getPubStorageD
-  let derivePubKeysE = fforMaybe (updated pubStoreD) (nothingIf (< 1) . getMissingPubKeysCount BTC External)
-  generateNewPubKeysByE BTC $ (External,) <$> derivePubKeysE
+  let pubStoreUpdateE = updated pubStoreD
+      deriveExternalPubKeysE = fforMaybe pubStoreUpdateE (nothingIf (< 1) . getMissingPubKeysCount BTC External)
+      deriveInternalPubKeysE = fforMaybe pubStoreUpdateE (nothingIf (< 1) . getMissingPubKeysCount BTC Internal)
+  generateNewPubKeysByE BTC $ (External,) <$> deriveExternalPubKeysE
+  generateNewPubKeysByE BTC $ (Internal,) <$> deriveInternalPubKeysE
   pure ()
 
 generateNewPubKeysByE :: MonadFront t m => Currency -> Event t (KeyPurpose, Int) -> m (Event t ())

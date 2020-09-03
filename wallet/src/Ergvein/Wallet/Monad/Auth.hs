@@ -351,7 +351,7 @@ liftAuth ma0 ma = mdo
           heightAsking
           indexersNetworkActualizationWorker
           feesWorker
-          externalPubKeysGenerator
+          pubKeysGenerator
           pure ()
         runReaderT (wrapped "liftAuth" ma) env
   let
