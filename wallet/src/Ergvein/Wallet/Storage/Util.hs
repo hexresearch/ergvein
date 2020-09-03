@@ -326,15 +326,18 @@ getMissingPubKeysCount currency keyPurpose pubStorage = missingKeysCount
     lastUnusedKeyIndex = fst <$> pubStorageLastUnusedKey currency keyPurpose pubStorage
     missingKeysCount = calcMissingKeys keyPurpose lastUnusedKeyIndex keysCount
 
-derivePubKeys :: Currency -> PubStorage -> (KeyPurpose, Int) -> PubKeystore
-derivePubKeys currency pubStorage (keyPurpose, n) = ks'
+derivePubKeys :: Currency -> PubStorage -> (Int, Int) -> PubKeystore
+derivePubKeys currency pubStorage (external, internal) = ks''
   where
-    keysCount = V.length $ pubStorageKeys currency keyPurpose pubStorage
-    masterPubKey = maybe (error $ "No " <> currencyStr <> " master key!") id $ pubStoragePubMaster currency pubStorage
-    newKeys = derivePubKey masterPubKey keyPurpose . fromIntegral <$> [keysCount .. keysCount + n - 1]
-    ks = maybe (error $ "No " <> currencyStr <> " key storage!") id $ pubStorageKeyStorage currency pubStorage
-    ks' = foldl' (flip $ addXPubKeyToKeystore keyPurpose) ks newKeys
     currencyStr = T.unpack $ currencyName currency
+    masterPubKey = maybe (error $ "No " <> currencyStr <> " master key!") id $ pubStoragePubMaster currency pubStorage
+    ks = maybe (error $ "No " <> currencyStr <> " key storage!") id $ pubStorageKeyStorage currency pubStorage
+    externalKeysCount = V.length $ pubStorageKeys currency External pubStorage
+    internalKeysCount = V.length $ pubStorageKeys currency Internal pubStorage
+    newExternalKeys = derivePubKey masterPubKey External . fromIntegral <$> [externalKeysCount .. externalKeysCount + external - 1]
+    newInternalKeys = derivePubKey masterPubKey Internal . fromIntegral <$> [internalKeysCount .. internalKeysCount + internal - 1]
+    ks'  = foldl' (flip $ addXPubKeyToKeystore External) ks newExternalKeys
+    ks'' = foldl' (flip $ addXPubKeyToKeystore Internal) ks' newInternalKeys
 
 calcMissingKeys :: KeyPurpose -> Maybe Int -> Int -> Int
 calcMissingKeys keyPurpose (Just lastUnusedKeyIndex) keysCount = (spareKeysCount keyPurpose) - (keysCount - lastUnusedKeyIndex)
