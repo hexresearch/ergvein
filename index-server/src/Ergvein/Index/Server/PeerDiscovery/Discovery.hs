@@ -39,28 +39,6 @@ import Ergvein.Types.Block
 import qualified Data.Map.Strict     as Map
 import qualified Data.Set            as Set
 
-peerKnownPeers :: BaseUrl -> ExceptT PeerValidationResult ServerM [BaseUrl]
-peerKnownPeers baseUrl = do
-  infoResult <- peerInfoRequest baseUrl
-  knownPeers <- peerKnownPeersRequest baseUrl
-  pure $ extractAddresses knownPeers
-  where
-    extractAddresses :: KnownPeersResp -> [BaseUrl]
-    extractAddresses = mapMaybe parseBaseUrl . knownPeersList
-
-considerPeerCandidate :: PeerCandidate -> ExceptT PeerValidationResult ServerM ()
-considerPeerCandidate candidate = do
-  baseUrl <- peerBaseUrl $ peerCandidateUrl candidate
-  knownPeers <- lift $ getKnownPeersList1
-  knowPeersSet <- undefined
-  if not $ Set.member baseUrl knowPeersSet then do
-    _ <- peerKnownPeers baseUrl
-    currentTime <- liftIO getCurrentTime
-    let newPeer = Peer baseUrl currentTime $ baseUrlScheme baseUrl
-    lift $ addKnownPeers [newPeer]
-  else
-    ExceptT $ pure $ Left AlreadyKnown
-
 considerPeerCandidate1 :: PeerCandidate1 -> ExceptT PeerValidationResult ServerM ()
 considerPeerCandidate1 candidate = undefined
    
@@ -78,9 +56,9 @@ knownPeersActualization1 = do
     scanIteration thread = do
      PeerDiscoveryRequisites {..} <- getDiscoveryRequisites
      currentTime <- liftIO getCurrentTime
-     knownPeers <- getKnownPeersList1
+     knownPeers <- getKnownPeersList
      let peersToFetchFrom = isNotOutdated descReqPredefinedPeers descReqActualizationTimeout currentTime `filter` knownPeers
-     setKnownPeersList1 peersToFetchFrom
+     setKnownPeersList peersToFetchFrom
      openedConnectionsRef <- asks envOpenConnections
      opened <- liftIO $ Map.keysSet <$> readTVarIO openedConnectionsRef
      let toOpen = Set.toList $ opened Set.\\ (Set.fromList $ peerAddress <$> peersToFetchFrom)
@@ -91,91 +69,14 @@ knownPeersActualization1 = do
        let fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt1 peer
        in Set.member (peerAddress peer) predefined || retryTimeout >= fromLastSuccess
 
-knownPeersActualization :: ServerM Thread
-knownPeersActualization = do
-  create $ logOnException . scanIteration
-  where
-    scanIteration :: Thread -> ServerM ()
-    scanIteration thread = do
-      requisites  <- getDiscoveryRequisites
-      currentTime <- liftIO getCurrentTime
-      knownPeers  <- getKnownPeersList1
-
-      let peersToFetchFrom = undefined --(isNotOutdated (descReqPredefinedPeers requisites) (descReqActualizationTimeout requisites) currentTime) `filter` knownPeers
-      
-      knowPeersSet <- knownPeersSet peersToFetchFrom
-      (failed, successful, fetched) <- mconcat <$> mapM queryKnownPeersTo peersToFetchFrom
-      let uniqueFetchedUrls = undefined --(not . (`Set.member` knowPeersSet)) `filter` uniqueElements fetched
-          uniqueFetched = (\x-> Peer x currentTime (baseUrlScheme x)) <$> uniqueFetchedUrls
-      let refreshedSuccessful = (\x-> x {peerLastValidatedAt = currentTime}) <$> successful
-      setKnownPeersList $ failed ++ refreshedSuccessful ++ uniqueFetched
-      liftIO $ threadDelay $ descReqActualizationDelay requisites
-
-    isNotOutdated :: Set BaseUrl -> NominalDiffTime -> UTCTime -> Peer -> Bool
-    isNotOutdated predefined retryTimeout currentTime peer =
-      let fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt peer
-      in Set.member (peerUrl peer) predefined || retryTimeout >= fromLastSuccess
-
-    queryKnownPeersTo :: Peer -> ServerM ([Peer], [Peer], [BaseUrl])
-    queryKnownPeersTo peer = do
-      knownPeers <- runExceptT $ peerKnownPeers $ peerUrl peer
-      pure $ case knownPeers of
-        Right peers -> ([]     , [peer] , peers)
-        otherwise   -> ([peer] , []     , []   )
-
 syncWithDefaultPeers :: ServerM ()
 syncWithDefaultPeers = do
   discoveredPeers <- getKnownPeersList
   predefinedPeers <- descReqPredefinedPeers <$> getDiscoveryRequisites
   currentTime <- liftIO getCurrentTime
-  let discoveredPeersSet = Set.fromList $ peerUrl <$> discoveredPeers
-      toAdd = undefined --(\x -> Peer x currentTime (baseUrlScheme x)) <$> (Set.toList $ predefinedPeers Set.\\ discoveredPeersSet)
+  let discoveredPeersSet = Set.fromList $ peerAddress <$> discoveredPeers
+      toAdd = (\x -> Peer1 x currentTime) <$> (Set.toList $ predefinedPeers Set.\\ discoveredPeersSet)
   addKnownPeers toAdd
-
-peerIntroduce :: ServerM ()
-peerIntroduce = void $ runMaybeT $ do
-  ownAddress <- MaybeT $ descReqOwnAddress <$> getDiscoveryRequisites
-  lift $ do
-    allPeers <- getKnownPeersList
-    let introduceReq = IntroducePeerReq $ showBaseUrl undefined--ownAddress
-    forM_ allPeers (flip getIntroducePeerEndpoint introduceReq . peerUrl)
-
-newPeer peerUrl = NewPeer peerUrl (baseUrlScheme peerUrl)
-
-peerBaseUrl :: String -> ExceptT PeerValidationResult ServerM BaseUrl
-peerBaseUrl url = ExceptT $ pure $ maybeToRight InfoEndpointError $ parseBaseUrl url
-
-peerInfoRequest :: BaseUrl -> ExceptT PeerValidationResult ServerM InfoResponse
-peerInfoRequest baseUrl =
-  ExceptT $ (const InfoEndpointError `mapLeft`)
-         <$> getInfoEndpoint baseUrl ()
-
-peerKnownPeersRequest :: BaseUrl -> ExceptT PeerValidationResult ServerM KnownPeersResp
-peerKnownPeersRequest baseUrl =
-  ExceptT $ (const KnownPeersEndpointError `mapLeft`)
-         <$> getKnownPeersEndpoint baseUrl (KnownPeersReq False)
-
-peerActualScan :: InfoResponse -> ExceptT PeerValidationResult ServerM InfoResponse
-peerActualScan candidateInfo = do
-  localInfo <- lift $ scanningInfo
-  let isCandidateScanMatchLocal = mapM currencyScanValidation localInfo
-  except $ candidateInfo <$ isCandidateScanMatchLocal
-  where
-    notLessThenOne local = (local <=) . succ
-
-    currencyScanValidation :: ScanProgressInfo -> Either PeerValidationResult ()
-    currencyScanValidation localInfo = do
-      let localCurrency = nfoCurrency localInfo
-          localScannedHeight =  nfoScannedHeight localInfo
-      candidateNfo <- maybeToRight (CurrencyMissing localCurrency) $ candidateInfoMap Map.!? localCurrency
-      let currencyInSync = and $ notLessThenOne localScannedHeight <$> scanProgressScannedHeight candidateNfo
-      if currencyInSync then
-        Right ()
-      else
-        Left $ CurrencyOutOfSync $ CurrencyOutOfSyncInfo localCurrency localScannedHeight
-
-    candidateInfoMap = Map.fromList $ (\scanInfo -> (scanProgressCurrency scanInfo, scanInfo))
-                                   <$> infoScanProgress candidateInfo
 
 isProgressMatch :: Version -> ServerM Bool
 isProgressMatch ver = do

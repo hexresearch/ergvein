@@ -23,20 +23,10 @@ data PeerValidationResult = OK
   | CurrencyOutOfSync CurrencyOutOfSyncInfo
   | CurrencyMissing Currency
   deriving Show
- 
-data PeerCandidate = PeerCandidate
-  { peerCandidateUrl :: String
-  }
 
 data PeerCandidate1 = PeerCandidate1
   { peerCandidateAddress :: SockAddr
   }
-
-data Peer = Peer
-  { peerUrl              :: BaseUrl
-  , peerLastValidatedAt  :: UTCTime
-  , peerConnScheme       :: Scheme
-  } deriving Show
 
 data Peer1 = Peer1
   { peerAddress           :: SockAddr
@@ -45,11 +35,6 @@ data Peer1 = Peer1
 
 data NewPeer1 = NewPeer1
   { newPeerAddress :: SockAddr
-  }
-
-data NewPeer = NewPeer
-  { newPeerUrl        :: BaseUrl
-  , newPeerConnScheme :: Scheme
   }
 
 data PeerDiscoveryRequisites = PeerDiscoveryRequisites

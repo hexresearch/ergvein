@@ -4,9 +4,7 @@ module Ergvein.Index.Server.DB.Queries
     getKnownPeers
   , getKnownPeersList
   , setKnownPeersList
-  , getKnownPeersList1
-  , setKnownPeersList1
-  , addPeer1
+  , addPeer
   , addKnownPeers
   , emptyKnownPeers
   , initIndexerDb
@@ -66,32 +64,25 @@ getKnownPeers = do
       filteredByLastValidatedAt = filter ((validDate <=) . read . T.unpack . knownPeerRecLastValidatedAt) knownPeers 
   pure $ convert <$> filteredByLastValidatedAt
 
-
-getKnownPeersList :: (HasIndexerDB m, MonadLogger m) => m [Peer]
-getKnownPeersList = undefined
-
-setKnownPeersList :: (HasIndexerDB m, MonadLogger m) => [Peer] -> m ()
-setKnownPeersList peers = undefined
-
-addPeer1 :: (HasIndexerDB m, MonadLogger m) => Peer1 -> m ()
-addPeer1 peer = do
+addPeer :: (HasIndexerDB m, MonadLogger m) => Peer1 -> m ()
+addPeer peer = do
   idb <- getIndexerDb
-  peerList <- getKnownPeersList1
-  setKnownPeersList1 $ peer : peerList 
+  peerList <- getKnownPeersList
+  setKnownPeersList $ peer : peerList
 
-setKnownPeersList1 :: (HasIndexerDB m, MonadLogger m) => [Peer1] -> m ()
-setKnownPeersList1 peers = do
+addKnownPeers :: (HasIndexerDB m, MonadLogger m) => [Peer1] -> m ()
+addKnownPeers peers = undefined
+
+setKnownPeersList :: (HasIndexerDB m, MonadLogger m) => [Peer1] -> m ()
+setKnownPeersList peers = do
   idb <- getIndexerDb
   upsertItem idb knownPeersRecKey $ convert @_ @KnownPeerRecItem <$> peers
 
-getKnownPeersList1 :: (HasIndexerDB m, MonadLogger m) => m [Peer1]
-getKnownPeersList1 = do
+getKnownPeersList :: (HasIndexerDB m, MonadLogger m) => m [Peer1]
+getKnownPeersList = do
   idb <- getIndexerDb
   peers <- getParsedExact @[KnownPeerRecItem] "getKnownPeersList1"  idb knownPeersRecKey
   pure $ convert <$> peers
-
-addKnownPeers :: (HasIndexerDB m, MonadLogger m) => [Peer] -> m ()
-addKnownPeers peers = undefined
 
 emptyKnownPeers :: (HasIndexerDB m, MonadLogger m) => m ()
 emptyKnownPeers = setKnownPeersList []

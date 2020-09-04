@@ -50,7 +50,7 @@ handleMsg address (MVersion Version{..}) = do
  -- pMatch <- isProgressMatch
   if protocolVersion == versionVersion then do
     currentTime <- liftIO getCurrentTime
-    addPeer1 $ Peer1 address currentTime
+    addPeer $ Peer1 address currentTime
     ownVer <- ownVersion
     pure [ MVersionACK $ VersionACK, MVersion ownVer ]
   else
