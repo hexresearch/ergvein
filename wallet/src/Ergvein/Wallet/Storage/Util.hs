@@ -17,6 +17,8 @@ module Ergvein.Wallet.Storage.Util(
   , setLastStorage
   , generateMissingPrvKeys
   , generateMissingPrvKeysHelper
+  , getMissingPubKeysCount
+  , derivePubKeys
   ) where
 
 import Control.Lens
@@ -24,6 +26,7 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.ByteArray           (convert)
 import Data.ByteString          (ByteString)
+import Data.List                (foldl')
 import Data.Maybe
 import Data.Proxy
 import Data.Text                (Text)
@@ -328,3 +331,32 @@ generateMissingPrvKeysHelper _ (CurrencyPrvStorage prvKeystore) (goalExternalKey
         l = goalInternalKeysNum - intLength
         v = V.unfoldrN l (\i -> Just (derivePrvKey masterPrvKey Internal (fromIntegral i), i+1)) intLength
         in currentInternalKeys V.++ v
+
+getMissingPubKeysCount :: Currency -> KeyPurpose -> PubStorage -> Int
+getMissingPubKeysCount currency keyPurpose pubStorage = missingKeysCount
+  where
+    keysCount = V.length $ pubStorageKeys currency keyPurpose pubStorage
+    lastUnusedKeyIndex = fst <$> pubStorageLastUnusedKey currency keyPurpose pubStorage
+    missingKeysCount = calcMissingKeys keyPurpose lastUnusedKeyIndex keysCount
+
+derivePubKeys :: Currency -> PubStorage -> (Int, Int) -> PubKeystore
+derivePubKeys currency pubStorage (external, internal) = ks''
+  where
+    currencyStr = T.unpack $ currencyName currency
+    masterPubKey = maybe (error $ "No " <> currencyStr <> " master key!") id $ pubStoragePubMaster currency pubStorage
+    ks = maybe (error $ "No " <> currencyStr <> " key storage!") id $ pubStorageKeyStorage currency pubStorage
+    externalKeysCount = V.length $ pubStorageKeys currency External pubStorage
+    internalKeysCount = V.length $ pubStorageKeys currency Internal pubStorage
+    newExternalKeys = derivePubKey masterPubKey External . fromIntegral <$> [externalKeysCount .. externalKeysCount + external - 1]
+    newInternalKeys = derivePubKey masterPubKey Internal . fromIntegral <$> [internalKeysCount .. internalKeysCount + internal - 1]
+    ks'  = foldl' (flip $ addXPubKeyToKeystore External) ks newExternalKeys
+    ks'' = foldl' (flip $ addXPubKeyToKeystore Internal) ks' newInternalKeys
+
+calcMissingKeys :: KeyPurpose -> Maybe Int -> Int -> Int
+calcMissingKeys keyPurpose (Just lastUnusedKeyIndex) keysCount = (spareKeysCount keyPurpose) - (keysCount - lastUnusedKeyIndex)
+calcMissingKeys keyPurpose Nothing _ = spareKeysCount keyPurpose
+
+spareKeysCount :: KeyPurpose -> Int
+spareKeysCount keyPurpose = if keyPurpose == External
+  then initialExternalAddressCount
+  else initialInternalAddressCount

@@ -52,6 +52,7 @@ import Ergvein.Wallet.Worker.Fees
 import Ergvein.Wallet.Worker.Height
 import Ergvein.Wallet.Worker.IndexersNetworkActualization
 import Ergvein.Wallet.Worker.Node
+import Ergvein.Wallet.Worker.PubKeysGenerator
 
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
@@ -354,6 +355,7 @@ liftAuth ma0 ma = mdo
           heightAsking
           indexersNetworkActualizationWorker
           feesWorker
+          pubKeysGenerator
           pure ()
         runReaderT (wrapped "liftAuth" ma) env
   let
