@@ -23,6 +23,7 @@ import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Network.Socket
 import Ergvein.Index.Server.DB.Queries
+import Ergvein.Index.Server.PeerDiscovery.Discovery
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -45,13 +46,13 @@ handleMsg address (MPong _) = pure mempty
 
 handleMsg address (MVersionACK _) = pure mempty
 
-handleMsg address (MVersion Version{..}) = do
-
- -- pMatch <- isProgressMatch
-  if protocolVersion == versionVersion then do
-    currentTime <- liftIO getCurrentTime
-    addPeer $ Peer1 address currentTime
-    ownVer <- ownVersion
+handleMsg address (MVersion peerVersion) = do
+  ownVer <- ownVersion 
+  if protocolVersion == versionVersion peerVersion then do
+    isScanActual <- isPeerScanActual (versionScanBlocks ownVer) (versionScanBlocks peerVersion)
+    when isScanActual $ do
+      currentTime <- liftIO getCurrentTime
+      addPeer $ Peer address currentTime
     pure [ MVersionACK $ VersionACK, MVersion ownVer ]
   else
     pure mempty
@@ -79,18 +80,3 @@ handleMsg address (MFeeRequest curs) = do
         _ -> let FeeBundle (_, h) (_, m) (_, l) = fb
           in FeeRespGeneric cur h m l
   pure $ pure $ MFeeResponse $ M.elems resps
-
-ownVersion :: ServerM Version
-ownVersion = do
-  now   <- liftIO $ round <$> getPOSIXTime
-  nonce <- liftIO $ randomIO
-  time  <- liftIO $ fromIntegral . floor <$> getPOSIXTime
-
-  scanNfo <- UV.fromList . fmap convert <$> scanningInfo
-
-  pure $ Version {
-      versionVersion    = protocolVersion
-    , versionTime       = time
-    , versionNonce      = nonce
-    , versionScanBlocks = scanNfo
-    }

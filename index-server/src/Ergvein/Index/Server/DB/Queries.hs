@@ -64,24 +64,24 @@ getKnownPeers = do
       filteredByLastValidatedAt = filter ((validDate <=) . read . T.unpack . knownPeerRecLastValidatedAt) knownPeers 
   pure $ convert <$> filteredByLastValidatedAt
 
-addPeer :: (HasIndexerDB m, MonadLogger m) => Peer1 -> m ()
+addPeer :: (HasIndexerDB m, MonadLogger m) => Peer -> m ()
 addPeer peer = do
   idb <- getIndexerDb
   peerList <- getKnownPeersList
   setKnownPeersList $ peer : peerList
 
-addKnownPeers :: (HasIndexerDB m, MonadLogger m) => [Peer1] -> m ()
+addKnownPeers :: (HasIndexerDB m, MonadLogger m) => [Peer] -> m ()
 addKnownPeers peers = undefined
 
-setKnownPeersList :: (HasIndexerDB m, MonadLogger m) => [Peer1] -> m ()
+setKnownPeersList :: (HasIndexerDB m, MonadLogger m) => [Peer] -> m ()
 setKnownPeersList peers = do
   idb <- getIndexerDb
   upsertItem idb knownPeersRecKey $ convert @_ @KnownPeerRecItem <$> peers
 
-getKnownPeersList :: (HasIndexerDB m, MonadLogger m) => m [Peer1]
+getKnownPeersList :: (HasIndexerDB m, MonadLogger m) => m [Peer]
 getKnownPeersList = do
   idb <- getIndexerDb
-  peers <- getParsedExact @[KnownPeerRecItem] "getKnownPeersList1"  idb knownPeersRecKey
+  peers <- getParsedExact @[KnownPeerRecItem] "getKnownPeersList"  idb knownPeersRecKey
   pure $ convert <$> peers
 
 emptyKnownPeers :: (HasIndexerDB m, MonadLogger m) => m ()
@@ -100,7 +100,7 @@ setScannedHeight currency height = do
 
 initIndexerDb :: DB -> IO ()
 initIndexerDb db = do
-  write db def $ putItem knownPeersRecKey $ convert @Peer1 @KnownPeerRecItem <$> []
+  write db def $ putItem knownPeersRecKey $ convert @Peer @KnownPeerRecItem <$> []
 
 addBlockInfo :: (HasFiltersDB m, HasIndexerDB m, MonadLogger m) => BlockInfo -> m ()
 addBlockInfo update = do

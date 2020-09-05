@@ -4,6 +4,7 @@ import Conversion
 import Data.ByteString.Builder
 import Data.Maybe
 import Data.Text
+import Data.Either
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Schema.Filters
@@ -11,13 +12,15 @@ import Ergvein.Index.Server.PeerDiscovery.Types as DiscoveryTypes
 import Network.Socket
 import Servant.Client.Core
 import Ergvein.Index.Server.DB.Schema.Indexer
+import Data.Attoparsec.ByteString
+import Data.Attoparsec.Binary
 import qualified Data.ByteString.Lazy as BSL
 
 instance Conversion TxInfo TxRec where
   convert txInfo = TxRec (txHash txInfo) (txHexView txInfo) (txOutputsCount txInfo)
 
-instance Conversion DiscoveryTypes.Peer1 KnownPeerRecItem where
-  convert Peer1 {..} = let
+instance Conversion DiscoveryTypes.Peer KnownPeerRecItem where
+  convert Peer {..} = let
     validatedAt = pack $ show $ peerLastValidatedAt1
     (port, ip) = case peerAddress of
       SockAddrInet p i -> (p, V4 i)
@@ -28,13 +31,13 @@ instance Conversion DiscoveryTypes.Peer1 KnownPeerRecItem where
       , knownPeerRecLastValidatedAt = validatedAt
       }
 
-instance Conversion KnownPeerRecItem DiscoveryTypes.Peer1 where
+instance Conversion KnownPeerRecItem DiscoveryTypes.Peer where
   convert KnownPeerRecItem {..} = let
     port = (fromInteger $ toInteger knownPeerRecPort)
     addr = case knownPeerRecIP of
       V4 ip -> SockAddrInet port ip
       V6 ip -> SockAddrInet6 port 0 ip 0
-    in DiscoveryTypes.Peer1
+    in DiscoveryTypes.Peer
       { peerAddress = addr
       , peerLastValidatedAt1 = read $ unpack $ knownPeerRecLastValidatedAt
       }
@@ -52,3 +55,14 @@ instance Conversion KnownPeerRecItem Address where
         , addressPort    = knownPeerRecPort
         , addressAddress = BSL.toStrict $ toLazyByteString $ word32BE a <> word32BE b <> word32BE c <> word32BE d
         } 
+
+instance Conversion Address SockAddr where
+  convert Address{..} = case addressType of
+    IPV4 -> let
+      port = (fromInteger $ toInteger addressPort)
+      ip  =  fromRight (error "address") $ parseOnly anyWord32be addressAddress
+      in SockAddrInet port ip
+    IPV6 -> let 
+      port = (fromInteger $ toInteger addressPort)
+      ip  =  fromRight (error "address") $ parseOnly ((,,,) <$> anyWord32be <*> anyWord32be <*> anyWord32be <*> anyWord32be) addressAddress
+      in SockAddrInet6 port 0 ip 0

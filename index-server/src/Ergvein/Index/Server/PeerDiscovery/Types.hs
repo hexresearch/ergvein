@@ -24,16 +24,12 @@ data PeerValidationResult = OK
   | CurrencyMissing Currency
   deriving Show
 
-data PeerCandidate1 = PeerCandidate1
-  { peerCandidateAddress :: SockAddr
-  }
-
-data Peer1 = Peer1
+data Peer = Peer
   { peerAddress           :: SockAddr
   , peerLastValidatedAt1  :: UTCTime
   } deriving Show
 
-data NewPeer1 = NewPeer1
+data NewPeer = NewPeer
   { newPeerAddress :: SockAddr
   }
 

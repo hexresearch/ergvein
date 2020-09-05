@@ -28,7 +28,7 @@ onStartup env = do
   scanningWorkers <- blockchainScanning
   syncWithDefaultPeers
   feeWorkers <- feesScanning
-  peerActThread <- knownPeersActualization1
+  peerActThread <- knownPeersActualization
   tcpServerThread <- runTcpSrv
   pure $ peerActThread : tcpServerThread : scanningWorkers ++ feeWorkers
 
