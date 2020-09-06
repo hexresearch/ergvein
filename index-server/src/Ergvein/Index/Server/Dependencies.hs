@@ -24,7 +24,6 @@ import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Types.Fees
 import Network.HTTP.Client
 import Network.Socket
-import Servant.Client.Core
 
 import qualified Data.Map.Strict            as Map
 import qualified Network.HTTP.Client        as HC

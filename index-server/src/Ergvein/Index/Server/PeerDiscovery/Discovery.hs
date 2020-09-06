@@ -1,4 +1,10 @@
-module Ergvein.Index.Server.PeerDiscovery.Discovery where
+module Ergvein.Index.Server.PeerDiscovery.Discovery 
+  ( considerPeer
+  , knownPeersSet
+  , knownPeersActualization
+  , syncWithDefaultPeers
+  , ownVersion
+  )where
 
 import Control.Concurrent.STM
 import Control.Immortal
@@ -26,9 +32,7 @@ import Ergvein.Types.Transaction
 
 import qualified Data.Map.Strict      as Map
 import qualified Data.Set             as Set
-import qualified Data.Vector          as V 
 import qualified Data.Vector.Unboxed  as UV
-import qualified Data.ByteString.Lazy as BSL
 
 considerPeer :: Version -> PeerCandidate -> ServerM ()
 considerPeer ownVer PeerCandidate {..} = do

@@ -20,9 +20,6 @@ import Ergvein.Text
 
 import qualified Data.Text.IO as T
 
-onStartup' :: ServerEnv -> ServerM [Thread]
-onStartup' env = fmap pure runTcpSrv
-
 onStartup :: ServerEnv -> ServerM [Thread]
 onStartup env = do
   scanningWorkers <- blockchainScanning

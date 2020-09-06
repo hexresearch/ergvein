@@ -7,28 +7,23 @@ import Conversion
 import Data.Time.Clock.POSIX
 import Control.Monad.Random
 
-import Ergvein.Index.API.Types
 import Ergvein.Index.Protocol.Types as IPT
 import Ergvein.Index.Server.DB.Monad
+import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema.Filters
 import Ergvein.Index.Server.DB.Utils
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
-import Ergvein.Index.Server.TCPService.Conversions
+import Ergvein.Index.Server.PeerDiscovery.Discovery
+import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 import Ergvein.Types.Transaction
-import Ergvein.Index.Server.BlockchainScanning.Common
-import Ergvein.Index.Server.BlockchainScanning.Types
-import Ergvein.Index.Server.PeerDiscovery.Types
 import Network.Socket
-import Ergvein.Index.Server.DB.Queries
-import Ergvein.Index.Server.PeerDiscovery.Discovery
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
-import qualified Data.Vector.Unboxed as UV
 
 getBlockMetaSlice :: Currency -> BlockHeight -> BlockHeight -> ServerM [BlockMetaRec]
 getBlockMetaSlice currency startHeight endHeight = do

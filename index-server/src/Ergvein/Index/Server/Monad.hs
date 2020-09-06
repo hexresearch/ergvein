@@ -1,29 +1,22 @@
 module Ergvein.Index.Server.Monad where
 
 import Control.Concurrent.STM
+import Control.Immortal
 import Control.Monad.Base
 import Control.Monad.Catch hiding (Handler)
-import Control.Monad.Except
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Reader
 import Control.Monad.Trans.Control
-import Servant.Server
-import Servant.Server.Generic
 
 import Ergvein.Index.Client
-import Ergvein.Index.Protocol.Types (CurrencyCode, Message)
+import Ergvein.Index.Protocol.Types (Message)
 import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
-import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
-import Ergvein.Types.Currency
 import Ergvein.Types.Fees
-import Control.Immortal
-import Control.Concurrent
-import Network.Socket
-import Ergvein.Index.Server.TCPService.Connections 
 
 import qualified Data.Map.Strict as M
 import qualified Network.Bitcoin.Api.Client  as BitcoinApi
@@ -32,7 +25,6 @@ import qualified Network.Ergo.Api.Client     as ErgoApi
 newtype ServerM a = ServerM { unServerM :: ReaderT ServerEnv (LoggingT IO) a }
   deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader ServerEnv, MonadThrow, MonadCatch, MonadMask, MonadBase IO)
 
-type AsServerM = AsServerT ServerM
 
 newtype StMServerM a = StMServerM { unStMServerM :: StM (ReaderT ServerEnv (LoggingT IO)) a }
 
@@ -41,18 +33,8 @@ instance MonadBaseControl IO ServerM where
   liftBaseWith f = ServerM $ liftBaseWith $ \q -> f (fmap StMServerM . q . unServerM)
   restoreM = ServerM . restoreM . unStMServerM
 
-catchHandler :: IO a -> Handler a
-catchHandler = Handler . ExceptT . try
-
-runServerM :: ServerEnv -> ServerM a -> Handler a
-runServerM e = catchHandler . runChanLoggingT (envLogger e) . flip runReaderT e . unServerM
-
 runServerMIO :: ServerEnv -> ServerM a -> IO a
-runServerMIO env m = do
-  ea <- runHandler $ runServerM env m
-  case ea of
-    Left e -> fail $ "runServerMIO: " <> show e
-    Right a -> return a
+runServerMIO e = runChanLoggingT (envLogger e) . flip runReaderT e . unServerM
 
 instance HasFiltersDB ServerM where
   getFiltersDb = asks envFiltersDBContext

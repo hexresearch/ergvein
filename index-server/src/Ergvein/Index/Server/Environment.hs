@@ -15,7 +15,6 @@ import Database.LevelDB.Base
 import Network.Bitcoin.Api.Types
 import Network.HTTP.Client.TLS
 import Network.Socket
-import Servant.Client.Core
 
 import Ergvein.Index.Protocol.Types (CurrencyCode, Message)
 import Ergvein.Index.Server.Config
@@ -61,17 +60,6 @@ discoveryRequisites cfg = let
       filteredKnownPeers
       (cfgPeerActualizationDelay cfg)
       (cfgPeerActualizationTimeout cfg)
-  where
-
-    parsedOwnAddress :: String -> BaseUrl
-    parsedOwnAddress address = let
-      err = error $ "Error cannot parse ownPeerAddress setting"
-      in fromMaybe err $ parseBaseUrl address
-
-    parseKnownPeer :: String -> BaseUrl
-    parseKnownPeer address = let
-      err = error $ "Error cannot parse peer '" <> address <> "'"
-      in fromMaybe err $ parseBaseUrl address
 
 newServerEnv :: (MonadIO m, MonadLogger m) => Bool -> Config -> m ServerEnv
 newServerEnv noDropFilters cfg = do

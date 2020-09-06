@@ -32,7 +32,6 @@ import Data.Time.Clock
 import Database.LevelDB
 import Database.LevelDB.Iterator
 import Ergvein.Index.Server.Dependencies
-import Servant.Client.Core
 
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Conversions

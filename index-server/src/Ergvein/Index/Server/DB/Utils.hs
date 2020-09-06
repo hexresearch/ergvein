@@ -35,7 +35,6 @@ import Data.Word
 import Database.LevelDB
 import Database.LevelDB.Iterator
 import Ergvein.Index.Server.Dependencies
-import Servant.Client.Core
 import System.ByteOrder
 
 -- import Ergvein.Index.Server.DB.Monad

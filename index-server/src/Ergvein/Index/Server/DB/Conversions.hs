@@ -10,7 +10,6 @@ import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Schema.Filters
 import Ergvein.Index.Server.PeerDiscovery.Types as DiscoveryTypes
 import Network.Socket
-import Servant.Client.Core
 import Ergvein.Index.Server.DB.Schema.Indexer
 import Data.Attoparsec.ByteString
 import Data.Attoparsec.Binary
