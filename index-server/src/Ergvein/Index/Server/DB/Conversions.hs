@@ -21,7 +21,7 @@ instance Conversion TxInfo TxRec where
 
 instance Conversion DiscoveryTypes.Peer KnownPeerRecItem where
   convert Peer {..} = let
-    validatedAt = pack $ show $ peerLastValidatedAt1
+    validatedAt = pack $ show $ peerLastValidatedAt
     (port, ip) = case peerAddress of
       SockAddrInet p i -> (p, V4 i)
       SockAddrInet6 p _ i _ -> (p, V6 i)
@@ -39,7 +39,7 @@ instance Conversion KnownPeerRecItem DiscoveryTypes.Peer where
       V6 ip -> SockAddrInet6 port 0 ip 0
     in DiscoveryTypes.Peer
       { peerAddress = addr
-      , peerLastValidatedAt1 = read $ unpack $ knownPeerRecLastValidatedAt
+      , peerLastValidatedAt = read $ unpack $ knownPeerRecLastValidatedAt
       }
 
 instance Conversion KnownPeerRecItem Address where

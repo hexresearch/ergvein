@@ -1,11 +1,11 @@
 module Ergvein.Index.Server.DB.Queries
   (
     -- * Indexer db queries
-    getKnownPeers
-  , getKnownPeersList
-  , setKnownPeersList
-  , addPeer
-  , addKnownPeers
+    getActualPeers
+  , getPeerList
+  , setPeerList
+  , upsertPeer
+  , deletePeer
   , emptyKnownPeers
   , initIndexerDb
   , setLastScannedBlock
@@ -54,8 +54,8 @@ import qualified Data.Text as T
 import qualified Database.LevelDB as LDB
 import qualified Database.LevelDB.Streaming as LDBStreaming
 
-getKnownPeers :: (HasIndexerDB m, MonadLogger m, HasDiscoveryRequisites m) => m [Address]
-getKnownPeers = do
+getActualPeers :: (HasIndexerDB m, MonadLogger m, HasDiscoveryRequisites m) => m [Address]
+getActualPeers = do
   idb <- getIndexerDb
   knownPeers <- getParsedExact @[KnownPeerRecItem] "getKnownPeers" idb  knownPeersRecKey
   currentTime <- liftIO getCurrentTime
@@ -64,28 +64,44 @@ getKnownPeers = do
       filteredByLastValidatedAt = filter ((validDate <=) . read . T.unpack . knownPeerRecLastValidatedAt) knownPeers 
   pure $ convert <$> filteredByLastValidatedAt
 
-addPeer :: (HasIndexerDB m, MonadLogger m) => Peer -> m ()
-addPeer peer = do
-  idb <- getIndexerDb
-  peerList <- getKnownPeersList
-  setKnownPeersList $ peer : peerList
-
-addKnownPeers :: (HasIndexerDB m, MonadLogger m) => [Peer] -> m ()
-addKnownPeers peers = undefined
-
-setKnownPeersList :: (HasIndexerDB m, MonadLogger m) => [Peer] -> m ()
-setKnownPeersList peers = do
+setPeerList :: (HasIndexerDB m, MonadLogger m) => [Peer] -> m ()
+setPeerList peers = do
   idb <- getIndexerDb
   upsertItem idb knownPeersRecKey $ convert @_ @KnownPeerRecItem <$> peers
 
-getKnownPeersList :: (HasIndexerDB m, MonadLogger m) => m [Peer]
-getKnownPeersList = do
+getPeerList :: (HasIndexerDB m, MonadLogger m) => m [Peer]
+getPeerList = do
   idb <- getIndexerDb
   peers <- getParsedExact @[KnownPeerRecItem] "getKnownPeersList"  idb knownPeersRecKey
   pure $ convert <$> peers
 
+setPeerRecList :: (HasIndexerDB m, MonadLogger m) => [KnownPeerRecItem] -> m ()
+setPeerRecList peers = do
+  idb <- getIndexerDb
+  upsertItem idb knownPeersRecKey peers
+
+upsertPeer :: (HasIndexerDB m, MonadLogger m) => Peer -> m ()
+upsertPeer peer = do
+  currentList <- peerList
+  let perRec = convert peer
+  setPeerRecList $ perRec : withoutPeer perRec currentList
+
+deletePeer :: (HasIndexerDB m, MonadLogger m) => Peer -> m ()
+deletePeer peer = do
+  currentList <- peerList
+  let perRec = convert peer
+  setPeerRecList $ withoutPeer perRec currentList
+
+withoutPeer :: KnownPeerRecItem ->  [KnownPeerRecItem] -> [KnownPeerRecItem]
+withoutPeer peer = filter (\p -> knownPeerRecIP p == knownPeerRecIP peer && knownPeerRecPort p == knownPeerRecPort peer)
+
+peerList :: (HasIndexerDB m, MonadLogger m) => m [KnownPeerRecItem]
+peerList = do
+  idb <- getIndexerDb
+  getParsedExact @[KnownPeerRecItem] "getKnownPeersList"  idb knownPeersRecKey
+
 emptyKnownPeers :: (HasIndexerDB m, MonadLogger m) => m ()
-emptyKnownPeers = setKnownPeersList []
+emptyKnownPeers = setPeerRecList []
 
 getScannedHeight :: (HasFiltersDB m, MonadLogger m) => Currency -> m (Maybe BlockHeight)
 getScannedHeight currency = do

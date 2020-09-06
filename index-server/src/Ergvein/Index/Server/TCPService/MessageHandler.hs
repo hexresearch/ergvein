@@ -49,16 +49,13 @@ handleMsg address (MVersionACK _) = pure mempty
 handleMsg address (MVersion peerVersion) = do
   ownVer <- ownVersion 
   if protocolVersion == versionVersion peerVersion then do
-    isScanActual <- isPeerScanActual (versionScanBlocks ownVer) (versionScanBlocks peerVersion)
-    when isScanActual $ do
-      currentTime <- liftIO getCurrentTime
-      addPeer $ Peer address currentTime
+    considerPeer ownVer $ PeerCandidate address $ versionScanBlocks ownVer
     pure [ MVersionACK $ VersionACK, MVersion ownVer ]
   else
     pure mempty
 
 handleMsg address (MPeerRequest _) = do
-  knownPeers <- getKnownPeers
+  knownPeers <- getActualPeers
   pure $ pure $ MPeerResponse $ PeerResponse $ V.fromList knownPeers
 
 handleMsg address (MFiltersRequest FilterRequest {..}) = do

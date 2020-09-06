@@ -1,36 +1,24 @@
-module Ergvein.Index.Server.PeerDiscovery.Types where
+module Ergvein.Index.Server.PeerDiscovery.Types 
+  ( Peer (..)
+  , PeerCandidate (..)
+  , PeerDiscoveryRequisites (..)
+  )where
 
-import Data.Time
-import Ergvein.Types.Block
-import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
-import Servant.Client.Core.BaseUrl
-import Data.Time.Clock
-import Data.Text
 import Data.Set (Set)
+import Data.Time
 import Network.Socket
+import Ergvein.Index.Protocol.Types
 
-data CurrencyOutOfSyncInfo = CurrencyOutOfSyncInfo
-  { outOfsyncCurrency    :: Currency
-  , outOfSyncLocalHeight :: BlockHeight
-  } deriving Show
-
-data PeerValidationResult = OK
-  | UrlFormatError
-  | AlreadyKnown
-  | InfoEndpointError
-  | KnownPeersEndpointError
-  | CurrencyOutOfSync CurrencyOutOfSyncInfo
-  | CurrencyMissing Currency
-  deriving Show
+import qualified Data.Vector.Unboxed as UV
 
 data Peer = Peer
-  { peerAddress           :: SockAddr
-  , peerLastValidatedAt1  :: UTCTime
+  { peerAddress          :: !SockAddr
+  , peerLastValidatedAt  :: !UTCTime
   } deriving Show
 
-data NewPeer = NewPeer
-  { newPeerAddress :: SockAddr
+data PeerCandidate = PeerCandidate
+  { peerCandidateAddress    :: !SockAddr
+  , peerCandidateScanBlocks :: !(UV.Vector ScanBlock)
   }
 
 data PeerDiscoveryRequisites = PeerDiscoveryRequisites

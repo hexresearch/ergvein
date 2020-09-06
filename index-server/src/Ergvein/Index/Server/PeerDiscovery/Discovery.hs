@@ -24,21 +24,22 @@ import Ergvein.Index.Server.Utils
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
-
-import qualified Data.Map.Strict     as Map
-import qualified Data.Set            as Set
-import qualified Data.Vector         as V 
-import qualified Data.Vector.Unboxed as UV
+import qualified Data.Map.Strict      as Map
+import qualified Data.Set             as Set
+import qualified Data.Vector          as V 
+import qualified Data.Vector.Unboxed  as UV
 import qualified Data.ByteString.Lazy as BSL
 
-upsertPeers :: [Address] ->  ServerM ()
-upsertPeers addresses = upsertPeer $ convert <$> addresses
-
-upsertPeer :: [SockAddr] -> ServerM ()
-upsertPeer newPeers = do
-  knownPeers <- knownPeersSet =<< getKnownPeersList
-  --let newList = newPeers ++ knownPeers
-  undefined
+considerPeer :: Version -> PeerCandidate -> ServerM ()
+considerPeer ownVer PeerCandidate {..} = do
+  ownAddress <- descReqOwnAddress <$> getDiscoveryRequisites
+  isScanActual <- isPeerScanActual (versionScanBlocks ownVer) peerCandidateScanBlocks
+  when (Just peerCandidateAddress /= ownAddress && isScanActual) $ do
+    currentTime <- liftIO getCurrentTime
+    upsertPeer $ Peer
+      { peerAddress          = peerCandidateAddress
+      , peerLastValidatedAt  = currentTime
+      }
 
 knownPeersSet :: [Peer] -> ServerM (Set SockAddr)
 knownPeersSet discoveredPeers = do
@@ -53,9 +54,9 @@ knownPeersActualization  = do
     scanIteration thread = do
      PeerDiscoveryRequisites {..} <- getDiscoveryRequisites
      currentTime <- liftIO getCurrentTime
-     knownPeers <- getKnownPeersList
+     knownPeers <- getPeerList
      let notOutdatedPeers = isNotOutdated descReqPredefinedPeers descReqActualizationTimeout currentTime `filter` knownPeers
-     setKnownPeersList notOutdatedPeers
+     setPeerList notOutdatedPeers
      openedConnectionsRef <- openConnections
      opened <- liftIO $ Map.keysSet <$> readTVarIO openedConnectionsRef
      let peersToConnect = Set.toList $ opened Set.\\ (Set.fromList $ peerAddress <$> notOutdatedPeers)
@@ -63,17 +64,17 @@ knownPeersActualization  = do
      broadcastSocketMessage $ MPeerRequest PeerRequest
     isNotOutdated :: Set SockAddr -> NominalDiffTime -> UTCTime -> Peer -> Bool
     isNotOutdated predefined retryTimeout currentTime peer = 
-       let fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt1 peer
+       let fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt peer
        in Set.member (peerAddress peer) predefined || retryTimeout >= fromLastSuccess
 
 syncWithDefaultPeers :: ServerM ()
 syncWithDefaultPeers = do
-  discoveredPeers <- getKnownPeersList
+  discoveredPeers <- getPeerList
   predefinedPeers <- descReqPredefinedPeers <$> getDiscoveryRequisites
   currentTime <- liftIO getCurrentTime
   let discoveredPeersSet = Set.fromList $ peerAddress <$> discoveredPeers
       toAdd = (\x -> Peer x currentTime) <$> (Set.toList $ predefinedPeers Set.\\ discoveredPeersSet)
-  addKnownPeers toAdd
+  setPeerList toAdd
 
 isPeerScanActual :: UV.Vector ScanBlock -> UV.Vector ScanBlock -> ServerM Bool
 isPeerScanActual localScanBlocks peerScanBlocks  = do
