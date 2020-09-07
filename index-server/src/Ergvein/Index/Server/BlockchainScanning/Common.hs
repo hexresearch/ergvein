@@ -53,12 +53,11 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
     blockIteration totalh blockHeight = do
       now <- liftIO $ getCurrentTime
       let percent = fromIntegral blockHeight / fromIntegral totalh :: Double
-      bi <- scanInfo blockHeight
       logInfoN $ "["<> showt now <> "] "
         <> "Scanning height for " <> showt currency <> " "
-        <> showt blockHeight <> " / " <> showt totalh <> " (" <> showf 2 (100*percent) <> "%): "
-        <> showt (length $ blockContentTxInfos bi)
-      pure bi
+        <> showt blockHeight <> " / " <> showt totalh <> " (" <> showf 2 (100*percent) <> "%)"
+        -- <> showt (length $ spentTxsHash bi)
+      scanInfo blockHeight
 
     scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
@@ -81,7 +80,7 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
               Right blockInfo | enoughSpace -> do
                 previousBlockSame <- isPreviousBlockSame $ blockMetaPreviousHeaderBlockHashHexView $ blockInfoMeta blockInfo
                 if previousBlockSame then do --fork detection
-                  addBlockInfo blockInfo
+                  addBlockInfo blockInfo to
                   when (current == to) $ broadcastFilter $ blockInfoMeta blockInfo
                   go (succ current) to
                 else previousBlockChanged current to

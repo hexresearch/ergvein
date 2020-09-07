@@ -13,7 +13,6 @@ import Control.Monad.Logger
 import Conversion
 import Data.ByteString
 import Data.Default
-import Data.Flat
 import Data.List
 import Data.Maybe
 import Data.Proxy
@@ -45,7 +44,7 @@ openDb noDropFilters dbtag dbDirectory = do
   levelDBContext <- liftIO $ do
     db <- open canonicalPathDirectory def {createIfMissing = True }
     if (noDropFilters && dbtag == DBFilters) then do
-      put db def schemaVersionRecKey (flat schemaVersion)
+      put db def schemaVersionRecKey schemaVersion
       pure db
       else do
         dbSchemaVersion <- dbSchemaVersion db
@@ -59,9 +58,7 @@ openDb noDropFilters dbtag dbDirectory = do
     (schemaVersionRecKey, schemaVersion) = case dbtag of
       DBFilters -> (DBF.schemaVersionRecKey, DBF.schemaVersion)
       DBIndexer -> (DBI.schemaVersionRecKey, DBI.schemaVersion)
-    dbSchemaVersion db = do
-      maybeDbSchemaVersion <- get db def schemaVersionRecKey
-      pure $ unflatExact <$> maybeDbSchemaVersion
+    dbSchemaVersion db = get db def schemaVersionRecKey
     clearDirectoryContent path = do
       content <- listDirectory path
       let contentFullPaths = (path </>) <$> content
@@ -71,6 +68,6 @@ openDb noDropFilters dbtag dbDirectory = do
     restoreDb pt = do
        clearDirectoryContent pt
        ctx <- open pt def {createIfMissing = True }
-       put ctx def schemaVersionRecKey (flat schemaVersion)
+       put ctx def schemaVersionRecKey schemaVersion
        when (dbtag == DBIndexer) $ initIndexerDb ctx
        pure ctx

@@ -19,7 +19,7 @@ import Crypto.Hash.SHA256
 import Data.ByteString (ByteString)
 import Data.ByteString.Short (ShortByteString)
 import Data.FileEmbed
-import Data.Flat
+import GHC.Generics
 import Data.Serialize (Serialize)
 import Data.Word
 

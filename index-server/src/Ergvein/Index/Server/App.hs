@@ -26,12 +26,13 @@ onStartup' env = fmap pure runTcpSrv
 onStartup :: ServerEnv -> ServerM [Thread]
 onStartup env = do
   scanningWorkers <- blockchainScanning
-  syncWithDefaultPeers
-  feeWorkers <- feesScanning
-  peerIntroduce
-  knownPeersActualization
-  tcpServerThread <- runTcpSrv
-  pure $ tcpServerThread : scanningWorkers ++ feeWorkers
+  -- syncWithDefaultPeers
+  -- feeWorkers <- feesScanning
+  -- peerIntroduce
+  -- knownPeersActualization
+  -- tcpServerThread <- runTcpSrv
+  -- pure $ tcpServerThread : scanningWorkers ++ feeWorkers
+  pure scanningWorkers
 
 onShutdown :: ServerEnv -> [Thread] -> IO ()
 onShutdown env workerTreads = do

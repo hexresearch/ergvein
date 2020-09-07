@@ -4,9 +4,11 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Types.Block
 
+import Control.DeepSeq
 import Data.ByteString
 import Data.ByteString.Short (ShortByteString)
 import Data.Word
+import GHC.Generics
 
 data BlockMetaInfo = BlockMetaInfo
   { blockMetaCurrency      :: Currency
@@ -20,7 +22,9 @@ data TxInfo = TxInfo
   { txHash         :: TxHash
   , txBytes        :: ByteString
   , txOutputsCount :: Word32
-  }
+  } deriving (Show, Generic)
+
+instance NFData TxInfo
 
 data BlockInfo = BlockInfo
   { blockInfoMeta       :: BlockMetaInfo

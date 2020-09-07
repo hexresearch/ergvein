@@ -18,7 +18,7 @@ import Crypto.Hash.SHA256
 import Data.ByteString (ByteString)
 import Data.ByteString.Short (ShortByteString)
 import Data.FileEmbed
-import Data.Flat
+import GHC.Generics
 import Data.Serialize (Serialize)
 import Data.Text
 import Data.Word
@@ -46,7 +46,9 @@ keyString keyPrefix key = (fromIntegral $ fromEnum keyPrefix) `BS.cons` S.encode
 knownPeersRecKey :: ByteString
 knownPeersRecKey  = keyString Peer $ mempty @String
 
-data KnownPeersRec = KnownPeersRec [KnownPeerRecItem] deriving (Generic, Show, Eq, Ord)
+data KnownPeersRec = KnownPeersRec {
+    unKnownPeersRec :: [KnownPeerRecItem]
+  } deriving (Generic, Show, Eq, Ord)
 
 data KnownPeerRecItem = KnownPeerRecItem
   { knownPeerRecUrl             :: !Text

@@ -31,6 +31,7 @@ import Data.Aeson as A
 import Data.Aeson.Types (Parser)
 import Data.ByteString (ByteString)
 import Data.ByteString.Short (ShortByteString)
+import Control.DeepSeq
 import Data.String (IsString, fromString)
 import Data.Text as T
 import Data.Time
@@ -186,7 +187,7 @@ type PubKeyScriptHash = Text
 
 -- | Hexadecimal representation of transaction hash
 newtype TxHash = TxHash {getTxHash :: ShortByteString}
-  deriving (Eq, Ord, Hashable, Generic, Flat, Serialize)
+  deriving (Eq, Ord, Hashable, Generic, Flat, Serialize, NFData)
 
 instance Show TxHash where
     showsPrec _ = shows . encodeHex . BSS.fromShort . getTxHash

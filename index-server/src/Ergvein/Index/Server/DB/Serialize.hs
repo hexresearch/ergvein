@@ -1,9 +1,13 @@
 module Ergvein.Index.Server.DB.Serialize
   (
-    ErgSerialize(..)
+    EgvSerialize(..)
+  , putTxInfosAsRecs
+  , serializeToTxRec
   ) where
 
+import Control.DeepSeq
 import Control.Monad (replicateM)
+import Control.Parallel.Strategies
 import Data.Attoparsec.Binary
 import Data.Attoparsec.ByteString
 import Data.ByteString (ByteString)
@@ -11,9 +15,11 @@ import Data.ByteString.Builder as BB
 import Data.Foldable
 import Data.Word
 
+import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Schema.Filters
 import Ergvein.Index.Server.DB.Schema.Indexer
 import Ergvein.Index.Server.DB.Serialize.Class
+import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
 import qualified Data.Attoparsec.ByteString as Parse
@@ -23,36 +29,35 @@ import qualified Data.ByteString.Short as BSS
 import qualified Data.Map.Strict as M
 import qualified Data.Sequence as Seq
 import qualified Data.Text.Encoding as TE
+import qualified Database.LevelDB as LDB
 
 -- ===========================================================================
---           instance ErgSerialize ScannedHeightRec
+--           instance EgvSerialize ScannedHeightRec
 -- ===========================================================================
 
-instance ErgSerialize ScannedHeightRec where
-  ergSerialize (ScannedHeightRec sh) = BL.toStrict . toLazyByteString $ word64LE sh
-  ergDeserialize = parseOnly $ ScannedHeightRec <$> anyWord64le
+instance EgvSerialize ScannedHeightRec where
+  egvSerialize _ (ScannedHeightRec sh) = BL.toStrict . toLazyByteString $ word64LE sh
+  egvDeserialize _ = parseOnly $ ScannedHeightRec <$> anyWord64le
 
 -- ===========================================================================
---           instance ErgSerialize TxRec
+--           instance EgvSerialize TxRec
 -- ===========================================================================
 
-instance ErgSerialize TxRec where
-  ergSerialize    = serializeTxRec
-  ergDeserialize  = deserializeTxRec
+instance EgvSerialize TxRec where
+  egvSerialize    = serializeTxRec
+  egvDeserialize  = deserializeTxRec
 
-deserializeTxRec :: ByteString -> Either String TxRec
-deserializeTxRec bs = flip parseOnly bs $ do
-  txHashLen <- fromIntegral <$> anyWord16le
-  txRecHash <- fmap (TxHash . BSS.toShort) $ Parse.take txHashLen
+deserializeTxRec :: Currency -> ByteString -> Either String TxRec
+deserializeTxRec cur bs = flip parseOnly bs $ do
+  txRecHash <- fmap (TxHash . BSS.toShort) $ Parse.take (getTxHashLength cur)
   txBytesLen <- fromIntegral <$> anyWord64le
   txRecBytes <- Parse.take txBytesLen
   txRecUnspentOutputsCount <- anyWord32le
   pure $ TxRec{..}
 
-serializeTxRec :: TxRec -> ByteString
-serializeTxRec TxRec{..} = BL.toStrict . toLazyByteString $
-      word16LE txHashLen
-  <> shortByteString txh
+serializeTxRec :: Currency -> TxRec -> ByteString
+serializeTxRec cur TxRec{..} = BL.toStrict . toLazyByteString $
+     shortByteString txh
   <> word64LE txBytesLen
   <> byteString txRecBytes
   <> word32LE txRecUnspentOutputsCount
@@ -62,28 +67,26 @@ serializeTxRec TxRec{..} = BL.toStrict . toLazyByteString $
     txBytesLen = fromIntegral $ BS.length txRecBytes
 
 -- ===========================================================================
---           instance ErgSerialize BlockMetaRec
+--           instance EgvSerialize BlockMetaRec
 -- ===========================================================================
 
-instance ErgSerialize BlockMetaRec where
-  ergSerialize (BlockMetaRec hd filt) = BL.toStrict . toLazyByteString $ let
-    len1 = fromIntegral $ BSS.length hd
-    len2 = fromIntegral $ BS.length filt
-    in word16LE len1 <> shortByteString hd <> word64LE len2 <> byteString filt
-  ergDeserialize = parseOnly $ do
-    len1 <- fromIntegral <$> anyWord16le
-    blockMetaRecHeaderHashHexView <- fmap BSS.toShort $ Parse.take len1
-    len2 <- fromIntegral <$> anyWord64le
-    blockMetaRecAddressFilterHexView <- Parse.take len2
+instance EgvSerialize BlockMetaRec where
+  egvSerialize cur (BlockMetaRec hd filt) = BL.toStrict . toLazyByteString $ let
+    len = fromIntegral $ BS.length filt
+    in shortByteString hd <> word64LE len <> byteString filt
+  egvDeserialize cur = parseOnly $ do
+    blockMetaRecHeaderHashHexView <- fmap BSS.toShort $ Parse.take (getBlockHashLength cur)
+    len <- fromIntegral <$> anyWord64le
+    blockMetaRecAddressFilterHexView <- Parse.take len
     pure BlockMetaRec{..}
 
 -- ===========================================================================
---           instance ErgSerialize KnownPeerRecItem, KnownPeersRec
+--           instance EgvSerialize KnownPeerRecItem, KnownPeersRec
 -- ===========================================================================
 
-instance ErgSerialize KnownPeerRecItem where
-  ergSerialize = BL.toStrict . toLazyByteString . knownPeerRecItemBuilder
-  ergDeserialize = parseOnly knownPeerRecItemParser
+instance EgvSerialize KnownPeerRecItem where
+  egvSerialize _ = BL.toStrict . toLazyByteString . knownPeerRecItemBuilder
+  egvDeserialize _ = parseOnly knownPeerRecItemParser
 
 knownPeerRecItemBuilder :: KnownPeerRecItem -> Builder
 knownPeerRecItemBuilder KnownPeerRecItem{..} =
@@ -108,45 +111,42 @@ knownPeerRecItemParser = do
   knownPeerRecLastValidatedAt <- fmap TE.decodeUtf8 $ Parse.take valLen
   pure KnownPeerRecItem{..}
 
-instance ErgSerialize KnownPeersRec where
-  ergSerialize (KnownPeersRec items) = BL.toStrict . toLazyByteString $ let
+instance EgvSerialize KnownPeersRec where
+  egvSerialize _ (KnownPeersRec items) = BL.toStrict . toLazyByteString $ let
     els = knownPeerRecItemBuilder <$> items
     num = fromIntegral $ length els
     in word32LE num <> mconcat els
 
-  ergDeserialize = parseOnly $ do
+  egvDeserialize _ = parseOnly $ do
     num <- fmap fromIntegral anyWord32le
     fmap KnownPeersRec $ replicateM num knownPeerRecItemParser
 
 -- ===========================================================================
---           instance ErgSerialize LastScannedBlockHeaderHashRec
+--           instance EgvSerialize LastScannedBlockHeaderHashRec
 -- ===========================================================================
 
-instance ErgSerialize LastScannedBlockHeaderHashRec where
-  ergSerialize (LastScannedBlockHeaderHashRec hs) = BL.toStrict . toLazyByteString $ let
-    size = fromIntegral $ BSS.length hs
-    in word16LE size <> shortByteString hs
-  ergDeserialize = parseOnly $ do
-    size <- fromIntegral <$> anyWord16le
-    fmap (LastScannedBlockHeaderHashRec . BSS.toShort) $ Parse.take size
+instance EgvSerialize LastScannedBlockHeaderHashRec where
+  egvSerialize _ (LastScannedBlockHeaderHashRec hs) = BL.toStrict . toLazyByteString $ shortByteString hs
+  egvDeserialize cur = parseOnly $ do
+    fmap (LastScannedBlockHeaderHashRec . BSS.toShort) $ Parse.take (getTxHashLength cur)
 
 -- ===========================================================================
---           instance ErgSerialize ContentHistoryRecItem, ContentHistoryRec
+--           instance EgvSerialize ContentHistoryRecItem, ContentHistoryRec
 -- ===========================================================================
 
-instance ErgSerialize ContentHistoryRecItem where
-  ergSerialize = BL.toStrict . toLazyByteString . contentHistoryRecItemBuilder
-  ergDeserialize = parseOnly contentHistoryRecItemParser
+instance EgvSerialize ContentHistoryRecItem where
+  egvSerialize _ = BL.toStrict . toLazyByteString . contentHistoryRecItemBuilder
+  egvDeserialize = parseOnly . contentHistoryRecItemParser
 
 
-instance ErgSerialize ContentHistoryRec where
-  ergSerialize (ContentHistoryRec items) =
+instance EgvSerialize ContentHistoryRec where
+  egvSerialize _ (ContentHistoryRec items) =
     let len = fromIntegral $ Seq.length items
         bs = fold $ fmap contentHistoryRecItemBuilder items
     in BL.toStrict . toLazyByteString $ word32LE len <> bs
-  ergDeserialize = parseOnly $ do
+  egvDeserialize cur = parseOnly $ do
     len <- fromIntegral <$> anyWord32le
-    fmap (ContentHistoryRec . Seq.fromList) $ replicateM len contentHistoryRecItemParser
+    fmap (ContentHistoryRec . Seq.fromList) $ replicateM len (contentHistoryRecItemParser cur)
 
 contentHistoryRecItemBuilder :: ContentHistoryRecItem -> Builder
 contentHistoryRecItemBuilder (ContentHistoryRecItem spent addedHash) =
@@ -155,26 +155,24 @@ contentHistoryRecItemBuilder (ContentHistoryRecItem spent addedHash) =
       <> word32LE len
       <> mconcat (txHashBuilder <$> addedHash)
 
-contentHistoryRecItemParser :: Parser ContentHistoryRecItem
-contentHistoryRecItemParser = do
-  spent <- hash2Word32MapParser
+contentHistoryRecItemParser :: Currency -> Parser ContentHistoryRecItem
+contentHistoryRecItemParser cur = do
+  spent <- hash2Word32MapParser cur
   num <- fmap fromIntegral anyWord32le
-  addedHash <- replicateM num txHashParser
+  addedHash <- replicateM num (txHashParser cur)
   pure $ ContentHistoryRecItem spent addedHash
 
-txHashParser :: Parser TxHash
-txHashParser = do
-  len <- fromIntegral <$> anyWord16le
-  fmap (TxHash . BSS.toShort) $ Parse.take len
+txHashParser :: Currency -> Parser TxHash
+txHashParser cur = fmap (TxHash . BSS.toShort) $ Parse.take $ getTxHashLength cur
 
 txHashBuilder :: TxHash -> Builder
-txHashBuilder (TxHash th) = word16LE (fromIntegral $ BSS.length th) <> shortByteString th
+txHashBuilder (TxHash th) = shortByteString th
 
-hash2Word32MapParser :: Parser (M.Map TxHash Word32)
-hash2Word32MapParser = do
+hash2Word32MapParser :: Currency -> Parser (M.Map TxHash Word32)
+hash2Word32MapParser cur = do
   num <- fromIntegral <$> anyWord32le
   fmap M.fromList $ replicateM num $ do
-    th <- txHashParser
+    th <- txHashParser cur
     c <- anyWord32le
     pure (th, c)
 
@@ -186,9 +184,30 @@ hash2Word32MapBuilder ms = word32LE num <> elb
     elb = mconcat $ flip fmap els $ \(th,c) -> txHashBuilder th <> word32LE c
 
 -- ===========================================================================
---           instance ErgSerialize SchemaVersionRec
+--           instance EgvSerialize SchemaVersionRec
 -- ===========================================================================
 --
--- instance ErgSerialize SchemaVersionRec where
---   ergSerialize Text = "Text"
---   ergDeserialize = const $ Right Text
+
+instance EgvSerialize ByteString where
+  egvSerialize _ bs = BL.toStrict . toLazyByteString $
+    word16LE (fromIntegral $ BS.length bs) <> byteString bs
+  egvDeserialize _ = parseOnly $ Parse.take . fromIntegral =<< anyWord16le
+
+-- ===========================================================================
+--           Some utils
+-- ===========================================================================
+
+putTxInfosAsRecs :: Currency -> [TxInfo] -> LDB.WriteBatch
+putTxInfosAsRecs cur items = fmap (uncurry LDB.Put) $ parMap rdeepseq putI (force items)
+  where putI item = (txRecKey $ txHash $ item, ) $ serializeToTxRec cur item
+
+serializeToTxRec :: Currency -> TxInfo -> BS.ByteString
+serializeToTxRec cur TxInfo{..} = BL.toStrict . toLazyByteString $
+      byteString txh
+  <> word64LE txBytesLen
+  <> byteString txBytes
+  <> word32LE txOutputsCount
+  where
+    txh = BSS.fromShort $ getTxHash txHash
+    txHashLen = fromIntegral $ BS.length txh
+    txBytesLen = fromIntegral $ BS.length txBytes
