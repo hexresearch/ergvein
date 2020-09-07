@@ -83,14 +83,13 @@ constructGcs p k m ls = G.fromVectorUnboxed p ids
 -- Note: the filter is consumed after the operation. Use 'matchGcsMany' to match
 -- against several targets at once.
 matchGcs :: MonadIO m
-  => Int -- ^ the bit P parameter of the Golomb-Rice coding
-  -> SipKey -- ^ k the 128-bit key used to randomize the SipHash outputs
+  => SipKey -- ^ k the 128-bit key used to randomize the SipHash outputs
   -> Word64 -- ^ M the target false positive rate
   -> Word64 -- ^ N the total amount of items in set
   -> GCS -- ^ Filter set
   -> ByteString -- ^ Target to test against Gcs
   -> m Bool
-matchGcs p k m n !gcs !target = fmap fst $ G.foldl f (False, 0) gcs
+matchGcs k m n !gcs !target = fmap fst $ G.foldl f (False, 0) gcs
   where
     targetHash = hashToRange (n * m) k target
     f (!_, !lastValue) delta = pure $ let
@@ -102,14 +101,13 @@ matchGcs p k m n !gcs !target = fmap fst $ G.foldl f (False, 0) gcs
 -- | Same as `matchGcs` but allows to check several targets against the GCS.
 -- Note that the filter is consumed after the operation.
 matchGcsMany :: (MonadIO m)
-  => Int -- ^ the bit P parameter of the Golomb-Rice coding
-  -> SipKey -- ^ k the 128-bit key used to randomize the SipHash outputs
+  => SipKey -- ^ k the 128-bit key used to randomize the SipHash outputs
   -> Word64 -- ^ M the target false positive rate
   -> Word64 -- ^ N the total amount of items in set
   -> GCS -- ^ Filter set
   -> [ByteString] -- ^ Targets to test against Gcs
   -> m Bool
-matchGcsMany p k m n gcs targets = fmap (\(v,_,_)->v) $ G.foldl f (False, targetHashes, 0) gcs
+matchGcsMany k m n gcs targets = fmap (\(v,_,_)->v) $ G.foldl f (False, targetHashes, 0) gcs
   where
     targetHashes = fmap (hashToRange (n * m) k) targets
     f (!_, !hs, !lastValue) delta = pure $ let

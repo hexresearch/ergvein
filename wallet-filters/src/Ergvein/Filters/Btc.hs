@@ -3,60 +3,33 @@
 -- inside the filter to save bandwidth.
 {-# LANGUAGE BangPatterns #-}
 module Ergvein.Filters.Btc
-  ( -- * SegWit address
-    SegWitAddress(..)
-  , guardSegWit
-  , fromSegWit
-    -- * Filter
-  , BtcAddrFilter(..)
+  ( -- * Filter
+    BtcAddrFilter(..)
   , encodeBtcAddrFilter
   , decodeBtcAddrFilter
   , makeBtcFilter
   , applyBtcFilter
-  -- * Testing
-  , getSegWitAddr
+  -- * Reexports
+  , module Ergvein.Filters.Btc.Index
   )
 where
 
 import           Data.ByteArray.Hash            ( SipKey(..) )
 import           Data.ByteString                ( ByteString )
-import           Data.Map.Strict                ( Map )
-import           Data.Maybe
 import           Data.Serialize                 ( encode )
 import           Data.Word
-import           Ergvein.Filters.Btc.Address
+import           Ergvein.Filters.Btc.Index
 import           Ergvein.Filters.Btc.VarInt
 import           Ergvein.Filters.GCS
-import           Ergvein.Types.Address          (btcAddrToString')
 import           GHC.Generics
-import           Network.Haskoin.Address
 import           Network.Haskoin.Block
-import           Network.Haskoin.Constants
-import           Network.Haskoin.Crypto         ( Hash160
-                                                , Hash256
-                                                )
-import           Network.Haskoin.Script
 import           Network.Haskoin.Transaction
 
-import qualified Data.Attoparsec.Binary        as A
 import qualified Data.Attoparsec.ByteString    as A
-import qualified Data.Binary                   as B
 import qualified Data.ByteString               as BS
 import qualified Data.ByteString.Builder       as B
 import qualified Data.ByteString.Lazy          as BSL
-import qualified Data.Map.Strict               as M
-import qualified Data.Text.Encoding            as T
 import qualified Data.Vector                   as V
-
--- | Default value for P parameter (amount of bits in golomb rice encoding).
--- Set to fixed `19` according to BIP-158.
-btcDefP :: Int
-btcDefP = 19
-
--- | Default value for M parameter (the target false positive rate).
--- Set to fixed `784931` according to BIP-158.
-btcDefM :: Word64
-btcDefM = 784931
 
 -- | BIP 158 filter that tracks only Bech32 SegWit addresses that are used in specific block.
 data BtcAddrFilter = BtcAddrFilter {
@@ -79,35 +52,24 @@ decodeBtcAddrFilter = A.parseOnly (parser <* A.endOfInput)
       <$> parseVarInt
       <*> fmap (decodeGcs btcDefP) A.takeByteString
 
-
-instance B.Binary BtcAddrFilter where
-  put = B.put . encodeBtcAddrFilter
-  {-# INLINE put #-}
-  get = do
-    bs <- B.get
-    either fail pure $ decodeBtcAddrFilter bs
-  {-# INLINE get #-}
-
--- | Contains each input tx for each tx in a block
-type InputTxs = [Tx]
-
--- | Add each segwit transaction to filter. We add Bech32 addresses for outputs that
--- are used as inputs in the given block and addresses that are outputs of transactions
--- in the given block.
+-- | Add scripts of tx outputs to filter.
 --
--- Network argument controls whether we are in testnet or mainnet.
-makeBtcFilter :: Network -> InputTxs -> Block -> BtcAddrFilter
-makeBtcFilter net intxs block = BtcAddrFilter
-  { btcAddrFilterN   = n
-  , btcAddrFilterGcs = constructGcs btcDefP sipkey btcDefM totalSet
-  }
+-- To add outputs that is ergvein indexable, use `isErgveinIndexable`.
+-- To add outputs that is compatible with BIP158, use `isBip158Indexable`.
+makeBtcFilter :: forall m . HasTxIndex m => (ByteString -> Bool) -> Block -> m BtcAddrFilter
+makeBtcFilter check block = do
+  inputSet <- foldInputs collect [] block
+  let totalSet = V.fromList $ outputSet <> inputSet
+      n = fromIntegral $ V.length totalSet
+  pure BtcAddrFilter
+      { btcAddrFilterN   = n
+      , btcAddrFilterGcs = constructGcs btcDefP sipkey btcDefM totalSet
+      }
  where
-  makeSegWitSet = fmap (encodeSegWitAddress net) . catMaybes . concatMap
-    (fmap getSegWitAddr . txOut)
-  outputSet = makeSegWitSet $ blockTxns block
-  inputSet  = makeSegWitSet intxs
-  totalSet  = V.fromList $ outputSet <> inputSet
-  n         = fromIntegral $ V.length totalSet
+  collect :: [ByteString] -> ByteString -> m [ByteString]
+  collect !as bs = pure $ if check bs then bs : as else as
+  makeGcsSet = concatMap (fmap scriptOutput . txOut)
+  outputSet = makeGcsSet $ drop 1 $ blockTxns block
   sipkey    = blockSipHash . headerHash . blockHeader $ block
 
 -- | Siphash key for filter is first 16 bytes of the hash (in standard little-endian representation)
@@ -117,18 +79,12 @@ blockSipHash :: BlockHash -> SipKey
 blockSipHash = fromBs . BS.reverse . encode . getBlockHash
  where
   toWord64 =
-    fst . foldl (\(!acc, !i) b -> (acc + fromIntegral b ^ i, i + 1)) (0, 1)
+    fst . foldl (\(!acc, !i) b -> (acc + fromIntegral b ^ i, i + 1 :: Word64)) (0, 1)
   fromBs bs = SipKey (toWord64 $ BS.unpack . BS.take 8 $ bs)
                      (toWord64 $ BS.unpack . BS.take 8 . BS.drop 8 $ bs)
 
 -- | Check that given address is located in the filter.
-applyBtcFilter :: Network -> BlockHash -> BtcAddrFilter -> SegWitAddress -> Bool
-applyBtcFilter net bhash BtcAddrFilter {..} addr = matchGcs btcDefP
-                                                            sipkey
-                                                            btcDefM
-                                                            btcAddrFilterN
-                                                            btcAddrFilterGcs
-                                                            item
+applyBtcFilter :: BlockHash -> BtcAddrFilter -> ByteString -> Bool
+applyBtcFilter bhash BtcAddrFilter {..} item = matchGcs sipkey btcDefM btcAddrFilterN btcAddrFilterGcs item
  where
-  item   = encodeSegWitAddress net addr
   sipkey = blockSipHash bhash

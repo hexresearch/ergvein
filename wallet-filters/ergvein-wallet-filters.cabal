@@ -1,5 +1,5 @@
 name:                ergvein-wallet-filters
-version:             0.1.0.0
+version:             0.2.0.0
 synopsis:            Tools to generate and use BIP 158 filters for ergvein wallet.
 description:         See README.md
 category:            Cryptocurrency
@@ -16,7 +16,7 @@ library
   exposed-modules:
     Ergvein.Filters
     Ergvein.Filters.Btc
-    Ergvein.Filters.Btc.Address
+    Ergvein.Filters.Btc.Index
     Ergvein.Filters.Btc.Mutable
     Ergvein.Filters.Btc.VarInt
     Ergvein.Filters.GCS
@@ -49,6 +49,7 @@ library
     DeriveGeneric
     OverloadedStrings
     RecordWildCards
+    ScopedTypeVariables
     TemplateHaskell
 
 test-suite ergvein-wallet-filters-test
