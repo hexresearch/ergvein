@@ -6,6 +6,11 @@ module Ergvein.Filters.Btc.Index(
   -- * Constants for BIP158
     btcDefP
   , btcDefM
+  -- * Filter hash
+  , FilterHash(..)
+  , filterHashFromText
+  , filterHashToText
+  , preGenesisFilterHash
   -- * Outpoint quering context
   , HasTxIndex(..)
   , withInputTxs
@@ -17,14 +22,16 @@ module Ergvein.Filters.Btc.Index(
   , addressToScriptBS
   ) where
 
-import Data.Word
-import Data.Map.Strict (Map)
 import Control.Monad.Reader
+import Data.ByteString ( ByteString )
+import Data.Map.Strict (Map)
+import Data.Text (Text)
+import Data.Word
+import Ergvein.Text
 import Network.Haskoin.Address
 import Network.Haskoin.Block
 import Network.Haskoin.Script
 import Network.Haskoin.Transaction
-import Data.ByteString ( ByteString )
 
 import qualified Data.Map.Strict as M
 
@@ -37,6 +44,22 @@ btcDefP = 19
 -- Set to fixed `784931` according to BIP-158.
 btcDefM :: Word64
 btcDefM = 784931
+
+-- | Filter hash is id that is calculated as hash from filter data and hash of previous filter
+newtype FilterHash = FilterHash { unFilterHash :: ByteString }
+  deriving (Eq, Ord, Show)
+
+-- | Decode hex encoded filter hash
+filterHashFromText :: Text -> FilterHash
+filterHashFromText = FilterHash . hex2bs
+
+-- | Encode filter hash as hex
+filterHashToText :: FilterHash -> Text
+filterHashToText = bs2Hex . unFilterHash
+
+-- | Special hash for filter before genesis block
+preGenesisFilterHash :: FilterHash
+preGenesisFilterHash = filterHashFromText "0000000000000000000000000000000000000000000000000000000000000000"
 
 -- | Creation of filters require quering of each output script for each input tx,
 -- so you need provide  a way `makeBtcFilter` can query them.

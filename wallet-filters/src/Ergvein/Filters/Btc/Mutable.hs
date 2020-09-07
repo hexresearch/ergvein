@@ -7,6 +7,7 @@ module Ergvein.Filters.Btc.Mutable
     BtcAddrFilter(..)
   , encodeBtcAddrFilter
   , decodeBtcAddrFilter
+  , btcAddrFilterHash
   , makeBtcFilter
   , applyBtcFilter
   , applyBtcFilterMany
@@ -15,8 +16,9 @@ module Ergvein.Filters.Btc.Mutable
   )
 where
 
-import           Control.Monad.IO.Class
 import           Control.DeepSeq
+import           Control.Monad.IO.Class
+import           Crypto.Hash                    ( SHA256 (..), hashWith)
 import           Data.ByteArray.Hash            ( SipKey(..) )
 import           Data.ByteString                ( ByteString )
 import           Data.Serialize                 ( encode )
@@ -29,6 +31,7 @@ import           Network.Haskoin.Block
 import           Network.Haskoin.Transaction
 
 import qualified Data.Attoparsec.ByteString    as A
+import qualified Data.ByteArray                as BA
 import qualified Data.ByteString               as BS
 import qualified Data.ByteString.Builder       as B
 import qualified Data.ByteString.Lazy          as BSL
@@ -58,6 +61,15 @@ decodeBtcAddrFilter bs = case A.parseOnly (parser <* A.endOfInput) bs of
    pure . Right $ BtcAddrFilter w gcs
  where
   parser = (,) <$> parseVarInt <*> A.takeByteString
+
+-- | Calculate filter hash of filter based on previous filter hash
+btcAddrFilterHash :: MonadIO m => BtcAddrFilter -> FilterHash -> m FilterHash
+btcAddrFilterHash bf prev = do
+  cnt <- encodeBtcAddrFilter bf
+  pure $ FilterHash . sha256d $ sha256d cnt <> unFilterHash prev
+  where
+    sha256d :: ByteString -> ByteString
+    sha256d = BA.convert . hashWith SHA256 . hashWith SHA256
 
 -- | Add scripts of tx outputs to filter.
 --
