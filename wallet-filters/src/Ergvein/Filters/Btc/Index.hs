@@ -8,6 +8,7 @@ module Ergvein.Filters.Btc.Index(
   , btcDefM
   -- * Outpoint quering context
   , HasTxIndex(..)
+  , withInputTxs
   , foldInputs
   -- * Filtering elements of filter
   , isBip158Indexable
@@ -17,11 +18,15 @@ module Ergvein.Filters.Btc.Index(
   ) where
 
 import Data.Word
+import Data.Map.Strict (Map)
+import Control.Monad.Reader
 import Network.Haskoin.Address
 import Network.Haskoin.Block
 import Network.Haskoin.Script
 import Network.Haskoin.Transaction
 import Data.ByteString ( ByteString )
+
+import qualified Data.Map.Strict as M
 
 -- | Default value for P parameter (amount of bits in golomb rice encoding).
 -- Set to fixed `19` according to BIP-158.
@@ -37,6 +42,20 @@ btcDefM = 784931
 -- so you need provide  a way `makeBtcFilter` can query them.
 class Monad m => HasTxIndex m where
   queryOutPoint :: OutPoint -> m (Maybe ByteString)
+
+instance Monad m => HasTxIndex (ReaderT (Map OutPoint ByteString) m) where
+  queryOutPoint i = do
+    m <- ask
+    pure $ M.lookup i m
+  {-# INLINE queryOutPoint #-}
+
+-- | Execute context with given list of transactions as input. Used for testing
+-- filters with already known set of input transactions.
+withInputTxs :: [Tx] -> (ReaderT (Map OutPoint ByteString) m a) -> m a
+withInputTxs txs = flip runReaderT txmap
+  where
+    txmap :: Map OutPoint ByteString
+    txmap = M.fromList $ concat $ fmap (\tx -> fmap (\(out, i) -> (OutPoint (txHash tx) i, scriptOutput out)) $ txOut tx `zip` [0 ..]) txs
 
 -- | Iterate over all inputs and collect corresponding outputs
 foldInputs :: forall a m . HasTxIndex m => (a -> ByteString -> m a) -> a -> Block -> m a

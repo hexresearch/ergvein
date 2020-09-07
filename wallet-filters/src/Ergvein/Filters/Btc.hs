@@ -59,7 +59,7 @@ decodeBtcAddrFilter = A.parseOnly (parser <* A.endOfInput)
 makeBtcFilter :: forall m . HasTxIndex m => (ByteString -> Bool) -> Block -> m BtcAddrFilter
 makeBtcFilter check block = do
   inputSet <- foldInputs collect [] block
-  let totalSet = V.fromList $ outputSet <> inputSet
+  let totalSet = V.uniq $ V.fromList $ outputSet <> inputSet
       n = fromIntegral $ V.length totalSet
   pure BtcAddrFilter
       { btcAddrFilterN   = n

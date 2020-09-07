@@ -66,7 +66,7 @@ decodeBtcAddrFilter bs = case A.parseOnly (parser <* A.endOfInput) bs of
 makeBtcFilter :: forall m . (MonadIO m, HasTxIndex m) => (ByteString -> Bool) -> Block -> m BtcAddrFilter
 makeBtcFilter check block = do
   inputSet <- foldInputs collect [] block
-  let totalSet = V.fromList $ outputSet <> inputSet
+  let totalSet = V.uniq $ V.fromList $ outputSet <> inputSet
       n = fromIntegral $ V.length totalSet
   gcs <- constructGcs btcDefP sipkey btcDefM totalSet
   pure BtcAddrFilter
@@ -94,20 +94,19 @@ blockSipHash = fromBs . BS.reverse . encode . getBlockHash
 -- | Check that given address is located in the filter. Note that filter is destroyed after the opeeration.
 applyBtcFilter :: MonadIO m => BlockHash -> BtcAddrFilter -> ByteString -> m Bool
 applyBtcFilter bhash BtcAddrFilter {..} item = matchGcs sipkey
-                                                            btcDefM
-                                                            btcAddrFilterN
-                                                            btcAddrFilterGcs
-                                                            item
+                                                        btcDefM
+                                                        btcAddrFilterN
+                                                        btcAddrFilterGcs
+                                                        item
  where
   sipkey = blockSipHash bhash
 
 -- | Check that given address is located in the filter. Note that filter is destroyed after the operation.
 applyBtcFilterMany :: MonadIO m => BlockHash -> BtcAddrFilter -> [ByteString] -> m Bool
-applyBtcFilterMany bhash BtcAddrFilter {..} items = matchGcsMany
-                                                            sipkey
-                                                            btcDefM
-                                                            btcAddrFilterN
-                                                            btcAddrFilterGcs
-                                                            items
+applyBtcFilterMany bhash BtcAddrFilter {..} items = matchGcsMany sipkey
+                                                                 btcDefM
+                                                                 btcAddrFilterN
+                                                                 btcAddrFilterGcs
+                                                                 items
  where
   sipkey = blockSipHash bhash

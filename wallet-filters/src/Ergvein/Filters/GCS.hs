@@ -66,7 +66,7 @@ constructGcs p k m ls = gs
       mv <- VU.unsafeThaw is
       V.sort mv
       VU.unsafeFreeze mv
-    ids = VU.zipWith (-) iss (VU.cons 0 $ VU.uniq iss)
+    ids = VU.uniq $ VU.zipWith (-) iss (VU.cons 0 iss)
     gs = G.fromVectorUnboxed p ids :: G.GolombRice Word64
 
 -- | To check membership of an item in a compressed GCS, one must reconstruct

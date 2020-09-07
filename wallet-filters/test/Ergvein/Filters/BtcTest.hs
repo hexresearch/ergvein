@@ -2,10 +2,13 @@
 module Ergvein.Filters.BtcTest where
 
 import           Test.Tasty.Hspec
+import           Data.Functor.Identity
 import           Data.Maybe
+import           Data.Bifunctor
 import           Network.Haskoin.Address
 import           Network.Haskoin.Block
 import           Network.Haskoin.Constants
+import           Network.Haskoin.Script
 import           Network.Haskoin.Transaction
 import qualified Data.Serialize                as S
 import           Data.Text                      ( Text
@@ -13,43 +16,43 @@ import           Data.Text                      ( Text
                                                 )
 import qualified Data.Text.Encoding            as TE
 import           Data.ByteString                ( ByteString )
-import qualified Data.ByteString               as BS
 import qualified Data.ByteString.Base16        as BS16
 import           Ergvein.Filters.Btc
 import           Ergvein.Text
 import           Ergvein.Types.Address          (btcAddrToString')
 import           Data.Foldable
 
--- import Debug.Trace
+showScript :: ScriptOp -> String
+showScript (OP_PUSHDATA bs opt) = "OP_PUSHDATA " <> unpack (TE.decodeUtf8 (BS16.encode bs)) <> " " <> show opt
+showScript op = show op
 
-spec_filterPositive :: Spec
-spec_filterPositive = forM_ samples $ \(block, txs, as) -> do
-  let bfilter = makeBtcFilter btcTest txs block
+spec_immutableFilterPositive :: Spec
+spec_immutableFilterPositive = forM_ samples $ \(block, txs, as) -> do
+  let bfilter = runIdentity $ withInputTxs txs $ makeBtcFilter isErgveinIndexable block
       bhash   = headerHash . blockHeader $ block
       bid     = blockHashToHex bhash
-  -- traceShowM $ bs2Hex $ encodeBtcAddrFilter bfilter
   describe ("block " ++ show bid) $ do
-    it "block filter encodes-decods to same" $ do
+    it "block filter encodes-decodes to same" $ do
       let hx1 = bs2Hex $ encodeBtcAddrFilter bfilter
       let bfilter2 = either (error "decode error") id $ decodeBtcAddrFilter (hex2bs hx1)
       let hx2 = bs2Hex $ encodeBtcAddrFilter bfilter2
       hx1 `shouldBe` hx2
-    forM_ as $ \a -> do
-      let at = unpack $ btcAddrToString' btcTest $ fromSegWit a
+    forM_ as $ \(a, ascript) -> do
+      let at = unpack $ btcAddrToString' btcTest a
       it ("block filter contains address " ++ at)
-        $          applyBtcFilter btcTest bhash bfilter a
+        $          applyBtcFilter bhash bfilter ascript
         `shouldBe` True
   where samples = zip3 testBlocks testInputTxs testAddresses
 
-spec_filterNegative :: Spec
-spec_filterNegative = forM_ samples $ \(block, txs) -> do
-  let bfilter = makeBtcFilter btcTest txs block
+spec_immutableFilterNegative :: Spec
+spec_immutableFilterNegative = forM_ samples $ \(block, txs) -> do
+  let bfilter = runIdentity $ withInputTxs txs $ makeBtcFilter isErgveinIndexable block
       bhash   = headerHash . blockHeader $ block
       bid     = blockHashToHex bhash
-      at      = unpack $ btcAddrToString' btcTest $ fromSegWit testAddress
+      at      = unpack $ btcAddrToString' btcTest testAddress
   describe ("block " ++ show bid)
     $          it ("block filter should not contain address " ++ at)
-    $          applyBtcFilter btcTest bhash bfilter testAddress
+    $          applyBtcFilter bhash bfilter (addressToScriptBS testAddress)
     `shouldBe` False
   where samples = zip testBlocks testInputTxs
 
@@ -70,27 +73,28 @@ testInputTxs = (fmap . fmap)
   , [ "02000000000101cb928b3d568186d4a167167ba8959e253a320b92499ae926962d8ffcb985dc0001000000171600143332a0772b4b9ea8f84a5fd0a62df51f6dfacf7cfeffffff020852000000000000160014cf6d0a6f8b1dd2a1fc53147fd3ae59edad0099f8989c7c0000000000160014161a71c89d7baca9420212081b5ed5e3fedd349f0247304402207a2805836f7446c434b883015e88a4fa6f1dd6bf67f7f3f7a797f64aecc45b1002204d1b245194d9c0f670210a79e412957452f9ce5fd4a0585c4d6c3d2c1dfeec8401210315ecc79737cc7a484615e8e287d7d53d5166e019f52dbc6387a7c4c2cb27ca1557f11800"
   ]]
 
-testAddresses :: [[SegWitAddress]]
+testAddresses :: [[(Address, ByteString)]]
 testAddresses = (fmap . fmap)
-  loadAddress
-  [ [ "tb1qnrycqvuwahpf8rq0glr675mp8zrxmsua32u482"
-    , "tb1q2n59pluplhy072hg3j2atc7h8as3434uw4wv02"
-    , "tb1qsajm7ff8tahqxnjuv886maa8dfl9m09fm674pe"
+  (bimap loadAddress loadScript)
+  [ [ ("tb1qnrycqvuwahpf8rq0glr675mp8zrxmsua32u482", "001498c980338eedc2938c0f47c7af536138866dc39d")
+    , ("tb1q2n59pluplhy072hg3j2atc7h8as3434uw4wv02", "001454e850ff81fdc8ff2ae88c95d5e3d73f611ac6bc")
     ]
-  , [ "tb1qal6enq02jpmgv7d08cj7a0ng8xlneezrz5g98q"
-    , "tb1ql4x827apmcrh5nlm75pknutjya4f2sy05l23yc"
-    , "tb1qzcd8rjya0wk2jsszzgypkhk4u0ld6dylga9ypz"
+  , [ ("tb1qal6enq02jpmgv7d08cj7a0ng8xlneezrz5g98q", "0014eff59981ea90768679af3e25eebe6839bf3ce443")
+    , ("tb1ql4x827apmcrh5nlm75pknutjya4f2sy05l23yc", "0014fd4c757ba1de077a4ffbf50369f172276a95408f")
+    , ("tb1qzcd8rjya0wk2jsszzgypkhk4u0ld6dylga9ypz", "0014161a71c89d7baca9420212081b5ed5e3fedd349f")
     ]
   ]
 
-testAddress :: SegWitAddress -- that isn't containted in test blocks
+testAddress :: Address -- that isn't containted in test blocks
 testAddress = loadAddress "tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx"
 
-loadAddress :: Text -> SegWitAddress
+loadAddress :: Text -> Address
 loadAddress t =
   fromMaybe (error "Failed to parse address")
-    $   guardSegWit
-    =<< stringToAddr btcTest t
+    $ stringToAddr btcTest t
+
+loadScript :: Text -> ByteString
+loadScript = fst . BS16.decode . TE.encodeUtf8
 
 loadTx :: Text -> Tx
 loadTx = either error id . S.decode @Tx . hex2bs

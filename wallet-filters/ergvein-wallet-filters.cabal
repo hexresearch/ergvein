@@ -40,6 +40,7 @@ library
     , golomb-rice       >= 0.1    && < 0.25
     , haskoin-core      >= 0.12.0 && < 0.12.1
     , memory            >= 0.11
+    , mtl               >= 2.2
     , text              >= 1.2
     , vector            >= 0.12
     , vector-algorithms >= 0.8
@@ -47,6 +48,7 @@ library
   default-extensions:
     DeriveAnyClass
     DeriveGeneric
+    FlexibleInstances
     OverloadedStrings
     RecordWildCards
     ScopedTypeVariables
