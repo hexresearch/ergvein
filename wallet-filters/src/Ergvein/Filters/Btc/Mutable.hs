@@ -28,6 +28,7 @@ import           Data.Maybe
 import           Data.Serialize                 ( encode )
 import           Data.Word
 import           Ergvein.Filters.Btc.Address
+import           Ergvein.Filters.Btc.VarInt
 import           Ergvein.Filters.GCS.Mutable
 import           Ergvein.Types.Address          (btcAddrToString')
 import           GHC.Generics
@@ -73,7 +74,7 @@ encodeBtcAddrFilter :: MonadIO m => BtcAddrFilter -> m ByteString
 encodeBtcAddrFilter BtcAddrFilter {..} = do
   bs <- encodeGcs btcAddrFilterGcs
   pure $ BSL.toStrict . B.toLazyByteString $
-    B.word64BE btcAddrFilterN <> B.byteString bs
+    encodeVarInt btcAddrFilterN <> B.byteString bs
 
 -- | Decoding filter from raw bytes
 decodeBtcAddrFilter :: MonadIO m =>  ByteString -> m (Either String BtcAddrFilter)
@@ -83,7 +84,7 @@ decodeBtcAddrFilter bs = case A.parseOnly (parser <* A.endOfInput) bs of
    gcs <- decodeGcs btcDefP gbs
    pure . Right $ BtcAddrFilter w gcs
  where
-  parser = (,) <$> A.anyWord64be <*> A.takeByteString
+  parser = (,) <$> parseVarInt <*> A.takeByteString
 
 -- instance B.Binary BtcAddrFilter where
 --   put = B.put . encodeBtcAddrFilter

@@ -15,13 +15,14 @@ library
   hs-source-dirs:      src
   exposed-modules:
     Ergvein.Filters
-    Ergvein.Filters.Mutable
     Ergvein.Filters.Btc
     Ergvein.Filters.Btc.Address
     Ergvein.Filters.Btc.Mutable
+    Ergvein.Filters.Btc.VarInt
     Ergvein.Filters.GCS
     Ergvein.Filters.GCS.Mutable
     Ergvein.Filters.Hash
+    Ergvein.Filters.Mutable
   default-language:    Haskell2010
   build-depends:
       base

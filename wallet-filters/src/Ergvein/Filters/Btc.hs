@@ -25,6 +25,7 @@ import           Data.Maybe
 import           Data.Serialize                 ( encode )
 import           Data.Word
 import           Ergvein.Filters.Btc.Address
+import           Ergvein.Filters.Btc.VarInt
 import           Ergvein.Filters.GCS
 import           Ergvein.Types.Address          (btcAddrToString')
 import           GHC.Generics
@@ -66,7 +67,7 @@ data BtcAddrFilter = BtcAddrFilter {
 -- | Encoding filter as simple <length><gcs>
 encodeBtcAddrFilter :: BtcAddrFilter -> ByteString
 encodeBtcAddrFilter BtcAddrFilter {..} =
-  BSL.toStrict . B.toLazyByteString $ B.word64BE btcAddrFilterN <> B.byteString
+  BSL.toStrict . B.toLazyByteString $ encodeVarInt btcAddrFilterN <> B.byteString
     (encodeGcs btcAddrFilterGcs)
 
 -- | Decoding filter from raw bytes
@@ -75,7 +76,7 @@ decodeBtcAddrFilter = A.parseOnly (parser <* A.endOfInput)
  where
   parser =
     BtcAddrFilter
-      <$> A.anyWord64be
+      <$> parseVarInt
       <*> fmap (decodeGcs btcDefP) A.takeByteString
 
 

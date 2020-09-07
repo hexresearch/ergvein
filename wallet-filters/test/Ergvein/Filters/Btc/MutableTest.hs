@@ -61,13 +61,13 @@ spec_filterNegative = forM_ samples $ \(block, txs) -> do
 spec_specificFilter1 :: Spec
 spec_specificFilter1 = do
   describe "filter encode-decode" $ it "idepontent" $ do
-    let filterHex = "0000000000000015024a80000098066800004cd26bc68db000000000030cdd70db52ff43c6000000fa9ea8d5fac400001dc73c000000000137e4b8d5e647dc38"
+    let filterHex = "15024a80000098066800004cd26bc68db000000000030cdd70db52ff43c6000000fa9ea8d5fac400001dc73c000000000137e4b8d5e647dc38"
     hx <- fmap bs2Hex $ encodeBtcAddrFilter =<< getFilter filterHex
     hx `shouldBe` filterHex
   describe "block 000000000000017c36b1c7c70f467244009c552e1732604a0f779fc6ff2d6112 generate filters" $ do
     let bhash   = headerHash . blockHeader $ block1
         bid     = blockHashToHex bhash
-        filterHex = "0000000000000015024a80000098066800004cd26bc68db0000030cdd70db52ff43c6000000fa9ea8d5fac400001dc73c0000137e4b8d5e647dc38"
+        filterHex = "15024a80000098066800004cd26bc68db0000030cdd70db52ff43c6000000fa9ea8d5fac400001dc73c0000137e4b8d5e647dc38"
     it "generates right filter" $ do
       bfilter <- makeBtcFilter btcTest block1Txs block1
       fstr <- bs2Hex <$> encodeBtcAddrFilter bfilter
