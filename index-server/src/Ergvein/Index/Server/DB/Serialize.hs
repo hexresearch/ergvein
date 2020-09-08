@@ -77,9 +77,9 @@ instance EgvSerialize BlockMetaRec where
     len = fromIntegral $ BS.length filt
     in shortByteString hd <> word64LE len <> byteString filt
   egvDeserialize cur = parseOnly $ do
-    blockMetaRecHeaderHashHexView <- fmap BSS.toShort $ Parse.take (getBlockHashLength cur)
+    blockMetaRecHeaderHash <- fmap BSS.toShort $ Parse.take (getBlockHashLength cur)
     len <- fromIntegral <$> anyWord64le
-    blockMetaRecAddressFilterHexView <- Parse.take len
+    blockMetaRecAddressFilter <- Parse.take len
     pure BlockMetaRec{..}
 
 -- ===========================================================================

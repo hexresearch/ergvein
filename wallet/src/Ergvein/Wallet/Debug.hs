@@ -24,7 +24,6 @@ import Ergvein.Wallet.Storage
 import Ergvein.Wallet.Wrapper
 import Ergvein.Index.Protocol.Types (Message(..))
 import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
-import Ergvein.Types.Block
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S

@@ -10,7 +10,6 @@ module Ergvein.Types.Transaction (
     , egvTxId
     , egvTxCurrency
     , TxId(..)
-    , TxHexView
     , BlockHeight
     , BlockHash
     , TxBlockIndex
@@ -159,9 +158,6 @@ instance ToJSON TxId where
 
 instance FromJSONKey TxId where
 instance ToJSONKey TxId where
-
--- | Hexadecimal representation of transaction
-type TxHexView = ByteString
 
 -- | Number of blocks before current one, from the starting from Genesis block with height of zero
 type BlockHeight = Word64

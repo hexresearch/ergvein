@@ -78,8 +78,8 @@ data BlockMetaRecKey = BlockMetaRecKey
   } deriving (Generic, Show, Eq, Ord, Serialize)
 
 data BlockMetaRec = BlockMetaRec
-  { blockMetaRecHeaderHashHexView     :: !ShortByteString
-  , blockMetaRecAddressFilterHexView  :: !ByteString
+  { blockMetaRecHeaderHash     :: !ShortByteString
+  , blockMetaRecAddressFilter  :: !ByteString
   } deriving (Generic, Show, Eq, Ord)
 
 --SchemaVersion

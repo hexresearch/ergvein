@@ -10,11 +10,11 @@ import Data.Word
 import GHC.Generics
 
 data BlockMetaInfo = BlockMetaInfo
-  { blockMetaCurrency      :: Currency
-  , blockMetaBlockHeight   :: BlockHeight
-  , blockMetaHeaderHashHexView :: ShortByteString
-  , blockMetaPreviousHeaderBlockHashHexView :: ShortByteString
-  , blockMetaAddressFilterHexView :: ByteString
+  { blockMetaCurrency      :: !Currency
+  , blockMetaBlockHeight   :: !BlockHeight
+  , blockMetaHeaderHash :: !ShortByteString
+  , blockMetaPreviousHeaderBlockHash :: !ShortByteString
+  , blockMetaAddressFilter :: !ByteString
   }
 
 data TxInfo = TxInfo

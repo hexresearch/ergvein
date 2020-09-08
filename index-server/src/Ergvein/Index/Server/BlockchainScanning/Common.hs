@@ -73,7 +73,7 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
             enoughSpace <- isEnoughSpace
             case tryBlockInfo of
               Right blockInfo | enoughSpace -> do
-                previousBlockSame <- isPreviousBlockSame $ blockMetaPreviousHeaderBlockHashHexView $ blockInfoMeta blockInfo
+                previousBlockSame <- isPreviousBlockSame $ blockMetaPreviousHeaderBlockHash $ blockInfoMeta blockInfo
                 if previousBlockSame then do --fork detection
                   addBlockInfo blockInfo to
                   when (current == to) $ broadcastFilter $ blockInfoMeta blockInfo
@@ -107,8 +107,8 @@ broadcastFilter BlockMetaInfo{..} =
   broadcastSocketMessage $ MFiltersEvent $ FilterEvent
   { filterEventCurrency     = convert blockMetaCurrency
   , filterEventHeight       = blockMetaBlockHeight
-  , filterEventBlockId      = blockMetaHeaderHashHexView
-  , filterEventBlockFilter  = blockMetaAddressFilterHexView
+  , filterEventBlockId      = blockMetaHeaderHash
+  , filterEventBlockFilter  = blockMetaAddressFilter
   }
 
 blockchainScanning :: ServerM [Thread]

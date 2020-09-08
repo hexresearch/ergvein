@@ -1,7 +1,6 @@
 module Ergvein.Index.Server.PeerDiscovery.Types where
 
 import Data.Time
-import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Servant.Client.Core.BaseUrl

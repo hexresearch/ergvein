@@ -108,7 +108,7 @@ addBlockInfo update to = do
   db <- getFiltersDb
   let current = blockMetaBlockHeight $ blockInfoMeta update
   let targetCurrency = blockMetaCurrency $ blockInfoMeta update
-  let newBlockHash = blockMetaHeaderHashHexView $ blockInfoMeta update
+  let newBlockHash = blockMetaHeaderHash $ blockInfoMeta update
   write db def $ putTxInfosAsRecs targetCurrency (blockContentTxInfos update)
   when (to - current <= 64) $
     updateContentHistory targetCurrency (spentTxsHash update) (txHash <$> blockContentTxInfos update)
@@ -134,7 +134,7 @@ addBlockMetaInfos currency infos = do
   write db def $ putItems currency keySelector valueSelector infos
   where
     keySelector   info = metaRecKey (blockMetaCurrency info, blockMetaBlockHeight info)
-    valueSelector info = BlockMetaRec (blockMetaHeaderHashHexView info) (blockMetaAddressFilterHexView info)
+    valueSelector info = BlockMetaRec (blockMetaHeaderHash info) (blockMetaAddressFilter info)
 
 updateContentHistory  :: (HasFiltersDB m, HasIndexerDB m, MonadLogger m) => Currency -> [TxHash] -> [TxHash] -> m ()
 updateContentHistory currency spentTxsHash newTxIds = do

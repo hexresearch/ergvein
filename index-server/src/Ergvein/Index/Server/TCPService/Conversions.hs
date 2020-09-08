@@ -21,8 +21,8 @@ instance Conversion C.Currency CurrencyCode where
 
 instance Conversion BlockMetaRec BlockFilter where
   convert BlockMetaRec {..} = BlockFilter
-    { blockFilterBlockId = blockMetaRecHeaderHashHexView
-    , blockFilterFilter  = blockMetaRecAddressFilterHexView
+    { blockFilterBlockId = blockMetaRecHeaderHash
+    , blockFilterFilter  = blockMetaRecAddressFilter
     }
 
 instance Conversion ScanProgressInfo ScanBlock where

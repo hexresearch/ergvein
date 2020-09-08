@@ -17,7 +17,6 @@ library
     Ergvein.Types
     Ergvein.Types.Address
     Ergvein.Types.AuthInfo
-    Ergvein.Types.Block
     Ergvein.Types.Currency
     Ergvein.Types.Fees
     Ergvein.Types.Keys
