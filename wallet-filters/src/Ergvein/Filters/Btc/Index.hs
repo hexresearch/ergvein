@@ -20,6 +20,7 @@ module Ergvein.Filters.Btc.Index(
   , isErgveinIndexable
     -- * SegWit address helpers
   , addressToScriptBS
+  , scriptToAddressBS
     -- * Siphash
   , blockSipHash
   ) where
