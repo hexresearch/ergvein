@@ -9,7 +9,7 @@ module Ergvein.Types.Transaction (
     , EgvTxMeta(..)
     , egvTxId
     , egvTxCurrency
-    , TxId(..)
+    , TxId
     , BlockHeight
     , BlockHash
     , TxBlockIndex
@@ -19,6 +19,7 @@ module Ergvein.Types.Transaction (
     , PubKeyScriptHash
     , TxHash(..)
     , hkTxHashToEgv
+    , egvBlockHashToHk
     , TxOutIndex
     , currencyHeightStart
     , getEgvTxMeta
@@ -31,6 +32,7 @@ import Data.Aeson.Types (Parser)
 import Data.ByteString (ByteString)
 import Data.ByteString.Short (ShortByteString)
 import Control.DeepSeq
+import Data.Either
 import Data.String (IsString, fromString)
 import Data.Text as T
 import Data.Time
@@ -50,6 +52,7 @@ import Ergvein.Types.Currency
 import           Data.Serialize              as S
 import qualified Network.Haskoin.Block as HB
 import qualified Network.Haskoin.Transaction as HK
+
 type BtcTx = HK.Tx
 
 btcTxToString :: BtcTx -> Text
@@ -86,7 +89,7 @@ egvTxToString (BtcTx tx _) = btcTxToString tx
 egvTxToString (ErgTx tx _) = ergTxToString tx
 
 egvTxId :: EgvTx -> TxId
-egvTxId (BtcTx tx _) = TxId $ getHash256 $ HK.getTxHash $ HK.txHash tx
+egvTxId (BtcTx tx _) = hkTxHashToEgv $ HK.txHash tx
 egvTxId (ErgTx tx _) = error "egvTxId: implement for Ergo!"
 
 egvTxCurrency :: EgvTx -> Currency
@@ -136,34 +139,13 @@ instance FromJSON EgvTx where
     pure $ setEgvTxMeta tx meta
 
 -- | Internal representation of transaction id
-newtype TxId = TxId {getTxId :: ShortByteString}
-  deriving (Eq, Ord, Hashable, Generic, Flat, Serialize)
-
-instance Show TxId where
-    showsPrec _ = shows . encodeHex . BSS.fromShort . getTxId
-
-instance Read TxId where
-    readPrec = do
-        R.String str <- lexP
-        maybe pfail return $ TxId . BSS.toShort <$> decodeHex (cs str)
-
-instance FromJSON TxId where
-  parseJSON = withText "TxId" $
-    maybe (fail "Failed to parse TxId") (pure . TxId) . readMaybe . T.unpack
-  {-# INLINE parseJSON #-}
-
-instance ToJSON TxId where
-  toJSON = A.String . showt
-  {-# INLINE toJSON #-}
-
-instance FromJSONKey TxId where
-instance ToJSONKey TxId where
+type TxId = TxHash
 
 -- | Number of blocks before current one, from the starting from Genesis block with height of zero
 type BlockHeight = Word64
 
 -- | Hash of block (usually header only) that identifies block.
-type BlockHash = Text
+type BlockHash = ShortByteString
 
 -- | Index of the transaction in block
 type TxBlockIndex = Word
@@ -195,15 +177,28 @@ instance Read TxHash where
 
 instance FromJSON TxHash where
   parseJSON = withText "TxHash" $
-    maybe (fail "Failed to parse TxHash") (pure . TxHash) . readMaybe . T.unpack
+    either (fail "Failed to parse TxHash") (pure . TxHash . BSS.toShort) . hex2bsTE
   {-# INLINE parseJSON #-}
 
 instance ToJSON TxHash where
-  toJSON = A.String . showt
+  toJSON = A.String . bs2Hex . BSS.fromShort . getTxHash
   {-# INLINE toJSON #-}
+
+instance FromJSON ShortByteString where
+  parseJSON = withText "ShortByteString" $
+    either (fail "Failed to parse a ShortByteString") (pure . BSS.toShort) . hex2bsTE
+  {-# INLINE parseJSON #-}
+
+instance ToJSON ShortByteString where
+  toJSON = A.String . bs2Hex . BSS.fromShort
+  {-# INLINE toJSON #-}
+
+instance FromJSONKey TxHash where
+instance ToJSONKey TxHash where
 
 hkTxHashToEgv :: HK.TxHash -> TxHash
 hkTxHashToEgv = TxHash . getHash256 . HK.getTxHash
+{-# INLINE hkTxHashToEgv #-}
 
 -- | Index of the UTXO
 type TxOutIndex = Word
@@ -212,6 +207,7 @@ type TxOutIndex = Word
 currencyHeightStart :: Currency -> BlockHeight
 currencyHeightStart = \case BTC  -> 0
                             ERGO -> 1
+{-# INLINE currencyHeightStart #-}
 
 data EgvTxMeta = EgvTxMeta {
   etxMetaHeight :: !(Maybe BlockHeight)
@@ -220,3 +216,7 @@ data EgvTxMeta = EgvTxMeta {
 } deriving (Eq, Show, Read)
 
 $(deriveJSON (aesonOptionsStripPrefix "etxMeta") ''EgvTxMeta)
+
+egvBlockHashToHk :: BlockHash -> HB.BlockHash
+egvBlockHashToHk bh = fromRight (error $ "Failed to convert bh: " <> show bh) $ runGet S.get (BSS.fromShort bh)
+{-# INLINE egvBlockHashToHk #-}

@@ -15,11 +15,10 @@ import Data.Foldable (traverse_)
 import Data.Maybe
 import Database.LMDB.Simple
 import Database.LMDB.Simple.Extra
-import Network.Haskoin.Block
+import Ergvein.Types.Transaction
 
 import Ergvein.Filters.Btc.Mutable
 import Ergvein.Text
-import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Filters.Btc.Types
 import Ergvein.Wallet.Platform
@@ -39,26 +38,25 @@ clearFiltersRange i0 i1 = do
         void $ delete h fdb
         pure ()
 
-insertFilter :: MonadIO m => BlockHeight -> BlockHash -> AddressFilterHexView -> Environment ReadWrite -> m ()
-insertFilter h bh fview e = liftIO . readWriteTransaction e $ do
+insertFilter :: MonadIO m => BlockHeight -> BlockHash -> ByteString -> Environment ReadWrite -> m ()
+insertFilter h bh filt e = liftIO . readWriteTransaction e $ do
   fdb <- getBtcFiltersDb
   hdb <- getBtcHeightsDb
   tdb <- getBtcTotalDb
-  ffor31 either (hex2bsTE fview) (const $ pure ()) $ \f -> do
-    put fdb bh $ Just f
-    put hdb h $ Just bh
-    mtotal <- get tdb ()
-    case mtotal of
-      Just total | total >= h -> pure ()
-      _ -> put tdb () $ Just h
+  put fdb bh $ Just filt
+  put hdb h $ Just bh
+  mtotal <- get tdb ()
+  case mtotal of
+    Just total | total >= h -> pure ()
+    _ -> put tdb () $ Just h
 
-insertMultipleFilters :: (MonadIO m, Foldable t) => t (BlockHeight, BlockHash, AddressFilterHexView) -> Environment ReadWrite -> m ()
+insertMultipleFilters :: (MonadIO m, Foldable t) => t (BlockHeight, BlockHash, ByteString) -> Environment ReadWrite -> m ()
 insertMultipleFilters fs e = liftIO . readWriteTransaction e $ do
   fdb <- getBtcFiltersDb
   hdb <- getBtcHeightsDb
   tdb <- getBtcTotalDb
-  flip traverse_ fs $ \(h,bh,fview) -> ffor31 either (hex2bsTE fview) (const $ pure ()) $ \f -> do
-    put fdb bh $ Just f
+  flip traverse_ fs $ \(h,bh,filt) -> do
+    put fdb bh $ Just filt
     put hdb h $ Just bh
     mtotal <- get tdb ()
     case mtotal of

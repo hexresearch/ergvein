@@ -17,13 +17,14 @@ module Ergvein.Wallet.Filters.Loader (
 ) where
 
 import Control.Monad
+import Data.ByteString (ByteString)
 import Data.Maybe
-import Network.Haskoin.Block
+-- import Network.Haskoin.Block
 
 import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
 import Ergvein.Text
-import Ergvein.Types.Block
 import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
@@ -80,17 +81,14 @@ postSync cur ch fh = do
     setFiltersSync cur $ val == Synced
     setSyncProgress $ val <$ buildE
 
-getFilters :: MonadFront t m => Currency -> Event t (BlockHeight, Int) -> m (Event t [(BlockHash, AddressFilterHexView)])
+getFilters :: MonadFront t m => Currency -> Event t (BlockHeight, Int) -> m (Event t [(BlockHash, ByteString)])
 getFilters cur e = do
   respE <- requestRandomIndexer $ ffor e $ \(h, n) ->
     MFiltersRequest $ FilterRequest curcode (fromIntegral h) (fromIntegral n)
   pure $ fforMaybe respE $ \case
     MFiltersResponse (FilterResponse{..}) -> if filterResponseCurrency /= curcode
       then Nothing
-      else Just $ catMaybes $ V.toList $ ffor filterResponseFilters $ \(BlockFilter bid filt) -> let
-        mbh = hexToBlockHash $ bs2Hex bid
-        fview = bs2Hex filt
-        in (, fview) <$> mbh
+      else Just $ V.toList $ ffor filterResponseFilters $ \(BlockFilter bid filt) -> (bid, filt)
     _ -> Nothing
   where
     curcode = currencyToCurrencyCode cur

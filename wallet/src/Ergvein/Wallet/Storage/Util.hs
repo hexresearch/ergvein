@@ -37,7 +37,7 @@ import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
-import Ergvein.Types.Transaction
+import Ergvein.Types.Transaction as ETT
 import Ergvein.Wallet.Localization.Native
 import Ergvein.Wallet.Localization.Storage
 import Ergvein.Wallet.Platform

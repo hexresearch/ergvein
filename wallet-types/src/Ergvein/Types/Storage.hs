@@ -95,7 +95,7 @@ data CurrencyPubStorage = CurrencyPubStorage {
   , _currencyPubStorage'scannedHeight :: !(Maybe BlockHeight)
   , _currencyPubStorage'headers       :: !(M.Map HB.BlockHash HB.BlockHeader)
   , _currencyPubStorage'outgoing      :: !(S.Set TxId)
-  , _currencyPubStorage'headerSeq     :: !(Word32, V.Vector (BlockHeight, HB.BlockHash))
+  , _currencyPubStorage'headerSeq     :: !(Word32, V.Vector (HB.BlockHeight, HB.BlockHash))
   } deriving (Eq, Show, Read)
 
 makeLenses ''CurrencyPubStorage

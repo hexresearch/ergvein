@@ -13,8 +13,9 @@ module Ergvein.Wallet.Platform(
 
 import GHC.Generics (Generic)
 import Network.Haskoin.Constants
-import Network.Haskoin.Block
+import Network.Haskoin.Block as HB
 import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
 import qualified Ergvein.Types.Transaction as ETT
 import qualified Data.Vector as V
 
@@ -50,7 +51,7 @@ btcNetwork = if isTestnet then btcTest else btc
 {-# INLINE btcNetwork #-}
 
 -- | The starting height for filters downloader. Start from SegWit adoption
-filterStartingHeight :: Currency -> BlockHeight
+filterStartingHeight :: Currency -> ETT.BlockHeight
 filterStartingHeight cur = case cur of
   ERGO -> 0
   BTC -> if isTestnet then 1722763 else 481824
@@ -63,7 +64,7 @@ avgTimePerBlock cur = case cur of
   BTC -> 10
 {-# INLINE avgTimePerBlock #-}
 
-btcCheckpoints :: (Timestamp, V.Vector (ETT.BlockHeight, BlockHash))
+btcCheckpoints :: (Timestamp, V.Vector (HB.BlockHeight, HB.BlockHash))
 btcCheckpoints = if isTestnet
   -- 1598198546 is the Timestamp of the block at the 1808161 height
   then (1598198546,) $ V.fromList $ [

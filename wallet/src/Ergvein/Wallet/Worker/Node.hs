@@ -11,6 +11,7 @@ import Data.Maybe (fromMaybe, catMaybes, listToMaybe)
 import Data.Time
 import Network.DNS
 import Network.Haskoin.Constants
+import Network.Haskoin.Crypto
 import Network.Haskoin.Network
 import Network.Haskoin.Transaction
 import Network.Socket
@@ -19,7 +20,7 @@ import Reflex.ExternalRef
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
-import Ergvein.Types.Transaction
+import Ergvein.Types.Transaction as ETT
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
@@ -129,7 +130,7 @@ myTxSender addr msgE = do
 mkTxMessages :: [InvVector] -> S.Set TxId -> M.Map TxId EgvTx -> [NodeReqG]
 mkTxMessages invs txids txmap = foo invs [] $ \acc iv -> case invType iv of
   InvTx -> let
-    txid    = txHashToHex $ TxHash $ invHash iv
+    txid    = ETT.TxHash $ getHash256 $ invHash iv
     b       = S.member txid txids
     metx    = if b then M.lookup txid txmap else Nothing
     mbtctx  = join $ ffor metx $ \case
@@ -148,7 +149,7 @@ filterTxInvs txids (Inv invs) = case txs of
   where
     txs = catMaybes $ ffor invs $ \iv -> case invType iv of
       InvTx -> let
-        txh = txHashToHex $ TxHash $ invHash iv
+        txh = ETT.TxHash $ getHash256 $ invHash iv
         b = S.member txh txids
         in if b then Nothing else Just iv
       _ -> Nothing

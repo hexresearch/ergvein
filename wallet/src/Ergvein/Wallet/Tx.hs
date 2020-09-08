@@ -117,7 +117,7 @@ checkTxIn addr txIn = do
   let spentOutput = HT.prevOutput txIn
       spentTxHash = HT.outPointHash spentOutput
       spentOutputIndex = HT.outPointIndex spentOutput
-  mtx <- getTxById $ TxId $ HT.getHash256 $ HT.getTxHash spentTxHash
+  mtx <- getTxById $ hkTxHashToEgv spentTxHash
   case mtx of
     Nothing -> pure False
     Just ErgTx{} -> pure False -- TODO: impl for Ergo

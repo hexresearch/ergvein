@@ -6,14 +6,13 @@ module Ergvein.Wallet.Worker.Height
 import Control.Lens
 import Data.Time
 import Data.Maybe
-import Network.Haskoin.Block hiding (BlockHeight)
+import Network.Haskoin.Block
 import Network.Haskoin.Network
 
 import Ergvein.Wallet.Platform
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
-import Ergvein.Types.Transaction (BlockHeight)
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
