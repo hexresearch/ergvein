@@ -13,6 +13,7 @@ import           Data.Text                      ( unpack
 import           Data.ByteString                ( ByteString )
 import           Ergvein.Filters.Btc
 import           Ergvein.Filters.Btc.TestHelpers
+import           Ergvein.Filters.Btc.TestVectors
 import           Ergvein.Text
 import           Ergvein.Types.Address          (btcAddrToString')
 import           Data.Foldable
@@ -77,3 +78,22 @@ testAddresses = (fmap . fmap)
 
 testAddress :: Address -- that isn't containted in test blocks
 testAddress = loadAddress "tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx"
+
+checkTVecRow :: TVecRow -> Spec
+checkTVecRow row@TVecRow{..} = do
+  let descr = unpack $ "Testing bip158 filter for height " <> showt tvecHeight <> " hash " <> blockHashToHex tvecBlockHash <> ": " <> tvecNote
+  let makeFilter = withPrevScripts row $ makeBtcFilter isBip158Indexable tvecBlock
+  describe descr $ do
+    it "block hash matches" $ do
+      headerHash (blockHeader tvecBlock) `shouldBe` tvecBlockHash
+    it "makes expected filter" $ do
+      bfilter <- makeFilter
+      let fstr = bs2Hex $ encodeBtcAddrFilter bfilter
+      fstr `shouldBe` tvecFilter
+    it "makes filter with right id" $ do
+      bfilter <- makeFilter
+      let bhash = btcAddrFilterHash bfilter tvecPrevHash
+      filterHashToText bhash `shouldBe` filterHashToText tvecFilterHash
+
+spec_testBip158 :: Spec
+spec_testBip158 = traverse_ checkTVecRow testVector

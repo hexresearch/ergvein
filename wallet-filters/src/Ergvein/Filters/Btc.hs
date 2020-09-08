@@ -58,8 +58,13 @@ decodeBtcAddrFilter = A.parseOnly (parser <* A.endOfInput)
 
 -- | Calculate filter hash of filter based on previous filter hash
 btcAddrFilterHash :: BtcAddrFilter -> FilterHash -> FilterHash
-btcAddrFilterHash bf prev = FilterHash . sha256d $ sha256d (encodeBtcAddrFilter bf) <> unFilterHash prev
+btcAddrFilterHash bf prev = finalHash header
   where
+    finalHash = FilterHash . BS.reverse . sha256d
+    header1 = sha256d (encodeBtcAddrFilter bf)
+    header2 = BS.reverse (unFilterHash prev)
+    header = header1 <> header2
+    
     sha256d :: ByteString -> ByteString
     sha256d = BA.convert . hashWith SHA256 . hashWith SHA256
 
