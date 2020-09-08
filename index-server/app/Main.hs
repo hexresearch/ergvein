@@ -29,9 +29,9 @@ options = Options
   <$> subparser (
        command "listen" (info (listenCmd <**> helper) $ progDesc "Start server") <>
        command "clean-known-peers" (info (cleanKnownPeers <**> helper) $ progDesc "resetting peers")
-  ) <*> flag False True (long "no-drop-filters")
-    <*> flag True False (long "no-wait-nodes")
-    <*> flag False True (long "only-scan")
+  ) <*> flag False True (long "no-drop-filters" <> help "Do not drop Filters db when version is changed" )
+    <*> flag True False (long "no-wait-nodes" <> help "Do not wait for BTC-TCP connection handshake to startup" )
+    <*> flag False True (long "only-scan" <> help "Start only BC-scanning threads" )
   where
     cleanKnownPeers = CleanKnownPeers
       <$> strArgument (

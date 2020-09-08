@@ -93,7 +93,7 @@ newServerEnv doWait noDropFilters btcClient cfg@Config{..} = do
     broadChan      <- liftIO newBroadcastTChanIO
     let bitcoinNodeNetwork = if cfgBTCNodeIsTestnet then HK.btcTest else HK.btc
         descDiscoveryRequisites = discoveryRequisites cfg
-    btcsock <- connectBtc bitcoinNodeNetwork "localhost" "8333" shutdownVar
+    btcsock <- connectBtc bitcoinNodeNetwork cfgBTCNodeTCPHost (show cfgBTCNodeTCPPort) shutdownVar
     when doWait $ liftIO $ do
       isUp <- atomically $ dupTChan $ btcSockOnActive btcsock
       b <- readTVarIO $ btcSockIsActive btcsock

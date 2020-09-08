@@ -7,6 +7,8 @@ BTCNodeHost              : localhost
 BTCNodePort              : 18332
 BTCNodeUser              : bitcoinrpc
 BTCNodePassword          : password
+BTCNodeTCPHost           : localhost
+BTCNodeTCPPort           : 18333
 ERGONodeHost             : localhost
 ERGONodePort             : 9052
 blockchainScanDelay      : 1000000

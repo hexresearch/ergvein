@@ -20,6 +20,8 @@ data Config = Config
   , cfgBTCNodePort              :: !Int
   , cfgBTCNodeUser              :: !Text
   , cfgBTCNodePassword          :: !Text
+  , cfgBTCNodeTCPHost           :: !String
+  , cfgBTCNodeTCPPort           :: !Int
   , cfgERGONodeHost             :: !String
   , cfgERGONodePort             :: !Int
   , cfgOwnPeerAddress           :: !(Maybe String)
@@ -46,6 +48,8 @@ instance FromJSON Config where
     cfgBTCNodePort              <- o .: "BTCNodePort"
     cfgBTCNodeUser              <- o .: "BTCNodeUser"
     cfgBTCNodePassword          <- o .: "BTCNodePassword"
+    cfgBTCNodeTCPHost           <- o .: "BTCNodeTCPHost"
+    cfgBTCNodeTCPPort           <- o .: "BTCNodeTCPPort"
     cfgERGONodeHost             <- o .: "ERGONodeHost"
     cfgERGONodePort             <- o .: "ERGONodePort"
     cfgOwnPeerAddress           <- o .:? "ownPeerAddress"
