@@ -59,15 +59,15 @@ knownPeersActualization  = do
      PeerDiscoveryRequisites {..} <- getDiscoveryRequisites
      currentTime <- liftIO getCurrentTime
      knownPeers <- getPeerList
-     let notOutdatedPeers = isNotOutdated descReqPredefinedPeers descReqActualizationTimeout currentTime `filter` knownPeers
-     setPeerList notOutdatedPeers
+     let upToDatePeers = isUpToDatePeer descReqPredefinedPeers descReqActualizationTimeout currentTime `filter` knownPeers
+     setPeerList upToDatePeers
      openedConnectionsRef <- openConnections
      opened <- liftIO $ Map.keysSet <$> readTVarIO openedConnectionsRef
-     let peersToConnect = Set.toList $ opened Set.\\ (Set.fromList $ peerAddress <$> notOutdatedPeers)
+     let peersToConnect = Set.toList $ opened Set.\\ (Set.fromList $ peerAddress <$> upToDatePeers)
      liftIO $ forM_ peersToConnect newConnection
      broadcastSocketMessage $ MPeerRequest PeerRequest
-    isNotOutdated :: Set SockAddr -> NominalDiffTime -> UTCTime -> Peer -> Bool
-    isNotOutdated predefined retryTimeout currentTime peer = 
+    isUpToDatePeer :: Set SockAddr -> NominalDiffTime -> UTCTime -> Peer -> Bool
+    isUpToDatePeer predefined retryTimeout currentTime peer = 
        let fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt peer
        in Set.member (peerAddress peer) predefined || retryTimeout >= fromLastSuccess
 

@@ -5,7 +5,6 @@ module Ergvein.Index.Server.DB.Queries
   , getPeerList
   , setPeerList
   , upsertPeer
-  , deletePeer
   , emptyKnownPeers
   , initIndexerDb
   , setLastScannedBlock
@@ -31,8 +30,9 @@ import Data.Maybe
 import Data.Time.Clock
 import Database.LevelDB
 import Database.LevelDB.Iterator
-import Ergvein.Index.Server.Dependencies
+import Network.Socket
 
+import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Conversions
 import Ergvein.Index.Server.DB.Monad
@@ -82,17 +82,16 @@ setPeerRecList peers = do
 upsertPeer :: (HasIndexerDB m, MonadLogger m) => Peer -> m ()
 upsertPeer peer = do
   currentList <- peerList
-  let perRec = convert peer
-  setPeerRecList $ perRec : withoutPeer perRec currentList
+  let peerRec = convert peer
+  setPeerRecList $ peerRec : excludePeerByAddr (knownPeerRecAddr peerRec) currentList
 
-deletePeer :: (HasIndexerDB m, MonadLogger m) => Peer -> m ()
-deletePeer peer = do
+deletePeerBySockAddr :: (HasIndexerDB m, MonadLogger m) => PeerAddr -> m ()
+deletePeerBySockAddr addr = do
   currentList <- peerList
-  let perRec = convert peer
-  setPeerRecList $ withoutPeer perRec currentList
+  setPeerRecList $ excludePeerByAddr addr currentList
 
-withoutPeer :: KnownPeerRecItem ->  [KnownPeerRecItem] -> [KnownPeerRecItem]
-withoutPeer peer = filter (\p -> knownPeerRecIP p == knownPeerRecIP peer && knownPeerRecPort p == knownPeerRecPort peer)
+excludePeerByAddr :: PeerAddr ->  [KnownPeerRecItem] -> [KnownPeerRecItem]
+excludePeerByAddr addr = filter ((== addr) . knownPeerRecAddr)
 
 peerList :: (HasIndexerDB m, MonadLogger m) => m [KnownPeerRecItem]
 peerList = do

@@ -25,15 +25,14 @@ instance Conversion DiscoveryTypes.Peer KnownPeerRecItem where
       SockAddrInet p i -> (p, V4 i)
       SockAddrInet6 p _ i _ -> (p, V6 i)
     in KnownPeerRecItem
-      { knownPeerRecIP = ip
-      , knownPeerRecPort = fromInteger $ toInteger port
+      { knownPeerRecAddr = DiscoveryTypes.PeerAddr ip $ fromInteger $ toInteger port
       , knownPeerRecLastValidatedAt = validatedAt
       }
 
 instance Conversion KnownPeerRecItem DiscoveryTypes.Peer where
   convert KnownPeerRecItem {..} = let
-    port = (fromInteger $ toInteger knownPeerRecPort)
-    addr = case knownPeerRecIP of
+    port = (fromInteger $ toInteger $ peerAddrPort knownPeerRecAddr)
+    addr = case peerAddrIP knownPeerRecAddr of
       V4 ip -> SockAddrInet port ip
       V6 ip -> SockAddrInet6 port 0 ip 0
     in DiscoveryTypes.Peer
@@ -43,15 +42,15 @@ instance Conversion KnownPeerRecItem DiscoveryTypes.Peer where
 
 instance Conversion KnownPeerRecItem Address where
   convert KnownPeerRecItem {..} = let
-    in case knownPeerRecIP of
+    in case peerAddrIP knownPeerRecAddr of
       V4 ip -> Address
         { addressType    = IPV4
-        , addressPort    = knownPeerRecPort
+        , addressPort    = peerAddrPort knownPeerRecAddr
         , addressAddress = BSL.toStrict $ toLazyByteString $ word32BE ip
         }
       V6 (a,b,c,d) -> Address
         { addressType    = IPV6
-        , addressPort    = knownPeerRecPort
+        , addressPort    = peerAddrPort knownPeerRecAddr
         , addressAddress = BSL.toStrict $ toLazyByteString $ word32BE a <> word32BE b <> word32BE c <> word32BE d
         } 
 

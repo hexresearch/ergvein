@@ -63,6 +63,15 @@ handleMsg address (MFiltersRequest FilterRequest {..}) = do
     , filterResponseFilters = filters
     }
 
+handleMsg address (MFiltersEvent FilterEvent {..}) = do
+  let currency = convert filterEventCurrency
+  slice <- getBlockMetaSlice currency filterEventHeight 1
+  let filters = blockFilterFilter . convert <$> slice
+  when (any (/= filterEventBlockFilter) filters) $ do
+   pure ()
+  pure mempty
+
+
 handleMsg address (MFeeRequest curs) = do
   fees <- liftIO . readTVarIO =<< asks envFeeEstimates
   let selCurs = M.restrictKeys fees $ S.fromList curs

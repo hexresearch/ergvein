@@ -5,7 +5,6 @@ module Ergvein.Index.Server.DB.Schema.Indexer
   , LastScannedBlockHeaderHashRec(..)
   , ContentHistoryRec(..)
   , ContentHistoryRecItem(..)
-  , PeerAddress (..)
   , knownPeersRecKey
   , lastScannedBlockHeaderHashRecKey
   , contentHistoryRecKey
@@ -25,6 +24,7 @@ import Data.Word
 import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import qualified Ergvein.Index.Server.PeerDiscovery.Types as DiscoveryTypes
 
 import qualified Data.ByteString as BS
 import qualified Data.Serialize as S
@@ -46,13 +46,8 @@ knownPeersRecKey  = keyString Peer $ mempty @String
 
 data KnownPeersRec = KnownPeersRec [KnownPeerRecItem] deriving (Generic, Show, Eq, Ord, Flat)
 
-data PeerAddress = V4 Word32
-                 | V6 (Word32, Word32, Word32, Word32)
-  deriving (Generic, Show, Eq, Ord, Flat)
-
 data KnownPeerRecItem = KnownPeerRecItem
-  { knownPeerRecIP               :: PeerAddress
-  , knownPeerRecPort             :: Word16
+  { knownPeerRecAddr             :: DiscoveryTypes.PeerAddr
   , knownPeerRecLastValidatedAt  :: Text
   } deriving (Generic, Show, Eq, Ord, Flat)
 
