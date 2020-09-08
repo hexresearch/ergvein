@@ -37,6 +37,16 @@ testVector = [
     , tvecFilterHash = filterHashFromText "21584579b7eb08997773e5aeff3a7f932700042d0ed2a6129012b7d7ae81b750"
     , tvecNote       = "Genesis block"
     }
+    , TVecRow {
+      tvecHeight     = 2
+    , tvecBlockHash  = loadBlockHash "000000006c02c8ea6e4ff69651f7fcde348fb9d557a06e6957b65552002a7820"
+    , tvecBlock      = loadBlock "0100000006128e87be8b1b4dea47a7247d5528d2702c96826c7a648497e773b800000000e241352e3bec0a95a6217e10c3abb54adfa05abb12c126695595580fb92e222032e7494dffff001d00d235340101000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0e0432e7494d010e062f503253482fffffffff0100f2052a010000002321038a7f6ef1c8ca0c588aa53fa860128077c9e6c11e6830f4d7ee4e763a56b7718fac00000000"
+    , tvecScripts    = []
+    , tvecPrevHash   = filterHashFromText "d7bdac13a59d745b1add0d2ce852f1a0442e8945fc1bf3848d3cbffd88c24fe1"
+    , tvecFilter     = "0174a170"
+    , tvecFilterHash = filterHashFromText "186afd11ef2b5e7e3504f2e8cbf8df28a1fd251fe53d60dff8b1467d1b386cf0"
+    , tvecNote       = ""
+    }
   ]
 
 testVecPrevIndex :: TVecRow -> Map OutPoint ByteString

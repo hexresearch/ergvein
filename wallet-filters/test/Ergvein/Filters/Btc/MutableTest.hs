@@ -2,7 +2,6 @@
 module Ergvein.Filters.Btc.MutableTest where
 
 import           Data.Bifunctor
-import           Data.Maybe
 import           Data.Foldable                  (traverse_)
 import           Test.Tasty.Hspec
 import           Network.Haskoin.Address
@@ -10,15 +9,10 @@ import           Network.Haskoin.Block
 import           Network.Haskoin.Constants
 import           Network.Haskoin.Transaction
 import           Control.Monad
-import qualified Data.Serialize                as S
-import           Data.Text                      ( Text
-                                                , unpack
-                                                )
+import           Data.Text                      ( unpack )
 import qualified Data.Text                     as T
 import qualified Data.Text.IO                  as T
-import qualified Data.Text.Encoding            as TE
 import           Data.ByteString                ( ByteString )
-import qualified Data.ByteString.Base16        as BS16
 import           Ergvein.Filters.Btc.Mutable
 import           Ergvein.Text
 import           Ergvein.Filters.Btc.TestHelpers
@@ -26,7 +20,6 @@ import           Ergvein.Filters.Btc.TestVectors
 import           Ergvein.Types.Address          (btcAddrToString')
 import           System.IO.Unsafe (unsafePerformIO)
 
-import Debug.Trace
 
 spec_mutableFilterPositive :: Spec
 spec_mutableFilterPositive = forM_ samples $ \(block, txs, as) -> do
@@ -158,6 +151,11 @@ checkTVecRow row@TVecRow{..} = do
       bfilter <- withPrevScripts row $ makeBtcFilter isBip158Indexable tvecBlock
       fstr <- bs2Hex <$> encodeBtcAddrFilter bfilter
       fstr `shouldBe` tvecFilter
+    it "makes filter with right id" $ do
+      -- bfilter <- withPrevScripts row $ makeBtcFilter isBip158Indexable tvecBlock
+      bfilter <- loadFilterMut tvecFilter
+      bhash <- btcAddrFilterHash bfilter tvecPrevHash
+      filterHashToText bhash `shouldBe` filterHashToText tvecFilterHash
 
 spec_testBip158 :: Spec
 spec_testBip158 = traverse_ checkTVecRow testVector

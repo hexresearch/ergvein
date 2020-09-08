@@ -37,7 +37,6 @@ import qualified Data.ByteString.Builder       as B
 import qualified Data.ByteString.Lazy          as BSL
 import qualified Data.Vector                   as V
 
-import Debug.Trace
 
 -- | BIP 158 filter that tracks only Bech32 SegWit addresses that are used in specific block.
 data BtcAddrFilter = BtcAddrFilter {
@@ -68,7 +67,7 @@ decodeBtcAddrFilter bs = case A.parseOnly (parser <* A.endOfInput) bs of
 btcAddrFilterHash :: MonadIO m => BtcAddrFilter -> FilterHash -> m FilterHash
 btcAddrFilterHash bf prev = do
   cnt <- encodeBtcAddrFilter bf
-  pure $ FilterHash . sha256d $ sha256d cnt <> unFilterHash prev
+  pure $ FilterHash . BS.reverse . sha256d $ sha256d cnt <> BS.reverse (unFilterHash prev)
   where
     sha256d :: ByteString -> ByteString
     sha256d = BA.convert . hashWith SHA256 . hashWith SHA256
