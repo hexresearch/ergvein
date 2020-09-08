@@ -1,22 +1,23 @@
 module Main where
 
 import Control.Monad.Logger
+import Data.Text (Text, pack)
 import Options.Applicative
 
+import Ergvein.Index.Server.App
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
-import Ergvein.Index.Server.App
-
-import Data.Text (Text, pack)
 
 import qualified Data.Text.IO as T
 import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 
 data Options = Options {
-  optsCommand :: Command
-, optsNoDropFilters :: Bool
+  optsCommand       :: Command  -- ^ Which command to execute
+, optsNoDropFilters :: Bool     -- ^ Def: False. Drop filters db when versions changed or not
+, optsWaitNodes     :: Bool     -- ^ Def: True. Wait for all node connections before startup
+, optsOnlyScan      :: Bool     -- ^ Def: False. Start only BC-scanning threads
 }
 
 type ServerUrl = Text
@@ -29,6 +30,8 @@ options = Options
        command "listen" (info (listenCmd <**> helper) $ progDesc "Start server") <>
        command "clean-known-peers" (info (cleanKnownPeers <**> helper) $ progDesc "resetting peers")
   ) <*> flag False True (long "no-drop-filters")
+    <*> flag True False (long "no-wait-nodes")
+    <*> flag False True (long "only-scan")
   where
     cleanKnownPeers = CleanKnownPeers
       <$> strArgument (
@@ -54,11 +57,11 @@ startServer Options{..} = case optsCommand of
       T.putStrLn $ pack "Server starting"
       cfg@Config{..} <- loadConfig cfgPath
       BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
-        env <- runStdoutLoggingT $ newServerEnv optsNoDropFilters client cfg
-        runStdoutLoggingT $ app cfg env
+        env <- runStdoutLoggingT $ newServerEnv optsWaitNodes optsNoDropFilters client cfg
+        runStdoutLoggingT $ app optsOnlyScan cfg env
     CleanKnownPeers cfgPath -> do
       cfg@Config{..} <- loadConfig cfgPath
       BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
-        env <- runStdoutLoggingT $ newServerEnv optsNoDropFilters client cfg
+        env <- runStdoutLoggingT $ newServerEnv optsWaitNodes optsNoDropFilters client cfg
         runServerMIO env emptyKnownPeers
       T.putStrLn $ pack "knownPeers cleared"

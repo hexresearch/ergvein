@@ -37,16 +37,17 @@ import           Ergvein.Types.Currency
 import           Ergvein.Types.Fees
 import           Ergvein.Types.Transaction
 
-import qualified Ergvein.Index.Protocol.Types       as IPT
-import qualified Data.Set                           as Set
+import qualified Data.ByteString                    as BS
 import qualified Data.HexString                     as HS
 import qualified Data.Map.Strict                    as Map
+import qualified Data.Set                           as Set
+import qualified Ergvein.Index.Protocol.Types       as IPT
 import qualified Network.Haskoin.Block              as HK
 import qualified Network.Haskoin.Constants          as HK
+import qualified Network.Haskoin.Crypto             as HK
 import qualified Network.Haskoin.Script             as HK
 import qualified Network.Haskoin.Transaction        as HK
 import qualified Network.Haskoin.Util               as HK
-import qualified Network.Haskoin.Crypto             as HK
 
 mkChunks :: Int -> [a] -> [[a]]
 mkChunks n vals = mkChunks' [] vals
@@ -98,11 +99,8 @@ blockInfo :: (BitcoinApiMonad m,  HasBitcoinNodeNetwork m, HasFiltersDB m, Monad
   => BlockHeight -> m BlockInfo
 blockInfo blockHeightToScan =  do
   blockHash <- nodeRpcCall $ (`getBlockHash` fromIntegral blockHeightToScan)
-  maybeRawBlock <- nodeRpcCall $ (`getBlockRaw` blockHash)
-
-  let rawBlock = fromMaybe blockParsingError maybeRawBlock
-      parsedBlock = fromRight blockGettingError $ decode $ HS.toBytes rawBlock
-
+  let bh = fromRight blockParsingError $ decode $ BS.reverse $ HS.toBytes blockHash
+  parsedBlock <- requestBlock bh
   currentNetwork <- currentBitcoinNetwork
 
   blockTxInfos parsedBlock blockHeightToScan currentNetwork
