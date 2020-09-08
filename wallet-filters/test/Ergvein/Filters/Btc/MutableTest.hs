@@ -36,7 +36,6 @@ spec_mutableFilterPositive = forM_ samples $ \(block, txs, as) -> do
       let at    = unpack $ btcAddrToString' btcTest a
       it ("block filter contains address " ++ at) $ do
         bfilter <- withInputTxs txs $ makeBtcFilter isErgveinIndexable block
-        -- traceShowM $ bs2Hex $ encodeBtcAddrFilter bfilter
         res <- applyBtcFilter bhash bfilter ascript
         res `shouldBe` True
   where samples = zip3 testBlocks testInputTxs testAddresses

@@ -38,8 +38,6 @@ import qualified Data.ByteString.Lazy          as BSL
 import qualified Data.HashSet                  as HS
 import qualified Data.Vector                   as V
 
-import Debug.Trace
-
 -- | BIP 158 filter that tracks only Bech32 SegWit addresses that are used in specific block.
 data BtcAddrFilter = BtcAddrFilter {
   btcAddrFilterN   :: !Word64 -- ^ the total amount of items in filter
@@ -83,7 +81,6 @@ makeBtcFilter check block = do
   inputSet <- foldInputs collect [] block
   let totalSet = HS.fromList $ outputSet <> inputSet
       n = fromIntegral $ HS.size totalSet
-  traceShowM $ (blockHashToHex $ headerHash $ blockHeader block, fmap BS.length $ HS.toList $ totalSet)
   gcs <- constructGcs btcDefP sipkey btcDefM totalSet
   pure BtcAddrFilter
       { btcAddrFilterN   = n

@@ -41,8 +41,6 @@ import Network.Haskoin.Transaction
 import qualified Data.Map.Strict as M
 import qualified Data.ByteString as BS
 
-import Debug.Trace
-
 -- | Default value for P parameter (amount of bits in golomb rice encoding).
 -- Set to fixed `19` according to BIP-158.
 btcDefP :: Int

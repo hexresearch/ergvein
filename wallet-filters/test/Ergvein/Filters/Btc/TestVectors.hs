@@ -11,8 +11,6 @@ import Network.Haskoin.Transaction
 
 import qualified Data.Map.Strict as M
 
-import Debug.Trace
-
 data TVecRow = TVecRow {
   tvecHeight     :: !Integer
 , tvecBlockHash  :: !BlockHash
@@ -132,7 +130,7 @@ testVector = [
 testVecPrevIndex :: TVecRow -> Map OutPoint ByteString
 testVecPrevIndex TVecRow{..} = M.fromList $ outs `zip` tvecScripts
   where
-    outs = traceShowId $ fmap prevOutput $ concat $ fmap txIn $ drop 1 $ blockTxns tvecBlock
+    outs = fmap prevOutput $ concat $ fmap txIn $ drop 1 $ blockTxns tvecBlock
 
 withPrevScripts :: TVecRow -> (ReaderT (Map OutPoint ByteString) m a) -> m a
 withPrevScripts = flip runReaderT . testVecPrevIndex
