@@ -43,6 +43,7 @@ library
     , memory            >= 0.11
     , mtl               >= 2.2
     , text              >= 1.2
+    , unordered-containers >= 0.2
     , vector            >= 0.12
     , vector-algorithms >= 0.8
   default-extensions:

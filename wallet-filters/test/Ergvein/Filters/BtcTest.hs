@@ -3,20 +3,14 @@ module Ergvein.Filters.BtcTest where
 
 import           Test.Tasty.Hspec
 import           Data.Functor.Identity
-import           Data.Maybe
 import           Data.Bifunctor
 import           Network.Haskoin.Address
 import           Network.Haskoin.Block
 import           Network.Haskoin.Constants
-import           Network.Haskoin.Script
 import           Network.Haskoin.Transaction
-import qualified Data.Serialize                as S
-import           Data.Text                      ( Text
-                                                , unpack
+import           Data.Text                      ( unpack
                                                 )
-import qualified Data.Text.Encoding            as TE
 import           Data.ByteString                ( ByteString )
-import qualified Data.ByteString.Base16        as BS16
 import           Ergvein.Filters.Btc
 import           Ergvein.Filters.Btc.TestHelpers
 import           Ergvein.Text

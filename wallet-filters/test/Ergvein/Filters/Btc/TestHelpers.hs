@@ -4,7 +4,6 @@ module Ergvein.Filters.Btc.TestHelpers where
 import Data.ByteString (ByteString)
 import Data.Maybe
 import Data.Text (Text, unpack)
-import Ergvein.Filters.Btc.Index
 import Ergvein.Text
 import Network.Haskoin.Address
 import Network.Haskoin.Block
@@ -16,9 +15,9 @@ import qualified Data.ByteString.Base16        as BS16
 import qualified Data.Serialize                as S
 import qualified Data.Text                     as T
 import qualified Data.Text.Encoding            as TE
-import qualified Data.Text.IO                  as T
 import qualified Ergvein.Filters.Btc           as IM
 import qualified Ergvein.Filters.Btc.Mutable   as M
+
 
 loadAddress :: Text -> Address
 loadAddress t =
@@ -26,7 +25,7 @@ loadAddress t =
     $ stringToAddr btcTest t
 
 loadScript :: Text -> ByteString
-loadScript = fst . BS16.decode . TE.encodeUtf8
+loadScript = hex2bs
 
 loadTx :: Text -> Tx
 loadTx = either error id . S.decode @Tx . hex2bs

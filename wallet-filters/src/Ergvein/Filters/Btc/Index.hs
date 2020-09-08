@@ -103,9 +103,11 @@ foldInputs f a0 block = go a0 $ fmap prevOutput . concat . fmap txIn . drop 1 . 
 
 -- | Standard indexes all but data carriers.
 isBip158Indexable :: ByteString -> Bool
-isBip158Indexable bs = case decodeOutputBS bs of
-  Right (DataCarrier          {}) -> False
-  _                               -> True
+isBip158Indexable bs = kindCheck && not (BS.null bs)
+  where
+    kindCheck = case decodeOutputBS bs of
+      Right (DataCarrier          {}) -> False
+      _                               -> True
 {-# INLINE isBip158Indexable #-}
 
 -- | We index only segwit scripts, multisigs and data carrier for USDT support.

@@ -32,6 +32,7 @@ import qualified Data.ByteArray                as BA
 import qualified Data.ByteString               as BS
 import qualified Data.ByteString.Builder       as B
 import qualified Data.ByteString.Lazy          as BSL
+import qualified Data.HashSet                  as HS
 import qualified Data.Vector                   as V
 
 -- | BIP 158 filter that tracks only Bech32 SegWit addresses that are used in specific block.
@@ -69,8 +70,8 @@ btcAddrFilterHash bf prev = FilterHash . sha256d $ sha256d (encodeBtcAddrFilter 
 makeBtcFilter :: forall m . HasTxIndex m => (ByteString -> Bool) -> Block -> m BtcAddrFilter
 makeBtcFilter check block = do
   inputSet <- foldInputs collect [] block
-  let totalSet = V.uniq $ V.fromList $ outputSet <> inputSet
-      n = fromIntegral $ V.length totalSet
+  let totalSet = HS.fromList $ outputSet <> inputSet
+      n = fromIntegral $ HS.size totalSet
   pure BtcAddrFilter
       { btcAddrFilterN   = n
       , btcAddrFilterGcs = constructGcs btcDefP sipkey btcDefM totalSet
@@ -78,7 +79,7 @@ makeBtcFilter check block = do
  where
   collect :: [ByteString] -> ByteString -> m [ByteString]
   collect !as bs = pure $ if check bs then bs : as else as
-  makeGcsSet = concatMap (fmap scriptOutput . txOut)
+  makeGcsSet = concatMap (filter check . fmap scriptOutput . txOut)
   outputSet = makeGcsSet $ blockTxns block
   sipkey    = blockSipHash . headerHash . blockHeader $ block
 

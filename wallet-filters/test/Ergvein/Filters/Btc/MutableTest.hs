@@ -55,11 +55,11 @@ spec_mutableFilterNegative = forM_ samples $ \(block, txs) -> do
 spec_mutableSpecificFilter1 :: Spec
 spec_mutableSpecificFilter1 = do
   describe "filter encode-decode" $ it "idepontent" $ do
-    let filterHex = "46c0915800002120e69d5e22b05f7148f675aa27211e7b8a5e22bc955a1d25f200000066c06093f2512f39d1b17ad87e68f8c000001eaa2c54bb6600000f2aeade7df1d20627b68aee2dffc13067eab1649eff8477177401920406cf616b3a1e0593e034bea6fbb78b5e6a0d93239a7058f76676d3f080c04311b4ab36d32e4cb4991c6c5c0000332f587de5316b158e58a800002d87d80000538f8c345a31a132e22befbc42fc0675e2331ee17b375672ff45ea10"
+    let filterHex = "13461a23a8ce05d6ce6a435b1d11d65707a3c6fce967152b8ae09f851d42505b3c41dd87b705d5f4cc2c3062ddcdfebe7a1e80"
     hx <- fmap bs2Hex $ encodeBtcAddrFilter =<< loadFilterMut filterHex
     hx `shouldBe` filterHex
   describe "block 000000000000017c36b1c7c70f467244009c552e1732604a0f779fc6ff2d6112 generate filters" $ do
-    let filterHex = "46c0915800002120e69d5e22b05f7148f675aa27211e7b8a5e22bc955a1d25f200000066c06093f2512f39d1b17ad87e68f8c000001eaa2c54bb6600000f2aeade7df1d20627b68aee2dffc13067eab1649eff8477177401920406cf616b3a1e0593e034bea6fbb78b5e6a0d93239a7058f76676d3f080c04311b4ab36d32e4cb4991c6c5c0000332f587de5316b158e58a800002d87d80000538f8c345a31a132e22befbc42fc0675e2331ee17b375672ff45ea10"
+    let filterHex = "13461a23a8ce05d6ce6a435b1d11d65707a3c6fce967152b8ae09f851d42505b3c41dd87b705d5f4cc2c3062ddcdfebe7a1e80"
     it "generates right filter" $ do
       bfilter <- withInputTxs block1Txs $ makeBtcFilter isErgveinIndexable block1
       fstr <- bs2Hex <$> encodeBtcAddrFilter bfilter
@@ -78,7 +78,7 @@ spec_mutableSpecificFilter1 = do
             "tb1q8tkcrwr0ejssk4xhchmge0dmpuqvd3rdu93srh"
           , "tb1q2z49tgch3fdjs7ye9swx5t6n824zqh2zaazw94"
           ]
-        filterHex = "46c0915800002120e69d5e22b05f7148f675aa27211e7b8a5e22bc955a1d25f200000066c06093f2512f39d1b17ad87e68f8c000001eaa2c54bb6600000f2aeade7df1d20627b68aee2dffc13067eab1649eff8477177401920406cf616b3a1e0593e034bea6fbb78b5e6a0d93239a7058f76676d3f080c04311b4ab36d32e4cb4991c6c5c0000332f587de5316b158e58a800002d87d80000538f8c345a31a132e22befbc42fc0675e2331ee17b375672ff45ea10"
+        filterHex = "13461a23a8ce05d6ce6a435b1d11d65707a3c6fce967152b8ae09f851d42505b3c41dd87b705d5f4cc2c3062ddcdfebe7a1e80"
 
     forM_ addrs $ \addr -> do
       let addrstr = unpack $ btcAddrToString' btcTest addr
@@ -144,16 +144,16 @@ testAddresses = (fmap . fmap)
 checkTVecRow :: TVecRow -> Spec
 checkTVecRow row@TVecRow{..} = do
   let descr = unpack $ "Testing bip158 filter for height " <> showt tvecHeight <> " hash " <> blockHashToHex tvecBlockHash <> ": " <> tvecNote
+  let makeFilter = withPrevScripts row $ makeBtcFilter isBip158Indexable tvecBlock
   describe descr $ do
     it "block hash matches" $ do
       headerHash (blockHeader tvecBlock) `shouldBe` tvecBlockHash
     it "makes expected filter" $ do
-      bfilter <- withPrevScripts row $ makeBtcFilter isBip158Indexable tvecBlock
+      bfilter <- makeFilter
       fstr <- bs2Hex <$> encodeBtcAddrFilter bfilter
       fstr `shouldBe` tvecFilter
     it "makes filter with right id" $ do
-      -- bfilter <- withPrevScripts row $ makeBtcFilter isBip158Indexable tvecBlock
-      bfilter <- loadFilterMut tvecFilter
+      bfilter <- makeFilter
       bhash <- btcAddrFilterHash bfilter tvecPrevHash
       filterHashToText bhash `shouldBe` filterHashToText tvecFilterHash
 
