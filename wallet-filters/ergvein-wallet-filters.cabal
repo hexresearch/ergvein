@@ -45,7 +45,6 @@ library
     , text              >= 1.2
     , vector            >= 0.12
     , vector-algorithms >= 0.8
-    , wide-word         >= 0.1
   default-extensions:
     DeriveAnyClass
     DeriveGeneric
@@ -62,6 +61,8 @@ test-suite ergvein-wallet-filters-test
   hs-source-dirs:      test
   other-modules:
       Ergvein.Filters.Btc.MutableTest
+      Ergvein.Filters.Btc.TestHelpers
+      Ergvein.Filters.Btc.TestVectors
       Ergvein.Filters.BtcTest
   ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
   default-extensions:
@@ -78,11 +79,13 @@ test-suite ergvein-wallet-filters-test
     , bytes
     , bytestring
     , cereal
+    , containers
     , either
     , ergvein-common
     , ergvein-wallet-filters
     , ergvein-wallet-types
     , haskoin-core
+    , mtl
     , tasty
     , tasty-discover
     , tasty-hspec

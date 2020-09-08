@@ -20,11 +20,15 @@ module Ergvein.Filters.Btc.Index(
   , isErgveinIndexable
     -- * SegWit address helpers
   , addressToScriptBS
+    -- * Siphash
+  , blockSipHash
   ) where
 
 import Control.Monad.Reader
+import Data.ByteArray.Hash ( SipKey(..) )
 import Data.ByteString ( ByteString )
 import Data.Map.Strict (Map)
+import Data.Serialize ( encode )
 import Data.Text (Text)
 import Data.Word
 import Ergvein.Text
@@ -34,6 +38,9 @@ import Network.Haskoin.Script
 import Network.Haskoin.Transaction
 
 import qualified Data.Map.Strict as M
+import qualified Data.ByteString as BS
+
+import Debug.Trace
 
 -- | Default value for P parameter (amount of bits in golomb rice encoding).
 -- Set to fixed `19` according to BIP-158.
@@ -110,3 +117,15 @@ isErgveinIndexable bs = case decodeOutputBS bs of
   Right (DataCarrier          {}) -> True
   _                               -> False
 {-# INLINE isErgveinIndexable #-}
+
+-- | Siphash key for filter is first 16 bytes of the hash (in standard little-endian representation)
+-- of the block for which the filter is constructed. This ensures the key is deterministic while
+-- still varying from block to block.
+blockSipHash :: BlockHash -> SipKey
+blockSipHash bh = fromBs . encode . getBlockHash $ bh
+ where
+  toWord64 =
+    fst . foldl (\(!acc, !i) b -> (acc + fromIntegral b * (256 ^ i), i + (1 :: Word64))) (0, 0)
+  k1 bs = toWord64 $ BS.unpack . BS.take 8 $ bs
+  k2 bs = toWord64 $ BS.unpack . BS.take 8 . BS.drop 8 $ bs
+  fromBs bs = SipKey (k1 bs) (k2 bs)

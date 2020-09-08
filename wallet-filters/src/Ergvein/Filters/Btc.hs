@@ -79,19 +79,8 @@ makeBtcFilter check block = do
   collect :: [ByteString] -> ByteString -> m [ByteString]
   collect !as bs = pure $ if check bs then bs : as else as
   makeGcsSet = concatMap (fmap scriptOutput . txOut)
-  outputSet = makeGcsSet $ drop 1 $ blockTxns block
+  outputSet = makeGcsSet $ blockTxns block
   sipkey    = blockSipHash . headerHash . blockHeader $ block
-
--- | Siphash key for filter is first 16 bytes of the hash (in standard little-endian representation)
--- of the block for which the filter is constructed. This ensures the key is deterministic while
--- still varying from block to block.
-blockSipHash :: BlockHash -> SipKey
-blockSipHash = fromBs . BS.reverse . encode . getBlockHash
- where
-  toWord64 =
-    fst . foldl (\(!acc, !i) b -> (acc + fromIntegral b ^ i, i + 1 :: Word64)) (0, 1)
-  fromBs bs = SipKey (toWord64 $ BS.unpack . BS.take 8 $ bs)
-                     (toWord64 $ BS.unpack . BS.take 8 . BS.drop 8 $ bs)
 
 -- | Check that given address is located in the filter.
 applyBtcFilter :: BlockHash -> BtcAddrFilter -> ByteString -> Bool
