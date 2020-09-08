@@ -51,7 +51,6 @@ mkChunks n vals = mkChunks' [] vals
 blockTxInfos :: (HasFiltersDB m, MonadLogger m, MonadBaseControl IO m) => HK.Block -> BlockHeight -> HK.Network -> m BlockInfo
 blockTxInfos block txBlockHeight nodeNetwork = do
   let (txInfos , spentTxsIds) = fmap (uniqueElements . mconcat) $ unzip $ txInfo <$> HK.blockTxns block
-  timeLog $ "spentTxsIds: " <> showt (length spentTxsIds)
   uniqueSpentTxs <- fmap mconcat $ mapConcurrently (mapM spentTxSource) $ mkChunks 100 spentTxsIds
   blockAddressFilter <- encodeBtcAddrFilter =<< makeBtcFilter nodeNetwork uniqueSpentTxs block
   let blockHeaderHash = HK.getHash256 $ HK.getBlockHash $ HK.headerHash $ HK.blockHeader block
