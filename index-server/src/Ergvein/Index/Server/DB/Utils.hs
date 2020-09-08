@@ -17,36 +17,20 @@ module Ergvein.Index.Server.DB.Utils
 import Control.Lens
 import Control.Monad.IO.Class
 import Control.Monad.Logger
-import Conversion
-import Crypto.Hash.SHA256
 import Data.ByteString (ByteString)
 import Data.Default
 import Data.Either
-import Data.FileEmbed
-import Data.Foldable
-import Data.Maybe
 import Data.Serialize (Serialize)
 import Data.Text
 import Data.Text.Encoding
 import Data.Time
-import Data.Time.Clock
-import Data.Word
 import Database.LevelDB
 import Database.LevelDB.Iterator
-import Ergvein.Index.Server.Dependencies
-import Servant.Client.Core
-import System.ByteOrder
 
 import Ergvein.Index.Server.DB.Serialize.Class
-import Ergvein.Types.Block
 import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
 
 import qualified Data.ByteString as BS
-import qualified Data.ByteString as BS
-import qualified Data.Map.Strict as Map
-import qualified Data.Sequence as Seq
-import qualified Data.Serialize as S
 import qualified Data.Serialize as S
 import qualified Data.Text as T
 import qualified Database.LevelDB as LDB

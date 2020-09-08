@@ -23,12 +23,10 @@ import Data.Serialize (Serialize)
 import Data.Text
 import Data.Word
 
-import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Short as BSS
 import qualified Data.Serialize as S
 import qualified Data.Sequence as Seq
 import qualified Data.Map.Strict as Map

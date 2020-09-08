@@ -2,7 +2,6 @@ module Ergvein.Index.Server.BlockchainScanning.Types where
 
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Ergvein.Types.Block
 
 import Control.DeepSeq
 import Data.ByteString

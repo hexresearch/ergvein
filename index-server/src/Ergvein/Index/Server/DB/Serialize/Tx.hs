@@ -2,22 +2,22 @@ module Ergvein.Index.Server.DB.Serialize.Tx
   (
   ) where
 
+import Control.Applicative
 import Control.Monad
-import Network.Haskoin.Transaction hiding (buildTx)
-import Network.Haskoin.Crypto
-import Data.ByteString.Builder
-import Ergvein.Index.Server.DB.Serialize.Class
 import Data.Attoparsec.Binary
 import Data.Attoparsec.ByteString hiding (word8)
+import Data.ByteString.Builder
+import Data.Either
 import Data.Word
+import Network.Haskoin.Crypto
+import Network.Haskoin.Transaction hiding (buildTx)
+
+import Ergvein.Index.Server.DB.Serialize.Class
+
+import qualified Data.Attoparsec.ByteString as A
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString.Short as BSS
-import qualified Data.Attoparsec.ByteString as A
 import qualified Data.Serialize as S
-import           Data.Either
-import Data.Attoparsec.Combinator
-import Control.Applicative
 
 instance EgvSerialize Tx where
   egvSerialize _ = BL.toStrict . toLazyByteString . buildTx
@@ -30,10 +30,6 @@ instance EgvSerialize TxIn where
 instance EgvSerialize TxOut where
   egvSerialize _ = BL.toStrict . toLazyByteString . buildTxOut
   egvDeserialize _ = parseOnly parseTxOut
-
--- | Data type representing a variable-length integer. The 'VarInt' type
--- usually precedes an array or a string that can vary in length.
-newtype VarInt = VarInt { getVarInt :: Word64 }
 
 parseVarInt :: Parser Word64
 parseVarInt = anyWord8 >>= go

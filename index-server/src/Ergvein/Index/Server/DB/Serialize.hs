@@ -3,6 +3,7 @@ module Ergvein.Index.Server.DB.Serialize
     EgvSerialize(..)
   , putTxInfosAsRecs
   , serializeToTxRec
+  , module Ergvein.Index.Server.DB.Serialize.Tx
   ) where
 
 import Control.DeepSeq
@@ -15,6 +16,7 @@ import Data.ByteString.Builder as BB
 import Data.Foldable
 import Data.Word
 
+import Ergvein.Index.Server.DB.Serialize.Tx
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Schema.Filters
 import Ergvein.Index.Server.DB.Schema.Indexer

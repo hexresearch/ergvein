@@ -2,9 +2,7 @@ module Ergvein.Index.Server.App where
 
 import Control.Concurrent.STM.TVar
 import Control.Immortal
-import Control.Monad
 import Control.Monad.STM
-import Data.Text (Text, pack)
 import System.Posix.Signals
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
@@ -21,15 +19,15 @@ import Ergvein.Text
 import qualified Data.Text.IO as T
 
 onStartup :: Bool -> ServerEnv -> ServerM [Thread]
-onStartup onlyScan env = do
+onStartup onlyScan _ = do
   scanningWorkers <- blockchainScanning
   if onlyScan then pure scanningWorkers else do
     syncWithDefaultPeers
     feeWorkers <- feesScanning
     peerIntroduce
-    knownPeersActualization
+    kpaThread <- knownPeersActualization
     tcpServerThread <- runTcpSrv
-    pure $ tcpServerThread : scanningWorkers ++ feeWorkers
+    pure $ tcpServerThread : kpaThread : scanningWorkers ++ feeWorkers
 
 onShutdown :: ServerEnv -> [Thread] -> IO ()
 onShutdown env workerTreads = do

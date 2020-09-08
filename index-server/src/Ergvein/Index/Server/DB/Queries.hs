@@ -19,42 +19,32 @@ module Ergvein.Index.Server.DB.Queries
   , updateContentHistory
   ) where
 
-import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Logger
 import Conversion
-import Data.ByteString (ByteString)
 import Data.ByteString.Short (ShortByteString)
 import Data.Default
 import Data.Foldable
-import Data.Maybe
 import Data.Time.Clock
 import Database.LevelDB
-import Database.LevelDB.Iterator
 import Ergvein.Index.Server.Dependencies
 import Servant.Client.Core
 
 import Ergvein.Index.Server.DB.Serialize(EgvSerialize(..), putTxInfosAsRecs)
 import Ergvein.Index.Server.BlockchainScanning.Types
-import Ergvein.Index.Server.DB.Conversions
+import Ergvein.Index.Server.DB.Conversions()
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema.Filters
 import Ergvein.Index.Server.DB.Schema.Indexer
 import Ergvein.Index.Server.DB.Utils
 import Ergvein.Index.Server.PeerDiscovery.Types
-import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Short as BSS
 import qualified Data.Map.Strict as Map
 import qualified Data.Sequence as Seq
-import qualified Data.Serialize as S
-import qualified Data.Text as T
 import qualified Database.LevelDB as LDB
-import qualified Database.LevelDB.Streaming as LDBStreaming
 
 getKnownPeers :: (HasIndexerDB m, MonadLogger m, HasDiscoveryRequisites m) => Bool -> m [String]
 getKnownPeers onlySecured = do
@@ -177,7 +167,6 @@ updateContentHistory currency spentTxsHash newTxIds = do
           LDB.Del $ txRecKey $ txRecHash info
          else
           LDB.Put (txRecKey $ txRecHash info) (egvSerialize currency $ info { txRecUnspentOutputsCount = outputsLeft })
-          -- LDB.Put (txRecKey $ txRecHash info) (flat $ info { txRecUnspentOutputsCount = outputsLeft })
 
 revertContentHistory :: (HasIndexerDB m, MonadLogger m) => Currency -> m Int
 revertContentHistory currency = do

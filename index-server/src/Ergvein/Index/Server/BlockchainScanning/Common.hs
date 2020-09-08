@@ -1,36 +1,31 @@
 module Ergvein.Index.Server.BlockchainScanning.Common where
 
-import Control.Concurrent
 import Control.Concurrent.STM
-import Control.Concurrent.STM.TVar
 import Control.Immortal
 import Control.Monad.Catch
 import Control.Monad.Logger
 import Control.Monad.Reader
 import Conversion
-import Data.Foldable
 import Data.Maybe
 import Data.Time
 import System.DiskSpace
-import System.Exit
 
 import Ergvein.Index.Protocol.Types (Message(..), FilterEvent(..))
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.Config
-import Ergvein.Index.Server.DB
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
-import Ergvein.Index.Server.TCPService.Conversions
+import Ergvein.Index.Server.TCPService.Conversions()
 import Ergvein.Index.Server.Utils
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
+import qualified Data.Text as T
 import qualified Ergvein.Index.Server.BlockchainScanning.Bitcoin as BTCScanning
 import qualified Ergvein.Index.Server.BlockchainScanning.Ergo    as ERGOScanning
-import qualified Network.Bitcoin.Api.Client                      as BitcoinApi
 
 scanningInfo :: ServerM [ScanProgressInfo]
 scanningInfo = catMaybes <$> mapM nfo allCurrencies
@@ -104,7 +99,7 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
           go restart to
 
         blockScanningError errorMessage from to = do
-          logInfoN $ "Error scanning " <> showt from <> " " <> showt currency
+          logInfoN $ "Error scanning " <> showt from <> " " <> showt currency <> " " <> T.pack errorMessage
           previousBlockChanged from to
 
 broadcastFilter :: BlockMetaInfo -> ServerM ()

@@ -1,6 +1,5 @@
 module Ergvein.Index.Server.BlockchainScanning.Bitcoin where
 
-import           Control.Concurrent
 import           Control.Concurrent.Async.Lifted
 import           Control.Lens.Combinators
 import           Control.Monad.Logger
@@ -8,26 +7,21 @@ import           Control.Monad.Reader
 import           Control.Monad.Trans.Control
 import           Data.Either
 import           Data.Fixed
-import           Data.List.Index
 import           Data.Maybe
 import           Data.Serialize
 import           Data.Text(Text)
 import           Data.Time
 import           Network.Bitcoin.Api.Blockchain
-import           Network.Bitcoin.Api.Client
 import           Network.Bitcoin.Api.Misc
 import           Control.Concurrent.STM.TVar
 
-import           Ergvein.Crypto.Hash
 import           Ergvein.Filters.Btc.Mutable
 import           Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import           Ergvein.Index.Server.BlockchainScanning.Types
 import           Ergvein.Index.Server.Config
 import           Ergvein.Index.Server.DB.Monad
-import           Ergvein.Index.Server.DB.Queries
 import           Ergvein.Index.Server.DB.Schema.Filters
 import           Ergvein.Index.Server.DB.Serialize
-import           Ergvein.Index.Server.DB.Serialize.Tx
 import           Ergvein.Index.Server.DB.Utils
 import           Ergvein.Index.Server.Dependencies
 import           Ergvein.Index.Server.Monad
@@ -40,14 +34,12 @@ import           Ergvein.Types.Transaction
 import qualified Data.ByteString                    as BS
 import qualified Data.HexString                     as HS
 import qualified Data.Map.Strict                    as Map
-import qualified Data.Set                           as Set
 import qualified Ergvein.Index.Protocol.Types       as IPT
 import qualified Network.Haskoin.Block              as HK
 import qualified Network.Haskoin.Constants          as HK
 import qualified Network.Haskoin.Crypto             as HK
 import qualified Network.Haskoin.Script             as HK
 import qualified Network.Haskoin.Transaction        as HK
-import qualified Network.Haskoin.Util               as HK
 
 mkChunks :: Int -> [a] -> [[a]]
 mkChunks n vals = mkChunks' [] vals
@@ -99,14 +91,13 @@ blockInfo :: (BitcoinApiMonad m,  HasBitcoinNodeNetwork m, HasFiltersDB m, Monad
   => BlockHeight -> m BlockInfo
 blockInfo blockHeightToScan =  do
   blockHash <- nodeRpcCall $ (`getBlockHash` fromIntegral blockHeightToScan)
-  let bh = fromRight blockParsingError $ decode $ BS.reverse $ HS.toBytes blockHash
+  let bh = fromRight hashParsingError $ decode $ BS.reverse $ HS.toBytes blockHash
   parsedBlock <- requestBlock bh
   currentNetwork <- currentBitcoinNetwork
 
   blockTxInfos parsedBlock blockHeightToScan currentNetwork
   where
-    blockGettingError = error $ "Error getting BTC node at height " ++ show blockHeightToScan
-    blockParsingError = error $ "Error parsing BTC node at height " ++ show blockHeightToScan
+    hashParsingError = error $ "Error parsing BTC BlockHash at height " ++ show blockHeightToScan
 
 feeScaner :: ServerM ()
 feeScaner = feeScaner' 0

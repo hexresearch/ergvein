@@ -1,19 +1,17 @@
+{-# OPTIONS_GHC -Wall #-}
 module Ergvein.Index.Server.Environment where
 
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Exception (SomeException(..),AsyncException(..))
-import Control.Immortal
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Control
 import Control.Monad.Logger
 import Control.Monad.Reader
-import Data.ByteString.UTF8
 import Data.Maybe
 import Data.Typeable
 import Database.LevelDB.Base
-import Network.Bitcoin.Api.Types
 import Network.HTTP.Client.TLS
 import Network.Socket
 import Servant.Client.Core
@@ -24,7 +22,6 @@ import Ergvein.Index.Server.DB
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.TCPService.BTC
 import Ergvein.Text
-import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 
 import qualified Data.Map.Strict             as M
@@ -59,7 +56,7 @@ discoveryRequisites cfg = let
   knownPeers = Set.fromList $ parseKnownPeer <$> cfgKnownPeers cfg
   filteredKnownPeers = case ownPeerAddress of
     Just address -> Set.delete address knownPeers
-    otherwise    -> knownPeers
+    _    -> knownPeers
   in PeerDiscoveryRequisites
       ownPeerAddress
       filteredKnownPeers
@@ -85,18 +82,18 @@ newServerEnv :: (MonadIO m, MonadLogger m, MonadMask m, MonadBaseControl IO m)
   -> m ServerEnv
 newServerEnv doWait noDropFilters btcClient cfg@Config{..} = do
     logger <- liftIO newChan
-    liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
+    void $ liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
     filtersDBCntx  <- openDb noDropFilters DBFilters cfgFiltersDbPath
     indexerDBCntx  <- openDb noDropFilters DBIndexer cfgIndexerDbPath
     ergoNodeClient <- liftIO $ ErgoApi.newClient cfgERGONodeHost cfgERGONodePort
     tlsManager     <- liftIO $ newTlsManager
     feeEstimates   <- liftIO $ newTVarIO M.empty
-    shutdown       <- liftIO $ newTVarIO False
+    shutdownVar    <- liftIO $ newTVarIO False
     openConns      <- liftIO $ newTVarIO M.empty
     broadChan      <- liftIO newBroadcastTChanIO
     let bitcoinNodeNetwork = if cfgBTCNodeIsTestnet then HK.btcTest else HK.btc
         descDiscoveryRequisites = discoveryRequisites cfg
-    btcsock <- connectBtc bitcoinNodeNetwork "localhost" "8333" shutdown
+    btcsock <- connectBtc bitcoinNodeNetwork "localhost" "8333" shutdownVar
     when doWait $ liftIO $ do
       isUp <- atomically $ dupTChan $ btcSockOnActive btcsock
       b <- readTVarIO $ btcSockIsActive btcsock
@@ -116,7 +113,7 @@ newServerEnv doWait noDropFilters btcClient cfg@Config{..} = do
       , envBitcoinSocket           = btcsock
       , envPeerDiscoveryRequisites = descDiscoveryRequisites
       , envFeeEstimates            = feeEstimates
-      , envShutdownFlag            = shutdown
+      , envShutdownFlag            = shutdownVar
       , envOpenConnections         = openConns
       , envBroadcastChannel        = broadChan
       }
