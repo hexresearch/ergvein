@@ -112,12 +112,14 @@ isBip158Indexable bs = kindCheck && not (BS.null bs)
 
 -- | We index only segwit scripts, multisigs and data carrier for USDT support.
 isErgveinIndexable :: ByteString -> Bool
-isErgveinIndexable bs = case decodeOutputBS bs of
-  Right (PayWitnessPKHash     {}) -> True
-  Right (PayWitnessScriptHash {}) -> True
-  Right (PayMulSig            {}) -> True
-  Right (DataCarrier          {}) -> True
-  _                               -> False
+isErgveinIndexable bs = kindCheck && not (BS.null bs)
+  where
+    kindCheck = case decodeOutputBS bs of
+      Right (PayWitnessPKHash     {}) -> True
+      Right (PayWitnessScriptHash {}) -> True
+      Right (PayMulSig            {}) -> True
+      Right (DataCarrier          {}) -> True
+      _                               -> False
 {-# INLINE isErgveinIndexable #-}
 
 -- | Siphash key for filter is first 16 bytes of the hash (in standard little-endian representation)
