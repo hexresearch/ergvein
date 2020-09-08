@@ -1,6 +1,7 @@
 module Ergvein.Index.Protocol.Types where
 
 import Data.ByteString
+import Data.ByteString.Short (ShortByteString)
 import Data.Vector.Unboxed.Deriving
 import Data.Word
 import Foreign.C.Types
@@ -124,7 +125,7 @@ data FilterRequest = FilterRequest
 
 data BlockFilter = BlockFilter
   { -- blockFilterBlockIdLength :: uint32 Length of block hash
-    blockFilterBlockId       :: !ByteString
+    blockFilterBlockId       :: !ShortByteString
  -- blockFilterLength :: uint32 Size in bytes of filter
   , blockFilterFilter        :: !ByteString
   } deriving (Show, Eq)
@@ -138,7 +139,7 @@ data FilterEvent = FilterEvent
   { filterEventCurrency      :: !CurrencyCode
   , filterEventHeight        :: !Word64
  -- filterEventBlockIdLength :: uint32 Length of block hash
-  , filterEventBlockId       :: !ByteString
+  , filterEventBlockId       :: !ShortByteString
  -- filterEventFilterLength  :: uint32 Length of filter
   , filterEventBlockFilter   :: !ByteString
   } deriving (Show, Eq)
@@ -169,18 +170,18 @@ data Address = Address
   { addressType    :: !IPType
   , addressPort    :: !Word16
   , addressAddress :: !ByteString
-  } deriving (Show, Eq) 
+  } deriving (Show, Eq)
 
 data PeerRequest = PeerRequest
-  deriving (Show, Eq) 
+  deriving (Show, Eq)
 
 data PeerResponse = PeerResponse
   { peerResponseAddresses :: !(V.Vector Address)
-  } deriving (Show, Eq) 
+  } deriving (Show, Eq)
 
 data PeerIntroduce = PeerIntroduce
   { peerIntroduceAddresses :: !(V.Vector Address)
-  } deriving (Show, Eq) 
+  } deriving (Show, Eq)
 
 data Message = MPing                       !Ping
              | MPong                       !Pong

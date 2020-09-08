@@ -84,7 +84,7 @@ scannerBtc = void $ workflow waiting
 
     scanning i0 = Workflow $ do
       logWrite "Scanning filters"
-      waitingE <- scanningAllBtcKeys i0
+      waitingE <- scanningAllBtcKeys $ fromIntegral i0
       scD <- getWalletsScannedHeightD BTC
       cleanedE <- performFork $ ffor waitingE $ const $ do
         i1 <- fmap fromIntegral . sample . current $ scD
@@ -93,8 +93,9 @@ scannerBtc = void $ workflow waiting
       pure ((), waiting <$ cleanedE)
 
 -- | Check all keys stored in public storage agains unscanned filters and return 'True' if we found any tx (stored in public storage).
-scanningAllBtcKeys :: MonadFront t m => HB.BlockHeight -> m (Event t Bool)
-scanningAllBtcKeys i0 = do
+scanningAllBtcKeys :: forall t m . MonadFront t m => HB.BlockHeight -> m (Event t Bool)
+scanningAllBtcKeys i0' = do
+  let i0 = fromIntegral i0'
   buildE <- getPostBuild
   ps <- getPubStorage
   let keys = getPublicKeys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "scannerBtc: not exsisting store!") . currencyPubStorage'pubKeystore
@@ -103,14 +104,18 @@ scanningAllBtcKeys i0 = do
   let updSync i i1 = updFire $ SyncMeta BTC (SyncBlocks (fromIntegral (i - i0)) (fromIntegral (i1 - i0))) (fromIntegral (i - i0)) (fromIntegral (i1 - i0))
   scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses i0 updSync $ xPubToBtcAddr . extractXPubKeyFromEgv . scanBox'key <$> keys
   let heightE = fst <$> scanE
-      hashesE = V.toList . snd <$> scanE
-  void $ writeWalletsScannedHeight "scanningAllBtcKeys" $ ((BTC, ) . fromIntegral) <$> heightE
+      hashesE = ffor scanE $ \(_, vs) ->
+        ffor (V.toList vs) $ \(ha,he) -> (egvBlockHashToHk ha, fromIntegral he)
+      -- hashesE = V.toList . snd <$> scanE
+      -- hashesE = never
+  void $ writeWalletsScannedHeight "scanningAllBtcKeys" $ (BTC, ) <$> heightE
   performEvent_ $ ffor scanE $ \(h, bls) -> logWrite $ "Scanned all keys up to " <> showt h <> ", blocks to check: " <> showt bls
   scanningBtcBlocks keys hashesE
 
 -- | Check single key against unscanned filters and return 'True' if we found any tx (stored in public storage).
 scanningBtcKey :: MonadFront t m => KeyPurpose -> HB.BlockHeight -> Int -> EgvXPubKey -> m (Event t Bool)
-scanningBtcKey kp i0 keyNum pubkey = do
+scanningBtcKey kp i0' keyNum pubkey = do
+  let i0 = fromIntegral i0'
   (updE, updFire) <- newTriggerEvent
   setSyncProgress updE
   let sp = case kp of
@@ -122,7 +127,8 @@ scanningBtcKey kp i0 keyNum pubkey = do
       address = xPubToBtcAddr $ extractXPubKeyFromEgv pubkey
   buildE <- getPostBuild
   scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddress i0 updSync $ xPubToBtcAddr . extractXPubKeyFromEgv $ pubkey
-  let hashesE = V.toList . snd <$> scanE
+  let hashesE = ffor scanE $ \(_, vs) ->
+        ffor (V.toList vs) $ \(ha,he) -> (egvBlockHashToHk ha, fromIntegral he)
   performEvent_ $ ffor scanE $ \(h, bls) -> logWrite $ "Scanned key #" <> showt keyNum <> " " <> btcAddrToString address <> " up to " <> showt h <> ", blocks to check: " <> showt bls
   scanningBtcBlocks (V.singleton (ScanKeyBox pubkey kp keyNum)) hashesE
 
@@ -184,7 +190,7 @@ getAddrTxsFromBlock box heights block = do
     utxo <- getUtxoUpdatesFromTxs mh box filteredTxs
     pure $ (filteredTxMap, utxo)
   where
-    mkTxId = HT.txHashToHex . HT.txHash
+    mkTxId = hkTxHashToEgv . HT.txHash
     addr = egvXPubKeyToEgvAddress $ scanBox'key box
     txs = HB.blockTxns block
     blockTime = secToTimestamp . HB.blockTimestamp $ HB.blockHeader $ block

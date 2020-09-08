@@ -9,7 +9,7 @@ module Ergvein.Wallet.Filters.Btc.Types(
 
 import Data.ByteString
 import Database.LMDB.Simple
-import Network.Haskoin.Block
+import Ergvein.Types.Transaction
 
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Codec()

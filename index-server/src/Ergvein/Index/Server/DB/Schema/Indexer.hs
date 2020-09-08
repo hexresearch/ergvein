@@ -2,6 +2,7 @@
 module Ergvein.Index.Server.DB.Schema.Indexer
   (
     KnownPeerRecItem(..)
+  , KnownPeersRec(..)
   , LastScannedBlockHeaderHashRec(..)
   , ContentHistoryRec(..)
   , ContentHistoryRecItem(..)
@@ -15,13 +16,13 @@ module Ergvein.Index.Server.DB.Schema.Indexer
 
 import Crypto.Hash.SHA256
 import Data.ByteString (ByteString)
+import Data.ByteString.Short (ShortByteString)
 import Data.FileEmbed
-import Data.Flat
+import GHC.Generics
 import Data.Serialize (Serialize)
 import Data.Text
 import Data.Word
 
-import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
@@ -43,13 +44,15 @@ keyString keyPrefix key = (fromIntegral $ fromEnum keyPrefix) `BS.cons` S.encode
 knownPeersRecKey :: ByteString
 knownPeersRecKey  = keyString Peer $ mempty @String
 
-data KnownPeersRec = KnownPeersRec [KnownPeerRecItem] deriving (Generic, Show, Eq, Ord, Flat)
+data KnownPeersRec = KnownPeersRec {
+    unKnownPeersRec :: [KnownPeerRecItem]
+  } deriving (Generic, Show, Eq, Ord)
 
 data KnownPeerRecItem = KnownPeerRecItem
-  { knownPeerRecUrl             :: Text
-  , knownPeerRecIsSecureConn    :: Bool
-  , knownPeerRecLastValidatedAt :: Text
-  } deriving (Generic, Show, Eq, Ord, Flat)
+  { knownPeerRecUrl             :: !Text
+  , knownPeerRecIsSecureConn    :: !Bool
+  , knownPeerRecLastValidatedAt :: !Text
+  } deriving (Generic, Show, Eq, Ord)
 
 --lastScannedBlockHeaderHash
 
@@ -57,12 +60,12 @@ lastScannedBlockHeaderHashRecKey :: Currency -> ByteString
 lastScannedBlockHeaderHashRecKey  = keyString LastBlockHash . LastScannedBlockHeaderHashRecKey
 
 data LastScannedBlockHeaderHashRecKey = LastScannedBlockHeaderHashRecKey
-  { lastScannedBlockHeaderHashRecKeyCurrency :: Currency
+  { lastScannedBlockHeaderHashRecKeyCurrency :: !Currency
   } deriving (Generic, Show, Eq, Ord, Serialize)
 
 data LastScannedBlockHeaderHashRec = LastScannedBlockHeaderHashRec
-  { lastScannedBlockHeaderHashRecHash :: BlockHeaderHashHexView
-  } deriving (Generic, Show, Eq, Ord, Flat)
+  { lastScannedBlockHeaderHashRecHash :: !ShortByteString
+  } deriving (Generic, Show, Eq, Ord)
 
 --ScannedContentHistory
 
@@ -70,17 +73,17 @@ contentHistoryRecKey :: Currency -> ByteString
 contentHistoryRecKey  = keyString ContentHistory . ContentHistoryRecKey
 
 data ContentHistoryRecKey = ContentHistoryRecKey
-  { contentHistoryRecKeyCurrency :: Currency
+  { contentHistoryRecKeyCurrency :: !Currency
   } deriving (Generic, Show, Eq, Ord, Serialize)
 
 data ContentHistoryRec = ContentHistoryRec
   { contentHistoryRecItems :: Seq.Seq ContentHistoryRecItem
-  } deriving (Generic, Show, Eq, Ord, Flat)
+  } deriving (Generic, Show, Eq, Ord)
 
 data ContentHistoryRecItem = ContentHistoryRecItem
   { contentHistoryRecItemSpentTxOuts  :: Map.Map TxHash Word32
   , contentHistoryRecItemAddedTxsHash :: [TxHash]
-  } deriving (Generic, Show, Eq, Ord, Flat)
+  } deriving (Generic, Show, Eq, Ord)
 
 contentHistorySize :: Int
 contentHistorySize = 64
@@ -90,4 +93,4 @@ contentHistorySize = 64
 schemaVersionRecKey :: ByteString
 schemaVersionRecKey  = keyString SchemaVersion $ mempty @String
 
-data SchemaVersionRec = Text  deriving (Generic, Show, Eq, Ord, Flat)
+data SchemaVersionRec = Text  deriving (Generic, Show, Eq, Ord)

@@ -8,12 +8,13 @@ import Control.Monad.IO.Class
 import Data.Dependent.Sum
 import Data.Functor.Identity
 import Data.Vector (Vector)
-import Ergvein.Filters.Mutable
+import Ergvein.Filters.Mutable hiding (BlockHeight, BlockHash)
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Platform
-import Network.Haskoin.Block
+-- import Network.Haskoin.Block
 
 import qualified Data.Vector as V
 
@@ -24,7 +25,7 @@ filterAddress addr = foldFilters (egvAddrCurrency addr) f []
       Just (AFBtc :=> Identity (caddr, cfilter)) -> case guardSegWit caddr of
         Nothing -> pure acc
         Just saddr -> do
-          res <- applyBtcFilter btcNetwork bhash cfilter saddr
+          res <- applyBtcFilter btcNetwork (egvBlockHashToHk bhash) cfilter saddr
           pure $ if res then bhash : acc else acc
       Just (AFErgo :=> _) -> pure acc -- TODO: add ergo hree
       _ -> pure acc
@@ -41,7 +42,7 @@ filterBtcAddress i0 progCb ba = case guardSegWit ba of
   where
     f saddr i n bhash cfilter (!_, !acc) = do
       liftIO $ progCb i n
-      res <- applyBtcFilter btcNetwork bhash cfilter saddr
+      res <- applyBtcFilter btcNetwork (egvBlockHashToHk bhash) cfilter saddr
       let acc' = if res then V.cons (bhash, i) acc else acc
       pure (i, acc')
 
@@ -59,6 +60,6 @@ filterBtcAddresses i0 progCb as
     bas = V.mapMaybe guardSegWit as
     f i n bhash cfilter (!_, !acc) = do
       liftIO $ progCb i n
-      res <- applyBtcFilterMany btcNetwork bhash cfilter $ V.toList bas
+      res <- applyBtcFilterMany btcNetwork (egvBlockHashToHk bhash) cfilter $ V.toList bas
       let acc' = if res then V.cons (bhash, i) acc else acc
       pure (i, acc')

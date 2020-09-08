@@ -168,7 +168,7 @@ transactionsGetting cur = do
       liftIO $ flip runReaderT store $ do
         let txHashes = fmap (HK.txHash . getBtcTx) txs
             txsRefList = fmap (calcRefill (fmap getBtcAddr allbtcAdrS)) txs
-            parentTxsIds = (fmap . fmap) (HK.txHashToHex . HK.outPointHash . HK.prevOutput) (fmap (HK.txIn . getBtcTx) txs)
+            parentTxsIds = (fmap . fmap) (hkTxHashToEgv . HK.outPointHash . HK.prevOutput) (fmap (HK.txIn . getBtcTx) txs)
         blh <- traverse getBtcBlockHashByTxHash txHashes
         bl <- traverse (maybe (pure Nothing) getBlockHeaderByHash) blh
         txStore <- getTxStorage cur

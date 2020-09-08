@@ -6,8 +6,9 @@ module Ergvein.Wallet.Debug
 
 import Control.Lens
 import Control.Monad.IO.Class
+import Data.ByteString (ByteString)
 import Data.Maybe (fromMaybe, listToMaybe, catMaybes)
-import Network.Haskoin.Block
+import Network.Haskoin.Block hiding (BlockHash, BlockHeight)
 import Network.Haskoin.Transaction
 
 import Ergvein.Text
@@ -16,6 +17,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Utxo
+import Ergvein.Types.Transaction (BlockHash, BlockHeight)
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
@@ -24,7 +26,6 @@ import Ergvein.Wallet.Storage
 import Ergvein.Wallet.Wrapper
 import Ergvein.Index.Protocol.Types (Message(..))
 import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
-import Ergvein.Types.Block
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -65,7 +66,7 @@ debugWidget = el "div" $ do
   h5 . dynText $ do
     p <- avgD
     pure $ "Avg.indexer ping: " <> showt p
-  -- dbgFiltersTest
+  dbgFiltersTest
   h5 . dynText . fmap showt =<< getCurrentHeight BTC
   let goE = leftmost [utxoE, pubIntE, pubExtE, prvIntE, prvExtE]
   void $ nextWidget $ ffor goE $ \sel -> Retractable {
@@ -166,23 +167,20 @@ dbgPrivExternalsPage = wrapper False "Private external keys" (Just $ pure dbgPri
 dbgFiltersTest :: MonadFront t m => m ()
 dbgFiltersTest = do
   getE <- outlineButton $ mkTxt "dbgFiltersTest"
-  filtsE <- getFilters BTC $ (1, 10) <$ getE
+  filtsE <- getFilters BTC $ (327298, 10) <$ getE
   performEvent_ $ ffor filtsE $ \filts -> void $ flip traverse filts $ \(bh, filt) -> do
     logWrite "====================================="
     logWrite $ showt bh
-    logWrite filt
+    logWrite $ bs2Hex filt
 
-getFilters :: MonadFront t m => Currency -> Event t (BlockHeight, Int) -> m (Event t [(BlockHash, AddressFilterHexView)])
+getFilters :: MonadFront t m => Currency -> Event t (BlockHeight, Int) -> m (Event t [(BlockHash, ByteString)])
 getFilters cur e = do
   respE <- requestRandomIndexer $ ffor e $ \(h, n) ->
     MFiltersRequest $ FilterRequest curcode (fromIntegral h) (fromIntegral n)
   pure $ fforMaybe respE $ \case
     MFiltersResponse (FilterResponse{..}) -> if filterResponseCurrency /= curcode
       then Nothing
-      else Just $ catMaybes $ V.toList $ ffor filterResponseFilters $ \(BlockFilter bid filt) -> let
-        mbh = hexToBlockHash $ bs2Hex bid
-        fview = bs2Hex filt
-        in (, fview) <$> mbh
+      else Just $ V.toList $ ffor filterResponseFilters $ \(BlockFilter bid filt) -> (bid, filt)
     _ -> Nothing
   where
     curcode = currencyToCurrencyCode cur

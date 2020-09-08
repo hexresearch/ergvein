@@ -166,4 +166,4 @@ checkAddrTx' vec tx = do
     pure $ if b then Just (kb, M.singleton th (BtcTx tx meta)) else Nothing
   pure $ V.mapMaybe id vec'
   where
-    th = HT.txHashToHex $ HT.txHash tx
+    th = hkTxHashToEgv $ HT.txHash tx

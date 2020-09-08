@@ -32,7 +32,7 @@ getBlockMetaSlice currency startHeight endHeight = do
   db <- getFiltersDb
   let start = metaRecKey (currency, startHeight)
       end   = BlockMetaRecKey currency $ startHeight + pred endHeight
-  slice <- safeEntrySlice db start end
+  slice <- safeEntrySlice currency db start end
   let metaSlice = snd <$> slice
   pure metaSlice
 

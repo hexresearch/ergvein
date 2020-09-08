@@ -13,6 +13,7 @@ import Ergvein.Types.Fees
 
 import qualified Data.Attoparsec.ByteString as Parse
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Short as BSS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
@@ -88,7 +89,7 @@ filterParser = do
   blockFilter <- Parse.take blockFilterLength
 
   pure $ BlockFilter
-    { blockFilterBlockId = blockId
+    { blockFilterBlockId = BSS.toShort blockId
     , blockFilterFilter  = blockFilter
     }
 
@@ -164,7 +165,7 @@ messageParser MFilterEventType = do
   pure $ MFiltersEvent $ FilterEvent
     { filterEventCurrency    = currency
     , filterEventHeight      = height
-    , filterEventBlockId     = blockId
+    , filterEventBlockId     = BSS.toShort blockId
     , filterEventBlockFilter = blockFilter
     }
 

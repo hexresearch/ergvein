@@ -10,6 +10,7 @@ import Ergvein.Index.Protocol.Types
 import Ergvein.Types.Fees
 
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Short as BSS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
@@ -73,14 +74,14 @@ scanBlockBuilder ScanBlock {..} = (scanBlockSize, scanBlock)
 blockFilterBuilder :: BlockFilter -> (Sum Word32, Builder)
 blockFilterBuilder BlockFilter {..} = (filterSize, filterBuilder)
   where
-    idLength = fromIntegral $ BS.length blockFilterBlockId
+    idLength = fromIntegral $ BSS.length blockFilterBlockId
     filterLength = fromIntegral $ BS.length blockFilterFilter
     filterSize = Sum $ genericSizeOf idLength
                      + idLength
                      + genericSizeOf filterLength
                      + filterLength
     filterBuilder = word32LE idLength
-                 <> byteString blockFilterBlockId
+                 <> byteString (BSS.fromShort blockFilterBlockId)
                  <> word32LE filterLength
                  <> byteString blockFilterFilter
 
@@ -153,12 +154,12 @@ messageBuilder (MFiltersEvent FilterEvent {..}) =
   $  word32LE currency
   <> word64LE filterEventHeight
   <> word32LE filterEventBlockIdLength
-  <> byteString filterEventBlockId
+  <> byteString (BSS.fromShort filterEventBlockId)
   <> word32LE filterEventBlockFilterLength
   <> byteString filterEventBlockFilter
   where
     currency = currencyCodeToWord32 filterEventCurrency
-    filterEventBlockIdLength = fromIntegral $ BS.length filterEventBlockId
+    filterEventBlockIdLength = fromIntegral $ BSS.length filterEventBlockId
     filterEventBlockFilterLength = fromIntegral $ BS.length filterEventBlockFilter
 
     msgSize = genericSizeOf currency
@@ -194,7 +195,7 @@ messageBuilder (MPeerResponse PeerResponse{..}) = let
   addrAmount = fromIntegral $ V.length peerResponseAddresses
   msgSize = genericSizeOf addrAmount
           + getSum addressesSize
-  in messageBase MPeerResponseType msgSize 
+  in messageBase MPeerResponseType msgSize
   $  word32LE addrAmount
   <> addresses
 
@@ -203,7 +204,7 @@ messageBuilder (MPeerIntroduce PeerIntroduce{..}) = let
   addrAmount = fromIntegral $ V.length peerIntroduceAddresses
   msgSize = genericSizeOf addrAmount
           + getSum addressesSize
-  in messageBase MPeerResponseType msgSize 
+  in messageBase MPeerResponseType msgSize
   $  word32LE addrAmount
   <> addresses
 

@@ -1,18 +1,17 @@
+{-# OPTIONS_GHC -Wall #-}
 module Ergvein.Index.Server.Environment where
 
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Exception (SomeException(..),AsyncException(..))
-import Control.Immortal
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
+import Control.Monad.Trans.Control
 import Control.Monad.Logger
 import Control.Monad.Reader
-import Data.ByteString.UTF8
 import Data.Maybe
 import Data.Typeable
 import Database.LevelDB.Base
-import Network.Bitcoin.Api.Types
 import Network.HTTP.Client.TLS
 import Network.Socket
 import Servant.Client.Core
@@ -21,8 +20,8 @@ import Ergvein.Index.Protocol.Types (CurrencyCode, Message)
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB
 import Ergvein.Index.Server.PeerDiscovery.Types
+import Ergvein.Index.Server.TCPService.BTC
 import Ergvein.Text
-import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 
 import qualified Data.Map.Strict             as M
@@ -41,7 +40,9 @@ data ServerEnv = ServerEnv
     , envIndexerDBContext         :: !DB
     , envBitcoinNodeNetwork       :: !HK.Network
     , envErgoNodeClient           :: !ErgoApi.Client
-    , envClientManager            :: !HC.Manager
+    , envClientManager            :: HC.Manager
+    , envBitcoinClient            :: !BitcoinApi.Client
+    , envBitcoinSocket            :: !BtcSocket
     , envPeerDiscoveryRequisites  :: !PeerDiscoveryRequisites
     , envFeeEstimates             :: !(TVar (M.Map CurrencyCode FeeBundle))
     , envShutdownFlag             :: !(TVar Bool)
@@ -55,7 +56,7 @@ discoveryRequisites cfg = let
   knownPeers = Set.fromList $ parseKnownPeer <$> cfgKnownPeers cfg
   filteredKnownPeers = case ownPeerAddress of
     Just address -> Set.delete address knownPeers
-    otherwise    -> knownPeers
+    _    -> knownPeers
   in PeerDiscoveryRequisites
       ownPeerAddress
       filteredKnownPeers
@@ -73,22 +74,32 @@ discoveryRequisites cfg = let
       err = error $ "Error cannot parse peer '" <> address <> "'"
       in fromMaybe err $ parseBaseUrl address
 
-newServerEnv :: (MonadIO m, MonadLogger m) => Bool -> Config -> m ServerEnv
-newServerEnv noDropFilters cfg = do
+newServerEnv :: (MonadIO m, MonadLogger m, MonadMask m, MonadBaseControl IO m)
+  => Bool               -- ^ flag, def True: wait for node connections to be up before finalizing the env
+  -> Bool               -- ^ flag, def False: do not drop Filters database
+  -> BitcoinApi.Client  -- ^ RPC connection to the bitcoin node
+  -> Config             -- ^ Contents of the config file
+  -> m ServerEnv
+newServerEnv doWait noDropFilters btcClient cfg@Config{..} = do
     logger <- liftIO newChan
-    liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
-
-    filtersDBCntx  <- openDb noDropFilters DBFilters (cfgFiltersDbPath cfg)
-    indexerDBCntx  <- openDb noDropFilters DBIndexer (cfgIndexerDbPath cfg)
-    ergoNodeClient <- liftIO $ ErgoApi.newClient (cfgERGONodeHost cfg) (cfgERGONodePort cfg)
-    httpManager    <- liftIO $ HC.newManager HC.defaultManagerSettings
+    void $ liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
+    filtersDBCntx  <- openDb noDropFilters DBFilters cfgFiltersDbPath
+    indexerDBCntx  <- openDb noDropFilters DBIndexer cfgIndexerDbPath
+    ergoNodeClient <- liftIO $ ErgoApi.newClient cfgERGONodeHost cfgERGONodePort
     tlsManager     <- liftIO $ newTlsManager
     feeEstimates   <- liftIO $ newTVarIO M.empty
-    shutdown       <- liftIO $ newTVarIO False
+    shutdownVar    <- liftIO $ newTVarIO False
     openConns      <- liftIO $ newTVarIO M.empty
     broadChan      <- liftIO newBroadcastTChanIO
-    let bitcoinNodeNetwork = if cfgBTCNodeIsTestnet cfg then HK.btcTest else HK.btc
+    let bitcoinNodeNetwork = if cfgBTCNodeIsTestnet then HK.btcTest else HK.btc
         descDiscoveryRequisites = discoveryRequisites cfg
+    btcsock <- connectBtc bitcoinNodeNetwork cfgBTCNodeTCPHost (show cfgBTCNodeTCPPort) shutdownVar
+    when doWait $ liftIO $ do
+      isUp <- atomically $ dupTChan $ btcSockOnActive btcsock
+      b <- readTVarIO $ btcSockIsActive btcsock
+      if b then pure () else fix $ \next -> do
+        b' <- atomically $ readTChan isUp
+        if b' then pure () else next
     traceShowM cfg
     pure ServerEnv
       { envServerConfig            = cfg
@@ -98,9 +109,11 @@ newServerEnv noDropFilters cfg = do
       , envBitcoinNodeNetwork      = bitcoinNodeNetwork
       , envErgoNodeClient          = ergoNodeClient
       , envClientManager           = tlsManager
+      , envBitcoinClient           = btcClient
+      , envBitcoinSocket           = btcsock
       , envPeerDiscoveryRequisites = descDiscoveryRequisites
       , envFeeEstimates            = feeEstimates
-      , envShutdownFlag            = shutdown
+      , envShutdownFlag            = shutdownVar
       , envOpenConnections         = openConns
       , envBroadcastChannel        = broadChan
       }

@@ -17,37 +17,20 @@ module Ergvein.Index.Server.DB.Utils
 import Control.Lens
 import Control.Monad.IO.Class
 import Control.Monad.Logger
-import Conversion
-import Crypto.Hash.SHA256
 import Data.ByteString (ByteString)
 import Data.Default
 import Data.Either
-import Data.FileEmbed
-import Data.Flat
-import Data.Foldable
-import Data.Maybe
 import Data.Serialize (Serialize)
 import Data.Text
 import Data.Text.Encoding
 import Data.Time
-import Data.Time.Clock
-import Data.Word
 import Database.LevelDB
 import Database.LevelDB.Iterator
-import Ergvein.Index.Server.Dependencies
-import Servant.Client.Core
-import System.ByteOrder
 
--- import Ergvein.Index.Server.DB.Monad
-import Ergvein.Types.Block
+import Ergvein.Index.Server.DB.Serialize.Class
 import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
 
 import qualified Data.ByteString as BS
-import qualified Data.ByteString as BS
-import qualified Data.Map.Strict as Map
-import qualified Data.Sequence as Seq
-import qualified Data.Serialize as S
 import qualified Data.Serialize as S
 import qualified Data.Text as T
 import qualified Database.LevelDB as LDB
@@ -57,10 +40,10 @@ instance Serialize Text where
   put txt = S.put $ encodeUtf8 txt
   get     = decodeUtf8 <$> S.get
 
-unflatExact :: (Flat a) => ByteString -> a
-unflatExact s = case unflat s of
+unflatExact :: (EgvSerialize a) => Currency -> Text -> ByteString -> a
+unflatExact cur t s = case egvDeserialize cur s of
     Right k -> k
-    Left e -> error $ show e ++ "value " ++  show s
+    Left e -> error $ show t ++ show e ++ "value " ++  show (BS.unpack s)
 
 decodeExact :: (Serialize b) => ByteString -> b
 decodeExact s = case S.decode s of
@@ -74,44 +57,45 @@ unPrefixedKey key = BS.tail key
 parsedKey :: Serialize k => ByteString -> k
 parsedKey = fromRight (error "ser") . S.decode . unPrefixedKey
 
-safeEntrySlice :: (MonadIO m , Ord k, S.Serialize k, Flat v) => DB -> BS.ByteString -> k -> m [(k,v)]
-safeEntrySlice db startKey endKey = do
+safeEntrySlice :: (MonadIO m , Ord k, S.Serialize k, EgvSerialize v)
+  => Currency -> DB -> BS.ByteString -> k -> m [(k,v)]
+safeEntrySlice cur db startKey endKey = do
   iterator <- createIter db def
   slice <- LDBStreaming.toList $ LDBStreaming.entrySlice iterator range LDBStreaming.Asc
-  pure $ over _2 unflatExact  <$> over _1 (decodeExact . unPrefixedKey) <$> slice
+  pure $ over _2 (unflatExact cur "safeEntrySlice")  <$> over _1 (decodeExact . unPrefixedKey) <$> slice
   where
     range = LDBStreaming.KeyRange startKey comparison
     comparison key = case S.decode $ unPrefixedKey key of
       Right parsedKey -> compare parsedKey endKey
       _ -> GT
 
-getParsed :: (Flat v, MonadIO m) => DB -> BS.ByteString -> m (Maybe v)
-getParsed db key = do
+getParsed :: (EgvSerialize v, MonadIO m) => Currency -> Text -> DB -> BS.ByteString -> m (Maybe v)
+getParsed cur c db key = do
   maybeResult <- get db def key
-  let maybeParsedResult = unflatExact <$> maybeResult
+  let caller = "getParsed: " <> c
+  let maybeParsedResult = (unflatExact cur caller) <$> maybeResult
   pure maybeParsedResult
 
-getParsedExact :: (Flat v, MonadIO m, MonadLogger m) => Text -> DB -> BS.ByteString -> m v
-getParsedExact caller db key = do
+getParsedExact :: (EgvSerialize v, MonadIO m, MonadLogger m) => Currency -> Text -> DB -> BS.ByteString -> m v
+getParsedExact cur caller db key = do
   maybeResult <- get db def key
   case maybeResult of
-    Just result -> pure $ unflatExact result
+    Just result -> pure $ unflatExact cur caller result
     Nothing -> do
       currentTime <- liftIO getCurrentTime
-      props <- getProperty db Stats
       logErrorN $ "[Db read miss][getParsedExact]" <> "["<> caller <>"]"<> " Entity with key " <> (T.pack $ show key) <> " not found at time:" <> (T.pack $ show currentTime)
-      error $ "getParsedExact: not found" ++ show key ++ " " ++ show props
+      error $ "getParsedExact: not found" ++ show key
 
-getManyParsedExact :: (Flat v, MonadIO m, MonadLogger m) => Text -> DB -> [BS.ByteString] -> m [v]
-getManyParsedExact caller db keys = mapM (getParsedExact caller db) keys
+getManyParsedExact :: (EgvSerialize v, MonadIO m, MonadLogger m) => Currency -> Text -> DB -> [BS.ByteString] -> m [v]
+getManyParsedExact cur caller db keys = traverse (getParsedExact cur caller db) keys
 
-putItems :: (Flat v) => (a -> BS.ByteString) -> (a -> v) -> [a] -> LDB.WriteBatch
-putItems keySelector valueSelector items = putI <$> items
-  where putI item = LDB.Put (keySelector item) $ flat $ valueSelector item
+putItems :: (EgvSerialize v) => Currency -> (a -> BS.ByteString) -> (a -> v) -> [a] -> LDB.WriteBatch
+putItems cur keySelector valueSelector items = putI <$> items
+  where putI item = LDB.Put (keySelector item) $ egvSerialize cur $ valueSelector item
 
-putItem :: (Flat v) => BS.ByteString -> v -> LDB.WriteBatch
-putItem key item = [LDB.Put key $ flat item]
+putItem :: (EgvSerialize v) => Currency -> BS.ByteString -> v -> LDB.WriteBatch
+putItem cur key item = [LDB.Put key $ egvSerialize cur item]
 
-upsertItem :: (Flat v, MonadIO m, MonadLogger m) => DB -> BS.ByteString -> v -> m ()
-upsertItem db key item = do
-  put db def key $ flat item
+upsertItem :: (EgvSerialize v, MonadIO m, MonadLogger m) => Currency -> DB -> BS.ByteString -> v -> m ()
+upsertItem cur db key item = do
+  put db def key $ egvSerialize cur item

@@ -1,6 +1,8 @@
 module Ergvein.Index.Server.Monad where
 
+import Control.Concurrent
 import Control.Concurrent.STM
+import Control.Immortal
 import Control.Monad.Base
 import Control.Monad.Catch hiding (Handler)
 import Control.Monad.Except
@@ -8,21 +10,19 @@ import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Reader
 import Control.Monad.Trans.Control
+import Network.Socket
 import Servant.Server
 import Servant.Server.Generic
 
 import Ergvein.Index.Client
 import Ergvein.Index.Protocol.Types (CurrencyCode, Message)
 import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
-import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
-import Control.Immortal
-import Control.Concurrent
-import Network.Socket
 
 import qualified Data.Map.Strict as M
 import qualified Network.Bitcoin.Api.Client  as BitcoinApi
@@ -74,15 +74,10 @@ instance HasServerConfig ServerM where
   {-# INLINE serverConfig #-}
 
 instance BitcoinApiMonad ServerM where
-  nodeRpcCall f = do
-    cfg <- asks $ envServerConfig
-
-    liftIO $ BitcoinApi.withClient
-     (cfgBTCNodeHost     cfg)
-     (cfgBTCNodePort     cfg)
-     (cfgBTCNodeUser     cfg)
-     (cfgBTCNodePassword cfg)
-     f
+  nodeRpcCall f = liftIO . f =<< asks envBitcoinClient
+  {-# INLINE nodeRpcCall #-}
+  getSocketConn = asks envBitcoinSocket
+  {-# INLINE getSocketConn #-}
 
 instance HasClientManager ServerM where
   getClientManager = asks envClientManager

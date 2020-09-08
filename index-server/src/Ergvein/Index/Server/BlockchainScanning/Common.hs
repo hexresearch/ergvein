@@ -1,35 +1,31 @@
 module Ergvein.Index.Server.BlockchainScanning.Common where
 
-import Control.Concurrent
 import Control.Concurrent.STM
-import Control.Concurrent.STM.TVar
 import Control.Immortal
 import Control.Monad.Catch
 import Control.Monad.Logger
 import Control.Monad.Reader
 import Conversion
-import Data.Foldable
 import Data.Maybe
+import Data.Time
 import System.DiskSpace
-import System.Exit
 
 import Ergvein.Index.Protocol.Types (Message(..), FilterEvent(..))
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.Config
-import Ergvein.Index.Server.DB
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
-import Ergvein.Index.Server.TCPService.Conversions
+import Ergvein.Index.Server.TCPService.Conversions()
 import Ergvein.Index.Server.Utils
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
+import qualified Data.Text as T
 import qualified Ergvein.Index.Server.BlockchainScanning.Bitcoin as BTCScanning
 import qualified Ergvein.Index.Server.BlockchainScanning.Ergo    as ERGOScanning
-import qualified Network.Bitcoin.Api.Client                      as BitcoinApi
 
 scanningInfo :: ServerM [ScanProgressInfo]
 scanningInfo = catMaybes <$> mapM nfo allCurrencies
@@ -50,8 +46,12 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
   where
     blockIteration :: BlockHeight -> BlockHeight -> ServerM BlockInfo
     blockIteration totalh blockHeight = do
+      now <- liftIO $ getCurrentTime
       let percent = fromIntegral blockHeight / fromIntegral totalh :: Double
-      logInfoN $ "Scanning height for " <> showt currency <> " " <> showt blockHeight <> " / " <> showt totalh <> " (" <> showf 2 (100*percent) <> "%)"
+      logInfoN $ "["<> showt now <> "] "
+        <> "Scanning height for " <> showt currency <> " "
+        <> showt blockHeight <> " / " <> showt totalh <> " (" <> showf 2 (100*percent) <> "%)"
+        -- <> showt (length $ spentTxsHash bi)
       scanInfo blockHeight
 
     scanIteration :: Thread -> ServerM ()
@@ -73,9 +73,9 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
             enoughSpace <- isEnoughSpace
             case tryBlockInfo of
               Right blockInfo | enoughSpace -> do
-                previousBlockSame <- isPreviousBlockSame $ blockMetaPreviousHeaderBlockHashHexView $ blockInfoMeta blockInfo
+                previousBlockSame <- isPreviousBlockSame $ blockMetaPreviousHeaderBlockHash $ blockInfoMeta blockInfo
                 if previousBlockSame then do --fork detection
-                  addBlockInfo blockInfo
+                  addBlockInfo blockInfo to
                   when (current == to) $ broadcastFilter $ blockInfoMeta blockInfo
                   go (succ current) to
                 else previousBlockChanged current to
@@ -99,7 +99,7 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
           go restart to
 
         blockScanningError errorMessage from to = do
-          logInfoN $ "Error scanning " <> showt from <> " " <> showt currency
+          logInfoN $ "Error scanning " <> showt from <> " " <> showt currency <> " " <> T.pack errorMessage
           previousBlockChanged from to
 
 broadcastFilter :: BlockMetaInfo -> ServerM ()
@@ -107,8 +107,8 @@ broadcastFilter BlockMetaInfo{..} =
   broadcastSocketMessage $ MFiltersEvent $ FilterEvent
   { filterEventCurrency     = convert blockMetaCurrency
   , filterEventHeight       = blockMetaBlockHeight
-  , filterEventBlockId      = hex2bs blockMetaHeaderHashHexView
-  , filterEventBlockFilter  = hex2bs blockMetaAddressFilterHexView
+  , filterEventBlockId      = blockMetaHeaderHash
+  , filterEventBlockFilter  = blockMetaAddressFilter
   }
 
 blockchainScanning :: ServerM [Thread]

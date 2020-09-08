@@ -24,6 +24,7 @@ import Ergvein.Types.Fees
 import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
+import Ergvein.Types.Transaction (BlockHeight)
 import Ergvein.Wallet.Filters.Loader
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Language
@@ -67,7 +68,7 @@ data Env t = Env {
 , env'logoutFire      :: !(IO ())
 , env'activeCursRef   :: !(ExternalRef t (S.Set Currency))
 , env'filtersStorage  :: !FiltersStorage
-, env'filtersHeights  :: !(ExternalRef t (Map Currency HS.BlockHeight))
+, env'filtersHeights  :: !(ExternalRef t (Map Currency BlockHeight))
 , env'syncProgress    :: !(ExternalRef t SyncProgress)
 , env'heightRef       :: !(ExternalRef t (Map Currency Integer))
 , env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
@@ -366,7 +367,7 @@ liftAuth ma0 ma = mdo
   widgetHold ma0' $ ffor redrawE $ maybe ma0 runAuthed
 
 -- | Query initial values for filters heights and write down them to the external ref
-initFiltersHeights :: MonadFront t m => ExternalRef t (Map Currency HS.BlockHeight) -> m ()
+initFiltersHeights :: MonadFront t m => ExternalRef t (Map Currency BlockHeight) -> m ()
 initFiltersHeights ref = do
   ps <- getPubStorage
   let curs =  _pubStorage'activeCurrencies ps

@@ -2,12 +2,12 @@ module Ergvein.Index.API.Types where
 
 import Data.Map.Strict (Map)
 import Data.Maybe
+import Data.Text
 import Data.Word
 import GHC.Generics
 import Servant.Client.Core
 
 import Ergvein.Aeson
-import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 import Ergvein.Types.Transaction
@@ -31,7 +31,7 @@ data BlockFiltersRequest = BlockFiltersRequest
     } deriving (Eq, Show, Generic)
 $(deriveJSON (aesonOptionsStripPrefix "filtersReq") ''BlockFiltersRequest)
 
-type BlockFiltersResponse = [(BlockHash, AddressFilterHexView)]
+type BlockFiltersResponse = [(BlockHash, Text)]
 
 --Info
 data ScanProgressItem = ScanProgressItem

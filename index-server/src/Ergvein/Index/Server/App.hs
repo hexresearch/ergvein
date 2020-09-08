@@ -2,9 +2,7 @@ module Ergvein.Index.Server.App where
 
 import Control.Concurrent.STM.TVar
 import Control.Immortal
-import Control.Monad
 import Control.Monad.STM
-import Data.Text (Text, pack)
 import System.Posix.Signals
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
@@ -20,18 +18,16 @@ import Ergvein.Text
 
 import qualified Data.Text.IO as T
 
-onStartup' :: ServerEnv -> ServerM [Thread]
-onStartup' env = fmap pure runTcpSrv
-
-onStartup :: ServerEnv -> ServerM [Thread]
-onStartup env = do
+onStartup :: Bool -> ServerEnv -> ServerM [Thread]
+onStartup onlyScan _ = do
   scanningWorkers <- blockchainScanning
-  syncWithDefaultPeers
-  feeWorkers <- feesScanning
-  peerIntroduce
-  knownPeersActualization
-  tcpServerThread <- runTcpSrv
-  pure $ tcpServerThread : scanningWorkers ++ feeWorkers
+  if onlyScan then pure scanningWorkers else do
+    syncWithDefaultPeers
+    feeWorkers <- feesScanning
+    peerIntroduce
+    kpaThread <- knownPeersActualization
+    tcpServerThread <- runTcpSrv
+    pure $ tcpServerThread : kpaThread : scanningWorkers ++ feeWorkers
 
 onShutdown :: ServerEnv -> [Thread] -> IO ()
 onShutdown env workerTreads = do
@@ -44,9 +40,9 @@ finalize workerTreads = do
   liftIO $ sequence_ $ wait <$> workerTreads
   logInfoN "service is stopped"
 
-app :: (MonadIO m, MonadLogger m) => Config -> ServerEnv -> m ()
-app cfg env = do
-  workerThreads <- liftIO $ runServerMIO env $ onStartup env
+app :: (MonadIO m, MonadLogger m) => Bool -> Config -> ServerEnv -> m ()
+app onlyScan cfg env = do
+  workerThreads <- liftIO $ runServerMIO env $ onStartup onlyScan env
   logInfoN $ "Server started at:" <> (showt . cfgServerPort $ cfg)
   liftIO $ installHandler sigTERM (Catch $ onShutdown env workerThreads) Nothing
   liftIO $ cancelableDelay (envShutdownFlag env) (-1)
