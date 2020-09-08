@@ -6,6 +6,7 @@ import Control.Monad.Reader
 import Conversion
 import Data.Time.Clock.POSIX
 import Control.Monad.Random
+import Conversion
 
 import Ergvein.Index.Protocol.Types as IPT
 import Ergvein.Index.Server.DB.Monad
@@ -19,6 +20,7 @@ import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 import Ergvein.Types.Transaction
+import Ergvein.Index.Server.TCPService.Connections
 import Network.Socket
 
 import qualified Data.Map.Strict as M
@@ -68,7 +70,8 @@ handleMsg address (MFiltersEvent FilterEvent {..}) = do
   slice <- getBlockMetaSlice currency filterEventHeight 1
   let filters = blockFilterFilter . convert <$> slice
   when (any (/= filterEventBlockFilter) filters) $ do
-   pure ()
+   closeConnection address
+   deletePeerBySockAddr $ convert address
   pure mempty
 
 

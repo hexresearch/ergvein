@@ -6,6 +6,7 @@ module Ergvein.Index.Server.DB.Queries
   , setPeerList
   , upsertPeer
   , emptyKnownPeers
+  , deletePeerBySockAddr
   , initIndexerDb
   , setLastScannedBlock
   , getLastScannedBlock

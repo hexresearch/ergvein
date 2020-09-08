@@ -18,26 +18,31 @@ import qualified Data.ByteString.Lazy as BSL
 instance Conversion TxInfo TxRec where
   convert txInfo = TxRec (txHash txInfo) (txHexView txInfo) (txOutputsCount txInfo)
 
+instance Conversion SockAddr PeerAddr where
+  convert = \case
+          SockAddrInet  port   ip   -> PeerAddr (V4 ip) (fromInteger $ toInteger port)
+          SockAddrInet6 port _ ip _ -> PeerAddr (V6 ip) (fromInteger $ toInteger port)
+
+instance Conversion PeerAddr SockAddr where
+  convert PeerAddr {..} = let
+    port = fromInteger $ toInteger peerAddrPort
+    in case peerAddrIP of
+      V4 ip -> SockAddrInet port ip
+      V6 ip -> SockAddrInet6 port 0 ip 0
+
 instance Conversion DiscoveryTypes.Peer KnownPeerRecItem where
   convert Peer {..} = let
     validatedAt = pack $ show $ peerLastValidatedAt
-    (port, ip) = case peerAddress of
-      SockAddrInet p i -> (p, V4 i)
-      SockAddrInet6 p _ i _ -> (p, V6 i)
     in KnownPeerRecItem
-      { knownPeerRecAddr = DiscoveryTypes.PeerAddr ip $ fromInteger $ toInteger port
+      { knownPeerRecAddr = convert peerAddress
       , knownPeerRecLastValidatedAt = validatedAt
       }
 
 instance Conversion KnownPeerRecItem DiscoveryTypes.Peer where
   convert KnownPeerRecItem {..} = let
-    port = (fromInteger $ toInteger $ peerAddrPort knownPeerRecAddr)
-    addr = case peerAddrIP knownPeerRecAddr of
-      V4 ip -> SockAddrInet port ip
-      V6 ip -> SockAddrInet6 port 0 ip 0
     in DiscoveryTypes.Peer
-      { peerAddress = addr
-      , peerLastValidatedAt = read $ unpack $ knownPeerRecLastValidatedAt
+      { peerAddress = convert knownPeerRecAddr
+      , peerLastValidatedAt = read $ unpack knownPeerRecLastValidatedAt
       }
 
 instance Conversion KnownPeerRecItem Address where
