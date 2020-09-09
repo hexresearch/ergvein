@@ -48,14 +48,26 @@ data ServerEnv = ServerEnv
     , envBroadcastChannel         :: !(TChan Message)
     }
 
-discoveryRequisites :: Config -> PeerDiscoveryRequisites
-discoveryRequisites cfg = let
-  ownPeerAddress = SockAddrUnix <$> cfgOwnPeerAddress cfg
-  knownPeers = Set.fromList $ SockAddrUnix <$> cfgKnownPeers cfg
-  filteredKnownPeers = case ownPeerAddress of
-    Just address -> Set.delete address knownPeers
-    _    -> knownPeers
-  in PeerDiscoveryRequisites
+sockAddress :: CfgPeer -> IO SockAddr
+sockAddress CfgPeer {..} = do
+  addr:_ <- getAddrInfo (Just hints) (Just cfgPeerIP) (Just cfgPeerPort)
+  pure $ addrAddress addr
+  where
+    hints = defaultHints {
+              addrFlags = [AI_PASSIVE]
+            , addrSocketType = Stream
+            , addrFamily = AF_INET
+            , addrProtocol = 0
+            }
+
+discoveryRequisites :: Config -> IO PeerDiscoveryRequisites
+discoveryRequisites cfg = do
+  ownPeerAddress <- sequence $ sockAddress <$> cfgOwnPeerAddress cfg
+  knownPeers <- Set.fromList <$> (mapM sockAddress $ cfgKnownPeers cfg)
+  let filteredKnownPeers = case ownPeerAddress of
+                             Just address -> Set.delete address knownPeers
+                             _    -> knownPeers
+  pure $ PeerDiscoveryRequisites
       ownPeerAddress
       filteredKnownPeers
       (cfgPeerActualizationDelay cfg)
@@ -79,7 +91,7 @@ newServerEnv doWait noDropFilters btcClient cfg@Config{..} = do
     openConns      <- liftIO $ newTVarIO M.empty
     broadChan      <- liftIO newBroadcastTChanIO
     let bitcoinNodeNetwork = if cfgBTCNodeIsTestnet then HK.btcTest else HK.btc
-        descDiscoveryRequisites = discoveryRequisites cfg
+    descDiscoveryRequisites <- liftIO $ discoveryRequisites cfg
     btcsock <- connectBtc bitcoinNodeNetwork cfgBTCNodeTCPHost (show cfgBTCNodeTCPPort) shutdownVar
     when doWait $ liftIO $ do
       isUp <- atomically $ dupTChan $ btcSockOnActive btcsock

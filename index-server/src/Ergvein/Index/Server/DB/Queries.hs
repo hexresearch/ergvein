@@ -29,27 +29,24 @@ import Data.Default
 import Data.Foldable
 import Data.Time.Clock
 import Database.LevelDB
-import Database.LevelDB.Iterator
-import Network.Socket
 
-import Ergvein.Index.Server.Dependencies
+import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Conversions()
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema.Filters
 import Ergvein.Index.Server.DB.Schema.Indexer
-import Ergvein.Index.Server.DB.Utils
-import Ergvein.Index.Server.PeerDiscovery.Types
-import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
-import Ergvein.Index.Protocol.Types
-import Ergvein.Types.Currency as Currency
 import Ergvein.Index.Server.DB.Serialize
+import Ergvein.Index.Server.DB.Utils
+import Ergvein.Index.Server.Dependencies
+import Ergvein.Index.Server.PeerDiscovery.Types
+import Ergvein.Types.Currency as Currency
+import Ergvein.Types.Transaction
 
-import qualified Data.Map.Strict as Map
-import qualified Data.Sequence as Seq
+import qualified Data.Map.Strict  as Map
+import qualified Data.Sequence    as Seq
+import qualified Data.Text        as T
 import qualified Database.LevelDB as LDB
-import qualified Data.Text as T
 
 getActualPeers :: (HasIndexerDB m, MonadLogger m, HasDiscoveryRequisites m) =>  m [Address]
 getActualPeers = do
@@ -61,25 +58,6 @@ getActualPeers = do
   let validDate = (-actualizationDelay) `addUTCTime` currentTime
       filteredByLastValidatedAt = filter ((validDate <=) . read . T.unpack . knownPeerRecLastValidatedAt) $ unKnownPeersRec knownPeers
   pure $ convert <$> filteredByLastValidatedAt
-
-getKnownPeersList :: (HasIndexerDB m, MonadLogger m) => m [Peer]
-getKnownPeersList = do
-  db <- getIndexerDb
-  peers <- getParsedExact @KnownPeersRec Currency.BTC "getKnownPeersList" db knownPeersRecKey
-  pure $ convert <$> (unKnownPeersRec peers)
-
-setKnownPeersList :: (HasIndexerDB m, MonadLogger m) => [Peer] -> m ()
-setKnownPeersList peers = do
-  db <- getIndexerDb
-  upsertItem Currency.BTC db knownPeersRecKey $ KnownPeersRec $ convert @_ @KnownPeerRecItem <$> peers
-
-addKnownPeers :: (HasIndexerDB m, MonadLogger m) => [Peer] -> m ()
-addKnownPeers peers = do
-  db <- getIndexerDb
-  let mapped = convert @_ @KnownPeerRecItem <$> peers
-  stored <- getParsedExact @KnownPeersRec Currency.BTC "addKnownPeers" db knownPeersRecKey
-  upsertItem Currency.BTC db knownPeersRecKey $ KnownPeersRec $ mapped ++ (unKnownPeersRec stored)
-
 
 getPeerList :: (HasIndexerDB m, MonadLogger m) => m [Peer]
 getPeerList = do

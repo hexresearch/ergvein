@@ -22,7 +22,7 @@ onStartup :: Bool -> ServerEnv -> ServerM [Thread]
 onStartup onlyScan _ = do
   scanningWorkers <- blockchainScanning
   if onlyScan then pure scanningWorkers else do
-    syncWithDefaultPeers
+    --syncWithDefaultPeers
     feeWorkers <- feesScanning
     kpaThread <- knownPeersActualization
     tcpServerThread <- runTcpSrv

@@ -9,6 +9,17 @@ import GHC.Generics
 
 import Ergvein.Aeson
 
+data CfgPeer = CfgPeer
+ { cfgPeerIP   :: !String
+ , cfgPeerPort :: !String
+ } deriving (Show, Eq)
+
+instance FromJSON CfgPeer where
+  parseJSON = withObject "CfgPeer" $ \o -> do
+    cfgPeerIP               <- o .: "peerIP"
+    cfgPeerPort             <- o .: "peerPort"
+    pure CfgPeer{..}
+
 data Config = Config
   { cfgServerPort               :: !Int
   , cfgServerTcpPort            :: !Int
@@ -24,8 +35,8 @@ data Config = Config
   , cfgBTCNodeTCPPort           :: !Int
   , cfgERGONodeHost             :: !String
   , cfgERGONodePort             :: !Int
-  , cfgOwnPeerAddress           :: !(Maybe String)
-  , cfgKnownPeers               :: ![String]
+  , cfgOwnPeerAddress           :: !(Maybe CfgPeer)
+  , cfgKnownPeers               :: ![CfgPeer]
   , cfgPeerActualizationDelay   :: !Int
   , cfgPeerActualizationTimeout :: !NominalDiffTime
   , cfgFeeEstimateDelay         :: !Int
@@ -60,13 +71,13 @@ instance FromJSON Config where
     cfgFeeEstimateDelay         <- o .:? "feeEstimateDelay"         .!= (300 * 1000000) -- 5 min
     pure Config{..}
 
-defaultPeers :: [String]
+defaultPeers :: [CfgPeer]
 defaultPeers = [
-    "https://ergvein-indexer1.hxr.team"
-  , "https://ergvein-indexer2.hxr.team"
+    CfgPeer "https://ergvein-indexer1.hxr.team" "8087"
+  , CfgPeer "https://ergvein-indexer2.hxr.team" "8087"
   ]
 
-filterOwnAddressFromDefault :: Maybe String -> [String]
+filterOwnAddressFromDefault :: Maybe CfgPeer -> [CfgPeer]
 filterOwnAddressFromDefault mown = case mown of
   Nothing -> defaultPeers
   Just own -> Prelude.filter (own /=) defaultPeers
