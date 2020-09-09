@@ -9,7 +9,6 @@ import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Control
 import Control.Monad.Logger
 import Control.Monad.Reader
-import Data.Maybe
 import Data.Typeable
 import Database.LevelDB.Base
 import Network.HTTP.Client.TLS

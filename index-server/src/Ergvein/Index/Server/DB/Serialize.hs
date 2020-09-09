@@ -18,6 +18,7 @@ import Data.Word
 
 import Ergvein.Index.Server.DB.Serialize.Tx
 import Ergvein.Index.Server.BlockchainScanning.Types
+import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.DB.Schema.Filters
 import Ergvein.Index.Server.DB.Schema.Indexer
 import Ergvein.Index.Server.DB.Serialize.Class
@@ -90,25 +91,36 @@ instance EgvSerialize KnownPeerRecItem where
   egvSerialize _ = BL.toStrict . toLazyByteString . knownPeerRecItemBuilder
   egvDeserialize _ = parseOnly knownPeerRecItemParser
 
+peerAddrBuilder :: PeerAddr -> Builder
+peerAddrBuilder PeerAddr{..} = let
+  ip = case peerAddrIP of
+        V4 a  -> BB.word8 0 <> word32LE a
+        V6 (a,b,c,d) -> BB.word8 1 <> word32LE a <> word32LE b <> word32LE c <> word32LE d
+  in word16LE peerAddrPort <> ip
+
+peerAddrParser :: Parser PeerAddr
+peerAddrParser = do
+  peerAddrPort <- anyWord16le
+  isIpV6 <- (== 1) <$> anyWord8
+  peerAddrIP <- 
+    if isIpV6 then
+      V6 <$> ((,,,) <$> anyWord32le <*> anyWord32le <*> anyWord32le <*> anyWord32le)
+    else
+      V4 <$> anyWord32le
+  pure PeerAddr {..}
+
 knownPeerRecItemBuilder :: KnownPeerRecItem -> Builder
 knownPeerRecItemBuilder KnownPeerRecItem{..} =
-       word16LE urlLen
-    <> byteString url
-    <> BB.word8 boo
+       peerAddrBuilder knownPeerRecAddr
     <> word32LE valLen
     <> byteString val
   where
-    url = TE.encodeUtf8 knownPeerRecUrl
-    urlLen = fromIntegral $ BS.length url
     val = TE.encodeUtf8 knownPeerRecLastValidatedAt
     valLen = fromIntegral $ BS.length val
-    boo = if knownPeerRecIsSecureConn then 1 else 0
 
 knownPeerRecItemParser :: Parser KnownPeerRecItem
 knownPeerRecItemParser = do
-  urlLen <- fromIntegral <$> anyWord16le
-  knownPeerRecUrl <- fmap TE.decodeUtf8 $ Parse.take urlLen
-  knownPeerRecIsSecureConn <- fmap (== 1) $ anyWord8
+  knownPeerRecAddr <- peerAddrParser
   valLen <- fromIntegral <$> anyWord32le
   knownPeerRecLastValidatedAt <- fmap TE.decodeUtf8 $ Parse.take valLen
   pure KnownPeerRecItem{..}
