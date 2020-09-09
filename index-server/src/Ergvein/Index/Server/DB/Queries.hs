@@ -1,11 +1,12 @@
 module Ergvein.Index.Server.DB.Queries
   (
     -- * Indexer db queries
-    getKnownPeers
-  , getKnownPeersList
-  , setKnownPeersList
-  , addKnownPeers
+    getActualPeers
+  , getPeerList
+  , setPeerList
+  , upsertPeer
   , emptyKnownPeers
+  , deletePeerBySockAddr
   , initIndexerDb
   , setLastScannedBlock
   , getLastScannedBlock
@@ -28,10 +29,10 @@ import Data.Default
 import Data.Foldable
 import Data.Time.Clock
 import Database.LevelDB
-import Ergvein.Index.Server.Dependencies
-import Servant.Client.Core
+import Database.LevelDB.Iterator
+import Network.Socket
 
-import Ergvein.Index.Server.DB.Serialize(EgvSerialize(..), putTxInfosAsRecs)
+import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Conversions()
 import Ergvein.Index.Server.DB.Monad
@@ -41,51 +42,82 @@ import Ergvein.Index.Server.DB.Utils
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import Ergvein.Index.Protocol.Types
+import Ergvein.Types.Currency as Currency
+import Ergvein.Index.Server.DB.Serialize
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Sequence as Seq
 import qualified Database.LevelDB as LDB
+import qualified Data.Text as T
 
-getKnownPeers :: (HasIndexerDB m, MonadLogger m, HasDiscoveryRequisites m) => Bool -> m [String]
-getKnownPeers onlySecured = do
+getActualPeers :: (HasIndexerDB m, MonadLogger m, HasDiscoveryRequisites m) =>  m [Address]
+getActualPeers = do
   db <- getIndexerDb
   -- I put BTC here and downstream, because it doesnt actually matter but we still need a value
-  knownPeers <- fmap (fmap convert . unKnownPeersRec) $ getParsedExact @KnownPeersRec BTC "getKnownPeers" db knownPeersRecKey
+  knownPeers <- getParsedExact @KnownPeersRec Currency.BTC "getKnownPeers" db knownPeersRecKey
   currentTime <- liftIO getCurrentTime
   actualizationDelay <- (/1000000) . fromIntegral . descReqActualizationDelay <$> getDiscoveryRequisites
   let validDate = (-actualizationDelay) `addUTCTime` currentTime
-      filteredByOnlySecured =
-        if onlySecured then
-          filter (\p ->
-            case peerConnScheme p of
-              Https -> True
-              _     -> False)
-          knownPeers
-        else
-          knownPeers
-      filteredByLastValidatedAt = filter ((validDate <=) . peerLastValidatedAt) filteredByOnlySecured
-  pure $ showBaseUrl . peerUrl <$> filteredByLastValidatedAt
+      filteredByLastValidatedAt = filter ((validDate <=) . read . T.unpack . knownPeerRecLastValidatedAt) $ unKnownPeersRec knownPeers
+  pure $ convert <$> filteredByLastValidatedAt
 
 getKnownPeersList :: (HasIndexerDB m, MonadLogger m) => m [Peer]
 getKnownPeersList = do
   db <- getIndexerDb
-  peers <- getParsedExact @KnownPeersRec BTC "getKnownPeersList" db knownPeersRecKey
+  peers <- getParsedExact @KnownPeersRec Currency.BTC "getKnownPeersList" db knownPeersRecKey
   pure $ convert <$> (unKnownPeersRec peers)
 
 setKnownPeersList :: (HasIndexerDB m, MonadLogger m) => [Peer] -> m ()
 setKnownPeersList peers = do
   db <- getIndexerDb
-  upsertItem BTC db knownPeersRecKey $ KnownPeersRec $ convert @_ @KnownPeerRecItem <$> peers
+  upsertItem Currency.BTC db knownPeersRecKey $ KnownPeersRec $ convert @_ @KnownPeerRecItem <$> peers
 
 addKnownPeers :: (HasIndexerDB m, MonadLogger m) => [Peer] -> m ()
 addKnownPeers peers = do
   db <- getIndexerDb
   let mapped = convert @_ @KnownPeerRecItem <$> peers
-  stored <- getParsedExact @KnownPeersRec BTC "addKnownPeers" db knownPeersRecKey
-  upsertItem BTC db knownPeersRecKey $ KnownPeersRec $ mapped ++ (unKnownPeersRec stored)
+  stored <- getParsedExact @KnownPeersRec Currency.BTC "addKnownPeers" db knownPeersRecKey
+  upsertItem Currency.BTC db knownPeersRecKey $ KnownPeersRec $ mapped ++ (unKnownPeersRec stored)
+
+
+getPeerList :: (HasIndexerDB m, MonadLogger m) => m [Peer]
+getPeerList = do
+  idb <- getIndexerDb
+  peers <- getParsedExact  @KnownPeersRec Currency.BTC "getKnownPeersList"  idb knownPeersRecKey
+  pure $ convert <$> unKnownPeersRec peers
+
+setPeerList :: (HasIndexerDB m, MonadLogger m) => [Peer] -> m ()
+setPeerList peers = do
+  idb <- getIndexerDb
+  upsertItem Currency.BTC  idb knownPeersRecKey $ KnownPeersRec $ convert @_ @KnownPeerRecItem <$> peers
+
+upsertPeer :: (HasIndexerDB m, MonadLogger m) => Peer -> m ()
+upsertPeer peer = do
+  currentList <- peerList
+  let peerRec = convert peer
+  setPeerRecList $ KnownPeersRec $ peerRec : excludePeerByAddr (knownPeerRecAddr peerRec) (unKnownPeersRec currentList)
+
+peerList :: (HasIndexerDB m, MonadLogger m) => m KnownPeersRec
+peerList = do
+  idb <- getIndexerDb
+  getParsedExact @KnownPeersRec Currency.BTC "getKnownPeersList"  idb knownPeersRecKey
+
+setPeerRecList :: (HasIndexerDB m, MonadLogger m) => KnownPeersRec -> m ()
+setPeerRecList peers = do
+  idb <- getIndexerDb
+  upsertItem Currency.BTC idb knownPeersRecKey peers
+
+deletePeerBySockAddr :: (HasIndexerDB m, MonadLogger m) => PeerAddr -> m ()
+deletePeerBySockAddr addr = do
+  currentList <- peerList
+  setPeerRecList $ KnownPeersRec $ excludePeerByAddr addr  $ unKnownPeersRec currentList
+
+excludePeerByAddr :: PeerAddr ->  [KnownPeerRecItem] -> [KnownPeerRecItem]
+excludePeerByAddr addr = filter ((== addr) . knownPeerRecAddr)
 
 emptyKnownPeers :: (HasIndexerDB m, MonadLogger m) => m ()
-emptyKnownPeers = setKnownPeersList []
+emptyKnownPeers = setPeerRecList $ KnownPeersRec []
 
 getScannedHeight :: (HasFiltersDB m, MonadLogger m) => Currency -> m (Maybe BlockHeight)
 getScannedHeight currency = do
@@ -100,7 +132,7 @@ setScannedHeight currency height = do
 
 initIndexerDb :: DB -> IO ()
 initIndexerDb db = do
-  write db def $ putItem BTC knownPeersRecKey $ KnownPeersRec []
+  write db def $ putItem Currency.BTC knownPeersRecKey $ KnownPeersRec []
 
 addBlockInfo :: (HasFiltersDB m, HasIndexerDB m, MonadLogger m)
   => BlockInfo -> BlockHeight -> m ()

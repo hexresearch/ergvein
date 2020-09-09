@@ -14,7 +14,7 @@ ERGONodePort             : 9052
 blockchainScanDelay      : 1000000
 ownPeerAddress           : null
 knownPeers               :
-                           - "https://ergvein-indexer1.hxr.team"
-                           - "https://ergvein-indexer2.hxr.team"
+                           - "120.0.0.1:8882"
+                           - "120.0.0.1:8883"
 peerActualizationDelay   : 10000000
 peerActualizationTimeout : 86400

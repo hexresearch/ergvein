@@ -43,6 +43,7 @@ word32toRejectType = \case
   0  -> Just MessageHeaderParsing
   1  -> Just MessageParsing
   2  -> Just InternalServerError
+  3  -> Just ZeroBytesReceived
   _  -> Nothing
 
 word8toFeeLevel :: Word8 -> Maybe FeeLevel

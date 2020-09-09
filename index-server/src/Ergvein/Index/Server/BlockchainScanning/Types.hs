@@ -26,9 +26,9 @@ data TxInfo = TxInfo
 instance NFData TxInfo
 
 data BlockInfo = BlockInfo
-  { blockInfoMeta       :: BlockMetaInfo
-  , spentTxsHash        :: [TxHash]
-  , blockContentTxInfos :: [TxInfo]
+  { blockInfoMeta       :: !BlockMetaInfo
+  , spentTxsHash        :: ![TxHash]
+  , blockContentTxInfos :: ![TxInfo]
   }
 
 data ScanProgressInfo = ScanProgressInfo

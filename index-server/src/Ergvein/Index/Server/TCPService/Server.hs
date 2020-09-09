@@ -16,7 +16,6 @@ import Data.ByteString.Builder
 import Data.Either.Combinators
 import Data.Foldable (traverse_)
 import Data.Time.Clock.POSIX
-import Data.Maybe
 import Data.Word
 import Network.Socket
 import Network.Socket.ByteString.Lazy
@@ -31,17 +30,17 @@ import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.TCPService.MessageHandler
-import Ergvein.Index.Server.TCPService.Socket
+import Ergvein.Index.Server.TCPService.Socket as S
+import Ergvein.Index.Server.TCPService.Connections 
 
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString as BS
-import qualified Data.Map.Strict as M
 import qualified Network.Socket.ByteString as NS
 
 -- Pinger thread
 runPinger :: ServerM Thread
 runPinger = create $ const $ logOnException $ do
-  broadChan <- liftIO . atomically . dupTChan =<< asks envBroadcastChannel
+  broadChan <- liftIO . atomically . dupTChan =<< broadcastChannel
   forever $ liftIO $ do
     threadDelay 5000000
     msg <- MPing <$> randomIO
@@ -74,59 +73,55 @@ tcpSrv thread = do
 
 mainLoop :: Thread -> Socket -> ServerM ()
 mainLoop thread sock = do
-  openedConnectionsRef <- asks envOpenConnections
+  openedConnectionsRef <- openConnections
   mainLoopId <- fork $ forever $ do
-    connection <- liftIO $ accept sock
-    connectionThreadId <- fork $ runConnection connection
-    liftIO $ atomically $ modifyTVar openedConnectionsRef $ M.insert (snd connection) (connectionThreadId , fst connection)
+    (newSock, newSockAddr) <- liftIO $ accept sock
+    connectionThreadId <- fork $ registerConnection (newSock, newSockAddr)
+    openConnection connectionThreadId newSockAddr newSock
   shutdownFlagRef <- getShutdownFlag
-  forever $ liftIO $ do
-    shutdownFlag <- readTVarIO shutdownFlagRef
-    when shutdownFlag $ performShutdown openedConnectionsRef mainLoopId
-    threadDelay 1000000
+  forever $ do
+    shutdownFlag <- liftIO $ readTVarIO shutdownFlagRef
+    when shutdownFlag $ performShutdown mainLoopId
+    liftIO $ threadDelay 1000000
   where
-   performShutdown openedConnectionsRef mainLoopId = do
-    traverse closeConnection =<< M.elems <$> readTVarIO openedConnectionsRef
-    killThread mainLoopId
-    atomically $ writeTVar openedConnectionsRef M.empty
-    stop thread
+   performShutdown :: HasConnectionsManagement m => ThreadId -> m ()
+   performShutdown mainLoopId = do
+    closeAllConnections
+    liftIO $ do 
+      killThread mainLoopId
+      stop thread
+
+registerConnection :: (Socket, SockAddr) -> ServerM ()
+registerConnection (sock, addr) = do
+  openedConnectionsRef <- openConnections
+  connectionThreadId <- fork $ runConnection (sock, addr)
+  openConnection connectionThreadId addr  sock
 
 runConnection :: (Socket, SockAddr) -> ServerM ()
-runConnection (sock, addr) = do
-  handshakeStatus <- handshake
-  if handshakeStatus then do
-    sendChan <- liftIO newTChanIO
-    -- report handshake success
-    writeMsg sendChan $ MVersionACK VersionACK
-    ver <- ownVersion
-    writeMsg sendChan $ MVersion ver
-    -- Spawn message sender thread
-    fork $ sendLoop sendChan
-    -- Spawn broadcaster loop
-    fork $ broadcastLoop sendChan
-    -- Start message listener
-    listenLoop sendChan
-  else closePeerConnection addr
+runConnection (sock, addr) =  do
+  evalResult <- runExceptT $ evalMsg
+  case evalResult of
+    Right (msgs@(MVersionACK _ : _)) -> do --peer version match ours
+      sendChan <- liftIO newTChanIO
+      forM msgs $ (liftIO . writeMsg sendChan) 
+      -- Spawn message sender thread
+      fork $ sendLoop sendChan
+      -- Spawn broadcaster loop
+      fork $ broadcastLoop sendChan
+      -- Start message listener
+      listenLoop sendChan
+    _ -> closeConnection addr 
   where
-    writeMsg :: TChan LBS.ByteString -> Message -> ServerM ()
-    writeMsg destinationChan = liftIO . atomically . writeTChan destinationChan . toLazyByteString . messageBuilder
+    writeMsg :: TChan LBS.ByteString -> Message -> IO ()
+    writeMsg destinationChan = atomically . writeTChan destinationChan . toLazyByteString . messageBuilder
 
-    broadcastLoop :: TChan LBS.ByteString -> ServerM ()
+    broadcastLoop :: HasBroadcastChannel m => TChan LBS.ByteString -> m ()
     broadcastLoop destinationChan = do
-      broadChan <- liftIO . atomically . dupTChan =<< asks envBroadcastChannel
-      forever $ do
-        msg <- liftIO $ atomically $ readTChan broadChan
+      channel <- broadcastChannel
+      broadChan <- liftIO $ atomically $ dupTChan channel
+      liftIO $ forever $ do
+        msg <- atomically $ readTChan broadChan
         writeMsg destinationChan msg
-
-    handshake :: ServerM Bool
-    handshake = do
-      headerBytes <- liftIO $ messageHeaderBytes
-      message     <- runExceptT $ fetchMessage sock headerBytes
-      pure $ case message of
-        Right (MVersion Version {..}) | protocolVersion == versionVersion -> True
-        _ -> False
-
-    messageHeaderBytes = NS.recv sock 8
 
     sendLoop :: TChan LBS.ByteString -> ServerM ()
     sendLoop sendChan = liftIO $ forever $ do
@@ -134,53 +129,44 @@ runConnection (sock, addr) = do
       sendLazy sock $ mconcat msgs
 
     listenLoop :: TChan LBS.ByteString -> ServerM ()
-    listenLoop destinationChan = do
-      -- Try to get the header. Empty string means that the client closed the connection
-      headerBytes <- liftIO $ messageHeaderBytes
-      if BS.null headerBytes then do
-          logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
-          closePeerConnection addr
-      else do
-        evalResult <- runExceptT $ evalMsg addr sock headerBytes
-        case evalResult of
-          Right Nothing    -> pure ()
-          Right (Just msg) -> writeMsg destinationChan msg
-          Left err         -> do
-            logInfoN $ "failed to handle msg: " <> showt err
-            writeMsg destinationChan $ MReject err
-        listenLoop destinationChan
+    listenLoop destinationChan = listenLoop'
+      where
+        listenLoop' = do
+          evalResult <- runExceptT $ evalMsg
+          case evalResult of
+            Right msgs -> do
+              forM msgs $ (liftIO . writeMsg destinationChan)
+              listenLoop'
+            Left Reject {..} | rejectMsgCode == ZeroBytesReceived -> do
+              logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
+              closeConnection addr
+            Left err -> do
+              logInfoN $ "failed to handle msg: " <> showt err
+              liftIO $ writeMsg destinationChan $ MReject err
 
-fetchMessage :: Socket -> BS.ByteString -> ExceptT Reject ServerM Message
-fetchMessage sock messageHeaderBytes = request =<< messageHeader
-  where
-    messageHeader :: ExceptT Reject ServerM MessageHeader
-    messageHeader = ExceptT . pure . mapLeft (\_-> Reject MessageHeaderParsing) . eitherResult $ parse messageHeaderParser messageHeaderBytes
+    evalMsg :: ExceptT Reject ServerM [Message]
+    evalMsg = response =<< request =<< messageHeader =<< messageHeaderBytes
+      where
+        messageHeaderBytesFetch = NS.recv sock 8
 
-    request :: MessageHeader -> ExceptT Reject ServerM Message
-    request MessageHeader {..} = do
-      messageBytes <- liftIO $ NS.recv sock $ fromIntegral msgSize
-      ExceptT $ pure $ mapLeft (\_-> Reject MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
+        messageHeaderBytes :: ExceptT Reject ServerM BS.ByteString
+        messageHeaderBytes = do
+          fetchedBytes <- lift $ liftIO messageHeaderBytesFetch
+          if BS.null fetchedBytes then
+            except $ Right fetchedBytes
+          else
+            except $ Left $ Reject MessageParsing
 
-
-evalMsg :: SockAddr -> Socket -> BS.ByteString -> ExceptT Reject ServerM (Maybe Message)
-evalMsg addr sock messageHeaderBytes = do
-  printDelim
-  let hdr = eitherResult $ parse messageHeaderParser messageHeaderBytes
-  liftIO $ print $ BS.unpack messageHeaderBytes
-  liftIO $ print hdr
-  response =<< request =<< messageHeader
-  where
-    printDelim = liftIO $ print "===================================================="
-    messageHeader :: ExceptT Reject ServerM MessageHeader
-    messageHeader = ExceptT . pure . mapLeft (\_-> Reject MessageHeaderParsing) . eitherResult $ parse messageHeaderParser messageHeaderBytes
-
-    request :: MessageHeader -> ExceptT Reject ServerM Message
-    request MessageHeader {..} = do
-      messageBytes <- liftIO $ NS.recv sock $ fromIntegral msgSize
-      liftIO $ print $ show msgType <> ": " <> show (msgSize, BS.length messageBytes)
-      liftIO $ print $ "Parse     :" <> show (eitherResult $ parse (messageParser msgType) messageBytes)
-      liftIO $ print $ "ParseOnly :" <> show (parseOnly (messageParser msgType) messageBytes)
-      ExceptT $ pure $ mapLeft (\_-> Reject MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
-
-    response :: Message -> ExceptT Reject ServerM (Maybe Message)
-    response msg = ExceptT $ (Right <$> handleMsg addr msg) `catch` (\(SomeException ex) -> pure $ Left $ Reject $ InternalServerError)
+        messageHeader :: BS.ByteString -> ExceptT Reject ServerM MessageHeader
+        messageHeader = ExceptT . pure . mapLeft (\_-> Reject MessageHeaderParsing) . eitherResult . parse messageHeaderParser
+    
+        request :: MessageHeader -> ExceptT Reject ServerM Message
+        request MessageHeader {..} = do
+          messageBytes <- liftIO $ NS.recv sock $ fromIntegral msgSize
+          liftIO $ print $ show msgType <> ": " <> show (msgSize, BS.length messageBytes)
+          liftIO $ print $ "Parse     :" <> show (eitherResult $ parse (messageParser msgType) messageBytes)
+          liftIO $ print $ "ParseOnly :" <> show (parseOnly (messageParser msgType) messageBytes)
+          except $ mapLeft (\_-> Reject MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
+    
+        response :: Message -> ExceptT Reject ServerM [Message]
+        response msg = (lift $ handleMsg addr msg) `catch` (\(SomeException ex) -> except $ Left $ Reject InternalServerError)

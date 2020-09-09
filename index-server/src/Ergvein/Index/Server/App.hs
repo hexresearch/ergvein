@@ -24,7 +24,6 @@ onStartup onlyScan _ = do
   if onlyScan then pure scanningWorkers else do
     syncWithDefaultPeers
     feeWorkers <- feesScanning
-    peerIntroduce
     kpaThread <- knownPeersActualization
     tcpServerThread <- runTcpSrv
     pure $ tcpServerThread : kpaThread : scanningWorkers ++ feeWorkers

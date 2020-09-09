@@ -26,6 +26,8 @@ import Data.Text.Encoding
 import Data.Time
 import Database.LevelDB
 import Database.LevelDB.Iterator
+import Ergvein.Index.Server.Dependencies
+import System.ByteOrder
 
 import Ergvein.Index.Server.DB.Serialize.Class
 import Ergvein.Types.Currency

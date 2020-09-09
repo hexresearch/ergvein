@@ -14,7 +14,6 @@ import Data.Typeable
 import Database.LevelDB.Base
 import Network.HTTP.Client.TLS
 import Network.Socket
-import Servant.Client.Core
 
 import Ergvein.Index.Protocol.Types (CurrencyCode, Message)
 import Ergvein.Index.Server.Config
@@ -52,8 +51,8 @@ data ServerEnv = ServerEnv
 
 discoveryRequisites :: Config -> PeerDiscoveryRequisites
 discoveryRequisites cfg = let
-  ownPeerAddress = parsedOwnAddress <$> cfgOwnPeerAddress cfg
-  knownPeers = Set.fromList $ parseKnownPeer <$> cfgKnownPeers cfg
+  ownPeerAddress = SockAddrUnix <$> cfgOwnPeerAddress cfg
+  knownPeers = Set.fromList $ SockAddrUnix <$> cfgKnownPeers cfg
   filteredKnownPeers = case ownPeerAddress of
     Just address -> Set.delete address knownPeers
     _    -> knownPeers
@@ -62,17 +61,6 @@ discoveryRequisites cfg = let
       filteredKnownPeers
       (cfgPeerActualizationDelay cfg)
       (cfgPeerActualizationTimeout cfg)
-  where
-
-    parsedOwnAddress :: String -> BaseUrl
-    parsedOwnAddress address = let
-      err = error $ "Error cannot parse ownPeerAddress setting"
-      in fromMaybe err $ parseBaseUrl address
-
-    parseKnownPeer :: String -> BaseUrl
-    parseKnownPeer address = let
-      err = error $ "Error cannot parse peer '" <> address <> "'"
-      in fromMaybe err $ parseBaseUrl address
 
 newServerEnv :: (MonadIO m, MonadLogger m, MonadMask m, MonadBaseControl IO m)
   => Bool               -- ^ flag, def True: wait for node connections to be up before finalizing the env

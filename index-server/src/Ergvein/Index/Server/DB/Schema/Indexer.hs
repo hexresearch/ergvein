@@ -25,6 +25,7 @@ import Data.Word
 
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import qualified Ergvein.Index.Server.PeerDiscovery.Types as DiscoveryTypes
 
 import qualified Data.ByteString as BS
 import qualified Data.Serialize as S
@@ -49,9 +50,8 @@ data KnownPeersRec = KnownPeersRec {
   } deriving (Generic, Show, Eq, Ord)
 
 data KnownPeerRecItem = KnownPeerRecItem
-  { knownPeerRecUrl             :: !Text
-  , knownPeerRecIsSecureConn    :: !Bool
-  , knownPeerRecLastValidatedAt :: !Text
+  { knownPeerRecAddr             :: DiscoveryTypes.PeerAddr
+  , knownPeerRecLastValidatedAt  :: Text
   } deriving (Generic, Show, Eq, Ord)
 
 --lastScannedBlockHeaderHash

@@ -1,45 +1,47 @@
-module Ergvein.Index.Server.PeerDiscovery.Types where
+{-# LANGUAGE DeriveAnyClass #-}
+module Ergvein.Index.Server.PeerDiscovery.Types 
+  ( Peer (..)
+  , PeerCandidate (..)
+  , PeerDiscoveryRequisites (..)
+  , PeerIP (..)
+  , PeerAddr (..)
+  )where
 
+import Data.Set (Set)
+import Data.Text
 import Data.Time
+import Data.Time.Clock
+import Data.Word
+import Ergvein.Index.Protocol.Types
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Servant.Client.Core.BaseUrl
-import Data.Time.Clock
-import Data.Text
-import Data.Set (Set)
+import Network.Socket
+import GHC.Generics
 
-data CurrencyOutOfSyncInfo = CurrencyOutOfSyncInfo
-  { outOfsyncCurrency    :: Currency
-  , outOfSyncLocalHeight :: BlockHeight
-  } deriving Show
+import qualified Data.Vector.Unboxed as UV
 
-data PeerValidationResult = OK
-  | UrlFormatError
-  | AlreadyKnown
-  | InfoEndpointError
-  | KnownPeersEndpointError
-  | CurrencyOutOfSync CurrencyOutOfSyncInfo
-  | CurrencyMissing Currency
-  deriving Show
+data PeerIP = V4 Word32
+            | V6 (Word32, Word32, Word32, Word32)
+  deriving (Generic, Show, Eq, Ord)
 
-data PeerCandidate = PeerCandidate
-  { peerCandidateUrl :: String
-  }
+data PeerAddr = PeerAddr
+  { peerAddrIP   :: PeerIP
+  , peerAddrPort :: Word16
+  } deriving (Generic, Show, Eq, Ord)
 
 data Peer = Peer
-  { peerUrl              :: BaseUrl
-  , peerLastValidatedAt  :: UTCTime
-  , peerConnScheme       :: Scheme
+  { peerAddress          :: !SockAddr
+  , peerLastValidatedAt  :: !UTCTime
   } deriving Show
 
-data NewPeer = NewPeer
-  { newPeerUrl        :: BaseUrl
-  , newPeerConnScheme :: Scheme
+data PeerCandidate = PeerCandidate
+  { peerCandidateAddress    :: !SockAddr
+  , peerCandidateScanBlocks :: !(UV.Vector ScanBlock)
   }
 
 data PeerDiscoveryRequisites = PeerDiscoveryRequisites
-  { descReqOwnAddress           :: !(Maybe BaseUrl)
-  , descReqPredefinedPeers      :: !(Set BaseUrl)
+  { descReqOwnAddress           :: !(Maybe SockAddr)
+  , descReqPredefinedPeers      :: !(Set SockAddr)
   , descReqActualizationDelay   :: !Int
   , descReqActualizationTimeout :: !NominalDiffTime
   }

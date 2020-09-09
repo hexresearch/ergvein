@@ -36,6 +36,7 @@ rejectTypeToWord32 = \case
   MessageHeaderParsing -> 0
   MessageParsing       -> 1
   InternalServerError  -> 2
+  ZeroBytesReceived    -> 3
 
 feeLevelToWord8 :: FeeLevel -> Word8
 feeLevelToWord8 fl = case fl of
