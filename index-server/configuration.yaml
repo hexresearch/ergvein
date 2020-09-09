@@ -11,7 +11,7 @@ BTCNodeTCPHost           : localhost
 BTCNodeTCPPort           : 18333
 ERGONodeHost             : localhost
 ERGONodePort             : 9052
-blockchainScanDelay      : 1000000
+blockchainScanDelay      : 10000000
 ownPeerAddress           : null
 knownPeers               : []
 peerActualizationDelay   : 10000000
