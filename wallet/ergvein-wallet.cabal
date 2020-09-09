@@ -174,7 +174,7 @@ library
         ergvein-crypto >=0.1 && <0.2,
         ergvein-index-api >=0.1 && <0.2,
         ergvein-index-client >=0.1 && <0.2,
-        ergvein-wallet-filters >= 0.1 && < 0.2,
+        ergvein-wallet-filters >= 0.2 && < 0.3,
         ergvein-wallet-native >=0.1 && <0.2,
         ergvein-wallet-types >=0.1 && <0.2,
         ergvein-wallet-version >= 0.1 && < 0.2,

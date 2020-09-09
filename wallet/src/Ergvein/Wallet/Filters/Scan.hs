@@ -22,10 +22,8 @@ filterAddress :: (MonadIO m, HasFiltersStorage t m) => EgvAddress -> m [BlockHas
 filterAddress addr = foldFilters (egvAddrCurrency addr) f []
   where
     f _ _ bhash gfilter acc = case matchAddrFilter addr gfilter of
-      Just (AFBtc :=> Identity (caddr, cfilter)) -> case guardSegWit caddr of
-        Nothing -> pure acc
-        Just saddr -> do
-          res <- applyBtcFilter btcNetwork bhash cfilter saddr
+      Just (AFBtc :=> Identity (caddr, cfilter)) -> do
+          res <- applyBtcFilter bhash cfilter $ addressToScriptBS caddr
           pure $ if res then bhash : acc else acc
       Just (AFErgo :=> _) -> pure acc -- TODO: add ergo hree
       _ -> pure acc
@@ -36,13 +34,11 @@ filterBtcAddress :: (MonadIO m, HasFiltersStorage t m)
   -> (BlockHeight -> BlockHeight -> IO ())    -- ^ Progress logging callback
   -> BtcAddress                               -- ^ Address to match
   -> m (BlockHeight, Vector (BlockHash, BlockHeight))        -- ^ Scanned height and matches
-filterBtcAddress i0 progCb ba = case guardSegWit ba of
-    Nothing -> pure (filterStartingHeight BTC, mempty)
-    Just saddr -> scanBtcFilters i0 (f saddr) (filterStartingHeight BTC, mempty)
+filterBtcAddress i0 progCb ba = scanBtcFilters i0 f (filterStartingHeight BTC, mempty)
   where
-    f saddr i n bhash cfilter (!_, !acc) = do
+    f i n bhash cfilter (!_, !acc) = do
       liftIO $ progCb i n
-      res <- applyBtcFilter btcNetwork bhash cfilter saddr
+      res <- applyBtcFilter bhash cfilter $ addressToScriptBS ba
       let acc' = if res then V.cons (bhash, i) acc else acc
       pure (i, acc')
 
@@ -57,9 +53,9 @@ filterBtcAddresses i0 progCb as
   | V.null bas = pure (0, mempty)
   | otherwise = scanBtcFilters i0 f (filterStartingHeight BTC, mempty)
   where
-    bas = V.mapMaybe guardSegWit as
+    bas = V.map addressToScriptBS as
     f i n bhash cfilter (!_, !acc) = do
       liftIO $ progCb i n
-      res <- applyBtcFilterMany btcNetwork bhash cfilter $ V.toList bas
+      res <- applyBtcFilterMany bhash cfilter $ V.toList bas
       let acc' = if res then V.cons (bhash, i) acc else acc
       pure (i, acc')

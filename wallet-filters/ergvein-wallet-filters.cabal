@@ -1,5 +1,5 @@
 name:                ergvein-wallet-filters
-version:             0.1.0.0
+version:             0.2.0.0
 synopsis:            Tools to generate and use BIP 158 filters for ergvein wallet.
 description:         See README.md
 category:            Cryptocurrency
@@ -15,13 +15,14 @@ library
   hs-source-dirs:      src
   exposed-modules:
     Ergvein.Filters
-    Ergvein.Filters.Mutable
     Ergvein.Filters.Btc
-    Ergvein.Filters.Btc.Address
+    Ergvein.Filters.Btc.Index
     Ergvein.Filters.Btc.Mutable
+    Ergvein.Filters.Btc.VarInt
     Ergvein.Filters.GCS
     Ergvein.Filters.GCS.Mutable
     Ergvein.Filters.Hash
+    Ergvein.Filters.Mutable
   default-language:    Haskell2010
   build-depends:
       base
@@ -32,6 +33,7 @@ library
     , bytestring        >= 0.10
     , cereal
     , containers        >= 0.5
+    , cryptonite        >= 0.25
     , deepseq           >= 1.4
     , dependent-sum     >= 0.6
     , ergvein-common
@@ -39,15 +41,18 @@ library
     , golomb-rice       >= 0.1    && < 0.25
     , haskoin-core      >= 0.12.0 && < 0.12.1
     , memory            >= 0.11
+    , mtl               >= 2.2
     , text              >= 1.2
+    , unordered-containers >= 0.2
     , vector            >= 0.12
     , vector-algorithms >= 0.8
-    , wide-word         >= 0.1
   default-extensions:
     DeriveAnyClass
     DeriveGeneric
+    FlexibleInstances
     OverloadedStrings
     RecordWildCards
+    ScopedTypeVariables
     TemplateHaskell
 
 test-suite ergvein-wallet-filters-test
@@ -57,6 +62,8 @@ test-suite ergvein-wallet-filters-test
   hs-source-dirs:      test
   other-modules:
       Ergvein.Filters.Btc.MutableTest
+      Ergvein.Filters.Btc.TestHelpers
+      Ergvein.Filters.Btc.TestVectors
       Ergvein.Filters.BtcTest
   ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
   default-extensions:
@@ -73,11 +80,13 @@ test-suite ergvein-wallet-filters-test
     , bytes
     , bytestring
     , cereal
+    , containers
     , either
     , ergvein-common
     , ergvein-wallet-filters
     , ergvein-wallet-types
     , haskoin-core
+    , mtl
     , tasty
     , tasty-discover
     , tasty-hspec
