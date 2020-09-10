@@ -63,7 +63,9 @@ instance BitcoinApiMonad ServerM where
   {-# INLINE nodeRpcCall #-}
   getSocketConn = asks envBitcoinSocket
   {-# INLINE getSocketConn #-}
-
+  getBtcConnectionScheme = asks envBtcConScheme
+  {-# INLINE getBtcConnectionScheme #-}
+  
 instance HasClientManager ServerM where
   getClientManager = asks envClientManager
   {-# INLINE getClientManager #-}

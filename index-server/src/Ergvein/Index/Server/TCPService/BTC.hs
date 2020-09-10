@@ -4,6 +4,7 @@ module Ergvein.Index.Server.TCPService.BTC
   , connectBtc
   , getIncChannel
   , requestBlock
+  , dummyBtcSock
   ) where
 
 import Control.Concurrent.Lifted (fork, threadDelay, killThread)
@@ -37,12 +38,32 @@ data BtcSocket = BtcSocket {
 , btcSockOnActive :: !(TChan Bool)
 }
 
+dummyBtcSock :: (MonadIO m, Ex.MonadMask m, MonadBaseControl IO m) => Network -> m BtcSocket
+dummyBtcSock net = do
+  sa       <- liftIO $ (N.addrAddress . head) <$> N.getAddrInfo (Just hints) (Just "localhost") (Just "8080")
+  shakeVar <- liftIO $ newTVarIO False
+  incChan  <- liftIO newBroadcastTChanIO
+  openChan <- liftIO newBroadcastTChanIO
+  pure $ BtcSocket {
+    btcSockNetwork  = net
+  , btcSockAddr     = sa
+  , btcSockRecv     = incChan
+  , btcSockSend     = const $ pure ()
+  , btcSockIsActive = shakeVar
+  , btcSockOnActive = openChan
+  }
+  where
+    hints :: N.AddrInfo
+    hints = N.defaultHints
+      { N.addrFlags = [N.AI_ADDRCONFIG]
+      , N.addrSocketType = N.Stream }
+
 getIncChannel :: MonadIO m => BtcSocket -> m (TChan Message)
 getIncChannel = liftIO . atomically . dupTChan . btcSockRecv
 
 connectBtc :: (MonadIO m, Ex.MonadMask m, MonadBaseControl IO m)
   => Network    -- ^ Btc network
-  -> N.HostName -- ^ Server hostname or IP address.
+  -> N.HostName -- ^ Server "host"name or IP address.
   -> N.ServiceName -- ^ Server service port name or number.
   -> TVar Bool
   -> m BtcSocket

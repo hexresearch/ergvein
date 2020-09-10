@@ -16,7 +16,7 @@ import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 data Options = Options {
   optsCommand       :: Command  -- ^ Which command to execute
 , optsNoDropFilters :: Bool     -- ^ Def: False. Drop filters db when versions changed or not
-, optsWaitNodes     :: Bool     -- ^ Def: True. Wait for all node connections before startup
+, optsBtcTcpConn    :: Bool     -- ^ Def: False. Use TCP connection to the node
 , optsOnlyScan      :: Bool     -- ^ Def: False. Start only BC-scanning threads
 }
 
@@ -30,7 +30,7 @@ options = Options
        command "listen" (info (listenCmd <**> helper) $ progDesc "Start server") <>
        command "clean-known-peers" (info (cleanKnownPeers <**> helper) $ progDesc "resetting peers")
   ) <*> flag False True (long "no-drop-filters" <> help "Do not drop Filters db when version is changed" )
-    <*> flag True False (long "no-wait-nodes" <> help "Do not wait for BTC-TCP connection handshake to startup" )
+    <*> flag True False (long "tcp-node" <> help "Use TCP connection to the node instead of RPC" )
     <*> flag False True (long "only-scan" <> help "Start only BC-scanning threads" )
   where
     cleanKnownPeers = CleanKnownPeers
@@ -57,11 +57,11 @@ startServer Options{..} = case optsCommand of
       T.putStrLn $ pack "Server starting"
       cfg@Config{..} <- loadConfig cfgPath
       BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
-        env <- runStdoutLoggingT $ newServerEnv optsWaitNodes optsNoDropFilters client cfg
+        env <- runStdoutLoggingT $ newServerEnv optsBtcTcpConn optsNoDropFilters client cfg
         runStdoutLoggingT $ app optsOnlyScan cfg env
     CleanKnownPeers cfgPath -> do
       cfg@Config{..} <- loadConfig cfgPath
       BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
-        env <- runStdoutLoggingT $ newServerEnv optsWaitNodes optsNoDropFilters client cfg
+        env <- runStdoutLoggingT $ newServerEnv optsBtcTcpConn optsNoDropFilters client cfg
         runServerMIO env emptyKnownPeers
       T.putStrLn $ pack "knownPeers cleared"

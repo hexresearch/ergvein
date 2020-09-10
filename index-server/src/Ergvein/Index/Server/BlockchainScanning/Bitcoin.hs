@@ -91,13 +91,19 @@ blockInfo :: (BitcoinApiMonad m,  HasBitcoinNodeNetwork m, HasFiltersDB m, Monad
   => BlockHeight -> m BlockInfo
 blockInfo blockHeightToScan =  do
   blockHash <- nodeRpcCall $ (`getBlockHash` fromIntegral blockHeightToScan)
-  let bh = fromRight hashParsingError $ decode $ BS.reverse $ HS.toBytes blockHash
-  parsedBlock <- requestBlock bh
   currentNetwork <- currentBitcoinNetwork
-
+  conScheme <- getBtcConnectionScheme
+  parsedBlock <- case conScheme of
+    BtcConTCP -> requestBlock $ fromRight hashParsingError $ decode $ BS.reverse $ HS.toBytes blockHash
+    BtcConRPC -> do
+      maybeRawBlock <- nodeRpcCall $ (`getBlockRaw` blockHash)
+      let rawBlock = fromMaybe blockParsingError maybeRawBlock
+      pure $ fromRight blockGettingError $ decode $ HS.toBytes rawBlock
   blockTxInfos parsedBlock blockHeightToScan currentNetwork
   where
     hashParsingError = error $ "Error parsing BTC BlockHash at height " ++ show blockHeightToScan
+    blockGettingError = error $ "Error getting BTC node at height " ++ show blockHeightToScan
+    blockParsingError = error $ "Error parsing BTC node at height " ++ show blockHeightToScan
 
 feeScaner :: ServerM ()
 feeScaner = feeScaner' 0

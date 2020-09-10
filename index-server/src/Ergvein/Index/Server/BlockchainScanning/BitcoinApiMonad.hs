@@ -7,10 +7,13 @@ import Ergvein.Index.Server.TCPService.BTC as BTC
 
 import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 
+data BtcConnectionScheme = BtcConTCP | BtcConRPC
+
 class BitcoinApiMonad m where
   nodeRpcCall :: (BitcoinApi.Client -> IO a) -> m a
   getSocketConn :: m BtcSocket
-
+  getBtcConnectionScheme :: m BtcConnectionScheme
+   
 requestBlock :: (MonadIO m, BitcoinApiMonad m) => BlockHash -> m Block
 requestBlock bh = do
   btcsock <- getSocketConn

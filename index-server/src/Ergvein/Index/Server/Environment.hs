@@ -19,6 +19,7 @@ import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.TCPService.BTC
+import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import Ergvein.Text
 import Ergvein.Types.Fees
 
@@ -41,6 +42,7 @@ data ServerEnv = ServerEnv
     , envClientManager            :: HC.Manager
     , envBitcoinClient            :: !BitcoinApi.Client
     , envBitcoinSocket            :: !BtcSocket
+    , envBtcConScheme             :: !BtcConnectionScheme
     , envPeerDiscoveryRequisites  :: !PeerDiscoveryRequisites
     , envFeeEstimates             :: !(TVar (M.Map CurrencyCode FeeBundle))
     , envShutdownFlag             :: !(TVar Bool)
@@ -79,7 +81,7 @@ newServerEnv :: (MonadIO m, MonadLogger m, MonadMask m, MonadBaseControl IO m)
   -> BitcoinApi.Client  -- ^ RPC connection to the bitcoin node
   -> Config             -- ^ Contents of the config file
   -> m ServerEnv
-newServerEnv doWait noDropFilters btcClient cfg@Config{..} = do
+newServerEnv useTcp noDropFilters btcClient cfg@Config{..} = do
     logger <- liftIO newChan
     void $ liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
     filtersDBCntx  <- openDb noDropFilters DBFilters cfgFiltersDbPath
@@ -92,13 +94,16 @@ newServerEnv doWait noDropFilters btcClient cfg@Config{..} = do
     broadChan      <- liftIO newBroadcastTChanIO
     let bitcoinNodeNetwork = if cfgBTCNodeIsTestnet then HK.btcTest else HK.btc
     descDiscoveryRequisites <- liftIO $ discoveryRequisites cfg
-    btcsock <- connectBtc bitcoinNodeNetwork cfgBTCNodeTCPHost (show cfgBTCNodeTCPPort) shutdownVar
-    when doWait $ liftIO $ do
-      isUp <- atomically $ dupTChan $ btcSockOnActive btcsock
-      b <- readTVarIO $ btcSockIsActive btcsock
-      if b then pure () else fix $ \next -> do
-        b' <- atomically $ readTChan isUp
-        if b' then pure () else next
+    btcsock <- if useTcp then do
+      btcsock <- connectBtc bitcoinNodeNetwork cfgBTCNodeTCPHost (show cfgBTCNodeTCPPort) shutdownVar
+      liftIO $ do
+        isUp <- atomically $ dupTChan $ btcSockOnActive btcsock
+        b <- readTVarIO $ btcSockIsActive btcsock
+        if b then pure () else fix $ \next -> do
+          b' <- atomically $ readTChan isUp
+          if b' then pure () else next
+      pure btcsock
+      else dummyBtcSock bitcoinNodeNetwork
     traceShowM cfg
     pure ServerEnv
       { envServerConfig            = cfg
@@ -110,6 +115,7 @@ newServerEnv doWait noDropFilters btcClient cfg@Config{..} = do
       , envClientManager           = tlsManager
       , envBitcoinClient           = btcClient
       , envBitcoinSocket           = btcsock
+      , envBtcConScheme            = if useTcp then BtcConTCP else BtcConRPC
       , envPeerDiscoveryRequisites = descDiscoveryRequisites
       , envFeeEstimates            = feeEstimates
       , envShutdownFlag            = shutdownVar
