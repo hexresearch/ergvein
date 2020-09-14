@@ -17,7 +17,7 @@ data InitialPageStrings =
 instance LocalizedPrint InitialPageStrings where
   localizedShow l v = case l of
     English -> case v of
-      IPSCreate       -> "Create wallet"
+      IPSCreate       -> "Create new wallet"
       IPSRestore      -> "Restore wallet"
       IPSSelectWallet -> "Select wallet"
       IPSOtherOptions -> "Either"
@@ -25,7 +25,7 @@ instance LocalizedPrint InitialPageStrings where
       IPSPinCodeError -> "Invalid code"
       IPSLastWallet   -> "Last used wallet"
     Russian -> case v of
-      IPSCreate       -> "Создать кошелёк"
+      IPSCreate       -> "Создать новый кошелёк"
       IPSRestore      -> "Восстановить кошелёк"
       IPSSelectWallet -> "Выберите кошелёк"
       IPSOtherOptions -> "Или"

@@ -32,18 +32,22 @@ instance LocalizedPrint PatternPageStrings where
       PatPSTitle -> "Установите графический ключ шифрования для кошелька"
       PatPSDescr -> "Этот графический ключ используется для каждой операции с вашими деньгами"
 
-data PasswordPageStrings = PPSTitle | PPSDescr | PPSUnlock
+data PasswordPageStrings = PPSTitle | PPSDescr | PPSSeedTitle | PPSSeedDescr | PPSUnlock
 
 instance LocalizedPrint PasswordPageStrings where
   localizedShow l v = case l of
     English -> case v of
-      PPSTitle  -> "Setup encryption password for your wallet"
-      PPSDescr  -> "The password is used every time you perform an operation with your money. Leave the fields empty to set no password for your wallet."
-      PPSUnlock -> "Enter the password to unlock private keys"
+      PPSTitle     -> "Setup login and encryption password for your wallet"
+      PPSDescr     -> "The password is used every time you perform an operation with your money. Leave the password fields empty to set no password for your wallet (not recommended)."
+      PPSSeedTitle -> "Setup encryption password for your seed"
+      PPSSeedDescr -> "We ask you to set a separate password for compatibility between mobile and desktop versions of the application. Leave the fields empty to set no password for your seed (not recommended)."
+      PPSUnlock    -> "Enter the password to unlock private storage"
     Russian -> case v of
-      PPSTitle  -> "Установите пароль шифрования для кошелька"
-      PPSDescr  -> "Этот пароль используется для каждой операции с вашими деньгами. Можете оставить поле пустым, если хотите (не рекомендуется)."
-      PPSUnlock -> "Введите пароль для расшифровки приватных ключей"
+      PPSTitle     -> "Установите логин и пароль для шифрования кошелька"
+      PPSDescr     -> "Этот пароль используется для каждой операции с вашими деньгами. Можете оставить поля пароля пустыми, если хотите (не рекомендуется)."
+      PPSSeedTitle -> "Установите пароль для шифрования сида"
+      PPSSeedDescr -> "Мы просим Вас установить отдельный пароль для совместимости между мобильной и десктопной версией приложения. Можете оставить поля пустыми, если хотите (не рекомендуется)."
+      PPSUnlock    -> "Введите пароль для расшифровки приватного хранилища"
 
 data PasswordWidgetStrings = PWSPassword | PWSPassNamed Text | PWSRepeat | PWSSet | PWSNoMatch | PWSGo | PWSLogin | PWSEmptyLogin | PWSEmptyPassword | PWSEmptyPattern
 

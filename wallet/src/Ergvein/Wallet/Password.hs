@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 module Ergvein.Wallet.Password(
-    setupLoginPassword
+    setupPassword
+  , setupLoginPassword
   , askPassword
   , askPasswordModal
   , setupLogin
@@ -27,6 +28,17 @@ import qualified Data.Map.Strict as Map
 import           Data.Time (UTCTime, getCurrentTime)
 import           Control.Monad.IO.Class
 
+setupPassword :: MonadFrontBase t m => m (Event t Password)
+setupPassword = divClass "setup-password" $ form $ fieldset $ mdo
+  p1D <- passFieldWithEye PWSPassword
+  p2D <- passFieldWithEye PWSRepeat
+  e <- submitClass "button button-outline" PWSSet
+  validate $ poke e $ const $ runExceptT $ do
+    p1 <- sampleDyn p1D
+    p2 <- sampleDyn p2D
+    check PWSNoMatch $ p1 == p2
+    pure p1
+
 setupLoginPassword :: MonadFrontBase t m => m (Event t (Text, Password))
 setupLoginPassword = divClass "setup-password" $ form $ fieldset $ mdo
   loginD <- textFieldAttr PWSLogin ("placeholder" =: "my wallet name") ""
@@ -39,7 +51,6 @@ setupLoginPassword = divClass "setup-password" $ form $ fieldset $ mdo
     l  <- sampleDyn loginD
     check PWSEmptyLogin $ not $ T.null l
     check PWSNoMatch $ p1 == p2
-    check PWSEmptyPassword $ not $ T.null p1
     pure (l,p1)
 
 passwordHeader :: MonadFrontBase t m => m (Event t ())

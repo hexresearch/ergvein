@@ -29,6 +29,7 @@ import Ergvein.Wallet.Monad.Auth
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Settings.Network
+import Ergvein.Wallet.Page.Settings.SeedExport
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage
 import Ergvein.Wallet.Storage.Keys
@@ -45,6 +46,7 @@ data SubPageSettings
   | GoUnits
   | GoNetwork
   | GoPortfolio
+  | GoSeedExport
 
 -- TODO: uncomment commented lines when ERGO is ready
 settingsPage :: MonadFront t m => m ()
@@ -52,25 +54,28 @@ settingsPage = do
   title <- localized STPSTitle
   wrapper True title (Just $ pure settingsPage) $ do
     divClass "initial-options grid1" $ do
-      goLangE      <- fmap (GoLanguage   <$) $ outlineButton STPSButLanguage
-      -- goCurrE      <- fmap (GoCurrencies <$) $ outlineButton STPSButActiveCurrs
-      goNetE       <- fmap (GoNetwork    <$) $ outlineButton STPSButNetwork
-      goUnitsE     <- fmap (GoUnits      <$) $ outlineButton STPSButUnits
-      goPortfolioE <- fmap (GoPortfolio  <$) $ outlineButton STPSButPortfolio
+      goLangE       <- fmap (GoLanguage   <$) $ outlineButton STPSButLanguage
+      -- goCurrE       <- fmap (GoCurrencies <$) $ outlineButton STPSButActiveCurrs
+      goNetE        <- fmap (GoNetwork    <$) $ outlineButton STPSButNetwork
+      goUnitsE      <- fmap (GoUnits      <$) $ outlineButton STPSButUnits
+      goPortfolioE  <- fmap (GoPortfolio  <$) $ outlineButton STPSButPortfolio
+      goSeedExportE <- fmap (GoSeedExport <$) $ outlineButton STPSButSeedExport
       let goE = leftmost [
               goLangE
             -- , goCurrE
             , goNetE
             , goUnitsE
             , goPortfolioE
+            , goSeedExportE
             ]
       void $ nextWidget $ ffor goE $ \spg -> Retractable {
           retractableNext = case spg of
-            GoLanguage   -> languagePage
-            -- GoCurrencies -> currenciesPage
-            GoNetwork    -> networkSettingsPage
-            GoUnits      -> unitsPage
-            GoPortfolio  -> portfolioPage
+            GoLanguage    -> languagePage
+            -- GoCurrencies  -> currenciesPage
+            GoNetwork     -> networkSettingsPage
+            GoUnits       -> unitsPage
+            GoPortfolio   -> portfolioPage
+            goSeedExportE -> seedExportPage
         , retractablePrev = Just $ pure settingsPage
         }
 
@@ -204,7 +209,7 @@ unitsPage = do
 portfolioPage :: MonadFront t m => m ()
 portfolioPage = do
   title <- localized STPSTitle
-  wrapper True title (Just $ pure currenciesPage) $ do
+  wrapper True title (Just $ pure portfolioPage) $ do
     h3 $ localizedText STPSSetsPortfolio
     divClass "initial-options" $ mdo
       settings <- getSettings
