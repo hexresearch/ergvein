@@ -9,6 +9,7 @@ import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Control
 import Control.Monad.Logger
 import Control.Monad.Reader
+import Data.Text (Text)
 import Data.Typeable
 import Database.LevelDB.Base
 import Network.HTTP.Client.TLS
@@ -133,14 +134,14 @@ newServerEnv useTcp noDropFilters optsNoDropIndexers btcClient cfg@Config{..} = 
       }
 
 -- | Log exceptions at Error severity
-logOnException :: (MonadIO m, MonadLogger m, MonadCatch m) => m a -> m a
-logOnException = handle logE
+logOnException :: (MonadIO m, MonadLogger m, MonadCatch m) => Text -> m a -> m a
+logOnException threadName = handle logE
   where
     logE e
         | Just ThreadKilled <- fromException e = do
-            logInfoN "Killed normally by ThreadKilled"
+            logInfoN $ "[" <> threadName <> "]: Killed normally by ThreadKilled"
             throwM e
         | SomeException eTy <- e = do
-            logErrorN $ "Killed by " <> showt (typeOf eTy) <> showt eTy
+            logErrorN $ "[" <> threadName <> "]: Killed by " <> showt (typeOf eTy) <> showt eTy
             liftIO $ threadDelay 1000000
             throwM e

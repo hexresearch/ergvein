@@ -31,7 +31,7 @@ import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.TCPService.MessageHandler
 import Ergvein.Index.Server.TCPService.Socket as S
-import Ergvein.Index.Server.TCPService.Connections 
+import Ergvein.Index.Server.TCPService.Connections
 
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString as BS
@@ -39,7 +39,7 @@ import qualified Network.Socket.ByteString as NS
 
 -- Pinger thread
 runPinger :: ServerM Thread
-runPinger = create $ const $ logOnException $ do
+runPinger = create $ const $ logOnException "runPinger" $ do
   broadChan <- liftIO . atomically . dupTChan =<< broadcastChannel
   forever $ liftIO $ do
     threadDelay 5000000
@@ -47,7 +47,7 @@ runPinger = create $ const $ logOnException $ do
     atomically $ writeTChan broadChan msg
 
 runTcpSrv :: ServerM Thread
-runTcpSrv = create $ logOnException . tcpSrv
+runTcpSrv = create $ logOnException "runTcpSrv" . tcpSrv
 
 tcpSrv :: Thread -> ServerM ()
 tcpSrv thread = do
@@ -87,7 +87,7 @@ mainLoop thread sock = do
    performShutdown :: HasConnectionsManagement m => ThreadId -> m ()
    performShutdown mainLoopId = do
     closeAllConnections
-    liftIO $ do 
+    liftIO $ do
       killThread mainLoopId
       stop thread
 
@@ -103,14 +103,14 @@ runConnection (sock, addr) =  do
   case evalResult of
     Right (msgs@(MVersionACK _ : _)) -> do --peer version match ours
       sendChan <- liftIO newTChanIO
-      forM msgs $ (liftIO . writeMsg sendChan) 
+      forM msgs $ (liftIO . writeMsg sendChan)
       -- Spawn message sender thread
       fork $ sendLoop sendChan
       -- Spawn broadcaster loop
       fork $ broadcastLoop sendChan
       -- Start message listener
       listenLoop sendChan
-    _ -> closeConnection addr 
+    _ -> closeConnection addr
   where
     writeMsg :: TChan LBS.ByteString -> Message -> IO ()
     writeMsg destinationChan = atomically . writeTChan destinationChan . toLazyByteString . messageBuilder
@@ -159,7 +159,7 @@ runConnection (sock, addr) =  do
 
         messageHeader :: BS.ByteString -> ExceptT Reject ServerM MessageHeader
         messageHeader = ExceptT . pure . mapLeft (\_-> Reject MessageHeaderParsing) . eitherResult . parse messageHeaderParser
-    
+
         request :: MessageHeader -> ExceptT Reject ServerM Message
         request MessageHeader {..} = do
           messageBytes <- liftIO $ NS.recv sock $ fromIntegral msgSize
@@ -167,6 +167,6 @@ runConnection (sock, addr) =  do
           liftIO $ print $ "Parse     :" <> show (eitherResult $ parse (messageParser msgType) messageBytes)
           liftIO $ print $ "ParseOnly :" <> show (parseOnly (messageParser msgType) messageBytes)
           except $ mapLeft (\_-> Reject MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
-    
+
         response :: Message -> ExceptT Reject ServerM [Message]
         response msg = (lift $ handleMsg addr msg) `catch` (\(SomeException ex) -> except $ Left $ Reject InternalServerError)

@@ -42,8 +42,9 @@ actualHeight currency = case currency of
   ERGO -> ERGOScanning.actualHeight
 
 scannerThread :: Currency -> (BlockHeight -> ServerM BlockInfo) -> ServerM Thread
-scannerThread currency scanInfo = create $ logOnException . scanIteration
+scannerThread currency scanInfo = create $ logOnException threadName . scanIteration
   where
+    threadName = "scannerThread<" <> showt currency <> ">"
     blockIteration :: BlockHeight -> BlockHeight -> ServerM BlockInfo
     blockIteration totalh blockHeight = do
       now <- liftIO $ getCurrentTime
@@ -117,7 +118,7 @@ blockchainScanning = sequenceA
   ]
 
 feesThread :: ServerM () -> ServerM Thread
-feesThread feescan = create $ logOnException . \thread -> do
+feesThread feescan = create $ logOnException "feesThread" . \thread -> do
   feescan
   stopThreadIfShutdown thread
 
