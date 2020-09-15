@@ -186,7 +186,7 @@ messageBuilder (MFeeResponse msgs) = let
   msg = word32LE amount <> resps
   in messageBase MFeeResponseType msgSize msg
 
-messageBuilder (MPeerRequest _) = messageBase MIntroducePeerType msgSize $ word8 msg
+messageBuilder (MPeerRequest _) = messageBase MPeerRequestType msgSize $ word8 msg
   where
     msg = 0 :: Word8
     msgSize = genericSizeOf msg
@@ -205,7 +205,7 @@ messageBuilder (MPeerIntroduce PeerIntroduce{..}) = let
   addrAmount = fromIntegral $ V.length peerIntroduceAddresses
   msgSize = genericSizeOf addrAmount
           + getSum addressesSize
-  in messageBase MPeerResponseType msgSize
+  in messageBase MIntroducePeerType msgSize
   $  word32LE addrAmount
   <> addresses
 
