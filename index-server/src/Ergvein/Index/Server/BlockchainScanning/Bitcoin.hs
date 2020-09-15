@@ -46,7 +46,8 @@ blockTxInfos block txBlockHeight nodeNetwork = do
   let (txInfos , spentTxsIds) = fmap (uniqueWithCount . mconcat) $ unzip $ txInfo <$> HK.blockTxns block
   -- timeLog $ "spentTxsIds: " <> showt (length spentTxsIds)
   uniqueSpentTxs <- fmap mconcat $ mapConcurrently (mapM spentTxSource) $ mkChunks 100 spentTxsIds
-  blockAddressFilter <- encodeBtcAddrFilter =<< makeBtcFilter nodeNetwork uniqueSpentTxs block
+  blockAddressFilter <- encodeBtcAddrFilter =<<
+    withInputTxs uniqueSpentTxs (makeBtcFilter isErgveinIndexable block)
   let blockHeaderHash = HK.getHash256 $ HK.getBlockHash $ HK.headerHash $ HK.blockHeader block
       prevBlockHeaderHash = HK.getHash256 $ HK.getBlockHash $ HK.prevBlock $ HK.blockHeader block
       blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHash prevBlockHeaderHash blockAddressFilter
