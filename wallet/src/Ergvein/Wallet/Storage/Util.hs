@@ -4,6 +4,8 @@ module Ergvein.Wallet.Storage.Util(
   , getLastSeenHeight
   , encryptPrvStorage
   , decryptPrvStorage
+  , encryptBS
+  , decryptBS
   , passwordToECIESPrvKey
   , createPrvStorage
   , createPubKeystore
@@ -186,6 +188,29 @@ decryptStorage encryptedStorage prvKey = do
             Right s -> Right s
             where
               storage = decodeJson $ decodeUtf8With lenientDecode decryptedStorage
+
+encryptBS :: MonadRandom m => ByteString -> Password -> m (Either StorageAlert EncryptedByteString)
+encryptBS bs pass = do
+  salt <- genRandomSalt32
+  let secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 pass) salt) :: Key AES256 ByteString
+  iv <- genRandomIV (undefined :: AES256)
+  case iv of
+    Nothing -> pure $ Left $ SACryptoError "Failed to generate an AES initialization vector"
+    Just iv' -> do
+      case encrypt secretKey iv' bs of
+        Left err -> pure $ Left $ SACryptoError $ showt err
+        Right ciphertext -> pure $ Right $ EncryptedByteString salt iv' ciphertext
+
+decryptBS :: EncryptedByteString -> Password -> Either StorageAlert ByteString
+decryptBS encryptedBS password =
+  case decrypt secretKey iv ciphertext of
+    Left err -> Left $ SACryptoError $ showt err
+    Right decryptedBS -> Right decryptedBS
+  where
+    salt = encryptedByteString'salt encryptedBS
+    secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
+    iv = encryptedByteString'iv encryptedBS
+    ciphertext = encryptedByteString'ciphertext encryptedBS
 
 passwordToECIESPrvKey :: Password -> Either StorageAlert ECIESPrvKey
 passwordToECIESPrvKey password = case secretKey passwordHash of

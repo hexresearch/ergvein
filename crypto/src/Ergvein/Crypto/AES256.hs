@@ -4,8 +4,6 @@ module Ergvein.Crypto.AES256 (
   , decrypt
   , encryptWithAEAD
   , decryptWithAEAD
-  , encryptBS
-  , decryptBS
   , defaultAuthTagLength
   , genRandomSalt
   , genRandomSalt32
@@ -131,26 +129,3 @@ instance Serialize EncryptedByteString where
     let salt = unsafeSizedByteArray saltBS :: SizedByteArray 32 ByteString
         iv = fromJust $ makeIV ivBS :: IV AES256
     return $ EncryptedByteString salt iv ciphertext
-
-encryptBS :: MonadRandom m => ByteString -> Password -> m (Either String EncryptedByteString)
-encryptBS bs pass = do
-  salt <- genRandomSalt32
-  let secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 pass) salt) :: Key AES256 ByteString
-  iv <- genRandomIV (undefined :: AES256)
-  case iv of
-    Nothing -> pure $ Left $ "Failed to generate an AES initialization vector"
-    Just iv' -> do
-      case encrypt secretKey iv' bs of
-        Left err -> pure $ Left $ show err
-        Right ciphertext -> pure $ Right $ EncryptedByteString salt iv' ciphertext
-
-decryptBS :: EncryptedByteString -> Password -> Either String ByteString
-decryptBS encryptedBS password =
-  case decrypt secretKey iv ciphertext of
-    Left err -> Left $ show err
-    Right decryptedBS -> Right decryptedBS
-  where
-    salt = encryptedByteString'salt encryptedBS
-    secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
-    iv = encryptedByteString'iv encryptedBS
-    ciphertext = encryptedByteString'ciphertext encryptedBS
