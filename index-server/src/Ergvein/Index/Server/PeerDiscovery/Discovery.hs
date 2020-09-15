@@ -66,6 +66,10 @@ knownPeersActualization  = do
      let peersToConnect = Set.toList $ opened Set.\\ (Set.fromList $ peerAddress <$> upToDatePeers)
      liftIO $ forM_ peersToConnect newConnection
      broadcastSocketMessage $ MPeerRequest PeerRequest
+     shutdownFlagVar <- getShutdownFlag
+     liftIO $ cancelableDelay shutdownFlagVar descReqActualizationDelay
+     shutdownFlag <- liftIO $ readTVarIO shutdownFlagVar
+     unless shutdownFlag $ scanIteration thread
     isUpToDatePeer :: Set SockAddr -> NominalDiffTime -> UTCTime -> Peer -> Bool
     isUpToDatePeer predefined retryTimeout currentTime peer =
        let fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt peer
