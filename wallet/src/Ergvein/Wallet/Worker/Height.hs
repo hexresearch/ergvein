@@ -68,6 +68,7 @@ startBTCFlow = Workflow $ do
 btcCatchUpFlow :: MonadFront t m => (Timestamp, [(BlockHeight, BlockHash)]) -> Workflow t m ()
 btcCatchUpFlow (ts, bl) = Workflow $ do
   let (h0, lasthash) = head bl
+  logWrite $ "btcCatchUpFlow: " <> showt h0
   buildE <- getPostBuild
   let req = MGetHeaders $ GetHeaders 70012 (snd <$> bl) emptyHash
   respE <- requestRandomNode $ (NodeReqBTC req) <$ buildE
