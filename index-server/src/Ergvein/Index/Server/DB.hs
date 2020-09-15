@@ -14,6 +14,7 @@ import Database.LevelDB.Base
 import Database.LevelDB.Internal
 import System.Directory
 import System.FilePath
+import Ergvein.Text
 
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries (initIndexerDb)
@@ -22,13 +23,13 @@ import qualified Ergvein.Index.Server.DB.Schema.Filters as DBF
 import qualified Ergvein.Index.Server.DB.Schema.Indexer as DBI
 
 openDb :: (MonadLogger m, MonadIO m) => Bool -> DBTag -> FilePath -> m DB
-openDb noDropFilters dbtag dbDirectory = do
+openDb noDropDb dbtag dbDirectory = do
   canonicalPathDirectory <- liftIO $ canonicalizePath dbDirectory
   isDbDirExist <- liftIO $ doesDirectoryExist canonicalPathDirectory
   liftIO $ unless isDbDirExist $ createDirectory canonicalPathDirectory
   levelDBContext <- liftIO $ do
     db <- open canonicalPathDirectory def {createIfMissing = True }
-    if (noDropFilters && dbtag == DBFilters) then do
+    if noDropDb then do
       put db def schemaVersionRecKey schemaVersion
       pure db
       else do

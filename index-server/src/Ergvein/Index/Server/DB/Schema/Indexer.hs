@@ -76,7 +76,7 @@ data RollbackKey = RollbackKey { unRollbackKey :: !Currency }
   deriving (Generic, Show, Eq, Ord, Serialize)
 
 data RollbackRecItem = RollbackRecItem
-  { rollbackItemAdded :: [TxHash]
+  { rollbackItemAdded     :: [TxHash]
   , rollbackItemSpendings :: Map.Map TxHash Word32
   , rollbackPrevBlockHash :: !BlockHash
   , rollbackPrevHeight    :: !BlockHeight

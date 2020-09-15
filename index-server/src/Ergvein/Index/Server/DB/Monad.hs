@@ -20,7 +20,7 @@ class MonadIO m => HasLMDBs m where
   getDb :: DBTag -> m LDB.DB
 
 data DBTag = DBFilters | DBIndexer
-  deriving (Eq)
+  deriving (Eq, Show)
 
 class HasBtcRollback m where
   getBtcRollbackVar :: m (TVar (Seq.Seq RollbackRecItem))

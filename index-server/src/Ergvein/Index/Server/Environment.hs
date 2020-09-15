@@ -83,14 +83,15 @@ discoveryRequisites cfg = do
 newServerEnv :: (MonadIO m, MonadLogger m, MonadMask m, MonadBaseControl IO m)
   => Bool               -- ^ flag, def True: wait for node connections to be up before finalizing the env
   -> Bool               -- ^ flag, def False: do not drop Filters database
+  -> Bool               -- ^ flag, def False: do not drop Indexer's database
   -> BitcoinApi.Client  -- ^ RPC connection to the bitcoin node
   -> Config             -- ^ Contents of the config file
   -> m ServerEnv
-newServerEnv useTcp noDropFilters btcClient cfg@Config{..} = do
+newServerEnv useTcp noDropFilters optsNoDropIndexers btcClient cfg@Config{..} = do
     logger <- liftIO newChan
     void $ liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
     filtersDBCntx  <- openDb noDropFilters DBFilters cfgFiltersDbPath
-    indexerDBCntx  <- openDb noDropFilters DBIndexer cfgIndexerDbPath
+    indexerDBCntx  <- openDb optsNoDropIndexers DBIndexer cfgIndexerDbPath
     ergoNodeClient <- liftIO $ ErgoApi.newClient cfgERGONodeHost cfgERGONodePort
     tlsManager     <- liftIO $ newTlsManager
     feeEstimates   <- liftIO $ newTVarIO M.empty
@@ -110,7 +111,7 @@ newServerEnv useTcp noDropFilters btcClient cfg@Config{..} = do
       pure btcsock
       else dummyBtcSock bitcoinNodeNetwork
     btcSeq <- liftIO $ runStdoutLoggingT $ runReaderT (loadRollbackSequence BTC) indexerDBCntx
-    btcSeqVar <- liftIO $ newTVarIO $ unRollbackSequence btcSeq 
+    btcSeqVar <- liftIO $ newTVarIO $ unRollbackSequence btcSeq
     traceShowM cfg
     pure ServerEnv
       { envServerConfig            = cfg
