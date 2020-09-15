@@ -90,7 +90,7 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
           pure $ flip all maybeLastScannedBlock (== proposedPreviousBlockId)
 
         previousBlockChanged from to = do
-          revertedBlocksCount <- fromIntegral <$> revertContentHistory currency
+          revertedBlocksCount <- fromIntegral <$> performRollback currency
           logInfoN $ "Fork detected at "
                   <> showt from <> " " <> showt currency
                   <> ", performing rollback of " <> showt revertedBlocksCount <> " previous blocks"

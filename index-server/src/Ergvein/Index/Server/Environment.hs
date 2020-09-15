@@ -17,14 +17,18 @@ import Network.Socket
 import Ergvein.Index.Protocol.Types (CurrencyCode, Message)
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB
+import Ergvein.Index.Server.DB.Schema.Indexer (RollbackRecItem, RollbackSequence(..))
+import Ergvein.Index.Server.DB.Queries (loadRollbackSequence)
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.TCPService.BTC
 import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import Ergvein.Text
 import Ergvein.Types.Fees
+import Ergvein.Types.Currency
 
 import qualified Data.Map.Strict             as M
 import qualified Data.Set                    as Set
+import qualified Data.Sequence               as Seq
 import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 import qualified Network.Ergo.Api.Client     as ErgoApi
 import qualified Network.Haskoin.Constants   as HK
@@ -43,6 +47,7 @@ data ServerEnv = ServerEnv
     , envBitcoinClient            :: !BitcoinApi.Client
     , envBitcoinSocket            :: !BtcSocket
     , envBtcConScheme             :: !BtcConnectionScheme
+    , envBtcRollback              :: !(TVar (Seq.Seq RollbackRecItem))
     , envPeerDiscoveryRequisites  :: !PeerDiscoveryRequisites
     , envFeeEstimates             :: !(TVar (M.Map CurrencyCode FeeBundle))
     , envShutdownFlag             :: !(TVar Bool)
@@ -104,6 +109,8 @@ newServerEnv useTcp noDropFilters btcClient cfg@Config{..} = do
           if b' then pure () else next
       pure btcsock
       else dummyBtcSock bitcoinNodeNetwork
+    btcSeq <- liftIO $ runStdoutLoggingT $ runReaderT (loadRollbackSequence BTC) indexerDBCntx
+    btcSeqVar <- liftIO $ newTVarIO $ unRollbackSequence btcSeq 
     traceShowM cfg
     pure ServerEnv
       { envServerConfig            = cfg
@@ -116,6 +123,7 @@ newServerEnv useTcp noDropFilters btcClient cfg@Config{..} = do
       , envBitcoinClient           = btcClient
       , envBitcoinSocket           = btcsock
       , envBtcConScheme            = if useTcp then BtcConTCP else BtcConRPC
+      , envBtcRollback             = btcSeqVar
       , envPeerDiscoveryRequisites = descDiscoveryRequisites
       , envFeeEstimates            = feeEstimates
       , envShutdownFlag            = shutdownVar

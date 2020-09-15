@@ -46,6 +46,10 @@ instance HasIndexerDB ServerM where
   getIndexerDb = asks envIndexerDBContext
   {-# INLINE getIndexerDb #-}
 
+instance HasBtcRollback ServerM where
+  getBtcRollbackVar = asks envBtcRollback
+  {-# INLINE getBtcRollbackVar #-}
+
 instance ErgoApi.ApiMonad ServerM where
   getClient = asks envErgoNodeClient
   {-# INLINE getClient #-}
@@ -65,7 +69,7 @@ instance BitcoinApiMonad ServerM where
   {-# INLINE getSocketConn #-}
   getBtcConnectionScheme = asks envBtcConScheme
   {-# INLINE getBtcConnectionScheme #-}
-  
+
 instance HasClientManager ServerM where
   getClientManager = asks envClientManager
   {-# INLINE getClientManager #-}

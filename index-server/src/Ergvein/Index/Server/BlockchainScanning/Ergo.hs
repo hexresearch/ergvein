@@ -19,6 +19,8 @@ import           Network.Ergo.Api.Client
 import           Network.Ergo.Api.Info
 import qualified Network.Ergo.Api.Utxo    as UtxoApi
 import qualified Data.ByteString.Short as BSS
+import qualified Data.Map.Strict as M
+
 import Control.Monad.IO.Unlift
 
 txInfo :: ApiMonad m => ErgoTransaction -> m ([TxInfo], [TxHash])
@@ -39,8 +41,9 @@ blockTxInfos block txBlockHeight = do
   let blockHeaderHash = mempty --TODO
       prevBlockHeaderHash = mempty --TODO
       blockAddressFilter = mempty --TODO
+      spentMap = M.fromList $ (,0) <$> spentTxsIds --TODO
       blockMeta = BlockMetaInfo ERGO (fromIntegral txBlockHeight) blockHeaderHash prevBlockHeaderHash blockAddressFilter
-  pure $ BlockInfo blockMeta spentTxsIds txInfos
+  pure $ BlockInfo blockMeta spentMap txInfos
 
 actualHeight :: ApiMonad m => m BlockHeight
 actualHeight = do

@@ -11,6 +11,7 @@ import           Data.Maybe
 import           Data.Serialize
 import           Data.Text(Text)
 import           Data.Time
+import           Data.Word
 import           Network.Bitcoin.Api.Blockchain
 import           Network.Bitcoin.Api.Misc
 import           Control.Concurrent.STM.TVar
@@ -30,7 +31,6 @@ import           Ergvein.Text
 import           Ergvein.Types.Currency
 import           Ergvein.Types.Fees
 import           Ergvein.Types.Transaction
-
 import qualified Data.ByteString                    as BS
 import qualified Data.HexString                     as HS
 import qualified Data.Map.Strict                    as Map
@@ -41,28 +41,21 @@ import qualified Network.Haskoin.Crypto             as HK
 import qualified Network.Haskoin.Script             as HK
 import qualified Network.Haskoin.Transaction        as HK
 
-mkChunks :: Int -> [a] -> [[a]]
-mkChunks n vals = mkChunks' [] vals
-  where
-     mkChunks' acc xs = case xs of
-       [] -> acc
-       _ -> let (a,b) = splitAt n xs in mkChunks' (acc ++ [a]) b
-
 blockTxInfos :: (HasFiltersDB m, MonadLogger m, MonadBaseControl IO m) => HK.Block -> BlockHeight -> HK.Network -> m BlockInfo
 blockTxInfos block txBlockHeight nodeNetwork = do
-  let (txInfos , spentTxsIds) = fmap (uniqueElements . mconcat) $ unzip $ txInfo <$> HK.blockTxns block
-  timeLog $ "spentTxsIds: " <> showt (length spentTxsIds)
+  let (txInfos , spentTxsIds) = fmap (uniqueWithCount . mconcat) $ unzip $ txInfo <$> HK.blockTxns block
+  -- timeLog $ "spentTxsIds: " <> showt (length spentTxsIds)
   uniqueSpentTxs <- fmap mconcat $ mapConcurrently (mapM spentTxSource) $ mkChunks 100 spentTxsIds
   blockAddressFilter <- encodeBtcAddrFilter =<< makeBtcFilter nodeNetwork uniqueSpentTxs block
   let blockHeaderHash = HK.getHash256 $ HK.getBlockHash $ HK.headerHash $ HK.blockHeader block
       prevBlockHeaderHash = HK.getHash256 $ HK.getBlockHash $ HK.prevBlock $ HK.blockHeader block
       blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHash prevBlockHeaderHash blockAddressFilter
 
-  pure $ BlockInfo blockMeta spentTxsIds txInfos
+  pure $ BlockInfo blockMeta (Map.fromList spentTxsIds) txInfos
   where
     blockTxMap = mapBy (hkTxHashToEgv . HK.txHash) $ HK.blockTxns block
-    spentTxSource :: (HasFiltersDB m, MonadLogger m) => TxHash -> m HK.Tx
-    spentTxSource txInId = do
+    spentTxSource :: (HasFiltersDB m, MonadLogger m) => (TxHash, Word32) -> m HK.Tx
+    spentTxSource (txInId, _) = do
       case Map.lookup txInId blockTxMap of
         Just    sourceTx -> pure sourceTx
         Nothing          -> fromChache
@@ -70,8 +63,11 @@ blockTxInfos block txBlockHeight nodeNetwork = do
         decodeError = "error decoding btc txIn source transaction " <> show txInId
         fromChache = do
           db <- getFiltersDb
-          src <- getParsedExact BTC "blockTxInfos" db $ txRecKey txInId
-          pure $ fromRight (error decodeError) $ egvDeserialize BTC $ txRecBytes src
+          src <- getParsedExact BTC "blockTxInfos" db $ txRawKey txInId
+          case egvDeserialize BTC $ unTxRecBytes src of
+            Left err -> error (err <> " : " <> show src)
+            Right tx -> pure tx
+          -- pure $ fromRight (error decodeError) $ egvDeserialize BTC $ unTxRecBytes src
 
     txInfo :: HK.Tx -> (TxInfo, [TxHash])
     txInfo tx = let

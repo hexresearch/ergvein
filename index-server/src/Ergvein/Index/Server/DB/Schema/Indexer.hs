@@ -4,12 +4,12 @@ module Ergvein.Index.Server.DB.Schema.Indexer
     KnownPeerRecItem(..)
   , KnownPeersRec(..)
   , LastScannedBlockHeaderHashRec(..)
-  , ContentHistoryRec(..)
-  , ContentHistoryRecItem(..)
+  , RollbackKey(..)
+  , RollbackRecItem(..)
+  , RollbackSequence(..)
+  , rollbackKey
   , knownPeersRecKey
   , lastScannedBlockHeaderHashRecKey
-  , contentHistoryRecKey
-  , contentHistorySize
   , schemaVersionRecKey
   , schemaVersion
   ) where
@@ -32,7 +32,7 @@ import qualified Data.Serialize as S
 import qualified Data.Sequence as Seq
 import qualified Data.Map.Strict as Map
 
-data KeyPrefix = Peer | LastBlockHash | ContentHistory | SchemaVersion deriving Enum
+data KeyPrefix = Peer | LastBlockHash | Rollback | SchemaVersion deriving Enum
 
 schemaVersion :: ByteString
 schemaVersion = hash $(embedFile "src/Ergvein/Index/Server/DB/Schema/Indexer.hs")
@@ -67,26 +67,23 @@ data LastScannedBlockHeaderHashRec = LastScannedBlockHeaderHashRec
   { lastScannedBlockHeaderHashRecHash :: !ShortByteString
   } deriving (Generic, Show, Eq, Ord)
 
---ScannedContentHistory
+-- Rollback
 
-contentHistoryRecKey :: Currency -> ByteString
-contentHistoryRecKey  = keyString ContentHistory . ContentHistoryRecKey
+rollbackKey :: Currency -> ByteString
+rollbackKey = keyString Rollback . RollbackKey
 
-data ContentHistoryRecKey = ContentHistoryRecKey
-  { contentHistoryRecKeyCurrency :: !Currency
-  } deriving (Generic, Show, Eq, Ord, Serialize)
+data RollbackKey = RollbackKey { unRollbackKey :: !Currency }
+  deriving (Generic, Show, Eq, Ord, Serialize)
 
-data ContentHistoryRec = ContentHistoryRec
-  { contentHistoryRecItems :: Seq.Seq ContentHistoryRecItem
+data RollbackRecItem = RollbackRecItem
+  { rollbackItemAdded :: [TxHash]
+  , rollbackItemSpendings :: Map.Map TxHash Word32
+  , rollbackPrevBlockHash :: !BlockHash
+  , rollbackPrevHeight    :: !BlockHeight
   } deriving (Generic, Show, Eq, Ord)
 
-data ContentHistoryRecItem = ContentHistoryRecItem
-  { contentHistoryRecItemSpentTxOuts  :: Map.Map TxHash Word32
-  , contentHistoryRecItemAddedTxsHash :: [TxHash]
-  } deriving (Generic, Show, Eq, Ord)
-
-contentHistorySize :: Int
-contentHistorySize = 64
+data RollbackSequence = RollbackSequence { unRollbackSequence :: Seq.Seq RollbackRecItem}
+  deriving (Generic, Show, Eq, Ord)
 
 --SchemaVersion
 

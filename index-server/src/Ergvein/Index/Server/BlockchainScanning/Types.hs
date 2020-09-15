@@ -8,6 +8,7 @@ import Data.ByteString
 import Data.ByteString.Short (ShortByteString)
 import Data.Word
 import GHC.Generics
+import Data.Map.Strict (Map)
 
 data BlockMetaInfo = BlockMetaInfo
   { blockMetaCurrency      :: !Currency
@@ -27,7 +28,7 @@ instance NFData TxInfo
 
 data BlockInfo = BlockInfo
   { blockInfoMeta       :: !BlockMetaInfo
-  , spentTxsHash        :: ![TxHash]
+  , spentTxOutputs      :: !(Map TxHash Word32)
   , blockContentTxInfos :: ![TxInfo]
   }
 

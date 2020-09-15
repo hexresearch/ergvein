@@ -2,7 +2,8 @@ module Ergvein.Index.Server.DB.Serialize
   (
     EgvSerialize(..)
   , putTxInfosAsRecs
-  , serializeToTxRec
+  , serializeWord32
+  , deserializeWord32
   , module Ergvein.Index.Server.DB.Serialize.Tx
   ) where
 
@@ -43,31 +44,16 @@ instance EgvSerialize ScannedHeightRec where
   egvDeserialize _ = parseOnly $ ScannedHeightRec <$> anyWord64le
 
 -- ===========================================================================
---           instance EgvSerialize TxRec
+--           Tx-related
 -- ===========================================================================
 
-instance EgvSerialize TxRec where
-  egvSerialize    = serializeTxRec
-  egvDeserialize  = deserializeTxRec
+instance EgvSerialize TxRecMeta where
+  egvSerialize _ = BL.toStrict . toLazyByteString . word32LE . unTxRecMeta
+  egvDeserialize _ = fmap TxRecMeta . parseOnly anyWord32le
 
-deserializeTxRec :: Currency -> ByteString -> Either String TxRec
-deserializeTxRec cur bs = flip parseOnly bs $ do
-  txRecHash <- fmap (TxHash . BSS.toShort) $ Parse.take (getTxHashLength cur)
-  txBytesLen <- fromIntegral <$> anyWord64le
-  txRecBytes <- Parse.take txBytesLen
-  txRecUnspentOutputsCount <- anyWord32le
-  pure $ TxRec{..}
-
-serializeTxRec :: Currency -> TxRec -> ByteString
-serializeTxRec cur TxRec{..} = BL.toStrict . toLazyByteString $
-     shortByteString txh
-  <> word64LE txBytesLen
-  <> byteString txRecBytes
-  <> word32LE txRecUnspentOutputsCount
-  where
-    txh = getTxHash txRecHash
-    txHashLen = fromIntegral $ BSS.length txh
-    txBytesLen = fromIntegral $ BS.length txRecBytes
+instance EgvSerialize TxRecBytes where
+  egvSerialize _ = BL.toStrict . toLazyByteString . buildBS . unTxRecBytes
+  egvDeserialize _ = fmap TxRecBytes . parseOnly parseBS
 
 -- ===========================================================================
 --           instance EgvSerialize BlockMetaRec
@@ -102,7 +88,7 @@ peerAddrParser :: Parser PeerAddr
 peerAddrParser = do
   peerAddrPort <- anyWord16le
   isIpV6 <- (== 1) <$> anyWord8
-  peerAddrIP <- 
+  peerAddrIP <-
     if isIpV6 then
       V6 <$> ((,,,) <$> anyWord32le <*> anyWord32le <*> anyWord32le <*> anyWord32le)
     else
@@ -145,36 +131,33 @@ instance EgvSerialize LastScannedBlockHeaderHashRec where
     fmap (LastScannedBlockHeaderHashRec . BSS.toShort) $ Parse.take (getTxHashLength cur)
 
 -- ===========================================================================
---           instance EgvSerialize ContentHistoryRecItem, ContentHistoryRec
+--           Rollback
 -- ===========================================================================
 
-instance EgvSerialize ContentHistoryRecItem where
-  egvSerialize _ = BL.toStrict . toLazyByteString . contentHistoryRecItemBuilder
-  egvDeserialize = parseOnly . contentHistoryRecItemParser
-
-
-instance EgvSerialize ContentHistoryRec where
-  egvSerialize _ (ContentHistoryRec items) =
-    let len = fromIntegral $ Seq.length items
-        bs = fold $ fmap contentHistoryRecItemBuilder items
-    in BL.toStrict . toLazyByteString $ word32LE len <> bs
+instance EgvSerialize RollbackSequence where
+  egvSerialize _ (RollbackSequence items) = BL.toStrict . toLazyByteString $
+       word32LE (fromIntegral $ Seq.length items)
+    <> fold (rollbackItemBuilder <$> items)
   egvDeserialize cur = parseOnly $ do
     len <- fromIntegral <$> anyWord32le
-    fmap (ContentHistoryRec . Seq.fromList) $ replicateM len (contentHistoryRecItemParser cur)
+    fmap (RollbackSequence . Seq.fromList) $ replicateM len (rollbackItemParser cur)
 
-contentHistoryRecItemBuilder :: ContentHistoryRecItem -> Builder
-contentHistoryRecItemBuilder (ContentHistoryRecItem spent addedHash) =
-  let len = fromIntegral $ length addedHash
-  in hash2Word32MapBuilder spent
-      <> word32LE len
-      <> mconcat (txHashBuilder <$> addedHash)
+rollbackItemBuilder :: RollbackRecItem -> Builder
+rollbackItemBuilder (RollbackRecItem sp m prevHash prevH) =
+     word32LE (fromIntegral $ length sp)
+  <> mconcat (txHashBuilder <$> sp)
+  <> hash2Word32MapBuilder m
+  <> buildBSS prevHash
+  <> word64LE prevH
 
-contentHistoryRecItemParser :: Currency -> Parser ContentHistoryRecItem
-contentHistoryRecItemParser cur = do
-  spent <- hash2Word32MapParser cur
-  num <- fmap fromIntegral anyWord32le
-  addedHash <- replicateM num (txHashParser cur)
-  pure $ ContentHistoryRecItem spent addedHash
+rollbackItemParser :: Currency -> Parser RollbackRecItem
+rollbackItemParser cur = do
+  l <- fromIntegral <$> anyWord32le
+  sp <- replicateM l $ txHashParser cur
+  m <- hash2Word32MapParser cur
+  prevHash <- parseBSS
+  prevH <- anyWord64le
+  pure $ RollbackRecItem sp m prevHash prevH
 
 txHashParser :: Currency -> Parser TxHash
 txHashParser cur = fmap (TxHash . BSS.toShort) $ Parse.take $ getTxHashLength cur
@@ -198,30 +181,30 @@ hash2Word32MapBuilder ms = word32LE num <> elb
     elb = mconcat $ flip fmap els $ \(th,c) -> txHashBuilder th <> word32LE c
 
 -- ===========================================================================
---           instance EgvSerialize SchemaVersionRec
+--           Some utils
 -- ===========================================================================
---
 
 instance EgvSerialize ByteString where
   egvSerialize _ bs = BL.toStrict . toLazyByteString $
     word16LE (fromIntegral $ BS.length bs) <> byteString bs
   egvDeserialize _ = parseOnly $ Parse.take . fromIntegral =<< anyWord16le
 
--- ===========================================================================
---           Some utils
--- ===========================================================================
+instance EgvSerialize Word32 where
+  egvSerialize _ = BL.toStrict . toLazyByteString . word32LE
+  egvDeserialize _ = parseOnly anyWord32le
+
+serializeWord32 :: Word32 -> ByteString
+serializeWord32 = BL.toStrict . toLazyByteString . word32LE
+{-# INLINE serializeWord32 #-}
+
+deserializeWord32 :: ByteString -> Either String Word32
+deserializeWord32 = parseOnly anyWord32le
+{-# INLINE deserializeWord32 #-}
 
 putTxInfosAsRecs :: Currency -> [TxInfo] -> LDB.WriteBatch
-putTxInfosAsRecs cur items = fmap (uncurry LDB.Put) $ parMap rdeepseq putI (force items)
-  where putI item = (txRecKey $ txHash $ item, ) $ serializeToTxRec cur item
-
-serializeToTxRec :: Currency -> TxInfo -> BS.ByteString
-serializeToTxRec cur TxInfo{..} = BL.toStrict . toLazyByteString $
-      byteString txh
-  <> word64LE txBytesLen
-  <> byteString txBytes
-  <> word32LE txOutputsCount
+putTxInfosAsRecs cur items = mconcat $ parMap rpar putI (force items)
   where
-    txh = BSS.fromShort $ getTxHash txHash
-    txHashLen = fromIntegral $ BS.length txh
-    txBytesLen = fromIntegral $ BS.length txBytes
+    putI TxInfo{..} = let
+      p1 = LDB.Put (txRawKey txHash) $ egvSerialize cur $ TxRecBytes txBytes
+      p2 = LDB.Put (txMetaKey txHash) $ egvSerialize cur $ TxRecMeta txOutputsCount
+      in [p1, p2]

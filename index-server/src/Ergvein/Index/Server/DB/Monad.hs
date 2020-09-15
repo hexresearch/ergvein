@@ -1,7 +1,13 @@
 {-# LANGUAGE DeriveAnyClass #-}
 module Ergvein.Index.Server.DB.Monad where
 
+import Control.Concurrent.STM
 import Control.Monad.IO.Unlift
+import Control.Monad.Reader
+
+import Ergvein.Index.Server.DB.Schema.Indexer
+
+import qualified Data.Sequence as Seq
 import qualified Database.LevelDB as LDB
 
 class  MonadIO m => HasFiltersDB m where
@@ -15,3 +21,12 @@ class MonadIO m => HasLMDBs m where
 
 data DBTag = DBFilters | DBIndexer
   deriving (Eq)
+
+class HasBtcRollback m where
+  getBtcRollbackVar :: m (TVar (Seq.Seq RollbackRecItem))
+
+instance MonadIO m => HasIndexerDB (ReaderT LDB.DB m) where
+  getIndexerDb = ask
+
+instance MonadIO m => HasFiltersDB (ReaderT LDB.DB m) where
+  getFiltersDb = ask
