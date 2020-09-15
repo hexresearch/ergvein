@@ -18,6 +18,7 @@ import Ergvein.Wallet.Localization.Receive
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
+import Ergvein.Wallet.Page.Canvas
 import Ergvein.Wallet.Page.QRCode
 import Ergvein.Wallet.Wrapper
 
@@ -28,11 +29,12 @@ import Ergvein.Wallet.Share
 receivePage :: MonadFront t m => Currency -> m ()
 receivePage cur = do
   pubStoreD <- getPubStorageD
-  let keyD = ffor pubStoreD $ \ps ->
+  let lastUnusedKeyD = ffor pubStoreD $ \ps ->
         (getLastUnusedKey External . _currencyPubStorage'pubKeystore) =<< (ps ^. pubStorage'currencyPubStorages . at cur)
-  void $ widgetHoldDyn $ ffor keyD $ \case
+  widgetHoldDyn $ ffor lastUnusedKeyD $ \case
     Nothing -> exceededGapLimit cur
     Just (i, key) -> receivePageWidget cur i key
+  pure ()
 
 exceededGapLimit :: MonadFront t m => Currency -> m ()
 exceededGapLimit cur = do

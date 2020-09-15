@@ -140,6 +140,7 @@ library
         Ergvein.Wallet.Worker.Indexer
         Ergvein.Wallet.Worker.IndexersNetworkActualization
         Ergvein.Wallet.Worker.Node
+        Ergvein.Wallet.Worker.PubKeysGenerator
         Ergvein.Wallet.Wrapper
         Ergvein.Wallet.Yaml
     hs-source-dirs: src
@@ -172,7 +173,7 @@ library
         ergvein-common >=1.0 && <1.1,
         ergvein-crypto >=0.1 && <0.2,
         ergvein-index-protocol >= 0.1 && < 0.2,
-        ergvein-wallet-filters >= 0.1 && < 0.2,
+        ergvein-wallet-filters >= 0.2 && < 0.3,
         ergvein-wallet-native >=0.1 && <0.2,
         ergvein-wallet-types >=0.1 && <0.2,
         ergvein-wallet-version >= 0.1 && < 0.2,
@@ -194,6 +195,7 @@ library
         network >= 2.8 && < 3.0,
         parsec -any,
         qrcode-core,
+        random-shuffle,
         ref-tf >=0.4 && <0.5,
         reflex >=0.4 && <0.7,
         reflex-dom >=0.4 && <0.7,
@@ -215,6 +217,8 @@ library
         unliftio-core >= 0.1 && < 0.2,
         validation >=1 && < 1.2,
         vector -any,
+        vector-algorithms,
+        wreq -any,
         yaml -any
 
     if flag(android)

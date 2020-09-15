@@ -5,6 +5,7 @@ module Ergvein.Wallet.Util(
   , poke
   , sampleDyn
   , check
+  , nothingIf
   , dbgPrintE
   , eventToNextFrame
   , eventToNextFrame'
@@ -44,6 +45,9 @@ sampleDyn = sample . current
 check :: MonadError a m => a -> Bool -> m ()
 check a False = throwError a
 check _ True = pure ()
+
+nothingIf :: (a -> Bool) -> a -> Maybe a
+nothingIf p x = if p x then Nothing else Just x
 
 dbgPrintE :: (MonadWidget t m, Show a) => Event t a -> m ()
 dbgPrintE = performEvent_ . fmap (liftIO . print)

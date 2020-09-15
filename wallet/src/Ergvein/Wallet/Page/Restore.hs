@@ -150,7 +150,7 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
 calcNumGap :: PubStorage -> Currency -> KeyPurpose -> (Int, Int)
 calcNumGap ps cur s = let
     r = pubStorageScannedKeys cur s ps
-    unused = maybe 0 fst $ pubStorageLastUnused cur s ps
+    unused = maybe 0 fst $ pubStorageLastUnusedKey cur s ps
     gap = r - unused
   in (r, gap)
 

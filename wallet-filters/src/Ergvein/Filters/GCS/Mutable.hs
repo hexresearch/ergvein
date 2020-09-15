@@ -26,13 +26,16 @@ module Ergvein.Filters.GCS.Mutable(
 import Control.Monad.IO.Class
 import Control.Monad.ST (runST)
 import Data.ByteString (ByteString)
+import Data.HashSet (HashSet)
 import Data.Vector (Vector)
 import Data.Word
 import Ergvein.Filters.Hash
 
-import qualified Data.Vector.Unboxed as VU
-import qualified Data.Vector.Algorithms.Heap as V
 import qualified Data.Encoding.GolombRice.Strict.Mutable as G
+import qualified Data.HashSet as HS
+import qualified Data.Vector as V
+import qualified Data.Vector.Algorithms.Heap as V
+import qualified Data.Vector.Unboxed as VU
 
 -- | Unserialised Golomb-coded set.
 type GCS = G.GolombRice Word64
@@ -61,16 +64,17 @@ constructGcs :: MonadIO m
   => Int -- ^ the bit P parameter of the Golomb-Rice coding
   -> SipKey -- ^ k the 128-bit key used to randomize the SipHash outputs
   -> Word64 -- ^ M the target false positive rate
-  -> Vector ByteString -- ^ Elements L that we need to add to filter. Length N
+  -> HashSet ByteString -- ^ Elements L that we need to add to filter. Length N
   -> m GCS
-constructGcs p k m ls = G.fromVectorUnboxed p ids
+constructGcs p k m hls = G.fromVectorUnboxed p ids
   where
+    ls = V.fromList . HS.toList $ hls
     is = hashSetConstruct k m ls
     iss = runST $ do
       mv <- VU.unsafeThaw is
       V.sort mv
       VU.unsafeFreeze mv
-    ids = VU.uniq $ VU.zipWith (-) iss (VU.cons 0 iss)
+    ids = VU.zipWith (-) iss (VU.cons 0 iss)
 
 -- | To check membership of an item in a compressed GCS, one must reconstruct
 -- the hashed set members from the encoded deltas. The procedure to do so is
@@ -83,14 +87,13 @@ constructGcs p k m ls = G.fromVectorUnboxed p ids
 -- Note: the filter is consumed after the operation. Use 'matchGcsMany' to match
 -- against several targets at once.
 matchGcs :: MonadIO m
-  => Int -- ^ the bit P parameter of the Golomb-Rice coding
-  -> SipKey -- ^ k the 128-bit key used to randomize the SipHash outputs
+  => SipKey -- ^ k the 128-bit key used to randomize the SipHash outputs
   -> Word64 -- ^ M the target false positive rate
   -> Word64 -- ^ N the total amount of items in set
   -> GCS -- ^ Filter set
   -> ByteString -- ^ Target to test against Gcs
   -> m Bool
-matchGcs p k m n !gcs !target = fmap fst $ G.foldl f (False, 0) gcs
+matchGcs k m n !gcs !target = fmap fst $ G.foldl f (False, 0) gcs
   where
     targetHash = hashToRange (n * m) k target
     f (!_, !lastValue) delta = pure $ let
@@ -102,14 +105,13 @@ matchGcs p k m n !gcs !target = fmap fst $ G.foldl f (False, 0) gcs
 -- | Same as `matchGcs` but allows to check several targets against the GCS.
 -- Note that the filter is consumed after the operation.
 matchGcsMany :: (MonadIO m)
-  => Int -- ^ the bit P parameter of the Golomb-Rice coding
-  -> SipKey -- ^ k the 128-bit key used to randomize the SipHash outputs
+  => SipKey -- ^ k the 128-bit key used to randomize the SipHash outputs
   -> Word64 -- ^ M the target false positive rate
   -> Word64 -- ^ N the total amount of items in set
   -> GCS -- ^ Filter set
   -> [ByteString] -- ^ Targets to test against Gcs
   -> m Bool
-matchGcsMany p k m n gcs targets = fmap (\(v,_,_)->v) $ G.foldl f (False, targetHashes, 0) gcs
+matchGcsMany k m n gcs targets = fmap (\(v,_,_)->v) $ G.foldl f (False, targetHashes, 0) gcs
   where
     targetHashes = fmap (hashToRange (n * m) k) targets
     f (!_, !hs, !lastValue) delta = pure $ let

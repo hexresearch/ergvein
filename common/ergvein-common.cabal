@@ -16,12 +16,13 @@ library
   build-depends:
       base
     , aeson
+    , atomic-write
     , base16-bytestring
     , base64-bytestring
     , bytestring
     , directory
     , lens
-    , safe 
+    , safe
     , template-haskell
     , text
   default-language:    Haskell2010

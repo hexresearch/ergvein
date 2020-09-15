@@ -53,7 +53,7 @@ import qualified Network.Haskoin.Block as HB
 import qualified Network.Haskoin.Transaction as HT
 
 class (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t m | m -> t where
-  getAddressByCurIx :: Currency -> Int -> m Base58
+  getAddressByCurIx      :: Currency -> Int -> m Base58
   getEncryptedPrvStorage :: m EncryptedPrvStorage
   getWalletName          :: m Text
   getPubStorage          :: m PubStorage

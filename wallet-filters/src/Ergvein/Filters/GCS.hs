@@ -24,13 +24,16 @@ module Ergvein.Filters.GCS(
 
 import Control.Monad.ST (runST)
 import Data.ByteString (ByteString)
+import Data.HashSet (HashSet)
 import Data.Vector (Vector)
 import Data.Word
 import Ergvein.Filters.Hash
 
-import qualified Data.Vector.Unboxed as VU
-import qualified Data.Vector.Algorithms.Heap as V
 import qualified Data.Encoding.GolombRice.Strict as G
+import qualified Data.HashSet as HS
+import qualified Data.Vector as V
+import qualified Data.Vector.Algorithms.Heap as V
+import qualified Data.Vector.Unboxed as VU
 
 -- | Unserialised Golomb-coded set.
 type GCS = G.GolombRice Word64
@@ -57,16 +60,17 @@ decodeGcs p = G.fromByteString p
 constructGcs :: Int -- ^ the bit P parameter of the Golomb-Rice coding
   -> SipKey -- ^ k the 128-bit key used to randomize the SipHash outputs
   -> Word64 -- ^ M the target false positive rate
-  -> Vector ByteString -- ^ Elements L that we need to add to filter. Length N
+  -> HashSet ByteString -- ^ Elements L that we need to add to filter. Length N
   -> GCS
-constructGcs p k m ls = gs
+constructGcs p k m hls = gs
   where
+    ls = V.fromList . HS.toList $ hls
     is = hashSetConstruct k m ls
     iss = runST $ do
       mv <- VU.unsafeThaw is
       V.sort mv
       VU.unsafeFreeze mv
-    ids = VU.zipWith (-) iss (VU.cons 0 $ VU.uniq iss)
+    ids = VU.zipWith (-) iss (VU.cons 0 iss)
     gs = G.fromVectorUnboxed p ids :: G.GolombRice Word64
 
 -- | To check membership of an item in a compressed GCS, one must reconstruct
@@ -76,14 +80,13 @@ constructGcs p k m ls = gs
 -- set. The queried item is hashed in the same way as the set members and compared
 -- against the reconstructed values. Note that querying does not require the
 -- entire decompressed set be held in memory at once.
-matchGcs :: Int -- ^ the bit P parameter of the Golomb-Rice coding
-  -> SipKey -- ^ k the 128-bit key used to randomize the SipHash outputs
+matchGcs :: SipKey -- ^ k the 128-bit key used to randomize the SipHash outputs
   -> Word64 -- ^ M the target false positive rate
   -> Word64 -- ^ N the total amount of items in set
   -> GCS -- ^ Filter set
   -> ByteString -- ^ Target to test against Gcs
   -> Bool
-matchGcs p k m n gcs target = fst $ G.foldl f (False, 0) gcs
+matchGcs k m n gcs target = fst $ G.foldl f (False, 0) gcs
   where
     targetHash = hashToRange (n * m) k target
     f (!_, !lastValue) delta = let

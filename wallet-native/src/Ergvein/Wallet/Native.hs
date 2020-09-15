@@ -27,12 +27,14 @@ data NativeAlerts
   | NAGenericError Text
   deriving (Eq)
 
+type AtomicMode = Bool
+
 class PlatformNatives where
   -- | Make platform specific URL to given resource.
   resUrl :: Text -> Text
 
   -- | Key-value store. Write JSON value
-  storeValue :: (HasStoreDir m, MonadIO m, ToJSON a) => Text -> a -> m ()
+  storeValue :: (HasStoreDir m, MonadIO m, ToJSON a) => Text -> a -> AtomicMode -> m ()
 
   -- | Key-value store. Read JSON value by key
   retrieveValue :: (HasStoreDir m, MonadIO m, FromJSON a) => Text -> a -> m (Either NativeAlerts a)

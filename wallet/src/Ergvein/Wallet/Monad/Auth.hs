@@ -17,6 +17,7 @@ import Reflex
 import Reflex.Dom
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
+import System.Directory
 
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
@@ -34,6 +35,7 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Settings (Settings(..))
 import Ergvein.Wallet.Storage.Util
@@ -43,8 +45,10 @@ import Ergvein.Wallet.Worker.Fees
 import Ergvein.Wallet.Worker.Height
 import Ergvein.Wallet.Worker.Indexer
 import Ergvein.Wallet.Worker.Node
+import Ergvein.Wallet.Worker.PubKeysGenerator
 
 import qualified Control.Exception.Safe as Ex
+import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
@@ -350,6 +354,7 @@ liftAuth ma0 ma = mdo
               }
 
         flip runReaderT env $ do -- Workers and other routines go here
+          when isAndroid (deleteTmpFiles storeDir)
           initFiltersHeights filtersHeights
           scanner
           bctNodeController
@@ -358,6 +363,7 @@ liftAuth ma0 ma = mdo
           heightAsking
           -- indexersNetworkActualizationWorker
           feesWorker
+          pubKeysGenerator
           pure ()
         runReaderT (wrapped "liftAuth" ma) env
   let
@@ -393,6 +399,13 @@ wrapped caller ma = do
   void . updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ ac <$ buildE
   ma
   where clr = caller <> ":" <> "wrapped"
+
+-- Deletes files created with 'atomicWriteFile' from specified directiry
+deleteTmpFiles :: MonadIO m => Text -> m ()
+deleteTmpFiles dir = liftIO $ do
+  entries <- listDirectory $ T.unpack dir
+  traverse_ removeFile $ L.filter isTmpFile entries
+  where isTmpFile filePath = "atomic" `L.isPrefixOf` filePath && ".write" `L.isSuffixOf` filePath
 
 parseSockAddrs :: MonadIO m => [Text] -> m [SockAddr]
 parseSockAddrs = fmap catMaybes . traverse parseSingle

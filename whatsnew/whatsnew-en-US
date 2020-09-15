@@ -1,4 +1,2 @@
-* Fix restore to remember stage with change addresses
-* Fix QR code recognition with dark backgrounds. White frame is added.
-* Detect incoming transactions from mempool on startup.
-* Fix balance calculation for outgoing unconfirmed transactions.
+* Reworked BIP158 filters to be compatible with standard (#636).
+* Automatic public key generation (#621).

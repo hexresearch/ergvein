@@ -129,8 +129,8 @@ pubStorageKeys c kp = fmap pubKeyBox'key . maybe mempty keys . fmap _currencyPub
 pubStoragePubMaster :: Currency -> PubStorage -> Maybe EgvXPubKey
 pubStoragePubMaster c = fmap pubKeystore'master . pubStorageKeyStorage c
 
-pubStorageLastUnused :: Currency -> KeyPurpose -> PubStorage -> Maybe (Int, EgvPubKeyBox)
-pubStorageLastUnused c kp ps = getLastUnusedKey kp . _currencyPubStorage'pubKeystore =<< M.lookup c (_pubStorage'currencyPubStorages ps)
+pubStorageLastUnusedKey :: Currency -> KeyPurpose -> PubStorage -> Maybe (Int, EgvPubKeyBox)
+pubStorageLastUnusedKey c kp ps = getLastUnusedKey kp . _currencyPubStorage'pubKeystore =<< M.lookup c (_pubStorage'currencyPubStorages ps)
 
 pubStorageScannedKeys :: Currency -> KeyPurpose -> PubStorage -> Int
 pubStorageScannedKeys c p ps = fromMaybe 0 $ f . _currencyPubStorage'scannedKey =<< M.lookup c (_pubStorage'currencyPubStorages ps)

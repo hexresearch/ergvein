@@ -189,8 +189,13 @@ transactionsGetting cur = do
       ERGO -> []
 
     calcRefill ac tx = case tx of
-        BtcTx btx _ -> Money cur $ sum $ fmap (HK.outValue . snd) $ L.filter (maybe False (flip elem ac . fromSegWit) . fst) $ fmap (\txo -> (getSegWitAddr txo,txo)) $ HK.txOut btx
-        ErgTx _ _ -> Money cur 0
+        BtcTx btx _ -> Money cur $ sum $ fmap (HK.outValue . snd) $ L.filter (either (const False) (flip elem ac) . fst) $ fmap (\txo -> (scriptToAddressBS . HK.scriptOutput $ txo,txo)) $ HK.txOut btx
+        ErgTx etx _ -> Money cur 0
+
+    checkAddr :: (HasTxStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m Bool
+    checkAddr ac tx = do
+      bL <- traverse (flip checkAddrTx (getBtcTx tx)) ac
+      pure $ L.or bL
 
     checkAddrInOut :: (HasTxStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m (Maybe TransType)
     checkAddrInOut ac tx = do

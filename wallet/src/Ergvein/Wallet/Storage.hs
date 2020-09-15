@@ -2,7 +2,7 @@
 module Ergvein.Wallet.Storage
   (
     withWallet
-  , updatePrvStorage
+  , modifyPrvStorage
   ) where
 
 import Control.Concurrent.MVar
@@ -41,10 +41,10 @@ withWallet reqE = do
   handleDangerMsg eresE
 
 -- | More specialized version. Provide an update function to manually update the private storage
-updatePrvStorage :: MonadFront t m
+modifyPrvStorage :: MonadFront t m
   => Event t (PrvStorage -> Performable m (Maybe PrvStorage)) -- ^ updater. Nothing == no update
   -> m (Event t ())
-updatePrvStorage updE = do
+modifyPrvStorage updE = do
   walletName <- getWalletName
   authInfoRef <- getAuthInfoRef
   updD <- holdDyn Nothing $ Just <$> updE
@@ -61,7 +61,7 @@ updatePrvStorage updE = do
         eeps <- encryptPrvStorage prv' pass
         either' eeps (withMutexRelease . Left) $ \eps' -> do
           let wallet = WalletStorage eps' pub walletName
-          err <- saveStorageSafelyToFile "updatePrvStorage" eciesPubKey wallet
+          err <- saveStorageSafelyToFile "modifyPrvStorage" eciesPubKey wallet
           either' err (withMutexRelease . Left) $ const $ do
             writeExternalRef authInfoRef $ ai {_authInfo'storage = wallet}
             withMutexRelease $ Right ()
