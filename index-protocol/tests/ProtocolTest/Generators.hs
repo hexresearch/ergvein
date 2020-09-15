@@ -25,6 +25,13 @@ getRandBounded = oneof $ pure <$> [minBound .. maxBound]
 getRandBoundedExcluding :: (Eq a, Enum a, Bounded a) => [a] -> Gen a
 getRandBoundedExcluding exs = oneof $ fmap pure $ filter (\e -> not $ e `elem` exs) $ [minBound .. maxBound]
 
+arbitraryBSLen :: Int -> Gen BS.ByteString
+arbitraryBSLen n = do
+  a <- arbitrary
+  pure $ BS.pack $ if BS.length a < n
+    then [1..(fromIntegral n)]
+    else take n . BS.unpack $ a
+
 instance Arbitrary MessageHeader where
   arbitrary = MessageHeader <$> getRandBounded <*> arbitrary
 
@@ -54,7 +61,11 @@ instance Arbitrary FeeResp where
     in oneof [gen1, gen2]
 
 instance Arbitrary Address where
-  arbitrary = sized $ \n -> Address <$> arbitrary <*> arbitrary <*> arbitrary
+  arbitrary = do
+    at <- arbitrary
+    case at of
+      IPV4 -> Address at <$> arbitrary <*> arbitraryBSLen 4
+      IPV6 -> Address at <$> arbitrary <*> arbitraryBSLen 16
 
 instance Arbitrary PeerResponse where
   arbitrary = sized $ \n -> PeerResponse <$> arbitrary
@@ -70,14 +81,14 @@ instance Arbitrary IPType where
 
 unimplementedMessageTypes :: [MessageType]
 unimplementedMessageTypes =
-  [ MPeerRequestType
-  , MPeerResponseType
-  , MIntroducePeerType
-  ]
+  []
 
 fullyImplementedMessageTypes :: [MessageType]
 fullyImplementedMessageTypes =
-  [ MPingType
+  [ MPeerRequestType
+  , MPeerResponseType
+  , MIntroducePeerType
+  , MPingType
   , MPongType
   , MRejectType
   , MVersionACKType

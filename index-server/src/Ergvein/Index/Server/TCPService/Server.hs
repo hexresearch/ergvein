@@ -152,7 +152,7 @@ runConnection (sock, addr) =  do
         messageHeaderBytes :: ExceptT Reject ServerM BS.ByteString
         messageHeaderBytes = do
           fetchedBytes <- lift $ liftIO messageHeaderBytesFetch
-          if BS.null fetchedBytes then
+          if not (BS.null fetchedBytes) then
             except $ Right fetchedBytes
           else
             except $ Left $ Reject MessageParsing

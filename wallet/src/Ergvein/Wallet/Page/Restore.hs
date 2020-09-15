@@ -30,7 +30,6 @@ restorePage :: forall t m . MonadFront t m =>  m ()
 restorePage = wrapperSimple True $ void $ workflow heightAsking
   where
     heightAsking = Workflow $ do
-      debugWidget
       el "h3" $ text "Getting current height"
       heightD <- getCurrentHeight BTC
       height0E <- tag (current heightD) <$> getPostBuild
