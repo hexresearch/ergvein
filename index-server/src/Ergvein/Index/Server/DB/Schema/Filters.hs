@@ -3,12 +3,14 @@ module Ergvein.Index.Server.DB.Schema.Filters
   (
     ScannedHeightRecKey(..)
   , ScannedHeightRec(..)
-  , TxRecKey(..)
-  , TxRec(..)
   , BlockMetaRecKey(..)
   , BlockMetaRec(..)
+  , TxRecBytes(..)
+  , TxRecMeta(..)
+  , TxRawKey(..)
+  , txRawKey
+  , txMetaKey
   , scannedHeightTxKey
-  , txRecKey
   , metaRecKey
   , unPrefixedKey
   , schemaVersionRecKey
@@ -30,7 +32,7 @@ import Ergvein.Types.Transaction
 import qualified Data.ByteString as BS
 import qualified Data.Serialize as S
 
-data KeyPrefix = ScannedHeight | Meta | Tx | SchemaVersion deriving Enum
+data KeyPrefix = ScannedHeight | Meta | TxRaw | TxMeta | SchemaVersion deriving Enum
 
 schemaVersion :: ByteString
 schemaVersion = hash $(embedFile "src/Ergvein/Index/Server/DB/Schema/Filters.hs")
@@ -51,21 +53,24 @@ data ScannedHeightRec = ScannedHeightRec
   { scannedHeightRecHeight   :: !BlockHeight
   } deriving (Generic, Show, Eq, Ord)
 
-
 --Tx
 
-txRecKey:: TxHash -> ByteString
-txRecKey = keyString Tx . TxRecKey
+txRawKey :: TxHash -> ByteString
+txRawKey = keyString TxRaw . TxRawKey
+{-# INLINE txRawKey #-}
 
-data TxRecKey = TxRecKey
-  { txRecKeyHash      :: !TxHash
-  } deriving (Generic, Show, Eq, Ord, Serialize)
+txMetaKey :: TxHash -> ByteString
+txMetaKey = keyString TxMeta . TxRawKey
+{-# INLINE txMetaKey #-}
 
-data TxRec = TxRec
-  { txRecHash                 :: !TxHash
-  , txRecBytes                :: !ByteString
-  , txRecUnspentOutputsCount  :: !Word32
-  } deriving (Generic, Show, Eq, Ord)
+data TxRawKey = TxRawKey {unTxRawKey :: !TxHash }
+  deriving (Generic, Show, Eq, Ord, Serialize)
+
+data TxRecBytes = TxRecBytes { unTxRecBytes :: !ByteString }
+  deriving (Generic, Show, Eq, Ord)
+
+data TxRecMeta = TxRecMeta { unTxRecMeta :: !Word32 }
+  deriving (Generic, Show, Eq, Ord)
 
 --BlockMeta
 

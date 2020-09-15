@@ -15,9 +15,6 @@ import Data.Attoparsec.ByteString
 import Data.Attoparsec.Binary
 import qualified Data.ByteString.Lazy as BSL
 
-instance Conversion TxInfo TxRec where
-  convert txInfo = TxRec (txHash txInfo) (txBytes txInfo) (txOutputsCount txInfo)
-
 instance Conversion SockAddr PeerAddr where
   convert = \case
           SockAddrInet  port   ip   -> PeerAddr (V4 ip) (fromInteger $ toInteger port)
@@ -59,7 +56,7 @@ instance Conversion KnownPeerRecItem Address where
         { addressType    = IPV6
         , addressPort    = peerAddrPort knownPeerRecAddr
         , addressAddress = BSL.toStrict $ toLazyByteString $ word32BE a <> word32BE b <> word32BE c <> word32BE d
-        } 
+        }
 
 instance Conversion Address SockAddr where
   convert Address{..} = case addressType of
@@ -67,7 +64,7 @@ instance Conversion Address SockAddr where
       port = (fromInteger $ toInteger addressPort)
       ip  =  fromRight (error "address") $ parseOnly anyWord32be addressAddress
       in SockAddrInet port ip
-    IPV6 -> let 
+    IPV6 -> let
       port = (fromInteger $ toInteger addressPort)
       ip  =  fromRight (error "address") $ parseOnly ((,,,) <$> anyWord32be <*> anyWord32be <*> anyWord32be <*> anyWord32be) addressAddress
       in SockAddrInet6 port 0 ip 0

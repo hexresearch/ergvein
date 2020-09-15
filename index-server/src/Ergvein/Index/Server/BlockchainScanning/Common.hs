@@ -42,8 +42,9 @@ actualHeight currency = case currency of
   ERGO -> ERGOScanning.actualHeight
 
 scannerThread :: Currency -> (BlockHeight -> ServerM BlockInfo) -> ServerM Thread
-scannerThread currency scanInfo = create $ logOnException . scanIteration
+scannerThread currency scanInfo = create $ logOnException threadName . scanIteration
   where
+    threadName = "scannerThread<" <> showt currency <> ">"
     blockIteration :: BlockHeight -> BlockHeight -> ServerM BlockInfo
     blockIteration totalh blockHeight = do
       now <- liftIO $ getCurrentTime
@@ -90,7 +91,7 @@ scannerThread currency scanInfo = create $ logOnException . scanIteration
           pure $ flip all maybeLastScannedBlock (== proposedPreviousBlockId)
 
         previousBlockChanged from to = do
-          revertedBlocksCount <- fromIntegral <$> revertContentHistory currency
+          revertedBlocksCount <- fromIntegral <$> performRollback currency
           logInfoN $ "Fork detected at "
                   <> showt from <> " " <> showt currency
                   <> ", performing rollback of " <> showt revertedBlocksCount <> " previous blocks"
@@ -117,7 +118,7 @@ blockchainScanning = sequenceA
   ]
 
 feesThread :: ServerM () -> ServerM Thread
-feesThread feescan = create $ logOnException . \thread -> do
+feesThread feescan = create $ logOnException "feesThread" . \thread -> do
   feescan
   stopThreadIfShutdown thread
 

@@ -6,15 +6,19 @@ import Control.Monad.STM
 import System.Posix.Signals
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
+import Control.Monad.Reader
 
 import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.DB.Schema.Indexer (RollbackSequence(..))
+import Ergvein.Index.Server.DB.Queries (storeRollbackSequence)
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Discovery
 import Ergvein.Index.Server.TCPService.Server
 import Ergvein.Index.Server.Utils
 import Ergvein.Text
+import Ergvein.Types.Currency
 
 import qualified Data.Text.IO as T
 
@@ -34,9 +38,12 @@ onShutdown env workerTreads = do
   T.putStrLn $ showt "service is stopping"
   atomically $ writeTVar (envShutdownFlag env) True
 
-finalize :: (MonadIO m, MonadLogger m) => [Thread] -> m ()
-finalize workerTreads = do
+finalize :: (MonadIO m, MonadLogger m) => ServerEnv -> [Thread] -> m ()
+finalize env workerTreads = do
   liftIO $ sequence_ $ wait <$> workerTreads
+  logInfoN "Dumping rollback data"
+  rse <- fmap RollbackSequence $ liftIO $ readTVarIO (envBtcRollback env)
+  runReaderT (storeRollbackSequence BTC rse) (envIndexerDBContext env)
   logInfoN "service is stopped"
 
 app :: (MonadIO m, MonadLogger m) => Bool -> Config -> ServerEnv -> m ()
@@ -45,4 +52,4 @@ app onlyScan cfg env = do
   logInfoN $ "Server started at:" <> (showt . cfgServerPort $ cfg)
   liftIO $ installHandler sigTERM (Catch $ onShutdown env workerThreads) Nothing
   liftIO $ cancelableDelay (envShutdownFlag env) (-1)
-  finalize workerThreads
+  finalize env workerThreads

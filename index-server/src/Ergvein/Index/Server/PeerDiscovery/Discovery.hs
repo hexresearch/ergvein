@@ -1,4 +1,4 @@
-module Ergvein.Index.Server.PeerDiscovery.Discovery 
+module Ergvein.Index.Server.PeerDiscovery.Discovery
   ( considerPeer
   , knownPeersSet
   , knownPeersActualization
@@ -52,7 +52,7 @@ knownPeersSet discoveredPeers = do
 
 knownPeersActualization :: ServerM Thread
 knownPeersActualization  = do
-  create $ logOnException . scanIteration
+  create $ logOnException "knownPeersActualization" . scanIteration
   where
     scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
@@ -67,7 +67,7 @@ knownPeersActualization  = do
      liftIO $ forM_ peersToConnect newConnection
      broadcastSocketMessage $ MPeerRequest PeerRequest
     isUpToDatePeer :: Set SockAddr -> NominalDiffTime -> UTCTime -> Peer -> Bool
-    isUpToDatePeer predefined retryTimeout currentTime peer = 
+    isUpToDatePeer predefined retryTimeout currentTime peer =
        let fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt peer
        in Set.member (peerAddress peer) predefined || retryTimeout >= fromLastSuccess
 
@@ -88,14 +88,14 @@ isPeerScanActual localScanBlocks peerScanBlocks  = do
     peerScanBlockList = UV.toList localScanBlocks
 
     matchLocalCurrencyScan :: ScanBlock -> Bool
-    matchLocalCurrencyScan localBlock = 
+    matchLocalCurrencyScan localBlock =
         case peerScanInfoMap Map.!? scanBlockCurrency localBlock of
           Just peerScanBlock -> let
             filterVersionValid = scanBlockVersion localBlock == scanBlockVersion peerScanBlock
             scanValid = notLessThenOne (scanBlockScanHeight localBlock) (scanBlockScanHeight peerScanBlock)
             in filterVersionValid && scanValid
           Nothing -> False
-    
+
     notLessThenOne :: BlockHeight -> BlockHeight -> Bool
     notLessThenOne local = (local <=) . succ
 
@@ -123,6 +123,6 @@ ownVersion = do
      , scanBlockScanHeight = nfoScannedHeight
      , scanBlockHeight     = nfoActualHeight
      }
-    
+
     filterVersion :: Currency -> Word32
     filterVersion = const 1

@@ -31,27 +31,6 @@ instance EgvSerialize TxOut where
   egvSerialize _ = BL.toStrict . toLazyByteString . buildTxOut
   egvDeserialize _ = parseOnly parseTxOut
 
-parseVarInt :: Parser Word64
-parseVarInt = anyWord8 >>= go
-  where
-    go 0xff = anyWord64le
-    go 0xfe = fromIntegral <$> anyWord32le
-    go 0xfd = fromIntegral <$> anyWord16le
-    go x    = fromIntegral <$> return x
-
-buildVarInt :: Word64 -> Builder
-buildVarInt x
-  | x < 0xfd        = word8 $ fromIntegral x
-  | x <= 0xffff     = word8 0xfd <> (word16LE $ fromIntegral x)
-  | x <= 0xffffffff = word8 0xfe <> (word32LE $ fromIntegral x)
-  | otherwise       = word8 0xff <> (word64LE x)
-
-buildBS :: BS.ByteString -> Builder
-buildBS bs = buildVarInt (fromIntegral $ BS.length bs) <> byteString bs
-
-parseBS :: Parser BS.ByteString
-parseBS = A.take . fromIntegral =<< parseVarInt
-
 buildTxOut :: TxOut -> Builder
 buildTxOut (TxOut o s) = word64LE o <> buildBS s
 

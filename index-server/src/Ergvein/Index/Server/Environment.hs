@@ -9,6 +9,7 @@ import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Control
 import Control.Monad.Logger
 import Control.Monad.Reader
+import Data.Text (Text)
 import Data.Typeable
 import Database.LevelDB.Base
 import Network.HTTP.Client.TLS
@@ -17,14 +18,18 @@ import Network.Socket
 import Ergvein.Index.Protocol.Types (CurrencyCode, Message)
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB
+import Ergvein.Index.Server.DB.Schema.Indexer (RollbackRecItem, RollbackSequence(..))
+import Ergvein.Index.Server.DB.Queries (loadRollbackSequence)
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.TCPService.BTC
 import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import Ergvein.Text
 import Ergvein.Types.Fees
+import Ergvein.Types.Currency
 
 import qualified Data.Map.Strict             as M
 import qualified Data.Set                    as Set
+import qualified Data.Sequence               as Seq
 import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 import qualified Network.Ergo.Api.Client     as ErgoApi
 import qualified Network.Haskoin.Constants   as HK
@@ -43,6 +48,7 @@ data ServerEnv = ServerEnv
     , envBitcoinClient            :: !BitcoinApi.Client
     , envBitcoinSocket            :: !BtcSocket
     , envBtcConScheme             :: !BtcConnectionScheme
+    , envBtcRollback              :: !(TVar (Seq.Seq RollbackRecItem))
     , envPeerDiscoveryRequisites  :: !PeerDiscoveryRequisites
     , envFeeEstimates             :: !(TVar (M.Map CurrencyCode FeeBundle))
     , envShutdownFlag             :: !(TVar Bool)
@@ -78,14 +84,15 @@ discoveryRequisites cfg = do
 newServerEnv :: (MonadIO m, MonadLogger m, MonadMask m, MonadBaseControl IO m)
   => Bool               -- ^ flag, def True: wait for node connections to be up before finalizing the env
   -> Bool               -- ^ flag, def False: do not drop Filters database
+  -> Bool               -- ^ flag, def False: do not drop Indexer's database
   -> BitcoinApi.Client  -- ^ RPC connection to the bitcoin node
   -> Config             -- ^ Contents of the config file
   -> m ServerEnv
-newServerEnv useTcp noDropFilters btcClient cfg@Config{..} = do
+newServerEnv useTcp noDropFilters optsNoDropIndexers btcClient cfg@Config{..} = do
     logger <- liftIO newChan
     void $ liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
     filtersDBCntx  <- openDb noDropFilters DBFilters cfgFiltersDbPath
-    indexerDBCntx  <- openDb noDropFilters DBIndexer cfgIndexerDbPath
+    indexerDBCntx  <- openDb optsNoDropIndexers DBIndexer cfgIndexerDbPath
     ergoNodeClient <- liftIO $ ErgoApi.newClient cfgERGONodeHost cfgERGONodePort
     tlsManager     <- liftIO $ newTlsManager
     feeEstimates   <- liftIO $ newTVarIO M.empty
@@ -104,6 +111,8 @@ newServerEnv useTcp noDropFilters btcClient cfg@Config{..} = do
           if b' then pure () else next
       pure btcsock
       else dummyBtcSock bitcoinNodeNetwork
+    btcSeq <- liftIO $ runStdoutLoggingT $ runReaderT (loadRollbackSequence BTC) indexerDBCntx
+    btcSeqVar <- liftIO $ newTVarIO $ unRollbackSequence btcSeq
     traceShowM cfg
     pure ServerEnv
       { envServerConfig            = cfg
@@ -116,6 +125,7 @@ newServerEnv useTcp noDropFilters btcClient cfg@Config{..} = do
       , envBitcoinClient           = btcClient
       , envBitcoinSocket           = btcsock
       , envBtcConScheme            = if useTcp then BtcConTCP else BtcConRPC
+      , envBtcRollback             = btcSeqVar
       , envPeerDiscoveryRequisites = descDiscoveryRequisites
       , envFeeEstimates            = feeEstimates
       , envShutdownFlag            = shutdownVar
@@ -124,14 +134,14 @@ newServerEnv useTcp noDropFilters btcClient cfg@Config{..} = do
       }
 
 -- | Log exceptions at Error severity
-logOnException :: (MonadIO m, MonadLogger m, MonadCatch m) => m a -> m a
-logOnException = handle logE
+logOnException :: (MonadIO m, MonadLogger m, MonadCatch m) => Text -> m a -> m a
+logOnException threadName = handle logE
   where
     logE e
         | Just ThreadKilled <- fromException e = do
-            logInfoN "Killed normally by ThreadKilled"
+            logInfoN $ "[" <> threadName <> "]: Killed normally by ThreadKilled"
             throwM e
         | SomeException eTy <- e = do
-            logErrorN $ "Killed by " <> showt (typeOf eTy) <> showt eTy
+            logErrorN $ "[" <> threadName <> "]: Killed by " <> showt (typeOf eTy) <> showt eTy
             liftIO $ threadDelay 1000000
             throwM e
