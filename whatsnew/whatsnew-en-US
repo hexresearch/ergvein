@@ -1,2 +1,1 @@
-* Reworked BIP158 filters to be compatible with standard (#636).
-* Automatic public key generation (#621).
+* Switch indexers and the wallet to TCP protocol (#492)

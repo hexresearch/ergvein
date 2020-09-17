@@ -2,13 +2,13 @@ serverPort               : 8085
 serverTcpPort            : 8667
 filtersDbPath            : "./ergveinDb"
 indexerDbPath            : "./indexerDb"
-BTCNodeIsTestnet         : true
+BTCNodeIsTestnet         : false
 BTCNodeHost              : localhost
-BTCNodePort              : 18332
+BTCNodePort              : 8332
 BTCNodeUser              : bitcoinrpc
 BTCNodePassword          : password
 BTCNodeTCPHost           : localhost
-BTCNodeTCPPort           : 18333
+BTCNodeTCPPort           : 8333
 ERGONodeHost             : localhost
 ERGONodePort             : 9052
 blockchainScanDelay      : 10000000
