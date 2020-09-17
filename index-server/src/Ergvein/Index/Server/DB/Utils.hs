@@ -59,16 +59,15 @@ unPrefixedKey key = BS.tail key
 parsedKey :: Serialize k => ByteString -> k
 parsedKey = fromRight (error "ser") . S.decode . unPrefixedKey
 
-safeEntrySlice :: (MonadIO m , Ord k, S.Serialize k, EgvSerialize v)
-  => Currency -> DB -> BS.ByteString -> k -> m [(k,v)]
-safeEntrySlice cur db startKey endKey = do
+safeEntrySlice :: (EgvSerialize v, MonadIO m , Ord k, S.Serialize k) => Currency -> DB -> BS.ByteString -> k -> k -> m [(k,v)]
+safeEntrySlice cur db startKeyBinary startKey endKey = do
   iterator <- createIter db def
   slice <- LDBStreaming.toList $ LDBStreaming.entrySlice iterator range LDBStreaming.Asc
   pure $ over _2 (unflatExact cur "safeEntrySlice")  <$> over _1 (decodeExact . unPrefixedKey) <$> slice
   where
-    range = LDBStreaming.KeyRange startKey comparison
+    range = LDBStreaming.KeyRange startKeyBinary comparison
     comparison key = case S.decode $ unPrefixedKey key of
-      Right parsedKey -> compare parsedKey endKey
+      Right parsedKey -> if startKey <= parsedKey && parsedKey <= endKey then LT else GT
       _ -> GT
 
 getParsed :: (EgvSerialize v, MonadIO m) => Currency -> Text -> DB -> BS.ByteString -> m (Maybe v)

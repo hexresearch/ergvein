@@ -27,14 +27,20 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
 
+import Debug.Trace
+
 getBlockMetaSlice :: Currency -> BlockHeight -> BlockHeight -> ServerM [BlockMetaRec]
-getBlockMetaSlice currency startHeight endHeight = do
+getBlockMetaSlice currency startHeight amount = do
   db <- getFiltersDb
-  let start = metaRecKey (currency, startHeight)
-      end   = BlockMetaRecKey currency $ startHeight + pred endHeight
-  slice <- safeEntrySlice currency db start end
-  let metaSlice = snd <$> slice
-  pure metaSlice
+  sh <- getScannedHeight currency
+
+  let start = BlockMetaRecKey currency $ startHeight
+      startBinary = metaRecKey (currency, startHeight)
+      end = BlockMetaRecKey currency $ startHeight + amount
+
+  slice <- safeEntrySlice currency db startBinary start end 
+
+  pure $ snd <$> slice
 
 handleMsg :: SockAddr -> Message -> ServerM [Message]
 handleMsg address (MPing msg) = pure [MPong msg]
