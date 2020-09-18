@@ -61,6 +61,6 @@ exportSeedPage2 seed pass = do
         let encSeedBs = S.encode encSeed
             seedText = encodeBase58CheckBtc encSeedBs
         h4 $ localizedText STPSSeedExportMsg
-        base64D <- divClass "receive-qr" $ qrCodeWidgetWithData seedText BTC
+        base64D <- divClass "receive-qr" $ qrCodeWidgetWithData seedText
         parClass "seed-export-seed-text" $ text seedText
         pure ()
