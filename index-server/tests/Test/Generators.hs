@@ -11,6 +11,7 @@ import qualified Network.Haskoin.Transaction as HK
 import Ergvein.Index.Server.DB.Schema.Filters
 import Ergvein.Index.Server.DB.Schema.Indexer
 import Ergvein.Index.Server.BlockchainScanning.Types
+import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Types.Transaction
 
 import qualified Data.List                  as L
@@ -47,22 +48,24 @@ instance Arbitrary TxHash where
   arbitrary = TxHash <$> arbitraryBSS32
 instance Arbitrary ScannedHeightRec where
   arbitrary = ScannedHeightRec <$> arbitrary
-instance Arbitrary TxRec where
-  arbitrary = TxRec . TxHash <$> arbitraryBSS32 <*> arbitrary <*> arbitrary
+instance Arbitrary TxRecBytes where
+  arbitrary = TxRecBytes <$> arbitrary
+instance Arbitrary TxRecMeta where
+  arbitrary = TxRecMeta <$> arbitrary
 instance Arbitrary TxInfo where
   arbitrary = TxInfo . TxHash <$> arbitraryBSS32 <*> arbitrary <*> arbitrary
 instance Arbitrary BlockMetaRec where
   arbitrary = BlockMetaRec <$> arbitraryBSS32 <*> arbitrary
 instance Arbitrary KnownPeerRecItem where
-  arbitrary = KnownPeerRecItem <$> arbitrary <*> arbitrary <*> arbitrary
+  arbitrary = KnownPeerRecItem <$> arbitrary <*> arbitrary
 instance Arbitrary KnownPeersRec where
   arbitrary = KnownPeersRec <$> arbitrary
 instance Arbitrary LastScannedBlockHeaderHashRec where
   arbitrary = LastScannedBlockHeaderHashRec <$> arbitraryBSS32
-instance Arbitrary ContentHistoryRecItem where
-  arbitrary = ContentHistoryRecItem <$> arbitrary <*> arbitrary
-instance Arbitrary ContentHistoryRec where
-  arbitrary = ContentHistoryRec <$> arbitrary
+instance Arbitrary RollbackRecItem where
+  arbitrary = RollbackRecItem <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+instance Arbitrary RollbackSequence where
+  arbitrary = RollbackSequence <$> arbitrary
 
 instance Arbitrary HK.TxHash where
   arbitrary = do
@@ -104,3 +107,13 @@ instance Arbitrary WitStack where
 
 unpackWits :: [WitStack] -> WitnessData
 unpackWits = fmap (fmap getWitItem . getWitStack)
+
+instance Arbitrary PeerIP where
+  arbitrary = do
+    b <- arbitrary
+    if b
+      then V4 <$> arbitrary
+      else V6 <$> arbitrary
+
+instance Arbitrary PeerAddr where
+  arbitrary = PeerAddr <$> arbitrary <*> arbitrary

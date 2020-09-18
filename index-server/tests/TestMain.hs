@@ -42,8 +42,11 @@ _prop_encdec_lastScannedBlockHeaderHashRec msg = either (const False) (msg ==) d
 _prop_encdec_ScannedHeightRec :: ScannedHeightRec -> Bool
 _prop_encdec_ScannedHeightRec msg = either (const False) (msg ==) dec
   where dec = egvDeserialize BTC $ egvSerialize BTC msg
-_prop_encdec_TxRec :: TxRec -> Bool
-_prop_encdec_TxRec msg = either (const False) (msg ==) dec
+_prop_encdec_TxRecBytes :: TxRecBytes -> Bool
+_prop_encdec_TxRecBytes msg = either (const False) (msg ==) dec
+  where dec = egvDeserialize BTC $ egvSerialize BTC msg
+_prop_encdec_TxRecMeta :: TxRecMeta -> Bool
+_prop_encdec_TxRecMeta msg = either (const False) (msg ==) dec
   where dec = egvDeserialize BTC $ egvSerialize BTC msg
 _prop_encdec_BlockMetaRec :: BlockMetaRec -> Bool
 _prop_encdec_BlockMetaRec msg = either (const False) (msg ==) dec
@@ -57,20 +60,9 @@ _prop_encdec_KnownPeersRec msg = either (const False) (msg ==) dec
 _prop_encdec_LastScannedBlockHeaderHashRec :: LastScannedBlockHeaderHashRec -> Bool
 _prop_encdec_LastScannedBlockHeaderHashRec msg = either (const False) (msg ==) dec
   where dec = egvDeserialize BTC $ egvSerialize BTC msg
-_prop_encdec_ContentHistoryRecItem :: ContentHistoryRecItem -> Bool
-_prop_encdec_ContentHistoryRecItem msg = either (const False) (msg ==) dec
-  where dec = egvDeserialize BTC $ egvSerialize BTC msg
-_prop_encdec_ContentHistoryRec :: ContentHistoryRec -> Bool
-_prop_encdec_ContentHistoryRec msg = either (const False) (msg ==) dec
-  where dec = egvDeserialize BTC $ egvSerialize BTC msg
-_prop_encdec_TxInfos :: [TxInfo] -> Bool
-_prop_encdec_TxInfos infos = either (const False) (recs ==) dec
-  where
-    enc = parMap rdeepseq (serializeToTxRec BTC) (force infos)
-    dec = sequence $ egvDeserialize BTC <$> enc
-    recs = flip fmap infos $ \(TxInfo a b c) -> TxRec a b c
-prop_encdec_Tx :: Tx -> Bool
-prop_encdec_Tx msg = either (const False) (msg ==) dec
+
+_prop_encdec_RollbackSequence :: RollbackSequence -> Bool
+_prop_encdec_RollbackSequence msg = either (const False) (msg ==) dec
   where dec = egvDeserialize BTC $ egvSerialize BTC msg
 
 prop_encdec_TxIn :: TxIn -> Bool
