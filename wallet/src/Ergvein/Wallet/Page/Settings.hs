@@ -13,6 +13,7 @@ import Reflex.Dom
 import Reflex.Dom as RD
 import Reflex.Host.Class
 
+import Ergvein.Crypto.Keys
 import Ergvein.Text
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
@@ -46,7 +47,7 @@ data SubPageSettings
   | GoUnits
   | GoNetwork
   | GoPortfolio
-  | GoSeedExport
+  | GoSeedExport Seed
 
 -- TODO: uncomment commented lines when ERGO is ready
 settingsPage :: MonadFront t m => m ()
@@ -59,7 +60,10 @@ settingsPage = do
       goNetE        <- fmap (GoNetwork    <$) $ outlineButton STPSButNetwork
       goUnitsE      <- fmap (GoUnits      <$) $ outlineButton STPSButUnits
       goPortfolioE  <- fmap (GoPortfolio  <$) $ outlineButton STPSButPortfolio
-      goSeedExportE <- fmap (GoSeedExport <$) $ outlineButton STPSButSeedExport
+      seedExportBtnE <- outlineButton STPSButSeedExport
+      goSeedExportE <- withWallet $
+        ffor seedExportBtnE $ \_ prvStorage -> do
+          pure $ GoSeedExport $ _prvStorage'seed prvStorage
       let goE = leftmost [
               goLangE
             -- , goCurrE
@@ -70,12 +74,12 @@ settingsPage = do
             ]
       void $ nextWidget $ ffor goE $ \spg -> Retractable {
           retractableNext = case spg of
-            GoLanguage    -> languagePage
-            -- GoCurrencies  -> currenciesPage
-            GoNetwork     -> networkSettingsPage
-            GoUnits       -> unitsPage
-            GoPortfolio   -> portfolioPage
-            goSeedExportE -> seedExportPage
+            GoLanguage         -> languagePage
+            -- GoCurrencies      -> currenciesPage
+            GoNetwork         -> networkSettingsPage
+            GoUnits           -> unitsPage
+            GoPortfolio       -> portfolioPage
+            GoSeedExport seed -> seedExportPage seed
         , retractablePrev = Just $ pure settingsPage
         }
 

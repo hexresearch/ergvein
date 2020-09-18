@@ -21,39 +21,23 @@ import Ergvein.Wallet.Wrapper
 import qualified Data.Serialize as S
 import qualified Data.Text as T
 
-seedExportPage :: MonadFront t m => m ()
-seedExportPage = do
-  title <- localized STPSTitle
-  wrapper True title (Just $ pure seedExportPage) $ do
-    buildE <- getPostBuild
-    seedE <- withWallet $
-      ffor buildE $ \_ prvStorage -> do
-        pure $ _prvStorage'seed prvStorage
-    nextWidget $
-      ffor seedE $ \seed ->
-        Retractable
-          { retractableNext = passwordPageExportSeed seed,
-            retractablePrev = Nothing
-          }
-  pure ()
-
-passwordPageExportSeed :: MonadFront t m => Seed -> m ()
-passwordPageExportSeed seed = wrapperSimple True $ do
+seedExportPage :: MonadFront t m => Seed -> m ()
+seedExportPage seed = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText PPSSeedTitle
   divClass "password-setup-descr" $ h5 $ localizedText PPSSeedDescr
   passE <- setupPassword
   nextWidget $
     ffor passE $ \pass ->
       Retractable
-        { retractableNext = exportSeedPage2 seed pass,
+        { retractableNext = seedExportResutlPage seed pass,
           retractablePrev = Nothing
         }
   pure ()
 
-exportSeedPage2 :: MonadFront t m => Seed -> Password -> m ()
-exportSeedPage2 seed pass = do
+seedExportResutlPage :: MonadFront t m => Seed -> Password -> m ()
+seedExportResutlPage seed pass = do
   title <- localized STPSTitle
-  wrapper True title (Just $ pure $ exportSeedPage2 seed pass) $ divClass "seed-export-page" $ do
+  wrapper True title (Just $ pure $ seedExportResutlPage seed pass) $ divClass "seed-export-page" $ do
     encryptedSeed <- liftIO $ encryptBSWithAEAD seed pass
     case encryptedSeed of
       Left err -> fail $ T.unpack $ localizedShow English err
