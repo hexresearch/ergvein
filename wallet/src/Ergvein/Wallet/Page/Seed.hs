@@ -200,26 +200,6 @@ restoreFromSeedPage = wrapperSimple True $ mdo
     , retractablePrev = Just $ pure restoreFromSeedPage
     }
 
--- restoreFromQRCodePage :: MonadFrontBase t m => m ()
--- restoreFromQRCodePage = wrapperSimple True $ mdo
---   buildE <- getPostBuild
---   encryptedSeedErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing))
---   h4 $ localizedText SPSRestoreFromSeed
---   encryptedSeedD <- validatedTextFieldSetVal SPSScanSeed "" encryptedSeedErrsD qrCodeE
---   qrCodeE <- waiterResultCamera $ leftmost [buildE, scanAgainE]
---   scanAgainE <- outlineButton SPSScanAgain
---   submitE <- outlineButton CSForward
---   let validationE = poke submitE $ \_ -> do
---         encryptedSeed <- sampleDyn encryptedSeedD
---         pure (validateBase58EncryptedSeed encryptedSeed)
---       goE = flip push validationE $ \eEncryptedSeed -> do
---         let mEncryptedSeed = either (const Nothing) Just eEncryptedSeed
---         pure mEncryptedSeed
---   void $ nextWidget $ ffor goE $ \encSeed -> Retractable {
---       retractableNext = askSeedPasswordPage encSeed
---     , retractablePrev = Just $ pure restoreFromSeedPage
---     }
-
 decodeSeed :: Text -> Maybe EncryptedByteString
 decodeSeed = eitherToMaybe . S.decode <=< decodeBase58CheckBtc
 
