@@ -15,9 +15,11 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.QRCode
 import Ergvein.Wallet.Password
 import Ergvein.Wallet.Storage
+import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Serialize as S
+import qualified Data.Text as T
 
 seedExportPage :: MonadFront t m => m ()
 seedExportPage = do
@@ -52,9 +54,9 @@ exportSeedPage2 :: MonadFront t m => Seed -> Password -> m ()
 exportSeedPage2 seed pass = do
   title <- localized STPSTitle
   wrapper True title (Just $ pure $ exportSeedPage2 seed pass) $ divClass "seed-export-page" $ do
-    encryptedSeed <- liftIO $ encryptBS seed pass
+    encryptedSeed <- liftIO $ encryptBSWithAEAD seed pass
     case encryptedSeed of
-      Left err -> fail $ err
+      Left err -> fail $ T.unpack $ localizedShow English err
       Right encSeed ->  do
         let encSeedBs = S.encode encSeed
             seedText = encodeBase58CheckBtc encSeedBs

@@ -36,7 +36,7 @@ instance LocalizedPrint ReceivePageStrings where
       RPSGenNew   -> "Generate new"
       RPSNewLabel -> "New label"
       RPSShare    -> "Share"
-      RPSShareQR  -> "Share QR-code"
+      RPSShareQR  -> "Share QR code"
       RPSTitle    -> "Receive"
     Russian -> case v of
       RPSAddLabel -> "Добавить название"

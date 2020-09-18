@@ -14,6 +14,7 @@ data CommonStrings =
   | CSUpdated
   | CSOn
   | CSOff
+  | CSForward
   deriving (Eq)
 
 instance LocalizedPrint CommonStrings where
@@ -23,8 +24,11 @@ instance LocalizedPrint CommonStrings where
       CSUpdated         -> "Updated"
       CSOn              -> "On"
       CSOff             -> "Off"
+      CSForward         -> "Forward"
+
     Russian -> case v of
       CSCopied          -> "Скопировано"
       CSUpdated         -> "Обновлено"
       CSOn              -> "Вкл"
       CSOff             -> "Выкл"
+      CSForward         -> "Далее"

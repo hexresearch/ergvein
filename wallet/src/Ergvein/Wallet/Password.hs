@@ -2,6 +2,7 @@
 module Ergvein.Wallet.Password(
     setupPassword
   , setupLoginPassword
+  , askTextPassword
   , askPassword
   , askPasswordModal
   , setupLogin
@@ -60,6 +61,14 @@ passwordHeader =
       divButton "header-button ml-a" $
         elClass "i" "fas fa-times fa-fw" $ pure ()
 
+askTextPassword :: (MonadFrontBase t m, LocalizedPrint l1, LocalizedPrint l2) => l1 -> l2 -> m (Event t Password)
+askTextPassword title description = do
+  divClass "password-ask-title" $ h4 $ localizedText title
+  divClass "ask-password" $ form $ fieldset $ do
+    pD <- passFieldWithEye description
+    e <- submitClass "button button-outline" PWSGo
+    pure $ tag (current pD) e
+
 #ifdef ANDROID
 
 askPassword :: MonadFrontBase t m => Text -> m (Event t Password)
@@ -116,13 +125,9 @@ askPasswordModal = mdo
   performEvent_ $ (liftIO . fire) <$> passE
 
 #else
+
 askPassword :: MonadFrontBase t m => Text -> m (Event t Password)
-askPassword name = do
-  divClass "password-ask-title" $ h4 $ localizedText PPSUnlock
-  divClass "ask-password" $ form $ fieldset $ do
-    pD <- passFieldWithEye $ PWSPassNamed name
-    e <- submitClass "button button-outline" PWSGo
-    pure $ tag (current pD) e
+askPassword name = askTextPassword PPSUnlock (PWSPassNamed name)
 
 askPasswordModal :: MonadFrontBase t m => m ()
 askPasswordModal = mdo

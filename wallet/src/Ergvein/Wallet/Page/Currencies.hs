@@ -27,19 +27,19 @@ import Ergvein.Wallet.Wrapper
 import Ergvein.Wallet.Util
 import Reflex.Localize
 
-selectCurrenciesPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> m ()
-selectCurrenciesPage wt m = wrapperSimple True $ do
+selectCurrenciesPage :: MonadFrontBase t m => WalletSource -> Seed -> m ()
+selectCurrenciesPage wt seed = wrapperSimple True $ do
   -- TODO: remove this when ERGO is ready
   e <- fmap ([BTC] <$) getPostBuild
   -- uncomment this when ERGO is ready
   -- e <- selectCurrenciesWidget []
   nextWidget $ ffor e $ \ac -> Retractable {
 #ifdef ANDROID
-      retractableNext = setupLoginPage wt m ac
+      retractableNext = setupLoginPage wt seed ac
 #else
-      retractableNext = passwordPage wt m ac
+      retractableNext = passwordPage wt seed ac
 #endif
-    , retractablePrev = Just $ pure $ selectCurrenciesPage wt m
+    , retractablePrev = Just $ pure $ selectCurrenciesPage wt seed
     }
   pure ()
 
