@@ -110,22 +110,26 @@ decryptWithAEAD mode secretKey iv header msg tag =
 data EncryptedByteString = EncryptedByteString {
     encryptedByteString'salt       :: SizedByteArray 32 ByteString
   , encryptedByteString'iv         :: IV AES256
+  , encryptedByteString'authTag    :: SizedByteArray 16 ByteString
   , encryptedByteString'ciphertext :: ByteString
-  }
+  } deriving Eq
 
 instance Serialize EncryptedByteString where
   put EncryptedByteString{..} = do
     let saltBS = convert encryptedByteString'salt :: ByteString
         ivBS = convert encryptedByteString'iv :: ByteString
+        authTagBS = convert encryptedByteString'authTag :: ByteString
     put saltBS
     put ivBS
+    put authTagBS
     put encryptedByteString'ciphertext
 
   get = do
-    saltBS <- getBytes 32
-    ivBS <- getBytes 16
-    remBytes <- remaining
-    ciphertext <- getBytes remBytes
+    saltBS :: ByteString <- get
+    ivBS :: ByteString <- get
+    authTagBS :: ByteString <- get
+    ciphertext :: ByteString <- get
     let salt = unsafeSizedByteArray saltBS :: SizedByteArray 32 ByteString
         iv = fromJust $ makeIV ivBS :: IV AES256
-    return $ EncryptedByteString salt iv ciphertext
+        authTag = unsafeSizedByteArray authTagBS :: SizedByteArray 16 ByteString
+    return $ EncryptedByteString salt iv authTag ciphertext
