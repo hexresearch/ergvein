@@ -17,8 +17,9 @@ flag android
     manual: True
 
 flag testnet
-    description:
-        Compile for testnet blockchains.
+  description: Build the testnet version
+  default: False
+  manual: True
 
 library
     exposed-modules:
