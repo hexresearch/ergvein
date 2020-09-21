@@ -31,7 +31,7 @@ data DebugBtns
   | DbgPubExt
   | DbgPrvInt
   | DbgPrvExt
-
+  | DbgMnemonic
 
 debugWidget :: MonadFront t m => m ()
 debugWidget = el "div" $ do
@@ -40,14 +40,16 @@ debugWidget = el "div" $ do
   pubExtE <- fmap (DbgPubExt <$) $ outlineButton ("Pub Externals" :: Text)
   prvIntE <- fmap (DbgPrvInt <$) $ outlineButton ("Priv Internals" :: Text)
   prvExtE <- fmap (DbgPrvExt <$) $ outlineButton ("Priv Externals" :: Text)
-  let goE = leftmost [utxoE, pubIntE, pubExtE, prvIntE, prvExtE]
+  mnemonicE <- fmap (DbgMnemonic <$) $ outlineButton ("Mnemonic" :: Text)
+  let goE = leftmost [utxoE, pubIntE, pubExtE, prvIntE, prvExtE, mnemonicE]
   void $ nextWidget $ ffor goE $ \sel -> Retractable {
       retractableNext = case sel of
-        DbgUtxo   -> dbgUtxoPage
-        DbgPubInt -> dbgPubInternalsPage
-        DbgPubExt -> dbgPubExternalsPage
-        DbgPrvInt -> dbgPrivInternalsPage
-        DbgPrvExt -> dbgPrivExternalsPage
+        DbgUtxo     -> dbgUtxoPage
+        DbgPubInt   -> dbgPubInternalsPage
+        DbgPubExt   -> dbgPubExternalsPage
+        DbgPrvInt   -> dbgPrivInternalsPage
+        DbgPrvExt   -> dbgPrivExternalsPage
+        DbgMnemonic -> dbgMnemonicPage
     , retractablePrev = Nothing
     }
 
@@ -117,3 +119,11 @@ dbgPrivExternalsPage = wrapper False "Private external keys" (Just $ pure dbgPri
       el "div" $ text $ showt i <> " ------------------------------------------"
       el "div" $ text $ showt $ k'
       el "div" $ text $ p
+
+dbgMnemonicPage :: MonadFront t m => m ()
+dbgMnemonicPage = wrapper False "Mnemonic" (Just $ pure dbgMnemonicPage) $ divClass "currency-content" $ do
+  buildE <- getPostBuild
+  mnemonicE <- withWallet $ ffor buildE $ \_ prv -> do
+    pure $ prv ^. prvStorage'mnemonic
+  mnemonicD <- holdDyn "" mnemonicE
+  dynText mnemonicD

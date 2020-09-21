@@ -67,8 +67,8 @@ createPrvKeystore masterPrvKey =
       internalKeys  = V.unfoldrN initialInternalAddressCount internalGen 0
   in PrvKeystore masterPrvKey externalKeys internalKeys
 
-createPrvStorage :: Seed -> EgvRootXPrvKey -> PrvStorage
-createPrvStorage seed rootPrvKey = PrvStorage seed rootPrvKey prvStorages
+createPrvStorage :: Mnemonic -> EgvRootXPrvKey -> PrvStorage
+createPrvStorage mnemonic rootPrvKey = PrvStorage mnemonic rootPrvKey prvStorages
   where prvStorages = M.fromList [
             (currency, CurrencyPrvStorage $ createPrvKeystore $ deriveCurrencyMasterPrvKey rootPrvKey currency) |
             currency <- allCurrencies
@@ -111,7 +111,7 @@ createStorage isRestored mnemonic (login, pass) cs = case mnemonicToSeed "" mnem
   Left err -> pure $ Left $ SAMnemonicFail $ showt err
   Right seed -> do
     let rootPrvKey = EgvRootXPrvKey $ makeXPrvKey seed
-        prvStorage = createPrvStorage seed rootPrvKey
+        prvStorage = createPrvStorage mnemonic rootPrvKey
         pubStorage = createPubStorage isRestored rootPrvKey cs
     encryptPrvStorageResult <- encryptPrvStorage prvStorage pass
     case encryptPrvStorageResult of
