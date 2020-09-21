@@ -1,35 +1,45 @@
+{-# LANGUAGE CPP #-}
+
 -- | Page for mnemonic phrase generation
 module Ergvein.Wallet.Page.Seed(
     mnemonicPage
   , mnemonicWidget
-  , seedRestorePage
-  , seedRestorePageText
+  , restoreFromMnemonicPage
+  , restoreFromMnemonicPageText
+  , restoreFromSeedPage
   ) where
 
 import Control.Monad.Random.Strict
 import Data.Bifunctor
+import Data.ByteString (ByteString)
 import Data.Either (either)
 import Data.List (permutations)
-import Ergvein.Crypto.Keys
-import Ergvein.Crypto.Util
-import Ergvein.Crypto.WordLists
+import Ergvein.Crypto
 import Ergvein.Text
 import Ergvein.Types.Restore
+import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
+import Ergvein.Wallet.Localization.Password
 import Ergvein.Wallet.Localization.Seed
+import Ergvein.Wallet.Localization.Util
+import Ergvein.Wallet.Log.Event
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Canvas
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Password
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Resize
+import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
 import Reflex.Localize
 
-import qualified Data.List   as L
-import qualified Data.Text   as T
-import qualified Data.Vector as V
+import qualified Data.List      as L
+import qualified Data.Serialize as S
+import qualified Data.Text      as T
+import qualified Data.Vector    as V
 
 mnemonicPage :: MonadFrontBase t m => m ()
 mnemonicPage = go Nothing
@@ -43,11 +53,13 @@ mnemonicPage = go Nothing
       pure ()
 
 checkPage :: MonadFrontBase t m => Mnemonic -> m ()
-checkPage mn = wrapperSimple True $ do
-  e <- mnemonicCheckWidget mn
-  nextWidget $ ffor e $ \m -> Retractable {
-      retractableNext = selectCurrenciesPage WalletGenerated m
-    , retractablePrev = Just $ pure $ checkPage m
+checkPage mnemonic = wrapperSimple True $ do
+  mnemonicE <- mnemonicCheckWidget mnemonic
+  let seedE = mnemonicToSeed "" <$> mnemonicE
+  verifiedSeedE <- handleDangerMsg $ (first T.pack) <$> seedE
+  nextWidget $ ffor verifiedSeedE $ \seed -> Retractable {
+      retractableNext = selectCurrenciesPage WalletGenerated seed
+    , retractablePrev = Just $ pure $ checkPage mnemonic
     }
   pure ()
 
@@ -134,30 +146,76 @@ guessButtons ws idyn = do
       btnE <- buttonClass classeD $ buttonWord
       delay 1 $ fforMaybe btnE $ const $ if buttonWord == correctWord then Just (i + 1) else Nothing
 
-seedRestorePage :: forall t m . MonadFrontBase t m => m ()
-seedRestorePage = wrapperSimple True $ do
-  h4 $ localizedText SPSRestoreTitle
+restoreFromMnemonicPage :: forall t m . MonadFrontBase t m => m ()
+restoreFromMnemonicPage = wrapperSimple True $ do
+  h4 $ localizedText SPSRestoreFromMnemonic
   resetE <- buttonClass (pure "button button-outline") SPSReset
-  mnemE <- fmap (switch . current) $ widgetHold seedRestoreWidget $ seedRestoreWidget <$ resetE
-  void $ nextWidget $ ffor mnemE $ \m -> Retractable {
-      retractableNext = selectCurrenciesPage WalletRestored m
-    , retractablePrev = Just $ pure seedRestorePage
+  mnemonicE <- fmap (switch . current) $ widgetHold seedRestoreWidget $ seedRestoreWidget <$ resetE
+  let seedE = mnemonicToSeed "" <$> mnemonicE
+  verifiedSeedE <- handleDangerMsg $ (first T.pack) <$> seedE
+  void $ nextWidget $ ffor verifiedSeedE $ \seed -> Retractable {
+      retractableNext = selectCurrenciesPage WalletRestored seed
+    , retractablePrev = Just $ pure restoreFromMnemonicPage
     }
 
 -- | For debug purposes. Instead of writing the phrase one word at a time, paste the whole phrase instantly
--- Switch seedRestorePage to seedRestorePageText at Ergvein.Wallet.Page.Initial:48 to enable.
-seedRestorePageText :: MonadFrontBase t m => m ()
-seedRestorePageText = wrapperSimple True $ do
-  h4 $ localizedText SPSRestoreTitle
+-- Switch restoreFromMnemonicPage to restoreFromMnemonicPageText at Ergvein.Wallet.Page.Initial:48 to enable.
+restoreFromMnemonicPageText :: MonadFrontBase t m => m ()
+restoreFromMnemonicPageText = wrapperSimple True $ do
+  h4 $ localizedText SPSRestoreFromMnemonic
   textD <- textFieldNoLabel ""
-  mnemE <- fmap (switch . current) $ widgetHoldDyn $ ffor textD $ \t -> if length (T.words t) == 24
+  mnemonicE <- fmap (switch . current) $ widgetHoldDyn $ ffor textD $ \t -> if length (T.words t) == 24
     then do
       goE <- buttonClass (pure "button button-outline") ("Restore" :: Text)
       pure $ t <$ goE
     else pure never
-  void $ nextWidget $ ffor mnemE $ \m -> Retractable {
+  let seedE = mnemonicToSeed "" <$> mnemonicE
+  verifiedSeedE <- handleDangerMsg $ (first T.pack) <$> seedE
+  void $ nextWidget $ ffor verifiedSeedE $ \m -> Retractable {
       retractableNext = selectCurrenciesPage WalletRestored m
-    , retractablePrev = Just $ pure seedRestorePageText
+    , retractablePrev = Just $ pure restoreFromMnemonicPageText
+    }
+
+restoreFromSeedPage :: MonadFrontBase t m => m ()
+restoreFromSeedPage = wrapperSimple True $ mdo
+  encryptedSeedErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing))
+  h4 $ localizedText SPSRestoreFromSeed
+#ifdef ANDROID
+  encryptedSeedD <- validatedTextFieldSetVal SPSEnterSeed "" encryptedSeedErrsD resQRcodeE
+  qrCodeBtnE <- divClass "" $ outlineButton SPSScanSeed
+  openCameraE <- delay 1.0 =<< openCamara qrCodeBtnE
+  resQRcodeE <- waiterResultCamera openCameraE
+#else
+  encryptedSeedD <- validatedTextField SPSEnterSeed "" encryptedSeedErrsD
+#endif
+  submitE <- outlineButton CSForward
+  let validationE = poke submitE $ \_ -> do
+        encryptedSeed <- sampleDyn encryptedSeedD
+        pure (validateBase58EncryptedSeed encryptedSeed)
+      goE = flip push validationE $ \eEncryptedSeed -> do
+        let mEncryptedSeed = either (const Nothing) Just eEncryptedSeed
+        pure mEncryptedSeed
+  void $ nextWidget $ ffor goE $ \encSeed -> Retractable {
+      retractableNext = askSeedPasswordPage encSeed
+    , retractablePrev = Just $ pure restoreFromSeedPage
+    }
+
+decodeSeed :: Text -> Maybe EncryptedByteString
+decodeSeed = eitherToMaybe . S.decode <=< decodeBase58CheckBtc
+
+validateBase58EncryptedSeed :: Text -> Either [SeedPageStrings] EncryptedByteString
+validateBase58EncryptedSeed base58EncryptedSeed = case decodeSeed base58EncryptedSeed of
+  Nothing -> Left [SPSSeedDecodeError]
+  Just encryptedSeed -> Right encryptedSeed
+
+askSeedPasswordPage :: MonadFrontBase t m => EncryptedByteString -> m ()
+askSeedPasswordPage encryptedSeed = do
+  passE <- askTextPasswordPage PPSSeedUnlock ("" :: Text)
+  let seedE = (decryptBSWithAEAD encryptedSeed) <$> passE
+  verifiedSeedE <- handleDangerMsg seedE
+  void $ nextWidget $ ffor verifiedSeedE $ \seed -> Retractable {
+      retractableNext = selectCurrenciesPage WalletRestored seed
+    , retractablePrev = Nothing
     }
 
 seedRestoreWidget :: forall t m . MonadFrontBase t m => m (Event t Mnemonic)

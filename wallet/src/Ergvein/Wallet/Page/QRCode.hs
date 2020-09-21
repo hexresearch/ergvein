@@ -20,8 +20,8 @@ import           Control.Lens                     (to, (^.))
 import           Control.Monad.IO.Class           (liftIO)
 import           Data.Maybe (fromMaybe)
 
-qrCodeWidget :: MonadFrontBase t m => Text -> Currency -> m (Element EventResult GhcjsDomSpace t, CanvasOptions)
-qrCodeWidget addr cur = divClass "qrcode-container" $ mdo
+qrCodeWidget :: MonadFrontBase t m => Text -> m (Element EventResult GhcjsDomSpace t, CanvasOptions)
+qrCodeWidget text = divClass "qrcode-container" $ mdo
     --divClass "test" $ text $ drawGridT canvasW canvasH (qrcPerCanvas qrData canvasW)
     canvasEl <- createCanvas cOpts
     rawJSCall (_element_raw canvasEl) $ drawGridT canvasW canvasH (qrcPerCanvas qrData canvasW)
@@ -30,17 +30,17 @@ qrCodeWidget addr cur = divClass "qrcode-container" $ mdo
       canvasH = 252
       canvasW = 252
       cOpts = CanvasOptions canvasW canvasH "qrcode" "qrcode"
-      qrData = qrcGen addr cur
+      qrData = qrGen text
 
-qrCodeWidgetWithData :: MonadFrontBase t m => Text -> Currency -> m (Dynamic t (Maybe Text))
-qrCodeWidgetWithData addr cur = do
+qrCodeWidgetWithData :: MonadFrontBase t m => Text -> m (Dynamic t (Maybe Text))
+qrCodeWidgetWithData text = do
   buildE <- getPostBuild
-  (canvasEl, cOpts) <- qrCodeWidget addr cur
+  (canvasEl, cOpts) <- qrCodeWidget text
   dataE <- performEvent $ ffor buildE $ const $ rawGetCanvasJpeg (_element_raw canvasEl) cOpts
   holdDyn Nothing dataE
 
-qrcGen :: Text -> Currency -> Maybe QRImage
-qrcGen t cur = encodeText (defaultQRCodeOptions L) Utf8WithoutECI $ curprefix cur <> t
+qrGen :: Text -> Maybe QRImage
+qrGen t = encodeText (defaultQRCodeOptions L) Utf8WithoutECI $ t
 
 qrcPerCanvas :: Maybe QRImage -> Int -> [(Maybe Int, Square)]
 qrcPerCanvas mqrI cW = case mqrI of

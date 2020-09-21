@@ -24,6 +24,8 @@ import qualified Data.Map.Strict as M
 
 data GoPage = GoSeed | GoRestore
 
+data GoRestoreMethodPage = GoRestoreMnemonic | GoRestoreSeed
+
 initialPage :: MonadFrontBase t m => m ()
 initialPage = do
   logWrite "Initial page rendering"
@@ -42,9 +44,27 @@ createRestore = do
   void $ nextWidget $ ffor goE $ \go -> Retractable {
       retractableNext = case go of
         GoSeed -> mnemonicPage
-        GoRestore -> seedRestorePage
+        GoRestore -> selectRestoreMethodPage
     , retractablePrev = Just $ pure initialPage
     }
+
+selectRestoreMethodPage :: MonadFrontBase t m => m ()
+selectRestoreMethodPage = do
+  wrapperSimple True $ do
+    h4 $ localizedText IPSChooseRestorationMethod
+    divClass "initial-options grid1" $ do
+      goRestoreMnemonicE <- fmap (GoRestoreMnemonic <$) $ outlineButton IPSRestoreFromMnemonic
+      goRestoreSeedE     <- fmap (GoRestoreSeed     <$) $ outlineButton IPSRestoreFromSeed
+      let goE = leftmost [
+              goRestoreMnemonicE
+            , goRestoreSeedE
+            ]
+      void $ nextWidget $ ffor goE $ \page -> Retractable {
+          retractableNext = case page of
+            GoRestoreMnemonic -> restoreFromMnemonicPage
+            GoRestoreSeed     -> restoreFromSeedPage
+        , retractablePrev = Just $ pure selectRestoreMethodPage
+        }
 
 hasWalletsPage :: MonadFrontBase t m => [WalletName] -> m ()
 hasWalletsPage ss = do
