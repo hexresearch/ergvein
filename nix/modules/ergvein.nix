@@ -3,6 +3,7 @@ with lib;  # use the functions from lib, such as mkIf
 let
   # the values of the options set for the service by the user of the service
   cfg = config.services.ergvein;
+  addressType = import ../service/address-type.nix { inherit lib; };
 in {
   ##### Depedendant services
   imports = [
@@ -28,7 +29,7 @@ in {
         '';
       };
       externalAddress = mkOption {
-        type = types.nullOr types.str;
+        type = types.nullOr (types.submodule addressType);
         default = null;
         description = ''
         Which IP and port is assigned to the node as external.

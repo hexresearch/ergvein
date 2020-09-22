@@ -4,6 +4,9 @@ let
   pkgs = import <nixpkgs> { };
   # the values of the options set for the service by the user of the service
   cfg = config.services.ergvein-indexer;
+
+  makePeerAddress = v: '' { peerIP: "${v.host}", peerPort: ${toString v.port} } '';
+  addressType = import ./address-type.nix { inherit lib; };
 in {
   ##### interface. here we define the options that users of our service can specify
   options = {
@@ -23,7 +26,7 @@ in {
         '';
       };
       nodeExternalAddress = mkOption {
-        type = types.nullOr types.str;
+        type = types.nullOr (types.submodule addressType);
         default = null;
         description = ''
           Which IP and port is assigned to the node as external.
@@ -140,7 +143,7 @@ in {
           ERGONodeHost             : localhost
           ERGONodePort             : 9052
           blockchainScanDelay      : 10000000
-          ownPeerAddress           : ${if cfg.nodeExternalAddress != null then cfg.nodeExternalAddress else "null"}
+          ownPeerAddress           : ${if cfg.nodeExternalAddress != null then makePeerAddress cfg.nodeExternalAddress else "null"}
           knownPeers               : []
           peerActualizationDelay   : 10000000
           peerActualizationTimeout : 86400

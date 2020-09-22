@@ -47,6 +47,32 @@ nix-env -iA cachix -f https://cachix.org/api/v1/install
 cachix use ergvein
 ```
 
+# Deploying indexer server
+
+You can use our NixOS module to deploy index server in ten minutes. Add the following to your `/etc/nixos/configuration.nix`:
+``` nix
+let ergvein = pkgs.fetchFromGitHub {
+      owner = "hexresearch";
+      repo = "ergvein";
+      rev = "d2cd3670cf981e502c6310876487a285ed469ab3";
+      sha256 = "0l718lfcmz5687cffhikcg0pvhph15m6ixab0xy83x006m3ajfwz";
+    };
+in {
+  imports = [
+    "${ergvein}/nix/modules/ergvein.nix"
+    "${ergvein}/nix/modules/local-secrets.nix" # remove if using nixops secrets
+  ];
+  services.ergvein = {
+    enable = true;
+    externalAddress = "127.0.0.1:8667"; # here place your ip
+  };
+  deployment.keys = {
+    btcpassword.text = "verysecretpassword";
+  };
+
+}
+```
+
 # UI prototyping
 
 * Start the server:
