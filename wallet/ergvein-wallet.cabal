@@ -17,8 +17,9 @@ flag android
     manual: True
 
 flag testnet
-    description:
-        Compile for testnet blockchains.
+  description: Build the testnet version
+  default: False
+  manual: True
 
 library
     exposed-modules:
@@ -27,7 +28,6 @@ library
         Ergvein.Wallet.Alert.Handler
         Ergvein.Wallet.Alert.Type
         Ergvein.Wallet.Camera
-        Ergvein.Wallet.Client
         Ergvein.Wallet.Clipboard
         Ergvein.Wallet.Codec
         Ergvein.Wallet.Currencies
@@ -42,6 +42,7 @@ library
         Ergvein.Wallet.Filters.Storage
         Ergvein.Wallet.Filters.Types
         Ergvein.Wallet.Id
+        Ergvein.Wallet.Indexer.Socket
         Ergvein.Wallet.Input
         Ergvein.Wallet.Language
         Ergvein.Wallet.Loading
@@ -137,6 +138,7 @@ library
         Ergvein.Wallet.Widget.GraphPinCode
         Ergvein.Wallet.Worker.Fees
         Ergvein.Wallet.Worker.Height
+        Ergvein.Wallet.Worker.Indexer
         Ergvein.Wallet.Worker.IndexersNetworkActualization
         Ergvein.Wallet.Worker.Node
         Ergvein.Wallet.Worker.PubKeysGenerator
@@ -154,6 +156,7 @@ library
     build-depends:
         aeson -any,
         aeson-lens -any,
+        attoparsec >= 0.13 && < 0.14,
         async -any,
         base -any,
         base64-bytestring >=1 && <1.0.0.3,
@@ -162,8 +165,6 @@ library
         bytestring >=0.10 && <0.11,
         cereal >=0.5 && <0.6,
         clay >=0.14 && <0.15,
-        composition-extra -any,
-        connection -any,
         containers >=0.6 && <0.7,
         data-default -any,
         dependent-map >= 0.3,
@@ -172,8 +173,7 @@ library
         dns >= 4.0 && < 5.0,
         ergvein-common >=1.0 && <1.1,
         ergvein-crypto >=0.1 && <0.2,
-        ergvein-index-api >=0.1 && <0.2,
-        ergvein-index-client >=0.1 && <0.2,
+        ergvein-index-protocol >= 0.1 && < 0.2,
         ergvein-wallet-filters >= 0.2 && < 0.3,
         ergvein-wallet-native >=0.1 && <0.2,
         ergvein-wallet-types >=0.1 && <0.2,
@@ -184,9 +184,7 @@ library
         ghcjs-dom -any,
         haskoin-core >= 0.12.0 && < 0.12.1,
         http-client >=0.5 && <0.7,
-        http-client-tls >= 0.3 && < 0.4,
         immortal >= 0.3 && < 0.4,
-        interpolatedstring-perl6 -any,
         iproute >= 1.7 && < 1.8,
         jsaddle -any,
         lens >=4.16 && <4.18,
@@ -197,7 +195,6 @@ library
         mtl >=2.2 && <2.3,
         network >= 2.8 && < 3.0,
         parsec -any,
-        process >=1.6 && <1.7,
         qrcode-core,
         random-shuffle,
         ref-tf >=0.4 && <0.5,
@@ -211,16 +208,12 @@ library
         safe-exceptions -any,
         semialign -any,
         serialise >= 0.2 && < 0.3,
-        servant -any,
-        servant-client >=0.16 && <0.17,
         split >=0.2.3.3 && <0.3,
         stm >=2.4 && <2.6,
-        string-conversions >= 0.4 && < 0.5,
         template-haskell -any,
         text >=1.2 && <1.3,
         these -any,
         time -any,
-        tls -any,
         unliftio >= 0.2 && < 0.3,
         unliftio-core >= 0.1 && < 0.2,
         validation >=1 && < 1.2,

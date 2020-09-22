@@ -2,6 +2,7 @@ module Ergvein.Wallet.Embed(
     createObjectURL
   ) where
 
+import Control.Monad
 import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Foreign.JavaScript.Utils (bsToArrayBuffer)
@@ -13,7 +14,7 @@ import qualified GHCJS.DOM.Types as JS
 
 createObjectURL_ :: MonadJSM m => Blob.Blob -> m JS.JSVal
 createObjectURL_ b = liftJSM $ do
-  eval ("ergvein_createObjectURL = function(a) { return window.URL.createObjectURL(a); }" :: Text)
+  void $ eval ("ergvein_createObjectURL = function(a) { return window.URL.createObjectURL(a); }" :: Text)
   liftJSM $ jsg1 ("ergvein_createObjectURL" :: Text) (toJSVal b)
 
 createObjectURL :: MonadJSM m => ByteString -> m Text

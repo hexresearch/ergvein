@@ -6,36 +6,20 @@ module Ergvein.Wallet.Monad.Unauth
   ) where
 
 import Control.Concurrent.Chan
-import Control.Monad.Random.Class
 import Control.Monad.Reader
-import Data.Default
 import Data.IORef
 import Data.Text (Text)
-import Data.Time(NominalDiffTime, getCurrentTime, diffUTCTime)
-import Ergvein.Index.Client
-import Ergvein.Types.Currency
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Currencies
-import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Front
-import Ergvein.Wallet.Monad.Prim
-import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Util
-import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Version
-import Network.Connection
-import Network.HTTP.Client hiding (Proxy)
-import Network.TLS
-import Network.TLS.Extra.Cipher
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
-import Servant.Client(BaseUrl)
-import Ergvein.Wallet.Client
 
 data UnauthEnv t = UnauthEnv {
   unauth'settings        :: !(ExternalRef t Settings)
@@ -126,7 +110,6 @@ newEnv settings uiChan = do
   passModalEF <- newTriggerEvent
   authRef <- newExternalRef Nothing
   langRef <- newExternalRef $ settingsLang settings
-  re <- newRetractEnv
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
   pure UnauthEnv {

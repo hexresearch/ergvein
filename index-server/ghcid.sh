@@ -1,1 +1,1 @@
-ghcid -c "cabal new-repl"
+ghcid --colour=always -c "cabal new-repl"

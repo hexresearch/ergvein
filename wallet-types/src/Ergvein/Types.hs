@@ -4,7 +4,6 @@ module Ergvein.Types(
 
 import Ergvein.Types.Address as X
 import Ergvein.Types.AuthInfo as X
-import Ergvein.Types.Block as X
 import Ergvein.Types.Currency as X
 import Ergvein.Types.Fees as X
 import Ergvein.Types.Keys as X

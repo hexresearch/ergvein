@@ -17,25 +17,23 @@ module Ergvein.Wallet.Filters.Loader (
 ) where
 
 import Control.Monad
+import Data.ByteString (ByteString)
 import Data.Maybe
-import Network.Haskoin.Block
-import Reflex.ExternalRef
+-- import Network.Haskoin.Block
 
-import Ergvein.Filters
-import Ergvein.Index.API.Types
+import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
 import Ergvein.Text
-import Ergvein.Types.Block
 import Ergvein.Types.Currency
-import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Client
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Sync.Status
+import Ergvein.Wallet.Util
 
-import qualified Data.Map as M
+import qualified Data.Vector as V
 
 filtersLoader :: MonadFront t m => m ()
 filtersLoader = nameSpace "filters loader" $ do
@@ -51,11 +49,11 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
       fh' <- getFiltersHeight BTC
       let fh = max fh' sh
       logWrite $ "Current height is " <> showt ch <> ", and filters are for height " <> showt fh
-      -- postSync BTC ch fh
+      postSync BTC ch fh
       if ch > fh then do
         let n = 500
         logWrite $ "Getting next filters ..." <> showt n
-        fse <- getFilters ((BTC, fh+1, n) <$ buildE)
+        fse <- getFilters BTC $ (fh+1, n) <$ buildE
         performEvent_ $ ffor fse $ const $ logWrite "Got filters!"
         we <- performFork $ ffor fse $ \fs ->
           insertMultipleFilters BTC $ zipWith (\h (bh,f) -> (h,bh,f)) [fh+1..] fs
@@ -83,10 +81,14 @@ postSync cur ch fh = do
     setFiltersSync cur $ val == Synced
     setSyncProgress $ val <$ buildE
 
-getFilters :: MonadFront t m => Event t (Currency, BlockHeight, Int) -> m (Event t [(BlockHash, AddressFilterHexView)])
-getFilters e = do
-  resE <- getBlockFiltersRandom $ ffor e $ \(cur, h, n) ->
-    BlockFiltersRequest cur (fromIntegral h) (fromIntegral n)
-  hexE <- handleDangerMsg resE
-  let mkPair (a, b) = (, b) <$> hexToBlockHash a
-  pure $ fmap (catMaybes .  fmap mkPair) hexE
+getFilters :: MonadFront t m => Currency -> Event t (BlockHeight, Int) -> m (Event t [(BlockHash, ByteString)])
+getFilters cur e = do
+  respE <- requestRandomIndexer $ ffor e $ \(h, n) ->
+    MFiltersRequest $ FilterRequest curcode (fromIntegral h) (fromIntegral n)
+  pure $ fforMaybe respE $ \case
+    MFiltersResponse (FilterResponse{..}) -> if filterResponseCurrency /= curcode
+      then Nothing
+      else Just $ V.toList $ ffor filterResponseFilters $ \(BlockFilter bid filt) -> (bid, filt)
+    _ -> Nothing
+  where
+    curcode = currencyToCurrencyCode cur

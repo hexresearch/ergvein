@@ -2,10 +2,7 @@ module Ergvein.Wallet.Localization.About(
     AboutPageStrings(..)
   ) where
 
-import Ergvein.Text
 import Ergvein.Wallet.Language
-
-import Data.Text
 
 data AboutPageStrings =
     AboutTitle

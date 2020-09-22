@@ -15,6 +15,8 @@ let
       ergvein-common = ./common;
       ergvein-crypto = ./crypto;
       ergvein-index-api = ./index-api;
+      ergvein-index-protocol = ./index-protocol;
+      ergvein-index-protocol-client = ./index-protocol-client;
       ergvein-index-client = ./index-client;
       ergvein-index-server = ./index-server;
       ergvein-interface-ergo = ./interfaces/ergo;
@@ -43,6 +45,8 @@ let
         "ergvein-common"
         "ergvein-crypto"
         "ergvein-index-api"
+        "ergvein-index-protocol"
+        "ergvein-index-protocol-client"
         "ergvein-index-client"
         "ergvein-index-server"
         "ergvein-interface-ergo"
@@ -66,6 +70,7 @@ let
       inherit (pkgs) leveldb;
       inherit (pkgs.haskellPackages) hakyll;
       hp2any-graph = if profile then ghc.hp2any-graph else null;
+      ghc-prof-flamegraph = if profile then ghc.ghc-prof-flamegraph else null;
     };
 
     android.ergvein-wallet = {

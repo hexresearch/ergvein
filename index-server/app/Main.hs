@@ -1,26 +1,24 @@
 module Main where
 
-import Control.Concurrent
-import Control.Immortal
-import Control.Monad.IO.Unlift
 import Control.Monad.Logger
-import Network.Wai.Handler.Warp
-import Network.Wai.Middleware.RequestLogger
+import Data.Text (Text, pack)
 import Options.Applicative
 
 import Ergvein.Index.Server.App
-import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
-import Ergvein.Index.Server.PeerDiscovery.Discovery
-import Ergvein.Index.Server.DB.Queries
 
 import qualified Data.Text.IO as T
-import Data.Text (Text, pack)
+import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 
 data Options = Options {
-  optsCommand :: Command
+  optsCommand         :: Command  -- ^ Which command to execute
+, optsNoDropFilters   :: Bool     -- ^ Def: False. Drop filters db when versions changed or not
+, optsNoDropIndexers  :: Bool     -- ^ Def: False. Drop indexers db when versions changed or not
+, optsBtcTcpConn      :: Bool     -- ^ Def: False. Use TCP connection to the node
+, optsOnlyScan        :: Bool     -- ^ Def: False. Start only BC-scanning threads
 }
 
 type ServerUrl = Text
@@ -32,7 +30,10 @@ options = Options
   <$> subparser (
        command "listen" (info (listenCmd <**> helper) $ progDesc "Start server") <>
        command "clean-known-peers" (info (cleanKnownPeers <**> helper) $ progDesc "resetting peers")
-  )
+  ) <*> flag False True (long "no-drop-filters" <> help "Do not drop Filters db when version is changed" )
+    <*> flag False True (long "no-drop-indexer" <> help "Do not drop Indexer's db when version is changed" )
+    <*> flag True False (long "tcp-node" <> help "Use TCP connection to the node instead of RPC" )
+    <*> flag False True (long "only-scan" <> help "Start only BC-scanning threads" )
   where
     cleanKnownPeers = CleanKnownPeers
       <$> strArgument (
@@ -52,30 +53,17 @@ main = do
        <> progDesc "Starts Ergvein index server"
        <> header "ergvein-index-server - cryptocurrency index server for ergvein client" )
 
-onStartup :: ServerEnv -> ServerM [Thread]
-onStartup env = do
-  scanningWorkers <- blockchainScanning
-  syncWithDefaultPeers
-  feeWorkers <- feesScanning
-  peerIntroduce
-  knownPeersActualization
-  pure $ scanningWorkers ++ feeWorkers
-
 startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
     CommandListen cfgPath -> do
       T.putStrLn $ pack "Server starting"
-      cfg <- loadConfig cfgPath
-      env <- runStdoutLoggingT $ newServerEnv cfg
-      workerThreads <- runServerMIO env $ onStartup env
-      T.putStrLn $ pack $ "Server started at:" <> (show . cfgServerPort $ cfg)
-
-      let settings = appSettings (beforeShutdown env workerThreads) (afterShutdown env workerThreads)
-          app = logStdoutDev $ indexServerApp env
-          warpSettings = setPort (cfgServerPort cfg) settings
-      runSettings warpSettings app
+      cfg@Config{..} <- loadConfig cfgPath
+      BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
+        env <- runStdoutLoggingT $ newServerEnv optsBtcTcpConn optsNoDropFilters optsNoDropIndexers client cfg
+        runStdoutLoggingT $ app optsOnlyScan cfg env
     CleanKnownPeers cfgPath -> do
-      cfg <- loadConfig cfgPath
-      env <- runStdoutLoggingT $ newServerEnv cfg
-      runServerMIO env emptyKnownPeers
+      cfg@Config{..} <- loadConfig cfgPath
+      BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
+        env <- runStdoutLoggingT $ newServerEnv optsBtcTcpConn optsNoDropFilters optsNoDropIndexers client cfg
+        runServerMIO env emptyKnownPeers
       T.putStrLn $ pack "knownPeers cleared"

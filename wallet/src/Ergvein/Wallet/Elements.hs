@@ -62,8 +62,6 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.OpenUrl
 import Ergvein.Wallet.Util
-import Reflex
-import Reflex.Dom
 import Reflex.Localize
 
 container :: DomBuilder t m => m a -> m a

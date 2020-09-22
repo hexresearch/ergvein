@@ -3,11 +3,7 @@ module Ergvein.Wallet.Localization.Util
     CommonStrings(..)
   ) where
 
-import Ergvein.Text
 import Ergvein.Wallet.Language
-
-import Data.Text
-
 
 data CommonStrings =
     CSCopied

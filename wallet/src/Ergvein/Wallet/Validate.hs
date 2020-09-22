@@ -9,7 +9,6 @@ module Ergvein.Wallet.Validate (
   ) where
 
 import Control.Lens
-import Data.Maybe
 import Data.Ratio
 import Data.Validation hiding (validate)
 import Ergvein.Types.Address
@@ -54,7 +53,7 @@ validateNonEmptyString x = if x /= []
 
 validateRational :: String -> Validation [VError] Rational
 validateRational x = case parse rational "" x of
-  Left err -> _Failure # [MustBeRational]
+  Left _ -> _Failure # [MustBeRational]
   Right result -> _Success # result
 
 validatePositiveRational :: (Rational) -> Validation [VError] PositiveRational
@@ -69,7 +68,7 @@ validatePositiveWord64 x = if x > 0
 
 validateWord64 :: String -> Validation [VError] Word64
 validateWord64 x = case parse word64 "" x of
-  Left err -> _Failure # [MustBeIntegral]
+  Left _ -> _Failure # [MustBeIntegral]
   Right res -> _Success # res
 
 validateAmount :: String -> Validation [VError] Rational
@@ -129,10 +128,12 @@ validateNow ma = case ma of
     pure Nothing
   Right a -> pure $ Just a
 
-(<++>) a b = (++) <$> a <*> b
+-- (<++>) a b = (++) <$> a <*> b
+(<:>) :: Applicative f => f a -> f [a] -> f [a]
 (<:>) a b = (:) <$> a <*> b
 
-readInt = read :: String -> Integer
+readInt :: String -> Integer
+readInt = read
 
 number :: Stream s m Char => ParsecT s u m String
 number = many1 digit
@@ -155,8 +156,8 @@ fractionalStr = option "" $ char '.' *> number
 intFracToRational :: String -> String -> Rational
 intFracToRational intStr fracStr = if null fracStr
   then int % 1
-  else (int * exponent + frac * sign int) % exponent
-  where exponent = 10 ^ length fracStr
+  else (int * expon + frac * sign int) % expon
+  where expon = 10 ^ length fracStr
         int = readInt intStr
         frac = readInt fracStr
         sign x = if x == 0 then signum 1 else signum x

@@ -4,11 +4,8 @@ module Ergvein.Wallet.Localization.Receive
    ,ReceivePageStrings(..)
   ) where
 
-import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
-
-import Data.Text
 
 newtype ReceiveTitle = ReceiveTitle Currency
 

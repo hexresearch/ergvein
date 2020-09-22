@@ -4,8 +4,6 @@ module Ergvein.Wallet.Share(
   ) where
 
 import Data.Text (Text)
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 

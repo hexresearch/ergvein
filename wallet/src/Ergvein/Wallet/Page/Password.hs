@@ -6,22 +6,16 @@ module Ergvein.Wallet.Page.Password(
   , askPasswordPage
   ) where
 
-import Control.Monad.IO.Class
-
 import Ergvein.Crypto.Keys     (Mnemonic)
 import Ergvein.Types.Currency
 import Ergvein.Types.Restore
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Currencies
-import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Password
 import Ergvein.Wallet.Wrapper
 import Ergvein.Wallet.Localization.Password
 import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Page.Balances
-import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Storage.AuthInfo
 import Reflex.Localize
 
@@ -40,11 +34,10 @@ setupLoginPage wt m ac = wrapperSimple True $ do
   divClass "password-setup-descr" $ h5 $ localizedText LPSDescr
   logE <- setupLogin
   logD <- holdDyn "" logE
-  nextWidget $ ffor (updated logD) $ \l -> Retractable {
+  void $ nextWidget $ ffor (updated logD) $ \l -> Retractable {
       retractableNext = setupPatternPage wt m l ac
     , retractablePrev = Just $ pure $ setupLoginPage wt m ac
     }
-  pure ()
 
 setupPatternPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> Text -> [Currency] -> m ()
 setupPatternPage wt m l curs = wrapperSimple True $ do

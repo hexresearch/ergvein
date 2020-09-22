@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedLists #-}
-
 module Ergvein.Wallet.Loading
   (
     loadingWidget
@@ -26,7 +25,7 @@ loadingWidget = do
   backE <- fmap fst getBackEventFire
   let toggleE = leftmost [(False, "") <$ backE, (False, "") <$ errE, triggerE]
   tglD <- holdUniqDyn =<< holdDyn (False, "") toggleE
-  widgetHold (pure ()) $ ffor (updated tglD) $ \(b, t) -> if not b
+  void $ widgetHold (pure ()) $ ffor (updated tglD) $ \(b, t) -> if not b
     then pure ()
     else divClass "loading-page" $ divClass "loading-box" $ do
       el "h5" $ text t
@@ -36,4 +35,3 @@ loadingWidget = do
                 ("class", "loading__status")
               , ("style", "width: " <> showt v <> "%;")]
         elDynAttr "div" attrD' $ pure ()
-  pure ()

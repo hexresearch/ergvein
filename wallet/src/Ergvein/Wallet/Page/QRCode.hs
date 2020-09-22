@@ -1,24 +1,16 @@
+{-# OPTIONS_GHC -Wno-type-defaults #-}
 module Ergvein.Wallet.Page.QRCode(
     qrCodeWidget
   , qrCodeWidgetWithData
   ) where
 
-import Ergvein.Text
+import Codec.QRCode
+
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Canvas
 
-import Reflex.Dom
-
-import Language.Javascript.JSaddle.Evaluate
-import Language.Javascript.JSaddle.Monad
-import Language.Javascript.JSaddle.Value
-
-import qualified Data.Vector.Unboxed              as UV
-import           Codec.QRCode
-import           Control.Lens                     (to, (^.))
-import           Control.Monad.IO.Class           (liftIO)
-import           Data.Maybe (fromMaybe)
+import qualified Data.Vector.Unboxed as UV
 
 qrCodeWidget :: MonadFrontBase t m => Text -> Currency -> m (Element EventResult GhcjsDomSpace t, CanvasOptions)
 qrCodeWidget addr cur = divClass "qrcode-container" $ mdo
@@ -56,12 +48,12 @@ qrcPerCanvas mqrI cW = case mqrI of
         else Nothing
 
 colList :: Int -> Int -> [Square]
-colList width count = mconcat $ fmap (\num -> rowList width count num) rList
+colList width cnt = mconcat $ fmap (\num -> rowList width cnt num) rList
   where
-    rList = fmap fromIntegral $ [0 .. (count-1)]
+    rList = fmap fromIntegral $ [0 .. (cnt-1)]
 
 rowList :: Int -> Int -> Double -> [Square]
-rowList width count globN = fmap (\num -> (w*num,w*globN, w,w)) rList
+rowList width cnt globN = fmap (\num -> (w*num,w*globN, w,w)) rList
   where
-    rList = fmap fromIntegral $ [0 .. (count-1)]
+    rList = fmap fromIntegral $ [0 .. (cnt-1)]
     w = fromIntegral width

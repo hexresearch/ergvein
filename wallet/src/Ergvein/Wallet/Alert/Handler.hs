@@ -97,7 +97,7 @@ alertHandlerWidget = elAttr "div" [("class","alert-overlay"),("style","position:
   pure ()
 
 logAlerts :: forall t m . MonadFrontBase t m => Event t AlertInfo -> m ()
-logAlerts e = postLog $ ffor e $ \AlertInfo{..} -> LogEntry {
+logAlerts e = postLogEvnt $ ffor e $ \AlertInfo{..} -> LogEntry {
     logTime = alertTime
   , logSeverity = alertTypeToSeverity alertType
   , logMessage = localizedShow English alertMessage
@@ -105,10 +105,10 @@ logAlerts e = postLog $ ffor e $ \AlertInfo{..} -> LogEntry {
   }
   where
         -- | Posting log message
-    postLog :: MonadFrontBase t m => Event t LogEntry -> m ()
-    postLog e = do
+    postLogEvnt :: MonadFrontBase t m => Event t LogEntry -> m ()
+    postLogEvnt evt = do
       (_, fire) <- getLogsTrigger
-      performEvent_ $ ffor e $ liftIO . fire
+      performEvent_ $ ffor evt $ liftIO . fire
 
 -- | Widget that displays alert to user. Fires when destruction timeout is passed.
 alertWidget :: MonadFrontBase t m => AlertInfo -> Int -> m (Event t ())

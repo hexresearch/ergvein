@@ -6,7 +6,6 @@ module Ergvein.Wallet.Widget.GraphPinCode(
   ) where
 
 import qualified Data.Map.Strict as M
-import Data.Function.Flip (flip3)
 
 import Ergvein.Text
 import Ergvein.Wallet.Monad
@@ -44,10 +43,10 @@ addPinProcess pp@PinProcess{..} v =
     False -> pp
   where
     canAdd :: [Int] -> Int -> Bool
-    canAdd [] v =
+    canAdd [] _ =
       pinProcess'flag
-    canAdd xs v =
-      if last xs == v
+    canAdd xs val =
+      if last xs == val
         then False
         else pinProcess'flag
 
@@ -79,6 +78,8 @@ graphPinCode actionE = mdo
       then Just pinProcess'pin
       else Nothing
   where
+    flip3 :: (a -> b -> c -> d) -> c -> b -> a -> d
+    flip3 f c b a = f a b c
     itemsGeom :: [(Int,Int,Int)]
     itemsGeom = [ (1, sizeGrid  , sizeGrid  )
                 , (2, sizeGrid*3, sizeGrid  )
