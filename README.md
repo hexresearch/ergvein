@@ -54,8 +54,8 @@ You can use our NixOS module to deploy index server in ten minutes. Add the foll
 let ergvein = pkgs.fetchFromGitHub {
       owner = "hexresearch";
       repo = "ergvein";
-      rev = "d2cd3670cf981e502c6310876487a285ed469ab3";
-      sha256 = "0l718lfcmz5687cffhikcg0pvhph15m6ixab0xy83x006m3ajfwz";
+      rev = "35a67a64c70c73cc100c929fe32f334ca6d549aa";
+      sha256 = "18rly6g6qkysw3gv3fhvicsbxv37f1hm4ll7sckpdwcfbxvyrfwn";
     };
 in {
   imports = [
