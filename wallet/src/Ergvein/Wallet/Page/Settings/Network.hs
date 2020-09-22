@@ -111,17 +111,26 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
     goE <- outlineButton NSSAddUrl
     performFork $ ffor goE $ const $ do
       t <- sampleDyn textD
-      let (h,p) = fmap (T.drop 1) $ T.span (/= ':') t
-      let p' = if p == "" then Nothing else Just $ T.unpack p
-      let hints = defaultHints { addrFlags = [AI_ALL] , addrSocketType = Stream }
-      addrs <- liftIO $ Ex.catch (
-          getAddrInfo (Just hints) (Just $ T.unpack h) p'
-        ) (\(_ :: Ex.SomeException) -> pure [])
-      pure $ fmap addrAddress $ listToMaybe addrs
+      parseSingle t
   void $ widgetHold (pure ()) $ ffor murlE $ \case
     Nothing -> divClass "form-field-errors" $ text "Falied to parse URL"
     _ -> pure ()
   pure $ fmapMaybe id murlE
+  where
+    parseSingle t = do
+      let (h,p) = fmap (T.drop 1) $ T.span (/= ':') t
+      let p' = if p == "" then Nothing else Just $ T.unpack p
+      let mport = readMaybe $ T.unpack p
+      let val = fmap (readMaybe . T.unpack) $ T.splitOn "." h
+      case (mport, val) of
+        (Just port, (Just a):(Just b):(Just c):(Just d):[]) ->
+          pure $ Just $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
+        _ -> do
+          let hints = defaultHints { addrFlags = [AI_ALL] , addrSocketType = Stream }
+          addrs <- liftIO $ Ex.catch (
+              getAddrInfo (Just hints) (Just $ T.unpack h) p'
+            ) (\(_ :: Ex.SomeException) -> pure [])
+          pure $ fmap addrAddress $ listToMaybe addrs
 
 activePageWidget :: forall t m . MonadFront t m => m ()
 activePageWidget = mdo

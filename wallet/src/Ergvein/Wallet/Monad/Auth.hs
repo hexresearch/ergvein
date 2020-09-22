@@ -18,6 +18,7 @@ import Reflex.Dom
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import System.Directory
+import Text.Read
 
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
@@ -413,8 +414,14 @@ parseSockAddrs = fmap catMaybes . traverse parseSingle
     parseSingle t = do
       let (h,p) = fmap (T.drop 1) $ T.span (/= ':') t
       let p' = if p == "" then Nothing else Just $ T.unpack p
-      let hints = defaultHints { addrFlags = [AI_ALL] , addrSocketType = Stream }
-      addrs <- liftIO $ Ex.catch (
-          getAddrInfo (Just hints) (Just $ T.unpack h) p'
-        ) (\(_ :: Ex.SomeException) -> pure [])
-      pure $ fmap addrAddress $ listToMaybe addrs
+      let mport = readMaybe $ T.unpack p
+      let val = fmap (readMaybe . T.unpack) $ T.splitOn "." h
+      case (mport, val) of
+        (Just port, (Just a):(Just b):(Just c):(Just d):[]) ->
+          pure $ Just $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
+        _ -> do
+          let hints = defaultHints { addrFlags = [AI_ALL] , addrSocketType = Stream }
+          addrs <- liftIO $ Ex.catch (
+              getAddrInfo (Just hints) (Just $ T.unpack h) p'
+            ) (\(_ :: Ex.SomeException) -> pure [])
+          pure $ fmap addrAddress $ listToMaybe addrs

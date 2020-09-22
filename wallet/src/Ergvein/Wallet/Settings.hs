@@ -127,7 +127,8 @@ instance ToJSON Settings where
    ]
 
 defaultIndexers :: [Text]
-defaultIndexers = ["ergvein-indexermainnet1.hxr.team:8667"]
+defaultIndexers = ["139.59.142.25:8667"]
+-- defaultIndexers = ["ergvein-indexermainnet1.hxr.team:8667"]
 
 defaultIndexersSockAddrs :: [SockAddr]
 defaultIndexersSockAddrs = [SockAddrInet 8667 (tupleToHostAddress (127,0,0,1))]
