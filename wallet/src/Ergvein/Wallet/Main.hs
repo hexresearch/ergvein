@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Ergvein.Wallet.Main(
     frontend
   , mainWidgetWithCss
@@ -26,7 +27,7 @@ frontend = do
   askPasswordModal
   logWriter =<< fmap fst getLogsTrigger
   logWrite "Entering initial page"
-  testnetDisclaimerPage
+  mainpageDispatcher
 
 startPage :: MonadFront t m => m ()
 startPage = do
@@ -35,9 +36,10 @@ startPage = do
     then restorePage
     else balancesPage
 
+#ifdef TESTNET
 -- TODO: remove this disclaimer when ERGO is ready
-testnetDisclaimerPage :: MonadFrontBase t m => m ()
-testnetDisclaimerPage = void $ workflow testnetDisclaimer
+mainpageDispatcher :: MonadFrontBase t m => m ()
+mainpageDispatcher = void $ workflow testnetDisclaimer
   where
     testnetDisclaimer = Workflow $ wrapperSimple True $ do
       elClass "h4" "testnet-disclaimer-label" $ dynText =<< localized TestnetDisclaimerLabel
@@ -47,3 +49,7 @@ testnetDisclaimerPage = void $ workflow testnetDisclaimer
     startWallet = Workflow $ do
       void $ retractStack initialPage `liftAuth` retractStack startPage
       pure ((), never)
+#else
+mainpageDispatcher :: MonadFrontBase t m => m ()
+mainpageDispatcher = void $ retractStack initialPage `liftAuth` retractStack startPage
+#endif
