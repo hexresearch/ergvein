@@ -22,34 +22,37 @@ import Ergvein.Types.Currency
 
 import qualified Data.Text.IO as T
 
-onStartup :: Bool -> ServerEnv -> ServerM [Thread]
+onStartup :: Bool -> ServerEnv -> ServerM ([Thread], [Thread])
 onStartup onlyScan _ = do
   scanningWorkers <- blockchainScanning
-  if onlyScan then pure scanningWorkers else do
+  if onlyScan then pure (scanningWorkers, []) else do
     --syncWithDefaultPeers
     feeWorkers <- feesScanning
-    kpaThread <- knownPeersActualization
+    -- kpaThread <- knownPeersActualization
     tcpServerThread <- runTcpSrv
-    pure $ tcpServerThread : kpaThread : scanningWorkers ++ feeWorkers
+    pure $ (scanningWorkers, tcpServerThread : feeWorkers)
 
-onShutdown :: ServerEnv -> [Thread] -> IO ()
-onShutdown env workerTreads = do
+onShutdown :: ServerEnv -> IO ()
+onShutdown env = do
   T.putStrLn $ showt "Server stop signal recivied..."
   T.putStrLn $ showt "service is stopping"
   atomically $ writeTVar (envShutdownFlag env) True
 
-finalize :: (MonadIO m, MonadLogger m) => ServerEnv -> [Thread] -> m ()
-finalize env workerTreads = do
-  liftIO $ sequence_ $ wait <$> workerTreads
+finalize :: (MonadIO m, MonadLogger m) => ServerEnv -> [Thread] -> [Thread] -> m ()
+finalize env scannerThreads workerTreads = do
+  logInfoN "Waiting for scaner threads to close"
+  liftIO $ sequence_ $ wait <$> scannerThreads
   logInfoN "Dumping rollback data"
   rse <- fmap RollbackSequence $ liftIO $ readTVarIO (envBtcRollback env)
   runReaderT (storeRollbackSequence BTC rse) (envIndexerDBContext env)
+  logInfoN "Waiting for other threads to close"
+  liftIO $ sequence_ $ wait <$> workerTreads
   logInfoN "service is stopped"
 
 app :: (MonadIO m, MonadLogger m) => Bool -> Config -> ServerEnv -> m ()
 app onlyScan cfg env = do
-  workerThreads <- liftIO $ runServerMIO env $ onStartup onlyScan env
+  (scannerThreads, workerThreads) <- liftIO $ runServerMIO env $ onStartup onlyScan env
   logInfoN $ "Server started at:" <> (showt . cfgServerPort $ cfg)
-  liftIO $ installHandler sigTERM (Catch $ onShutdown env workerThreads) Nothing
+  liftIO $ installHandler sigTERM (Catch $ onShutdown env) Nothing
   liftIO $ cancelableDelay (envShutdownFlag env) (-1)
-  finalize env workerThreads
+  finalize env scannerThreads workerThreads
