@@ -3,6 +3,7 @@
 module Ergvein.Wallet.Page.Settings.Network
   (
     networkSettingsPage
+  , networkSettingsPageUnauth
   ) where
 
 import Control.Lens
@@ -65,7 +66,15 @@ networkSettingsPage = do
       DisabledPage    -> inactivePageWidget
       ParametersPage  -> parametersPageWidget
 
-parametersPageWidget :: MonadFront t m => m ()
+networkSettingsPageUnauth :: MonadFrontBase t m => m ()
+networkSettingsPageUnauth = wrapperSimple False $ do
+  navD <- navbarWidget ActivePage
+  void $ widgetHoldDyn $ ffor navD $ \case
+    ActivePage      -> activePageWidget
+    DisabledPage    -> inactivePageWidget
+    ParametersPage  -> parametersPageWidget
+
+parametersPageWidget :: MonadFrontBase t m => m ()
 parametersPageWidget = mdo
   setD <- getSettingsD
   valsD <- fmap join $
@@ -103,7 +112,7 @@ parametersPageWidget = mdo
   where
     fmap2 = fmap . fmap
 
-addUrlWidget :: forall t m . MonadFront t m => Dynamic t Bool -> m (Event t SockAddr)
+addUrlWidget :: forall t m . MonadFrontBase t m => Dynamic t Bool -> m (Event t SockAddr)
 addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not b then pure never else do
   murlE <- el "div" $ do
     textD <- fmap _inputElement_value $ inputElement $ def
@@ -132,7 +141,7 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
             ) (\(_ :: Ex.SomeException) -> pure [])
           pure $ fmap addrAddress $ listToMaybe addrs
 
-activePageWidget :: forall t m . MonadFront t m => m ()
+activePageWidget :: forall t m . MonadFrontBase t m => m ()
 activePageWidget = mdo
   connsD  <- externalRefDynamic =<< getActiveConnsRef
   addrsD  <- (fmap . fmap) S.toList $ externalRefDynamic =<< getActiveAddrsRef
@@ -144,13 +153,13 @@ activePageWidget = mdo
   (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
     restoreE <- buttonClass "button button-outline m-0" NSSRestoreUrls
-    void $ activateURLList $ defaultIndexersSockAddrs <$ restoreE
+    void $ activateURLList =<< performFork (parseSockAddrs defaultIndexers <$ restoreE)
     tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSClose else NSSAddUrl
     pure (refrE', tglE')
   pure ()
 
-renderActive :: MonadFront t m
+renderActive :: MonadFrontBase t m
   => SockAddr
   -> Event t ()
   -> (Maybe (IndexerConnection t))
@@ -176,7 +185,7 @@ renderActive addr refrE mconn = mdo
       void $ deactivateURL . (addr <$) =<< buttonClass "button button-outline mt-1 ml-1" NSSDisable
       void $ forgetURL . (addr <$) =<< buttonClass "button button-outline mt-1 ml-1" NSSForget
 
-inactivePageWidget :: forall t m . MonadFront t m => m ()
+inactivePageWidget :: forall t m . MonadFrontBase t m => m ()
 inactivePageWidget = mdo
   addrsD <- externalRefDynamic =<< getInactiveAddrsRef
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
@@ -190,7 +199,7 @@ inactivePageWidget = mdo
     pure (pingAllE', tglE')
   pure ()
 
-renderInactive :: MonadFront t m => Event t () -> SockAddr -> m ()
+renderInactive :: MonadFrontBase t m => Event t () -> SockAddr -> m ()
 renderInactive initPingE addr = mdo
   sel <- getIndexReqSelector
   tglD <- holdDyn False tglE
@@ -216,7 +225,7 @@ renderInactive initPingE addr = mdo
       pure pingE'
   pure ()
   where
-    tglBtn :: MonadFront t m => Dynamic t Bool -> m (Event t Bool)
+    tglBtn :: MonadFrontBase t m => Dynamic t Bool -> m (Event t Bool)
     tglBtn tglD = fmap switchDyn $ widgetHoldDyn $ ffor tglD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a" $
         if b then NSSClose else NSSEdit
@@ -228,7 +237,7 @@ renderInactive initPingE addr = mdo
       descrOption NSSOffline
       pure tglE
 
-navbarWidget :: MonadFront t m => NavbarItem -> m (Dynamic t NavbarItem)
+navbarWidget :: MonadFrontBase t m => NavbarItem -> m (Dynamic t NavbarItem)
 navbarWidget initItem = divClass "navbar" $ mdo
   selD <- holdDyn initItem selE
   selE <- fmap leftmost $ flip traverse [ActivePage, DisabledPage, ParametersPage] $ \i -> do
@@ -236,14 +245,14 @@ navbarWidget initItem = divClass "navbar" $ mdo
     pure . (<$) i =<< spanButton attrD i
   pure selD
 
-lineOption :: MonadFront t m => m a -> m a
+lineOption :: MonadFrontBase t m => m a -> m a
 lineOption = divClass "network-wrapper mt-1"
 
-descrOption :: (MonadFront t m, LocalizedPrint a) => a -> m ()
+descrOption :: (MonadFrontBase t m, LocalizedPrint a) => a -> m ()
 descrOption = divClass "network-descr" . localizedText
 
-descrOptionDyn :: (MonadFront t m, LocalizedPrint a) => Dynamic t a -> m ()
+descrOptionDyn :: (MonadFrontBase t m, LocalizedPrint a) => Dynamic t a -> m ()
 descrOptionDyn v = getLanguage >>= \langD -> (>>) elBR (divClass "network-descr" $ dynText $ ffor2 langD v localizedShow)
 
-elBR :: MonadFront t m => m ()
+elBR :: MonadFrontBase t m => m ()
 elBR = el "br" blank

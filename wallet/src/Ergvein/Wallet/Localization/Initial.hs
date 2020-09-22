@@ -8,6 +8,7 @@ import Ergvein.Wallet.Language
 data InitialPageStrings =
     IPSCreate
   | IPSRestore
+  | IPSNetwork
   | IPSSelectWallet
   | IPSOtherOptions
   | IPSPinCode
@@ -19,6 +20,7 @@ instance LocalizedPrint InitialPageStrings where
     English -> case v of
       IPSCreate       -> "Create wallet"
       IPSRestore      -> "Restore wallet"
+      IPSNetwork      -> "Setup indexers"
       IPSSelectWallet -> "Select wallet"
       IPSOtherOptions -> "Either"
       IPSPinCode      -> "PIN code:"
@@ -27,6 +29,7 @@ instance LocalizedPrint InitialPageStrings where
     Russian -> case v of
       IPSCreate       -> "Создать кошелёк"
       IPSRestore      -> "Восстановить кошелёк"
+      IPSNetwork      -> "Настроить индексеры"
       IPSSelectWallet -> "Выберите кошелёк"
       IPSOtherOptions -> "Или"
       IPSPinCode      -> "ПИН код:"

@@ -6,7 +6,6 @@ module Ergvein.Wallet.Settings (
   , storeSettings
   , defaultSettings
   , defaultIndexers
-  , defaultIndexersSockAddrs
   , defaultIndexersNum
   , defaultIndexerTimeout
   , defaultActUrlNum
@@ -129,9 +128,6 @@ instance ToJSON Settings where
 defaultIndexers :: [Text]
 defaultIndexers = ["139.59.142.25:8667"]
 -- defaultIndexers = ["ergvein-indexermainnet1.hxr.team:8667"]
-
-defaultIndexersSockAddrs :: [SockAddr]
-defaultIndexersSockAddrs = [SockAddrInet 8667 (tupleToHostAddress (127,0,0,1))]
 
 defaultIndexersNum :: (Int, Int)
 defaultIndexersNum = (2, 4)

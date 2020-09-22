@@ -2,7 +2,6 @@
 module Ergvein.Wallet.Monad.Prim
   (
     MonadBaseConstr
-  , MonadFrontConstr
   , MonadAlertPoster(..)
   , AlertType(..)
   , alertTypeToSeverity
@@ -70,20 +69,6 @@ type MonadBaseConstr t m = (MonadHold t m
   , MonadRandom (Performable m)
   , PlatformNatives
   , MonadReflexCreateTrigger t m
-  )
-
--- Context for unauthed widgets
--- Only to be used to request password and open the local storage
-type MonadFrontConstr t m = (PlatformNatives
-  , HasStoreDir (Performable m)
-  , HasStoreDir m
-  , MonadAlertPoster t m
-  , MonadBaseConstr t m
-  , MonadEgvLogger t m
-  , MonadHasSettings t m
-  , MonadLocalized t m
-  , MonadRetract t m
-  , HasVersion
   )
 
 -- ===========================================================================
