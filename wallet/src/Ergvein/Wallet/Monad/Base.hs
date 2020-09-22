@@ -1,6 +1,7 @@
 module Ergvein.Wallet.Monad.Base
   (
     MonadFrontBase(..)
+  , MonadFrontConstr
   , getAuthInfoMaybe
   , isAuthorized
   , loadingWidgetDyn
@@ -14,12 +15,31 @@ import Control.Monad.Random.Class
 import Data.Maybe (isJust)
 import Data.Text (Text)
 import Reflex
+import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Prim
+import Ergvein.Wallet.Monad.Client
+import Ergvein.Wallet.Native
+import Ergvein.Wallet.Version
+
+-- Context for unauthed widgets
+-- Only to be used to request password and open the local storage
+type MonadFrontConstr t m = (PlatformNatives
+  , HasStoreDir (Performable m)
+  , HasStoreDir m
+  , MonadAlertPoster t m
+  , MonadBaseConstr t m
+  , MonadEgvLogger t m
+  , MonadHasSettings t m
+  , MonadLocalized t m
+  , MonadRetract t m
+  , MonadIndexClient t m
+  , HasVersion
+  )
 
 class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   -- | Get loading widget trigger and fire. This is internal stuff

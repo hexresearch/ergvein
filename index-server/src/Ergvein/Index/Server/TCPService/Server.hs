@@ -165,9 +165,6 @@ runConnection (sock, addr) =  do
         request :: MessageHeader -> ExceptT Reject ServerM Message
         request MessageHeader {..} = do
           messageBytes <- liftIO $ NS.recv sock $ fromIntegral msgSize
-          liftIO $ print $ show msgType <> ": " <> show (msgSize, BS.length messageBytes)
-          liftIO $ print $ "Parse     :" <> show (eitherResult $ parse (messageParser msgType) messageBytes)
-          liftIO $ print $ "ParseOnly :" <> show (parseOnly (messageParser msgType) messageBytes)
           except $ mapLeft (\_-> Reject MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
 
         response :: Message -> ExceptT Reject ServerM [Message]

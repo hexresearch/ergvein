@@ -9,7 +9,6 @@ import Control.Concurrent.Chan (Chan)
 import Control.Lens
 import Control.Monad.Reader
 import Data.Map.Strict (Map)
-import Data.Maybe(listToMaybe, catMaybes)
 import Data.Text as T
 import Data.Time (NominalDiffTime)
 import Network.Socket
@@ -18,7 +17,6 @@ import Reflex.Dom
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import System.Directory
-import Text.Read
 
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
@@ -44,16 +42,13 @@ import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Version
 import Ergvein.Wallet.Worker.Fees
 import Ergvein.Wallet.Worker.Height
-import Ergvein.Wallet.Worker.Indexer
 import Ergvein.Wallet.Worker.Node
 import Ergvein.Wallet.Worker.PubKeysGenerator
 
-import qualified Control.Exception.Safe as Ex
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
-import qualified Network.Haskoin.Block as HS (BlockHeight)
 
 data Env t = Env {
   -- Unauth context's fields
@@ -286,24 +281,24 @@ liftAuth ma0 ma = mdo
         -- Read settings to fill other refs
         settings        <- readExternalRef settingsRef
 
-        -- MonadClient refs
-        socadrs <- parseSockAddrs (settingsActiveAddrs settings)
         authRef         <- newExternalRef auth
-        urlsArchive     <- newExternalRef . S.fromList =<< parseSockAddrs (settingsArchivedAddrs settings)
-        inactiveUrls    <- newExternalRef . S.fromList =<< parseSockAddrs (settingsDeactivatedAddrs settings)
-        actvieAddrsRef  <- newExternalRef $ S.fromList socadrs
-        indexConmapRef  <- newExternalRef $ M.empty
-        reqUrlNumRef    <- newExternalRef $ settingsReqUrlNum settings
-        actUrlNumRef    <- newExternalRef $ settingsActUrlNum settings
-        timeoutRef      <- newExternalRef $ settingsReqTimeout settings
+
+        -- MonadClient refs
+        urlsArchive     <- getArchivedAddrsRef
+        inactiveUrls    <- getInactiveAddrsRef
+        actvieAddrsRef  <- getActiveAddrsRef
+        indexConmapRef  <- getActiveConnsRef
+        reqUrlNumRef    <- getRequiredUrlNumRef
+        actUrlNumRef    <- getActiveUrlsNumRef
+        timeoutRef      <- getRequestTimeoutRef
+        iReqFire        <- getIndexReqFire
+        indexSel        <- getIndexReqSelector  -- Node request selector :: NodeReqSelector t
+        indexEF         <- getActivationEF
 
         -- Create data for Auth context
         (nReqE, nReqFire) <- newTriggerEvent
         let nodeSel = fanMap nReqE -- Node request selector :: NodeReqSelector t
 
-        (iReqE, iReqFire) <- newTriggerEvent
-        let indexSel = fanMap iReqE -- Node request selector :: NodeReqSelector t
-        indexEF <- newTriggerEvent
 
         let ps = auth ^. authInfo'storage . storage'pubStorage
 
@@ -359,7 +354,6 @@ liftAuth ma0 ma = mdo
           initFiltersHeights filtersHeights
           scanner
           bctNodeController
-          indexerNodeController socadrs
           filtersLoader
           heightAsking
           -- indexersNetworkActualizationWorker
@@ -407,21 +401,3 @@ deleteTmpFiles dir = liftIO $ do
   entries <- listDirectory $ T.unpack dir
   traverse_ removeFile $ L.filter isTmpFile entries
   where isTmpFile filePath = "atomic" `L.isPrefixOf` filePath && ".write" `L.isSuffixOf` filePath
-
-parseSockAddrs :: MonadIO m => [Text] -> m [SockAddr]
-parseSockAddrs = fmap catMaybes . traverse parseSingle
-  where
-    parseSingle t = do
-      let (h,p) = fmap (T.drop 1) $ T.span (/= ':') t
-      let p' = if p == "" then Nothing else Just $ T.unpack p
-      let mport = readMaybe $ T.unpack p
-      let val = fmap (readMaybe . T.unpack) $ T.splitOn "." h
-      case (mport, val) of
-        (Just port, (Just a):(Just b):(Just c):(Just d):[]) ->
-          pure $ Just $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
-        _ -> do
-          let hints = defaultHints { addrFlags = [AI_ALL] , addrSocketType = Stream }
-          addrs <- liftIO $ Ex.catch (
-              getAddrInfo (Just hints) (Just $ T.unpack h) p'
-            ) (\(_ :: Ex.SomeException) -> pure [])
-          pure $ fmap addrAddress $ listToMaybe addrs
