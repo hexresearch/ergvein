@@ -109,8 +109,10 @@ createPubStorage isRestored rootPrvKey cs = PubStorage rootPubKey pubStorages cs
           }
         pubStorages = M.fromList [(currency, mkStore currency) | currency <- cs]
 
-createStorage :: MonadIO m => Bool -> Seed -> (WalletName, Password) -> [Currency] -> m (Either StorageAlert WalletStorage)
-createStorage isRestored seed (login, pass) cs = do
+createStorage :: MonadIO m => Bool -> Mnemonic -> (WalletName, Password) -> [Currency] -> m (Either StorageAlert WalletStorage)
+createStorage isRestored mnemonic (login, pass) cs = case mnemonicToSeed "" mnemonic of
+   Left err -> pure $ Left $ SAMnemonicFail $ showt err
+   Right seed -> do
     let rootPrvKey = EgvRootXPrvKey $ makeXPrvKey seed
         prvStorage = createPrvStorage mnemonic rootPrvKey
         pubStorage = createPubStorage isRestored rootPrvKey cs

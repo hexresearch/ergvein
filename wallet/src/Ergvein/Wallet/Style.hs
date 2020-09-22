@@ -104,7 +104,7 @@ frontendCss r = do
   selectCss
   sendPageCss
   settingsCss
-  seedExportCss
+  mnemonicExportCss
   sharePageCss
   validateCss
   wrapperCss
@@ -428,9 +428,9 @@ settingsCss = do
   ".initial-options" ? do
     margin (rem 0) auto (rem 0) auto
 
-seedExportCss :: Css
-seedExportCss = do
-  ".seed-export-seed-text" ? do
+mnemonicExportCss :: Css
+mnemonicExportCss = do
+  ".mnemonic-export-text" ? do
     wordBreak breakAll
 
 validateCss :: Css

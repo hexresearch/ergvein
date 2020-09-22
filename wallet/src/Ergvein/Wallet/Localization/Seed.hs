@@ -15,10 +15,9 @@ data SeedPageStrings =
   | SPSVerifyTitle
   | SPSSelectWord Int
   | SPSRestoreFromMnemonic
-  | SPSRestoreFromSeed
-  | SPSEnterSeed
-  | SPSScanSeed
-  | SPSSeedDecodeError
+  | SPSEnterMnemonic
+  | SPSScanQR
+  | SPSMnemonicDecodeError
   | SPSReset
   | SPSEnterWord Int
   | SPSWaiting
@@ -40,10 +39,9 @@ instance LocalizedPrint SeedPageStrings where
       SPSVerifyTitle         -> "Double check the mnemonic phrase"
       SPSSelectWord n        -> "Select the " <> showt n <> numSuffix n <> " word"
       SPSRestoreFromMnemonic -> "Restoring wallet from mnemonic phrase"
-      SPSRestoreFromSeed     -> "Restoring wallet from seed"
-      SPSEnterSeed           -> "Enter seed"
-      SPSScanSeed            -> "Scan QR code"
-      SPSSeedDecodeError     -> "Failed to decode the seed"
+      SPSEnterMnemonic       -> "Enter mnemonic phrase"
+      SPSScanQR              -> "Scan QR code"
+      SPSMnemonicDecodeError -> "Failed to decode mnemonic"
       SPSReset               -> "Reset and start again"
       SPSEnterWord n         -> "Enter the " <> showt n <> numSuffix n <> " word"
       SPSWaiting             -> "Waiting for input..."
@@ -55,10 +53,9 @@ instance LocalizedPrint SeedPageStrings where
       SPSVerifyTitle         -> "Перепроверьте мнемоническую фразу"
       SPSSelectWord n        -> "Выберите " <> showt n <> "-е слово"
       SPSRestoreFromMnemonic -> "Восстановление кошелька из мнемонической фразы"
-      SPSRestoreFromSeed     -> "Восстановление кошелька из seed"
-      SPSEnterSeed           -> "Введите seed"
-      SPSScanSeed            -> "Cканировать QR-код"
-      SPSSeedDecodeError     -> "Не удалось декодировать seed"
+      SPSEnterMnemonic       -> "Введите мнемоническую фразу"
+      SPSScanQR              -> "Cканировать QR-код"
+      SPSMnemonicDecodeError -> "Не удалось декодировать мнемоническую фразу"
       SPSReset               -> "Сбросить и начать заново"
       SPSEnterWord n         -> "Введите " <> showt n <> "-е слово"
       SPSWaiting             -> "Ожидаю ввода..."

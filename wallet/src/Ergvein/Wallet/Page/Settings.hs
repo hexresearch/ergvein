@@ -30,7 +30,7 @@ import Ergvein.Wallet.Monad.Auth
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Settings.Network
-import Ergvein.Wallet.Page.Settings.SeedExport
+import Ergvein.Wallet.Page.Settings.MnemonicExport
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage
 import Ergvein.Wallet.Storage.Keys
@@ -47,7 +47,7 @@ data SubPageSettings
   | GoUnits
   | GoNetwork
   | GoPortfolio
-  | GoSeedExport Seed
+  | GoMnemonicExport Mnemonic
 
 -- TODO: uncomment commented lines when ERGO is ready
 settingsPage :: MonadFront t m => m ()
@@ -55,31 +55,31 @@ settingsPage = do
   title <- localized STPSTitle
   wrapper True title (Just $ pure settingsPage) $ do
     divClass "initial-options grid1" $ do
-      goLangE       <- fmap (GoLanguage   <$) $ outlineButton STPSButLanguage
-      -- goCurrE       <- fmap (GoCurrencies <$) $ outlineButton STPSButActiveCurrs
-      goNetE        <- fmap (GoNetwork    <$) $ outlineButton STPSButNetwork
-      goUnitsE      <- fmap (GoUnits      <$) $ outlineButton STPSButUnits
-      goPortfolioE  <- fmap (GoPortfolio  <$) $ outlineButton STPSButPortfolio
-      seedExportBtnE <- outlineButton STPSButSeedExport
-      goSeedExportE <- withWallet $
-        ffor seedExportBtnE $ \_ prvStorage -> do
-          pure $ GoSeedExport $ _prvStorage'seed prvStorage
+      goLangE            <- fmap (GoLanguage   <$) $ outlineButton STPSButLanguage
+      -- goCurrE            <- fmap (GoCurrencies <$) $ outlineButton STPSButActiveCurrs
+      goNetE             <- fmap (GoNetwork    <$) $ outlineButton STPSButNetwork
+      goUnitsE           <- fmap (GoUnits      <$) $ outlineButton STPSButUnits
+      goPortfolioE       <- fmap (GoPortfolio  <$) $ outlineButton STPSButPortfolio
+      mnemonicExportBtnE <- outlineButton STPSButMnemonicExport
+      goMnemonicExportE <- withWallet $
+        ffor mnemonicExportBtnE $ \_ prvStorage -> do
+          pure $ GoMnemonicExport $ _prvStorage'mnemonic prvStorage
       let goE = leftmost [
               goLangE
             -- , goCurrE
             , goNetE
             , goUnitsE
             , goPortfolioE
-            , goSeedExportE
+            , goMnemonicExportE
             ]
       void $ nextWidget $ ffor goE $ \spg -> Retractable {
           retractableNext = case spg of
-            GoLanguage         -> languagePage
-            -- GoCurrencies      -> currenciesPage
-            GoNetwork         -> networkSettingsPage
-            GoUnits           -> unitsPage
-            GoPortfolio       -> portfolioPage
-            GoSeedExport seed -> seedExportPage seed
+            GoLanguage                -> languagePage
+            -- GoCurrencies              -> currenciesPage
+            GoNetwork                 -> networkSettingsPage
+            GoUnits                   -> unitsPage
+            GoPortfolio               -> portfolioPage
+            GoMnemonicExport mnemonic -> mnemonicExportPage mnemonic
         , retractablePrev = Just $ pure settingsPage
         }
 

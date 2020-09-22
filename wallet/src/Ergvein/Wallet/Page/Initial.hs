@@ -24,7 +24,7 @@ import qualified Data.Map.Strict as M
 
 data GoPage = GoSeed | GoRestore
 
-data GoRestoreMethodPage = GoRestoreMnemonic | GoRestoreSeed
+data GoRestoreMethodPage = GoRestoreMnemonic
 
 initialPage :: MonadFrontBase t m => m ()
 initialPage = do
@@ -53,16 +53,10 @@ selectRestoreMethodPage = do
   wrapperSimple True $ do
     h4 $ localizedText IPSChooseRestorationMethod
     divClass "initial-options grid1" $ do
-      goRestoreMnemonicE <- fmap (GoRestoreMnemonic <$) $ outlineButton IPSRestoreFromMnemonic
-      goRestoreSeedE     <- fmap (GoRestoreSeed     <$) $ outlineButton IPSRestoreFromSeed
-      let goE = leftmost [
-              goRestoreMnemonicE
-            , goRestoreSeedE
-            ]
-      void $ nextWidget $ ffor goE $ \page -> Retractable {
+      goRestoreMnemonicE  <- fmap (GoRestoreMnemonic  <$) $ outlineButton IPSRestoreFromMnemonic
+      void $ nextWidget $ ffor goRestoreMnemonicE $ \page -> Retractable {
           retractableNext = case page of
             GoRestoreMnemonic -> restoreFromMnemonicPage
-            GoRestoreSeed     -> restoreFromSeedPage
         , retractablePrev = Just $ pure selectRestoreMethodPage
         }
 
