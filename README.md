@@ -64,7 +64,7 @@ in {
   ];
   services.ergvein = {
     enable = true;
-    externalAddress = "127.0.0.1:8667"; # here place your ip
+    externalAddress = externalAddress = { host = "127.0.0.1"; port = 8667; }; # here place your ip
   };
   deployment.keys = {
     btcpassword.text = "verysecretpassword";
