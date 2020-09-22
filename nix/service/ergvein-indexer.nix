@@ -5,7 +5,7 @@ let
   # the values of the options set for the service by the user of the service
   cfg = config.services.ergvein-indexer;
 
-  makePeerAddress = v: '' { peerIP: "${v.host}", peerPort: ${toString v.port} } '';
+  makePeerAddress = v: '' { peerIP: "${v.host}", peerPort: "${toString v.port}" } '';
   addressType = import ./address-type.nix { inherit lib; };
 in {
   ##### interface. here we define the options that users of our service can specify
