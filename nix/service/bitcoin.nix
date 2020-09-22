@@ -32,7 +32,7 @@ in {
       };
       nodeUser = mkOption {
         type = types.str;
-        default = "uniquebitcoinuser";
+        default = "bitcoin";
         description = ''
           Which name of RPC user to use.
         '';
@@ -105,14 +105,14 @@ in {
       };
       passwordFile = mkOption {
         type = types.str;
-        default = "/run/keys/rpcpassword";
+        default = "/run/keys/btcpassword";
         description = ''
           Location of file with password for RPC.
         '';
       };
       passwordFileService = mkOption {
         type = types.str;
-        default = "rpcpassword-key.service";
+        default = "btcpassword-key.service";
         description = ''
           Service that indicates that passwordFile is ready.
         '';
