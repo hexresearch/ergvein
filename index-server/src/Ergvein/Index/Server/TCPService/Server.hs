@@ -51,24 +51,26 @@ runTcpSrv = create $ logOnException "runTcpSrv" . tcpSrv
 
 tcpSrv :: Thread -> ServerM ()
 tcpSrv thread = do
-  port <- show . cfgServerTcpPort <$> serverConfig
+  cfg <- serverConfig
+  let port = show . cfgServerTcpPort $ cfg
+      host = cfgServerHostname cfg
   unlift <- askUnliftIO
   liftIO $ withSocketsDo $ do
-    addr <- resolve port
+    addr <- resolve port host
     sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
     bind sock (addrAddress addr)
     listen sock 5
     unliftIO unlift $ mainLoop thread sock
   where
     numberOfQueuedConnections = 5
-    resolve port = do
+    resolve port host = do
       let hints = defaultHints {
               addrFlags = [AI_PASSIVE]
             , addrSocketType = Stream
             , addrFamily = AF_INET
             , addrProtocol = 0
             }
-      addr:_ <- getAddrInfo (Just hints) Nothing (Just port)
+      addr:_ <- getAddrInfo (Just hints) (Just host) (Just port)
       pure addr
 
 mainLoop :: Thread -> Socket -> ServerM ()

@@ -23,6 +23,7 @@ instance FromJSON CfgPeer where
 data Config = Config
   { cfgServerPort               :: !Int
   , cfgServerTcpPort            :: !Int
+  , cfgServerHostname           :: !String
   , cfgFiltersDbPath            :: !String
   , cfgIndexerDbPath            :: !String
   , cfgBlockchainScanDelay      :: !Int
@@ -50,18 +51,19 @@ loadConfig path = liftIO $ loadYamlSettings [path] [] useEnv
 
 instance FromJSON Config where
   parseJSON = withObject "Config" $ \o -> do
-    cfgServerPort               <- o .: "serverPort"
-    cfgServerTcpPort            <- o .: "serverTcpPort"
-    cfgFiltersDbPath            <- o .:? "filtersDbPath" .!= "./ergveinDb"
-    cfgIndexerDbPath            <- o .:? "indexerDbPath" .!= "./indexerDb"
-    cfgBTCNodeIsTestnet         <- o .: "BTCNodeIsTestnet"
-    cfgBTCNodeHost              <- o .: "BTCNodeHost"
+    cfgServerPort               <- o .:? "serverPort"       .!= 8085
+    cfgServerTcpPort            <- o .:? "serverTcpPort"    .!= 8667
+    cfgServerHostname           <- o .:? "serverHostname"   .!= "0.0.0.0"
+    cfgFiltersDbPath            <- o .:? "filtersDbPath"    .!= "./ergveinDb"
+    cfgIndexerDbPath            <- o .:? "indexerDbPath"    .!= "./indexerDb"
+    cfgBTCNodeIsTestnet         <- o .:? "BTCNodeIsTestnet" .!= False
+    cfgBTCNodeHost              <- o .:? "BTCNodeHost"      .!= "localhost"
     cfgBTCNodePort              <- o .: "BTCNodePort"
     cfgBTCNodeUser              <- o .: "BTCNodeUser"
     cfgBTCNodePassword          <- o .: "BTCNodePassword"
-    cfgBTCNodeTCPHost           <- o .: "BTCNodeTCPHost"
-    cfgBTCNodeTCPPort           <- o .: "BTCNodeTCPPort"
-    cfgERGONodeHost             <- o .: "ERGONodeHost"
+    cfgBTCNodeTCPHost           <- o .:? "BTCNodeTCPHost"   .!= "localhost"
+    cfgBTCNodeTCPPort           <- o .:? "BTCNodeTCPPort"   .!= (if cfgBTCNodeIsTestnet then 18333 else 8333)
+    cfgERGONodeHost             <- o .:? "ERGONodeHost"     .!= "localhost"
     cfgERGONodePort             <- o .: "ERGONodePort"
     cfgOwnPeerAddress           <- o .:? "ownPeerAddress"
     cfgKnownPeers               <- o .:? "knownPeers"               .!= (filterOwnAddressFromDefault cfgOwnPeerAddress)
