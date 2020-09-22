@@ -1,1 +1,2 @@
-* Fix issues with the TCP protocol for indexers
+* Allow indexer setup before restore (#654)
+* Small fixes for indexer server
