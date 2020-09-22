@@ -1,1 +1,1 @@
-* Switch indexers and the wallet to TCP protocol (#492)
+* Fix issues with the TCP protocol for indexers
