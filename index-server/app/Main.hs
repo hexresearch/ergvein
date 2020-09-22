@@ -32,7 +32,7 @@ options = Options
        command "clean-known-peers" (info (cleanKnownPeers <**> helper) $ progDesc "resetting peers")
   ) <*> flag False True (long "no-drop-filters" <> help "Do not drop Filters db when version is changed" )
     <*> flag False True (long "no-drop-indexer" <> help "Do not drop Indexer's db when version is changed" )
-    <*> flag True False (long "tcp-node" <> help "Use TCP connection to the node instead of RPC" )
+    <*> flag False True (long "tcp-node" <> help "Use TCP connection to the node instead of RPC" )
     <*> flag False True (long "only-scan" <> help "Start only BC-scanning threads" )
   where
     cleanKnownPeers = CleanKnownPeers
