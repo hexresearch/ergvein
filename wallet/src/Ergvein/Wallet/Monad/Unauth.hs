@@ -6,36 +6,29 @@ module Ergvein.Wallet.Monad.Unauth
   ) where
 
 import Control.Concurrent.Chan
-import Control.Monad.Random.Class
 import Control.Monad.Reader
-import Data.Default
 import Data.IORef
+import Data.Map.Strict (Map)
 import Data.Text (Text)
-import Data.Time(NominalDiffTime, getCurrentTime, diffUTCTime)
-import Ergvein.Index.Client
-import Ergvein.Types.Currency
+import Data.Time (NominalDiffTime)
+import Network.Socket (SockAddr)
+import Reflex.Dom.Retractable
+import Reflex.ExternalRef
+
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Currencies
-import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Front
-import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Util
-import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Version
-import Network.Connection
-import Network.HTTP.Client hiding (Proxy)
-import Network.TLS
-import Network.TLS.Extra.Cipher
-import Reflex.Dom.Retractable
-import Reflex.ExternalRef
-import Servant.Client(BaseUrl)
-import Ergvein.Wallet.Client
+import Ergvein.Wallet.Worker.Indexer
+
+import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 
 data UnauthEnv t = UnauthEnv {
   unauth'settings        :: !(ExternalRef t Settings)
@@ -50,6 +43,17 @@ data UnauthEnv t = UnauthEnv {
 , unauth'authRef         :: !(ExternalRef t (Maybe AuthInfo))
 , unauth'passModalEF     :: !(Event t (Int, Text), (Int, Text) -> IO ())
 , unauth'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
+-- Client context
+, unauth'addrsArchive    :: !(ExternalRef t (S.Set SockAddr))
+, unauth'inactiveAddrs   :: !(ExternalRef t (S.Set SockAddr))
+, unauth'activeAddrs     :: !(ExternalRef t (S.Set SockAddr))
+, unauth'indexConmap     :: !(ExternalRef t (Map SockAddr (IndexerConnection t)))
+, unauth'reqUrlNum       :: !(ExternalRef t (Int, Int))
+, unauth'actUrlNum       :: !(ExternalRef t Int)
+, unauth'timeout         :: !(ExternalRef t NominalDiffTime)
+, unauth'indexReqSel     :: !(IndexReqSelector t)
+, unauth'indexReqFire    :: !(Map SockAddr IndexerMsg -> IO ())
+, unauth'activateIndexEF :: !(Event t [SockAddr], [SockAddr] -> IO ())
 }
 
 type UnauthM t m = ReaderT (UnauthEnv t) m
@@ -113,7 +117,29 @@ instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
   {-# INLINE newAlertEvent #-}
   {-# INLINE getAlertEventFire #-}
 
-newEnv :: (Reflex t, TriggerEvent t m, MonadIO m, PlatformNatives)
+instance MonadBaseConstr t m => MonadIndexClient t (UnauthM t m) where
+  getActiveAddrsRef = asks unauth'activeAddrs
+  {-# INLINE getActiveAddrsRef #-}
+  getArchivedAddrsRef = asks unauth'addrsArchive
+  {-# INLINE getArchivedAddrsRef #-}
+  getActiveConnsRef = asks unauth'indexConmap
+  {-# INLINE getActiveConnsRef #-}
+  getInactiveAddrsRef = asks unauth'inactiveAddrs
+  {-# INLINE getInactiveAddrsRef #-}
+  getActiveUrlsNumRef = asks unauth'actUrlNum
+  {-# INLINE getActiveUrlsNumRef #-}
+  getRequiredUrlNumRef = asks unauth'reqUrlNum
+  {-# INLINE getRequiredUrlNumRef #-}
+  getRequestTimeoutRef = asks unauth'timeout
+  {-# INLINE getRequestTimeoutRef #-}
+  getIndexReqSelector = asks unauth'indexReqSel
+  {-# INLINE getIndexReqSelector #-}
+  getIndexReqFire = asks unauth'indexReqFire
+  {-# INLINE getIndexReqFire #-}
+  getActivationEF = asks unauth'activateIndexEF
+  {-# INLINE getActivationEF #-}
+
+newEnv :: MonadBaseConstr t m
   => Settings
   -> Chan (IO ()) -- UI callbacks channel
   -> m (UnauthEnv t)
@@ -126,23 +152,47 @@ newEnv settings uiChan = do
   passModalEF <- newTriggerEvent
   authRef <- newExternalRef Nothing
   langRef <- newExternalRef $ settingsLang settings
-  re <- newRetractEnv
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
-  pure UnauthEnv {
-      unauth'settings       = settingsRef
-    , unauth'backEF         = (backE, backFire ())
-    , unauth'loading        = loadingEF
-    , unauth'langRef        = langRef
-    , unauth'storeDir       = settingsStoreDir settings
-    , unauth'alertsEF       = alertsEF
-    , unauth'logsTrigger    = logsTrigger
-    , unauth'logsNameSpaces = nameSpaces
-    , unauth'uiChan         = uiChan
-    , unauth'authRef        = authRef
-    , unauth'passModalEF    = passModalEF
-    , unauth'passSetEF      = passSetEF
-    }
+  -- MonadClient refs
+  socadrs         <- parseSockAddrs (settingsActiveAddrs settings)
+  urlsArchive     <- newExternalRef . S.fromList =<< parseSockAddrs (settingsArchivedAddrs settings)
+  inactiveUrls    <- newExternalRef . S.fromList =<< parseSockAddrs (settingsDeactivatedAddrs settings)
+  actvieAddrsRef  <- newExternalRef $ S.fromList socadrs
+  indexConmapRef  <- newExternalRef $ M.empty
+  reqUrlNumRef    <- newExternalRef $ settingsReqUrlNum settings
+  actUrlNumRef    <- newExternalRef $ settingsActUrlNum settings
+  timeoutRef      <- newExternalRef $ settingsReqTimeout settings
+  (iReqE, iReqFire) <- newTriggerEvent
+  let indexSel = fanMap iReqE -- Node request selector :: NodeReqSelector t
+  indexEF <- newTriggerEvent
+  let env = UnauthEnv {
+          unauth'settings         = settingsRef
+        , unauth'backEF           = (backE, backFire ())
+        , unauth'loading          = loadingEF
+        , unauth'langRef          = langRef
+        , unauth'storeDir         = settingsStoreDir settings
+        , unauth'alertsEF         = alertsEF
+        , unauth'logsTrigger      = logsTrigger
+        , unauth'logsNameSpaces   = nameSpaces
+        , unauth'uiChan           = uiChan
+        , unauth'authRef          = authRef
+        , unauth'passModalEF      = passModalEF
+        , unauth'passSetEF        = passSetEF
+        , unauth'addrsArchive     = urlsArchive
+        , unauth'inactiveAddrs    = inactiveUrls
+        , unauth'activeAddrs      = actvieAddrsRef
+        , unauth'indexConmap      = indexConmapRef
+        , unauth'reqUrlNum        = reqUrlNumRef
+        , unauth'actUrlNum        = actUrlNumRef
+        , unauth'timeout          = timeoutRef
+        , unauth'indexReqSel      = indexSel
+        , unauth'indexReqFire     = iReqFire
+        , unauth'activateIndexEF  = indexEF
+        }
+  flip runReaderT env $ do
+    indexerNodeController socadrs
+  pure env
 
 runEnv :: (MonadBaseConstr t m, PlatformNatives, HasVersion)
   => RunCallbacks -> UnauthEnv t -> ReaderT (UnauthEnv t) (RetractT t m) a -> m a

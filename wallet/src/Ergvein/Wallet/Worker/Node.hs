@@ -6,25 +6,21 @@ module Ergvein.Wallet.Worker.Node
 import Control.Exception
 import Control.Lens
 import Control.Monad.Random
-import Control.Monad.Reader
 import Data.IP
-import Data.List (foldl')
 import Data.Maybe (fromMaybe, catMaybes, listToMaybe)
 import Data.Time
 import Network.DNS
 import Network.Haskoin.Constants
+import Network.Haskoin.Crypto
 import Network.Haskoin.Network
 import Network.Haskoin.Transaction
 import Network.Socket
 import Reflex.ExternalRef
 
 import Ergvein.Text
-import Ergvein.Types.Address
 import Ergvein.Types.Currency
-import Ergvein.Types.Keys
 import Ergvein.Types.Storage
-import Ergvein.Types.Transaction
-import Ergvein.Types.Utxo
+import Ergvein.Types.Transaction as ETT
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
@@ -33,19 +29,14 @@ import Ergvein.Wallet.Node
 import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Node.BTC.Mempool
 import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Storage.Keys
-import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Util
 
 import qualified Data.Bits as BI
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Dependent.Map as DM
-import qualified Data.IntMap as MI
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
-import qualified Data.Vector as V
-import qualified Network.Haskoin.Transaction        as HT
 
 minNodeNum :: Int
 minNodeNum = 3
@@ -65,14 +56,13 @@ btcRefrTimeout = 30
 bctNodeController :: MonadFront t m => m ()
 bctNodeController = mdo
   btcLog "Starting"
-  sel       <- getNodeRequestSelector
+  sel       <- getNodeNodeReqSelector
   conMapD   <- getNodeConnectionsD
   nodeRef   <- getNodeConnRef
   te        <- fmap void $ tickLossyFromPostBuildTime btcRefrTimeout
 
   pubStorageD <- getPubStorageD
 
-  let keysD = ffor pubStorageD $ \ps -> getPublicKeys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "bctNodeController: not exsisting store!") . currencyPubStorage'pubKeystore
   let txidsD = ffor pubStorageD $ \ps -> S.fromList $ M.keys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "bctNodeController: not exsisting store!") . currencyPubStorage'transactions
 
   let btcLenD = ffor conMapD $ fromMaybe 0 . fmap M.size . DM.lookup BTCTag
@@ -118,8 +108,7 @@ bctNodeController = mdo
     pure $ (u <$ closeE, newTxE)
 
   _ <- requestBTCMempool =<< delay 1 =<< getPostBuild
-  btcMempoolTxInserter txE
-  pure ()
+  void $ btcMempoolTxInserter txE
   where
     switchTuple (a, b) = (switchDyn . fmap leftmost $ a, switchDyn . fmap leftmost $ b)
 
@@ -141,7 +130,7 @@ myTxSender addr msgE = do
 mkTxMessages :: [InvVector] -> S.Set TxId -> M.Map TxId EgvTx -> [NodeReqG]
 mkTxMessages invs txids txmap = foo invs [] $ \acc iv -> case invType iv of
   InvTx -> let
-    txid    = txHashToHex $ TxHash $ invHash iv
+    txid    = ETT.TxHash $ getHash256 $ invHash iv
     b       = S.member txid txids
     metx    = if b then M.lookup txid txmap else Nothing
     mbtctx  = join $ ffor metx $ \case
@@ -160,7 +149,7 @@ filterTxInvs txids (Inv invs) = case txs of
   where
     txs = catMaybes $ ffor invs $ \iv -> case invType iv of
       InvTx -> let
-        txh = txHashToHex $ TxHash $ invHash iv
+        txh = ETT.TxHash $ getHash256 $ invHash iv
         b = S.member txh txids
         in if b then Nothing else Just iv
       _ -> Nothing
@@ -188,7 +177,7 @@ handleSAStore sact acc = case sact of
 -- Returns the storage and an event which fires first minNodeNum times
 -- That event allows the controller to connect to nodes immediately once there is at least 1 connection
 mkUrlBatcher :: MonadFrontAuth t m
-  => RequestSelector t -> Event t SockAddr -> m (Dynamic t [SockAddr], Event t ())
+  => NodeReqSelector t -> Event t SockAddr -> m (Dynamic t [SockAddr], Event t ())
 mkUrlBatcher sel remE = mdo
   buildE <- getPostBuild
   remCntD <- count remE
@@ -228,7 +217,7 @@ mkUrlBatcher sel remE = mdo
   pure $ (S.toList <$> urlsD, fstRunE)
 
 -- | Connects to DNS servers, gets n urls and initializes connection to those nodes
-getRandomBTCNodesFromDNS :: MonadFrontConstr t m => RequestSelector t -> Int -> m (Event t [NodeBTC t])
+getRandomBTCNodesFromDNS :: MonadFrontConstr t m => NodeReqSelector t -> Int -> m (Event t [NodeBTC t])
 getRandomBTCNodesFromDNS sel n = do
   buildE <- getPostBuild
   let dnsUrls = getSeeds btcNetwork

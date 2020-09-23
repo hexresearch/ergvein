@@ -10,7 +10,6 @@ import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Platform
-import Reflex.Localize
 
 data SyncBehind = SyncDays !Int | SyncHours !Int
 

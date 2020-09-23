@@ -1,48 +1,58 @@
 module Ergvein.Index.Server.App where
 
-import Control.Immortal
-import Control.Monad
-import Database.LevelDB.Internal
-import Network.Wai
-import Network.Wai.Handler.Warp
-import Network.Wai.Middleware.Cors
-import Network.Wai.Middleware.Gzip
-import Servant
-import Servant.API.Generic
-import System.Posix.Signals
-import qualified Data.Text.IO as T
-import Data.Text (Text, pack)
 import Control.Concurrent.STM.TVar
+import Control.Immortal
 import Control.Monad.STM
+import System.Posix.Signals
+import Control.Monad.IO.Unlift
+import Control.Monad.Logger
+import Control.Monad.Reader
 
-import Ergvein.Index.API
-import Ergvein.Index.Server.Monad
+import Ergvein.Index.Server.BlockchainScanning.Common
+import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.DB.Schema.Indexer (RollbackSequence(..))
+import Ergvein.Index.Server.DB.Queries (storeRollbackSequence)
 import Ergvein.Index.Server.Environment
-import Ergvein.Index.Server.Server.V1
+import Ergvein.Index.Server.Monad
+import Ergvein.Index.Server.PeerDiscovery.Discovery
+import Ergvein.Index.Server.TCPService.Server
+import Ergvein.Index.Server.Utils
+import Ergvein.Text
+import Ergvein.Types.Currency
 
-indexServerApp :: ServerEnv -> Application
-indexServerApp e = gzip def . appCors $ serve indexApi $ hoistServer indexApi (runServerM e) $ toServant indexServer
-    where
-        appCors = cors $ const $ Just simpleCorsResourcePolicy 
-            { corsRequestHeaders = ["Content-Type"]
-            , corsMethods = "PUT" : simpleMethods 
-            }
+import qualified Data.Text.IO as T
 
-beforeShutdown :: ServerEnv -> [Thread] -> IO ()
-beforeShutdown env workerTreads = do
-  T.putStrLn $ pack "Server stop signal recivied..."
-  T.putStrLn $ pack "service is stopping"
+onStartup :: Bool -> ServerEnv -> ServerM ([Thread], [Thread])
+onStartup onlyScan _ = do
+  scanningWorkers <- blockchainScanning
+  if onlyScan then pure (scanningWorkers, []) else do
+    --syncWithDefaultPeers
+    feeWorkers <- feesScanning
+    -- kpaThread <- knownPeersActualization
+    tcpServerThread <- runTcpSrv
+    pure $ (scanningWorkers, tcpServerThread : feeWorkers)
+
+onShutdown :: ServerEnv -> IO ()
+onShutdown env = do
+  T.putStrLn $ showt "Server stop signal recivied..."
+  T.putStrLn $ showt "service is stopping"
   atomically $ writeTVar (envShutdownFlag env) True
 
-afterShutdown :: ServerEnv -> [Thread] -> IO ()
-afterShutdown env workerTreads = do
-  sequence_ $ wait <$> workerTreads
-  T.putStrLn $ pack "service is stopped"
+finalize :: (MonadIO m, MonadLogger m) => ServerEnv -> [Thread] -> [Thread] -> m ()
+finalize env scannerThreads workerTreads = do
+  logInfoN "Waiting for scaner threads to close"
+  liftIO $ sequence_ $ wait <$> scannerThreads
+  logInfoN "Dumping rollback data"
+  rse <- fmap RollbackSequence $ liftIO $ readTVarIO (envBtcRollback env)
+  runReaderT (storeRollbackSequence BTC rse) (envIndexerDBContext env)
+  logInfoN "Waiting for other threads to close"
+  liftIO $ sequence_ $ wait <$> workerTreads
+  logInfoN "service is stopped"
 
-appSettings :: IO () -> IO () -> Settings
-appSettings beforeShutdown afterShutdown = setGracefulShutdownTimeout gracefulShutdownTimeout 
-                           $ setInstallShutdownHandler shutdownHandler defaultSettings
-  where
-    gracefulShutdownTimeout = Just 4 --seconds
-    shutdownHandler closeSocket =
-      void $ installHandler sigTERM (Catch $ beforeShutdown >> closeSocket >> afterShutdown) Nothing
+app :: (MonadIO m, MonadLogger m) => Bool -> Config -> ServerEnv -> m ()
+app onlyScan cfg env = do
+  (scannerThreads, workerThreads) <- liftIO $ runServerMIO env $ onStartup onlyScan env
+  logInfoN $ "Server started at:" <> (showt . cfgServerPort $ cfg)
+  liftIO $ installHandler sigTERM (Catch $ onShutdown env) Nothing
+  liftIO $ cancelableDelay (envShutdownFlag env) (-1)
+  finalize env scannerThreads workerThreads

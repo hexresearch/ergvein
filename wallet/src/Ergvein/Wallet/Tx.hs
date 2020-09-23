@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Ergvein.Wallet.Tx
   (
     checkAddrTx
@@ -11,9 +12,7 @@ module Ergvein.Wallet.Tx
   ) where
 
 import Control.Monad.IO.Class
-import Data.List
 import Data.Maybe
-import Data.Word
 import Network.Haskoin.Transaction (Tx(..), TxIn(..), TxOut(..), OutPoint(..), txHash)
 
 import Ergvein.Text
@@ -21,20 +20,15 @@ import Ergvein.Types.Address
 import Ergvein.Types.Keys
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
-import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
-import Ergvein.Wallet.Node.BTC.Blocks
-import Ergvein.Wallet.Storage.Keys
 
 import qualified Data.Map.Strict                    as M
-import qualified Data.Text                          as T
 import qualified Data.Vector                        as V
 import qualified Network.Haskoin.Address            as HA
-import qualified Network.Haskoin.Block              as HB
 import qualified Network.Haskoin.Script             as HS
 import qualified Network.Haskoin.Transaction        as HT
-
+import qualified Network.Haskoin.Crypto             as HT
 
 -- | Filter txs for ones, relevant to an address
 filterTxsForAddress :: (HasTxStorage m, PlatformNatives) => EgvAddress -> [Tx] -> m [Tx]
@@ -123,7 +117,7 @@ checkTxIn addr txIn = do
   let spentOutput = HT.prevOutput txIn
       spentTxHash = HT.outPointHash spentOutput
       spentOutputIndex = HT.outPointIndex spentOutput
-  mtx <- getTxById $ HT.txHashToHex spentTxHash
+  mtx <- getTxById $ hkTxHashToEgv spentTxHash
   case mtx of
     Nothing -> pure False
     Just ErgTx{} -> pure False -- TODO: impl for Ergo

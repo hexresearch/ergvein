@@ -22,13 +22,9 @@ module Ergvein.Wallet.Node.Types
   ) where
 
 import Data.GADT.Compare
-import Data.Time(NominalDiffTime)
 import Network.Socket (SockAddr)
 
 import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
-import Reflex.Dom
-
 import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Node.ERGO
 import Ergvein.Wallet.Node.Prim

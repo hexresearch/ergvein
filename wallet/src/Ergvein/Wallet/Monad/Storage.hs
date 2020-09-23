@@ -12,7 +12,6 @@ module Ergvein.Wallet.Monad.Storage
   , getWalletsScannedHeightD
   , writeWalletsScannedHeight
   , reconfirmBtxUtxoSet
-  , insertBlockHeaders
   , getBtcUtxoD
   , insertTxsUtxoInPubKeystore
   , addOutgoingTx
@@ -22,6 +21,7 @@ module Ergvein.Wallet.Monad.Storage
   , getTxById
   , getBlockHeaderByHash
   , storeBlockHeadersE
+  , attachNewBtcHeader
   ) where
 
 import Control.Concurrent.MVar
@@ -31,15 +31,12 @@ import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.Functor (void)
 import Data.Map (Map)
-import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Network.Haskoin.Transaction (OutPoint)
+import Network.Haskoin.Block (Timestamp)
 import Reflex
 
 import Ergvein.Crypto
-import Ergvein.Text
-import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
@@ -48,7 +45,6 @@ import Ergvein.Types.Utxo
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Util
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -178,12 +174,24 @@ writeWalletsScannedHeight caller reqE = modifyPubStorage clr $ ffor reqE $ \(cur
     %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'scannedHeight .~ Just h
   where clr = caller <> ":" <> "writeWalletsScannedHeight"
 
-insertBlockHeaders :: MonadStorage t m => Text -> Currency -> Event t [HB.Block] -> m ()
-insertBlockHeaders caller cur reqE = void . modifyPubStorage clr $ ffor reqE $ \blocks ps -> case blocks of
-  [] -> Nothing
-  _ -> let blkmap = M.fromList $ (\blk -> let bhead = HB.blockHeader blk in (HB.headerHash bhead, bhead)) <$> blocks
-    in Just $ ps & pubStorage'currencyPubStorages . at cur %~ fmap (currencyPubStorage'headers %~ M.union blkmap)
-  where clr = caller <> ":" <> "insertBlockHeaders"
+attachNewBtcHeader :: MonadStorage t m => Text -> Event t (HB.BlockHeight, Timestamp, HB.BlockHash) -> m (Event t ())
+attachNewBtcHeader caller reqE = modifyPubStorage clr $ ffor reqE $ \(he, ts, ha) ps -> let
+  heha = (he, ha)
+  mvec = join $ ps ^. pubStorage'currencyPubStorages . at BTC
+    & fmap (consifNEq heha . snd . _currencyPubStorage'headerSeq)
+  mseq = ffor mvec $ \v -> (ts, ) $ if V.length v > 8 then V.init v else v
+  in ffor mseq $ \s -> ps & pubStorage'currencyPubStorages . at BTC
+    %~ \mcps -> ffor mcps $ \cps -> cps
+      & currencyPubStorage'headerSeq .~ s
+      & currencyPubStorage'height .~ Just (fromIntegral he)
+  where
+    clr = caller <> ":" <> "attachNewBtcHeader"
+    consifNEq (he, ha) vs = if V.null vs
+      then Just $ V.singleton (he, ha)
+      else let (vhe, _) = V.head vs in
+        if vhe >= he
+          then Nothing
+          else Just $ V.cons (he, ha) vs
 
 getBtcUtxoD :: MonadStorage t m => m (Dynamic t BtcUtxoSet)
 getBtcUtxoD = do
@@ -223,7 +231,7 @@ getBtcBlockHashByTxHash bth = do
   ps <- askPubStorage
   pure $ join $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "getBtcBlockHashByTxHash: not exsisting store!")
     . currencyPubStorage'transactions . at th & fmap getEgvTxMeta & fmap etxMetaHash . join
-  where th = HT.txHashToHex bth
+  where th = hkTxHashToEgv bth
 
 getTxStorage :: HasPubStorage m => Currency -> m (M.Map TxId EgvTx)
 getTxStorage cur = do

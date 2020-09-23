@@ -1,9 +1,9 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Wallet.Localization.Settings(
     SettingsPageStrings(..)
   , NetSetupStrings(..)
   ) where
 
-import Data.Text
 import Data.Time
 import Ergvein.Text
 import Ergvein.Types.Currency

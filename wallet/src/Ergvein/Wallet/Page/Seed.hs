@@ -26,7 +26,6 @@ import Ergvein.Wallet.Localization.Seed
 import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Log.Event
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Page.Canvas
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Platform
@@ -46,20 +45,18 @@ mnemonicPage = go Nothing
   where
     go mnemonic = wrapperSimple True $ do
       (e, mnemonicD) <- mnemonicWidget mnemonic
-      nextWidget $ ffor e $ \mn -> Retractable {
+      void $ nextWidget $ ffor e $ \mn -> Retractable {
           retractableNext = checkPage mn
         , retractablePrev = Just $ go <$> mnemonicD
         }
-      pure ()
 
 checkPage :: MonadFrontBase t m => Mnemonic -> m ()
 checkPage mnemonic = wrapperSimple True $ do
   mnemonicE <- mnemonicCheckWidget mnemonic
-  nextWidget $ ffor mnemonicE $ \mnemonic' -> Retractable {
+  void $ nextWidget $ ffor mnemonicE $ \mnemonic' -> Retractable {
       retractableNext = selectCurrenciesPage WalletGenerated mnemonic'
     , retractablePrev = Just $ pure $ checkPage mnemonic'
     }
-  pure ()
 
 generateMnemonic :: MonadFrontBase t m => m (Maybe Mnemonic)
 generateMnemonic = do
@@ -74,7 +71,7 @@ mnemonicWidget mnemonic = do
     Nothing -> pure (never, pure Nothing)
     Just phrase -> mdo
       divClass "mnemonic-title" $ h4 $ localizedText SPSTitle
-      divClass "mnemonic-colony" $ adaptive3 (smallMnemonic phrase) (mediumMnemonic phrase) (desktopMnemonic phrase)
+      void $ divClass "mnemonic-colony" $ adaptive3 (smallMnemonic phrase) (mediumMnemonic phrase) (desktopMnemonic phrase)
       divClass "mnemonic-warn" $ h4 $ localizedText SPSWarn
       btnE <- outlineButton SPSWrote
       pure (phrase <$ btnE, pure $ Just phrase)
@@ -86,7 +83,7 @@ mnemonicWidget mnemonic = do
       elClass "span" "mnemonic-word-ix" $ text $ showt i
       text w
 
-    smallMnemonic phrase = flip traverse_ (zip [1..] . T.words $ phrase) $ uncurry (wordColumn "mnemonic-word-mb")
+    smallMnemonic phrase = flip traverse_ (zip [(1 :: Int)..] . T.words $ phrase) $ uncurry (wordColumn "mnemonic-word-mb")
     mediumMnemonic phrase =  void $ colonize 2 (prepareMnemonic 2 phrase) $ uncurry (wordColumn "mnemonic-word-md")
     desktopMnemonic phrase = void $ colonize 4 (prepareMnemonic 4 phrase) $ uncurry (wordColumn "mnemonic-word-dx")
 
@@ -208,8 +205,7 @@ seedRestoreWidget = mdo
     Just ws -> divClass "restore-seed-buttons-wrapper" $ fmap leftmost $ flip traverse ws $ \w -> do
       btnClickE <- buttonClass (pure "button button-outline") w
       pure $ w <$ btnClickE
-  let emptyStr :: Text = ""
-      enterPressedE = keypress Enter txtInput
+  let enterPressedE = keypress Enter txtInput
       inputD = _inputElement_value txtInput
       enterE = flip push enterPressedE $ const $ do
         sugs <- sampleDyn suggestionsD
@@ -224,8 +220,3 @@ seedRestoreWidget = mdo
   where
     waiting :: m (Event t Text)
     waiting = (h4 $ localizedText SPSWaiting) >> pure never
-
-validateSeedWord :: Text -> Either [SeedPageStrings] Text
-validateSeedWord word = if wordTrieElem $ T.toLower word
-  then Right word
-  else Left [SPSInvalidWord]

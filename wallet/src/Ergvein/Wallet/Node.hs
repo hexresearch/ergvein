@@ -21,11 +21,9 @@ import Control.Monad.IO.Class
 import Control.Monad.Random
 import Control.Monad.Reader
 import Data.Foldable
-import Data.Functor.Misc
 import Data.Maybe
 import Data.Time.Clock.System
 import Network.Socket (SockAddr)
-import Servant.Client(BaseUrl)
 
 import Ergvein.Types
 import Ergvein.Wallet.Monad.Async
@@ -36,13 +34,11 @@ import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Node.ERGO
 import Ergvein.Wallet.Node.Prim
 import Ergvein.Wallet.Node.Types
-import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Util
 
 import qualified Data.Dependent.Map as DM
 import qualified Data.Map.Strict as M
-import qualified Data.Set as S
 import qualified Data.Vector as V
 import qualified Network.Haskoin.Transaction as HT
 
@@ -62,11 +58,11 @@ getNodeConn :: CurrencyTag t a -> SockAddr -> ConnMap t -> Maybe a
 getNodeConn t url cm = M.lookup url =<< DM.lookup t cm
 
 removeNodeConn :: forall t a . CurrencyTag t a -> SockAddr -> ConnMap t -> ConnMap t
-removeNodeConn tag url cm = DM.adjust (M.delete url) tag cm
+removeNodeConn curtag url cm = DM.adjust (M.delete url) curtag cm
 
 initNode :: MonadBaseConstr t m
   => Currency
-  -> RequestSelector t
+  -> NodeReqSelector t
   -> SockAddr -> m (NodeConn t)
 initNode cur sel url = case cur of
   BTC   -> fmap NodeConnBTC $ initBTCNode True url  reqE
@@ -75,7 +71,7 @@ initNode cur sel url = case cur of
     reqE = extractReq sel cur url
 
 initializeNodes :: MonadBaseConstr t m
-  => RequestSelector t
+  => NodeReqSelector t
   -> M.Map Currency [SockAddr] -> m (ConnMap t)
 initializeNodes sel urlmap = do
   let ks = M.keys urlmap
@@ -85,7 +81,7 @@ initializeNodes sel urlmap = do
 reinitNodes :: forall t m . MonadBaseConstr t m
   => M.Map Currency [SockAddr]  -- Map with all urls
   -> M.Map Currency Bool        -- True -- initialize or keep existing conns. False -- remove conns
-  -> RequestSelector t          -- Request selector
+  -> NodeReqSelector t          -- Request selector
   -> ConnMap t                  -- Inital map of connections
   -> m (ConnMap t)
 reinitNodes urls cs sel conMap = foldlM updCurr conMap $ M.toList cs
@@ -170,4 +166,4 @@ checkAddrTx' vec tx = do
     pure $ if b then Just (kb, M.singleton th (BtcTx tx meta)) else Nothing
   pure $ V.mapMaybe id vec'
   where
-    th = HT.txHashToHex $ HT.txHash tx
+    th = hkTxHashToEgv $ HT.txHash tx

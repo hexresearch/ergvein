@@ -15,59 +15,37 @@ module Ergvein.Wallet.Page.Transaction(
   , TransOutputType(..)
   ) where
 
-import Control.Lens.Combinators
 import Control.Monad.Reader
+import Data.Map.Strict as Map
+import Data.Maybe (fromMaybe, catMaybes)
+import Data.Text as T
+import Data.Time
+import Data.Word
+import Network.Haskoin.Address
 
 import Ergvein.Filters.Btc
 import Ergvein.Text
 import Ergvein.Types.Address
-import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
-import Ergvein.Types.Utxo
-import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.History
-import Ergvein.Wallet.Localization.Util
-import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
-import Ergvein.Wallet.Navbar
-import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.TimeZone
 import Ergvein.Wallet.Tx
-
-import Ergvein.Wallet.Widget.Balance
-import Ergvein.Wallet.Worker.Node
 import Ergvein.Wallet.Wrapper
 
-import Data.Map.Strict as Map
-import qualified Data.Set as S
 import qualified Data.List as L
 import qualified Data.Vector as V
-import Network.Haskoin.Address
-import Data.Maybe (fromMaybe, isJust, catMaybes)
-import Data.Time
-import Data.Time.Clock.POSIX
-import Data.Time.Format
-import Data.Text as T
-import Data.Serialize
-import Data.Word
-import Safe
-
 import qualified Network.Haskoin.Block              as HK
-import qualified Network.Haskoin.Constants          as HK
-import qualified Network.Haskoin.Script             as HK
 import qualified Network.Haskoin.Transaction        as HK
-import qualified Network.Haskoin.Util               as HK
 
 transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
 transactionInfoPage cur tr@TransactionView{..} = do
@@ -88,7 +66,7 @@ transactionInfoPage cur tr@TransactionView{..} = do
     case txInOut of
       TransRefill -> pure ()
       TransWithdraw -> infoPageElementEl HistoryTIInputs $ divClass "tx-info-page-outputs-inputs" $ do
-        flip traverse (txInputs txInfoView) $ \(oAddress, oValue) -> do
+        void $ flip traverse (txInputs txInfoView) $ \(oAddress, oValue) -> do
           divClass "pr-1" $ localizedText HistoryTIOutputsValue
           divClass "" $ text $ showMoneyUnit oValue moneyUnits <> " " <> symbolUnit cur moneyUnits
           divClass "pr-1 mb-1" $ localizedText HistoryTIOutputsAddress
@@ -97,7 +75,7 @@ transactionInfoPage cur tr@TransactionView{..} = do
             Just address -> text address
         pure ()
     infoPageElementEl HistoryTIOutputs $ divClass "tx-info-page-outputs-inputs" $ do
-      flip traverse (txOutputs txInfoView) $ \(oAddress, oValue, oStatus, isOur) -> do
+      void $ flip traverse (txOutputs txInfoView) $ \(oAddress, oValue, oStatus, isOur) -> do
         divClass (oBld "pr-1" isOur) $ localizedText HistoryTIOutputsValue
         divClass (oBld "" isOur) $ text $ showMoneyUnit oValue moneyUnits <> " " <> symbolUnit cur moneyUnits
         if isOur
@@ -114,7 +92,7 @@ transactionInfoPage cur tr@TransactionView{..} = do
 
 
 showTime :: MonadFront t m => TransactionView -> m ()
-showTime tr@TransactionView{..} = case txDate of
+showTime TransactionView{..} = case txDate of
   TxTime Nothing -> do
     localizedText $ if txStatus == TransUncofirmedParents then HistoryUnconfirmedParents else HistoryUnconfirmed
   TxTime (Just date) -> do
@@ -126,19 +104,14 @@ infoPageElement hps txt = divClass "tx-info-page-element" $ do
   par $ text txt
 
 infoPageElementEl :: MonadFront t m => HistoryPageStrings -> m () -> m ()
-infoPageElementEl hps el = divClass "tx-info-page-element" $ do
+infoPageElementEl hps m = divClass "tx-info-page-element" $ do
   par $ bold $ localizedText hps
-  el
-
-infoPageElementExp :: MonadFront t m => HistoryPageStrings -> Text -> m ()
-infoPageElementExp hps txt = divClass "tx-info-page-element" $ do
-  par $ bold $ localizedText hps
-  parClass "tx-info-page-expanded" $ text $ txt
+  m
 
 infoPageElementExpEl :: MonadFront t m => HistoryPageStrings -> m () -> m ()
-infoPageElementExpEl hps el = divClass "tx-info-page-element" $ do
+infoPageElementExpEl hps m = divClass "tx-info-page-element" $ do
   par $ bold $ localizedText hps
-  parClass "tx-info-page-expanded" $ el
+  parClass "tx-info-page-expanded" m
 
 symb :: MonadFront t m => TransType -> m a -> m a
 symb txInOut ma = case txInOut of
@@ -166,6 +139,7 @@ stat :: MonadFront t m => TransStatus -> m ()
 stat txStatus = case txStatus of
   TransConfirmed -> spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" $ blank
   TransUncofirmed -> spanClass "history-page-status-icon" $ elClass "i" "fas fa-question fa-fw" $ blank
+  _ -> pure ()
 
 transactionsGetting :: MonadFront t m => Currency -> m (Dynamic t [TransactionView], Dynamic t Word64)
 transactionsGetting cur = do
@@ -194,7 +168,7 @@ transactionsGetting cur = do
       liftIO $ flip runReaderT store $ do
         let txHashes = fmap (HK.txHash . getBtcTx) txs
             txsRefList = fmap (calcRefill (fmap getBtcAddr allbtcAdrS)) txs
-            parentTxsIds = (fmap . fmap) (HK.txHashToHex . HK.outPointHash . HK.prevOutput) (fmap (HK.txIn . getBtcTx) txs)
+            parentTxsIds = (fmap . fmap) (hkTxHashToEgv . HK.outPointHash . HK.prevOutput) (fmap (HK.txIn . getBtcTx) txs)
         blh <- traverse getBtcBlockHashByTxHash txHashes
         bl <- traverse (maybe (pure Nothing) getBlockHeaderByHash) blh
         txStore <- getTxStorage cur
@@ -206,11 +180,11 @@ transactionsGetting cur = do
                 Just tx -> maybe 0 (\x -> hght - (fromMaybe 0 x) + 1) $ (fmap etxMetaHeight $ getBtcTxMeta tx)
               txParentsConfirmations = (fmap . fmap) getTxConfirmations parentTxs
               hasUnconfirmedParents = fmap (L.any (== 0)) txParentsConfirmations
-          let rawTxsL = L.filter (\(a,b) -> a/=Nothing) $ L.zip bInOut $ txListRaw bl blh txs txsRefList hasUnconfirmedParents parentTxs
+          let rawTxsL = L.filter (\(a,_) -> a/=Nothing) $ L.zip bInOut $ txListRaw bl blh txs txsRefList hasUnconfirmedParents parentTxs
               prepTxs = L.sortOn txDate $ (prepareTransactionView allbtcAdrS hght timeZone (maybe btcDefaultExplorerUrls id $ Map.lookup cur (settingsExplorerUrl settings)) <$> rawTxsL)
           pure $ L.reverse $ addWalletState prepTxs
 
-    filterTx ac pubS = case cur of
+    filterTx _ pubS = case cur of
       BTC  -> fmap snd $ fromMaybe [] $ fmap Map.toList $ _currencyPubStorage'transactions <$> Map.lookup cur (_pubStorage'currencyPubStorages pubS)
       ERGO -> []
 
@@ -236,6 +210,7 @@ transactionsGetting cur = do
           else pure $ Just TransRefill
 
     txListRaw (a:as) (b:bs) (c:cs) (d:ds) (e:es) (f:fs) = (TxRawInfo a b c d e f) : txListRaw as bs cs ds es fs
+    txListRaw _ _ _ _ _ _ = []
 
 addWalletState :: [TransactionView] -> [TransactionView]
 addWalletState txs = fmap setPrev $ fmap (\(prevTxCount, txView) -> (txView, calcAmount prevTxCount txs)) $ L.zip [0..] txs
@@ -295,7 +270,6 @@ prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = TransactionVi
 
     blockTime = TxTime trTime -- $ maybe Nothing (Just . secToTimestamp . HK.blockTimestamp) txMBl
     trTime = fmap ((utcToZonedTime tz) . etxMetaTime ) $ getBtcTxMeta txr
-    secToTimestamp t = utcToZonedTime tz $ posixSecondsToUTCTime $ fromIntegral t
     btcAddrs = fmap getBtcAddr addrs
     txFeeCalc = case mTT of
       Nothing -> Nothing

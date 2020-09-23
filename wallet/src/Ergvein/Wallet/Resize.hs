@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiWayIf #-}
+{-# OPTIONS_GHC -Wno-type-defaults #-}
 module Ergvein.Wallet.Resize(
     adaptive
   , adaptive3

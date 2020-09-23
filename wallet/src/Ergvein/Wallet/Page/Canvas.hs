@@ -25,9 +25,9 @@ module Ergvein.Wallet.Page.Canvas(
   , rawGetCanvasJpeg
   -- Auxiliary types
   , ClientRect(..)
-  , Square(..)
+  , Square
   , DrawCommand(..)
-  , Position(..)
+  , Position
   , TouchState(..)
   , HoverState(..)
   , PatternTry(..)
@@ -37,26 +37,17 @@ module Ergvein.Wallet.Page.Canvas(
   , createCanvas
   ) where
 
+import Data.Aeson.Types as A
+import Data.List  (find)
+import Data.List.Split
+import Data.Map.Strict   (fromList)
+import Data.Maybe
+import Language.Javascript.JSaddle hiding ((!!))
+
 import Ergvein.Text
 import Ergvein.Wallet.Monad
 
-import Reflex.Dom
-
-import           Data.Aeson.Types as A
-import           Data.List  (find)
-import           Data.List.Split
-import           Data.Maybe
-import           Data.Map.Strict   (fromList)
-import qualified Data.Text        as T
-
-import Language.Javascript.JSaddle hiding ((!!))
-
-import qualified GHCJS.DOM.Types as JS
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BSL
-
-import Control.Monad.IO.Class
-import Data.Word
+import qualified Data.Text as T
 
 type Square  = (Double, Double, Double, Double)
 type Position = (Double, Double)
@@ -91,23 +82,9 @@ createCanvas CanvasOptions{..} = do
       , ("class" , coClass)
       ]
 
-jstFilter :: (Maybe Int, a) -> Bool
-jstFilter (a,_) = case a of
-  Just _ -> True
-  Nothing -> False
-
-concatMyLists :: [(Maybe Int, Square)] -> [(Maybe Int, Square)] -> [(Maybe Int, Square)]
-concatMyLists a b = (\((mi1,f1),(mi2,f2)) -> case mi1 of
-  Just n1 -> (Just n1, f1)
-  Nothing -> case mi2 of
-    Just n2 -> (Just n2, f2)
-    Nothing -> (Nothing,f2)
-  ) <$> (zip a b)
-
 drawGridT :: Int -> Int -> [(Maybe Int, Square)] -> Text
 drawGridT cWOld cHOld r = (clearCanvasT cW cH)
                     <> beginPathT
-                  --  <> " ctx.fillStyle = \"#FF0000\";"
                     <> " ctx.fillStyle = \"#FFFFFF\";"
                     <> " ctx.fillRect(0,0," <> (showt cW) <> "," <> (showt cH) <> "); "
                     <> beginPathT
@@ -202,13 +179,12 @@ drawRndHovT w h lst = T.concat $ [(clearCanvasT w h)] <> (fmap res lred)
       then 0.98*(dw/2)
       else 0.98*(dh/2)
     lunh = fmap fst lst
-    l3 = scanl (\x y -> x+y*2*pi) tp lunh
+    l3 = scanl (\a b -> a+b*2*pi) tp lunh
     lok = zip (init l3) (tail l3)
     dw = fromIntegral w
     dh = fromIntegral h
     tp = -pi/2
-    crcl = pi*2
-    colHs c h = case h of
+    colHs c hov = case hov of
       Hovered -> "\"#000000\""
       Unhovered -> c
     colorList = ["\"#9e9e9e\"","\"#3e3e3e\"","\"#bebebe\""]
@@ -230,7 +206,7 @@ drawRoundLstT w h lst =  T.concat $ fmap res lred
     r = if (dw < dh)
       then 0.98*(dw/2)
       else 0.98*(dh/2)
-    l3 = scanl (\x y -> x+y*2*pi) tp lst
+    l3 = scanl (\a b -> a+b*2*pi) tp lst
     lok = zip (init l3) (tail l3)
     dw = fromIntegral w
     dh = fromIntegral h
@@ -238,10 +214,11 @@ drawRoundLstT w h lst =  T.concat $ fmap res lred
     crcl = pi*2
     colorList = ["\"#9e9e9e\"","\"#3e3e3e\"","\"#bebebe\""]
 
+drawRndT :: Int -> Int -> [Double] -> Text
 drawRndT w h lst = drawRoundLstT w h lst
 
 drawLineT :: Int -> Int -> Double -> Double -> Double -> Double -> (DrawCommand,(Double,Double)) -> [(Maybe Int, Square)] -> Text
-drawLineT canvasW canvasH coordX coordY fromX fromY (a,(cntX,cntY)) r = case a of
+drawLineT canvasW canvasH coordX coordY _ _ (a,(cntX,cntY)) r = case a of
   Clear ->  drawGridT canvasW canvasH r
   AddSquare -> (drawGridT canvasW canvasH r)
             <> (moveToT cntX cntY)
@@ -258,7 +235,7 @@ drawLinesT (dc, mi) z = case dc of
         (fjMi :: [Int]) = catMaybes mi
         (prepList :: [Int]) = ([head fjMi]) <> (concat (fmap (\a -> [a,a]) fjMi)) <> ([last fjMi])
         pointsList  = chunksOf 2 $ fmap (\a -> case (find (\(num,_) -> num == a ) z) of
-            Just (num, (a,b,c,d)) -> (a+c/2,b+d/2)
+            Just (_, (a',b,c,d)) -> (a'+c/2,b+d/2)
             Nothing -> (0,0) ) prepList
         drawLs :: [(Double, Double)] -> Text
         drawLs [(ax,ay),(bx,by)] = beginPathT
@@ -266,6 +243,7 @@ drawLinesT (dc, mi) z = case dc of
                                 <> (moveToT ax ay)
                                 <> (lineToT bx by)
                                 <> strokeT
+        drawLs _ = ""
   Clear -> ""
   --Save -> ""
 
@@ -301,41 +279,22 @@ instance FromJSVal ClientRect where
         A.Success b -> pure $ Just b
 
 elementPosition :: MonadJSM m => RawElement GhcjsDomSpace -> m ClientRect
-elementPosition el = liftJSM $ do
-  eval ("ergvein_elementPosition = function(a) { return a.getBoundingClientRect(); }" :: Text)
-  jsv <- liftJSM $ jsg1 ("ergvein_elementPosition" :: Text) (toJSVal el)
+elementPosition e = liftJSM $ do
+  void $ eval ("ergvein_elementPosition = function(a) { return a.getBoundingClientRect(); }" :: Text)
+  jsv <- liftJSM $ jsg1 ("ergvein_elementPosition" :: Text) (toJSVal e)
   fromJSValUnchecked jsv
 
-
-rawJSBeginPath :: MonadJSM m => RawElement GhcjsDomSpace -> m ()
-rawJSBeginPath el = liftJSM $ do
-  eval func1
-  _ <- liftJSM $ jsg1 func2 (toJSVal el)
-  pure ()
-  where
-    (func2 :: Text) = "ergvein_drawtouchline"
-    (func1 :: Text) = " ergvein_drawtouchline = function(cnv) { "
-                   <> " var ctx = cnv.getContext(\"2d\");"
-                   <> " ctx.beginPath(); "
-                   <> " ctx.lineWidth = 2; "
-                   <> " ctx.moveTo(0,0); "
-                   <> " ctx.lineTo(100,100); "
-                   <> " ctx.strokeStyle = \"#000000\"; "
-                   <> " ctx.stroke(); "
-                   <> " }"
-
 rawJSCall :: MonadJSM m => RawElement GhcjsDomSpace -> Text -> m ()
-rawJSCall el t = liftJSM $ do
-  eval func1
-  _ <- liftJSM $ jsg1 func2 (toJSVal el)
-  pure ()
+rawJSCall e t = liftJSM $ do
+  void $ eval func
+  void $ jsg1 funcName (toJSVal e)
   where
-    (func2 :: Text) = "ergvein_drawgrid"
-    (func1 :: Text) = " ergvein_drawgrid = function(cnv) { " <> " var ctx = cnv.getContext(\"2d\");" <> t <> " }"
+    (funcName :: Text) = "ergvein_drawgrid"
+    (func :: Text) = " ergvein_drawgrid = function(cnv) { " <> " var ctx = cnv.getContext(\"2d\");" <> t <> " }"
 
 rawGetCanvasJpeg :: MonadJSM m => RawElement GhcjsDomSpace -> CanvasOptions -> m (Maybe Text)
 rawGetCanvasJpeg canvEl CanvasOptions{..} = liftJSM $ do
-  eval func
+  void $ eval func
   fromJSVal =<< jsg1 funcName (toJSVal canvEl)
   where
     (funcName :: Text) = "ergvein_canvas_image_data"

@@ -1,11 +1,8 @@
 {-# LANGUAGE CPP #-}
-
 module Ergvein.Wallet.Page.Initial(
     initialPage
   ) where
 
-import Control.Monad.IO.Class
-import Data.Either (isLeft)
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
@@ -14,15 +11,19 @@ import Ergvein.Wallet.Localization.Initial
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.Password
-import Ergvein.Wallet.Page.PatternKey
+import Ergvein.Wallet.Page.Settings.Network
 import Ergvein.Wallet.Page.Seed
 import Ergvein.Wallet.Storage.AuthInfo
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Wrapper
 
+#ifdef ANDROID
+import Control.Monad.IO.Class
+import Ergvein.Wallet.Page.PatternKey
 import qualified Data.Map.Strict as M
+#endif
 
-data GoPage = GoSeed | GoRestore
+data GoPage = GoSeed | GoRestore | GoNetwork
 
 data GoRestoreMethodPage = GoRestoreMnemonic
 
@@ -38,27 +39,16 @@ noWalletsPage = wrapperSimple True $ divClass "initial-page-options" $ createRes
 
 createRestore :: MonadFrontBase t m => m ()
 createRestore = do
-  newE <- fmap (GoSeed <$) $ outlineButton IPSCreate
-  restoreE <- fmap (GoRestore <$) $ outlineButton IPSRestore
-  let goE = leftmost [newE, restoreE]
+  let items = [(GoSeed, IPSCreate), (GoRestore, IPSRestore), (GoNetwork, IPSNetwork)]
+  goE <- fmap leftmost $ flip traverse items $ \(act, lbl) ->
+    fmap (act <$) $ outlineButton lbl
   void $ nextWidget $ ffor goE $ \go -> Retractable {
       retractableNext = case go of
         GoSeed -> mnemonicPage
-        GoRestore -> selectRestoreMethodPage
+        GoRestore -> restoreFromMnemonicPage
+        GoNetwork -> networkSettingsPageUnauth
     , retractablePrev = Just $ pure initialPage
     }
-
-selectRestoreMethodPage :: MonadFrontBase t m => m ()
-selectRestoreMethodPage = do
-  wrapperSimple True $ do
-    h4 $ localizedText IPSChooseRestorationMethod
-    divClass "initial-options grid1" $ do
-      goRestoreMnemonicE  <- fmap (GoRestoreMnemonic  <$) $ outlineButton IPSRestoreFromMnemonic
-      void $ nextWidget $ ffor goRestoreMnemonicE $ \page -> Retractable {
-          retractableNext = case page of
-            GoRestoreMnemonic -> restoreFromMnemonicPage
-        , retractablePrev = Just $ pure selectRestoreMethodPage
-        }
 
 hasWalletsPage :: MonadFrontBase t m => [WalletName] -> m ()
 hasWalletsPage ss = do

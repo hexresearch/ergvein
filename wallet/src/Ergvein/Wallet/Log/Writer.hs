@@ -13,9 +13,9 @@ import Ergvein.Wallet.Native
 import qualified Data.ByteString.Lazy as BS
 
 #ifdef ANDROID
-import Ergvein.Wallet.Android.Native
+import Ergvein.Wallet.Android.Native()
 #else
-import Ergvein.Wallet.Desktop.Native
+import Ergvein.Wallet.Desktop.Native()
 #endif
 
 -- | Widget that writes down to internal storage all log entries

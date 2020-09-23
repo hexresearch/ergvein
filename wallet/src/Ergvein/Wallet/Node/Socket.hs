@@ -19,15 +19,12 @@ module Ergvein.Wallet.Node.Socket(
   , N.SockAddr
   ) where
 
-import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad.IO.Unlift
 import Control.Monad.Reader
 import Data.ByteString (ByteString)
-import Data.Default
 import Data.Maybe
 import Data.Time
-import Ergvein.Text
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Native
 import GHC.Generics

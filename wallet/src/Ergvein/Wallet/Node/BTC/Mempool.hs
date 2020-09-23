@@ -4,18 +4,13 @@ module Ergvein.Wallet.Node.BTC.Mempool
   ) where
 
 import Control.Monad.Random
-import Data.Maybe (catMaybes)
-import Data.Time
-import Network.Haskoin.Block
 import Network.Haskoin.Network
 
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Node.Types
-import Ergvein.Wallet.Util
 
 import qualified Data.Dependent.Map as DM
 import qualified Data.Map.Strict as M
-import qualified Data.List as L
 
 data MempoolAnswers = MANoNode | MAEmpty | MAAnswer Message deriving (Show, Eq)
 
@@ -24,7 +19,7 @@ requestBTCMempool :: MonadFront t m => Event t () -> m (Event t MempoolAnswers)
 requestBTCMempool reqE = mdo
   conMapD <- getNodeConnectionsD
   let goE =  attach (current conMapD) $ reqE
-  actE <- fmap switchDyn $ widgetHold (pure never) $ ffor goE $ \(cm, req) -> do
+  actE <- fmap switchDyn $ widgetHold (pure never) $ ffor goE $ \(cm, _) -> do
     buildE <- getPostBuild
     case DM.lookup BTCTag cm of
       Nothing -> pure $ MANoNode <$ buildE
