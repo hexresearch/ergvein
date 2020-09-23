@@ -126,8 +126,12 @@ instance ToJSON Settings where
    ]
 
 defaultIndexers :: [Text]
-defaultIndexers = ["139.59.142.25:8667"]
--- defaultIndexers = ["ergvein-indexermainnet1.hxr.team:8667"]
+defaultIndexers = [
+    "139.59.142.25:8667"      -- ergvein-indexermainnet1.hxr.team:8667
+  , "35.176.95.50:8667"       -- ergvein-indexermainnet2.hxr.team:8667
+  , "84.201.147.96:8667"      -- ergvein-indexermainnet3.hxr.team:8667
+  , "188.244.4.78:8667"       -- OwO
+  ]
 
 defaultIndexersNum :: (Int, Int)
 defaultIndexersNum = (2, 4)

@@ -1,2 +1,3 @@
 * Allow indexer setup before restore (#654)
 * Small fixes for indexer server
+* Add more default indexers
