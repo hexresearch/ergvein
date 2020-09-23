@@ -25,6 +25,7 @@ import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
@@ -54,7 +55,7 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
         let n = 500
         logWrite $ "Getting next filters ..." <> showt n
         fse <- getFilters BTC $ (fh+1, n) <$ buildE
-        performEvent_ $ ffor fse $ const $ logWrite "Got filters!"
+        performEvent_ $ ffor fse $ \fs -> logWrite $ "Got " <> showt (length fs) <> " filters!"
         we <- performFork $ ffor fse $ \fs ->
           insertMultipleFilters BTC $ zipWith (\h (bh,f) -> (h,bh,f)) [fh+1..] fs
         goE <- fmap (go <$) $ delay 1 we
@@ -85,10 +86,17 @@ getFilters :: MonadFront t m => Currency -> Event t (BlockHeight, Int) -> m (Eve
 getFilters cur e = do
   respE <- requestRandomIndexer $ ffor e $ \(h, n) ->
     MFiltersRequest $ FilterRequest curcode (fromIntegral h) (fromIntegral n)
-  pure $ fforMaybe respE $ \case
-    MFiltersResponse (FilterResponse{..}) -> if filterResponseCurrency /= curcode
-      then Nothing
-      else Just $ V.toList $ ffor filterResponseFilters $ \(BlockFilter bid filt) -> (bid, filt)
-    _ -> Nothing
+  let respE' = fforMaybe respE $ \case
+        (addr, MFiltersResponse (FilterResponse{..})) -> if filterResponseCurrency /= curcode
+          then Nothing
+          else Just $ (addr,) $ V.toList $ ffor filterResponseFilters $ \(BlockFilter bid filt) -> (bid, filt)
+        _ -> Nothing
+  warnDesynced respE'
+  pure $ snd <$> respE'
   where
     curcode = currencyToCurrencyCode cur
+
+warnDesynced :: MonadFront t m => Event t (SockAddr, [a]) -> m ()
+warnDesynced e = showWarnMsg $ fforMaybe e $ \(addr, rs) -> if null rs
+  then Just $ "Indexer " <> showt addr <> " possibly out of sync!"
+  else Nothing

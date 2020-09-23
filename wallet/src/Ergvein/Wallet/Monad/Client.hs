@@ -16,6 +16,8 @@ module Ergvein.Wallet.Monad.Client (
   , indexerConnPingerWidget
   , indexersAverageLatencyWidget
   , indexersAverageLatNumWidget
+  -- * Reexports
+  , SockAddr
   ) where
 
 import Control.Monad
@@ -197,19 +199,28 @@ broadcastIndexerMessage reqE = do
     cm <- readExternalRef connsRef
     liftIO $ fire $ req <$ cm
 
-requestRandomIndexer :: MonadIndexClient t m => Event t Message -> m (Event t Message)
+randomKeyValue :: (MonadIO m, Ord k) => M.Map k v -> m (Maybe (k, v))
+randomKeyValue m
+  | M.null m = pure Nothing
+  | otherwise = do
+    let keys = M.keys m
+    i <- liftIO $ randomRIO (0, length keys - 1)
+    let key = keys !! i
+    pure $ (key,) <$> M.lookup key m
+
+requestRandomIndexer :: MonadIndexClient t m => Event t Message -> m (Event t (SockAddr, Message))
 requestRandomIndexer reqE = mdo
-  connsD  <- fmap (fmap M.elems) $ externalRefDynamic =<< getActiveConnsRef
+  connsD  <- externalRefDynamic =<< getActiveConnsRef
   let actE = leftmost [Just <$> reqE, Nothing <$ sentE]
   sentE <- fmap switchDyn $ widgetHold (pure never) $ ffor actE $ \case
     Nothing -> pure never
-    Just req -> fmap switchDyn $ widgetHoldDyn $ ffor connsD $ \case
-      [] -> pure never
-      cons -> do
-        i <- liftIO $ randomRIO (0, length cons - 1)
-        let conn = cons!!i
-        sentE' <- requestWhenOpen conn req
-        pure $ (indexConRespE conn) <$ sentE'
+    Just req -> fmap switchDyn $ widgetHoldDyn $ ffor connsD $ \conns -> do
+      mconn <- randomKeyValue conns
+      case mconn of
+        Nothing -> pure never
+        Just (addr, conn) -> do
+          sentE' <- requestWhenOpen conn req
+          pure $ ((addr,) <$> indexConRespE conn) <$ sentE'
   switchHold never sentE
 
 requestWhenOpen :: MonadIndexClient t m => IndexerConnection t -> Message -> m (Event t ())

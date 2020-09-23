@@ -174,7 +174,7 @@ getFilters cur e = do
   respE <- requestRandomIndexer $ ffor e $ \(h, n) ->
     MFiltersRequest $ FilterRequest curcode (fromIntegral h) (fromIntegral n)
   pure $ fforMaybe respE $ \case
-    MFiltersResponse (FilterResponse{..}) -> if filterResponseCurrency /= curcode
+    (_, MFiltersResponse (FilterResponse{..})) -> if filterResponseCurrency /= curcode
       then Nothing
       else Just $ V.toList $ ffor filterResponseFilters $ \(BlockFilter bid filt) -> (bid, filt)
     _ -> Nothing
