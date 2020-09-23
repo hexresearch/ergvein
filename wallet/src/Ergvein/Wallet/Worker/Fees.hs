@@ -29,7 +29,7 @@ feesWorker = do
   let goE = attachWith (\cs _ -> fmap currencyToCurrencyCode $ S.toList cs) (current cursD) tickE
   respE <- requestRandomIndexer $ MFeeRequest <$> goE
   let feesE = fforMaybe respE $ \case
-        MFeeResponse fees -> Just $ repack fees
+        (_, MFeeResponse fees) -> Just $ repack fees
         _ -> Nothing
   performFork_ $ ffor feesE $ \fm -> modifyExternalRef_ feeRef $ \fm' -> M.union fm fm'
   where
