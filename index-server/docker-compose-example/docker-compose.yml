@@ -1,19 +1,19 @@
 version: "2.4"
 volumes:
-  db:
-    name: ergvein-db
+  ergveindata:
+    name: ergveindata
 services:
   ergvein-index-server:
-    image: ergvein-index-server:develop
+    image: ergvein/ergvein-index-server:v18
     container_name: ergvein-index-server
     command: ["listen", "/config.yml"]
     ports:
-    - 8085:8085
+    - 8667:8667
     volumes:
     - ./config.yml:/config.yml
-    - db:/db
+    - ergveindata:/ergveindata
     restart: always
-    logging: &log
+    logging:
       options:
-        max-size: "10m"
+        max-size: "100m"
         max-file: "10"
