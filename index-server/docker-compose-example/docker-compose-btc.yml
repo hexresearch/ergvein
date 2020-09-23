@@ -1,0 +1,16 @@
+version: '2.4'
+volumes:
+  btcdata:
+    name: btcdata
+services:
+  btc:
+    image: ruimarinho/bitcoin-core:alpine
+    container_name: btc
+    restart: "always"
+    command: "-server -txindex -rest -printtoconsole -rpcbind=0.0.0.0 -rpcauth=bitcoinrpcuser:6fe27a01950b4d4881e7877abc324841$$067e15b4ae9a602c314e3b9c26bbc6b0555f6bf08f177b103b646d7ddf262fbe -rpcallowip=172.0.0.0/8 -chain=${CHAIN:-main}"
+    volumes:
+    - btcdata:/home/bitcoin/.bitcoin
+    logging:
+      options:
+        max-size: "100m"
+        max-file: "10"
