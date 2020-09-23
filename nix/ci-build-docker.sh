@@ -39,5 +39,7 @@ done
 if $PUBLISH; then
 echo $DOCKER_PASSWORD | docker login --username $DOCKER_USERNAME --password-stdin
 docker tag ergvein-index-server:$CONTAINER_TAG ergvein/ergvein-index-server:$CONTAINER_TAG
-docker push ergvein/ergvein-index-server:$CONTAINER_TAG 
+docker tag ergvein-index-server:$CONTAINER_TAG ergvein/ergvein-index-server:latest
+docker push ergvein/ergvein-index-server:$CONTAINER_TAG
+docker push ergvein/ergvein-index-server:latest
 fi
