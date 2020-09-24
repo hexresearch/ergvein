@@ -150,14 +150,14 @@ restoreFromMnemonicPage = wrapperSimple True $ mdo
     pasteBtnE <- pasteBtn
     pasteE <- clipboardPaste pasteBtnE
 #ifdef ANDROID
-    let inputE = leftmost [resQRCodeE, pasteE]
     qrCodeBtnE <- scanQRBtn
     openCameraE <- delay 1.0 =<< openCamara qrCodeBtnE
     resQRCodeE <- waiterResultCamera openCameraE
+    let inputE' = leftmost [pasteE, resQRCodeE]
 #else
-    let inputE = pasteE
-    pure inputE
+    let inputE' = pasteE
 #endif
+    pure inputE'
   submitE <- outlineButton CSForward
   let validationE = poke submitE $ \_ -> do
         encodedEncryptedMnemonic <- sampleDyn encodedEncryptedMnemonicD
