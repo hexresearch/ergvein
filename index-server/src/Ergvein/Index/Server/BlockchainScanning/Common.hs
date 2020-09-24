@@ -46,62 +46,61 @@ scannerThread currency scanInfo = create $ logOnException threadName . scanItera
   where
     threadName = "scannerThread<" <> showt currency <> ">"
     blockIteration :: BlockHeight -> BlockHeight -> ServerM BlockInfo
-    blockIteration totalh blockHeight = do
+    blockIteration headBlockHeight blockHeight = do
       now <- liftIO $ getCurrentTime
-      let percent = fromIntegral blockHeight / fromIntegral totalh :: Double
-      logInfoN $ "["<> showt now <> "] "
+      let percent = fromIntegral blockHeight / fromIntegral headBlockHeight :: Double
+      logInfoN $ "["<> showt (formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S" now) <> "] "
         <> "Scanning height for " <> showt currency <> " "
-        <> showt blockHeight <> " / " <> showt totalh <> " (" <> showf 2 (100*percent) <> "%)"
+        <> showt blockHeight <> " / " <> showt headBlockHeight <> " (" <> showf 2 (100*percent) <> "%)"
         -- <> showt (length $ spentTxsHash bi)
       scanInfo blockHeight
 
     scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
-      logInfoN "Start scan iteration"
       cfg <- serverConfig
-      actual  <- actualHeight currency
       scanned <- getScannedHeight currency
       let toScanFrom = maybe (currencyHeightStart currency) succ scanned
-      go toScanFrom actual
+      go toScanFrom
       shutdownFlag <- getShutdownFlag
       liftIO $ cancelableDelay shutdownFlag $ cfgBlockchainScanDelay cfg
       stopThreadIfShutdown thread
       where
-        go current to = do
+        go :: BlockHeight -> ServerM ()
+        go current = do
           shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
-          when (not shutdownFlag && current <= to) $ do
-            tryBlockInfo <- (Right <$> blockIteration to current) `catch` (\(SomeException ex) -> pure $ Left $ show ex)
-            enoughSpace <- isEnoughSpace
-            case tryBlockInfo of
-              Right blockInfo | enoughSpace -> do
-                previousBlockSame <- isPreviousBlockSame $ blockMetaPreviousHeaderBlockHash $ blockInfoMeta blockInfo
-                if previousBlockSame then do --fork detection
-                  addBlockInfo blockInfo to
-                  when (current == to) $ broadcastFilter $ blockInfoMeta blockInfo
-                  go (succ current) to
-                else previousBlockChanged current to
-
-              _ | not enoughSpace ->
-                logInfoN $ "Not enough available disc space to store block scan result"
-
-              Left errMsg -> blockScanningError errMsg current to
+          unless shutdownFlag $ do
+            headBlockHeight <- actualHeight currency
+            when (current <= headBlockHeight) $ do
+              tryBlockInfo <- (Right <$> blockIteration headBlockHeight current) `catch` (\(SomeException ex) -> pure $ Left $ show ex)
+              enoughSpace <- isEnoughSpace
+              case tryBlockInfo of
+                Right (blockInfo@BlockInfo {..}) | enoughSpace -> do
+                  previousBlockSame <- isPreviousBlockSame $ blockMetaPreviousHeaderBlockHash $ blockInfoMeta
+                  if previousBlockSame then do --fork detection
+                    addBlockInfo blockInfo
+                    when (current == headBlockHeight) $ broadcastFilter $ blockInfoMeta
+                    go (succ current)
+                  else previousBlockChanged current
+                _ | not enoughSpace ->
+                  logInfoN $ "Not enough available disc space to store block scan result"
+                Left errMsg -> blockScanningError errMsg current
 
         isPreviousBlockSame proposedPreviousBlockId = do
           maybeLastScannedBlock <- getLastScannedBlock currency
           pure $ flip all maybeLastScannedBlock (== proposedPreviousBlockId)
 
-        previousBlockChanged from to = do
+        previousBlockChanged from = do
           revertedBlocksCount <- fromIntegral <$> performRollback currency
           logInfoN $ "Fork detected at "
                   <> showt from <> " " <> showt currency
                   <> ", performing rollback of " <> showt revertedBlocksCount <> " previous blocks"
           let restart = (from - revertedBlocksCount)
           setScannedHeight currency restart
-          go restart to
+          go restart
 
-        blockScanningError errorMessage from to = do
+        blockScanningError errorMessage from = do
           logInfoN $ "Error scanning " <> showt from <> " " <> showt currency <> " " <> T.pack errorMessage
-          previousBlockChanged from to
+          previousBlockChanged from
 
 broadcastFilter :: BlockMetaInfo -> ServerM ()
 broadcastFilter BlockMetaInfo{..} =

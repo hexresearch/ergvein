@@ -119,9 +119,8 @@ initIndexerDb :: DB -> IO ()
 initIndexerDb db = do
   write db def $ putItem Currency.BTC knownPeersRecKey $ KnownPeersRec []
 
-addBlockInfo :: (HasBtcRollback m, HasFiltersDB m, HasIndexerDB m, MonadLogger m, MonadBaseControl IO m)
-  => BlockInfo -> BlockHeight -> m ()
-addBlockInfo update to = do
+addBlockInfo :: (HasBtcRollback m, HasFiltersDB m, HasIndexerDB m, MonadLogger m, MonadBaseControl IO m) => BlockInfo -> m ()
+addBlockInfo update = do
   db <- getFiltersDb
   let current = blockMetaBlockHeight $ blockInfoMeta update
   let targetCurrency = blockMetaCurrency $ blockInfoMeta update
