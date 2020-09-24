@@ -14,6 +14,7 @@ import Data.Typeable
 import Database.LevelDB.Base
 import Network.HTTP.Client.TLS
 import Network.Socket
+import System.IO
 
 import Ergvein.Index.Protocol.Types (CurrencyCode, Message)
 import Ergvein.Index.Server.Config
@@ -35,8 +36,6 @@ import qualified Network.Ergo.Api.Client     as ErgoApi
 import qualified Network.Haskoin.Constants   as HK
 import qualified Network.HTTP.Client         as HC
 
-import Debug.Trace
-
 data ServerEnv = ServerEnv
     { envServerConfig             :: !Config
     , envLogger                   :: !(Chan (Loc, LogSource, LogLevel, LogStr))
@@ -44,7 +43,7 @@ data ServerEnv = ServerEnv
     , envIndexerDBContext         :: !DB
     , envBitcoinNodeNetwork       :: !HK.Network
     , envErgoNodeClient           :: !ErgoApi.Client
-    , envClientManager            :: HC.Manager
+    , envClientManager            :: !HC.Manager
     , envBitcoinClient            :: !BitcoinApi.Client
     , envBitcoinSocket            :: !BtcSocket
     , envBtcConScheme             :: !BtcConnectionScheme
@@ -90,6 +89,7 @@ newServerEnv :: (MonadIO m, MonadLogger m, MonadMask m, MonadBaseControl IO m)
   -> m ServerEnv
 newServerEnv useTcp noDropFilters optsNoDropIndexers btcClient cfg@Config{..} = do
     logger <- liftIO newChan
+    liftIO $ hSetBuffering stdout LineBuffering
     void $ liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
     filtersDBCntx  <- openDb noDropFilters DBFilters cfgFiltersDbPath
     indexerDBCntx  <- openDb optsNoDropIndexers DBIndexer cfgIndexerDbPath
@@ -106,9 +106,9 @@ newServerEnv useTcp noDropFilters optsNoDropIndexers btcClient cfg@Config{..} = 
       liftIO $ do
         isUp <- atomically $ dupTChan $ btcSockOnActive btcsock
         b <- readTVarIO $ btcSockIsActive btcsock
-        if b then pure () else fix $ \next -> do
+        unless b $ fix $ \next -> do
           b' <- atomically $ readTChan isUp
-          if b' then pure () else next
+          unless b' next
       pure btcsock
       else dummyBtcSock bitcoinNodeNetwork
     btcSeq <- liftIO $ runStdoutLoggingT $ runReaderT (loadRollbackSequence BTC) indexerDBCntx
