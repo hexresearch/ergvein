@@ -431,6 +431,15 @@ mnemonicExportCss :: Css
 mnemonicExportCss = do
   ".mnemonic-export-text" ? do
     wordBreak breakAll
+  ".mnemonic-export-buttons-wrapper" ? do
+    display flex
+    flexWrap F.wrap
+    marginLeft $ rem (-1)
+    marginRight $ rem (-1)
+    justifyContent center
+  ".mnemonic-export-btn-wrapper" ? do
+    paddingLeft $ rem 0.5
+    paddingRight $ rem 0.5
 
 validateCss :: Css
 validateCss = do

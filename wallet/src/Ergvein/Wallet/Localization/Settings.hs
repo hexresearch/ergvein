@@ -51,7 +51,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSSetsPinOff          -> "Switch off PIN code"
       STPSSetsPinInput        -> "Enter PIN code:"
       STPSSetsPinDoSet        -> "Set PIN code"
-      STPSMnemonicExportMsg   -> "This is your password protected mnemonic phrase in qr code and text form. Choose the most convenient way."
+      STPSMnemonicExportMsg   -> "This is your password protected mnemonic phrase in QR code and text form. Choose the most convenient way."
       STPSSuccess             -> "Successfully updated settings"
     Russian -> case v of
       STPSTitle               -> "Настройки"
