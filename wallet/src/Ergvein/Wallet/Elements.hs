@@ -220,7 +220,7 @@ divButton = mkButton "div" []
 -- The first parameter is the button text
 -- The second parameter is the icon class
 -- Usage example:
--- >>> outlineTextIconButton BtnPasteString "fas fa-clipboard"
+-- >>> outlineTextIconButton CSPaste "fas fa-clipboard"
 -- As a result, such an element will be created:
 -- <button class="button button-outline href="return false;">
 --   Scan QR code

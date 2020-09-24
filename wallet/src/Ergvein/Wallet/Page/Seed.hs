@@ -19,6 +19,7 @@ import Ergvein.Text
 import Ergvein.Types.Restore
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Camera
+import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Localization.Password
@@ -98,7 +99,6 @@ mkCols n vals = mkCols' [] vals
       [] -> acc
       _ -> let (r, rest) = L.splitAt n' xs in mkCols' (acc ++ [r]) rest
 
-
 -- | Interactive check of mnemonic phrase
 mnemonicCheckWidget :: MonadFrontBase t m => Mnemonic -> m (Event t Mnemonic)
 mnemonicCheckWidget mnemonic = mdo
@@ -145,13 +145,18 @@ restoreFromMnemonicPage :: MonadFrontBase t m => m ()
 restoreFromMnemonicPage = wrapperSimple True $ mdo
   encodedEncryptedMnemonicErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing))
   h4 $ localizedText SPSRestoreFromMnemonic
+  encodedEncryptedMnemonicD <- validatedTextFieldSetVal SPSEnterMnemonic "" encodedEncryptedMnemonicErrsD inputE
+  inputE <- divClass "restore-seed-buttons-wrapper" $ do
+    pasteBtnE <- pasteBtn
+    pasteE <- clipboardPaste pasteBtnE
 #ifdef ANDROID
-  encodedEncryptedMnemonicD <- validatedTextFieldSetVal SPSEnterMnemonic "" encodedEncryptedMnemonicErrsD resQRCodeE
-  qrCodeBtnE <- divClass "" $ outlineButton SPSScanQR
-  openCameraE <- delay 1.0 =<< openCamara qrCodeBtnE
-  resQRCodeE <- waiterResultCamera openCameraE
+    let inputE = leftmost [resQRCodeE, pasteE]
+    qrCodeBtnE <- scanQRBtn
+    openCameraE <- delay 1.0 =<< openCamara qrCodeBtnE
+    resQRCodeE <- waiterResultCamera openCameraE
 #else
-  encodedEncryptedMnemonicD <- validatedTextField SPSEnterMnemonic "" encodedEncryptedMnemonicErrsD
+    let inputE = pasteE
+    pure inputE
 #endif
   submitE <- outlineButton CSForward
   let validationE = poke submitE $ \_ -> do
@@ -171,6 +176,12 @@ restoreFromMnemonicPage = wrapperSimple True $ mdo
         , retractablePrev = Just $ pure restoreFromMnemonicPage
         }
 
+pasteBtn :: MonadFrontBase t m => m (Event t ())
+pasteBtn = outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
+
+scanQRBtn :: MonadFrontBase t m => m (Event t ())
+scanQRBtn = outlineTextIconButtonTypeButton CSScanQR "fas fa-qrcode fa-lg"
+
 askSeedPasswordPage :: MonadFrontBase t m => EncryptedByteString -> m ()
 askSeedPasswordPage encryptedMnemonic = do
   passE <- askTextPasswordPage PPSMnemonicUnlock ("" :: Text)
@@ -178,7 +189,7 @@ askSeedPasswordPage encryptedMnemonic = do
   verifiedMnemonicE <- handleDangerMsg mnemonicBSE
   void $ nextWidget $ ffor (decodeUtf8With lenientDecode <$> verifiedMnemonicE) $ \mnem -> Retractable {
       retractableNext = selectCurrenciesPage WalletRestored mnem
-    , retractablePrev = Nothing
+    , retractablePrev = Just $ pure $ askSeedPasswordPage encryptedMnemonic
     }
 
 decodeMnemonic :: Text -> Maybe (Either Text EncryptedByteString)

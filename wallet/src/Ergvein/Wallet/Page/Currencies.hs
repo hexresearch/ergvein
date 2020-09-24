@@ -30,7 +30,8 @@ selectCurrenciesPage wt mnemonic = wrapperSimple True $ do
 #else
       retractableNext = passwordPage wt mnemonic ac
 #endif
-    , retractablePrev = Just $ pure $ selectCurrenciesPage wt mnemonic
+    -- , retractablePrev = Just $ pure $ selectCurrenciesPage wt mnemonic -- TODO: uncomment this when ERGO is ready
+    , retractablePrev = Nothing -- TODO: remove this when ERGO is ready
     }
 
 selectCurrenciesWidget :: MonadFrontBase t m => [Currency] -> m (Event t [Currency])
