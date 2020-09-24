@@ -27,7 +27,7 @@ instance LocalizedPrint MenuItem where
       MenuSwitch      -> "Switch wallet"
     Russian -> case v of
       MenuBalances    -> "Балансы"
-      MenuSingleBalance cur -> "Баланс" <> showt cur
+      MenuSingleBalance cur -> "Баланс " <> showt cur
       MenuNetwork     -> "Сеть"
       MenuSettings    -> "Настройки"
       MenuAbout       -> "О программе"
