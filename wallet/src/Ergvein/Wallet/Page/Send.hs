@@ -20,6 +20,7 @@ import Ergvein.Wallet.Input
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Send
 import Ergvein.Wallet.Localization.Settings()
+import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Navbar
@@ -69,16 +70,16 @@ sendPage cur minit = mdo
 #ifdef ANDROID
         recipientD <- validatedTextFieldSetVal RecipientString recipientInit recipientErrsD (leftmost [resQRcodeE, pasteE])
         (qrE, pasteE, resQRcodeE) <- divClass "send-page-buttons-wrapper" $ do
-          qrE <- outlineTextIconButtonTypeButton BtnScanQRCode "fas fa-qrcode fa-lg"
+          qrE <- outlineTextIconButtonTypeButton CSScanQR "fas fa-qrcode fa-lg"
           openE <- delay 1.0 =<< openCamara qrE
           resQRcodeE <- (fmap . fmap) stripCurPrefix $ waiterResultCamera openE
-          pasteBtnE <- outlineTextIconButtonTypeButton BtnPasteString "fas fa-clipboard fa-lg"
+          pasteBtnE <- outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
           pasteE <- clipboardPaste pasteBtnE
           pure (qrE, pasteE, resQRcodeE)
 #else
         recipientD <- validatedTextFieldSetVal RecipientString recipientInit recipientErrsD pasteE
         pasteE <- divClass "send-page-buttons-wrapper" $ do
-          clipboardPaste =<< outlineTextIconButtonTypeButton BtnPasteString "fas fa-clipboard fa-lg"
+          clipboardPaste =<< outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
 #endif
         amountD <- sendAmountWidget amountInit $ () <$ validationE
         feeD    <- btcFeeSelectionWidget feeInit submitE

@@ -42,7 +42,7 @@ $(deriveJSON aesonOptionsStripToApostroph ''CurrencyPrvStorage)
 type CurrencyPrvStorages = M.Map Currency CurrencyPrvStorage
 
 data PrvStorage = PrvStorage {
-    _prvStorage'seed                :: Seed
+    _prvStorage'mnemonic            :: Mnemonic
   , _prvStorage'rootPrvKey          :: EgvRootXPrvKey
   , _prvStorage'currencyPrvStorages :: CurrencyPrvStorages
   } deriving (Eq, Show, Read)
@@ -51,14 +51,14 @@ makeLenses ''PrvStorage
 
 instance ToJSON PrvStorage where
   toJSON PrvStorage{..} = object [
-      "seed"                .= toJSON (bs2Base64Text _prvStorage'seed)
+      "mnemonic"            .= toJSON _prvStorage'mnemonic
     , "rootPrvKey"          .= toJSON _prvStorage'rootPrvKey
     , "currencyPrvStorages" .= toJSON _prvStorage'currencyPrvStorages
     ]
 
 instance FromJSON PrvStorage where
   parseJSON = withObject "PrvStorage" $ \o -> PrvStorage
-    <$> fmap base64Text2bs (o .: "seed")
+    <$> o .: "mnemonic"
     <*> o .: "rootPrvKey"
     <*> o .: "currencyPrvStorages"
 

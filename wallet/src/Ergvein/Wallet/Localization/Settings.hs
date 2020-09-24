@@ -16,6 +16,7 @@ data SettingsPageStrings =
   | STPSButNetwork
   | STPSButUnits
   | STPSButPortfolio
+  | STPSButMnemonicExport
   | STPSSelectLanguage
   | STPSSetsActiveCurrs
   | STPSSetsPortfolio
@@ -26,6 +27,7 @@ data SettingsPageStrings =
   | STPSSetsPinOff
   | STPSSetsPinInput
   | STPSSetsPinDoSet
+  | STPSMnemonicExportMsg
   | STPSSuccess
   deriving (Eq)
 
@@ -38,6 +40,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButNetwork          -> "Network"
       STPSButUnits            -> "Display units for cryptos"
       STPSButPortfolio        -> "Portfolio"
+      STPSButMnemonicExport   -> "Export mnemonic phrase"
       STPSSelectLanguage      -> "Select language:"
       STPSSetsActiveCurrs     -> "Settings for active currencies"
       STPSSetsPortfolio       -> "Settings for fiat and ticks"
@@ -48,6 +51,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSSetsPinOff          -> "Switch off PIN code"
       STPSSetsPinInput        -> "Enter PIN code:"
       STPSSetsPinDoSet        -> "Set PIN code"
+      STPSMnemonicExportMsg   -> "This is your password protected mnemonic phrase in QR code and text form. Choose the most convenient way."
       STPSSuccess             -> "Successfully updated settings"
     Russian -> case v of
       STPSTitle               -> "Настройки"
@@ -56,6 +60,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButNetwork          -> "Сеть"
       STPSButUnits            -> "Единицы отображения криптосистем"
       STPSButPortfolio        -> "Портфель"
+      STPSButMnemonicExport   -> "Экспортировать мнемоническую фразу"
       STPSSelectLanguage      -> "Выберите язык:"
       STPSSetsActiveCurrs     -> "Настройки активных валют"
       STPSSetsPortfolio       -> "Настройки отображения фиата и тиков"
@@ -66,6 +71,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSSetsPinOff          -> "Выключить ПИН код"
       STPSSetsPinInput        -> "Введите ПИН код:"
       STPSSetsPinDoSet        -> "Установить ПИН код"
+      STPSMnemonicExportMsg   -> "Это ваша защищенная паролем мнемоническая фраза в виде QR-кода и в текстовом виде. Используйте наиболее подходящий для вас способ."
       STPSSuccess             -> "Настройки успешно обновлены"
 
 instance LocalizedPrint UnitBTC where

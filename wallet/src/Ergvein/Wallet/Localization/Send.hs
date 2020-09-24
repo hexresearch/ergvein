@@ -19,8 +19,6 @@ data SendStrings
   | SendBtnString
   | RecipientString
   | AmountString
-  | BtnPasteString
-  | BtnScanQRCode
   | SendBtnSign
   | SendBtnSend
   | SendBtnBack
@@ -36,8 +34,6 @@ instance LocalizedPrint SendStrings where
       SendBtnString -> "Send"
       RecipientString -> "Recipient"
       AmountString -> "Amount"
-      BtnPasteString -> "Paste"
-      BtnScanQRCode -> "Scan"
       SendBtnSign -> "Sign Tx"
       SendBtnSend -> "Send Tx"
       SendBtnBack -> "Back"
@@ -50,8 +46,6 @@ instance LocalizedPrint SendStrings where
       SendBtnString -> "Отправить"
       RecipientString -> "Получатель"
       AmountString -> "Сумма"
-      BtnPasteString -> "Вставить"
-      BtnScanQRCode -> "Сканировать"
       SendBtnSign -> "Подписать транзакцию"
       SendBtnSend -> "Отправить транзакцию"
       SendBtnBack -> "Назад"

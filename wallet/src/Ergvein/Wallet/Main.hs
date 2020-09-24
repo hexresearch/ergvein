@@ -37,7 +37,6 @@ startPage = do
     else balancesPage
 
 #ifdef TESTNET
--- TODO: remove this disclaimer when ERGO is ready
 mainpageDispatcher :: MonadFrontBase t m => m ()
 mainpageDispatcher = void $ workflow testnetDisclaimer
   where

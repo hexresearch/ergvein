@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 module Ergvein.Crypto.AES256 (
     encrypt
   , decrypt
@@ -5,6 +6,7 @@ module Ergvein.Crypto.AES256 (
   , decryptWithAEAD
   , defaultAuthTagLength
   , genRandomSalt
+  , genRandomSalt32
   , genRandomIV
   , AES256
   , AEADMode(..)
@@ -13,21 +15,33 @@ module Ergvein.Crypto.AES256 (
   , makeIV
   , AuthTag(..)
   , MonadRandom(..)
+  , EncryptedByteString(..)
   ) where
 
 import Crypto.Cipher.AES (AES256)
 import Crypto.Cipher.Types
 import Crypto.Error (CryptoFailable(..), CryptoError(..))
 import Crypto.Random.Types (MonadRandom, getRandomBytes)
-import Data.ByteArray (ByteArray, ByteArrayAccess)
+import Data.ByteArray (ByteArray, ByteArrayAccess, convert)
+import Data.ByteArray.Sized (SizedByteArray, unsafeSizedByteArray)
 import Data.ByteString (ByteString)
+import Data.Maybe
+import Data.Text
+import Data.Serialize
 import Ergvein.Crypto.PBKDF
+import Data.Text.Encoding (encodeUtf8)
+
+type Password = Text
 
 data Key c a where
   Key :: (BlockCipher c, ByteArray a) => a -> Key c a
 
 defaultAuthTagLength :: Int
 defaultAuthTagLength = 16
+
+-- | Generate a random salt with length equal to 'defaultPBKDF2SaltLength'
+genRandomSalt32 :: MonadRandom m => m (SizedByteArray 32 ByteString)
+genRandomSalt32 = unsafeSizedByteArray <$> getRandomBytes defaultPBKDF2SaltLength
 
 -- | Generate a random salt with length equal to 'defaultPBKDF2SaltLength'
 genRandomSalt :: (MonadRandom m, ByteArray a) => m a
@@ -92,3 +106,30 @@ decryptWithAEAD mode secretKey iv header msg tag =
   case initAEADCipher mode secretKey iv of
     Left e -> error $ show e
     Right context -> aeadSimpleDecrypt context header msg tag
+
+data EncryptedByteString = EncryptedByteString {
+    encryptedByteString'salt       :: SizedByteArray 32 ByteString
+  , encryptedByteString'iv         :: IV AES256
+  , encryptedByteString'authTag    :: SizedByteArray 16 ByteString
+  , encryptedByteString'ciphertext :: ByteString
+  } deriving Eq
+
+instance Serialize EncryptedByteString where
+  put EncryptedByteString{..} = do
+    let saltBS = convert encryptedByteString'salt :: ByteString
+        ivBS = convert encryptedByteString'iv :: ByteString
+        authTagBS = convert encryptedByteString'authTag :: ByteString
+    put saltBS
+    put ivBS
+    put authTagBS
+    put encryptedByteString'ciphertext
+
+  get = do
+    saltBS :: ByteString <- get
+    ivBS :: ByteString <- get
+    authTagBS :: ByteString <- get
+    ciphertext :: ByteString <- get
+    let salt = unsafeSizedByteArray saltBS :: SizedByteArray 32 ByteString
+        iv = fromJust $ makeIV ivBS :: IV AES256
+        authTag = unsafeSizedByteArray authTagBS :: SizedByteArray 16 ByteString
+    return $ EncryptedByteString salt iv authTag ciphertext

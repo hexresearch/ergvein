@@ -5,6 +5,8 @@ module Ergvein.Wallet.Storage.Util(
   , getLastSeenHeight
   , encryptPrvStorage
   , decryptPrvStorage
+  , encryptBSWithAEAD
+  , decryptBSWithAEAD
   , passwordToECIESPrvKey
   , createPrvStorage
   , createPubKeystore
@@ -25,7 +27,8 @@ module Ergvein.Wallet.Storage.Util(
 import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
-import Data.ByteArray           (convert)
+import Data.ByteArray           (Bytes, convert)
+import Data.ByteArray.Sized     (SizedByteArray, unsafeSizedByteArray)
 import Data.ByteString          (ByteString)
 import Data.List                (foldl')
 import Data.Maybe
@@ -68,8 +71,8 @@ createPrvKeystore masterPrvKey =
       internalKeys  = V.unfoldrN initialInternalAddressCount internalGen 0
   in PrvKeystore masterPrvKey externalKeys internalKeys
 
-createPrvStorage :: Seed -> EgvRootXPrvKey -> PrvStorage
-createPrvStorage seed rootPrvKey = PrvStorage seed rootPrvKey prvStorages
+createPrvStorage :: Mnemonic -> EgvRootXPrvKey -> PrvStorage
+createPrvStorage mnemonic rootPrvKey = PrvStorage mnemonic rootPrvKey prvStorages
   where prvStorages = M.fromList [
             (currency, CurrencyPrvStorage $ createPrvKeystore $ deriveCurrencyMasterPrvKey rootPrvKey currency) |
             currency <- allCurrencies
@@ -110,10 +113,10 @@ createPubStorage isRestored rootPrvKey cs = PubStorage rootPubKey pubStorages cs
 
 createStorage :: MonadIO m => Bool -> Mnemonic -> (WalletName, Password) -> [Currency] -> m (Either StorageAlert WalletStorage)
 createStorage isRestored mnemonic (login, pass) cs = case mnemonicToSeed "" mnemonic of
-  Left err -> pure $ Left $ SAMnemonicFail $ showt err
-  Right seed -> do
+   Left err -> pure $ Left $ SAMnemonicFail $ showt err
+   Right seed -> do
     let rootPrvKey = EgvRootXPrvKey $ makeXPrvKey seed
-        prvStorage = createPrvStorage seed rootPrvKey
+        prvStorage = createPrvStorage mnemonic rootPrvKey
         pubStorage = createPubStorage isRestored rootPrvKey cs
     encryptPrvStorageResult <- encryptPrvStorage prvStorage pass
     case encryptPrvStorageResult of
@@ -191,6 +194,39 @@ decryptStorage encryptedStorage prvKey = do
             Right s -> Right s
             where
               storage = decodeJson $ decodeUtf8With lenientDecode decryptedStorage
+
+encryptBSWithAEAD :: (MonadIO m, MonadRandom m) => ByteString -> Password -> m (Either StorageAlert EncryptedByteString)
+encryptBSWithAEAD bs password = do
+  salt <- genRandomSalt32
+  let secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
+  iv <- genRandomIV (undefined :: AES256)
+  case iv of
+    Nothing -> pure $ Left $ SACryptoError "Failed to generate an AES initialization vector"
+    Just iv' -> do
+      let ivBS = convert iv' :: ByteString
+          saltBS = convert salt :: ByteString
+          header = BS.concat [saltBS, ivBS]
+      case encryptWithAEAD AEAD_GCM secretKey iv' header bs defaultAuthTagLength of
+        Left err -> pure $ Left $ SACryptoError $ showt err
+        Right (authTag, ciphertext) -> do
+          let authTag' = unsafeSizedByteArray (convert authTag :: ByteString) :: SizedByteArray 16 ByteString
+          pure $ Right $ EncryptedByteString salt iv' authTag' ciphertext
+
+decryptBSWithAEAD :: EncryptedByteString -> Password -> Either StorageAlert ByteString
+decryptBSWithAEAD encryptedBS password =
+  case decryptWithAEAD AEAD_GCM secretKey iv header ciphertext authTag' of
+    Nothing -> Left $ SACryptoError "Failed to decrypt message"
+    Just decryptedBS -> Right decryptedBS
+  where
+    salt = encryptedByteString'salt encryptedBS
+    saltBS = convert salt :: ByteString
+    secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
+    iv = encryptedByteString'iv encryptedBS
+    ivBS = convert iv :: ByteString
+    authTag = encryptedByteString'authTag encryptedBS
+    authTag' = AuthTag (convert authTag :: Bytes)
+    ciphertext = encryptedByteString'ciphertext encryptedBS
+    header = BS.concat [saltBS, ivBS]
 
 passwordToECIESPrvKey :: Password -> Either StorageAlert ECIESPrvKey
 passwordToECIESPrvKey password = case secretKey passwordHash of

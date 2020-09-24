@@ -42,7 +42,7 @@ data DebugBtns
   | DbgPubExt
   | DbgPrvInt
   | DbgPrvExt
-
+  | DbgMnemonic
 
 mkTxt :: Text -> Text
 mkTxt = id
@@ -57,6 +57,7 @@ debugWidget = el "div" $ do
   pubExtE <- fmap (DbgPubExt <$) $ outlineButton $ mkTxt "Pub Externals"
   prvIntE <- fmap (DbgPrvInt <$) $ outlineButton $ mkTxt "Priv Internals"
   prvExtE <- fmap (DbgPrvExt <$) $ outlineButton $ mkTxt "Priv Externals"
+  mnemonicE <- fmap (DbgMnemonic <$) $ outlineButton ("Mnemonic" :: Text)
   pingE <- outlineButton $ mkTxt "Ping"
   avgD <- indexersAverageLatencyWidget =<< delay 1 pingE
   h5 . dynText $ do
@@ -64,14 +65,15 @@ debugWidget = el "div" $ do
     pure $ "Avg.indexer ping: " <> showt p
   dbgFiltersTest
   h5 . dynText . fmap showt =<< getCurrentHeight BTC
-  let goE = leftmost [utxoE, pubIntE, pubExtE, prvIntE, prvExtE]
+  let goE = leftmost [utxoE, pubIntE, pubExtE, prvIntE, prvExtE, mnemonicE]
   void $ nextWidget $ ffor goE $ \sel -> Retractable {
       retractableNext = case sel of
-        DbgUtxo   -> dbgUtxoPage
-        DbgPubInt -> dbgPubInternalsPage
-        DbgPubExt -> dbgPubExternalsPage
-        DbgPrvInt -> dbgPrivInternalsPage
-        DbgPrvExt -> dbgPrivExternalsPage
+        DbgUtxo     -> dbgUtxoPage
+        DbgPubInt   -> dbgPubInternalsPage
+        DbgPubExt   -> dbgPubExternalsPage
+        DbgPrvInt   -> dbgPrivInternalsPage
+        DbgPrvExt   -> dbgPrivExternalsPage
+        DbgMnemonic -> dbgMnemonicPage
     , retractablePrev = Nothing
     }
 
@@ -159,6 +161,14 @@ dbgPrivExternalsPage = wrapper False "Private external keys" (Just $ pure dbgPri
       el "div" $ text $ showt i <> " ------------------------------------------"
       el "div" $ text $ showt $ k'
       el "div" $ text $ p
+
+dbgMnemonicPage :: MonadFront t m => m ()
+dbgMnemonicPage = wrapper False "Mnemonic" (Just $ pure dbgMnemonicPage) $ divClass "currency-content" $ do
+  buildE <- getPostBuild
+  mnemonicE <- withWallet $ ffor buildE $ \_ prv -> do
+    pure $ prv ^. prvStorage'mnemonic
+  mnemonicD <- holdDyn "" mnemonicE
+  dynText mnemonicD
 
 dbgFiltersTest :: MonadFront t m => m ()
 dbgFiltersTest = do

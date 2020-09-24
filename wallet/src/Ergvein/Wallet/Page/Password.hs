@@ -4,6 +4,7 @@ module Ergvein.Wallet.Page.Password(
   , setupLoginPage
   , setupPatternPage
   , askPasswordPage
+  , askTextPasswordPage
   ) where
 
 import Ergvein.Crypto.Keys     (Mnemonic)
@@ -29,25 +30,28 @@ passwordPage wt mnemonic curs = wrapperSimple True $ do
   void $ setAuthInfo $ Just <$> authInfoE
 
 setupLoginPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> [Currency] -> m ()
-setupLoginPage wt m ac = wrapperSimple True $ do
+setupLoginPage wt mnemonic ac = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText LPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText LPSDescr
   logE <- setupLogin
   logD <- holdDyn "" logE
   void $ nextWidget $ ffor (updated logD) $ \l -> Retractable {
-      retractableNext = setupPatternPage wt m l ac
-    , retractablePrev = Just $ pure $ setupLoginPage wt m ac
+      retractableNext = setupPatternPage wt mnemonic l ac
+    , retractablePrev = Just $ pure $ setupLoginPage wt mnemonic ac
     }
 
 setupPatternPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> Text -> [Currency] -> m ()
-setupPatternPage wt m l curs = wrapperSimple True $ do
+setupPatternPage wt mnemonic l curs = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText PatPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText PatPSDescr
   patE <- setupPattern
   let logPassE = fmap (\p -> (l,p)) patE
-  createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo wt m curs) logPassE
+  createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo wt mnemonic curs) logPassE
   authInfoE <- handleDangerMsg createStorageE
   void $ setAuthInfo $ Just <$> authInfoE
 
 askPasswordPage :: MonadFrontBase t m => Text -> m (Event t Password)
 askPasswordPage name = wrapperSimple True $ askPassword name
+
+askTextPasswordPage :: (MonadFrontBase t m, LocalizedPrint l1, LocalizedPrint l2) => l1 -> l2 -> m (Event t Password)
+askTextPasswordPage title description = wrapperSimple True $ askTextPassword title description

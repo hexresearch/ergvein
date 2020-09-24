@@ -25,6 +25,8 @@ import qualified Data.Map.Strict as M
 
 data GoPage = GoSeed | GoRestore | GoNetwork
 
+data GoRestoreMethodPage = GoRestoreMnemonic
+
 initialPage :: MonadFrontBase t m => m ()
 initialPage = do
   logWrite "Initial page rendering"
@@ -43,7 +45,7 @@ createRestore = do
   void $ nextWidget $ ffor goE $ \go -> Retractable {
       retractableNext = case go of
         GoSeed -> mnemonicPage
-        GoRestore -> seedRestorePageText
+        GoRestore -> restoreFromMnemonicPage
         GoNetwork -> networkSettingsPageUnauth
     , retractablePrev = Just $ pure initialPage
     }
