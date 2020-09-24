@@ -13,12 +13,12 @@ import Ergvein.Types.Network
 
 import qualified Data.ByteString       as BS
 
--- | Derive a BIP44 compatible private key for a specific currency.
+-- | Derive a BIP44 and BIP84 compatible private key for a specific currency.
 -- Given a parent private key /m/
--- and a currency with code /c/, this function will compute private key with path /m\/44'\/c'\/0'/.
+-- and a currency with code /c/, this function will compute private key with path /m\/84'\/c'\/0'/.
 deriveCurrencyMasterPrvKey :: EgvRootXPrvKey -> Currency -> EgvXPrvKey
 deriveCurrencyMasterPrvKey rootPrvKey currency =
-    let hardPath = [44, getCurrencyIndex currency, 0]
+    let hardPath = [84, getCurrencyIndex currency, 0]
         derivedPrvKey = foldl hardSubKey (unEgvRootXPrvKey rootPrvKey) hardPath
     in case currency of
       BTC -> BtcXPrvKey derivedPrvKey
@@ -26,10 +26,10 @@ deriveCurrencyMasterPrvKey rootPrvKey currency =
 
 -- | Derive a BIP44 compatible public key for a specific currency.
 -- Given a parent private key /m/
--- and a currency with code /c/, this function will compute public key with path /m\/44'\/c'\/0'/.
+-- and a currency with code /c/, this function will compute public key with path /m\/84'\/c'\/0'/.
 deriveCurrencyMasterPubKey :: EgvRootXPrvKey -> Currency -> EgvXPubKey
 deriveCurrencyMasterPubKey rootPrvKey currency =
-    let hardPath = [44, getCurrencyIndex currency, 0]
+    let hardPath = [84, getCurrencyIndex currency, 0]
         derivedPrvKey = foldl hardSubKey (unEgvRootXPrvKey rootPrvKey) hardPath
         derivedPubKey = deriveXPubKey derivedPrvKey
     in case currency of
