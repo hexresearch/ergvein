@@ -70,6 +70,7 @@ btcCatchUpFlow (ts, bl) = Workflow $ do
   let (h0, lasthash) = head bl
   logWrite $ "btcCatchUpFlow: " <> showt h0
   buildE <- getPostBuild
+  setCatchUpHeight BTC $ (fromIntegral h0) <$ buildE
   let req = MGetHeaders $ GetHeaders 70012 (snd <$> bl) emptyHash
   respE <- requestRandomNode $ (NodeReqBTC req) <$ buildE
   let hlE = fforMaybe respE $ \case
