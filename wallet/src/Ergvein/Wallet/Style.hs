@@ -141,10 +141,14 @@ desktopBreakpoint :: Size LengthUnit
 desktopBreakpoint = rem 120
 
 htmlCss :: Css
-htmlCss = html ? do
-  margin (px 0) (px 0) (px 0) (px 0)
-  padding (px 0) (px 0) (px 0) (px 0)
-  textAlign center
+htmlCss = do
+  html ? do
+    margin (px 0) (px 0) (px 0) (px 0)
+    padding (px 0) (px 0) (px 0) (px 0)
+    textAlign center
+  "input, textarea, select" ? do
+    fontFamily ["Roboto"] [sansSerif, monospace]
+    fontSize $ pt 14
 
 bodyCss :: Css
 bodyCss = body ? do
@@ -152,7 +156,7 @@ bodyCss = body ? do
   padding (px 0) (px 0) (px 0) (px 0)
   color textColor
   backgroundColor majorBackground
-  fontFamily ["Roboto"] []
+  fontFamily ["Roboto"] [sansSerif, monospace]
 
 wrapperCss :: Css
 wrapperCss = do
