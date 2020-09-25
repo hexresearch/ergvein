@@ -28,6 +28,7 @@ import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
+import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction

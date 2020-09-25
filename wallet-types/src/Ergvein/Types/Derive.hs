@@ -1,4 +1,4 @@
-module Ergvein.Wallet.Storage.Keys (
+module Ergvein.Types.Derive(
     deriveCurrencyMasterPrvKey
   , deriveCurrencyMasterPubKey
   , derivePrvKey
@@ -6,6 +6,8 @@ module Ergvein.Wallet.Storage.Keys (
   , DerivPrefix
   , defaultDerivPathPrefix
   , defaultDerivePath
+  , legacyDerivPathPrefix
+  , legacyDerivPath
   , parseDerivePath
   , showDerivPath
   , extendDerivPath
@@ -19,15 +21,25 @@ import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Network
-import Ergvein.Types.Storage (DerivPrefix)
 import Text.Read (readMaybe)
 
 import qualified Data.ByteString       as BS
 import qualified Data.Text             as T
 
+-- | Shorthand for encoded BIP48 derivation path like m/84'/0'/0' (hard)
+type DerivPrefix = [KeyIndex]
+
 -- | Derivation path starts with 84 according to BIP84
 defaultDerivPathPrefix :: DerivPrefix
 defaultDerivPathPrefix = [84]
+
+-- | Old wallets used m/44' prefix
+legacyDerivPathPrefix :: DerivPrefix
+legacyDerivPathPrefix = [44]
+
+-- | Remember that we used to use 44' prefix in old wallets
+legacyDerivPath :: Currency -> DerivPrefix
+legacyDerivPath currency = extendDerivPath currency legacyDerivPathPrefix
 
 -- | Derivation path from BIP44 that compatible with BIP84
 defaultDerivePath :: Currency -> DerivPrefix
@@ -37,12 +49,12 @@ defaultDerivePath currency = extendDerivPath currency defaultDerivPathPrefix
 parseDerivePath :: Text -> Maybe DerivPrefix
 parseDerivePath s = do
   sm <- T.stripPrefix "m/" s
-  let ss = T.splitOn "'/" sm
+  ss <- traverse (T.stripSuffix "'") $ T.splitOn "/" sm
   traverse (readMaybe . T.unpack) ss
 
 -- | Display derivation path as string m\/84'\/0'\/0'
 showDerivPath :: DerivPrefix -> Text
-showDerivPath ks = "m/" <> T.intercalate "'/" (fmap showt ks)
+showDerivPath ks = "m/" <> T.intercalate "/" (fmap ((<> "'") . showt) ks)
 
 -- | Extend derivation path with c'\/0' if it contains only from purpose prefix
 extendDerivPath :: Currency -> DerivPrefix -> DerivPrefix

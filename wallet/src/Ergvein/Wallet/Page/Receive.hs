@@ -8,6 +8,7 @@ import Control.Lens
 import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
+import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Clipboard
@@ -21,6 +22,8 @@ import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Page.Canvas
 import Ergvein.Wallet.Page.QRCode
+import Ergvein.Wallet.Share
+import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
 
 #ifdef ANDROID

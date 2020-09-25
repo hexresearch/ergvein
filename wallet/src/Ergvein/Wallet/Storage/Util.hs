@@ -41,6 +41,7 @@ import Ergvein.Crypto
 import Ergvein.Text
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
+import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction as ETT
@@ -48,7 +49,6 @@ import Ergvein.Wallet.Localization.Native
 import Ergvein.Wallet.Localization.Storage
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Storage.Constants
-import Ergvein.Wallet.Storage.Keys
 
 import qualified Data.ByteString as BS
 import qualified Data.Map.Merge.Strict as MM

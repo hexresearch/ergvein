@@ -20,7 +20,6 @@ data ReceivePageStrings =
   | RPSGap
   | RPSGenNew
   | RPSNewLabel
-
 instance LocalizedPrint ReceivePageStrings where
   localizedShow l v = case l of
     English -> case v of
@@ -28,8 +27,6 @@ instance LocalizedPrint ReceivePageStrings where
       RPSGap      -> "Exceeded gap limit"
       RPSGenNew   -> "Generate new"
       RPSNewLabel -> "New label"
-      RPSShare    -> "Share"
-      RPSShareQR  -> "Share QR code"
       RPSTitle    -> "Receive"
     Russian -> case v of
       RPSAddLabel -> "Добавить название"

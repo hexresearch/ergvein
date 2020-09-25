@@ -11,6 +11,7 @@ import Ergvein.Crypto.Keys
 import Ergvein.Text
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
+import Ergvein.Types.Derive
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
@@ -19,12 +20,11 @@ import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Currencies
-import Ergvein.Wallet.Page.Settings.Network
 import Ergvein.Wallet.Page.Settings.MnemonicExport
+import Ergvein.Wallet.Page.Settings.Network
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage
-import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Wrapper
 

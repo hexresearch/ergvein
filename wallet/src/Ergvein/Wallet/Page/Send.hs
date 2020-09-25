@@ -13,6 +13,7 @@ import Text.Read
 
 import Ergvein.Text
 import Ergvein.Types
+import Ergvein.Types.Derive
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements

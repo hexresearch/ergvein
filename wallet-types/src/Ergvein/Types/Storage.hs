@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Ergvein.Types.Storage where
 
 import Control.Lens (makeLenses, (&), (%~))
@@ -19,6 +20,7 @@ import qualified Network.Haskoin.Block as HB
 import Ergvein.Aeson
 import Ergvein.Text
 import Ergvein.Types.Currency
+import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
@@ -30,9 +32,6 @@ import qualified Data.Vector as V
 type WalletName = Text
 
 type Password = Text
-
--- | Shorthand for encoded BIP48 derivation path like m/84'/0'/0' (hard)
-type DerivPrefix = [KeyIndex]
 
 data CurrencyPrvStorage = CurrencyPrvStorage {
     _currencyPrvStorage'prvKeystore :: !PrvKeystore
@@ -67,7 +66,7 @@ instance FromJSON PrvStorage where
     <$> o .: "mnemonic"
     <*> o .: "rootPrvKey"
     <*> o .: "currencyPrvStorages"
-    <*> o .:? "pathPrefix"
+    <*> o .:? "pathPrefix" .!= Just legacyDerivPathPrefix
 
 data EncryptedPrvStorage = EncryptedPrvStorage {
     _encryptedPrvStorage'ciphertext :: ByteString
@@ -108,10 +107,10 @@ data CurrencyPubStorage = CurrencyPubStorage {
 
 makeLenses ''CurrencyPubStorage
 
+$(deriveJSON aesonOptionsStripToApostroph ''CurrencyPubStorage)
+
 instance FromJSONKey HB.BlockHash where
 instance ToJSONKey HB.BlockHash where
-
-$(deriveJSON aesonOptionsStripToApostroph ''CurrencyPubStorage)
 
 type CurrencyPubStorages = M.Map Currency CurrencyPubStorage
 

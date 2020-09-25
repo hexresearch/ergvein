@@ -27,8 +27,6 @@ data GoPage = GoSeed | GoRestore | GoNetwork
 
 data GoRestoreMethodPage = GoRestoreMnemonic
 
-data GoRestoreMethodPage = GoRestoreMnemonic
-
 initialPage :: MonadFrontBase t m => m ()
 initialPage = do
   logWrite "Initial page rendering"
