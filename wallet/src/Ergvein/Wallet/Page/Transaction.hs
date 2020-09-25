@@ -174,7 +174,7 @@ transactionsGetting cur = do
   pubStorageD <- getPubStorageD
   let getHeight pubStorage' = fromMaybe 0 $ _currencyPubStorage'height =<< Map.lookup cur (_pubStorage'currencyPubStorages pubStorage')
       heightD = getHeight <$> pubStorageD
-      allBtcAddrsD = ffor pubStorageD $ \(PubStorage _ cm _ _) -> case Map.lookup BTC cm of
+      allBtcAddrsD = ffor pubStorageD $ \PubStorage{..} -> case Map.lookup BTC _pubStorage'currencyPubStorages of
         Nothing -> []
         Just CurrencyPubStorage{..} -> V.toList $ extractAddrs _currencyPubStorage'pubKeystore
   timeZoneE <- getGetTimeZone buildE

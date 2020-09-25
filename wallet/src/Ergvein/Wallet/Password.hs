@@ -7,18 +7,22 @@ module Ergvein.Wallet.Password(
   , askPasswordModal
   , setupLogin
   , setupPattern
+  , setupDerivPrefix
   ) where
 
 import Control.Monad.Except
+import Data.Maybe
 import Ergvein.Crypto
 import Ergvein.Text
+import Ergvein.Types
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Localization.Password
 import Ergvein.Wallet.Localization.PatternKey
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Page.PatternKey
+import Ergvein.Wallet.Storage.Keys
+import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Validate
 
 import Reflex.Dom
@@ -164,3 +168,15 @@ setupLogin = divClass "setup-password" $ form $ fieldset $ mdo
     l <- sampleDyn loginD
     check PWSEmptyLogin $ not $ T.null l
     pure l
+
+setupDerivPrefix :: MonadFrontBase t m => [Currency] -> Maybe DerivPrefix -> m (Dynamic t DerivPrefix)
+setupDerivPrefix ac mpath = divClass "setup-password" $ form $ fieldset $ mdo
+  let dval = fromMaybe defValue mpath
+  pathTD <- textField PWSDeriv $ showDerivPath dval
+  pathE <- validate $ ffor (updated pathTD) $ maybe (Left PWSInvalidPath) Right . parseDerivePath
+  holdDyn dval pathE
+  where
+    defValue = case ac of
+      [] -> defaultDerivePath BTC
+      [c] -> defaultDerivePath c
+      _ -> defaultDerivPathPrefix

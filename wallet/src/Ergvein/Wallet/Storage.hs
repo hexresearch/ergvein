@@ -102,7 +102,7 @@ decryptAndValidatePrvStorage _ mutex pass authInfoRef = do
 
   liftIO $ takeMVar mutex
   either' (decryptPrvStorage eps pass) (withMutexRelease . Left) $ \prv -> do
-    let prvKeysNumber = M.map (\(CurrencyPrvStorage keystore) -> (
+    let prvKeysNumber = M.map (\(CurrencyPrvStorage keystore _) -> (
             V.length $ prvKeystore'external keystore
           , V.length $ prvKeystore'internal keystore
           )) $ _prvStorage'currencyPrvStorages prv

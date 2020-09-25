@@ -24,36 +24,37 @@ import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Storage.AuthInfo
+import Ergvein.Wallet.Storage.Keys
 import Reflex.Localize
 
-passwordPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> [Currency] -> m ()
-passwordPage wt mnemonic curs = wrapperSimple True $ do
+passwordPage :: MonadFrontBase t m => WalletSource -> Maybe DerivPrefix -> Mnemonic -> [Currency] -> m ()
+passwordPage wt mpath mnemonic curs = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText PPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText PPSDescr
   logPassE <- setupLoginPassword
-  createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo wt mnemonic curs) logPassE
+  createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo wt mpath mnemonic curs) logPassE
   authInfoE <- handleDangerMsg createStorageE
   void $ setAuthInfo $ Just <$> authInfoE
 
-setupLoginPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> [Currency] -> m ()
-setupLoginPage wt mnemonic ac = wrapperSimple True $ do
+setupLoginPage :: MonadFrontBase t m => WalletSource -> Maybe DerivPrefix -> Mnemonic -> [Currency] -> m ()
+setupLoginPage wt mpath mnemonic ac = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText LPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText LPSDescr
-  logE <- setupLogin
-  logD <- holdDyn "" logE
-  nextWidget $ ffor (updated logD) $ \l -> Retractable {
-      retractableNext = setupPatternPage wt mnemonic l ac
-    , retractablePrev = Just $ pure $ setupLoginPage wt mnemonic ac
+  logD <- holdDyn "" =<< setupLogin
+  pathD <- setupDerivPrefix ac mpath
+  nextWidget $ ffor (updated ((,) <$> logD <*> pathD)) $ \(l, path) -> Retractable {
+      retractableNext = setupPatternPage wt (Just path) mnemonic l ac
+    , retractablePrev = Just $ pure $ setupLoginPage wt (Just path) mnemonic ac
     }
   pure ()
 
-setupPatternPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> Text -> [Currency] -> m ()
-setupPatternPage wt mnemonic l curs = wrapperSimple True $ do
+setupPatternPage :: MonadFrontBase t m => WalletSource -> Maybe DerivPrefix -> Mnemonic -> Text -> [Currency] -> m ()
+setupPatternPage wt mpath mnemonic l curs = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText PatPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText PatPSDescr
   patE <- setupPattern
   let logPassE = fmap (\p -> (l,p)) patE
-  createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo wt mnemonic curs) logPassE
+  createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo wt mpath mnemonic curs) logPassE
   authInfoE <- handleDangerMsg createStorageE
   void $ setAuthInfo $ Just <$> authInfoE
 

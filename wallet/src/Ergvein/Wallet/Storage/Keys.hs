@@ -3,22 +3,59 @@ module Ergvein.Wallet.Storage.Keys (
   , deriveCurrencyMasterPubKey
   , derivePrvKey
   , derivePubKey
+  , DerivPrefix
+  , defaultDerivPathPrefix
+  , defaultDerivePath
+  , parseDerivePath
+  , showDerivPath
+  , extendDerivPath
   ) where
 
+import Data.Maybe
+import Data.Text (Text)
 import Ergvein.Crypto
+import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Network
+import Ergvein.Types.Storage (DerivPrefix)
+import Text.Read (readMaybe)
 
 import qualified Data.ByteString       as BS
+import qualified Data.Text             as T
+
+-- | Derivation path starts with 84 according to BIP84
+defaultDerivPathPrefix :: DerivPrefix
+defaultDerivPathPrefix = [84]
+
+-- | Derivation path from BIP44 that compatible with BIP84
+defaultDerivePath :: Currency -> DerivPrefix
+defaultDerivePath currency = extendDerivPath currency defaultDerivPathPrefix
+
+-- | Parse string m/0'/0'/0' as derivation path
+parseDerivePath :: Text -> Maybe DerivPrefix
+parseDerivePath s = do
+  sm <- T.stripPrefix "m/" s
+  let ss = T.splitOn "'/" sm
+  traverse (readMaybe . T.unpack) ss
+
+-- | Display derivation path as string m\/84'\/0'\/0'
+showDerivPath :: DerivPrefix -> Text
+showDerivPath ks = "m/" <> T.intercalate "'/" (fmap showt ks)
+
+-- | Extend derivation path with c'\/0' if it contains only from purpose prefix
+extendDerivPath :: Currency -> DerivPrefix -> DerivPrefix
+extendDerivPath currency [a] = [a, getCurrencyIndex currency, 0]
+extendDerivPath _ as = as
 
 -- | Derive a BIP44 and BIP84 compatible private key for a specific currency.
 -- Given a parent private key /m/
 -- and a currency with code /c/, this function will compute private key with path /m\/84'\/c'\/0'/.
-deriveCurrencyMasterPrvKey :: EgvRootXPrvKey -> Currency -> EgvXPrvKey
-deriveCurrencyMasterPrvKey rootPrvKey currency =
-    let hardPath = [84, getCurrencyIndex currency, 0]
+-- The overide derivation path is expected to be full derivation path
+deriveCurrencyMasterPrvKey :: Maybe DerivPrefix -> EgvRootXPrvKey -> Currency -> EgvXPrvKey
+deriveCurrencyMasterPrvKey mpath rootPrvKey currency =
+    let hardPath = fromMaybe (defaultDerivePath currency) mpath
         derivedPrvKey = foldl hardSubKey (unEgvRootXPrvKey rootPrvKey) hardPath
     in case currency of
       BTC -> BtcXPrvKey derivedPrvKey
@@ -27,9 +64,9 @@ deriveCurrencyMasterPrvKey rootPrvKey currency =
 -- | Derive a BIP44 compatible public key for a specific currency.
 -- Given a parent private key /m/
 -- and a currency with code /c/, this function will compute public key with path /m\/84'\/c'\/0'/.
-deriveCurrencyMasterPubKey :: EgvRootXPrvKey -> Currency -> EgvXPubKey
-deriveCurrencyMasterPubKey rootPrvKey currency =
-    let hardPath = [84, getCurrencyIndex currency, 0]
+deriveCurrencyMasterPubKey :: Maybe DerivPrefix -> EgvRootXPrvKey -> Currency -> EgvXPubKey
+deriveCurrencyMasterPubKey mpath rootPrvKey currency =
+    let hardPath = fromMaybe (defaultDerivePath currency) mpath
         derivedPrvKey = foldl hardSubKey (unEgvRootXPrvKey rootPrvKey) hardPath
         derivedPubKey = deriveXPubKey derivedPrvKey
     in case currency of

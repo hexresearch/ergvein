@@ -29,8 +29,12 @@ type WalletName = Text
 
 type Password = Text
 
+-- | Shorthand for encoded BIP48 derivation path like m/84'/0'/0' (hard)
+type DerivPrefix = [KeyIndex]
+
 data CurrencyPrvStorage = CurrencyPrvStorage {
-    _currencyPrvStorage'prvKeystore :: PrvKeystore
+    _currencyPrvStorage'prvKeystore :: !PrvKeystore
+  , _currencyPrvStorage'path        :: !(Maybe DerivPrefix)
   } deriving (Eq, Show, Read)
 
 makeLenses ''CurrencyPrvStorage
@@ -43,6 +47,7 @@ data PrvStorage = PrvStorage {
     _prvStorage'mnemonic            :: Mnemonic
   , _prvStorage'rootPrvKey          :: EgvRootXPrvKey
   , _prvStorage'currencyPrvStorages :: CurrencyPrvStorages
+  , _prvStorage'pathPrefix          :: !(Maybe DerivPrefix)
   } deriving (Eq, Show, Read)
 
 makeLenses ''PrvStorage
@@ -52,6 +57,7 @@ instance ToJSON PrvStorage where
       "mnemonic"            .= toJSON _prvStorage'mnemonic
     , "rootPrvKey"          .= toJSON _prvStorage'rootPrvKey
     , "currencyPrvStorages" .= toJSON _prvStorage'currencyPrvStorages
+    , "pathPrefix"          .= toJSON _prvStorage'pathPrefix
     ]
 
 instance FromJSON PrvStorage where
@@ -59,6 +65,7 @@ instance FromJSON PrvStorage where
     <$> o .: "mnemonic"
     <*> o .: "rootPrvKey"
     <*> o .: "currencyPrvStorages"
+    <*> o .:? "pathPrefix"
 
 data EncryptedPrvStorage = EncryptedPrvStorage {
     _encryptedPrvStorage'ciphertext :: ByteString
@@ -86,6 +93,7 @@ instance FromJSON EncryptedPrvStorage where
 
 data CurrencyPubStorage = CurrencyPubStorage {
     _currencyPubStorage'pubKeystore   :: !PubKeystore
+  , _currencyPubStorage'path          :: !(Maybe DerivPrefix)
   , _currencyPubStorage'transactions  :: !(M.Map TxId EgvTx)
   , _currencyPubStorage'height        :: !(Maybe BlockHeight)     -- ^ Last height seen by the wallet
   , _currencyPubStorage'scannedKey    :: !(Maybe Int, Maybe Int)  -- ^ When restoring here we put which keys are we already scanned
@@ -109,6 +117,7 @@ data PubStorage = PubStorage {
   , _pubStorage'currencyPubStorages :: !CurrencyPubStorages
   , _pubStorage'activeCurrencies    :: [Currency]
   , _pubStorage'restoring           :: !Bool -- ^ Flag to track unfinished process of restoration
+  , _pubStorage'pathPrefix          :: !(Maybe DerivPrefix)
   } deriving (Eq, Show, Read)
 
 makeLenses ''PubStorage

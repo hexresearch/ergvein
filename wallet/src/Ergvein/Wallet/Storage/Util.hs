@@ -70,10 +70,13 @@ createPrvKeystore masterPrvKey =
       internalKeys  = V.unfoldrN initialInternalAddressCount internalGen 0
   in PrvKeystore masterPrvKey externalKeys internalKeys
 
-createPrvStorage :: Mnemonic -> EgvRootXPrvKey -> PrvStorage
-createPrvStorage mnemonic rootPrvKey = PrvStorage mnemonic rootPrvKey prvStorages
+createPrvStorage :: Maybe DerivPrefix -> Mnemonic -> EgvRootXPrvKey -> PrvStorage
+createPrvStorage mpath mnemonic rootPrvKey = PrvStorage mnemonic rootPrvKey prvStorages mpath
   where prvStorages = M.fromList [
-            (currency, CurrencyPrvStorage $ createPrvKeystore $ deriveCurrencyMasterPrvKey rootPrvKey currency) |
+            (currency, let
+              dpath = extendDerivPath currency <$> mpath
+              kstore = createPrvKeystore $ deriveCurrencyMasterPrvKey dpath rootPrvKey currency
+              in CurrencyPrvStorage kstore dpath) |
             currency <- allCurrencies
           ]
 
@@ -93,12 +96,15 @@ createPubKeystore masterPubKey =
       internalKeys = V.unfoldrN initialInternalAddressCount (keygen Internal) 0
   in PubKeystore masterPubKey externalKeys internalKeys
 
-createPubStorage :: Bool -> EgvRootXPrvKey -> [Currency] -> PubStorage
-createPubStorage isRestored rootPrvKey cs = PubStorage rootPubKey pubStorages cs isRestored
+createPubStorage :: Bool -> Maybe DerivPrefix -> EgvRootXPrvKey -> [Currency] -> PubStorage
+createPubStorage isRestored mpath rootPrvKey cs = PubStorage rootPubKey pubStorages cs isRestored mpath
   where restState = if isRestored then (Just 0, Just 0) else (Nothing, Nothing)
         rootPubKey = EgvRootXPubKey $ deriveXPubKey $ unEgvRootXPrvKey rootPrvKey
-        mkStore c = CurrencyPubStorage {
-            _currencyPubStorage'pubKeystore   = (createPubKeystore $ deriveCurrencyMasterPubKey rootPrvKey c)
+        mkStore c = let
+          dpath = extendDerivPath c <$> mpath
+          in CurrencyPubStorage {
+            _currencyPubStorage'pubKeystore   = (createPubKeystore $ deriveCurrencyMasterPubKey dpath rootPrvKey c)
+          , _currencyPubStorage'path          = dpath
           , _currencyPubStorage'transactions  = M.empty
           , _currencyPubStorage'height        = Nothing
           , _currencyPubStorage'scannedKey    = restState
@@ -109,13 +115,19 @@ createPubStorage isRestored rootPrvKey cs = PubStorage rootPubKey pubStorages cs
           }
         pubStorages = M.fromList [(currency, mkStore currency) | currency <- cs]
 
-createStorage :: MonadIO m => Bool -> Mnemonic -> (WalletName, Password) -> [Currency] -> m (Either StorageAlert WalletStorage)
-createStorage isRestored mnemonic (login, pass) cs = case mnemonicToSeed "" mnemonic of
+createStorage :: MonadIO m
+  => Bool -- ^ Flag that set to True if wallet was restored, not fresh generation
+  -> Maybe DerivPrefix -- ^ Override Bip44 derivation path in keys
+  -> Mnemonic -- ^ Mnemonic to generate keys
+  -> (WalletName, Password) -- ^ Wallet file name and encryption password
+  -> [Currency] -- ^ Default currencies
+  -> m (Either StorageAlert WalletStorage)
+createStorage isRestored mpath mnemonic (login, pass) cs = case mnemonicToSeed "" mnemonic of
    Left err -> pure $ Left $ SAMnemonicFail $ showt err
    Right seed -> do
     let rootPrvKey = EgvRootXPrvKey $ makeXPrvKey seed
-        prvStorage = createPrvStorage mnemonic rootPrvKey
-        pubStorage = createPubStorage isRestored rootPrvKey cs
+        prvStorage = createPrvStorage mpath mnemonic rootPrvKey
+        pubStorage = createPubStorage isRestored mpath rootPrvKey cs
     encryptPrvStorageResult <- encryptPrvStorage prvStorage pass
     case encryptPrvStorageResult of
       Left err -> pure $ Left err
@@ -347,8 +359,8 @@ generateMissingPrvKeysHelper ::
   -> CurrencyPrvStorage -- ^ Private keystore
   -> (Int, Int)         -- ^ Total number of external and internal private keys respectively that should be stored in keystore
   -> CurrencyPrvStorage -- ^ Updated private keystore
-generateMissingPrvKeysHelper _ (CurrencyPrvStorage prvKeystore) (goalExternalKeysNum, goalInternalKeysNum) =
-  CurrencyPrvStorage $ PrvKeystore masterPrvKey updatedExternalPrvKeys updatedInternalPrvKeys
+generateMissingPrvKeysHelper _ (CurrencyPrvStorage prvKeystore path) (goalExternalKeysNum, goalInternalKeysNum) =
+  CurrencyPrvStorage (PrvKeystore masterPrvKey updatedExternalPrvKeys updatedInternalPrvKeys) path
   where
     currentExternalKeys = prvKeystore'external prvKeystore
     currentInternalKeys = prvKeystore'internal prvKeystore
