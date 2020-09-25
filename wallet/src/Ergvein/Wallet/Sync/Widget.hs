@@ -8,7 +8,7 @@ import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Util
 
 syncWidget :: MonadFront t m => Dynamic t SyncProgress -> m ()
-syncWidget progressD = divClass "currency-wrapper" $ do
+syncWidget progressD = divClass "sync-widget-wrapper" $ do
   void $ widgetHoldDyn $ ffor progressD $ \sp -> case sp of
     Synced -> pure ()
     SyncMeta{..} -> do
