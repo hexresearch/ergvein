@@ -1,16 +1,18 @@
 serverPort               : 8085
-dbPath                   : "./ergveinDb"
-BTCNodeIsTestnet         : true
+serverTcpPort            : 8667
+filtersDbPath            : "./ergveinDb"
+indexerDbPath            : "./indexerDb"
+BTCNodeIsTestnet         : false
 BTCNodeHost              : localhost
-BTCNodePort              : 18332
+BTCNodePort              : 8332
 BTCNodeUser              : bitcoinrpc
 BTCNodePassword          : password
+BTCNodeTCPHost           : localhost
+BTCNodeTCPPort           : 8333
 ERGONodeHost             : localhost
 ERGONodePort             : 9052
-blockchainScanDelay      : 1000000
+blockchainScanDelay      : 10000000
 ownPeerAddress           : null
-knownPeers               :
-                           - "https://ergvein-indexer1.hxr.team"
-                           - "https://ergvein-indexer2.hxr.team"
+knownPeers               : []
 peerActualizationDelay   : 10000000
 peerActualizationTimeout : 86400

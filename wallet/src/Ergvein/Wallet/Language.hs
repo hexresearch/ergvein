@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 -- | Module that fullfils data family required by `reflex-localize`
 module Ergvein.Wallet.Language(
     Language(..)

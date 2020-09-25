@@ -1,13 +1,13 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Wallet.Monad.Prim
   (
     MonadBaseConstr
-  , MonadFrontConstr
   , MonadAlertPoster(..)
   , AlertType(..)
   , alertTypeToSeverity
   , AlertInfo(..)
   , MonadEgvLogger(..)
-  , PeerScanInfoMap (..)
+  , PeerScanInfoMap
   , IndexerInfo(..)
   , MonadHasSettings(..)
   , getSettings
@@ -32,10 +32,8 @@ import Reflex.ExternalRef
 import Reflex.Host.Class
 import Reflex.Localize
 import Reflex.Spider.Internal (SpiderHostFrame, Global)
-import Servant.Client(BaseUrl)
 
 import Ergvein.Crypto
-import Ergvein.Index.Client
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Log.Types
@@ -43,7 +41,6 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Version
 
-import qualified Data.Set as S
 import qualified Reflex.Profiled as RP
 import qualified Control.Monad.Fail as F
 
@@ -72,20 +69,6 @@ type MonadBaseConstr t m = (MonadHold t m
   , MonadRandom (Performable m)
   , PlatformNatives
   , MonadReflexCreateTrigger t m
-  )
-
--- Context for unauthed widgets
--- Only to be used to request password and open the local storage
-type MonadFrontConstr t m = (PlatformNatives
-  , HasStoreDir (Performable m)
-  , HasStoreDir m
-  , MonadAlertPoster t m
-  , MonadBaseConstr t m
-  , MonadEgvLogger t m
-  , MonadHasSettings t m
-  , MonadLocalized t m
-  , MonadRetract t m
-  , HasVersion
   )
 
 -- ===========================================================================

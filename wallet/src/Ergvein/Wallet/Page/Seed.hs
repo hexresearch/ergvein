@@ -19,6 +19,7 @@ import Ergvein.Text
 import Ergvein.Types.Restore
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Camera
+import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Localization.Password
@@ -26,7 +27,6 @@ import Ergvein.Wallet.Localization.Seed
 import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Log.Event
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Page.Canvas
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Platform
@@ -46,20 +46,18 @@ mnemonicPage = go Nothing
   where
     go mnemonic = wrapperSimple True $ do
       (e, mnemonicD) <- mnemonicWidget mnemonic
-      nextWidget $ ffor e $ \mn -> Retractable {
+      void $ nextWidget $ ffor e $ \mn -> Retractable {
           retractableNext = checkPage mn
         , retractablePrev = Just $ go <$> mnemonicD
         }
-      pure ()
 
 checkPage :: MonadFrontBase t m => Mnemonic -> m ()
 checkPage mnemonic = wrapperSimple True $ do
   mnemonicE <- mnemonicCheckWidget mnemonic
-  nextWidget $ ffor mnemonicE $ \mnemonic' -> Retractable {
+  void $ nextWidget $ ffor mnemonicE $ \mnemonic' -> Retractable {
       retractableNext = selectCurrenciesPage WalletGenerated mnemonic'
     , retractablePrev = Just $ pure $ checkPage mnemonic'
     }
-  pure ()
 
 generateMnemonic :: MonadFrontBase t m => m (Maybe Mnemonic)
 generateMnemonic = do
@@ -74,7 +72,7 @@ mnemonicWidget mnemonic = do
     Nothing -> pure (never, pure Nothing)
     Just phrase -> mdo
       divClass "mnemonic-title" $ h4 $ localizedText SPSTitle
-      divClass "mnemonic-colony" $ adaptive3 (smallMnemonic phrase) (mediumMnemonic phrase) (desktopMnemonic phrase)
+      void $ divClass "mnemonic-colony" $ adaptive3 (smallMnemonic phrase) (mediumMnemonic phrase) (desktopMnemonic phrase)
       divClass "mnemonic-warn" $ h4 $ localizedText SPSWarn
       btnE <- outlineButton SPSWrote
       pure (phrase <$ btnE, pure $ Just phrase)
@@ -86,7 +84,7 @@ mnemonicWidget mnemonic = do
       elClass "span" "mnemonic-word-ix" $ text $ showt i
       text w
 
-    smallMnemonic phrase = flip traverse_ (zip [1..] . T.words $ phrase) $ uncurry (wordColumn "mnemonic-word-mb")
+    smallMnemonic phrase = flip traverse_ (zip [(1 :: Int)..] . T.words $ phrase) $ uncurry (wordColumn "mnemonic-word-mb")
     mediumMnemonic phrase =  void $ colonize 2 (prepareMnemonic 2 phrase) $ uncurry (wordColumn "mnemonic-word-md")
     desktopMnemonic phrase = void $ colonize 4 (prepareMnemonic 4 phrase) $ uncurry (wordColumn "mnemonic-word-dx")
 
@@ -100,7 +98,6 @@ mkCols n vals = mkCols' [] vals
     mkCols' acc xs = case xs of
       [] -> acc
       _ -> let (r, rest) = L.splitAt n' xs in mkCols' (acc ++ [r]) rest
-
 
 -- | Interactive check of mnemonic phrase
 mnemonicCheckWidget :: MonadFrontBase t m => Mnemonic -> m (Event t Mnemonic)
@@ -148,14 +145,19 @@ restoreFromMnemonicPage :: MonadFrontBase t m => m ()
 restoreFromMnemonicPage = wrapperSimple True $ mdo
   encodedEncryptedMnemonicErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing))
   h4 $ localizedText SPSRestoreFromMnemonic
+  encodedEncryptedMnemonicD <- validatedTextFieldSetVal SPSEnterMnemonic "" encodedEncryptedMnemonicErrsD inputE
+  inputE <- divClass "restore-seed-buttons-wrapper" $ do
+    pasteBtnE <- pasteBtn
+    pasteE <- clipboardPaste pasteBtnE
 #ifdef ANDROID
-  encodedEncryptedMnemonicD <- validatedTextFieldSetVal SPSEnterMnemonic "" encodedEncryptedMnemonicErrsD resQRCodeE
-  qrCodeBtnE <- divClass "" $ outlineButton SPSScanQR
-  openCameraE <- delay 1.0 =<< openCamara qrCodeBtnE
-  resQRCodeE <- waiterResultCamera openCameraE
+    qrCodeBtnE <- scanQRBtn
+    openCameraE <- delay 1.0 =<< openCamara qrCodeBtnE
+    resQRCodeE <- waiterResultCamera openCameraE
+    let inputE' = leftmost [pasteE, resQRCodeE]
 #else
-  encodedEncryptedMnemonicD <- validatedTextField SPSEnterMnemonic "" encodedEncryptedMnemonicErrsD
+    let inputE' = pasteE
 #endif
+    pure inputE'
   submitE <- outlineButton CSForward
   let validationE = poke submitE $ \_ -> do
         encodedEncryptedMnemonic <- sampleDyn encodedEncryptedMnemonicD
@@ -174,6 +176,12 @@ restoreFromMnemonicPage = wrapperSimple True $ mdo
         , retractablePrev = Just $ pure restoreFromMnemonicPage
         }
 
+pasteBtn :: MonadFrontBase t m => m (Event t ())
+pasteBtn = outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
+
+scanQRBtn :: MonadFrontBase t m => m (Event t ())
+scanQRBtn = outlineTextIconButtonTypeButton CSScanQR "fas fa-qrcode fa-lg"
+
 askSeedPasswordPage :: MonadFrontBase t m => EncryptedByteString -> m ()
 askSeedPasswordPage encryptedMnemonic = do
   passE <- askTextPasswordPage PPSMnemonicUnlock ("" :: Text)
@@ -181,7 +189,7 @@ askSeedPasswordPage encryptedMnemonic = do
   verifiedMnemonicE <- handleDangerMsg mnemonicBSE
   void $ nextWidget $ ffor (decodeUtf8With lenientDecode <$> verifiedMnemonicE) $ \mnem -> Retractable {
       retractableNext = selectCurrenciesPage WalletRestored mnem
-    , retractablePrev = Nothing
+    , retractablePrev = Just $ pure $ askSeedPasswordPage encryptedMnemonic
     }
 
 decodeMnemonic :: Text -> Maybe (Either Text EncryptedByteString)
@@ -208,8 +216,7 @@ seedRestoreWidget = mdo
     Just ws -> divClass "restore-seed-buttons-wrapper" $ fmap leftmost $ flip traverse ws $ \w -> do
       btnClickE <- buttonClass (pure "button button-outline") w
       pure $ w <$ btnClickE
-  let emptyStr :: Text = ""
-      enterPressedE = keypress Enter txtInput
+  let enterPressedE = keypress Enter txtInput
       inputD = _inputElement_value txtInput
       enterE = flip push enterPressedE $ const $ do
         sugs <- sampleDyn suggestionsD
@@ -224,8 +231,3 @@ seedRestoreWidget = mdo
   where
     waiting :: m (Event t Text)
     waiting = (h4 $ localizedText SPSWaiting) >> pure never
-
-validateSeedWord :: Text -> Either [SeedPageStrings] Text
-validateSeedWord word = if wordTrieElem $ T.toLower word
-  then Right word
-  else Left [SPSInvalidWord]

@@ -1,0 +1,23 @@
+serverPort               : 8080
+serverTcpPort            : 8667
+filtersDbPath            : "/ergveindata/filters"
+indexerDbPath            : "/ergveindata/unfork"
+
+BTCNodeHost              : btc
+BTCNodePort              : 8332 # use 18333 for testnet
+BTCNodeTCPHost           : btc
+BTCNodeTCPPort           : 8333 # use 18332 for testnet
+BTCNodeUser              : bitcoinrpcuser
+BTCNodePassword          : bitcoinrpcpassword
+ERGONodeHost             : ergo
+ERGONodePort             : 9053 # use 9052 for testnet
+
+# temporary flag. should be autodetection in future releases
+BTCNodeIsTestnet         : false # use true for testnet
+
+blockchainScanDelay      : 1000000
+pubScriptHistoryScan     : false
+ownPeerAddress           : null
+knownPeers               : []
+peerActualizationDelay   : 10000000
+peerActualizationTimeout : 86400

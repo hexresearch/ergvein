@@ -1,6 +1,7 @@
 module Ergvein.Wallet.Monad.Base
   (
     MonadFrontBase(..)
+  , MonadFrontConstr
   , getAuthInfoMaybe
   , isAuthorized
   , loadingWidgetDyn
@@ -9,41 +10,36 @@ module Ergvein.Wallet.Monad.Base
   ) where
 
 import Control.Concurrent.Chan
-import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Random.Class
-import Data.Foldable (traverse_)
-import Data.Functor (void)
-import Data.Functor.Misc (Const2(..))
-import Data.Map (Map)
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (isJust)
 import Data.Text (Text)
-import Language.Javascript.JSaddle
-import Network.Socket (SockAddr)
 import Reflex
-import Reflex.Dom hiding (run, mainWidgetWithCss, textInput)
-import Reflex.Dom.Retractable.Class
+import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 
 import Ergvein.Types.AuthInfo
-import Ergvein.Types.Currency
-import Ergvein.Types.Fees
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Currencies
-import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Monad.Async
-import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Prim
-import Ergvein.Wallet.Monad.Storage
+import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Native
-import Ergvein.Wallet.Node.Types
-import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Storage.Util
-import Ergvein.Wallet.Sync.Status
+import Ergvein.Wallet.Version
 
-import qualified Data.Map.Strict as M
-import qualified Data.Set as S
+-- Context for unauthed widgets
+-- Only to be used to request password and open the local storage
+type MonadFrontConstr t m = (PlatformNatives
+  , HasStoreDir (Performable m)
+  , HasStoreDir m
+  , MonadAlertPoster t m
+  , MonadBaseConstr t m
+  , MonadEgvLogger t m
+  , MonadHasSettings t m
+  , MonadLocalized t m
+  , MonadRetract t m
+  , MonadIndexClient t m
+  , HasVersion
+  )
 
 class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   -- | Get loading widget trigger and fire. This is internal stuff

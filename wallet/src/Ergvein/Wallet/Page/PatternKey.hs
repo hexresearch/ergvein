@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -Wno-all #-}
 module Ergvein.Wallet.Page.PatternKey(
     patternAsk
   , patternAskWidget
@@ -13,6 +14,9 @@ module Ergvein.Wallet.Page.PatternKey(
   , PatternTries(..)
   ) where
 
+import Data.List (find)
+import Data.Maybe (fromMaybe)
+
 import Ergvein.Aeson
 import Ergvein.Text
 import Ergvein.Wallet.Language
@@ -21,24 +25,14 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Canvas
 import Ergvein.Wallet.Util
 
-import Control.Monad.IO.Class
-import Data.Aeson.Types as A
-import Data.Aeson
-
-import Reflex.Dom
-
 import qualified Data.Map.Strict as Map
-import           Data.Maybe (catMaybes, fromMaybe)
-import           Data.List (find)
-import           Data.List.Split
-import qualified Data.Text as T
-import           Data.Time (UTCTime, getCurrentTime)
-import           System.Directory
-
-import Language.Javascript.JSaddle hiding ((!!))
 
 #ifdef ANDROID
 import Android.HaskellActivity
+import Control.Monad.IO.Class
+import Data.Aeson
+import Language.Javascript.JSaddle hiding ((!!))
+import System.Directory
 #endif
 
 data PatternTries = PatternTries {

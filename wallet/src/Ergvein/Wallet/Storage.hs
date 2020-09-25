@@ -5,27 +5,21 @@ module Ergvein.Wallet.Storage
   , modifyPrvStorage
   ) where
 
-import Data.List (foldl')
-import Data.Proxy
 import Control.Concurrent.MVar
 import Control.Lens
 import Control.Monad.IO.Class
+import Data.Proxy
 import Reflex.ExternalRef
 
-import Ergvein.Text
-import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Localization.Storage
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
-import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Storage.Util
-import Ergvein.Wallet.Util
 
-import qualified Data.Map.Strict as M
 import qualified Data.Map.Merge.Strict as MM
+import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
 
 -- | Requests password, runs a callback against decoded wallet and returns the result
@@ -52,7 +46,6 @@ modifyPrvStorage :: MonadFront t m
   -> m (Event t ())
 modifyPrvStorage updE = do
   walletName <- getWalletName
-  authD <- getAuthInfo
   authInfoRef <- getAuthInfoRef
   updD <- holdDyn Nothing $ Just <$> updE
   passE <- requestPasssword (walletName <$ updE)
@@ -118,5 +111,4 @@ decryptAndValidatePrvStorage _ mutex pass authInfoRef = do
           withMutexRelease $ Right updatedPrvStorage
   where
     withMutexRelease a = liftIO $ putMVar mutex () >> pure a  -- release the mutex and return the value
-    maybe' m n j = maybe n j m
     either' e l r = either l r e

@@ -10,25 +10,22 @@ import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Receive
-import Ergvein.Wallet.Menu
+import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Page.Canvas
 import Ergvein.Wallet.Page.QRCode
-import Ergvein.Wallet.Share
-import Ergvein.Wallet.Storage.Keys
-import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
 
-import qualified Data.ByteString.Lazy as BS
+#ifdef ANDROID
+import Ergvein.Wallet.Share
+#endif
 
 receivePage :: MonadFront t m => Currency -> m ()
 receivePage cur = do
@@ -55,11 +52,11 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
   let thisWidget = Just $ pure $ receivePage cur
       navbar = blank
   wrapperNavbar False title thisWidget navbar $ void $ divClass "receive-page" $ do
-    base64D <- divClass "receive-qr" $ qrCodeWidgetWithData (curprefix cur <> keyTxt)
+    base64D <- divClass "receive-qr" $ qrCodeWidgetWithData prefixedKeyText
     (newE, copyE, shareE) <- divClass "receive-buttons-wrapper" $ do
       nE  <- newAddrBtn
       cE <- copyAddrBtn
-      sE <- fmap (shareUrl <$) shareAddrBtn
+      sE <- fmap (prefixedKeyText <$) shareAddrBtn
       shareQRE <- shareQRBtn
       shareShareQR $ attachWithMaybe (\m _ -> (, keyTxt) <$> m) (current base64D) shareQRE
       pure (nE, cE, sE)
@@ -72,9 +69,13 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
     setLabelToExtPubKey "receivePageWidget:2" $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
   where
     keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress pubKeyBox'key
-    shareUrl = generateURL keyTxt
-    generateURL :: Text -> Text
-    generateURL addr = curprefix cur <> addr
+    prefixedKeyText = curprefix cur <> keyTxt
+
+shareAddrBtn :: MonadFront t m => m (Event t ())
+shareAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton CSShare "fas fa-share-alt fa-lg"
+
+shareQRBtn :: MonadFront t m => m (Event t ())
+shareQRBtn = divClass "receive-btn-wrapper" $ outlineTextIconButtonTypeButton CSShareQR "fas fa-qrcode fa-lg"
 
 #else
 receivePageWidget :: MonadFront t m => Currency -> Int -> EgvPubKeyBox -> m ()
@@ -85,7 +86,7 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
       navbar = navbarWidget cur thisWidget NavbarReceive
   wrapperNavbar False title thisWidget navbar $ void $ divClass "receive-page" $ do
     void $ divClass "receive-qr" $ qrCodeWidget (curprefix cur <> keyTxt)
-    divClass "receive-buttons-wrapper" $ do
+    void $ divClass "receive-buttons-wrapper" $ do
       newE  <- newAddrBtn
       copyE <- copyAddrBtn
       setFlagToExtPubKey "receivePageWidget:1" $ (cur, i) <$ newE
@@ -104,13 +105,7 @@ newAddrBtn :: MonadFront t m => m (Event t ())
 newAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton RPSGenNew "fas fa-forward fa-lg"
 
 copyAddrBtn :: MonadFront t m => m (Event t ())
-copyAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton RPSCopy "fas fa-copy fa-lg"
-
-shareAddrBtn :: MonadFront t m => m (Event t ())
-shareAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton RPSShare "fas fa-share-alt fa-lg"
-
-shareQRBtn :: MonadFront t m => m (Event t ())
-shareQRBtn = divClass "receive-btn-wrapper" $ outlineTextIconButtonTypeButton RPSShareQR "fas fa-qrcode fa-lg"
+copyAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton CSCopy "fas fa-copy fa-lg"
 
 labelAddrBtn :: MonadFront t m => m (Event t ())
 labelAddrBtn = outlineTextIconButton RPSAddLabel "fas fa-tag fa-lg"

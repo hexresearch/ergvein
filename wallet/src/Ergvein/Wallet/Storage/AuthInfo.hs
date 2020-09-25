@@ -8,7 +8,6 @@ import Ergvein.Crypto
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
 import Ergvein.Types.Restore
-import Ergvein.Wallet.Input
 import Ergvein.Wallet.Localization.AuthInfo
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
@@ -21,7 +20,7 @@ initAuthInfo wt mpath mnemonic curs login pass = do
   case mstorage of
     Left err -> pure $ Left $ CreateStorageAlert err
     Right s -> case passwordToECIESPrvKey pass of
-      Left err -> pure $ Left GenerateECIESKeyAlert
+      Left _ -> pure $ Left GenerateECIESKeyAlert
       Right k -> pure $ Right AuthInfo {
           _authInfo'storage = s
         , _authInfo'eciesPubKey = toPublic k
@@ -35,7 +34,7 @@ loadAuthInfo login pass = do
   case mstorage of
     Left err -> pure $ Left $ LoadStorageAlert err
     Right s -> case passwordToECIESPrvKey pass of
-      Left err -> pure $ Left GenerateECIESKeyAlert
+      Left _ -> pure $ Left GenerateECIESKeyAlert
       Right k -> pure $ Right (
           AuthInfo {
             _authInfo'storage = s

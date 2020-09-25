@@ -8,7 +8,6 @@ module Ergvein.Wallet.Camera(
 import Data.Text (Text)
 import Data.Text as T
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 

@@ -1,2 +1,3 @@
-* Reworked BIP158 filters to be compatible with standard (#636).
-* Automatic public key generation (#621).
+* Allow indexer setup before restore (#654)
+* Small fixes for indexer server
+* Add more default indexers

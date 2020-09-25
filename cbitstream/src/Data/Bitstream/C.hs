@@ -48,8 +48,6 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Unsafe as BS
 import qualified Prelude as P
 
-import Debug.Trace
-
 -- | Wrapper around C object to track buffers.
 data Bitstream = Bitstream {
   bitstreamSize   :: !Int -- ^ Size of allocated buffer

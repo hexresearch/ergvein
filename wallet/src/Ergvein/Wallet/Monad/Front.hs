@@ -4,7 +4,7 @@ module Ergvein.Wallet.Monad.Front(
   , MonadFrontAuth(..)
   , AuthInfo(..)
   , Password
-  , RequestSelector
+  , NodeReqSelector
   -- * Helpers
   , extractReq
   , getActiveCursD
@@ -37,6 +37,7 @@ module Ergvein.Wallet.Monad.Front(
   , module Ergvein.Wallet.Monad.Client
   ) where
 
+import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Foldable (traverse_)
@@ -70,16 +71,16 @@ import Ergvein.Wallet.Sync.Status
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
-type RequestSelector t = EventSelector t (Const2 Currency (Map SockAddr NodeMessage))
+type NodeReqSelector t = EventSelector t (Const2 Currency (Map SockAddr NodeMessage))
 
-extractReq :: Reflex t => RequestSelector t -> Currency -> SockAddr -> Event t NodeMessage
+extractReq :: Reflex t => NodeReqSelector t -> Currency -> SockAddr -> Event t NodeMessage
 extractReq sel c u = select (fanMap (select sel $ Const2 c)) $ Const2 u
 
 -- | Authorized context. Has access to storage and indexer's functionality
 type MonadFront t m = (
     MonadFrontAuth t m
   , MonadStorage t m
-  , MonadClient t m
+  , MonadIndexClient t m
   , HasFiltersStorage t m
   , HasFiltersStorage t (Performable m)
   )
@@ -96,7 +97,7 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   -- | Internal method to get connection map ref
   getNodeConnRef  :: m (ExternalRef t (ConnMap t))
   -- | Get node request event
-  getNodeRequestSelector :: m (RequestSelector t)
+  getNodeNodeReqSelector :: m (NodeReqSelector t)
   -- | Get fees ref. Internal
   getFeesRef :: m (ExternalRef t (Map Currency FeeBundle))
   -- | Get node request trigger
@@ -188,12 +189,9 @@ getActiveCursD = externalRefDynamic =<< getActiveCursRef
 updateActiveCurs :: MonadFrontAuth t m => Event t (S.Set Currency -> S.Set Currency) -> m (Event t ())
 updateActiveCurs updE = do
   curRef      <- getActiveCursRef
-  nodeRef     <- getNodeConnRef
   settingsRef <- getSettingsRef
-  authRef     <- getAuthInfoRef
-  sel         <- getNodeRequestSelector
   fmap updated $ widgetHold (pure ()) $ ffor updE $ \f -> do
-    (diffMap, newcs) <- modifyExternalRef curRef $ \cs -> let
+    (_, _) <- modifyExternalRef curRef $ \cs -> let
       cs' = f cs
       offUrls = S.map (, False) $ S.difference cs cs'
       onUrls  = S.map (, True)  $ S.difference cs' cs
@@ -201,12 +199,8 @@ updateActiveCurs updE = do
       dm = M.fromList $ S.toList $ offUrls <> onUrls <> onUrls'
       in (cs',(dm, S.toList cs'))
     settings <- readExternalRef settingsRef
-    login    <- fmap _authInfo'login $ readExternalRef authRef
-    let urls = settingsNodes settings
-        set' = settings
-
-    writeExternalRef settingsRef set'
-    storeSettings set'
+    writeExternalRef settingsRef settings
+    storeSettings settings
     pure ()
 {-# INLINE updateActiveCurs #-}
 
@@ -225,23 +219,31 @@ getFeesD :: MonadFrontAuth t m => m (Dynamic t (Map Currency FeeBundle))
 getFeesD = externalRefDynamic =<< getFeesRef
 
 -- | Get current value of longest chain height for given currency.
-getCurrentHeight :: MonadFrontAuth t m => Currency -> m (Dynamic t Integer)
+getCurrentHeight :: (MonadFrontAuth t m, MonadStorage t m) => Currency -> m (Dynamic t Integer)
 getCurrentHeight c = do
-  r <- getHeightRef
-  md <- externalRefDynamic r
-  holdUniqDyn $ (fromMaybe 0 . M.lookup c) <$> md
+  psD <- getPubStorageD
+  pure $ ffor psD $ \ps -> fromIntegral $ fromMaybe 0 $ join $ ps ^. pubStorage'currencyPubStorages . at c
+    & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'height
 
 -- | Update current height of longest chain for given currency.
+-- DEPRECATED! getCurrentHeight reads directly from pubStorage
 setCurrentHeight :: MonadFront t m => Currency -> Event t Integer -> m (Event t ())
 setCurrentHeight c e = do
   r <- getHeightRef
+  e' <- fmap (fmapMaybe id) $ performFork $ ffor e $ \h -> do
+    h0 <- fromMaybe 0 . M.lookup c <$> readExternalRef r
+    pure $ if h > h0 then Just h else Nothing
+
   restoredD <- fmap _pubStorage'restoring <$> getPubStorageD
-  setLastSeenHeight "setCurrentHeight" c $ fromIntegral <$> e
-  mE <- performFork $ ffor e $ \h -> do
+  setLastSeenHeight "setCurrentHeight" c $ fromIntegral <$> e'
+  mE <- performFork $ ffor e' $ \h -> do
     h0 <- fromMaybe 0 . M.lookup c <$> readExternalRef r
     restored <- sample . current $ restoredD
-    modifyExternalRef r ((, ()) . M.insert c h)
-    pure $ if (h0 == 0 && not restored) then Just (c, fromIntegral (h-1)) else Nothing
+    if h > h0
+      then do
+        modifyExternalRef r ((, ()) . M.insert c h)
+        pure $ if (h0 == 0 && not restored) then Just (c, fromIntegral (h-1)) else Nothing
+      else pure Nothing
   writeWalletsScannedHeight "setCurrentHeight" $ fmapMaybe id mE
 
 -- | Get current value that tells you whether filters are fully in sync now or not

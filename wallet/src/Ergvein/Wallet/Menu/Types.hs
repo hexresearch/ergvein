@@ -5,7 +5,6 @@ module Ergvein.Wallet.Menu.Types(
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Monad
 
 data MenuItem
   = MenuBalances
@@ -28,7 +27,7 @@ instance LocalizedPrint MenuItem where
       MenuSwitch      -> "Switch wallet"
     Russian -> case v of
       MenuBalances    -> "Балансы"
-      MenuSingleBalance cur -> "Баланс" <> showt cur
+      MenuSingleBalance cur -> "Баланс " <> showt cur
       MenuNetwork     -> "Сеть"
       MenuSettings    -> "Настройки"
       MenuAbout       -> "О программе"

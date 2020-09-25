@@ -1,10 +1,14 @@
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 module Ergvein.Wallet.Debug
   (
     debugWidget
   ) where
 
 import Control.Lens
-import Data.Maybe (fromMaybe)
+import Control.Monad.IO.Class
+import Data.ByteString (ByteString)
+import Data.Maybe (fromMaybe, listToMaybe, catMaybes)
+import Network.Haskoin.Block hiding (BlockHash, BlockHeight)
 import Network.Haskoin.Transaction
 
 import Ergvein.Text
@@ -13,17 +17,24 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Utxo
+import Ergvein.Types.Transaction (BlockHash, BlockHeight)
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage
-import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Wrapper
+import Ergvein.Index.Protocol.Types (Message(..))
+import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
+import qualified Data.Text as T
 import qualified Network.Haskoin.Keys as HK
+
+import Network.Socket
+import qualified Control.Exception.Safe as Ex
 
 data DebugBtns
   = DbgUtxo
@@ -33,14 +44,27 @@ data DebugBtns
   | DbgPrvExt
   | DbgMnemonic
 
+mkTxt :: Text -> Text
+mkTxt = id
+
+backTxt :: Text
+backTxt = "Back"
+
 debugWidget :: MonadFront t m => m ()
 debugWidget = el "div" $ do
   utxoE <- fmap (DbgUtxo <$) $ outlineButton ("UTXO" :: Text)
-  pubIntE <- fmap (DbgPubInt <$) $ outlineButton ("Pub Internals" :: Text)
-  pubExtE <- fmap (DbgPubExt <$) $ outlineButton ("Pub Externals" :: Text)
-  prvIntE <- fmap (DbgPrvInt <$) $ outlineButton ("Priv Internals" :: Text)
-  prvExtE <- fmap (DbgPrvExt <$) $ outlineButton ("Priv Externals" :: Text)
+  pubIntE <- fmap (DbgPubInt <$) $ outlineButton $ mkTxt "Pub Internals"
+  pubExtE <- fmap (DbgPubExt <$) $ outlineButton $ mkTxt "Pub Externals"
+  prvIntE <- fmap (DbgPrvInt <$) $ outlineButton $ mkTxt "Priv Internals"
+  prvExtE <- fmap (DbgPrvExt <$) $ outlineButton $ mkTxt "Priv Externals"
   mnemonicE <- fmap (DbgMnemonic <$) $ outlineButton ("Mnemonic" :: Text)
+  pingE <- outlineButton $ mkTxt "Ping"
+  avgD <- indexersAverageLatencyWidget =<< delay 1 pingE
+  h5 . dynText $ do
+    p <- avgD
+    pure $ "Avg.indexer ping: " <> showt p
+  dbgFiltersTest
+  h5 . dynText . fmap showt =<< getCurrentHeight BTC
   let goE = leftmost [utxoE, pubIntE, pubExtE, prvIntE, prvExtE, mnemonicE]
   void $ nextWidget $ ffor goE $ \sel -> Retractable {
       retractableNext = case sel of
@@ -53,22 +77,40 @@ debugWidget = el "div" $ do
     , retractablePrev = Nothing
     }
 
+addUrlWidget :: forall t m . MonadFront t m => Dynamic t Bool -> m (Event t SockAddr)
+addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not b then pure never else do
+  murlE <- el "div" $ do
+    textD <- fmap _inputElement_value $ inputElement $ def
+      & inputElementConfig_elementConfig . elementConfig_initialAttributes .~ ("type" =: "text")
+    goE <- outlineButton $ mkTxt "Addurl"
+    performFork $ ffor goE $ const $ do
+      t <- sampleDyn textD
+      let (h,p) = fmap (T.drop 1) $ T.span (/= ':') t
+      let hints = defaultHints { addrFlags = [AI_ALL] , addrSocketType = Stream }
+      addrs <- liftIO $ Ex.catch (
+          getAddrInfo (Just hints) (Just $ T.unpack h) (Just $ T.unpack p)
+        ) (\(_ :: Ex.SomeException) -> pure [])
+      pure $ fmap addrAddress $ listToMaybe addrs
+  void $ widgetHold (pure ()) $ ffor murlE $ \case
+    Nothing -> divClass "form-field-errors" $ text "Falied to parse URL"
+    _ -> pure ()
+  pure $ fmapMaybe id murlE
+
 dbgUtxoPage :: MonadFront t m => m ()
 dbgUtxoPage = wrapper False "UTXO" (Just $ pure dbgUtxoPage) $ divClass "currency-content" $ do
-  void . el "div" $ retract =<< outlineButton ("Back" :: Text)
+  void . el "div" $ retract =<< outlineButton backTxt
   pubSD <- getPubStorageD
   let utxoD = ffor pubSD $ \ps -> M.toList $ fromMaybe M.empty $ ps ^. pubStorage'currencyPubStorages . at BTC & fmap (view currencyPubStorage'utxos)
   void $ widgetHoldDyn $ ffor utxoD $ \utxo -> divClass "" $ do
-    flip traverse utxo $ \(o, UtxoMeta{..}) -> do
+    void $ flip traverse utxo $ \(o, UtxoMeta{..}) -> do
       el "div" $ text $ showt $ outPointHash o
       el "div" $ text $ showt (utxoMeta'purpose, utxoMeta'index) <> " amount: " <> showt utxoMeta'amount <> " " <> showt utxoMeta'status
       el "div" $ text $ showt utxoMeta'script
       el "div" $ text $ "------------------------------------------"
-    pure ()
 
 dbgPubInternalsPage :: MonadFront t m => m ()
 dbgPubInternalsPage = wrapper False "Public internal keys" (Just $ pure dbgPubInternalsPage) $ divClass "currency-content" $ do
-  void . el "div" $ retract =<< outlineButton ("Back" :: Text)
+  void . el "div" $ retract =<< outlineButton backTxt
   pubSD <- getPubStorageD
   let intsD = ffor pubSD $ \ps -> V.indexed $ fromMaybe V.empty $ ps ^. pubStorage'currencyPubStorages . at BTC & fmap (\a -> a ^. currencyPubStorage'pubKeystore & pubKeystore'internal)
   void $ widgetHoldDyn $ ffor intsD $ \ints -> divClass "" $ do
@@ -78,7 +120,7 @@ dbgPubInternalsPage = wrapper False "Public internal keys" (Just $ pure dbgPubIn
 
 dbgPubExternalsPage :: MonadFront t m => m ()
 dbgPubExternalsPage = wrapper False "Public external keys" (Just $ pure dbgPubExternalsPage) $ divClass "currency-content" $ do
-  void . el "div" $ retract =<< outlineButton ("Back" :: Text)
+  void . el "div" $ retract =<< outlineButton backTxt
   pubSD <- getPubStorageD
   let intsD = ffor pubSD $ \ps -> V.indexed $ fromMaybe V.empty $ ps ^. pubStorage'currencyPubStorages . at BTC & fmap (\a -> a ^. currencyPubStorage'pubKeystore & pubKeystore'external)
   void $ widgetHoldDyn $ ffor intsD $ \ints -> divClass "" $ do
@@ -88,7 +130,7 @@ dbgPubExternalsPage = wrapper False "Public external keys" (Just $ pure dbgPubEx
 
 dbgPrivInternalsPage :: MonadFront t m => m ()
 dbgPrivInternalsPage = wrapper False "Private internal keys" (Just $ pure dbgPrivInternalsPage) $ divClass "currency-content" $ do
-  void . el "div" $ retract =<< outlineButton ("Back" :: Text)
+  void . el "div" $ retract =<< outlineButton backTxt
   buildE <- getPostBuild
   intE <- withWallet $ ffor buildE $ \_ prv -> do
     let PrvKeystore _ _ int = prv ^. prvStorage'currencyPrvStorages
@@ -105,7 +147,7 @@ dbgPrivInternalsPage = wrapper False "Private internal keys" (Just $ pure dbgPri
 
 dbgPrivExternalsPage :: MonadFront t m => m ()
 dbgPrivExternalsPage = wrapper False "Private external keys" (Just $ pure dbgPrivExternalsPage) $ divClass "currency-content" $ do
-  void . el "div" $ retract =<< outlineButton ("Back" :: Text)
+  void . el "div" $ retract =<< outlineButton backTxt
   buildE <- getPostBuild
   extE <- withWallet $ ffor buildE $ \_ prv -> do
     let PrvKeystore _ ext _ = prv ^. prvStorage'currencyPrvStorages
@@ -127,3 +169,24 @@ dbgMnemonicPage = wrapper False "Mnemonic" (Just $ pure dbgMnemonicPage) $ divCl
     pure $ prv ^. prvStorage'mnemonic
   mnemonicD <- holdDyn "" mnemonicE
   dynText mnemonicD
+
+dbgFiltersTest :: MonadFront t m => m ()
+dbgFiltersTest = do
+  getE <- outlineButton $ mkTxt "dbgFiltersTest"
+  filtsE <- getFilters BTC $ (327298, 10) <$ getE
+  performEvent_ $ ffor filtsE $ \filts -> void $ flip traverse filts $ \(bh, filt) -> do
+    logWrite "====================================="
+    logWrite $ showt bh
+    logWrite $ bs2Hex filt
+
+getFilters :: MonadFront t m => Currency -> Event t (BlockHeight, Int) -> m (Event t [(BlockHash, ByteString)])
+getFilters cur e = do
+  respE <- requestRandomIndexer $ ffor e $ \(h, n) ->
+    MFiltersRequest $ FilterRequest curcode (fromIntegral h) (fromIntegral n)
+  pure $ fforMaybe respE $ \case
+    (_, MFiltersResponse (FilterResponse{..})) -> if filterResponseCurrency /= curcode
+      then Nothing
+      else Just $ V.toList $ ffor filterResponseFilters $ \(BlockFilter bid filt) -> (bid, filt)
+    _ -> Nothing
+  where
+    curcode = currencyToCurrencyCode cur

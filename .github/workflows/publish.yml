@@ -35,6 +35,13 @@ jobs:
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         GITHUB_BRANCH: ${{ steps.extract_branch.outputs.branch }}
 
+    - name: Docker Hub Description
+      uses: peter-evans/dockerhub-description@v2
+      env:
+        DOCKERHUB_USERNAME: ergvein
+        DOCKERHUB_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        DOCKERHUB_REPOSITORY: ergvein/ergvein-index-server
+
   android:
     name: Build and publish android release
     runs-on: self-hosted

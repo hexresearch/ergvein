@@ -2,39 +2,29 @@ module Ergvein.Wallet.Page.Restore(
     restorePage
   ) where
 
-import Control.Monad.IO.Class
 import Data.Foldable (foldl')
-import Data.Maybe (fromMaybe)
-import Ergvein.Filters.Btc
+
 import Ergvein.Text
-import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
-import Ergvein.Types.Transaction
-import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Filters.Storage
-import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.Balances
-import Ergvein.Wallet.Page.History
-import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Scan
-import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Constants
 import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Sync.Widget
-import Ergvein.Wallet.Tx
-import Ergvein.Wallet.Worker.Node
 import Ergvein.Wallet.Wrapper
 
-import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
+
+import Ergvein.Wallet.Debug
 
 restorePage :: forall t m . MonadFront t m =>  m ()
 restorePage = wrapperSimple True $ void $ workflow heightAsking
@@ -90,7 +80,7 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
         pure((), scanInternalKeys igap ir <$ storedE)
       else if keyNum >= V.length keys then do
         logWrite "Generating next portion of external BTC keys..."
-        deriveNewBtcKeys External gapLimit
+        void $ deriveNewBtcKeys External gapLimit
         pure ((), scanKeys gapN keyNum <$ buildE)
       else do
         logWrite $ "Scanning external BTC key " <> showt keyNum
@@ -114,7 +104,6 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
     scanInternalKeys :: MonadFront t m => Int -> Int -> Workflow t m ()
     scanInternalKeys gapN keyNum = Workflow $ do
       buildE <- delay 0.1 =<< getPostBuild
-      ps <- getPubStorage
       keys <- pubStorageKeys BTC Internal <$> getPubStorage
       syncWidget =<< getSyncProgress
       heightD <- getCurrentHeight BTC
@@ -124,14 +113,14 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
       if gapN >= gapLimit then pure ((), finishScanning <$ buildE)
       else if keyNum >= V.length keys then do
         logWrite "Generating next portion of internal BTC keys..."
-        deriveNewBtcKeys Internal gapLimit
+        void $ deriveNewBtcKeys Internal gapLimit
         pure ((), scanInternalKeys gapN keyNum <$ buildE)
       else do
         logWrite $ "Scanning internal BTC key #" <> showt keyNum
         h0 <- fmap fromIntegral . sample . current =<< getWalletsScannedHeightD BTC
         scannedE <- scanningBtcKey Internal h0 keyNum (keys V.! keyNum)
         hasTxsD <- holdDyn False scannedE
-        storedE <- modifyPubStorage "scanInternalKeys" $ ffor scannedE $ const $ Just . pubStorageSetKeyScanned BTC Internal (Just keyNum)
+        void $ modifyPubStorage "scanInternalKeys" $ ffor scannedE $ const $ Just . pubStorageSetKeyScanned BTC Internal (Just keyNum)
         let nextE = flip pushAlways scannedE $ const $ do
               hastxs <- sample . current $ hasTxsD
               let gapN' = if hastxs then 0 else gapN+1
@@ -146,7 +135,7 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
       h <- sample . current =<< getCurrentHeight BTC
       scanhE <- writeWalletsScannedHeight "finishScanning" $ (BTC, fromIntegral h) <$ buildE
       clearedE <- performEvent $ clearFilters BTC <$ scanhE
-      modifyPubStorage "finishScanning" $ ffor clearedE $ const $ \ps -> Just $ ps {
+      void $ modifyPubStorage "finishScanning" $ ffor clearedE $ const $ \ps -> Just $ ps {
           _pubStorage'restoring = False
         }
       _ <- nextWidget $ ffor buildE $ const $ Retractable {
@@ -176,10 +165,3 @@ deriveNewBtcKeys keyPurpose n = do
       ks = maybe (error "No BTC key storage!") id $ pubStorageKeyStorage BTC ps
       ks' = foldl' (flip $ addXPubKeyToKeystore keyPurpose) ks newKeys
   modifyPubStorage "deriveNewBtcKeys" $ (Just . pubStorageSetKeyStorage BTC ks') <$ buildE
-
--- TODO: This function will not be needed after using DMap as a CurrencyPubStorage
-egvTxsToBtcTxs :: M.Map TxId EgvTx -> M.Map TxId BtcTx
-egvTxsToBtcTxs egvTxMap = M.mapMaybe egvTxToBtcTx egvTxMap
-  where egvTxToBtcTx tx = case tx of
-          BtcTx t _ -> Just t
-          _ -> Nothing

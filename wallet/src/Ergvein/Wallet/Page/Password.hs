@@ -7,22 +7,16 @@ module Ergvein.Wallet.Page.Password(
   , askTextPasswordPage
   ) where
 
-import Control.Monad.IO.Class
-
 import Ergvein.Crypto.Keys     (Mnemonic)
 import Ergvein.Types.Currency
 import Ergvein.Types.Restore
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Currencies
-import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Password
 import Ergvein.Wallet.Wrapper
 import Ergvein.Wallet.Localization.Password
 import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Page.Balances
-import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Storage.AuthInfo
 import Ergvein.Wallet.Storage.Keys
 import Reflex.Localize
@@ -42,11 +36,10 @@ setupLoginPage wt mpath mnemonic ac = wrapperSimple True $ do
   divClass "password-setup-descr" $ h5 $ localizedText LPSDescr
   logD <- holdDyn "" =<< setupLogin
   pathD <- setupDerivPrefix ac mpath
-  nextWidget $ ffor (updated ((,) <$> logD <*> pathD)) $ \(l, path) -> Retractable {
+  void $ nextWidget $ ffor (updated ((,) <$> logD <*> pathD)) $ \(l, path) -> Retractable {
       retractableNext = setupPatternPage wt (Just path) mnemonic l ac
     , retractablePrev = Just $ pure $ setupLoginPage wt (Just path) mnemonic ac
     }
-  pure ()
 
 setupPatternPage :: MonadFrontBase t m => WalletSource -> Maybe DerivPrefix -> Mnemonic -> Text -> [Currency] -> m ()
 setupPatternPage wt mpath mnemonic l curs = wrapperSimple True $ do

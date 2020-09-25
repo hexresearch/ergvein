@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Wallet.Localization.Native
   ( module Ergvein.Wallet.Native
   ) where

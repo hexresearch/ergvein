@@ -4,11 +4,8 @@ module Ergvein.Wallet.Localization.Receive
    ,ReceivePageStrings(..)
   ) where
 
-import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
-
-import Data.Text
 
 newtype ReceiveTitle = ReceiveTitle Currency
 
@@ -20,18 +17,14 @@ instance LocalizedPrint ReceiveTitle where
 data ReceivePageStrings =
     RPSTitle
   | RPSAddLabel
-  | RPSCopy
   | RPSGap
   | RPSGenNew
   | RPSNewLabel
-  | RPSShare
-  | RPSShareQR
 
 instance LocalizedPrint ReceivePageStrings where
   localizedShow l v = case l of
     English -> case v of
       RPSAddLabel -> "Add label"
-      RPSCopy     -> "Copy"
       RPSGap      -> "Exceeded gap limit"
       RPSGenNew   -> "Generate new"
       RPSNewLabel -> "New label"
@@ -40,10 +33,7 @@ instance LocalizedPrint ReceivePageStrings where
       RPSTitle    -> "Receive"
     Russian -> case v of
       RPSAddLabel -> "Добавить название"
-      RPSCopy     -> "Скопировать"
       RPSGap      -> "Вышли за \"Gap limit\""
       RPSGenNew   -> "Создать новый"
       RPSNewLabel -> "Изменить название"
-      RPSShare    -> "Поделиться"
-      RPSShareQR  -> "Поделиться QR-кодом"
       RPSTitle    -> "Получение"

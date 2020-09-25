@@ -1,0 +1,74 @@
+name:                ergvein-index-protocol
+version:             0.1.0.0
+synopsis:            Shared api contract for ergvein wallet cryptocurrencies index server
+description:         See README.md
+category:            Cryptocurrency
+build-type:          Simple
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+    Ergvein.Index.Protocol.Types
+    Ergvein.Index.Protocol.Serialization
+    Ergvein.Index.Protocol.Deserialization
+    Ergvein.Index.Protocol.Utils
+
+  build-depends:
+      base                 >= 4.7  && < 4.13
+    , attoparsec           >= 0.13 && < 0.14
+    , attoparsec-binary    >= 0.2  && < 0.3
+    , bytestring           >= 0.10 && < 0.11
+    , template-haskell     >= 2.14 && < 2.15
+    , time                 >= 1.8  && < 1.9
+    , vector               >= 0.12 && < 0.13
+    , vector-th-unbox      >= 0.2  && < 0.3
+    , zlib                 >= 0.6  && < 0.7
+    , ergvein-wallet-types
+  default-language:    Haskell2010
+  default-extensions:
+    BangPatterns
+    ConstraintKinds
+    DataKinds
+    DeriveAnyClass
+    DeriveDataTypeable
+    DeriveGeneric
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    LambdaCase
+    MultiParamTypeClasses
+    OverloadedStrings
+    RankNTypes
+    RecordWildCards
+    RecursiveDo
+    ScopedTypeVariables
+    StandaloneDeriving
+    TemplateHaskell
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeOperators
+    DeriveAnyClass
+    MultiParamTypeClasses
+
+test-suite ergvein-index-protocol-test
+  type: exitcode-stdio-1.0
+  Default-language: Haskell2010
+  hs-source-dirs: tests
+  main-is: ProtocolTest.hs
+  other-modules: ProtocolTest.Generators
+  build-depends:
+      base
+    , attoparsec
+    , bytestring
+    , QuickCheck
+    , quickcheck-instances
+    , vector
+    , ergvein-index-protocol
+    , ergvein-wallet-types
+  default-extensions:
+    RecordWildCards
+    OverloadedStrings

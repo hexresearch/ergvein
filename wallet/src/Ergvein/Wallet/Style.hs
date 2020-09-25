@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 {-# LANGUAGE OverloadedLists #-}
 module Ergvein.Wallet.Style(
     compileFrontendCss
@@ -5,8 +6,6 @@ module Ergvein.Wallet.Style(
 
 import Clay
 import Clay.Selector
-import Clay.Display
-import Clay.Stylesheet (prefixed)
 import Control.Monad
 import Data.ByteString (ByteString)
 import Data.ByteString.Lazy (toStrict)
@@ -340,9 +339,9 @@ fontFamilies Resources{..} = do
   makeFontFace "Roboto-Black" robotoBlackUrl
   makeFontFace "Roboto-Medium" robotoMediumUrl
   where
-    makeFontFace name url = fontFace $ do
-      fontFamily [name] []
-      fontFaceSrc [FontFaceSrcUrl url (Just TrueType)]
+    makeFontFace fontName fontUrl = fontFace $ do
+      fontFamily [fontName] []
+      fontFaceSrc [FontFaceSrcUrl fontUrl (Just TrueType)]
       fontWeight $ weight 400
 
 faFontFamilies :: Resources -> Css
@@ -369,11 +368,11 @@ faFontFamilies Resources{..} = do
     , fasolid900woff2Url
     ]
   where
-    makeFontFace name w urls = fontFace $ do
-      fontFamily [name] []
+    makeFontFace ffName w urls = fontFace $ do
+      fontFamily [ffName] []
       fontStyle normal
-      fontFaceSrc [FontFaceSrcUrl url (Just format)
-        | url    <- urls,
+      fontFaceSrc [FontFaceSrcUrl ffUrl (Just format)
+        | ffUrl    <- urls,
           format <- [EmbeddedOpenType, SVG, TrueType, WOFF, WOFF2]]
       fontWeight $ weight w
 
@@ -436,6 +435,15 @@ mnemonicExportCss :: Css
 mnemonicExportCss = do
   ".mnemonic-export-text" ? do
     wordBreak breakAll
+  ".mnemonic-export-buttons-wrapper" ? do
+    display flex
+    flexWrap F.wrap
+    marginLeft $ rem (-1)
+    marginRight $ rem (-1)
+    justifyContent center
+  ".mnemonic-export-btn-wrapper" ? do
+    paddingLeft $ rem 0.5
+    paddingRight $ rem 0.5
 
 validateCss :: Css
 validateCss = do

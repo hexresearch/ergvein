@@ -3,12 +3,9 @@ module Ergvein.Wallet.Page.About(
     aboutPage
   ) where
 
-import Ergvein.Text
-import Ergvein.Types.Currency
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.About
-import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Version
 import Ergvein.Wallet.Wrapper

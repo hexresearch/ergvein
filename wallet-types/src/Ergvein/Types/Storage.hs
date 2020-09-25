@@ -12,6 +12,7 @@ import Data.Maybe (fromMaybe)
 import Data.Proxy
 import Data.Text
 import Data.Vector (Vector)
+import Data.Word
 import Network.Haskoin.Keys
 import qualified Network.Haskoin.Block as HB
 
@@ -24,6 +25,7 @@ import Ergvein.Types.Utxo
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+import qualified Data.Vector as V
 
 type WalletName = Text
 
@@ -101,6 +103,7 @@ data CurrencyPubStorage = CurrencyPubStorage {
   , _currencyPubStorage'scannedHeight :: !(Maybe BlockHeight)
   , _currencyPubStorage'headers       :: !(M.Map HB.BlockHash HB.BlockHeader)
   , _currencyPubStorage'outgoing      :: !(S.Set TxId)
+  , _currencyPubStorage'headerSeq     :: !(Word32, V.Vector (HB.BlockHeight, HB.BlockHash))
   } deriving (Eq, Show, Read)
 
 makeLenses ''CurrencyPubStorage

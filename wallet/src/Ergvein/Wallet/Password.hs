@@ -11,27 +11,39 @@ module Ergvein.Wallet.Password(
   ) where
 
 import Control.Monad.Except
-import Data.Maybe
-import Ergvein.Crypto
-import Ergvein.Text
-import Ergvein.Types
+import Reflex.Dom
+import Reflex.Localize
+
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Localization.Password
-import Ergvein.Wallet.Localization.PatternKey
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Validate
 
-import Reflex.Dom
-import Reflex.Localize
-
 import qualified Data.Text as T
+
+#ifdef ANDROID
+import Control.Monad.IO.Class
+import Data.Time (getCurrentTime)
+import Ergvein.Text
+import Ergvein.Wallet.Localization.PatternKey
+import Ergvein.Wallet.Storage.Util
 import qualified Data.Map.Strict as Map
-import           Data.Time (UTCTime, getCurrentTime)
-import           Control.Monad.IO.Class
+#endif
+
+setupPassword :: MonadFrontBase t m => m (Event t Password)
+setupPassword = divClass "setup-password" $ form $ fieldset $ mdo
+  p1D <- passFieldWithEye PWSPassword
+  p2D <- passFieldWithEye PWSRepeat
+  e <- submitClass "button button-outline" PWSSet
+  validate $ poke e $ const $ runExceptT $ do
+    p1 <- sampleDyn p1D
+    p2 <- sampleDyn p2D
+    check PWSNoMatch $ p1 == p2
+    pure p1
 
 setupPassword :: MonadFrontBase t m => m (Event t Password)
 setupPassword = divClass "setup-password" $ form $ fieldset $ mdo
@@ -140,10 +152,9 @@ askPasswordModal = mdo
   let redrawE = leftmost [Just <$> goE, Nothing <$ passE, Nothing <$ closeE]
   valD <- widgetHold (pure (never, never)) $ ffor redrawE $ \case
     Just (i, name) -> divClass "ask-password-modal" $ do
-      closeE <- passwordHeader
-      passE <- divClass "ask-password-modal-content" $ askPassword name
-      let passE' = fmap ((i,) . Just) passE
-      pure (passE', closeE)
+      closeE' <- passwordHeader
+      passE' <- (fmap . fmap) ((i,) . Just) $ divClass "ask-password-modal-content" $ askPassword name
+      pure (passE', closeE')
     Nothing -> pure (never, never)
   let (passD, closeD) = splitDynPure valD
   let passE = switchDyn passD

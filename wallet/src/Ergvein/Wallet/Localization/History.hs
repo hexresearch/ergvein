@@ -4,11 +4,8 @@ module Ergvein.Wallet.Localization.History
   , HistoryTitle(..)
   ) where
 
-import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
-
-import Data.Text
 
 newtype HistoryTitle = HistoryTitle Currency
 

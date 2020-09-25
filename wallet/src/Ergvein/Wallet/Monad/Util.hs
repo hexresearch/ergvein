@@ -15,26 +15,30 @@ module Ergvein.Wallet.Monad.Util
   , performFork
   , performFork_
   , worker
+  , parseSockAddrs
   ) where
 
 import Control.Concurrent
 import Control.Concurrent.Async
-import Control.Exception
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
+import Data.Maybe
 import Data.Text (pack)
 import Data.Time
+import Network.Socket
+import Reflex.ExternalRef
+import Text.Read
+
 import Ergvein.Text
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
-import Foreign.JavaScript.TH (WithJSContextSingleton(..))
-import Reflex.ExternalRef
-import Reflex.Spider.Internal (SpiderHostFrame(..), EventM(..))
 
+import qualified Control.Exception.Safe as Ex
 import qualified Control.Immortal as I
+import qualified Data.Text as T
 
 -- | Posting log message
 postLog :: MonadEgvLogger t m => Event t LogEntry -> m ()
@@ -131,3 +135,22 @@ worker lbl f = I.createWithLabel lbl $ \thread -> I.onUnexpectedFinish thread lo
         logWrite $ "Worker " <> pack lbl <> " exit with: " <> showt e
         liftIO $ threadDelay 1000000
       _ -> pure ()
+
+-- | Helper to parse a list of urls into a list of SockAddrs
+parseSockAddrs :: MonadIO m => [Text] -> m [SockAddr]
+parseSockAddrs = fmap catMaybes . traverse parseSingle
+  where
+    parseSingle t = do
+      let (h,p) = fmap (T.drop 1) $ T.span (/= ':') t
+      let p' = if p == "" then Nothing else Just $ T.unpack p
+      let mport = readMaybe $ T.unpack p
+      let val = fmap (readMaybe . T.unpack) $ T.splitOn "." h
+      case (mport, val) of
+        (Just port, (Just a):(Just b):(Just c):(Just d):[]) ->
+          pure $ Just $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
+        _ -> do
+          let hints = defaultHints { addrFlags = [AI_ALL] , addrSocketType = Stream }
+          addrs <- liftIO $ Ex.catch (
+              getAddrInfo (Just hints) (Just $ T.unpack h) p'
+            ) (\(_ :: Ex.SomeException) -> pure [])
+          pure $ fmap addrAddress $ listToMaybe addrs
