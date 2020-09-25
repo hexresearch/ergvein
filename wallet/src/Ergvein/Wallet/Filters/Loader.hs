@@ -17,25 +17,24 @@ module Ergvein.Wallet.Filters.Loader (
 ) where
 
 import Control.Monad
+import Data.ByteString (ByteString)
 import Data.Maybe
-import Network.Haskoin.Block
-import Reflex.ExternalRef
+-- import Network.Haskoin.Block
 
-import Ergvein.Filters
-import Ergvein.Index.API.Types
+import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
 import Ergvein.Text
-import Ergvein.Types.Block
 import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Client
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Sync.Status
+import Ergvein.Wallet.Util
 
-import qualified Data.Map as M
+import qualified Data.Vector as V
 
 filtersLoader :: MonadFront t m => m ()
 filtersLoader = nameSpace "filters loader" $ do
@@ -55,8 +54,8 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
       if ch > fh then do
         let n = 500
         logWrite $ "Getting next filters ..." <> showt n
-        fse <- getFilters ((BTC, fh+1, n) <$ buildE)
-        performEvent_ $ ffor fse $ const $ logWrite "Got filters!"
+        fse <- getFilters BTC $ (fh+1, n) <$ buildE
+        performEvent_ $ ffor fse $ \fs -> logWrite $ "Got " <> showt (length fs) <> " filters!"
         we <- performFork $ ffor fse $ \fs ->
           insertMultipleFilters BTC $ zipWith (\h (bh,f) -> (h,bh,f)) [fh+1..] fs
         goE <- fmap (go <$) $ delay 1 we
@@ -83,10 +82,21 @@ postSync cur ch fh = do
     setFiltersSync cur $ val == Synced
     setSyncProgress $ val <$ buildE
 
-getFilters :: MonadFront t m => Event t (Currency, BlockHeight, Int) -> m (Event t [(BlockHash, AddressFilterHexView)])
-getFilters e = do
-  resE <- getBlockFiltersRandom $ ffor e $ \(cur, h, n) ->
-    BlockFiltersRequest cur (fromIntegral h) (fromIntegral n)
-  hexE <- handleDangerMsg resE
-  let mkPair (a, b) = (, b) <$> hexToBlockHash a
-  pure $ fmap (catMaybes .  fmap mkPair) hexE
+getFilters :: MonadFront t m => Currency -> Event t (BlockHeight, Int) -> m (Event t [(BlockHash, ByteString)])
+getFilters cur e = do
+  respE <- requestRandomIndexer $ ffor e $ \(h, n) ->
+    MFiltersRequest $ FilterRequest curcode (fromIntegral h) (fromIntegral n)
+  let respE' = fforMaybe respE $ \case
+        (addr, MFiltersResponse (FilterResponse{..})) -> if filterResponseCurrency /= curcode
+          then Nothing
+          else Just $ (addr,) $ V.toList $ ffor filterResponseFilters $ \(BlockFilter bid filt) -> (bid, filt)
+        _ -> Nothing
+  warnDesynced respE'
+  pure $ snd <$> respE'
+  where
+    curcode = currencyToCurrencyCode cur
+
+warnDesynced :: MonadFront t m => Event t (SockAddr, [a]) -> m ()
+warnDesynced e = showWarnMsg $ fforMaybe e $ \(addr, rs) -> if null rs
+  then Just $ "Indexer " <> showt addr <> " possibly out of sync!"
+  else Nothing

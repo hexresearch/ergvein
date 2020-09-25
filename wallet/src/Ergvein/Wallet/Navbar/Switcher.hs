@@ -6,7 +6,6 @@ import Ergvein.Types.Currency
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar.Types
 
-import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.History
 import Ergvein.Wallet.Page.Receive
 import Ergvein.Wallet.Page.Send

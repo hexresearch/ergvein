@@ -15,11 +15,10 @@ import Data.Foldable (traverse_)
 import Data.Maybe
 import Database.LMDB.Simple
 import Database.LMDB.Simple.Extra
-import Network.Haskoin.Block
+import Ergvein.Types.Transaction
 
 import Ergvein.Filters.Btc.Mutable
 import Ergvein.Text
-import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Filters.Btc.Types
 import Ergvein.Wallet.Platform
@@ -35,30 +34,29 @@ clearFiltersRange i0 i1 = do
     case mh of
       Nothing -> pure ()
       Just h -> do
-        delete i hdb
-        delete h fdb
+        void $ delete i hdb
+        void $ delete h fdb
         pure ()
 
-insertFilter :: MonadIO m => BlockHeight -> BlockHash -> AddressFilterHexView -> Environment ReadWrite -> m ()
-insertFilter h bh fview e = liftIO . readWriteTransaction e $ do
+insertFilter :: MonadIO m => BlockHeight -> BlockHash -> ByteString -> Environment ReadWrite -> m ()
+insertFilter h bh filt e = liftIO . readWriteTransaction e $ do
   fdb <- getBtcFiltersDb
   hdb <- getBtcHeightsDb
   tdb <- getBtcTotalDb
-  ffor31 either (hex2bsTE fview) (const $ pure ()) $ \f -> do
-    put fdb bh $ Just f
-    put hdb h $ Just bh
-    mtotal <- get tdb ()
-    case mtotal of
-      Just total | total >= h -> pure ()
-      _ -> put tdb () $ Just h
+  put fdb bh $ Just filt
+  put hdb h $ Just bh
+  mtotal <- get tdb ()
+  case mtotal of
+    Just total | total >= h -> pure ()
+    _ -> put tdb () $ Just h
 
-insertMultipleFilters :: (MonadIO m, Foldable t) => t (BlockHeight, BlockHash, AddressFilterHexView) -> Environment ReadWrite -> m ()
+insertMultipleFilters :: (MonadIO m, Foldable t) => t (BlockHeight, BlockHash, ByteString) -> Environment ReadWrite -> m ()
 insertMultipleFilters fs e = liftIO . readWriteTransaction e $ do
   fdb <- getBtcFiltersDb
   hdb <- getBtcHeightsDb
   tdb <- getBtcTotalDb
-  flip traverse_ fs $ \(h,bh,fview) -> ffor31 either (hex2bsTE fview) (const $ pure ()) $ \f -> do
-    put fdb bh $ Just f
+  flip traverse_ fs $ \(h,bh,filt) -> do
+    put fdb bh $ Just filt
     put hdb h $ Just bh
     mtotal <- get tdb ()
     case mtotal of
@@ -79,8 +77,8 @@ getFilterImpl fdb hdb k = do
   mh <- get hdb k
   ffor31 maybe mh (pure Nothing) $ \h -> do
     mview <- get fdb h
-    mfilter <- traverse decodeBtcAddrFilter mview
-    pure $ maybe Nothing (either (const Nothing) (Just . (h,))) mfilter
+    mfilt <- traverse decodeBtcAddrFilter mview
+    pure $ maybe Nothing (either (const Nothing) (Just . (h,))) mfilt
 
 readFiltersHeight :: MonadIO m => Environment ReadWrite -> m BlockHeight
 readFiltersHeight e = liftIO $ readOnlyTransaction e getFiltersHeight
@@ -120,17 +118,17 @@ scanFilters :: forall a m . MonadIO m
   -> a -- ^ initial value. Returned unchanged if there is no filters to scan
   -> Environment ReadWrite -- ^ Env with the DB
   -> m a -- ^ Result
-scanFilters i0 f a0 e = liftIO . readOnlyTransaction e $ do
+scanFilters i0' f a0' e = liftIO . readOnlyTransaction e $ do
   fdb <- getBtcFiltersDb
   hdb <- getBtcHeightsDb
   i1 <- getFiltersHeight
-  go fdb hdb i0 i1 a0
+  go fdb hdb i0' i1 a0'
   where
     go fdb hdb !i0 i1 !acc
       | i0 > i1 = pure acc
       | otherwise = do
-        mfilter <- getFilterImpl fdb hdb i0
-        case mfilter of
+        mfilt <- getFilterImpl fdb hdb i0
+        case mfilt of
           Nothing -> go fdb hdb (i0+1) i1 acc
           Just (h, mf) -> do
             !acc' <- liftIO $ f i0 i1 h mf acc

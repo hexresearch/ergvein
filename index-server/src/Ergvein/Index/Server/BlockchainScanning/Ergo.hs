@@ -18,16 +18,19 @@ import           Network.Ergo.Api.Blocks
 import           Network.Ergo.Api.Client
 import           Network.Ergo.Api.Info
 import qualified Network.Ergo.Api.Utxo    as UtxoApi
+import qualified Data.ByteString.Short as BSS
+import qualified Data.Map.Strict as M
+
 import Control.Monad.IO.Unlift
 
 txInfo :: ApiMonad m => ErgoTransaction -> m ([TxInfo], [TxHash])
 txInfo tx = do
-  let info = TxInfo { txHash = bs2Hex $ unTransactionId $ transactionId (tx :: ErgoTransaction)
-                    , txHexView = mempty
+  let info = TxInfo { txHash =  TxHash $ BSS.toShort $ unTransactionId $ transactionId (tx :: ErgoTransaction)
+                    , txBytes = mempty
                     , txOutputsCount = fromIntegral $ length $ dataInputs tx
                     }
   txIns <- forM (dataInputs tx) txInInfo
-  let spentTxIds = bs2Hex . unTransactionId . fromJust . (transactionId :: ErgoTransactionOutput -> Maybe TransactionId) <$> txIns
+  let spentTxIds = TxHash . BSS.toShort . unTransactionId . fromJust . (transactionId :: ErgoTransactionOutput -> Maybe TransactionId) <$> txIns
   pure $ ([info], spentTxIds)
   where
     txInInfo txIn = UtxoApi.getById $ boxId (txIn :: ErgoTransactionDataInput)
@@ -35,11 +38,12 @@ txInfo tx = do
 blockTxInfos :: ApiMonad m => FullBlock -> BlockHeight -> m BlockInfo
 blockTxInfos block txBlockHeight = do
   (txInfos , spentTxsIds) <- mconcat <$> mapM txInfo (transactions $ blockTransactions block)
-  let blockHeaderHashHexView = mempty --TODO
-      prevBlockHeaderHashHexView = mempty --TODO
+  let blockHeaderHash = mempty --TODO
+      prevBlockHeaderHash = mempty --TODO
       blockAddressFilter = mempty --TODO
-      blockMeta = BlockMetaInfo ERGO (fromIntegral txBlockHeight) blockHeaderHashHexView prevBlockHeaderHashHexView blockAddressFilter
-  pure $ BlockInfo blockMeta spentTxsIds txInfos
+      spentMap = M.fromList $ (,0) <$> spentTxsIds --TODO
+      blockMeta = BlockMetaInfo ERGO (fromIntegral txBlockHeight) blockHeaderHash prevBlockHeaderHash blockAddressFilter
+  pure $ BlockInfo blockMeta spentMap txInfos
 
 actualHeight :: ApiMonad m => m BlockHeight
 actualHeight = do

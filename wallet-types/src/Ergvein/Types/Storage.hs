@@ -12,6 +12,7 @@ import Data.Maybe (fromMaybe)
 import Data.Proxy
 import Data.Text
 import Data.Vector (Vector)
+import Data.Word
 import Network.Haskoin.Keys
 import qualified Network.Haskoin.Block as HB
 
@@ -24,6 +25,7 @@ import Ergvein.Types.Utxo
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+import qualified Data.Vector as V
 
 type WalletName = Text
 
@@ -40,7 +42,7 @@ $(deriveJSON aesonOptionsStripToApostroph ''CurrencyPrvStorage)
 type CurrencyPrvStorages = M.Map Currency CurrencyPrvStorage
 
 data PrvStorage = PrvStorage {
-    _prvStorage'seed                :: Seed
+    _prvStorage'mnemonic            :: Mnemonic
   , _prvStorage'rootPrvKey          :: EgvRootXPrvKey
   , _prvStorage'currencyPrvStorages :: CurrencyPrvStorages
   } deriving (Eq, Show, Read)
@@ -49,14 +51,14 @@ makeLenses ''PrvStorage
 
 instance ToJSON PrvStorage where
   toJSON PrvStorage{..} = object [
-      "seed"                .= toJSON (bs2Base64Text _prvStorage'seed)
+      "mnemonic"            .= toJSON _prvStorage'mnemonic
     , "rootPrvKey"          .= toJSON _prvStorage'rootPrvKey
     , "currencyPrvStorages" .= toJSON _prvStorage'currencyPrvStorages
     ]
 
 instance FromJSON PrvStorage where
   parseJSON = withObject "PrvStorage" $ \o -> PrvStorage
-    <$> fmap base64Text2bs (o .: "seed")
+    <$> o .: "mnemonic"
     <*> o .: "rootPrvKey"
     <*> o .: "currencyPrvStorages"
 
@@ -93,6 +95,7 @@ data CurrencyPubStorage = CurrencyPubStorage {
   , _currencyPubStorage'scannedHeight :: !(Maybe BlockHeight)
   , _currencyPubStorage'headers       :: !(M.Map HB.BlockHash HB.BlockHeader)
   , _currencyPubStorage'outgoing      :: !(S.Set TxId)
+  , _currencyPubStorage'headerSeq     :: !(Word32, V.Vector (HB.BlockHeight, HB.BlockHash))
   } deriving (Eq, Show, Read)
 
 makeLenses ''CurrencyPubStorage
@@ -126,8 +129,8 @@ pubStorageKeys c kp = fmap pubKeyBox'key . maybe mempty keys . fmap _currencyPub
 pubStoragePubMaster :: Currency -> PubStorage -> Maybe EgvXPubKey
 pubStoragePubMaster c = fmap pubKeystore'master . pubStorageKeyStorage c
 
-pubStorageLastUnused :: Currency -> KeyPurpose -> PubStorage -> Maybe (Int, EgvPubKeyBox)
-pubStorageLastUnused c kp ps = getLastUnusedKey kp . _currencyPubStorage'pubKeystore =<< M.lookup c (_pubStorage'currencyPubStorages ps)
+pubStorageLastUnusedKey :: Currency -> KeyPurpose -> PubStorage -> Maybe (Int, EgvPubKeyBox)
+pubStorageLastUnusedKey c kp ps = getLastUnusedKey kp . _currencyPubStorage'pubKeystore =<< M.lookup c (_pubStorage'currencyPubStorages ps)
 
 pubStorageScannedKeys :: Currency -> KeyPurpose -> PubStorage -> Int
 pubStorageScannedKeys c p ps = fromMaybe 0 $ f . _currencyPubStorage'scannedKey =<< M.lookup c (_pubStorage'currencyPubStorages ps)

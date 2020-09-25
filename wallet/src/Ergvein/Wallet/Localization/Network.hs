@@ -7,16 +7,13 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Language
 
-import Data.Text
 import Data.Time
-import Servant.Client (BaseUrl, showBaseUrl)
 
 data NetworkPageStrings
   = NPSTitle
   | NPSServer
   | NPSServerVal Int
   | NPSServerDescr
-  | NPSCurHeight Int
   | NPSSyncStatus
   | NPSNoServerAvail
   | NPSSyncInfo (Maybe BlockHeight, BlockHeight)

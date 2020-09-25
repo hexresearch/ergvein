@@ -14,13 +14,13 @@ import Text.Read
 import Ergvein.Text
 import Ergvein.Types
 import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Send
 import Ergvein.Wallet.Localization.Settings()
+import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Navbar
@@ -30,7 +30,6 @@ import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage
-import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
@@ -45,6 +44,10 @@ import qualified Data.Vector as V
 import qualified Network.Haskoin.Script as HS
 import qualified Network.Haskoin.Transaction as HT
 
+#ifdef ANDROID
+import Ergvein.Wallet.Camera
+#endif
+
 sendPage :: MonadFront t m => Currency -> Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), EgvAddress) -> m ()
 sendPage cur minit = mdo
   walletName <- getWalletName
@@ -53,12 +56,12 @@ sendPage cur minit = mdo
         then blank
         else navbarWidget cur thisWidget NavbarSend
       thisWidget = Just $ sendPage cur <$> retInfoD
-  retInfoD <- sendWidget cur minit title navbar thisWidget
+  retInfoD <- sendWidget title navbar thisWidget
   pure ()
   where
     stripCurPrefix t = T.dropWhile (== '/') $ fromMaybe t $ T.stripPrefix (curprefix cur) t
     -- TODO: write type annotation here
-    sendWidget cur minit title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ mdo
+    sendWidget title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ mdo
       let recipientInit = maybe "" (\(_, _, a) -> egvAddrToString a) minit
           amountInit = (\(a, _, _) -> a) <$> minit
           feeInit = (\(_, f, _) -> f) <$> minit
@@ -67,16 +70,16 @@ sendPage cur minit = mdo
 #ifdef ANDROID
         recipientD <- validatedTextFieldSetVal RecipientString recipientInit recipientErrsD (leftmost [resQRcodeE, pasteE])
         (qrE, pasteE, resQRcodeE) <- divClass "send-page-buttons-wrapper" $ do
-          qrE <- outlineTextIconButtonTypeButton BtnScanQRCode "fas fa-qrcode fa-lg"
+          qrE <- outlineTextIconButtonTypeButton CSScanQR "fas fa-qrcode fa-lg"
           openE <- delay 1.0 =<< openCamara qrE
           resQRcodeE <- (fmap . fmap) stripCurPrefix $ waiterResultCamera openE
-          pasteBtnE <- outlineTextIconButtonTypeButton BtnPasteString "fas fa-clipboard fa-lg"
+          pasteBtnE <- outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
           pasteE <- clipboardPaste pasteBtnE
           pure (qrE, pasteE, resQRcodeE)
 #else
         recipientD <- validatedTextFieldSetVal RecipientString recipientInit recipientErrsD pasteE
         pasteE <- divClass "send-page-buttons-wrapper" $ do
-          clipboardPaste =<< outlineTextIconButtonTypeButton BtnPasteString "fas fa-clipboard fa-lg"
+          clipboardPaste =<< outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
 #endif
         amountD <- sendAmountWidget amountInit $ () <$ validationE
         feeD    <- btcFeeSelectionWidget feeInit submitE
@@ -89,7 +92,7 @@ sendPage cur minit = mdo
               mamount <- sampleDyn amountD
               let mrecipient = either (const Nothing) Just erecipient
               pure $ (,,) <$> mamount <*> mfee <*> mrecipient
-        nextWidget $ ffor goE $ \v@(uam, (m, fee), addr) -> Retractable {
+        void $ nextWidget $ ffor goE $ \v@(uam, (_, fee), addr) -> Retractable {
             retractableNext = btcSendConfirmationWidget (uam, fee, addr)
           , retractablePrev = Just $ pure $ sendPage cur $ Just v
           }
@@ -135,30 +138,28 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr) = do
     stxE <- fmap switchDyn $ widgetHoldDyn $ ffor valD $ \case
       Left (Nothing, _) -> confirmationErrorWidget CEMEmptyUTXO
       Left (_, Nothing) -> confirmationErrorWidget CEMNoChangeKey
-      Left (Just utxomap, Just (changeIndex, changeKey)) -> do
+      Left (Just utxomap, Just (_, changeKey)) -> do
         let (confs, unconfs) = partition' $ M.toList utxomap
             firstpick = HT.chooseCoins amount fee 2 True $ L.sort confs
             finalpick = either (const $ HT.chooseCoins amount fee 2 True $ L.sort $ confs <> unconfs) Right firstpick
         either' finalpick (const $ confirmationErrorWidget CEMNoSolution) $ \(pick, change) ->
           txSignSendWidget addr unit amount fee changeKey change pick
-      Right (tx, unit, amount, estFee, addr) -> do
-        confirmationInfoWidget (unit, amount) estFee addr
+      Right (tx, unit', amount', estFee, addr') -> do
+        confirmationInfoWidget (unit', amount') estFee addr'
         el "h4" . text . (<>) "TxId: " . HT.txHashToHex . HT.txHash $ tx
         pure never
-    widgetHold (pure ()) $ ffor stxE $ \(tx, _, _, _, _) -> do
+    void $ widgetHold (pure ()) $ ffor stxE $ \(tx, _, _, _, _) -> do
       sendE <- getPostBuild
       addedE <- addOutgoingTx "btcSendConfirmationWidget" $ (BtcTx tx Nothing) <$ sendE
       storedE <- btcMempoolTxInserter $ tx <$ addedE
-      reqE <- requestBroadcast $ ffor storedE $ const $
+      void $ requestBroadcast $ ffor storedE $ const $
         NodeReqBTC . MInv . Inv . pure . InvVector InvTx . HT.getTxHash . HT.txHash $ tx
       goE <- el "div" $ delay 1 =<< outlineButton SendBtnBack
       void $ nextWidget $ ffor goE $ const $ Retractable {
             retractableNext = balancesPage
           , retractablePrev = Nothing
         }
-    pure ()
   where
-    maybe' m n j = maybe n j m
     either' e l r = either l r e
     foo b f ta = L.foldl' f b ta
     -- Left -- utxo updates, Right -- stored tx
@@ -170,8 +171,8 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr) = do
 
     -- | Split utxo set into confirmed and unconfirmed points
     partition' :: [(HT.OutPoint, UtxoMeta)] -> ([UtxoPoint], [UtxoPoint])
-    partition' = foo ([], []) $ \(cs, ucs) (op, meta@UtxoMeta{..}) ->
-      let upoint = UtxoPoint op meta in
+    partition' = foo ([], []) $ \(cs, ucs) (opoint, meta@UtxoMeta{..}) ->
+      let upoint = UtxoPoint opoint meta in
       case utxoMeta'status of
         EUtxoConfirmed -> (upoint:cs, ucs)
         EUtxoSemiConfirmed _ -> (upoint:cs, ucs)
@@ -204,7 +205,7 @@ confirmationInfoWidget (unit, amount) estFee addr = divClass "send-confirm-info"
 confirmationErrorWidget :: MonadFront t m => ConfirmationErrorMessage -> m (Event t a)
 confirmationErrorWidget cem = do
   el "h4" $ localizedText cem
-  el "div" $ retract =<< outlineButton SendBtnBack
+  void $ el "div" $ retract =<< outlineButton SendBtnBack
   pure never
 
 -- | This widget builds & signs the transaction
@@ -227,9 +228,9 @@ txSignSendWidget addr unit amount fee changeKey change pick = mdo
   etxE <- either' etx (const $ confirmationErrorWidget CEMTxBuildFail >> pure never) $ \tx -> do
     fmap switchDyn $ widgetHoldDyn $ ffor showSignD $ \b -> if not b then pure never else do
       signE <- outlineButton SendBtnSign
-      etxE <- fmap (fmapMaybe id) $ withWallet $ (signTxWithWallet tx pick) <$ signE
-      widgetHold (pure ()) $ ffor etxE $ either (const $ void $ confirmationErrorWidget CEMSignFail) (const $ pure ())
-      handleDangerMsg $ (either (Left . T.pack) Right) <$> etxE
+      etxE' <- fmap (fmapMaybe id) $ withWallet $ (signTxWithWallet tx pick) <$ signE
+      void $ widgetHold (pure ()) $ ffor etxE' $ either (const $ void $ confirmationErrorWidget CEMSignFail) (const $ pure ())
+      handleDangerMsg $ (either (Left . T.pack) Right) <$> etxE'
   fmap switchDyn $ widgetHold (pure never) $ ffor etxE $ \tx -> do
     sendE <- el "div" $ outlineButton SendBtnSend
     pure $ (tx, unit, amount, estFee, addr) <$ sendE
@@ -242,8 +243,8 @@ signTxWithWallet tx pick prv = do
   let PrvKeystore _ ext int = prv ^. prvStorage'currencyPrvStorages
         . at BTC . non (error "btcSendConfirmationWidget: not exsisting store!")
         . currencyPrvStorage'prvKeystore
-  mvals <- fmap (fmap unzip . sequence) $ flip traverse pick $ \(UtxoPoint op UtxoMeta{..}) -> do
-    let sig = HT.SigInput utxoMeta'script utxoMeta'amount op HS.sigHashAll Nothing
+  mvals <- fmap (fmap unzip . sequence) $ flip traverse pick $ \(UtxoPoint opoint UtxoMeta{..}) -> do
+    let sig = HT.SigInput utxoMeta'script utxoMeta'amount opoint HS.sigHashAll Nothing
     let errMsg = "Failed to get a corresponding secret key: " <> showt utxoMeta'purpose <> " #" <> showt utxoMeta'index
     let msec = case utxoMeta'purpose of
           Internal -> fmap (xPrvKey . unEgvXPrvKey) $ (V.!?) int utxoMeta'index
@@ -308,7 +309,7 @@ sendAmountWidget minit validateE = mdo
     when isAndroid (availableBalanceWidget unitD)
     unitD <- unitsDropdown (getUnitBTC unitInit) allUnitsBTC
     pure $ zipDynWith (\u v -> fmap (u,) $ toEither $ validateBtcWithUnits u v) unitD textInputValueD
-  divClass "form-field-errors" $ simpleList errsD displayError
+  void $ divClass "form-field-errors" $ simpleList errsD displayError
   amountErrsD <- holdDyn Nothing $ ffor (current amountValD `tag` validateE) (either Just (const Nothing))
   pure $ (either (const Nothing) Just) <$> amountValD
   where

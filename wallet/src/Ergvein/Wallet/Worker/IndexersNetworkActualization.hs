@@ -1,8 +1,11 @@
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
 module Ergvein.Wallet.Worker.IndexersNetworkActualization
   (
     indexersNetworkActualizationWorker
   ) where
 
+indexersNetworkActualizationWorker = undefined
+{-}
 import Control.Monad.Reader
 import Control.Monad.Zip
 import Data.Bifunctor
@@ -114,8 +117,8 @@ indexersNetworkActualizationWorker = do
   te                <- void <$> tickLossyFromPostBuildTime infoWorkerInterval
   settingsRef       <- getSettingsRef
   activeUrlsRef     <- getActiveUrlsRef
-  inactiveUrlsRef   <- getInactiveUrlsRef
-  archivedUrlsRef   <- getArchivedUrlsRef
+  inactiveUrlsRef   <- getInactiveAddrsRef
+  archivedUrlsRef   <- getArchivedAddrsRef
 
   let goE = leftmost [void te, refreshE, buildE]
 
@@ -143,3 +146,4 @@ indexersNetworkActualizationWorker = do
       if previous /= resultingNetworkInfoMap then
         Just resultingNetworkInfoMap
       else Nothing)
+-}

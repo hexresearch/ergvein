@@ -2,11 +2,8 @@ module Ergvein.Wallet.Menu.Switcher(
     switchMenu
   ) where
 
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu.Types
 import Ergvein.Wallet.Monad
-
 import Ergvein.Wallet.Page.About
 import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.History

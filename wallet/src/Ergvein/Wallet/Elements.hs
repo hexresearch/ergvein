@@ -62,8 +62,6 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.OpenUrl
 import Ergvein.Wallet.Util
-import Reflex
-import Reflex.Dom
 import Reflex.Localize
 
 container :: DomBuilder t m => m a -> m a
@@ -222,7 +220,7 @@ divButton = mkButton "div" []
 -- The first parameter is the button text
 -- The second parameter is the icon class
 -- Usage example:
--- >>> outlineTextIconButton BtnPasteString "fas fa-clipboard"
+-- >>> outlineTextIconButton CSPaste "fas fa-clipboard"
 -- As a result, such an element will be created:
 -- <button class="button button-outline href="return false;">
 --   Scan QR code

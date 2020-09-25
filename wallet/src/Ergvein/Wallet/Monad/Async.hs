@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Wallet.Monad.Async(
     bindSelf
   , forkOnOther
@@ -6,21 +7,15 @@ module Ergvein.Wallet.Monad.Async(
   ) where
 
 import Control.Concurrent
-import Control.Concurrent.Async
 import Control.Exception
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Control.Monad.Random.Strict
-import Data.Text (pack)
-import Data.Time
 import Ergvein.Text
-import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Native
 import Foreign.JavaScript.TH (WithJSContextSingleton(..))
-import Reflex.ExternalRef
 import Reflex.Spider.Internal (SpiderHostFrame(..), EventM(..))
 import Reflex
-import Control.Monad
 
 import qualified Reflex.Profiled as RP
 
@@ -31,7 +26,7 @@ bindSelf io = do
   var <- newEmptyMVar
   n <- getNumCapabilities
   if n == 1 then io else do
-    tid <- forkOn 0 $ io `finally` putMVar var ()
+    void $ forkOn 0 $ io `finally` putMVar var ()
     takeMVar var
 
 -- | Fork new thread and bind it to other capability than current thread.

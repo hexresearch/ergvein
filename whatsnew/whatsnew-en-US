@@ -1,2 +1,3 @@
-* Fix bug with corrupted wallet files on emergency shutdowns (#625)
-* Fix bug with duplicated words in mnemonic checks (#629)
+* Allow indexer setup before restore (#654)
+* Small fixes for indexer server
+* Add more default indexers

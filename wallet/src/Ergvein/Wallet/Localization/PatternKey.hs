@@ -16,7 +16,7 @@ instance LocalizedPrint PatternKeyStrings where
       PKSErrorTry -> "Keys don't match. Enter pattern key."
       PKSDone -> "Keys match."
       PKSAsk -> "Sign settings changes by your key."
-      PKSUnlock -> "Enter the pattern to unlock private keys"
+      PKSUnlock -> "Enter the pattern to unlock private storage"
       PKSFor n -> "Pattern for " <> n
     Russian -> case v of
       PKSFirstTry -> "Введите графический ключ."
@@ -24,5 +24,5 @@ instance LocalizedPrint PatternKeyStrings where
       PKSErrorTry -> "Ключи не совпадают. Введите графический ключ."
       PKSDone -> "Ключи совпадают."
       PKSAsk -> "Подпишите изменения настроек своим ключом."
-      PKSUnlock -> "Введите графический ключ для расшифровки приватных ключей"
+      PKSUnlock -> "Введите графический ключ для расшифровки приватного хранилища"
       PKSFor n -> "Графический ключ для " <> n

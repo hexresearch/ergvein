@@ -3,10 +3,7 @@ module Ergvein.Wallet.Localization.Currencies
     CurrenciesPageStrings(..)
   ) where
 
-import Ergvein.Text
 import Ergvein.Wallet.Language
-
-import Data.Text
 
 data CurrenciesPageStrings =
     CurTitle

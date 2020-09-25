@@ -2,11 +2,8 @@ module Ergvein.Wallet.Localization.Share(
     SharePageStrings(..)
   ) where
 
-import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
-
-import Data.Text
 
 data SharePageStrings =
     ShareTitle !Currency

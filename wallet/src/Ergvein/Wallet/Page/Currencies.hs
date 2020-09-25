@@ -4,53 +4,44 @@ module Ergvein.Wallet.Page.Currencies(
   , selectCurrenciesWidget
   ) where
 
-import Control.Monad.Random.Strict
-import Data.Aeson
 import Data.List (find)
 import Data.Maybe (fromMaybe)
-import System.Directory
+import Reflex.Localize
 
-import qualified Data.Map.Strict as Map
-
-import Ergvein.Aeson
 import Ergvein.Crypto.Keys
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Restore
-import Ergvein.Wallet.Input
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Localization.Currencies
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
-import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
-import Ergvein.Wallet.Util
-import Reflex.Localize
 
 selectCurrenciesPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> m ()
-selectCurrenciesPage wt m = wrapperSimple True $ do
+selectCurrenciesPage wt mnemonic = wrapperSimple True $ do
   -- TODO: remove this when ERGO is ready
   e <- fmap ([BTC] <$) getPostBuild
   -- uncomment this when ERGO is ready
   -- e <- selectCurrenciesWidget []
-  nextWidget $ ffor e $ \ac -> Retractable {
+  void $ nextWidget $ ffor e $ \ac -> Retractable {
 #ifdef ANDROID
-      retractableNext = setupLoginPage wt m ac
+      retractableNext = setupLoginPage wt mnemonic ac
 #else
-      retractableNext = passwordPage wt m ac
+      retractableNext = passwordPage wt mnemonic ac
 #endif
-    , retractablePrev = Just $ pure $ selectCurrenciesPage wt m
+    -- , retractablePrev = Just $ pure $ selectCurrenciesPage wt mnemonic -- TODO: uncomment this when ERGO is ready
+    , retractablePrev = Nothing -- TODO: remove this when ERGO is ready
     }
-  pure ()
 
 selectCurrenciesWidget :: MonadFrontBase t m => [Currency] -> m (Event t [Currency])
 selectCurrenciesWidget currs = mdo
   divClass "select-currencies-title" $ h4 $ localizedText CurTitle
-  eL <- traverse (\(cur,flag) -> divClass "currency-toggle" $ do
+  eL <- traverse (\(cur,_) -> divClass "currency-toggle" $ do
     let curD = fmap (toggled . snd .  (fromMaybe (cur, False)) . (find (\(c,_) -> c == cur))) curListD
     e <- divButton curD (text $ showt cur)
-    pure (cur <$ e) ) $ startList currs
-  curListD <- holdDyn (startList currs) $ poke (leftmost eL) $ \cur -> do
+    pure (cur <$ e) ) $ startList
+  curListD <- holdDyn startList $ poke (leftmost eL) $ \cur -> do
     curListS <- sampleDyn curListD
     pure $ fmap (invert cur) curListS
   let curButtonD = fmap (enabled . checkTrue) curListD
@@ -78,6 +69,6 @@ selectCurrenciesWidget currs = mdo
       Just _ -> True
       Nothing -> False
 
-    startList currs = ffor allCurrencies $ \cur -> if (elem cur currs)
+    startList = ffor allCurrencies $ \cur -> if (elem cur currs)
       then (cur,True)
       else (cur,False)

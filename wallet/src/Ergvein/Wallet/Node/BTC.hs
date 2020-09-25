@@ -13,24 +13,19 @@ module Ergvein.Wallet.Node.BTC
 import Control.Monad.Catch (throwM, MonadThrow)
 import Control.Monad.IO.Class
 import Control.Monad.Reader
-import Control.Monad.STM
-import Data.ByteString (ByteString)
 import Data.Serialize (decode, runGet, runPut)
-import Data.String.Conversions (cs)
 import Data.Text (Text)
 import Data.Time.Clock.POSIX
 import Data.Word
 import Network.Haskoin.Constants
 import Network.Haskoin.Network
-import Network.Socket (AddrInfo(..), getNameInfo, NameInfoFlag(..), SockAddr(..)
-  , getAddrInfo, defaultHints, AddrInfoFlag(..), SocketType(..), Family(..))
+import Network.Socket (getNameInfo, NameInfoFlag(..), SockAddr(..))
 import Reflex
 import Reflex.Dom
 import Reflex.ExternalRef
 import UnliftIO hiding (atomically)
 
 import qualified Data.ByteString as B
-import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 
 import Ergvein.Types.Currency
@@ -74,7 +69,6 @@ initBTCNode doLog sa msgE = do
       reqE = fforMaybe msgE $ \case
         NodeMsgReq (NodeReqBTC req) -> Just req
         _ -> Nothing
-  (closeSE, fireCloseS)     <- newTriggerEvent
   buildE                    <- getPostBuild
   statRef                   <- newExternalRef nstat
   let startE = leftmost [buildE, restartE]
@@ -116,7 +110,7 @@ initBTCNode doLog sa msgE = do
         _ -> Nothing
 
   shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
-  let openE = fmapMaybe (\b -> if b then Just () else Nothing) $ updated shakeD
+  let openE = fmapMaybe (\o -> if o then Just () else Nothing) $ updated shakeD
       closedE = () <$ _socketClosed s
   pure $ NodeConnection {
     nodeconCurrency   = BTC
@@ -143,7 +137,7 @@ peekMessage net url = do
       nodeLog $ "Could not decode incoming message header: " <> showt e
       nodeLog $ showt x
       throwM DecodeHeaderError
-    Right (MessageHeader !_ !cmd !len !_) -> do
+    Right (MessageHeader !_ !_ !len !_) -> do
       -- nodeLog $ showt cmd
       when (len > 32 * 2 ^ (20 :: Int)) $ do
         nodeLog "Payload too large"

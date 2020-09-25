@@ -9,11 +9,8 @@ module Ergvein.Wallet.Filters.Btc.Types(
 
 import Data.ByteString
 import Database.LMDB.Simple
-import Network.Haskoin.Block
-import Network.Haskoin.Crypto
+import Ergvein.Types.Transaction
 
-import Ergvein.Filters.Btc.Mutable
-import Ergvein.Types.Block
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Codec()
 import Ergvein.Wallet.Platform
@@ -26,9 +23,6 @@ heightsDbName = "btcheights"
 
 totalDbName :: String
 totalDbName = "btctotal"
-
-scannedDbName :: String
-scannedDbName = "btcscanned"
 
 -- | Force creation of datab
 initBtcDbs :: Transaction ReadWrite ()

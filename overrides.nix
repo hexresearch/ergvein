@@ -46,6 +46,8 @@ in (self: super: let
     ergvein-common = ingnoreGarbage super.ergvein-common;
     ergvein-crypto = ingnoreGarbage super.ergvein-crypto;
     ergvein-index-api = ingnoreGarbage super.ergvein-index-api;
+    ergvein-index-protocol = ingnoreGarbage super.ergvein-index-protocol;
+    ergvein-index-protocol-client = ingnoreGarbage super.ergvein-index-protocol-client;
     ergvein-index-client = ingnoreGarbage super.ergvein-index-client;
     ergvein-index-server = ingnoreGarbage super.ergvein-index-server;
     ergvein-interface-ergo = ingnoreGarbage super.ergvein-interface-ergo;

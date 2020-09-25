@@ -6,12 +6,9 @@ module Ergvein.Wallet.Storage.Keys (
   ) where
 
 import Ergvein.Crypto
-import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Network
-
-import qualified Data.ByteString       as BS
 
 -- | Derive a BIP44 compatible private key for a specific currency.
 -- Given a parent private key /m/
