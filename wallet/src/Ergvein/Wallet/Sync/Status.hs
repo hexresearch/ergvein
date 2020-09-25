@@ -70,7 +70,7 @@ instance LocalizedPrint SyncStage where
       SyncGettingNodeAddresses -> "Getting node addresses"
       SyncConnectingToPeers -> "Connecting to peers"
       SyncGettingHeight -> "Getting height"
-      SyncConnectionIndexer -> "Connection to indexer"
+      SyncConnectionIndexer -> "Connecting to indexer"
       SyncNoIndexer -> "All indexers are down"
     Russian -> case v of
       SyncFilters -> "фильтров"
