@@ -29,8 +29,10 @@ passwordPage :: MonadFrontBase t m => WalletSource -> Maybe DerivPrefix -> Mnemo
 passwordPage wt mpath mnemonic curs = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText PPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText PPSDescr
-  logPassE <- setupLoginPassword
-  pathD <- setupDerivPrefix curs mpath
+  rec
+    logPassE <- setupLoginPassword btnE
+    pathD <- setupDerivPrefix curs mpath
+    btnE <- submitSetBtn
   createStorageE <- performEvent $ ffor logPassE $ \(login, pass) -> do
     path <- sample . current $ pathD
     initAuthInfo wt (Just path) mnemonic curs login pass
@@ -41,8 +43,10 @@ setupLoginPage :: MonadFrontBase t m => WalletSource -> Maybe DerivPrefix -> Mne
 setupLoginPage wt mpath mnemonic curs = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText LPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText LPSDescr
-  logD <- holdDyn "" =<< setupLogin
-  pathD <- setupDerivPrefix curs mpath
+  rec
+    logD <- holdDyn "" =<< setupLogin btnE
+    pathD <- setupDerivPrefix curs mpath
+    btnE <- submitSetBtn
   void $ nextWidget $ ffor (updated ((,) <$> logD <*> pathD)) $ \(l, path) -> Retractable {
       retractableNext = setupPatternPage wt (Just path) mnemonic l curs
     , retractablePrev = Just $ pure $ setupLoginPage wt (Just path) mnemonic curs

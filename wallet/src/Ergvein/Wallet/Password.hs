@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 module Ergvein.Wallet.Password(
     setupPassword
+  , submitSetBtn
   , setupLoginPassword
   , askTextPassword
   , askPassword
@@ -36,23 +37,24 @@ import Ergvein.Wallet.Storage.Util
 import qualified Data.Map.Strict as Map
 #endif
 
-setupPassword :: MonadFrontBase t m => m (Event t Password)
-setupPassword = divClass "setup-password" $ form $ fieldset $ mdo
+submitSetBtn :: MonadFrontBase t m => m (Event t ())
+submitSetBtn = submitClass "button button-outline" PWSSet
+
+setupPassword :: MonadFrontBase t m => Event t () -> m (Event t Password)
+setupPassword e = divClass "setup-password" $ form $ fieldset $ mdo
   p1D <- passFieldWithEye PWSPassword
   p2D <- passFieldWithEye PWSRepeat
-  e <- submitClass "button button-outline" PWSSet
   validate $ poke e $ const $ runExceptT $ do
     p1 <- sampleDyn p1D
     p2 <- sampleDyn p2D
     check PWSNoMatch $ p1 == p2
     pure p1
 
-setupLoginPassword :: MonadFrontBase t m => m (Event t (Text, Password))
-setupLoginPassword = divClass "setup-password" $ form $ fieldset $ mdo
+setupLoginPassword :: MonadFrontBase t m => Event t () -> m (Event t (Text, Password))
+setupLoginPassword e = divClass "setup-password" $ form $ fieldset $ mdo
   loginD <- textFieldAttr PWSLogin ("placeholder" =: "my wallet name") ""
   p1D <- passFieldWithEye PWSPassword
   p2D <- passFieldWithEye PWSRepeat
-  e <- submitClass "button button-outline" PWSSet
   validate $ poke e $ const $ runExceptT $ do
     p1 <- sampleDyn p1D
     p2 <- sampleDyn p2D
@@ -162,10 +164,9 @@ setupPattern = divClass "setup-password" $ form $ fieldset $ mdo
     check PWSEmptyPattern $ not $ T.null p
     pure p
 
-setupLogin :: MonadFrontBase t m => m (Event t Text)
-setupLogin = divClass "setup-password" $ form $ fieldset $ mdo
+setupLogin :: MonadFrontBase t m => Event t () -> m (Event t Text)
+setupLogin e = divClass "setup-password" $ form $ fieldset $ mdo
   loginD <- textField PWSLogin ""
-  e <- submitClass "button button-outline" PWSSet
   validate $ poke e $ const $ runExceptT $ do
     l <- sampleDyn loginD
     check PWSEmptyLogin $ not $ T.null l
