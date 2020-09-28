@@ -16,6 +16,7 @@ import Reflex.ExternalRef
 import Text.Read
 
 import Ergvein.Text
+import Ergvein.Types.Currency
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Indexer.Socket
@@ -24,6 +25,7 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Wrapper
 
 import qualified Control.Exception.Safe as Ex
