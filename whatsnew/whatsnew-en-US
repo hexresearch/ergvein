@@ -1,3 +1,5 @@
-* Allow indexer setup before restore (#654)
-* Small fixes for indexer server
-* Add more default indexers
+* Status bar at balance screen (#663)
+* Progress indicator for height catch up at restore (#674)
+* Now use BIP84 derivation path for wallet (#670)
+* Mnemonic export with encryption and QR code (#662)
+* Added warning when misbehaved indexer returns 0 filters (#663)
