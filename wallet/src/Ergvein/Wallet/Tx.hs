@@ -17,11 +17,13 @@ import Network.Haskoin.Transaction (Tx(..), TxIn(..), TxOut(..), OutPoint(..), t
 
 import Ergvein.Text
 import Ergvein.Types.Address
+import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Node.BTC.Blocks
 
 import qualified Data.Map.Strict                    as M
 import qualified Data.Vector                        as V

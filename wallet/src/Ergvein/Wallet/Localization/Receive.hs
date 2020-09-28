@@ -20,7 +20,6 @@ data ReceivePageStrings =
   | RPSGap
   | RPSGenNew
   | RPSNewLabel
-
 instance LocalizedPrint ReceivePageStrings where
   localizedShow l v = case l of
     English -> case v of

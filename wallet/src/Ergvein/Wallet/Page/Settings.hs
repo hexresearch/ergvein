@@ -11,6 +11,7 @@ import Ergvein.Crypto.Keys
 import Ergvein.Text
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
+import Ergvein.Types.Derive
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
@@ -19,12 +20,11 @@ import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Currencies
-import Ergvein.Wallet.Page.Settings.Network
 import Ergvein.Wallet.Page.Settings.MnemonicExport
+import Ergvein.Wallet.Page.Settings.Network
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage
-import Ergvein.Wallet.Storage.Keys
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Wrapper
 
@@ -113,7 +113,8 @@ currenciesPage = do
           auth <- sample . current $ authD
           let authNew = auth & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
               difC = curs \\ (_pubStorage'activeCurrencies ps)
-              mL = Map.fromList [(currency, mkStore prvStr currency) | currency <- difC ]
+              mpath = auth ^. authInfo'storage . storage'pubStorage . pubStorage'pathPrefix
+              mL = Map.fromList [(currency, mkStore mpath prvStr currency) | currency <- difC ]
               authN2 = authNew & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages %~ (Map.union mL)
           pure $ Just $ authN2
       setAuthInfoE <- setAuthInfo updateAE
@@ -122,8 +123,11 @@ currenciesPage = do
       pure ()
   where
     uac cE =  updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ cE
-    mkStore prvStr currency = CurrencyPubStorage {
-        _currencyPubStorage'pubKeystore   = (createPubKeystore $ deriveCurrencyMasterPubKey (_prvStorage'rootPrvKey prvStr) currency)
+    mkStore mpath prvStr currency = let
+      dpath = extendDerivPath currency <$> mpath
+      in CurrencyPubStorage {
+        _currencyPubStorage'pubKeystore   = (createPubKeystore $ deriveCurrencyMasterPubKey dpath (_prvStorage'rootPrvKey prvStr) currency)
+      , _currencyPubStorage'path          = dpath
       , _currencyPubStorage'transactions  = Map.empty
       , _currencyPubStorage'height        = Nothing
       , _currencyPubStorage'scannedKey    = (Just 0, Just 0)

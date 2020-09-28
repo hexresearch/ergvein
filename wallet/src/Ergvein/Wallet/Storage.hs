@@ -11,11 +11,15 @@ import Control.Monad.IO.Class
 import Data.Proxy
 import Reflex.ExternalRef
 
+import Ergvein.Text
+import Ergvein.Types.Currency
+import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Localization.Storage
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Util
 
 import qualified Data.Map.Merge.Strict as MM
@@ -95,7 +99,7 @@ decryptAndValidatePrvStorage _ mutex pass authInfoRef = do
 
   liftIO $ takeMVar mutex
   either' (decryptPrvStorage eps pass) (withMutexRelease . Left) $ \prv -> do
-    let prvKeysNumber = M.map (\(CurrencyPrvStorage keystore) -> (
+    let prvKeysNumber = M.map (\(CurrencyPrvStorage keystore _) -> (
             V.length $ prvKeystore'external keystore
           , V.length $ prvKeystore'internal keystore
           )) $ _prvStorage'currencyPrvStorages prv

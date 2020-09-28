@@ -14,6 +14,7 @@ import Network.Haskoin.Transaction
 import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
+import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Utxo

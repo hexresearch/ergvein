@@ -126,7 +126,6 @@ library
         Ergvein.Wallet.Storage
         Ergvein.Wallet.Storage.AuthInfo
         Ergvein.Wallet.Storage.Constants
-        Ergvein.Wallet.Storage.Keys
         Ergvein.Wallet.Storage.Util
         Ergvein.Wallet.Style
         Ergvein.Wallet.Sync.Status

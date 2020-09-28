@@ -31,7 +31,7 @@ mnemonicExportPage :: MonadFront t m => Mnemonic -> m ()
 mnemonicExportPage mnemonic = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText PPSMnemonicTitle
   divClass "password-setup-descr" $ h5 $ localizedText PPSMnemonicDescr
-  passE <- setupPassword
+  passE <- setupPassword =<< submitSetBtn
   nextWidget $
     ffor passE $ \pass ->
       Retractable

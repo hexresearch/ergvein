@@ -54,7 +54,7 @@ instance LocalizedPrint PasswordPageStrings where
       PPSMnemonicUnlock -> "Введите пароль для расшифровки мнемонической фразы"
       PPSWrongPassword  -> "Неверный пароль"
 
-data PasswordWidgetStrings = PWSPassword | PWSPassNamed Text | PWSRepeat | PWSSet | PWSNoMatch | PWSGo | PWSLogin | PWSEmptyLogin | PWSEmptyPassword | PWSEmptyPattern
+data PasswordWidgetStrings = PWSPassword | PWSPassNamed Text | PWSRepeat | PWSSet | PWSNoMatch | PWSGo | PWSLogin | PWSEmptyLogin | PWSEmptyPassword | PWSEmptyPattern | PWSDeriv | PWSDerivDescr | PWSInvalidPath
 
 instance LocalizedPrint PasswordWidgetStrings where
   localizedShow l v = case l of
@@ -69,6 +69,9 @@ instance LocalizedPrint PasswordWidgetStrings where
       PWSEmptyLogin    -> "Login is empty!"
       PWSEmptyPassword -> "Password is empty!"
       PWSEmptyPattern  -> ""
+      PWSDeriv         -> "Derivation path"
+      PWSDerivDescr    -> "You can override suggested derivation path. Leave it untouched if not sure what it is."
+      PWSInvalidPath   -> "Derivation path is invalid! Format m/0'/0'/0'"
     Russian -> case v of
       PWSPassword      -> "Пароль"
       PWSPassNamed n   -> "Пароль от " <> n
@@ -80,3 +83,6 @@ instance LocalizedPrint PasswordWidgetStrings where
       PWSEmptyLogin    -> "Логин пустой!"
       PWSEmptyPassword -> "Пароль пустой!"
       PWSEmptyPattern  -> ""
+      PWSDeriv         -> "Префикс BIP48 для вывода ключей"
+      PWSDerivDescr    -> "Вы можете переназначить префикс дерева для вывода ключей. Оставьте как есть, если не знаете, что это такое."
+      PWSInvalidPath   -> "Путь вывода неверен! Формат поля m/0'/0'/0'"

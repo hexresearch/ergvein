@@ -9,6 +9,7 @@ data InitialPageStrings =
     IPSCreate
   | IPSRestore
   | IPSChooseRestorationMethod
+  | IPSRestoreFromMnemonic
   | IPSRestoreFromSeed
   | IPSNetwork
   | IPSSelectWallet
@@ -23,6 +24,7 @@ instance LocalizedPrint InitialPageStrings where
       IPSCreate                  -> "Create new wallet"
       IPSRestore                 -> "Restore wallet"
       IPSChooseRestorationMethod -> "Choose restoration method"
+      IPSRestoreFromMnemonic     -> "Mnemonic phrase"
       IPSRestoreFromSeed         -> "Seed"
       IPSSelectWallet            -> "Select wallet"
       IPSOtherOptions            -> "Either"
@@ -34,6 +36,7 @@ instance LocalizedPrint InitialPageStrings where
       IPSCreate                  -> "Создать новый кошелёк"
       IPSRestore                 -> "Восстановить кошелёк"
       IPSChooseRestorationMethod -> "Выберите метод восстановления"
+      IPSRestoreFromMnemonic     -> "Мнемоническая фраза"
       IPSRestoreFromSeed         -> "Seed"
       IPSSelectWallet            -> "Выберите кошелёк"
       IPSOtherOptions            -> "Или"

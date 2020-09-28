@@ -16,6 +16,7 @@ data SeedPageStrings =
   | SPSSelectWord Int
   | SPSRestoreFromMnemonic
   | SPSEnterMnemonic
+  | SPSScanQR
   | SPSMnemonicDecodeError
   | SPSReset
   | SPSEnterWord Int
@@ -39,6 +40,7 @@ instance LocalizedPrint SeedPageStrings where
       SPSSelectWord n        -> "Select the " <> showt n <> numSuffix n <> " word"
       SPSRestoreFromMnemonic -> "Restoring wallet from mnemonic phrase"
       SPSEnterMnemonic       -> "Enter mnemonic phrase"
+      SPSScanQR              -> "Scan QR code"
       SPSMnemonicDecodeError -> "Failed to decode mnemonic"
       SPSReset               -> "Reset and start again"
       SPSEnterWord n         -> "Enter the " <> showt n <> numSuffix n <> " word"
@@ -52,6 +54,7 @@ instance LocalizedPrint SeedPageStrings where
       SPSSelectWord n        -> "Выберите " <> showt n <> "-е слово"
       SPSRestoreFromMnemonic -> "Восстановление кошелька из мнемонической фразы"
       SPSEnterMnemonic       -> "Введите мнемоническую фразу"
+      SPSScanQR              -> "Cканировать QR-код"
       SPSMnemonicDecodeError -> "Не удалось декодировать мнемоническую фразу"
       SPSReset               -> "Сбросить и начать заново"
       SPSEnterWord n         -> "Введите " <> showt n <> "-е слово"
