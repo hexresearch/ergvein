@@ -26,6 +26,7 @@ import Data.Time.Clock.System
 import Network.Socket (SockAddr)
 
 import Ergvein.Types
+import Ergvein.Types.Derive
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage

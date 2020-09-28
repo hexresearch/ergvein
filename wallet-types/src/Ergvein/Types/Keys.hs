@@ -33,8 +33,8 @@ import Data.Aeson.Types       (Parser)
 import Data.Serialize         (get, put)
 import Data.Serialize.Get     (Get, getWord32be, getWord8, runGet)
 import Data.Serialize.Put     (Putter, putWord32be, putWord8, runPut)
-import Data.Text
-import Data.Vector (Vector)
+import Data.Text              (Text)
+import Data.Vector            (Vector)
 import Ergvein.Aeson
 import Ergvein.Crypto.Keys
 import Ergvein.Crypto.Util

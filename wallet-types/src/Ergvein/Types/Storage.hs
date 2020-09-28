@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Ergvein.Types.Storage where
 
 import Control.Lens (makeLenses, (&), (%~))
@@ -19,6 +20,7 @@ import qualified Network.Haskoin.Block as HB
 import Ergvein.Aeson
 import Ergvein.Text
 import Ergvein.Types.Currency
+import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
@@ -32,7 +34,8 @@ type WalletName = Text
 type Password = Text
 
 data CurrencyPrvStorage = CurrencyPrvStorage {
-    _currencyPrvStorage'prvKeystore :: PrvKeystore
+    _currencyPrvStorage'prvKeystore :: !PrvKeystore
+  , _currencyPrvStorage'path        :: !(Maybe DerivPrefix)
   } deriving (Eq, Show, Read)
 
 makeLenses ''CurrencyPrvStorage
@@ -45,6 +48,7 @@ data PrvStorage = PrvStorage {
     _prvStorage'mnemonic            :: Mnemonic
   , _prvStorage'rootPrvKey          :: EgvRootXPrvKey
   , _prvStorage'currencyPrvStorages :: CurrencyPrvStorages
+  , _prvStorage'pathPrefix          :: !(Maybe DerivPrefix)
   } deriving (Eq, Show, Read)
 
 makeLenses ''PrvStorage
@@ -54,6 +58,7 @@ instance ToJSON PrvStorage where
       "mnemonic"            .= toJSON _prvStorage'mnemonic
     , "rootPrvKey"          .= toJSON _prvStorage'rootPrvKey
     , "currencyPrvStorages" .= toJSON _prvStorage'currencyPrvStorages
+    , "pathPrefix"          .= toJSON _prvStorage'pathPrefix
     ]
 
 instance FromJSON PrvStorage where
@@ -61,6 +66,7 @@ instance FromJSON PrvStorage where
     <$> o .: "mnemonic"
     <*> o .: "rootPrvKey"
     <*> o .: "currencyPrvStorages"
+    <*> o .:? "pathPrefix" .!= Just legacyDerivPathPrefix
 
 data EncryptedPrvStorage = EncryptedPrvStorage {
     _encryptedPrvStorage'ciphertext :: ByteString
@@ -88,6 +94,7 @@ instance FromJSON EncryptedPrvStorage where
 
 data CurrencyPubStorage = CurrencyPubStorage {
     _currencyPubStorage'pubKeystore   :: !PubKeystore
+  , _currencyPubStorage'path          :: !(Maybe DerivPrefix)
   , _currencyPubStorage'transactions  :: !(M.Map TxId EgvTx)
   , _currencyPubStorage'height        :: !(Maybe BlockHeight)     -- ^ Last height seen by the wallet
   , _currencyPubStorage'scannedKey    :: !(Maybe Int, Maybe Int)  -- ^ When restoring here we put which keys are we already scanned
@@ -100,10 +107,10 @@ data CurrencyPubStorage = CurrencyPubStorage {
 
 makeLenses ''CurrencyPubStorage
 
+$(deriveJSON aesonOptionsStripToApostroph ''CurrencyPubStorage)
+
 instance FromJSONKey HB.BlockHash where
 instance ToJSONKey HB.BlockHash where
-
-$(deriveJSON aesonOptionsStripToApostroph ''CurrencyPubStorage)
 
 type CurrencyPubStorages = M.Map Currency CurrencyPubStorage
 
@@ -112,6 +119,7 @@ data PubStorage = PubStorage {
   , _pubStorage'currencyPubStorages :: !CurrencyPubStorages
   , _pubStorage'activeCurrencies    :: [Currency]
   , _pubStorage'restoring           :: !Bool -- ^ Flag to track unfinished process of restoration
+  , _pubStorage'pathPrefix          :: !(Maybe DerivPrefix)
   } deriving (Eq, Show, Read)
 
 makeLenses ''PubStorage

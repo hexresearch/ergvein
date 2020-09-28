@@ -19,6 +19,8 @@ import Reflex.ExternalRef
 
 import Ergvein.Text
 import Ergvein.Types.Currency
+import Ergvein.Types.Derive
+import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction as ETT
 import Ergvein.Wallet.Monad.Async
@@ -30,6 +32,7 @@ import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Node.BTC.Mempool
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Sync.Status
+import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Util
 
 import qualified Data.Bits as BI

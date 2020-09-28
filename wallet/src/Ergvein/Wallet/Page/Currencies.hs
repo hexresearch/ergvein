@@ -26,9 +26,9 @@ selectCurrenciesPage wt mnemonic = wrapperSimple True $ do
   -- e <- selectCurrenciesWidget []
   void $ nextWidget $ ffor e $ \ac -> Retractable {
 #ifdef ANDROID
-      retractableNext = setupLoginPage wt mnemonic ac
+      retractableNext = setupLoginPage wt Nothing mnemonic ac
 #else
-      retractableNext = passwordPage wt mnemonic ac
+      retractableNext = passwordPage wt Nothing mnemonic ac
 #endif
     -- , retractablePrev = Just $ pure $ selectCurrenciesPage wt mnemonic -- TODO: uncomment this when ERGO is ready
     , retractablePrev = Nothing -- TODO: remove this when ERGO is ready

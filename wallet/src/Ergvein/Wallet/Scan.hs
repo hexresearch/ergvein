@@ -13,6 +13,7 @@ import Data.Vector (Vector)
 import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
+import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
@@ -24,6 +25,8 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node.BTC.Blocks
+import Ergvein.Wallet.Storage.Constants
+import Ergvein.Wallet.Storage.Util (addXPubKeyToKeystore)
 import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Util
