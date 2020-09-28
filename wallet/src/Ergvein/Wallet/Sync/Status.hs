@@ -101,24 +101,24 @@ syncProgressBehind v = case v of
 
 instance LocalizedPrint SyncProgress where
   localizedShow l SyncMeta{syncMetaStage = syncMetaStage@SyncFilters, ..} = case l of
-    English -> "Syncing " <> localizedShow l syncMetaStage <> " of " <> showt syncMetaCur <> ": " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
-    Russian -> "Синхронизация " <> localizedShow l syncMetaStage <> " " <> showt syncMetaCur <> ": " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
+    English -> "Syncing " <> localizedShow l syncMetaStage <> " of " <> showt syncMetaCur <> "\n" <> showt (percent syncMetaAmount syncMetaTotal) <> "%"
+    Russian -> "Синхронизация " <> localizedShow l syncMetaStage <> " " <> showt syncMetaCur <> "\n" <> showt (percent syncMetaAmount syncMetaTotal) <> "%"
 
   localizedShow l SyncMeta{syncMetaStage = syncMetaStage@(SyncAddressInternal _), ..} = case l of
-    English -> "Syncing " <> showt syncMetaCur <> " change address " <> localizedShow l syncMetaStage <> ", " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
-    Russian -> "Синхронизация " <> showt syncMetaCur <> " адреса для сдачи " <> localizedShow l syncMetaStage <> ", " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
+    English -> "Syncing " <> showt syncMetaCur <> " change address " <> localizedShow l syncMetaStage <> "\n" <> showt (percent syncMetaAmount syncMetaTotal) <> "%"
+    Russian -> "Синхронизация " <> showt syncMetaCur <> " адреса для сдачи " <> localizedShow l syncMetaStage <> "\n" <> showt (percent syncMetaAmount syncMetaTotal) <> "%"
 
   localizedShow l SyncMeta{syncMetaStage = syncMetaStage@(SyncAddressExternal _), ..} = case l of
-    English -> "Syncing " <> showt syncMetaCur <> " receiving address " <> localizedShow l syncMetaStage <> ", " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
-    Russian -> "Синхронизация " <> showt syncMetaCur <> " адреса для получения " <> localizedShow l syncMetaStage <> ", " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
+    English -> "Syncing " <> showt syncMetaCur <> " receiving address " <> localizedShow l syncMetaStage <> "\n" <> showt (percent syncMetaAmount syncMetaTotal) <> "%"
+    Russian -> "Синхронизация " <> showt syncMetaCur <> " адреса для получения " <> localizedShow l syncMetaStage <> "\n" <> showt (percent syncMetaAmount syncMetaTotal) <> "%"
 
   localizedShow l SyncMeta{syncMetaStage = syncMetaStage@(SyncBlocks _ _), ..} = if isAndroid
     then case l of
-      English -> "Syncing new blocks of " <> showt syncMetaCur <> ": " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
-      Russian -> "Синхронизация новых блоков " <> showt syncMetaCur <> ": " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
+      English -> "Syncing new blocks of " <> showt syncMetaCur <> "\n" <> showt (percent syncMetaAmount syncMetaTotal) <> "%"
+      Russian -> "Синхронизация новых блоков " <> showt syncMetaCur <> "\n" <> showt (percent syncMetaAmount syncMetaTotal) <> "%"
      else case l of
-      English -> "Syncing new blocks of " <> showt syncMetaCur <> ": " <> localizedShow l syncMetaStage <> ", " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
-      Russian -> "Синхронизация новых блоков " <> showt syncMetaCur <> ": " <> localizedShow l syncMetaStage <> ", " <> showt (percent syncMetaAmount syncMetaTotal) <> "%."
+      English -> "Syncing new blocks of " <> showt syncMetaCur <> "\n" <> localizedShow l syncMetaStage <> ", " <> showt (percent syncMetaAmount syncMetaTotal) <> "%"
+      Russian -> "Синхронизация новых блоков " <> showt syncMetaCur <> "\n" <> localizedShow l syncMetaStage <> ", " <> showt (percent syncMetaAmount syncMetaTotal) <> "%"
 
   localizedShow l SyncMeta{syncMetaStage = syncMetaStage@(_), ..} = localizedShow l syncMetaStage
 

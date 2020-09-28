@@ -39,6 +39,7 @@ module Ergvein.Wallet.Elements(
   , fieldsetClass
   , label
   , imgClass
+  , linedText
   , colonize
   , colonize_
   , buttonClass
@@ -62,7 +63,10 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.OpenUrl
 import Ergvein.Wallet.Util
+import Control.Monad.Fix (MonadFix)
 import Reflex.Localize
+
+import qualified Data.Text as T
 
 container :: DomBuilder t m => m a -> m a
 container = divClass "container"
@@ -166,6 +170,9 @@ imgClass src classVal = elAttr "img" [
 chunked :: Int -> [a] -> [[a]]
 chunked _ [] = []
 chunked n xs = take n xs : chunked n (drop n xs)
+
+linedText :: (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m) => Dynamic t Text -> m ()
+linedText textD = void $ simpleList (T.lines <$> textD) (\t -> dynText t >> br)
 
 -- | Traverse container and render widgets for each element in rows
 colonize :: (DomBuilder t m)
