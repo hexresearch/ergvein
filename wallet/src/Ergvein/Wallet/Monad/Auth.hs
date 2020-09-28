@@ -71,6 +71,7 @@ data Env t = Env {
 , env'filtersHeights  :: !(ExternalRef t (Map Currency BlockHeight))
 , env'syncProgress    :: !(ExternalRef t SyncProgress)
 , env'heightRef       :: !(ExternalRef t (Map Currency Integer))
+, env'catchUpRef      :: !(ExternalRef t (Map Currency Integer))
 , env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
 , env'nodeConsRef     :: !(ExternalRef t (ConnMap t))
 , env'nodeReqSelector :: !(NodeReqSelector t)
@@ -172,6 +173,8 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getFeesRef #-}
   getNodeReqFire = asks env'nodeReqFire
   {-# INLINE getNodeReqFire #-}
+  getCatchUpHeightRef = asks env'catchUpRef
+  {-# INLINE getCatchUpHeightRef #-}
 
 instance MonadBaseConstr t m => MonadIndexClient t (ErgveinM t m) where
   getActiveAddrsRef = asks env'activeAddrs
@@ -310,6 +313,7 @@ liftAuth ma0 ma = mdo
         fsyncRef        <- newExternalRef mempty
         consRef         <- newExternalRef mempty
         feesRef         <- newExternalRef mempty
+        catchUpRef      <- newExternalRef mempty
         storeMvar       <- liftIO $ newMVar ()
         let env = Env {
                 env'settings = settingsRef
@@ -330,6 +334,7 @@ liftAuth ma0 ma = mdo
               , env'filtersHeights = filtersHeights
               , env'syncProgress = syncRef
               , env'heightRef = heightRef
+              , env'catchUpRef = catchUpRef
               , env'filtersSyncRef = fsyncRef
               , env'nodeConsRef = consRef
               , env'nodeReqSelector = nodeSel

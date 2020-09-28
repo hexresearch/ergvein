@@ -25,6 +25,7 @@ module Ergvein.Wallet.Monad.Front(
   , setFiltersSync
   , setSyncProgress
   , updateActiveCurs
+  , setCatchUpHeight
   -- * Reexports
   , Text
   , MonadJSM
@@ -104,6 +105,8 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   getNodeReqFire :: m (Map Currency (Map SockAddr NodeMessage) -> IO ())
   -- | Get authed info
   getAuthInfoRef :: m (ExternalRef t AuthInfo)
+  -- | Special height value. Used during catchup
+  getCatchUpHeightRef :: m (ExternalRef t (Map Currency Integer))
 
 
 -- | Get connections map
@@ -257,3 +260,9 @@ setFiltersSync :: MonadFrontAuth t m => Currency -> Bool -> m ()
 setFiltersSync c v = do
   r <- getFiltersSyncRef
   modifyExternalRef r $ (, ()) . M.insert c v
+
+-- | Set the value for catchup heights
+setCatchUpHeight :: MonadFrontAuth t m => Currency -> Event t Integer -> m ()
+setCatchUpHeight cur hE = do
+  r <- getCatchUpHeightRef
+  performFork_ $ ffor hE $ \h -> modifyExternalRef_ r (M.insert cur h)

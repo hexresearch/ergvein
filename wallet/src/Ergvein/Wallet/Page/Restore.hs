@@ -3,6 +3,8 @@ module Ergvein.Wallet.Page.Restore(
   ) where
 
 import Data.Foldable (foldl')
+import Data.Maybe (fromMaybe)
+import Reflex.ExternalRef
 
 import Ergvein.Text
 import Ergvein.Types.Currency
@@ -22,6 +24,7 @@ import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Sync.Widget
 import Ergvein.Wallet.Wrapper
 
+import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
 
 import Ergvein.Wallet.Debug
@@ -30,8 +33,10 @@ restorePage :: forall t m . MonadFront t m =>  m ()
 restorePage = wrapperSimple True $ void $ workflow heightAsking
   where
     heightAsking = Workflow $ do
+      hD <- (fmap . fmap) (fromMaybe 0 . M.lookup BTC) $ externalRefDynamic =<< getCatchUpHeightRef
       el "h3" $ text "Getting current height"
       heightD <- getCurrentHeight BTC
+      el "h4" $ dynText $ ffor hD $ \h -> "Catching up at height: " <> showt h
       height0E <- tag (current heightD) <$> getPostBuild
       let heightE = leftmost [updated heightD, height0E]
       let nextE = fforMaybe heightE $ \h -> if h == 0 then Nothing else Just downloadFilters
