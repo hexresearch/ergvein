@@ -31,8 +31,8 @@ aboutPage = do
         aboutRow $ do
           aboutCellLabel $ localizedText AboutDevelopers
           aboutCellValue $ do
-            text "Hexresearch team"
-            elBR
+            -- text "Hexresearch team"
+            -- elBR
             text "Anton Gushcha ncrashed@protonmail.com"
             elBR
             text "Dmitry Zuikov dzuikov@gmail.com"
