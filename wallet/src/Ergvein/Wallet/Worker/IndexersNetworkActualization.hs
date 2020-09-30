@@ -1,10 +1,65 @@
+
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 module Ergvein.Wallet.Worker.IndexersNetworkActualization
-  (
-    indexersNetworkActualizationWorker
+  ( indexersNetworkActualizationWorker
+  , tmi
   ) where
 
+import Control.Monad.IO.Class
+import Data.Attoparsec.Binary
+import Data.Attoparsec.ByteString
+import Data.Either
+import Data.Maybe
+import Network.Socket
+import Reflex.ExternalRef
+import System.Random.Shuffle
+
+import Ergvein.Index.Protocol.Types
+import Ergvein.Wallet.Monad.Client
+import Ergvein.Wallet.Monad.Front
+import Ergvein.Wallet.Settings
+
+import qualified Data.List          as L
+import qualified Data.Map.Strict    as Map
+import qualified Data.Set           as Set
+import qualified Data.Text          as T
+import qualified Data.Vector        as V
+
+
 indexersNetworkActualizationWorker = undefined
+
+
+tmi ::(MonadIndexClient t m, MonadHasSettings t m) => m ()
+tmi = do
+  timerE <- void <$> tickLossyFromPostBuildTime 4
+  activeUrlsRef <- getActiveConnsRef 
+  goE' <- performEvent $ ffor timerE $ const $ readExternalRef activeUrlsRef
+  
+  let reqE = fforMaybe goE' (\activeUrls -> let
+       l = length $ Map.toList activeUrls
+       in if l < 16 then Just $ MPeerRequest PeerRequest else Nothing)
+
+  respE <- requestRandomIndexer reqE
+  
+  let nonEmptyAddressesE' = fforMaybe respE $ (\(_, msg) -> case msg of
+        MPeerResponse PeerResponse {..} | not (V.null peerResponseAddresses) -> Just peerResponseAddresses
+        _-> Nothing)
+  
+  respE'' <- performEvent $ ffor nonEmptyAddressesE' $ (\ idxs -> 
+    liftIO $ (convertA . head) <$> (shuffleM $ V.toList idxs))
+  activateURL respE''
+  pure ()
+
+convertA Address{..} = case addressType of
+    IPV4 -> let
+      port = (fromInteger $ toInteger addressPort)
+      ip  =  fromRight (error "address") $ parseOnly anyWord32be addressAddress
+      in SockAddrInet port ip
+    IPV6 -> let
+      port = (fromInteger $ toInteger addressPort)
+      ip  =  fromRight (error "address") $ parseOnly ((,,,) <$> anyWord32be <*> anyWord32be <*> anyWord32be <*> anyWord32be) addressAddress
+      in SockAddrInet6 port 0 ip 0
+
 {-}
 import Control.Monad.Reader
 import Control.Monad.Zip
