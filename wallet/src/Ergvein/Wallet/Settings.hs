@@ -18,17 +18,23 @@ import Control.Lens hiding ((.=))
 import Control.Monad.IO.Class
 import Data.Aeson hiding (encodeFile)
 import Data.Maybe
+import Data.Either
 import Data.Text(Text, pack, unpack)
 import Data.Time (NominalDiffTime)
 import Data.Yaml (encodeFile)
 import Network.Socket
 import System.Directory
+import Data.IP
+import Network.DNS.Lookup
+import Network.DNS.Types
+import Network.DNS.Resolver
 
 import Ergvein.Aeson
 import Ergvein.Lens
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Yaml(readYamlEither')
+import Ergvein.Text
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
@@ -212,3 +218,40 @@ loadSettings mpath = liftIO $ case mpath of
     encodeFile (unpack $ settingsConfigPath cfg) cfg
     pure cfg
 #endif
+
+dnsList :: [Domain]
+dnsList = ["seed.cypra.io"]
+
+getDNS :: [Domain] -> IO (Maybe [Text])
+getDNS domains = findMMaybe f domains
+  where
+    f :: Domain -> IO (Maybe [Text])
+    f x = do
+      r <- resolve x
+      pure $ if length r < 2 then Nothing else Just r
+    resolve :: Domain -> IO [Text]
+    resolve domain = do
+      rs <- makeResolvSeed defaultResolvConf
+      withResolver rs $ \r -> do
+        v4 <- lookupA r domain
+        v6 <- lookupAAAA r domain
+        pure $ concat $ rights [(fmap showt <$> v4), (fmap showt <$> v6)]
+
+    tran4 :: IPv4 -> SockAddr
+    tran4 v4 = let 
+      [a] = fromIntegral <$> fromIPv4 v4
+      in SockAddrInet 8667 a
+
+    tran6 :: IPv6 -> SockAddr
+    tran6 v6 = let 
+      [a,b,c,d] = fromIntegral <$> fromIPv6 v6
+      in SockAddrInet6 8667 0 (a, b, c, d) 0
+    
+    findMapMMaybe :: Monad m => (a -> m (Maybe b)) -> [a] -> m (Maybe b)
+    findMapMMaybe f (x:xs) = do
+      r <- f x
+      if isJust r then
+        pure r
+      else
+        findMMaybe f xs
+    findMMaybe f [] = pure Nothing
