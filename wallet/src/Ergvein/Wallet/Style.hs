@@ -292,6 +292,10 @@ navbarCss = do
   ".navbar-android-controls-wrapper" ? do
     display flex
     justifyContent center
+    justifyContent spaceBetween
+    paddingBottom $ rem 2
+    maxWidth $ rem 22
+    width $ pct 100
   ".navbar-android-controls" ? do
     display flex
     justifyContent spaceBetween

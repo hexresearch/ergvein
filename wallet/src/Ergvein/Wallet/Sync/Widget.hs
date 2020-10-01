@@ -14,4 +14,4 @@ syncWidget progressD = divClass "sync-widget-wrapper" $ do
     Synced -> pure ()
     SyncMeta{..} -> do
       linedText =<< localized sp
-      -- traverse_ localizedText $ syncProgressBehind sp
+      traverse_ localizedText $ syncProgressBehind sp
