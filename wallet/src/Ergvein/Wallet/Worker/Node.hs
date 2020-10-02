@@ -225,10 +225,10 @@ getRandomBTCNodesFromDNS :: MonadFrontAuth t m => NodeReqSelector t -> Int -> m 
 getRandomBTCNodesFromDNS sel n = do
   buildE <- getPostBuild
   let dnsUrls = getSeeds btcNetwork
-  setSyncProgress $ (SyncMeta BTC SyncGettingNodeAddresses 0 0) <$ buildE
   i <- liftIO $ randomRIO (0, length dnsUrls - 1)
-  setSyncProgress $ (SyncMeta BTC SyncConnectingToPeers 0 0) <$ urlsE
+  setSyncProgress $ (SyncMeta BTC SyncGettingNodeAddresses 0 0) <$ buildE
   urlsE <- performFork $ (requestNodesFromBTCDNS (dnsUrls!!i) n) <$ buildE
+  setSyncProgress $ (SyncMeta BTC SyncConnectingToPeers 0 0) <$ urlsE
   nodesD <- widgetHold (pure []) $ ffor urlsE $ \urls -> flip traverse urls $ \u -> let
     reqE = extractReq sel BTC u
     in initBTCNode False u reqE
