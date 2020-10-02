@@ -7,28 +7,25 @@ module Ergvein.Wallet.Page.Settings.Network
   ) where
 
 import Control.Lens
-import Control.Monad.IO.Class
 import Data.Functor.Misc (Const2(..))
-import Data.Maybe (isJust, listToMaybe)
+import Data.Maybe (isJust)
 import Network.Socket
 import Reflex.Dom
 import Reflex.ExternalRef
 import Text.Read
 
 import Ergvein.Text
-import Ergvein.Types.Currency
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Indexer.Socket
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Settings
+import Ergvein.Wallet.Localization.Network
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Wrapper
 
-import qualified Control.Exception.Safe as Ex
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Set as S
@@ -122,26 +119,11 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
     goE <- outlineButton NSSAddUrl
     performFork $ ffor goE $ const $ do
       t <- sampleDyn textD
-      parseSingle t
+      parseSingleSockAddr t
   void $ widgetHold (pure ()) $ ffor murlE $ \case
-    Nothing -> divClass "form-field-errors" $ text "Falied to parse URL"
+    Nothing -> divClass "form-field-errors" $ localizedText NPSParseError
     _ -> pure ()
   pure $ fmapMaybe id murlE
-  where
-    parseSingle t = do
-      let (h,p) = fmap (T.drop 1) $ T.span (/= ':') t
-      let p' = if p == "" then Nothing else Just $ T.unpack p
-      let mport = readMaybe $ T.unpack p
-      let val = fmap (readMaybe . T.unpack) $ T.splitOn "." h
-      case (mport, val) of
-        (Just port, (Just a):(Just b):(Just c):(Just d):[]) ->
-          pure $ Just $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
-        _ -> do
-          let hints = defaultHints { addrFlags = [AI_ALL] , addrSocketType = Stream }
-          addrs <- liftIO $ Ex.catch (
-              getAddrInfo (Just hints) (Just $ T.unpack h) p'
-            ) (\(_ :: Ex.SomeException) -> pure [])
-          pure $ fmap addrAddress $ listToMaybe addrs
 
 activePageWidget :: forall t m . MonadFrontBase t m => m ()
 activePageWidget = mdo

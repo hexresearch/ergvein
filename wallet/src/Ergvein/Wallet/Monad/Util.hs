@@ -16,15 +16,18 @@ module Ergvein.Wallet.Monad.Util
   , performFork_
   , worker
   , parseSockAddrs
+  , parseSingleSockAddr
   ) where
 
 import Control.Concurrent
 import Control.Concurrent.Async
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
+import Data.IP
 import Data.Maybe
 import Data.Text (pack)
 import Data.Time
+import Network.DNS
 import Network.Socket
 import Reflex.ExternalRef
 import Text.Read
@@ -35,9 +38,11 @@ import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Settings
 
 import qualified Control.Exception.Safe as Ex
 import qualified Control.Immortal as I
+import qualified Data.ByteString.Char8 as B8
 import qualified Data.Text as T
 
 -- | Posting log message
@@ -136,21 +141,43 @@ worker lbl f = I.createWithLabel lbl $ \thread -> I.onUnexpectedFinish thread lo
         liftIO $ threadDelay 1000000
       _ -> pure ()
 
--- | Helper to parse a list of urls into a list of SockAddrs
-parseSockAddrs :: MonadIO m => [Text] -> m [SockAddr]
-parseSockAddrs = fmap catMaybes . traverse parseSingle
+-- | Parse and resolve multiple SockAddrs.
+-- If the address is an IP4 tuple, it is not resolved
+-- If it is not, then try to resolve it with dns lookup with nativeResolvConf
+-- direct lookup is used instead of getAddrInfo b.c. the latter fails on Android
+parseSockAddrs :: (MonadIO m, PlatformNatives) => [Text] -> m [SockAddr]
+parseSockAddrs urls = liftIO $ do
+  rs <- makeResolvSeed nativeResolvConf
+  withResolver rs $ \resolver -> fmap catMaybes $ traverse (parseAddr resolver) urls
   where
-    parseSingle t = do
-      let (h,p) = fmap (T.drop 1) $ T.span (/= ':') t
-      let p' = if p == "" then Nothing else Just $ T.unpack p
-      let mport = readMaybe $ T.unpack p
+    parseAddr :: Resolver -> Text -> IO (Maybe SockAddr)
+    parseAddr resolver t = do
+      let (h, p) = fmap (T.drop 1) $ T.span (/= ':') t
+      let port = if p == "" then defIndexerPort else fromMaybe defIndexerPort (readMaybe $ T.unpack p)
       let val = fmap (readMaybe . T.unpack) $ T.splitOn "." h
-      case (mport, val) of
-        (Just port, (Just a):(Just b):(Just c):(Just d):[]) ->
-          pure $ Just $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
+      case val of
+        (Just a):(Just b):(Just c):(Just d):[] -> pure $ Just $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
         _ -> do
-          let hints = defaultHints { addrFlags = [AI_ALL] , addrSocketType = Stream }
-          addrs <- liftIO $ Ex.catch (
-              getAddrInfo (Just hints) (Just $ T.unpack h) p'
-            ) (\(_ :: Ex.SomeException) -> pure [])
-          pure $ fmap addrAddress $ listToMaybe addrs
+          let url = B8.pack $ T.unpack h
+          ips <- fmap (either (const []) id) $ lookupA resolver url
+          case ips of
+            [] -> pure Nothing
+            ip:_ -> pure $ Just $ SockAddrInet port (toHostAddress ip)
+
+-- | Same as the one above, but is better for single url
+-- Hides makeResolvSeed
+parseSingleSockAddr :: (MonadIO m, PlatformNatives) => Text -> m (Maybe SockAddr)
+parseSingleSockAddr t = do
+  let (h, p) = fmap (T.drop 1) $ T.span (/= ':') t
+  let port = if p == "" then defIndexerPort else fromMaybe defIndexerPort (readMaybe $ T.unpack p)
+  let val = fmap (readMaybe . T.unpack) $ T.splitOn "." h
+  case val of
+    (Just a):(Just b):(Just c):(Just d):[] -> pure $ Just $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
+    _ -> do
+      let url = B8.pack $ T.unpack h
+      ips <- liftIO $ do
+        rs <- makeResolvSeed nativeResolvConf
+        fmap (either (const []) id) $ withResolver rs (flip lookupA url)
+      case ips of
+        [] -> pure Nothing
+        ip:_ -> pure $ Just $ SockAddrInet port (toHostAddress ip)
