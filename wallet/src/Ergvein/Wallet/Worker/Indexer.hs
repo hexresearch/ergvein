@@ -17,6 +17,12 @@ import Ergvein.Wallet.Indexer.Socket
 
 import qualified Data.Map.Strict as M
 
+connectionTimeout :: NominalDiffTime
+connectionTimeout = 60
+
+reconnectTimeout :: NominalDiffTime
+reconnectTimeout = 5
+
 indexerNodeController :: MonadIndexClient t m => [SockAddr] -> m ()
 indexerNodeController initAddrs = mdo
   nodeLog "Starting"
@@ -51,9 +57,3 @@ connectionWidget IndexerConnection{..} = do
   pure $ gate (not <$> current indexConIsUp) timeoutE
   where
     nodeLog t = logWrite $ "[indexerNodeController]<" <> showt indexConAddr <> ">: " <> t
-
-connectionTimeout :: NominalDiffTime
-connectionTimeout = 5
-
-reconnectTimeout :: NominalDiffTime
-reconnectTimeout = 5
