@@ -3,15 +3,14 @@ module Ergvein.Wallet.Android.Native(
   ) where
 
 import Android.HaskellActivity
-import Control.Exception (handle, bracket, SomeException)
+import Control.Exception (handle, bracket)
 import Control.Monad.IO.Class
-import Data.Text(Text, unpack)
+import Data.Text(Text)
 import Ergvein.Aeson
 import Ergvein.Wallet.Android.Native.Certs
 import Ergvein.Wallet.Native
 import Foreign
 import Foreign.C
-import Network.DNS.Resolver
 import System.Directory
 import System.Directory.Tree
 import System.FilePath.Posix
@@ -162,12 +161,6 @@ instance PlatformNatives where
   {-# INLINE logWrite #-}
 
   readSystemCertificates = getSystemCertificateStore additionalCertificates
-
-  nativeResolvConf = defaultResolvConf {
-      resolvInfo = RCHostNames ["8.8.8.8","8.8.4.4", "1.1.1.1"]
-    , resolvConcurrent = True
-    }
-  {-# INLINE nativeResolvConf #-}
 
   nativeShareJpeg b64jpeg filename = liftIO $ encodeText b64jpeg $ \s -> encodeText filename $ \fs -> do
     a <- getHaskellActivity

@@ -143,11 +143,10 @@ worker lbl f = I.createWithLabel lbl $ \thread -> I.onUnexpectedFinish thread lo
 
 -- | Parse and resolve multiple SockAddrs.
 -- If the address is an IP4 tuple, it is not resolved
--- If it is not, then try to resolve it with dns lookup with nativeResolvConf
+-- If it is not, then try to resolve it with dns lookup with the provided ResolvSeed
 -- direct lookup is used instead of getAddrInfo b.c. the latter fails on Android
-parseSockAddrs :: (MonadIO m, PlatformNatives) => [Text] -> m [SockAddr]
-parseSockAddrs urls = liftIO $ do
-  rs <- makeResolvSeed nativeResolvConf
+parseSockAddrs :: (MonadIO m, PlatformNatives) => ResolvSeed -> [Text] -> m [SockAddr]
+parseSockAddrs rs urls = liftIO $ do
   withResolver rs $ \resolver -> fmap catMaybes $ traverse (parseAddr resolver) urls
   where
     parseAddr :: Resolver -> Text -> IO (Maybe SockAddr)
@@ -166,8 +165,8 @@ parseSockAddrs urls = liftIO $ do
 
 -- | Same as the one above, but is better for single url
 -- Hides makeResolvSeed
-parseSingleSockAddr :: (MonadIO m, PlatformNatives) => Text -> m (Maybe SockAddr)
-parseSingleSockAddr t = do
+parseSingleSockAddr :: (MonadIO m, PlatformNatives) => ResolvSeed -> Text -> m (Maybe SockAddr)
+parseSingleSockAddr rs t = do
   let (h, p) = fmap (T.drop 1) $ T.span (/= ':') t
   let port = if p == "" then defIndexerPort else fromMaybe defIndexerPort (readMaybe $ T.unpack p)
   let val = fmap (readMaybe . T.unpack) $ T.splitOn "." h
@@ -175,9 +174,7 @@ parseSingleSockAddr t = do
     (Just a):(Just b):(Just c):(Just d):[] -> pure $ Just $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
     _ -> do
       let url = B8.pack $ T.unpack h
-      ips <- liftIO $ do
-        rs <- makeResolvSeed nativeResolvConf
-        fmap (either (const []) id) $ withResolver rs (flip lookupA url)
+      ips <- liftIO $ fmap (either (const []) id) $ withResolver rs (flip lookupA url)
       case ips of
         [] -> pure Nothing
         ip:_ -> pure $ Just $ SockAddrInet port (toHostAddress ip)

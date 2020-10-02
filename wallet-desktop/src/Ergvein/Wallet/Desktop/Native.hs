@@ -1,15 +1,15 @@
+{-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Werror #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Wallet.Desktop.Native(
 
   ) where
 
 import Control.Monad
 import Control.Monad.IO.Class
-import Data.Aeson
-import Data.Text(Text)
 import Data.Time.LocalTime (getCurrentTimeZone)
 import Ergvein.Aeson
 import Ergvein.Wallet.Native
-import Network.DNS.Resolver
 import System.Directory
 import System.Directory.Tree
 import System.FilePath.Posix
@@ -19,7 +19,6 @@ import System.X509 (getSystemCertificateStore)
 import Web.Browser
 
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
 import qualified Data.Text.IO as T
 import qualified Turtle
 
@@ -116,9 +115,6 @@ instance PlatformNatives where
   logWrite = liftIO . T.putStrLn
 
   readSystemCertificates = liftIO getSystemCertificateStore
-
-  nativeResolvConf = defaultResolvConf
-  {-# INLINE nativeResolvConf #-}
 
   nativeShareJpeg _ _ = pure ()
 

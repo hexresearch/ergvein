@@ -11,6 +11,7 @@ import Data.IORef
 import Data.Map.Strict (Map)
 import Data.Text (Text)
 import Data.Time (NominalDiffTime)
+import Network.DNS
 import Network.Socket (SockAddr)
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
@@ -155,9 +156,14 @@ newEnv settings uiChan = do
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
   -- MonadClient refs
-  socadrs         <- parseSockAddrs (settingsActiveAddrs settings)
-  urlsArchive     <- newExternalRef . S.fromList =<< parseSockAddrs (settingsArchivedAddrs settings)
-  inactiveUrls    <- newExternalRef . S.fromList =<< parseSockAddrs (settingsDeactivatedAddrs settings)
+  rs <- liftIO $ makeResolvSeed defaultResolvConf {
+      resolvInfo = RCHostNames $ settingsDns settings
+    , resolvConcurrent = True
+    }
+
+  socadrs         <- parseSockAddrs rs (settingsActiveAddrs settings)
+  urlsArchive     <- newExternalRef . S.fromList =<< parseSockAddrs rs (settingsArchivedAddrs settings)
+  inactiveUrls    <- newExternalRef . S.fromList =<< parseSockAddrs rs (settingsDeactivatedAddrs settings)
   actvieAddrsRef  <- newExternalRef $ S.fromList socadrs
   indexConmapRef  <- newExternalRef $ M.empty
   reqUrlNumRef    <- newExternalRef $ settingsReqUrlNum settings

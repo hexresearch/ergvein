@@ -117,9 +117,10 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
     textD <- fmap _inputElement_value $ inputElement $ def
       & inputElementConfig_elementConfig . elementConfig_initialAttributes .~ ("type" =: "text")
     goE <- outlineButton NSSAddUrl
+    rs <- mkResolvSeed
     performFork $ ffor goE $ const $ do
       t <- sampleDyn textD
-      parseSingleSockAddr t
+      parseSingleSockAddr rs t
   void $ widgetHold (pure ()) $ ffor murlE $ \case
     Nothing -> divClass "form-field-errors" $ localizedText NPSParseError
     _ -> pure ()
@@ -137,7 +138,8 @@ activePageWidget = mdo
   (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
     restoreE <- buttonClass "button button-outline m-0" NSSRestoreUrls
-    void $ activateURLList =<< performFork (parseSockAddrs defaultIndexers <$ restoreE)
+    rs <- mkResolvSeed
+    void $ activateURLList =<< performFork (parseSockAddrs rs defaultIndexers <$ restoreE)
     tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSClose else NSSAddUrl
     pure (refrE', tglE')
