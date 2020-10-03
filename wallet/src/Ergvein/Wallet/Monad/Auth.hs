@@ -79,16 +79,16 @@ data Env t = Env {
 , env'feesStore       :: !(ExternalRef t (Map Currency FeeBundle))
 , env'storeMutex      :: !(MVar ())
 -- Client context
-, env'addrsArchive    :: !(ExternalRef t (S.Set SockAddr))
-, env'inactiveAddrs   :: !(ExternalRef t (S.Set SockAddr))
-, env'activeAddrs     :: !(ExternalRef t (S.Set SockAddr))
+, env'addrsArchive    :: !(ExternalRef t (S.Set NamedSockAddr))
+, env'inactiveAddrs   :: !(ExternalRef t (S.Set NamedSockAddr))
+, env'activeAddrs     :: !(ExternalRef t (S.Set NamedSockAddr))
 , env'indexConmap     :: !(ExternalRef t (Map SockAddr (IndexerConnection t)))
 , env'reqUrlNum       :: !(ExternalRef t (Int, Int))
 , env'actUrlNum       :: !(ExternalRef t Int)
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
 , env'indexReqSel     :: !(IndexReqSelector t)
 , env'indexReqFire    :: !(Map SockAddr IndexerMsg -> IO ())
-, env'activateIndexEF :: !(Event t [SockAddr], [SockAddr] -> IO ())
+, env'activateIndexEF :: !(Event t [NamedSockAddr], [NamedSockAddr] -> IO ())
 }
 
 type ErgveinM t m = ReaderT (Env t) m

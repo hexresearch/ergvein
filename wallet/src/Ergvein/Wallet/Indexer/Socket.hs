@@ -32,8 +32,8 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Builder    as BB
 import qualified Data.ByteString.Lazy       as BL
 
-initIndexerConnection :: MonadBaseConstr t m => SockAddr -> Event t IndexerMsg ->  m (IndexerConnection t)
-initIndexerConnection sa msgE = mdo
+initIndexerConnection :: MonadBaseConstr t m => NamedSockAddr -> Event t IndexerMsg ->  m (IndexerConnection t)
+initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
   (msname, msport) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True sa
   let peer = fromJust $ Peer <$> msname <*> msport
   let restartE = fforMaybe msgE $ \case
@@ -72,6 +72,7 @@ initIndexerConnection sa msgE = mdo
   let openE = fmapMaybe (\b -> if b then Just () else Nothing) $ updated shakeD
   pure $ IndexerConnection {
       indexConAddr = sa
+    , indexConName = sname
     , indexConClosedE = () <$ _socketClosed s
     , indexConOpensE = openE
     , indexConIsUp = shakeD
