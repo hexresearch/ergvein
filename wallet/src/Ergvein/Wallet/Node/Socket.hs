@@ -201,7 +201,7 @@ socket SocketConf{..} = do
                 closeCb $ Just $ Ex.SomeException e
               Right (Right a) -> inFire a >> next
         Peer host port = _socketConfPeer
-    logWrite $ "Connecting to " <> showt host <> ":" <> showt port
+    -- logWrite $ "Connecting to " <> showt host <> ":" <> showt port
     statusFire SocketConnecting
     connect host port conCb `Ex.catchAny` (closeCb . Just)
   pure Socket {
