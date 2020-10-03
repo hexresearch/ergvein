@@ -227,7 +227,8 @@ getRandomBTCNodesFromDNS sel n = do
   let dnsUrls = getSeeds btcNetwork
   i <- liftIO $ randomRIO (0, length dnsUrls - 1)
   setSyncProgress $ (SyncMeta BTC SyncGettingNodeAddresses 0 0) <$ buildE
-  urlsE <- performFork $ (requestNodesFromBTCDNS (dnsUrls!!i) n) <$ buildE
+  rs <- mkResolvSeed
+  urlsE <- performFork $ (requestNodesFromBTCDNS rs (dnsUrls!!i) n) <$ buildE
   setSyncProgress $ (SyncMeta BTC SyncConnectingToPeers 0 0) <$ urlsE
   nodesD <- widgetHold (pure []) $ ffor urlsE $ \urls -> flip traverse urls $ \u -> let
     reqE = extractReq sel BTC u
@@ -237,9 +238,8 @@ getRandomBTCNodesFromDNS sel n = do
     ns -> Just ns
 
 -- | Connects to DNS servers and collects n BTC node addresses
-requestNodesFromBTCDNS :: (MonadIO m, PlatformNatives) => String -> Int -> m [SockAddr]
-requestNodesFromBTCDNS dnsurl n = liftIO $ do
-  rs <- makeResolvSeed nativeResolvConf
+requestNodesFromBTCDNS :: (MonadIO m, PlatformNatives) => ResolvSeed -> String -> Int -> m [SockAddr]
+requestNodesFromBTCDNS rs dnsurl n = liftIO $ do
   res <- fmap (either (const []) id) $ withResolver rs $ \resolver -> lookupA resolver $ B8.pack dnsurl
   urls <- randomVals n res
   pure $ ffor urls $ \u -> let

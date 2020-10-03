@@ -81,9 +81,6 @@ class PlatformNatives where
   -- | Read system wide certificate store for TLS connections
   readSystemCertificates :: MonadIO m => m CertificateStore
 
-  -- | Get system-appropriate DNS resolv config
-  nativeResolvConf :: ResolvConf
-
   -- | Share a jpeg image. Implement for android only
   -- MonadIO m => jpegInBase64 -> Filename (w/o .jpeg) -> m ()
   nativeShareJpeg :: MonadIO m => Text -> Text -> m ()

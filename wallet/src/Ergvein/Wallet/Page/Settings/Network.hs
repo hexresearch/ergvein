@@ -7,28 +7,25 @@ module Ergvein.Wallet.Page.Settings.Network
   ) where
 
 import Control.Lens
-import Control.Monad.IO.Class
 import Data.Functor.Misc (Const2(..))
-import Data.Maybe (isJust, listToMaybe)
+import Data.Maybe (isJust)
 import Network.Socket
 import Reflex.Dom
 import Reflex.ExternalRef
 import Text.Read
 
 import Ergvein.Text
-import Ergvein.Types.Currency
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Indexer.Socket
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Settings
+import Ergvein.Wallet.Localization.Network
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Wrapper
 
-import qualified Control.Exception.Safe as Ex
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Set as S
@@ -120,28 +117,14 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
     textD <- fmap _inputElement_value $ inputElement $ def
       & inputElementConfig_elementConfig . elementConfig_initialAttributes .~ ("type" =: "text")
     goE <- outlineButton NSSAddUrl
+    rs <- mkResolvSeed
     performFork $ ffor goE $ const $ do
       t <- sampleDyn textD
-      parseSingle t
+      parseSingleSockAddr rs t
   void $ widgetHold (pure ()) $ ffor murlE $ \case
-    Nothing -> divClass "form-field-errors" $ text "Falied to parse URL"
+    Nothing -> divClass "form-field-errors" $ localizedText NPSParseError
     _ -> pure ()
   pure $ fmapMaybe id murlE
-  where
-    parseSingle t = do
-      let (h,p) = fmap (T.drop 1) $ T.span (/= ':') t
-      let p' = if p == "" then Nothing else Just $ T.unpack p
-      let mport = readMaybe $ T.unpack p
-      let val = fmap (readMaybe . T.unpack) $ T.splitOn "." h
-      case (mport, val) of
-        (Just port, (Just a):(Just b):(Just c):(Just d):[]) ->
-          pure $ Just $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
-        _ -> do
-          let hints = defaultHints { addrFlags = [AI_ALL] , addrSocketType = Stream }
-          addrs <- liftIO $ Ex.catch (
-              getAddrInfo (Just hints) (Just $ T.unpack h) p'
-            ) (\(_ :: Ex.SomeException) -> pure [])
-          pure $ fmap addrAddress $ listToMaybe addrs
 
 activePageWidget :: forall t m . MonadFrontBase t m => m ()
 activePageWidget = mdo
@@ -155,7 +138,8 @@ activePageWidget = mdo
   (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
     restoreE <- buttonClass "button button-outline m-0" NSSRestoreUrls
-    void $ activateURLList =<< performFork (parseSockAddrs defaultIndexers <$ restoreE)
+    rs <- mkResolvSeed
+    void $ activateURLList =<< performFork (parseSockAddrs rs defaultIndexers <$ restoreE)
     tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSClose else NSSAddUrl
     pure (refrE', tglE')
