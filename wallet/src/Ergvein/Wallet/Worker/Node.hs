@@ -46,20 +46,21 @@ minNodeNum :: Int
 minNodeNum = 3
 
 firstTierNodeNum :: Int
-firstTierNodeNum = 4
+firstTierNodeNum = 10
 
 saStorageSize :: Int
-saStorageSize = 100
+saStorageSize = 50
 
 btcLog :: (PlatformNatives, MonadIO m) => Text -> m ()
 btcLog v = logWrite $ "[nodeController][" <> showt BTC <> "]: " <> v
 
 btcRefrTimeout :: NominalDiffTime
-btcRefrTimeout = 30
+btcRefrTimeout = 5
 
 bctNodeController :: MonadFront t m => m ()
 bctNodeController = mdo
   btcLog "Starting"
+  buildE    <- delay 0.1 =<< getPostBuild
   sel       <- getNodeNodeReqSelector
   conMapD   <- getNodeConnectionsD
   nodeRef   <- getNodeConnRef
@@ -206,6 +207,9 @@ mkUrlBatcher sel remE = mdo
     liftIO $ fmap (SAAdd . catMaybes) $ flip traverse hs $ \h ->
       catch (fmap Just $ evaluate $ hostToSockAddr h) (\(_ :: SomeException) -> pure Nothing)
   urlsD <- foldDynMaybe handleSAStore S.empty $ leftmost [sasE, SARemove <$> remE]
+  -- let addr = SockAddrInet 8333 $ tupleToHostAddress (127,0,0,1)
+  -- let urlsD' = S.insert addr <$> urlsD
+  -- performEvent_ $ ffor (updated urlsD') $ liftIO . print
   let actE = flip push (updated urlsD) $ \acc -> if S.size acc >= saStorageSize
         then pure $ Just Nothing          -- If the storage is full, stop connections
         else if S.size acc /= 0
