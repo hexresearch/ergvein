@@ -361,7 +361,6 @@ liftAuth ma0 ma = mdo
           bctNodeController
           filtersLoader
           heightAsking
-          -- indexersNetworkActualizationWorker
           feesWorker
           pubKeysGenerator
           pure ()

@@ -139,7 +139,7 @@ lineOption :: MonadFront t m => m a -> m a
 lineOption = divClass "network-wrapper"
 
 nameOption, descrOption :: (MonadFront t m, LocalizedPrint a) => a -> m ()
-nameOption = divClass "network-name"    . localizedText
+nameOption = divClass "network-name" . localizedText
 descrOption = (>>) elBR . divClass "network-descr" . localizedText
 
 valueOptionDyn, descrOptionDyn, descrOptionDynNoBR :: (MonadFront t m, LocalizedPrint a) => Dynamic t a -> m ()
