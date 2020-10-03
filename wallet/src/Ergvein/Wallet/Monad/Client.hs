@@ -195,7 +195,7 @@ forgetURL addrE = do
 
 broadcastIndexerMessage :: (MonadIndexClient t m) => Event t IndexerMsg -> m ()
 broadcastIndexerMessage reqE = do
-  connsRef  <- getActiveConnsRef
+  connsRef <- getActiveConnsRef
   fire <- getIndexReqFire
   performEvent_ $ ffor reqE $ \req -> do
     cm <- readExternalRef connsRef
@@ -235,8 +235,8 @@ requestWhenOpen IndexerConnection{..} msg = do
 
 requestSpecificIndexer :: MonadIndexClient t m => Event t (SockAddr, Message) -> m (Event t Message)
 requestSpecificIndexer saMsgE = do
-  connsRef  <- getActiveConnsRef
-  fireReq   <- getIndexReqFire
+  connsRef <- getActiveConnsRef
+  fireReq  <- getIndexReqFire
   mrespE <- performFork $ ffor saMsgE $ \(sa, req) -> do
     mcon <- fmap (M.lookup sa) $ readExternalRef connsRef
     case mcon of

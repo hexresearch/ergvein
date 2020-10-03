@@ -3,7 +3,9 @@ module Ergvein.Wallet.Worker.Indexer
     indexerNodeController
   ) where
 
+import Control.Monad
 import Data.Functor.Misc (Const2(..))
+import Data.Time
 import Network.Socket (SockAddr)
 import Reflex.Dom
 import Reflex.ExternalRef
@@ -16,32 +18,43 @@ import Ergvein.Wallet.Indexer.Socket
 
 import qualified Data.Map.Strict as M
 
+connectionTimeout :: NominalDiffTime
+connectionTimeout = 60
+
+reconnectTimeout :: NominalDiffTime
+reconnectTimeout = 5
+
 indexerNodeController :: MonadIndexClient t m => [NamedSockAddr] -> m ()
 indexerNodeController initAddrs = mdo
   nodeLog "Starting"
   sel <- getIndexReqSelector
   (addrE, _) <- getActivationEF
   connRef <- getActiveConnsRef
+  reconnectTimeoutE <- delay reconnectTimeout closedE
   let initMap = M.fromList $ ((, ())) <$> initAddrs
-  let closedE = switchDyn $ ffor valD $ leftmost . M.elems
-  let delE = (\u -> M.singleton u Nothing) <$> closedE
-  let addE = (\us -> M.fromList $ (, Just ()) <$> us) <$> addrE
-  let actE = leftmost [delE, addE]
+      closedE = switchDyn $ ffor valD $ leftmost . M.elems
+      delE = (\u -> M.singleton u Nothing) <$> closedE
+      addE = (\us -> M.fromList $ (, Just ()) <$> us) <$> addrE
+      actE = leftmost [delE, addE, reconnectE]
+      reconnectE = (\u -> M.singleton u (Just ())) <$> reconnectTimeoutE
   valD <- listWithKeyShallowDiff initMap actE $ \nsa@(NamedSockAddr _ u) _ _ -> do
     nodeLog $ "<" <> showt u <> ">: Connect"
     let reqE = select sel $ Const2 u
     conn <- initIndexerConnection nsa reqE
     modifyExternalRef connRef $ \cm -> (M.insert u conn cm, ())
     closedE' <- delay 0.1 $ indexConClosedE conn
-    closedE'' <- performEvent $ ffor closedE' $ const $ modifyExternalRef connRef $ \cm -> (M.delete u cm, ())
-    connectionWidget conn
-    pure $ nsa <$ closedE''
+    failedToConnectE <- connectionWidget conn
+    let closedE'' = leftmost [closedE', failedToConnectE]
+    closedE''' <- performEvent $ ffor closedE'' $ const $ modifyExternalRef connRef $ \cm -> (M.delete u cm, ())
+    pure $ nsa <$ closedE'''
   pure ()
   where
     nodeLog t = logWrite $ "[indexerNodeController]: " <> t
 
-connectionWidget :: MonadIndexClient t m => IndexerConnection t -> m ()
+connectionWidget :: MonadIndexClient t m => IndexerConnection t -> m (Event t ())
 connectionWidget IndexerConnection{..} = do
   performEvent_ $ (nodeLog "Connected") <$ indexConOpensE
+  timeoutE <- void <$> tickLossyFromPostBuildTime connectionTimeout
+  pure $ gate (not <$> current indexConIsUp) timeoutE
   where
     nodeLog t = logWrite $ "[indexerNodeController]<" <> showt indexConAddr <> ">: " <> t
