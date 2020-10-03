@@ -154,8 +154,11 @@ renderActive addr refrE mconn = mdo
   tglD <- holdDyn False tglE
   tglE <- lineOption $ do
     tglE' <- divClass "network-name" $ do
-      let cls = if isJust mconn then "mt-a mb-a indexer-online" else "mt-a mb-a indexer-offline"
-      elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
+      let offclass = [("class", "mt-a mb-a indexer-offline")]
+      let onclass = [("class", "mt-a mb-a indexer-online")]
+      let maybe' m n j = maybe n j m
+      let clsD = maybe' mconn (pure offclass) $ \con -> ffor (indexConIsUp con) $ \up -> if up then onclass else offclass
+      elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
       divClass "mt-a mb-a network-name-txt" $ text $ showt addr
       fmap switchDyn $ widgetHoldDyn $ ffor tglD $ \b ->
         fmap (not b <$) $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a" $ if b then NSSClose else NSSEdit
