@@ -20,6 +20,17 @@ instance FromJSON CfgPeer where
     cfgPeerPort             <- o .: "peerPort"
     pure CfgPeer{..}
 
+data CfgMetrics = CfgMetrics {
+  cfgMetricsPort :: !Int
+, cfgMetricsHost :: !String
+} deriving (Show, Eq)
+
+instance FromJSON CfgMetrics where
+  parseJSON = withObject "CfgMetrics" $ \o -> do
+    cfgMetricsPort <- o .: "port"
+    cfgMetricsHost <- o .: "host"
+    pure CfgMetrics{..}
+
 data Config = Config
   { cfgServerPort               :: !Int
   , cfgServerTcpPort            :: !Int
@@ -41,6 +52,7 @@ data Config = Config
   , cfgPeerActualizationDelay   :: !Int
   , cfgPeerActualizationTimeout :: !NominalDiffTime
   , cfgFeeEstimateDelay         :: !Int
+  , cfgMetrics                  :: !(Maybe CfgMetrics)
   } deriving (Show, Generic)
 
 class HasServerConfig m where
@@ -71,6 +83,7 @@ instance FromJSON Config where
     cfgPeerActualizationDelay   <- o .:? "peerActualizationDelay"   .!= 10000000
     cfgPeerActualizationTimeout <- o .:? "peerActualizationTimeout" .!= 86400
     cfgFeeEstimateDelay         <- o .:? "feeEstimateDelay"         .!= (300 * 1000000) -- 5 min
+    cfgMetrics                  <- o .:? "metrics"
     pure Config{..}
 
 defaultPeers :: [CfgPeer]
