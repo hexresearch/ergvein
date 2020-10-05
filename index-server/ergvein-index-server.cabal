@@ -33,6 +33,7 @@ library
     Ergvein.Index.Server.DB.Utils
     Ergvein.Index.Server.Dependencies
     Ergvein.Index.Server.Environment
+    Ergvein.Index.Server.Metrics
     Ergvein.Index.Server.Monad
     Ergvein.Index.Server.PeerDiscovery.Discovery
     Ergvein.Index.Server.PeerDiscovery.Types
@@ -65,6 +66,7 @@ library
       , cryptohash               >= 0.11    &&  < 0.12
       , data-default             >= 0.7     &&  < 0.8
       , directory                >= 1.3     &&  < 1.4
+      , disk-free-space          >= 0.1     &&  < 0.2
       , either                   >= 5.0     &&  < 5.1
       , exceptions               >= 0.10    &&  < 0.11
       , file-embed               >= 0.0.11  &&  < 0.0.12
@@ -78,8 +80,8 @@ library
       , immortal                 >= 0.3     &&  < 0.4
       , lens                     >= 4.17    &&  < 4.18
       , leveldb-haskell          >= 0.6     &&  < 0.7
-      , lifted-base              >= 0.2     &&  < 0.3
       , lifted-async             >= 0.10    &&  < 0.11
+      , lifted-base              >= 0.2     &&  < 0.3
       , monad-control            >= 1.0     &&  < 1.1
       , monad-extras             >= 0.6     &&  < 0.7
       , monad-logger             >= 0.3     &&  < 0.4
@@ -87,6 +89,8 @@ library
       , mtl                      >= 2.2     &&  < 2.3
       , network                  >= 2.8     &&  < 2.9
       , parallel                 >= 3.2     &&  < 3.3
+      , prometheus-metrics-ghc   >= 1.0     &&  < 1.1
+      , prometheus-client        >= 1.0     &&  < 1.1
       , resource-pool            >= 0.2     &&  < 0.3
       , resourcet                >= 1.2     &&  < 1.3
       , safe                     >= 0.3     &&  < 0.4
@@ -106,9 +110,9 @@ library
       , wai                      >= 3.2     &&  < 3.3
       , wai-cors                 >= 0.2     &&  < 0.3
       , wai-extra                >= 3.0     &&  < 3.1
+      , wai-middleware-prometheus >= 1.0    &&  < 1.1
       , warp                     >= 3.2     &&  < 3.3
       , yaml                     >= 0.11    &&  < 0.12
-      , disk-free-space          >= 0.1     &&  < 0.2
       , ergo-api
       , ergvein-common
       , ergvein-crypto
