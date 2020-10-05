@@ -82,7 +82,7 @@ class MonadBaseConstr t m => MonadIndexClient t m | m -> t where
   -- | Get activation event and trigger
   getActivationEF :: m (Event t [SockAddr], [SockAddr] -> IO ())
 
--- | Get deactivated urls dynamic
+-- | Get archived urls dynamic
 getArchivedUrlsD :: MonadIndexClient t m => m (Dynamic t (Set SockAddr))
 getArchivedUrlsD = externalRefDynamic =<< getArchivedAddrsRef
 -- | Get deactivated urls dynamic
@@ -115,7 +115,7 @@ activateURL addrE = do
     storeSettings s
     fire ()
 
--- | Activate an URL
+-- | Activate a list of URLs
 activateURLList :: (MonadIndexClient t m, MonadHasSettings t m) => Event t [SockAddr] -> m (Event t ())
 activateURLList addrE = do
   (_, f)    <- getActivationEF
@@ -193,7 +193,7 @@ forgetURL addrE = do
 
 broadcastIndexerMessage :: (MonadIndexClient t m) => Event t IndexerMsg -> m ()
 broadcastIndexerMessage reqE = do
-  connsRef  <- getActiveConnsRef
+  connsRef <- getActiveConnsRef
   fire <- getIndexReqFire
   performEvent_ $ ffor reqE $ \req -> do
     cm <- readExternalRef connsRef
@@ -233,8 +233,8 @@ requestWhenOpen IndexerConnection{..} msg = do
 
 requestSpecificIndexer :: MonadIndexClient t m => Event t (SockAddr, Message) -> m (Event t Message)
 requestSpecificIndexer saMsgE = do
-  connsRef  <- getActiveConnsRef
-  fireReq   <- getIndexReqFire
+  connsRef <- getActiveConnsRef
+  fireReq  <- getIndexReqFire
   mrespE <- performFork $ ffor saMsgE $ \(sa, req) -> do
     mcon <- fmap (M.lookup sa) $ readExternalRef connsRef
     case mcon of

@@ -90,11 +90,10 @@ menuButtonsDesktop :: MonadFront t m => Maybe (Dynamic t (m ())) -> Maybe Curren
 menuButtonsDesktop thisWidget mCur = do
   let menuBtn v = (v <$) <$> clearButton v
   balE <- menuBtn $ maybe MenuBalances MenuSingleBalance mCur
-  netE <- menuBtn MenuNetwork
   setE <- menuBtn MenuSettings
   abtE <- menuBtn MenuAbout
   switchE <- menuBtn MenuSwitch
-  switchMenu thisWidget $ leftmost [balE, netE, setE, abtE, switchE]
+  switchMenu thisWidget $ leftmost [balE, setE, abtE, switchE]
 
 menuButtonsAndroid :: MonadFront t m => Maybe (Dynamic t (m ())) -> Maybe Currency -> m ()
 menuButtonsAndroid thisWidget mCur = do
@@ -103,8 +102,7 @@ menuButtonsAndroid thisWidget mCur = do
         localizedText v
         pure v
   balE <- menuBtn $ (maybe MenuBalances MenuSingleBalance mCur, "fas fa-wallet fa-fw")
-  netE <- menuBtn (MenuNetwork, "fas fa-network-wired fa-fw")
   setE <- menuBtn (MenuSettings, "fas fa-cog fa-fw")
   abtE <- menuBtn (MenuAbout, "fas fa-info-circle fa-fw")
   switchE <- menuBtn (MenuSwitch, "fas fa-sign-out-alt fa-fw")
-  switchMenu thisWidget $ leftmost [balE, netE, setE, abtE, switchE]
+  switchMenu thisWidget $ leftmost [balE, setE, abtE, switchE]

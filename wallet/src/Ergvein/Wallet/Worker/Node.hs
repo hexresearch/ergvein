@@ -46,20 +46,21 @@ minNodeNum :: Int
 minNodeNum = 3
 
 firstTierNodeNum :: Int
-firstTierNodeNum = 4
+firstTierNodeNum = 10
 
 saStorageSize :: Int
-saStorageSize = 100
+saStorageSize = 50
 
 btcLog :: (PlatformNatives, MonadIO m) => Text -> m ()
 btcLog v = logWrite $ "[nodeController][" <> showt BTC <> "]: " <> v
 
 btcRefrTimeout :: NominalDiffTime
-btcRefrTimeout = 30
+btcRefrTimeout = 5
 
 bctNodeController :: MonadFront t m => m ()
 bctNodeController = mdo
   btcLog "Starting"
+  buildE    <- delay 0.1 =<< getPostBuild
   sel       <- getNodeNodeReqSelector
   conMapD   <- getNodeConnectionsD
   nodeRef   <- getNodeConnRef
@@ -206,6 +207,9 @@ mkUrlBatcher sel remE = mdo
     liftIO $ fmap (SAAdd . catMaybes) $ flip traverse hs $ \h ->
       catch (fmap Just $ evaluate $ hostToSockAddr h) (\(_ :: SomeException) -> pure Nothing)
   urlsD <- foldDynMaybe handleSAStore S.empty $ leftmost [sasE, SARemove <$> remE]
+  -- let addr = SockAddrInet 8333 $ tupleToHostAddress (127,0,0,1)
+  -- let urlsD' = S.insert addr <$> urlsD
+  -- performEvent_ $ ffor (updated urlsD') $ liftIO . print
   let actE = flip push (updated urlsD) $ \acc -> if S.size acc >= saStorageSize
         then pure $ Just Nothing          -- If the storage is full, stop connections
         else if S.size acc /= 0
@@ -227,7 +231,8 @@ getRandomBTCNodesFromDNS sel n = do
   let dnsUrls = getSeeds btcNetwork
   i <- liftIO $ randomRIO (0, length dnsUrls - 1)
   setSyncProgress $ (SyncMeta BTC SyncGettingNodeAddresses 0 0) <$ buildE
-  urlsE <- performFork $ (requestNodesFromBTCDNS (dnsUrls!!i) n) <$ buildE
+  rs <- mkResolvSeed
+  urlsE <- performFork $ (requestNodesFromBTCDNS rs (dnsUrls!!i) n) <$ buildE
   setSyncProgress $ (SyncMeta BTC SyncConnectingToPeers 0 0) <$ urlsE
   nodesD <- widgetHold (pure []) $ ffor urlsE $ \urls -> flip traverse urls $ \u -> let
     reqE = extractReq sel BTC u
@@ -237,9 +242,8 @@ getRandomBTCNodesFromDNS sel n = do
     ns -> Just ns
 
 -- | Connects to DNS servers and collects n BTC node addresses
-requestNodesFromBTCDNS :: (MonadIO m, PlatformNatives) => String -> Int -> m [SockAddr]
-requestNodesFromBTCDNS dnsurl n = liftIO $ do
-  rs <- makeResolvSeed nativeResolvConf
+requestNodesFromBTCDNS :: (MonadIO m, PlatformNatives) => ResolvSeed -> String -> Int -> m [SockAddr]
+requestNodesFromBTCDNS rs dnsurl n = liftIO $ do
   res <- fmap (either (const []) id) $ withResolver rs $ \resolver -> lookupA resolver $ B8.pack dnsurl
   urls <- randomVals n res
   pure $ ffor urls $ \u -> let

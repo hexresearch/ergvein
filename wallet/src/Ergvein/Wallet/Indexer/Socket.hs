@@ -50,7 +50,7 @@ initIndexerConnection sa msgE = mdo
     , _socketConfSend   = fmap serializeMessage sendE
     , _socketConfPeeker = peekMessage sa
     , _socketConfClose  = closeE
-    , _socketConfReopen = Just 10
+    , _socketConfReopen = Just (1, 2) -- reconnect after 1 seconds 2 retries
     }
   handshakeE <- performEvent $ ffor (socketConnected s) $ const $ mkVers
   let respE = _socketInbound s
