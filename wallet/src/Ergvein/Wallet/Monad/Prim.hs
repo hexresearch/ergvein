@@ -7,9 +7,11 @@ module Ergvein.Wallet.Monad.Prim
   , alertTypeToSeverity
   , AlertInfo(..)
   , MonadEgvLogger(..)
-  , PeerScanInfoMap
-  , IndexerInfo(..)
   , MonadHasSettings(..)
+  -- * Frontend-wide types
+  , IndexerInfo(..)
+  , PeerScanInfoMap
+  , NamedSockAddr(..)
   , getSettings
   , getSettingsD
   , updateSettings
@@ -28,7 +30,7 @@ import Data.Time(UTCTime, NominalDiffTime)
 import Foreign.JavaScript.TH (WithJSContextSingleton)
 import Language.Javascript.JSaddle
 import Network.DNS
-import Network.Socket (HostName)
+import Network.Socket (HostName, SockAddr)
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
 import Reflex.Dom.Retractable
@@ -179,6 +181,12 @@ data IndexerInfo = IndexerInfo {
   indInfoHeights :: PeerScanInfoMap
 , indInfoLatency :: NominalDiffTime
 } deriving (Show, Eq)
+
+data NamedSockAddr = NamedSockAddr {
+  namedAddrName :: Text
+, namedAddrSock :: SockAddr
+} deriving (Eq, Ord)
+
 
 -- ===========================================================================
 --    Helper instances for base monad

@@ -45,16 +45,16 @@ data UnauthEnv t = UnauthEnv {
 , unauth'passModalEF     :: !(Event t (Int, Text), (Int, Text) -> IO ())
 , unauth'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
 -- Client context
-, unauth'addrsArchive    :: !(ExternalRef t (S.Set SockAddr))
-, unauth'inactiveAddrs   :: !(ExternalRef t (S.Set SockAddr))
-, unauth'activeAddrs     :: !(ExternalRef t (S.Set SockAddr))
+, unauth'addrsArchive    :: !(ExternalRef t (S.Set NamedSockAddr))
+, unauth'inactiveAddrs   :: !(ExternalRef t (S.Set NamedSockAddr))
+, unauth'activeAddrs     :: !(ExternalRef t (S.Set NamedSockAddr))
 , unauth'indexConmap     :: !(ExternalRef t (Map SockAddr (IndexerConnection t)))
 , unauth'reqUrlNum       :: !(ExternalRef t (Int, Int))
 , unauth'actUrlNum       :: !(ExternalRef t Int)
 , unauth'timeout         :: !(ExternalRef t NominalDiffTime)
 , unauth'indexReqSel     :: !(IndexReqSelector t)
 , unauth'indexReqFire    :: !(Map SockAddr IndexerMsg -> IO ())
-, unauth'activateIndexEF :: !(Event t [SockAddr], [SockAddr] -> IO ())
+, unauth'activateIndexEF :: !(Event t [NamedSockAddr], [NamedSockAddr] -> IO ())
 }
 
 type UnauthM t m = ReaderT (UnauthEnv t) m

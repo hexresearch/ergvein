@@ -12,6 +12,7 @@ import Reflex.ExternalRef
 
 import Ergvein.Text
 import Ergvein.Wallet.Monad.Client
+import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Indexer.Socket
 
@@ -23,7 +24,7 @@ connectionTimeout = 60
 reconnectTimeout :: NominalDiffTime
 reconnectTimeout = 5
 
-indexerNodeController :: MonadIndexClient t m => [SockAddr] -> m ()
+indexerNodeController :: MonadIndexClient t m => [NamedSockAddr] -> m ()
 indexerNodeController initAddrs = mdo
   nodeLog "Starting"
   sel <- getIndexReqSelector
@@ -36,16 +37,16 @@ indexerNodeController initAddrs = mdo
       addE = (\us -> M.fromList $ (, Just ()) <$> us) <$> addrE
       actE = leftmost [delE, addE, reconnectE]
       reconnectE = (\u -> M.singleton u (Just ())) <$> reconnectTimeoutE
-  valD <- listWithKeyShallowDiff initMap actE $ \u _ _ -> do
+  valD <- listWithKeyShallowDiff initMap actE $ \nsa@(NamedSockAddr _ u) _ _ -> do
     nodeLog $ "<" <> showt u <> ">: Connect"
     let reqE = select sel $ Const2 u
-    conn <- initIndexerConnection u reqE
+    conn <- initIndexerConnection nsa reqE
     modifyExternalRef connRef $ \cm -> (M.insert u conn cm, ())
     closedE' <- delay 0.1 $ indexConClosedE conn
     failedToConnectE <- connectionWidget conn
     let closedE'' = leftmost [closedE', failedToConnectE]
     closedE''' <- performEvent $ ffor closedE'' $ const $ modifyExternalRef connRef $ \cm -> (M.delete u cm, ())
-    pure $ u <$ closedE'''
+    pure $ nsa <$ closedE'''
   pure ()
   where
     nodeLog t = logWrite $ "[indexerNodeController]: " <> t
