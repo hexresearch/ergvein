@@ -10,9 +10,10 @@ import Control.Monad.Reader
 
 import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.Config
-import Ergvein.Index.Server.DB.Schema.Indexer (RollbackSequence(..))
 import Ergvein.Index.Server.DB.Queries (storeRollbackSequence)
+import Ergvein.Index.Server.DB.Schema.Indexer (RollbackSequence(..))
 import Ergvein.Index.Server.Environment
+import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Discovery
 import Ergvein.Index.Server.TCPService.Server
@@ -52,6 +53,7 @@ finalize env scannerThreads workerTreads = do
 app :: (MonadIO m, MonadLogger m) => Bool -> Config -> ServerEnv -> m ()
 app onlyScan cfg env = do
   (scannerThreads, workerThreads) <- liftIO $ runServerMIO env $ onStartup onlyScan env
+  runReaderT serveMetrics cfg
   logInfoN $ "Server started at:" <> (showt . cfgServerPort $ cfg)
   liftIO $ installHandler sigTERM (Catch $ onShutdown env) Nothing
   liftIO $ cancelableDelay (envShutdownFlag env) (-1)

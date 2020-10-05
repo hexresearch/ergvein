@@ -1,6 +1,7 @@
 module Ergvein.Index.Server.Config where
 
 import Control.Monad.IO.Class
+import Control.Monad.Reader
 import Data.Aeson
 import Data.Text
 import Data.Time.Clock
@@ -57,6 +58,10 @@ data Config = Config
 
 class HasServerConfig m where
   serverConfig :: m Config
+
+instance Monad m => HasServerConfig (ReaderT Config m) where
+  serverConfig = ask
+  {-# INLINE serverConfig #-}
 
 loadConfig :: MonadIO m => FilePath -> m Config
 loadConfig path = liftIO $ loadYamlSettings [path] [] useEnv
