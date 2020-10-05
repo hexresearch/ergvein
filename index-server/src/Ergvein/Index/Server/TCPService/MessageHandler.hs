@@ -14,6 +14,7 @@ import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema.Filters
 import Ergvein.Index.Server.DB.Utils
 import Ergvein.Index.Server.Environment
+import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Discovery
 import Ergvein.Index.Server.PeerDiscovery.Types
@@ -36,7 +37,7 @@ getBlockMetaSlice currency startHeight amount = do
       startBinary = metaRecKey (currency, startHeight)
       end = BlockMetaRecKey currency $ startHeight + amount
 
-  slice <- safeEntrySlice currency db startBinary start end 
+  slice <- safeEntrySlice currency db startBinary start end
 
   pure $ snd <$> slice
 
@@ -48,7 +49,7 @@ handleMsg address (MPong _) = pure mempty
 handleMsg address (MVersionACK _) = pure mempty
 
 handleMsg address (MVersion peerVersion) = do
-  ownVer <- ownVersion 
+  ownVer <- ownVersion
   if protocolVersion == versionVersion peerVersion then do
     considerPeer ownVer $ PeerCandidate address $ versionScanBlocks ownVer
     pure [ MVersionACK $ VersionACK, MVersion ownVer ]
@@ -63,6 +64,7 @@ handleMsg address (MFiltersRequest FilterRequest {..}) = do
   let currency = convert filterRequestMsgCurrency
   slice <- getBlockMetaSlice currency filterRequestMsgStart filterRequestMsgAmount
   let filters = V.fromList $ convert <$> slice
+  addCounter filtersServedCounter $ fromIntegral $ V.length filters
 
   pure $ pure $ MFiltersResponse $ FilterResponse
     { filterResponseCurrency = filterRequestMsgCurrency
