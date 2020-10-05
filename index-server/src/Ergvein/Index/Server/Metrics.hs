@@ -1,10 +1,19 @@
 module Ergvein.Index.Server.Metrics(
-    serveMetrics
+    activeConnsGauge
+  -- * Helpers
+  , incGaugeWhile
+  -- * Metrics server
+  , serveMetrics
+  -- * Reexports
+  , addGauge
+  , subGauge
+  , setGauge
   ) where
 
 import Control.Immortal.Worker (worker)
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
+import Control.Monad.Catch
 import Control.Monad.Logger
 import Data.Functor (void)
 import Data.String (fromString)
@@ -15,8 +24,15 @@ import Network.HTTP.Types.Status (status401)
 import Network.Wai
 import Network.Wai.Handler.Warp (runSettings, defaultSettings, setPort, setHost)
 import Network.Wai.Middleware.Prometheus (prometheus, def, PrometheusSettings(..))
-import Prometheus (register)
+import Prometheus (register, unsafeRegister, Gauge, gauge, Info(..), addGauge, subGauge, setGauge, MonadMonitor)
 import Prometheus.Metric.GHC (ghcMetrics)
+
+activeConnsGauge :: Gauge
+activeConnsGauge = unsafeRegister $ gauge (Info "active_connections" "Amount of opened TCP connections")
+{-# NOINLINE activeConnsGauge #-}
+
+incGaugeWhile :: (MonadMonitor m, MonadMask m) => Gauge -> m a -> m a
+incGaugeWhile g = bracket_ (addGauge activeConnsGauge 1.0) (subGauge activeConnsGauge 1.0)
 
 -- | Start server with prometheus metrics if corresponding config section is defined.
 --
