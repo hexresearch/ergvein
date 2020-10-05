@@ -50,7 +50,7 @@ finalize env scannerThreads workerTreads = do
   liftIO $ sequence_ $ wait <$> workerTreads
   logInfoN "service is stopped"
 
-app :: (MonadIO m, MonadLogger m) => Bool -> Config -> ServerEnv -> m ()
+app :: (MonadUnliftIO m, MonadLogger m) => Bool -> Config -> ServerEnv -> m ()
 app onlyScan cfg env = do
   (scannerThreads, workerThreads) <- liftIO $ runServerMIO env $ onStartup onlyScan env
   runReaderT serveMetrics cfg

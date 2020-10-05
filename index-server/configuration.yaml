@@ -5,8 +5,8 @@ indexerDbPath            : "./indexerDb"
 BTCNodeIsTestnet         : false
 BTCNodeHost              : localhost
 BTCNodePort              : 8332
-BTCNodeUser              : bitcoinrpc
-BTCNodePassword          : password
+BTCNodeUser              : bitcoin
+BTCNodePassword          : AeNungaengohpeeG4eX5
 BTCNodeTCPHost           : localhost
 BTCNodeTCPPort           : 8333
 ERGONodeHost             : localhost
