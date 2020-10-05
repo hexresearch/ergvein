@@ -14,10 +14,10 @@ import Ergvein.Text
 import Network.HTTP.Types.Status (status401)
 
 import Network.Wai
-import Network.Wai.Middleware.Prometheus (prometheus, def)
+import Network.Wai.Middleware.Prometheus (prometheus, def, PrometheusSettings(..))
 import Network.Wai.Handler.Warp (runSettings, defaultSettings, setPort, setHost)
 
--- | Start server with prometheus metrics if corresponding config section is defined
+-- | Start server with prometheus metrics if corresponding config section is defined.
 serveMetrics :: (HasServerConfig m, MonadLogger m, MonadUnliftIO m) => m ()
 serveMetrics = void $ worker "metrics-server" $ const $ do
   cfg <- serverConfig
@@ -26,7 +26,9 @@ serveMetrics = void $ worker "metrics-server" $ const $ do
     Just CfgMetrics{..} -> do
       logInfoN $ "Metrics server is started at " <> pack cfgMetricsHost <> ":" <> showt cfgMetricsPort
       let sett = setPort cfgMetricsPort $ setHost (fromString cfgMetricsHost) defaultSettings
-      liftIO $ runSettings sett $ prometheus def noApp
+          pcfg = def { prometheusEndPoint = [] }
+      liftIO $ runSettings sett $ prometheus pcfg noApp
 
+-- | App that serves 404 on any page
 noApp :: Application
 noApp _ respond = respond $ responseLBS status401 [] "Not found"
