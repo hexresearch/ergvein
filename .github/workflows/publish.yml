@@ -131,11 +131,11 @@ jobs:
         asset_name: ergvein-${{ github.ref }}.apk
         asset_content_type: application/zip
 
-    # - name: Upload Android Release to Play Store
-    #   uses: r0adkll/upload-google-play@v1.0.4
-    #   with:
-    #     serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_ERGVEIN_SECRET }}
-    #     packageName: org.ergvein.wallet
-    #     releaseFile: android-release/release/android-app.aab
-    #     track: "Internal Alpha"
-    #     whatsNewDirectory: whatsnew
+    - name: Upload Android Release to Play Store
+      uses: r0adkll/upload-google-play@v1.0.4
+      with:
+        serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_ERGVEIN_SECRET }}
+        packageName: org.ergvein.wallet
+        releaseFile: android-release/release/android-app.aab
+        track: "Internal Alpha"
+        whatsNewDirectory: whatsnew
