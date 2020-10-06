@@ -69,7 +69,7 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
 
 postSync :: MonadFront t m => Currency -> BlockHeight -> BlockHeight -> m ()
 postSync cur ch fh = do
-  syncD <- getSyncProgress
+  syncD <- getSyncProgress cur
   sp <- sample . current $ syncD
   let shouldUpdate = case sp of
         Synced -> True
@@ -80,7 +80,7 @@ postSync cur ch fh = do
           then Synced
           else SyncMeta cur SyncFilters (fromIntegral fh) (fromIntegral ch)
     setFiltersSync cur $ val == Synced
-    setSyncProgress $ val <$ buildE
+    setSyncProgress $ (cur, val) <$ buildE
 
 getFilters :: MonadFront t m => Currency -> Event t (BlockHeight, Int) -> m (Event t [(BlockHash, ByteString)])
 getFilters cur e = do

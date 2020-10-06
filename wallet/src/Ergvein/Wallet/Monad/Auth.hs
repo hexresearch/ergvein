@@ -69,7 +69,7 @@ data Env t = Env {
 , env'activeCursRef   :: !(ExternalRef t (S.Set Currency))
 , env'filtersStorage  :: !FiltersStorage
 , env'filtersHeights  :: !(ExternalRef t (Map Currency BlockHeight))
-, env'syncProgress    :: !(ExternalRef t SyncProgress)
+, env'syncProgress    :: !(ExternalRef t (Map Currency SyncProgress))
 , env'heightRef       :: !(ExternalRef t (Map Currency Integer))
 , env'catchUpRef      :: !(ExternalRef t (Map Currency Integer))
 , env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
@@ -306,7 +306,7 @@ liftAuth ma0 ma = mdo
         let ps = auth ^. authInfo'storage . storage'pubStorage
 
         activeCursRef   <- newExternalRef mempty
-        syncRef         <- newExternalRef Synced
+        syncRef         <- newExternalRef mempty
         filtersStore    <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
         filtersHeights  <- newExternalRef mempty
         heightRef       <- newExternalRef (fmap (maybe 0 fromIntegral . _currencyPubStorage'height) . _pubStorage'currencyPubStorages $ ps)

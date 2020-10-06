@@ -91,6 +91,7 @@ data SyncProgress =
     , syncMetaTotal  :: !Int
     }
   | Synced
+  | NotActive
   deriving (Show, Eq)
 
 syncProgressBehind :: SyncProgress -> Maybe SyncBehind

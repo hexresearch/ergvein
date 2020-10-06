@@ -71,13 +71,13 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
     scanKeys :: Int -> Int -> Workflow t m ()
     scanKeys gapN keyNum = Workflow $ do
       logWrite "We are at scan stage"
-      syncWidget =<< getSyncProgress
+      syncWidget =<< getSyncProgress BTC
       buildE <- delay 0.1 =<< getPostBuild
       keys <- pubStorageKeys BTC External <$> getPubStorage
       heightD <- getCurrentHeight BTC
       setSyncProgress $ flip pushAlways buildE $ const $ do
         h <- sample . current $ heightD
-        pure $ SyncMeta BTC (SyncAddressExternal keyNum) 0 (fromIntegral h)
+        pure $ (BTC, ) $ SyncMeta BTC (SyncAddressExternal keyNum) 0 (fromIntegral h)
       if gapN >= gapLimit then do
         ps <- sample . current =<< getPubStorageD
         storedE <- modifyPubStorage "scanKeys" $ ffor buildE $ const $ Just . pubStorageSetKeyScanned BTC External (Just (keyNum + 1))
@@ -110,11 +110,11 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
     scanInternalKeys gapN keyNum = Workflow $ do
       buildE <- delay 0.1 =<< getPostBuild
       keys <- pubStorageKeys BTC Internal <$> getPubStorage
-      syncWidget =<< getSyncProgress
+      syncWidget =<< getSyncProgress BTC
       heightD <- getCurrentHeight BTC
       setSyncProgress $ flip pushAlways buildE $ const $ do
         h <- sample . current $ heightD
-        pure $ SyncMeta BTC (SyncAddressInternal keyNum) 0 (fromIntegral h)
+        pure $ (BTC,) $ SyncMeta BTC (SyncAddressInternal keyNum) 0 (fromIntegral h)
       if gapN >= gapLimit then pure ((), finishScanning <$ buildE)
       else if keyNum >= V.length keys then do
         logWrite "Generating next portion of internal BTC keys..."
@@ -136,7 +136,7 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
     finishScanning = Workflow $ do
       logWrite "Finished scanning BTC keys..."
       buildE <- getPostBuild
-      setSyncProgress $ Synced <$ buildE
+      setSyncProgress $ (BTC, Synced) <$ buildE
       h <- sample . current =<< getCurrentHeight BTC
       scanhE <- writeWalletsScannedHeight "finishScanning" $ (BTC, fromIntegral h) <$ buildE
       clearedE <- performEvent $ clearFilters BTC <$ scanhE

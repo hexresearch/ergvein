@@ -88,7 +88,7 @@ type MonadFront t m = (
 
 class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   -- | Internal method.
-  getSyncProgressRef :: m (ExternalRef t SyncProgress)
+  getSyncProgressRef :: m (ExternalRef t (Map Currency SyncProgress))
   -- | Internal method to get reference with known heights per currency.
   getHeightRef :: m (ExternalRef t (Map Currency Integer))
   -- | Internal method to get flag if we has fully synced filters at the moment.
@@ -162,19 +162,21 @@ requestManyFromNode reqE = do
 {-# INLINE requestManyFromNode #-}
 
 -- | Get global sync process value
-getSyncProgress :: MonadFrontAuth t m => m (Dynamic t SyncProgress)
-getSyncProgress = externalRefDynamic =<< getSyncProgressRef
+getSyncProgress :: MonadFrontAuth t m => Currency -> m (Dynamic t SyncProgress)
+getSyncProgress cur = do
+  syncMapD <- externalRefDynamic =<< getSyncProgressRef
+  pure $ fmap (fromMaybe NotActive . M.lookup cur) syncMapD
 {-# INLINE getSyncProgress #-}
 
 -- | Set global sync process value each time the event is fired
-setSyncProgress :: MonadFrontAuth t m => Event t SyncProgress -> m ()
+setSyncProgress :: MonadFrontAuth t m => Event t (Currency, SyncProgress) -> m ()
 setSyncProgress spE = do
   syncProgRef <- getSyncProgressRef
   syncRef <- getFiltersSyncRef
-  performEvent_ $ ffor spE $ \sp -> do
-    writeExternalRef syncProgRef sp
+  performEvent_ $ ffor spE $ \(cur, sp) -> do
+    modifyExternalRef_ syncProgRef $ M.insert cur sp
     case sp of
-      SyncMeta cur SyncFilters a t -> when (a >= t && t /= 0) $
+      SyncMeta _ SyncFilters a t -> when (a >= t && t /= 0) $
         modifyExternalRef syncRef $ \m -> (,()) $ M.insert cur True m
       _ -> pure ()
 {-# INLINE setSyncProgress #-}
