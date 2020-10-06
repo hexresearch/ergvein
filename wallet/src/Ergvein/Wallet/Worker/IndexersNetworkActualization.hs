@@ -13,6 +13,7 @@ import Data.Maybe
 import Network.Socket
 import Reflex.ExternalRef
 import System.Random.Shuffle
+import Ergvein.Text
 
 import Ergvein.Index.Protocol.Types
 import Ergvein.Wallet.Monad.Client
@@ -45,7 +46,7 @@ tmi = do
         MPeerResponse PeerResponse {..} | not (V.null peerResponseAddresses) -> Just peerResponseAddresses
         _-> Nothing
   
-  respE'' <- performEvent $ ffor nonEmptyAddressesE' $ \idxs -> 
+  respE'' <- performEvent $ ffor nonEmptyAddressesE' $ \idxs -> do
     liftIO $ (convertA . head) <$> (shuffleM $ V.toList idxs)
   activateURL respE''
   pure ()
@@ -54,11 +55,13 @@ convertA Address{..} = case addressType of
     IPV4 -> let
       port = (fromInteger $ toInteger addressPort)
       ip  =  fromRight (error "address") $ parseOnly anyWord32be addressAddress
-      in SockAddrInet port ip
+      addr = SockAddrInet port ip
+      in NamedSockAddr (showt addr) addr
     IPV6 -> let
       port = (fromInteger $ toInteger addressPort)
       ip  =  fromRight (error "address") $ parseOnly ((,,,) <$> anyWord32be <*> anyWord32be <*> anyWord32be <*> anyWord32be) addressAddress
-      in SockAddrInet6 port 0 ip 0
+      addr = SockAddrInet6 port 0 ip 0
+      in NamedSockAddr (showt addr) addr
 
 {-}
 import Control.Monad.Reader
