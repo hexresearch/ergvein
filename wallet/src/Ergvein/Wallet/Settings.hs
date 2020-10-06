@@ -140,7 +140,7 @@ defaultIndexers = [
     "ergvein-indexermainnet1.hxr.team:8667"
   , "ergvein-indexermainnet2.hxr.team:8667"
   , "ergvein-indexermainnet3.hxr.team:8667"
-  , "188.244.4.78:8667"       -- OwO
+  , "indexer.ergvein.net"       -- OwO
   ]
 
 defaultIndexersNum :: (Int, Int)
