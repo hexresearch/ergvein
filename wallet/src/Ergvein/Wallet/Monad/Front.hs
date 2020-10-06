@@ -25,7 +25,6 @@ module Ergvein.Wallet.Monad.Front(
   , setFiltersSync
   , setSyncProgress
   , updateActiveCurs
-  , setCatchUpHeight
   -- * Reexports
   , Text
   , MonadJSM
@@ -88,7 +87,7 @@ type MonadFront t m = (
 
 class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   -- | Internal method.
-  getSyncProgressRef :: m (ExternalRef t (Map Currency SyncProgress))
+  getSyncProgressRef :: m (ExternalRef t (Map Currency SyncStage))
   -- | Internal method to get reference with known heights per currency.
   getHeightRef :: m (ExternalRef t (Map Currency Integer))
   -- | Internal method to get flag if we has fully synced filters at the moment.
@@ -105,9 +104,6 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   getNodeReqFire :: m (Map Currency (Map SockAddr NodeMessage) -> IO ())
   -- | Get authed info
   getAuthInfoRef :: m (ExternalRef t AuthInfo)
-  -- | Special height value. Used during catchup
-  getCatchUpHeightRef :: m (ExternalRef t (Map Currency Integer))
-
 
 -- | Get connections map
 getNodeConnectionsD :: MonadFrontAuth t m => m (Dynamic t (ConnMap t))
@@ -162,21 +158,21 @@ requestManyFromNode reqE = do
 {-# INLINE requestManyFromNode #-}
 
 -- | Get global sync process value
-getSyncProgress :: MonadFrontAuth t m => Currency -> m (Dynamic t SyncProgress)
+getSyncProgress :: MonadFrontAuth t m => Currency -> m (Dynamic t SyncStage)
 getSyncProgress cur = do
   syncMapD <- externalRefDynamic =<< getSyncProgressRef
   pure $ fmap (fromMaybe NotActive . M.lookup cur) syncMapD
 {-# INLINE getSyncProgress #-}
 
 -- | Set global sync process value each time the event is fired
-setSyncProgress :: MonadFrontAuth t m => Event t (Currency, SyncProgress) -> m ()
+setSyncProgress :: MonadFrontAuth t m => Event t (SyncProgress) -> m ()
 setSyncProgress spE = do
   syncProgRef <- getSyncProgressRef
   syncRef <- getFiltersSyncRef
-  performEvent_ $ ffor spE $ \(cur, sp) -> do
+  performEvent_ $ ffor spE $ \(SyncProgress cur sp) -> do
     modifyExternalRef_ syncProgRef $ M.insert cur sp
     case sp of
-      SyncMeta _ SyncFilters a t -> when (a >= t && t /= 0) $
+      SyncFilters a t -> when (a >= t && t /= 0) $
         modifyExternalRef syncRef $ \m -> (,()) $ M.insert cur True m
       _ -> pure ()
 {-# INLINE setSyncProgress #-}
@@ -262,9 +258,3 @@ setFiltersSync :: MonadFrontAuth t m => Currency -> Bool -> m ()
 setFiltersSync c v = do
   r <- getFiltersSyncRef
   modifyExternalRef r $ (, ()) . M.insert c v
-
--- | Set the value for catchup heights
-setCatchUpHeight :: MonadFrontAuth t m => Currency -> Event t Integer -> m ()
-setCatchUpHeight cur hE = do
-  r <- getCatchUpHeightRef
-  performFork_ $ ffor hE $ \h -> modifyExternalRef_ r (M.insert cur h)

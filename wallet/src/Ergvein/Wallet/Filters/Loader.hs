@@ -73,14 +73,15 @@ postSync cur ch fh = do
   sp <- sample . current $ syncD
   let shouldUpdate = case sp of
         Synced -> True
-        SyncMeta{..} -> syncMetaStage == SyncFilters
+        SyncFilters _ _ -> True
+        _ -> False
   when shouldUpdate $ do
     buildE <- getPostBuild
     let val = if fh >= ch
           then Synced
-          else SyncMeta cur SyncFilters (fromIntegral fh) (fromIntegral ch)
+          else SyncFilters (fromIntegral fh) (fromIntegral ch)
     setFiltersSync cur $ val == Synced
-    setSyncProgress $ (cur, val) <$ buildE
+    setSyncProgress $ (SyncProgress cur val) <$ buildE
 
 getFilters :: MonadFront t m => Currency -> Event t (BlockHeight, Int) -> m (Event t [(BlockHash, ByteString)])
 getFilters cur e = do

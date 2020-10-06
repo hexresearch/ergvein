@@ -73,7 +73,7 @@ scannerBtc = void $ workflow waiting
       fhD <- watchFiltersHeight BTC
       scD <- (fmap . fmap) fromIntegral $ getWalletsScannedHeightD BTC
       rsD <- fmap _pubStorage'restoring <$> getPubStorageD
-      setSyncProgress $ ffor buildE $ const $ (BTC, Synced)
+      setSyncProgress $ ffor buildE $ const $ SyncProgress BTC Synced
       let newFiltersE = fmapMaybe id $ updated $ do
             fh <- fhD
             sc <- scD
@@ -105,7 +105,7 @@ scanningAllBtcKeys i0' = do
   (updE, updFire) <- newTriggerEvent
   setSyncProgress updE
   ch <- fmap fromIntegral . sample . current =<< getCurrentHeight BTC
-  let updSync i i1 = updFire $ (BTC, ) $ SyncMeta BTC (SyncBlocks (fromIntegral i) ch) (fromIntegral $ i - i0) (ch - fromIntegral i0)
+  let updSync i i1 = updFire $ SyncProgress BTC (SyncBlocks (fromIntegral i) ch (fromIntegral $ i - i0) (ch - fromIntegral i0))
   scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses i0 updSync $ xPubToBtcAddr . extractXPubKeyFromEgv . scanBox'key <$> keys
   let heightE = fst <$> scanE
       hashesE = ffor scanE $ \(_, vs) ->
@@ -126,7 +126,7 @@ scanningBtcKey kp i0' keyNum pubkey = do
         Internal -> SyncAddressInternal keyNum
         External -> SyncAddressExternal keyNum
   let updSync i i1 = if i `mod` 100 == 0
-        then updFire $ (BTC, ) $ SyncMeta BTC sp (fromIntegral (i - i0)) (fromIntegral (i1 - i0))
+        then updFire $ SyncProgress BTC $ sp (fromIntegral (i - i0)) (fromIntegral (i1 - i0))
         else pure ()
       address = xPubToBtcAddr $ extractXPubKeyFromEgv pubkey
   buildE <- getPostBuild

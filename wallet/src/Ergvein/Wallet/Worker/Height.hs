@@ -17,6 +17,7 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node
+import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Util
 
 import qualified Data.Dependent.Map as DM
@@ -70,7 +71,7 @@ btcCatchUpFlow (ts, bl) = Workflow $ do
   let (h0, lasthash) = head bl
   logWrite $ "btcCatchUpFlow: " <> showt h0
   buildE <- getPostBuild
-  setCatchUpHeight BTC $ (fromIntegral h0) <$ buildE
+  setSyncProgress $ SyncProgress BTC (SyncGettingHeight $ fromIntegral h0) <$ buildE
   let req = MGetHeaders $ GetHeaders 70012 (snd <$> bl) emptyHash
   respE <- requestRandomNode $ (NodeReqBTC req) <$ buildE
   let hlE = fforMaybe respE $ \case
