@@ -13,6 +13,8 @@ import Network.Socket
 import Reflex.Dom
 import Reflex.ExternalRef
 import Text.Read
+import Data.Maybe
+import Control.Monad.IO.Class
 
 import Ergvein.Text
 import Ergvein.Wallet.Alert
@@ -25,6 +27,7 @@ import Ergvein.Wallet.Localization.Network
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
+import Ergvein.Wallet.Settings
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
@@ -139,7 +142,8 @@ activePageWidget = mdo
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
     restoreE <- buttonClass "button button-outline m-0" NSSRestoreUrls
     rs <- mkResolvSeed
-    void $ activateURLList =<< performFork (parseSockAddrs rs defaultIndexers <$ restoreE)
+    x <- liftIO $ getDNS seedList
+    void $ activateURLList =<< performFork (parseSockAddrs rs (fromMaybe defaultIndexers x) <$ restoreE)
     tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSClose else NSSAddUrl
     pure (refrE', tglE')

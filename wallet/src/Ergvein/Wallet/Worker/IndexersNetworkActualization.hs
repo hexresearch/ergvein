@@ -35,18 +35,18 @@ tmi = do
   activeUrlsRef <- getActiveConnsRef 
   goE' <- performEvent $ ffor timerE $ const $ readExternalRef activeUrlsRef
   
-  let reqE = fforMaybe goE' (\activeUrls -> let
+  let reqE = fforMaybe goE' $ \activeUrls -> let
        l = length $ Map.toList activeUrls
-       in if l < 16 then Just $ MPeerRequest PeerRequest else Nothing)
+       in if l < 16 then Just $ MPeerRequest PeerRequest else Nothing
 
   respE <- requestRandomIndexer reqE
   
-  let nonEmptyAddressesE' = fforMaybe respE $ (\(_, msg) -> case msg of
+  let nonEmptyAddressesE' = fforMaybe respE $ \(_, msg) -> case msg of
         MPeerResponse PeerResponse {..} | not (V.null peerResponseAddresses) -> Just peerResponseAddresses
-        _-> Nothing)
+        _-> Nothing
   
-  respE'' <- performEvent $ ffor nonEmptyAddressesE' $ (\ idxs -> 
-    liftIO $ (convertA . head) <$> (shuffleM $ V.toList idxs))
+  respE'' <- performEvent $ ffor nonEmptyAddressesE' $ \idxs -> 
+    liftIO $ (convertA . head) <$> (shuffleM $ V.toList idxs)
   activateURL respE''
   pure ()
 

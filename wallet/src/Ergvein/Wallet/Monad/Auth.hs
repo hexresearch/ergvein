@@ -363,7 +363,7 @@ liftAuth ma0 ma = mdo
           filtersLoader
           heightAsking
           -- indexersNetworkActualizationWorker
-          tmi
+          --tmi
           feesWorker
           pubKeysGenerator
           pure ()

@@ -5,7 +5,6 @@ module Ergvein.Wallet.Settings (
   , loadSettings
   , storeSettings
   , defaultSettings
-  , defaultIndexers
   , defIndexerPort
   , defaultIndexersNum
   , defaultIndexerTimeout
@@ -13,6 +12,10 @@ module Ergvein.Wallet.Settings (
   , ExplorerUrls(..)
   , defaultExplorerUrl
   , btcDefaultExplorerUrls
+  , defaultDns
+  , defaultIndexers
+  , getDNS
+  , seedList
   ) where
 
 import Control.Lens hiding ((.=))
@@ -29,6 +32,7 @@ import Data.IP
 import Network.DNS.Lookup
 import Network.DNS.Types
 import Network.DNS.Resolver
+import Ergvein.Wallet.Platform
 
 import Ergvein.Aeson
 import Ergvein.Lens
@@ -108,8 +112,8 @@ instance FromJSON Settings where
     settingsActUrlNum         <- o .:? "actUrlNum"  .!= 10
     let (settingsActiveAddrs, settingsDeactivatedAddrs, settingsArchivedAddrs) =
           case (mActiveAddrs, mDeactivatedAddrs, mArchivedAddrs) of
-            (Nothing, Nothing, Nothing) -> (defaultIndexers, [], [])
-            (Just [], Just [], Just []) -> (defaultIndexers, [], [])
+            (Nothing, Nothing, Nothing) -> ([], [], [])
+            (Just [], Just [], Just []) -> ([], [], [])
             _ -> (fromMaybe [] mActiveAddrs, fromMaybe [] mDeactivatedAddrs, fromMaybe [] mArchivedAddrs)
     settingsExplorerUrl       <- o .:? "explorerUrl" .!= defaultExplorerUrl
     settingsPortfolio         <- o .:? "portfolio" .!= False
@@ -141,13 +145,19 @@ instance ToJSON Settings where
 defIndexerPort :: PortNumber
 defIndexerPort = 8667
 
+seedList :: [Domain]
+seedList = if isTestnet
+  then ["testseed.cypra.io"]
+  else ["seed.cypra.io"]
+
 defaultIndexers :: [Text]
-defaultIndexers = [
-    "ergvein-indexermainnet1.hxr.team:8667"
-  , "ergvein-indexermainnet2.hxr.team:8667"
-  , "ergvein-indexermainnet3.hxr.team:8667"
-  , "188.244.4.78:8667"       -- OwO
-  ]
+defaultIndexers = 
+  if isTestnet 
+  then ["127.0.0.1"]
+  else ["139.59.142.25", "188.244.4.78"]
+
+defaultDns :: [HostName]
+defaultDns = ["8.8.8.8","8.8.4.4", "1.1.1.1"]
 
 defaultIndexersNum :: (Int, Int)
 defaultIndexersNum = (2, 4)
@@ -158,14 +168,12 @@ defaultIndexerTimeout = 20
 defaultActUrlNum :: Int
 defaultActUrlNum = 10
 
-defaultDns :: [HostName]
-defaultDns = ["8.8.8.8","8.8.4.4", "1.1.1.1"]
-
-defaultSettings :: FilePath -> Settings
-defaultSettings home =
+defaultSettings :: MonadIO m => FilePath -> m Settings
+defaultSettings home = do
   let storePath   = home <> "/store"
       configPath  = home <> "/config.yaml"
-  in Settings {
+  x <- liftIO $ getDNS seedList
+  pure $ Settings {
         settingsLang              = English
       , settingsStoreDir          = pack storePath
       , settingsConfigPath        = pack configPath
@@ -176,7 +184,7 @@ defaultSettings home =
       , settingsExplorerUrl       = defaultExplorerUrl
       , settingsPortfolio         = False
       , settingsFiatCurr          = USD
-      , settingsActiveAddrs       = defaultIndexers
+      , settingsActiveAddrs       = fromMaybe defaultIndexers x
       , settingsDeactivatedAddrs  = []
       , settingsArchivedAddrs     = []
       , settingsDns               = defaultDns
@@ -199,7 +207,7 @@ loadSettings = const $ liftIO $ do
       let configPath = path <> "/config.yaml"
       ex <- doesFileExist configPath
       cfg <- if not ex
-        then pure $ defaultSettings path
+        then defaultSettings path
         else fmap (either (const $ defaultSettings path) id) $ readYamlEither' configPath
       createDirectoryIfMissing True (unpack $ settingsStoreDir cfg)
       encodeFile (unpack $ settingsConfigPath cfg) cfg
@@ -213,7 +221,7 @@ mkDefSettings = liftIO $ do
   putStrLn $ "Config path: " <> home <> "/.ergvein/config.yaml"
   putStrLn $ "Store  path: " <> home <> "/.ergvein/store"
   putStrLn $ "Language   : English"
-  pure $ defaultSettings (home <> "/.ergvein")
+  defaultSettings (home <> "/.ergvein")
 
 loadSettings :: MonadIO m => Maybe FilePath -> m Settings
 loadSettings mpath = liftIO $ case mpath of
@@ -233,11 +241,10 @@ loadSettings mpath = liftIO $ case mpath of
     pure cfg
 #endif
 
-dnsList :: [Domain]
-dnsList = ["seed.cypra.io"]
+
 
 getDNS :: [Domain] -> IO (Maybe [Text])
-getDNS domains = findMMaybe f domains
+getDNS domains = findMapMMaybe f domains
   where
     f :: Domain -> IO (Maybe [Text])
     f x = do
@@ -267,5 +274,5 @@ getDNS domains = findMMaybe f domains
       if isJust r then
         pure r
       else
-        findMMaybe f xs
-    findMMaybe f [] = pure Nothing
+        findMapMMaybe f xs
+    findMapMMaybe f [] = pure Nothing
