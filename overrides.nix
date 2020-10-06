@@ -27,7 +27,7 @@ let
     in { src = gitignore.gitignoreSourceAux ignore-list pkg.src; } );
   addVersions = drv: pkgs.haskell.lib.overrideCabal drv (drv: {
     preConfigure = (drv.preConfigure or "") + ''
-      export GIT_HASH=${gitHash}
+      ${if gitHash == null then "" else "export GIT_HASH=${gitHash}"}
       export VERSION_TAG=${versionTag}
     '';
   });
