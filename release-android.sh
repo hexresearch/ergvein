@@ -1,2 +1,5 @@
+set -xe
 gitHash=$(git rev-parse --short HEAD)
-nix-build --arg gitHash "\"$gitHash\"" -A android.ergvein-wallet -o android-release --arg release true "$@"
+releaseArgs="--arg gitHash "\"$gitHash\"" -A android.ergvein-wallet --arg release true"
+nix-build $releaseArgs -o android-release "$@"
+nix-build $releaseArgs -o android-release-apk --arg releaseBundle false "$@"

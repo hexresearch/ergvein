@@ -1,6 +1,7 @@
 { release ? false
 , profile ? false
 , gitHash
+, releaseBundle ? true
  }:
 let
    reflex-platform = import ./platform-overlay.nix { inherit profile; };
@@ -93,6 +94,7 @@ let
         "${project.ghc.x509-android.src}/java"
       ];
       version = version;
+      inherit releaseBundle;
       releaseKey = let
         readPassword = file: builtins.replaceStrings ["\n"] [""] (builtins.readFile file);
       in if release then {
