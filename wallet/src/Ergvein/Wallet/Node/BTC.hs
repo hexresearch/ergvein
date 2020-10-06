@@ -86,7 +86,7 @@ initBTCNode doLog sa msgE = do
         , _socketConfSend   = fmap (runPut . putMessage net) $ leftmost [reqE, handshakeE, hsRespE]
         , _socketConfPeeker = peekMessage net sa
         , _socketConfClose  = closeE
-        , _socketConfReopen = Just 10
+        , _socketConfReopen = Just (1, 2) -- reconnect after 1 seconds 2 retries
         }
 
     let respE = _socketInbound s

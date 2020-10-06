@@ -28,6 +28,7 @@ import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
+import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.TCPService.MessageHandler
 import Ergvein.Index.Server.TCPService.Socket as S
@@ -100,7 +101,7 @@ registerConnection (sock, addr) = do
   openConnection connectionThreadId addr  sock
 
 runConnection :: (Socket, SockAddr) -> ServerM ()
-runConnection (sock, addr) =  do
+runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
   evalResult <- runExceptT $ evalMsg
   case evalResult of
     Right (msgs@(MVersionACK _ : _)) -> do --peer version match ours

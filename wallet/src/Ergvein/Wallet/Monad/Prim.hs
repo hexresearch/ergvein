@@ -7,12 +7,16 @@ module Ergvein.Wallet.Monad.Prim
   , alertTypeToSeverity
   , AlertInfo(..)
   , MonadEgvLogger(..)
-  , PeerScanInfoMap
-  , IndexerInfo(..)
   , MonadHasSettings(..)
+  -- * Frontend-wide types
+  , IndexerInfo(..)
+  , PeerScanInfoMap
+  , NamedSockAddr(..)
   , getSettings
   , getSettingsD
   , updateSettings
+  , getDnsList
+  , mkResolvSeed
   ) where
 
 import Control.Monad.Fix
@@ -25,6 +29,8 @@ import Data.Text (Text)
 import Data.Time(UTCTime, NominalDiffTime)
 import Foreign.JavaScript.TH (WithJSContextSingleton)
 import Language.Javascript.JSaddle
+import Network.DNS
+import Network.Socket (HostName, SockAddr)
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
 import Reflex.Dom.Retractable
@@ -98,6 +104,19 @@ updateSettings setE = do
     storeSettings s
 {-# INLINE updateSettings #-}
 
+getDnsList :: MonadHasSettings t m => m [HostName]
+getDnsList = fmap settingsDns $ readExternalRef =<< getSettingsRef
+{-# INLINE getDnsList #-}
+
+mkResolvSeed :: MonadHasSettings t m => m ResolvSeed
+mkResolvSeed = do
+  dns <- getDnsList
+  liftIO $ makeResolvSeed defaultResolvConf {
+      resolvInfo = RCHostNames dns
+    , resolvConcurrent = True
+    }
+{-# INLINE mkResolvSeed #-}
+
 -- ===========================================================================
 --           Monad EgvLogger. Implements Ervgein's logging
 -- ===========================================================================
@@ -162,6 +181,12 @@ data IndexerInfo = IndexerInfo {
   indInfoHeights :: PeerScanInfoMap
 , indInfoLatency :: NominalDiffTime
 } deriving (Show, Eq)
+
+data NamedSockAddr = NamedSockAddr {
+  namedAddrName :: Text
+, namedAddrSock :: SockAddr
+} deriving (Eq, Ord)
+
 
 -- ===========================================================================
 --    Helper instances for base monad

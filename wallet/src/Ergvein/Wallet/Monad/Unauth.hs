@@ -11,6 +11,7 @@ import Data.IORef
 import Data.Map.Strict (Map)
 import Data.Text (Text)
 import Data.Time (NominalDiffTime)
+import Network.DNS
 import Network.Socket (SockAddr)
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
@@ -44,16 +45,16 @@ data UnauthEnv t = UnauthEnv {
 , unauth'passModalEF     :: !(Event t (Int, Text), (Int, Text) -> IO ())
 , unauth'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
 -- Client context
-, unauth'addrsArchive    :: !(ExternalRef t (S.Set SockAddr))
-, unauth'inactiveAddrs   :: !(ExternalRef t (S.Set SockAddr))
-, unauth'activeAddrs     :: !(ExternalRef t (S.Set SockAddr))
+, unauth'addrsArchive    :: !(ExternalRef t (S.Set NamedSockAddr))
+, unauth'inactiveAddrs   :: !(ExternalRef t (S.Set NamedSockAddr))
+, unauth'activeAddrs     :: !(ExternalRef t (S.Set NamedSockAddr))
 , unauth'indexConmap     :: !(ExternalRef t (Map SockAddr (IndexerConnection t)))
 , unauth'reqUrlNum       :: !(ExternalRef t (Int, Int))
 , unauth'actUrlNum       :: !(ExternalRef t Int)
 , unauth'timeout         :: !(ExternalRef t NominalDiffTime)
 , unauth'indexReqSel     :: !(IndexReqSelector t)
 , unauth'indexReqFire    :: !(Map SockAddr IndexerMsg -> IO ())
-, unauth'activateIndexEF :: !(Event t [SockAddr], [SockAddr] -> IO ())
+, unauth'activateIndexEF :: !(Event t [NamedSockAddr], [NamedSockAddr] -> IO ())
 }
 
 type UnauthM t m = ReaderT (UnauthEnv t) m
@@ -155,9 +156,14 @@ newEnv settings uiChan = do
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
   -- MonadClient refs
-  socadrs         <- parseSockAddrs (settingsActiveAddrs settings)
-  urlsArchive     <- newExternalRef . S.fromList =<< parseSockAddrs (settingsArchivedAddrs settings)
-  inactiveUrls    <- newExternalRef . S.fromList =<< parseSockAddrs (settingsDeactivatedAddrs settings)
+  rs <- liftIO $ makeResolvSeed defaultResolvConf {
+      resolvInfo = RCHostNames $ settingsDns settings
+    , resolvConcurrent = True
+    }
+
+  socadrs         <- parseSockAddrs rs (settingsActiveAddrs settings)
+  urlsArchive     <- newExternalRef . S.fromList =<< parseSockAddrs rs (settingsArchivedAddrs settings)
+  inactiveUrls    <- newExternalRef . S.fromList =<< parseSockAddrs rs (settingsDeactivatedAddrs settings)
   actvieAddrsRef  <- newExternalRef $ S.fromList socadrs
   indexConmapRef  <- newExternalRef $ M.empty
   reqUrlNumRef    <- newExternalRef $ settingsReqUrlNum settings

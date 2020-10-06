@@ -25,8 +25,10 @@ import Control.Monad.Reader
 import Data.ByteString (ByteString)
 import Data.Maybe
 import Data.Time
+import Ergvein.Text (showt)
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Native
+import Reflex.ExternalRef
 import GHC.Generics
 import Reflex
 import System.Timeout (timeout)
@@ -78,7 +80,8 @@ data SocketConf t a = SocketConf {
 -- | Event that externaly closes the connection
 , _socketConfClose  :: !(Event t ())
 -- | Timeout after which we try to reconnect. `Nothing` means to not reconnect.
-, _socketConfReopen :: !(Maybe NominalDiffTime)
+-- Second number means amount of tries of reconnection after which close event is fired.
+, _socketConfReopen :: !(Maybe (NominalDiffTime, Int))
 } deriving (Generic)
 
 -- | Different socket states
@@ -112,6 +115,8 @@ data Socket t a = Socket {
 , _socketStatus  :: !(Dynamic t SocketStatus)
 -- | Fires when failed to read bytes from socket
 , _socketRecvEr  :: !(Event t InboundException)
+-- | Amount of connection tries
+, _socketTries   :: !(Dynamic t Int)
 } deriving (Generic)
 
 -- | Get event that fires each time the socket is connected to host
@@ -127,6 +132,7 @@ noSocket = Socket {
   , _socketClosed = never
   , _socketStatus = pure SocketInitial
   , _socketRecvEr = never
+  , _socketTries = pure 0
   }
 
 -- | Switch over chain of sockets to represent only current one
@@ -136,6 +142,7 @@ switchSocket dsock = Socket {
   , _socketClosed = switch . current $ _socketClosed <$> dsock
   , _socketStatus = join $ _socketStatus <$> dsock
   , _socketRecvEr = switch . current $ _socketRecvEr <$> dsock
+  , _socketTries = join $ _socketTries <$> dsock
   }
 
 -- | Widget that starts TCP socket internally and reconnects if needed.
@@ -143,6 +150,8 @@ socket :: (Show a, TriggerEvent t m, PerformEvent t m, MonadHold t m, PostBuild 
   => SocketConf t a -> m (Socket t a)
 socket SocketConf{..} = do
   buildE <- delay 0.01 =<< getPostBuild
+  reconnTriesRef <- newExternalRef 0
+  triesD <- externalRefDynamic reconnTriesRef
   (closeE, closeFire) <- newTriggerEvent
   (statusE, statusFire) <- newTriggerEvent
   (readErE, readErFire) <- newTriggerEvent
@@ -150,14 +159,22 @@ socket SocketConf{..} = do
   statusD <- holdDyn SocketInitial statusE
   let doReconnecting = isJust _socketConfReopen
   reconnectE <- case _socketConfReopen of
-    Just dt -> delay dt $ fforMaybe closeE $ \cr -> if isCloseFinal cr then Nothing else Just ()
+    Just (dt, _) -> do
+      let notFinalE = fforMaybe closeE $ \cr -> if isCloseFinal cr then Nothing else Just ()
+      performEvent_ $ ffor notFinalE $ const $ modifyExternalRef reconnTriesRef $ \i -> (i+1, ())
+      delay dt notFinalE
     _ -> pure never
   -- performEvent_ $ ffor closeE $ logWrite . showt
   -- performEvent_ $ ffor reconnectE $ logWrite . showt
+  -- performEvent_ $ ffor (updated triesD) $ logWrite . showt
   let connectE = leftmost [reconnectE, buildE]
   let closeCb :: Maybe CloseException -> IO ()
       closeCb e = do
         statusFire SocketClosed
+        i <- readExternalRef reconnTriesRef
+        let doReconnecting = case _socketConfReopen of
+              Nothing -> False
+              Just (_, n) -> i < n
         closeFire $ maybe CloseGracefull (CloseError doReconnecting) e
   intVar <- liftIO $ newTVarIO False
   sendChan <- liftIO newTChanIO
@@ -189,9 +206,10 @@ socket SocketConf{..} = do
     connect host port conCb `Ex.catchAny` (closeCb . Just)
   pure Socket {
       _socketInbound = inE
-    , _socketClosed  = closeE
+    , _socketClosed  = ffilter isCloseFinal closeE
     , _socketStatus  = statusD
     , _socketRecvEr  = readErE
+    , _socketTries   = triesD
     }
 
 -- | Exception occured when receiving bytes from socket fails.

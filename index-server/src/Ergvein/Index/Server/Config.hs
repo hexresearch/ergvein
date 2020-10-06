@@ -1,6 +1,7 @@
 module Ergvein.Index.Server.Config where
 
 import Control.Monad.IO.Class
+import Control.Monad.Reader
 import Data.Aeson
 import Data.Text
 import Data.Time.Clock
@@ -19,6 +20,17 @@ instance FromJSON CfgPeer where
     cfgPeerIP               <- o .: "peerIP"
     cfgPeerPort             <- o .: "peerPort"
     pure CfgPeer{..}
+
+data CfgMetrics = CfgMetrics {
+  cfgMetricsPort :: !Int
+, cfgMetricsHost :: !String
+} deriving (Show, Eq)
+
+instance FromJSON CfgMetrics where
+  parseJSON = withObject "CfgMetrics" $ \o -> do
+    cfgMetricsPort <- o .: "port"
+    cfgMetricsHost <- o .: "host"
+    pure CfgMetrics{..}
 
 data Config = Config
   { cfgServerPort               :: !Int
@@ -41,10 +53,15 @@ data Config = Config
   , cfgPeerActualizationDelay   :: !Int
   , cfgPeerActualizationTimeout :: !NominalDiffTime
   , cfgFeeEstimateDelay         :: !Int
+  , cfgMetrics                  :: !(Maybe CfgMetrics)
   } deriving (Show, Generic)
 
 class HasServerConfig m where
   serverConfig :: m Config
+
+instance Monad m => HasServerConfig (ReaderT Config m) where
+  serverConfig = ask
+  {-# INLINE serverConfig #-}
 
 loadConfig :: MonadIO m => FilePath -> m Config
 loadConfig path = liftIO $ loadYamlSettings [path] [] useEnv
@@ -71,6 +88,7 @@ instance FromJSON Config where
     cfgPeerActualizationDelay   <- o .:? "peerActualizationDelay"   .!= 10000000
     cfgPeerActualizationTimeout <- o .:? "peerActualizationTimeout" .!= 86400
     cfgFeeEstimateDelay         <- o .:? "feeEstimateDelay"         .!= (300 * 1000000) -- 5 min
+    cfgMetrics                  <- o .:? "metrics"
     pure Config{..}
 
 defaultPeers :: [CfgPeer]

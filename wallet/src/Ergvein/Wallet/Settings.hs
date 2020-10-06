@@ -6,6 +6,7 @@ module Ergvein.Wallet.Settings (
   , storeSettings
   , defaultSettings
   , defaultIndexers
+  , defIndexerPort
   , defaultIndexersNum
   , defaultIndexerTimeout
   , defaultActUrlNum
@@ -78,6 +79,7 @@ data Settings = Settings {
 , settingsExplorerUrl       :: M.Map Currency ExplorerUrls
 , settingsPortfolio         :: Bool
 , settingsFiatCurr          :: Fiat
+, settingsDns               :: [HostName]
 } deriving (Eq, Show)
 
 
@@ -106,6 +108,10 @@ instance FromJSON Settings where
     settingsExplorerUrl       <- o .:? "explorerUrl" .!= defaultExplorerUrl
     settingsPortfolio         <- o .:? "portfolio" .!= False
     settingsFiatCurr          <- o .:? "fiatCurr"  .!= USD
+    mdns                      <- o .:? "dns"
+    let settingsDns = case fromMaybe [] mdns of
+          [] -> defaultDns
+          dns -> dns
     pure Settings{..}
 
 instance ToJSON Settings where
@@ -123,14 +129,18 @@ instance ToJSON Settings where
     , "explorerUrl"       .= toJSON settingsExplorerUrl
     , "portfolio"         .= toJSON settingsPortfolio
     , "fiatCurr"          .= toJSON settingsFiatCurr
+    , "dns"               .= toJSON settingsDns
    ]
+
+defIndexerPort :: PortNumber
+defIndexerPort = 8667
 
 defaultIndexers :: [Text]
 defaultIndexers = [
-    "139.59.142.25:8667"      -- ergvein-indexermainnet1.hxr.team:8667
-  , "35.176.95.50:8667"       -- ergvein-indexermainnet2.hxr.team:8667
-  , "84.201.147.96:8667"      -- ergvein-indexermainnet3.hxr.team:8667
-  , "188.244.4.78:8667"       -- OwO
+    "ergvein-indexermainnet1.hxr.team:8667"
+  , "ergvein-indexermainnet2.hxr.team:8667"
+  , "ergvein-indexermainnet3.hxr.team:8667"
+  , "indexer.ergvein.net"       -- OwO
   ]
 
 defaultIndexersNum :: (Int, Int)
@@ -141,6 +151,9 @@ defaultIndexerTimeout = 20
 
 defaultActUrlNum :: Int
 defaultActUrlNum = 10
+
+defaultDns :: [HostName]
+defaultDns = ["8.8.8.8","8.8.4.4", "1.1.1.1"]
 
 defaultSettings :: FilePath -> Settings
 defaultSettings home =
@@ -160,6 +173,7 @@ defaultSettings home =
       , settingsActiveAddrs       = defaultIndexers
       , settingsDeactivatedAddrs  = []
       , settingsArchivedAddrs     = []
+      , settingsDns               = defaultDns
       }
 
 -- | TODO: Implement some checks to see if the configPath folder is ok to write to
