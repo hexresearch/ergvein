@@ -34,6 +34,17 @@ main = hakyll $ do
             >>= loadAndApplyTemplate "templates/default.html" docsCtx
             >>= relativizeUrls
 
+    create ["download.html"] $ do
+      route idRoute
+      compile $ do
+        let docsCtx =
+              constField "downpage" "" `mappend`
+              defaultContext
+        makeItem ""
+            >>= loadAndApplyTemplate "templates/download.html" docsCtx
+            >>= loadAndApplyTemplate "templates/default.html" docsCtx
+            >>= relativizeUrls
+
     match "index.html" $ do
         route idRoute
         compile $ do

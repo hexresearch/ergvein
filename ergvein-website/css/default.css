@@ -108,3 +108,17 @@ th {
 .coinjoin-img {
   width: 50%;
 }
+
+.google-play-img {
+  max-width: 220px;
+  padding-top: 10px;
+}
+.android-downloads {
+  margin-top: 30px;
+}
+.desktop-downloads {
+  margin-top: 50px;
+}
+.code-wrapper {
+  margin-top: 30px;
+}

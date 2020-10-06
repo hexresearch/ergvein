@@ -1,0 +1,36 @@
+<div class="container bg-white">
+  <div class="row py-4 py-lg-5">
+    <div class="col-lg-12 downloads-warning">
+      <b>Warning!</b> We are in public beta stage. Not all features are implemented at the moment. The current stage of the project is BTC wallet with high privacy.
+    </div>
+    <div class="col-lg-12 android-downloads">
+      <h2> Android </h2>
+        <a href='https://play.google.com/store/apps/details?id=org.ergvein.wallet&pcampaignid=pcampaignidMKT-Other-global-all-co-prtnr-py-PartBadge-Mar2515-1'>
+          <img class="google-play-img" alt='Get it on Google Play' src='https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png'/>
+        </a>
+        <a class="btn btn-outline-dark mt-2" href="https://github.com/hexresearch/ergvein/releases/latest/download/ergvein.apk">Download APK</a>
+    </div>
+    <div class="col-lg-12 desktop-downloads">
+      <h2> Desktop Linux </h2>
+
+      With usage of <b><a href="https://nixos.org/">Nix</a></b> package manager:
+
+      <div class="code-wrapper">
+        <pre>
+          <code>nix-env -iA ghc.ergvein-wallet -f https://github.com/hexresearch/ergvein/archive/master.tar.gz</code>
+        </pre>
+      </div>
+
+      We use binary cache provided by <b><a href="https://cachix.org">Cachix</a></b> to speedup installation. Run the following commands to enable it: </b>
+      <div class="code-wrapper">
+        <pre>
+          <code>
+          nix-env -iA cachix -f https://cachix.org/api/v1/install
+          cachix use ergvein
+          </code>
+        </pre>
+      </div>
+
+    </div>
+  </div>
+</div>
