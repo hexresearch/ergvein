@@ -73,7 +73,7 @@ scannerBtc = void $ workflow dbgStage
       fhD <- watchFiltersHeight BTC
       scD <- (fmap . fmap) fromIntegral $ getWalletsScannedHeightD BTC
       rsD <- fmap _pubStorage'restoring <$> getPubStorageD
-      -- setSyncProgress $ ffor buildE $ const $ Synced
+      setSyncProgress $ ffor buildE $ const $ Synced
       let newFiltersE = fmapMaybe id $ updated $ do
             fh <- fhD
             sc <- scD
