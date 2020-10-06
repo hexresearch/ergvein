@@ -1,6 +1,9 @@
 footer .container {
   padding-bottom: 0 !important;
 }
+footer {
+  padding-bottom: 10px;
+}
 
 .body-logo-img{
   max-height: 360px;
@@ -116,9 +119,9 @@ th {
 .android-downloads {
   margin-top: 30px;
 }
+.download-apk-btn {
+  margin-left: 15px;
+}
 .desktop-downloads {
   margin-top: 50px;
-}
-.code-wrapper {
-  margin-top: 30px;
 }
