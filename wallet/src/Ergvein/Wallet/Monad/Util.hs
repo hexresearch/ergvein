@@ -23,6 +23,7 @@ import Control.Concurrent
 import Control.Concurrent.Async
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
+import Control.Immortal.Worker
 import Data.IP
 import Data.Maybe
 import Data.Text (pack)
@@ -130,16 +131,6 @@ runOnUiThreadM :: MonadFrontBase t m => IO () -> m ()
 runOnUiThreadM ma = do
   ch <- getUiChan
   liftIO $ writeChan ch ma
-
--- | Helper that starts new immortal thread with logging of errors
-worker :: (MonadUnliftIO m, PlatformNatives) => String -> (I.Thread -> m ()) -> m I.Thread
-worker lbl f = I.createWithLabel lbl $ \thread -> I.onUnexpectedFinish thread logthem (f thread)
-  where
-    logthem me = case me of
-      Left e -> do
-        logWrite $ "Worker " <> pack lbl <> " exit with: " <> showt e
-        liftIO $ threadDelay 1000000
-      _ -> pure ()
 
 -- | Parse and resolve multiple SockAddrs.
 -- If the address is an IP4 tuple, it is not resolved

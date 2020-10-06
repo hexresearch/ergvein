@@ -10,6 +10,7 @@ import Control.Monad.Logger
 import Control.Monad.Reader
 import Control.Monad.Trans.Control
 import Network.Socket
+import Prometheus (MonadMonitor(..))
 
 import Ergvein.Index.Client
 import Ergvein.Index.Protocol.Types (Message)
@@ -25,8 +26,11 @@ import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 import qualified Network.Ergo.Api.Client     as ErgoApi
 
 newtype ServerM a = ServerM { unServerM :: ReaderT ServerEnv (LoggingT IO) a }
-  deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader ServerEnv, MonadThrow, MonadCatch, MonadMask, MonadBase IO)
+  deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader ServerEnv, MonadThrow, MonadCatch, MonadMask, MonadBase IO, MonadMonitor)
 
+instance MonadMonitor m => MonadMonitor (LoggingT m) where
+  doIO = lift . doIO
+  {-# INLINE doIO #-}
 
 newtype StMServerM a = StMServerM { unStMServerM :: StM (ReaderT ServerEnv (LoggingT IO)) a }
 

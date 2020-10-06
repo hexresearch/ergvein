@@ -286,12 +286,16 @@ navbarCss = do
   ".navbar-status" ? do
     display flex
     justifyContent center
-    fontSize $ pt 14
+    fontSize $ pt 12
     marginBottom $ rem 1
     color silver
   ".navbar-android-controls-wrapper" ? do
     display flex
     justifyContent center
+    paddingBottom $ rem 2
+    maxWidth $ rem 22
+    width $ pct 100
+    margin (px 0) auto (px 0) auto
   ".navbar-android-controls" ? do
     display flex
     justifyContent spaceBetween

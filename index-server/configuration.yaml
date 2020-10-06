@@ -5,8 +5,8 @@ indexerDbPath            : "./indexerDb"
 BTCNodeIsTestnet         : false
 BTCNodeHost              : localhost
 BTCNodePort              : 8332
-BTCNodeUser              : bitcoinrpc
-BTCNodePassword          : password
+BTCNodeUser              : bitcoin
+BTCNodePassword          : AeNungaengohpeeG4eX5
 BTCNodeTCPHost           : localhost
 BTCNodeTCPPort           : 8333
 ERGONodeHost             : localhost
@@ -16,3 +16,6 @@ ownPeerAddress           : null
 knownPeers               : []
 peerActualizationDelay   : 10000000
 peerActualizationTimeout : 86400
+metrics:
+  host: localhost
+  port: 9667
