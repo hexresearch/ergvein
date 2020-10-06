@@ -171,6 +171,8 @@ chunked :: Int -> [a] -> [[a]]
 chunked _ [] = []
 chunked n xs = take n xs : chunked n (drop n xs)
 
+-- | Places each line of text in seperate `dynText` widget. Caution: for fast changing
+-- dynamics it can cause redraw flickering (e.x. triggering resize each time).
 linedText :: (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m) => Dynamic t Text -> m ()
 linedText textD = void $ simpleList (T.lines <$> textD) (\t -> dynText t >> br)
 
