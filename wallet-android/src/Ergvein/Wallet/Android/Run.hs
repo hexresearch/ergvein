@@ -18,10 +18,14 @@ instance PlatformRun where
   run jsm = do
     hSetBuffering stdout LineBuffering
     hSetBuffering stderr LineBuffering
+    pauseCbRef <- newIORef $ pure ()
+    resumeCbRef <- newIORef $ pure ()
     backCbRef <- newIORef $ pure ()
     uiCbChan <- newChan
     let cbs = RunCallbacks {
-            runBackCallback = backCbRef
+            runPauseCallback = pauseCbRef
+          , runResumeCallback = resumeCbRef
+          , runBackCallback = backCbRef
           , runUiCallbacks = uiCbChan
           }
     continueWithCallbacks $ def
@@ -29,6 +33,12 @@ instance PlatformRun where
           a <- getHaskellActivity
           let startPage = fromString "file:///android_asset/index.html"
           startMainWidget a uiCbChan startPage $ jsm cbs
+      , _activityCallbacks_onPause = do
+          io <- readIORef pauseCbRef
+          io
+      , _activityCallbacks_onResume = do
+          io <- readIORef resumeCbRef
+          io
       , _activityCallbacks_onBackPressed = do
           io <- readIORef backCbRef
           io

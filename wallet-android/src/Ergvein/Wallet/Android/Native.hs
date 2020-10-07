@@ -5,7 +5,8 @@ module Ergvein.Wallet.Android.Native(
 import Android.HaskellActivity
 import Control.Exception (handle, bracket)
 import Control.Monad.IO.Class
-import Data.Text(Text)
+import Data.Text (Text)
+import Data.Time (TimeZone(..))
 import Ergvein.Aeson
 import Ergvein.Wallet.Android.Native.Certs
 import Ergvein.Wallet.Native
@@ -16,7 +17,6 @@ import System.Directory.Tree
 import System.FilePath.Posix
 import System.IO
 import System.X509.Android
-import Data.Time (TimeZone(..))
 
 import qualified Data.ByteString as BS
 import qualified Data.Text as T

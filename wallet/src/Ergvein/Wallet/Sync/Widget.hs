@@ -10,8 +10,8 @@ import Ergvein.Wallet.Util
 
 syncWidget :: MonadFront t m => Dynamic t SyncProgress -> m ()
 syncWidget progressD = divClass "sync-widget-wrapper" $ do
-  void $ widgetHoldDyn $ ffor progressD $ \sp -> case sp of
-    Synced -> pure ()
-    SyncMeta{..} -> do
-      linedText =<< localized sp
-      -- traverse_ localizedText $ syncProgressBehind sp
+  langD <- getLanguage
+  void $ dynText $ do
+    lang <- langD
+    sp <- progressD
+    pure $ localizedShow lang sp

@@ -64,7 +64,7 @@ scannerBtc = void $ workflow waiting
     --   buildE <- delay 0.1 =<< getPostBuild
     --   rsD <- fmap _pubStorage'restoring <$> getPubStorageD
     --   let setE = ffilter not $ leftmost [updated rsD, tag (current rsD) buildE]
-    --   e <- writeWalletsScannedHeight "setting dbg scan" $ (BTC, 1781221) <$ setE
+    --   e <- writeWalletsScannedHeight "setting dbg scan" $ (BTC, 640932) <$ setE
     --   pure ((), waiting <$ e)
 
     waiting = Workflow $ do
@@ -79,8 +79,8 @@ scannerBtc = void $ workflow waiting
             sc <- scD
             rs <- rsD
             pure $ if sc < fh && not rs then Just (fh, sc) else Nothing
-      setSyncProgress $ ffor newFiltersE $ \(fh, sc) -> do
-        SyncMeta BTC (SyncBlocks 0 (fromIntegral (fh - sc))) 0 (fromIntegral (fh - sc))
+      -- setSyncProgress $ ffor newFiltersE $ \(fh, sc) -> do
+      --   SyncMeta BTC (SyncBlocks 0 (fromIntegral (fh - sc))) 0 (fromIntegral (fh - sc))
       performEvent_ $ ffor newFiltersE $  \(fh, sc) -> do
         logWrite $ "Start scanning for new " <> showt (fh - sc)
       pure ((), scanning . snd <$> newFiltersE)
@@ -104,7 +104,8 @@ scanningAllBtcKeys i0' = do
   let keys = getPublicKeys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "scannerBtc: not exsisting store!") . currencyPubStorage'pubKeystore
   (updE, updFire) <- newTriggerEvent
   setSyncProgress updE
-  let updSync i i1 = updFire $ SyncMeta BTC (SyncBlocks (fromIntegral (i - i0)) (fromIntegral (i1 - i0))) (fromIntegral (i - i0)) (fromIntegral (i1 - i0))
+  ch <- fmap fromIntegral . sample . current =<< getCurrentHeight BTC
+  let updSync i i1 = updFire $ SyncMeta BTC (SyncBlocks (fromIntegral i) ch) (fromIntegral $ i - i0) (ch - fromIntegral i0)
   scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses i0 updSync $ xPubToBtcAddr . extractXPubKeyFromEgv . scanBox'key <$> keys
   let heightE = fst <$> scanE
       hashesE = ffor scanE $ \(_, vs) ->

@@ -19,7 +19,7 @@ import qualified Data.Text as T
 -- | Compile time version info that is embedded via TH. Collected from `GIT_HASH`,
 -- `VERSION_TAG` env vars.
 data Version = Version
-  { versionHash   :: !Text -- ^ Commit hash
+  { versionHash   :: !(Maybe Text) -- ^ Commit hash
   , versionTag    :: !Text -- ^ Current version tag
   } deriving (Eq, Show, Data)
 
@@ -45,10 +45,12 @@ getCompileEnv key defval = fromMaybe defval <$> lookupCompileEnv key
 -- Returns expression of type Version
 embedVersion :: Q Exp
 embedVersion = (`sigE` [t| Version |]) . liftDataWithText =<< (Version
-  <$> getCompileEnv "GIT_HASH" "no_git_hash"
+  <$> lookupCompileEnv "GIT_HASH"
   <*> getCompileEnv "VERSION_TAG" "development"
   )
 
 -- | Make single string from version info
 makeVersionString :: Version -> Text
-makeVersionString Version{..} = T.intercalate "-" [versionTag, versionHash]
+makeVersionString Version{..} = case versionHash of
+  Just h -> T.intercalate "-" [versionTag, h]
+  Nothing -> versionTag
