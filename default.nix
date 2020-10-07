@@ -1,6 +1,6 @@
 { release ? false
 , profile ? false
-, gitHash ? "0000000000000000000000000000000000000000"
+, gitHash ? null
 , releaseBundle ? true
  }:
 let
