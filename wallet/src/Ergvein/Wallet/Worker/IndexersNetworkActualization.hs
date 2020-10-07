@@ -8,7 +8,7 @@ module Ergvein.Wallet.Worker.IndexersNetworkActualization
 import Control.Monad.IO.Class
 import Data.Attoparsec.Binary
 import Data.Attoparsec.ByteString
-import Data.Either
+import Data.Either.Combinators
 import Data.Maybe
 import Network.Socket
 import Reflex.ExternalRef
@@ -19,37 +19,55 @@ import Ergvein.Index.Protocol.Types
 import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Monad.Util
+import Ergvein.Wallet.Monad.Util
+import Ergvein.Wallet.Monad.Prim
+import Ergvein.Wallet.Native
 
 import qualified Data.List          as L
 import qualified Data.Map.Strict    as Map
 import qualified Data.Set           as Set
 import qualified Data.Text          as T
 import qualified Data.Vector        as V
-
+import Network.DNS
 
 indexersNetworkActualizationWorker = undefined
 
+--forkEvent :: Event a -> (a -> Either b c) -> (Event b, Event c)
 
-tmi ::(MonadIndexClient t m, MonadHasSettings t m) => m ()
+tmi ::(MonadFrontBase t m, MonadIO m, MonadIndexClient t m, MonadHasSettings t m, PlatformNatives) => m ()
 tmi = do
+  dnsSettingsD <- fmap settingsDns <$> getSettingsD
   timerE <- void <$> tickLossyFromPostBuildTime 4
   activeUrlsRef <- getActiveConnsRef 
-  goE' <- performEvent $ ffor timerE $ const $ readExternalRef activeUrlsRef
-  
-  let reqE = fforMaybe goE' $ \activeUrls -> let
-       l = length $ Map.toList activeUrls
-       in if l < 16 then Just $ MPeerRequest PeerRequest else Nothing
+  activeUrlsE <- performEvent $ ffor timerE $ const $ readExternalRef activeUrlsRef
 
-  respE <- requestRandomIndexer reqE
-  
+  let activePeerAmount  = length . Map.toList <$> activeUrlsE
+      notOperablePeerAmountE  = fforMaybe activePeerAmount $ \amount -> if amount < 2  then Just () else Nothing
+
+  reloadedFromSeedE <- performEvent $ ffor notOperablePeerAmountE $ \activeUrls -> do
+      dns <- sample $ current dnsSettingsD
+      rs <- liftIO $ makeResolvSeed defaultResolvConf 
+        { resolvInfo = RCHostNames dns
+        , resolvConcurrent = True
+        }
+      newSet <- liftIO $ getDNS rs seedList 
+      parseSockAddrs rs $ fromMaybe defaultIndexers newSet
+
+  activateURLList reloadedFromSeedE
+
+  let insufficientPeerAmountE = fforMaybe activePeerAmount $ \amount -> if amount < 16 then Just $ MPeerRequest PeerRequest else Nothing
+
+  respE <- requestRandomIndexer insufficientPeerAmountE
+
   let nonEmptyAddressesE' = fforMaybe respE $ \(_, msg) -> case msg of
-        MPeerResponse PeerResponse {..} | not (V.null peerResponseAddresses) -> Just peerResponseAddresses
+        MPeerResponse PeerResponse {..} | not $ V.null peerResponseAddresses -> Just peerResponseAddresses
         _-> Nothing
-  
-  respE'' <- performEvent $ ffor nonEmptyAddressesE' $ \idxs -> do
-    liftIO $ (convertA . head) <$> (shuffleM $ V.toList idxs)
-  activateURL respE''
-  pure ()
+
+  newIndexerE <- performEvent $ ffor nonEmptyAddressesE' $ \addrs ->
+    liftIO $ convertA . head <$> (shuffleM $ V.toList addrs)
+
+  void $ activateURL newIndexerE
 
 convertA Address{..} = case addressType of
     IPV4 -> let

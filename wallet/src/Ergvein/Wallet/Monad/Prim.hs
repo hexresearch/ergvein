@@ -17,6 +17,7 @@ module Ergvein.Wallet.Monad.Prim
   , updateSettings
   , getDnsList
   , mkResolvSeed
+  , initialIndexers
   ) where
 
 import Control.Monad.Fix
@@ -25,6 +26,7 @@ import Control.Monad.IO.Unlift
 import Control.Monad.Reader
 import Control.Monad.Ref
 import Data.Map.Strict
+import Data.Maybe
 import Data.Text (Text)
 import Data.Time(UTCTime, NominalDiffTime)
 import Foreign.JavaScript.TH (WithJSContextSingleton)
@@ -116,6 +118,16 @@ mkResolvSeed = do
     , resolvConcurrent = True
     }
 {-# INLINE mkResolvSeed #-}
+
+initialIndexers :: IO [Text]
+initialIndexers = do
+  resolvInfo <- makeResolvSeed defaultResolvConf {
+      resolvInfo = RCHostNames defaultDns
+    , resolvConcurrent = True
+    }
+  tryDNS <- getDNS resolvInfo seedList
+  pure $ fromMaybe defaultIndexers tryDNS
+
 
 -- ===========================================================================
 --           Monad EgvLogger. Implements Ervgein's logging

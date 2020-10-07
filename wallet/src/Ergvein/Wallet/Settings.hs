@@ -172,7 +172,7 @@ defaultSettings :: MonadIO m => FilePath -> m Settings
 defaultSettings home = do
   let storePath   = home <> "/store"
       configPath  = home <> "/config.yaml"
-  x <- liftIO $ getDNS seedList
+
   pure $ Settings {
         settingsLang              = English
       , settingsStoreDir          = pack storePath
@@ -184,7 +184,7 @@ defaultSettings home = do
       , settingsExplorerUrl       = defaultExplorerUrl
       , settingsPortfolio         = False
       , settingsFiatCurr          = USD
-      , settingsActiveAddrs       = fromMaybe defaultIndexers x
+      , settingsActiveAddrs       = []
       , settingsDeactivatedAddrs  = []
       , settingsArchivedAddrs     = []
       , settingsDns               = defaultDns
@@ -241,32 +241,16 @@ loadSettings mpath = liftIO $ case mpath of
     pure cfg
 #endif
 
-
-
-getDNS :: [Domain] -> IO (Maybe [Text])
-getDNS domains = findMapMMaybe f domains
+getDNS :: ResolvSeed -> [Domain] -> IO (Maybe [Text])
+getDNS seed domains = withResolver seed $ \resolver -> do 
+  findMapMMaybe (resolve resolver) domains
   where
-    f :: Domain -> IO (Maybe [Text])
-    f x = do
-      r <- resolve x
-      pure $ if length r < 2 then Nothing else Just r
-    resolve :: Domain -> IO [Text]
-    resolve domain = do
-      rs <- makeResolvSeed defaultResolvConf
-      withResolver rs $ \r -> do
-        v4 <- lookupA r domain
-        v6 <- lookupAAAA r domain
-        pure $ concat $ rights [(fmap showt <$> v4), (fmap showt <$> v6)]
-
-    tran4 :: IPv4 -> SockAddr
-    tran4 v4 = let 
-      [a] = fromIntegral <$> fromIPv4 v4
-      in SockAddrInet 8667 a
-
-    tran6 :: IPv6 -> SockAddr
-    tran6 v6 = let 
-      [a,b,c,d] = fromIntegral <$> fromIPv6 v6
-      in SockAddrInet6 8667 0 (a, b, c, d) 0
+    resolve :: Resolver -> Domain -> IO (Maybe [Text])
+    resolve resolver domain = do
+        v4 <- lookupA resolver domain
+        v6 <- lookupAAAA resolver domain
+        let resolved = concat $ rights [(fmap showt <$> v4), (fmap showt <$> v6)]
+        pure $ if length resolved < 2 then Nothing else Just resolved
     
     findMapMMaybe :: Monad m => (a -> m (Maybe b)) -> [a] -> m (Maybe b)
     findMapMMaybe f (x:xs) = do

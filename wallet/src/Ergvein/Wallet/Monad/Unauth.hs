@@ -15,6 +15,7 @@ import Network.DNS
 import Network.Socket (SockAddr)
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
+import Data.Maybe
 
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Language
@@ -160,7 +161,9 @@ newEnv settings uiChan = do
       resolvInfo = RCHostNames $ settingsDns settings
     , resolvConcurrent = True
     }
+  x <- liftIO $ getDNS rs seedList
 
+  let rsss = if (length $ settingsActiveAddrs settings) > 2 then settingsActiveAddrs settings else fromMaybe defaultIndexers x
   socadrs         <- parseSockAddrs rs (settingsActiveAddrs settings)
   urlsArchive     <- newExternalRef . S.fromList =<< parseSockAddrs rs (settingsArchivedAddrs settings)
   inactiveUrls    <- newExternalRef . S.fromList =<< parseSockAddrs rs (settingsDeactivatedAddrs settings)

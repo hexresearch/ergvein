@@ -222,7 +222,8 @@ library
         vector-algorithms,
         wreq -any,
         yaml -any,
-        attoparsec-binary
+        attoparsec-binary,
+        either
 
     if flag(android)
         cpp-options: -DANDROID

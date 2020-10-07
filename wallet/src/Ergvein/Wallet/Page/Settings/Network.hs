@@ -22,12 +22,12 @@ import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Indexer.Socket
 import Ergvein.Wallet.Input
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Localization.Network
+import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
-import Ergvein.Wallet.Settings
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
@@ -98,7 +98,6 @@ parametersPageWidget = mdo
       stngs <- sample $ current setD
       pure $ stngs {
             settingsReqTimeout = defaultIndexerTimeout
-          , settingsReqUrlNum  = defaultIndexersNum
           , settingsActUrlNum  = defaultActUrlNum
         }
     updE' <- updateSettings $ flip pushAlways saveE $ const $ do
@@ -142,8 +141,8 @@ activePageWidget = mdo
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
     restoreE <- buttonClass "button button-outline m-0" NSSRestoreUrls
     rs <- mkResolvSeed
-    x <- liftIO $ getDNS seedList
-    void $ activateURLList =<< performFork (parseSockAddrs rs (fromMaybe defaultIndexers x) <$ restoreE)
+    x <- liftIO $ initialIndexers
+    void $ activateURLList =<< performFork (parseSockAddrs rs x <$ restoreE)
     tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSClose else NSSAddUrl
     pure (refrE', tglE')
