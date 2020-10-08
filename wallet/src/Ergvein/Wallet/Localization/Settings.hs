@@ -109,6 +109,7 @@ data NetSetupStrings
   | NSSAddUrl
   | NSSAddDns
   | NSSAdd
+  | NSSDelete
   | NSSEdit
   | NSSCancel
   | NSSClose
@@ -127,7 +128,7 @@ instance LocalizedPrint NetSetupStrings where
       NSSEnable       -> "Enable"
       NSSForget       -> "Forget"
       NSSPingAll      -> "Ping all"
-      NSSRestoreUrls  -> "Add default URLs"
+      NSSRestoreUrls  -> "Restore default"
       NSSRestoreDef   -> "Restore default values"
       NSSReqTimeout   -> "Request timeout, s"
       NSSActUrlNum    -> "Min. number of active indexers"
@@ -137,6 +138,7 @@ instance LocalizedPrint NetSetupStrings where
       NSSAddUrl       -> "Add indexer"
       NSSAddDns       -> "Add DNS"
       NSSAdd          -> "Add"
+      NSSDelete       -> "Delete"
       NSSEdit         -> "Edit"
       NSSCancel       -> "Cancel"
       NSSClose        -> "Close"
@@ -162,6 +164,7 @@ instance LocalizedPrint NetSetupStrings where
       NSSAddUrl       -> "Добавить индексер"
       NSSAddDns       -> "Добавить DNS"
       NSSAdd          -> "Добавить"
+      NSSDelete       -> "Удалить"
       NSSEdit         -> "Изменить"
       NSSCancel       -> "Отменить"
       NSSClose        -> "Закрыть"

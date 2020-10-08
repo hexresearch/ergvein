@@ -13,6 +13,7 @@ module Ergvein.Wallet.Settings (
   , ExplorerUrls(..)
   , defaultExplorerUrl
   , btcDefaultExplorerUrls
+  , defaultDns
   ) where
 
 import Control.Lens hiding ((.=))

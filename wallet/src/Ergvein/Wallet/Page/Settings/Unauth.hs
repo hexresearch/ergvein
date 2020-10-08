@@ -52,50 +52,88 @@ settingsPageUnauth = wrapperSimple True $ do
 dnsPageUnauth :: MonadFrontBase t m => m ()
 dnsPageUnauth = wrapperSimple False dnsPageWidget
 
+data DnsAction = DnsDel HostName | DnsUpd HostName HostName | DNSAdd HostName | DnsRestore
+
 dnsPageWidget :: MonadFrontBase t m => m ()
 dnsPageWidget = do
   h3 $ localizedText STPSButDns
   setsD <- getSettingsD
-  actD <- widgetHoldDyn $ ffor setsD $ \Settings{..} -> divClass "p-1 fit-content ml-a mr-a" $
-    flip traverse (S.toList settingsDns) $ \url -> mdo
-      tglD <- toggle False editE
-      (delE, editE) <- divClass "network-name mt-1 pl-2" $ do
-        divClass "mt-a mb-a network-name-txt" $ text $ T.pack url
-        delE <- buttonClass "button button-outline network-edit-btn mt-a mb-a ml-2" ("Delete" :: Text)
-        editE <- buttonClassDynLabel "button button-outline mt-a mb-a ml-1" $ ffor tglD $ \case
-          False -> NSSEdit
-          True -> NSSCancel
-        pure (delE, editE)
-      setE <- addDnsWidget url tglD
-      widgetHoldDyn $ ffor tglD $ \case
-        True -> elClass "hr" "network-hr-sep-lb m-0 mt-1" $ pure ()
-        False -> pure ()
-        
-      pure $ leftmost [Right . (url,) <$> setE, Left url <$ delE]
-  let actE = switchDyn $ leftmost <$> actD
+  actE <- divClass "p-1 fit-content ml-a mr-a" $ do
+    editD <- widgetHoldDyn $ ffor setsD $ \s ->
+      traverse dnsWidget $ S.toList $ settingsDns s
+    addE <- addDnsWidget
+    restoreE <- buttonClass "button button-outline ml-a mr-a w-100" NSSRestoreUrls
+    let editE = switchDyn $ leftmost <$> editD
+    pure $ leftmost [addE, editE, DnsRestore <$ restoreE]
   modifySettings $ ffor actE $ \act s -> case act of
-    Left u -> s {settingsDns = S.delete u (settingsDns s)}
-    Right (u,u') -> let us' = S.insert u' $ S.delete u (settingsDns s)
+    DnsDel u -> s {settingsDns = S.delete u (settingsDns s)}
+    DnsUpd u u' -> let us' = S.insert u' $ S.delete u (settingsDns s)
       in s {settingsDns = us'}
+    DNSAdd u -> s {settingsDns = S.insert u $ settingsDns s}
+    DnsRestore -> s {settingsDns = defaultDns}
   pure ()
+  where
+    addDnsWidget :: MonadFrontBase t m => m (Event t DnsAction)
+    addDnsWidget = divClass "mt-3" $ mdo
+      elClass "hr" "network-hr-sep-lb m-0 mt-1 mb-1" $ pure ()
+      tglD <- toggle False tglE
+      valD <- widgetHoldDyn $ ffor tglD $ \case
+        False -> fmap (, never) $ buttonClass "button button-outline ml-a mr-a w-100" NSSAddDns
+        True -> do
+          textD <- fmap _inputElement_value $ inputElement $ def
+            & inputElementConfig_elementConfig . elementConfig_initialAttributes .~ ("type" =: "text")
+          divClass "" $ do
+            goE <- outlineButton NSSSave
+            closeE <- outlineButton NSSCancel
+            setE <- validateDNSIp $ current textD `tag` goE
+            pure (closeE, DNSAdd <$> setE)
+      let (tglE', actE) = (\(a,b) -> (switchDyn a, switchDyn b)) $ splitDynPure valD
+      let tglE = leftmost [() <$ actE, tglE']
+      pure actE
 
+dnsWidget :: MonadFrontBase t m => HostName -> m (Event t DnsAction)
+dnsWidget url = divClass "network-name mt-1 pl-2" $ mdo
+  tglD <- holdDyn False editE
+  valD <- widgetHoldDyn $ ffor tglD $ \case
+    True -> editDnsWidget
+    False -> showDnsWidget
+  let (editE, actE) = (\(a,b) -> (switchDyn a, switchDyn b)) $ splitDynPure valD
+  pure actE
+  where
+    showDnsWidget :: MonadFrontBase t m => m (Event t Bool, Event t DnsAction)
+    showDnsWidget = do
+      divClass "mt-a mb-a network-name-txt ml-a" $ text $ T.pack url
+      editE <- buttonClass "button button-outline mt-a mb-a ml-1 mr-a" NSSEdit
+      pure (True <$ editE, never)
 
-addDnsWidget :: forall t m . MonadFrontBase t m => HostName -> Dynamic t Bool -> m (Event t HostName)
-addDnsWidget initIp showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not b then pure never else do
-  murlE <- divClass "mt-3" $ do
-    textD <- fmap _inputElement_value $ inputElement $ def
-      & inputElementConfig_elementConfig . elementConfig_initialAttributes .~ ("type" =: "text")
-    goE <- outlineButton NSSAddDns
-    pure $ poke goE $ const $ do
-      t <- sampleDyn textD
-      let val :: [Maybe Word8] = fmap (readMaybe . T.unpack) $ T.splitOn "." t
-      pure $ case val of
-        (Just a):(Just b):(Just c):(Just d):[] -> Just $ T.unpack t
-        _ -> Nothing
+    editDnsWidget :: MonadFrontBase t m => m (Event t Bool, Event t DnsAction)
+    editDnsWidget = el "div" $ do
+      textD <- fmap _inputElement_value $ inputElement $ def
+        & inputElementConfig_elementConfig . elementConfig_initialAttributes .~ ("type" =: "text")
+        & inputElementConfig_initialValue .~ T.pack url
+      (goE, delE, closeE) <- divClass "" $ do
+        goE <- outlineButton NSSSave
+        delE <- outlineButton NSSDelete
+        closeE <- outlineButton NSSCancel
+        pure (goE, delE, closeE)
+      setE <- validateDNSIp $ current textD `tag` goE
+      elClass "hr" "network-hr-sep-lb m-0 mt-1" $ pure ()
+      let actE = leftmost $ [DnsDel url <$ delE, DnsUpd url <$> setE]
+      pure (False <$ closeE, actE)
+
+-- | Validate ip and show an error if something is not ok
+validateDNSIp :: MonadFrontBase t m => Event t Text -> m (Event t HostName)
+validateDNSIp txtE = do
   void $ widgetHold (pure ()) $ ffor murlE $ \case
-    Nothing -> divClass "form-field-errors" $ localizedText NSSFailedDns
+    Nothing -> divClass "form-field-errors ta-c-imp" $ localizedText NSSFailedDns
     _ -> pure ()
   pure $ fmapMaybe id murlE
+  where
+    murlE = ffor txtE $ \t -> let
+      val :: [Maybe Word8] = fmap (readMaybe . T.unpack) $ T.splitOn "." t
+      in case val of
+        (Just a):(Just b):(Just c):(Just d):[] -> Just $ T.unpack t
+        _ -> Nothing
 
 languagePageUnauth :: MonadFrontBase t m => m ()
 languagePageUnauth = wrapperSimple True languagePageWidget
