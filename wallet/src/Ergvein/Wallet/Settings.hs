@@ -153,8 +153,8 @@ seedList = if isTestnet
 defaultIndexers :: [Text]
 defaultIndexers = 
   if isTestnet 
-  then ["127.0.0.1"]
-  else ["139.59.142.25", "188.244.4.78"]
+  then ["127.0.0.1:8667"]
+  else ["139.59.142.25:8667", "188.244.4.78:8667"]
 
 defaultDns :: [HostName]
 defaultDns = ["8.8.8.8","8.8.4.4", "1.1.1.1"]

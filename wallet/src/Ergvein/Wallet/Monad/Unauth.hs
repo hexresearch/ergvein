@@ -165,13 +165,8 @@ newEnv settings uiChan = do
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
   -- MonadClient refs
-  rs <- liftIO $ makeResolvSeed defaultResolvConf {
-      resolvInfo = RCHostNames $ settingsDns settings
-    , resolvConcurrent = True
-    }
-  x <- liftIO $ getDNS rs seedList
+  rs <- liftIO $ resolveSeed $ settingsDns settings
 
-  let rsss = if (length $ settingsActiveAddrs settings) > 2 then settingsActiveAddrs settings else fromMaybe defaultIndexers x
   socadrs         <- parseSockAddrs rs (settingsActiveAddrs settings)
   urlsArchive     <- newExternalRef . S.fromList =<< parseSockAddrs rs (settingsArchivedAddrs settings)
   inactiveUrls    <- newExternalRef . S.fromList =<< parseSockAddrs rs (settingsDeactivatedAddrs settings)

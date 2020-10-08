@@ -17,6 +17,7 @@ module Ergvein.Wallet.Monad.Prim
   , updateSettings
   , getDnsList
   , mkResolvSeed
+  , resolveSeed
   , initialIndexers
   ) where
 
@@ -113,11 +114,14 @@ getDnsList = fmap settingsDns $ readExternalRef =<< getSettingsRef
 mkResolvSeed :: MonadHasSettings t m => m ResolvSeed
 mkResolvSeed = do
   dns <- getDnsList
-  liftIO $ makeResolvSeed defaultResolvConf {
+  liftIO $ resolveSeed dns
+{-# INLINE mkResolvSeed #-}
+
+resolveSeed :: [HostName] -> IO ResolvSeed
+resolveSeed dns =  makeResolvSeed defaultResolvConf {
       resolvInfo = RCHostNames dns
     , resolvConcurrent = True
     }
-{-# INLINE mkResolvSeed #-}
 
 initialIndexers :: IO [Text]
 initialIndexers = do

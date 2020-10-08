@@ -23,7 +23,7 @@ flag testnet
 
 library
     exposed-modules:
-        Ergvein.Wallet.Worker.IndexersNetworkActualization
+        Ergvein.Wallet.Worker.ErgveinNetworkRefresh
         Ergvein.Wallet
         Ergvein.Wallet.Alert
         Ergvein.Wallet.Alert.Handler
