@@ -15,6 +15,7 @@ module Ergvein.Wallet.Monad.Prim
   , getSettings
   , getSettingsD
   , updateSettings
+  , modifySettings
   , getDnsList
   , mkResolvSeed
   ) where
@@ -49,6 +50,7 @@ import Ergvein.Wallet.Version
 
 import qualified Reflex.Profiled as RP
 import qualified Control.Monad.Fail as F
+import qualified Data.Set as S
 
 -- | Type classes that we need from reflex-dom itself.
 type MonadBaseConstr t m = (MonadHold t m
@@ -104,8 +106,16 @@ updateSettings setE = do
     storeSettings s
 {-# INLINE updateSettings #-}
 
+-- | Update app's settings. Sets settings to provided value and stores them
+modifySettings :: MonadHasSettings t m => Event t (Settings -> Settings) -> m (Event t ())
+modifySettings setE = do
+  settingsRef <- getSettingsRef
+  performEvent $ ffor setE $ \f -> do
+    storeSettings =<< modifyExternalRef settingsRef (\s -> let s' = f s in (s',s'))
+{-# INLINE modifySettings #-}
+
 getDnsList :: MonadHasSettings t m => m [HostName]
-getDnsList = fmap settingsDns $ readExternalRef =<< getSettingsRef
+getDnsList = fmap (S.toList . settingsDns) $ readExternalRef =<< getSettingsRef
 {-# INLINE getDnsList #-}
 
 mkResolvSeed :: MonadHasSettings t m => m ResolvSeed

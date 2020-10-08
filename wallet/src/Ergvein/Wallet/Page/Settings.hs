@@ -22,6 +22,7 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Settings.MnemonicExport
 import Ergvein.Wallet.Page.Settings.Network
+import Ergvein.Wallet.Page.Settings.Unauth
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage
@@ -78,24 +79,7 @@ settingsPage = do
 languagePage :: MonadFront t m => m ()
 languagePage = do
   title <- localized STPSTitle
-  wrapper True title (Just $ pure languagePage) $ do
-    h3 $ localizedText $ STPSSelectLanguage
-    divClass "initial-options grid1" $ do
-      langD <- getLanguage
-      initKey <- sample . current $ langD
-      let listLangsD = ffor langD $ \l -> Map.fromList $ fmap (\v -> (v, localizedShow l v)) allLanguages
-          ddnCfg = DropdownConfig {
-                _dropdownConfig_setValue   = updated langD
-              , _dropdownConfig_attributes = constDyn ("class" =: "select-lang")
-              }
-      dp <- dropdown initKey listLangsD ddnCfg
-      let selD = _dropdown_value dp
-      selE <- fmap updated $ holdUniqDyn selD
-      void $ widgetHold (pure ()) $ setLanguage <$> selE
-      settings <- getSettings
-      updE <- updateSettings $ ffor selE (\lng -> settings {settingsLang = lng})
-      showSuccessMsg $ STPSSuccess <$ updE
-    pure ()
+  wrapper True title (Just $ pure languagePage) languagePageWidget
 
 currenciesPage :: MonadFront t m => m ()
 currenciesPage = do

@@ -17,6 +17,7 @@ data SettingsPageStrings =
   | STPSButUnits
   | STPSButPortfolio
   | STPSButMnemonicExport
+  | STPSButDns
   | STPSSelectLanguage
   | STPSSetsActiveCurrs
   | STPSSetsPortfolio
@@ -38,6 +39,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButLanguage         -> "Language"
       STPSButActiveCurrs      -> "Currencies"
       STPSButNetwork          -> "Network"
+      STPSButDns              -> "DNS servers"
       STPSButUnits            -> "Display units for cryptos"
       STPSButPortfolio        -> "Portfolio"
       STPSButMnemonicExport   -> "Export mnemonic phrase"
@@ -58,6 +60,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButLanguage         -> "Язык"
       STPSButActiveCurrs      -> "Валюты"
       STPSButNetwork          -> "Сеть"
+      STPSButDns              -> "DNS сервера"
       STPSButUnits            -> "Единицы отображения криптосистем"
       STPSButPortfolio        -> "Портфель"
       STPSButMnemonicExport   -> "Экспортировать мнемоническую фразу"
@@ -104,10 +107,13 @@ data NetSetupStrings
   | NSSReqNumMax
   | NSSSave
   | NSSAddUrl
+  | NSSAddDns
   | NSSAdd
   | NSSEdit
+  | NSSCancel
   | NSSClose
   | NSSCopyURL
+  | NSSFailedDns
 
 instance LocalizedPrint NetSetupStrings where
   localizedShow l v = case l of
@@ -129,10 +135,13 @@ instance LocalizedPrint NetSetupStrings where
       NSSReqNumMax    -> "Required number of confirmations"
       NSSSave         -> "Save"
       NSSAddUrl       -> "Add indexer"
+      NSSAddDns       -> "Add DNS"
       NSSAdd          -> "Add"
       NSSEdit         -> "Edit"
+      NSSCancel       -> "Cancel"
       NSSClose        -> "Close"
       NSSCopyURL      -> "Copy URL"
+      NSSFailedDns    -> "Failed to parse DNS IP"
     Russian -> case v of
       NSSTitle        -> "Настройки сети"
       NSSLatency lat  -> "Задержка: " <> showt lat
@@ -151,7 +160,10 @@ instance LocalizedPrint NetSetupStrings where
       NSSReqNumMax    -> "Необходимое количество подтверждений"
       NSSSave         -> "Сохранить"
       NSSAddUrl       -> "Добавить индексер"
+      NSSAddDns       -> "Добавить DNS"
       NSSAdd          -> "Добавить"
       NSSEdit         -> "Изменить"
+      NSSCancel       -> "Отменить"
       NSSClose        -> "Закрыть"
       NSSCopyURL      -> "Copy URL"
+      NSSFailedDns    -> "Некорректный IP DNS сервера"

@@ -157,7 +157,7 @@ newEnv settings uiChan = do
   nameSpaces <- newExternalRef []
   -- MonadClient refs
   rs <- liftIO $ makeResolvSeed defaultResolvConf {
-      resolvInfo = RCHostNames $ settingsDns settings
+      resolvInfo = RCHostNames $ S.toList $ settingsDns settings
     , resolvConcurrent = True
     }
 

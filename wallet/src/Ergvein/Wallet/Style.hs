@@ -989,6 +989,7 @@ legoStyles = do
   ".ta-c" ? textAlign center
   ".word-break-all" ? wordBreak breakAll
   ".font-bold" ? fontWeight bold
+  ".fit-content" ? width fitContent
 
 receiveCss :: Css
 receiveCss = do

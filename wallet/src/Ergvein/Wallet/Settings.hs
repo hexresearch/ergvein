@@ -33,6 +33,7 @@ import Ergvein.Wallet.Yaml(readYamlEither')
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
+import qualified Data.Set as S
 
 #ifdef ANDROID
 import Android.HaskellActivity
@@ -79,7 +80,7 @@ data Settings = Settings {
 , settingsExplorerUrl       :: M.Map Currency ExplorerUrls
 , settingsPortfolio         :: Bool
 , settingsFiatCurr          :: Fiat
-, settingsDns               :: [HostName]
+, settingsDns               :: S.Set HostName
 } deriving (Eq, Show)
 
 
@@ -111,7 +112,7 @@ instance FromJSON Settings where
     mdns                      <- o .:? "dns"
     let settingsDns = case fromMaybe [] mdns of
           [] -> defaultDns
-          dns -> dns
+          dns -> S.fromList dns
     pure Settings{..}
 
 instance ToJSON Settings where
@@ -152,8 +153,8 @@ defaultIndexerTimeout = 20
 defaultActUrlNum :: Int
 defaultActUrlNum = 10
 
-defaultDns :: [HostName]
-defaultDns = ["8.8.8.8","8.8.4.4", "1.1.1.1"]
+defaultDns :: S.Set HostName
+defaultDns = S.fromList ["8.8.8.8","8.8.4.4", "1.1.1.1"]
 
 defaultSettings :: FilePath -> Settings
 defaultSettings home =
