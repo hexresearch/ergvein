@@ -40,6 +40,7 @@ data SubPageSettings
   | GoNetwork
   | GoPortfolio
   | GoMnemonicExport Mnemonic
+  | GoDns
 
 -- TODO: uncomment commented lines when ERGO is ready
 settingsPage :: MonadFront t m => m ()
@@ -47,23 +48,19 @@ settingsPage = do
   title <- localized STPSTitle
   wrapper True title (Just $ pure settingsPage) $ do
     divClass "initial-options grid1" $ do
-      goLangE            <- fmap (GoLanguage   <$) $ outlineButton STPSButLanguage
-      -- goCurrE            <- fmap (GoCurrencies <$) $ outlineButton STPSButActiveCurrs
-      goNetE             <- fmap (GoNetwork    <$) $ outlineButton STPSButNetwork
-      goUnitsE           <- fmap (GoUnits      <$) $ outlineButton STPSButUnits
-      goPortfolioE       <- fmap (GoPortfolio  <$) $ outlineButton STPSButPortfolio
+      let btns = [
+              (GoLanguage, STPSButLanguage)
+            , (GoNetwork, STPSButNetwork)
+            , (GoUnits, STPSButUnits)
+            , (GoPortfolio, STPSButPortfolio)
+            , (GoDns, STPSButDns)
+            ]
+      goE' <- fmap leftmost $ flip traverse btns $ \(v,l) -> fmap (v <$) $ outlineButton l
       mnemonicExportBtnE <- outlineButton STPSButMnemonicExport
       goMnemonicExportE <- withWallet $
         ffor mnemonicExportBtnE $ \_ prvStorage -> do
           pure $ GoMnemonicExport $ _prvStorage'mnemonic prvStorage
-      let goE = leftmost [
-              goLangE
-            -- , goCurrE
-            , goNetE
-            , goUnitsE
-            , goPortfolioE
-            , goMnemonicExportE
-            ]
+      let goE = leftmost [ goE', goMnemonicExportE ]
       void $ nextWidget $ ffor goE $ \spg -> Retractable {
           retractableNext = case spg of
             GoLanguage                -> languagePage
@@ -72,6 +69,7 @@ settingsPage = do
             GoUnits                   -> unitsPage
             GoPortfolio               -> portfolioPage
             GoMnemonicExport mnemonic -> mnemonicExportPage mnemonic
+            GoDns                     -> dnsPage
         , retractablePrev = Just $ pure settingsPage
         }
 
@@ -80,6 +78,12 @@ languagePage :: MonadFront t m => m ()
 languagePage = do
   title <- localized STPSTitle
   wrapper True title (Just $ pure languagePage) languagePageWidget
+
+-- TODO: use dyn settings instead of simple settings <- getSettings
+dnsPage :: MonadFront t m => m ()
+dnsPage = do
+  title <- localized STPSTitle
+  wrapper True title (Just $ pure dnsPage) dnsPageWidget
 
 currenciesPage :: MonadFront t m => m ()
 currenciesPage = do

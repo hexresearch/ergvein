@@ -2,6 +2,7 @@ module Ergvein.Wallet.Page.Settings.Unauth
   (
     settingsPageUnauth
   , languagePageWidget
+  , dnsPageWidget
   ) where
 
 import Control.Monad
