@@ -115,7 +115,6 @@ instance LocalizedPrint NetSetupStrings where
       NSSTitle        -> "Network settings"
       NSSLatency lat  -> "Latency: " <> showt lat
       NSSOffline      -> "Offline"
-      NSSRefresh      -> "Refresh"
       NSSPing         -> "Ping"
       NSSDisable      -> "Disable"
       NSSEnable       -> "Enable"
@@ -137,7 +136,6 @@ instance LocalizedPrint NetSetupStrings where
       NSSTitle        -> "Настройки сети"
       NSSLatency lat  -> "Задержка: " <> showt lat
       NSSOffline      -> "Оффлайн"
-      NSSRefresh      -> "Обновить"
       NSSPing         -> "Запросить статус"
       NSSDisable      -> "Отключить"
       NSSEnable       -> "Включить"

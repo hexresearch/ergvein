@@ -139,10 +139,6 @@ activePageWidget = mdo
   hideE <- activateURL =<< addUrlWidget showD
   (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
-    restoreE <- buttonClass "button button-outline m-0" NSSRestoreUrls
-    rs <- mkResolvSeed
-    x <- liftIO $ initialIndexers
-    void $ activateURLList =<< performFork (parseSockAddrs rs x <$ restoreE)
     tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSClose else NSSAddUrl
     pure (refrE', tglE')
