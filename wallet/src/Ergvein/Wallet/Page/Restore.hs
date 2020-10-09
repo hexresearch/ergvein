@@ -35,7 +35,7 @@ restorePage = wrapperSimple True $ void $ workflow nodeConnection
   where
     nodeConnection = Workflow $ do
       el "h3" $ text "Connecting to nodes"
-      syncWidget BTC
+      syncWidget False BTC
       conmapD <- getNodesByCurrencyD BTC
       let upsD = fmap or $ join $ ffor conmapD $ \cm -> sequence $ ffor (M.elems cm) $ \case
             NodeConnBTC con -> nodeconIsUp con
@@ -45,7 +45,7 @@ restorePage = wrapperSimple True $ void $ workflow nodeConnection
 
     heightAsking = Workflow $ do
       el "h3" $ text "Getting current height"
-      syncWidget BTC
+      syncWidget False BTC
       heightD <- getCurrentHeight BTC
       height0E <- tag (current heightD) <$> getPostBuild
       let heightE = leftmost [updated heightD, height0E]
@@ -81,7 +81,7 @@ restorePage = wrapperSimple True $ void $ workflow nodeConnection
     scanKeys :: Int -> Int -> Workflow t m ()
     scanKeys gapN keyNum = Workflow $ do
       logWrite "We are at scan stage"
-      syncWidget BTC
+      syncWidget False BTC
       buildE <- delay 0.1 =<< getPostBuild
       keys <- pubStorageKeys BTC External <$> getPubStorage
       heightD <- getCurrentHeight BTC
@@ -120,7 +120,7 @@ restorePage = wrapperSimple True $ void $ workflow nodeConnection
     scanInternalKeys gapN keyNum = Workflow $ do
       buildE <- delay 0.1 =<< getPostBuild
       keys <- pubStorageKeys BTC Internal <$> getPubStorage
-      syncWidget BTC
+      syncWidget False BTC
       heightD <- getCurrentHeight BTC
       setSyncProgress $ flip pushAlways buildE $ const $ do
         h <- sample . current $ heightD

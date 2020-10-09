@@ -66,9 +66,9 @@ instance LocalizedPrint SyncStage where
   localizedShow l v = case l of
     English -> case v of
       SyncFilters a t -> "filters " <> showt (percent a t) <> "%"
-      SyncAddressInternal i a t -> "#" <> showt i <> " " <> showt (percent a t) <> "%"
-      SyncAddressExternal i a t -> "#" <> showt i <> " " <> showt (percent a t) <> "%"
-      SyncBlocks i j a t -> showt i <> " of " <> showt j <> " " <> showt (percent a t) <> "%"
+      SyncAddressInternal i a t -> "Sync change address #" <> showt i <> " " <> showt (percent a t) <> "%"
+      SyncAddressExternal i a t -> "Sync receiving address #" <> showt i <> " " <> showt (percent a t) <> "%"
+      SyncBlocks i j a t -> "Synс blocks from " <> showt i <> " to " <> showt j <> "; " <> showt (percent a t) <> "% of total"
       SyncGettingNodeAddresses -> "Getting node addresses"
       SyncConnectingToPeers -> "Connecting to peers"
       SyncGettingHeight h -> "Getting height. Catching up at: " <> showt h
@@ -78,9 +78,9 @@ instance LocalizedPrint SyncStage where
       NotActive -> "Not active"
     Russian -> case v of
       SyncFilters a t -> "фильтров " <> showt (percent a t) <> "%"
-      SyncAddressInternal i a t -> "#" <> showt i <> " " <> showt (percent a t) <> "%"
-      SyncAddressExternal i a t -> "#" <> showt i <> " " <> showt (percent a t) <> "%"
-      SyncBlocks i j a t -> showt i <> " из " <> showt j <> " " <> showt (percent a t) <> "%"
+      SyncAddressInternal i a t -> "Синхр. адреса для сдачи #" <> showt i <> " " <> showt (percent a t) <> "%"
+      SyncAddressExternal i a t -> "Синхр. адреса для получения #" <> showt i <> " " <> showt (percent a t) <> "%"
+      SyncBlocks i j a t -> "Синхр. блоков с " <> showt i <> " по " <> showt j <> "; " <> showt (percent a t) <> "% готово"
       SyncGettingNodeAddresses -> "Получение адреса ноды"
       SyncConnectingToPeers -> "Подключение к узлу"
       SyncGettingHeight h -> "Вычисление высоты. Сейчас на " <> showt h

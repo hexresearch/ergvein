@@ -40,7 +40,7 @@ balancesPage = do
   walletName <- getWalletName
   title <- localized walletName
   wrapper False title (Just $ pure balancesPage) $ do
-    syncWidget BTC -- TODO: rework this when we add ERGO
+    syncWidget False BTC -- TODO: rework this when we add ERGO
     currenciesList walletName
 
 currenciesList :: MonadFront t m => Text -> m ()
