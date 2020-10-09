@@ -165,6 +165,7 @@ wrapperCss = do
     flexDirection column
   ".wrapper .container" ? do
     maxWidth tabletBreakpoint
+    flexGrow 1
   ".centered-container" ? do
     display flex
     flexGrow 1
