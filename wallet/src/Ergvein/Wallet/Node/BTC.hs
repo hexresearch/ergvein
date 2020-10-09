@@ -35,6 +35,7 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node.Prim
 import Ergvein.Wallet.Node.Socket
 import Ergvein.Wallet.Platform
+import Ergvein.Wallet.Settings
 
 -- These two are for dummy stats
 import Control.Monad.Random
@@ -48,7 +49,7 @@ instance HasNode BTCType where
   type NodeResp BTCType = Message
   type NodeSpecific BTCType = ()
 
-initBTCNode :: MonadBaseConstr t m => Bool -> SockAddr -> Event t NodeMessage -> m (NodeBTC t)
+initBTCNode :: (MonadBaseConstr t m, MonadHasSettings t m) => Bool -> SockAddr -> Event t NodeMessage -> m (NodeBTC t)
 initBTCNode doLog sa msgE = do
   -- Dummy status TODO: Make status real later
   b  <- liftIO randomIO
@@ -78,6 +79,7 @@ initBTCNode doLog sa msgE = do
     (Just sname, Just sport) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True sa
     pure $ Peer sname sport
 
+  proxyD <- getSocksConf
   rec
     -- Start the connection
     s <- fmap switchSocket $ widgetHold (pure noSocket) $ ffor peerE $ \peer -> do
@@ -87,6 +89,7 @@ initBTCNode doLog sa msgE = do
         , _socketConfPeeker = peekMessage net sa
         , _socketConfClose  = closeE
         , _socketConfReopen = Just (1, 2) -- reconnect after 1 seconds 2 retries
+        , _socketConfProxy  = proxyD
         }
 
     let respE = _socketInbound s

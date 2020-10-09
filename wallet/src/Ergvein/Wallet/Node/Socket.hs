@@ -32,6 +32,7 @@ import Reflex.ExternalRef
 import GHC.Generics
 import Reflex
 import System.Timeout (timeout)
+import Network.Socks5 (SocksConf(..))
 
 import qualified Control.Exception.Safe as Ex
 import qualified Data.ByteString as BS
@@ -82,6 +83,8 @@ data SocketConf t a = SocketConf {
 -- | Timeout after which we try to reconnect. `Nothing` means to not reconnect.
 -- Second number means amount of tries of reconnection after which close event is fired.
 , _socketConfReopen :: !(Maybe (NominalDiffTime, Int))
+-- | Configuration of SOCKS proxy. If the value changes, connection is reopened.
+, _socketConfProxy  :: !(Dynamic t (Maybe SocksConf))
 } deriving (Generic)
 
 -- | Different socket states

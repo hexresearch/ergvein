@@ -13,6 +13,9 @@ module Ergvein.Wallet.Settings (
   , ExplorerUrls(..)
   , defaultExplorerUrl
   , btcDefaultExplorerUrls
+  , SocksConf(..)
+  , torSocks
+  , toSocksProxy
   ) where
 
 import Control.Lens hiding ((.=))
@@ -24,6 +27,9 @@ import Data.Time (NominalDiffTime)
 import Data.Yaml (encodeFile)
 import Network.Socket
 import System.Directory
+import Data.Word
+import Data.IP (IP, toSockAddr)
+import Text.Read (readMaybe)
 
 import Ergvein.Aeson
 import Ergvein.Lens
@@ -33,6 +39,7 @@ import Ergvein.Wallet.Yaml(readYamlEither')
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
+import qualified Network.Socks5 as S5
 
 #ifdef ANDROID
 import Android.HaskellActivity
@@ -65,6 +72,37 @@ defaultExplorerUrl = M.fromList $ btcDefaultUrls <> ergoDefaultUrls
 btcDefaultExplorerUrls :: ExplorerUrls
 btcDefaultExplorerUrls = ExplorerUrls "https://www.blockchain.com/btc-testnet" "https://www.blockchain.com/btc"
 
+data SocksConf = SocksConf {
+  socksConfAddr :: !Text
+, socksConfPort :: !Int
+} deriving (Eq, Show)
+
+instance ToJSON SocksConf where
+  toJSON SocksConf{..} = object [
+      "address" .= socksConfAddr
+    , "port" .= socksConfPort
+    ]
+
+instance FromJSON SocksConf where
+  parseJSON = withObject "SocksConf" $ \o -> do
+    socksConfAddr <- o .: "address"
+    socksConfPort <- o .: "port"
+    pure SocksConf{..}
+
+-- | Default tor socks proxy
+torSocks :: SocksConf
+torSocks = SocksConf "127.0.0.1" 9050
+
+toSocksProxy :: SocksConf -> Maybe S5.SocksConf
+toSocksProxy (SocksConf a p) = do
+  addr <- makeSockAddr a p
+  pure $ S5.defaultSocksConfFromSockAddr addr
+
+makeSockAddr :: Text -> Int -> Maybe SockAddr
+makeSockAddr t pnum = do
+  ip :: IP <- readMaybe . T.unpack $ t
+  pure $ toSockAddr (ip, fromIntegral pnum)
+
 data Settings = Settings {
   settingsLang              :: Language
 , settingsStoreDir          :: Text
@@ -80,6 +118,7 @@ data Settings = Settings {
 , settingsPortfolio         :: Bool
 , settingsFiatCurr          :: Fiat
 , settingsDns               :: [HostName]
+, settingsSocksProxy        :: Maybe SocksConf
 } deriving (Eq, Show)
 
 
@@ -109,6 +148,7 @@ instance FromJSON Settings where
     settingsPortfolio         <- o .:? "portfolio" .!= False
     settingsFiatCurr          <- o .:? "fiatCurr"  .!= USD
     mdns                      <- o .:? "dns"
+    settingsSocksProxy        <- o .:? "socksProxy"
     let settingsDns = case fromMaybe [] mdns of
           [] -> defaultDns
           dns -> dns
@@ -174,6 +214,7 @@ defaultSettings home =
       , settingsDeactivatedAddrs  = []
       , settingsArchivedAddrs     = []
       , settingsDns               = defaultDns
+      , settingsSocksProxy        = Nothing
       }
 
 -- | TODO: Implement some checks to see if the configPath folder is ok to write to

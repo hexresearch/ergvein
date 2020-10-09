@@ -24,7 +24,7 @@ connectionTimeout = 60
 reconnectTimeout :: NominalDiffTime
 reconnectTimeout = 5
 
-indexerNodeController :: MonadIndexClient t m => [NamedSockAddr] -> m ()
+indexerNodeController :: (MonadIndexClient t m, MonadHasSettings t m) => [NamedSockAddr] -> m ()
 indexerNodeController initAddrs = mdo
   nodeLog "Starting"
   sel <- getIndexReqSelector
