@@ -48,7 +48,8 @@ mnemonicExportResutlPage mnemonic pass = do
     encryptedMnemonic <- liftIO $ encryptMnemonic mnemonic pass
     h4 $ localizedText STPSMnemonicExportMsg
     base64D <- divClass "receive-qr" $ qrCodeWidgetWithData encryptedMnemonic
-    parClass "mnemonic-export-text" $ text encryptedMnemonic
+    let mnemonicClass = if T.null pass then "" else "word-break-all"
+    parClass mnemonicClass $ text encryptedMnemonic
     divClass "mnemonic-export-buttons-wrapper" $ do
       copyE <- copyBtn
       clipboardCopy (encryptedMnemonic <$ copyE)
