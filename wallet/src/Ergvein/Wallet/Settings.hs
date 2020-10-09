@@ -14,7 +14,9 @@ module Ergvein.Wallet.Settings (
   , defaultExplorerUrl
   , btcDefaultExplorerUrls
   , defaultDns
+  -- * Helpers
   , makeSockAddr
+  , parseIP
   ) where
 
 import Control.Lens hiding ((.=))
@@ -73,8 +75,12 @@ btcDefaultExplorerUrls = ExplorerUrls "https://www.blockchain.com/btc-testnet" "
 -- | Parsing IPv4 and IPv6 addresses and makes socket address from them
 makeSockAddr :: Text -> Int -> Maybe SockAddr
 makeSockAddr t pnum = do
-  ip :: IP <- readMaybe . T.unpack $ t
+  ip <- parseIP t
   pure $ toSockAddr (ip, fromIntegral pnum)
+
+-- | Parsing IPv4 and IPv6 addresses
+parseIP :: Text -> Maybe IP
+parseIP = readMaybe . T.unpack
 
 data Settings = Settings {
   settingsLang              :: Language

@@ -130,11 +130,7 @@ validateDNSIp txtE = do
     _ -> pure ()
   pure $ fmapMaybe id murlE
   where
-    murlE = ffor txtE $ \t -> let
-      val :: [Maybe Word8] = fmap (readMaybe . T.unpack) $ T.splitOn "." t
-      in case val of
-        (Just a):(Just b):(Just c):(Just d):[] -> Just $ T.unpack t
-        _ -> Nothing
+    murlE = ffor txtE $ \t -> T.unpack t <$ parseIP t
 
 languagePageUnauth :: MonadFrontBase t m => m ()
 languagePageUnauth = wrapperSimple True languagePageWidget
