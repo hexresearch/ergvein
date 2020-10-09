@@ -7,11 +7,15 @@ import Control.Concurrent
 import Data.IORef
 
 data RunCallbacks = RunCallbacks {
-  runBackCallback :: !(IORef (IO ()))
-, runUiCallbacks  :: !(Chan (IO ()))
+  runPauseCallback  :: !(IORef (IO ()))
+, runResumeCallback :: !(IORef (IO ()))
+, runBackCallback   :: !(IORef (IO ()))
+, runUiCallbacks    :: !(Chan (IO ()))
 }
 
 noOpRunCallbacks :: IO RunCallbacks
 noOpRunCallbacks = RunCallbacks
   <$> newIORef (pure ())
+  <*> newIORef (pure ())
+  <*> newIORef (pure ())
   <*> newChan

@@ -33,6 +33,8 @@ import qualified Data.Set as S
 
 data UnauthEnv t = UnauthEnv {
   unauth'settings        :: !(ExternalRef t Settings)
+, unauth'pauseEF         :: !(Event t (), IO ())
+, unauth'resumeEF        :: !(Event t (), IO ())
 , unauth'backEF          :: !(Event t (), IO ())
 , unauth'loading         :: !(Event t (Bool, Text), (Bool, Text) -> IO ())
 , unauth'langRef         :: !(ExternalRef t Language)
@@ -84,6 +86,10 @@ instance MonadBaseConstr t m => MonadLocalized t (UnauthM t m) where
 instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives, HasVersion) => MonadFrontBase t (UnauthM t m) where
   getLoadingWidgetTF = asks unauth'loading
   {-# INLINE getLoadingWidgetTF #-}
+  getPauseEventFire = asks unauth'pauseEF
+  {-# INLINE getPauseEventFire #-}
+  getResumeEventFire = asks unauth'resumeEF
+  {-# INLINE getResumeEventFire #-}
   getBackEventFire = asks unauth'backEF
   {-# INLINE getBackEventFire #-}
   getUiChan = asks unauth'uiChan
@@ -146,6 +152,8 @@ newEnv :: MonadBaseConstr t m
   -> m (UnauthEnv t)
 newEnv settings uiChan = do
   settingsRef <- newExternalRef settings
+  (pauseE, pauseFire) <- newTriggerEvent
+  (resumeE, resumeFire) <- newTriggerEvent
   (backE, backFire) <- newTriggerEvent
   loadingEF <- newTriggerEvent
   alertsEF <- newTriggerEvent
@@ -174,6 +182,8 @@ newEnv settings uiChan = do
   indexEF <- newTriggerEvent
   let env = UnauthEnv {
           unauth'settings         = settingsRef
+        , unauth'pauseEF          = (pauseE, pauseFire ())
+        , unauth'resumeEF         = (resumeE, resumeFire ())
         , unauth'backEF           = (backE, backFire ())
         , unauth'loading          = loadingEF
         , unauth'langRef          = langRef
@@ -204,6 +214,8 @@ runEnv :: (MonadBaseConstr t m, PlatformNatives, HasVersion)
   => RunCallbacks -> UnauthEnv t -> ReaderT (UnauthEnv t) (RetractT t m) a -> m a
 runEnv cbs e ma = do
   liftIO $ writeIORef (runBackCallback cbs) $ (snd . unauth'backEF) e
+  liftIO $ writeIORef (runPauseCallback cbs) $ (snd . unauth'pauseEF) e
+  liftIO $ writeIORef (runResumeCallback cbs) $ (snd . unauth'resumeEF) e
   re <- newRetractEnv
   runRetractT (runReaderT ma' e) re
   where

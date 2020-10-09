@@ -44,6 +44,10 @@ type MonadFrontConstr t m = (PlatformNatives
 class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   -- | Get loading widget trigger and fire. This is internal stuff
   getLoadingWidgetTF :: m (Event t (Bool, Text), (Bool, Text) -> IO ())
+  -- | Application pause event. Informs that the application goes into the background.
+  getPauseEventFire :: m (Event t (), IO ())
+  -- | Application resume event. Informs that the application goes into the foreground.
+  getResumeEventFire :: m (Event t (), IO ())
   -- | System back button event
   getBackEventFire :: m (Event t (), IO ())
   -- | Internal method of getting channel where you can post actions that must be
