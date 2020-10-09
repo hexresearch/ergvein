@@ -1,6 +1,9 @@
 footer .container {
   padding-bottom: 0 !important;
 }
+footer {
+  padding-bottom: 10px;
+}
 
 .body-logo-img{
   max-height: 360px;
@@ -107,4 +110,18 @@ th {
 }
 .coinjoin-img {
   width: 50%;
+}
+
+.google-play-img {
+  max-width: 220px;
+  padding-top: 10px;
+}
+.android-downloads {
+  margin-top: 30px;
+}
+.download-apk-btn {
+  margin-left: 15px;
+}
+.desktop-downloads {
+  margin-top: 50px;
 }
