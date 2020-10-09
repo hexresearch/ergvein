@@ -44,7 +44,7 @@ import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Functor.Misc (Const2(..))
 import Data.Map (Map)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, catMaybes)
 import Data.Text (Text)
 import Network.Socket (SockAddr)
 import Language.Javascript.JSaddle
@@ -67,6 +67,7 @@ import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Node.Prim
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Sync.Status
+import Ergvein.Wallet.Util
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -258,3 +259,13 @@ setFiltersSync :: MonadFrontAuth t m => Currency -> Bool -> m ()
 setFiltersSync c v = do
   r <- getFiltersSyncRef
   modifyExternalRef r $ (, ()) . M.insert c v
+
+-- | Designed to be used inside a widgetHold, samples dynamics
+getOpenSyncedConns :: MonadFront t m => Currency -> m [IndexerConnection t]
+getOpenSyncedConns cur = do
+  conns <- readExternalRef =<< getActiveConnsRef
+  heights <- readExternalRef =<< getHeightRef
+  let mh = M.lookup cur heights
+  fmap catMaybes $ flip traverse (M.elems conns) $ \con -> do
+    isUp <- sampleDyn $ indexConIsUp con
+    pure $ if isUp then Just con else Nothing

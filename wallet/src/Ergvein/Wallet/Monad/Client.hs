@@ -37,6 +37,8 @@ import Reflex.ExternalRef
 
 import Ergvein.Index.Protocol.Types (Message(..))
 import Ergvein.Text
+import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Settings
@@ -53,6 +55,7 @@ data IndexerConnection t = IndexerConnection {
 , indexConOpensE :: !(Event t ())
 , indexConIsUp :: !(Dynamic t Bool)
 , indexConRespE :: !(Event t Message)
+, indexerConHeight :: !(Dynamic t (Map Currency BlockHeight))
 }
 
 data IndexerMsg = IndexerClose | IndexerRestart | IndexerMsg Message

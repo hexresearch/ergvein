@@ -26,11 +26,14 @@ import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node.Socket
+import Ergvein.Wallet.Util
 
 import qualified Data.Attoparsec.ByteString as AP
-import qualified Data.ByteString as B
+import qualified Data.ByteString            as B
 import qualified Data.ByteString.Builder    as BB
 import qualified Data.ByteString.Lazy       as BL
+import qualified Data.Map.Strict            as M
+import qualified Data.Vector.Unboxed        as VU
 
 initIndexerConnection :: MonadBaseConstr t m => NamedSockAddr -> Event t IndexerMsg ->  m (IndexerConnection t)
 initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
@@ -70,6 +73,17 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
         _ -> Nothing
   shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
   let openE = fmapMaybe (\b -> if b then Just () else Nothing) $ updated shakeD
+
+  -- Track filters height
+
+  let setHE = fforMaybe respE $ \case
+        MVersion Version{..} -> Just $ M.fromList $ ffor (VU.toList versionScanBlocks) $
+          \ScanBlock{..} -> (currencyCodeToCurrency scanBlockCurrency, scanBlockScanHeight)
+        MFiltersEvent FilterEvent{..} -> let k = currencyCodeToCurrency filterEventCurrency
+          in Just $ M.singleton k filterEventHeight
+        _ -> Nothing
+  heightsD <- foldDyn M.union M.empty setHE
+
   pure $ IndexerConnection {
       indexConAddr = sa
     , indexConName = sname
@@ -77,6 +91,7 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
     , indexConOpensE = openE
     , indexConIsUp = shakeD
     , indexConRespE = respE
+    , indexerConHeight = heightsD
     }
   where
     serializeMessage :: Message -> B.ByteString
