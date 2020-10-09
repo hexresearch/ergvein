@@ -50,7 +50,6 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
       fh' <- getFiltersHeight BTC
       let fh = max fh' sh
       logWrite $ "Current height is " <> showt ch <> ", and filters are for height " <> showt fh
-      postSync BTC ch fh
       if ch > fh then do
         let n = 500
         logWrite $ "Getting next filters ..." <> showt n
@@ -66,21 +65,6 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
         de <- delay dt buildE
         upde <- updated <$> getCurrentHeight BTC
         pure ((), go <$ leftmost [de, void upde])
-
-postSync :: MonadFront t m => Currency -> BlockHeight -> BlockHeight -> m ()
-postSync cur ch fh = do
-  syncD <- getSyncProgress
-  sp <- sample . current $ syncD
-  let shouldUpdate = case sp of
-        Synced -> True
-        SyncMeta{..} -> syncMetaStage == SyncFilters
-  when shouldUpdate $ do
-    buildE <- getPostBuild
-    let val = if fh >= ch
-          then Synced
-          else SyncMeta cur SyncFilters (fromIntegral fh) (fromIntegral ch)
-    setFiltersSync cur $ val == Synced
-    setSyncProgress $ val <$ buildE
 
 getFilters :: MonadFront t m => Currency -> Event t (BlockHeight, Int) -> m (Event t [(BlockHash, ByteString)])
 getFilters cur e = do

@@ -21,11 +21,9 @@ module Ergvein.Wallet.Monad.Front(
   , postNodeMessage
   , broadcastNodeMessage
   , requestManyFromNode
-  , setCurrentHeight
   , setFiltersSync
   , setSyncProgress
   , updateActiveCurs
-  , setCatchUpHeight
   -- * Reexports
   , Text
   , MonadJSM
@@ -88,7 +86,7 @@ type MonadFront t m = (
 
 class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   -- | Internal method.
-  getSyncProgressRef :: m (ExternalRef t SyncProgress)
+  getSyncProgressRef :: m (ExternalRef t (Map Currency SyncStage))
   -- | Internal method to get reference with known heights per currency.
   getHeightRef :: m (ExternalRef t (Map Currency Integer))
   -- | Internal method to get flag if we has fully synced filters at the moment.
@@ -105,9 +103,6 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   getNodeReqFire :: m (Map Currency (Map SockAddr NodeMessage) -> IO ())
   -- | Get authed info
   getAuthInfoRef :: m (ExternalRef t AuthInfo)
-  -- | Special height value. Used during catchup
-  getCatchUpHeightRef :: m (ExternalRef t (Map Currency Integer))
-
 
 -- | Get connections map
 getNodeConnectionsD :: MonadFrontAuth t m => m (Dynamic t (ConnMap t))
@@ -162,21 +157,18 @@ requestManyFromNode reqE = do
 {-# INLINE requestManyFromNode #-}
 
 -- | Get global sync process value
-getSyncProgress :: MonadFrontAuth t m => m (Dynamic t SyncProgress)
-getSyncProgress = externalRefDynamic =<< getSyncProgressRef
+getSyncProgress :: MonadFrontAuth t m => Currency -> m (Dynamic t SyncStage)
+getSyncProgress cur = do
+  syncMapD <- externalRefDynamic =<< getSyncProgressRef
+  pure $ fmap (fromMaybe NotActive . M.lookup cur) syncMapD
 {-# INLINE getSyncProgress #-}
 
 -- | Set global sync process value each time the event is fired
-setSyncProgress :: MonadFrontAuth t m => Event t SyncProgress -> m ()
+setSyncProgress :: MonadFrontAuth t m => Event t (SyncProgress) -> m ()
 setSyncProgress spE = do
   syncProgRef <- getSyncProgressRef
-  syncRef <- getFiltersSyncRef
-  performEvent_ $ ffor spE $ \sp -> do
-    writeExternalRef syncProgRef sp
-    case sp of
-      SyncMeta cur SyncFilters a t -> when (a >= t && t /= 0) $
-        modifyExternalRef syncRef $ \m -> (,()) $ M.insert cur True m
-      _ -> pure ()
+  performEvent_ $ ffor spE $ \(SyncProgress cur sp) -> do
+    modifyExternalRef_ syncProgRef $ M.insert cur sp
 {-# INLINE setSyncProgress #-}
 
 -- | Get auth info. Not a Maybe since this is authorized context
@@ -228,27 +220,6 @@ getCurrentHeight c = do
   pure $ ffor psD $ \ps -> fromIntegral $ fromMaybe 0 $ join $ ps ^. pubStorage'currencyPubStorages . at c
     & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'height
 
--- | Update current height of longest chain for given currency.
--- DEPRECATED! getCurrentHeight reads directly from pubStorage
-setCurrentHeight :: MonadFront t m => Currency -> Event t Integer -> m (Event t ())
-setCurrentHeight c e = do
-  r <- getHeightRef
-  e' <- fmap (fmapMaybe id) $ performFork $ ffor e $ \h -> do
-    h0 <- fromMaybe 0 . M.lookup c <$> readExternalRef r
-    pure $ if h > h0 then Just h else Nothing
-
-  restoredD <- fmap _pubStorage'restoring <$> getPubStorageD
-  setLastSeenHeight "setCurrentHeight" c $ fromIntegral <$> e'
-  mE <- performFork $ ffor e' $ \h -> do
-    h0 <- fromMaybe 0 . M.lookup c <$> readExternalRef r
-    restored <- sample . current $ restoredD
-    if h > h0
-      then do
-        modifyExternalRef r ((, ()) . M.insert c h)
-        pure $ if (h0 == 0 && not restored) then Just (c, fromIntegral (h-1)) else Nothing
-      else pure Nothing
-  writeWalletsScannedHeight "setCurrentHeight" $ fmapMaybe id mE
-
 -- | Get current value that tells you whether filters are fully in sync now or not
 getFiltersSync :: MonadFrontAuth t m => Currency -> m (Dynamic t Bool)
 getFiltersSync c = do
@@ -260,9 +231,3 @@ setFiltersSync :: MonadFrontAuth t m => Currency -> Bool -> m ()
 setFiltersSync c v = do
   r <- getFiltersSyncRef
   modifyExternalRef r $ (, ()) . M.insert c v
-
--- | Set the value for catchup heights
-setCatchUpHeight :: MonadFrontAuth t m => Currency -> Event t Integer -> m ()
-setCatchUpHeight cur hE = do
-  r <- getCatchUpHeightRef
-  performFork_ $ ffor hE $ \h -> modifyExternalRef_ r (M.insert cur h)
