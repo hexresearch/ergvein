@@ -16,6 +16,8 @@ module Ergvein.Wallet.Settings (
   , SocksConf(..)
   , torSocks
   , toSocksProxy
+  -- * Helpers
+  , makeSockAddr
   ) where
 
 import Control.Lens hiding ((.=))
@@ -98,6 +100,7 @@ toSocksProxy (SocksConf a p) = do
   addr <- makeSockAddr a p
   pure $ S5.defaultSocksConfFromSockAddr addr
 
+-- | Parsing IPv4 and IPv6 addresses and makes socket address from them
 makeSockAddr :: Text -> Int -> Maybe SockAddr
 makeSockAddr t pnum = do
   ip :: IP <- readMaybe . T.unpack $ t
