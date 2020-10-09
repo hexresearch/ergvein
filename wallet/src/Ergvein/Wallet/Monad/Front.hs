@@ -167,13 +167,8 @@ getSyncProgress cur = do
 setSyncProgress :: MonadFrontAuth t m => Event t (SyncProgress) -> m ()
 setSyncProgress spE = do
   syncProgRef <- getSyncProgressRef
-  syncRef <- getFiltersSyncRef
   performEvent_ $ ffor spE $ \(SyncProgress cur sp) -> do
     modifyExternalRef_ syncProgRef $ M.insert cur sp
-    case sp of
-      SyncFilters a t -> when (a >= t && t /= 0) $
-        modifyExternalRef syncRef $ \m -> (,()) $ M.insert cur True m
-      _ -> pure ()
 {-# INLINE setSyncProgress #-}
 
 -- | Get auth info. Not a Maybe since this is authorized context

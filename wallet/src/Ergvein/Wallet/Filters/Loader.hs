@@ -66,22 +66,6 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
         upde <- updated <$> getCurrentHeight BTC
         pure ((), go <$ leftmost [de, void upde])
 
-postSync :: MonadFront t m => Currency -> BlockHeight -> BlockHeight -> m ()
-postSync cur ch fh = do
-  syncD <- getSyncProgress cur
-  sp <- sample . current $ syncD
-  let shouldUpdate = case sp of
-        Synced -> True
-        SyncFilters _ _ -> True
-        _ -> False
-  when shouldUpdate $ do
-    buildE <- getPostBuild
-    let val = if fh >= ch
-          then Synced
-          else SyncFilters (fromIntegral fh) (fromIntegral ch)
-    setFiltersSync cur $ val == Synced
-    setSyncProgress $ (SyncProgress cur val) <$ buildE
-
 getFilters :: MonadFront t m => Currency -> Event t (BlockHeight, Int) -> m (Event t [(BlockHash, ByteString)])
 getFilters cur e = do
   respE <- requestRandomIndexer $ ffor e $ \(h, n) ->
