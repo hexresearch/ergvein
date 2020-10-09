@@ -101,8 +101,8 @@ syncProgressBehind v = case v of
 
 instance LocalizedPrint SyncProgress where
   localizedShow l SyncMeta{syncMetaStage = syncMetaStage@SyncFilters, ..} = case l of
-    English -> "Sync " <> localizedShow l syncMetaStage <> " of " <> showt syncMetaCur <> showt (percent syncMetaAmount syncMetaTotal) <> "%"
-    Russian -> "Синхр " <> localizedShow l syncMetaStage <> " " <> showt syncMetaCur <> showt (percent syncMetaAmount syncMetaTotal) <> "%"
+    English -> "Sync " <> localizedShow l syncMetaStage <> " of " <> showt syncMetaCur <> " " <> showt (percent syncMetaAmount syncMetaTotal) <> "%"
+    Russian -> "Синхр " <> localizedShow l syncMetaStage <> " " <> showt syncMetaCur <> " " <> showt (percent syncMetaAmount syncMetaTotal) <> "%"
 
   localizedShow l SyncMeta{syncMetaStage = syncMetaStage@(SyncAddressInternal _), ..} = case l of
     English -> "Sync " <> showt syncMetaCur <> " change address " <> localizedShow l syncMetaStage <> " " <> showt (percent syncMetaAmount syncMetaTotal) <> "%"
