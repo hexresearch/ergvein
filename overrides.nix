@@ -80,6 +80,7 @@ in (self: super: let
     hp2any-core = self.callPackage ./derivations/hp2any-core.nix {};
     hp2any-graph = self.callPackage ./derivations/hp2any-graph.nix {};
     immortal-worker = self.callPackage ./derivations/immortal-worker.nix {};
+    iproute = self.callPackage ./derivations/iproute.nix {};
     lmdb = self.callPackage ./derivations/haskell-lmdb.nix {};
     parseargs = lib.dontCheck super.parseargs;
     persistent-pagination = self.callPackage ./derivations/persistent-pagination.nix {};

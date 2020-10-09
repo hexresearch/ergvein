@@ -14,6 +14,7 @@ module Ergvein.Wallet.Settings (
   , defaultExplorerUrl
   , btcDefaultExplorerUrls
   , defaultDns
+  , makeSockAddr
   ) where
 
 import Control.Lens hiding ((.=))
@@ -25,6 +26,8 @@ import Data.Time (NominalDiffTime)
 import Data.Yaml (encodeFile)
 import Network.Socket
 import System.Directory
+import Data.IP (IP, toSockAddr)
+import Text.Read (readMaybe)
 
 import Ergvein.Aeson
 import Ergvein.Lens
@@ -66,6 +69,12 @@ defaultExplorerUrl = M.fromList $ btcDefaultUrls <> ergoDefaultUrls
 
 btcDefaultExplorerUrls :: ExplorerUrls
 btcDefaultExplorerUrls = ExplorerUrls "https://www.blockchain.com/btc-testnet" "https://www.blockchain.com/btc"
+
+-- | Parsing IPv4 and IPv6 addresses and makes socket address from them
+makeSockAddr :: Text -> Int -> Maybe SockAddr
+makeSockAddr t pnum = do
+  ip :: IP <- readMaybe . T.unpack $ t
+  pure $ toSockAddr (ip, fromIntegral pnum)
 
 data Settings = Settings {
   settingsLang              :: Language
