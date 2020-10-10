@@ -22,7 +22,7 @@ import qualified Ergvein.Types.Currency as ETC
 import Ergvein.Index.Protocol.Types
 
 -- | Same as 'widgetHold' but for dynamic
-widgetHoldDyn :: forall t m a . (DomBuilder t m, MonadHold t m) => Dynamic t (m a) -> m (Dynamic t a)
+widgetHoldDyn :: forall t m a . (Reflex t, Adjustable t m, MonadHold t m) => Dynamic t (m a) -> m (Dynamic t a)
 widgetHoldDyn maD = do
   ma <- sample . current $ maD
   widgetHold ma $ updated maD
