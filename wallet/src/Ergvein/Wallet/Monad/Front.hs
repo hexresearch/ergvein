@@ -21,7 +21,6 @@ module Ergvein.Wallet.Monad.Front(
   , postNodeMessage
   , broadcastNodeMessage
   , requestManyFromNode
-  , setCurrentHeight
   , setFiltersSync
   , setSyncProgress
   , updateActiveCurs
@@ -169,13 +168,8 @@ getSyncProgress cur = do
 setSyncProgress :: MonadFrontAuth t m => Event t (SyncProgress) -> m ()
 setSyncProgress spE = do
   syncProgRef <- getSyncProgressRef
-  syncRef <- getFiltersSyncRef
   performEvent_ $ ffor spE $ \(SyncProgress cur sp) -> do
     modifyExternalRef_ syncProgRef $ M.insert cur sp
-    case sp of
-      SyncFilters a t -> when (a >= t && t /= 0) $
-        modifyExternalRef syncRef $ \m -> (,()) $ M.insert cur True m
-      _ -> pure ()
 {-# INLINE setSyncProgress #-}
 
 -- | Get auth info. Not a Maybe since this is authorized context
@@ -226,27 +220,6 @@ getCurrentHeight c = do
   psD <- getPubStorageD
   pure $ ffor psD $ \ps -> fromIntegral $ fromMaybe 0 $ join $ ps ^. pubStorage'currencyPubStorages . at c
     & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'height
-
--- | Update current height of longest chain for given currency.
--- DEPRECATED! getCurrentHeight reads directly from pubStorage
-setCurrentHeight :: MonadFront t m => Currency -> Event t Integer -> m (Event t ())
-setCurrentHeight c e = do
-  r <- getHeightRef
-  e' <- fmap (fmapMaybe id) $ performFork $ ffor e $ \h -> do
-    h0 <- fromMaybe 0 . M.lookup c <$> readExternalRef r
-    pure $ if h > h0 then Just h else Nothing
-
-  restoredD <- fmap _pubStorage'restoring <$> getPubStorageD
-  setLastSeenHeight "setCurrentHeight" c $ fromIntegral <$> e'
-  mE <- performFork $ ffor e' $ \h -> do
-    h0 <- fromMaybe 0 . M.lookup c <$> readExternalRef r
-    restored <- sample . current $ restoredD
-    if h > h0
-      then do
-        modifyExternalRef r ((, ()) . M.insert c h)
-        pure $ if (h0 == 0 && not restored) then Just (c, fromIntegral (h-1)) else Nothing
-      else pure Nothing
-  writeWalletsScannedHeight "setCurrentHeight" $ fmapMaybe id mE
 
 -- | Get current value that tells you whether filters are fully in sync now or not
 getFiltersSync :: MonadFrontAuth t m => Currency -> m (Dynamic t Bool)

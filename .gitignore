@@ -4,6 +4,7 @@ dist
 result
 android-result
 android-release
+android-release-apk
 .stack-work
 cabal.project.freeze
 stack.yaml.lock

@@ -57,9 +57,25 @@ scannerFor cur = case cur of
 -- | Widget that continuously scans new filters agains all known public keys and
 -- updates transactions that are found. Specific for Bitcoin.
 scannerBtc :: forall t m . MonadFront t m => m ()
-scannerBtc = void $ workflow waiting
--- scannerBtc = void $ workflow dbgStage
+scannerBtc = void $ workflow initial
   where
+    initial = Workflow $ do
+      logWrite "Initializing scanner"
+      mscD <- getWalletsScannedHeightD_ BTC
+      curhE <- updatedWithInit =<< getCurrentHeight BTC
+      let heightE = fforMaybe curhE $ \curh ->
+            if curh == 0 then Nothing else Just $ fromIntegral curh
+      performEvent_ $ ffor heightE $ \h -> do
+        logWrite $ "Height resolved at " <> showt h
+      writeWalletsScannedHeight "scannerInitial" $ flip push heightE $ \h -> do
+        msc <- sample . current $ mscD
+        pure $ case msc of
+          Nothing -> Just (BTC, h)
+          Just _ -> Nothing
+      nextE <- delay 0.1 heightE
+      pure ((), waiting <$ nextE)
+      -- pure ((), dbgStage <$ nextE)
+
     -- dbgStage = Workflow $ do
     --   buildE <- delay 0.1 =<< getPostBuild
     --   rsD <- fmap _pubStorage'restoring <$> getPubStorageD

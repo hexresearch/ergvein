@@ -53,6 +53,8 @@ import qualified Data.Vector as V
 data Env t = Env {
   -- Unauth context's fields
   env'settings        :: !(ExternalRef t Settings)
+, env'pauseEF         :: !(Event t (), IO ())
+, env'resumeEF        :: !(Event t (), IO ())
 , env'backEF          :: !(Event t (), IO ())
 , env'loading         :: !(Event t (Bool, Text), (Bool, Text) -> IO ())
 , env'langRef         :: !(ExternalRef t Language)
@@ -123,6 +125,10 @@ instance MonadBaseConstr t m => MonadLocalized t (ErgveinM t m) where
 instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives, HasVersion) => MonadFrontBase t (ErgveinM t m) where
   getLoadingWidgetTF = asks env'loading
   {-# INLINE getLoadingWidgetTF #-}
+  getPauseEventFire = asks env'pauseEF
+  {-# INLINE getPauseEventFire #-}
+  getResumeEventFire = asks env'resumeEF
+  {-# INLINE getResumeEventFire #-}
   getBackEventFire = asks env'backEF
   {-# INLINE getBackEventFire #-}
   getUiChan = asks env'uiChan
@@ -267,6 +273,8 @@ liftAuth ma0 ma = mdo
   (logoutE, logoutFire) <- newTriggerEvent
   let runAuthed auth = do
         -- Get refs from Unauth context
+        pauseEF         <- getPauseEventFire
+        resumeEF        <- getResumeEventFire
         backEF          <- getBackEventFire
         loading         <- getLoadingWidgetTF
         langRef         <- getLangRef
@@ -313,6 +321,8 @@ liftAuth ma0 ma = mdo
         storeMvar       <- liftIO $ newMVar ()
         let env = Env {
                 env'settings = settingsRef
+              , env'pauseEF = pauseEF
+              , env'resumeEF = resumeEF
               , env'backEF = backEF
               , env'loading = loading
               , env'langRef = langRef

@@ -15,6 +15,10 @@ main = hakyll $ do
         route   idRoute
         compile compressCssCompiler
 
+    match "css/highlight/*" $ do
+        route   idRoute
+        compile compressCssCompiler
+
     match "js/*" $ do
         route   idRoute
         compile copyFileCompiler
@@ -31,6 +35,17 @@ main = hakyll $ do
               defaultContext
         makeItem ""
             >>= loadAndApplyTemplate "templates/docs.html" docsCtx
+            >>= loadAndApplyTemplate "templates/default.html" docsCtx
+            >>= relativizeUrls
+
+    create ["download.html"] $ do
+      route idRoute
+      compile $ do
+        let docsCtx =
+              constField "downpage" "" `mappend`
+              defaultContext
+        makeItem ""
+            >>= loadAndApplyTemplate "templates/download.html" docsCtx
             >>= loadAndApplyTemplate "templates/default.html" docsCtx
             >>= relativizeUrls
 

@@ -60,7 +60,8 @@ dnsPageWidget = do
   h3 $ localizedText STPSButDns
   setsD <- getSettingsD
   actE <- divClass "p-1 fit-content ml-a mr-a" $ do
-    editD <- widgetHoldDyn $ ffor setsD $ \s ->
+    editD <- widgetHoldDyn $ ffor setsD $ \s -> do
+      when (S.null $ settingsDns s) $ h4 $ localizedText NSSResolveConfDefault
       traverse dnsWidget $ S.toList $ settingsDns s
     addE <- addDnsWidget
     restoreE <- buttonClass "button button-outline ml-a mr-a w-100" NSSRestoreUrls
@@ -130,11 +131,7 @@ validateDNSIp txtE = do
     _ -> pure ()
   pure $ fmapMaybe id murlE
   where
-    murlE = ffor txtE $ \t -> let
-      val :: [Maybe Word8] = fmap (readMaybe . T.unpack) $ T.splitOn "." t
-      in case val of
-        (Just a):(Just b):(Just c):(Just d):[] -> Just $ T.unpack t
-        _ -> Nothing
+    murlE = ffor txtE $ \t -> T.unpack t <$ parseIP t
 
 languagePageUnauth :: MonadFrontBase t m => m ()
 languagePageUnauth = wrapperSimple True languagePageWidget

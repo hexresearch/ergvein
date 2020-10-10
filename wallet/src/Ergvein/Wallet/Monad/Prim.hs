@@ -25,7 +25,7 @@ import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Control.Monad.Reader
 import Control.Monad.Ref
-import Data.Map.Strict
+import Data.Map.Strict (Map)
 import Data.Text (Text)
 import Data.Time(UTCTime, NominalDiffTime)
 import Foreign.JavaScript.TH (WithJSContextSingleton)
@@ -87,6 +87,10 @@ class MonadBaseConstr t m => MonadHasSettings t m where
   -- | Get settings ref
   getSettingsRef :: m (ExternalRef t Settings)
 
+instance MonadBaseConstr t m => MonadHasSettings t (ReaderT (ExternalRef t Settings) m) where
+  getSettingsRef = ask
+  {-# INLINE getSettingsRef #-}
+
 -- | Get current settings
 getSettings :: MonadHasSettings t m => m Settings
 getSettings = readExternalRef =<< getSettingsRef
@@ -122,7 +126,9 @@ mkResolvSeed :: MonadHasSettings t m => m ResolvSeed
 mkResolvSeed = do
   dns <- getDnsList
   liftIO $ makeResolvSeed defaultResolvConf {
-      resolvInfo = RCHostNames dns
+      resolvInfo = if null dns
+        then resolvInfo defaultResolvConf -- resolve via "/etc/resolv.conf" by default
+        else RCHostNames dns
     , resolvConcurrent = True
     }
 {-# INLINE mkResolvSeed #-}
