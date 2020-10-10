@@ -13,11 +13,13 @@ module Ergvein.Wallet.Settings (
   , ExplorerUrls(..)
   , defaultExplorerUrl
   , btcDefaultExplorerUrls
+  , defaultDns
   , SocksConf(..)
   , torSocks
   , toSocksProxy
   -- * Helpers
   , makeSockAddr
+  , parseIP
   ) where
 
 import Control.Lens hiding ((.=))
@@ -37,11 +39,13 @@ import Ergvein.Aeson
 import Ergvein.Lens
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Yaml(readYamlEither')
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Network.Socks5 as S5
+import qualified Data.Set as S
 
 #ifdef ANDROID
 import Android.HaskellActivity
@@ -103,8 +107,12 @@ toSocksProxy (SocksConf a p) = do
 -- | Parsing IPv4 and IPv6 addresses and makes socket address from them
 makeSockAddr :: Text -> Int -> Maybe SockAddr
 makeSockAddr t pnum = do
-  ip :: IP <- readMaybe . T.unpack $ t
+  ip <- parseIP t
   pure $ toSockAddr (ip, fromIntegral pnum)
+
+-- | Parsing IPv4 and IPv6 addresses
+parseIP :: Text -> Maybe IP
+parseIP = readMaybe . T.unpack
 
 data Settings = Settings {
   settingsLang              :: Language
@@ -120,7 +128,7 @@ data Settings = Settings {
 , settingsExplorerUrl       :: M.Map Currency ExplorerUrls
 , settingsPortfolio         :: Bool
 , settingsFiatCurr          :: Fiat
-, settingsDns               :: [HostName]
+, settingsDns               :: S.Set HostName
 , settingsSocksProxy        :: Maybe SocksConf
 } deriving (Eq, Show)
 
@@ -154,7 +162,7 @@ instance FromJSON Settings where
     settingsSocksProxy        <- o .:? "socksProxy"
     let settingsDns = case fromMaybe [] mdns of
           [] -> defaultDns
-          dns -> dns
+          dns -> S.fromList dns
     pure Settings{..}
 
 instance ToJSON Settings where
@@ -195,8 +203,10 @@ defaultIndexerTimeout = 20
 defaultActUrlNum :: Int
 defaultActUrlNum = 10
 
-defaultDns :: [HostName]
-defaultDns = ["8.8.8.8","8.8.4.4", "1.1.1.1"]
+defaultDns :: S.Set HostName
+defaultDns = S.fromList $ if isAndroid
+  then ["8.8.8.8","8.8.4.4", "1.1.1.1"]
+  else [] -- use resolv.conf
 
 defaultSettings :: FilePath -> Settings
 defaultSettings home =

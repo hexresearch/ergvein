@@ -113,7 +113,7 @@ parametersPageWidget = mdo
 
 addUrlWidget :: forall t m . MonadFrontBase t m => Dynamic t Bool -> m (Event t NamedSockAddr)
 addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not b then pure never else do
-  murlE <- el "div" $ do
+  murlE <- divClass "mt-3" $ do
     textD <- fmap _inputElement_value $ inputElement $ def
       & inputElementConfig_elementConfig . elementConfig_initialAttributes .~ ("type" =: "text")
     goE <- outlineButton NSSAddUrl

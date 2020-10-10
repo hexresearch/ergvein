@@ -11,7 +11,7 @@ import Ergvein.Wallet.Localization.Initial
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.Password
-import Ergvein.Wallet.Page.Settings.Network
+import Ergvein.Wallet.Page.Settings.Unauth
 import Ergvein.Wallet.Page.Seed
 import Ergvein.Wallet.Storage.AuthInfo
 import Ergvein.Wallet.Storage.Util
@@ -23,7 +23,7 @@ import Ergvein.Wallet.Page.PatternKey
 import qualified Data.Map.Strict as M
 #endif
 
-data GoPage = GoSeed | GoRestore | GoNetwork
+data GoPage = GoSeed | GoRestore | GoSettings
 
 data GoRestoreMethodPage = GoRestoreMnemonic
 
@@ -39,14 +39,14 @@ noWalletsPage = wrapperSimple True $ divClass "initial-page-options" $ createRes
 
 createRestore :: MonadFrontBase t m => m ()
 createRestore = do
-  let items = [(GoSeed, IPSCreate), (GoRestore, IPSRestore), (GoNetwork, IPSNetwork)]
+  let items = [(GoSeed, IPSCreate), (GoRestore, IPSRestore), (GoSettings, IPSSettings)]
   goE <- fmap leftmost $ flip traverse items $ \(act, lbl) ->
     fmap (act <$) $ outlineButton lbl
   void $ nextWidget $ ffor goE $ \go -> Retractable {
       retractableNext = case go of
         GoSeed -> mnemonicPage
         GoRestore -> restoreFromMnemonicPage
-        GoNetwork -> networkSettingsPageUnauth
+        GoSettings -> settingsPageUnauth
     , retractablePrev = Just $ pure initialPage
     }
 
