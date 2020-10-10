@@ -76,6 +76,10 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
 
   -- Track filters height
 
+
+  performEvent $ ffor respE $ \case
+    MVersion v -> logWrite . showt $ v
+    _ -> pure ()
   let setHE = fforMaybe respE $ \case
         MVersion Version{..} -> Just $ M.fromList $ ffor (VU.toList versionScanBlocks) $
           \ScanBlock{..} -> (currencyCodeToCurrency scanBlockCurrency, scanBlockScanHeight)

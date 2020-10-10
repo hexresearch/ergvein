@@ -15,6 +15,7 @@ import Reflex.ExternalRef
 import Text.Read
 
 import Ergvein.Text
+import Ergvein.Types.Currency
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Indexer.Socket
@@ -166,7 +167,9 @@ renderActive nsa refrE mconn = mdo
       Nothing -> descrOption NSSOffline
       Just conn -> do
         latD <- indexerConnPingerWidget conn refrE
+        let heightD = fmap (M.lookup BTC) $ indexerConHeight conn
         descrOptionDyn $ NSSLatency <$> latD
+        descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> heightD
     pure tglE'
   void $ widgetHoldDyn $ ffor tglD $ \b -> if not b
     then pure ()

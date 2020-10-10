@@ -7,6 +7,7 @@ module Ergvein.Wallet.Localization.Settings(
 import Data.Time
 import Ergvein.Text
 import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Language
 
 data SettingsPageStrings =
@@ -92,6 +93,7 @@ instance LocalizedPrint UnitERGO where
 data NetSetupStrings
   = NSSTitle
   | NSSLatency NominalDiffTime
+  | NSSIndexerHeight BlockHeight
   | NSSOffline
   | NSSRefresh
   | NSSPing
@@ -116,12 +118,14 @@ data NetSetupStrings
   | NSSClose
   | NSSCopyURL
   | NSSFailedDns
+  | NSSNoHeight
 
 instance LocalizedPrint NetSetupStrings where
   localizedShow l v = case l of
     English -> case v of
       NSSTitle        -> "Network settings"
       NSSLatency lat  -> "Latency: " <> showt lat
+      NSSIndexerHeight h -> "Height: " <> showt h
       NSSOffline      -> "Offline"
       NSSRefresh      -> "Refresh"
       NSSPing         -> "Ping"
@@ -146,9 +150,11 @@ instance LocalizedPrint NetSetupStrings where
       NSSClose        -> "Close"
       NSSCopyURL      -> "Copy URL"
       NSSFailedDns    -> "Failed to parse DNS IP"
+      NSSNoHeight     -> "None"
     Russian -> case v of
       NSSTitle        -> "Настройки сети"
       NSSLatency lat  -> "Задержка: " <> showt lat
+      NSSIndexerHeight h -> "Высота: " <> showt h
       NSSOffline      -> "Оффлайн"
       NSSRefresh      -> "Обновить"
       NSSPing         -> "Запросить статус"
@@ -173,3 +179,4 @@ instance LocalizedPrint NetSetupStrings where
       NSSClose        -> "Закрыть"
       NSSCopyURL      -> "Copy URL"
       NSSFailedDns    -> "Некорректный IP DNS сервера"
+      NSSNoHeight     -> "Нет"
