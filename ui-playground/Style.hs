@@ -109,6 +109,7 @@ frontendCss r = do
   validateCss
   wrapperCss
   testnetDisclaimerCss
+  inplaceEditCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -969,3 +970,12 @@ testnetDisclaimerCss = do
     marginBottom $ rem 1
   ".testnet-disclaimer-text" ? do
     marginBottom $ rem 1
+
+inplaceEditCss :: Css
+inplaceEditCss = do
+  ".inplace-label-txt" ? do
+    textAlign $ alignSide sideLeft
+    wordBreak breakAll
+    paddingRight $ em 0.5
+  ".inplace-separator" ? do
+    border solid (px 1) black

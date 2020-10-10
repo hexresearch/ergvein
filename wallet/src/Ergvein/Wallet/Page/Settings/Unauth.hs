@@ -94,26 +94,17 @@ dnsPageWidget = do
       let tglE = leftmost [() <$ actE, tglE']
       pure actE
 
-dnsWidget :: MonadFrontBase t m => HostName -> m (Event t DnsAction)
+dnsWidget :: forall t m . MonadFrontBase t m => HostName -> m (Event t DnsAction)
 dnsWidget url = divClass "network-name mt-1 pl-2" $ do
-  let cfg = InplaceEditCfg {
-         _inplaceCanDelete   = pure True
-       , _inplaceShowClass   = "mt-a mb-a network-name-txt ml-a"
-       , _inplaceSeparator   = Just <$> "network-hr-sep-lb m-0 mt-1"
-       , _inplaceEditLabel   = NSSEdit
+  let cfg = (def :: InplaceEditCfg t (InplaceEditLbl NetSetupStrings)) {
+         _inplaceShowClass   = "mt-a mb-a network-name-txt ml-a"
        , _inplaceEditClass   = "button button-outline mt-a mb-a ml-1 mr-a"
-       , _inplaceBtnGroup    = ""
-       , _inplaceErrorClass  = "form-field-errors ta-c-imp"
-       , _inplaceSaveLabel   = NSSSave
-       , _inplaceDeleteLabel = NSSDelete
-       , _inplaceCancelLabel = NSSCancel
       }
-      parse t = maybe (Left NSSFailedDns) (const $ Right $ T.unpack t) . parseIP $ t
+      parse t = maybe (Left $ InplaceError NSSFailedDns) (const $ Right $ T.unpack t) . parseIP $ t
   actE <- inplaceEditField cfg T.pack parse (pure url)
   pure $ ffor actE $ \case
     EditDelete a -> DnsDel a
     EditUpdate a1 a2 -> DnsUpd a1 a2
-
 
 -- | Validate ip and show an error if something is not ok
 validateDNSIp :: MonadFrontBase t m => Event t Text -> m (Event t HostName)

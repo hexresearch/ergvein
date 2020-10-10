@@ -1,6 +1,7 @@
 module Ergvein.Wallet.Inplace(
     EditAction(..)
   , InplaceEditCfg(..)
+  , InplaceEditLbl(..)
   , inplaceEditField
   ) where
 
@@ -8,9 +9,11 @@ import Control.Monad.Fix
 import Data.Functor (void)
 import Data.Text (Text)
 import Reflex.Dom
+import Data.Default
 
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Localization.Inplace
 
 -- | Output action for 'inplaceEditField'
 data EditAction a =
@@ -30,6 +33,20 @@ data InplaceEditCfg t lbl = InplaceEditCfg {
 , _inplaceDeleteLabel :: lbl -- ^ Delete button label
 , _inplaceCancelLabel :: lbl -- ^ Cancel button label
 }
+
+instance (Reflex t, LocalizedPrint lbl) => Default (InplaceEditCfg t (InplaceEditLbl lbl)) where
+  def = InplaceEditCfg {
+      _inplaceCanDelete   = pure True
+    , _inplaceShowClass   = "mt-a mb-a inplace-label-txt ml-a"
+    , _inplaceSeparator   = Just <$> "inplace-separator m-0 mt-1"
+    , _inplaceEditLabel   = InplaceEdit
+    , _inplaceEditClass   = "button button-outline mt-a mb-a ml-1 mr-a"
+    , _inplaceBtnGroup    = ""
+    , _inplaceErrorClass  = "form-field-errors ta-c-imp"
+    , _inplaceSaveLabel   = InplaceSave
+    , _inplaceDeleteLabel = InplaceDelete
+    , _inplaceCancelLabel = InplaceCancel
+    }
 
 -- | Generic widget to edit a single field value inplace. Text label with a edit button aside.
 -- On edit label is replaced with text field and save/delete/cancel buttons below.
