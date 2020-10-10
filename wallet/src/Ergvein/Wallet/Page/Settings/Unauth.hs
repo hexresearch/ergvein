@@ -60,7 +60,8 @@ dnsPageWidget = do
   h3 $ localizedText STPSButDns
   setsD <- getSettingsD
   actE <- divClass "p-1 fit-content ml-a mr-a" $ do
-    editD <- widgetHoldDyn $ ffor setsD $ \s ->
+    editD <- widgetHoldDyn $ ffor setsD $ \s -> do
+      when (S.null $ settingsDns s) $ h4 $ localizedText NSSResolveConfDefault
       traverse dnsWidget $ S.toList $ settingsDns s
     addE <- addDnsWidget
     restoreE <- buttonClass "button button-outline ml-a mr-a w-100" NSSRestoreUrls

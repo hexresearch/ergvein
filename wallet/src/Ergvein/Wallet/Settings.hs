@@ -35,6 +35,7 @@ import Ergvein.Aeson
 import Ergvein.Lens
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Yaml(readYamlEither')
 
 import qualified Data.Map.Strict as M
@@ -170,7 +171,9 @@ defaultActUrlNum :: Int
 defaultActUrlNum = 10
 
 defaultDns :: S.Set HostName
-defaultDns = S.fromList ["8.8.8.8","8.8.4.4", "1.1.1.1"]
+defaultDns = S.fromList $ if isAndroid
+  then ["8.8.8.8","8.8.4.4", "1.1.1.1"]
+  else [] -- use resolv.conf
 
 defaultSettings :: FilePath -> Settings
 defaultSettings home =

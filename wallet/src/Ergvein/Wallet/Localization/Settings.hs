@@ -99,6 +99,7 @@ data NetSetupStrings
   | NSSDisable
   | NSSEnable
   | NSSForget
+  | NSSResolveConfDefault
   | NSSRestoreUrls
   | NSSRestoreDef
   | NSSReqTimeout
@@ -128,6 +129,7 @@ instance LocalizedPrint NetSetupStrings where
       NSSEnable       -> "Enable"
       NSSForget       -> "Forget"
       NSSPingAll      -> "Ping all"
+      NSSResolveConfDefault -> "Using servers from system configuration"
       NSSRestoreUrls  -> "Restore default"
       NSSRestoreDef   -> "Restore default values"
       NSSReqTimeout   -> "Request timeout, s"
@@ -154,6 +156,7 @@ instance LocalizedPrint NetSetupStrings where
       NSSEnable       -> "Включить"
       NSSForget       -> "Забыть"
       NSSPingAll      -> "Запросить всех"
+      NSSResolveConfDefault -> "Используем глобальные настройки системы"
       NSSRestoreUrls  -> "Сервера по умолчанию"
       NSSRestoreDef   -> "Значения по умолчанию"
       NSSReqTimeout   -> "Время ожидания ответа, с"
