@@ -43,6 +43,7 @@ module Ergvein.Wallet.Elements(
   , colonize
   , colonize_
   , buttonClass
+  , buttonClassDynLabel
   , outlineButton
   , clearButton
   , divButton
@@ -205,6 +206,16 @@ mkButton eltp attrs classValD ma = do
 buttonClass :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
   => Dynamic t Text -> lbl -> m (Event t ())
 buttonClass classValD lbl = mkButton "button" [("onclick", "return false;")] classValD . dynText =<< localized lbl
+
+-- | Button with CSS classes
+buttonClassDynLabel :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
+  => Dynamic t Text -> Dynamic t lbl -> m (Event t ())
+buttonClassDynLabel classValD lblD = do
+  langD <- getLanguage
+  mkButton "button" [("onclick", "return false;")] classValD . dynText $ do
+    l <- langD
+    lbl <- lblD
+    pure $ localizedShow l lbl
 
 -- | Bright button with dark outline
 outlineButton :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)

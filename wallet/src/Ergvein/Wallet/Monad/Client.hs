@@ -26,6 +26,7 @@ import Control.Monad.Random
 import Data.Function (on)
 import Data.Functor.Misc (Const2(..))
 import Data.Map.Strict (Map)
+import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Time(NominalDiffTime, getCurrentTime, diffUTCTime)
@@ -210,20 +211,34 @@ randomKeyValue m
     let key = keys !! i
     pure $ (key,) <$> M.lookup key m
 
+randomElem :: MonadIO m => [a] -> m (Maybe a)
+randomElem xs = case xs of
+  [] -> pure Nothing
+  _ -> do
+    i <- liftIO $ randomRIO (0, length xs - 1)
+    pure $ Just $ xs!!i
+
 requestRandomIndexer :: MonadIndexClient t m => Event t Message -> m (Event t (SockAddr, Message))
 requestRandomIndexer reqE = mdo
   connsD  <- externalRefDynamic =<< getActiveConnsRef
   let actE = leftmost [Just <$> reqE, Nothing <$ sentE]
   sentE <- fmap switchDyn $ widgetHold (pure never) $ ffor actE $ \case
     Nothing -> pure never
-    Just req -> fmap switchDyn $ widgetHoldDyn $ ffor connsD $ \conns -> do
-      mconn <- randomKeyValue conns
+    Just req -> do
+      mconn <- randomElem =<< getOpenConns
       case mconn of
         Nothing -> pure never
-        Just (addr, conn) -> do
+        Just conn -> do
           sentE' <- requestWhenOpen conn req
-          pure $ ((addr,) <$> indexConRespE conn) <$ sentE'
+          pure $ ((indexConAddr conn,) <$> indexConRespE conn) <$ sentE'
   switchHold never sentE
+
+getOpenConns :: MonadIndexClient t m => m [IndexerConnection t]
+getOpenConns = do
+  conns <- readExternalRef =<< getActiveConnsRef
+  fmap catMaybes $ flip traverse (M.elems conns) $ \con -> do
+    isUp <- sampleDyn $ indexConIsUp con
+    pure $ if isUp then Just con else Nothing
 
 requestWhenOpen :: MonadIndexClient t m => IndexerConnection t -> Message -> m (Event t ())
 requestWhenOpen IndexerConnection{..} msg = do
