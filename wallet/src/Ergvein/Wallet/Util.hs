@@ -11,6 +11,7 @@ module Ergvein.Wallet.Util(
   , eventToNextFrame'
   , eventToNextFrameN
   , eventToNextFrameN'
+  , mergeDyn
   , currencyToCurrencyCode
   , currencyCodeToCurrency
   ) where
@@ -70,6 +71,12 @@ eventToNextFrameN' :: MonadWidget t m => Int -> m (Event t a) -> m (Event t a)
 eventToNextFrameN' n evtM = do
   evt <- evtM
   eventToNextFrameN n evt
+
+-- | Make new dynamic that is updated with values from given event and the original dynamic
+mergeDyn :: (Reflex t, MonadHold t m) => Dynamic t a -> Event t a -> m (Dynamic t a)
+mergeDyn d e = do
+  v0 <- sampleDyn d
+  holdDyn v0 $ leftmost [e, updated d]
 
 currencyToCurrencyCode :: ETC.Currency -> CurrencyCode
 currencyToCurrencyCode c = case c of

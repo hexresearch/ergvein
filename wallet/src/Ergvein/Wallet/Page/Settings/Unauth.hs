@@ -23,6 +23,7 @@ import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Page.Settings.Network
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
+import Ergvein.Wallet.Inplace
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as S
@@ -94,34 +95,25 @@ dnsPageWidget = do
       pure actE
 
 dnsWidget :: MonadFrontBase t m => HostName -> m (Event t DnsAction)
-dnsWidget url = divClass "network-name mt-1 pl-2" $ mdo
-  tglD <- holdDyn False editE
-  valD <- widgetHoldDyn $ ffor tglD $ \case
-    True -> editDnsWidget
-    False -> showDnsWidget
-  let (editE, actE) = (\(a,b) -> (switchDyn a, switchDyn b)) $ splitDynPure valD
-  pure actE
-  where
-    showDnsWidget :: MonadFrontBase t m => m (Event t Bool, Event t DnsAction)
-    showDnsWidget = do
-      divClass "mt-a mb-a network-name-txt ml-a" $ text $ T.pack url
-      editE <- buttonClass "button button-outline mt-a mb-a ml-1 mr-a" NSSEdit
-      pure (True <$ editE, never)
+dnsWidget url = divClass "network-name mt-1 pl-2" $ do
+  let cfg = InplaceEditCfg {
+         _inplaceCanDelete   = pure True
+       , _inplaceShowClass   = "mt-a mb-a network-name-txt ml-a"
+       , _inplaceSeparator   = Just <$> "network-hr-sep-lb m-0 mt-1"
+       , _inplaceEditLabel   = NSSEdit
+       , _inplaceEditClass   = "button button-outline mt-a mb-a ml-1 mr-a"
+       , _inplaceBtnGroup    = ""
+       , _inplaceErrorClass  = "form-field-errors ta-c-imp"
+       , _inplaceSaveLabel   = NSSSave
+       , _inplaceDeleteLabel = NSSDelete
+       , _inplaceCancelLabel = NSSCancel
+      }
+      parse t = maybe (Left NSSFailedDns) (const $ Right $ T.unpack t) . parseIP $ t
+  actE <- inplaceEditField cfg T.pack parse (pure url)
+  pure $ ffor actE $ \case
+    EditDelete a -> DnsDel a
+    EditUpdate a1 a2 -> DnsUpd a1 a2
 
-    editDnsWidget :: MonadFrontBase t m => m (Event t Bool, Event t DnsAction)
-    editDnsWidget = el "div" $ do
-      textD <- fmap _inputElement_value $ inputElement $ def
-        & inputElementConfig_elementConfig . elementConfig_initialAttributes .~ ("type" =: "text")
-        & inputElementConfig_initialValue .~ T.pack url
-      (goE, delE, closeE) <- divClass "" $ do
-        goE <- outlineButton NSSSave
-        delE <- outlineButton NSSDelete
-        closeE <- outlineButton NSSCancel
-        pure (goE, delE, closeE)
-      setE <- validateDNSIp $ current textD `tag` goE
-      elClass "hr" "network-hr-sep-lb m-0 mt-1" $ pure ()
-      let actE = leftmost $ [DnsDel url <$ delE, DnsUpd url <$> setE]
-      pure (False <$ closeE, actE)
 
 -- | Validate ip and show an error if something is not ok
 validateDNSIp :: MonadFrontBase t m => Event t Text -> m (Event t HostName)
