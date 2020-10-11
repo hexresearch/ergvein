@@ -246,7 +246,6 @@ requestRandomIndexer reqE = mdo
 
 requester :: MonadFront t m => Currency -> Message -> m (Event t (SockAddr, Message))
 requester cur req = mdo
-  connsD  <- externalRefDynamic =<< getActiveConnsRef
   buildE <- getPostBuild
   respD <- holdDyn True $ False <$ respE
   te <- widgetHoldDynE $ ffor respD $ \b -> if b
