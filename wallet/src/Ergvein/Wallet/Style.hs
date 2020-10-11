@@ -844,16 +844,15 @@ selectCss = do
 
 buttonsToggleCss :: Css
 buttonsToggleCss = do
+  ".button-currency" ? do
+    fontSize $ pt 18
+    width $ px 200
   ".button-on" ? do
-    fontSize $ pt 18
-    width $ px 200
-    backgroundColor "#000000"
-    color "#ffffff"
+    important $ backgroundColor "#000000"
+    important $ color "#ffffff"
   ".button-off" ? do
-    fontSize $ pt 18
-    width $ px 200
-    backgroundColor "#ffffff"
-    color "#000000"
+    important $ backgroundColor "#ffffff"
+    important $ color "#000000"
   ".button-not-working" ? do
     visibility hidden
     pointerEvents none

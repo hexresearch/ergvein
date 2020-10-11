@@ -30,7 +30,7 @@ import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Util (widgetHoldDyn)
 import GHC.Generics
-import Network.Socks5 (SocksConf(..), socksConnectWithSocket, SocksAddress(..), SocksHostAddress(..))
+import Network.Socks5 (SocksConf(..), socksConnect, SocksAddress(..), SocksHostAddress(..))
 import Reflex
 import Reflex.ExternalRef
 import System.Timeout (timeout)
@@ -174,6 +174,7 @@ socket SocketConf{..} = fmap switchSocket $ widgetHoldDyn $ ffor _socketConfProx
   let connectE = leftmost [reconnectE, buildE]
   let closeCb :: Maybe CloseException -> IO ()
       closeCb e = do
+        -- logWrite $ showt e
         statusFire SocketClosed
         i <- readExternalRef reconnTriesRef
         let doReconnecting = case _socketConfReopen of
@@ -303,17 +304,20 @@ connectSock host port mproxy = liftIO $ do
       (x:xs) -> Ex.catch (useAddr x) (\(_ :: IOError) -> tryAddrs xs)
     useAddr :: N.AddrInfo -> IO (N.Socket, N.SockAddr)
     useAddr addr = do
-       yx <- timeout 3000000 $ do -- 3 seconds
-          Ex.bracketOnError (newSocket addr) closeSock $ \sock -> do
-             let sockAddr = N.addrAddress addr
-             N.setSocketOption sock N.NoDelay 1
-             N.setSocketOption sock N.KeepAlive 1
-             case mproxy of
-               Nothing -> N.connect sock sockAddr
-               Just proxy -> void $ socksConnectWithSocket sock proxy $ fromSockAddr sockAddr
-             pure (sock, sockAddr)
+       yx <- timeout 30000000 $ do -- 30 seconds
+         let sockAddr = N.addrAddress addr
+         sock <- case mproxy of
+           Nothing -> Ex.bracketOnError (newSocket addr) closeSock $ \sock -> do
+            N.setSocketOption sock N.NoDelay 1
+            N.setSocketOption sock N.KeepAlive 1
+            N.connect sock sockAddr
+            pure sock
+           Just proxy -> do
+             (sock, _) <- socksConnect proxy $ fromSockAddr sockAddr
+             pure sock
+         pure (sock, sockAddr)
        case yx of
-          Nothing -> fail "Network.Simple.TCP.connectSock: Timeout on connect"
+          Nothing -> fail "connectSock: Timeout on connect"
           Just x -> pure x
 
 -- | Convert network address to format that socks library understands

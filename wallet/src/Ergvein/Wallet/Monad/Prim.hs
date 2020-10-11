@@ -19,6 +19,7 @@ module Ergvein.Wallet.Monad.Prim
   , getDnsList
   , mkResolvSeed
   , getSocksConf
+  , getProxyConf
   ) where
 
 import Control.Monad.Fix
@@ -138,6 +139,10 @@ mkResolvSeed = do
 getSocksConf :: MonadHasSettings t m => m (Dynamic t (Maybe S5.SocksConf))
 getSocksConf = fmap (toSocksProxy <=< settingsSocksProxy) <$> getSettingsD
 {-# INLINE getSocksConf #-}
+
+getProxyConf :: MonadHasSettings t m => m (Dynamic t (Maybe SocksConf))
+getProxyConf = fmap settingsSocksProxy <$> getSettingsD
+{-# INLINE getProxyConf #-}
 
 -- ===========================================================================
 --           Monad EgvLogger. Implements Ervgein's logging

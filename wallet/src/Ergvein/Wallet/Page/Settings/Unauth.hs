@@ -3,6 +3,7 @@ module Ergvein.Wallet.Page.Settings.Unauth
     settingsPageUnauth
   , languagePageWidget
   , dnsPageWidget
+  , torPageWidget
   ) where
 
 import Control.Monad
@@ -16,6 +17,8 @@ import Text.Read
 import Ergvein.Text
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
+import Ergvein.Wallet.Elements.Inplace
+import Ergvein.Wallet.Elements.Toggle
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Monad.Base
@@ -23,7 +26,6 @@ import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Page.Settings.Network
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
-import Ergvein.Wallet.Inplace
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as S
@@ -34,19 +36,22 @@ data SubPageSettings
   = GoLanguage
   | GoNetwork
   | GoDns
+  | GoTor
 
 settingsPageUnauth :: MonadFrontBase t m => m ()
 settingsPageUnauth = wrapperSimple True $ do
   divClass "initial-options grid1" $ do
     goLangE            <- fmap (GoLanguage   <$) $ outlineButton STPSButLanguage
     goNetE             <- fmap (GoNetwork    <$) $ outlineButton STPSButNetwork
-    goDnsE             <- fmap (GoDns    <$) $ outlineButton STPSButDns
-    let goE = leftmost [goLangE, goNetE, goDnsE]
+    goDnsE             <- fmap (GoDns        <$) $ outlineButton STPSButDns
+    goTorE             <- fmap (GoTor        <$) $ outlineButton STPSButTor
+    let goE = leftmost [goLangE, goNetE, goDnsE, goTorE]
     void $ nextWidget $ ffor goE $ \spg -> Retractable {
         retractableNext = case spg of
           GoLanguage  -> languagePageUnauth
           GoNetwork   -> networkSettingsPageUnauth
           GoDns       -> dnsPageUnauth
+          GoTor       -> torPageUnauth
       , retractablePrev = Just $ pure settingsPageUnauth
       }
 
@@ -139,3 +144,35 @@ languagePageWidget = do
     updE <- updateSettings $ ffor selE (\lng -> settings {settingsLang = lng})
     showSuccessMsg $ STPSSuccess <$ updE
   pure ()
+
+torPageUnauth :: MonadFrontBase t m => m ()
+torPageUnauth = wrapperSimple True torPageWidget
+
+-- | The same for both auth and unauth contexts
+torPageWidget :: MonadFrontBase t m => m ()
+torPageWidget = do
+  h3 $ localizedText STPSSetsTor
+  divClass "initial-options grid1" torToggleButton
+  h3 $ localizedText STPSSetsProxy
+  where
+    torToggleButton = void $ do
+      torUsedD <- fmap (maybe False (torSocks ==)) <$> getProxyConf
+      torD <- toggleButton STPSUseTor STPSUseTor torUsedD
+      modifySettings $ ffor (updated torD) $ \useTor setts -> setts {
+          settingsSocksProxy = if useTor then Just torSocks else Nothing
+        }
+  --   langD <- getLanguage
+  --   initKey <- sample . current $ langD
+  --   let listLangsD = ffor langD $ \l -> Map.fromList $ fmap (\v -> (v, localizedShow l v)) allLanguages
+  --       ddnCfg = DropdownConfig {
+  --             _dropdownConfig_setValue   = updated langD
+  --           , _dropdownConfig_attributes = constDyn ("class" =: "select-lang")
+  --           }
+  --   dp <- dropdown initKey listLangsD ddnCfg
+  --   let selD = _dropdown_value dp
+  --   selE <- fmap updated $ holdUniqDyn selD
+  --   void $ widgetHold (pure ()) $ setLanguage <$> selE
+  --   settings <- getSettings
+  --   updE <- updateSettings $ ffor selE (\lng -> settings {settingsLang = lng})
+  --   showSuccessMsg $ STPSSuccess <$ updE
+  -- pure ()

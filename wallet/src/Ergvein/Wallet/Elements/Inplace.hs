@@ -1,4 +1,4 @@
-module Ergvein.Wallet.Inplace(
+module Ergvein.Wallet.Elements.Inplace(
     EditAction(..)
   , InplaceEditCfg(..)
   , InplaceEditLbl(..)

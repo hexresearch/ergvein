@@ -18,7 +18,11 @@ data SettingsPageStrings =
   | STPSButPortfolio
   | STPSButMnemonicExport
   | STPSButDns
+  | STPSButTor
   | STPSSelectLanguage
+  | STPSSetsTor
+  | STPSUseTor
+  | STPSSetsProxy
   | STPSSetsActiveCurrs
   | STPSSetsPortfolio
   | STPSSetsPortfolioEnable
@@ -40,10 +44,14 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButActiveCurrs      -> "Currencies"
       STPSButNetwork          -> "Network"
       STPSButDns              -> "DNS servers"
+      STPSButTor              -> "Tor and proxy"
       STPSButUnits            -> "Display units for cryptos"
       STPSButPortfolio        -> "Portfolio"
       STPSButMnemonicExport   -> "Export mnemonic phrase"
       STPSSelectLanguage      -> "Select language:"
+      STPSSetsTor             -> "Tor configuration"
+      STPSUseTor              -> "Use Tor"
+      STPSSetsProxy           -> "SOCKS proxy configuration"
       STPSSetsActiveCurrs     -> "Settings for active currencies"
       STPSSetsPortfolio       -> "Settings for fiat and ticks"
       STPSSetsPortfolioEnable -> "Display portfolio"
@@ -61,10 +69,14 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButActiveCurrs      -> "Валюты"
       STPSButNetwork          -> "Сеть"
       STPSButDns              -> "DNS сервера"
+      STPSButTor              -> "Tor и прокси"
       STPSButUnits            -> "Единицы отображения криптосистем"
       STPSButPortfolio        -> "Портфель"
       STPSButMnemonicExport   -> "Экспортировать мнемоническую фразу"
       STPSSelectLanguage      -> "Выберите язык:"
+      STPSSetsTor             -> "Настройки Tor"
+      STPSUseTor              -> "Проксировать через Tor"
+      STPSSetsProxy           -> "Настройки прокси SOCKS"
       STPSSetsActiveCurrs     -> "Настройки активных валют"
       STPSSetsPortfolio       -> "Настройки отображения фиата и тиков"
       STPSSetsPortfolioEnable -> "Отображение портфеля"

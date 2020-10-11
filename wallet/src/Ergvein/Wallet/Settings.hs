@@ -181,6 +181,7 @@ instance ToJSON Settings where
     , "portfolio"         .= toJSON settingsPortfolio
     , "fiatCurr"          .= toJSON settingsFiatCurr
     , "dns"               .= toJSON settingsDns
+    , "socksProxy"        .= toJSON settingsSocksProxy
    ]
 
 defIndexerPort :: PortNumber

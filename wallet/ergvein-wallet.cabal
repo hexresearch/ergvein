@@ -33,6 +33,8 @@ library
         Ergvein.Wallet.Currencies
         Ergvein.Wallet.Debug
         Ergvein.Wallet.Elements
+        Ergvein.Wallet.Elements.Inplace
+        Ergvein.Wallet.Elements.Toggle
         Ergvein.Wallet.Embed
         Ergvein.Wallet.Embed.TH
         Ergvein.Wallet.Filters.Btc.Queries
@@ -43,7 +45,6 @@ library
         Ergvein.Wallet.Filters.Types
         Ergvein.Wallet.Id
         Ergvein.Wallet.Indexer.Socket
-        Ergvein.Wallet.Inplace
         Ergvein.Wallet.Input
         Ergvein.Wallet.Language
         Ergvein.Wallet.Loading
