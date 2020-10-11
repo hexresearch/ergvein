@@ -24,6 +24,7 @@ module Ergvein.Wallet.Monad.Front(
   , setFiltersSync
   , setSyncProgress
   , updateActiveCurs
+  , requestRandomIndexer
   -- * Reexports
   , Text
   , MonadJSM
@@ -39,19 +40,21 @@ module Ergvein.Wallet.Monad.Front(
 import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.Random
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Functor.Misc (Const2(..))
 import Data.Map (Map)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, catMaybes)
 import Data.Text (Text)
 import Network.Socket (SockAddr)
-import Language.Javascript.JSaddle
+import Language.Javascript.JSaddle hiding ((!!))
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss, textInput)
 import Reflex.Dom.Retractable.Class
 import Reflex.ExternalRef
 
+import Ergvein.Index.Protocol.Types (Message(..))
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
@@ -66,6 +69,7 @@ import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Node.Prim
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Sync.Status
+import Ergvein.Wallet.Util
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -231,3 +235,51 @@ setFiltersSync :: MonadFrontAuth t m => Currency -> Bool -> m ()
 setFiltersSync c v = do
   r <- getFiltersSyncRef
   modifyExternalRef r $ (, ()) . M.insert c v
+
+requestRandomIndexer :: MonadFront t m => Event t (Currency, Message) -> m (Event t (SockAddr, Message))
+requestRandomIndexer reqE = mdo
+  let actE = leftmost [Just <$> reqE, Nothing <$ sentE]
+  sentE <- widgetHoldE (pure never) $ ffor actE $ \case
+    Nothing -> pure never
+    Just (cur, req) -> requester cur req
+  pure sentE
+
+requester :: MonadFront t m => Currency -> Message -> m (Event t (SockAddr, Message))
+requester cur req = mdo
+  buildE <- getPostBuild
+  respD <- holdDyn True $ False <$ respE
+  te <- widgetHoldDynE $ ffor respD $ \b -> if b
+    then tickLossyFromPostBuildTime timeout
+    else pure never
+  let goE = leftmost [buildE, () <$ te]
+  respE <- widgetHoldE (pure never) $ ffor goE $ const $ do
+    mconn <- randomElem =<< getOpenSyncedConns cur
+    case mconn of
+      Nothing -> pure never
+      Just conn -> do
+        requestIndexerWhenOpen conn req
+        pure $ (indexConAddr conn,) <$> indexConRespE conn
+  pure respE
+  where
+    timeout = 5 -- NominalDiffTime, seconds
+
+-- | Designed to be used inside a widgetHold, samples dynamics
+getOpenSyncedConns :: MonadFront t m => Currency -> m [IndexerConnection t]
+getOpenSyncedConns cur = do
+  conns <- readExternalRef =<< getActiveConnsRef
+  heights <- readExternalRef =<< getHeightRef
+  let mh = M.lookup cur heights
+  fmap catMaybes $ flip traverse (M.elems conns) $ \con -> do
+    isUp <- sampleDyn $ indexConIsUp con
+    if not isUp then pure Nothing else do
+      mh' <- fmap (M.lookup cur) $ sampleDyn $ indexerConHeight con
+      pure $ case (mh, fromIntegral <$> mh') of
+        (Just h, Just h') -> if h == h' || h - h' == 1 then Just con else Nothing
+        _ -> Nothing
+
+randomElem :: MonadIO m => [a] -> m (Maybe a)
+randomElem xs = case xs of
+  [] -> pure Nothing
+  _ -> do
+    i <- liftIO $ randomRIO (0, length xs - 1)
+    pure $ Just $ xs!!i

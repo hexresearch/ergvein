@@ -68,7 +68,7 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
 
 getFilters :: MonadFront t m => Currency -> Event t (BlockHeight, Int) -> m (Event t [(BlockHash, ByteString)])
 getFilters cur e = do
-  respE <- requestRandomIndexer $ ffor e $ \(h, n) ->
+  respE <- requestRandomIndexer $ ffor e $ \(h, n) -> (cur, ) $
     MFiltersRequest $ FilterRequest curcode (fromIntegral h) (fromIntegral n)
   let respE' = fforMaybe respE $ \case
         (addr, MFiltersResponse (FilterResponse{..})) -> if filterResponseCurrency /= curcode

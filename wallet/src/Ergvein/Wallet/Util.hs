@@ -1,6 +1,8 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Ergvein.Wallet.Util(
     widgetHoldDyn
+  , widgetHoldE
+  , widgetHoldDynE
   , updatedWithInit
   , poke
   , sampleDyn
@@ -22,10 +24,21 @@ import qualified Ergvein.Types.Currency as ETC
 import Ergvein.Index.Protocol.Types
 
 -- | Same as 'widgetHold' but for dynamic
-widgetHoldDyn :: forall t m a . (DomBuilder t m, MonadHold t m) => Dynamic t (m a) -> m (Dynamic t a)
+widgetHoldDyn :: forall t m a . (Reflex t, Adjustable t m, MonadHold t m) => Dynamic t (m a) -> m (Dynamic t a)
 widgetHoldDyn maD = do
   ma <- sample . current $ maD
   widgetHold ma $ updated maD
+{-# INLINABLE widgetHoldDyn #-}
+
+-- | Same as `widgetHold` but tailored for widgets returning events
+widgetHoldE :: forall t m a . (Reflex t, Adjustable t m, MonadHold t m) => m (Event t a) -> Event t (m (Event t a)) -> m (Event t a)
+widgetHoldE m0 ma = fmap switchDyn $ widgetHold m0 ma
+{-# INLINABLE widgetHoldE #-}
+
+-- | Same as `widgetHoldDyn` but tailored for widgets returning events
+widgetHoldDynE :: forall t m a . (Reflex t, Adjustable t m, MonadHold t m) => Dynamic t (m (Event t a)) -> m (Event t a)
+widgetHoldDynE = fmap switchDyn . widgetHoldDyn
+{-# INLINABLE widgetHoldDynE #-}
 
 -- | Same as 'updated', but fires init value with 'getPostBuild'
 updatedWithInit :: PostBuild t m => Dynamic t a -> m (Event t a)
@@ -79,4 +92,7 @@ currencyToCurrencyCode c = case c of
 currencyCodeToCurrency :: CurrencyCode -> ETC.Currency
 currencyCodeToCurrency c = case c of
   BTC -> ETC.BTC
+  TBTC -> ETC.BTC
   ERGO -> ETC.ERGO
+  TERGO -> ETC.ERGO
+  _ -> error "Currency code not implemented"

@@ -182,7 +182,7 @@ dbgFiltersTest = do
 
 getFilters :: MonadFront t m => Currency -> Event t (BlockHeight, Int) -> m (Event t [(BlockHash, ByteString)])
 getFilters cur e = do
-  respE <- requestRandomIndexer $ ffor e $ \(h, n) ->
+  respE <- requestRandomIndexer $ ffor e $ \(h, n) -> (BTC, ) $
     MFiltersRequest $ FilterRequest curcode (fromIntegral h) (fromIntegral n)
   pure $ fforMaybe respE $ \case
     (_, MFiltersResponse (FilterResponse{..})) -> if filterResponseCurrency /= curcode
