@@ -10,6 +10,7 @@ module Ergvein.Wallet.Monad.Storage
   , setFlagToExtPubKey
   , updateBtcUtxoSet
   , getWalletsScannedHeightD
+  , getWalletsScannedHeightD_
   , writeWalletsScannedHeight
   , reconfirmBtxUtxoSet
   , getBtcUtxoD
@@ -161,11 +162,14 @@ reconfirmBtxUtxoSet caller reqE = void . modifyPubStorage clr $ ffor reqE $ \bh 
   where clr = caller <> ":" <> "reconfirmBtxUtxoSet"
 
 getWalletsScannedHeightD :: MonadStorage t m => Currency -> m (Dynamic t BlockHeight)
-getWalletsScannedHeightD cur = do
-  psD <- getPubStorageD
-  pure $ ffor psD $ \ps -> fromMaybe h0 $ join $ ps ^. pubStorage'currencyPubStorages . at cur
-    & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'scannedHeight
+getWalletsScannedHeightD cur = fmap  (fromMaybe h0) <$> getWalletsScannedHeightD_ cur
   where h0 = fromIntegral $ filterStartingHeight cur
+
+getWalletsScannedHeightD_ :: MonadStorage t m => Currency -> m (Dynamic t (Maybe BlockHeight))
+getWalletsScannedHeightD_ cur = do
+  psD <- getPubStorageD
+  pure $ ffor psD $ \ps -> join $ ps ^. pubStorage'currencyPubStorages . at cur
+    & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'scannedHeight
 
 writeWalletsScannedHeight :: MonadStorage t m => Text -> Event t (Currency, BlockHeight) -> m (Event t ())
 writeWalletsScannedHeight caller reqE = modifyPubStorage clr $ ffor reqE $ \(cur, h) ps -> let

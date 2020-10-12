@@ -15,6 +15,7 @@ import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Scan
@@ -30,13 +31,22 @@ import qualified Data.Vector as V
 import Ergvein.Wallet.Debug
 
 restorePage :: forall t m . MonadFront t m =>  m ()
-restorePage = wrapperSimple True $ void $ workflow heightAsking
+restorePage = wrapperSimple True $ void $ workflow nodeConnection
   where
+    nodeConnection = Workflow $ do
+      el "h3" $ text "Connecting to nodes"
+      syncWidget False BTC
+      conmapD <- getNodesByCurrencyD BTC
+      let upsD = fmap or $ join $ ffor conmapD $ \cm -> sequence $ ffor (M.elems cm) $ \case
+            NodeConnBTC con -> nodeconIsUp con
+            _ -> pure False
+      let nextE = ffilter id $ updated upsD
+      pure ((), heightAsking <$ nextE)
+
     heightAsking = Workflow $ do
-      hD <- (fmap . fmap) (fromMaybe 0 . M.lookup BTC) $ externalRefDynamic =<< getCatchUpHeightRef
       el "h3" $ text "Getting current height"
+      syncWidget False BTC
       heightD <- getCurrentHeight BTC
-      el "h4" $ dynText $ ffor hD $ \h -> "Catching up at height: " <> showt h
       height0E <- tag (current heightD) <$> getPostBuild
       let heightE = leftmost [updated heightD, height0E]
       let nextE = fforMaybe heightE $ \h -> if h == 0 then Nothing else Just downloadFilters
@@ -71,13 +81,13 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
     scanKeys :: Int -> Int -> Workflow t m ()
     scanKeys gapN keyNum = Workflow $ do
       logWrite "We are at scan stage"
-      syncWidget =<< getSyncProgress
+      syncWidget False BTC
       buildE <- delay 0.1 =<< getPostBuild
       keys <- pubStorageKeys BTC External <$> getPubStorage
       heightD <- getCurrentHeight BTC
       setSyncProgress $ flip pushAlways buildE $ const $ do
         h <- sample . current $ heightD
-        pure $ SyncMeta BTC (SyncAddressExternal keyNum) 0 (fromIntegral h)
+        pure $ SyncProgress BTC $ SyncAddressExternal keyNum 0 (fromIntegral h)
       if gapN >= gapLimit then do
         ps <- sample . current =<< getPubStorageD
         storedE <- modifyPubStorage "scanKeys" $ ffor buildE $ const $ Just . pubStorageSetKeyScanned BTC External (Just (keyNum + 1))
@@ -110,11 +120,11 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
     scanInternalKeys gapN keyNum = Workflow $ do
       buildE <- delay 0.1 =<< getPostBuild
       keys <- pubStorageKeys BTC Internal <$> getPubStorage
-      syncWidget =<< getSyncProgress
+      syncWidget False BTC
       heightD <- getCurrentHeight BTC
       setSyncProgress $ flip pushAlways buildE $ const $ do
         h <- sample . current $ heightD
-        pure $ SyncMeta BTC (SyncAddressInternal keyNum) 0 (fromIntegral h)
+        pure $ SyncProgress BTC $ SyncAddressInternal keyNum 0 (fromIntegral h)
       if gapN >= gapLimit then pure ((), finishScanning <$ buildE)
       else if keyNum >= V.length keys then do
         logWrite "Generating next portion of internal BTC keys..."
@@ -136,7 +146,7 @@ restorePage = wrapperSimple True $ void $ workflow heightAsking
     finishScanning = Workflow $ do
       logWrite "Finished scanning BTC keys..."
       buildE <- getPostBuild
-      setSyncProgress $ Synced <$ buildE
+      setSyncProgress $ SyncProgress BTC Synced <$ buildE
       h <- sample . current =<< getCurrentHeight BTC
       scanhE <- writeWalletsScannedHeight "finishScanning" $ (BTC, fromIntegral h) <$ buildE
       clearedE <- performEvent $ clearFilters BTC <$ scanhE

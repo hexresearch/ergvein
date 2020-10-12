@@ -10,12 +10,12 @@ module Ergvein.Wallet.Monad.Client (
   , deactivateURL
   , forgetURL
   , broadcastIndexerMessage
-  , requestRandomIndexer
   , requestSpecificIndexer
   , indexerPingerWidget
   , indexerConnPingerWidget
   , indexersAverageLatencyWidget
   , indexersAverageLatNumWidget
+  , requestIndexerWhenOpen
   -- * Reexports
   , SockAddr
   ) where
@@ -26,6 +26,7 @@ import Control.Monad.Random
 import Data.Function (on)
 import Data.Functor.Misc (Const2(..))
 import Data.Map.Strict (Map)
+import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Time(NominalDiffTime, getCurrentTime, diffUTCTime)
@@ -36,6 +37,8 @@ import Reflex.ExternalRef
 
 import Ergvein.Index.Protocol.Types (Message(..))
 import Ergvein.Text
+import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Settings
@@ -52,6 +55,7 @@ data IndexerConnection t = IndexerConnection {
 , indexConOpensE :: !(Event t ())
 , indexConIsUp :: !(Dynamic t Bool)
 , indexConRespE :: !(Event t Message)
+, indexerConHeight :: !(Dynamic t (Map Currency BlockHeight))
 }
 
 data IndexerMsg = IndexerClose | IndexerRestart | IndexerMsg Message
@@ -201,32 +205,8 @@ broadcastIndexerMessage reqE = do
     cm <- readExternalRef connsRef
     liftIO $ fire $ req <$ cm
 
-randomKeyValue :: (MonadIO m, Ord k) => M.Map k v -> m (Maybe (k, v))
-randomKeyValue m
-  | M.null m = pure Nothing
-  | otherwise = do
-    let keys = M.keys m
-    i <- liftIO $ randomRIO (0, length keys - 1)
-    let key = keys !! i
-    pure $ (key,) <$> M.lookup key m
-
-requestRandomIndexer :: MonadIndexClient t m => Event t Message -> m (Event t (SockAddr, Message))
-requestRandomIndexer reqE = mdo
-  connsD  <- externalRefDynamic =<< getActiveConnsRef
-  let actE = leftmost [Just <$> reqE, Nothing <$ sentE]
-  sentE <- fmap switchDyn $ widgetHold (pure never) $ ffor actE $ \case
-    Nothing -> pure never
-    Just req -> fmap switchDyn $ widgetHoldDyn $ ffor connsD $ \conns -> do
-      mconn <- randomKeyValue conns
-      case mconn of
-        Nothing -> pure never
-        Just (addr, conn) -> do
-          sentE' <- requestWhenOpen conn req
-          pure $ ((addr,) <$> indexConRespE conn) <$ sentE'
-  switchHold never sentE
-
-requestWhenOpen :: MonadIndexClient t m => IndexerConnection t -> Message -> m (Event t ())
-requestWhenOpen IndexerConnection{..} msg = do
+requestIndexerWhenOpen :: MonadIndexClient t m => IndexerConnection t -> Message -> m (Event t ())
+requestIndexerWhenOpen IndexerConnection{..} msg = do
   fire  <- getIndexReqFire
   initE <- fmap (gate (current indexConIsUp)) $ getPostBuild
   let reqE = leftmost [initE, indexConOpensE]

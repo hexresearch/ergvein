@@ -17,6 +17,7 @@ import Data.Maybe
 import Control.Monad.IO.Class
 
 import Ergvein.Text
+import Ergvein.Types.Currency
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Indexer.Socket
@@ -115,7 +116,7 @@ parametersPageWidget = mdo
 
 addUrlWidget :: forall t m . MonadFrontBase t m => Dynamic t Bool -> m (Event t NamedSockAddr)
 addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not b then pure never else do
-  murlE <- el "div" $ do
+  murlE <- divClass "mt-3" $ do
     textD <- fmap _inputElement_value $ inputElement $ def
       & inputElementConfig_elementConfig . elementConfig_initialAttributes .~ ("type" =: "text")
     goE <- outlineButton NSSAddUrl
@@ -165,7 +166,9 @@ renderActive nsa refrE mconn = mdo
       Nothing -> descrOption NSSOffline
       Just conn -> do
         latD <- indexerConnPingerWidget conn refrE
+        let heightD = fmap (M.lookup BTC) $ indexerConHeight conn
         descrOptionDyn $ NSSLatency <$> latD
+        descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> heightD
     pure tglE'
   void $ widgetHoldDyn $ ffor tglD $ \b -> if not b
     then pure ()

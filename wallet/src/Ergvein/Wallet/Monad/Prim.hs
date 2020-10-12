@@ -15,6 +15,7 @@ module Ergvein.Wallet.Monad.Prim
   , getSettings
   , getSettingsD
   , updateSettings
+  , modifySettings
   , getDnsList
   , mkResolvSeed
   , resolveSeed
@@ -26,8 +27,8 @@ import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Control.Monad.Reader
 import Control.Monad.Ref
-import Data.Map.Strict
 import Data.Maybe
+import Data.Map.Strict (Map)
 import Data.Text (Text)
 import Data.Time(UTCTime, NominalDiffTime)
 import Foreign.JavaScript.TH (WithJSContextSingleton)
@@ -52,6 +53,7 @@ import Ergvein.Wallet.Version
 
 import qualified Reflex.Profiled as RP
 import qualified Control.Monad.Fail as F
+import qualified Data.Set as S
 
 -- | Type classes that we need from reflex-dom itself.
 type MonadBaseConstr t m = (MonadHold t m
@@ -88,6 +90,10 @@ class MonadBaseConstr t m => MonadHasSettings t m where
   -- | Get settings ref
   getSettingsRef :: m (ExternalRef t Settings)
 
+instance MonadBaseConstr t m => MonadHasSettings t (ReaderT (ExternalRef t Settings) m) where
+  getSettingsRef = ask
+  {-# INLINE getSettingsRef #-}
+
 -- | Get current settings
 getSettings :: MonadHasSettings t m => m Settings
 getSettings = readExternalRef =<< getSettingsRef
@@ -107,8 +113,16 @@ updateSettings setE = do
     storeSettings s
 {-# INLINE updateSettings #-}
 
+-- | Update app's settings. Sets settings to provided value and stores them
+modifySettings :: MonadHasSettings t m => Event t (Settings -> Settings) -> m (Event t ())
+modifySettings setE = do
+  settingsRef <- getSettingsRef
+  performEvent $ ffor setE $ \f -> do
+    storeSettings =<< modifyExternalRef settingsRef (\s -> let s' = f s in (s',s'))
+{-# INLINE modifySettings #-}
+
 getDnsList :: MonadHasSettings t m => m [HostName]
-getDnsList = fmap settingsDns $ readExternalRef =<< getSettingsRef
+getDnsList = fmap (S.toList . settingsDns) $ readExternalRef =<< getSettingsRef
 {-# INLINE getDnsList #-}
 
 mkResolvSeed :: MonadHasSettings t m => m ResolvSeed
@@ -118,15 +132,18 @@ mkResolvSeed = do
 {-# INLINE mkResolvSeed #-}
 
 resolveSeed :: [HostName] -> IO ResolvSeed
-resolveSeed dns =  makeResolvSeed defaultResolvConf {
-      resolvInfo = RCHostNames dns
+resolveSeed dns = makeResolvSeed defaultResolvConf {
+      resolvInfo = if null dns
+        then resolvInfo defaultResolvConf -- resolve via "/etc/resolv.conf" by default
+        else RCHostNames dns
     , resolvConcurrent = True
     }
+{-# INLINE resolveSeed #-}
 
 initialIndexers :: IO [Text]
 initialIndexers = do
   resolvInfo <- makeResolvSeed defaultResolvConf {
-      resolvInfo = RCHostNames defaultDns
+      resolvInfo = RCHostNames $ S.toList $ defaultDns
     , resolvConcurrent = True
     }
   tryDNS <- getDNS resolvInfo seedList

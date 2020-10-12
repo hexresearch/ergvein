@@ -16,6 +16,9 @@ module Ergvein.Wallet.Settings (
   , defaultIndexers
   , getDNS
   , seedList
+  -- * Helpers
+  , makeSockAddr
+  , parseIP
   ) where
 
 import Control.Lens hiding ((.=))
@@ -33,16 +36,20 @@ import Network.DNS.Lookup
 import Network.DNS.Types
 import Network.DNS.Resolver
 import Ergvein.Wallet.Platform
+import Data.IP (IP, toSockAddr)
+import Text.Read (readMaybe)
 
 import Ergvein.Aeson
 import Ergvein.Lens
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Yaml(readYamlEither')
 import Ergvein.Text
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
+import qualified Data.Set as S
 
 #ifdef ANDROID
 import Android.HaskellActivity
@@ -75,6 +82,16 @@ defaultExplorerUrl = M.fromList $ btcDefaultUrls <> ergoDefaultUrls
 btcDefaultExplorerUrls :: ExplorerUrls
 btcDefaultExplorerUrls = ExplorerUrls "https://www.blockchain.com/btc-testnet" "https://www.blockchain.com/btc"
 
+-- | Parsing IPv4 and IPv6 addresses and makes socket address from them
+makeSockAddr :: Text -> Int -> Maybe SockAddr
+makeSockAddr t pnum = do
+  ip <- parseIP t
+  pure $ toSockAddr (ip, fromIntegral pnum)
+
+-- | Parsing IPv4 and IPv6 addresses
+parseIP :: Text -> Maybe IP
+parseIP = readMaybe . T.unpack
+
 data Settings = Settings {
   settingsLang              :: Language
 , settingsStoreDir          :: Text
@@ -89,7 +106,7 @@ data Settings = Settings {
 , settingsExplorerUrl       :: M.Map Currency ExplorerUrls
 , settingsPortfolio         :: Bool
 , settingsFiatCurr          :: Fiat
-, settingsDns               :: [HostName]
+, settingsDns               :: S.Set HostName
 } deriving (Eq, Show)
 
 
@@ -121,7 +138,7 @@ instance FromJSON Settings where
     mdns                      <- o .:? "dns"
     let settingsDns = case fromMaybe [] mdns of
           [] -> defaultDns
-          dns -> dns
+          dns -> S.fromList dns
     pure Settings{..}
 
 instance ToJSON Settings where
@@ -156,9 +173,6 @@ defaultIndexers =
   then ["127.0.0.1:8667"]
   else ["139.59.142.25:8667", "188.244.4.78:8667"]
 
-defaultDns :: [HostName]
-defaultDns = ["8.8.8.8","8.8.4.4", "1.1.1.1"]
-
 defaultIndexersNum :: (Int, Int)
 defaultIndexersNum = (2, 4)
 
@@ -168,27 +182,32 @@ defaultIndexerTimeout = 20
 defaultActUrlNum :: Int
 defaultActUrlNum = 10
 
-defaultSettings :: MonadIO m => FilePath -> m Settings
-defaultSettings home = do
+defaultDns :: S.Set HostName
+defaultDns = S.fromList $ if isAndroid
+  then ["8.8.8.8","8.8.4.4", "1.1.1.1"]
+  else [] -- use resolv.conf
+
+defaultSettings :: FilePath -> Settings
+defaultSettings home =
   let storePath   = home <> "/store"
       configPath  = home <> "/config.yaml"
 
-  pure $ Settings {
-        settingsLang              = English
-      , settingsStoreDir          = pack storePath
-      , settingsConfigPath        = pack configPath
-      , settingsUnits             = Just defUnits
-      , settingsReqTimeout        = defaultIndexerTimeout
-      , settingsReqUrlNum         = defaultIndexersNum
-      , settingsActUrlNum         = defaultActUrlNum
-      , settingsExplorerUrl       = defaultExplorerUrl
-      , settingsPortfolio         = False
-      , settingsFiatCurr          = USD
-      , settingsActiveAddrs       = []
-      , settingsDeactivatedAddrs  = []
-      , settingsArchivedAddrs     = []
-      , settingsDns               = defaultDns
-      }
+  in Settings 
+    { settingsLang              = English
+    , settingsStoreDir          = pack storePath
+    , settingsConfigPath        = pack configPath
+    , settingsUnits             = Just defUnits
+    , settingsReqTimeout        = defaultIndexerTimeout
+    , settingsReqUrlNum         = defaultIndexersNum
+    , settingsActUrlNum         = defaultActUrlNum
+    , settingsExplorerUrl       = defaultExplorerUrl
+    , settingsPortfolio         = False
+    , settingsFiatCurr          = USD
+    , settingsActiveAddrs       = []
+    , settingsDeactivatedAddrs  = []
+    , settingsArchivedAddrs     = []
+    , settingsDns               = defaultDns
+    }
 
 -- | TODO: Implement some checks to see if the configPath folder is ok to write to
 storeSettings :: MonadIO m => Settings -> m ()
@@ -221,7 +240,7 @@ mkDefSettings = liftIO $ do
   putStrLn $ "Config path: " <> home <> "/.ergvein/config.yaml"
   putStrLn $ "Store  path: " <> home <> "/.ergvein/store"
   putStrLn $ "Language   : English"
-  defaultSettings (home <> "/.ergvein")
+  pure $ defaultSettings (home <> "/.ergvein")
 
 loadSettings :: MonadIO m => Maybe FilePath -> m Settings
 loadSettings mpath = liftIO $ case mpath of

@@ -165,7 +165,7 @@ newEnv settings uiChan = do
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
   -- MonadClient refs
-  rs <- liftIO $ resolveSeed $ settingsDns settings
+  rs <- runReaderT mkResolvSeed settingsRef
 
   socadrs         <- parseSockAddrs rs (settingsActiveAddrs settings)
   urlsArchive     <- newExternalRef . S.fromList =<< parseSockAddrs rs (settingsArchivedAddrs settings)
