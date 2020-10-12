@@ -27,7 +27,7 @@ feesWorker = do
   te      <- fmap void $ tickLossyFromPostBuildTime feesTimeout
   tickE   <- delay 1 $ leftmost [te, void $ updated cursD, buildE]
   let goE = attachWith (\cs _ -> fmap currencyToCurrencyCode $ S.toList cs) (current cursD) tickE
-  respE <- requestRandomIndexer $ MFeeRequest <$> goE
+  respE <- requestRandomIndexer $ ((ETC.BTC, ) . MFeeRequest) <$> goE -- TODO: Fix this for multiple currencies
   let feesE = fforMaybe respE $ \case
         (_, MFeeResponse fees) -> Just $ repack fees
         _ -> Nothing
