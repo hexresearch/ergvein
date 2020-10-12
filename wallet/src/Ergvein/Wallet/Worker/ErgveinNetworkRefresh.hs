@@ -24,8 +24,10 @@ import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings
 
-import qualified Data.Vector        as V
-import qualified Data.Map.Strict    as Map
+import qualified Data.Vector            as V
+import qualified Data.Map.Strict        as Map
+import qualified Data.Set               as Set
+import qualified Ergvein.Types.Currency as C
 
 minOperableAmount, targetAmount :: Int
 minOperableAmount = 1
@@ -34,7 +36,7 @@ targetAmount = 16
 workerDelay :: NominalDiffTime
 workerDelay = 4
 
-ergveinNetworkRefresh ::(MonadFrontBase t m, MonadIO m, MonadIndexClient t m, MonadHasSettings t m, PlatformNatives) => m ()
+ergveinNetworkRefresh ::(MonadFront t m, MonadIO m, MonadIndexClient t m, MonadHasSettings t m, PlatformNatives) => m ()
 ergveinNetworkRefresh = do
   dnsSettingsD <- fmap settingsDns <$> getSettingsD
   timerE <- void <$> tickLossyFromPostBuildTime workerDelay
@@ -50,20 +52,20 @@ ergveinNetworkRefresh = do
   restoreFromDNS notOperablePeerAmountE
   fetchNewPeer insufficientPeerAmountE
 
-restoreFromDNS :: MonadFrontBase t m => Event t () -> m ()
+restoreFromDNS :: MonadFront t m => Event t () -> m ()
 restoreFromDNS e = do
   dnsSettingsD <- fmap settingsDns <$> getSettingsD
   reloadedFromSeedE <- performEvent $ ffor e $ const $ do
     dns <- sample $ current dnsSettingsD
-    rs <- liftIO $ resolveSeed dns
+    rs <- liftIO $ resolveSeed $ Set.toList dns
     newSet <- liftIO $ getDNS rs seedList 
     parseSockAddrs rs $ fromMaybe defaultIndexers newSet
 
   void $ activateURLList reloadedFromSeedE
 
-fetchNewPeer :: MonadFrontBase t m => Event t () -> m ()
+fetchNewPeer :: MonadFront t m => Event t () -> m ()
 fetchNewPeer e = do
-  let reqE = MPeerRequest PeerRequest <$ e
+  let reqE = (C.BTC, MPeerRequest PeerRequest) <$ e
   respE <- requestRandomIndexer reqE
   let nonEmptyAddressesE = fforMaybe respE $ \(_, msg) -> case msg of
         MPeerResponse PeerResponse {..} | not $ V.null peerResponseAddresses -> Just peerResponseAddresses
