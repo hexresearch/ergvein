@@ -6,13 +6,34 @@ import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Server.DB.Schema.Filters
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Text
+import Ergvein.Index.Server.Config
 
 import qualified Ergvein.Types.Currency as C
 
-instance Conversion CurrencyCode C.Currency where
-  convert = \case
-    BTC   -> C.BTC
-    ERGO  -> C.ERGO
+
+currencyCodeToCurrency :: (Monad m, HasServerConfig m) => CurrencyCode -> m C.Currency
+currencyCodeToCurrency code = do
+  isTestnet <- cfgBTCNodeIsTestnet <$> serverConfig
+  pure $ (if isTestnet then testnet else mainnet) code
+  where
+    testnet = \case
+      TBTC   -> C.BTC
+      TERGO  -> C.ERGO
+    mainnet = \case
+      BTC   -> C.BTC
+      ERGO  -> C.ERGO
+
+currencyToCurrencyCode :: (Monad m, HasServerConfig m) => C.Currency -> m CurrencyCode
+currencyToCurrencyCode code = do
+  isTestnet <- cfgBTCNodeIsTestnet <$> serverConfig
+  pure $ (if isTestnet then testnet else mainnet) code
+  where
+    testnet = \case
+      C.BTC  -> TBTC 
+      C.ERGO -> TERGO
+    mainnet = \case
+      C.BTC   -> BTC 
+      C.ERGO  -> ERGO
 
 instance Conversion C.Currency CurrencyCode where
   convert = \case
