@@ -11,7 +11,7 @@ data InitialPageStrings =
   | IPSChooseRestorationMethod
   | IPSRestoreFromMnemonic
   | IPSRestoreFromSeed
-  | IPSNetwork
+  | IPSSettings
   | IPSSelectWallet
   | IPSOtherOptions
   | IPSPinCode
@@ -31,7 +31,7 @@ instance LocalizedPrint InitialPageStrings where
       IPSPinCode                 -> "PIN code:"
       IPSPinCodeError            -> "Invalid code"
       IPSLastWallet              -> "Last used wallet"
-      IPSNetwork                 -> "Setup indexers"
+      IPSSettings                -> "Settings"
     Russian -> case v of
       IPSCreate                  -> "Создать новый кошелёк"
       IPSRestore                 -> "Восстановить кошелёк"
@@ -43,4 +43,4 @@ instance LocalizedPrint InitialPageStrings where
       IPSPinCode                 -> "ПИН код:"
       IPSPinCodeError            -> "Неправильный код"
       IPSLastWallet              -> "Последний использованный кошелек"
-      IPSNetwork                 -> "Настроить индексеры"
+      IPSSettings                -> "Настройки"

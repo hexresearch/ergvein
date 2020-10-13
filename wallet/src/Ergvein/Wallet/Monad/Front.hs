@@ -21,11 +21,10 @@ module Ergvein.Wallet.Monad.Front(
   , postNodeMessage
   , broadcastNodeMessage
   , requestManyFromNode
-  , setCurrentHeight
   , setFiltersSync
   , setSyncProgress
   , updateActiveCurs
-  , setCatchUpHeight
+  , requestRandomIndexer
   -- * Reexports
   , Text
   , MonadJSM
@@ -41,19 +40,21 @@ module Ergvein.Wallet.Monad.Front(
 import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.Random
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Functor.Misc (Const2(..))
 import Data.Map (Map)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, catMaybes)
 import Data.Text (Text)
 import Network.Socket (SockAddr)
-import Language.Javascript.JSaddle
+import Language.Javascript.JSaddle hiding ((!!))
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss, textInput)
 import Reflex.Dom.Retractable.Class
 import Reflex.ExternalRef
 
+import Ergvein.Index.Protocol.Types (Message(..))
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
@@ -68,6 +69,7 @@ import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Node.Prim
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Sync.Status
+import Ergvein.Wallet.Util
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -88,7 +90,7 @@ type MonadFront t m = (
 
 class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   -- | Internal method.
-  getSyncProgressRef :: m (ExternalRef t SyncProgress)
+  getSyncProgressRef :: m (ExternalRef t (Map Currency SyncStage))
   -- | Internal method to get reference with known heights per currency.
   getHeightRef :: m (ExternalRef t (Map Currency Integer))
   -- | Internal method to get flag if we has fully synced filters at the moment.
@@ -105,9 +107,6 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   getNodeReqFire :: m (Map Currency (Map SockAddr NodeMessage) -> IO ())
   -- | Get authed info
   getAuthInfoRef :: m (ExternalRef t AuthInfo)
-  -- | Special height value. Used during catchup
-  getCatchUpHeightRef :: m (ExternalRef t (Map Currency Integer))
-
 
 -- | Get connections map
 getNodeConnectionsD :: MonadFrontAuth t m => m (Dynamic t (ConnMap t))
@@ -162,21 +161,18 @@ requestManyFromNode reqE = do
 {-# INLINE requestManyFromNode #-}
 
 -- | Get global sync process value
-getSyncProgress :: MonadFrontAuth t m => m (Dynamic t SyncProgress)
-getSyncProgress = externalRefDynamic =<< getSyncProgressRef
+getSyncProgress :: MonadFrontAuth t m => Currency -> m (Dynamic t SyncStage)
+getSyncProgress cur = do
+  syncMapD <- externalRefDynamic =<< getSyncProgressRef
+  pure $ fmap (fromMaybe NotActive . M.lookup cur) syncMapD
 {-# INLINE getSyncProgress #-}
 
 -- | Set global sync process value each time the event is fired
-setSyncProgress :: MonadFrontAuth t m => Event t SyncProgress -> m ()
+setSyncProgress :: MonadFrontAuth t m => Event t (SyncProgress) -> m ()
 setSyncProgress spE = do
   syncProgRef <- getSyncProgressRef
-  syncRef <- getFiltersSyncRef
-  performEvent_ $ ffor spE $ \sp -> do
-    writeExternalRef syncProgRef sp
-    case sp of
-      SyncMeta cur SyncFilters a t -> when (a >= t && t /= 0) $
-        modifyExternalRef syncRef $ \m -> (,()) $ M.insert cur True m
-      _ -> pure ()
+  performEvent_ $ ffor spE $ \(SyncProgress cur sp) -> do
+    modifyExternalRef_ syncProgRef $ M.insert cur sp
 {-# INLINE setSyncProgress #-}
 
 -- | Get auth info. Not a Maybe since this is authorized context
@@ -228,27 +224,6 @@ getCurrentHeight c = do
   pure $ ffor psD $ \ps -> fromIntegral $ fromMaybe 0 $ join $ ps ^. pubStorage'currencyPubStorages . at c
     & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'height
 
--- | Update current height of longest chain for given currency.
--- DEPRECATED! getCurrentHeight reads directly from pubStorage
-setCurrentHeight :: MonadFront t m => Currency -> Event t Integer -> m (Event t ())
-setCurrentHeight c e = do
-  r <- getHeightRef
-  e' <- fmap (fmapMaybe id) $ performFork $ ffor e $ \h -> do
-    h0 <- fromMaybe 0 . M.lookup c <$> readExternalRef r
-    pure $ if h > h0 then Just h else Nothing
-
-  restoredD <- fmap _pubStorage'restoring <$> getPubStorageD
-  setLastSeenHeight "setCurrentHeight" c $ fromIntegral <$> e'
-  mE <- performFork $ ffor e' $ \h -> do
-    h0 <- fromMaybe 0 . M.lookup c <$> readExternalRef r
-    restored <- sample . current $ restoredD
-    if h > h0
-      then do
-        modifyExternalRef r ((, ()) . M.insert c h)
-        pure $ if (h0 == 0 && not restored) then Just (c, fromIntegral (h-1)) else Nothing
-      else pure Nothing
-  writeWalletsScannedHeight "setCurrentHeight" $ fmapMaybe id mE
-
 -- | Get current value that tells you whether filters are fully in sync now or not
 getFiltersSync :: MonadFrontAuth t m => Currency -> m (Dynamic t Bool)
 getFiltersSync c = do
@@ -261,8 +236,50 @@ setFiltersSync c v = do
   r <- getFiltersSyncRef
   modifyExternalRef r $ (, ()) . M.insert c v
 
--- | Set the value for catchup heights
-setCatchUpHeight :: MonadFrontAuth t m => Currency -> Event t Integer -> m ()
-setCatchUpHeight cur hE = do
-  r <- getCatchUpHeightRef
-  performFork_ $ ffor hE $ \h -> modifyExternalRef_ r (M.insert cur h)
+requestRandomIndexer :: MonadFront t m => Event t (Currency, Message) -> m (Event t (SockAddr, Message))
+requestRandomIndexer reqE = mdo
+  let actE = leftmost [Just <$> reqE, Nothing <$ sentE]
+  sentE <- widgetHoldE (pure never) $ ffor actE $ \case
+    Nothing -> pure never
+    Just (cur, req) -> requester cur req
+  pure sentE
+
+requester :: MonadFront t m => Currency -> Message -> m (Event t (SockAddr, Message))
+requester cur req = mdo
+  buildE <- getPostBuild
+  respD <- holdDyn True $ False <$ respE
+  te <- widgetHoldDynE $ ffor respD $ \b -> if b
+    then tickLossyFromPostBuildTime timeout
+    else pure never
+  let goE = leftmost [buildE, () <$ te]
+  respE <- widgetHoldE (pure never) $ ffor goE $ const $ do
+    mconn <- randomElem =<< getOpenSyncedConns cur
+    case mconn of
+      Nothing -> pure never
+      Just conn -> do
+        requestIndexerWhenOpen conn req
+        pure $ (indexConAddr conn,) <$> indexConRespE conn
+  pure respE
+  where
+    timeout = 5 -- NominalDiffTime, seconds
+
+-- | Designed to be used inside a widgetHold, samples dynamics
+getOpenSyncedConns :: MonadFront t m => Currency -> m [IndexerConnection t]
+getOpenSyncedConns cur = do
+  conns <- readExternalRef =<< getActiveConnsRef
+  heights <- readExternalRef =<< getHeightRef
+  let mh = M.lookup cur heights
+  fmap catMaybes $ flip traverse (M.elems conns) $ \con -> do
+    isUp <- sampleDyn $ indexConIsUp con
+    if not isUp then pure Nothing else do
+      mh' <- fmap (M.lookup cur) $ sampleDyn $ indexerConHeight con
+      pure $ case (mh, fromIntegral <$> mh') of
+        (Just h, Just h') -> if h == h' || h - h' == 1 then Just con else Nothing
+        _ -> Nothing
+
+randomElem :: MonadIO m => [a] -> m (Maybe a)
+randomElem xs = case xs of
+  [] -> pure Nothing
+  _ -> do
+    i <- liftIO $ randomRIO (0, length xs - 1)
+    pure $ Just $ xs!!i

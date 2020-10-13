@@ -13,6 +13,10 @@ module Ergvein.Wallet.Settings (
   , ExplorerUrls(..)
   , defaultExplorerUrl
   , btcDefaultExplorerUrls
+  , defaultDns
+  -- * Helpers
+  , makeSockAddr
+  , parseIP
   ) where
 
 import Control.Lens hiding ((.=))
@@ -24,15 +28,19 @@ import Data.Time (NominalDiffTime)
 import Data.Yaml (encodeFile)
 import Network.Socket
 import System.Directory
+import Data.IP (IP, toSockAddr)
+import Text.Read (readMaybe)
 
 import Ergvein.Aeson
 import Ergvein.Lens
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Yaml(readYamlEither')
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
+import qualified Data.Set as S
 
 #ifdef ANDROID
 import Android.HaskellActivity
@@ -65,6 +73,16 @@ defaultExplorerUrl = M.fromList $ btcDefaultUrls <> ergoDefaultUrls
 btcDefaultExplorerUrls :: ExplorerUrls
 btcDefaultExplorerUrls = ExplorerUrls "https://www.blockchain.com/btc-testnet" "https://www.blockchain.com/btc"
 
+-- | Parsing IPv4 and IPv6 addresses and makes socket address from them
+makeSockAddr :: Text -> Int -> Maybe SockAddr
+makeSockAddr t pnum = do
+  ip <- parseIP t
+  pure $ toSockAddr (ip, fromIntegral pnum)
+
+-- | Parsing IPv4 and IPv6 addresses
+parseIP :: Text -> Maybe IP
+parseIP = readMaybe . T.unpack
+
 data Settings = Settings {
   settingsLang              :: Language
 , settingsStoreDir          :: Text
@@ -79,7 +97,7 @@ data Settings = Settings {
 , settingsExplorerUrl       :: M.Map Currency ExplorerUrls
 , settingsPortfolio         :: Bool
 , settingsFiatCurr          :: Fiat
-, settingsDns               :: [HostName]
+, settingsDns               :: S.Set HostName
 } deriving (Eq, Show)
 
 
@@ -111,7 +129,7 @@ instance FromJSON Settings where
     mdns                      <- o .:? "dns"
     let settingsDns = case fromMaybe [] mdns of
           [] -> defaultDns
-          dns -> dns
+          dns -> S.fromList dns
     pure Settings{..}
 
 instance ToJSON Settings where
@@ -152,8 +170,10 @@ defaultIndexerTimeout = 20
 defaultActUrlNum :: Int
 defaultActUrlNum = 10
 
-defaultDns :: [HostName]
-defaultDns = ["8.8.8.8","8.8.4.4", "1.1.1.1"]
+defaultDns :: S.Set HostName
+defaultDns = S.fromList $ if isAndroid
+  then ["8.8.8.8","8.8.4.4", "1.1.1.1"]
+  else [] -- use resolv.conf
 
 defaultSettings :: FilePath -> Settings
 defaultSettings home =

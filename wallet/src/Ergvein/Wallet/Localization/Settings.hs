@@ -7,6 +7,7 @@ module Ergvein.Wallet.Localization.Settings(
 import Data.Time
 import Ergvein.Text
 import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Language
 
 data SettingsPageStrings =
@@ -17,6 +18,7 @@ data SettingsPageStrings =
   | STPSButUnits
   | STPSButPortfolio
   | STPSButMnemonicExport
+  | STPSButDns
   | STPSSelectLanguage
   | STPSSetsActiveCurrs
   | STPSSetsPortfolio
@@ -38,6 +40,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButLanguage         -> "Language"
       STPSButActiveCurrs      -> "Currencies"
       STPSButNetwork          -> "Network"
+      STPSButDns              -> "DNS servers"
       STPSButUnits            -> "Display units for cryptos"
       STPSButPortfolio        -> "Portfolio"
       STPSButMnemonicExport   -> "Export mnemonic phrase"
@@ -58,6 +61,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButLanguage         -> "Язык"
       STPSButActiveCurrs      -> "Валюты"
       STPSButNetwork          -> "Сеть"
+      STPSButDns              -> "DNS сервера"
       STPSButUnits            -> "Единицы отображения криптосистем"
       STPSButPortfolio        -> "Портфель"
       STPSButMnemonicExport   -> "Экспортировать мнемоническую фразу"
@@ -89,6 +93,7 @@ instance LocalizedPrint UnitERGO where
 data NetSetupStrings
   = NSSTitle
   | NSSLatency NominalDiffTime
+  | NSSIndexerHeight BlockHeight
   | NSSOffline
   | NSSRefresh
   | NSSPing
@@ -96,6 +101,7 @@ data NetSetupStrings
   | NSSDisable
   | NSSEnable
   | NSSForget
+  | NSSResolveConfDefault
   | NSSRestoreUrls
   | NSSRestoreDef
   | NSSReqTimeout
@@ -104,16 +110,22 @@ data NetSetupStrings
   | NSSReqNumMax
   | NSSSave
   | NSSAddUrl
+  | NSSAddDns
   | NSSAdd
+  | NSSDelete
   | NSSEdit
+  | NSSCancel
   | NSSClose
   | NSSCopyURL
+  | NSSFailedDns
+  | NSSNoHeight
 
 instance LocalizedPrint NetSetupStrings where
   localizedShow l v = case l of
     English -> case v of
       NSSTitle        -> "Network settings"
       NSSLatency lat  -> "Latency: " <> showt lat
+      NSSIndexerHeight h -> "Height: " <> showt h
       NSSOffline      -> "Offline"
       NSSRefresh      -> "Refresh"
       NSSPing         -> "Ping"
@@ -121,7 +133,8 @@ instance LocalizedPrint NetSetupStrings where
       NSSEnable       -> "Enable"
       NSSForget       -> "Forget"
       NSSPingAll      -> "Ping all"
-      NSSRestoreUrls  -> "Add default URLs"
+      NSSResolveConfDefault -> "Using servers from system configuration"
+      NSSRestoreUrls  -> "Restore default"
       NSSRestoreDef   -> "Restore default values"
       NSSReqTimeout   -> "Request timeout, s"
       NSSActUrlNum    -> "Min. number of active indexers"
@@ -129,13 +142,19 @@ instance LocalizedPrint NetSetupStrings where
       NSSReqNumMax    -> "Required number of confirmations"
       NSSSave         -> "Save"
       NSSAddUrl       -> "Add indexer"
+      NSSAddDns       -> "Add DNS"
       NSSAdd          -> "Add"
+      NSSDelete       -> "Delete"
       NSSEdit         -> "Edit"
+      NSSCancel       -> "Cancel"
       NSSClose        -> "Close"
       NSSCopyURL      -> "Copy URL"
+      NSSFailedDns    -> "Failed to parse DNS IP"
+      NSSNoHeight     -> "None"
     Russian -> case v of
       NSSTitle        -> "Настройки сети"
       NSSLatency lat  -> "Задержка: " <> showt lat
+      NSSIndexerHeight h -> "Высота: " <> showt h
       NSSOffline      -> "Оффлайн"
       NSSRefresh      -> "Обновить"
       NSSPing         -> "Запросить статус"
@@ -143,6 +162,7 @@ instance LocalizedPrint NetSetupStrings where
       NSSEnable       -> "Включить"
       NSSForget       -> "Забыть"
       NSSPingAll      -> "Запросить всех"
+      NSSResolveConfDefault -> "Используем глобальные настройки системы"
       NSSRestoreUrls  -> "Сервера по умолчанию"
       NSSRestoreDef   -> "Значения по умолчанию"
       NSSReqTimeout   -> "Время ожидания ответа, с"
@@ -151,7 +171,12 @@ instance LocalizedPrint NetSetupStrings where
       NSSReqNumMax    -> "Необходимое количество подтверждений"
       NSSSave         -> "Сохранить"
       NSSAddUrl       -> "Добавить индексер"
+      NSSAddDns       -> "Добавить DNS"
       NSSAdd          -> "Добавить"
+      NSSDelete       -> "Удалить"
       NSSEdit         -> "Изменить"
+      NSSCancel       -> "Отменить"
       NSSClose        -> "Закрыть"
       NSSCopyURL      -> "Copy URL"
+      NSSFailedDns    -> "Некорректный IP DNS сервера"
+      NSSNoHeight     -> "Нет"
