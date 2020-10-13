@@ -15,7 +15,7 @@ module Ergvein.Wallet.Input(
   , passFieldWithEye
   , submitClass
   , textInputTypeDyn
-  , toggleSwitchInput
+  , toggler
   ) where
 
 import Control.Lens
@@ -219,14 +219,19 @@ textInputTypeDyn :: forall t m . MonadFrontBase t m => Event t Text -> InputElem
 textInputTypeDyn typeE cfg = fmap _inputElement_value $ inputElement $ cfg
   & inputElementConfig_elementConfig . elementConfig_modifyAttributes .~ fmap ((=:) "type" . Just) typeE
 
-toggleSwitchInput :: MonadFrontBase t m
+toggler :: MonadFrontBase t m
   => InputElementConfig EventResult t (DomBuilderSpace m)
-  -> m  (Dynamic t Text)
-toggleSwitchInput cfg = do
+  -> (Dynamic t Bool)
+  -> m  (Dynamic t Bool)
+toggler cfg init = do
+  let initE = updated init
+  initVal <- sample $ current init
   i <- genId
-  elClass "label" "switch" $ do
+  y <- elClass "label" "switch" $ do
     x <- inputElement $ cfg
-      & inputElementConfig_elementConfig . elementConfig_initialAttributes
-        %~ (\as -> "id" =: i <> "type" =: "checkbox" <> as)
+      & inputElementConfig_elementConfig . elementConfig_initialAttributes %~ (\as -> "id" =: i <> "type" =: "checkbox" <> as)
+      & inputElementConfig_initialChecked .~ initVal
+      & inputElementConfig_setChecked .~ initE
     spanClass "slider" $ pure ()
-  undefined
+    pure x
+  pure $ _inputElement_checked y

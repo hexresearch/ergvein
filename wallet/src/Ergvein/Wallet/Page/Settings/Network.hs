@@ -136,14 +136,16 @@ activePageWidget = mdo
   void $ widgetHoldDyn $ ffor valsD $ \(conmap, urls) ->
     flip traverse urls $ \sa -> renderActive sa refrE $ M.lookup (namedAddrSock sa) conmap
   hideE <- activateURL =<< addUrlWidget showD
-  (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
+  (refrE, tglE, e) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
     restoreE <- buttonClass "button button-outline m-0" NSSRestoreUrls
+    e <- traceEventWith show . updated <$> toggler def (constDyn True)
+    
     rs <- mkResolvSeed
-    void $ activateURLList =<< performFork (parseSockAddrs rs defaultIndexers <$ restoreE)
+    void $ activateURLList =<< performFork (parseSockAddrs rs defaultIndexers <$ e)
     tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSClose else NSSAddUrl
-    pure (refrE', tglE')
+    pure (refrE', tglE', e)
   pure ()
 
 renderActive :: MonadFrontBase t m
