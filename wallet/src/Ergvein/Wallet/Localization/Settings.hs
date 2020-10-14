@@ -19,6 +19,7 @@ data SettingsPageStrings =
   | STPSButPortfolio
   | STPSButMnemonicExport
   | STPSButDns
+  | STPSButNodes
   | STPSSelectLanguage
   | STPSSetsActiveCurrs
   | STPSSetsPortfolio
@@ -41,6 +42,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButActiveCurrs      -> "Currencies"
       STPSButNetwork          -> "Network"
       STPSButDns              -> "DNS servers"
+      STPSButNodes            -> "BTC nodes"
       STPSButUnits            -> "Display units for cryptos"
       STPSButPortfolio        -> "Portfolio"
       STPSButMnemonicExport   -> "Export mnemonic phrase"
@@ -62,6 +64,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButActiveCurrs      -> "Валюты"
       STPSButNetwork          -> "Сеть"
       STPSButDns              -> "DNS сервера"
+      STPSButNodes            -> "Ноды BTC"
       STPSButUnits            -> "Единицы отображения криптосистем"
       STPSButPortfolio        -> "Портфель"
       STPSButMnemonicExport   -> "Экспортировать мнемоническую фразу"
