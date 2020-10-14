@@ -7,6 +7,7 @@ import Conversion
 import Data.Time.Clock.POSIX
 import Control.Monad.Random
 import Conversion
+import Network.Socket
 
 import Ergvein.Index.Protocol.Types as IPT
 import Ergvein.Index.Server.DB.Monad
@@ -22,7 +23,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 import Ergvein.Types.Transaction
 import Ergvein.Index.Server.TCPService.Connections
-import Network.Socket
+import Ergvein.Index.Server.TCPService.Conversions
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -61,7 +62,7 @@ handleMsg address (MPeerRequest _) = do
   pure $ pure $ MPeerResponse $ PeerResponse $ V.fromList knownPeers
 
 handleMsg address (MFiltersRequest FilterRequest {..}) = do
-  let currency = convert filterRequestMsgCurrency
+  currency <- currencyCodeToCurrency filterRequestMsgCurrency
   slice <- getBlockMetaSlice currency filterRequestMsgStart filterRequestMsgAmount
   let filters = V.fromList $ convert <$> slice
   addCounter filtersServedCounter $ fromIntegral $ V.length filters
@@ -72,7 +73,7 @@ handleMsg address (MFiltersRequest FilterRequest {..}) = do
     }
 
 handleMsg address (MFiltersEvent FilterEvent {..}) = do
-  let currency = convert filterEventCurrency
+  currency <- currencyCodeToCurrency filterEventCurrency
   slice <- getBlockMetaSlice currency filterEventHeight 1
   let filters = blockFilterFilter . convert <$> slice
   when (any (/= filterEventBlockFilter) filters) $ do
