@@ -84,6 +84,59 @@
       "type": "gauge"
     },
     {
+      "datasource": null,
+      "gridPos": {
+        "h": 8,
+        "w": 2,
+        "x": 7,
+        "y": 0
+      },
+      "id": 20,
+      "options": {
+        "displayMode": "lcd",
+        "fieldOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "defaults": {
+            "mappings": [],
+            "max": 50,
+            "min": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 2
+                }
+              ]
+            }
+          },
+          "overrides": [],
+          "values": false
+        },
+        "orientation": "vertical",
+        "showUnfilled": true
+      },
+      "pluginVersion": "6.7.4",
+      "targets": [
+        {
+          "expr": "btc_current_height - btc_scanned_height",
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Desync",
+      "type": "bargauge"
+    },
+    {
       "aliasColors": {},
       "bars": false,
       "dashLength": 10,
@@ -94,7 +147,7 @@
       "gridPos": {
         "h": 8,
         "w": 9,
-        "x": 7,
+        "x": 9,
         "y": 0
       },
       "hiddenSeries": false,
@@ -189,8 +242,8 @@
       "fillGradient": 0,
       "gridPos": {
         "h": 8,
-        "w": 8,
-        "x": 16,
+        "w": 6,
+        "x": 18,
         "y": 0
       },
       "hiddenSeries": false,
@@ -840,8 +893,8 @@
     "list": []
   },
   "time": {
-    "from": "now-30m",
-    "to": "now"
+    "from": "2020-10-15T05:31:36.243Z",
+    "to": "2020-10-15T07:07:33.243Z"
   },
   "timepicker": {
     "refresh_intervals": [
