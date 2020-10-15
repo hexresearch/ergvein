@@ -7,6 +7,29 @@ let
 
   makePeerAddress = v: '' { peerIP: "${v.host}", peerPort: "${toString v.port}" } '';
   addressType = import ./address-type.nix { inherit lib; };
+  metricsType = {
+    options = {
+      host = mkOption {
+        type = types.str;
+        example = "127.0.0.1";
+        description = ''
+          Hostname of metrics client server.
+        '';
+      };
+      port = mkOption {
+        type = types.int;
+        example = 9667;
+        description = ''
+          Port of metrics client.
+        '';
+      };
+    };
+  };
+  makeMetricsCfg = v: ''
+    metrics:
+      host: ${v.host}
+      port: ${toString v.port}
+    '';
 in {
   ##### interface. here we define the options that users of our service can specify
   options = {
@@ -124,7 +147,13 @@ in {
           Service that indicates that passwordFile is ready.
         '';
       };
-
+      metrics = mkOption {
+        type = types.nullOr (types.submodule metricsType);
+        default = null;
+        description = ''
+          Start metrics client inside the indexer if not null.
+        '';
+      };
       config = mkOption {
         type = types.str;
         default = ''
@@ -147,7 +176,7 @@ in {
           knownPeers               : []
           peerActualizationDelay   : 10000000
           peerActualizationTimeout : 86400
-
+          ${if cfg.metrics != null then makeMetricsCfg cfg.metrics else ""}
         '';
         description = ''
           Configuration file for indexer server.
