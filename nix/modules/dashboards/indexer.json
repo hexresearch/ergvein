@@ -885,7 +885,7 @@
       }
     }
   ],
-  "refresh": "5s",
+  "refresh": "10s",
   "schemaVersion": 22,
   "style": "dark",
   "tags": [],
@@ -893,8 +893,8 @@
     "list": []
   },
   "time": {
-    "from": "2020-10-15T05:31:36.243Z",
-    "to": "2020-10-15T07:07:33.243Z"
+    "from": "now-5m",
+    "to": "now"
   },
   "timepicker": {
     "refresh_intervals": [
