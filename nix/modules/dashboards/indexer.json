@@ -897,8 +897,7 @@
     "list": []
   },
   "time": {
-    "from": "now-30m",
-    "to": "now"
+    "from": "now-30m",    "to": "now"
   },
   "timepicker": {
     "refresh_intervals": [
