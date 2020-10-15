@@ -1,11 +1,13 @@
+{-# LANGUAGE OverloadedLists #-}
 module Ergvein.Wallet.Page.Settings(
     settingsPage
   ) where
 
 import Control.Lens
 import Data.List
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, catMaybes)
 import Reflex.Dom
+import Reflex.ExternalRef
 
 import Ergvein.Crypto.Keys
 import Ergvein.Text
@@ -16,9 +18,11 @@ import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Localization.Network
 import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Node
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Settings.MnemonicExport
 import Ergvein.Wallet.Page.Settings.Network
@@ -31,6 +35,7 @@ import Ergvein.Wallet.Wrapper
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as S
+import qualified Data.Dependent.Map as DM
 
 -- TODO: uncomment commented lines when ERGO is ready
 data SubPageSettings
@@ -41,6 +46,7 @@ data SubPageSettings
   | GoPortfolio
   | GoMnemonicExport Mnemonic
   | GoDns
+  | GoNodes
 
 -- TODO: uncomment commented lines when ERGO is ready
 settingsPage :: MonadFront t m => m ()
@@ -54,6 +60,7 @@ settingsPage = do
             , (GoUnits, STPSButUnits)
             , (GoPortfolio, STPSButPortfolio)
             , (GoDns, STPSButDns)
+            , (GoNodes, STPSButNodes)
             ]
       goE' <- fmap leftmost $ flip traverse btns $ \(v,l) -> fmap (v <$) $ outlineButton l
       mnemonicExportBtnE <- outlineButton STPSButMnemonicExport
@@ -70,8 +77,42 @@ settingsPage = do
             GoPortfolio               -> portfolioPage
             GoMnemonicExport mnemonic -> mnemonicExportPage mnemonic
             GoDns                     -> dnsPage
+            GoNodes                   -> btcNodesPage
         , retractablePrev = Just $ pure settingsPage
         }
+
+btcNodesPage :: MonadFront t m => m ()
+btcNodesPage = do
+  title <- localized STPSButNodes
+  wrapper False title (Just $ pure $ btcNodesPage) $ do
+    conmapD <- getNodeConnectionsD
+    void $ lineOption $ widgetHoldDyn $ ffor conmapD $ \cm -> do
+      let btcNodes = maybe [] Map.elems $ DM.lookup BTCTag cm
+      btcNetworkWidget btcNodes
+      void $ flip traverse btcNodes $ \node -> do
+        let offclass = [("class", "mt-a mb-a indexer-offline")]
+        let onclass = [("class", "mt-a mb-a indexer-online")]
+        let clsD = fmap (\b -> if b then onclass else offclass) $ nodeconIsUp node
+        divClass "network-name" $ do
+          let addr = nodeconUrl node
+          (e,_) <- elAttr' "span" [("class", "mt-a mb-a mr-1")] $ elClass "i" "fas fa-times" $ pure ()
+          let closeE = (addr, NodeMsgClose) <$ domEvent Click e
+          postNodeMessage BTC closeE
+          elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
+          divClass "mt-a mb-a network-name-txt" $ text $ showt addr
+        pure ()
+  pure ()
+
+btcNetworkWidget :: MonadFront t m => [NodeBTC t] -> m ()
+btcNetworkWidget nodes = do
+  infosD <- fmap sequence $ traverse externalRefDynamic $ nodeconStatus <$> nodes
+  let activeND = fmap (length . filter id) $ sequence $ nodeconIsUp <$> nodes
+      sumLatD  = fmap (sum . fmap nodestatLat . catMaybes) infosD
+      avgLatD  = (\a b -> if b == 0 then NPSNoActiveNodes else NPSAvgLat $ a / fromIntegral b) <$> sumLatD <*> activeND
+  valueOptionDyn $ NPSActiveNum <$> activeND
+  descrOption $ NPSNodesNum $ length nodes
+  descrOptionDyn avgLatD
+  labelHorSep
 
 -- TODO: use dyn settings instead of simple settings <- getSettings
 languagePage :: MonadFront t m => m ()
@@ -79,7 +120,6 @@ languagePage = do
   title <- localized STPSTitle
   wrapper True title (Just $ pure languagePage) languagePageWidget
 
--- TODO: use dyn settings instead of simple settings <- getSettings
 dnsPage :: MonadFront t m => m ()
 dnsPage = do
   title <- localized STPSTitle
@@ -195,3 +235,19 @@ portfolioPage = do
       dp <- divClass "select-fiat" $ dropdown initKey listFiatsD ddnCfg
       let selD = _dropdown_value dp
       fmap updated $ holdUniqDyn selD
+
+lineOption :: MonadFront t m => m a -> m a
+lineOption = divClass "network-wrapper"
+
+nameOption, descrOption :: (MonadFront t m, LocalizedPrint a) => a -> m ()
+nameOption = divClass "network-name" . localizedText
+descrOption = (>>) elBR . divClass "network-descr" . localizedText
+
+valueOptionDyn, descrOptionDyn, descrOptionDynNoBR :: (MonadFront t m, LocalizedPrint a) => Dynamic t a -> m ()
+valueOptionDyn v = getLanguage >>= \langD -> divClass "network-value" $ dynText $ ffor2 langD v localizedShow
+descrOptionDyn v = getLanguage >>= \langD -> (>>) elBR (divClass "network-descr" $ dynText $ ffor2 langD v localizedShow)
+descrOptionDynNoBR v = getLanguage >>= \langD -> divClass "network-descr" $ dynText $ ffor2 langD v localizedShow
+
+labelHorSep, elBR :: MonadFront t m => m ()
+labelHorSep = elAttr "hr" [("class","network-hr-sep-lb")] blank
+elBR = el "br" blank
