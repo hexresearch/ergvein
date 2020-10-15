@@ -23,8 +23,8 @@ in {
       };
       package = mkOption {
         type = types.package;
-        default = pkgs.altcoins.bitcoind;
-        defaultText = "pkgs.altcoins.bitcoind";
+        default = pkgs.bitcoind;
+        defaultText = "pkgs.bitcoind";
         description = ''
           Which bitcoin package to use with the service. The bitcoin node have to
           be built with ZeroMQ support.
