@@ -128,6 +128,7 @@ isEnoughSpace :: ServerM Bool
 isEnoughSpace = do
   path <- cfgFiltersDbPath <$> serverConfig
   availSpace <- liftIO $ getAvailSpace path
+  setGauge availableSpaceGauge $ fromIntegral (availSpace - requiredAvailSpace)
   pure $ requiredAvailSpace <= availSpace
  where
   requiredAvailSpace = 2^30 -- 1Gb

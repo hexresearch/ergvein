@@ -5,6 +5,7 @@ module Ergvein.Index.Server.Metrics(
   , scanGauge
   , reportCurrentHeight
   , reportScannedHeight
+  , availableSpaceGauge
   -- * Helpers
   , incGaugeWhile
   -- * Metrics server
@@ -57,6 +58,10 @@ scanGauge c = unsafeRegister $ gauge (Info gaugeName ("Amount of scanned blocks 
   where
     gaugeName = T.toLower (showt c) <> "_scanned_height"
 {-# NOINLINE scanGauge #-}
+
+availableSpaceGauge :: Gauge
+availableSpaceGauge = unsafeRegister $ gauge (Info "available_space" "Amount of space left for indecies until the server stops")
+{-# NOINLINE availableSpaceGauge #-}
 
 incGaugeWhile :: (MonadMonitor m, MonadMask m) => Gauge -> m a -> m a
 incGaugeWhile g = bracket_ (addGauge activeConnsGauge 1.0) (subGauge activeConnsGauge 1.0)
