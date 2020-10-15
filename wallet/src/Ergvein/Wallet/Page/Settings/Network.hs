@@ -139,8 +139,6 @@ activePageWidget = mdo
   (refrE, tglE, e) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
     restoreE <- buttonClass "button button-outline m-0" NSSRestoreUrls
-    e <- traceEventWith show . updated <$> toggler def (constDyn True)
-    
     rs <- mkResolvSeed
     void $ activateURLList =<< performFork (parseSockAddrs rs defaultIndexers <$ e)
     tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->

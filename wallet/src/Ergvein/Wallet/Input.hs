@@ -219,19 +219,20 @@ textInputTypeDyn :: forall t m . MonadFrontBase t m => Event t Text -> InputElem
 textInputTypeDyn typeE cfg = fmap _inputElement_value $ inputElement $ cfg
   & inputElementConfig_elementConfig . elementConfig_modifyAttributes .~ fmap ((=:) "type" . Just) typeE
 
-toggler :: MonadFrontBase t m
-  => InputElementConfig EventResult t (DomBuilderSpace m)
+toggler :: (MonadFrontBase t m, LocalizedPrint l)
+  => l
   -> (Dynamic t Bool)
   -> m  (Dynamic t Bool)
-toggler cfg init = do
+toggler lbl init = do
   let initE = updated init
   initVal <- sample $ current init
   i <- genId
-  y <- elClass "label" "switch" $ do
-    x <- inputElement $ cfg
+  label i $ localizedText lbl
+  input <- elClass "label" "switch" $ do
+    input <- inputElement $ def
       & inputElementConfig_elementConfig . elementConfig_initialAttributes %~ (\as -> "id" =: i <> "type" =: "checkbox" <> as)
       & inputElementConfig_initialChecked .~ initVal
       & inputElementConfig_setChecked .~ initE
     spanClass "slider" $ pure ()
-    pure x
-  pure $ _inputElement_checked y
+    pure input
+  pure $ _inputElement_checked input
