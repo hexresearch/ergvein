@@ -100,7 +100,7 @@
           ],
           "defaults": {
             "mappings": [],
-            "max": 50,
+            "max": 10,
             "min": 0,
             "thresholds": {
               "mode": "absolute",
@@ -108,6 +108,10 @@
                 {
                   "color": "green",
                   "value": null
+                },
+                {
+                  "color": "#EAB839",
+                  "value": 1
                 },
                 {
                   "color": "red",
@@ -885,7 +889,7 @@
       }
     }
   ],
-  "refresh": "5s",
+  "refresh": "10s",
   "schemaVersion": 22,
   "style": "dark",
   "tags": [],
@@ -893,8 +897,8 @@
     "list": []
   },
   "time": {
-    "from": "2020-10-15T05:31:36.243Z",
-    "to": "2020-10-15T07:07:33.243Z"
+    "from": "now-30m",
+    "to": "now"
   },
   "timepicker": {
     "refresh_intervals": [
