@@ -94,8 +94,12 @@ btcNodesPage = do
         let onclass = [("class", "mt-a mb-a indexer-online")]
         let clsD = fmap (\b -> if b then onclass else offclass) $ nodeconIsUp node
         divClass "network-name" $ do
+          let addr = nodeconUrl node
+          (e,_) <- elAttr' "span" [("class", "mt-a mb-a mr-1")] $ elClass "i" "fas fa-times" $ pure ()
+          let closeE = (addr, NodeMsgClose) <$ domEvent Click e
+          postNodeMessage BTC closeE
           elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
-          divClass "mt-a mb-a network-name-txt" $ text $ showt $ nodeconUrl node
+          divClass "mt-a mb-a network-name-txt" $ text $ showt addr
         pure ()
   pure ()
 
