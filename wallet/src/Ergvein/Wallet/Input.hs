@@ -223,9 +223,9 @@ toggler :: (MonadFrontBase t m, LocalizedPrint l)
   => l
   -> (Dynamic t Bool)
   -> m  (Dynamic t Bool)
-toggler lbl init = do
-  let initE = updated init
-  initVal <- sample $ current init
+toggler lbl initialChecked = do
+  let initE = updated initialChecked
+  initVal <- sample $ current initialChecked
   i <- genId
   label i $ localizedText lbl
   input <- elClass "label" "switch" $ do
