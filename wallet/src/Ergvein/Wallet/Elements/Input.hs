@@ -13,14 +13,19 @@ module Ergvein.Wallet.Elements.Input(
   , textFieldValidated
   , passField
   , passFieldWithEye
+  , Inputable(..)
+  , valueField
   , submitClass
   , textInputTypeDyn
   ) where
 
 import Control.Lens
+import Control.Monad.IO.Class
+import Data.Proxy
 import Data.Text (Text)
 import Ergvein.Text
 import Ergvein.Wallet.Elements
+import Ergvein.Wallet.Elements.Input.Class
 import Ergvein.Wallet.Id
 import Ergvein.Wallet.Monad
 import Reflex.Localize
@@ -193,6 +198,30 @@ passFieldWithEye lbl = mdo
     eyeE' <- divButton "small-eye" $ elClassDyn "i" eyeButtonIconClassD blank
     pure (valD', eyeE')
   pure valD
+
+-- | Labeled text input that parses text into given type
+valueField :: forall a t m l .(MonadFrontBase t m, Inputable l a, Eq a, Show l, Show a)
+  => l -- ^ Label
+  -> Dynamic t a -- ^ Initial value and updates
+  -> m (Dynamic t a)
+valueField lbl av0D = mdo
+  av0 <- sample . current $ av0D
+  avD :: Dynamic t a <- holdUniqDyn =<< mergeDyn av0D valE
+  errorD <- holdDyn Nothing $ leftmost [Just <$> errorE, Nothing <$ valE]
+  let isInvalidD = fmap (maybe "" (const "is-invalid")) errorD
+  tInput <- divClassDyn isInvalidD $ let
+      display = displayInput (Proxy :: Proxy l)
+      in labeledTextInput lbl mempty def {
+        _inputElementConfig_setValue = Just $ display <$> updated avD
+      , _inputElementConfig_initialValue = display av0
+      }
+  void $ widgetHoldDyn $ ffor errorD $ \case
+    Nothing -> pure ()
+    Just e -> divClass "form-field-errors" $ displayError $ pure e
+  let resD = parseInput <$> _inputElement_value tInput
+      (errorE :: Event t l, valE) = splitEither $ updated resD
+  performEvent_ $ ffor (updated resD) $ liftIO . print
+  holdUniqDyn =<< holdDyn av0 valE
 
 eyeButtonIconClass :: Bool -> Text
 eyeButtonIconClass True = "far fa-eye-slash fa-fw"

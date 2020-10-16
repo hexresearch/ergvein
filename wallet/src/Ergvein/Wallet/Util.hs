@@ -16,6 +16,7 @@ module Ergvein.Wallet.Util(
   , mergeDyn
   , currencyToCurrencyCode
   , currencyCodeToCurrency
+  , splitEither
   ) where
 
 import Control.Monad.Except
@@ -103,3 +104,9 @@ currencyCodeToCurrency c = case c of
   ERGO -> ETC.ERGO
   TERGO -> ETC.ERGO
   _ -> error "Currency code not implemented"
+
+splitEither :: Reflex t => Event t (Either a b) -> (Event t a, Event t b)
+splitEither e = (ae, be)
+  where
+    ae = fmapMaybe (either Just (const Nothing)) e
+    be = fmapMaybe (either (const Nothing) Just) e

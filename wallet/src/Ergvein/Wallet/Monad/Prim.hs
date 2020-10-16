@@ -137,7 +137,7 @@ mkResolvSeed = do
 {-# INLINE mkResolvSeed #-}
 
 getSocksConf :: MonadHasSettings t m => m (Dynamic t (Maybe S5.SocksConf))
-getSocksConf = fmap (toSocksProxy <=< settingsSocksProxy) <$> getSettingsD
+getSocksConf = fmap (fmap toSocksProxy . settingsSocksProxy) <$> getSettingsD
 {-# INLINE getSocksConf #-}
 
 getProxyConf :: MonadHasSettings t m => m (Dynamic t (Maybe SocksConf))

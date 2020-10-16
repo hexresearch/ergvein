@@ -9,6 +9,9 @@ import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Elements.Input.Class
+import Ergvein.Wallet.Localization.Input
+import Ergvein.Wallet.Localization.IP
 
 data SettingsPageStrings =
     STPSTitle
@@ -25,6 +28,8 @@ data SettingsPageStrings =
   | STPSSetsTor
   | STPSUseTor
   | STPSSetsProxy
+  | STPSProxyIpField
+  | STPSProxyPortField
   | STPSSetsActiveCurrs
   | STPSSetsPortfolio
   | STPSSetsPortfolioEnable
@@ -36,7 +41,15 @@ data SettingsPageStrings =
   | STPSSetsPinDoSet
   | STPSMnemonicExportMsg
   | STPSSuccess
-  deriving (Eq)
+  | STPSIPStrings IPStrings
+  | STPSInputStrings InputStrings
+  deriving (Eq, Show)
+
+instance Wrappable IPStrings SettingsPageStrings where
+  wrap = STPSIPStrings
+
+instance Wrappable InputStrings SettingsPageStrings where
+  wrap = STPSInputStrings
 
 instance LocalizedPrint SettingsPageStrings where
   localizedShow l v = case l of
@@ -55,6 +68,8 @@ instance LocalizedPrint SettingsPageStrings where
       STPSSetsTor             -> "Tor configuration"
       STPSUseTor              -> "Use Tor"
       STPSSetsProxy           -> "SOCKS proxy configuration"
+      STPSProxyIpField        -> "Proxy IP address"
+      STPSProxyPortField      -> "Proxy port"
       STPSSetsActiveCurrs     -> "Settings for active currencies"
       STPSSetsPortfolio       -> "Settings for fiat and ticks"
       STPSSetsPortfolioEnable -> "Display portfolio"
@@ -66,6 +81,8 @@ instance LocalizedPrint SettingsPageStrings where
       STPSSetsPinDoSet        -> "Set PIN code"
       STPSMnemonicExportMsg   -> "This is your password protected mnemonic phrase in QR code and text form. Choose the most convenient way."
       STPSSuccess             -> "Successfully updated settings"
+      STPSIPStrings s         -> localizedShow English s
+      STPSInputStrings s      -> localizedShow English s
     Russian -> case v of
       STPSTitle               -> "Настройки"
       STPSButLanguage         -> "Язык"
@@ -81,6 +98,8 @@ instance LocalizedPrint SettingsPageStrings where
       STPSSetsTor             -> "Настройки Tor"
       STPSUseTor              -> "Проксировать через Tor"
       STPSSetsProxy           -> "Настройки прокси SOCKS"
+      STPSProxyIpField        -> "Адрес прокси"
+      STPSProxyPortField      -> "Порт прокси"
       STPSSetsActiveCurrs     -> "Настройки активных валют"
       STPSSetsPortfolio       -> "Настройки отображения фиата и тиков"
       STPSSetsPortfolioEnable -> "Отображение портфеля"
@@ -92,6 +111,8 @@ instance LocalizedPrint SettingsPageStrings where
       STPSSetsPinDoSet        -> "Установить ПИН код"
       STPSMnemonicExportMsg   -> "Это ваша защищенная паролем мнемоническая фраза в виде QR-кода и в текстовом виде. Используйте наиболее подходящий для вас способ."
       STPSSuccess             -> "Настройки успешно обновлены"
+      STPSIPStrings s         -> localizedShow Russian s 
+      STPSInputStrings s      -> localizedShow Russian s
 
 instance LocalizedPrint UnitBTC where
   localizedShow _ v = case v of

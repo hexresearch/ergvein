@@ -7,6 +7,7 @@ module Ergvein.Wallet.Page.Settings.Unauth
   ) where
 
 import Control.Monad
+import Data.Maybe
 import Data.Text
 import Data.Word
 import Network.Socket
@@ -18,6 +19,7 @@ import Ergvein.Text
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Elements.Inplace
+import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Elements.Toggle
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Settings
@@ -154,25 +156,24 @@ torPageWidget = do
   h3 $ localizedText STPSSetsTor
   divClass "initial-options grid1" torToggleButton
   h3 $ localizedText STPSSetsProxy
+  divClass "initial-options grid1" socksSettings
   where
     torToggleButton = void $ do
       torUsedD <- fmap (maybe False (torSocks ==)) <$> getProxyConf
-      torD <- toggleButton STPSUseTor STPSUseTor torUsedD
-      modifySettings $ ffor (updated torD) $ \useTor setts -> setts {
+      torD <- toggler STPSUseTor torUsedD
+      let updateE = flip push (updated torD) $ \useTor -> do
+            torUsed <- sample . current $ torUsedD
+            pure $ if useTor == torUsed then Nothing else Just useTor
+      modifySettings $ ffor updateE $ \useTor setts -> setts {
           settingsSocksProxy = if useTor then Just torSocks else Nothing
         }
-  --   langD <- getLanguage
-  --   initKey <- sample . current $ langD
-  --   let listLangsD = ffor langD $ \l -> Map.fromList $ fmap (\v -> (v, localizedShow l v)) allLanguages
-  --       ddnCfg = DropdownConfig {
-  --             _dropdownConfig_setValue   = updated langD
-  --           , _dropdownConfig_attributes = constDyn ("class" =: "select-lang")
-  --           }
-  --   dp <- dropdown initKey listLangsD ddnCfg
-  --   let selD = _dropdown_value dp
-  --   selE <- fmap updated $ holdUniqDyn selD
-  --   void $ widgetHold (pure ()) $ setLanguage <$> selE
-  --   settings <- getSettings
-  --   updE <- updateSettings $ ffor selE (\lng -> settings {settingsLang = lng})
-  --   showSuccessMsg $ STPSSuccess <$ updE
-  -- pure ()
+    socksSettings = void $ do
+      msocksD <- getProxyConf
+      maddrD <- valueField STPSProxyIpField $ fmap socksConfAddr <$> msocksD
+      mportD <- valueField STPSProxyPortField $ fmap socksConfPort <$> msocksD
+      let newSocksE = ffor (updated $ (,) <$> maddrD <*> mportD) $ \(maddr, mport) -> case maddr of
+            Nothing -> Nothing
+            Just addr -> Just $ SocksConf addr (fromMaybe 9050 mport)
+      modifySettings $ ffor newSocksE $ \socks setts -> setts {
+          settingsSocksProxy = socks
+        }

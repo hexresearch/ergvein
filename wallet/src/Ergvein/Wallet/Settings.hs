@@ -29,15 +29,15 @@ import Data.Maybe
 import Data.Text(Text, pack, unpack)
 import Data.Time (NominalDiffTime)
 import Data.Yaml (encodeFile)
-import Network.Socket
+import Network.Socket (HostName, PortNumber)
 import System.Directory
 import Data.Word
-import Data.IP (IP, toSockAddr)
-import Text.Read (readMaybe)
 
 import Ergvein.Aeson
 import Ergvein.Lens
+import Ergvein.Text
 import Ergvein.Types.Currency
+import Ergvein.Wallet.IP
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Yaml(readYamlEither')
@@ -79,19 +79,20 @@ btcDefaultExplorerUrls :: ExplorerUrls
 btcDefaultExplorerUrls = ExplorerUrls "https://www.blockchain.com/btc-testnet" "https://www.blockchain.com/btc"
 
 data SocksConf = SocksConf {
-  socksConfAddr :: !Text
+  socksConfAddr :: !IP
 , socksConfPort :: !Int
 } deriving (Eq, Show)
 
 instance ToJSON SocksConf where
   toJSON SocksConf{..} = object [
-      "address" .= socksConfAddr
+      "address" .= showt socksConfAddr
     , "port" .= socksConfPort
     ]
 
 instance FromJSON SocksConf where
   parseJSON = withObject "SocksConf" $ \o -> do
-    socksConfAddr <- o .: "address"
+    addrText <- o .: "address"
+    socksConfAddr <- maybe (fail "Cannot parse IP of socks proxy") pure . parseIP $ addrText
     socksConfPort <- o .: "port"
     pure SocksConf{..}
 
@@ -99,20 +100,8 @@ instance FromJSON SocksConf where
 torSocks :: SocksConf
 torSocks = SocksConf "127.0.0.1" 9050
 
-toSocksProxy :: SocksConf -> Maybe S5.SocksConf
-toSocksProxy (SocksConf a p) = do
-  addr <- makeSockAddr a p
-  pure $ S5.defaultSocksConfFromSockAddr addr
-
--- | Parsing IPv4 and IPv6 addresses and makes socket address from them
-makeSockAddr :: Text -> Int -> Maybe SockAddr
-makeSockAddr t pnum = do
-  ip <- parseIP t
-  pure $ toSockAddr (ip, fromIntegral pnum)
-
--- | Parsing IPv4 and IPv6 addresses
-parseIP :: Text -> Maybe IP
-parseIP = readMaybe . T.unpack
+toSocksProxy :: SocksConf -> S5.SocksConf
+toSocksProxy (SocksConf a p) = S5.defaultSocksConfFromSockAddr $ makeSockAddr a p
 
 data Settings = Settings {
   settingsLang              :: Language
