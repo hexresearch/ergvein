@@ -111,7 +111,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSSetsPinDoSet        -> "Установить ПИН код"
       STPSMnemonicExportMsg   -> "Это ваша защищенная паролем мнемоническая фраза в виде QR-кода и в текстовом виде. Используйте наиболее подходящий для вас способ."
       STPSSuccess             -> "Настройки успешно обновлены"
-      STPSIPStrings s         -> localizedShow Russian s 
+      STPSIPStrings s         -> localizedShow Russian s
       STPSInputStrings s      -> localizedShow Russian s
 
 instance LocalizedPrint UnitBTC where
