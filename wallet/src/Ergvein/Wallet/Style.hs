@@ -98,6 +98,7 @@ frontendCss r = do
   mnemonicWidgetCss
   navbarCss
   networkPageCss
+  toggleSwitchCss
   passwordCss
   receiveCss
   selectCss
@@ -460,6 +461,48 @@ validateCss :: Css
 validateCss = do
   ".validate-error" ? do
     fontSize $ pt 14
+
+
+toggleSwitchCss :: Css
+toggleSwitchCss = do
+  ".switch" ? do
+    position relative
+    display inlineBlock
+    width  $ px 60
+    height $ px 34
+  input # ".switch" ? do
+    opacity 0.0
+    width $ px 0
+    height $ px 0
+    verticalAlign vAlignBottom
+  ".slider" ? do
+    position absolute
+    cursor pointer
+    top $ px 0
+    left $ px 0
+    right $ px 0
+    bottom $ px 0
+    backgroundColor white
+    borderStyle solid
+    borderWidth $ px 1
+    borderColor black
+
+  ".slider" # before ? do 
+    position absolute
+    content $ stringContent mempty
+    height $ px 26
+    width $ px 26
+    left $ px  4
+    bottom $ px  3
+    backgroundColor black
+    verticalAlign middle
+  input # checked |+ ".slider" ? do 
+    backgroundColor grey
+    verticalAlign middle
+  input # focus |+ ".slider" ? do
+    boxShadow $ pure $ bsColor grey $ shadowWithBlur (px 0) (px 0) (px 1)
+  input # checked |+ ".slider" # before ? do
+    transform $ translateX $ px 26
 
 passwordCss :: Css
 passwordCss = do

@@ -16,6 +16,7 @@ import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
+import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.TCPService.Conversions()
 import Ergvein.Index.Server.Utils
@@ -70,6 +71,7 @@ scannerThread currency scanInfo = create $ logOnException threadName . scanItera
           shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
           unless shutdownFlag $ do
             headBlockHeight <- actualHeight currency
+            reportCurrentHeight currency headBlockHeight
             when (current <= headBlockHeight) $ do
               tryBlockInfo <- (Right <$> blockIteration headBlockHeight current) `catch` (\(SomeException ex) -> pure $ Left $ show ex)
               enoughSpace <- isEnoughSpace
@@ -79,6 +81,7 @@ scannerThread currency scanInfo = create $ logOnException threadName . scanItera
                   if previousBlockSame then do --fork detection
                     addBlockInfo blockInfo
                     when (current == headBlockHeight) $ broadcastFilter $ blockInfoMeta
+                    reportScannedHeight currency current
                     go (succ current)
                   else previousBlockChanged current
                 _ | not enoughSpace ->
@@ -125,6 +128,7 @@ isEnoughSpace :: ServerM Bool
 isEnoughSpace = do
   path <- cfgFiltersDbPath <$> serverConfig
   availSpace <- liftIO $ getAvailSpace path
+  setGauge availableSpaceGauge $ fromIntegral (availSpace - requiredAvailSpace)
   pure $ requiredAvailSpace <= availSpace
  where
   requiredAvailSpace = 2^30 -- 1Gb

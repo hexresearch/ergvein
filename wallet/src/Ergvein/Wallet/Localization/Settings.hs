@@ -20,6 +20,7 @@ data SettingsPageStrings =
   | STPSButMnemonicExport
   | STPSButDns
   | STPSButTor
+  | STPSButNodes
   | STPSSelectLanguage
   | STPSSetsTor
   | STPSUseTor
@@ -46,6 +47,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButNetwork          -> "Network"
       STPSButDns              -> "DNS servers"
       STPSButTor              -> "Tor and proxy"
+      STPSButNodes            -> "BTC nodes"
       STPSButUnits            -> "Display units for cryptos"
       STPSButPortfolio        -> "Portfolio"
       STPSButMnemonicExport   -> "Export mnemonic phrase"
@@ -71,6 +73,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButNetwork          -> "Сеть"
       STPSButDns              -> "DNS сервера"
       STPSButTor              -> "Tor и прокси"
+      STPSButNodes            -> "Ноды BTC"
       STPSButUnits            -> "Единицы отображения криптосистем"
       STPSButPortfolio        -> "Портфель"
       STPSButMnemonicExport   -> "Экспортировать мнемоническую фразу"
