@@ -1,4 +1,4 @@
-module Ergvein.Wallet.Input(
+module Ergvein.Wallet.Elements.Input(
     Password
   , textInput
   , validatedTextInput

@@ -45,7 +45,7 @@ library
         Ergvein.Wallet.Filters.Types
         Ergvein.Wallet.Id
         Ergvein.Wallet.Indexer.Socket
-        Ergvein.Wallet.Input
+        Ergvein.Wallet.Elements.Input
         Ergvein.Wallet.Language
         Ergvein.Wallet.Loading
         Ergvein.Wallet.Localization.About

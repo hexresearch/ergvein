@@ -9,7 +9,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Derive
 import Ergvein.Types.Restore
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Input
+import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Localization.AuthInfo
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native

@@ -17,7 +17,7 @@ import Ergvein.Types.Derive
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Input
+import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Send
 import Ergvein.Wallet.Localization.Settings()

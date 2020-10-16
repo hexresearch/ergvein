@@ -13,7 +13,7 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Input
+import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Receive
 import Ergvein.Wallet.Localization.Util
