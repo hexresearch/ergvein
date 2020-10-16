@@ -357,6 +357,46 @@
       }
     },
     {
+      "alert": {
+        "alertRuleTags": {},
+        "conditions": [
+          {
+            "evaluator": {
+              "params": [
+                2000000000
+              ],
+              "type": "lt"
+            },
+            "operator": {
+              "type": "and"
+            },
+            "query": {
+              "params": [
+                "A",
+                "5m",
+                "now"
+              ]
+            },
+            "reducer": {
+              "params": [],
+              "type": "avg"
+            },
+            "type": "query"
+          }
+        ],
+        "executionErrorState": "alerting",
+        "for": "5m",
+        "frequency": "1m",
+        "handler": 1,
+        "message": "Indexer is running out of space!",
+        "name": "Available storage space alert",
+        "noDataState": "no_data",
+        "notifications": [
+          {
+            "uid": "nFWplX5Gz"
+          }
+        ]
+      },
       "aliasColors": {},
       "bars": false,
       "dashLength": 10,
@@ -413,13 +453,11 @@
       ],
       "thresholds": [
         {
-          "$$hashKey": "object:611",
           "colorMode": "critical",
           "fill": true,
           "line": true,
           "op": "lt",
-          "value": 10000000000,
-          "yaxis": "left"
+          "value": 2000000000
         }
       ],
       "timeFrom": null,
