@@ -28,9 +28,11 @@ import Data.Time
 import Ergvein.Text (showt)
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Native
-import Reflex.ExternalRef
+import Ergvein.Wallet.Util (widgetHoldDyn)
 import GHC.Generics
+import Network.Socks5 (SocksConf(..), socksConnect, SocksAddress(..), SocksHostAddress(..))
 import Reflex
+import Reflex.ExternalRef
 import System.Timeout (timeout)
 
 import qualified Control.Exception.Safe as Ex
@@ -82,6 +84,8 @@ data SocketConf t a = SocketConf {
 -- | Timeout after which we try to reconnect. `Nothing` means to not reconnect.
 -- Second number means amount of tries of reconnection after which close event is fired.
 , _socketConfReopen :: !(Maybe (NominalDiffTime, Int))
+-- | Configuration of SOCKS proxy. If the value changes, connection is reopened.
+, _socketConfProxy  :: !(Dynamic t (Maybe SocksConf))
 } deriving (Generic)
 
 -- | Different socket states
@@ -146,9 +150,9 @@ switchSocket dsock = Socket {
   }
 
 -- | Widget that starts TCP socket internally and reconnects if needed.
-socket :: (Show a, TriggerEvent t m, PerformEvent t m, MonadHold t m, PostBuild t m, MonadIO (Performable m), MonadIO m, MonadUnliftIO (Performable m), PlatformNatives)
+socket :: (Show a, TriggerEvent t m, Adjustable t m, PerformEvent t m, MonadHold t m, PostBuild t m, MonadIO (Performable m), MonadIO m, MonadUnliftIO (Performable m), PlatformNatives)
   => SocketConf t a -> m (Socket t a)
-socket SocketConf{..} = do
+socket SocketConf{..} = fmap switchSocket $ widgetHoldDyn $ ffor _socketConfProxy $ \mproxy -> do
   buildE <- delay 0.01 =<< getPostBuild
   reconnTriesRef <- newExternalRef 0
   triesD <- externalRefDynamic reconnTriesRef
@@ -170,6 +174,7 @@ socket SocketConf{..} = do
   let connectE = leftmost [reconnectE, buildE]
   let closeCb :: Maybe CloseException -> IO ()
       closeCb e = do
+        -- logWrite $ showt e
         statusFire SocketClosed
         i <- readExternalRef reconnTriesRef
         let doReconnecting = case _socketConfReopen of
@@ -203,7 +208,7 @@ socket SocketConf{..} = do
         Peer host port = _socketConfPeer
     -- logWrite $ "Connecting to " <> showt host <> ":" <> showt port
     statusFire SocketConnecting
-    connect host port conCb `Ex.catchAny` (closeCb . Just)
+    connect host port mproxy conCb `Ex.catchAny` (closeCb . Just)
   pure Socket {
       _socketInbound = inE
     , _socketClosed  = ffilter isCloseFinal closeE
@@ -261,10 +266,11 @@ connect
   :: (MonadIO m, Ex.MonadMask m)
   => N.HostName -- ^ Server hostname or IP address.
   -> N.ServiceName -- ^ Server service port name or number.
+  -> Maybe SocksConf -- ^ Optional Socks proxy to use
   -> ((N.Socket, N.SockAddr) -> m r)
   -- ^ Computation taking the communication socket and the server address.
   -> m r
-connect host port = Ex.bracket (connectSock host port) (closeSock . fst)
+connect host port mproxy = Ex.bracket (connectSock host port mproxy) (closeSock . fst)
 
 -- | Obtain a 'N.Socket' connected to the given host and TCP service port.
 --
@@ -281,8 +287,9 @@ connectSock
   :: MonadIO m
   => N.HostName -- ^ Server hostname or IP address.
   -> N.ServiceName -- ^ Server service port name or number.
+  -> Maybe SocksConf -- ^ Optional Socks proxy to use
   -> m (N.Socket, N.SockAddr) -- ^ Connected socket and server address.
-connectSock host port = liftIO $ do
+connectSock host port mproxy = liftIO $ do
     addrs <- N.getAddrInfo (Just hints) (Just host) (Just port)
     tryAddrs (happyEyeballSort addrs)
   where
@@ -297,16 +304,28 @@ connectSock host port = liftIO $ do
       (x:xs) -> Ex.catch (useAddr x) (\(_ :: IOError) -> tryAddrs xs)
     useAddr :: N.AddrInfo -> IO (N.Socket, N.SockAddr)
     useAddr addr = do
-       yx <- timeout 3000000 $ do -- 3 seconds
-          Ex.bracketOnError (newSocket addr) closeSock $ \sock -> do
-             let sockAddr = N.addrAddress addr
-             N.setSocketOption sock N.NoDelay 1
-             N.setSocketOption sock N.KeepAlive 1
-             N.connect sock sockAddr
-             pure (sock, sockAddr)
+       yx <- timeout 30000000 $ do -- 30 seconds
+         let sockAddr = N.addrAddress addr
+         sock <- case mproxy of
+           Nothing -> Ex.bracketOnError (newSocket addr) closeSock $ \sock -> do
+            N.setSocketOption sock N.NoDelay 1
+            N.setSocketOption sock N.KeepAlive 1
+            N.connect sock sockAddr
+            pure sock
+           Just proxy -> do
+             (sock, _) <- socksConnect proxy $ fromSockAddr sockAddr
+             pure sock
+         pure (sock, sockAddr)
        case yx of
-          Nothing -> fail "Network.Simple.TCP.connectSock: Timeout on connect"
+          Nothing -> fail "connectSock: Timeout on connect"
           Just x -> pure x
+
+-- | Convert network address to format that socks library understands
+fromSockAddr :: N.SockAddr -> SocksAddress
+fromSockAddr = \case
+  N.SockAddrInet port haddr -> SocksAddress (SocksAddrIPV4 haddr) port
+  N.SockAddrInet6 port _ haddr _ -> SocksAddress (SocksAddrIPV6 haddr) port
+  N.SockAddrUnix _ -> error "fromSockAddr: not supported unix socket"
 
 newSocket :: N.AddrInfo -> IO N.Socket
 newSocket addr = N.socket (N.addrFamily addr)

@@ -21,7 +21,7 @@ import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Input
+import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Localization.Password
 import Ergvein.Wallet.Localization.Seed
 import Ergvein.Wallet.Localization.Util
