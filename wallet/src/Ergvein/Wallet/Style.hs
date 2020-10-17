@@ -487,7 +487,7 @@ toggleSwitchCss = do
     borderWidth $ px 1
     borderColor black
 
-  ".slider" # before ? do 
+  ".slider" # before ? do
     position absolute
     content $ stringContent mempty
     height $ px 26
@@ -496,7 +496,7 @@ toggleSwitchCss = do
     bottom $ px  3
     backgroundColor black
     verticalAlign middle
-  input # checked |+ ".slider" ? do 
+  input # checked |+ ".slider" ? do
     backgroundColor grey
     verticalAlign middle
   input # focus |+ ".slider" ? do
@@ -723,6 +723,9 @@ networkPageCss = do
   ".indexer-offline" ? do
     marginRight $ em 0.5
     color red
+  ".indexer-unsync" ? do
+    marginRight $ em 0.5
+    color orange
   ".net-refresh-btn" ? do
     height $ em 3.8
     verticalAlign vAlignTop
