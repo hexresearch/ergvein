@@ -58,8 +58,8 @@ selectCurrenciesWidget currs = mdo
       else (b, c)
 
     toggled b = if b
-      then "button button-on"
-      else "button button-off"
+      then "button button-on button-currency"
+      else "button button-off button-currency"
 
     enabled b = case b of
       Just _ -> "button button-outline"

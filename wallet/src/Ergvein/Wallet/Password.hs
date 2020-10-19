@@ -18,7 +18,7 @@ import Ergvein.Text
 import Ergvein.Types
 import Ergvein.Types.Derive
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Input
+import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Localization.Password
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.PatternKey

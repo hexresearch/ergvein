@@ -33,6 +33,10 @@ library
         Ergvein.Wallet.Currencies
         Ergvein.Wallet.Debug
         Ergvein.Wallet.Elements
+        Ergvein.Wallet.Elements.Inplace
+        Ergvein.Wallet.Elements.Toggle
+        Ergvein.Wallet.Elements.Input
+        Ergvein.Wallet.Elements.Input.Class
         Ergvein.Wallet.Embed
         Ergvein.Wallet.Embed.TH
         Ergvein.Wallet.Filters.Btc.Queries
@@ -43,7 +47,7 @@ library
         Ergvein.Wallet.Filters.Types
         Ergvein.Wallet.Id
         Ergvein.Wallet.Indexer.Socket
-        Ergvein.Wallet.Input
+        Ergvein.Wallet.IP
         Ergvein.Wallet.Language
         Ergvein.Wallet.Loading
         Ergvein.Wallet.Localization.About
@@ -54,6 +58,9 @@ library
         Ergvein.Wallet.Localization.History
         Ergvein.Wallet.Localization.Info
         Ergvein.Wallet.Localization.Initial
+        Ergvein.Wallet.Localization.Inplace
+        Ergvein.Wallet.Localization.Input
+        Ergvein.Wallet.Localization.IP
         Ergvein.Wallet.Localization.Native
         Ergvein.Wallet.Localization.Network
         Ergvein.Wallet.Localization.Password
@@ -209,6 +216,7 @@ library
         safe-exceptions -any,
         semialign -any,
         serialise >= 0.2 && < 0.3,
+        socks >= 0.5 && < 0.7,
         split >=0.2.3.3 && <0.3,
         stm >=2.4 && <2.6,
         template-haskell -any,

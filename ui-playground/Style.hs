@@ -109,6 +109,7 @@ frontendCss r = do
   validateCss
   wrapperCss
   testnetDisclaimerCss
+  inplaceEditCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -727,16 +728,15 @@ selectCss = do
 
 buttonsToggleCss :: Css
 buttonsToggleCss = do
+  ".button-currency" ? do
+    fontSize $ pt 18
+    width $ px 200
   ".button-on" ? do
-    fontSize $ pt 18
-    width $ px 200
-    backgroundColor "#000000"
-    color "#ffffff"
+    important $ backgroundColor "#000000"
+    important $ color "#ffffff"
   ".button-off" ? do
-    fontSize $ pt 18
-    width $ px 200
-    backgroundColor "#ffffff"
-    color "#000000"
+    important $ backgroundColor "#ffffff"
+    important $ color "#000000"
   ".button-not-working" ? do
     visibility hidden
     pointerEvents none
@@ -969,3 +969,12 @@ testnetDisclaimerCss = do
     marginBottom $ rem 1
   ".testnet-disclaimer-text" ? do
     marginBottom $ rem 1
+
+inplaceEditCss :: Css
+inplaceEditCss = do
+  ".inplace-label-txt" ? do
+    textAlign $ alignSide sideLeft
+    wordBreak breakAll
+    paddingRight $ em 0.5
+  ".inplace-separator" ? do
+    border solid (px 1) black

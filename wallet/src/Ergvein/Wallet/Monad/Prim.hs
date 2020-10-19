@@ -18,6 +18,8 @@ module Ergvein.Wallet.Monad.Prim
   , modifySettings
   , getDnsList
   , mkResolvSeed
+  , getSocksConf
+  , getProxyConf
   ) where
 
 import Control.Monad.Fix
@@ -48,8 +50,9 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Version
 
-import qualified Reflex.Profiled as RP
 import qualified Control.Monad.Fail as F
+import qualified Network.Socks5 as S5
+import qualified Reflex.Profiled as RP
 import qualified Data.Set as S
 
 -- | Type classes that we need from reflex-dom itself.
@@ -132,6 +135,14 @@ mkResolvSeed = do
     , resolvConcurrent = True
     }
 {-# INLINE mkResolvSeed #-}
+
+getSocksConf :: MonadHasSettings t m => m (Dynamic t (Maybe S5.SocksConf))
+getSocksConf = fmap (fmap toSocksProxy . settingsSocksProxy) <$> getSettingsD
+{-# INLINE getSocksConf #-}
+
+getProxyConf :: MonadHasSettings t m => m (Dynamic t (Maybe SocksConf))
+getProxyConf = fmap settingsSocksProxy <$> getSettingsD
+{-# INLINE getProxyConf #-}
 
 -- ===========================================================================
 --           Monad EgvLogger. Implements Ervgein's logging

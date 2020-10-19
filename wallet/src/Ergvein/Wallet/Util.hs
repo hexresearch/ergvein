@@ -13,8 +13,10 @@ module Ergvein.Wallet.Util(
   , eventToNextFrame'
   , eventToNextFrameN
   , eventToNextFrameN'
+  , mergeDyn
   , currencyToCurrencyCode
   , currencyCodeToCurrency
+  , splitEither
   ) where
 
 import Control.Monad.Except
@@ -86,6 +88,12 @@ eventToNextFrameN' n evtM = do
   evt <- evtM
   eventToNextFrameN n evt
 
+-- | Make new dynamic that is updated with values from given event and the original dynamic
+mergeDyn :: (Reflex t, MonadHold t m) => Dynamic t a -> Event t a -> m (Dynamic t a)
+mergeDyn d e = do
+  v0 <- sampleDyn d
+  holdDyn v0 $ leftmost [e, updated d]
+
 currencyToCurrencyCode :: ETC.Currency -> CurrencyCode
 currencyToCurrencyCode c = case c of
   ETC.BTC -> if isTestnet then TBTC else BTC
@@ -98,3 +106,9 @@ currencyCodeToCurrency c = case c of
   ERGO -> ETC.ERGO
   TERGO -> ETC.ERGO
   _ -> error "Currency code not implemented"
+
+splitEither :: Reflex t => Event t (Either a b) -> (Event t a, Event t b)
+splitEither e = (ae, be)
+  where
+    ae = fmapMaybe (either Just (const Nothing)) e
+    be = fmapMaybe (either (const Nothing) Just) e

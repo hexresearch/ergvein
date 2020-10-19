@@ -18,14 +18,15 @@ import Network.Socket hiding (socket)
 import Reflex
 import UnliftIO hiding (atomically)
 
-import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Protocol.Deserialization
 import Ergvein.Index.Protocol.Serialization
+import Ergvein.Index.Protocol.Types
 import Ergvein.Text
 import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node.Socket
+import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Util
 
 import qualified Data.Attoparsec.ByteString as AP
@@ -35,7 +36,7 @@ import qualified Data.ByteString.Lazy       as BL
 import qualified Data.Map.Strict            as M
 import qualified Data.Vector.Unboxed        as VU
 
-initIndexerConnection :: MonadBaseConstr t m => NamedSockAddr -> Event t IndexerMsg ->  m (IndexerConnection t)
+initIndexerConnection :: (MonadBaseConstr t m, MonadHasSettings t m) => NamedSockAddr -> Event t IndexerMsg ->  m (IndexerConnection t)
 initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
   (msname, msport) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True sa
   let peer = fromJust $ Peer <$> msname <*> msport
@@ -48,12 +49,14 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
       reqE = fforMaybe msgE $ \case
         IndexerMsg req -> Just req
         _ -> Nothing
+  proxyD <- getSocksConf
   s <- socket SocketConf {
       _socketConfPeer   = peer
     , _socketConfSend   = fmap serializeMessage sendE
     , _socketConfPeeker = peekMessage sa
     , _socketConfClose  = closeE
     , _socketConfReopen = Just (1, 2) -- reconnect after 1 seconds 2 retries
+    , _socketConfProxy  = proxyD
     }
   handshakeE <- performEvent $ ffor (socketConnected s) $ const $ mkVers
   let respE = _socketInbound s

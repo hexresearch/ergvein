@@ -125,6 +125,11 @@ dnsPage = do
   title <- localized STPSTitle
   wrapper True title (Just $ pure dnsPage) dnsPageWidget
 
+torPage :: MonadFront t m => m ()
+torPage = do
+  title <- localized STPSTitle
+  wrapper True title (Just $ pure torPage) torPageWidget
+
 currenciesPage :: MonadFront t m => m ()
 currenciesPage = do
   title <- localized STPSTitle
@@ -221,8 +226,8 @@ portfolioPage = do
       void $ updateSettings $ ffor fiatE (\fiat -> settings {settingsFiatCurr = fiat})
   where
     toggled b = if b
-      then "button button-on"
-      else "button button-off"
+      then "button button-on button-currency"
+      else "button button-off button-currency"
 
     fiatDropdown val fiats = do
       let fiatD = constDyn val
