@@ -22,8 +22,10 @@ module Ergvein.Wallet.Util(
 import Control.Monad.Except
 import Reflex.Dom
 
-import qualified Ergvein.Types.Currency as ETC
 import Ergvein.Index.Protocol.Types
+import Ergvein.Wallet.Platform
+
+import qualified Ergvein.Types.Currency as ETC
 
 -- | Same as 'widgetHold' but for dynamic
 widgetHoldDyn :: forall t m a . (Reflex t, Adjustable t m, MonadHold t m) => Dynamic t (m a) -> m (Dynamic t a)
@@ -94,8 +96,8 @@ mergeDyn d e = do
 
 currencyToCurrencyCode :: ETC.Currency -> CurrencyCode
 currencyToCurrencyCode c = case c of
-  ETC.BTC -> BTC
-  ETC.ERGO -> ERGO
+  ETC.BTC -> if isTestnet then TBTC else BTC
+  ETC.ERGO -> if isTestnet then TERGO else ERGO
 
 currencyCodeToCurrency :: CurrencyCode -> ETC.Currency
 currencyCodeToCurrency c = case c of
