@@ -153,29 +153,49 @@ renderActive :: MonadFrontBase t m
   -> m ()
 renderActive nsa refrE mconn = mdo
   tglD <- holdDyn False tglE
-  tglE <- lineOption $ do
-    tglE' <- divClass "network-name" $ do
-      let offclass = [("class", "mt-a mb-a indexer-offline")]
-      let onclass = [("class", "mt-a mb-a indexer-online")]
-      let maybe' m n j = maybe n j m
-      let clsD = maybe' mconn (pure offclass) $ \con -> ffor (indexConIsUp con) $ \up -> if up then onclass else offclass
-      elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
-      divClass "mt-a mb-a network-name-txt" $ text $ namedAddrName nsa
-      fmap switchDyn $ widgetHoldDyn $ ffor tglD $ \b ->
-        fmap (not b <$) $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a" $ if b then NSSClose else NSSEdit
-    case mconn of
-      Nothing -> descrOption NSSOffline
-      Just conn -> do
-        latD <- indexerConnPingerWidget conn refrE
-        let heightD = fmap (M.lookup BTC) $ indexerConHeight conn
-        descrOptionDyn $ NSSLatency <$> latD
-        descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> heightD
-    pure tglE'
+  let editBtn = fmap switchDyn $ widgetHoldDyn $ ffor tglD $ \b -> fmap (not b <$)
+        $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a"
+          $ if b then NSSClose else NSSEdit
+
+  tglE <- divClass "network-wrapper mt-3" $ case mconn of
+    Nothing -> do
+      tglE <- divClass "network-name" $ do
+        elAttr "span" offclass $ elClass "i" "fas fa-circle" $ pure ()
+        divClass "mt-a mb-a network-name-txt" $ text $ namedAddrName nsa
+        editBtn
+      descrOption NSSOffline
+      pure tglE
+    Just conn -> do
+      let clsUnauthD = ffor (indexConIsUp conn) $ \up -> if up then onclass else offclass
+      let heightD = fmap (M.lookup BTC) $ indexerConHeight conn
+      clsD <- fmap join $ liftAuth (pure clsUnauthD) $ do
+        hD <- getCurrentHeight BTC
+        pure $ do
+          h <- heightD
+          h' <- fmap (Just . fromIntegral) hD
+          up <- indexConIsUp conn
+          let synced = h == h' || Just 1 == ((-) <$> h' <*> h)
+          pure $ if up
+            then if synced then onclass else unsyncClass
+            else offclass
+      tglE <- divClass "network-name" $ do
+        elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
+        divClass "mt-a mb-a network-name-txt" $ text $ namedAddrName nsa
+        editBtn
+      latD <- indexerConnPingerWidget conn refrE
+      descrOptionDyn $ NSSLatency <$> latD
+      descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> heightD
+      pure tglE
+
   void $ widgetHoldDyn $ ffor tglD $ \b -> if not b
     then pure ()
     else divClass "network-wrapper mt-2" $ do
       void $ deactivateURL . (nsa <$) =<< buttonClass "button button-outline mt-1 ml-1" NSSDisable
       void $ forgetURL . (nsa <$) =<< buttonClass "button button-outline mt-1 ml-1" NSSForget
+  where
+    offclass    = [("class", "mb-a mt-a indexer-offline")]
+    onclass     = [("class", "mb-a mt-a indexer-online")]
+    unsyncClass = [("class", "mb-a mt-a indexer-unsync")]
 
 inactivePageWidget :: forall t m . MonadFrontBase t m => m ()
 inactivePageWidget = mdo
@@ -196,7 +216,7 @@ renderInactive initPingE nsa = mdo
   sel <- getIndexReqSelector
   tglD <- holdDyn False tglE
   (fstPingE, refrE) <- headTailE $ leftmost [initPingE, pingE]
-  tglE <- fmap switchDyn $ lineOption $ widgetHold (startingWidget tglD) $ ffor fstPingE $ const $ do
+  tglE <- fmap switchDyn $ divClass "network-wrapper mt-1" $ widgetHold (startingWidget tglD) $ ffor fstPingE $ const $ do
       let reqE = select sel $ Const2 (namedAddrSock nsa)
       conn <- initIndexerConnection nsa reqE
       pingD <- indexerConnPingerWidget conn refrE
@@ -237,14 +257,11 @@ navbarWidget initItem = divClass "navbar" $ mdo
     pure . (<$) i =<< spanButton attrD i
   pure selD
 
-lineOption :: MonadFrontBase t m => m a -> m a
-lineOption = divClass "network-wrapper mt-1"
-
 descrOption :: (MonadFrontBase t m, LocalizedPrint a) => a -> m ()
 descrOption = divClass "network-descr" . localizedText
 
 descrOptionDyn :: (MonadFrontBase t m, LocalizedPrint a) => Dynamic t a -> m ()
-descrOptionDyn v = getLanguage >>= \langD -> (>>) elBR (divClass "network-descr" $ dynText $ ffor2 langD v localizedShow)
+descrOptionDyn v = getLanguage >>= \langD -> divClass "network-descr" $ dynText $ ffor2 langD v localizedShow
 
 elBR :: MonadFrontBase t m => m ()
 elBR = el "br" blank
