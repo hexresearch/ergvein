@@ -135,7 +135,6 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
           evalResult <- runExceptT $ evalMsg
           case evalResult of
             Right msgs -> do
-              logInfoN $ showt msgs
               forM msgs $ (liftIO . writeMsg destinationChan)
               listenLoop'
             Left Reject {..} | rejectMsgCode == ZeroBytesReceived -> do
