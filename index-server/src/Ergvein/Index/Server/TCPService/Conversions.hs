@@ -35,21 +35,17 @@ currencyToCurrencyCode code = do
       C.BTC   -> BTC 
       C.ERGO  -> ERGO
 
-instance Conversion C.Currency CurrencyCode where
-  convert = \case
-    C.BTC  -> TBTC
-    C.ERGO -> TERGO
-
 instance Conversion BlockMetaRec BlockFilter where
   convert BlockMetaRec {..} = BlockFilter
     { blockFilterBlockId = blockMetaRecHeaderHash
     , blockFilterFilter  = blockMetaRecAddressFilter
     }
 
-instance Conversion ScanProgressInfo ScanBlock where
-  convert ScanProgressInfo {..} = ScanBlock
-    { scanBlockCurrency   = convert nfoCurrency
-    , scanBlockVersion    = 1
-    , scanBlockScanHeight = nfoScannedHeight
-    , scanBlockHeight     = nfoActualHeight
-    }
+
+scanProgressInfoToScanBlock :: (Monad m, HasServerConfig m) => ScanProgressInfo -> m ScanBlock
+scanProgressInfoToScanBlock ScanProgressInfo {..} = do
+  scanBlockCurrency <- currencyToCurrencyCode nfoCurrency
+  let scanBlockVersion    = 1
+      scanBlockScanHeight = nfoScannedHeight
+      scanBlockHeight     = nfoActualHeight
+  pure $ ScanBlock {..}
