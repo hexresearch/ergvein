@@ -59,7 +59,7 @@ startBTCFlow = Workflow $ do
   buildE <- getPostBuild
   ps <- getPubStorage
   let bl0 = ps ^. pubStorage'currencyPubStorages
-        . at BTC . non (error "bctNodeController: not exsisting store!")
+        . at BTC . non (error "btcNodeController: not exsisting store!")
         . currencyPubStorage'headerSeq
       bl = fmap V.toList $ if V.null $ snd bl0 then btcCheckpoints else bl0
   pure ((), btcCatchUpFlow bl <$ buildE)
