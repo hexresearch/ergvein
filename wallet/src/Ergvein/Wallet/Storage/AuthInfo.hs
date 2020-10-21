@@ -27,6 +27,7 @@ initAuthInfo wt mpath mnemonic curs login pass = do
         , _authInfo'eciesPubKey = toPublic k
         , _authInfo'login = login
         , _authInfo'isUpdate = False
+        , _authInfo'isPlain = pass == ""
         }
 
 loadAuthInfo :: (MonadIO m, HasStoreDir m, PlatformNatives) => WalletName -> Password -> m (Either AuthInfoAlert (AuthInfo, Password))
@@ -42,6 +43,7 @@ loadAuthInfo login pass = do
           , _authInfo'eciesPubKey = toPublic k
           , _authInfo'login = login
           , _authInfo'isUpdate = False
+          , _authInfo'isPlain = pass == ""
           }
         , pass
         )
