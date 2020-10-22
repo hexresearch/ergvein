@@ -91,9 +91,16 @@ selectWalletsPage ss = wrapperSimple True $ divClass "initial-page-options" $ do
 
 loadWalletPage :: MonadFrontBase t m => WalletName -> m ()
 loadWalletPage name = do
-  passE <- askPasswordPage name
-  mOldAuthE <- performEvent $ loadAuthInfo name <$> passE
-  oldAuthE <- handleDangerMsg mOldAuthE
+  buildE <- getPostBuild
+  mPlainE <- performEvent $ (loadAuthInfo name "") <$ buildE
+  let oldAuthE' = fmapMaybe (either (const Nothing) Just) mPlainE
+  oldAuthE'' <- fmap switchDyn $ widgetHold (pure never) $ ffor mPlainE $ \case
+    Right _ -> pure never
+    Left _ -> do
+      passE <- askPasswordPage name
+      mOldAuthE <- performEvent $ loadAuthInfo name <$> passE
+      handleDangerMsg mOldAuthE
+  let oldAuthE = leftmost [oldAuthE', oldAuthE'']
   mAuthE <- performEvent $ generateMissingPrvKeys <$> oldAuthE
   authE <- handleDangerMsg mAuthE
 #ifdef ANDROID

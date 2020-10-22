@@ -50,9 +50,9 @@ setupPassword e = divClass "setup-password" $ form $ fieldset $ mdo
     check PWSNoMatch $ p1 == p2
     pure p1
 
-setupLoginPassword :: MonadFrontBase t m => Event t () -> m (Event t (Text, Password))
-setupLoginPassword e = divClass "setup-password" $ form $ fieldset $ mdo
-  loginD <- textFieldAttr PWSLogin ("placeholder" =: "my wallet name") ""
+setupLoginPassword :: MonadFrontBase t m => Maybe Text -> Event t () -> m (Event t (Text, Password))
+setupLoginPassword mlogin e = divClass "setup-password" $ form $ fieldset $ mdo
+  loginD <- textFieldAttr PWSLogin ("placeholder" =: "my wallet name") $ fromMaybe "" mlogin
   p1D <- passFieldWithEye PWSPassword
   p2D <- passFieldWithEye PWSRepeat
   validate $ poke e $ const $ runExceptT $ do

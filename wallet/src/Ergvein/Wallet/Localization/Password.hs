@@ -4,6 +4,7 @@ module Ergvein.Wallet.Localization.Password
   , PasswordWidgetStrings(..)
   , LoginPageStrings(..)
   , PatternPageStrings(..)
+  , ConfirmEmptyPage(..)
   ) where
 
 import Data.Text (Text)
@@ -86,3 +87,16 @@ instance LocalizedPrint PasswordWidgetStrings where
       PWSDeriv         -> "Префикс BIP48 для вывода ключей"
       PWSDerivDescr    -> "Вы можете переназначить префикс дерева для вывода ключей. Оставьте как есть, если не знаете, что это такое."
       PWSInvalidPath   -> "Путь вывода неверен! Формат поля m/0'/0'/0'"
+
+data ConfirmEmptyPage = CEPBack | CEPAttention | CEPConsequences
+
+instance LocalizedPrint ConfirmEmptyPage where
+  localizedShow l v = case l of
+    English -> case v of
+      CEPBack         -> "Back"
+      CEPAttention    -> "The password is empty. Are you sure?"
+      CEPConsequences -> "The wallet will be accesible without password"
+    Russian -> case v of
+      CEPBack         -> "Назад"
+      CEPAttention    -> "Пустой пароль. Вы уверены?"
+      CEPConsequences -> "Кошелёк будет доступен без ввода пароля"
