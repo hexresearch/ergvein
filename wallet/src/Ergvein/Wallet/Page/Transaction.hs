@@ -91,13 +91,10 @@ transactionInfoPage cur tr@TransactionView{..} = do
       where
         oBld txt isOur = if isOur then (txt <> " tx-info-our-address") else txt
 
-
 showTime :: MonadFront t m => TransactionView -> m ()
 showTime TransactionView{..} = case txDate of
-  TxTime Nothing -> do
-    localizedText $ if txStatus == TransUncofirmedParents then HistoryUnconfirmedParents else HistoryUnconfirmed
-  TxTime (Just date) -> do
-    text $ T.pack $ formatTime defaultTimeLocale "%H:%M:%S %d/%m/%Y" $ date
+  TxTime Nothing -> localizedText $ if txStatus == TransUncofirmedParents then HistoryUnconfirmedParents else HistoryUnconfirmed
+  TxTime (Just date) -> text $ T.pack $ formatTime defaultTimeLocale "%H:%M:%S %d/%m/%Y" $ date
 
 infoPageElement :: MonadFront t m => HistoryPageStrings -> Text -> m ()
 infoPageElement hps txt = divClass "tx-info-page-element" $ do
@@ -307,7 +304,7 @@ data TxRawInfo = TxRawInfo {
   , txr                     :: EgvTx
   , txom                    :: Money
   , txHasUnconfirmedParents :: Bool
-  , txParents                :: [Maybe EgvTx]
+  , txParents               :: [Maybe EgvTx]
 } deriving (Show)
 
 newtype TxTime = TxTime (Maybe ZonedTime) deriving (Show)

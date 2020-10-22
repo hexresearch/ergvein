@@ -363,7 +363,7 @@ liftAuth ma0 ma = mdo
           when isAndroid (deleteTmpFiles storeDir)
           initFiltersHeights filtersHeights
           scanner
-          bctNodeController
+          btcNodeController
           filtersLoader
           heightAsking
           feesWorker
