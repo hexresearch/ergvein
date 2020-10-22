@@ -16,7 +16,7 @@ import Ergvein.Wallet.Widget.Balance
 navbarWidget :: MonadFront t m => Currency -> Maybe (Dynamic t (m ())) -> NavbarItem -> m ()
 navbarWidget cur prevWidget activeItem = do
   when (activeItem /= NavbarReceive) balanceWidget
-  divClass "navbar" $ do
+  divClass "navbar-3-cols" $ do
     sendE <- navbarBtn NavbarSend activeItem
     historyE <- navbarBtn NavbarHistory activeItem
     receiveE <- navbarBtn NavbarReceive activeItem

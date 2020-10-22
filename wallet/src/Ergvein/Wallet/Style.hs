@@ -264,7 +264,11 @@ headerCss = do
 
 navbarCss :: Css
 navbarCss = do
-  ".navbar" ? do
+  ".navbar-2-cols" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1]
+    padding (rem 0) (rem 1) (rem 0) (rem 1)
+  ".navbar-3-cols" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1, fr 1]
     padding (rem 0) (rem 1) (rem 0) (rem 1)

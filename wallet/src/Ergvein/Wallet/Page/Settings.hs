@@ -58,7 +58,7 @@ settingsPage = do
               (GoLanguage, STPSButLanguage)
             , (GoNetwork, STPSButNetwork)
             , (GoUnits, STPSButUnits)
-            , (GoPortfolio, STPSButPortfolio)
+            -- , (GoPortfolio, STPSButPortfolio)
             , (GoDns, STPSButDns)
             , (GoNodes, STPSButNodes)
             ]
