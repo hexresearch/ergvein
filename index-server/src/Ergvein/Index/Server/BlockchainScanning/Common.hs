@@ -18,6 +18,7 @@ import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
+import Ergvein.Index.Server.TCPService.Conversions
 import Ergvein.Index.Server.TCPService.Conversions()
 import Ergvein.Index.Server.Utils
 import Ergvein.Text
@@ -106,13 +107,14 @@ scannerThread currency scanInfo = create $ logOnException threadName . scanItera
           previousBlockChanged from
 
 broadcastFilter :: BlockMetaInfo -> ServerM ()
-broadcastFilter BlockMetaInfo{..} =
+broadcastFilter BlockMetaInfo{..} = do
+  currencyCode <- currencyToCurrencyCode blockMetaCurrency
   broadcastSocketMessage $ MFiltersEvent $ FilterEvent
-  { filterEventCurrency     = convert blockMetaCurrency
-  , filterEventHeight       = blockMetaBlockHeight
-  , filterEventBlockId      = blockMetaHeaderHash
-  , filterEventBlockFilter  = blockMetaAddressFilter
-  }
+    { filterEventCurrency     = currencyCode
+    , filterEventHeight       = blockMetaBlockHeight
+    , filterEventBlockId      = blockMetaHeaderHash
+    , filterEventBlockFilter  = blockMetaAddressFilter
+    }
 
 blockchainScanning :: ServerM [Thread]
 blockchainScanning = sequenceA
