@@ -37,29 +37,29 @@ passwordPage wt mpath mnemonic curs mlogin = wrapperSimple True $ do
   let goE = current pathD `attach` logPassE
   void $ nextWidget $ ffor goE $ \(path, (login,pass)) -> Retractable {
       retractableNext = if pass == ""
-        then confirmEmptyPage wt mnemonic curs login pass path
-        else performAuth wt mnemonic curs login pass path
+        then confirmEmptyPage wt mnemonic curs login pass $ Just path
+        else performAuth wt mnemonic curs login pass (Just path)
     , retractablePrev = if pass == ""
         then Just $ pure $ passwordPage wt (Just path) mnemonic curs (Just login)
         else Nothing
     }
 
-confirmEmptyPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> [Currency] -> Text -> Password -> DerivPrefix -> m ()
-confirmEmptyPage wt mnemonic curs login pass path = wrapperSimple True $ do
+confirmEmptyPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> [Currency] -> Text -> Password -> Maybe DerivPrefix -> m ()
+confirmEmptyPage wt mnemonic curs login pass mpath = wrapperSimple True $ do
   h4 $ localizedText CEPAttention
   h5 $ localizedText CEPConsequences
   divClass "fit-content ml-a mr-a" $ do
     setE <- divClass "" (submitClass "button button-outline w-100" PWSSet)
     retract =<< divClass "" (submitClass "button button-outline w-100" CEPBack)
     void $ nextWidget $ ffor setE $ const $ Retractable {
-        retractableNext = performAuth wt mnemonic curs login pass path
+        retractableNext = performAuth wt mnemonic curs login pass mpath
       , retractablePrev = Nothing
       }
 
-performAuth :: MonadFrontBase t m => WalletSource -> Mnemonic -> [Currency] -> Text -> Password -> DerivPrefix -> m ()
-performAuth wt mnemonic curs login pass path = do
-  storage <- initAuthInfo wt (Just path) mnemonic curs login pass
+performAuth :: MonadFrontBase t m => WalletSource -> Mnemonic -> [Currency] -> Text -> Password -> Maybe DerivPrefix -> m ()
+performAuth wt mnemonic curs login pass mpath = do
   buildE <- getPostBuild
+  storage <- initAuthInfo wt mpath mnemonic curs login pass
   authInfoE <- handleDangerMsg $ storage <$ buildE
   void $ setAuthInfo $ Just <$> authInfoE
 
@@ -81,10 +81,16 @@ setupPatternPage wt mpath mnemonic l curs = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText PatPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText PatPSDescr
   patE <- setupPattern
-  let logPassE = fmap (\p -> (l,p)) patE
-  createStorageE <- performEvent $ fmap (uncurry $ initAuthInfo wt mpath mnemonic curs) logPassE
-  authInfoE <- handleDangerMsg createStorageE
-  void $ setAuthInfo $ Just <$> authInfoE
+  skipE <- divClass "" $ submitClass "button button-outline" CEPSkip
+  let passE = leftmost ["" <$ skipE, patE]
+  void $ nextWidget $ ffor passE $ \pass -> Retractable {
+      retractableNext = if pass == ""
+        then confirmEmptyPage wt mnemonic curs l pass mpath
+        else performAuth wt mnemonic curs l pass mpath
+    , retractablePrev = if pass == ""
+        then Just $ pure $ setupPatternPage wt mpath mnemonic l curs
+        else Nothing
+    }
 
 askPasswordPage :: MonadFrontBase t m => Text -> m (Event t Password)
 askPasswordPage name = wrapperSimple True $ askPassword name
