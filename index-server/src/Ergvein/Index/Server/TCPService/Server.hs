@@ -94,7 +94,6 @@ mainLoop thread sock = do
 
 registerConnection :: (Socket, SockAddr) -> ServerM ()
 registerConnection (sock, addr) = do
-  openedConnectionsRef <- openConnections
   connectionThreadId <- fork $ runConnection (sock, addr)
   openConnection connectionThreadId addr sock
 
@@ -156,7 +155,7 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
           if not (BS.null fetchedBytes) then
             except $ Right fetchedBytes
           else
-            except $ Left $ Reject MessageHeaderParsing
+            except $ Left $ Reject ZeroBytesReceived
 
         messageHeader :: BS.ByteString -> ExceptT Reject ServerM MessageHeader
         messageHeader = ExceptT . pure . mapLeft (\_-> Reject MessageHeaderParsing) . eitherResult . parse messageHeaderParser

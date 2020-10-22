@@ -26,6 +26,7 @@ import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.TCPService.Connections
+import Ergvein.Index.Server.TCPService.Conversions
 import Ergvein.Index.Server.Utils
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
@@ -111,7 +112,7 @@ ownVersion = do
   nonce <- liftIO $ randomIO
   time  <- liftIO $ fromIntegral . floor <$> getPOSIXTime
 
-  scanNfo <- UV.fromList . fmap verBlock <$> scanningInfo
+  scanNfo <- UV.fromList <$> (mapM verBlock =<< scanningInfo)
 
   pure $ Version {
       versionVersion    = protocolVersion
@@ -120,13 +121,15 @@ ownVersion = do
     , versionScanBlocks = scanNfo
     }
   where
-    verBlock :: ScanProgressInfo -> ScanBlock
-    verBlock ScanProgressInfo {..} = ScanBlock
-     { scanBlockCurrency   = convert nfoCurrency
-     , scanBlockVersion    = filterVersion nfoCurrency
-     , scanBlockScanHeight = nfoScannedHeight
-     , scanBlockHeight     = nfoActualHeight
-     }
+    verBlock :: ScanProgressInfo -> ServerM ScanBlock
+    verBlock ScanProgressInfo {..} = do
+      currencyCode <- currencyToCurrencyCode nfoCurrency
+      pure $ ScanBlock
+        { scanBlockCurrency   = currencyCode
+        , scanBlockVersion    = filterVersion nfoCurrency
+        , scanBlockScanHeight = nfoScannedHeight
+        , scanBlockHeight     = nfoActualHeight
+        }
 
     filterVersion :: Currency -> Word32
     filterVersion = const 1
