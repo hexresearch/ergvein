@@ -88,15 +88,17 @@ instance LocalizedPrint PasswordWidgetStrings where
       PWSDerivDescr    -> "Вы можете переназначить префикс дерева для вывода ключей. Оставьте как есть, если не знаете, что это такое."
       PWSInvalidPath   -> "Путь вывода неверен! Формат поля m/0'/0'/0'"
 
-data ConfirmEmptyPage = CEPBack | CEPAttention | CEPConsequences
+data ConfirmEmptyPage = CEPBack | CEPSkip | CEPAttention | CEPConsequences
 
 instance LocalizedPrint ConfirmEmptyPage where
   localizedShow l v = case l of
     English -> case v of
       CEPBack         -> "Back"
+      CEPSkip         -> "Skip"
       CEPAttention    -> "The password is empty. Are you sure?"
       CEPConsequences -> "The wallet will be accesible without password"
     Russian -> case v of
       CEPBack         -> "Назад"
+      CEPSkip         -> "Пропустить"
       CEPAttention    -> "Пустой пароль. Вы уверены?"
       CEPConsequences -> "Кошелёк будет доступен без ввода пароля"
