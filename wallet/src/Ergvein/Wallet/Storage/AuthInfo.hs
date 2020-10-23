@@ -13,10 +13,23 @@ import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Localization.AuthInfo
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Storage.Util
 
-initAuthInfo :: MonadIO m => WalletSource -> Maybe DerivPrefix -> Mnemonic -> [Currency] -> WalletName -> Password -> m (Either AuthInfoAlert AuthInfo)
-initAuthInfo wt mpath mnemonic curs login pass = do
+import qualified Data.Text as T
+
+initAuthInfo :: (MonadIO m, PlatformNatives, HasStoreDir m)
+  => WalletSource
+  -> Maybe DerivPrefix
+  -> Mnemonic
+  -> [Currency]
+  -> WalletName
+  -> Password
+  -> Bool
+  -> m (Either AuthInfoAlert AuthInfo)
+initAuthInfo wt mpath mnemonic curs login pass isPass = do
+  let fname = "meta_wallet_" <> (T.replace " " "_" login)
+  when (isAndroid && isPass) $ storeValue ("meta_wallet_" <> login) True True
   mstorage <- createStorage (wt == WalletRestored) mpath mnemonic (login, pass) curs
   case mstorage of
     Left err -> pure $ Left $ CreateStorageAlert err
@@ -30,7 +43,10 @@ initAuthInfo wt mpath mnemonic curs login pass = do
         , _authInfo'isPlain = pass == ""
         }
 
-loadAuthInfo :: (MonadIO m, HasStoreDir m, PlatformNatives) => WalletName -> Password -> m (Either AuthInfoAlert (AuthInfo, Password))
+loadAuthInfo :: (MonadIO m, HasStoreDir m, PlatformNatives)
+  => WalletName
+  -> Password
+  -> m (Either AuthInfoAlert (AuthInfo, Password))
 loadAuthInfo login pass = do
   mstorage <- loadStorageFromFile login pass
   case mstorage of

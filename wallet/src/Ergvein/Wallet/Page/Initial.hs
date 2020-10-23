@@ -3,6 +3,7 @@ module Ergvein.Wallet.Page.Initial(
     initialPage
   ) where
 
+import Data.Either (fromRight)
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
@@ -98,6 +99,7 @@ loadWalletPage name = do
     Right _ -> pure never
     Left _ -> do
       passE <- askPasswordPage name
+      isPass <- fmap (either (const False) id) $ retrieveValue ("meta_wallet_" <> name) False
       mOldAuthE <- performEvent $ loadAuthInfo name <$> passE
       handleDangerMsg mOldAuthE
   let oldAuthE = leftmost [oldAuthE', oldAuthE'']
