@@ -59,7 +59,7 @@ class (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t m | m -> t where
   getWalletName          :: m Text
   getPubStorage          :: m PubStorage
   getPubStorageD         :: m (Dynamic t PubStorage)
-  storeWallet            :: Text -> Event t () -> m ()
+  storeWallet            :: Text -> Event t () -> m (Event t ())
   modifyPubStorage       :: Text -> Event t (PubStorage -> Maybe PubStorage) -> m (Event t ())
   getStoreMutex          :: m (MVar ())
 

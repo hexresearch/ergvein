@@ -235,7 +235,7 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   {-# INLINE getPubStorageD #-}
   storeWallet caller e = do
     ref <-  asks env'authRef
-    performEvent_ $ ffor e $ \_ -> do
+    performEvent $ ffor e $ \_ -> do
         authInfo <- readExternalRef ref
         let storage = _authInfo'storage authInfo
         let eciesPubKey = _authInfo'eciesPubKey authInfo

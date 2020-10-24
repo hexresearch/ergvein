@@ -82,21 +82,21 @@ askTextPassword title description = do
 
 #ifdef ANDROID
 
-askPassword :: MonadFrontBase t m => Text -> m (Event t Password)
-askPassword name = mdo
-  let fpath = "meta_wallet_" <> name
+askPassword :: MonadFrontBase t m => Text -> Bool -> m (Event t Password)
+askPassword name writeMeta = mdo
+  let fpath = "meta_wallet_" <> (T.replace " " "_" name)
   isPass0 <- fmap (fromRight False) $ retrieveValue fpath False
   isPassD <- holdDyn isPass0 tglE
   valD <- widgetHoldDyn $ ffor isPassD $ \isPass -> if isPass
-    then askPasswordImpl name
-    else askPatternImpl name
+    then askPasswordImpl name writeMeta
+    else askPatternImpl name writeMeta
   let (passE, tglE) = (\(a,b) -> (switchDyn a, switchDyn b)) $ splitDynPure valD
   pure passE
 
-askPasswordImpl :: MonadFrontBase t m => Text -> m (Event t Password, Event t Bool)
-askPasswordImpl name = do
-  let fpath = "meta_wallet_" <> name
-  storeValue fpath True True
+askPasswordImpl :: MonadFrontBase t m => Text -> Bool -> m (Event t Password, Event t Bool)
+askPasswordImpl name writeMeta = do
+  let fpath = "meta_wallet_" <> (T.replace " " "_" name)
+  when writeMeta $ storeValue fpath True True
   divClass "password-ask-title" $ h4 $ localizedText PPSUnlock
   divClass "ask-password" $ form $ fieldset $ do
     pD <- passFieldWithEye $ PWSPassNamed name
@@ -105,10 +105,10 @@ askPasswordImpl name = do
       patE <- divClass "" $ submitClass "button button-outline w-100" PatPSUsePattern
       pure $ (tag (current pD) e, False <$ patE)
 
-askPatternImpl :: MonadFrontBase t m => Text -> m (Event t Password, Event t Bool)
-askPatternImpl name = do
-  let fpath = "meta_wallet_" <> name
-  storeValue fpath False True
+askPatternImpl :: MonadFrontBase t m => Text -> Bool -> m (Event t Password, Event t Bool)
+askPatternImpl name writeMeta = do
+  let fpath = "meta_wallet_" <> (T.replace " " "_" name)
+  when writeMeta $ storeValue fpath False True
   divClass "password-ask-title" $ h5 $ localizedText PKSUnlock
   divClass "password-ask-title" $ h5 $ localizedText $ PKSFor name
   patE <- divClass "ask-pattern" $ form $ fieldset $ mdo
@@ -152,7 +152,7 @@ askPasswordModal = mdo
     Just (i, name) -> divClass "ask-pattern-modal" $ do
       closeE <- passwordHeader
       passE <- divClass "mt-1 ml-1 mr-1" $ do
-        askPassword name
+        askPassword name False
       let passE' = fmap ((i,) . Just) passE
       pure (passE', closeE)
     Nothing -> pure (never, never)
@@ -163,8 +163,8 @@ askPasswordModal = mdo
 
 #else
 
-askPassword :: MonadFrontBase t m => Text -> m (Event t Password)
-askPassword name = askTextPassword PPSUnlock (PWSPassNamed name)
+askPassword :: MonadFrontBase t m => Text -> Bool -> m (Event t Password)
+askPassword name _ = askTextPassword PPSUnlock (PWSPassNamed name)
 
 askPasswordModal :: MonadFrontBase t m => m ()
 askPasswordModal = mdo
@@ -174,7 +174,7 @@ askPasswordModal = mdo
   valD <- widgetHold (pure (never, never)) $ ffor redrawE $ \case
     Just (i, name) -> divClass "ask-password-modal" $ do
       closeE' <- passwordHeader
-      passE' <- (fmap . fmap) ((i,) . Just) $ divClass "ask-password-modal-content" $ askPassword name
+      passE' <- (fmap . fmap) ((i,) . Just) $ divClass "ask-password-modal-content" $ askPassword name False
       pure (passE', closeE')
     Nothing -> pure (never, never)
   let (passD, closeD) = splitDynPure valD
