@@ -23,13 +23,12 @@ import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Localization.Password
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.PatternKey
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Validate
 import Reflex.Localize
-
 import qualified Data.Text as T
 
-#ifdef ANDROID
 import Control.Monad.IO.Class
 import Data.Time (getCurrentTime)
 import Ergvein.Text
@@ -37,7 +36,6 @@ import Ergvein.Wallet.Localization.PatternKey
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Util
 import qualified Data.Map.Strict as Map
-#endif
 
 submitSetBtn :: MonadFrontBase t m => m (Event t ())
 submitSetBtn = submitClass "button button-outline" PWSSet
@@ -72,6 +70,42 @@ passwordHeader =
       divButton "header-button ml-a" $
         elClass "i" "fas fa-times fa-fw" $ pure ()
 
+setupPattern :: MonadFrontBase t m => m (Event t Password)
+setupPattern = divClass "setup-password" $ form $ fieldset $ mdo
+  pD <- patternSaveWidget
+  pE <- delay 0.1 $ updated pD
+  validate $ poke pE $ const $ runExceptT $ do
+    p <- sampleDyn pD
+    check PWSEmptyPattern $ not $ T.null p
+    pure p
+
+setupLogin :: MonadFrontBase t m => Event t () -> m (Event t Text)
+setupLogin e = divClass "setup-password" $ form $ fieldset $ mdo
+  loginD <- textField PWSLogin ""
+  validate $ poke e $ const $ runExceptT $ do
+    l <- sampleDyn loginD
+    check PWSEmptyLogin $ not $ T.null l
+    pure l
+
+setupDerivPrefix :: MonadFrontBase t m => [Currency] -> Maybe DerivPrefix -> m (Dynamic t DerivPrefix)
+setupDerivPrefix ac mpath = do
+  divClass "password-setup-descr" $ h5 $ localizedText PWSDerivDescr
+  divClass "setup-password" $ form $ fieldset $ mdo
+    let dval = fromMaybe defValue mpath
+    pathTD <- textField PWSDeriv $ showDerivPath dval
+    pathE <- validate $ ffor (updated pathTD) $ maybe (Left PWSInvalidPath) Right . parseDerivePath
+    holdDyn dval pathE
+  where
+    defValue = case ac of
+      [] -> defaultDerivePath BTC
+      [c] -> defaultDerivePath c
+      _ -> defaultDerivPathPrefix
+
+askPassword :: MonadFrontBase t m => Text -> Bool -> m (Event t Password)
+askPassword name writeMeta
+  | isAndroid = askPasswordAndroid name writeMeta
+  | otherwise = askTextPassword PPSUnlock (PWSPassNamed name)
+
 askTextPassword :: (MonadFrontBase t m, LocalizedPrint l1, LocalizedPrint l2) => l1 -> l2 -> m (Event t Password)
 askTextPassword title description = do
   divClass "password-ask-title" $ h4 $ localizedText title
@@ -80,10 +114,8 @@ askTextPassword title description = do
     e <- submitClass "button button-outline" PWSGo
     pure $ tag (current pD) e
 
-#ifdef ANDROID
-
-askPassword :: MonadFrontBase t m => Text -> Bool -> m (Event t Password)
-askPassword name writeMeta = mdo
+askPasswordAndroid :: MonadFrontBase t m => Text -> Bool -> m (Event t Password)
+askPasswordAndroid name writeMeta = mdo
   let fpath = "meta_wallet_" <> (T.replace " " "_" name)
   isPass0 <- fmap (fromRight False) $ retrieveValue fpath False
   isPassD <- holdDyn isPass0 tglE
@@ -136,15 +168,19 @@ askPatternImpl name writeMeta = do
       if freezeS
         then pure cS
         else pure $ cS + 1
-    performEvent_ $ ffor (updated counterD) $ \cS -> do
-      liftIO $ saveCounter $ PatternTries $ Map.insert name cS (patterntriesCount c)
-      pure ()
+    performEvent_ $ ffor (updated counterD) $ \cS ->
+      saveCounter $ PatternTries $ Map.insert name cS (patterntriesCount c)
     pure $ attachPromptlyDynWithMaybe (\freeze p -> if not freeze then Just p else Nothing) freezeD (updated pD)
   passE <- submitClass "button button-outline" PatPSUsePass
   pure (patE, True <$ passE)
 
 askPasswordModal :: MonadFrontBase t m => m ()
-askPasswordModal = mdo
+askPasswordModal
+  | isAndroid = askPasswordModalAndroid
+  | otherwise = askPasswordModalDesc
+
+askPasswordModalAndroid :: MonadFrontBase t m => m ()
+askPasswordModalAndroid = mdo
   goE  <- fmap fst getPasswordModalEF
   fire <- fmap snd getPasswordSetEF
   let redrawE = leftmost [Just <$> goE, Nothing <$ passE, Nothing <$ closeE]
@@ -161,13 +197,8 @@ askPasswordModal = mdo
   let closeE = switchDyn closeD
   performEvent_ $ (liftIO . fire) <$> passE
 
-#else
-
-askPassword :: MonadFrontBase t m => Text -> Bool -> m (Event t Password)
-askPassword name _ = askTextPassword PPSUnlock (PWSPassNamed name)
-
-askPasswordModal :: MonadFrontBase t m => m ()
-askPasswordModal = mdo
+askPasswordModalDesc :: MonadFrontBase t m => m ()
+askPasswordModalDesc = mdo
   goE  <- fmap fst getPasswordModalEF
   fire <- fmap snd getPasswordSetEF
   let redrawE = leftmost [Just <$> goE, Nothing <$ passE, Nothing <$ closeE]
@@ -181,35 +212,3 @@ askPasswordModal = mdo
   let passE = switchDyn passD
   let closeE = switchDyn closeD
   performEvent_ $ (liftIO . fire) <$> passE
-#endif
-
-setupPattern :: MonadFrontBase t m => m (Event t Password)
-setupPattern = divClass "setup-password" $ form $ fieldset $ mdo
-  pD <- patternSaveWidget
-  pE <- delay 0.1 $ updated pD
-  validate $ poke pE $ const $ runExceptT $ do
-    p <- sampleDyn pD
-    check PWSEmptyPattern $ not $ T.null p
-    pure p
-
-setupLogin :: MonadFrontBase t m => Event t () -> m (Event t Text)
-setupLogin e = divClass "setup-password" $ form $ fieldset $ mdo
-  loginD <- textField PWSLogin ""
-  validate $ poke e $ const $ runExceptT $ do
-    l <- sampleDyn loginD
-    check PWSEmptyLogin $ not $ T.null l
-    pure l
-
-setupDerivPrefix :: MonadFrontBase t m => [Currency] -> Maybe DerivPrefix -> m (Dynamic t DerivPrefix)
-setupDerivPrefix ac mpath = do
-  divClass "password-setup-descr" $ h5 $ localizedText PWSDerivDescr
-  divClass "setup-password" $ form $ fieldset $ mdo
-    let dval = fromMaybe defValue mpath
-    pathTD <- textField PWSDeriv $ showDerivPath dval
-    pathE <- validate $ ffor (updated pathTD) $ maybe (Left PWSInvalidPath) Right . parseDerivePath
-    holdDyn dval pathE
-  where
-    defValue = case ac of
-      [] -> defaultDerivePath BTC
-      [c] -> defaultDerivePath c
-      _ -> defaultDerivPathPrefix

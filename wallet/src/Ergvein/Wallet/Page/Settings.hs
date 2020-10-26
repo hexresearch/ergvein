@@ -109,11 +109,9 @@ passwordChangePage = do
           & authInfo'eciesPubKey .~ toPublic k
           & authInfo'isPlain .~ (pass == "")
   aibE <- handleDangerMsg eaibE
-#ifdef ANDROID
-  performEvent_ $ ffor aibE $ \(ai,b) -> do
+  when isAndroid $ performEvent_ $ ffor aibE $ \(ai,b) -> do
     let fpath = "meta_wallet_" <> T.replace " " "_" (_authInfo'login ai)
     storeValue fpath b True
-#endif
   doneE <- storeWallet "passwordChangePage" =<< setAuthInfo (fmap (Just . fst) aibE)
   nextWidget $ ffor doneE $ const $ Retractable{
       retractableNext = settingsPage
