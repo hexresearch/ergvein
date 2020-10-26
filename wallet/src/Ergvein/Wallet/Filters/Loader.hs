@@ -52,7 +52,7 @@ filtersLoaderBtc = nameSpace "btc" $ void $ workflow go
       logWrite $ "Current height is " <> showt ch <> ", and filters are for height " <> showt fh
       if ch > fh then do
         let n = 500
-        logWrite $ "Getting next filters ..." <> showt n
+        logWrite $ "Getting next filters ..."
         fse <- getFilters BTC $ (fh+1, n) <$ buildE
         performEvent_ $ ffor fse $ \fs -> logWrite $ "Got " <> showt (length fs) <> " filters!"
         we <- performFork $ ffor fse $ \fs ->
