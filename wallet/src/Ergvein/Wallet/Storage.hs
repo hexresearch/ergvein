@@ -36,7 +36,10 @@ withWallet reqE = do
   walletName  <- getWalletName
   authInfoRef <- getAuthInfoRef
   widgD <- holdDyn Nothing $ Just <$> reqE
-  passE <- requestPasssword (walletName <$ reqE)
+  isPlainE <- performEvent $ ffor reqE $ const $ fmap _authInfo'isPlain $ readExternalRef authInfoRef
+  let passE' = ("" <$) $ ffilter id isPlainE
+  passE'' <- requestPasssword $ walletName <$ (ffilter not isPlainE)
+  let passE = leftmost [passE', passE'']
   mutex <- getStoreMutex
   let goE = attachWithMaybe (\mwid pass -> (pass, ) <$> mwid) (current widgD) passE
   eresE <- performEvent $ ffor goE $ \(pass, f) -> do
@@ -52,13 +55,18 @@ modifyPrvStorage updE = do
   walletName <- getWalletName
   authInfoRef <- getAuthInfoRef
   updD <- holdDyn Nothing $ Just <$> updE
-  passE <- requestPasssword (walletName <$ updE)
+  isPlainE <- performEvent $ ffor updE $ const $ fmap _authInfo'isPlain $ readExternalRef authInfoRef
+  let passE' = ("" <$) $ ffilter id isPlainE
+  passE'' <- requestPasssword $ walletName <$ (ffilter not isPlainE)
+  let passE = leftmost [passE', passE'']
   mutex <- getStoreMutex
   let goE = attachWithMaybe (\mupd pass -> (pass, ) <$> mupd) (current updD) passE
   errE <- performEvent $ ffor goE $ \(pass, upd) -> do
     liftIO $ takeMVar mutex                                       -- We want the next part to not interfere with any store changes
     let withMutexRelease a = liftIO $ putMVar mutex () >> pure a  -- release the mutex and return the value
-    ai@(AuthInfo (WalletStorage eps pub _) eciesPubKey _ _) <- readExternalRef authInfoRef
+    ai <- readExternalRef authInfoRef
+    let WalletStorage eps pub _ = _authInfo'storage ai
+    let eciesPubKey = _authInfo'eciesPubKey ai
     either' (decryptPrvStorage eps pass) (withMutexRelease . Left) $ \prv -> do
       mprv <- upd prv
       maybe' mprv (withMutexRelease $ Right ()) $ \prv' -> do
@@ -84,7 +92,9 @@ decryptAndValidatePrvStorage :: MonadFront t m
   -> ExternalRef t AuthInfo   -- ^ A ref to AuthInfo. We have to be able to update AuthInfo if the validation stage changed the PrvStorage
   -> Performable m (Either StorageAlert PrvStorage) -- ^ Decoded PrvStorage. Use in withWallet only
 decryptAndValidatePrvStorage _ mutex pass authInfoRef = do
-  ai@(AuthInfo (WalletStorage eps pub walletName) eciesPubKey _ _) <- readExternalRef authInfoRef
+  ai <- readExternalRef authInfoRef
+  let WalletStorage eps pub walletName = _authInfo'storage ai
+  let eciesPubKey = _authInfo'eciesPubKey ai
   let pubKeysNumber = M.map (\currencyPubStorage -> (
           V.length $ pubKeystore'external (view currencyPubStorage'pubKeystore currencyPubStorage),
           V.length $ pubKeystore'internal (view currencyPubStorage'pubKeystore currencyPubStorage)

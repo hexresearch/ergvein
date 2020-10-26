@@ -13,6 +13,7 @@ module Ergvein.Wallet.Password(
 
 import Control.Monad.Except
 import Data.Maybe
+import Data.Either (fromRight)
 import Ergvein.Crypto
 import Ergvein.Text
 import Ergvein.Types
@@ -33,6 +34,7 @@ import Control.Monad.IO.Class
 import Data.Time (getCurrentTime)
 import Ergvein.Text
 import Ergvein.Wallet.Localization.PatternKey
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Storage.Util
 import qualified Data.Map.Strict as Map
 #endif
@@ -50,9 +52,9 @@ setupPassword e = divClass "setup-password" $ form $ fieldset $ mdo
     check PWSNoMatch $ p1 == p2
     pure p1
 
-setupLoginPassword :: MonadFrontBase t m => Event t () -> m (Event t (Text, Password))
-setupLoginPassword e = divClass "setup-password" $ form $ fieldset $ mdo
-  loginD <- textFieldAttr PWSLogin ("placeholder" =: "my wallet name") ""
+setupLoginPassword :: MonadFrontBase t m => Maybe Text -> Event t () -> m (Event t (Text, Password))
+setupLoginPassword mlogin e = divClass "setup-password" $ form $ fieldset $ mdo
+  loginD <- textFieldAttr PWSLogin ("placeholder" =: "my wallet name") $ fromMaybe "" mlogin
   p1D <- passFieldWithEye PWSPassword
   p2D <- passFieldWithEye PWSRepeat
   validate $ poke e $ const $ runExceptT $ do
@@ -81,10 +83,35 @@ askTextPassword title description = do
 #ifdef ANDROID
 
 askPassword :: MonadFrontBase t m => Text -> m (Event t Password)
-askPassword name = do
+askPassword name = mdo
+  let fpath = "meta_wallet_" <> name
+  isPass0 <- fmap (fromRight False) $ retrieveValue fpath False
+  isPassD <- holdDyn isPass0 tglE
+  valD <- widgetHoldDyn $ ffor isPassD $ \isPass -> if isPass
+    then askPasswordImpl name
+    else askPatternImpl name
+  let (passE, tglE) = (\(a,b) -> (switchDyn a, switchDyn b)) $ splitDynPure valD
+  pure passE
+
+askPasswordImpl :: MonadFrontBase t m => Text -> m (Event t Password, Event t Bool)
+askPasswordImpl name = do
+  let fpath = "meta_wallet_" <> name
+  storeValue fpath True True
+  divClass "password-ask-title" $ h4 $ localizedText PPSUnlock
+  divClass "ask-password" $ form $ fieldset $ do
+    pD <- passFieldWithEye $ PWSPassNamed name
+    divClass "fit-content ml-a mr-a" $ do
+      e <- divClass "" $ submitClass "button button-outline w-100" PWSGo
+      patE <- divClass "" $ submitClass "button button-outline w-100" PatPSUsePattern
+      pure $ (tag (current pD) e, False <$ patE)
+
+askPatternImpl :: MonadFrontBase t m => Text -> m (Event t Password, Event t Bool)
+askPatternImpl name = do
+  let fpath = "meta_wallet_" <> name
+  storeValue fpath False True
   divClass "password-ask-title" $ h5 $ localizedText PKSUnlock
   divClass "password-ask-title" $ h5 $ localizedText $ PKSFor name
-  divClass "ask-pattern" $ form $ fieldset $ mdo
+  patE <- divClass "ask-pattern" $ form $ fieldset $ mdo
     c <- loadCounter
     let cInt = case (Map.lookup name (patterntriesCount c)) of
           Just p -> p
@@ -113,6 +140,8 @@ askPassword name = do
       liftIO $ saveCounter $ PatternTries $ Map.insert name cS (patterntriesCount c)
       pure ()
     pure $ attachPromptlyDynWithMaybe (\freeze p -> if not freeze then Just p else Nothing) freezeD (updated pD)
+  passE <- submitClass "button button-outline" PatPSUsePass
+  pure (patE, True <$ passE)
 
 askPasswordModal :: MonadFrontBase t m => m ()
 askPasswordModal = mdo
@@ -122,8 +151,7 @@ askPasswordModal = mdo
   valD <- widgetHold (pure (never, never)) $ ffor redrawE $ \case
     Just (i, name) -> divClass "ask-pattern-modal" $ do
       closeE <- passwordHeader
-      passE <- divClass "mt-1" $ do
-        h4 $ localizedText PKSAsk
+      passE <- divClass "mt-1 ml-1 mr-1" $ do
         askPassword name
       let passE' = fmap ((i,) . Just) passE
       pure (passE', closeE)

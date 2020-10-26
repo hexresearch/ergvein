@@ -94,7 +94,6 @@ mainLoop thread sock = do
 
 registerConnection :: (Socket, SockAddr) -> ServerM ()
 registerConnection (sock, addr) = do
-  openedConnectionsRef <- openConnections
   connectionThreadId <- fork $ runConnection (sock, addr)
   openConnection connectionThreadId addr sock
 
@@ -107,8 +106,8 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
       forM msgs $ (liftIO . writeMsg sendChan)
       -- Spawn message sender thread
       fork $ sendLoop sendChan
-      -- Spawn broadcaster loop
-      fork $ broadcastLoop sendChan
+      -- Spawn broadcaster loop. Temporary disabled due to https://github.com/hexresearch/ergvein/pull/738
+      -- fork $ broadcastLoop sendChan
       -- Start message listener
       listenLoop sendChan
     _ -> closeConnection addr
@@ -156,7 +155,7 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
           if not (BS.null fetchedBytes) then
             except $ Right fetchedBytes
           else
-            except $ Left $ Reject MessageHeaderParsing
+            except $ Left $ Reject ZeroBytesReceived
 
         messageHeader :: BS.ByteString -> ExceptT Reject ServerM MessageHeader
         messageHeader = ExceptT . pure . mapLeft (\_-> Reject MessageHeaderParsing) . eitherResult . parse messageHeaderParser

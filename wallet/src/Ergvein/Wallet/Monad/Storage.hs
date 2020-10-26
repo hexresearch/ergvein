@@ -195,9 +195,11 @@ attachNewBtcHeader caller updHeight reqE = modifyPubStorage clr $ ffor reqE $ \(
     consifNEq (he, ha) vs = if V.null vs
       then Just $ V.singleton (he, ha)
       else let (vhe, _) = V.head vs in
-        if vhe >= he
+        if vhe > he
           then Nothing
-          else Just $ V.cons (he, ha) vs
+          else if vhe == he
+            then Just vs
+            else Just $ V.cons (he, ha) vs
 
 getBtcUtxoD :: MonadStorage t m => m (Dynamic t BtcUtxoSet)
 getBtcUtxoD = do
