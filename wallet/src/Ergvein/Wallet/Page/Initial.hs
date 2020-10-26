@@ -14,15 +14,14 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Page.Settings.Unauth
 import Ergvein.Wallet.Page.Seed
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Storage.AuthInfo
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Wrapper
 
-#ifdef ANDROID
 import Control.Monad.IO.Class
 import Ergvein.Wallet.Page.PatternKey
 import qualified Data.Map.Strict as M
-#endif
 
 data GoPage = GoSeed | GoRestore | GoSettings
 
@@ -105,14 +104,7 @@ loadWalletPage name = do
   let oldAuthE = leftmost [oldAuthE', oldAuthE'']
   mAuthE <- performEvent $ generateMissingPrvKeys <$> oldAuthE
   authE <- handleDangerMsg mAuthE
-#ifdef ANDROID
-  performEvent_ $ resetPasswordTimer name <$ authE
-#endif
+  when isAndroid $ performEvent_ $ ffor authE $ const $ do
+    c <- loadCounter
+    saveCounter $ PatternTries $ M.insert name 0 (patterntriesCount c)
   void $ setAuthInfo $ Just <$> authE
-
-#ifdef ANDROID
-resetPasswordTimer :: MonadIO m => WalletName -> m ()
-resetPasswordTimer walletName = do
-  c <- liftIO $ loadCounter
-  liftIO $ saveCounter $ PatternTries $ M.insert walletName 0 (patterntriesCount c)
-#endif

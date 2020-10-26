@@ -29,7 +29,7 @@ initAuthInfo :: (MonadIO m, PlatformNatives, HasStoreDir m)
   -> m (Either AuthInfoAlert AuthInfo)
 initAuthInfo wt mpath mnemonic curs login pass isPass = do
   let fname = "meta_wallet_" <> (T.replace " " "_" login)
-  when (isAndroid && isPass) $ storeValue ("meta_wallet_" <> login) True True
+  when (isAndroid && isPass) $ storeValue fname True True
   mstorage <- createStorage (wt == WalletRestored) mpath mnemonic (login, pass) curs
   case mstorage of
     Left err -> pure $ Left $ CreateStorageAlert err
