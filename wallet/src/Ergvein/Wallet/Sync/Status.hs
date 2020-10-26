@@ -55,7 +55,6 @@ data SyncStage = SyncAddressInternal !Int !Int !Int -- addr #, amount, total
                | SyncGettingNodeAddresses
                | SyncConnectingToPeers
                | SyncGettingHeight !Int             -- Current height for catch up
-               | SyncGotHeight !Int
                | SyncConnectionIndexer
                | SyncNoIndexer
                | Synced
@@ -71,7 +70,6 @@ instance LocalizedPrint SyncStage where
       SyncGettingNodeAddresses -> "Getting node addresses"
       SyncConnectingToPeers -> "Connecting to peers"
       SyncGettingHeight h -> "Getting height. Catching up at: " <> showt h
-      SyncGotHeight h -> "Current height is " <> showt h
       SyncConnectionIndexer -> "Connecting to indexer"
       SyncNoIndexer -> "All indexers are down"
       Synced -> "Fully synchronized"
@@ -83,7 +81,6 @@ instance LocalizedPrint SyncStage where
       SyncGettingNodeAddresses -> "Получение адреса ноды"
       SyncConnectingToPeers -> "Подключение к узлу"
       SyncGettingHeight h -> "Вычисление высоты. Сейчас на " <> showt h
-      SyncGotHeight h -> "Текущая высота " <> showt h
       SyncConnectionIndexer -> "Подключение к индексатору"
       SyncNoIndexer -> "Все индексаторы недоступны"
       Synced -> "Синхронизировано"
