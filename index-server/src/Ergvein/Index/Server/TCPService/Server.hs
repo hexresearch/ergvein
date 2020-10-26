@@ -106,7 +106,7 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
       forM msgs $ (liftIO . writeMsg sendChan)
       -- Spawn message sender thread
       fork $ sendLoop sendChan
-      -- Spawn broadcaster loop
+      -- Spawn broadcaster loop. Temporary disabled due to https://github.com/hexresearch/ergvein/pull/738
       -- fork $ broadcastLoop sendChan
       -- Start message listener
       listenLoop sendChan
