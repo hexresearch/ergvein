@@ -107,7 +107,7 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
       -- Spawn message sender thread
       fork $ sendLoop sendChan
       -- Spawn broadcaster loop
-      fork $ broadcastLoop sendChan
+      -- fork $ broadcastLoop sendChan
       -- Start message listener
       listenLoop sendChan
     _ -> closeConnection addr
