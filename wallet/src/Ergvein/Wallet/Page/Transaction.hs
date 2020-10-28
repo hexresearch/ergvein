@@ -229,7 +229,7 @@ prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = TransactionVi
   , txInOut = fromMaybe TransRefill mTT
   , txInfoView = txInf
   , txStatus =
-      if txHasUnconfirmedParents
+      if (txHasUnconfirmedParents) && (bHeight == 0)
         then TransUncofirmedParents
       else if (bHeight == 0)
         then TransUncofirmed
