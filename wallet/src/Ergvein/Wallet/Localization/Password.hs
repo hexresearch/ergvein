@@ -4,6 +4,7 @@ module Ergvein.Wallet.Localization.Password
   , PasswordWidgetStrings(..)
   , LoginPageStrings(..)
   , PatternPageStrings(..)
+  , ConfirmEmptyPage(..)
   ) where
 
 import Data.Text (Text)
@@ -21,24 +22,33 @@ instance LocalizedPrint LoginPageStrings where
       LPSTitle  -> "Установите логин для кошелька"
       LPSDescr -> "Вы можете иметь несколько кошельков и имя поможет различать их"
 
-data PatternPageStrings = PatPSTitle | PatPSDescr
+data PatternPageStrings = PatPSTitle | PatPSDescr | PatPSPass | PatPSPatt | PatPSUsePass | PatPSUsePattern
 
 instance LocalizedPrint PatternPageStrings where
   localizedShow l v = case l of
     English -> case v of
-      PatPSTitle -> "Setup encryption pattern key for your wallet"
-      PatPSDescr -> "The pattern key is used every time you perform an operation with your money"
+      PatPSTitle      -> "Setup encryption pattern key for your wallet"
+      PatPSDescr      -> "The pattern key is used every time you perform an operation with your money"
+      PatPSPass       -> "Set password"
+      PatPSPatt       -> "Set pattern"
+      PatPSUsePass    -> "Use password"
+      PatPSUsePattern -> "Use pattern"
     Russian -> case v of
-      PatPSTitle -> "Установите графический ключ шифрования для кошелька"
-      PatPSDescr -> "Этот графический ключ используется для каждой операции с вашими деньгами"
+      PatPSTitle      -> "Установите графический ключ шифрования для кошелька"
+      PatPSDescr      -> "Этот графический ключ используется для каждой операции с вашими деньгами"
+      PatPSPass       -> "Установить пароль"
+      PatPSPatt       -> "Установить ключ"
+      PatPSUsePass    -> "Ввести пароль"
+      PatPSUsePattern -> "Ввести ключ"
 
-data PasswordPageStrings = PPSTitle | PPSDescr | PPSMnemonicTitle | PPSMnemonicDescr | PPSUnlock | PPSMnemonicUnlock | PPSWrongPassword
+data PasswordPageStrings = PPSTitle | PPSPassTitle | PPSDescr | PPSMnemonicTitle | PPSMnemonicDescr | PPSUnlock | PPSMnemonicUnlock | PPSWrongPassword
   deriving (Eq)
 
 instance LocalizedPrint PasswordPageStrings where
   localizedShow l v = case l of
     English -> case v of
       PPSTitle          -> "Setup login and encryption password for your wallet"
+      PPSPassTitle      -> "Setup encryption password for your wallet"
       PPSDescr          -> "The password is used every time you perform an operation with your money. Leave the password fields empty to set no password for your wallet (not recommended)."
       PPSMnemonicTitle  -> "Setup encryption password for your mnemonic phrase"
       PPSMnemonicDescr  -> "We ask you to set a separate password for compatibility between mobile and desktop versions of the application. Leave the fields empty to set no password for your mnemonic phrase (not recommended)."
@@ -47,6 +57,7 @@ instance LocalizedPrint PasswordPageStrings where
       PPSWrongPassword  -> "Wrong password"
     Russian -> case v of
       PPSTitle          -> "Установите логин и пароль для шифрования кошелька"
+      PPSPassTitle      -> "Установите пароль для шифрования кошелька"
       PPSDescr          -> "Этот пароль используется для каждой операции с вашими деньгами. Можете оставить поля пароля пустыми, если хотите (не рекомендуется)."
       PPSMnemonicTitle  -> "Установите пароль для шифрования мнемонической фразы"
       PPSMnemonicDescr  -> "Мы просим Вас установить отдельный пароль для совместимости между мобильной и десктопной версией приложения. Можете оставить поля пустыми, если хотите (не рекомендуется)."
@@ -86,3 +97,18 @@ instance LocalizedPrint PasswordWidgetStrings where
       PWSDeriv         -> "Префикс BIP48 для вывода ключей"
       PWSDerivDescr    -> "Вы можете переназначить префикс дерева для вывода ключей. Оставьте как есть, если не знаете, что это такое."
       PWSInvalidPath   -> "Путь вывода неверен! Формат поля m/0'/0'/0'"
+
+data ConfirmEmptyPage = CEPBack | CEPSkip | CEPAttention | CEPConsequences
+
+instance LocalizedPrint ConfirmEmptyPage where
+  localizedShow l v = case l of
+    English -> case v of
+      CEPBack         -> "Back"
+      CEPSkip         -> "Skip"
+      CEPAttention    -> "The password is empty. Are you sure?"
+      CEPConsequences -> "The wallet will be accesible without password"
+    Russian -> case v of
+      CEPBack         -> "Назад"
+      CEPSkip         -> "Пропустить"
+      CEPAttention    -> "Пустой пароль. Вы уверены?"
+      CEPConsequences -> "Кошелёк будет доступен без ввода пароля"

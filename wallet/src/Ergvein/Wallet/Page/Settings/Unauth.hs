@@ -3,9 +3,11 @@ module Ergvein.Wallet.Page.Settings.Unauth
     settingsPageUnauth
   , languagePageWidget
   , dnsPageWidget
+  , torPageWidget
   ) where
 
 import Control.Monad
+import Data.Maybe
 import Data.Text
 import Data.Word
 import Network.Socket
@@ -16,6 +18,9 @@ import Text.Read
 import Ergvein.Text
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
+import Ergvein.Wallet.Elements.Inplace
+import Ergvein.Wallet.Elements.Input
+import Ergvein.Wallet.Elements.Toggle
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Monad.Base
@@ -33,19 +38,22 @@ data SubPageSettings
   = GoLanguage
   | GoNetwork
   | GoDns
+  | GoTor
 
 settingsPageUnauth :: MonadFrontBase t m => m ()
 settingsPageUnauth = wrapperSimple True $ do
   divClass "initial-options grid1" $ do
     goLangE            <- fmap (GoLanguage   <$) $ outlineButton STPSButLanguage
     goNetE             <- fmap (GoNetwork    <$) $ outlineButton STPSButNetwork
-    goDnsE             <- fmap (GoDns    <$) $ outlineButton STPSButDns
-    let goE = leftmost [goLangE, goNetE, goDnsE]
+    goDnsE             <- fmap (GoDns        <$) $ outlineButton STPSButDns
+    goTorE             <- fmap (GoTor        <$) $ outlineButton STPSButTor
+    let goE = leftmost [goLangE, goNetE, goDnsE, goTorE]
     void $ nextWidget $ ffor goE $ \spg -> Retractable {
         retractableNext = case spg of
           GoLanguage  -> languagePageUnauth
           GoNetwork   -> networkSettingsPageUnauth
           GoDns       -> dnsPageUnauth
+          GoTor       -> torPageUnauth
       , retractablePrev = Just $ pure settingsPageUnauth
       }
 
@@ -93,35 +101,17 @@ dnsPageWidget = do
       let tglE = leftmost [() <$ actE, tglE']
       pure actE
 
-dnsWidget :: MonadFrontBase t m => HostName -> m (Event t DnsAction)
-dnsWidget url = divClass "network-name mt-1 pl-2" $ mdo
-  tglD <- holdDyn False editE
-  valD <- widgetHoldDyn $ ffor tglD $ \case
-    True -> editDnsWidget
-    False -> showDnsWidget
-  let (editE, actE) = (\(a,b) -> (switchDyn a, switchDyn b)) $ splitDynPure valD
-  pure actE
-  where
-    showDnsWidget :: MonadFrontBase t m => m (Event t Bool, Event t DnsAction)
-    showDnsWidget = do
-      divClass "mt-a mb-a network-name-txt ml-a" $ text $ T.pack url
-      editE <- buttonClass "button button-outline mt-a mb-a ml-1 mr-a" NSSEdit
-      pure (True <$ editE, never)
-
-    editDnsWidget :: MonadFrontBase t m => m (Event t Bool, Event t DnsAction)
-    editDnsWidget = el "div" $ do
-      textD <- fmap _inputElement_value $ inputElement $ def
-        & inputElementConfig_elementConfig . elementConfig_initialAttributes .~ ("type" =: "text")
-        & inputElementConfig_initialValue .~ T.pack url
-      (goE, delE, closeE) <- divClass "" $ do
-        goE <- outlineButton NSSSave
-        delE <- outlineButton NSSDelete
-        closeE <- outlineButton NSSCancel
-        pure (goE, delE, closeE)
-      setE <- validateDNSIp $ current textD `tag` goE
-      elClass "hr" "network-hr-sep-lb m-0 mt-1" $ pure ()
-      let actE = leftmost $ [DnsDel url <$ delE, DnsUpd url <$> setE]
-      pure (False <$ closeE, actE)
+dnsWidget :: forall t m . MonadFrontBase t m => HostName -> m (Event t DnsAction)
+dnsWidget url = divClass "network-name mt-1 pl-2" $ do
+  let cfg = (def :: InplaceEditCfg t (InplaceEditLbl NetSetupStrings)) {
+         _inplaceShowClass   = "mt-a mb-a network-name-txt ml-a"
+       , _inplaceEditClass   = "button button-outline mt-a mb-a ml-1 mr-a"
+      }
+      parse t = maybe (Left $ InplaceError NSSFailedDns) (const $ Right $ T.unpack t) . parseIP $ t
+  actE <- inplaceEditField cfg T.pack parse (pure url)
+  pure $ ffor actE $ \case
+    EditDelete a -> DnsDel a
+    EditUpdate a1 a2 -> DnsUpd a1 a2
 
 -- | Validate ip and show an error if something is not ok
 validateDNSIp :: MonadFrontBase t m => Event t Text -> m (Event t HostName)
@@ -156,3 +146,34 @@ languagePageWidget = do
     updE <- updateSettings $ ffor selE (\lng -> settings {settingsLang = lng})
     showSuccessMsg $ STPSSuccess <$ updE
   pure ()
+
+torPageUnauth :: MonadFrontBase t m => m ()
+torPageUnauth = wrapperSimple True torPageWidget
+
+-- | The same for both auth and unauth contexts
+torPageWidget :: MonadFrontBase t m => m ()
+torPageWidget = do
+  h3 $ localizedText STPSSetsTor
+  divClass "initial-options grid1" torToggleButton
+  h3 $ localizedText STPSSetsProxy
+  divClass "initial-options grid1" socksSettings
+  where
+    torToggleButton = void $ do
+      torUsedD <- fmap (maybe False (torSocks ==)) <$> getProxyConf
+      torD <- toggler STPSUseTor torUsedD
+      let updateE = flip push (updated torD) $ \useTor -> do
+            torUsed <- sample . current $ torUsedD
+            pure $ if useTor == torUsed then Nothing else Just useTor
+      modifySettings $ ffor updateE $ \useTor setts -> setts {
+          settingsSocksProxy = if useTor then Just torSocks else Nothing
+        }
+    socksSettings = void $ do
+      msocksD <- getProxyConf
+      maddrD <- valueField STPSProxyIpField $ fmap socksConfAddr <$> msocksD
+      mportD <- valueField STPSProxyPortField $ fmap socksConfPort <$> msocksD
+      let newSocksE = ffor (updated $ (,) <$> maddrD <*> mportD) $ \(maddr, mport) -> case maddr of
+            Nothing -> Nothing
+            Just addr -> Just $ SocksConf addr (fromMaybe 9050 mport)
+      modifySettings $ ffor newSocksE $ \socks setts -> setts {
+          settingsSocksProxy = socks
+        }

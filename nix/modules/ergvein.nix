@@ -25,14 +25,21 @@ in {
         type = types.bool;
         default = false;
         description = ''
-        Start in testnet mode. Uses different data dir.
+          Start in testnet mode. Uses different data dir.
         '';
       };
       externalAddress = mkOption {
         type = types.nullOr (types.submodule addressType);
         default = null;
         description = ''
-        Which IP and port is assigned to the node as external.
+          Which IP and port is assigned to the node as external.
+        '';
+      };
+      metrics = mkOption {
+        type = types.bool;
+        default = false;
+        description = ''
+          Start prometheus and grafana with local metrics for the indexer.
         '';
       };
     };
@@ -55,6 +62,49 @@ in {
         package = pkgs.ergvein-index-server;
         nodeExternalAddress = cfg.externalAddress;
         testnet = cfg.testnet;
+        metrics = if cfg.metrics then {
+          host = "127.0.0.1";
+          port = 9667;
+        } else null;
+      };
+      grafana = {
+        enable = cfg.metrics;
+        provision = {
+          enable = true;
+          datasources = [
+            {
+              name = "Prometheus";
+              type = "prometheus";
+              isDefault = true;
+              url = "http://127.0.0.1:9090";
+            }
+          ];
+          dashboards = [
+            {
+              options.path = ./dashboards;
+            }
+          ];
+        };
+      };
+      prometheus = {
+        enable = cfg.metrics;
+        scrapeConfigs = [
+          {
+            job_name = "node";
+            scrape_interval = "10s";
+            metrics_path = "/";
+            static_configs = [
+              {
+                targets = [
+                  "127.0.0.1:9667"
+                ];
+                labels = {
+                  alias = "indexer";
+                };
+              }
+            ];
+          }
+        ];
       };
     };
   };

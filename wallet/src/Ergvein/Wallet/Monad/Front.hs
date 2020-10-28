@@ -91,8 +91,6 @@ type MonadFront t m = (
 class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   -- | Internal method.
   getSyncProgressRef :: m (ExternalRef t (Map Currency SyncStage))
-  -- | Internal method to get reference with known heights per currency.
-  getHeightRef :: m (ExternalRef t (Map Currency Integer))
   -- | Internal method to get flag if we has fully synced filters at the moment.
   getFiltersSyncRef :: m (ExternalRef t (Map Currency Bool))
   -- | Get activeCursRef Internal
@@ -267,14 +265,14 @@ requester cur req = mdo
 getOpenSyncedConns :: MonadFront t m => Currency -> m [IndexerConnection t]
 getOpenSyncedConns cur = do
   conns <- readExternalRef =<< getActiveConnsRef
-  heights <- readExternalRef =<< getHeightRef
-  let mh = M.lookup cur heights
+  walletHeightD <- getCurrentHeight cur
   fmap catMaybes $ flip traverse (M.elems conns) $ \con -> do
     isUp <- sampleDyn $ indexConIsUp con
+    walletHeight <- sampleDyn walletHeightD
     if not isUp then pure Nothing else do
-      mh' <- fmap (M.lookup cur) $ sampleDyn $ indexerConHeight con
-      pure $ case (mh, fromIntegral <$> mh') of
-        (Just h, Just h') -> if h == h' || h - h' == 1 then Just con else Nothing
+      indexerHeight <- fmap (M.lookup cur) $ sampleDyn $ indexerConHeight con
+      pure $ case (walletHeight, fromIntegral <$> indexerHeight) of
+        (wh, Just ih) -> if wh == ih || wh - ih == 1 then Just con else Nothing
         _ -> Nothing
 
 randomElem :: MonadIO m => [a] -> m (Maybe a)

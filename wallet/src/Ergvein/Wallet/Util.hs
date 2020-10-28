@@ -13,15 +13,21 @@ module Ergvein.Wallet.Util(
   , eventToNextFrame'
   , eventToNextFrameN
   , eventToNextFrameN'
+  , mergeDyn
   , currencyToCurrencyCode
   , currencyCodeToCurrency
+  , splitEither
+  , splitFilter
+  , switchDyn2
   ) where
 
 import Control.Monad.Except
 import Reflex.Dom
 
-import qualified Ergvein.Types.Currency as ETC
 import Ergvein.Index.Protocol.Types
+import Ergvein.Wallet.Platform
+
+import qualified Ergvein.Types.Currency as ETC
 
 -- | Same as 'widgetHold' but for dynamic
 widgetHoldDyn :: forall t m a . (Reflex t, Adjustable t m, MonadHold t m) => Dynamic t (m a) -> m (Dynamic t a)
@@ -84,10 +90,16 @@ eventToNextFrameN' n evtM = do
   evt <- evtM
   eventToNextFrameN n evt
 
+-- | Make new dynamic that is updated with values from given event and the original dynamic
+mergeDyn :: (Reflex t, MonadHold t m) => Dynamic t a -> Event t a -> m (Dynamic t a)
+mergeDyn d e = do
+  v0 <- sampleDyn d
+  holdDyn v0 $ leftmost [e, updated d]
+
 currencyToCurrencyCode :: ETC.Currency -> CurrencyCode
 currencyToCurrencyCode c = case c of
-  ETC.BTC -> BTC
-  ETC.ERGO -> ERGO
+  ETC.BTC -> if isTestnet then TBTC else BTC
+  ETC.ERGO -> if isTestnet then TERGO else ERGO
 
 currencyCodeToCurrency :: CurrencyCode -> ETC.Currency
 currencyCodeToCurrency c = case c of
@@ -96,3 +108,15 @@ currencyCodeToCurrency c = case c of
   ERGO -> ETC.ERGO
   TERGO -> ETC.ERGO
   _ -> error "Currency code not implemented"
+
+splitEither :: Reflex t => Event t (Either a b) -> (Event t a, Event t b)
+splitEither e = (ae, be)
+  where
+    ae = fmapMaybe (either Just (const Nothing)) e
+    be = fmapMaybe (either (const Nothing) Just) e
+
+switchDyn2 :: Reflex t => Dynamic t (Event t a, Event t b) -> (Event t a, Event t b)
+switchDyn2 = (\(a,b) -> (switchDyn a, switchDyn b)) . splitDynPure
+
+splitFilter :: Reflex t => (a -> Bool) -> Event t a -> (Event t a, Event t a)
+splitFilter f e = (ffilter f e, ffilter (not . f) e)

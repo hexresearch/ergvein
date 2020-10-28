@@ -98,6 +98,7 @@ frontendCss r = do
   mnemonicWidgetCss
   navbarCss
   networkPageCss
+  toggleSwitchCss
   passwordCss
   receiveCss
   selectCss
@@ -263,7 +264,11 @@ headerCss = do
 
 navbarCss :: Css
 navbarCss = do
-  ".navbar" ? do
+  ".navbar-2-cols" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1]
+    padding (rem 0) (rem 1) (rem 0) (rem 1)
+  ".navbar-3-cols" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1, fr 1]
     padding (rem 0) (rem 1) (rem 0) (rem 1)
@@ -460,6 +465,48 @@ validateCss :: Css
 validateCss = do
   ".validate-error" ? do
     fontSize $ pt 14
+
+
+toggleSwitchCss :: Css
+toggleSwitchCss = do
+  ".switch" ? do
+    position relative
+    display inlineBlock
+    width  $ px 60
+    height $ px 34
+  input # ".switch" ? do
+    opacity 0.0
+    width $ px 0
+    height $ px 0
+    verticalAlign vAlignBottom
+  ".slider" ? do
+    position absolute
+    cursor pointer
+    top $ px 0
+    left $ px 0
+    right $ px 0
+    bottom $ px 0
+    backgroundColor white
+    borderStyle solid
+    borderWidth $ px 1
+    borderColor black
+
+  ".slider" # before ? do
+    position absolute
+    content $ stringContent mempty
+    height $ px 26
+    width $ px 26
+    left $ px  4
+    bottom $ px  3
+    backgroundColor black
+    verticalAlign middle
+  input # checked |+ ".slider" ? do
+    backgroundColor grey
+    verticalAlign middle
+  input # focus |+ ".slider" ? do
+    boxShadow $ pure $ bsColor grey $ shadowWithBlur (px 0) (px 0) (px 1)
+  input # checked |+ ".slider" # before ? do
+    transform $ translateX $ px 26
 
 passwordCss :: Css
 passwordCss = do
@@ -680,6 +727,9 @@ networkPageCss = do
   ".indexer-offline" ? do
     marginRight $ em 0.5
     color red
+  ".indexer-unsync" ? do
+    marginRight $ em 0.5
+    color orange
   ".net-refresh-btn" ? do
     height $ em 3.8
     verticalAlign vAlignTop
@@ -844,16 +894,15 @@ selectCss = do
 
 buttonsToggleCss :: Css
 buttonsToggleCss = do
+  ".button-currency" ? do
+    fontSize $ pt 18
+    width $ px 200
   ".button-on" ? do
-    fontSize $ pt 18
-    width $ px 200
-    backgroundColor "#000000"
-    color "#ffffff"
+    important $ backgroundColor "#000000"
+    important $ color "#ffffff"
   ".button-off" ? do
-    fontSize $ pt 18
-    width $ px 200
-    backgroundColor "#ffffff"
-    color "#000000"
+    important $ backgroundColor "#ffffff"
+    important $ color "#000000"
   ".button-not-working" ? do
     visibility hidden
     pointerEvents none

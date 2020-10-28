@@ -59,7 +59,7 @@ class (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t m | m -> t where
   getWalletName          :: m Text
   getPubStorage          :: m PubStorage
   getPubStorageD         :: m (Dynamic t PubStorage)
-  storeWallet            :: Text -> Event t () -> m ()
+  storeWallet            :: Text -> Event t () -> m (Event t ())
   modifyPubStorage       :: Text -> Event t (PubStorage -> Maybe PubStorage) -> m (Event t ())
   getStoreMutex          :: m (MVar ())
 
@@ -178,8 +178,8 @@ writeWalletsScannedHeight caller reqE = modifyPubStorage clr $ ffor reqE $ \(cur
     %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'scannedHeight .~ Just h
   where clr = caller <> ":" <> "writeWalletsScannedHeight"
 
-attachNewBtcHeader :: MonadStorage t m => Text -> Event t (HB.BlockHeight, Timestamp, HB.BlockHash) -> m (Event t ())
-attachNewBtcHeader caller reqE = modifyPubStorage clr $ ffor reqE $ \(he, ts, ha) ps -> let
+attachNewBtcHeader :: MonadStorage t m => Text -> Bool -> Event t (HB.BlockHeight, Timestamp, HB.BlockHash) -> m (Event t ())
+attachNewBtcHeader caller updHeight reqE = modifyPubStorage clr $ ffor reqE $ \(he, ts, ha) ps -> let
   heha = (he, ha)
   mvec = join $ ps ^. pubStorage'currencyPubStorages . at BTC
     & fmap (consifNEq heha . snd . _currencyPubStorage'headerSeq)
@@ -187,15 +187,19 @@ attachNewBtcHeader caller reqE = modifyPubStorage clr $ ffor reqE $ \(he, ts, ha
   in ffor mseq $ \s -> ps & pubStorage'currencyPubStorages . at BTC
     %~ \mcps -> ffor mcps $ \cps -> cps
       & currencyPubStorage'headerSeq .~ s
-      & currencyPubStorage'height .~ Just (fromIntegral he)
+      & if updHeight
+        then currencyPubStorage'height .~ Just (fromIntegral he)
+        else id
   where
     clr = caller <> ":" <> "attachNewBtcHeader"
     consifNEq (he, ha) vs = if V.null vs
       then Just $ V.singleton (he, ha)
       else let (vhe, _) = V.head vs in
-        if vhe >= he
+        if vhe > he
           then Nothing
-          else Just $ V.cons (he, ha) vs
+          else if vhe == he
+            then Just vs
+            else Just $ V.cons (he, ha) vs
 
 getBtcUtxoD :: MonadStorage t m => m (Dynamic t BtcUtxoSet)
 getBtcUtxoD = do

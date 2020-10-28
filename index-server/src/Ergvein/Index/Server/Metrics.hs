@@ -1,6 +1,11 @@
 module Ergvein.Index.Server.Metrics(
     activeConnsGauge
   , filtersServedCounter
+  , heightGauge
+  , scanGauge
+  , reportCurrentHeight
+  , reportScannedHeight
+  , availableSpaceGauge
   -- * Helpers
   , incGaugeWhile
   -- * Metrics server
@@ -23,12 +28,16 @@ import Data.String (fromString)
 import Data.Text (pack)
 import Ergvein.Index.Server.Config
 import Ergvein.Text
+import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
 import Network.HTTP.Types.Status (status401)
 import Network.Wai
 import Network.Wai.Handler.Warp (runSettings, defaultSettings, setPort, setHost)
 import Network.Wai.Middleware.Prometheus (prometheus, def, PrometheusSettings(..))
 import Prometheus (register, unsafeRegister, Counter, counter, incCounter, addCounter, Gauge, gauge, Info(..), addGauge, subGauge, setGauge, MonadMonitor)
 import Prometheus.Metric.GHC (ghcMetrics)
+
+import qualified Data.Text as T
 
 activeConnsGauge :: Gauge
 activeConnsGauge = unsafeRegister $ gauge (Info "active_connections" "Amount of opened TCP connections")
@@ -38,8 +47,30 @@ filtersServedCounter :: Counter
 filtersServedCounter = unsafeRegister $ counter (Info "filters_served" "Amount of served filters")
 {-# NOINLINE filtersServedCounter #-}
 
+heightGauge :: Currency -> Gauge
+heightGauge c = unsafeRegister $ gauge (Info gaugeName ("Reported height of " <> showt c <> " from node"))
+  where
+    gaugeName = T.toLower (showt c) <> "_current_height"
+{-# NOINLINE heightGauge #-}
+
+scanGauge :: Currency -> Gauge
+scanGauge c = unsafeRegister $ gauge (Info gaugeName ("Amount of scanned blocks for " <> showt c))
+  where
+    gaugeName = T.toLower (showt c) <> "_scanned_height"
+{-# NOINLINE scanGauge #-}
+
+availableSpaceGauge :: Gauge
+availableSpaceGauge = unsafeRegister $ gauge (Info "available_space" "Amount of space left for indecies until the server stops")
+{-# NOINLINE availableSpaceGauge #-}
+
 incGaugeWhile :: (MonadMonitor m, MonadMask m) => Gauge -> m a -> m a
 incGaugeWhile g = bracket_ (addGauge activeConnsGauge 1.0) (subGauge activeConnsGauge 1.0)
+
+reportCurrentHeight :: MonadMonitor m => Currency -> BlockHeight -> m ()
+reportCurrentHeight currency = setGauge (heightGauge currency) . fromIntegral
+
+reportScannedHeight :: MonadMonitor m => Currency -> BlockHeight -> m ()
+reportScannedHeight currency = setGauge (scanGauge currency) . fromIntegral
 
 -- | Start server with prometheus metrics if corresponding config section is defined.
 --

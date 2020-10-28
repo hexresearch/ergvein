@@ -16,7 +16,9 @@ import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
+import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
+import Ergvein.Index.Server.TCPService.Conversions
 import Ergvein.Index.Server.TCPService.Conversions()
 import Ergvein.Index.Server.Utils
 import Ergvein.Text
@@ -70,6 +72,7 @@ scannerThread currency scanInfo = create $ logOnException threadName . scanItera
           shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
           unless shutdownFlag $ do
             headBlockHeight <- actualHeight currency
+            reportCurrentHeight currency headBlockHeight
             when (current <= headBlockHeight) $ do
               tryBlockInfo <- (Right <$> blockIteration headBlockHeight current) `catch` (\(SomeException ex) -> pure $ Left $ show ex)
               enoughSpace <- isEnoughSpace
@@ -79,6 +82,7 @@ scannerThread currency scanInfo = create $ logOnException threadName . scanItera
                   if previousBlockSame then do --fork detection
                     addBlockInfo blockInfo
                     when (current == headBlockHeight) $ broadcastFilter $ blockInfoMeta
+                    reportScannedHeight currency current
                     go (succ current)
                   else previousBlockChanged current
                 _ | not enoughSpace ->
@@ -103,13 +107,14 @@ scannerThread currency scanInfo = create $ logOnException threadName . scanItera
           previousBlockChanged from
 
 broadcastFilter :: BlockMetaInfo -> ServerM ()
-broadcastFilter BlockMetaInfo{..} =
+broadcastFilter BlockMetaInfo{..} = do
+  currencyCode <- currencyToCurrencyCode blockMetaCurrency
   broadcastSocketMessage $ MFiltersEvent $ FilterEvent
-  { filterEventCurrency     = convert blockMetaCurrency
-  , filterEventHeight       = blockMetaBlockHeight
-  , filterEventBlockId      = blockMetaHeaderHash
-  , filterEventBlockFilter  = blockMetaAddressFilter
-  }
+    { filterEventCurrency     = currencyCode
+    , filterEventHeight       = blockMetaBlockHeight
+    , filterEventBlockId      = blockMetaHeaderHash
+    , filterEventBlockFilter  = blockMetaAddressFilter
+    }
 
 blockchainScanning :: ServerM [Thread]
 blockchainScanning = sequenceA
@@ -125,6 +130,7 @@ isEnoughSpace :: ServerM Bool
 isEnoughSpace = do
   path <- cfgFiltersDbPath <$> serverConfig
   availSpace <- liftIO $ getAvailSpace path
+  setGauge availableSpaceGauge $ fromIntegral (availSpace - requiredAvailSpace)
   pure $ requiredAvailSpace <= availSpace
  where
   requiredAvailSpace = 2^30 -- 1Gb

@@ -1,6 +1,6 @@
 module Ergvein.Wallet.Worker.Node
   (
-    bctNodeController
+    btcNodeController
   ) where
 
 import Control.Exception
@@ -57,8 +57,8 @@ btcLog v = logWrite $ "[nodeController][" <> showt BTC <> "]: " <> v
 btcRefrTimeout :: NominalDiffTime
 btcRefrTimeout = 5
 
-bctNodeController :: MonadFront t m => m ()
-bctNodeController = mdo
+btcNodeController :: MonadFront t m => m ()
+btcNodeController = mdo
   btcLog "Starting"
   buildE    <- delay 0.1 =<< getPostBuild
   sel       <- getNodeNodeReqSelector
@@ -68,7 +68,7 @@ bctNodeController = mdo
 
   pubStorageD <- getPubStorageD
 
-  let txidsD = ffor pubStorageD $ \ps -> S.fromList $ M.keys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "bctNodeController: not exsisting store!") . currencyPubStorage'transactions
+  let txidsD = ffor pubStorageD $ \ps -> S.fromList $ M.keys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "btcNodeController: not exsisting store!") . currencyPubStorage'transactions
 
   let btcLenD = ffor conMapD $ fromMaybe 0 . fmap M.size . DM.lookup BTCTag
   let te' = poke te $ const $ do
@@ -122,7 +122,7 @@ myTxSender addr msgE = do
   pubD <- getPubStorageD
   let txsD = do
         ps <- pubD
-        let store = ps ^. pubStorage'currencyPubStorages . at BTC . non (error "bctNodeController: not exsisting store!")
+        let store = ps ^. pubStorage'currencyPubStorages . at BTC . non (error "btcNodeController: not exsisting store!")
         let txids = store ^. currencyPubStorage'outgoing
         let txmap = store ^. currencyPubStorage'transactions
         pure (txids, txmap)

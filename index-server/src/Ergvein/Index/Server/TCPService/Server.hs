@@ -76,11 +76,9 @@ tcpSrv thread = do
 
 mainLoop :: Thread -> Socket -> ServerM ()
 mainLoop thread sock = do
-  openedConnectionsRef <- openConnections
   mainLoopId <- fork $ forever $ do
     (newSock, newSockAddr) <- liftIO $ accept sock
-    connectionThreadId <- fork $ registerConnection (newSock, newSockAddr)
-    openConnection connectionThreadId newSockAddr newSock
+    fork $ registerConnection (newSock, newSockAddr)
   shutdownFlagRef <- getShutdownFlag
   forever $ do
     shutdownFlag <- liftIO $ readTVarIO shutdownFlagRef
@@ -96,9 +94,8 @@ mainLoop thread sock = do
 
 registerConnection :: (Socket, SockAddr) -> ServerM ()
 registerConnection (sock, addr) = do
-  openedConnectionsRef <- openConnections
   connectionThreadId <- fork $ runConnection (sock, addr)
-  openConnection connectionThreadId addr  sock
+  openConnection connectionThreadId addr sock
 
 runConnection :: (Socket, SockAddr) -> ServerM ()
 runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
@@ -158,7 +155,7 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
           if not (BS.null fetchedBytes) then
             except $ Right fetchedBytes
           else
-            except $ Left $ Reject MessageParsing
+            except $ Left $ Reject ZeroBytesReceived
 
         messageHeader :: BS.ByteString -> ExceptT Reject ServerM MessageHeader
         messageHeader = ExceptT . pure . mapLeft (\_-> Reject MessageHeaderParsing) . eitherResult . parse messageHeaderParser

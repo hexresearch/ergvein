@@ -28,7 +28,7 @@ selectCurrenciesPage wt mnemonic = wrapperSimple True $ do
 #ifdef ANDROID
       retractableNext = setupLoginPage wt Nothing mnemonic ac
 #else
-      retractableNext = passwordPage wt Nothing mnemonic ac
+      retractableNext = passwordPage wt Nothing mnemonic ac Nothing
 #endif
     -- , retractablePrev = Just $ pure $ selectCurrenciesPage wt mnemonic -- TODO: uncomment this when ERGO is ready
     , retractablePrev = Nothing -- TODO: remove this when ERGO is ready
@@ -58,8 +58,8 @@ selectCurrenciesWidget currs = mdo
       else (b, c)
 
     toggled b = if b
-      then "button button-on"
-      else "button button-off"
+      then "button button-on button-currency"
+      else "button button-off button-currency"
 
     enabled b = case b of
       Just _ -> "button button-outline"

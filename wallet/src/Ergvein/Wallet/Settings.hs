@@ -16,6 +16,9 @@ module Ergvein.Wallet.Settings (
   , defaultIndexers
   , getDNS
   , seedList
+  , SocksConf(..)
+  , torSocks
+  , toSocksProxy
   -- * Helpers
   , makeSockAddr
   , parseIP
@@ -29,7 +32,7 @@ import Data.Either
 import Data.Text(Text, pack, unpack)
 import Data.Time (NominalDiffTime)
 import Data.Yaml (encodeFile)
-import Network.Socket
+import Network.Socket (HostName, PortNumber)
 import System.Directory
 import Data.IP
 import Network.DNS.Lookup
@@ -38,10 +41,13 @@ import Network.DNS.Resolver
 import Ergvein.Wallet.Platform
 import Data.IP (IP, toSockAddr)
 import Text.Read (readMaybe)
+import Data.Word
 
 import Ergvein.Aeson
 import Ergvein.Lens
+import Ergvein.Text
 import Ergvein.Types.Currency
+import Ergvein.Wallet.IP
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Yaml(readYamlEither')
@@ -49,6 +55,7 @@ import Ergvein.Text
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
+import qualified Network.Socks5 as S5
 import qualified Data.Set as S
 
 #ifdef ANDROID
@@ -82,15 +89,30 @@ defaultExplorerUrl = M.fromList $ btcDefaultUrls <> ergoDefaultUrls
 btcDefaultExplorerUrls :: ExplorerUrls
 btcDefaultExplorerUrls = ExplorerUrls "https://www.blockchain.com/btc-testnet" "https://www.blockchain.com/btc"
 
--- | Parsing IPv4 and IPv6 addresses and makes socket address from them
-makeSockAddr :: Text -> Int -> Maybe SockAddr
-makeSockAddr t pnum = do
-  ip <- parseIP t
-  pure $ toSockAddr (ip, fromIntegral pnum)
+data SocksConf = SocksConf {
+  socksConfAddr :: !IP
+, socksConfPort :: !Int
+} deriving (Eq, Show)
 
--- | Parsing IPv4 and IPv6 addresses
-parseIP :: Text -> Maybe IP
-parseIP = readMaybe . T.unpack
+instance ToJSON SocksConf where
+  toJSON SocksConf{..} = object [
+      "address" .= showt socksConfAddr
+    , "port" .= socksConfPort
+    ]
+
+instance FromJSON SocksConf where
+  parseJSON = withObject "SocksConf" $ \o -> do
+    addrText <- o .: "address"
+    socksConfAddr <- maybe (fail "Cannot parse IP of socks proxy") pure . parseIP $ addrText
+    socksConfPort <- o .: "port"
+    pure SocksConf{..}
+
+-- | Default tor socks proxy
+torSocks :: SocksConf
+torSocks = SocksConf "127.0.0.1" 9050
+
+toSocksProxy :: SocksConf -> S5.SocksConf
+toSocksProxy (SocksConf a p) = S5.defaultSocksConfFromSockAddr $ makeSockAddr a p
 
 data Settings = Settings {
   settingsLang              :: Language
@@ -107,6 +129,7 @@ data Settings = Settings {
 , settingsPortfolio         :: Bool
 , settingsFiatCurr          :: Fiat
 , settingsDns               :: S.Set HostName
+, settingsSocksProxy        :: Maybe SocksConf
 } deriving (Eq, Show)
 
 
@@ -136,6 +159,7 @@ instance FromJSON Settings where
     settingsPortfolio         <- o .:? "portfolio" .!= False
     settingsFiatCurr          <- o .:? "fiatCurr"  .!= USD
     mdns                      <- o .:? "dns"
+    settingsSocksProxy        <- o .:? "socksProxy"
     let settingsDns = case fromMaybe [] mdns of
           [] -> defaultDns
           dns -> S.fromList dns
@@ -157,6 +181,7 @@ instance ToJSON Settings where
     , "portfolio"         .= toJSON settingsPortfolio
     , "fiatCurr"          .= toJSON settingsFiatCurr
     , "dns"               .= toJSON settingsDns
+    , "socksProxy"        .= toJSON settingsSocksProxy
    ]
 
 defIndexerPort :: PortNumber
@@ -191,23 +216,23 @@ defaultSettings :: FilePath -> Settings
 defaultSettings home =
   let storePath   = home <> "/store"
       configPath  = home <> "/config.yaml"
-
-  in Settings 
-    { settingsLang              = English
-    , settingsStoreDir          = pack storePath
-    , settingsConfigPath        = pack configPath
-    , settingsUnits             = Just defUnits
-    , settingsReqTimeout        = defaultIndexerTimeout
-    , settingsReqUrlNum         = defaultIndexersNum
-    , settingsActUrlNum         = defaultActUrlNum
-    , settingsExplorerUrl       = defaultExplorerUrl
-    , settingsPortfolio         = False
-    , settingsFiatCurr          = USD
-    , settingsActiveAddrs       = []
-    , settingsDeactivatedAddrs  = []
-    , settingsArchivedAddrs     = []
-    , settingsDns               = defaultDns
-    }
+  in Settings {
+        settingsLang              = English
+      , settingsStoreDir          = pack storePath
+      , settingsConfigPath        = pack configPath
+      , settingsUnits             = Just defUnits
+      , settingsReqTimeout        = defaultIndexerTimeout
+      , settingsReqUrlNum         = defaultIndexersNum
+      , settingsActUrlNum         = defaultActUrlNum
+      , settingsExplorerUrl       = defaultExplorerUrl
+      , settingsPortfolio         = False
+      , settingsFiatCurr          = USD
+      , settingsActiveAddrs       = defaultIndexers
+      , settingsDeactivatedAddrs  = []
+      , settingsArchivedAddrs     = []
+      , settingsDns               = defaultDns
+      , settingsSocksProxy        = Nothing
+      }
 
 -- | TODO: Implement some checks to see if the configPath folder is ok to write to
 storeSettings :: MonadIO m => Settings -> m ()

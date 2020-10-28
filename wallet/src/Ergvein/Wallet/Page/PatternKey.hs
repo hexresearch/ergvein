@@ -6,40 +6,37 @@ module Ergvein.Wallet.Page.PatternKey(
   , patternSave
   , patternSaveWidget
   , portfolioWidget
-#ifdef ANDROID
   , loadCounter
   , saveCounter
-#endif
   , PatternSavingTry(..)
   , PatternTries(..)
   ) where
 
+import Control.Monad.IO.Class
 import Data.List (find)
 import Data.Maybe (fromMaybe)
+import Data.Either (fromRight)
 
 import Ergvein.Aeson
 import Ergvein.Text
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.PatternKey
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.Canvas
 import Ergvein.Wallet.Util
 
 import qualified Data.Map.Strict as Map
-
-#ifdef ANDROID
-import Android.HaskellActivity
-import Control.Monad.IO.Class
-import Data.Aeson
-import Language.Javascript.JSaddle hiding ((!!))
-import System.Directory
-#endif
 
 data PatternTries = PatternTries {
   patterntriesCount  :: Map.Map Text Integer
 } deriving (Eq, Show)
 
 $(deriveJSON (aesonOptionsStripPrefix "pattern") ''PatternTries)
+
+emptyPT :: PatternTries
+emptyPT = PatternTries Map.empty
+{-# INLINE emptyPT #-}
 
 patternAsk :: MonadFrontBase t m => m (Dynamic t Password, Dynamic t TouchState)
 patternAsk = divClass "pattern-container" $ mdo
@@ -267,33 +264,11 @@ patternSaveWidget = mdo
   passD <- holdDyn "" passOkE
   pure passD
 
-#ifdef ANDROID
-saveCounter :: MonadIO m => PatternTries -> m ()
-saveCounter pt = do
-  mpath <- liftIO $ getFilesDir =<< getHaskellActivity
-  case mpath of
-    Nothing -> fail "Ergvein panic! No local folder!"
-    Just path -> do
-      let triespath = path <> "/tries.yaml"
-      ex <- liftIO $ doesFileExist triespath
-      liftIO $ encodeFile triespath $ pt
+saveCounter :: (MonadIO m, PlatformNatives, HasStoreDir m) => PatternTries -> m ()
+saveCounter pt = storeValue "tries.json" pt True
 
-loadCounter :: MonadIO m => m PatternTries
-loadCounter = do
-  mpath <- liftIO $ getFilesDir =<< getHaskellActivity
-  case mpath of
-    Nothing -> fail "Ergvein panic! No local folder!"
-    Just path -> do
-      let triespath = path <> "/tries.yaml"
-      ex <- liftIO $ doesFileExist triespath
-      if not ex
-        then pure (PatternTries (Map.fromList []))
-        else do
-          mPT <- liftIO $ decodeFileStrict' triespath
-          case mPT of
-            Just p -> pure p
-            Nothing -> pure (PatternTries (Map.fromList []))
-#endif
+loadCounter :: (MonadIO m, PlatformNatives, HasStoreDir m) => m PatternTries
+loadCounter = fmap (fromRight emptyPT) $ retrieveValue "tries" emptyPT
 
 clearSelectionDynamic :: Reflex t => Dynamic t (DrawCommand, [Maybe Int]) -> Dynamic t [Int]
 clearSelectionDynamic selD = fmap (fmap (\a -> fromMaybe 0 a)) $ fmap snd selD

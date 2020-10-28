@@ -59,7 +59,7 @@ startBTCFlow = Workflow $ do
   buildE <- getPostBuild
   ps <- getPubStorage
   let bl0 = ps ^. pubStorage'currencyPubStorages
-        . at BTC . non (error "bctNodeController: not exsisting store!")
+        . at BTC . non (error "btcNodeController: not exsisting store!")
         . currencyPubStorage'headerSeq
       bl = fmap V.toList $ if V.null $ snd bl0 then btcCheckpoints else bl0
   pure ((), btcCatchUpFlow bl <$ buildE)
@@ -71,9 +71,10 @@ btcCatchUpFlow (ts, bl) = Workflow $ do
   let (h0, lasthash) = head bl
   logWrite $ "btcCatchUpFlow: " <> showt h0
   buildE <- getPostBuild
-  setSyncProgress $ SyncProgress BTC (SyncGettingHeight $ fromIntegral h0) <$ buildE
+  storedE <-  attachNewBtcHeader "btcCatchUpFlow" False $ (h0, ts, lasthash) <$ buildE
+  setSyncProgress $ SyncProgress BTC (SyncGettingHeight $ fromIntegral h0) <$ storedE
   let req = MGetHeaders $ GetHeaders 70012 (snd <$> bl) emptyHash
-  respE <- requestRandomNode $ (NodeReqBTC req) <$ buildE
+  respE <- requestRandomNode $ (NodeReqBTC req) <$ storedE
   let hlE = fforMaybe respE $ \case
         NodeRespBTC (MHeaders (Headers hl)) -> Just $ fmap fst hl
         _ -> Nothing
@@ -128,7 +129,8 @@ btcListenFlow h0 ts0 he0 = Workflow $ mdo
       restartE = fmapMaybe (either Just (const Nothing)) actE
       setE = fmapMaybe (either (const Nothing) Just) actE
       storeE = leftmost [(he0, ts0, h0) <$ buildE, updated htD]
-  void $ attachNewBtcHeader "heightAskerBtc" storeE
+  void $ attachNewBtcHeader "btcListenFlow" True storeE
+  setSyncProgress $ ffor storeE $ \(he,_,_) -> SyncProgress BTC Synced
   pure ((), startBTCFlow <$ restartE)
 
 pickFirstBlockInv :: [InvVector] -> Maybe BlockHash
