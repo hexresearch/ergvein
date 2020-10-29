@@ -155,13 +155,13 @@ deactivateURL addrE = do
   iaRef     <- getInactiveAddrsRef
   setRef    <- getSettingsRef
   activsRef <- getActiveAddrsRef
-  performEventAsync $ ffor addrE $ \url fire -> void $ liftIO $ forkOnOther $ do
+  performFork $ ffor addrE $ \url -> void $ do
     acs <- modifyExternalRef activsRef $ \as ->
       let as' = S.delete url as in  (as', S.toList as')
     ias <- modifyExternalRef iaRef  $ \us ->
       let us' = S.insert url us in (us', S.toList us')
 
-    req $ M.singleton (namedAddrSock url) IndexerClose
+    liftIO $ req $ M.singleton (namedAddrSock url) IndexerClose
     s <- modifyExternalRef setRef $ \s -> let
       s' = s {
           settingsActiveAddrs  = namedAddrName <$> acs
@@ -169,7 +169,6 @@ deactivateURL addrE = do
         }
       in (s', s')
     storeSettings s
-    fire ()
 
 -- | Forget an url
 forgetURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t NamedSockAddr -> m (Event t ())
@@ -179,14 +178,14 @@ forgetURL addrE = do
   acrhRef   <- getArchivedAddrsRef
   setRef    <- getSettingsRef
   activsRef <- getActiveAddrsRef
-  performEventAsync $ ffor addrE $ \url fire -> void $ liftIO $ forkOnOther $ do
+  performFork $ ffor addrE $ \url -> void $ do
     ias <- modifyExternalRef iaRef $ \us ->
       let us' = S.delete url us in (us', S.toList us')
     ars <- modifyExternalRef acrhRef $ \as ->
       let as' = S.delete url as in  (as', S.toList as')
     acs <- modifyExternalRef activsRef $ \as ->
       let as' = S.delete url as in  (as', S.toList as')
-    req $ M.singleton (namedAddrSock url) IndexerClose
+    liftIO $ req $ M.singleton (namedAddrSock url) IndexerClose
     s <- modifyExternalRef setRef $ \s -> let
       s' = s {
           settingsActiveAddrs  = namedAddrName <$> acs
@@ -195,7 +194,6 @@ forgetURL addrE = do
         }
       in (s', s')
     storeSettings s
-    fire ()
 
 broadcastIndexerMessage :: (MonadIndexClient t m) => Event t IndexerMsg -> m ()
 broadcastIndexerMessage reqE = do
