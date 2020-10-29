@@ -30,22 +30,40 @@ indexerNodeController initAddrs = mdo
   sel <- getIndexReqSelector
   (addrE, _) <- getActivationEF
   connRef <- getActiveConnsRef
-  reconnectTimeoutE <- delay reconnectTimeout closedE
   let initMap = M.fromList $ ((, ())) <$> initAddrs
       closedE = switchDyn $ ffor valD $ leftmost . M.elems
       delE = (\u -> M.singleton u Nothing) <$> closedE
       addE = (\us -> M.fromList $ (, Just ()) <$> us) <$> addrE
-      actE = leftmost [delE, addE, reconnectE]
-      reconnectE = (\u -> M.singleton u (Just ())) <$> reconnectTimeoutE
+      actE = leftmost [delE, addE]
+
+  performEvent $ ffor delE $ \mnsa -> flip traverse (M.keys mnsa) $
+    \(NamedSockAddr _ u) -> nodeLog $ "<" <> showt u <> ">: DELETE"
+
   valD <- listWithKeyShallowDiff initMap actE $ \nsa@(NamedSockAddr _ u) _ _ -> do
     nodeLog $ "<" <> showt u <> ">: Connect"
+    te <- tickLossyFromPostBuildTime 10
+    performEvent $ ffor te $ const $ nodeLog $ "<" <> showt u <> ">: Ping"
     let reqE = select sel $ Const2 u
     conn <- initIndexerConnection nsa reqE
     modifyExternalRef connRef $ \cm -> (M.insert u conn cm, ())
-    closedE' <- delay 0.1 $ indexConClosedE conn
+
+    -- Everything below thsi line is handling the closure of a connection
+    -- the event the socket fires when it wants to be closed
+    let closedE' = indexConClosedE conn
+    performEvent_ $ ffor closedE' $ const $ nodeLog $ "<" <> showt u <> ">: closedE'"
+    -- potential solution: directly send signal to kill the widget
+    -- from this point when IndexerClose message is sent
+    let clsMsgE = never
+    -- let clsMsgE = fforMaybe reqE $ \case
+    --       IndexerClose -> Just ()
+    --       _ -> Nothing
     failedToConnectE <- connectionWidget conn
-    let closedE'' = leftmost [closedE', failedToConnectE]
+
+    -- closedE'' -- init closure procedure here
+    let closedE'' = leftmost [closedE', failedToConnectE, clsMsgE]
+    -- remove the connection from the connection map
     closedE''' <- performEvent $ ffor closedE'' $ const $ modifyExternalRef connRef $ \cm -> (M.delete u cm, ())
+    -- send out the event to delete this widget
     pure $ nsa <$ closedE'''
   pure ()
   where

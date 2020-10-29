@@ -65,10 +65,10 @@ selectRestoreMethodPage = do
 hasWalletsPage :: MonadFrontBase t m => [WalletName] -> m ()
 hasWalletsPage ss = do
   mname <- getLastStorage
-  selectTrougth ss mname
+  selectThrough ss mname
 
-selectTrougth :: MonadFrontBase t m => [WalletName] -> Maybe WalletName -> m ()
-selectTrougth ss mname = do
+selectThrough :: MonadFrontBase t m => [WalletName] -> Maybe WalletName -> m ()
+selectThrough ss mname = do
   buildE <- getPostBuild
   case mname of
     Just name -> void $ nextWidget $ ffor buildE $ const $ Retractable {
