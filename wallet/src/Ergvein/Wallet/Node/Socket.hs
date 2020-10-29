@@ -165,9 +165,7 @@ socket SocketConf{..} = fmap switchSocket $ widgetHoldDyn $ ffor _socketConfProx
   reconnectE <- case _socketConfReopen of
     Just (dt, _) -> do
       let notFinalE = fforMaybe closeE $ \cr -> if isCloseFinal cr then Nothing else Just ()
-      performEvent_ $ ffor notFinalE $ const $ do
-        logWrite "notFinalE: this fires when the closure is not final and we want to reconnect"
-        modifyExternalRef reconnTriesRef $ \i -> (i+1, ())
+      performEvent_ $ ffor notFinalE $ const $ modifyExternalRef reconnTriesRef $ \i -> (i+1, ())
       delay dt notFinalE
     _ -> pure never
   -- performEvent_ $ ffor closeE $ logWrite . showt
@@ -182,23 +180,14 @@ socket SocketConf{..} = fmap switchSocket $ widgetHoldDyn $ ffor _socketConfProx
         let doReconnecting = case _socketConfReopen of
               Nothing -> False
               Just (_, n) -> i < n
-        let val = maybe CloseGracefull (CloseError doReconnecting) e
-        logWrite $ "This value goes to closeFire: " <> showt val
-        closeFire val
+        closeFire $ maybe CloseGracefull (CloseError doReconnecting) e
   intVar <- liftIO $ newTVarIO False
   sendChan <- liftIO newTChanIO
-  performEvent_ $ ffor closeE $ const $ do
-    logWrite "closeE has been fired"
-    liftIO $ atomically $ writeTVar intVar True
+  performEvent_ $ ffor closeE $ const $ liftIO $ atomically $ writeTVar intVar True
   performEvent_ $ ffor reconnectE $ const $ liftIO $ atomically $ writeTVar intVar False
   performEvent_ $ ffor _socketConfSend $ liftIO . atomically . writeTChan sendChan
-  -- performEvent $ ffor buildE $ const $ liftIO $ closeFire CloseGracefull
-  performEvent $ ffor _socketConfClose $ const $ do
-    logWrite "_socketConfClose"
-    liftIO $ closeFire CloseGracefull
-    logWrite "Called closeFire"
-    -- liftIO $ closeCb Nothing
-  performFork_ $ ffor connectE $ const $ liftIO $ do
+  performEvent_ $ ffor _socketConfClose $ const $ liftIO $ closeCb Nothing
+  performFork_  $ ffor connectE $ const $ liftIO $ do
     let sendThread sock = forever $ do
           msgs <- atomically $ readAllTVar sendChan
           -- logWrite $ "Sending message"
