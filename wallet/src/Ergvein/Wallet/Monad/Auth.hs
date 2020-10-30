@@ -72,7 +72,6 @@ data Env t = Env {
 , env'filtersStorage  :: !FiltersStorage
 , env'filtersHeights  :: !(ExternalRef t (Map Currency BlockHeight))
 , env'syncProgress    :: !(ExternalRef t (Map Currency SyncStage))
-, env'heightRef       :: !(ExternalRef t (Map Currency Integer))
 , env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
 , env'nodeConsRef     :: !(ExternalRef t (ConnMap t))
 , env'nodeReqSelector :: !(NodeReqSelector t)
@@ -162,8 +161,6 @@ instance MonadBaseConstr t m => MonadHasSettings t (ErgveinM t m) where
 instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   getSyncProgressRef = asks env'syncProgress
   {-# INLINE getSyncProgressRef #-}
-  getHeightRef = asks env'heightRef
-  {-# INLINE getHeightRef #-}
   getFiltersSyncRef = asks env'filtersSyncRef
   {-# INLINE getFiltersSyncRef #-}
   getActiveCursRef = asks env'activeCursRef
@@ -235,7 +232,7 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   {-# INLINE getPubStorageD #-}
   storeWallet caller e = do
     ref <-  asks env'authRef
-    performEvent_ $ ffor e $ \_ -> do
+    performEvent $ ffor e $ \_ -> do
         authInfo <- readExternalRef ref
         let storage = _authInfo'storage authInfo
         let eciesPubKey = _authInfo'eciesPubKey authInfo
@@ -308,13 +305,10 @@ liftAuth ma0 ma = mdo
         let nodeSel = fanMap nReqE -- Node request selector :: NodeReqSelector t
 
 
-        let ps = auth ^. authInfo'storage . storage'pubStorage
-
         activeCursRef   <- newExternalRef mempty
         syncRef         <- newExternalRef mempty
         filtersStore    <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
         filtersHeights  <- newExternalRef mempty
-        heightRef       <- newExternalRef (fmap (maybe 0 fromIntegral . _currencyPubStorage'height) . _pubStorage'currencyPubStorages $ ps)
         fsyncRef        <- newExternalRef mempty
         consRef         <- newExternalRef mempty
         feesRef         <- newExternalRef mempty
@@ -339,7 +333,6 @@ liftAuth ma0 ma = mdo
               , env'filtersStorage = filtersStore
               , env'filtersHeights = filtersHeights
               , env'syncProgress = syncRef
-              , env'heightRef = heightRef
               , env'filtersSyncRef = fsyncRef
               , env'nodeConsRef = consRef
               , env'nodeReqSelector = nodeSel

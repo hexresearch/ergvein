@@ -28,7 +28,7 @@ import Data.Time
 import Ergvein.Text (showt)
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Native
-import Ergvein.Wallet.Util (widgetHoldDyn)
+import Ergvein.Wallet.Util (widgetHoldDyn, eventToNextFrame)
 import GHC.Generics
 import Network.Socks5 (SocksConf(..), socksConnect, SocksAddress(..), SocksHostAddress(..))
 import Reflex
@@ -36,6 +36,7 @@ import Reflex.ExternalRef
 import System.Timeout (timeout)
 
 import qualified Control.Exception.Safe as Ex
+import Control.Exception.Base
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Builder as BB
 import qualified Data.ByteString.Lazy as BSL
@@ -161,7 +162,6 @@ socket SocketConf{..} = fmap switchSocket $ widgetHoldDyn $ ffor _socketConfProx
   (readErE, readErFire) <- newTriggerEvent
   (inE, inFire) <- newTriggerEvent
   statusD <- holdDyn SocketInitial statusE
-  let doReconnecting = isJust _socketConfReopen
   reconnectE <- case _socketConfReopen of
     Just (dt, _) -> do
       let notFinalE = fforMaybe closeE $ \cr -> if isCloseFinal cr then Nothing else Just ()
@@ -187,7 +187,7 @@ socket SocketConf{..} = fmap switchSocket $ widgetHoldDyn $ ffor _socketConfProx
   performEvent_ $ ffor reconnectE $ const $ liftIO $ atomically $ writeTVar intVar False
   performEvent_ $ ffor _socketConfSend $ liftIO . atomically . writeTChan sendChan
   performEvent_ $ ffor _socketConfClose $ const $ liftIO $ closeCb Nothing
-  performFork_ $ ffor connectE $ const $ liftIO $ do
+  performFork_  $ ffor connectE $ const $ liftIO $ do
     let sendThread sock = forever $ do
           msgs <- atomically $ readAllTVar sendChan
           -- logWrite $ "Sending message"

@@ -17,6 +17,8 @@ module Ergvein.Wallet.Util(
   , currencyToCurrencyCode
   , currencyCodeToCurrency
   , splitEither
+  , splitFilter
+  , switchDyn2
   ) where
 
 import Control.Monad.Except
@@ -112,3 +114,9 @@ splitEither e = (ae, be)
   where
     ae = fmapMaybe (either Just (const Nothing)) e
     be = fmapMaybe (either (const Nothing) Just) e
+
+switchDyn2 :: Reflex t => Dynamic t (Event t a, Event t b) -> (Event t a, Event t b)
+switchDyn2 = (\(a,b) -> (switchDyn a, switchDyn b)) . splitDynPure
+
+splitFilter :: Reflex t => (a -> Bool) -> Event t a -> (Event t a, Event t a)
+splitFilter f e = (ffilter f e, ffilter (not . f) e)
