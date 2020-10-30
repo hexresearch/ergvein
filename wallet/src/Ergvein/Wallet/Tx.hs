@@ -4,15 +4,18 @@ module Ergvein.Wallet.Tx
     checkAddrTx
   , checkAddrTxIn
   , checkAddrTxOut
+  , checkTxOut
   , filterTxsForAddress
   , getSpentOutputs
   , getUnspentOutputs
   , getUtxoUpdates
   , getUtxoUpdatesFromTxs
+  , inputSpendsOutPoint
   ) where
 
 import Control.Monad.IO.Class
 import Data.Maybe
+import Data.Word (Word32)
 import Network.Haskoin.Transaction (Tx(..), TxIn(..), TxOut(..), OutPoint(..), txHash)
 
 import Ergvein.Text
@@ -25,12 +28,13 @@ import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node.BTC.Blocks
 
+import qualified Data.List                          as L
 import qualified Data.Map.Strict                    as M
 import qualified Data.Vector                        as V
 import qualified Network.Haskoin.Address            as HA
+import qualified Network.Haskoin.Crypto             as HT
 import qualified Network.Haskoin.Script             as HS
 import qualified Network.Haskoin.Transaction        as HT
-import qualified Network.Haskoin.Crypto             as HT
 
 -- | Filter txs for ones, relevant to an address
 filterTxsForAddress :: (HasTxStorage m, PlatformNatives) => EgvAddress -> [Tx] -> m [Tx]
@@ -46,14 +50,14 @@ checkAddrTx addr tx = do
   pure $ concatResults checkTxInputsResults || concatResults checkTxOutputsResults
   where concatResults = foldr (||) False
 
--- | Checks given tx if there are some inputs or outputs containing given address.
+-- | Checks given tx if there are some inputs containing given address.
 checkAddrTxIn :: (HasTxStorage m, PlatformNatives) => EgvAddress -> Tx -> m Bool
 checkAddrTxIn addr tx = do
   checkTxInputsResults <- traverse (checkTxIn addr) (HT.txIn tx)
   pure $ concatResults checkTxInputsResults
   where concatResults = foldr (||) False
 
--- | Checks given tx if there are some inputs or outputs containing given address.
+-- | Checks given tx if there are some outputs containing given address.
 checkAddrTxOut :: (HasTxStorage m, PlatformNatives) => EgvAddress -> Tx -> m Bool
 checkAddrTxOut addr tx = do
   checkTxOutputsResults <- traverse (checkTxOut addr) (HT.txOut tx)
@@ -146,3 +150,7 @@ checkTxOut (BtcAddress (HA.WitnessScriptAddress sh)) txO = case HS.decodeOutputB
   Right output -> case output of
     HS.PayWitnessScriptHash h -> if h == sh then pure True else pure False
     _ -> pure False
+
+-- | Check given TxIn wheather it spends OutPoint.
+inputSpendsOutPoint :: OutPoint -> TxIn -> Bool
+inputSpendsOutPoint outPoint txIn = prevOutput txIn == outPoint
