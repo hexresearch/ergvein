@@ -295,8 +295,6 @@ prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = TransactionVi
     txHs = HK.txHash btx
     txHex = HK.txHashToHex txHs
 
-    getOutType out = TOUnspent
-
     txOuts = fmap (\(out, outStatus) -> (txOutAdr out, Money BTC (HK.outValue out), outStatus, txOurAdrCheck out)) $ L.zip (HK.txOut btx) outsStatuses
     txOutsAm = fmap (\out -> HK.outValue out) $ HK.txOut btx
 
