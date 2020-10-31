@@ -120,9 +120,7 @@ data Settings = Settings {
 , settingsConfigPath        :: Text
 , settingsUnits             :: Maybe Units
 , settingsReqTimeout        :: NominalDiffTime
-, settingsActiveAddrs       :: [Text]
-, settingsDeactivatedAddrs  :: [Text]
-, settingsArchivedAddrs     :: [Text]
+, settingsAddrs             :: M.Map Text 
 , settingsReqUrlNum         :: (Int, Int) -- ^ First is minimum required answers. Second is sufficient amount of answers from indexers.
 , settingsActUrlNum         :: Int
 , settingsExplorerUrl       :: M.Map Currency ExplorerUrls
@@ -150,11 +148,7 @@ instance FromJSON Settings where
     mArchivedAddrs            <- o .: "archivedAddrs"
     settingsReqUrlNum         <- o .:? "reqUrlNum"  .!= defaultIndexersNum
     settingsActUrlNum         <- o .:? "actUrlNum"  .!= 10
-    let (settingsActiveAddrs, settingsDeactivatedAddrs, settingsArchivedAddrs) =
-          case (mActiveAddrs, mDeactivatedAddrs, mArchivedAddrs) of
-            (Nothing, Nothing, Nothing) -> ([], [], [])
-            (Just [], Just [], Just []) -> ([], [], [])
-            _ -> (fromMaybe [] mActiveAddrs, fromMaybe [] mDeactivatedAddrs, fromMaybe [] mArchivedAddrs)
+    settingsAddrs             <- o .: "addrs"
     settingsExplorerUrl       <- o .:? "explorerUrl" .!= defaultExplorerUrl
     settingsPortfolio         <- o .:? "portfolio" .!= False
     settingsFiatCurr          <- o .:? "fiatCurr"  .!= USD
@@ -172,9 +166,7 @@ instance ToJSON Settings where
     , "configPath"        .= toJSON settingsConfigPath
     , "units"             .= toJSON settingsUnits
     , "reqTimeout"        .= toJSON settingsReqTimeout
-    , "activeAddrs"       .= toJSON settingsActiveAddrs
-    , "deactivatedAddrs"  .= toJSON settingsDeactivatedAddrs
-    , "archivedAddrs"     .= toJSON settingsArchivedAddrs
+    , "addrs"             .= toJSON settingsAddrs
     , "reqUrlNum"         .= toJSON settingsReqUrlNum
     , "actUrlNum"         .= toJSON settingsActUrlNum
     , "explorerUrl"       .= toJSON settingsExplorerUrl
@@ -227,9 +219,7 @@ defaultSettings home =
       , settingsExplorerUrl       = defaultExplorerUrl
       , settingsPortfolio         = False
       , settingsFiatCurr          = USD
-      , settingsActiveAddrs       = defaultIndexers
-      , settingsDeactivatedAddrs  = []
-      , settingsArchivedAddrs     = []
+      , settingsAddrs             = []
       , settingsDns               = defaultDns
       , settingsSocksProxy        = Nothing
       }

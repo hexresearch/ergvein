@@ -132,7 +132,7 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
 activePageWidget :: forall t m . MonadFrontBase t m => m ()
 activePageWidget = mdo
   connsD  <- externalRefDynamic =<< getActiveConnsRef
-  addrsD  <- (fmap . fmap) S.toList $ externalRefDynamic =<< getActiveAddrsRef
+  addrsD  <- (fmap . fmap) S.toList $ externalRefDynamic =<< undefined
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   let valsD = (,) <$> connsD <*> addrsD
   void $ widgetHoldDyn $ ffor valsD $ \(conmap, urls) ->
@@ -198,7 +198,7 @@ renderActive nsa refrE mconn = mdo
 
 inactivePageWidget :: forall t m . MonadFrontBase t m => m ()
 inactivePageWidget = mdo
-  addrsD <- externalRefDynamic =<< getInactiveAddrsRef
+  addrsD <- externalRefDynamic =<< undefined
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   hideE <- deactivateURL =<< addUrlWidget showD
   let addrsMapD = (M.fromList . fmap (,()) . S.toList) <$> addrsD

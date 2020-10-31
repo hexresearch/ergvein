@@ -120,7 +120,7 @@ serversInfoPage initCur = do
     curD <- networkPageHeader $ Just initCur
     void $ widgetHoldDyn $ ffor curD $ maybe (pure ()) $ \(_, refrE) -> do
       connsD  <- externalRefDynamic =<< getActiveConnsRef
-      setsD  <- (fmap . fmap) S.toList $ externalRefDynamic =<< getActiveAddrsRef
+      setsD  <- (fmap . fmap) S.toList $ externalRefDynamic =<< undefined
       let valD = (,) <$> connsD <*> setsD
       void $ widgetHoldDyn $ ffor valD $ \(conmap, urls) -> flip traverse urls $ \nsa -> do
         let mconn = M.lookup (namedAddrSock nsa) conmap

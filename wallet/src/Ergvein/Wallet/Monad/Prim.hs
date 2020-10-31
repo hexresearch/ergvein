@@ -9,7 +9,6 @@ module Ergvein.Wallet.Monad.Prim
   , MonadEgvLogger(..)
   , MonadHasSettings(..)
   -- * Frontend-wide types
-  , IndexerInfo(..)
   , PeerScanInfoMap
   , NamedSockAddr(..)
   , getSettings
@@ -220,11 +219,6 @@ class MonadBaseConstr t m => MonadAlertPoster t m | m -> t where
 -- ===========================================================================
 
 type PeerScanInfoMap = Map Currency (Maybe BlockHeight, BlockHeight) -- (scanned, actual)
-
-data IndexerInfo = IndexerInfo {
-  indInfoHeights :: PeerScanInfoMap
-, indInfoLatency :: NominalDiffTime
-} deriving (Show, Eq)
 
 data NamedSockAddr = NamedSockAddr {
   namedAddrName :: Text

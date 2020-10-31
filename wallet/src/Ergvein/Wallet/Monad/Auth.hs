@@ -80,9 +80,7 @@ data Env t = Env {
 , env'feesStore       :: !(ExternalRef t (Map Currency FeeBundle))
 , env'storeMutex      :: !(MVar ())
 -- Client context
-, env'addrsArchive    :: !(ExternalRef t (S.Set NamedSockAddr))
-, env'inactiveAddrs   :: !(ExternalRef t (S.Set NamedSockAddr))
-, env'activeAddrs     :: !(ExternalRef t (S.Set NamedSockAddr))
+, env'addrs           :: !(ExternalRef t (Map NamedSockAddr PeerInfo))
 , env'indexConmap     :: !(ExternalRef t (Map SockAddr (IndexerConnection t)))
 , env'reqUrlNum       :: !(ExternalRef t (Int, Int))
 , env'actUrlNum       :: !(ExternalRef t Int)
@@ -178,14 +176,10 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getNodeReqFire #-}
 
 instance MonadBaseConstr t m => MonadIndexClient t (ErgveinM t m) where
-  getActiveAddrsRef = asks env'activeAddrs
-  {-# INLINE getActiveAddrsRef #-}
-  getArchivedAddrsRef = asks env'addrsArchive
-  {-# INLINE getArchivedAddrsRef #-}
+  getAddrsRef = asks env'addrs
+  {-# INLINE getAddrsRef #-}
   getActiveConnsRef = asks env'indexConmap
   {-# INLINE getActiveConnsRef #-}
-  getInactiveAddrsRef = asks env'inactiveAddrs
-  {-# INLINE getInactiveAddrsRef #-}
   getActiveUrlsNumRef = asks env'actUrlNum
   {-# INLINE getActiveUrlsNumRef #-}
   getRequiredUrlNumRef = asks env'reqUrlNum
@@ -290,9 +284,7 @@ liftAuth ma0 ma = mdo
         authRef         <- newExternalRef auth
 
         -- MonadClient refs
-        urlsArchive     <- getArchivedAddrsRef
-        inactiveUrls    <- getInactiveAddrsRef
-        actvieAddrsRef  <- getActiveAddrsRef
+        addrNfo <- newExternalRef mempty
         indexConmapRef  <- getActiveConnsRef
         reqUrlNumRef    <- getRequiredUrlNumRef
         actUrlNumRef    <- getActiveUrlsNumRef
@@ -340,10 +332,7 @@ liftAuth ma0 ma = mdo
               , env'nodeReqFire = nReqFire
               , env'feesStore = feesRef
               , env'storeMutex = storeMvar
-
-              , env'addrsArchive = urlsArchive
-              , env'inactiveAddrs = inactiveUrls
-              , env'activeAddrs = actvieAddrsRef
+              , env'addrs    = addrNfo
               , env'indexConmap = indexConmapRef
               , env'reqUrlNum = reqUrlNumRef
               , env'actUrlNum = actUrlNumRef

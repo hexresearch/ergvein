@@ -28,6 +28,7 @@ import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Version
 import Ergvein.Wallet.Worker.Indexer
+import Ergvein.Wallet.Worker.ErgveinNetworkRefresh
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -48,9 +49,7 @@ data UnauthEnv t = UnauthEnv {
 , unauth'passModalEF     :: !(Event t (Int, Text), (Int, Text) -> IO ())
 , unauth'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
 -- Client context
-, unauth'addrsArchive    :: !(ExternalRef t (S.Set NamedSockAddr))
-, unauth'inactiveAddrs   :: !(ExternalRef t (S.Set NamedSockAddr))
-, unauth'activeAddrs     :: !(ExternalRef t (S.Set NamedSockAddr))
+, unauth'addrs           :: !(ExternalRef t (Map NamedSockAddr PeerInfo))
 , unauth'indexConmap     :: !(ExternalRef t (Map SockAddr (IndexerConnection t)))
 , unauth'reqUrlNum       :: !(ExternalRef t (Int, Int))
 , unauth'actUrlNum       :: !(ExternalRef t Int)
@@ -126,14 +125,10 @@ instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
   {-# INLINE getAlertEventFire #-}
 
 instance MonadBaseConstr t m => MonadIndexClient t (UnauthM t m) where
-  getActiveAddrsRef = asks unauth'activeAddrs
-  {-# INLINE getActiveAddrsRef #-}
-  getArchivedAddrsRef = asks unauth'addrsArchive
-  {-# INLINE getArchivedAddrsRef #-}
   getActiveConnsRef = asks unauth'indexConmap
   {-# INLINE getActiveConnsRef #-}
-  getInactiveAddrsRef = asks unauth'inactiveAddrs
-  {-# INLINE getInactiveAddrsRef #-}
+  getAddrsRef = asks unauth'addrs
+  {-# INLINE getAddrsRef #-}
   getActiveUrlsNumRef = asks unauth'actUrlNum
   {-# INLINE getActiveUrlsNumRef #-}
   getRequiredUrlNumRef = asks unauth'reqUrlNum
@@ -153,6 +148,8 @@ newEnv :: MonadBaseConstr t m
   -> m (UnauthEnv t)
 newEnv settings uiChan = do
   settingsRef <- newExternalRef settings
+
+  addrNfo <- newExternalRef mempty
   (pauseE, pauseFire) <- newTriggerEvent
   (resumeE, resumeFire) <- newTriggerEvent
   (backE, backFire) <- newTriggerEvent
@@ -167,10 +164,8 @@ newEnv settings uiChan = do
   -- MonadClient refs
   rs <- runReaderT mkResolvSeed settingsRef
 
-  socadrs         <- parseSockAddrs rs (settingsActiveAddrs settings)
-  urlsArchive     <- newExternalRef . S.fromList =<< parseSockAddrs rs (settingsArchivedAddrs settings)
-  inactiveUrls    <- newExternalRef . S.fromList =<< parseSockAddrs rs (settingsDeactivatedAddrs settings)
-  actvieAddrsRef  <- newExternalRef $ S.fromList socadrs
+  socadrs         <- parseSockAddrs rs (settingsAddrs settings)
+  addrsRef  <- newExternalRef $ S.fromList socadrs
   indexConmapRef  <- newExternalRef $ M.empty
   reqUrlNumRef    <- newExternalRef $ settingsReqUrlNum settings
   actUrlNumRef    <- newExternalRef $ settingsActUrlNum settings
@@ -193,9 +188,7 @@ newEnv settings uiChan = do
         , unauth'authRef          = authRef
         , unauth'passModalEF      = passModalEF
         , unauth'passSetEF        = passSetEF
-        , unauth'addrsArchive     = urlsArchive
-        , unauth'inactiveAddrs    = inactiveUrls
-        , unauth'activeAddrs      = actvieAddrsRef
+        , unauth'addrs            = addrNfo
         , unauth'indexConmap      = indexConmapRef
         , unauth'reqUrlNum        = reqUrlNumRef
         , unauth'actUrlNum        = actUrlNumRef

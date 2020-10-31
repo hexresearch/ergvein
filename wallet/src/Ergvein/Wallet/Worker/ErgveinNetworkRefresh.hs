@@ -23,11 +23,14 @@ import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Monad.Prim
 
 import qualified Data.Vector            as V
 import qualified Data.Map.Strict        as Map
 import qualified Data.Set               as Set
 import qualified Ergvein.Types.Currency as C
+
+
 
 minOperableAmount, targetAmount :: Int
 minOperableAmount = 1
