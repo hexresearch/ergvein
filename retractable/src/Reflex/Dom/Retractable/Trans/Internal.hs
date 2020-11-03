@@ -34,7 +34,7 @@ data RetractEnv t m = RetractEnv
   , renvStack        :: !(Dynamic t [RetractableT t m])
   } deriving (Generic)
 
--- | Allocate new environment for `RetracT`.
+-- | Allocate new environment for `RetractT`.
 newRetractEnv :: (Reflex t, TriggerEvent t m) => m (RetractEnv t m)
 newRetractEnv = do
   (nextE, nextFire) <- newTriggerEvent
