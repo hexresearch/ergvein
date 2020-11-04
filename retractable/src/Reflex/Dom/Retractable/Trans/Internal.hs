@@ -63,7 +63,9 @@ deriving instance MonadHold t m => MonadHold t (RetractT t m)
 deriving instance MonadSample t m => MonadSample t (RetractT t m)
 deriving instance DomBuilder t m => DomBuilder t (RetractT t m)
 deriving instance MonadIO m => MonadIO (RetractT t m)
+#ifndef ghcjs_HOST_OS
 deriving instance MonadJSM m => MonadJSM (RetractT t m)
+#endif
 deriving instance (Group q, Additive q, Query q, Eq q, MonadQuery t q m, Monad m) => MonadQuery t q (RetractT t m)
 deriving instance (Monoid w, DynamicWriter t w m) => DynamicWriter t w (RetractT t m)
 #if !MIN_VERSION_reflex(0,7,0)
