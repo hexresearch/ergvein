@@ -1,3 +1,8 @@
+0.1.5.0
+=======
+
+* Fix compilation under `reflex-0.7`
+
 0.1.4.0
 =======
 
