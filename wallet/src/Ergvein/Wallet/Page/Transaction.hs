@@ -61,6 +61,7 @@ transactionInfoPage cur tr@TransactionView{..} = do
     case txInOut of
       TransRefill -> pure ()
       TransWithdraw -> infoPageElement HistoryTIFee $ maybe "unknown" (\a -> (showMoneyUnit a moneyUnits) <> " " <> symbolUnit cur moneyUnits) $ txFee txInfoView
+    infoPageElement HistoryTIRbf $ showt $ txRbfEnabled txInfoView
     infoPageElementEl HistoryTITime $ showTime tr
     infoPageElement HistoryTIConfirmations $ showt $ txConfirmations txInfoView
     infoPageElementExpEl HistoryTIBlock $ maybe (text "unknown") (\(bllink,bl) -> hyperlink "link" bl bllink) $ txBlock txInfoView
@@ -278,14 +279,15 @@ prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = TransactionVi
   }
   where
     txInf = TransactionViewInfo {
-      txId            = txHex
-     ,txLabel         = Nothing
-     ,txUrl           = blUrl <> "/tx/" <> txHex
-     ,txFee           = txFeeCalc
-     ,txConfirmations = bHeight
-     ,txBlock         = txBlockLink
-     ,txOutputs       = txOuts
-     ,txInputs        = txInsOuts
+        txId            = txHex
+      , txLabel         = Nothing
+      , txUrl           = blUrl <> "/tx/" <> txHex
+      , txFee           = txFeeCalc
+      , txRbfEnabled    = markedReplaceable btx
+      , txConfirmations = bHeight
+      , txBlock         = txBlockLink
+      , txOutputs       = txOuts
+      , txInputs        = txInsOuts
     }
     btx = getBtcTx txr
     blHght = fromMaybe 0 $ maybe (Just 0) etxMetaHeight $ getBtcTxMeta txr
@@ -382,6 +384,7 @@ data TransactionViewInfo = TransactionViewInfo {
   , txLabel         :: Maybe Text
   , txUrl           :: Text
   , txFee           :: Maybe Money
+  , txRbfEnabled    :: Bool
   , txConfirmations :: Word64
   , txBlock         :: Maybe (Text, Text)
   , txOutputs       :: [(Maybe Text, Money, TransOutputType, Bool)]

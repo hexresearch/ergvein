@@ -102,6 +102,13 @@ historyTableRowD _ trD = fmap switchDyn $ widgetHoldDyn $ ffor trD $ \tr@Transac
 
 showTxStatus :: MonadFront t m => TransactionView -> m ()
 showTxStatus tr@TransactionView{..} = case txStatus of
-  TransUncofirmed -> localizedText HistoryUnconfirmed
-  TransUncofirmedParents -> localizedText HistoryUnconfirmedParents
   TransConfirmed -> showTime tr
+  TransUncofirmed -> showStatus HistoryUnconfirmed
+  TransUncofirmedParents -> showStatus HistoryUnconfirmedParents
+  where
+    rbfEnabled = txRbfEnabled txInfoView
+
+    showStatus :: (MonadFront t m, LocalizedPrint l) => l -> m ()
+    showStatus status = do
+      localizedText status
+      when rbfEnabled (badge "badge-info-2 ml-1" ("rbf" :: Text))

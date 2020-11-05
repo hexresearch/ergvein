@@ -11,6 +11,7 @@ module Ergvein.Wallet.Tx
   , getUtxoUpdates
   , getUtxoUpdatesFromTxs
   , inputSpendsOutPoint
+  , markedReplaceable
   ) where
 
 import Control.Monad.IO.Class
@@ -154,3 +155,9 @@ checkTxOut (BtcAddress (HA.WitnessScriptAddress sh)) txO = case HS.decodeOutputB
 -- | Check given TxIn wheather it spends OutPoint.
 inputSpendsOutPoint :: OutPoint -> TxIn -> Bool
 inputSpendsOutPoint outPoint txIn = prevOutput txIn == outPoint
+
+markedReplaceable :: Tx -> Bool
+markedReplaceable tx = any (\input -> txInSequence input < (maxBound :: Word32) - 1) (txIn tx)
+
+haveCommonInputs :: Tx -> Tx -> Bool
+haveCommonInputs tx1 tx2 = (not . L.null) $ (txIn tx1) `L.intersect` (txIn tx2)

@@ -32,6 +32,7 @@ data HistoryPageStrings =
   | HistoryTILabel
   | HistoryTIURL
   | HistoryTIFee
+  | HistoryTIRbf
   | HistoryTIConfirmations
   | HistoryTIBlock
   | HistoryTITime
@@ -64,6 +65,7 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTILabel             -> "Label"
       HistoryTIURL               -> "Block Explorer"
       HistoryTIFee               -> "Fee"
+      HistoryTIRbf               -> "Replace by fee"
       HistoryTIConfirmations     -> "Confirmations"
       HistoryTIBlock             -> "Block"
       HistoryTITime              -> "Time"
@@ -91,6 +93,7 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTILabel             -> "Описание"
       HistoryTIURL               -> "Block Explorer"
       HistoryTIFee               -> "Комиссия"
+      HistoryTIRbf               -> "Replace by fee"
       HistoryTIConfirmations     -> "Подтверждения"
       HistoryTIBlock             -> "Блок"
       HistoryTITime              -> "Время"
