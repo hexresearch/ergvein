@@ -164,7 +164,7 @@ newEnv settings uiChan = do
   -- MonadClient refs
   rs <- runReaderT mkResolvSeed settingsRef
 
-  socadrs         <- parseSockAddrs rs (settingsAddrs settings)
+  socadrs         <- parseSockAddrs rs $ M.keys $ settingsAddrs settings
   addrsRef  <- newExternalRef $ S.fromList socadrs
   indexConmapRef  <- newExternalRef $ M.empty
   reqUrlNumRef    <- newExternalRef $ settingsReqUrlNum settings

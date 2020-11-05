@@ -45,6 +45,7 @@ import Ergvein.Wallet.Worker.Height
 import Ergvein.Wallet.Worker.Node
 import Ergvein.Wallet.Worker.PubKeysGenerator
 import Ergvein.Wallet.Worker.ErgveinNetworkRefresh
+import Ergvein.Wallet.Settings
 
 import qualified Data.List as L
 import qualified Data.Map.Strict as M

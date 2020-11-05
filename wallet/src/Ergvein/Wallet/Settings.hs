@@ -22,6 +22,7 @@ module Ergvein.Wallet.Settings (
   -- * Helpers
   , makeSockAddr
   , parseIP
+  , PeerInfo (..)
   ) where
 
 import Control.Lens hiding ((.=))
@@ -62,6 +63,28 @@ import qualified Data.Set as S
 import Android.HaskellActivity
 import Ergvein.Wallet.Native
 #endif
+
+
+
+data PeerInfo = PeerInfo
+  { peerInfoIsActivated :: !Bool
+  , peerInfoIsToAvoid   :: !Bool
+  , peerInfoIsManual    :: !Bool
+  } deriving (Eq, Show)
+
+instance ToJSON PeerInfo where
+  toJSON PeerInfo{..} = object [
+      "isActivated" .= toJSON peerInfoIsActivated
+    , "isToAvoid"   .= toJSON peerInfoIsToAvoid
+    , "isManual"    .= toJSON peerInfoIsManual
+   ]
+
+instance FromJSON PeerInfo where
+  parseJSON = withObject "v" $ \o -> do
+    peerInfoIsActivated     <- o .: "isActivated"
+    peerInfoIsToAvoid       <- o .: "isToAvoid"
+    peerInfoIsManual        <- o .: "isManual"
+    pure PeerInfo{..}
 
 data ExplorerUrls = ExplorerUrls {
   testnetUrl :: !Text
@@ -120,7 +143,7 @@ data Settings = Settings {
 , settingsConfigPath        :: Text
 , settingsUnits             :: Maybe Units
 , settingsReqTimeout        :: NominalDiffTime
-, settingsAddrs             :: M.Map Text 
+, settingsAddrs             :: M.Map Text PeerInfo
 , settingsReqUrlNum         :: (Int, Int) -- ^ First is minimum required answers. Second is sufficient amount of answers from indexers.
 , settingsActUrlNum         :: Int
 , settingsExplorerUrl       :: M.Map Currency ExplorerUrls
@@ -143,12 +166,9 @@ instance FromJSON Settings where
     settingsConfigPath        <- o .: "configPath"
     settingsUnits             <- o .: "units"
     settingsReqTimeout        <- o .: "reqTimeout"
-    mActiveAddrs              <- o .: "activeAddrs"
-    mDeactivatedAddrs         <- o .: "deactivatedAddrs"
-    mArchivedAddrs            <- o .: "archivedAddrs"
     settingsReqUrlNum         <- o .:? "reqUrlNum"  .!= defaultIndexersNum
     settingsActUrlNum         <- o .:? "actUrlNum"  .!= 10
-    settingsAddrs             <- o .: "addrs"
+    settingsAddrs             <- o .:  "addrs"
     settingsExplorerUrl       <- o .:? "explorerUrl" .!= defaultExplorerUrl
     settingsPortfolio         <- o .:? "portfolio" .!= False
     settingsFiatCurr          <- o .:? "fiatCurr"  .!= USD
@@ -219,7 +239,7 @@ defaultSettings home =
       , settingsExplorerUrl       = defaultExplorerUrl
       , settingsPortfolio         = False
       , settingsFiatCurr          = USD
-      , settingsAddrs             = []
+      , settingsAddrs             = mempty
       , settingsDns               = defaultDns
       , settingsSocksProxy        = Nothing
       }
