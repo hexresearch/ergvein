@@ -107,6 +107,20 @@ activateURLList addrE = do
   performEventAsync $ ffor addrE $ \urls fire -> void $ liftIO $ forkOnOther $ do
     fire ()
 
+-- | It is really important to wait until indexer performs deinitialization before deleting it from dynamic collections
+closeAndWait :: MonadIndexClient t m => Event t NamedSockAddr -> m (Event t NamedSockAddr)
+closeAndWait urlE = do
+  req      <- getIndexReqFire
+  connsRef <- getActiveConnsRef
+  closedEE <- performEvent $ ffor urlE $ \url -> do
+    let sa = namedAddrSock url
+    liftIO $ req $ M.singleton sa IndexerClose
+    mconn <- fmap (M.lookup sa) $ readExternalRef connsRef
+    pure $ case mconn of
+      Nothing -> never
+      Just conn -> url <$ indexConClosedE conn
+  switchDyn <$> holdDyn never closedEE
+
 -- | Deactivate an URL
 deactivateURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t NamedSockAddr -> m (Event t ())
 deactivateURL addrE = do

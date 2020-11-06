@@ -161,25 +161,28 @@ transactionsGetting cur = do
   pure (filteredTxListD, heightD)
   where
     getAndFilterBlocks heightD btcAddrsD timeZone txs store settings = do
-      allbtcAdrS <- sampleDyn btcAddrsD
+      allBtcAddrs <- sampleDyn btcAddrsD
       hght <- sampleDyn heightD
       liftIO $ flip runReaderT store $ do
         let txHashes = fmap (HK.txHash . getBtcTx) txs
-            txsRefList = fmap (calcRefill (fmap getBtcAddr allbtcAdrS)) txs
+            txsRefList = fmap (calcRefill (fmap getBtcAddr allBtcAddrs)) txs
             parentTxsIds = (fmap . fmap) (hkTxHashToEgv . HK.outPointHash . HK.prevOutput) (fmap (HK.txIn . getBtcTx) txs)
         blh <- traverse getBtcBlockHashByTxHash txHashes
         bl <- traverse (maybe (pure Nothing) getBlockHeaderByHash) blh
         txStore <- getTxStorage cur
         flip runReaderT txStore $ do
-          bInOut <- traverse (checkAddrInOut allbtcAdrS) txs
+          bInOut <- traverse (checkAddrInOut allBtcAddrs) txs
           parentTxs <- sequenceA $ fmap (traverse getTxById) parentTxsIds
-          let getTxConfirmations mTx = case mTx of
+          txStore' <- ask
+          let storedTxs = Map.elems txStore'
+              getTxConfirmations mTx = case mTx of
                 Nothing -> 1 -- If tx is not found we put 1 just to indicate that the transaction is confirmed
                 Just tx -> maybe 0 (countConfirmations hght) (fmap etxMetaHeight $ getBtcTxMeta tx)
               txParentsConfirmations = (fmap . fmap) getTxConfirmations parentTxs
               hasUnconfirmedParents = fmap (L.any (== 0)) txParentsConfirmations
-              rawTxsL = L.filter (\(a,_) -> a/=Nothing) $ L.zip bInOut $ txListRaw bl blh txs txsRefList hasUnconfirmedParents parentTxs
-              prepTxs = L.sortOn txDate $ (prepareTransactionView allbtcAdrS hght timeZone (maybe btcDefaultExplorerUrls id $ Map.lookup cur (settingsExplorerUrl settings)) <$> rawTxsL)
+          outsStatuses <- traverse (getOutsStatuses storedTxs allBtcAddrs) txs
+          let rawTxsL = L.filter (\(a,_) -> a/=Nothing) $ L.zip bInOut $ txListRaw bl blh txs txsRefList hasUnconfirmedParents parentTxs outsStatuses
+              prepTxs = L.sortOn txDate $ (prepareTransactionView allBtcAddrs hght timeZone (maybe btcDefaultExplorerUrls id $ Map.lookup cur (settingsExplorerUrl settings)) <$> rawTxsL)
           pure $ L.reverse $ addWalletState prepTxs
 
     countConfirmations :: BlockHeight -> Maybe BlockHeight -> Word64
@@ -211,8 +214,40 @@ transactionsGetting cur = do
           then pure $ Just TransWithdraw
           else pure $ Just TransRefill
 
-    txListRaw (a:as) (b:bs) (c:cs) (d:ds) (e:es) (f:fs) = (TxRawInfo a b c d e f) : txListRaw as bs cs ds es fs
-    txListRaw _ _ _ _ _ _ = []
+    -- | Calculates statuses (Spent / Unspent / Unknown) of transaction outputs based on stored transactions and addresses.
+    -- Statuses of outputs in resulting list are in the same order as outputs in transaction.
+    getOutsStatuses :: (MonadIO m, PlatformNatives) => [EgvTx] -> [EgvAddress] -> EgvTx -> m [TransOutputType]
+    getOutsStatuses storedTxs storedAddrs tx = do
+      isOursOutCheckResults <- traverse (checkOutIsOurs storedAddrs) outsToCheck
+      let outsStatuses = calculateOutputStatus <$> L.zip spentCheckResults isOursOutCheckResults
+      pure outsStatuses
+      where
+        storedTxs' = getBtcTx <$> storedTxs
+        tx' = getBtcTx tx
+        txHash = HK.txHash tx'
+        outsToCheck = HK.txOut tx'
+        outsCount = L.length outsToCheck
+        outPointsToCheck = (uncurry HK.OutPoint) <$> L.zip (L.repeat txHash) [0..(fromIntegral outsCount - 1)]
+        inputsOfStoredTxs = HK.txIn <$> storedTxs'
+        spentCheckResults = (checkOutSpent inputsOfStoredTxs) <$> outPointsToCheck
+        
+        checkOutSpent :: [[HK.TxIn]] -> HK.OutPoint -> Bool
+        checkOutSpent inputs out = let results = (fmap . fmap) (inputSpendsOutPoint out) inputs in
+          (L.any (== True)) $ fmap (L.any (== True)) results
+        
+        checkOutIsOurs :: (MonadIO m, PlatformNatives) => [EgvAddress] -> HK.TxOut -> m Bool
+        checkOutIsOurs addrs out = do
+          results <- traverse (flip checkTxOut out) addrs
+          pure $ L.any (== True) results
+
+        calculateOutputStatus :: (Bool, Bool) -> TransOutputType
+        calculateOutputStatus (isSpent, isOurs) = case (isSpent, isOurs) of
+          (True, True) -> TOSpent
+          (False, True) -> TOUnspent
+          _ -> TOUnknown
+
+    txListRaw (a:as) (b:bs) (c:cs) (d:ds) (e:es) (f:fs) (g:gs) = (TxRawInfo a b c d e f g) : txListRaw as bs cs ds es fs gs
+    txListRaw _ _ _ _ _ _ _ = []
 
 addWalletState :: [TransactionView] -> [TransactionView]
 addWalletState txs = fmap setPrev $ fmap (\(prevTxCount, txView) -> (txView, calcAmount prevTxCount txs)) $ L.zip [0..] txs
@@ -221,7 +256,13 @@ addWalletState txs = fmap setPrev $ fmap (\(prevTxCount, txView) -> (txView, cal
     calcAmount n txs' = L.foldl' calc 0 $ L.take n txs'
     calc acc TransactionView{..} = if txInOut == TransRefill then acc + moneyAmount txAmount else acc - moneyAmount txAmount - (fromMaybe 0 $ moneyAmount <$> txFee txInfoView)
 
-prepareTransactionView :: [EgvAddress] -> Word64 -> TimeZone -> ExplorerUrls -> (Maybe TransType, TxRawInfo) -> TransactionView
+prepareTransactionView ::
+  [EgvAddress] ->
+  Word64 ->
+  TimeZone ->
+  ExplorerUrls ->
+  (Maybe TransType, TxRawInfo) ->
+  TransactionView
 prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = TransactionView {
     txAmount = txAmountCalc
   , txPrevAm = Nothing
@@ -254,16 +295,16 @@ prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = TransactionVi
     txHs = HK.txHash btx
     txHex = HK.txHashToHex txHs
 
-    txOuts = fmap (\out -> (txOutAdr out, Money BTC (HK.outValue out), TOUnspent, txOurArdCheck out)) $ HK.txOut btx
+    txOuts = fmap (\(out, outStatus) -> (txOutAdr out, Money BTC (HK.outValue out), outStatus, txOurAdrCheck out)) $ L.zip (HK.txOut btx) outsStatuses
     txOutsAm = fmap (\out -> HK.outValue out) $ HK.txOut btx
 
-    txOutsOurAm = fmap fst $ L.filter snd $ fmap (\out -> (HK.outValue out, not (txOurArdCheck out))) $ HK.txOut btx
+    txOutsOurAm = fmap fst $ L.filter snd $ fmap (\out -> (HK.outValue out, not (txOurAdrCheck out))) $ HK.txOut btx
 
-    txInsOuts = fmap fst $ L.filter snd $ fmap (\out -> ((txOutAdr out, Money BTC (HK.outValue out)), txOurArdCheck out)) $ L.concat $ fmap (HK.txOut . getBtcTx) $ catMaybes txParents
-    txInsOutsAm = fmap fst $ L.filter snd $ fmap (\out -> (HK.outValue out,txOurArdCheck out)) $ L.concat $ fmap (HK.txOut . getBtcTx) $ catMaybes txParents
+    txInsOuts = fmap fst $ L.filter snd $ fmap (\out -> ((txOutAdr out, Money BTC (HK.outValue out)), txOurAdrCheck out)) $ L.concat $ fmap (HK.txOut . getBtcTx) $ catMaybes txParents
+    txInsOutsAm = fmap fst $ L.filter snd $ fmap (\out -> (HK.outValue out,txOurAdrCheck out)) $ L.concat $ fmap (HK.txOut . getBtcTx) $ catMaybes txParents
 
     txOutAdr out = either (const Nothing) id $ (addrToString network) <$> (scriptToAddressBS $ HK.scriptOutput out)
-    txOurArdCheck out = either (\_ -> False) (\a -> a `L.elem` btcAddrs) $ (scriptToAddressBS $ HK.scriptOutput out)
+    txOurAdrCheck out = either (\_ -> False) (\a -> a `L.elem` btcAddrs) $ (scriptToAddressBS $ HK.scriptOutput out)
 
     network = getBtcNetwork $ getCurrencyNetwork BTC
 
@@ -287,19 +328,21 @@ prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = TransactionVi
 -- Front types, should be moved to Utils
 data ExpStatus = Expanded | Minified deriving (Eq, Show)
 
-data TransStatus = TransUncofirmed | TransUncofirmedParents | TransConfirmed deriving (Eq,Show)
+data TransStatus = TransUncofirmed | TransUncofirmedParents | TransConfirmed deriving (Eq, Show)
 
-data TransType = TransRefill | TransWithdraw deriving (Eq,Show)
-data TransOutputType = TOSpent | TOUnspent deriving (Eq,Show)
+data TransType = TransRefill | TransWithdraw deriving (Eq, Show)
+data TransOutputType = TOSpent | TOUnspent | TOUnknown deriving (Eq, Show)
 
 instance LocalizedPrint TransOutputType where
   localizedShow l v = case l of
     English -> case v of
       TOSpent   -> "Spent"
       TOUnspent -> "Unspent"
+      TOUnknown -> "Unknown"
     Russian -> case v of
       TOSpent   -> "Потрачен"
       TOUnspent -> "Не потрачен"
+      TOUnknown -> "Неизвестно"
 
 
 data TxRawInfo = TxRawInfo {
@@ -309,6 +352,7 @@ data TxRawInfo = TxRawInfo {
   , txom                    :: Money
   , txHasUnconfirmedParents :: Bool
   , txParents               :: [Maybe EgvTx]
+  , outsStatuses            :: [TransOutputType]
 } deriving (Show)
 
 newtype TxTime = TxTime (Maybe ZonedTime) deriving (Show)

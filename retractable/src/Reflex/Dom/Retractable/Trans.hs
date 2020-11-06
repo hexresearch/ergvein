@@ -6,7 +6,7 @@
 -- Stability   : unstable
 -- Portability : non-portable
 --
--- Plug-in implementation for `MonadRetract` using wrapper around `ReaderT`.
+-- Plug-in implementation for `Reflex.Dom.Retractable.Class.MonadRetract` using wrapper around `Control.Monad.Reader.ReaderT`.
 --
 -- Example of use:
 --
