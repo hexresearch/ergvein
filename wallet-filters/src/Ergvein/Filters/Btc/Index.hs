@@ -82,11 +82,11 @@ withInputTxs :: [Tx] -> (ReaderT (Map OutPoint ByteString) m a) -> m a
 withInputTxs txs = flip runReaderT txmap
   where
     txmap :: Map OutPoint ByteString
-    txmap = M.fromList $ concat $ fmap (\tx -> fmap (\(out, i) -> (OutPoint (txHash tx) i, scriptOutput out)) $ txOut tx `zip` [0 ..]) txs
+    txmap = M.fromList $ concatMap (\tx -> fmap (\(out, i) -> (OutPoint (txHash tx) i, scriptOutput out)) $ txOut tx `zip` [0 ..]) txs
 
 -- | Iterate over all inputs and collect corresponding outputs
 foldInputs :: forall a m . HasTxIndex m => (a -> ByteString -> m a) -> a -> Block -> m a
-foldInputs f a0 block = go a0 $ fmap prevOutput . concat . fmap txIn . drop 1 . blockTxns $ block
+foldInputs f a0 = go a0 . fmap prevOutput . concatMap txIn . drop 1 . blockTxns
   where
     go :: a -> [OutPoint] -> m a
     go !a [] = pure a
