@@ -73,9 +73,7 @@ class Monad m => HasTxIndex m where
   queryOutPoint :: OutPoint -> m (Maybe ByteString)
 
 instance Monad m => HasTxIndex (ReaderT (Map OutPoint ByteString) m) where
-  queryOutPoint i = do
-    m <- ask
-    pure $ M.lookup i m
+  queryOutPoint i = asks (M.lookup i)
   {-# INLINE queryOutPoint #-}
 
 -- | Execute context with given list of transactions as input. Used for testing
