@@ -123,7 +123,7 @@ serversInfoPage initCur = do
       setsD  <- (fmap . fmap) S.toList $ externalRefDynamic =<< undefined
       let valD = (,) <$> connsD <*> setsD
       void $ widgetHoldDyn $ ffor valD $ \(conmap, urls) -> flip traverse urls $ \nsa -> do
-        let mconn = M.lookup (namedAddrSock nsa) conmap
+        let mconn = M.lookup (namedAddrName nsa) conmap
         divClass "network-name" $ do
           let offclass = [("class", "mt-a mb-a indexer-offline")]
           let onclass = [("class", "mt-a mb-a indexer-online")]

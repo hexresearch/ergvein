@@ -82,12 +82,12 @@ data Env t = Env {
 , env'storeMutex      :: !(MVar ())
 -- Client context
 , env'addrs           :: !(ExternalRef t (Map NamedSockAddr PeerInfo))
-, env'indexConmap     :: !(ExternalRef t (Map SockAddr (IndexerConnection t)))
+, env'indexConmap     :: !(ExternalRef t (Map Text (IndexerConnection t)))
 , env'reqUrlNum       :: !(ExternalRef t (Int, Int))
 , env'actUrlNum       :: !(ExternalRef t Int)
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
 , env'indexReqSel     :: !(IndexReqSelector t)
-, env'indexReqFire    :: !(Map SockAddr IndexerMsg -> IO ())
+, env'indexReqFire    :: !(Map Text IndexerMsg -> IO ())
 , env'activateIndexEF :: !(Event t [NamedSockAddr], [NamedSockAddr] -> IO ())
 }
 
@@ -177,8 +177,6 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getNodeReqFire #-}
 
 instance MonadBaseConstr t m => MonadIndexClient t (ErgveinM t m) where
-  getAddrsRef = asks env'addrs
-  {-# INLINE getAddrsRef #-}
   getActiveConnsRef = asks env'indexConmap
   {-# INLINE getActiveConnsRef #-}
   getActiveUrlsNumRef = asks env'actUrlNum

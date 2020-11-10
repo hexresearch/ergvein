@@ -148,6 +148,7 @@ data Settings = Settings {
 , settingsActUrlNum         :: Int
 , settingsExplorerUrl       :: M.Map Currency ExplorerUrls
 , settingsPortfolio         :: Bool
+, settingsDiscoveryEnabled  :: Bool
 , settingsFiatCurr          :: Fiat
 , settingsDns               :: S.Set HostName
 , settingsSocksProxy        :: Maybe SocksConf
@@ -168,8 +169,9 @@ instance FromJSON Settings where
     settingsReqTimeout        <- o .: "reqTimeout"
     settingsReqUrlNum         <- o .:? "reqUrlNum"  .!= defaultIndexersNum
     settingsActUrlNum         <- o .:? "actUrlNum"  .!= 10
-    settingsAddrs             <- o .:  "addrs"
+    settingsAddrs             <- o .:? "addrs"  .!= mempty
     settingsExplorerUrl       <- o .:? "explorerUrl" .!= defaultExplorerUrl
+    settingsDiscoveryEnabled  <- o .:? "discoveryEnabled" .!= True
     settingsPortfolio         <- o .:? "portfolio" .!= False
     settingsFiatCurr          <- o .:? "fiatCurr"  .!= USD
     mdns                      <- o .:? "dns"
@@ -240,6 +242,7 @@ defaultSettings home =
       , settingsPortfolio         = False
       , settingsFiatCurr          = USD
       , settingsAddrs             = mempty
+      , settingsDiscoveryEnabled  = True
       , settingsDns               = defaultDns
       , settingsSocksProxy        = Nothing
       }

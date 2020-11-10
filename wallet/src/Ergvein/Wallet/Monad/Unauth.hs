@@ -49,13 +49,12 @@ data UnauthEnv t = UnauthEnv {
 , unauth'passModalEF     :: !(Event t (Int, Text), (Int, Text) -> IO ())
 , unauth'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
 -- Client context
-, unauth'addrs           :: !(ExternalRef t (Map NamedSockAddr PeerInfo))
-, unauth'indexConmap     :: !(ExternalRef t (Map SockAddr (IndexerConnection t)))
+, unauth'indexConmap     :: !(ExternalRef t (Map Text (IndexerConnection t)))
 , unauth'reqUrlNum       :: !(ExternalRef t (Int, Int))
 , unauth'actUrlNum       :: !(ExternalRef t Int)
 , unauth'timeout         :: !(ExternalRef t NominalDiffTime)
 , unauth'indexReqSel     :: !(IndexReqSelector t)
-, unauth'indexReqFire    :: !(Map SockAddr IndexerMsg -> IO ())
+, unauth'indexReqFire    :: !(Map Text IndexerMsg -> IO ())
 , unauth'activateIndexEF :: !(Event t [NamedSockAddr], [NamedSockAddr] -> IO ())
 }
 
@@ -127,8 +126,6 @@ instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
 instance MonadBaseConstr t m => MonadIndexClient t (UnauthM t m) where
   getActiveConnsRef = asks unauth'indexConmap
   {-# INLINE getActiveConnsRef #-}
-  getAddrsRef = asks unauth'addrs
-  {-# INLINE getAddrsRef #-}
   getActiveUrlsNumRef = asks unauth'actUrlNum
   {-# INLINE getActiveUrlsNumRef #-}
   getRequiredUrlNumRef = asks unauth'reqUrlNum
@@ -148,8 +145,6 @@ newEnv :: MonadBaseConstr t m
   -> m (UnauthEnv t)
 newEnv settings uiChan = do
   settingsRef <- newExternalRef settings
-
-  addrNfo <- newExternalRef mempty
   (pauseE, pauseFire) <- newTriggerEvent
   (resumeE, resumeFire) <- newTriggerEvent
   (backE, backFire) <- newTriggerEvent
@@ -164,8 +159,6 @@ newEnv settings uiChan = do
   -- MonadClient refs
   rs <- runReaderT mkResolvSeed settingsRef
 
-  socadrs         <- parseSockAddrs rs $ M.keys $ settingsAddrs settings
-  addrsRef  <- newExternalRef $ S.fromList socadrs
   indexConmapRef  <- newExternalRef $ M.empty
   reqUrlNumRef    <- newExternalRef $ settingsReqUrlNum settings
   actUrlNumRef    <- newExternalRef $ settingsActUrlNum settings
@@ -188,8 +181,7 @@ newEnv settings uiChan = do
         , unauth'authRef          = authRef
         , unauth'passModalEF      = passModalEF
         , unauth'passSetEF        = passSetEF
-        , unauth'addrs            = addrNfo
-        , unauth'indexConmap      = indexConmapRef
+        , unauth'indexConmap      = undefined --indexConmapRef
         , unauth'reqUrlNum        = reqUrlNumRef
         , unauth'actUrlNum        = actUrlNumRef
         , unauth'timeout          = timeoutRef
@@ -198,7 +190,7 @@ newEnv settings uiChan = do
         , unauth'activateIndexEF  = indexEF
         }
   flip runReaderT env $ do
-    indexerNodeController socadrs
+    indexerNodeController
   pure env
 
 runEnv :: (MonadBaseConstr t m, PlatformNatives, HasVersion)

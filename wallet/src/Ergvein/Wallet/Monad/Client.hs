@@ -61,17 +61,15 @@ data IndexerConnection t = IndexerConnection {
 
 data IndexerMsg = IndexerClose | IndexerRestart | IndexerMsg Message
 
-type IndexReqSelector t = EventSelector t (Const2 SockAddr IndexerMsg)
+type IndexReqSelector t = EventSelector t (Const2 Text IndexerMsg)
 
 -- ===========================================================================
 --    Monad Client. Implements all required things for client operations
 -- ===========================================================================
 
 class MonadBaseConstr t m => MonadIndexClient t m | m -> t where
-  -- | Get active addrs ref
-  getAddrsRef :: m (ExternalRef t (Map NamedSockAddr PeerInfo))
   -- | Internal method to get reference to indexers
-  getActiveConnsRef :: m (ExternalRef t (Map SockAddr (IndexerConnection t)))
+  getActiveConnsRef :: m (ExternalRef t (Map Text (IndexerConnection t)))
   -- | Get deactivated urls' reference. Internal
   getActiveUrlsNumRef :: m (ExternalRef t Int)
   -- | Get num reference. Internal
@@ -81,7 +79,7 @@ class MonadBaseConstr t m => MonadIndexClient t m | m -> t where
   -- | Get indexer request event
   getIndexReqSelector :: m (IndexReqSelector t)
   -- | Get indexer request trigger
-  getIndexReqFire :: m (Map SockAddr IndexerMsg -> IO ())
+  getIndexReqFire :: m (Map Text IndexerMsg -> IO ())
   -- | Get activation event and trigger
   getActivationEF :: m (Event t [NamedSockAddr], [NamedSockAddr] -> IO ())
 
@@ -94,7 +92,6 @@ activateURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t NamedSock
 activateURL addrE = do
   (_, f)    <- getActivationEF
   setRef    <- getSettingsRef
-  addrsRef <- getAddrsRef
   performEventAsync $ ffor addrE $ \url fire -> void $ liftIO $ forkOnOther $ do
     fire ()
 
@@ -103,7 +100,6 @@ activateURLList :: (MonadIndexClient t m, MonadHasSettings t m) => Event t [Name
 activateURLList addrE = do
   (_, f)    <- getActivationEF
   setRef    <- getSettingsRef
-  activsRef <- getAddrsRef
   performEventAsync $ ffor addrE $ \urls fire -> void $ liftIO $ forkOnOther $ do
     fire ()
 
@@ -112,10 +108,9 @@ closeAndWait :: MonadIndexClient t m => Event t NamedSockAddr -> m (Event t Name
 closeAndWait urlE = do
   req      <- getIndexReqFire
   connsRef <- getActiveConnsRef
-  closedEE <- performEvent $ ffor urlE $ \url -> do
-    let sa = namedAddrSock url
-    liftIO $ req $ M.singleton sa IndexerClose
-    mconn <- fmap (M.lookup sa) $ readExternalRef connsRef
+  closedEE <- performEvent $ ffor urlE $ \url@NamedSockAddr {..} -> do
+    liftIO $ req $ M.singleton namedAddrName IndexerClose
+    mconn <- fmap (M.lookup namedAddrName) $ readExternalRef connsRef
     pure $ case mconn of
       Nothing -> never
       Just conn -> url <$ indexConClosedE conn
@@ -126,7 +121,6 @@ deactivateURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t NamedSo
 deactivateURL addrE = do
   req       <- getIndexReqFire
   setRef    <- getSettingsRef
-  activsRef <- getAddrsRef
   performEventAsync $ ffor addrE $ \url fire -> void $ liftIO $ forkOnOther $ do
     fire ()
 
@@ -135,7 +129,6 @@ forgetURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t NamedSockAd
 forgetURL addrE = do
   req       <- getIndexReqFire
   setRef    <- getSettingsRef
-  activsRef <- getAddrsRef
   performEventAsync $ ffor addrE $ \url fire -> void $ liftIO $ forkOnOther $ do
     fire ()
 
@@ -153,14 +146,14 @@ requestIndexerWhenOpen IndexerConnection{..} msg = do
   initE <- fmap (gate (current indexConIsUp)) $ getPostBuild
   let reqE = leftmost [initE, indexConOpensE]
   performEvent $ ffor reqE $ const $
-    liftIO $ fire $ M.singleton indexConAddr $ IndexerMsg msg
+    liftIO $ fire $ M.singleton indexConName $ IndexerMsg msg
 
-requestSpecificIndexer :: MonadIndexClient t m => Event t (SockAddr, Message) -> m (Event t Message)
+requestSpecificIndexer :: MonadIndexClient t m => Event t (Text, Message) -> m (Event t Message)
 requestSpecificIndexer saMsgE = do
   connsRef <- getActiveConnsRef
   fireReq  <- getIndexReqFire
   mrespE <- performFork $ ffor saMsgE $ \(sa, req) -> do
-    mcon <- fmap (M.lookup sa) $ readExternalRef connsRef
+    mcon <- M.lookup sa <$> readExternalRef connsRef
     case mcon of
       Nothing -> pure Nothing
       Just con -> do
@@ -169,7 +162,7 @@ requestSpecificIndexer saMsgE = do
   switchHold never $ fmapMaybe id mrespE
 
 indexerPingerWidget :: MonadIndexClient t m
-  => SockAddr                       -- Which indexer to ping
+  => Text                       -- Which indexer to ping
   -> Event t ()                     -- Manual refresh event
   -> m (Dynamic t NominalDiffTime)  -- Dynamic with the latency. Starting value 0
 indexerPingerWidget addr refrE = do
@@ -191,7 +184,7 @@ indexerConnPingerWidget IndexerConnection{..} refrE = do
   pingE <- performFork $ ffor tickE $ const $ liftIO $ do
     p <- randomIO
     t <- getCurrentTime
-    fireReq $ M.singleton indexConAddr $ (IndexerMsg $ MPing p)
+    fireReq $ M.singleton indexConName $ (IndexerMsg $ MPing p)
     pure (p,t)
   pingD <- holdDyn Nothing $ Just <$> pingE
   pongE <- performFork $ ffor indexConRespE $ \case

@@ -136,7 +136,7 @@ activePageWidget = mdo
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   let valsD = (,) <$> connsD <*> addrsD
   void $ widgetHoldDyn $ ffor valsD $ \(conmap, urls) ->
-    flip traverse urls $ \sa -> renderActive sa refrE $ M.lookup (namedAddrSock sa) conmap
+    flip traverse urls $ \sa -> renderActive sa refrE $ M.lookup (namedAddrName sa) conmap
   hideE <- activateURL =<< addUrlWidget showD
   (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
@@ -216,7 +216,7 @@ renderInactive initPingE nsa = mdo
   tglD <- holdDyn False tglE
   (fstPingE, refrE) <- headTailE $ leftmost [initPingE, pingE]
   tglE <- fmap switchDyn $ divClass "network-wrapper mt-1" $ widgetHold (startingWidget tglD) $ ffor fstPingE $ const $ do
-      let reqE = select sel $ Const2 (namedAddrSock nsa)
+      let reqE = select sel $ Const2 (namedAddrName nsa)
       conn <- initIndexerConnection nsa reqE
       pingD <- indexerConnPingerWidget conn refrE
       fmap switchDyn $ widgetHoldDyn $ ffor pingD $ \p -> do
