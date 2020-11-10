@@ -35,7 +35,7 @@ import qualified Text.Read                 as R
 
 type BtcAddress = HA.Address
 
--- | Type for variable-length addresses.
+-- | Type for ERGO variable-length addresses.
 newtype VLAddr = VLAddr { getErgVLAddr :: ShortByteString }
   deriving (Eq, Generic, Ord, Hashable)
 
