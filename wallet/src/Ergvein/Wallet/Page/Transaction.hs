@@ -62,6 +62,10 @@ transactionInfoPage cur tr@TransactionView{..} = do
       TransRefill -> pure ()
       TransWithdraw -> infoPageElement HistoryTIFee $ maybe "unknown" (\a -> (showMoneyUnit a moneyUnits) <> " " <> symbolUnit cur moneyUnits) $ txFee txInfoView
     infoPageElement HistoryTIRbf $ showt $ txRbfEnabled txInfoView
+    case txConflictingTxs of
+      [] -> pure ()
+      conflictingTxs -> infoPageElementExpEl HistoryTIConflictingTxs $ do
+        void $ traverse (makeTxIdLink cur) conflictingTxs
     infoPageElementEl HistoryTITime $ showTime tr
     infoPageElement HistoryTIConfirmations $ showt $ txConfirmations txInfoView
     infoPageElementExpEl HistoryTIBlock $ maybe (text "unknown") (\(bllink,bl) -> hyperlink "link" bl bllink) $ txBlock txInfoView
@@ -91,6 +95,15 @@ transactionInfoPage cur tr@TransactionView{..} = do
       pure ()
       where
         oBld txt isOur = if isOur then (txt <> " tx-info-our-address") else txt
+
+makeTxIdLink :: MonadFront t m => Currency -> TxId -> m ()
+makeTxIdLink cur txId = do
+  settings <- getSettings
+  let txIdText = egvTxHashToStr txId
+      mExplorerPrefixes = Map.lookup cur $ settingsExplorerUrl settings
+      urlPrefixes = maybe btcDefaultExplorerUrls id mExplorerPrefixes
+      urlPrefix = if isTestnet then testnetUrl urlPrefixes else mainnetUrl urlPrefixes
+  hyperlink "link" txIdText (urlPrefix <> "/tx/" <> txIdText)
 
 showTime :: MonadFront t m => TransactionView -> m ()
 showTime TransactionView{..} = case txDate of
@@ -175,14 +188,15 @@ transactionsGetting cur = do
           bInOut <- traverse (checkAddrInOut allBtcAddrs) txs
           parentTxs <- sequenceA $ fmap (traverse getTxById) parentTxsIds
           txStore' <- ask
-          let storedTxs = Map.elems txStore'
+          let conflictingTxs = getConflictingTxs txs -- This might be inefficient, better to calculate this only for unconfirmed txs
+              storedTxs = Map.elems txStore'
               getTxConfirmations mTx = case mTx of
-                Nothing -> 1 -- If tx is not found we put 1 just to indicate that the transaction is confirmed
+                Nothing -> 1 -- If tx is not found in our storage we prefer to treat it as confirmed
                 Just tx -> maybe 0 (countConfirmations hght) (fmap etxMetaHeight $ getBtcTxMeta tx)
               txParentsConfirmations = (fmap . fmap) getTxConfirmations parentTxs
-              hasUnconfirmedParents = fmap (L.any (== 0)) txParentsConfirmations
+              hasUnconfirmedParents = fmap (L.any (== 0)) txParentsConfirmations -- This might be inefficient, better to calculate this only for unconfirmed txs
           outsStatuses <- traverse (getOutsStatuses storedTxs allBtcAddrs) txs
-          let rawTxsL = L.filter (\(a,_) -> a/=Nothing) $ L.zip bInOut $ txListRaw bl blh txs txsRefList hasUnconfirmedParents parentTxs outsStatuses
+          let rawTxsL = L.filter (\(a,_) -> a/=Nothing) $ L.zip bInOut $ txListRaw bl blh txs txsRefList hasUnconfirmedParents parentTxs outsStatuses conflictingTxs
               prepTxs = L.sortOn txDate $ (prepareTransactionView allBtcAddrs hght timeZone (maybe btcDefaultExplorerUrls id $ Map.lookup cur (settingsExplorerUrl settings)) <$> rawTxsL)
           pure $ L.reverse $ addWalletState prepTxs
 
@@ -246,9 +260,21 @@ transactionsGetting cur = do
           (True, True) -> TOSpent
           (False, True) -> TOUnspent
           _ -> TOUnknown
+    
+    -- | Gets a list of groups of conflicting txs. Txs in the same group have at least one common input.
+    getConflictingTxs :: [EgvTx] -> [[TxId]]
+    getConflictingTxs txs = helper <$> btcTxs
+      where
+        btcTxs = getBtcTx <$> txs
+        groupedConflictingTxs = (fmap . fmap) getTxHash (L.groupBy haveCommonInputs btcTxs)
+        getTxHash = hkTxHashToEgv . HK.txHash
 
-    txListRaw (a:as) (b:bs) (c:cs) (d:ds) (e:es) (f:fs) (g:gs) = (TxRawInfo a b c d e f g) : txListRaw as bs cs ds es fs gs
-    txListRaw _ _ _ _ _ _ _ = []
+        helper :: HK.Tx -> [TxId]
+        helper tx = fromMaybe [] (L.delete (getTxHash tx) <$> mGroup)
+          where mGroup = L.find (\group -> L.elem (getTxHash tx) group) groupedConflictingTxs
+
+    txListRaw (a:as) (b:bs) (c:cs) (d:ds) (e:es) (f:fs) (g:gs) (h:hs) = (TxRawInfo a b c d e f g h) : txListRaw as bs cs ds es fs gs hs
+    txListRaw _ _ _ _ _ _ _ _ = []
 
 addWalletState :: [TransactionView] -> [TransactionView]
 addWalletState txs = fmap setPrev $ fmap (\(prevTxCount, txView) -> (txView, calcAmount prevTxCount txs)) $ L.zip [0..] txs
@@ -276,6 +302,7 @@ prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = TransactionVi
       else if (bHeight == 0)
         then TransUncofirmed
       else TransConfirmed
+  , txConflictingTxs = txConflTxs
   }
   where
     txInf = TransactionViewInfo {
@@ -297,7 +324,7 @@ prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = TransactionVi
     txHs = HK.txHash btx
     txHex = HK.txHashToHex txHs
 
-    txOuts = fmap (\(out, outStatus) -> (txOutAdr out, Money BTC (HK.outValue out), outStatus, txOurAdrCheck out)) $ L.zip (HK.txOut btx) outsStatuses
+    txOuts = fmap (\(out, outStatus) -> (txOutAdr out, Money BTC (HK.outValue out), outStatus, txOurAdrCheck out)) $ L.zip (HK.txOut btx) txOutsStatuses
     txOutsAm = fmap (\out -> HK.outValue out) $ HK.txOut btx
 
     txOutsOurAm = fmap fst $ L.filter snd $ fmap (\out -> (HK.outValue out, not (txOurAdrCheck out))) $ HK.txOut btx
@@ -354,7 +381,8 @@ data TxRawInfo = TxRawInfo {
   , txom                    :: Money
   , txHasUnconfirmedParents :: Bool
   , txParents               :: [Maybe EgvTx]
-  , outsStatuses            :: [TransOutputType]
+  , txOutsStatuses          :: [TransOutputType]
+  , txConflTxs              :: [TxId]
 } deriving (Show)
 
 newtype TxTime = TxTime (Maybe ZonedTime) deriving (Show)
@@ -371,12 +399,13 @@ instance Ord TxTime where
   compare (TxTime (Just x)) (TxTime (Just y)) = compare (zonedTimeToUTC x) (zonedTimeToUTC y)
 
 data TransactionView = TransactionView {
-    txAmount   :: Money
-  , txPrevAm   :: Maybe Money
-  , txDate     :: TxTime
-  , txInOut    :: TransType
-  , txInfoView :: TransactionViewInfo
-  , txStatus   :: TransStatus
+    txAmount         :: Money
+  , txPrevAm         :: Maybe Money
+  , txDate           :: TxTime
+  , txInOut          :: TransType
+  , txInfoView       :: TransactionViewInfo
+  , txStatus         :: TransStatus
+  , txConflictingTxs :: [TxId]
 } deriving (Show)
 
 data TransactionViewInfo = TransactionViewInfo {

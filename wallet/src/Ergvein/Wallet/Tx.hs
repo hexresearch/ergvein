@@ -12,6 +12,7 @@ module Ergvein.Wallet.Tx
   , getUtxoUpdatesFromTxs
   , inputSpendsOutPoint
   , markedReplaceable
+  , haveCommonInputs
   ) where
 
 import Control.Monad.IO.Class

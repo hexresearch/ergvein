@@ -1055,6 +1055,9 @@ badgeCss :: Css
 badgeCss = do
   ".badge-warning" ? do
     backgroundColor textWarning
+  ".badge-danger" ? do
+    backgroundColor textDanger
+    color white
   ".badge-info" ? do
     backgroundColor textInfo
     color white

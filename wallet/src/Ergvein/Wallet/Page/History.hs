@@ -107,8 +107,10 @@ showTxStatus tr@TransactionView{..} = case txStatus of
   TransUncofirmedParents -> showStatus HistoryUnconfirmedParents
   where
     rbfEnabled = txRbfEnabled txInfoView
+    conflictingTxs = not $ L.null txConflictingTxs
 
     showStatus :: (MonadFront t m, LocalizedPrint l) => l -> m ()
     showStatus status = do
       localizedText status
-      when rbfEnabled (badge "badge-info-2 ml-1" ("rbf" :: Text))
+      when rbfEnabled (text " " >> badge "badge-info-2" ("rbf" :: Text)) -- text " " is needed for proper word wrapping
+      when conflictingTxs (text " " >> badge "badge-danger" ("double spend" :: Text))
