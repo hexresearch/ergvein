@@ -16,6 +16,7 @@ module Ergvein.Wallet.Monad.Util
   , performFork_
   , worker
   , parseSockAddrs
+  , parseAddr
   , parseSingleSockAddr
   ) where
 
@@ -139,20 +140,20 @@ runOnUiThreadM ma = do
 parseSockAddrs :: (MonadIO m, PlatformNatives) => ResolvSeed -> [Text] -> m [NamedSockAddr]
 parseSockAddrs rs urls = liftIO $ do
   withResolver rs $ \resolver -> fmap catMaybes $ traverse (parseAddr resolver) urls
-  where
-    parseAddr :: Resolver -> Text -> IO (Maybe NamedSockAddr)
-    parseAddr resolver t = do
-      let (h, p) = fmap (T.drop 1) $ T.span (/= ':') t
-      let port = if p == "" then defIndexerPort else fromMaybe defIndexerPort (readMaybe $ T.unpack p)
-      let val = fmap (readMaybe . T.unpack) $ T.splitOn "." h
-      case val of
-        (Just a):(Just b):(Just c):(Just d):[] -> pure $ Just $ NamedSockAddr t $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
-        _ -> do
-          let url = B8.pack $ T.unpack h
-          ips <- fmap (either (const []) id) $ lookupA resolver url
-          case ips of
-            [] -> pure Nothing
-            ip:_ -> pure $ Just $ NamedSockAddr t $ SockAddrInet port (toHostAddress ip)
+
+parseAddr :: Resolver -> Text -> IO (Maybe NamedSockAddr)
+parseAddr resolver t = do
+  let (h, p) = fmap (T.drop 1) $ T.span (/= ':') t
+  let port = if p == "" then defIndexerPort else fromMaybe defIndexerPort (readMaybe $ T.unpack p)
+  let val = fmap (readMaybe . T.unpack) $ T.splitOn "." h
+  case val of
+    (Just a):(Just b):(Just c):(Just d):[] -> pure $ Just $ NamedSockAddr t $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
+    _ -> do
+      let url = B8.pack $ T.unpack h
+      ips <- fmap (either (const []) id) $ lookupA resolver url
+      case ips of
+        [] -> pure Nothing
+        ip:_ -> pure $ Just $ NamedSockAddr t $ SockAddrInet port (toHostAddress ip)
 
 -- | Same as the one above, but is better for single url
 -- Hides makeResolvSeed

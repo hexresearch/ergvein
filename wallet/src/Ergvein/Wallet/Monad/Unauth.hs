@@ -55,7 +55,7 @@ data UnauthEnv t = UnauthEnv {
 , unauth'timeout         :: !(ExternalRef t NominalDiffTime)
 , unauth'indexReqSel     :: !(IndexReqSelector t)
 , unauth'indexReqFire    :: !(Map Text IndexerMsg -> IO ())
-, unauth'activateIndexEF :: !(Event t [NamedSockAddr], [NamedSockAddr] -> IO ())
+, unauth'activateIndexEF :: !(Event t [Text], [Text] -> IO ())
 }
 
 type UnauthM t m = ReaderT (UnauthEnv t) m

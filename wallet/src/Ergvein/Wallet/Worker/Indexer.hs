@@ -9,6 +9,7 @@ import Data.Time
 import Network.Socket (SockAddr)
 import Reflex.Dom
 import Reflex.ExternalRef
+import Ergvein.Wallet.Monad.Util
 
 import Ergvein.Text
 import Ergvein.Wallet.Monad.Client
@@ -34,27 +35,32 @@ indexerNodeController  = mdo
   sel <- getIndexReqSelector
   (addrE, _) <- getActivationEF
   connRef <- getActiveConnsRef
-  let initMap = M.fromList $ ((, ())) <$> undefined
+  seed <- mkResolvSeed
+  let initMap = M.fromList $ ((, ())) <$> mempty 
       closedE = switchDyn $ ffor valD $ leftmost . M.elems
       delE = (\u -> M.singleton u Nothing) <$> closedE
       addE = (\us -> M.fromList $ (, Just ()) <$> us) <$> addrE
-      actE = leftmost [delE, addE]
-  valD <- listWithKeyShallowDiff initMap actE $ \nsa@(NamedSockAddr n u) _ _ -> do
-    nodeLog $ "<" <> showt u <> ">: Connect"
-    let reqE = select sel $ Const2 n
-    conn <- initIndexerConnection nsa reqE
-    modifyExternalRef connRef $ \cm -> (M.insert n conn cm, ())
-
-    -- Everything below this line is handling the closure of a connection
-    -- the event the socket fires when it wants to be closed
-    let closedE' = indexConClosedE conn
-    failedToConnectE <- connectionWidget conn
-    -- closedE'' -- init closure procedure here
-    let closedE'' = leftmost [closedE', failedToConnectE]
-    -- remove the connection from the connection map
-    closedE''' <- performEvent $ ffor closedE'' $ const $ modifyExternalRef connRef $ \cm -> (M.delete n cm, ())
-    -- send out the event to delete this widget
-    pure $ nsa <$ closedE'''
+      actE = leftmost [delE, addE] 
+  valD <- listWithKeyShallowDiff initMap actE $ \n _ _ -> do
+    mAddr <- parseSockAddrs seed [n]
+    case mAddr of
+      [addr] ->  do
+        nodeLog $ "<" <> n <> ">: Connect"
+        let reqE = select sel $ Const2 n
+        conn <- initIndexerConnection undefined reqE
+        modifyExternalRef connRef $ \cm -> (M.insert n conn cm, ())
+    
+        -- Everything below this line is handling the closure of a connection
+        -- the event the socket fires when it wants to be closed
+        let closedE' = indexConClosedE conn
+        failedToConnectE <- connectionWidget conn
+        -- closedE'' -- init closure procedure here
+        let closedE'' = leftmost [closedE', failedToConnectE]
+        -- remove the connection from the connection map
+        closedE''' <- performEvent $ ffor closedE'' $ const $ modifyExternalRef connRef $ \cm -> (M.delete n cm, ())
+        -- send out the event to delete this widget
+        pure $ n <$ closedE'''
+      _-> pure never
   pure ()
   where
     nodeLog t = logWrite $ "[indexerNodeController]: " <> t

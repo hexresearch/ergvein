@@ -81,7 +81,7 @@ class MonadBaseConstr t m => MonadIndexClient t m | m -> t where
   -- | Get indexer request trigger
   getIndexReqFire :: m (Map Text IndexerMsg -> IO ())
   -- | Get activation event and trigger
-  getActivationEF :: m (Event t [NamedSockAddr], [NamedSockAddr] -> IO ())
+  getActivationEF :: m (Event t [Text], [Text] -> IO ())
 
 -- | Get deactivated urls dynamic
 getUrlsD :: MonadIndexClient t m => m (Dynamic t (Map SockAddr (IndexerConnection t)))
