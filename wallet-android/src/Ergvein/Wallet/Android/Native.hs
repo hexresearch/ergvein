@@ -17,6 +17,7 @@ import System.Directory.Tree
 import System.FilePath.Posix
 import System.IO
 import System.X509.Android
+import Control.Monad.IO.Class
 
 import qualified Data.ByteString as BS
 import qualified Data.Text as T

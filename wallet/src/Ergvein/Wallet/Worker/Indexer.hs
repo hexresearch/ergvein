@@ -16,6 +16,8 @@ import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Indexer.Socket
+import Ergvein.Wallet.Settings
+import Control.Monad.IO.Class
 
 import qualified Data.Map.Strict as M
 
@@ -36,7 +38,9 @@ indexerNodeController  = mdo
   (addrE, _) <- getActivationEF
   connRef <- getActiveConnsRef
   seed <- mkResolvSeed
-  let initMap = M.fromList $ ((, ())) <$> mempty 
+  addrs <- settingsAddrs <$> (readExternalRef =<< getSettingsRef)
+  liftIO $ print $ show addrs
+  let initMap = M.fromList $ ((, ())) <$> M.keys addrs
       closedE = switchDyn $ ffor valD $ leftmost . M.elems
       delE = (\u -> M.singleton u Nothing) <$> closedE
       addE = (\us -> M.fromList $ (, Just ()) <$> us) <$> addrE
@@ -47,7 +51,7 @@ indexerNodeController  = mdo
       [addr] ->  do
         nodeLog $ "<" <> n <> ">: Connect"
         let reqE = select sel $ Const2 n
-        conn <- initIndexerConnection undefined reqE
+        conn <- initIndexerConnection addr reqE
         modifyExternalRef connRef $ \cm -> (M.insert n conn cm, ())
     
         -- Everything below this line is handling the closure of a connection
