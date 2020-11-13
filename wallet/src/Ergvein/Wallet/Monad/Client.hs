@@ -3,7 +3,6 @@ module Ergvein.Wallet.Monad.Client (
   , IndexerConnection(..)
   , IndexerMsg(..)
   , IndexReqSelector
-  , getUrlsD
   , activateURL
   , activateURLList
   , deactivateURL
@@ -83,10 +82,6 @@ class MonadBaseConstr t m => MonadIndexClient t m | m -> t where
   -- | Get activation event and trigger
   getActivationEF :: m (Event t [Text], [Text] -> IO ())
 
--- | Get deactivated urls dynamic
-getUrlsD :: MonadIndexClient t m => m (Dynamic t (Map SockAddr (IndexerConnection t)))
-getUrlsD = externalRefDynamic =<< undefined
-
 -- | Activate an URL
 activateURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t NamedSockAddr -> m (Event t ())
 activateURL addrE = do
@@ -117,7 +112,7 @@ closeAndWait urlE = do
   switchDyn <$> holdDyn never closedEE
 
 -- | Deactivate an URL
-deactivateURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t NamedSockAddr -> m (Event t ())
+deactivateURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m (Event t ())
 deactivateURL addrE = do
   req       <- getIndexReqFire
   setRef    <- getSettingsRef
@@ -125,7 +120,7 @@ deactivateURL addrE = do
     fire ()
 
 -- | Forget an url
-forgetURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t NamedSockAddr -> m (Event t ())
+forgetURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m (Event t ())
 forgetURL addrE = do
   req       <- getIndexReqFire
   setRef    <- getSettingsRef

@@ -66,7 +66,6 @@ networkSettingsPage = do
     navD <- navbarWidget ActivePage
     void $ widgetHoldDyn $ ffor navD $ \case
       ActivePage      -> activePageWidget
-      DisabledPage    -> inactivePageWidget
       ParametersPage  -> parametersPageWidget
 
 networkSettingsPageUnauth :: MonadFrontBase t m => m ()
@@ -74,7 +73,6 @@ networkSettingsPageUnauth = wrapperSimple False $ do
   navD <- navbarWidget ActivePage
   void $ widgetHoldDyn $ ffor navD $ \case
     ActivePage      -> activePageWidget
-    DisabledPage    -> inactivePageWidget
     ParametersPage  -> parametersPageWidget
 
 parametersPageWidget :: MonadFrontBase t m => m ()
@@ -132,11 +130,11 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
 activePageWidget :: forall t m . MonadFrontBase t m => m ()
 activePageWidget = mdo
   connsD  <- externalRefDynamic =<< getActiveConnsRef
-  addrsD  <- (fmap . fmap) S.toList $ externalRefDynamic =<< undefined
+  addrsD  <- fmap (M.keys . settingsAddrs) <$> getSettingsD
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   let valsD = (,) <$> connsD <*> addrsD
   void $ widgetHoldDyn $ ffor valsD $ \(conmap, urls) ->
-    flip traverse urls $ \sa -> renderActive sa refrE $ M.lookup (namedAddrName sa) conmap
+    flip traverse urls $ \sa -> renderActive sa refrE $ M.lookup sa conmap
   hideE <- activateURL =<< addUrlWidget showD
   (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
@@ -146,7 +144,7 @@ activePageWidget = mdo
   pure ()
 
 renderActive :: MonadFrontBase t m
-  => NamedSockAddr
+  => Text
   -> Event t ()
   -> (Maybe (IndexerConnection t))
   -> m ()
@@ -160,7 +158,7 @@ renderActive nsa refrE mconn = mdo
     Nothing -> do
       tglE <- divClass "network-name" $ do
         elAttr "span" offclass $ elClass "i" "fas fa-circle" $ pure ()
-        divClass "mt-a mb-a network-name-txt" $ text $ namedAddrName nsa
+        divClass "mt-a mb-a network-name-txt" $ text $ nsa
         editBtn
       descrOption NSSOffline
       pure tglE
@@ -179,7 +177,7 @@ renderActive nsa refrE mconn = mdo
             else offclass
       tglE <- divClass "network-name" $ do
         elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
-        divClass "mt-a mb-a network-name-txt" $ text $ namedAddrName nsa
+        divClass "mt-a mb-a network-name-txt" $ text nsa
         editBtn
       latD <- indexerConnPingerWidget conn refrE
       descrOptionDyn $ NSSLatency <$> latD
@@ -195,58 +193,6 @@ renderActive nsa refrE mconn = mdo
     offclass    = [("class", "mb-a mt-a indexer-offline")]
     onclass     = [("class", "mb-a mt-a indexer-online")]
     unsyncClass = [("class", "mb-a mt-a indexer-unsync")]
-
-inactivePageWidget :: forall t m . MonadFrontBase t m => m ()
-inactivePageWidget = mdo
-  addrsD <- externalRefDynamic =<< undefined
-  showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
-  hideE <- deactivateURL =<< addUrlWidget showD
-  let addrsMapD = (M.fromList . fmap (,()) . S.toList) <$> addrsD
-  void $ listWithKey addrsMapD $ \addr _ -> renderInactive pingAllE addr
-  (pingAllE, tglE) <- divClass "network-wrapper mt-1" $ divClass "net-btns-2" $ do
-    pingAllE' <- buttonClass "button button-outline m-0" NSSPingAll
-    tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
-      fmap (not b <$) $ buttonClass "m-0 button button-outline" $ if b then NSSClose else NSSAddUrl
-    pure (pingAllE', tglE')
-  pure ()
-
-renderInactive :: MonadFrontBase t m => Event t () -> NamedSockAddr -> m ()
-renderInactive initPingE nsa = mdo
-  sel <- getIndexReqSelector
-  tglD <- holdDyn False tglE
-  (fstPingE, refrE) <- headTailE $ leftmost [initPingE, pingE]
-  tglE <- fmap switchDyn $ divClass "network-wrapper mt-1" $ widgetHold (startingWidget tglD) $ ffor fstPingE $ const $ do
-      let reqE = select sel $ Const2 (namedAddrName nsa)
-      conn <- initIndexerConnection nsa reqE
-      pingD <- indexerConnPingerWidget conn refrE
-      fmap switchDyn $ widgetHoldDyn $ ffor pingD $ \p -> do
-        tglE' <- divClass "network-name" $ do
-          let cls = if p == 0 then "mt-a mb-a indexer-offline" else "mt-a mb-a indexer-online"
-          elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
-          divClass "mt-a mb-a network-name-txt" $ text $ namedAddrName nsa
-          tglBtn tglD
-        descrOption $ NSSLatency p
-        pure tglE'
-  pingE <- fmap switchDyn $ widgetHoldDyn $ ffor tglD $ \b -> if not b
-    then pure never
-    else divClass "network-wrapper mt-1" $ divClass "net-btns-3" $ do
-      void $ activateURL . (nsa <$) =<< outlineButton NSSEnable
-      pingE' <- outlineButton NSSPing
-      void $ forgetURL . (nsa <$) =<< outlineButton NSSForget
-      pure pingE'
-  pure ()
-  where
-    tglBtn :: MonadFrontBase t m => Dynamic t Bool -> m (Event t Bool)
-    tglBtn tglD = fmap switchDyn $ widgetHoldDyn $ ffor tglD $ \b ->
-      fmap (not b <$) $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a" $
-        if b then NSSClose else NSSEdit
-
-    startingWidget tglD = do
-      tglE <- divClass "network-name" $ do
-        divClass "mt-a mb-a network-name-txt" $ text $ namedAddrName nsa
-        tglBtn tglD
-      descrOption NSSOffline
-      pure tglE
 
 navbarWidget :: MonadFrontBase t m => NavbarItem -> m (Dynamic t NavbarItem)
 navbarWidget initItem = divClass "navbar-2-cols" $ mdo

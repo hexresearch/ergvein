@@ -120,17 +120,17 @@ serversInfoPage initCur = do
     curD <- networkPageHeader $ Just initCur
     void $ widgetHoldDyn $ ffor curD $ maybe (pure ()) $ \(_, refrE) -> do
       connsD  <- externalRefDynamic =<< getActiveConnsRef
-      setsD  <- (fmap . fmap) S.toList $ externalRefDynamic =<< undefined
+      setsD  <- fmap (M.keys . settingsAddrs) <$> getSettingsD
       let valD = (,) <$> connsD <*> setsD
       void $ widgetHoldDyn $ ffor valD $ \(conmap, urls) -> flip traverse urls $ \nsa -> do
-        let mconn = M.lookup (namedAddrName nsa) conmap
+        let mconn = M.lookup nsa conmap
         divClass "network-name" $ do
           let offclass = [("class", "mt-a mb-a indexer-offline")]
           let onclass = [("class", "mt-a mb-a indexer-online")]
           let maybe' m n j = maybe n j m
           let clsD = maybe' mconn (pure offclass) $ \con -> ffor (indexConIsUp con) $ \up -> if up then onclass else offclass
           elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
-          divClass "mt-a mb-a network-name-txt" $ text $ namedAddrName nsa
+          divClass "mt-a mb-a network-name-txt" $ text nsa
         case mconn of
           Nothing -> pure ()
           Just conn -> do

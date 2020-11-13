@@ -49,7 +49,7 @@ ergveinNetworkRefresh = do
   activeUrlsRef <- getActiveConnsRef
   activeUrlsE <- performEvent $ ffor goE $ const $ readExternalRef activeUrlsRef
 
-  let activePeerAmountE  = length . Map.toList <$> activeUrlsE
+  let activePeerAmountE  = traceEvent "discovery" $ length . Map.toList <$> activeUrlsE
       notOperablePeerAmountE  = void $ ffilter (< minOperableAmount) activePeerAmountE 
       insufficientPeerAmountE = void $ ffilter (< targetAmount) activePeerAmountE
   restoreFromDNS notOperablePeerAmountE
