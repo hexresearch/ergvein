@@ -2,7 +2,6 @@
 module Ergvein.Wallet.Storage.Util(
     addXPrvKeyToKeystore
   , addXPubKeyToKeystore
-  , getLastSeenHeight
   , encryptPrvStorage
   , decryptPrvStorage
   , encryptBSWithAEAD
@@ -87,9 +86,6 @@ addXPubKeyToKeystore External key (PubKeystore master external internal) =
 addXPubKeyToKeystore Internal key (PubKeystore master external internal) =
   PubKeystore master external (V.snoc internal (EgvPubKeyBox key S.empty False))
 
-getLastSeenHeight :: Currency -> PubStorage -> Maybe BlockHeight
-getLastSeenHeight cur bs = join . (fmap _currencyPubStorage'height) $ bs ^. pubStorage'currencyPubStorages . at cur
-
 createPubKeystore :: EgvXPubKey -> PubKeystore
 createPubKeystore masterPubKey =
   let keygen kp i = Just (EgvPubKeyBox (derivePubKey masterPubKey kp (fromIntegral i)) S.empty False, i + 1)
@@ -99,21 +95,19 @@ createPubKeystore masterPubKey =
 
 createPubStorage :: Bool -> Maybe DerivPrefix -> EgvRootXPrvKey -> [Currency] -> PubStorage
 createPubStorage isRestored mpath rootPrvKey cs = PubStorage rootPubKey pubStorages cs isRestored mpath
-  where restState = if isRestored then (Just 0, Just 0) else (Nothing, Nothing)
-        rootPubKey = EgvRootXPubKey $ deriveXPubKey $ unEgvRootXPrvKey rootPrvKey
+  where rootPubKey = EgvRootXPubKey $ deriveXPubKey $ unEgvRootXPrvKey rootPrvKey
         mkStore c = let
           dpath = extendDerivPath c <$> mpath
           in CurrencyPubStorage {
             _currencyPubStorage'pubKeystore   = (createPubKeystore $ deriveCurrencyMasterPubKey dpath rootPrvKey c)
           , _currencyPubStorage'path          = dpath
           , _currencyPubStorage'transactions  = M.empty
-          , _currencyPubStorage'height        = Nothing
-          , _currencyPubStorage'scannedKey    = restState
           , _currencyPubStorage'utxos         = M.empty
-          , _currencyPubStorage'scannedHeight = Nothing
           , _currencyPubStorage'headers       = M.empty
           , _currencyPubStorage'outgoing      = S.empty
           , _currencyPubStorage'headerSeq     = btcCheckpoints
+          , _currencyPubStorage'scannedHeight = 0
+          , _currencyPubStorage'chainHeight   = 0
           }
         pubStorages = M.fromList [(currency, mkStore currency) | currency <- cs]
 

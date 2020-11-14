@@ -26,7 +26,6 @@ import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction (BlockHeight)
 import Ergvein.Wallet.Filters.Loader
-import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Client
@@ -68,7 +67,6 @@ data Env t = Env {
 , env'authRef         :: !(ExternalRef t AuthInfo)
 , env'logoutFire      :: !(IO ())
 , env'activeCursRef   :: !(ExternalRef t (S.Set Currency))
-, env'filtersStorage  :: !FiltersStorage
 , env'filtersHeights  :: !(ExternalRef t (Map Currency BlockHeight))
 , env'syncProgress    :: !(ExternalRef t (Map Currency SyncStage))
 , env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
@@ -95,12 +93,6 @@ type ErgveinM t m = ReaderT (Env t) m
 instance Monad m => HasStoreDir (ErgveinM t m) where
   getStoreDir = asks env'storeDir
   {-# INLINE getStoreDir #-}
-
-instance Monad m => HasFiltersStorage t (ErgveinM t m) where
-  getFiltersStorage = asks env'filtersStorage
-  {-# INLINE getFiltersStorage #-}
-  getFiltersHeightRef = asks env'filtersHeights
-  {-# INLINE getFiltersHeightRef #-}
 
 instance MonadBaseConstr t m => MonadEgvLogger t (ErgveinM t m) where
   getLogsTrigger = asks env'logsTrigger
@@ -306,7 +298,6 @@ liftAuth ma0 ma = mdo
 
         activeCursRef   <- newExternalRef mempty
         syncRef         <- newExternalRef mempty
-        filtersStore    <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
         filtersHeights  <- newExternalRef mempty
         fsyncRef        <- newExternalRef mempty
         consRef         <- newExternalRef mempty
@@ -329,7 +320,6 @@ liftAuth ma0 ma = mdo
               , env'authRef = authRef
               , env'logoutFire = logoutFire ()
               , env'activeCursRef = activeCursRef
-              , env'filtersStorage = filtersStore
               , env'filtersHeights = filtersHeights
               , env'syncProgress = syncRef
               , env'filtersSyncRef = fsyncRef
@@ -353,7 +343,7 @@ liftAuth ma0 ma = mdo
 
         flip runReaderT env $ do -- Workers and other routines go here
           when isAndroid (deleteTmpFiles storeDir)
-          initFiltersHeights filtersHeights
+          -- initFiltersHeights filtersHeights
           btcNodeController
           heightAsking
           feesWorker
@@ -365,16 +355,6 @@ liftAuth ma0 ma = mdo
     newAuthInfoE = ffilter isMauthUpdate $ updated mauthD
     redrawE = leftmost [newAuthInfoE, Nothing <$ logoutE]
   widgetHold ma0' $ ffor redrawE $ maybe ma0 runAuthed
-
--- | Query initial values for filters heights and write down them to the external ref
-initFiltersHeights :: MonadFront t m => ExternalRef t (Map Currency BlockHeight) -> m ()
-initFiltersHeights ref = do
-  ps <- getPubStorage
-  let curs =  _pubStorage'activeCurrencies ps
-  scms <- flip traverse curs $ \cur -> do
-    h <- getFiltersHeight cur
-    pure (cur, h)
-  writeExternalRef ref $ M.fromList scms
 
 isMauthUpdate :: Maybe AuthInfo -> Bool
 isMauthUpdate mauth = case mauth of

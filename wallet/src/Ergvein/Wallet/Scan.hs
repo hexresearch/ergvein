@@ -18,7 +18,6 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
-import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Log.Event
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
@@ -35,7 +34,6 @@ import Ergvein.Filters.Btc
 import qualified Data.Map.Strict                    as M
 import qualified Data.Set                           as S
 import qualified Data.Vector                        as V
-import qualified Ergvein.Wallet.Filters.Scan        as Filters
 import qualified Network.Haskoin.Block              as HB
 import qualified Network.Haskoin.Transaction        as HT
 

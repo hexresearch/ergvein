@@ -19,7 +19,6 @@ import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Filters.Loader
-import Ergvein.Wallet.Filters.Storage
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node.Types
@@ -130,10 +129,8 @@ restorePage = wrapperSimple True $ void $ workflow nodeConnection
     finishScanning = Workflow $ do
       logWrite "Finished scanning BTC keys..."
       buildE <- getPostBuild
-      setSyncProgress $ SyncProgress BTC Synced <$ buildE
-      h <- sample . current =<< getCurrentHeight BTC
-      scanhE <- writeWalletsScannedHeight "finishScanning" $ (BTC, fromIntegral h) <$ buildE
-      void $ modifyPubStorage "finishScanning" $ ffor scanhE $ const $ \ps -> Just $ ps {
+      setE <- setSyncProgress $ SyncProgress BTC Synced <$ buildE
+      void $ modifyPubStorage "finishScanning" $ ffor setE $ const $ \ps -> Just $ ps {
           _pubStorage'restoring = False
         }
       _ <- nextWidget $ ffor buildE $ const $ Retractable {

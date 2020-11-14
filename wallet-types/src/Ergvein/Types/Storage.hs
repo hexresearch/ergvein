@@ -96,13 +96,12 @@ data CurrencyPubStorage = CurrencyPubStorage {
     _currencyPubStorage'pubKeystore   :: !PubKeystore
   , _currencyPubStorage'path          :: !(Maybe DerivPrefix)
   , _currencyPubStorage'transactions  :: !(M.Map TxId EgvTx)
-  , _currencyPubStorage'height        :: !(Maybe BlockHeight)     -- ^ Last height seen by the wallet
-  , _currencyPubStorage'scannedKey    :: !(Maybe Int, Maybe Int)  -- ^ When restoring here we put which keys are we already scanned
   , _currencyPubStorage'utxos         :: !BtcUtxoSet              -- ^ TODO: Change to a generalized one, after we switch to DMaps
-  , _currencyPubStorage'scannedHeight :: !(Maybe BlockHeight)
   , _currencyPubStorage'headers       :: !(M.Map HB.BlockHash HB.BlockHeader)
   , _currencyPubStorage'outgoing      :: !(S.Set TxId)
   , _currencyPubStorage'headerSeq     :: !(Word32, V.Vector (HB.BlockHeight, HB.BlockHash))
+  , _currencyPubStorage'scannedHeight :: !BlockHeight
+  , _currencyPubStorage'chainHeight   :: !BlockHeight
   } deriving (Eq, Show, Read)
 
 makeLenses ''CurrencyPubStorage
@@ -140,13 +139,6 @@ pubStoragePubMaster c = fmap pubKeystore'master . pubStorageKeyStorage c
 pubStorageLastUnusedKey :: Currency -> KeyPurpose -> PubStorage -> Maybe (Int, EgvPubKeyBox)
 pubStorageLastUnusedKey c kp ps = getLastUnusedKey kp . _currencyPubStorage'pubKeystore =<< M.lookup c (_pubStorage'currencyPubStorages ps)
 
-pubStorageScannedKeys :: Currency -> KeyPurpose -> PubStorage -> Int
-pubStorageScannedKeys c p ps = fromMaybe 0 $ f . _currencyPubStorage'scannedKey =<< M.lookup c (_pubStorage'currencyPubStorages ps)
-  where
-    f = case p of
-      Internal -> fst
-      External -> snd
-
 pubStorageKeyStorage :: Currency -> PubStorage -> Maybe PubKeystore
 pubStorageKeyStorage c = fmap _currencyPubStorage'pubKeystore . M.lookup c . _pubStorage'currencyPubStorages
 
@@ -158,12 +150,6 @@ pubStorageSetKeyStorage c ks ps = ps {
     f cps = cps {
         _currencyPubStorage'pubKeystore = ks
       }
-
-pubStorageSetKeyScanned :: Currency -> KeyPurpose -> Maybe Int -> PubStorage -> PubStorage
-pubStorageSetKeyScanned c p v = modifyCurrStorage c $ \cps ->
-  cps & currencyPubStorage'scannedKey %~ \(i,e) -> case p of
-    Internal -> (v,e)
-    External -> (i,v)
 
 modifyCurrStorage :: Currency -> (CurrencyPubStorage  -> CurrencyPubStorage) -> PubStorage -> PubStorage
 modifyCurrStorage c f ps = ps {

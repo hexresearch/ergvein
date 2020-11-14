@@ -59,7 +59,7 @@ import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Filters.Storage
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Client
@@ -84,8 +84,6 @@ type MonadFront t m = (
     MonadFrontAuth t m
   , MonadStorage t m
   , MonadIndexClient t m
-  , HasFiltersStorage t m
-  , HasFiltersStorage t (Performable m)
   )
 
 class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
@@ -166,10 +164,10 @@ getSyncProgress cur = do
 {-# INLINE getSyncProgress #-}
 
 -- | Set global sync process value each time the event is fired
-setSyncProgress :: MonadFrontAuth t m => Event t (SyncProgress) -> m ()
+setSyncProgress :: MonadFrontAuth t m => Event t (SyncProgress) -> m (Event t ())
 setSyncProgress spE = do
   syncProgRef <- getSyncProgressRef
-  performEvent_ $ ffor spE $ \(SyncProgress cur sp) -> do
+  performEvent $ ffor spE $ \(SyncProgress cur sp) -> do
     modifyExternalRef_ syncProgRef $ M.insert cur sp
 {-# INLINE setSyncProgress #-}
 
@@ -219,8 +217,8 @@ getFeesD = externalRefDynamic =<< getFeesRef
 getCurrentHeight :: (MonadFrontAuth t m, MonadStorage t m) => Currency -> m (Dynamic t Integer)
 getCurrentHeight c = do
   psD <- getPubStorageD
-  pure $ ffor psD $ \ps -> fromIntegral $ fromMaybe 0 $ join $ ps ^. pubStorage'currencyPubStorages . at c
-    & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'height
+  pure $ ffor psD $ \ps -> fromIntegral $ fromMaybe 0 $ ps ^. pubStorage'currencyPubStorages . at c
+    & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'chainHeight
 
 -- | Get current value that tells you whether filters are fully in sync now or not
 getFiltersSync :: MonadFrontAuth t m => Currency -> m (Dynamic t Bool)
