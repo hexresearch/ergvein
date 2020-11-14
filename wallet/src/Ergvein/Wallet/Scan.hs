@@ -1,11 +1,11 @@
 module Ergvein.Wallet.Scan (
-    scanner
-  , scanningBtcKey
+    scanBtcBlocks
   ) where
 
 import Control.Lens
 import Control.Monad.IO.Class
 import Control.Monad.Reader
+import Data.ByteString (ByteString)
 import Data.List
 import Data.Time.Clock.POSIX
 import Data.Vector (Vector)
@@ -30,6 +30,7 @@ import Ergvein.Wallet.Storage.Util (addXPubKeyToKeystore)
 import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Util
+import Ergvein.Filters.Btc
 
 import qualified Data.Map.Strict                    as M
 import qualified Data.Set                           as S
@@ -49,124 +50,24 @@ scanner = do
 -- updates transactions that are found. Specific for currency.
 scannerFor :: MonadFront t m => Currency -> m ()
 scannerFor cur = case cur of
-  BTC -> do
-    reconfirmBtxUtxoSet "scannerFor" . updated . fmap fromIntegral =<< watchFiltersHeight BTC
-    scannerBtc
+  BTC -> pure ()
   _ -> pure ()
-
--- | Widget that continuously scans new filters agains all known public keys and
--- updates transactions that are found. Specific for Bitcoin.
-scannerBtc :: forall t m . MonadFront t m => m ()
-scannerBtc = void $ workflow initial
-  where
-    initial = Workflow $ do
-      logWrite "Initializing scanner"
-      mscD <- getWalletsScannedHeightD_ BTC
-      curhE <- updatedWithInit =<< getCurrentHeight BTC
-      let heightE = fforMaybe curhE $ \curh ->
-            if curh == 0 then Nothing else Just $ fromIntegral curh
-      performEvent_ $ ffor heightE $ \h -> do
-        logWrite $ "Height resolved at " <> showt h
-      writeWalletsScannedHeight "scannerInitial" $ flip push heightE $ \h -> do
-        msc <- sample . current $ mscD
-        pure $ case msc of
-          Nothing -> Just (BTC, h)
-          Just _ -> Nothing
-      nextE <- delay 0.1 heightE
-      pure ((), waiting <$ nextE)
-      -- pure ((), dbgStage <$ nextE)
-
-    -- dbgStage = Workflow $ do
-    --   buildE <- delay 0.1 =<< getPostBuild
-    --   rsD <- fmap _pubStorage'restoring <$> getPubStorageD
-    --   let setE = ffilter not $ leftmost [updated rsD, tag (current rsD) buildE]
-    --   e <- writeWalletsScannedHeight "setting dbg scan" $ (BTC, 640932) <$ setE
-    --   pure ((), waiting <$ e)
-
-    waiting = Workflow $ do
-      logWrite "Waiting for unscanned filters"
-      buildE <- getPostBuild
-      fhD <- watchFiltersHeight BTC
-      scD <- (fmap . fmap) fromIntegral $ getWalletsScannedHeightD BTC
-      rsD <- fmap _pubStorage'restoring <$> getPubStorageD
-      setSyncProgress $ ffor buildE $ const $ SyncProgress BTC Synced
-      let newFiltersE = fmapMaybe id $ updated $ do
-            fh <- fhD
-            sc <- scD
-            rs <- rsD
-            pure $ if sc < fh && not rs then Just (fh, sc) else Nothing
-      -- setSyncProgress $ ffor newFiltersE $ \(fh, sc) -> do
-      --   SyncMeta BTC (SyncBlocks 0 (fromIntegral (fh - sc))) 0 (fromIntegral (fh - sc))
-      performEvent_ $ ffor newFiltersE $  \(fh, sc) -> do
-        logWrite $ "Start scanning for new " <> showt (fh - sc)
-      pure ((), scanning . snd <$> newFiltersE)
-
-    scanning i0 = Workflow $ do
-      logWrite "Scanning filters"
-      waitingE <- scanningAllBtcKeys $ fromIntegral i0
-      scD <- getWalletsScannedHeightD BTC
-      cleanedE <- performFork $ ffor waitingE $ const $ do
-        i1 <- fmap fromIntegral . sample . current $ scD
-        logWrite $ "Cleaning filters from " <> showt i0 <> " to " <> showt i1
-        clearFiltersRange BTC i0 i1
-      pure ((), waiting <$ cleanedE)
-
--- | Check all keys stored in public storage agains unscanned filters and return 'True' if we found any tx (stored in public storage).
-scanningAllBtcKeys :: forall t m . MonadFront t m => HB.BlockHeight -> m (Event t Bool)
-scanningAllBtcKeys i0' = do
-  let i0 = fromIntegral i0'
-  buildE <- getPostBuild
-  ps <- getPubStorage
-  let keys = getPublicKeys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "scannerBtc: not exsisting store!") . currencyPubStorage'pubKeystore
-  (updE, updFire) <- newTriggerEvent
-  setSyncProgress updE
-  ch <- fmap fromIntegral . sample . current =<< getCurrentHeight BTC
-  let updSync i i1 = updFire $ SyncProgress BTC (SyncBlocks (fromIntegral i) ch (fromIntegral $ i - i0) (ch - fromIntegral i0))
-  scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddresses i0 updSync $ xPubToBtcAddr . extractXPubKeyFromEgv . scanBox'key <$> keys
-  let heightE = fst <$> scanE
-      hashesE = ffor scanE $ \(_, vs) ->
-        ffor (V.toList vs) $ \(ha,he) -> (egvBlockHashToHk ha, fromIntegral he)
-      -- hashesE = V.toList . snd <$> scanE
-      -- hashesE = never
-  void $ writeWalletsScannedHeight "scanningAllBtcKeys" $ (BTC, ) <$> heightE
-  performEvent_ $ ffor scanE $ \(h, bls) -> logWrite $ "Scanned all keys up to " <> showt h <> ", blocks to check: " <> showt bls
-  scanningBtcBlocks keys hashesE
-
--- | Check single key against unscanned filters and return 'True' if we found any tx (stored in public storage).
-scanningBtcKey :: MonadFront t m => KeyPurpose -> HB.BlockHeight -> Int -> EgvXPubKey -> m (Event t Bool)
-scanningBtcKey kp i0' keyNum pubkey = do
-  let i0 = fromIntegral i0'
-  (updE, updFire) <- newTriggerEvent
-  setSyncProgress updE
-  let sp = case kp of
-        Internal -> SyncAddressInternal keyNum
-        External -> SyncAddressExternal keyNum
-  let updSync i i1 = if i `mod` 100 == 0
-        then updFire $ SyncProgress BTC $ sp (fromIntegral (i - i0)) (fromIntegral (i1 - i0))
-        else pure ()
-      address = xPubToBtcAddr $ extractXPubKeyFromEgv pubkey
-  buildE <- getPostBuild
-  scanE <- performFork $ ffor buildE $ const $ Filters.filterBtcAddress i0 updSync $ xPubToBtcAddr . extractXPubKeyFromEgv $ pubkey
-  let hashesE = ffor scanE $ \(_, vs) ->
-        ffor (V.toList vs) $ \(ha,he) -> (egvBlockHashToHk ha, fromIntegral he)
-  performEvent_ $ ffor scanE $ \(h, bls) -> logWrite $ "Scanned key #" <> showt keyNum <> " " <> btcAddrToString address <> " up to " <> showt h <> ", blocks to check: " <> showt bls
-  scanningBtcBlocks (V.singleton (ScanKeyBox pubkey kp keyNum)) hashesE
 
 -- | Check given blocks for transactions that are related to given set of keys and store txs into storage.
 -- Return event that fires 'True' if we found any transaction and fires 'False' if not.
-scanningBtcBlocks :: MonadFront t m => Vector ScanKeyBox -> Event t [(HB.BlockHash, HB.BlockHeight)] -> m (Event t Bool)
-scanningBtcBlocks keys hashesE = do
+scanBtcBlocks :: MonadFront t m => Vector ScanKeyBox -> Event t [(HB.BlockHash, HB.BlockHeight)] -> m (Event t Bool)
+scanBtcBlocks keys hashesE = do
   performEvent_ $ ffor hashesE $ \hs -> flip traverse_ hs $ \(_,a) -> logWrite $ showt a
   let noScanE = fforMaybe hashesE $ \bls -> if null bls then Just () else Nothing
   heightMapD <- holdDyn M.empty $ M.fromList <$> hashesE
   let rhashesE = fmap (nub . fst . unzip) $ hashesE
   _ <-logEvent "Blocks requested: " rhashesE
   blocksE <- requestBTCBlocks rhashesE
-  storedBlocks <- storeBlockHeadersE "scanningBtcBlocks" BTC blocksE
+  storedBlocks <- storeBlockHeadersE "scanBtcBlocks" BTC blocksE
   let blkHeightE = current heightMapD `attach` storedBlocks
   txsUpdsE <- logEvent "Transactions got: " =<< getAddressesTxs ((\(a,b) -> (keys,a,b)) <$> blkHeightE)
-  void $ insertTxsUtxoInPubKeystore "scanningBtcBlocks" BTC txsUpdsE
-  removeOutgoingTxs "scanningBtcBlocks" BTC $ (M.elems . M.unions . V.toList . snd . V.unzip . fst) <$> txsUpdsE
+  void $ insertTxsUtxoInPubKeystore "scanBtcBlocks" BTC txsUpdsE
+  removeOutgoingTxs "scanBtcBlocks" BTC $ (M.elems . M.unions . V.toList . snd . V.unzip . fst) <$> txsUpdsE
   pure $ leftmost [(V.any (not . M.null . snd)) . fst <$> txsUpdsE, False <$ noScanE]
 
 -- | Extract transactions that correspond to given address.

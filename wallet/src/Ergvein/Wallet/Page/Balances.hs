@@ -16,6 +16,7 @@ import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Sync.Widget
 import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
+import Ergvein.Wallet.Debug
 
 import qualified Data.List as L
 
@@ -49,7 +50,8 @@ currenciesList _ = divClass "currency-content" $ do
   ps <- getPubStorage
   let currencies = _pubStorage'activeCurrencies ps
       thisWidget = Just $ pure balancesPage
-  if L.length currencies == 1
+  debugWidget
+  if L.length currencies == 10
     then do
       buildE <- getPostBuild
       void $ nextWidget $ ffor buildE $ \_ -> Retractable {

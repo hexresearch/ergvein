@@ -13,7 +13,7 @@
 -----------------------------------------------------------------------------
 
 module Ergvein.Wallet.Filters.Loader (
-  filtersLoader
+  getFilters
 ) where
 
 import Control.Monad

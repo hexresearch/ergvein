@@ -22,7 +22,6 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Password
-import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.AuthInfo
 import Ergvein.Wallet.Wrapper
