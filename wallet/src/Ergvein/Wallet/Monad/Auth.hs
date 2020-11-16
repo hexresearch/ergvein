@@ -348,7 +348,7 @@ liftAuth ma0 ma = mdo
           btcNodeController
           filtersLoader
           heightAsking
-          ergveinNetworkRefresh
+          --ergveinNetworkRefresh
           feesWorker
           pubKeysGenerator
           pure ()

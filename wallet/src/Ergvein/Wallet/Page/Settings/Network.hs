@@ -34,18 +34,16 @@ import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Set as S
 
-data NavbarItem = ActivePage | DisabledPage | ParametersPage
+data NavbarItem = ActivePage | ParametersPage
   deriving (Eq)
 
 instance LocalizedPrint NavbarItem where
   localizedShow l v = case l of
     English -> case v of
       ActivePage      -> "Active indexers"
-      DisabledPage    -> "Reserved indexers"
       ParametersPage  -> "Network parameters"
     Russian -> case v of
       ActivePage      -> "Используемые индексеры"
-      DisabledPage    -> "Запасные индексеры"
       ParametersPage  -> "Сетевые параметры"
 
 data ParametersParseErrors = PPENDT | PPEInt
@@ -130,11 +128,11 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
 activePageWidget :: forall t m . MonadFrontBase t m => m ()
 activePageWidget = mdo
   connsD  <- externalRefDynamic =<< getActiveConnsRef
-  addrsD  <- fmap (M.keys . settingsAddrs) <$> getSettingsD
+  addrsD  <- holdUniqDyn =<< fmap settingsAddrs <$> getSettingsD
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   let valsD = (,) <$> connsD <*> addrsD
   void $ widgetHoldDyn $ ffor valsD $ \(conmap, urls) ->
-    flip traverse urls $ \sa -> renderActive sa refrE $ M.lookup sa conmap
+    flip traverse (M.toList urls) $ \(sa, i) -> renderActive sa i refrE $ M.lookup sa conmap
   hideE <- activateURL =<< addUrlWidget showD
   (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
@@ -145,23 +143,27 @@ activePageWidget = mdo
 
 renderActive :: MonadFrontBase t m
   => Text
+  -> PeerInfo
   -> Event t ()
   -> (Maybe (IndexerConnection t))
   -> m ()
-renderActive nsa refrE mconn = mdo
-  tglD <- holdDyn False tglE
-  let editBtn = fmap switchDyn $ widgetHoldDyn $ ffor tglD $ \b -> fmap (not b <$)
+renderActive nsa nfo refrE mconn = mdo
+  pinD <- holdDyn False pinE
+  actD <- holdDyn False actE
+  let pinBtn = fmap switchDyn $ widgetHoldDyn $ ffor pinD $ \b -> fmap (not b <$)
         $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a"
           $ if b then NSSClose else NSSEdit
-
-  tglE <- divClass "network-wrapper mt-3" $ case mconn of
+  let actBtn = fmap switchDyn $ widgetHoldDyn $ ffor actD $ \b -> fmap (not b <$)
+        $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a"
+          $ if b then NSSClose else NSSEdit
+  (pinE, actE) <- divClass "network-wrapper mt-3" $ case mconn of
     Nothing -> do
-      tglE <- divClass "network-name" $ do
+      (pinE, actE) <- divClass "network-name" $ do
         elAttr "span" offclass $ elClass "i" "fas fa-circle" $ pure ()
         divClass "mt-a mb-a network-name-txt" $ text $ nsa
-        editBtn
+        (,) <$> actBtn <*> pinBtn
       descrOption NSSOffline
-      pure tglE
+      pure (pinE, actE)
     Just conn -> do
       let clsUnauthD = ffor (indexConIsUp conn) $ \up -> if up then onclass else offclass
       let heightD = fmap (M.lookup BTC) $ indexerConHeight conn
@@ -175,16 +177,16 @@ renderActive nsa refrE mconn = mdo
           pure $ if up
             then if synced then onclass else unsyncClass
             else offclass
-      tglE <- divClass "network-name" $ do
+      (pinE, actE) <- divClass "network-name" $ do
         elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
         divClass "mt-a mb-a network-name-txt" $ text nsa
-        editBtn
+        (,) <$> actBtn <*> pinBtn
       latD <- indexerConnPingerWidget conn refrE
       descrOptionDyn $ NSSLatency <$> latD
       descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> heightD
-      pure tglE
+      pure (pinE, actE)
 
-  void $ widgetHoldDyn $ ffor tglD $ \b -> if not b
+  void $ widgetHoldDyn $ ffor pinD $ \b -> if not b
     then pure ()
     else divClass "network-wrapper mt-2" $ do
       void $ deactivateURL . (nsa <$) =<< buttonClass "button button-outline mt-1 ml-1" NSSDisable
@@ -197,7 +199,7 @@ renderActive nsa refrE mconn = mdo
 navbarWidget :: MonadFrontBase t m => NavbarItem -> m (Dynamic t NavbarItem)
 navbarWidget initItem = divClass "navbar-2-cols" $ mdo
   selD <- holdDyn initItem selE
-  selE <- fmap leftmost $ flip traverse [ActivePage, DisabledPage] $ \i -> do
+  selE <- fmap leftmost $ flip traverse [ActivePage] $ \i -> do
     let attrD = (\ai -> "navbar-item" <> if i == ai then " active" else "") <$> selD
     pure . (<$) i =<< spanButton attrD i
   pure selD

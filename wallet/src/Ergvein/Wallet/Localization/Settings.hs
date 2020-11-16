@@ -166,6 +166,7 @@ instance LocalizedPrint NetSetupStrings where
       NSSLatency lat  -> "Latency: " <> showt lat
       NSSIndexerHeight h -> "Height: " <> showt h
       NSSOffline      -> "Offline"
+      NSSRefresh      -> "Refresh"
       NSSPing         -> "Ping"
       NSSDisable      -> "Disable"
       NSSEnable       -> "Enable"
