@@ -1,3 +1,18 @@
+0.1.6.0
+=======
+
+* Fix compilation under ghcjs
+
+0.1.5.0
+=======
+
+* Fix compilation under `reflex-0.7`
+
+0.1.4.0
+=======
+
+* Bump version for `reflex`.
+
 0.1.3.0
 =======
 
