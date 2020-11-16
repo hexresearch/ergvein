@@ -106,7 +106,7 @@ createPubStorage isRestored mpath rootPrvKey cs = PubStorage rootPubKey pubStora
           , _currencyPubStorage'headers       = M.empty
           , _currencyPubStorage'outgoing      = S.empty
           , _currencyPubStorage'headerSeq     = btcCheckpoints
-          , _currencyPubStorage'scannedHeight = 0
+          , _currencyPubStorage'scannedHeight = filterStartingHeight c
           , _currencyPubStorage'chainHeight   = 0
           }
         pubStorages = M.fromList [(currency, mkStore currency) | currency <- cs]

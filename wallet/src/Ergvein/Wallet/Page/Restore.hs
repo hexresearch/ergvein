@@ -59,13 +59,13 @@ restorePage = wrapperSimple True $ void $ workflow nodeConnection
       heightD <- getCurrentHeight BTC
       height0E <- tag (current heightD) <$> getPostBuild
       let heightE = leftmost [updated heightD, height0E]
-      let h0 = filterStartingHeight BTC
-      let nextE = fforMaybe heightE $ \h -> if h == 0 then Nothing else Just (getFiltersBatch h0)
+      let nextE = fforMaybe heightE $ \h -> if h == 0 then Nothing else Just getFiltersBatch
       pure ((), nextE)
 
     -- | Stage 3: get a batch of filters and send them to stage 4
     -- if filters height >= btc height - 1, goto stage 5
-    getFiltersBatch fh = Workflow $ do
+    getFiltersBatch = Workflow $ do
+      fh <- getScannedHeight BTC
       h3 $ text $ "Getting a fresh batch of filters from: " <> showt fh
       psD <- getPubStorageD
       heightD <- getCurrentHeight BTC
@@ -119,10 +119,10 @@ restorePage = wrapperSimple True $ void $ workflow nodeConnection
         fmap (catMaybes . mconcat) $ liftIO $
           mapConcurrently (traverse foo) chunks
       scanE <- scanBtcBlocks keys hashesE
-      extraE <- refreshBtcKeys $ void scanE
-      let nextE = ffor extraE $ \extraKeys -> if V.null extraKeys
-            then getFiltersBatch nextHeight
-            else scanBatchKeys nextHeight batch extraKeys
+      keysE <- refreshBtcKeys $ void scanE
+      let (nullE, extraE) = splitFilter V.null keysE
+      goNewBatchE <- setScannedHeightE BTC $ nextHeight <$ nullE
+      let nextE = leftmost [getFiltersBatch <$ goNewBatchE, (scanBatchKeys nextHeight batch) <$> extraE]
       pure ((), nextE)
 
     -- Stage 5: finalize the restore and exit to the balances page
@@ -194,7 +194,6 @@ refreshBtcKeys goE = do
         _ -> Nothing
   modifyPubStorage "deriveNewBtcKeys" storeE
   pure $ snd <$> ksVecE
-
 
 -- | Generate next public keys for bitcoin and put them to storage
 deriveNewBtcKeys :: MonadFront t m => KeyPurpose -> Int -> m (Event t ())

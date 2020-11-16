@@ -19,6 +19,9 @@ module Ergvein.Wallet.Monad.Storage
   , getBlockHeaderByHash
   , storeBlockHeadersE
   , attachNewBtcHeader
+  , setScannedHeightE
+  , getScannedHeightD
+  , getScannedHeight
   ) where
 
 import Control.Concurrent.MVar
@@ -203,6 +206,25 @@ storeBlockHeadersE caller cur reqE = do
     in ffor mmap $ \m -> modifyCurrStorage cur (currencyPubStorage'headers %~ M.union m) ps
   pure $ attachWithMaybe (\a _ -> a) (current reqD) storedE
   where clr = caller <> ":" <> "storeBlockHeadersE"
+
+setScannedHeightE :: MonadStorage t m => Currency -> Event t BlockHeight -> m (Event t ())
+setScannedHeightE cur he = modifyPubStorage "setScannedHeightE" $ ffor he $ \h ->
+  Just . modifyCurrStorage cur (currencyPubStorage'scannedHeight .~ h)
+
+getScannedHeightD :: MonadStorage t m => Currency -> m (Dynamic t BlockHeight)
+getScannedHeightD cur = do
+  psD <- getPubStorageD
+  pure $ ffor psD $ \ps ->
+    fromMaybe 0 $ ps ^. pubStorage'currencyPubStorages . at cur & (fmap _currencyPubStorage'scannedHeight)
+
+getScannedHeight :: MonadStorage t m => Currency -> m BlockHeight
+getScannedHeight cur = do
+  ps <- getPubStorage
+  pure $ fromMaybe 0 $ ps
+    ^. pubStorage'currencyPubStorages
+    . at cur
+    & (fmap _currencyPubStorage'scannedHeight)
+
 
 -- ===========================================================================
 --           HasPubStorage helpers
