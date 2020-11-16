@@ -32,6 +32,9 @@ import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Short as BSS
 import qualified Data.Map.Strict as M
 import qualified Data.Sequence as Seq
+import qualified Data.Serialize as S
+import qualified Data.Serialize.Get as S
+import qualified Data.Serialize.Put as S
 import qualified Data.Text.Encoding as TE
 import qualified Database.LevelDB as LDB
 
@@ -160,10 +163,16 @@ rollbackItemParser cur = do
   pure $ RollbackRecItem sp m prevHash prevH
 
 txHashParser :: Currency -> Parser TxHash
-txHashParser cur = fmap (TxHash . BSS.toShort) $ Parse.take $ getTxHashLength cur
+txHashParser BTC = do
+  val <- Parse.take $ getTxHashLength BTC
+  case S.runGet S.get val of
+    Left err -> fail err
+    Right result -> pure $ BtcTxHash result
+txHashParser ERGO = fmap (ErgTxHash . BSS.toShort) $ Parse.take $ getTxHashLength ERGO
 
 txHashBuilder :: TxHash -> Builder
-txHashBuilder (TxHash th) = shortByteString th
+txHashBuilder (BtcTxHash th) = byteString $ S.runPut $ S.put th
+txHashBuilder (ErgTxHash th) = shortByteString th
 
 hash2Word32MapParser :: Currency -> Parser (M.Map TxHash Word32)
 hash2Word32MapParser cur = do

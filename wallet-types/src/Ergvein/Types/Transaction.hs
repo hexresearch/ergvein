@@ -251,3 +251,12 @@ hkTxHashToEgv = BtcTxHash
 egvTxId :: EgvTx -> TxId
 egvTxId (BtcTx tx _) = hkTxHashToEgv $ HK.txHash tx
 egvTxId (ErgTx tx _) = error "egvTxId: implement for Ergo!"
+
+instance FromJSON ShortByteString where
+  parseJSON = withText "ShortByteString" $
+    either (fail "Failed to parse a ShortByteString") (pure . BSS.toShort) . hex2bsTE
+  {-# INLINE parseJSON #-}
+
+instance ToJSON ShortByteString where
+  toJSON = A.String . bs2Hex . BSS.fromShort
+  {-# INLINE toJSON #-}

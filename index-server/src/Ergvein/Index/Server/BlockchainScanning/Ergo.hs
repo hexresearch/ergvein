@@ -25,12 +25,12 @@ import Control.Monad.IO.Unlift
 
 txInfo :: ApiMonad m => ErgoTransaction -> m ([TxInfo], [TxHash])
 txInfo tx = do
-  let info = TxInfo { txHash =  TxHash $ BSS.toShort $ unTransactionId $ transactionId (tx :: ErgoTransaction)
+  let info = TxInfo { txHash =  ErgTxHash $ BSS.toShort $ unTransactionId $ transactionId (tx :: ErgoTransaction)
                     , txBytes = mempty
                     , txOutputsCount = fromIntegral $ length $ dataInputs tx
                     }
   txIns <- forM (dataInputs tx) txInInfo
-  let spentTxIds = TxHash . BSS.toShort . unTransactionId . fromJust . (transactionId :: ErgoTransactionOutput -> Maybe TransactionId) <$> txIns
+  let spentTxIds = ErgTxHash . BSS.toShort . unTransactionId . fromJust . (transactionId :: ErgoTransactionOutput -> Maybe TransactionId) <$> txIns
   pure $ ([info], spentTxIds)
   where
     txInInfo txIn = UtxoApi.getById $ boxId (txIn :: ErgoTransactionDataInput)
