@@ -34,6 +34,7 @@ import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node
 import Ergvein.Wallet.Platform
+import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Settings (Settings(..))
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Sync.Status
@@ -344,6 +345,7 @@ liftAuth ma0 ma = mdo
         flip runReaderT env $ do -- Workers and other routines go here
           when isAndroid (deleteTmpFiles storeDir)
           -- initFiltersHeights filtersHeights
+          scanner
           btcNodeController
           heightAsking
           feesWorker

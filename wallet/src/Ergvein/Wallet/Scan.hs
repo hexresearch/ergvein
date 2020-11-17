@@ -1,5 +1,7 @@
 module Ergvein.Wallet.Scan (
-    scanBtcBlocks
+    scanner
+  , scanBtcBlocks
+  , refreshBtcKeys
   ) where
 
 import Control.Lens
@@ -7,9 +9,11 @@ import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.ByteString (ByteString)
 import Data.List
+import Data.Maybe
 import Data.Time.Clock.POSIX
 import Data.Vector (Vector)
 
+import Ergvein.Filters.Btc.Mutable
 import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
@@ -18,6 +22,7 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
+import Ergvein.Wallet.Filters.Loader
 import Ergvein.Wallet.Log.Event
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
@@ -29,10 +34,10 @@ import Ergvein.Wallet.Storage.Util (addXPubKeyToKeystore)
 import Ergvein.Wallet.Sync.Status
 import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Util
-import Ergvein.Filters.Btc
 
 import qualified Data.Map.Strict                    as M
 import qualified Data.Set                           as S
+import qualified Data.Text                          as T
 import qualified Data.Vector                        as V
 import qualified Network.Haskoin.Block              as HB
 import qualified Network.Haskoin.Transaction        as HT
@@ -42,14 +47,92 @@ import qualified Network.Haskoin.Transaction        as HT
 scanner :: MonadFront t m => m ()
 scanner = do
   cursD <- getActiveCursD
-  void $ widgetHoldDyn $ ffor cursD $ traverse_ scannerFor . S.toList
+  void $ widgetHoldDyn $ ffor cursD $ traverse_ $ \case
+    BTC -> scannerBtc
+    _ -> pure ()
 
--- | Widget that continuously scans new filters agains all known public keys and
--- updates transactions that are found. Specific for currency.
-scannerFor :: MonadFront t m => Currency -> m ()
-scannerFor cur = case cur of
-  BTC -> pure ()
-  _ -> pure ()
+scannerBtc :: forall t m . MonadFront t m => m ()
+scannerBtc = void $ workflow checkRestored
+  where
+    filterReqDelay = 10
+    -- | Before actually starting up check if the wallet is currently being restored
+    -- if it is then wait until restore is done.
+    checkRestored :: Workflow t m ()
+    checkRestored = Workflow $ do
+      logWrite "[scannerBtc][checkRestored]: Checking restore status"
+      restoringE <- updatedWithInit . fmap _pubStorage'restoring =<< getPubStorageD
+      let goE = listenHeight <$ ffilter not restoringE
+      pure ((), goE)
+
+    -- | Listen the btc network for new blocks
+    -- Once we spot a new block has been issued, poll indexers for filters
+    -- Repeat the request each filterReqDelay just in case
+    listenHeight :: Workflow t m ()
+    listenHeight = Workflow $ do
+      logWrite "[scannerBtc][listenHeight]: Start"
+      heightD <- getCurrentHeight BTC
+      filterD <- getScannedHeightD BTC
+      fhE <- updatedWithInit $ ((,) . fromIntegral) <$> heightD <*> filterD
+      reqE <- widgetHoldE (pure never) $ ffor fhE $ \(h,f) -> if h >= f
+        then do
+          buildE <- getPostBuild
+          te <- tickLossyFromPostBuildTime filterReqDelay
+          let n = fromIntegral $ if f == h then 1 else h - f
+          pure $ (f, n) <$ (leftmost [buildE, void te])
+        else pure never
+      filtersE <- getFilters BTC reqE
+      pure ((), prepareBatch <$> filtersE)
+
+    -- | Prepare the batch for processing
+    -- Decode filters, add height info and get all the keys
+    prepareBatch :: [(BlockHash, ByteString)] -> Workflow t m ()
+    prepareBatch fs = Workflow $ do
+      logWrite $ "[scannerBtc][prepareBatch]: Got a new batch of size " <> showt (length fs)
+      fh <- getScannedHeight BTC
+      let filts = zip [fh, fh+1 ..] fs
+      batch <- fmap catMaybes $ flip traverse filts $ \(h, (bh, bs)) -> do
+        efilt <- decodeBtcAddrFilter bs
+        case efilt of
+          Left err -> do
+            logWrite $ "BTC filter decoding error: " <> (T.pack err)
+            pure Nothing
+          Right filt -> pure $ Just (h, bh, filt)
+      psD <- getPubStorageD
+      buildE <- getPostBuild
+      let nextE = ffor (current psD `tag` buildE) $ \ps -> let
+            ext = repackKeys External $ pubStorageKeys BTC External ps
+            int = repackKeys Internal $ pubStorageKeys BTC Internal ps
+            nextHeight = fh + fromIntegral (length fs)
+            in scanBatchKeys nextHeight batch $ (V.++) ext int
+      nextE' <- delay 0.1 nextE
+      pure ((), nextE')
+
+    -- | Scan the batch against all provided keys
+    -- After scanning and updating the wallet check if new keys have to be generated
+    -- If there are new keys, feed them to scanBatchKeys again
+    -- If there is none, set nextHeight and switch back to listenHeight
+    scanBatchKeys :: BlockHeight -> [(BlockHeight, BlockHash, BtcAddrFilter)] -> V.Vector ScanKeyBox -> Workflow t m ()
+    scanBatchKeys nextHeight batch keys = Workflow $ do
+      let mkAddr k = addressToScriptBS . xPubToBtcAddr . extractXPubKeyFromEgv $ scanBox'key k
+      let addrs = V.toList $ mkAddr <$> keys
+      buildE' <- getPostBuild
+      buildE <- delay 0.1 buildE'
+      hashesE <- performFork $ ffor buildE $ const $ liftIO $ fmap catMaybes $
+        flip traverse batch $ \(h, bh, filt) -> do
+          let bhash = egvBlockHashToHk bh
+          res <- applyBtcFilterMany bhash filt addrs
+          pure $ if res then Just (bhash, fromIntegral h) else Nothing
+      scanE <- scanBtcBlocks keys hashesE
+      keysE <- refreshBtcKeys $ void scanE
+      performEvent_ $ ffor keysE $ \ks ->
+        logWrite $ "[scannerBtc][scanBatchKeys]: Scan done. Got " <> showt (V.length ks) <> " extra keys"
+      let (nullE, extraE) = splitFilter V.null keysE
+      goListenE <- setScannedHeightE BTC $ nextHeight <$ nullE
+      let nextE = leftmost [listenHeight <$ goListenE, (scanBatchKeys nextHeight batch) <$> extraE]
+      pure ((), nextE)
+
+repackKeys :: KeyPurpose -> V.Vector EgvXPubKey -> V.Vector ScanKeyBox
+repackKeys kp = V.imap $ \i k -> ScanKeyBox k kp i
 
 -- | Check given blocks for transactions that are related to given set of keys and store txs into storage.
 -- Return event that fires 'True' if we found any transaction and fires 'False' if not.
@@ -117,3 +200,48 @@ getAddrTxsFromBlock box heights block = do
     mh = Just $ maybe 0 fromIntegral $ M.lookup bhash heights
     mheha = (\h -> EgvTxMeta (Just h) (Just bhash) blockTime) <$> mh
     secToTimestamp t = posixSecondsToUTCTime $ fromIntegral t
+
+-- | Check if the gap is not enough and new keys are needed
+-- generate new keys and return extra keys in an event to re-evaluate
+refreshBtcKeys :: MonadFront t m => Event t () -> m (Event t (V.Vector ScanKeyBox))
+refreshBtcKeys goE = do
+  psD <- getPubStorageD
+  ksVecE <- performFork $ ffor goE $ const $ do
+    ps <- sampleDyn psD
+    let masterPubKey = maybe (error "No BTC master key!") id $ pubStoragePubMaster BTC ps
+    let ks = maybe (error "No BTC key storage!") id $ pubStorageKeyStorage BTC ps
+
+    let eN = V.length $ pubStorageKeys BTC External ps
+        eU = maybe 0 fst $ pubStorageLastUnusedKey BTC External ps
+        extExtraNum = gapLimit - (eN - eU)
+        extKeys = if extExtraNum > 0
+          then derivePubKey masterPubKey External . fromIntegral <$> [eN .. eN+extExtraNum-1]
+          else []
+        extKb = zipWith (\i k -> ScanKeyBox k External i) [eN, eN+1 ..] extKeys
+    let iN = V.length $ pubStorageKeys BTC Internal ps
+        iU = maybe 0 fst $ pubStorageLastUnusedKey BTC Internal ps
+        intExtraNum = gapLimit - (iN - iU)
+        intKeys = if intExtraNum > 0
+          then derivePubKey masterPubKey Internal . fromIntegral <$> [iN .. iN+intExtraNum-1]
+          else []
+        intKb = zipWith (\i k -> ScanKeyBox k Internal i) [iN, iN+1 ..] intKeys
+    let vec = V.fromList $ extKb <> intKb
+    pure $ case (extKeys, intKeys) of
+      ([], []) -> (Nothing, vec)
+      _ -> let
+        ks' = foldl' (flip $ addXPubKeyToKeystore External) ks extKeys
+        ks'' = foldl' (flip $ addXPubKeyToKeystore Internal) ks' intKeys
+        in (Just ks'', vec)
+  let storeE = fforMaybe ksVecE $ \(mks,_) -> case mks of
+        Just ks -> Just $ Just . pubStorageSetKeyStorage BTC ks
+        _ -> Nothing
+  modifyPubStorage "deriveNewBtcKeys" storeE
+  pure $ snd <$> ksVecE
+
+-- | Calculate number of last restore key and gap that indicates how many unused
+-- keys we are scanned already.
+calcNumGap :: PubStorage -> Currency -> KeyPurpose -> Int
+calcNumGap ps cur s = let
+    l = V.length (pubStorageKeys cur s ps) - 1
+    unused = maybe 0 fst $ pubStorageLastUnusedKey cur s ps
+    in l - unused
