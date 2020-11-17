@@ -137,7 +137,7 @@ activePageWidget = mdo
   (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
     tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
-      fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSClose else NSSAddUrl
+      fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSPin else NSSAddUrl
     pure (refrE', tglE')
   pure ()
 
@@ -148,14 +148,15 @@ renderActive :: MonadFrontBase t m
   -> (Maybe (IndexerConnection t))
   -> m ()
 renderActive nsa nfo refrE mconn = mdo
+  liftIO $ print $ show nsa
   pinD <- holdDyn False pinE
   actD <- holdDyn False actE
   let pinBtn = fmap switchDyn $ widgetHoldDyn $ ffor pinD $ \b -> fmap (not b <$)
         $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a"
-          $ if b then NSSClose else NSSEdit
+          $ if b then NSSPin else NSSUnpin
   let actBtn = fmap switchDyn $ widgetHoldDyn $ ffor actD $ \b -> fmap (not b <$)
         $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a"
-          $ if b then NSSClose else NSSEdit
+          $ if b then NSSStart else NSSStop
   (pinE, actE) <- divClass "network-wrapper mt-3" $ case mconn of
     Nothing -> do
       (pinE, actE) <- divClass "network-name" $ do

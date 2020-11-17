@@ -67,23 +67,20 @@ import Ergvein.Wallet.Native
 
 
 data PeerInfo = PeerInfo
-  { peerInfoIsActivated :: !Bool
-  , peerInfoIsToAvoid   :: !Bool
-  , peerInfoIsManual    :: !Bool
+  { peerInfoIsActive :: !Bool
+  , peerInfoIsPinned   :: !Bool
   } deriving (Eq, Show)
 
 instance ToJSON PeerInfo where
   toJSON PeerInfo{..} = object [
-      "isActivated" .= toJSON peerInfoIsActivated
-    , "isToAvoid"   .= toJSON peerInfoIsToAvoid
-    , "isManual"    .= toJSON peerInfoIsManual
+      "isActive" .= toJSON peerInfoIsActive
+    , "isPinned" .= toJSON peerInfoIsPinned
    ]
 
 instance FromJSON PeerInfo where
   parseJSON = withObject "v" $ \o -> do
-    peerInfoIsActivated     <- o .: "isActivated"
-    peerInfoIsToAvoid       <- o .: "isToAvoid"
-    peerInfoIsManual        <- o .: "isManual"
+    peerInfoIsActive <- o .: "isActive"
+    peerInfoIsPinned <- o .: "isPinned"
     pure PeerInfo{..}
 
 data ExplorerUrls = ExplorerUrls {
@@ -241,7 +238,7 @@ defaultSettings home =
       , settingsExplorerUrl       = defaultExplorerUrl
       , settingsPortfolio         = False
       , settingsFiatCurr          = USD
-      , settingsAddrs             = mempty
+      , settingsAddrs             = M.singleton "127.0.0.1:8667" $ PeerInfo  True True
       , settingsDiscoveryEnabled  = True
       , settingsDns               = defaultDns
       , settingsSocksProxy        = Nothing

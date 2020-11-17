@@ -148,16 +148,18 @@ data NetSetupStrings
   | NSSReqNumMin
   | NSSReqNumMax
   | NSSSave
+  | NSSDelete
   | NSSAddUrl
   | NSSAddDns
   | NSSAdd
-  | NSSDelete
-  | NSSEdit
-  | NSSCancel
-  | NSSClose
+  | NSSPin
+  | NSSUnpin
+  | NSSStart
+  | NSSStop
   | NSSCopyURL
   | NSSFailedDns
   | NSSNoHeight
+  | NSSCancel
 
 instance LocalizedPrint NetSetupStrings where
   localizedShow l v = case l of
@@ -184,9 +186,11 @@ instance LocalizedPrint NetSetupStrings where
       NSSAddDns       -> "Add DNS"
       NSSAdd          -> "Add"
       NSSDelete       -> "Delete"
-      NSSEdit         -> "Edit"
+      NSSPin          -> "Pin"
+      NSSUnpin        -> "Unpin"
+      NSSStart        -> "Start"
+      NSSStop         -> "Stop"
       NSSCancel       -> "Cancel"
-      NSSClose        -> "Close"
       NSSCopyURL      -> "Copy URL"
       NSSFailedDns    -> "Failed to parse DNS IP"
       NSSNoHeight     -> "None"
@@ -212,9 +216,11 @@ instance LocalizedPrint NetSetupStrings where
       NSSAddDns       -> "Добавить DNS"
       NSSAdd          -> "Добавить"
       NSSDelete       -> "Удалить"
-      NSSEdit         -> "Изменить"
-      NSSCancel       -> "Отменить"
-      NSSClose        -> "Закрыть"
+      NSSPin          -> "Закрепить"
+      NSSUnpin        -> "Открепить"
+      NSSStart        -> "Старт"
+      NSSStop         -> "Стоп"
       NSSCopyURL      -> "Copy URL"
       NSSFailedDns    -> "Некорректный IP DNS сервера"
       NSSNoHeight     -> "Нет"
+      NSSCancel       -> "Отмена"
