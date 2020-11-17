@@ -6,6 +6,8 @@ module Reflex.Localize.Class(
   , localizedText
   , localizedTextLower
   , localizedTextUpper
+  , localizedDyn
+  , localizedDynText
 ) where
 
 import Data.Data
@@ -65,6 +67,14 @@ defaultLocPrintDyn f v = fmap (fmap (flip f v)) getLanguage
 
 localizedText :: (MonadLocalized t m, LocalizedPrint a) => a -> m ()
 localizedText val = dynText =<< localized val
+
+localizedDyn :: (MonadLocalized t m, LocalizedPrint a) => Dynamic t a -> m (Dynamic t Text)
+localizedDyn valD = do
+  langD <- getLanguage
+  pure $ localizedShow <$> langD <*> valD
+
+localizedDynText :: (MonadLocalized t m, LocalizedPrint a) => Dynamic t a -> m ()
+localizedDynText valD = dynText =<< localizedDyn valD
 
 localizedTextLower :: (MonadLocalized t m, LocalizedPrint a) => a -> m ()
 localizedTextLower val = dynText =<< (fmap2 T.toLower $ localized val)
