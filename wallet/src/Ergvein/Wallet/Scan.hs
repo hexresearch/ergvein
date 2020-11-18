@@ -28,7 +28,7 @@ import Ergvein.Wallet.Node.BTC.Blocks
 import Ergvein.Wallet.Storage.Constants
 import Ergvein.Wallet.Storage.Util (addXPubKeyToKeystore)
 import Ergvein.Wallet.Sync.Status
-import Ergvein.Wallet.Tx
+import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Util
 
 import qualified Data.Map.Strict                    as M

@@ -32,7 +32,7 @@ import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Node.BTC.Mempool
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Sync.Status
-import Ergvein.Wallet.Tx
+import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Util
 
 import qualified Data.Bits as BI

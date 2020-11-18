@@ -34,9 +34,9 @@ library
         Ergvein.Wallet.Debug
         Ergvein.Wallet.Elements
         Ergvein.Wallet.Elements.Inplace
-        Ergvein.Wallet.Elements.Toggle
         Ergvein.Wallet.Elements.Input
         Ergvein.Wallet.Elements.Input.Class
+        Ergvein.Wallet.Elements.Toggle
         Ergvein.Wallet.Embed
         Ergvein.Wallet.Embed.TH
         Ergvein.Wallet.Filters.Btc.Queries
@@ -139,7 +139,10 @@ library
         Ergvein.Wallet.Sync.Status
         Ergvein.Wallet.Sync.Widget
         Ergvein.Wallet.TimeZone
-        Ergvein.Wallet.Tx
+        Ergvein.Wallet.Transaction
+        Ergvein.Wallet.Transaction.Get
+        Ergvein.Wallet.Transaction.Util
+        Ergvein.Wallet.Transaction.View
         Ergvein.Wallet.Util
         Ergvein.Wallet.Validate
         Ergvein.Wallet.Widget.Balance

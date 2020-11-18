@@ -17,6 +17,9 @@ import Ergvein.Wallet.Node.BTC.Mempool
 import Ergvein.Wallet.Page.Transaction
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Transaction.Get
+import Ergvein.Wallet.Transaction.Util
+import Ergvein.Wallet.Transaction.View
 import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
 
