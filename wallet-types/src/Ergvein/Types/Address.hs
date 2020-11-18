@@ -129,12 +129,12 @@ egvAddrToJSON :: EgvAddress -> Value
 egvAddrToJSON = String . egvAddrToString
 
 egvAddrFromJSON :: Currency -> Value -> Parser EgvAddress
-egvAddrFromJSON cur
-  | cur == BTC = withText "address" $ \t ->
+egvAddrFromJSON = \case
+  BTC -> withText "address" $ \t ->
     case btcAddrFromString t of
       Nothing -> fail "could not decode address"
       Just x  -> return $ BtcAddress x
-  | cur == ERGO = withText "address" $ \t ->
+  ERGO -> withText "address" $ \t ->
     case ergAddrFromString t of
       Nothing -> fail "could not decode address"
       Just x  -> return $ ErgAddress x

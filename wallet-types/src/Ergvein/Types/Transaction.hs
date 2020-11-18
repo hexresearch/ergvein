@@ -97,12 +97,12 @@ egvTxCurrency e = case e of
   ErgTx{} -> ERGO
 
 egvTxFromJSON :: Currency -> Value -> Parser EgvTx
-egvTxFromJSON cur
-  | cur == BTC = withText "Bitcoin transaction" $ \t ->
+egvTxFromJSON = \case
+  BTC -> withText "Bitcoin transaction" $ \t ->
     case btcTxFromString t of
       Nothing -> fail "could not decode Bitcoin transaction"
       Just x  -> return $ BtcTx x Nothing
-  | cur == ERGO = withText "Ergo transaction" $ \t ->
+  ERGO -> withText "Ergo transaction" $ \t ->
     case ergTxFromString t of
       Nothing -> fail "could not decode Ergo transaction"
       Just x  -> return $ ErgTx x Nothing
