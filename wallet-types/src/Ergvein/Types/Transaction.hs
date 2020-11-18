@@ -183,15 +183,6 @@ instance ToJSON TxHash where
   toJSON = A.String . bs2Hex . BSS.fromShort . getTxHash
   {-# INLINE toJSON #-}
 
-instance FromJSON ShortByteString where
-  parseJSON = withText "ShortByteString" $
-    either (fail "Failed to parse a ShortByteString") (pure . BSS.toShort) . hex2bsTE
-  {-# INLINE parseJSON #-}
-
-instance ToJSON ShortByteString where
-  toJSON = A.String . bs2Hex . BSS.fromShort
-  {-# INLINE toJSON #-}
-
 instance FromJSONKey TxHash where
 instance ToJSONKey TxHash where
 
