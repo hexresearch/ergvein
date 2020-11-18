@@ -335,9 +335,9 @@ data PubKeystore = PubKeystore {
 $(deriveJSON aesonOptionsStripToApostroph ''PubKeystore)
 
 getLastUnusedKey :: KeyPurpose -> PubKeystore -> Maybe (Int, EgvPubKeyBox)
-getLastUnusedKey kp PubKeystore{..} = go Nothing vec
+getLastUnusedKey kp PubKeystore{..} = go Nothing vector
   where
-    vec = case kp of
+    vector = case kp of
       Internal -> pubKeystore'internal
       External -> pubKeystore'external
     go :: Maybe (Int, EgvPubKeyBox) -> Vector EgvPubKeyBox -> Maybe (Int, EgvPubKeyBox)
