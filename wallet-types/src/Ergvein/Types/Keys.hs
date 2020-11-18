@@ -44,7 +44,6 @@ import Ergvein.Types.Network
 import Ergvein.Types.Transaction
 import Text.Read              (readMaybe)
 
-import qualified Data.IntMap.Strict as MI
 import qualified Data.Set as S
 import qualified Data.Vector as V
 import qualified Data.ByteString.Short as BSS

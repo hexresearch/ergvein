@@ -1,5 +1,5 @@
 module Ergvein.Types.Transaction (
-      BtcTx(..)
+      BtcTx
     , btcTxToString
     , btcTxFromString
     , ErgTx(..)
@@ -26,14 +26,13 @@ module Ergvein.Types.Transaction (
     , setEgvTxMeta
   ) where
 
-import Control.Monad (mzero, (<=<))
+import Control.Monad ((<=<))
 import Data.Aeson as A
 import Data.Aeson.Types (Parser)
 import Data.ByteString (ByteString)
 import Data.ByteString.Short (ShortByteString)
 import Control.DeepSeq
 import Data.Either
-import Data.String (IsString, fromString)
 import Data.Text as T
 import Data.Time
 import Data.Flat

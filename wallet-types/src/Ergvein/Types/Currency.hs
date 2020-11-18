@@ -40,11 +40,9 @@ import Data.Flat
 import Data.Maybe (fromMaybe)
 import Data.Ratio
 import Data.Serialize (Serialize)
-import Data.String
-import Data.Text (Text, pack, unpack)
+import Data.Text (Text)
 import Data.Time
 import Data.Time.Clock.POSIX
-import Data.Version
 import Data.Word
 import Ergvein.Aeson
 import Text.Printf

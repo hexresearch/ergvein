@@ -17,12 +17,10 @@ import Network.Haskoin.Script
 import Network.Haskoin.Transaction
 
 import Ergvein.Aeson
-import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Transaction
 
 import qualified Data.Map.Strict as M
-import qualified Data.Set as S
 
 data EgvUtxoStatus
   = EUtxoConfirmed

@@ -30,7 +30,6 @@ import qualified Data.Serialize            as S
 import qualified Data.Serialize.Get        as Get
 import qualified Data.Serialize.Put        as Put
 import qualified Network.Haskoin.Address   as HA
-import qualified Network.Haskoin.Constants as HC
 import qualified Text.Read                 as R
 
 type BtcAddress = HA.Address
