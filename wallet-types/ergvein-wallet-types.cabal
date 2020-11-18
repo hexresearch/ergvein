@@ -12,6 +12,7 @@ flag testnet
   manual: True
 
 library
+  Ghc-options:         -Wall
   hs-source-dirs:      src
   exposed-modules:
     Ergvein.Types
