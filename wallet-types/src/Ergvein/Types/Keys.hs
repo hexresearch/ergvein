@@ -127,25 +127,25 @@ putXPubKey (EgvErgNetwork net) k = do
 
 -- | Exports an extended private key to the BIP32 key export format ('Base58').
 xPrvExport :: EgvNetwork -> XPrvKey -> Base58
-xPrvExport n@(EgvBtcNetwork net) = encodeBase58CheckBtc . runPut . putXPrvKey n
-xPrvExport n@(EgvErgNetwork net) = encodeBase58CheckErg . runPut . putXPrvKey n
+xPrvExport n@(EgvBtcNetwork _) = encodeBase58CheckBtc . runPut . putXPrvKey n
+xPrvExport n@(EgvErgNetwork _) = encodeBase58CheckErg . runPut . putXPrvKey n
 
 -- | Exports an extended public key to the BIP32 key export format ('Base58').
 xPubExport :: EgvNetwork -> XPubKey -> Base58
-xPubExport n@(EgvBtcNetwork net) = encodeBase58CheckBtc . runPut . putXPubKey n
-xPubExport n@(EgvErgNetwork net) = encodeBase58CheckErg . runPut . putXPubKey n
+xPubExport n@(EgvBtcNetwork _) = encodeBase58CheckBtc . runPut . putXPubKey n
+xPubExport n@(EgvErgNetwork _) = encodeBase58CheckErg . runPut . putXPubKey n
 
 -- | Decodes a BIP32 encoded extended private key. This function will fail if
 -- invalid base 58 characters are detected or if the checksum fails.
 xPrvImport :: EgvNetwork -> Base58 -> Maybe XPrvKey
-xPrvImport n@(EgvBtcNetwork net) = eitherToMaybe . runGet (getXPrvKey n) <=< decodeBase58CheckBtc
-xPrvImport n@(EgvErgNetwork net) = eitherToMaybe . runGet (getXPrvKey n) <=< decodeBase58CheckErg
+xPrvImport n@(EgvBtcNetwork _) = eitherToMaybe . runGet (getXPrvKey n) <=< decodeBase58CheckBtc
+xPrvImport n@(EgvErgNetwork _) = eitherToMaybe . runGet (getXPrvKey n) <=< decodeBase58CheckErg
 
 -- | Decodes a BIP32 encoded extended public key. This function will fail if
 -- invalid base 58 characters are detected or if the checksum fails.
 xPubImport :: EgvNetwork -> Base58 -> Maybe XPubKey
-xPubImport n@(EgvBtcNetwork net) = eitherToMaybe . runGet (getXPubKey n) <=< decodeBase58CheckBtc
-xPubImport n@(EgvErgNetwork net) = eitherToMaybe . runGet (getXPubKey n) <=< decodeBase58CheckErg
+xPubImport n@(EgvBtcNetwork _) = eitherToMaybe . runGet (getXPubKey n) <=< decodeBase58CheckBtc
+xPubImport n@(EgvErgNetwork _) = eitherToMaybe . runGet (getXPubKey n) <=< decodeBase58CheckErg
 
 -- | Wrapper for a root extended private key (a key without assigned network)
 newtype EgvRootXPrvKey = EgvRootXPrvKey {unEgvRootXPrvKey :: XPrvKey}
@@ -289,10 +289,10 @@ instance Ord EgvXPubKey where
     EQ -> compare (xPubExport (getCurrencyNetwork c1) k1) (xPubExport (getCurrencyNetwork c2) k2)
     x -> x
     where
-      (c1, k1, l1) =  case key1 of
+      (c1, k1, _l1) =  case key1 of
         ErgXPubKey k l -> (ERGO, k, l)
         BtcXPubKey k l -> (BTC, k, l)
-      (c2, k2, l2) =  case key2 of
+      (c2, k2, _l2) =  case key2 of
         ErgXPubKey k l -> (ERGO, k, l)
         BtcXPubKey k l -> (BTC, k, l)
 

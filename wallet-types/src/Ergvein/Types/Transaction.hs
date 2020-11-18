@@ -89,7 +89,7 @@ egvTxToString (ErgTx tx _) = ergTxToString tx
 
 egvTxId :: EgvTx -> TxId
 egvTxId (BtcTx tx _) = hkTxHashToEgv $ HK.txHash tx
-egvTxId (ErgTx tx _) = error "egvTxId: implement for Ergo!"
+egvTxId (ErgTx _  _) = error "egvTxId: implement for Ergo!"
 
 egvTxCurrency :: EgvTx -> Currency
 egvTxCurrency e = case e of
@@ -119,12 +119,12 @@ setEgvTxMeta etx mh = case etx of
 
 
 instance ToJSON EgvTx where
-  toJSON egvTx@(BtcTx tx meta) = object [
+  toJSON (BtcTx tx meta) = object [
       "currency"  .= toJSON BTC
     , "tx"        .= btcTxToString tx
     , "meta"      .= toJSON meta
     ]
-  toJSON egvTx@(ErgTx tx meta) = object [
+  toJSON (ErgTx tx meta) = object [
       "currency"  .= toJSON ERGO
     , "tx"        .= ergTxToString tx
     , "meta"      .= toJSON meta

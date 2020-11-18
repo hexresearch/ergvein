@@ -1,5 +1,5 @@
 module Ergvein.Types.Address (
-      BtcAddress(..)
+      BtcAddress
     , ErgAddress(..)
     , EgvAddress(..)
     , VLAddr(..)
@@ -140,11 +140,11 @@ egvAddrFromJSON cur
       Just x  -> return $ ErgAddress x
 
 instance ToJSON EgvAddress where
-  toJSON egvAddr@(BtcAddress addr) = object [
+  toJSON egvAddr@(BtcAddress _) = object [
       "currency" .= toJSON BTC
     , "address"  .= egvAddrToJSON egvAddr
     ]
-  toJSON egvAddr@(ErgAddress addr) = object [
+  toJSON egvAddr@(ErgAddress _) = object [
       "currency" .= toJSON ERGO
     , "address"  .= egvAddrToJSON egvAddr
     ]

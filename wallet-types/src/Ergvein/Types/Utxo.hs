@@ -77,6 +77,3 @@ reconfirmBtxUtxoSetPure bh bs = flip M.mapMaybe bs $ \meta -> case utxoMeta'stat
   EUtxoReceiving mh -> case mh of
     Nothing -> Just $ meta {utxoMeta'status = EUtxoReceiving $ Just bh}
     Just bh0 -> if bh - bh0 >= staleGap - 1 then Nothing else Just meta
-  where
-    keys = M.keys bs
-    foo b ta f = foldl' f b ta
