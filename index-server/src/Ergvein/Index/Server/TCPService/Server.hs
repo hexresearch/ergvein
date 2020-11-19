@@ -145,7 +145,7 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
 
         messageHeaderBytes :: ExceptT Reject ServerM BS.ByteString
         messageHeaderBytes = do
-          fetchedBytes <- lift $ liftIO messageHeaderBytesFetch
+          fetchedBytes <- liftIO messageHeaderBytesFetch
           if not (BS.null fetchedBytes) then
             except $ Right fetchedBytes
           else
