@@ -97,7 +97,7 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
   case evalResult of
     Right (msgs@(MVersionACK _ : _)) -> do --peer version match ours
       sendChan <- liftIO newTChanIO
-      forM msgs $ (liftIO . writeMsg sendChan)
+      liftIO $ forM_ msgs $ writeMsg sendChan
       -- Spawn message sender thread
       fork $ sendLoop sendChan
       -- Spawn broadcaster loop
@@ -129,7 +129,7 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
           evalResult <- runExceptT $ evalMsg
           case evalResult of
             Right msgs -> do
-              forM msgs $ (liftIO . writeMsg destinationChan)
+              liftIO $ forM_ msgs $ writeMsg destinationChan
               listenLoop'
             Left Reject {..} | rejectMsgCode == ZeroBytesReceived -> do
               logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
