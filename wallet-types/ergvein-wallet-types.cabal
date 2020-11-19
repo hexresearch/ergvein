@@ -12,6 +12,7 @@ flag testnet
   manual: True
 
 library
+  Ghc-options:         -Wall
   hs-source-dirs:      src
   exposed-modules:
     Ergvein.Types
@@ -22,6 +23,7 @@ library
     Ergvein.Types.Fees
     Ergvein.Types.Keys
     Ergvein.Types.Network
+    Ergvein.Types.Orphanage
     Ergvein.Types.Restore
     Ergvein.Types.Storage
     Ergvein.Types.Transaction
