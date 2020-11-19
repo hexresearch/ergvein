@@ -9,6 +9,7 @@ import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad.IO.Unlift
 import Data.Maybe
+import Data.Foldable
 import Ergvein.Index.Server.Dependencies
 import Network.Socket
 
@@ -36,5 +37,5 @@ closeAllConnections :: HasConnectionsManagement m => m ()
 closeAllConnections = do
   openedConnectionsRef <- openConnections
   liftIO $ do
-    traverse closeSocketAndKillThread =<< Map.elems <$> readTVarIO openedConnectionsRef
+    traverse_ closeSocketAndKillThread =<< Map.elems <$> readTVarIO openedConnectionsRef
     atomically $ writeTVar openedConnectionsRef mempty
