@@ -6,11 +6,9 @@ import Data.Vector.Unboxed.Deriving
 import Data.Word
 import Foreign.C.Types
 import Foreign.Storable
-import Language.Haskell.TH
 
 import Ergvein.Types.Fees
 
-import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 
@@ -44,6 +42,7 @@ data CurrencyCode = BTC   | TBTC
                   | DASH  | TDASH
   deriving (Eq, Ord, Enum, Bounded, Show)
 
+currencyCodeToWord32 :: CurrencyCode -> Word32
 currencyCodeToWord32 = \case
   BTC    -> 0
   TBTC   -> 1
@@ -60,6 +59,7 @@ currencyCodeToWord32 = \case
   DASH   -> 12
   TDASH  -> 13
 
+word32ToCurrencyCode :: Word32 -> CurrencyCode
 word32ToCurrencyCode = \case
   0  -> BTC
   1  -> TBTC

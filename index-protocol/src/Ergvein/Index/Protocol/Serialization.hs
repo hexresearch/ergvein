@@ -101,7 +101,7 @@ messageBuilder (MReject msg) = messageBase MRejectType msgSize $ word32LE reject
     rejectType = rejectTypeToWord32 $ rejectMsgCode msg
     msgSize = genericSizeOf rejectType
 
-messageBuilder (MVersionACK msg) = messageBase MVersionACKType msgSize $ word8 msg
+messageBuilder (MVersionACK VersionACK) = messageBase MVersionACKType msgSize $ word8 msg
   where
     msg = 0 :: Word8
     msgSize = genericSizeOf msg
@@ -142,7 +142,7 @@ messageBuilder (MFiltersResponse FilterResponse {..}) =
   <> word32LE filtersCount
   <> lazyByteString zippedFilters
   where
-    (filtersSizeSum, filters) = mconcat $ blockFilterBuilder <$> V.toList filterResponseFilters
+    (_filtersSizeSum, filters) = mconcat $ blockFilterBuilder <$> V.toList filterResponseFilters
     filtersCount = fromIntegral $ V.length filterResponseFilters
     zippedFilters = compress $ toLazyByteString filters
 

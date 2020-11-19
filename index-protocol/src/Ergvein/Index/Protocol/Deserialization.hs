@@ -4,7 +4,6 @@ import Codec.Compression.GZip
 import Control.Monad
 import Data.Attoparsec.Binary
 import Data.Attoparsec.ByteString
-import Data.List
 import Data.Word
 
 import Ergvein.Index.Protocol.Types
