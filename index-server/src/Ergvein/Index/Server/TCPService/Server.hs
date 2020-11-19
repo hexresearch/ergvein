@@ -54,7 +54,7 @@ tcpSrv thread = do
     addr <- resolve port host
     sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
     bind sock (addrAddress addr)
-    listen sock 5
+    listen sock numberOfQueuedConnections
     unliftIO unlift $ mainLoop thread sock
   where
     numberOfQueuedConnections = 5
@@ -160,4 +160,4 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
           except $ mapLeft (\_-> Reject MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
 
         response :: Message -> ExceptT Reject ServerM [Message]
-        response msg = (lift $ handleMsg addr msg) `catch` (\(SomeException ex) -> except $ Left $ Reject InternalServerError)
+        response msg = (lift $ handleMsg addr msg) `catch` (\SomeException{} -> except $ Left $ Reject InternalServerError)

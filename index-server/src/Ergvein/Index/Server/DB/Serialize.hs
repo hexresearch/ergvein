@@ -59,7 +59,7 @@ instance EgvSerialize TxRecBytes where
 -- ===========================================================================
 
 instance EgvSerialize BlockMetaRec where
-  egvSerialize cur (BlockMetaRec hd filt) = BL.toStrict . toLazyByteString $ let
+  egvSerialize _ (BlockMetaRec hd filt) = BL.toStrict . toLazyByteString $ let
     len = fromIntegral $ BS.length filt
     in shortByteString hd <> word64LE len <> byteString filt
   egvDeserialize cur = parseOnly $ do
