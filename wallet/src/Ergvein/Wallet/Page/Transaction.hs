@@ -81,6 +81,7 @@ makeTxIdLink cur txId = do
       urlPrefixes = maybe btcDefaultExplorerUrls id mExplorerPrefixes
       urlPrefix = if isTestnet then testnetUrl urlPrefixes else mainnetUrl urlPrefixes
   hyperlink "link" txIdText (urlPrefix <> "/tx/" <> txIdText)
+  br
 
 showTime :: MonadFront t m => TransactionView -> m ()
 showTime TransactionView{..} = case txDate of
