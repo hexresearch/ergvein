@@ -17,12 +17,10 @@ import Network.Haskoin.Script
 import Network.Haskoin.Transaction
 
 import Ergvein.Aeson
-import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Transaction
 
 import qualified Data.Map.Strict as M
-import qualified Data.Set as S
 
 data EgvUtxoStatus
   = EUtxoConfirmed
@@ -55,9 +53,6 @@ type BtcUtxoSet = M.Map OutPoint UtxoMeta
 -- snd's bool: True - confirmed, must be deleted from UTXO set, False - set status to EUtxoSending
 type BtcUtxoUpdate = (BtcUtxoSet, [(OutPoint, Bool)])
 
-instance FromJSONKey OutPoint
-instance ToJSONKey OutPoint
-
 updateBtcUtxoSetPure :: BtcUtxoUpdate -> BtcUtxoSet -> BtcUtxoSet
 updateBtcUtxoSetPure (outs, ins) s = foo (M.union outs s) ins $ \m (op, b) ->
   M.update (\meta -> if b then Nothing else Just meta {utxoMeta'status = EUtxoSending Nothing}) op m
@@ -79,6 +74,3 @@ reconfirmBtxUtxoSetPure bh bs = flip M.mapMaybe bs $ \meta -> case utxoMeta'stat
   EUtxoReceiving mh -> case mh of
     Nothing -> Just $ meta {utxoMeta'status = EUtxoReceiving $ Just bh}
     Just bh0 -> if bh - bh0 >= staleGap - 1 then Nothing else Just meta
-  where
-    keys = M.keys bs
-    foo b ta f = foldl' f b ta

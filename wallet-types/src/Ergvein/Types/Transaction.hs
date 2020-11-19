@@ -1,5 +1,5 @@
 module Ergvein.Types.Transaction (
-      BtcTx(..)
+      BtcTx
     , btcTxToString
     , btcTxFromString
     , ErgTx(..)
@@ -26,14 +26,13 @@ module Ergvein.Types.Transaction (
     , setEgvTxMeta
   ) where
 
-import Control.Monad (mzero, (<=<))
+import Control.Monad ((<=<))
 import Data.Aeson as A
 import Data.Aeson.Types (Parser)
 import Data.ByteString (ByteString)
 import Data.ByteString.Short (ShortByteString)
 import Control.DeepSeq
 import Data.Either
-import Data.String (IsString, fromString)
 import Data.Text as T
 import Data.Time
 import Data.Flat
@@ -90,7 +89,7 @@ egvTxToString (ErgTx tx _) = ergTxToString tx
 
 egvTxId :: EgvTx -> TxId
 egvTxId (BtcTx tx _) = hkTxHashToEgv $ HK.txHash tx
-egvTxId (ErgTx tx _) = error "egvTxId: implement for Ergo!"
+egvTxId (ErgTx _  _) = error "egvTxId: implement for Ergo!"
 
 egvTxCurrency :: EgvTx -> Currency
 egvTxCurrency e = case e of
@@ -98,12 +97,12 @@ egvTxCurrency e = case e of
   ErgTx{} -> ERGO
 
 egvTxFromJSON :: Currency -> Value -> Parser EgvTx
-egvTxFromJSON cur
-  | cur == BTC = withText "Bitcoin transaction" $ \t ->
+egvTxFromJSON = \case
+  BTC -> withText "Bitcoin transaction" $ \t ->
     case btcTxFromString t of
       Nothing -> fail "could not decode Bitcoin transaction"
       Just x  -> return $ BtcTx x Nothing
-  | cur == ERGO = withText "Ergo transaction" $ \t ->
+  ERGO -> withText "Ergo transaction" $ \t ->
     case ergTxFromString t of
       Nothing -> fail "could not decode Ergo transaction"
       Just x  -> return $ ErgTx x Nothing
@@ -120,12 +119,12 @@ setEgvTxMeta etx mh = case etx of
 
 
 instance ToJSON EgvTx where
-  toJSON egvTx@(BtcTx tx meta) = object [
+  toJSON (BtcTx tx meta) = object [
       "currency"  .= toJSON BTC
     , "tx"        .= btcTxToString tx
     , "meta"      .= toJSON meta
     ]
-  toJSON egvTx@(ErgTx tx meta) = object [
+  toJSON (ErgTx tx meta) = object [
       "currency"  .= toJSON ERGO
     , "tx"        .= ergTxToString tx
     , "meta"      .= toJSON meta
@@ -182,15 +181,6 @@ instance FromJSON TxHash where
 
 instance ToJSON TxHash where
   toJSON = A.String . bs2Hex . BSS.fromShort . getTxHash
-  {-# INLINE toJSON #-}
-
-instance FromJSON ShortByteString where
-  parseJSON = withText "ShortByteString" $
-    either (fail "Failed to parse a ShortByteString") (pure . BSS.toShort) . hex2bsTE
-  {-# INLINE parseJSON #-}
-
-instance ToJSON ShortByteString where
-  toJSON = A.String . bs2Hex . BSS.fromShort
   {-# INLINE toJSON #-}
 
 instance FromJSONKey TxHash where
