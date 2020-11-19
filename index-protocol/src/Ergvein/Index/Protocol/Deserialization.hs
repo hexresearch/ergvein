@@ -99,7 +99,9 @@ filterParser = do
 
 addressParser :: Parser Address
 addressParser = do
-  addrType <- word8ToIPType <$> anyWord8
+  addrType <-  maybe (fail "Invalid address type") pure
+            .  word8ToIPType
+           =<< anyWord8
   addrPort <- anyWord16le
   addr <- Parse.take (if addrType == IPV4 then 4 else 16)
   pure $ Address

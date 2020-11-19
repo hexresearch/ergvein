@@ -162,10 +162,11 @@ ipTypeToWord8 = \case
   IPV4 -> 0
   IPV6 -> 1
 
-word8ToIPType :: Word8 -> IPType
+word8ToIPType :: Word8 -> Maybe IPType
 word8ToIPType = \case
-  0 -> IPV4
-  1 -> IPV6
+  0 -> Just IPV4
+  1 -> Just IPV6
+  _ -> Nothing
 
 data Address = Address
   { addressType    :: !IPType
