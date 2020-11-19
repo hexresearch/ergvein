@@ -1,9 +1,7 @@
 module Ergvein.Index.Server.Utils where
 
 import Control.Concurrent.STM
-import Control.Concurrent.STM.TVar
 import Control.Monad
-import Data.Foldable
 import Data.Hashable
 import Data.Word
 import System.Timeout

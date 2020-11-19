@@ -9,17 +9,11 @@ import Control.Monad.Catch
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Random
-import Control.Monad.Reader
 import Control.Monad.Trans.Except
 import Data.Attoparsec.ByteString
 import Data.ByteString.Builder
 import Data.Either.Combinators
-import Data.Foldable (traverse_)
-import Data.Time.Clock.POSIX
-import Data.Word
 import Network.Socket
-import Network.Socket.ByteString.Lazy
-import System.IO
 
 import Ergvein.Text
 import Ergvein.Index.Protocol.Deserialization

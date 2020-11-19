@@ -7,11 +7,8 @@ module Ergvein.Index.Server.TCPService.Connections
 
 import Control.Concurrent
 import Control.Concurrent.STM
-import Control.Concurrent.STM.TVar
 import Control.Monad.IO.Unlift
-import Data.Map.Strict (Map(..))
 import Data.Maybe
-import Ergvein.Index.Protocol.Types (CurrencyCode, Message)
 import Ergvein.Index.Server.Dependencies
 import Network.Socket
 

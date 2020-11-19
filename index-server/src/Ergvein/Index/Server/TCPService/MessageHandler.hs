@@ -4,9 +4,6 @@ import Control.Concurrent.STM
 import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Conversion
-import Data.Time.Clock.POSIX
-import Control.Monad.Random
-import Conversion
 import Network.Socket
 
 import Ergvein.Index.Protocol.Types as IPT

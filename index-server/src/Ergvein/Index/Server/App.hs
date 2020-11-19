@@ -15,7 +15,6 @@ import Ergvein.Index.Server.DB.Schema.Indexer (RollbackSequence(..))
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
-import Ergvein.Index.Server.PeerDiscovery.Discovery
 import Ergvein.Index.Server.TCPService.Server
 import Ergvein.Index.Server.Utils
 import Ergvein.Text

@@ -1,6 +1,5 @@
 module Ergvein.Index.Server.Monad where
 
-import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Immortal
 import Control.Monad.Base
@@ -9,7 +8,6 @@ import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Reader
 import Control.Monad.Trans.Control
-import Network.Socket
 import Prometheus (MonadMonitor(..))
 
 import Ergvein.Index.Client
@@ -19,10 +17,8 @@ import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
-import Ergvein.Types.Fees
 
 import qualified Data.Map.Strict as M
-import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 import qualified Network.Ergo.Api.Client     as ErgoApi
 
 newtype ServerM a = ServerM { unServerM :: ReaderT ServerEnv (LoggingT IO) a }
