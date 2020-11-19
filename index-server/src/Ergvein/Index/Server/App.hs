@@ -34,8 +34,8 @@ onStartup onlyScan _ = do
 
 onShutdown :: ServerEnv -> IO ()
 onShutdown env = do
-  T.putStrLn $ showt "Server stop signal recivied..."
-  T.putStrLn $ showt "service is stopping"
+  T.putStrLn "Server stop signal recivied..."
+  T.putStrLn "service is stopping"
   atomically $ writeTVar (envShutdownFlag env) True
 
 finalize :: (MonadIO m, MonadLogger m) => ServerEnv -> [Thread] -> [Thread] -> m ()
