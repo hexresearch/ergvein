@@ -35,7 +35,11 @@ word32toMessageType = \case
   _  -> Nothing
 
 currencyCodeParser :: Parser CurrencyCode
-currencyCodeParser = fmap word32ToCurrencyCode anyWord32le
+currencyCodeParser = do
+  w <- anyWord32le
+  case word32ToCurrencyCode w of
+    Nothing -> fail "Invalid currency code"
+    Just c  -> pure c
 
 word32toRejectType :: Word32 -> Maybe RejectCode
 word32toRejectType = \case
