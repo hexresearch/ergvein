@@ -130,15 +130,13 @@ filterTxsForAddress addr txs = fmap catMaybes $ flip traverse txs $ \tx -> do
 
 -- | Gets a list of groups of conflicting txs. Txs in the same group have at least one common input.
 getConflictingTxs :: [EgvTx] -> [[TxId]]
-getConflictingTxs txs = helper <$> btcTxs
+getConflictingTxs txs = getConflicts <$> btcTxs
   where
     btcTxs = getBtcTx <$> txs
-    groupedConflictingTxs = (fmap . fmap) getTxHash (L.groupBy haveCommonInputs btcTxs)
     getTxHash = hkTxHashToEgv . HK.txHash
 
-    helper :: HK.Tx -> [TxId]
-    helper tx = fromMaybe [] (L.delete (getTxHash tx) <$> mGroup)
-      where mGroup = L.find (\group -> L.elem (getTxHash tx) group) groupedConflictingTxs
+    getConflicts :: HK.Tx -> [TxId]
+    getConflicts tx = getTxHash <$> (L.filter (haveCommonInputs tx) (L.delete tx btcTxs))
 
 getOutputByOutPoint :: (HasTxStorage m, PlatformNatives) => HK.OutPoint -> m (Maybe HK.TxOut)
 getOutputByOutPoint HK.OutPoint{..} = do
