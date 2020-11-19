@@ -8,6 +8,7 @@ module Ergvein.Wallet.Monad.Unauth
 import Control.Concurrent.Chan
 import Control.Monad.Reader
 import Data.IORef
+import Control.Lens
 import Data.Map.Strict (Map)
 import Data.Text (Text)
 import Data.Time (NominalDiffTime)
@@ -16,6 +17,7 @@ import Network.Socket (SockAddr)
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Data.Maybe
+import Control.Lens ((^.))
 
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Language
@@ -153,16 +155,16 @@ newEnv settings uiChan = do
   passSetEF <- newTriggerEvent
   passModalEF <- newTriggerEvent
   authRef <- newExternalRef Nothing
-  langRef <- newExternalRef $ settingsLang settings
+  langRef <- newExternalRef $ settings ^. settingsLang 
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
   -- MonadClient refs
   rs <- runReaderT mkResolvSeed settingsRef
 
   indexConmapRef  <- newExternalRef $ M.empty
-  reqUrlNumRef    <- newExternalRef $ settingsReqUrlNum settings
-  actUrlNumRef    <- newExternalRef $ settingsActUrlNum settings
-  timeoutRef      <- newExternalRef $ settingsReqTimeout settings
+  reqUrlNumRef    <- newExternalRef $ settings ^. settingsReqUrlNum 
+  actUrlNumRef    <- newExternalRef $ settings ^. settingsActUrlNum 
+  timeoutRef      <- newExternalRef $ settings ^. settingsReqTimeout 
   (iReqE, iReqFire) <- newTriggerEvent
   let indexSel = fanMap iReqE -- Node request selector :: NodeReqSelector t
   indexEF <- newTriggerEvent
@@ -173,7 +175,7 @@ newEnv settings uiChan = do
         , unauth'backEF           = (backE, backFire ())
         , unauth'loading          = loadingEF
         , unauth'langRef          = langRef
-        , unauth'storeDir         = settingsStoreDir settings
+        , unauth'storeDir         = settings ^. settingsStoreDir 
         , unauth'alertsEF         = alertsEF
         , unauth'logsTrigger      = logsTrigger
         , unauth'logsNameSpaces   = nameSpaces

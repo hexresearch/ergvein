@@ -78,14 +78,14 @@ parametersPageWidget = mdo
   setD <- getSettingsD
   valsD <- fmap join $
     widgetHoldDyn $ ffor setD $ \Settings{..} -> do
-      let dt0 :: Double = realToFrac settingsReqTimeout
+      let dt0 :: Double = realToFrac _settingsReqTimeout
       dtD <- fmap2 realToFrac $ textFieldValidated NSSReqTimeout dt0 $
         maybe (Left [PPENDT]) Right . readMaybe . T.unpack
-      actNumD <- textFieldValidated NSSActUrlNum settingsActUrlNum $
+      actNumD <- textFieldValidated NSSActUrlNum _settingsActUrlNum $
         maybe (Left [PPEInt]) Right . readMaybe . T.unpack
-      rminD <- textFieldValidated NSSReqNumMin (fst settingsReqUrlNum) $
+      rminD <- textFieldValidated NSSReqNumMin (fst _settingsReqUrlNum) $
         maybe (Left [PPEInt]) Right . readMaybe . T.unpack
-      rmaxD <- textFieldValidated NSSReqNumMax (snd settingsReqUrlNum) $
+      rmaxD <- textFieldValidated NSSReqNumMax (snd _settingsReqUrlNum) $
         maybe (Left [PPEInt]) Right . readMaybe . T.unpack
       pure $ (,,,) <$> dtD <*> actNumD <*> rminD <*> rmaxD
   divClass "net-btns-2" $ do
@@ -94,16 +94,16 @@ parametersPageWidget = mdo
     updE <- updateSettings $ flip pushAlways defE $ const $ do
       stngs <- sample $ current setD
       pure $ stngs {
-            settingsReqTimeout = defaultIndexerTimeout
-          , settingsActUrlNum  = defaultActUrlNum
+            _settingsReqTimeout = defaultIndexerTimeout
+          , _settingsActUrlNum  = defaultActUrlNum
         }
     updE' <- updateSettings $ flip pushAlways saveE $ const $ do
       stngs <- sample $ current setD
       (dt, actNum, rmin, rmax) <- sample $ current valsD
       pure $ stngs {
-            settingsReqTimeout = dt
-          , settingsReqUrlNum  = (rmin, rmax)
-          , settingsActUrlNum  = actNum
+            _settingsReqTimeout = dt
+          , _settingsReqUrlNum  = (rmin, rmax)
+          , _settingsActUrlNum  = actNum
         }
     showSuccessMsg $ STPSSuccess <$ (leftmost [updE, updE'])
   pure ()
@@ -128,7 +128,7 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
 activePageWidget :: forall t m . MonadFrontBase t m => m ()
 activePageWidget = mdo
   connsD  <- externalRefDynamic =<< getActiveConnsRef
-  addrsD  <- holdUniqDyn =<< fmap settingsAddrs <$> getSettingsD
+  addrsD  <- holdUniqDyn =<< fmap _settingsAddrs <$> getSettingsD
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   let valsD = (,) <$> connsD <*> addrsD
   void $ widgetHoldDyn $ ffor valsD $ \(conmap, urls) ->
@@ -149,8 +149,8 @@ renderActive :: MonadFrontBase t m
   -> m ()
 renderActive nsa nfo refrE mconn = mdo
   liftIO $ print $ show nsa
-  pinD <- holdDyn False pinE
-  actD <- holdDyn False actE
+  pinD <- holdDyn (_peerInfoIsPinned nfo) pinE
+  actD <- holdDyn (_peerInfoIsPinned nfo) actE
   let pinBtn = fmap switchDyn $ widgetHoldDyn $ ffor pinD $ \b -> fmap (not b <$)
         $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a"
           $ if b then NSSPin else NSSUnpin
@@ -162,7 +162,7 @@ renderActive nsa nfo refrE mconn = mdo
       (pinE, actE) <- divClass "network-name" $ do
         elAttr "span" offclass $ elClass "i" "fas fa-circle" $ pure ()
         divClass "mt-a mb-a network-name-txt" $ text $ nsa
-        (,) <$> actBtn <*> pinBtn
+        (,) <$> pinBtn <*> actBtn
       descrOption NSSOffline
       pure (pinE, actE)
     Just conn -> do
@@ -181,17 +181,14 @@ renderActive nsa nfo refrE mconn = mdo
       (pinE, actE) <- divClass "network-name" $ do
         elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
         divClass "mt-a mb-a network-name-txt" $ text nsa
-        (,) <$> actBtn <*> pinBtn
+        (,) <$> pinBtn <*> actBtn
       latD <- indexerConnPingerWidget conn refrE
       descrOptionDyn $ NSSLatency <$> latD
       descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> heightD
       pure (pinE, actE)
 
-  void $ widgetHoldDyn $ ffor pinD $ \b -> if not b
-    then pure ()
-    else divClass "network-wrapper mt-2" $ do
-      void $ deactivateURL . (nsa <$) =<< buttonClass "button button-outline mt-1 ml-1" NSSDisable
-      void $ forgetURL . (nsa <$) =<< buttonClass "button button-outline mt-1 ml-1" NSSForget
+  setAddrPin $ (nsa,) <$> pinE
+  setAddrActive $ (nsa,) <$> actE
   where
     offclass    = [("class", "mb-a mt-a indexer-offline")]
     onclass     = [("class", "mb-a mt-a indexer-online")]

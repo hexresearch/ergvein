@@ -223,7 +223,7 @@ unitsPage = do
         settings <- getSettings
         let setUs = getSettingsUnits settings
         unitBtcE <- unitsDropdown (getUnitBTC setUs) allUnitsBTC
-        setE <- updateSettings $ ffor unitBtcE (\ubtc -> settings {settingsUnits = Just $ setUs {unitBTC = Just ubtc}})
+        setE <- updateSettings $ ffor unitBtcE (\ubtc -> settings {_settingsUnits = Just $ setUs {unitBTC = Just ubtc}})
         delay 0.1 $ () <$ setE
       pure ubE
 
@@ -240,7 +240,7 @@ unitsPage = do
       let selD = _dropdown_value dp
       fmap updated $ holdUniqDyn selD
 
-    getSettingsUnits = fromMaybe defUnits . settingsUnits
+    getSettingsUnits = fromMaybe defUnits . _settingsUnits
 
 portfolioPage :: MonadFront t m => m ()
 portfolioPage = do
@@ -249,19 +249,19 @@ portfolioPage = do
     h3 $ localizedText STPSSetsPortfolio
     divClass "initial-options" $ mdo
       settings <- getSettings
-      let sFC = settingsFiatCurr settings
+      let sFC = _settingsFiatCurr settings
       divClass "select-currencies-title" $ h4 $ localizedText STPSSetsPortfolioEnable
-      portD <- holdDyn (settingsPortfolio settings) $ poke pbtnE $ \_ -> do
+      portD <- holdDyn (_settingsPortfolio settings) $ poke pbtnE $ \_ -> do
         portS <- sampleDyn portD
         pure $ not portS
       pbtnE <- divButton (fmap toggled portD) $ widgetHoldDyn $ ffor portD $ \pS ->
         if pS
           then localizedText CSOn
           else localizedText CSOff
-      void $ updateSettings $ ffor (updated portD) (\portS -> settings {settingsPortfolio = portS})
+      void $ updateSettings $ ffor (updated portD) (\portS -> settings {_settingsPortfolio = portS})
       divClass "select-currencies-title" $ h4 $ localizedText STPSSetsFiatSelect
       fiatE <- fiatDropdown sFC allFiats
-      void $ updateSettings $ ffor fiatE (\fiat -> settings {settingsFiatCurr = fiat})
+      void $ updateSettings $ ffor fiatE (\fiat -> settings {_settingsFiatCurr = fiat})
   where
     toggled b = if b
       then "button button-on button-currency"

@@ -300,7 +300,7 @@ manualFeeSelector = (fmap . fmap) (maybe FSSNoManual FSSManual . readMaybe . T.u
 -- | Input field with units. Converts everything to satoshis and returns the unit
 sendAmountWidget :: MonadFront t m => Maybe (UnitBTC, Word64) -> Event t () -> m (Dynamic t (Maybe (UnitBTC, Word64)))
 sendAmountWidget minit validateE = mdo
-  setUs <- fmap (fromMaybe defUnits . settingsUnits) getSettings
+  setUs <- fmap (fromMaybe defUnits . _settingsUnits) getSettings
   let (unitInit, txtInit) = maybe (setUs, "") (\(u, a) -> let us = Units (Just u) Nothing
         in (us, showMoneyUnit (Money BTC a) us)) minit
   let errsD = fmap (maybe [] id) amountErrsD

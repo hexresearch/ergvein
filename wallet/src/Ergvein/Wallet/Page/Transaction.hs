@@ -51,7 +51,7 @@ import qualified Network.Haskoin.Transaction        as HK
 transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
 transactionInfoPage cur tr@TransactionView{..} = do
   title <- localized HistoryTITitle
-  moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
+  moneyUnits <- fmap (fromMaybe defUnits . _settingsUnits) getSettings
   wrapper False title (Just $ pure $ transactionInfoPage cur tr) $ divClass "tx-info-page" $ do
     infoPageElementExpEl HistoryTITransactionId $ hyperlink "link" (txId txInfoView) (txUrl txInfoView)
     infoPageElementEl HistoryTIAmount $ (symbCol txInOut) $ text $ showMoneyUnit txAmount moneyUnits <> " " <> symbolUnit cur moneyUnits
@@ -182,7 +182,7 @@ transactionsGetting cur = do
               hasUnconfirmedParents = fmap (L.any (== 0)) txParentsConfirmations
           outsStatuses <- traverse (getOutsStatuses storedTxs allBtcAddrs) txs
           let rawTxsL = L.filter (\(a,_) -> a/=Nothing) $ L.zip bInOut $ txListRaw bl blh txs txsRefList hasUnconfirmedParents parentTxs outsStatuses
-              prepTxs = L.sortOn txDate $ (prepareTransactionView allBtcAddrs hght timeZone (maybe btcDefaultExplorerUrls id $ Map.lookup cur (settingsExplorerUrl settings)) <$> rawTxsL)
+              prepTxs = L.sortOn txDate $ (prepareTransactionView allBtcAddrs hght timeZone (maybe btcDefaultExplorerUrls id $ Map.lookup cur (_settingsExplorerUrl settings)) <$> rawTxsL)
           pure $ L.reverse $ addWalletState prepTxs
 
     countConfirmations :: BlockHeight -> Maybe BlockHeight -> Word64

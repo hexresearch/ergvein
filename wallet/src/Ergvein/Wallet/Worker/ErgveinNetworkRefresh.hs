@@ -41,7 +41,7 @@ workerDelay = 4
 
 ergveinNetworkRefresh ::(MonadFront t m, MonadIO m, MonadIndexClient t m, MonadHasSettings t m, PlatformNatives) => m ()
 ergveinNetworkRefresh = do
-  dnsSettingsD <- fmap settingsDns <$> getSettingsD
+  dnsSettingsD <- fmap _settingsDns <$> getSettingsD
   timerE <- void <$> tickLossyFromPostBuildTime workerDelay
   buildE <- getPostBuild
   activePeersChangedE <- void . fst <$> getActivationEF
@@ -57,7 +57,7 @@ ergveinNetworkRefresh = do
 
 restoreFromDNS :: MonadFront t m => Event t () -> m ()
 restoreFromDNS e = do
-  dnsSettingsD <- fmap settingsDns <$> getSettingsD
+  dnsSettingsD <- fmap _settingsDns <$> getSettingsD
   reloadedFromSeedE <- performEvent $ ffor e $ const $ do
     dns <- sample $ current dnsSettingsD
     rs <- liftIO $ resolveSeed $ Set.toList dns

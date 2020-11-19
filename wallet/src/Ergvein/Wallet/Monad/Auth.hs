@@ -299,7 +299,7 @@ liftAuth ma0 ma = mdo
 
         activeCursRef   <- newExternalRef mempty
         syncRef         <- newExternalRef mempty
-        filtersStore    <- liftIO $ runReaderT openFiltersStorage (settingsStoreDir settings)
+        filtersStore    <- liftIO $ runReaderT openFiltersStorage $ settings ^. settingsStoreDir
         filtersHeights  <- newExternalRef mempty
         fsyncRef        <- newExternalRef mempty
         consRef         <- newExternalRef mempty

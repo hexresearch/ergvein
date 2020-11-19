@@ -58,7 +58,7 @@ currenciesList _ = divClass "currency-content" $ do
       }
     else do
       historyE <- leftmost <$> traverse (currencyLine s) currencies
-      if (settingsPortfolio s)
+      if (_settingsPortfolio s)
         then portfolioWidget
         else pure ()
       void $ nextWidget $ ffor historyE $ \cur -> Retractable {
@@ -76,4 +76,4 @@ currenciesList _ = divClass "currency-content" $ do
           elClass "span" "currency-unit"  $ text $ symbolUnit cur setUs
           elClass "span" "currency-arrow" $ text "〉"
       pure $ cur <$ domEvent Click e
-    getSettingsUnits = fromMaybe defUnits . settingsUnits
+    getSettingsUnits = fromMaybe defUnits . _settingsUnits

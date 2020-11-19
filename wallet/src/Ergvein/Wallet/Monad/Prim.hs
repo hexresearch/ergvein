@@ -124,7 +124,7 @@ modifySettings setE = do
 {-# INLINE modifySettings #-}
 
 getDnsList :: MonadHasSettings t m => m [HostName]
-getDnsList = fmap (S.toList . settingsDns) $ readExternalRef =<< getSettingsRef
+getDnsList = fmap (S.toList . _settingsDns) $ readExternalRef =<< getSettingsRef
 {-# INLINE getDnsList #-}
 
 mkResolvSeed :: MonadHasSettings t m => m ResolvSeed
@@ -153,11 +153,11 @@ initialIndexers = do
 
 
 getSocksConf :: MonadHasSettings t m => m (Dynamic t (Maybe S5.SocksConf))
-getSocksConf = fmap (fmap toSocksProxy . settingsSocksProxy) <$> getSettingsD
+getSocksConf = fmap (fmap toSocksProxy . _settingsSocksProxy) <$> getSettingsD
 {-# INLINE getSocksConf #-}
 
 getProxyConf :: MonadHasSettings t m => m (Dynamic t (Maybe SocksConf))
-getProxyConf = fmap settingsSocksProxy <$> getSettingsD
+getProxyConf = fmap _settingsSocksProxy <$> getSettingsD
 {-# INLINE getProxyConf #-}
 
 -- ===========================================================================

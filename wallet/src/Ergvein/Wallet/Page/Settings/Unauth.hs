@@ -14,6 +14,7 @@ import Network.Socket
 import Reflex.Dom
 import Reflex.Dom.Retractable
 import Text.Read
+import Control.Lens
 
 import Ergvein.Text
 import Ergvein.Wallet.Alert
@@ -69,18 +70,18 @@ dnsPageWidget = do
   setsD <- getSettingsD
   actE <- divClass "p-1 fit-content ml-a mr-a" $ do
     editD <- widgetHoldDyn $ ffor setsD $ \s -> do
-      when (S.null $ settingsDns s) $ h4 $ localizedText NSSResolveConfDefault
-      traverse dnsWidget $ S.toList $ settingsDns s
+      when (S.null $ _settingsDns s) $ h4 $ localizedText NSSResolveConfDefault
+      traverse dnsWidget $ S.toList $ _settingsDns s
     addE <- addDnsWidget
     restoreE <- buttonClass "button button-outline ml-a mr-a w-100" NSSRestoreUrls
     let editE = switchDyn $ leftmost <$> editD
     pure $ leftmost [addE, editE, DnsRestore <$ restoreE]
   modifySettings $ ffor actE $ \act s -> case act of
-    DnsDel u -> s {settingsDns = S.delete u (settingsDns s)}
-    DnsUpd u u' -> let us' = S.insert u' $ S.delete u (settingsDns s)
-      in s {settingsDns = us'}
-    DNSAdd u -> s {settingsDns = S.insert u $ settingsDns s}
-    DnsRestore -> s {settingsDns = defaultDns}
+    DnsDel u -> s {_settingsDns = S.delete u (_settingsDns s)}
+    DnsUpd u u' -> let us' = S.insert u' $ S.delete u (_settingsDns s)
+      in s {_settingsDns = us'}
+    DNSAdd u -> s {_settingsDns = S.insert u $ _settingsDns s}
+    DnsRestore -> s {_settingsDns = defaultDns}
   pure ()
   where
     addDnsWidget :: MonadFrontBase t m => m (Event t DnsAction)
@@ -143,7 +144,7 @@ languagePageWidget = do
     selE <- fmap updated $ holdUniqDyn selD
     void $ widgetHold (pure ()) $ setLanguage <$> selE
     settings <- getSettings
-    updE <- updateSettings $ ffor selE (\lng -> settings {settingsLang = lng})
+    updE <- updateSettings $ ffor selE $ flip (set settingsLang) settings
     showSuccessMsg $ STPSSuccess <$ updE
   pure ()
 
@@ -165,7 +166,7 @@ torPageWidget = do
             torUsed <- sample . current $ torUsedD
             pure $ if useTor == torUsed then Nothing else Just useTor
       modifySettings $ ffor updateE $ \useTor setts -> setts {
-          settingsSocksProxy = if useTor then Just torSocks else Nothing
+          _settingsSocksProxy = if useTor then Just torSocks else Nothing
         }
     socksSettings = void $ do
       msocksD <- getProxyConf
@@ -175,5 +176,5 @@ torPageWidget = do
             Nothing -> Nothing
             Just addr -> Just $ SocksConf addr (fromMaybe 9050 mport)
       modifySettings $ ffor newSocksE $ \socks setts -> setts {
-          settingsSocksProxy = socks
+          _settingsSocksProxy = socks
         }

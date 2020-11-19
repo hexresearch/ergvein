@@ -56,7 +56,7 @@ historyTableWidget cur = divClass "history-table" $ case cur of
 
 historyTableRow :: MonadFront t m => TransactionView -> m (Event t TransactionView)
 historyTableRow tr@TransactionView{..} = divButton "history-table-row" $ do
-  moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
+  moneyUnits <- fmap (fromMaybe defUnits . _settingsUnits) getSettings
   divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ (symb txInOut) $ text $ showMoneyUnit txAmount moneyUnits
   divClass "history-date" $ showTxStatus tr
   divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> confsClass) confsText
@@ -75,7 +75,7 @@ historyTableRow tr@TransactionView{..} = divButton "history-table-row" $ do
 
 historyTableRowD :: MonadFront t m => Dynamic t Word64 -> Dynamic t TransactionView -> m (Event t TransactionView)
 historyTableRowD _ trD = fmap switchDyn $ widgetHoldDyn $ ffor trD $ \tr@TransactionView{..} -> divButton "history-table-row" $ do
-    moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
+    moneyUnits <- fmap (fromMaybe defUnits . _settingsUnits) getSettings
     divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ symb txInOut $ text $ showMoneyUnit txAmount moneyUnits
     divClass "history-date" $ showTxStatus tr
     divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> (confsClass tr)) $ confsText tr

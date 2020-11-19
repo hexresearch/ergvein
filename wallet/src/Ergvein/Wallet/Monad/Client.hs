@@ -14,6 +14,8 @@ module Ergvein.Wallet.Monad.Client (
   , indexersAverageLatencyWidget
   , indexersAverageLatNumWidget
   , requestIndexerWhenOpen
+  , setAddrPin
+  , setAddrActive
   -- * Reexports
   , SockAddr
   ) where
@@ -88,6 +90,11 @@ activateURL addrE = do
   (_, f)    <- getActivationEF
   setRef    <- getSettingsRef
   performEventAsync $ ffor addrE $ \url fire -> void $ liftIO $ forkOnOther $ do
+    s <- modifyExternalRef setRef $ \s -> let
+        x = s & settingsAddrs .~ mempty
+        s' = s 
+        in (s', s')
+    storeSettings s
     fire ()
 
 -- | Activate an URL
@@ -96,6 +103,7 @@ activateURLList addrE = do
   (_, f)    <- getActivationEF
   setRef    <- getSettingsRef
   performEventAsync $ ffor addrE $ \urls fire -> void $ liftIO $ forkOnOther $ do
+
     fire ()
 
 -- | It is really important to wait until indexer performs deinitialization before deleting it from dynamic collections
@@ -118,6 +126,16 @@ deactivateURL addrE = do
   setRef    <- getSettingsRef
   performEventAsync $ ffor addrE $ \url fire -> void $ liftIO $ forkOnOther $ do
     fire ()
+
+setAddrPin :: (MonadIndexClient t m, MonadHasSettings t m) =>  Event t (Text, Bool) -> m ()
+setAddrPin addrE = do
+  req       <- getIndexReqFire
+  setRef    <- getSettingsRef
+  void $ performEventAsync $ ffor addrE $ \(url, v) fire -> void $ liftIO $ forkOnOther $ do
+    fire ()
+setAddrActive :: (MonadIndexClient t m, MonadHasSettings t m) => Event t (Text, Bool)  -> m ()
+setAddrActive = undefined
+
 
 -- | Forget an url
 forgetURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m (Event t ())

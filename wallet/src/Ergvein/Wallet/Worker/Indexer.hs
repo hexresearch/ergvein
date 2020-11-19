@@ -38,7 +38,7 @@ indexerNodeController  = mdo
   (addrE, _) <- getActivationEF
   connRef <- getActiveConnsRef
   seed <- mkResolvSeed
-  addrs <- settingsAddrs <$> (readExternalRef =<< getSettingsRef)
+  addrs <- _settingsAddrs <$> (readExternalRef =<< getSettingsRef)
   liftIO $ print $ show addrs
   let initMap = M.fromList $ ((, ())) <$> M.keys addrs
       closedE = switchDyn $ ffor valD $ leftmost . M.elems

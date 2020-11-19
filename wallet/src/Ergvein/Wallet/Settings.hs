@@ -23,64 +23,78 @@ module Ergvein.Wallet.Settings (
   , makeSockAddr
   , parseIP
   , PeerInfo (..)
+  , settingsLang           
+  , settingsStoreDir         
+  , settingsConfigPath       
+  , settingsUnits            
+  , settingsReqTimeout       
+  , settingsAddrs            
+  , settingsReqUrlNum        
+  , settingsActUrlNum        
+  , settingsExplorerUrl      
+  , settingsPortfolio        
+  , settingsDiscoveryEnabled 
+  , settingsFiatCurr         
+  , settingsDns              
+  , settingsSocksProxy       
   ) where
 
 import Control.Lens hiding ((.=))
 import Control.Monad.IO.Class
 import Data.Aeson hiding (encodeFile)
-import Data.Maybe
 import Data.Either
+import Data.IP
+import Data.IP (IP, toSockAddr)
+import Data.Maybe
 import Data.Text(Text, pack, unpack)
 import Data.Time (NominalDiffTime)
+import Data.Word
 import Data.Yaml (encodeFile)
+import Ergvein.Wallet.Platform
+import Network.DNS.Lookup
+import Network.DNS.Resolver
+import Network.DNS.Types
 import Network.Socket (HostName, PortNumber)
 import System.Directory
-import Data.IP
-import Network.DNS.Lookup
-import Network.DNS.Types
-import Network.DNS.Resolver
-import Ergvein.Wallet.Platform
-import Data.IP (IP, toSockAddr)
 import Text.Read (readMaybe)
-import Data.Word
 
 import Ergvein.Aeson
 import Ergvein.Lens
+import Ergvein.Text
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.IP
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Yaml(readYamlEither')
-import Ergvein.Text
 
 import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Network.Socks5 as S5
-import qualified Data.Set as S
 
 #ifdef ANDROID
 import Android.HaskellActivity
 import Ergvein.Wallet.Native
 #endif
 
-
-
 data PeerInfo = PeerInfo
-  { peerInfoIsActive :: !Bool
-  , peerInfoIsPinned   :: !Bool
+  { _peerInfoIsActive :: !Bool
+  , _peerInfoIsPinned   :: !Bool
   } deriving (Eq, Show)
+
+makeLenses ''PeerInfo
 
 instance ToJSON PeerInfo where
   toJSON PeerInfo{..} = object [
-      "isActive" .= toJSON peerInfoIsActive
-    , "isPinned" .= toJSON peerInfoIsPinned
+      "isActive" .= toJSON _peerInfoIsActive
+    , "isPinned" .= toJSON _peerInfoIsPinned
    ]
 
 instance FromJSON PeerInfo where
   parseJSON = withObject "v" $ \o -> do
-    peerInfoIsActive <- o .: "isActive"
-    peerInfoIsPinned <- o .: "isPinned"
+    _peerInfoIsActive <- o .: "isActive"
+    _peerInfoIsPinned <- o .: "isPinned"
     pure PeerInfo{..}
 
 data ExplorerUrls = ExplorerUrls {
@@ -135,64 +149,63 @@ toSocksProxy :: SocksConf -> S5.SocksConf
 toSocksProxy (SocksConf a p) = S5.defaultSocksConfFromSockAddr $ makeSockAddr a p
 
 data Settings = Settings {
-  settingsLang              :: Language
-, settingsStoreDir          :: Text
-, settingsConfigPath        :: Text
-, settingsUnits             :: Maybe Units
-, settingsReqTimeout        :: NominalDiffTime
-, settingsAddrs             :: M.Map Text PeerInfo
-, settingsReqUrlNum         :: (Int, Int) -- ^ First is minimum required answers. Second is sufficient amount of answers from indexers.
-, settingsActUrlNum         :: Int
-, settingsExplorerUrl       :: M.Map Currency ExplorerUrls
-, settingsPortfolio         :: Bool
-, settingsDiscoveryEnabled  :: Bool
-, settingsFiatCurr          :: Fiat
-, settingsDns               :: S.Set HostName
-, settingsSocksProxy        :: Maybe SocksConf
+  _settingsLang              :: Language
+, _settingsStoreDir          :: Text
+, _settingsConfigPath        :: Text
+, _settingsUnits             :: Maybe Units
+, _settingsReqTimeout        :: NominalDiffTime
+, _settingsAddrs             :: M.Map Text PeerInfo
+, _settingsReqUrlNum         :: (Int, Int) -- ^ First is minimum required answers. Second is sufficient amount of answers from indexers.
+, _settingsActUrlNum         :: Int
+, _settingsExplorerUrl       :: M.Map Currency ExplorerUrls
+, _settingsPortfolio         :: Bool
+, _settingsDiscoveryEnabled  :: Bool
+, _settingsFiatCurr          :: Fiat
+, _settingsDns               :: S.Set HostName
+, _settingsSocksProxy        :: Maybe SocksConf
 } deriving (Eq, Show)
 
-
-makeLensesWith humbleFields ''Settings
+makeLenses ''Settings
 
 $(deriveJSON defaultOptions ''PortNumber)
 $(deriveJSON defaultOptions ''SockAddr)
 
 instance FromJSON Settings where
   parseJSON = withObject "Settings" $ \o -> do
-    settingsLang              <- o .: "lang"
-    settingsStoreDir          <- o .: "storeDir"
-    settingsConfigPath        <- o .: "configPath"
-    settingsUnits             <- o .: "units"
-    settingsReqTimeout        <- o .: "reqTimeout"
-    settingsReqUrlNum         <- o .:? "reqUrlNum"  .!= defaultIndexersNum
-    settingsActUrlNum         <- o .:? "actUrlNum"  .!= 10
-    settingsAddrs             <- o .:? "addrs"  .!= mempty
-    settingsExplorerUrl       <- o .:? "explorerUrl" .!= defaultExplorerUrl
-    settingsDiscoveryEnabled  <- o .:? "discoveryEnabled" .!= True
-    settingsPortfolio         <- o .:? "portfolio" .!= False
-    settingsFiatCurr          <- o .:? "fiatCurr"  .!= USD
-    mdns                      <- o .:? "dns"
-    settingsSocksProxy        <- o .:? "socksProxy"
-    let settingsDns = case fromMaybe [] mdns of
+    _settingsLang              <- o .: "lang"
+    _settingsStoreDir          <- o .: "storeDir"
+    _settingsConfigPath        <- o .: "configPath"
+    _settingsUnits             <- o .: "units"
+    _settingsReqTimeout        <- o .: "reqTimeout"
+    _settingsReqUrlNum         <- o .:? "reqUrlNum"  .!= defaultIndexersNum
+    _settingsActUrlNum         <- o .:? "actUrlNum"  .!= 10
+    _settingsAddrs             <- o .:? "addrs"  .!= mempty
+    _settingsExplorerUrl       <- o .:? "explorerUrl" .!= defaultExplorerUrl
+    _settingsDiscoveryEnabled  <- o .:? "discoveryEnabled" .!= True
+    _settingsPortfolio         <- o .:? "portfolio" .!= False
+    _settingsFiatCurr          <- o .:? "fiatCurr"  .!= USD
+    _mdns                      <- o .:? "dns"
+    _settingsSocksProxy        <- o .:? "socksProxy"
+    let _settingsDns = case fromMaybe [] _mdns of
           [] -> defaultDns
           dns -> S.fromList dns
     pure Settings{..}
 
 instance ToJSON Settings where
   toJSON Settings{..} = object [
-      "lang"              .= toJSON settingsLang
-    , "storeDir"          .= toJSON settingsStoreDir
-    , "configPath"        .= toJSON settingsConfigPath
-    , "units"             .= toJSON settingsUnits
-    , "reqTimeout"        .= toJSON settingsReqTimeout
-    , "addrs"             .= toJSON settingsAddrs
-    , "reqUrlNum"         .= toJSON settingsReqUrlNum
-    , "actUrlNum"         .= toJSON settingsActUrlNum
-    , "explorerUrl"       .= toJSON settingsExplorerUrl
-    , "portfolio"         .= toJSON settingsPortfolio
-    , "fiatCurr"          .= toJSON settingsFiatCurr
-    , "dns"               .= toJSON settingsDns
-    , "socksProxy"        .= toJSON settingsSocksProxy
+      "lang"              .= toJSON _settingsLang
+    , "storeDir"          .= toJSON _settingsStoreDir
+    , "configPath"        .= toJSON _settingsConfigPath
+    , "units"             .= toJSON _settingsUnits
+    , "reqTimeout"        .= toJSON _settingsReqTimeout
+    , "addrs"             .= toJSON _settingsAddrs
+    , "reqUrlNum"         .= toJSON _settingsReqUrlNum
+    , "actUrlNum"         .= toJSON _settingsActUrlNum
+    , "explorerUrl"       .= toJSON _settingsExplorerUrl
+    , "portfolio"         .= toJSON _settingsPortfolio
+    , "fiatCurr"          .= toJSON _settingsFiatCurr
+    , "dns"               .= toJSON _settingsDns
+    , "socksProxy"        .= toJSON _settingsSocksProxy
    ]
 
 defIndexerPort :: PortNumber
@@ -228,26 +241,26 @@ defaultSettings home =
   let storePath   = home <> "/store"
       configPath  = home <> "/config.yaml"
   in Settings {
-        settingsLang              = English
-      , settingsStoreDir          = pack storePath
-      , settingsConfigPath        = pack configPath
-      , settingsUnits             = Just defUnits
-      , settingsReqTimeout        = defaultIndexerTimeout
-      , settingsReqUrlNum         = defaultIndexersNum
-      , settingsActUrlNum         = defaultActUrlNum
-      , settingsExplorerUrl       = defaultExplorerUrl
-      , settingsPortfolio         = False
-      , settingsFiatCurr          = USD
-      , settingsAddrs             = M.singleton "127.0.0.1:8667" $ PeerInfo  True True
-      , settingsDiscoveryEnabled  = True
-      , settingsDns               = defaultDns
-      , settingsSocksProxy        = Nothing
+        _settingsLang              = English
+      , _settingsStoreDir          = pack storePath
+      , _settingsConfigPath        = pack configPath
+      , _settingsUnits             = Just defUnits
+      , _settingsReqTimeout        = defaultIndexerTimeout
+      , _settingsReqUrlNum         = defaultIndexersNum
+      , _settingsActUrlNum         = defaultActUrlNum
+      , _settingsExplorerUrl       = defaultExplorerUrl
+      , _settingsPortfolio         = False
+      , _settingsFiatCurr          = USD
+      , _settingsAddrs             = M.singleton "127.0.0.1:8667" $ PeerInfo  True True
+      , _settingsDiscoveryEnabled  = True
+      , _settingsDns               = defaultDns
+      , _settingsSocksProxy        = Nothing
       }
 
 -- | TODO: Implement some checks to see if the configPath folder is ok to write to
 storeSettings :: MonadIO m => Settings -> m ()
 storeSettings s = liftIO $ do
-  let configPath = settingsConfigPath s
+  let configPath = _settingsConfigPath s
   createDirectoryIfMissing True $ unpack $ T.dropEnd 1 $ fst $ T.breakOnEnd "/" configPath
   encodeFile (unpack configPath) s
 
@@ -263,8 +276,8 @@ loadSettings = const $ liftIO $ do
       cfg <- if not ex
         then defaultSettings path
         else fmap (either (const $ defaultSettings path) id) $ readYamlEither' configPath
-      createDirectoryIfMissing True (unpack $ settingsStoreDir cfg)
-      encodeFile (unpack $ settingsConfigPath cfg) cfg
+      createDirectoryIfMissing True (unpack $ settingsStoreDir ^. cfg)
+      encodeFile (unpack $ _settingsConfigPath cfg) cfg
       pure cfg
 
 #else
@@ -290,8 +303,8 @@ loadSettings mpath = liftIO $ case mpath of
     cfg <- if not ex
       then mkDefSettings
       else either (const mkDefSettings) pure =<< readYamlEither' path
-    createDirectoryIfMissing True (unpack $ settingsStoreDir cfg)
-    encodeFile (unpack $ settingsConfigPath cfg) cfg
+    createDirectoryIfMissing True (unpack $ cfg ^. settingsStoreDir)
+    encodeFile (unpack $ _settingsConfigPath cfg) cfg
     pure cfg
 #endif
 
