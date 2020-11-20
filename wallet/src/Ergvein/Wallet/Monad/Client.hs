@@ -16,6 +16,7 @@ module Ergvein.Wallet.Monad.Client (
   , requestIndexerWhenOpen
   , setAddrPin
   , setAddrActive
+  , deleteAddr
   -- * Reexports
   , SockAddr
   ) where
@@ -34,6 +35,7 @@ import Network.Socket (SockAddr)
 import Reflex
 import Reflex.Dom
 import Reflex.ExternalRef
+import Control.Lens
 
 import Ergvein.Index.Protocol.Types (Message(..))
 import Ergvein.Text
@@ -90,11 +92,7 @@ activateURL addrE = do
   (_, f)    <- getActivationEF
   setRef    <- getSettingsRef
   performEventAsync $ ffor addrE $ \url fire -> void $ liftIO $ forkOnOther $ do
-    s <- modifyExternalRef setRef $ \s -> let
-        x = s & settingsAddrs .~ mempty
-        s' = s 
-        in (s', s')
-    storeSettings s
+  
     fire ()
 
 -- | Activate an URL
@@ -132,10 +130,36 @@ setAddrPin addrE = do
   req       <- getIndexReqFire
   setRef    <- getSettingsRef
   void $ performEventAsync $ ffor addrE $ \(url, v) fire -> void $ liftIO $ forkOnOther $ do
+    s <- modifyExternalRef setRef $ \s -> let
+      s' = s & settingsAddrs . at url . _Just . peerInfoIsPinned .~ v
+      in (s', s')
+    liftIO $ print $ show s
+    storeSettings s
     fire ()
-setAddrActive :: (MonadIndexClient t m, MonadHasSettings t m) => Event t (Text, Bool)  -> m ()
-setAddrActive = undefined
 
+setAddrActive :: (MonadIndexClient t m, MonadHasSettings t m) => Event t (Text, Bool)  -> m ()
+setAddrActive addrE = do
+  req       <- getIndexReqFire
+  setRef    <- getSettingsRef
+  void $ performEventAsync $ ffor addrE $ \(url, v) fire -> void $ liftIO $ forkOnOther $ do
+    s <- modifyExternalRef setRef $ \s -> let
+      s' = s & settingsAddrs . at url . _Just . peerInfoIsActive .~ v 
+      in (s', s')
+    liftIO $ print $ show s
+    storeSettings s
+    fire ()
+
+deleteAddr :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m ()
+deleteAddr addrE = do
+  req       <- getIndexReqFire
+  setRef    <- getSettingsRef
+  void $ performEventAsync $ ffor addrE $ \url fire -> void $ liftIO $ forkOnOther $ do
+    s <- modifyExternalRef setRef $ \s -> let
+      s' = s & settingsAddrs . at url .~ Nothing
+      in (s', s')
+    liftIO $ print $ show s
+    storeSettings s
+    fire ()
 
 -- | Forget an url
 forgetURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m (Event t ())

@@ -37,6 +37,8 @@ module Ergvein.Wallet.Settings (
   , settingsFiatCurr         
   , settingsDns              
   , settingsSocksProxy       
+  , peerInfoIsActive
+  , peerInfoIsPinned
   ) where
 
 import Control.Lens hiding ((.=))
