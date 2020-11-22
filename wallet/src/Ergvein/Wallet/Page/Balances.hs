@@ -13,7 +13,7 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.History
 import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Sync.Widget
+import Ergvein.Wallet.Status.Widget
 import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
 import Ergvein.Wallet.Debug
@@ -41,7 +41,7 @@ balancesPage = do
   walletName <- getWalletName
   title <- localized walletName
   wrapper False title (Just $ pure balancesPage) $ do
-    syncWidget False BTC -- TODO: rework this when we add ERGO
+    statusBarWidget False BTC -- TODO: rework this when we add ERGO
     currenciesList walletName
 
 currenciesList :: MonadFront t m => Text -> m ()

@@ -31,7 +31,7 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node.BTC.Blocks
 import Ergvein.Wallet.Storage.Constants
 import Ergvein.Wallet.Storage.Util (addXPubKeyToKeystore)
-import Ergvein.Wallet.Sync.Status
+import Ergvein.Wallet.Status.Types
 import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Util
 
@@ -99,13 +99,13 @@ scannerBtc = void $ workflow checkRestored
           Right filt -> pure $ Just (h, bh, filt)
       psD <- getPubStorageD
       buildE <- getPostBuild
-      let nextE = ffor (current psD `tag` buildE) $ \ps -> let
-            ext = repackKeys External $ pubStorageKeys BTC External ps
-            int = repackKeys Internal $ pubStorageKeys BTC Internal ps
-            nextHeight = fh + fromIntegral (length fs)
-            in scanBatchKeys nextHeight batch $ (V.++) ext int
-      nextE' <- delay 0.1 nextE
-      pure ((), nextE')
+      publishStatusUpdate $ CurrencyStatus BTC (StatNewFilters $ length fs) <$ buildE
+      nextE <- delay 0.1 $ ffor (current psD `tag` buildE) $ \ps -> let
+        ext = repackKeys External $ pubStorageKeys BTC External ps
+        int = repackKeys Internal $ pubStorageKeys BTC Internal ps
+        nextHeight = fh + fromIntegral (length fs)
+        in scanBatchKeys nextHeight batch $ (V.++) ext int
+      pure ((), nextE)
 
     -- | Scan the batch against all provided keys
     -- After scanning and updating the wallet check if new keys have to be generated
@@ -115,8 +115,7 @@ scannerBtc = void $ workflow checkRestored
     scanBatchKeys nextHeight batch keys = Workflow $ do
       let mkAddr k = addressToScriptBS . xPubToBtcAddr . extractXPubKeyFromEgv $ scanBox'key k
       let addrs = V.toList $ mkAddr <$> keys
-      buildE' <- getPostBuild
-      buildE <- delay 0.1 buildE'
+      buildE <- delay 0.1 =<< getPostBuild
       hashesE <- performFork $ ffor buildE $ const $ liftIO $ fmap catMaybes $
         flip traverse batch $ \(h, bh, filt) -> do
           let bhash = egvBlockHashToHk bh

@@ -31,7 +31,7 @@ import Ergvein.Wallet.Node
 import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Node.BTC.Mempool
 import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Sync.Status
+import Ergvein.Wallet.Status.Types
 import Ergvein.Wallet.Tx
 import Ergvein.Wallet.Util
 
@@ -230,10 +230,10 @@ getRandomBTCNodesFromDNS sel n = do
   buildE <- getPostBuild
   let dnsUrls = getSeeds btcNetwork
   i <- liftIO $ randomRIO (0, length dnsUrls - 1)
-  setSyncProgress $ (SyncProgress BTC SyncGettingNodeAddresses) <$ buildE
+  publishStatusUpdate $ (CurrencyStatus BTC StatGettingNodeAddresses) <$ buildE
   rs <- mkResolvSeed
   urlsE <- performFork $ (requestNodesFromBTCDNS rs (dnsUrls!!i) n) <$ buildE
-  setSyncProgress $ (SyncProgress BTC SyncConnectingToPeers) <$ urlsE
+  publishStatusUpdate $ (CurrencyStatus BTC StatConnectingToPeers) <$ urlsE
   nodesD <- widgetHold (pure []) $ ffor urlsE $ \urls -> flip traverse urls $ \u -> let
     reqE = extractReq sel BTC u
     in initBTCNode False u reqE

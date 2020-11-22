@@ -23,8 +23,8 @@ import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Scan
-import Ergvein.Wallet.Sync.Status
-import Ergvein.Wallet.Sync.Widget
+import Ergvein.Wallet.Status.Types
+import Ergvein.Wallet.Status.Widget
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Map.Strict as M
@@ -46,7 +46,7 @@ restorePage = wrapperSimple True $ void $ workflow nodeConnection
     -- | Stage 1: connect to BTC nodes
     nodeConnection = Workflow $ do
       h2 $ localizedText RPSConnecting
-      syncWidget False BTC
+      statusBarWidget False BTC
       conmapD <- getNodesByCurrencyD BTC
       let upsD = fmap or $ join $ ffor conmapD $ \cm -> sequence $ ffor (M.elems cm) $ \case
             NodeConnBTC con -> nodeconIsUp con
@@ -57,7 +57,7 @@ restorePage = wrapperSimple True $ void $ workflow nodeConnection
     -- | Stage 2: calculate the current height
     heightAsking = Workflow $ do
       h2 $ localizedText RPSGetHeight
-      syncWidget False BTC
+      statusBarWidget False BTC
       heightD <- getCurrentHeight BTC
       height0E <- tag (current heightD) <$> getPostBuild
       let heightE = leftmost [updated heightD, height0E]
@@ -139,7 +139,7 @@ restorePage = wrapperSimple True $ void $ workflow nodeConnection
     finishScanning = Workflow $ do
       buildE <- getPostBuild
       h2 $ localizedText RPSFinished
-      setE <- setSyncProgress $ SyncProgress BTC Synced <$ buildE
+      setE <- publishStatusUpdate $ CurrencyStatus BTC Synced <$ buildE
       doneE <- modifyPubStorage "finishScanning" $ ffor setE $ const $ \ps -> Just $ ps {
           _pubStorage'restoring = False
         }

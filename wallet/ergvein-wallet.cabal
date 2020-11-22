@@ -132,8 +132,8 @@ library
         Ergvein.Wallet.Storage.Constants
         Ergvein.Wallet.Storage.Util
         Ergvein.Wallet.Style
-        Ergvein.Wallet.Sync.Status
-        Ergvein.Wallet.Sync.Widget
+        Ergvein.Wallet.Status.Types
+        Ergvein.Wallet.Status.Widget
         Ergvein.Wallet.TimeZone
         Ergvein.Wallet.Tx
         Ergvein.Wallet.Util

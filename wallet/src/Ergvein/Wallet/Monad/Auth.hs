@@ -37,7 +37,7 @@ import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Settings (Settings(..))
 import Ergvein.Wallet.Storage.Util
-import Ergvein.Wallet.Sync.Status
+import Ergvein.Wallet.Status.Types
 import Ergvein.Wallet.Version
 import Ergvein.Wallet.Worker.Fees
 import Ergvein.Wallet.Worker.Height
@@ -69,7 +69,7 @@ data Env t = Env {
 , env'logoutFire      :: !(IO ())
 , env'activeCursRef   :: !(ExternalRef t (S.Set Currency))
 , env'filtersHeights  :: !(ExternalRef t (Map Currency BlockHeight))
-, env'syncProgress    :: !(ExternalRef t (Map Currency SyncStage))
+, env'statusUpdates    :: !(ExternalRef t (Map Currency StatusUpdate))
 , env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
 , env'nodeConsRef     :: !(ExternalRef t (ConnMap t))
 , env'nodeReqSelector :: !(NodeReqSelector t)
@@ -151,8 +151,8 @@ instance MonadBaseConstr t m => MonadHasSettings t (ErgveinM t m) where
   {-# INLINE getSettingsRef #-}
 
 instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
-  getSyncProgressRef = asks env'syncProgress
-  {-# INLINE getSyncProgressRef #-}
+  getStatusUpdRef = asks env'statusUpdates
+  {-# INLINE getStatusUpdRef #-}
   getFiltersSyncRef = asks env'filtersSyncRef
   {-# INLINE getFiltersSyncRef #-}
   getActiveCursRef = asks env'activeCursRef
@@ -298,7 +298,7 @@ liftAuth ma0 ma = mdo
 
 
         activeCursRef   <- newExternalRef mempty
-        syncRef         <- newExternalRef mempty
+        statRef         <- newExternalRef mempty
         filtersHeights  <- newExternalRef mempty
         fsyncRef        <- newExternalRef mempty
         consRef         <- newExternalRef mempty
@@ -322,7 +322,7 @@ liftAuth ma0 ma = mdo
               , env'logoutFire = logoutFire ()
               , env'activeCursRef = activeCursRef
               , env'filtersHeights = filtersHeights
-              , env'syncProgress = syncRef
+              , env'statusUpdates = statRef
               , env'filtersSyncRef = fsyncRef
               , env'nodeConsRef = consRef
               , env'nodeReqSelector = nodeSel

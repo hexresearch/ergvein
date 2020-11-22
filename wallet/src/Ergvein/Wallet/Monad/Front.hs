@@ -15,14 +15,14 @@ module Ergvein.Wallet.Monad.Front(
   , getLoginD
   , getNodeConnectionsD
   , getNodesByCurrencyD
-  , getSyncProgress
+  , getStatusUpdates
   , requestBroadcast
   , requestFromNode
   , postNodeMessage
   , broadcastNodeMessage
   , requestManyFromNode
   , setFiltersSync
-  , setSyncProgress
+  , publishStatusUpdate
   , updateActiveCurs
   , requestRandomIndexer
   -- * Reexports
@@ -68,7 +68,7 @@ import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Node.Prim
 import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Sync.Status
+import Ergvein.Wallet.Status.Types
 import Ergvein.Wallet.Util
 
 import qualified Data.Map.Strict as M
@@ -88,7 +88,7 @@ type MonadFront t m = (
 
 class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   -- | Internal method.
-  getSyncProgressRef :: m (ExternalRef t (Map Currency SyncStage))
+  getStatusUpdRef :: m (ExternalRef t (Map Currency StatusUpdate))
   -- | Internal method to get flag if we has fully synced filters at the moment.
   getFiltersSyncRef :: m (ExternalRef t (Map Currency Bool))
   -- | Get activeCursRef Internal
@@ -156,20 +156,20 @@ requestManyFromNode reqE = do
     in liftIO . nodeReqFire $ M.singleton cur $ M.singleton u $ NodeMsgReq req
 {-# INLINE requestManyFromNode #-}
 
--- | Get global sync process value
-getSyncProgress :: MonadFrontAuth t m => Currency -> m (Dynamic t SyncStage)
-getSyncProgress cur = do
-  syncMapD <- externalRefDynamic =<< getSyncProgressRef
-  pure $ fmap (fromMaybe NotActive . M.lookup cur) syncMapD
-{-# INLINE getSyncProgress #-}
+-- | Get global status value
+getStatusUpdates :: MonadFrontAuth t m => Currency -> m (Dynamic t StatusUpdate)
+getStatusUpdates cur = do
+  statMapD <- externalRefDynamic =<< getStatusUpdRef
+  pure $ fmap (fromMaybe NotActive . M.lookup cur) statMapD
+{-# INLINE getStatusUpdates #-}
 
 -- | Set global sync process value each time the event is fired
-setSyncProgress :: MonadFrontAuth t m => Event t (SyncProgress) -> m (Event t ())
-setSyncProgress spE = do
-  syncProgRef <- getSyncProgressRef
-  performEvent $ ffor spE $ \(SyncProgress cur sp) -> do
-    modifyExternalRef_ syncProgRef $ M.insert cur sp
-{-# INLINE setSyncProgress #-}
+publishStatusUpdate :: MonadFrontAuth t m => Event t CurrencyStatus -> m (Event t ())
+publishStatusUpdate spE = do
+  statusUpdRef <- getStatusUpdRef
+  performEvent $ ffor spE $ \(CurrencyStatus cur sp) -> do
+    modifyExternalRef_ statusUpdRef $ M.insert cur sp
+{-# INLINE publishStatusUpdate #-}
 
 -- | Get auth info. Not a Maybe since this is authorized context
 getAuthInfo :: MonadFrontAuth t m => m (Dynamic t AuthInfo)
