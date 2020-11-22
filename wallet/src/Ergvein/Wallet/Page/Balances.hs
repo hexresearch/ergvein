@@ -50,8 +50,7 @@ currenciesList _ = divClass "currency-content" $ do
   ps <- getPubStorage
   let currencies = _pubStorage'activeCurrencies ps
       thisWidget = Just $ pure balancesPage
-  debugWidget
-  if L.length currencies == 10
+  if L.length currencies == 1
     then do
       buildE <- getPostBuild
       void $ nextWidget $ ffor buildE $ \_ -> Retractable {
