@@ -15,10 +15,10 @@ jobs:
         fetch-depth: 0
 
     - name: Install Nix
-      uses: cachix/install-nix-action@v8
+      uses: cachix/install-nix-action@v12
 
     - name: Setup cachix
-      uses: cachix/cachix-action@v6
+      uses: cachix/cachix-action@v8
       with:
         name: ergvein
         signingKey: ${{ secrets.CACHIX_KEY }}
