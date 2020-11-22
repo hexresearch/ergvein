@@ -96,5 +96,6 @@ jobs:
       run: |
         source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
         source /nix/var/nix/profiles/default/etc/profile.d/nix.sh
+        nix-channel --add https://nixos.org/channels/nixos-20.09 nixpkgs
         nix-channel --update
         ./make-android.sh
