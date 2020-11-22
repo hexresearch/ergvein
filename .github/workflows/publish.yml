@@ -101,7 +101,7 @@ jobs:
       run: |
         source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
         source /nix/var/nix/profiles/default/etc/profile.d/nix.sh
-        echo "::add-path::/nix/var/nix/profiles/per-user/actions/profile/bin"
+        echo "/nix/var/nix/profiles/per-user/actions/profile/bin" >> $GITHUB_PATH
         sudo ln -s /nix/var/nix/profiles/per-user/actions /nix/var/nix/profiles/per-user/runner
         echo "trusted-users = root $USER" | sudo tee -a /etc/nix/nix.conf && sudo pkill nix-daemon
         for n in $(seq 1 10)
