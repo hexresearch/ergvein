@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 
 module Ergvein.Types.Network (
-    BtcNetwork(..)
+    BtcNetwork
   , Network(..)
   , ErgNetwork(..)
   , EgvNetwork(..)

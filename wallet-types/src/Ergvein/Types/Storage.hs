@@ -24,6 +24,7 @@ import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
+import Ergvein.Types.Orphanage ()
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -107,9 +108,6 @@ data CurrencyPubStorage = CurrencyPubStorage {
 makeLenses ''CurrencyPubStorage
 
 $(deriveJSON aesonOptionsStripToApostroph ''CurrencyPubStorage)
-
-instance FromJSONKey HB.BlockHash where
-instance ToJSONKey HB.BlockHash where
 
 type CurrencyPubStorages = M.Map Currency CurrencyPubStorage
 

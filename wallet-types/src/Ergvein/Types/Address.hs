@@ -1,5 +1,5 @@
 module Ergvein.Types.Address (
-      BtcAddress(..)
+      BtcAddress
     , ErgAddress(..)
     , EgvAddress(..)
     , VLAddr(..)
@@ -30,7 +30,6 @@ import qualified Data.Serialize            as S
 import qualified Data.Serialize.Get        as Get
 import qualified Data.Serialize.Put        as Put
 import qualified Network.Haskoin.Address   as HA
-import qualified Network.Haskoin.Constants as HC
 import qualified Text.Read                 as R
 
 type BtcAddress = HA.Address
@@ -130,22 +129,22 @@ egvAddrToJSON :: EgvAddress -> Value
 egvAddrToJSON = String . egvAddrToString
 
 egvAddrFromJSON :: Currency -> Value -> Parser EgvAddress
-egvAddrFromJSON cur
-  | cur == BTC = withText "address" $ \t ->
+egvAddrFromJSON = \case
+  BTC -> withText "address" $ \t ->
     case btcAddrFromString t of
       Nothing -> fail "could not decode address"
       Just x  -> return $ BtcAddress x
-  | cur == ERGO = withText "address" $ \t ->
+  ERGO -> withText "address" $ \t ->
     case ergAddrFromString t of
       Nothing -> fail "could not decode address"
       Just x  -> return $ ErgAddress x
 
 instance ToJSON EgvAddress where
-  toJSON egvAddr@(BtcAddress addr) = object [
+  toJSON egvAddr@(BtcAddress _) = object [
       "currency" .= toJSON BTC
     , "address"  .= egvAddrToJSON egvAddr
     ]
-  toJSON egvAddr@(ErgAddress addr) = object [
+  toJSON egvAddr@(ErgAddress _) = object [
       "currency" .= toJSON ERGO
     , "address"  .= egvAddrToJSON egvAddr
     ]

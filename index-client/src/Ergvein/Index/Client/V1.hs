@@ -23,6 +23,7 @@ import Ergvein.Index.API.Types
 import Ergvein.Index.API.V1
 import Ergvein.Text
 import Ergvein.Types.Currency
+import Ergvein.Types.Orphanage
 import Ergvein.Wallet.Native
 
 data AsClient

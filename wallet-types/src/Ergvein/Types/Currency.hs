@@ -40,11 +40,9 @@ import Data.Flat
 import Data.Maybe (fromMaybe)
 import Data.Ratio
 import Data.Serialize (Serialize)
-import Data.String
-import Data.Text (Text, pack, unpack)
+import Data.Text (Text)
 import Data.Time
 import Data.Time.Clock.POSIX
-import Data.Version
 import Data.Word
 import Ergvein.Aeson
 import Text.Printf
@@ -192,8 +190,8 @@ currencyGenesisTime c = case c of
 -- | Average duration between blocks
 currencyBlockDuration :: Currency -> NominalDiffTime
 currencyBlockDuration c = case c of
-  BTC -> fromIntegral 600
-  ERGO -> fromIntegral 120
+  BTC  -> 600
+  ERGO -> 120
 
 -- | Approx time of block
 currencyBlockTime :: Currency -> Int -> UTCTime
@@ -225,13 +223,13 @@ moneyToRationalUnit (Money cur amount) units = fromIntegral amount % (10 ^ curre
 moneyFromRational :: Currency -> Rational -> Money
 moneyFromRational cur amount = Money cur val
   where
-    val = fromIntegral . round $ amount * (10 ^ currencyResolution cur)
+    val = round $ amount * (10 ^ currencyResolution cur)
 {-# INLINE moneyFromRational #-}
 
 moneyFromRationalUnit :: Currency -> Units-> Rational -> Money
 moneyFromRationalUnit cur units amount = Money cur val
   where
-    val = fromIntegral . round $ amount * (10 ^ currencyResolutionUnit cur units)
+    val = round $ amount * (10 ^ currencyResolutionUnit cur units)
 {-# INLINE moneyFromRationalUnit #-}
 
 -- | Print amount of cryptocurrency

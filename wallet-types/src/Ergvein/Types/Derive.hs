@@ -17,13 +17,11 @@ import Data.Maybe
 import Data.Text (Text)
 import Ergvein.Crypto
 import Ergvein.Text
-import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Text.Read (readMaybe)
 
-import qualified Data.ByteString       as BS
 import qualified Data.Text             as T
 
 -- | Shorthand for encoded BIP48 derivation path like m/84'/0'/0' (hard)
