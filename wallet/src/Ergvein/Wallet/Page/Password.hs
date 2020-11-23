@@ -90,10 +90,11 @@ setupLoginPage wt mpath mnemonic curs = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText LPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText LPSDescr
   rec
-    logD <- holdDyn "" =<< setupLogin btnE
+    loginE <- setupLogin btnE
     pathD <- setupDerivPrefix curs mpath
     btnE <- submitSetBtn
-  void $ nextWidget $ ffor (updated ((,) <$> logD <*> pathD)) $ \(l, path) -> Retractable {
+  let goE = attachWith (,) (current pathD) loginE
+  void $ nextWidget $ ffor goE $ \(path, l) -> Retractable {
       retractableNext = setupPatternPage wt (Just path) mnemonic l curs
     , retractablePrev = Just $ pure $ setupLoginPage wt (Just path) mnemonic curs
     }
