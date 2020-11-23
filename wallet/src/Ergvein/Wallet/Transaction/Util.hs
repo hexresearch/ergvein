@@ -218,7 +218,7 @@ getUtxoUpdatesFromTxs mheight box txs = do
     addr = egvXPubKeyToEgvAddress $ scanBox'key box
 
 haveCommonInputs :: Tx -> Tx -> Bool
-haveCommonInputs tx1 tx2 = (not . L.null) $ (txIn tx1) `L.intersect` (txIn tx2)
+haveCommonInputs tx1 tx2 = (not . L.null) $ (prevOutput <$> txIn tx1) `L.intersect` (prevOutput <$> txIn tx2)
 
 -- | Returns Just True if tx1 has higher fee than tx2, Just False if tx2 has higher fee than tx1.
 -- If it was not possible to calculate the fee for any of the transactions
@@ -234,7 +234,7 @@ haveHigherFee tx1 tx2
         (_, _) -> pure Nothing
 
 haveSameInputs :: Tx -> Tx -> Bool
-haveSameInputs tx1 tx2 = L.sort (txIn tx1) == L.sort (txIn tx2)
+haveSameInputs tx1 tx2 = L.sort (prevOutput <$> txIn tx1) == L.sort (prevOutput <$> txIn tx2)
 
 -- | Check given TxIn wheather it spends OutPoint.
 inputSpendsOutPoint :: OutPoint -> TxIn -> Bool
