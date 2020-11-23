@@ -1,5 +1,6 @@
 module Ergvein.Types.Transaction (
       BlockHeight
+    , BtcTx
     , BlockHash
     , TxBlockIndex
     , MerkleSum
@@ -9,7 +10,6 @@ module Ergvein.Types.Transaction (
     , TxOutIndex
     , currencyHeightStart
     , egvBlockHashToHk
-    , BtcTx(..)
     , btcTxToString
     , btcTxFromString
     , ErgTx(..)
@@ -17,6 +17,7 @@ module Ergvein.Types.Transaction (
     , ergTxFromString
     , EgvTx(..)
     , EgvTxMeta(..)
+    , egvTxToString
     , getEgvTxMeta
     , setEgvTxMeta
     , egvTxCurrency
@@ -33,30 +34,23 @@ module Ergvein.Types.Transaction (
   ) where
 
 import Control.DeepSeq
-import Control.Monad           (mzero, (<=<))
-import Data.Aeson              as A
-import Data.Aeson.Types        (Parser)
-import Data.ByteString         (ByteString)
-import Data.ByteString.Short   (ShortByteString)
+import Control.Monad ((<=<))
+import Data.Aeson as A
+import Data.Aeson.Types (Parser)
+import Data.ByteString (ByteString)
+import Data.ByteString.Short (ShortByteString)
 import Data.Either
-import Data.Flat
-import Data.Hashable           (Hashable)
-import Data.Serialize          as S
-import Data.String             (IsString, fromString)
-import Data.String.Conversions (cs)
-import Data.Text               as T
+import Data.Hashable (Hashable)
+import Data.Serialize as S
+import Data.Text as T
 import Data.Time
 import Data.Word
 import Ergvein.Aeson
 import Ergvein.Crypto.Util
-import Ergvein.Text
 import Ergvein.Types.Currency
-import GHC.Generics            (Generic)
-import Network.Haskoin.Crypto  (getHash256, Hash256(..))
-import Text.Read               as R
+import GHC.Generics (Generic)
 
 import qualified Data.ByteString.Short       as BSS
-import qualified Data.ByteString             as BS
 import qualified Network.Haskoin.Block       as HB
 import qualified Network.Haskoin.Transaction as HK
 
@@ -82,6 +76,10 @@ type TxFee = MoneyUnit
 -- of transaction addresses when indexer scans blockchain
 type PubKeyScriptHash = Text
 
+egvBlockHashToHk :: BlockHash -> HB.BlockHash
+egvBlockHashToHk bh = fromRight (error $ "Failed to convert bh: " <> show bh) $ runGet S.get (BSS.fromShort bh)
+{-# INLINE egvBlockHashToHk #-}
+
 -- | Index of the UTXO
 type TxOutIndex = Word
 
@@ -90,10 +88,6 @@ currencyHeightStart :: Currency -> BlockHeight
 currencyHeightStart = \case BTC  -> 0
                             ERGO -> 1
 {-# INLINE currencyHeightStart #-}
-
-egvBlockHashToHk :: BlockHash -> HB.BlockHash
-egvBlockHashToHk bh = fromRight (error $ "Failed to convert bh: " <> show bh) $ runGet S.get (BSS.fromShort bh)
-{-# INLINE egvBlockHashToHk #-}
 
 type BtcTx = HK.Tx
 
@@ -144,12 +138,12 @@ egvTxCurrency e = case e of
   ErgTx{} -> ERGO
 
 egvTxFromJSON :: Currency -> Value -> Parser EgvTx
-egvTxFromJSON cur
-  | cur == BTC = withText "Bitcoin transaction" $ \t ->
+egvTxFromJSON = \case
+  BTC -> withText "Bitcoin transaction" $ \t ->
     case btcTxFromString t of
       Nothing -> fail "could not decode Bitcoin transaction"
       Just x  -> return $ BtcTx x Nothing
-  | cur == ERGO = withText "Ergo transaction" $ \t ->
+  ERGO -> withText "Ergo transaction" $ \t ->
     case ergTxFromString t of
       Nothing -> fail "could not decode Ergo transaction"
       Just x  -> return $ ErgTx x Nothing
@@ -165,12 +159,12 @@ setEgvTxMeta etx mh = case etx of
   ErgTx tx _ -> ErgTx tx mh
 
 instance ToJSON EgvTx where
-  toJSON egvTx@(BtcTx tx meta) = object [
+  toJSON (BtcTx tx meta) = object [
       "currency"  .= toJSON BTC
     , "tx"        .= btcTxToString tx
     , "meta"      .= toJSON meta
     ]
-  toJSON egvTx@(ErgTx tx meta) = object [
+  toJSON (ErgTx tx meta) = object [
       "currency"  .= toJSON ERGO
     , "tx"        .= ergTxToString tx
     , "meta"      .= toJSON meta
@@ -216,12 +210,12 @@ egvTxHashToJSON :: TxHash -> Value
 egvTxHashToJSON = A.String . egvTxHashToStr
 
 egvTxHashFromJSON :: Currency -> Value -> Parser TxHash
-egvTxHashFromJSON cur
-  | cur == BTC = withText "txHash" $ \t ->
+egvTxHashFromJSON = \case
+  BTC -> withText "txHash" $ \t ->
     case btcTxHashFromStr t of
       Nothing -> fail "could not decode transaction hash"
       Just x  -> return $ BtcTxHash x
-  | cur == ERGO = withText "txHash" $ \t ->
+  ERGO -> withText "txHash" $ \t ->
     case ergTxHashFromStr t of
       Nothing -> fail "could not decode transaction hash"
       Just x  -> return $ ErgTxHash x
@@ -250,13 +244,4 @@ hkTxHashToEgv = BtcTxHash
 
 egvTxId :: EgvTx -> TxId
 egvTxId (BtcTx tx _) = hkTxHashToEgv $ HK.txHash tx
-egvTxId (ErgTx tx _) = error "egvTxId: implement for Ergo!"
-
-instance FromJSON ShortByteString where
-  parseJSON = withText "ShortByteString" $
-    either (fail "Failed to parse a ShortByteString") (pure . BSS.toShort) . hex2bsTE
-  {-# INLINE parseJSON #-}
-
-instance ToJSON ShortByteString where
-  toJSON = A.String . bs2Hex . BSS.fromShort
-  {-# INLINE toJSON #-}
+egvTxId (ErgTx _ _)  = error "egvTxId: implement for Ergo!"
