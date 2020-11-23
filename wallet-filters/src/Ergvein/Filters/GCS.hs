@@ -25,7 +25,6 @@ module Ergvein.Filters.GCS(
 import Control.Monad.ST (runST)
 import Data.ByteString (ByteString)
 import Data.HashSet (HashSet)
-import Data.Vector (Vector)
 import Data.Word
 import Ergvein.Filters.Hash
 

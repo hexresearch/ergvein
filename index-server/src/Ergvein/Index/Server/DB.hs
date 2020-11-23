@@ -14,7 +14,6 @@ import Database.LevelDB.Base
 import Database.LevelDB.Internal
 import System.Directory
 import System.FilePath
-import Ergvein.Text
 
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries (initIndexerDb)

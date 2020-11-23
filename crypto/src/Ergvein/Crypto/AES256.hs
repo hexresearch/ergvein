@@ -26,12 +26,9 @@ import Data.ByteArray (ByteArray, ByteArrayAccess, convert)
 import Data.ByteArray.Sized (SizedByteArray, unsafeSizedByteArray)
 import Data.ByteString (ByteString)
 import Data.Maybe
-import Data.Text
 import Data.Serialize
 import Ergvein.Crypto.PBKDF
-import Data.Text.Encoding (encodeUtf8)
 
-type Password = Text
 
 data Key c a where
   Key :: (BlockCipher c, ByteArray a) => a -> Key c a

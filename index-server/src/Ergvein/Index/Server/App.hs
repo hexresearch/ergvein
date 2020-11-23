@@ -15,7 +15,6 @@ import Ergvein.Index.Server.DB.Schema.Indexer (RollbackSequence(..))
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
-import Ergvein.Index.Server.PeerDiscovery.Discovery
 import Ergvein.Index.Server.TCPService.Server
 import Ergvein.Index.Server.Utils
 import Ergvein.Text
@@ -35,8 +34,8 @@ onStartup onlyScan _ = do
 
 onShutdown :: ServerEnv -> IO ()
 onShutdown env = do
-  T.putStrLn $ showt "Server stop signal recivied..."
-  T.putStrLn $ showt "service is stopping"
+  T.putStrLn "Server stop signal recivied..."
+  T.putStrLn "service is stopping"
   atomically $ writeTVar (envShutdownFlag env) True
 
 finalize :: (MonadIO m, MonadLogger m) => ServerEnv -> [Thread] -> [Thread] -> m ()
