@@ -11,7 +11,7 @@ import Control.Concurrent.Lifted (fork, threadDelay, killThread)
 import Control.Concurrent.STM
 import Control.Monad.Catch (throwM, MonadThrow)
 import Control.Monad.IO.Unlift
-import Control.Monad.Random
+import Control.Monad.Random (randomIO)
 import Control.Monad.Reader
 import Control.Monad.Trans.Control
 import Data.Serialize (decode, runGet, runPut)
