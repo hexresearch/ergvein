@@ -32,8 +32,6 @@ import qualified Data.ByteString.Short as BSS
 import qualified Data.Map.Strict as M
 import qualified Data.Sequence as Seq
 import qualified Data.Serialize as S
-import qualified Data.Serialize.Get as S
-import qualified Data.Serialize.Put as S
 import qualified Data.Text.Encoding as TE
 import qualified Database.LevelDB as LDB
 
