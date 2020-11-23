@@ -111,7 +111,7 @@ connectBtc net host port closeVar = do
       print =<< atomically (readTChan closeChan)
       liftIO $ N.close sock
     b <- liftIO $ readTVarIO closeVar
-    if b then liftIO $ print "Close connection to BTC node" else next
+    if b then liftIO $ putStrLn "Close connection to BTC node" else next
   pure btcsock
   where
     hints :: N.AddrInfo
