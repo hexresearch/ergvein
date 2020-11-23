@@ -23,6 +23,7 @@ import Ergvein.Types.Currency
 import qualified Data.Attoparsec.ByteString as A
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as BSS
+import qualified Data.ByteString.Lazy as BL
 
 -- ===========================================================================
 --           Custom serialize-deserialize class
@@ -70,3 +71,17 @@ buildBSS = buildBS . BSS.fromShort
 
 parseBSS :: Parser BSS.ShortByteString
 parseBSS = BSS.toShort <$> parseBS
+
+
+-- ===========================================================================
+--           Instances
+-- ===========================================================================
+
+instance EgvSerialize Word32 where
+  egvSerialize _ = BL.toStrict . toLazyByteString . word32LE
+  egvDeserialize _ = parseOnly anyWord32le
+
+instance EgvSerialize ByteString where
+  egvSerialize _ bs = BL.toStrict . toLazyByteString $
+    word16LE (fromIntegral $ BS.length bs) <> byteString bs
+  egvDeserialize _ = parseOnly $ A.take . fromIntegral =<< anyWord16le

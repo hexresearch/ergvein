@@ -190,15 +190,6 @@ hash2Word32MapBuilder ms = word32LE num <> elb
 --           Some utils
 -- ===========================================================================
 
-instance EgvSerialize ByteString where
-  egvSerialize _ bs = BL.toStrict . toLazyByteString $
-    word16LE (fromIntegral $ BS.length bs) <> byteString bs
-  egvDeserialize _ = parseOnly $ Parse.take . fromIntegral =<< anyWord16le
-
-instance EgvSerialize Word32 where
-  egvSerialize _ = BL.toStrict . toLazyByteString . word32LE
-  egvDeserialize _ = parseOnly anyWord32le
-
 serializeWord32 :: Word32 -> ByteString
 serializeWord32 = BL.toStrict . toLazyByteString . word32LE
 {-# INLINE serializeWord32 #-}
@@ -214,3 +205,4 @@ putTxInfosAsRecs cur items = mconcat $ parMap rpar putI (force items)
       p1 = LDB.Put (txRawKey txHash) $ egvSerialize cur $ TxRecBytes txBytes
       p2 = LDB.Put (txMetaKey txHash) $ egvSerialize cur $ TxRecMeta txOutputsCount
       in [p1, p2]
+
