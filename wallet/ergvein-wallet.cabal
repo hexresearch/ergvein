@@ -212,6 +212,7 @@ library
         reflex-dom-retractable -any,
         reflex-external-ref -any,
         reflex-localize -any,
+        reflex-localize-dom -any,
         safe -any,
         safe-exceptions -any,
         semialign -any,

@@ -15,7 +15,6 @@ import Control.Monad.State.Strict
 import GHC.Generics
 import Language.Javascript.JSaddle.Types
 import Reflex
-import Reflex.Dom
 import Reflex.ExternalRef
 import Reflex.Localize.Language
 import Reflex.Localize.Monad
@@ -38,7 +37,6 @@ deriving instance PerformEvent t m => PerformEvent t (LocalizeT t m)
 deriving instance TriggerEvent t m => TriggerEvent t (LocalizeT t m)
 deriving instance MonadHold t m => MonadHold t (LocalizeT t m)
 deriving instance MonadSample t m => MonadSample t (LocalizeT t m)
-deriving instance DomBuilder t m => DomBuilder t (LocalizeT t m)
 deriving instance MonadIO m => MonadIO (LocalizeT t m)
 deriving instance MonadJSM m => MonadJSM (LocalizeT t m)
 deriving instance (Group q, Additive q, Query q, Eq q, MonadQuery t q m, Monad m) => MonadQuery t q (LocalizeT t m)
@@ -95,7 +93,7 @@ runLocalize initLang ma = do
   runLocalizeT ma re
 {-# INLINABLE runLocalize #-}
 
-instance (PerformEvent t m, MonadHold t m, Adjustable t m, MonadFix m, MonadIO (Performable m), PostBuild t m, MonadIO m, DomBuilder t m)
+instance (PerformEvent t m, MonadHold t m, Adjustable t m, MonadFix m, MonadIO (Performable m), PostBuild t m, MonadIO m)
   => MonadLocalized t (LocalizeT t m) where
   setLanguage lang = do
     langRef <- LocalizeT $ asks locEnvLangRef

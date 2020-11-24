@@ -3,9 +3,6 @@ module Reflex.Localize.Class(
     GrammarCase(..)
   , LocalizedPrint(..)
   , defaultLocPrintDyn
-  , localizedText
-  , localizedTextLower
-  , localizedTextUpper
 ) where
 
 import Data.Data
@@ -14,7 +11,6 @@ import Data.Text (Text)
 import GHC.Generics
 import qualified Data.Text as T
 import Reflex
-import Reflex.Dom
 import Reflex.Localize.Language
 import Reflex.Localize.Monad
 
@@ -62,18 +58,3 @@ instance (LocalizedPrint a, LocalizedPrint b) => LocalizedPrint (Either a b) whe
 -- | Default implementation
 defaultLocPrintDyn :: MonadLocalized t m => (Language -> a -> Text) -> a -> m (Dynamic t Text)
 defaultLocPrintDyn f v = fmap (fmap (flip f v)) getLanguage
-
-localizedText :: (MonadLocalized t m, LocalizedPrint a) => a -> m ()
-localizedText val = dynText =<< localized val
-
-localizedTextLower :: (MonadLocalized t m, LocalizedPrint a) => a -> m ()
-localizedTextLower val = dynText =<< (fmap2 T.toLower $ localized val)
-  where
-    fmap2 :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
-    fmap2 f x = fmap (fmap f) x
-
-localizedTextUpper :: (MonadLocalized t m, LocalizedPrint a) => a -> m ()
-localizedTextUpper val = dynText =<< (fmap2 T.toUpper $ localized val)
-  where
-    fmap2 :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
-    fmap2 f x = fmap (fmap f) x

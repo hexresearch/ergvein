@@ -28,7 +28,7 @@ navbarWidget cur prevWidget activeItem = do
         divClass "navbar-balance" $ dynText balance
         divClass "navbar-status"  $ syncWidget False cur
 
-navbarBtn :: (DomBuilder t m, MonadLocalized t m) => NavbarItem -> NavbarItem-> m (Event t NavbarItem)
+navbarBtn :: (DomBuilder t m, PostBuild t m, MonadLocalized t m) => NavbarItem -> NavbarItem-> m (Event t NavbarItem)
 navbarBtn item activeItem
   | item == activeItem = (item <$) <$> spanButton "navbar-item active" item
   | item /= activeItem = (item <$) <$> spanButton "navbar-item" item
