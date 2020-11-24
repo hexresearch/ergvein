@@ -50,7 +50,7 @@ instance (Reflex t, LocalizedPrint lbl) => Default (InplaceEditCfg t (InplaceEdi
 
 -- | Generic widget to edit a single field value inplace. Text label with a edit button aside.
 -- On edit label is replaced with text field and save/delete/cancel buttons below.
-inplaceEditField :: forall t m a lbl . (DomBuilder t m, MonadFix m, MonadHold t m, MonadLocalized t m, LocalizedPrint lbl)
+inplaceEditField :: forall t m a lbl . (DomBuilder t m, PostBuild t m, MonadFix m, MonadHold t m, MonadLocalized t m, LocalizedPrint lbl)
   => InplaceEditCfg t lbl -- ^ Configuration of widget
   -> (a -> Text) -- ^ Render value to text
   -> (Text -> Either lbl a) -- ^ Parse value from text

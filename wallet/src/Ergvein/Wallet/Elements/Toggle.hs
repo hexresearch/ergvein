@@ -14,7 +14,7 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Util
 
 -- | Create toggle button with pressed and unpressed states
-toggleButton :: forall t m lbl . (DomBuilder t m, MonadHold t m, MonadLocalized t m, MonadFix m, LocalizedPrint lbl)
+toggleButton :: forall t m lbl . (DomBuilder t m, PostBuild t m, MonadHold t m, MonadLocalized t m, MonadFix m, LocalizedPrint lbl)
   => lbl -- ^ Label of button unpressed
   -> lbl -- ^ Label of button pressed
   -> Dynamic t Bool -- ^ Input of toggler
@@ -30,7 +30,7 @@ toggleButton lblOff lblOn val0D = mdo
   pure valD'
 
 -- | Toggler switch with alya materlized looking
-toggler :: (DomBuilder t m, MonadSample t m, MonadIO m, MonadLocalized t m, LocalizedPrint l)
+toggler :: (DomBuilder t m, PostBuild t m, MonadSample t m, MonadIO m, MonadLocalized t m, LocalizedPrint l)
   => l
   -> (Dynamic t Bool)
   -> m  (Dynamic t Bool)

@@ -14,6 +14,7 @@ packages:
   ./interfaces/ergo
   ./reflex-external-ref
   ./reflex-localize
+  ./reflex-localize-dom
   ./retractable
   ./wallet
   ./wallet-android

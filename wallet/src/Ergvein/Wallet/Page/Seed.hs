@@ -34,7 +34,7 @@ import Ergvein.Wallet.Resize
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
-import Reflex.Localize
+import Reflex.Localize.Dom
 
 import qualified Data.List      as L
 import qualified Data.Serialize as S
