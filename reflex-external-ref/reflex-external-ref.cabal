@@ -1,5 +1,5 @@
 name:                reflex-external-ref
-version:             1.0.2.0
+version:             1.0.3.0
 synopsis:            External reference with reactivity support
 description:         See README.md
 stability:           Experimental
@@ -18,6 +18,8 @@ maintainer:          - Anton Gushcha <ncrashed@gmail.com>
                      - Aminion <>
                      - Vladimir Krutkin <krutkinvs@gmail.com>
                      - Levon Oganyan
+bug-reports:         https://github.com/hexresearch/ergvein/issues
+homepage:            https://github.com/hexresearch/ergvein
 
 library
   hs-source-dirs:      src
@@ -25,7 +27,10 @@ library
     Reflex.ExternalRef
   build-depends:
       base
-    , reflex                    >= 0.4      && < 0.7
-    , reflex-dom                >= 0.4      && < 0.7
+    , reflex                    >= 0.4      && < 0.9
     , deepseq                   >= 1.4      && < 1.5
   default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/hexresearch/ergvein.git
