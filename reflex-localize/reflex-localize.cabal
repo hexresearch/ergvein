@@ -28,7 +28,7 @@ library
     Reflex.Localize.Monad
     Reflex.Localize.Trans
   build-depends:
-      base
+      base                      >= 4.5      && < 4.15
     , text
     , reflex                    >= 0.4      && < 0.7
     , reflex-dom                >= 0.4      && < 0.7

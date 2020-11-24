@@ -1,3 +1,13 @@
+1.0.3.1
+=======
+
+Add description and README file.
+
+1.0.3.0
+=======
+
+Bump versions of reflex. Drop dependency on `reflex-dom`
+
 1.0.2.0
 =======
 
