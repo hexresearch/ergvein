@@ -13,6 +13,8 @@ module Reflex.Localize.Dom(
   , localizedTextWith
   , localizedTextLower
   , localizedTextUpper
+  , localizedDyn
+  , localizedDynText
   , languageDropdown
   , module Reflex.Localize
   ) where
@@ -57,5 +59,15 @@ localizedTextLower = localizedTextWith T.toLower
 -- | Same as `localizedText` but transforms text to upper case.
 localizedTextUpper :: (MonadLocalized t m, LocalizedPrint a, PostBuild t m, DomBuilder t m) => a -> m ()
 localizedTextUpper = localizedTextWith T.toUpper
+
+-- | Same as 'localized', but takes a dynamic value as input
+localizedDyn :: (MonadLocalized t m, LocalizedPrint a) => Dynamic t a -> m (Dynamic t Text)
+localizedDyn valD = do
+  langD <- getLanguage
+  pure $ localizedShow <$> langD <*> valD
+
+-- | Same as 'localizedText', but takes a dynamic value as input
+localizedDynText :: (MonadLocalized t m, LocalizedPrint a, PostBuild t m, DomBuilder t m) => Dynamic t a -> m ()
+localizedDynText valD = dynText =<< localizedDyn valD
 
 deriving instance DomBuilder t m => DomBuilder t (LocalizeT t m)

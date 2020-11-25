@@ -5,11 +5,16 @@ module Ergvein.Wallet.Localization.Password
   , LoginPageStrings(..)
   , PatternPageStrings(..)
   , ConfirmEmptyPage(..)
+  , StartHeightStrings(..)
   ) where
 
+import Data.Time
 import Data.Text (Text)
 
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Language
+
+import qualified Data.Text as T
 
 data LoginPageStrings = LPSTitle | LPSDescr
 
@@ -112,3 +117,26 @@ instance LocalizedPrint ConfirmEmptyPage where
       CEPSkip         -> "Пропустить"
       CEPAttention    -> "Пустой пароль. Вы уверены?"
       CEPConsequences -> "Кошелёк будет доступен без ввода пароля"
+
+data StartHeightStrings = SHSDescr | SHSLabel | SHSParseError | SHSNonNegError | SHSEstimate BlockHeight
+
+instance LocalizedPrint StartHeightStrings where
+  localizedShow l v = case l of
+    English -> case v of
+      SHSDescr        -> "The height to restore from"
+      SHSLabel        -> "Starting height"
+      SHSParseError   -> "Parse error. Not an integer!"
+      SHSNonNegError  -> "The height has to be non-negative!"
+      SHSEstimate h   -> "Estimated start date: " <> showDate h
+    Russian -> case v of
+      SHSDescr        -> "Начальная высота для восстановления"
+      SHSLabel        -> "Высота"
+      SHSParseError   -> "Ошибка. Введите целое число"
+      SHSNonNegError  -> "Высота должна быть 0 или больше"
+      SHSEstimate h   -> "Дата начала (оценка): " <> showDate h
+
+showDate :: BlockHeight -> Text
+showDate h = T.pack $ formatTime defaultTimeLocale "%F" $ addUTCTime delta genDate
+  where
+    genDate = parseTimeOrError False defaultTimeLocale "%F %T" "2009-01-03 18:15:05"
+    delta = (fromIntegral h) * 9.5 * 60

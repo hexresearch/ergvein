@@ -39,12 +39,7 @@ library
         Ergvein.Wallet.Elements.Input.Class
         Ergvein.Wallet.Embed
         Ergvein.Wallet.Embed.TH
-        Ergvein.Wallet.Filters.Btc.Queries
-        Ergvein.Wallet.Filters.Btc.Types
         Ergvein.Wallet.Filters.Loader
-        Ergvein.Wallet.Filters.Scan
-        Ergvein.Wallet.Filters.Storage
-        Ergvein.Wallet.Filters.Types
         Ergvein.Wallet.Id
         Ergvein.Wallet.Indexer.Socket
         Ergvein.Wallet.IP
@@ -66,6 +61,7 @@ library
         Ergvein.Wallet.Localization.Password
         Ergvein.Wallet.Localization.PatternKey
         Ergvein.Wallet.Localization.Receive
+        Ergvein.Wallet.Localization.Restore
         Ergvein.Wallet.Localization.Seed
         Ergvein.Wallet.Localization.Send
         Ergvein.Wallet.Localization.Settings
@@ -136,8 +132,8 @@ library
         Ergvein.Wallet.Storage.Constants
         Ergvein.Wallet.Storage.Util
         Ergvein.Wallet.Style
-        Ergvein.Wallet.Sync.Status
-        Ergvein.Wallet.Sync.Widget
+        Ergvein.Wallet.Status.Types
+        Ergvein.Wallet.Status.Widget
         Ergvein.Wallet.TimeZone
         Ergvein.Wallet.Tx
         Ergvein.Wallet.Util

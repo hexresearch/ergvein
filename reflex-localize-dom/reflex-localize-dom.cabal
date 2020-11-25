@@ -1,5 +1,5 @@
 name:                reflex-localize-dom
-version:             1.0.0.0
+version:             1.0.1.0
 synopsis:            Helper widgets for reflex-localize
 description:         Library provides helpers for dynamic strings that depends on current selected language.
 stability:           Experimental
