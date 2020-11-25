@@ -1054,7 +1054,6 @@ receiveCss = do
     margin (rem 2) auto (rem 2) auto
     fontSize $ px 16
     fontWeight $ weight 600
-    wordBreak breakAll
   ".label-block" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1]
@@ -1074,7 +1073,6 @@ receiveCss = do
     margin (px 20) (px 5) (px 40) (px 5)
     fontSize $ px 16
     fontWeight $ weight 600
-    wordBreak breakAll
   ".button-receive" ? do
     width $ pct 75
     marginLeft auto
