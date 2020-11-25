@@ -9,6 +9,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Derive
 import Ergvein.Types.Restore
 import Ergvein.Types.Storage
+import Ergvein.Types.Transaction
 import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Localization.AuthInfo
 import Ergvein.Wallet.Monad
@@ -25,12 +26,13 @@ initAuthInfo :: (MonadIO m, PlatformNatives, HasStoreDir m)
   -> [Currency]
   -> WalletName
   -> Password
+  -> BlockHeight
   -> Bool
   -> m (Either AuthInfoAlert AuthInfo)
-initAuthInfo wt mpath mnemonic curs login pass isPass = do
+initAuthInfo wt mpath mnemonic curs login pass startingHeight isPass = do
   let fname = "meta_wallet_" <> (T.replace " " "_" login)
   when (isAndroid && isPass) $ storeValue fname True True
-  mstorage <- createStorage (wt == WalletRestored) mpath mnemonic (login, pass) curs
+  mstorage <- createStorage (wt == WalletRestored) mpath mnemonic (login, pass) startingHeight curs
   case mstorage of
     Left err -> pure $ Left $ CreateStorageAlert err
     Right s -> case passwordToECIESPrvKey pass of
