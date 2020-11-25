@@ -4,7 +4,6 @@ import Codec.Compression.GZip
 import Control.Monad
 import Data.Attoparsec.Binary
 import Data.Attoparsec.ByteString
-import Data.List
 import Data.Word
 
 import Ergvein.Index.Protocol.Types
@@ -36,7 +35,11 @@ word32toMessageType = \case
   _  -> Nothing
 
 currencyCodeParser :: Parser CurrencyCode
-currencyCodeParser = fmap word32ToCurrencyCode anyWord32le
+currencyCodeParser = do
+  w <- anyWord32le
+  case word32ToCurrencyCode w of
+    Nothing -> fail "Invalid currency code"
+    Just c  -> pure c
 
 word32toRejectType :: Word32 -> Maybe RejectCode
 word32toRejectType = \case
@@ -96,7 +99,9 @@ filterParser = do
 
 addressParser :: Parser Address
 addressParser = do
-  addrType <- word8ToIPType <$> anyWord8
+  addrType <-  maybe (fail "Invalid address type") pure
+            .  word8ToIPType
+           =<< anyWord8
   addrPort <- anyWord16le
   addr <- Parse.take (if addrType == IPV4 then 4 else 16)
   pure $ Address

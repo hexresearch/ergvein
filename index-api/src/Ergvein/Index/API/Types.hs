@@ -1,11 +1,9 @@
 module Ergvein.Index.API.Types where
 
 import Data.Map.Strict (Map)
-import Data.Maybe
 import Data.Text
 import Data.Word
 import GHC.Generics
-import Servant.Client.Core
 
 import Ergvein.Aeson
 import Ergvein.Types.Currency

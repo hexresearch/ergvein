@@ -14,7 +14,6 @@ import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.Proxy
 import Network.HTTP.Client hiding (Proxy)
-import Servant.API
 import Servant.API.Generic
 import Servant.Client
 
@@ -23,7 +22,7 @@ import Ergvein.Index.API.Types
 import Ergvein.Index.API.V1
 import Ergvein.Text
 import Ergvein.Types.Currency
-import Ergvein.Types.Orphanage
+import Ergvein.Types.Orphanage ()
 import Ergvein.Wallet.Native
 
 data AsClient

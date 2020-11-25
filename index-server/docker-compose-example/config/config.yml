@@ -21,3 +21,6 @@ ownPeerAddress           : null
 knownPeers               : []
 peerActualizationDelay   : 10000000
 peerActualizationTimeout : 86400
+metrics:
+  host: 0.0.0.0
+  port: 8668

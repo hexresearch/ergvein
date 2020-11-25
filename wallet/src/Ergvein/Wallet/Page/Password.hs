@@ -224,7 +224,7 @@ changePasswordDescWidget = wrapperSimple True $ mdo
       pure (passE, True <$ emptyE)
   pure $ (,True) <$> passE
 
-changePasswordDescr :: MonadLocalized t m => Bool -> m ()
+changePasswordDescr :: (MonadLocalized t m, DomBuilder t m, PostBuild t m) => Bool -> m ()
 changePasswordDescr b = do
   divClass "password-setup-title" $ h4 $ localizedText (b, CPSTitle)
   divClass "password-setup-descr" $ h5 $ localizedText (b, CPSDescr)

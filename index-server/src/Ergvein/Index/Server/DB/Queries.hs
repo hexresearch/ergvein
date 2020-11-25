@@ -24,7 +24,6 @@ module Ergvein.Index.Server.DB.Queries
 
 import Control.Concurrent.Async.Lifted
 import Control.Concurrent.STM
-import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Logger
 import Control.Monad.Trans.Control

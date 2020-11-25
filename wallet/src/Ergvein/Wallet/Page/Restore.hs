@@ -6,7 +6,7 @@ module Ergvein.Wallet.Page.Restore(
 import Control.Concurrent.Async
 import Control.Monad.IO.Class
 import Data.Maybe (catMaybes)
-import Reflex.Localize
+import Reflex.Localize.Dom
 
 import Ergvein.Filters.Btc.Index
 import Ergvein.Filters.Mutable hiding (BlockHeight)

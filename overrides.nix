@@ -63,6 +63,7 @@ in (self: super: let
     reflex-dom-retractable = ingnoreGarbage super.reflex-dom-retractable;
     reflex-external-ref = ingnoreGarbage super.reflex-external-ref;
     reflex-localize = ingnoreGarbage super.reflex-localize;
+    reflex-localize-dom = ingnoreGarbage super.reflex-localize-dom;
     # Overridess
     android-activity = self.callPackage ./derivations/android-activity.nix {
       inherit (pkgs.buildPackages) jdk;

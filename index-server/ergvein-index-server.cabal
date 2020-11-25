@@ -12,6 +12,7 @@ author:              Anton Gushcha, Aminion, Vladimir Krutkin, Levon Oganyan
 maintainer:          Anton Gushcha <ncrashed@protonmail.com>, Vladimir Krutkin <krutkinvs@gmail.com>
 
 library
+  ghc-options:         -Wall
   hs-source-dirs:      src
   exposed-modules:
     Ergvein.Index.Server.App

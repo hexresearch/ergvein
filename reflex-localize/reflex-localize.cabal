@@ -1,11 +1,12 @@
 name:                reflex-localize
 version:             1.0.0.0
 synopsis:            Localization library for reflex
-description:         See README.md
+description:         Library provides helpers for dynamic strings that depends on current selected language.
+  See also `reflex-localize-dom` for examples and DOM related helpers.
 stability:           Experimental
 category:            Reflex, FRP, Web, GUI, HTML, Javascript, Reactive, Reactivity, User Interfaces, User-interface
 build-type:          Simple
-cabal-version:       >= 1.25
+cabal-version:       >=1.10
 license:             MIT
 license-file:        LICENSE
 copyright:           2019 ATUM SOLUTIONS AG
@@ -18,6 +19,11 @@ maintainer:          - Anton Gushcha <ncrashed@gmail.com>
                      - Aminion <>
                      - Vladimir Krutkin <krutkinvs@gmail.com>
                      - Levon Oganyan
+bug-reports:         https://github.com/hexresearch/ergvein/issues
+homepage:            https://github.com/hexresearch/ergvein
+extra-source-files:
+  README.md
+  CHANGELOG.md
 
 library
   hs-source-dirs:      src
@@ -28,13 +34,12 @@ library
     Reflex.Localize.Monad
     Reflex.Localize.Trans
   build-depends:
-      base
-    , text
-    , reflex                    >= 0.4      && < 0.7
-    , reflex-dom                >= 0.4      && < 0.7
-    , mtl
-    , reflex-external-ref
+      base                      >= 4.5      && < 4.15
     , jsaddle
+    , mtl
+    , reflex                    >= 0.4      && < 0.8
+    , reflex-external-ref
+    , text
   default-language:    Haskell2010
   default-extensions:
     DataKinds
@@ -50,3 +55,8 @@ library
     StandaloneDeriving
     TypeFamilies
     UndecidableInstances
+
+source-repository head
+  type: git
+  location: https://github.com/hexresearch/ergvein
+  subdir: reflex-localize

@@ -6,7 +6,7 @@ module Ergvein.Wallet.Page.Currencies(
 
 import Data.List (find)
 import Data.Maybe (fromMaybe)
-import Reflex.Localize
+import Reflex.Localize.Dom
 
 import Ergvein.Crypto.Keys
 import Ergvein.Text

@@ -5,7 +5,6 @@ import Control.Immortal
 import Control.Monad.Catch
 import Control.Monad.Logger
 import Control.Monad.Reader
-import Conversion
 import Data.Maybe
 import Data.Time
 import System.DiskSpace

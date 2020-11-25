@@ -9,7 +9,6 @@ module Ergvein.Index.Server.PeerDiscovery.Discovery
 import Control.Concurrent.STM
 import Control.Immortal
 import Control.Monad.Random
-import Conversion
 import Data.Foldable
 import Data.Set (Set)
 import Data.Time.Clock
