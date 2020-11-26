@@ -146,8 +146,7 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr) = do
         either' finalpick (const $ confirmationErrorWidget CEMNoSolution) $ \(pick, change) ->
           txSignSendWidget addr unit amount fee changeKey change pick
       Right (tx, unit', amount', estFee, addr') -> do
-        confirmationInfoWidget (unit', amount') estFee addr'
-        el "h4" . text . (<>) "TxId: " . HT.txHashToHex . HT.txHash $ tx
+        confirmationInfoWidget (unit', amount') estFee addr' (Just tx)
         pure never
     void $ widgetHold (pure ()) $ ffor stxE $ \(tx, _, _, _, _) -> do
       sendE <- getPostBuild
@@ -155,7 +154,7 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr) = do
       storedE <- btcMempoolTxInserter $ tx <$ addedE
       void $ requestBroadcast $ ffor storedE $ const $
         NodeReqBTC . MInv . Inv . pure . InvVector InvTx . HT.getTxHash . HT.txHash $ tx
-      goE <- el "div" $ delay 1 =<< outlineButton SendBtnBack
+      goE <- delay 1 =<< outlineButton SendBtnBack
       void $ nextWidget $ ffor goE $ const $ Retractable {
             retractableNext = balancesPage
           , retractablePrev = Nothing
@@ -182,31 +181,43 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr) = do
 
 -- | Simply displays the relevant information about a transaction
 -- TODO: modify to accomodate Ergo
-confirmationInfoWidget :: MonadFront t m => (UnitBTC, Word64) -> Word64 -> EgvAddress -> m ()
-confirmationInfoWidget (unit, amount) estFee addr = divClass "send-confirm-info" $ do
-  h4  $ localizedText SSConfirm
-  divClass "mb-1 ml-1 mr-1" $ do
-    mkrow AmountString $ showMoneyUnit (mkMoney amount) us <> " " <> symbolUnit cur us
-    mkrow RecipientString $ egvAddrToString addr
-    mkrow SSFee $ showt estFee <> " " <> symbolUnit cur (Units (Just BtcSat) Nothing)
-    mkrow SSTotal $ showMoneyUnit (mkMoney $ amount + estFee) us <> " " <> symbolUnit cur us
+confirmationInfoWidget :: MonadFront t m => (UnitBTC, Word64) -> Word64 -> EgvAddress -> Maybe HT.Tx -> m ()
+confirmationInfoWidget (unit, amount) estFee addr mTx = divClass "send-confirm-info ta-l mb-1" $ do
+  let label = if isJust mTx then SSPosted else SSConfirm
+  elClass "h4" "ta-c mb-1" $ localizedText label
+  mkrow AmountString (text $ showMoneyUnit (mkMoney amount) us <> " " <> symbolUnit cur us) False
+  mkrow RecipientString (text $ egvAddrToString addr) True
+  mkrow SSFee (text $ showt estFee <> " " <> symbolUnit cur (Units (Just BtcSat) Nothing)) False
+  mkrow SSTotal (text $ showMoneyUnit (mkMoney $ amount + estFee) us <> " " <> symbolUnit cur us) False
+  case mTx of
+    Nothing -> pure ()
+    Just tx -> mkrow SSTxId (makeTxIdLink $ HT.txHashToHex . HT.txHash $ tx) True
   where
     cur = egvAddrCurrency addr
     mkMoney = Money cur
     us = Units (Just unit) Nothing
-    mkrow :: (MonadFront t m, LocalizedPrint l) => l -> Text -> m ()
-    mkrow a b = divClass "ta-l" $ do
-      lD <- getLanguage
-      elClass "span" "font-bold" $ dynText $ do
-        l <- lD
-        pure $ localizedShow l a <> ":"
-      elClass "span" "word-break-all ml-1" $ text b
+
+    mkrow :: (MonadFront t m, LocalizedPrint l) => l -> m b -> Bool -> m ()
+    mkrow a mb wordBreak = divClass "" $ do
+      elClass "span" "font-bold" $ do
+        localizedText a
+        text ": "
+      let wordBreakClass = if wordBreak then "word-break-all" else ""
+      void $ elClass "span" wordBreakClass $ mb
+
+    makeTxIdLink :: MonadFront t m => Text -> m ()
+    makeTxIdLink txIdText = do
+      settings <- getSettings
+      let mExplorerPrefixes = M.lookup BTC $ settingsExplorerUrl settings
+          urlPrefixes = maybe btcDefaultExplorerUrls id mExplorerPrefixes
+          urlPrefix = if isTestnet then testnetUrl urlPrefixes else mainnetUrl urlPrefixes
+      hyperlink "link" txIdText (urlPrefix <> "/tx/" <> txIdText)
 
 -- | A handy patch to display various errors
 confirmationErrorWidget :: MonadFront t m => ConfirmationErrorMessage -> m (Event t a)
 confirmationErrorWidget cem = do
   el "h4" $ localizedText cem
-  void $ el "div" $ retract =<< outlineButton SendBtnBack
+  void $ retract =<< outlineButton SendBtnBack
   pure never
 
 -- | This widget builds & signs the transaction
@@ -224,7 +235,7 @@ txSignSendWidget addr unit amount fee changeKey change pick = mdo
   let outs = [(egvAddrToString addr, amount), (keyTxt, change)]
   let etx = HT.buildAddrTx btcNetwork (upPoint <$> pick) outs
   let estFee = HT.guessTxFee fee 2 $ length pick
-  confirmationInfoWidget (unit, amount) estFee addr
+  confirmationInfoWidget (unit, amount) estFee addr Nothing
   showSignD <- holdDyn True . (False <$) =<< eventToNextFrame etxE
   etxE <- either' etx (const $ confirmationErrorWidget CEMTxBuildFail >> pure never) $ \tx -> do
     fmap switchDyn $ widgetHoldDyn $ ffor showSignD $ \b -> if not b then pure never else do

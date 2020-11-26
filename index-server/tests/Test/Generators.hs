@@ -45,7 +45,10 @@ arbitraryBSS32 = do
     else take 32 . BSS.unpack $ a
 
 instance Arbitrary TxHash where
-  arbitrary = TxHash <$> arbitraryBSS32
+  arbitrary = oneof [
+      BtcTxHash <$> arbitrary
+    , ErgTxHash <$> arbitraryBSS32
+    ]
 instance Arbitrary ScannedHeightRec where
   arbitrary = ScannedHeightRec <$> arbitrary
 instance Arbitrary TxRecBytes where
@@ -53,7 +56,7 @@ instance Arbitrary TxRecBytes where
 instance Arbitrary TxRecMeta where
   arbitrary = TxRecMeta <$> arbitrary
 instance Arbitrary TxInfo where
-  arbitrary = TxInfo . TxHash <$> arbitraryBSS32 <*> arbitrary <*> arbitrary
+  arbitrary = TxInfo <$> arbitrary <*> arbitrary <*> arbitrary
 instance Arbitrary BlockMetaRec where
   arbitrary = BlockMetaRec <$> arbitraryBSS32 <*> arbitrary
 instance Arbitrary KnownPeerRecItem where

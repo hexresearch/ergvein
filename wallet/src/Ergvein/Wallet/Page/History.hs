@@ -17,6 +17,9 @@ import Ergvein.Wallet.Node.BTC.Mempool
 import Ergvein.Wallet.Page.Transaction
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Transaction.Get
+import Ergvein.Wallet.Transaction.Util
+import Ergvein.Wallet.Transaction.View
 import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
 
@@ -102,6 +105,15 @@ historyTableRowD _ trD = fmap switchDyn $ widgetHoldDyn $ ffor trD $ \tr@Transac
 
 showTxStatus :: MonadFront t m => TransactionView -> m ()
 showTxStatus tr@TransactionView{..} = case txStatus of
-  TransUncofirmed -> localizedText HistoryUnconfirmed
-  TransUncofirmedParents -> localizedText HistoryUnconfirmedParents
   TransConfirmed -> showTime tr
+  TransUncofirmed -> showStatus HistoryUnconfirmed
+  TransUncofirmedParents -> showStatus HistoryUnconfirmedParents
+  where
+    rbfEnabled = txRbfEnabled txInfoView
+    conflictingTxs = not $ L.null txConflictingTxs
+
+    showStatus :: (MonadFront t m, LocalizedPrint l) => l -> m ()
+    showStatus status = do
+      localizedText status
+      when rbfEnabled (text " " >> badge "badge-info-2" ("rbf" :: Text)) -- text " " is needed for proper word wrapping
+      when conflictingTxs (text " " >> badge "badge-danger" ("double spend" :: Text))

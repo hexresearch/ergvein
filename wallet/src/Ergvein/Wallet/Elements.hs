@@ -54,6 +54,7 @@ module Ergvein.Wallet.Elements(
   , outlineSubmitTextIconButtonClass
   , outlineIconButtonClass
   , hyperlink
+  , badge
   , module Ergvein.Wallet.Util
   ) where
 
@@ -287,3 +288,6 @@ hyperlink classValD lbl url = do
   clickeE <- spanButton classValD lbl
   _ <- openOpenUrl $ url <$ clickeE
   pure ()
+
+badge :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl) => Text -> lbl -> m ()
+badge classes lbl = elClass "code" classes $ dynText =<< localized lbl

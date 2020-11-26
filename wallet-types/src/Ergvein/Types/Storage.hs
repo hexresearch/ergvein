@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Ergvein.Types.Storage where
 
-import Control.Lens (makeLenses, (&), (%~))
+import Control.Lens (makeLenses)
 import Crypto.Cipher.AES
 import Crypto.Cipher.Types
 import Crypto.ECC (Curve_X25519, Point, encodePoint, decodePoint)
@@ -9,7 +9,6 @@ import Crypto.Error
 import Data.Aeson
 import Data.ByteArray (convert, Bytes)
 import Data.ByteString (ByteString)
-import Data.Maybe (fromMaybe)
 import Data.Proxy
 import Data.Text
 import Data.Vector (Vector)

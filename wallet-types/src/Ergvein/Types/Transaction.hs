@@ -1,5 +1,15 @@
 module Ergvein.Types.Transaction (
-      BtcTx
+      BlockHeight
+    , BtcTx
+    , BlockHash
+    , TxBlockIndex
+    , MerkleSum
+    , TxMerkleProof
+    , TxFee
+    , PubKeyScriptHash
+    , TxOutIndex
+    , currencyHeightStart
+    , egvBlockHashToHk
     , btcTxToString
     , btcTxFromString
     , ErgTx(..)
@@ -7,50 +17,77 @@ module Ergvein.Types.Transaction (
     , ergTxFromString
     , EgvTx(..)
     , EgvTxMeta(..)
-    , egvTxId
-    , egvTxCurrency
-    , TxId
-    , BlockHeight
-    , BlockHash
-    , TxBlockIndex
-    , MerkleSum
-    , TxMerkleProof
-    , TxFee
-    , PubKeyScriptHash
-    , TxHash(..)
-    , hkTxHashToEgv
-    , egvBlockHashToHk
-    , TxOutIndex
-    , currencyHeightStart
+    , egvTxToString
     , getEgvTxMeta
     , setEgvTxMeta
+    , egvTxCurrency
+    , TxId
+    , TxHash(..)
+    , btcTxHashToStr
+    , btcTxHashFromStr
+    , ergTxHashToStr
+    , ergTxHashFromStr
+    , egvTxHashToStr
+    , egvTxHashFromStr
+    , hkTxHashToEgv
+    , egvTxId
   ) where
 
+import Control.DeepSeq
 import Control.Monad ((<=<))
 import Data.Aeson as A
 import Data.Aeson.Types (Parser)
 import Data.ByteString (ByteString)
 import Data.ByteString.Short (ShortByteString)
-import Control.DeepSeq
 import Data.Either
+import Data.Hashable (Hashable)
+import Data.Serialize as S
 import Data.Text as T
 import Data.Time
-import Data.Flat
 import Data.Word
-import Network.Haskoin.Crypto (getHash256)
-import           Data.Hashable           (Hashable)
-import           GHC.Generics            (Generic)
-import qualified Data.ByteString.Short   as BSS
-import           Text.Read               as R
-import           Data.String.Conversions (cs)
 import Ergvein.Aeson
 import Ergvein.Crypto.Util
-import Ergvein.Text
 import Ergvein.Types.Currency
+import GHC.Generics (Generic)
 
-import           Data.Serialize              as S
-import qualified Network.Haskoin.Block as HB
+import qualified Data.ByteString.Short       as BSS
+import qualified Network.Haskoin.Block       as HB
 import qualified Network.Haskoin.Transaction as HK
+
+-- | Number of blocks before current one, from the starting from Genesis block with height of zero
+type BlockHeight = Word64
+
+-- | Hash of block (usually header only) that identifies block.
+type BlockHash = ShortByteString
+
+-- | Index of the transaction in block
+type TxBlockIndex = Word
+
+-- | Node in Merkle tree, hash of concatenated child nodes
+type MerkleSum = Text
+
+-- | Brunch of MerkleSums in Merkle tree, for transaction validation, deepest MerkleSum first
+type TxMerkleProof = [MerkleSum]
+
+-- | Fee included with transaction as price for processing transaction by miner
+type TxFee = MoneyUnit
+
+-- | SHA256 hash of locking script with big-endian byte order, used to track transfers due inaccessibility
+-- of transaction addresses when indexer scans blockchain
+type PubKeyScriptHash = Text
+
+egvBlockHashToHk :: BlockHash -> HB.BlockHash
+egvBlockHashToHk bh = fromRight (error $ "Failed to convert bh: " <> show bh) $ runGet S.get (BSS.fromShort bh)
+{-# INLINE egvBlockHashToHk #-}
+
+-- | Index of the UTXO
+type TxOutIndex = Word
+
+-- | index of the first block in blockchain
+currencyHeightStart :: Currency -> BlockHeight
+currencyHeightStart = \case BTC  -> 0
+                            ERGO -> 1
+{-# INLINE currencyHeightStart #-}
 
 type BtcTx = HK.Tx
 
@@ -78,6 +115,14 @@ instance FromJSON ErgTx where
 instance ToJSON ErgTx where
   toJSON = A.String . ergTxToString
 
+data EgvTxMeta = EgvTxMeta {
+  etxMetaHeight :: !(Maybe BlockHeight)
+, etxMetaHash   :: !(Maybe HB.BlockHash)
+, etxMetaTime   :: !UTCTime
+} deriving (Eq, Show, Read)
+
+$(deriveJSON (aesonOptionsStripPrefix "etxMeta") ''EgvTxMeta)
+
 data EgvTx
   = BtcTx { getBtcTx :: !BtcTx, getBtcTxMeta :: !(Maybe EgvTxMeta)}
   | ErgTx { getErgTx :: !ErgTx, getErgTxMeta :: !(Maybe EgvTxMeta)}
@@ -86,10 +131,6 @@ data EgvTx
 egvTxToString :: EgvTx -> Text
 egvTxToString (BtcTx tx _) = btcTxToString tx
 egvTxToString (ErgTx tx _) = ergTxToString tx
-
-egvTxId :: EgvTx -> TxId
-egvTxId (BtcTx tx _) = hkTxHashToEgv $ HK.txHash tx
-egvTxId (ErgTx _  _) = error "egvTxId: implement for Ergo!"
 
 egvTxCurrency :: EgvTx -> Currency
 egvTxCurrency e = case e of
@@ -117,7 +158,6 @@ setEgvTxMeta etx mh = case etx of
   BtcTx tx _ -> BtcTx tx mh
   ErgTx tx _ -> ErgTx tx mh
 
-
 instance ToJSON EgvTx where
   toJSON (BtcTx tx meta) = object [
       "currency"  .= toJSON BTC
@@ -140,73 +180,68 @@ instance FromJSON EgvTx where
 -- | Internal representation of transaction id
 type TxId = TxHash
 
--- | Number of blocks before current one, from the starting from Genesis block with height of zero
-type BlockHeight = Word64
+-- | Hash of transaction
+data TxHash
+  = BtcTxHash {getBtcTxHash :: HK.TxHash}
+  | ErgTxHash {getErgTxHash :: ShortByteString}
+  deriving (Eq, Show, Read, Ord, Hashable, Generic, Serialize, NFData)
 
--- | Hash of block (usually header only) that identifies block.
-type BlockHash = ShortByteString
+btcTxHashToStr :: HK.TxHash -> Text
+btcTxHashToStr = HK.txHashToHex
 
--- | Index of the transaction in block
-type TxBlockIndex = Word
+ergTxHashToStr :: ShortByteString -> Text
+ergTxHashToStr = encodeHex . BSS.fromShort
 
--- | Node in Merkle tree, hash of concatenated child nodes
-type MerkleSum = Text
+egvTxHashToStr :: TxHash -> Text
+egvTxHashToStr (BtcTxHash h) = btcTxHashToStr h
+egvTxHashToStr (ErgTxHash h) = ergTxHashToStr h
 
--- | Brunch of MerkleSums in Merkle tree, for transaction validation, deepest MerkleSum first
-type TxMerkleProof = [MerkleSum]
+btcTxHashFromStr :: Text -> Maybe HK.TxHash
+btcTxHashFromStr = HK.hexToTxHash
 
--- | Fee included with transaction as price for processing transaction by miner
-type TxFee = MoneyUnit
+ergTxHashFromStr :: Text -> Maybe ShortByteString
+ergTxHashFromStr t = BSS.toShort <$> decodeHex t
 
--- | SHA256 hash of locking script with big-endian byte order, used to track transfers due inaccessibility
--- of transaction addresses when indexer scans blockchain
-type PubKeyScriptHash = Text
+egvTxHashFromStr :: Currency -> Text -> Maybe TxHash
+egvTxHashFromStr BTC  addr = BtcTxHash <$> btcTxHashFromStr addr
+egvTxHashFromStr ERGO addr = ErgTxHash <$> ergTxHashFromStr addr
 
--- | Hexadecimal representation of transaction hash
-newtype TxHash = TxHash {getTxHash :: ShortByteString}
-  deriving (Eq, Ord, Hashable, Generic, Flat, Serialize, NFData)
+egvTxHashToJSON :: TxHash -> Value
+egvTxHashToJSON = A.String . egvTxHashToStr
 
-instance Show TxHash where
-    showsPrec _ = shows . encodeHex . BSS.fromShort . getTxHash
-
-instance Read TxHash where
-    readPrec = do
-        R.String str <- lexP
-        maybe pfail return $ TxHash . BSS.toShort <$> decodeHex (cs str)
-
-instance FromJSON TxHash where
-  parseJSON = withText "TxHash" $
-    either (fail "Failed to parse TxHash") (pure . TxHash . BSS.toShort) . hex2bsTE
-  {-# INLINE parseJSON #-}
+egvTxHashFromJSON :: Currency -> Value -> Parser TxHash
+egvTxHashFromJSON = \case
+  BTC -> withText "txHash" $ \t ->
+    case btcTxHashFromStr t of
+      Nothing -> fail "could not decode transaction hash"
+      Just x  -> return $ BtcTxHash x
+  ERGO -> withText "txHash" $ \t ->
+    case ergTxHashFromStr t of
+      Nothing -> fail "could not decode transaction hash"
+      Just x  -> return $ ErgTxHash x
 
 instance ToJSON TxHash where
-  toJSON = A.String . bs2Hex . BSS.fromShort . getTxHash
-  {-# INLINE toJSON #-}
+  toJSON egvTxHash@(BtcTxHash _) = object [
+      "currency" .= toJSON BTC
+    , "txHash"   .= egvTxHashToJSON egvTxHash
+    ]
+  toJSON egvTxHash@(ErgTxHash _) = object [
+      "currency" .= toJSON ERGO
+    , "txHash"   .= egvTxHashToJSON egvTxHash
+    ]
+
+instance FromJSON TxHash where
+  parseJSON = withObject "TxHash" $ \o -> do
+    cur  <- o .: "currency"
+    egvTxHashFromJSON cur =<< (o .: "txHash")
 
 instance FromJSONKey TxHash where
 instance ToJSONKey TxHash where
 
 hkTxHashToEgv :: HK.TxHash -> TxHash
-hkTxHashToEgv = TxHash . getHash256 . HK.getTxHash
+hkTxHashToEgv = BtcTxHash
 {-# INLINE hkTxHashToEgv #-}
 
--- | Index of the UTXO
-type TxOutIndex = Word
-
--- | index of the first block in blockchain
-currencyHeightStart :: Currency -> BlockHeight
-currencyHeightStart = \case BTC  -> 0
-                            ERGO -> 1
-{-# INLINE currencyHeightStart #-}
-
-data EgvTxMeta = EgvTxMeta {
-  etxMetaHeight :: !(Maybe BlockHeight)
-, etxMetaHash   :: !(Maybe HB.BlockHash)
-, etxMetaTime   :: !UTCTime
-} deriving (Eq, Show, Read)
-
-$(deriveJSON (aesonOptionsStripPrefix "etxMeta") ''EgvTxMeta)
-
-egvBlockHashToHk :: BlockHash -> HB.BlockHash
-egvBlockHashToHk bh = fromRight (error $ "Failed to convert bh: " <> show bh) $ runGet S.get (BSS.fromShort bh)
-{-# INLINE egvBlockHashToHk #-}
+egvTxId :: EgvTx -> TxId
+egvTxId (BtcTx tx _) = hkTxHashToEgv $ HK.txHash tx
+egvTxId (ErgTx _ _)  = error "egvTxId: implement for Ergo!"

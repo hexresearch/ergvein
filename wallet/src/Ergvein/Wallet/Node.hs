@@ -35,7 +35,7 @@ import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Node.ERGO
 import Ergvein.Wallet.Node.Prim
 import Ergvein.Wallet.Node.Types
-import Ergvein.Wallet.Tx
+import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Util
 
 import qualified Data.Dependent.Map as DM
