@@ -26,7 +26,7 @@ import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Validate
-import Reflex.Localize
+import Reflex.Localize.Dom
 import qualified Data.Text as T
 
 import Control.Monad.IO.Class

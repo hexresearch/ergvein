@@ -12,6 +12,7 @@ author:              Levon Oganyan
 maintainer:          Levon Oganyan <lemarwin@protonmail.com>
 
 library
+  ghc-options:         -Wall
   hs-source-dirs:      src
   exposed-modules:
     Ergvein.Index.Client

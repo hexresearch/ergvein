@@ -29,6 +29,7 @@ import Ergvein.Wallet.Elements.Input.Class
 import Ergvein.Wallet.Id
 import Ergvein.Wallet.Monad
 import Reflex.Localize
+import Reflex.Localize.Dom
 
 import qualified Data.Map.Strict as M
 

@@ -200,13 +200,12 @@ currenciesPage = do
         _currencyPubStorage'pubKeystore   = (createPubKeystore $ deriveCurrencyMasterPubKey dpath (_prvStorage'rootPrvKey prvStr) currency)
       , _currencyPubStorage'path          = dpath
       , _currencyPubStorage'transactions  = Map.empty
-      , _currencyPubStorage'height        = Nothing
-      , _currencyPubStorage'scannedKey    = (Just 0, Just 0)
       , _currencyPubStorage'utxos         = Map.empty
-      , _currencyPubStorage'scannedHeight = Nothing
       , _currencyPubStorage'headers       = Map.empty
       , _currencyPubStorage'outgoing      = S.empty
       , _currencyPubStorage'headerSeq     = btcCheckpoints
+      , _currencyPubStorage'chainHeight   = 0
+      , _currencyPubStorage'scannedHeight = 0
       }
 
 -- TODO: uncomment commented lines when ERGO is ready

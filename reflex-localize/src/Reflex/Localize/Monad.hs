@@ -5,7 +5,6 @@ module Reflex.Localize.Monad
 
 import Control.Monad.Reader
 import Reflex
-import Reflex.Dom
 import Reflex.Localize.Language
 
 -- | ===========================================================================
@@ -13,7 +12,7 @@ import Reflex.Localize.Language
 -- | ===========================================================================
 
 -- | API for language localization support
-class (Reflex t, Monad m, PostBuild t m, DomBuilder t m) => MonadLocalized t m | m -> t where
+class (Reflex t, Monad m) => MonadLocalized t m | m -> t where
   -- | Switch frontend language
   setLanguage :: Language -> m ()
   -- | Switch frontend language by event

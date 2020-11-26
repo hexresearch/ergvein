@@ -10,7 +10,7 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.History
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar.Types
-import Ergvein.Wallet.Sync.Widget
+import Ergvein.Wallet.Status.Widget
 import Ergvein.Wallet.Widget.Balance
 
 navbarWidget :: MonadFront t m => Currency -> Maybe (Dynamic t (m ())) -> NavbarItem -> m ()
@@ -26,9 +26,9 @@ navbarWidget cur prevWidget activeItem = do
       balance <- balanceTitleWidgetSimple cur
       divClass "navbar-black" $ do
         divClass "navbar-balance" $ dynText balance
-        divClass "navbar-status"  $ syncWidget False cur
+        divClass "navbar-status"  $ statusBarWidget False cur
 
-navbarBtn :: (DomBuilder t m, MonadLocalized t m) => NavbarItem -> NavbarItem-> m (Event t NavbarItem)
+navbarBtn :: (DomBuilder t m, PostBuild t m, MonadLocalized t m) => NavbarItem -> NavbarItem-> m (Event t NavbarItem)
 navbarBtn item activeItem
   | item == activeItem = (item <$) <$> spanButton "navbar-item active" item
   | item /= activeItem = (item <$) <$> spanButton "navbar-item" item
@@ -40,7 +40,7 @@ navbarWidgetAndroid :: MonadFront t m => Currency -> Maybe (Dynamic t (m ())) ->
 navbarWidgetAndroid cur prevWidget = divClass "navbar-black" $ do
     balance <- balanceTitleWidgetSimple cur
     divClass "navbar-balance" $ dynText balance
-    divClass "navbar-status"  $ syncWidget False cur
+    divClass "navbar-status"  $ statusBarWidget False cur
     divClass "navbar-android-controls-wrapper" $ divClass "navbar-android-controls" $ do
       sendE <- divButton "navbar-android-controls-button mlr-1" $ headerNavigationButton HeaderNavigationSend
       receiveE <- divButton "navbar-android-controls-button mlr-1" $ headerNavigationButton HeaderNavigationReceive

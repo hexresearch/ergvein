@@ -34,6 +34,7 @@ let
       reflex-dom-retractable = ./retractable;
       reflex-external-ref = ./reflex-external-ref;
       reflex-localize = ./reflex-localize;
+      reflex-localize-dom = ./reflex-localize-dom;
       ui-playground = ./ui-playground;
       x509-android = ./x509-android;
     };

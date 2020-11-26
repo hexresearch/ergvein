@@ -24,11 +24,11 @@ module Ergvein.Crypto.Keys (
 import Control.Monad            (unless, when)
 import Crypto.Hash              (SHA256 (..), hashWith)
 import Crypto.Secp256k1         (SecKey)
-import Data.Bits                (shiftL, shiftR)
+import Data.Bits                (shiftR)
 import Data.ByteString          (ByteString)
 import Data.Serialize.Get       (Get, getWord8)
 import Data.Serialize.Put       (Putter, putWord8, runPut)
-import Data.Vector              (Vector, (!))
+import Data.Vector              ((!))
 import Ergvein.Crypto.WordLists
 import Network.Haskoin.Util
 import Network.Haskoin.Address

@@ -17,7 +17,7 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node
-import Ergvein.Wallet.Sync.Status
+import Ergvein.Wallet.Status.Types
 import Ergvein.Wallet.Util
 
 import qualified Data.Dependent.Map as DM
@@ -72,7 +72,7 @@ btcCatchUpFlow (ts, bl) = Workflow $ do
   logWrite $ "btcCatchUpFlow: " <> showt h0
   buildE <- getPostBuild
   storedE <-  attachNewBtcHeader "btcCatchUpFlow" False $ (h0, ts, lasthash) <$ buildE
-  setSyncProgress $ SyncProgress BTC (SyncGettingHeight $ fromIntegral h0) <$ storedE
+  publishStatusUpdate $ CurrencyStatus BTC (StatGettingHeight $ fromIntegral h0) <$ storedE
   let req = MGetHeaders $ GetHeaders 70012 (snd <$> bl) emptyHash
   respE <- requestRandomNode $ (NodeReqBTC req) <$ storedE
   let hlE = fforMaybe respE $ \case
@@ -130,7 +130,7 @@ btcListenFlow h0 ts0 he0 = Workflow $ mdo
       setE = fmapMaybe (either (const Nothing) Just) actE
       storeE = leftmost [(he0, ts0, h0) <$ buildE, updated htD]
   void $ attachNewBtcHeader "btcListenFlow" True storeE
-  setSyncProgress $ ffor storeE $ \(he,_,_) -> SyncProgress BTC Synced
+  publishStatusUpdate $ ffor storeE $ \(he,_,_) -> CurrencyStatus BTC Synced
   pure ((), startBTCFlow <$ restartE)
 
 pickFirstBlockInv :: [InvVector] -> Maybe BlockHash

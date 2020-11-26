@@ -1,16 +1,12 @@
 module Ergvein.Index.Server.BlockchainScanning.Ergo where
 
 import  Control.Monad.Reader
-import  Data.List.Index
 import  Data.Maybe
-import  Data.Serialize
 
-import Ergvein.Crypto.Hash
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Interfaces.Ergo.Api
 import Ergvein.Interfaces.Ergo.It.Api.NodeApi
 import Ergvein.Interfaces.Ergo.Scorex.Core.Block
-import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
@@ -21,7 +17,6 @@ import qualified Network.Ergo.Api.Utxo    as UtxoApi
 import qualified Data.ByteString.Short as BSS
 import qualified Data.Map.Strict as M
 
-import Control.Monad.IO.Unlift
 
 txInfo :: ApiMonad m => ErgoTransaction -> m ([TxInfo], [TxHash])
 txInfo tx = do

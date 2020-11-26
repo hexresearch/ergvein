@@ -12,6 +12,7 @@ author:              Anton Gushcha, Aminion, Vladimir Krutkin, Levon Oganyan, Se
 maintainer:          Anton Gushcha <ncrashed@protonmail.com>
 
 library
+  ghc-options:         -Wall
   hs-source-dirs:      src
   exposed-modules:
     Ergvein.Filters

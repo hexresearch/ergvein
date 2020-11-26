@@ -4,11 +4,13 @@ module Ergvein.Wallet.Language(
     Language(..)
   , allLanguages
   , module Reflex.Localize
+  , module Reflex.Localize.Dom
   ) where
 
 import Ergvein.Aeson
 import GHC.Generics (Generic)
 import Reflex.Localize
+import Reflex.Localize.Dom
 import Reflex.Localize.Language
 
 -- | Languages that are supported by wallet

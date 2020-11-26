@@ -4,9 +4,6 @@ import Control.Concurrent.STM
 import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Conversion
-import Data.Time.Clock.POSIX
-import Control.Monad.Random
-import Conversion
 import Network.Socket
 
 import Ergvein.Index.Protocol.Types as IPT
@@ -43,11 +40,11 @@ getBlockMetaSlice currency startHeight amount = do
   pure $ snd <$> slice
 
 handleMsg :: SockAddr -> Message -> ServerM [Message]
-handleMsg address (MPing msg) = pure [MPong msg]
+handleMsg _ (MPing msg) = pure [MPong msg]
 
-handleMsg address (MPong _) = pure mempty
+handleMsg _ (MPong _) = pure mempty
 
-handleMsg address (MVersionACK _) = pure mempty
+handleMsg _ (MVersionACK _) = pure mempty
 
 handleMsg address (MVersion peerVersion) = do
   ownVer <- ownVersion
@@ -57,11 +54,11 @@ handleMsg address (MVersion peerVersion) = do
   else
     pure mempty
 
-handleMsg address (MPeerRequest _) = do
+handleMsg _ (MPeerRequest _) = do
   knownPeers <- getActualPeers
   pure $ pure $ MPeerResponse $ PeerResponse $ V.fromList knownPeers
 
-handleMsg address (MFiltersRequest FilterRequest {..}) = do
+handleMsg _ (MFiltersRequest FilterRequest {..}) = do
   currency <- currencyCodeToCurrency filterRequestMsgCurrency
   slice <- getBlockMetaSlice currency filterRequestMsgStart filterRequestMsgAmount
   let filters = V.fromList $ convert <$> slice
@@ -82,7 +79,7 @@ handleMsg address (MFiltersEvent FilterEvent {..}) = do
   pure mempty
 
 
-handleMsg address (MFeeRequest curs) = do
+handleMsg _ (MFeeRequest curs) = do
   fees <- liftIO . readTVarIO =<< asks envFeeEstimates
   let selCurs = M.restrictKeys fees $ S.fromList curs
   let resps =  (`M.mapWithKey` selCurs) $ \cur fb -> case cur of

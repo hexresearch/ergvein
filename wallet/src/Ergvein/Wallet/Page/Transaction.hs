@@ -144,7 +144,7 @@ transactionsGetting cur = do
   buildE <- delay 0.2 =<< getPostBuild
   settings <- getSettings
   pubStorageD <- getPubStorageD
-  let getHeight pubStorage' = fromMaybe 0 $ _currencyPubStorage'height =<< Map.lookup cur (_pubStorage'currencyPubStorages pubStorage')
+  let getHeight pubStorage' = maybe 0 _currencyPubStorage'chainHeight $ Map.lookup cur (_pubStorage'currencyPubStorages pubStorage')
       heightD = getHeight <$> pubStorageD
       allBtcAddrsD = ffor pubStorageD $ \PubStorage{..} -> case Map.lookup BTC _pubStorage'currencyPubStorages of
         Nothing -> []
@@ -230,11 +230,11 @@ transactionsGetting cur = do
         outPointsToCheck = (uncurry HK.OutPoint) <$> L.zip (L.repeat txHash) [0..(fromIntegral outsCount - 1)]
         inputsOfStoredTxs = HK.txIn <$> storedTxs'
         spentCheckResults = (checkOutSpent inputsOfStoredTxs) <$> outPointsToCheck
-        
+
         checkOutSpent :: [[HK.TxIn]] -> HK.OutPoint -> Bool
         checkOutSpent inputs out = let results = (fmap . fmap) (inputSpendsOutPoint out) inputs in
           (L.any (== True)) $ fmap (L.any (== True)) results
-        
+
         checkOutIsOurs :: (MonadIO m, PlatformNatives) => [EgvAddress] -> HK.TxOut -> m Bool
         checkOutIsOurs addrs out = do
           results <- traverse (flip checkTxOut out) addrs
