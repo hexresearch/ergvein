@@ -53,13 +53,13 @@ import qualified Data.Set as S
 
 
 data IndexerConnection t = IndexerConnection {
-  indexConAddr :: !SockAddr
-, indexConName :: !Text
-, indexConClosedE :: !(Event t ())
-, indexConOpensE :: !(Event t ())
-, indexConIsUp :: !(Dynamic t Bool)
-, indexConRespE :: !(Event t Message)
-, indexerConHeight :: !(Dynamic t (Map Currency BlockHeight))
+  indexConAddr      :: !SockAddr
+, indexConName      :: !Text
+, indexConClosedE   :: !(Event t ())
+, indexConOpensE    :: !(Event t ())
+, indexConIsUp      :: !(Dynamic t Bool)
+, indexConRespE     :: !(Event t Message)
+, indexerConHeight  :: !(Dynamic t (Map Currency BlockHeight))
 }
 
 data IndexerMsg = IndexerClose | IndexerRestart | IndexerMsg Message
@@ -87,12 +87,16 @@ class MonadBaseConstr t m => MonadIndexClient t m | m -> t where
   getActivationEF :: m (Event t [Text], [Text] -> IO ())
 
 -- | Activate an URL
-activateURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t NamedSockAddr -> m (Event t ())
+activateURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m (Event t ())
 activateURL addrE = do
   (_, f)    <- getActivationEF
   setRef    <- getSettingsRef
   performEventAsync $ ffor addrE $ \url fire -> void $ liftIO $ forkOnOther $ do
-  
+    s <- modifyExternalRef setRef $ \s -> let
+      s' = s & settingsAddrs . at url .~ (Just $  PeerInfo  True True)
+      in (s', s')
+    liftIO $ print $ show s
+    storeSettings s
     fire ()
 
 -- | Activate an URL
@@ -101,7 +105,7 @@ activateURLList addrE = do
   (_, f)    <- getActivationEF
   setRef    <- getSettingsRef
   performEventAsync $ ffor addrE $ \urls fire -> void $ liftIO $ forkOnOther $ do
-
+    
     fire ()
 
 -- | It is really important to wait until indexer performs deinitialization before deleting it from dynamic collections

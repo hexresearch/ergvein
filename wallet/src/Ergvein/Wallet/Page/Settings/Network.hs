@@ -133,7 +133,7 @@ activePageWidget = mdo
   let valsD = (,) <$> connsD <*> addrsD
   void $ widgetHoldDyn $ ffor valsD $ \(conmap, urls) ->
     flip traverse (M.toList urls) $ \(sa, i) -> renderActive sa i refrE $ M.lookup sa conmap
-  hideE <- activateURL =<< addUrlWidget showD
+  hideE <- activateURL =<< (fmap namedAddrName) <$> addUrlWidget showD
   (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
     tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->

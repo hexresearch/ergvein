@@ -71,7 +71,7 @@ data Env t = Env {
 , env'logoutFire      :: !(IO ())
 , env'activeCursRef   :: !(ExternalRef t (S.Set Currency))
 , env'filtersHeights  :: !(ExternalRef t (Map Currency BlockHeight))
-, env'statusUpdates    :: !(ExternalRef t (Map Currency StatusUpdate))
+, env'statusUpdates   :: !(ExternalRef t (Map Currency StatusUpdate))
 , env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
 , env'nodeConsRef     :: !(ExternalRef t (ConnMap t))
 , env'nodeReqSelector :: !(NodeReqSelector t)
@@ -290,8 +290,6 @@ liftAuth ma0 ma = mdo
 
 
         activeCursRef   <- newExternalRef mempty
-        syncRef         <- newExternalRef mempty
-        filtersStore    <- liftIO $ runReaderT openFiltersStorage $ settings ^. settingsStoreDir
         statRef         <- newExternalRef mempty
         filtersHeights  <- newExternalRef mempty
         fsyncRef        <- newExternalRef mempty
