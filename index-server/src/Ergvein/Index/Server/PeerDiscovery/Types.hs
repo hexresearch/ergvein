@@ -8,13 +8,9 @@ module Ergvein.Index.Server.PeerDiscovery.Types
   )where
 
 import Data.Set (Set)
-import Data.Text
 import Data.Time
-import Data.Time.Clock
 import Data.Word
 import Ergvein.Index.Protocol.Types
-import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
 import Network.Socket
 import GHC.Generics
 

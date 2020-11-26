@@ -45,7 +45,7 @@ transactionsGetting cur = do
   buildE <- delay 0.2 =<< getPostBuild
   settings <- getSettings
   pubStorageD <- getPubStorageD
-  let getHeight pubStorage' = fromMaybe 0 $ _currencyPubStorage'height =<< Map.lookup cur (_pubStorage'currencyPubStorages pubStorage')
+  let getHeight pubStorage' = maybe 0 _currencyPubStorage'chainHeight $ Map.lookup cur (_pubStorage'currencyPubStorages pubStorage')
       heightD = getHeight <$> pubStorageD
       allBtcAddrsD = ffor pubStorageD $ \PubStorage{..} -> case Map.lookup BTC _pubStorage'currencyPubStorages of
         Nothing -> []

@@ -6,11 +6,9 @@ import Data.Vector.Unboxed.Deriving
 import Data.Word
 import Foreign.C.Types
 import Foreign.Storable
-import Language.Haskell.TH
 
 import Ergvein.Types.Fees
 
-import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 
@@ -44,6 +42,7 @@ data CurrencyCode = BTC   | TBTC
                   | DASH  | TDASH
   deriving (Eq, Ord, Enum, Bounded, Show)
 
+currencyCodeToWord32 :: CurrencyCode -> Word32
 currencyCodeToWord32 = \case
   BTC    -> 0
   TBTC   -> 1
@@ -60,26 +59,28 @@ currencyCodeToWord32 = \case
   DASH   -> 12
   TDASH  -> 13
 
+word32ToCurrencyCode :: Word32 -> Maybe CurrencyCode
 word32ToCurrencyCode = \case
-  0  -> BTC
-  1  -> TBTC
-  2  -> ERGO
-  3  -> TERGO
-  4  -> USDTO
-  5  -> TUSDTO
-  6  -> LTC
-  7  -> TLTC
-  8  -> ZEC
-  9  -> TZEC
-  10 -> CPR
-  11 -> TCPR
-  12 -> DASH
-  13 -> TDASH
+  0  -> Just BTC
+  1  -> Just TBTC
+  2  -> Just ERGO
+  3  -> Just TERGO
+  4  -> Just USDTO
+  5  -> Just TUSDTO
+  6  -> Just LTC
+  7  -> Just TLTC
+  8  -> Just ZEC
+  9  -> Just TZEC
+  10 -> Just CPR
+  11 -> Just TCPR
+  12 -> Just DASH
+  13 -> Just TDASH
+  _  -> Nothing
 
 derivingUnbox "CurrencyCode"
-  [t| CurrencyCode -> Word32 |]
-  [| currencyCodeToWord32    |]
-  [| word32ToCurrencyCode    |]
+  [t| CurrencyCode -> Word8  |]
+  [| fromIntegral . fromEnum |]
+  [| toEnum . fromIntegral   |]
 
 data MessageHeader = MessageHeader
   { msgType :: !MessageType
@@ -161,10 +162,11 @@ ipTypeToWord8 = \case
   IPV4 -> 0
   IPV6 -> 1
 
-word8ToIPType :: Word8 -> IPType
+word8ToIPType :: Word8 -> Maybe IPType
 word8ToIPType = \case
-  0 -> IPV4
-  1 -> IPV6
+  0 -> Just IPV4
+  1 -> Just IPV6
+  _ -> Nothing
 
 data Address = Address
   { addressType    :: !IPType

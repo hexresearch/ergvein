@@ -19,9 +19,7 @@ where
 import           Control.DeepSeq
 import           Control.Monad.IO.Class
 import           Crypto.Hash                    ( SHA256 (..), hashWith)
-import           Data.ByteArray.Hash            ( SipKey(..) )
 import           Data.ByteString                ( ByteString )
-import           Data.Serialize                 ( encode )
 import           Data.Word
 import           Ergvein.Filters.Btc.Index
 import           Ergvein.Filters.Btc.VarInt
@@ -36,7 +34,6 @@ import qualified Data.ByteString               as BS
 import qualified Data.ByteString.Builder       as B
 import qualified Data.ByteString.Lazy          as BSL
 import qualified Data.HashSet                  as HS
-import qualified Data.Vector                   as V
 
 -- | BIP 158 filter that tracks only Bech32 SegWit addresses that are used in specific block.
 data BtcAddrFilter = BtcAddrFilter {

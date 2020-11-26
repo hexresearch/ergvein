@@ -30,7 +30,6 @@ import Control.Monad.IO.Class
 import Data.IORef
 import GHC.Generics
 import Reflex
-import Reflex.Dom
 
 -- | Holds value of type `a` and provides ways for notifying FRP network about
 -- changes of the variable.

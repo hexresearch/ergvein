@@ -3,15 +3,11 @@ module Ergvein.Wallet.Monad.Storage
     MonadStorage(..)
   , HasPubStorage(..)
   , HasTxStorage(..)
-  , setLastSeenHeight
   , addTxToPubStorage
   , addTxMapToPubStorage
   , setLabelToExtPubKey
   , setFlagToExtPubKey
   , updateBtcUtxoSet
-  , getWalletsScannedHeightD
-  , getWalletsScannedHeightD_
-  , writeWalletsScannedHeight
   , reconfirmBtxUtxoSet
   , getBtcUtxoD
   , insertTxsUtxoInPubKeystore
@@ -23,6 +19,9 @@ module Ergvein.Wallet.Monad.Storage
   , getBlockHeaderByHash
   , storeBlockHeadersE
   , attachNewBtcHeader
+  , setScannedHeightE
+  , getScannedHeightD
+  , getScannedHeight
   ) where
 
 import Control.Concurrent.MVar
@@ -78,11 +77,6 @@ instance MonadIO m => HasTxStorage (ReaderT (M.Map TxId EgvTx) m) where
 -- ===========================================================================
 --           MonadStorage helpers
 -- ===========================================================================
-
-setLastSeenHeight :: MonadStorage t m => Text -> Currency -> Event t BlockHeight -> m ()
-setLastSeenHeight caller cur e = void . modifyPubStorage clr $ ffor e $ \h ps -> Just $
-  ps & pubStorage'currencyPubStorages . at cur . _Just . currencyPubStorage'height ?~ h
-  where clr = caller <> ":" <> "setLastSeenHeight"
 
 addTxToPubStorage :: MonadStorage t m => Text -> Event t (TxId, EgvTx) -> m ()
 addTxToPubStorage caller txE = void . modifyPubStorage clr $ ffor txE $ \(txid, etx) ps -> Just $ let
@@ -161,23 +155,6 @@ reconfirmBtxUtxoSet caller reqE = void . modifyPubStorage clr $ ffor reqE $ \bh 
   Just $ modifyCurrStorage BTC (\cps -> cps & currencyPubStorage'utxos %~ reconfirmBtxUtxoSetPure bh) ps
   where clr = caller <> ":" <> "reconfirmBtxUtxoSet"
 
-getWalletsScannedHeightD :: MonadStorage t m => Currency -> m (Dynamic t BlockHeight)
-getWalletsScannedHeightD cur = fmap  (fromMaybe h0) <$> getWalletsScannedHeightD_ cur
-  where h0 = fromIntegral $ filterStartingHeight cur
-
-getWalletsScannedHeightD_ :: MonadStorage t m => Currency -> m (Dynamic t (Maybe BlockHeight))
-getWalletsScannedHeightD_ cur = do
-  psD <- getPubStorageD
-  pure $ ffor psD $ \ps -> join $ ps ^. pubStorage'currencyPubStorages . at cur
-    & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'scannedHeight
-
-writeWalletsScannedHeight :: MonadStorage t m => Text -> Event t (Currency, BlockHeight) -> m (Event t ())
-writeWalletsScannedHeight caller reqE = modifyPubStorage clr $ ffor reqE $ \(cur, h) ps -> let
-  mcp = ps ^. pubStorage'currencyPubStorages . at cur
-  in ffor mcp $ const $ ps & pubStorage'currencyPubStorages . at cur
-    %~ \mcps -> ffor mcps $ \cps -> cps & currencyPubStorage'scannedHeight .~ Just h
-  where clr = caller <> ":" <> "writeWalletsScannedHeight"
-
 attachNewBtcHeader :: MonadStorage t m => Text -> Bool -> Event t (HB.BlockHeight, Timestamp, HB.BlockHash) -> m (Event t ())
 attachNewBtcHeader caller updHeight reqE = modifyPubStorage clr $ ffor reqE $ \(he, ts, ha) ps -> let
   heha = (he, ha)
@@ -188,7 +165,7 @@ attachNewBtcHeader caller updHeight reqE = modifyPubStorage clr $ ffor reqE $ \(
     %~ \mcps -> ffor mcps $ \cps -> cps
       & currencyPubStorage'headerSeq .~ s
       & if updHeight
-        then currencyPubStorage'height .~ Just (fromIntegral he)
+        then currencyPubStorage'chainHeight .~ fromIntegral he
         else id
   where
     clr = caller <> ":" <> "attachNewBtcHeader"
@@ -229,6 +206,25 @@ storeBlockHeadersE caller cur reqE = do
     in ffor mmap $ \m -> modifyCurrStorage cur (currencyPubStorage'headers %~ M.union m) ps
   pure $ attachWithMaybe (\a _ -> a) (current reqD) storedE
   where clr = caller <> ":" <> "storeBlockHeadersE"
+
+setScannedHeightE :: MonadStorage t m => Currency -> Event t BlockHeight -> m (Event t ())
+setScannedHeightE cur he = modifyPubStorage "setScannedHeightE" $ ffor he $ \h ->
+  Just . modifyCurrStorage cur (currencyPubStorage'scannedHeight .~ h)
+
+getScannedHeightD :: MonadStorage t m => Currency -> m (Dynamic t BlockHeight)
+getScannedHeightD cur = do
+  psD <- getPubStorageD
+  pure $ ffor psD $ \ps ->
+    fromMaybe 0 $ ps ^. pubStorage'currencyPubStorages . at cur & (fmap _currencyPubStorage'scannedHeight)
+
+getScannedHeight :: MonadStorage t m => Currency -> m BlockHeight
+getScannedHeight cur = do
+  ps <- getPubStorage
+  pure $ fromMaybe 0 $ ps
+    ^. pubStorage'currencyPubStorages
+    . at cur
+    & (fmap _currencyPubStorage'scannedHeight)
+
 
 -- ===========================================================================
 --           HasPubStorage helpers

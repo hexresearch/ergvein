@@ -2,7 +2,6 @@
 module Ergvein.Wallet.Storage.Util(
     addXPrvKeyToKeystore
   , addXPubKeyToKeystore
-  , getLastSeenHeight
   , encryptPrvStorage
   , decryptPrvStorage
   , encryptBSWithAEAD
@@ -87,9 +86,6 @@ addXPubKeyToKeystore External key (PubKeystore master external internal) =
 addXPubKeyToKeystore Internal key (PubKeystore master external internal) =
   PubKeystore master external (V.snoc internal (EgvPubKeyBox key S.empty False))
 
-getLastSeenHeight :: Currency -> PubStorage -> Maybe BlockHeight
-getLastSeenHeight cur bs = join . (fmap _currencyPubStorage'height) $ bs ^. pubStorage'currencyPubStorages . at cur
-
 createPubKeystore :: EgvXPubKey -> PubKeystore
 createPubKeystore masterPubKey =
   let keygen kp i = Just (EgvPubKeyBox (derivePubKey masterPubKey kp (fromIntegral i)) S.empty False, i + 1)
@@ -97,23 +93,21 @@ createPubKeystore masterPubKey =
       internalKeys = V.unfoldrN initialInternalAddressCount (keygen Internal) 0
   in PubKeystore masterPubKey externalKeys internalKeys
 
-createPubStorage :: Bool -> Maybe DerivPrefix -> EgvRootXPrvKey -> [Currency] -> PubStorage
-createPubStorage isRestored mpath rootPrvKey cs = PubStorage rootPubKey pubStorages cs isRestored mpath
-  where restState = if isRestored then (Just 0, Just 0) else (Nothing, Nothing)
-        rootPubKey = EgvRootXPubKey $ deriveXPubKey $ unEgvRootXPrvKey rootPrvKey
+createPubStorage :: Bool -> Maybe DerivPrefix -> EgvRootXPrvKey -> [Currency] -> BlockHeight -> PubStorage
+createPubStorage isRestored mpath rootPrvKey cs startingHeight = PubStorage rootPubKey pubStorages cs isRestored mpath
+  where rootPubKey = EgvRootXPubKey $ deriveXPubKey $ unEgvRootXPrvKey rootPrvKey
         mkStore c = let
           dpath = extendDerivPath c <$> mpath
           in CurrencyPubStorage {
             _currencyPubStorage'pubKeystore   = (createPubKeystore $ deriveCurrencyMasterPubKey dpath rootPrvKey c)
           , _currencyPubStorage'path          = dpath
           , _currencyPubStorage'transactions  = M.empty
-          , _currencyPubStorage'height        = Nothing
-          , _currencyPubStorage'scannedKey    = restState
           , _currencyPubStorage'utxos         = M.empty
-          , _currencyPubStorage'scannedHeight = Nothing
           , _currencyPubStorage'headers       = M.empty
           , _currencyPubStorage'outgoing      = S.empty
           , _currencyPubStorage'headerSeq     = btcCheckpoints
+          , _currencyPubStorage'scannedHeight = startingHeight
+          , _currencyPubStorage'chainHeight   = 0
           }
         pubStorages = M.fromList [(currency, mkStore currency) | currency <- cs]
 
@@ -122,14 +116,15 @@ createStorage :: MonadIO m
   -> Maybe DerivPrefix -- ^ Override Bip44 derivation path in keys
   -> Mnemonic -- ^ Mnemonic to generate keys
   -> (WalletName, Password) -- ^ Wallet file name and encryption password
+  -> BlockHeight -- ^ Starting height for the restore process
   -> [Currency] -- ^ Default currencies
   -> m (Either StorageAlert WalletStorage)
-createStorage isRestored mpath mnemonic (login, pass) cs = case mnemonicToSeed "" mnemonic of
+createStorage isRestored mpath mnemonic (login, pass) startingHeight cs = case mnemonicToSeed "" mnemonic of
    Left err -> pure $ Left $ SAMnemonicFail $ showt err
    Right seed -> do
     let rootPrvKey = EgvRootXPrvKey $ makeXPrvKey seed
         prvStorage = createPrvStorage mpath mnemonic rootPrvKey
-        pubStorage = createPubStorage isRestored mpath rootPrvKey cs
+        pubStorage = createPubStorage isRestored mpath rootPrvKey cs startingHeight
     encryptPrvStorageResult <- encryptPrvStorage prvStorage pass
     case encryptPrvStorageResult of
       Left err -> pure $ Left err

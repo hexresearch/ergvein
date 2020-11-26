@@ -8,14 +8,12 @@ import Data.Attoparsec.Binary
 import Data.Attoparsec.ByteString hiding (word8)
 import Data.ByteString.Builder
 import Data.Either
-import Data.Word
 import Network.Haskoin.Crypto
 import Network.Haskoin.Transaction hiding (buildTx)
 
 import Ergvein.Index.Server.DB.Serialize.Class
 
 import qualified Data.Attoparsec.ByteString as A
-import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Serialize as S
 

@@ -64,7 +64,6 @@ debugWidget = el "div" $ do
   h5 . dynText $ do
     p <- avgD
     pure $ "Avg.indexer ping: " <> showt p
-  dbgFiltersTest
   h5 . dynText . fmap showt =<< getCurrentHeight BTC
   let goE = leftmost [utxoE, pubIntE, pubExtE, prvIntE, prvExtE, mnemonicE]
   void $ nextWidget $ ffor goE $ \sel -> Retractable {
@@ -170,24 +169,3 @@ dbgMnemonicPage = wrapper False "Mnemonic" (Just $ pure dbgMnemonicPage) $ divCl
     pure $ prv ^. prvStorage'mnemonic
   mnemonicD <- holdDyn "" mnemonicE
   dynText mnemonicD
-
-dbgFiltersTest :: MonadFront t m => m ()
-dbgFiltersTest = do
-  getE <- outlineButton $ mkTxt "dbgFiltersTest"
-  filtsE <- getFilters BTC $ (327298, 10) <$ getE
-  performEvent_ $ ffor filtsE $ \filts -> void $ flip traverse filts $ \(bh, filt) -> do
-    logWrite "====================================="
-    logWrite $ showt bh
-    logWrite $ bs2Hex filt
-
-getFilters :: MonadFront t m => Currency -> Event t (BlockHeight, Int) -> m (Event t [(BlockHash, ByteString)])
-getFilters cur e = do
-  respE <- requestRandomIndexer $ ffor e $ \(h, n) -> (BTC, ) $
-    MFiltersRequest $ FilterRequest curcode (fromIntegral h) (fromIntegral n)
-  pure $ fforMaybe respE $ \case
-    (_, MFiltersResponse (FilterResponse{..})) -> if filterResponseCurrency /= curcode
-      then Nothing
-      else Just $ V.toList $ ffor filterResponseFilters $ \(BlockFilter bid filt) -> (bid, filt)
-    _ -> Nothing
-  where
-    curcode = currencyToCurrencyCode cur
