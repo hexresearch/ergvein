@@ -93,7 +93,7 @@ activateURL addrE = do
   setRef    <- getSettingsRef
   performEventAsync $ ffor addrE $ \url fire -> void $ liftIO $ forkOnOther $ do
     s <- modifyExternalRef setRef $ \s -> let
-      s' = s & settingsAddrs . at url .~ (Just $  PeerInfo  True True)
+      s' = s & settingsAddrs . at url .~ (Just $  PeerInfo True True)
       in (s', s')
     liftIO $ print $ show s
     storeSettings s

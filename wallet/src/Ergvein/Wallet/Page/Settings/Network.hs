@@ -15,6 +15,7 @@ import Reflex.ExternalRef
 import Text.Read
 import Data.Maybe
 import Control.Monad.IO.Class
+import Data.List
 
 import Ergvein.Text
 import Ergvein.Types.Currency
@@ -29,6 +30,7 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
+import Data.Function
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
@@ -127,12 +129,20 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
 
 activePageWidget :: forall t m . MonadFrontBase t m => m ()
 activePageWidget = mdo
+  let sortf a b = let 
+               x = on compare (_peerInfoIsPinned . snd) a b <> on compare (_peerInfoIsActive . snd) a b
+               in case x of 
+                    LT -> GT
+                    GT -> LT
+                    EQ -> EQ
   connsD  <- externalRefDynamic =<< getActiveConnsRef
   addrsD  <- holdUniqDyn =<< fmap _settingsAddrs <$> getSettingsD
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   let valsD = (,) <$> connsD <*> addrsD
-  void $ widgetHoldDyn $ ffor valsD $ \(conmap, urls) ->
-    flip traverse (M.toList urls) $ \(sa, i) -> renderActive sa i refrE $ M.lookup sa conmap
+  void $ widgetHoldDyn $ ffor valsD $ \(conmap, urls) -> do
+    let sorted = sortBy sortf $ M.toList urls
+    liftIO $ print $ show sorted
+    flip traverse sorted $ \(sa, i) -> renderActive sa i refrE $ M.lookup sa conmap
   hideE <- activateURL =<< (fmap namedAddrName) <$> addUrlWidget showD
   (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
@@ -150,13 +160,13 @@ renderActive :: MonadFrontBase t m
 renderActive nsa nfo refrE mconn = mdo
   liftIO $ print $ show nsa
   pinD <- holdDyn (_peerInfoIsPinned nfo) pinE
-  actD <- holdDyn (_peerInfoIsPinned nfo) actE
+  actD <- holdDyn (_peerInfoIsActive nfo) actE
   let pinBtn = fmap switchDyn $ widgetHoldDyn $ ffor pinD $ \b -> fmap (not b <$)
         $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a"
-          $ if b then NSSPin else NSSUnpin
+          $ if b then NSSUnpin else NSSPin
   let actBtn = fmap switchDyn $ widgetHoldDyn $ ffor actD $ \b -> fmap (not b <$)
         $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a"
-          $ if b then NSSStart else NSSStop
+          $ if b then NSSStop else NSSStart
   (pinE, actE) <- divClass "network-wrapper mt-3" $ case mconn of
     Nothing -> do
       (pinE, actE) <- divClass "network-name" $ do
