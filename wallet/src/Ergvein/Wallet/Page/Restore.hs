@@ -152,11 +152,3 @@ restorePage = wrapperSimple True $ void $ workflow nodeConnection
 
 repackKeys :: KeyPurpose -> V.Vector EgvXPubKey -> V.Vector ScanKeyBox
 repackKeys kp = V.imap $ \i k -> ScanKeyBox k kp i
-
--- / Make chunks of length n
-mkChunks :: Int -> [a] -> [[a]]
-mkChunks n vals = mkChunks' [] vals
-  where
-     mkChunks' acc xs = case xs of
-       [] -> acc
-       _ -> let (a,b) = splitAt n xs in mkChunks' (acc ++ [a]) b
