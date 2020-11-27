@@ -5,12 +5,14 @@ module Ergvein.Wallet.Monad.Storage
   , HasTxStorage(..)
   , addTxToPubStorage
   , addTxMapToPubStorage
+  , removeTxsAndUtxosFromPubStorage
   , setLabelToExtPubKey
   , setFlagToExtPubKey
   , updateBtcUtxoSet
   , reconfirmBtxUtxoSet
   , getBtcUtxoD
   , insertTxsUtxoInPubKeystore
+  , txListToMap
   , addOutgoingTx
   , removeOutgoingTxs
   , getBtcBlockHashByTxHash
@@ -32,6 +34,7 @@ import Control.Monad.Reader
 import Data.Functor (void)
 import Data.Map (Map)
 import Data.Maybe (fromMaybe)
+import Data.Set (Set)
 import Data.Text (Text)
 import Network.Haskoin.Block (Timestamp)
 import Reflex
@@ -46,6 +49,7 @@ import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Platform
 
+import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
@@ -125,6 +129,37 @@ insertTxsUtxoInPubKeystore caller cur reqE = modifyPubStorage clr $ ffor reqE $ 
     in V.foldl' go (Just ps2) vec
   where clr = caller <> ":" <> "insertTxsUtxoInPubKeystore"
 
+removeTxsAndUtxosFromPubStorage :: MonadStorage t m => Text -> Event t (Currency, [TxId]) -> m (Event t ())
+removeTxsAndUtxosFromPubStorage caller txIdsE = modifyPubStorage clr $ ffor txIdsE $ \(cur, txIds) ps ->
+  if L.null txIds
+    then Nothing
+    else Just $ let
+      txIdsSet = S.fromList txIds
+      -- Removing txs from currencyPubStorage'transactions
+      ps1 = ps & pubStorage'currencyPubStorages
+        . at cur . _Just
+        . currencyPubStorage'transactions %~ (flip M.withoutKeys $ txIdsSet)
+      -- Removing utxos from currencyPubStorage'utxos
+      ps2 = modifyCurrStorage cur (\cps -> cps & currencyPubStorage'utxos %~ (M.filterWithKey (filterOutPoints txIdsSet))) ps1
+      -- Removing txids from EgvPubKeyBoxes form currencyPubStorage'pubKeystore
+      ps3 = modifyCurrStorage cur (\cps -> cps & currencyPubStorage'pubKeystore %~ removeTxIdsFromEgvKeyBoxes txIdsSet) ps2
+      in ps3
+  where
+    clr = caller <> ":" <> "removeTxsAndUtxosFromPubStorage"
+      
+    filterOutPoints :: Set TxId -> HT.OutPoint -> UtxoMeta -> Bool
+    filterOutPoints txIdsSet outPoint _ = not $ S.member (hkTxHashToEgv $ HT.outPointHash outPoint) txIdsSet
+
+    removeTxIdsFromEgvKeyBoxes :: Set TxId -> PubKeystore -> PubKeystore
+    removeTxIdsFromEgvKeyBoxes txIdsSet PubKeystore{..} =
+      let updatedPubKeystore'external = fmap (removeTxIdsFromKeybox txIdsSet) pubKeystore'external
+          updatedPubKeystore'internal = fmap (removeTxIdsFromKeybox txIdsSet) pubKeystore'internal
+          removeTxIdsFromKeybox txIds (EgvPubKeyBox k txs m) = EgvPubKeyBox k (S.difference txs txIdsSet) m
+      in PubKeystore pubKeystore'master updatedPubKeystore'external updatedPubKeystore'internal
+
+txListToMap :: [EgvTx] -> M.Map TxId EgvTx
+txListToMap txList = M.fromList $ (\tx -> (egvTxId tx, tx)) <$> txList
+
 updateBtcUtxoSet :: BtcUtxoUpdate -> PubStorage -> PubStorage
 updateBtcUtxoSet upds@(o,i) ps = if (M.null o && null i) then ps else
   modifyCurrStorage BTC (\cps -> cps & currencyPubStorage'utxos %~ updateBtcUtxoSetPure upds) ps
@@ -201,7 +236,8 @@ storeBlockHeadersE :: MonadStorage t m => Text -> Currency -> Event t [HB.Block]
 storeBlockHeadersE caller cur reqE = do
   reqD <- holdDyn Nothing $ Just <$> reqE
   storedE <- modifyPubStorage clr $ ffor reqE $ \blks ps -> let
-    mmap = if null blks then Nothing
+    mmap = if null blks
+            then Nothing
             else Just $ M.fromList $ fmap (\b -> (HB.headerHash $ HB.blockHeader $ b, HB.blockHeader b)) blks
     in ffor mmap $ \m -> modifyCurrStorage cur (currencyPubStorage'headers %~ M.union m) ps
   pure $ attachWithMaybe (\a _ -> a) (current reqD) storedE

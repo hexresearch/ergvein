@@ -141,11 +141,11 @@ scanBtcBlocks keys hashesE = do
   let noScanE = fforMaybe hashesE $ \bls -> if null bls then Just () else Nothing
   heightMapD <- holdDyn M.empty $ M.fromList <$> hashesE
   let rhashesE = fmap (nub . fst . unzip) $ hashesE
-  _ <-logEvent "Blocks requested: " rhashesE
+  _ <- logEvent "Blocks requested: " rhashesE
   blocksE <- requestBTCBlocks rhashesE
-  storedBlocks <- storeBlockHeadersE "scanBtcBlocks" BTC blocksE
-  let blkHeightE = current heightMapD `attach` storedBlocks
-  txsUpdsE <- logEvent "Transactions got: " =<< getAddressesTxs ((\(a,b) -> (keys,a,b)) <$> blkHeightE)
+  storedBlocksE <- storeBlockHeadersE "scanBtcBlocks" BTC blocksE
+  let blkHeightE = current heightMapD `attach` storedBlocksE
+  txsUpdsE <- logEvent "Transactions got: " =<< getAddressesTxs ((\(height, blocks) -> (keys, height, blocks)) <$> blkHeightE)
   void $ insertTxsUtxoInPubKeystore "scanBtcBlocks" BTC txsUpdsE
   removeOutgoingTxs "scanBtcBlocks" BTC $ (M.elems . M.unions . V.toList . snd . V.unzip . fst) <$> txsUpdsE
   pure $ leftmost [(V.any (not . M.null . snd)) . fst <$> txsUpdsE, False <$ noScanE]
