@@ -31,6 +31,7 @@ import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
 import Data.Function
+import Data.Ord
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
@@ -129,12 +130,8 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
 
 activePageWidget :: forall t m . MonadFrontBase t m => m ()
 activePageWidget = mdo
-  let sortf a b = let 
-               x = on compare (_peerInfoIsPinned . snd) a b <> on compare (_peerInfoIsActive . snd) a b
-               in case x of 
-                    LT -> GT
-                    GT -> LT
-                    EQ -> EQ
+  let sortf a b = on (comparing Down) (_peerInfoIsPinned . snd) a b 
+               <> on (comparing Down) (_peerInfoIsActive . snd) a b
   connsD  <- externalRefDynamic =<< getActiveConnsRef
   addrsD  <- holdUniqDyn =<< fmap _settingsAddrs <$> getSettingsD
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
