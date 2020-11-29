@@ -93,7 +93,7 @@ getAndFilterBlocks cur heightD btcAddrsD timeZone txs store settings = do
           hasUnconfirmedParents = fmap (L.any (== 0)) txParentsConfirmations -- This might be inefficient, better to calculate this only for unconfirmed txs
       outsStatuses <- traverse (getOutsStatuses storedTxs allBtcAddrs) txs
       let rawTxsL = L.filter (\(a,_) -> a/=Nothing) $ L.zip bInOut $ txListRaw bl blh txs txsRefList hasUnconfirmedParents parentTxs outsStatuses conflictingTxs
-          prepTxs = L.sortOn txDate $ (prepareTransactionView allBtcAddrs hght timeZone (maybe btcDefaultExplorerUrls id $ Map.lookup cur (settingsExplorerUrl settings)) <$> rawTxsL)
+          prepTxs = L.sortOn txDate $ (prepareTransactionView allBtcAddrs hght timeZone (maybe btcDefaultExplorerUrls id $ Map.lookup cur (_settingsExplorerUrl settings)) <$> rawTxsL)
       pure $ L.reverse $ addWalletState prepTxs
 
 filterTx :: Currency -> p -> PubStorage -> [EgvTx]

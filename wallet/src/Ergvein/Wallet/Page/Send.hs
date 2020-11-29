@@ -208,7 +208,7 @@ confirmationInfoWidget (unit, amount) estFee addr mTx = divClass "send-confirm-i
     makeTxIdLink :: MonadFront t m => Text -> m ()
     makeTxIdLink txIdText = do
       settings <- getSettings
-      let mExplorerPrefixes = M.lookup BTC $ settingsExplorerUrl settings
+      let mExplorerPrefixes = M.lookup BTC $ _settingsExplorerUrl settings
           urlPrefixes = maybe btcDefaultExplorerUrls id mExplorerPrefixes
           urlPrefix = if isTestnet then testnetUrl urlPrefixes else mainnetUrl urlPrefixes
       hyperlink "link" txIdText (urlPrefix <> "/tx/" <> txIdText)
