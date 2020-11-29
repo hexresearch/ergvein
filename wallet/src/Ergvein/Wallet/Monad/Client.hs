@@ -17,6 +17,7 @@ module Ergvein.Wallet.Monad.Client (
   , setAddrPin
   , setAddrActive
   , deleteAddr
+  , setDiscovery
   -- * Reexports
   , SockAddr
   ) where
@@ -95,7 +96,6 @@ activateURL addrE = do
     s <- modifyExternalRef setRef $ \s -> let
       s' = s & settingsAddrs . at url .~ (Just $  PeerInfo True True)
       in (s', s')
-    liftIO $ print $ show s
     storeSettings s
     fire ()
 
@@ -137,8 +137,19 @@ setAddrPin addrE = do
     s <- modifyExternalRef setRef $ \s -> let
       s' = s & settingsAddrs . at url . _Just . peerInfoIsPinned .~ v
       in (s', s')
-    liftIO $ print $ show s
     storeSettings s
+    liftIO $ print $ show v
+    fire ()
+
+setDiscovery :: (MonadIndexClient t m, MonadHasSettings t m) =>  Event t (Bool) -> m ()
+setDiscovery discE = do
+  setRef    <- getSettingsRef
+  void $ performEventAsync $ ffor discE $ \v fire -> void $ liftIO $ forkOnOther $ do
+    s <- modifyExternalRef setRef $ \s -> let
+      s' = s & settingsDiscoveryEnabled .~ v
+      in (s', s')
+    storeSettings s
+    liftIO $ print $ show s
     fire ()
 
 setAddrActive :: (MonadIndexClient t m, MonadHasSettings t m) => Event t (Text, Bool)  -> m ()
@@ -149,7 +160,6 @@ setAddrActive addrE = do
     s <- modifyExternalRef setRef $ \s -> let
       s' = s & settingsAddrs . at url . _Just . peerInfoIsActive .~ v 
       in (s', s')
-    liftIO $ print $ show s
     storeSettings s
     fire ()
 
@@ -161,7 +171,6 @@ deleteAddr addrE = do
     s <- modifyExternalRef setRef $ \s -> let
       s' = s & settingsAddrs . at url .~ Nothing
       in (s', s')
-    liftIO $ print $ show s
     storeSettings s
     fire ()
 

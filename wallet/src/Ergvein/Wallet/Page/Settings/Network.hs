@@ -7,22 +7,25 @@ module Ergvein.Wallet.Page.Settings.Network
   ) where
 
 import Control.Lens
+import Control.Monad.IO.Class
+import Data.Function
 import Data.Functor.Misc (Const2(..))
+import Data.List
+import Data.Maybe
 import Data.Maybe (isJust)
+import Data.Ord
 import Network.Socket
 import Reflex.Dom
 import Reflex.ExternalRef
 import Text.Read
-import Data.Maybe
-import Control.Monad.IO.Class
-import Data.List
 
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Indexer.Socket
 import Ergvein.Wallet.Elements.Input
+import Ergvein.Wallet.Elements.Toggle
+import Ergvein.Wallet.Indexer.Socket
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Network
 import Ergvein.Wallet.Localization.Settings
@@ -30,12 +33,10 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
-import Data.Function
-import Data.Ord
 
 import qualified Data.Map.Strict as M
-import qualified Data.Text as T
-import qualified Data.Set as S
+import qualified Data.Set        as S
+import qualified Data.Text       as T
 
 data NavbarItem = ActivePage | ParametersPage
   deriving (Eq)
@@ -134,11 +135,14 @@ activePageWidget = mdo
                <> on (comparing Down) (_peerInfoIsActive . snd) a b
   connsD  <- externalRefDynamic =<< getActiveConnsRef
   addrsD  <- holdUniqDyn =<< fmap _settingsAddrs <$> getSettingsD
+  discoveryD  <- holdUniqDyn =<< fmap _settingsDiscoveryEnabled <$> getSettingsD
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   let valsD = (,) <$> connsD <*> addrsD
+  
+  dE <- updated <$> toggler NSSToggleDiscovery discoveryD 
+  setDiscovery dE
   void $ widgetHoldDyn $ ffor valsD $ \(conmap, urls) -> do
     let sorted = sortBy sortf $ M.toList urls
-    liftIO $ print $ show sorted
     flip traverse sorted $ \(sa, i) -> renderActive sa i refrE $ M.lookup sa conmap
   hideE <- activateURL =<< (fmap namedAddrName) <$> addUrlWidget showD
   (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do

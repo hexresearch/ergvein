@@ -150,6 +150,7 @@ data NetSetupStrings
   | NSSSave
   | NSSDelete
   | NSSAddUrl
+  | NSSToggleDiscovery
   | NSSAddDns
   | NSSAdd
   | NSSPin
@@ -183,6 +184,7 @@ instance LocalizedPrint NetSetupStrings where
       NSSReqNumMax    -> "Required number of confirmations"
       NSSSave         -> "Save"
       NSSAddUrl       -> "Add indexer"
+      NSSToggleDiscovery -> "Toggle Discovery"
       NSSAddDns       -> "Add DNS"
       NSSAdd          -> "Add"
       NSSDelete       -> "Delete"
@@ -213,6 +215,7 @@ instance LocalizedPrint NetSetupStrings where
       NSSReqNumMax    -> "Необходимое количество подтверждений"
       NSSSave         -> "Сохранить"
       NSSAddUrl       -> "Добавить индексер"
+      NSSToggleDiscovery -> "Toggle Discovery"
       NSSAddDns       -> "Добавить DNS"
       NSSAdd          -> "Добавить"
       NSSDelete       -> "Удалить"
