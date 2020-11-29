@@ -150,7 +150,7 @@ decryptPrvStorage encryptedPrvStorage password =
     Right decryptedPrvStorage -> do
       let decodedPrvStorage = decodeJson $ decodeUtf8With lenientDecode decryptedPrvStorage
       case decodedPrvStorage of
-        Left err -> Left $ SACryptoError $ showt err
+        Left err -> Left $ SADecryptError $ showt err
         Right dps -> Right dps
   where
     salt = _encryptedPrvStorage'salt encryptedPrvStorage
@@ -195,7 +195,7 @@ decryptStorage encryptedStorage prvKey = do
             secKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params sharedSecret salt) :: Key AES256 ByteString
             decryptedData = decryptWithAEAD AEAD_GCM secKey iv (BS.concat [salt, ivBS, eciesPointBS]) ciphertext authTag
         case decryptedData of
-          Nothing -> Left $ SACryptoError "Failed to decrypt storage"
+          Nothing -> Left $ SADecryptError "Failed to decrypt storage"
           Just decryptedStorage -> case storage of
             Left err -> Left $ SACryptoError $ showt err
             Right s -> Right s

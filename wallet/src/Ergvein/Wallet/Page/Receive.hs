@@ -26,6 +26,9 @@ import Ergvein.Wallet.Share
 import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
 
+import qualified Data.Text as T
+import qualified Data.List as L
+
 #ifdef ANDROID
 import Ergvein.Wallet.Share
 #endif
@@ -66,12 +69,13 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
     _ <- shareShareUrl shareE
     setFlagToExtPubKey "receivePageWidget:1" $ (cur, i) <$ newE
     clipboardCopy (keyTxt <$ copyE)
-    divClass "receive-adr-andr" $ text $ "#" <> showt i <> ": " <> keyTxt
+    divClass "receive-adr-andr" $ text $ "#" <> showt i <> ": " <> keyView
     labelD <- divClass "button-receive" $ textFieldNoLabel $ getLabelFromEgvPubKey pubKeyBox'key
     btnE <- labelAddrBtn
     setLabelToExtPubKey "receivePageWidget:2" $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
   where
     keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress pubKeyBox'key
+    keyView = T.pack $ L.intercalate " " $ mkChunks 4 $ T.unpack keyTxt
     prefixedKeyText = curprefix cur <> keyTxt
 
 shareAddrBtn :: MonadFront t m => m (Event t ())
@@ -94,7 +98,7 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
       copyE <- copyAddrBtn
       setFlagToExtPubKey "receivePageWidget:1" $ (cur, i) <$ newE
       clipboardCopy (keyTxt <$ copyE)
-    divClass "receive-adr" $ text $ "#" <> showt i <> ": " <> keyTxt
+    divClass "receive-adr" $ text $ "#" <> showt i <> ": " <> keyView
     divClass "label-block" $ do
       labelD <- textFieldNoLabel $ getLabelFromEgvPubKey pubKeyBox'key
       btnE <- labelAddrBtn
@@ -102,6 +106,7 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
       pure ()
   where
     keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress pubKeyBox'key
+    keyView = T.pack $ L.intercalate " " $ mkChunks 4 $ T.unpack keyTxt
 #endif
 
 newAddrBtn :: MonadFront t m => m (Event t ())

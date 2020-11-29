@@ -38,7 +38,9 @@ deriving instance TriggerEvent t m => TriggerEvent t (LocalizeT t m)
 deriving instance MonadHold t m => MonadHold t (LocalizeT t m)
 deriving instance MonadSample t m => MonadSample t (LocalizeT t m)
 deriving instance MonadIO m => MonadIO (LocalizeT t m)
+#ifndef ghcjs_HOST_OS
 deriving instance MonadJSM m => MonadJSM (LocalizeT t m)
+#endif
 deriving instance (Group q, Additive q, Query q, Eq q, MonadQuery t q m, Monad m) => MonadQuery t q (LocalizeT t m)
 deriving instance (Monoid w, DynamicWriter t w m) => DynamicWriter t w (LocalizeT t m)
 deriving instance (Monoid w, MonadBehaviorWriter t w m) => MonadBehaviorWriter t w (LocalizeT t m)

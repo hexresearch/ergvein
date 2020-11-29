@@ -32,7 +32,7 @@ import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Node.BTC.Mempool
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Status.Types
-import Ergvein.Wallet.Tx
+import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Util
 
 import qualified Data.Bits as BI
@@ -135,7 +135,7 @@ myTxSender addr msgE = do
 mkTxMessages :: [InvVector] -> S.Set TxId -> M.Map TxId EgvTx -> [NodeReqG]
 mkTxMessages invs txids txmap = foo invs [] $ \acc iv -> case invType iv of
   InvTx -> let
-    txid    = ETT.TxHash $ getHash256 $ invHash iv
+    txid    = ETT.BtcTxHash $ TxHash $ invHash iv
     b       = S.member txid txids
     metx    = if b then M.lookup txid txmap else Nothing
     mbtctx  = join $ ffor metx $ \case
@@ -154,7 +154,7 @@ filterTxInvs txids (Inv invs) = case txs of
   where
     txs = catMaybes $ ffor invs $ \iv -> case invType iv of
       InvTx -> let
-        txh = ETT.TxHash $ getHash256 $ invHash iv
+        txh = ETT.BtcTxHash $ TxHash $ invHash iv
         b = S.member txh txids
         in if b then Nothing else Just iv
       _ -> Nothing

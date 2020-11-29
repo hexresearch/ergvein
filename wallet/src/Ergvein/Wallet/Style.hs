@@ -100,6 +100,7 @@ frontendCss r = do
   networkPageCss
   toggleSwitchCss
   passwordCss
+  badgeCss
   receiveCss
   selectCss
   sendPageCss
@@ -124,6 +125,12 @@ textWarning = rgb 255 193 7
 
 textDanger :: Color
 textDanger = rgb 220 53 69
+
+textInfo :: Color
+textInfo = rgb 23 162 184
+
+textInfo2 :: Color
+textInfo2 = rgb 220 220 215
 
 majorBackground :: Color
 majorBackground = rgb 255 255 255
@@ -1044,6 +1051,19 @@ legoStyles = do
   ".font-bold" ? fontWeight bold
   ".fit-content" ? width fitContent
 
+badgeCss :: Css
+badgeCss = do
+  ".badge-warning" ? do
+    backgroundColor textWarning
+  ".badge-danger" ? do
+    backgroundColor textDanger
+    color white
+  ".badge-info" ? do
+    backgroundColor textInfo
+    color white
+  ".badge-info-2" ? do
+    backgroundColor textInfo2
+
 receiveCss :: Css
 receiveCss = do
   ".receive-qr" ? do
@@ -1054,7 +1074,6 @@ receiveCss = do
     margin (rem 2) auto (rem 2) auto
     fontSize $ px 16
     fontWeight $ weight 600
-    wordBreak breakAll
   ".label-block" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1]
@@ -1074,7 +1093,6 @@ receiveCss = do
     margin (px 20) (px 5) (px 40) (px 5)
     fontSize $ px 16
     fontWeight $ weight 600
-    wordBreak breakAll
   ".button-receive" ? do
     width $ pct 75
     marginLeft auto

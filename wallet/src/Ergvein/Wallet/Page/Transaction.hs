@@ -4,49 +4,26 @@ module Ergvein.Wallet.Page.Transaction(
   , transactionsGetting
   , showTime
   , symb
-  , stat
-  , TransactionView(..)
-  , TransactionViewInfo(..)
-  , TxRawInfo(..)
-  , TxTime(..)
-  , ExpStatus(..)
-  , TransStatus(..)
-  , TransType(..)
-  , TransOutputType(..)
   ) where
 
 import Control.Monad.Reader
 import Data.Map.Strict as Map
-import Data.Maybe (fromMaybe, catMaybes)
+import Data.Maybe (fromMaybe)
 import Data.Text as T
 import Data.Time
-import Data.Word
-import Network.Haskoin.Address
 
-import Ergvein.Filters.Btc
 import Ergvein.Text
-import Ergvein.Types.Address
 import Ergvein.Types.Currency
-import Ergvein.Types.Keys
-import Ergvein.Types.Keys
-import Ergvein.Types.Network
-import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.History
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
-import Ergvein.Wallet.TimeZone
-import Ergvein.Wallet.Tx
+import Ergvein.Wallet.Transaction.Get
+import Ergvein.Wallet.Transaction.View
 import Ergvein.Wallet.Wrapper
-
-import qualified Data.List as L
-import qualified Data.Vector as V
-import qualified Network.Haskoin.Block              as HK
-import qualified Network.Haskoin.Transaction        as HK
 
 transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
 transactionInfoPage cur tr@TransactionView{..} = do
@@ -61,6 +38,11 @@ transactionInfoPage cur tr@TransactionView{..} = do
     case txInOut of
       TransRefill -> pure ()
       TransWithdraw -> infoPageElement HistoryTIFee $ maybe "unknown" (\a -> (showMoneyUnit a moneyUnits) <> " " <> symbolUnit cur moneyUnits) $ txFee txInfoView
+    infoPageElement HistoryTIRbf $ showt $ txRbfEnabled txInfoView
+    case txConflictingTxs of
+      [] -> pure ()
+      conflictingTxs -> infoPageElementExpEl HistoryTIConflictingTxs $ do
+        void $ traverse (makeTxIdLink cur) conflictingTxs
     infoPageElementEl HistoryTITime $ showTime tr
     infoPageElement HistoryTIConfirmations $ showt $ txConfirmations txInfoView
     infoPageElementExpEl HistoryTIBlock $ maybe (text "unknown") (\(bllink,bl) -> hyperlink "link" bl bllink) $ txBlock txInfoView
@@ -90,6 +72,16 @@ transactionInfoPage cur tr@TransactionView{..} = do
       pure ()
       where
         oBld txt isOur = if isOur then (txt <> " tx-info-our-address") else txt
+
+makeTxIdLink :: MonadFront t m => Currency -> TxId -> m ()
+makeTxIdLink cur txId = do
+  settings <- getSettings
+  let txIdText = egvTxHashToStr txId
+      mExplorerPrefixes = Map.lookup cur $ settingsExplorerUrl settings
+      urlPrefixes = maybe btcDefaultExplorerUrls id mExplorerPrefixes
+      urlPrefix = if isTestnet then testnetUrl urlPrefixes else mainnetUrl urlPrefixes
+  hyperlink "link" txIdText (urlPrefix <> "/tx/" <> txIdText)
+  br
 
 showTime :: MonadFront t m => TransactionView -> m ()
 showTime TransactionView{..} = case txDate of

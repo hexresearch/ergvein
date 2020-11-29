@@ -71,6 +71,14 @@ in {
           Start in testnet mode. Uses different data dir.
         '';
       };
+      reindex = mkOption {
+        type = types.bool;
+        default = false;
+        description = ''
+          Start with -reindex flag. 
+        '';
+      };
+
       datadir = mkOption {
         type = types.str;
         default = if bitcoin-cfg.testnet then "/var/lib/bitcoin-testnet" else "/var/lib/bitcoin";
@@ -138,7 +146,7 @@ in {
       wants = ["network.target" bitcoin-cfg.passwordFileService];
       script = ''
         export RPC_PASSWORD=$(cat ${bitcoin-cfg.passwordFile} | xargs echo -n)
-        ${bitcoin-cfg.package}/bin/bitcoind -datadir=${bitcoin-cfg.datadir} -conf=${bitcoin-cfg.configPath} -rpcpassword=$RPC_PASSWORD
+        ${bitcoin-cfg.package}/bin/bitcoind -datadir=${bitcoin-cfg.datadir} -conf=${bitcoin-cfg.configPath} -rpcpassword=$RPC_PASSWORD ${if bitcoin-cfg.reindex then "-reindex" else ""}
       '';
       serviceConfig = {
           Restart = "always";
