@@ -51,8 +51,7 @@ decodeExact s = case S.decode s of
     Left e -> error e
 
 unPrefixedKey :: ByteString -> ByteString
-unPrefixedKey key = BS.tail key
-  where err = error $ "unPrefixedKey error"
+unPrefixedKey = BS.tail
 
 parsedKey :: Serialize k => ByteString -> k
 parsedKey = fromRight (error "ser") . S.decode . unPrefixedKey
