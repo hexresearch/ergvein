@@ -8,8 +8,6 @@ import Data.Time.Clock
 import Data.Yaml.Config
 import GHC.Generics
 
-import Ergvein.Aeson
-
 data CfgPeer = CfgPeer
  { cfgPeerIP   :: !String
  , cfgPeerPort :: !String

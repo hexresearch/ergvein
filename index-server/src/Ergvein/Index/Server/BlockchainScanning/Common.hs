@@ -132,7 +132,7 @@ isEnoughSpace = do
   setGauge availableSpaceGauge $ fromIntegral (availSpace - requiredAvailSpace)
   pure $ requiredAvailSpace <= availSpace
  where
-  requiredAvailSpace = 2^30 -- 1Gb
+  requiredAvailSpace = 2^(30::Int) -- 1Gb
 
 feesScanning :: ServerM [Thread]
 feesScanning = sequenceA
