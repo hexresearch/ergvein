@@ -144,7 +144,7 @@ activePageWidget = mdo
   void $ widgetHoldDyn $ ffor valsD $ \(conmap, urls) -> do
     let sorted = sortBy sortf $ M.toList urls
     flip traverse sorted $ \(sa, i) -> renderActive sa i refrE $ M.lookup sa conmap
-  hideE <- activateURL =<< (fmap namedAddrName) <$> addUrlWidget showD
+  hideE <- addManual =<< (fmap namedAddrName) <$> addUrlWidget showD
   (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
     tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
@@ -199,7 +199,7 @@ renderActive nsa nfo refrE mconn = mdo
       pure (pinE, actE)
 
   setAddrPin $ (nsa,) <$> pinE
-  setAddrActive $ (nsa,) <$> actE
+  void $ setAddrActive $ (nsa,) <$> actE
   where
     offclass    = [("class", "mb-a mt-a indexer-offline")]
     onclass     = [("class", "mb-a mt-a indexer-online")]

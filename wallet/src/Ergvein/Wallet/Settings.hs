@@ -82,7 +82,7 @@ import Ergvein.Wallet.Native
 
 data PeerInfo = PeerInfo
   { _peerInfoIsActive :: !Bool
-  , _peerInfoIsPinned   :: !Bool
+  , _peerInfoIsPinned :: !Bool
   } deriving (Eq, Show)
 
 makeLenses ''PeerInfo

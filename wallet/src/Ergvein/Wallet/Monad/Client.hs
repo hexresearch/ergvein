@@ -3,10 +3,7 @@ module Ergvein.Wallet.Monad.Client (
   , IndexerConnection(..)
   , IndexerMsg(..)
   , IndexReqSelector
-  , activateURL
   , activateURLList
-  , deactivateURL
-  , forgetURL
   , broadcastIndexerMessage
   , requestSpecificIndexer
   , indexerPingerWidget
@@ -14,6 +11,8 @@ module Ergvein.Wallet.Monad.Client (
   , indexersAverageLatencyWidget
   , indexersAverageLatNumWidget
   , requestIndexerWhenOpen
+  , addDiscovered
+  , addManual
   , setAddrPin
   , setAddrActive
   , deleteAddr
@@ -87,26 +86,44 @@ class MonadBaseConstr t m => MonadIndexClient t m | m -> t where
   -- | Get activation event and trigger
   getActivationEF :: m (Event t [Text], [Text] -> IO ())
 
--- | Activate an URL
-activateURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m (Event t ())
-activateURL addrE = do
-  (_, f)    <- getActivationEF
-  setRef    <- getSettingsRef
-  performEventAsync $ ffor addrE $ \url fire -> void $ liftIO $ forkOnOther $ do
-    s <- modifyExternalRef setRef $ \s -> let
-      s' = s & settingsAddrs . at url .~ (Just $  PeerInfo True True)
-      in (s', s')
-    storeSettings s
-    fire ()
+addDiscovered :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m (Event t ())
+addDiscovered addrE = updateSettingsAsync $ ffor addrE $ \ url ->
+  settingsAddrs . at url .~ Just discoveredPeerInfo
+  where
+  discoveredPeerInfo = PeerInfo
+    { _peerInfoIsActive = True
+    , _peerInfoIsPinned = False
+    }
+
+addManual :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m (Event t ())
+addManual addrE = updateSettingsAsync $ ffor addrE $ \ url ->
+  settingsAddrs . at url .~ Just manualPeerInfo
+  where
+  manualPeerInfo = PeerInfo
+    { _peerInfoIsActive = True
+    , _peerInfoIsPinned = True
+    }
+
+setAddrPin :: (MonadIndexClient t m, MonadHasSettings t m) =>  Event t (Text, Bool) -> m (Event t ())
+setAddrPin addrE = updateSettingsAsync $ ffor addrE $ \(url, v) -> 
+  settingsAddrs . at url . _Just . peerInfoIsPinned .~ v
+
+setAddrActive :: (MonadIndexClient t m, MonadHasSettings t m) => Event t (Text, Bool) -> m (Event t ())
+setAddrActive addrE = updateSettingsAsync $ ffor addrE $ \(url, v) -> 
+  settingsAddrs . at url . _Just . peerInfoIsActive .~ v
+
+setDiscovery :: (MonadIndexClient t m, MonadHasSettings t m) =>  Event t Bool -> m (Event t ())
+setDiscovery discE = updateSettingsAsync $ ffor discE $ \v -> 
+  settingsDiscoveryEnabled .~ v
+
+deleteAddr :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m (Event t ())
+deleteAddr addrE = updateSettingsAsync $ ffor addrE $ \url -> 
+  settingsAddrs . at url .~ Nothing
 
 -- | Activate an URL
 activateURLList :: (MonadIndexClient t m, MonadHasSettings t m) => Event t [NamedSockAddr] -> m (Event t ())
-activateURLList addrE = do
-  (_, f)    <- getActivationEF
-  setRef    <- getSettingsRef
-  performEventAsync $ ffor addrE $ \urls fire -> void $ liftIO $ forkOnOther $ do
-    
-    fire ()
+activateURLList addrE = updateSettingsAsync $ ffor addrE $ \urls -> let
+  in settingsAddrs %~ (`M.union` (M.fromList $ (,PeerInfo True True) . namedAddrName <$> urls))
 
 -- | It is really important to wait until indexer performs deinitialization before deleting it from dynamic collections
 closeAndWait :: MonadIndexClient t m => Event t NamedSockAddr -> m (Event t NamedSockAddr)
@@ -120,67 +137,6 @@ closeAndWait urlE = do
       Nothing -> never
       Just conn -> url <$ indexConClosedE conn
   switchDyn <$> holdDyn never closedEE
-
--- | Deactivate an URL
-deactivateURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m (Event t ())
-deactivateURL addrE = do
-  req       <- getIndexReqFire
-  setRef    <- getSettingsRef
-  performEventAsync $ ffor addrE $ \url fire -> void $ liftIO $ forkOnOther $ do
-    fire ()
-
-setAddrPin :: (MonadIndexClient t m, MonadHasSettings t m) =>  Event t (Text, Bool) -> m ()
-setAddrPin addrE = do
-  req       <- getIndexReqFire
-  setRef    <- getSettingsRef
-  void $ performEventAsync $ ffor addrE $ \(url, v) fire -> void $ liftIO $ forkOnOther $ do
-    s <- modifyExternalRef setRef $ \s -> let
-      s' = s & settingsAddrs . at url . _Just . peerInfoIsPinned .~ v
-      in (s', s')
-    storeSettings s
-    liftIO $ print $ show v
-    fire ()
-
-setDiscovery :: (MonadIndexClient t m, MonadHasSettings t m) =>  Event t (Bool) -> m ()
-setDiscovery discE = do
-  setRef    <- getSettingsRef
-  void $ performEventAsync $ ffor discE $ \v fire -> void $ liftIO $ forkOnOther $ do
-    s <- modifyExternalRef setRef $ \s -> let
-      s' = s & settingsDiscoveryEnabled .~ v
-      in (s', s')
-    storeSettings s
-    liftIO $ print $ show s
-    fire ()
-
-setAddrActive :: (MonadIndexClient t m, MonadHasSettings t m) => Event t (Text, Bool)  -> m ()
-setAddrActive addrE = do
-  req       <- getIndexReqFire
-  setRef    <- getSettingsRef
-  void $ performEventAsync $ ffor addrE $ \(url, v) fire -> void $ liftIO $ forkOnOther $ do
-    s <- modifyExternalRef setRef $ \s -> let
-      s' = s & settingsAddrs . at url . _Just . peerInfoIsActive .~ v 
-      in (s', s')
-    storeSettings s
-    fire ()
-
-deleteAddr :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m ()
-deleteAddr addrE = do
-  req       <- getIndexReqFire
-  setRef    <- getSettingsRef
-  void $ performEventAsync $ ffor addrE $ \url fire -> void $ liftIO $ forkOnOther $ do
-    s <- modifyExternalRef setRef $ \s -> let
-      s' = s & settingsAddrs . at url .~ Nothing
-      in (s', s')
-    storeSettings s
-    fire ()
-
--- | Forget an url
-forgetURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m (Event t ())
-forgetURL addrE = do
-  req       <- getIndexReqFire
-  setRef    <- getSettingsRef
-  performEventAsync $ ffor addrE $ \url fire -> void $ liftIO $ forkOnOther $ do
-    fire ()
 
 broadcastIndexerMessage :: (MonadIndexClient t m) => Event t IndexerMsg -> m ()
 broadcastIndexerMessage reqE = do

@@ -76,7 +76,7 @@ fetchNewPeer e = do
         _-> Nothing
   newIndexerE <- performEvent $ ffor nonEmptyAddressesE $ \addrs ->
     liftIO $ convertA . head <$> (shuffleM $ V.toList addrs)
-  void $ activateURL (namedAddrName <$> newIndexerE)
+  void $ addDiscovered (namedAddrName <$> newIndexerE)
 
 convertA Address{..} = case addressType of
     IPV4 -> let

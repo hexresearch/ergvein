@@ -21,6 +21,7 @@ module Ergvein.Wallet.Monad.Prim
   , initialIndexers
   , getSocksConf
   , getProxyConf
+  , updateSettingsAsync
   ) where
 
 import Control.Monad.Fix
@@ -51,6 +52,7 @@ import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Version
+import Ergvein.Wallet.Monad.Async
 
 import qualified Control.Monad.Fail as F
 import qualified Network.Socks5 as S5
@@ -245,3 +247,13 @@ instance F.MonadFail (WithJSContextSingleton x (SpiderHostFrame Global)) where
 
 instance F.MonadFail (WithJSContextSingleton x (RP.ProfiledM (SpiderHostFrame Global))) where
   fail = liftIO . F.fail
+
+updateSettingsAsync :: (MonadHasSettings t m) => Event t (Settings -> Settings) -> m (Event t ())
+updateSettingsAsync updateE = do 
+  setRef    <- getSettingsRef
+  performEventAsync $ ffor updateE $ \f fire -> void $ liftIO $ forkOnOther $ do
+    s <- modifyExternalRef setRef $ \s -> let
+      s' = f s
+      in (s', s')
+    storeSettings s
+    fire ()
