@@ -39,6 +39,7 @@ module Ergvein.Wallet.Settings (
   , settingsSocksProxy       
   , peerInfoIsActive
   , peerInfoIsPinned
+  , ErgveinNodeAddr
   ) where
 
 import Control.Lens hiding ((.=))
@@ -70,6 +71,7 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Yaml(readYamlEither')
 
+
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Text as T
@@ -79,6 +81,8 @@ import qualified Network.Socks5 as S5
 import Android.HaskellActivity
 import Ergvein.Wallet.Native
 #endif
+
+type ErgveinNodeAddr = Text
 
 data PeerInfo = PeerInfo
   { _peerInfoIsActive :: !Bool
@@ -156,7 +160,7 @@ data Settings = Settings {
 , _settingsConfigPath        :: Text
 , _settingsUnits             :: Maybe Units
 , _settingsReqTimeout        :: NominalDiffTime
-, _settingsAddrs             :: M.Map Text PeerInfo
+, _settingsAddrs             :: M.Map ErgveinNodeAddr PeerInfo
 , _settingsReqUrlNum         :: (Int, Int) -- ^ First is minimum required answers. Second is sufficient amount of answers from indexers.
 , _settingsActUrlNum         :: Int
 , _settingsExplorerUrl       :: M.Map Currency ExplorerUrls

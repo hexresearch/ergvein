@@ -77,16 +77,16 @@ fetchNewPeer e = do
         _-> Nothing
   newIndexerE <- performEvent $ ffor nonEmptyAddressesE $ \addrs ->
     liftIO $ convertA . head <$> (shuffleM $ V.toList addrs)
-  void $ addDiscovered (namedAddrName <$> newIndexerE)
+  void $ addDiscovered newIndexerE
 
 convertA Address{..} = case addressType of
     IPV4 -> let
       port = (fromInteger $ toInteger addressPort)
       ip  =  fromRight (error "address") $ parseOnly anyWord32be addressAddress
       addr = SockAddrInet port ip
-      in NamedSockAddr (showt addr) addr
+      in showt addr
     IPV6 -> let
       port = (fromInteger $ toInteger addressPort)
       ip  =  fromRight (error "address") $ parseOnly ((,,,) <$> anyWord32be <*> anyWord32be <*> anyWord32be <*> anyWord32be) addressAddress
       addr = SockAddrInet6 port 0 ip 0
-      in NamedSockAddr (showt addr) addr
+      in showt addr

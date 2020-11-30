@@ -50,8 +50,6 @@ import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
-
-
 data IndexerConnection t = IndexerConnection {
   indexConAddr      :: !SockAddr
 , indexConName      :: !Text
@@ -86,7 +84,7 @@ class MonadBaseConstr t m => MonadIndexClient t m | m -> t where
   -- | Get activation event and trigger
   getActivationEF :: m (Event t [Text], [Text] -> IO ())
 
-addDiscovered :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m (Event t ())
+addDiscovered :: (MonadIndexClient t m, MonadHasSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
 addDiscovered addrE = updateSettingsAsync $ ffor addrE $ \ url ->
   settingsAddrs . at url .~ Just discoveredPeerInfo
   where
@@ -95,7 +93,7 @@ addDiscovered addrE = updateSettingsAsync $ ffor addrE $ \ url ->
     , _peerInfoIsPinned = False
     }
 
-addManual :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m (Event t ())
+addManual :: (MonadIndexClient t m, MonadHasSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
 addManual addrE = updateSettingsAsync $ ffor addrE $ \ url ->
   settingsAddrs . at url .~ Just manualPeerInfo
   where
@@ -104,11 +102,11 @@ addManual addrE = updateSettingsAsync $ ffor addrE $ \ url ->
     , _peerInfoIsPinned = True
     }
 
-setAddrPin :: (MonadIndexClient t m, MonadHasSettings t m) =>  Event t (Text, Bool) -> m (Event t ())
+setAddrPin :: (MonadIndexClient t m, MonadHasSettings t m) =>  Event t (ErgveinNodeAddr, Bool) -> m (Event t ())
 setAddrPin addrE = updateSettingsAsync $ ffor addrE $ \(url, v) -> 
   settingsAddrs . at url . _Just . peerInfoIsPinned .~ v
 
-setAddrActive :: (MonadIndexClient t m, MonadHasSettings t m) => Event t (Text, Bool) -> m (Event t ())
+setAddrActive :: (MonadIndexClient t m, MonadHasSettings t m) => Event t (ErgveinNodeAddr, Bool) -> m (Event t ())
 setAddrActive addrE = updateSettingsAsync $ ffor addrE $ \(url, v) -> 
   settingsAddrs . at url . _Just . peerInfoIsActive .~ v
 
@@ -121,7 +119,7 @@ deleteAddr addrE = updateSettingsAsync $ ffor addrE $ \url ->
   settingsAddrs . at url .~ Nothing
 
 -- | Activate an URL
-activateURLList :: (MonadIndexClient t m, MonadHasSettings t m) => Event t [Text] -> m (Event t ())
+activateURLList :: (MonadIndexClient t m, MonadHasSettings t m) => Event t [ErgveinNodeAddr] -> m (Event t ())
 activateURLList addrE = updateSettingsAsync $ ffor addrE $ \urls -> let
   in settingsAddrs %~ (`M.union` (M.fromList $ (,PeerInfo True True) <$> urls))
 
@@ -141,7 +139,7 @@ requestIndexerWhenOpen IndexerConnection{..} msg = do
   performEvent $ ffor reqE $ const $
     liftIO $ fire $ M.singleton indexConName $ IndexerMsg msg
 
-requestSpecificIndexer :: MonadIndexClient t m => Event t (Text, Message) -> m (Event t Message)
+requestSpecificIndexer :: MonadIndexClient t m => Event t (ErgveinNodeAddr, Message) -> m (Event t Message)
 requestSpecificIndexer saMsgE = do
   connsRef <- getActiveConnsRef
   fireReq  <- getIndexReqFire

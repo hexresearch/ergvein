@@ -48,7 +48,7 @@ indexerNodeController  = mdo
   valD <- listWithKeyShallowDiff initMap actE $ \n _ _ -> do
     mAddr <- parseSockAddrs seed [n]
     case mAddr of
-      [addr] ->  do
+      addr:_ ->  do
         nodeLog $ "<" <> n <> ">: Connect"
         let reqE = select sel $ Const2 n
         conn <- initIndexerConnection addr reqE

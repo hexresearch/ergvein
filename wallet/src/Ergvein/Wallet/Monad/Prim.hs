@@ -222,6 +222,8 @@ class MonadBaseConstr t m => MonadAlertPoster t m | m -> t where
 
 type PeerScanInfoMap = Map Currency (Maybe BlockHeight, BlockHeight) -- (scanned, actual)
 
+type ErgveinNodeAddr = Text
+
 data NamedSockAddr = NamedSockAddr {
   namedAddrName :: Text
 , namedAddrSock :: SockAddr

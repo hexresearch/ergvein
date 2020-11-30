@@ -79,7 +79,6 @@ data Env t = Env {
 , env'feesStore       :: !(ExternalRef t (Map Currency FeeBundle))
 , env'storeMutex      :: !(MVar ())
 -- Client context
-, env'addrs           :: !(ExternalRef t (Map NamedSockAddr PeerInfo))
 , env'indexConmap     :: !(ExternalRef t (Map Text (IndexerConnection t)))
 , env'reqUrlNum       :: !(ExternalRef t (Int, Int))
 , env'actUrlNum       :: !(ExternalRef t Int)
@@ -275,7 +274,6 @@ liftAuth ma0 ma = mdo
         authRef         <- newExternalRef auth
 
         -- MonadClient refs
-        addrNfo <- newExternalRef mempty
         indexConmapRef  <- getActiveConnsRef
         reqUrlNumRef    <- getRequiredUrlNumRef
         actUrlNumRef    <- getActiveUrlsNumRef
@@ -321,7 +319,6 @@ liftAuth ma0 ma = mdo
               , env'nodeReqFire = nReqFire
               , env'feesStore = feesRef
               , env'storeMutex = storeMvar
-              , env'addrs    = addrNfo
               , env'indexConmap = indexConmapRef
               , env'reqUrlNum = reqUrlNumRef
               , env'actUrlNum = actUrlNumRef
