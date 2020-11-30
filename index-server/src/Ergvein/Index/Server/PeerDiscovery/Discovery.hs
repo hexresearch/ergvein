@@ -15,6 +15,7 @@ import Data.Time.Clock
 import Data.Time.Clock.POSIX
 import Data.Word
 import Network.Socket (SockAddr)
+import Foreign.C.Types (CTime(..))
 
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Server.BlockchainScanning.Common
@@ -109,7 +110,7 @@ isPeerScanActual localScanBlocks peerScanBlocks  = do
 ownVersion :: ServerM Version
 ownVersion = do
   nonce <- liftIO $ randomIO
-  time  <- liftIO $ fromIntegral . floor <$> getPOSIXTime
+  time  <- liftIO $ CTime . floor <$> getPOSIXTime
 
   scanNfo <- UV.fromList <$> (mapM verBlock =<< scanningInfo)
 
