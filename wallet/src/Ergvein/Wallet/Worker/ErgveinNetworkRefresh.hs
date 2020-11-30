@@ -45,8 +45,9 @@ ergveinNetworkRefresh = do
   timerE <- void <$> tickLossyFromPostBuildTime workerDelay
   buildE <- getPostBuild
   settD <- fmap _settingsDiscoveryEnabled <$> getSettingsD
+  let settE = void $ updated settD
   activePeersChangedE <- void . fst <$> getActivationEF
-  let goE = traceEvent "DISCOVERY" $  gate (current settD) $  leftmost [timerE, buildE, activePeersChangedE]
+  let goE = gate (current settD) $  leftmost [timerE, buildE, settE, activePeersChangedE]
   activeUrlsRef <- getActiveConnsRef
   activeUrlsE <- performEvent $ ffor goE $ const $ readExternalRef activeUrlsRef
 
@@ -61,9 +62,9 @@ restoreFromDNS e = do
   dnsSettingsD <- fmap _settingsDns <$> getSettingsD
   reloadedFromSeedE <- performEvent $ ffor e $ const $ do
     dns <- sample $ current dnsSettingsD
-    rs <- liftIO $ resolveSeed $ Set.toList dns
-    newSet <- liftIO $ getDNS rs seedList 
-    parseSockAddrs rs $ fromMaybe defaultIndexers newSet
+    rs <- liftIO $ resolveSeed $ Set.toList dns 
+    newSet <- liftIO $ getDNS rs seedList
+    pure $ fromMaybe defaultIndexers newSet
 
   void $ activateURLList reloadedFromSeedE
 

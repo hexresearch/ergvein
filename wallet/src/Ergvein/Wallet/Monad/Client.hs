@@ -121,22 +121,9 @@ deleteAddr addrE = updateSettingsAsync $ ffor addrE $ \url ->
   settingsAddrs . at url .~ Nothing
 
 -- | Activate an URL
-activateURLList :: (MonadIndexClient t m, MonadHasSettings t m) => Event t [NamedSockAddr] -> m (Event t ())
+activateURLList :: (MonadIndexClient t m, MonadHasSettings t m) => Event t [Text] -> m (Event t ())
 activateURLList addrE = updateSettingsAsync $ ffor addrE $ \urls -> let
-  in settingsAddrs %~ (`M.union` (M.fromList $ (,PeerInfo True True) . namedAddrName <$> urls))
-
--- | It is really important to wait until indexer performs deinitialization before deleting it from dynamic collections
-closeAndWait :: MonadIndexClient t m => Event t NamedSockAddr -> m (Event t NamedSockAddr)
-closeAndWait urlE = do
-  req      <- getIndexReqFire
-  connsRef <- getActiveConnsRef
-  closedEE <- performEvent $ ffor urlE $ \url@NamedSockAddr {..} -> do
-    liftIO $ req $ M.singleton namedAddrName IndexerClose
-    mconn <- fmap (M.lookup namedAddrName) $ readExternalRef connsRef
-    pure $ case mconn of
-      Nothing -> never
-      Just conn -> url <$ indexConClosedE conn
-  switchDyn <$> holdDyn never closedEE
+  in settingsAddrs %~ (`M.union` (M.fromList $ (,PeerInfo True True) <$> urls))
 
 broadcastIndexerMessage :: (MonadIndexClient t m) => Event t IndexerMsg -> m ()
 broadcastIndexerMessage reqE = do
