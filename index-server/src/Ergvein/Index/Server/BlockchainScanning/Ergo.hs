@@ -54,5 +54,4 @@ blockInfo blockHeightToScan = do
   let mainChainId = head headersAtHeight
 
   block <- getById mainChainId
-  blockInfo <- blockTxInfos block blockHeightToScan
-  pure blockInfo
+  blockTxInfos block blockHeightToScan

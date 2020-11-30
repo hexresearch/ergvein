@@ -11,7 +11,7 @@ import Control.Concurrent.Lifted (fork, threadDelay, killThread)
 import Control.Concurrent.STM
 import Control.Monad.Catch (throwM, MonadThrow)
 import Control.Monad.IO.Unlift
-import Control.Monad.Random
+import Control.Monad.Random (randomIO)
 import Control.Monad.Reader
 import Control.Monad.Trans.Control
 import Data.Serialize (decode, runGet, runPut)
@@ -90,7 +90,7 @@ connectBtc net host port closeVar = do
       then atomically $ writeTChan closeChan $ Ex.SomeException PeerSeppuku
       else threadDelay 1000000 >> next
   fork $ fix $ \next -> do
-    connect host port $ \(sock, sockaddr) -> liftIO $ do
+    connect host port $ \(sock, _sockaddr) -> liftIO $ do
       atomically $ writeTVar shakeVar False
       let env = PeekerEnv intVar sock
       let inFire = atomically . writeTChan incChan
@@ -111,7 +111,7 @@ connectBtc net host port closeVar = do
       print =<< atomically (readTChan closeChan)
       liftIO $ N.close sock
     b <- liftIO $ readTVarIO closeVar
-    if b then liftIO $ print "Close connection to BTC node" else next
+    if b then liftIO $ putStrLn "Close connection to BTC node" else next
   pure btcsock
   where
     hints :: N.AddrInfo
