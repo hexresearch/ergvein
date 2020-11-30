@@ -14,6 +14,7 @@ module Ergvein.Index.Server.DB.Schema.Indexer
   , schemaVersion
   ) where
 
+import Conversion
 import Control.Monad
 import Crypto.Hash.SHA256
 import Data.Attoparsec.Binary
@@ -25,13 +26,14 @@ import Data.FileEmbed
 import Data.Foldable
 import GHC.Generics
 import Data.Serialize (Serialize)
-import Data.Text (Text)
+import Data.Text (Text,pack,unpack)
 import Data.Word
 
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Index.Server.DB.Serialize.Class
 import Ergvein.Index.Server.PeerDiscovery.Types (PeerAddr(..), PeerIP(..))
+import Ergvein.Index.Protocol.Types (Address(..),IPType(..))
 import qualified Ergvein.Index.Server.PeerDiscovery.Types as DiscoveryTypes
 
 import qualified Data.ByteString         as BS
@@ -102,6 +104,39 @@ schemaVersionRecKey :: ByteString
 schemaVersionRecKey  = keyString SchemaVersion $ mempty @String
 
 data SchemaVersionRec = Text  deriving (Generic, Show, Eq, Ord)
+
+
+-- ===========================================================================
+--           Conversion instances
+-- ===========================================================================
+
+instance Conversion DiscoveryTypes.Peer KnownPeerRecItem where
+  convert DiscoveryTypes.Peer{..} = let
+    validatedAt = pack $ show $ peerLastValidatedAt
+    in KnownPeerRecItem
+      { knownPeerRecAddr = convert peerAddress
+      , knownPeerRecLastValidatedAt = validatedAt
+      }
+
+instance Conversion KnownPeerRecItem DiscoveryTypes.Peer where
+  convert KnownPeerRecItem {..} = DiscoveryTypes.Peer
+    { peerAddress = convert knownPeerRecAddr
+    , peerLastValidatedAt = read $ unpack knownPeerRecLastValidatedAt
+    }
+
+instance Conversion KnownPeerRecItem Address where
+  convert KnownPeerRecItem {..} = let
+    in case peerAddrIP knownPeerRecAddr of
+      V4 ip -> Address
+        { addressType    = IPV4
+        , addressPort    = peerAddrPort knownPeerRecAddr
+        , addressAddress = BL.toStrict $ toLazyByteString $ word32BE ip
+        }
+      V6 (a,b,c,d) -> Address
+        { addressType    = IPV6
+        , addressPort    = peerAddrPort knownPeerRecAddr
+        , addressAddress = BL.toStrict $ toLazyByteString $ word32BE a <> word32BE b <> word32BE c <> word32BE d
+        }
 
 
 -- ===========================================================================

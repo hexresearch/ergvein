@@ -12,35 +12,6 @@ import Data.Attoparsec.ByteString
 import Data.Attoparsec.Binary
 import qualified Data.ByteString.Lazy as BSL
 
-instance Conversion DiscoveryTypes.Peer KnownPeerRecItem where
-  convert Peer {..} = let
-    validatedAt = pack $ show $ peerLastValidatedAt
-    in KnownPeerRecItem
-      { knownPeerRecAddr = convert peerAddress
-      , knownPeerRecLastValidatedAt = validatedAt
-      }
-
-instance Conversion KnownPeerRecItem DiscoveryTypes.Peer where
-  convert KnownPeerRecItem {..} = let
-    in DiscoveryTypes.Peer
-      { peerAddress = convert knownPeerRecAddr
-      , peerLastValidatedAt = read $ unpack knownPeerRecLastValidatedAt
-      }
-
-instance Conversion KnownPeerRecItem Address where
-  convert KnownPeerRecItem {..} = let
-    in case peerAddrIP knownPeerRecAddr of
-      V4 ip -> Address
-        { addressType    = IPV4
-        , addressPort    = peerAddrPort knownPeerRecAddr
-        , addressAddress = BSL.toStrict $ toLazyByteString $ word32BE ip
-        }
-      V6 (a,b,c,d) -> Address
-        { addressType    = IPV6
-        , addressPort    = peerAddrPort knownPeerRecAddr
-        , addressAddress = BSL.toStrict $ toLazyByteString $ word32BE a <> word32BE b <> word32BE c <> word32BE d
-        }
-
 instance Conversion Address SockAddr where
   convert Address{..} = case addressType of
     IPV4 -> let
