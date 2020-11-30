@@ -16,8 +16,9 @@ instance Conversion SockAddr PeerAddr where
   convert = \case
           SockAddrInet  port   ip   -> PeerAddr (V4 ip) (fromInteger $ toInteger port)
           SockAddrInet6 port _ ip _ -> PeerAddr (V6 ip) (fromInteger $ toInteger port)
-          SockAddrUnix _ -> error "SockAddrUnix not supported"
-
+          SockAddrUnix{} -> error "SockAddrUnix is not supported"
+          -- Use of SockAddrCan generates deprecation warnign
+          _              -> error "SockAddrCan is not supported"
 
 instance Conversion PeerAddr SockAddr where
   convert PeerAddr {..} = let
