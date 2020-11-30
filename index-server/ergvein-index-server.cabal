@@ -23,7 +23,6 @@ library
     Ergvein.Index.Server.BlockchainScanning.Types
     Ergvein.Index.Server.Config
     Ergvein.Index.Server.DB
-    Ergvein.Index.Server.DB.Conversions
     Ergvein.Index.Server.DB.Monad
     Ergvein.Index.Server.DB.Queries
     Ergvein.Index.Server.DB.Schema.Filters

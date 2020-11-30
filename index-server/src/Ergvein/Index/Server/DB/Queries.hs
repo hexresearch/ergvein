@@ -37,7 +37,6 @@ import Database.LevelDB
 
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Server.BlockchainScanning.Types
-import Ergvein.Index.Server.DB.Conversions()
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema.Filters
 import Ergvein.Index.Server.DB.Schema.Indexer
