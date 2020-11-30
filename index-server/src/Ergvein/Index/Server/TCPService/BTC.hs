@@ -90,7 +90,7 @@ connectBtc net host port closeVar = do
       then atomically $ writeTChan closeChan $ Ex.SomeException PeerSeppuku
       else threadDelay 1000000 >> next
   fork $ fix $ \next -> do
-    connect host port $ \(sock, sockaddr) -> liftIO $ do
+    connect host port $ \(sock, _sockaddr) -> liftIO $ do
       atomically $ writeTVar shakeVar False
       let env = PeekerEnv intVar sock
       let inFire = atomically . writeTChan incChan
