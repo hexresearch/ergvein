@@ -12,21 +12,6 @@ import Data.Attoparsec.ByteString
 import Data.Attoparsec.Binary
 import qualified Data.ByteString.Lazy as BSL
 
-instance Conversion SockAddr PeerAddr where
-  convert = \case
-          SockAddrInet  port   ip   -> PeerAddr (V4 ip) (fromInteger $ toInteger port)
-          SockAddrInet6 port _ ip _ -> PeerAddr (V6 ip) (fromInteger $ toInteger port)
-          SockAddrUnix{} -> error "SockAddrUnix is not supported"
-          -- Use of SockAddrCan generates deprecation warnign
-          _              -> error "SockAddrCan is not supported"
-
-instance Conversion PeerAddr SockAddr where
-  convert PeerAddr {..} = let
-    port = fromInteger $ toInteger peerAddrPort
-    in case peerAddrIP of
-      V4 ip -> SockAddrInet port ip
-      V6 ip -> SockAddrInet6 port 0 ip 0
-
 instance Conversion DiscoveryTypes.Peer KnownPeerRecItem where
   convert Peer {..} = let
     validatedAt = pack $ show $ peerLastValidatedAt
