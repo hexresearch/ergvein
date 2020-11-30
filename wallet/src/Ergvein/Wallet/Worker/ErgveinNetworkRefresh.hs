@@ -44,8 +44,9 @@ ergveinNetworkRefresh = do
   dnsSettingsD <- fmap _settingsDns <$> getSettingsD
   timerE <- void <$> tickLossyFromPostBuildTime workerDelay
   buildE <- getPostBuild
+  settD <- fmap _settingsDiscoveryEnabled <$> getSettingsD
   activePeersChangedE <- void . fst <$> getActivationEF
-  let goE = leftmost [timerE, buildE, activePeersChangedE]
+  let goE = traceEvent "DISCOVERY" $  gate (current settD) $  leftmost [timerE, buildE, activePeersChangedE]
   activeUrlsRef <- getActiveConnsRef
   activeUrlsE <- performEvent $ ffor goE $ const $ readExternalRef activeUrlsRef
 

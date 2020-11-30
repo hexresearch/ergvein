@@ -337,7 +337,7 @@ liftAuth ma0 ma = mdo
           scanner
           btcNodeController
           heightAsking
-          --ergveinNetworkRefresh
+          ergveinNetworkRefresh
           feesWorker
           pubKeysGenerator
           pure ()
