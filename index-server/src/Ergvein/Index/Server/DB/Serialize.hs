@@ -7,31 +7,19 @@ module Ergvein.Index.Server.DB.Serialize
   ) where
 
 import Control.DeepSeq
-import Control.Monad (replicateM)
 import Control.Parallel.Strategies
 import Data.Attoparsec.Binary
 import Data.Attoparsec.ByteString
 import Data.ByteString (ByteString)
 import Data.ByteString.Builder as BB
-import Data.Foldable
 import Data.Word
 
 import Ergvein.Index.Server.BlockchainScanning.Types
-import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.DB.Schema.Filters
-import Ergvein.Index.Server.DB.Schema.Indexer
 import Ergvein.Index.Server.DB.Serialize.Class
 import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
 
-import qualified Data.Attoparsec.ByteString as Parse
-import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString.Short as BSS
-import qualified Data.Map.Strict as M
-import qualified Data.Sequence as Seq
-import qualified Data.Serialize as S
-import qualified Data.Text.Encoding as TE
 import qualified Database.LevelDB as LDB
 
 
