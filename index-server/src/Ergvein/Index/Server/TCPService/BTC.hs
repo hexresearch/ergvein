@@ -101,7 +101,7 @@ connectBtc net host port closeVar = do
         NSB.send sock $ runPut . putMessage net $ msg
 
       fork $ fix $ \next -> do
-        mma <- Ex.tryAny $ Ex.try $ runReaderT (peekMessage net sa) env
+        mma <- Ex.tryAny $ Ex.try $ runReaderT (peekMessage net) env
         case mma of
           Left e -> readErFire e >> next
           Right (Left (e :: ReceiveException)) -> readErFire $ Ex.SomeException e
@@ -186,9 +186,8 @@ mkVers net url = liftIO $ do
 -- | Internal peeker to parse messages coming from peer.
 peekMessage :: (MonadPeeker m, MonadIO m, MonadThrow m)
     => Network
-    -> N.SockAddr
     -> m Message
-peekMessage net url = do
+peekMessage net = do
   x <- peek 24
   case decode x of
     Left e -> do
