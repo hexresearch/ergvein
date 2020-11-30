@@ -35,39 +35,6 @@ import qualified Data.Serialize as S
 import qualified Data.Text.Encoding as TE
 import qualified Database.LevelDB as LDB
 
--- ===========================================================================
---           instance EgvSerialize ScannedHeightRec
--- ===========================================================================
-
-instance EgvSerialize ScannedHeightRec where
-  egvSerialize _ (ScannedHeightRec sh) = BL.toStrict . toLazyByteString $ word64LE sh
-  egvDeserialize _ = parseOnly $ ScannedHeightRec <$> anyWord64le
-
--- ===========================================================================
---           Tx-related
--- ===========================================================================
-
-instance EgvSerialize TxRecMeta where
-  egvSerialize _ = BL.toStrict . toLazyByteString . word32LE . unTxRecMeta
-  egvDeserialize _ = fmap TxRecMeta . parseOnly anyWord32le
-
-instance EgvSerialize TxRecBytes where
-  egvSerialize _ = BL.toStrict . toLazyByteString . buildBS . unTxRecBytes
-  egvDeserialize _ = fmap TxRecBytes . parseOnly parseBS
-
--- ===========================================================================
---           instance EgvSerialize BlockMetaRec
--- ===========================================================================
-
-instance EgvSerialize BlockMetaRec where
-  egvSerialize _ (BlockMetaRec hd filt) = BL.toStrict . toLazyByteString $ let
-    len = fromIntegral $ BS.length filt
-    in shortByteString hd <> word64LE len <> byteString filt
-  egvDeserialize cur = parseOnly $ do
-    blockMetaRecHeaderHash <- fmap BSS.toShort $ Parse.take (getBlockHashLength cur)
-    len <- fromIntegral <$> anyWord64le
-    blockMetaRecAddressFilter <- Parse.take len
-    pure BlockMetaRec{..}
 
 -- ===========================================================================
 --           instance EgvSerialize KnownPeerRecItem, KnownPeersRec
