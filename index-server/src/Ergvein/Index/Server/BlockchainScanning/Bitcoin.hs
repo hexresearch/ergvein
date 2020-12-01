@@ -36,13 +36,12 @@ import qualified Data.HexString                     as HS
 import qualified Data.Map.Strict                    as Map
 import qualified Ergvein.Index.Protocol.Types       as IPT
 import qualified Network.Haskoin.Block              as HK
-import qualified Network.Haskoin.Constants          as HK
 import qualified Network.Haskoin.Crypto             as HK
 import qualified Network.Haskoin.Script             as HK
 import qualified Network.Haskoin.Transaction        as HK
 
-blockTxInfos :: (HasFiltersDB m, MonadLogger m, MonadBaseControl IO m) => HK.Block -> BlockHeight -> HK.Network -> m BlockInfo
-blockTxInfos block txBlockHeight nodeNetwork = do
+blockTxInfos :: (HasFiltersDB m, MonadLogger m, MonadBaseControl IO m) => HK.Block -> BlockHeight -> m BlockInfo
+blockTxInfos block txBlockHeight = do
   let (txInfos , spentTxsIds) = fmap (uniqueWithCount . mconcat) $ unzip $ txInfo <$> HK.blockTxns block
   -- timeLog $ "spentTxsIds: " <> showt (length spentTxsIds)
   uniqueSpentTxs <- fmap mconcat $ mapConcurrently (mapM spentTxSource) $ mkChunks 100 spentTxsIds
@@ -86,7 +85,6 @@ blockInfo :: (BitcoinApiMonad m,  HasBitcoinNodeNetwork m, HasFiltersDB m, Monad
   => BlockHeight -> m BlockInfo
 blockInfo blockHeightToScan =  do
   blockHash <- nodeRpcCall $ (`getBlockHash` fromIntegral blockHeightToScan)
-  currentNetwork <- currentBitcoinNetwork
   conScheme <- getBtcConnectionScheme
   parsedBlock <- case conScheme of
     BtcConTCP -> requestBlock $ fromRight hashParsingError $ decode $ BS.reverse $ HS.toBytes blockHash
@@ -94,7 +92,7 @@ blockInfo blockHeightToScan =  do
       maybeRawBlock <- nodeRpcCall $ (`getBlockRaw` blockHash)
       let rawBlock = fromMaybe blockParsingError maybeRawBlock
       pure $ fromRight blockGettingError $ decode $ HS.toBytes rawBlock
-  blockTxInfos parsedBlock blockHeightToScan currentNetwork
+  blockTxInfos parsedBlock blockHeightToScan
   where
     hashParsingError = error $ "Error parsing BTC BlockHash at height " ++ show blockHeightToScan
     blockGettingError = error $ "Error getting BTC node at height " ++ show blockHeightToScan
