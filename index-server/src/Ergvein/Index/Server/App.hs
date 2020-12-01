@@ -54,6 +54,6 @@ app onlyScan cfg env = do
   (scannerThreads, workerThreads) <- liftIO $ runServerMIO env $ onStartup onlyScan env
   runReaderT serveMetrics cfg
   logInfoN $ "Server started at:" <> (showt . cfgServerPort $ cfg)
-  liftIO $ installHandler sigTERM (Catch $ onShutdown env) Nothing
+  _ <- liftIO $ installHandler sigTERM (Catch $ onShutdown env) Nothing
   liftIO $ cancelableDelay (envShutdownFlag env) (-1)
   finalize env scannerThreads workerThreads
