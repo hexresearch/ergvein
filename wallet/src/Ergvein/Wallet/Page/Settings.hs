@@ -206,6 +206,7 @@ currenciesPage = do
       , _currencyPubStorage'headerSeq     = btcCheckpoints
       , _currencyPubStorage'chainHeight   = 0
       , _currencyPubStorage'scannedHeight = 0
+      , _currencyPubStorage'replacedTxs   = Map.empty
       }
 
 -- TODO: uncomment commented lines when ERGO is ready

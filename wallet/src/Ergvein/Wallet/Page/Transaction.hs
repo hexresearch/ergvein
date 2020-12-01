@@ -43,6 +43,10 @@ transactionInfoPage cur tr@TransactionView{..} = do
       [] -> pure ()
       conflictingTxs -> infoPageElementExpEl HistoryTIConflictingTxs $ do
         void $ traverse (makeTxIdLink cur) conflictingTxs
+    case txReplacedTxs txInfoView of
+      [] -> pure ()
+      replacedTxs -> infoPageElementExpEl HistoryTIReplacedTxs $ do
+        void $ traverse (makeTxIdLink cur) replacedTxs
     infoPageElementEl HistoryTITime $ showTime tr
     infoPageElement HistoryTIConfirmations $ showt $ txConfirmations txInfoView
     infoPageElementExpEl HistoryTIBlock $ maybe (text "unknown") (\(bllink,bl) -> hyperlink "link" bl bllink) $ txBlock txInfoView

@@ -10,6 +10,9 @@ module Ergvein.Wallet.Transaction.Util(
   , countConfirmations
   , filterTxsForAddress
   , getConflictingTxs
+  , isDirectChildTxOf
+  , getChildTxs
+  , getReplacedTxs
   , getOutputByOutPoint
   , getOutputsByOutPoints
   , getSpentOutputs
@@ -41,6 +44,7 @@ import Ergvein.Wallet.Native
 
 import qualified Data.List                          as L
 import qualified Data.Map.Strict                    as M
+import qualified Data.Set                           as S
 import qualified Data.Vector                        as V
 import qualified Network.Haskoin.Address            as HA
 import qualified Network.Haskoin.Script             as HS
@@ -137,6 +141,36 @@ getConflictingTxs txs = getConflicts <$> btcTxs
 
     getConflicts :: HK.Tx -> [TxId]
     getConflicts tx = getTxHash <$> (L.filter (haveCommonInputs tx) (L.delete tx btcTxs))
+
+isDirectChildTxOf :: Tx -> Tx -> Bool
+isDirectChildTxOf childTx parentTx = parentTxId `L.elem` childTxInputsTxIds
+  where
+    parentTxId = txHash parentTx
+    childTxInputsTxIds = (HK.outPointHash . HK.prevOutput) <$> HK.txIn childTx
+
+-- | Returns the list of child txs found in transaction storage.
+--           parentTx
+--          /        \
+--     childTx1    childTx3   => [childTx1, childTx2, childTx3]
+--       /
+--  childTx2
+getChildTxs :: (HasTxStorage m, PlatformNatives) => Tx -> m [Tx]
+getChildTxs tx = do
+  txStore <- askTxStorage
+  case L.filter (`isDirectChildTxOf` tx) (getBtcTx <$> M.elems txStore) of
+    [] -> pure []
+    childTxs -> do
+      grandChildTxs <- L.concat <$> traverse getChildTxs childTxs
+      pure $ childTxs ++ grandChildTxs
+
+-- | Gets a list of ids of replaced transaction for every transaction in provided list.
+getReplacedTxs :: M.Map TxId (S.Set TxId) -> [EgvTx] -> [[TxId]]
+getReplacedTxs replacedTxs txs = getReplaced replacedTxs <$> txs
+  where
+    getReplaced :: M.Map TxId (S.Set TxId) -> EgvTx -> [TxId]
+    getReplaced rTxs tx = case M.lookup (egvTxId tx) rTxs of
+      Nothing -> []
+      Just txSet -> S.toList txSet
 
 getOutputByOutPoint :: (HasTxStorage m, PlatformNatives) => HK.OutPoint -> m (Maybe HK.TxOut)
 getOutputByOutPoint HK.OutPoint{..} = do

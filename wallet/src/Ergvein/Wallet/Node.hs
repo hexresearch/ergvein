@@ -40,6 +40,7 @@ import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Util
 
 import qualified Data.Dependent.Map as DM
+import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
 import qualified Network.Haskoin.Transaction as HT
@@ -183,14 +184,14 @@ removeTxsReplacedByFee caller cur txE = do
     liftIO $ flip runReaderT txStore $ do
       txStore' <- ask
       let btcTxs = getBtcTx <$> txStore'
-          otherTxs = M.delete (egvTxId tx) btcTxs
-      txsToRemove <- mapM (replacesByFee (getBtcTx tx)) otherTxs
-      -- logWrite $ "txs to remove " <> showt txsToRemove
-      pure $ M.keys $ M.filter (== Just True) txsToRemove
+          txId = egvTxId tx
+          otherTxs = M.delete txId btcTxs
+      replacedTxs <- filterM ((fmap (== Just True)) . replacesByFee (getBtcTx tx)) (M.elems otherTxs)
+      replacedTxsChilds <- L.concat <$> traverse getChildTxs replacedTxs
+      let txsToRemove = replacedTxs ++ replacedTxsChilds
+      pure (txId, (hkTxHashToEgv . HT.txHash) <$> txsToRemove)
   removedE <- removeTxsAndUtxosFromPubStorage "removeTxsReplacedByFee" ((cur,) <$> txsToRemoveE)
   pure removedE
-  where
-    clr = caller <> ":" <> "removeReplacedTxs"
 
 -- | Checks tx with checkAddrTx against provided keys and returns that tx in EgvTx format with matched keys vector.
 checkAddrTx' :: (HasTxStorage m, PlatformNatives) => V.Vector ScanKeyBox -> HT.Tx -> m ((V.Vector (ScanKeyBox), EgvTx))

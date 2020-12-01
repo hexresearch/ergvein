@@ -73,9 +73,9 @@ instance MonadIO m => HasPubStorage (ReaderT PubStorage m) where
   askPubStorage = ask
 
 class MonadIO m => HasTxStorage m where
-  askTxStorage :: m (M.Map TxId EgvTx)
+  askTxStorage :: m (Map TxId EgvTx)
 
-instance MonadIO m => HasTxStorage (ReaderT (M.Map TxId EgvTx) m) where
+instance MonadIO m => HasTxStorage (ReaderT (Map TxId EgvTx) m) where
   askTxStorage = ask
 
 -- ===========================================================================
@@ -112,7 +112,7 @@ setFlagToExtPubKey caller reqE = void . modifyPubStorage clr $ ffor reqE $ \(cur
 
 insertTxsUtxoInPubKeystore :: MonadStorage t m
   => Text -> Currency
-  -> Event t (V.Vector (ScanKeyBox, M.Map TxId EgvTx), BtcUtxoUpdate)
+  -> Event t (V.Vector (ScanKeyBox, Map TxId EgvTx), BtcUtxoUpdate)
   -> m (Event  t ())
 insertTxsUtxoInPubKeystore caller cur reqE = modifyPubStorage clr $ ffor reqE $ \(vec, (o,i)) ps ->
   if (V.null vec && M.null o && null i) then Nothing else let
@@ -129,12 +129,12 @@ insertTxsUtxoInPubKeystore caller cur reqE = modifyPubStorage clr $ ffor reqE $ 
     in V.foldl' go (Just ps2) vec
   where clr = caller <> ":" <> "insertTxsUtxoInPubKeystore"
 
-removeTxsAndUtxosFromPubStorage :: MonadStorage t m => Text -> Event t (Currency, [TxId]) -> m (Event t ())
-removeTxsAndUtxosFromPubStorage caller txIdsE = modifyPubStorage clr $ ffor txIdsE $ \(cur, txIds) ps ->
-  if L.null txIds
+removeTxsAndUtxosFromPubStorage :: MonadStorage t m => Text -> Event t (Currency, (TxId, [TxId])) -> m (Event t ())
+removeTxsAndUtxosFromPubStorage caller txIdsE = modifyPubStorage clr $ ffor txIdsE $ \(cur, (replacingTxId, replacedTxIds)) ps ->
+  if L.null replacedTxIds
     then Nothing
     else Just $ let
-      txIdsSet = S.fromList txIds
+      txIdsSet = S.fromList replacedTxIds
       -- Removing txs from currencyPubStorage'transactions
       ps1 = ps & pubStorage'currencyPubStorages
         . at cur . _Just
@@ -143,7 +143,9 @@ removeTxsAndUtxosFromPubStorage caller txIdsE = modifyPubStorage clr $ ffor txId
       ps2 = modifyCurrStorage cur (\cps -> cps & currencyPubStorage'utxos %~ (M.filterWithKey (filterOutPoints txIdsSet))) ps1
       -- Removing txids from EgvPubKeyBoxes form currencyPubStorage'pubKeystore
       ps3 = modifyCurrStorage cur (\cps -> cps & currencyPubStorage'pubKeystore %~ removeTxIdsFromEgvKeyBoxes txIdsSet) ps2
-      in ps3
+      -- Updating currencyPubStorage'replacedTxs
+      ps4 = modifyCurrStorage cur (\cps -> cps & currencyPubStorage'replacedTxs %~ updateReplacedTxsStorage replacingTxId replacedTxIds) ps3
+      in ps4
   where
     clr = caller <> ":" <> "removeTxsAndUtxosFromPubStorage"
       
@@ -157,7 +159,15 @@ removeTxsAndUtxosFromPubStorage caller txIdsE = modifyPubStorage clr $ ffor txId
           removeTxIdsFromKeybox txIds (EgvPubKeyBox k txs m) = EgvPubKeyBox k (S.difference txs txIdsSet) m
       in PubKeystore pubKeystore'master updatedPubKeystore'external updatedPubKeystore'internal
 
-txListToMap :: [EgvTx] -> M.Map TxId EgvTx
+    updateReplacedTxsStorage :: TxId -> [TxId] -> Map TxId (Set TxId) -> Map TxId (Set TxId)
+    updateReplacedTxsStorage replacingTxId replacedTxIds replacedTxsMap = replacedTxsMap''
+      where
+        replacedTxsMap' = M.filterWithKey (\k _ -> L.elem k replacedTxIds) replacedTxsMap
+        txIdsReplacedByFilteredTxIds = (flip (M.findWithDefault S.empty) $ replacedTxsMap) <$> replacedTxIds
+        updatedReplacedTxIds = S.unions $ (S.fromList replacedTxIds) : txIdsReplacedByFilteredTxIds
+        replacedTxsMap'' = M.insertWith S.union replacingTxId updatedReplacedTxIds replacedTxsMap'
+
+txListToMap :: [EgvTx] -> Map TxId EgvTx
 txListToMap txList = M.fromList $ (\tx -> (egvTxId tx, tx)) <$> txList
 
 updateBtcUtxoSet :: BtcUtxoUpdate -> PubStorage -> PubStorage
@@ -273,7 +283,7 @@ getBtcBlockHashByTxHash bth = do
     . currencyPubStorage'transactions . at th & fmap getEgvTxMeta & fmap etxMetaHash . join
   where th = hkTxHashToEgv bth
 
-getTxStorage :: HasPubStorage m => Currency -> m (M.Map TxId EgvTx)
+getTxStorage :: HasPubStorage m => Currency -> m (Map TxId EgvTx)
 getTxStorage cur = do
   ps <- askPubStorage
   pure $ ps ^. pubStorage'currencyPubStorages . at cur . non (error $ "getTxStorage: " <> show cur <> " storage does not exist!")

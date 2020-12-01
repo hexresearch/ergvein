@@ -62,6 +62,7 @@ data TxRawInfo = TxRawInfo {
   , txParents               :: [Maybe EgvTx]
   , txOutsStatuses          :: [TransOutputType]
   , txConflTxs              :: [TxId]
+  , txReplTxs               :: [TxId]
 } deriving (Show)
 
 newtype TxTime = TxTime (Maybe ZonedTime) deriving (Show)
@@ -93,6 +94,7 @@ data TransactionViewInfo = TransactionViewInfo {
   , txUrl           :: Text
   , txFee           :: Maybe Money
   , txRbfEnabled    :: Bool
+  , txReplacedTxs   :: [TxId]
   , txConfirmations :: Word64
   , txBlock         :: Maybe (Text, Text)
   , txOutputs       :: [(Maybe Text, Money, TransOutputType, Bool)]
@@ -146,6 +148,7 @@ prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = TransactionVi
       , txUrl           = blUrl <> "/tx/" <> txHex
       , txFee           = txFeeCalc
       , txRbfEnabled    = markedReplaceable btx
+      , txReplacedTxs   = txReplTxs
       , txConfirmations = bHeight
       , txBlock         = txBlockLink
       , txOutputs       = txOuts
