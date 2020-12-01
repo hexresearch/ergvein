@@ -61,14 +61,12 @@ blockTxInfos block txBlockHeight nodeNetwork = do
         Just    sourceTx -> pure sourceTx
         Nothing          -> fromChache
       where
-        decodeError = "error decoding btc txIn source transaction " <> show txInId
         fromChache = do
           db <- getFiltersDb
           src <- getParsedExact BTC "blockTxInfos" db $ txRawKey txInId
           case egvDeserialize BTC $ unTxRecBytes src of
             Left err -> error (err <> " : " <> show src)
             Right tx -> pure tx
-          -- pure $ fromRight (error decodeError) $ egvDeserialize BTC $ unTxRecBytes src
 
     txInfo :: HK.Tx -> (TxInfo, [TxHash])
     txInfo tx = let
