@@ -81,7 +81,7 @@ blockTxInfos block txBlockHeight = do
 actualHeight :: (Monad m, BitcoinApiMonad m) => m BlockHeight
 actualHeight = fromIntegral <$> nodeRpcCall getBlockCount
 
-blockInfo :: (BitcoinApiMonad m,  HasBitcoinNodeNetwork m, HasFiltersDB m, MonadLogger m, MonadBaseControl IO m)
+blockInfo :: (BitcoinApiMonad m, HasFiltersDB m, MonadLogger m, MonadBaseControl IO m)
   => BlockHeight -> m BlockInfo
 blockInfo blockHeightToScan =  do
   blockHash <- nodeRpcCall $ (`getBlockHash` fromIntegral blockHeightToScan)
