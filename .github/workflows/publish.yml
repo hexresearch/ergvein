@@ -161,7 +161,7 @@ jobs:
         asset_content_type: application/zip
 
     - name: Upload Android Release to Play Store
-      uses: r0adkll/upload-google-play@v1.0.4
+      uses: r0adkll/upload-google-play@v1.0.6
       with:
         serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_ERGVEIN_SECRET }}
         packageName: org.ergvein.wallet
