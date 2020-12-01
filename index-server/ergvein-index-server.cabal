@@ -23,14 +23,12 @@ library
     Ergvein.Index.Server.BlockchainScanning.Types
     Ergvein.Index.Server.Config
     Ergvein.Index.Server.DB
-    Ergvein.Index.Server.DB.Conversions
     Ergvein.Index.Server.DB.Monad
     Ergvein.Index.Server.DB.Queries
     Ergvein.Index.Server.DB.Schema.Filters
     Ergvein.Index.Server.DB.Schema.Indexer
     Ergvein.Index.Server.DB.Serialize
     Ergvein.Index.Server.DB.Serialize.Class
-    Ergvein.Index.Server.DB.Serialize.Tx
     Ergvein.Index.Server.DB.Utils
     Ergvein.Index.Server.Dependencies
     Ergvein.Index.Server.Environment
