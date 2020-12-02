@@ -104,7 +104,7 @@ jobs:
         echo "/nix/var/nix/profiles/per-user/actions/profile/bin" >> $GITHUB_PATH
         sudo ln -s /nix/var/nix/profiles/per-user/actions /nix/var/nix/profiles/per-user/runner
         echo "trusted-users = root $USER\nsandbox = false" | sudo tee -a /etc/nix/nix.conf && sudo pkill nix-daemon
-        for n in $(seq 1 10)
+        for n in $(seq 1 20)
         do
           if getent passwd nixbld$n > /dev/null 2>&1
           then
