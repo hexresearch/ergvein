@@ -17,13 +17,6 @@ import System.Timeout (timeout)
 import Control.Monad.Reader
 
 
--- | Possible exceptions when read from socket
-type InboundException = Ex.SomeException
--- | Possible exceptions when establishing connection to remote host
-type ConnectException = Ex.SomeException
--- | Possible exceptions when connection is closed ungracefully
-type CloseException = Ex.SomeException
-
 -- | Interface monad for `socket` widget that allows to peek exact amount of
 -- bytes from socket to parse next portion of data.
 class Monad m => MonadPeeker m where
@@ -55,7 +48,7 @@ data SocketStatus =
 -- | Information why socket was closed
 data CloseReason =
     CloseGracefull -- ^ Socket was closed gracefully and not going to be reopened
-  | CloseError !Bool !CloseException -- ^ Socket was closed by exception. Boolean marks is the connection restarting.
+  | CloseError !Bool !Ex.SomeException -- ^ Socket was closed by exception. Boolean marks is the connection restarting.
   deriving (Show, Generic)
 
 -- | Check whether the closing of socket is not recoverable
