@@ -5,7 +5,14 @@ rec {
   zlibSys = self.callPackage ../derivations/zlibSys.nix {};
   lmdbSys = self.callPackage ../derivations/lmdbSys.nix {};
 
-  pyopenssl = super.pyopenssl.overridePythonAttrs(old: rec {
-    checkPhase = "";
-  });
+  python = super.python.override {
+    # Careful, we're using a different self and super here!
+    packageOverrides = self: super: {
+      pyopenssl = super.pyopenssl.overridePythonAttrs(old: rec {
+        checkPhase = "";
+      });
+    };
+  };
+  pythonPackages = super.recurseIntoAttrs (python.pkgs);
+  pyopenssl = pythonPackages.pyopenssl;
 }
