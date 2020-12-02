@@ -2,7 +2,7 @@
 import ((import <nixpkgs> {}).fetchFromGitHub {
   owner = "hexresearch";
   repo = "reflex-platform";
-  rev = "269f59069c9d1175687b224aaeaedd34e7d60ad7";
-  sha256  = "0dpnwqln2vgpqw1kc1wpywgrlbi6d309yx2vk7lcya5fasi21n36";
+  rev = "f76ff088aa0af677e7f216391690d7df37341ee2";
+  sha256  = "15f6szr0fl5q0h10g7vpmc3s93aipb5wmy9mrkslqxz9h0rbcqzh";
 })
 /* import ../reflex-platform  */
