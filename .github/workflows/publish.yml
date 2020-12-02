@@ -102,8 +102,9 @@ jobs:
         source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
         source /nix/var/nix/profiles/default/etc/profile.d/nix.sh
         echo "/nix/var/nix/profiles/per-user/actions/profile/bin" >> $GITHUB_PATH
-        echo "trusted-users = root $USER" | sudo tee -a /etc/nix/nix.conf && sudo pkill nix-daemon
-        echo "sandbox = false" | sudo tee -a /etc/nix/nix.conf && sudo pkill nix-daemon
+        echo "trusted-users = root $USER" | sudo tee -a /etc/nix/nix.conf
+        echo "sandbox = false" | sudo tee -a /etc/nix/nix.conf
+        sudo pkill nix-daemon
         for n in $(seq 1 20)
         do
           if getent passwd nixbld$n > /dev/null 2>&1
