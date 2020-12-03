@@ -166,6 +166,6 @@ jobs:
       with:
         serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_ERGVEIN_SECRET }}
         packageName: org.ergvein.wallet
-        releaseFile: android-release/release/android-app.aab
+        releaseFiles: android-release/release/android-app.aab
         track: "Internal Alpha"
         whatsNewDirectory: whatsnew
