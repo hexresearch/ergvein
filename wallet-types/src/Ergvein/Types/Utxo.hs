@@ -12,7 +12,9 @@ module Ergvein.Types.Utxo
 
 import Data.Aeson
 import Data.List (foldl')
+import Data.Serialize
 import Data.Word
+import GHC.Generics
 import Network.Haskoin.Script
 import Network.Haskoin.Transaction
 
@@ -27,8 +29,8 @@ data EgvUtxoStatus
   | EUtxoSemiConfirmed !BlockHeight
   | EUtxoSending !(Maybe BlockHeight)
   | EUtxoReceiving !(Maybe BlockHeight)
+  deriving (Eq, Show, Read, Generic, Serialize)
 
-  deriving (Eq, Show, Read)
 $(deriveJSON defaultOptions ''EgvUtxoStatus)
 
 isUtxoConfirmed :: EgvUtxoStatus -> Bool
@@ -45,6 +47,23 @@ data UtxoMeta = UtxoMeta {
 } deriving (Eq, Show, Read)
 
 $(deriveJSON aesonOptionsStripToApostroph ''UtxoMeta)
+
+instance Serialize UtxoMeta where
+  put UtxoMeta{..} = do
+    put utxoMeta'index
+    put utxoMeta'purpose
+    put utxoMeta'amount
+    put $ encodeOutputBS utxoMeta'script
+    put utxoMeta'status
+  get = do
+    index <- get
+    purpose <- get
+    amount <- get
+    escript <- fmap decodeOutputBS get
+    status <- get
+    case escript of
+      Left err -> fail $ "failed to decode output script! " <> show err
+      Right script -> pure $ UtxoMeta index purpose amount script status
 
 type BtcUtxoSet = M.Map OutPoint UtxoMeta
 

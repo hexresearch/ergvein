@@ -8,6 +8,7 @@ module Ergvein.Wallet.Native
 import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.Aeson
+import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Data.Time.LocalTime (TimeZone)
 import Data.X509.CertificateStore (CertificateStore)
@@ -25,13 +26,19 @@ data NativeAlerts
   | NAFileIsEmpty Text
   | NADecodingError Text
   | NAGenericError Text
-  deriving (Eq)
+  deriving (Eq, Show)
 
 type AtomicMode = Bool
 
 class PlatformNatives where
   -- | Make platform specific URL to given resource.
   resUrl :: Text -> Text
+
+  -- | ByteString storage. Write ByteString
+  storeBS :: (HasStoreDir m, MonadIO m) => Text -> ByteString -> AtomicMode -> m ()
+
+  -- | ByteString storage. Read ByteString
+  retrieveBS :: (HasStoreDir m, MonadIO m) => Text -> m (Either NativeAlerts ByteString)
 
   -- | Key-value store. Write JSON value
   storeValue :: (HasStoreDir m, MonadIO m, ToJSON a) => Text -> a -> AtomicMode -> m ()

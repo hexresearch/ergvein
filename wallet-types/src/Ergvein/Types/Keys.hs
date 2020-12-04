@@ -29,8 +29,9 @@ module Ergvein.Types.Keys (
 
 import Control.Monad
 import Data.Aeson
-import Data.Aeson.Types       (Parser)
+import Data.SafeCopy
 import Data.Serialize         (get, put)
+import Data.Serialize         (Serialize)
 import Data.Serialize.Get     (Get, getWord32be, getWord8, runGet)
 import Data.Serialize.Put     (Putter, putWord32be, putWord8, runPut)
 import Data.Text              (Text)
@@ -41,10 +42,12 @@ import Ergvein.Crypto.Util
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Network
+import Ergvein.Types.Orphanage()
 import Ergvein.Types.Transaction
-import Text.Read              (readMaybe)
+import GHC.Generics
 
 import qualified Data.Set as S
+import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Data.ByteString.Short as BSS
 import qualified Data.Serialize        as SE
@@ -151,89 +154,68 @@ xPubImport n@(EgvErgNetwork _) = eitherToMaybe . runGet (getXPubKey n) <=< decod
 newtype EgvRootXPrvKey = EgvRootXPrvKey {unEgvRootXPrvKey :: XPrvKey}
   deriving (Eq, Show, Read)
 
-instance ToJSON EgvRootXPrvKey where
-  toJSON (EgvRootXPrvKey XPrvKey{..}) = object [
-      "depth"  .= toJSON xPrvDepth
-    , "parent" .= toJSON xPrvParent
-    , "index"  .= toJSON xPrvIndex
-    , "chain"  .= show xPrvChain
-    , "key"    .= show xPrvKey
-    ]
+instance Serialize EgvRootXPrvKey where
+  get = fmap EgvRootXPrvKey $ XPrvKey
+    <$> getWord8
+    <*> getWord32be
+    <*> getWord32be
+    <*> get
+    <*> getPadPrvKey
 
-instance FromJSON EgvRootXPrvKey where
-  parseJSON = withObject "EgvRootXPrvKey" $ \o -> do
-    depth  <- o .: "depth"
-    parent <- o .: "parent"
-    index  <- o .: "index"
-    chain  <- o .: "chain"
-    key    <- o .: "key"
-    case (readMaybe chain, readMaybe key) of
-      (Just chain', Just key') -> pure $ EgvRootXPrvKey $ XPrvKey depth parent index chain' key'
-      _ -> fail "failed to read chain code or key"
+  put (EgvRootXPrvKey k) = do
+    putWord8     $ xPrvDepth k
+    putWord32be  $ xPrvParent k
+    putWord32be  $ xPrvIndex k
+    put          $ xPrvChain k
+    putPadPrvKey $ xPrvKey k
 
 -- | Wrapper for a root extended public key (a key without assigned network)
 newtype EgvRootXPubKey = EgvRootXPubKey {unEgvRootXPubKey :: XPubKey}
   deriving (Eq, Show, Read)
 
-instance ToJSON EgvRootXPubKey where
-  toJSON (EgvRootXPubKey XPubKey{..}) = object [
-      "depth"  .= toJSON xPubDepth
-    , "parent" .= toJSON xPubParent
-    , "index"  .= toJSON xPubIndex
-    , "chain"  .= show xPubChain
-    , "key"    .= show xPubKey
-    ]
-
-instance FromJSON EgvRootXPubKey where
-  parseJSON = withObject "EgvRootXPubKey" $ \o -> do
-    depth  <- o .: "depth"
-    parent <- o .: "parent"
-    index  <- o .: "index"
-    chain  <- o .: "chain"
-    key    <- o .: "key"
-    case (readMaybe chain, readMaybe key) of
-      (Just chain', Just key') -> pure $ EgvRootXPubKey $ XPubKey depth parent index chain' key'
-      _ -> fail "failed to read chain code or key"
+instance Serialize EgvRootXPubKey where
+  get = fmap EgvRootXPubKey $ XPubKey
+    <$> getWord8
+    <*> getWord32be
+    <*> getWord32be
+    <*> get
+    <*> (pubKeyPoint <$> get)
+  put (EgvRootXPubKey k) = do
+    putWord8    $ xPubDepth k
+    putWord32be $ xPubParent k
+    putWord32be $ xPubIndex k
+    put         $ xPubChain k
+    put         $ wrapPubKey True (xPubKey k)
 
 -- | Wrapper around XPrvKey for easy to/from json manipulations
 data EgvXPrvKey = BtcXPrvKey { btcXPrvKey :: !XPrvKey} | ErgXPrvKey {ergXPrvKey :: !XPrvKey}
   deriving (Eq, Show, Read)
 
+egvXPrvKeyGetter :: Get EgvXPrvKey
+egvXPrvKeyGetter = do
+  cur <- get
+  k <- getXPrvKey (getCurrencyNetwork cur)
+  pure $ case cur of
+    BTC -> BtcXPrvKey k
+    ERGO -> ErgXPrvKey k
+
+egvXPrvKeyPutter :: Putter EgvXPrvKey
+egvXPrvKeyPutter key = case key of
+  ErgXPrvKey k -> do
+    put ERGO
+    putXPrvKey (getCurrencyNetwork ERGO) k
+  BtcXPrvKey k -> do
+    put BTC
+    putXPrvKey (getCurrencyNetwork BTC) k
+
+instance Serialize EgvXPrvKey where
+  get = egvXPrvKeyGetter
+  put = egvXPrvKeyPutter
+
 unEgvXPrvKey :: EgvXPrvKey -> XPrvKey
 unEgvXPrvKey key = case key of
   BtcXPrvKey k -> k
   ErgXPrvKey k -> k
-
--- | Get JSON 'Value' from 'XPrvKey'.
-xPrvToJSON :: EgvNetwork -> XPrvKey -> Value
-xPrvToJSON net = String . xPrvExport net
-
--- | Decode an extended private key from a JSON string
-xPrvFromJSON :: EgvNetwork -> Value -> Parser XPrvKey
-xPrvFromJSON net =
-    withText "xprv" $ \t ->
-        case xPrvImport net t of
-            Nothing -> fail "could not read xprv"
-            Just x  -> return x
-
-instance ToJSON EgvXPrvKey where
-  toJSON k = case k of
-    BtcXPrvKey key -> object [
-        "currency" .= toJSON BTC
-      , "prvKey"   .= xPrvToJSON (getCurrencyNetwork BTC) key
-      ]
-    ErgXPrvKey key -> object [
-        "currency" .= toJSON ERGO
-      , "prvKey"   .= xPrvToJSON (getCurrencyNetwork ERGO) key
-      ]
-
-instance FromJSON EgvXPrvKey where
-  parseJSON = withObject "EgvXPrvKey" $ \o -> do
-    currency <- o .: "currency"
-    key <- xPrvFromJSON (getCurrencyNetwork currency) =<< (o .: "prvKey")
-    pure $ case currency of
-      BTC -> BtcXPrvKey key
-      ERGO -> ErgXPrvKey key
 
 -- | Wrapper around XPubKey for easy to/from json manipulations
 data EgvXPubKey =
@@ -247,42 +229,34 @@ data EgvXPubKey =
     }
   deriving (Eq, Show, Read)
 
+egvXPubKeyGetter :: Get EgvXPubKey
+egvXPubKeyGetter = do
+  cur <- get
+  k <- getXPubKey (getCurrencyNetwork cur)
+  l <- fmap T.pack get
+  pure $ case cur of
+    BTC -> BtcXPubKey k l
+    ERGO -> ErgXPubKey k l
+
+egvXPubKeyPutter :: Putter EgvXPubKey
+egvXPubKeyPutter key = case key of
+  ErgXPubKey k l -> do
+    put ERGO
+    putXPubKey (getCurrencyNetwork ERGO) k
+    put $ T.unpack l
+  BtcXPubKey k l -> do
+    put BTC
+    putXPubKey (getCurrencyNetwork BTC) k
+    put $ T.unpack l
+
+instance Serialize EgvXPubKey where
+  get = egvXPubKeyGetter
+  put = egvXPubKeyPutter
+
 egvXPubCurrency :: EgvXPubKey -> Currency
 egvXPubCurrency val = case val of
   ErgXPubKey{} -> ERGO
   BtcXPubKey{} -> BTC
-
--- | Get JSON 'Value' from 'XPubKey'.
-xPubToJSON :: EgvNetwork -> XPubKey -> Value
-xPubToJSON net = String . xPubExport net
-
--- | Decode an extended public key from a JSON string
-xPubFromJSON :: EgvNetwork -> Value -> Parser XPubKey
-xPubFromJSON net =
-    withText "xpub" $ \t ->
-        case xPubImport net t of
-            Nothing -> fail "could not read xpub"
-            Just x  -> return x
-
-instance ToJSON EgvXPubKey where
-  toJSON val = object [
-      "currency"  .= toJSON cur
-    , "pubKey"    .= xPubToJSON (getCurrencyNetwork cur) key
-    , "label"     .= toJSON label
-    ]
-    where
-      (cur, key, label) =  case val of
-        ErgXPubKey k l -> (ERGO, k, l)
-        BtcXPubKey k l -> (BTC, k, l)
-
-instance FromJSON EgvXPubKey where
-  parseJSON = withObject "EgvXPubKey" $ \o -> do
-    currency <- o .: "currency"
-    key <- xPubFromJSON (getCurrencyNetwork currency) =<< (o .: "pubKey")
-    label <- o .:? "label" .!= ""
-    pure $ case currency of
-      ERGO -> ErgXPubKey key label
-      BTC  -> BtcXPubKey key label
 
 instance Ord EgvXPubKey where
   compare key1 key2 = case compare c1 c2 of
@@ -307,17 +281,26 @@ data PrvKeystore = PrvKeystore {
   -- ^Map with BIP44 internal extended private keys and corresponding indices.
   -- This private keys must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.
-} deriving (Eq, Show, Read)
+} deriving (Eq, Show, Read, Generic, Serialize)
 
-$(deriveJSON aesonOptionsStripToApostroph ''PrvKeystore)
+
+instance SafeCopy PrvKeystore where
+  putCopy (PrvKeystore m e i) = contain $
+    put m >> put e >> put i
+  getCopy = contain $
+    PrvKeystore <$> get <*> get <*> get
 
 data EgvPubKeyBox = EgvPubKeyBox {
   pubKeyBox'key    :: !EgvXPubKey
 , pubKeyBox'txs    :: !(S.Set TxId)
 , pubKeyBox'manual :: !Bool
-} deriving (Eq, Show, Read)
+} deriving (Eq, Show, Read, Generic, Serialize)
 
-$(deriveJSON aesonOptionsStripToApostroph ''EgvPubKeyBox)
+instance SafeCopy EgvPubKeyBox where
+  putCopy (EgvPubKeyBox k t m) = contain $
+    put k >> put t >> put m
+  getCopy = contain $
+    EgvPubKeyBox <$> get <*> get <*> get
 
 data PubKeystore = PubKeystore {
   pubKeystore'master   :: !EgvXPubKey
@@ -330,9 +313,13 @@ data PubKeystore = PubKeystore {
   -- ^Map with BIP44 internal extended public keys and corresponding indices.
   -- This addresses must have the following derivation path:
   -- /m\/purpose'\/coin_type'\/account'\/1\/address_index/.
-} deriving (Eq, Show, Read)
+} deriving (Eq, Show, Read, Generic, Serialize)
 
-$(deriveJSON aesonOptionsStripToApostroph ''PubKeystore)
+instance SafeCopy PubKeystore where
+  putCopy (PubKeystore m e i) = contain $
+    put m >> safePut e >> safePut i
+  getCopy = contain $
+    PubKeystore <$> get <*> safeGet <*> safeGet
 
 getLastUnusedKey :: KeyPurpose -> PubKeystore -> Maybe (Int, EgvPubKeyBox)
 getLastUnusedKey kp PubKeystore{..} = go Nothing vector
@@ -396,5 +383,5 @@ extractAddrs pks = fmap (egvXPubKeyToEgvAddress . scanBox'key) $ getPublicKeys p
 -- External chain is used for addresses that are meant to be visible outside of the wallet (e.g. for receiving payments).
 -- Internal chain is used for addresses which are not meant to be visible outside of the wallet and is used for return transaction change.
 data KeyPurpose = External | Internal
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Show, Read, Generic, Serialize)
 $(deriveJSON defaultOptions ''KeyPurpose)

@@ -41,14 +41,18 @@ import Data.ByteString (ByteString)
 import Data.ByteString.Short (ShortByteString)
 import Data.Either
 import Data.Hashable (Hashable)
+import Data.SafeCopy
+import Data.Serialize (put, get)
 import Data.Serialize as S
 import Data.Text as T
 import Data.Time
 import Data.Word
+import GHC.Generics (Generic)
+
 import Ergvein.Aeson
 import Ergvein.Crypto.Util
 import Ergvein.Types.Currency
-import GHC.Generics (Generic)
+import Ergvein.Types.Orphanage ()
 
 import qualified Data.ByteString.Short       as BSS
 import qualified Network.Haskoin.Block       as HB
@@ -98,7 +102,7 @@ btcTxFromString :: Text -> Maybe BtcTx
 btcTxFromString = eitherToMaybe . S.decode <=< decodeHex
 
 newtype ErgTx = ErgTransaction ByteString
-  deriving (Eq, Show, Read)
+  deriving (Eq, Show, Read, Generic, Serialize)
 
 ergTxToString :: ErgTx -> Text
 ergTxToString (ErgTransaction tx) = encodeHex tx
@@ -123,10 +127,29 @@ data EgvTxMeta = EgvTxMeta {
 
 $(deriveJSON (aesonOptionsStripPrefix "etxMeta") ''EgvTxMeta)
 
+instance SafeCopy EgvTxMeta where
+  putCopy EgvTxMeta{..} = contain $ do
+    put etxMetaHeight
+    put etxMetaHash
+    put etxMetaTime
+  getCopy = contain $ EgvTxMeta <$> get <*> get <*> get
+
 data EgvTx
   = BtcTx { getBtcTx :: !BtcTx, getBtcTxMeta :: !(Maybe EgvTxMeta)}
   | ErgTx { getErgTx :: !ErgTx, getErgTxMeta :: !(Maybe EgvTxMeta)}
   deriving (Eq, Show, Read)
+
+instance SafeCopy EgvTx where
+  putCopy v = contain $ case v of
+    BtcTx btx meta -> do
+      put BTC >> put btx >> safePut meta
+    ErgTx etx meta -> do
+      put ERGO >> put etx >> safePut meta
+  getCopy = contain $ do
+    c <- get
+    case c of
+      BTC -> BtcTx <$> get <*> safeGet
+      ERGO -> ErgTx <$> get <*> safeGet
 
 egvTxToString :: EgvTx -> Text
 egvTxToString (BtcTx tx _) = btcTxToString tx
@@ -185,6 +208,10 @@ data TxHash
   = BtcTxHash {getBtcTxHash :: HK.TxHash}
   | ErgTxHash {getErgTxHash :: ShortByteString}
   deriving (Eq, Show, Read, Ord, Hashable, Generic, Serialize, NFData)
+
+instance SafeCopy TxHash where
+  putCopy = contain . put
+  getCopy = contain get
 
 btcTxHashToStr :: HK.TxHash -> Text
 btcTxHashToStr = HK.txHashToHex

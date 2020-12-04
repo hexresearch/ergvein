@@ -39,7 +39,8 @@ module Ergvein.Types.Currency (
 import Data.Flat
 import Data.Maybe (fromMaybe)
 import Data.Ratio
-import Data.Serialize (Serialize)
+import Data.SafeCopy
+import Data.Serialize (Serialize, get, put)
 import Data.Text (Text)
 import Data.Time
 import Data.Time.Clock.POSIX
@@ -53,6 +54,10 @@ import qualified Data.Text as T
 data Currency = BTC | ERGO
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Flat, Serialize)
 $(deriveJSON aesonOptions ''Currency)
+
+instance SafeCopy Currency where
+  putCopy = contain . put
+  getCopy = contain get
 
 instance ToJSONKey Currency where
 instance FromJSONKey Currency where

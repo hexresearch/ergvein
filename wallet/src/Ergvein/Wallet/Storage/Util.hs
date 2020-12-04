@@ -8,6 +8,7 @@ module Ergvein.Wallet.Storage.Util(
   , decryptBSWithAEAD
   , passwordToECIESPrvKey
   , createPrvStorage
+  , createPubStorage
   , createPubKeystore
   , createStorage
   , storageFilePrefix
@@ -35,6 +36,9 @@ import Data.Proxy
 import Data.Text                (Text)
 import Data.Text.Encoding
 import Data.Text.Encoding.Error
+import Data.SafeCopy
+import Data.Serialize
+
 import Ergvein.Aeson
 import Ergvein.Crypto
 import Ergvein.Text
@@ -138,7 +142,7 @@ encryptPrvStorage prvStorage password = liftIO $ do
   case iv of
     Nothing -> pure $ Left $ SACryptoError "Failed to generate an AES initialization vector"
     Just iv' -> do
-      let prvStorageBS = encodeUtf8 $ encodeJson prvStorage
+      let prvStorageBS = runPut $ safePut prvStorage
       case encrypt secKey iv' prvStorageBS of
         Left err -> pure $ Left $ SACryptoError $ showt err
         Right ciphertext -> pure $ Right $ EncryptedPrvStorage ciphertext salt iv'
@@ -148,7 +152,7 @@ decryptPrvStorage encryptedPrvStorage password =
   case decrypt secKey iv ciphertext of
     Left err -> Left $ SACryptoError $ showt err
     Right decryptedPrvStorage -> do
-      let decodedPrvStorage = decodeJson $ decodeUtf8With lenientDecode decryptedPrvStorage
+      let decodedPrvStorage = runGet safeGet decryptedPrvStorage
       case decodedPrvStorage of
         Left err -> Left $ SADecryptError $ showt err
         Right dps -> Right dps
@@ -171,7 +175,7 @@ encryptStorage storage pubKey = do
       case iv' of
         Nothing -> pure $ Left $ SACryptoError "Failed to generate an initialization vector"
         Just iv -> do
-          let storageBS = encodeUtf8 $ encodeJson storage
+          let storageBS = runPut $ safePut storage
               ivBS = convert iv :: ByteString
               eciesPointBS = encodePoint curve eciesPoint :: ByteString
               encryptedData = encryptWithAEAD AEAD_GCM secKey iv (BS.concat [salt, ivBS, eciesPointBS]) storageBS defaultAuthTagLength
@@ -200,7 +204,7 @@ decryptStorage encryptedStorage prvKey = do
             Left err -> Left $ SACryptoError $ showt err
             Right s -> Right s
             where
-              storage = decodeJson $ decodeUtf8With lenientDecode decryptedStorage
+              storage = runGet safeGet decryptedStorage
 
 encryptBSWithAEAD :: (MonadIO m, MonadRandom m) => ByteString -> Password -> m (Either StorageAlert EncryptedByteString)
 encryptBSWithAEAD bs password = do
@@ -259,7 +263,8 @@ saveStorageToFile caller pubKey storage = do
     Left _ -> fail "Failed to encrypt storage"
     Right encStorage -> do
       moveStoredFile fname backupFname
-      storeValue fname encStorage True
+      let bs = runPut $ safePut encStorage
+      storeBS fname bs True
 
 -- | The same as saveStorageToFile, but does not fail and returns the error instead
 saveStorageSafelyToFile :: (MonadIO m, MonadRandom m, HasStoreDir m, PlatformNatives)
@@ -273,24 +278,25 @@ saveStorageSafelyToFile caller pubKey storage = do
     Left err -> pure $ Left err
     Right encStorage -> do
       moveStoredFile fname backupFname
-      fmap Right $ storeValue fname encStorage True
+      let bs = runPut $ safePut encStorage
+      fmap Right $ storeBS fname bs True
 
 loadStorageFromFile :: (MonadIO m, HasStoreDir m, PlatformNatives)
   => WalletName -> Password -> m (Either StorageAlert WalletStorage)
 loadStorageFromFile login pass = do
   let fname = storageFilePrefix <> T.replace " " "_" login
       backupFname = fname <> storageBackupFilePrefix
-  storageResp <- readStoredFile fname
+  storageResp <- retrieveBS fname
   case storageResp of
     Left err -> pure $ Left $ SANativeAlert err
-    Right storageText -> case decodeJson $ T.concat storageText of
+    Right storageBs -> case runGet safeGet storageBs of
       Left err -> do
         logWrite $ "Failed to decode wallet from: " <> fname <> "\nReading from backup: " <> backupFname
-        backupStorageResp <- readStoredFile backupFname
+        backupStorageResp <- retrieveBS fname
         case backupStorageResp of
             Left err -> pure $ Left $ SANativeAlert err
-            Right backupStorageText -> case decodeJson $ T.concat backupStorageText of
-              Left err -> pure $ Left $ SADecodeError err
+            Right backupStorageBs -> case runGet safeGet backupStorageBs of
+              Left err -> pure $ Left $ SADecodeError $ T.pack err
               Right backupStorage -> pure $ passwordToECIESPrvKey pass >>= decryptStorage backupStorage
       Right storage -> pure $ passwordToECIESPrvKey pass >>= decryptStorage storage
 

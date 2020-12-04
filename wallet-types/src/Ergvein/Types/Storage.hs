@@ -4,30 +4,30 @@ module Ergvein.Types.Storage where
 import Control.Lens (makeLenses)
 import Crypto.Cipher.AES
 import Crypto.Cipher.Types
-import Crypto.ECC (Curve_X25519, Point, encodePoint, decodePoint)
+import Crypto.ECC (Curve_X25519, Point, decodePoint)
 import Crypto.Error
-import Data.Aeson
 import Data.ByteArray (convert, Bytes)
 import Data.ByteString (ByteString)
 import Data.Proxy
+import Data.SafeCopy
 import Data.Text
 import Data.Vector (Vector)
 import Data.Word
 import Network.Haskoin.Keys
+
+import qualified Data.Map.Strict as M
+import qualified Data.Serialize as SE
+import qualified Data.Set as S
+import qualified Data.Text as T
+import qualified Data.Vector as V
 import qualified Network.Haskoin.Block as HB
 
-import Ergvein.Aeson
-import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Derive
 import Ergvein.Types.Keys
+import Ergvein.Types.Orphanage ()
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
-import Ergvein.Types.Orphanage ()
-
-import qualified Data.Map.Strict as M
-import qualified Data.Set as S
-import qualified Data.Vector as V
 
 type WalletName = Text
 
@@ -40,7 +40,9 @@ data CurrencyPrvStorage = CurrencyPrvStorage {
 
 makeLenses ''CurrencyPrvStorage
 
-$(deriveJSON aesonOptionsStripToApostroph ''CurrencyPrvStorage)
+instance SafeCopy CurrencyPrvStorage where
+  putCopy (CurrencyPrvStorage ks p)= contain $ safePut ks >> safePut p
+  getCopy = contain $ CurrencyPrvStorage <$> safeGet <*> safeGet
 
 type CurrencyPrvStorages = M.Map Currency CurrencyPrvStorage
 
@@ -53,20 +55,13 @@ data PrvStorage = PrvStorage {
 
 makeLenses ''PrvStorage
 
-instance ToJSON PrvStorage where
-  toJSON PrvStorage{..} = object [
-      "mnemonic"            .= toJSON _prvStorage'mnemonic
-    , "rootPrvKey"          .= toJSON _prvStorage'rootPrvKey
-    , "currencyPrvStorages" .= toJSON _prvStorage'currencyPrvStorages
-    , "pathPrefix"          .= toJSON _prvStorage'pathPrefix
-    ]
-
-instance FromJSON PrvStorage where
-  parseJSON = withObject "PrvStorage" $ \o -> PrvStorage
-    <$> o .: "mnemonic"
-    <*> o .: "rootPrvKey"
-    <*> o .: "currencyPrvStorages"
-    <*> o .:? "pathPrefix" .!= Just legacyDerivPathPrefix
+instance SafeCopy PrvStorage where
+  putCopy PrvStorage{..} = contain $ do
+    SE.put $ T.unpack _prvStorage'mnemonic
+    SE.put _prvStorage'rootPrvKey
+    safePut _prvStorage'currencyPrvStorages
+    safePut _prvStorage'pathPrefix
+  getCopy = contain $ (PrvStorage . T.pack) <$> SE.get <*> SE.get <*> safeGet <*> safeGet
 
 data EncryptedPrvStorage = EncryptedPrvStorage {
     _encryptedPrvStorage'ciphertext :: ByteString
@@ -76,21 +71,12 @@ data EncryptedPrvStorage = EncryptedPrvStorage {
 
 makeLenses ''EncryptedPrvStorage
 
-instance ToJSON EncryptedPrvStorage where
-  toJSON EncryptedPrvStorage{..} = object [
-      "ciphertext" .= toJSON (bs2Base64Text _encryptedPrvStorage'ciphertext)
-    , "salt"       .= toJSON (bs2Base64Text _encryptedPrvStorage'salt)
-    , "iv"         .= toJSON (bs2Base64Text (convert _encryptedPrvStorage'iv :: ByteString))
-    ]
-
-instance FromJSON EncryptedPrvStorage where
-  parseJSON = withObject "EncryptedPrvStorage" $ \o -> do
-    ciphertext <- fmap base64Text2bs (o .: "ciphertext")
-    salt       <- fmap base64Text2bs (o .: "salt")
-    iv         <- fmap base64Text2bs (o .: "iv")
-    case makeIV iv of
-      Nothing -> fail "failed to read iv"
-      Just iv' -> pure $ EncryptedPrvStorage ciphertext salt iv'
+instance SafeCopy EncryptedPrvStorage where
+  putCopy EncryptedPrvStorage{..} = contain $ do
+    safePut _encryptedPrvStorage'ciphertext
+    safePut _encryptedPrvStorage'salt
+    safePut _encryptedPrvStorage'iv
+  getCopy = contain $ EncryptedPrvStorage <$> safeGet <*> safeGet <*> safeGet
 
 data CurrencyPubStorage = CurrencyPubStorage {
     _currencyPubStorage'pubKeystore   :: !PubKeystore
@@ -106,7 +92,20 @@ data CurrencyPubStorage = CurrencyPubStorage {
 
 makeLenses ''CurrencyPubStorage
 
-$(deriveJSON aesonOptionsStripToApostroph ''CurrencyPubStorage)
+instance SafeCopy CurrencyPubStorage where
+  putCopy CurrencyPubStorage{..} = contain $ do
+    safePut _currencyPubStorage'pubKeystore
+    safePut _currencyPubStorage'path
+    safePut _currencyPubStorage'transactions
+    SE.put _currencyPubStorage'utxos
+    SE.put _currencyPubStorage'headers
+    SE.put _currencyPubStorage'outgoing
+    SE.put _currencyPubStorage'headerSeq
+    SE.put _currencyPubStorage'scannedHeight
+    SE.put _currencyPubStorage'chainHeight
+  getCopy = contain $ CurrencyPubStorage
+    <$> safeGet <*> safeGet <*> safeGet <*> SE.get
+    <*> SE.get <*> SE.get <*> SE.get <*> SE.get <*> SE.get
 
 type CurrencyPubStorages = M.Map Currency CurrencyPubStorage
 
@@ -120,7 +119,14 @@ data PubStorage = PubStorage {
 
 makeLenses ''PubStorage
 
-$(deriveJSON aesonOptionsStripToApostroph ''PubStorage)
+instance SafeCopy PubStorage where
+  putCopy PubStorage{..} = contain $ do
+    SE.put _pubStorage'rootPubKey
+    safePut _pubStorage'currencyPubStorages
+    safePut _pubStorage'activeCurrencies
+    SE.put _pubStorage'restoring
+    SE.put _pubStorage'pathPrefix
+  getCopy = contain $ PubStorage <$> SE.get <*> safeGet <*> safeGet <*> SE.get <*> SE.get
 
 -- | Get pub storage keys
 pubStorageKeys :: Currency -> KeyPurpose -> PubStorage -> Vector EgvXPubKey
@@ -167,7 +173,16 @@ makeLenses ''WalletStorage
 instance Eq WalletStorage where
   a == b = _storage'walletName a == _storage'walletName b
 
-$(deriveJSON aesonOptionsStripToApostroph ''WalletStorage)
+instance SafeCopy WalletStorage where
+  putCopy (WalletStorage e p w) = contain $ do
+    safePut e
+    safePut p
+    SE.put w
+  getCopy = contain $ do
+    e <- safeGet
+    p <- safeGet
+    w <- SE.get
+    pure $ WalletStorage e p w
 
 data EncryptedWalletStorage = EncryptedWalletStorage {
     _encryptedStorage'ciphertext :: ByteString
@@ -179,30 +194,21 @@ data EncryptedWalletStorage = EncryptedWalletStorage {
 
 makeLenses ''EncryptedWalletStorage
 
-instance ToJSON EncryptedWalletStorage where
-  toJSON EncryptedWalletStorage{..} = object [
-      "ciphertext" .= toJSON (bs2Base64Text _encryptedStorage'ciphertext)
-    , "salt"       .= toJSON (bs2Base64Text _encryptedStorage'salt)
-    , "iv"         .= toJSON (bs2Base64Text (convert _encryptedStorage'iv :: ByteString))
-    , "eciesPoint" .= toJSON (bs2Base64Text eciesPoint)
-    , "authTag"    .= toJSON (bs2Base64Text (convert _encryptedStorage'authTag :: ByteString))
-    ]
-    where
-      curve = Proxy :: Proxy Curve_X25519
-      eciesPoint = encodePoint curve _encryptedStorage'eciesPoint :: ByteString
-
-instance FromJSON EncryptedWalletStorage where
-  parseJSON = withObject "EncryptedWalletStorage" $ \o -> do
-    ciphertext <- fmap base64Text2bs (o .: "ciphertext")
-    salt <- fmap base64Text2bs (o .: "salt")
-    iv <- fmap base64Text2bs (o .: "iv")
-    eciesPoint <- fmap base64Text2bs (o .: "eciesPoint")
-    authTag <- fmap base64Text2bs (o .: "authTag")
-    case makeIV iv of
-      Nothing -> fail "failed to read iv"
-      Just iv' -> case decodePoint curve eciesPoint of
-        CryptoFailed _ -> fail "failed to read eciesPoint"
-        CryptoPassed eciesPoint' -> pure $ EncryptedWalletStorage ciphertext salt iv' eciesPoint' authTag'
-        where
-          curve = Proxy :: Proxy Curve_X25519
-          authTag' = AuthTag (convert authTag :: Bytes)
+instance SafeCopy EncryptedWalletStorage where
+  putCopy EncryptedWalletStorage{..} = contain $ do
+    safePut _encryptedStorage'ciphertext
+    safePut _encryptedStorage'salt
+    safePut _encryptedStorage'iv
+    safePut (convert _encryptedStorage'eciesPoint :: ByteString)
+    safePut (convert _encryptedStorage'authTag :: ByteString)
+  getCopy = contain $ do
+    cip <- safeGet
+    salt <- safeGet
+    iv <- safeGet
+    eciesbs :: ByteString <- safeGet
+    tagbs :: ByteString <- safeGet
+    let authTag = AuthTag (convert tagbs :: Bytes)
+        curve = Proxy :: Proxy Curve_X25519
+    case decodePoint curve eciesbs of
+      CryptoFailed _ -> fail "failed to read eciesPoint"
+      CryptoPassed eciesPoint -> pure $ EncryptedWalletStorage cip salt iv eciesPoint authTag

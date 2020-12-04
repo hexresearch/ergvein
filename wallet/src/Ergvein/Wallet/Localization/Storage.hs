@@ -16,7 +16,7 @@ data StorageAlert
   | SAMnemonicFail Text
   | SACryptoError Text
   | SADecryptError Text
-  deriving (Eq)
+  deriving (Eq, Show)
 
 instance LocalizedPrint StorageAlert where
   localizedShow l v = case l of
