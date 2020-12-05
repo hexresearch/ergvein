@@ -22,10 +22,19 @@ library
     Ergvein.Types.Derive
     Ergvein.Types.Fees
     Ergvein.Types.Keys
+    Ergvein.Types.Keys.EgvPubKeyBox
+    Ergvein.Types.Keys.Prim
+    Ergvein.Types.Keys.PrvKeystore
+    Ergvein.Types.Keys.PubKeystore
     Ergvein.Types.Network
     Ergvein.Types.Orphanage
     Ergvein.Types.Restore
     Ergvein.Types.Storage
+    Ergvein.Types.Storage.CurrencyPrvStorage
+    Ergvein.Types.Storage.CurrencyPubStorage
+    Ergvein.Types.Storage.PrvStorage
+    Ergvein.Types.Storage.PubStorage
+    Ergvein.Types.Storage.WalletStorage
     Ergvein.Types.Transaction
     Ergvein.Types.Utxo
   default-language:    Haskell2010
