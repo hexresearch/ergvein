@@ -30,22 +30,25 @@ import Data.Text (Text,)
 import Ergvein.Types.Storage.PubStorage
 import Ergvein.Types.Storage.PrvStorage
 
+-- ====================================================================
+--      WalletStorage. Not encrypted
+-- ====================================================================
+
 data WalletStorage = WalletStorage {
     _storage'encryptedPrvStorage :: EncryptedPrvStorage
   , _storage'pubStorage          :: PubStorage
   , _storage'walletName          :: Text
   }
 
-makeLenses ''WalletStorage
-
-instance Eq WalletStorage where
-  a == b = _storage'walletName a == _storage'walletName b
-
 instance SafeCopy WalletStorage where
   version = 1
   putCopy (WalletStorage e p w) = contain $ do
     safePut e >> safePut p >> put w
   getCopy = contain $ WalletStorage <$> safeGet <*> safeGet <*> get
+
+-- ====================================================================
+--      EncryptedWalletStorage
+-- ====================================================================
 
 data EncryptedWalletStorage = EncryptedWalletStorage {
     _encryptedStorage'ciphertext :: ByteString
@@ -54,8 +57,6 @@ data EncryptedWalletStorage = EncryptedWalletStorage {
   , _encryptedStorage'eciesPoint :: Point Curve_X25519
   , _encryptedStorage'authTag    :: AuthTag
   }
-
-makeLenses ''EncryptedWalletStorage
 
 instance SafeCopy EncryptedWalletStorage where
   version = 1
@@ -76,3 +77,12 @@ instance SafeCopy EncryptedWalletStorage where
     case decodePoint curve eciesbs of
       CryptoFailed _ -> fail "failed to read eciesPoint"
       CryptoPassed eciesPoint -> pure $ EncryptedWalletStorage cip salt iv eciesPoint authTag
+
+-- ====================================================================
+-- These instances are required only for the current version
+-- ====================================================================
+makeLenses ''WalletStorage
+makeLenses ''EncryptedWalletStorage
+
+instance Eq WalletStorage where
+  a == b = _storage'walletName a == _storage'walletName b

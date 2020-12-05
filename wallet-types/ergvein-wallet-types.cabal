@@ -70,3 +70,4 @@ library
     RecordWildCards
     TemplateHaskell
     ScopedTypeVariables
+    TypeFamilies

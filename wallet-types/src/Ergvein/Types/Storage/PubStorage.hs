@@ -1,5 +1,6 @@
 -- {-# OPTIONS_GHC -Wunused-top-binds #-}
 -- Turn on unused-top-binds (if it's off) to see which TH-generated lenses to export
+-- Read the README.md to learn now to work with migrations
 module Ergvein.Types.Storage.PubStorage
   (
     PubStorage(..)
@@ -28,8 +29,6 @@ data PubStorage = PubStorage {
   , _pubStorage'pathPrefix          :: !(Maybe DerivPrefix)
   } deriving (Eq, Show, Read)
 
-makeLenses ''PubStorage
-
 instance SafeCopy PubStorage where
   version = 1
   putCopy PubStorage{..} = contain $ do
@@ -39,3 +38,6 @@ instance SafeCopy PubStorage where
     put _pubStorage'restoring
     put _pubStorage'pathPrefix
   getCopy = contain $ PubStorage <$> get <*> safeGet <*> safeGet <*> get <*> get
+
+-- This instances is required only for the current version
+makeLenses ''PubStorage

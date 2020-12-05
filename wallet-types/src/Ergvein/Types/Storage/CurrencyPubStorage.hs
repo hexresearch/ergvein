@@ -1,5 +1,6 @@
 -- {-# OPTIONS_GHC -Wunused-top-binds #-}
 -- Turn on unused-top-binds (if it's off) to see which TH-generated lenses to export
+-- Read the README.md to learn now to work with migrations
 module Ergvein.Types.Storage.CurrencyPubStorage
   (
     CurrencyPubStorage(..)
@@ -44,7 +45,6 @@ data CurrencyPubStorage = CurrencyPubStorage {
   , _currencyPubStorage'chainHeight   :: !BlockHeight
   } deriving (Eq, Show, Read)
 
-makeLenses ''CurrencyPubStorage
 
 instance SafeCopy CurrencyPubStorage where
   version = 1
@@ -63,3 +63,6 @@ instance SafeCopy CurrencyPubStorage where
     <*> get <*> get <*> get <*> get <*> get
 
 type CurrencyPubStorages = Map Currency CurrencyPubStorage
+
+-- This instances is required only for the current version
+makeLenses ''CurrencyPubStorage

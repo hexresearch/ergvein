@@ -1,5 +1,6 @@
 -- {-# OPTIONS_GHC -Wunused-top-binds #-}
 -- Turn on unused-top-binds (if it's off) to see which TH-generated lenses to export
+-- Read the README.md to learn now to work with migrations
 module Ergvein.Types.Storage.CurrencyPrvStorage
   (
     CurrencyPrvStorage(..)
@@ -21,7 +22,6 @@ data CurrencyPrvStorage = CurrencyPrvStorage {
   , _currencyPrvStorage'path        :: !(Maybe DerivPrefix)
   } deriving (Eq, Show, Read)
 
-makeLenses ''CurrencyPrvStorage
 
 instance SafeCopy CurrencyPrvStorage where
   version = 1
@@ -29,3 +29,6 @@ instance SafeCopy CurrencyPrvStorage where
   getCopy = contain $ CurrencyPrvStorage <$> safeGet <*> safeGet
 
 type CurrencyPrvStorages = Map Currency CurrencyPrvStorage
+
+-- This instances is required only for the current version
+makeLenses ''CurrencyPrvStorage
