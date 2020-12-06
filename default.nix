@@ -86,7 +86,6 @@ let
         "${nixpkgs.zlibSys}/lib/libz.so"
         "${nixpkgs.secp256k1Sys}/lib/libsecp256k1.so"
         "${nixpkgs.lmdbSys}/lib/liblmdb.so"
-        "${nixpkgs.leveldb}/lib/leveldb.so"
       ];
       /* additionalDependencies = ''
 
