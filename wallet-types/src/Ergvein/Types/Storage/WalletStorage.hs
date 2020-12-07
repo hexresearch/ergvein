@@ -35,9 +35,9 @@ import Ergvein.Types.Storage.PrvStorage
 -- ====================================================================
 
 data WalletStorage = WalletStorage {
-    _storage'encryptedPrvStorage :: EncryptedPrvStorage
-  , _storage'pubStorage          :: PubStorage
-  , _storage'walletName          :: Text
+    _storage'encryptedPrvStorage :: !EncryptedPrvStorage
+  , _storage'pubStorage          :: !PubStorage
+  , _storage'walletName          :: !Text
   }
 
 instance SafeCopy WalletStorage where
@@ -51,11 +51,11 @@ instance SafeCopy WalletStorage where
 -- ====================================================================
 
 data EncryptedWalletStorage = EncryptedWalletStorage {
-    _encryptedStorage'ciphertext :: ByteString
-  , _encryptedStorage'salt       :: ByteString
-  , _encryptedStorage'iv         :: IV AES256
-  , _encryptedStorage'eciesPoint :: Point Curve_X25519
-  , _encryptedStorage'authTag    :: AuthTag
+    _encryptedStorage'ciphertext :: !ByteString
+  , _encryptedStorage'salt       :: !ByteString
+  , _encryptedStorage'iv         :: !(IV AES256)
+  , _encryptedStorage'eciesPoint :: !(Point Curve_X25519)
+  , _encryptedStorage'authTag    :: !AuthTag
   }
 
 instance SafeCopy EncryptedWalletStorage where
