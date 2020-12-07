@@ -1,7 +1,9 @@
 db/
 db.log
-ergveinDb/
-indexerDb/
+ergveinDb_testnet/
+indexerDb_testnet/
+ergveinDb_mainnet/
+indexerDb_mainnet/
 ergveincache/
 ncrashed-config.yaml
 runNC.sh
