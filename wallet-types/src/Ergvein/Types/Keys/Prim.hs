@@ -104,12 +104,12 @@ instance Serialize EgvRootXPubKey where
 -- | Wrapper around XPubKey for easy to/from json manipulations
 data EgvXPubKey =
     ErgXPubKey {
-      ergXPubKey   :: XPubKey
-    , ergXPubLabel :: Text
+      ergXPubKey   :: !XPubKey
+    , ergXPubLabel :: !Text
     }
   | BtcXPubKey {
-      btcXPubKey   :: XPubKey
-    , btcXPubLabel :: Text
+      btcXPubKey   :: !XPubKey
+    , btcXPubLabel :: !Text
     }
   deriving (Eq, Show, Read)
 
