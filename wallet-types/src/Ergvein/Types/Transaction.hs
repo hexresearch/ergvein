@@ -205,8 +205,8 @@ type TxId = TxHash
 
 -- | Hash of transaction
 data TxHash
-  = BtcTxHash {getBtcTxHash :: HK.TxHash}
-  | ErgTxHash {getErgTxHash :: ShortByteString}
+  = BtcTxHash {getBtcTxHash :: !HK.TxHash}
+  | ErgTxHash {getErgTxHash :: !ShortByteString}
   deriving (Eq, Show, Read, Ord, Hashable, Generic, Serialize, NFData)
 
 instance SafeCopy TxHash where
