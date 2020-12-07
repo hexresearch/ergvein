@@ -45,7 +45,7 @@ createRestore = do
   void $ nextWidget $ ffor goE $ \go -> Retractable {
       retractableNext = case go of
         GoSeed -> mnemonicPage
-        GoRestore -> restoreFromMnemonicPage
+        GoRestore -> seedRestorePage
         GoSettings -> settingsPageUnauth
     , retractablePrev = Just $ pure initialPage
     }
@@ -58,7 +58,7 @@ selectRestoreMethodPage = do
       goRestoreMnemonicE  <- fmap (GoRestoreMnemonic  <$) $ outlineButton IPSRestoreFromMnemonic
       void $ nextWidget $ ffor goRestoreMnemonicE $ \page -> Retractable {
           retractableNext = case page of
-            GoRestoreMnemonic -> restoreFromMnemonicPage
+            GoRestoreMnemonic -> seedRestorePage
         , retractablePrev = Just $ pure selectRestoreMethodPage
         }
 
