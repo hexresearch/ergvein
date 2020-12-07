@@ -1,7 +1,7 @@
 -- {-# OPTIONS_GHC -Wunused-top-binds #-}
 -- Turn on unused-top-binds (if it's off) to see which TH-generated lenses to export
 -- Read the README.md to learn now to work with migrations
-module Ergvein.Types.Storage.PrvStorage
+module Ergvein.Types.Storage.Private
   (
     PrvStorage(..)
   , EncryptedPrvStorage(..)
@@ -25,7 +25,7 @@ import Data.Text (pack, unpack)
 
 import Ergvein.Types.Derive
 import Ergvein.Types.Keys.Prim
-import Ergvein.Types.Storage.CurrencyPrvStorage
+import Ergvein.Types.Storage.Currency.Private
 import Ergvein.Crypto.Keys
 
 -- ====================================================================

@@ -1,4 +1,4 @@
-module Ergvein.Types.Keys.PrvKeystore
+module Ergvein.Types.Keys.Store.Private
   (
     PrvKeystore(..)
   ) where

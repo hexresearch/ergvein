@@ -32,10 +32,10 @@ import Data.Vector            (Vector)
 import Ergvein.Crypto.Keys
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
-import Ergvein.Types.Keys.EgvPubKeyBox (EgvPubKeyBox(..))
+import Ergvein.Types.Keys.Box.Public (EgvPubKeyBox(..))
 import Ergvein.Types.Keys.Prim
-import Ergvein.Types.Keys.PrvKeystore (PrvKeystore(..))
-import Ergvein.Types.Keys.PubKeystore (PubKeystore(..))
+import Ergvein.Types.Keys.Store.Private (PrvKeystore(..))
+import Ergvein.Types.Keys.Store.Public (PubKeystore(..))
 
 import qualified Data.Set as S
 import qualified Data.Vector as V

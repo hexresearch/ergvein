@@ -1,4 +1,4 @@
-module Ergvein.Types.Keys.PubKeystore
+module Ergvein.Types.Keys.Store.Public
   (
     PubKeystore(..)
   ) where
@@ -9,7 +9,7 @@ import Data.Vector
 import GHC.Generics
 
 import Ergvein.Types.Keys.Prim
-import Ergvein.Types.Keys.EgvPubKeyBox (EgvPubKeyBox(..))
+import Ergvein.Types.Keys.Box.Public (EgvPubKeyBox(..))
 
 data PubKeystore = PubKeystore {
   pubKeystore'master   :: !EgvXPubKey

@@ -1,7 +1,7 @@
 -- {-# OPTIONS_GHC -Wunused-top-binds #-}
 -- Turn on unused-top-binds (if it's off) to see which TH-generated lenses to export
 -- Read the README.md to learn now to work with migrations
-module Ergvein.Types.Storage.CurrencyPubStorage
+module Ergvein.Types.Storage.Currency.Public
   (
     CurrencyPubStorage(..)
   , CurrencyPubStorages
@@ -27,7 +27,7 @@ import Data.Word
 
 import Ergvein.Types.Currency
 import Ergvein.Types.Derive
-import Ergvein.Types.Keys.PubKeystore
+import Ergvein.Types.Keys.Store.Public
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
 

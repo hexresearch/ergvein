@@ -1,4 +1,4 @@
-module Ergvein.Types.Keys.EgvPubKeyBox
+module Ergvein.Types.Keys.Box.Public
   (
     EgvPubKeyBox(..)
   ) where

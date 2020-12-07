@@ -1,7 +1,7 @@
 -- {-# OPTIONS_GHC -Wunused-top-binds #-}
 -- Turn on unused-top-binds (if it's off) to see which TH-generated lenses to export
 -- Read the README.md to learn now to work with migrations
-module Ergvein.Types.Storage.PubStorage
+module Ergvein.Types.Storage.Public
   (
     PubStorage(..)
   -- * Export lenses
@@ -19,7 +19,7 @@ import Data.Serialize
 import Ergvein.Types.Currency
 import Ergvein.Types.Derive
 import Ergvein.Types.Keys.Prim
-import Ergvein.Types.Storage.CurrencyPubStorage
+import Ergvein.Types.Storage.Currency.Public
 
 data PubStorage = PubStorage {
     _pubStorage'rootPubKey          :: !EgvRootXPubKey

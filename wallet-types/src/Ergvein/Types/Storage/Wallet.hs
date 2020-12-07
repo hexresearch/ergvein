@@ -1,6 +1,6 @@
 -- {-# OPTIONS_GHC -Wunused-top-binds #-}
 -- Turn on unused-top-binds (if it's off) to see which TH-generated lenses to export
-module Ergvein.Types.Storage.WalletStorage
+module Ergvein.Types.Storage.Wallet
   (
     WalletStorage(..)
   , EncryptedWalletStorage(..)
@@ -27,8 +27,8 @@ import Data.SafeCopy
 import Data.Serialize
 import Data.Text (Text,)
 
-import Ergvein.Types.Storage.PubStorage
-import Ergvein.Types.Storage.PrvStorage
+import Ergvein.Types.Storage.Public
+import Ergvein.Types.Storage.Private
 
 -- ====================================================================
 --      WalletStorage. Not encrypted

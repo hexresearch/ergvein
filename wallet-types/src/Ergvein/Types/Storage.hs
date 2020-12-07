@@ -21,11 +21,11 @@ import Data.Vector (Vector)
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Orphanage ()
-import Ergvein.Types.Storage.CurrencyPrvStorage as Reexport
-import Ergvein.Types.Storage.CurrencyPubStorage as Reexport
-import Ergvein.Types.Storage.PrvStorage as Reexport
-import Ergvein.Types.Storage.PubStorage as Reexport
-import Ergvein.Types.Storage.WalletStorage as Reexport
+import Ergvein.Types.Storage.Currency.Private as Reexport
+import Ergvein.Types.Storage.Currency.Public as Reexport
+import Ergvein.Types.Storage.Private as Reexport
+import Ergvein.Types.Storage.Public as Reexport
+import Ergvein.Types.Storage.Wallet as Reexport
 import Ergvein.Types.Transaction
 
 import qualified Data.Map.Strict as M
