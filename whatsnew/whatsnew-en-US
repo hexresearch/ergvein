@@ -1,17 +1,8 @@
-* Break receive address to groups #751
-* Wrong password message on sign tx #752
-* Double spend indication fix #754
 * RBF transaction indication (support for sending RBF is comming soon) #754
 * Breaking change in hash format (overflow bug). Indexers should resync. #754
 * New restore process that doesn't require storing filters on device #759
-* Fixed bug with derivation path input #762
 * You can specify starting block for restore #763
-* No password wallets are handled correctly #701
-* Height scanning improved #724
 * Display un-synced indexers with an orange dot #723
 * Add tor socs support #722
-* Connection duplicates fixed #716
-* Use only synced indexers in scan and restore #709
 * Add GUI to setup DNS servers #706
-* Alerts are now sticky to bottom of page #702
-* Word break at seed restore #696
+* Other fixes (#762, #754, #716, #702, #724, #752, #701, #696, #751, #709)

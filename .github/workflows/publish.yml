@@ -102,9 +102,10 @@ jobs:
         source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
         source /nix/var/nix/profiles/default/etc/profile.d/nix.sh
         echo "/nix/var/nix/profiles/per-user/actions/profile/bin" >> $GITHUB_PATH
-        sudo ln -s /nix/var/nix/profiles/per-user/actions /nix/var/nix/profiles/per-user/runner
-        echo "trusted-users = root $USER" | sudo tee -a /etc/nix/nix.conf && sudo pkill nix-daemon
-        for n in $(seq 1 10)
+        echo "trusted-users = root $USER" | sudo tee -a /etc/nix/nix.conf
+        echo "sandbox = false" | sudo tee -a /etc/nix/nix.conf
+        sudo pkill nix-daemon
+        for n in $(seq 1 20)
         do
           if getent passwd nixbld$n > /dev/null 2>&1
           then
@@ -161,10 +162,10 @@ jobs:
         asset_content_type: application/zip
 
     - name: Upload Android Release to Play Store
-      uses: r0adkll/upload-google-play@v1.0.4
+      uses: r0adkll/upload-google-play@3ea191f69b364a922c2af186abe5a12cc40922ce
       with:
         serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_ERGVEIN_SECRET }}
         packageName: org.ergvein.wallet
-        releaseFile: android-release/release/android-app.aab
+        releaseFiles: android-release/release/android-app.aab
         track: "Internal Alpha"
         whatsNewDirectory: whatsnew

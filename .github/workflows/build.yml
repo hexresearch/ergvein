@@ -63,7 +63,6 @@ jobs:
         sudo mv /etc/profile.d/nix.sh.backup-before-nix /etc/profile.d/nix.sh	|| true
         sudo rm -rf /etc/nix/nix.conf || true
         sudo rm -rf /etc/nix /nix /root/.nix-profile /root/.nix-defexpr /root/.nix-channels /home/actions/.nix-profile /home/actions/.nix-defexpr /home/actions/.nix-channels || true
-
     - name: Install Nix
       uses: cachix/install-nix-action@v12
       with:
@@ -75,8 +74,9 @@ jobs:
         source /nix/var/nix/profiles/default/etc/profile.d/nix.sh
         echo "/nix/var/nix/profiles/per-user/actions/profile/bin" >> $GITHUB_PATH
         sudo ln -s /nix/var/nix/profiles/per-user/actions /nix/var/nix/profiles/per-user/runner
-        echo "trusted-users = root $USER" | sudo tee -a /etc/nix/nix.conf && sudo pkill nix-daemon
-        for n in $(seq 1 10)
+        echo "trusted-users = root $USER" | sudo tee -a /etc/nix/nix.conf
+        sudo pkill nix-daemon
+        for n in $(seq 1 20)
         do
           if getent passwd nixbld$n > /dev/null 2>&1
           then
@@ -85,7 +85,6 @@ jobs:
               sudo useradd -c "Nix build user $n" -d /var/empty -g nixbld -G nixbld -M -N -r -s "$(which nologin)" nixbld$n
           fi
         done
-
     - name: Setup cachix
       uses: cachix/cachix-action@v8
       with:

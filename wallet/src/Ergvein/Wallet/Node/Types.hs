@@ -22,6 +22,7 @@ module Ergvein.Wallet.Node.Types
   ) where
 
 import Data.GADT.Compare
+import Data.Type.Equality
 import Network.Socket (SockAddr)
 
 import Ergvein.Types.Currency
