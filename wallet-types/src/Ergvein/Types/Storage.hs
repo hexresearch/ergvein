@@ -9,12 +9,16 @@ module Ergvein.Types.Storage
   , pubStorageKeyStorage
   , pubStorageSetKeyStorage
   , modifyCurrStorage
+  , modifyCurrStorageMay
+  , modifyCurrStorageBtc
+  , modifyCurrStorageErgo
   , pubStorageTxs
   -- * Reexport latest general version
   -- along with specific other versions
   , module Reexport
   ) where
 
+import Control.Lens
 import Data.Text
 import Data.Vector (Vector)
 
@@ -23,6 +27,8 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Orphanage ()
 import Ergvein.Types.Storage.Currency.Private as Reexport
 import Ergvein.Types.Storage.Currency.Public as Reexport
+import Ergvein.Types.Storage.Currency.Public.Btc (BtcPubStorage)
+import Ergvein.Types.Storage.Currency.Public.Ergo (ErgoPubStorage)
 import Ergvein.Types.Storage.Private as Reexport
 import Ergvein.Types.Storage.Public as Reexport
 import Ergvein.Types.Storage.Wallet as Reexport
@@ -68,6 +74,17 @@ modifyCurrStorage :: Currency -> (CurrencyPubStorage  -> CurrencyPubStorage) -> 
 modifyCurrStorage c f ps = ps {
     _pubStorage'currencyPubStorages = M.adjust f c $ _pubStorage'currencyPubStorages ps
   }
+
+modifyCurrStorageMay :: Currency -> (CurrencyPubStorage -> Maybe CurrencyPubStorage) -> PubStorage -> Maybe PubStorage
+modifyCurrStorageMay c f ps = do
+  cps <- f =<< M.lookup c (_pubStorage'currencyPubStorages ps)
+  pure $ ps & pubStorage'currencyPubStorages %~ M.insert c cps
+
+modifyCurrStorageBtc :: (BtcPubStorage -> BtcPubStorage) -> PubStorage -> PubStorage
+modifyCurrStorageBtc f = modifyCurrStorage BTC $ over (currencyPubStorage'meta . _PubStorageBtc) f
+
+modifyCurrStorageErgo :: (ErgoPubStorage -> ErgoPubStorage) -> PubStorage -> PubStorage
+modifyCurrStorageErgo f = modifyCurrStorage ERGO $ over (currencyPubStorage'meta . _PubStorageErgo) f
 
 pubStorageTxs :: Currency -> PubStorage -> Maybe (M.Map TxId EgvTx)
 pubStorageTxs c = fmap _currencyPubStorage'transactions . M.lookup c . _pubStorage'currencyPubStorages

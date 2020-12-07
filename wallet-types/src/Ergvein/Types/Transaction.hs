@@ -1,6 +1,7 @@
 module Ergvein.Types.Transaction (
       BlockHeight
-    , BtcTx
+    , BtcTxRaw
+    , ErgTxRaw(..)
     , BlockHash
     , TxBlockIndex
     , MerkleSum
@@ -12,17 +13,24 @@ module Ergvein.Types.Transaction (
     , egvBlockHashToHk
     , btcTxToString
     , btcTxFromString
-    , ErgTx(..)
     , ergTxToString
     , ergTxFromString
+    , BtcTx(..)
+    , ErgTx(..)
     , EgvTx(..)
     , EgvTxMeta(..)
+    , toTxBtc
+    , toTxErg
     , egvTxToString
     , getEgvTxMeta
     , setEgvTxMeta
     , egvTxCurrency
     , TxId
+    , BtcTxId
+    , ErgTxId(..)
     , TxHash(..)
+    , toBtcTxHash
+    , toErgTxHash
     , btcTxHashToStr
     , btcTxHashFromStr
     , ergTxHashToStr
@@ -93,30 +101,30 @@ currencyHeightStart = \case BTC  -> 0
                             ERGO -> 1
 {-# INLINE currencyHeightStart #-}
 
-type BtcTx = HK.Tx
+type BtcTxRaw = HK.Tx
 
-btcTxToString :: BtcTx -> Text
+btcTxToString :: BtcTxRaw -> Text
 btcTxToString = encodeHex . S.encode
 
-btcTxFromString :: Text -> Maybe BtcTx
+btcTxFromString :: Text -> Maybe BtcTxRaw
 btcTxFromString = eitherToMaybe . S.decode <=< decodeHex
 
-newtype ErgTx = ErgTransaction ByteString
+newtype ErgTxRaw = ErgTransaction ByteString
   deriving (Eq, Show, Read, Generic, Serialize)
 
-ergTxToString :: ErgTx -> Text
+ergTxToString :: ErgTxRaw -> Text
 ergTxToString (ErgTransaction tx) = encodeHex tx
 
-ergTxFromString :: Text -> Maybe ErgTx
+ergTxFromString :: Text -> Maybe ErgTxRaw
 ergTxFromString t = ErgTransaction <$> decodeHex t
 
-instance FromJSON ErgTx where
-  parseJSON = withText "ErgTx" $ \t ->
+instance FromJSON ErgTxRaw where
+  parseJSON = withText "ErgTxRaw" $ \t ->
     case ergTxFromString t of
       Nothing -> fail "could not decode ERGO transaction"
       Just x  -> return x
 
-instance ToJSON ErgTx where
+instance ToJSON ErgTxRaw where
   toJSON = A.String . ergTxToString
 
 data EgvTxMeta = EgvTxMeta {
@@ -134,60 +142,82 @@ instance SafeCopy EgvTxMeta where
     put etxMetaTime
   getCopy = contain $ EgvTxMeta <$> get <*> get <*> get
 
+data BtcTx = BtcTx { getBtcTx :: !BtcTxRaw, getBtcTxMeta :: !(Maybe EgvTxMeta) }
+  deriving (Eq, Show, Read)
+
+instance SafeCopy BtcTx where
+  putCopy (BtcTx btx meta) = contain $ put btx >> safePut meta
+  getCopy = contain $ BtcTx <$> get <*> safeGet
+
+data ErgTx = ErgTx { getErgTx :: !ErgTxRaw, getErgTxMeta :: !(Maybe EgvTxMeta)}
+  deriving (Eq, Show, Read)
+
+instance SafeCopy ErgTx where
+  putCopy (ErgTx btx meta) = contain $ put btx >> safePut meta
+  getCopy = contain $ ErgTx <$> get <*> safeGet
+
 data EgvTx
-  = BtcTx { getBtcTx :: !BtcTx, getBtcTxMeta :: !(Maybe EgvTxMeta)}
-  | ErgTx { getErgTx :: !ErgTx, getErgTxMeta :: !(Maybe EgvTxMeta)}
+  = TxBtc !BtcTx
+  | TxErg !ErgTx
   deriving (Eq, Show, Read)
 
 instance SafeCopy EgvTx where
   putCopy v = contain $ case v of
-    BtcTx btx meta -> do
-      put BTC >> put btx >> safePut meta
-    ErgTx etx meta -> do
-      put ERGO >> put etx >> safePut meta
+    TxBtc tx -> put BTC >> safePut tx
+    TxErg tx -> put ERGO >> safePut tx
   getCopy = contain $ do
     c <- get
     case c of
-      BTC -> BtcTx <$> get <*> safeGet
-      ERGO -> ErgTx <$> get <*> safeGet
+      BTC -> TxBtc <$> safeGet
+      ERGO -> TxErg <$> safeGet
+
+toTxBtc :: EgvTx -> Maybe BtcTx
+toTxBtc = \case
+  TxBtc t -> Just t
+  _ -> Nothing
+
+toTxErg :: EgvTx -> Maybe ErgTx
+toTxErg = \case
+  TxErg t -> Just t
+  _ -> Nothing
 
 egvTxToString :: EgvTx -> Text
-egvTxToString (BtcTx tx _) = btcTxToString tx
-egvTxToString (ErgTx tx _) = ergTxToString tx
+egvTxToString (TxBtc (BtcTx tx _)) = btcTxToString tx
+egvTxToString (TxErg (ErgTx tx _)) = ergTxToString tx
 
 egvTxCurrency :: EgvTx -> Currency
 egvTxCurrency e = case e of
-  BtcTx{} -> BTC
-  ErgTx{} -> ERGO
+  TxBtc{} -> BTC
+  TxErg{} -> ERGO
 
 egvTxFromJSON :: Currency -> Value -> Parser EgvTx
 egvTxFromJSON = \case
   BTC -> withText "Bitcoin transaction" $ \t ->
     case btcTxFromString t of
       Nothing -> fail "could not decode Bitcoin transaction"
-      Just x  -> return $ BtcTx x Nothing
+      Just x  -> return $ TxBtc $ BtcTx x Nothing
   ERGO -> withText "Ergo transaction" $ \t ->
     case ergTxFromString t of
       Nothing -> fail "could not decode Ergo transaction"
-      Just x  -> return $ ErgTx x Nothing
+      Just x  -> return $ TxErg $ ErgTx x Nothing
 
 getEgvTxMeta :: EgvTx -> Maybe EgvTxMeta
 getEgvTxMeta etx= case etx of
-  BtcTx _ m -> m
-  ErgTx _ m -> m
+  TxBtc (BtcTx _ m) -> m
+  TxErg (ErgTx _ m) -> m
 
 setEgvTxMeta :: EgvTx -> Maybe EgvTxMeta -> EgvTx
 setEgvTxMeta etx mh = case etx of
-  BtcTx tx _ -> BtcTx tx mh
-  ErgTx tx _ -> ErgTx tx mh
+  TxBtc (BtcTx tx _) -> TxBtc (BtcTx tx mh)
+  TxErg (ErgTx tx _) -> TxErg (ErgTx tx mh)
 
 instance ToJSON EgvTx where
-  toJSON (BtcTx tx meta) = object [
+  toJSON (TxBtc (BtcTx tx meta)) = object [
       "currency"  .= toJSON BTC
     , "tx"        .= btcTxToString tx
     , "meta"      .= toJSON meta
     ]
-  toJSON (ErgTx tx meta) = object [
+  toJSON (TxErg (ErgTx tx meta)) = object [
       "currency"  .= toJSON ERGO
     , "tx"        .= ergTxToString tx
     , "meta"      .= toJSON meta
@@ -203,31 +233,50 @@ instance FromJSON EgvTx where
 -- | Internal representation of transaction id
 type TxId = TxHash
 
+type BtcTxId = HK.TxHash
+
+newtype ErgTxId = ErgTxId { unErgTxId :: ShortByteString }
+  deriving (Eq, Ord, Show, Read, Hashable, Serialize, Generic, NFData)
+
+instance SafeCopy ErgTxId where
+  putCopy = contain . put
+  getCopy = contain get
+
 -- | Hash of transaction
 data TxHash
-  = BtcTxHash {getBtcTxHash :: !HK.TxHash}
-  | ErgTxHash {getErgTxHash :: !ShortByteString}
-  deriving (Eq, Show, Read, Ord, Hashable, Generic, Serialize, NFData)
+  = BtcTxHash {getBtcTxHash :: !BtcTxId}
+  | ErgTxHash {getErgTxHash :: !ErgTxId}
+  deriving (Eq, Show, Read, Ord, Hashable, Serialize, Generic, NFData)
 
 instance SafeCopy TxHash where
   putCopy = contain . put
   getCopy = contain get
 
-btcTxHashToStr :: HK.TxHash -> Text
+toBtcTxHash :: TxHash -> Maybe BtcTxId
+toBtcTxHash = \case
+  BtcTxHash t -> Just t
+  _ -> Nothing
+
+toErgTxHash :: TxHash -> Maybe ErgTxId
+toErgTxHash = \case
+  ErgTxHash t -> Just t
+  _ -> Nothing
+
+btcTxHashToStr :: BtcTxId -> Text
 btcTxHashToStr = HK.txHashToHex
 
-ergTxHashToStr :: ShortByteString -> Text
-ergTxHashToStr = encodeHex . BSS.fromShort
+ergTxHashToStr :: ErgTxId -> Text
+ergTxHashToStr = encodeHex . BSS.fromShort . unErgTxId
 
 egvTxHashToStr :: TxHash -> Text
 egvTxHashToStr (BtcTxHash h) = btcTxHashToStr h
 egvTxHashToStr (ErgTxHash h) = ergTxHashToStr h
 
-btcTxHashFromStr :: Text -> Maybe HK.TxHash
+btcTxHashFromStr :: Text -> Maybe BtcTxId
 btcTxHashFromStr = HK.hexToTxHash
 
-ergTxHashFromStr :: Text -> Maybe ShortByteString
-ergTxHashFromStr t = BSS.toShort <$> decodeHex t
+ergTxHashFromStr :: Text -> Maybe ErgTxId
+ergTxHashFromStr t = ErgTxId . BSS.toShort <$> decodeHex t
 
 egvTxHashFromStr :: Currency -> Text -> Maybe TxHash
 egvTxHashFromStr BTC  addr = BtcTxHash <$> btcTxHashFromStr addr
@@ -270,5 +319,5 @@ hkTxHashToEgv = BtcTxHash
 {-# INLINE hkTxHashToEgv #-}
 
 egvTxId :: EgvTx -> TxId
-egvTxId (BtcTx tx _) = hkTxHashToEgv $ HK.txHash tx
-egvTxId (ErgTx _ _)  = error "egvTxId: implement for Ergo!"
+egvTxId (TxBtc (BtcTx tx _)) = hkTxHashToEgv $ HK.txHash tx
+egvTxId (TxErg (ErgTx _ _))  = error "egvTxId: implement for Ergo!"

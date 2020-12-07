@@ -13,6 +13,7 @@ import Ergvein.Wallet.Platform
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
+import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
@@ -58,9 +59,9 @@ startBTCFlow :: MonadFront t m => Workflow t m ()
 startBTCFlow = Workflow $ do
   buildE <- getPostBuild
   ps <- getPubStorage
-  let bl0 = ps ^. pubStorage'currencyPubStorages
-        . at BTC . non (error "btcNodeController: not exsisting store!")
-        . currencyPubStorage'headerSeq
+  let bl0 = fromMaybe (error "btcNodeController: cannot get block headers!") $ ps ^? pubStorage'currencyPubStorages
+        . at BTC . _Just . currencyPubStorage'meta
+        . _PubStorageBtc . btcPubStorage'headerSeq
       bl = fmap V.toList $ if V.null $ snd bl0 then btcCheckpoints else bl0
   pure ((), btcCatchUpFlow bl <$ buildE)
 

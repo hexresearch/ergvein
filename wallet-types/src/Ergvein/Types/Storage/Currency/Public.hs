@@ -4,45 +4,45 @@
 module Ergvein.Types.Storage.Currency.Public
   (
     CurrencyPubStorage(..)
+  , PubStorageMeta(..)
   , CurrencyPubStorages
+  , _currencyPubStorage'outgoing
+  , _currencyPubStorage'transactions
   -- * Export lenses
   , currencyPubStorage'pubKeystore
   , currencyPubStorage'path
   , currencyPubStorage'transactions
-  , currencyPubStorage'utxos
-  , currencyPubStorage'headers
   , currencyPubStorage'outgoing
-  , currencyPubStorage'headerSeq
   , currencyPubStorage'scannedHeight
   , currencyPubStorage'chainHeight
+  , currencyPubStorage'meta
+  , _PubStorageBtc
+  , _PubStorageErgo
   ) where
 
 import Control.Lens
 import Data.Map (Map)
+import Data.Maybe
 import Data.SafeCopy
-import Data.Set(Set)
-import Data.Vector(Vector)
 import Data.Serialize
-import Data.Word
+import Data.Set (Set)
 
 import Ergvein.Types.Currency
 import Ergvein.Types.Derive
 import Ergvein.Types.Keys.Store.Public
+import Ergvein.Types.Storage.Currency.Public.Btc
+import Ergvein.Types.Storage.Currency.Public.Ergo
 import Ergvein.Types.Transaction
-import Ergvein.Types.Utxo
 
-import qualified Network.Haskoin.Block as HB
+import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 
 data CurrencyPubStorage = CurrencyPubStorage {
     _currencyPubStorage'pubKeystore   :: !PubKeystore
   , _currencyPubStorage'path          :: !(Maybe DerivPrefix)
-  , _currencyPubStorage'transactions  :: !(Map TxId EgvTx)
-  , _currencyPubStorage'utxos         :: !BtcUtxoSet              -- ^ TODO: Change to a generalized one, after we switch to DMaps
-  , _currencyPubStorage'headers       :: !(Map HB.BlockHash HB.BlockHeader)
-  , _currencyPubStorage'outgoing      :: !(Set TxId)
-  , _currencyPubStorage'headerSeq     :: !(Word32, Vector (HB.BlockHeight, HB.BlockHash))
   , _currencyPubStorage'scannedHeight :: !BlockHeight
   , _currencyPubStorage'chainHeight   :: !BlockHeight
+  , _currencyPubStorage'meta          :: !PubStorageMeta
   } deriving (Eq, Show, Read)
 
 
@@ -51,18 +51,68 @@ instance SafeCopy CurrencyPubStorage where
   putCopy CurrencyPubStorage{..} = contain $ do
     safePut _currencyPubStorage'pubKeystore
     safePut _currencyPubStorage'path
-    safePut _currencyPubStorage'transactions
-    put _currencyPubStorage'utxos
-    put _currencyPubStorage'headers
-    put _currencyPubStorage'outgoing
-    put _currencyPubStorage'headerSeq
     put _currencyPubStorage'scannedHeight
     put _currencyPubStorage'chainHeight
+    safePut _currencyPubStorage'meta
   getCopy = contain $ CurrencyPubStorage
-    <$> safeGet <*> safeGet <*> safeGet <*> get
-    <*> get <*> get <*> get <*> get <*> get
+    <$> safeGet <*> safeGet <*> get <*> get <*> safeGet
+
+data PubStorageMeta = PubStorageBtc !BtcPubStorage | PubStorageErgo !ErgoPubStorage
+  deriving (Eq, Show, Read)
+
+instance SafeCopy PubStorageMeta where
+  version = 1
+  putCopy v = contain $ case v of
+    PubStorageBtc  a -> put (0 :: Int) >> safePut a
+    PubStorageErgo a -> put (1 :: Int) >> safePut a
+  getCopy = contain $ do
+    i :: Int <- get
+    case i of
+      0 -> PubStorageBtc <$> safeGet
+      1 -> PubStorageErgo <$> safeGet
+      _ -> fail $ "Unknown PubStorageMeta tag " <> show i
 
 type CurrencyPubStorages = Map Currency CurrencyPubStorage
 
 -- This instances is required only for the current version
 makeLenses ''CurrencyPubStorage
+makePrisms ''PubStorageMeta
+
+_currencyPubStorage'transactions :: CurrencyPubStorage -> Map TxId EgvTx
+_currencyPubStorage'transactions CurrencyPubStorage{..} = case _currencyPubStorage'meta of
+  PubStorageBtc bs  -> mbimap BtcTxHash TxBtc . _btcPubStorage'transactions $ bs
+  PubStorageErgo es -> mbimap ErgTxHash TxErg . _ergoPubStorage'transactions $ es
+
+mbimap :: (Ord k2) => (k1 -> k2) -> (a -> b) -> M.Map k1 a -> M.Map k2 b
+mbimap fk fe = M.map fe . M.mapKeys fk
+
+currencyPubStorage'transactions :: Lens' CurrencyPubStorage (Map TxId EgvTx)
+currencyPubStorage'transactions = lens _currencyPubStorage'transactions $ \s txs -> s {
+    _currencyPubStorage'meta = case _currencyPubStorage'meta s of
+      PubStorageBtc bs  -> PubStorageBtc bs {
+          _btcPubStorage'transactions = mbimap (unwrap . toBtcTxHash) (unwrap . toTxBtc) txs
+        }
+      PubStorageErgo bs  -> PubStorageErgo bs {
+          _ergoPubStorage'transactions = mbimap (unwrap . toErgTxHash) (unwrap . toTxErg) txs
+        }
+    }
+  where
+    unwrap = fromMaybe (error "currencyPubStorage'transactions: transaction types doesn't match!")
+
+_currencyPubStorage'outgoing :: CurrencyPubStorage -> Set TxId
+_currencyPubStorage'outgoing CurrencyPubStorage{..} = case _currencyPubStorage'meta of
+  PubStorageBtc bs  -> S.map BtcTxHash . _btcPubStorage'outgoing $ bs
+  PubStorageErgo es -> S.map ErgTxHash . _ergoPubStorage'outgoing $ es
+
+currencyPubStorage'outgoing :: Lens' CurrencyPubStorage (Set TxId)
+currencyPubStorage'outgoing = lens _currencyPubStorage'outgoing $ \s txs -> s {
+    _currencyPubStorage'meta = case _currencyPubStorage'meta s of
+      PubStorageBtc bs  -> PubStorageBtc bs {
+          _btcPubStorage'outgoing = S.map  (unwrap . toBtcTxHash) txs
+        }
+      PubStorageErgo bs  -> PubStorageErgo bs {
+          _ergoPubStorage'outgoing = S.map  (unwrap . toErgTxHash) txs
+        }
+    }
+  where
+    unwrap = fromMaybe (error "currencyPubStorage'outgoing: transaction types doesn't match!")

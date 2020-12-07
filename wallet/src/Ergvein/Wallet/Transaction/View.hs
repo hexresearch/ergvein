@@ -15,6 +15,7 @@ module Ergvein.Wallet.Transaction.View(
 import Data.Maybe (fromMaybe, catMaybes)
 import Data.Text as T
 import Data.Time
+import Data.Maybe
 import Data.Word
 import Network.Haskoin.Address
 
@@ -100,7 +101,7 @@ data TransactionViewInfo = TransactionViewInfo {
 } deriving (Show)
 
 checkAddrInOut :: (HasTxStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m (Maybe TransType)
-checkAddrInOut ac tx = do
+checkAddrInOut ac (TxBtc tx) = do
   bLIn <- traverse (flip checkAddrTxIn (getBtcTx tx)) ac
   bLOut <- traverse (flip checkAddrTxOut (getBtcTx tx)) ac
   let isIn = L.or bLIn
@@ -110,6 +111,7 @@ checkAddrInOut ac tx = do
     else if isIn
       then pure $ Just TransWithdraw
       else pure $ Just TransRefill
+checkAddrInOut _ (TxErg _) = error "checkAddrInOut: Ergo is not implemented!"
 
 addWalletState :: [TransactionView] -> [TransactionView]
 addWalletState txs = fmap setPrev $ fmap (\(prevTxCount, txView) -> (txView, calcAmount prevTxCount txs)) $ L.zip [0..] txs
@@ -125,66 +127,70 @@ prepareTransactionView ::
   ExplorerUrls ->
   (Maybe TransType, TxRawInfo) ->
   TransactionView
-prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = TransactionView {
-    txAmount = txAmountCalc
-  , txPrevAm = Nothing
-  , txDate = blockTime
-  , txInOut = fromMaybe TransRefill mTT
-  , txInfoView = txInf
-  , txStatus =
-      if (txHasUnconfirmedParents) && (bHeight == 0)
-        then TransUncofirmedParents
-      else if (bHeight == 0)
-        then TransUncofirmed
-      else TransConfirmed
-  , txConflictingTxs = txConflTxs
-  }
+prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = case txr of
+  TxBtc btx -> btcView btx
+  TxErg _ -> error "prepareTransactionView: Ergo is not impolemented"
   where
-    txInf = TransactionViewInfo {
-        txId            = txHex
-      , txLabel         = Nothing
-      , txUrl           = blUrl <> "/tx/" <> txHex
-      , txFee           = txFeeCalc
-      , txRbfEnabled    = markedReplaceable btx
-      , txConfirmations = bHeight
-      , txBlock         = txBlockLink
-      , txOutputs       = txOuts
-      , txInputs        = txInsOuts
-    }
-    btx = getBtcTx txr
-    blHght = fromMaybe 0 $ maybe (Just 0) etxMetaHeight $ getBtcTxMeta txr
-    bHeight = if ((blHght == 0) || (hght == 0))
-      then 0
-      else hght - blHght + 1
-    txHs = HK.txHash btx
-    txHex = HK.txHashToHex txHs
+    btcView (BtcTx btx meta) = TransactionView {
+        txAmount = txAmountCalc
+      , txPrevAm = Nothing
+      , txDate = blockTime
+      , txInOut = fromMaybe TransRefill mTT
+      , txInfoView = txInf
+      , txStatus =
+          if (txHasUnconfirmedParents) && (bHeight == 0)
+            then TransUncofirmedParents
+          else if (bHeight == 0)
+            then TransUncofirmed
+          else TransConfirmed
+      , txConflictingTxs = txConflTxs
+      }
+      where
+        txInf = TransactionViewInfo {
+            txId            = txHex
+          , txLabel         = Nothing
+          , txUrl           = blUrl <> "/tx/" <> txHex
+          , txFee           = txFeeCalc
+          , txRbfEnabled    = markedReplaceable btx
+          , txConfirmations = bHeight
+          , txBlock         = txBlockLink
+          , txOutputs       = txOuts
+          , txInputs        = txInsOuts
+        }
+        blHght = fromMaybe 0 $ maybe (Just 0) etxMetaHeight meta
+        bHeight = if ((blHght == 0) || (hght == 0))
+          then 0
+          else hght - blHght + 1
+        txHs = HK.txHash btx
+        txHex = HK.txHashToHex txHs
 
-    txOuts = fmap (\(out, outStatus) -> (txOutAdr out, Money BTC (HK.outValue out), outStatus, txOurAdrCheck out)) $ L.zip (HK.txOut btx) txOutsStatuses
-    txOutsAm = fmap (\out -> HK.outValue out) $ HK.txOut btx
+        txOuts = fmap (\(out, outStatus) -> (txOutAdr out, Money BTC (HK.outValue out), outStatus, txOurAdrCheck out)) $ L.zip (HK.txOut btx) txOutsStatuses
+        txOutsAm = fmap (\out -> HK.outValue out) $ HK.txOut btx
 
-    txOutsOurAm = fmap fst $ L.filter snd $ fmap (\out -> (HK.outValue out, not (txOurAdrCheck out))) $ HK.txOut btx
+        txOutsOurAm = fmap fst $ L.filter snd $ fmap (\out -> (HK.outValue out, not (txOurAdrCheck out))) $ HK.txOut btx
 
-    txInsOuts = fmap fst $ L.filter snd $ fmap (\out -> ((txOutAdr out, Money BTC (HK.outValue out)), txOurAdrCheck out)) $ L.concat $ fmap (HK.txOut . getBtcTx) $ catMaybes txParents
-    txInsOutsAm = fmap fst $ L.filter snd $ fmap (\out -> (HK.outValue out,txOurAdrCheck out)) $ L.concat $ fmap (HK.txOut . getBtcTx) $ catMaybes txParents
+        getOut = HK.txOut . getBtcTx . fromJust . toTxBtc
+        txInsOuts = fmap fst $ L.filter snd $ fmap (\out -> ((txOutAdr out, Money BTC (HK.outValue out)), txOurAdrCheck out)) $ L.concat $ fmap getOut $ catMaybes txParents
+        txInsOutsAm = fmap fst $ L.filter snd $ fmap (\out -> (HK.outValue out,txOurAdrCheck out)) $ L.concat $ fmap getOut $ catMaybes txParents
 
-    txOutAdr out = either (const Nothing) id $ (addrToString network) <$> (scriptToAddressBS $ HK.scriptOutput out)
-    txOurAdrCheck out = either (\_ -> False) (\a -> a `L.elem` btcAddrs) $ (scriptToAddressBS $ HK.scriptOutput out)
+        txOutAdr out = either (const Nothing) id $ (addrToString network) <$> (scriptToAddressBS $ HK.scriptOutput out)
+        txOurAdrCheck out = either (\_ -> False) (\a -> a `L.elem` btcAddrs) $ (scriptToAddressBS $ HK.scriptOutput out)
 
-    network = getBtcNetwork $ getCurrencyNetwork BTC
+        network = getBtcNetwork $ getCurrencyNetwork BTC
 
-    txBlockM = maybe Nothing (Just . HK.blockHashToHex) txHBl
-    txBlockLink = maybe Nothing (\a -> Just (blUrl <> "/block/" <> a, a)) txBlockM
+        txBlockM = maybe Nothing (Just . HK.blockHashToHex) txHBl
+        txBlockLink = maybe Nothing (\a -> Just (blUrl <> "/block/" <> a, a)) txBlockM
 
-    blockTime = TxTime trTime -- $ maybe Nothing (Just . secToTimestamp . HK.blockTimestamp) txMBl
-    trTime = fmap ((utcToZonedTime tz) . etxMetaTime ) $ getBtcTxMeta txr
-    btcAddrs = fmap getBtcAddr addrs
-    txFeeCalc = case mTT of
-      Nothing -> Nothing
-      Just TransRefill -> Nothing
-      Just TransWithdraw -> Just $ Money BTC $ (sum txInsOutsAm) - (sum txOutsAm)
-    txAmountCalc = case mTT of
-      Nothing -> txom
-      Just TransRefill -> txom
-      Just TransWithdraw -> Money BTC $ sum txOutsOurAm
+        blockTime = TxTime trTime -- $ maybe Nothing (Just . secToTimestamp . HK.blockTimestamp) txMBl
+        trTime = fmap ((utcToZonedTime tz) . etxMetaTime ) meta
+        btcAddrs = fmap getBtcAddr addrs
+        txFeeCalc = case mTT of
+          Nothing -> Nothing
+          Just TransRefill -> Nothing
+          Just TransWithdraw -> Just $ Money BTC $ (sum txInsOutsAm) - (sum txOutsAm)
+        txAmountCalc = case mTT of
+          Nothing -> txom
+          Just TransRefill -> txom
+          Just TransWithdraw -> Money BTC $ sum txOutsOurAm
 
-    blUrl = if isTestnet then testnetUrl sblUrl else mainnetUrl sblUrl
+        blUrl = if isTestnet then testnetUrl sblUrl else mainnetUrl sblUrl

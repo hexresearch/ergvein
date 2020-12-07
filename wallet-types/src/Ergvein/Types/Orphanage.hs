@@ -15,7 +15,7 @@ import Data.Time
 import Data.Text (Text)
 import Data.Vector (Vector)
 import Network.Haskoin.Block (BlockHash)
-import Network.Haskoin.Transaction (OutPoint)
+import Network.Haskoin.Transaction (OutPoint(..), TxHash)
 
 import Ergvein.Text
 
@@ -43,6 +43,14 @@ instance SafeCopy (IV AES256) where
   getCopy = contain $ do
     iv :: ByteString <- safeGet
     maybe (fail "failed to make iv") pure $ makeIV iv
+
+instance SafeCopy OutPoint where
+  putCopy (OutPoint a b) = contain $ put a >> put b
+  getCopy = contain $ OutPoint <$> get <*> get
+
+instance SafeCopy TxHash where
+  putCopy v = contain $ put v
+  getCopy = contain get
 
 instance Serialize a => Serialize (Vector a) where
   get = do

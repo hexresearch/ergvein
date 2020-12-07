@@ -32,11 +32,16 @@ library
     Ergvein.Types.Storage
     Ergvein.Types.Storage.Currency.Private
     Ergvein.Types.Storage.Currency.Public
+    Ergvein.Types.Storage.Currency.Public.Btc
+    Ergvein.Types.Storage.Currency.Public.Ergo
     Ergvein.Types.Storage.Private
     Ergvein.Types.Storage.Public
     Ergvein.Types.Storage.Wallet
     Ergvein.Types.Transaction
     Ergvein.Types.Utxo
+    Ergvein.Types.Utxo.Btc
+    Ergvein.Types.Utxo.Ergo
+    Ergvein.Types.Utxo.Status
   default-language:    Haskell2010
   build-depends:
       aeson

@@ -9,6 +9,7 @@ module Ergvein.Wallet.Storage.Util(
   , passwordToECIESPrvKey
   , createPrvStorage
   , createPubStorage
+  , createCurrencyPubStorage
   , createPubKeystore
   , createStorage
   , storageFilePrefix
@@ -47,6 +48,8 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
+import Ergvein.Types.Storage.Currency.Public.Btc (BtcPubStorage(..))
+import Ergvein.Types.Storage.Currency.Public.Ergo (ErgoPubStorage(..))
 import Ergvein.Types.Transaction as ETT
 import Ergvein.Wallet.Localization.Native
 import Ergvein.Wallet.Localization.Storage
@@ -100,20 +103,34 @@ createPubKeystore masterPubKey =
 createPubStorage :: Bool -> Maybe DerivPrefix -> EgvRootXPrvKey -> [Currency] -> BlockHeight -> PubStorage
 createPubStorage isRestored mpath rootPrvKey cs startingHeight = PubStorage rootPubKey pubStorages cs isRestored mpath
   where rootPubKey = EgvRootXPubKey $ deriveXPubKey $ unEgvRootXPrvKey rootPrvKey
-        mkStore c = let
-          dpath = extendDerivPath c <$> mpath
-          in CurrencyPubStorage {
-            _currencyPubStorage'pubKeystore   = (createPubKeystore $ deriveCurrencyMasterPubKey dpath rootPrvKey c)
-          , _currencyPubStorage'path          = dpath
-          , _currencyPubStorage'transactions  = M.empty
-          , _currencyPubStorage'utxos         = M.empty
-          , _currencyPubStorage'headers       = M.empty
-          , _currencyPubStorage'outgoing      = S.empty
-          , _currencyPubStorage'headerSeq     = btcCheckpoints
-          , _currencyPubStorage'scannedHeight = startingHeight
-          , _currencyPubStorage'chainHeight   = 0
-          }
+        mkStore = createCurrencyPubStorage mpath rootPrvKey startingHeight
         pubStorages = M.fromList [(currency, mkStore currency) | currency <- cs]
+
+createCurrencyPubStorage :: Maybe DerivPrefix -> EgvRootXPrvKey -> BlockHeight -> Currency -> CurrencyPubStorage
+createCurrencyPubStorage mpath rootPrvKey startingHeight c = CurrencyPubStorage {
+    _currencyPubStorage'pubKeystore   = (createPubKeystore $ deriveCurrencyMasterPubKey dpath rootPrvKey c)
+  , _currencyPubStorage'path          = dpath
+  , _currencyPubStorage'scannedHeight = startingHeight
+  , _currencyPubStorage'chainHeight   = 0
+  , _currencyPubStorage'meta = case c of
+    BTC -> PubStorageBtc BtcPubStorage {
+        _btcPubStorage'transactions  = M.empty
+      , _btcPubStorage'utxos         = M.empty
+      , _btcPubStorage'headers       = M.empty
+      , _btcPubStorage'outgoing      = S.empty
+      , _btcPubStorage'headerSeq     = btcCheckpoints
+      }
+    ERGO -> PubStorageErgo ErgoPubStorage {
+        _ergoPubStorage'transactions  = M.empty
+      , _ergoPubStorage'utxos         = M.empty
+      , _ergoPubStorage'headers       = M.empty
+      , _ergoPubStorage'outgoing      = S.empty
+      , _ergoPubStorage'headerSeq     = ergoCheckpoints
+      }
+  }
+  where
+    dpath = extendDerivPath c <$> mpath
+
 
 createStorage :: MonadIO m
   => Bool -- ^ Flag that set to True if wallet was restored, not fresh generation
