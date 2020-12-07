@@ -4,7 +4,7 @@
 module Ergvein.Wallet.Page.Seed(
     mnemonicPage
   , mnemonicWidget
-  , restoreFromMnemonicPage
+  , seedRestorePage
   ) where
 
 import Control.Monad.Random.Strict
@@ -12,8 +12,11 @@ import Data.Bifunctor
 import Data.ByteString (ByteString)
 import Data.Either (either)
 import Data.List (permutations)
+import Data.Maybe
 import Data.Text.Encoding (decodeUtf8With)
 import Data.Text.Encoding.Error (lenientDecode)
+import Reflex.Localize.Dom
+
 import Ergvein.Crypto
 import Ergvein.Text
 import Ergvein.Types.Restore
@@ -22,6 +25,7 @@ import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Elements.Input
+import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Password
 import Ergvein.Wallet.Localization.Seed
 import Ergvein.Wallet.Localization.Util
@@ -32,9 +36,9 @@ import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Resize
 import Ergvein.Wallet.Storage.Util
+import Ergvein.Wallet.Util
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
-import Reflex.Localize.Dom
 
 import qualified Data.List      as L
 import qualified Data.Serialize as S
@@ -141,41 +145,6 @@ guessButtons ws idyn = do
       btnE <- buttonClass classeD $ buttonWord
       delay 1 $ fforMaybe btnE $ const $ if buttonWord == correctWord then Just (i + 1) else Nothing
 
-restoreFromMnemonicPage :: MonadFrontBase t m => m ()
-restoreFromMnemonicPage = wrapperSimple True $ mdo
-  encodedEncryptedMnemonicErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing))
-  h4 $ localizedText SPSRestoreFromMnemonic
-  encodedEncryptedMnemonicD <- validatedTextFieldSetVal SPSEnterMnemonic "" encodedEncryptedMnemonicErrsD inputE
-  inputE <- divClass "restore-seed-buttons-wrapper" $ do
-    pasteBtnE <- pasteBtn
-    pasteE <- clipboardPaste pasteBtnE
-#ifdef ANDROID
-    qrCodeBtnE <- scanQRBtn
-    openCameraE <- delay 1.0 =<< openCamara qrCodeBtnE
-    resQRCodeE <- waiterResultCamera openCameraE
-    let inputE' = leftmost [pasteE, resQRCodeE]
-#else
-    let inputE' = pasteE
-#endif
-    pure inputE'
-  submitE <- outlineButton CSForward
-  let validationE = poke submitE $ \_ -> do
-        encodedEncryptedMnemonic <- sampleDyn encodedEncryptedMnemonicD
-        pure $ decodeEnocdedEncryptedMnemonic encodedEncryptedMnemonic
-      goE = flip push validationE $ \eMnemonic -> do
-        let mMnemonic = either (const Nothing) Just eMnemonic
-        pure mMnemonic
-  void $ nextWidget $ ffor goE $ \eMnemonic -> do
-    case eMnemonic of
-      Left mnemonic -> Retractable {
-          retractableNext = selectCurrenciesPage WalletRestored mnemonic
-        , retractablePrev = Just $ pure restoreFromMnemonicPage
-        }
-      Right encryptedMnemonic -> Retractable {
-          retractableNext = askSeedPasswordPage encryptedMnemonic
-        , retractablePrev = Just $ pure restoreFromMnemonicPage
-        }
-
 pasteBtn :: MonadFrontBase t m => m (Event t ())
 pasteBtn = outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
 
@@ -192,17 +161,8 @@ askSeedPasswordPage encryptedMnemonic = do
     , retractablePrev = Just $ pure $ askSeedPasswordPage encryptedMnemonic
     }
 
-decodeMnemonic :: Text -> Maybe (Either Text EncryptedByteString)
-decodeMnemonic text
-  | (length words == 24) && (all (wordTrieElem . T.toLower) words) = Just $ Left text
-  | otherwise = Right <$> (eitherToMaybe . S.decode <=< decodeBase58CheckBtc) text
-  where words = T.words text
-
-decodeEnocdedEncryptedMnemonic :: Text -> Either [SeedPageStrings] (Either Text EncryptedByteString)
-decodeEnocdedEncryptedMnemonic encodedEncryptedMnemonic = case decodeMnemonic encodedEncryptedMnemonic of
-  Nothing -> Left [SPSMnemonicDecodeError]
-  Just encryptedMnemonic -> Right encryptedMnemonic
-
+-- | Word by word seed restore.
+-- This is not used now. Keep just in case we decide to enable it again
 seedRestoreWidget :: forall t m . MonadFrontBase t m => m (Event t Mnemonic)
 seedRestoreWidget = mdo
   langD <- getLanguage
@@ -231,3 +191,167 @@ seedRestoreWidget = mdo
   where
     waiting :: m (Event t Text)
     waiting = (h4 $ localizedText SPSWaiting) >> pure never
+
+data SeedNavItems = SNIPlain | SNIBase58
+  deriving (Eq)
+
+instance LocalizedPrint SeedNavItems where
+  localizedShow l v = case l of
+    English -> case v of
+      SNIPlain -> "Plain"
+      SNIBase58 -> "Base58"
+    Russian -> case v of
+      SNIPlain -> "Словарный"
+      SNIBase58 -> "Base58"
+
+seedRestorePage :: MonadFrontBase t m => m ()
+seedRestorePage = wrapperSimple True $ mdo
+  itemD <- divClass "w-80 ml-a mr-a mb-2" $ divClass "navbar-2-cols" $ mdo
+    itemD <- holdUniqDyn =<< holdDyn SNIPlain valE
+    valE <- widgetHoldDynE $ ffor itemD $ \activeItem -> do
+      plainE  <- navbarBtn SNIPlain activeItem
+      base58E <- navbarBtn SNIBase58 activeItem
+      pure $ leftmost [plainE, base58E]
+    pure itemD
+  widgetHoldDyn $ ffor itemD $ \case
+    SNIPlain -> plainRestoreWidget
+    SNIBase58 -> base58RestoreWidget
+  pure ()
+  where
+    navbarBtn :: (DomBuilder t m, PostBuild t m, MonadLocalized t m) => SeedNavItems -> SeedNavItems-> m (Event t SeedNavItems)
+    navbarBtn item activeItem
+      | item == activeItem = fmap (item <$) $ spanButton "ml-2 mr-2 navbar-item active" item
+      | item /= activeItem = fmap (item <$) $ spanButton "ml-2 mr-2 navbar-item" item
+    navbarBtn _ _ = pure never
+
+
+pasteBtnsWidget :: MonadFrontBase t m => m (Event t Text)
+pasteBtnsWidget = divClass "restore-seed-buttons-wrapper" $ do
+  pasteBtnE <- pasteBtn
+  pasteE <- clipboardPaste pasteBtnE
+#ifdef ANDROID
+  qrCodeBtnE <- scanQRBtn
+  openCameraE <- delay 1.0 =<< openCamara qrCodeBtnE
+  resQRCodeE <- waiterResultCamera openCameraE
+  pure $ leftmost [pasteE, resQRCodeE]
+#else
+  pure $ pasteE
+#endif
+
+data ParseState
+  = PSWaiting
+  | PSDone Text
+  | PSSuggs [Text] [Text]
+  | PSWordError Text
+  | PSFullError [(Int, Text)]
+  | PSExtraError Text
+
+
+-- Parse the mnemonic phrase
+-- If it's empty, return PSWaiting
+-- If it's exactly 24 words, check if all words are correct, otherwise return error
+-- If it's longer than 24 -- something went wrong, return error
+-- If it's lesser that 24 words and the last symbol is " "
+--   assume that the user wants to enter a new word and show PSWaiting again
+-- Otherwise, assume it's a prefix, get all words from the wordlist with that prefix
+-- If there is none, the prefix is misspelled, return error
+-- Otherwise return suggestions along with the rest.
+parseMnem :: Text -> ParseState
+parseMnem mnem = case ws of
+  [] -> PSWaiting
+  _ -> if length ws == 24
+    then case filter (not . wordTrieElem . snd) iws of
+      [] -> PSDone (mconcat ws)
+      errs -> PSFullError errs
+    else if length ws > 24
+      then PSExtraError mnem
+      else if wordTrieElem w && T.takeEnd 1 mnem == " "
+        then PSWaiting
+        else case getWordsWithPrefix w of
+          [] -> PSWordError mnem
+          suggs -> PSSuggs (init ws) suggs
+  where
+    iws = zip [1..] ws
+    ws = T.words mnem
+    w = last ws
+
+plainRestoreWidget :: MonadFrontBase t m => m ()
+plainRestoreWidget = mdo
+  let inputD = _inputElement_value ti
+      enterKeyE = keypress Enter ti
+      anyKeyE = domEvent Keypress ti
+      -- resetE: overwrite all new writes if there was an unfixed error
+      -- allows only del, backspace and arrows
+      resetE = flip push anyKeyE $ const $ do
+        state <- sampleDyn stateD
+        pure $ case state of
+          PSWordError t -> Just t
+          PSExtraError t -> Just t
+          _ -> Nothing
+
+  fillE' <- delay 0.05 fillE    -- FRP network hangs without this delay
+  stateD <- foldDyn fldr PSWaiting $ leftmost [Nothing <$ fillE', updated $ (Just . parseMnem) <$> inputD]
+  ti <- textInput $ def & inputElementConfig_setValue .~ leftmost [pasteE, fillE, resetE]
+  fillE <- widgetHoldE (pure never) $ ffor (updated stateD) $ \case
+    PSWaiting         -> waiting
+    PSWordError _     -> wordError
+    PSDone _          -> doneText
+    PSFullError errs  -> fullErr errs
+    PSExtraError _    -> extraErr
+    PSSuggs _ []      -> waiting
+    PSSuggs ts ws -> case ws of
+      [] -> wordError
+      w:[] -> divClass "restore-seed-buttons-wrapper" $ do
+        let res = recombine ts w
+        clickE <- buttonClass (pure "button button-outline") w
+        pure $ res <$ leftmost [clickE, enterKeyE]
+      _ -> do
+        let ws' = take 6 ws
+        wE <- divClass "restore-seed-buttons-wrapper" $ fmap leftmost $ flip traverse ws' $ \w -> do
+          btnClickE <- buttonClass (pure "button button-outline") w
+          pure $ w <$ btnClickE
+        pure $ recombine ts <$> wE
+  pasteE <- pasteBtnsWidget
+  widgetHold (pure ()) $ ffor (updated stateD ) $ \case
+    PSDone mnem -> do
+      submitE <- outlineButton CSForward
+      void $ nextWidget $ ffor submitE $ const $ Retractable {
+          retractableNext = selectCurrenciesPage WalletRestored mnem
+        , retractablePrev = Just $ pure seedRestorePage
+        }
+    _ -> pure ()
+  pure ()
+  where
+    fldr next prev = case prev of
+      PSDone mnem -> fromMaybe (PSDone mnem) next
+      _ -> fromMaybe prev next
+
+    recombine ts w = T.intercalate " " (ts <> [w]) <> " "
+
+    waiting   = h4 (localizedText SPSWaiting)     >> pure never
+    wordError = h4 (localizedText SPSInvalidWord) >> pure never
+    doneText  = h4 (localizedText SPSDone)        >> pure never
+    extraErr  = h4 (localizedText SPSExtraWords)  >> pure never
+    fullErr errs = do
+      h4 $ localizedText SPSMisspelled
+      divClass "mb-1" $ flip traverse errs $
+        divClass "" . localizedText . SPSMisspelledWord
+      pure never
+
+base58RestoreWidget :: MonadFrontBase t m => m ()
+base58RestoreWidget = mdo
+  encodedEncryptedMnemonicErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing))
+  encodedEncryptedMnemonicD <- validatedTextFieldSetVal SPSEnterMnemonic "" encodedEncryptedMnemonicErrsD inputE
+  inputE <- pasteBtnsWidget
+  submitE <- widgetHoldDynE $ ffor encodedEncryptedMnemonicD $ \v -> if v == ""
+    then pure never
+    else outlineButton CSForward
+  let validationE = poke submitE $ \_ -> do
+        encodedEncryptedMnemonic <- sampleDyn encodedEncryptedMnemonicD
+        pure $ maybe (Left [SPSMnemonicDecodeError]) Right $
+          (eitherToMaybe . S.decode <=< decodeBase58CheckBtc) encodedEncryptedMnemonic
+      goE = fmapMaybe (either (const Nothing) Just) validationE
+  void $ nextWidget $ ffor goE $ \encryptedMnemonic -> Retractable {
+      retractableNext = askSeedPasswordPage encryptedMnemonic
+    , retractablePrev = Just $ pure seedRestorePage
+    }
