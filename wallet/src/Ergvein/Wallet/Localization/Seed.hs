@@ -26,6 +26,7 @@ data SeedPageStrings =
   | SPSExtraWords
   | SPSMisspelled
   | SPSMisspelledWord (Int, Text)
+  | SPSMnemonicLength
 
 numSuffix :: Int -> Text
 numSuffix n = case (n `mod` 10) of
@@ -54,6 +55,7 @@ instance LocalizedPrint SeedPageStrings where
       SPSExtraWords           -> "Error! You have extra words!"
       SPSMisspelled           -> "Some words are misspelled"
       SPSMisspelledWord (i,w) -> "#" <> showt i <> ": " <> w
+      SPSMnemonicLength       -> "Mnemonic phrase length"
     Russian -> case v of
       SPSTitle                -> "Слова мнемонической фразы от вашего кошелька"
       SPSWarn                 -> "Эта мнемоническая фраза — единственный способ восстановить ваш кошелёк. Запишите их, иначе вы можете потерять свои деньги. Навсегда."
@@ -72,3 +74,4 @@ instance LocalizedPrint SeedPageStrings where
       SPSExtraWords           -> "Ошибка! Вы ввели лишние слова!"
       SPSMisspelled           -> "Некоторые слова с ошибкой, не словарные"
       SPSMisspelledWord (i,w) -> "№" <> showt i <> ": " <> w
+      SPSMnemonicLength       -> "Длина мнемонической фразы"

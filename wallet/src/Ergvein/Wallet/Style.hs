@@ -279,6 +279,10 @@ navbarCss = do
     display grid
     gridTemplateColumns [fr 1, fr 1, fr 1]
     padding (rem 0) (rem 1) (rem 0) (rem 1)
+  ".navbar-5-cols" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1, fr 1, fr 1, fr 1]
+    padding (rem 0) (rem 1) (rem 0) (rem 1)
   ".navbar-item" ? do
     padding (rem 1) (rem 1) (rem 1) (rem 1)
     cursor pointer

@@ -256,14 +256,14 @@ data ParseState
 -- Otherwise, assume it's a prefix, get all words from the wordlist with that prefix
 -- If there is none, the prefix is misspelled, return error
 -- Otherwise return suggestions along with the rest.
-parseMnem :: Text -> ParseState
-parseMnem mnem = case ws of
+parseMnem :: Int -> Text -> ParseState
+parseMnem l mnem = case ws of
   [] -> PSWaiting
-  _ -> if length ws == 24
+  _ -> if length ws == l
     then case filter (not . wordTrieElem . snd) iws of
       [] -> PSDone (mconcat ws)
       errs -> PSFullError errs
-    else if length ws > 24
+    else if length ws > l
       then PSExtraError mnem
       else if wordTrieElem w && T.takeEnd 1 mnem == " "
         then PSWaiting
@@ -275,9 +275,27 @@ parseMnem mnem = case ws of
     ws = T.words mnem
     w = last ws
 
+-- 24 21 18 15 12
+
+lengthSelector :: MonadFrontBase t m => m (Dynamic t Int)
+lengthSelector = do
+  elClass "h4" "mb-0" $ localizedText SPSMnemonicLength
+  divClass "w-80 ml-a mr-a mb-1 navbar-5-cols" $ mdo
+    inpD <- holdDyn 24 inpE
+    inpE <-widgetHoldDynE $ ffor inpD $ \i ->
+      fmap leftmost $ traverse (mkBtn i) [24,21,18,15,12]
+    pure inpD
+  where
+    mkBtn activeItem item = if item == activeItem
+      then spanButton "ml-2 mr-2 navbar-item active" (showt item) >> pure never
+      else fmap (item <$) $ spanButton "ml-2 mr-2 navbar-item" (showt item)
+
 plainRestoreWidget :: MonadFrontBase t m => m ()
 plainRestoreWidget = mdo
-  let inputD = _inputElement_value ti
+  lengthD <- lengthSelector
+  buildE <- getPostBuild
+
+  let parsedD = parseMnem <$> lengthD <*> _inputElement_value ti
       enterKeyE = keypress Enter ti
       anyKeyE = domEvent Keypress ti
       -- resetE: overwrite all new writes if there was an unfixed error
@@ -290,7 +308,7 @@ plainRestoreWidget = mdo
           _ -> Nothing
 
   fillE' <- delay 0.05 fillE    -- FRP network hangs without this delay
-  stateD <- foldDyn fldr PSWaiting $ leftmost [Nothing <$ fillE', updated $ (Just . parseMnem) <$> inputD]
+  stateD <- foldDyn fldr PSWaiting $ leftmost [Nothing <$ fillE', updated $ Just <$> parsedD, Just PSWaiting <$ buildE]
   ti <- textInput $ def & inputElementConfig_setValue .~ leftmost [pasteE, fillE, resetE]
   fillE <- widgetHoldE (pure never) $ ffor (updated stateD) $ \case
     PSWaiting         -> waiting
