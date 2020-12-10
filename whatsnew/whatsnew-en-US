@@ -1,4 +1,8 @@
-* Status bar is not flickering now (#691)
-* Bitcoin node connections are tuned for more reliable operation (#684)
-* Automatic reconnection to indexer servers (#679)
-* Indexer addresses now can be hostnames. Added DNS resolving step (#680)
+* RBF transaction indication (support for sending RBF is comming soon) #754
+* Breaking change in hash format (overflow bug). Indexers should resync. #754
+* New restore process that doesn't require storing filters on device #759
+* You can specify starting block for restore #763
+* Display un-synced indexers with an orange dot #723
+* Add tor socs support #722
+* Add GUI to setup DNS servers #706
+* Other fixes (#762, #754, #716, #702, #724, #752, #701, #696, #751, #709)

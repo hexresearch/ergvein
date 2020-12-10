@@ -43,7 +43,9 @@ deriving instance MonadJSM m => MonadJSM (LocalizeT t m)
 #endif
 deriving instance (Group q, Additive q, Query q, Eq q, MonadQuery t q m, Monad m) => MonadQuery t q (LocalizeT t m)
 deriving instance (Monoid w, DynamicWriter t w m) => DynamicWriter t w (LocalizeT t m)
-deriving instance (Monoid w, MonadBehaviorWriter t w m) => MonadBehaviorWriter t w (LocalizeT t m)
+#if !MIN_VERSION_reflex(0,7,0)
+deriving instance (Monoid w, MonadBehaviorWriter t w m) => MonadBehaviorWriter t w (RetractT t m)
+#endif
 deriving instance (Semigroup w, EventWriter t w m) => EventWriter t w (LocalizeT t m)
 deriving instance (Requester t m) => Requester t (LocalizeT t m)
 

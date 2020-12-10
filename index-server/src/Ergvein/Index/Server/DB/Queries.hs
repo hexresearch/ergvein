@@ -37,7 +37,6 @@ import Database.LevelDB
 
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Server.BlockchainScanning.Types
-import Ergvein.Index.Server.DB.Conversions()
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema.Filters
 import Ergvein.Index.Server.DB.Schema.Indexer
@@ -121,7 +120,6 @@ initIndexerDb db = do
 addBlockInfo :: (HasBtcRollback m, HasFiltersDB m, HasIndexerDB m, MonadLogger m, MonadBaseControl IO m) => BlockInfo -> m ()
 addBlockInfo update = do
   db <- getFiltersDb
-  let current = blockMetaBlockHeight $ blockInfoMeta update
   let targetCurrency = blockMetaCurrency $ blockInfoMeta update
   let newBlockHash = blockMetaHeaderHash $ blockInfoMeta update
   write db def $ putTxInfosAsRecs targetCurrency (blockContentTxInfos update)
@@ -188,7 +186,7 @@ loadRollbackSequence cur = do
   pure $ fromMaybe (RollbackSequence mempty) mseq
 
 finalizeRollbackItem :: (HasFiltersDB m, MonadLogger m, MonadBaseControl IO m) => Currency -> RollbackRecItem -> m ()
-finalizeRollbackItem cur (RollbackRecItem _ outs _ _) = do
+finalizeRollbackItem _cur (RollbackRecItem _ outs _ _) = do
   fdb <- getFiltersDb
   let outsl = mkChunks 100 $ Map.toList outs
   upds <- fmap (mconcat . mconcat) $ mapConcurrently (traverse (mkupds fdb)) outsl
@@ -218,7 +216,7 @@ performBtcRollback = do
   let clearSeq = LDB.Put (rollbackKey cur) $ egvSerialize cur (RollbackSequence mempty)
   case Seq.viewr rse of
     Seq.EmptyR -> pure ()
-    rest Seq.:> lst -> do
+    _ Seq.:> lst -> do
       setLastScannedBlock cur $ rollbackPrevBlockHash lst
       setScannedHeight cur $ rollbackPrevHeight lst
 

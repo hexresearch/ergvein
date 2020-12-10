@@ -76,16 +76,17 @@ scannerThread currency scanInfo = create $ logOnException threadName . scanItera
               tryBlockInfo <- (Right <$> blockIteration headBlockHeight current) `catch` (\(SomeException ex) -> pure $ Left $ show ex)
               enoughSpace <- isEnoughSpace
               case tryBlockInfo of
-                Right (blockInfo@BlockInfo {..}) | enoughSpace -> do
-                  previousBlockSame <- isPreviousBlockSame $ blockMetaPreviousHeaderBlockHash $ blockInfoMeta
-                  if previousBlockSame then do --fork detection
-                    addBlockInfo blockInfo
-                    when (current == headBlockHeight) $ broadcastFilter $ blockInfoMeta
-                    reportScannedHeight currency current
-                    go (succ current)
-                  else previousBlockChanged current
-                _ | not enoughSpace ->
-                  logInfoN $ "Not enough available disc space to store block scan result"
+                Right (blockInfo@BlockInfo {..})
+                  | enoughSpace -> do
+                    previousBlockSame <- isPreviousBlockSame $ blockMetaPreviousHeaderBlockHash $ blockInfoMeta
+                    if previousBlockSame then do --fork detection
+                      addBlockInfo blockInfo
+                      when (current == headBlockHeight) $ broadcastFilter $ blockInfoMeta
+                      reportScannedHeight currency current
+                      go (succ current)
+                    else previousBlockChanged current
+                  | otherwise ->
+                    logInfoN $ "Not enough available disc space to store block scan result"
                 Left errMsg -> blockScanningError errMsg current
 
         isPreviousBlockSame proposedPreviousBlockId = do
@@ -132,7 +133,7 @@ isEnoughSpace = do
   setGauge availableSpaceGauge $ fromIntegral (availSpace - requiredAvailSpace)
   pure $ requiredAvailSpace <= availSpace
  where
-  requiredAvailSpace = 2^30 -- 1Gb
+  requiredAvailSpace = 2^(30::Int) -- 1Gb
 
 feesScanning :: ServerM [Thread]
 feesScanning = sequenceA
