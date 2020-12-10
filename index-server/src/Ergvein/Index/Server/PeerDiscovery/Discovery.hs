@@ -38,7 +38,7 @@ import qualified Data.Vector.Unboxed  as UV
 considerPeer :: Version -> PeerCandidate -> ServerM ()
 considerPeer ownVer PeerCandidate {..} = do
   ownAddress <- descReqOwnAddress <$> getDiscoveryRequisites
-  isScanActual <- isPeerScanActual (versionScanBlocks ownVer) peerCandidateScanBlocks
+  isScanActual <- isPeerScanActual (versionScanBlocks ownVer)
   when (Just peerCandidateAddress /= ownAddress && isScanActual) $ do
     currentTime <- liftIO getCurrentTime
     upsertPeer $ Peer
@@ -85,8 +85,8 @@ syncWithDefaultPeers = do
       toAdd = (\x -> Peer x currentTime) <$> (Set.toList $ predefinedPeers Set.\\ discoveredPeersSet)
   setPeerList toAdd
 
-isPeerScanActual :: UV.Vector ScanBlock -> UV.Vector ScanBlock -> ServerM Bool
-isPeerScanActual localScanBlocks peerScanBlocks  = do
+isPeerScanActual :: UV.Vector ScanBlock -> ServerM Bool
+isPeerScanActual localScanBlocks = do
   pure $ all matchLocalCurrencyScan peerScanBlockList
   where
     peerScanBlockList :: [ScanBlock]

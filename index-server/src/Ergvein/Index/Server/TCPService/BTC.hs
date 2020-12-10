@@ -38,7 +38,7 @@ data BtcSocket = BtcSocket {
 , btcSockOnActive :: !(TChan Bool)
 }
 
-dummyBtcSock :: (MonadIO m, Ex.MonadMask m, MonadBaseControl IO m) => Network -> m BtcSocket
+dummyBtcSock :: (MonadIO m, MonadBaseControl IO m) => Network -> m BtcSocket
 dummyBtcSock net = do
   sa       <- liftIO $ (N.addrAddress . head) <$> N.getAddrInfo (Just hints) (Just "localhost") (Just "8080")
   shakeVar <- liftIO $ newTVarIO False
