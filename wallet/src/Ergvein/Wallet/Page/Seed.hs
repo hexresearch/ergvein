@@ -31,6 +31,7 @@ import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Password
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Resize
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Util
@@ -192,9 +193,12 @@ seedRestoreWidget = mdo
 seedRestorePage :: MonadFrontBase t m => m ()
 seedRestorePage = wrapperSimple True $ do
   h2 $ localizedText SPSTypeTitle
-  goE <- divClass "w-80 ml-a mr-a mb-2" $ divClass "navbar-2-cols" $ do
-    e1 <- fmap (True <$) $ outlineButton SPSPlain
-    e2 <- fmap (False <$) $ outlineButton SPSBase58
+  let cls = "ml-a mr-a mb-2 w-80" <> if isAndroid then " fit-content" else " navbar-2-cols"
+      btnCls = "button button-outline" <>
+        if isAndroid then " disp-block w-100" else ""
+  goE <- divClass cls $ do
+    e1 <- fmap (True <$)  $ buttonClass btnCls SPSPlain
+    e2 <- fmap (False <$) $ buttonClass btnCls SPSBase58
     pure $ leftmost [e1, e2]
   void $ nextWidget $ ffor goE $ \b -> Retractable {
       retractableNext = if b
@@ -205,15 +209,17 @@ seedRestorePage = wrapperSimple True $ do
 
 lengthSelectPage :: MonadFrontBase t m => m ()
 lengthSelectPage = wrapperSimple True $ do
-  h4 $ localizedText SPSLengthTitle
-  goE <- divClass "w-80 ml-a mr-a navbar-5-cols" $ mdo
+  h2 $ localizedText SPSLengthTitle
+  let cls = "ml-a mr-a mb-2 w-80" <> if isAndroid then "" else " navbar-5-cols"
+  goE <- divClass cls $ mdo
     fmap leftmost $ traverse mkBtn [24,21,18,15,12]
   void $ nextWidget $ ffor goE $ \i -> Retractable {
       retractableNext = plainRestorePage i
     , retractablePrev = Just $ pure lengthSelectPage
     }
   where
-    mkBtn i = fmap (i <$) $ outlineButton $ showt i
+    btnCls = "button button-outline" <> if isAndroid then " mlr-a disp-block" else ""
+    mkBtn i = fmap (i <$) $ buttonClass btnCls $ showt i
 
 pasteBtnsWidget :: MonadFrontBase t m => m (Event t Text)
 pasteBtnsWidget = divClass "restore-seed-buttons-wrapper" $ do

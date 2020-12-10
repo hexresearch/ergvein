@@ -1020,6 +1020,9 @@ legoStyles = do
   ".mt-1" ? (marginTop    $ rem 1)
   ".m-1" ? margin (rem 1) (rem 1) (rem 1) (rem 1)
   ".mlr-1" ? margin (rem 0) (rem 1) (rem 0) (rem 1)
+  ".mlr-a" ? do
+    marginLeft auto
+    marginRight auto
   ".mb-2" ? (marginBottom $ rem 2)
   ".ml-2" ? (marginLeft   $ rem 2)
   ".mr-2" ? (marginRight  $ rem 2)
@@ -1054,6 +1057,7 @@ legoStyles = do
   ".word-break-all" ? wordBreak breakAll
   ".font-bold" ? fontWeight bold
   ".fit-content" ? width fitContent
+  ".disp-block" ? display block
 
 badgeCss :: Css
 badgeCss = do
