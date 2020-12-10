@@ -250,7 +250,7 @@ parseMnem l mnem = case ws of
   [] -> PSWaiting
   _ -> if length ws == l
     then case filter (not . wordTrieElem . snd) iws of
-      [] -> PSDone (mconcat ws)
+      [] -> PSDone (T.intercalate " " ws)
       errs -> PSFullError errs
     else if length ws > l
       then PSExtraError mnem
