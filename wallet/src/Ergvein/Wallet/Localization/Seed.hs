@@ -14,8 +14,6 @@ data SeedPageStrings =
   | SPSWrote
   | SPSVerifyTitle
   | SPSSelectWord Int
-  | SPSRestoreFromMnemonic
-  | SPSEnterMnemonic
   | SPSScanQR
   | SPSMnemonicDecodeError
   | SPSReset
@@ -26,7 +24,12 @@ data SeedPageStrings =
   | SPSExtraWords
   | SPSMisspelled
   | SPSMisspelledWord (Int, Text)
-  | SPSMnemonicLength
+  | SPSTypeTitle
+  | SPSLengthTitle
+  | SPSPlain
+  | SPSBase58
+  | SPSPlainTitle Int
+  | SPSBase58Title
 
 numSuffix :: Int -> Text
 numSuffix n = case (n `mod` 10) of
@@ -43,8 +46,6 @@ instance LocalizedPrint SeedPageStrings where
       SPSWrote                -> "I wrote them"
       SPSVerifyTitle          -> "Double check the mnemonic phrase"
       SPSSelectWord n         -> "Select the " <> showt n <> numSuffix n <> " word"
-      SPSRestoreFromMnemonic  -> "Restoring wallet from mnemonic phrase"
-      SPSEnterMnemonic        -> "Enter mnemonic phrase"
       SPSScanQR               -> "Scan QR code"
       SPSMnemonicDecodeError  -> "Failed to decode mnemonic"
       SPSReset                -> "Reset and start again"
@@ -55,15 +56,18 @@ instance LocalizedPrint SeedPageStrings where
       SPSExtraWords           -> "Error! You have extra words!"
       SPSMisspelled           -> "Some words are misspelled"
       SPSMisspelledWord (i,w) -> "#" <> showt i <> ": " <> w
-      SPSMnemonicLength       -> "Mnemonic phrase length"
+      SPSTypeTitle            -> "Select mnemonic type"
+      SPSLengthTitle          -> "Select mnemonic's length"
+      SPSPlain                -> "Plain text"
+      SPSBase58               -> "Base58"
+      SPSPlainTitle i         -> "Enter the mnemonic phrase of length " <> showt i
+      SPSBase58Title          -> "Enter base58-encoded mnemonic"
     Russian -> case v of
       SPSTitle                -> "Слова мнемонической фразы от вашего кошелька"
       SPSWarn                 -> "Эта мнемоническая фраза — единственный способ восстановить ваш кошелёк. Запишите их, иначе вы можете потерять свои деньги. Навсегда."
       SPSWrote                -> "Я записал мнемоническую фразу"
       SPSVerifyTitle          -> "Перепроверьте мнемоническую фразу"
       SPSSelectWord n         -> "Выберите " <> showt n <> "-е слово"
-      SPSRestoreFromMnemonic  -> "Восстановление кошелька из мнемонической фразы"
-      SPSEnterMnemonic        -> "Введите мнемоническую фразу"
       SPSScanQR               -> "Cканировать QR-код"
       SPSMnemonicDecodeError  -> "Не удалось декодировать мнемоническую фразу"
       SPSReset                -> "Сбросить и начать заново"
@@ -74,4 +78,9 @@ instance LocalizedPrint SeedPageStrings where
       SPSExtraWords           -> "Ошибка! Вы ввели лишние слова!"
       SPSMisspelled           -> "Некоторые слова с ошибкой, не словарные"
       SPSMisspelledWord (i,w) -> "№" <> showt i <> ": " <> w
-      SPSMnemonicLength       -> "Длина мнемонической фразы"
+      SPSTypeTitle            -> "Выберите тип мнемоники"
+      SPSLengthTitle          -> "Выберите длину мнемоники"
+      SPSPlain                -> "Словарный"
+      SPSBase58               -> "Base58"
+      SPSPlainTitle i         -> "Введите мнемоническую фразу длиной " <> showt i
+      SPSBase58Title          -> "Введите мнемоническую фразу в кодировке base58"

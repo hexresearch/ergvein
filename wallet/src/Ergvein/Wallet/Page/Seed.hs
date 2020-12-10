@@ -5,11 +5,11 @@ module Ergvein.Wallet.Page.Seed(
     mnemonicPage
   , mnemonicWidget
   , seedRestorePage
+  , seedRestoreWidget
   ) where
 
 import Control.Monad.Random.Strict
 import Data.Bifunctor
-import Data.ByteString (ByteString)
 import Data.Either (either)
 import Data.List (permutations)
 import Data.Maybe
@@ -25,15 +25,12 @@ import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Elements.Input
-import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Password
 import Ergvein.Wallet.Localization.Seed
 import Ergvein.Wallet.Localization.Util
-import Ergvein.Wallet.Log.Event
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Password
-import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Resize
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Util
@@ -192,38 +189,31 @@ seedRestoreWidget = mdo
     waiting :: m (Event t Text)
     waiting = (h4 $ localizedText SPSWaiting) >> pure never
 
-data SeedNavItems = SNIPlain | SNIBase58
-  deriving (Eq)
-
-instance LocalizedPrint SeedNavItems where
-  localizedShow l v = case l of
-    English -> case v of
-      SNIPlain -> "Plain"
-      SNIBase58 -> "Base58"
-    Russian -> case v of
-      SNIPlain -> "Словарный"
-      SNIBase58 -> "Base58"
-
 seedRestorePage :: MonadFrontBase t m => m ()
-seedRestorePage = wrapperSimple True $ mdo
-  itemD <- divClass "w-80 ml-a mr-a mb-2" $ divClass "navbar-2-cols" $ mdo
-    itemD <- holdUniqDyn =<< holdDyn SNIPlain valE
-    valE <- widgetHoldDynE $ ffor itemD $ \activeItem -> do
-      plainE  <- navbarBtn SNIPlain activeItem
-      base58E <- navbarBtn SNIBase58 activeItem
-      pure $ leftmost [plainE, base58E]
-    pure itemD
-  widgetHoldDyn $ ffor itemD $ \case
-    SNIPlain -> plainRestoreWidget
-    SNIBase58 -> base58RestoreWidget
-  pure ()
-  where
-    navbarBtn :: (DomBuilder t m, PostBuild t m, MonadLocalized t m) => SeedNavItems -> SeedNavItems-> m (Event t SeedNavItems)
-    navbarBtn item activeItem
-      | item == activeItem = fmap (item <$) $ spanButton "ml-2 mr-2 navbar-item active" item
-      | item /= activeItem = fmap (item <$) $ spanButton "ml-2 mr-2 navbar-item" item
-    navbarBtn _ _ = pure never
+seedRestorePage = wrapperSimple True $ do
+  h2 $ localizedText SPSTypeTitle
+  goE <- divClass "w-80 ml-a mr-a mb-2" $ divClass "navbar-2-cols" $ do
+    e1 <- fmap (True <$) $ outlineButton SPSPlain
+    e2 <- fmap (False <$) $ outlineButton SPSBase58
+    pure $ leftmost [e1, e2]
+  void $ nextWidget $ ffor goE $ \b -> Retractable {
+      retractableNext = if b
+        then lengthSelectPage
+        else base58RestorePage
+    , retractablePrev = Just $ pure seedRestorePage
+    }
 
+lengthSelectPage :: MonadFrontBase t m => m ()
+lengthSelectPage = wrapperSimple True $ do
+  h4 $ localizedText SPSLengthTitle
+  goE <- divClass "w-80 ml-a mr-a navbar-5-cols" $ mdo
+    fmap leftmost $ traverse mkBtn [24,21,18,15,12]
+  void $ nextWidget $ ffor goE $ \i -> Retractable {
+      retractableNext = plainRestorePage i
+    , retractablePrev = Just $ pure lengthSelectPage
+    }
+  where
+    mkBtn i = fmap (i <$) $ outlineButton $ showt i
 
 pasteBtnsWidget :: MonadFrontBase t m => m (Event t Text)
 pasteBtnsWidget = divClass "restore-seed-buttons-wrapper" $ do
@@ -246,12 +236,11 @@ data ParseState
   | PSFullError [(Int, Text)]
   | PSExtraError Text
 
-
 -- Parse the mnemonic phrase
 -- If it's empty, return PSWaiting
--- If it's exactly 24 words, check if all words are correct, otherwise return error
--- If it's longer than 24 -- something went wrong, return error
--- If it's lesser that 24 words and the last symbol is " "
+-- If it's exactly `mnem` words, check if all words are correct, otherwise return error
+-- If it's longer than `mnem` -- something went wrong, return error
+-- If it's lesser that `mnem` words and the last symbol is " "
 --   assume that the user wants to enter a new word and show PSWaiting again
 -- Otherwise, assume it's a prefix, get all words from the wordlist with that prefix
 -- If there is none, the prefix is misspelled, return error
@@ -275,27 +264,12 @@ parseMnem l mnem = case ws of
     ws = T.words mnem
     w = last ws
 
--- 24 21 18 15 12
-
-lengthSelector :: MonadFrontBase t m => m (Dynamic t Int)
-lengthSelector = do
-  elClass "h4" "mb-0" $ localizedText SPSMnemonicLength
-  divClass "w-80 ml-a mr-a mb-1 navbar-5-cols" $ mdo
-    inpD <- holdDyn 24 inpE
-    inpE <-widgetHoldDynE $ ffor inpD $ \i ->
-      fmap leftmost $ traverse (mkBtn i) [24,21,18,15,12]
-    pure inpD
-  where
-    mkBtn activeItem item = if item == activeItem
-      then spanButton "ml-2 mr-2 navbar-item active" (showt item) >> pure never
-      else fmap (item <$) $ spanButton "ml-2 mr-2 navbar-item" (showt item)
-
-plainRestoreWidget :: MonadFrontBase t m => m ()
-plainRestoreWidget = mdo
-  lengthD <- lengthSelector
+plainRestorePage :: MonadFrontBase t m => Int -> m ()
+plainRestorePage mnemLength = wrapperSimple True $ mdo
+  h4 $ localizedText $ SPSPlainTitle mnemLength
   buildE <- getPostBuild
 
-  let parsedD = parseMnem <$> lengthD <*> _inputElement_value ti
+  let parsedD = parseMnem mnemLength <$> _inputElement_value ti
       enterKeyE = keypress Enter ti
       anyKeyE = domEvent Keypress ti
       -- resetE: overwrite all new writes if there was an unfixed error
@@ -308,7 +282,11 @@ plainRestoreWidget = mdo
           _ -> Nothing
 
   fillE' <- delay 0.05 fillE    -- FRP network hangs without this delay
-  stateD <- foldDyn fldr PSWaiting $ leftmost [Nothing <$ fillE', updated $ Just <$> parsedD, Just PSWaiting <$ buildE]
+  stateD <- foldDyn (flip fromMaybe) PSWaiting $ leftmost [
+      Nothing <$ fillE'
+    , updated $ Just <$> parsedD
+    , Just PSWaiting <$ buildE
+    ]
   ti <- textInput $ def & inputElementConfig_setValue .~ leftmost [pasteE, fillE, resetE]
   fillE <- widgetHoldE (pure never) $ ffor (updated stateD) $ \case
     PSWaiting         -> waiting
@@ -330,7 +308,7 @@ plainRestoreWidget = mdo
           pure $ w <$ btnClickE
         pure $ recombine ts <$> wE
   pasteE <- pasteBtnsWidget
-  widgetHold (pure ()) $ ffor (updated stateD ) $ \case
+  void $ widgetHold (pure ()) $ ffor (updated stateD ) $ \case
     PSDone mnem -> do
       submitE <- outlineButton CSForward
       void $ nextWidget $ ffor submitE $ const $ Retractable {
@@ -340,10 +318,6 @@ plainRestoreWidget = mdo
     _ -> pure ()
   pure ()
   where
-    fldr next prev = case prev of
-      PSDone mnem -> fromMaybe (PSDone mnem) next
-      _ -> fromMaybe prev next
-
     recombine ts w = T.intercalate " " (ts <> [w]) <> " "
 
     waiting   = h4 (localizedText SPSWaiting)     >> pure never
@@ -352,14 +326,15 @@ plainRestoreWidget = mdo
     extraErr  = h4 (localizedText SPSExtraWords)  >> pure never
     fullErr errs = do
       h4 $ localizedText SPSMisspelled
-      divClass "mb-1" $ flip traverse errs $
+      void $ divClass "mb-1" $ flip traverse errs $
         divClass "" . localizedText . SPSMisspelledWord
       pure never
 
-base58RestoreWidget :: MonadFrontBase t m => m ()
-base58RestoreWidget = mdo
+base58RestorePage :: MonadFrontBase t m => m ()
+base58RestorePage = wrapperSimple True $ mdo
+  h4 $ localizedText $ SPSBase58Title
   encodedEncryptedMnemonicErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing))
-  encodedEncryptedMnemonicD <- validatedTextFieldSetVal SPSEnterMnemonic "" encodedEncryptedMnemonicErrsD inputE
+  encodedEncryptedMnemonicD <- validatedTextFieldSetValNoLabel "" encodedEncryptedMnemonicErrsD inputE
   inputE <- pasteBtnsWidget
   submitE <- widgetHoldDynE $ ffor encodedEncryptedMnemonicD $ \v -> if v == ""
     then pure never
