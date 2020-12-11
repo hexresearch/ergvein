@@ -18,6 +18,7 @@ import System.IO
 import System.X509 (getSystemCertificateStore)
 import Web.Browser
 
+import qualified Data.ByteString as BS
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Turtle
@@ -25,9 +26,34 @@ import qualified Turtle
 instance PlatformNatives where
   resUrl = id
 
+  storeBS fname bs atomicMode = do
+    path <- getStoreDir
+    logWrite $ "Writing ByteString to file " <> path <> "/" <> fname
+    liftIO $ do
+      let fpath = T.unpack $ path <> "/" <> fname
+      createDirectoryIfMissing True $ takeDirectory fpath
+      case atomicMode of
+        True -> do
+          tmpDir <- T.pack <$> getTemporaryDirectory
+          let tmpFilePath = T.unpack $ tmpDir <> "/ergvein/" <> fname
+          createDirectoryIfMissing True $ takeDirectory tmpFilePath
+          BS.writeFile tmpFilePath bs
+          Turtle.mv (Turtle.fromText $ T.pack tmpFilePath) (Turtle.fromText $ T.pack fpath)
+        False -> BS.writeFile fpath bs
+
+  retrieveBS fname = do
+    path <- getStoreDir
+    logWrite $ "Reading ByteString from file " <> path <> "/" <> fname
+    liftIO $ do
+      let fpath = T.unpack $ path <> "/" <> fname
+      ex <- doesFileExist fpath
+      if ex
+        then fmap Right $ BS.readFile fpath
+        else pure $ Left $ NAFileDoesNotExist fname
+
   storeValue k v atomicMode = do
     path <- getStoreDir
-    logWrite $ "Writing file " <> path <> "/" <> k
+    logWrite $ "Writing JSON to file " <> path <> "/" <> k
     liftIO $ do
       let fpath = T.unpack $ path <> "/" <> k
       createDirectoryIfMissing True $ takeDirectory fpath
@@ -42,7 +68,7 @@ instance PlatformNatives where
 
   retrieveValue k a0 = do
     path <- getStoreDir
-    logWrite $ "Reading file " <> path <> "/" <> k
+    logWrite $ "Reading JSON from file " <> path <> "/" <> k
     liftIO $ do
       let fpath = T.unpack $ path <> "/" <> k
       ex <- doesFileExist fpath

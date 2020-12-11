@@ -4,7 +4,7 @@ module Ergvein.Wallet.Transaction.Get(
 
 import Control.Monad.Reader
 import Data.Map.Strict as Map
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, fromJust)
 import Data.Time
 import Data.Word
 import Network.Haskoin.Address
@@ -74,9 +74,9 @@ getAndFilterBlocks cur heightD btcAddrsD timeZone txs store settings = do
   allBtcAddrs <- sampleDyn btcAddrsD
   hght <- sampleDyn heightD
   liftIO $ flip runReaderT store $ do
-    let txHashes = fmap (HK.txHash . getBtcTx) txs
+    let txHashes = fmap (HK.txHash . getBtcTx . fromJust . toTxBtc) txs
         txsRefList = fmap ((calcRefill cur) (fmap getBtcAddr allBtcAddrs)) txs
-        parentTxsIds = (fmap . fmap) (hkTxHashToEgv . HK.outPointHash . HK.prevOutput) (fmap (HK.txIn . getBtcTx) txs)
+        parentTxsIds = (fmap . fmap) (hkTxHashToEgv . HK.outPointHash . HK.prevOutput) (fmap (HK.txIn . getBtcTx . fromJust . toTxBtc) txs)
     blh <- traverse getBtcBlockHashByTxHash txHashes
     bl <- traverse (maybe (pure Nothing) getBlockHeaderByHash) blh
     txStore <- getTxStorage cur
@@ -88,7 +88,7 @@ getAndFilterBlocks cur heightD btcAddrsD timeZone txs store settings = do
           storedTxs = Map.elems txStore'
           getTxConfirmations mTx = case mTx of
             Nothing -> 1 -- If tx is not found in our storage we prefer to treat it as confirmed
-            Just tx -> maybe 0 (countConfirmations hght) (fmap etxMetaHeight $ getBtcTxMeta tx)
+            Just tx -> maybe 0 (countConfirmations hght) (fmap etxMetaHeight $ getBtcTxMeta $ fromJust . toTxBtc $ tx)
           txParentsConfirmations = (fmap . fmap) getTxConfirmations parentTxs
           hasUnconfirmedParents = fmap (L.any (== 0)) txParentsConfirmations -- This might be inefficient, better to calculate this only for unconfirmed txs
       outsStatuses <- traverse (getOutsStatuses storedTxs allBtcAddrs) txs
@@ -103,8 +103,8 @@ filterTx cur _ pubS = case cur of
 
 calcRefill :: Foldable t => Currency -> t Address -> EgvTx -> Money
 calcRefill cur ac tx = case tx of
-    BtcTx btx _ -> Money cur $ sum $ fmap (HK.outValue . snd) $ L.filter (either (const False) (flip elem ac) . fst) $ fmap (\txo -> (scriptToAddressBS . HK.scriptOutput $ txo,txo)) $ HK.txOut btx
-    ErgTx _ _ -> Money cur 0
+  TxBtc (BtcTx btx _) -> Money cur $ sum $ fmap (HK.outValue . snd) $ L.filter (either (const False) (flip elem ac) . fst) $ fmap (\txo -> (scriptToAddressBS . HK.scriptOutput $ txo,txo)) $ HK.txOut btx
+  TxErg (ErgTx _ _) -> Money cur 0
 
 calculateOutputStatus :: (Bool, Bool) -> TransOutputType
 calculateOutputStatus (isSpent, isOurs) = case (isSpent, isOurs) of
@@ -120,8 +120,8 @@ getOutsStatuses storedTxs storedAddrs tx = do
   let outsStatuses = calculateOutputStatus <$> L.zip spentCheckResults isOursOutCheckResults
   pure outsStatuses
   where
-    storedTxs' = getBtcTx <$> storedTxs
-    tx' = getBtcTx tx
+    storedTxs' = getBtcTx . fromJust . toTxBtc <$> storedTxs
+    tx' = getBtcTx . fromJust . toTxBtc $ tx
     txHash = HK.txHash tx'
     outsToCheck = HK.txOut tx'
     outsCount = L.length outsToCheck

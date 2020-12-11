@@ -164,7 +164,7 @@ checkAddrTx' vec tx = do
     b <- checkAddrTx (egvXPubKeyToEgvAddress . scanBox'key $ kb) tx
     st <- liftIO $ systemToUTCTime <$> getSystemTime
     let meta = (Just (EgvTxMeta Nothing Nothing st))
-    pure $ if b then Just (kb, M.singleton th (BtcTx tx meta)) else Nothing
+    pure $ if b then Just (kb, M.singleton th (TxBtc $ BtcTx tx meta)) else Nothing
   pure $ V.mapMaybe id vec'
   where
     th = hkTxHashToEgv $ HT.txHash tx

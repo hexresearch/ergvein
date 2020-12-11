@@ -50,5 +50,5 @@ mainpageDispatcher = void $ workflow testnetDisclaimer
       pure ((), never)
 #else
 mainpageDispatcher :: MonadFrontBase t m => m ()
-mainpageDispatcher = void $ retractStack initialPage `liftAuth` retractStack startPage
+mainpageDispatcher = void $ retractStack (initialPage True) `liftAuth` retractStack startPage
 #endif
