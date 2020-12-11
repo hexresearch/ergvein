@@ -63,6 +63,7 @@ data TxRawInfo = TxRawInfo {
   , txOutsStatuses          :: [TransOutputType]
   , txConflTxs              :: [TxId]
   , txReplTxs               :: [TxId]
+  , txPossReplTxs           :: (Bool, [TxId])
 } deriving (Show)
 
 newtype TxTime = TxTime (Maybe ZonedTime) deriving (Show)
@@ -85,20 +86,21 @@ data TransactionView = TransactionView {
   , txInOut          :: TransType
   , txInfoView       :: TransactionViewInfo
   , txStatus         :: TransStatus
-  , txConflictingTxs :: [TxId]
 } deriving (Show)
 
 data TransactionViewInfo = TransactionViewInfo {
-    txId            :: Text
-  , txLabel         :: Maybe Text
-  , txUrl           :: Text
-  , txFee           :: Maybe Money
-  , txRbfEnabled    :: Bool
-  , txReplacedTxs   :: [TxId]
-  , txConfirmations :: Word64
-  , txBlock         :: Maybe (Text, Text)
-  , txOutputs       :: [(Maybe Text, Money, TransOutputType, Bool)]
-  , txInputs        :: [(Maybe Text, Money)]
+    txId                  :: Text
+  , txLabel               :: Maybe Text
+  , txUrl                 :: Text
+  , txFee                 :: Maybe Money
+  , txRbfEnabled          :: Bool
+  , txConflictingTxs      :: [TxId]
+  , txReplacedTxs         :: [TxId]
+  , txPossiblyReplacedTxs :: (Bool, [TxId])
+  , txConfirmations       :: Word64
+  , txBlock               :: Maybe (Text, Text)
+  , txOutputs             :: [(Maybe Text, Money, TransOutputType, Bool)]
+  , txInputs              :: [(Maybe Text, Money)]
 } deriving (Show)
 
 checkAddrInOut :: (HasTxStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m (Maybe TransType)
@@ -139,20 +141,21 @@ prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = TransactionVi
       else if (bHeight == 0)
         then TransUncofirmed
       else TransConfirmed
-  , txConflictingTxs = txConflTxs
   }
   where
     txInf = TransactionViewInfo {
-        txId            = txHex
-      , txLabel         = Nothing
-      , txUrl           = blUrl <> "/tx/" <> txHex
-      , txFee           = txFeeCalc
-      , txRbfEnabled    = markedReplaceable btx
-      , txReplacedTxs   = txReplTxs
-      , txConfirmations = bHeight
-      , txBlock         = txBlockLink
-      , txOutputs       = txOuts
-      , txInputs        = txInsOuts
+        txId                  = txHex
+      , txLabel               = Nothing
+      , txUrl                 = blUrl <> "/tx/" <> txHex
+      , txFee                 = txFeeCalc
+      , txRbfEnabled          = markedReplaceable btx
+      , txConflictingTxs      = txConflTxs
+      , txReplacedTxs         = txReplTxs
+      , txPossiblyReplacedTxs = txPossReplTxs
+      , txConfirmations       = bHeight
+      , txBlock               = txBlockLink
+      , txOutputs             = txOuts
+      , txInputs              = txInsOuts
     }
     btx = getBtcTx txr
     blHght = fromMaybe 0 $ maybe (Just 0) etxMetaHeight $ getBtcTxMeta txr

@@ -13,6 +13,7 @@ module Ergvein.Wallet.Transaction.Util(
   , isDirectChildTxOf
   , getChildTxs
   , getReplacedTxs
+  , getPossiblyReplacedTxs
   , getOutputByOutPoint
   , getOutputsByOutPoints
   , getSpentOutputs
@@ -132,12 +133,15 @@ filterTxsForAddress addr txs = fmap catMaybes $ flip traverse txs $ \tx -> do
   b <- checkAddrTx addr tx
   pure $ if b then Just tx else Nothing
 
--- | Gets a list of groups of conflicting txs. Txs in the same group have at least one common input.
-getConflictingTxs :: [EgvTx] -> [[TxId]]
-getConflictingTxs txs = getConflicts <$> btcTxs
+-- | Gets a list of groups of conflicting txs. Txs in the same list have at least one common input.
+getConflictingTxs :: [(Bool, [TxId])] -> [EgvTx] -> [[TxId]]
+getConflictingTxs possiblyReplacedTxs txs = L.zipWith removePossiblyReplacedTxs possiblyReplacedTxs (getConflicts <$> btcTxs)
   where
     btcTxs = getBtcTx <$> txs
     getTxHash = hkTxHashToEgv . HK.txHash
+
+    removePossiblyReplacedTxs :: (Bool, [TxId]) -> [TxId] -> [TxId]
+    removePossiblyReplacedTxs (_, prTxs) cTxs = L.filter (`L.notElem` prTxs) cTxs
 
     getConflicts :: HK.Tx -> [TxId]
     getConflicts tx = getTxHash <$> (L.filter (haveCommonInputs tx) (L.delete tx btcTxs))
@@ -163,7 +167,7 @@ getChildTxs tx = do
       grandChildTxs <- L.concat <$> traverse getChildTxs childTxs
       pure $ childTxs ++ grandChildTxs
 
--- | Gets a list of ids of replaced transaction for every transaction in provided list.
+-- | Gets a list of ids of replaced transactions for every transaction in provided list.
 getReplacedTxs :: M.Map TxId (S.Set TxId) -> [EgvTx] -> [[TxId]]
 getReplacedTxs replacedTxs txs = getReplaced replacedTxs <$> txs
   where
@@ -171,6 +175,19 @@ getReplacedTxs replacedTxs txs = getReplaced replacedTxs <$> txs
     getReplaced rTxs tx = case M.lookup (egvTxId tx) rTxs of
       Nothing -> []
       Just txSet -> S.toList txSet
+
+-- | Gets a list of ids of possibly replaced transactions for every transaction in provided list.
+getPossiblyReplacedTxs :: M.Map TxId (S.Set TxId) -> [EgvTx] -> [(Bool, [TxId])]
+getPossiblyReplacedTxs possiblyReplacedTxs txs = getPossiblyReplaced possiblyReplacedTxs <$> txs
+  where
+    getPossiblyReplaced :: M.Map TxId (S.Set TxId) -> EgvTx -> (Bool, [TxId])
+    getPossiblyReplaced rTxs tx = M.foldrWithKey' (helper $ egvTxId tx) (False, []) rTxs
+
+    helper :: TxId -> TxId -> S.Set TxId -> (Bool, [TxId]) -> (Bool, [TxId])
+    helper txId possiblyReplacingTxId possiblyReplacedTxIds acc
+      | txId == possiblyReplacingTxId = (True, S.toList possiblyReplacedTxIds)
+      | S.member txId possiblyReplacedTxIds = (False, possiblyReplacingTxId : (S.toList $ S.delete txId possiblyReplacedTxIds))
+      | otherwise = acc
 
 getOutputByOutPoint :: (HasTxStorage m, PlatformNatives) => HK.OutPoint -> m (Maybe HK.TxOut)
 getOutputByOutPoint HK.OutPoint{..} = do

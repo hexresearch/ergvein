@@ -5,7 +5,9 @@ module Ergvein.Wallet.Monad.Storage
   , HasTxStorage(..)
   , addTxToPubStorage
   , addTxMapToPubStorage
-  , removeTxsAndUtxosFromPubStorage
+  , removeRbfTxsFromStorage1
+  , removeRbfTxsFromStorage2
+  , RemoveRbfTxsInfo(..)
   , setLabelToExtPubKey
   , setFlagToExtPubKey
   , updateBtcUtxoSet
@@ -24,6 +26,8 @@ module Ergvein.Wallet.Monad.Storage
   , setScannedHeightE
   , getScannedHeightD
   , getScannedHeight
+  , getConfirmedTxs
+  , getUnconfirmedTxs
   ) where
 
 import Control.Concurrent.MVar
@@ -33,7 +37,7 @@ import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.Functor (void)
 import Data.Map (Map)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust, isNothing)
 import Data.Set (Set)
 import Data.Text (Text)
 import Network.Haskoin.Block (Timestamp)
@@ -113,7 +117,7 @@ setFlagToExtPubKey caller reqE = void . modifyPubStorage clr $ ffor reqE $ \(cur
 insertTxsUtxoInPubKeystore :: MonadStorage t m
   => Text -> Currency
   -> Event t (V.Vector (ScanKeyBox, Map TxId EgvTx), BtcUtxoUpdate)
-  -> m (Event  t ())
+  -> m (Event t ())
 insertTxsUtxoInPubKeystore caller cur reqE = modifyPubStorage clr $ ffor reqE $ \(vec, (o,i)) ps ->
   if (V.null vec && M.null o && null i) then Nothing else let
     txmap = M.unions $ V.toList $ snd $ V.unzip vec
@@ -129,43 +133,99 @@ insertTxsUtxoInPubKeystore caller cur reqE = modifyPubStorage clr $ ffor reqE $ 
     in V.foldl' go (Just ps2) vec
   where clr = caller <> ":" <> "insertTxsUtxoInPubKeystore"
 
-removeTxsAndUtxosFromPubStorage :: MonadStorage t m => Text -> Event t (Currency, (TxId, [TxId])) -> m (Event t ())
-removeTxsAndUtxosFromPubStorage caller txIdsE = modifyPubStorage clr $ ffor txIdsE $ \(cur, (replacingTxId, replacedTxIds)) ps ->
-  if L.null replacedTxIds
+-- | Removes RBF transactions from storage and updates transaction replacements info.
+-- Note: that this process has two stages. This is the first stage.
+-- At first stage we remove those RBF transactions for which
+-- a transaction with the highest fee (a.k.a. replacing transaction) was found succesfully.
+-- This stage is performed when we receive tx form mempool.
+-- The second stage is performed when one of txs stored in currencyPubStorage'possiblyReplacedTxs is confirmed.
+-- Information about which transactions were repaced is stored in currencyPubStorage'replacedTxs.
+-- Since we are not always able to identify the transactions with the highest fee in a sequence of RBF transactions,
+-- we also keep information about which of these transactions should be deleted when one of them is confirmed.
+-- This information is stored in currencyPubStorage'possiblyReplacedTxs.
+removeRbfTxsFromStorage1 :: MonadStorage t m => Text -> Event t (Currency, TxId, Set TxId, Set TxId) -> m (Event t ())
+removeRbfTxsFromStorage1 caller txsToReplaceE = modifyPubStorage clr $ ffor txsToReplaceE $ \(cur, replacingTxId, replacedTxIds, possiblyReplacedTxIds) ps ->
+  let
+    ps1 = if L.null replacedTxIds
+      then Nothing
+      else Just $ let
+        -- Removing txs from currencyPubStorage'transactions
+        ps11 = ps & pubStorage'currencyPubStorages
+          . at cur . _Just
+          . currencyPubStorage'transactions %~ (flip M.withoutKeys $ replacedTxIds)
+        -- Removing utxos from currencyPubStorage'utxos
+        ps12 = modifyCurrStorage cur (\cps -> cps & currencyPubStorage'utxos %~ (M.filterWithKey (filterOutPoints replacedTxIds))) ps11
+        -- Removing txids from EgvPubKeyBoxes form currencyPubStorage'pubKeystore
+        ps13 = modifyCurrStorage cur (\cps -> cps & currencyPubStorage'pubKeystore %~ removeTxIdsFromEgvKeyBoxes replacedTxIds) ps12
+        -- Updating currencyPubStorage'replacedTxs
+        ps14 = modifyCurrStorage cur (\cps -> cps & currencyPubStorage'replacedTxs %~ updateReplacedTxsStorage replacingTxId replacedTxIds) ps13
+        in ps14
+    ps2 = if L.null possiblyReplacedTxIds
+      then ps1
+      else Just $ let
+        ps1' = fromMaybe ps ps1
+        in
+        -- Updating currencyPubStorage'possiblyReplacedTxs
+        modifyCurrStorage cur (\cps -> cps & currencyPubStorage'possiblyReplacedTxs %~ updateReplacedTxsStorage replacingTxId possiblyReplacedTxIds) ps1'
+  in ps2
+  where
+    clr = caller <> ":" <> "removeRbfTxsFromStorage1"
+
+data RemoveRbfTxsInfo = RemoveRbfTxsInfo {
+    removeRbfTxsInfo'keyToRemoveFromPossiblyReplacedTxs :: !TxId -- ^ Map key that should be removed from currencyPubStorage'possiblyReplacedTxs.
+  , removeRbfTxsInfo'replacingTx :: !TxId -- ^ Tx that replaces txs in removeRbfTxsInfo'replacedTxs.
+  , removeRbfTxsInfo'replacedTxs :: !(Set TxId) -- ^ Set of txs that was replaced and should be removed from storage.
+  } deriving (Eq, Show, Ord)
+
+-- | Removes RBF transactions from storage and updates transaction replacements info.
+-- Note: that this process has two stages. This is the second stage.
+-- At second stage we remove those RBF transactions for which transaction with the highest fee (a.k.a. replacing transaction) wasn't found
+-- before one of them was confirmed.
+-- The first stage is performed when we receive tx form mempool.
+removeRbfTxsFromStorage2 :: MonadStorage t m => Text -> Event t (Currency, Set (RemoveRbfTxsInfo)) -> m (Event t ())
+removeRbfTxsFromStorage2 caller txsToReplaceE = modifyPubStorage clr $ ffor txsToReplaceE $ \(cur, removeRbfTxsInfoSet) ps ->
+  if S.null removeRbfTxsInfoSet
     then Nothing
     else Just $ let
-      txIdsSet = S.fromList replacedTxIds
+      keysToRemoveFromPossiblyReplacedTxs = S.map removeRbfTxsInfo'keyToRemoveFromPossiblyReplacedTxs removeRbfTxsInfoSet
+      txIdsToRemove = S.unions $ S.map removeRbfTxsInfo'replacedTxs removeRbfTxsInfoSet
+      replacedTxsMap = M.fromList $ (\(RemoveRbfTxsInfo a b c) -> (b, c)) <$> (S.toList removeRbfTxsInfoSet)
       -- Removing txs from currencyPubStorage'transactions
-      ps1 = ps & pubStorage'currencyPubStorages
+      ps11 = ps & pubStorage'currencyPubStorages
         . at cur . _Just
-        . currencyPubStorage'transactions %~ (flip M.withoutKeys $ txIdsSet)
+        . currencyPubStorage'transactions %~ (flip M.withoutKeys $ txIdsToRemove)
       -- Removing utxos from currencyPubStorage'utxos
-      ps2 = modifyCurrStorage cur (\cps -> cps & currencyPubStorage'utxos %~ (M.filterWithKey (filterOutPoints txIdsSet))) ps1
+      ps12 = modifyCurrStorage cur (\cps -> cps & currencyPubStorage'utxos %~ (M.filterWithKey (filterOutPoints txIdsToRemove))) ps11
       -- Removing txids from EgvPubKeyBoxes form currencyPubStorage'pubKeystore
-      ps3 = modifyCurrStorage cur (\cps -> cps & currencyPubStorage'pubKeystore %~ removeTxIdsFromEgvKeyBoxes txIdsSet) ps2
+      ps13 = modifyCurrStorage cur (\cps -> cps & currencyPubStorage'pubKeystore %~ removeTxIdsFromEgvKeyBoxes txIdsToRemove) ps12
       -- Updating currencyPubStorage'replacedTxs
-      ps4 = modifyCurrStorage cur (\cps -> cps & currencyPubStorage'replacedTxs %~ updateReplacedTxsStorage replacingTxId replacedTxIds) ps3
-      in ps4
+      ps14 = modifyCurrStorage cur (\cps -> cps & currencyPubStorage'replacedTxs %~ (M.union replacedTxsMap)) ps13
+      -- Removing invalid tx ids from currencyPubStorage'possiblyReplacedTxs
+      ps15 = modifyCurrStorage cur (\cps -> cps & currencyPubStorage'possiblyReplacedTxs %~ (flip M.withoutKeys $ keysToRemoveFromPossiblyReplacedTxs)) ps14
+      in ps15
   where
-    clr = caller <> ":" <> "removeTxsAndUtxosFromPubStorage"
-      
-    filterOutPoints :: Set TxId -> HT.OutPoint -> UtxoMeta -> Bool
-    filterOutPoints txIdsSet outPoint _ = not $ S.member (hkTxHashToEgv $ HT.outPointHash outPoint) txIdsSet
+    clr = caller <> ":" <> "removeRbfTxsFromStorage2"
 
-    removeTxIdsFromEgvKeyBoxes :: Set TxId -> PubKeystore -> PubKeystore
-    removeTxIdsFromEgvKeyBoxes txIdsSet PubKeystore{..} =
-      let updatedPubKeystore'external = fmap (removeTxIdsFromKeybox txIdsSet) pubKeystore'external
-          updatedPubKeystore'internal = fmap (removeTxIdsFromKeybox txIdsSet) pubKeystore'internal
-          removeTxIdsFromKeybox txIds (EgvPubKeyBox k txs m) = EgvPubKeyBox k (S.difference txs txIdsSet) m
-      in PubKeystore pubKeystore'master updatedPubKeystore'external updatedPubKeystore'internal
+filterOutPoints :: Set TxId -> HT.OutPoint -> UtxoMeta -> Bool
+filterOutPoints txIdSet outPoint _ = not $ S.member (hkTxHashToEgv $ HT.outPointHash outPoint) txIdSet
 
-    updateReplacedTxsStorage :: TxId -> [TxId] -> Map TxId (Set TxId) -> Map TxId (Set TxId)
-    updateReplacedTxsStorage replacingTxId replacedTxIds replacedTxsMap = replacedTxsMap''
-      where
-        replacedTxsMap' = M.filterWithKey (\k _ -> L.elem k replacedTxIds) replacedTxsMap
-        txIdsReplacedByFilteredTxIds = (flip (M.findWithDefault S.empty) $ replacedTxsMap) <$> replacedTxIds
-        updatedReplacedTxIds = S.unions $ (S.fromList replacedTxIds) : txIdsReplacedByFilteredTxIds
-        replacedTxsMap'' = M.insertWith S.union replacingTxId updatedReplacedTxIds replacedTxsMap'
+removeTxIdsFromEgvKeyBoxes :: Set TxId -> PubKeystore -> PubKeystore
+removeTxIdsFromEgvKeyBoxes txIdsSet PubKeystore{..} =
+  let updatedPubKeystore'external = fmap (removeTxIdsFromKeybox txIdsSet) pubKeystore'external
+      updatedPubKeystore'internal = fmap (removeTxIdsFromKeybox txIdsSet) pubKeystore'internal
+      removeTxIdsFromKeybox txIds (EgvPubKeyBox k txs m) = EgvPubKeyBox k (S.difference txs txIdsSet) m
+  in PubKeystore pubKeystore'master updatedPubKeystore'external updatedPubKeystore'internal
+
+updateReplacedTxsStorage :: TxId -> Set TxId -> Map TxId (Set TxId) -> Map TxId (Set TxId)
+updateReplacedTxsStorage replacingTxId replacedTxIds replacedTxsMap = replacedTxsMap''
+  where
+    -- Remove all keys that are members of replacedTxIds
+    replacedTxsMap' = M.filterWithKey (\k _ -> not $ k `S.member` replacedTxIds) replacedTxsMap
+    -- Collect values of removed keys into one set
+    txIdsReplacedByFilteredTxIds = S.unions $ S.map (flip (M.findWithDefault S.empty) $ replacedTxsMap) replacedTxIds
+    -- Combine resulting set with replacedTxIds
+    updatedReplacedTxIds = S.union replacedTxIds txIdsReplacedByFilteredTxIds
+    replacedTxsMap'' = M.insertWith S.union replacingTxId updatedReplacedTxIds replacedTxsMap'
 
 txListToMap :: [EgvTx] -> Map TxId EgvTx
 txListToMap txList = M.fromList $ (\tx -> (egvTxId tx, tx)) <$> txList
@@ -297,3 +357,13 @@ getBlockHeaderByHash bh = do
   ps <- askPubStorage
   pure $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "getBtcBlockHashByTxHash: not exsisting store!")
     . currencyPubStorage'headers . at bh
+
+getConfirmedTxs :: HasTxStorage m => m (Map TxId EgvTx)
+getConfirmedTxs = do
+  txs <- askTxStorage
+  pure $ M.filter (isJust . (etxMetaHeight <=< getBtcTxMeta)) txs
+
+getUnconfirmedTxs :: HasTxStorage m => m (Map TxId EgvTx)
+getUnconfirmedTxs = do
+  txs <- askTxStorage
+  pure $ M.filter (isNothing . (etxMetaHeight <=< getBtcTxMeta)) txs

@@ -99,16 +99,17 @@ createPubStorage isRestored mpath rootPrvKey cs startingHeight = PubStorage root
         mkStore c = let
           dpath = extendDerivPath c <$> mpath
           in CurrencyPubStorage {
-            _currencyPubStorage'pubKeystore   = (createPubKeystore $ deriveCurrencyMasterPubKey dpath rootPrvKey c)
-          , _currencyPubStorage'path          = dpath
-          , _currencyPubStorage'transactions  = M.empty
-          , _currencyPubStorage'utxos         = M.empty
-          , _currencyPubStorage'headers       = M.empty
-          , _currencyPubStorage'outgoing      = S.empty
-          , _currencyPubStorage'headerSeq     = btcCheckpoints
-          , _currencyPubStorage'scannedHeight = startingHeight
-          , _currencyPubStorage'chainHeight   = 0
-          , _currencyPubStorage'replacedTxs   = M.empty
+            _currencyPubStorage'pubKeystore         = (createPubKeystore $ deriveCurrencyMasterPubKey dpath rootPrvKey c)
+          , _currencyPubStorage'path                = dpath
+          , _currencyPubStorage'transactions        = M.empty
+          , _currencyPubStorage'utxos               = M.empty
+          , _currencyPubStorage'headers             = M.empty
+          , _currencyPubStorage'outgoing            = S.empty
+          , _currencyPubStorage'headerSeq           = btcCheckpoints
+          , _currencyPubStorage'scannedHeight       = startingHeight
+          , _currencyPubStorage'chainHeight         = 0
+          , _currencyPubStorage'replacedTxs         = M.empty
+          , _currencyPubStorage'possiblyReplacedTxs = M.empty
           }
         pubStorages = M.fromList [(currency, mkStore currency) | currency <- cs]
 

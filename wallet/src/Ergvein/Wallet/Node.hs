@@ -42,6 +42,7 @@ import Ergvein.Wallet.Util
 import qualified Data.Dependent.Map as DM
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 import qualified Data.Vector as V
 import qualified Network.Haskoin.Transaction as HT
 
@@ -158,6 +159,7 @@ btcMempoolTxInserter txE = do
       checkAddrTxResult <- checkAddrTx' keys tx
       utxoUpdates <- getUtxoUpdates Nothing keys tx
       pure (checkAddrTxResult, utxoUpdates)
+  -- TODO: should matchedTxsE and txInsertedE be fired in sequence?
   let matchedTxsE = helper <$> valsE
       txInsertedE = fmapMaybe txInserted valsE
   insertedE <- insertTxsUtxoInPubKeystore "btcMempoolTxInserter" BTC matchedTxsE
@@ -170,27 +172,33 @@ btcMempoolTxInserter txE = do
     txInserted :: ((V.Vector ScanKeyBox, EgvTx), BtcUtxoUpdate) -> Maybe EgvTx
     txInserted ((vec, tx), (utxos, outPoints)) = if V.null vec && M.null utxos && null outPoints then Nothing else Just tx
 
--- | Finds all txs that should be replaced by given tx and removes them and their utxos from storage.
-removeTxsReplacedByFee :: MonadStorage t m
-  => Text -> Currency
-  -> Event t EgvTx
-  -> m (Event t ())
-removeTxsReplacedByFee caller cur txE = do
+-- | Finds all txs that should be replaced by given tx and removes them from storage.
+-- Also stores information about transaction replacements in the storage.
+-- Stage 2. See removeRbfTxsFromStorage2.
+removeTxsReplacedByFee :: MonadStorage t m =>
+  Text ->
+  Currency ->
+  Event t EgvTx ->
+  m (Event t ())
+removeTxsReplacedByFee caller cur replacingTxE = do
   pubStorageD <- getPubStorageD
-  txsToRemoveE <- performFork $ ffor (current pubStorageD `attach` txE) $ \(ps, tx) -> do
+  replacedTxsE <- performFork $ ffor (current pubStorageD `attach` replacingTxE) $ \(ps, replacingTx) -> do
     let btcps = ps ^. pubStorage'currencyPubStorages . at BTC . non (error $ "removeTxsReplacedByFee: BTC storage does not exist!")
-        keys = getPublicKeys $ btcps ^. currencyPubStorage'pubKeystore
         txStore = btcps ^. currencyPubStorage'transactions
     liftIO $ flip runReaderT txStore $ do
-      txStore' <- ask
-      let btcTxs = getBtcTx <$> txStore'
-          txId = egvTxId tx
-          otherTxs = M.delete txId btcTxs
-      replacedTxs <- filterM ((fmap (== Just True)) . replacesByFee (getBtcTx tx)) (M.elems otherTxs)
+      unconfirmedTxs <- getUnconfirmedTxs
+      let unconfirmedBtcTxs = getBtcTx <$> unconfirmedTxs
+          replacingTxId = egvTxId replacingTx
+          otherUnconfirmedTxs = M.elems $ M.delete replacingTxId unconfirmedBtcTxs
+          replacingBtcTx = getBtcTx replacingTx
+      replacedTxs <- filterM ((fmap (== Just True)) . replacesByFee replacingBtcTx) otherUnconfirmedTxs
       replacedTxsChilds <- L.concat <$> traverse getChildTxs replacedTxs
-      let txsToRemove = replacedTxs ++ replacedTxsChilds
-      pure (txId, (hkTxHashToEgv . HT.txHash) <$> txsToRemove)
-  removedE <- removeTxsAndUtxosFromPubStorage "removeTxsReplacedByFee" ((cur,) <$> txsToRemoveE)
+      possiblyReplacedTxs <- filterM ((fmap (== Nothing)) . replacesByFee replacingBtcTx) otherUnconfirmedTxs
+      possiblyReplacedTxsChilds <- L.concat <$> traverse getChildTxs possiblyReplacedTxs
+      let replacedTxIds = S.fromList $ (hkTxHashToEgv . HT.txHash) <$> (replacedTxs ++ replacedTxsChilds)
+          possiblyReplacedTxIds = S.fromList $ (hkTxHashToEgv . HT.txHash) <$> (possiblyReplacedTxs ++ possiblyReplacedTxsChilds)
+      pure (cur, replacingTxId, replacedTxIds, possiblyReplacedTxIds)
+  removedE <- removeRbfTxsFromStorage1 "removeTxsReplacedByFee" replacedTxsE
   pure removedE
 
 -- | Checks tx with checkAddrTx against provided keys and returns that tx in EgvTx format with matched keys vector.

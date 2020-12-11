@@ -95,7 +95,7 @@ historyTableRowD _ trD = fmap switchDyn $ widgetHoldDyn $ ffor trD $ \tr@Transac
         then "partially-confirmed"
       else "confirmed"
     confsText tr =
-      if (confs tr)>= confirmationGap
+      if (confs tr)  >= confirmationGap
         then spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" $ blank
       else if unconfirmedParents tr
         then do
@@ -110,10 +110,16 @@ showTxStatus tr@TransactionView{..} = case txStatus of
   TransUncofirmedParents -> showStatus HistoryUnconfirmedParents
   where
     rbfEnabled = txRbfEnabled txInfoView
-    conflictingTxs = not $ L.null txConflictingTxs
+    conflictingTxs = not $ L.null $ txConflictingTxs txInfoView
+    txPossiblyReplacedTxsWrapper = txPossiblyReplacedTxs txInfoView
+    possibleReplacedTxs = not $ L.null $ snd txPossiblyReplacedTxsWrapper
+    possiblyReplacing = fst txPossiblyReplacedTxsWrapper
 
     showStatus :: (MonadFront t m, LocalizedPrint l) => l -> m ()
     showStatus status = do
       localizedText status
       when rbfEnabled (text " " >> badge "badge-info-2" ("rbf" :: Text)) -- text " " is needed for proper word wrapping
       when conflictingTxs (text " " >> badge "badge-danger" ("double spend" :: Text))
+      when possibleReplacedTxs (text " " >> badge "badge-warning" (if possiblyReplacing
+        then "possibly replacing" :: Text
+        else "possibly replaced" :: Text))

@@ -93,16 +93,26 @@ instance FromJSON EncryptedPrvStorage where
       Just iv' -> pure $ EncryptedPrvStorage ciphertext salt iv'
 
 data CurrencyPubStorage = CurrencyPubStorage {
-    _currencyPubStorage'pubKeystore   :: !PubKeystore
-  , _currencyPubStorage'path          :: !(Maybe DerivPrefix)
-  , _currencyPubStorage'transactions  :: !(M.Map TxId EgvTx)
-  , _currencyPubStorage'utxos         :: !BtcUtxoSet              -- ^ TODO: Change to a generalized one, after we switch to DMaps
-  , _currencyPubStorage'headers       :: !(M.Map HB.BlockHash HB.BlockHeader)
-  , _currencyPubStorage'outgoing      :: !(S.Set TxId)
-  , _currencyPubStorage'headerSeq     :: !(Word32, V.Vector (HB.BlockHeight, HB.BlockHash))
-  , _currencyPubStorage'scannedHeight :: !BlockHeight
-  , _currencyPubStorage'chainHeight   :: !BlockHeight
-  , _currencyPubStorage'replacedTxs   :: !(M.Map TxId (S.Set TxId))
+    _currencyPubStorage'pubKeystore         :: !PubKeystore
+  , _currencyPubStorage'path                :: !(Maybe DerivPrefix)
+  , _currencyPubStorage'transactions        :: !(M.Map TxId EgvTx)
+  , _currencyPubStorage'utxos               :: !BtcUtxoSet              -- ^ TODO: Change to a generalized one, after we switch to DMaps
+  , _currencyPubStorage'headers             :: !(M.Map HB.BlockHash HB.BlockHeader)
+  , _currencyPubStorage'outgoing            :: !(S.Set TxId)
+  , _currencyPubStorage'headerSeq           :: !(Word32, V.Vector (HB.BlockHeight, HB.BlockHash))
+  , _currencyPubStorage'scannedHeight       :: !BlockHeight
+  , _currencyPubStorage'chainHeight         :: !BlockHeight
+  , _currencyPubStorage'replacedTxs         :: !(M.Map TxId (S.Set TxId))
+  -- ^ This field stores history of tx replacements by fee.
+  -- Map keys are replacing tx ids and values are sets of replaced tx ids.
+  , _currencyPubStorage'possiblyReplacedTxs :: !(M.Map TxId (S.Set TxId))
+  -- ^ This field stores sequences of unconfirmed RBF transactions,
+  -- for which we cannot determine the tx with highest fee (a.k.a. replacing transaction).
+  -- Map keys are the most recent transactions received by the wallet,
+  -- so we assume they have the highest fees and will replace others.
+  -- Map values does not contain tx that stored in key.
+  -- TODO: probably it is better to use Set (TxId, (S.Set TxId)) instead of
+  -- M.Map TxId (S.Set TxId) here.
   } deriving (Eq, Show, Read)
 
 makeLenses ''CurrencyPubStorage
