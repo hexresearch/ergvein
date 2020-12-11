@@ -84,7 +84,7 @@ serveMetrics = void $ worker "metrics-server" $ const $ do
       logInfoN $ "Metrics server is started at " <> pack cfgMetricsHost <> ":" <> showt cfgMetricsPort
       let sett = setPort cfgMetricsPort $ setHost (fromString cfgMetricsHost) defaultSettings
           pcfg = def { prometheusEndPoint = [] }
-      register ghcMetrics
+      _ <- register ghcMetrics
       liftIO $ runSettings sett $ prometheus pcfg noApp
 
 -- | App that serves 404 on any page
