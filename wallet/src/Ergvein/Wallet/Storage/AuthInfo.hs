@@ -17,6 +17,9 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Storage.Util
 
+import Ergvein.Wallet.Language
+import Ergvein.Wallet.Platform
+
 import qualified Data.Text as T
 
 initAuthInfo :: (MonadIO m, PlatformNatives, HasStoreDir m)
@@ -34,7 +37,9 @@ initAuthInfo wt mpath mnemonic curs login pass startingHeight isPass = do
   when (isAndroid && isPass) $ storeValue fname True True
   mstorage <- createStorage (wt == WalletRestored) mpath mnemonic (login, pass) startingHeight curs
   case mstorage of
-    Left err -> pure $ Left $ CreateStorageAlert err
+    Left err -> do
+      logWrite $ localizedShow English err
+      pure $ Left $ CreateStorageAlert err
     Right s -> case passwordToECIESPrvKey pass of
       Left _ -> pure $ Left GenerateECIESKeyAlert
       Right k -> pure $ Right AuthInfo {

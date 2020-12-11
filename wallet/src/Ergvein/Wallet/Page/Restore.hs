@@ -21,6 +21,7 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Page.Balances
+import Ergvein.Wallet.Page.Initial
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Status.Types
@@ -32,7 +33,11 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 
 restorePage :: forall t m . MonadFront t m =>  m ()
-restorePage = wrapperSimple True $ void $ workflow nodeConnection
+restorePage = wrapperSimple True $ do
+  void $ wipeRetract . (Nothing <$) =<< getPostBuild
+  retractE <- retractEvent
+  void $ nextWidget $ ffor retractE $ const $ Retractable (initialPage False) Nothing
+  void $ workflow nodeConnection
   where
     restoreProgressWidget :: BlockHeight -> BlockHeight -> BlockHeight -> m ()
     restoreProgressWidget f0' fh' hh' = h2 $ localizedText $ RPSProgress p

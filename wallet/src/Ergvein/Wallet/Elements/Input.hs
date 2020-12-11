@@ -9,6 +9,7 @@ module Ergvein.Wallet.Elements.Input(
   , textFieldAttrNoLabel
   , validatedTextField
   , validatedTextFieldSetVal
+  , validatedTextFieldSetValNoLabel
   , textFieldSetValValidated
   , textFieldValidated
   , passField
@@ -138,6 +139,22 @@ validatedTextFieldSetVal lbl v0 mErrsD setValE = do
     errsD = fmap (maybe [] id) mErrsD
     isInvalidD = fmap (maybe "" (const "is-invalid")) mErrsD
     inputField = divClassDyn isInvalidD $ fmap _inputElement_value $ labeledTextInput lbl M.empty $ def
+      & inputElementConfig_initialValue .~ v0
+      & inputElementConfig_setValue .~ setValE
+
+validatedTextFieldSetValNoLabel :: (MonadFrontBase t m, LocalizedPrint l1)
+  => Text -- ^ Initial value
+  -> Dynamic t (Maybe [l1]) -- ^ List of errors
+  -> Event t Text
+  -> m (Dynamic t Text)
+validatedTextFieldSetValNoLabel v0 mErrsD setValE = do
+  textInputValueD <- inputField
+  void $ divClass "form-field-errors" $ simpleList errsD displayError
+  pure textInputValueD
+  where
+    errsD = fmap (maybe [] id) mErrsD
+    isInvalidD = fmap (maybe "" (const "is-invalid")) mErrsD
+    inputField = divClassDyn isInvalidD $ fmap _inputElement_value $ textInput $ def
       & inputElementConfig_initialValue .~ v0
       & inputElementConfig_setValue .~ setValE
 
