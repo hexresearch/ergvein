@@ -28,19 +28,20 @@ data MyException = DbVersionMismatch
 instance Exception MyException
 
 openDb :: (MonadLogger m, MonadIO m) => Bool -> DBTag -> FilePath -> m DB
-openDb noDropDb dbtag dbDirectory = do
+openDb overwriteDbVerOnMismatch dbtag dbDirectory = do
   canonicalPathDirectory <- liftIO $ canonicalizePath dbDirectory
-  isDbDirExist <- liftIO $ doesDirectoryExist canonicalPathDirectory
-  liftIO $ unless isDbDirExist $ createDirectory canonicalPathDirectory
+  dbStatePresent <- liftIO $ doesDirectoryExist canonicalPathDirectory
+  liftIO $ unless dbStatePresent $ createDirectory canonicalPathDirectory
   levelDBContext <- liftIO $ do
     db <- open canonicalPathDirectory def {createIfMissing = True }
-    if noDropDb then do
+    if overwriteDbVerOnMismatch || not dbStatePresent then do
       put db def schemaVersionRecKey schemaVersion
       pure db
     else do
       dbSchemaVersion <- get db def schemaVersionRecKey
-      if dbSchemaVersion == Just schemaVersion then pure db
-        else throw DbVersionMismatch
+      if dbSchemaVersion == Just schemaVersion then
+        pure db
+      else throw DbVersionMismatch
   pure levelDBContext
   where
     (schemaVersionRecKey, schemaVersion) = case dbtag of
