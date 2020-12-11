@@ -22,12 +22,26 @@ library
     Ergvein.Types.Derive
     Ergvein.Types.Fees
     Ergvein.Types.Keys
+    Ergvein.Types.Keys.Box.Public
+    Ergvein.Types.Keys.Prim
+    Ergvein.Types.Keys.Store.Private
+    Ergvein.Types.Keys.Store.Public
     Ergvein.Types.Network
     Ergvein.Types.Orphanage
     Ergvein.Types.Restore
     Ergvein.Types.Storage
+    Ergvein.Types.Storage.Currency.Private
+    Ergvein.Types.Storage.Currency.Public
+    Ergvein.Types.Storage.Currency.Public.Btc
+    Ergvein.Types.Storage.Currency.Public.Ergo
+    Ergvein.Types.Storage.Private
+    Ergvein.Types.Storage.Public
+    Ergvein.Types.Storage.Wallet
     Ergvein.Types.Transaction
     Ergvein.Types.Utxo
+    Ergvein.Types.Utxo.Btc
+    Ergvein.Types.Utxo.Ergo
+    Ergvein.Types.Utxo.Status
   default-language:    Haskell2010
   build-depends:
       aeson
@@ -50,6 +64,7 @@ library
     , text
     , time
     , vector                    >= 0.12     && < 0.13
+    , safecopy                  >= 0.9      && < 0.10
   if flag(testnet)
     cpp-options: -DTESTNET
   default-extensions:
@@ -59,3 +74,5 @@ library
     OverloadedStrings
     RecordWildCards
     TemplateHaskell
+    ScopedTypeVariables
+    TypeFamilies

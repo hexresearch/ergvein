@@ -17,7 +17,9 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
+import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo
+import Ergvein.Types.Utxo.Btc
 import Ergvein.Types.Transaction (BlockHash, BlockHeight)
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
@@ -100,12 +102,12 @@ dbgUtxoPage :: MonadFront t m => m ()
 dbgUtxoPage = wrapper False "UTXO" (Just $ pure dbgUtxoPage) $ divClass "currency-content" $ do
   void . el "div" $ retract =<< outlineButton backTxt
   pubSD <- getPubStorageD
-  let utxoD = ffor pubSD $ \ps -> M.toList $ fromMaybe M.empty $ ps ^. pubStorage'currencyPubStorages . at BTC & fmap (view currencyPubStorage'utxos)
+  let utxoD = ffor pubSD $ \ps -> M.toList $ fromMaybe M.empty $ ps ^? pubStorage'currencyPubStorages . at BTC . _Just . currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'utxos
   void $ widgetHoldDyn $ ffor utxoD $ \utxo -> divClass "" $ do
-    void $ flip traverse utxo $ \(o, UtxoMeta{..}) -> do
+    void $ flip traverse utxo $ \(o, BtcUtxoMeta{..}) -> do
       el "div" $ text $ showt $ outPointHash o
-      el "div" $ text $ showt (utxoMeta'purpose, utxoMeta'index) <> " amount: " <> showt utxoMeta'amount <> " " <> showt utxoMeta'status
-      el "div" $ text $ showt utxoMeta'script
+      el "div" $ text $ showt (btcUtxo'purpose, btcUtxo'index) <> " amount: " <> showt btcUtxo'amount <> " " <> showt btcUtxo'status
+      el "div" $ text $ showt btcUtxo'script
       el "div" $ text $ "------------------------------------------"
 
 dbgPubInternalsPage :: MonadFront t m => m ()

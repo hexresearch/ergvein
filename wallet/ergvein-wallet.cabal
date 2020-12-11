@@ -213,6 +213,7 @@ library
         reflex-localize -any,
         reflex-localize-dom -any,
         safe -any,
+        safecopy  >= 0.9 && < 0.10,
         safe-exceptions -any,
         semialign -any,
         serialise >= 0.2 && < 0.3,

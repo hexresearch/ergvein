@@ -8,6 +8,8 @@ module Ergvein.Wallet.Storage.Util(
   , decryptBSWithAEAD
   , passwordToECIESPrvKey
   , createPrvStorage
+  , createPubStorage
+  , createCurrencyPubStorage
   , createPubKeystore
   , createStorage
   , storageFilePrefix
@@ -35,6 +37,9 @@ import Data.Proxy
 import Data.Text                (Text)
 import Data.Text.Encoding
 import Data.Text.Encoding.Error
+import Data.SafeCopy
+import Data.Serialize
+
 import Ergvein.Aeson
 import Ergvein.Crypto
 import Ergvein.Text
@@ -43,6 +48,8 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
+import Ergvein.Types.Storage.Currency.Public.Btc (BtcPubStorage(..))
+import Ergvein.Types.Storage.Currency.Public.Ergo (ErgoPubStorage(..))
 import Ergvein.Types.Transaction as ETT
 import Ergvein.Wallet.Localization.Native
 import Ergvein.Wallet.Localization.Storage
@@ -96,20 +103,34 @@ createPubKeystore masterPubKey =
 createPubStorage :: Bool -> Maybe DerivPrefix -> EgvRootXPrvKey -> [Currency] -> BlockHeight -> PubStorage
 createPubStorage isRestored mpath rootPrvKey cs startingHeight = PubStorage rootPubKey pubStorages cs isRestored mpath
   where rootPubKey = EgvRootXPubKey $ deriveXPubKey $ unEgvRootXPrvKey rootPrvKey
-        mkStore c = let
-          dpath = extendDerivPath c <$> mpath
-          in CurrencyPubStorage {
-            _currencyPubStorage'pubKeystore   = (createPubKeystore $ deriveCurrencyMasterPubKey dpath rootPrvKey c)
-          , _currencyPubStorage'path          = dpath
-          , _currencyPubStorage'transactions  = M.empty
-          , _currencyPubStorage'utxos         = M.empty
-          , _currencyPubStorage'headers       = M.empty
-          , _currencyPubStorage'outgoing      = S.empty
-          , _currencyPubStorage'headerSeq     = btcCheckpoints
-          , _currencyPubStorage'scannedHeight = startingHeight
-          , _currencyPubStorage'chainHeight   = 0
-          }
+        mkStore = createCurrencyPubStorage mpath rootPrvKey startingHeight
         pubStorages = M.fromList [(currency, mkStore currency) | currency <- cs]
+
+createCurrencyPubStorage :: Maybe DerivPrefix -> EgvRootXPrvKey -> BlockHeight -> Currency -> CurrencyPubStorage
+createCurrencyPubStorage mpath rootPrvKey startingHeight c = CurrencyPubStorage {
+    _currencyPubStorage'pubKeystore   = (createPubKeystore $ deriveCurrencyMasterPubKey dpath rootPrvKey c)
+  , _currencyPubStorage'path          = dpath
+  , _currencyPubStorage'scannedHeight = startingHeight
+  , _currencyPubStorage'chainHeight   = 0
+  , _currencyPubStorage'meta = case c of
+    BTC -> PubStorageBtc BtcPubStorage {
+        _btcPubStorage'transactions  = M.empty
+      , _btcPubStorage'utxos         = M.empty
+      , _btcPubStorage'headers       = M.empty
+      , _btcPubStorage'outgoing      = S.empty
+      , _btcPubStorage'headerSeq     = btcCheckpoints
+      }
+    ERGO -> PubStorageErgo ErgoPubStorage {
+        _ergoPubStorage'transactions  = M.empty
+      , _ergoPubStorage'utxos         = M.empty
+      , _ergoPubStorage'headers       = M.empty
+      , _ergoPubStorage'outgoing      = S.empty
+      , _ergoPubStorage'headerSeq     = ergoCheckpoints
+      }
+  }
+  where
+    dpath = extendDerivPath c <$> mpath
+
 
 createStorage :: MonadIO m
   => Bool -- ^ Flag that set to True if wallet was restored, not fresh generation
@@ -138,7 +159,7 @@ encryptPrvStorage prvStorage password = liftIO $ do
   case iv of
     Nothing -> pure $ Left $ SACryptoError "Failed to generate an AES initialization vector"
     Just iv' -> do
-      let prvStorageBS = encodeUtf8 $ encodeJson prvStorage
+      let prvStorageBS = runPut $ safePut prvStorage
       case encrypt secKey iv' prvStorageBS of
         Left err -> pure $ Left $ SACryptoError $ showt err
         Right ciphertext -> pure $ Right $ EncryptedPrvStorage ciphertext salt iv'
@@ -148,7 +169,7 @@ decryptPrvStorage encryptedPrvStorage password =
   case decrypt secKey iv ciphertext of
     Left err -> Left $ SACryptoError $ showt err
     Right decryptedPrvStorage -> do
-      let decodedPrvStorage = decodeJson $ decodeUtf8With lenientDecode decryptedPrvStorage
+      let decodedPrvStorage = runGet safeGet decryptedPrvStorage
       case decodedPrvStorage of
         Left err -> Left $ SADecryptError $ showt err
         Right dps -> Right dps
@@ -171,7 +192,7 @@ encryptStorage storage pubKey = do
       case iv' of
         Nothing -> pure $ Left $ SACryptoError "Failed to generate an initialization vector"
         Just iv -> do
-          let storageBS = encodeUtf8 $ encodeJson storage
+          let storageBS = runPut $ safePut storage
               ivBS = convert iv :: ByteString
               eciesPointBS = encodePoint curve eciesPoint :: ByteString
               encryptedData = encryptWithAEAD AEAD_GCM secKey iv (BS.concat [salt, ivBS, eciesPointBS]) storageBS defaultAuthTagLength
@@ -200,7 +221,7 @@ decryptStorage encryptedStorage prvKey = do
             Left err -> Left $ SACryptoError $ showt err
             Right s -> Right s
             where
-              storage = decodeJson $ decodeUtf8With lenientDecode decryptedStorage
+              storage = runGet safeGet decryptedStorage
 
 encryptBSWithAEAD :: (MonadIO m, MonadRandom m) => ByteString -> Password -> m (Either StorageAlert EncryptedByteString)
 encryptBSWithAEAD bs password = do
@@ -259,7 +280,8 @@ saveStorageToFile caller pubKey storage = do
     Left _ -> fail "Failed to encrypt storage"
     Right encStorage -> do
       moveStoredFile fname backupFname
-      storeValue fname encStorage True
+      let bs = runPut $ safePut encStorage
+      storeBS fname bs True
 
 -- | The same as saveStorageToFile, but does not fail and returns the error instead
 saveStorageSafelyToFile :: (MonadIO m, MonadRandom m, HasStoreDir m, PlatformNatives)
@@ -273,24 +295,25 @@ saveStorageSafelyToFile caller pubKey storage = do
     Left err -> pure $ Left err
     Right encStorage -> do
       moveStoredFile fname backupFname
-      fmap Right $ storeValue fname encStorage True
+      let bs = runPut $ safePut encStorage
+      fmap Right $ storeBS fname bs True
 
 loadStorageFromFile :: (MonadIO m, HasStoreDir m, PlatformNatives)
   => WalletName -> Password -> m (Either StorageAlert WalletStorage)
 loadStorageFromFile login pass = do
   let fname = storageFilePrefix <> T.replace " " "_" login
       backupFname = fname <> storageBackupFilePrefix
-  storageResp <- readStoredFile fname
+  storageResp <- retrieveBS fname
   case storageResp of
     Left err -> pure $ Left $ SANativeAlert err
-    Right storageText -> case decodeJson $ T.concat storageText of
+    Right storageBs -> case runGet safeGet storageBs of
       Left err -> do
         logWrite $ "Failed to decode wallet from: " <> fname <> "\nReading from backup: " <> backupFname
-        backupStorageResp <- readStoredFile backupFname
+        backupStorageResp <- retrieveBS fname
         case backupStorageResp of
             Left err -> pure $ Left $ SANativeAlert err
-            Right backupStorageText -> case decodeJson $ T.concat backupStorageText of
-              Left err -> pure $ Left $ SADecodeError err
+            Right backupStorageBs -> case runGet safeGet backupStorageBs of
+              Left err -> pure $ Left $ SADecodeError $ T.pack err
               Right backupStorage -> pure $ passwordToECIESPrvKey pass >>= decryptStorage backupStorage
       Right storage -> pure $ passwordToECIESPrvKey pass >>= decryptStorage storage
 

@@ -21,7 +21,7 @@ import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
-import Ergvein.Types.Utxo
+import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Filters.Loader
 import Ergvein.Wallet.Log.Event
 import Ergvein.Wallet.Monad.Async
@@ -182,7 +182,7 @@ getAddrTxsFromBlock :: (HasPubStorage m, PlatformNatives)
 getAddrTxsFromBlock box heights block = do
   ps <- askPubStorage
   let origtxMap = ps ^. pubStorage'currencyPubStorages . at BTC . non (error "getAddrTxsFromBlock: BTC store does not exist") . currencyPubStorage'transactions
-      newtxmap = M.fromList $ (\tx -> (mkTxId tx, BtcTx tx mheha)) <$> txs
+      newtxmap = M.fromList $ (\tx -> (mkTxId tx, TxBtc $ BtcTx tx mheha)) <$> txs
       txmap = M.union newtxmap origtxMap
   liftIO $ flip runReaderT txmap $ do
     filteredTxs <- filterTxsForAddress addr txs

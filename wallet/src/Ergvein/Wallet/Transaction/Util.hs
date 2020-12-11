@@ -36,6 +36,7 @@ import Ergvein.Types.Address
 import Ergvein.Types.Keys
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
+import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
 
@@ -47,12 +48,13 @@ import qualified Network.Haskoin.Script             as HS
 import qualified Network.Haskoin.Transaction        as HK
 
 checkAddr :: (HasTxStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m Bool
-checkAddr ac tx = do
+checkAddr ac (TxBtc tx) = do
   bL <- traverse (flip checkAddrTx (getBtcTx tx)) ac
   pure $ L.or bL
+checkAddr ac (TxErg _) = error "checkAddr: Ergo is not implemented!"
 
 -- | Checks given tx if there are some inputs or outputs containing given address.
-checkAddrTx :: (HasTxStorage m, PlatformNatives) => EgvAddress -> Tx -> m Bool
+checkAddrTx :: (HasTxStorage m, PlatformNatives) => EgvAddress -> BtcTxRaw -> m Bool
 checkAddrTx addr tx = do
   checkTxInputsResults <- traverse (checkTxIn addr) (HK.txIn tx)
   checkTxOutputsResults <- traverse (checkTxOut addr) (HK.txOut tx)
@@ -60,14 +62,14 @@ checkAddrTx addr tx = do
   where concatResults = L.foldr (||) False
 
 -- | Checks given tx if there are some inputs containing given address.
-checkAddrTxIn :: (HasTxStorage m, PlatformNatives) => EgvAddress -> Tx -> m Bool
+checkAddrTxIn :: (HasTxStorage m, PlatformNatives) => EgvAddress -> BtcTxRaw -> m Bool
 checkAddrTxIn addr tx = do
   checkTxInputsResults <- traverse (checkTxIn addr) (HK.txIn tx)
   pure $ concatResults checkTxInputsResults
   where concatResults = L.foldr (||) False
 
 -- | Checks given tx if there are some outputs containing given address.
-checkAddrTxOut :: (HasTxStorage m, PlatformNatives) => EgvAddress -> Tx -> m Bool
+checkAddrTxOut :: (HasTxStorage m, PlatformNatives) => EgvAddress -> BtcTxRaw -> m Bool
 checkAddrTxOut addr tx = do
   checkTxOutputsResults <- traverse (checkTxOut addr) (HK.txOut tx)
   pure $ concatResults checkTxOutputsResults
@@ -92,8 +94,8 @@ checkTxIn addr txIn = do
   mtx <- getTxById $ hkTxHashToEgv spentTxHash
   case mtx of
     Nothing -> pure False
-    Just ErgTx{} -> pure False -- TODO: impl for Ergo
-    Just BtcTx{..} -> checkTxOut addr $ (HK.txOut getBtcTx) !! (fromIntegral spentOutputIndex)
+    Just (TxErg _) -> pure False -- TODO: impl for Ergo
+    Just (TxBtc BtcTx{..}) -> checkTxOut addr $ (HK.txOut getBtcTx) !! (fromIntegral spentOutputIndex)
 
 -- | Checks given TxOut wheather it contains given address.
 -- TODO: Pattern match(es) are non-exhaustive:
@@ -129,10 +131,11 @@ filterTxsForAddress addr txs = fmap catMaybes $ flip traverse txs $ \tx -> do
   pure $ if b then Just tx else Nothing
 
 -- | Gets a list of groups of conflicting txs. Txs in the same group have at least one common input.
+-- TODO: Implement ERGO
 getConflictingTxs :: [EgvTx] -> [[TxId]]
 getConflictingTxs txs = getConflicts <$> btcTxs
   where
-    btcTxs = getBtcTx <$> txs
+    btcTxs = catMaybes $ fmap getBtcTx . toTxBtc <$> txs
     getTxHash = hkTxHashToEgv . HK.txHash
 
     getConflicts :: HK.Tx -> [TxId]
@@ -143,8 +146,8 @@ getOutputByOutPoint HK.OutPoint{..} = do
   mtx <- getTxById $ hkTxHashToEgv outPointHash
   case mtx of
     Nothing -> pure Nothing
-    Just ErgTx{} -> pure Nothing -- TODO: impl for Ergo
-    Just BtcTx{..} -> pure $ Just $ (HK.txOut getBtcTx) !! (fromIntegral outPointIndex)
+    Just (TxErg _) -> pure Nothing -- TODO: impl for Ergo
+    Just (TxBtc BtcTx{..}) -> pure $ Just $ (HK.txOut getBtcTx) !! (fromIntegral outPointIndex)
 
 getOutputsByOutPoints :: (HasTxStorage m, PlatformNatives) => [HK.OutPoint] -> m [Maybe HK.TxOut]
 getOutputsByOutPoints outPoints = traverse getOutputByOutPoint outPoints
@@ -175,13 +178,13 @@ getTxOutputsAmount tx = L.sum $ HK.outValue <$> outputs
 -- | Gets unspent output for a given address from a transaction
 -- Maybe BlockHeight: Nothing -- unconfirmed Tx. Just n -> confirmed at height n
 getUnspentOutputs :: (MonadIO m, PlatformNatives)
-  => Maybe BlockHeight -> ScanKeyBox -> Tx -> m [(OutPoint, UtxoMeta)]
+  => Maybe BlockHeight -> ScanKeyBox -> Tx -> m [(OutPoint, BtcUtxoMeta)]
 getUnspentOutputs c ScanKeyBox{..} tx = fmap catMaybes $ flip traverse (L.zip [0..] $ txOut tx) $ \(i,o) -> do
   b <- checkTxOut addr o
   let escript = HS.decodeOutputBS $ scriptOutput o
   either (\e -> logWrite $ "Failed to decode scriptOutput: " <> showt o <> ". Error: " <> showt e) (const $ pure ()) escript
   pure $ case (b, escript) of
-    (True, Right scr) -> Just (OutPoint th i, UtxoMeta scanBox'index scanBox'purpose (outValue o) scr stat)
+    (True, Right scr) -> Just (OutPoint th i, BtcUtxoMeta scanBox'index scanBox'purpose (outValue o) scr stat)
     _ -> Nothing
   where
     th = txHash tx

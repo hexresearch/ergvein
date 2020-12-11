@@ -7,6 +7,7 @@ module Ergvein.Wallet.Platform(
   , isTestnet
   , btcNetwork
   , btcCheckpoints
+  , ergoCheckpoints
   , filterStartingHeight
   , avgTimePerBlock
   ) where
@@ -87,3 +88,7 @@ btcCheckpoints = if isTestnet
     , (0,      "00000000839a8e6886ab5951d76f411475428afc90947ee320161bbf18eb6048")
     ]
 {-# INLINE btcCheckpoints #-}
+
+ergoCheckpoints :: (Timestamp, V.Vector (HB.BlockHeight, HB.BlockHash))
+ergoCheckpoints = (0, V.empty)
+{-# INLINE ergoCheckpoints #-}
