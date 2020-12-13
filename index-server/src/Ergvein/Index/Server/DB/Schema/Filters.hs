@@ -38,7 +38,13 @@ import qualified Data.ByteString.Short   as BSS
 import qualified Data.Serialize          as S
 import qualified Data.ByteString.Builder as BB
 
-data KeyPrefix = ScannedHeight | Meta | TxRaw | TxMeta | SchemaVersion deriving Enum
+data KeyPrefix
+  = SchemaVersion
+  | ScannedHeight
+  | Meta
+  | TxRaw
+  | TxMeta
+  deriving Enum
 
 schemaVersion :: ByteString
 schemaVersion = hash $(embedFile "src/Ergvein/Index/Server/DB/Schema/Filters.hs")
@@ -75,8 +81,10 @@ data TxRawKey = TxRawKey {unTxRawKey :: !TxHash }
 data TxRecBytes = TxRecBytes { unTxRecBytes :: !ByteString }
   deriving (Generic, Show, Eq, Ord)
 
-data TxRecMeta = TxRecMeta { unTxRecMeta :: !Word32 }
-  deriving (Generic, Show, Eq, Ord)
+data TxRecMeta = TxRecMeta
+  { txMetaHeight  :: !Word32
+  , txMetaUnspent :: !Word32
+  } deriving (Generic, Show, Eq, Ord)
 
 --BlockMeta
 
@@ -110,8 +118,15 @@ instance EgvSerialize ScannedHeightRec where
   egvDeserialize _ = parseOnly $ ScannedHeightRec <$> anyWord64le
 
 instance EgvSerialize TxRecMeta where
-  egvSerialize _ = BL.toStrict . BB.toLazyByteString . BB.word32LE . unTxRecMeta
-  egvDeserialize _ = fmap TxRecMeta . parseOnly anyWord32le
+  egvSerialize _ TxRecMeta{..} = BL.toStrict . BB.toLazyByteString $ if txMetaUnspent == 0
+    then BB.int8 0 <> BB.word32LE txMetaHeight
+    else BB.int8 1 <> BB.word32LE txMetaHeight <> BB.word32LE txMetaUnspent
+  egvDeserialize _ = parseOnly $ do
+    i <- anyWord8
+    h <- anyWord32le
+    if i == 0
+      then pure $ TxRecMeta h 0
+      else TxRecMeta h <$> anyWord32le
 
 instance EgvSerialize TxRecBytes where
   egvSerialize _ = BL.toStrict . BB.toLazyByteString . buildBS . unTxRecBytes

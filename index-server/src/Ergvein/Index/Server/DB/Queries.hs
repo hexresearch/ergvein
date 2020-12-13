@@ -35,7 +35,7 @@ import Data.Maybe
 import Data.Time.Clock
 import Database.LevelDB
 
-import Ergvein.Index.Protocol.Types
+import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema.Filters
@@ -118,19 +118,17 @@ initIndexerDb db = do
   write db def $ putItem Currency.BTC knownPeersRecKey $ KnownPeersRec []
 
 addBlockInfo :: (HasBtcRollback m, HasFiltersDB m, HasIndexerDB m, MonadLogger m, MonadBaseControl IO m) => BlockInfo -> m ()
-addBlockInfo update = do
+addBlockInfo (BlockInfo meta spent txinfos) = do
   db <- getFiltersDb
-  let targetCurrency = blockMetaCurrency $ blockInfoMeta update
-  let newBlockHash = blockMetaHeaderHash $ blockInfoMeta update
-  write db def $ putTxInfosAsRecs targetCurrency (blockContentTxInfos update)
-  insertRollback targetCurrency $ RollbackRecItem
-    (txHash <$> blockContentTxInfos update)
-    (spentTxOutputs update)
-    (blockMetaPreviousHeaderBlockHash $ blockInfoMeta update)
-    (blockMetaBlockHeight (blockInfoMeta update) - 1)
-  addBlockMetaInfos targetCurrency [blockInfoMeta update]
-  setLastScannedBlock targetCurrency newBlockHash
-  setScannedHeight targetCurrency (blockMetaBlockHeight $ blockInfoMeta update)
+  write db def $ txInfosBatch <> metaInfosBatch <> heightWrite
+  insertRollback cur $ RollbackRecItem txHashes spent prevHash (height -1)
+  setLastScannedBlock cur blkHash
+  where
+    BlockMetaInfo cur height blkHash prevHash filt = meta
+    txHashes       = txHash <$> txinfos
+    txInfosBatch   = putTxInfosAsRecs cur height txinfos
+    metaInfosBatch = putItem cur (metaRecKey (cur, height)) $ BlockMetaRec blkHash filt
+    heightWrite    = putItem cur (scannedHeightTxKey cur) $ ScannedHeightRec height
 
 setLastScannedBlock :: (HasIndexerDB m, MonadLogger m) => Currency -> ShortByteString -> m ()
 setLastScannedBlock currency blockHash = do
@@ -197,9 +195,11 @@ finalizeRollbackItem _cur (RollbackRecItem _ outs _ _) = do
     mkupds fdb (th, sp) = do
       let k = txMetaKey th
       mraw <- get fdb def k
-      pure $ maybe' mraw $ \bs -> either' (deserializeWord32 bs) $ \unsp -> let
-        o = unsp - sp
-        in if o <= 0 then [LDB.Del k, LDB.Del $ txRawKey th] else [LDB.Put k (serializeWord32 o)]
+      pure $ maybe' mraw $ \bs -> either' (egvDeserialize BTC bs) $ \meta -> let
+        o = (txMetaUnspent meta) - sp
+        in if o <= 0
+          then [LDB.Put k $ egvSerialize BTC $ meta {txMetaUnspent = 0}, LDB.Del $ txRawKey th]
+          else [LDB.Put k $ egvSerialize BTC $ meta {txMetaUnspent = o}]
 
 performRollback :: (HasFiltersDB m, HasIndexerDB m, HasBtcRollback m, MonadLogger m) => Currency -> m Int
 performRollback cur = case cur of
