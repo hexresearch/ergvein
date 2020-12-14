@@ -32,7 +32,7 @@ instance LocalizedPrint RestorePageStrings where
       RPSGetFiltsTitle      -> "Getting the next batch of filters"
       RPSGetFiltsFromTo f t -> "From " <> showt f <> " to " <> showt t
       RPSScanTitle          -> "Concurrently scanning the batch ..."
-      RPSBlocksTitle        -> "Getting blocks from network ..."
+      RPSBlocksTitle        -> "Getting blocks"
       RPSBlocskAmount n     -> "Hit " <> showt n <> " blocks"
       RPSKeysTitle         -> "Updating wallet keys"
       RPSScanProgress h     -> "Scanning height " <> showt h
@@ -44,7 +44,7 @@ instance LocalizedPrint RestorePageStrings where
       RPSGetFiltsTitle      -> "Запрашиваем следующую пачку фильтров"
       RPSGetFiltsFromTo f t -> "От " <> showt f <> " до " <> showt t
       RPSScanTitle          -> "Параллельно сканируем фильтры"
-      RPSBlocksTitle        -> "Получаем блоки из сети"
+      RPSBlocksTitle        -> "Получаем блоки"
       RPSBlocskAmount n     -> "Проверяем " <> showt n <> " блоков"
       RPSKeysTitle         -> "Обновляем ключи кошелька"
       RPSScanProgress h     -> "Сейчас сканируется высота: " <> showt h
