@@ -46,6 +46,7 @@ handleMsg _ (MVersionACK _) = pure mempty
 
 handleMsg address (MVersion peerVersion) = do
   ownVer <- ownVersion
+  liftIO $ print $ show $ protocolVersion == versionVersion peerVersion
   if protocolVersion == versionVersion peerVersion then do
     considerPeer ownVer $ PeerCandidate address $ versionScanBlocks ownVer
     pure [ MVersionACK $ VersionACK, MVersion ownVer ]
@@ -53,8 +54,12 @@ handleMsg address (MVersion peerVersion) = do
     pure mempty
 
 handleMsg _ (MPeerRequest _) = do
-  knownPeers <- getActualPeers
-  pure $ pure $ MPeerResponse $ PeerResponse $ V.fromList knownPeers
+  liftIO $ print "PEERS REQ"
+  pure $ pure $ MPeerResponse $ PeerResponse $ V.fromList [Address
+    { addressType    = IPV4
+    , addressPort    = 1234
+    , addressAddress = "1234"
+    }]
 
 handleMsg _ (MFiltersRequest FilterRequest {..}) = do
   currency <- currencyCodeToCurrency filterRequestMsgCurrency

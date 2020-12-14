@@ -93,6 +93,7 @@ registerConnection (sock, addr) = do
 
 runConnection :: (Socket, SockAddr) -> ServerM ()
 runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
+  liftIO $ print $ show addr
   evalResult <- runExceptT $ evalMsg
   case evalResult of
     Right (msgs@(MVersionACK _ : _)) -> do --peer version match ours
@@ -104,7 +105,9 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
       fork $ broadcastLoop sendChan
       -- Start message listener
       listenLoop sendChan
-    _ -> closeConnection addr
+    _ -> do
+      liftIO $ print $ "CLOSED"
+      closeConnection addr
   where
     writeMsg :: TChan LBS.ByteString -> Message -> IO ()
     writeMsg destinationChan = atomically . writeTChan destinationChan . toLazyByteString . messageBuilder

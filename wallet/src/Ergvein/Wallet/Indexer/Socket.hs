@@ -54,7 +54,7 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
       _socketConfPeer   = peer
     , _socketConfSend   = fmap serializeMessage sendE
     , _socketConfPeeker = peekMessage sa
-    , _socketConfClose  = closeE
+    , _socketConfClose  = traceEvent "_socketConfClose" $ closeE
     , _socketConfReopen = Just (1, 2) -- reconnect after 1 seconds 2 retries
     , _socketConfProxy  = proxyD
     }
@@ -74,7 +74,7 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
   let verAckE = fforMaybe respE $ \case
         MVersionACK _ -> Just True
         _ -> Nothing
-  shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
+  shakeD <- holdDyn False $ traceEventWith (("ACTIVE "++) . show) $ leftmost [verAckE, False <$ closeE]
   let openE = fmapMaybe (\b -> if b then Just () else Nothing) $ updated shakeD
 
   -- Track filters height
@@ -105,7 +105,7 @@ peekMessage :: (MonadPeeker m, MonadIO m, MonadThrow m, PlatformNatives)
   => SockAddr -> m Message
 peekMessage url = do
   x <- peek 8
-  let ehead = AP.eitherResult $ AP.parse messageHeaderParser x
+  let ehead = AP.parseOnly messageHeaderParser x
   case ehead of
     Left e -> do
       nodeLog url $ "Consumed " <> showt (B.length x)

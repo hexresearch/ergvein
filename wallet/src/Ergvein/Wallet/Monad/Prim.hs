@@ -105,7 +105,7 @@ getSettings = readExternalRef =<< getSettingsRef
 
 -- | Get current settings dynamic
 getSettingsD :: MonadHasSettings t m => m (Dynamic t Settings)
-getSettingsD = externalRefDynamic =<< getSettingsRef
+getSettingsD = holdUniqDyn =<< externalRefDynamic =<< getSettingsRef
 {-# INLINE getSettingsD #-}
 
 -- | Update app's settings. Sets settings to provided value and stores them

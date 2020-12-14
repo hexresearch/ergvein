@@ -57,11 +57,11 @@ getActualPeers :: (HasIndexerDB m, MonadLogger m, HasDiscoveryRequisites m) =>  
 getActualPeers = do
   db <- getIndexerDb
   -- I put BTC here and downstream, because it doesnt actually matter but we still need a value
-  knownPeers <- getParsedExact @KnownPeersRec Currency.BTC "getKnownPeers" db knownPeersRecKey
+  knownPeers <- getParsed @KnownPeersRec Currency.BTC "getKnownPeers" db knownPeersRecKey
   currentTime <- liftIO getCurrentTime
   actualizationDelay <- (/1000000) . fromIntegral . descReqActualizationDelay <$> getDiscoveryRequisites
   let validDate = (-actualizationDelay) `addUTCTime` currentTime
-      filteredByLastValidatedAt = filter ((validDate <=) . read . T.unpack . knownPeerRecLastValidatedAt) $ unKnownPeersRec knownPeers
+      filteredByLastValidatedAt = filter ((validDate <=) . read . T.unpack . knownPeerRecLastValidatedAt) $ maybe mempty unKnownPeersRec knownPeers
   pure $ convert <$> filteredByLastValidatedAt
 
 getPeerList :: (HasIndexerDB m, MonadLogger m) => m [Peer]

@@ -24,13 +24,14 @@ import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Monad.Prim
+import Control.Lens
+import Control.Lens.Fold
+import Data.Map.Lens
 
 import qualified Data.Vector            as V
 import qualified Data.Map.Strict        as Map
 import qualified Data.Set               as Set
 import qualified Ergvein.Types.Currency as C
-
-
 
 minOperableAmount, targetAmount :: Int
 minOperableAmount = 1
@@ -49,11 +50,16 @@ ergveinNetworkRefresh = do
   activePeersChangedE <- void . fst <$> getActivationEF
   let goE = gate (current settD) $  leftmost [timerE, buildE, settE, activePeersChangedE]
   activeUrlsRef <- getActiveConnsRef
-  activeUrlsE <- performEvent $ ffor goE $ const $ readExternalRef activeUrlsRef
+  gE <- performEvent $ ffor goE $ \_-> do
+    act <- readExternalRef activeUrlsRef
+    pure $ settingsAddrs %~ Map.filterWithKey (\k a -> _peerInfoIsPinned a || has (at k . _Just) act)
+
+  gE' <- updateSettingsAsync gE
+  activeUrlsE <- performEvent $ ffor gE' $ const $ readExternalRef activeUrlsRef
 
   let activePeerAmountE  = traceEvent "discovery" $ length . Map.toList <$> activeUrlsE
       notOperablePeerAmountE  = void $ ffilter (< minOperableAmount) activePeerAmountE 
-      insufficientPeerAmountE = void $ ffilter (< targetAmount) activePeerAmountE
+      insufficientPeerAmountE = traceEvent "insufficientPeerAmountE" $ void $ ffilter (< targetAmount) activePeerAmountE
   restoreFromDNS notOperablePeerAmountE
   fetchNewPeer insufficientPeerAmountE
 
@@ -70,9 +76,9 @@ restoreFromDNS e = do
 
 fetchNewPeer :: MonadFront t m => Event t () -> m ()
 fetchNewPeer e = do
-  let reqE = (C.BTC, MPeerRequest PeerRequest) <$ e
-  respE <- requestRandomIndexer reqE
-  let nonEmptyAddressesE = fforMaybe respE $ \(_, msg) -> case msg of
+  let reqE = traceEvent "reqREEEEEEEEEEEEEEEEEEEEEE" $ (C.BTC, MPeerRequest PeerRequest) <$ e
+  respE <-  traceEvent "respE" <$> requestRandomIndexer reqE
+  let nonEmptyAddressesE = traceEvent "nonEmptyAddressesE" $ fforMaybe respE $ \(_, msg) -> case msg of
         MPeerResponse PeerResponse {..} | not $ V.null peerResponseAddresses -> Just peerResponseAddresses
         _-> Nothing
   newIndexerE <- performEvent $ ffor nonEmptyAddressesE $ \addrs ->
