@@ -121,13 +121,22 @@ restorePage = wrapperSimple True $ do
       -> [(BlockHeight, BlockHash, BtcAddrFilter)]
       -> V.Vector ScanKeyBox
       -> Workflow t m ()
-    scanBatchKeys (curHeight, nextHeight) batch keys = Workflow $ do
+    scanBatchKeys (curHeight, nextHeight) batch keys = Workflow $ mdo
       (hE, cb) <- newTriggerEvent
       hD <- holdDyn curHeight hE
       hh <- sampleDyn . fmap fromIntegral =<< getCurrentHeight BTC
       restoreProgressWidget (filterStartingHeight BTC) curHeight hh
-      h3 $ localizedText RPSScanTitle
-      h4 $ localizedDynText $ RPSScanProgress <$> hD
+      let scanTitles = do
+            h3 $ localizedText RPSScanTitle
+            h4 $ localizedDynText $ RPSScanProgress <$> hD
+          blockRetrieveTitles hashes = do
+            h3 $ localizedText RPSBlocksTitle
+            h4 $ localizedText $ RPSBlocskAmount (length hashes)
+          refreshWalletTitles = h3 $ localizedText RPSKeysTitle
+      widgetHold_ scanTitles $ leftmost [
+          blockRetrieveTitles <$> hashesE
+        , refreshWalletTitles <$ scanE
+        ]
       let mkAddr k = addressToScriptBS . xPubToBtcAddr . extractXPubKeyFromEgv $ scanBox'key k
       let addrs = V.toList $ mkAddr <$> keys
       buildE <- getPostBuild
@@ -143,7 +152,7 @@ restorePage = wrapperSimple True $ do
       hashesE <- performFork $ ffor buildE $ const $
         fmap (catMaybes . mconcat) $ liftIO $
           mapConcurrently (traverse foo) chunks
-          -- traverse (traverse foo) chunks
+
       scanE <- scanBtcBlocks keys hashesE
       keysE <- refreshBtcKeys $ void scanE
       let (nullE, extraE) = splitFilter V.null keysE

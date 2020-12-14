@@ -17,6 +17,9 @@ data RestorePageStrings
   | RPSGetFiltsTitle
   | RPSGetFiltsFromTo BlockHeight BlockHeight
   | RPSScanTitle
+  | RPSBlocksTitle
+  | RPSBlocskAmount Int
+  | RPSKeysTitle
   | RPSScanProgress BlockHeight
   | RPSFinished
 
@@ -29,6 +32,9 @@ instance LocalizedPrint RestorePageStrings where
       RPSGetFiltsTitle      -> "Getting the next batch of filters"
       RPSGetFiltsFromTo f t -> "From " <> showt f <> " to " <> showt t
       RPSScanTitle          -> "Concurrently scanning the batch ..."
+      RPSBlocksTitle        -> "Getting blocks from network ..."
+      RPSBlocskAmount n     -> "Hit " <> showt n <> " blocks"
+      RPSKeysTitle         -> "Updating wallet keys"
       RPSScanProgress h     -> "Scanning height " <> showt h
       RPSFinished           -> "Restore completed"
     Russian -> case v of
@@ -38,5 +44,8 @@ instance LocalizedPrint RestorePageStrings where
       RPSGetFiltsTitle      -> "Запрашиваем следующую пачку фильтров"
       RPSGetFiltsFromTo f t -> "От " <> showt f <> " до " <> showt t
       RPSScanTitle          -> "Параллельно сканируем фильтры"
+      RPSBlocksTitle        -> "Получаем блоки из сети"
+      RPSBlocskAmount n     -> "Проверяем " <> showt n <> " блоков"
+      RPSKeysTitle         -> "Обновляем ключи кошелька"
       RPSScanProgress h     -> "Сейчас сканируется высота: " <> showt h
       RPSFinished           -> "Восстановление успешно завершено"
