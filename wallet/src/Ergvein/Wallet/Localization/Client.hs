@@ -15,6 +15,7 @@ data ClientMessage
   | CMSDone
   | CMSTimeout
   | CMSRestarting
+  | CMSAllOutOfSync
   deriving (Eq)
 
 instance LocalizedPrint ClientMessage where
@@ -27,6 +28,7 @@ instance LocalizedPrint ClientMessage where
       CMSDone             -> "Done!"
       CMSTimeout          -> "Time out!"
       CMSRestarting       -> "Restarting"
+      CMSAllOutOfSync     -> "All indexers are out of sync!"
     Russian -> case v of
       CMSLoading i mi ma  -> "Запрашиваю. " <> showt i <> " из " <> showt ma <> " (мин: " <> showt mi <> ") ответили."
       CMSError            -> "Один из запросов не удался"
@@ -35,6 +37,7 @@ instance LocalizedPrint ClientMessage where
       CMSDone             -> "Готово!"
       CMSTimeout          -> "Время вышло!"
       CMSRestarting       -> "Перезапускаем"
+      CMSAllOutOfSync     -> "Все индексаторы отстают от цепочки!"
 
 data ClientErr = ClientErrInconsistentResult | ClientErrNoUrls | ClientErrTimeOut
   deriving (Eq, Show)

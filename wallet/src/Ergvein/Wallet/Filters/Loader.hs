@@ -37,12 +37,6 @@ getFilters cur e = do
           then Nothing
           else Just $ (addr,) $ V.toList $ ffor filterResponseFilters $ \(BlockFilter bid filt) -> (bid, filt)
         _ -> Nothing
-  warnDesynced respE'
   pure $ snd <$> respE'
   where
     curcode = currencyToCurrencyCode cur
-
-warnDesynced :: MonadFront t m => Event t (SockAddr, [a]) -> m ()
-warnDesynced e = showWarnMsg $ fforMaybe e $ \(addr, rs) -> if null rs
-  then Just $ "Indexer " <> showt addr <> " possibly out of sync!"
-  else Nothing
