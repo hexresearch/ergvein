@@ -17,8 +17,8 @@ in {
       };
       package = mkOption {
         type = types.package;
-        default = pkgs.ergo-platform;
-        defaultText = "pkgs.ergo-platform";
+        default = pkgs.ergo;
+        defaultText = "pkgs.ergo";
         description = ''
           Which ergo package to use with the service.
         '';
@@ -92,7 +92,7 @@ in {
       secretHash = mkOption {
         type = types.str;
         description = ''
-          Hex-encoded Blake2b256 hash of an API key. Should be 64-chars long Base16 string. You 
+          Hex-encoded Blake2b256 hash of an API key. Should be 64-chars long Base16 string. You
           can use already running local node to get the hash of your secret http://127.0.0.1:9053/swagger#/utils/hashBlake2b .
           Example for secret 'hello' is '324dcf027dd4a30a932c441f365a25e86b173defa4b8e58948253471b81b72cf'.
         '';

@@ -50,12 +50,19 @@ in {
     nixpkgs.overlays = [
       (import ../overlay.nix)
     ];
+    nixpkgs.config.packageOverrides = pkgs: with pkgs; {
+      ergo = pkgs.callPackage ../pkgs/ergo-node.nix {};
+    };
     services = {
       bitcoin = {
         enable = true;
         testnet = cfg.testnet;
         nodePort = 8332;
         package = with pkgs; pkgs.callPackage ../pkgs/bitcoin-node.nix { withGui = false; };
+      };
+      ergo = {
+        enable = true;
+        testnet = cfg.testnet;
       };
       ergvein-indexer = {
         enable = true;
