@@ -12,6 +12,7 @@ let
       cbitstream = ./cbitstream;
       data-merkle-tree = ./data-merkle-tree;
       ergo-api = ./ergo-api;
+      ergo-protocol = ./ergo-protocol;
       ergvein-checkpoint-generator = ./checkpoint-generator;
       ergvein-common = ./common;
       ergvein-crypto = ./crypto;
@@ -43,6 +44,7 @@ let
         "cbitstream"
         "data-merkle-tree"
         "ergo-api"
+        "ergo-protocol"
         "ergvein-checkpoint-generator"
         "ergvein-common"
         "ergvein-crypto"

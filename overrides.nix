@@ -59,6 +59,7 @@ in (self: super: let
     ergvein-wallet-types = ingnoreGarbage super.ergvein-wallet-types;
     ergvein-wallet-version = ingnoreGarbage super.ergvein-wallet-version;
     ergo-api = lib.dontCheck (ingnoreGarbage super.ergo-api);
+    ergo-protocol = lib.dontCheck (ingnoreGarbage super.ergo-protocol);
     golomb-rice = ingnoreGarbage super.golomb-rice;
     reflex-dom-retractable = ingnoreGarbage super.reflex-dom-retractable;
     reflex-external-ref = ingnoreGarbage super.reflex-external-ref;

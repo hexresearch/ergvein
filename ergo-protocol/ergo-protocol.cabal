@@ -1,0 +1,57 @@
+name:                ergo-protocol
+version:             0.1.0.0
+synopsis:            Data types used in P2P protocol of Ergo platform.
+description:         See README.md
+category:            Data
+build-type:          Simple
+cabal-version:       >=2.0
+license:             MIT
+license-file:        LICENSE
+copyright:           2020 ATUM SOLUTIONS AG
+author:              Anton Gushcha, Aminion, Vladimir Krutkin, Levon Oganyan, Sergey Ivanov
+maintainer:          Anton Gushcha <ncrashed@protonmail.com>
+extra-source-files:  CHANGELOG.md
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+    Data.Ergo.Protocol
+  default-language:    Haskell2010
+  build-depends:
+      base            >= 4.7 && < 4.13
+    , bytestring      >= 0.9 && < 0.11
+    , deepseq         >= 1.4
+    , vector          >= 0.12
+  default-extensions:
+    CPP
+    DeriveAnyClass
+    DeriveGeneric
+    FlexibleContexts
+    OverloadedStrings
+    TemplateHaskell
+
+test-suite ergo-protocol-test
+  default-language:    Haskell2010
+  type:                exitcode-stdio-1.0
+  main-is:             Driver.hs
+  hs-source-dirs:      test
+  other-modules:
+      Data.Ergo.ProtocolTest
+  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
+  default-extensions:
+    NumDecimals
+    OverloadedStrings
+    QuasiQuotes
+    RecordWildCards
+    ScopedTypeVariables
+    TupleSections
+  build-depends:
+      base
+    , bytestring
+    , ergo-protocol
+    , quickcheck-instances
+    , tasty
+    , tasty-discover
+    , tasty-hspec
+    , tasty-quickcheck
+    , vector

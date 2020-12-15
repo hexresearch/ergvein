@@ -5,6 +5,7 @@ packages:
   ./crypto
   ./data-merkle-tree
   ./ergo-api
+  ./ergo-protocol
   ./golomb-rice
   ./index-api
   ./index-protocol
