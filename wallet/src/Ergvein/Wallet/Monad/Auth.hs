@@ -6,11 +6,14 @@ module Ergvein.Wallet.Monad.Auth(
 
 import Control.Concurrent
 import Control.Concurrent.Chan (Chan)
+import Control.Concurrent.STM.TChan
+import Control.Concurrent.STM.TVar
 import Control.Lens
+import Control.Monad.STM
 import Control.Monad.Reader
 import Data.Map.Strict (Map)
 import Data.Text as T
-import Data.Time (NominalDiffTime)
+import Data.Time (getCurrentTime, diffUTCTime, NominalDiffTime)
 import Network.Socket
 import Reflex
 import Reflex.Dom
@@ -28,6 +31,7 @@ import Ergvein.Types.Transaction (BlockHeight)
 import Ergvein.Wallet.Filters.Loader
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
+import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
@@ -78,6 +82,7 @@ data Env t = Env {
 , env'nodeReqFire     :: !(Map Currency (Map SockAddr NodeMessage) -> IO ())
 , env'feesStore       :: !(ExternalRef t (Map Currency FeeBundle))
 , env'storeMutex      :: !(MVar ())
+, env'storeChan       :: !(TChan (Text, AuthInfo))
 -- Client context
 , env'indexConmap     :: !(ExternalRef t (Map Text (IndexerConnection t)))
 , env'reqUrlNum       :: !(ExternalRef t (Int, Int))
@@ -226,24 +231,65 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
 
   modifyPubStorage caller fe = do
     authRef   <- asks env'authRef
-    mutex     <- asks env'storeMutex
+    chan      <- asks env'storeChan
     storeDir  <- asks env'storeDir
     performEvent $ ffor fe $ \f -> do
       mai <- modifyExternalRefMaybe authRef $ \ai ->
         let mps' = f (ai ^. authInfo'storage . storage'pubStorage)
         in (\a -> (a, a)) . (\ps' -> ai & authInfo'storage . storage'pubStorage .~ ps') <$> mps'
-      liftIO $ storeWalletIO caller storeDir mutex mai
+      liftIO $ atomically $ traverse_ (writeTChan chan . (caller, )) mai
   {-# INLINE modifyPubStorage #-}
   getStoreMutex = asks env'storeMutex
   {-# INLINE getStoreMutex #-}
+  getStoreChan = asks env'storeChan
+  {-# INLINE getStoreChan #-}
 
-storeWalletIO :: PlatformNatives => Text -> Text -> MVar () -> Maybe AuthInfo -> IO ()
-storeWalletIO caller storeDir mutex mai = case mai of
-  Nothing -> pure ()
-  Just ai -> do
-    let storage = _authInfo'storage ai
-    let eciesPubKey = _authInfo'eciesPubKey ai
-    withMVar mutex $ const $ flip runReaderT storeDir $ saveStorageToFile caller eciesPubKey storage
+-- | Minimum time between two writes of storage to disk
+storeTimeBetweenWrites :: NominalDiffTime
+storeTimeBetweenWrites = 20
+
+-- | Thread that writes down updates of wallet storages and checks that write down doesn't occur too frequent.
+walletStoreThread :: PlatformNatives => Text -> MVar () -> TChan (Text, AuthInfo) -> IO ()
+walletStoreThread storeDir mutex updChan = void $ forkOnOther $ do
+  timeRef <- newTVarIO =<< getCurrentTime
+  lastUpdTimeRef <- newTVarIO =<< getCurrentTime
+  lastStoreRef <- newTVarIO Nothing
+  -- Thread that updates reference with time to compare it with value in lastUpdTimeRef in getTimedWrite
+  void $ forkIO $ fix $ \next -> do
+    threadDelay $ ceiling storeTimeBetweenWrites
+    currTime <- getCurrentTime
+    atomically $ writeTVar timeRef currTime
+    next
+  -- Thread that reads from chan and stores last storage to reference which next thread will check and validate
+  -- against timeout.
+  void $ forkIO $ fix $ \next -> do
+    atomically $ do
+      val <- readTChan updChan
+      writeTVar lastStoreRef $ Just val
+    next
+  -- If we have awaiting write to disk and time passed > timeout we return the value unless retry
+  let getTimedWrite = do
+        mval <- readTVar lastStoreRef
+        case mval of
+          Nothing -> retry
+          Just val -> do
+            currTime <- readTVar timeRef
+            updTime <- readTVar lastUpdTimeRef
+            when (diffUTCTime currTime updTime < storeTimeBetweenWrites) retry
+            writeTVar lastUpdTimeRef currTime
+            writeTVar lastStoreRef Nothing
+            pure val
+  -- Thread that indefinetely queries if we need to write down new state
+  fix $ \next -> do
+    updVal@(caller, authInfo) <- atomically getTimedWrite
+    storeWalletIO caller storeDir mutex authInfo
+    next
+
+storeWalletIO :: PlatformNatives => Text -> Text -> MVar () -> AuthInfo -> IO ()
+storeWalletIO caller storeDir mutex ai = do
+  let storage = _authInfo'storage ai
+  let eciesPubKey = _authInfo'eciesPubKey ai
+  withMVar mutex $ const $ flip runReaderT storeDir $ saveStorageToFile caller eciesPubKey storage
 
 -- | Execute action under authorized context or return the given value as result
 -- if user is not authorized. Each time the login info changes and authInfo'isUpdate flag is set to 'False'
@@ -293,7 +339,8 @@ liftAuth ma0 ma = mdo
         fsyncRef        <- newExternalRef mempty
         consRef         <- newExternalRef mempty
         feesRef         <- newExternalRef mempty
-        storeMvar       <- liftIO $ newMVar ()
+        storeMutex      <- liftIO $ newMVar ()
+        storeChan       <- liftIO newTChanIO
         let env = Env {
                 env'settings = settingsRef
               , env'pauseEF = pauseEF
@@ -318,7 +365,8 @@ liftAuth ma0 ma = mdo
               , env'nodeReqSelector = nodeSel
               , env'nodeReqFire = nReqFire
               , env'feesStore = feesRef
-              , env'storeMutex = storeMvar
+              , env'storeMutex = storeMutex
+              , env'storeChan = storeChan
               , env'indexConmap = indexConmapRef
               , env'reqUrlNum = reqUrlNumRef
               , env'actUrlNum = actUrlNumRef
@@ -329,6 +377,7 @@ liftAuth ma0 ma = mdo
               }
 
         flip runReaderT env $ do -- Workers and other routines go here
+          liftIO $ walletStoreThread storeDir storeMutex storeChan
           when isAndroid (deleteTmpFiles storeDir)
           -- initFiltersHeights filtersHeights
           scanner

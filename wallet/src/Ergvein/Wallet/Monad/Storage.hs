@@ -28,6 +28,7 @@ module Ergvein.Wallet.Monad.Storage
   ) where
 
 import Control.Concurrent.MVar
+import Control.Concurrent.STM.TChan
 import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
@@ -40,6 +41,7 @@ import Network.Haskoin.Block (Timestamp)
 import Reflex
 
 import Ergvein.Crypto
+import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
@@ -66,7 +68,10 @@ class (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t m | m -> t where
   getPubStorageD         :: m (Dynamic t PubStorage)
   storeWallet            :: Text -> Event t () -> m (Event t ())
   modifyPubStorage       :: Text -> Event t (PubStorage -> Maybe PubStorage) -> m (Event t ())
+  -- | Get mutex that guards writing or reading from storage file
   getStoreMutex          :: m (MVar ())
+  -- | Channel that writes down given storage to disk in separate thread. First element in tuple is tracing info (caller).
+  getStoreChan           :: m (TChan (Text, AuthInfo))
 
 class MonadIO m => HasPubStorage m where
   askPubStorage :: m PubStorage
