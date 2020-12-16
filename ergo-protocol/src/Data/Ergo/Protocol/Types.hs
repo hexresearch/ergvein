@@ -28,6 +28,7 @@ module Data.Ergo.Protocol.Types(
   , magicBytes
   ) where
 
+import Data.ByteString (ByteString)
 import Data.Int
 import Data.Text (Text)
 import Data.Vector (Vector)
@@ -78,7 +79,7 @@ featureOperationModeId :: Word8
 featureOperationModeId = 16
 
 -- | Known peer feature types that client supports.
-data PeerFeature = FeatureOperationMode !OperationModeFeature
+data PeerFeature = FeatureOperationMode !OperationModeFeature | UnknownFeature !Word8 !ByteString
   deriving (Generic, Show, Read)
 
 -- | Amount of seconds that is given to peer to send handshake message. After that
