@@ -84,19 +84,20 @@ getTxFromCache :: (HasFiltersDB m, MonadLogger m)
   => TxHash -> m (Either String HK.Tx)
 getTxFromCache thash = do
   db <- getFiltersDb
-  src <- getParsedExact BTC "getTxFromCache" db $ txRawKey thash
+  src <- getParsedExact BTC "getTxFromCache" db $ txBytesKey thash
   pure $ egvDeserialize BTC $ unTxRecBytes src
 
 getTxFromNode :: (BitcoinApiMonad m, MonadLogger m, MonadBaseControl IO m, HasFiltersDB m)
   => HK.TxHash -> m HK.Tx
 getTxFromNode thash = do
   db <- getFiltersDb
-  txMeta <- getParsedExact BTC "getTxFromNode" db $ txMetaKey $ hkTxHashToEgv thash
-  blk <- getBtcBlock $ fromIntegral $ txMetaHeight txMeta
+  txHeight <- fmap unTxRecHeight $
+    getParsedExact BTC "getTxFromNode" db $ txHeightKey $ hkTxHashToEgv thash
+  blk <- getBtcBlock $ fromIntegral txHeight
   let txChunks = mkChunks 100 $ HK.blockTxns blk
   txs <- fmap mconcat $ mapConcurrently (pure . catMaybes . parMap rpar comparator) txChunks
   case txs of
-    [] -> txGettingError $ txMetaHeight txMeta
+    [] -> txGettingError txHeight
     tx:_ -> pure tx
   where
     comparator tx = if thash == HK.txHash tx then Just tx else Nothing

@@ -193,13 +193,12 @@ finalizeRollbackItem _cur (RollbackRecItem _ outs _ _) = do
     maybe' mv c = maybe [] c mv
     either' ev c = either (const []) c ev
     mkupds fdb (th, sp) = do
-      let k = txMetaKey th
+      let k = txUnspentKey th
       mraw <- get fdb def k
-      pure $ maybe' mraw $ \bs -> either' (egvDeserialize BTC bs) $ \meta -> let
-        o = (txMetaUnspent meta) - sp
-        in if o <= 0
-          then [LDB.Put k $ egvSerialize BTC $ meta {txMetaUnspent = 0}, LDB.Del $ txRawKey th]
-          else [LDB.Put k $ egvSerialize BTC $ meta {txMetaUnspent = o}]
+      pure $ maybe' mraw $ \bs -> either' (egvDeserialize BTC bs) $ \(TxRecUnspent unsp) ->
+        if unsp <= sp
+          then [LDB.Del k, LDB.Del $ txBytesKey th]
+          else [LDB.Put k $ egvSerialize BTC $ TxRecUnspent (unsp - sp)]
 
 performRollback :: (HasFiltersDB m, HasIndexerDB m, HasBtcRollback m, MonadLogger m) => Currency -> m Int
 performRollback cur = case cur of
@@ -221,7 +220,7 @@ performBtcRollback = do
       setScannedHeight cur $ rollbackPrevHeight lst
 
   let spentTxIds = fold $ rollbackItemAdded <$> rse
-  let dels = mconcat $ flip fmap spentTxIds $ \th -> [LDB.Del (txRawKey th), LDB.Del (txMetaKey th)]
+  let dels = mconcat $ flip fmap spentTxIds $ \th -> [LDB.Del (txBytesKey th), LDB.Del (txHeightKey th)]
   write fdb def dels
   write idb def $ pure clearSeq
   liftIO $ atomically $ writeTVar rollVar mempty
