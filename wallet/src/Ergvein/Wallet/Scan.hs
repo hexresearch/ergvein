@@ -22,8 +22,9 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
+import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Transaction
-import Ergvein.Types.Utxo
+import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Filters.Loader
 import Ergvein.Wallet.Log.Event
 import Ergvein.Wallet.Monad.Async
@@ -175,22 +176,22 @@ removeTxsReplacedByFee goE = do
   replacedTxsE <- performFork $ ffor (tagPromptlyDyn pubStorageD goE) $ \ps -> do
     let btcps = ps ^. pubStorage'currencyPubStorages . at BTC . non (error $ "removeTxsReplacedByFee: BTC storage does not exist!")
         txStore = btcps ^. currencyPubStorage'transactions
-        possiblyReplacedTxs = btcps ^. currencyPubStorage'possiblyReplacedTxs
+        possiblyReplacedTxs = btcps ^. currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'possiblyReplacedTxs
     liftIO $ flip runReaderT txStore $ do
       confirmedTxIds <- M.keysSet <$> getConfirmedTxs
-      let txsToRemove = getTxsToRemove confirmedTxIds possiblyReplacedTxs
-      pure txsToRemove
-  removedE <- removeRbfTxsFromStorage2 "removedReplacedTxs" $ (BTC,) <$> replacedTxsE
+      let confirmedBtcTxIds = S.map (fromJust . toBtcTxHash) confirmedTxIds
+      pure $ getTxsToRemove confirmedBtcTxIds possiblyReplacedTxs
+  removedE <- removeRbfTxsFromStorage2 "removedReplacedTxs" replacedTxsE
   pure removedE
 
 getTxsToRemove ::
-  Set TxId ->
-  Map TxId (Set TxId) ->
+  Set BtcTxId ->
+  Map BtcTxId (Set BtcTxId) ->
   Set RemoveRbfTxsInfo
 getTxsToRemove confirmedTxIds possiblyReplacedTxs =
   M.foldrWithKey' (helper confirmedTxIds) S.empty possiblyReplacedTxs
   where
-    helper :: Set TxId -> TxId -> Set TxId -> Set RemoveRbfTxsInfo -> Set RemoveRbfTxsInfo
+    helper :: Set BtcTxId -> BtcTxId -> Set BtcTxId -> Set RemoveRbfTxsInfo -> Set RemoveRbfTxsInfo
     helper confirmedTxIds possiblyReplacingTx possiblyReplacedTxs acc
       | possiblyReplacingTx `S.member` confirmedTxIds = S.insert (RemoveRbfTxsInfo possiblyReplacingTx possiblyReplacingTx possiblyReplacedTxs) acc
       | not $ S.null intersection = S.insert (RemoveRbfTxsInfo possiblyReplacingTx (S.findMin intersection) (S.insert possiblyReplacingTx (S.delete (S.findMin intersection) possiblyReplacedTxs))) acc
@@ -217,7 +218,7 @@ getAddrTxsFromBlock :: (HasPubStorage m, PlatformNatives)
 getAddrTxsFromBlock box heights block = do
   ps <- askPubStorage
   let origtxMap = ps ^. pubStorage'currencyPubStorages . at BTC . non (error "getAddrTxsFromBlock: BTC store does not exist") . currencyPubStorage'transactions
-      newtxmap = M.fromList $ (\tx -> (mkTxId tx, BtcTx tx mheha)) <$> txs
+      newtxmap = M.fromList $ (\tx -> (mkTxId tx, TxBtc $ BtcTx tx mheha)) <$> txs
       txmap = M.union newtxmap origtxMap
   liftIO $ flip runReaderT txmap $ do
     filteredTxs <- filterTxsForAddress addr txs

@@ -19,6 +19,7 @@ module Ergvein.Wallet.Util(
   , splitEither
   , splitFilter
   , switchDyn2
+  , mkChunks
   ) where
 
 import Control.Monad.Except
@@ -120,3 +121,11 @@ switchDyn2 = (\(a,b) -> (switchDyn a, switchDyn b)) . splitDynPure
 
 splitFilter :: Reflex t => (a -> Bool) -> Event t a -> (Event t a, Event t a)
 splitFilter f e = (ffilter f e, ffilter (not . f) e)
+
+-- / Make chunks of length n
+mkChunks :: Int -> [a] -> [[a]]
+mkChunks n vals = mkChunks' [] vals
+  where
+     mkChunks' acc xs = case xs of
+       [] -> acc
+       _ -> let (a,b) = splitAt n xs in mkChunks' (acc ++ [a]) b

@@ -1,6 +1,6 @@
 { profile ? false }: (import ./reflex-platform.nix) {
     nixpkgsOverlays = [
-      (self: super: import ./nixpkgs-overlays/default.nix self super )
+      (import ./nixpkgs-overlays/default.nix)
     ];
     config = {
       android_sdk.accept_license = true;

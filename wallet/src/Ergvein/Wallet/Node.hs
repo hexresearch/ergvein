@@ -28,6 +28,7 @@ import Network.Socket (SockAddr)
 import Ergvein.Text
 import Ergvein.Types
 import Ergvein.Types.Derive
+import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
@@ -163,41 +164,44 @@ btcMempoolTxInserter txE = do
   let matchedTxsE = helper <$> valsE
       txInsertedE = fmapMaybe txInserted valsE
   insertedE <- insertTxsUtxoInPubKeystore "btcMempoolTxInserter" BTC matchedTxsE
-  _ <- removeTxsReplacedByFee "btcMempoolTxInserter" BTC txInsertedE
+  _ <- removeTxsReplacedByFee "btcMempoolTxInserter" txInsertedE
   pure insertedE
   where
     helper :: ((V.Vector ScanKeyBox, EgvTx), BtcUtxoUpdate) -> (V.Vector (ScanKeyBox, M.Map TxId EgvTx), BtcUtxoUpdate)
     helper ((vec, tx), utxoUpd) = ((\keyBox -> (keyBox, M.fromList [(egvTxId tx, tx)])) <$> vec, utxoUpd)
 
-    txInserted :: ((V.Vector ScanKeyBox, EgvTx), BtcUtxoUpdate) -> Maybe EgvTx
-    txInserted ((vec, tx), (utxos, outPoints)) = if V.null vec && M.null utxos && null outPoints then Nothing else Just tx
+    txInserted :: ((V.Vector ScanKeyBox, EgvTx), BtcUtxoUpdate) -> Maybe BtcTxRaw
+    txInserted ((vec, tx), (utxos, outPoints)) = if V.null vec && M.null utxos && null outPoints
+      then Nothing
+      else case tx of
+        TxBtc (BtcTx tx _) -> Just tx
+        _ -> Nothing
 
 -- | Finds all txs that should be replaced by given tx and removes them from storage.
 -- Also stores information about transaction replacements in the storage.
 -- Stage 2. See removeRbfTxsFromStorage2.
 removeTxsReplacedByFee :: MonadStorage t m =>
   Text ->
-  Currency ->
-  Event t EgvTx ->
+  Event t BtcTxRaw ->
   m (Event t ())
-removeTxsReplacedByFee caller cur replacingTxE = do
+removeTxsReplacedByFee caller replacingTxE = do
   pubStorageD <- getPubStorageD
   replacedTxsE <- performFork $ ffor (current pubStorageD `attach` replacingTxE) $ \(ps, replacingTx) -> do
     let btcps = ps ^. pubStorage'currencyPubStorages . at BTC . non (error $ "removeTxsReplacedByFee: BTC storage does not exist!")
         txStore = btcps ^. currencyPubStorage'transactions
     liftIO $ flip runReaderT txStore $ do
       unconfirmedTxs <- getUnconfirmedTxs
-      let unconfirmedBtcTxs = getBtcTx <$> unconfirmedTxs
-          replacingTxId = egvTxId replacingTx
+      let unconfirmedBtcTxs = getBtcTx . fromJust . toTxBtc <$> unconfirmedTxs
+          replacingBtcTxId = HT.txHash replacingTx
+          replacingTxId = BtcTxHash replacingBtcTxId
           otherUnconfirmedTxs = M.elems $ M.delete replacingTxId unconfirmedBtcTxs
-          replacingBtcTx = getBtcTx replacingTx
-      replacedTxs <- filterM ((fmap (== Just True)) . replacesByFee replacingBtcTx) otherUnconfirmedTxs
+      replacedTxs <- filterM ((fmap (== Just True)) . replacesByFee replacingTx) otherUnconfirmedTxs
       replacedTxsChilds <- L.concat <$> traverse getChildTxs replacedTxs
-      possiblyReplacedTxs <- filterM ((fmap (== Nothing)) . replacesByFee replacingBtcTx) otherUnconfirmedTxs
+      possiblyReplacedTxs <- filterM ((fmap (== Nothing)) . replacesByFee replacingTx) otherUnconfirmedTxs
       possiblyReplacedTxsChilds <- L.concat <$> traverse getChildTxs possiblyReplacedTxs
-      let replacedTxIds = S.fromList $ (hkTxHashToEgv . HT.txHash) <$> (replacedTxs ++ replacedTxsChilds)
-          possiblyReplacedTxIds = S.fromList $ (hkTxHashToEgv . HT.txHash) <$> (possiblyReplacedTxs ++ possiblyReplacedTxsChilds)
-      pure (cur, replacingTxId, replacedTxIds, possiblyReplacedTxIds)
+      let replacedTxIds = S.fromList $ HT.txHash <$> (replacedTxs ++ replacedTxsChilds)
+          possiblyReplacedTxIds = S.fromList $ HT.txHash <$> (possiblyReplacedTxs ++ possiblyReplacedTxsChilds)
+      pure (replacingBtcTxId, replacedTxIds, possiblyReplacedTxIds)
   removedE <- removeRbfTxsFromStorage1 "removeTxsReplacedByFee" replacedTxsE
   pure removedE
 
@@ -208,6 +212,6 @@ checkAddrTx' vec tx = do
     b <- checkAddrTx (egvXPubKeyToEgvAddress . scanBox'key $ kb) tx
     pure $ if b then Just kb else Nothing
   st <- liftIO $ systemToUTCTime <$> getSystemTime
-  let meta = Just (EgvTxMeta Nothing Nothing st)
-      resultVec = V.mapMaybe id vec'
-  pure (resultVec, BtcTx tx meta)
+  let meta = (Just (EgvTxMeta Nothing Nothing st))
+      resultVec =  V.mapMaybe id vec'
+  pure (resultVec, TxBtc $ BtcTx tx meta)

@@ -279,6 +279,10 @@ navbarCss = do
     display grid
     gridTemplateColumns [fr 1, fr 1, fr 1]
     padding (rem 0) (rem 1) (rem 0) (rem 1)
+  ".navbar-5-cols" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1, fr 1, fr 1, fr 1]
+    padding (rem 0) (rem 1) (rem 0) (rem 1)
   ".navbar-item" ? do
     padding (rem 1) (rem 1) (rem 1) (rem 1)
     cursor pointer
@@ -1016,6 +1020,9 @@ legoStyles = do
   ".mt-1" ? (marginTop    $ rem 1)
   ".m-1" ? margin (rem 1) (rem 1) (rem 1) (rem 1)
   ".mlr-1" ? margin (rem 0) (rem 1) (rem 0) (rem 1)
+  ".mlr-a" ? do
+    marginLeft auto
+    marginRight auto
   ".mb-2" ? (marginBottom $ rem 2)
   ".ml-2" ? (marginLeft   $ rem 2)
   ".mr-2" ? (marginRight  $ rem 2)
@@ -1050,6 +1057,7 @@ legoStyles = do
   ".word-break-all" ? wordBreak breakAll
   ".font-bold" ? fontWeight bold
   ".fit-content" ? width fitContent
+  ".disp-block" ? display block
 
 badgeCss :: Css
 badgeCss = do
@@ -1074,7 +1082,6 @@ receiveCss = do
     margin (rem 2) auto (rem 2) auto
     fontSize $ px 16
     fontWeight $ weight 600
-    wordBreak breakAll
   ".label-block" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1]
@@ -1094,7 +1101,6 @@ receiveCss = do
     margin (px 20) (px 5) (px 40) (px 5)
     fontSize $ px 16
     fontWeight $ weight 600
-    wordBreak breakAll
   ".button-receive" ? do
     width $ pct 75
     marginLeft auto

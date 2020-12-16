@@ -13,6 +13,8 @@ import Text.Read
 
 import Ergvein.Text
 import Ergvein.Types
+import Ergvein.Types.Storage.Currency.Public.Btc
+import Ergvein.Types.Utxo.Btc
 import Ergvein.Types.Derive
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Clipboard
@@ -104,18 +106,18 @@ data FeeSelectorStatus = FSSNoEntry | FSSNoCache | FSSNoManual | FSSManual Word6
 
 data UtxoPoint = UtxoPoint {
   upPoint :: !HT.OutPoint
-, upMeta  :: !UtxoMeta
+, upMeta  :: !BtcUtxoMeta
 } deriving (Show)
 
 instance Eq UtxoPoint where
-  a == b = (utxoMeta'amount $ upMeta a) == (utxoMeta'amount $ upMeta b)
+  a == b = (btcUtxo'amount $ upMeta a) == (btcUtxo'amount $ upMeta b)
 
 -- | We need to sort in desc order to reduce Tx size
 instance Ord UtxoPoint where
-  a `compare` b = (utxoMeta'amount $ upMeta b) `compare` (utxoMeta'amount $ upMeta a)
+  a `compare` b = (btcUtxo'amount $ upMeta b) `compare` (btcUtxo'amount $ upMeta a)
 
 instance HT.Coin UtxoPoint where
-  coinValue = utxoMeta'amount . upMeta
+  coinValue = btcUtxo'amount . upMeta
 
 -- | Main confirmation & sign & send widget
 btcSendConfirmationWidget :: MonadFront t m => ((UnitBTC, Word64), Word64, EgvAddress) -> m ()
@@ -130,7 +132,7 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr) = do
     psD <- getPubStorageD
     utxoKeyD <- holdUniqDyn $ do
       ps <- psD
-      let utxo = ps ^. pubStorage'currencyPubStorages . at BTC & fmap (view currencyPubStorage'utxos)
+      let utxo = ps ^? pubStorage'currencyPubStorages . at BTC . _Just . currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'utxos
           mkey = getLastUnusedKey Internal =<< pubStorageKeyStorage BTC ps
       pure $ (utxo, mkey)
     utxoKey0 <- fmap Left $ sampleDyn utxoKeyD
@@ -150,7 +152,7 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr) = do
         pure never
     void $ widgetHold (pure ()) $ ffor stxE $ \(tx, _, _, _, _) -> do
       sendE <- getPostBuild
-      addedE <- addOutgoingTx "btcSendConfirmationWidget" $ (BtcTx tx Nothing) <$ sendE
+      addedE <- addOutgoingTx "btcSendConfirmationWidget" $ (TxBtc $ BtcTx tx Nothing) <$ sendE
       storedE <- btcMempoolTxInserter $ tx <$ addedE
       void $ requestBroadcast $ ffor storedE $ const $
         NodeReqBTC . MInv . Inv . pure . InvVector InvTx . HT.getTxHash . HT.txHash $ tx
@@ -170,10 +172,10 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr) = do
       (Right _, Right _)  -> Nothing
 
     -- | Split utxo set into confirmed and unconfirmed points
-    partition' :: [(HT.OutPoint, UtxoMeta)] -> ([UtxoPoint], [UtxoPoint])
-    partition' = foo ([], []) $ \(cs, ucs) (opoint, meta@UtxoMeta{..}) ->
+    partition' :: [(HT.OutPoint, BtcUtxoMeta)] -> ([UtxoPoint], [UtxoPoint])
+    partition' = foo ([], []) $ \(cs, ucs) (opoint, meta@BtcUtxoMeta{..}) ->
       let upoint = UtxoPoint opoint meta in
-      case utxoMeta'status of
+      case btcUtxo'status of
         EUtxoConfirmed -> (upoint:cs, ucs)
         EUtxoSemiConfirmed _ -> (upoint:cs, ucs)
         EUtxoSending _ -> (cs, ucs)
@@ -255,12 +257,12 @@ signTxWithWallet tx pick prv = do
   let PrvKeystore _ ext int = prv ^. prvStorage'currencyPrvStorages
         . at BTC . non (error "btcSendConfirmationWidget: not exsisting store!")
         . currencyPrvStorage'prvKeystore
-  mvals <- fmap (fmap unzip . sequence) $ flip traverse pick $ \(UtxoPoint opoint UtxoMeta{..}) -> do
-    let sig = HT.SigInput utxoMeta'script utxoMeta'amount opoint HS.sigHashAll Nothing
-    let errMsg = "Failed to get a corresponding secret key: " <> showt utxoMeta'purpose <> " #" <> showt utxoMeta'index
-    let msec = case utxoMeta'purpose of
-          Internal -> fmap (xPrvKey . unEgvXPrvKey) $ (V.!?) int utxoMeta'index
-          External -> fmap (xPrvKey . unEgvXPrvKey) $ (V.!?) ext utxoMeta'index
+  mvals <- fmap (fmap unzip . sequence) $ flip traverse pick $ \(UtxoPoint opoint BtcUtxoMeta{..}) -> do
+    let sig = HT.SigInput btcUtxo'script btcUtxo'amount opoint HS.sigHashAll Nothing
+    let errMsg = "Failed to get a corresponding secret key: " <> showt btcUtxo'purpose <> " #" <> showt btcUtxo'index
+    let msec = case btcUtxo'purpose of
+          Internal -> fmap (xPrvKey . unEgvXPrvKey) $ (V.!?) int btcUtxo'index
+          External -> fmap (xPrvKey . unEgvXPrvKey) $ (V.!?) ext btcUtxo'index
     maybe (logWrite errMsg >> pure Nothing) (pure . Just . (sig,)) msec
   pure $ (uncurry $ HT.signTx btcNetwork tx) <$> mvals
 

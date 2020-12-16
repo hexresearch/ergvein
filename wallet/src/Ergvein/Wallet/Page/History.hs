@@ -6,6 +6,7 @@ import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Derive
 import Ergvein.Types.Utxo
+import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.History

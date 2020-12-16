@@ -9,7 +9,9 @@ import Data.Maybe (fromMaybe)
 
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
-import Ergvein.Types.Utxo
+import Ergvein.Types.Utxo.Btc
+import Ergvein.Types.Utxo.Status
+import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.History
 import Ergvein.Wallet.Monad
@@ -23,14 +25,16 @@ ergoBalances = pure $ pure $ Money ERGO 0
 
 btcBalances :: MonadFront t m => m (Dynamic t Money)
 btcBalances = do
-  pubStorageD <- getPubStorageD
-  pure $ ffor pubStorageD $ \pubStorage -> let
-    utxos = M.elems $ fromMaybe M.empty $ pubStorage ^. pubStorage'currencyPubStorages . at BTC & fmap (view currencyPubStorage'utxos)
-    in Money BTC $ L.foldl' helper 0 utxos
+  pubStorageD <- getPubStorageBtcD
+  pure $ ffor pubStorageD $ \case
+    Nothing -> Money BTC 0
+    Just pubStorage -> let
+      utxos = M.elems $ pubStorage ^. btcPubStorage'utxos
+      in Money BTC $ L.foldl' helper 0 utxos
   where
-    helper :: MoneyUnit -> UtxoMeta -> MoneyUnit
-    helper balance UtxoMeta{utxoMeta'status = EUtxoSending _} = balance
-    helper balance UtxoMeta{..} = balance + utxoMeta'amount
+    helper :: MoneyUnit -> BtcUtxoMeta -> MoneyUnit
+    helper balance BtcUtxoMeta{btcUtxo'status = EUtxoSending _} = balance
+    helper balance BtcUtxoMeta{..} = balance + btcUtxo'amount
 
 balancesWidget :: MonadFront t m => Currency -> m (Dynamic t Money)
 balancesWidget cur = case cur of

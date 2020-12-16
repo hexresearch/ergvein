@@ -64,7 +64,7 @@ availableSpaceGauge = unsafeRegister $ gauge (Info "available_space" "Amount of 
 {-# NOINLINE availableSpaceGauge #-}
 
 incGaugeWhile :: (MonadMonitor m, MonadMask m) => Gauge -> m a -> m a
-incGaugeWhile g = bracket_ (addGauge activeConnsGauge 1.0) (subGauge activeConnsGauge 1.0)
+incGaugeWhile g = bracket_ (addGauge g 1.0) (subGauge g 1.0)
 
 reportCurrentHeight :: MonadMonitor m => Currency -> BlockHeight -> m ()
 reportCurrentHeight currency = setGauge (heightGauge currency) . fromIntegral
@@ -84,7 +84,7 @@ serveMetrics = void $ worker "metrics-server" $ const $ do
       logInfoN $ "Metrics server is started at " <> pack cfgMetricsHost <> ":" <> showt cfgMetricsPort
       let sett = setPort cfgMetricsPort $ setHost (fromString cfgMetricsHost) defaultSettings
           pcfg = def { prometheusEndPoint = [] }
-      register ghcMetrics
+      _ <- register ghcMetrics
       liftIO $ runSettings sett $ prometheus pcfg noApp
 
 -- | App that serves 404 on any page

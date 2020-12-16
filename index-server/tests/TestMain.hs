@@ -14,7 +14,6 @@ import Test.QuickCheck.Instances
 import Test.Generators
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Serialize
-import Ergvein.Index.Server.DB.Serialize.Tx
 import Ergvein.Index.Server.DB.Schema.Filters
 import Ergvein.Index.Server.DB.Schema.Indexer
 import Ergvein.Types.Currency

@@ -1,11 +1,16 @@
 module Ergvein.Index.Protocol.Types where
 
+import Conversion
+import Data.Attoparsec.ByteString
+import Data.Attoparsec.Binary
 import Data.ByteString
 import Data.ByteString.Short (ShortByteString)
+import Data.Either
 import Data.Vector.Unboxed.Deriving
 import Data.Word
 import Foreign.C.Types
 import Foreign.Storable
+import Network.Socket (SockAddr(..))
 
 import Ergvein.Types.Fees
 
@@ -202,3 +207,15 @@ data Message = MPing                       !Ping
 
 genericSizeOf :: (Storable a, Integral b) => a -> b
 genericSizeOf = fromIntegral . sizeOf
+
+
+instance Conversion Address SockAddr where
+  convert Address{..} = case addressType of
+    IPV4 -> let
+      port = (fromInteger $ toInteger addressPort)
+      ip  =  fromRight (error "address") $ parseOnly anyWord32be addressAddress
+      in SockAddrInet port ip
+    IPV6 -> let
+      port = (fromInteger $ toInteger addressPort)
+      ip  =  fromRight (error "address") $ parseOnly ((,,,) <$> anyWord32be <*> anyWord32be <*> anyWord32be <*> anyWord32be) addressAddress
+      in SockAddrInet6 port 0 ip 0

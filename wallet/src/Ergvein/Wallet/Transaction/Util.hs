@@ -30,6 +30,7 @@ module Ergvein.Wallet.Transaction.Util(
   , replacesByFee
   ) where
 
+import Control.Monad ((<=<))
 import Control.Monad.IO.Class
 import Data.Maybe
 import Data.Word
@@ -40,6 +41,7 @@ import Ergvein.Types.Address
 import Ergvein.Types.Keys
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
+import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
 
@@ -52,12 +54,13 @@ import qualified Network.Haskoin.Script             as HS
 import qualified Network.Haskoin.Transaction        as HK
 
 checkAddr :: (HasTxStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m Bool
-checkAddr ac tx = do
+checkAddr ac (TxBtc tx) = do
   bL <- traverse (flip checkAddrTx (getBtcTx tx)) ac
   pure $ L.or bL
+checkAddr ac (TxErg _) = error "checkAddr: Ergo is not implemented!"
 
 -- | Checks given tx if there are some inputs or outputs containing given address.
-checkAddrTx :: (HasTxStorage m, PlatformNatives) => EgvAddress -> Tx -> m Bool
+checkAddrTx :: (HasTxStorage m, PlatformNatives) => EgvAddress -> BtcTxRaw -> m Bool
 checkAddrTx addr tx = do
   checkTxInputsResults <- traverse (checkTxIn addr) (HK.txIn tx)
   checkTxOutputsResults <- traverse (checkTxOut addr) (HK.txOut tx)
@@ -65,14 +68,14 @@ checkAddrTx addr tx = do
   where concatResults = L.foldr (||) False
 
 -- | Checks given tx if there are some inputs containing given address.
-checkAddrTxIn :: (HasTxStorage m, PlatformNatives) => EgvAddress -> Tx -> m Bool
+checkAddrTxIn :: (HasTxStorage m, PlatformNatives) => EgvAddress -> BtcTxRaw -> m Bool
 checkAddrTxIn addr tx = do
   checkTxInputsResults <- traverse (checkTxIn addr) (HK.txIn tx)
   pure $ concatResults checkTxInputsResults
   where concatResults = L.foldr (||) False
 
 -- | Checks given tx if there are some outputs containing given address.
-checkAddrTxOut :: (HasTxStorage m, PlatformNatives) => EgvAddress -> Tx -> m Bool
+checkAddrTxOut :: (HasTxStorage m, PlatformNatives) => EgvAddress -> BtcTxRaw -> m Bool
 checkAddrTxOut addr tx = do
   checkTxOutputsResults <- traverse (checkTxOut addr) (HK.txOut tx)
   pure $ concatResults checkTxOutputsResults
@@ -97,8 +100,8 @@ checkTxIn addr txIn = do
   mtx <- getTxById $ hkTxHashToEgv spentTxHash
   case mtx of
     Nothing -> pure False
-    Just ErgTx{} -> pure False -- TODO: impl for Ergo
-    Just BtcTx{..} -> checkTxOut addr $ (HK.txOut getBtcTx) !! (fromIntegral spentOutputIndex)
+    Just (TxErg _) -> pure False -- TODO: impl for Ergo
+    Just (TxBtc BtcTx{..}) -> checkTxOut addr $ (HK.txOut getBtcTx) !! (fromIntegral spentOutputIndex)
 
 -- | Checks given TxOut wheather it contains given address.
 -- TODO: Pattern match(es) are non-exhaustive:
@@ -134,17 +137,16 @@ filterTxsForAddress addr txs = fmap catMaybes $ flip traverse txs $ \tx -> do
   pure $ if b then Just tx else Nothing
 
 -- | Gets a list of groups of conflicting txs. Txs in the same list have at least one common input.
-getConflictingTxs :: [(Bool, [TxId])] -> [EgvTx] -> [[TxId]]
+getConflictingTxs :: [(Bool, [BtcTxId])] -> [EgvTx] -> [[BtcTxId]]
 getConflictingTxs possiblyReplacedTxs txs = L.zipWith removePossiblyReplacedTxs possiblyReplacedTxs (getConflicts <$> btcTxs)
   where
-    btcTxs = getBtcTx <$> txs
-    getTxHash = hkTxHashToEgv . HK.txHash
+    btcTxs = catMaybes $ fmap getBtcTx . toTxBtc <$> txs
 
-    removePossiblyReplacedTxs :: (Bool, [TxId]) -> [TxId] -> [TxId]
+    removePossiblyReplacedTxs :: (Bool, [BtcTxId]) -> [BtcTxId] -> [BtcTxId]
     removePossiblyReplacedTxs (_, prTxs) cTxs = L.filter (`L.notElem` prTxs) cTxs
 
-    getConflicts :: HK.Tx -> [TxId]
-    getConflicts tx = getTxHash <$> (L.filter (haveCommonInputs tx) (L.delete tx btcTxs))
+    getConflicts :: HK.Tx -> [BtcTxId]
+    getConflicts tx = HK.txHash <$> (L.filter (haveCommonInputs tx) (L.delete tx btcTxs))
 
 isDirectChildTxOf :: Tx -> Tx -> Bool
 isDirectChildTxOf childTx parentTx = parentTxId `L.elem` childTxInputsTxIds
@@ -161,29 +163,29 @@ isDirectChildTxOf childTx parentTx = parentTxId `L.elem` childTxInputsTxIds
 getChildTxs :: (HasTxStorage m, PlatformNatives) => Tx -> m [Tx]
 getChildTxs tx = do
   txStore <- askTxStorage
-  case L.filter (`isDirectChildTxOf` tx) (getBtcTx <$> M.elems txStore) of
+  case L.filter (`isDirectChildTxOf` tx) (getBtcTx . fromJust . toTxBtc <$> M.elems txStore) of
     [] -> pure []
     childTxs -> do
       grandChildTxs <- L.concat <$> traverse getChildTxs childTxs
       pure $ childTxs ++ grandChildTxs
 
 -- | Gets a list of ids of replaced transactions for every transaction in provided list.
-getReplacedTxs :: M.Map TxId (S.Set TxId) -> [EgvTx] -> [[TxId]]
+getReplacedTxs :: M.Map BtcTxId (S.Set BtcTxId) -> [EgvTx] -> [[BtcTxId]]
 getReplacedTxs replacedTxs txs = getReplaced replacedTxs <$> txs
   where
-    getReplaced :: M.Map TxId (S.Set TxId) -> EgvTx -> [TxId]
-    getReplaced rTxs tx = case M.lookup (egvTxId tx) rTxs of
+    getReplaced :: M.Map BtcTxId (S.Set BtcTxId) -> EgvTx -> [BtcTxId]
+    getReplaced rTxs tx = case M.lookup (fromJust . toBtcTxHash . egvTxId $ tx) rTxs of
       Nothing -> []
       Just txSet -> S.toList txSet
 
 -- | Gets a list of ids of possibly replaced transactions for every transaction in provided list.
-getPossiblyReplacedTxs :: M.Map TxId (S.Set TxId) -> [EgvTx] -> [(Bool, [TxId])]
+getPossiblyReplacedTxs :: M.Map BtcTxId (S.Set BtcTxId) -> [EgvTx] -> [(Bool, [BtcTxId])]
 getPossiblyReplacedTxs possiblyReplacedTxs txs = getPossiblyReplaced possiblyReplacedTxs <$> txs
   where
-    getPossiblyReplaced :: M.Map TxId (S.Set TxId) -> EgvTx -> (Bool, [TxId])
-    getPossiblyReplaced rTxs tx = M.foldrWithKey' (helper $ egvTxId tx) (False, []) rTxs
+    getPossiblyReplaced :: M.Map BtcTxId (S.Set BtcTxId) -> EgvTx -> (Bool, [BtcTxId])
+    getPossiblyReplaced rTxs tx = M.foldrWithKey' (helper $ fromJust . toBtcTxHash . egvTxId $ tx) (False, []) rTxs
 
-    helper :: TxId -> TxId -> S.Set TxId -> (Bool, [TxId]) -> (Bool, [TxId])
+    helper :: BtcTxId -> BtcTxId -> S.Set BtcTxId -> (Bool, [BtcTxId]) -> (Bool, [BtcTxId])
     helper txId possiblyReplacingTxId possiblyReplacedTxIds acc
       | txId == possiblyReplacingTxId = (True, S.toList possiblyReplacedTxIds)
       | S.member txId possiblyReplacedTxIds = (False, possiblyReplacingTxId : (S.toList $ S.delete txId possiblyReplacedTxIds))
@@ -194,8 +196,8 @@ getOutputByOutPoint HK.OutPoint{..} = do
   mtx <- getTxById $ hkTxHashToEgv outPointHash
   case mtx of
     Nothing -> pure Nothing
-    Just ErgTx{} -> pure Nothing -- TODO: impl for Ergo
-    Just BtcTx{..} -> pure $ Just $ (HK.txOut getBtcTx) !! (fromIntegral outPointIndex)
+    Just (TxErg _) -> pure Nothing -- TODO: impl for Ergo
+    Just (TxBtc BtcTx{..}) -> pure $ Just $ (HK.txOut getBtcTx) !! (fromIntegral outPointIndex)
 
 getOutputsByOutPoints :: (HasTxStorage m, PlatformNatives) => [HK.OutPoint] -> m [Maybe HK.TxOut]
 getOutputsByOutPoints outPoints = traverse getOutputByOutPoint outPoints
@@ -226,13 +228,13 @@ getTxOutputsAmount tx = L.sum $ HK.outValue <$> outputs
 -- | Gets unspent output for a given address from a transaction
 -- Maybe BlockHeight: Nothing -- unconfirmed Tx. Just n -> confirmed at height n
 getUnspentOutputs :: (MonadIO m, PlatformNatives)
-  => Maybe BlockHeight -> ScanKeyBox -> Tx -> m [(OutPoint, UtxoMeta)]
+  => Maybe BlockHeight -> ScanKeyBox -> Tx -> m [(OutPoint, BtcUtxoMeta)]
 getUnspentOutputs c ScanKeyBox{..} tx = fmap catMaybes $ flip traverse (L.zip [0..] $ txOut tx) $ \(i,o) -> do
   b <- checkTxOut addr o
   let escript = HS.decodeOutputBS $ scriptOutput o
   either (\e -> logWrite $ "Failed to decode scriptOutput: " <> showt o <> ". Error: " <> showt e) (const $ pure ()) escript
   pure $ case (b, escript) of
-    (True, Right scr) -> Just (OutPoint th i, UtxoMeta scanBox'index scanBox'purpose (outValue o) scr stat)
+    (True, Right scr) -> Just (OutPoint th i, BtcUtxoMeta scanBox'index scanBox'purpose (outValue o) scr stat)
     _ -> Nothing
   where
     th = txHash tx

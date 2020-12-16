@@ -18,7 +18,8 @@ import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Derive
 import Ergvein.Types.Storage
-import Ergvein.Types.Storage
+import Ergvein.Types.Storage.Currency.Public.Btc (BtcPubStorage(..))
+import Ergvein.Types.Storage.Currency.Public.Ergo (ErgoPubStorage(..))
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
@@ -194,21 +195,7 @@ currenciesPage = do
       pure ()
   where
     uac cE =  updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ cE
-    mkStore mpath prvStr currency = let
-      dpath = extendDerivPath currency <$> mpath
-      in CurrencyPubStorage {
-        _currencyPubStorage'pubKeystore         = (createPubKeystore $ deriveCurrencyMasterPubKey dpath (_prvStorage'rootPrvKey prvStr) currency)
-      , _currencyPubStorage'path                = dpath
-      , _currencyPubStorage'transactions        = Map.empty
-      , _currencyPubStorage'utxos               = Map.empty
-      , _currencyPubStorage'headers             = Map.empty
-      , _currencyPubStorage'outgoing            = S.empty
-      , _currencyPubStorage'headerSeq           = btcCheckpoints
-      , _currencyPubStorage'chainHeight         = 0
-      , _currencyPubStorage'scannedHeight       = 0
-      , _currencyPubStorage'replacedTxs         = Map.empty
-      , _currencyPubStorage'possiblyReplacedTxs = Map.empty
-      }
+    mkStore mpath prvStr currency = createCurrencyPubStorage mpath (_prvStorage'rootPrvKey prvStr) (filterStartingHeight currency) currency
 
 -- TODO: uncomment commented lines when ERGO is ready
 unitsPage :: MonadFront t m => m ()
