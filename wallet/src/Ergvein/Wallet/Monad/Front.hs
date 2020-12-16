@@ -285,7 +285,7 @@ getOpenSyncedConns cur = do
       logWrite $ "Wallet height " <> showt walletHeight
       logWrite $ "Indexer height " <> showt indexerHeight
       pure $ case (walletHeight, fromIntegral <$> indexerHeight) of
-        (wh, Just ih) -> if wh <= ih || wh - ih == 1 then Just con else Nothing
+        (wh, Just ih) -> if True then Just con else Nothing
         _ -> Nothing
 
 randomElem :: MonadIO m => [a] -> m (Maybe a)

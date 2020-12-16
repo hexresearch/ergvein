@@ -48,7 +48,7 @@ ergveinNetworkRefresh = do
   settD <- fmap _settingsDiscoveryEnabled <$> getSettingsD
   let settE = void $ updated settD
   activePeersChangedE <- void . fst <$> getActivationEF
-  let goE = gate (current settD) $  leftmost [timerE, buildE, settE, activePeersChangedE]
+  let goE = gate (current settD) $  leftmost [timerE, buildE, settE]
   activeUrlsRef <- getActiveConnsRef
   gE <- performEvent $ ffor goE $ \_-> do
     act <- readExternalRef activeUrlsRef
@@ -57,9 +57,9 @@ ergveinNetworkRefresh = do
   gE' <- updateSettingsAsync gE
   activeUrlsE <- performEvent $ ffor gE' $ const $ readExternalRef activeUrlsRef
 
-  let activePeerAmountE  = traceEvent "discovery" $ length . Map.toList <$> activeUrlsE
+  let activePeerAmountE  = length . Map.toList <$> activeUrlsE
       notOperablePeerAmountE  = void $ ffilter (< minOperableAmount) activePeerAmountE 
-      insufficientPeerAmountE = traceEvent "insufficientPeerAmountE" $ void $ ffilter (< targetAmount) activePeerAmountE
+      insufficientPeerAmountE = void $ ffilter (< targetAmount) activePeerAmountE
   restoreFromDNS notOperablePeerAmountE
   fetchNewPeer insufficientPeerAmountE
 
@@ -76,14 +76,14 @@ restoreFromDNS e = do
 
 fetchNewPeer :: MonadFront t m => Event t () -> m ()
 fetchNewPeer e = do
-  let reqE = traceEvent "reqREEEEEEEEEEEEEEEEEEEEEE" $ (C.BTC, MPeerRequest PeerRequest) <$ e
-  respE <-  traceEvent "respE" <$> requestRandomIndexer reqE
-  let nonEmptyAddressesE = traceEvent "nonEmptyAddressesE" $ fforMaybe respE $ \(_, msg) -> case msg of
+  let reqE = (C.BTC, MPeerRequest PeerRequest) <$ e
+  respE <- requestRandomIndexer reqE
+  let nonEmptyAddressesE = fforMaybe respE $ \(_, msg) -> case msg of
         MPeerResponse PeerResponse {..} | not $ V.null peerResponseAddresses -> Just peerResponseAddresses
         _-> Nothing
-  newIndexerE <- performEvent $ ffor nonEmptyAddressesE $ \addrs ->
+  newIndexerE <- fmap (traceEvent "newIndexerE RANDOM") <$> performEvent $ ffor nonEmptyAddressesE $ \addrs ->
     liftIO $ convertA . head <$> (shuffleM $ V.toList addrs)
-  void $ addDiscovered newIndexerE
+  void $ traceEvent "newIndexerE  11111111111111111111111111111111111111111" <$> addDiscovered newIndexerE
 
 convertA Address{..} = case addressType of
     IPV4 -> let

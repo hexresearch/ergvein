@@ -85,13 +85,16 @@ class MonadBaseConstr t m => MonadIndexClient t m | m -> t where
   getActivationEF :: m (Event t [Text], [Text] -> IO ())
 
 addDiscovered :: (MonadIndexClient t m, MonadHasSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
-addDiscovered addrE = updateSettingsAsync $ ffor addrE $ \ url ->
-  settingsAddrs . at url .~ Just discoveredPeerInfo
+addDiscovered discoveredAddressE = do
+    (_, activationFunc)    <- getActivationEF
+    fmap (traceEvent "ASYNC UPDATE") <$> updateSettingsAsync $ ffor discoveredAddressE $ \ url ->
+      settingsAddrs . at url .~ Just discoveredPeerInfo
+    performEvent $ ffor discoveredAddressE $ liftIO . activationFunc . pure
   where
-  discoveredPeerInfo = PeerInfo
-    { _peerInfoIsActive = True
-    , _peerInfoIsPinned = False
-    }
+    discoveredPeerInfo = PeerInfo
+      { _peerInfoIsActive = True
+      , _peerInfoIsPinned = False
+      }
 
 addManual :: (MonadIndexClient t m, MonadHasSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
 addManual addrE = updateSettingsAsync $ ffor addrE $ \ url ->
