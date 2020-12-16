@@ -83,3 +83,7 @@ encodeFeature (FeatureOperationMode v) =
   <> byteString bs
   where
     bs = BSL.toStrict . toLazyByteString $ encodeOpMode v
+encodeFeature (UnknownFeature i bs) =
+     word8 i
+  <> word16BE (fromIntegral $ BS.length bs)
+  <> byteString bs 
