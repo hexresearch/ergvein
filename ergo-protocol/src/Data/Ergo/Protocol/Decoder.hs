@@ -1,5 +1,6 @@
 module Data.Ergo.Protocol.Decoder(
     decodeMessage
+  , messageParser
   ) where
 
 import Control.Monad
@@ -100,7 +101,7 @@ parsePeerFeature = do
 
 handshakeParser :: Parser Handshake
 handshakeParser = Handshake
-  <$> fmap fromIntegral anyWord32be
+  <$> fmap fromIntegral anyWord64be
   <*> parseText
   <*> parseVersion
   <*> parseText

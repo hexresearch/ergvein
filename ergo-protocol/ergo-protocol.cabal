@@ -58,11 +58,14 @@ test-suite ergo-protocol-test
     TupleSections
   build-depends:
       base
+    , base16-bytestring
     , bytestring
     , ergo-protocol
     , quickcheck-instances
+    , quickcheck-text
     , tasty
     , tasty-discover
     , tasty-hspec
     , tasty-quickcheck
+    , text
     , vector

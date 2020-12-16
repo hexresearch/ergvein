@@ -37,7 +37,7 @@ import GHC.Generics
 
 -- | Blockchain network tag. Testing or production.
 data Network = Mainnet | Testnet
-  deriving (Generic, Show, Read)
+  deriving (Generic, Show, Read, Eq)
 
 -- | Magic bytes in front of message
 magicBytes :: Network -> Word32
@@ -46,25 +46,25 @@ magicBytes Testnet = 0x02000000
 
 -- | Possible types of network messages in P2P protocol for Ergo
 data Message = MsgHandshake !Handshake
-  deriving (Generic, Show, Read)
+  deriving (Generic, Show, Read, Eq)
 
 -- | Protocol version
 data ProtoVer = ProtoVer !Word8 !Word8 !Word8
-  deriving (Generic, Show, Read)
+  deriving (Generic, Show, Read, Eq)
 
 -- | IP address of network address
 data IP
   = IPV4 !Word32
   | IPV6 !Word32 !Word32 !Word32 !Word32
-  deriving (Generic, Show, Read)
+  deriving (Generic, Show, Read, Eq)
 
 -- | IP and port
 data NetAddr = NetAddr !IP !Word32
-  deriving (Generic, Show, Read)
+  deriving (Generic, Show, Read, Eq)
 
 -- | State representation of the node
 data StateType = StateUtxo | StateDigest
-  deriving (Generic, Show, Read)
+  deriving (Generic, Show, Read, Eq)
 
 -- | Operation mode information
 data OperationModeFeature = OperationModeFeature {
@@ -72,7 +72,7 @@ data OperationModeFeature = OperationModeFeature {
 , verifying     :: !Bool -- ^ Whether peer verify transactions
 , nipopowSuffix :: !(Maybe Word32) -- ^ Suffix length for NiPoPoW bootstrapping, 'Nothing' no NiPoPoW bootstrapping
 , blocksStored  :: !(Maybe Word32) -- ^ How many block kept, 'Nothing' means all are stored
-} deriving (Generic, Show, Read)
+} deriving (Generic, Show, Read, Eq)
 
 -- | ID of 'OperationModeFeature' feature
 featureOperationModeId :: Word8
@@ -80,7 +80,7 @@ featureOperationModeId = 16
 
 -- | Known peer feature types that client supports.
 data PeerFeature = FeatureOperationMode !OperationModeFeature | UnknownFeature !Word8 !ByteString
-  deriving (Generic, Show, Read)
+  deriving (Generic, Show, Read, Eq)
 
 -- | Amount of seconds that is given to peer to send handshake message. After that
 -- connection is dropped.
@@ -95,7 +95,7 @@ data Handshake = Handshake
   , peerName     :: !Text
   , publicAddr   :: !(Maybe NetAddr)
   , peerFeatures :: !(Vector PeerFeature)
-  } deriving (Generic, Show, Read)
+  } deriving (Generic, Show, Read, Eq)
 
 -- | ID of handshake message type
 handshakeId :: Word8

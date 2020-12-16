@@ -12,6 +12,7 @@ import Data.Vector (Vector)
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
+import qualified Data.Text as T
 import qualified Data.Vector as V
 
 encodeMessage :: Network -> Message -> Builder
@@ -27,9 +28,11 @@ encodeMessage net msg = case msg of
       bbody = BSL.toStrict . toLazyByteString $! encodeHandshake hmsg
 
 encodeVarText :: Text -> Builder
-encodeVarText t = word8 l <> byteString (BS.take (fromIntegral l) bs)
+encodeVarText t
+  | l > 255   = encodeVarText $ T.init t
+  | otherwise = word8 (fromIntegral l) <> byteString bs
   where
-    l = fromIntegral $ min 256 $ BS.length bs
+    l = BS.length bs
     bs = encodeUtf8 t
 
 encodeVersion :: ProtoVer -> Builder
@@ -49,7 +52,7 @@ encodeNetAddr (NetAddr ip p) = encodeIP ip <> word32BE p
 encodeVector :: (a -> Builder) -> Vector a -> Builder
 encodeVector f v = word8 l <> foldMap f v
   where
-    l = fromIntegral $ min 256 $ V.length v
+    l = fromIntegral $ min 255 $ V.length v
 
 encodeBool :: Bool -> Builder
 encodeBool v = word8 $ if v then 1 else 0
@@ -86,4 +89,4 @@ encodeFeature (FeatureOperationMode v) =
 encodeFeature (UnknownFeature i bs) =
      word8 i
   <> word16BE (fromIntegral $ BS.length bs)
-  <> byteString bs 
+  <> byteString bs

@@ -18,9 +18,16 @@ module Data.Ergo.Protocol(
   , ProtoVer(..)
   , IP(..)
   , NetAddr(..)
+  , StateType(..)
+  , OperationModeFeature(..)
+  , featureOperationModeId
+  , PeerFeature(..)
   , Handshake(..)
+  , handshakeId
   , handshakeTimeout
   , magicBytes
+  , decodeMessage
+  , encodeMessage
   ) where
 
 import Data.Ergo.Protocol.Types
