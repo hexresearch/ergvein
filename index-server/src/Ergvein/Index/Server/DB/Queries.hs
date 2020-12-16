@@ -120,8 +120,13 @@ initIndexerDb db = do
 addBlockInfo :: (HasBtcRollback m, HasFiltersDB m, HasIndexerDB m, MonadLogger m, MonadBaseControl IO m) => BlockInfo -> m ()
 addBlockInfo (BlockInfo meta spent txinfos) = do
   db <- getFiltersDb
-  write db def $ txInfosBatch <> metaInfosBatch <> heightWrite
-  insertRollback cur $ RollbackRecItem txHashes spent prevHash (height -1)
+  let outsl = mkChunks 100 $ Map.toList spent
+  upds <- fmap (mconcat . mconcat) $ mapConcurrently (traverse (mkupds db)) outsl
+  -- upds <- fmap (mconcat . mconcat)
+  --   $ mapConcurrently (mapM (mkupd db))
+  --     $ mkChunks 100 $ Map.toList spent
+  write db def $ txInfosBatch <> metaInfosBatch <> upds <> heightWrite
+  insertRollback cur $ RollbackRecItem txHashes prevHash (height -1)
   setLastScannedBlock cur blkHash
   where
     BlockMetaInfo cur height blkHash prevHash filt = meta
@@ -129,6 +134,15 @@ addBlockInfo (BlockInfo meta spent txinfos) = do
     txInfosBatch   = putTxInfosAsRecs cur height txinfos
     metaInfosBatch = putItem cur (metaRecKey (cur, height)) $ BlockMetaRec blkHash filt
     heightWrite    = putItem cur (scannedHeightTxKey cur) $ ScannedHeightRec height
+    maybe' mv c = maybe [] c mv
+    either' ev c = either (const []) c ev
+    mkupds fdb (th, sp) = do
+      let k = txUnspentKey th
+      mraw <- get fdb def k
+      pure $ maybe' mraw $ \bs -> either' (egvDeserialize BTC bs) $ \(TxRecUnspent unsp) ->
+        if unsp <= sp
+          then [LDB.Del k, LDB.Del $ txBytesKey th]
+          else [LDB.Put k $ egvSerialize BTC $ TxRecUnspent (unsp - sp)]
 
 setLastScannedBlock :: (HasIndexerDB m, MonadLogger m) => Currency -> ShortByteString -> m ()
 setLastScannedBlock currency blockHash = do
@@ -169,7 +183,6 @@ insertBtcRollback ritem = do
     then liftIO $ atomically $ writeTVar rollVar rse'
     else do
       let rest Seq.:> lst = Seq.viewr rse'
-      finalizeRollbackItem Currency.BTC lst
       liftIO $ atomically $ writeTVar rollVar rest
 
 storeRollbackSequence :: (HasIndexerDB m, MonadLogger m) => Currency -> RollbackSequence -> m ()
@@ -183,22 +196,22 @@ loadRollbackSequence cur = do
   mseq <- getParsed cur "loadRollbackSequence" idb $ rollbackKey cur
   pure $ fromMaybe (RollbackSequence mempty) mseq
 
-finalizeRollbackItem :: (HasFiltersDB m, MonadLogger m, MonadBaseControl IO m) => Currency -> RollbackRecItem -> m ()
-finalizeRollbackItem _cur (RollbackRecItem _ outs _ _) = do
-  fdb <- getFiltersDb
-  let outsl = mkChunks 100 $ Map.toList outs
-  upds <- fmap (mconcat . mconcat) $ mapConcurrently (traverse (mkupds fdb)) outsl
-  write fdb def upds
-  where
-    maybe' mv c = maybe [] c mv
-    either' ev c = either (const []) c ev
-    mkupds fdb (th, sp) = do
-      let k = txUnspentKey th
-      mraw <- get fdb def k
-      pure $ maybe' mraw $ \bs -> either' (egvDeserialize BTC bs) $ \(TxRecUnspent unsp) ->
-        if unsp <= sp
-          then [LDB.Del k, LDB.Del $ txBytesKey th]
-          else [LDB.Put k $ egvSerialize BTC $ TxRecUnspent (unsp - sp)]
+-- finalizeRollbackItem :: (HasFiltersDB m, MonadLogger m, MonadBaseControl IO m) => Currency -> RollbackRecItem -> m ()
+-- finalizeRollbackItem _cur (RollbackRecItem _ outs _ _) = do
+--   fdb <- getFiltersDb
+--   let outsl = mkChunks 100 $ Map.toList outs
+--   upds <- fmap (mconcat . mconcat) $ mapConcurrently (traverse (mkupds fdb)) outsl
+--   write fdb def upds
+--   where
+--     maybe' mv c = maybe [] c mv
+--     either' ev c = either (const []) c ev
+--     mkupds fdb (th, sp) = do
+--       let k = txUnspentKey th
+--       mraw <- get fdb def k
+--       pure $ maybe' mraw $ \bs -> either' (egvDeserialize BTC bs) $ \(TxRecUnspent unsp) ->
+--         if unsp <= sp
+--           then [LDB.Del k, LDB.Del $ txBytesKey th]
+--           else [LDB.Put k $ egvSerialize BTC $ TxRecUnspent (unsp - sp)]
 
 performRollback :: (HasFiltersDB m, HasIndexerDB m, HasBtcRollback m, MonadLogger m) => Currency -> m Int
 performRollback cur = case cur of

@@ -95,11 +95,6 @@ data TxRecHeight = TxRecHeight { unTxRecHeight :: !Word32 }
 data TxRecUnspent = TxRecUnspent { unTxRecUnspent :: !Word32 }
   deriving (Generic, Show, Eq, Ord)
 
-data TxRecMeta = TxRecMeta
-  { txMetaHeight  :: !Word32
-  , txMetaUnspent :: !Word32
-  } deriving (Generic, Show, Eq, Ord)
-
 --BlockMeta
 
 metaRecKey :: (Currency, BlockHeight) -> ByteString
@@ -130,17 +125,6 @@ data SchemaVersionRec = Text  deriving (Generic, Show, Eq, Ord)
 instance EgvSerialize ScannedHeightRec where
   egvSerialize _ (ScannedHeightRec sh) = BL.toStrict . BB.toLazyByteString $ BB.word64LE sh
   egvDeserialize _ = parseOnly $ ScannedHeightRec <$> anyWord64le
-
-instance EgvSerialize TxRecMeta where
-  egvSerialize _ TxRecMeta{..} = BL.toStrict . BB.toLazyByteString $ if txMetaUnspent == 0
-    then BB.int8 0 <> BB.word32LE txMetaHeight
-    else BB.int8 1 <> BB.word32LE txMetaHeight <> BB.word32LE txMetaUnspent
-  egvDeserialize _ = parseOnly $ do
-    i <- anyWord8
-    h <- anyWord32le
-    if i == 0
-      then pure $ TxRecMeta h 0
-      else TxRecMeta h <$> anyWord32le
 
 instance EgvSerialize TxRecBytes where
   egvSerialize _ = BL.toStrict . BB.toLazyByteString . buildBS . unTxRecBytes
