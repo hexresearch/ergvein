@@ -14,6 +14,8 @@ Types are kept close to binary representation for fast processing.
 -}
 module Data.Ergo.Protocol(
     Network(..)
+  , TestnetMessage(..)
+  , MainnetMessage(..)
   , Message(..)
   , ProtoVer(..)
   , IP(..)
@@ -30,6 +32,22 @@ module Data.Ergo.Protocol(
   , encodeMessage
   ) where
 
-import Data.Ergo.Protocol.Types
-import Data.Ergo.Protocol.Encoder
 import Data.Ergo.Protocol.Decoder
+import Data.Ergo.Protocol.Encoder
+import Data.Ergo.Protocol.Types
+import Data.Persist
+import GHC.Generics
+
+newtype TestnetMessage = TestnetMessage { unTestnetMessage :: Message }
+  deriving (Generic, Show, Read, Eq)
+
+newtype MainnetMessage = MainnetMessage { unMainnetMessage :: Message }
+  deriving (Generic, Show, Read, Eq)
+
+instance Persist TestnetMessage where
+  put = messageEncoder Testnet . unTestnetMessage
+  get = TestnetMessage <$> messageParser Testnet
+
+instance Persist MainnetMessage where
+  put = messageEncoder Mainnet . unMainnetMessage
+  get = MainnetMessage <$> messageParser Mainnet

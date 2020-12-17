@@ -3,6 +3,7 @@ module Data.Ergo.ProtocolTest where
 import Control.Monad
 import Data.ByteString.Builder
 import Data.Ergo.Protocol
+import Data.Persist
 import Data.Text (Text)
 import Data.Text.Encoding
 import Data.Vector (Vector)
@@ -23,11 +24,19 @@ import Debug.Trace
 traceShowIdHex :: BS.ByteString -> BS.ByteString
 traceShowIdHex a = traceShow (B16.encode a) a
 
-prop_encodeDecodeTestnet :: Message -> Property
-prop_encodeDecodeTestnet msg = property $ decodeMessage Testnet (BSL.toStrict . toLazyByteString $ encodeMessage Testnet msg) == Right msg
+prop_encodeDecodeTestnet :: TestnetMessage -> Property
+prop_encodeDecodeTestnet msg = property $ traceShowId (decode (traceShowIdHex $ encode msg)) == Right (traceShowId msg)
 
--- prop_encodeDecodeMainnet :: Message -> Property
--- prop_encodeDecodeMainnet msg = withMaxSuccess 100 $ within 1000 $ decodeMessage Mainnet (BSL.toStrict . toLazyByteString $ encodeMessage Mainnet msg) == Right msg
+-- prop_encodeDecodeMainnet :: MainnetMessage -> Property
+-- prop_encodeDecodeMainnet msg = property $ decode (encode msg) == Right msg
+
+instance Arbitrary TestnetMessage where
+  arbitrary = TestnetMessage <$> arbitrary
+  shrink = genericShrink
+
+instance Arbitrary MainnetMessage where
+  arbitrary = MainnetMessage <$> arbitrary
+  shrink = genericShrink
 
 instance Arbitrary Message where
   arbitrary = MsgHandshake <$> arbitrary
