@@ -95,7 +95,6 @@ getLabelFromEgvPubKey key = case key of
   ErgXPubKey _ l -> l
   BtcXPubKey _ l -> l
 
-
 xPubToBtcAddr :: XPubKey -> BtcAddress
 xPubToBtcAddr key = pubKeyWitnessAddr $ wrapPubKey True (xPubKey key)
 

@@ -5,7 +5,7 @@ module Ergvein.Wallet.Transaction.Get(
 import Control.Lens
 import Control.Monad.IO.Class
 import Control.Monad.Reader
-import Data.Map.Strict as Map
+
 import Data.Maybe (fromMaybe, fromJust)
 import Data.Time
 import Data.Word
@@ -26,6 +26,7 @@ import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Transaction.View
 
 import qualified Data.List as L
+import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
 import qualified Network.Haskoin.Block          as HK
 import qualified Network.Haskoin.Transaction    as HK
@@ -50,9 +51,9 @@ transactionsGetting cur = do
   buildE <- delay 0.2 =<< getPostBuild
   settings <- getSettings
   pubStorageD <- getPubStorageD
-  let getHeight pubStorage' = maybe 0 _currencyPubStorage'chainHeight $ Map.lookup cur (_pubStorage'currencyPubStorages pubStorage')
+  let getHeight pubStorage' = maybe 0 _currencyPubStorage'chainHeight $ M.lookup cur (_pubStorage'currencyPubStorages pubStorage')
       heightD = getHeight <$> pubStorageD
-      allBtcAddrsD = ffor pubStorageD $ \PubStorage{..} -> case Map.lookup BTC _pubStorage'currencyPubStorages of
+      allBtcAddrsD = ffor pubStorageD $ \PubStorage{..} -> case M.lookup BTC _pubStorage'currencyPubStorages of
         Nothing -> []
         Just CurrencyPubStorage{..} -> V.toList $ extractAddrs _currencyPubStorage'pubKeystore
   timeZoneE <- getGetTimeZone buildE
@@ -95,7 +96,7 @@ getAndFilterBlocks cur heightD btcAddrsD timeZone txs store settings = do
           possiblyReplacedTxsStore = btcPubStorageMeta ^. btcPubStorage'possiblyReplacedTxs
           replacedTxs = (fmap . fmap) BtcTxHash $ getReplacedTxs replacedTxsStore txs
           possiblyReplacedTxs = getPossiblyReplacedTxs possiblyReplacedTxsStore txs
-          storedTxs = Map.elems txStorage
+          storedTxs = M.elems txStorage
           conflictingTxs = (fmap . fmap) BtcTxHash $ getConflictingTxs possiblyReplacedTxs txs -- This might be inefficient, better to calculate this only for unconfirmed txs
           getTxConfirmations mTx = case mTx of
             Nothing -> 1 -- If tx is not found in our storage we prefer to treat it as confirmed
@@ -104,12 +105,12 @@ getAndFilterBlocks cur heightD btcAddrsD timeZone txs store settings = do
           hasUnconfirmedParents = fmap (L.any (== 0)) txParentsConfirmations -- This might be inefficient, better to calculate this only for unconfirmed txs
       outsStatuses <- traverse (getOutsStatuses storedTxs allBtcAddrs) txs
       let rawTxsL = L.filter (\(a,_) -> a/=Nothing) $ L.zip bInOut $ txListRaw bl blh txs txsRefList hasUnconfirmedParents parentTxs outsStatuses conflictingTxs replacedTxs ((fmap . fmap . fmap) BtcTxHash possiblyReplacedTxs)
-          prepTxs = L.sortOn txDate $ (prepareTransactionView allBtcAddrs hght timeZone (maybe btcDefaultExplorerUrls id $ Map.lookup cur (settingsExplorerUrl settings)) <$> rawTxsL)
+          prepTxs = L.sortOn txDate $ (prepareTransactionView allBtcAddrs hght timeZone (maybe btcDefaultExplorerUrls id $ M.lookup cur (settingsExplorerUrl settings)) <$> rawTxsL)
       pure $ L.reverse $ addWalletState prepTxs
 
 filterTx :: Currency -> p -> PubStorage -> [EgvTx]
 filterTx cur _ pubS = case cur of
-  BTC  -> fmap snd $ fromMaybe [] $ fmap Map.toList $ _currencyPubStorage'transactions <$> Map.lookup cur (_pubStorage'currencyPubStorages pubS)
+  BTC  -> fmap snd $ fromMaybe [] $ fmap M.toList $ _currencyPubStorage'transactions <$> M.lookup cur (_pubStorage'currencyPubStorages pubS)
   ERGO -> []
 
 calcRefill :: Foldable t => Currency -> t Address -> EgvTx -> Money
@@ -127,15 +128,16 @@ calculateOutputStatus (isSpent, isOurs) = case (isSpent, isOurs) of
 -- Statuses of outputs in resulting list are in the same order as outputs in transaction.
 getOutsStatuses :: (MonadIO m, PlatformNatives) => [EgvTx] -> [EgvAddress] -> EgvTx -> m [TransOutputType]
 getOutsStatuses storedTxs storedAddrs tx = do
-  isOursOutCheckResults <- traverse (checkOutIsOurs storedAddrs) outsToCheck
+  isOursOutCheckResults <- traverse (checkOutIsOursBtc storedBtcAddrs) outsToCheck
   let outsStatuses = calculateOutputStatus <$> L.zip spentCheckResults isOursOutCheckResults
   pure outsStatuses
   where
-    storedTxs' = getBtcTx . fromJust . toTxBtc <$> storedTxs
+    storedBtcTxs = getBtcTx . fromJust . toTxBtc <$> storedTxs
+    storedBtcAddrs = mapMaybe (\addr -> case addr of (BtcAddress addr) -> Just addr; _ -> Nothing) storedAddrs
     tx' = getBtcTx . fromJust . toTxBtc $ tx
     txHash = HK.txHash tx'
     outsToCheck = HK.txOut tx'
     outsCount = L.length outsToCheck
     outPointsToCheck = (uncurry HK.OutPoint) <$> L.zip (L.repeat txHash) [0..(fromIntegral outsCount - 1)]
-    inputsOfStoredTxs = HK.txIn <$> storedTxs'
+    inputsOfStoredTxs = HK.txIn <$> storedBtcTxs
     spentCheckResults = (checkOutSpent inputsOfStoredTxs) <$> outPointsToCheck

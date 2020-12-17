@@ -221,14 +221,14 @@ getAddrTxsFromBlock box heights block = do
       newtxmap = M.fromList $ (\tx -> (mkTxId tx, TxBtc $ BtcTx tx mheha)) <$> txs
       txmap = M.union newtxmap origtxMap
   liftIO $ flip runReaderT txmap $ do
-    filteredTxs <- filterTxsForAddress addr txs
+    filteredTxs <- filterTxsForAddressBtc addr txs
     let filteredIds = S.fromList $ mkTxId <$> filteredTxs
         filteredTxMap = M.restrictKeys newtxmap filteredIds
     utxo <- getUtxoUpdatesFromTxs mh box filteredTxs
     pure $ (filteredTxMap, utxo)
   where
     mkTxId = hkTxHashToEgv . HT.txHash
-    addr = egvXPubKeyToEgvAddress $ scanBox'key box
+    addr = xPubToBtcAddr $ extractXPubKeyFromEgv $ scanBox'key box
     txs = HB.blockTxns block
     blockTime = secToTimestamp . HB.blockTimestamp $ HB.blockHeader $ block
     bhash = HB.headerHash . HB.blockHeader $ block

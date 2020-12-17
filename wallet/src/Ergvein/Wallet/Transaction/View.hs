@@ -12,10 +12,9 @@ module Ergvein.Wallet.Transaction.View(
   , prepareTransactionView
   ) where
 
-import Data.Maybe (fromMaybe, catMaybes)
+import Data.Maybe (fromJust, fromMaybe, catMaybes)
 import Data.Text as T
 import Data.Time
-import Data.Maybe
 import Data.Word
 import Network.Haskoin.Address
 
@@ -106,8 +105,9 @@ data TransactionViewInfo = TransactionViewInfo {
 
 checkAddrInOut :: (HasTxStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m (Maybe TransType)
 checkAddrInOut ac (TxBtc tx) = do
-  bLIn <- traverse (flip checkAddrTxIn (getBtcTx tx)) ac
-  bLOut <- traverse (flip checkAddrTxOut (getBtcTx tx)) ac
+  let btcAddrs = mapMaybe (\addr -> case addr of (BtcAddress addr) -> Just addr; _ -> Nothing) ac
+  bLIn <- traverse (flip checkAddrTxInBtc (getBtcTx tx)) btcAddrs
+  bLOut <- traverse (flip checkAddrTxOutBtc (getBtcTx tx)) btcAddrs
   let isIn = L.or bLIn
       isOut = L.or bLOut
   if (not (isIn || isOut))

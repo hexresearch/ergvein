@@ -208,10 +208,10 @@ removeTxsReplacedByFee caller replacingTxE = do
 -- | Checks tx with checkAddrTx against provided keys and returns that tx in EgvTx format with matched keys vector.
 checkAddrTx' :: (HasTxStorage m, PlatformNatives) => V.Vector ScanKeyBox -> HT.Tx -> m ((V.Vector (ScanKeyBox), EgvTx))
 checkAddrTx' vec tx = do
-  vec' <- flip traverse vec $ \kb -> do
-    b <- checkAddrTx (egvXPubKeyToEgvAddress . scanBox'key $ kb) tx
-    pure $ if b then Just kb else Nothing
   st <- liftIO $ systemToUTCTime <$> getSystemTime
   let meta = (Just (EgvTxMeta Nothing Nothing st))
-      resultVec =  V.mapMaybe id vec'
+  vec' <- flip traverse vec $ \kb -> do
+    b <- checkAddrTx (TxBtc $ BtcTx tx meta) (egvXPubKeyToEgvAddress . scanBox'key $ kb)
+    pure $ if b then Just kb else Nothing
+  let resultVec = V.mapMaybe id vec'
   pure (resultVec, TxBtc $ BtcTx tx meta)
