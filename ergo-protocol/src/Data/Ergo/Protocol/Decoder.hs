@@ -39,6 +39,9 @@ anyWord8 = get
 anyWord64be :: Get Word64
 anyWord64be = fmap unBE get
 
+anyInt32be :: Get Int32
+anyInt32be = fmap unBE get
+
 anyWord32be :: Get Word32
 anyWord32be = fmap unBE get
 
@@ -105,12 +108,7 @@ parseOperationMode = OperationModeFeature
   <$> parseStateType
   <*> parseFlag
   <*> parseOptional anyWord32be
-  <*> parseBlocksStored
-  where
-    parseBlocksStored = do
-      w <- anyWord32be
-      let i = fromIntegral w :: Int32
-      pure $ if i < 0 then Nothing else Just w
+  <*> anyInt32be
 
 parsePeerFeature :: Get PeerFeature
 parsePeerFeature = do

@@ -3,6 +3,7 @@ module Data.Ergo.ProtocolTest where
 import Control.Monad
 import Data.ByteString.Builder
 import Data.Ergo.Protocol
+import Data.Maybe
 import Data.Persist
 import Data.Text (Text)
 import Data.Text.Encoding
@@ -24,11 +25,11 @@ import Debug.Trace
 traceShowIdHex :: BS.ByteString -> BS.ByteString
 traceShowIdHex a = traceShow (B16.encode a) a
 
-prop_encodeDecodeTestnet :: TestnetMessage -> Property
-prop_encodeDecodeTestnet msg = property $ traceShowId (decode (traceShowIdHex $ encode msg)) == Right (traceShowId msg)
+prop_encodeDecodeTestnet :: TestnetMessage -> Bool
+prop_encodeDecodeTestnet msg = traceShowId (decode (traceShowIdHex $ encode msg)) == Right (traceShowId msg)
 
--- prop_encodeDecodeMainnet :: MainnetMessage -> Property
--- prop_encodeDecodeMainnet msg = property $ decode (encode msg) == Right msg
+prop_encodeDecodeMainnet :: MainnetMessage -> Property
+prop_encodeDecodeMainnet msg = property $ decode (encode msg) == Right msg
 
 instance Arbitrary TestnetMessage where
   arbitrary = TestnetMessage <$> arbitrary
@@ -72,21 +73,23 @@ instance Arbitrary PeerFeature where
 instance Arbitrary Handshake where
   arbitrary = Handshake
     <$> arbitrary
-    <*> arbitraryTextLimit 255
+    <*> arbitraryTextLimit 10
     <*> arbitrary
-    <*> arbitraryTextLimit 255
+    <*> arbitraryTextLimit 10
     <*> arbitrary
     <*> arbitraryVecLimit 10
-  shrink v
-    | V.length (peerFeatures v) > 0 =
-      [ v { peerFeatures = mempty } ]
+  -- shrink v = []
+  shrink v =
+      (if V.null (peerFeatures v) then [] else [
+          v { peerFeatures = V.drop 1 $ peerFeatures v }
+        , v { peerFeatures = V.init $ peerFeatures v }
+        ])
       ++
-      [ v { peerFeatures = V.take i $ peerFeatures v } | i <- [1 .. V.length (peerFeatures v)]  ]
+      (if T.null (agentName v) then [] else [v { agentName = ""}])
       ++
-      [ v { agentName = ""}, v {peerName = ""} ]
+      (if T.null (peerName v) then [] else [v { peerName = ""}])
       ++
-      genericShrink v
-    | otherwise = genericShrink v
+      (if isNothing (publicAddr v) then [] else [ v { publicAddr = Nothing }])
 
 instance Arbitrary Text where
   arbitrary = genValidUtf8

@@ -74,7 +74,7 @@ encodeNetAddr :: NetAddr -> Put ()
 encodeNetAddr (NetAddr ip p) = encodeIP ip >> word32BE p
 
 encodeVector :: (a -> Put ()) -> Vector a -> Put ()
-encodeVector f v = word8 l >> traverse_ f v
+encodeVector f v = word8 l >> traverse_ f (V.take (fromIntegral l) v)
   where
     l = fromIntegral $ min 255 $ V.length v
 
@@ -99,7 +99,7 @@ encodeOpMode OperationModeFeature{..} = do
   encodeStateType stateType
   encodeBool verifying
   encodeOptional word32BE nipopowSuffix
-  maybe (int32BE (-1)) word32BE blocksStored
+  int32BE blocksStored
 
 encodeFeature :: PeerFeature -> Put ()
 encodeFeature (FeatureOperationMode v) = do

@@ -71,7 +71,7 @@ data OperationModeFeature = OperationModeFeature {
   stateType     :: !StateType
 , verifying     :: !Bool -- ^ Whether peer verify transactions
 , nipopowSuffix :: !(Maybe Word32) -- ^ Suffix length for NiPoPoW bootstrapping, 'Nothing' no NiPoPoW bootstrapping
-, blocksStored  :: !(Maybe Word32) -- ^ How many block kept, 'Nothing' means all are stored
+, blocksStored  :: !Int32 -- ^ How many block kept, -1 means all are stored
 } deriving (Generic, Show, Read, Eq)
 
 -- | ID of 'OperationModeFeature' feature
