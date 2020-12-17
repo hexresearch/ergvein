@@ -72,7 +72,7 @@ restoreFromDNS e = do
     newSet <- liftIO $ getDNS rs seedList
     pure $ fromMaybe defaultIndexers newSet
 
-  void $ activateURLList reloadedFromSeedE
+  void $ addManyDiscovered reloadedFromSeedE
 
 fetchNewPeer :: MonadFront t m => Event t () -> m ()
 fetchNewPeer e = do

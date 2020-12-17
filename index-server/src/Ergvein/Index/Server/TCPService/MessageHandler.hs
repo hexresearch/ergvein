@@ -48,7 +48,7 @@ handleMsg address (MVersion peerVersion) = do
   ownVer <- ownVersion
   liftIO $ print $ show $ protocolVersion == versionVersion peerVersion
   if protocolVersion == versionVersion peerVersion then do
-    --considerPeer ownVer $ PeerCandidate address $ versionScanBlocks ownVer
+    considerPeer ownVer $ PeerCandidate address $ versionScanBlocks ownVer
     liftIO $ print $ show ownVer
     pure [ MVersionACK $ VersionACK, MVersion ownVer ]
   else

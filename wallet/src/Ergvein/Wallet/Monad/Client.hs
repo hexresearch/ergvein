@@ -3,7 +3,6 @@ module Ergvein.Wallet.Monad.Client (
   , IndexerConnection(..)
   , IndexerMsg(..)
   , IndexReqSelector
-  , activateURLList
   , broadcastIndexerMessage
   , requestSpecificIndexer
   , indexerPingerWidget
@@ -12,6 +11,7 @@ module Ergvein.Wallet.Monad.Client (
   , indexersAverageLatNumWidget
   , requestIndexerWhenOpen
   , addDiscovered
+  , addManyDiscovered
   , addManual
   , setAddrPin
   , setAddrActive
@@ -84,26 +84,38 @@ class MonadBaseConstr t m => MonadIndexClient t m | m -> t where
   -- | Get activation event and trigger
   getActivationEF :: m (Event t [Text], [Text] -> IO ())
 
-addDiscovered :: (MonadIndexClient t m, MonadHasSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
-addDiscovered discoveredAddressE = do
-    (_, activationFunc)    <- getActivationEF
-    fmap (traceEvent "ASYNC UPDATE") <$> updateSettingsAsync $ ffor discoveredAddressE $ \ url ->
-      settingsAddrs . at url .~ Just discoveredPeerInfo
-    performEvent $ ffor discoveredAddressE $ liftIO . activationFunc . pure
-  where
-    discoveredPeerInfo = PeerInfo
+discoveredPeerInfo , manualPeerInfo :: PeerInfo
+discoveredPeerInfo = PeerInfo
       { _peerInfoIsActive = True
       , _peerInfoIsPinned = False
       }
 
-addManual :: (MonadIndexClient t m, MonadHasSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
-addManual addrE = updateSettingsAsync $ ffor addrE $ \ url ->
-  settingsAddrs . at url .~ Just manualPeerInfo
-  where
-  manualPeerInfo = PeerInfo
+manualPeerInfo = PeerInfo
     { _peerInfoIsActive = True
     , _peerInfoIsPinned = True
     }
+
+addDiscovered :: (MonadIndexClient t m, MonadHasSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
+addDiscovered addressE = do
+    (_, activationFunc) <- getActivationEF
+    updateSettingsAsync $ ffor addressE $ \ url ->
+      settingsAddrs . at url .~ Just discoveredPeerInfo
+    performEvent $ ffor addressE $ liftIO . activationFunc . pure
+
+addManyDiscovered :: (MonadIndexClient t m, MonadHasSettings t m) => Event t [ErgveinNodeAddr] -> m (Event t ())
+addManyDiscovered addressE = do
+  (_, activationFunc) <- getActivationEF
+  updateSettingsAsync $ ffor addressE $ \urls -> let
+    in settingsAddrs %~ (`M.union` (M.fromList $ (,discoveredPeerInfo) <$> urls))
+  performEvent $ ffor addressE $ liftIO . activationFunc
+
+addManual :: (MonadIndexClient t m, MonadHasSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
+addManual addressE = do
+  (_, activationFunc) <- getActivationEF
+  updateSettingsAsync $ ffor addressE $ \ url ->
+    settingsAddrs . at url .~ Just manualPeerInfo
+  performEvent $ ffor addressE $ liftIO . activationFunc . pure
+
 
 setAddrPin :: (MonadIndexClient t m, MonadHasSettings t m) =>  Event t (ErgveinNodeAddr, Bool) -> m (Event t ())
 setAddrPin addrE = updateSettingsAsync $ ffor addrE $ \(url, v) -> 
@@ -120,11 +132,6 @@ setDiscovery discE = updateSettingsAsync $ ffor discE $ \v ->
 deleteAddr :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m (Event t ())
 deleteAddr addrE = updateSettingsAsync $ ffor addrE $ \url -> 
   settingsAddrs . at url .~ Nothing
-
--- | Activate an URL
-activateURLList :: (MonadIndexClient t m, MonadHasSettings t m) => Event t [ErgveinNodeAddr] -> m (Event t ())
-activateURLList addrE = updateSettingsAsync $ ffor addrE $ \urls -> let
-  in settingsAddrs %~ (`M.union` (M.fromList $ (,PeerInfo True True) <$> urls))
 
 broadcastIndexerMessage :: (MonadIndexClient t m) => Event t IndexerMsg -> m ()
 broadcastIndexerMessage reqE = do
