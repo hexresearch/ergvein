@@ -15,18 +15,30 @@ extra-source-files:  CHANGELOG.md
 library
   hs-source-dirs:      src
   exposed-modules:
-    Network.Socket.Manager.TCP
+    Network.Socket.Manager.Peeker
+    Network.Socket.Manager.TCP.Client
   default-language:    Haskell2010
   build-depends:
       base              >= 4.7 && < 4.17
     , bytestring        >= 0.9
+    , mtl               >= 2.1
+    , network           >= 2.8
+    , safe-exceptions   >= 0.1
+    , socks             >= 0.6
+    , stm               >= 2.4
     , time              >= 1.8
+    , unbounded-delays  >= 0.1
+    , unliftio-core     >= 0.1
   default-extensions:
+    BangPatterns
     CPP
     DeriveAnyClass
     DeriveGeneric
     FlexibleContexts
+    FlexibleInstances
+    LambdaCase
     MultiWayIf
     OverloadedStrings
     RecordWildCards
+    ScopedTypeVariables
     TemplateHaskell
