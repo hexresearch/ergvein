@@ -1,0 +1,32 @@
+name:                socket-manager
+version:             0.1.0.0
+synopsis:            Wraps TCP socket into threads for easy management and embedding in FRP frameworks.
+description:         See README.md
+category:            Data
+build-type:          Simple
+cabal-version:       >=2.0
+license:             MIT
+license-file:        LICENSE
+copyright:           2020 ATUM SOLUTIONS AG
+author:              Anton Gushcha, Aminion, Vladimir Krutkin, Levon Oganyan, Sergey Ivanov
+maintainer:          Anton Gushcha <ncrashed@protonmail.com>
+extra-source-files:  CHANGELOG.md
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+    Network.Socket.Manager.TCP
+  default-language:    Haskell2010
+  build-depends:
+      base              >= 4.7 && < 4.17
+    , bytestring        >= 0.9
+    , time              >= 1.8
+  default-extensions:
+    CPP
+    DeriveAnyClass
+    DeriveGeneric
+    FlexibleContexts
+    MultiWayIf
+    OverloadedStrings
+    RecordWildCards
+    TemplateHaskell

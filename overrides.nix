@@ -42,13 +42,16 @@ in (self: super: let
     # Internal
     cbitstream = ingnoreGarbage super.cbitstream;
     data-merkle-tree = ingnoreGarbage super.data-merkle-tree;
+    ergo-api = lib.dontCheck (ingnoreGarbage super.ergo-api);
+    ergo-protocol = lib.dontCheck (ingnoreGarbage super.ergo-protocol);
+    ergo-protocol-client = lib.dontCheck (ingnoreGarbage super.ergo-protocol-client);
     ergvein-checkpoint-generator = ingnoreGarbage super.ergvein-checkpoint-generator;
     ergvein-common = ingnoreGarbage super.ergvein-common;
     ergvein-crypto = ingnoreGarbage super.ergvein-crypto;
     ergvein-index-api = ingnoreGarbage super.ergvein-index-api;
+    ergvein-index-client = ingnoreGarbage super.ergvein-index-client;
     ergvein-index-protocol = ingnoreGarbage super.ergvein-index-protocol;
     ergvein-index-protocol-client = ingnoreGarbage super.ergvein-index-protocol-client;
-    ergvein-index-client = ingnoreGarbage super.ergvein-index-client;
     ergvein-index-server = ingnoreGarbage super.ergvein-index-server;
     ergvein-interface-ergo = ingnoreGarbage super.ergvein-interface-ergo;
     ergvein-wallet = addVersions (ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-wallet" ./wallet walletOpts {}));
@@ -58,14 +61,12 @@ in (self: super: let
     ergvein-wallet-native = ingnoreGarbage super.ergvein-wallet-native;
     ergvein-wallet-types = ingnoreGarbage super.ergvein-wallet-types;
     ergvein-wallet-version = ingnoreGarbage super.ergvein-wallet-version;
-    ergo-api = lib.dontCheck (ingnoreGarbage super.ergo-api);
-    ergo-protocol = lib.dontCheck (ingnoreGarbage super.ergo-protocol);
-    ergo-protocol-client = lib.dontCheck (ingnoreGarbage super.ergo-protocol-client);
     golomb-rice = ingnoreGarbage super.golomb-rice;
     reflex-dom-retractable = ingnoreGarbage super.reflex-dom-retractable;
     reflex-external-ref = ingnoreGarbage super.reflex-external-ref;
     reflex-localize = ingnoreGarbage super.reflex-localize;
     reflex-localize-dom = ingnoreGarbage super.reflex-localize-dom;
+    socket-manager = lib.dontCheck (ingnoreGarbage super.socket-manager);
     # Overridess
     android-activity = self.callPackage ./derivations/android-activity.nix {
       inherit (pkgs.buildPackages) jdk;

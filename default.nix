@@ -18,9 +18,9 @@ let
       ergvein-common = ./common;
       ergvein-crypto = ./crypto;
       ergvein-index-api = ./index-api;
+      ergvein-index-client = ./index-client;
       ergvein-index-protocol = ./index-protocol;
       ergvein-index-protocol-client = ./index-protocol-client;
-      ergvein-index-client = ./index-client;
       ergvein-index-server = ./index-server;
       ergvein-interface-ergo = ./interfaces/ergo;
       ergvein-wallet = ./wallet;
@@ -37,6 +37,7 @@ let
       reflex-external-ref = ./reflex-external-ref;
       reflex-localize = ./reflex-localize;
       reflex-localize-dom = ./reflex-localize-dom;
+      socket-manager = ./socket-manager;
       ui-playground = ./ui-playground;
       x509-android = ./x509-android;
     };
@@ -45,15 +46,15 @@ let
         "cbitstream"
         "data-merkle-tree"
         "ergo-api"
-        "ergo-protocol"
         "ergo-protocol-client"
+        "ergo-protocol"
         "ergvein-checkpoint-generator"
         "ergvein-common"
         "ergvein-crypto"
         "ergvein-index-api"
-        "ergvein-index-protocol"
-        "ergvein-index-protocol-client"
         "ergvein-index-client"
+        "ergvein-index-protocol-client"
+        "ergvein-index-protocol"
         "ergvein-index-server"
         "ergvein-interface-ergo"
         "ergvein-wallet-desktop"
@@ -67,6 +68,7 @@ let
         "reflex-dom-retractable"
         "reflex-external-ref"
         "reflex-localize"
+        "socket-manager"
         "ui-playground"
       ];
     };

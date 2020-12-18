@@ -7,17 +7,20 @@ packages:
   ./ergo-api
   ./ergo-protocol
   ./ergo-protocol-client
+  ./ergvein-website
   ./golomb-rice
   ./index-api
+  ./index-client
   ./index-protocol
   ./index-protocol-client
-  ./index-client
   ./index-server
   ./interfaces/ergo
   ./reflex-external-ref
   ./reflex-localize
   ./reflex-localize-dom
   ./retractable
+  ./socket-manager
+  ./ui-playground
   ./wallet
   ./wallet-android
   ./wallet-desktop
@@ -26,5 +29,3 @@ packages:
   ./wallet-types
   ./wallet-version
   ./x509-android
-  ./ergvein-website
-  ./ui-playground
