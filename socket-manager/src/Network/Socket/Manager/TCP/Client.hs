@@ -52,7 +52,7 @@ data SocketInEvent a =
   | SockInCloseEvent
   -- | Event that changes socks proxy configuration. Connection reopens.
   | SockInSocksConf !(Maybe SocksConf)
-  deriving (Generic)
+  deriving (Generic, Functor)
 
 -- | Configuration to socket widget. Sending always raw bytestrings and receiving
 -- is controlled by callind side with `Peeker`.
@@ -87,7 +87,7 @@ data SocketOutEvent a =
   | SockOutStatus  !SocketStatus
   | SockOutRecvEr  !InboundException
   | SockOutTries   !Int
-  deriving (Show, Generic)
+  deriving (Show, Generic, Functor)
 
 data Reconnect = DoReconnect !(Maybe Ex.SomeException) | GraceStop
 

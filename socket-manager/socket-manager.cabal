@@ -32,6 +32,7 @@ library
     BangPatterns
     CPP
     DeriveAnyClass
+    DeriveFunctor
     DeriveGeneric
     FlexibleContexts
     FlexibleInstances
