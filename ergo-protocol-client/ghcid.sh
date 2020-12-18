@@ -1,1 +1,1 @@
-ghcid -c "cabal new-repl ergo-protocol"
+ghcid -c "cabal new-repl ergo-protocol-client"

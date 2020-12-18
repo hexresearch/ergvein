@@ -1,6 +1,7 @@
 module Data.Ergo.Protocol.Decoder(
     decodeMessage
   , messageParser
+  , parseMsgLength
   ) where
 
 import Control.Monad
@@ -51,11 +52,23 @@ anyWord32le = fmap unLE get
 anyWord16be :: Get Word16
 anyWord16be = fmap unBE get
 
+-- | Parse first 4+1+4=9 bytes and return length of rest message.
+--
+-- The helper designed for usage in sockets.
+parseMsgLength :: Network -> ByteString -> Either String Int
+parseMsgLength net bs = do
+  (mb, _, l) <- runGet headerParser bs
+  unless (magicBytes net == mb) $ fail "Wrong magic bytes of message!"
+  pure $ fromIntegral l
+
+-- | Parser of magicBytes, message type and length
+headerParser :: Get (Word32, Word8, Word32)
+headerParser = (,,) <$> anyWord32be <*> anyWord8 <*> anyWord32be
+
 messageParser :: Network -> Get Message
 messageParser net = do
-  _ <- word32be $ magicBytes net
-  i <- anyWord8
-  l <- anyWord32be
+  (mb, i, l) <- headerParser
+  unless (magicBytes net == mb) $ fail "Wrong magic bytes of message!"
   body <- getByteString (fromIntegral l)
   c <- getByteString 4
   unless (validateSum c body) $ fail "Check sum failed for body!"

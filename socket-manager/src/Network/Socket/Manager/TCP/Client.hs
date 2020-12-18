@@ -8,6 +8,10 @@ module Network.Socket.Manager.TCP.Client(
   , SocksConf(..)
   , SocketInEvent(..)
   , SocketConf(..)
+  -- * Parsing of messages
+  , ReceiveException(..)
+  , MonadPeeker(..)
+  , PeekerIO
   -- * Widget
   , SocketStatus(..)
   , SocketOutEvent(..)
