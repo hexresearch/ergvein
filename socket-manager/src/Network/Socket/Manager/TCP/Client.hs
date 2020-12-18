@@ -99,11 +99,12 @@ type PeekerIO a = ReaderT PeekerEnv IO a
 -- Automatically reopens on non user triggered close events (if config specifty this)
 -- and when SOCKS config is changed.
 socket :: (MonadIO m)
-  => PeekerIO a -- ^ Deserialization of outcoming messages
-  -> TChan (SocketInEvent ByteString) -- ^ Incoming messages
+  => (a -> ByteString) -- ^ Serialization of incoming messages
+  -> PeekerIO b -- ^ Deserialization of outcoming messages
+  -> TChan (SocketInEvent a) -- ^ Incoming messages
   -> SocketConf
-  -> m (TChan (SocketOutEvent a))
-socket peeker inputChan SocketConf{..} = liftIO $ do
+  -> m (TChan (SocketOutEvent b))
+socket mkmessage peeker inputChan SocketConf{..} = liftIO $ do
   eventsChan <- newTChanIO
   sendChan <- newTChanIO
   intVar <- newTVarIO False
@@ -132,7 +133,7 @@ socket peeker inputChan SocketConf{..} = liftIO $ do
   let connectThread = do
         let sendThread sock = forever $ do
               msgs <- atomically $ readAllTChan sendChan
-              sendLazy sock . BSL.fromChunks $ msgs
+              sendLazy sock . BSL.fromChunks . fmap mkmessage $ msgs
             conCb (sock, _) = do
               statusFire SocketOperational
               let env = PeekerEnv intVar sock
