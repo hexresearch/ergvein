@@ -6,6 +6,7 @@ packages:
   ./data-merkle-tree
   ./ergo-api
   ./ergo-protocol
+  ./ergo-protocol-client
   ./golomb-rice
   ./index-api
   ./index-protocol

@@ -13,6 +13,7 @@ let
       data-merkle-tree = ./data-merkle-tree;
       ergo-api = ./ergo-api;
       ergo-protocol = ./ergo-protocol;
+      ergo-protocol-client = ./ergo-protocol-client;
       ergvein-checkpoint-generator = ./checkpoint-generator;
       ergvein-common = ./common;
       ergvein-crypto = ./crypto;
@@ -45,6 +46,7 @@ let
         "data-merkle-tree"
         "ergo-api"
         "ergo-protocol"
+        "ergo-protocol-client"
         "ergvein-checkpoint-generator"
         "ergvein-common"
         "ergvein-crypto"
