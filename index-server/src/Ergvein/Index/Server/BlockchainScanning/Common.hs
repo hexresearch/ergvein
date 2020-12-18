@@ -73,7 +73,7 @@ scannerThread currency scanInfo = create $ logOnException threadName . scanItera
             headBlockHeight <- actualHeight currency
             reportCurrentHeight currency headBlockHeight
             when (current <= headBlockHeight) $ do
-              tryBlockInfo <- (Right <$> blockIteration headBlockHeight current) `catch` (\(SomeException ex) -> pure $ Left $ show ex)
+              tryBlockInfo <- try $ blockIteration headBlockHeight current
               enoughSpace <- isEnoughSpace
               case tryBlockInfo of
                 Right (blockInfo@BlockInfo {..})
@@ -87,7 +87,8 @@ scannerThread currency scanInfo = create $ logOnException threadName . scanItera
                     else previousBlockChanged current
                   | otherwise ->
                     logInfoN $ "Not enough available disc space to store block scan result"
-                Left errMsg -> blockScanningError errMsg current
+                -- FIXME: Are we swallowing ALL errors here???
+                Left (SomeException err) -> blockScanningError (show err) current
 
         isPreviousBlockSame proposedPreviousBlockId = do
           maybeLastScannedBlock <- getLastScannedBlock currency
