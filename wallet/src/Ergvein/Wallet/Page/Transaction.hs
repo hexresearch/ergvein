@@ -25,6 +25,8 @@ import Ergvein.Wallet.Transaction.Get
 import Ergvein.Wallet.Transaction.View
 import Ergvein.Wallet.Wrapper
 
+import qualified Data.List as L
+
 transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
 transactionInfoPage cur tr@TransactionView{..} = do
   title <- localized HistoryTITitle
@@ -39,10 +41,18 @@ transactionInfoPage cur tr@TransactionView{..} = do
       TransRefill -> pure ()
       TransWithdraw -> infoPageElement HistoryTIFee $ maybe "unknown" (\a -> (showMoneyUnit a moneyUnits) <> " " <> symbolUnit cur moneyUnits) $ txFee txInfoView
     infoPageElement HistoryTIRbf $ showt $ txRbfEnabled txInfoView
-    case txConflictingTxs of
+    case txConflictingTxs txInfoView of
       [] -> pure ()
       conflictingTxs -> infoPageElementExpEl HistoryTIConflictingTxs $ do
-        void $ traverse (makeTxIdLink cur) conflictingTxs
+        void $ traverse (makeNumberedTxIdLink cur) (L.zip [1..] conflictingTxs)
+    case txReplacedTxs txInfoView of
+      [] -> pure ()
+      replacedTxs -> infoPageElementExpEl HistoryTIReplacedTxs $ do
+        void $ traverse (makeNumberedTxIdLink cur) (L.zip [1..] replacedTxs)
+    case txPossiblyReplacedTxs txInfoView of
+      (_, []) -> pure ()
+      (_, possiblyReplacedTxs) -> infoPageElementExpEl HistoryTIPossiblyReplacedTxs $ do
+        void $ traverse (makeNumberedTxIdLink cur) (L.zip [1..] possiblyReplacedTxs)
     infoPageElementEl HistoryTITime $ showTime tr
     infoPageElement HistoryTIConfirmations $ showt $ txConfirmations txInfoView
     infoPageElementExpEl HistoryTIBlock $ maybe (text "unknown") (\(bllink,bl) -> hyperlink "link" bl bllink) $ txBlock txInfoView
@@ -73,13 +83,14 @@ transactionInfoPage cur tr@TransactionView{..} = do
       where
         oBld txt isOur = if isOur then (txt <> " tx-info-our-address") else txt
 
-makeTxIdLink :: MonadFront t m => Currency -> TxId -> m ()
-makeTxIdLink cur txId = do
+makeNumberedTxIdLink :: MonadFront t m => Currency -> (Int, TxId) -> m ()
+makeNumberedTxIdLink cur (num, txId) = do
   settings <- getSettings
   let txIdText = egvTxHashToStr txId
       mExplorerPrefixes = Map.lookup cur $ settingsExplorerUrl settings
       urlPrefixes = maybe btcDefaultExplorerUrls id mExplorerPrefixes
       urlPrefix = if isTestnet then testnetUrl urlPrefixes else mainnetUrl urlPrefixes
+  text $ showt num <> ". "
   hyperlink "link" txIdText (urlPrefix <> "/tx/" <> txIdText)
   br
 

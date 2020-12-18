@@ -25,8 +25,10 @@ import Data.Maybe
 import Data.Time.Clock.System
 import Network.Socket (SockAddr)
 
+import Ergvein.Text
 import Ergvein.Types
 import Ergvein.Types.Derive
+import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
@@ -39,7 +41,9 @@ import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Util
 
 import qualified Data.Dependent.Map as DM
+import qualified Data.List as L
 import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 import qualified Data.Vector as V
 import qualified Network.Haskoin.Transaction as HT
 
@@ -150,21 +154,64 @@ btcMempoolTxInserter txE = do
   pubStorageD <- getPubStorageD
   valsE <- performFork $ ffor (current pubStorageD `attach` txE) $ \(ps, tx) -> do
     let btcps = ps ^. pubStorage'currencyPubStorages . at BTC . non (error $ "btcMempoolTxInserter: BTC storage does not exist!")
-    let keys = getPublicKeys $ btcps ^. currencyPubStorage'pubKeystore
+        keys = getPublicKeys $ btcps ^. currencyPubStorage'pubKeystore
         txStore = btcps ^. currencyPubStorage'transactions
     liftIO $ flip runReaderT txStore $ do
-      v <- checkAddrTx' keys tx
-      u <- getUtxoUpdates Nothing keys tx
-      pure (v,u)
-  insertTxsUtxoInPubKeystore "btcMempoolTxInserter" BTC valsE
-
-checkAddrTx' :: (HasTxStorage m, PlatformNatives) => V.Vector ScanKeyBox -> HT.Tx -> m (V.Vector (ScanKeyBox, M.Map TxId EgvTx))
-checkAddrTx' vec tx = do
-  vec' <- flip traverse vec $ \kb -> do
-    b <- checkAddrTx (egvXPubKeyToEgvAddress . scanBox'key $ kb) tx
-    st <- liftIO $ systemToUTCTime <$> getSystemTime
-    let meta = (Just (EgvTxMeta Nothing Nothing st))
-    pure $ if b then Just (kb, M.singleton th (TxBtc $ BtcTx tx meta)) else Nothing
-  pure $ V.mapMaybe id vec'
+      checkAddrTxResult <- checkAddrTx' keys tx
+      utxoUpdates <- getUtxoUpdates Nothing keys tx
+      pure (checkAddrTxResult, utxoUpdates)
+  -- TODO: should matchedTxsE and txInsertedE be fired in sequence?
+  let matchedTxsE = helper <$> valsE
+      txInsertedE = fmapMaybe txInserted valsE
+  insertedE <- insertTxsUtxoInPubKeystore "btcMempoolTxInserter" BTC matchedTxsE
+  _ <- removeTxsReplacedByFee "btcMempoolTxInserter" txInsertedE
+  pure insertedE
   where
-    th = hkTxHashToEgv $ HT.txHash tx
+    helper :: ((V.Vector ScanKeyBox, EgvTx), BtcUtxoUpdate) -> (V.Vector (ScanKeyBox, M.Map TxId EgvTx), BtcUtxoUpdate)
+    helper ((vec, tx), utxoUpd) = ((\keyBox -> (keyBox, M.fromList [(egvTxId tx, tx)])) <$> vec, utxoUpd)
+
+    txInserted :: ((V.Vector ScanKeyBox, EgvTx), BtcUtxoUpdate) -> Maybe BtcTxRaw
+    txInserted ((vec, tx), (utxos, outPoints)) = if V.null vec && M.null utxos && null outPoints
+      then Nothing
+      else case tx of
+        TxBtc (BtcTx tx _) -> Just tx
+        _ -> Nothing
+
+-- | Finds all txs that should be replaced by given tx and removes them from storage.
+-- Also stores information about transaction replacements in the storage.
+-- Stage 2. See removeRbfTxsFromStorage2.
+removeTxsReplacedByFee :: MonadStorage t m =>
+  Text ->
+  Event t BtcTxRaw ->
+  m (Event t ())
+removeTxsReplacedByFee caller replacingTxE = do
+  pubStorageD <- getPubStorageD
+  replacedTxsE <- performFork $ ffor (current pubStorageD `attach` replacingTxE) $ \(ps, replacingTx) -> do
+    let btcps = ps ^. pubStorage'currencyPubStorages . at BTC . non (error $ "removeTxsReplacedByFee: BTC storage does not exist!")
+        txStore = btcps ^. currencyPubStorage'transactions
+    liftIO $ flip runReaderT txStore $ do
+      unconfirmedTxs <- getUnconfirmedTxs
+      let unconfirmedBtcTxs = getBtcTx . fromJust . toTxBtc <$> unconfirmedTxs
+          replacingBtcTxId = HT.txHash replacingTx
+          replacingTxId = BtcTxHash replacingBtcTxId
+          otherUnconfirmedTxs = M.elems $ M.delete replacingTxId unconfirmedBtcTxs
+      replacedTxs <- filterM ((fmap (== Just True)) . replacesByFee replacingTx) otherUnconfirmedTxs
+      replacedTxsChilds <- L.concat <$> traverse getChildTxs replacedTxs
+      possiblyReplacedTxs <- filterM ((fmap (== Nothing)) . replacesByFee replacingTx) otherUnconfirmedTxs
+      possiblyReplacedTxsChilds <- L.concat <$> traverse getChildTxs possiblyReplacedTxs
+      let replacedTxIds = S.fromList $ HT.txHash <$> (replacedTxs ++ replacedTxsChilds)
+          possiblyReplacedTxIds = S.fromList $ HT.txHash <$> (possiblyReplacedTxs ++ possiblyReplacedTxsChilds)
+      pure (replacingBtcTxId, replacedTxIds, possiblyReplacedTxIds)
+  removedE <- removeRbfTxsFromStorage1 "removeTxsReplacedByFee" replacedTxsE
+  pure removedE
+
+-- | Checks tx with checkAddrTx against provided keys and returns that tx in EgvTx format with matched keys vector.
+checkAddrTx' :: (HasTxStorage m, PlatformNatives) => V.Vector ScanKeyBox -> HT.Tx -> m ((V.Vector (ScanKeyBox), EgvTx))
+checkAddrTx' vec tx = do
+  st <- liftIO $ systemToUTCTime <$> getSystemTime
+  let meta = (Just (EgvTxMeta Nothing Nothing st))
+  vec' <- flip traverse vec $ \kb -> do
+    b <- checkAddrTx (TxBtc $ BtcTx tx meta) (egvXPubKeyToEgvAddress . scanBox'key $ kb)
+    pure $ if b then Just kb else Nothing
+  let resultVec = V.mapMaybe id vec'
+  pure (resultVec, TxBtc $ BtcTx tx meta)

@@ -114,11 +114,13 @@ createCurrencyPubStorage mpath rootPrvKey startingHeight c = CurrencyPubStorage 
   , _currencyPubStorage'chainHeight   = 0
   , _currencyPubStorage'meta = case c of
     BTC -> PubStorageBtc BtcPubStorage {
-        _btcPubStorage'transactions  = M.empty
-      , _btcPubStorage'utxos         = M.empty
-      , _btcPubStorage'headers       = M.empty
-      , _btcPubStorage'outgoing      = S.empty
-      , _btcPubStorage'headerSeq     = btcCheckpoints
+        _btcPubStorage'transactions        = M.empty
+      , _btcPubStorage'utxos               = M.empty
+      , _btcPubStorage'headers             = M.empty
+      , _btcPubStorage'outgoing            = S.empty
+      , _btcPubStorage'headerSeq           = btcCheckpoints
+      , _btcPubStorage'replacedTxs         = M.empty
+      , _btcPubStorage'possiblyReplacedTxs = M.empty
       }
     ERGO -> PubStorageErgo ErgoPubStorage {
         _ergoPubStorage'transactions  = M.empty

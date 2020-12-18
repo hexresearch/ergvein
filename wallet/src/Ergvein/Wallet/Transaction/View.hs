@@ -12,10 +12,9 @@ module Ergvein.Wallet.Transaction.View(
   , prepareTransactionView
   ) where
 
-import Data.Maybe (fromMaybe, catMaybes)
+import Data.Maybe (fromJust, fromMaybe, catMaybes)
 import Data.Text as T
 import Data.Time
-import Data.Maybe
 import Data.Word
 import Network.Haskoin.Address
 
@@ -63,6 +62,8 @@ data TxRawInfo = TxRawInfo {
   , txParents               :: [Maybe EgvTx]
   , txOutsStatuses          :: [TransOutputType]
   , txConflTxs              :: [TxId]
+  , txReplTxs               :: [TxId]
+  , txPossReplTxs           :: (Bool, [TxId])
 } deriving (Show)
 
 newtype TxTime = TxTime (Maybe ZonedTime) deriving (Show)
@@ -85,25 +86,28 @@ data TransactionView = TransactionView {
   , txInOut          :: TransType
   , txInfoView       :: TransactionViewInfo
   , txStatus         :: TransStatus
-  , txConflictingTxs :: [TxId]
 } deriving (Show)
 
 data TransactionViewInfo = TransactionViewInfo {
-    txId            :: Text
-  , txLabel         :: Maybe Text
-  , txUrl           :: Text
-  , txFee           :: Maybe Money
-  , txRbfEnabled    :: Bool
-  , txConfirmations :: Word64
-  , txBlock         :: Maybe (Text, Text)
-  , txOutputs       :: [(Maybe Text, Money, TransOutputType, Bool)]
-  , txInputs        :: [(Maybe Text, Money)]
+    txId                  :: Text
+  , txLabel               :: Maybe Text
+  , txUrl                 :: Text
+  , txFee                 :: Maybe Money
+  , txRbfEnabled          :: Bool
+  , txConflictingTxs      :: [TxId]
+  , txReplacedTxs         :: [TxId]
+  , txPossiblyReplacedTxs :: (Bool, [TxId])
+  , txConfirmations       :: Word64
+  , txBlock               :: Maybe (Text, Text)
+  , txOutputs             :: [(Maybe Text, Money, TransOutputType, Bool)]
+  , txInputs              :: [(Maybe Text, Money)]
 } deriving (Show)
 
 checkAddrInOut :: (HasTxStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m (Maybe TransType)
 checkAddrInOut ac (TxBtc tx) = do
-  bLIn <- traverse (flip checkAddrTxIn (getBtcTx tx)) ac
-  bLOut <- traverse (flip checkAddrTxOut (getBtcTx tx)) ac
+  let btcAddrs = mapMaybe (\addr -> case addr of (BtcAddress addr) -> Just addr; _ -> Nothing) ac
+  bLIn <- traverse (flip checkAddrTxInBtc (getBtcTx tx)) btcAddrs
+  bLOut <- traverse (flip checkAddrTxOutBtc (getBtcTx tx)) btcAddrs
   let isIn = L.or bLIn
       isOut = L.or bLOut
   if (not (isIn || isOut))
@@ -143,19 +147,21 @@ prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = case txr of
           else if (bHeight == 0)
             then TransUncofirmed
           else TransConfirmed
-      , txConflictingTxs = txConflTxs
       }
       where
         txInf = TransactionViewInfo {
-            txId            = txHex
-          , txLabel         = Nothing
-          , txUrl           = blUrl <> "/tx/" <> txHex
-          , txFee           = txFeeCalc
-          , txRbfEnabled    = markedReplaceable btx
-          , txConfirmations = bHeight
-          , txBlock         = txBlockLink
-          , txOutputs       = txOuts
-          , txInputs        = txInsOuts
+            txId                  = txHex
+          , txLabel               = Nothing
+          , txUrl                 = blUrl <> "/tx/" <> txHex
+          , txFee                 = txFeeCalc
+          , txRbfEnabled          = markedReplaceable btx
+          , txConflictingTxs      = txConflTxs
+          , txReplacedTxs         = txReplTxs
+          , txPossiblyReplacedTxs = txPossReplTxs
+          , txConfirmations       = bHeight
+          , txBlock               = txBlockLink
+          , txOutputs             = txOuts
+          , txInputs              = txInsOuts
         }
         blHght = fromMaybe 0 $ maybe (Just 0) etxMetaHeight meta
         bHeight = if ((blHght == 0) || (hght == 0))
