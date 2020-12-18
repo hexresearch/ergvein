@@ -5,19 +5,19 @@ module Network.Socket.Manager.TCP.Client(
   , CloseException
   -- * Configuration
   , Peer(..)
+  , SocksConf(..)
   , SocketInEvent(..)
   , SocketConf(..)
   -- * Widget
   , SocketStatus(..)
   , SocketOutEvent(..)
   , CloseReason(..)
-  , isCloseFinal
   , socket
   ) where
 
 import Control.Concurrent
 import Control.Concurrent.STM
-import Control.Monad.IO.Unlift
+import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.ByteString (ByteString)
 import Data.Foldable (traverse_)
@@ -45,9 +45,9 @@ type CloseException = Ex.SomeException
 data Peer = Peer !N.HostName !N.ServiceName deriving (Show, Eq, Generic)
 
 -- | Control events of the socket
-data SocketInEvent =
+data SocketInEvent a =
   -- | Payload to send into socket
-    SockInSendEvent !ByteString
+    SockInSendEvent !a
   -- | Event that externaly closes the connection
   | SockInCloseEvent
   -- | Event that changes socks proxy configuration. Connection reopens.
@@ -56,15 +56,11 @@ data SocketInEvent =
 
 -- | Configuration to socket widget. Sending always raw bytestrings and receiving
 -- is controlled by callind side with `Peeker`.
-data SocketConf a = SocketConf {
+data SocketConf = SocketConf {
 -- | Connection address
   _socketConfPeer   :: !Peer
 -- | Initial SOCKS proxy configuration
 , _socketConfSocks  :: !(Maybe SocksConf)
--- | Event that socket will listen to payloads to send
-, _socketConfEvents :: !(TChan SocketInEvent)
--- | Function that peeks bytes from socket and parses them into user side messages
-, _socketConfPeeker :: !(ReaderT PeekerEnv IO a)
 -- | Timeout after which we try to reconnect. `Nothing` means to not reconnect.
 -- Second number means amount of tries of reconnection after which close event is fired.
 , _socketConfReopen :: !(Maybe (NominalDiffTime, Int))
@@ -81,14 +77,8 @@ data SocketStatus =
 -- | Information why socket was closed
 data CloseReason =
     CloseGracefull -- ^ Socket was closed gracefully and not going to be reopened
-  | CloseError !Bool !CloseException -- ^ Socket was closed by exception. Boolean marks is the connection restarting.
+  | CloseError !CloseException -- ^ Socket was closed by exception. Boolean marks is the connection restarting.
   deriving (Show, Generic)
-
--- | Check whether the closing of socket is not recoverable
-isCloseFinal :: CloseReason -> Bool
-isCloseFinal r = case r of
-  CloseGracefull -> True
-  CloseError b _ -> not b
 
 -- | Messages that user get from socket
 data SocketOutEvent a =
@@ -101,12 +91,19 @@ data SocketOutEvent a =
 
 data Reconnect = DoReconnect !(Maybe Ex.SomeException) | GraceStop
 
+-- | Monad for parsing incoming messages
+type PeekerIO a = ReaderT PeekerEnv IO a
+
 -- | Start socket in separate thread and send events about it state change.
 --
 -- Automatically reopens on non user triggered close events (if config specifty this)
 -- and when SOCKS config is changed.
-socket :: MonadUnliftIO m => SocketConf a -> m (TChan (SocketOutEvent a))
-socket SocketConf{..} = liftIO $ do
+socket :: (MonadIO m)
+  => PeekerIO a -- ^ Deserialization of outcoming messages
+  -> TChan (SocketInEvent ByteString) -- ^ Incoming messages
+  -> SocketConf
+  -> m (TChan (SocketOutEvent a))
+socket peeker inputChan SocketConf{..} = liftIO $ do
   eventsChan <- newTChanIO
   sendChan <- newTChanIO
   intVar <- newTVarIO False
@@ -123,7 +120,7 @@ socket SocketConf{..} = liftIO $ do
 
   -- Thread that process input events
   inputThread <- forkIO $ forever $ do
-    e <- atomically $ readTChan _socketConfEvents
+    e <- atomically $ readTChan inputChan
     case e of
       SockInSendEvent bs -> atomically $ writeTChan sendChan bs
       SockInCloseEvent -> atomically $ writeTChan reconChan GraceStop
@@ -141,7 +138,7 @@ socket SocketConf{..} = liftIO $ do
               let env = PeekerEnv intVar sock
               void $ forkIO $ sendThread sock
               fix $ \next -> do
-                mma <- Ex.tryAny $ Ex.try $ runReaderT _socketConfPeeker env
+                mma <- Ex.tryAny $ Ex.try $ runReaderT peeker env
                 case mma of
                   Left e -> readErFire e >> next
                   Right (Left (e :: ReceiveException)) -> do
@@ -169,10 +166,10 @@ socket SocketConf{..} = liftIO $ do
         case _socketConfReopen of
           Nothing -> do
             killThread inputThread
-            atomically $ writeTChan eventsChan $ SockOutClosed $ CloseError False ex
+            atomically $ writeTChan eventsChan $ SockOutClosed $ CloseError ex
           Just (_, n) | i >= n -> do
             killThread inputThread
-            atomically $ writeTChan eventsChan $ SockOutClosed $ CloseError False ex
+            atomically $ writeTChan eventsChan $ SockOutClosed $ CloseError ex
           Just (dt, _) -> do
             atomically $ writeTChan eventsChan $ SockOutTries i
             _ <- forkIO $ do
