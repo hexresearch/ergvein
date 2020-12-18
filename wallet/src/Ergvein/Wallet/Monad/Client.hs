@@ -105,7 +105,7 @@ addDiscovered addressE = do
 addManyDiscovered :: (MonadIndexClient t m, MonadHasSettings t m) => Event t [ErgveinNodeAddr] -> m (Event t ())
 addManyDiscovered addressE = do
   (_, activationFunc) <- getActivationEF
-  updateSettingsAsync $ ffor addressE $ \urls -> let
+  updateSettingsAsync $  ffor addressE $ \urls -> let
     in settingsAddrs %~ (`M.union` (M.fromList $ (,discoveredPeerInfo) <$> urls))
   performEvent $ ffor addressE $ liftIO . activationFunc
 

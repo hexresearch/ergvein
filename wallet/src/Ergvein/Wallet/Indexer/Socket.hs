@@ -74,7 +74,7 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
   let verAckE = fforMaybe respE $ \case
         MVersionACK _ -> Just True
         _ -> Nothing
-  shakeD <- holdDyn False $ traceEventWith (("ACTIVE "++) . show) $ leftmost [verAckE, False <$ closeE]
+  shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
   let openE = fmapMaybe (\b -> if b then Just () else Nothing) $ updated shakeD
 
   -- Track filters height

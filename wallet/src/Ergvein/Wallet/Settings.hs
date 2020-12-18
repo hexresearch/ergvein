@@ -218,7 +218,7 @@ defIndexerPort :: PortNumber
 defIndexerPort = 8667
 
 seedList :: [Domain]
-seedList = if isTestnet
+seedList = if False
   then ["testseed.cypra.io"]
   else ["seed.cypra.io"]
 
@@ -257,7 +257,7 @@ defaultSettings home =
       , _settingsExplorerUrl       = defaultExplorerUrl
       , _settingsPortfolio         = False
       , _settingsFiatCurr          = USD
-      , _settingsAddrs             = M.singleton "127.0.0.1:8667" $ PeerInfo  True True
+      , _settingsAddrs             = mempty
       , _settingsDiscoveryEnabled  = True
       , _settingsDns               = defaultDns
       , _settingsSocksProxy        = Nothing

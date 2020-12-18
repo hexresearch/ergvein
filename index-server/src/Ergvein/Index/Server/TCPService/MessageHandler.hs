@@ -55,12 +55,8 @@ handleMsg address (MVersion peerVersion) = do
     pure mempty
 
 handleMsg _ (MPeerRequest _) = do
-  liftIO $ print "PEERS REQ"
-  pure $ pure $ MPeerResponse $ PeerResponse $ V.fromList [Address
-    { addressType    = IPV4
-    , addressPort    = 1234
-    , addressAddress = "1234"
-    }]
+  knownPeers <- getActualPeers
+  pure $ pure $ MPeerResponse $ PeerResponse $ V.fromList knownPeers
 
 handleMsg _ (MFiltersRequest FilterRequest {..}) = do
   currency <- currencyCodeToCurrency filterRequestMsgCurrency

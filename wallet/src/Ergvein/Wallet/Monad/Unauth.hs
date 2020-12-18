@@ -192,8 +192,8 @@ newEnv settings uiChan = do
         , unauth'activateIndexEF  = indexEF
         }
   flip runReaderT env $ do
+    initNetwork
     indexerNodeController
-    --ergveinNetworkRefresh
   pure env
 
 runEnv :: (MonadBaseConstr t m, PlatformNatives, HasVersion)

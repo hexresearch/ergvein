@@ -2,6 +2,7 @@
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 module Ergvein.Wallet.Worker.ErgveinNetworkRefresh
   ( ergveinNetworkRefresh
+  , initNetwork
   ) where
 
 import Control.Monad.IO.Class
@@ -46,9 +47,7 @@ ergveinNetworkRefresh = do
   timerE <- void <$> tickLossyFromPostBuildTime workerDelay
   buildE <- getPostBuild
   settD <- fmap _settingsDiscoveryEnabled <$> getSettingsD
-  let settE = void $ updated settD
-  activePeersChangedE <- void . fst <$> getActivationEF
-  let goE = gate (current settD) $  leftmost [timerE, buildE, settE]
+  let goE = gate (current settD) $ leftmost [timerE, buildE]
   activeUrlsRef <- getActiveConnsRef
   gE <- performEvent $ ffor goE $ \_-> do
     act <- readExternalRef activeUrlsRef
@@ -63,7 +62,15 @@ ergveinNetworkRefresh = do
   restoreFromDNS notOperablePeerAmountE
   fetchNewPeer insufficientPeerAmountE
 
-restoreFromDNS :: MonadFront t m => Event t () -> m ()
+initNetwork :: (MonadIndexClient t m, MonadHasSettings t m) => m ()
+initNetwork  = do
+  settingsRef <- getSettingsRef
+  buildE <- getPostBuild
+  activeUrlsE <- performEvent $ ffor buildE $ const $ readExternalRef settingsRef
+  let activeUrlsE' = void $ ffilter (null . _settingsAddrs)  activeUrlsE
+  restoreFromDNS activeUrlsE'
+
+restoreFromDNS :: (MonadIndexClient t m, MonadHasSettings t m) => Event t () -> m ()
 restoreFromDNS e = do
   dnsSettingsD <- fmap _settingsDns <$> getSettingsD
   reloadedFromSeedE <- performEvent $ ffor e $ const $ do
@@ -81,9 +88,9 @@ fetchNewPeer e = do
   let nonEmptyAddressesE = fforMaybe respE $ \(_, msg) -> case msg of
         MPeerResponse PeerResponse {..} | not $ V.null peerResponseAddresses -> Just peerResponseAddresses
         _-> Nothing
-  newIndexerE <- fmap (traceEvent "newIndexerE RANDOM") <$> performEvent $ ffor nonEmptyAddressesE $ \addrs ->
+  newIndexerE <- performEvent $ ffor nonEmptyAddressesE $ \addrs ->
     liftIO $ convertA . head <$> (shuffleM $ V.toList addrs)
-  void $ traceEvent "newIndexerE  11111111111111111111111111111111111111111" <$> addDiscovered newIndexerE
+  void $ addDiscovered newIndexerE
 
 convertA Address{..} = case addressType of
     IPV4 -> let
