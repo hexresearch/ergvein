@@ -169,7 +169,7 @@ getAddressesTxs e = do
 
 -- | Finds all txs that should be replaced and removes them from storage.
 -- Also stores information about transaction replacements in the storage.
--- Stage 1. See removeRbfTxsFromStorage1.
+-- Stage 2. See removeRbfTxsFromStorage2.
 removeTxsReplacedByFee :: MonadFront t m => Event t () -> m (Event t ())
 removeTxsReplacedByFee goE = do
   pubStorageD <- getPubStorageD

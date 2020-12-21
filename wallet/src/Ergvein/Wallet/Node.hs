@@ -179,7 +179,7 @@ btcMempoolTxInserter txE = do
 
 -- | Finds all txs that should be replaced by given tx and removes them from storage.
 -- Also stores information about transaction replacements in the storage.
--- Stage 2. See removeRbfTxsFromStorage2.
+-- Stage 1. See removeRbfTxsFromStorage1.
 removeTxsReplacedByFee :: MonadStorage t m =>
   Text ->
   Event t BtcTxRaw ->
