@@ -35,4 +35,4 @@ main = do
   outChan <- ergoSocket net inChan conf
   forever $ do
     ev <- atomically $ readTChan outChan
-    print ev 
+    print ev

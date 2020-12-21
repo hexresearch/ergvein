@@ -1,6 +1,8 @@
 module Data.Ergo.Protocol.Encoder(
     encodeMessage
+  , encodeHandshake
   , messageEncoder
+  , handshakeEncoder
   ) where
 
 import Data.ByteString (ByteString)
@@ -25,6 +27,9 @@ int64BE = put . BigEndian
 int32BE :: Int32 -> Put ()
 int32BE = put . BigEndian
 
+word64BE :: Word64 -> Put ()
+word64BE = put . BigEndian
+
 word32BE :: Word32 -> Put ()
 word32BE = put . BigEndian
 
@@ -40,16 +45,21 @@ word8 = put
 encodeMessage :: Network -> Message -> ByteString
 encodeMessage net msg = runPut $ messageEncoder net msg
 
+encodeHandshake :: Handshake -> ByteString
+encodeHandshake = runPut . handshakeEncoder
+
 messageEncoder :: Network -> Message -> Put ()
 messageEncoder net msg = case msg of
-  MsgHandshake hmsg -> do
-    word32BE (magicBytes net)
-    word8 handshakeId
-    word32BE (fromIntegral $ BS.length bbody)
-    putByteString bbody
-    putByteString (checkSum bbody)
-    where
-      bbody = runPut $! encodeHandshake hmsg
+  MsgHandshake hmsg -> handshakeEncoder hmsg
+
+    -- for other types of messages
+    -- word32BE (magicBytes net)
+    -- word8 handshakeId
+    -- word32BE (fromIntegral $ BS.length bbody)
+    -- putByteString bbody
+    -- putByteString (checkSum bbody)
+    -- where
+    --   bbody = runPut $! handshakeEncoder hmsg
 
 encodeVarText :: Text -> Put ()
 encodeVarText t
@@ -85,8 +95,8 @@ encodeStateType :: StateType -> Put ()
 encodeStateType StateUtxo = word8 0
 encodeStateType StateDigest = word8 1
 
-encodeHandshake :: Handshake -> Put ()
-encodeHandshake Handshake{..} = do
+handshakeEncoder :: Handshake -> Put ()
+handshakeEncoder Handshake{..} = do
   int64BE time
   encodeVarText agentName
   encodeVersion version
@@ -101,14 +111,18 @@ encodeOpMode OperationModeFeature{..} = do
   encodeOptional word32BE nipopowSuffix
   int32BE blocksStored
 
+encodeSessionFeature :: SessionFeature -> Put ()
+encodeSessionFeature SessionFeature{..} = do
+  word32BE networkMagic
+  word64BE sessionId
+
 encodeFeature :: PeerFeature -> Put ()
-encodeFeature (FeatureOperationMode v) = do
-  word8 featureOperationModeId
+encodeFeature v = do
+  word8 $ featureId v
   word16BE (fromIntegral $ BS.length bs)
   putByteString bs
   where
-    bs = runPut $ encodeOpMode v
-encodeFeature (UnknownFeature i bs) = do
-  word8 i
-  word16BE (fromIntegral $ BS.length bs)
-  putByteString bs
+    bs = case v of
+      FeatureOperationMode v -> runPut $ encodeOpMode v
+      FeatureSession v -> runPut $ encodeSessionFeature v
+      UnknownFeature _ bs -> bs

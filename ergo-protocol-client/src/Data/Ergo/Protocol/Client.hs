@@ -16,14 +16,23 @@ import Control.Concurrent.STM
 import Control.Monad.IO.Class
 import Data.Ergo.Protocol
 import Data.Ergo.Protocol.Decoder
+import Data.IORef
 import GHC.Generics
+
+import Debug.Trace
 
 import qualified Network.Socket.Manager.TCP.Client as C
 
-peekMessage :: Network -> C.PeekerIO Message
-peekMessage net = do
-  n <- either fail pure =<< fmap (parseMsgLength net) (C.peek 9)
-  either fail pure =<< fmap (decodeMessage net) (C.peek n)
+peekMessage :: Network -> IORef Bool -> C.PeekerIO Message
+peekMessage net initRef = do
+  isinit <- liftIO $ readIORef initRef
+  if isinit then do
+    h <- peekHandshake (fmap traceShowId . C.peek . traceShowId)
+    liftIO $ writeIORef initRef False
+    pure $ MsgHandshake h
+  else do
+    n <- either fail pure =<< fmap (parseMsgLength net) (C.peek 9)
+    either fail pure =<< fmap (decodeMessage net) (C.peek n)
 
 -- | Start connection to ergo node in separate thread.
 --
@@ -36,4 +45,6 @@ ergoSocket :: MonadIO m
   -> TChan (C.SocketInEvent Message)
   -> C.SocketConf
   -> m (TChan (C.SocketOutEvent Message))
-ergoSocket net inChan conf = C.socket (encodeMessage net) (peekMessage net) inChan conf
+ergoSocket net inChan conf = do
+  initRef <- liftIO $ newIORef True
+  C.socket (encodeMessage net) (peekMessage net initRef) inChan conf

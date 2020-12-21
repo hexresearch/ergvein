@@ -21,7 +21,10 @@ module Data.Ergo.Protocol.Types(
   , StateType(..)
   , OperationModeFeature(..)
   , featureOperationModeId
+  , SessionFeature(..)
+  , sessionFeatureId
   , PeerFeature(..)
+  , featureId
   , Handshake(..)
   , handshakeId
   , handshakeTimeout
@@ -78,9 +81,29 @@ data OperationModeFeature = OperationModeFeature {
 featureOperationModeId :: Word8
 featureOperationModeId = 16
 
+-- | Session peer feature introduced in 3.3.7
+data SessionFeature = SessionFeature {
+  networkMagic :: !Word32
+, sessionId    :: !Word64 -- ^ 64 bits long random session id. For reference client, session id is currently used only to avoid connections to self
+} deriving (Generic, Show, Read, Eq)
+
+-- | ID of 'SessionFeature' feature
+sessionFeatureId :: Word8
+sessionFeatureId = 3
+
 -- | Known peer feature types that client supports.
-data PeerFeature = FeatureOperationMode !OperationModeFeature | UnknownFeature !Word8 !ByteString
+data PeerFeature =
+    FeatureOperationMode !OperationModeFeature
+  | FeatureSession !SessionFeature
+  | UnknownFeature !Word8 !ByteString
   deriving (Generic, Show, Read, Eq)
+
+-- | Get protocol type for feature type
+featureId :: PeerFeature -> Word8
+featureId v = case v of
+  FeatureOperationMode _ -> featureOperationModeId
+  FeatureSession _ -> sessionFeatureId
+  UnknownFeature i _ -> i
 
 -- | Amount of seconds that is given to peer to send handshake message. After that
 -- connection is dropped.

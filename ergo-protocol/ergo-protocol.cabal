@@ -38,6 +38,7 @@ library
     MultiWayIf
     OverloadedStrings
     RecordWildCards
+    ScopedTypeVariables
     TemplateHaskell
 
 test-suite ergo-protocol-test

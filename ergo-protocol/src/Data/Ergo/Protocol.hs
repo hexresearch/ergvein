@@ -23,7 +23,10 @@ module Data.Ergo.Protocol(
   , StateType(..)
   , OperationModeFeature(..)
   , featureOperationModeId
+  , SessionFeature(..)
+  , sessionFeatureId
   , PeerFeature(..)
+  , featureId
   , Handshake(..)
   , handshakeId
   , handshakeTimeout
@@ -43,6 +46,10 @@ newtype TestnetMessage = TestnetMessage { unTestnetMessage :: Message }
 
 newtype MainnetMessage = MainnetMessage { unMainnetMessage :: Message }
   deriving (Generic, Show, Read, Eq)
+
+instance Persist Handshake where
+  put = handshakeEncoder
+  get = handshakeParser
 
 instance Persist TestnetMessage where
   put = messageEncoder Testnet . unTestnetMessage

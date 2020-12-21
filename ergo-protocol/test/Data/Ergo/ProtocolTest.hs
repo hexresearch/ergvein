@@ -3,6 +3,7 @@ module Data.Ergo.ProtocolTest where
 import Control.Monad
 import Data.ByteString.Builder
 import Data.Ergo.Protocol
+import Data.Ergo.Protocol.Decoder
 import Data.Maybe
 import Data.Persist
 import Data.Text (Text)
@@ -25,11 +26,21 @@ import Debug.Trace
 traceShowIdHex :: BS.ByteString -> BS.ByteString
 traceShowIdHex a = traceShow (B16.encode a) a
 
-prop_encodeDecodeTestnet :: TestnetMessage -> Bool
-prop_encodeDecodeTestnet msg = traceShowId (decode (traceShowIdHex $ encode msg)) == Right (traceShowId msg)
+prop_encodeDecodeHandshake :: Handshake -> Property
+prop_encodeDecodeHandshake msg = property $ decode (encode msg) == Right msg
 
-prop_encodeDecodeMainnet :: MainnetMessage -> Property
-prop_encodeDecodeMainnet msg = property $ decode (encode msg) == Right msg
+prop_encodeDecodeHandshakeIncr :: Handshake -> Property
+prop_encodeDecodeHandshakeIncr msg = ioProperty $ do
+  peek <- simplePeeker $ encode msg
+  res <- peekHandshake peek
+  pure $ res == msg
+
+
+-- prop_encodeDecodeTestnet :: TestnetMessage -> Bool
+-- prop_encodeDecodeTestnet msg = traceShowId (decode (traceShowIdHex $ encode msg)) == Right (traceShowId msg)
+--
+-- prop_encodeDecodeMainnet :: MainnetMessage -> Property
+-- prop_encodeDecodeMainnet msg = property $ decode (encode msg) == Right msg
 
 instance Arbitrary TestnetMessage where
   arbitrary = TestnetMessage <$> arbitrary
@@ -63,6 +74,12 @@ instance Arbitrary OperationModeFeature where
     <$> arbitrary
     <*> arbitrary
     <*> arbitrary
+    <*> arbitrary
+  shrink = genericShrink
+
+instance Arbitrary SessionFeature where
+  arbitrary = SessionFeature
+    <$> arbitrary
     <*> arbitrary
   shrink = genericShrink
 
