@@ -1,6 +1,8 @@
 module Ergvein.Index.Server.BlockchainScanning.Bitcoin where
 
 import           Control.Concurrent.Async.Lifted
+import           Control.Concurrent.Lifted
+import           Control.Concurrent.STM
 import           Control.Lens.Combinators
 import           Control.Monad.Logger
 import           Control.Monad.Reader
@@ -40,6 +42,10 @@ import qualified Network.Haskoin.Block              as HK
 import qualified Network.Haskoin.Crypto             as HK
 import qualified Network.Haskoin.Script             as HK
 import qualified Network.Haskoin.Transaction        as HK
+
+blockInfo :: (BitcoinApiMonad m, HasFiltersDB m, MonadLogger m, MonadBaseControl IO m, HasShutdownFlag m)
+  => BlockHeight -> m BlockInfo
+blockInfo blockHeightToScan = blockTxInfos blockHeightToScan =<< getBtcBlockWithRepeat blockHeightToScan
 
 blockTxInfos :: (BitcoinApiMonad m, MonadBaseControl IO m, HasFiltersDB m, MonadLogger m, MonadBaseControl IO m) => BlockHeight -> HK.Block -> m BlockInfo
 blockTxInfos txBlockHeight block = do
@@ -103,6 +109,26 @@ getTxFromNode thash = do
     comparator tx = if thash == HK.txHash tx then Just tx else Nothing
     txGettingError h = error $ "Failed to get tx from block #" ++ show h ++ " TxHash: " ++ show thash
 
+getBtcBlockWithRepeat :: (BitcoinApiMonad m, MonadLogger m, MonadBaseControl IO m, MonadIO m, HasShutdownFlag m)
+  => BlockHeight -> m HK.Block
+getBtcBlockWithRepeat blockHeightReq = do
+  resChan <- liftIO newTChanIO
+  shutdownFlag <- getShutdownFlag
+  fix $ \next -> do
+    fork $    -- Request thread
+      liftIO . atomically . writeTChan resChan . Just =<< getBtcBlock blockHeightReq
+    fork $ do -- Timeout thread
+      threadDelay 30000000 -- 30s
+      liftIO . atomically . writeTChan resChan $ Nothing
+    res <- liftIO $ atomically $ readTChan resChan
+    case res of
+      Nothing -> do
+        b <- liftIO . readTVarIO $ shutdownFlag
+        if b
+          then error "Everything is fine, just killing the thread"
+          else next
+      Just block -> pure block
+
 getBtcBlock :: (BitcoinApiMonad m, MonadLogger m, MonadBaseControl IO m, MonadIO m)
   => BlockHeight -> m HK.Block
 getBtcBlock blockHeightReq = do
@@ -118,10 +144,6 @@ getBtcBlock blockHeightReq = do
     hashParsingError = error $ "Error parsing BTC BlockHash at height " ++ show blockHeightReq
     blockGettingError = error $ "Error getting BTC node at height " ++ show blockHeightReq
     blockParsingError = error $ "Error parsing BTC node at height " ++ show blockHeightReq
-
-blockInfo :: (BitcoinApiMonad m, HasFiltersDB m, MonadLogger m, MonadBaseControl IO m)
-  => BlockHeight -> m BlockInfo
-blockInfo blockHeightToScan = blockTxInfos blockHeightToScan =<< getBtcBlock blockHeightToScan
 
 feeScaner :: ServerM ()
 feeScaner = feeScaner' 0

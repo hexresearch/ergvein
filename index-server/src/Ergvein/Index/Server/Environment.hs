@@ -46,7 +46,8 @@ data ServerEnv = ServerEnv
     , envClientManager            :: !HC.Manager
     , envBitcoinClient            :: !BitcoinApi.Client
     , envBitcoinSocket            :: !BtcSocket
-    , envBtcConScheme             :: !BtcConnectionScheme
+    , envBitcoinSocketReconnect   :: !(IO ())
+    , envBtcConScheme             :: !(TVar BtcConnectionScheme)
     , envBtcRollback              :: !(TVar (Seq.Seq RollbackRecItem))
     , envPeerDiscoveryRequisites  :: !PeerDiscoveryRequisites
     , envFeeEstimates             :: !(TVar (M.Map CurrencyCode FeeBundle))
@@ -99,10 +100,17 @@ newServerEnv useTcp noDropFilters optsNoDropIndexers btcClient cfg@Config{..} = 
     shutdownVar    <- liftIO $ newTVarIO False
     openConns      <- liftIO $ newTVarIO M.empty
     broadChan      <- liftIO newBroadcastTChanIO
+    btcRestartChan <- liftIO newTChanIO
+    btcConnVar     <- liftIO $ newTVarIO $ if useTcp then BtcConTCP else BtcConRPC
     let bitcoinNodeNetwork = if cfgBTCNodeIsTestnet then HK.btcTest else HK.btc
     descDiscoveryRequisites <- liftIO $ discoveryRequisites cfg
     btcsock <- if useTcp then do
-      btcsock <- connectBtc bitcoinNodeNetwork cfgBTCNodeTCPHost (show cfgBTCNodeTCPPort) shutdownVar
+      btcsock <- connectBtc
+        bitcoinNodeNetwork
+        cfgBTCNodeTCPHost
+        (show cfgBTCNodeTCPPort)
+        shutdownVar
+        btcRestartChan
       liftIO $ do
         isUp <- atomically $ dupTChan $ btcSockOnActive btcsock
         b <- readTVarIO $ btcSockIsActive btcsock
@@ -123,7 +131,8 @@ newServerEnv useTcp noDropFilters optsNoDropIndexers btcClient cfg@Config{..} = 
       , envClientManager           = tlsManager
       , envBitcoinClient           = btcClient
       , envBitcoinSocket           = btcsock
-      , envBtcConScheme            = if useTcp then BtcConTCP else BtcConRPC
+      , envBitcoinSocketReconnect  = liftIO (atomically $ writeTChan btcRestartChan ())
+      , envBtcConScheme            = btcConnVar
       , envBtcRollback             = btcSeqVar
       , envPeerDiscoveryRequisites = descDiscoveryRequisites
       , envFeeEstimates            = feeEstimates
