@@ -92,7 +92,7 @@ getAndFilterBlocks cur heightD btcAddrsD timeZone txs store settings = do
       parentTxs <- sequenceA $ fmap (traverse getTxById) parentTxsIds
       txStorage <- askTxStorage
       let btcPubStorageMeta = fromMaybe (error "getAndFilterBlocks: BTC storage does not exist!") $ pubStorage ^? pubStorage'currencyPubStorages . at BTC . _Just . currencyPubStorage'meta . _PubStorageBtc
-          replacedTxsStore = btcPubStorageMeta ^. btcPubStorage'possiblyReplacedTxs
+          replacedTxsStore = btcPubStorageMeta ^. btcPubStorage'replacedTxs
           possiblyReplacedTxsStore = btcPubStorageMeta ^. btcPubStorage'possiblyReplacedTxs
           replacedTxs = (fmap . fmap) BtcTxHash $ getReplacedTxs replacedTxsStore txs
           possiblyReplacedTxs = getPossiblyReplacedTxs possiblyReplacedTxsStore txs
