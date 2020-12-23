@@ -46,7 +46,7 @@ library
     , secp256k1-haskell         >= 0.2.2    && < 0.2.3
     , string-conversions        >= 0.4.0.1  && <0.4.0.2
     , text                      >= 1.2      && < 1.3
-    , vector                    >= 0.10     && < 0.12.1
+    , vector                    >= 0.10     && < 0.13
   default-language:    Haskell2010
   default-extensions:
     GADTs

@@ -6,10 +6,12 @@ module Ergvein.Wallet.Page.Restore(
 import Control.Concurrent.Async
 import Control.Monad.IO.Class
 import Data.Maybe (catMaybes)
+import Data.Time
 import Reflex.Localize.Dom
 
 import Ergvein.Filters.Btc.Index
 import Ergvein.Filters.Mutable hiding (BlockHeight)
+import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
@@ -32,6 +34,10 @@ import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Vector as V
 
+-- | Timeout for trying to request filters again at 'getting filters batch' stage
+filtersRetryTimeout :: NominalDiffTime
+filtersRetryTimeout = 10
+
 restorePage :: forall t m . MonadFront t m =>  m ()
 restorePage = wrapperSimple True $ do
   void $ wipeRetract . (Nothing <$) =<< getPostBuild
@@ -46,7 +52,7 @@ restorePage = wrapperSimple True $ do
         p = 100 * (fh - f0) / (hh - f0)
 
     filtersBatchSize :: Int
-    filtersBatchSize = 700
+    filtersBatchSize = 300
 
     -- | Stage 1: connect to BTC nodes
     nodeConnection = Workflow $ do
@@ -80,8 +86,10 @@ restorePage = wrapperSimple True $ do
       h3 $ localizedText RPSGetFiltsTitle
       h4 $ localizedText $ RPSGetFiltsFromTo fh $ if batchTipHeight > hh then hh else batchTipHeight
       psD <- getPubStorageD
-      buildE <- getPostBuild
-      let boolE = poke buildE $ const $ do
+      buildE <- delay 0.1 =<< getPostBuild
+      tickE <- tickLossyFromPostBuildTime filtersRetryTimeout
+      let checkE = leftmost [buildE, void tickE]
+      let boolE = poke checkE $ const $ do
             h <- sampleDyn heightD
             pure $ fromIntegral fh >= (h - 1)
           (doneE, notDoneE) = splitFilter id boolE
@@ -113,19 +121,30 @@ restorePage = wrapperSimple True $ do
       -> [(BlockHeight, BlockHash, BtcAddrFilter)]
       -> V.Vector ScanKeyBox
       -> Workflow t m ()
-    scanBatchKeys (curHeight, nextHeight) batch keys = Workflow $ do
+    scanBatchKeys (curHeight, nextHeight) batch keys = Workflow $ mdo
       (hE, cb) <- newTriggerEvent
       hD <- holdDyn curHeight hE
       hh <- sampleDyn . fmap fromIntegral =<< getCurrentHeight BTC
       restoreProgressWidget (filterStartingHeight BTC) curHeight hh
-      h3 $ localizedText RPSScanTitle
-      h4 $ localizedDynText $ RPSScanProgress <$> hD
+      let scanTitles = do
+            h3 $ localizedText RPSScanTitle
+            h4 $ localizedDynText $ RPSScanProgress <$> hD
+          blockRetrieveTitles hashes = do
+            h3 $ localizedText RPSBlocksTitle
+            h4 $ localizedText $ RPSBlocskAmount (length hashes)
+          refreshWalletTitles = h3 $ localizedText RPSKeysTitle
+      widgetHold_ scanTitles $ leftmost [
+          blockRetrieveTitles <$> hashesE
+        , refreshWalletTitles <$ scanE
+        ]
       let mkAddr k = addressToScriptBS . xPubToBtcAddr . extractXPubKeyFromEgv $ scanBox'key k
       let addrs = V.toList $ mkAddr <$> keys
       buildE <- getPostBuild
       let chunks = mkChunks 100 batch
       let foo (h, bh, filt) = do
-            liftIO $ cb h
+            liftIO $ when (h `mod` 10 == 0) $ do
+              logWrite $ "Scanning " <> showt h
+              cb h
             let bhash = egvBlockHashToHk bh
             res <- applyBtcFilterMany bhash filt addrs
             pure $ if res then Just (bhash, fromIntegral h) else Nothing
@@ -133,6 +152,7 @@ restorePage = wrapperSimple True $ do
       hashesE <- performFork $ ffor buildE $ const $
         fmap (catMaybes . mconcat) $ liftIO $
           mapConcurrently (traverse foo) chunks
+
       scanE <- scanBtcBlocks keys hashesE
       keysE <- refreshBtcKeys $ void scanE
       let (nullE, extraE) = splitFilter V.null keysE

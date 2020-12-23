@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingVia #-}
 module Ergvein.Index.Server.Monad where
 
 import Control.Concurrent.STM
@@ -22,11 +23,9 @@ import qualified Data.Map.Strict as M
 import qualified Network.Ergo.Api.Client     as ErgoApi
 
 newtype ServerM a = ServerM { unServerM :: ReaderT ServerEnv (LoggingT IO) a }
-  deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader ServerEnv, MonadThrow, MonadCatch, MonadMask, MonadBase IO, MonadMonitor)
-
-instance MonadMonitor m => MonadMonitor (LoggingT m) where
-  doIO = lift . doIO
-  {-# INLINE doIO #-}
+  deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader ServerEnv, MonadThrow, MonadCatch, MonadMask, MonadBase IO)
+  -- To avoid orphan we unwrap LoggingT as its reader representation
+  deriving MonadMonitor via (ReaderT ServerEnv (ReaderT (Loc -> LogSource -> LogLevel -> LogStr -> IO ()) IO))
 
 newtype StMServerM a = StMServerM { unStMServerM :: StM (ReaderT ServerEnv (LoggingT IO)) a }
 

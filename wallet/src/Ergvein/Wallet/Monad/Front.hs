@@ -55,18 +55,22 @@ import Reflex.Dom.Retractable.Class
 import Reflex.ExternalRef
 
 import Ergvein.Index.Protocol.Types (Message(..))
+import Ergvein.Text
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
+import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Localization.Client
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Storage
-import Ergvein.Wallet.Node.Types
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node.Prim
+import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Status.Types
 import Ergvein.Wallet.Util
@@ -249,10 +253,17 @@ requester cur req = mdo
     else pure never
   let goE = leftmost [buildE, () <$ te]
   respE <- widgetHoldE (pure never) $ ffor goE $ const $ do
-    mconn <- randomElem =<< getOpenSyncedConns cur
+    conns <- getOpenSyncedConns cur
+    logWrite $ "Has " <> showt (length conns) <> " synced connections to indexers"
+    mconn <- randomElem conns
     case mconn of
-      Nothing -> pure never
+      Nothing -> do
+        logWrite "Cannot select indexer for request"
+        buildE <- delay 0.1 =<< getPostBuild
+        showWarnMsg $ ffor buildE $ const CMSAllOutOfSync
+        pure never
       Just conn -> do
+        logWrite $ "Selected indexer " <> showt (indexConAddr conn)
         requestIndexerWhenOpen conn req
         pure $ (indexConAddr conn,) <$> indexConRespE conn
   pure respE
@@ -263,14 +274,18 @@ requester cur req = mdo
 getOpenSyncedConns :: MonadFront t m => Currency -> m [IndexerConnection t]
 getOpenSyncedConns cur = do
   conns <- readExternalRef =<< getActiveConnsRef
+  logWrite $ "Has " <> showt (length conns) <> " active connections to indexers"
   walletHeightD <- getCurrentHeight cur
   fmap catMaybes $ flip traverse (M.elems conns) $ \con -> do
     isUp <- sampleDyn $ indexConIsUp con
+    logWrite $ "Connection " <> showt (indexConAddr con) <> " is up: " <> showt isUp
     walletHeight <- sampleDyn walletHeightD
     if not isUp then pure Nothing else do
       indexerHeight <- fmap (M.lookup cur) $ sampleDyn $ indexerConHeight con
+      logWrite $ "Wallet height " <> showt walletHeight
+      logWrite $ "Indexer height " <> showt indexerHeight
       pure $ case (walletHeight, fromIntegral <$> indexerHeight) of
-        (wh, Just ih) -> if wh == ih || wh - ih == 1 then Just con else Nothing
+        (wh, Just ih) -> if wh <= ih || wh - ih == 1 then Just con else Nothing
         _ -> Nothing
 
 randomElem :: MonadIO m => [a] -> m (Maybe a)

@@ -8,16 +8,12 @@ module Ergvein.Index.Server.DB
 import Conduit
 import Control.Exception
 import Control.Monad
-import Control.Monad.Catch
 import Control.Monad.Logger
 import Data.Default
 import Database.LevelDB.Base
-import Database.LevelDB.Internal
 import System.Directory
-import System.FilePath
 
 import Ergvein.Index.Server.DB.Monad
-import Ergvein.Index.Server.DB.Queries (initIndexerDb)
 
 import qualified Ergvein.Index.Server.DB.Schema.Filters as DBF
 import qualified Ergvein.Index.Server.DB.Schema.Indexer as DBI
