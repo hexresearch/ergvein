@@ -53,8 +53,10 @@ instance Arbitrary ScannedHeightRec where
   arbitrary = ScannedHeightRec <$> arbitrary
 instance Arbitrary TxRecBytes where
   arbitrary = TxRecBytes <$> arbitrary
-instance Arbitrary TxRecMeta where
-  arbitrary = TxRecMeta <$> arbitrary
+instance Arbitrary TxRecHeight where
+  arbitrary = TxRecHeight <$> arbitrary
+instance Arbitrary TxRecUnspent where
+  arbitrary = TxRecUnspent <$> arbitrary
 instance Arbitrary TxInfo where
   arbitrary = TxInfo <$> arbitrary <*> arbitrary <*> arbitrary
 instance Arbitrary BlockMetaRec where
@@ -66,7 +68,7 @@ instance Arbitrary KnownPeersRec where
 instance Arbitrary LastScannedBlockHeaderHashRec where
   arbitrary = LastScannedBlockHeaderHashRec <$> arbitraryBSS32
 instance Arbitrary RollbackRecItem where
-  arbitrary = RollbackRecItem <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+  arbitrary = RollbackRecItem <$> arbitrary <*> arbitrary <*> arbitrary
 instance Arbitrary RollbackSequence where
   arbitrary = RollbackSequence <$> arbitrary
 
