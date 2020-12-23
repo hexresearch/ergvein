@@ -31,11 +31,12 @@ import Conversion
 import Data.ByteString.Short (ShortByteString)
 import Data.Default
 import Data.Foldable
+import Data.Word
 import Data.Maybe
 import Data.Time.Clock
 import Database.LevelDB
 
-import Ergvein.Index.Protocol.Types
+import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema.Filters
@@ -118,19 +119,18 @@ initIndexerDb db = do
   write db def $ putItem Currency.BTC knownPeersRecKey $ KnownPeersRec []
 
 addBlockInfo :: (HasBtcRollback m, HasFiltersDB m, HasIndexerDB m, MonadLogger m, MonadBaseControl IO m) => BlockInfo -> m ()
-addBlockInfo update = do
+addBlockInfo (BlockInfo meta spent txinfos) = do
   db <- getFiltersDb
-  let targetCurrency = blockMetaCurrency $ blockInfoMeta update
-  let newBlockHash = blockMetaHeaderHash $ blockInfoMeta update
-  write db def $ putTxInfosAsRecs targetCurrency (blockContentTxInfos update)
-  insertRollback targetCurrency $ RollbackRecItem
-    (txHash <$> blockContentTxInfos update)
-    (spentTxOutputs update)
-    (blockMetaPreviousHeaderBlockHash $ blockInfoMeta update)
-    (blockMetaBlockHeight (blockInfoMeta update) - 1)
-  addBlockMetaInfos targetCurrency [blockInfoMeta update]
-  setLastScannedBlock targetCurrency newBlockHash
-  setScannedHeight targetCurrency (blockMetaBlockHeight $ blockInfoMeta update)
+  write db def $ txInfosBatch <> metaInfosBatch <> heightWrite
+  insertRollback cur $ RollbackRecItem txHashes prevHash (height -1)
+  insertSpentTxUpdates cur spent
+  setLastScannedBlock cur blkHash
+  where
+    BlockMetaInfo cur height blkHash prevHash filt = meta
+    txHashes       = txHash <$> txinfos
+    txInfosBatch   = putTxInfosAsRecs cur height txinfos
+    metaInfosBatch = putItem cur (metaRecKey (cur, height)) $ BlockMetaRec blkHash filt
+    heightWrite    = putItem cur (scannedHeightTxKey cur) $ ScannedHeightRec height
 
 setLastScannedBlock :: (HasIndexerDB m, MonadLogger m) => Currency -> ShortByteString -> m ()
 setLastScannedBlock currency blockHash = do
@@ -171,7 +171,6 @@ insertBtcRollback ritem = do
     then liftIO $ atomically $ writeTVar rollVar rse'
     else do
       let rest Seq.:> lst = Seq.viewr rse'
-      finalizeRollbackItem Currency.BTC lst
       liftIO $ atomically $ writeTVar rollVar rest
 
 storeRollbackSequence :: (HasIndexerDB m, MonadLogger m) => Currency -> RollbackSequence -> m ()
@@ -185,8 +184,8 @@ loadRollbackSequence cur = do
   mseq <- getParsed cur "loadRollbackSequence" idb $ rollbackKey cur
   pure $ fromMaybe (RollbackSequence mempty) mseq
 
-finalizeRollbackItem :: (HasFiltersDB m, MonadLogger m, MonadBaseControl IO m) => Currency -> RollbackRecItem -> m ()
-finalizeRollbackItem _cur (RollbackRecItem _ outs _ _) = do
+insertSpentTxUpdates :: (HasFiltersDB m, MonadLogger m, MonadBaseControl IO m) => Currency -> Map.Map TxHash Word32 -> m ()
+insertSpentTxUpdates _ outs = do
   fdb <- getFiltersDb
   let outsl = mkChunks 100 $ Map.toList outs
   upds <- fmap (mconcat . mconcat) $ mapConcurrently (traverse (mkupds fdb)) outsl
@@ -195,11 +194,12 @@ finalizeRollbackItem _cur (RollbackRecItem _ outs _ _) = do
     maybe' mv c = maybe [] c mv
     either' ev c = either (const []) c ev
     mkupds fdb (th, sp) = do
-      let k = txMetaKey th
+      let k = txUnspentKey th
       mraw <- get fdb def k
-      pure $ maybe' mraw $ \bs -> either' (deserializeWord32 bs) $ \unsp -> let
-        o = unsp - sp
-        in if o <= 0 then [LDB.Del k, LDB.Del $ txRawKey th] else [LDB.Put k (serializeWord32 o)]
+      pure $ maybe' mraw $ \bs -> either' (egvDeserialize BTC bs) $ \(TxRecUnspent unsp) ->
+        if unsp <= sp
+          then [LDB.Del k, LDB.Del $ txBytesKey th]
+          else [LDB.Put k $ egvSerialize BTC $ TxRecUnspent (unsp - sp)]
 
 performRollback :: (HasFiltersDB m, HasIndexerDB m, HasBtcRollback m, MonadLogger m) => Currency -> m Int
 performRollback cur = case cur of
@@ -221,7 +221,7 @@ performBtcRollback = do
       setScannedHeight cur $ rollbackPrevHeight lst
 
   let spentTxIds = fold $ rollbackItemAdded <$> rse
-  let dels = mconcat $ flip fmap spentTxIds $ \th -> [LDB.Del (txRawKey th), LDB.Del (txMetaKey th)]
+  let dels = mconcat $ flip fmap spentTxIds $ \th -> [LDB.Del (txBytesKey th), LDB.Del (txHeightKey th)]
   write fdb def dels
   write idb def $ pure clearSeq
   liftIO $ atomically $ writeTVar rollVar mempty
