@@ -3,13 +3,14 @@ module Ergvein.Index.Server.Environment where
 
 import Control.Concurrent
 import Control.Concurrent.STM
-import Control.Exception (SomeException(..),AsyncException(..))
+import Control.Exception hiding (handle)
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Control
 import Control.Monad.Logger
 import Control.Monad.Reader
-import Data.Text (Text)
+import Data.Default
+import Data.Text (Text, isInfixOf)
 import Data.Typeable
 import Database.LevelDB.Base
 import Network.HTTP.Client.TLS
@@ -142,14 +143,27 @@ newServerEnv useTcp noDropFilters optsNoDropIndexers btcClient cfg@Config{..} = 
       }
 
 -- | Log exceptions at Error severity
-logOnException :: (MonadIO m, MonadLogger m, MonadCatch m) => Text -> m a -> m a
+logOnException :: (HasServerConfig m, MonadIO m, MonadLogger m, MonadCatch m) => Text -> m a -> m a
 logOnException threadName = handle logE
   where
+    logE :: (HasServerConfig m, MonadIO m, MonadLogger m, MonadCatch m) => SomeException -> m b
     logE e
         | Just ThreadKilled <- fromException e = do
             logInfoN $ "[" <> threadName <> "]: Killed normally by ThreadKilled"
             throwM e
+        | Just (ioe :: IOException) <- fromException e = do
+          let isBadMagic = isInfixOf "not an sstable" $ showt ioe
+          if isBadMagic
+            then do
+              logInfoN $ "[" <> threadName <> "]: Halted by \"not an sstable (bad magic nuber)\" error. Repairing the db."
+              Config{..} <- serverConfig
+              repair cfgFiltersDbPath def
+              repair cfgIndexerDbPath def
+            else
+              logErrorN $ "[" <> threadName <> "]: Killed by IOException. " <> showt ioe
+          liftIO $ threadDelay 1000000
+          throwM e
         | SomeException eTy <- e = do
-            logErrorN $ "[" <> threadName <> "]: Killed by " <> showt (typeOf eTy) <> showt eTy
+            logErrorN $ "[" <> threadName <> "]: Killed by " <> showt (typeOf eTy) <> ". " <> showt eTy
             liftIO $ threadDelay 1000000
             throwM e
