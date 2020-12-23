@@ -13,7 +13,8 @@ class BitcoinApiMonad m where
   nodeRpcCall :: (BitcoinApi.Client -> IO a) -> m a
   getSocketConn :: m BtcSocket
   getBtcConnectionScheme :: m BtcConnectionScheme
-   
+  restartSocketConn :: m ()
+
 requestBlock :: (MonadIO m, BitcoinApiMonad m) => BlockHash -> m Block
 requestBlock bh = do
   btcsock <- getSocketConn

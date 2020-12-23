@@ -129,6 +129,9 @@ library
   default-extensions:
     BangPatterns
     DataKinds
+    DeriveFunctor
+    DeriveFoldable
+    DeriveTraversable
     DeriveDataTypeable
     DeriveGeneric
     FlexibleContexts

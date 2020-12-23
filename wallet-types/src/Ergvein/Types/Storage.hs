@@ -13,12 +13,15 @@ module Ergvein.Types.Storage
   , modifyCurrStorageBtc
   , modifyCurrStorageErgo
   , pubStorageTxs
+  , pubStorageBtcTxs
+  , pubStorageErgTxs
   -- * Reexport latest general version
   -- along with specific other versions
   , module Reexport
   ) where
 
 import Control.Lens
+import Data.Maybe (fromMaybe)
 import Data.Text
 import Data.Vector (Vector)
 
@@ -88,3 +91,17 @@ modifyCurrStorageErgo f = modifyCurrStorage ERGO $ over (currencyPubStorage'meta
 
 pubStorageTxs :: Currency -> PubStorage -> Maybe (M.Map TxId EgvTx)
 pubStorageTxs c = fmap _currencyPubStorage'transactions . M.lookup c . _pubStorage'currencyPubStorages
+
+pubStorageBtcTxs :: PubStorage -> M.Map BtcTxId BtcTx
+pubStorageBtcTxs = M.foldMapWithKey foldHelper . fromMaybe M.empty . pubStorageTxs BTC
+  where
+    foldHelper :: TxId -> EgvTx -> M.Map BtcTxId BtcTx
+    foldHelper (BtcTxHash h) (TxBtc tx) = M.singleton h tx
+    foldHelper _ _ = M.empty
+
+pubStorageErgTxs :: PubStorage -> M.Map ErgTxId ErgTx
+pubStorageErgTxs = M.foldMapWithKey foldHelper . fromMaybe M.empty . pubStorageTxs ERGO
+  where
+    foldHelper :: TxId -> EgvTx -> M.Map ErgTxId ErgTx
+    foldHelper (ErgTxHash h) (TxErg tx) = M.singleton h tx
+    foldHelper _ _ = M.empty

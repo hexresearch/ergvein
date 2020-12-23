@@ -90,7 +90,6 @@ data RollbackKey = RollbackKey { unRollbackKey :: !Currency }
 
 data RollbackRecItem = RollbackRecItem
   { rollbackItemAdded     :: [TxHash]
-  , rollbackItemSpendings :: Map.Map TxHash Word32
   , rollbackPrevBlockHash :: !BlockHash
   , rollbackPrevHeight    :: !BlockHeight
   } deriving (Generic, Show, Eq, Ord)
@@ -212,10 +211,9 @@ instance EgvSerialize RollbackSequence where
     fmap (RollbackSequence . Seq.fromList) $ replicateM len (rollbackItemParser cur)
 
 rollbackItemBuilder :: RollbackRecItem -> Builder
-rollbackItemBuilder (RollbackRecItem sp m prevHash prevH) =
+rollbackItemBuilder (RollbackRecItem sp prevHash prevH) =
      word32LE (fromIntegral $ length sp)
   <> mconcat (txHashBuilder <$> sp)
-  <> hash2Word32MapBuilder m
   <> buildBSS prevHash
   <> word64LE prevH
 
@@ -223,10 +221,9 @@ rollbackItemParser :: Currency -> Parser RollbackRecItem
 rollbackItemParser cur = do
   l <- fromIntegral <$> anyWord32le
   sp <- replicateM l $ txHashParser cur
-  m <- hash2Word32MapParser cur
   prevHash <- parseBSS
   prevH <- anyWord64le
-  pure $ RollbackRecItem sp m prevHash prevH
+  pure $ RollbackRecItem sp prevHash prevH
 
 txHashParser :: Currency -> Parser TxHash
 txHashParser BTC = do
@@ -239,18 +236,3 @@ txHashParser ERGO = fmap (ErgTxHash . ErgTxId . BSS.toShort) $ Parse.take $ getT
 txHashBuilder :: TxHash -> Builder
 txHashBuilder (BtcTxHash th) = byteString $ S.runPut $ S.put th
 txHashBuilder (ErgTxHash th) = shortByteString . unErgTxId $ th
-
-hash2Word32MapParser :: Currency -> Parser (Map.Map TxHash Word32)
-hash2Word32MapParser cur = do
-  num <- fromIntegral <$> anyWord32le
-  fmap Map.fromList $ replicateM num $ do
-    th <- txHashParser cur
-    c <- anyWord32le
-    pure (th, c)
-
-hash2Word32MapBuilder :: Map.Map TxHash Word32 -> Builder
-hash2Word32MapBuilder ms = word32LE num <> elb
-  where
-    els = Map.toList ms
-    num = fromIntegral $ Map.size ms
-    elb = mconcat $ flip fmap els $ \(th,c) -> txHashBuilder th <> word32LE c

@@ -9,7 +9,9 @@ import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.ByteString (ByteString)
 import Data.List
+import Data.Map (Map)
 import Data.Maybe
+import Data.Set (Set)
 import Data.Time.Clock.POSIX
 import Data.Vector (Vector)
 
@@ -20,6 +22,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
+import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Filters.Loader
@@ -35,6 +38,7 @@ import Ergvein.Wallet.Storage.Util (addXPubKeyToKeystore)
 import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Util
 
+import qualified Data.List                          as L
 import qualified Data.Map.Strict                    as M
 import qualified Data.Set                           as S
 import qualified Data.Text                          as T
@@ -122,7 +126,8 @@ scannerBtc = void $ workflow checkRestored
           res <- applyBtcFilterMany bhash filt addrs
           pure $ if res then Just (bhash, fromIntegral h) else Nothing
       scanE <- scanBtcBlocks keys hashesE
-      keysE <- refreshBtcKeys $ void scanE
+      removedReplacedE <- removeTxsReplacedByFee =<< delay 1 (void scanE)
+      keysE <- refreshBtcKeys removedReplacedE
       performEvent_ $ ffor keysE $ \ks ->
         logWrite $ "[scannerBtc][scanBatchKeys]: Scan done. Got " <> showt (V.length ks) <> " extra keys"
       let (nullE, extraE) = splitFilter V.null keysE
@@ -141,11 +146,11 @@ scanBtcBlocks keys hashesE = do
   let noScanE = fforMaybe hashesE $ \bls -> if null bls then Just () else Nothing
   heightMapD <- holdDyn M.empty $ M.fromList <$> hashesE
   let rhashesE = fmap (nub . fst . unzip) $ hashesE
-  _ <-logEvent "Blocks requested: " rhashesE
+  _ <- logEvent "Blocks requested: " rhashesE
   blocksE <- requestBTCBlocks rhashesE
-  storedBlocks <- storeBlockHeadersE "scanBtcBlocks" BTC blocksE
-  let blkHeightE = current heightMapD `attach` storedBlocks
-  txsUpdsE <- logEvent "Transactions got: " =<< getAddressesTxs ((\(a,b) -> (keys,a,b)) <$> blkHeightE)
+  storedBlocksE <- storeBlockHeadersE "scanBtcBlocks" BTC blocksE
+  let blkHeightE = current heightMapD `attach` storedBlocksE
+  txsUpdsE <- logEvent "Transactions got: " =<< getAddressesTxs ((\(height, blocks) -> (keys, height, blocks)) <$> blkHeightE)
   void $ insertTxsUtxoInPubKeystore "scanBtcBlocks" BTC txsUpdsE
   removeOutgoingTxs "scanBtcBlocks" BTC $ (M.elems . M.unions . V.toList . snd . V.unzip . fst) <$> txsUpdsE
   pure $ leftmost [(V.any (not . M.null . snd)) . fst <$> txsUpdsE, False <$ noScanE]
@@ -161,6 +166,37 @@ getAddressesTxs e = do
     let (outs, ins) = V.unzip b
     let upds :: BtcUtxoUpdate = (M.unions $ V.toList outs, mconcat $ V.toList ins)
     pure (vec, upds)
+
+-- | Finds all txs that should be replaced and removes them from storage.
+-- Also stores information about transaction replacements in the storage.
+-- Stage 2. See removeRbfTxsFromStorage2.
+removeTxsReplacedByFee :: MonadFront t m => Event t () -> m (Event t ())
+removeTxsReplacedByFee goE = do
+  pubStorageD <- getPubStorageD
+  replacedTxsE <- performFork $ ffor (tagPromptlyDyn pubStorageD goE) $ \ps -> do
+    let btcps = ps ^. pubStorage'currencyPubStorages . at BTC . non (error $ "removeTxsReplacedByFee: BTC storage does not exist!")
+        txStore = btcps ^. currencyPubStorage'transactions
+        possiblyReplacedTxs = btcps ^. currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'possiblyReplacedTxs
+    liftIO $ flip runReaderT txStore $ do
+      confirmedTxIds <- M.keysSet <$> getConfirmedTxs
+      let confirmedBtcTxIds = S.map (fromJust . toBtcTxHash) confirmedTxIds
+      pure $ getTxsToRemove confirmedBtcTxIds possiblyReplacedTxs
+  removedE <- removeRbfTxsFromStorage2 "removedReplacedTxs" replacedTxsE
+  pure removedE
+
+getTxsToRemove ::
+  Set BtcTxId ->
+  Map BtcTxId (Set BtcTxId) ->
+  Set RemoveRbfTxsInfo
+getTxsToRemove confirmedTxIds possiblyReplacedTxs =
+  M.foldrWithKey' (helper confirmedTxIds) S.empty possiblyReplacedTxs
+  where
+    helper :: Set BtcTxId -> BtcTxId -> Set BtcTxId -> Set RemoveRbfTxsInfo -> Set RemoveRbfTxsInfo
+    helper confirmedTxIds possiblyReplacingTx possiblyReplacedTxs acc
+      | possiblyReplacingTx `S.member` confirmedTxIds = S.insert (RemoveRbfTxsInfo possiblyReplacingTx possiblyReplacingTx possiblyReplacedTxs) acc
+      | not $ S.null intersection = S.insert (RemoveRbfTxsInfo possiblyReplacingTx (S.findMin intersection) (S.insert possiblyReplacingTx (S.delete (S.findMin intersection) possiblyReplacedTxs))) acc
+      | otherwise = acc
+      where intersection = possiblyReplacedTxs `S.intersection` confirmedTxIds -- This intersection must contain only one element, because possiblyReplacedTxs are conflicting and no more than one tx may be valid
 
 -- | Gets transactions related to given address from given block.
 getAddrTxsFromBlocks :: (HasPubStorage m, PlatformNatives)
@@ -185,14 +221,14 @@ getAddrTxsFromBlock box heights block = do
       newtxmap = M.fromList $ (\tx -> (mkTxId tx, TxBtc $ BtcTx tx mheha)) <$> txs
       txmap = M.union newtxmap origtxMap
   liftIO $ flip runReaderT txmap $ do
-    filteredTxs <- filterTxsForAddress addr txs
+    filteredTxs <- filterTxsForAddressBtc addr txs
     let filteredIds = S.fromList $ mkTxId <$> filteredTxs
         filteredTxMap = M.restrictKeys newtxmap filteredIds
     utxo <- getUtxoUpdatesFromTxs mh box filteredTxs
     pure $ (filteredTxMap, utxo)
   where
     mkTxId = hkTxHashToEgv . HT.txHash
-    addr = egvXPubKeyToEgvAddress $ scanBox'key box
+    addr = xPubToBtcAddr $ extractXPubKeyFromEgv $ scanBox'key box
     txs = HB.blockTxns block
     blockTime = secToTimestamp . HB.blockTimestamp $ HB.blockHeader $ block
     bhash = HB.headerHash . HB.blockHeader $ block
