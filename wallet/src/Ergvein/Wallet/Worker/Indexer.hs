@@ -39,12 +39,11 @@ indexerNodeController  = mdo
   connRef <- getActiveConnsRef
   seed <- mkResolvSeed
   addrs <- _settingsAddrs <$> (readExternalRef =<< getSettingsRef)
-  liftIO $ print $ show addrs
   let initMap = M.fromList $ ((, ())) <$> M.keys addrs
       closedE = switchDyn $ ffor valD $ leftmost . M.elems
       delE = (\u -> M.singleton u Nothing) <$> closedE
       addE = (\us -> M.fromList $ (, Just ()) <$> us) <$> addrE
-      actE = leftmost [delE, addE] 
+      actE = traceEvent "UPD_______________________________" $ leftmost [delE, addE] 
   valD <- listWithKeyShallowDiff initMap actE $ \n _ _ -> do
     mAddr <- parseSockAddrs seed [n]
     case mAddr of
@@ -52,7 +51,7 @@ indexerNodeController  = mdo
         nodeLog $ "<" <> n <> ">: Connect"
         let reqE = select sel $ Const2 n
         conn <- initIndexerConnection addr reqE
-        modifyExternalRef connRef $ \cm -> (M.insert n conn cm, ())
+        modifyExternalRef connRef $ (, ()) . M.insert n conn
     
         -- Everything below this line is handling the closure of a connection
         -- the event the socket fires when it wants to be closed

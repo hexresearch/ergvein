@@ -168,14 +168,16 @@ renderActive nsa nfo refrE mconn = mdo
   let actBtn = fmap switchDyn $ widgetHoldDyn $ ffor actD $ \b -> fmap (not b <$)
         $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a"
           $ if b then NSSStop else NSSStart
-  (pinE, actE) <- divClass "network-wrapper mt-3" $ case mconn of
+  let delBtn = buttonClass "button button-outline m-0" NSSRefresh
+  
+  (pinE, actE, delE) <- divClass "network-wrapper mt-3" $ case mconn of
     Nothing -> do
-      (pinE, actE) <- divClass "network-name" $ do
+      (pinE, actE, delE) <- divClass "network-name" $ do
         elAttr "span" offclass $ elClass "i" "fas fa-circle" $ pure ()
         divClass "mt-a mb-a network-name-txt" $ text $ nsa
-        (,) <$> pinBtn <*> actBtn
+        (,,) <$> pinBtn <*> actBtn <*> delBtn
       descrOption NSSOffline
-      pure (pinE, actE)
+      pure (pinE, actE, delE)
     Just conn -> do
       let clsUnauthD = ffor (indexConIsUp conn) $ \up -> if up then onclass else offclass
       let heightD = fmap (M.lookup BTC) $ indexerConHeight conn
@@ -189,17 +191,17 @@ renderActive nsa nfo refrE mconn = mdo
           pure $ if up
             then if synced then onclass else unsyncClass
             else offclass
-      (pinE, actE) <- divClass "network-name" $ do
+      (pinE, actE, delE) <- divClass "network-name" $ do
         elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
         divClass "mt-a mb-a network-name-txt" $ text nsa
-        (,) <$> pinBtn <*> actBtn
+        (,,) <$> pinBtn <*> actBtn <*> delBtn
       latD <- indexerConnPingerWidget conn refrE
       descrOptionDyn $ NSSLatency <$> latD
       descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> heightD
-      pure (pinE, actE)
+      pure (pinE, actE, delE)
 
-  setAddrPin $ (nsa,) <$> pinE
-  void $ setAddrActive $ (nsa,) <$> actE
+  setAddrActive $ (nsa,) <$> actE
+  void $ deleteAddr $ nsa <$ delE
   where
     offclass    = [("class", "mb-a mt-a indexer-offline")]
     onclass     = [("class", "mb-a mt-a indexer-online")]

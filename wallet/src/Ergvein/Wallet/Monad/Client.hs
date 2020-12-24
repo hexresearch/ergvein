@@ -13,7 +13,6 @@ module Ergvein.Wallet.Monad.Client (
   , addDiscovered
   , addManyDiscovered
   , addManual
-  , setAddrPin
   , setAddrActive
   , deleteAddr
   , setDiscovery
@@ -116,22 +115,17 @@ addManual addressE = do
     settingsAddrs . at url .~ Just manualPeerInfo
   performEvent $ ffor addressE $ liftIO . activationFunc . pure
 
-
-setAddrPin :: (MonadIndexClient t m, MonadHasSettings t m) =>  Event t (ErgveinNodeAddr, Bool) -> m (Event t ())
-setAddrPin addrE = updateSettingsAsync $ ffor addrE $ \(url, v) -> 
-  settingsAddrs . at url . _Just . peerInfoIsPinned .~ v
-
 setAddrActive :: (MonadIndexClient t m, MonadHasSettings t m) => Event t (ErgveinNodeAddr, Bool) -> m (Event t ())
 setAddrActive addrE = updateSettingsAsync $ ffor addrE $ \(url, v) -> 
-  settingsAddrs . at url . _Just . peerInfoIsActive .~ v
-
-setDiscovery :: (MonadIndexClient t m, MonadHasSettings t m) =>  Event t Bool -> m (Event t ())
-setDiscovery discE = updateSettingsAsync $ ffor discE $ \v -> 
-  settingsDiscoveryEnabled .~ v
+  settingsAddrs . at url . _Just %~ (peerInfoIsActive .~ v) . (peerInfoIsPinned .~ True)
 
 deleteAddr :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m (Event t ())
 deleteAddr addrE = updateSettingsAsync $ ffor addrE $ \url -> 
   settingsAddrs . at url .~ Nothing
+
+setDiscovery :: (MonadIndexClient t m, MonadHasSettings t m) =>  Event t Bool -> m (Event t ())
+setDiscovery discE = updateSettingsAsync $ ffor discE $ \v -> 
+  settingsDiscoveryEnabled .~ v
 
 broadcastIndexerMessage :: (MonadIndexClient t m) => Event t IndexerMsg -> m ()
 broadcastIndexerMessage reqE = do
