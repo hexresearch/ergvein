@@ -113,6 +113,14 @@ instance PlatformNatives where
         then Right <$> renameFile fpath1 fpath2
         else pure $ Left $ NAFileDoesNotExist filename1
 
+  deleteStoredFile filename = do
+    path <- getStoreDir
+    logWrite $ "Deleting file " <> path <> "/" <> filename
+    liftIO $ do
+      let fpath = T.unpack $ path <> "/" <> filename
+      ex <- doesFileExist fpath
+      when ex $ removeFile fpath
+
   getStoreFileSize filename = do
     path <- getStoreDir
     liftIO $ do

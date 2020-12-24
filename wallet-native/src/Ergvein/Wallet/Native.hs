@@ -58,6 +58,9 @@ class PlatformNatives where
   -- | Move stored file from first name to the second with destruction of second.
   moveStoredFile :: (HasStoreDir m, MonadIO m) => Text -> Text -> m (Either NativeAlerts ())
 
+  -- | Delete stored file
+  deleteStoredFile :: (HasStoreDir m, MonadIO m) => Text -> m ()
+
   -- | Get size in bytes of stored file
   getStoreFileSize :: (HasStoreDir m, MonadIO m) => Text -> m (Either NativeAlerts Int)
 
