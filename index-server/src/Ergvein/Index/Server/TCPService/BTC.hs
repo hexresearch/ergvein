@@ -61,19 +61,24 @@ dummyBtcSock net = do
 getIncChannel :: MonadIO m => BtcSocket -> m (TChan Message)
 getIncChannel = liftIO . atomically . dupTChan . btcSockRecv
 
+data BTCSockAction = BTCSockReconnect | BTCSockClose | BTCSockFail Ex.SomeException
+
 connectBtc :: (MonadIO m, Ex.MonadMask m, MonadBaseControl IO m)
   => Network    -- ^ Btc network
   -> N.HostName -- ^ Server "host"name or IP address.
   -> N.ServiceName -- ^ Server service port name or number.
   -> TVar Bool
+  -> TChan ()
   -> m BtcSocket
-connectBtc net host port closeVar = do
+connectBtc net host port closeVar restartChan = do
   sa       <- liftIO $ (N.addrAddress . head) <$> N.getAddrInfo (Just hints) (Just host) (Just port)
   incChan  <- liftIO newBroadcastTChanIO
   onActive <- liftIO newBroadcastTChanIO
   sendChan <- liftIO newTChanIO
   intVar   <- liftIO $ newTVarIO False
   shakeVar <- liftIO $ newTVarIO False
+
+
   let btcsock = BtcSocket {
           btcSockNetwork  = net
         , btcSockAddr     = sa
@@ -83,18 +88,26 @@ connectBtc net host port closeVar = do
         , btcSockOnActive = onActive
         }
 
-  closeChan <- liftIO newTChanIO
+  actChan <- liftIO newTChanIO
+  let readErFire = atomically . writeTChan actChan . BTCSockFail
+  let inFire = atomically . writeTChan incChan
+
   fork $ liftIO $ fix $ \next -> do
     b <- atomically $ readTVar closeVar
     if b
-      then atomically $ writeTChan closeChan $ Ex.SomeException PeerSeppuku
+      then atomically $ writeTChan actChan BTCSockClose
       else threadDelay 1000000 >> next
-  fork $ fix $ \next -> do
-    connect host port $ \(sock, _sockaddr) -> liftIO $ do
+
+  fork $ liftIO $ fix $ \next -> do
+    atomically $ do
+      void $ readTChan restartChan
+      writeTChan actChan BTCSockReconnect
+    next
+
+  fork $ liftIO $ fix $ \next -> do
+    connect host port $ \(sock, _sockaddr) -> do
       atomically $ writeTVar shakeVar False
       let env = PeekerEnv intVar sock
-      let inFire = atomically . writeTChan incChan
-      let readErFire = atomically . writeTChan closeChan
 
       fork $ forever $ do
         msg <- atomically $ readTChan sendChan
@@ -103,15 +116,19 @@ connectBtc net host port closeVar = do
       fork $ fix $ \next -> do
         mma <- Ex.tryAny $ Ex.try $ runReaderT (peekMessage net) env
         case mma of
-          Left e -> readErFire e >> next
+          Left e -> readErFire e
           Right (Left (e :: ReceiveException)) -> readErFire $ Ex.SomeException e
           Right (Right a) -> inFire a >> next
       fork $ performHandshake btcsock
       fork $ btcPinger btcsock
-      print =<< atomically (readTChan closeChan)
-      liftIO $ N.close sock
-    b <- liftIO $ readTVarIO closeVar
-    if b then liftIO $ putStrLn "Close connection to BTC node" else next
+      act <- atomically $ readTChan actChan
+      case act of
+        BTCSockReconnect ->
+          N.close sock >> next
+        BTCSockClose -> do
+          putStrLn "Close connection to BTC node"
+          N.close sock
+        BTCSockFail err -> N.close sock >> threadDelay 5000000 >> next
   pure btcsock
   where
     hints :: N.AddrInfo

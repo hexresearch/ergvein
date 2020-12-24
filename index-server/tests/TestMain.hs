@@ -44,8 +44,11 @@ _prop_encdec_ScannedHeightRec msg = either (const False) (msg ==) dec
 _prop_encdec_TxRecBytes :: TxRecBytes -> Bool
 _prop_encdec_TxRecBytes msg = either (const False) (msg ==) dec
   where dec = egvDeserialize BTC $ egvSerialize BTC msg
-_prop_encdec_TxRecMeta :: TxRecMeta -> Bool
-_prop_encdec_TxRecMeta msg = either (const False) (msg ==) dec
+_prop_encdec_TxRecHeight :: TxRecHeight -> Bool
+_prop_encdec_TxRecHeight msg = either (const False) (msg ==) dec
+  where dec = egvDeserialize BTC $ egvSerialize BTC msg
+_prop_encdec_TxRecUnspent :: TxRecUnspent -> Bool
+_prop_encdec_TxRecUnspent msg = either (const False) (msg ==) dec
   where dec = egvDeserialize BTC $ egvSerialize BTC msg
 _prop_encdec_BlockMetaRec :: BlockMetaRec -> Bool
 _prop_encdec_BlockMetaRec msg = either (const False) (msg ==) dec
@@ -64,12 +67,12 @@ _prop_encdec_RollbackSequence :: RollbackSequence -> Bool
 _prop_encdec_RollbackSequence msg = either (const False) (msg ==) dec
   where dec = egvDeserialize BTC $ egvSerialize BTC msg
 
-prop_encdec_TxIn :: TxIn -> Bool
-prop_encdec_TxIn msg = either (const False) (msg ==) dec
+_prop_encdec_TxIn :: TxIn -> Bool
+_prop_encdec_TxIn msg = either (const False) (msg ==) dec
   where dec = egvDeserialize BTC $ egvSerialize BTC msg
 
-prop_encdec_TxOut :: TxOut -> Bool
-prop_encdec_TxOut msg = either (const False) (msg ==) dec
+_prop_encdec_TxOut :: TxOut -> Bool
+_prop_encdec_TxOut msg = either (const False) (msg ==) dec
   where dec = egvDeserialize BTC $ egvSerialize BTC msg
 --------------------------------------------------------------------------
 -- main

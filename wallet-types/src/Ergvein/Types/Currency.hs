@@ -36,6 +36,7 @@ module Ergvein.Types.Currency (
   , curprefix
   ) where
 
+import Control.DeepSeq
 import Data.Flat
 import Data.Maybe (fromMaybe)
 import Data.Ratio
@@ -54,6 +55,8 @@ import qualified Data.Text as T
 data Currency = BTC | ERGO
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Flat, Serialize)
 $(deriveJSON aesonOptions ''Currency)
+
+instance NFData Currency
 
 instance SafeCopy Currency where
   putCopy = contain . put
