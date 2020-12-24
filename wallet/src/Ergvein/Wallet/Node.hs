@@ -28,6 +28,7 @@ import Network.Socket (SockAddr)
 import Ergvein.Text
 import Ergvein.Types
 import Ergvein.Types.Derive
+import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
@@ -189,17 +190,27 @@ removeTxsReplacedByFee caller replacingTxE = do
   replacedTxsE <- performFork $ ffor (current pubStorageD `attach` replacingTxE) $ \(ps, replacingTx) -> do
     let btcps = ps ^. pubStorage'currencyPubStorages . at BTC . non (error $ "removeTxsReplacedByFee: BTC storage does not exist!")
         txStore = btcps ^. currencyPubStorage'transactions
+        possiblyReplacedTxStore = fromMaybe M.empty $ btcps ^? currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'possiblyReplacedTxs
     liftIO $ flip runReaderT txStore $ do
       unconfirmedTxs <- getUnconfirmedTxs
       let unconfirmedBtcTxs = getBtcTx . fromJust . toTxBtc <$> unconfirmedTxs
           replacingBtcTxId = HT.txHash replacingTx
           replacingTxId = BtcTxHash replacingBtcTxId
           otherUnconfirmedTxs = M.elems $ M.delete replacingTxId unconfirmedBtcTxs
-      replacedTxs <- filterM ((fmap (== Just True)) . replacesByFee replacingTx) otherUnconfirmedTxs
-      replacedTxsChilds <- L.concat <$> traverse getChildTxs replacedTxs
+      directlyReplacedTxs <- filterM ((fmap (== Just True)) . replacesByFee replacingTx) otherUnconfirmedTxs
+      directlyReplacedTxsChilds <- L.concat <$> traverse getChildTxs directlyReplacedTxs
       possiblyReplacedTxs <- filterM ((fmap (== Nothing)) . replacesByFee replacingTx) otherUnconfirmedTxs
       possiblyReplacedTxsChilds <- L.concat <$> traverse getChildTxs possiblyReplacedTxs
-      let replacedTxIds = S.fromList $ HT.txHash <$> (replacedTxs ++ replacedTxsChilds)
+      -- Also remove all txs that are in the same group in btcPubStorage'possiblyReplacedTxs
+      -- with replaced txs.
+      let possiblyReplacedTxsGroups = (\(k, v) -> S.insert k v) <$> M.toList possiblyReplacedTxStore
+
+          -- Gets txs that should be replaced form btcPubStorage'possiblyReplacedTxs if provided tx has been replaced
+          getTxsFromGroups :: [S.Set BtcTxId] -> BtcTxId -> S.Set BtcTxId
+          getTxsFromGroups txGroups tx = S.unions $ (\txGroup -> if S.member tx txGroup then S.delete tx txGroup else S.empty) <$> txGroups
+          
+          indirectlyReplacedTxs = S.toList $ S.unions $ (getTxsFromGroups possiblyReplacedTxsGroups) <$> (HT.txHash <$> directlyReplacedTxs)
+          replacedTxIds = S.fromList $ (HT.txHash <$> (directlyReplacedTxs ++ directlyReplacedTxsChilds)) ++ indirectlyReplacedTxs
           possiblyReplacedTxIds = S.fromList $ HT.txHash <$> (possiblyReplacedTxs ++ possiblyReplacedTxsChilds)
       pure (replacingBtcTxId, replacedTxIds, possiblyReplacedTxIds)
   removedE <- removeRbfTxsFromStorage1 "removeTxsReplacedByFee" replacedTxsE
