@@ -173,29 +173,56 @@ insertTxsUtxoInPubKeystore caller cur reqE = modifyPubStorage clr $ ffor reqE $ 
 -- This information is stored in currencyPubStorage'possiblyReplacedTxs.
 removeRbfTxsFromStorage1 :: MonadStorage t m => Text -> Event t (BtcTxId, Set BtcTxId, Set BtcTxId) -> m (Event t ())
 removeRbfTxsFromStorage1 caller txsToReplaceE = modifyPubStorage clr $ ffor txsToReplaceE $ \(replacingTxId, replacedTxIds, possiblyReplacedTxIds) ps ->
-  let
-    ps1 = if L.null replacedTxIds
-      then Nothing
-      else Just $ let
-        -- Removing txs from btcPubStorage'transactions
-        ps11 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'transactions %~ (flip M.withoutKeys $ replacedTxIds)) ps
-        -- Removing utxos from btcPubStorage'utxos
-        ps12 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'utxos %~ (M.filterWithKey (filterOutPoints replacedTxIds))) ps11
-        -- Removing txids from EgvPubKeyBoxes form currencyPubStorage'pubKeystore
-        ps13 = modifyCurrStorage BTC (\cps -> cps & currencyPubStorage'pubKeystore %~ removeTxIdsFromEgvKeyBoxes (S.map BtcTxHash replacedTxIds)) ps12
-        -- Updating btcPubStorage'replacedTxs
-        ps14 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'replacedTxs %~ updateReplacedTxsStorage replacingTxId replacedTxIds) ps13
-        in ps14
-    ps2 = if L.null possiblyReplacedTxIds
-      then ps1
-      else Just $ let
-        ps1' = fromMaybe ps ps1
-        in
-        -- Updating btcPubStorage'possiblyReplacedTxs
-        modifyCurrStorageBtc (\cps -> cps & btcPubStorage'possiblyReplacedTxs %~ updateReplacedTxsStorage replacingTxId possiblyReplacedTxIds) ps1'
-    in ps2
+  if L.null replacedTxIds && L.null possiblyReplacedTxIds
+    then Nothing
+    else Just $ let
+      -- Removing txs from btcPubStorage'transactions
+      ps11 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'transactions %~ (flip M.withoutKeys $ replacedTxIds)) ps
+      -- Removing utxos from btcPubStorage'utxos
+      ps12 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'utxos %~ (M.filterWithKey (filterOutPoints replacedTxIds))) ps11
+      -- Removing txids from EgvPubKeyBoxes in currencyPubStorage'pubKeystore
+      ps13 = modifyCurrStorage BTC (\cps -> cps & currencyPubStorage'pubKeystore %~ removeTxIdsFromEgvKeyBoxes (S.map BtcTxHash replacedTxIds)) ps12
+      -- Updating btcPubStorage'replacedTxs
+      ps14 = modifyCurrStorageBtc (updateReplacedTxsStorage replacingTxId replacedTxIds) ps13
+      -- Updating btcPubStorage'possiblyReplacedTxs
+      ps15 = modifyCurrStorageBtc (updatePossiblyReplacedTxsStorage replacingTxId replacedTxIds possiblyReplacedTxIds) ps14
+      in ps15
   where
     clr = caller <> ":" <> "removeRbfTxsFromStorage1"
+
+updateReplacedTxsStorage :: BtcTxId -> Set BtcTxId -> BtcPubStorage -> BtcPubStorage
+updateReplacedTxsStorage replacingTxId replacedTxIds btcPs =
+  let
+    replacedTxsMap = btcPs ^. btcPubStorage'replacedTxs
+    possiblyReplacedTxsMap = btcPs ^. btcPubStorage'possiblyReplacedTxs
+    -- Remove all replacedTxsMap keys that are members of replacedTxIds
+    replacedTxsMap' = M.filterWithKey (\k _ -> not $ k `S.member` replacedTxIds) replacedTxsMap
+    -- Collect values of removed replacedTxsMap keys into one set
+    txIdsReplacedByFilteredTxIds = S.unions $ S.map (flip (M.findWithDefault S.empty) $ replacedTxsMap) replacedTxIds
+    -- Combine into one set
+    updatedReplacedTxIds = S.unions [replacedTxIds, txIdsReplacedByFilteredTxIds]
+    -- Insert replacing tx with replaced txs into map
+    updatedReplacedTxs = M.insertWith S.union replacingTxId updatedReplacedTxIds replacedTxsMap'
+    updatedBtcPs = btcPs & btcPubStorage'replacedTxs .~ updatedReplacedTxs
+  in updatedBtcPs
+
+updatePossiblyReplacedTxsStorage :: BtcTxId -> Set BtcTxId -> Set BtcTxId -> BtcPubStorage -> BtcPubStorage
+updatePossiblyReplacedTxsStorage possiblyReplacingTxId replacedTxIds possiblyReplacedTxIds btcPs =
+  let
+    possiblyReplacedTxsMap = btcPs ^. btcPubStorage'possiblyReplacedTxs
+    -- Remove all keys that are members of possiblyReplacedTxIds
+    possiblyReplacedTxsMap' = M.filterWithKey (\k _ -> not $ k `S.member` possiblyReplacedTxIds) possiblyReplacedTxsMap
+    -- Collect values of removed keys into one set
+    txIdsReplacedByFilteredTxIds = S.unions $ S.map (flip (M.findWithDefault S.empty) $ possiblyReplacedTxsMap) possiblyReplacedTxIds
+    -- Combine resulting set with possiblyReplacedTxIds
+    updatedPossiblyReplacedTxIds = S.union possiblyReplacedTxIds txIdsReplacedByFilteredTxIds
+    -- Insert possibly replacing tx with possibly replaced txs into map
+    possiblyReplacedTxsMap'' = M.insertWith S.union possiblyReplacingTxId updatedPossiblyReplacedTxIds possiblyReplacedTxsMap'
+    -- If some txs from btcPubStorage'possiblyReplacedTxs have been replaced by replacingTxId
+    -- then we need to delete the corresponding group
+    updatedPossiblyReplacedTxs  = M.filterWithKey (\k v -> (not $ k `S.member` replacedTxIds) && (S.null $ S.intersection v replacedTxIds)) possiblyReplacedTxsMap''
+    updatedBtcPs = btcPs & btcPubStorage'possiblyReplacedTxs .~ updatedPossiblyReplacedTxs
+  in updatedBtcPs
 
 data RemoveRbfTxsInfo = RemoveRbfTxsInfo {
     removeRbfTxsInfo'keyToRemoveFromPossiblyReplacedTxs :: !BtcTxId -- ^ Map key that should be removed from currencyPubStorage'possiblyReplacedTxs.
@@ -224,7 +251,7 @@ removeRbfTxsFromStorage2 caller txsToReplaceE = modifyPubStorage clr $ ffor txsT
       ps13 = modifyCurrStorage BTC (\cps -> cps & currencyPubStorage'pubKeystore %~ removeTxIdsFromEgvKeyBoxes (S.map BtcTxHash txIdsToRemove)) ps12
       -- Updating btcPubStorage'replacedTxs
       ps14 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'replacedTxs %~ (M.union replacedTxsMap)) ps13
-      -- Removing invalid tx ids from btcPubStorage'possiblyReplacedTxs
+      -- Removing replaced tx ids from btcPubStorage'possiblyReplacedTxs
       ps15 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'possiblyReplacedTxs %~ (flip M.withoutKeys $ keysToRemoveFromPossiblyReplacedTxs)) ps14
       in ps15
   where
@@ -239,17 +266,6 @@ removeTxIdsFromEgvKeyBoxes txIdsSet PubKeystore{..} =
       updatedPubKeystore'internal = fmap (removeTxIdsFromKeybox txIdsSet) pubKeystore'internal
       removeTxIdsFromKeybox txIds (EgvPubKeyBox k txs m) = EgvPubKeyBox k (S.difference txs txIdsSet) m
   in PubKeystore pubKeystore'master updatedPubKeystore'external updatedPubKeystore'internal
-
-updateReplacedTxsStorage :: BtcTxId -> Set BtcTxId -> Map BtcTxId (Set BtcTxId) -> Map BtcTxId (Set BtcTxId)
-updateReplacedTxsStorage replacingTxId replacedTxIds replacedTxsMap = replacedTxsMap''
-  where
-    -- Remove all keys that are members of replacedTxIds
-    replacedTxsMap' = M.filterWithKey (\k _ -> not $ k `S.member` replacedTxIds) replacedTxsMap
-    -- Collect values of removed keys into one set
-    txIdsReplacedByFilteredTxIds = S.unions $ S.map (flip (M.findWithDefault S.empty) $ replacedTxsMap) replacedTxIds
-    -- Combine resulting set with replacedTxIds
-    updatedReplacedTxIds = S.union replacedTxIds txIdsReplacedByFilteredTxIds
-    replacedTxsMap'' = M.insertWith S.union replacingTxId updatedReplacedTxIds replacedTxsMap'
 
 txListToMap :: [EgvTx] -> Map TxId EgvTx
 txListToMap txList = M.fromList $ (\tx -> (egvTxId tx, tx)) <$> txList
