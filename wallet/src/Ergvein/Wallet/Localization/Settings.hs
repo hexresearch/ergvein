@@ -2,6 +2,7 @@
 module Ergvein.Wallet.Localization.Settings(
     SettingsPageStrings(..)
   , NetSetupStrings(..)
+  , DeleteWalletStrings(..)
   ) where
 
 import Data.Time
@@ -25,6 +26,7 @@ data SettingsPageStrings =
   | STPSButTor
   | STPSButNodes
   | STPSButSetPass
+  | STPSButDeleteWallet
   | STPSSelectLanguage
   | STPSSetsTor
   | STPSUseTor
@@ -66,6 +68,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButUnits            -> "Display units for cryptos"
       STPSButPortfolio        -> "Portfolio"
       STPSButMnemonicExport   -> "Export mnemonic phrase"
+      STPSButDeleteWallet     -> "Delete wallet"
       STPSSelectLanguage      -> "Select language:"
       STPSSetsTor             -> "Tor configuration"
       STPSUseTor              -> "Use Tor"
@@ -97,6 +100,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButUnits            -> "Единицы отображения криптосистем"
       STPSButPortfolio        -> "Портфель"
       STPSButMnemonicExport   -> "Экспортировать мнемоническую фразу"
+      STPSButDeleteWallet     -> "Удалить кошелёк"
       STPSSelectLanguage      -> "Выберите язык:"
       STPSSetsTor             -> "Настройки Tor"
       STPSUseTor              -> "Проксировать через Tor"
@@ -219,3 +223,40 @@ instance LocalizedPrint NetSetupStrings where
       NSSCopyURL      -> "Copy URL"
       NSSFailedDns    -> "Некорректный IP DNS сервера"
       NSSNoHeight     -> "Нет"
+
+data DeleteWalletStrings
+  = DWSTitle
+  | DWSWarn1
+  | DWSBtnYes
+  | DWSBtnPass
+  | DWSBtnNo
+  | DWSWarn2
+  | DWSWarn2Desc
+  | DWSWarn3
+  | DWSFinStage
+  | DWSFin
+
+instance LocalizedPrint DeleteWalletStrings where
+  localizedShow l v = case l of
+    English -> case v of
+      DWSTitle      -> "Delete wallet"
+      DWSBtnYes     -> "Delete"
+      DWSBtnPass    -> "Enter the password"
+      DWSBtnNo      -> "Cancel"
+      DWSWarn1      -> "Are you sure you want to delete this wallet?"
+      DWSWarn2      -> "Do you have your mnemonic?"
+      DWSWarn2Desc  -> "If you don't, you will lose access to all your money. Forever."
+      DWSWarn3      -> "One last step. Enter the password to continue."
+      DWSFinStage   -> "Okay, you have convinced me. Go on."
+      DWSFin        -> "The wallet has been deleted. Redirecting."
+    Russian -> case v of
+      DWSTitle      -> "Удаление кошелька"
+      DWSWarn1      -> "Вы уверены, что хотите удалить этот кошелёк?"
+      DWSBtnYes     -> "Удалить"
+      DWSBtnPass    -> "Ввести пароль"
+      DWSBtnNo      -> "Отмена"
+      DWSWarn2      -> "Сохранили ли вы мнемоническую фразу?"
+      DWSWarn2Desc  -> "Без неё вы потеряете доступ к своим деньгам. Навсегда."
+      DWSWarn3      -> "Последняя проверка. Введите пароль для подтверждения."
+      DWSFinStage   -> "Окей, вы убедили меня. Можете удалять."
+      DWSFin        -> "Кошелёк успешно удалён. Перенаправляю."
