@@ -58,7 +58,7 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
   let thisWidget = Just $ pure $ receivePage cur
       navbar = blank
   wrapperNavbar False title thisWidget navbar $ void $ divClass "receive-page" $ do
-    base64D <- divClass "receive-qr" $ qrCodeWidgetWithData prefixedKeyText
+    base64D <- divClass "receive-qr" $ qrCodeWidgetWithData 252 252 prefixedKeyText
     (newE, copyE, shareE) <- divClass "receive-buttons-wrapper" $ do
       nE  <- newAddrBtn
       cE <- copyAddrBtn
@@ -92,7 +92,7 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
   let thisWidget = Just $ pure $ receivePage cur
       navbar = navbarWidget cur thisWidget NavbarReceive
   wrapperNavbar False title thisWidget navbar $ void $ divClass "receive-page" $ do
-    void $ divClass "receive-qr" $ qrCodeWidget (curprefix cur <> keyTxt)
+    void $ divClass "receive-qr" $ qrCodeWidget 252 252 (curprefix cur <> keyTxt)
     void $ divClass "receive-buttons-wrapper" $ do
       newE  <- newAddrBtn
       copyE <- copyAddrBtn

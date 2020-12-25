@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-type-defaults #-}
+{-# LANGUAGE OverloadedLists #-}
 module Ergvein.Wallet.Page.QRCode(
     qrCodeWidget
   , qrCodeWidgetWithData
@@ -6,28 +7,31 @@ module Ergvein.Wallet.Page.QRCode(
 
 import Codec.QRCode
 
+import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Canvas
 
 import qualified Data.Vector.Unboxed as UV
 
-qrCodeWidget :: MonadFrontBase t m => Text -> m (Element EventResult GhcjsDomSpace t, CanvasOptions)
-qrCodeWidget text = divClass "qrcode-container" $ mdo
+qrCodeWidget :: MonadFrontBase t m => Int -> Int -> Text -> m (Element EventResult GhcjsDomSpace t, CanvasOptions)
+qrCodeWidget canvasH canvasW text = elAttr "div" attrs $ mdo
     --divClass "test" $ text $ drawGridT canvasW canvasH (qrcPerCanvas qrData canvasW)
     canvasEl <- createCanvas cOpts
     rawJSCall (_element_raw canvasEl) $ drawGridT canvasW canvasH (qrcPerCanvas qrData canvasW)
     pure (canvasEl, cOpts)
     where
-      canvasH = 252
-      canvasW = 252
+      attrs = [
+          ("class", "qrcode-container")
+        , ("style", "height:" <> showt (canvasH + 4) <> "px;width:" <> showt (canvasW + 4) <> "px;padding:2px;")
+        ]
       cOpts = CanvasOptions canvasW canvasH "qrcode" "qrcode"
       qrData = qrGen text
 
-qrCodeWidgetWithData :: MonadFrontBase t m => Text -> m (Dynamic t (Maybe Text))
-qrCodeWidgetWithData text = do
+qrCodeWidgetWithData :: MonadFrontBase t m => Int -> Int -> Text -> m (Dynamic t (Maybe Text))
+qrCodeWidgetWithData canvasH canvasW text = do
   buildE <- getPostBuild
-  (canvasEl, cOpts) <- qrCodeWidget text
+  (canvasEl, cOpts) <- qrCodeWidget canvasH canvasW text
   dataE <- performEvent $ ffor buildE $ const $ rawGetCanvasJpeg (_element_raw canvasEl) cOpts
   holdDyn Nothing dataE
 

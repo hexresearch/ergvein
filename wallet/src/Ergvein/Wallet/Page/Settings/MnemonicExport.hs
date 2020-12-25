@@ -1,7 +1,8 @@
 {-# LANGUAGE CPP #-}
 
 module Ergvein.Wallet.Page.Settings.MnemonicExport (
-    mnemonicExportPage,
+    mnemonicExportPage
+  , mnemonicExportResutlPage
   ) where
 
 import Control.Monad.IO.Class
@@ -27,39 +28,42 @@ import Ergvein.Wallet.Wrapper
 import qualified Data.Serialize as S
 import qualified Data.Text as T
 
-mnemonicExportPage :: MonadFront t m => Mnemonic -> m ()
-mnemonicExportPage mnemonic = wrapperSimple True $ do
+mnemonicExportPage :: MonadFront t m => m ()
+mnemonicExportPage = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText PPSMnemonicTitle
   divClass "password-setup-descr" $ h5 $ localizedText PPSMnemonicDescr
   passE <- setupPassword =<< submitSetBtn
   nextWidget $
     ffor passE $ \pass ->
       Retractable
-        { retractableNext = mnemonicExportResutlPage mnemonic pass,
+        { retractableNext = mnemonicExportResutlPage pass,
           retractablePrev = Nothing
         }
   pure ()
 
-mnemonicExportResutlPage :: MonadFront t m => Mnemonic -> Password -> m ()
-mnemonicExportResutlPage mnemonic pass = do
+mnemonicExportResutlPage :: MonadFront t m => Password -> m ()
+mnemonicExportResutlPage pass = do
   title <- localized STPSTitle
-  let thisWidget = Just $ pure $ mnemonicExportResutlPage mnemonic pass
-  wrapper True title thisWidget $ divClass "mnemonic-export-page" $ do
-    encryptedMnemonic <- liftIO $ encryptMnemonic mnemonic pass
-    h4 $ localizedText STPSMnemonicExportMsg
-    base64D <- divClass "receive-qr" $ qrCodeWidgetWithData encryptedMnemonic
-    let mnemonicClass = if T.null pass then "" else "word-break-all"
-    parClass mnemonicClass $ text encryptedMnemonic
-    divClass "mnemonic-export-buttons-wrapper" $ do
-      copyE <- copyBtn
-      clipboardCopy (encryptedMnemonic <$ copyE)
+  let thisWidget = Just $ pure $ mnemonicExportResutlPage pass
+  buildE <- getPostBuild
+  encMnemE <- withWallet $ ffor buildE $ \_ prvStorage -> do
+    liftIO $ encryptMnemonic (_prvStorage'mnemonic prvStorage) pass
+  void $ widgetHold (pure ()) $ ffor encMnemE $ \encryptedMnemonic ->
+    wrapper True title thisWidget $ divClass "mnemonic-export-page" $ do
+      h4 $ localizedText STPSMnemonicExportMsg
+      base64D <- divClass "receive-qr" $ qrCodeWidgetWithData 504 504 encryptedMnemonic
+      let mnemonicClass = if T.null pass then "" else "word-break-all"
+      parClass mnemonicClass $ text encryptedMnemonic
+      divClass "mnemonic-export-buttons-wrapper" $ do
+        copyE <- copyBtn
+        clipboardCopy (encryptedMnemonic <$ copyE)
 #ifdef ANDROID
-      shareE <- fmap (encryptedMnemonic <$) shareBtn
-      shareShareUrl shareE
-      shareQRE <- shareQRBtn
-      shareShareQR $ attachPromptlyDynWithMaybe (\m _ -> (, "qr_code") <$> m) base64D shareQRE
+        shareE <- fmap (encryptedMnemonic <$) shareBtn
+        shareShareUrl shareE
+        shareQRE <- shareQRBtn
+        shareShareQR $ attachPromptlyDynWithMaybe (\m _ -> (, "qr_code") <$> m) base64D shareQRE
 #endif
-    pure ()
+      pure ()
 
 copyBtn :: MonadFront t m => m (Event t ())
 copyBtn = divClass "mnemonic-export-btn-wrapper" $ outlineTextIconButton CSCopy "fas fa-copy fa-lg"
