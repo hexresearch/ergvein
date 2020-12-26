@@ -68,8 +68,8 @@ getActualPeers = do
 getPeerList :: (HasIndexerDB m, MonadLogger m) => m [Peer]
 getPeerList = do
   idb <- getIndexerDb
-  maybePeers <- getParsed  @KnownPeersRec Currency.BTC "getKnownPeersList"  idb knownPeersRecKey
-  pure $ convert <$> maybe mempty unKnownPeersRec maybePeers
+  currentList <- peerList
+  pure $ convert <$> unKnownPeersRec currentList
 
 setPeerList :: (HasIndexerDB m, MonadLogger m) => [Peer] -> m ()
 setPeerList peers = do
@@ -85,7 +85,8 @@ upsertPeer peer = do
 peerList :: (HasIndexerDB m, MonadLogger m) => m KnownPeersRec
 peerList = do
   idb <- getIndexerDb
-  getParsedExact @KnownPeersRec Currency.BTC "getKnownPeersList"  idb knownPeersRecKey
+  maybeLst <- getParsed @KnownPeersRec Currency.BTC "getKnownPeersList"  idb knownPeersRecKey
+  pure $ fromMaybe (KnownPeersRec mempty) maybeLst
 
 setPeerRecList :: (HasIndexerDB m, MonadLogger m) => KnownPeersRec -> m ()
 setPeerRecList peers = do
