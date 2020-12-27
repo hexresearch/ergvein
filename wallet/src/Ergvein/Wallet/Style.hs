@@ -1058,6 +1058,15 @@ legoStyles = do
   ".font-bold" ? fontWeight bold
   ".fit-content" ? width fitContent
   ".disp-block" ? display block
+  let fillBtnColor cl backCol fontCol = do
+        let colorSet = do
+              important (backgroundColor backCol)
+              important (color fontCol)
+        cl ? colorSet
+        cl `with` hover ? colorSet
+        cl `with` focus ? colorSet
+  fillBtnColor ".btn-color-green" green white
+  fillBtnColor ".btn-color-red" red white
 
 badgeCss :: Css
 badgeCss = do

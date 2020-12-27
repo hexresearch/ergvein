@@ -58,6 +58,7 @@ data SubPageSettings
   | GoDns
   | GoNodes
   | GoPassword
+  | GoDelete
 
 -- TODO: uncomment commented lines when ERGO is ready
 settingsPage :: MonadFront t m => m ()
@@ -73,6 +74,7 @@ settingsPage = do
             , (GoDns, STPSButDns)
             , (GoNodes, STPSButNodes)
             , (GoPassword, STPSButSetPass)
+            , (GoDelete, STPSButDeleteWallet)
             ]
       goE' <- fmap leftmost $ flip traverse btns $ \(v,l) -> fmap (v <$) $ outlineButton l
       mnemonicExportBtnE <- outlineButton STPSButMnemonicExport
@@ -91,6 +93,7 @@ settingsPage = do
             GoDns                     -> dnsPage
             GoNodes                   -> btcNodesPage
             GoPassword                -> passwordChangePage
+            GoDelete                  -> deleteWalletPage
         , retractablePrev = Just $ pure settingsPage
         }
 
@@ -266,6 +269,45 @@ portfolioPage = do
       dp <- divClass "select-fiat" $ dropdown initKey listFiatsD ddnCfg
       let selD = _dropdown_value dp
       fmap updated $ holdUniqDyn selD
+
+deleteWalletPage :: MonadFront t m => m ()
+deleteWalletPage = do
+  title <- localized DWSTitle
+  void $ wrapper True title (Just $ pure deleteWalletPage) $ do
+    h3 $ localizedText DWSTitle
+    workflow stageOne
+  where
+    buttonsRow yesLbl = divClass "mt-1" $ do
+      goE <- buttonClass "button button-outline btn-color-red mr-1" yesLbl
+      backE <- outlineButton DWSBtnNo
+      void $ nextWidget $ ffor backE $ const $ Retractable settingsPage Nothing
+      pure goE
+    stageOne = Workflow $ do
+      h4 $ localizedText DWSWarn1
+      nextE <- buttonsRow DWSBtnYes
+      pure ((), stageTwo <$ nextE)
+    stageTwo = Workflow $ do
+      h4 $ localizedText DWSWarn2
+      h5 $ localizedText DWSWarn2Desc
+      nextE <- buttonsRow DWSBtnYes
+      pure ((), stageThree <$ nextE)
+    stageThree = Workflow $ do
+      h4 $ localizedText DWSWarn3
+      reqPassE <- buttonsRow DWSBtnPass
+      nextE <- withWallet $ (const $ pure ()) <$ reqPassE
+      pure ((), stageFour <$ nextE)
+    stageFour = Workflow $ do
+      h4 $ localizedText DWSFinStage
+      delE <- buttonsRow DWSBtnYes
+      login <- fmap _authInfo'login . readExternalRef =<< getAuthInfoRef
+      let walletName = "wallet_" <> T.replace " " "_" login
+          backupName = "backup_" <> walletName
+      doneE <- performEvent $ ffor delE $ const $ do
+        deleteStoredFile walletName
+        deleteStoredFile backupName
+        deleteStoredFile ".last-wallet"
+      setAuthInfo $ Nothing <$ doneE
+      pure ((), never)
 
 lineOption :: MonadFront t m => m a -> m a
 lineOption = divClass "network-wrapper"

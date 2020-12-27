@@ -4,6 +4,7 @@ module Ergvein.Wallet.Android.Native(
 
 import Android.HaskellActivity
 import Control.Exception (handle, bracket)
+import Control.Monad
 import Control.Monad.IO.Class
 import Data.Text (Text)
 import Data.Time (TimeZone(..))
@@ -127,6 +128,14 @@ instance PlatformNatives where
       if ex
         then Right <$> renameFile fpath1 fpath2
         else pure $ Left $ NAFileDoesNotExist filename1
+
+  deleteStoredFile filename = do
+    path <- getStoreDir
+    logWrite $ "Deleting file " <> path <> "/" <> filename
+    liftIO $ do
+      let fpath = T.unpack $ path <> "/" <> filename
+      ex <- doesFileExist fpath
+      when ex $ removeFile fpath
 
   getStoreFileSize filename = do
     path <- getStoreDir
