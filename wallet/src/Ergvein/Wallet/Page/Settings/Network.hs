@@ -134,8 +134,9 @@ activePageWidget = mdo
   let sortf a b = on (comparing Down) (_peerInfoIsPinned . snd) a b 
                <> on (comparing Down) (_peerInfoIsActive . snd) a b
   connsD  <- externalRefDynamic =<< getActiveConnsRef
-  addrsD  <- holdUniqDyn =<< fmap _settingsAddrs <$> getSettingsD
-  discoveryD  <- holdUniqDyn =<< fmap _settingsDiscoveryEnabled <$> getSettingsD
+  settD <- getSettingsD
+  addrsD  <- holdUniqDyn $ _settingsAddrs <$> settD
+  discoveryD  <- holdUniqDyn $ _settingsDiscoveryEnabled <$> settD
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   let valsD = (,) <$> connsD <*> addrsD
   
@@ -143,7 +144,7 @@ activePageWidget = mdo
   setDiscovery dE
   void $ widgetHoldDyn $ ffor valsD $ \(conmap, urls) -> do
     let sorted = sortBy sortf $ M.toList urls
-    flip traverse sorted $ \(sa, i) -> renderActive sa i refrE $ M.lookup sa conmap
+    flip traverse sorted $ \(sa, _) -> renderActive sa ((M.! sa) <$> addrsD) refrE $ M.lookup sa conmap
   hideE <- addManual =<< (fmap namedAddrName) <$> addUrlWidget showD
   (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
@@ -154,30 +155,29 @@ activePageWidget = mdo
 
 renderActive :: MonadFrontBase t m
   => Text
-  -> PeerInfo
+  -> Dynamic t PeerInfo
   -> Event t ()
   -> (Maybe (IndexerConnection t))
   -> m ()
 renderActive nsa nfo refrE mconn = mdo
-  liftIO $ print $ show nsa
-  pinD <- holdDyn (_peerInfoIsPinned nfo) pinE
-  actD <- holdDyn (_peerInfoIsActive nfo) actE
-  let pinBtn = fmap switchDyn $ widgetHoldDyn $ ffor pinD $ \b -> fmap (not b <$)
+  smp <- sampleDyn $ _peerInfoIsActive <$> nfo 
+  actD <- holdDyn smp actE 
+  let pinD = traceDyn "---------------------_peerInfoIsPinned" $ not . _peerInfoIsPinned <$> nfo
+      actBtn = fmap switchDyn $ widgetHoldDyn $ ffor actD $ \b -> fmap (not b <$)
         $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a"
-          $ if b then NSSUnpin else NSSPin
-  let actBtn = fmap switchDyn $ widgetHoldDyn $ ffor actD $ \b -> fmap (not b <$)
-        $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a"
-          $ if b then NSSStop else NSSStart
-  let delBtn = buttonClass "button button-outline m-0" NSSRefresh
+        $ if b then NSSStop else NSSStart
+      delBtn = buttonClass "button button-outline m-0" NSSRefresh
   
-  (pinE, actE, delE) <- divClass "network-wrapper mt-3" $ case mconn of
+  (actE, delE) <- divClass "network-wrapper mt-3" $ case mconn of
     Nothing -> do
-      (pinE, actE, delE) <- divClass "network-name" $ do
+      (actE, delE) <- divClass "network-name" $ do
         elAttr "span" offclass $ elClass "i" "fas fa-circle" $ pure ()
         divClass "mt-a mb-a network-name-txt" $ text $ nsa
-        (,,) <$> pinBtn <*> actBtn <*> delBtn
+        let menuClassesD = visibilityClass "" <$> pinD
+        divClassDyn menuClassesD $ text "PINNED"
+        (,) <$> actBtn <*> delBtn
       descrOption NSSOffline
-      pure (pinE, actE, delE)
+      pure (actE, delE)
     Just conn -> do
       let clsUnauthD = ffor (indexConIsUp conn) $ \up -> if up then onclass else offclass
       let heightD = fmap (M.lookup BTC) $ indexerConHeight conn
@@ -191,21 +191,25 @@ renderActive nsa nfo refrE mconn = mdo
           pure $ if up
             then if synced then onclass else unsyncClass
             else offclass
-      (pinE, actE, delE) <- divClass "network-name" $ do
+      (actE, delE) <- divClass "network-name" $ do
         elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
         divClass "mt-a mb-a network-name-txt" $ text nsa
-        (,,) <$> pinBtn <*> actBtn <*> delBtn
+        (,) <$> actBtn <*> delBtn
       latD <- indexerConnPingerWidget conn refrE
       descrOptionDyn $ NSSLatency <$> latD
       descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> heightD
-      pure (pinE, actE, delE)
+      pure (actE, delE)
 
-  setAddrActive $ (nsa,) <$> actE
+  setAddrActive $ (nsa,) <$> traceEvent "________________setAddrActive" actE
   void $ deleteAddr $ nsa <$ delE
   where
     offclass    = [("class", "mb-a mt-a indexer-offline")]
     onclass     = [("class", "mb-a mt-a indexer-online")]
     unsyncClass = [("class", "mb-a mt-a indexer-unsync")]
+
+visibilityClass :: Text -> Bool -> Text
+visibilityClass classes True = classes <> " hidden"
+visibilityClass classes False = classes
 
 navbarWidget :: MonadFrontBase t m => NavbarItem -> m (Dynamic t NavbarItem)
 navbarWidget initItem = divClass "navbar-2-cols" $ mdo

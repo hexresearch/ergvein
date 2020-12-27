@@ -212,6 +212,7 @@ instance ToJSON Settings where
     , "fiatCurr"          .= toJSON _settingsFiatCurr
     , "dns"               .= toJSON _settingsDns
     , "socksProxy"        .= toJSON _settingsSocksProxy
+    , "discoveryEnabled"  .= toJSON _settingsDiscoveryEnabled
    ]
 
 defIndexerPort :: PortNumber

@@ -38,12 +38,12 @@ indexerNodeController  = mdo
   (addrE, _) <- getActivationEF
   connRef <- getActiveConnsRef
   seed <- mkResolvSeed
-  addrs <- _settingsAddrs <$> (readExternalRef =<< getSettingsRef)
-  let initMap = M.fromList $ ((, ())) <$> M.keys addrs
+  addrs <- M.filter _peerInfoIsActive . _settingsAddrs <$> (readExternalRef =<< getSettingsRef)
+  let initMap = () <$ addrs
       closedE = switchDyn $ ffor valD $ leftmost . M.elems
       delE = (\u -> M.singleton u Nothing) <$> closedE
       addE = (\us -> M.fromList $ (, Just ()) <$> us) <$> addrE
-      actE = traceEvent "UPD_______________________________" $ leftmost [delE, addE] 
+      actE = leftmost [delE, addE] 
   valD <- listWithKeyShallowDiff initMap actE $ \n _ _ -> do
     mAddr <- parseSockAddrs seed [n]
     case mAddr of

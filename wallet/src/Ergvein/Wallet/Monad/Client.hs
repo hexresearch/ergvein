@@ -120,8 +120,23 @@ setAddrActive addrE = updateSettingsAsync $ ffor addrE $ \(url, v) ->
   settingsAddrs . at url . _Just %~ (peerInfoIsActive .~ v) . (peerInfoIsPinned .~ True)
 
 deleteAddr :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m (Event t ())
-deleteAddr addrE = updateSettingsAsync $ ffor addrE $ \url -> 
-  settingsAddrs . at url .~ Nothing
+deleteAddr addrE = do
+  closedE <- closeAndWait addrE
+  updateSettingsAsync $ ffor (traceEvent "__________________deleteAddr" closedE) $ \url -> 
+    settingsAddrs . at url .~ Nothing
+
+-- | It is really important to wait until indexer performs deinitialization before deleting it from dynamic collections
+closeAndWait :: MonadIndexClient t m => Event t ErgveinNodeAddr -> m (Event t ErgveinNodeAddr)
+closeAndWait urlE = do
+  req      <- getIndexReqFire
+  connsRef <- getActiveConnsRef
+  closedEE <- performEvent $ ffor urlE $ \url -> do
+    liftIO $ req $ M.singleton url IndexerClose
+    mconn <- fmap (M.lookup url) $ readExternalRef connsRef
+    pure $ case mconn of
+      Nothing -> never
+      Just conn -> url <$ indexConClosedE conn
+  switchDyn <$> holdDyn never closedEE
 
 setDiscovery :: (MonadIndexClient t m, MonadHasSettings t m) =>  Event t Bool -> m (Event t ())
 setDiscovery discE = updateSettingsAsync $ ffor discE $ \v -> 
