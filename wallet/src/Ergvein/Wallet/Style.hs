@@ -784,13 +784,11 @@ sharePageCss = do
   ".share-v-spacer" ? do
     height $ px 20
   ".qrcode-container" ? do
-    width $ px 232
-    height $ px 232
     justifyContent center
     margin auto auto auto auto
   ".share-qrcode-container" ? do
-    width $ px 232
-    height $ px 232
+    width $ px 252
+    height $ px 252
     justifyContent center
     let px0 = px 0 in padding px0 px0 px0 $ px 8
     margin (px 0) auto (px 0) auto
