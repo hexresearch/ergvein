@@ -89,12 +89,12 @@ newServerEnv :: (MonadIO m, MonadLogger m, MonadMask m, MonadBaseControl IO m)
   -> BitcoinApi.Client  -- ^ RPC connection to the bitcoin node
   -> Config             -- ^ Contents of the config file
   -> m ServerEnv
-newServerEnv useTcp noDropFilters optsNoDropIndexers btcClient cfg@Config{..} = do
+newServerEnv useTcp overrideFilters overridesIndexers btcClient cfg@Config{..} = do
     logger <- liftIO newChan
     liftIO $ hSetBuffering stdout LineBuffering
     void $ liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
-    filtersDBCntx  <- openDb noDropFilters DBFilters cfgFiltersDbPath
-    indexerDBCntx  <- openDb optsNoDropIndexers DBIndexer cfgIndexerDbPath
+    filtersDBCntx  <- openDb overrideFilters DBFilters cfgFiltersDbPath
+    indexerDBCntx  <- openDb overridesIndexers DBIndexer cfgIndexerDbPath
     ergoNodeClient <- liftIO $ ErgoApi.newClient cfgERGONodeHost cfgERGONodePort
     tlsManager     <- liftIO $ newTlsManager
     feeEstimates   <- liftIO $ newTVarIO M.empty
