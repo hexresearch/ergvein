@@ -51,7 +51,7 @@ sharePage cur = do
       let shareAddr = addrBase
           shareUrl  = generateURL shareAddr
       vertSpacer
-      divClass "share-qrcode-container" $ qrCodeWidget 252 252 (curprefix cur <> shareAddr)
+      divClass "share-qrcode-container" $ qrCodeWidget qrSizeMedium (curprefix cur <> shareAddr)
       (e,_) <- elAttr' "div" [("class","share-block-value")] $ mapM_ (\v -> text v >> br) $ T.chunksOf 17 $ shareAddr
       let copyLineE = shareUrl <$ domEvent Click e
       vertSpacer
