@@ -40,11 +40,11 @@ onShutdown env = do
 
 finalize :: (MonadIO m, MonadLogger m) => ServerEnv -> [Thread] -> [Thread] -> m ()
 finalize env scannerThreads workerTreads = do
-  logInfoN "Waiting for scaner threads to close"
-  liftIO $ sequence_ $ wait <$> scannerThreads
   logInfoN "Dumping rollback data"
   rse <- fmap RollbackSequence $ liftIO $ readTVarIO (envBtcRollback env)
   runReaderT (storeRollbackSequence BTC rse) (envIndexerDBContext env)
+  logInfoN "Waiting for scaner threads to close"
+  liftIO $ sequence_ $ wait <$> scannerThreads
   logInfoN "Waiting for other threads to close"
   liftIO $ sequence_ $ wait <$> workerTreads
   logInfoN "service is stopped"
