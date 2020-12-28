@@ -18,7 +18,6 @@ import           Data.Time
 import           Data.Word
 import           Network.Bitcoin.Api.Blockchain
 import           Network.Bitcoin.Api.Misc
-import           Control.Concurrent.STM.TVar
 
 import           Ergvein.Filters.Btc.Mutable
 import           Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
@@ -116,9 +115,9 @@ getBtcBlockWithRepeat blockHeightReq = do
   resChan <- liftIO newTChanIO
   shutdownFlag <- getShutdownFlag
   fix $ \next -> do
-    fork $    -- Request thread
+    void $ fork $    -- Request thread
       liftIO . atomically . writeTChan resChan . Just =<< getBtcBlock blockHeightReq
-    fork $ do -- Timeout thread
+    void $ fork $ do -- Timeout thread
       threadDelay 30000000 -- 30s
       liftIO . atomically . writeTChan resChan $ Nothing
     res <- liftIO $ atomically $ readTChan resChan
