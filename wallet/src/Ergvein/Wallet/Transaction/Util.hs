@@ -31,7 +31,6 @@ module Ergvein.Wallet.Transaction.Util(
   -- Ergo functions
   ) where
 
-import Control.Monad ((<=<))
 import Control.Monad.IO.Class
 import Data.Maybe
 import Data.Word

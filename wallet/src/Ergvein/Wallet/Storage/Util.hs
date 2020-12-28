@@ -36,11 +36,9 @@ import Data.Maybe
 import Data.Proxy
 import Data.Text                (Text)
 import Data.Text.Encoding
-import Data.Text.Encoding.Error
 import Data.SafeCopy
 import Data.Serialize
 
-import Ergvein.Aeson
 import Ergvein.Crypto
 import Ergvein.Text
 import Ergvein.Types.AuthInfo
@@ -228,7 +226,7 @@ decryptStorage encryptedStorage prvKey = do
 encryptBSWithAEAD :: (MonadIO m, MonadRandom m) => ByteString -> Password -> m (Either StorageAlert EncryptedByteString)
 encryptBSWithAEAD bs password = do
   salt <- genRandomSalt32
-  let secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
+  let secKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
   iv <- genRandomIV (undefined :: AES256)
   case iv of
     Nothing -> pure $ Left $ SACryptoError "Failed to generate an AES initialization vector"
@@ -236,7 +234,7 @@ encryptBSWithAEAD bs password = do
       let ivBS = convert iv' :: ByteString
           saltBS = convert salt :: ByteString
           header = BS.concat [saltBS, ivBS]
-      case encryptWithAEAD AEAD_GCM secretKey iv' header bs defaultAuthTagLength of
+      case encryptWithAEAD AEAD_GCM secKey iv' header bs defaultAuthTagLength of
         Left err -> pure $ Left $ SACryptoError $ showt err
         Right (authTag, ciphertext) -> do
           let authTag' = unsafeSizedByteArray (convert authTag :: ByteString) :: SizedByteArray 16 ByteString
@@ -244,13 +242,13 @@ encryptBSWithAEAD bs password = do
 
 decryptBSWithAEAD :: EncryptedByteString -> Password -> Either StorageAlert ByteString
 decryptBSWithAEAD encryptedBS password =
-  case decryptWithAEAD AEAD_GCM secretKey iv header ciphertext authTag' of
+  case decryptWithAEAD AEAD_GCM secKey iv header ciphertext authTag' of
     Nothing -> Left $ SACryptoError "Failed to decrypt message"
     Just decryptedBS -> Right decryptedBS
   where
     salt = encryptedByteString'salt encryptedBS
     saltBS = convert salt :: ByteString
-    secretKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
+    secKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
     iv = encryptedByteString'iv encryptedBS
     ivBS = convert iv :: ByteString
     authTag = encryptedByteString'authTag encryptedBS
@@ -281,7 +279,7 @@ saveStorageToFile caller pubKey storage = do
   case encryptedStorage of
     Left _ -> fail "Failed to encrypt storage"
     Right encStorage -> do
-      moveStoredFile fname backupFname
+      void $ moveStoredFile fname backupFname
       let bs = runPut $ safePut encStorage
       storeBS fname bs True
 
@@ -296,7 +294,7 @@ saveStorageSafelyToFile caller pubKey storage = do
   case encryptedStorage of
     Left err -> pure $ Left err
     Right encStorage -> do
-      moveStoredFile fname backupFname
+      void $ moveStoredFile fname backupFname
       let bs = runPut $ safePut encStorage
       fmap Right $ storeBS fname bs True
 
@@ -309,7 +307,7 @@ loadStorageFromFile login pass = do
   case storageResp of
     Left err -> pure $ Left $ SANativeAlert err
     Right storageBs -> case runGet safeGet storageBs of
-      Left err -> do
+      Left _ -> do
         logWrite $ "Failed to decode wallet from: " <> fname <> "\nReading from backup: " <> backupFname
         backupStorageResp <- retrieveBS fname
         case backupStorageResp of

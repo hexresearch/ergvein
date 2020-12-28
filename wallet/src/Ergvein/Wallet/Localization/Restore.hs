@@ -7,7 +7,6 @@ import Ergvein.Text
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Language
 import Numeric
-import Reflex.Localize
 import Data.Text (pack)
 
 data RestorePageStrings

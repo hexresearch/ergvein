@@ -3,10 +3,7 @@ module Ergvein.Wallet.Localization.Input
     InputStrings(..)
   ) where
 
-import Ergvein.Text
 import Ergvein.Wallet.Language
-
-import Data.Text
 
 data InputStrings =
     IntParseError

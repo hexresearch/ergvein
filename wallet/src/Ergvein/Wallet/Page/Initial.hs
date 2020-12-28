@@ -3,7 +3,6 @@ module Ergvein.Wallet.Page.Initial(
     initialPage
   ) where
 
-import Data.Either (fromRight)
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
@@ -19,13 +18,10 @@ import Ergvein.Wallet.Storage.AuthInfo
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Wrapper
 
-import Control.Monad.IO.Class
 import Ergvein.Wallet.Page.PatternKey
 import qualified Data.Map.Strict as M
 
 data GoPage = GoSeed | GoRestore | GoSettings
-
-data GoRestoreMethodPage = GoRestoreMnemonic
 
 initialPage :: MonadFrontBase t m => Bool -> m ()
 initialPage redir = do
@@ -50,6 +46,9 @@ createRestore = do
     , retractablePrev = Just $ pure $ initialPage False
     }
 
+{-
+data GoRestoreMethodPage = GoRestoreMnemonic
+
 selectRestoreMethodPage :: MonadFrontBase t m => m ()
 selectRestoreMethodPage = do
   wrapperSimple True $ do
@@ -61,6 +60,7 @@ selectRestoreMethodPage = do
             GoRestoreMnemonic -> seedRestorePage
         , retractablePrev = Just $ pure selectRestoreMethodPage
         }
+-}
 
 hasWalletsPage :: MonadFrontBase t m => Bool -> [WalletName] -> m ()
 hasWalletsPage redir ss = do
@@ -94,7 +94,6 @@ loadWalletPage name = do
     Right _ -> pure never
     Left _ -> do
       passE <- askPasswordPage name
-      isPass <- fmap (either (const False) id) $ retrieveValue ("meta_wallet_" <> name) False
       mOldAuthE <- performEvent $ loadAuthInfo name <$> passE
       handleDangerMsg mOldAuthE
   let oldAuthE = leftmost [oldAuthE', oldAuthE'']

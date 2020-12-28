@@ -10,7 +10,6 @@ module Ergvein.Wallet.Page.QRCode(
 import Codec.QRCode
 
 import Ergvein.Text
-import Ergvein.Types.Currency
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Canvas
 
@@ -23,8 +22,8 @@ qrSizeXL :: (Int, Int)
 qrSizeXL = (504, 504)
 
 qrCodeWidget :: MonadFrontBase t m => (Int, Int) -> Text -> m (Element EventResult GhcjsDomSpace t, CanvasOptions)
-qrCodeWidget (canvasH, canvasW) text = elAttr "div" attrs $ mdo
-    --divClass "test" $ text $ drawGridT canvasW canvasH (qrcPerCanvas qrData canvasW)
+qrCodeWidget (canvasH, canvasW) txt = elAttr "div" attrs $ mdo
+    --divClass "test" $ txt $ drawGridT canvasW canvasH (qrcPerCanvas qrData canvasW)
     canvasEl <- createCanvas cOpts
     rawJSCall (_element_raw canvasEl) $ drawGridT canvasW canvasH (qrcPerCanvas qrData canvasW)
     pure (canvasEl, cOpts)
@@ -34,12 +33,12 @@ qrCodeWidget (canvasH, canvasW) text = elAttr "div" attrs $ mdo
         , ("style", "height:" <> showt (canvasH + 4) <> "px;width:" <> showt (canvasW + 4) <> "px;padding:2px;")
         ]
       cOpts = CanvasOptions canvasW canvasH "qrcode" "qrcode"
-      qrData = qrGen text
+      qrData = qrGen txt
 
 qrCodeWidgetWithData :: MonadFrontBase t m => (Int, Int) -> Text -> m (Dynamic t (Maybe Text))
-qrCodeWidgetWithData canvasSize text = do
+qrCodeWidgetWithData canvasSize txt = do
   buildE <- getPostBuild
-  (canvasEl, cOpts) <- qrCodeWidget canvasSize text
+  (canvasEl, cOpts) <- qrCodeWidget canvasSize txt
   dataE <- performEvent $ ffor buildE $ const $ rawGetCanvasJpeg (_element_raw canvasEl) cOpts
   holdDyn Nothing dataE
 

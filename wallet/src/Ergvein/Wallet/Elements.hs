@@ -297,9 +297,9 @@ badge :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
 badge classes lbl = elClass "code" classes $ dynText =<< localized lbl
 
 selElementFocus :: MonadJSM m => RawElement GhcjsDomSpace -> m ()
-selElementFocus element = liftJSM $ do
+selElementFocus rawEl = liftJSM $ do
   void $ eval func
-  void $ jsg1 funcName (toJSVal element)
+  void $ jsg1 funcName (toJSVal rawEl)
   where
     (funcName :: Text) = "ergvein_set_el_focus"
     (func :: Text) = " ergvein_set_el_focus = function(el) {el.focus();}"

@@ -4,21 +4,19 @@ module Ergvein.Wallet.Storage.AuthInfo (
   ) where
 
 import Control.Monad.Except
+
 import Ergvein.Crypto
 import Ergvein.Types.Currency
 import Ergvein.Types.Derive
 import Ergvein.Types.Restore
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
-import Ergvein.Wallet.Elements.Input
+import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.AuthInfo
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Storage.Util
-
-import Ergvein.Wallet.Language
-import Ergvein.Wallet.Platform
 
 import qualified Data.Text as T
 

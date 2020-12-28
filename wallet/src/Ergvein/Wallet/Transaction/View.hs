@@ -105,7 +105,7 @@ data TransactionViewInfo = TransactionViewInfo {
 
 checkAddrInOut :: (HasTxStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m (Maybe TransType)
 checkAddrInOut ac (TxBtc tx) = do
-  let btcAddrs = mapMaybe (\addr -> case addr of (BtcAddress addr) -> Just addr; _ -> Nothing) ac
+  let btcAddrs = mapMaybe (\addr -> case addr of (BtcAddress addr') -> Just addr'; _ -> Nothing) ac
   bLIn <- traverse (flip checkAddrTxInBtc (getBtcTx tx)) btcAddrs
   bLOut <- traverse (flip checkAddrTxOutBtc (getBtcTx tx)) btcAddrs
   let isIn = L.or bLIn

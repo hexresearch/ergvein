@@ -3,10 +3,9 @@ module Ergvein.Wallet.Page.Network(
     networkPage
   ) where
 
-import Data.Maybe (catMaybes, isJust)
+import Data.Maybe (catMaybes)
 import Reflex.ExternalRef
 
-import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
@@ -14,7 +13,6 @@ import Ergvein.Wallet.Localization.Currency()
 import Ergvein.Wallet.Localization.Network
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Node
-import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Dependent.Map as DM
