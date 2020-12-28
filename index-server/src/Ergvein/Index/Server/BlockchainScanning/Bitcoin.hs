@@ -3,6 +3,7 @@ module Ergvein.Index.Server.BlockchainScanning.Bitcoin where
 import           Control.Concurrent.Async.Lifted
 import           Control.Concurrent.Lifted
 import           Control.Concurrent.STM
+import           Control.Exception
 import           Control.Lens.Combinators
 import           Control.Monad.Logger
 import           Control.Monad.Reader
@@ -125,7 +126,7 @@ getBtcBlockWithRepeat blockHeightReq = do
       Nothing -> do
         b <- liftIO . readTVarIO $ shutdownFlag
         if b
-          then error "Everything is fine, just killing the thread"
+          then throw $ ErrorCallWithLocation "Everything is fine, just killing the thread" "getBtcBlockWithRepeat"
           else next
       Just block -> pure block
 
