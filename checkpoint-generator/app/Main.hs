@@ -5,8 +5,6 @@ module Main where
 import System.Environment
 import Options.Applicative
 import Crypto.Checkpoint.Btc
-import Data.Semigroup ((<>))
-import Data.ByteString.Char8 as C8
 
 scanConfig :: Parser ScanConfig
 scanConfig = ScanConfig
@@ -18,9 +16,6 @@ scanConfig = ScanConfig
       <*> strOption   ( long "fileName")
 
 main :: IO ()
-main = do
-  args <- getArgs
-  scanConfig <- execParser opts
-  scanToFile scanConfig
+main = scanToFile =<< execParser opts
   where
     opts = info (scanConfig <**> helper) fullDesc

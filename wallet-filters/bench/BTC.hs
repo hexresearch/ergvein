@@ -21,6 +21,7 @@ import qualified Data.Vector as V
 import qualified Ergvein.Filters.Btc.Mutable as M
 
 -- Our benchmark harness.
+main :: IO ()
 main = defaultMain [
     env makeBlockEnv $ \ ~(txs, block) -> let
       bhash = headerHash . blockHeader $ block

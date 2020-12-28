@@ -24,8 +24,8 @@ data ScanConfig = ScanConfig
 
 scanToFile :: ScanConfig -> IO ()
 scanToFile scanConfig= do
-  headersMerkleTree <- headersMerkleTree scanConfig
-  TIO.writeFile (cfgFileName scanConfig) $ pack $ show headersMerkleTree
+  headersMerkleTree' <- headersMerkleTree scanConfig
+  TIO.writeFile (cfgFileName scanConfig) $ pack $ show headersMerkleTree'
 
 headersMerkleTree :: ScanConfig -> IO (MerkleTree ByteString)
 headersMerkleTree scanConfig = do
@@ -33,16 +33,16 @@ headersMerkleTree scanConfig = do
 
   let roundNodeHeight = nodeHeight - nodeHeight `rem` cfgChunkSize scanConfig
 
-  tree <- runConduit $ 
+  tree <- runConduit $
     CL.enumFromTo 0 roundNodeHeight
     .| CL.mapM (blockHeaderAtHeight roundNodeHeight)
     .| CL.chunksOf (fromIntegral $ cfgChunkSize scanConfig)
     .| CL.map chunkHash
     .| CC.sinkList
-         
+
   pure $ mkMerkleTree tree
   where
-    client = BitcoinApi.withClient 
+    client = BitcoinApi.withClient
       (cfgNodeHost scanConfig)
       (cfgNodePort scanConfig)
       (cfgNodeUser scanConfig)
