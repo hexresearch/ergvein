@@ -54,7 +54,7 @@ data SubPageSettings
   | GoUnits
   | GoNetwork
   | GoPortfolio
-  | GoMnemonicExport Mnemonic
+  | GoMnemonicExport
   | GoDns
   | GoNodes
   | GoPassword
@@ -75,25 +75,21 @@ settingsPage = do
             , (GoNodes, STPSButNodes)
             , (GoPassword, STPSButSetPass)
             , (GoDelete, STPSButDeleteWallet)
+            , (GoMnemonicExport, STPSButMnemonicExport)
             ]
-      goE' <- fmap leftmost $ flip traverse btns $ \(v,l) -> fmap (v <$) $ outlineButton l
-      mnemonicExportBtnE <- outlineButton STPSButMnemonicExport
-      goMnemonicExportE <- withWallet $
-        ffor mnemonicExportBtnE $ \_ prvStorage -> do
-          pure $ GoMnemonicExport $ _prvStorage'mnemonic prvStorage
-      let goE = leftmost [ goE', goMnemonicExportE ]
+      goE <- fmap leftmost $ flip traverse btns $ \(v,l) -> fmap (v <$) $ outlineButton l
       void $ nextWidget $ ffor goE $ \spg -> Retractable {
           retractableNext = case spg of
-            GoLanguage                -> languagePage
-            -- GoCurrencies              -> currenciesPage
-            GoNetwork                 -> networkSettingsPage
-            GoUnits                   -> unitsPage
-            GoPortfolio               -> portfolioPage
-            GoMnemonicExport mnemonic -> mnemonicExportPage mnemonic
-            GoDns                     -> dnsPage
-            GoNodes                   -> btcNodesPage
-            GoPassword                -> passwordChangePage
-            GoDelete                  -> deleteWalletPage
+            GoLanguage        -> languagePage
+            -- GoCurrencies   -> currenciesPage
+            GoNetwork         -> networkSettingsPage
+            GoUnits           -> unitsPage
+            GoPortfolio       -> portfolioPage
+            GoMnemonicExport  -> mnemonicExportPage
+            GoDns             -> dnsPage
+            GoNodes           -> btcNodesPage
+            GoPassword        -> passwordChangePage
+            GoDelete          -> deleteWalletPage
         , retractablePrev = Just $ pure settingsPage
         }
 

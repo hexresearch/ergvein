@@ -267,7 +267,7 @@ parseMnem l mnem = case ws of
           suggs -> PSSuggs (init ws) suggs
   where
     iws = zip [1..] ws
-    ws = T.words mnem
+    ws = T.words $ T.toLower mnem
     w = last ws
 
 plainRestorePage :: MonadFrontBase t m => Int -> m ()
@@ -293,7 +293,10 @@ plainRestorePage mnemLength = wrapperSimple True $ mdo
     , updated $ Just <$> parsedD
     , Just PSWaiting <$ buildE
     ]
-  ti <- textInput $ def & inputElementConfig_setValue .~ leftmost [pasteE, fillE, resetE]
+  ti <- textInput $ def & inputElementConfig_setValue .~ setValE
+  let setValE = leftmost [pasteE, fillE, resetE]
+  let tiEl = _element_raw $ _inputElement_element ti
+  performEvent_ $ ffor setValE $ const $ selElementFocus tiEl
   fillE <- widgetHoldE (pure never) $ ffor (updated stateD) $ \case
     PSWaiting         -> waiting
     PSWordError _     -> wordError
