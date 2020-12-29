@@ -14,6 +14,7 @@ import Ergvein.Wallet.Localization.Network
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Node
 import Ergvein.Wallet.Wrapper
+import Ergvein.Wallet.Settings
 
 import qualified Data.Dependent.Map as DM
 import qualified Data.Map.Strict as M
