@@ -15,6 +15,12 @@ import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.Initial
 import Ergvein.Wallet.Page.Restore
 import Ergvein.Wallet.Password
+#ifdef TESTNET
+import Ergvein.Wallet.Elements
+import Ergvein.Wallet.Language
+import Ergvein.Wallet.Localization.TestnetDisclaimer
+import Ergvein.Wallet.Wrapper
+#endif
 
 frontend :: MonadFrontBase t m => m ()
 frontend = do
