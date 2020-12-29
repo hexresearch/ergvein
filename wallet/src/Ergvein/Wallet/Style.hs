@@ -1056,6 +1056,7 @@ legoStyles = do
   ".font-bold" ? fontWeight bold
   ".fit-content" ? width fitContent
   ".disp-block" ? display block
+  ".overflow-wrap-bw" ? overflowWrap breakWord
   let fillBtnColor cl backCol fontCol = do
         let colorSet = do
               important (backgroundColor backCol)

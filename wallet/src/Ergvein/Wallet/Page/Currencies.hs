@@ -28,7 +28,7 @@ selectCurrenciesPage wt mnemonic = wrapperSimple True $ do
 #ifdef ANDROID
       retractableNext = setupLoginPage wt Nothing mnemonic ac
 #else
-      retractableNext = passwordPage wt Nothing mnemonic ac Nothing
+      retractableNext = setupPasswordPage wt Nothing mnemonic ac Nothing
 #endif
     -- , retractablePrev = Just $ pure $ selectCurrenciesPage wt mnemonic -- TODO: uncomment this when ERGO is ready
     , retractablePrev = Nothing -- TODO: remove this when ERGO is ready
