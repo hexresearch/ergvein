@@ -37,7 +37,6 @@ import Data.Foldable (traverse_)
 import Data.Word
 import Foreign.C.Types
 import Foreign.ForeignPtr
-import Foreign.Marshal.Alloc hiding (realloc)
 import Foreign.Marshal.Utils
 import Foreign.Ptr
 import GHC.Generics
@@ -126,7 +125,7 @@ resize n bs = liftIO $ withForeignPtr (bitstreamWriter bs) $ \wp -> do
   newBuff <- mallocForeignPtrBytes n'
   withForeignPtr newBuff $ \newp -> withForeignPtr (bitstreamBuffer bs) $ \oldp -> do
     copyBytes newp oldp l
-    withForeignPtr (bitstreamWriter bs) $ \wp -> bitstream_writer_update_buffer wp newp
+    withForeignPtr (bitstreamWriter bs) $ \wp' -> bitstream_writer_update_buffer wp' newp
     withForeignPtr (bitstreamReader bs) $ \rp -> bitstream_reader_update_buffer rp newp
   pure $ Bitstream n' newBuff (bitstreamWriter bs) (bitstreamReader bs)
 {-# INLINABLE resize #-}

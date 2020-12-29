@@ -13,7 +13,6 @@ import           GHC.Generics
 import           Prelude                 hiding ( null, read )
 import           Safe.Partial
 
-import qualified Data.Foldable                 as F
 import qualified Data.Vector.Generic           as V
 import qualified Data.Vector.Unboxed           as VU
 import qualified Prelude                       as P
@@ -202,8 +201,8 @@ foldWords
 foldWords p f a0 !s = liftIO $ withForeignPtr (BS.bitstreamBuffer s) $ const $ go a0 -- Fixes https://github.com/hexresearch/ergvein/issues/558
   where
     go !a = do
-      empty <- BS.null s
-      if empty then pure a else do
+      isEmpty <- BS.null s
+      if isEmpty then pure a else do
         w <- decodeWord p s
         sh <- f a w
         case sh of

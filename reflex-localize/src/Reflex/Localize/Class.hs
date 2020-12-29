@@ -6,10 +6,8 @@ module Reflex.Localize.Class(
 ) where
 
 import Data.Data
-import Data.Monoid
 import Data.Text (Text)
 import GHC.Generics
-import qualified Data.Text as T
 import Reflex
 import Reflex.Localize.Language
 import Reflex.Localize.Monad

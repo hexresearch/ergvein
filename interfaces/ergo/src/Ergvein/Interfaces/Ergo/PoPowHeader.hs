@@ -6,9 +6,6 @@ module Ergvein.Interfaces.Ergo.PoPowHeader where
 
 import Data.Aeson as A
 import Data.Serialize                     as S (Serialize (..), decode, encode, get, put)
-import Data.Serialize.Get                 as S
-import Data.Serialize.Put                 as S
-import qualified Data.ByteString as BS
 
 import Ergvein.Aeson
 

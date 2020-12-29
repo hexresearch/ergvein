@@ -7,19 +7,13 @@ module Ergvein.Interfaces.Ergo.Header where
 import Crypto.Hash (hashWith, Blake2b_256(..))
 import Data.Aeson as A
 import Data.ByteString
-import Data.Serialize                     as S (Serialize (..), decode, encode, get, put)
+import Data.Serialize                     as S (Serialize (..), encode, get, put)
 import Data.Serialize.Get                 as S
 import Data.Serialize.Put                 as S
 import Data.String
-import Data.Time
 
 import qualified Data.ByteArray as BA
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BSL
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
-
-import Ergvein.Aeson
 
 import Ergvein.Interfaces.Ergo.Mining.AutolykosSolution
 import Ergvein.Interfaces.Ergo.Mining.Difficulty.RequiredDifficulty
@@ -27,7 +21,6 @@ import Ergvein.Interfaces.Ergo.Modifiers.History.ModifierType
 import Ergvein.Interfaces.Ergo.NodeView.History.ErgoHistory
 import Ergvein.Interfaces.Ergo.Scorex.Core.Block
 import Ergvein.Interfaces.Ergo.Scorex.Crypto.Authds
-import Ergvein.Interfaces.Ergo.Scorex.Crypto.Hash
 import Ergvein.Interfaces.Ergo.Scorex.Util.Package
 
 

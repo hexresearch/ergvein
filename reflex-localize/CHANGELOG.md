@@ -1,3 +1,7 @@
+# 1.0.4.0
+
+* Remove warnings
+
 # 1.0.3.0
 
 * Allow `reflex-0.8`

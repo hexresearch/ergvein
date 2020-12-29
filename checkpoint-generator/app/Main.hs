@@ -2,7 +2,6 @@
 
 module Main where
 
-import System.Environment
 import Options.Applicative
 import Crypto.Checkpoint.Btc
 

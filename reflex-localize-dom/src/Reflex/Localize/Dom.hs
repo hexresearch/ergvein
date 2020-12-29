@@ -8,6 +8,7 @@
 --
 -- Dom helpers to show localized
 --
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Reflex.Localize.Dom(
     localizedText
   , localizedTextWith
@@ -24,7 +25,6 @@ import Data.Text (Text)
 import Reflex.Dom
 import Reflex.Localize
 import Reflex.Localize.Language
-import Reflex.Localize.Trans
 
 import qualified Data.Text as T
 import qualified Data.Map.Strict as M

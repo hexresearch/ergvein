@@ -2,18 +2,13 @@ module Ergvein.Interfaces.Ergo.Mining.AutolykosSolution where
 
 import Data.Aeson
 import Data.ByteString (ByteString)
-import Data.Serialize                     as S (Serialize (..), decode, encode, get, put)
-import Data.Serialize.Get                 as S
-import Data.Serialize.Put                 as S
+import Data.Serialize     as S (Serialize (..), get, put)
+import Data.Serialize.Get as S
+import Data.Serialize.Put as S
 import Data.String
-
-import qualified Data.ByteString as BS
-
-import Ergvein.Aeson
 
 import Ergvein.Interfaces.Ergo.Common.BigNat
 import Ergvein.Interfaces.Ergo.Scorex.Util.Package
-import Ergvein.Interfaces.Ergo.Scorex.Util.Serialization.VLQLengthPrefixed
 
 -- | Solution of Autolykos PoW puzzle
 --

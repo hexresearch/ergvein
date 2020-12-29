@@ -2,20 +2,16 @@ module Ergvein.Interfaces.Ergo.Scorex.Util.Package where
 
 import Data.Aeson as A
 import Data.ByteString
-import Data.Serialize                     as S (Serialize (..), decode, encode, get, put)
+import Data.Serialize                     as S (Serialize (..), get, put)
 import Data.Serialize.Get                 as S
 import Data.Serialize.Put                 as S
 import Data.String
 import Data.Text (Text)
-import Numeric.Natural
 import Safe.Partial
 
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Base16 as BS16
 import qualified Data.Text.Encoding as TE
-
-import Ergvein.Aeson
 
 newtype ModifierId = ModifierId { unModifierId :: ByteString }
   deriving (Eq)
