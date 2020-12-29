@@ -8,7 +8,6 @@ import Control.Lens
 import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
-import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Clipboard
@@ -20,10 +19,7 @@ import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
-import Ergvein.Wallet.Page.Canvas
 import Ergvein.Wallet.Page.QRCode
-import Ergvein.Wallet.Share
-import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Text as T
@@ -38,7 +34,7 @@ receivePage cur = do
   pubStoreD <- getPubStorageD
   let lastUnusedKeyD = ffor pubStoreD $ \ps ->
         (getLastUnusedKey External . _currencyPubStorage'pubKeystore) =<< (ps ^. pubStorage'currencyPubStorages . at cur)
-  widgetHoldDyn $ ffor lastUnusedKeyD $ \case
+  void $ widgetHoldDyn $ ffor lastUnusedKeyD $ \case
     Nothing -> exceededGapLimit cur
     Just (i, key) -> receivePageWidget cur i key
   pure ()

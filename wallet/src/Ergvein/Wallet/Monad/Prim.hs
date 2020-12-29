@@ -36,7 +36,6 @@ import Network.DNS
 import Network.Socket (HostName, SockAddr)
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
-import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Reflex.Host.Class
 import Reflex.Localize
@@ -48,7 +47,6 @@ import Ergvein.Types.Transaction
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Version
 
 import qualified Control.Monad.Fail as F
 import qualified Network.Socks5 as S5

@@ -26,14 +26,12 @@ import Control.Monad.IO.Unlift
 import Control.Immortal.Worker
 import Data.IP
 import Data.Maybe
-import Data.Text (pack)
 import Data.Time
 import Network.DNS
 import Network.Socket
 import Reflex.ExternalRef
 import Text.Read
 
-import Ergvein.Text
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Prim
@@ -41,8 +39,6 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings
 
-import qualified Control.Exception.Safe as Ex
-import qualified Control.Immortal as I
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Text as T
 

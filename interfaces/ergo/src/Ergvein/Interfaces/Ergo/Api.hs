@@ -6,7 +6,7 @@ module Ergvein.Interfaces.Ergo.Api where
 import Data.Aeson as A
 import Data.ByteString
 import Data.Int
-import Data.HashMap.Strict
+import Data.HashMap.Strict hiding (size)
 import Data.String
 import Data.Text (Text)
 import Data.Word

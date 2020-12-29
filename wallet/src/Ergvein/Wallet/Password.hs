@@ -12,30 +12,25 @@ module Ergvein.Wallet.Password(
   ) where
 
 import Control.Monad.Except
-import Data.Maybe
 import Data.Either (fromRight)
-import Ergvein.Crypto
+import Data.Maybe
+import Data.Time (getCurrentTime)
+import Reflex.Localize.Dom
+
 import Ergvein.Text
 import Ergvein.Types
-import Ergvein.Types.Derive
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Localization.Password
+import Ergvein.Wallet.Localization.PatternKey
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Validate
-import Reflex.Localize.Dom
-import qualified Data.Text as T
 
-import Control.Monad.IO.Class
-import Data.Time (getCurrentTime)
-import Ergvein.Text
-import Ergvein.Wallet.Localization.PatternKey
-import Ergvein.Wallet.Native
-import Ergvein.Wallet.Storage.Util
 import qualified Data.Map.Strict as Map
+import qualified Data.Text as T
 
 submitSetBtn :: MonadFrontBase t m => m (Event t ())
 submitSetBtn = submitClass "button button-outline" PWSSet
@@ -186,11 +181,10 @@ askPasswordModalAndroid = mdo
   let redrawE = leftmost [Just <$> goE, Nothing <$ passE, Nothing <$ closeE]
   valD <- widgetHold (pure (never, never)) $ ffor redrawE $ \case
     Just (i, name) -> divClass "ask-pattern-modal" $ do
-      closeE <- passwordHeader
-      passE <- divClass "mt-1 ml-1 mr-1" $ do
+      closeE' <- passwordHeader
+      passE' <- divClass "mt-1 ml-1 mr-1" $ do
         askPassword name False
-      let passE' = fmap ((i,) . Just) passE
-      pure (passE', closeE)
+      pure (fmap ((i,) . Just) passE', closeE')
     Nothing -> pure (never, never)
   let (passD, closeD) = splitDynPure valD
   let passE = switchDyn passD

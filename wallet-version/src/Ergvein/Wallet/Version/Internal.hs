@@ -8,11 +8,9 @@ import Data.Data
 import Data.Maybe
 import Data.Text (Text)
 import Ergvein.Aeson
-import Ergvein.Text (showt)
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax (Lift(..), dataToExpQ)
 import System.Environment (getEnvironment)
-import Text.Read (readMaybe)
 
 import qualified Data.Text as T
 

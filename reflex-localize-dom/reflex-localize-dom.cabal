@@ -1,5 +1,5 @@
 name:                reflex-localize-dom
-version:             1.0.1.0
+version:             1.0.2.0
 synopsis:            Helper widgets for reflex-localize
 description:         Library provides helpers for dynamic strings that depends on current selected language.
 stability:           Experimental
@@ -17,7 +17,7 @@ author:
 maintainer:          - Anton Gushcha <ncrashed@gmail.com>
                      - Aminion <>
                      - Vladimir Krutkin <krutkinvs@gmail.com>
-                     - Levon Oganyan
+                     - Levon Oganyan <lemarwin42@protonmail.com>
 bug-reports:         https://github.com/hexresearch/ergvein/issues
 homepage:            https://github.com/hexresearch/ergvein
 extra-source-files:

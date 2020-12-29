@@ -9,7 +9,6 @@ import           GHC.Generics
 import           Prelude                 hiding ( null, head )
 import           Safe.Partial
 
-import qualified Data.Foldable                 as F
 import qualified Data.Vector.Generic           as V
 import qualified Data.Vector.Unboxed           as VU
 import qualified Prelude                       as P
@@ -158,9 +157,9 @@ decodeWord
 decodeWord p s = (x, leftover)
  where
   prefix   = BS.takeWhile id s
-  postfix  = BS.drop 1 . BS.dropWhile id $ s
+  postfix  = BS.drop (1 :: Int) . BS.dropWhile id $ s
   leftover = BS.drop p postfix
-  q        = fromIntegral $ BS.length prefix
+  q :: Word64 = BS.length prefix
   r        = BS.toBits . BS.take p $ postfix
   x        = (q `shiftL` p) + r
 

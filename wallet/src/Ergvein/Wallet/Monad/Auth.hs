@@ -28,7 +28,6 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction (BlockHeight)
-import Ergvein.Wallet.Filters.Loader
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Async
@@ -239,7 +238,6 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
   modifyPubStorage caller fe = do
     authRef   <- asks env'authRef
     chan      <- asks env'storeChan
-    storeDir  <- asks env'storeDir
     performEvent $ ffor fe $ \f -> do
       mai <- modifyExternalRefMaybe authRef $ \ai ->
         let mps' = f (ai ^. authInfo'storage . storage'pubStorage)
@@ -288,7 +286,7 @@ walletStoreThread storeDir mutex updChan = void $ forkOnOther $ do
             pure val
   -- Thread that indefinetely queries if we need to write down new state
   fix $ \next -> do
-    updVal@(caller, authInfo) <- atomically getTimedWrite
+    (caller, authInfo) <- atomically getTimedWrite
     storeWalletIO caller storeDir mutex authInfo
     next
 
@@ -321,8 +319,6 @@ liftAuth ma0 ma = mdo
         passModalEF     <- getPasswordModalEF
         passSetEF       <- getPasswordSetEF
         settingsRef     <- getSettingsRef
-        -- Read settings to fill other refs
-        settings        <- readExternalRef settingsRef
 
         authRef         <- newExternalRef auth
 
@@ -418,7 +414,7 @@ liftUnauthed ma = ReaderT $ const ma
 
 wrapped :: MonadFrontBase t m => Text -> ErgveinM t m a -> ErgveinM t m a
 wrapped caller ma = do
-  storeWallet clr =<< getPostBuild
+  void $ storeWallet clr =<< getPostBuild
   buildE <- getPostBuild
   ac <- _pubStorage'activeCurrencies <$> getPubStorage
   void . updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ ac <$ buildE

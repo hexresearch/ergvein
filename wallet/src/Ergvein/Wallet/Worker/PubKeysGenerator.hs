@@ -16,8 +16,7 @@ pubKeysGenerator :: MonadFront t m => m ()
 pubKeysGenerator = do
   pubStoreD <- getPubStorageD
   let deriveExternalPubKeysE = fforMaybe (updated pubStoreD) getMissingPubKeysCountHelper
-  generateNewPubKeysByE BTC deriveExternalPubKeysE
-  pure ()
+  void $ generateNewPubKeysByE BTC deriveExternalPubKeysE
 
 getMissingPubKeysCountHelper :: PubStorage -> Maybe (Int, Int)
 getMissingPubKeysCountHelper pubstorage = nothingIf (\(x, y) -> (x < 1) && (y < 1)) (external, internal)

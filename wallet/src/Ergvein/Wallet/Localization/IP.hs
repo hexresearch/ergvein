@@ -3,10 +3,7 @@ module Ergvein.Wallet.Localization.IP
     IPStrings(..)
   ) where
 
-import Ergvein.Text
 import Ergvein.Wallet.Language
-
-import Data.Text
 
 data IPStrings =
   IPParseFailed

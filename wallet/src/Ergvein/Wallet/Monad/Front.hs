@@ -60,7 +60,6 @@ import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 import Ergvein.Types.Storage
-import Ergvein.Types.Transaction
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Localization.Client
 import Ergvein.Wallet.Monad.Async
@@ -259,12 +258,12 @@ requester cur req = mdo
     case mconn of
       Nothing -> do
         logWrite "Cannot select indexer for request"
-        buildE <- delay 0.1 =<< getPostBuild
-        showWarnMsg $ ffor buildE $ const CMSAllOutOfSync
+        buildE' <- delay 0.1 =<< getPostBuild
+        showWarnMsg $ ffor buildE' $ const CMSAllOutOfSync
         pure never
       Just conn -> do
         logWrite $ "Selected indexer " <> showt (indexConAddr conn)
-        requestIndexerWhenOpen conn req
+        void $ requestIndexerWhenOpen conn req
         pure $ (indexConAddr conn,) <$> indexConRespE conn
   pure respE
   where

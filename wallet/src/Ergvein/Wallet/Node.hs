@@ -25,9 +25,7 @@ import Data.Maybe
 import Data.Time.Clock.System
 import Network.Socket (SockAddr)
 
-import Ergvein.Text
 import Ergvein.Types
-import Ergvein.Types.Derive
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Monad.Async
@@ -175,7 +173,7 @@ btcMempoolTxInserter txE = do
     txInserted ((vec, tx), (utxos, outPoints)) = if V.null vec && M.null utxos && null outPoints
       then Nothing
       else case tx of
-        TxBtc (BtcTx tx _) -> Just tx
+        TxBtc (BtcTx btcTx _) -> Just btcTx
         _ -> Nothing
 
 -- | Finds all txs that should be replaced by given tx and removes them from storage.
@@ -208,13 +206,14 @@ removeTxsReplacedByFee caller replacingTxE = do
           -- Gets txs that should be replaced form btcPubStorage'possiblyReplacedTxs if provided tx has been replaced
           getTxsFromGroups :: [S.Set BtcTxId] -> BtcTxId -> S.Set BtcTxId
           getTxsFromGroups txGroups tx = S.unions $ (\txGroup -> if S.member tx txGroup then S.delete tx txGroup else S.empty) <$> txGroups
-          
+
           indirectlyReplacedTxs = S.toList $ S.unions $ (getTxsFromGroups possiblyReplacedTxsGroups) <$> (HT.txHash <$> directlyReplacedTxs)
           replacedTxIds = S.fromList $ (HT.txHash <$> (directlyReplacedTxs ++ directlyReplacedTxsChilds)) ++ indirectlyReplacedTxs
           possiblyReplacedTxIds = S.fromList $ HT.txHash <$> (possiblyReplacedTxs ++ possiblyReplacedTxsChilds)
       pure (replacingBtcTxId, replacedTxIds, possiblyReplacedTxIds)
-  removedE <- removeRbfTxsFromStorage1 "removeTxsReplacedByFee" replacedTxsE
+  removedE <- removeRbfTxsFromStorage1 clr replacedTxsE
   pure removedE
+  where clr = caller <> ":" <> "removeTxsReplacedByFee"
 
 -- | Checks tx with checkAddrTx against provided keys and returns that tx in EgvTx format with matched keys vector.
 checkAddrTx' :: (HasTxStorage m, PlatformNatives) => V.Vector ScanKeyBox -> HT.Tx -> m ((V.Vector (ScanKeyBox), EgvTx))

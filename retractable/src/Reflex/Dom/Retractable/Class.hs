@@ -44,12 +44,9 @@ module Reflex.Dom.Retractable.Class(
 
 import Control.Monad.Fix
 import Control.Monad.Reader
-import Data.Sequence (Seq)
 import GHC.Generics (Generic)
 import Reflex
 import Reflex.Network
-
-import qualified Data.Sequence as S
 
 -- | Information about widget that attaches information how to return to the
 -- widget.

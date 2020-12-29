@@ -4,6 +4,7 @@ import Criterion.Main
 import Data.MerkleTree
 import qualified Data.Serialize as S
 
+main :: IO ()
 main = defaultMain
   [ bench "constructing tree"  $ nf mkMerkleTree leafData
   , bench "constructing leaf hash"  $ nf mkLeafRootHash leaf

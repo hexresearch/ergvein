@@ -4,7 +4,7 @@ import Control.Monad
 import Data.Bits
 import Data.Bool
 import Data.Int
-import Data.Serialize as S (Serialize (..), decode, encode, get, put)
+import Data.Serialize as S (Serialize (..), get, put)
 import Data.Serialize.Get as S
 import Data.Word
 

@@ -66,10 +66,7 @@ getActualPeers = do
   pure $ convert <$> filteredByLastValidatedAt
 
 getPeerList :: (HasIndexerDB m, MonadLogger m) => m [Peer]
-getPeerList = do
-  idb <- getIndexerDb
-  currentList <- peerList
-  pure $ convert <$> unKnownPeersRec currentList
+getPeerList = fmap (fmap convert . unKnownPeersRec) peerList
 
 setPeerList :: (HasIndexerDB m, MonadLogger m) => [Peer] -> m ()
 setPeerList peers = do
@@ -171,7 +168,7 @@ insertBtcRollback ritem = do
   if Seq.length rse' <= btcRollbackSize
     then liftIO $ atomically $ writeTVar rollVar rse'
     else do
-      let rest Seq.:> lst = Seq.viewr rse'
+      let rest Seq.:> _ = Seq.viewr rse'
       liftIO $ atomically $ writeTVar rollVar rest
 
 storeRollbackSequence :: (HasIndexerDB m, MonadLogger m) => Currency -> RollbackSequence -> m ()

@@ -20,19 +20,15 @@ import Ergvein.Types.Restore
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Currencies
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Password
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
-import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Password
 import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.AuthInfo
-import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Text as T
@@ -89,7 +85,7 @@ confirmEmptyPage wt mnemonic curs login pass mpath startingHeight isPass = wrapp
   h5 $ localizedText CEPConsequences
   divClass "fit-content ml-a mr-a" $ do
     setE <- divClass "" (submitClass "button button-outline w-100" PWSSet)
-    retract =<< divClass "" (submitClass "button button-outline w-100" CEPBack)
+    void $ retract =<< divClass "" (submitClass "button button-outline w-100" CEPBack)
     void $ nextWidget $ ffor setE $ const $ Retractable {
         retractableNext = performAuth wt mnemonic curs login pass mpath startingHeight isPass
       , retractablePrev = Nothing
@@ -172,10 +168,10 @@ setupMobilePasswordPage wt mpath mnemonic l curs startingHeight = wrapperSimple 
   rec
     passE <- setupPassword btnE
     btnE <- divClass "fit-content ml-a mr-a" $ do
-      btnE <- divClass "" $ (submitClass "button button-outline w-100" PWSSet)
+      btnE' <- divClass "" $ (submitClass "button button-outline w-100" PWSSet)
       setPattE <- divClass "" $ submitClass "button button-outline w-100" PatPSPatt
-      retract setPattE
-      pure btnE
+      void $ retract setPattE
+      pure btnE'
   void $ nextWidget $ ffor passE $ \pass -> Retractable {
       retractableNext = if pass == ""
         then confirmEmptyPage wt mnemonic curs l pass mpath startingHeight True
@@ -205,11 +201,10 @@ instance LocalizedPrint (Bool, ChangePasswordStrings) where
       CPSOld   -> "В конце вам понадобится ввести старый " <> s
 
 changePasswordWidget :: MonadFront t m => m (Event t (Password, Bool))
-#ifdef ANDROID
-changePasswordWidget = changePasswordMobileWidget
-#else
-changePasswordWidget = changePasswordDescWidget
-#endif
+changePasswordWidget =
+  if isAndroid then changePasswordMobileWidget else changePasswordDescWidget
+{-# INLINE changePasswordWidget #-}
+
 
 changePasswordDescWidget :: MonadFront t m => m (Event t (Password, Bool))
 changePasswordDescWidget = wrapperSimple True $ mdo
@@ -220,8 +215,8 @@ changePasswordDescWidget = wrapperSimple True $ mdo
       changePasswordDescr True
       passE' <- setupPassword btnE
       btnE <- submitSetBtn
-      let (emptyE, passE) = splitFilter (== "") passE'
-      pure (passE, True <$ emptyE)
+      let (emptyE, passE'') = splitFilter (== "") passE'
+      pure (passE'', True <$ emptyE)
   pure $ (,True) <$> passE
 
 changePasswordDescr :: (MonadLocalized t m, DomBuilder t m, PostBuild t m) => Bool -> m ()
@@ -255,20 +250,20 @@ changePasswordMobileWidget = wrapperSimple True $ mdo
       changePasswordDescr True
       passE' <- setupPassword btnE
       (btnE, setPattE) <- divClass "fit-content ml-a mr-a" $ do
-        btnE <- divClass "" $ (submitClass "button button-outline w-100" PWSSet)
-        setPattE <- divClass "" $ submitClass "button button-outline w-100" PatPSPatt
-        pure (btnE, setPattE)
+        btnE' <- divClass "" $ (submitClass "button button-outline w-100" PWSSet)
+        setPattE' <- divClass "" $ submitClass "button button-outline w-100" PatPSPatt
+        pure (btnE', setPattE')
       let (emptyE, passE) = splitFilter (== "") passE'
-      let nextE = leftmost [CPMEmpty True <$ emptyE, CPMPattern <$ setPattE]
-      pure ((, True) <$> passE, nextE)
+      let nxtE = leftmost [CPMEmpty True <$ emptyE, CPMPattern <$ setPattE]
+      pure ((, True) <$> passE, nxtE)
     CPMPattern -> do
       changePasswordDescr False
-      patE <- setupPattern
+      patE' <- setupPattern
       divClass "fit-content ml-a mr-a" $ do
         setPassE <- divClass "" $ submitClass "button button-outline w-100" PatPSPass
         skipE <- divClass "" $ submitClass "button button-outline w-100" CEPSkip
-        let nextE = leftmost [CPMPassword <$ setPassE, CPMEmpty False <$ skipE]
-        pure ((, False) <$> patE, nextE)
+        let nxtE = leftmost [CPMPassword <$ setPassE, CPMEmpty False <$ skipE]
+        pure ((, False) <$> patE', nxtE)
   pure patE
   where
     boolToStage b = if b then CPMPassword else CPMPattern

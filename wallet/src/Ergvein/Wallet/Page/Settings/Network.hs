@@ -8,13 +8,10 @@ module Ergvein.Wallet.Page.Settings.Network
 
 import Control.Lens
 import Data.Functor.Misc (Const2(..))
-import Data.Maybe (isJust)
-import Network.Socket
 import Reflex.Dom
 import Reflex.ExternalRef
 import Text.Read
 
-import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
@@ -159,12 +156,12 @@ renderActive nsa refrE mconn = mdo
 
   tglE <- divClass "network-wrapper mt-3" $ case mconn of
     Nothing -> do
-      tglE <- divClass "network-name" $ do
+      tglE' <- divClass "network-name" $ do
         elAttr "span" offclass $ elClass "i" "fas fa-circle" $ pure ()
         divClass "mt-a mb-a network-name-txt" $ text $ namedAddrName nsa
         editBtn
       descrOption NSSOffline
-      pure tglE
+      pure tglE'
     Just conn -> do
       let clsUnauthD = ffor (indexConIsUp conn) $ \up -> if up then onclass else offclass
       let heightD = fmap (M.lookup BTC) $ indexerConHeight conn
@@ -178,14 +175,14 @@ renderActive nsa refrE mconn = mdo
           pure $ if up
             then if synced then onclass else unsyncClass
             else offclass
-      tglE <- divClass "network-name" $ do
+      tglE' <- divClass "network-name" $ do
         elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
         divClass "mt-a mb-a network-name-txt" $ text $ namedAddrName nsa
         editBtn
       latD <- indexerConnPingerWidget conn refrE
       descrOptionDyn $ NSSLatency <$> latD
       descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> heightD
-      pure tglE
+      pure tglE'
 
   void $ widgetHoldDyn $ ffor tglD $ \b -> if not b
     then pure ()
@@ -262,6 +259,3 @@ descrOption = divClass "network-descr" . localizedText
 
 descrOptionDyn :: (MonadFrontBase t m, LocalizedPrint a) => Dynamic t a -> m ()
 descrOptionDyn v = getLanguage >>= \langD -> divClass "network-descr" $ dynText $ ffor2 langD v localizedShow
-
-elBR :: MonadFrontBase t m => m ()
-elBR = el "br" blank

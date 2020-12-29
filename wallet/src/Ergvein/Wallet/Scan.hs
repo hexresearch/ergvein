@@ -17,7 +17,6 @@ import Data.Vector (Vector)
 
 import Ergvein.Filters.Btc.Mutable
 import Ergvein.Text
-import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Derive
 import Ergvein.Types.Keys
@@ -38,7 +37,6 @@ import Ergvein.Wallet.Storage.Util (addXPubKeyToKeystore)
 import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Util
 
-import qualified Data.List                          as L
 import qualified Data.Map.Strict                    as M
 import qualified Data.Set                           as S
 import qualified Data.Text                          as T
@@ -103,7 +101,7 @@ scannerBtc = void $ workflow checkRestored
           Right filt -> pure $ Just (h, bh, filt)
       psD <- getPubStorageD
       buildE <- getPostBuild
-      publishStatusUpdate $ CurrencyStatus BTC (StatNewFilters $ length fs) <$ buildE
+      void $ publishStatusUpdate $ CurrencyStatus BTC (StatNewFilters $ length fs) <$ buildE
       nextE <- delay 0.1 $ ffor (current psD `tag` buildE) $ \ps -> let
         ext = repackKeys External $ pubStorageKeys BTC External ps
         int = repackKeys Internal $ pubStorageKeys BTC Internal ps
@@ -189,14 +187,14 @@ getTxsToRemove ::
   Map BtcTxId (Set BtcTxId) ->
   Set RemoveRbfTxsInfo
 getTxsToRemove confirmedTxIds possiblyReplacedTxs =
-  M.foldrWithKey' (helper confirmedTxIds) S.empty possiblyReplacedTxs
+  M.foldrWithKey' helper S.empty possiblyReplacedTxs
   where
-    helper :: Set BtcTxId -> BtcTxId -> Set BtcTxId -> Set RemoveRbfTxsInfo -> Set RemoveRbfTxsInfo
-    helper confirmedTxIds possiblyReplacingTx possiblyReplacedTxs acc
-      | possiblyReplacingTx `S.member` confirmedTxIds = S.insert (RemoveRbfTxsInfo possiblyReplacingTx possiblyReplacingTx possiblyReplacedTxs) acc
-      | not $ S.null intersection = S.insert (RemoveRbfTxsInfo possiblyReplacingTx (S.findMin intersection) (S.insert possiblyReplacingTx (S.delete (S.findMin intersection) possiblyReplacedTxs))) acc
+    helper :: BtcTxId -> Set BtcTxId -> Set RemoveRbfTxsInfo -> Set RemoveRbfTxsInfo
+    helper possiblyReplacingTx possiblyReplacedTxs' acc
+      | possiblyReplacingTx `S.member` confirmedTxIds = S.insert (RemoveRbfTxsInfo possiblyReplacingTx possiblyReplacingTx possiblyReplacedTxs') acc
+      | not $ S.null intersection = S.insert (RemoveRbfTxsInfo possiblyReplacingTx (S.findMin intersection) (S.insert possiblyReplacingTx (S.delete (S.findMin intersection) possiblyReplacedTxs'))) acc
       | otherwise = acc
-      where intersection = possiblyReplacedTxs `S.intersection` confirmedTxIds -- This intersection must contain only one element, because possiblyReplacedTxs are conflicting and no more than one tx may be valid
+      where intersection = possiblyReplacedTxs' `S.intersection` confirmedTxIds -- This intersection must contain only one element, because possiblyReplacedTxs are conflicting and no more than one tx may be valid
 
 -- | Gets transactions related to given address from given block.
 getAddrTxsFromBlocks :: (HasPubStorage m, PlatformNatives)
@@ -270,13 +268,5 @@ refreshBtcKeys goE = do
   let storeE = fforMaybe ksVecE $ \(mks,_) -> case mks of
         Just ks -> Just $ Just . pubStorageSetKeyStorage BTC ks
         _ -> Nothing
-  modifyPubStorage "deriveNewBtcKeys" storeE
+  void $ modifyPubStorage "deriveNewBtcKeys" storeE
   pure $ snd <$> ksVecE
-
--- | Calculate number of last restore key and gap that indicates how many unused
--- keys we are scanned already.
-calcNumGap :: PubStorage -> Currency -> KeyPurpose -> Int
-calcNumGap ps cur s = let
-    l = V.length (pubStorageKeys cur s ps) - 1
-    unused = maybe 0 fst $ pubStorageLastUnusedKey cur s ps
-    in l - unused

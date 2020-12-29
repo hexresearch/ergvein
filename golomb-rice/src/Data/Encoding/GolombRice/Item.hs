@@ -3,11 +3,7 @@ module Data.Encoding.GolombRice.Item
   )
 where
 
-import           Data.Bits
-import           Data.Int
 import           Data.Word
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BSL
 
 -- | Golomb encoder can store anything that can be converted
 -- to 'Word64'.

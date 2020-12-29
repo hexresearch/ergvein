@@ -7,9 +7,8 @@ module Ergvein.Wallet.Page.Settings.MnemonicExport (
 
 import Control.Monad.IO.Class
 import Data.Text.Encoding (encodeUtf8)
+
 import Ergvein.Crypto
-import Ergvein.Text
-import Ergvein.Types.Currency
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
@@ -20,6 +19,7 @@ import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.QRCode
 import Ergvein.Wallet.Password
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Share
 import Ergvein.Wallet.Storage
 import Ergvein.Wallet.Storage.Util
@@ -33,13 +33,11 @@ mnemonicExportPage = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText PPSMnemonicTitle
   divClass "password-setup-descr" $ h5 $ localizedText PPSMnemonicDescr
   passE <- setupPassword =<< submitSetBtn
-  nextWidget $
-    ffor passE $ \pass ->
-      Retractable
-        { retractableNext = mnemonicExportResutlPage pass,
-          retractablePrev = Nothing
-        }
-  pure ()
+  void $ nextWidget $ ffor passE $ \pass ->
+    Retractable
+      { retractableNext = mnemonicExportResutlPage pass,
+        retractablePrev = Nothing
+      }
 
 mnemonicExportResutlPage :: MonadFront t m => Password -> m ()
 mnemonicExportResutlPage pass = do
@@ -54,27 +52,22 @@ mnemonicExportResutlPage pass = do
       base64D <- divClass "receive-qr" $ qrCodeWidgetWithData qrSizeXL encryptedMnemonic
       let mnemonicClass = if T.null pass then "" else "word-break-all"
       parClass mnemonicClass $ text encryptedMnemonic
-      divClass "mnemonic-export-buttons-wrapper" $ do
+      void $ divClass "mnemonic-export-buttons-wrapper" $ do
         copyE <- copyBtn
-        clipboardCopy (encryptedMnemonic <$ copyE)
-#ifdef ANDROID
-        shareE <- fmap (encryptedMnemonic <$) shareBtn
-        shareShareUrl shareE
-        shareQRE <- shareQRBtn
-        shareShareQR $ attachPromptlyDynWithMaybe (\m _ -> (, "qr_code") <$> m) base64D shareQRE
-#endif
-      pure ()
+        void $ clipboardCopy (encryptedMnemonic <$ copyE)
+        when isAndroid $ do
+          void $ shareShareUrl . (encryptedMnemonic <$) =<< shareBtn
+          shareQRE <- shareQRBtn
+          void $ shareShareQR $ attachPromptlyDynWithMaybe (\m _ -> (, "qr_code") <$> m) base64D shareQRE
 
 copyBtn :: MonadFront t m => m (Event t ())
 copyBtn = divClass "mnemonic-export-btn-wrapper" $ outlineTextIconButton CSCopy "fas fa-copy fa-lg"
 
-#ifdef ANDROID
 shareBtn :: MonadFront t m => m (Event t ())
 shareBtn = divClass "mnemonic-export-btn-wrapper" $ outlineTextIconButton CSShare "fas fa-share-alt fa-lg"
 
 shareQRBtn :: MonadFront t m => m (Event t ())
 shareQRBtn = divClass "mnemonic-export-btn-wrapper" $ outlineTextIconButton CSShareQR "fas fa-qrcode fa-lg"
-#endif
 
 encryptMnemonic :: (MonadIO m, MonadRandom m) => Mnemonic -> Password -> m Text
 encryptMnemonic mnemonic "" = pure mnemonic
