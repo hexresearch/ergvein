@@ -37,7 +37,13 @@ openDb overwriteDbVerOnMismatch dbtag dbDirectory = do
       dbSchemaVersion <- get db def schemaVersionRecKey
       if dbSchemaVersion == Just schemaVersion then
         pure db
-      else throw DbVersionMismatch
+      else do
+        let (dbName, overrideFlag) = case dbtag of
+              DBFilters -> ("Filters", "--override-ver-filters")
+              DBIndexer -> ("Indexer", "--override-ver-indexer")
+        putStrLn $ "[" <> dbName <> "]: Error! Database version mismatch!"
+        putStrLn $ "[" <> dbName <> "]: If you are sure, that the new schema is compatible, run with " <> overrideFlag
+        throw DbVersionMismatch
   pure levelDBContext
   where
     (schemaVersionRecKey, schemaVersion) = case dbtag of

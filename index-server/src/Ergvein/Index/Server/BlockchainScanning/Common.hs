@@ -75,9 +75,11 @@ scannerThread currency scanInfo = create $ logOnException threadName . scanItera
             when (current <= headBlockHeight) $ do
               tryBlockInfo <- try $ blockIteration headBlockHeight current
               enoughSpace <- isEnoughSpace
+              flg <- liftIO . readTVarIO =<< getShutdownFlag
               case tryBlockInfo of
                 Right (blockInfo@BlockInfo {..})
-                  | enoughSpace -> do
+                  | flg -> logInfoN $ "Told to shut down"
+                  | enoughSpace && not flg -> do
                     previousBlockSame <- isPreviousBlockSame $ blockMetaPreviousHeaderBlockHash $ blockInfoMeta
                     if previousBlockSame then do --fork detection
                       addBlockInfo blockInfo

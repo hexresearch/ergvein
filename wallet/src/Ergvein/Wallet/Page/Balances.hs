@@ -16,7 +16,6 @@ import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Status.Widget
 import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
-import Ergvein.Wallet.Debug
 
 import qualified Data.List as L
 

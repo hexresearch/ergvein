@@ -15,8 +15,8 @@ import Ergvein.Text
 import Ergvein.Types
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo.Btc
-import Ergvein.Types.Derive
 import Ergvein.Wallet.Alert
+import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Elements.Input
@@ -47,10 +47,6 @@ import qualified Data.Vector as V
 import qualified Network.Haskoin.Script as HS
 import qualified Network.Haskoin.Transaction as HT
 
-#ifdef ANDROID
-import Ergvein.Wallet.Camera
-#endif
-
 sendPage :: MonadFront t m => Currency -> Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), EgvAddress) -> m ()
 sendPage cur minit = mdo
   walletName <- getWalletName
@@ -70,20 +66,22 @@ sendPage cur minit = mdo
           feeInit = (\(_, f, _) -> f) <$> minit
       retInfoD <- form $ mdo
         recipientErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing))
-#ifdef ANDROID
-        recipientD <- validatedTextFieldSetVal RecipientString recipientInit recipientErrsD (leftmost [resQRcodeE, pasteE])
-        (qrE, pasteE, resQRcodeE) <- divClass "send-page-buttons-wrapper" $ do
-          qrE <- outlineTextIconButtonTypeButton CSScanQR "fas fa-qrcode fa-lg"
-          openE <- delay 1.0 =<< openCamara qrE
-          resQRcodeE <- (fmap . fmap) stripCurPrefix $ waiterResultCamera openE
-          pasteBtnE <- outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
-          pasteE <- clipboardPaste pasteBtnE
-          pure (qrE, pasteE, resQRcodeE)
-#else
-        recipientD <- validatedTextFieldSetVal RecipientString recipientInit recipientErrsD pasteE
-        pasteE <- divClass "send-page-buttons-wrapper" $ do
-          clipboardPaste =<< outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
-#endif
+        recipientD <- if isAndroid
+          then mdo
+            recipD <- validatedTextFieldSetVal RecipientString recipientInit recipientErrsD (leftmost [resQRcodeE, pasteE])
+            (pasteE, resQRcodeE) <- divClass "send-page-buttons-wrapper" $ do
+              qrE <- outlineTextIconButtonTypeButton CSScanQR "fas fa-qrcode fa-lg"
+              openE <- delay 1.0 =<< openCamara qrE
+              resQRcodeE' <- (fmap . fmap) stripCurPrefix $ waiterResultCamera openE
+              pasteBtnE <- outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
+              pasteE' <- clipboardPaste pasteBtnE
+              pure (pasteE', resQRcodeE')
+            pure recipD
+          else mdo
+            recipD <- validatedTextFieldSetVal RecipientString recipientInit recipientErrsD pasteE
+            pasteE <- divClass "send-page-buttons-wrapper" $ do
+              clipboardPaste =<< outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
+            pure recipD
         amountD <- sendAmountWidget amountInit $ () <$ validationE
         feeD    <- btcFeeSelectionWidget feeInit submitE
         submitE <- outlineSubmitTextIconButtonClass "w-100" SendBtnString "fas fa-paper-plane fa-lg"
@@ -185,8 +183,8 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr) = do
 -- TODO: modify to accomodate Ergo
 confirmationInfoWidget :: MonadFront t m => (UnitBTC, Word64) -> Word64 -> EgvAddress -> Maybe HT.Tx -> m ()
 confirmationInfoWidget (unit, amount) estFee addr mTx = divClass "send-confirm-info ta-l mb-1" $ do
-  let label = if isJust mTx then SSPosted else SSConfirm
-  elClass "h4" "ta-c mb-1" $ localizedText label
+  elClass "h4" "ta-c mb-1" $ localizedText $
+    if isJust mTx then SSPosted else SSConfirm
   mkrow AmountString (text $ showMoneyUnit (mkMoney amount) us <> " " <> symbolUnit cur us) False
   mkrow RecipientString (text $ egvAddrToString addr) True
   mkrow SSFee (text $ showt estFee <> " " <> symbolUnit cur (Units (Just BtcSat) Nothing)) False

@@ -18,12 +18,12 @@ module Data.MerkleTree (
   mtRoot,
   mtSize,
   mtHash,
-  mtHeight
+  mtHeight,
+  mtWidth
 ) where
 
 import Crypto.Hash (Digest, SHA3_256(..), hash)
 
-import qualified Data.List as List
 import qualified Data.Serialize as S
 import qualified Data.ByteArray as B
 import qualified Data.ByteArray.Encoding as B
@@ -31,9 +31,6 @@ import qualified Data.ByteString as BS
 import Data.Word
 import GHC.Generics
 import Data.Bits
-import qualified Data.ByteString.Lazy.UTF8 as BLU
-import qualified Data.Text as T
-import Data.Text.Encoding (encodeUtf8)
 import Control.DeepSeq
 
 -------------------------------------------------------------------------------
@@ -191,7 +188,7 @@ merkleProof (MerkleTree _ rootNode) leafRoot = MerkleProof $ constructPath [] ro
     constructPath pElems (MerkleLeaf leafRoot' _)
       | leafRoot == leafRoot' = pElems
       | otherwise             = []
-    constructPath pElems (MerkleBranch bRoot ln rn) = lPath ++ rPath
+    constructPath pElems (MerkleBranch _ ln rn) = lPath ++ rPath
       where
         lProofElem = ProofElem (mRoot ln) (mRoot rn) L
         rProofElem = ProofElem (mRoot rn) (mRoot ln) R

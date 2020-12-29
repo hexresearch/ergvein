@@ -3,6 +3,8 @@
 
 module Ergvein.Wallet.Page.Settings(
     settingsPage
+  , torPage
+  , currenciesPage
   ) where
 
 import Control.Lens
@@ -12,21 +14,16 @@ import Reflex.Dom
 import Reflex.ExternalRef
 
 import Ergvein.Crypto
-import Ergvein.Crypto.Keys
 import Ergvein.Text
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
-import Ergvein.Types.Derive
 import Ergvein.Types.Storage
-import Ergvein.Types.Storage.Currency.Public.Btc (BtcPubStorage(..))
-import Ergvein.Types.Storage.Currency.Public.Ergo (ErgoPubStorage(..))
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.AuthInfo
 import Ergvein.Wallet.Localization.Network
 import Ergvein.Wallet.Localization.Settings
-import Ergvein.Wallet.Localization.Storage
 import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
@@ -113,7 +110,7 @@ passwordChangePage = do
     let fpath = "meta_wallet_" <> T.replace " " "_" (_authInfo'login ai)
     storeValue fpath b True
   doneE <- storeWallet "passwordChangePage" =<< setAuthInfo (fmap (Just . fst) aibE)
-  nextWidget $ ffor doneE $ const $ Retractable{
+  void $ nextWidget $ ffor doneE $ const $ Retractable{
       retractableNext = settingsPage
     , retractablePrev = Nothing
     }
@@ -189,7 +186,7 @@ currenciesPage = do
               authN2 = authNew & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages %~ (Map.union mL)
           pure $ Just $ authN2
       setAuthInfoE <- setAuthInfo updateAE
-      storeWallet "currenciesPage" (void $ updated authD)
+      void $ storeWallet "currenciesPage" (void $ updated authD)
       showSuccessMsg $ STPSSuccess <$ setAuthInfoE
       pure ()
   where
@@ -302,20 +299,18 @@ deleteWalletPage = do
         deleteStoredFile walletName
         deleteStoredFile backupName
         deleteStoredFile ".last-wallet"
-      setAuthInfo $ Nothing <$ doneE
+      void $ setAuthInfo $ Nothing <$ doneE
       pure ((), never)
 
 lineOption :: MonadFront t m => m a -> m a
 lineOption = divClass "network-wrapper"
 
-nameOption, descrOption :: (MonadFront t m, LocalizedPrint a) => a -> m ()
-nameOption = divClass "network-name" . localizedText
+descrOption :: (MonadFront t m, LocalizedPrint a) => a -> m ()
 descrOption = (>>) elBR . divClass "network-descr" . localizedText
 
-valueOptionDyn, descrOptionDyn, descrOptionDynNoBR :: (MonadFront t m, LocalizedPrint a) => Dynamic t a -> m ()
+valueOptionDyn, descrOptionDyn :: (MonadFront t m, LocalizedPrint a) => Dynamic t a -> m ()
 valueOptionDyn v = getLanguage >>= \langD -> divClass "network-value" $ dynText $ ffor2 langD v localizedShow
 descrOptionDyn v = getLanguage >>= \langD -> (>>) elBR (divClass "network-descr" $ dynText $ ffor2 langD v localizedShow)
-descrOptionDynNoBR v = getLanguage >>= \langD -> divClass "network-descr" $ dynText $ ffor2 langD v localizedShow
 
 labelHorSep, elBR :: MonadFront t m => m ()
 labelHorSep = elAttr "hr" [("class","network-hr-sep-lb")] blank

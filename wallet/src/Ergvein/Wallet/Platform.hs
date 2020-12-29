@@ -16,7 +16,6 @@ import GHC.Generics (Generic)
 import Network.Haskoin.Constants
 import Network.Haskoin.Block as HB
 import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
 import qualified Ergvein.Types.Transaction as ETT
 import qualified Data.Vector as V
 

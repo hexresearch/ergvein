@@ -2,13 +2,10 @@ module Ergvein.Interfaces.Ergo.Scorex.Crypto.Authds where
 
 import Data.Aeson
 import Data.ByteString
-import Data.Serialize                     as S (Serialize (..), decode, encode, get, put)
+import Data.Serialize                     as S (Serialize (..), get, put)
 import Data.Serialize.Get                 as S
 import Data.Serialize.Put                 as S
 import Data.String
-import Data.Word
-
-import Ergvein.Aeson
 
 import Ergvein.Interfaces.Ergo.Scorex.Util.Package
 

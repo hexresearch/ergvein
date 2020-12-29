@@ -34,7 +34,6 @@ import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Resize
 import Ergvein.Wallet.Storage.Util
-import Ergvein.Wallet.Util
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
 
@@ -225,14 +224,13 @@ pasteBtnsWidget :: MonadFrontBase t m => m (Event t Text)
 pasteBtnsWidget = divClass "restore-seed-buttons-wrapper" $ do
   pasteBtnE <- pasteBtn
   pasteE <- clipboardPaste pasteBtnE
-#ifdef ANDROID
-  qrCodeBtnE <- scanQRBtn
-  openCameraE <- delay 1.0 =<< openCamara qrCodeBtnE
-  resQRCodeE <- waiterResultCamera openCameraE
-  pure $ leftmost [pasteE, resQRCodeE]
-#else
-  pure $ pasteE
-#endif
+  if isAndroid
+    then do
+      qrCodeBtnE <- scanQRBtn
+      openCameraE <- delay 1.0 =<< openCamara qrCodeBtnE
+      resQRCodeE <- waiterResultCamera openCameraE
+      pure $ leftmost [pasteE, resQRCodeE]
+    else pure pasteE
 
 data ParseState
   = PSWaiting

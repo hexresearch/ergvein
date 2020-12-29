@@ -1,4 +1,6 @@
 {-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
+{-# OPTIONS_GHC -Wno-unused-imports #-}
 module Ergvein.Wallet.Desktop.Run(
 
   ) where

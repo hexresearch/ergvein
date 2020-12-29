@@ -62,7 +62,7 @@ handleMsg _ (MFiltersRequest FilterRequest {..}) = do
   currency <- currencyCodeToCurrency filterRequestMsgCurrency
   slice <- getBlockMetaSlice currency filterRequestMsgStart filterRequestMsgAmount
   let filters = V.fromList $ convert <$> slice
-  addCounter filtersServedCounter $ fromIntegral $ V.length filters
+  void $ addCounter filtersServedCounter $ fromIntegral $ V.length filters
 
   pure $ pure $ MFiltersResponse $ FilterResponse
     { filterResponseCurrency = filterRequestMsgCurrency
@@ -88,3 +88,5 @@ handleMsg _ (MFeeRequest curs) = do
         _ -> let FeeBundle (_, h) (_, m) (_, l) = fb
           in FeeRespGeneric cur h m l
   pure $ pure $ MFeeResponse $ M.elems resps
+
+handleMsg _ _ = pure []

@@ -3,7 +3,6 @@ module Ergvein.Interfaces.Ergo.Mining.Difficulty.RequiredDifficulty where
 import Data.Aeson
 import Data.Bits
 import Data.Bool
-import Data.Bytes.Get
 import Data.Bytes.Put
 import Data.Word
 import Safe.Partial

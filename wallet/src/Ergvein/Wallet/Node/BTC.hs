@@ -35,7 +35,6 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node.Prim
 import Ergvein.Wallet.Node.Socket
 import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Settings
 
 -- These two are for dummy stats
 import Control.Monad.Random
@@ -158,12 +157,12 @@ peekMessage net url = do
 -- | Create version data message
 mkVers :: MonadIO m => Network -> SockAddr -> m Message
 mkVers net url = liftIO $ do
-  now   <- round <$> getPOSIXTime
+  ts   <- round <$> getPOSIXTime
   nonce <- randomIO
   pure $ MVersion $ Version
     { version = 70012
     , services = 0
-    , timestamp = now
+    , timestamp = ts
     , addrRecv = NetworkAddress 0 (sockToHostAddress url)
     , addrSend = NetworkAddress 0 (sockToHostAddress $ SockAddrInet 0 0)
     , verNonce = nonce

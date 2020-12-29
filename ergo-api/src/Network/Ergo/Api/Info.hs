@@ -2,13 +2,10 @@ module Network.Ergo.Api.Info where
 
 import Control.Lens ((^.))
 import Control.Monad.Reader
-import Data.Aeson
 import Data.String.Interpolate (i)
 import Data.Text
-import Data.Word
-import GHC.Generics
-import Network.Ergo.Api.Client
 import Ergvein.Interfaces.Ergo.It.Api.NodeApi
+import Network.Ergo.Api.Client
 
 import qualified Network.Wreq              as W
 import qualified Network.Wreq.Session      as WS

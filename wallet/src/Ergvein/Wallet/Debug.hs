@@ -6,29 +6,20 @@ module Ergvein.Wallet.Debug
 
 import Control.Lens
 import Control.Monad.IO.Class
-import Data.ByteString (ByteString)
-import Data.Maybe (fromMaybe, listToMaybe, catMaybes)
-import Network.Haskoin.Block hiding (BlockHash, BlockHeight)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Network.Haskoin.Transaction
 
 import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
-import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Storage.Currency.Public.Btc
-import Ergvein.Types.Utxo
 import Ergvein.Types.Utxo.Btc
-import Ergvein.Types.Transaction (BlockHash, BlockHeight)
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
-import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage
 import Ergvein.Wallet.Wrapper
-import Ergvein.Index.Protocol.Types (Message(..))
-import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S

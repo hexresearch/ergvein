@@ -6,7 +6,6 @@ module Ergvein.Wallet.Worker.Indexer
 import Control.Monad
 import Data.Functor.Misc (Const2(..))
 import Data.Time
-import Network.Socket (SockAddr)
 import Reflex.Dom
 import Reflex.ExternalRef
 import Ergvein.Wallet.Monad.Util

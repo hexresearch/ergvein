@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Wallet.IP(
     IP
   , SockAddr

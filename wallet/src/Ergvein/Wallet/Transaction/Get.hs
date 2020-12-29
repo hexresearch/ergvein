@@ -133,7 +133,7 @@ getOutsStatuses storedTxs storedAddrs tx = do
   pure outsStatuses
   where
     storedBtcTxs = getBtcTx . fromJust . toTxBtc <$> storedTxs
-    storedBtcAddrs = mapMaybe (\addr -> case addr of (BtcAddress addr) -> Just addr; _ -> Nothing) storedAddrs
+    storedBtcAddrs = mapMaybe (\addr -> case addr of (BtcAddress addr') -> Just addr'; _ -> Nothing) storedAddrs
     tx' = getBtcTx . fromJust . toTxBtc $ tx
     txHash = HK.txHash tx'
     outsToCheck = HK.txOut tx'

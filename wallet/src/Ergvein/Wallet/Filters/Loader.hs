@@ -19,10 +19,8 @@ module Ergvein.Wallet.Filters.Loader (
 import Data.ByteString (ByteString)
 
 import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
-import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Util
 

@@ -19,7 +19,6 @@ import Reflex.Dom
 import Reflex.ExternalRef
 import Text.Read
 
-import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
@@ -224,6 +223,3 @@ descrOption = divClass "network-descr" . localizedText
 
 descrOptionDyn :: (MonadFrontBase t m, LocalizedPrint a) => Dynamic t a -> m ()
 descrOptionDyn v = getLanguage >>= \langD -> divClass "network-descr" $ dynText $ ffor2 langD v localizedShow
-
-elBR :: MonadFrontBase t m => m ()
-elBR = el "br" blank

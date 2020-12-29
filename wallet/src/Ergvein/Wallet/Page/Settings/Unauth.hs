@@ -9,14 +9,12 @@ module Ergvein.Wallet.Page.Settings.Unauth
 import Control.Monad
 import Data.Maybe
 import Data.Text
-import Data.Word
 import Network.Socket
 import Reflex.Dom
 import Reflex.Dom.Retractable
 import Text.Read
 import Control.Lens
 
-import Ergvein.Text
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Elements.Inplace

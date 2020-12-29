@@ -39,7 +39,6 @@ import Network.DNS
 import Network.Socket (HostName, SockAddr)
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
-import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import Reflex.Host.Class
 import Reflex.Localize

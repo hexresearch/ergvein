@@ -100,9 +100,9 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
       sendChan <- liftIO newTChanIO
       liftIO $ forM_ msgs $ writeMsg sendChan
       -- Spawn message sender thread
-      fork $ sendLoop sendChan
+      void $ fork $ sendLoop sendChan
       -- Spawn broadcaster loop
-      fork $ broadcastLoop sendChan
+      void $ fork $ broadcastLoop sendChan
       -- Start message listener
       listenLoop sendChan
     _ -> do

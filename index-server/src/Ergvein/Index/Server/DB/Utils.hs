@@ -22,7 +22,6 @@ import Data.Default
 import Data.Either
 import Data.Serialize (Serialize)
 import Data.Text
-import Data.Text.Encoding
 import Data.Time
 import Database.LevelDB
 import Database.LevelDB.Iterator
@@ -35,10 +34,6 @@ import qualified Data.Serialize as S
 import qualified Data.Text as T
 import qualified Database.LevelDB as LDB
 import qualified Database.LevelDB.Streaming as LDBStreaming
-
-instance Serialize Text where
-  put txt = S.put $ encodeUtf8 txt
-  get     = decodeUtf8 <$> S.get
 
 unflatExact :: (EgvSerialize a) => Currency -> Text -> ByteString -> a
 unflatExact cur t s = case egvDeserialize cur s of

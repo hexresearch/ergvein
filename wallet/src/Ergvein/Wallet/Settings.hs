@@ -59,7 +59,6 @@ import Network.DNS.Resolver
 import Network.DNS.Types
 import Network.Socket (HostName, PortNumber)
 import System.Directory
-import Text.Read (readMaybe)
 
 import Ergvein.Aeson
 import Ergvein.Lens
