@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 module Ergvein.Wallet.Page.Password(
-    passwordPage
+    setupPasswordPage
   , setupLoginPage
   , setupPatternPage
   , askPasswordPage
@@ -24,6 +24,7 @@ import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Password
+import Ergvein.Wallet.Localization.Restore
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Password
@@ -48,8 +49,8 @@ setupBtcStartingHeight = do
         divClass "validate-error" . localizedText . either id SHSEstimate
     holdDyn defHeight hE
 
-passwordPage :: MonadFrontBase t m => WalletSource -> Maybe DerivPrefix -> Mnemonic -> [Currency] -> Maybe Text -> m ()
-passwordPage wt mpath mnemonic curs mlogin = wrapperSimple True $ do
+setupPasswordPage :: MonadFrontBase t m => WalletSource -> Maybe DerivPrefix -> Mnemonic -> [Currency] -> Maybe Text -> m ()
+setupPasswordPage wt mpath mnemonic curs mlogin = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText PPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText PPSDescr
   rec
@@ -66,7 +67,7 @@ passwordPage wt mpath mnemonic curs mlogin = wrapperSimple True $ do
         then confirmEmptyPage wt mnemonic curs login pass (Just path) height True
         else performAuth wt mnemonic curs login pass (Just path) height True
     , retractablePrev = if pass == ""
-        then Just $ pure $ passwordPage wt (Just path) mnemonic curs (Just login)
+        then Just $ pure $ setupPasswordPage wt (Just path) mnemonic curs (Just login)
         else Nothing
     }
 
@@ -102,9 +103,16 @@ performAuth :: MonadFrontBase t m
   -> Bool
   -> m ()
 performAuth wt mnemonic curs login pass mpath startingHeight isPass = do
-  buildE <- getPostBuild
-  storage <- initAuthInfo wt mpath mnemonic curs login pass startingHeight isPass
-  authInfoE <- handleDangerMsg $ storage <$ buildE
+  goE <- case wt of
+    WalletGenerated -> getPostBuild
+    WalletRestored -> wrapperSimple True $ do
+      h3 $ localizedText RPSTrafficTitle
+      elClass "h5" "overflow-wrap-bw" $ localizedText RPSTrafficWarn
+      elClass "h5" "overflow-wrap-bw" $ localizedText RPSTrafficWifi
+      outlineButton RPSTrafficAccept
+  storageE <- performEvent $ ffor goE $ const $
+    initAuthInfo wt mpath mnemonic curs login pass startingHeight isPass
+  authInfoE <- handleDangerMsg storageE
   void $ setAuthInfo $ Just <$> authInfoE
 
 setupLoginPage :: MonadFrontBase t m => WalletSource -> Maybe DerivPrefix -> Mnemonic -> [Currency] -> m ()
