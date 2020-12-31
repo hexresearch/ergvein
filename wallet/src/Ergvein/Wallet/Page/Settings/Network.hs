@@ -32,6 +32,7 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
+import Ergvein.Types.Transaction
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set        as S
@@ -152,56 +153,64 @@ activePageWidget = mdo
     pure (refrE', tglE')
   pure ()
 
-renderActive :: MonadFrontBase t m
+renderActive :: forall t m . MonadFrontBase t m
   => Text
   -> PeerInfo
   -> Event t ()
   -> (Maybe (IndexerConnection t))
   -> m ()
-renderActive nsa nfo refrE mconn = mdo
-  actD <- holdDyn (_peerInfoIsActive nfo) actE 
-  let actBtn = fmap switchDyn $ widgetHoldDyn $ ffor actD $ \b -> fmap (not b <$)
+renderActive nodeAddress nodeInfo refreshE nodeConnection = mdo
+  isNodeActiveD <- holdDyn (_peerInfoIsActive nodeInfo) nodeActivationE 
+  let actBtn = fmap switchDyn $ widgetHoldDyn $ ffor isNodeActiveD $ \isActive -> fmap (not isActive <$)
         $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a"
-        $ if b then NSSStop else NSSStart
-      delBtn = buttonClass "button button-outline m-0" NSSRefresh
-      f conn = do
-        let clsUnauthD = ffor (indexConIsUp conn) $ \up -> if up then onclass else offclass
-            heightD = fmap (M.lookup BTC) $ indexerConHeight conn
-        x <-fmap join $ liftAuth (pure clsUnauthD) $ do
-           hD <- getCurrentHeight BTC
-           pure $ do
-             h <- heightD
-             h' <- fmap (Just . fromIntegral) hD
-             up <- indexConIsUp conn
-             let synced = h == h' || Just 1 == ((-) <$> h' <*> h)
-             pure $ if up
-               then if synced then onclass else unsyncClass
-               else offclass
-        pure (x, heightD)
-  (actE, delE) <- divClass "network-wrapper mt-3" $ do
-    (actE, delE) <- divClass "network-name" $ do
-      elAttr "span" offclass $ elClass "i" "fas fa-circle" $ pure ()
-      divClass "mt-a mb-a network-name-txt" $ text $ nsa
-      when (_peerInfoIsPinned nfo) $ text "PINNED"
-      (,) <$> actBtn <*> delBtn
-    case mconn of
+        $ if isActive then NSSStop else NSSStart
+
+  (nodeActivationE, deletionE) <- divClass "network-wrapper mt-3" $ do
+    (nodeActivationE, deletionE) <- divClass "network-name" $ do
+      case nodeConnection of
+        Nothing -> elAttr "span" offclass $ elClass "i" "fas fa-circle" $ pure ()
+        Just connection -> do
+          let nodeHeightD = nodeHeight connection
+          nodeStatusClassD <- nodeStatusClass connection nodeHeightD
+          elDynAttr "span" nodeStatusClassD $ elClass "i" "fas fa-circle" $ pure ()
+      divClass "mt-a mb-a network-name-txt" $ text $ nodeAddress
+      when (_peerInfoIsPinned nodeInfo) $ text "PINNED"
+      nodeActivationE <- actBtn
+      deletionE <- buttonClass "button button-outline m-0" NSSRefresh
+      pure (nodeActivationE, deletionE) 
+    case nodeConnection of
       Nothing -> do
         descrOption NSSOffline
-      Just conn -> do
-        (clsD, heightD) <- f conn 
-        divClass "network-name" $ do
-          elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
-        latD <- indexerConnPingerWidget conn refrE
-        descrOptionDyn $ NSSLatency <$> latD
-        descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> heightD
-    pure (actE, delE)
+      Just connection -> do
+        let nodeHeightD = nodeHeight connection
+        latencyD <- indexerConnPingerWidget connection refreshE
+        descrOptionDyn $ NSSLatency <$> latencyD
+        descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> nodeHeightD
+    pure (nodeActivationE, deletionE)
   
-  setAddrActive $ (nsa,) <$> traceEvent "________________setAddrActive" actE
-  void $ deleteAddr $ nsa <$ delE
+  setAddrActive $ (nodeAddress,) <$> nodeActivationE
+  void $ deleteAddr $ nodeAddress <$ deletionE
   where
     offclass    = [("class", "mb-a mt-a indexer-offline")]
     onclass     = [("class", "mb-a mt-a indexer-online")]
     unsyncClass = [("class", "mb-a mt-a indexer-unsync")]
+
+    nodeHeight :: IndexerConnection t -> Dynamic t (Maybe BlockHeight)
+    nodeHeight = fmap (M.lookup BTC) . indexerConHeight
+
+    nodeStatusClass ::  MonadFrontBase t m => IndexerConnection t -> Dynamic t (Maybe BlockHeight) -> m (Dynamic t (M.Map Text Text))
+    nodeStatusClass nodeConnection nodeHeightD = do
+      let clsUnauthD = ffor (indexConIsUp nodeConnection) $ \up -> if up then onclass else offclass
+      fmap join $ liftAuth (pure clsUnauthD) $ do
+        walletHeightD <- getCurrentHeight BTC
+        pure $ do
+          nodeHeight <- nodeHeightD
+          walletHeight <- fmap (Just . fromIntegral) walletHeightD
+          isConnected <- indexConIsUp nodeConnection
+          pure $ case (nodeHeight, walletHeight) of 
+            (Just nodeH, Just walletH) | isConnected && nodeH >= pred walletH -> onclass
+            _                          | isConnected                          -> unsyncClass
+            otherwise                                                         -> offclass
 
 visibilityClass :: Text -> Bool -> Text
 visibilityClass classes True = classes <> " none"
