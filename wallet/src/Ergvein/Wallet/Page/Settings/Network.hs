@@ -143,7 +143,7 @@ activePageWidget = mdo
   setDiscovery dE
   void $ widgetHoldDyn $ ffor valsD $ \(conmap, urls) -> do
     let sorted = sortBy sortf $ M.toList urls
-    flip traverse sorted $ \(sa, _) -> renderActive sa ((M.! sa) <$> addrsD) refrE $ M.lookup sa conmap
+    flip traverse sorted $ \(sa, nfo) -> renderActive sa nfo refrE $ M.lookup sa conmap
   hideE <- addManual =<< (fmap namedAddrName) <$> addUrlWidget showD
   (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
@@ -154,51 +154,48 @@ activePageWidget = mdo
 
 renderActive :: MonadFrontBase t m
   => Text
-  -> Dynamic t PeerInfo
+  -> PeerInfo
   -> Event t ()
   -> (Maybe (IndexerConnection t))
   -> m ()
 renderActive nsa nfo refrE mconn = mdo
-  smp <- sampleDyn $ _peerInfoIsActive <$> nfo 
-  actD <- holdDyn smp actE 
-  let pinD = traceDyn "---------------------_peerInfoIsPinned" $ not . _peerInfoIsPinned <$> nfo
-      actBtn = fmap switchDyn $ widgetHoldDyn $ ffor actD $ \b -> fmap (not b <$)
+  actD <- holdDyn (_peerInfoIsActive nfo) actE 
+  let actBtn = fmap switchDyn $ widgetHoldDyn $ ffor actD $ \b -> fmap (not b <$)
         $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a"
         $ if b then NSSStop else NSSStart
       delBtn = buttonClass "button button-outline m-0" NSSRefresh
+      f conn = do
+        let clsUnauthD = ffor (indexConIsUp conn) $ \up -> if up then onclass else offclass
+            heightD = fmap (M.lookup BTC) $ indexerConHeight conn
+        x <-fmap join $ liftAuth (pure clsUnauthD) $ do
+           hD <- getCurrentHeight BTC
+           pure $ do
+             h <- heightD
+             h' <- fmap (Just . fromIntegral) hD
+             up <- indexConIsUp conn
+             let synced = h == h' || Just 1 == ((-) <$> h' <*> h)
+             pure $ if up
+               then if synced then onclass else unsyncClass
+               else offclass
+        pure (x, heightD)
+  (actE, delE) <- divClass "network-wrapper mt-3" $ do
+    (actE, delE) <- divClass "network-name" $ do
+      elAttr "span" offclass $ elClass "i" "fas fa-circle" $ pure ()
+      divClass "mt-a mb-a network-name-txt" $ text $ nsa
+      when (_peerInfoIsPinned nfo) $ text "PINNED"
+      (,) <$> actBtn <*> delBtn
+    case mconn of
+      Nothing -> do
+        descrOption NSSOffline
+      Just conn -> do
+        (clsD, heightD) <- f conn 
+        divClass "network-name" $ do
+          elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
+        latD <- indexerConnPingerWidget conn refrE
+        descrOptionDyn $ NSSLatency <$> latD
+        descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> heightD
+    pure (actE, delE)
   
-  (actE, delE) <- divClass "network-wrapper mt-3" $ case mconn of
-    Nothing -> do
-      (actE, delE) <- divClass "network-name" $ do
-        elAttr "span" offclass $ elClass "i" "fas fa-circle" $ pure ()
-        divClass "mt-a mb-a network-name-txt" $ text $ nsa
-        let menuClassesD = visibilityClass "" <$> pinD
-        divClassDyn menuClassesD $ text "PINNED"
-        (,) <$> actBtn <*> delBtn
-      descrOption NSSOffline
-      pure (actE, delE)
-    Just conn -> do
-      let clsUnauthD = ffor (indexConIsUp conn) $ \up -> if up then onclass else offclass
-      let heightD = fmap (M.lookup BTC) $ indexerConHeight conn
-      clsD <- fmap join $ liftAuth (pure clsUnauthD) $ do
-        hD <- getCurrentHeight BTC
-        pure $ do
-          h <- heightD
-          h' <- fmap (Just . fromIntegral) hD
-          up <- indexConIsUp conn
-          let synced = h == h' || Just 1 == ((-) <$> h' <*> h)
-          pure $ if up
-            then if synced then onclass else unsyncClass
-            else offclass
-      (actE, delE) <- divClass "network-name" $ do
-        elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
-        divClass "mt-a mb-a network-name-txt" $ text nsa
-        (,) <$> actBtn <*> delBtn
-      latD <- indexerConnPingerWidget conn refrE
-      descrOptionDyn $ NSSLatency <$> latD
-      descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> heightD
-      pure (actE, delE)
-
   setAddrActive $ (nsa,) <$> traceEvent "________________setAddrActive" actE
   void $ deleteAddr $ nsa <$ delE
   where
@@ -207,7 +204,7 @@ renderActive nsa nfo refrE mconn = mdo
     unsyncClass = [("class", "mb-a mt-a indexer-unsync")]
 
 visibilityClass :: Text -> Bool -> Text
-visibilityClass classes True = classes <> " hidden"
+visibilityClass classes True = classes <> " none"
 visibilityClass classes False = classes
 
 navbarWidget :: MonadFrontBase t m => NavbarItem -> m (Dynamic t NavbarItem)
