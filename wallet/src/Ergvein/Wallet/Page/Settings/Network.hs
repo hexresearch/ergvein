@@ -131,35 +131,48 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
 
 activePageWidget :: forall t m . MonadFrontBase t m => m ()
 activePageWidget = mdo
-  let sortf a b = on (comparing Down) (_peerInfoIsPinned . snd) a b 
-               <> on (comparing Down) (_peerInfoIsActive . snd) a b
-  connsD  <- externalRefDynamic =<< getActiveConnsRef
-  settD <- getSettingsD
-  addrsD  <- holdUniqDyn $ _settingsAddrs <$> settD
-  discoveryD  <- holdUniqDyn $ _settingsDiscoveryEnabled <$> settD
+  settingsD <- getSettingsD
+  nodeAddressesD  <- holdUniqDyn $ _settingsAddrs <$> settingsD
+  nodeConnectionsD <- externalRefDynamic =<< getActiveConnsRef
+  isDiscoveryEnabledD  <- holdUniqDyn $ _settingsDiscoveryEnabled <$> settingsD
+
+  renderNodeList nodeConnectionsD nodeAddressesD refreshE
+  isDiscoveryEnabledE <- renderDiscoveryEnabled isDiscoveryEnabledD
+
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
-  let valsD = (,) <$> connsD <*> addrsD
-  
-  dE <- updated <$> toggler NSSToggleDiscovery discoveryD 
-  setDiscovery dE
-  void $ widgetHoldDyn $ ffor valsD $ \(conmap, urls) -> do
-    let sorted = sortBy sortf $ M.toList urls
-    flip traverse sorted $ \(sa, nfo) -> renderActive sa nfo refrE $ M.lookup sa conmap
   hideE <- addManual =<< (fmap namedAddrName) <$> addUrlWidget showD
-  (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
-    refrE' <- buttonClass "button button-outline m-0" NSSRefresh
+  (refreshE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
+    refreshE' <- buttonClass "button button-outline m-0" NSSRefresh
     tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSPin else NSSAddUrl
-    pure (refrE', tglE')
+    pure (refreshE', tglE')
+  setDiscovery isDiscoveryEnabledE
   pure ()
+  where
+    renderNodeList :: Dynamic t (M.Map Text (IndexerConnection t)) -> Dynamic t (M.Map ErgveinNodeAddr PeerInfo) -> Event t () -> m ()
+    renderNodeList nodeConnectionsD nodeAddressesD refreshE = do
+      void $ widgetHoldDyn $ ffor2 nodeConnectionsD nodeAddressesD $ \nodeConnectionsMap nodeAddresses -> do
+        let sortedNodes = sortBy nodeSorting $ M.toList nodeAddresses
+        flip traverse sortedNodes $ \(nodeAddr, nodeInfo) -> do
+          let maybeNodeConnection = M.lookup nodeAddr nodeConnectionsMap
+          renderNode nodeAddr nodeInfo refreshE maybeNodeConnection
 
-renderActive :: forall t m . MonadFrontBase t m
-  => Text
+    renderDiscoveryEnabled :: Dynamic t Bool -> m (Event t Bool)
+    renderDiscoveryEnabled isDiscoveryEnabledD = updated <$> toggler NSSToggleDiscovery isDiscoveryEnabledD 
+
+    nodeSorting :: (ErgveinNodeAddr, PeerInfo) -> (ErgveinNodeAddr, PeerInfo) -> Ordering
+    nodeSorting a b = compareOn (_peerInfoIsPinned . snd) <> compareOn (_peerInfoIsActive . snd) <> compareOn fst
+      where
+        compareOn :: Ord a => ((ErgveinNodeAddr, PeerInfo) -> a) -> Ordering
+        compareOn selector = on (comparing Down) selector a b
+
+renderNode :: forall t m . MonadFrontBase t m
+  => ErgveinNodeAddr
   -> PeerInfo
   -> Event t ()
   -> (Maybe (IndexerConnection t))
   -> m ()
-renderActive nodeAddress nodeInfo refreshE nodeConnection = mdo
+renderNode nodeAddress nodeInfo refreshE nodeConnection = mdo
   isNodeActiveD <- holdDyn (_peerInfoIsActive nodeInfo) nodeActivationE 
   let actBtn = fmap switchDyn $ widgetHoldDyn $ ffor isNodeActiveD $ \isActive -> fmap (not isActive <$)
         $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a"
