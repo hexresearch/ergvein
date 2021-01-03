@@ -167,18 +167,30 @@ renderActive nodeAddress nodeInfo refreshE nodeConnection = mdo
 
   (nodeActivationE, deletionE) <- divClass "network-wrapper mt-3" $ do
     (nodeActivationE, deletionE) <- divClass "network-name" $ do
-      case nodeConnection of
-        Nothing -> elAttr "span" offclass $ elClass "i" "fas fa-circle" $ pure ()
-        Just connection -> do
-          let nodeHeightD = nodeHeight connection
-          nodeStatusClassD <- nodeStatusClass connection nodeHeightD
-          elDynAttr "span" nodeStatusClassD $ elClass "i" "fas fa-circle" $ pure ()
+      renderStatus
       divClass "mt-a mb-a network-name-txt" $ text $ nodeAddress
       when (_peerInfoIsPinned nodeInfo) $ text "PINNED"
       nodeActivationE <- actBtn
       deletionE <- buttonClass "button button-outline m-0" NSSRefresh
       pure (nodeActivationE, deletionE) 
-    case nodeConnection of
+    renderStatusInfo
+    pure (nodeActivationE, deletionE)
+  
+  setAddrActive $ (nodeAddress,) <$> nodeActivationE
+  void $ deleteAddr $ nodeAddress <$ deletionE
+  where
+    renderStatus :: m ()
+    renderStatus = do
+      case nodeConnection of
+        Just connection -> do
+          let nodeHeightD = nodeHeight connection
+          nodeStatusClassD <- nodeStatusClass connection nodeHeightD
+          elDynAttr "span" nodeStatusClassD $ elClass "i" "fas fa-circle" $ pure ()
+        Nothing -> elAttr "span" offclass $ elClass "i" "fas fa-circle" $ pure ()
+
+    renderStatusInfo :: m ()
+    renderStatusInfo = 
+     case nodeConnection of
       Nothing -> do
         descrOption NSSOffline
       Just connection -> do
@@ -186,11 +198,7 @@ renderActive nodeAddress nodeInfo refreshE nodeConnection = mdo
         latencyD <- indexerConnPingerWidget connection refreshE
         descrOptionDyn $ NSSLatency <$> latencyD
         descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> nodeHeightD
-    pure (nodeActivationE, deletionE)
-  
-  setAddrActive $ (nodeAddress,) <$> nodeActivationE
-  void $ deleteAddr $ nodeAddress <$ deletionE
-  where
+
     offclass    = [("class", "mb-a mt-a indexer-offline")]
     onclass     = [("class", "mb-a mt-a indexer-online")]
     unsyncClass = [("class", "mb-a mt-a indexer-unsync")]
