@@ -5,6 +5,7 @@ module Data.Ergo.Protocol.Encoder(
   , handshakeEncoder
   ) where
 
+import Data.Bits
 import Data.ByteString (ByteString)
 import Data.Ergo.Protocol.Check
 import Data.Ergo.Protocol.Types
@@ -41,6 +42,39 @@ word16BE = put . BigEndian
 
 word8 :: Word8 -> Put ()
 word8 = put
+
+-- | Shifting right with stopping propogation of sign bit
+class ShiftRS a where
+  shiftRS :: a -> Int -> a
+
+instance ShiftRS Word64 where
+  shiftRS = shiftR
+  {-# INLINE shiftRS #-}
+
+instance ShiftRS Int64 where
+  shiftRS a i
+    | a >= 0 = shiftR a i
+    | otherwise = shiftR a i + (shiftL 2 (complement i))
+  {-# INLINE shiftRS #-}
+
+instance ShiftRS Word32 where
+  shiftRS = shiftR
+  {-# INLINE shiftRS #-}
+
+instance ShiftRS Int32 where
+  shiftRS a i
+    | a >= 0 = shiftR a i
+    | otherwise = shiftR a i + (shiftL 2 (complement i))
+  {-# INLINE shiftRS #-}
+
+vlq :: (Integral a, ShiftRS a, Bits a) => a -> Put ()
+vlq w | w .&. complement 0x7F == 0 = word8 $ fromIntegral w
+      | otherwise = do
+        word8 $ fromIntegral ((fromIntegral (w .&. 0x7F) :: Word32) .|. 0x80)
+        vlq $ shiftRS w 7
+
+int64Vlq :: Int64 -> Put ()
+int64Vlq = vlq
 
 encodeMessage :: Network -> Message -> ByteString
 encodeMessage net msg = runPut $ messageEncoder net msg
@@ -97,7 +131,7 @@ encodeStateType StateDigest = word8 1
 
 handshakeEncoder :: Handshake -> Put ()
 handshakeEncoder Handshake{..} = do
-  int64BE time
+  int64Vlq time
   encodeVarText agentName
   encodeVersion version
   encodeVarText peerName

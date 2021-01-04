@@ -26,6 +26,8 @@ library
     , stm               >= 2.4
     , text              >= 1.2
     , vector            >= 0.12
+
+    , base16-bytestring
   default-extensions:
     CPP
     DeriveAnyClass

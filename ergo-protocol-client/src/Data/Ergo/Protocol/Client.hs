@@ -20,6 +20,7 @@ import Data.IORef
 import GHC.Generics
 
 import Debug.Trace
+import qualified Data.ByteString.Base16 as B16
 
 import qualified Network.Socket.Manager.TCP.Client as C
 
@@ -27,6 +28,9 @@ peekMessage :: Network -> IORef Bool -> C.PeekerIO Message
 peekMessage net initRef = do
   isinit <- liftIO $ readIORef initRef
   if isinit then do
+    bs <- C.peekAll
+    traceShowM bs
+    traceShowM $ B16.encode bs
     h <- peekHandshake (fmap traceShowId . C.peek . traceShowId)
     liftIO $ writeIORef initRef False
     pure $ MsgHandshake h

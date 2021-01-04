@@ -1,8 +1,6 @@
 module Data.Ergo.Protocol.Decoder(
     decodeMessage
   , decodeHandshake
-  , peekHandshake
-  , simplePeeker
   , messageParser
   , handshakeParser
   , parseMsgLength
@@ -13,6 +11,7 @@ module Data.Ergo.Protocol.Decoder(
 import Control.Monad.IO.Class
 import Control.Monad hiding (fail)
 import Control.Monad.Fail
+import Data.Bits
 import Data.ByteString (ByteString)
 import Data.Ergo.Protocol.Check
 import Data.Ergo.Protocol.Types
@@ -36,40 +35,6 @@ decodeMessage net = runGet $ messageParser net
 -- | Decode only handshake message
 decodeHandshake :: ByteString -> Either String Handshake
 decodeHandshake = runGet handshakeParser
-
--- | Incremental parsing of handshake message
-peekHandshake :: forall m . MonadFail m => (Int -> m ByteString) -> m Handshake
-peekHandshake peek = do
-  (t, al) <- parse 9 $ (,) <$> anyInt64be <*> anyWord8
-  (at, v, pl) <- parse (fromIntegral $ al + 4) $ (,,) <$> parseTextN al <*> parseVersion <*> anyWord8
-  (pt, addrf) <- parse (fromIntegral $ pl + 1) $ (,) <$> parseTextN pl <*> anyWord8
-  paddr <- if addrf == 0 then pure Nothing else do
-      nl <- parse 1 anyWord8
-      (addr, p) <- parse (fromIntegral $ nl + 4) $ (,) <$> parseIPN nl <*> anyWord32be
-      pure $ Just $ NetAddr addr p
-  featuresN <- parse 1 anyWord8
-  fs <- V.replicateM (fromIntegral featuresN) $ do
-    (i, l) <- parse 3 $ (,) <$> anyWord8 <*> anyWord16be
-    parse (fromIntegral l) $ parsePeerFeatureN i l
-  pure Handshake {
-      time         = t
-    , agentName    = at
-    , version      = v
-    , peerName     = pt
-    , publicAddr   = paddr
-    , peerFeatures = fs
-    }
-  where
-    parse :: forall a . Int -> Get a -> m a
-    parse n p = do
-      bs <- peek n
-      either fail pure $ runGet p bs
-
--- | Peeker that peeks from preloaded bytestring. Used for testing.
-simplePeeker :: forall m . (MonadFail m, MonadIO m) => ByteString -> IO (Int -> m ByteString)
-simplePeeker bs = do
-  r <- newIORef bs
-  pure $ \n -> liftIO $ atomicModifyIORef' r $ \b -> (BS.drop n b, BS.take n b)
 
 embedParser :: String -> Get a -> ByteString -> Get a
 embedParser msg p bs = case runGet p bs of
@@ -102,6 +67,18 @@ anyWord32le = fmap unLE get
 
 anyWord16be :: Get Word16
 anyWord16be = fmap unBE get
+
+-- | Parse VLQ (variable int) encoding.
+--
+-- https://ergoplatform.org/docs/ErgoTree.pdf
+vlqInt64 :: Get Int64
+vlqInt64 = go 0 0
+  where
+    go !i !acc = do
+      w <- anyWord8
+      if w .&. complement 0x7F == 0
+        then pure $ acc + shiftL w i
+        else go (i+8) (acc + shiftL (w .&. 0x7F) i)
 
 -- | Parse first 4+1+4=9 bytes and return length of rest message.
 --
@@ -199,7 +176,7 @@ parsePeerFeatureN i l
 
 handshakeParser :: Get Handshake
 handshakeParser = Handshake
-  <$> anyInt64be
+  <$> int64Vlq
   <*> parseText
   <*> parseVersion
   <*> parseText

@@ -31,6 +31,7 @@ library
     , text              >= 1.2
     , vector            >= 0.12
   default-extensions:
+    BangPatterns
     CPP
     DeriveAnyClass
     DeriveGeneric
