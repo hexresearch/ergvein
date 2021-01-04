@@ -182,7 +182,6 @@ renderNode nodeAddress nodeInfo refreshE nodeConnection = mdo
     (nodeActivationE, deletionE) <- divClass "network-name" $ do
       renderStatus
       divClass "mt-a mb-a network-name-txt" $ text $ nodeAddress
-      when (_peerInfoIsPinned nodeInfo) $ text "PINNED"
       nodeActivationE <- actBtn
       deletionE <- buttonClass "button button-outline m-0" NSSRefresh
       pure (nodeActivationE, deletionE) 
@@ -194,12 +193,14 @@ renderNode nodeAddress nodeInfo refreshE nodeConnection = mdo
   where
     renderStatus :: m ()
     renderStatus = do
+      let colorEncodedStatusShape = if _peerInfoIsPinned nodeInfo then "star" else "circle"
+          colorEncodedStatus = elClass "i" ("fas fa-" <> colorEncodedStatusShape) $ pure ()
       case nodeConnection of
         Just connection -> do
           let nodeHeightD = nodeHeight connection
           nodeStatusClassD <- nodeStatusClass connection nodeHeightD
-          elDynAttr "span" nodeStatusClassD $ elClass "i" "fas fa-circle" $ pure ()
-        Nothing -> elAttr "span" offclass $ elClass "i" "fas fa-circle" $ pure ()
+          elDynAttr "span" nodeStatusClassD colorEncodedStatus
+        Nothing -> elAttr "span" offclass colorEncodedStatus
 
     renderStatusInfo :: m ()
     renderStatusInfo = 
