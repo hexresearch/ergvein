@@ -139,11 +139,6 @@ data NetSetupStrings
   | NSSIndexerHeight BlockHeight
   | NSSOffline
   | NSSRefresh
-  | NSSPing
-  | NSSPingAll
-  | NSSDisable
-  | NSSEnable
-  | NSSForget
   | NSSResolveConfDefault
   | NSSRestoreUrls
   | NSSRestoreDef
@@ -157,11 +152,8 @@ data NetSetupStrings
   | NSSToggleDiscovery
   | NSSAddDns
   | NSSAdd
-  | NSSPin
-  | NSSUnpin
-  | NSSStart
-  | NSSStop
-  | NSSCopyURL
+  | NSSDisable
+  | NSSEnable
   | NSSFailedDns
   | NSSNoHeight
   | NSSCancel
@@ -174,11 +166,8 @@ instance LocalizedPrint NetSetupStrings where
       NSSIndexerHeight h -> "Height: " <> showt h
       NSSOffline      -> "Offline"
       NSSRefresh      -> "Refresh"
-      NSSPing         -> "Ping"
       NSSDisable      -> "Disable"
       NSSEnable       -> "Enable"
-      NSSForget       -> "Forget"
-      NSSPingAll      -> "Ping all"
       NSSResolveConfDefault -> "Using servers from system configuration"
       NSSRestoreUrls  -> "Restore default"
       NSSRestoreDef   -> "Restore default values"
@@ -188,16 +177,11 @@ instance LocalizedPrint NetSetupStrings where
       NSSReqNumMax    -> "Required number of confirmations"
       NSSSave         -> "Save"
       NSSAddUrl       -> "Add indexer"
-      NSSToggleDiscovery -> "Toggle Discovery"
+      NSSToggleDiscovery -> "Automatic network discovery"
       NSSAddDns       -> "Add DNS"
       NSSAdd          -> "Add"
       NSSDelete       -> "Delete"
-      NSSPin          -> "Pin"
-      NSSUnpin        -> "Unpin"
-      NSSStart        -> "Start"
-      NSSStop         -> "Stop"
       NSSCancel       -> "Cancel"
-      NSSCopyURL      -> "Copy URL"
       NSSFailedDns    -> "Failed to parse DNS IP"
       NSSNoHeight     -> "None"
     Russian -> case v of
@@ -205,11 +189,8 @@ instance LocalizedPrint NetSetupStrings where
       NSSLatency lat  -> "Задержка: " <> showt lat
       NSSIndexerHeight h -> "Высота: " <> showt h
       NSSOffline      -> "Оффлайн"
-      NSSPing         -> "Запросить статус"
       NSSDisable      -> "Отключить"
       NSSEnable       -> "Включить"
-      NSSForget       -> "Забыть"
-      NSSPingAll      -> "Запросить всех"
       NSSResolveConfDefault -> "Используем глобальные настройки системы"
       NSSRestoreUrls  -> "Сервера по умолчанию"
       NSSRestoreDef   -> "Значения по умолчанию"
@@ -219,15 +200,10 @@ instance LocalizedPrint NetSetupStrings where
       NSSReqNumMax    -> "Необходимое количество подтверждений"
       NSSSave         -> "Сохранить"
       NSSAddUrl       -> "Добавить индексер"
-      NSSToggleDiscovery -> "Toggle Discovery"
+      NSSToggleDiscovery -> "автоматическое построение сети"
       NSSAddDns       -> "Добавить DNS"
       NSSAdd          -> "Добавить"
       NSSDelete       -> "Удалить"
-      NSSPin          -> "Закрепить"
-      NSSUnpin        -> "Открепить"
-      NSSStart        -> "Старт"
-      NSSStop         -> "Стоп"
-      NSSCopyURL      -> "Copy URL"
       NSSFailedDns    -> "Некорректный IP DNS сервера"
       NSSNoHeight     -> "Нет"
       NSSCancel       -> "Отмена"

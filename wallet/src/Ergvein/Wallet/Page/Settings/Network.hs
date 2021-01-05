@@ -38,16 +38,16 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set        as S
 import qualified Data.Text       as T
 
-data NavbarItem = ActivePage | ParametersPage
+data NavbarItem = NodesPage | ParametersPage
   deriving (Eq)
 
 instance LocalizedPrint NavbarItem where
   localizedShow l v = case l of
     English -> case v of
-      ActivePage      -> "Active indexers"
+      NodesPage      -> "Nodes"
       ParametersPage  -> "Network parameters"
     Russian -> case v of
-      ActivePage      -> "Используемые индексеры"
+      NodesPage      -> "Узлы"
       ParametersPage  -> "Сетевые параметры"
 
 data ParametersParseErrors = PPENDT | PPEInt
@@ -65,16 +65,16 @@ networkSettingsPage :: MonadFront t m => m ()
 networkSettingsPage = do
   title <- localized NSSTitle
   wrapper False title (Just $ pure networkSettingsPage ) $ do
-    navD <- navbarWidget ActivePage
+    navD <- navbarWidget NodesPage
     void $ widgetHoldDyn $ ffor navD $ \case
-      ActivePage      -> activePageWidget
+      NodesPage      -> networkPageWidget
       ParametersPage  -> parametersPageWidget
 
 networkSettingsPageUnauth :: MonadFrontBase t m => m ()
 networkSettingsPageUnauth = wrapperSimple False $ do
-  navD <- navbarWidget ActivePage
+  navD <- navbarWidget NodesPage
   void $ widgetHoldDyn $ ffor navD $ \case
-    ActivePage      -> activePageWidget
+    NodesPage      -> networkPageWidget
     ParametersPage  -> parametersPageWidget
 
 parametersPageWidget :: MonadFrontBase t m => m ()
@@ -129,22 +129,22 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
     _ -> pure ()
   pure $ fmapMaybe id murlE
 
-activePageWidget :: forall t m . MonadFrontBase t m => m ()
-activePageWidget = mdo
+networkPageWidget :: forall t m . MonadFrontBase t m => m ()
+networkPageWidget = mdo
   settingsD <- getSettingsD
   nodeAddressesD  <- holdUniqDyn $ _settingsAddrs <$> settingsD
   nodeConnectionsD <- externalRefDynamic =<< getActiveConnsRef
   isDiscoveryEnabledD  <- holdUniqDyn $ _settingsDiscoveryEnabled <$> settingsD
 
-  renderNodeList nodeConnectionsD nodeAddressesD refreshE
   isDiscoveryEnabledE <- renderDiscoveryEnabled isDiscoveryEnabledD
+  renderNodeList nodeConnectionsD nodeAddressesD refreshE
 
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   hideE <- addManual =<< (fmap namedAddrName) <$> addUrlWidget showD
   (refreshE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refreshE' <- buttonClass "button button-outline m-0" NSSRefresh
     tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
-      fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSPin else NSSAddUrl
+      fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSCancel else NSSAddUrl
     pure (refreshE', tglE')
   setDiscovery isDiscoveryEnabledE
   pure ()
@@ -176,14 +176,14 @@ renderNode nodeAddress nodeInfo refreshE nodeConnection = mdo
   isNodeActiveD <- holdDyn (_peerInfoIsActive nodeInfo) nodeActivationE 
   let actBtn = fmap switchDyn $ widgetHoldDyn $ ffor isNodeActiveD $ \isActive -> fmap (not isActive <$)
         $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a"
-        $ if isActive then NSSStop else NSSStart
+        $ if isActive then NSSDisable else NSSEnable
 
   (nodeActivationE, deletionE) <- divClass "network-wrapper mt-3" $ do
     (nodeActivationE, deletionE) <- divClass "network-name" $ do
       renderStatus
       divClass "mt-a mb-a network-name-txt" $ text $ nodeAddress
       nodeActivationE <- actBtn
-      deletionE <- buttonClass "button button-outline m-0" NSSRefresh
+      deletionE <- buttonClass "button button-outline m-0" NSSDelete
       pure (nodeActivationE, deletionE) 
     renderStatusInfo
     pure (nodeActivationE, deletionE)
@@ -241,7 +241,7 @@ visibilityClass classes False = classes
 navbarWidget :: MonadFrontBase t m => NavbarItem -> m (Dynamic t NavbarItem)
 navbarWidget initItem = divClass "navbar-2-cols" $ mdo
   selD <- holdDyn initItem selE
-  selE <- fmap leftmost $ flip traverse [ActivePage] $ \i -> do
+  selE <- fmap leftmost $ flip traverse [NodesPage, ParametersPage] $ \i -> do
     let attrD = (\ai -> "navbar-item" <> if i == ai then " active" else "") <$> selD
     pure . (<$) i =<< spanButton attrD i
   pure selD
