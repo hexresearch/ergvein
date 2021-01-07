@@ -158,7 +158,9 @@ networkPageWidget = mdo
           renderNode nodeAddr nodeInfo refreshE maybeNodeConnection
 
     renderDiscoveryEnabled :: Dynamic t Bool -> m (Event t Bool)
-    renderDiscoveryEnabled isDiscoveryEnabledD = updated <$> toggler NSSToggleDiscovery isDiscoveryEnabledD 
+    renderDiscoveryEnabled isDiscoveryEnabledD = do
+      localizedText NSSToggleDiscovery
+      updated <$> (elClass "span" "discoveryToggler" $ toggler isDiscoveryEnabledD)
 
     nodeSorting :: (ErgveinNodeAddr, PeerInfo) -> (ErgveinNodeAddr, PeerInfo) -> Ordering
     nodeSorting a b = compareOn (_peerInfoIsPinned . snd) <> compareOn (_peerInfoIsActive . snd) <> compareOn fst

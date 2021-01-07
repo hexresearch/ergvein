@@ -756,6 +756,10 @@ networkPageCss = do
     gridGap $ em 0.5
     marginLeft auto
     marginRight auto
+  ".discoveryToggler" ? do
+    marginLeft $ em 1;
+    display inlineBlock
+    verticalAlign middle
   query M.screen [M.minWidth tabletBreakpoint] $ ".net-btns-3" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1, fr 1]

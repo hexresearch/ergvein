@@ -1,6 +1,7 @@
 module Ergvein.Wallet.Elements.Toggle(
     toggleButton
   , toggler
+  , labeledToggler
   ) where
 
 import Control.Lens
@@ -29,11 +30,11 @@ toggleButton lblOff lblOn val0D = mdo
   pure valD'
 
 -- | Toggler switch with alya materlized looking
-toggler :: (DomBuilder t m, PostBuild t m, MonadSample t m, MonadIO m, MonadLocalized t m, LocalizedPrint l)
+labeledToggler :: (DomBuilder t m, PostBuild t m, MonadSample t m, MonadIO m, MonadLocalized t m, LocalizedPrint l)
   => l
   -> (Dynamic t Bool)
   -> m  (Dynamic t Bool)
-toggler lbl initialChecked = do
+labeledToggler lbl initialChecked = do
   let initE = updated initialChecked
   initVal <- sample $ current initialChecked
   i <- genId
@@ -41,6 +42,22 @@ toggler lbl initialChecked = do
   input <- elClass "label" "switch" $ do
     input <- inputElement $ def
       & inputElementConfig_elementConfig . elementConfig_initialAttributes %~ (\as -> "id" =: i <> "type" =: "checkbox" <> as)
+      & inputElementConfig_initialChecked .~ initVal
+      & inputElementConfig_setChecked .~ initE
+    spanClass "slider" $ pure ()
+    pure input
+  pure $ _inputElement_checked input
+
+-- | Toggler switch with alya materlized looking
+toggler :: (DomBuilder t m, PostBuild t m, MonadSample t m, MonadIO m)
+  => (Dynamic t Bool)
+  -> m  (Dynamic t Bool)
+toggler  initialChecked = do
+  let initE = updated initialChecked
+  initVal <- sample $ current initialChecked
+  input <- elClass "label" "switch" $ do
+    input <- inputElement $ def
+      & inputElementConfig_elementConfig . elementConfig_initialAttributes %~ (\as -> "type" =: "checkbox" <> as)
       & inputElementConfig_initialChecked .~ initVal
       & inputElementConfig_setChecked .~ initE
     spanClass "slider" $ pure ()
