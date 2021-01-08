@@ -19,6 +19,8 @@ import Data.ByteString (ByteString)
 
 import qualified Data.ByteString as BS
 
+import Debug.Trace
+
 type CheckSum = ByteString
 
 -- | Take 4 bytes from blake2b256 of payload
@@ -27,4 +29,4 @@ checkSum = BS.take 4 . convert . hashWith Blake2b_256
 
 -- | Validate given payload check sum
 validateSum :: CheckSum -> ByteString -> Bool
-validateSum s = (s ==) . checkSum
+validateSum s = traceShow s . (s ==) . traceShowId . checkSum

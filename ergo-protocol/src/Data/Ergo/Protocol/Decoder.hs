@@ -90,6 +90,9 @@ vlqInt64 = vlq
 vlqWord16 :: Get Word16
 vlqWord16 = vlq
 
+vlqWord32 :: Get Word32
+vlqWord32 = vlq
+
 -- | Parse first 4+1+4=9 bytes and return length of rest message.
 --
 -- The helper designed for usage in sockets.
@@ -121,8 +124,8 @@ parseMsgBody i l = runGet $ msgBodyParser i l
 -- | Parse message without id and length
 msgBodyParser :: Int -> Int -> Get Message
 msgBodyParser i l = do
-  body <- getByteString (fromIntegral l)
   c <- getByteString 4
+  body <- getByteString (fromIntegral l)
   unless (validateSum c body) $ fail "Check sum failed for body!"
   if -- | i == handshakeId -> MsgHandshake <$> embedParser "Handshake parsing error" handshakeParser body
      | otherwise -> fail $ "Unknown message type " <> show i
