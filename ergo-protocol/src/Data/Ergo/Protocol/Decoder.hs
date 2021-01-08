@@ -2,8 +2,10 @@ module Data.Ergo.Protocol.Decoder(
     decodeMessage
   , decodeHandshake
   , messageParser
+  , msgBodyParser
   , handshakeParser
   , parseMsgLength
+  , parseMsgBody
   , anyWord32be
   , runGet
   ) where
@@ -32,7 +34,7 @@ import Debug.Trace
 
 -- | Perform parsing of whole message from bytestring without remainder
 decodeMessage :: Network -> ByteString -> Either String Message
-decodeMessage net = runGet $ messageParser net
+decodeMessage = runGet . messageParser
 
 -- | Decode only handshake message
 decodeHandshake :: ByteString -> Either String Handshake
@@ -91,22 +93,34 @@ vlqWord16 = vlq
 -- | Parse first 4+1+4=9 bytes and return length of rest message.
 --
 -- The helper designed for usage in sockets.
-parseMsgLength :: Network -> ByteString -> Either String Int
-parseMsgLength net bs = do
-  (mb, _, l) <- runGet headerParser bs
-  unless (magicBytes net == mb) $ Left $ "Wrong magic bytes of message! Expected: "
+--
+-- First int is message id, second is message length in bytes.
+parseMsgLength :: Network -> ByteString -> Either String (Int, Int)
+parseMsgLength = runGet . lengthParser
+
+lengthParser :: Network -> Get (Int, Int)
+lengthParser net = do
+  (mb, i, l) <- headerParser
+  unless (magicBytes net == mb) $ fail $ "Wrong magic bytes of message! Expected: "
     <> show (magicBytes net) <> ", but got: " <> show mb
-  pure $ fromIntegral l
+  pure (fromIntegral i, fromIntegral l)
 
 -- | Parser of magicBytes, message type and length
 headerParser :: Get (Word32, Word8, Word32)
 headerParser = (,,) <$> anyWord32be <*> anyWord8 <*> anyWord32be
 
+-- | Parse message with preceding id and length
 messageParser :: Network -> Get Message
 messageParser net = do
-  (mb, i, l) <- headerParser
-  unless (magicBytes net == mb) $ fail $ "Wrong magic bytes of message! Expected: "
-    <> show (magicBytes net) <> ", but got: " <> show mb
+  (i, l) <- lengthParser net
+  msgBodyParser i l
+
+parseMsgBody :: Int -> Int -> ByteString -> Either String Message
+parseMsgBody i l = runGet $ msgBodyParser i l
+
+-- | Parse message without id and length
+msgBodyParser :: Int -> Int -> Get Message
+msgBodyParser i l = do
   body <- getByteString (fromIntegral l)
   c <- getByteString 4
   unless (validateSum c body) $ fail "Check sum failed for body!"
@@ -174,7 +188,6 @@ parsePeerFeature :: Get PeerFeature
 parsePeerFeature = do
   i <- anyWord8
   l <- vlqWord16
-  traceShowM (i, l)
   parsePeerFeatureN i l
 
 parsePeerFeatureN :: Word8 -> Word16 -> Get PeerFeature

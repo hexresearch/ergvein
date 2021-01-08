@@ -24,6 +24,7 @@ import Data.Time.Clock.POSIX
 import GHC.Generics
 
 import Debug.Trace
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base16 as B16
 
 import qualified Network.Socket.Manager.TCP.Client as C
@@ -57,8 +58,14 @@ peekMessage net initRef = do
     liftIO $ writeIORef initRef False
     pure $ MsgHandshake h
   else do
-    n <- either fail pure =<< fmap (parseMsgLength net) (C.peek 9)
-    either fail pure =<< fmap (decodeMessage net) (C.peek n)
+    bs <- C.peekAll
+    traceShowM bs
+    traceShowM $ B16.encode bs
+    (i, n) <- either fail pure $ parseMsgLength net $ BS.take 9 bs
+    either fail pure $ parseMsgBody i n $ BS.take n $ BS.drop 9 bs
+
+    -- n <- either fail pure =<< fmap (parseMsgLength net) (C.peek 9)
+    -- either fail pure =<< fmap (decodeMessage net) (C.peek n)
 
 -- | Start connection to ergo node in separate thread.
 --
