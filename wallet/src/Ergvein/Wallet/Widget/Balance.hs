@@ -8,7 +8,6 @@ import Control.Lens
 import Data.Maybe (fromMaybe)
 
 import Ergvein.Types.Currency
-import Ergvein.Types.Storage
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Types.Utxo.Status
 import Ergvein.Types.Storage.Currency.Public.Btc

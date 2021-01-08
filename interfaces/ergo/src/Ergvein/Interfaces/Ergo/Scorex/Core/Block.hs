@@ -1,14 +1,9 @@
 module Ergvein.Interfaces.Ergo.Scorex.Core.Block where
 
-import Data.Aeson
-import Data.Int
-import Data.Serialize                     as S (Serialize (..), decode, encode, get, put)
-import Data.Serialize.Get                 as S
-import Data.Serialize.Put                 as S
+import Data.Serialize                     as S (Serialize (..), get, put)
 import Data.Word
 
 import Ergvein.Aeson
-
 import Ergvein.Interfaces.Ergo.Scorex.Util.Package (ModifierId)
 import Ergvein.Interfaces.Ergo.Scorex.Util.Serialization.VLQLengthPrefixed
 

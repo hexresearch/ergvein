@@ -3,11 +3,9 @@ module Ergvein.Wallet.Status.Widget(
   ) where
 
 import Ergvein.Types.Currency
-import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Status.Types
-import Ergvein.Wallet.Util
 
 statusBarWidget :: MonadFront t m => Bool -> Currency -> m ()
 statusBarWidget isVerbose cur = divClass "sync-widget-wrapper" $ do

@@ -73,7 +73,7 @@ btcCatchUpFlow (ts, bl) = Workflow $ do
   logWrite $ "btcCatchUpFlow: " <> showt h0
   buildE <- getPostBuild
   storedE <-  attachNewBtcHeader "btcCatchUpFlow" False $ (h0, ts, lasthash) <$ buildE
-  publishStatusUpdate $ CurrencyStatus BTC (StatGettingHeight $ fromIntegral h0) <$ storedE
+  void $ publishStatusUpdate $ CurrencyStatus BTC (StatGettingHeight $ fromIntegral h0) <$ storedE
   let req = MGetHeaders $ GetHeaders 70012 (snd <$> bl) emptyHash
   respE <- requestRandomNode $ (NodeReqBTC req) <$ storedE
   let hlE = fforMaybe respE $ \case
@@ -131,7 +131,7 @@ btcListenFlow h0 ts0 he0 = Workflow $ mdo
       setE = fmapMaybe (either (const Nothing) Just) actE
       storeE = leftmost [(he0, ts0, h0) <$ buildE, updated htD]
   void $ attachNewBtcHeader "btcListenFlow" True storeE
-  publishStatusUpdate $ ffor storeE $ \(he,_,_) -> CurrencyStatus BTC Synced
+  void $ publishStatusUpdate $ ffor storeE $ const $ CurrencyStatus BTC Synced
   pure ((), startBTCFlow <$ restartE)
 
 pickFirstBlockInv :: [InvVector] -> Maybe BlockHash

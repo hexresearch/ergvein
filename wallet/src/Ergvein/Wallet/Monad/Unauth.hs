@@ -11,7 +11,6 @@ import Data.IORef
 import Data.Map.Strict (Map)
 import Data.Text (Text)
 import Data.Time (NominalDiffTime)
-import Network.DNS
 import Network.Socket (SockAddr)
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef

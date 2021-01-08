@@ -43,6 +43,7 @@ library
     DeriveGeneric
     FlexibleContexts
     OverloadedStrings
+    ScopedTypeVariables
     TemplateHaskell
 
 test-suite golomb-rice-test

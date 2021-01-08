@@ -2,12 +2,11 @@ module Ergvein.Interfaces.Ergo.Scorex.Crypto.Hash where
 
 import Data.Aeson
 import Data.ByteString
-import Data.Serialize                     as S (Serialize (..), decode, encode, get, put)
+import Data.Serialize                     as S (Serialize (..), get, put)
 import Data.Serialize.Get                 as S
 import Data.Serialize.Put                 as S
 import Data.String
 
-import Ergvein.Aeson
 import Ergvein.Interfaces.Ergo.Scorex.Util.Package
 
 newtype Digest32 = Digest32 { unDigest32 :: ByteString }

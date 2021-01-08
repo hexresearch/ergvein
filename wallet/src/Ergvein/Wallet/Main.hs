@@ -7,10 +7,7 @@ module Ergvein.Wallet.Main(
 import Reflex.Dom.Main (mainWidgetWithCss)
 
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Language
 import Ergvein.Wallet.Loading
-import Ergvein.Wallet.Localization.TestnetDisclaimer
 import Ergvein.Wallet.Log.Writer
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
@@ -18,7 +15,12 @@ import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.Initial
 import Ergvein.Wallet.Page.Restore
 import Ergvein.Wallet.Password
+#ifdef TESTNET
+import Ergvein.Wallet.Elements
+import Ergvein.Wallet.Language
+import Ergvein.Wallet.Localization.TestnetDisclaimer
 import Ergvein.Wallet.Wrapper
+#endif
 
 frontend :: MonadFrontBase t m => m ()
 frontend = do

@@ -9,13 +9,10 @@ module Ergvein.Wallet.Page.Settings.Unauth
 import Control.Monad
 import Data.Maybe
 import Data.Text
-import Data.Word
 import Network.Socket
 import Reflex.Dom
 import Reflex.Dom.Retractable
-import Text.Read
 
-import Ergvein.Text
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Elements.Inplace
@@ -75,7 +72,7 @@ dnsPageWidget = do
     restoreE <- buttonClass "button button-outline ml-a mr-a w-100" NSSRestoreUrls
     let editE = switchDyn $ leftmost <$> editD
     pure $ leftmost [addE, editE, DnsRestore <$ restoreE]
-  modifySettings $ ffor actE $ \act s -> case act of
+  void $ modifySettings $ ffor actE $ \act s -> case act of
     DnsDel u -> s {settingsDns = S.delete u (settingsDns s)}
     DnsUpd u u' -> let us' = S.insert u' $ S.delete u (settingsDns s)
       in s {settingsDns = us'}

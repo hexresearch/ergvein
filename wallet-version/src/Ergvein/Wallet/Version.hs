@@ -5,8 +5,6 @@ module Ergvein.Wallet.Version(
   , HasVersion(..)
 ) where
 
-import Data.Text    (Text)
-
 import Ergvein.Wallet.Version.Internal
 
 -- | Decouple version usage from embedding place. The class should be implemented

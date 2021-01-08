@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Index.Server.TCPService.Conversions where
 
 import Conversion
@@ -28,10 +30,10 @@ currencyToCurrencyCode code = do
   pure $ (if isTestnet then testnet else mainnet) code
   where
     testnet = \case
-      C.BTC  -> TBTC 
+      C.BTC  -> TBTC
       C.ERGO -> TERGO
     mainnet = \case
-      C.BTC   -> BTC 
+      C.BTC   -> BTC
       C.ERGO  -> ERGO
 
 instance Conversion BlockMetaRec BlockFilter where

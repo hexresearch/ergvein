@@ -55,18 +55,22 @@ module Ergvein.Wallet.Elements(
   , outlineIconButtonClass
   , hyperlink
   , badge
+  -- * JS functions
+  , selElementFocus
   , module Ergvein.Wallet.Util
   ) where
 
+import Control.Monad.Fix (MonadFix)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Text (Text)
+import Language.Javascript.JSaddle hiding ((!!))
+import Reflex.Localize
+
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.OpenUrl
 import Ergvein.Wallet.Util
-import Control.Monad.Fix (MonadFix)
-import Reflex.Localize
 
 import qualified Data.Text as T
 
@@ -291,3 +295,11 @@ hyperlink classValD lbl url = do
 
 badge :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl) => Text -> lbl -> m ()
 badge classes lbl = elClass "code" classes $ dynText =<< localized lbl
+
+selElementFocus :: MonadJSM m => RawElement GhcjsDomSpace -> m ()
+selElementFocus rawEl = liftJSM $ do
+  void $ eval func
+  void $ jsg1 funcName (toJSVal rawEl)
+  where
+    (funcName :: Text) = "ergvein_set_el_focus"
+    (func :: Text) = " ergvein_set_el_focus = function(el) {el.focus();}"

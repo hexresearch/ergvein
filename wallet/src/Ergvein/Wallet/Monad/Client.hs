@@ -26,17 +26,14 @@ import Control.Monad.Random
 import Data.Function (on)
 import Data.Functor.Misc (Const2(..))
 import Data.Map.Strict (Map)
-import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Time(NominalDiffTime, getCurrentTime, diffUTCTime)
 import Network.Socket (SockAddr)
 import Reflex
-import Reflex.Dom
 import Reflex.ExternalRef
 
 import Ergvein.Index.Protocol.Types (Message(..))
-import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Monad.Async
@@ -44,7 +41,6 @@ import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Util
 
-import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 

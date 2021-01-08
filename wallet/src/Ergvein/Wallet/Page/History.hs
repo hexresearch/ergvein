@@ -4,8 +4,6 @@ module Ergvein.Wallet.Page.History(
 
 import Ergvein.Text
 import Ergvein.Types.Currency
-import Ergvein.Types.Derive
-import Ergvein.Types.Utxo
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
@@ -13,15 +11,10 @@ import Ergvein.Wallet.Localization.History
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
-import Ergvein.Wallet.Node.BTC.Blocks
-import Ergvein.Wallet.Node.BTC.Mempool
 import Ergvein.Wallet.Page.Transaction
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Transaction.Get
-import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Transaction.View
-import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
 
 import Data.Map.Strict as Map

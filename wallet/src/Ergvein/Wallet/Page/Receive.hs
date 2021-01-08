@@ -8,7 +8,6 @@ import Control.Lens
 import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
-import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Clipboard
@@ -20,10 +19,7 @@ import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
-import Ergvein.Wallet.Page.Canvas
 import Ergvein.Wallet.Page.QRCode
-import Ergvein.Wallet.Share
-import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Text as T
@@ -38,7 +34,7 @@ receivePage cur = do
   pubStoreD <- getPubStorageD
   let lastUnusedKeyD = ffor pubStoreD $ \ps ->
         (getLastUnusedKey External . _currencyPubStorage'pubKeystore) =<< (ps ^. pubStorage'currencyPubStorages . at cur)
-  widgetHoldDyn $ ffor lastUnusedKeyD $ \case
+  void $ widgetHoldDyn $ ffor lastUnusedKeyD $ \case
     Nothing -> exceededGapLimit cur
     Just (i, key) -> receivePageWidget cur i key
   pure ()
@@ -58,7 +54,7 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
   let thisWidget = Just $ pure $ receivePage cur
       navbar = blank
   wrapperNavbar False title thisWidget navbar $ void $ divClass "receive-page" $ do
-    base64D <- divClass "receive-qr" $ qrCodeWidgetWithData prefixedKeyText
+    base64D <- divClass "receive-qr" $ qrCodeWidgetWithData qrSizeMedium prefixedKeyText
     (newE, copyE, shareE) <- divClass "receive-buttons-wrapper" $ do
       nE  <- newAddrBtn
       cE <- copyAddrBtn
@@ -92,7 +88,7 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
   let thisWidget = Just $ pure $ receivePage cur
       navbar = navbarWidget cur thisWidget NavbarReceive
   wrapperNavbar False title thisWidget navbar $ void $ divClass "receive-page" $ do
-    void $ divClass "receive-qr" $ qrCodeWidget (curprefix cur <> keyTxt)
+    void $ divClass "receive-qr" $ qrCodeWidget qrSizeMedium (curprefix cur <> keyTxt)
     void $ divClass "receive-buttons-wrapper" $ do
       newE  <- newAddrBtn
       copyE <- copyAddrBtn

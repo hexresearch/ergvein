@@ -11,7 +11,6 @@ import Reflex.Dom
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Id
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Util
 
 -- | Create toggle button with pressed and unpressed states
 toggleButton :: forall t m lbl . (DomBuilder t m, PostBuild t m, MonadHold t m, MonadLocalized t m, MonadFix m, LocalizedPrint lbl)

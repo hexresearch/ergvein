@@ -1,10 +1,9 @@
 module Main where
 
 import Control.Monad.IO.Class
-import Data.Default
 import Data.Foldable (traverse_)
 import Data.Maybe
-import Data.Text (Text, unpack, pack)
+import Data.Text (Text, unpack)
 import Data.Text.Encoding
 import Ergvein.Text
 import GHC.Generics

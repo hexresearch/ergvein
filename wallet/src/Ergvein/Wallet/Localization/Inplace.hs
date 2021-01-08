@@ -21,6 +21,3 @@ instance LocalizedPrint er => LocalizedPrint (InplaceEditLbl er) where
       InplaceDelete   -> "Удалить"
       InplaceCancel   -> "Отмена"
       InplaceError er -> localizedShow Russian er
-
-instance LocalizedPrint () where
-  localizedShow l v = ""

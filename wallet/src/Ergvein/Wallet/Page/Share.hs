@@ -6,7 +6,6 @@ module Ergvein.Wallet.Page.Share(
 
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
-import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Clipboard (clipboardCopy)
@@ -15,8 +14,6 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Share
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.QRCode
-import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Share
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Map.Strict as M
@@ -51,7 +48,8 @@ sharePage cur = do
       let shareAddr = addrBase
           shareUrl  = generateURL shareAddr
       vertSpacer
-      divClass "share-qrcode-container" $ qrCodeWidget (curprefix cur <> shareAddr)
+      void $ divClass "share-qrcode-container" $
+        qrCodeWidget qrSizeMedium (curprefix cur <> shareAddr)
       (e,_) <- elAttr' "div" [("class","share-block-value")] $ mapM_ (\v -> text v >> br) $ T.chunksOf 17 $ shareAddr
       let copyLineE = shareUrl <$ domEvent Click e
       vertSpacer

@@ -3,6 +3,7 @@ module Ergvein.Index.Server.BlockchainScanning.Bitcoin where
 import           Control.Concurrent.Async.Lifted
 import           Control.Concurrent.Lifted
 import           Control.Concurrent.STM
+import           Control.Exception
 import           Control.Lens.Combinators
 import           Control.Monad.Logger
 import           Control.Monad.Reader
@@ -17,7 +18,6 @@ import           Data.Time
 import           Data.Word
 import           Network.Bitcoin.Api.Blockchain
 import           Network.Bitcoin.Api.Misc
-import           Control.Concurrent.STM.TVar
 
 import           Ergvein.Filters.Btc.Mutable
 import           Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
@@ -115,9 +115,9 @@ getBtcBlockWithRepeat blockHeightReq = do
   resChan <- liftIO newTChanIO
   shutdownFlag <- getShutdownFlag
   fix $ \next -> do
-    fork $    -- Request thread
+    void $ fork $    -- Request thread
       liftIO . atomically . writeTChan resChan . Just =<< getBtcBlock blockHeightReq
-    fork $ do -- Timeout thread
+    void $ fork $ do -- Timeout thread
       threadDelay 30000000 -- 30s
       liftIO . atomically . writeTChan resChan $ Nothing
     res <- liftIO $ atomically $ readTChan resChan
@@ -125,7 +125,7 @@ getBtcBlockWithRepeat blockHeightReq = do
       Nothing -> do
         b <- liftIO . readTVarIO $ shutdownFlag
         if b
-          then error "Everything is fine, just killing the thread"
+          then throw $ ErrorCallWithLocation "Everything is fine, just killing the thread" "getBtcBlockWithRepeat"
           else next
       Just block -> pure block
 

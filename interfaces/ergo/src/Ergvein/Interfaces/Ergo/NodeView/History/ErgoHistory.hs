@@ -1,8 +1,6 @@
 module Ergvein.Interfaces.Ergo.NodeView.History.ErgoHistory where
 
-import Data.Aeson
-import Data.Int
-import Data.Serialize                     as S (Serialize (..), decode, encode, get, put)
+import Data.Serialize                     as S (Serialize (..), get, put)
 import Data.Serialize.Get                 as S
 import Data.Serialize.Put                 as S
 import Data.Word

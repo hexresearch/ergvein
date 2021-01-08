@@ -23,20 +23,18 @@ import Control.Concurrent.STM
 import Control.Monad.IO.Unlift
 import Control.Monad.Reader
 import Data.ByteString (ByteString)
-import Data.Maybe
 import Data.Time
-import Ergvein.Text (showt)
-import Ergvein.Wallet.Monad.Async
-import Ergvein.Wallet.Native
-import Ergvein.Wallet.Util (widgetHoldDyn, eventToNextFrame)
 import GHC.Generics
 import Network.Socks5 (SocksConf(..), socksConnect, SocksAddress(..), SocksHostAddress(..))
 import Reflex
 import Reflex.ExternalRef
 import System.Timeout (timeout)
 
+import Ergvein.Wallet.Monad.Async
+import Ergvein.Wallet.Native
+import Ergvein.Wallet.Util
+
 import qualified Control.Exception.Safe as Ex
-import Control.Exception.Base
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Builder as BB
 import qualified Data.ByteString.Lazy as BSL
@@ -326,6 +324,7 @@ fromSockAddr = \case
   N.SockAddrInet port haddr -> SocksAddress (SocksAddrIPV4 haddr) port
   N.SockAddrInet6 port _ haddr _ -> SocksAddress (SocksAddrIPV6 haddr) port
   N.SockAddrUnix _ -> error "fromSockAddr: not supported unix socket"
+  _ -> error "fromSockAddr: not supported socket"
 
 newSocket :: N.AddrInfo -> IO N.Socket
 newSocket addr = N.socket (N.addrFamily addr)

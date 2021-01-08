@@ -27,7 +27,6 @@ import Data.Foldable
 import GHC.Generics
 import Data.Serialize (Serialize)
 import Data.Text (Text,pack,unpack)
-import Data.Word
 
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
@@ -42,7 +41,6 @@ import qualified Data.ByteString.Short   as BSS
 import qualified Data.ByteString.Builder as BB
 import qualified Data.Serialize          as S
 import qualified Data.Sequence           as Seq
-import qualified Data.Map.Strict         as Map
 import qualified Data.Text.Encoding      as TE
 
 data KeyPrefix = Peer | LastBlockHash | Rollback | SchemaVersion deriving Enum

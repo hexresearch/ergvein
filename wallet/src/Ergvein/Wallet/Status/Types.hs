@@ -2,13 +2,13 @@ module Ergvein.Wallet.Status.Types(
     SyncBehind(..)
   , StatusUpdate(..)
   , CurrencyStatus(..)
+  , nominalToBehind
   ) where
 
 import Data.Time
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Platform
 
 data SyncBehind = SyncDays !Int | SyncHours !Int
 
@@ -80,6 +80,3 @@ instance LocalizedPrint CurrencyStatus where
   localizedShow l (CurrencyStatus cur stage) = case l of
     English -> "[" <> showt cur <> "]: " <> localizedShow l stage
     Russian -> "[" <> showt cur <> "]: " <> localizedShow l stage
-
-percent :: Int -> Int -> Int
-percent amount total = if total == 0 then 0 else ceiling $ 100 * (fromIntegral amount :: Double) / fromIntegral total

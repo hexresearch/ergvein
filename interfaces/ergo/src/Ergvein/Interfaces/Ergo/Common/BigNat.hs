@@ -2,15 +2,13 @@ module Ergvein.Interfaces.Ergo.Common.BigNat where
 
 import Control.Applicative
 import Data.Aeson
+import Data.Aeson.Types
 import Data.Bits
 import Data.List    (unfoldr)
 import Data.Scientific
-import Data.Serialize                     as S (Serialize (..), decode, encode, get, put)
-import Data.Serialize.Get                 as S
-import Data.Serialize.Put                 as S
+import Data.Serialize                     as S (Serialize (..), get, put)
 import Data.String
 import Data.Word
-import Ergvein.Aeson
 import Numeric.Natural
 
 import qualified Data.ByteString as BS
@@ -62,16 +60,18 @@ instance FromJSON BigNat where
   parseJSON j = parseScientific j <|> parseStringScientific j
   {-# INLINE parseJSON #-}
 
+parseStringScientific :: Value -> Parser BigNat
 parseStringScientific = withText "BigNat string" $ either fail pure . eitherDecode . BSL.fromStrict . TE.encodeUtf8
 {-# INLINE parseStringScientific #-}
 
+parseScientific :: Value -> Parser BigNat
 parseScientific =
   withScientific "BigNat" $ \n -> do
     let
-      exponent = base10Exponent n
-      msg = "found a number with exponent " <> show exponent
+      expnt = base10Exponent n
+      msg = "found a number with exponent " <> show expnt
           <> ", but it must not be greater than 1024"
-    if exponent > 1024
+    if expnt > 1024
       then fail msg
       else (pure . BigNat . floor $ n)
 {-# INLINE parseScientific #-}

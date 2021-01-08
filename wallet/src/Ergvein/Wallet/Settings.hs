@@ -31,7 +31,6 @@ import Data.Time (NominalDiffTime)
 import Data.Yaml (encodeFile)
 import Network.Socket (HostName, PortNumber)
 import System.Directory
-import Data.Word
 
 import Ergvein.Aeson
 import Ergvein.Lens

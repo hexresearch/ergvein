@@ -59,7 +59,6 @@ import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Native
-import Ergvein.Wallet.Platform
 
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
@@ -194,7 +193,6 @@ updateReplacedTxsStorage :: BtcTxId -> Set BtcTxId -> BtcPubStorage -> BtcPubSto
 updateReplacedTxsStorage replacingTxId replacedTxIds btcPs =
   let
     replacedTxsMap = btcPs ^. btcPubStorage'replacedTxs
-    possiblyReplacedTxsMap = btcPs ^. btcPubStorage'possiblyReplacedTxs
     -- Remove all replacedTxsMap keys that are members of replacedTxIds
     replacedTxsMap' = M.filterWithKey (\k _ -> not $ k `S.member` replacedTxIds) replacedTxsMap
     -- Collect values of removed replacedTxsMap keys into one set
@@ -242,7 +240,7 @@ removeRbfTxsFromStorage2 caller txsToReplaceE = modifyPubStorage clr $ ffor txsT
     else Just $ let
       keysToRemoveFromPossiblyReplacedTxs = S.map removeRbfTxsInfo'keyToRemoveFromPossiblyReplacedTxs removeRbfTxsInfoSet
       txIdsToRemove = S.unions $ S.map removeRbfTxsInfo'replacedTxs removeRbfTxsInfoSet
-      replacedTxsMap = M.fromList $ (\(RemoveRbfTxsInfo a b c) -> (b, c)) <$> (S.toList removeRbfTxsInfoSet)
+      replacedTxsMap = M.fromList $ (\(RemoveRbfTxsInfo _ b c) -> (b, c)) <$> (S.toList removeRbfTxsInfoSet)
       -- Removing txs from btcPubStorage'transactions
       ps11 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'transactions %~ (flip M.withoutKeys $ txIdsToRemove)) ps
       -- Removing utxos from btcPubStorage'utxos
@@ -262,9 +260,9 @@ filterOutPoints txIdSet outPoint _ = not $ S.member (HT.outPointHash outPoint) t
 
 removeTxIdsFromEgvKeyBoxes :: Set TxId -> PubKeystore -> PubKeystore
 removeTxIdsFromEgvKeyBoxes txIdsSet PubKeystore{..} =
-  let updatedPubKeystore'external = fmap (removeTxIdsFromKeybox txIdsSet) pubKeystore'external
-      updatedPubKeystore'internal = fmap (removeTxIdsFromKeybox txIdsSet) pubKeystore'internal
-      removeTxIdsFromKeybox txIds (EgvPubKeyBox k txs m) = EgvPubKeyBox k (S.difference txs txIdsSet) m
+  let updatedPubKeystore'external = fmap removeTxIdsFromKeybox pubKeystore'external
+      updatedPubKeystore'internal = fmap removeTxIdsFromKeybox pubKeystore'internal
+      removeTxIdsFromKeybox (EgvPubKeyBox k txs m) = EgvPubKeyBox k (S.difference txs txIdsSet) m
   in PubKeystore pubKeystore'master updatedPubKeystore'external updatedPubKeystore'internal
 
 txListToMap :: [EgvTx] -> Map TxId EgvTx
@@ -342,7 +340,7 @@ removeOutgoingTxs caller cur reqE = void . modifyPubStorage clr $ ffor reqE $ \e
   where clr = caller <> ":" <> "removeOutgoingTxs"
 
 storeBlockHeadersE :: MonadStorage t m => Text -> Currency -> Event t [HB.Block] -> m (Event t [HB.Block])
-storeBlockHeadersE caller cur reqE = do
+storeBlockHeadersE caller _ reqE = do
   reqD <- holdDyn Nothing $ Just <$> reqE
   storedE <- modifyPubStorage clr $ ffor reqE $ \blks ps -> let
     mmap = if null blks

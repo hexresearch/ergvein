@@ -228,10 +228,10 @@ valueField lbl av0D = mdo
   errorD <- holdDyn Nothing $ leftmost [Just <$> errorE, Nothing <$ valE]
   let isInvalidD = fmap (maybe "" (const "is-invalid")) errorD
   tInput <- divClassDyn isInvalidD $ let
-      display = displayInput (Proxy :: Proxy l)
+      disp = displayInput (Proxy :: Proxy l)
       in labeledTextInput lbl mempty def {
-        _inputElementConfig_setValue = Just $ display <$> updated avD
-      , _inputElementConfig_initialValue = display av0
+        _inputElementConfig_setValue = Just $ disp <$> updated avD
+      , _inputElementConfig_initialValue = disp av0
       }
   void $ widgetHoldDyn $ ffor errorD $ \case
     Nothing -> pure ()

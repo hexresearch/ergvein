@@ -12,7 +12,6 @@ import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Data.Time.LocalTime (TimeZone)
 import Data.X509.CertificateStore (CertificateStore)
-import Network.DNS.Resolver (ResolvConf)
 
 class HasStoreDir m where
   getStoreDir :: m Text

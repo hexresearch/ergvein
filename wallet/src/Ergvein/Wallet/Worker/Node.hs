@@ -11,7 +11,6 @@ import Data.Maybe (fromMaybe, catMaybes, listToMaybe)
 import Data.Time
 import Network.DNS
 import Network.Haskoin.Constants
-import Network.Haskoin.Crypto
 import Network.Haskoin.Network
 import Network.Haskoin.Transaction
 import Network.Socket
@@ -19,8 +18,6 @@ import Reflex.ExternalRef
 
 import Ergvein.Text
 import Ergvein.Types.Currency
-import Ergvein.Types.Derive
-import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction as ETT
 import Ergvein.Wallet.Monad.Async
@@ -32,7 +29,6 @@ import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Node.BTC.Mempool
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Status.Types
-import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Util
 
 import qualified Data.Bits as BI
@@ -60,7 +56,6 @@ btcRefrTimeout = 5
 btcNodeController :: MonadFront t m => m ()
 btcNodeController = mdo
   btcLog "Starting"
-  buildE    <- delay 0.1 =<< getPostBuild
   sel       <- getNodeNodeReqSelector
   conMapD   <- getNodeConnectionsD
   nodeRef   <- getNodeConnRef
@@ -230,10 +225,10 @@ getRandomBTCNodesFromDNS sel n = do
   buildE <- getPostBuild
   let dnsUrls = getSeeds btcNetwork
   i <- liftIO $ randomRIO (0, length dnsUrls - 1)
-  publishStatusUpdate $ (CurrencyStatus BTC StatGettingNodeAddresses) <$ buildE
+  void $ publishStatusUpdate $ (CurrencyStatus BTC StatGettingNodeAddresses) <$ buildE
   rs <- mkResolvSeed
   urlsE <- performFork $ (requestNodesFromBTCDNS rs (dnsUrls!!i) n) <$ buildE
-  publishStatusUpdate $ (CurrencyStatus BTC StatConnectingToPeers) <$ urlsE
+  void $ publishStatusUpdate $ (CurrencyStatus BTC StatConnectingToPeers) <$ urlsE
   nodesD <- widgetHold (pure []) $ ffor urlsE $ \urls -> flip traverse urls $ \u -> let
     reqE = extractReq sel BTC u
     in initBTCNode False u reqE
