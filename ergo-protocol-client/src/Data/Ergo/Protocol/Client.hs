@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedLists #-}
 module Data.Ergo.Protocol.Client(
   -- * Exceptions
     C.InboundException
@@ -10,6 +11,7 @@ module Data.Ergo.Protocol.Client(
   -- * Socket
   , C.SocketOutEvent(..)
   , ergoSocket
+  , makeHandshake
   ) where
 
 import Control.Concurrent.STM
@@ -17,12 +19,31 @@ import Control.Monad.IO.Class
 import Data.Ergo.Protocol
 import Data.Ergo.Protocol.Decoder
 import Data.IORef
+import Data.Time
+import Data.Time.Clock.POSIX
 import GHC.Generics
 
 import Debug.Trace
 import qualified Data.ByteString.Base16 as B16
 
 import qualified Network.Socket.Manager.TCP.Client as C
+
+makeHandshake :: Int -> UTCTime -> Handshake
+makeHandshake blocks t = Handshake {
+    time = round $ utcTimeToPOSIXSeconds t
+  , agentName = "ergoref"
+  , version = ProtoVer 3 3 6
+  , peerName = "ergo-mainnet-3.3.6"
+  , publicAddr = Nothing
+  , peerFeatures = [
+      FeatureOperationMode OperationModeFeature {
+        stateType     = StateUtxo
+      , verifying     = False
+      , nipopowSuffix = Nothing
+      , blocksStored  = fromIntegral blocks
+      }
+    ]
+  }
 
 peekMessage :: Network -> IORef Bool -> C.PeekerIO Message
 peekMessage net initRef = do

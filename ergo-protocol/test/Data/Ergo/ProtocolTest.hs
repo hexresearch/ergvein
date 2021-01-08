@@ -4,6 +4,7 @@ import Control.Monad
 import Data.ByteString.Builder
 import Data.Ergo.Protocol
 import Data.Ergo.Protocol.Decoder
+import Data.Int
 import Data.Maybe
 import Data.Persist
 import Data.Text (Text)
@@ -28,13 +29,6 @@ traceShowIdHex a = traceShow (B16.encode a) a
 
 prop_encodeDecodeHandshake :: Handshake -> Property
 prop_encodeDecodeHandshake msg = property $ decode (encode msg) == Right msg
-
-prop_encodeDecodeHandshakeIncr :: Handshake -> Property
-prop_encodeDecodeHandshakeIncr msg = ioProperty $ do
-  peek <- simplePeeker $ encode msg
-  res <- peekHandshake peek
-  pure $ res == msg
-
 
 -- prop_encodeDecodeTestnet :: TestnetMessage -> Bool
 -- prop_encodeDecodeTestnet msg = traceShowId (decode (traceShowIdHex $ encode msg)) == Right (traceShowId msg)
@@ -89,7 +83,7 @@ instance Arbitrary PeerFeature where
 
 instance Arbitrary Handshake where
   arbitrary = Handshake
-    <$> arbitrary
+    <$> (getNonNegative <$> (arbitrary :: Gen (NonNegative Int64)))
     <*> arbitraryTextLimit 10
     <*> arbitrary
     <*> arbitraryTextLimit 10

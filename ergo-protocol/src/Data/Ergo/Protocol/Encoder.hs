@@ -67,6 +67,16 @@ instance ShiftRS Int32 where
     | otherwise = shiftR a i + (shiftL 2 (complement i))
   {-# INLINE shiftRS #-}
 
+instance ShiftRS Word16 where
+  shiftRS = shiftR
+  {-# INLINE shiftRS #-}
+
+instance ShiftRS Int16 where
+  shiftRS a i
+    | a >= 0 = shiftR a i
+    | otherwise = shiftR a i + (shiftL 2 (complement i))
+  {-# INLINE shiftRS #-}
+
 vlq :: (Integral a, ShiftRS a, Bits a) => a -> Put ()
 vlq w | w .&. complement 0x7F == 0 = word8 $ fromIntegral w
       | otherwise = do
@@ -75,6 +85,9 @@ vlq w | w .&. complement 0x7F == 0 = word8 $ fromIntegral w
 
 int64Vlq :: Int64 -> Put ()
 int64Vlq = vlq
+
+word16Vlq :: Word16 -> Put ()
+word16Vlq = vlq
 
 encodeMessage :: Network -> Message -> ByteString
 encodeMessage net msg = runPut $ messageEncoder net msg
@@ -153,7 +166,7 @@ encodeSessionFeature SessionFeature{..} = do
 encodeFeature :: PeerFeature -> Put ()
 encodeFeature v = do
   word8 $ featureId v
-  word16BE (fromIntegral $ BS.length bs)
+  word16Vlq (fromIntegral $ BS.length bs)
   putByteString bs
   where
     bs = case v of

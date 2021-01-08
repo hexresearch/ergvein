@@ -1,11 +1,12 @@
 module Main where
 
-import Control.Monad
 import Control.Concurrent
 import Control.Concurrent.STM
+import Control.Monad
 import Data.Ergo.Protocol
 import Data.Ergo.Protocol.Client
 import Data.Maybe
+import Data.Time
 import Options.Generic
 
 data Options = Options {
@@ -35,4 +36,9 @@ main = do
   outChan <- ergoSocket net inChan conf
   forever $ do
     ev <- atomically $ readTChan outChan
+    case ev of
+      SockOutInbound (MsgHandshake h) -> do
+        t <- getCurrentTime
+        atomically $ writeTChan inChan $ SockInSendEvent $ MsgHandshake $ makeHandshake 0 t
+      _ -> pure ()
     print ev
