@@ -28,6 +28,8 @@ import Prelude hiding (fail)
 import qualified Data.Vector as V
 import qualified Data.ByteString as BS
 
+import Debug.Trace
+
 -- | Perform parsing of whole message from bytestring without remainder
 decodeMessage :: Network -> ByteString -> Either String Message
 decodeMessage net = runGet $ messageParser net
@@ -71,14 +73,20 @@ anyWord16be = fmap unBE get
 -- | Parse VLQ (variable int) encoding.
 --
 -- https://ergoplatform.org/docs/ErgoTree.pdf
-vlqInt64 :: Get Int64
-vlqInt64 = go 0 0
+vlq :: (Integral a, Bits a) => Get a
+vlq = go 0 0
   where
     go !i !acc = do
-      w <- anyWord8
+      w <- fromIntegral <$> anyWord8
       if w .&. complement 0x7F == 0
         then pure $ acc + shiftL w i
-        else go (i+8) (acc + shiftL (w .&. 0x7F) i)
+        else go (i+7) (acc + shiftL (w .&. 0x7F) i)
+
+vlqInt64 :: Get Int64
+vlqInt64 = vlq
+
+vlqWord16 :: Get Word16
+vlqWord16 = vlq
 
 -- | Parse first 4+1+4=9 bytes and return length of rest message.
 --
@@ -165,7 +173,8 @@ parseSessionFeature = SessionFeature
 parsePeerFeature :: Get PeerFeature
 parsePeerFeature = do
   i <- anyWord8
-  l <- anyWord16be
+  l <- vlqWord16
+  traceShowM (i, l)
   parsePeerFeatureN i l
 
 parsePeerFeatureN :: Word8 -> Word16 -> Get PeerFeature
@@ -176,7 +185,7 @@ parsePeerFeatureN i l
 
 handshakeParser :: Get Handshake
 handshakeParser = Handshake
-  <$> int64Vlq
+  <$> vlqInt64
   <*> parseText
   <*> parseVersion
   <*> parseText

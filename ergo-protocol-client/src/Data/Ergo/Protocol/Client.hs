@@ -31,7 +31,8 @@ peekMessage net initRef = do
     bs <- C.peekAll
     traceShowM bs
     traceShowM $ B16.encode bs
-    h <- peekHandshake (fmap traceShowId . C.peek . traceShowId)
+    h <- either fail pure $ decodeHandshake bs
+    traceShowM h
     liftIO $ writeIORef initRef False
     pure $ MsgHandshake h
   else do
