@@ -90,8 +90,10 @@ getTxFromCache :: (HasFiltersDB m, MonadLogger m)
   => TxHash -> m (Either String HK.Tx)
 getTxFromCache thash = do
   db <- getFiltersDb
-  src <- getParsedExact BTC "getTxFromCache" db $ txBytesKey thash
-  pure $ egvDeserialize BTC $ unTxRecBytes src
+  msrc <- getParsed BTC "getTxFromCache" db $ txBytesKey thash
+  pure $ case msrc of
+    Nothing -> Left $ "Tx not found. TxHash: " <> show thash
+    Just src -> egvDeserialize BTC $ unTxRecBytes src
 
 getTxFromNode :: (BitcoinApiMonad m, MonadLogger m, MonadBaseControl IO m, HasFiltersDB m)
   => HK.TxHash -> m HK.Tx
