@@ -49,7 +49,7 @@ ergveinNetworkRefresh = do
   let refreshE = gate (current isDiscoveryEnabledD) $ leftmost [refreshTimerE, buildE]
   offlinePeersRemoveE <- performEvent $ ffor refreshE $ \_-> do
     activeConnections <- readExternalRef activeConnectionsRef
-    pure $ settingsAddrs %~ Map.filterWithKey (\address info -> _peerInfoIsPinned info || (activeConnections & has (at address . _Just)))
+    pure $ settingsErgveinNetwork %~ Map.filterWithKey (\address info -> _nfoIsUserModified info || (activeConnections & has (at address . _Just)))
 
   offlinePeersRemovedE <- updateSettingsAsync offlinePeersRemoveE
   activeConnectionsE <- performEvent $ ffor offlinePeersRemovedE $ const $ readExternalRef activeConnectionsRef
@@ -65,7 +65,7 @@ ensureErgveinNetwork  = do
   settingsRef <- getSettingsRef
   buildE <- getPostBuild
   activeUrlsE <- performEvent $ ffor buildE $ const $ readExternalRef settingsRef
-  let activeUrlsE' = ffilter (== 0) $ length . _settingsAddrs <$> activeUrlsE
+  let activeUrlsE' = ffilter (== 0) $ length . _settingsErgveinNetwork <$> activeUrlsE
   restoreNetwork activeUrlsE'
 
 restoreNetwork :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Int -> m ()

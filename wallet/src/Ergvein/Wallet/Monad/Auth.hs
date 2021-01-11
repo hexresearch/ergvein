@@ -375,7 +375,6 @@ liftAuth ma0 ma = mdo
         flip runReaderT env $ do -- Workers and other routines go here
           liftIO $ walletStoreThread storeDir storeMutex storeChan
           when isAndroid (deleteTmpFiles storeDir)
-          -- initFiltersHeights filtersHeights
           scanner
           btcNodeController
           heightAsking

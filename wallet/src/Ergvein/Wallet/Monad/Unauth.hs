@@ -191,7 +191,7 @@ newEnv settings uiChan = do
         , unauth'activateIndexEF  = indexEF
         }
   flip runReaderT env $ do
-    indexerNodeController
+    ergveinNodeController
     ensureErgveinNetwork
   pure env
 

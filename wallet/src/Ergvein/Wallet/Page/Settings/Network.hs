@@ -132,7 +132,7 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
 networkPageWidget :: forall t m . MonadFrontBase t m => m ()
 networkPageWidget = mdo
   settingsD <- getSettingsD
-  nodeAddressesD  <- holdUniqDyn $ _settingsAddrs <$> settingsD
+  nodeAddressesD  <- holdUniqDyn $ _settingsErgveinNetwork <$> settingsD
   nodeConnectionsD <- externalRefDynamic =<< getActiveConnsRef
   isDiscoveryEnabledD  <- holdUniqDyn $ _settingsDiscoveryEnabled <$> settingsD
 
@@ -149,7 +149,7 @@ networkPageWidget = mdo
   setDiscovery isDiscoveryEnabledE
   pure ()
   where
-    renderNodeList :: Dynamic t (M.Map Text (IndexerConnection t)) -> Dynamic t (M.Map ErgveinNodeAddr PeerInfo) -> Event t () -> m ()
+    renderNodeList :: Dynamic t (M.Map Text (IndexerConnection t)) -> Dynamic t (M.Map ErgveinNodeAddr ErgveinNodeManagementInfo) -> Event t () -> m ()
     renderNodeList nodeConnectionsD nodeAddressesD refreshE = do
       void $ widgetHoldDyn $ ffor2 nodeConnectionsD nodeAddressesD $ \nodeConnectionsMap nodeAddresses -> do
         let sortedNodes = sortBy nodeSorting $ M.toList nodeAddresses
@@ -162,20 +162,20 @@ networkPageWidget = mdo
       localizedText NSSToggleDiscovery
       updated <$> (elClass "span" "discoveryToggler" $ toggler isDiscoveryEnabledD)
 
-    nodeSorting :: (ErgveinNodeAddr, PeerInfo) -> (ErgveinNodeAddr, PeerInfo) -> Ordering
-    nodeSorting a b = compareOn (_peerInfoIsPinned . snd) <> compareOn (_peerInfoIsActive . snd) <> compareOn fst
+    nodeSorting :: (ErgveinNodeAddr, ErgveinNodeManagementInfo) -> (ErgveinNodeAddr, ErgveinNodeManagementInfo) -> Ordering
+    nodeSorting a b = compareOn (_nfoIsUserModified . snd) <> compareOn (_nfoIsActivated . snd) <> compareOn fst
       where
-        compareOn :: Ord a => ((ErgveinNodeAddr, PeerInfo) -> a) -> Ordering
+        compareOn :: Ord a => ((ErgveinNodeAddr, ErgveinNodeManagementInfo) -> a) -> Ordering
         compareOn selector = on (comparing Down) selector a b
 
 renderNode :: forall t m . MonadFrontBase t m
   => ErgveinNodeAddr
-  -> PeerInfo
+  -> ErgveinNodeManagementInfo
   -> Event t ()
   -> (Maybe (IndexerConnection t))
   -> m ()
 renderNode nodeAddress nodeInfo refreshE nodeConnection = mdo
-  isNodeActiveD <- holdDyn (_peerInfoIsActive nodeInfo) nodeActivationE 
+  isNodeActiveD <- holdDyn (_nfoIsActivated nodeInfo) nodeActivationE 
   let actBtn = fmap switchDyn $ widgetHoldDyn $ ffor isNodeActiveD $ \isActive -> fmap (not isActive <$)
         $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a"
         $ if isActive then NSSDisable else NSSEnable
@@ -190,12 +190,12 @@ renderNode nodeAddress nodeInfo refreshE nodeConnection = mdo
     renderStatusInfo
     pure (nodeActivationE, deletionE)
   
-  setAddrActive $ (nodeAddress,) <$> nodeActivationE
-  void $ deleteAddr $ nodeAddress <$ deletionE
+  setNodeActivated $ (nodeAddress,) <$> nodeActivationE
+  void $ removeNode $ nodeAddress <$ deletionE
   where
     renderStatus :: m ()
     renderStatus = do
-      let colorEncodedStatusShape = if _peerInfoIsPinned nodeInfo then "star" else "circle"
+      let colorEncodedStatusShape = if _nfoIsUserModified nodeInfo then "star" else "circle"
           colorEncodedStatus = elClass "i" ("fas fa-" <> colorEncodedStatusShape) $ pure ()
       case nodeConnection of
         Just connection -> do

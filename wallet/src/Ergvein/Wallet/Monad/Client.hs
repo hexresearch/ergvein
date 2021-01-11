@@ -5,7 +5,7 @@ module Ergvein.Wallet.Monad.Client (
   , IndexReqSelector
   , broadcastIndexerMessage
   , requestSpecificIndexer
-  , indexerPingerWidget
+  , ergveinNodePingerWidget
   , indexerConnPingerWidget
   , indexersAverageLatencyWidget
   , indexersAverageLatNumWidget
@@ -13,8 +13,8 @@ module Ergvein.Wallet.Monad.Client (
   , addDiscovered
   , addManyDiscovered
   , addManual
-  , setAddrActive
-  , deleteAddr
+  , setNodeActivated
+  , removeNode
   , setDiscovery
   -- * Reexports
   , SockAddr
@@ -79,47 +79,47 @@ class MonadBaseConstr t m => MonadIndexClient t m | m -> t where
   -- | Get activation event and trigger
   getActivationEF :: m (Event t [Text], [Text] -> IO ())
 
-discoveredPeerInfo , manualPeerInfo :: PeerInfo
-discoveredPeerInfo = PeerInfo
-      { _peerInfoIsActive = True
-      , _peerInfoIsPinned = False
+discoveredErgveinNodeManagementInfo , manualErgveinNodeManagementInfo :: ErgveinNodeManagementInfo
+discoveredErgveinNodeManagementInfo = ErgveinNodeManagementInfo
+      { _nfoIsActivated = True
+      , _nfoIsUserModified = False
       }
 
-manualPeerInfo = PeerInfo
-    { _peerInfoIsActive = True
-    , _peerInfoIsPinned = True
+manualErgveinNodeManagementInfo = ErgveinNodeManagementInfo
+    { _nfoIsActivated = True
+    , _nfoIsUserModified = True
     }
 
 addDiscovered :: (MonadIndexClient t m, MonadHasSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
 addDiscovered addressE = do
     (_, activationFunc) <- getActivationEF
     updateSettingsAsync $ ffor addressE $ \ url ->
-      settingsAddrs . at url .~ Just discoveredPeerInfo
+      settingsErgveinNetwork . at url .~ Just discoveredErgveinNodeManagementInfo
     performEvent $ ffor addressE $ liftIO . activationFunc . pure
 
 addManyDiscovered :: (MonadIndexClient t m, MonadHasSettings t m) => Event t [ErgveinNodeAddr] -> m (Event t ())
 addManyDiscovered addressE = do
   (_, activationFunc) <- getActivationEF
   updateSettingsAsync $  ffor addressE $ \urls -> let
-    in settingsAddrs %~ (`M.union` (M.fromList $ (,discoveredPeerInfo) <$> urls))
+    in settingsErgveinNetwork %~ (`M.union` (M.fromList $ (,discoveredErgveinNodeManagementInfo) <$> urls))
   performEvent $ ffor addressE $ liftIO . activationFunc
 
 addManual :: (MonadIndexClient t m, MonadHasSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
 addManual addressE = do
   (_, activationFunc) <- getActivationEF
   updateSettingsAsync $ ffor addressE $ \ url ->
-    settingsAddrs . at url .~ Just manualPeerInfo
+    settingsErgveinNetwork . at url .~ Just manualErgveinNodeManagementInfo
   performEvent $ ffor addressE $ liftIO . activationFunc . pure
 
-setAddrActive :: (MonadIndexClient t m, MonadHasSettings t m) => Event t (ErgveinNodeAddr, Bool) -> m (Event t ())
-setAddrActive addrE = updateSettingsAsync $ ffor addrE $ \(url, v) -> 
-  settingsAddrs . at url . _Just %~ (peerInfoIsActive .~ v) . (peerInfoIsPinned .~ True)
+setNodeActivated :: (MonadIndexClient t m, MonadHasSettings t m) => Event t (ErgveinNodeAddr, Bool) -> m (Event t ())
+setNodeActivated addrE = updateSettingsAsync $ ffor addrE $ \(url, v) -> 
+  settingsErgveinNetwork . at url . _Just %~ (nfoIsActivated .~ v) . (nfoIsUserModified .~ True)
 
-deleteAddr :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m (Event t ())
-deleteAddr addrE = do
+removeNode :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m (Event t ())
+removeNode addrE = do
   closedE <- closeAndWait addrE
-  updateSettingsAsync $ ffor (traceEvent "__________________deleteAddr" closedE) $ \url -> 
-    settingsAddrs . at url .~ Nothing
+  updateSettingsAsync $ ffor closedE $ \url -> 
+    settingsErgveinNetwork . at url .~ Nothing
 
 -- | It is really important to wait until indexer performs deinitialization before deleting it from dynamic collections
 closeAndWait :: MonadIndexClient t m => Event t ErgveinNodeAddr -> m (Event t ErgveinNodeAddr)
@@ -167,11 +167,11 @@ requestSpecificIndexer saMsgE = do
         pure $ Just $ indexConRespE con
   switchHold never $ fmapMaybe id mrespE
 
-indexerPingerWidget :: MonadIndexClient t m
+ergveinNodePingerWidget :: MonadIndexClient t m
   => Text                       -- Which indexer to ping
   -> Event t ()                     -- Manual refresh event
   -> m (Dynamic t NominalDiffTime)  -- Dynamic with the latency. Starting value 0
-indexerPingerWidget addr refrE = do
+ergveinNodePingerWidget addr refrE = do
   connmD  <- holdUniqDynBy eq =<< pure . fmap (M.lookup addr) =<< externalRefDynamic =<< getActiveConnsRef
   fmap join $ widgetHoldDyn $ ffor connmD $ \case
     Nothing -> pure $ pure 0

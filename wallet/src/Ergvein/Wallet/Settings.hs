@@ -22,13 +22,13 @@ module Ergvein.Wallet.Settings (
   -- * Helpers
   , makeSockAddr
   , parseIP
-  , PeerInfo (..)
+  , ErgveinNodeManagementInfo (..)
   , settingsLang           
   , settingsStoreDir         
   , settingsConfigPath       
   , settingsUnits            
   , settingsReqTimeout       
-  , settingsAddrs            
+  , settingsErgveinNetwork            
   , settingsReqUrlNum        
   , settingsActUrlNum        
   , settingsExplorerUrl      
@@ -37,8 +37,8 @@ module Ergvein.Wallet.Settings (
   , settingsFiatCurr         
   , settingsDns              
   , settingsSocksProxy       
-  , peerInfoIsActive
-  , peerInfoIsPinned
+  , nfoIsActivated
+  , nfoIsUserModified
   , ErgveinNodeAddr
   ) where
 
@@ -63,18 +63,16 @@ import System.Directory
 import Ergvein.Aeson
 import Ergvein.Lens
 import Ergvein.Text
-import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.IP
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Yaml(readYamlEither')
 
-
 import qualified Data.Map.Strict as M
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Network.Socks5 as S5
+import qualified Data.Set        as S
+import qualified Data.Text       as T
+import qualified Network.Socks5  as S5
 
 #ifdef ANDROID
 import Android.HaskellActivity
@@ -83,24 +81,24 @@ import Ergvein.Wallet.Native
 
 type ErgveinNodeAddr = Text
 
-data PeerInfo = PeerInfo
-  { _peerInfoIsActive :: !Bool
-  , _peerInfoIsPinned :: !Bool
+data ErgveinNodeManagementInfo = ErgveinNodeManagementInfo
+  { _nfoIsActivated  :: !Bool
+  , _nfoIsUserModified :: !Bool
   } deriving (Eq, Show)
 
-makeLenses ''PeerInfo
+makeLenses ''ErgveinNodeManagementInfo
 
-instance ToJSON PeerInfo where
-  toJSON PeerInfo{..} = object [
-      "isActive" .= toJSON _peerInfoIsActive
-    , "isPinned" .= toJSON _peerInfoIsPinned
+instance ToJSON ErgveinNodeManagementInfo where
+  toJSON ErgveinNodeManagementInfo{..} = object [
+      "nfoIsActivated" .= toJSON _nfoIsActivated
+    , "nfoIsUserModified" .= toJSON _nfoIsUserModified
    ]
 
-instance FromJSON PeerInfo where
+instance FromJSON ErgveinNodeManagementInfo where
   parseJSON = withObject "v" $ \o -> do
-    _peerInfoIsActive <- o .: "isActive"
-    _peerInfoIsPinned <- o .: "isPinned"
-    pure PeerInfo{..}
+    _nfoIsActivated    <- o .: "nfoIsActivated"
+    _nfoIsUserModified <- o .: "nfoIsUserModified"
+    pure ErgveinNodeManagementInfo{..}
 
 data ExplorerUrls = ExplorerUrls {
   testnetUrl :: !Text
@@ -108,10 +106,9 @@ data ExplorerUrls = ExplorerUrls {
 } deriving (Eq, Show)
 
 instance ToJSON ExplorerUrls where
-  toJSON ExplorerUrls{..} = object [
-      "testnetUrl"  .= toJSON testnetUrl
-    , "mainnetUrl"  .= toJSON mainnetUrl
-   ]
+  toJSON ExplorerUrls{..} = object [ "testnetUrl"  .= toJSON testnetUrl
+                                   , "mainnetUrl"  .= toJSON mainnetUrl
+                                   ]
 
 instance FromJSON ExplorerUrls where
   parseJSON = withObject "ExplorerUrls" $ \o -> do
@@ -159,7 +156,7 @@ data Settings = Settings {
 , _settingsConfigPath        :: Text
 , _settingsUnits             :: Maybe Units
 , _settingsReqTimeout        :: NominalDiffTime
-, _settingsAddrs             :: M.Map ErgveinNodeAddr PeerInfo
+, _settingsErgveinNetwork    :: M.Map ErgveinNodeAddr ErgveinNodeManagementInfo
 , _settingsReqUrlNum         :: (Int, Int) -- ^ First is minimum required answers. Second is sufficient amount of answers from indexers.
 , _settingsActUrlNum         :: Int
 , _settingsExplorerUrl       :: M.Map Currency ExplorerUrls
@@ -177,18 +174,18 @@ $(deriveJSON defaultOptions ''SockAddr)
 
 instance FromJSON Settings where
   parseJSON = withObject "Settings" $ \o -> do
-    _settingsLang              <- o .: "lang"
-    _settingsStoreDir          <- o .: "storeDir"
-    _settingsConfigPath        <- o .: "configPath"
-    _settingsUnits             <- o .: "units"
-    _settingsReqTimeout        <- o .: "reqTimeout"
-    _settingsReqUrlNum         <- o .:? "reqUrlNum"  .!= defaultIndexersNum
-    _settingsActUrlNum         <- o .:? "actUrlNum"  .!= 10
-    _settingsAddrs             <- o .:? "addrs"  .!= mempty
-    _settingsExplorerUrl       <- o .:? "explorerUrl" .!= defaultExplorerUrl
+    _settingsLang              <- o .:  "lang"
+    _settingsStoreDir          <- o .:  "storeDir"
+    _settingsConfigPath        <- o .:  "configPath"
+    _settingsUnits             <- o .:  "units"
+    _settingsReqTimeout        <- o .:  "reqTimeout"
+    _settingsReqUrlNum         <- o .:? "reqUrlNum"        .!= defaultIndexersNum
+    _settingsActUrlNum         <- o .:? "actUrlNum"        .!= 10
+    _settingsErgveinNetwork    <- o .:? "ergveinNetwork"   .!= mempty
+    _settingsExplorerUrl       <- o .:? "explorerUrl"      .!= defaultExplorerUrl
     _settingsDiscoveryEnabled  <- o .:? "discoveryEnabled" .!= True
-    _settingsPortfolio         <- o .:? "portfolio" .!= False
-    _settingsFiatCurr          <- o .:? "fiatCurr"  .!= USD
+    _settingsPortfolio         <- o .:? "portfolio"        .!= False
+    _settingsFiatCurr          <- o .:? "fiatCurr"         .!= USD
     _mdns                      <- o .:? "dns"
     _settingsSocksProxy        <- o .:? "socksProxy"
     let _settingsDns = case fromMaybe [] _mdns of
@@ -203,7 +200,7 @@ instance ToJSON Settings where
     , "configPath"        .= toJSON _settingsConfigPath
     , "units"             .= toJSON _settingsUnits
     , "reqTimeout"        .= toJSON _settingsReqTimeout
-    , "addrs"             .= toJSON _settingsAddrs
+    , "ergveinNetwork"    .= toJSON _settingsErgveinNetwork
     , "reqUrlNum"         .= toJSON _settingsReqUrlNum
     , "actUrlNum"         .= toJSON _settingsActUrlNum
     , "explorerUrl"       .= toJSON _settingsExplorerUrl
@@ -257,7 +254,7 @@ defaultSettings home =
       , _settingsExplorerUrl       = defaultExplorerUrl
       , _settingsPortfolio         = False
       , _settingsFiatCurr          = USD
-      , _settingsAddrs             = mempty
+      , _settingsErgveinNetwork    = mempty
       , _settingsDiscoveryEnabled  = True
       , _settingsDns               = defaultDns
       , _settingsSocksProxy        = Nothing
