@@ -2,6 +2,7 @@
 module Ergvein.Index.Server.DB.Monad where
 
 import Control.Concurrent.STM
+import Control.Concurrent
 import Control.Monad.IO.Unlift
 import Control.Monad.Reader
 
@@ -11,10 +12,10 @@ import qualified Data.Sequence as Seq
 import qualified Database.LevelDB as LDB
 
 class  MonadIO m => HasFiltersDB m where
-  getFiltersDb :: m LDB.DB
+  getFiltersDbVar :: m (MVar LDB.DB)
 
 class MonadIO m => HasIndexerDB m where
-  getIndexerDb :: m LDB.DB
+  getIndexerDbVar :: m (MVar LDB.DB)
 
 class MonadIO m => HasLMDBs m where
   getDb :: DBTag -> m LDB.DB
@@ -25,8 +26,14 @@ data DBTag = DBFilters | DBIndexer
 class HasBtcRollback m where
   getBtcRollbackVar :: m (TVar (Seq.Seq RollbackRecItem))
 
-instance MonadIO m => HasIndexerDB (ReaderT LDB.DB m) where
-  getIndexerDb = ask
+instance MonadIO m => HasIndexerDB (ReaderT (MVar LDB.DB) m) where
+  getIndexerDbVar = ask
 
-instance MonadIO m => HasFiltersDB (ReaderT LDB.DB m) where
-  getFiltersDb = ask
+instance MonadIO m => HasFiltersDB (ReaderT (MVar LDB.DB) m) where
+  getFiltersDbVar  = ask
+
+readFiltersDb :: HasFiltersDB m => m LDB.DB
+readFiltersDb = liftIO . readMVar =<< getFiltersDbVar
+
+readIndexerDb :: HasIndexerDB m => m LDB.DB
+readIndexerDb = liftIO . readMVar =<< getIndexerDbVar
