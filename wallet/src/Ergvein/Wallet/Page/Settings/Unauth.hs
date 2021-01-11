@@ -97,7 +97,7 @@ dnsPageWidget = do
             setE <- validateDNSIp $ current textD `tag` goE
             pure (closeE, DNSAdd <$> setE)
       let (tglE', actE) = (\(a,b) -> (switchDyn a, switchDyn b)) $ splitDynPure valD
-      let tglE = leftmost [() <$ actE, tglE']
+      let tglE = leftmost [void $ actE, tglE']
       pure actE
 
 dnsWidget :: forall t m . MonadFrontBase t m => HostName -> m (Event t DnsAction)

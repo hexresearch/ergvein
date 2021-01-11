@@ -51,8 +51,8 @@ patternAsk = divClass "pattern-container" $ mdo
       pressedE = leftmost [Pressed <$ tdownE, Unpressed <$ tupE]
       predrawE = leftmost [squaresUpdatedE, (Clear,(0,0),emptySq) <$ tupPrE]
       selE = fmap (\(dc, sqs) -> (dc, fmap fst sqs)) $ fmap (\(dc,sqs) -> (dc, filter jstFilter sqs)) $ fmap (\(dc,_,sqs) -> (dc,sqs)) predrawE
-      gridE = leftmost [() <$ tdownE, () <$ tupE, buildE]
-      lineE = leftmost [() <$ tmoveE, () <$ tdownE]
+      gridE = leftmost [void $ tdownE, void $ tupE, buildE]
+      lineE = leftmost [void $ tmoveE, void $ tdownE]
   tmovePrE <- performEvent $ ffor tmoveE prepTCoord
   tdownPrE <- performEvent $ ffor tdownE prepTCoord
   tupPrE   <- performEvent $ ffor tupE   prepTCoord
@@ -133,8 +133,8 @@ patternSave tryD = divClass "pattern-container" $ mdo
       pressedE = leftmost [Pressed <$ tdownE, Unpressed <$ tupE]
       predrawE = leftmost [squaresUpdatedE, (Clear,(0,0),emptySq) <$ tupPrE]
       selE = fmap (\(dc, sqs) -> (dc, fmap fst sqs)) $ fmap (\(dc,sqs) -> (dc, filter jstFilter sqs)) $ fmap (\(dc,_,sqs) -> (dc,sqs)) predrawE
-      gridE = leftmost [() <$ tdownE, () <$ tupE, buildE]
-      lineE = leftmost [() <$ tmoveE, () <$ tdownE]
+      gridE = leftmost [void $ tdownE, void $ tupE, buildE]
+      lineE = leftmost [void $ tmoveE, void $ tdownE]
   tmovePrE <- performEvent $ ffor tmoveE prepTCoord
   tdownPrE <- performEvent $ ffor tdownE prepTCoord
   tupPrE   <- performEvent $ ffor tupE   prepTCoord

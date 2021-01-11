@@ -208,7 +208,7 @@ unitsPage = do
         let setUs = getSettingsUnits settings
         unitBtcE <- unitsDropdown (getUnitBTC setUs) allUnitsBTC
         setE <- updateSettings $ ffor unitBtcE (\ubtc -> settings {_settingsUnits = Just $ setUs {unitBTC = Just ubtc}})
-        delay 0.1 $ () <$ setE
+        delay 0.1 $ void $ setE
       pure ubE
 
     unitsDropdown val allUnits = do

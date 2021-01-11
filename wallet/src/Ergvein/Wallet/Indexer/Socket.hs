@@ -90,7 +90,7 @@ initIndexerConnection sname sa msgE = mdo
   pure $ IndexerConnection {
       indexConAddr = sa
     , indexConName = sname
-    , indexConClosedE = () <$ _socketClosed s
+    , indexConClosedE = void $ _socketClosed s
     , indexConOpensE = openE
     , indexConIsUp = shakeD
     , indexConRespE = respE

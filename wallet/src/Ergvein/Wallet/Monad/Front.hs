@@ -250,7 +250,7 @@ requester cur req = mdo
   te <- widgetHoldDynE $ ffor respD $ \b -> if b
     then tickLossyFromPostBuildTime timeout
     else pure never
-  let goE = leftmost [buildE, () <$ te]
+  let goE = leftmost [buildE, void $ te]
   respE <- widgetHoldE (pure never) $ ffor goE $ const $ do
     conns <- getOpenSyncedConns cur
     logWrite $ "Has " <> showt (length conns) <> " synced connections to indexers"

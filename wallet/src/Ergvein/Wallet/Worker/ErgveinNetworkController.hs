@@ -34,7 +34,7 @@ ergveinNetworkController  = mdo
   connRef <- getActiveConnsRef
   seed <- mkResolvSeed
   addrs <- M.filter _nfoIsActivated . _settingsErgveinNetwork <$> (readExternalRef =<< getSettingsRef)
-  let initMap = () <$ addrs
+  let initMap = void $ addrs
       closedE = switchDyn $ ffor valD $ leftmost . M.elems
       delE = (\u -> M.singleton u Nothing) <$> closedE
       addE = (\us -> M.fromList $ (, Just ()) <$> us) <$> addrE
