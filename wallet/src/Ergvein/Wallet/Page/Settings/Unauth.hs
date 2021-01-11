@@ -42,10 +42,10 @@ data SubPageSettings
 settingsPageUnauth :: MonadFrontBase t m => m ()
 settingsPageUnauth = wrapperSimple True $ do
   divClass "initial-options grid1" $ do
-    goLangE            <- fmap (GoLanguage   <$) $ outlineButton STPSButLanguage
-    goNetE             <- fmap (GoNetwork    <$) $ outlineButton STPSButNetwork
-    goDnsE             <- fmap (GoDns        <$) $ outlineButton STPSButDns
-    goTorE             <- fmap (GoTor        <$) $ outlineButton STPSButTor
+    goLangE            <- (GoLanguage   <$) <$> outlineButton STPSButLanguage
+    goNetE             <- (GoNetwork    <$) <$> outlineButton STPSButNetwork
+    goDnsE             <- (GoDns        <$) <$> outlineButton STPSButDns
+    goTorE             <- (GoTor        <$) <$> outlineButton STPSButTor
     let goE = leftmost [goLangE, goNetE, goDnsE, goTorE]
     void $ nextWidget $ ffor goE $ \spg -> Retractable {
         retractableNext = case spg of
@@ -170,7 +170,7 @@ torPageWidget = do
       msocksD <- getProxyConf
       maddrD <- valueField STPSProxyIpField $ fmap socksConfAddr <$> msocksD
       mportD <- valueField STPSProxyPortField $ fmap socksConfPort <$> msocksD
-      let newSocksE = ffor (updated $ (,) <$> maddrD <*> mportD) $ \(maddr, mport) -> case maddr of
+      let newSocksE = updated $ ffor2 maddrD mportD $ \maddr mport -> case maddr of
             Nothing -> Nothing
             Just addr -> Just $ SocksConf addr (fromMaybe 9050 mport)
       modifySettings $ ffor newSocksE $ \socks setts -> setts {

@@ -121,7 +121,7 @@ broadcastFilter BlockMetaInfo{..} = do
 
 blockchainScanning :: ServerM [Thread]
 blockchainScanning = sequenceA
-  [--scannerThread BTC  BTCScanning.blockInfo
+  [scannerThread BTC  BTCScanning.blockInfo
   ]
 
 feesThread :: ServerM () -> ServerM Thread

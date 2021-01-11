@@ -28,7 +28,7 @@ import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Version
-import Ergvein.Wallet.Worker.Indexer
+import Ergvein.Wallet.Worker.ErgveinNetworkController
 import Ergvein.Wallet.Worker.ErgveinNetworkRefresh
 
 import qualified Data.Map.Strict as M
@@ -191,7 +191,7 @@ newEnv settings uiChan = do
         , unauth'activateIndexEF  = indexEF
         }
   flip runReaderT env $ do
-    ergveinNodeController
+    ergveinNetworkController
     ensureErgveinNetwork
   pure env
 

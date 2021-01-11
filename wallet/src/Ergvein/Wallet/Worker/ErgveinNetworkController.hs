@@ -1,6 +1,6 @@
-module Ergvein.Wallet.Worker.Indexer
+module Ergvein.Wallet.Worker.ErgveinNetworkController
   (
-    ergveinNodeController
+    ergveinNetworkController
   ) where
 
 import Control.Monad
@@ -26,8 +26,8 @@ connectionTimeout = 60
 reconnectTimeout :: NominalDiffTime
 reconnectTimeout = 5
 
-ergveinNodeController :: (MonadIndexClient t m, MonadHasSettings t m) => m ()
-ergveinNodeController  = mdo
+ergveinNetworkController :: (MonadIndexClient t m, MonadHasSettings t m) => m ()
+ergveinNetworkController  = mdo
   nodeLog "Starting"
   sel <- getIndexReqSelector
   (addrE, _) <- getActivationEF
@@ -60,7 +60,7 @@ ergveinNodeController  = mdo
       _ -> pure never
   pure ()
   where
-    nodeLog t = logWrite $ "[ergveinNodeController]: " <> t
+    nodeLog t = logWrite $ "[ergveinNetworkController]: " <> t
 
 connectionWidget :: MonadIndexClient t m => IndexerConnection t -> m (Event t ())
 connectionWidget IndexerConnection{..} = do
@@ -68,4 +68,4 @@ connectionWidget IndexerConnection{..} = do
   timeoutE <- void <$> tickLossyFromPostBuildTime connectionTimeout
   pure $ gate (not <$> current indexConIsUp) timeoutE
   where
-    nodeLog t = logWrite $ "[ergveinNodeController]<" <> showt indexConAddr <> ">: " <> t
+    nodeLog t = logWrite $ "[ergveinNetworkController]<" <> showt indexConAddr <> ">: " <> t

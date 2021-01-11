@@ -34,7 +34,7 @@ frontend = do
 startPage :: MonadFront t m => m ()
 startPage = do
   ps <- getPubStorage
-  if False
+  if _pubStorage'restoring ps
     then restorePage
     else balancesPage
 

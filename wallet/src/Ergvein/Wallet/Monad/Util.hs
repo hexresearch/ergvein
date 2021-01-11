@@ -143,7 +143,7 @@ parseAddr resolver t = do
   let port = if p == "" then defIndexerPort else fromMaybe defIndexerPort (readMaybe $ T.unpack p)
   let val = fmap (readMaybe . T.unpack) $ T.splitOn "." h
   case val of
-    (Just a):(Just b):(Just c):(Just d):[] -> pure $ Just $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
+    [Just a, Just b, Just c, Just d] -> pure $ Just $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
     _ -> do
       let url = B8.pack $ T.unpack h
       ips <- fmap (either (const []) id) $ lookupA resolver url
@@ -159,7 +159,7 @@ parseSingleSockAddr rs t = do
   let port = if p == "" then defIndexerPort else fromMaybe defIndexerPort (readMaybe $ T.unpack p)
   let val = fmap (readMaybe . T.unpack) $ T.splitOn "." h
   case val of
-    (Just a):(Just b):(Just c):(Just d):[] -> pure $ Just $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
+    [Just a, Just b, Just c, Just d] -> pure $ Just $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
     _ -> do
       let url = B8.pack $ T.unpack h
       ips <- liftIO $ fmap (either (const []) id) $ withResolver rs (flip lookupA url)

@@ -146,7 +146,7 @@ library
         Ergvein.Wallet.Widget.GraphPinCode
         Ergvein.Wallet.Worker.Fees
         Ergvein.Wallet.Worker.Height
-        Ergvein.Wallet.Worker.Indexer
+        Ergvein.Wallet.Worker.ErgveinNetworkController
         Ergvein.Wallet.Worker.Node
         Ergvein.Wallet.Worker.PubKeysGenerator
         Ergvein.Wallet.Wrapper

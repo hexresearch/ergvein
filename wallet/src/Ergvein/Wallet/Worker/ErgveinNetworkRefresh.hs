@@ -25,6 +25,7 @@ import Ergvein.Wallet.Monad.Util
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Util
+import Ergvein.Wallet.Platform
 
 import qualified Data.Attoparsec.Binary     as P
 import qualified Data.Attoparsec.ByteString as P
@@ -34,7 +35,8 @@ import qualified Data.Vector                as V
 import qualified Ergvein.Types.Currency     as C
 
 operableNetworkSize, targetNetworkSize :: Int
-operableNetworkSize = 1
+operableNetworkSize | isTestnet = 1
+                    | otherwise = 2
 targetNetworkSize = 16
 
 workerDelay :: NominalDiffTime

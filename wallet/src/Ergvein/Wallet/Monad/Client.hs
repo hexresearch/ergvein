@@ -128,7 +128,7 @@ closeAndWait urlE = do
   connsRef <- getActiveConnsRef
   closedEE <- performEvent $ ffor urlE $ \url -> do
     liftIO $ req $ M.singleton url IndexerClose
-    mconn <- fmap (M.lookup url) $ readExternalRef connsRef
+    mconn <- M.lookup url <$> readExternalRef connsRef
     pure $ case mconn of
       Nothing -> never
       Just conn -> url <$ indexConClosedE conn

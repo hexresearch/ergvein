@@ -381,7 +381,6 @@ liftAuth ma0 ma = mdo
           ergveinNetworkRefresh
           feesWorker
           pubKeysGenerator
-          pure ()
         runReaderT (wrapped "liftAuth" ma) env
   let
     ma0' = maybe ma0 runAuthed mauth0
