@@ -10,7 +10,6 @@ module Ergvein.Wallet.Monad.Prim
   , MonadHasSettings(..)
   -- * Frontend-wide types
   , PeerScanInfoMap
-  , NamedSockAddr(..)
   , getSettings
   , getSettingsD
   , updateSettings
@@ -222,12 +221,6 @@ class MonadBaseConstr t m => MonadAlertPoster t m | m -> t where
 type PeerScanInfoMap = Map Currency (Maybe BlockHeight, BlockHeight) -- (scanned, actual)
 
 type ErgveinNodeAddr = Text
-
-data NamedSockAddr = NamedSockAddr {
-  namedAddrName :: Text
-, namedAddrSock :: SockAddr
-} deriving (Eq, Ord)
-
 
 -- ===========================================================================
 --    Helper instances for base monad

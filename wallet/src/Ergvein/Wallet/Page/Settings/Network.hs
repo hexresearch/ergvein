@@ -114,7 +114,7 @@ parametersPageWidget = mdo
   where
     fmap2 = fmap . fmap
 
-addUrlWidget :: forall t m . MonadFrontBase t m => Dynamic t Bool -> m (Event t NamedSockAddr)
+addUrlWidget :: forall t m . MonadFrontBase t m => Dynamic t Bool -> m (Event t ErgveinNodeAddr)
 addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not b then pure never else do
   murlE <- divClass "mt-3" $ do
     textD <- fmap _inputElement_value $ inputElement $ def
@@ -123,7 +123,7 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
     rs <- mkResolvSeed
     performFork $ ffor goE $ const $ do
       t <- sampleDyn textD
-      parseSingleSockAddr rs t
+      (t <$) <$> parseSingleSockAddr rs t
   void $ widgetHold (pure ()) $ ffor murlE $ \case
     Nothing -> divClass "form-field-errors" $ localizedText NPSParseError
     _ -> pure ()
@@ -140,7 +140,7 @@ networkPageWidget = mdo
   renderNodeList nodeConnectionsD nodeAddressesD refreshE
 
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
-  hideE <- addManual =<< (fmap namedAddrName) <$> addUrlWidget showD
+  hideE <- addManual =<< addUrlWidget showD
   (refreshE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refreshE' <- buttonClass "button button-outline m-0" NSSRefresh
     tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->

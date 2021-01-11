@@ -45,7 +45,7 @@ ergveinNodeController  = mdo
       Just addr ->  do
         nodeLog $ "<" <> n <> ">: Connect"
         let reqE = select sel $ Const2 n
-        conn <- initIndexerConnection addr reqE
+        conn <- initIndexerConnection n addr reqE
         modifyExternalRef connRef $ (, ()) . M.insert n conn
         -- Everything below this line is handling the closure of a connection
         -- the event the socket fires when it wants to be closed

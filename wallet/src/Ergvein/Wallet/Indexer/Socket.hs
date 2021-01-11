@@ -36,8 +36,8 @@ import qualified Data.ByteString.Lazy       as BL
 import qualified Data.Map.Strict            as M
 import qualified Data.Vector.Unboxed        as VU
 
-initIndexerConnection :: (MonadBaseConstr t m, MonadHasSettings t m) => NamedSockAddr -> Event t IndexerMsg ->  m (IndexerConnection t)
-initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
+initIndexerConnection :: (MonadBaseConstr t m, MonadHasSettings t m) => ErgveinNodeAddr -> SockAddr -> Event t IndexerMsg ->  m (IndexerConnection t)
+initIndexerConnection sname sa msgE = mdo
   (msname, msport) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True sa
   let peer = fromJust $ Peer <$> msname <*> msport
   let restartE = fforMaybe msgE $ \case
