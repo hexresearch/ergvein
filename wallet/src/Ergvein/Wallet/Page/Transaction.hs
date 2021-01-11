@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedLists #-}
 module Ergvein.Wallet.Page.Transaction(
     transactionInfoPage
-  , transactionsGetting
   , showTime
   , symb
   ) where
