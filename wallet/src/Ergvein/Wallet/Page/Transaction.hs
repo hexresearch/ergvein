@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedLists #-}
 module Ergvein.Wallet.Page.Transaction(
     transactionInfoPage
-  , transactionsGetting
   , showTime
   , symb
   ) where
@@ -87,8 +86,7 @@ makeNumberedTxIdLink :: MonadFront t m => Currency -> (Int, TxId) -> m ()
 makeNumberedTxIdLink cur (num, txId) = do
   settings <- getSettings
   let txIdText = egvTxHashToStr txId
-      mExplorerPrefixes = Map.lookup cur $ settingsExplorerUrl settings
-      urlPrefixes = maybe btcDefaultExplorerUrls id mExplorerPrefixes
+      urlPrefixes = btcSettings'explorerUrls $ getBtcSettings settings
       urlPrefix = if isTestnet then testnetUrl urlPrefixes else mainnetUrl urlPrefixes
   text $ showt num <> ". "
   hyperlink "link" txIdText (urlPrefix <> "/tx/" <> txIdText)

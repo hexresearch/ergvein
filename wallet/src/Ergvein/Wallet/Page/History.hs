@@ -14,6 +14,7 @@ import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Page.Transaction
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Transaction.Get
 import Ergvein.Wallet.Transaction.View
 import Ergvein.Wallet.Wrapper
 
@@ -44,17 +45,21 @@ historyTableWidget cur = divClass "history-table" $ case cur of
   BTC -> do
     (txsD, hghtD) <- transactionsGetting BTC
     let txMapD = Map.fromList . L.zip [(0 :: Int)..] <$> txsD
-    mapED <- listWithKey txMapD (\_ -> historyTableRowD hghtD)
+    mapED <- listWithKey txMapD (\_ -> historyTableRowD BTC hghtD)
     let txClickE = switchDyn $ mergeMap <$> mapED
     pure $ fmapMaybe id $ headMay . Map.elems <$> txClickE
   ERGO -> do
-    txClickE <- traverse historyTableRow []
+    txClickE <- traverse (historyTableRow ERGO) []
     pure $ leftmost txClickE
 
-historyTableRow :: MonadFront t m => TransactionView -> m (Event t TransactionView)
-historyTableRow tr@TransactionView{..} = divButton "history-table-row" $ do
+historyTableRow :: MonadFront t m => Currency -> TransactionView -> m (Event t TransactionView)
+historyTableRow cur tr@TransactionView{..} = divButton "history-table-row" $ do
   moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
-  divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ (symb txInOut) $ text $ showMoneyUnit txAmount moneyUnits
+  let txAmountPlusFee = moneyFromRational cur (moneyToRational txAmount + fromMaybe 0 (moneyToRational <$> txFee txInfoView))
+      fullAmount = case txInOut of
+        TransWithdraw -> symb TransWithdraw $ text $ showMoneyUnit txAmountPlusFee moneyUnits
+        TransRefill -> symb TransRefill $ text $ showMoneyUnit txAmount moneyUnits
+  divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) (fullAmount)
   divClass "history-date" $ showTxStatus tr
   divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> confsClass) confsText
   pure tr
@@ -70,10 +75,14 @@ historyTableRow tr@TransactionView{..} = divButton "history-table-row" $ do
           then text $ showt confs <> "/" <> showt confirmationGap
           else spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" $ blank
 
-historyTableRowD :: MonadFront t m => Dynamic t Word64 -> Dynamic t TransactionView -> m (Event t TransactionView)
-historyTableRowD _ trD = fmap switchDyn $ widgetHoldDyn $ ffor trD $ \tr@TransactionView{..} -> divButton "history-table-row" $ do
+historyTableRowD :: MonadFront t m => Currency -> Dynamic t Word64 -> Dynamic t TransactionView -> m (Event t TransactionView)
+historyTableRowD cur _ trD = fmap switchDyn $ widgetHoldDyn $ ffor trD $ \tr@TransactionView{..} -> divButton "history-table-row" $ do
     moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
-    divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ symb txInOut $ text $ showMoneyUnit txAmount moneyUnits
+    let txAmountPlusFee = moneyFromRational cur (moneyToRational txAmount + fromMaybe 0 (moneyToRational <$> txFee txInfoView))
+        fullAmount = case txInOut of
+          TransWithdraw -> symb TransWithdraw $ text $ showMoneyUnit txAmountPlusFee moneyUnits
+          TransRefill -> symb TransRefill $ text $ showMoneyUnit txAmount moneyUnits
+    divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) fullAmount
     divClass "history-date" $ showTxStatus tr
     divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> (confsClass tr)) $ confsText tr
     pure tr

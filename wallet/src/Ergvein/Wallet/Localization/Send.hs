@@ -27,6 +27,7 @@ data SendStrings
   | SSConfirm
   | SSPosted
   | SSTxId
+  | SSRbf
 
 instance LocalizedPrint SendStrings where
   localizedShow l v = case l of
@@ -44,6 +45,7 @@ instance LocalizedPrint SendStrings where
       SSConfirm -> "Confirm the transaction"
       SSPosted -> "Transaction posted"
       SSTxId -> "Transaction ID"
+      SSRbf -> "Replace by fee"
     Russian -> case v of
       SendTitle c -> "Отправить " <> currencyName c
       SendAvailableBalance -> "Доступно"
@@ -58,6 +60,7 @@ instance LocalizedPrint SendStrings where
       SSConfirm -> "Обзор транзакции"
       SSPosted -> "Транзакция отправлена"
       SSTxId -> "ID транзакции"
+      SSRbf -> "Replace by fee"
 
 data BTCFeeMode = BFMLow | BFMMid | BFMHigh | BFMManual
   deriving (Eq)
