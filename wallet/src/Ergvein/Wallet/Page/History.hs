@@ -45,11 +45,11 @@ historyTableWidget cur = divClass "history-table" $ case cur of
   BTC -> do
     (txsD, hghtD) <- transactionsGetting BTC
     let txMapD = Map.fromList . L.zip [(0 :: Int)..] <$> txsD
-    mapED <- listWithKey txMapD (\_ -> historyTableRowD hghtD)
+    mapED <- listWithKey txMapD (\_ -> historyTableRowD BTC hghtD)
     let txClickE = switchDyn $ mergeMap <$> mapED
     pure $ fmapMaybe id $ headMay . Map.elems <$> txClickE
   ERGO -> do
-    txClickE <- traverse historyTableRow []
+    txClickE <- traverse (historyTableRow ERGO) []
     pure $ leftmost txClickE
 
 historyTableRow :: MonadFront t m => Currency -> TransactionView -> m (Event t TransactionView)
