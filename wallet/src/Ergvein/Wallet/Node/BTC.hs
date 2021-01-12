@@ -98,7 +98,7 @@ initBTCNode doLog sa msgE = do
     -- Also, respond to ping messages by corrseponding pongs
     hsRespE <- performEvent $ fforMaybe respE $ \case
       MVersion Version{..} -> Just $ liftIO $ do
-        nodeLog $ "Received version at height: " <> showt startHeight
+        --nodeLog $ "Received version at height: " <> showt startHeight
         pure MVerAck
       MPing (Ping v) -> Just $ pure $ MPong (Pong v)
       _ -> Nothing

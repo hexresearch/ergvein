@@ -120,8 +120,7 @@ serversInfoPage initCur = do
     void $ widgetHoldDyn $ ffor curD $ maybe (pure ()) $ \(_, refrE) -> do
       connsD  <- externalRefDynamic =<< getActiveConnsRef
       setsD  <- fmap (M.keys . _settingsErgveinNetwork) <$> getSettingsD
-      let valD = (,) <$> connsD <*> setsD
-      void $ widgetHoldDyn $ ffor valD $ \(conmap, urls) -> flip traverse urls $ \nsa -> do
+      void $ widgetHoldDyn $ ffor2 connsD setsD $ \conmap urls -> flip traverse urls $ \nsa -> do
         let mconn = M.lookup nsa conmap
         divClass "network-name" $ do
           let offclass = [("class", "mt-a mb-a indexer-offline")]

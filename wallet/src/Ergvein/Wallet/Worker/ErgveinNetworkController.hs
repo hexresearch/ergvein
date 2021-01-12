@@ -33,12 +33,11 @@ ergveinNetworkController  = mdo
   (addrE, _) <- getActivationEF
   connRef <- getActiveConnsRef
   seed <- mkResolvSeed
-  addrs <- M.filter _nfoIsActivated . _settingsErgveinNetwork <$> (readExternalRef =<< getSettingsRef)
-  let initMap = void $ addrs
-      closedE = switchDyn $ ffor valD $ leftmost . M.elems
-      delE = (\u -> M.singleton u Nothing) <$> closedE
-      addE = (\us -> M.fromList $ (, Just ()) <$> us) <$> addrE
-      actE = leftmost [delE, addE] 
+  initMap <- void . M.filter _nfoIsActivated . _settingsErgveinNetwork <$> (readExternalRef =<< getSettingsRef)
+  let closedE = switchDyn $ ffor valD $ leftmost . M.elems
+      delE = (`M.singleton` Nothing) <$> closedE
+      addE = M.fromList . fmap (, Just ()) <$> addrE
+      actE = leftmost [delE, addE]
   valD <- listWithKeyShallowDiff initMap actE $ \n _ _ -> do
     mAddr <- parseSingleSockAddr seed n
     case mAddr of
@@ -54,7 +53,7 @@ ergveinNetworkController  = mdo
         -- closedE'' -- init closure procedure here
         let closedE'' = leftmost [closedE', failedToConnectE]
         -- remove the connection from the connection map
-        closedE''' <- performEvent $ ffor closedE'' $ const $ modifyExternalRef connRef $ \cm -> (M.delete n cm, ())
+        closedE''' <- performEvent $ ffor closedE'' $ const $ modifyExternalRef connRef $ (, ()) . M.delete n
         -- send out the event to delete this widget
         pure $ n <$ closedE'''
       _ -> pure never

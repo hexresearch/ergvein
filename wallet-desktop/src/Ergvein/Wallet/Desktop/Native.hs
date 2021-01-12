@@ -28,7 +28,7 @@ instance PlatformNatives where
 
   storeBS fname bs atomicMode = do
     path <- getStoreDir
-    logWrite $ "Writing ByteString to file " <> path <> "/" <> fname
+    --logWrite $ "Writing ByteString to file " <> path <> "/" <> fname
     liftIO $ do
       let fpath = T.unpack $ path <> "/" <> fname
       createDirectoryIfMissing True $ takeDirectory fpath
@@ -43,7 +43,7 @@ instance PlatformNatives where
 
   retrieveBS fname = do
     path <- getStoreDir
-    logWrite $ "Reading ByteString from file " <> path <> "/" <> fname
+    --logWrite $ "Reading ByteString from file " <> path <> "/" <> fname
     liftIO $ do
       let fpath = T.unpack $ path <> "/" <> fname
       ex <- doesFileExist fpath
@@ -104,7 +104,7 @@ instance PlatformNatives where
 
   moveStoredFile filename1 filename2 = do
     path <- getStoreDir
-    logWrite $ "Moving file " <> path <> "/" <> filename1 <> " to " <> path <> "/" <> filename2
+    --logWrite $ "Moving file " <> path <> "/" <> filename1 <> " to " <> path <> "/" <> filename2
     liftIO $ do
       let fpath1 = T.unpack $ path <> "/" <> filename1
           fpath2 = T.unpack $ path <> "/" <> filename2

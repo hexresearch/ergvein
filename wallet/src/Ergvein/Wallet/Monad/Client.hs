@@ -95,27 +95,32 @@ addDiscovered addressE = do
     (_, activationFunc) <- getActivationEF
     updateSettingsAsync $ ffor addressE $ \ url ->
       settingsErgveinNetwork . at url .~ Just discoveredErgveinNodeManagementInfo
-    performEvent $ ffor addressE $ liftIO . activationFunc . pure
+    performEvent $ liftIO . activationFunc . pure <$> addressE
 
 addManyDiscovered :: (MonadIndexClient t m, MonadHasSettings t m) => Event t [ErgveinNodeAddr] -> m (Event t ())
 addManyDiscovered addressE = do
   (_, activationFunc) <- getActivationEF
   updateSettingsAsync $  ffor addressE $ \urls -> let
     in settingsErgveinNetwork %~ (`M.union` (M.fromList $ (,discoveredErgveinNodeManagementInfo) <$> urls))
-  performEvent $ ffor addressE $ liftIO . activationFunc
+  performEvent $ liftIO . activationFunc <$> addressE
 
 addManual :: (MonadIndexClient t m, MonadHasSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
 addManual addressE = do
   (_, activationFunc) <- getActivationEF
   updateSettingsAsync $ ffor addressE $ \ url ->
     settingsErgveinNetwork . at url .~ Just manualErgveinNodeManagementInfo
-  performEvent $ ffor addressE $ liftIO . activationFunc . pure
+  performEvent $ liftIO . activationFunc . pure <$> addressE
 
 setNodeActivated :: (MonadIndexClient t m, MonadHasSettings t m) => Event t (ErgveinNodeAddr, Bool) -> m (Event t ())
-setNodeActivated addrE = updateSettingsAsync $ ffor addrE $ \(url, v) -> 
-  settingsErgveinNetwork . at url . _Just %~ (nfoIsActivated .~ v) . (nfoIsUserModified .~ True)
+setNodeActivated addrE = do
+  (_, activationFunc) <- getActivationEF
+  let (deactivationE, activationE) = fanEither $ (\(u, v)-> (if v then Right else Left) u) <$> addrE
+  closeAndWait deactivationE
+  performEvent $ liftIO . activationFunc . pure <$> activationE
+  updateSettingsAsync $ ffor addrE $ \(url, v) -> 
+    settingsErgveinNetwork . at url . _Just %~ (nfoIsActivated .~ v) . (nfoIsUserModified .~ True)
 
-removeNode :: (MonadIndexClient t m, MonadHasSettings t m) => Event t Text -> m (Event t ())
+removeNode :: (MonadIndexClient t m, MonadHasSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
 removeNode addrE = do
   closedE <- closeAndWait addrE
   updateSettingsAsync $ ffor closedE $ \url -> 
@@ -131,7 +136,7 @@ closeAndWait urlE = do
     mconn <- M.lookup url <$> readExternalRef connsRef
     pure $ case mconn of
       Nothing -> never
-      Just conn -> url <$ indexConClosedE conn
+      Just conn -> url <$ (traceEvent "))))))))))))))))))))))))))))))))))indexConClosedE" $ indexConClosedE conn)
   switchDyn <$> holdDyn never closedEE
 
 setDiscovery :: (MonadIndexClient t m, MonadHasSettings t m) =>  Event t Bool -> m (Event t ())
