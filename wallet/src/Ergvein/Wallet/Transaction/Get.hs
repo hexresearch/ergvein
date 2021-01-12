@@ -37,8 +37,8 @@ txListRaw ::
   [EgvTx] ->
   [Money] ->
   [Bool] ->
-  [[Maybe EgvTx]] ->
   [[TransOutputType]] ->
+  [[Maybe HK.TxOut]] ->
   [[TxId]] ->
   [[TxId]] ->
   [(Bool, [TxId])] ->
@@ -91,21 +91,22 @@ getAndFilterBlocks cur heightD btcAddrsD timeZone txs store settings = do
       bInOut <- traverse (checkAddrInOut allBtcAddrs) txs
       parentTxs <- sequenceA $ fmap (traverse getTxById) parentTxsIds
       txStorage <- askTxStorage
+      let storedTxs = M.elems txStorage
+      outsStatuses <- traverse (getOutsStatuses storedTxs allBtcAddrs) txs
+      spentOuts <- traverse (\egvTx -> getOutputsByOutPoints $ HK.prevOutput <$> (HK.txIn . getBtcTx . fromJust . toTxBtc $ egvTx)) txs
       let btcPubStorageMeta = fromMaybe (error "getAndFilterBlocks: BTC storage does not exist!") $ pubStorage ^? pubStorage'currencyPubStorages . at BTC . _Just . currencyPubStorage'meta . _PubStorageBtc
           replacedTxsStore = btcPubStorageMeta ^. btcPubStorage'replacedTxs
           possiblyReplacedTxsStore = btcPubStorageMeta ^. btcPubStorage'possiblyReplacedTxs
           replacedTxs = (fmap . fmap) BtcTxHash $ getReplacedTxs replacedTxsStore txs
           possiblyReplacedTxs = getPossiblyReplacedTxs possiblyReplacedTxsStore txs
-          storedTxs = M.elems txStorage
           conflictingTxs = (fmap . fmap) BtcTxHash $ getConflictingTxs possiblyReplacedTxs txs -- This might be inefficient, better to calculate this only for unconfirmed txs
           getTxConfirmations mTx = case mTx of
             Nothing -> 1 -- If tx is not found in our storage we prefer to treat it as confirmed
             Just tx -> maybe 0 (countConfirmations hght) (fmap etxMetaHeight $ getBtcTxMeta $ fromJust . toTxBtc $ tx)
           txParentsConfirmations = (fmap . fmap) getTxConfirmations parentTxs
           hasUnconfirmedParents = fmap (L.any (== 0)) txParentsConfirmations -- This might be inefficient, better to calculate this only for unconfirmed txs
-      outsStatuses <- traverse (getOutsStatuses storedTxs allBtcAddrs) txs
-      let explorerUrls = btcSettings'explorerUrls $ getBtcSettings settings
-          rawTxsL = L.filter (\(a,_) -> a /= Nothing) $ L.zip bInOut $ txListRaw bl blh txs txsRefList hasUnconfirmedParents parentTxs outsStatuses conflictingTxs replacedTxs ((fmap . fmap . fmap) BtcTxHash possiblyReplacedTxs)
+          explorerUrls = btcSettings'explorerUrls $ getBtcSettings settings
+          rawTxsL = L.filter (\(a,_) -> a /= Nothing) $ L.zip bInOut $ txListRaw bl blh txs txsRefList hasUnconfirmedParents outsStatuses spentOuts conflictingTxs replacedTxs ((fmap . fmap . fmap) BtcTxHash possiblyReplacedTxs)
           prepTxs = L.sortOn txDate $ (prepareTransactionView allBtcAddrs hght timeZone explorerUrls <$> rawTxsL)
       pure $ L.reverse $ addWalletState prepTxs
 

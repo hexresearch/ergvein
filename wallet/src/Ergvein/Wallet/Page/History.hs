@@ -56,9 +56,9 @@ historyTableRow :: MonadFront t m => Currency -> TransactionView -> m (Event t T
 historyTableRow cur tr@TransactionView{..} = divButton "history-table-row" $ do
   moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
   let txAmountPlusFee = moneyFromRational cur (moneyToRational txAmount + fromMaybe 0 (moneyToRational <$> txFee txInfoView))
-      fullAmount = if txInOut == TransWithdraw
-        then symb TransWithdraw $ text $ showMoneyUnit txAmountPlusFee moneyUnits
-        else symb TransRefill $ text $ showMoneyUnit txAmount moneyUnits
+      fullAmount = case txInOut of
+        TransWithdraw -> symb TransWithdraw $ text $ showMoneyUnit txAmountPlusFee moneyUnits
+        TransRefill -> symb TransRefill $ text $ showMoneyUnit txAmount moneyUnits
   divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) (fullAmount)
   divClass "history-date" $ showTxStatus tr
   divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> confsClass) confsText
@@ -79,9 +79,9 @@ historyTableRowD :: MonadFront t m => Currency -> Dynamic t Word64 -> Dynamic t 
 historyTableRowD cur _ trD = fmap switchDyn $ widgetHoldDyn $ ffor trD $ \tr@TransactionView{..} -> divButton "history-table-row" $ do
     moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
     let txAmountPlusFee = moneyFromRational cur (moneyToRational txAmount + fromMaybe 0 (moneyToRational <$> txFee txInfoView))
-        fullAmount = if txInOut == TransWithdraw
-          then symb TransWithdraw $ text $ showMoneyUnit txAmountPlusFee moneyUnits
-          else symb TransRefill $ text $ showMoneyUnit txAmount moneyUnits
+        fullAmount = case txInOut of
+          TransWithdraw -> symb TransWithdraw $ text $ showMoneyUnit txAmountPlusFee moneyUnits
+          TransRefill -> symb TransRefill $ text $ showMoneyUnit txAmount moneyUnits
     divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) fullAmount
     divClass "history-date" $ showTxStatus tr
     divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> (confsClass tr)) $ confsText tr
