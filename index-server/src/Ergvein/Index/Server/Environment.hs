@@ -9,10 +9,10 @@ import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Control
 import Control.Monad.Logger
 import Control.Monad.Reader
-import Data.Default
 import Data.Text (Text, isInfixOf)
 import Data.Typeable
 import Database.LevelDB.Base
+import Database.LevelDB.Internal (unsafeClose)
 import Network.HTTP.Client.TLS
 import Network.Socket
 import System.IO
@@ -20,6 +20,7 @@ import System.IO
 import Ergvein.Index.Protocol.Types (CurrencyCode, Message)
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB
+import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema.Indexer (RollbackRecItem, RollbackSequence(..))
 import Ergvein.Index.Server.DB.Queries (loadRollbackSequence)
 import Ergvein.Index.Server.PeerDiscovery.Types
@@ -40,8 +41,8 @@ import qualified Network.HTTP.Client         as HC
 data ServerEnv = ServerEnv
     { envServerConfig             :: !Config
     , envLogger                   :: !(Chan (Loc, LogSource, LogLevel, LogStr))
-    , envFiltersDBContext         :: !DB
-    , envIndexerDBContext         :: !DB
+    , envFiltersDBContext         :: !(MVar DB)
+    , envIndexerDBContext         :: !(MVar DB)
     , envBitcoinNodeNetwork       :: !HK.Network
     , envErgoNodeClient           :: !ErgoApi.Client
     , envClientManager            :: !HC.Manager
@@ -95,6 +96,8 @@ newServerEnv useTcp overrideFilters overridesIndexers btcClient cfg@Config{..} =
     void $ liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
     filtersDBCntx  <- openDb overrideFilters DBFilters cfgFiltersDbPath
     indexerDBCntx  <- openDb overridesIndexers DBIndexer cfgIndexerDbPath
+    filtersDBVar   <- liftIO $ newMVar filtersDBCntx
+    indexerDBVar   <- liftIO $ newMVar indexerDBCntx
     ergoNodeClient <- liftIO $ ErgoApi.newClient cfgERGONodeHost cfgERGONodePort
     tlsManager     <- liftIO $ newTlsManager
     feeEstimates   <- liftIO $ newTVarIO M.empty
@@ -120,13 +123,13 @@ newServerEnv useTcp overrideFilters overridesIndexers btcClient cfg@Config{..} =
           unless b' next
       pure btcsock
       else dummyBtcSock bitcoinNodeNetwork
-    btcSeq <- liftIO $ runStdoutLoggingT $ runReaderT (loadRollbackSequence BTC) indexerDBCntx
+    btcSeq <- liftIO $ runStdoutLoggingT $ runReaderT (loadRollbackSequence BTC) indexerDBVar
     btcSeqVar <- liftIO $ newTVarIO $ unRollbackSequence btcSeq
     pure ServerEnv
       { envServerConfig            = cfg
       , envLogger                  = logger
-      , envFiltersDBContext        = filtersDBCntx
-      , envIndexerDBContext        = indexerDBCntx
+      , envFiltersDBContext        = filtersDBVar
+      , envIndexerDBContext        = indexerDBVar
       , envBitcoinNodeNetwork      = bitcoinNodeNetwork
       , envErgoNodeClient          = ergoNodeClient
       , envClientManager           = tlsManager
@@ -143,27 +146,55 @@ newServerEnv useTcp overrideFilters overridesIndexers btcClient cfg@Config{..} =
       }
 
 -- | Log exceptions at Error severity
-logOnException :: (HasServerConfig m, MonadIO m, MonadLogger m, MonadCatch m) => Text -> m a -> m a
+logOnException :: (
+    HasServerConfig m
+  , HasFiltersDB m
+  , HasIndexerDB m
+  , MonadIO m
+  , MonadLogger m
+  , MonadCatch m)
+  => Text -> m a -> m a
 logOnException threadName = handle logE
   where
-    logE :: (HasServerConfig m, MonadIO m, MonadLogger m, MonadCatch m) => SomeException -> m b
+    logInfoN' :: MonadLogger m => Text -> m ()
+    logInfoN' t = logInfoN $ "[" <> threadName <> "]: " <> t
+    logErrorN' :: MonadLogger m => Text -> m ()
+    logErrorN' t = logErrorN $ "[" <> threadName <> "]: " <> t
+    logE :: (
+        HasServerConfig m
+      , HasFiltersDB m
+      , HasIndexerDB m
+      , MonadIO m
+      , MonadLogger m
+      , MonadCatch m) => SomeException -> m b
     logE e
         | Just ThreadKilled <- fromException e = do
-            logInfoN $ "[" <> threadName <> "]: Killed normally by ThreadKilled"
+            logInfoN' "Killed normally by ThreadKilled"
             throwM e
         | Just (ioe :: IOException) <- fromException e = do
           let isBadMagic = isInfixOf "not an sstable" $ showt ioe
           if isBadMagic
             then do
-              logInfoN $ "[" <> threadName <> "]: Halted by \"not an sstable (bad magic nuber)\" error. Repairing the db."
+              logInfoN' "Halted by \"not an sstable (bad magic nuber)\" error. Repairing the db."
               Config{..} <- serverConfig
-              repair cfgFiltersDbPath def
-              repair cfgIndexerDbPath def
+              fdbVar <- getFiltersDbVar
+              idbVar <- getIndexerDbVar
+              fdb <- liftIO $ takeMVar fdbVar
+              idb <- liftIO $ takeMVar idbVar
+              logInfoN' "Waiting 10s before closing, just in case"
+              liftIO $ threadDelay 10000000
+              liftIO $ unsafeClose fdb
+              liftIO $ unsafeClose idb
+              filtersDBCntx  <- openDb False DBFilters cfgFiltersDbPath
+              indexerDBCntx  <- openDb False DBIndexer cfgIndexerDbPath
+              liftIO $ putMVar fdbVar filtersDBCntx
+              liftIO $ putMVar idbVar indexerDBCntx
+              logInfoN' "Reopened the db. Resume as usual"
             else
-              logErrorN $ "[" <> threadName <> "]: Killed by IOException. " <> showt ioe
+              logErrorN' $ "Killed by IOException. " <> showt ioe
           liftIO $ threadDelay 1000000
           throwM e
         | SomeException eTy <- e = do
-            logErrorN $ "[" <> threadName <> "]: Killed by " <> showt (typeOf eTy) <> ". " <> showt eTy
+            logErrorN' $ "Killed by " <> showt (typeOf eTy) <> ". " <> showt eTy
             liftIO $ threadDelay 1000000
             throwM e

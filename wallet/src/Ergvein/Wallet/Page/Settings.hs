@@ -20,6 +20,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
+import Ergvein.Wallet.Elements.Toggle
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.AuthInfo
 import Ergvein.Wallet.Localization.Network
@@ -56,6 +57,7 @@ data SubPageSettings
   | GoNodes
   | GoPassword
   | GoDelete
+  | GoRbf
 
 -- TODO: uncomment commented lines when ERGO is ready
 settingsPage :: MonadFront t m => m ()
@@ -73,6 +75,7 @@ settingsPage = do
             , (GoPassword, STPSButSetPass)
             , (GoDelete, STPSButDeleteWallet)
             , (GoMnemonicExport, STPSButMnemonicExport)
+            , (GoRbf, STPSButRbf)
             ]
       goE <- fmap leftmost $ flip traverse btns $ \(v,l) -> fmap (v <$) $ outlineButton l
       void $ nextWidget $ ffor goE $ \spg -> Retractable {
@@ -87,6 +90,7 @@ settingsPage = do
             GoNodes           -> btcNodesPage
             GoPassword        -> passwordChangePage
             GoDelete          -> deleteWalletPage
+            GoRbf             -> rbfPage
         , retractablePrev = Just $ pure settingsPage
         }
 
@@ -301,6 +305,25 @@ deleteWalletPage = do
         deleteStoredFile ".last-wallet"
       void $ setAuthInfo $ Nothing <$ doneE
       pure ((), never)
+
+rbfPage :: MonadFront t m => m ()
+rbfPage = do
+  title <- localized STPSButRbf
+  wrapper True title (Just $ pure rbfPage) $ do
+    settings <- getSettings
+    let initVal = btcSettings'sendRbfByDefault $ getBtcSettings settings
+    initValD <- holdDyn initVal never
+    valD <- toggler STPSEnableRbfByDefault initValD
+    selE <- fmap updated $ holdUniqDyn valD
+    updE <- updateSettings $ ffor selE (\rbfSetting -> setRbfSetting settings rbfSetting)
+    showSuccessMsg $ STPSSuccess <$ updE
+    pure ()
+  where
+    setRbfSetting :: Settings -> Bool -> Settings
+    setRbfSetting s val =
+      let oldSettings = settingsCurrencySpecific s
+          oldBtcSettings = getBtcSettings s
+      in s {settingsCurrencySpecific = Map.insert BTC (SettingsBtc $ oldBtcSettings {btcSettings'sendRbfByDefault = val}) oldSettings}
 
 lineOption :: MonadFront t m => m a -> m a
 lineOption = divClass "network-wrapper"

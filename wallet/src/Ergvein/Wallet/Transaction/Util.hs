@@ -28,30 +28,36 @@ module Ergvein.Wallet.Transaction.Util(
   , inputSpendsOutPoint
   , markedReplaceable
   , replacesByFee
+  , buildAddrTxRbf
   -- Ergo functions
   ) where
 
 import Control.Monad.IO.Class
 import Data.Maybe
+import Data.Text (Text)
 import Data.Word
 import Network.Haskoin.Transaction (Tx(..), TxIn(..), TxOut(..), OutPoint(..), txHash)
 
 import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Keys
+import Ergvein.Types.Network (Network)
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
 
+import qualified Data.ByteString                    as B
 import qualified Data.List                          as L
 import qualified Data.Map.Strict                    as M
 import qualified Data.Set                           as S
+import qualified Data.Text                          as T
 import qualified Data.Vector                        as V
 import qualified Network.Haskoin.Address            as HA
 import qualified Network.Haskoin.Script             as HS
 import qualified Network.Haskoin.Transaction        as HK
+import qualified Network.Haskoin.Util               as HU
 
 checkAddr :: (HasTxStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m Bool
 checkAddr addrs tx = do
@@ -324,3 +330,26 @@ replacesByFee tx1 tx2 = do
     (True, True, Just True) -> pure $ Just True
   where
     shareInputs = haveCommonInputs tx1 tx2
+
+-- | Build a transaction by providing a list of outpoints as inputs
+-- and a list of recipient addresses and amounts as outputs.
+buildAddrTxRbf :: Network -> [OutPoint] -> [(Text, Word64)] -> Either String Tx
+buildAddrTxRbf net xs ys = buildTxRbf xs =<< mapM f ys
+  where
+    f (s, v) =
+        maybe (Left ("buildAddrTxRbf: Invalid address " <> T.unpack s)) Right $ do
+            a <- HA.stringToAddr net s
+            let o = HA.addressToOutput a
+            return (o, v)
+
+-- | Build a transaction by providing a list of outpoints as inputs
+-- and a list of 'ScriptOutput' and amounts as outputs.
+buildTxRbf :: [OutPoint] -> [(HS.ScriptOutput, Word64)] -> Either String Tx
+buildTxRbf xs ys =
+    mapM fo ys >>= \os -> return $ Tx 1 (map fi xs) os [] 0
+  where
+    fi outPoint = TxIn outPoint B.empty (maxBound - 2)
+    fo (o, v)
+        | v <= 2100000000000000 = return $ TxOut v $ HS.encodeOutputBS o
+        | otherwise =
+            Left $ "buildTxRbf: Invalid amount " ++ show v
