@@ -163,13 +163,8 @@ insertBtcRollback :: (HasBtcRollback m, HasFiltersDB m, MonadLogger m, MonadBase
   => RollbackRecItem -> m ()
 insertBtcRollback ritem = do
   rollVar <- getBtcRollbackVar
-  rse <- liftIO $ readTVarIO rollVar
-  let rse' = ritem Seq.<| rse
-  if Seq.length rse' <= btcRollbackSize
-    then liftIO $ atomically $ writeTVar rollVar rse'
-    else do
-      let rest Seq.:> _ = Seq.viewr rse'
-      liftIO $ atomically $ writeTVar rollVar rest
+  liftIO $ atomically $ modifyTVar' rollVar $ \rse ->
+    Seq.take btcRollbackSize $ ritem Seq.<| rse
 
 storeRollbackSequence :: (HasIndexerDB m, MonadLogger m) => Currency -> RollbackSequence -> m ()
 storeRollbackSequence cur rse = do
