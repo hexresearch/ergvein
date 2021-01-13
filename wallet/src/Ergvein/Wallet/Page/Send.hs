@@ -162,7 +162,7 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr, rbfEnabled) = do
         either' finalpick (const $ confirmationErrorWidget CEMNoSolution) $ \(pick, change) ->
           txSignSendWidget addr unit amount fee changeKey change pick rbfEnabled
       Right (tx, unit', amount', estFee, addr') -> do
-        confirmationInfoWidget (unit', amount') estFee addr' (Just tx)
+        confirmationInfoWidget (unit', amount') estFee rbfEnabled addr' (Just tx)
         pure never
     void $ widgetHold (pure ()) $ ffor stxE $ \(tx, _, _, _, _) -> do
       sendE <- getPostBuild
@@ -197,13 +197,14 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr, rbfEnabled) = do
 
 -- | Simply displays the relevant information about a transaction
 -- TODO: modify to accomodate Ergo
-confirmationInfoWidget :: MonadFront t m => (UnitBTC, Word64) -> Word64 -> EgvAddress -> Maybe HT.Tx -> m ()
-confirmationInfoWidget (unit, amount) estFee addr mTx = divClass "send-confirm-info ta-l mb-1" $ do
+confirmationInfoWidget :: MonadFront t m => (UnitBTC, Word64) -> Word64 -> RbfEnabled -> EgvAddress -> Maybe HT.Tx -> m ()
+confirmationInfoWidget (unit, amount) estFee rbfEnabled addr mTx = divClass "send-confirm-info ta-l mb-1" $ do
   elClass "h4" "ta-c mb-1" $ localizedText $
     if isJust mTx then SSPosted else SSConfirm
   mkrow AmountString (text $ showMoneyUnit (mkMoney amount) us <> " " <> symbolUnit cur us) False
   mkrow RecipientString (text $ egvAddrToString addr) True
   mkrow SSFee (text $ showt estFee <> " " <> symbolUnit cur (Units (Just BtcSat) Nothing)) False
+  mkrow SSRbf (localizedText $ FSRbf rbfEnabled) False
   mkrow SSTotal (text $ showMoneyUnit (mkMoney $ amount + estFee) us <> " " <> symbolUnit cur us) False
   case mTx of
     Nothing -> pure ()
@@ -253,7 +254,7 @@ txSignSendWidget addr unit amount fee changeKey change pick rbfEnabled = mdo
         then HT.buildAddrTx btcNetwork (upPoint <$> pick) outs
         else buildAddrTxRbf btcNetwork (upPoint <$> pick) outs
   let estFee = HT.guessTxFee fee 2 $ length pick
-  confirmationInfoWidget (unit, amount) estFee addr Nothing
+  confirmationInfoWidget (unit, amount) estFee rbfEnabled addr Nothing
   showSignD <- holdDyn True . (False <$) =<< eventToNextFrame etxE
   etxE <- either' etx (const $ confirmationErrorWidget CEMTxBuildFail >> pure never) $ \tx -> do
     fmap switchDyn $ widgetHoldDyn $ ffor showSignD $ \b -> if not b then pure never else do
