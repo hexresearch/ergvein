@@ -22,7 +22,6 @@ import Control.Exception
 import Control.Monad.IO.Class
 import Data.Default
 import Data.ByteString           (ByteString)
-import qualified Data.Serialize as S
 import Database.LevelDB.Base
 import Database.LevelDB.Internal (unsafeClose)
 import Database.LevelDB.Streaming (entrySlice,Entry,KeyRange,Direction)

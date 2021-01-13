@@ -11,8 +11,6 @@ import Control.Monad.Logger
 import Control.Monad.Reader
 import Data.Text (Text, isInfixOf)
 import Data.Typeable
-import Database.LevelDB.Base
-import Database.LevelDB.Internal (unsafeClose)
 import Network.HTTP.Client.TLS
 import Network.Socket
 import System.IO

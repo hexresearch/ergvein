@@ -23,8 +23,6 @@ import Data.Either
 import Data.Serialize (Serialize)
 import Data.Text
 import Data.Time
-import Database.LevelDB
-import Database.LevelDB.Iterator
 
 import Ergvein.Index.Server.DB.Serialize.Class
 import Ergvein.Index.Server.DB.Wrapper

@@ -2,7 +2,6 @@
 module Ergvein.Index.Server.DB.Monad where
 
 import Control.Concurrent.STM
-import Control.Concurrent
 import Control.Monad.IO.Unlift
 import Control.Monad.Reader
 
