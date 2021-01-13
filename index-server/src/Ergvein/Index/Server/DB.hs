@@ -3,10 +3,11 @@ module Ergvein.Index.Server.DB
   (
     DBTag(..)
   , openDb
+  , withDb
   ) where
 
 import Conduit
-import Control.Exception
+import Control.Monad.Catch
 import Control.Monad
 import Control.Monad.Logger
 import Data.Default
@@ -43,9 +44,19 @@ openDb overwriteDbVerOnMismatch dbtag dbDirectory = do
               DBIndexer -> ("Indexer", "--override-ver-indexer")
         putStrLn $ "[" <> dbName <> "]: Error! Database version mismatch!"
         putStrLn $ "[" <> dbName <> "]: If you are sure, that the new schema is compatible, run with " <> overrideFlag
-        throw DbVersionMismatch
+        throwM DbVersionMismatch
   pure levelDBContext
   where
     (schemaVersionRecKey, schemaVersion) = case dbtag of
       DBFilters -> (DBF.schemaVersionRecKey, DBF.schemaVersion)
       DBIndexer -> (DBI.schemaVersionRecKey, DBI.schemaVersion)
+
+withDb
+  :: (MonadLogger m, MonadIO m, MonadMask m)
+  => Bool -> DBTag -> FilePath -> (LevelDB -> m a) -> m a
+withDb overwriteDbVerOnMismatch dbtag dbDirectory =
+  -- NOTE: Not quite ideal. It's still possible to lose handle if
+  --       we're interrupted in openDb
+  bracket
+    (openDb overwriteDbVerOnMismatch dbtag dbDirectory)
+    closeLevelDB

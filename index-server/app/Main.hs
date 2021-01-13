@@ -1,6 +1,7 @@
 module Main where
 
 import Control.Monad.Logger
+import Control.Monad.IO.Class
 import Data.Text (Text, pack)
 import Options.Applicative
 
@@ -64,11 +65,11 @@ startServer Options{..} = case optsCommand of
       T.putStrLn $ pack "Server starting"
       cfg@Config{..} <- loadConfig cfgPath
       BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
-        env <- runStdoutLoggingT $ newServerEnv optsBtcTcpConn optsOverrideFilters optsOverrideIndexers client cfg
-        runStdoutLoggingT $ app optsOnlyScan cfg env
+        runStdoutLoggingT $ withNewServerEnv optsBtcTcpConn optsOverrideFilters optsOverrideIndexers client cfg $ \env -> do
+          app optsOnlyScan cfg env
     CleanKnownPeers cfgPath -> do
       cfg@Config{..} <- loadConfig cfgPath
       BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
-        env <- runStdoutLoggingT $ newServerEnv optsBtcTcpConn optsOverrideFilters optsOverrideIndexers client cfg
-        runServerMIO env emptyKnownPeers
+        runStdoutLoggingT $ withNewServerEnv optsBtcTcpConn optsOverrideFilters optsOverrideIndexers client cfg $ \env -> do
+          liftIO $ runServerMIO env emptyKnownPeers
       T.putStrLn $ pack "knownPeers cleared"
