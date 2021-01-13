@@ -13,13 +13,19 @@ module Ergvein.Index.Server.DB.Wrapper
   , writeLDB
   , getLDB
   , putLDB
+  , streamSliceLDB
   ) where
 
 import Control.Concurrent.MVar
+import Control.Exception
 import Control.Monad.IO.Class
+import Data.Default
 import Data.ByteString           (ByteString)
+import qualified Data.Serialize as S
 import Database.LevelDB.Base
 import Database.LevelDB.Internal (unsafeClose)
+import Database.LevelDB.Streaming (entrySlice,Entry,KeyRange,Direction)
+import qualified Database.LevelDB.Streaming as Stream
 
 -- | Connection to database. Actual connection is stored inside @MVar@
 -- and @Nothing@ is stored on when connection is closed. This way user
@@ -59,3 +65,11 @@ getLDB db opt key = usingLevelDB db $ \c -> get c opt key
 
 putLDB :: MonadIO m => LevelDB -> WriteOptions -> ByteString -> ByteString -> m ()
 putLDB db opt k v = usingLevelDB db $ \c -> put c opt k v
+
+-- | Stripped down but safe variant of streaming data from levelDB. It
+-- fetches all data in one go
+streamSliceLDB :: MonadIO m => LevelDB -> KeyRange -> Direction -> m [Entry]
+streamSliceLDB db range dir
+  = usingLevelDB db
+  $ \c    -> bracket (createIter c def) releaseIter
+  $ \iter -> Stream.toList $ entrySlice iter range dir

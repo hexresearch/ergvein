@@ -54,12 +54,8 @@ parsedKey = fromRight (error "ser") . S.decode . unPrefixedKey
 
 safeEntrySlice :: (EgvSerialize v, MonadIO m , Ord k, S.Serialize k) => Currency -> LevelDB -> BS.ByteString -> k -> k -> m [(k,v)]
 safeEntrySlice cur db startKeyBinary startKey endKey = do
-  -- FIXME: Decide what to do with iterator
-  --
-  -- iterator <- createIter db def
-  -- slice <- LDBStreaming.toList $ LDBStreaming.entrySlice iterator range LDBStreaming.Asc
-  -- pure $ over _2 (unflatExact cur "safeEntrySlice")  <$> over _1 (decodeExact . unPrefixedKey) <$> slice
-  undefined
+  slice <- streamSliceLDB db range LDBStreaming.Asc
+  pure $ over _2 (unflatExact cur "safeEntrySlice")  <$> over _1 (decodeExact . unPrefixedKey) <$> slice
   where    
     range = LDBStreaming.KeyRange startKeyBinary comparison
     comparison key = case S.decode $ unPrefixedKey key of
