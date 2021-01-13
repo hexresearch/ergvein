@@ -89,6 +89,7 @@ frontendCss r = do
   headerCss
   historyPageCss
   txInfoPageCss
+  bumpFeePageCss
   infoPageCss
   initialPageCss
   inputCss
@@ -1004,6 +1005,11 @@ txInfoPageCss = do
     cursor pointer
   ".tx-info-our-address" ? do
     fontWeight bold
+
+bumpFeePageCss :: Css
+bumpFeePageCss = do
+  ".bump-fee-page" ? do
+    textAlign $ alignSide sideLeft
 
 legoStyles :: Css
 legoStyles = do

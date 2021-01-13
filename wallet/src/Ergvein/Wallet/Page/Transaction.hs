@@ -8,8 +8,10 @@ module Ergvein.Wallet.Page.Transaction(
 import Control.Monad.Reader
 import Data.Map.Strict as Map
 import Data.Maybe (fromMaybe)
+import Data.Serialize (encode)
 import Data.Text as T
 import Data.Time
+import Text.Printf
 
 import Ergvein.Text
 import Ergvein.Types.Currency
@@ -24,13 +26,15 @@ import Ergvein.Wallet.Transaction.Get
 import Ergvein.Wallet.Transaction.View
 import Ergvein.Wallet.Wrapper
 
+import qualified Data.ByteString as BS
 import qualified Data.List as L
 
 transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
 transactionInfoPage cur tr@TransactionView{..} = do
   title <- localized HistoryTITitle
   moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
-  wrapper False title (Just $ pure $ transactionInfoPage cur tr) $ divClass "tx-info-page" $ do
+  let thisWidget = Just $ pure $ transactionInfoPage cur tr
+  wrapper False title thisWidget $ divClass "tx-info-page" $ do
     infoPageElementExpEl HistoryTITransactionId $ hyperlink "link" (txId txInfoView) (txUrl txInfoView)
     infoPageElementEl HistoryTIAmount $ (symbCol txInOut) $ text $ showMoneyUnit txAmount moneyUnits <> " " <> symbolUnit cur moneyUnits
     infoPageElementEl HistoryTIWalletChanges $ (transTypeCol txInOut) $ text $ case txInOut of
@@ -39,7 +43,16 @@ transactionInfoPage cur tr@TransactionView{..} = do
     case txInOut of
       TransRefill -> pure ()
       TransWithdraw -> infoPageElement HistoryTIFee $ maybe "unknown" (\a -> (showMoneyUnit a moneyUnits) <> " " <> symbolUnit cur moneyUnits) $ txFee txInfoView
-    infoPageElement HistoryTIRbf $ showt $ txRbfEnabled txInfoView
+    infoPageElementEl HistoryTIRbf $ do
+      text $ showt $ txRbfEnabled txInfoView
+      let bumpFeePossible = txInOut == TransWithdraw && txRbfEnabled txInfoView && txConfirmations txInfoView == 0
+      when (bumpFeePossible) $ do
+        bumpFeeE <- divClass "mt-1" $ outlineButton HistoryTIBumpFeeBtn
+        void $ nextWidget $ ffor bumpFeeE $ \_ -> Retractable {
+          retractableNext = bumpFeeWidget cur tr
+        , retractablePrev = thisWidget
+        }
+      pure ()
     case txConflictingTxs txInfoView of
       [] -> pure ()
       conflictingTxs -> infoPageElementExpEl HistoryTIConflictingTxs $ do
@@ -133,3 +146,35 @@ symbCol txInOut ma = divClass ("history-amount-" <> ((T.toLower . showt) txInOut
 
 transTypeCol :: MonadFront t m => TransType -> m a -> m a
 transTypeCol txInOut ma = divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) ma
+
+bumpFeeWidget :: MonadFront t m => Currency -> TransactionView -> m ()
+bumpFeeWidget cur tr@TransactionView{..} = do
+  title <- localized BumpFeeTitle
+  let thisWidget = Just $ pure $ bumpFeeWidget cur tr
+  wrapper False title thisWidget $ divClass "bump-fee-page" $ do
+    moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
+    mkRow BumpFeeCurrentFee $ maybe "unknown" (\a -> (showMoneyUnit a moneyUnits) <> " " <> symbolUnit cur moneyUnits) $ txFee txInfoView
+    mkRow BumpFeeCurrentFeeRate $ maybe "unknown" (\a -> (T.pack $ printf "%.3f" $ (realToFrac a :: Double)) <> " " <> symbolUnit cur smallestUnits <> "/byte") $ calcFeeRate (txFee txInfoView) (txRaw txInfoView)
+    mkRow BumpFeeNewFeeRate ""
+    pure ()
+
+mkRow :: (MonadFront t m, LocalizedPrint l) => l -> Text -> m ()
+mkRow a t = divClass "" $ do
+  elClass "span" "font-bold" $ do
+    localizedText a
+    text ": "
+  text t
+
+smallestUnits :: Units
+smallestUnits = Units {
+    unitBTC  = Just BtcSat
+  , unitERGO = Just ErgNano
+  }
+
+calcFeeRate :: Maybe Money -> EgvTx -> Maybe Rational
+calcFeeRate (Just money) (TxBtc btcTx) =
+  let txSize = BS.length $ encode $ getBtcTx btcTx
+      fee = moneyToRationalUnit money smallestUnits
+  in Just $ fee / (fromIntegral txSize)
+calcFeeRate (Just money) (TxErg ergTx) = Nothing -- TODO: implement for ERGO
+calcFeeRate _ _ = Nothing
