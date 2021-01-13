@@ -176,22 +176,15 @@ logOnException threadName = handle logE
             then do
               logInfoN' "Halted by \"not an sstable (bad magic nuber)\" error. Repairing the db."
               Config{..} <- serverConfig
-              -- FIXME: Implement opening and closing of database
-              --
-              -- fdbVar <- getFiltersDbVar
-              -- idbVar <- getIndexerDbVar
-              -- fdb <- liftIO $ takeMVar fdbVar
-              -- idb <- liftIO $ takeMVar idbVar
-              -- logInfoN' "Waiting 10s before closing, just in case"
-              -- liftIO $ threadDelay 10000000
-              -- liftIO $ unsafeClose fdb
-              -- liftIO $ unsafeClose idb
-              -- filtersDBCntx  <- openDb False DBFilters cfgFiltersDbPath
-              -- indexerDBCntx  <- openDb False DBIndexer cfgIndexerDbPath
-              -- liftIO $ putMVar fdbVar filtersDBCntx
-              -- liftIO $ putMVar idbVar indexerDBCntx
-              -- logInfoN' "Reopened the db. Resume as usual"
-              undefined
+              fdb <- getFiltersDb
+              idb <- getIndexerDb
+              closeLevelDB fdb
+              closeLevelDB idb
+              fdb' <- openDb False DBFilters cfgFiltersDbPath
+              idb' <- openDb False DBIndexer cfgIndexerDbPath
+              moveLevelDbHandle fdb' fdb
+              moveLevelDbHandle idb' idb
+              logInfoN' "Reopened the db. Resume as usual"
             else
               logErrorN' $ "Killed by IOException. " <> showt ioe
           liftIO $ threadDelay 1000000

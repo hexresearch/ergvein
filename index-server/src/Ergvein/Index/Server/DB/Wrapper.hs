@@ -9,6 +9,7 @@ module Ergvein.Index.Server.DB.Wrapper
   ( LevelDB
   , openLevelDB
   , closeLevelDB
+  , moveLevelDbHandle
     -- * Wrapped operations
   , writeLDB
   , getLDB
@@ -39,6 +40,14 @@ openLevelDB path opt = liftIO $ do
   db <- open path opt
   putMVar mv (Just db)
   pure $ LevelDB mv
+
+-- | Close and then immediately reopen database
+moveLevelDbHandle :: MonadIO m => LevelDB -> LevelDB -> m ()
+moveLevelDbHandle (LevelDB src) (LevelDB dst) = liftIO $ modifyMVar src $ \case
+  Nothing -> error "moveLevelDbHandle: can't move from closed handle"
+  Just h  -> modifyMVar dst $ \mh -> do
+    mapM_ unsafeClose mh
+    pure (Just h, (Nothing, ()))
 
 -- | Close handle. After close it's no longer usable and any database
 -- operation which uses this handle will throw exception.
