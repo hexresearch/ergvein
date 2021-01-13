@@ -23,6 +23,7 @@ import Ergvein.Index.Server.DB
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Schema.Indexer (RollbackRecItem, RollbackSequence(..))
 import Ergvein.Index.Server.DB.Queries (loadRollbackSequence)
+import Ergvein.Index.Server.DB.Wrapper
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.TCPService.BTC
 import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
@@ -41,8 +42,8 @@ import qualified Network.HTTP.Client         as HC
 data ServerEnv = ServerEnv
     { envServerConfig             :: !Config
     , envLogger                   :: !(Chan (Loc, LogSource, LogLevel, LogStr))
-    , envFiltersDBContext         :: !(MVar DB)
-    , envIndexerDBContext         :: !(MVar DB)
+    , envFiltersDBContext         :: !LevelDB
+    , envIndexerDBContext         :: !LevelDB
     , envBitcoinNodeNetwork       :: !HK.Network
     , envErgoNodeClient           :: !ErgoApi.Client
     , envClientManager            :: !HC.Manager
@@ -94,10 +95,8 @@ newServerEnv useTcp overrideFilters overridesIndexers btcClient cfg@Config{..} =
     logger <- liftIO newChan
     liftIO $ hSetBuffering stdout LineBuffering
     void $ liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
-    filtersDBCntx  <- openDb overrideFilters DBFilters cfgFiltersDbPath
-    indexerDBCntx  <- openDb overridesIndexers DBIndexer cfgIndexerDbPath
-    filtersDBVar   <- liftIO $ newMVar filtersDBCntx
-    indexerDBVar   <- liftIO $ newMVar indexerDBCntx
+    filtersDB      <- openDb overrideFilters DBFilters cfgFiltersDbPath
+    indexerDB      <- openDb overridesIndexers DBIndexer cfgIndexerDbPath
     ergoNodeClient <- liftIO $ ErgoApi.newClient cfgERGONodeHost cfgERGONodePort
     tlsManager     <- liftIO $ newTlsManager
     feeEstimates   <- liftIO $ newTVarIO M.empty
@@ -123,13 +122,13 @@ newServerEnv useTcp overrideFilters overridesIndexers btcClient cfg@Config{..} =
           unless b' next
       pure btcsock
       else dummyBtcSock bitcoinNodeNetwork
-    btcSeq <- liftIO $ runStdoutLoggingT $ runReaderT (loadRollbackSequence BTC) indexerDBVar
+    btcSeq    <- liftIO $ runStdoutLoggingT $ runReaderT (loadRollbackSequence BTC) indexerDB
     btcSeqVar <- liftIO $ newTVarIO $ unRollbackSequence btcSeq
     pure ServerEnv
       { envServerConfig            = cfg
       , envLogger                  = logger
-      , envFiltersDBContext        = filtersDBVar
-      , envIndexerDBContext        = indexerDBVar
+      , envFiltersDBContext        = filtersDB
+      , envIndexerDBContext        = indexerDB
       , envBitcoinNodeNetwork      = bitcoinNodeNetwork
       , envErgoNodeClient          = ergoNodeClient
       , envClientManager           = tlsManager
@@ -177,19 +176,22 @@ logOnException threadName = handle logE
             then do
               logInfoN' "Halted by \"not an sstable (bad magic nuber)\" error. Repairing the db."
               Config{..} <- serverConfig
-              fdbVar <- getFiltersDbVar
-              idbVar <- getIndexerDbVar
-              fdb <- liftIO $ takeMVar fdbVar
-              idb <- liftIO $ takeMVar idbVar
-              logInfoN' "Waiting 10s before closing, just in case"
-              liftIO $ threadDelay 10000000
-              liftIO $ unsafeClose fdb
-              liftIO $ unsafeClose idb
-              filtersDBCntx  <- openDb False DBFilters cfgFiltersDbPath
-              indexerDBCntx  <- openDb False DBIndexer cfgIndexerDbPath
-              liftIO $ putMVar fdbVar filtersDBCntx
-              liftIO $ putMVar idbVar indexerDBCntx
-              logInfoN' "Reopened the db. Resume as usual"
+              -- FIXME: Implement opening and closing of database
+              --
+              -- fdbVar <- getFiltersDbVar
+              -- idbVar <- getIndexerDbVar
+              -- fdb <- liftIO $ takeMVar fdbVar
+              -- idb <- liftIO $ takeMVar idbVar
+              -- logInfoN' "Waiting 10s before closing, just in case"
+              -- liftIO $ threadDelay 10000000
+              -- liftIO $ unsafeClose fdb
+              -- liftIO $ unsafeClose idb
+              -- filtersDBCntx  <- openDb False DBFilters cfgFiltersDbPath
+              -- indexerDBCntx  <- openDb False DBIndexer cfgIndexerDbPath
+              -- liftIO $ putMVar fdbVar filtersDBCntx
+              -- liftIO $ putMVar idbVar indexerDBCntx
+              -- logInfoN' "Reopened the db. Resume as usual"
+              undefined
             else
               logErrorN' $ "Killed by IOException. " <> showt ioe
           liftIO $ threadDelay 1000000

@@ -9,11 +9,15 @@ module Ergvein.Index.Server.DB.Wrapper
   ( LevelDB
   , openLevelDB
   , closeLevelDB
+    -- * Wrapped operations
   , writeLDB
+  , getLDB
+  , putLDB
   ) where
 
 import Control.Concurrent.MVar
 import Control.Monad.IO.Class
+import Data.ByteString           (ByteString)
 import Database.LevelDB.Base
 import Database.LevelDB.Internal (unsafeClose)
 
@@ -42,6 +46,16 @@ usingLevelDB (LevelDB h) action = liftIO $ withMVar h $ \case
   Nothing -> error "usingLevelDB: database is already closed"
   Just c  -> action c
 
--- | Wrapped 'write'
+
+----------------------------------------------------------------
+-- Wrappers
+----------------------------------------------------------------
+
 writeLDB :: MonadIO m => LevelDB -> WriteOptions -> WriteBatch -> m ()
 writeLDB db opt batch = usingLevelDB db $ \c -> write c opt batch
+
+getLDB :: MonadIO m => LevelDB -> ReadOptions -> ByteString -> m (Maybe ByteString)
+getLDB db opt key = usingLevelDB db $ \c -> get c opt key
+
+putLDB :: MonadIO m => LevelDB -> WriteOptions -> ByteString -> ByteString -> m ()
+putLDB db opt k v = usingLevelDB db $ \c -> put c opt k v
