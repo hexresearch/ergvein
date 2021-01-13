@@ -30,6 +30,7 @@ library
     Ergvein.Index.Server.DB.Serialize
     Ergvein.Index.Server.DB.Serialize.Class
     Ergvein.Index.Server.DB.Utils
+    Ergvein.Index.Server.DB.Wrapper
     Ergvein.Index.Server.Dependencies
     Ergvein.Index.Server.Environment
     Ergvein.Index.Server.Metrics
