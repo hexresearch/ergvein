@@ -313,7 +313,7 @@ rbfPage = do
     settings <- getSettings
     let initVal = btcSettings'sendRbfByDefault $ getBtcSettings settings
     initValD <- holdDyn initVal never
-    valD <- toggler STPSEnableRbfByDefault initValD
+    valD <- labeledToggler STPSEnableRbfByDefault initValD
     selE <- fmap updated $ holdUniqDyn valD
     updE <- updateSettings $ ffor selE (\rbfSetting -> setRbfSetting settings rbfSetting)
     showSuccessMsg $ STPSSuccess <$ updE
@@ -321,9 +321,9 @@ rbfPage = do
   where
     setRbfSetting :: Settings -> Bool -> Settings
     setRbfSetting s val =
-      let oldSettings = settingsCurrencySpecific s
+      let oldSettings = _settingsCurrencySpecific s
           oldBtcSettings = getBtcSettings s
-      in s {settingsCurrencySpecific = Map.insert BTC (SettingsBtc $ oldBtcSettings {btcSettings'sendRbfByDefault = val}) oldSettings}
+      in s {_settingsCurrencySpecific = Map.insert BTC (SettingsBtc $ oldBtcSettings {btcSettings'sendRbfByDefault = val}) oldSettings}
 
 lineOption :: MonadFront t m => m a -> m a
 lineOption = divClass "network-wrapper"
