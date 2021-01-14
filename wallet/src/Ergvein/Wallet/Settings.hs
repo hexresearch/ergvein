@@ -2,6 +2,11 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Wallet.Settings (
     Settings(..)
+  , BtcSettings(..)
+  , ErgoSettings(..)
+  , CurrencySettings(..)
+  , getBtcSettings
+  , getErgoSettings
   , loadSettings
   , storeSettings
   , defaultSettings
@@ -10,8 +15,6 @@ module Ergvein.Wallet.Settings (
   , defaultIndexerTimeout
   , defaultActUrlNum
   , ExplorerUrls(..)
-  , defaultExplorerUrl
-  , btcDefaultExplorerUrls
   , defaultDns
   , defaultIndexers
   , getDNS
@@ -31,12 +34,12 @@ module Ergvein.Wallet.Settings (
   , settingsErgveinNetwork            
   , settingsReqUrlNum        
   , settingsActUrlNum        
-  , settingsExplorerUrl      
   , settingsPortfolio        
   , settingsDiscoveryEnabled 
   , settingsFiatCurr         
   , settingsDns              
   , settingsSocksProxy       
+  , settingsCurrencySpecific
   , nfoIsActivated
   , nfoIsUserModified
   , ErgveinNodeAddr
@@ -103,7 +106,7 @@ instance FromJSON ErgveinNodeManagementInfo where
 data ExplorerUrls = ExplorerUrls {
   testnetUrl :: !Text
 , mainnetUrl :: !Text
-} deriving (Eq, Show)
+} deriving (Eq, Show, Read)
 
 instance ToJSON ExplorerUrls where
   toJSON ExplorerUrls{..} = object [ "testnetUrl"  .= toJSON testnetUrl
@@ -116,14 +119,11 @@ instance FromJSON ExplorerUrls where
     mainnetUrl          <- o .: "mainnetUrl"
     pure ExplorerUrls{..}
 
-defaultExplorerUrl :: M.Map Currency ExplorerUrls
-defaultExplorerUrl = M.fromList $ btcDefaultUrls <> ergoDefaultUrls
-  where
-    btcDefaultUrls  = [(BTC, btcDefaultExplorerUrls)]
-    ergoDefaultUrls = [(ERGO, ExplorerUrls "" "")]
-
 btcDefaultExplorerUrls :: ExplorerUrls
 btcDefaultExplorerUrls = ExplorerUrls "https://www.blockchain.com/btc-testnet" "https://www.blockchain.com/btc"
+
+ergDefaultExplorerUrls :: ExplorerUrls
+ergDefaultExplorerUrls = ExplorerUrls "https://testnet.ergoplatform.com" "https://explorer.ergoplatform.com"
 
 data SocksConf = SocksConf {
   socksConfAddr :: !IP
@@ -150,6 +150,71 @@ torSocks = SocksConf "127.0.0.1" 9050
 toSocksProxy :: SocksConf -> S5.SocksConf
 toSocksProxy (SocksConf a p) = S5.defaultSocksConfFromSockAddr $ makeSockAddr a p
 
+data BtcSettings = BtcSettings {
+    btcSettings'explorerUrls     :: !ExplorerUrls
+  , btcSettings'sendRbfByDefault :: !Bool
+  } deriving (Eq, Show, Read)
+
+instance ToJSON BtcSettings where
+  toJSON BtcSettings{..} = object [
+      "explorerUrls" .= toJSON btcSettings'explorerUrls
+    , "sendRbfByDefault" .= toJSON btcSettings'sendRbfByDefault
+    ]
+
+instance FromJSON BtcSettings where
+  parseJSON = withObject "BtcSettings" $ \o -> do
+    btcSettings'explorerUrls <- o .: "explorerUrls"
+    btcSettings'sendRbfByDefault <- o .: "sendRbfByDefault"
+    pure BtcSettings{..}
+
+defaultBtcSettings :: BtcSettings
+defaultBtcSettings = BtcSettings {
+    btcSettings'explorerUrls = btcDefaultExplorerUrls
+  , btcSettings'sendRbfByDefault = True
+}
+
+data ErgoSettings = ErgoSettings {
+    ergSettings'explorerUrls :: !ExplorerUrls
+} deriving (Eq, Show, Read)
+
+instance ToJSON ErgoSettings where
+  toJSON ErgoSettings{..} = object [
+      "explorerUrls" .= toJSON ergSettings'explorerUrls
+    ]
+
+instance FromJSON ErgoSettings where
+  parseJSON = withObject "ErgoSettings" $ \o -> do
+    ergSettings'explorerUrls <- o .: "explorerUrls"
+    pure ErgoSettings{..}
+
+defaultErgSettings :: ErgoSettings
+defaultErgSettings = ErgoSettings {
+    ergSettings'explorerUrls = ergDefaultExplorerUrls
+}
+
+data CurrencySettings = SettingsBtc !BtcSettings | SettingsErgo !ErgoSettings
+  deriving (Eq, Show, Read)
+
+$(deriveJSON defaultOptions ''CurrencySettings)
+
+type CurrencySpecificSettings = M.Map Currency CurrencySettings
+
+defaultCurrencySpecificSettings :: CurrencySpecificSettings
+defaultCurrencySpecificSettings = M.fromList $ btcDefaultSettings <> ergoDefaultSettings
+  where
+    btcDefaultSettings  = [(BTC, SettingsBtc defaultBtcSettings)]
+    ergoDefaultSettings = [(ERGO, SettingsErgo defaultErgSettings)]
+
+getBtcSettings :: Settings -> BtcSettings
+getBtcSettings settings = case M.lookup BTC (_settingsCurrencySpecific settings) of
+  Just (SettingsBtc btcSettings) -> btcSettings
+  _ -> defaultBtcSettings
+
+getErgoSettings :: Settings -> ErgoSettings
+getErgoSettings settings = case M.lookup ERGO (_settingsCurrencySpecific settings) of
+  Just (SettingsErgo ergoSettings) -> ergoSettings
+  _ -> defaultErgSettings
+
 data Settings = Settings {
   _settingsLang              :: Language
 , _settingsStoreDir          :: Text
@@ -159,12 +224,12 @@ data Settings = Settings {
 , _settingsErgveinNetwork    :: M.Map ErgveinNodeAddr ErgveinNodeManagementInfo
 , _settingsReqUrlNum         :: (Int, Int) -- ^ First is minimum required answers. Second is sufficient amount of answers from indexers.
 , _settingsActUrlNum         :: Int
-, _settingsExplorerUrl       :: M.Map Currency ExplorerUrls
 , _settingsPortfolio         :: Bool
 , _settingsDiscoveryEnabled  :: Bool
 , _settingsFiatCurr          :: Fiat
 , _settingsDns               :: S.Set HostName
 , _settingsSocksProxy        :: Maybe SocksConf
+, _settingsCurrencySpecific    :: CurrencySpecificSettings
 } deriving (Eq, Show)
 
 makeLenses ''Settings
@@ -182,7 +247,6 @@ instance FromJSON Settings where
     _settingsReqUrlNum         <- o .:? "reqUrlNum"        .!= defaultIndexersNum
     _settingsActUrlNum         <- o .:? "actUrlNum"        .!= 10
     _settingsErgveinNetwork    <- o .:? "ergveinNetwork"   .!= mempty
-    _settingsExplorerUrl       <- o .:? "explorerUrl"      .!= defaultExplorerUrl
     _settingsDiscoveryEnabled  <- o .:? "discoveryEnabled" .!= True
     _settingsPortfolio         <- o .:? "portfolio"        .!= False
     _settingsFiatCurr          <- o .:? "fiatCurr"         .!= USD
@@ -191,6 +255,7 @@ instance FromJSON Settings where
     let _settingsDns = case fromMaybe [] _mdns of
           [] -> defaultDns
           dns -> S.fromList dns
+    _settingsCurrencySpecific  <- o .:? "currencySpecific" .!= defaultCurrencySpecificSettings
     pure Settings{..}
 
 instance ToJSON Settings where
@@ -203,12 +268,12 @@ instance ToJSON Settings where
     , "ergveinNetwork"    .= toJSON _settingsErgveinNetwork
     , "reqUrlNum"         .= toJSON _settingsReqUrlNum
     , "actUrlNum"         .= toJSON _settingsActUrlNum
-    , "explorerUrl"       .= toJSON _settingsExplorerUrl
     , "portfolio"         .= toJSON _settingsPortfolio
     , "fiatCurr"          .= toJSON _settingsFiatCurr
     , "dns"               .= toJSON _settingsDns
     , "socksProxy"        .= toJSON _settingsSocksProxy
     , "discoveryEnabled"  .= toJSON _settingsDiscoveryEnabled
+    , "currencySpecific"  .= toJSON _settingsCurrencySpecific
    ]
 
 defIndexerPort :: PortNumber
@@ -251,13 +316,13 @@ defaultSettings home =
       , _settingsReqTimeout        = defaultIndexerTimeout
       , _settingsReqUrlNum         = defaultIndexersNum
       , _settingsActUrlNum         = defaultActUrlNum
-      , _settingsExplorerUrl       = defaultExplorerUrl
       , _settingsPortfolio         = False
       , _settingsFiatCurr          = USD
       , _settingsErgveinNetwork    = mempty
       , _settingsDiscoveryEnabled  = True
       , _settingsDns               = defaultDns
       , _settingsSocksProxy        = Nothing
+      , _settingsCurrencySpecific  = defaultCurrencySpecificSettings
       }
 
 -- | TODO: Implement some checks to see if the configPath folder is ok to write to

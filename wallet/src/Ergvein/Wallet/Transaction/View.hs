@@ -59,8 +59,8 @@ data TxRawInfo = TxRawInfo {
   , txr                     :: EgvTx
   , txom                    :: Money
   , txHasUnconfirmedParents :: Bool
-  , txParents               :: [Maybe EgvTx]
   , txOutsStatuses          :: [TransOutputType]
+  , txSpentOutputs          :: [Maybe HK.TxOut]
   , txConflTxs              :: [TxId]
   , txReplTxs               :: [TxId]
   , txPossReplTxs           :: (Bool, [TxId])
@@ -122,7 +122,9 @@ addWalletState txs = fmap setPrev $ fmap (\(prevTxCount, txView) -> (txView, cal
   where
     setPrev (tr, prAm) = tr {txPrevAm = (Just (Money BTC prAm))}
     calcAmount n txs' = L.foldl' calc 0 $ L.take n txs'
-    calc acc TransactionView{..} = if txInOut == TransRefill then acc + moneyAmount txAmount else acc - moneyAmount txAmount - (fromMaybe 0 $ moneyAmount <$> txFee txInfoView)
+    calc acc TransactionView{..} = case txInOut of
+      TransRefill -> acc + moneyAmount txAmount
+      TransWithdraw -> acc - moneyAmount txAmount - (fromMaybe 0 $ moneyAmount <$> txFee txInfoView)
 
 prepareTransactionView ::
   [EgvAddress] ->
@@ -133,7 +135,7 @@ prepareTransactionView ::
   TransactionView
 prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = case txr of
   TxBtc btx -> btcView btx
-  TxErg _ -> error "prepareTransactionView: Ergo is not impolemented"
+  TxErg _ -> error "prepareTransactionView: Ergo is not implemented"
   where
     btcView (BtcTx btx meta) = TransactionView {
         txAmount = txAmountCalc
@@ -161,7 +163,7 @@ prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = case txr of
           , txConfirmations       = bHeight
           , txBlock               = txBlockLink
           , txOutputs             = txOuts
-          , txInputs              = txInsOuts
+          , txInputs              = txIns
         }
         blHght = fromMaybe 0 $ maybe (Just 0) etxMetaHeight meta
         bHeight = if ((blHght == 0) || (hght == 0))
@@ -175,9 +177,8 @@ prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = case txr of
 
         txOutsOurAm = fmap fst $ L.filter snd $ fmap (\out -> (HK.outValue out, not (txOurAdrCheck out))) $ HK.txOut btx
 
-        getOut = HK.txOut . getBtcTx . fromJust . toTxBtc
-        txInsOuts = fmap fst $ L.filter snd $ fmap (\out -> ((txOutAdr out, Money BTC (HK.outValue out)), txOurAdrCheck out)) $ L.concat $ fmap getOut $ catMaybes txParents
-        txInsOutsAm = fmap fst $ L.filter snd $ fmap (\out -> (HK.outValue out,txOurAdrCheck out)) $ L.concat $ fmap getOut $ catMaybes txParents
+        txIns = mapMaybe (\mOut -> maybe Nothing (\out -> Just (txOutAdr out, Money BTC (HK.outValue out))) mOut) txSpentOutputs
+        txInsAm = mapMaybe (\mOut -> maybe Nothing (\out -> Just $ HK.outValue out) mOut) txSpentOutputs
 
         txOutAdr out = either (const Nothing) id $ (addrToString network) <$> (scriptToAddressBS $ HK.scriptOutput out)
         txOurAdrCheck out = either (\_ -> False) (\a -> a `L.elem` btcAddrs) $ (scriptToAddressBS $ HK.scriptOutput out)
@@ -193,7 +194,7 @@ prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = case txr of
         txFeeCalc = case mTT of
           Nothing -> Nothing
           Just TransRefill -> Nothing
-          Just TransWithdraw -> Just $ Money BTC $ (sum txInsOutsAm) - (sum txOutsAm)
+          Just TransWithdraw -> Just $ Money BTC $ (sum txInsAm) - (sum txOutsAm)
         txAmountCalc = case mTT of
           Nothing -> txom
           Just TransRefill -> txom

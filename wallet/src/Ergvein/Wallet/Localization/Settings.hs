@@ -27,6 +27,8 @@ data SettingsPageStrings =
   | STPSButNodes
   | STPSButSetPass
   | STPSButDeleteWallet
+  | STPSButRbf
+  | STPSEnableRbfByDefault
   | STPSSelectLanguage
   | STPSSetsTor
   | STPSUseTor
@@ -69,6 +71,8 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButPortfolio        -> "Portfolio"
       STPSButMnemonicExport   -> "Export mnemonic phrase"
       STPSButDeleteWallet     -> "Delete wallet"
+      STPSButRbf              -> "Replace by fee"
+      STPSEnableRbfByDefault  -> "Send RBF enabled transactions by default"
       STPSSelectLanguage      -> "Select language:"
       STPSSetsTor             -> "Tor configuration"
       STPSUseTor              -> "Use Tor"
@@ -101,6 +105,8 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButPortfolio        -> "Портфель"
       STPSButMnemonicExport   -> "Экспортировать мнемоническую фразу"
       STPSButDeleteWallet     -> "Удалить кошелёк"
+      STPSButRbf              -> "Replace by fee"
+      STPSEnableRbfByDefault  -> "Отправлять RBF транзакции по умолчанию"
       STPSSelectLanguage      -> "Выберите язык:"
       STPSSetsTor             -> "Настройки Tor"
       STPSUseTor              -> "Проксировать через Tor"

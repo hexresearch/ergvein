@@ -89,14 +89,16 @@ actualHeight = fromIntegral <$> nodeRpcCall getBlockCount
 getTxFromCache :: (HasFiltersDB m, MonadLogger m)
   => TxHash -> m (Either String HK.Tx)
 getTxFromCache thash = do
-  db <- getFiltersDb
-  src <- getParsedExact BTC "getTxFromCache" db $ txBytesKey thash
-  pure $ egvDeserialize BTC $ unTxRecBytes src
+  db <- readFiltersDb
+  msrc <- getParsed BTC "getTxFromCache" db $ txBytesKey thash
+  pure $ case msrc of
+    Nothing -> Left $ "Tx not found. TxHash: " <> show thash
+    Just src -> egvDeserialize BTC $ unTxRecBytes src
 
 getTxFromNode :: (BitcoinApiMonad m, MonadLogger m, MonadBaseControl IO m, HasFiltersDB m)
   => HK.TxHash -> m HK.Tx
 getTxFromNode thash = do
-  db <- getFiltersDb
+  db <- readFiltersDb
   txHeight <- fmap unTxRecHeight $
     getParsedExact BTC "getTxFromNode" db $ txHeightKey $ hkTxHashToEgv thash
   blk <- getBtcBlock $ fromIntegral txHeight
@@ -162,7 +164,9 @@ feeScaner = feeScaner' 0
             case (estimateResFee mco, estimateResFee mec) of
               (Just (MkFixed co), Just (MkFixed ec)) -> pure $ Just (lvl, (fromIntegral co `div` 1000 , fromIntegral ec `div` 1000))
               _ -> pure Nothing
-          setFees IPT.BTC $ mkFeeBundle res
+          let isTestnet = cfgBTCNodeIsTestnet cfg
+              currencyCode = if isTestnet then IPT.TBTC else IPT.BTC
+          setFees currencyCode $ mkFeeBundle res
           logInfoN $ "[BTC]: " <> showt res
           pure $ case res of
             [] -> h

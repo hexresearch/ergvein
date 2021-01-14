@@ -56,13 +56,14 @@ import qualified Database.LevelDB as LDB
 
 getActualPeers :: (HasIndexerDB m, MonadLogger m, HasDiscoveryRequisites m) =>  m [Address]
 getActualPeers = do
-  db <- getIndexerDb
+  db <- readIndexerDb
   -- I put BTC here and downstream, because it doesnt actually matter but we still need a value
-  knownPeers <- getParsed @KnownPeersRec Currency.BTC "getKnownPeers" db knownPeersRecKey
+  mKnownPeers <- getParsed Currency.BTC "getKnownPeers" db knownPeersRecKey
+  let knownPeers = fromMaybe (KnownPeersRec []) mKnownPeers
   currentTime <- liftIO getCurrentTime
   actualizationDelay <- (/1000000) . fromIntegral . descReqActualizationDelay <$> getDiscoveryRequisites
   let validDate = (-actualizationDelay) `addUTCTime` currentTime
-      filteredByLastValidatedAt = filter ((validDate <=) . read . T.unpack . knownPeerRecLastValidatedAt) $ maybe mempty unKnownPeersRec knownPeers
+      filteredByLastValidatedAt = filter ((validDate <=) . read . T.unpack . knownPeerRecLastValidatedAt) $ unKnownPeersRec knownPeers
   pure $ convert <$> filteredByLastValidatedAt
 
 getPeerList :: (HasIndexerDB m, MonadLogger m) => m [Peer]
@@ -70,7 +71,7 @@ getPeerList = fmap (fmap convert . unKnownPeersRec) peerList
 
 setPeerList :: (HasIndexerDB m, MonadLogger m) => [Peer] -> m ()
 setPeerList peers = do
-  idb <- getIndexerDb
+  idb <- readIndexerDb
   upsertItem Currency.BTC  idb knownPeersRecKey $ KnownPeersRec $ convert @_ @KnownPeerRecItem <$> peers
 
 upsertPeer :: (HasIndexerDB m, MonadLogger m) => Peer -> m ()
@@ -81,13 +82,13 @@ upsertPeer peer = do
 
 peerList :: (HasIndexerDB m, MonadLogger m) => m KnownPeersRec
 peerList = do
-  idb <- getIndexerDb
+  idb <- readIndexerDb
   maybeLst <- getParsed @KnownPeersRec Currency.BTC "getKnownPeersList"  idb knownPeersRecKey
   pure $ fromMaybe (KnownPeersRec mempty) maybeLst
 
 setPeerRecList :: (HasIndexerDB m, MonadLogger m) => KnownPeersRec -> m ()
 setPeerRecList peers = do
-  idb <- getIndexerDb
+  idb <- readIndexerDb
   upsertItem Currency.BTC idb knownPeersRecKey peers
 
 deletePeerBySockAddr :: (HasIndexerDB m, MonadLogger m) => PeerAddr -> m ()
@@ -103,13 +104,13 @@ emptyKnownPeers = setPeerRecList $ KnownPeersRec []
 
 getScannedHeight :: (HasFiltersDB m, MonadLogger m) => Currency -> m (Maybe BlockHeight)
 getScannedHeight currency = do
-  db <- getFiltersDb
+  db <- readFiltersDb
   stored <- getParsed currency "BlockHeight" db $ scannedHeightTxKey currency
   pure $ scannedHeightRecHeight <$> stored
 
 setScannedHeight :: (HasFiltersDB m, MonadLogger m) => Currency -> BlockHeight -> m ()
 setScannedHeight currency height = do
-  db <- getFiltersDb
+  db <- readFiltersDb
   upsertItem currency db (scannedHeightTxKey currency) $ ScannedHeightRec height
 
 initIndexerDb :: DB -> IO ()
@@ -118,7 +119,7 @@ initIndexerDb db = do
 
 addBlockInfo :: (HasBtcRollback m, HasFiltersDB m, HasIndexerDB m, MonadLogger m, MonadBaseControl IO m) => BlockInfo -> m ()
 addBlockInfo (BlockInfo meta spent txinfos) = do
-  db <- getFiltersDb
+  db <- readFiltersDb
   write db def $ txInfosBatch <> metaInfosBatch <> heightWrite
   insertRollback cur $ RollbackRecItem txHashes prevHash (height -1)
   insertSpentTxUpdates cur spent
@@ -132,19 +133,19 @@ addBlockInfo (BlockInfo meta spent txinfos) = do
 
 setLastScannedBlock :: (HasIndexerDB m, MonadLogger m) => Currency -> ShortByteString -> m ()
 setLastScannedBlock currency blockHash = do
-  db <- getIndexerDb
+  db <- readIndexerDb
   upsertItem currency db (lastScannedBlockHeaderHashRecKey currency) $ LastScannedBlockHeaderHashRec blockHash
 
 getLastScannedBlock :: (HasIndexerDB m, MonadLogger m) => Currency -> m (Maybe ShortByteString)
 getLastScannedBlock currency = do
-  db <- getIndexerDb
+  db <- readIndexerDb
   maybeLastScannedBlock <- getParsed currency "lastScannedBlockHeaderHashRecKey" db $ lastScannedBlockHeaderHashRecKey currency
   pure $ lastScannedBlockHeaderHashRecHash <$> maybeLastScannedBlock
 
 -- Currency should be consistent with currency in BlockInfoMeta
 addBlockMetaInfos :: (HasFiltersDB m, MonadLogger m) => Currency -> [BlockMetaInfo] -> m ()
 addBlockMetaInfos currency infos = do
-  db <- getFiltersDb
+  db <- readFiltersDb
   write db def $ putItems currency keySelector valueSelector infos
   where
     keySelector   info = metaRecKey (blockMetaCurrency info, blockMetaBlockHeight info)
@@ -163,28 +164,23 @@ insertBtcRollback :: (HasBtcRollback m, HasFiltersDB m, MonadLogger m, MonadBase
   => RollbackRecItem -> m ()
 insertBtcRollback ritem = do
   rollVar <- getBtcRollbackVar
-  rse <- liftIO $ readTVarIO rollVar
-  let rse' = ritem Seq.<| rse
-  if Seq.length rse' <= btcRollbackSize
-    then liftIO $ atomically $ writeTVar rollVar rse'
-    else do
-      let rest Seq.:> _ = Seq.viewr rse'
-      liftIO $ atomically $ writeTVar rollVar rest
+  liftIO $ atomically $ modifyTVar' rollVar $ \rse ->
+    Seq.take btcRollbackSize $ ritem Seq.<| rse
 
 storeRollbackSequence :: (HasIndexerDB m, MonadLogger m) => Currency -> RollbackSequence -> m ()
 storeRollbackSequence cur rse = do
-  idb <- getIndexerDb
+  idb <- readIndexerDb
   write idb def $ pure $ LDB.Put (rollbackKey cur) $ egvSerialize cur rse
 
 loadRollbackSequence :: (HasIndexerDB m, MonadLogger m) => Currency -> m RollbackSequence
 loadRollbackSequence cur = do
-  idb <- getIndexerDb
+  idb <- readIndexerDb
   mseq <- getParsed cur "loadRollbackSequence" idb $ rollbackKey cur
   pure $ fromMaybe (RollbackSequence mempty) mseq
 
 insertSpentTxUpdates :: (HasFiltersDB m, MonadLogger m, MonadBaseControl IO m) => Currency -> Map.Map TxHash Word32 -> m ()
 insertSpentTxUpdates _ outs = do
-  fdb <- getFiltersDb
+  fdb <- readFiltersDb
   let outsl = mkChunks 100 $ Map.toList outs
   upds <- fmap (mconcat . mconcat) $ mapConcurrently (traverse (mkupds fdb)) outsl
   write fdb def upds
@@ -207,8 +203,8 @@ performRollback cur = case cur of
 performBtcRollback :: (HasFiltersDB m, HasIndexerDB m, HasBtcRollback m, MonadLogger m) => m Int
 performBtcRollback = do
   let cur = Currency.BTC
-  fdb <- getIndexerDb
-  idb <- getFiltersDb
+  fdb <- readIndexerDb
+  idb <- readFiltersDb
   rollVar <- getBtcRollbackVar
   rse <- liftIO . readTVarIO $ rollVar
   let clearSeq = LDB.Put (rollbackKey cur) $ egvSerialize cur (RollbackSequence mempty)
