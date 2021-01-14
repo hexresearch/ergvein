@@ -164,7 +164,9 @@ feeScaner = feeScaner' 0
             case (estimateResFee mco, estimateResFee mec) of
               (Just (MkFixed co), Just (MkFixed ec)) -> pure $ Just (lvl, (fromIntegral co `div` 1000 , fromIntegral ec `div` 1000))
               _ -> pure Nothing
-          setFees IPT.BTC $ mkFeeBundle res
+          let isTestnet = cfgBTCNodeIsTestnet cfg
+              currencyCode = if isTestnet then IPT.TBTC else IPT.BTC
+          setFees currencyCode $ mkFeeBundle res
           logInfoN $ "[BTC]: " <> showt res
           pure $ case res of
             [] -> h
