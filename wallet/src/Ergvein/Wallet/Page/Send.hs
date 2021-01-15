@@ -35,6 +35,7 @@ import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage
+import Ergvein.Wallet.Transaction.Fee
 import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Widget.Balance
@@ -157,8 +158,8 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr, rbfEnabled) = do
       Left (_, Nothing) -> confirmationErrorWidget CEMNoChangeKey
       Left (Just utxomap, Just (_, changeKey)) -> do
         let (confs, unconfs) = partition' $ M.toList utxomap
-            firstpick = HT.chooseCoins amount fee 2 True $ L.sort confs
-            finalpick = either (const $ HT.chooseCoins amount fee 2 True $ L.sort $ confs <> unconfs) Right firstpick
+            firstpick = chooseCoins amount fee 2 True $ L.sort confs
+            finalpick = either (const $ chooseCoins amount fee 2 True $ L.sort $ confs <> unconfs) Right firstpick
         either' finalpick (const $ confirmationErrorWidget CEMNoSolution) $ \(pick, change) ->
           txSignSendWidget addr unit amount fee changeKey change pick rbfEnabled
       Right (tx, unit', amount', estFee, addr') -> do
@@ -253,7 +254,7 @@ txSignSendWidget addr unit amount fee changeKey change pick rbfEnabled = mdo
   let etx = if rbfEnabled
         then HT.buildAddrTx btcNetwork (upPoint <$> pick) outs
         else buildAddrTxRbf btcNetwork (upPoint <$> pick) outs
-  let estFee = HT.guessTxFee fee 2 $ length pick
+  let estFee = guessTxFee fee 2 $ length pick
   confirmationInfoWidget (unit, amount) estFee rbfEnabled addr Nothing
   showSignD <- holdDyn True . (False <$) =<< eventToNextFrame etxE
   etxE <- either' etx (const $ confirmationErrorWidget CEMTxBuildFail >> pure never) $ \tx -> do
