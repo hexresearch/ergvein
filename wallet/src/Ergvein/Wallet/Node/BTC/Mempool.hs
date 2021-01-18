@@ -7,37 +7,53 @@ import Control.Monad.Random
 import Network.Haskoin.Network
 
 import Ergvein.Wallet.Monad.Front
+import Ergvein.Wallet.Native
+import Ergvein.Wallet.Util
+import Ergvein.Text
 import Ergvein.Wallet.Node.Types
 
 import qualified Data.Dependent.Map as DM
 import qualified Data.Map.Strict as M
 
-data MempoolAnswers = MANoNode | MAEmpty | MAAnswer Message deriving (Show, Eq)
-
 -- | Request a mempool from a random node
-requestBTCMempool :: MonadFront t m => Event t () -> m (Event t MempoolAnswers)
-requestBTCMempool reqE = mdo
-  conMapD <- getNodeConnectionsD
-  let goE =  attach (current conMapD) $ reqE
-  actE <- fmap switchDyn $ widgetHold (pure never) $ ffor goE $ \(cm, _) -> do
-    buildE <- getPostBuild
-    case DM.lookup BTCTag cm of
-      Nothing -> pure $ MANoNode <$ buildE
-      Just btcsMap -> case M.elems btcsMap of
-        [] -> pure $ MAEmpty <$ buildE
-        btcs -> do
+requestBTCMempool :: MonadFront t m => m ()
+requestBTCMempool = void $ workflow waitNode
+  where
+    waitNode = Workflow $ do
+      conMapE <- updatedWithInit =<< getBtcNodesD
+      nodeE <- performEvent $ ffor conMapE $ \cm ->
+        if M.null cm then pure Nothing else do
+          let btcs = M.toList cm
           node <- liftIO $ fmap (btcs!!) $ randomRIO (0, length btcs - 1)
-          mempoolRequester node
-  pure actE
+          pure $ Just node
+      pure ((), uncurry loadMempool <$> fmapMaybe id nodeE)
 
+    loadMempool addr node = Workflow $ do
+      timeoutE <- delay 10 =<< getPostBuild -- Node can drop us before we asked for mempool
+      requestedE <- mempoolRequester addr node
+      let nextE = leftmost [doNothing <$ requestedE, waitNode <$ timeoutE]
+      pure ((), nextE)
+
+    doNothing = Workflow $ do
+      logWrite "Mempool requester is disabled. We got enough of mempool today..."
+      -- buildE <- delay 3 =<< getPostBuild
+      let nextE = never -- TODO: request mempool here if we implement background sleeping
+      pure ((), waitNode <$ nextE)
+
+-- | Consider this size as minimum size of mempool that we expect as answer for mempool msg
+mempoolMinInvSize :: Int
+mempoolMinInvSize = 20
 
 -- | Requester for mempool
-mempoolRequester :: MonadFront t m => NodeBTC t -> m (Event t MempoolAnswers)
-mempoolRequester NodeConnection{..} = do
+mempoolRequester :: MonadFront t m => SockAddr -> NodeBTC t -> m (Event t ())
+mempoolRequester addr NodeConnection{..} = do
   buildE      <- getPostBuild
   let upE     = leftmost [updated nodeconIsUp, current nodeconIsUp `tag` buildE]
   let btcreq  = NodeReqBTC MMempool
   let reqE    = fforMaybe upE $ \b -> if b then Just (nodeconUrl, btcreq) else Nothing
-  let updE    = fmap (\a -> MAAnswer a) nodeconRespE
-  requestFromNode reqE
-  pure $ updE
+  performEvent_ $ ffor reqE $ const $ logWrite $ "Requesting initial mempool for BTC from " <> showt addr
+  _ <- requestFromNode reqE
+  let hugeInv = fforMaybe nodeconRespE $ \case
+        MInv (Inv is) -> if length is >= mempoolMinInvSize then Just () else Nothing
+        _ -> Nothing
+  pure hugeInv

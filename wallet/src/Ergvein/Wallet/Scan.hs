@@ -172,7 +172,7 @@ removeTxsReplacedByFee :: MonadFront t m => Event t () -> m (Event t ())
 removeTxsReplacedByFee goE = do
   pubStorageD <- getPubStorageD
   replacedTxsE <- performFork $ ffor (tagPromptlyDyn pubStorageD goE) $ \ps -> do
-    let btcps = ps ^. pubStorage'currencyPubStorages . at BTC . non (error $ "removeTxsReplacedByFee: BTC storage does not exist!")
+    let btcps = ps ^. btcPubStorage
         txStore = btcps ^. currencyPubStorage'transactions
         possiblyReplacedTxs = btcps ^. currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'possiblyReplacedTxs
     liftIO $ flip runReaderT txStore $ do
@@ -215,7 +215,7 @@ getAddrTxsFromBlock :: (HasPubStorage m, PlatformNatives)
   -> m (M.Map TxId EgvTx, BtcUtxoUpdate)
 getAddrTxsFromBlock box heights block = do
   ps <- askPubStorage
-  let origtxMap = ps ^. pubStorage'currencyPubStorages . at BTC . non (error "getAddrTxsFromBlock: BTC store does not exist") . currencyPubStorage'transactions
+  let origtxMap = ps ^. btcPubStorage . currencyPubStorage'transactions
       newtxmap = M.fromList $ (\tx -> (mkTxId tx, TxBtc $ BtcTx tx mheha)) <$> txs
       txmap = M.union newtxmap origtxMap
   liftIO $ flip runReaderT txmap $ do
