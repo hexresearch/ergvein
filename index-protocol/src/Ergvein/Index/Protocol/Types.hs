@@ -14,6 +14,8 @@ import Network.Socket (SockAddr(..))
 
 import Ergvein.Types.Fees
 
+import qualified Binance.Client.Types as Binance
+import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 
@@ -33,6 +35,8 @@ data MessageType = MVersionType
                  | MRejectType
                  | MPingType
                  | MPongType
+                 | MRatesRequestType
+                 | MRatesResponseType
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 data RejectCode = MessageHeaderParsing | MessageParsing | InternalServerError | ZeroBytesReceived
@@ -190,6 +194,12 @@ data PeerIntroduce = PeerIntroduce
   { peerIntroduceAddresses :: !(V.Vector Address)
   } deriving (Show, Eq)
 
+newtype RatesRequest = RatesRequest { unRatesRequest :: [Binance.Symbol] }
+  deriving (Show, Eq)
+
+newtype RatesResponse = RatesResponse { unRatesResponse :: M.Map Binance.Symbol Double}
+  deriving (Show, Eq)
+
 data Message = MPing                       !Ping
              | MPong                       !Pong
              | MVersion                    !Version
@@ -203,6 +213,8 @@ data Message = MPing                       !Ping
              | MPeerRequest                !PeerRequest
              | MPeerResponse               !PeerResponse
              | MPeerIntroduce              !PeerIntroduce
+             | MRatesRequest               !RatesRequest
+             | MRatesResponse              !RatesResponse
   deriving (Show, Eq)
 
 genericSizeOf :: (Storable a, Integral b) => a -> b

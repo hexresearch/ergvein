@@ -4,14 +4,17 @@ import Codec.Compression.GZip
 import Data.ByteString.Builder
 import Data.Monoid
 import Data.Word
+import Data.Scientific
 import Foreign.C.Types
 
 import Ergvein.Index.Protocol.Types
 import Ergvein.Types.Fees
 
+import qualified Binance.Client.Types as Binance
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Short as BSS
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString.Short as BSS
+import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 
@@ -30,6 +33,8 @@ messageTypeToWord32 = \case
   MRejectType          -> 10
   MPingType            -> 11
   MPongType            -> 12
+  MRatesRequestType    -> 13
+  MRatesResponseType   -> 14
 
 rejectTypeToWord32 :: RejectCode -> Word32
 rejectTypeToWord32 = \case
@@ -208,6 +213,30 @@ messageBuilder (MPeerIntroduce PeerIntroduce{..}) = let
   in messageBase MIntroducePeerType msgSize
   $  word32LE addrAmount
   <> addresses
+
+messageBuilder (MRatesRequest (RatesRequest rs)) = let
+  rsNum = fromIntegral $ length rs
+  body = mconcat $ binanceSymbolBuilder <$> rs
+  msgSize = (rsNum + 1) * genericSizeOf rsNum
+  in messageBase MRatesRequestType msgSize $ word32LE rsNum <> body
+
+messageBuilder (MRatesResponse (RatesResponse rs)) = let
+  rsNum = fromIntegral $ M.size rs
+  elBuilder (s,v) = binanceSymbolBuilder s <> doubleBuilder v
+  body = mconcat $ fmap elBuilder $ M.toList rs
+  msgSize = 4 + (4 + 16) * rsNum
+  in messageBase MRatesResponseType msgSize $ word32LE rsNum <> body
+
+binanceSymbolBuilder :: Binance.Symbol -> Builder
+binanceSymbolBuilder = word32LE . fromIntegral . fromEnum
+
+-- | Build Double as two Word64. size = 16
+doubleBuilder :: Double -> Builder
+doubleBuilder v = let
+  sci = normalize $ fromFloatDigits v
+  c = fromIntegral $ coefficient sci
+  e = fromIntegral $ base10Exponent sci
+  in word64LE c <> word64LE e
 
 feeRespBuilder :: FeeResp -> (Sum Word32, Builder)
 feeRespBuilder (FeeRespBTC isTest (FeeBundle (a,b) (c,d) (e,f))) = let

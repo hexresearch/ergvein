@@ -4,16 +4,19 @@ import Codec.Compression.GZip
 import Control.Monad
 import Data.Attoparsec.Binary
 import Data.Attoparsec.ByteString
+import Data.Scientific
 import Data.Word
 
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Protocol.Utils
 import Ergvein.Types.Fees
 
+import qualified Binance.Client.Types as Binance
 import qualified Data.Attoparsec.ByteString as Parse
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Short as BSS
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString.Short as BSS
+import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 
@@ -32,6 +35,8 @@ word32toMessageType = \case
   10 -> Just MRejectType
   11 -> Just MPingType
   12 -> Just MPongType
+  13 -> Just MRatesRequestType
+  14 -> Just MRatesResponseType
   _  -> Nothing
 
 currencyCodeParser :: Parser CurrencyCode
@@ -200,6 +205,28 @@ messageParser MIntroducePeerType = do
   pure $ MPeerIntroduce $ PeerIntroduce
     { peerIntroduceAddresses = addresses
     }
+
+messageParser MRatesRequestType = do
+  amount <- anyWord32le
+  symbols <- replicateM (fromIntegral amount) parseBinanceSymbol
+  pure $ MRatesRequest $ RatesRequest symbols
+
+messageParser MRatesResponseType = do
+  amount <- anyWord32le
+  vals <- replicateM (fromIntegral amount) $ do
+    s <- parseBinanceSymbol
+    v <- parseDouble
+    pure (s,v)
+  pure $ MRatesResponse $ RatesResponse $ M.fromList vals
+
+parseDouble :: Parser Double
+parseDouble = do
+  c <- fromIntegral <$> anyWord64le
+  e <- fromIntegral <$> anyWord64le
+  pure $ toRealFloat $ scientific c e
+
+parseBinanceSymbol :: Parser Binance.Symbol
+parseBinanceSymbol = fmap (toEnum . fromIntegral) anyWord32le
 
 parseFeeResp :: Parser FeeResp
 parseFeeResp = do

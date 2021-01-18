@@ -9,6 +9,7 @@ import Control.Monad.Logger
 import Control.Monad.Reader
 
 import Ergvein.Index.Server.BlockchainScanning.Common
+import Ergvein.Index.Server.Worker.Rates
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Queries (storeRollbackSequence)
 import Ergvein.Index.Server.DB.Schema.Indexer (RollbackSequence(..))
@@ -29,8 +30,9 @@ onStartup onlyScan _ = do
     --syncWithDefaultPeers
     feeWorkers <- feesScanning
     -- kpaThread <- knownPeersActualization
+    ratesThread <- ratesScanner
     tcpServerThread <- runTcpSrv
-    pure $ (scanningWorkers, tcpServerThread : feeWorkers)
+    pure $ (scanningWorkers, tcpServerThread : ratesThread : feeWorkers)
 
 onShutdown :: ServerEnv -> IO ()
 onShutdown env = do
