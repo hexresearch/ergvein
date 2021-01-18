@@ -6,6 +6,7 @@ module Data.Ergo.Protocol.Encoder(
   ) where
 
 import Data.Bits
+import Control.Monad
 import Data.ByteString (ByteString)
 import Data.Ergo.Protocol.Check
 import Data.Ergo.Protocol.Types
@@ -98,15 +99,18 @@ encodeHandshake = runPut . handshakeEncoder
 messageEncoder :: Network -> Message -> Put ()
 messageEncoder net msg = case msg of
   MsgHandshake hmsg -> handshakeEncoder hmsg
-
-    -- for other types of messages
-    -- word32BE (magicBytes net)
-    -- word8 handshakeId
-    -- word32BE (fromIntegral $ BS.length bbody)
-    -- putByteString bbody
-    -- putByteString (checkSum bbody)
-    -- where
-    --   bbody = runPut $! handshakeEncoder hmsg
+  MsgSyncInfo smsg -> wrapBody syncInfoId $ syncInfoEncoder smsg
+  where
+    wrapBody i b = do
+      word32BE (magicBytes net)
+      word8 i
+      word32BE l
+      when (l > 0) $ do
+        putByteString bbody
+        putByteString (checkSum bbody)
+      where
+        l = fromIntegral $ BS.length bbody
+        bbody = runPut b
 
 encodeVarText :: Text -> Put ()
 encodeVarText t
@@ -173,3 +177,6 @@ encodeFeature v = do
       FeatureOperationMode v -> runPut $ encodeOpMode v
       FeatureSession v -> runPut $ encodeSessionFeature v
       UnknownFeature _ bs -> bs
+
+syncInfoEncoder :: SyncInfo -> Put ()
+syncInfoEncoder _ = pure ()

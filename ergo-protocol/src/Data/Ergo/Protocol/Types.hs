@@ -29,6 +29,8 @@ module Data.Ergo.Protocol.Types(
   , handshakeId
   , handshakeTimeout
   , magicBytes
+  , SyncInfo(..)
+  , syncInfoId
   ) where
 
 import Data.ByteString (ByteString)
@@ -48,7 +50,9 @@ magicBytes Mainnet = 0x01000204
 magicBytes Testnet = 0x02000000
 
 -- | Possible types of network messages in P2P protocol for Ergo
-data Message = MsgHandshake !Handshake
+data Message =
+    MsgHandshake !Handshake
+  | MsgSyncInfo !SyncInfo
   deriving (Generic, Show, Read, Eq)
 
 -- | Protocol version
@@ -121,5 +125,21 @@ data Handshake = Handshake
   } deriving (Generic, Show, Read, Eq)
 
 -- | ID of handshake message type
-handshakeId :: Word8
+handshakeId :: Integral a => a
 handshakeId = 75
+
+{-
+  The `SyncInfo` message requests an `Inv` message that provides modifier ids
+  required be sender to synchronize his blockchain with the recipient.
+  It allows a peer which has been disconnected or started for the first
+  time to get the data it needs to request the blocks it hasn't seen.
+
+  Payload of this message should be determined in underlying applications.
+-}
+data SyncInfo = SyncInfo {
+
+  } deriving (Generic, Show, Read, Eq)
+
+-- | ID of SyncInfo message type
+syncInfoId :: Integral a => a
+syncInfoId = 65

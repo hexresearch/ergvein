@@ -126,8 +126,9 @@ msgBodyParser :: Int -> Int -> Get Message
 msgBodyParser i l = do
   c <- getByteString 4
   body <- getByteString (fromIntegral l)
+  traceShowM (i, body)
   unless (validateSum c body) $ fail "Check sum failed for body!"
-  if -- | i == handshakeId -> MsgHandshake <$> embedParser "Handshake parsing error" handshakeParser body
+  if | i == syncInfoId -> MsgSyncInfo <$> embedParser "SyncInfo parsing error" syncInfoParser body
      | otherwise -> fail $ "Unknown message type " <> show i
 
 parseText :: Get Text
@@ -207,3 +208,6 @@ handshakeParser = Handshake
   <*> parseText
   <*> parseOptional parseNetAddr
   <*> parseVector parsePeerFeature
+
+syncInfoParser :: Get SyncInfo
+syncInfoParser = pure SyncInfo
