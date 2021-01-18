@@ -108,7 +108,7 @@ sendPage cur minit = mdo
               mamount <- sampleDyn amountD
               rbfEnabled <- sampleDyn rbfEnabledD
               let mrecipient = either (const Nothing) Just erecipient
-              pure $ (,,,) <$> mamount <*> mfee <*> mrecipient <*> (Just rbfInit')
+              pure $ (,,,) <$> mamount <*> mfee <*> mrecipient <*> (Just rbfEnabled)
         void $ nextWidget $ ffor goE $ \v@(uam, (_, fee), addr, rbf) -> Retractable {
             retractableNext = btcSendConfirmationWidget (uam, fee, addr, rbf)
           , retractablePrev = Just $ pure $ sendPage cur $ Just v
@@ -250,8 +250,8 @@ txSignSendWidget addr unit amount fee changeKey change pick rbfEnabled = mdo
   let keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress $ pubKeyBox'key changeKey
   let outs = [(egvAddrToString addr, amount), (keyTxt, change)]
   let etx = if rbfEnabled
-        then HT.buildAddrTx btcNetwork (upPoint <$> pick) outs
-        else buildAddrTxRbf btcNetwork (upPoint <$> pick) outs
+        then buildAddrTxRbf btcNetwork (upPoint <$> pick) outs
+        else HT.buildAddrTx btcNetwork (upPoint <$> pick) outs
   let estFee = HT.guessTxFee fee 2 $ length pick
   confirmationInfoWidget (unit, amount) estFee addr Nothing
   showSignD <- holdDyn True . (False <$) =<< eventToNextFrame etxE
