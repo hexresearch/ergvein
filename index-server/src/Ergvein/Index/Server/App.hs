@@ -9,7 +9,6 @@ import Control.Monad.Logger
 import Control.Monad.Reader
 
 import Ergvein.Index.Server.BlockchainScanning.Common
-import Ergvein.Index.Server.Worker.Rates
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Queries (storeRollbackSequence)
 import Ergvein.Index.Server.DB.Schema.Indexer (RollbackSequence(..))
@@ -18,6 +17,8 @@ import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.TCPService.Server
 import Ergvein.Index.Server.Utils
+import Ergvein.Index.Server.Worker.Fees
+import Ergvein.Index.Server.Worker.Rates
 import Ergvein.Text
 import Ergvein.Types.Currency
 
@@ -28,7 +29,7 @@ onStartup onlyScan _ = do
   scanningWorkers <- blockchainScanning
   if onlyScan then pure (scanningWorkers, []) else do
     --syncWithDefaultPeers
-    feeWorkers <- feesScanning
+    feeWorkers <- feesScanner
     -- kpaThread <- knownPeersActualization
     ratesThread <- ratesScanner
     tcpServerThread <- runTcpSrv

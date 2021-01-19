@@ -124,11 +124,6 @@ blockchainScanning = sequenceA
   [ scannerThread BTC  BTCScanning.blockInfo
   ]
 
-feesThread :: ServerM () -> ServerM Thread
-feesThread feescan = create $ logOnException "feesThread" . \thread -> do
-  feescan
-  stopThreadIfShutdown thread
-
 isEnoughSpace :: ServerM Bool
 isEnoughSpace = do
   path <- cfgFiltersDbPath <$> serverConfig
@@ -137,8 +132,3 @@ isEnoughSpace = do
   pure $ requiredAvailSpace <= availSpace
  where
   requiredAvailSpace = 2^(30::Int) -- 1Gb
-
-feesScanning :: ServerM [Thread]
-feesScanning = sequenceA
-  [ feesThread BTCScanning.feeScaner
-  ]

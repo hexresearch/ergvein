@@ -43,6 +43,7 @@ library
     Ergvein.Index.Server.TCPService.Server
     Ergvein.Index.Server.TCPService.Socket
     Ergvein.Index.Server.Utils
+    Ergvein.Index.Server.Worker.Fees
     Ergvein.Index.Server.Worker.Rates
   build-depends:
         base                     >= 4.7     &&  < 4.13
