@@ -15,6 +15,8 @@ module Ergvein.Wallet.Monad.Front(
   , getLoginD
   , getNodeConnectionsD
   , getNodesByCurrencyD
+  , getBtcNodesD
+  , getErgoNodesD
   , getStatusUpdates
   , requestBroadcast
   , requestFromNode
@@ -74,6 +76,7 @@ import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Status.Types
 import Ergvein.Wallet.Util
 
+import qualified Data.Dependent.Map as DM
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
@@ -120,15 +123,27 @@ getLoginD = (fmap . fmap) _authInfo'login . externalRefDynamic =<< getAuthInfoRe
 -- | Get nodes by currency. Basically useless, but who knows
 getNodesByCurrencyD :: MonadFrontAuth t m => Currency -> m (Dynamic t (Map SockAddr (NodeConn t)))
 getNodesByCurrencyD cur =
-  (fmap . fmap) (fromMaybe (M.empty) . getAllConnByCurrency cur) . externalRefDynamic =<< getNodeConnRef
+  (fmap . fmap) (fromMaybe (M.empty) . getAllConnByCurrency cur) getNodeConnectionsD
 {-# INLINE getNodesByCurrencyD #-}
+
+-- | Get BTC nodes
+getBtcNodesD :: MonadFrontAuth t m => m (Dynamic t (Map SockAddr (NodeBTC t)))
+getBtcNodesD =
+  (fmap . fmap) (fromMaybe (M.empty) . DM.lookup BTCTag) getNodeConnectionsD
+{-# INLINE getBtcNodesD #-}
+
+-- | Get ERGO nodes
+getErgoNodesD :: MonadFrontAuth t m => m (Dynamic t (Map SockAddr (NodeERG t)))
+getErgoNodesD =
+  (fmap . fmap) (fromMaybe (M.empty) . DM.lookup ERGOTag) getNodeConnectionsD
+{-# INLINE getErgoNodesD #-}
 
 -- | Send a request to a specific URL
 -- It's up to the caller to ensure that the URL actually points to a correct currency node
-requestFromNode :: MonadFrontAuth t m => Event t (SockAddr, NodeReqG) -> m ()
+requestFromNode :: MonadFrontAuth t m => Event t (SockAddr, NodeReqG) -> m (Event t ())
 requestFromNode reqE = do
   nodeReqFire <- getNodeReqFire
-  performFork_ $ ffor reqE $ \(u, req) ->
+  performFork $ ffor reqE $ \(u, req) ->
     let cur = getNodeReqCurrency req
     in liftIO . nodeReqFire $ M.singleton cur $ M.singleton u $ NodeMsgReq req
 {-# INLINE requestFromNode #-}
