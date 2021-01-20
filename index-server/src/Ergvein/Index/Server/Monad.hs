@@ -116,7 +116,6 @@ interruptThreadOnShutdown thread = do
   shutChan <- liftIO . atomically . cloneTChan =<< asks envShutdownChannel
   liftIO $ fix $ \next -> do
     shutdownFlag <- atomically $ readTChan shutChan
-    print shutdownFlag
     if shutdownFlag then stop thread else next
 
 broadcastSocketMessage :: Message -> ServerM ()
