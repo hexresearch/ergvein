@@ -113,7 +113,7 @@ stopThreadIfShutdown thread = do
 
 interruptThreadOnShutdown :: Thread -> ServerM ()
 interruptThreadOnShutdown thread = do
-  shutChan <- liftIO . atomically . dupTChan =<< asks envShutdownChannel
+  shutChan <- liftIO . atomically . cloneTChan =<< asks envShutdownChannel
   liftIO $ fix $ \next -> do
     shutdownFlag <- atomically $ readTChan shutChan
     print shutdownFlag
