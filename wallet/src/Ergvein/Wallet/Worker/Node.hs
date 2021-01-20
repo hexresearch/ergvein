@@ -38,8 +38,6 @@ import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
-import Debug.Trace
-
 minNodeNum :: Int
 minNodeNum = 3
 
@@ -98,7 +96,6 @@ btcNodeController = mdo
     let respE = nodeconRespE node
     let txInvsE = flip push respE $ \case
           MInv inv -> do
-            traceM $ "Got MInv with size: " <> show (length . (\(Inv inv) -> inv) $ inv)
             txids <- sampleDyn txidsD
             pure $ filterTxInvs txids inv
           _ -> pure Nothing
