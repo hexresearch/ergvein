@@ -4,6 +4,7 @@ module Ergvein.Wallet.Widget.Balance(
   , balanceTitleWidgetSimple
   ) where
 
+import Binance.Client.Types
 import Control.Lens
 import Data.Maybe (fromMaybe)
 
@@ -40,25 +41,38 @@ balancesWidget cur = case cur of
   ERGO -> ergoBalances
   BTC  -> btcBalances
 
+balancesRatedWidget :: MonadFront t m => Currency -> m (Dynamic t Text, Dynamic t Text)
+balancesRatedWidget cur = do
+  settings <- getSettings
+  balD <- balancesWidget cur
+  let setUs = getSettingsUnits settings
+  let rateSymbol = settingsRateSymbol settings
+  rateD <- getRateBySymbolD rateSymbol
+  pure $ splitDynPure $ do
+    bal <- balD
+    rate <- rateD
+    let unrated = (showMoneyUnit bal setUs, symbolUnit cur setUs)
+    pure $ case rate of
+      Nothing -> unrated
+      Just r -> if cur == BTC
+        then (showMoneyRated bal r, showRateSymbol rateSymbol)
+        else unrated
+  where getSettingsUnits = fromMaybe defUnits . settingsUnits
+
 balanceTitleWidget :: MonadFront t m => Currency -> m (Dynamic t Text)
 balanceTitleWidget cur = do
-  bal <- balancesWidget cur
-  settings <- getSettings
-  titleText <- localized $ HistoryBalance
-  let getSettingsUnits = fromMaybe defUnits . settingsUnits
-      setUs = getSettingsUnits settings
-      titleVal = ffor bal (\v -> showMoneyUnit v setUs)
-      curSymbol = symbolUnit cur setUs
-      title = zipDynWith (\x y -> x <> ": " <> y <> " " <> curSymbol) titleText titleVal
-  pure title
+  titleTextD <- localized $ HistoryBalance
+  (balD, curSymbolD) <- balancesRatedWidget cur
+  pure $ do
+    tit <- titleTextD
+    bal <- balD
+    sym <- curSymbolD
+    pure $ tit <> ": " <> bal <> " " <> sym
 
 balanceTitleWidgetSimple :: MonadFront t m => Currency -> m (Dynamic t Text)
 balanceTitleWidgetSimple cur = do
-  bal <- balancesWidget cur
-  settings <- getSettings
-  let getSettingsUnits = fromMaybe defUnits . settingsUnits
-      setUs = getSettingsUnits settings
-      titleVal = ffor bal (\v -> showMoneyUnit v setUs)
-      curSymbol = symbolUnit cur setUs
-      title = (\x -> x <> " " <> curSymbol) <$> titleVal
-  pure title
+  (balD, curSymbolD) <- balancesRatedWidget cur
+  pure $ do
+    bal <- balD
+    sym <- curSymbolD
+    pure $ bal <> " " <> sym

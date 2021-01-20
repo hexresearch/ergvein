@@ -25,6 +25,7 @@ module Ergvein.Wallet.Settings (
   , parseIP
   ) where
 
+import Binance.Client.Types
 import Control.Lens hiding ((.=))
 import Control.Monad.IO.Class
 import Data.Aeson hiding (encodeFile)
@@ -179,7 +180,8 @@ data Settings = Settings {
 , settingsReqUrlNum         :: (Int, Int) -- ^ First is minimum required answers. Second is sufficient amount of answers from indexers.
 , settingsActUrlNum         :: Int
 , settingsPortfolio         :: Bool
-, settingsFiatCurr          :: Fiat
+, settingsFiatCurr          :: Fiat -- Deprecated
+, settingsRateSymbol        :: Symbol
 , settingsDns               :: S.Set HostName
 , settingsSocksProxy        :: Maybe SocksConf
 , settingsCurrencySpecific  :: CurrencySpecificSettings
@@ -209,6 +211,7 @@ instance FromJSON Settings where
             _ -> (fromMaybe [] mActiveAddrs, fromMaybe [] mDeactivatedAddrs, fromMaybe [] mArchivedAddrs)
     settingsPortfolio         <- o .:? "portfolio" .!= False
     settingsFiatCurr          <- o .:? "fiatCurr"  .!= USD
+    settingsRateSymbol        <- o .:? "rateSymbol" .!= BTCBUSD
     mdns                      <- o .:? "dns"
     settingsSocksProxy        <- o .:? "socksProxy"
     let settingsDns = case fromMaybe [] mdns of
@@ -231,6 +234,7 @@ instance ToJSON Settings where
     , "actUrlNum"         .= toJSON settingsActUrlNum
     , "portfolio"         .= toJSON settingsPortfolio
     , "fiatCurr"          .= toJSON settingsFiatCurr
+    , "rateSymbol"        .= encodeSymbol settingsRateSymbol
     , "dns"               .= toJSON settingsDns
     , "socksProxy"        .= toJSON settingsSocksProxy
     , "currencySpecific"  .= toJSON settingsCurrencySpecific
@@ -275,6 +279,7 @@ defaultSettings home =
       , settingsActUrlNum         = defaultActUrlNum
       , settingsPortfolio         = False
       , settingsFiatCurr          = USD
+      , settingsRateSymbol        = BTCBUSD
       , settingsActiveAddrs       = defaultIndexers
       , settingsDeactivatedAddrs  = []
       , settingsArchivedAddrs     = []

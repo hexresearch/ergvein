@@ -8,7 +8,9 @@ import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Immortal
 import Control.Monad.Reader
+import Control.Monad.Logger
 
+import Ergvein.Text
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
@@ -24,9 +26,10 @@ ratesThread :: ServerM ()
 ratesThread = do
   dt <- fmap cfgRatesRefreshPeriod $ asks envServerConfig
   xratesVar <- asks envExchangeRates
-  forever $ liftIO $ do
+  forever $ do
     usdt <- getCurrentPrice BTCUSDT
     busd <- getCurrentPrice BTCBUSD
     let m = M.fromList [(BTCUSDT, usdt), (BTCBUSD, busd)]
-    atomically $ modifyTVar xratesVar $ M.union m
-    threadDelay dt
+    logInfoN $ "Rates: " <> showt m
+    liftIO $ atomically $ modifyTVar xratesVar $ M.union m
+    liftIO $ threadDelay dt

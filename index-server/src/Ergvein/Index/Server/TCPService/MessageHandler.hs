@@ -86,5 +86,9 @@ handleMsg _ (MFeeRequest curs) = do
         _ -> let FeeBundle (_, h) (_, m) (_, l) = fb
           in FeeRespGeneric cur h m l
   pure $ pure $ MFeeResponse $ M.elems resps
-
+handleMsg _ (MRatesRequest (RatesRequest rs)) = do
+  rates <- liftIO . readTVarIO =<< asks envExchangeRates
+  let resp = MRatesResponse $ RatesResponse $ M.restrictKeys rates $ S.fromList rs
+  pure [resp]
+  
 handleMsg _ _ = pure []
