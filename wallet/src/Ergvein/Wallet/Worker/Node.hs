@@ -3,8 +3,10 @@ module Ergvein.Wallet.Worker.Node
     btcNodeController
   ) where
 
+import Control.Concurrent
 import Control.Exception
 import Control.Lens
+import Control.Monad.IO.Unlift (MonadUnliftIO)
 import Control.Monad.Random
 import Data.IP
 import Data.Maybe (fromMaybe, catMaybes, listToMaybe)
@@ -37,6 +39,7 @@ import qualified Data.Dependent.Map as DM
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+import qualified Network.Haskoin.Transaction as HT
 
 minNodeNum :: Int
 minNodeNum = 3
@@ -121,10 +124,51 @@ myTxSender addr msgE = do
         let txids = store ^. currencyPubStorage'outgoing
         let txmap = store ^. currencyPubStorage'transactions
         pure (txids, txmap)
+  -- Send txs at random moment of times with random subsample of our txs.
+  -- That should increase privacy of wallet a bit.
+  tickE <- randomTimer 60 300 -- random time between ticks between 1 and 5 minutes.
+  txsE <- fmap (fmapMaybe id) $ performEvent $ ffor tickE $ const $ do -- sample random 1/4 txs
+    (txids, _) <- sample . current $ txsD
+    is <- randomPeekPart 0.25 $ S.toList txids
+    pure $ if null is then Nothing else Just is
+  performEvent_ $ ffor txsE $ \txs -> logWrite $ "Broadcasting txs: " <> showt txs
+  void $ sendRandomNode $ ffor txsE $ \is -> -- send them to random node
+    NodeReqBTC . MInv . Inv $ fmap (InvVector InvTx . HT.getTxHash . fromMaybe (error "myTxSender: non BTC outgoing tx") . ETT.toBtcTxHash) is
+  -- Answer about known transactions to nodes (also about own outgoing txs that we announce)
   requestManyFromNode $ flip push msgE $ \case
     MGetData (GetData invs) -> fmap (Just . (addr,) . uncurry (mkTxMessages invs)) $ sampleDyn txsD
     _ -> pure Nothing
   pure ()
+
+-- | Tick in random time between minT and maxT
+randomTimer :: (TriggerEvent t m, PerformEvent t m, PostBuild t m, MonadUnliftIO (Performable m), PlatformNatives) => NominalDiffTime -> NominalDiffTime -> m (Event t ())
+randomTimer minT maxT = do
+  (tickE, fire) <- newTriggerEvent
+  buildE <- getPostBuild
+  let tickerE = leftmost [buildE, tickE]
+  performFork_ $ ffor tickerE $ const $ liftIO $ do
+    t <- randomRIO (toMs minT, toMs maxT)
+    threadDelay t
+    fire ()
+  return tickE
+  where
+    toMs n = ceiling $ (realToFrac n :: Double) * 1000000
+
+-- | Peek a fraction from 0 to 1 from list
+randomPeekPart :: MonadIO m => Float -> [a] -> m [a]
+randomPeekPart k [] = pure []
+randomPeekPart k as = do
+  let n = ceiling $ k * fromIntegral (length as)
+  go n 0 [] as
+  where
+    go n i acc [] = pure acc
+    go n i acc as
+      | i >= n = pure acc
+      | otherwise = do
+        j <- liftIO $ randomRIO (0, length as - 1)
+        let a = as !! j
+        let as' = take j as ++ drop (j+1) as
+        go n (i+1) (a : acc) as'
 
 -- | Filter TxHashes from Inv vector. Return Nothing if no TxHashes are present
 mkTxMessages :: [InvVector] -> S.Set TxId -> M.Map TxId EgvTx -> [NodeReqG]
