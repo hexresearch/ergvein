@@ -1,8 +1,7 @@
 module Ergvein.Index.Server.App where
 
-import Control.Concurrent.STM.TVar
+import Control.Concurrent.STM
 import Control.Immortal
-import Control.Monad.STM
 import System.Posix.Signals
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
@@ -39,6 +38,7 @@ onShutdown :: ServerEnv -> IO ()
 onShutdown env = do
   T.putStrLn "Server stop signal recivied..."
   T.putStrLn "service is stopping"
+  atomically $ writeTChan (envShutdownChannel env) True
   atomically $ writeTVar (envShutdownFlag env) True
 
 finalize :: (MonadIO m, MonadLogger m) => ServerEnv -> [Thread] -> [Thread] -> m ()

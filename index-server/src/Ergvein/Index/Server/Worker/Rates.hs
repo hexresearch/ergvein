@@ -4,7 +4,7 @@ module Ergvein.Index.Server.Worker.Rates
   ) where
 
 import Binance.Client
-import Control.Concurrent
+import Control.Concurrent.Lifted
 import Control.Concurrent.STM
 import Control.Immortal
 import Control.Monad.Reader
@@ -19,8 +19,8 @@ import qualified Data.Map.Strict as M
 
 ratesScanner :: ServerM Thread
 ratesScanner = create $ logOnException "ratesScanner" . \thread -> do
+  void $ fork $ interruptThreadOnShutdown thread
   ratesThread
-  stopThreadIfShutdown thread
 
 ratesThread :: ServerM ()
 ratesThread = do

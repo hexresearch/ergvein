@@ -55,6 +55,7 @@ data ServerEnv = ServerEnv
     , envPeerDiscoveryRequisites  :: !PeerDiscoveryRequisites
     , envFeeEstimates             :: !(TVar (M.Map CurrencyCode FeeBundle))
     , envShutdownFlag             :: !(TVar Bool)
+    , envShutdownChannel          :: !(TChan Bool)
     , envOpenConnections          :: !(TVar (M.Map SockAddr (ThreadId, Socket)))
     , envBroadcastChannel         :: !(TChan Message)
     , envExchangeRates            :: !(TVar (M.Map Binance.Symbol Double))
@@ -106,6 +107,7 @@ newServerEnv useTcp overrideFilters overridesIndexers btcClient cfg@Config{..} =
     shutdownVar    <- liftIO $ newTVarIO False
     openConns      <- liftIO $ newTVarIO M.empty
     broadChan      <- liftIO newBroadcastTChanIO
+    shutdownChan   <- liftIO newTChanIO
     btcRestartChan <- liftIO newTChanIO
     btcConnVar     <- liftIO $ newTVarIO $ if useTcp then BtcConTCP else BtcConRPC
     let bitcoinNodeNetwork = if cfgBTCNodeIsTestnet then HK.btcTest else HK.btc
@@ -144,6 +146,7 @@ newServerEnv useTcp overrideFilters overridesIndexers btcClient cfg@Config{..} =
       , envPeerDiscoveryRequisites = descDiscoveryRequisites
       , envFeeEstimates            = feeEstimates
       , envShutdownFlag            = shutdownVar
+      , envShutdownChannel         = shutdownChan
       , envOpenConnections         = openConns
       , envBroadcastChannel        = broadChan
       , envExchangeRates           = exchangeRates
