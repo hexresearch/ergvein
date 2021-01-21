@@ -38,6 +38,8 @@ import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
+import Debug.Trace
+
 minNodeNum :: Int
 minNodeNum = 3
 
@@ -63,7 +65,7 @@ btcNodeController = mdo
 
   pubStorageD <- getPubStorageD
 
-  let txidsD = ffor pubStorageD $ \ps -> S.fromList $ M.keys $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "btcNodeController: not exsisting store!") . currencyPubStorage'transactions
+  let txidsD = ffor pubStorageD $ \ps -> S.fromList $ M.keys $ ps ^. btcPubStorage . currencyPubStorage'transactions
 
   let btcLenD = ffor conMapD $ fromMaybe 0 . fmap M.size . DM.lookup BTCTag
   let te' = poke te $ const $ do
@@ -96,6 +98,7 @@ btcNodeController = mdo
     let respE = nodeconRespE node
     let txInvsE = flip push respE $ \case
           MInv inv -> do
+            traceM $ "Got MInv with size: " <> show (length . (\(Inv inv) -> inv) $ inv)
             txids <- sampleDyn txidsD
             pure $ filterTxInvs txids inv
           _ -> pure Nothing
@@ -107,7 +110,7 @@ btcNodeController = mdo
     myTxSender u respE
     pure $ (u <$ closeE, newTxE)
 
-  _ <- requestBTCMempool =<< delay 1 =<< getPostBuild
+  requestBTCMempool
   void $ btcMempoolTxInserter txE
   where
     switchTuple (a, b) = (switchDyn . fmap leftmost $ a, switchDyn . fmap leftmost $ b)
@@ -117,7 +120,7 @@ myTxSender addr msgE = do
   pubD <- getPubStorageD
   let txsD = do
         ps <- pubD
-        let store = ps ^. pubStorage'currencyPubStorages . at BTC . non (error "btcNodeController: not exsisting store!")
+        let store = ps ^. btcPubStorage
         let txids = store ^. currencyPubStorage'outgoing
         let txmap = store ^. currencyPubStorage'transactions
         pure (txids, txmap)

@@ -376,8 +376,7 @@ getScannedHeight cur = do
 getBtcBlockHashByTxHash :: HasPubStorage m => HT.TxHash -> m (Maybe HB.BlockHash)
 getBtcBlockHashByTxHash bth = do
   ps <- askPubStorage
-  pure $ join $ ps ^. pubStorage'currencyPubStorages . at BTC . non (error "getBtcBlockHashByTxHash: not exsisting store!")
-    . currencyPubStorage'transactions . at th & fmap getEgvTxMeta & fmap etxMetaHash . join
+  pure $ join $ ps ^. btcPubStorage . currencyPubStorage'transactions . at th & fmap getEgvTxMeta & fmap etxMetaHash . join
   where th = hkTxHashToEgv bth
 
 getTxStorage :: HasPubStorage m => Currency -> m (Map TxId EgvTx)
