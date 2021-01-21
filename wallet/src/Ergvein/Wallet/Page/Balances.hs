@@ -69,24 +69,12 @@ currenciesList _ = divClass "currency-content" $ do
   where
     currencyLine settings cur = do
       (e, _) <- divClass' "currency-row" $ do
-        balD <- balancesWidget cur
+        bal <- balancesWidget cur
         let setUs = getSettingsUnits settings
-        let rateSymbol = settingsRateSymbol settings
-        rateD <- getRateBySymbolD rateSymbol
-        let (moneyD, unitD) = splitDynPure $ do
-              bal <- balD
-              rate <- rateD
-              let unrated = (showMoneyUnit bal setUs, symbolUnit cur setUs)
-              pure $ case rate of
-                Nothing -> unrated
-                Just r -> if cur == BTC
-                  then (showMoneyRated bal r, showRateSymbol rateSymbol)
-                  else unrated
-                  
-        divClass "currency-name" $ text $ currencyName cur
+        divClass "currency-name"    $ text $ currencyName cur
         divClass "currency-balance" $ do
-          elClass "span" "currency-value" $ dynText moneyD
-          elClass "span" "currency-unit"  $ dynText unitD
+          elClass "span" "currency-value" $ dynText $ (\v -> showMoneyUnit v setUs) <$> bal
+          elClass "span" "currency-unit"  $ text $ symbolUnit cur setUs
           elClass "span" "currency-arrow" $ text "〉"
       pure $ cur <$ domEvent Click e
     getSettingsUnits = fromMaybe defUnits . settingsUnits

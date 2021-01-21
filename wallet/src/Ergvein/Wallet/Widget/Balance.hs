@@ -1,5 +1,7 @@
 module Ergvein.Wallet.Widget.Balance(
     balancesWidget
+  , balancesRatedWidget
+  , balanceRatedOnlyWidget
   , balanceTitleWidget
   , balanceTitleWidgetSimple
   ) where
@@ -16,6 +18,7 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.History
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Util
 
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
@@ -46,33 +49,59 @@ balancesRatedWidget cur = do
   settings <- getSettings
   balD <- balancesWidget cur
   let setUs = getSettingsUnits settings
-  let rateSymbol = settingsRateSymbol settings
-  rateD <- getRateBySymbolD rateSymbol
-  pure $ splitDynPure $ do
-    bal <- balD
-    rate <- rateD
-    let unrated = (showMoneyUnit bal setUs, symbolUnit cur setUs)
-    pure $ case rate of
-      Nothing -> unrated
-      Just r -> if cur == BTC
-        then (showMoneyRated bal r, showRateSymbol rateSymbol)
-        else unrated
+  let mRateSymbol = settingsRateSymbol settings
+  case mRateSymbol of
+    Nothing -> pure $ splitDynPure $ ffor balD $ \bal ->
+      let u = symbolUnit cur setUs
+          b = showMoneyUnit bal setUs
+      in (b, u)
+    Just rateSymbol -> do
+      rateD <- getRateBySymbolD rateSymbol
+      pure $ splitDynPure $ do
+        bal <- balD
+        rate <- rateD
+        let unrated = (showMoneyUnit bal setUs, symbolUnit cur setUs)
+        pure $ case rate of
+          Nothing -> unrated
+          Just r -> if cur == BTC
+            then (showMoneyRated bal r, showRateSymbol rateSymbol)
+            else unrated
   where getSettingsUnits = fromMaybe defUnits . settingsUnits
+
+balanceRatedOnlyWidget :: MonadFront t m => Currency -> m (Dynamic t (Maybe Text))
+balanceRatedOnlyWidget cur = if cur /= BTC then pure (pure Nothing) else do
+  mRateSymbolD <- (fmap . fmap) settingsRateSymbol getSettingsD
+  fmap join $ widgetHoldDyn $ ffor mRateSymbolD $ \case
+    Nothing -> pure $ pure Nothing
+    Just rs -> do
+      balD <- balancesWidget BTC
+      rateD <- getRateBySymbolD rs
+      pure $ do
+        bal <- balD
+        mRate <- rateD
+        pure $ case mRate of
+          Nothing -> Nothing
+          Just r -> Just $ showMoneyRated bal r <> " " <> showRateSymbol rs
 
 balanceTitleWidget :: MonadFront t m => Currency -> m (Dynamic t Text)
 balanceTitleWidget cur = do
-  titleTextD <- localized $ HistoryBalance
-  (balD, curSymbolD) <- balancesRatedWidget cur
-  pure $ do
-    tit <- titleTextD
-    bal <- balD
-    sym <- curSymbolD
-    pure $ tit <> ": " <> bal <> " " <> sym
+  bal <- balancesWidget cur
+  settings <- getSettings
+  titleText <- localized $ HistoryBalance
+  let getSettingsUnits = fromMaybe defUnits . settingsUnits
+      setUs = getSettingsUnits settings
+      titleVal = ffor bal (\v -> showMoneyUnit v setUs)
+      curSymbol = symbolUnit cur setUs
+      title = zipDynWith (\x y -> x <> ": " <> y <> " " <> curSymbol) titleText titleVal
+  pure title
 
 balanceTitleWidgetSimple :: MonadFront t m => Currency -> m (Dynamic t Text)
 balanceTitleWidgetSimple cur = do
-  (balD, curSymbolD) <- balancesRatedWidget cur
-  pure $ do
-    bal <- balD
-    sym <- curSymbolD
-    pure $ bal <> " " <> sym
+  bal <- balancesWidget cur
+  settings <- getSettings
+  let getSettingsUnits = fromMaybe defUnits . settingsUnits
+      setUs = getSettingsUnits settings
+      titleVal = ffor bal (\v -> showMoneyUnit v setUs)
+      curSymbol = symbolUnit cur setUs
+      title = (\x -> x <> " " <> curSymbol) <$> titleVal
+  pure title

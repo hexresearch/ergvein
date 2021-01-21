@@ -181,7 +181,7 @@ data Settings = Settings {
 , settingsActUrlNum         :: Int
 , settingsPortfolio         :: Bool
 , settingsFiatCurr          :: Fiat -- Deprecated
-, settingsRateSymbol        :: Symbol
+, settingsRateSymbol        :: Maybe Symbol
 , settingsDns               :: S.Set HostName
 , settingsSocksProxy        :: Maybe SocksConf
 , settingsCurrencySpecific  :: CurrencySpecificSettings
@@ -211,7 +211,7 @@ instance FromJSON Settings where
             _ -> (fromMaybe [] mActiveAddrs, fromMaybe [] mDeactivatedAddrs, fromMaybe [] mArchivedAddrs)
     settingsPortfolio         <- o .:? "portfolio" .!= False
     settingsFiatCurr          <- o .:? "fiatCurr"  .!= USD
-    settingsRateSymbol        <- o .:? "rateSymbol" .!= BTCBUSD
+    settingsRateSymbol        <- o .:? "rateSymbol"
     mdns                      <- o .:? "dns"
     settingsSocksProxy        <- o .:? "socksProxy"
     let settingsDns = case fromMaybe [] mdns of
@@ -234,7 +234,7 @@ instance ToJSON Settings where
     , "actUrlNum"         .= toJSON settingsActUrlNum
     , "portfolio"         .= toJSON settingsPortfolio
     , "fiatCurr"          .= toJSON settingsFiatCurr
-    , "rateSymbol"        .= encodeSymbol settingsRateSymbol
+    , "rateSymbol"        .= toJSON (encodeSymbol <$> settingsRateSymbol)
     , "dns"               .= toJSON settingsDns
     , "socksProxy"        .= toJSON settingsSocksProxy
     , "currencySpecific"  .= toJSON settingsCurrencySpecific
@@ -279,7 +279,7 @@ defaultSettings home =
       , settingsActUrlNum         = defaultActUrlNum
       , settingsPortfolio         = False
       , settingsFiatCurr          = USD
-      , settingsRateSymbol        = BTCBUSD
+      , settingsRateSymbol        = Just BTCUSDT
       , settingsActiveAddrs       = defaultIndexers
       , settingsDeactivatedAddrs  = []
       , settingsArchivedAddrs     = []
