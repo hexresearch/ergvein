@@ -2,7 +2,6 @@ module Ergvein.Wallet.Localization.History
   (
     HistoryPageStrings(..)
   , HistoryTitle(..)
-  , BumpFeeWidgetStrings(..)
   ) where
 
 import Ergvein.Types.Currency
@@ -34,7 +33,6 @@ data HistoryPageStrings =
   | HistoryTIURL
   | HistoryTIFee
   | HistoryTIRbf
-  | HistoryTIBumpFeeBtn
   | HistoryTIConflictingTxs
   | HistoryTIReplacedTxs
   | HistoryTIPossiblyReplacedTxs
@@ -70,7 +68,6 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTIURL                 -> "Block Explorer"
       HistoryTIFee                 -> "Fee"
       HistoryTIRbf                 -> "Replace by fee"
-      HistoryTIBumpFeeBtn          -> "Bump fee"
       HistoryTIConflictingTxs      -> "Conflicting transactions"
       HistoryTIReplacedTxs         -> "Replaced transactions"
       HistoryTIPossiblyReplacedTxs -> "The transaction may have replaced these transactions or was replaced by one of them"
@@ -102,7 +99,6 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTIURL                 -> "Block Explorer"
       HistoryTIFee                 -> "Комиссия"
       HistoryTIRbf                 -> "Replace by fee"
-      HistoryTIBumpFeeBtn          -> "Увеличить комиссию"
       HistoryTIConflictingTxs      -> "Конфликтующие транзакции"
       HistoryTIReplacedTxs         -> "Замененные транзакции"
       HistoryTIPossiblyReplacedTxs -> "Эта транзакция заменила следующие транзакции или была заменена одной из них"
@@ -115,23 +111,3 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTIOutputsOurAddress   -> "Наш адрес"
       HistoryTIOutputsValue        -> "Объем"
       HistoryTIOutputsStatus       -> "Статус"
-
-data BumpFeeWidgetStrings =
-    BumpFeeTitle
-  | BumpFeeCurrentFee
-  | BumpFeeCurrentFeeRate
-  | BumpFeeNewFeeRate
-  deriving (Eq)
-
-instance LocalizedPrint BumpFeeWidgetStrings where
-  localizedShow l v = case l of
-    English -> case v of
-      BumpFeeTitle               -> "Fee bumping"
-      BumpFeeCurrentFee          -> "Current fee"
-      BumpFeeCurrentFeeRate      -> "Current fee rate"
-      BumpFeeNewFeeRate          -> "New fee rate"
-    Russian -> case v of
-      BumpFeeTitle               -> "Увеличение комиссии"
-      BumpFeeCurrentFee          -> "Текущая комиссия"
-      BumpFeeCurrentFeeRate      -> "Текущая комиссия за байт"
-      BumpFeeNewFeeRate          -> "Новая комиссия за байт"
