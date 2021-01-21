@@ -49,6 +49,7 @@ in (self: super: let
     ergvein-index-protocol = ingnoreGarbage super.ergvein-index-protocol;
     ergvein-index-protocol-client = ingnoreGarbage super.ergvein-index-protocol-client;
     ergvein-index-client = ingnoreGarbage super.ergvein-index-client;
+    ergvein-dns-crawling = ingnoreGarbage super.ergvein-dns-crawling;
     ergvein-index-server = ingnoreGarbage super.ergvein-index-server;
     ergvein-interface-ergo = ingnoreGarbage super.ergvein-interface-ergo;
     ergvein-wallet = addVersions (ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-wallet" ./wallet walletOpts {}));

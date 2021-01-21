@@ -1,0 +1,1 @@
+module Ergvein.DNS.Constants where

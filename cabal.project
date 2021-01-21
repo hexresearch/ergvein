@@ -10,6 +10,7 @@ packages:
   ./index-protocol
   ./index-protocol-client
   ./index-client
+  ./dns-crawling
   ./index-server
   ./interfaces/ergo
   ./reflex-external-ref

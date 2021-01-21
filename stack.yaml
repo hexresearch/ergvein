@@ -35,6 +35,7 @@ packages:
 - index-protocol
 - index-client
 - index-server
+- ergvein-dns-crawling
 - checkpoint-generator
 - data-merkle-tree
 - interfaces/ergo

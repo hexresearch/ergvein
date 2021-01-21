@@ -21,6 +21,7 @@ let
       ergvein-index-client = ./index-client;
       ergvein-index-server = ./index-server;
       ergvein-interface-ergo = ./interfaces/ergo;
+      ergvein-dns-crawling = ./ergvein-dns-crawling;
       ergvein-wallet = ./wallet;
       ergvein-wallet-android = ./wallet-android;
       ergvein-wallet-desktop = ./wallet-desktop;
@@ -51,6 +52,7 @@ let
         "ergvein-index-protocol-client"
         "ergvein-index-client"
         "ergvein-index-server"
+        "ergvein-dns-crawling"
         "ergvein-interface-ergo"
         "ergvein-wallet-desktop"
         "ergvein-wallet-filters"
