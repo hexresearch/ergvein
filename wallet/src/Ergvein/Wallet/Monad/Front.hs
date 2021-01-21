@@ -19,6 +19,7 @@ module Ergvein.Wallet.Monad.Front(
   , getErgoNodesD
   , getStatusUpdates
   , requestBroadcast
+  , sendRandomNode
   , requestFromNode
   , postNodeMessage
   , broadcastNodeMessage
@@ -31,6 +32,7 @@ module Ergvein.Wallet.Monad.Front(
   , Text
   , MonadJSM
   , traverse_
+  , for_
   , module Ergvein.Wallet.Monad.Prim
   , module Ergvein.Wallet.Monad.Base
   , module Reflex.Dom
@@ -43,7 +45,7 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Random
-import Data.Foldable (traverse_)
+import Data.Foldable (traverse_, for_)
 import Data.Functor (void)
 import Data.Functor.Misc (Const2(..))
 import Data.Map (Map)
@@ -169,7 +171,7 @@ broadcastNodeMessage cur reqE = do
 requestManyFromNode :: MonadFrontAuth t m => Event t (SockAddr, [NodeReqG]) -> m ()
 requestManyFromNode reqE = do
   nodeReqFire <- getNodeReqFire
-  performFork_ $ ffor reqE $ \(u, reqs) -> flip traverse_ reqs $ \req ->
+  performFork_ $ ffor reqE $ \(u, reqs) -> for_ reqs $ \req ->
     let cur = getNodeReqCurrency req
     in liftIO . nodeReqFire $ M.singleton cur $ M.singleton u $ NodeMsgReq req
 {-# INLINE requestManyFromNode #-}
@@ -226,6 +228,18 @@ requestBroadcast reqE = do
     let cur = getNodeReqCurrency req
     reqs <- fmap ((<$) (NodeMsgReq req) . fromMaybe (M.empty) . getAllConnByCurrency cur) $ readExternalRef nodeConnRef
     liftIO . nodeReqFire $ M.singleton cur reqs
+
+-- | Send message to random crypto node
+sendRandomNode :: MonadFrontAuth t m => Event t NodeReqG -> m (Event t ())
+sendRandomNode reqE = do
+  nodeReqFire <- getNodeReqFire
+  nodeConnRef <- getNodeConnRef
+  performFork $ ffor reqE $ \req -> do
+    let cur = getNodeReqCurrency req
+    nodes <- fmap (maybe [] M.toList . getAllConnByCurrency cur) $ readExternalRef nodeConnRef
+    mnode <- randomElem nodes
+    for_ mnode $ \(addr, _) ->
+      liftIO . nodeReqFire . M.singleton cur . M.singleton addr . NodeMsgReq $ req
 
 -- | Get fees dynamic
 getFeesD :: MonadFrontAuth t m => m (Dynamic t (Map Currency FeeBundle))
