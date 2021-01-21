@@ -228,19 +228,18 @@ unitsPage = do
         labelHorSep
 
         let initSel = maybe NoFiat (const YesFiat) $ settingsRateSymbol settings
-            initSymb = fromMaybe BTCUSDT $ settingsRateSymbol settings
+            initSymb = fromMaybe defaultBTCSymbol $ settingsRateSymbol settings
         selE <- divClass "navbar-2-cols mb-2" $ do
           noFiatE <- navbarBtn NoFiat initSel
           fiatE <- navbarBtn YesFiat initSel
           pure $ leftmost [noFiatE, fiatE]
-
         selD <- holdDyn initSel selE
         symbE <- widgetHoldDynE $ ffor selD $ \case
           NoFiat -> pure never
           YesFiat -> unitsDropdown initSymb symbolsBTC
-        let detSymbE = fforMaybe selE $ \case
-              NoFiat -> Just Nothing
-              _ -> Nothing
+        let detSymbE = ffor selE $ \case
+              NoFiat -> Nothing
+              YesFiat -> Just initSymb
         let setE = leftmost [Just <$> symbE, detSymbE]
         setSymbE <- updateSettings $ ffor setE $ \ms -> settings {settingsRateSymbol = ms}
         delay 0.1 $ leftmost [() <$ setUnitE, () <$ setSymbE]
