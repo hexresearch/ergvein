@@ -136,7 +136,7 @@ library
         Ergvein.Wallet.Status.Widget
         Ergvein.Wallet.TimeZone
         Ergvein.Wallet.Transaction
-        Ergvein.Wallet.Transaction.Fee
+        Ergvein.Wallet.Transaction.Builder
         Ergvein.Wallet.Transaction.Get
         Ergvein.Wallet.Transaction.Util
         Ergvein.Wallet.Transaction.View

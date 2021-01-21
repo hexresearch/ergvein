@@ -73,7 +73,7 @@ dbgPrintE :: (MonadWidget t m, Show a) => Event t a -> m ()
 dbgPrintE = performEvent_ . fmap (liftIO . print)
 
 eventToNextFrame :: MonadWidget t m => Event t a -> m (Event t a)
-eventToNextFrame = performEvent . (fmap (liftIO . pure. id))
+eventToNextFrame = performEvent . (fmap (liftIO . pure . id))
 
 eventToNextFrame' :: MonadWidget t m => m (Event t a) -> m (Event t a)
 eventToNextFrame' evtM = do
