@@ -26,16 +26,18 @@ ratesTimeout = 600
 ratesWorker :: MonadFront t m => m ()
 ratesWorker = do
   ratesRef  <- getRatesRef
-  buildE  <- getPostBuild
-  te      <- fmap void $ tickLossyFromPostBuildTime ratesTimeout
-  tickE   <- delay 3 $ leftmost [te, buildE]
   settingsD <- getSettingsD
-  let reqE = flip push tickE $ const $ do
-        mRateSymbol <- fmap settingsRateSymbol $ sampleDyn settingsD
-        pure $ ffor mRateSymbol $ \rs -> (BTC, MRatesRequest $ RatesRequest [rs])
-  respE <- requestRandomIndexer reqE
-  let ratesE = fforMaybe respE $ \case
-        (_, MRatesResponse (RatesResponse rs)) -> Just rs
-        _ -> Nothing
-  performFork_ $ ffor ratesE $ \rs -> logWrite $ "Rates: " <> showt rs
-  performFork_ $ ffor ratesE $ \rs -> modifyExternalRef_ ratesRef $ \rs' -> M.union rs rs'
+  mrateD <- holdUniqDyn $ fmap settingsRateSymbol settingsD
+  void $ widgetHoldDyn $ ffor mrateD $ \case
+    Nothing -> pure ()
+    Just rs -> do
+      buildE  <- getPostBuild
+      te      <- fmap void $ tickLossyFromPostBuildTime ratesTimeout
+      tickE   <- delay 2 $ leftmost [te, buildE]
+      let reqE = (BTC, MRatesRequest $ RatesRequest [rs]) <$ tickE
+      respE <- requestRandomIndexer reqE
+      let ratesE = fforMaybe respE $ \case
+            (_, MRatesResponse (RatesResponse rs)) -> Just rs
+            _ -> Nothing
+      performFork_ $ ffor ratesE $ \rs -> logWrite $ "Rates: " <> showt rs
+      performFork_ $ ffor ratesE $ \rs -> modifyExternalRef_ ratesRef $ \rs' -> M.union rs rs'

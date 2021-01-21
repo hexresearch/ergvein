@@ -5,6 +5,7 @@ module Ergvein.Wallet.Localization.Settings(
   , DeleteWalletStrings(..)
   ) where
 
+import Binance.Client.Types
 import Data.Time
 import Ergvein.Text
 import Ergvein.Types.Currency
@@ -67,7 +68,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButTor              -> "Tor and proxy"
       STPSButNodes            -> "BTC nodes"
       STPSButSetPass          -> "Change password"
-      STPSButUnits            -> "Display units for cryptos"
+      STPSButUnits            -> "Display units & fiat"
       STPSButPortfolio        -> "Portfolio"
       STPSButMnemonicExport   -> "Export mnemonic phrase"
       STPSButDeleteWallet     -> "Delete wallet"
@@ -101,7 +102,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButTor              -> "Tor и прокси"
       STPSButNodes            -> "Ноды BTC"
       STPSButSetPass          -> "Изменить пароль"
-      STPSButUnits            -> "Единицы отображения криптосистем"
+      STPSButUnits            -> "Единицы отображения и выбор фиата"
       STPSButPortfolio        -> "Портфель"
       STPSButMnemonicExport   -> "Экспортировать мнемоническую фразу"
       STPSButDeleteWallet     -> "Удалить кошелёк"
@@ -266,3 +267,6 @@ instance LocalizedPrint DeleteWalletStrings where
       DWSWarn3      -> "Последняя проверка. Введите пароль для подтверждения."
       DWSFinStage   -> "Окей, вы убедили меня. Можете удалять."
       DWSFin        -> "Кошелёк успешно удалён. Перенаправляю."
+
+instance LocalizedPrint Symbol where
+  localizedShow _ = showRateSymbol

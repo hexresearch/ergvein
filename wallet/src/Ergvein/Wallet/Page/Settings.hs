@@ -7,6 +7,7 @@ module Ergvein.Wallet.Page.Settings(
   , currenciesPage
   ) where
 
+import Binance.Client.Types
 import Control.Lens
 import Data.List
 import Data.Maybe (fromMaybe, catMaybes)
@@ -28,6 +29,7 @@ import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Node
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Password
@@ -197,23 +199,52 @@ currenciesPage = do
     uac cE =  updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ cE
     mkStore mpath prvStr currency = createCurrencyPubStorage mpath (_prvStorage'rootPrvKey prvStr) (filterStartingHeight currency) currency
 
+data FiatSelection = NoFiat | YesFiat
+  deriving (Eq)
+
+instance LocalizedPrint FiatSelection where
+  localizedShow l v = case l of
+    English -> case v of
+      NoFiat -> "No fiat display"
+      YesFiat -> "Select fiat"
+    Russian -> case v of
+      NoFiat -> "Не отображать фиат"
+      YesFiat -> "Выбрать фиат"
+
 -- TODO: uncomment commented lines when ERGO is ready
 unitsPage :: MonadFront t m => m ()
 unitsPage = do
   title <- localized STPSTitle
-  wrapper True title (Just $ pure unitsPage) $ mdo
-    cntED <- widgetHold content $ content <$ switchDyn cntED
-    pure ()
+  wrapper True title (Just $ pure unitsPage) $ void $ workflow content
   where
-    content = do
-      h3 $ localizedText $ STPSSelectUnitsFor BTC
-      ubE <- divClass "initial-options grid1" $ do
-        settings <- getSettings
+    content = Workflow $ do
+      h4 $ localizedText $ STPSSelectUnitsFor BTC
+      settings <- getSettings
+      nextE <- divClass "initial-options grid1" $ do
         let setUs = getSettingsUnits settings
         unitBtcE <- unitsDropdown (getUnitBTC setUs) allUnitsBTC
-        setE <- updateSettings $ ffor unitBtcE (\ubtc -> settings {settingsUnits = Just $ setUs {unitBTC = Just ubtc}})
-        delay 0.1 $ () <$ setE
-      pure ubE
+        setUnitE <- updateSettings $ ffor unitBtcE (\ubtc -> settings {settingsUnits = Just $ setUs {unitBTC = Just ubtc}})
+
+        labelHorSep
+
+        let initSel = maybe NoFiat (const YesFiat) $ settingsRateSymbol settings
+            initSymb = fromMaybe BTCUSDT $ settingsRateSymbol settings
+        selE <- divClass "navbar-2-cols mb-2" $ do
+          noFiatE <- navbarBtn NoFiat initSel
+          fiatE <- navbarBtn YesFiat initSel
+          pure $ leftmost [noFiatE, fiatE]
+
+        selD <- holdDyn initSel selE
+        symbE <- widgetHoldDynE $ ffor selD $ \case
+          NoFiat -> pure never
+          YesFiat -> unitsDropdown initSymb symbolsBTC
+        let detSymbE = fforMaybe selE $ \case
+              NoFiat -> Just Nothing
+              _ -> Nothing
+        let setE = leftmost [Just <$> symbE, detSymbE]
+        setSymbE <- updateSettings $ ffor setE $ \ms -> settings {settingsRateSymbol = ms}
+        delay 0.1 $ leftmost [() <$ setUnitE, () <$ setSymbE]
+      pure ((), content <$ nextE)
 
     unitsDropdown val allUnits = do
       langD <- getLanguage
@@ -229,6 +260,11 @@ unitsPage = do
       fmap updated $ holdUniqDyn selD
 
     getSettingsUnits = fromMaybe defUnits . settingsUnits
+    navbarBtn :: (DomBuilder t m, PostBuild t m, MonadLocalized t m) => FiatSelection -> FiatSelection-> m (Event t FiatSelection)
+    navbarBtn item activeItem
+      | item == activeItem = spanButton "navbar-item active" item >> pure never
+      | item /= activeItem = (item <$) <$> spanButton "navbar-item" item
+    navbarBtn _ _ = pure never
 
 portfolioPage :: MonadFront t m => m ()
 portfolioPage = do

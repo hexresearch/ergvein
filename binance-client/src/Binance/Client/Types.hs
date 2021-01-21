@@ -4,6 +4,7 @@ module Binance.Client.Types
   , encodeSymbol
   , decodeSymbol
   , showRateSymbol
+  , symbolsBTC
   , AvgPrice(..)
   , LatestPrice(..)
   ) where
@@ -37,6 +38,10 @@ showRateSymbol :: Symbol -> Text
 showRateSymbol v = case v of
   BTCUSDT -> "USDT"
   BTCBUSD -> "BUSD"
+
+-- | Symbols for BTC. Currently all symbols are for BTC
+symbolsBTC :: [Symbol]
+symbolsBTC = [BTCUSDT, BTCBUSD]
 
 instance FromJSON Symbol where
   parseJSON = withText "Symbol" $ \t -> maybe (fail $ "Unknown Symbol: " <> T.unpack t) pure . decodeSymbol $ t
