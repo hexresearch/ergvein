@@ -33,6 +33,7 @@ import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
 import Ergvein.Types.Transaction
+import Ergvein.DNS.Crawling
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set        as S

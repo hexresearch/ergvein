@@ -233,7 +233,8 @@ library
         wreq -any,
         yaml -any,
         attoparsec-binary,
-        either
+        either,
+        ergvein-dns-crawling
 
     if flag(android)
         cpp-options: -DANDROID

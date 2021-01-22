@@ -9,6 +9,7 @@ import Data.Functor.Misc (Const2(..))
 import Data.Time
 import Reflex.Dom
 import Reflex.ExternalRef
+import Ergvein.DNS.Crawling
 
 import Ergvein.Text
 import Ergvein.Wallet.Indexer.Socket

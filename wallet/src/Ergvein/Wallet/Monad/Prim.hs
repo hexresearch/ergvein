@@ -51,6 +51,7 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Version
 import Ergvein.Wallet.Monad.Async
+import Ergvein.DNS.Crawling
 
 import qualified Control.Monad.Fail as F
 import qualified Network.Socks5 as S5

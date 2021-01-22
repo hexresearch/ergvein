@@ -26,6 +26,7 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Util
 import Ergvein.Wallet.Platform
+import Ergvein.DNS.Crawling
 
 import qualified Data.Attoparsec.Binary     as P
 import qualified Data.Attoparsec.ByteString as P

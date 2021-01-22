@@ -17,7 +17,6 @@ module Ergvein.Wallet.Settings (
   , ExplorerUrls(..)
   , defaultDns
   , defaultIndexers
-  , getDNS
   , seedList
   , SocksConf(..)
   , torSocks
@@ -71,6 +70,8 @@ import Ergvein.Wallet.IP
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Yaml(readYamlEither')
+import Ergvein.DNS.Constants
+import Ergvein.DNS.Crawling 
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set        as S
@@ -81,8 +82,6 @@ import qualified Network.Socks5  as S5
 import Android.HaskellActivity
 import Ergvein.Wallet.Native
 #endif
-
-type ErgveinNodeAddr = Text
 
 data ErgveinNodeManagementInfo = ErgveinNodeManagementInfo
   { _nfoIsActivated  :: !Bool
@@ -276,19 +275,13 @@ instance ToJSON Settings where
     , "currencySpecific"  .= toJSON _settingsCurrencySpecific
    ]
 
-defIndexerPort :: PortNumber
-defIndexerPort = 8667
-
 seedList :: [Domain]
 seedList = if False
-  then ["testseed.cypra.io"]
-  else ["seed.cypra.io"]
+  then seedTestnetNodesSource
+  else seedMainnetNodesSource
 
 defaultIndexers :: [Text]
-defaultIndexers = 
-  if isTestnet 
-  then ["127.0.0.1:8667"]
-  else ["139.59.142.25:8667", "188.244.4.78:8667"]
+defaultIndexers = if isTestnet then defTestnetNodes else defMainnetNodes
 
 defaultIndexersNum :: (Int, Int)
 defaultIndexersNum = (2, 4)
@@ -301,8 +294,8 @@ defaultActUrlNum = 10
 
 defaultDns :: S.Set HostName
 defaultDns = S.fromList $ if isAndroid
-  then ["8.8.8.8","8.8.4.4", "1.1.1.1"]
-  else [] -- use resolv.conf
+  then defDns
+  else defAndroidDns -- use resolv.conf
 
 defaultSettings :: FilePath -> Settings
 defaultSettings home =
@@ -375,23 +368,3 @@ loadSettings mpath = liftIO $ case mpath of
     encodeFile (unpack $ _settingsConfigPath cfg) cfg
     pure cfg
 #endif
-
-getDNS :: ResolvSeed -> [Domain] -> IO (Maybe [Text])
-getDNS seed domains = withResolver seed $ \resolver -> do 
-  findMapMMaybe (resolve resolver) domains
-  where
-    resolve :: Resolver -> Domain -> IO (Maybe [Text])
-    resolve resolver domain = do
-        v4 <- lookupA resolver domain
-        v6 <- lookupAAAA resolver domain
-        let resolved = concat $ rights [(fmap showt <$> v4), (fmap showt <$> v6)]
-        pure $ if length resolved < 2 then Nothing else Just resolved
-    
-    findMapMMaybe :: Monad m => (a -> m (Maybe b)) -> [a] -> m (Maybe b)
-    findMapMMaybe f (x:xs) = do
-      r <- f x
-      if isJust r then
-        pure r
-      else
-        findMapMMaybe f xs
-    findMapMMaybe f [] = pure Nothing
