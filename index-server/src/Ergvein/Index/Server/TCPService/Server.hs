@@ -105,9 +105,7 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
       void $ fork $ broadcastLoop sendChan
       -- Start message listener
       listenLoop sendChan
-    _ -> do
-      liftIO $ print $ "CLOSED"
-      closeConnection addr
+    _ -> closeConnection addr
   where
     writeMsg :: TChan LBS.ByteString -> Message -> IO ()
     writeMsg destinationChan = atomically . writeTChan destinationChan . toLazyByteString . messageBuilder

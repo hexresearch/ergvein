@@ -115,9 +115,12 @@ setNodeActivated :: (MonadIndexClient t m, MonadHasSettings t m) => Event t (Erg
 setNodeActivated addrE = do
   (_, activationFunc) <- getActivationEF
   let (deactivationE, activationE) = fanEither $ (\(u, v)-> (if v then Right else Left) u) <$> addrE
-  closeAndWait deactivationE
-  performEvent $ liftIO . activationFunc . pure <$> activationE
-  updateSettingsAsync $ ffor addrE $ \(url, v) -> 
+  deactivateE <- closeAndWait deactivationE
+  activatedE <- performEvent $ ffor activationE $ \addr -> do
+    liftIO $ activationFunc [addr]
+    pure addr
+  let performedE = leftmost [(, True) <$> activatedE, (, False) <$> deactivateE]
+  updateSettingsAsync $ ffor performedE $ \(url, v) -> 
     settingsErgveinNetwork . at url . _Just %~ (nfoIsActivated .~ v) . (nfoIsUserModified .~ True)
 
 removeNode :: (MonadIndexClient t m, MonadHasSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
@@ -136,7 +139,7 @@ closeAndWait urlE = do
     mconn <- M.lookup url <$> readExternalRef connsRef
     pure $ case mconn of
       Nothing -> never
-      Just conn -> url <$ (traceEvent "))))))))))))))))))))))))))))))))))indexConClosedE" $ indexConClosedE conn)
+      Just conn -> url <$ indexConClosedE conn
   switchDyn <$> holdDyn never closedEE
 
 setDiscovery :: (MonadIndexClient t m, MonadHasSettings t m) =>  Event t Bool -> m (Event t ())

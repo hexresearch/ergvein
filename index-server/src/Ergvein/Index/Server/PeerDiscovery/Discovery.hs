@@ -14,8 +14,15 @@ import Data.Set (Set)
 import Data.Time.Clock
 import Data.Time.Clock.POSIX
 import Data.Word
+import Data.Maybe
+import Data.Text (Text)
+import Network.DNS.Resolver
+import Network.DNS
 import Network.Socket (SockAddr)
 import Foreign.C.Types (CTime(..))
+import Network.Socket
+import Data.Either
+import Ergvein.Text
 
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Server.BlockchainScanning.Common
@@ -30,10 +37,14 @@ import Ergvein.Index.Server.TCPService.Conversions
 import Ergvein.Index.Server.Utils
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import Text.Read (readMaybe)
+import Data.IP
 
 import qualified Data.Map.Strict      as Map
 import qualified Data.Set             as Set
 import qualified Data.Vector.Unboxed  as UV
+import qualified Data.Text as T
+import qualified Data.ByteString.Char8 as B8
 
 considerPeer :: Version -> PeerCandidate -> ServerM ()
 considerPeer ownVer PeerCandidate {..} = do
@@ -41,10 +52,9 @@ considerPeer ownVer PeerCandidate {..} = do
   isScanActual <- isPeerScanActual (versionScanBlocks ownVer)
   when (Just peerCandidateAddress /= ownAddress && isScanActual) $ do
     currentTime <- liftIO getCurrentTime
-    upsertPeer $ Peer
-      { peerAddress          = peerCandidateAddress
-      , peerLastValidatedAt  = currentTime
-      }
+    upsertPeer $ let peerAddress          = peerCandidateAddress
+                     peerLastValidatedAt  = currentTime
+                 in Peer {..}
 
 knownPeersSet :: [Peer] -> ServerM (Set SockAddr)
 knownPeersSet discoveredPeers = do
@@ -57,24 +67,110 @@ knownPeersActualization  = do
   where
     scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
-     PeerDiscoveryRequisites {..} <- getDiscoveryRequisites
-     currentTime <- liftIO getCurrentTime
-     knownPeers <- getPeerList
-     let upToDatePeers = isUpToDatePeer descReqPredefinedPeers descReqActualizationTimeout currentTime `filter` knownPeers
-     setPeerList upToDatePeers
-     openedConnectionsRef <- openConnections
-     opened <- liftIO $ Map.keysSet <$> readTVarIO openedConnectionsRef
-     let peersToConnect = Set.toList $ opened Set.\\ (Set.fromList $ peerAddress <$> upToDatePeers)
-     liftIO $ forM_ peersToConnect newConnection
-     broadcastSocketMessage $ MPeerRequest PeerRequest
-     shutdownFlagVar <- getShutdownFlag
-     liftIO $ cancelableDelay shutdownFlagVar descReqActualizationDelay
-     shutdownFlag <- liftIO $ readTVarIO shutdownFlagVar
-     unless shutdownFlag $ scanIteration thread
+      PeerDiscoveryRequisites {..} <- getDiscoveryRequisites
+      knownPeers <- getPeerList
+      if length knownPeers >= 2 then do 
+        currentTime <- liftIO getCurrentTime
+        let upToDatePeers = isUpToDatePeer descReqPredefinedPeers descReqActualizationTimeout currentTime `filter` knownPeers
+        setPeerList upToDatePeers
+        openedConnectionsRef <- openConnections
+        opened <- liftIO $ Map.keysSet <$> readTVarIO openedConnectionsRef
+        let peersToConnect = Set.toList $ opened Set.\\ (Set.fromList $ peerAddress <$> upToDatePeers)
+        liftIO $ forM_ peersToConnect newConnection
+        broadcastSocketMessage $ MPeerRequest PeerRequest
+      else do
+        x <- liftIO initialIndexers
+        pure ()
+      shutdownFlagVar <- getShutdownFlag
+      liftIO $ cancelableDelay shutdownFlagVar descReqActualizationDelay
+      shutdownFlag <- liftIO $ readTVarIO shutdownFlagVar
+      unless shutdownFlag $ scanIteration thread
     isUpToDatePeer :: Set SockAddr -> NominalDiffTime -> UTCTime -> Peer -> Bool
     isUpToDatePeer predefined retryTimeout currentTime peer =
        let fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt peer
        in Set.member (peerAddress peer) predefined || retryTimeout >= fromLastSuccess
+
+
+seedList :: [Domain]
+seedList = if True
+  then ["testseed.cypra.io"]
+  else ["seed.cypra.io"]
+
+
+defaultIndexers :: [Text]
+defaultIndexers = 
+  if True 
+  then ["127.0.0.1:8667"]
+  else ["139.59.142.25:8667", "188.244.4.78:8667"]
+
+defaultDns :: Set.Set HostName
+defaultDns = Set.fromList $ if True
+  then ["8.8.8.8", "8.8.4.4", "1.1.1.1"]
+  else [] -- use resolv.conf
+
+parseSockAddrs :: (MonadIO m) => ResolvSeed -> [Text] -> m [SockAddr]
+parseSockAddrs rs urls = liftIO $ do
+  withResolver rs $ \resolver -> fmap catMaybes $ traverse (parseAddr resolver) urls
+
+parseSingleSockAddr :: (MonadIO m) => ResolvSeed -> Text -> m (Maybe SockAddr)
+parseSingleSockAddr rs t = do
+  let (h, p) = fmap (T.drop 1) $ T.span (/= ':') t
+  let port = if p == "" then defIndexerPort else fromMaybe defIndexerPort (readMaybe $ T.unpack p)
+  let val = fmap (readMaybe . T.unpack) $ T.splitOn "." h
+  case val of
+    [Just a, Just b, Just c, Just d] -> pure $ Just $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
+    _ -> do
+      let url = B8.pack $ T.unpack h
+      ips <- liftIO $ fmap (either (const []) id) $ withResolver rs (flip lookupA url)
+      case ips of
+        [] -> pure Nothing
+        ip:_ -> pure $ Just $ SockAddrInet port (toHostAddress ip)
+
+getDNS :: ResolvSeed -> [Domain] -> IO (Maybe [Text])
+getDNS seed domains = withResolver seed $ \resolver -> do 
+  findMapMMaybe (resolve resolver) domains
+  where
+    resolve :: Resolver -> Domain -> IO (Maybe [Text])
+    resolve resolver domain = do
+        v4 <- lookupA resolver domain
+        v6 <- lookupAAAA resolver domain
+        let resolved = concat $ rights [(fmap showt <$> v4), (fmap showt <$> v6)]
+        pure $ if length resolved < 2 then Nothing else Just resolved
+    
+    findMapMMaybe :: Monad m => (a -> m (Maybe b)) -> [a] -> m (Maybe b)
+    findMapMMaybe f (x:xs) = do
+      r <- f x
+      if isJust r then
+        pure r
+      else
+        findMapMMaybe f xs
+    findMapMMaybe f [] = pure Nothing
+
+parseAddr :: Resolver -> Text -> IO (Maybe SockAddr)
+parseAddr resolver t = do
+  let (h, p) = fmap (T.drop 1) $ T.span (/= ':') t
+  let port = if p == "" then defIndexerPort else fromMaybe defIndexerPort (readMaybe $ T.unpack p)
+  let val = fmap (readMaybe . T.unpack) $ T.splitOn "." h
+  case val of
+    [Just a, Just b, Just c, Just d] -> pure $ Just $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
+    _ -> do
+      let url = B8.pack $ T.unpack h
+      ips <- fmap (either (const []) id) $ lookupA resolver url
+      case ips of
+        [] -> pure Nothing
+        ip:_ -> pure $ Just $ SockAddrInet port (toHostAddress ip)
+
+defIndexerPort :: PortNumber
+defIndexerPort = 8667
+
+initialIndexers :: IO [Text]
+initialIndexers = do
+  resolvInfo <- makeResolvSeed defaultResolvConf {
+      resolvInfo = RCHostNames $ Set.toList $ defaultDns
+    , resolvConcurrent = True
+    }
+  tryDNS <- getDNS resolvInfo seedList
+  pure $ fromMaybe defaultIndexers tryDNS
 
 syncWithDefaultPeers :: ServerM ()
 syncWithDefaultPeers = do
@@ -82,7 +178,7 @@ syncWithDefaultPeers = do
   predefinedPeers <- descReqPredefinedPeers <$> getDiscoveryRequisites
   currentTime <- liftIO getCurrentTime
   let discoveredPeersSet = Set.fromList $ peerAddress <$> discoveredPeers
-      toAdd = (\x -> Peer x currentTime) <$> (Set.toList $ predefinedPeers Set.\\ discoveredPeersSet)
+      toAdd = (`Peer` currentTime) <$> (Set.toList $ predefinedPeers Set.\\ discoveredPeersSet)
   setPeerList toAdd
 
 isPeerScanActual :: UV.Vector ScanBlock -> ServerM Bool
@@ -114,22 +210,20 @@ ownVersion = do
 
   scanNfo <- UV.fromList <$> (mapM verBlock =<< scanningInfo)
 
-  pure $ Version {
-      versionVersion    = protocolVersion
-    , versionTime       = time
-    , versionNonce      = nonce
-    , versionScanBlocks = scanNfo
-    }
+  pure $ let versionVersion    = protocolVersion
+             versionTime       = time
+             versionNonce      = nonce
+             versionScanBlocks = scanNfo
+         in Version {..}
   where
     verBlock :: ScanProgressInfo -> ServerM ScanBlock
     verBlock ScanProgressInfo {..} = do
       currencyCode <- currencyToCurrencyCode nfoCurrency
-      pure $ ScanBlock
-        { scanBlockCurrency   = currencyCode
-        , scanBlockVersion    = filterVersion nfoCurrency
-        , scanBlockScanHeight = nfoScannedHeight
-        , scanBlockHeight     = nfoActualHeight
-        }
+      pure $ let scanBlockCurrency   = currencyCode
+                 scanBlockVersion    = filterVersion nfoCurrency
+                 scanBlockScanHeight = nfoScannedHeight
+                 scanBlockHeight     = nfoActualHeight
+             in ScanBlock {..}
 
     filterVersion :: Currency -> Word32
     filterVersion = const 1

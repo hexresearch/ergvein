@@ -114,6 +114,8 @@ library
       , wai-middleware-prometheus >= 1.0    &&  < 1.1
       , warp                     >= 3.2     &&  < 3.3
       , yaml                     >= 0.11    &&  < 0.12
+      , dns                      >= 4.0     &&  < 4.1
+      , iproute                  >= 1.7.8 && < 1.8
       , ergo-api
       , ergvein-common
       , ergvein-crypto

@@ -54,7 +54,7 @@ initIndexerConnection sname sa msgE = mdo
       _socketConfPeer   = peer
     , _socketConfSend   = fmap serializeMessage sendE
     , _socketConfPeeker = peekMessage sa
-    , _socketConfClose  = closeE
+    , _socketConfClose  = traceEvent "closeEcloseEcloseEcloseEcloseE" closeE
     , _socketConfReopen = Just (1, 2) -- reconnect after 1 seconds 2 retries
     , _socketConfProxy  = proxyD
     }

@@ -184,7 +184,7 @@ socket SocketConf{..} = fmap switchSocket $ widgetHoldDyn $ ffor _socketConfProx
   performEvent_ $ ffor closeE $ const $ liftIO $ atomically $ writeTVar intVar True
   performEvent_ $ ffor reconnectE $ const $ liftIO $ atomically $ writeTVar intVar False
   performEvent_ $ ffor _socketConfSend $ liftIO . atomically . writeTChan sendChan
-  performEvent_ $ ffor _socketConfClose $ const $ liftIO $ closeCb Nothing
+  performEvent_ $ ffor (traceEvent "_socketConfClose_socketConfClose_socketConfClose" _socketConfClose) $ const $ liftIO $ closeCb Nothing
   performFork_  $ ffor connectE $ const $ liftIO $ do
     let sendThread sock = forever $ do
           msgs <- atomically $ readAllTVar sendChan

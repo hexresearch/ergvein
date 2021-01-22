@@ -21,7 +21,7 @@ let
       ergvein-index-client = ./index-client;
       ergvein-index-server = ./index-server;
       ergvein-interface-ergo = ./interfaces/ergo;
-      ergvein-dns-crawling = ./ergvein-dns-crawling;
+      ergvein-dns-crawling = ./dns-crawling;
       ergvein-wallet = ./wallet;
       ergvein-wallet-android = ./wallet-android;
       ergvein-wallet-desktop = ./wallet-desktop;
