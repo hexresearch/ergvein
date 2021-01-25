@@ -12,10 +12,11 @@ import Network.Haskoin.Network
 import Control.Monad.Identity (runIdentity)
 import Data.Conduit (ConduitT, Void, runConduit, (.|), await)
 import Data.Conduit.List (sourceList)
-import Data.Ratio
 import Data.Serialize (encode)
 import Data.Word
 import Network.Haskoin.Util
+
+import Ergvein.Wallet.Transaction.Util
 
 import qualified Data.ByteString as B
 
@@ -156,7 +157,7 @@ guessTxVsize ::
   -> [OutputType]
   -> Int
 guessTxVsize inputs outputs =
-  ceiling $ (sum (getInputWeight <$> inputs) + sum (getOutputWeight <$> outputs) + overhead) % 4
+  weightUnitsToVBytes $ sum (getInputWeight <$> inputs) + sum (getOutputWeight <$> outputs) + overhead
   where
     varIntSize = B.length . encode . VarInt . fromIntegral
     segWitInputs = filter (\x -> x /= P2PKH && x /= P2SH) inputs

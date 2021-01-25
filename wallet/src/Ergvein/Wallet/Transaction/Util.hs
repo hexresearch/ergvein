@@ -29,13 +29,19 @@ module Ergvein.Wallet.Transaction.Util(
   , markedReplaceable
   , replacesByFee
   , buildAddrTxRbf
+  , weightUnitsToVBytes
+  , calcTxVsize
   -- Ergo functions
   ) where
 
+import Control.Monad (forM_)
 import Control.Monad.IO.Class
 import Data.Maybe
+import Data.Ratio
+import Data.Serialize
 import Data.Text (Text)
 import Data.Word
+import Network.Haskoin.Network (putVarInt)
 import Network.Haskoin.Transaction (Tx(..), TxIn(..), TxOut(..), OutPoint(..), txHash)
 
 import Ergvein.Text
@@ -56,7 +62,7 @@ import qualified Data.Text                          as T
 import qualified Data.Vector                        as V
 import qualified Network.Haskoin.Address            as HA
 import qualified Network.Haskoin.Script             as HS
-import qualified Network.Haskoin.Transaction        as HK
+import qualified Network.Haskoin.Transaction        as HT
 import qualified Network.Haskoin.Util               as HU
 
 checkAddr :: (HasTxStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m Bool
@@ -72,8 +78,8 @@ checkAddrTx _ _ = pure False
 
 checkAddrTxBtc :: (HasTxStorage m, PlatformNatives) => BtcTxRaw -> BtcAddress -> m Bool
 checkAddrTxBtc tx addr = do
-  checkTxInputsResults <- traverse (checkTxInBtc addr) (HK.txIn tx)
-  checkTxOutputsResults <- traverse (checkTxOutBtc addr) (HK.txOut tx)
+  checkTxInputsResults <- traverse (checkTxInBtc addr) (HT.txIn tx)
+  checkTxOutputsResults <- traverse (checkTxOutBtc addr) (HT.txOut tx)
   pure $ concatResults checkTxInputsResults || concatResults checkTxOutputsResults
   where concatResults = L.foldr (||) False
 
@@ -83,23 +89,23 @@ checkAddrTxErg = undefined
 -- | Checks given tx if there are some inputs containing given address.
 checkAddrTxInBtc :: (HasTxStorage m, PlatformNatives) => BtcAddress -> BtcTxRaw -> m Bool
 checkAddrTxInBtc addr tx = do
-  checkTxInputsResults <- traverse (checkTxInBtc addr) (HK.txIn tx)
+  checkTxInputsResults <- traverse (checkTxInBtc addr) (HT.txIn tx)
   pure $ concatResults checkTxInputsResults
   where concatResults = L.foldr (||) False
 
 -- | Checks given tx if there are some outputs containing given address.
 checkAddrTxOutBtc :: (HasTxStorage m, PlatformNatives) => BtcAddress -> BtcTxRaw -> m Bool
 checkAddrTxOutBtc addr tx = do
-  checkTxOutputsResults <- traverse (checkTxOutBtc addr) (HK.txOut tx)
+  checkTxOutputsResults <- traverse (checkTxOutBtc addr) (HT.txOut tx)
   pure $ concatResults checkTxOutputsResults
   where concatResults = L.foldr (||) False
 
-checkOutIsOursBtc :: (MonadIO m, PlatformNatives) => [BtcAddress] -> HK.TxOut -> m Bool
+checkOutIsOursBtc :: (MonadIO m, PlatformNatives) => [BtcAddress] -> HT.TxOut -> m Bool
 checkOutIsOursBtc addrs out = do
   results <- traverse (flip checkTxOutBtc out) addrs
   pure $ L.any (== True) results
 
-checkOutSpent :: [[HK.TxIn]] -> HK.OutPoint -> Bool
+checkOutSpent :: [[HT.TxIn]] -> HT.OutPoint -> Bool
 checkOutSpent inputs out = let results = (fmap . fmap) (inputSpendsOutPoint out) inputs in
   (L.any (== True)) $ fmap (L.any (== True)) results
 
@@ -107,17 +113,17 @@ checkOutSpent inputs out = let results = (fmap . fmap) (inputSpendsOutPoint out)
 -- Native SegWit addresses are not presented in TxIns scriptSig.
 checkTxInBtc :: (HasTxStorage m, PlatformNatives) => BtcAddress -> TxIn -> m Bool
 checkTxInBtc addr txIn = do
-  let spentOutput = HK.prevOutput txIn
-      spentTxHash = HK.outPointHash spentOutput
-      spentOutputIndex = HK.outPointIndex spentOutput
+  let spentOutput = HT.prevOutput txIn
+      spentTxHash = HT.outPointHash spentOutput
+      spentOutputIndex = HT.outPointIndex spentOutput
   mtx <- getTxById $ hkTxHashToEgv spentTxHash
   case mtx of
     Nothing -> pure False
     Just (TxErg _) -> pure False -- TODO: impl for Ergo
-    Just (TxBtc BtcTx{..}) -> checkTxOutBtc addr $ (HK.txOut getBtcTx) !! (fromIntegral spentOutputIndex)
+    Just (TxBtc BtcTx{..}) -> checkTxOutBtc addr $ (HT.txOut getBtcTx) !! (fromIntegral spentOutputIndex)
 
 decodeBtcOutHelper :: (MonadIO m, PlatformNatives) => TxOut -> m (Maybe HS.ScriptOutput)
-decodeBtcOutHelper txOut = case HS.decodeOutputBS $ HK.scriptOutput txOut of
+decodeBtcOutHelper txOut = case HS.decodeOutputBS $ HT.scriptOutput txOut of
   Left e -> do
     logWrite $ "Could not decode transaction output: " <> (showt e)
     pure Nothing
@@ -166,13 +172,13 @@ getConflictingTxs possiblyReplacedTxs txs = L.zipWith removePossiblyReplacedTxs 
     removePossiblyReplacedTxs (_, prTxs) cTxs = L.filter (`L.notElem` prTxs) cTxs
 
     getConflicts :: BtcTxRaw -> [BtcTxId]
-    getConflicts tx = HK.txHash <$> (L.filter (haveCommonInputs tx) (L.delete tx btcTxs))
+    getConflicts tx = HT.txHash <$> (L.filter (haveCommonInputs tx) (L.delete tx btcTxs))
 
 isDirectChildTxOf :: BtcTxRaw -> BtcTxRaw -> Bool
 isDirectChildTxOf childTx parentTx = parentTxId `L.elem` childTxInputsTxIds
   where
     parentTxId = txHash parentTx
-    childTxInputsTxIds = (HK.outPointHash . HK.prevOutput) <$> HK.txIn childTx
+    childTxInputsTxIds = (HT.outPointHash . HT.prevOutput) <$> HT.txIn childTx
 
 -- | Returns the list of child txs found in transaction storage.
 --           parentTx
@@ -211,39 +217,39 @@ getPossiblyReplacedTxs possiblyReplacedTxs txs = getPossiblyReplaced possiblyRep
       | S.member txId possiblyReplacedTxIds = (False, possiblyReplacingTxId : (S.toList $ S.delete txId possiblyReplacedTxIds))
       | otherwise = acc
 
-getOutputByOutPoint :: (HasTxStorage m, PlatformNatives) => HK.OutPoint -> m (Maybe HK.TxOut)
-getOutputByOutPoint HK.OutPoint{..} = do
+getOutputByOutPoint :: (HasTxStorage m, PlatformNatives) => HT.OutPoint -> m (Maybe HT.TxOut)
+getOutputByOutPoint HT.OutPoint{..} = do
   mtx <- getTxById $ hkTxHashToEgv outPointHash
   case mtx of
     Nothing -> pure Nothing
     Just (TxErg _) -> pure Nothing -- TODO: impl for Ergo
-    Just (TxBtc BtcTx{..}) -> pure $ Just $ (HK.txOut getBtcTx) !! (fromIntegral outPointIndex)
+    Just (TxBtc BtcTx{..}) -> pure $ Just $ (HT.txOut getBtcTx) !! (fromIntegral outPointIndex)
 
-getOutputsByOutPoints :: (HasTxStorage m, PlatformNatives) => [HK.OutPoint] -> m [Maybe HK.TxOut]
+getOutputsByOutPoints :: (HasTxStorage m, PlatformNatives) => [HT.OutPoint] -> m [Maybe HT.TxOut]
 getOutputsByOutPoints outPoints = traverse getOutputByOutPoint outPoints
 
 -- | Gets spent output (they are inputs for a tx) for a given address from a transaction
 -- Bool specifies if the Tx was confirmed (True) or not
 getSpentOutputsBtc :: (HasTxStorage m, PlatformNatives) => Bool -> BtcAddress -> BtcTxRaw -> m ([(OutPoint, Bool)])
-getSpentOutputsBtc c addr HK.Tx{..} = fmap catMaybes $ flip traverse txIn $ \ti -> do
+getSpentOutputsBtc c addr HT.Tx{..} = fmap catMaybes $ flip traverse txIn $ \ti -> do
   b <- checkTxInBtc addr ti
   pure $ if b then Just (prevOutput ti, c) else Nothing
 
 -- | Calculates tx fee. If any of parent txs were are found in the wallet storage then it returns Nothing.
 getTxFee :: (HasTxStorage m, PlatformNatives) => BtcTxRaw -> m (Maybe Word64)
 getTxFee tx = do
-  let inputs = HK.txIn tx
-      outputs = HK.txOut tx
-      outputsAmount = L.sum $ HK.outValue <$> outputs
-  prevOutputs <- getOutputsByOutPoints $ HK.prevOutput <$> inputs
-  let inputsAmount = L.sum $ HK.outValue <$> catMaybes prevOutputs
+  let inputs = HT.txIn tx
+      outputs = HT.txOut tx
+      outputsAmount = L.sum $ HT.outValue <$> outputs
+  prevOutputs <- getOutputsByOutPoints $ HT.prevOutput <$> inputs
+  let inputsAmount = L.sum $ HT.outValue <$> catMaybes prevOutputs
       result = if L.any isNothing prevOutputs then Nothing else Just $ inputsAmount - outputsAmount
   pure result
 
 -- | Calculates amount of coins in tx outputs.
 getTxOutputsAmount :: BtcTxRaw -> Word64
-getTxOutputsAmount tx = L.sum $ HK.outValue <$> outputs
-  where outputs = HK.txOut tx
+getTxOutputsAmount tx = L.sum $ HT.outValue <$> outputs
+  where outputs = HT.txOut tx
 
 -- | Gets unspent output for a given address from a transaction
 -- Maybe BlockHeight: Nothing -- unconfirmed Tx. Just n -> confirmed at height n
@@ -353,3 +359,40 @@ buildTxRbf xs ys =
         | v <= 2100000000000000 = return $ TxOut v $ HS.encodeOutputBS o
         | otherwise =
             Left $ "buildTxRbf: Invalid amount " ++ show v
+
+weightUnitsToVBytes :: Word64 -> Int
+weightUnitsToVBytes wu = ceiling $ wu % 4
+
+calcTxVsize :: Tx -> Int
+calcTxVsize tx
+  | null (txWitness tx) = calcLegacyTxVsize tx
+  | otherwise = calcWitnessTxVsize tx
+
+calcLegacyTxVsize :: Tx -> Int
+calcLegacyTxVsize = B.length . encode
+
+calcWitnessTxVsize :: Tx -> Int
+calcWitnessTxVsize tx = weightUnitsToVBytes $ overhead + inOut + witnessData
+  where
+    overhead = 34 -- version 16 WU + marker 1 WU + flag 1 WU + locktime 16 WU
+    inOut = (* 4) $ fromIntegral $ B.length $ runPut $ putInOut tx
+    witnessData = fromIntegral $ B.length $ runPut $ putWitnessData $ txWitness tx
+
+-- From haskoin-core
+putInOut :: Tx -> Put
+putInOut tx = do
+  putVarInt $ length (txIn tx)
+  forM_ (txIn tx) put
+  putVarInt $ length (txOut tx)
+  forM_ (txOut tx) put
+
+-- | Witness data serializer.
+putWitnessData :: HT.WitnessData -> Put
+putWitnessData = mapM_ putWitnessStack
+  where
+    putWitnessStack ws = do
+      putVarInt $ length ws
+      mapM_ putWitnessStackItem ws
+    putWitnessStackItem bs = do
+      putVarInt $ B.length bs
+      putByteString bs

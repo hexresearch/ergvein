@@ -8,7 +8,6 @@ module Ergvein.Wallet.Page.Transaction(
 import Control.Monad.Reader
 import Data.Map.Strict as Map
 import Data.Maybe (fromMaybe)
-import Data.Serialize (encode)
 import Data.Text as T
 import Data.Time
 import Text.Printf
@@ -23,10 +22,10 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Transaction.Get
+import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Transaction.View
 import Ergvein.Wallet.Wrapper
 
-import qualified Data.ByteString as BS
 import qualified Data.List as L
 
 transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
@@ -154,7 +153,7 @@ bumpFeeWidget cur tr@TransactionView{..} = do
   wrapper False title thisWidget $ divClass "bump-fee-page" $ do
     moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
     mkRow BumpFeeCurrentFee $ maybe "unknown" (\a -> (showMoneyUnit a moneyUnits) <> " " <> symbolUnit cur moneyUnits) $ txFee txInfoView
-    mkRow BumpFeeCurrentFeeRate $ maybe "unknown" (\a -> (T.pack $ printf "%.3f" $ (realToFrac a :: Double)) <> " " <> symbolUnit cur smallestUnits <> "/byte") $ calcFeeRate (txFee txInfoView) (txRaw txInfoView)
+    mkRow BumpFeeCurrentFeeRate $ maybe "unknown" (\a -> (T.pack $ printf "%.3f" $ (realToFrac a :: Double)) <> " " <> symbolUnit cur smallestUnits <> "/vbyte") $ calcFeeRate (txFee txInfoView) (txRaw txInfoView)
     mkRow BumpFeeNewFeeRate ""
     pure ()
 
@@ -173,8 +172,8 @@ smallestUnits = Units {
 
 calcFeeRate :: Maybe Money -> EgvTx -> Maybe Rational
 calcFeeRate (Just money) (TxBtc btcTx) =
-  let txSize = BS.length $ encode $ getBtcTx btcTx
+  let txVsize = calcTxVsize $ getBtcTx btcTx
       fee = moneyToRationalUnit money smallestUnits
-  in Just $ fee / (fromIntegral txSize)
+  in Just $ fee / (fromIntegral txVsize)
 calcFeeRate (Just money) (TxErg ergTx) = Nothing -- TODO: implement for ERGO
 calcFeeRate _ _ = Nothing
