@@ -17,7 +17,6 @@ module Ergvein.Wallet.Monad.Prim
   , getDnsList
   , mkResolvSeed
   , resolveSeed
-  , initialIndexers
   , getSocksConf
   , getProxyConf
   , updateSettingsAsync
@@ -142,16 +141,6 @@ resolveSeed dns = makeResolvSeed defaultResolvConf {
     , resolvConcurrent = True
     }
 {-# INLINE resolveSeed #-}
-
-initialIndexers :: IO [Text]
-initialIndexers = do
-  resolvInfo <- makeResolvSeed defaultResolvConf {
-      resolvInfo = RCHostNames $ S.toList $ defaultDns
-    , resolvConcurrent = True
-    }
-  tryDNS <- getDNS resolvInfo seedList
-  pure $ fromMaybe defaultIndexers tryDNS
-
 
 getSocksConf :: MonadHasSettings t m => m (Dynamic t (Maybe S5.SocksConf))
 getSocksConf = fmap (fmap toSocksProxy . _settingsSocksProxy) <$> getSettingsD

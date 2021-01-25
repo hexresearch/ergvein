@@ -1,7 +1,7 @@
 module Ergvein.DNS.Crawling
   ( getDNS,
-    parseSockAddrs,
-    parseSingleSockAddr
+    parseSockAddr,
+    parseSockAddrs
   )
   where
 
@@ -13,12 +13,19 @@ import Data.Either
 import Network.Socket
 import Ergvein.Text
 import Data.Maybe
+import Control.Monad
 import Control.Monad.IO.Class
 import Ergvein.DNS.Constants
 import Text.Read (readMaybe)
 import Data.IP
+import qualified Data.List.Safe as LS
 import qualified Data.Text as T
 import qualified Data.ByteString.Char8 as B8
+
+class MonadIO m => DNSInfo m where
+  dNodes :: m [ErgveinNodeAddr]
+  dDns   :: m [HostName]
+  dSeed  :: m [Domain]
 
 getDNS :: ResolvSeed -> [Domain] -> IO (Maybe [Text])
 getDNS seed domains = withResolver seed $ \resolver -> do 
@@ -41,33 +48,31 @@ getDNS seed domains = withResolver seed $ \resolver -> do
     findMapMMaybe _ [] = pure Nothing
 
 parseSockAddrs :: (MonadIO m) => ResolvSeed -> [Text] -> m [SockAddr]
-parseSockAddrs rs urls = liftIO $ do
-  withResolver rs $ \resolver -> fmap catMaybes $ traverse (parseAddr resolver) urls
+parseSockAddrs rs urls = liftIO $ catMaybes <$> (withResolver rs $ forM urls . parseAddr) 
 
-parseSingleSockAddr :: (MonadIO m) => ResolvSeed -> Text -> m (Maybe SockAddr)
-parseSingleSockAddr rs t = do
-  let (h, p) = fmap (T.drop 1) $ T.span (/= ':') t
-  let port = if p == "" then defIndexerPort else fromMaybe defIndexerPort (readMaybe $ T.unpack p)
-  let val = fmap (readMaybe . T.unpack) $ T.splitOn "." h
-  case val of
-    [Just a, Just b, Just c, Just d] -> pure $ Just $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
-    _ -> do
-      let url = B8.pack $ T.unpack h
-      ips <- liftIO $ fmap (either (const []) id) $ withResolver rs (flip lookupA url)
-      case ips of
-        [] -> pure Nothing
-        ip:_ -> pure $ Just $ SockAddrInet port (toHostAddress ip)
+parseSockAddr :: (MonadIO m) => ResolvSeed -> Text -> m (Maybe SockAddr)
+parseSockAddr rs t = liftIO $ withResolver rs $ flip parseAddr t
 
 parseAddr :: Resolver -> Text -> IO (Maybe SockAddr)
-parseAddr resolver t = do
-  let (h, p) = fmap (T.drop 1) $ T.span (/= ':') t
-  let port = if p == "" then defIndexerPort else fromMaybe defIndexerPort (readMaybe $ T.unpack p)
-  let val = fmap (readMaybe . T.unpack) $ T.splitOn "." h
-  case val of
+parseAddr resolver addressText = do
+  let (hostText, portText) = fmap T.tail $ T.span (/= ':') addressText
+      port = if T.null portText then defIndexerPort else fromMaybe defIndexerPort (readMaybe $ T.unpack portText)
+      hostSegments = readMaybe . T.unpack <$> T.splitOn "." hostText
+  case hostSegments of
     [Just a, Just b, Just c, Just d] -> pure $ Just $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
     _ -> do
-      let url = B8.pack $ T.unpack h
-      ips <- fmap (either (const []) id) $ lookupA resolver url
-      case ips of
-        [] -> pure Nothing
-        ip:_ -> pure $ Just $ SockAddrInet port (toHostAddress ip)
+      let url = B8.pack $ T.unpack hostText
+      ips <- lookupA resolver url
+      pure $ SockAddrInet port . toHostAddress <$> (LS.head $ fromRight mempty ips)
+
+initialIndexers :: DNSInfo m => m [Text]
+initialIndexers = do
+  nodes <- dNodes 
+  dns <- dDns 
+  seed <- dSeed 
+  resolvInfo <- liftIO $ makeResolvSeed defaultResolvConf {
+      resolvInfo = RCHostNames dns
+    , resolvConcurrent = True
+    }
+  tryDNS <- liftIO $ getDNS resolvInfo seed
+  pure $ fromMaybe nodes tryDNS

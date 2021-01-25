@@ -25,7 +25,9 @@ library
         dns,
         ergvein-common,
         bytestring,
-        iproute
+        iproute,
+        containers,
+        listsafe
 
   default-language:    Haskell2010
   default-extensions:

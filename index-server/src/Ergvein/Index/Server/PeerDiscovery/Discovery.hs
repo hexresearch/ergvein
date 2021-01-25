@@ -38,6 +38,8 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Text.Read (readMaybe)
 import Data.IP
+import Network.Socket
+import Ergvein.DNS.Crawling
 
 import qualified Data.Map.Strict      as Map
 import qualified Data.Set             as Set
@@ -88,65 +90,6 @@ knownPeersActualization  = do
     isUpToDatePeer predefined retryTimeout currentTime peer =
        let fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt peer
        in Set.member (peerAddress peer) predefined || retryTimeout >= fromLastSuccess
-
-
-seedList :: [Domain]
-seedList = if True
-  then ["testseed.cypra.io"]
-  else ["seed.cypra.io"]
-
-
-defaultIndexers :: [Text]
-defaultIndexers = 
-  if True 
-  then ["127.0.0.1:8667"]
-  else ["139.59.142.25:8667", "188.244.4.78:8667"]
-
-defaultDns :: Set.Set HostName
-defaultDns = Set.fromList $ if True
-  then ["8.8.8.8", "8.8.4.4", "1.1.1.1"]
-  else [] -- use resolv.conf
-
-parseSockAddrs :: (MonadIO m) => ResolvSeed -> [Text] -> m [SockAddr]
-parseSockAddrs rs urls = liftIO $ do
-  withResolver rs $ \resolver -> fmap catMaybes $ traverse (parseAddr resolver) urls
-
-parseSingleSockAddr :: (MonadIO m) => ResolvSeed -> Text -> m (Maybe SockAddr)
-parseSingleSockAddr rs t = do
-  let (h, p) = fmap (T.drop 1) $ T.span (/= ':') t
-  let port = if p == "" then defIndexerPort else fromMaybe defIndexerPort (readMaybe $ T.unpack p)
-  let val = fmap (readMaybe . T.unpack) $ T.splitOn "." h
-  case val of
-    [Just a, Just b, Just c, Just d] -> pure $ Just $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
-    _ -> do
-      let url = B8.pack $ T.unpack h
-      ips <- liftIO $ fmap (either (const []) id) $ withResolver rs (flip lookupA url)
-      case ips of
-        [] -> pure Nothing
-        ip:_ -> pure $ Just $ SockAddrInet port (toHostAddress ip)
-
-parseAddr :: Resolver -> Text -> IO (Maybe SockAddr)
-parseAddr resolver t = do
-  let (h, p) = fmap (T.drop 1) $ T.span (/= ':') t
-  let port = if p == "" then defIndexerPort else fromMaybe defIndexerPort (readMaybe $ T.unpack p)
-  let val = fmap (readMaybe . T.unpack) $ T.splitOn "." h
-  case val of
-    [Just a, Just b, Just c, Just d] -> pure $ Just $ SockAddrInet port $ tupleToHostAddress (a,b,c,d)
-    _ -> do
-      let url = B8.pack $ T.unpack h
-      ips <- fmap (either (const []) id) $ lookupA resolver url
-      case ips of
-        [] -> pure Nothing
-        ip:_ -> pure $ Just $ SockAddrInet port (toHostAddress ip)
-
-initialIndexers :: IO [Text]
-initialIndexers = do
-  resolvInfo <- makeResolvSeed defaultResolvConf {
-      resolvInfo = RCHostNames $ Set.toList $ defaultDns
-    , resolvConcurrent = True
-    }
-  tryDNS <- getDNS resolvInfo seedList
-  pure $ fromMaybe defaultIndexers tryDNS
 
 syncWithDefaultPeers :: ServerM ()
 syncWithDefaultPeers = do
