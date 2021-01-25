@@ -11,6 +11,7 @@ let
     packages = {
       binance-client = ./binance-client;
       cbitstream = ./cbitstream;
+      coinbase-client = ./coinbase-client;
       data-merkle-tree = ./data-merkle-tree;
       ergo-api = ./ergo-api;
       ergvein-checkpoint-generator = ./checkpoint-generator;
@@ -43,6 +44,7 @@ let
       ghc = [
         "binance-client"
         "cbitstream"
+        "coinbase-client"
         "data-merkle-tree"
         "ergo-api"
         "ergvein-checkpoint-generator"

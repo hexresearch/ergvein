@@ -2,6 +2,7 @@ packages:
   ./binance-client
   ./cbitstream
   ./checkpoint-generator
+  ./coinbase-client
   ./common
   ./crypto
   ./data-merkle-tree
