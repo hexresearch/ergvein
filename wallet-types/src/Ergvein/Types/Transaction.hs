@@ -127,41 +127,20 @@ instance FromJSON ErgTxRaw where
 instance ToJSON ErgTxRaw where
   toJSON = A.String . ergTxToString
 
-data EgvTxMeta_V1 = EgvTxMeta_V1 {
-  etxMetaV1_Height :: !(Maybe BlockHeight)
-, etxMetaV1_Hash   :: !(Maybe HB.BlockHash)
-, etxMetaV1_Time   :: !UTCTime
-} deriving (Eq, Show, Read)
-
-instance SafeCopy EgvTxMeta_V1 where
-  putCopy EgvTxMeta_V1{..} = contain $ do
-    put etxMetaV1_Height
-    put etxMetaV1_Hash
-    put etxMetaV1_Time
-  getCopy = contain $ EgvTxMeta_V1 <$> get <*> get <*> get
-
 data EgvTxMeta = EgvTxMeta {
   etxMetaHeight :: !(Maybe BlockHeight)
 , etxMetaHash   :: !(Maybe HB.BlockHash)
 , etxMetaTime   :: !UTCTime
-, etxMetaFiat   :: !(Maybe Double)
 } deriving (Eq, Show, Read)
 
+$(deriveJSON (aesonOptionsStripPrefix "etxMeta") ''EgvTxMeta)
+
 instance SafeCopy EgvTxMeta where
-  version = 2
-  kind = extension
   putCopy EgvTxMeta{..} = contain $ do
     put etxMetaHeight
     put etxMetaHash
     put etxMetaTime
-    put etxMetaFiat
-  getCopy = contain $ EgvTxMeta <$> get <*> get <*> get <*> get
-
-$(deriveJSON (aesonOptionsStripPrefix "etxMeta") ''EgvTxMeta)
-
-instance Migrate EgvTxMeta where
-  type MigrateFrom EgvTxMeta = EgvTxMeta_V1
-  migrate (EgvTxMeta_V1 he ha t) = EgvTxMeta he ha t Nothing
+  getCopy = contain $ EgvTxMeta <$> get <*> get <*> get
 
 data BtcTx = BtcTx { getBtcTx :: !BtcTxRaw, getBtcTxMeta :: !(Maybe EgvTxMeta) }
   deriving (Eq, Show, Read)
