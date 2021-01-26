@@ -35,6 +35,7 @@ module Data.Ergo.Protocol(
   , HeaderId(..)
   , encodeHeaderId
   , decodeHeaderId
+  , nullHeader
   , syncInfoId
   , decodeMessage
   , encodeMessage

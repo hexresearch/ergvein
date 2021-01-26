@@ -33,6 +33,7 @@ module Data.Ergo.Protocol.Types(
   , HeaderId(..)
   , encodeHeaderId
   , decodeHeaderId
+  , nullHeader
   , syncInfoId
   ) where
 
@@ -161,6 +162,11 @@ decodeHeaderId = check . fst . B16.decode . encodeUtf8
   where
     check bs | BS.length bs == 32 = Just $ HeaderId bs
              | otherwise = Nothing
+
+-- | Header id that is filled with zeros. It is used as request for recent
+-- headers.
+nullHeader :: HeaderId
+nullHeader = HeaderId $ BS.replicate 32 0
 
 -- | ID of SyncInfo message type
 syncInfoId :: Integral a => a

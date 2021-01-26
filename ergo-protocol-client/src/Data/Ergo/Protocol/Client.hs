@@ -35,8 +35,8 @@ makeHandshake :: Int -> UTCTime -> Handshake
 makeHandshake blocks t = Handshake {
     time = round $ utcTimeToPOSIXSeconds t
   , agentName = "ergoref"
-  , version = ProtoVer 3 3 6
-  , peerName = "ergo-mainnet-3.3.6"
+  , version = ProtoVer 4 0 2
+  , peerName = "ergo-mainnet-4.0.0"
   , publicAddr = Nothing
   , peerFeatures = [
       FeatureOperationMode OperationModeFeature {

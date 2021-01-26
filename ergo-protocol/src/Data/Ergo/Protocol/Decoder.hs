@@ -16,6 +16,7 @@ import Control.Monad.Fail
 import Data.Bits
 import Data.ByteString (ByteString)
 import Data.Ergo.Protocol.Check
+import Data.Ergo.Protocol.Shift
 import Data.Ergo.Protocol.Types
 import Data.Int
 import Data.IORef
@@ -93,6 +94,15 @@ vlqWord16 = vlq
 vlqWord32 :: Get Word32
 vlqWord32 = vlq
 
+-- | Decode ZigZag encoded signed integer
+--
+--  http://github.com/google/protobuf/blob/a7252bf42df8f0841cf3a0c85fdbf1a5172adecb/java/core/src/main/java/com/google/protobuf/CodedInputStream.java#L553
+zigzag :: (Integral a, Bits a, ShiftRS a) => a -> a
+zigzag n = (n `shiftRS` 1) `xor` (-(n .&. 1))
+
+varInt32 :: Get Int32
+varInt32 = zigzag <$> vlq
+
 -- | Parse first 4+1+4=9 bytes and return length of rest message.
 --
 -- The helper designed for usage in sockets.
@@ -150,6 +160,7 @@ parseOptional p = do
 parseVector :: Get a -> Get (Vector a)
 parseVector p = do
   l <- anyWord8
+  traceShowM l
   V.replicateM (fromIntegral l) p
 
 parseIP :: Get IP
@@ -181,7 +192,7 @@ parseOperationMode = OperationModeFeature
   <$> parseStateType
   <*> parseFlag
   <*> parseOptional anyWord32be
-  <*> anyInt32be
+  <*> varInt32
 
 parseSessionFeature :: Get SessionFeature
 parseSessionFeature = SessionFeature
@@ -192,7 +203,9 @@ parsePeerFeature :: Get PeerFeature
 parsePeerFeature = do
   i <- anyWord8
   l <- vlqWord16
-  parsePeerFeatureN i l
+  traceShowM (i, l)
+  body <- getBytes $ fromIntegral l
+  embedParser ("Feature " <> show i <> " body parsing error") (parsePeerFeatureN i l) body
 
 parsePeerFeatureN :: Word8 -> Word16 -> Get PeerFeature
 parsePeerFeatureN i l
