@@ -31,6 +31,11 @@ module Data.Ergo.Protocol(
   , handshakeId
   , handshakeTimeout
   , magicBytes
+  , SyncInfo(..)
+  , HeaderId(..)
+  , encodeHeaderId
+  , decodeHeaderId
+  , syncInfoId
   , decodeMessage
   , encodeMessage
   ) where

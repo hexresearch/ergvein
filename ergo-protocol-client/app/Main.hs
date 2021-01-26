@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedLists #-}
 module Main where
 
 import Control.Concurrent
@@ -40,5 +41,6 @@ main = do
       SockOutInbound (MsgHandshake h) -> do
         t <- getCurrentTime
         atomically $ writeTChan inChan $ SockInSendEvent $ MsgHandshake $ makeHandshake 0 t
+        atomically $ writeTChan inChan $ SockInSendEvent $ MsgSyncInfo $ SyncInfo []
       _ -> pure ()
     print ev

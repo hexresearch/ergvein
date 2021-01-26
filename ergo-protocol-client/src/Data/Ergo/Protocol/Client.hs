@@ -14,7 +14,9 @@ module Data.Ergo.Protocol.Client(
   , makeHandshake
   ) where
 
+import Control.Concurrent
 import Control.Concurrent.STM
+import Control.Monad
 import Control.Monad.IO.Class
 import Data.Ergo.Protocol
 import Data.Ergo.Protocol.Decoder
@@ -80,4 +82,12 @@ ergoSocket :: MonadIO m
   -> m (TChan (C.SocketOutEvent Message))
 ergoSocket net inChan conf = do
   initRef <- liftIO $ newIORef True
-  C.socket (encodeMessage net) (peekMessage net initRef) inChan conf
+  out <- C.socket (encodeMessage net) (peekMessage net initRef) inChan conf
+  liftIO $ do
+    outInt <- atomically $ dupTChan out
+    void $ forkIO $ forever $ do
+      e <- atomically $ readTChan outInt
+      case e of
+        C.SockOutTries _ -> writeIORef initRef True
+        _ -> pure ()
+  pure out
