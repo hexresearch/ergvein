@@ -57,6 +57,9 @@ int64Vlq = vlq
 word16Vlq :: Word16 -> Put ()
 word16Vlq = vlq
 
+word32Vlq :: Word32 -> Put ()
+word32Vlq = vlq
+
 encodeMessage :: Network -> Message -> ByteString
 encodeMessage net msg = runPut $ messageEncoder net msg
 
@@ -134,6 +137,11 @@ encodeSessionFeature SessionFeature{..} = do
   word32BE networkMagic
   word64BE sessionId
 
+encodeLocalAddrFeature :: LocalAddressFeature -> Put ()
+encodeLocalAddrFeature LocalAddressFeature{..} = do
+  word32Vlq address
+  word32Vlq port
+
 encodeFeature :: PeerFeature -> Put ()
 encodeFeature v = do
   word8 $ featureId v
@@ -143,6 +151,7 @@ encodeFeature v = do
     bs = case v of
       FeatureOperationMode v -> runPut $ encodeOpMode v
       FeatureSession v -> runPut $ encodeSessionFeature v
+      FeatureLocalAddress v -> runPut $ encodeLocalAddrFeature v
       UnknownFeature _ bs -> bs
 
 syncInfoEncoder :: SyncInfo -> Put ()

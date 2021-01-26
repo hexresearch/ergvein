@@ -160,7 +160,6 @@ parseOptional p = do
 parseVector :: Get a -> Get (Vector a)
 parseVector p = do
   l <- anyWord8
-  traceShowM l
   V.replicateM (fromIntegral l) p
 
 parseIP :: Get IP
@@ -203,7 +202,6 @@ parsePeerFeature :: Get PeerFeature
 parsePeerFeature = do
   i <- anyWord8
   l <- vlqWord16
-  traceShowM (i, l)
   body <- getBytes $ fromIntegral l
   embedParser ("Feature " <> show i <> " body parsing error") (parsePeerFeatureN i l) body
 
@@ -211,6 +209,7 @@ parsePeerFeatureN :: Word8 -> Word16 -> Get PeerFeature
 parsePeerFeatureN i l
   | i == featureOperationModeId = FeatureOperationMode <$> parseOperationMode
   | i == sessionFeatureId = FeatureSession <$> parseSessionFeature
+  | i == localAddressFeatureId = FeatureLocalAddress <$> parseLocalAddrFeature
   | otherwise = UnknownFeature i <$> (fmap BS.copy $ getByteString (fromIntegral l))
 
 handshakeParser :: Get Handshake
@@ -228,3 +227,8 @@ syncInfoParser = SyncInfo
 
 headerIdParser :: Get HeaderId
 headerIdParser = HeaderId <$> getBytes 32
+
+parseLocalAddrFeature :: Get LocalAddressFeature
+parseLocalAddrFeature = LocalAddressFeature
+  <$> vlqWord32
+  <*> vlqWord32

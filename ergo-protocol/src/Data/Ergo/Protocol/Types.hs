@@ -23,6 +23,8 @@ module Data.Ergo.Protocol.Types(
   , featureOperationModeId
   , SessionFeature(..)
   , sessionFeatureId
+  , LocalAddressFeature(..)
+  , localAddressFeatureId
   , PeerFeature(..)
   , featureId
   , Handshake(..)
@@ -103,10 +105,21 @@ data SessionFeature = SessionFeature {
 sessionFeatureId :: Word8
 sessionFeatureId = 3
 
+-- | Feature that contains local IPv4 address of node
+data LocalAddressFeature = LocalAddressFeature
+  { address :: !Word32
+  , port    :: !Word32
+  } deriving (Generic, Show, Read, Eq)
+
+-- | ID of 'LocalAddressFeature' feature
+localAddressFeatureId :: Word8
+localAddressFeatureId = 2
+
 -- | Known peer feature types that client supports.
 data PeerFeature =
     FeatureOperationMode !OperationModeFeature
   | FeatureSession !SessionFeature
+  | FeatureLocalAddress !LocalAddressFeature
   | UnknownFeature !Word8 !ByteString
   deriving (Generic, Show, Read, Eq)
 

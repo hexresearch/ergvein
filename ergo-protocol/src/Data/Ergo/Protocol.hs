@@ -25,6 +25,8 @@ module Data.Ergo.Protocol(
   , featureOperationModeId
   , SessionFeature(..)
   , sessionFeatureId
+  , LocalAddressFeature(..)
+  , localAddressFeatureId
   , PeerFeature(..)
   , featureId
   , Handshake(..)
