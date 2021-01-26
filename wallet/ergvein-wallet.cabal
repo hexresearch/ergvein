@@ -50,6 +50,7 @@ library
         Ergvein.Wallet.Localization.Client
         Ergvein.Wallet.Localization.Currencies
         Ergvein.Wallet.Localization.Currency
+        Ergvein.Wallet.Localization.Fee
         Ergvein.Wallet.Localization.History
         Ergvein.Wallet.Localization.Info
         Ergvein.Wallet.Localization.Initial
@@ -143,6 +144,7 @@ library
         Ergvein.Wallet.Util
         Ergvein.Wallet.Validate
         Ergvein.Wallet.Widget.Balance
+        Ergvein.Wallet.Widget.FeeSelector
         Ergvein.Wallet.Widget.GraphPinCode
         Ergvein.Wallet.Worker.Fees
         Ergvein.Wallet.Worker.Height

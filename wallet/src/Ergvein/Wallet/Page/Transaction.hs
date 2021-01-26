@@ -24,6 +24,7 @@ import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Transaction.Get
 import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Transaction.View
+import Ergvein.Wallet.Widget.FeeSelector
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.List as L
@@ -154,7 +155,11 @@ bumpFeeWidget cur tr@TransactionView{..} = do
     moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
     mkRow BumpFeeCurrentFee $ maybe "unknown" (\a -> (showMoneyUnit a moneyUnits) <> " " <> symbolUnit cur moneyUnits) $ txFee txInfoView
     mkRow BumpFeeCurrentFeeRate $ maybe "unknown" (\a -> (T.pack $ printf "%.3f" $ (realToFrac a :: Double)) <> " " <> symbolUnit cur smallestUnits <> "/vbyte") $ calcFeeRate (txFee txInfoView) (txRaw txInfoView)
+    
     mkRow BumpFeeNewFeeRate ""
+
+    feeD <- btcFeeSelectionWidget Nothing never
+
     pure ()
 
 mkRow :: (MonadFront t m, LocalizedPrint l) => l -> Text -> m ()
