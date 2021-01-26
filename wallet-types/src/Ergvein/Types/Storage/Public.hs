@@ -10,6 +10,8 @@ module Ergvein.Types.Storage.Public
   , pubStorage'activeCurrencies
   , pubStorage'restoring
   , pubStorage'pathPrefix
+  , btcPubStorage
+  , ergoPubStorage
   ) where
 
 import Control.Lens
@@ -41,3 +43,11 @@ instance SafeCopy PubStorage where
 
 -- This instances is required only for the current version
 makeLenses ''PubStorage
+
+-- | Extract public storage for BTC
+btcPubStorage :: Lens' PubStorage CurrencyPubStorage
+btcPubStorage = pubStorage'currencyPubStorages . at BTC . non (error "btcPubStorage: not exsisting store!")
+
+-- | Extract public storage for ERGO
+ergoPubStorage :: Lens' PubStorage CurrencyPubStorage
+ergoPubStorage = pubStorage'currencyPubStorages . at ERGO . non (error "ergoPubStorage: not exsisting store!")

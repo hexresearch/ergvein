@@ -15,8 +15,11 @@ module Ergvein.Wallet.Monad.Front(
   , getLoginD
   , getNodeConnectionsD
   , getNodesByCurrencyD
+  , getBtcNodesD
+  , getErgoNodesD
   , getStatusUpdates
   , requestBroadcast
+  , sendRandomNode
   , requestFromNode
   , postNodeMessage
   , broadcastNodeMessage
@@ -29,6 +32,7 @@ module Ergvein.Wallet.Monad.Front(
   , Text
   , MonadJSM
   , traverse_
+  , for_
   , module Ergvein.Wallet.Monad.Prim
   , module Ergvein.Wallet.Monad.Base
   , module Reflex.Dom
@@ -41,7 +45,7 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Random
-import Data.Foldable (traverse_)
+import Data.Foldable (traverse_, for_)
 import Data.Functor (void)
 import Data.Functor.Misc (Const2(..))
 import Data.Map (Map)
@@ -74,6 +78,7 @@ import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Status.Types
 import Ergvein.Wallet.Util
 
+import qualified Data.Dependent.Map as DM
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
@@ -120,15 +125,27 @@ getLoginD = (fmap . fmap) _authInfo'login . externalRefDynamic =<< getAuthInfoRe
 -- | Get nodes by currency. Basically useless, but who knows
 getNodesByCurrencyD :: MonadFrontAuth t m => Currency -> m (Dynamic t (Map SockAddr (NodeConn t)))
 getNodesByCurrencyD cur =
-  (fmap . fmap) (fromMaybe (M.empty) . getAllConnByCurrency cur) . externalRefDynamic =<< getNodeConnRef
+  (fmap . fmap) (fromMaybe (M.empty) . getAllConnByCurrency cur) getNodeConnectionsD
 {-# INLINE getNodesByCurrencyD #-}
+
+-- | Get BTC nodes
+getBtcNodesD :: MonadFrontAuth t m => m (Dynamic t (Map SockAddr (NodeBTC t)))
+getBtcNodesD =
+  (fmap . fmap) (fromMaybe (M.empty) . DM.lookup BTCTag) getNodeConnectionsD
+{-# INLINE getBtcNodesD #-}
+
+-- | Get ERGO nodes
+getErgoNodesD :: MonadFrontAuth t m => m (Dynamic t (Map SockAddr (NodeERG t)))
+getErgoNodesD =
+  (fmap . fmap) (fromMaybe (M.empty) . DM.lookup ERGOTag) getNodeConnectionsD
+{-# INLINE getErgoNodesD #-}
 
 -- | Send a request to a specific URL
 -- It's up to the caller to ensure that the URL actually points to a correct currency node
-requestFromNode :: MonadFrontAuth t m => Event t (SockAddr, NodeReqG) -> m ()
+requestFromNode :: MonadFrontAuth t m => Event t (SockAddr, NodeReqG) -> m (Event t ())
 requestFromNode reqE = do
   nodeReqFire <- getNodeReqFire
-  performFork_ $ ffor reqE $ \(u, req) ->
+  performFork $ ffor reqE $ \(u, req) ->
     let cur = getNodeReqCurrency req
     in liftIO . nodeReqFire $ M.singleton cur $ M.singleton u $ NodeMsgReq req
 {-# INLINE requestFromNode #-}
@@ -154,7 +171,7 @@ broadcastNodeMessage cur reqE = do
 requestManyFromNode :: MonadFrontAuth t m => Event t (SockAddr, [NodeReqG]) -> m ()
 requestManyFromNode reqE = do
   nodeReqFire <- getNodeReqFire
-  performFork_ $ ffor reqE $ \(u, reqs) -> flip traverse_ reqs $ \req ->
+  performFork_ $ ffor reqE $ \(u, reqs) -> for_ reqs $ \req ->
     let cur = getNodeReqCurrency req
     in liftIO . nodeReqFire $ M.singleton cur $ M.singleton u $ NodeMsgReq req
 {-# INLINE requestManyFromNode #-}
@@ -211,6 +228,18 @@ requestBroadcast reqE = do
     let cur = getNodeReqCurrency req
     reqs <- fmap ((<$) (NodeMsgReq req) . fromMaybe (M.empty) . getAllConnByCurrency cur) $ readExternalRef nodeConnRef
     liftIO . nodeReqFire $ M.singleton cur reqs
+
+-- | Send message to random crypto node
+sendRandomNode :: MonadFrontAuth t m => Event t NodeReqG -> m (Event t ())
+sendRandomNode reqE = do
+  nodeReqFire <- getNodeReqFire
+  nodeConnRef <- getNodeConnRef
+  performFork $ ffor reqE $ \req -> do
+    let cur = getNodeReqCurrency req
+    nodes <- fmap (maybe [] M.toList . getAllConnByCurrency cur) $ readExternalRef nodeConnRef
+    mnode <- randomElem nodes
+    for_ mnode $ \(addr, _) ->
+      liftIO . nodeReqFire . M.singleton cur . M.singleton addr . NodeMsgReq $ req
 
 -- | Get fees dynamic
 getFeesD :: MonadFrontAuth t m => m (Dynamic t (Map Currency FeeBundle))

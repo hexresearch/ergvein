@@ -109,7 +109,7 @@ reinitNodes urls cs sel conMap = foldlM updCurr conMap $ M.toList cs
 
 -- Send a request to a node. Wait until the connection is up
 requestNodeWait :: (MonadFrontAuth t m, HasNode cur)
-  => NodeConnection t cur -> Event t NodeReqG -> m ()
+  => NodeConnection t cur -> Event t NodeReqG -> m (Event t ())
 requestNodeWait NodeConnection{..} reqE = do
   reqD <- holdDyn Nothing $ Just <$> reqE
   let passValE = updated $ (,) <$> reqD <*> nodeconIsUp
@@ -152,7 +152,7 @@ btcMempoolTxInserter :: MonadFront t m => Event t HT.Tx -> m (Event t ())
 btcMempoolTxInserter txE = do
   pubStorageD <- getPubStorageD
   valsE <- performFork $ ffor (current pubStorageD `attach` txE) $ \(ps, tx) -> do
-    let btcps = ps ^. pubStorage'currencyPubStorages . at BTC . non (error $ "btcMempoolTxInserter: BTC storage does not exist!")
+    let btcps = ps ^. btcPubStorage
         keys = getPublicKeys $ btcps ^. currencyPubStorage'pubKeystore
         txStore = btcps ^. currencyPubStorage'transactions
     liftIO $ flip runReaderT txStore $ do
@@ -186,7 +186,7 @@ removeTxsReplacedByFee :: MonadStorage t m =>
 removeTxsReplacedByFee caller replacingTxE = do
   pubStorageD <- getPubStorageD
   replacedTxsE <- performFork $ ffor (current pubStorageD `attach` replacingTxE) $ \(ps, replacingTx) -> do
-    let btcps = ps ^. pubStorage'currencyPubStorages . at BTC . non (error $ "removeTxsReplacedByFee: BTC storage does not exist!")
+    let btcps = ps ^. btcPubStorage
         txStore = btcps ^. currencyPubStorage'transactions
         possiblyReplacedTxStore = fromMaybe M.empty $ btcps ^? currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'possiblyReplacedTxs
     liftIO $ flip runReaderT txStore $ do
