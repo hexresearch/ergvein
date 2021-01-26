@@ -139,6 +139,7 @@ msgBodyParser i l = do
   traceShowM (i, body)
   unless (validateSum c body) $ fail "Check sum failed for body!"
   if | i == syncInfoId -> MsgSyncInfo <$> embedParser "SyncInfo parsing error" syncInfoParser body
+     | i == invMsgId -> MsgInv <$> embedParser "Inv parsing error" invMsgParser body
      | otherwise -> fail $ "Unknown message type " <> show i
 
 parseText :: Get Text
@@ -160,6 +161,11 @@ parseOptional p = do
 parseVector :: Get a -> Get (Vector a)
 parseVector p = do
   l <- anyWord8
+  V.replicateM (fromIntegral l) p
+
+parseLVector :: Get a -> Get (Vector a)
+parseLVector p = do
+  l <- vlqWord32
   V.replicateM (fromIntegral l) p
 
 parseIP :: Get IP
@@ -223,10 +229,15 @@ handshakeParser = Handshake
 
 syncInfoParser :: Get SyncInfo
 syncInfoParser = SyncInfo
-  <$> parseVector headerIdParser
+  <$> parseVector modifierIdParser
 
-headerIdParser :: Get HeaderId
-headerIdParser = HeaderId <$> getBytes 32
+invMsgParser :: Get InvMsg
+invMsgParser = InvMsg
+  <$> fmap decodeModifierType anyWord8
+  <*> parseLVector modifierIdParser
+
+modifierIdParser :: Get ModifierId
+modifierIdParser = ModifierId <$> getBytes 32
 
 parseLocalAddrFeature :: Get LocalAddressFeature
 parseLocalAddrFeature = LocalAddressFeature

@@ -70,6 +70,7 @@ messageEncoder :: Network -> Message -> Put ()
 messageEncoder net msg = case msg of
   MsgHandshake hmsg -> handshakeEncoder hmsg
   MsgSyncInfo smsg -> wrapBody syncInfoId $ syncInfoEncoder smsg
+  MsgInv imsg -> wrapBody invMsgId $ invMsgEncoder imsg
   where
     wrapBody i b = do
       word32BE (magicBytes net)
@@ -108,6 +109,11 @@ encodeVector :: (a -> Put ()) -> Vector a -> Put ()
 encodeVector f v = word8 l >> traverse_ f (V.take (fromIntegral l) v)
   where
     l = fromIntegral $ min 255 $ V.length v
+
+encodeLVector :: (a -> Put ()) -> Vector a -> Put ()
+encodeLVector f v = word32Vlq l >> traverse_ f (V.take (fromIntegral l) v)
+  where
+    l = fromIntegral $ V.length v
 
 encodeBool :: Bool -> Put ()
 encodeBool v = word8 $ if v then 1 else 0
@@ -155,7 +161,12 @@ encodeFeature v = do
       UnknownFeature _ bs -> bs
 
 syncInfoEncoder :: SyncInfo -> Put ()
-syncInfoEncoder SyncInfo{..} = encodeVector headerIdEncoder syncHeaders
+syncInfoEncoder SyncInfo{..} = encodeVector modifierIdEncoder syncHeaders
 
-headerIdEncoder :: HeaderId -> Put ()
-headerIdEncoder (HeaderId h) = putByteString h
+invMsgEncoder :: InvMsg -> Put ()
+invMsgEncoder InvMsg{..} = do
+  word8 $ encodeModifierType typeId
+  encodeLVector modifierIdEncoder ids
+
+modifierIdEncoder :: ModifierId -> Put ()
+modifierIdEncoder (ModifierId h) = putByteString h

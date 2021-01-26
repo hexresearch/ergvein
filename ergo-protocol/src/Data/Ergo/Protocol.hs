@@ -34,11 +34,16 @@ module Data.Ergo.Protocol(
   , handshakeTimeout
   , magicBytes
   , SyncInfo(..)
-  , HeaderId(..)
-  , encodeHeaderId
-  , decodeHeaderId
-  , nullHeader
-  , syncInfoId
+  , InvMsg(..)
+  , invMsgId
+  , ModifierId(..)
+  , BlockId
+  , encodeModifierId
+  , decodeModifierId
+  , nullModifierId
+  , ModifierType(..)
+  , encodeModifierType
+  , decodeModifierType
   , decodeMessage
   , encodeMessage
   ) where

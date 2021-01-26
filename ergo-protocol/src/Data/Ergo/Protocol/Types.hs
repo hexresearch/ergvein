@@ -32,11 +32,17 @@ module Data.Ergo.Protocol.Types(
   , handshakeTimeout
   , magicBytes
   , SyncInfo(..)
-  , HeaderId(..)
-  , encodeHeaderId
-  , decodeHeaderId
-  , nullHeader
   , syncInfoId
+  , InvMsg(..)
+  , invMsgId
+  , ModifierId(..)
+  , BlockId
+  , encodeModifierId
+  , decodeModifierId
+  , nullModifierId
+  , ModifierType(..)
+  , encodeModifierType
+  , decodeModifierType
   ) where
 
 import Data.ByteString (ByteString)
@@ -63,6 +69,7 @@ magicBytes Testnet = 0x02000000
 data Message =
     MsgHandshake !Handshake
   | MsgSyncInfo !SyncInfo
+  | MsgInv !InvMsg
   deriving (Generic, Show, Read, Eq)
 
 -- | Protocol version
@@ -158,29 +165,72 @@ handshakeId = 75
   Payload of this message should be determined in underlying applications.
 -}
 data SyncInfo = SyncInfo {
-    syncHeaders :: !(Vector HeaderId)
+    syncHeaders :: !(Vector BlockId)
   } deriving (Generic, Show, Read, Eq)
 
--- | 32 Byte header hash
-newtype HeaderId = HeaderId { unHeaderId :: ByteString }
+type BlockId = ModifierId
+
+-- | 32 Byte hash of something (block, tx)
+newtype ModifierId = ModifierId { unModifierId :: ByteString }
   deriving(Eq, Ord, Show, Read)
 
 -- | Convert header to hex string
-encodeHeaderId :: HeaderId -> Text
-encodeHeaderId = decodeUtf8 . B16.encode . unHeaderId
+encodeModifierId :: ModifierId -> Text
+encodeModifierId = decodeUtf8 . B16.encode . unModifierId
 
 -- | Convert hex string to header hash. Need to be 32 byte length.
-decodeHeaderId :: Text -> Maybe HeaderId
-decodeHeaderId = check . fst . B16.decode . encodeUtf8
+decodeModifierId :: Text -> Maybe ModifierId
+decodeModifierId = check . fst . B16.decode . encodeUtf8
   where
-    check bs | BS.length bs == 32 = Just $ HeaderId bs
+    check bs | BS.length bs == 32 = Just $ ModifierId bs
              | otherwise = Nothing
 
--- | Header id that is filled with zeros. It is used as request for recent
+-- | Modifier id that is filled with zeros. It is used as request for recent
 -- headers.
-nullHeader :: HeaderId
-nullHeader = HeaderId $ BS.replicate 32 0
+nullModifierId :: ModifierId
+nullModifierId = ModifierId $ BS.replicate 32 0
 
 -- | ID of SyncInfo message type
 syncInfoId :: Integral a => a
 syncInfoId = 65
+
+-- |  The `Inv` message (inventory message) transmits one or more inventories of
+-- objects known to the transmitting peer.
+-- It can be sent unsolicited to announce new transactions or blocks,
+-- or it can be sent in reply to a `SyncInfo` message (or application-specific messages like `GetMempool`).
+data InvMsg = InvMsg {
+    typeId :: !ModifierType
+  , ids    :: !(Vector ModifierId)
+  } deriving (Generic, Show, Read, Eq)
+
+-- | ID of inv message
+invMsgId :: Integral a => a
+invMsgId = 55
+
+-- | Modifier type tag
+data ModifierType =
+    ModifierTx
+  | ModifierBlockId -- ^ Header of block
+  | ModifierBlockTxs -- ^ Part of block with txs
+  | ModifierBlockProof -- ^ Proof for valid state transformation
+  | ModifierBlockExt -- ^ Block extension (including NiPoPow vector)
+  | UnknownModifier !Word8
+  deriving (Generic, Show, Read, Eq)
+
+encodeModifierType :: ModifierType -> Word8
+encodeModifierType v = case v of
+  ModifierTx -> 2
+  ModifierBlockId -> 101
+  ModifierBlockTxs -> 102
+  ModifierBlockProof -> 104
+  ModifierBlockExt -> 108
+  UnknownModifier w -> w
+
+decodeModifierType :: Word8 -> ModifierType
+decodeModifierType w = case w of
+  2 -> ModifierTx
+  101 -> ModifierBlockId
+  102 -> ModifierBlockTxs
+  104 -> ModifierBlockProof
+  108 -> ModifierBlockExt
+  _ -> UnknownModifier w
