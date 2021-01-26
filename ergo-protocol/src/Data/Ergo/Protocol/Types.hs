@@ -30,15 +30,22 @@ module Data.Ergo.Protocol.Types(
   , handshakeTimeout
   , magicBytes
   , SyncInfo(..)
+  , HeaderId(..)
+  , encodeHeaderId
+  , decodeHeaderId
   , syncInfoId
   ) where
 
 import Data.ByteString (ByteString)
 import Data.Int
 import Data.Text (Text)
+import Data.Text.Encoding
 import Data.Vector (Vector)
 import Data.Word
 import GHC.Generics
+
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Base16 as B16
 
 -- | Blockchain network tag. Testing or production.
 data Network = Mainnet | Testnet
@@ -137,8 +144,23 @@ handshakeId = 75
   Payload of this message should be determined in underlying applications.
 -}
 data SyncInfo = SyncInfo {
-
+    syncHeaders :: !(Vector HeaderId)
   } deriving (Generic, Show, Read, Eq)
+
+-- | 32 Byte header hash
+newtype HeaderId = HeaderId { unHeaderId :: ByteString }
+  deriving(Eq, Ord, Show, Read)
+
+-- | Convert header to hex string
+encodeHeaderId :: HeaderId -> Text
+encodeHeaderId = decodeUtf8 . B16.encode . unHeaderId
+
+-- | Convert hex string to header hash. Need to be 32 byte length.
+decodeHeaderId :: Text -> Maybe HeaderId
+decodeHeaderId = check . fst . B16.decode . encodeUtf8
+  where
+    check bs | BS.length bs == 32 = Just $ HeaderId bs
+             | otherwise = Nothing
 
 -- | ID of SyncInfo message type
 syncInfoId :: Integral a => a

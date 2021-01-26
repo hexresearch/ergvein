@@ -179,4 +179,7 @@ encodeFeature v = do
       UnknownFeature _ bs -> bs
 
 syncInfoEncoder :: SyncInfo -> Put ()
-syncInfoEncoder _ = pure ()
+syncInfoEncoder SyncInfo{..} = encodeVector headerIdEncoder syncHeaders
+
+headerIdEncoder :: HeaderId -> Put ()
+headerIdEncoder (HeaderId h) = putByteString h

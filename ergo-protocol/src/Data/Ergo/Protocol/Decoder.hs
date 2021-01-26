@@ -210,4 +210,8 @@ handshakeParser = Handshake
   <*> parseVector parsePeerFeature
 
 syncInfoParser :: Get SyncInfo
-syncInfoParser = pure SyncInfo
+syncInfoParser = SyncInfo
+  <$> parseVector headerIdParser
+
+headerIdParser :: Get HeaderId
+headerIdParser = HeaderId <$> getBytes 32
