@@ -9,12 +9,11 @@ import Foreign.C.Types
 
 import Ergvein.Index.Protocol.Types
 import Ergvein.Types.Fees
+import Ergvein.Types.Currency (Fiat)
 
-import qualified Binance.Client.Types as Binance
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Short as BSS
-import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 
@@ -216,19 +215,21 @@ messageBuilder (MPeerIntroduce PeerIntroduce{..}) = let
 
 messageBuilder (MRatesRequest (RatesRequest rs)) = let
   rsNum = fromIntegral $ length rs
-  body = mconcat $ binanceSymbolBuilder <$> rs
+  body = mconcat $ (uncurry currencyPairBuilder) <$> rs
   msgSize = (rsNum + 1) * genericSizeOf rsNum
   in messageBase MRatesRequestType msgSize $ word32LE rsNum <> body
 
 messageBuilder (MRatesResponse (RatesResponse rs)) = let
-  rsNum = fromIntegral $ M.size rs
-  elBuilder (s,v) = binanceSymbolBuilder s <> doubleBuilder v
-  body = mconcat $ fmap elBuilder $ M.toList rs
+  rsNum = fromIntegral $ length rs
+  elBuilder (cc,f,v) = currencyPairBuilder cc f <> doubleBuilder v
+  body = mconcat $ fmap elBuilder rs
   msgSize = 4 + (4 + 16) * rsNum
   in messageBase MRatesResponseType msgSize $ word32LE rsNum <> body
 
-binanceSymbolBuilder :: Binance.Symbol -> Builder
-binanceSymbolBuilder = word32LE . fromIntegral . fromEnum
+currencyPairBuilder :: CurrencyCode -> Fiat -> Builder
+currencyPairBuilder cc f =
+     (word32LE . fromIntegral . fromEnum $ cc)
+  <> (word32LE . fromIntegral . fromEnum $ f)
 
 -- | Build Double as two Word64. size = 16
 doubleBuilder :: Double -> Builder

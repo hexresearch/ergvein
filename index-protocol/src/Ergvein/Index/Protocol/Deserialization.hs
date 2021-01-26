@@ -10,13 +10,12 @@ import Data.Word
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Protocol.Utils
 import Ergvein.Types.Fees
+import Ergvein.Types.Currency (Fiat)
 
-import qualified Binance.Client.Types as Binance
 import qualified Data.Attoparsec.ByteString as Parse
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Short as BSS
-import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 
@@ -208,16 +207,16 @@ messageParser MIntroducePeerType = do
 
 messageParser MRatesRequestType = do
   amount <- anyWord32le
-  symbols <- replicateM (fromIntegral amount) parseBinanceSymbol
+  symbols <- replicateM (fromIntegral amount) parseCurrencyPair
   pure $ MRatesRequest $ RatesRequest symbols
 
 messageParser MRatesResponseType = do
   amount <- anyWord32le
   vals <- replicateM (fromIntegral amount) $ do
-    s <- parseBinanceSymbol
+    (cc,f) <- parseCurrencyPair
     v <- parseDouble
-    pure (s,v)
-  pure $ MRatesResponse $ RatesResponse $ M.fromList vals
+    pure (cc,f,v)
+  pure $ MRatesResponse $ RatesResponse vals
 
 parseDouble :: Parser Double
 parseDouble = do
@@ -225,8 +224,10 @@ parseDouble = do
   e <- fromIntegral <$> anyWord64le
   pure $ toRealFloat $ scientific c e
 
-parseBinanceSymbol :: Parser Binance.Symbol
-parseBinanceSymbol = fmap (toEnum . fromIntegral) anyWord32le
+parseCurrencyPair :: Parser (CurrencyCode, Fiat)
+parseCurrencyPair = (,)
+  <$> (fmap (toEnum . fromIntegral) anyWord32le)
+  <*> (fmap (toEnum . fromIntegral) anyWord32le)
 
 parseFeeResp :: Parser FeeResp
 parseFeeResp = do

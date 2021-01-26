@@ -13,9 +13,8 @@ import Foreign.Storable
 import Network.Socket (SockAddr(..))
 
 import Ergvein.Types.Fees
+import Ergvein.Types.Currency (Fiat)
 
-import qualified Binance.Client.Types as Binance
-import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 
@@ -165,7 +164,6 @@ type FeeRequest = [CurrencyCode]
 data IPType = IPV4 | IPV6
   deriving (Eq, Ord, Enum, Bounded, Show)
 
-
 ipTypeToWord8 :: IPType -> Word8
 ipTypeToWord8 = \case
   IPV4 -> 0
@@ -194,10 +192,10 @@ data PeerIntroduce = PeerIntroduce
   { peerIntroduceAddresses :: !(V.Vector Address)
   } deriving (Show, Eq)
 
-newtype RatesRequest = RatesRequest { unRatesRequest :: [Binance.Symbol] }
+newtype RatesRequest = RatesRequest { unRatesRequest :: [(CurrencyCode, Fiat)] }
   deriving (Show, Eq)
 
-newtype RatesResponse = RatesResponse { unRatesResponse :: M.Map Binance.Symbol Double}
+newtype RatesResponse = RatesResponse { unRatesResponse :: [(CurrencyCode, Fiat, Double)]}
   deriving (Show, Eq)
 
 data Message = MPing                       !Ping
@@ -219,7 +217,6 @@ data Message = MPing                       !Ping
 
 genericSizeOf :: (Storable a, Integral b) => a -> b
 genericSizeOf = fromIntegral . sizeOf
-
 
 instance Conversion Address SockAddr where
   convert Address{..} = case addressType of

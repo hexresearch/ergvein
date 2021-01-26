@@ -3,9 +3,9 @@ module ProtocolTest.Generators where
 import Control.Monad (replicateM)
 import Test.QuickCheck
 import Test.QuickCheck.Instances
-import Binance.Client.Types
 
 import Ergvein.Types.Fees
+import Ergvein.Types.Currency (Fiat)
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Protocol.Serialization
 import Ergvein.Index.Protocol.Deserialization
@@ -82,26 +82,12 @@ instance Arbitrary IPType where
   arbitrary = getRandBounded
 
 instance Arbitrary RatesRequest where
-  arbitrary = sized $ \n -> fmap RatesRequest . oneof . fmap pure $ case n of
-    0 -> [[]]
-    1 -> [[BTCUSDT], [BTCBUSD]]
-    _ -> [[BTCUSDT], [BTCBUSD], [BTCUSDT, BTCBUSD]]
+  arbitrary = fmap RatesRequest $ sized $ \n -> replicateM n $
+    (,) <$> getRandBounded <*> getRandBounded
 
 instance Arbitrary RatesResponse where
-  arbitrary = sized $ \n -> fmap RatesResponse . oneof $ case n of
-    0 -> [pure mempty]
-    1 -> [mkRate BTCUSDT, mkRate BTCBUSD]
-    _ -> [mkRate BTCUSDT, mkRate BTCBUSD, fullRate]
-
--- | Requires abs.
-mkRate :: Symbol -> Gen (M.Map Symbol Double)
-mkRate s = M.singleton s . abs <$> arbitrary
-
-fullRate :: Gen (M.Map Symbol Double)
-fullRate = do
-  a <- arbitrary
-  b <- arbitrary
-  pure $ M.fromList [(BTCUSDT, abs a), (BTCBUSD, abs b)]
+  arbitrary = fmap RatesResponse $ sized $ \n -> replicateM n $ do
+    (,,) <$> getRandBounded <*> getRandBounded <*> (fmap abs arbitrary)
 
 unimplementedMessageTypes :: [MessageType]
 unimplementedMessageTypes =
