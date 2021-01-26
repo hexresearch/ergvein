@@ -10,14 +10,15 @@ module Ergvein.Wallet.Settings (
   , loadSettings
   , storeSettings
   , defaultSettings
-  , defIndexerPort
-  , defaultIndexersNum
-  , defaultIndexerTimeout
+  , defErgveinNodePort
+  , defaultErgveinNodeNum
+  , defaultErgveinNodeTimeout
   , defaultActUrlNum
-  , ExplorerUrls(..)
   , defaultDns
-  , defaultIndexers
-  , seedList
+  , defaultErgveinNodeAddresses
+  , defErgveinNodeSeedList
+  , ExplorerUrls(..)
+
   , SocksConf(..)
   , torSocks
   , toSocksProxy
@@ -243,7 +244,7 @@ instance FromJSON Settings where
     _settingsConfigPath        <- o .:  "configPath"
     _settingsUnits             <- o .:  "units"
     _settingsReqTimeout        <- o .:  "reqTimeout"
-    _settingsReqUrlNum         <- o .:? "reqUrlNum"        .!= defaultIndexersNum
+    _settingsReqUrlNum         <- o .:? "reqUrlNum"        .!= defaultErgveinNodeNum
     _settingsActUrlNum         <- o .:? "actUrlNum"        .!= 10
     _settingsErgveinNetwork    <- o .:? "ergveinNetwork"   .!= mempty
     _settingsDiscoveryEnabled  <- o .:? "discoveryEnabled" .!= True
@@ -275,27 +276,26 @@ instance ToJSON Settings where
     , "currencySpecific"  .= toJSON _settingsCurrencySpecific
    ]
 
-seedList :: [Domain]
-seedList = if False
-  then seedTestnetNodesSource
-  else seedMainnetNodesSource
+defErgveinNodePort :: PortNumber
+defErgveinNodePort = defNodePort isTestnet
 
-defaultIndexers :: [Text]
-defaultIndexers = if isTestnet then defTestnetNodes else defMainnetNodes
+defErgveinNodeSeedList :: [Domain]
+defErgveinNodeSeedList = defSeedNodesSource isTestnet
 
-defaultIndexersNum :: (Int, Int)
-defaultIndexersNum = (2, 4)
+defaultErgveinNodeAddresses :: [ErgveinNodeAddr]
+defaultErgveinNodeAddresses = defNodes isTestnet
 
-defaultIndexerTimeout :: NominalDiffTime
-defaultIndexerTimeout = 20
+defaultErgveinNodeNum :: (Int, Int)
+defaultErgveinNodeNum = (2, 4)
+
+defaultErgveinNodeTimeout :: NominalDiffTime
+defaultErgveinNodeTimeout = 20
 
 defaultActUrlNum :: Int
 defaultActUrlNum = 10
 
 defaultDns :: S.Set HostName
-defaultDns = S.fromList $ if isAndroid
-  then defDns
-  else defAndroidDns -- use resolv.conf
+defaultDns = S.fromList $ defDns isAndroid
 
 defaultSettings :: FilePath -> Settings
 defaultSettings home =
@@ -306,8 +306,8 @@ defaultSettings home =
       , _settingsStoreDir          = pack storePath
       , _settingsConfigPath        = pack configPath
       , _settingsUnits             = Just defUnits
-      , _settingsReqTimeout        = defaultIndexerTimeout
-      , _settingsReqUrlNum         = defaultIndexersNum
+      , _settingsReqTimeout        = defaultErgveinNodeTimeout
+      , _settingsReqUrlNum         = defaultErgveinNodeNum
       , _settingsActUrlNum         = defaultActUrlNum
       , _settingsPortfolio         = False
       , _settingsFiatCurr          = USD

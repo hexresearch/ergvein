@@ -40,7 +40,7 @@ ergveinNetworkController  = mdo
       addE = M.fromList . fmap (, Just ()) <$> addrE
       actE = leftmost [delE, addE]
   valD <- listWithKeyShallowDiff initMap actE $ \n _ _ -> do
-    mAddr <- parseSingleSockAddr seed n
+    mAddr <- parseSockAddr seed defErgveinNodePort n
     case mAddr of
       Just addr ->  do
         nodeLog $ "<" <> n <> ">: Connect"

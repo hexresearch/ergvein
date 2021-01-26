@@ -1,12 +1,9 @@
 module Ergvein.DNS.Constants
   ( ErgveinNodeAddr
-  , defTestnetNodes
-  , defMainnetNodes
-  , defIndexerPort
+  , defNodes
+  , defNodePort
   , defDns
-  , defAndroidDns
-  , seedTestnetNodesSource
-  , seedMainnetNodesSource
+  , defSeedNodesSource
   ) where
 
 import Network.Socket (HostName, PortNumber)
@@ -15,17 +12,14 @@ import Network.DNS.Types
 
 type ErgveinNodeAddr = Text
 
-defIndexerPort :: PortNumber
-defIndexerPort = 8667
+defNodePort :: Bool -> PortNumber
+defNodePort isTestnet =  if isTestnet then 8667 else 18667
 
-defTestnetNodes, defMainnetNodes :: [ErgveinNodeAddr]
-defTestnetNodes = ["127.0.0.1"]
-defMainnetNodes = ["139.59.142.25", "188.244.4.78"]
+defNodes :: Bool -> [ErgveinNodeAddr]
+defNodes isTestnet = if isTestnet then ["127.0.0.1"] else ["139.59.142.25", "188.244.4.78"]
 
-defDns, defAndroidDns :: [HostName]
-defDns = ["8.8.8.8","8.8.4.4", "1.1.1.1"]
-defAndroidDns = mempty
+defDns :: Bool -> [HostName]
+defDns isTestnet = if isTestnet then ["8.8.8.8","8.8.4.4", "1.1.1.1"] else mempty 
 
-seedTestnetNodesSource, seedMainnetNodesSource :: [Domain]
-seedTestnetNodesSource = ["testseed.cypra.io"]
-seedMainnetNodesSource = ["seed.cypra.io"]
+defSeedNodesSource :: Bool -> [Domain]
+defSeedNodesSource isTestnet = if isTestnet then ["testseed.cypra.io"] else ["seed.cypra.io"]

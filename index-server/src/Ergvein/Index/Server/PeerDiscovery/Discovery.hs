@@ -80,7 +80,6 @@ knownPeersActualization  = do
         liftIO $ forM_ peersToConnect newConnection
         broadcastSocketMessage $ MPeerRequest PeerRequest
       else do
-        x <- liftIO initialIndexers
         pure ()
       shutdownFlagVar <- getShutdownFlag
       liftIO $ cancelableDelay shutdownFlagVar descReqActualizationDelay

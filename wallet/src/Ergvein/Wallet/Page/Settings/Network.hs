@@ -99,7 +99,7 @@ parametersPageWidget = mdo
     updE <- updateSettings $ flip pushAlways defE $ const $ do
       stngs <- sample $ current setD
       pure $ stngs {
-            _settingsReqTimeout = defaultIndexerTimeout
+            _settingsReqTimeout = defaultErgveinNodeTimeout
           , _settingsActUrlNum  = defaultActUrlNum
         }
     updE' <- updateSettings $ flip pushAlways saveE $ const $ do
@@ -124,7 +124,7 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
     rs <- mkResolvSeed
     performFork $ ffor goE $ const $ do
       t <- sampleDyn textD
-      (t <$) <$> parseSingleSockAddr rs t
+      (t <$) <$> parseSockAddr rs defErgveinNodePort t
   void $ widgetHold (pure ()) $ ffor murlE $ \case
     Nothing -> divClass "form-field-errors" $ localizedText NPSParseError
     _ -> pure ()

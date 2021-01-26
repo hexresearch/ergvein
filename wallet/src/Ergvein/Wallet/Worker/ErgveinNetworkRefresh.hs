@@ -77,8 +77,8 @@ restoreNetwork notOperablePeerAmountE = do
   reloadedFromSeedE <- performEvent $ ffor notOperablePeerAmountE $ \presentAmount -> do
     dns <- sampleDyn dnsSettingsD
     rs <- liftIO $ resolveSeed $ Set.toList dns 
-    newSet <- liftIO $ getDNS rs seedList
-    neededSet <- take (targetNetworkSize - presentAmount) <$> (liftIO $ shuffleM $ fromMaybe defaultIndexers newSet)
+    newSet <- liftIO $ getDNS rs defErgveinNodeSeedList
+    neededSet <- take (targetNetworkSize - presentAmount) <$> (liftIO $ shuffleM $ fromMaybe defaultErgveinNodeAddresses newSet)
     pure neededSet
   void $ addManyDiscovered reloadedFromSeedE
 
