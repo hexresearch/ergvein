@@ -48,26 +48,18 @@ makeHandshake blocks t = Handshake {
     ]
   }
 
-peekMessage :: Network -> IORef Bool -> C.PeekerIO Message
+peekMessage :: Network -> IORef Bool -> C.PeekerIO ErgoMessage
 peekMessage net initRef = do
   isinit <- liftIO $ readIORef initRef
   if isinit then do
     bs <- C.peekAll
-    traceShowM bs
-    traceShowM $ B16.encode bs
     h <- either fail pure $ decodeHandshake bs
-    traceShowM h
     liftIO $ writeIORef initRef False
     pure $ MsgHandshake h
   else do
     bs <- C.peekAll
-    traceShowM bs
-    traceShowM $ B16.encode bs
     (i, n) <- either fail pure $ parseMsgLength net $ BS.take 9 bs
-    either fail pure $ parseMsgBody i n $ BS.drop 9 bs
-
-    -- n <- either fail pure =<< fmap (parseMsgLength net) (C.peek 9)
-    -- either fail pure =<< fmap (decodeMessage net) (C.peek n)
+    either fail (pure . MsgOther) $ parseMsgBody i n $ BS.drop 9 bs
 
 -- | Start connection to ergo node in separate thread.
 --
@@ -77,12 +69,13 @@ peekMessage net initRef = do
 -- The socket doesn't perform handshaking with node.
 ergoSocket :: MonadIO m
   => Network
-  -> TChan (C.SocketInEvent Message)
+  -> TChan (C.SocketInEvent ErgoMessage)
   -> C.SocketConf
-  -> m (TChan (C.SocketOutEvent Message))
+  -> m (TChan (C.SocketOutEvent ErgoMessage))
 ergoSocket net inChan conf = do
   initRef <- liftIO $ newIORef True
-  out <- C.socket (encodeMessage net) (peekMessage net initRef) inChan conf
+  let encoder net msg = encodeErgoMessage net msg
+  out <- C.socket (encoder net) (peekMessage net initRef) inChan conf
   liftIO $ do
     outInt <- atomically $ dupTChan out
     void $ forkIO $ forever $ do

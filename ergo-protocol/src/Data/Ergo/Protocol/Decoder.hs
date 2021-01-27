@@ -7,6 +7,7 @@ module Data.Ergo.Protocol.Decoder(
   , parseMsgLength
   , parseMsgBody
   , anyWord32be
+  , decodeZigZag
   , runGet
   ) where
 
@@ -18,6 +19,8 @@ import Data.ByteString (ByteString)
 import Data.Ergo.Protocol.Check
 import Data.Ergo.Protocol.Shift
 import Data.Ergo.Protocol.Types
+import Data.Ergo.Protocol.Vlq
+import Data.Ergo.Protocol.ZigZag
 import Data.Int
 import Data.IORef
 import Data.Persist
@@ -73,35 +76,20 @@ anyWord32le = fmap unLE get
 anyWord16be :: Get Word16
 anyWord16be = fmap unBE get
 
--- | Parse VLQ (variable int) encoding.
---
--- https://ergoplatform.org/docs/ErgoTree.pdf
-vlq :: (Integral a, Bits a) => Get a
-vlq = go 0 0
-  where
-    go !i !acc = do
-      w <- fromIntegral <$> anyWord8
-      if w .&. complement 0x7F == 0
-        then pure $ acc + shiftL w i
-        else go (i+7) (acc + shiftL (w .&. 0x7F) i)
-
 vlqInt64 :: Get Int64
-vlqInt64 = vlq
+vlqInt64 = decodeVlq
 
 vlqWord16 :: Get Word16
-vlqWord16 = vlq
+vlqWord16 = decodeVlq
 
 vlqWord32 :: Get Word32
-vlqWord32 = vlq
+vlqWord32 = decodeVlq
 
--- | Decode ZigZag encoded signed integer
---
---  http://github.com/google/protobuf/blob/a7252bf42df8f0841cf3a0c85fdbf1a5172adecb/java/core/src/main/java/com/google/protobuf/CodedInputStream.java#L553
-zigzag :: (Integral a, Bits a, ShiftRS a) => a -> a
-zigzag n = (n `shiftRS` 1) `xor` (-(n .&. 1))
+vlqWord64 :: Get Word64
+vlqWord64 = decodeVlq
 
 varInt32 :: Get Int32
-varInt32 = zigzag <$> vlq
+varInt32 = decodeVarInt
 
 -- | Parse first 4+1+4=9 bytes and return length of rest message.
 --
@@ -134,10 +122,12 @@ parseMsgBody i l = runGet $ msgBodyParser i l
 -- | Parse message without id and length
 msgBodyParser :: Int -> Int -> Get Message
 msgBodyParser i l = do
-  c <- getByteString 4
-  body <- getByteString (fromIntegral l)
-  traceShowM (i, body)
-  unless (validateSum c body) $ fail "Check sum failed for body!"
+  body <- if l == 0 then pure BS.empty else do
+    c <- getByteString 4
+    body <- getByteString (fromIntegral l)
+    traceShowM (i, body)
+    unless (validateSum c body) $ fail "Check sum failed for body!"
+    pure body
   if | i == syncInfoId -> MsgSyncInfo <$> embedParser "SyncInfo parsing error" syncInfoParser body
      | i == invMsgId -> MsgInv <$> embedParser "Inv parsing error" invMsgParser body
      | otherwise -> fail $ "Unknown message type " <> show i
@@ -160,12 +150,7 @@ parseOptional p = do
 
 parseVector :: Get a -> Get (Vector a)
 parseVector p = do
-  l <- anyWord8
-  V.replicateM (fromIntegral l) p
-
-parseLVector :: Get a -> Get (Vector a)
-parseLVector p = do
-  l <- vlqWord32
+  l <- vlqWord64
   V.replicateM (fromIntegral l) p
 
 parseIP :: Get IP
@@ -234,7 +219,7 @@ syncInfoParser = SyncInfo
 invMsgParser :: Get InvMsg
 invMsgParser = InvMsg
   <$> fmap decodeModifierType anyWord8
-  <*> parseLVector modifierIdParser
+  <*> parseVector modifierIdParser
 
 modifierIdParser :: Get ModifierId
 modifierIdParser = ModifierId <$> getBytes 32

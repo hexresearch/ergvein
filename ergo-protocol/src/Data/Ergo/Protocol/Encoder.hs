@@ -1,8 +1,10 @@
 module Data.Ergo.Protocol.Encoder(
-    encodeMessage
+    encodeErgoMessage
+  , encodeMessage
   , encodeHandshake
   , messageEncoder
   , handshakeEncoder
+  , encodeZigZag
   ) where
 
 import Data.Bits
@@ -11,6 +13,8 @@ import Data.ByteString (ByteString)
 import Data.Ergo.Protocol.Check
 import Data.Ergo.Protocol.Shift
 import Data.Ergo.Protocol.Types
+import Data.Ergo.Protocol.Vlq
+import Data.Ergo.Protocol.ZigZag
 import Data.Foldable (traverse_)
 import Data.Int
 import Data.Persist
@@ -23,6 +27,8 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Text as T
 import qualified Data.Vector as V
+
+import Debug.Trace
 
 int64BE :: Int64 -> Put ()
 int64BE = put . BigEndian
@@ -45,21 +51,26 @@ word16BE = put . BigEndian
 word8 :: Word8 -> Put ()
 word8 = put
 
-vlq :: (Integral a, ShiftRS a, Bits a) => a -> Put ()
-vlq w | w .&. complement 0x7F == 0 = word8 $ fromIntegral w
-      | otherwise = do
-        word8 $ fromIntegral ((fromIntegral (w .&. 0x7F) :: Word32) .|. 0x80)
-        vlq $ shiftRS w 7
-
 int64Vlq :: Int64 -> Put ()
-int64Vlq = vlq
+int64Vlq = encodeVlq
 
 word16Vlq :: Word16 -> Put ()
-word16Vlq = vlq
+word16Vlq = encodeVlq
 
 word32Vlq :: Word32 -> Put ()
-word32Vlq = vlq
+word32Vlq = encodeVlq
 
+word64Vlq :: Word64 -> Put ()
+word64Vlq = encodeVlq
+
+varInt32 :: Int32 -> Put ()
+varInt32 = encodeVarInt
+
+encodeErgoMessage :: Network -> ErgoMessage -> ByteString
+encodeErgoMessage net msg = case msg of
+  MsgHandshake hmsg -> encodeHandshake hmsg
+  MsgOther omsg -> encodeMessage net omsg
+  
 encodeMessage :: Network -> Message -> ByteString
 encodeMessage net msg = runPut $ messageEncoder net msg
 
@@ -68,7 +79,6 @@ encodeHandshake = runPut . handshakeEncoder
 
 messageEncoder :: Network -> Message -> Put ()
 messageEncoder net msg = case msg of
-  MsgHandshake hmsg -> handshakeEncoder hmsg
   MsgSyncInfo smsg -> wrapBody syncInfoId $ syncInfoEncoder smsg
   MsgInv imsg -> wrapBody invMsgId $ invMsgEncoder imsg
   where
@@ -77,8 +87,8 @@ messageEncoder net msg = case msg of
       word8 i
       word32BE l
       when (l > 0) $ do
-        putByteString bbody
         putByteString (checkSum bbody)
+        putByteString bbody
       where
         l = fromIntegral $ BS.length bbody
         bbody = runPut b
@@ -106,12 +116,7 @@ encodeNetAddr :: NetAddr -> Put ()
 encodeNetAddr (NetAddr ip p) = encodeIP ip >> word32BE p
 
 encodeVector :: (a -> Put ()) -> Vector a -> Put ()
-encodeVector f v = word8 l >> traverse_ f (V.take (fromIntegral l) v)
-  where
-    l = fromIntegral $ min 255 $ V.length v
-
-encodeLVector :: (a -> Put ()) -> Vector a -> Put ()
-encodeLVector f v = word32Vlq l >> traverse_ f (V.take (fromIntegral l) v)
+encodeVector f v = word64Vlq l >> traverse_ f (V.take (fromIntegral l) v)
   where
     l = fromIntegral $ V.length v
 
@@ -136,7 +141,7 @@ encodeOpMode OperationModeFeature{..} = do
   encodeStateType stateType
   encodeBool verifying
   encodeOptional word32BE nipopowSuffix
-  int32BE blocksStored
+  varInt32 blocksStored
 
 encodeSessionFeature :: SessionFeature -> Put ()
 encodeSessionFeature SessionFeature{..} = do
@@ -166,7 +171,7 @@ syncInfoEncoder SyncInfo{..} = encodeVector modifierIdEncoder syncHeaders
 invMsgEncoder :: InvMsg -> Put ()
 invMsgEncoder InvMsg{..} = do
   word8 $ encodeModifierType typeId
-  encodeLVector modifierIdEncoder ids
+  encodeVector modifierIdEncoder ids
 
 modifierIdEncoder :: ModifierId -> Put ()
 modifierIdEncoder (ModifierId h) = putByteString h

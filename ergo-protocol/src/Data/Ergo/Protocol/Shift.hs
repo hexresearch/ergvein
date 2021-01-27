@@ -11,31 +11,31 @@ class ShiftRS a where
   shiftRS :: a -> Int -> a
 
 instance ShiftRS Word64 where
-  shiftRS = shiftR
+  shiftRS = unsafeShiftR
   {-# INLINE shiftRS #-}
 
 instance ShiftRS Int64 where
   shiftRS a i
-    | a >= 0 = shiftR a i
-    | otherwise = shiftR a i + (shiftL 2 (complement i))
+    | a >= 0 = unsafeShiftR a i
+    | otherwise = unsafeShiftR a i + (unsafeShiftL 2 (complement i))
   {-# INLINE shiftRS #-}
 
 instance ShiftRS Word32 where
-  shiftRS = shiftR
+  shiftRS = unsafeShiftR
   {-# INLINE shiftRS #-}
 
 instance ShiftRS Int32 where
   shiftRS a i
-    | a >= 0 = shiftR a i
-    | otherwise = shiftR a i + (shiftL 2 (complement i))
+    | a >= 0 = unsafeShiftR a i
+    | otherwise = unsafeShiftR a i + (unsafeShiftL 2 (complement i))
   {-# INLINE shiftRS #-}
 
 instance ShiftRS Word16 where
-  shiftRS = shiftR
+  shiftRS = unsafeShiftR
   {-# INLINE shiftRS #-}
 
 instance ShiftRS Int16 where
   shiftRS a i
-    | a >= 0 = shiftR a i
-    | otherwise = shiftR a i + (shiftL 2 (complement i))
+    | a >= 0 = unsafeShiftR a i
+    | otherwise = unsafeShiftR a i + (unsafeShiftL 2 (complement i))
   {-# INLINE shiftRS #-}

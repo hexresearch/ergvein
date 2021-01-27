@@ -21,6 +21,8 @@ library
     Data.Ergo.Protocol.Encoder
     Data.Ergo.Protocol.Shift
     Data.Ergo.Protocol.Types
+    Data.Ergo.Protocol.Vlq
+    Data.Ergo.Protocol.ZigZag
   default-language:    Haskell2010
   build-depends:
       base              >= 4.7 && < 4.13
@@ -38,6 +40,8 @@ library
     DeriveAnyClass
     DeriveGeneric
     FlexibleContexts
+    FunctionalDependencies
+    MultiParamTypeClasses
     MultiWayIf
     OverloadedStrings
     RecordWildCards

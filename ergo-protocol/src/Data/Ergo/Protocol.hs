@@ -16,6 +16,7 @@ module Data.Ergo.Protocol(
     Network(..)
   , TestnetMessage(..)
   , MainnetMessage(..)
+  , ErgoMessage(..)
   , Message(..)
   , ProtoVer(..)
   , IP(..)
@@ -46,6 +47,7 @@ module Data.Ergo.Protocol(
   , decodeModifierType
   , decodeMessage
   , encodeMessage
+  , encodeErgoMessage
   ) where
 
 import Data.Ergo.Protocol.Decoder

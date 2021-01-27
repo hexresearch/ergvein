@@ -41,8 +41,10 @@ main = do
       SockOutInbound (MsgHandshake h) -> do
         t <- getCurrentTime
         atomically $ writeTChan inChan $ SockInSendEvent $ MsgHandshake $ makeHandshake 0 t
-      SockOutInbound (MsgSyncInfo (SyncInfo [])) -> do
-        -- atomically $ writeTChan inChan $ SockInSendEvent $ MsgSyncInfo $ SyncInfo [nullHeader]
+        threadDelay 1000000
+        putStrLn "!!!!!!!!!"
+        atomically $ writeTChan inChan $ SockInSendEvent $ MsgOther $ MsgSyncInfo $ SyncInfo [nullModifierId]
+      SockOutInbound (MsgOther (MsgSyncInfo (SyncInfo []))) -> do
         pure ()
       _ -> pure ()
     print ev

@@ -46,7 +46,7 @@ in {
   };
 
   ##### implementation
-  config = mkIf cfg.enable { # only apply the following settings if enabled
+  config = {
     nixpkgs.overlays = [
       (import ../overlay.nix)
     ];
@@ -55,17 +55,18 @@ in {
     };
     services = {
       bitcoin = {
-        enable = true;
+        enable = cfg.enable;
         testnet = cfg.testnet;
         nodePort = 8332;
         package = with pkgs; pkgs.callPackage ../pkgs/bitcoin-node.nix { withGui = false; };
       };
       ergo = {
         enable = true;
+        /* enable = cfg.enable; */
         testnet = cfg.testnet;
       };
       ergvein-indexer = {
-        enable = true;
+        enable = cfg.enable;
         package = pkgs.ergvein-index-server;
         nodeExternalAddress = cfg.externalAddress;
         testnet = cfg.testnet;

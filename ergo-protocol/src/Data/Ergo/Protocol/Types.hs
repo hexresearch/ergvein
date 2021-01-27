@@ -14,6 +14,7 @@ Types are kept close to binary representation for fast processing.
 -}
 module Data.Ergo.Protocol.Types(
     Network(..)
+  , ErgoMessage(..)
   , Message(..)
   , ProtoVer(..)
   , IP(..)
@@ -65,10 +66,18 @@ magicBytes :: Network -> Word32
 magicBytes Mainnet = 0x01000204
 magicBytes Testnet = 0x02000000
 
+-- | Ergo protocol is split into two parts: handshaking and operation.
+--
+-- Handshaking message is first message received and sent, no other message
+-- is allowed until handshaking done.
+data ErgoMessage = MsgHandshake !Handshake | MsgOther !Message
+  deriving (Generic, Show, Read, Eq)
+
 -- | Possible types of network messages in P2P protocol for Ergo
+--
+-- Handshake message is special and encoded separately. See `Handshake`
 data Message =
-    MsgHandshake !Handshake
-  | MsgSyncInfo !SyncInfo
+    MsgSyncInfo !SyncInfo
   | MsgInv !InvMsg
   deriving (Generic, Show, Read, Eq)
 
@@ -135,6 +144,7 @@ featureId :: PeerFeature -> Word8
 featureId v = case v of
   FeatureOperationMode _ -> featureOperationModeId
   FeatureSession _ -> sessionFeatureId
+  FeatureLocalAddress _ -> localAddressFeatureId
   UnknownFeature i _ -> i
 
 -- | Amount of seconds that is given to peer to send handshake message. After that

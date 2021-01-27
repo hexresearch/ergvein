@@ -4,7 +4,11 @@ import Control.Monad
 import Data.ByteString.Builder
 import Data.Ergo.Protocol
 import Data.Ergo.Protocol.Decoder
+import Data.Ergo.Protocol.Encoder
+import Data.Ergo.Protocol.Vlq
+import Data.Ergo.Protocol.ZigZag
 import Data.Int
+import Data.Word
 import Data.Maybe
 import Data.Persist
 import Data.Text (Text)
@@ -17,6 +21,7 @@ import Test.Tasty.Hspec
 import Test.Tasty.QuickCheck
 
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Text as T
@@ -27,14 +32,32 @@ import Debug.Trace
 traceShowIdHex :: BS.ByteString -> BS.ByteString
 traceShowIdHex a = traceShow (B16.encode a) a
 
-prop_encodeDecodeHandshake :: Handshake -> Property
-prop_encodeDecodeHandshake msg = property $ decode (encode msg) == Right msg
+prop_zigzag32 :: Int32 -> Bool
+prop_zigzag32 a = decodeZigZag (encodeZigZag a) == a
+
+prop_zigzag64 :: Int64 -> Bool
+prop_zigzag64 a = decodeZigZag (encodeZigZag a) == a
+
+prop_vlq32 :: Word32 -> Bool
+prop_vlq32 a = runGet decodeVlq (runPut $ encodeVlq a) == Right a
+
+prop_vlq64 :: Word64 -> Bool
+prop_vlq64 a = runGet decodeVlq (runPut $ encodeVlq a) == Right a
+
+prop_varInt32 :: Int32 -> Bool
+prop_varInt32 a = runGet decodeVarInt (runPut $ encodeVarInt a) == Right a
+
+prop_encodeDecodeHandshake :: Handshake -> Bool
+prop_encodeDecodeHandshake msg = decode (encode msg) == Right msg
+
+prop_encodeDecodeSyncInfo :: SyncInfo -> Bool
+prop_encodeDecodeSyncInfo msg = decode (encode $ TestnetMessage $ MsgSyncInfo msg) == Right (TestnetMessage $ MsgSyncInfo msg)
 
 -- prop_encodeDecodeTestnet :: TestnetMessage -> Bool
--- prop_encodeDecodeTestnet msg = traceShowId (decode (traceShowIdHex $ encode msg)) == Right (traceShowId msg)
---
--- prop_encodeDecodeMainnet :: MainnetMessage -> Property
--- prop_encodeDecodeMainnet msg = property $ decode (encode msg) == Right msg
+-- prop_encodeDecodeTestnet msg = decode (encode msg) == Right msg
+
+prop_encodeDecodeMainnet :: MainnetMessage -> Bool
+prop_encodeDecodeMainnet msg = decode (encode msg) == Right msg
 
 instance Arbitrary TestnetMessage where
   arbitrary = TestnetMessage <$> arbitrary
@@ -45,7 +68,10 @@ instance Arbitrary MainnetMessage where
   shrink = genericShrink
 
 instance Arbitrary Message where
-  arbitrary = MsgHandshake <$> arbitrary
+  arbitrary = oneof [
+      MsgSyncInfo <$> arbitrary
+    , MsgInv <$> arbitrary
+    ]
   shrink = genericShrink
 
 instance Arbitrary ProtoVer where
@@ -77,8 +103,38 @@ instance Arbitrary SessionFeature where
     <*> arbitrary
   shrink = genericShrink
 
+instance Arbitrary LocalAddressFeature where
+  arbitrary = LocalAddressFeature <$> arbitrary <*> arbitrary
+  shrink = genericShrink
+
 instance Arbitrary PeerFeature where
-  arbitrary = FeatureOperationMode <$> arbitrary
+  arbitrary = oneof [
+      FeatureOperationMode <$> arbitrary
+    , FeatureSession <$> arbitrary
+    , FeatureLocalAddress <$> arbitrary
+    ]
+  shrink = genericShrink
+
+instance Arbitrary SyncInfo where
+  arbitrary = SyncInfo <$> arbitrary
+  shrink = genericShrink
+
+instance Arbitrary InvMsg where
+  arbitrary = InvMsg <$> arbitrary <*> arbitrary
+  shrink = genericShrink
+
+instance Arbitrary ModifierId where
+  arbitrary = ModifierId . BS8.pack <$> replicateM 32 arbitrary
+  shrink = shrinkNothing
+
+instance Arbitrary ModifierType where
+  arbitrary = oneof [
+      pure ModifierTx
+    , pure ModifierBlockId
+    , pure ModifierBlockTxs
+    , pure ModifierBlockProof
+    , pure ModifierBlockExt
+    ]
   shrink = genericShrink
 
 instance Arbitrary Handshake where
