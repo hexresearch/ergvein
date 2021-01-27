@@ -893,14 +893,19 @@ selectCss = do
     margin auto auto auto auto
     width $ px 200
   "select" ? do
+    color textColor
     borderColor textColor
-    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" height=\\\"14\\\" viewBox=\\\"0 0 24 8\\\" width=\\\"24\\\"><path fill=\\\"#000000\\\" d=\\\"M0,0l6,8l6-8\\\"/></svg>"
+    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 8' width='30'><path fill='%23000000' d='M0,0l6,8l6-8'/></svg>" 
+    backgroundPosition $ placed sideCenter sideRight
+    backgroundRepeat noRepeat
   "select:hover" ? do
     cursor pointer
   "select:hover, select:focus" ? do
     color hoverColor
     borderColor hoverColor
-    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" height=\\\"14\\\" viewBox=\\\"0 0 24 8\\\" width=\\\"24\\\"><path fill=\\\"#707070\\\" d=\\\"M0,0l6,8l6-8\\\"/></svg>"
+    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 8' width='30'><path fill='%23707070' d='M0,0l6,8l6-8'/></svg>" 
+    backgroundPosition $ placed sideCenter sideRight
+    backgroundRepeat noRepeat
 
 buttonsToggleCss :: Css
 buttonsToggleCss = do
