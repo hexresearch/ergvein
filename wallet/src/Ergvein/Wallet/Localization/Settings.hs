@@ -5,7 +5,6 @@ module Ergvein.Wallet.Localization.Settings(
   , DeleteWalletStrings(..)
   ) where
 
-import Binance.Client.Types
 import Data.Time
 import Ergvein.Text
 import Ergvein.Types.Currency
@@ -267,6 +266,3 @@ instance LocalizedPrint DeleteWalletStrings where
       DWSWarn3      -> "Последняя проверка. Введите пароль для подтверждения."
       DWSFinStage   -> "Окей, вы убедили меня. Можете удалять."
       DWSFin        -> "Кошелёк успешно удалён. Перенаправляю."
-
-instance LocalizedPrint Symbol where
-  localizedShow _ = showRateSymbol

@@ -7,7 +7,6 @@ module Ergvein.Wallet.Page.Settings(
   , currenciesPage
   ) where
 
-import Binance.Client.Types
 import Control.Lens
 import Data.List
 import Data.Maybe (fromMaybe, catMaybes)

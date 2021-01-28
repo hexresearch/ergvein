@@ -6,7 +6,6 @@ module Ergvein.Wallet.Widget.Balance(
   , balanceTitleWidgetSimple
   ) where
 
-import Binance.Client.Types
 import Control.Lens
 import Data.Maybe (fromMaybe)
 

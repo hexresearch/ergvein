@@ -25,7 +25,6 @@ module Ergvein.Wallet.Settings (
   , parseIP
   ) where
 
-import Binance.Client.Types
 import Control.Lens hiding ((.=))
 import Control.Monad.IO.Class
 import Data.Aeson hiding (encodeFile)

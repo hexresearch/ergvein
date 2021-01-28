@@ -3,7 +3,6 @@ module Ergvein.Wallet.Worker.Rates
     ratesWorker
   ) where
 
-import Binance.Client.Types
 import Data.Maybe
 import Data.List (nub)
 import Data.Time

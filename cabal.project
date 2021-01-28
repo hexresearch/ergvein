@@ -1,5 +1,4 @@
 packages:
-  ./binance-client
   ./cbitstream
   ./checkpoint-generator
   ./coinbase-client

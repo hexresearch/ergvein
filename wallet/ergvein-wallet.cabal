@@ -167,7 +167,6 @@ library
         attoparsec >= 0.13 && < 0.14,
         base -any,
         base64-bytestring >=1 && <1.0.0.3,
-        binance-client,
         binary >=0.8 && <0.9,
         bitcoin-api >= 0.13 && < 0.14,
         bytestring >=0.10 && <0.11,

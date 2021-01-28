@@ -3,7 +3,6 @@ module Ergvein.Wallet.Page.Balances(
     balancesPage
   ) where
 
-import Binance.Client.Types (showRateSymbol)
 import Data.Maybe (fromMaybe)
 
 import Ergvein.Types.Currency

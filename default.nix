@@ -9,7 +9,6 @@ let
    versionTag = version.code;
    project = reflex-platform.project ({ pkgs, ... }: {
     packages = {
-      binance-client = ./binance-client;
       cbitstream = ./cbitstream;
       coinbase-client = ./coinbase-client;
       data-merkle-tree = ./data-merkle-tree;
@@ -42,7 +41,6 @@ let
     };
     shells = {
       ghc = [
-        "binance-client"
         "cbitstream"
         "coinbase-client"
         "data-merkle-tree"
