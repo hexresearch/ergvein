@@ -130,6 +130,7 @@ msgBodyParser i l = do
     pure body
   if | i == syncInfoId -> MsgSyncInfo <$> embedParser "SyncInfo parsing error" syncInfoParser body
      | i == invMsgId -> MsgInv <$> embedParser "Inv parsing error" invMsgParser body
+     | i == requestModifierId -> MsgRequestModifier <$> embedParser "RequestModifier parsing error" reqModMsgParser body
      | otherwise -> fail $ "Unknown message type " <> show i
 
 parseText :: Get Text
@@ -177,6 +178,14 @@ parseStateType = do
      | i == 1 -> pure StateDigest
      | otherwise -> fail $ "Unknown StateType enum value " <> show i
 
+modifierIdParser :: Get ModifierId
+modifierIdParser = ModifierId <$> getBytes 32
+
+parseLocalAddrFeature :: Get LocalAddressFeature
+parseLocalAddrFeature = LocalAddressFeature
+  <$> vlqWord32
+  <*> vlqWord32
+
 parseOperationMode :: Get OperationModeFeature
 parseOperationMode = OperationModeFeature
   <$> parseStateType
@@ -221,10 +230,7 @@ invMsgParser = InvMsg
   <$> fmap decodeModifierType anyWord8
   <*> parseVector modifierIdParser
 
-modifierIdParser :: Get ModifierId
-modifierIdParser = ModifierId <$> getBytes 32
-
-parseLocalAddrFeature :: Get LocalAddressFeature
-parseLocalAddrFeature = LocalAddressFeature
-  <$> vlqWord32
-  <*> vlqWord32
+reqModMsgParser :: Get RequestModifierMsg
+reqModMsgParser = RequestModifierMsg
+  <$> fmap decodeModifierType anyWord8
+  <*> parseVector modifierIdParser

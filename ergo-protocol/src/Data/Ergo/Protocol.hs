@@ -45,6 +45,8 @@ module Data.Ergo.Protocol(
   , ModifierType(..)
   , encodeModifierType
   , decodeModifierType
+  , RequestModifierMsg(..)
+  , requestModifierId
   , decodeMessage
   , encodeMessage
   , encodeErgoMessage

@@ -12,6 +12,7 @@ for network messages in peer to peer protocol that is used in Ergo cryptocurrenc
 
 Types are kept close to binary representation for fast processing.
 -}
+{-# LANGUAGE DuplicateRecordFields #-}
 module Data.Ergo.Protocol.Types(
     Network(..)
   , ErgoMessage(..)
@@ -44,6 +45,8 @@ module Data.Ergo.Protocol.Types(
   , ModifierType(..)
   , encodeModifierType
   , decodeModifierType
+  , RequestModifierMsg(..)
+  , requestModifierId
   ) where
 
 import Data.ByteString (ByteString)
@@ -79,6 +82,7 @@ data ErgoMessage = MsgHandshake !Handshake | MsgOther !Message
 data Message =
     MsgSyncInfo !SyncInfo
   | MsgInv !InvMsg
+  | MsgRequestModifier !RequestModifierMsg
   deriving (Generic, Show, Read, Eq)
 
 -- | Protocol version
@@ -244,3 +248,21 @@ decodeModifierType w = case w of
   104 -> ModifierBlockProof
   108 -> ModifierBlockExt
   _ -> UnknownModifier w
+
+-- | The `RequestModifier` message requests one or more modifiers from another node.
+-- The objects are requested by an inventory, which the requesting node
+-- typically received previously by way of an `Inv` message.
+--
+-- This message cannot be used to request arbitrary data, such as historic transactions no
+-- longer in the memory pool. Full nodes may not even be able to provide older blocks if
+-- they’ve pruned old transactions from their block database.
+-- For this reason, the `RequestModifier` message should usually only be used to request
+-- data from a node which previously advertised it had that data by sending an `Inv` message.
+data RequestModifierMsg = RequestModifierMsg {
+    typeId :: !ModifierType
+  , ids    :: !(Vector ModifierId)
+  } deriving (Generic, Show, Read, Eq)
+
+-- | ID of request modifier message
+requestModifierId :: Integral a => a
+requestModifierId = 22

@@ -70,7 +70,7 @@ encodeErgoMessage :: Network -> ErgoMessage -> ByteString
 encodeErgoMessage net msg = case msg of
   MsgHandshake hmsg -> encodeHandshake hmsg
   MsgOther omsg -> encodeMessage net omsg
-  
+
 encodeMessage :: Network -> Message -> ByteString
 encodeMessage net msg = runPut $ messageEncoder net msg
 
@@ -81,6 +81,7 @@ messageEncoder :: Network -> Message -> Put ()
 messageEncoder net msg = case msg of
   MsgSyncInfo smsg -> wrapBody syncInfoId $ syncInfoEncoder smsg
   MsgInv imsg -> wrapBody invMsgId $ invMsgEncoder imsg
+  MsgRequestModifier rmsg -> wrapBody requestModifierId $ reqModMsgEncoder rmsg
   where
     wrapBody i b = do
       word32BE (magicBytes net)
@@ -168,10 +169,15 @@ encodeFeature v = do
 syncInfoEncoder :: SyncInfo -> Put ()
 syncInfoEncoder SyncInfo{..} = encodeVector modifierIdEncoder syncHeaders
 
+modifierIdEncoder :: ModifierId -> Put ()
+modifierIdEncoder (ModifierId h) = putByteString h
+
 invMsgEncoder :: InvMsg -> Put ()
 invMsgEncoder InvMsg{..} = do
   word8 $ encodeModifierType typeId
   encodeVector modifierIdEncoder ids
 
-modifierIdEncoder :: ModifierId -> Put ()
-modifierIdEncoder (ModifierId h) = putByteString h
+reqModMsgEncoder :: RequestModifierMsg -> Put ()
+reqModMsgEncoder RequestModifierMsg{..} = do
+  word8 $ encodeModifierType typeId
+  encodeVector modifierIdEncoder ids

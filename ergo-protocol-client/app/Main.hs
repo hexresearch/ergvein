@@ -10,6 +10,8 @@ import Data.Maybe
 import Data.Time
 import Options.Generic
 
+import qualified Data.Vector as V
+
 data Options = Options {
   nodeAddress  :: Maybe String <?> "Address of node"
 , nodePort     :: Maybe Int <?> "Port of node"
@@ -42,9 +44,9 @@ main = do
         t <- getCurrentTime
         atomically $ writeTChan inChan $ SockInSendEvent $ MsgHandshake $ makeHandshake 0 t
         threadDelay 1000000
-        putStrLn "!!!!!!!!!"
         atomically $ writeTChan inChan $ SockInSendEvent $ MsgOther $ MsgSyncInfo $ SyncInfo [nullModifierId]
-      SockOutInbound (MsgOther (MsgSyncInfo (SyncInfo []))) -> do
+      SockOutInbound (MsgOther (MsgInv (InvMsg itype is))) -> do
+        atomically $ writeTChan inChan $ SockInSendEvent $ MsgOther $ MsgRequestModifier $ RequestModifierMsg itype $ V.singleton $ V.head is
         pure ()
       _ -> pure ()
     print ev

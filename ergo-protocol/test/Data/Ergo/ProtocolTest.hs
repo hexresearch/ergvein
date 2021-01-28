@@ -123,6 +123,10 @@ instance Arbitrary InvMsg where
   arbitrary = InvMsg <$> arbitrary <*> arbitrary
   shrink = genericShrink
 
+instance Arbitrary RequestModifierMsg where
+  arbitrary = RequestModifierMsg <$> arbitrary <*> arbitrary
+  shrink = genericShrink
+
 instance Arbitrary ModifierId where
   arbitrary = ModifierId . BS8.pack <$> replicateM 32 arbitrary
   shrink = shrinkNothing
