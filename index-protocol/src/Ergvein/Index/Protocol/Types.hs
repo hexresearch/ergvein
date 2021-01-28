@@ -6,6 +6,7 @@ import Data.Attoparsec.Binary
 import Data.ByteString
 import Data.ByteString.Short (ShortByteString)
 import Data.Either
+import Data.Map.Strict (Map)
 import Data.Vector.Unboxed.Deriving
 import Data.Word
 import Foreign.C.Types
@@ -192,10 +193,10 @@ data PeerIntroduce = PeerIntroduce
   { peerIntroduceAddresses :: !(V.Vector Address)
   } deriving (Show, Eq)
 
-newtype RatesRequest = RatesRequest { unRatesRequest :: [(CurrencyCode, Fiat)] }
+newtype RatesRequest = RatesRequest { unRatesRequest :: Map CurrencyCode [Fiat] }
   deriving (Show, Eq)
 
-newtype RatesResponse = RatesResponse { unRatesResponse :: [(CurrencyCode, Fiat, Double)]}
+newtype RatesResponse = RatesResponse { unRatesResponse :: Map CurrencyCode (Map Fiat Double)}
   deriving (Show, Eq)
 
 data Message = MPing                       !Ping

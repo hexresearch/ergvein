@@ -3,6 +3,7 @@ module Ergvein.Index.Server.TCPService.MessageHandler where
 import Control.Concurrent.STM
 import Control.Monad.IO.Class
 import Control.Monad.Reader
+import Data.List (foldl')
 import Conversion
 import Network.Socket
 
@@ -76,7 +77,6 @@ handleMsg address (MFiltersEvent FilterEvent {..}) = do
    deletePeerBySockAddr $ convert address
   pure mempty
 
-
 handleMsg _ (MFeeRequest curs) = do
   fees <- liftIO . readTVarIO =<< asks envFeeEstimates
   let selCurs = M.restrictKeys fees $ S.fromList curs
@@ -86,9 +86,13 @@ handleMsg _ (MFeeRequest curs) = do
         _ -> let FeeBundle (_, h) (_, m) (_, l) = fb
           in FeeRespGeneric cur h m l
   pure $ pure $ MFeeResponse $ M.elems resps
+
 handleMsg _ (MRatesRequest (RatesRequest rs)) = do
   rates <- liftIO . readTVarIO =<< asks envExchangeRates
-  let resp = MRatesResponse $ RatesResponse $ M.restrictKeys rates $ S.fromList rs
+  let boo fs m = let m' = M.restrictKeys m $ S.fromList fs
+        in if M.null m' then Nothing else Just m'
+  let foo m (c,fs) = M.update (boo fs) c m
+  let resp = MRatesResponse $ RatesResponse $ foldl' foo rates $ M.toList rs
   pure [resp]
-  
+
 handleMsg _ _ = pure []

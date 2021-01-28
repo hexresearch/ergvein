@@ -16,6 +16,7 @@ import qualified Data.Attoparsec.ByteString as Parse
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Short as BSS
+import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 
@@ -206,17 +207,32 @@ messageParser MIntroducePeerType = do
     }
 
 messageParser MRatesRequestType = do
-  amount <- anyWord32le
-  symbols <- replicateM (fromIntegral amount) parseCurrencyPair
-  pure $ MRatesRequest $ RatesRequest symbols
+  n <- fmap fromIntegral anyWord32le
+  cfs <- replicateM n cfParser
+  pure $ MRatesRequest $ RatesRequest $ M.fromList cfs
 
 messageParser MRatesResponseType = do
-  amount <- anyWord32le
-  vals <- replicateM (fromIntegral amount) $ do
-    (cc,f) <- parseCurrencyPair
-    v <- parseDouble
-    pure (cc,f,v)
-  pure $ MRatesResponse $ RatesResponse vals
+  n <- fmap fromIntegral anyWord32le
+  cfds <- replicateM n cfdParser
+  pure $ MRatesResponse $ RatesResponse $ M.fromList cfds
+
+enumParser :: Enum a => Parser a
+enumParser = fmap (toEnum . fromIntegral) anyWord32le
+
+cfParser :: Parser (CurrencyCode, [Fiat])
+cfParser = do
+  c <- enumParser
+  n <- fmap fromIntegral anyWord32le
+  fmap (c, ) $ replicateM n enumParser
+
+cfdParser :: Parser (CurrencyCode, M.Map Fiat Double)
+cfdParser = do
+  c <- enumParser
+  n <- fmap fromIntegral anyWord32le
+  fmap ((c,) . M.fromList) $ replicateM n fdParser
+
+fdParser :: Parser (Fiat, Double)
+fdParser = (,) <$> enumParser <*> parseDouble
 
 parseDouble :: Parser Double
 parseDouble = do

@@ -37,7 +37,6 @@ import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 import qualified Network.Ergo.Api.Client     as ErgoApi
 import qualified Network.Haskoin.Constants   as HK
 import qualified Network.HTTP.Client         as HC
-import qualified Binance.Client.Types        as Binance
 
 data ServerEnv = ServerEnv
     { envServerConfig             :: !Config
@@ -58,7 +57,7 @@ data ServerEnv = ServerEnv
     , envShutdownChannel          :: !(TChan Bool)
     , envOpenConnections          :: !(TVar (M.Map SockAddr (ThreadId, Socket)))
     , envBroadcastChannel         :: !(TChan Message)
-    , envExchangeRates            :: !(TVar (M.Map Binance.Symbol Double))
+    , envExchangeRates            :: !(TVar (M.Map CurrencyCode (M.Map Fiat Double)))
     }
 
 sockAddress :: CfgPeer -> IO SockAddr

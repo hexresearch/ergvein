@@ -25,7 +25,7 @@ module Ergvein.Wallet.Monad.Front(
   , publishStatusUpdate
   , updateActiveCurs
   , requestRandomIndexer
-  , getRateBySymbolD
+  , getRateByFiatD
   -- * Reexports
   , Text
   , MonadJSM
@@ -38,7 +38,6 @@ module Ergvein.Wallet.Monad.Front(
   , module Ergvein.Wallet.Monad.Client
   ) where
 
-import Binance.Client.Types (Symbol)
 import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
@@ -109,7 +108,7 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   -- | Get authed info
   getAuthInfoRef :: m (ExternalRef t AuthInfo)
   -- | Get rates (e.g. BTC/USDT) ref
-  getRatesRef :: m (ExternalRef t (Map Symbol Double))
+  getRatesRef :: m (ExternalRef t (Map Currency (Map Fiat Double)))
 
 -- | Get connections map
 getNodeConnectionsD :: MonadFrontAuth t m => m (Dynamic t (ConnMap t))
@@ -298,5 +297,7 @@ randomElem xs = case xs of
     i <- liftIO $ randomRIO (0, length xs - 1)
     pure $ Just $ xs!!i
 
-getRateBySymbolD :: MonadFront t m => Symbol -> m (Dynamic t (Maybe Double))
-getRateBySymbolD s = (fmap . fmap) (M.lookup s) $ externalRefDynamic =<< getRatesRef
+getRateByFiatD :: MonadFront t m => Currency -> Fiat -> m (Dynamic t (Maybe Double))
+getRateByFiatD c f = do
+  ratesD <- externalRefDynamic =<< getRatesRef
+  pure $ ffor ratesD $ join . fmap (M.lookup f ) . M.lookup c

@@ -10,6 +10,7 @@ import Binance.Client.Types
 import Control.Lens
 import Data.Maybe (fromMaybe)
 
+import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Types.Utxo.Status
@@ -49,14 +50,14 @@ balancesRatedWidget cur = do
   settings <- getSettings
   balD <- balancesWidget cur
   let setUs = getSettingsUnits settings
-  let mRateSymbol = settingsRateSymbol settings
-  case mRateSymbol of
+  let mFiat = settingsFiatCurr settings
+  case mFiat of
     Nothing -> pure $ splitDynPure $ ffor balD $ \bal ->
       let u = symbolUnit cur setUs
           b = showMoneyUnit bal setUs
       in (b, u)
-    Just rateSymbol -> do
-      rateD <- getRateBySymbolD rateSymbol
+    Just f -> do
+      rateD <- getRateByFiatD cur f
       pure $ splitDynPure $ do
         bal <- balD
         rate <- rateD
@@ -64,24 +65,24 @@ balancesRatedWidget cur = do
         pure $ case rate of
           Nothing -> unrated
           Just r -> if cur == BTC
-            then (showMoneyRated bal r, showRateSymbol rateSymbol)
+            then (showMoneyRated bal r, showt f)
             else unrated
   where getSettingsUnits = fromMaybe defUnits . settingsUnits
 
 balanceRatedOnlyWidget :: MonadFront t m => Currency -> m (Dynamic t (Maybe Text))
 balanceRatedOnlyWidget cur = if cur /= BTC then pure (pure Nothing) else do
-  mRateSymbolD <- (fmap . fmap) settingsRateSymbol getSettingsD
+  mRateSymbolD <- (fmap . fmap) settingsFiatCurr getSettingsD
   fmap join $ widgetHoldDyn $ ffor mRateSymbolD $ \case
     Nothing -> pure $ pure Nothing
     Just rs -> do
-      balD <- balancesWidget BTC
-      rateD <- getRateBySymbolD rs
+      balD <- balancesWidget cur
+      rateD <- getRateByFiatD cur rs
       pure $ do
         bal <- balD
         mRate <- rateD
         pure $ case mRate of
           Nothing -> Nothing
-          Just r -> Just $ showMoneyRated bal r <> " " <> showRateSymbol rs
+          Just r -> Just $ showMoneyRated bal r <> " " <> showt rs
 
 balanceTitleWidget :: MonadFront t m => Currency -> m (Dynamic t Text)
 balanceTitleWidget cur = do

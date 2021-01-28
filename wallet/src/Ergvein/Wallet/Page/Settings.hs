@@ -24,6 +24,7 @@ import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Elements.Toggle
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.AuthInfo
+import Ergvein.Wallet.Localization.Currency
 import Ergvein.Wallet.Localization.Network
 import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Localization.Util
@@ -227,8 +228,8 @@ unitsPage = do
 
         labelHorSep
 
-        let initSel = maybe NoFiat (const YesFiat) $ settingsRateSymbol settings
-            initSymb = fromMaybe defaultBTCSymbol $ settingsRateSymbol settings
+        let initSel = maybe NoFiat (const YesFiat) $ settingsFiatCurr settings
+            initFiat = fromMaybe USD $ settingsFiatCurr settings
         selE <- divClass "navbar-2-cols mb-2" $ do
           noFiatE <- navbarBtn NoFiat initSel
           fiatE <- navbarBtn YesFiat initSel
@@ -236,12 +237,12 @@ unitsPage = do
         selD <- holdDyn initSel selE
         symbE <- widgetHoldDynE $ ffor selD $ \case
           NoFiat -> pure never
-          YesFiat -> unitsDropdown initSymb symbolsBTC
+          YesFiat -> unitsDropdown initFiat allFiats
         let detSymbE = ffor selE $ \case
               NoFiat -> Nothing
-              YesFiat -> Just initSymb
+              YesFiat -> Just initFiat
         let setE = leftmost [Just <$> symbE, detSymbE]
-        setSymbE <- updateSettings $ ffor setE $ \ms -> settings {settingsRateSymbol = ms}
+        setSymbE <- updateSettings $ ffor setE $ \ms -> settings {settingsFiatCurr = ms}
         delay 0.1 $ leftmost [() <$ setUnitE, () <$ setSymbE]
       pure ((), content <$ nextE)
 
@@ -272,7 +273,7 @@ portfolioPage = do
     h3 $ localizedText STPSSetsPortfolio
     divClass "initial-options" $ mdo
       settings <- getSettings
-      let sFC = settingsFiatCurr settings
+      let sFC = fromMaybe USD $ settingsFiatCurr settings
       divClass "select-currencies-title" $ h4 $ localizedText STPSSetsPortfolioEnable
       portD <- holdDyn (settingsPortfolio settings) $ poke pbtnE $ \_ -> do
         portS <- sampleDyn portD
@@ -284,7 +285,7 @@ portfolioPage = do
       void $ updateSettings $ ffor (updated portD) (\portS -> settings {settingsPortfolio = portS})
       divClass "select-currencies-title" $ h4 $ localizedText STPSSetsFiatSelect
       fiatE <- fiatDropdown sFC allFiats
-      void $ updateSettings $ ffor fiatE (\fiat -> settings {settingsFiatCurr = fiat})
+      void $ updateSettings $ ffor fiatE (\fiat -> settings {settingsFiatCurr = Just $ fiat})
   where
     toggled b = if b
       then "button button-on button-currency"

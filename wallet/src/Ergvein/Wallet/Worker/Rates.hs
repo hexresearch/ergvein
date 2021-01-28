@@ -27,17 +27,18 @@ ratesWorker :: MonadFront t m => m ()
 ratesWorker = do
   ratesRef  <- getRatesRef
   settingsD <- getSettingsD
-  mrateD <- holdUniqDyn $ fmap settingsRateSymbol settingsD
+  mrateD <- holdUniqDyn $ fmap settingsFiatCurr settingsD
+  let btcCC = currencyToCurrencyCode BTC
   void $ widgetHoldDyn $ ffor mrateD $ \case
     Nothing -> pure ()
-    Just rs -> do
+    Just f -> do
       buildE  <- getPostBuild
       te      <- fmap void $ tickLossyFromPostBuildTime ratesTimeout
       tickE   <- delay 2 $ leftmost [te, buildE]
-      let reqE = (BTC, MRatesRequest $ RatesRequest [rs]) <$ tickE
+      let reqE = (BTC, MRatesRequest $ RatesRequest $ M.singleton btcCC [f]) <$ tickE
       respE <- requestRandomIndexer reqE
       let ratesE = fforMaybe respE $ \case
-            (_, MRatesResponse (RatesResponse rs)) -> Just rs
+            (_, MRatesResponse (RatesResponse rs)) -> Just $ M.mapKeys currencyCodeToCurrency rs
             _ -> Nothing
       performFork_ $ ffor ratesE $ \rs -> logWrite $ "Rates: " <> showt rs
       performFork_ $ ffor ratesE $ \rs -> modifyExternalRef_ ratesRef $ \rs' -> M.union rs rs'

@@ -116,6 +116,7 @@ library
       , warp                     >= 3.2     &&  < 3.3
       , yaml                     >= 0.11    &&  < 0.12
       , binance-client
+      , coinbase-client
       , ergo-api
       , ergvein-common
       , ergvein-crypto

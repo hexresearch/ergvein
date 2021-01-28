@@ -81,13 +81,25 @@ instance Arbitrary CurrencyCode where
 instance Arbitrary IPType where
   arbitrary = getRandBounded
 
+instance Arbitrary Fiat where
+  arbitrary = getRandBounded
+
+newtype Fiats = Fiats {unFiats :: [Fiat]}
+instance Arbitrary Fiats where
+  arbitrary = fmap Fiats $ sized $ flip replicateM arbitrary
+
+newtype FDS = FDS {unFDS :: M.Map Fiat Double}
+instance Arbitrary FDS where
+  arbitrary = fmap (FDS . M.fromList) $ sized $
+    flip replicateM $ (,) <$> getRandBounded <*> (fmap abs arbitrary)
+
 instance Arbitrary RatesRequest where
-  arbitrary = fmap RatesRequest $ sized $ \n -> replicateM n $
-    (,) <$> getRandBounded <*> getRandBounded
+  arbitrary = fmap (RatesRequest . M.fromList) $ sized $
+    flip replicateM $ (,) <$> getRandBounded <*> (fmap unFiats arbitrary)
 
 instance Arbitrary RatesResponse where
-  arbitrary = fmap RatesResponse $ sized $ \n -> replicateM n $ do
-    (,,) <$> getRandBounded <*> getRandBounded <*> (fmap abs arbitrary)
+  arbitrary = fmap (RatesResponse . M.fromList) $ sized $
+    flip replicateM $ (,) <$> getRandBounded <*> (fmap unFDS arbitrary)
 
 unimplementedMessageTypes :: [MessageType]
 unimplementedMessageTypes =

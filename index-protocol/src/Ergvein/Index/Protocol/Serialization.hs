@@ -14,6 +14,7 @@ import Ergvein.Types.Currency (Fiat)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Short as BSS
+import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 
@@ -215,21 +216,36 @@ messageBuilder (MPeerIntroduce PeerIntroduce{..}) = let
 
 messageBuilder (MRatesRequest (RatesRequest rs)) = let
   rsNum = fromIntegral $ length rs
-  body = mconcat $ (uncurry currencyPairBuilder) <$> rs
-  msgSize = (rsNum + 1) * genericSizeOf rsNum
+  (size, body) = mconcat $ fmap cfBuilder $ M.toList rs
+  msgSize = genericSizeOf rsNum + (getSum size)
   in messageBase MRatesRequestType msgSize $ word32LE rsNum <> body
-
+--
 messageBuilder (MRatesResponse (RatesResponse rs)) = let
   rsNum = fromIntegral $ length rs
-  elBuilder (cc,f,v) = currencyPairBuilder cc f <> doubleBuilder v
-  body = mconcat $ fmap elBuilder rs
-  msgSize = 4 + (4 + 16) * rsNum
+  (size, body) = mconcat $ fmap cfdBuilder $ M.toList rs
+  msgSize = genericSizeOf rsNum + (getSum size)
   in messageBase MRatesResponseType msgSize $ word32LE rsNum <> body
 
-currencyPairBuilder :: CurrencyCode -> Fiat -> Builder
-currencyPairBuilder cc f =
-     (word32LE . fromIntegral . fromEnum $ cc)
-  <> (word32LE . fromIntegral . fromEnum $ f)
+enumBuilder :: Enum a => a -> Builder
+enumBuilder = word32LE . fromIntegral . fromEnum
+
+cfBuilder :: (CurrencyCode, [Fiat]) -> (Sum Word32, Builder)
+cfBuilder (cc, fs) = let
+  fsNum = fromIntegral $ length fs
+  body = mconcat $ enumBuilder <$> fs
+  size = Sum $ (fsNum + 2) * (genericSizeOf fsNum)
+  in (size, ) $ enumBuilder cc <> word32LE fsNum <> body
+
+cfdBuilder :: (CurrencyCode, M.Map Fiat Double) -> (Sum Word32, Builder)
+cfdBuilder (cc, fds) = let
+  fdsNum = fromIntegral $ length fds
+  body = mconcat $ fmap fdBuilder $ M.toList fds
+  size = Sum $ 8 + fdsNum * 20
+  in (size, ) $ enumBuilder cc <> word32LE fdsNum <> body
+
+-- | size 20
+fdBuilder :: (Fiat, Double) -> Builder
+fdBuilder (f, d) = enumBuilder f <> doubleBuilder d
 
 -- | Build Double as two Word64. size = 16
 doubleBuilder :: Double -> Builder

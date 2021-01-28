@@ -4,7 +4,6 @@ module Ergvein.Wallet.Monad.Auth(
   , liftUnauthed
   ) where
 
-import Binance.Client.Types (Symbol)
 import Control.Concurrent
 import Control.Concurrent.Chan (Chan)
 import Control.Concurrent.STM.TChan
@@ -82,7 +81,7 @@ data Env t = Env {
 , env'feesStore       :: !(ExternalRef t (Map Currency FeeBundle))
 , env'storeMutex      :: !(MVar ())
 , env'storeChan       :: !(TChan (Text, AuthInfo))
-, env'ratesRef        :: !(ExternalRef t (Map Symbol Double))
+, env'ratesRef        :: !(ExternalRef t (Map Currency (Map Fiat Double)))
 -- Client context
 , env'addrsArchive    :: !(ExternalRef t (S.Set NamedSockAddr))
 , env'inactiveAddrs   :: !(ExternalRef t (S.Set NamedSockAddr))
