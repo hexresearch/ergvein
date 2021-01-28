@@ -23,15 +23,15 @@ import qualified Data.Text as T
 coinbaseAPIPath :: String
 coinbaseAPIPath = "https://api.coinbase.com/v2/"
 
--- Two endpoints are commented out for the sake of uniformity
+-- | Two endpoints are commented out for the sake of uniformity
 -- All other endpoints result in a Double value
 data CoinbasePublicAPIEndpoint =
     ExchangeRate
   | BuyPrice
   | SellPrice
   | SpotPrice
-  -- | GetCurrencies
-  -- | CurrentTime
+  -- GetCurrencies
+  -- CurrentTime
 
 endpointUrl :: CoinbasePublicAPIEndpoint -> Currency -> Fiat -> String
 endpointUrl endpoint c f = coinbaseAPIPath <> case endpoint of

@@ -20,7 +20,7 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 
 protocolVersion :: Word32
-protocolVersion = 1
+protocolVersion = 2
 
 data MessageType = MVersionType
                  | MVersionACKType
