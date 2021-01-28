@@ -5,6 +5,7 @@ module Ergvein.Wallet.Worker.Rates
 
 import Binance.Client.Types
 import Data.Maybe
+import Data.List (nub)
 import Data.Time
 import Reflex.ExternalRef
 
@@ -30,7 +31,7 @@ ratesWorker = do
   settingsD <- getSettingsD
   mFiatD <- holdUniqDyn $ fmap settingsFiatCurr settingsD
   mRateD <- holdUniqDyn $ fmap settingsRateFiat settingsD
-  let fiatsD = (\a b -> catMaybes [a,b]) <$> mFiatD <*> mRateD
+  let fiatsD = (\a b -> nub $ catMaybes [a,b]) <$> mFiatD <*> mRateD
   let btcCC = currencyToCurrencyCode BTC
   void $ widgetHoldDyn $ ffor fiatsD $ \case
     [] -> pure ()
