@@ -206,11 +206,23 @@ data FiatSelection = NoFiat | YesFiat
 instance LocalizedPrint FiatSelection where
   localizedShow l v = case l of
     English -> case v of
-      NoFiat -> "No fiat display"
-      YesFiat -> "Select fiat"
+      NoFiat -> "Hide fiat balance"
+      YesFiat -> "Show balance in fiat"
     Russian -> case v of
-      NoFiat -> "Не отображать фиат"
-      YesFiat -> "Выбрать фиат"
+      NoFiat -> "Не отображать фиатный баланс"
+      YesFiat -> "Фиатный баланс в"
+
+data RateSelection = NoRate | YesRate
+  deriving (Eq)
+
+instance LocalizedPrint RateSelection where
+  localizedShow l v = case l of
+    English -> case v of
+      NoRate -> "Hide fiat rate"
+      YesRate -> "Show rate for"
+    Russian -> case v of
+      NoRate -> "Не отображать курс"
+      YesRate -> "Показывать курс к"
 
 -- TODO: uncomment commented lines when ERGO is ready
 unitsPage :: MonadFront t m => m ()
@@ -220,31 +232,59 @@ unitsPage = do
   where
     content = Workflow $ do
       h4 $ localizedText $ STPSSelectUnitsFor BTC
-      settings <- getSettings
       nextE <- divClass "initial-options grid1" $ do
-        let setUs = getSettingsUnits settings
-        unitBtcE <- unitsDropdown (getUnitBTC setUs) allUnitsBTC
-        setUnitE <- updateSettings $ ffor unitBtcE (\ubtc -> settings {settingsUnits = Just $ setUs {unitBTC = Just ubtc}})
-
+        setUnitE <- unitsSelectionWidget
         labelHorSep
-
-        let initSel = maybe NoFiat (const YesFiat) $ settingsFiatCurr settings
-            initFiat = fromMaybe USD $ settingsFiatCurr settings
-        selE <- divClass "navbar-2-cols mb-2" $ do
-          noFiatE <- navbarBtn NoFiat initSel
-          fiatE <- navbarBtn YesFiat initSel
-          pure $ leftmost [noFiatE, fiatE]
-        selD <- holdDyn initSel selE
-        symbE <- widgetHoldDynE $ ffor selD $ \case
-          NoFiat -> pure never
-          YesFiat -> unitsDropdown initFiat allFiats
-        let detSymbE = ffor selE $ \case
-              NoFiat -> Nothing
-              YesFiat -> Just initFiat
-        let setE = leftmost [Just <$> symbE, detSymbE]
-        setSymbE <- updateSettings $ ffor setE $ \ms -> settings {settingsFiatCurr = ms}
-        delay 0.1 $ leftmost [() <$ setUnitE, () <$ setSymbE]
+        setFiatE <- fiatSelectionWidget
+        labelHorSep
+        setRateE <- rateSelectionWidget
+        delay 0.1 $ leftmost [setUnitE, setFiatE, setRateE]
       pure ((), content <$ nextE)
+
+    unitsSelectionWidget :: MonadFront t m => m (Event t ())
+    unitsSelectionWidget = do
+      settings <- getSettings
+      let setUs = fromMaybe defUnits . settingsUnits $ settings
+      unitBtcE <- unitsDropdown (getUnitBTC setUs) allUnitsBTC
+      updateSettings $ ffor unitBtcE (\ubtc -> settings {settingsUnits = Just $ setUs {unitBTC = Just ubtc}})
+
+    fiatSelectionWidget :: MonadFront t m => m (Event t ())
+    fiatSelectionWidget = do
+      settings <- getSettings
+      let initSel = maybe NoFiat (const YesFiat) $ settingsFiatCurr settings
+          initFiat = fromMaybe USD $ settingsFiatCurr settings
+      selE <- divClass "navbar-2-cols mb-2" $ do
+        noFiatE <- navbarBtn NoFiat initSel
+        fiatE <- navbarBtn YesFiat initSel
+        pure $ leftmost [noFiatE, fiatE]
+      selD <- holdDyn initSel selE
+      symbE <- widgetHoldDynE $ ffor selD $ \case
+        NoFiat -> pure never
+        YesFiat -> unitsDropdown initFiat allFiats
+      let detSymbE = ffor selE $ \case
+            NoFiat -> Nothing
+            YesFiat -> Just initFiat
+      let setE = leftmost [Just <$> symbE, detSymbE]
+      updateSettings $ ffor setE $ \ms -> settings {settingsFiatCurr = ms}
+
+    rateSelectionWidget :: MonadFront t m => m (Event t ())
+    rateSelectionWidget = do
+      settings <- getSettings
+      let initSel = maybe NoRate (const YesRate) $ settingsRateFiat settings
+          initFiat = fromMaybe USD $ settingsRateFiat settings
+      selE <- divClass "navbar-2-cols mb-2" $ do
+        noFiatE <- navbarBtn NoRate initSel
+        fiatE <- navbarBtn YesRate initSel
+        pure $ leftmost [noFiatE, fiatE]
+      selD <- holdDyn initSel selE
+      symbE <- widgetHoldDynE $ ffor selD $ \case
+        NoRate -> pure never
+        YesRate -> unitsDropdown initFiat allFiats
+      let detSymbE = ffor selE $ \case
+            NoRate -> Nothing
+            YesRate -> Just initFiat
+      let setE = leftmost [Just <$> symbE, detSymbE]
+      updateSettings $ ffor setE $ \ms -> settings {settingsRateFiat = ms}
 
     unitsDropdown val allUnits = do
       langD <- getLanguage
@@ -259,8 +299,8 @@ unitsPage = do
       let selD = _dropdown_value dp
       fmap updated $ holdUniqDyn selD
 
-    getSettingsUnits = fromMaybe defUnits . settingsUnits
-    navbarBtn :: (DomBuilder t m, PostBuild t m, MonadLocalized t m) => FiatSelection -> FiatSelection-> m (Event t FiatSelection)
+    navbarBtn :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint l, Eq l)
+      => l -> l -> m (Event t l)
     navbarBtn item activeItem
       | item == activeItem = spanButton "navbar-item active" item >> pure never
       | item /= activeItem = (item <$) <$> spanButton "navbar-item" item

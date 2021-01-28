@@ -181,6 +181,7 @@ data Settings = Settings {
 , settingsActUrlNum         :: Int
 , settingsPortfolio         :: Bool
 , settingsFiatCurr          :: Maybe Fiat
+, settingsRateFiat          :: Maybe Fiat
 , settingsDns               :: S.Set HostName
 , settingsSocksProxy        :: Maybe SocksConf
 , settingsCurrencySpecific  :: CurrencySpecificSettings
@@ -210,6 +211,7 @@ instance FromJSON Settings where
             _ -> (fromMaybe [] mActiveAddrs, fromMaybe [] mDeactivatedAddrs, fromMaybe [] mArchivedAddrs)
     settingsPortfolio         <- o .:? "portfolio" .!= False
     settingsFiatCurr          <- o .:? "fiatCurr"
+    settingsRateFiat          <- o .:? "rateFiat"
     mdns                      <- o .:? "dns"
     settingsSocksProxy        <- o .:? "socksProxy"
     let settingsDns = case fromMaybe [] mdns of
@@ -232,6 +234,7 @@ instance ToJSON Settings where
     , "actUrlNum"         .= toJSON settingsActUrlNum
     , "portfolio"         .= toJSON settingsPortfolio
     , "fiatCurr"          .= toJSON settingsFiatCurr
+    , "rateFiat"          .= toJSON settingsRateFiat
     , "dns"               .= toJSON settingsDns
     , "socksProxy"        .= toJSON settingsSocksProxy
     , "currencySpecific"  .= toJSON settingsCurrencySpecific
@@ -276,6 +279,7 @@ defaultSettings home =
       , settingsActUrlNum         = defaultActUrlNum
       , settingsPortfolio         = False
       , settingsFiatCurr          = Nothing
+      , settingsRateFiat          = Nothing
       , settingsActiveAddrs       = defaultIndexers
       , settingsDeactivatedAddrs  = []
       , settingsArchivedAddrs     = []

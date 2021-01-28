@@ -4,6 +4,7 @@ module Ergvein.Wallet.Worker.Rates
   ) where
 
 import Binance.Client.Types
+import Data.Maybe
 import Data.Time
 import Reflex.ExternalRef
 
@@ -27,15 +28,17 @@ ratesWorker :: MonadFront t m => m ()
 ratesWorker = do
   ratesRef  <- getRatesRef
   settingsD <- getSettingsD
-  mrateD <- holdUniqDyn $ fmap settingsFiatCurr settingsD
+  mFiatD <- holdUniqDyn $ fmap settingsFiatCurr settingsD
+  mRateD <- holdUniqDyn $ fmap settingsRateFiat settingsD
+  let fiatsD = (\a b -> catMaybes [a,b]) <$> mFiatD <*> mRateD
   let btcCC = currencyToCurrencyCode BTC
-  void $ widgetHoldDyn $ ffor mrateD $ \case
-    Nothing -> pure ()
-    Just f -> do
+  void $ widgetHoldDyn $ ffor fiatsD $ \case
+    [] -> pure ()
+    fs -> do
       buildE  <- getPostBuild
       te      <- fmap void $ tickLossyFromPostBuildTime ratesTimeout
       tickE   <- delay 2 $ leftmost [te, buildE]
-      let reqE = (BTC, MRatesRequest $ RatesRequest $ M.singleton btcCC [f]) <$ tickE
+      let reqE = (BTC, MRatesRequest $ RatesRequest $ M.singleton btcCC fs) <$ tickE
       respE <- requestRandomIndexer reqE
       let ratesE = fforMaybe respE $ \case
             (_, MRatesResponse (RatesResponse rs)) -> Just $ M.mapKeys currencyCodeToCurrency rs
