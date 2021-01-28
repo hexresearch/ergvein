@@ -45,8 +45,11 @@ module Data.Ergo.Protocol.Types(
   , ModifierType(..)
   , encodeModifierType
   , decodeModifierType
+  , Modifier(..)
   , RequestModifierMsg(..)
   , requestModifierId
+  , ModifierMsg(..)
+  , modifierMsgId
   ) where
 
 import Data.ByteString (ByteString)
@@ -83,6 +86,7 @@ data Message =
     MsgSyncInfo !SyncInfo
   | MsgInv !InvMsg
   | MsgRequestModifier !RequestModifierMsg
+  | MsgModifier !ModifierMsg
   deriving (Generic, Show, Read, Eq)
 
 -- | Protocol version
@@ -224,7 +228,7 @@ invMsgId = 55
 -- | Modifier type tag
 data ModifierType =
     ModifierTx
-  | ModifierBlockId -- ^ Header of block
+  | ModifierBlockHeader -- ^ Header of block
   | ModifierBlockTxs -- ^ Part of block with txs
   | ModifierBlockProof -- ^ Proof for valid state transformation
   | ModifierBlockExt -- ^ Block extension (including NiPoPow vector)
@@ -234,7 +238,7 @@ data ModifierType =
 encodeModifierType :: ModifierType -> Word8
 encodeModifierType v = case v of
   ModifierTx -> 2
-  ModifierBlockId -> 101
+  ModifierBlockHeader -> 101
   ModifierBlockTxs -> 102
   ModifierBlockProof -> 104
   ModifierBlockExt -> 108
@@ -243,11 +247,18 @@ encodeModifierType v = case v of
 decodeModifierType :: Word8 -> ModifierType
 decodeModifierType w = case w of
   2 -> ModifierTx
-  101 -> ModifierBlockId
+  101 -> ModifierBlockHeader
   102 -> ModifierBlockTxs
   104 -> ModifierBlockProof
   108 -> ModifierBlockExt
   _ -> UnknownModifier w
+
+-- | Modifier data like blocks headers, block bodies or transactions or proofs or block extensions
+-- TODO: parse content
+data Modifier = UnknownModifierBody {
+    modifierId   :: !ModifierId
+  , modifierBody :: !ByteString
+  } deriving (Generic, Show, Read, Eq)
 
 -- | The `RequestModifier` message requests one or more modifiers from another node.
 -- The objects are requested by an inventory, which the requesting node
@@ -266,3 +277,13 @@ data RequestModifierMsg = RequestModifierMsg {
 -- | ID of request modifier message
 requestModifierId :: Integral a => a
 requestModifierId = 22
+
+-- | The `Modifier` message is a reply to a `RequestModifier` message which requested these modifiers.
+data ModifierMsg = ModifierMsg {
+    typeId    :: !ModifierType
+  , modifiers :: !(Vector Modifier)
+  } deriving (Generic, Show, Read, Eq)
+
+-- | ID of modifier message
+modifierMsgId :: Integral a => a
+modifierMsgId = 33

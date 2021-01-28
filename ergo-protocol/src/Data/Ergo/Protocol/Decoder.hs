@@ -131,6 +131,7 @@ msgBodyParser i l = do
   if | i == syncInfoId -> MsgSyncInfo <$> embedParser "SyncInfo parsing error" syncInfoParser body
      | i == invMsgId -> MsgInv <$> embedParser "Inv parsing error" invMsgParser body
      | i == requestModifierId -> MsgRequestModifier <$> embedParser "RequestModifier parsing error" reqModMsgParser body
+     | i == modifierMsgId -> MsgModifier <$> embedParser "Modifier msg parsing error" modMsgParser body
      | otherwise -> fail $ "Unknown message type " <> show i
 
 parseText :: Get Text
@@ -180,6 +181,13 @@ parseStateType = do
 
 modifierIdParser :: Get ModifierId
 modifierIdParser = ModifierId <$> getBytes 32
+
+modifierParser :: Get Modifier
+modifierParser = do
+  mid <- modifierIdParser
+  l <- vlqWord32
+  bs <- getByteString (fromIntegral l)
+  pure $ UnknownModifierBody mid bs
 
 parseLocalAddrFeature :: Get LocalAddressFeature
 parseLocalAddrFeature = LocalAddressFeature
@@ -234,3 +242,8 @@ reqModMsgParser :: Get RequestModifierMsg
 reqModMsgParser = RequestModifierMsg
   <$> fmap decodeModifierType anyWord8
   <*> parseVector modifierIdParser
+
+modMsgParser :: Get ModifierMsg
+modMsgParser = ModifierMsg
+  <$> fmap decodeModifierType anyWord8
+  <*> parseVector modifierParser

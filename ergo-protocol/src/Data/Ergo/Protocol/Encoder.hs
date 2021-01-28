@@ -82,6 +82,7 @@ messageEncoder net msg = case msg of
   MsgSyncInfo smsg -> wrapBody syncInfoId $ syncInfoEncoder smsg
   MsgInv imsg -> wrapBody invMsgId $ invMsgEncoder imsg
   MsgRequestModifier rmsg -> wrapBody requestModifierId $ reqModMsgEncoder rmsg
+  MsgModifier mmsg -> wrapBody modifierMsgId $ modMsgEncoder mmsg
   where
     wrapBody i b = do
       word32BE (magicBytes net)
@@ -172,6 +173,12 @@ syncInfoEncoder SyncInfo{..} = encodeVector modifierIdEncoder syncHeaders
 modifierIdEncoder :: ModifierId -> Put ()
 modifierIdEncoder (ModifierId h) = putByteString h
 
+modifierEncoder :: Modifier -> Put ()
+modifierEncoder (UnknownModifierBody i bs) = do
+  modifierIdEncoder i
+  word32Vlq $ fromIntegral $ BS.length bs
+  putByteString bs
+
 invMsgEncoder :: InvMsg -> Put ()
 invMsgEncoder InvMsg{..} = do
   word8 $ encodeModifierType typeId
@@ -181,3 +188,8 @@ reqModMsgEncoder :: RequestModifierMsg -> Put ()
 reqModMsgEncoder RequestModifierMsg{..} = do
   word8 $ encodeModifierType typeId
   encodeVector modifierIdEncoder ids
+
+modMsgEncoder :: ModifierMsg -> Put ()
+modMsgEncoder ModifierMsg{..} = do
+  word8 $ encodeModifierType typeId
+  encodeVector modifierEncoder modifiers

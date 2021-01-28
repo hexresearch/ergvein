@@ -127,6 +127,10 @@ instance Arbitrary RequestModifierMsg where
   arbitrary = RequestModifierMsg <$> arbitrary <*> arbitrary
   shrink = genericShrink
 
+instance Arbitrary ModifierMsg where
+  arbitrary = ModifierMsg <$> arbitrary <*> arbitrary
+  shrink = genericShrink
+
 instance Arbitrary ModifierId where
   arbitrary = ModifierId . BS8.pack <$> replicateM 32 arbitrary
   shrink = shrinkNothing
@@ -134,12 +138,16 @@ instance Arbitrary ModifierId where
 instance Arbitrary ModifierType where
   arbitrary = oneof [
       pure ModifierTx
-    , pure ModifierBlockId
+    , pure ModifierBlockHeader
     , pure ModifierBlockTxs
     , pure ModifierBlockProof
     , pure ModifierBlockExt
     ]
   shrink = genericShrink
+
+instance Arbitrary Modifier where
+  arbitrary = UnknownModifierBody <$> arbitrary <*> (BS8.pack <$> replicateM 10 arbitrary)
+  shrink = shrinkNothing
 
 instance Arbitrary Handshake where
   arbitrary = Handshake
