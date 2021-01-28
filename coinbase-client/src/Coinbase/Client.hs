@@ -14,6 +14,7 @@ import Data.Maybe             (fromMaybe, catMaybes)
 import Text.Read              (readMaybe)
 import Network.Wreq
 
+import Ergvein.Text (showt)
 import Ergvein.Types.Currency
 
 import qualified Data.Map.Strict as M
@@ -69,6 +70,3 @@ coinbaseReqMultipleRates c fs = do
     l f = key "data" . key "rates" . key (showt f)
     extract r f = r ^? responseBody . l f . _String
       & join . fmap (fmap (f,) . readMaybe . T.unpack)
-
-showt :: Show a => a -> T.Text
-showt = T.pack . show

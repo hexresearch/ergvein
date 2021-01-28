@@ -1,5 +1,5 @@
 name:                ergvein-index-protocol
-version:             0.1.0.0
+version:             0.1.0.1
 synopsis:            Shared api contract for ergvein wallet cryptocurrencies index server
 description:         See README.md
 category:            Cryptocurrency
