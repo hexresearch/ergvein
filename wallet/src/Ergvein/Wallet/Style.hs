@@ -895,7 +895,7 @@ selectCss = do
   "select" ? do
     color textColor
     borderColor textColor
-    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 8' width='30'><path fill='%23000000' d='M0,0l6,8l6-8'/></svg>" 
+    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 8' width='30'><path fill='%23000000' d='M7,0l6,8l6-8'/></svg>"
     backgroundPosition $ placed sideCenter sideRight
     backgroundRepeat noRepeat
   "select:hover" ? do
@@ -903,7 +903,7 @@ selectCss = do
   "select:hover, select:focus" ? do
     color hoverColor
     borderColor hoverColor
-    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 8' width='30'><path fill='%23707070' d='M0,0l6,8l6-8'/></svg>" 
+    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 8' width='30'><path fill='%23707070' d='M7,0l6,8l6-8'/></svg>"
     backgroundPosition $ placed sideCenter sideRight
     backgroundRepeat noRepeat
 
