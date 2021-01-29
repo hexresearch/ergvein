@@ -153,20 +153,15 @@ bumpFeeWidget cur tr@TransactionView{..} = do
   let thisWidget = Just $ pure $ bumpFeeWidget cur tr
   wrapper False title thisWidget $ divClass "bump-fee-page" $ do
     moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
-    mkRow BumpFeeCurrentFee $ maybe "unknown" (\a -> (showMoneyUnit a moneyUnits) <> " " <> symbolUnit cur moneyUnits) $ txFee txInfoView
-    mkRow BumpFeeCurrentFeeRate $ maybe "unknown" (\a -> (T.pack $ printf "%.3f" $ (realToFrac a :: Double)) <> " " <> symbolUnit cur smallestUnits <> "/vbyte") $ calcFeeRate (txFee txInfoView) (txRaw txInfoView)
-    
-    mkRow BumpFeeNewFeeRate ""
-
-    feeD <- btcFeeSelectionWidget Nothing never
-
+    makeBlock BumpFeeCurrentFee $ maybe "unknown" (\a -> (showMoneyUnit a moneyUnits) <> " " <> symbolUnit cur moneyUnits) $ txFee txInfoView
+    makeBlock BumpFeeCurrentFeeRate $ maybe "unknown" (\a -> (T.pack $ printf "%.3f" $ (realToFrac a :: Double)) <> " " <> symbolUnit cur smallestUnits <> "/vbyte") $ calcFeeRate (txFee txInfoView) (txRaw txInfoView)
+    feeD <- btcFeeSelectionWidget BumpFeeNewFeeRate Nothing never
     pure ()
 
-mkRow :: (MonadFront t m, LocalizedPrint l) => l -> Text -> m ()
-mkRow a t = divClass "" $ do
-  elClass "span" "font-bold" $ do
-    localizedText a
-    text ": "
+makeBlock :: (MonadFront t m, LocalizedPrint l) => l -> Text -> m ()
+makeBlock a t = el "div" $ do
+  elClass "span" "font-bold" $ localizedText a
+  br
   text t
 
 smallestUnits :: Units

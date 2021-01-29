@@ -100,7 +100,7 @@ sendPage cur minit = mdo
               clipboardPaste =<< outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
             pure recipD
         amountD <- sendAmountWidget amountInit $ () <$ validationE
-        feeD <- btcFeeSelectionWidget feeInit submitE
+        feeD <- btcFeeSelectionWidget FSRate feeInit submitE
         rbfEnabledD <- divClass "mb-1" $ toggler SSRbf (constDyn rbfInit')
         submitE <- outlineSubmitTextIconButtonClass "w-100" SendBtnString "fas fa-paper-plane fa-lg"
         let validationE = poke submitE $ \_ -> do

@@ -101,7 +101,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButTor              -> "Tor и прокси"
       STPSButNodes            -> "Ноды BTC"
       STPSButSetPass          -> "Изменить пароль"
-      STPSButUnits            -> "Единицы отображения криптосистем"
+      STPSButUnits            -> "Единицы отображения криптовалют"
       STPSButPortfolio        -> "Портфель"
       STPSButMnemonicExport   -> "Экспортировать мнемоническую фразу"
       STPSButDeleteWallet     -> "Удалить кошелёк"

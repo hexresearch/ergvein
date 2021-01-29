@@ -103,13 +103,17 @@ textFieldNoLabel v0 = fmap _inputElement_value $ inputElement $ def
     %~ (\as -> "type" =: "text" <> as)
 
 textFieldAttrNoLabel :: (MonadFrontBase t m)
-  => M.Map AttributeName Text
+  => Event t (M.Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
+  -> Event t Text
   -> Text -- ^ Initial value
   -> m (Dynamic t Text)
-textFieldAttrNoLabel attrs v0 = fmap _inputElement_value $ inputElement $ def
+textFieldAttrNoLabel modifyAttrsE setValE v0 = fmap _inputElement_value $ inputElement $ def
   & inputElementConfig_initialValue .~ v0
   & inputElementConfig_elementConfig . elementConfig_initialAttributes
-    %~ (\as -> attrs <> "type" =: "text" <> as)
+    %~ (\as -> "type" =: "text" <> as)
+  & inputElementConfig_elementConfig . elementConfig_modifyAttributes
+    .~ modifyAttrsE
+  & inputElementConfig_setValue .~ setValE
 
 validatedTextField :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPrint l1)
   => l0 -- ^ Label

@@ -118,6 +118,9 @@ textColor = rgb 0 0 0
 hoverColor :: Color
 hoverColor = rgb 112 112 112
 
+disabledColor :: Color
+disabledColor = rgb 209 209 209
+
 textSuccess :: Color
 textSuccess = rgb 40 167 69
 
@@ -355,10 +358,12 @@ buttonCss = do
 inputCss :: Css
 inputCss = do
   let simpleBorder = border solid (rem 0.1) black
+      disabledBorder = border solid (rem 0.1) disabledColor
   let passInput = input # ("type" @= "password")
   (passInput # hover) <> (passInput # focus) ? simpleBorder
   let textInput = input # ("type" @= "text")
   (textInput # hover) <> (textInput # focus) ? simpleBorder
+  (textInput # disabled # hover) <> (textInput # disabled # focus) ? disabledBorder
 
 fontFamilies :: Resources -> Css
 fontFamilies Resources{..} = do

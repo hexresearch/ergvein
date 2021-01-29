@@ -129,9 +129,9 @@ instance LocalizedPrint BumpFeeWidgetStrings where
       BumpFeeTitle               -> "Fee bumping"
       BumpFeeCurrentFee          -> "Current fee"
       BumpFeeCurrentFeeRate      -> "Current fee rate"
-      BumpFeeNewFeeRate          -> "New fee rate"
+      BumpFeeNewFeeRate          -> "New fee rate, sat/vbyte"
     Russian -> case v of
       BumpFeeTitle               -> "Увеличение комиссии"
       BumpFeeCurrentFee          -> "Текущая комиссия"
       BumpFeeCurrentFeeRate      -> "Текущая комиссия за байт"
-      BumpFeeNewFeeRate          -> "Новая комиссия за байт"
+      BumpFeeNewFeeRate          -> "Новая комиссия за байт, sat/vbyte"
