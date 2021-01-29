@@ -55,11 +55,12 @@ mkProtocolVersion (mj,mn,p)
   | mj > 1023 = error $ "Major version out of bounds: " <> show mj <> " should be < 1023"
   | mn > 1023 = error $ "Minor version out of bounds: " <> show mn <> " should be < 1023"
   | p  > 1023 = error $ "Patch version out of bounds: " <> show p  <> " should be < 1023"
-  | S.length protocolReservedBits /= (2 :: Int) = error "There should be only two reserved bits"
-  | otherwise = S.toByteString $ protocolReservedBits <> w16to10 mj <> w16to10 mn <> w16to10 p
+  | otherwise = S.toByteString $ reservedBits <> w16to10 mj <> w16to10 mn <> w16to10 p
   where
     w16to10 :: Word16 -> S.Bitstream (S.Right)
     w16to10 = S.fromNBits (10 :: Int)
+    reservedBits :: S.Bitstream S.Right
+    reservedBits = S.pack [False, False]
 
 protocolVersionBS :: BS.ByteString
 protocolVersionBS = mkProtocolVersion protocolVersion
