@@ -11,6 +11,7 @@ import Ergvein.Index.Protocol.Types
 import Ergvein.Types.Fees
 import Ergvein.Types.Currency (Fiat)
 
+import qualified Data.Bitstream as S
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Short as BSS
@@ -48,6 +49,20 @@ feeLevelToWord8 fl = case fl of
   FeeFast     -> 0
   FeeModerate -> 1
   FeeCheap    -> 2
+
+mkProtocolVersion :: ProtocolVersion -> BS.ByteString
+mkProtocolVersion (mj,mn,p)
+  | mj > 1023 = error $ "Major version out of bounds: " <> show mj <> " should be < 1023"
+  | mn > 1023 = error $ "Minor version out of bounds: " <> show mn <> " should be < 1023"
+  | p  > 1023 = error $ "Patch version out of bounds: " <> show p  <> " should be < 1023"
+  | S.length protocolReservedBits /= (2 :: Int) = error "There should be only two reserved bits"
+  | otherwise = S.toByteString $ protocolReservedBits <> w16to10 mj <> w16to10 mn <> w16to10 p
+  where
+    w16to10 :: Word16 -> S.Bitstream (S.Right)
+    w16to10 = S.fromNBits (10 :: Int)
+
+protocolVersionBS :: BS.ByteString
+protocolVersionBS = mkProtocolVersion protocolVersion
 
 addressBuilder :: Address -> (Sum Word32, Builder)
 addressBuilder Address {..} = (addrSize, addrBuilder)
@@ -113,7 +128,7 @@ messageBuilder (MVersionACK VersionACK) = messageBase MVersionACKType msgSize $ 
 
 messageBuilder (MVersion Version {..}) =
   messageBase MVersionType msgSize
-  $  word32LE versionVersion
+  $  byteString (mkProtocolVersion versionVersion)
   <> word64LE (fromIntegral time)
   <> word64LE versionNonce
   <> word32LE scanBlocksCount
@@ -122,7 +137,7 @@ messageBuilder (MVersion Version {..}) =
     (scanBlocksSizeSum, scanBlocks) = mconcat $ scanBlockBuilder <$> UV.toList versionScanBlocks
     scanBlocksCount = fromIntegral $ UV.length versionScanBlocks
     scanBlocksSize = getSum scanBlocksSizeSum
-    msgSize = genericSizeOf versionVersion
+    msgSize = 4 -- Version is 4-byte long byteString
             + genericSizeOf versionTime
             + genericSizeOf versionNonce
             + genericSizeOf scanBlocksCount

@@ -1,6 +1,7 @@
 module ProtocolTest.Generators where
 
 import Control.Monad (replicateM)
+import Data.Bits
 import Test.QuickCheck
 import Test.QuickCheck.Instances
 
@@ -40,9 +41,19 @@ instance Arbitrary MessageHeader where
 instance Arbitrary ScanBlock where
   arbitrary = ScanBlock <$> getRandBounded <*> arbitrary <*> arbitrary <*> arbitrary
 
+-- | Bounded protocol version (<= 1023)
+newtype PVT = PVT {unPVT :: ProtocolVersion}
+  deriving (Show, Eq)
+instance Arbitrary PVT where
+  arbitrary = do
+    a <- fmap ((flip shiftR 6) . (flip shiftL 6)) $ arbitrary
+    b <- fmap ((flip shiftR 6) . (flip shiftL 6)) $ arbitrary
+    c <- fmap ((flip shiftR 6) . (flip shiftL 6)) $ arbitrary
+    pure $ PVT (a,b,c)
+
 instance Arbitrary Version where
   arbitrary = sized $ \n ->
-    Version <$> arbitrary <*> arbitrary <*> arbitrary <*> (UV.replicateM n arbitrary)
+    Version <$> (fmap unPVT arbitrary) <*> arbitrary <*> arbitrary <*> (UV.replicateM n arbitrary)
 
 instance Arbitrary FilterRequest where
   arbitrary = FilterRequest <$> getRandBounded <*> arbitrary <*> arbitrary

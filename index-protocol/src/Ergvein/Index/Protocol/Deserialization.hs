@@ -13,6 +13,7 @@ import Ergvein.Types.Fees
 import Ergvein.Types.Currency (Fiat)
 
 import qualified Data.Attoparsec.ByteString as Parse
+import qualified Data.Bitstream as S
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Short as BSS
@@ -60,6 +61,22 @@ word8toFeeLevel = \case
   1 -> Just FeeModerate
   2 -> Just FeeCheap
   _ -> Nothing
+
+versionParser :: Parser ProtocolVersion
+versionParser = do
+  bs :: S.Bitstream (S.Right) <- S.fromBits <$> anyWord32be
+  let pref = S.take i2 bs
+  let rst  = S.drop i2 bs
+  let mj   = S.toBits $ S.append pad $ S.take i10 rst
+  let mn   = S.toBits $ S.append pad $ S.take i10 $ S.drop i10 rst
+  let p    = S.toBits $ S.append pad $ S.take i10 $ S.drop i20 rst
+  if (pref == protocolReservedBits)
+    then pure (mj,mn,p)
+    else fail "Incorrect prefix"
+  where
+    i2,i6,i10,i20 :: Int
+    i2 = 2; i6 = 6 ; i10 = 10 ; i20 = 20
+    pad = S.replicate i6 False
 
 messageHeaderParser ::  Parser MessageHeader
 messageHeaderParser = do
@@ -123,7 +140,7 @@ messageParser MPongType = MPong <$> anyWord64le
 messageParser MRejectType = MReject . Reject <$> rejectCodeParser
 
 messageParser MVersionType = do
-  version       <- anyWord32le
+  version       <- versionParser
   time          <- fromIntegral <$> anyWord64le
   nonce         <- anyWord64le
   currencies    <- anyWord32le
