@@ -1,12 +1,12 @@
-module Data.Ergo.Protocol.Vlq(
+module Data.Ergo.Vlq(
     encodeVlq
   , decodeVlq
   , VarInt(..)
   ) where
 
 import Data.Bits
-import Data.Ergo.Protocol.Shift
-import Data.Ergo.Protocol.ZigZag
+import Data.Ergo.Shift
+import Data.Ergo.ZigZag
 import Data.Int
 import Data.Persist
 import Data.Word

@@ -4,17 +4,14 @@ module Data.Ergo.Protocol.Encoder(
   , encodeHandshake
   , messageEncoder
   , handshakeEncoder
-  , encodeZigZag
   ) where
 
 import Data.Bits
 import Control.Monad
 import Data.ByteString (ByteString)
 import Data.Ergo.Protocol.Check
-import Data.Ergo.Protocol.Shift
 import Data.Ergo.Protocol.Types
-import Data.Ergo.Protocol.Vlq
-import Data.Ergo.Protocol.ZigZag
+import Data.Ergo.Vlq
 import Data.Foldable (traverse_)
 import Data.Int
 import Data.Persist
@@ -168,28 +165,19 @@ encodeFeature v = do
       UnknownFeature _ bs -> bs
 
 syncInfoEncoder :: SyncInfo -> Put ()
-syncInfoEncoder SyncInfo{..} = encodeVector modifierIdEncoder syncHeaders
-
-modifierIdEncoder :: ModifierId -> Put ()
-modifierIdEncoder (ModifierId h) = putByteString h
-
-modifierEncoder :: Modifier -> Put ()
-modifierEncoder (UnknownModifierBody i bs) = do
-  modifierIdEncoder i
-  word32Vlq $ fromIntegral $ BS.length bs
-  putByteString bs
+syncInfoEncoder SyncInfo{..} = encodeVector put syncHeaders
 
 invMsgEncoder :: InvMsg -> Put ()
 invMsgEncoder InvMsg{..} = do
-  word8 $ encodeModifierType typeId
-  encodeVector modifierIdEncoder ids
+  put typeId
+  encodeVector put ids
 
 reqModMsgEncoder :: RequestModifierMsg -> Put ()
 reqModMsgEncoder RequestModifierMsg{..} = do
-  word8 $ encodeModifierType typeId
-  encodeVector modifierIdEncoder ids
+  put typeId
+  encodeVector put ids
 
 modMsgEncoder :: ModifierMsg -> Put ()
 modMsgEncoder ModifierMsg{..} = do
-  word8 $ encodeModifierType typeId
-  encodeVector modifierEncoder modifiers
+  put typeId
+  encodeVector put modifiers

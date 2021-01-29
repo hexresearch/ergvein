@@ -1,4 +1,4 @@
-module Data.Ergo.Protocol.Shift(
+module Data.Ergo.Shift(
     ShiftRS(..)
   ) where
 

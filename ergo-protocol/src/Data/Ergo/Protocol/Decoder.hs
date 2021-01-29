@@ -7,7 +7,6 @@ module Data.Ergo.Protocol.Decoder(
   , parseMsgLength
   , parseMsgBody
   , anyWord32be
-  , decodeZigZag
   , runGet
   ) where
 
@@ -17,10 +16,8 @@ import Control.Monad.Fail
 import Data.Bits
 import Data.ByteString (ByteString)
 import Data.Ergo.Protocol.Check
-import Data.Ergo.Protocol.Shift
 import Data.Ergo.Protocol.Types
-import Data.Ergo.Protocol.Vlq
-import Data.Ergo.Protocol.ZigZag
+import Data.Ergo.Vlq
 import Data.Int
 import Data.IORef
 import Data.Persist
@@ -179,16 +176,6 @@ parseStateType = do
      | i == 1 -> pure StateDigest
      | otherwise -> fail $ "Unknown StateType enum value " <> show i
 
-modifierIdParser :: Get ModifierId
-modifierIdParser = ModifierId <$> getBytes 32
-
-modifierParser :: Get Modifier
-modifierParser = do
-  mid <- modifierIdParser
-  l <- vlqWord32
-  bs <- getByteString (fromIntegral l)
-  pure $ UnknownModifierBody mid bs
-
 parseLocalAddrFeature :: Get LocalAddressFeature
 parseLocalAddrFeature = LocalAddressFeature
   <$> vlqWord32
@@ -231,19 +218,19 @@ handshakeParser = Handshake
 
 syncInfoParser :: Get SyncInfo
 syncInfoParser = SyncInfo
-  <$> parseVector modifierIdParser
+  <$> parseVector get
 
 invMsgParser :: Get InvMsg
 invMsgParser = InvMsg
-  <$> fmap decodeModifierType anyWord8
-  <*> parseVector modifierIdParser
+  <$> get
+  <*> parseVector get
 
 reqModMsgParser :: Get RequestModifierMsg
 reqModMsgParser = RequestModifierMsg
-  <$> fmap decodeModifierType anyWord8
-  <*> parseVector modifierIdParser
+  <$> get
+  <*> parseVector get
 
 modMsgParser :: Get ModifierMsg
 modMsgParser = ModifierMsg
-  <$> fmap decodeModifierType anyWord8
-  <*> parseVector modifierParser
+  <$> get
+  <*> parseVector get

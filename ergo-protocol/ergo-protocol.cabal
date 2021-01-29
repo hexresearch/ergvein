@@ -15,14 +15,16 @@ extra-source-files:  CHANGELOG.md
 library
   hs-source-dirs:      src
   exposed-modules:
+    Data.Ergo.Block
+    Data.Ergo.Modifier
     Data.Ergo.Protocol
     Data.Ergo.Protocol.Check
     Data.Ergo.Protocol.Decoder
     Data.Ergo.Protocol.Encoder
-    Data.Ergo.Protocol.Shift
     Data.Ergo.Protocol.Types
-    Data.Ergo.Protocol.Vlq
-    Data.Ergo.Protocol.ZigZag
+    Data.Ergo.Shift
+    Data.Ergo.Vlq
+    Data.Ergo.ZigZag
   default-language:    Haskell2010
   build-depends:
       base              >= 4.7 && < 4.13

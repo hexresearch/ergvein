@@ -1,4 +1,4 @@
-module Data.Ergo.Protocol.ZigZag(
+module Data.Ergo.ZigZag(
     ZigZag(..)
   ) where
 

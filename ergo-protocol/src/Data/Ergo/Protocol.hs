@@ -37,17 +37,8 @@ module Data.Ergo.Protocol(
   , SyncInfo(..)
   , InvMsg(..)
   , invMsgId
-  , ModifierId(..)
-  , BlockId
-  , encodeModifierId
-  , decodeModifierId
-  , nullModifierId
-  , ModifierType(..)
-  , encodeModifierType
-  , decodeModifierType
   , RequestModifierMsg(..)
   , requestModifierId
-  , Modifier(..)
   , ModifierMsg(..)
   , modifierMsgId
   , decodeMessage

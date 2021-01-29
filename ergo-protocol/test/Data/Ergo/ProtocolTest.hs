@@ -5,8 +5,10 @@ import Data.ByteString.Builder
 import Data.Ergo.Protocol
 import Data.Ergo.Protocol.Decoder
 import Data.Ergo.Protocol.Encoder
-import Data.Ergo.Protocol.Vlq
-import Data.Ergo.Protocol.ZigZag
+import Data.Ergo.Vlq
+import Data.Ergo.ZigZag
+import Data.Ergo.Block
+import Data.Ergo.Modifier
 import Data.Int
 import Data.Word
 import Data.Maybe
