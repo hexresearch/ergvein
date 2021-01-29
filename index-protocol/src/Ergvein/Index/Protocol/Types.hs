@@ -19,8 +19,10 @@ import Ergvein.Types.Currency (Fiat)
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 
-protocolVersion :: Word32
-protocolVersion = 2
+type ProtocolVersion = (Word16, Word16, Word16)
+
+protocolVersion :: ProtocolVersion
+protocolVersion = (1,0,0)
 
 data MessageType = MVersionType
                  | MVersionACKType
@@ -117,7 +119,7 @@ derivingUnbox "ScanBlock"
   [| \(c, v, s, h) -> ScanBlock c v s h |]
 
 data Version = Version
-  { versionVersion    :: !Word32
+  { versionVersion    :: !ProtocolVersion
   , versionTime       :: !CTime
   , versionNonce      :: !Word64
  -- versionCurrencies :: uint32 Amount of currencies blocks following the field. For clients it is 0.
