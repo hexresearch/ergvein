@@ -46,6 +46,7 @@ import Ergvein.Wallet.Worker.Fees
 import Ergvein.Wallet.Worker.Height
 import Ergvein.Wallet.Worker.Node
 import Ergvein.Wallet.Worker.PubKeysGenerator
+import Ergvein.Wallet.Worker.Rates
 
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
@@ -80,6 +81,7 @@ data Env t = Env {
 , env'feesStore       :: !(ExternalRef t (Map Currency FeeBundle))
 , env'storeMutex      :: !(MVar ())
 , env'storeChan       :: !(TChan (Text, AuthInfo))
+, env'ratesRef        :: !(ExternalRef t (Map Currency (Map Fiat Double)))
 -- Client context
 , env'addrsArchive    :: !(ExternalRef t (S.Set NamedSockAddr))
 , env'inactiveAddrs   :: !(ExternalRef t (S.Set NamedSockAddr))
@@ -169,6 +171,8 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getNodeNodeReqSelector #-}
   getFeesRef = asks env'feesStore
   {-# INLINE getFeesRef #-}
+  getRatesRef = asks env'ratesRef
+  {-# INLINE getRatesRef #-}
   getNodeReqFire = asks env'nodeReqFire
   {-# INLINE getNodeReqFire #-}
 
@@ -345,6 +349,7 @@ liftAuth ma0 ma = mdo
         fsyncRef        <- newExternalRef mempty
         consRef         <- newExternalRef mempty
         feesRef         <- newExternalRef mempty
+        ratesRef        <- newExternalRef mempty
         storeMutex      <- liftIO $ newMVar ()
         storeChan       <- liftIO newTChanIO
         let env = Env {
@@ -373,6 +378,7 @@ liftAuth ma0 ma = mdo
               , env'feesStore = feesRef
               , env'storeMutex = storeMutex
               , env'storeChan = storeChan
+              , env'ratesRef  = ratesRef
 
               , env'addrsArchive = urlsArchive
               , env'inactiveAddrs = inactiveUrls
@@ -392,6 +398,7 @@ liftAuth ma0 ma = mdo
           -- initFiltersHeights filtersHeights
           scanner
           btcNodeController
+          ratesWorker
           heightAsking
           feesWorker
           pubKeysGenerator
