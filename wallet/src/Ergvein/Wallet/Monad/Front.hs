@@ -28,6 +28,7 @@ module Ergvein.Wallet.Monad.Front(
   , publishStatusUpdate
   , updateActiveCurs
   , requestRandomIndexer
+  , getRateByFiatD
   -- * Reexports
   , Text
   , MonadJSM
@@ -111,6 +112,8 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   getNodeReqFire :: m (Map Currency (Map SockAddr NodeMessage) -> IO ())
   -- | Get authed info
   getAuthInfoRef :: m (ExternalRef t AuthInfo)
+  -- | Get rates (e.g. BTC/USDT) ref
+  getRatesRef :: m (ExternalRef t (Map Currency (Map Fiat Double)))
 
 -- | Get connections map
 getNodeConnectionsD :: MonadFrontAuth t m => m (Dynamic t (ConnMap t))
@@ -322,3 +325,8 @@ randomElem xs = case xs of
   _ -> do
     i <- liftIO $ randomRIO (0, length xs - 1)
     pure $ Just $ xs!!i
+
+getRateByFiatD :: MonadFront t m => Currency -> Fiat -> m (Dynamic t (Maybe Double))
+getRateByFiatD c f = do
+  ratesD <- externalRefDynamic =<< getRatesRef
+  pure $ ffor ratesD $ join . fmap (M.lookup f ) . M.lookup c

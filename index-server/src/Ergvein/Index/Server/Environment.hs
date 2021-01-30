@@ -54,8 +54,10 @@ data ServerEnv = ServerEnv
     , envPeerDiscoveryRequisites  :: !PeerDiscoveryRequisites
     , envFeeEstimates             :: !(TVar (M.Map CurrencyCode FeeBundle))
     , envShutdownFlag             :: !(TVar Bool)
+    , envShutdownChannel          :: !(TChan Bool)
     , envOpenConnections          :: !(TVar (M.Map SockAddr (ThreadId, Socket)))
     , envBroadcastChannel         :: !(TChan Message)
+    , envExchangeRates            :: !(TVar (M.Map CurrencyCode (M.Map Fiat Double)))
     }
 
 sockAddress :: CfgPeer -> IO SockAddr
@@ -104,6 +106,7 @@ newServerEnv useTcp overrideFilters overridesIndexers btcClient cfg@Config{..} =
     shutdownVar    <- liftIO $ newTVarIO False
     openConns      <- liftIO $ newTVarIO M.empty
     broadChan      <- liftIO newBroadcastTChanIO
+    shutdownChan   <- liftIO newTChanIO
     btcRestartChan <- liftIO newTChanIO
     btcConnVar     <- liftIO $ newTVarIO $ if useTcp then BtcConTCP else BtcConRPC
     let bitcoinNodeNetwork = if cfgBTCNodeIsTestnet then HK.btcTest else HK.btc
@@ -125,6 +128,7 @@ newServerEnv useTcp overrideFilters overridesIndexers btcClient cfg@Config{..} =
       else dummyBtcSock bitcoinNodeNetwork
     btcSeq <- liftIO $ runStdoutLoggingT $ runReaderT (loadRollbackSequence BTC) indexerDBVar
     btcSeqVar <- liftIO $ newTVarIO $ unRollbackSequence btcSeq
+    exchangeRates <- liftIO $ newTVarIO mempty
     pure ServerEnv
       { envServerConfig            = cfg
       , envLogger                  = logger
@@ -141,8 +145,10 @@ newServerEnv useTcp overrideFilters overridesIndexers btcClient cfg@Config{..} =
       , envPeerDiscoveryRequisites = descDiscoveryRequisites
       , envFeeEstimates            = feeEstimates
       , envShutdownFlag            = shutdownVar
+      , envShutdownChannel         = shutdownChan
       , envOpenConnections         = openConns
       , envBroadcastChannel        = broadChan
+      , envExchangeRates           = exchangeRates
       }
 
 -- | Log exceptions at Error severity

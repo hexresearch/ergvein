@@ -10,6 +10,7 @@ let
    project = reflex-platform.project ({ pkgs, ... }: {
     packages = {
       cbitstream = ./cbitstream;
+      coinbase-client = ./coinbase-client;
       data-merkle-tree = ./data-merkle-tree;
       ergo-api = ./ergo-api;
       ergvein-checkpoint-generator = ./checkpoint-generator;
@@ -41,6 +42,7 @@ let
     shells = {
       ghc = [
         "cbitstream"
+        "coinbase-client"
         "data-merkle-tree"
         "ergo-api"
         "ergvein-checkpoint-generator"

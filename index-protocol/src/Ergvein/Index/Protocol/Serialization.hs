@@ -4,14 +4,18 @@ import Codec.Compression.GZip
 import Data.ByteString.Builder
 import Data.Monoid
 import Data.Word
+import Data.Scientific
 import Foreign.C.Types
 
 import Ergvein.Index.Protocol.Types
 import Ergvein.Types.Fees
+import Ergvein.Types.Currency (Fiat)
 
+import qualified Data.Bitstream as S
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Short as BSS
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString.Short as BSS
+import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 
@@ -30,6 +34,8 @@ messageTypeToWord32 = \case
   MRejectType          -> 10
   MPingType            -> 11
   MPongType            -> 12
+  MRatesRequestType    -> 13
+  MRatesResponseType   -> 14
 
 rejectTypeToWord32 :: RejectCode -> Word32
 rejectTypeToWord32 = \case
@@ -43,6 +49,21 @@ feeLevelToWord8 fl = case fl of
   FeeFast     -> 0
   FeeModerate -> 1
   FeeCheap    -> 2
+
+mkProtocolVersion :: ProtocolVersion -> BS.ByteString
+mkProtocolVersion (mj,mn,p)
+  | mj > 1023 = error $ "Major version out of bounds: " <> show mj <> " should be < 1023"
+  | mn > 1023 = error $ "Minor version out of bounds: " <> show mn <> " should be < 1023"
+  | p  > 1023 = error $ "Patch version out of bounds: " <> show p  <> " should be < 1023"
+  | otherwise = S.toByteString $ reservedBits <> w16to10 mj <> w16to10 mn <> w16to10 p
+  where
+    w16to10 :: Word16 -> S.Bitstream (S.Right)
+    w16to10 = S.fromNBits (10 :: Int)
+    reservedBits :: S.Bitstream S.Right
+    reservedBits = S.pack [False, False]
+
+protocolVersionBS :: BS.ByteString
+protocolVersionBS = mkProtocolVersion protocolVersion
 
 addressBuilder :: Address -> (Sum Word32, Builder)
 addressBuilder Address {..} = (addrSize, addrBuilder)
@@ -108,7 +129,7 @@ messageBuilder (MVersionACK VersionACK) = messageBase MVersionACKType msgSize $ 
 
 messageBuilder (MVersion Version {..}) =
   messageBase MVersionType msgSize
-  $  word32LE versionVersion
+  $  byteString (mkProtocolVersion versionVersion)
   <> word64LE (fromIntegral time)
   <> word64LE versionNonce
   <> word32LE scanBlocksCount
@@ -117,7 +138,7 @@ messageBuilder (MVersion Version {..}) =
     (scanBlocksSizeSum, scanBlocks) = mconcat $ scanBlockBuilder <$> UV.toList versionScanBlocks
     scanBlocksCount = fromIntegral $ UV.length versionScanBlocks
     scanBlocksSize = getSum scanBlocksSizeSum
-    msgSize = genericSizeOf versionVersion
+    msgSize = 4 -- Version is 4-byte long byteString
             + genericSizeOf versionTime
             + genericSizeOf versionNonce
             + genericSizeOf scanBlocksCount
@@ -208,6 +229,47 @@ messageBuilder (MPeerIntroduce PeerIntroduce{..}) = let
   in messageBase MIntroducePeerType msgSize
   $  word32LE addrAmount
   <> addresses
+
+messageBuilder (MRatesRequest (RatesRequest rs)) = let
+  rsNum = fromIntegral $ length rs
+  (size, body) = mconcat $ fmap cfBuilder $ M.toList rs
+  msgSize = genericSizeOf rsNum + (getSum size)
+  in messageBase MRatesRequestType msgSize $ word32LE rsNum <> body
+--
+messageBuilder (MRatesResponse (RatesResponse rs)) = let
+  rsNum = fromIntegral $ length rs
+  (size, body) = mconcat $ fmap cfdBuilder $ M.toList rs
+  msgSize = genericSizeOf rsNum + (getSum size)
+  in messageBase MRatesResponseType msgSize $ word32LE rsNum <> body
+
+enumBuilder :: Enum a => a -> Builder
+enumBuilder = word32LE . fromIntegral . fromEnum
+
+cfBuilder :: (CurrencyCode, [Fiat]) -> (Sum Word32, Builder)
+cfBuilder (cc, fs) = let
+  fsNum = fromIntegral $ length fs
+  body = mconcat $ enumBuilder <$> fs
+  size = Sum $ (fsNum + 2) * (genericSizeOf fsNum)
+  in (size, ) $ enumBuilder cc <> word32LE fsNum <> body
+
+cfdBuilder :: (CurrencyCode, M.Map Fiat Double) -> (Sum Word32, Builder)
+cfdBuilder (cc, fds) = let
+  fdsNum = fromIntegral $ length fds
+  body = mconcat $ fmap fdBuilder $ M.toList fds
+  size = Sum $ 8 + fdsNum * 20
+  in (size, ) $ enumBuilder cc <> word32LE fdsNum <> body
+
+-- | size 20
+fdBuilder :: (Fiat, Double) -> Builder
+fdBuilder (f, d) = enumBuilder f <> doubleBuilder d
+
+-- | Build Double as two Word64. size = 16
+doubleBuilder :: Double -> Builder
+doubleBuilder v = let
+  sci = normalize $ fromFloatDigits v
+  c = fromIntegral $ coefficient sci
+  e = fromIntegral $ base10Exponent sci
+  in word64LE c <> word64LE e
 
 feeRespBuilder :: FeeResp -> (Sum Word32, Builder)
 feeRespBuilder (FeeRespBTC isTest (FeeBundle (a,b) (c,d) (e,f))) = let

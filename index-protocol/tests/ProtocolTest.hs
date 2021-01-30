@@ -79,6 +79,11 @@ prop_encdec_ScanBlock_Eq sb = either (const False) (sb ==) decMsg
   where
     encMsg = serializeScanBlock sb
     decMsg = deserializeScanBlock $ BL.toStrict encMsg
+
+prop_encdec_version v = either (const False) (v == ) decVer
+  where
+    encVer = mkProtocolVersion $ unPVT v
+    decVer = fmap PVT $ AP.parseOnly versionParser encVer
 --------------------------------------------------------------------------
 -- main
 

@@ -1,10 +1,12 @@
 module ProtocolTest.Generators where
 
 import Control.Monad (replicateM)
+import Data.Bits
 import Test.QuickCheck
 import Test.QuickCheck.Instances
 
 import Ergvein.Types.Fees
+import Ergvein.Types.Currency (Fiat)
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Protocol.Serialization
 import Ergvein.Index.Protocol.Deserialization
@@ -15,6 +17,7 @@ import qualified Data.ByteString.Lazy       as BL
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Builder    as BB
 import qualified Data.Attoparsec.ByteString as AP
+import qualified Data.Map.Strict            as M
 
 --------------------------------------------------------------------------
 -- generators
@@ -38,9 +41,19 @@ instance Arbitrary MessageHeader where
 instance Arbitrary ScanBlock where
   arbitrary = ScanBlock <$> getRandBounded <*> arbitrary <*> arbitrary <*> arbitrary
 
+-- | Bounded protocol version (<= 1023)
+newtype PVT = PVT {unPVT :: ProtocolVersion}
+  deriving (Show, Eq)
+instance Arbitrary PVT where
+  arbitrary = do
+    a <- fmap ((flip shiftR 6) . (flip shiftL 6)) $ arbitrary
+    b <- fmap ((flip shiftR 6) . (flip shiftL 6)) $ arbitrary
+    c <- fmap ((flip shiftR 6) . (flip shiftL 6)) $ arbitrary
+    pure $ PVT (a,b,c)
+
 instance Arbitrary Version where
   arbitrary = sized $ \n ->
-    Version <$> arbitrary <*> arbitrary <*> arbitrary <*> (UV.replicateM n arbitrary)
+    Version <$> (fmap unPVT arbitrary) <*> arbitrary <*> arbitrary <*> (UV.replicateM n arbitrary)
 
 instance Arbitrary FilterRequest where
   arbitrary = FilterRequest <$> getRandBounded <*> arbitrary <*> arbitrary
@@ -79,6 +92,26 @@ instance Arbitrary CurrencyCode where
 instance Arbitrary IPType where
   arbitrary = getRandBounded
 
+instance Arbitrary Fiat where
+  arbitrary = getRandBounded
+
+newtype Fiats = Fiats {unFiats :: [Fiat]}
+instance Arbitrary Fiats where
+  arbitrary = fmap Fiats $ sized $ flip replicateM arbitrary
+
+newtype FDS = FDS {unFDS :: M.Map Fiat Double}
+instance Arbitrary FDS where
+  arbitrary = fmap (FDS . M.fromList) $ sized $
+    flip replicateM $ (,) <$> getRandBounded <*> (fmap abs arbitrary)
+
+instance Arbitrary RatesRequest where
+  arbitrary = fmap (RatesRequest . M.fromList) $ sized $
+    flip replicateM $ (,) <$> getRandBounded <*> (fmap unFiats arbitrary)
+
+instance Arbitrary RatesResponse where
+  arbitrary = fmap (RatesResponse . M.fromList) $ sized $
+    flip replicateM $ (,) <$> getRandBounded <*> (fmap unFDS arbitrary)
+
 unimplementedMessageTypes :: [MessageType]
 unimplementedMessageTypes =
   []
@@ -98,6 +131,8 @@ fullyImplementedMessageTypes =
   , MFiltersRequestType
   , MFiltersResponseType
   , MFilterEventType
+  , MRatesRequestType
+  , MRatesResponseType
   ]
 
 instance Arbitrary Message where
@@ -117,7 +152,8 @@ instance Arbitrary Message where
       MIntroducePeerType    -> MPeerIntroduce <$> arbitrary
       MFeeRequestType       -> MFeeRequest <$> arbitrary
       MFeeResponseType      -> MFeeResponse <$> arbitrary
-
+      MRatesRequestType     -> MRatesRequest <$> arbitrary
+      MRatesResponseType    -> MRatesResponse <$> arbitrary
 
 --------------------------------------------------------------------------
 -- newtype wrappers

@@ -127,13 +127,13 @@ library
         Ergvein.Wallet.Scan
         Ergvein.Wallet.Settings
         Ergvein.Wallet.Share
+        Ergvein.Wallet.Status.Types
+        Ergvein.Wallet.Status.Widget
         Ergvein.Wallet.Storage
         Ergvein.Wallet.Storage.AuthInfo
         Ergvein.Wallet.Storage.Constants
         Ergvein.Wallet.Storage.Util
         Ergvein.Wallet.Style
-        Ergvein.Wallet.Status.Types
-        Ergvein.Wallet.Status.Widget
         Ergvein.Wallet.TimeZone
         Ergvein.Wallet.Transaction
         Ergvein.Wallet.Transaction.Get
@@ -148,6 +148,7 @@ library
         Ergvein.Wallet.Worker.Indexer
         Ergvein.Wallet.Worker.Node
         Ergvein.Wallet.Worker.PubKeysGenerator
+        Ergvein.Wallet.Worker.Rates
         Ergvein.Wallet.Wrapper
         Ergvein.Wallet.Yaml
     hs-source-dirs: src
