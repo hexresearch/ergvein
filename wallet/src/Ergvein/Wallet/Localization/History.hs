@@ -45,7 +45,6 @@ data HistoryPageStrings =
   | HistoryTIOutputsOurAddress
   | HistoryTIOutputsValue
   | HistoryTIOutputsStatus
-
   deriving (Eq)
 
 instance LocalizedPrint HistoryPageStrings where
@@ -62,7 +61,7 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTIFeeUndefined        -> "Unknown"
       HistoryTITitle               -> "Transaction info"
       HistoryTIAmount              -> "Amount"
-      HistoryTIWalletChanges       -> "Wallet changes"
+      HistoryTIWalletChanges       -> "Balance change"
       HistoryTIHash                -> "Hash"
       HistoryTITransactionId       -> "Transaction id"
       HistoryTILabel               -> "Label"
@@ -93,7 +92,7 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTIFeeUndefined        -> "Неизвестно"
       HistoryTITitle               -> "Информация о транзакции"
       HistoryTIAmount              -> "Объем"
-      HistoryTIWalletChanges       -> "Изменения в кошельке"
+      HistoryTIWalletChanges       -> "Изменение баланса"
       HistoryTIHash                -> "Хэш"
       HistoryTITransactionId       -> "Id транзакции"
       HistoryTILabel               -> "Описание"
