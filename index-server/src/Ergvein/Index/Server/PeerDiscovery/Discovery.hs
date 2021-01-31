@@ -15,13 +15,9 @@ import Data.Time.Clock
 import Data.Time.Clock.POSIX
 import Data.Word
 import Data.Maybe
-import Data.Text (Text)
 import Network.DNS.Resolver
-import Network.DNS
 import Network.Socket (SockAddr)
 import Foreign.C.Types (CTime(..))
-import Data.Either
-import Ergvein.Text
 
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Server.BlockchainScanning.Common
@@ -36,16 +32,13 @@ import Ergvein.Index.Server.TCPService.Conversions
 import Ergvein.Index.Server.Utils
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Text.Read (readMaybe)
-import Data.IP
 import Network.Socket
 import Ergvein.DNS.Crawling
+import Ergvein.DNS.Constants
 
-import qualified Data.Map.Strict      as Map
-import qualified Data.Set             as Set
-import qualified Data.Vector.Unboxed  as UV
-import qualified Data.Text as T
-import qualified Data.ByteString.Char8 as B8
+import qualified Data.Map.Strict       as Map
+import qualified Data.Set              as Set
+import qualified Data.Vector.Unboxed   as UV
 
 considerPeer :: Version -> PeerCandidate -> ServerM ()
 considerPeer ownVer PeerCandidate {..} = do
@@ -80,6 +73,9 @@ knownPeersActualization  = do
         liftIO $ forM_ peersToConnect newConnection
         broadcastSocketMessage $ MPeerRequest PeerRequest
       else do
+        seed <- liftIO $ resolveSeed $ defDns True
+        x <- liftIO $ getDNS seed $ defSeedNodesSource True
+        z <- liftIO $ parseSockAddrs seed (defNodePort True) (fromJust x)
         pure ()
       shutdownFlagVar <- getShutdownFlag
       liftIO $ cancelableDelay shutdownFlagVar descReqActualizationDelay
@@ -89,6 +85,16 @@ knownPeersActualization  = do
     isUpToDatePeer predefined retryTimeout currentTime peer =
        let fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt peer
        in Set.member (peerAddress peer) predefined || retryTimeout >= fromLastSuccess
+
+
+
+resolveSeed :: [HostName] -> IO ResolvSeed
+resolveSeed dns = makeResolvSeed defaultResolvConf {
+      resolvInfo = if null dns
+        then resolvInfo defaultResolvConf -- resolve via "/etc/resolv.conf" by default
+        else RCHostNames dns
+    , resolvConcurrent = True
+    }
 
 syncWithDefaultPeers :: ServerM ()
 syncWithDefaultPeers = do

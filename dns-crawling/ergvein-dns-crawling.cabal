@@ -19,15 +19,15 @@ library
     Ergvein.DNS.Crawling
 
   build-depends:
-        base                     >= 4.7     &&  < 4.13,
-        text,
-        network,
-        dns,
-        ergvein-common,
-        bytestring,
-        iproute,
-        containers,
-        listsafe
+        base                     >= 4.7     &&  < 4.13
+      , text
+      , network
+      , dns
+      , ergvein-common
+      , bytestring
+      , iproute
+      , containers
+      , listsafe
 
   default-language:    Haskell2010
   default-extensions:

@@ -15,6 +15,7 @@ import Network.DNS
 import Network.Socket
 import Reflex.ExternalRef
 import System.Random.Shuffle
+import Ergvein.Index.Protocol.Types
 
 import Ergvein.Index.Protocol.Types
 import Ergvein.Text
@@ -27,6 +28,7 @@ import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Util
 import Ergvein.Wallet.Platform
 import Ergvein.DNS.Crawling
+import Conversion
 
 import qualified Data.Attoparsec.Binary     as P
 import qualified Data.Attoparsec.ByteString as P
@@ -90,19 +92,7 @@ fetchNewPeer e = do
         MPeerResponse PeerResponse {..} | not $ V.null peerResponseAddresses -> Just peerResponseAddresses
         _-> Nothing
   newAddressE <- performEvent $ ffor nonEmptyAddressesE $ liftIO . fmap head . shuffleM . V.toList
-  let (parsingErrorE, parsedAddressE) = fanEither $ convertAddress <$> newAddressE
+  let (parsingErrorE, parsedAddressE) = fanEither $ (showt <$>) . convert @_ @(Either String SockAddr) <$> newAddressE
   
   logInfo $ showt . ("[ErgveinNetworkRefresh] failed to decode address, error:" <>) <$> parsingErrorE
   void $ addDiscovered parsedAddressE
-  where
-    convertAddress :: Address -> Either String Text 
-    convertAddress Address{..} = case addressType of
-      IPV4 -> let
-        port = (fromInteger $ toInteger addressPort)
-        in (\ip -> showt $ SockAddrInet port ip) <$> P.parseOnly parseV4 addressAddress
-      IPV6 -> let
-        port = (fromInteger $ toInteger addressPort)
-        in (\ip -> showt $ SockAddrInet6 port 0 ip 0) <$> P.parseOnly parseV6 addressAddress
-      where 
-        parseV4 = P.anyWord32be
-        parseV6 = (,,,) <$> P.anyWord32be <*> P.anyWord32be <*> P.anyWord32be <*> P.anyWord32be

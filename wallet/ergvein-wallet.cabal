@@ -234,7 +234,8 @@ library
         yaml -any,
         attoparsec-binary,
         either,
-        ergvein-dns-crawling
+        ergvein-dns-crawling,
+        conversion
 
     if flag(android)
         cpp-options: -DANDROID
