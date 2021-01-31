@@ -18,7 +18,6 @@ module Ergvein.Wallet.Settings (
   , defaultErgveinNodeAddresses
   , defErgveinNodeSeedList
   , ExplorerUrls(..)
-
   , SocksConf(..)
   , torSocks
   , toSocksProxy
@@ -26,19 +25,19 @@ module Ergvein.Wallet.Settings (
   , makeSockAddr
   , parseIP
   , ErgveinNodeManagementInfo (..)
-  , settingsLang           
-  , settingsStoreDir         
-  , settingsConfigPath       
-  , settingsUnits            
-  , settingsReqTimeout       
-  , settingsErgveinNetwork            
-  , settingsReqUrlNum        
-  , settingsActUrlNum        
-  , settingsPortfolio        
+  , settingsLang
+  , settingsStoreDir
+  , settingsConfigPath
+  , settingsUnits
+  , settingsReqTimeout
+  , settingsErgveinNetwork
+  , settingsReqUrlNum
+  , settingsActUrlNum
+  , settingsPortfolio
   , settingsDiscoveryEnabled 
-  , settingsFiatCurr         
-  , settingsDns              
-  , settingsSocksProxy       
+  , settingsFiatCurr
+  , settingsDns
+  , settingsSocksProxy
   , settingsCurrencySpecific
   , nfoIsActivated
   , nfoIsUserModified
@@ -229,7 +228,7 @@ data Settings = Settings {
 , _settingsFiatCurr          :: Fiat
 , _settingsDns               :: S.Set HostName
 , _settingsSocksProxy        :: Maybe SocksConf
-, _settingsCurrencySpecific    :: CurrencySpecificSettings
+, _settingsCurrencySpecific  :: CurrencySpecificSettings
 } deriving (Eq, Show)
 
 makeLenses ''Settings

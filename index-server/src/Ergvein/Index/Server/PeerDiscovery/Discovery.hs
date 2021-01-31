@@ -31,7 +31,6 @@ import Ergvein.Index.Server.TCPService.Connections
 import Ergvein.Index.Server.TCPService.Conversions
 import Ergvein.Index.Server.Utils
 import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
 import Network.Socket
 import Ergvein.DNS.Crawling
 import Ergvein.DNS.Constants
@@ -86,8 +85,6 @@ knownPeersActualization  = do
        let fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt peer
        in Set.member (peerAddress peer) predefined || retryTimeout >= fromLastSuccess
 
-
-
 resolveSeed :: [HostName] -> IO ResolvSeed
 resolveSeed dns = makeResolvSeed defaultResolvConf {
       resolvInfo = if null dns
@@ -117,12 +114,9 @@ isPeerScanActual localScanBlocks = do
         case peerScanInfoMap Map.!? scanBlockCurrency localBlock of
           Just peerScanBlock -> let
             filterVersionValid = scanBlockVersion localBlock == scanBlockVersion peerScanBlock
-            scanValid = notLessThenOne (scanBlockScanHeight localBlock) (scanBlockScanHeight peerScanBlock)
+            scanValid = permissibleHeightDifference (scanBlockScanHeight localBlock) (scanBlockScanHeight peerScanBlock)
             in filterVersionValid && scanValid
           Nothing -> False
-
-    notLessThenOne :: BlockHeight -> BlockHeight -> Bool
-    notLessThenOne local = (local <=) . succ
 
     peerScanInfoMap :: Map.Map CurrencyCode ScanBlock
     peerScanInfoMap = mapBy scanBlockCurrency peerScanBlockList

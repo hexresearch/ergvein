@@ -1,22 +1,26 @@
 module Ergvein.DNS.Crawling
   ( getDNS,
     parseSockAddr,
-    parseSockAddrs
+    parseSockAddrs,
+    permissibleHeightDifference
   )
   where
 
-import Network.DNS.Types
-import Network.DNS.Resolver
-import Network.DNS.Lookup
-import Data.Text (Text)
-import Data.Either
-import Network.Socket
-import Ergvein.Text
-import Data.Maybe
 import Control.Monad
 import Control.Monad.IO.Class
-import Text.Read (readMaybe)
+import Data.Either
 import Data.IP
+import Data.Maybe
+import Data.Text (Text)
+import Ergvein.Text
+import Network.DNS.Lookup
+import Network.DNS.Resolver
+import Network.DNS.Types
+import Network.Socket
+import Text.Read (readMaybe)
+
+import Ergvein.Types.Transaction
+
 import qualified Data.List.Safe as LS
 import qualified Data.Text as T
 import qualified Data.ByteString.Char8 as B8
@@ -58,3 +62,7 @@ parseAddr resolver defNodePort addressText = do
       let url = B8.pack $ T.unpack hostText
       ips <- lookupA resolver url
       pure $ SockAddrInet port . toHostAddress <$> (LS.head $ fromRight mempty ips)
+
+
+permissibleHeightDifference :: BlockHeight -> BlockHeight -> Bool
+permissibleHeightDifference known provided = succ provided >= known

@@ -6,9 +6,9 @@ module Ergvein.DNS.Constants
   , defSeedNodesSource
   ) where
 
-import Network.Socket (HostName, PortNumber)
 import Data.Text (Text)
 import Network.DNS.Types
+import Network.Socket (HostName, PortNumber)
 
 type ErgveinNodeAddr = Text
 
