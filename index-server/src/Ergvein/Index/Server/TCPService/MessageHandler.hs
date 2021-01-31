@@ -2,11 +2,11 @@ module Ergvein.Index.Server.TCPService.MessageHandler where
 
 import Control.Concurrent.STM
 import Control.Monad.IO.Class
+import Control.Monad.Logger
 import Control.Monad.Reader
 import Conversion
 import Network.Socket
 
-import Ergvein.Index.Protocol.Types as IPT
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema.Filters
@@ -16,15 +16,18 @@ import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Discovery
 import Ergvein.Index.Server.PeerDiscovery.Types
+import Ergvein.Index.Server.TCPService.Connections
+import Ergvein.Index.Server.TCPService.Conversions
+import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 import Ergvein.Types.Transaction
-import Ergvein.Index.Server.TCPService.Connections
-import Ergvein.Index.Server.TCPService.Conversions
 
-import qualified Data.Map.Strict as M
-import qualified Data.Set as S
-import qualified Data.Vector as V
+import qualified Data.Map.Strict    as M
+import qualified Data.Set           as S
+import qualified Data.Vector        as V
+
+import Ergvein.Index.Protocol.Types as IPT
 
 getBlockMetaSlice :: Currency -> BlockHeight -> BlockHeight -> ServerM [BlockMetaRec]
 getBlockMetaSlice currency startHeight amount = do
@@ -57,6 +60,16 @@ handleMsg address (MVersion peerVersion) = do
 handleMsg _ (MPeerRequest _) = do
   knownPeers <- getActualPeers
   pure $ pure $ MPeerResponse $ PeerResponse $ V.fromList knownPeers
+
+handleMsg _ (MPeerResponse PeerResponse {..}) = do
+  knownPeers <- getPeerList
+  let sockAddrs = mapM (convert @_ @(Either String SockAddr)) $ V.toList peerResponseAddresses
+  case sockAddrs of
+    Right addrs -> do
+        let peersToConnect = S.fromList addrs S.\\ (S.fromList $ peerAddress <$> knownPeers)
+        liftIO $ forM_ peersToConnect newConnection
+    Left err -> logInfoN $ "Error parsing PeerResponse address: " <> showt err
+  pure mempty
 
 handleMsg _ (MFiltersRequest FilterRequest {..}) = do
   currency <- currencyCodeToCurrency filterRequestMsgCurrency
