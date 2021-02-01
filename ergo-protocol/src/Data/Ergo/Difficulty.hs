@@ -76,7 +76,7 @@ decodeDifficulty nCompact = (Difficulty $ if neg then res * (-1) else res, over)
                         nWord > 0xffff && nSize > 32)
 
 instance Persist Difficulty where
-  put = put . encodeDifficulty
+  put = put . BigEndian . encodeDifficulty
   {-# INLINE put #-}
-  get = fmap (fst . decodeDifficulty) get
+  get = fmap (fst . decodeDifficulty . unBE) get
   {-# INLINE get #-}

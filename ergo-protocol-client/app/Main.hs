@@ -4,6 +4,7 @@ module Main where
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad
+import Data.Ergo.Modifier
 import Data.Ergo.Protocol
 import Data.Ergo.Protocol.Client
 import Data.Maybe
@@ -44,6 +45,8 @@ main = do
         t <- getCurrentTime
         atomically $ writeTChan inChan $ SockInSendEvent $ MsgHandshake $ makeHandshake 0 t
         threadDelay 1000000
+        -- let requiredBlock = "8cf6dca6b9505243e36192fa107735024c0000cf4594b1daa2dc4e13ee86f26f"
+        -- atomically $ writeTChan inChan $ SockInSendEvent $ MsgOther $ MsgRequestModifier $ RequestModifierMsg ModifierBlockHeader [requiredBlock]
         atomically $ writeTChan inChan $ SockInSendEvent $ MsgOther $ MsgSyncInfo $ SyncInfo [nullModifierId]
       SockOutInbound (MsgOther (MsgInv (InvMsg itype is))) -> do
         atomically $ writeTChan inChan $ SockInSendEvent $ MsgOther $ MsgRequestModifier $ RequestModifierMsg itype $ V.singleton $ V.head is

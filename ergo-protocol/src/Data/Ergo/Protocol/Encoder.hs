@@ -25,8 +25,6 @@ import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Text as T
 import qualified Data.Vector as V
 
-import Debug.Trace
-
 int64BE :: Int64 -> Put ()
 int64BE = put . BigEndian
 

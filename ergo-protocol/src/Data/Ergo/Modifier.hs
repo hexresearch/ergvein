@@ -12,9 +12,11 @@ module Data.Ergo.Modifier(
 
 import Data.ByteString (ByteString)
 import Data.Ergo.Vlq
+import Data.Maybe (fromMaybe)
 import Data.Persist
+import Data.String
 import Data.Text.Encoding
-import Data.Text(Text)
+import Data.Text (Text, pack)
 import Data.Word
 import GHC.Generics
 
@@ -43,6 +45,9 @@ decodeModifierId = check . fst . B16.decode . encodeUtf8
   where
     check bs | BS.length bs == 32 = Just $ ModifierId bs
              | otherwise = Nothing
+
+instance IsString ModifierId where
+  fromString s = fromMaybe (error $ "Failed to parse modifier id: " <> s) . decodeModifierId . pack $! s
 
 -- | Modifier id that is filled with zeros. It is used as request for recent
 -- headers.

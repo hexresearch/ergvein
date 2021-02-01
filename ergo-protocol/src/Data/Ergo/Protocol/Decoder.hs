@@ -31,8 +31,6 @@ import Prelude hiding (fail)
 import qualified Data.Vector as V
 import qualified Data.ByteString as BS
 
-import Debug.Trace
-
 -- | Perform parsing of whole message from bytestring without remainder
 decodeMessage :: Network -> ByteString -> Either String Message
 decodeMessage = runGet . messageParser
@@ -122,7 +120,6 @@ msgBodyParser i l = do
   body <- if l == 0 then pure BS.empty else do
     c <- getByteString 4
     body <- getByteString (fromIntegral l)
-    traceShowM (i, body)
     unless (validateSum c body) $ fail "Check sum failed for body!"
     pure body
   if | i == syncInfoId -> MsgSyncInfo <$> embedParser "SyncInfo parsing error" syncInfoParser body
