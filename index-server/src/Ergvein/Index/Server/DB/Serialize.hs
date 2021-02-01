@@ -15,7 +15,7 @@ import Data.ByteString.Builder as BB
 import Data.Word
 
 import Ergvein.Index.Server.BlockchainScanning.Types
-import Ergvein.Index.Server.DB.Schema.Filters
+import Ergvein.Index.Server.DB.Schema.Utxo
 import Ergvein.Index.Server.DB.Serialize.Class
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction

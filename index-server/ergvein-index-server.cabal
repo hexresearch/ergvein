@@ -27,6 +27,7 @@ library
     Ergvein.Index.Server.DB.Queries
     Ergvein.Index.Server.DB.Schema.Filters
     Ergvein.Index.Server.DB.Schema.Indexer
+    Ergvein.Index.Server.DB.Schema.Utxo
     Ergvein.Index.Server.DB.Serialize
     Ergvein.Index.Server.DB.Serialize.Class
     Ergvein.Index.Server.DB.Utils

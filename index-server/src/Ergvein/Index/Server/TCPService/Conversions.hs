@@ -36,10 +36,10 @@ currencyToCurrencyCode code = do
       C.BTC   -> BTC
       C.ERGO  -> ERGO
 
-instance Conversion BlockMetaRec BlockFilter where
-  convert BlockMetaRec {..} = BlockFilter
-    { blockFilterBlockId = blockMetaRecHeaderHash
-    , blockFilterFilter  = blockMetaRecAddressFilter
+instance Conversion BlockInfoRec BlockFilter where
+  convert BlockInfoRec {..} = BlockFilter
+    { blockFilterBlockId = blockInfoRecHeaderHash
+    , blockFilterFilter  = blockInfoRecAddressFilter
     }
 
 

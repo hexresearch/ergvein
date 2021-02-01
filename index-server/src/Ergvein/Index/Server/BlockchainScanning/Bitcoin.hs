@@ -21,7 +21,7 @@ import           Ergvein.Filters.Btc.Mutable
 import           Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import           Ergvein.Index.Server.BlockchainScanning.Types
 import           Ergvein.Index.Server.DB.Monad
-import           Ergvein.Index.Server.DB.Schema.Filters
+import           Ergvein.Index.Server.DB.Schema.Utxo
 import           Ergvein.Index.Server.DB.Serialize
 import           Ergvein.Index.Server.DB.Utils
 import           Ergvein.Index.Server.Dependencies
@@ -38,11 +38,11 @@ import qualified Network.Haskoin.Crypto             as HK
 import qualified Network.Haskoin.Script             as HK
 import qualified Network.Haskoin.Transaction        as HK
 
-blockInfo :: (BitcoinApiMonad m, HasFiltersDB m, MonadLogger m, MonadBaseControl IO m, HasShutdownFlag m)
+blockInfo :: (BitcoinApiMonad m, HasUtxoDB m, MonadLogger m, MonadBaseControl IO m, HasShutdownFlag m)
   => BlockHeight -> m BlockInfo
 blockInfo blockHeightToScan = blockTxInfos blockHeightToScan =<< getBtcBlockWithRepeat blockHeightToScan
 
-blockTxInfos :: (BitcoinApiMonad m, MonadBaseControl IO m, HasFiltersDB m, MonadLogger m, MonadBaseControl IO m) => BlockHeight -> HK.Block -> m BlockInfo
+blockTxInfos :: (BitcoinApiMonad m, MonadBaseControl IO m, HasUtxoDB m, MonadLogger m, MonadBaseControl IO m) => BlockHeight -> HK.Block -> m BlockInfo
 blockTxInfos txBlockHeight block = do
   let (txInfos , spentTxsIds) = fmap (uniqueWithCount . mconcat) $ unzip $ txInfo <$> HK.blockTxns block
   -- timeLog $ "spentTxsIds: " <> showt (length spentTxsIds)
@@ -56,7 +56,7 @@ blockTxInfos txBlockHeight block = do
   pure $ BlockInfo blockMeta spentTxsIdsMap txInfos
   where
     blockTxMap = mapBy (HK.txHash) $ HK.blockTxns block
-    spentTxSource :: (MonadBaseControl IO m, BitcoinApiMonad m, HasFiltersDB m, MonadLogger m) => (HK.TxHash, Word32) -> m HK.Tx
+    spentTxSource :: (MonadBaseControl IO m, BitcoinApiMonad m, HasUtxoDB m, MonadLogger m) => (HK.TxHash, Word32) -> m HK.Tx
     spentTxSource (txInId, _) = case Map.lookup txInId blockTxMap of
       Just    sourceTx -> pure sourceTx
       Nothing          -> do
@@ -81,19 +81,19 @@ blockTxInfos txBlockHeight block = do
 actualHeight :: (Monad m, BitcoinApiMonad m) => m BlockHeight
 actualHeight = fromIntegral <$> nodeRpcCall getBlockCount
 
-getTxFromCache :: (HasFiltersDB m, MonadLogger m)
+getTxFromCache :: (HasUtxoDB m, MonadLogger m)
   => TxHash -> m (Either String HK.Tx)
 getTxFromCache thash = do
-  db <- readFiltersDb
+  db <- readUtxoDb
   msrc <- getParsed BTC "getTxFromCache" db $ txBytesKey thash
   pure $ case msrc of
     Nothing -> Left $ "Tx not found. TxHash: " <> show thash
     Just src -> egvDeserialize BTC $ unTxRecBytes src
 
-getTxFromNode :: (BitcoinApiMonad m, MonadLogger m, MonadBaseControl IO m, HasFiltersDB m)
+getTxFromNode :: (BitcoinApiMonad m, MonadLogger m, MonadBaseControl IO m, HasUtxoDB m)
   => HK.TxHash -> m HK.Tx
 getTxFromNode thash = do
-  db <- readFiltersDb
+  db <- readUtxoDb
   txHeight <- fmap unTxRecHeight $
     getParsedExact BTC "getTxFromNode" db $ txHeightKey $ hkTxHashToEgv thash
   blk <- getBtcBlock $ fromIntegral txHeight
