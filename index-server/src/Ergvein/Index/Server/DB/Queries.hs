@@ -17,6 +17,7 @@ module Ergvein.Index.Server.DB.Queries
   , addBlockMetaInfos
   -- * Combined queries
   , addBlockInfo
+  , addTxIndexInfo
   -- * Rollback related
   , storeRollbackSequence
   , loadRollbackSequence
@@ -164,13 +165,13 @@ addBlockMetaInfos currency infos = do
 btcRollbackSize :: Int
 btcRollbackSize = 64
 
-insertRollback :: (HasBtcRollback m, HasFiltersDB m, MonadLogger m, MonadBaseControl IO m)
+insertRollback :: (HasBtcRollback m, MonadIO m, MonadLogger m)
   => Currency -> RollbackRecItem -> m ()
 insertRollback cur = case cur of
   Currency.BTC -> insertBtcRollback
   _ -> const $ pure ()
 
-insertBtcRollback :: (HasBtcRollback m, HasFiltersDB m, MonadLogger m, MonadBaseControl IO m)
+insertBtcRollback :: (HasBtcRollback m, MonadIO m, MonadLogger m)
   => RollbackRecItem -> m ()
 insertBtcRollback ritem = do
   rollVar <- getBtcRollbackVar
@@ -230,3 +231,13 @@ performBtcRollback = do
   write idb def $ pure clearSeq
   liftIO $ atomically $ writeTVar rollVar mempty
   pure $ Seq.length rse
+
+addTxIndexInfo :: (HasUtxoDB m, MonadLogger m) => Currency -> TxIndexInfo -> m ()
+addTxIndexInfo cur = case cur of
+  ERGO -> const $ pure ()
+  BTC -> addBtcTxIndexInfo
+
+addBtcTxIndexInfo :: (HasUtxoDB m, MonadLogger m) => TxIndexInfo -> m ()
+addBtcTxIndexInfo tinfo@TxIndexInfo{..} = do
+  dbu <- readUtxoDb
+  write dbu def $ putTxIndexInfoAsRec BTC tinfo

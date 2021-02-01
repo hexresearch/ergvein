@@ -8,6 +8,7 @@ import Ergvein.Index.Server.App
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.Environment
+import Ergvein.Index.Server.TxIndex
 import Ergvein.Index.Server.Monad
 
 import qualified Data.Text.IO as T
@@ -32,13 +33,17 @@ data Options = Options {
 
 type ServerUrl = Text
 
-data Command =  CleanKnownPeers FilePath | CommandListen FilePath
+data Command
+  = CleanKnownPeers FilePath
+  | CommandListen FilePath
+  | BuildBtcIndex FilePath
 
 options :: Parser Options
 options = Options
   <$> subparser (
        command "listen" (info (listenCmd <**> helper) $ progDesc "Start server") <>
-       command "clean-known-peers" (info (cleanKnownPeers <**> helper) $ progDesc "resetting peers")
+       command "clean-known-peers" (info (cleanKnownPeers <**> helper) $ progDesc "resetting peers") <>
+       command "build-index" (info (indexCmd <**> helper) $ progDesc "Build btc index")
   ) <*> flag False True (long "override-ver-filters" <> help "Override Filters db version" )
     <*> flag False True (long "override-ver-indexer" <> help "Override Indexer's db version" )
     <*> flag False True (long "override-ver-utxo" <> help "Override Utxo's db version" )
@@ -54,7 +59,7 @@ options = Options
       <$> strArgument (
           metavar "CONFIG_PATH"
         )
-
+    indexCmd = BuildBtcIndex <$> (strArgument (metavar "CONFIG_PATH"))
 main :: IO ()
 main = do
     startServer =<< execParser opts
@@ -78,3 +83,9 @@ startServer Options{..} = case optsCommand of
         env <- runStdoutLoggingT $ newServerEnv optsBtcTcpConn optsOverrideFilters optsOverrideIndexers optsOverrideUtxo client cfg
         runServerMIO env emptyKnownPeers
       T.putStrLn $ pack "knownPeers cleared"
+    BuildBtcIndex cfgPath -> do
+      cfg@Config{..} <- loadConfig cfgPath
+      BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
+        env <- runStdoutLoggingT $ newTxIndexEnv optsBtcTcpConn client cfg
+        runStdoutLoggingT $ txIndexApp env
+      T.putStrLn $ pack "Index builder done"

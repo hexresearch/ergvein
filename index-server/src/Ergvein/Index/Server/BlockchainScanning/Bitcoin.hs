@@ -142,6 +142,15 @@ getBtcBlock blockHeightReq = do
     blockGettingError = error $ "Error getting BTC node at height " ++ show blockHeightReq
     blockParsingError = error $ "Error parsing BTC node at height " ++ show blockHeightReq
 
+buildTxIndex :: (BitcoinApiMonad m, HasUtxoDB m, MonadLogger m, MonadBaseControl IO m, HasShutdownFlag m)
+  => BlockHeight -> m TxIndexInfo
+buildTxIndex blockHeightToScan = do
+  block <- getBtcBlockWithRepeat blockHeightToScan
+  let txIds = fmap (hkTxHashToEgv . HK.txHash) $ HK.blockTxns block
+      blockHeaderHash = HK.getHash256 $ HK.getBlockHash $ HK.headerHash $ HK.blockHeader block
+      prevBlockHeaderHash = HK.getHash256 $ HK.getBlockHash $ HK.prevBlock $ HK.blockHeader block
+  pure $ TxIndexInfo blockHeightToScan blockHeaderHash prevBlockHeaderHash txIds
+
 timeLog :: (MonadLogger m, MonadIO m) => Text -> m ()
 timeLog t = do
   now <- liftIO $ getCurrentTime
