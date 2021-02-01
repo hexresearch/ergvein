@@ -10,6 +10,7 @@ module Ergvein.Wallet.Elements.Input(
   , validatedTextField
   , validatedTextFieldSetVal
   , validatedTextFieldSetValNoLabel
+  , validatedTextFieldAttrSetValNoLabel
   , textFieldSetValValidated
   , textFieldValidated
   , passField
@@ -103,14 +104,15 @@ textFieldNoLabel v0 = fmap _inputElement_value $ inputElement $ def
     %~ (\as -> "type" =: "text" <> as)
 
 textFieldAttrNoLabel :: (MonadFrontBase t m)
-  => Event t (M.Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
+  => M.Map AttributeName Text -- ^ Initial attributes
+  -> Event t (M.Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
   -> Event t Text
   -> Text -- ^ Initial value
   -> m (Dynamic t Text)
-textFieldAttrNoLabel modifyAttrsE setValE v0 = fmap _inputElement_value $ inputElement $ def
+textFieldAttrNoLabel attrs modifyAttrsE setValE v0 = fmap _inputElement_value $ inputElement $ def
   & inputElementConfig_initialValue .~ v0
   & inputElementConfig_elementConfig . elementConfig_initialAttributes
-    %~ (\as -> "type" =: "text" <> as)
+    %~ (\as -> "type" =: "text" <> attrs <> as)
   & inputElementConfig_elementConfig . elementConfig_modifyAttributes
     .~ modifyAttrsE
   & inputElementConfig_setValue .~ setValE
@@ -161,6 +163,26 @@ validatedTextFieldSetValNoLabel v0 mErrsD setValE = do
     inputField = divClassDyn isInvalidD $ fmap _inputElement_value $ textInput $ def
       & inputElementConfig_initialValue .~ v0
       & inputElementConfig_setValue .~ setValE
+
+validatedTextFieldAttrSetValNoLabel :: (MonadFrontBase t m, LocalizedPrint l1)
+  => Text -- ^ Initial value
+  -> M.Map AttributeName Text -- ^ Initial attributes
+  -> Event t Text -- ^ Event that changes value
+  -> Event t (M.Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
+  -> Dynamic t (Maybe [l1]) -- ^ List of errors
+  -> m (Dynamic t Text)
+validatedTextFieldAttrSetValNoLabel initValue initAttrs setValE modifyAttrsE mErrsD = do
+  textInputValueD <- inputField
+  void $ divClass "form-field-errors" $ simpleList errsD displayError
+  pure textInputValueD
+  where
+    errsD = fmap (maybe [] id) mErrsD
+    isInvalidD = fmap (maybe "" (const "is-invalid")) mErrsD
+    inputField = divClassDyn isInvalidD $ fmap _inputElement_value $ textInput $ def
+      & inputElementConfig_initialValue .~ initValue
+      & inputElementConfig_elementConfig . elementConfig_initialAttributes %~ (\as -> "type" =: "text" <> initAttrs <> as)
+      & inputElementConfig_setValue .~ setValE
+      & inputElementConfig_elementConfig . elementConfig_modifyAttributes .~ modifyAttrsE
 
 textFieldSetValValidated :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPrint l1, Show a)
   => l0 -- ^ Label

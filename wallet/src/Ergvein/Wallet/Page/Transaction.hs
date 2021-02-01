@@ -10,7 +10,6 @@ import Data.Map.Strict as Map
 import Data.Maybe (fromMaybe)
 import Data.Text as T
 import Data.Time
-import Text.Printf
 
 import Ergvein.Text
 import Ergvein.Types.Currency
@@ -18,6 +17,7 @@ import Ergvein.Types.Transaction
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.History
+import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
@@ -151,11 +151,13 @@ bumpFeeWidget :: MonadFront t m => Currency -> TransactionView -> m ()
 bumpFeeWidget cur tr@TransactionView{..} = do
   title <- localized BumpFeeTitle
   let thisWidget = Just $ pure $ bumpFeeWidget cur tr
-  wrapper False title thisWidget $ divClass "bump-fee-page" $ do
+  wrapper False title thisWidget $ divClass "bump-fee-page" $ mdo
+    let feeRate = calcFeeRate (txFee txInfoView) (txRaw txInfoView)
     moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
     makeBlock BumpFeeCurrentFee $ maybe "unknown" (\a -> (showMoneyUnit a moneyUnits) <> " " <> symbolUnit cur moneyUnits) $ txFee txInfoView
-    makeBlock BumpFeeCurrentFeeRate $ maybe "unknown" (\a -> (T.pack $ printf "%.3f" $ (realToFrac a :: Double)) <> " " <> symbolUnit cur smallestUnits <> "/vbyte") $ calcFeeRate (txFee txInfoView) (txRaw txInfoView)
-    feeD <- btcFeeSelectionWidget BumpFeeNewFeeRate Nothing never
+    makeBlock BumpFeeCurrentFeeRate $ maybe "unknown" (\a -> (showf 3 $ (realToFrac a :: Double)) <> " " <> symbolUnit cur smallestUnits <> "/vbyte") feeRate
+    feeD <- btcFeeSelectionWidget BumpFeeNewFeeRate Nothing feeRate submitE
+    submitE <- outlineButton CSSubmit
     pure ()
 
 makeBlock :: (MonadFront t m, LocalizedPrint l) => l -> Text -> m ()

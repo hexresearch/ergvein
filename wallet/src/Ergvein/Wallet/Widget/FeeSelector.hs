@@ -20,12 +20,22 @@ import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Fee
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Validate
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 
-manualFeeSelector :: MonadFront t m => Text -> Event t Text -> Event t (Map AttributeName (Maybe Text)) -> m (Dynamic t (Maybe Word64))
-manualFeeSelector text setValE attrsE = (fmap . fmap) (maybe Nothing Just . readMaybe . T.unpack) . divClass "fee-widget-input" . (textFieldAttrNoLabel attrsE setValE) $ text
+manualFeeSelector :: (MonadFront t m, LocalizedPrint l)
+  => Text -- ^ Initial value
+  -> Bool -- ^ If True then field is initially disabled
+  -> Event t Text -- ^ Event that changes input value
+  -> Event t (Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
+  -> Dynamic t (Maybe [l]) -- ^ List of errors
+  -> m (Dynamic t Text)
+manualFeeSelector text isDisabled setValE attrsE errsD = divClass "fee-widget-input" $
+  validatedTextFieldAttrSetValNoLabel text attrs setValE attrsE errsD
+  where
+    attrs = if isDisabled then "disabled" =: "disabled" else M.empty
 
 feeModeToAttr :: BTCFeeMode -> Map AttributeName (Maybe Text)
 feeModeToAttr = \case
@@ -47,22 +57,32 @@ feeModeToRateText fees mode = case mode of
 btcFeeSelectionWidget :: forall t m l . (MonadFront t m, LocalizedPrint l)
   => l                                          -- ^ Label
   -> Maybe (BTCFeeMode, Word64)                 -- ^ Inital mode and value
+  -> Maybe Rational                             -- ^ Previous value (used for RBF)
   -> Event t ()                                 -- ^ Send event. Triggers fileds validation
   -> m (Dynamic t (Maybe (BTCFeeMode, Word64)))
-btcFeeSelectionWidget lbl minit sendE = do
+btcFeeSelectionWidget lbl minit mPrevRate sendE = do
   feesD <- getFeesD
   initFees <- sampleDyn feesD
   let getInitFeeRateByLvl lvl = maybe Nothing (Just . fst . extractFee lvl) (M.lookup BTC initFees)
       (initFeeMode, mInitFeeRate) = maybe (BFMMid, getInitFeeRateByLvl FeeModerate) (second Just) minit
       initFeeRateText = maybe "" showt mInitFeeRate
+      initInputIsDisabled = if initFeeMode == BFMManual then False else True
   divClass "fee-widget ta-l" $ do
     el "label" $ localizedText lbl
     selectedD <- row $ mdo
-      feeRateD <- column67 $ do
+      feeRateD <- column67 $ mdo
         feeModeE <- updated <$> holdUniqDyn feeModeD
-        let manualSelectorDisabledE = feeModeToAttr <$> feeModeE
+        let modifyAttrsE = feeModeToAttr <$> feeModeE
             setValE = attachPromptlyDynWithMaybe feeModeToRateText feesD feeModeE
-        manualFeeSelector initFeeRateText setValE manualSelectorDisabledE
+        errsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing))
+        selectedRateD <- manualFeeSelector initFeeRateText initInputIsDisabled setValE modifyAttrsE errsD
+        let validationE = poke sendE $ \_ -> do
+              fee <- sampleDyn selectedRateD
+              pure $ toEither $ validateBtcFeeRate mPrevRate (T.unpack fee)
+            validatedE :: Event t (Maybe Word64)
+            validatedE = (either (const Nothing) Just) <$> validationE
+        validatedRateD <- holdDyn mInitFeeRate validatedE
+        pure validatedRateD
       feeModeD <- column33 $ do
         langD <- getLanguage
         l <- sampleDyn langD
@@ -75,5 +95,5 @@ btcFeeSelectionWidget lbl minit sendE = do
       (Just feeRate, BFMLow)    -> el "label" (localizedText $ FSRateDesc FeeCheap    ) >> pure (Just (BFMLow,    feeRate))
       (Just feeRate, BFMMid)    -> el "label" (localizedText $ FSRateDesc FeeModerate ) >> pure (Just (BFMMid,    feeRate))
       (Just feeRate, BFMHigh)   -> el "label" (localizedText $ FSRateDesc FeeFast     ) >> pure (Just (BFMHigh,   feeRate))
-      (Nothing, BFMManual)      -> elClass "label" "lbl-red" (localizedText FSInvalid)  >> pure Nothing
+      (Nothing, BFMManual)      ->                                                         pure Nothing
       (Nothing, _)              -> el "label" (localizedText FSNoFees)                  >> pure Nothing

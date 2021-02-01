@@ -1,9 +1,11 @@
 module Ergvein.Wallet.Validate (
-    validate
+    toEither
+  , validate
   , validateNow
   , validateAmount
   , validateBtcRecipient
   , validateBtcWithUnits
+  , validateBtcFeeRate
   , VError(..)
   , Validation(..)
   ) where
@@ -11,40 +13,45 @@ module Ergvein.Wallet.Validate (
 import Control.Lens
 import Data.Ratio
 import Data.Validation hiding (validate)
+import Data.Word
+import Text.Parsec
+
+import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
-import Text.Parsec
-import Data.Word
 
 import qualified Data.Text as T
 
 newtype NonEmptyString = NonEmptyString String deriving (Show)
 newtype PositiveRational = PositiveRational Rational deriving (Show)
-newtype PositiveWord64 = PositiveWord64 Word64 deriving (Show)
+newtype GreaterThanRational = GreaterThanRational Word64 deriving (Show)
 
 data VError = MustNotBeEmpty
             | MustBeRational
             | MustBePositive
-            | MustBeIntegral
+            | MustBeNonNegativeIntegral
             | InvalidAddress
+            | MustBeGreaterThan Rational
   deriving (Show)
 
 instance LocalizedPrint VError where
   localizedShow l v = case l of
     English -> case v of
-      MustNotBeEmpty -> "This field is required."
-      MustBeRational -> "Enter a valid amount (example: 1.23)."
-      MustBePositive -> "Value must be positive."
-      MustBeIntegral -> "Enter a valid integer"
-      InvalidAddress -> "Invalid address."
+      MustNotBeEmpty            -> "This field is required"
+      MustBeRational            -> "Enter a valid amount (example: 1.23)"
+      MustBeNonNegativeIntegral -> "Enter a valid non-negative integer"
+      MustBePositive            -> "Value must be positive"
+      InvalidAddress            -> "Invalid address"
+      MustBeGreaterThan x       -> "Value must be greater than " <> showf 3 (realToFrac x :: Double)
     Russian -> case v of
-      MustNotBeEmpty -> "Заполните это поле."
-      MustBeRational -> "Введите корректное значение (пример: 1.23)."
-      MustBeIntegral -> "Введите корректное целочисленное значение."
-      MustBePositive -> "Значение должно быть положительным."
-      InvalidAddress -> "Неверный адрес."
+      MustNotBeEmpty            -> "Заполните это поле"
+      MustBeRational            -> "Введите корректное значение (пример: 1.23)"
+      MustBeNonNegativeIntegral -> "Введите корректное неотрицательное целочисленное значение"
+      MustBePositive            -> "Значение должно быть положительным"
+      InvalidAddress            -> "Неверный адрес"
+      MustBeGreaterThan x       -> "Значение должно быть больше " <> showf 3 (realToFrac x :: Double)
 
 validateNonEmptyString :: String -> Validation [VError] NonEmptyString
 validateNonEmptyString x = if x /= []
@@ -56,19 +63,14 @@ validateRational x = case parse rational "" x of
   Left _ -> _Failure # [MustBeRational]
   Right result -> _Success # result
 
-validatePositiveRational :: (Rational) -> Validation [VError] PositiveRational
+validatePositiveRational :: Rational -> Validation [VError] PositiveRational
 validatePositiveRational x = if x > 0
   then _Success # PositiveRational x
   else _Failure # [MustBePositive]
 
-validatePositiveWord64 :: Word64 -> Validation [VError] PositiveWord64
-validatePositiveWord64 x = if x > 0
-  then _Success # PositiveWord64 x
-  else _Failure # [MustBePositive]
-
 validateWord64 :: String -> Validation [VError] Word64
 validateWord64 x = case parse word64 "" x of
-  Left _ -> _Failure # [MustBeIntegral]
+  Left _ -> _Failure # [MustBeNonNegativeIntegral]
   Right res -> _Success # res
 
 validateAmount :: String -> Validation [VError] Rational
@@ -86,9 +88,7 @@ validateBtcWithUnits unit x = case validateNonEmptyString x of
   Success (NonEmptyString result) -> case unit of
     BtcSat -> case validateWord64 result of
       Failure errs' -> _Failure # errs'
-      Success result' -> case validatePositiveWord64 result' of
-        Failure errs'' -> _Failure # errs''
-        Success (PositiveWord64 result'') -> _Success # result''
+      Success result' -> _Success # result'
     _ -> case validateRational result of
       Failure errs' -> _Failure # errs'
       Success result' -> case validatePositiveRational result' of
@@ -106,6 +106,21 @@ validateBtcRecipient addrStr = case validateNonEmptyString addrStr of
   Success (NonEmptyString nonEmptyAddrStr) -> case validateBtcAddr nonEmptyAddrStr of
     Failure errs' -> _Failure # errs'
     Success addr -> _Success # addr
+
+validateBtcFeeRate :: Maybe Rational -> String -> Validation [VError] Word64
+validateBtcFeeRate mPrevFeeRate feeRateStr = case validateNonEmptyString feeRateStr of
+  Failure errs -> _Failure # errs
+  Success (NonEmptyString result) -> case validateWord64 result of
+    Failure errs' -> _Failure # errs'
+    Success result' -> case validateGreaterThan mPrevFeeRate result' of
+        Failure errs'' -> _Failure # errs''
+        Success (GreaterThanRational result'') -> _Success # result''
+
+validateGreaterThan :: Maybe Rational -> Word64 -> Validation [VError] GreaterThanRational
+validateGreaterThan Nothing x = _Success # GreaterThanRational x
+validateGreaterThan (Just y) x = if (fromIntegral x) > y
+  then _Success # GreaterThanRational x
+  else _Failure # [MustBeGreaterThan y]
 
 -- | Helper for widget that displays error
 errorWidget :: (MonadFrontBase t m, LocalizedPrint l) => l -> m ()
@@ -147,8 +162,11 @@ minus = char '-' <:> number
 integerStr :: Stream s m Char => ParsecT s u m String
 integerStr = plus <|> minus <|> number
 
+nonNegativeIntegerStr :: Stream s m Char => ParsecT s u m String
+nonNegativeIntegerStr = plus <|> number
+
 word64 :: Stream s m Char => ParsecT s u m Word64
-word64 = fmap read integerStr
+word64 = fmap read (nonNegativeIntegerStr <* eof)
 
 fractionalStr :: Stream s m Char => ParsecT s u m String
 fractionalStr = option "" $ char '.' *> number

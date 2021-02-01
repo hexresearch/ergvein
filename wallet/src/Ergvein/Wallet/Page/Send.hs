@@ -43,7 +43,6 @@ import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Widget.FeeSelector
 import Ergvein.Wallet.Wrapper
 
-import Data.Validation (toEither)
 import Network.Haskoin.Network (Inv(..), InvVector(..), InvType(..), Message(..))
 
 import qualified Data.List as L
@@ -100,7 +99,7 @@ sendPage cur minit = mdo
               clipboardPaste =<< outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
             pure recipD
         amountD <- sendAmountWidget amountInit $ () <$ validationE
-        feeD <- btcFeeSelectionWidget FSRate feeInit submitE
+        feeD <- btcFeeSelectionWidget FSRate feeInit Nothing submitE
         rbfEnabledD <- divClass "mb-1" $ toggler SSRbf (constDyn rbfInit')
         submitE <- outlineSubmitTextIconButtonClass "w-100" SendBtnString "fas fa-paper-plane fa-lg"
         let validationE = poke submitE $ \_ -> do
