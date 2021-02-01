@@ -5,8 +5,6 @@ import Data.ByteString.Builder
 import Data.Ergo.Protocol
 import Data.Ergo.Protocol.Decoder
 import Data.Ergo.Protocol.Encoder
-import Data.Ergo.Vlq
-import Data.Ergo.ZigZag
 import Data.Ergo.Block
 import Data.Ergo.Modifier
 import Data.Int
@@ -34,26 +32,11 @@ import Debug.Trace
 traceShowIdHex :: BS.ByteString -> BS.ByteString
 traceShowIdHex a = traceShow (B16.encode a) a
 
-prop_zigzag32 :: Int32 -> Bool
-prop_zigzag32 a = decodeZigZag (encodeZigZag a) == a
-
-prop_zigzag64 :: Int64 -> Bool
-prop_zigzag64 a = decodeZigZag (encodeZigZag a) == a
-
-prop_vlq32 :: Word32 -> Bool
-prop_vlq32 a = runGet decodeVlq (runPut $ encodeVlq a) == Right a
-
-prop_vlq64 :: Word64 -> Bool
-prop_vlq64 a = runGet decodeVlq (runPut $ encodeVlq a) == Right a
-
-prop_varInt32 :: Int32 -> Bool
-prop_varInt32 a = runGet decodeVarInt (runPut $ encodeVarInt a) == Right a
-
-prop_encodeDecodeHandshake :: Handshake -> Bool
-prop_encodeDecodeHandshake msg = decode (encode msg) == Right msg
-
-prop_encodeDecodeSyncInfo :: SyncInfo -> Bool
-prop_encodeDecodeSyncInfo msg = decode (encode $ TestnetMessage $ MsgSyncInfo msg) == Right (TestnetMessage $ MsgSyncInfo msg)
+-- prop_encodeDecodeHandshake :: Handshake -> Bool
+-- prop_encodeDecodeHandshake msg = decode (encode msg) == Right msg
+--
+-- prop_encodeDecodeSyncInfo :: SyncInfo -> Bool
+-- prop_encodeDecodeSyncInfo msg = decode (encode $ TestnetMessage $ MsgSyncInfo msg) == Right (TestnetMessage $ MsgSyncInfo msg)
 
 -- prop_encodeDecodeTestnet :: TestnetMessage -> Bool
 -- prop_encodeDecodeTestnet msg = decode (encode msg) == Right msg
