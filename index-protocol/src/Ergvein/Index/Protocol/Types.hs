@@ -27,7 +27,7 @@ protocolVersion = (1,0,0)
 -- | Compare own version with other version and check whether we support it
 isCompatible :: ProtocolVersion -> ProtocolVersion -> Bool
 isCompatible (1,_, _) (0, 0, 1) = True
-isCompatible (major1, minor1, _) (major2, minor2, _) = major1 == major2 && minor1 >= minor2
+isCompatible (major1, _, _) (major2, _, _) = major1 == major2
 
 data MessageType = MVersionType
                  | MVersionACKType
