@@ -24,6 +24,11 @@ type ProtocolVersion = (Word16, Word16, Word16)
 protocolVersion :: ProtocolVersion
 protocolVersion = (1,0,0)
 
+-- | Compare own version with other version and check whether we support it
+isCompatible :: ProtocolVersion -> ProtocolVersion -> Bool
+isCompatible (1,_, _) (0, 0, 1) = True
+isCompatible (major1, minor1, _) (major2, minor2, _) = major1 == major2 && minor1 >= minor2
+
 data MessageType = MVersionType
                  | MVersionACKType
                  | MFiltersRequestType
@@ -41,7 +46,7 @@ data MessageType = MVersionType
                  | MRatesResponseType
   deriving (Eq, Ord, Enum, Bounded, Show)
 
-data RejectCode = MessageHeaderParsing | MessageParsing | InternalServerError | ZeroBytesReceived
+data RejectCode = MessageHeaderParsing | MessageParsing | InternalServerError | ZeroBytesReceived | VersionNotSupported
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 data CurrencyCode = BTC   | TBTC
