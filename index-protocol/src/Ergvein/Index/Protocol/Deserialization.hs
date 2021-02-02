@@ -66,10 +66,9 @@ word8toFeeLevel = \case
 versionParser :: Parser ProtocolVersion
 versionParser = do
   bs :: S.Bitstream (S.Right) <- S.fromBits <$> anyWord32be
-  let rst  = S.drop i2 bs
-  let mj   = S.toBits $ S.append pad $ S.take i10 rst
-  let mn   = S.toBits $ S.append pad $ S.take i10 $ S.drop i10 rst
-  let p    = S.toBits $ S.append pad $ S.take i10 $ S.drop i20 rst
+  let p    = S.toBits $ S.append pad $ S.take i10 bs
+  let mn   = S.toBits $ S.append pad $ S.take i10 $ S.drop i10 bs
+  let mj   = S.toBits $ S.append pad $ S.take i10 $ S.drop i20 bs
   pure (mj,mn,p)
   where
     i2,i6,i10,i20 :: Int

@@ -79,6 +79,7 @@ test-suite ergvein-index-protocol-test
     , tasty
     , tasty-discover
     , tasty-hspec
+    , tasty-hunit
     , tasty-quickcheck
     , QuickCheck
     , quickcheck-instances
