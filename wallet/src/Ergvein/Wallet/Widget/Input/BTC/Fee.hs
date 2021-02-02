@@ -1,16 +1,14 @@
--- {-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE OverloadedLists #-}
 
-module Ergvein.Wallet.Widget.FeeSelector(
+module Ergvein.Wallet.Widget.Input.BTC.Fee(
     btcFeeSelectionWidget
   ) where
 
 import Data.Bifunctor (second)
 import Data.Map.Strict (Map)
-import Data.Maybe (fromMaybe)
 import Data.Text
 import Data.Word
-import Text.Read
 
 import Ergvein.Text
 import Ergvein.Types.Currency
@@ -32,8 +30,8 @@ manualFeeSelector :: (MonadFront t m, LocalizedPrint l)
   -> Event t (Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
   -> Dynamic t (Maybe [l]) -- ^ List of errors
   -> m (Dynamic t Text)
-manualFeeSelector text isDisabled setValE attrsE errsD = divClass "fee-widget-input" $
-  validatedTextFieldAttrSetValNoLabel text attrs setValE attrsE errsD
+manualFeeSelector initVal isDisabled setValE attrsE errsD = divClass "fee-widget-input" $
+  validatedTextFieldAttrSetValNoLabel initVal attrs setValE attrsE errsD
   where
     attrs = if isDisabled then "disabled" =: "disabled" else M.empty
 
@@ -60,7 +58,7 @@ btcFeeSelectionWidget :: forall t m l . (MonadFront t m, LocalizedPrint l)
   -> Maybe Rational                             -- ^ Previous value (used for RBF)
   -> Event t ()                                 -- ^ Send event. Triggers fileds validation
   -> m (Dynamic t (Maybe (BTCFeeMode, Word64)))
-btcFeeSelectionWidget lbl minit mPrevRate sendE = do
+btcFeeSelectionWidget lbl minit mPrevRate submitE = do
   feesD <- getFeesD
   initFees <- sampleDyn feesD
   let getInitFeeRateByLvl lvl = maybe Nothing (Just . fst . extractFee lvl) (M.lookup BTC initFees)
@@ -76,7 +74,7 @@ btcFeeSelectionWidget lbl minit mPrevRate sendE = do
             setValE = attachPromptlyDynWithMaybe feeModeToRateText feesD feeModeE
         errsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing))
         selectedRateD <- manualFeeSelector initFeeRateText initInputIsDisabled setValE modifyAttrsE errsD
-        let validationE = poke sendE $ \_ -> do
+        let validationE = poke submitE $ \_ -> do
               fee <- sampleDyn selectedRateD
               pure $ toEither $ validateBtcFeeRate mPrevRate (T.unpack fee)
             validatedE :: Event t (Maybe Word64)

@@ -40,7 +40,9 @@ import Ergvein.Wallet.Transaction.Builder
 import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Widget.Balance
-import Ergvein.Wallet.Widget.FeeSelector
+import Ergvein.Wallet.Widget.Input.BTC.Amount
+import Ergvein.Wallet.Widget.Input.BTC.Fee
+import Ergvein.Wallet.Widget.Input.BTC.Recipient
 import Ergvein.Wallet.Wrapper
 
 import Network.Haskoin.Network (Inv(..), InvVector(..), InvType(..), Message(..))
@@ -70,46 +72,26 @@ sendPage cur minit = mdo
   retInfoD <- sendWidget title navbar thisWidget
   pure ()
   where
-    stripCurPrefix t = T.dropWhile (== '/') $ fromMaybe t $ T.stripPrefix (curprefix cur) t
     -- TODO: write type annotation here
     sendWidget title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ mdo
       settings <- getSettings
-      let recipientInit = maybe "" (\(_, _, a, _) -> btcAddrToString a) minit
-          amountInit = (\(am, _, _, _) -> am) <$> minit
-          feeInit = (\(_, f, _, _) -> f) <$> minit
-          rbfInit = (\(_, _, _, r) -> r) <$> minit
+      let recipientInit = (\(_, _, x, _) -> x) <$> minit
+          amountInit = (\(x, _, _, _) -> x) <$> minit
+          feeInit = (\(_, x, _, _) -> x) <$> minit
+          rbfInit = (\(_, _, _, x) -> x) <$> minit
           rbfFromSettings = btcSettings'sendRbfByDefault $ getBtcSettings settings
           rbfInit' = fromMaybe rbfFromSettings rbfInit
       retInfoD <- form $ mdo
-        recipientErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing))
-        recipientD <- if isAndroid
-          then mdo
-            recipD <- validatedTextFieldSetVal RecipientString recipientInit recipientErrsD (leftmost [resQRcodeE, pasteE])
-            (pasteE, resQRcodeE) <- divClass "send-page-buttons-wrapper" $ do
-              qrE <- outlineTextIconButtonTypeButton CSScanQR "fas fa-qrcode fa-lg"
-              openE <- delay 1.0 =<< openCamara qrE
-              resQRcodeE' <- (fmap . fmap) stripCurPrefix $ waiterResultCamera openE
-              pasteBtnE <- outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
-              pasteE' <- clipboardPaste pasteBtnE
-              pure (pasteE', resQRcodeE')
-            pure recipD
-          else mdo
-            recipD <- validatedTextFieldSetVal RecipientString recipientInit recipientErrsD pasteE
-            pasteE <- divClass "send-page-buttons-wrapper" $ do
-              clipboardPaste =<< outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
-            pure recipD
-        amountD <- sendAmountWidget amountInit $ () <$ validationE
+        recipientD <- recipientWidget recipientInit submitE
+        amountD <- sendAmountWidget amountInit submitE
         feeD <- btcFeeSelectionWidget FSRate feeInit Nothing submitE
         rbfEnabledD <- divClass "mb-1" $ toggler SSRbf (constDyn rbfInit')
         submitE <- outlineSubmitTextIconButtonClass "w-100" SendBtnString "fas fa-paper-plane fa-lg"
-        let validationE = poke submitE $ \_ -> do
-              recipient <- sampleDyn recipientD
-              pure (toEither $ validateBtcRecipient (T.unpack $ stripCurPrefix recipient))
-            goE = flip push validationE $ \erecipient -> do
-              mfee <- sampleDyn feeD
+        let goE = flip push submitE $ \_ -> do
+              mrecipient <- sampleDyn recipientD
               mamount <- sampleDyn amountD
+              mfee <- sampleDyn feeD
               rbfEnabled <- sampleDyn rbfEnabledD
-              let mrecipient = either (const Nothing) Just erecipient
               pure $ (,,,) <$> mamount <*> mfee <*> mrecipient <*> (Just rbfEnabled)
         void $ nextWidget $ ffor goE $ \v@(uam, (_, fee), addr, rbf) -> Retractable {
             retractableNext = btcSendConfirmationWidget (uam, fee, addr, rbf)
@@ -308,45 +290,3 @@ signTxWithWallet tx pick prv = do
           External -> fmap (xPrvKey . unEgvXPrvKey) $ (V.!?) ext btcUtxo'index
     maybe (logWrite errMsg >> pure Nothing) (pure . Just . (sig,)) msec
   pure $ (uncurry $ HT.signTx btcNetwork tx) <$> mvals
-
--- | Input field with units. Converts everything to satoshis and returns the unit
-sendAmountWidget :: MonadFront t m => Maybe (UnitBTC, Word64) -> Event t () -> m (Dynamic t (Maybe (UnitBTC, Word64)))
-sendAmountWidget minit validateE = mdo
-  setUs <- fmap (fromMaybe defUnits . settingsUnits) getSettings
-  let (unitInit, txtInit) = maybe (setUs, "") (\(u, a) -> let us = Units (Just u) Nothing
-        in (us, showMoneyUnit (Money BTC a) us)) minit
-  let errsD = fmap (maybe [] id) amountErrsD
-  let isInvalidD = fmap (maybe "" (const "is-invalid")) amountErrsD
-  amountValD <- el "div" $ mdo
-    textInputValueD <- (fmap . fmap) T.unpack $ divClassDyn isInvalidD $ textField AmountString txtInit
-    when isAndroid (availableBalanceWidget unitD)
-    unitD <- unitsDropdown (getUnitBTC unitInit) allUnitsBTC
-    pure $ zipDynWith (\u v -> fmap (u,) $ toEither $ validateBtcWithUnits u v) unitD textInputValueD
-  void $ divClass "form-field-errors" $ simpleList errsD displayError
-  amountErrsD <- holdDyn Nothing $ ffor (current amountValD `tag` validateE) (either Just (const Nothing))
-  pure $ (either (const Nothing) Just) <$> amountValD
-  where
-    availableBalanceWidget uD = do
-      balanceValue <- balancesWidget BTC
-      balanceText <- localized SendAvailableBalance
-      let balanceVal = zipDynWith (\x y -> showMoneyUnit x (Units (Just y) Nothing) <> " " <> btcSymbolUnit y) balanceValue uD
-          balanceTxt = zipDynWith (\x y -> x <> ": " <> y) balanceText balanceVal
-      divClass "send-page-available-balance" $ dynText balanceTxt
-    unitsDropdown val allUnits = do
-      langD <- getLanguage
-      let unitD = constDyn val
-      initKey <- sample . current $ unitD
-      let listUnitsD = ffor langD $ \l -> M.fromList $ fmap (\v -> (v, localizedShow l v)) allUnits
-          ddnCfg = DropdownConfig {
-                _dropdownConfig_setValue   = updated unitD
-              , _dropdownConfig_attributes = constDyn ("class" =: "select-lang")
-              }
-      dp <- dropdown initKey listUnitsD ddnCfg
-      let selD = _dropdown_value dp
-      holdUniqDyn selD
-    displayError :: (MonadFrontBase t m, LocalizedPrint l) => Dynamic t l -> m ()
-    displayError errD = do
-      langD <- getLanguage
-      let localizedErrD = zipDynWith localizedShow langD errD
-      dynText localizedErrD
-      br

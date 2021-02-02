@@ -10,12 +10,14 @@ import Data.Map.Strict as Map
 import Data.Maybe (fromMaybe)
 import Data.Text as T
 import Data.Time
+import Data.Word
 
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Localization.Fee
 import Ergvein.Wallet.Localization.History
 import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
@@ -24,7 +26,7 @@ import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Transaction.Get
 import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Transaction.View
-import Ergvein.Wallet.Widget.FeeSelector
+import Ergvein.Wallet.Widget.Input.BTC.Fee
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.List as L
@@ -49,7 +51,7 @@ transactionInfoPage cur tr@TransactionView{..} = do
       when (bumpFeePossible) $ do
         bumpFeeE <- divClass "mt-1" $ outlineButton HistoryTIBumpFeeBtn
         void $ nextWidget $ ffor bumpFeeE $ \_ -> Retractable {
-          retractableNext = bumpFeeWidget cur tr
+          retractableNext = bumpFeeWidget cur tr Nothing
         , retractablePrev = thisWidget
         }
       pure ()
@@ -147,10 +149,10 @@ symbCol txInOut ma = divClass ("history-amount-" <> ((T.toLower . showt) txInOut
 transTypeCol :: MonadFront t m => TransType -> m a -> m a
 transTypeCol txInOut ma = divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) ma
 
-bumpFeeWidget :: MonadFront t m => Currency -> TransactionView -> m ()
-bumpFeeWidget cur tr@TransactionView{..} = do
+bumpFeeWidget :: MonadFront t m => Currency -> TransactionView -> Maybe (BTCFeeMode, Word64) -> m ()
+bumpFeeWidget cur tr@TransactionView{..} mInit= do
   title <- localized BumpFeeTitle
-  let thisWidget = Just $ pure $ bumpFeeWidget cur tr
+  let thisWidget = Just $ pure $ bumpFeeWidget cur tr mInit
   wrapper False title thisWidget $ divClass "bump-fee-page" $ mdo
     let feeRate = calcFeeRate (txFee txInfoView) (txRaw txInfoView)
     moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
@@ -158,7 +160,11 @@ bumpFeeWidget cur tr@TransactionView{..} = do
     makeBlock BumpFeeCurrentFeeRate $ maybe "unknown" (\a -> (showf 3 $ (realToFrac a :: Double)) <> " " <> symbolUnit cur smallestUnits <> "/vbyte") feeRate
     feeD <- btcFeeSelectionWidget BumpFeeNewFeeRate Nothing feeRate submitE
     submitE <- outlineButton CSSubmit
-    pure ()
+    let goE = attachWithMaybe (\mFee _ -> ((,) (txRaw txInfoView)) <$> mFee) (current feeD) submitE
+    void $ nextWidget $ ffor goE $ \v@((tx, fee)) -> Retractable {
+      retractableNext = pure ()
+    , retractablePrev = Just $ pure $ bumpFeeWidget cur tr (Just fee)
+    }
 
 makeBlock :: (MonadFront t m, LocalizedPrint l) => l -> Text -> m ()
 makeBlock a t = el "div" $ do
@@ -179,3 +185,11 @@ calcFeeRate (Just money) (TxBtc btcTx) =
   in Just $ fee / (fromIntegral txVsize)
 calcFeeRate (Just money) (TxErg ergTx) = Nothing -- TODO: implement for ERGO
 calcFeeRate _ _ = Nothing
+
+-- bumpFeeConfirmationWidget :: MonadFront t m => EgvTx -> Word64 -> m ()
+-- bumpFeeConfirmationWidget (TxBtc tx) feeRate = do
+--   title <- localized BumpFeeConfirmation
+--   let thisWidget = Just $ pure $ bumpFeeConfirmationWidget (TxBtc tx) feeRate
+--   wrapper False title thisWidget $ divClass "send-confirm-box" $ do
+--     pure ()
+-- bumpFeeConfirmationWidget (TxErg tx) feeRate = pure ()

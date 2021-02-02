@@ -128,13 +128,13 @@ library
         Ergvein.Wallet.Scan
         Ergvein.Wallet.Settings
         Ergvein.Wallet.Share
+        Ergvein.Wallet.Status.Types
+        Ergvein.Wallet.Status.Widget
         Ergvein.Wallet.Storage
         Ergvein.Wallet.Storage.AuthInfo
         Ergvein.Wallet.Storage.Constants
         Ergvein.Wallet.Storage.Util
         Ergvein.Wallet.Style
-        Ergvein.Wallet.Status.Types
-        Ergvein.Wallet.Status.Widget
         Ergvein.Wallet.TimeZone
         Ergvein.Wallet.Transaction
         Ergvein.Wallet.Transaction.Builder
@@ -144,8 +144,10 @@ library
         Ergvein.Wallet.Util
         Ergvein.Wallet.Validate
         Ergvein.Wallet.Widget.Balance
-        Ergvein.Wallet.Widget.FeeSelector
         Ergvein.Wallet.Widget.GraphPinCode
+        Ergvein.Wallet.Widget.Input.BTC.Amount
+        Ergvein.Wallet.Widget.Input.BTC.Fee
+        Ergvein.Wallet.Widget.Input.BTC.Recipient
         Ergvein.Wallet.Worker.Fees
         Ergvein.Wallet.Worker.Height
         Ergvein.Wallet.Worker.Indexer
