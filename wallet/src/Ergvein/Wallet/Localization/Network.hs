@@ -2,6 +2,7 @@ module Ergvein.Wallet.Localization.Network(
     NetworkPageStrings(..)
   ) where
 
+import Ergvein.Index.Protocol.Types (Version)
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
@@ -37,6 +38,7 @@ data NetworkPageStrings
   | NPSNoActiveNodes
   | NPSNoCurrencies
   | NPSTitleCur Currency
+  | NPSIndexerVersion (Maybe Version)
 
 instance LocalizedPrint NetworkPageStrings where
   localizedShow l v = case l of
@@ -71,6 +73,7 @@ instance LocalizedPrint NetworkPageStrings where
       NPSNoActiveNodes      -> "No active nodes"
       NPSNoCurrencies       -> "No active currencies"
       NPSTitleCur c         -> "Network " <> showt c
+      NPSIndexerVersion v   -> "Indexer version: " <> showt v
     Russian -> case v of
       NPSTitle              -> "Сеть"
       NPSServer             -> "Сервера: "
@@ -108,3 +111,4 @@ instance LocalizedPrint NetworkPageStrings where
       NPSNoActiveNodes      -> "Нет активных узлов"
       NPSNoCurrencies       -> "Нет активных валют"
       NPSTitleCur c         -> "Сеть " <> showt c
+      NPSIndexerVersion v   -> "Indexer version: " <> showt v

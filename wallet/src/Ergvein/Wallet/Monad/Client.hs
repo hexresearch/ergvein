@@ -33,7 +33,7 @@ import Network.Socket (SockAddr)
 import Reflex
 import Reflex.ExternalRef
 
-import Ergvein.Index.Protocol.Types (Message(..))
+import Ergvein.Index.Protocol.Types (Message(..),Version)
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Monad.Async
@@ -47,12 +47,15 @@ import qualified Data.Set as S
 data IndexerConnection t = IndexerConnection {
   indexConAddr :: !SockAddr
 , indexConName :: !Text
+, indexConIndexerVersion :: !(Maybe Version)
 , indexConClosedE :: !(Event t ())
 , indexConOpensE :: !(Event t ())
 , indexConIsUp :: !(Dynamic t Bool)
 , indexConRespE :: !(Event t Message)
 , indexerConHeight :: !(Dynamic t (Map Currency BlockHeight))
 }
+
+type Lalala = Version
 
 data IndexerMsg = IndexerClose | IndexerRestart | IndexerMsg Message
 
