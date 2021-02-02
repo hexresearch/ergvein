@@ -2,7 +2,7 @@ module Ergvein.Wallet.Validate (
     validate
   , validateNow
   , validateAmount
-  , validateRecipient
+  , validateBtcRecipient
   , validateBtcWithUnits
   , VError(..)
   , Validation(..)
@@ -95,15 +95,15 @@ validateBtcWithUnits unit x = case validateNonEmptyString x of
         Failure errs'' -> _Failure # errs''
         Success (PositiveRational result'') -> _Success # (floor $ result'' * 10 ^ btcResolution unit)
 
-validateAddress :: Currency -> String -> Validation [VError] EgvAddress
-validateAddress currency addrStr = case egvAddrFromString currency (T.pack addrStr) of
+validateBtcAddr :: String -> Validation [VError] BtcAddress
+validateBtcAddr addrStr = case btcAddrFromString (T.pack addrStr) of
   Nothing   -> _Failure # [InvalidAddress]
   Just addr -> _Success # addr
 
-validateRecipient :: Currency -> String -> Validation [VError] EgvAddress
-validateRecipient currency addrStr = case validateNonEmptyString addrStr of
+validateBtcRecipient :: String -> Validation [VError] BtcAddress
+validateBtcRecipient addrStr = case validateNonEmptyString addrStr of
   Failure errs -> _Failure # errs
-  Success (NonEmptyString nonEmptyAddrStr) -> case validateAddress currency nonEmptyAddrStr of
+  Success (NonEmptyString nonEmptyAddrStr) -> case validateBtcAddr nonEmptyAddrStr of
     Failure errs' -> _Failure # errs'
     Success addr -> _Success # addr
 

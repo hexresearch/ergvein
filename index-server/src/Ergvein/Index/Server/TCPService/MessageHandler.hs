@@ -45,13 +45,13 @@ handleMsg _ (MPong _) = pure mempty
 
 handleMsg _ (MVersionACK _) = pure mempty
 
-handleMsg address (MVersion peerVersion) = do
-  ownVer <- ownVersion
-  if protocolVersion == versionVersion peerVersion then do
+handleMsg address (MVersion peerVersion) =
+  if protocolVersion `isCompatible` versionVersion peerVersion then do
+    ownVer <- ownVersion
     considerPeer ownVer $ PeerCandidate address $ versionScanBlocks ownVer
-    pure [ MVersionACK $ VersionACK, MVersion ownVer ]
+    pure [ MVersionACK VersionACK, MVersion ownVer ]
   else
-    pure mempty
+    pure [ MReject $ Reject VersionNotSupported ]
 
 handleMsg _ (MPeerRequest _) = do
   knownPeers <- getActualPeers
