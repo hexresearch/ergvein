@@ -1,5 +1,8 @@
+{-# LANGUAGE BinaryLiterals #-}
+{-# LANGUAGE NumericUnderscores #-}
 module VersionTest where
 
+import Data.Attoparsec.Binary
 import Data.ByteString (ByteString)
 import Data.ByteString.Builder
 import Data.Word
@@ -24,4 +27,9 @@ unit_oldVersion :: IO ()
 unit_oldVersion = do
   let v = 1 :: Word32
       vbs = BSL.toStrict $ toLazyByteString $ word32LE v
-  decodeVersion vbs @?= Right (0, 0, 1)
+  decodeVersion vbs @?= Right (0, 0, 4)
+
+unit_sampleVersion :: IO ()
+unit_sampleVersion = do
+  let res = AP.parseOnly anyWord32be $ mkProtocolVersion (1, 2, 4)
+  res @?= Right 0b0000000100_0000000010_0000000001_00

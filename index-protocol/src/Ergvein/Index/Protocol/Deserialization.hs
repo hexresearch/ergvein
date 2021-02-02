@@ -65,7 +65,7 @@ word8toFeeLevel = \case
 
 versionParser :: Parser ProtocolVersion
 versionParser = do
-  bs :: S.Bitstream (S.Right) <- S.fromBits <$> anyWord32be
+  bs :: S.Bitstream S.Right <- S.fromBits <$> anyWord32be
   let p    = S.toBits $ S.append pad $ S.take i10 bs
   let mn   = S.toBits $ S.append pad $ S.take i10 $ S.drop i10 bs
   let mj   = S.toBits $ S.append pad $ S.take i10 $ S.drop i20 bs

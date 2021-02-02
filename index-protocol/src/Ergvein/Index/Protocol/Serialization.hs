@@ -58,7 +58,7 @@ mkProtocolVersion (mj,mn,p)
   | p  > 1023 = error $ "Patch version out of bounds: " <> show p  <> " should be < 1023"
   | otherwise = S.toByteString $ w16to10 p <> w16to10 mn <> w16to10 mj <> reservedBits
   where
-    w16to10 :: Word16 -> S.Bitstream (S.Right)
+    w16to10 :: Word16 -> S.Bitstream S.Right
     w16to10 = S.fromNBits (10 :: Int)
     reservedBits :: S.Bitstream S.Right
     reservedBits = S.pack [False, False]
