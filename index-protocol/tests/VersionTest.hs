@@ -29,7 +29,12 @@ unit_oldVersion = do
       vbs = BSL.toStrict $ toLazyByteString $ word32LE v
   decodeVersion vbs @?= Right (0, 0, 4)
 
-unit_sampleVersion :: IO ()
-unit_sampleVersion = do
+unit_sampleVersion1 :: IO ()
+unit_sampleVersion1 = do
   let res = AP.parseOnly anyWord32be $ mkProtocolVersion (1, 2, 4)
   res @?= Right 0b0000000100_0000000010_0000000001_00
+
+unit_sampleVersion2 :: IO ()
+unit_sampleVersion2 = do
+  let res = AP.parseOnly anyWord32be $ mkProtocolVersion (2, 0, 0)
+  res @?= Right 0b0000000000_0000000000_0000000010_00

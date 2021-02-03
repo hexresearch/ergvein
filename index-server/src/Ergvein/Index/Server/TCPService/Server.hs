@@ -104,7 +104,9 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
       void $ fork $ broadcastLoop sendChan
       -- Start message listener
       listenLoop sendChan
-    _ -> closeConnection addr
+    _ -> do
+      logErrorN $ "<" <> showt addr <> ">: Client sent something that not version packet at handshake phase. Closed."
+      closeConnection addr
   where
     writeMsg :: TChan LBS.ByteString -> Message -> IO ()
     writeMsg destinationChan = atomically . writeTChan destinationChan . toLazyByteString . messageBuilder
