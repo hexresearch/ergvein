@@ -2,9 +2,10 @@ module Ergvein.Index.Server.TCPService.MessageHandler where
 
 import Control.Concurrent.STM
 import Control.Monad.IO.Class
+import Control.Monad.Logger
 import Control.Monad.Reader
-import Data.List (foldl')
 import Conversion
+import Data.List (foldl')
 import Network.Socket
 
 import Ergvein.Index.Protocol.Types as IPT
@@ -17,11 +18,12 @@ import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Discovery
 import Ergvein.Index.Server.PeerDiscovery.Types
+import Ergvein.Index.Server.TCPService.Connections
+import Ergvein.Index.Server.TCPService.Conversions
+import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 import Ergvein.Types.Transaction
-import Ergvein.Index.Server.TCPService.Connections
-import Ergvein.Index.Server.TCPService.Conversions
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -38,24 +40,28 @@ getBlockMetaSlice currency startHeight amount = do
 
   pure $ snd <$> slice
 
-handleMsg :: SockAddr -> Message -> ServerM [Message]
-handleMsg _ (MPing msg) = pure [MPong msg]
+handleMsg :: SockAddr -> Message -> ServerM ([Message], Bool) -- bool is to close connection
+handleMsg _ (MPing msg) = pure ([MPong msg], False)
 
-handleMsg _ (MPong _) = pure mempty
+handleMsg _ (MPong _) = pure (mempty, False)
 
-handleMsg _ (MVersionACK _) = pure mempty
+handleMsg _ (MVersionACK _) = pure (mempty, False)
+
+handleMsg addr (MReject r) = do
+  logErrorN $ "<" <> showt addr <> ">: Client sent reject: " <> showt r
+  pure (mempty, True)
 
 handleMsg address (MVersion peerVersion) =
   if protocolVersion `isCompatible` versionVersion peerVersion then do
     ownVer <- ownVersion
     considerPeer ownVer $ PeerCandidate address $ versionScanBlocks ownVer
-    pure [ MVersionACK VersionACK, MVersion ownVer ]
+    pure ([ MVersionACK VersionACK, MVersion ownVer ], False)
   else
-    pure [ MReject $ Reject VersionNotSupported ]
+    pure ([ MReject $ Reject VersionNotSupported ], True)
 
 handleMsg _ (MPeerRequest _) = do
   knownPeers <- getActualPeers
-  pure $ pure $ MPeerResponse $ PeerResponse $ V.fromList knownPeers
+  pure ([MPeerResponse $ PeerResponse $ V.fromList knownPeers], False)
 
 handleMsg _ (MFiltersRequest FilterRequest {..}) = do
   currency <- currencyCodeToCurrency filterRequestMsgCurrency
@@ -63,10 +69,10 @@ handleMsg _ (MFiltersRequest FilterRequest {..}) = do
   let filters = V.fromList $ convert <$> slice
   void $ addCounter filtersServedCounter $ fromIntegral $ V.length filters
 
-  pure $ pure $ MFiltersResponse $ FilterResponse
+  pure ([MFiltersResponse $ FilterResponse
     { filterResponseCurrency = filterRequestMsgCurrency
     , filterResponseFilters = filters
-    }
+    }], False)
 
 handleMsg address (MFiltersEvent FilterEvent {..}) = do
   currency <- currencyCodeToCurrency filterEventCurrency
@@ -75,7 +81,7 @@ handleMsg address (MFiltersEvent FilterEvent {..}) = do
   when (any (/= filterEventBlockFilter) filters) $ do
    closeConnection address
    deletePeerBySockAddr $ convert address
-  pure mempty
+  pure (mempty, False)
 
 handleMsg _ (MFeeRequest curs) = do
   fees <- liftIO . readTVarIO =<< asks envFeeEstimates
@@ -85,7 +91,7 @@ handleMsg _ (MFeeRequest curs) = do
         IPT.TBTC -> FeeRespBTC True fb
         _ -> let FeeBundle (_, h) (_, m) (_, l) = fb
           in FeeRespGeneric cur h m l
-  pure $ pure $ MFeeResponse $ M.elems resps
+  pure $ ([MFeeResponse $ M.elems resps], False)
 
 handleMsg _ (MRatesRequest (RatesRequest rs)) = do
   rates <- liftIO . readTVarIO =<< asks envExchangeRates
@@ -93,6 +99,6 @@ handleMsg _ (MRatesRequest (RatesRequest rs)) = do
         in if M.null m' then Nothing else Just m'
   let foo m (c,fs) = M.update (boo fs) c m
   let resp = MRatesResponse $ RatesResponse $ foldl' foo rates $ M.toList rs
-  pure [resp]
+  pure ([resp], False)
 
-handleMsg _ _ = pure []
+handleMsg _ _ = pure ([], False)
