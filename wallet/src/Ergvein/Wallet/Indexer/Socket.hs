@@ -38,6 +38,7 @@ import qualified Data.Vector.Unboxed        as VU
 
 initIndexerConnection :: (MonadBaseConstr t m, MonadHasSettings t m) => NamedSockAddr -> Event t IndexerMsg ->  m (IndexerConnection t)
 initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
+  (versionMismatchE, versionMismatchFire) <- newTriggerEvent
   (msname, msport) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True sa
   let peer = fromJust $ Peer <$> msname <*> msport
   let restartE = fforMaybe msgE $ \case
@@ -54,18 +55,27 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
       _socketConfPeer   = peer
     , _socketConfSend   = fmap serializeMessage sendE
     , _socketConfPeeker = peekMessage sa
-    , _socketConfClose  = closeE
+    , _socketConfClose  = leftmost [closeE, versionMismatchE]
     , _socketConfReopen = Just (1, 2) -- reconnect after 1 seconds 2 retries
     , _socketConfProxy  = proxyD
     }
   handshakeE <- performEvent $ ffor (socketConnected s) $ const $ mkVers
   let respE = _socketInbound s
-  hsRespE <- performEvent $ fforMaybe respE $ \case
-    MVersion Version{..} -> Just $ liftIO $ do
+  hsRespE <- fmap (fmapMaybe id) $ performEvent $ ffor respE $ \case
+    MReject (Reject VersionNotSupported) -> do
+      nodeLog sa $ "The remote version is not compatible with our version " <> showt protocolVersion
+      liftIO $ versionMismatchFire ()
+      pure Nothing
+    MVersion Version{..} -> do
       nodeLog sa $ "Received version: " <> showt versionVersion
-      pure $ MVersionACK VersionACK
-    MPing nonce -> Just $ pure $ MPong nonce
-    _ -> Nothing
+      if protocolVersion `isCompatible` versionVersion
+        then pure $ Just (MVersionACK VersionACK)
+        else do
+          nodeLog sa $ "The reported remote version " <> showt versionVersion <> " is not compatible with our version " <> showt protocolVersion
+          liftIO $ versionMismatchFire ()
+          pure Nothing
+    MPing nonce -> pure $ Just $ MPong nonce
+    _ -> pure Nothing
   let sendE = leftmost [handshakeE, hsRespE, gate (current shakeD) reqE]
 
   performEvent_ $ ffor (_socketRecvEr s) $ nodeLog sa . showt
