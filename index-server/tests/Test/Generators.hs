@@ -1,27 +1,28 @@
 module Test.Generators where
 
 import Control.Monad (replicateM)
+import Data.Serialize (decode)
+import Network.Haskoin.Transaction hiding (TxHash)
+import qualified Network.Haskoin.Transaction as HK
 import Test.QuickCheck
 import Test.QuickCheck.Instances
-import Network.Haskoin.Transaction hiding (TxHash)
-import Data.Serialize (decode)
-import qualified Network.Haskoin.Transaction as HK
 
 
+import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Schema.Filters
 import Ergvein.Index.Server.DB.Schema.Indexer
-import Ergvein.Index.Server.BlockchainScanning.Types
+import Ergvein.Index.Server.DB.Schema.Utxo
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Types.Transaction
 
-import qualified Data.List                  as L
-import qualified Data.Vector.Unboxed        as UV
-import qualified Data.Vector                as V
-import qualified Data.ByteString.Lazy       as BL
-import qualified Data.ByteString            as BS
-import qualified Data.ByteString.Short      as BSS
-import qualified Data.ByteString.Builder    as BB
 import qualified Data.Attoparsec.ByteString as AP
+import qualified Data.ByteString            as BS
+import qualified Data.ByteString.Builder    as BB
+import qualified Data.ByteString.Lazy       as BL
+import qualified Data.ByteString.Short      as BSS
+import qualified Data.List                  as L
+import qualified Data.Vector                as V
+import qualified Data.Vector.Unboxed        as UV
 
 --------------------------------------------------------------------------
 -- generators
@@ -47,7 +48,7 @@ arbitraryBSS32 = do
 instance Arbitrary TxHash where
   arbitrary = oneof [
       BtcTxHash <$> arbitrary
-    , ErgTxHash . ErgTxId <$> arbitraryBSS32
+    -- , ErgTxHash . ErgTxId <$> arbitraryBSS32 -- We do not support ERGO at the moment
     ]
 instance Arbitrary ScannedHeightRec where
   arbitrary = ScannedHeightRec <$> arbitrary
@@ -59,8 +60,8 @@ instance Arbitrary TxRecUnspent where
   arbitrary = TxRecUnspent <$> arbitrary
 instance Arbitrary TxInfo where
   arbitrary = TxInfo <$> arbitrary <*> arbitrary <*> arbitrary
-instance Arbitrary BlockMetaRec where
-  arbitrary = BlockMetaRec <$> arbitraryBSS32 <*> arbitrary
+instance Arbitrary BlockInfoRec where
+  arbitrary = BlockInfoRec <$> arbitraryBSS32 <*> arbitrary
 instance Arbitrary KnownPeerRecItem where
   arbitrary = KnownPeerRecItem <$> arbitrary <*> arbitrary
 instance Arbitrary KnownPeersRec where
