@@ -181,22 +181,23 @@ btcDbConsistencyCheck = do
       block <- getBtcBlockWithRepeat h
       let blockHeaderHash = HK.getHash256 $ HK.getBlockHash $ HK.headerHash $ HK.blockHeader block
       mhash <- getLastScannedBlock BTC
-      if (Just blockHeaderHash /= mhash)
-        then deleteLastScannedBlock BTC >> pure True
-        else do
-          let txIds = fmap (hkTxHashToEgv . HK.txHash) $ HK.blockTxns block
-          rse <- liftIO . readTVarIO =<< getBtcRollbackVar
-          case rse of
-            Seq.Empty -> pure ()
-            tip Seq.:<| _ -> when (rollbackPrevHeight tip /= h - 1) clearRollback
-          brec <- getBlockInfoRec BTC h
-          case brec of
-            Nothing -> pure False
-            Just (BlockInfoRec hh _) -> if blockHeaderHash /= hh
-              then pure False
-              else do
-                udb <- readUtxoDb
-                checkTxs udb txIds
+      -- These inconsistencies can be repaired
+      when (Just blockHeaderHash /= mhash) $ deleteLastScannedBlock BTC
+      rse <- liftIO . readTVarIO =<< getBtcRollbackVar
+      case rse of
+        Seq.Empty -> pure ()
+        tip Seq.:<| _ -> when (rollbackPrevHeight tip /= h - 1) clearRollback
+
+      -- these cannot
+      let txIds = fmap (hkTxHashToEgv . HK.txHash) $ HK.blockTxns block
+      brec <- getBlockInfoRec BTC h
+      case brec of
+        Nothing -> pure False   -- Filter is missing
+        Just (BlockInfoRec hh _) -> if blockHeaderHash /= hh
+          then pure False       -- Filter is for the wrong block (how??)
+          else do
+            udb <- readUtxoDb
+            checkTxs udb txIds  -- check that all transaction are stored
   where
     clearRollback = do
       storeRollbackSequence BTC $ RollbackSequence mempty

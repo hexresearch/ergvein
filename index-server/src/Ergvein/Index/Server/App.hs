@@ -74,8 +74,6 @@ dirtyBtcHack = do
 cleanerBtcHack :: ServerM ()
 cleanerBtcHack = do
   isConsistent <- btcDbConsistencyCheck
-  logInfoN $ "Consistency: " <> showt isConsistent
-  liftIO $ getChar
   unless isConsistent $ do
     -- we set Nothing value to 1 to avoid checking for 0 later
     h <- fmap (fromMaybe 1) $ getScannedHeight BTC
