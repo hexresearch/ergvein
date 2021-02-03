@@ -110,8 +110,8 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
         rawSendMsg $ MReject err
         threadDelay 100000
       closeConnection addr
-    _ -> do
-      logErrorN $ "<" <> showt addr <> ">: Client sent something that not version packet at handshake phase. Closed."
+    Right (msg : _) -> do
+      logErrorN $ "<" <> showt addr <> ">: Client sent something that not version packet at handshake phase: " <> showt msg
       closeConnection addr
   where
     rawSendMsg :: Message -> IO ()
