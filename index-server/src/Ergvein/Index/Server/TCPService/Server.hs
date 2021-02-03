@@ -135,8 +135,10 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
               logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
               closeConnection addr
             Left err -> do
-              logInfoN $ "failed to handle msg: " <> showt err
-              liftIO $ writeMsg destinationChan $ MReject err
+              liftIO $ do
+                writeMsg destinationChan $ MReject err
+                threadDelay 100000
+              closeConnection addr
 
     evalMsg :: ExceptT Reject ServerM [Message]
     evalMsg = response =<< request =<< messageHeader =<< messageHeaderBytes
@@ -160,4 +162,6 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
           except $ mapLeft (\_-> Reject MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
 
         response :: Message -> ExceptT Reject ServerM [Message]
-        response msg = (lift $ handleMsg addr msg) `catch` (\SomeException{} -> except $ Left $ Reject InternalServerError)
+        response msg = (lift $ handleMsg addr msg) `catch` (\(e :: SomeException) -> do
+          logErrorN $ "<" <> showt addr <> ">: Rejecting peer as exception occured in while handling it message: " <> showt e
+          except $ Left $ Reject InternalServerError)
