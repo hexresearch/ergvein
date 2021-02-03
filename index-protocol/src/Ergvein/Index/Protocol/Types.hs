@@ -31,7 +31,7 @@ protocolVersion = (1,0,0)
 
 -- | Compare own version with other version and check whether we support it
 isCompatible :: ProtocolVersion -> ProtocolVersion -> Bool
-isCompatible (1,_, _) (0, 0, 16) = True -- Pre 1.0.0 versions encoded as simple LE number. Thus 1 => 0b00000001000000000000000000000000 => 0b10000 patch version (2 bits dropped, 10 next)
+isCompatible (1,_, _) (0, 0, 4) = True -- Pre 1.0.0 versions encoded as simple LE number. Thus 1 => 0b00000001000000000000000000000000 => 0b100 patch version (10 bits patch version in LE)
 isCompatible (major1, _, _) (major2, _, _) = major1 == major2
 
 data MessageType = MVersionType
