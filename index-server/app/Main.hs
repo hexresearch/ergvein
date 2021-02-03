@@ -2,7 +2,9 @@ module Main where
 
 import Control.Monad.Logger
 import Data.Text (Text, pack)
+import Data.Word
 import Options.Applicative
+import Text.Read
 
 import Ergvein.Index.Server.App
 import Ergvein.Index.Server.Config
@@ -29,14 +31,21 @@ data Options = Options {
 , optsOnlyScan          :: Bool
   -- |Def: False. Whether to skip BTC hack or not
 , optsSkipBtcHack       :: Bool
+  -- | Starting height for btc
+, optsBtcStartHeight    :: Word64
 }
+
+wordReader :: ReadM Word64
+wordReader = eitherReader $ \arg -> case readMaybe arg of
+  Nothing -> Left ("Cannot parse word: " ++ arg)
+  Just w  -> Right w
 
 type ServerUrl = Text
 
 data Command
   = CleanKnownPeers FilePath
   | CommandListen FilePath
-  | BuildBtcIndex FilePath
+  | BuildBtcIndex FilePath Int
 
 options :: Parser Options
 options = Options
@@ -50,16 +59,16 @@ options = Options
     <*> flag False True (long "tcp-node" <> help "Use TCP connection to the node instead of RPC" )
     <*> flag False True (long "only-scan" <> help "Start only BC-scanning threads" )
     <*> flag False True (long "no-btc-hack" <> help "Skip BTC hack which starts the scan one block early each time" )
+    <*> option wordReader (long "btc-start" <> help "BTC starting height" <> value 0)
   where
     cleanKnownPeers = CleanKnownPeers
-      <$> strArgument (
-          metavar "CONFIG_PATH"
-        )
+      <$> strArgument ( metavar "CONFIG_PATH" )
     listenCmd = CommandListen
-      <$> strArgument (
-          metavar "CONFIG_PATH"
-        )
-    indexCmd = BuildBtcIndex <$> (strArgument (metavar "CONFIG_PATH"))
+      <$> strArgument ( metavar "CONFIG_PATH" )
+    indexCmd = BuildBtcIndex
+      <$> strArgument ( metavar "CONFIG_PATH" )
+      <*> option auto ( metavar "THREAD_COUNT" <> short 'n' <> long "thread-count" <> value 1)
+
 main :: IO ()
 main = do
     startServer =<< execParser opts
@@ -83,9 +92,9 @@ startServer Options{..} = case optsCommand of
         env <- runStdoutLoggingT $ newServerEnv optsBtcTcpConn optsOverrideFilters optsOverrideIndexers optsOverrideUtxo client cfg
         runServerMIO env emptyKnownPeers
       T.putStrLn $ pack "knownPeers cleared"
-    BuildBtcIndex cfgPath -> do
+    BuildBtcIndex cfgPath n -> do
       cfg@Config{..} <- loadConfig cfgPath
       BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
         env <- runStdoutLoggingT $ newTxIndexEnv optsBtcTcpConn client cfg
-        runStdoutLoggingT $ txIndexApp env
+        runStdoutLoggingT $ txIndexApp optsBtcStartHeight n env
       T.putStrLn $ pack "Index builder done"

@@ -4,6 +4,7 @@ module Ergvein.Index.Server.TxIndex
   , newTxIndexEnv
   ) where
 
+import Control.Concurrent.Async.Lifted
 import Control.Concurrent.STM
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
@@ -20,7 +21,6 @@ import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.TxIndex.Monad
 import Ergvein.Index.Server.TCPService.Conversions()
-import Ergvein.Index.Server.Utils
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
@@ -28,13 +28,21 @@ import Ergvein.Types.Transaction
 import qualified Data.Text.IO as T
 import Ergvein.Index.Server.BlockchainScanning.Bitcoin (buildTxIndex, actualHeight)
 
-txIndexApp :: (MonadUnliftIO m, MonadLogger m) => TxIndexEnv -> m ()
-txIndexApp env = do
+txIndexApp :: (MonadUnliftIO m, MonadLogger m) => BlockHeight -> Int -> TxIndexEnv -> m ()
+txIndexApp btcStartHeight threadNum env = do
   logInfoN $ "Server started at:" <> (showt . cfgServerPort $ envServerConfig env)
   _ <- liftIO $ installHandler sigTERM (Catch onShutdown) Nothing
   _ <- liftIO $ installHandler sigINT  (Catch onShutdown) Nothing
-  liftIO $ runTxIndexMIO env $ btcTxIndexBuilder 668617 Nothing
-  liftIO $ cancelableDelay (envShutdownFlag env) (-1)
+  liftIO $ runTxIndexMIO env $ if threadNum == 1
+    then btcTxIndexBuilder btcStartHeight Nothing
+    else do
+      tipHeight <- actualHeight
+      let (q,r) = quotRem (tipHeight - btcStartHeight + 1) $ fromIntegral threadNum
+      let num = q + if r /= 0 then 1 else 0
+      let bounds = [(n, Just $ n + num - 1) | n <- [btcStartHeight, btcStartHeight + num..tipHeight]]
+      let (xs,(lastStart, _)) = (init bounds, last bounds)
+      let bounds' = xs ++ [(lastStart, Nothing)]
+      void $ mapConcurrently (uncurry btcTxIndexBuilder) bounds'
   where
     onShutdown :: IO ()
     onShutdown = do
@@ -53,7 +61,6 @@ btcTxIndexBuilder hbeg mhend = indexIteration hbeg
       logInfoN $ "["<> showt (formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S" now) <> "] "
         <> "Building index for <BTC> "
         <> showt blockHeight <> " / " <> showt headBlockHeight <> " (" <> showf 2 (100*percent) <> "%)"
-        -- <> showt (length $ spentTxsHash bi)
       buildTxIndex blockHeight
 
     indexIteration :: BlockHeight -> TxIndexM ()

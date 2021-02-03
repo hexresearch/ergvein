@@ -42,7 +42,7 @@ blockInfo :: (BitcoinApiMonad m, HasUtxoDB m, MonadLogger m, MonadBaseControl IO
   => BlockHeight -> m BlockInfo
 blockInfo blockHeightToScan = blockTxInfos blockHeightToScan =<< getBtcBlockWithRepeat blockHeightToScan
 
-blockTxInfos :: (BitcoinApiMonad m, MonadBaseControl IO m, HasUtxoDB m, MonadLogger m, MonadBaseControl IO m) => BlockHeight -> HK.Block -> m BlockInfo
+blockTxInfos :: (HasShutdownFlag m, BitcoinApiMonad m, MonadBaseControl IO m, HasUtxoDB m, MonadLogger m, MonadBaseControl IO m) => BlockHeight -> HK.Block -> m BlockInfo
 blockTxInfos txBlockHeight block = do
   let (txInfos , spentTxsIds) = fmap (uniqueWithCount . mconcat) $ unzip $ txInfo <$> HK.blockTxns block
   -- timeLog $ "spentTxsIds: " <> showt (length spentTxsIds)
@@ -56,7 +56,7 @@ blockTxInfos txBlockHeight block = do
   pure $ BlockInfo blockMeta spentTxsIdsMap txInfos
   where
     blockTxMap = mapBy (HK.txHash) $ HK.blockTxns block
-    spentTxSource :: (MonadBaseControl IO m, BitcoinApiMonad m, HasUtxoDB m, MonadLogger m) => (HK.TxHash, Word32) -> m HK.Tx
+    spentTxSource :: (HasShutdownFlag m, MonadBaseControl IO m, BitcoinApiMonad m, HasUtxoDB m, MonadLogger m) => (HK.TxHash, Word32) -> m HK.Tx
     spentTxSource (txInId, _) = case Map.lookup txInId blockTxMap of
       Just    sourceTx -> pure sourceTx
       Nothing          -> do
@@ -90,13 +90,13 @@ getTxFromCache thash = do
     Nothing -> Left $ "Tx not found. TxHash: " <> show thash
     Just src -> egvDeserialize BTC $ unTxRecBytes src
 
-getTxFromNode :: (BitcoinApiMonad m, MonadLogger m, MonadBaseControl IO m, HasUtxoDB m)
+getTxFromNode :: (HasShutdownFlag m, BitcoinApiMonad m, MonadLogger m, MonadBaseControl IO m, HasUtxoDB m)
   => HK.TxHash -> m HK.Tx
 getTxFromNode thash = do
   db <- readUtxoDb
   txHeight <- fmap unTxRecHeight $
     getParsedExact BTC "getTxFromNode" db $ txHeightKey $ hkTxHashToEgv thash
-  blk <- getBtcBlock $ fromIntegral txHeight
+  blk <- getBtcBlockWithRepeat $ fromIntegral txHeight
   let txChunks = mkChunks 100 $ HK.blockTxns blk
   txs <- fmap mconcat $ mapConcurrently (pure . catMaybes . parMap rpar comparator) txChunks
   case txs of
