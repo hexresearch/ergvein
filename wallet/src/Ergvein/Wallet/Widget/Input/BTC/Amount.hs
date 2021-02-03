@@ -1,55 +1,27 @@
--- {-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wall #-}
 
 module Ergvein.Wallet.Widget.Input.BTC.Amount(
     sendAmountWidget
   ) where
 
-import Control.Lens
 import Control.Monad.Except
 import Data.Maybe
 import Data.Word
-import Text.Read
 
-import Ergvein.Text
 import Ergvein.Types
-import Ergvein.Types.Derive
-import Ergvein.Types.Storage.Currency.Public.Btc
-import Ergvein.Types.Utxo.Btc
-import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Camera
-import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Elements.Input
-import Ergvein.Wallet.Elements.Toggle
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Fee
 import Ergvein.Wallet.Localization.Send
 import Ergvein.Wallet.Localization.Settings()
-import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
-import Ergvein.Wallet.Navbar
-import Ergvein.Wallet.Navbar.Types
-import Ergvein.Wallet.Node
-import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Storage
-import Ergvein.Wallet.Transaction.Builder
-import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Widget.Balance
-import Ergvein.Wallet.Wrapper
 
-import Network.Haskoin.Network (Inv(..), InvVector(..), InvType(..), Message(..))
-
-import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import qualified Data.Vector as V
-import qualified Network.Haskoin.Address as HA
-import qualified Network.Haskoin.Script as HS
-import qualified Network.Haskoin.Transaction as HT
 
 -- | Input field with units. Converts everything to satoshis and returns the unit
 sendAmountWidget :: MonadFront t m => Maybe (UnitBTC, Word64) -> Event t () -> m (Dynamic t (Maybe (UnitBTC, Word64)))

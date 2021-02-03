@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedLists #-}
 
 module Ergvein.Wallet.Page.Send (
@@ -9,24 +8,18 @@ import Control.Lens
 import Control.Monad.Except
 import Data.Maybe
 import Data.Word
-import Text.Read
 
 import Ergvein.Text
 import Ergvein.Types
-import Ergvein.Types.Derive
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Camera
-import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Elements.Toggle
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Fee
 import Ergvein.Wallet.Localization.Send
 import Ergvein.Wallet.Localization.Settings()
-import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Navbar
@@ -38,8 +31,6 @@ import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage
 import Ergvein.Wallet.Transaction.Builder
 import Ergvein.Wallet.Transaction.Util
-import Ergvein.Wallet.Validate
-import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Widget.Input.BTC.Amount
 import Ergvein.Wallet.Widget.Input.BTC.Fee
 import Ergvein.Wallet.Widget.Input.BTC.Recipient
@@ -55,10 +46,6 @@ import qualified Network.Haskoin.Address as HA
 import qualified Network.Haskoin.Script as HS
 import qualified Network.Haskoin.Transaction as HT
 
-#ifdef ANDROID
-import Ergvein.Wallet.Camera
-#endif
-
 type RbfEnabled = Bool
 
 sendPage :: MonadFront t m => Currency -> Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), BtcAddress, RbfEnabled) -> m ()
@@ -69,36 +56,42 @@ sendPage cur minit = mdo
         then blank
         else navbarWidget cur thisWidget NavbarSend
       thisWidget = Just $ sendPage cur <$> retInfoD
-  retInfoD <- sendWidget title navbar thisWidget
+  retInfoD <- sendWidget cur minit title navbar thisWidget
   pure ()
-  where
-    -- TODO: write type annotation here
-    sendWidget title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ mdo
-      settings <- getSettings
-      let recipientInit = (\(_, _, x, _) -> x) <$> minit
-          amountInit = (\(x, _, _, _) -> x) <$> minit
-          feeInit = (\(_, x, _, _) -> x) <$> minit
-          rbfInit = (\(_, _, _, x) -> x) <$> minit
-          rbfFromSettings = btcSettings'sendRbfByDefault $ getBtcSettings settings
-          rbfInit' = fromMaybe rbfFromSettings rbfInit
-      retInfoD <- form $ mdo
-        recipientD <- recipientWidget recipientInit submitE
-        amountD <- sendAmountWidget amountInit submitE
-        feeD <- btcFeeSelectionWidget FSRate feeInit Nothing submitE
-        rbfEnabledD <- divClass "mb-1" $ toggler SSRbf (constDyn rbfInit')
-        submitE <- outlineSubmitTextIconButtonClass "w-100" SendBtnString "fas fa-paper-plane fa-lg"
-        let goE = flip push submitE $ \_ -> do
-              mrecipient <- sampleDyn recipientD
-              mamount <- sampleDyn amountD
-              mfee <- sampleDyn feeD
-              rbfEnabled <- sampleDyn rbfEnabledD
-              pure $ (,,,) <$> mamount <*> mfee <*> mrecipient <*> (Just rbfEnabled)
-        void $ nextWidget $ ffor goE $ \v@(uam, (_, fee), addr, rbf) -> Retractable {
-            retractableNext = btcSendConfirmationWidget (uam, fee, addr, rbf)
-          , retractablePrev = Just $ pure $ sendPage cur $ Just v
-          }
-        holdDyn minit $ Just <$> goE
-      pure retInfoD
+
+sendWidget :: MonadFront t m
+  => Currency
+  -> Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), BtcAddress, RbfEnabled)
+  -> Dynamic t Text
+  -> m a
+  -> Maybe (Dynamic t (m ()))
+  -> m (Dynamic t (Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), BtcAddress, RbfEnabled)))
+sendWidget cur minit title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ mdo
+  settings <- getSettings
+  let amountInit = (\(x, _, _, _) -> x) <$> minit
+      feeInit = (\(_, x, _, _) -> x) <$> minit
+      recipientInit = (\(_, _, x, _) -> x) <$> minit
+      rbfInit = (\(_, _, _, x) -> x) <$> minit
+      rbfFromSettings = btcSettings'sendRbfByDefault $ getBtcSettings settings
+      rbfInit' = fromMaybe rbfFromSettings rbfInit
+  retInfoD <- form $ mdo
+    recipientD <- recipientWidget recipientInit submitE
+    amountD <- sendAmountWidget amountInit submitE
+    feeD <- btcFeeSelectionWidget FSRate feeInit Nothing submitE
+    rbfEnabledD <- divClass "mb-1" $ toggler SSRbf (constDyn rbfInit')
+    submitE <- outlineSubmitTextIconButtonClass "w-100" SendBtnString "fas fa-paper-plane fa-lg"
+    let goE = flip push submitE $ \_ -> do
+          mrecipient <- sampleDyn recipientD
+          mamount <- sampleDyn amountD
+          mfee <- sampleDyn feeD
+          rbfEnabled <- sampleDyn rbfEnabledD
+          pure $ (,,,) <$> mamount <*> mfee <*> mrecipient <*> (Just rbfEnabled)
+    void $ nextWidget $ ffor goE $ \v@(uam, (_, fee), addr, rbf) -> Retractable {
+        retractableNext = btcSendConfirmationWidget (uam, fee, addr, rbf)
+      , retractablePrev = Just $ pure $ sendPage cur $ Just v
+      }
+    holdDyn minit $ Just <$> goE
+  pure retInfoD
 
 data UtxoPoint = UtxoPoint {
   upPoint :: !HT.OutPoint
@@ -125,7 +118,7 @@ instance Coin UtxoPoint where
 
 -- | Main confirmation & sign & send widget
 btcSendConfirmationWidget :: MonadFront t m => ((UnitBTC, Word64), Word64, BtcAddress, RbfEnabled) -> m ()
-btcSendConfirmationWidget v@((unit, amount), fee, addr, rbfEnabled) = do
+btcSendConfirmationWidget v = do
   walletName <- getWalletName
   title <- localized walletName
   let thisWidget = Just $ pure $ btcSendConfirmationWidget v
@@ -156,7 +149,7 @@ btcAddrToBtcOutType = \case
 makeTxWidget :: MonadFront t m =>
   ((UnitBTC, Word64), Word64, BtcAddress, RbfEnabled) ->
   m (Event t (HT.Tx, UnitBTC, Word64, Word64, BtcAddress))
-makeTxWidget v@((unit, amount), fee, addr, rbfEnabled) = mdo
+makeTxWidget ((unit, amount), fee, addr, rbfEnabled) = mdo
   psD <- getPubStorageD
   utxoKeyD <- holdUniqDyn $ do
     ps <- psD
@@ -253,7 +246,7 @@ txSignSendWidget :: MonadFront t m
   -> [UtxoPoint]    -- ^ List of utxo points used as inputs
   -> RbfEnabled     -- ^ Explicit opt-in RBF signalling
   -> m (Event t (HT.Tx, UnitBTC, Word64, Word64, BtcAddress)) -- ^ Return the Tx + all relevant information for display
-txSignSendWidget addr unit amount fee changeKey change pick rbfEnabled = mdo
+txSignSendWidget addr unit amount _ changeKey change pick rbfEnabled = mdo
   let keyTxt = btcAddrToString $ xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key changeKey
       outs = [(btcAddrToString addr, amount), (keyTxt, change)]
       etx = if rbfEnabled

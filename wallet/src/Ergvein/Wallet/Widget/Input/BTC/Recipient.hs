@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# LANGUAGE CPP #-}
 
 module Ergvein.Wallet.Widget.Input.BTC.Recipient(
     recipientWidget
@@ -17,6 +18,10 @@ import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Validate
+
+#ifdef ANDROID
+import Ergvein.Wallet.Camera
+#endif
 
 import qualified Data.Text as T
 
