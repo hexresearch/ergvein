@@ -15,6 +15,7 @@ module Ergvein.Index.Server.DB.Queries
   , getScannedHeight
   , setScannedHeight
   , addBlockMetaInfos
+  , getBlockInfoRec
   -- * Combined queries
   , addBlockInfo
   , addTxIndexInfo
@@ -241,3 +242,8 @@ addBtcTxIndexInfo :: (HasUtxoDB m, MonadLogger m) => TxIndexInfo -> m ()
 addBtcTxIndexInfo tinfo@TxIndexInfo{..} = do
   dbu <- readUtxoDb
   write dbu def $ putTxIndexInfoAsRec BTC tinfo
+
+getBlockInfoRec :: (HasFiltersDB m, MonadLogger m) => Currency -> BlockHeight -> m (Maybe BlockInfoRec)
+getBlockInfoRec c h = do
+  fdb <- readFiltersDb
+  getParsed c "getBlockInfoRec" fdb $ blockInfoRecKey (c,h)

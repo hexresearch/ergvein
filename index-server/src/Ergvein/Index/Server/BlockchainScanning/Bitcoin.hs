@@ -22,14 +22,18 @@ import           Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import           Ergvein.Index.Server.BlockchainScanning.Types
 import           Ergvein.Index.Server.DB.Monad
 import           Ergvein.Index.Server.DB.Schema.Utxo
+import           Ergvein.Index.Server.DB.Schema.Indexer
+import           Ergvein.Index.Server.DB.Schema.Filters
 import           Ergvein.Index.Server.DB.Serialize
 import           Ergvein.Index.Server.DB.Utils
+import           Ergvein.Index.Server.DB.Queries
 import           Ergvein.Index.Server.Dependencies
 import           Ergvein.Index.Server.Utils
 import           Ergvein.Text
 import           Ergvein.Types.Currency
 import           Ergvein.Types.Transaction
 
+import qualified Data.Sequence                      as Seq
 import qualified Data.ByteString                    as BS
 import qualified Data.HexString                     as HS
 import qualified Data.Map.Strict                    as Map
@@ -150,6 +154,59 @@ buildTxIndex blockHeightToScan = do
       blockHeaderHash = HK.getHash256 $ HK.getBlockHash $ HK.headerHash $ HK.blockHeader block
       prevBlockHeaderHash = HK.getHash256 $ HK.getBlockHash $ HK.prevBlock $ HK.blockHeader block
   pure $ TxIndexInfo blockHeightToScan blockHeaderHash prevBlockHeaderHash txIds
+
+
+-- | Check database consistency
+-- If the scanned height is Nothing -- delete all progress info just in case
+-- and report that the db is consistent
+-- Get the last scanned block from a node and check that:
+-- a) there's a filter for that block
+-- b) for each tx in the block there is at least the height info
+-- If a or b is false -- report inconsistency
+-- In addition check that the rollback sequence is consistent with the last scanned height
+-- If not -- delete the sequence, we can afford to ignore it in almost every case
+btcDbConsistencyCheck :: (BitcoinApiMonad m
+  , HasUtxoDB m
+  , HasFiltersDB m
+  , HasIndexerDB m
+  , HasBtcRollback m
+  , MonadLogger m
+  , MonadBaseControl IO m
+  , HasShutdownFlag m) => m Bool
+btcDbConsistencyCheck = do
+  mh <- getScannedHeight BTC
+  case mh of
+    Nothing -> clearRollback >> deleteLastScannedBlock BTC >> pure True
+    Just h -> do
+      block <- getBtcBlockWithRepeat h
+      let blockHeaderHash = HK.getHash256 $ HK.getBlockHash $ HK.headerHash $ HK.blockHeader block
+      mhash <- getLastScannedBlock BTC
+      if (Just blockHeaderHash /= mhash)
+        then deleteLastScannedBlock BTC >> pure True
+        else do
+          let txIds = fmap (hkTxHashToEgv . HK.txHash) $ HK.blockTxns block
+          rse <- liftIO . readTVarIO =<< getBtcRollbackVar
+          case rse of
+            Seq.Empty -> pure ()
+            tip Seq.:<| _ -> when (rollbackPrevHeight tip /= h - 1) clearRollback
+          brec <- getBlockInfoRec BTC h
+          case brec of
+            Nothing -> pure False
+            Just (BlockInfoRec hh _) -> if blockHeaderHash /= hh
+              then pure False
+              else do
+                udb <- readUtxoDb
+                checkTxs udb txIds
+  where
+    clearRollback = do
+      storeRollbackSequence BTC $ RollbackSequence mempty
+      rvar <- getBtcRollbackVar
+      liftIO $ atomically $ writeTVar rvar mempty
+
+    checkTxs _ [] = pure True
+    checkTxs udb (th:xs) = do
+      mheight :: Maybe Word32 <- getParsed BTC "consistencyCheck" udb $ txHeightKey th
+      maybe (pure False) (const $ checkTxs udb xs) mheight
 
 timeLog :: (MonadLogger m, MonadIO m) => Text -> m ()
 timeLog t = do

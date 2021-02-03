@@ -161,6 +161,7 @@ logOnException :: (
     HasServerConfig m
   , HasFiltersDB m
   , HasIndexerDB m
+  , HasUtxoDB m
   , MonadIO m
   , MonadLogger m
   , MonadCatch m)
@@ -175,6 +176,7 @@ logOnException threadName = handle logE
         HasServerConfig m
       , HasFiltersDB m
       , HasIndexerDB m
+      , HasUtxoDB m
       , MonadIO m
       , MonadLogger m
       , MonadCatch m) => SomeException -> m b
@@ -190,16 +192,21 @@ logOnException threadName = handle logE
               Config{..} <- serverConfig
               fdbVar <- getFiltersDbVar
               idbVar <- getIndexerDbVar
+              udbVar <- getUtxoDbVar
               fdb <- liftIO $ takeMVar fdbVar
               idb <- liftIO $ takeMVar idbVar
+              udb <- liftIO $ takeMVar udbVar
               logInfoN' "Waiting 10s before closing, just in case"
               liftIO $ threadDelay 10000000
               liftIO $ unsafeClose fdb
               liftIO $ unsafeClose idb
-              filtersDBCntx  <- openDb False DBFilters cfgFiltersDbPath
-              indexerDBCntx  <- openDb False DBIndexer cfgIndexerDbPath
+              liftIO $ unsafeClose udb
+              filtersDBCntx <- openDb False DBFilters cfgFiltersDbPath
+              indexerDBCntx <- openDb False DBIndexer cfgIndexerDbPath
+              utxoDBCntx    <- openDb False DBUtxo    cfgUtxoDbPath
               liftIO $ putMVar fdbVar filtersDBCntx
               liftIO $ putMVar idbVar indexerDBCntx
+              liftIO $ putMVar udbVar utxoDBCntx
               logInfoN' "Reopened the db. Resume as usual"
             else
               logErrorN' $ "Killed by IOException. " <> showt ioe

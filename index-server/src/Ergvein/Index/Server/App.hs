@@ -1,5 +1,6 @@
 module Ergvein.Index.Server.App where
 
+import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Immortal
 import Control.Monad.IO.Unlift
@@ -7,9 +8,11 @@ import Control.Monad.Logger
 import Control.Monad.Reader
 import Data.Maybe
 import Data.Sequence (Seq(..))
+import Database.LevelDB.Internal (unsafeClose)
 import System.Posix.Signals
 
 import Ergvein.Index.Server.BlockchainScanning.Common
+import Ergvein.Index.Server.BlockchainScanning.Bitcoin (btcDbConsistencyCheck)
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema.Indexer (RollbackSequence(..), RollbackRecItem(..))
@@ -64,9 +67,25 @@ dirtyBtcHack = do
           setScannedHeight BTC $ rollbackPrevHeight tip
           storeRollbackSequence BTC $ RollbackSequence rest
 
+-- Cleaner version of the same hack as above
+-- Check the db for consistency
+-- if it is consistent -- great, do not hack
+-- otherwise perform the hack
+cleanerBtcHack :: ServerM ()
+cleanerBtcHack = do
+  isConsistent <- btcDbConsistencyCheck
+  logInfoN $ "Consistency: " <> showt isConsistent
+  liftIO $ getChar
+  unless isConsistent $ do
+    -- we set Nothing value to 1 to avoid checking for 0 later
+    h <- fmap (fromMaybe 1) $ getScannedHeight BTC
+    setScannedHeight BTC (h - 1)
+    deleteLastScannedBlock BTC
+    storeRollbackSequence BTC $ RollbackSequence mempty
+
 onStartup :: Bool -> Bool -> ServerEnv -> ServerM ([Thread], [Thread])
 onStartup onlyScan skipBtcHack _ = do
-  unless skipBtcHack dirtyBtcHack
+  unless skipBtcHack cleanerBtcHack
   scanningWorkers <- blockchainScanning
   if onlyScan then pure (scanningWorkers, []) else do
     --syncWithDefaultPeers
@@ -92,7 +111,21 @@ finalize env scannerThreads workerTreads = do
   liftIO $ mapM_ wait scannerThreads
   logInfoN "Waiting for other threads to close"
   liftIO $ mapM_ wait workerTreads
+  closeDataBases env
   logInfoN "service is stopped"
+
+closeDataBases :: (MonadIO m, MonadLogger m) => ServerEnv -> m ()
+closeDataBases env = do
+  let delay = 2 -- in seconds
+  logInfoN $ "Waiting " <> showt delay <> "s before closing the databases. Just in case"
+  liftIO $ do
+    threadDelay $ delay * 1000000
+    fdb <- takeMVar $ envFiltersDBContext env
+    idb <- takeMVar $ envIndexerDBContext env
+    udb <- takeMVar $ envUtxoDBContext env
+    unsafeClose fdb
+    unsafeClose idb
+    unsafeClose udb
 
 app :: (MonadUnliftIO m, MonadLogger m) => Bool -> Bool -> Config -> ServerEnv -> m ()
 app onlyScan skipBtcHack cfg env = do
