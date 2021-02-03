@@ -22,6 +22,7 @@ import Ergvein.Index.Protocol.Deserialization
 import Ergvein.Index.Protocol.Serialization
 import Ergvein.Index.Protocol.Types
 import Ergvein.Text
+import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Native
@@ -39,6 +40,7 @@ import qualified Data.Vector.Unboxed        as VU
 initIndexerConnection :: (MonadBaseConstr t m, MonadHasSettings t m) => NamedSockAddr -> Event t IndexerMsg ->  m (IndexerConnection t)
 initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
   (versionMismatchE, versionMismatchFire) <- newTriggerEvent
+  versionMismatchDE <- delay 0.2 versionMismatchE
   (msname, msport) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True sa
   let peer = fromJust $ Peer <$> msname <*> msport
   let restartE = fforMaybe msgE $ \case
@@ -55,13 +57,13 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
       _socketConfPeer   = peer
     , _socketConfSend   = fmap serializeMessage sendE
     , _socketConfPeeker = peekMessage sa
-    , _socketConfClose  = leftmost [closeE, versionMismatchE]
+    , _socketConfClose  = leftmost [closeE, versionMismatchDE]
     , _socketConfReopen = Just (1, 2) -- reconnect after 1 seconds 2 retries
     , _socketConfProxy  = proxyD
     }
   handshakeE <- performEvent $ ffor (socketConnected s) $ const $ mkVers
   let respE = _socketInbound s
-  hsRespE <- fmap (fmapMaybe id) $ performEvent $ ffor respE $ \case
+  hsRespE <- fmap (fmapMaybe id) $ performFork $ ffor respE $ \case
     MReject (Reject VersionNotSupported) -> do
       nodeLog sa $ "The remote version is not compatible with our version " <> showt protocolVersion
       liftIO $ versionMismatchFire ()
