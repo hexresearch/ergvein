@@ -11,6 +11,7 @@ import Data.Text (Text)
 import Reflex.Dom
 import Data.Default
 
+import Ergvein.Util
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Inplace
@@ -101,4 +102,4 @@ inplaceEditField InplaceEditCfg{..} renderVal parseVal val0D = mdo
       void $ widgetHold (pure ()) $ ffor valE $ \case
         Left er -> divClassDyn _inplaceErrorClass $ localizedText er
         _ -> pure ()
-      pure $ fmapMaybe (either (const Nothing) Just) valE
+      pure $ fmapMaybe eitherToMaybe valE

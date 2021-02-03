@@ -8,6 +8,7 @@ module Ergvein.Wallet.Widget.Input.BTC.Recipient(
 import Data.Maybe
 
 import Ergvein.Types
+import Ergvein.Util
 import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
@@ -31,7 +32,7 @@ recipientWidget :: MonadFront t m
   -> m (Dynamic t (Maybe BtcAddress))
 recipientWidget mInitRecipient submitE = mdo
   let initRecipient = maybe "" btcAddrToString mInitRecipient
-  recipientErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing))
+  recipientErrsD <- holdDyn Nothing $ ffor (current validatedRecipientD `tag` submitE) eitherToMaybe'
   recipientD <- if isAndroid
     then mdo
       recipD <- validatedTextFieldSetVal RecipientString initRecipient recipientErrsD (leftmost [resQRcodeE, pasteE])
@@ -49,9 +50,5 @@ recipientWidget mInitRecipient submitE = mdo
       pasteE <- divClass "send-page-buttons-wrapper" $ do
         clipboardPaste =<< outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
       pure recipD
-  let validationE = poke submitE $ \_ -> do
-        recipient <- sampleDyn recipientD
-        pure $ toEither $ validateBtcRecipient (T.unpack recipient)
-      validatedE = (either (const Nothing) Just) <$> validationE
-  validatedRateD <- holdDyn mInitRecipient validatedE
-  pure validatedRateD
+  let validatedRecipientD = toEither . validateBtcRecipient . T.unpack <$> recipientD
+  pure $ eitherToMaybe <$> validatedRecipientD

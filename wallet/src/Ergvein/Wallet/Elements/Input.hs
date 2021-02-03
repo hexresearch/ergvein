@@ -26,6 +26,7 @@ import Control.Monad.IO.Class
 import Data.Proxy
 import Data.Text (Text)
 import Ergvein.Text
+import Ergvein.Util
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Elements.Input.Class
 import Ergvein.Wallet.Id
@@ -62,7 +63,7 @@ textInputValidated :: (MonadFrontBase t m, LocalizedPrint l)
   -> (Text -> Either [l] a) -- ^ Validator
   -> m (InputElement EventResult (DomBuilderSpace m) t) -- ^ Only valid values get through
 textInputValidated cfg f = mdo
-  mErrsD <- holdDyn Nothing $ fmap (either Just (const Nothing)) rawE
+  mErrsD <- holdDyn Nothing $ fmap eitherToMaybe' rawE
   ti <- validatedTextInput cfg mErrsD
   let txtD = _inputElement_value ti
       rawE = updated $ f <$> txtD
@@ -191,10 +192,10 @@ textFieldSetValValidated :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPri
   -> (Text -> Either [l1] a) -- ^ Validatior
   -> m (Dynamic t a) -- ^ Only valid values get through
 textFieldSetValValidated lbl v0 setValE f = mdo
-  mErrsD <- holdDyn Nothing $ fmap (either Just (const Nothing)) rawE
+  mErrsD <- holdDyn Nothing $ fmap eitherToMaybe' rawE
   txtD <- validatedTextFieldSetVal lbl (showt v0) mErrsD (showt <$> setValE)
   let rawE = updated $ f <$> txtD
-  holdDyn v0 $ fmapMaybe (either (const Nothing) Just) rawE
+  holdDyn v0 $ fmapMaybe eitherToMaybe rawE
 
 textFieldValidated :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPrint l1, Show a)
   => l0 -- ^ Label
@@ -202,10 +203,10 @@ textFieldValidated :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPrint l1,
   -> (Text -> Either [l1] a) -- ^ Validatior
   -> m (Dynamic t a) -- ^ Only valid values get through
 textFieldValidated lbl v0 f = mdo
-  mErrsD <- holdDyn Nothing $ fmap (either Just (const Nothing)) rawE
+  mErrsD <- holdDyn Nothing $ fmap eitherToMaybe' rawE
   txtD <- validatedTextField lbl (showt v0) mErrsD
   let rawE = updated $ f <$> txtD
-  holdDyn v0 $ fmapMaybe (either (const Nothing) Just) rawE
+  holdDyn v0 $ fmapMaybe eitherToMaybe rawE
 
 displayError :: (MonadFrontBase t m, LocalizedPrint l) => Dynamic t l -> m ()
 displayError errD = do

@@ -19,6 +19,7 @@ import Text.Parsec
 import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
+import Ergvein.Util
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
 
@@ -132,7 +133,7 @@ validate e = do
   widgetHold_ (pure ()) $ ffor e $ \case
     Left err -> errorWidget err
     _ -> pure ()
-  pure $ fmapMaybe (either (const Nothing) Just) e
+  pure $ fmapMaybe eitherToMaybe e
 
 -- | Print in place error message for context where error is known in widget
 -- building time.

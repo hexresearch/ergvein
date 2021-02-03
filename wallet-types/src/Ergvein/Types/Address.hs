@@ -24,6 +24,7 @@ import Data.Text               (Text)
 import Ergvein.Crypto
 import Ergvein.Types.Currency
 import Ergvein.Types.Network
+import Ergvein.Util
 import GHC.Generics            (Generic)
 
 import qualified Data.ByteString.Short     as BSS

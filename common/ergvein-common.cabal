@@ -12,8 +12,9 @@ library
   exposed-modules:
     Ergvein.Aeson
     Ergvein.IO
-    Ergvein.Text
     Ergvein.Lens
+    Ergvein.Text
+    Ergvein.Util
   build-depends:
       base
     , aeson

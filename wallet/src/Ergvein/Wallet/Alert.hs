@@ -47,6 +47,7 @@ module Ergvein.Wallet.Alert
 
 import Control.Monad.IO.Class
 import Data.Time (getCurrentTime)
+import Ergvein.Util
 import Ergvein.Wallet.Alert.Type
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
@@ -128,7 +129,7 @@ handleAlertWith et e = do
       pure $ AlertInfo et defaultMsgTimeout ns t True ge
     Right _ -> Nothing
   _ <- postAlert alertE
-  pure $ fmapMaybe (either (const Nothing) Just) e
+  pure $ fmapMaybe eitherToMaybe e
 
 -- | Just an abbreviation
 type AlertLogger t m l = (MonadBaseConstr t m, MonadLocalized t m, MonadEgvLogger t m, LocalizedPrint l, Eq l)
@@ -173,8 +174,7 @@ logAlertWith et e = do
         }
     Right _ -> Nothing
   performEvent_ $ (liftIO . postLog) <$> logE
-  pure $ fmapMaybe (either (const Nothing) Just) e
-
+  pure $ fmapMaybe eitherToMaybe e
 
 -- | Display and log localized value as error message
 logShowDangerMsg :: (MonadAlertPoster t m, AlertLogger t m l) => Event t l -> m ()

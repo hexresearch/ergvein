@@ -20,6 +20,7 @@ import Reflex.Localize.Dom
 import Ergvein.Crypto
 import Ergvein.Text
 import Ergvein.Types.Restore
+import Ergvein.Util
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Clipboard
@@ -340,7 +341,7 @@ plainRestorePage mnemLength = wrapperSimple True $ mdo
 base58RestorePage :: MonadFrontBase t m => m ()
 base58RestorePage = wrapperSimple True $ mdo
   h4 $ localizedText $ SPSBase58Title
-  encodedEncryptedMnemonicErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing))
+  encodedEncryptedMnemonicErrsD <- holdDyn Nothing $ ffor validationE eitherToMaybe'
   encodedEncryptedMnemonicD <- validatedTextFieldSetValNoLabel "" encodedEncryptedMnemonicErrsD inputE
   inputE <- pasteBtnsWidget
   submitE <- widgetHoldDynE $ ffor encodedEncryptedMnemonicD $ \v -> if v == ""
@@ -350,7 +351,7 @@ base58RestorePage = wrapperSimple True $ mdo
         encodedEncryptedMnemonic <- sampleDyn encodedEncryptedMnemonicD
         pure $ maybe (Left [SPSMnemonicDecodeError]) Right $
           (eitherToMaybe . S.decode <=< decodeBase58CheckBtc) encodedEncryptedMnemonic
-      goE = fmapMaybe (either (const Nothing) Just) validationE
+      goE = fmapMaybe eitherToMaybe validationE
   void $ nextWidget $ ffor goE $ \encryptedMnemonic -> Retractable {
       retractableNext = askSeedPasswordPage encryptedMnemonic
     , retractablePrev = Just $ pure seedRestorePage

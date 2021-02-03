@@ -4,6 +4,7 @@ module Ergvein.Wallet.Page.Initial(
   ) where
 
 import Ergvein.Types.Storage
+import Ergvein.Util
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
@@ -11,8 +12,8 @@ import Ergvein.Wallet.Localization.Initial
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.Password
-import Ergvein.Wallet.Page.Settings.Unauth
 import Ergvein.Wallet.Page.Seed
+import Ergvein.Wallet.Page.Settings.Unauth
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Storage.AuthInfo
 import Ergvein.Wallet.Storage.Util
@@ -89,7 +90,7 @@ loadWalletPage :: MonadFrontBase t m => WalletName -> m ()
 loadWalletPage name = do
   buildE <- getPostBuild
   mPlainE <- performEvent $ (loadAuthInfo name "") <$ buildE
-  let oldAuthE' = fmapMaybe (either (const Nothing) Just) mPlainE
+  let oldAuthE' = fmapMaybe eitherToMaybe mPlainE
   oldAuthE'' <- fmap switchDyn $ widgetHold (pure never) $ ffor mPlainE $ \case
     Right _ -> pure never
     Left _ -> do

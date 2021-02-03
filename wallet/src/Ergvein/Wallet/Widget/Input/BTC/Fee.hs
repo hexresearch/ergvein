@@ -13,6 +13,7 @@ import Data.Word
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
+import Ergvein.Util
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Language
@@ -72,15 +73,10 @@ btcFeeSelectionWidget lbl minit mPrevRate submitE = do
         feeModeE <- updated <$> holdUniqDyn feeModeD
         let modifyAttrsE = feeModeToAttr <$> feeModeE
             setValE = attachPromptlyDynWithMaybe feeModeToRateText feesD feeModeE
-        errsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing))
-        selectedRateD <- manualFeeSelector initFeeRateText initInputIsDisabled setValE modifyAttrsE errsD
-        let validationE = poke submitE $ \_ -> do
-              fee <- sampleDyn selectedRateD
-              pure $ toEither $ validateBtcFeeRate mPrevRate (T.unpack fee)
-            validatedE :: Event t (Maybe Word64)
-            validatedE = (either (const Nothing) Just) <$> validationE
-        validatedRateD <- holdDyn mInitFeeRate validatedE
-        pure validatedRateD
+        feeRateErrsD <- holdDyn Nothing $ ffor (current validatedRateD `tag` submitE) eitherToMaybe'
+        selectedRateD <- manualFeeSelector initFeeRateText initInputIsDisabled setValE modifyAttrsE feeRateErrsD
+        let validatedRateD = toEither . (validateBtcFeeRate mPrevRate) . T.unpack <$> selectedRateD
+        pure $ eitherToMaybe <$> validatedRateD
       feeModeD <- column33 $ do
         langD <- getLanguage
         l <- sampleDyn langD

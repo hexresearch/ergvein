@@ -58,6 +58,7 @@ import Data.Word
 import GHC.Generics (Generic)
 
 import Ergvein.Aeson
+import Ergvein.Util
 import Ergvein.Crypto.Util
 import Ergvein.Types.Currency
 import Ergvein.Types.Orphanage ()

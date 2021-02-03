@@ -9,6 +9,7 @@ import Data.Maybe
 import Data.Word
 
 import Ergvein.Types
+import Ergvein.Util
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Language
@@ -25,7 +26,7 @@ import qualified Data.Text as T
 
 -- | Input field with units. Converts everything to satoshis and returns the unit
 sendAmountWidget :: MonadFront t m => Maybe (UnitBTC, Word64) -> Event t () -> m (Dynamic t (Maybe (UnitBTC, Word64)))
-sendAmountWidget minit validateE = mdo
+sendAmountWidget minit submitE = mdo
   setUs <- fmap (fromMaybe defUnits . settingsUnits) getSettings
   let (unitInit, txtInit) = maybe (setUs, "") (\(u, a) -> let us = Units (Just u) Nothing
         in (us, showMoneyUnit (Money BTC a) us)) minit
@@ -37,8 +38,8 @@ sendAmountWidget minit validateE = mdo
     unitD <- unitsDropdown (getUnitBTC unitInit) allUnitsBTC
     pure $ zipDynWith (\u v -> fmap (u,) $ toEither $ validateBtcWithUnits u v) unitD textInputValueD
   void $ divClass "form-field-errors" $ simpleList errsD displayError
-  amountErrsD <- holdDyn Nothing $ ffor (current amountValD `tag` validateE) (either Just (const Nothing))
-  pure $ (either (const Nothing) Just) <$> amountValD
+  amountErrsD <- holdDyn Nothing $ ffor (current amountValD `tag` submitE) eitherToMaybe'
+  pure $ eitherToMaybe <$> amountValD
   where
     availableBalanceWidget uD = do
       balanceValue <- balancesWidget BTC
