@@ -273,7 +273,6 @@ JNIEXPORT jint JNICALL JNI_OnLoad ( JavaVM *vm, void *reserved ) {
   HaskellActivity_jvm = vm;
 
   startLogger("HaskellActivity"); //TODO: Use the app name
-  init_runtime();
 
   return JNI_VERSION_1_6;
 }
