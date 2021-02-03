@@ -104,10 +104,19 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
       void $ fork $ broadcastLoop sendChan
       -- Start message listener
       listenLoop sendChan
+    Left err -> do
+      logErrorN $ "<" <> showt addr <> ">: Rejecting client on handshake phase with: " <> showt err
+      liftIO $ do
+        rawSendMsg $ MReject err
+        threadDelay 100000
+      closeConnection addr
     _ -> do
       logErrorN $ "<" <> showt addr <> ">: Client sent something that not version packet at handshake phase. Closed."
       closeConnection addr
   where
+    rawSendMsg :: Message -> IO ()
+    rawSendMsg = sendLazy sock . toLazyByteString . messageBuilder
+
     writeMsg :: TChan LBS.ByteString -> Message -> IO ()
     writeMsg destinationChan = atomically . writeTChan destinationChan . toLazyByteString . messageBuilder
 
@@ -137,6 +146,7 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
               logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
               closeConnection addr
             Left err -> do
+              logErrorN $ "<" <> showt addr <> ">: Rejecting client with: " <> showt err
               liftIO $ do
                 writeMsg destinationChan $ MReject err
                 threadDelay 100000
