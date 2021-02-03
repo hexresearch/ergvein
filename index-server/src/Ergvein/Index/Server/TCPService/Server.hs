@@ -95,7 +95,7 @@ runConnection :: (Socket, SockAddr) -> ServerM ()
 runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
   evalResult <- runExceptT $ evalMsg
   case evalResult of
-    Right (msgs@(MVersionACK _ : _)) -> do --peer version match ours
+    Right (msgs@(MVersionACK _ : _), _) -> do --peer version match ours
       sendChan <- liftIO newTChanIO
       liftIO $ forM_ msgs $ writeMsg sendChan
       -- Spawn message sender thread
@@ -110,7 +110,7 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
         rawSendMsg $ MReject err
         threadDelay 100000
       closeConnection addr
-    Right (MReject r : _) -> do
+    Right (MReject r : _, _) -> do
       logErrorN $ "<" <> showt addr <> ">: Rejecting client on handshake phase with: " <> showt r
       liftIO $ do
         rawSendMsg $ MReject r
@@ -145,9 +145,13 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
         listenLoop' = do
           evalResult <- runExceptT $ evalMsg
           case evalResult of
-            Right msgs -> do
+            Right (msgs, closeIt) -> do
               liftIO $ forM_ msgs $ writeMsg destinationChan
-              listenLoop'
+              if closeIt then do
+                logInfoN $ "<" <> showt addr <> ">: Closing connection on our side"
+                liftIO $ threadDelay 100000
+                closeConnection addr
+              else listenLoop'
             Left Reject {..} | rejectMsgCode == ZeroBytesReceived -> do
               logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
               closeConnection addr
@@ -158,7 +162,7 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
                 threadDelay 100000
               closeConnection addr
 
-    evalMsg :: ExceptT Reject ServerM [Message]
+    evalMsg :: ExceptT Reject ServerM ([Message], Bool)
     evalMsg = response =<< request =<< messageHeader =<< messageHeaderBytes
       where
         messageHeaderBytesFetch = NS.recv sock 8
@@ -179,7 +183,7 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
           messageBytes <- liftIO $ NS.recv sock $ fromIntegral msgSize
           except $ mapLeft (\_-> Reject MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
 
-        response :: Message -> ExceptT Reject ServerM [Message]
+        response :: Message -> ExceptT Reject ServerM ([Message], Bool)
         response msg = (lift $ handleMsg addr msg) `catch` (\(e :: SomeException) -> do
           logErrorN $ "<" <> showt addr <> ">: Rejecting peer as exception occured in while handling it message: " <> showt e
           except $ Left $ Reject InternalServerError)
