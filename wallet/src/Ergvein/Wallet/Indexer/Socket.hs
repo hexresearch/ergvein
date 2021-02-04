@@ -99,6 +99,7 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
         _ -> Nothing
   heightsD <- foldDyn M.union M.empty setHE
 
+  statusD <- holdDyn IndexerOk $ leftmost [ IndexerWrongVersion <$ versionMismatchE ]
   pure $ IndexerConnection {
       indexConAddr = sa
     , indexConName = sname
@@ -107,7 +108,7 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
     , indexConIsUp = shakeD
     , indexConRespE = respE
     , indexConHeight = heightsD
-    , indexConStatus = pure IndexerOk
+    , indexConStatus = statusD
     }
   where
     serializeMessage :: Message -> B.ByteString
