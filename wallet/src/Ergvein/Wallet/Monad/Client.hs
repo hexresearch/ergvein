@@ -1,6 +1,7 @@
 module Ergvein.Wallet.Monad.Client (
     MonadIndexClient(..)
   , IndexerConnection(..)
+  , IndexerStatus(..)
   , IndexerMsg(..)
   , IndexReqSelector
   , getArchivedUrlsD
@@ -29,6 +30,7 @@ import Data.Map.Strict (Map)
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Time(NominalDiffTime, getCurrentTime, diffUTCTime)
+import GHC.Generics
 import Network.Socket (SockAddr)
 import Reflex
 import Reflex.ExternalRef
@@ -52,7 +54,11 @@ data IndexerConnection t = IndexerConnection {
 , indexConIsUp :: !(Dynamic t Bool)
 , indexConRespE :: !(Event t Message)
 , indexConHeight :: !(Dynamic t (Map Currency BlockHeight))
+, indexConStatus :: !(Dynamic t IndexerStatus)
 }
+
+data IndexerStatus = IndexerOk | IndexerNotSynced | IndexerWrongVersion | IndexerWrongNetwork
+  deriving (Eq, Ord, Show, Read, Generic)
 
 data IndexerMsg = IndexerClose | IndexerRestart | IndexerMsg Message
 
