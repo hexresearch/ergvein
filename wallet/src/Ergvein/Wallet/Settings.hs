@@ -37,6 +37,7 @@ import System.Directory
 
 import Ergvein.Aeson
 import Ergvein.Lens
+import Ergvein.Node.Constants
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.IP
@@ -240,15 +241,10 @@ instance ToJSON Settings where
    ]
 
 defIndexerPort :: PortNumber
-defIndexerPort = 8667
+defIndexerPort = defNodePort isTestnet
 
 defaultIndexers :: [Text]
-defaultIndexers = [
-    "ergvein-indexermainnet1.hxr.team:8667"
-  , "ergvein-indexermainnet2.hxr.team:8667"
-  , "ergvein-indexermainnet3.hxr.team:8667"
-  , "indexer.ergvein.net"       -- OwO
-  ]
+defaultIndexers = defNodes isTestnet
 
 defaultIndexersNum :: (Int, Int)
 defaultIndexersNum = (2, 4)
@@ -260,9 +256,7 @@ defaultActUrlNum :: Int
 defaultActUrlNum = 10
 
 defaultDns :: S.Set HostName
-defaultDns = S.fromList $ if isAndroid
-  then ["8.8.8.8","8.8.4.4", "1.1.1.1"]
-  else [] -- use resolv.conf
+defaultDns = S.fromList $ defDns isTestnet
 
 defaultSettings :: FilePath -> Settings
 defaultSettings home =
