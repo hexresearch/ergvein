@@ -182,6 +182,9 @@ versionCurrSynced Version{..} c = flip UV.any versionScanBlocks $ \ScanBlock{..}
      scanBlockCurrency == c
   && (scanBlockHeight - scanBlockScanHeight) <= 1
 
+versionCurrsSynced :: Foldable t => Version -> t CurrencyCode -> Bool
+versionCurrsSynced v = all (versionCurrSynced v)
+
 data VersionACK = VersionACK
   deriving (Show, Eq)
 
