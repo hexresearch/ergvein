@@ -177,6 +177,11 @@ versionHasCurr Version{..} c = UV.any ((c ==) . scanBlockCurrency) versionScanBl
 versionHasCurrs :: Foldable t => Version -> t CurrencyCode -> Bool
 versionHasCurrs v = all (versionHasCurr v)
 
+versionCurrSynced :: Version -> CurrencyCode -> Bool
+versionCurrSynced Version{..} c = flip UV.any versionScanBlocks $ \ScanBlock{..} ->
+     scanBlockCurrency == c
+  && (scanBlockHeight - scanBlockScanHeight) <= 1
+
 data VersionACK = VersionACK
   deriving (Show, Eq)
 
