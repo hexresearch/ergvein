@@ -1,21 +1,24 @@
 packages:
   ./cbitstream
   ./checkpoint-generator
+  ./coinbase-client
   ./common
   ./crypto
   ./data-merkle-tree
   ./ergo-api
+  ./ergvein-website
   ./golomb-rice
   ./index-api
+  ./index-client
   ./index-protocol
   ./index-protocol-client
-  ./index-client
   ./index-server
   ./interfaces/ergo
   ./reflex-external-ref
   ./reflex-localize
   ./reflex-localize-dom
   ./retractable
+  ./ui-playground
   ./wallet
   ./wallet-android
   ./wallet-desktop
@@ -24,5 +27,3 @@ packages:
   ./wallet-types
   ./wallet-version
   ./x509-android
-  ./ergvein-website
-  ./ui-playground

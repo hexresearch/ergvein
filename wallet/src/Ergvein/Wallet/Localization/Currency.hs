@@ -6,10 +6,12 @@ import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
 
 instance LocalizedPrint Currency where
-  localizedShow l v = case l of
-    English -> case v of
-      BTC   -> "BTC"
-      ERGO  -> "ERGO"
-    Russian -> case v of
-      BTC   -> "BTC"
-      ERGO  -> "ERGO"
+  localizedShow _ v = case v of
+    BTC   -> "BTC"
+    ERGO  -> "ERGO"
+
+instance LocalizedPrint Fiat where
+  localizedShow _ v = case v of
+    USD -> "USD"
+    EUR -> "EUR"
+    RUB -> "RUB"

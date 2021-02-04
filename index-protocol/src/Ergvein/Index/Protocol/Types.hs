@@ -6,6 +6,7 @@ import Data.Attoparsec.Binary
 import Data.ByteString
 import Data.ByteString.Short (ShortByteString)
 import Data.Either
+import Data.Map.Strict (Map)
 import Data.Vector.Unboxed.Deriving
 import Data.Word
 import Foreign.C.Types
@@ -13,12 +14,25 @@ import Foreign.Storable
 import Network.Socket (SockAddr(..))
 
 import Ergvein.Types.Fees
+import Ergvein.Types.Currency (Fiat)
 
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 
-protocolVersion :: Word32
-protocolVersion = 1
+-- | Protocol version that follows semantic version (major, minor, patch),
+-- where minor adds backward compatible features and patch refers to bug fixes.
+--
+-- In memory it is encoded as LE word32: 2 bits reserved + 10 bits major + 10 bits minor + 10 bits patch
+-- LE order means that first byte in memory contains patch component.
+type ProtocolVersion = (Word16, Word16, Word16)
+
+protocolVersion :: ProtocolVersion
+protocolVersion = (1,0,0)
+
+-- | Compare own version with other version and check whether we support it
+isCompatible :: ProtocolVersion -> ProtocolVersion -> Bool
+isCompatible (1,_, _) (0, 0, 4) = True -- Pre 1.0.0 versions encoded as simple LE number. Thus 1 => 0b00000001000000000000000000000000 => 0b100 patch version (10 bits patch version in LE)
+isCompatible (major1, _, _) (major2, _, _) = major1 == major2
 
 data MessageType = MVersionType
                  | MVersionACKType
@@ -33,9 +47,11 @@ data MessageType = MVersionType
                  | MRejectType
                  | MPingType
                  | MPongType
+                 | MRatesRequestType
+                 | MRatesResponseType
   deriving (Eq, Ord, Enum, Bounded, Show)
 
-data RejectCode = MessageHeaderParsing | MessageParsing | InternalServerError | ZeroBytesReceived
+data RejectCode = MessageHeaderParsing | MessageParsing | InternalServerError | ZeroBytesReceived | VersionNotSupported
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 data CurrencyCode = BTC   | TBTC
@@ -113,7 +129,7 @@ derivingUnbox "ScanBlock"
   [| \(c, v, s, h) -> ScanBlock c v s h |]
 
 data Version = Version
-  { versionVersion    :: !Word32
+  { versionVersion    :: !ProtocolVersion
   , versionTime       :: !CTime
   , versionNonce      :: !Word64
  -- versionCurrencies :: uint32 Amount of currencies blocks following the field. For clients it is 0.
@@ -161,7 +177,6 @@ type FeeRequest = [CurrencyCode]
 data IPType = IPV4 | IPV6
   deriving (Eq, Ord, Enum, Bounded, Show)
 
-
 ipTypeToWord8 :: IPType -> Word8
 ipTypeToWord8 = \case
   IPV4 -> 0
@@ -190,6 +205,12 @@ data PeerIntroduce = PeerIntroduce
   { peerIntroduceAddresses :: !(V.Vector Address)
   } deriving (Show, Eq)
 
+newtype RatesRequest = RatesRequest { unRatesRequest :: Map CurrencyCode [Fiat] }
+  deriving (Show, Eq)
+
+newtype RatesResponse = RatesResponse { unRatesResponse :: Map CurrencyCode (Map Fiat Double)}
+  deriving (Show, Eq)
+
 data Message = MPing                       !Ping
              | MPong                       !Pong
              | MVersion                    !Version
@@ -203,11 +224,12 @@ data Message = MPing                       !Ping
              | MPeerRequest                !PeerRequest
              | MPeerResponse               !PeerResponse
              | MPeerIntroduce              !PeerIntroduce
+             | MRatesRequest               !RatesRequest
+             | MRatesResponse              !RatesResponse
   deriving (Show, Eq)
 
 genericSizeOf :: (Storable a, Integral b) => a -> b
 genericSizeOf = fromIntegral . sizeOf
-
 
 instance Conversion Address SockAddr where
   convert Address{..} = case addressType of

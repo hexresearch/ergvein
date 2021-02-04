@@ -1,5 +1,5 @@
-{-# LANGUAGE ScopedTypeVariables, TemplateHaskell #-}
-module Main where
+{-# LANGUAGE ScopedTypeVariables #-}
+module ProtocolTest where
 
 --------------------------------------------------------------------------
 -- imports
@@ -79,11 +79,8 @@ prop_encdec_ScanBlock_Eq sb = either (const False) (sb ==) decMsg
   where
     encMsg = serializeScanBlock sb
     decMsg = deserializeScanBlock $ BL.toStrict encMsg
---------------------------------------------------------------------------
--- main
 
-return []
-main = $quickCheckAll
-
---------------------------------------------------------------------------
--- the end.
+prop_encdec_version v = either (const False) (v == ) decVer
+  where
+    encVer = mkProtocolVersion $ unPVT v
+    decVer = fmap PVT $ AP.parseOnly versionParser encVer

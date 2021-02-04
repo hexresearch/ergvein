@@ -1,8 +1,7 @@
 module Ergvein.Index.Server.App where
 
-import Control.Concurrent.STM.TVar
+import Control.Concurrent.STM
 import Control.Immortal
-import Control.Monad.STM
 import System.Posix.Signals
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
@@ -17,6 +16,8 @@ import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.TCPService.Server
 import Ergvein.Index.Server.Utils
+import Ergvein.Index.Server.Worker.Fees
+import Ergvein.Index.Server.Worker.Rates
 import Ergvein.Text
 import Ergvein.Types.Currency
 
@@ -27,15 +28,17 @@ onStartup onlyScan _ = do
   scanningWorkers <- blockchainScanning
   if onlyScan then pure (scanningWorkers, []) else do
     --syncWithDefaultPeers
-    feeWorkers <- feesScanning
+    feeWorkers <- feesScanner
     -- kpaThread <- knownPeersActualization
+    ratesThread <- ratesScanner
     tcpServerThread <- runTcpSrv
-    pure $ (scanningWorkers, tcpServerThread : feeWorkers)
+    pure $ (scanningWorkers, tcpServerThread : ratesThread : feeWorkers)
 
 onShutdown :: ServerEnv -> IO ()
 onShutdown env = do
   T.putStrLn "Server stop signal recivied..."
   T.putStrLn "service is stopping"
+  atomically $ writeTChan (envShutdownChannel env) True
   atomically $ writeTVar (envShutdownFlag env) True
 
 finalize :: (MonadIO m, MonadLogger m) => ServerEnv -> [Thread] -> [Thread] -> m ()

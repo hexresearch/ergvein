@@ -4,16 +4,20 @@ import Codec.Compression.GZip
 import Control.Monad
 import Data.Attoparsec.Binary
 import Data.Attoparsec.ByteString
+import Data.Scientific
 import Data.Word
 
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Protocol.Utils
 import Ergvein.Types.Fees
+import Ergvein.Types.Currency (Fiat)
 
 import qualified Data.Attoparsec.ByteString as Parse
+import qualified Data.Bitstream as S
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Short as BSS
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString.Short as BSS
+import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 
@@ -32,6 +36,8 @@ word32toMessageType = \case
   10 -> Just MRejectType
   11 -> Just MPingType
   12 -> Just MPongType
+  13 -> Just MRatesRequestType
+  14 -> Just MRatesResponseType
   _  -> Nothing
 
 currencyCodeParser :: Parser CurrencyCode
@@ -47,6 +53,7 @@ word32toRejectType = \case
   1  -> Just MessageParsing
   2  -> Just InternalServerError
   3  -> Just ZeroBytesReceived
+  4  -> Just VersionNotSupported
   _  -> Nothing
 
 word8toFeeLevel :: Word8 -> Maybe FeeLevel
@@ -55,6 +62,18 @@ word8toFeeLevel = \case
   1 -> Just FeeModerate
   2 -> Just FeeCheap
   _ -> Nothing
+
+versionParser :: Parser ProtocolVersion
+versionParser = do
+  bs :: S.Bitstream S.Right <- S.fromBits <$> anyWord32be
+  let p    = S.toBits $ S.append pad $ S.take i10 bs
+  let mn   = S.toBits $ S.append pad $ S.take i10 $ S.drop i10 bs
+  let mj   = S.toBits $ S.append pad $ S.take i10 $ S.drop i20 bs
+  pure (mj,mn,p)
+  where
+    i2,i6,i10,i20 :: Int
+    i2 = 2; i6 = 6 ; i10 = 10 ; i20 = 20
+    pad = S.replicate i6 False
 
 messageHeaderParser ::  Parser MessageHeader
 messageHeaderParser = do
@@ -118,7 +137,7 @@ messageParser MPongType = MPong <$> anyWord64le
 messageParser MRejectType = MReject . Reject <$> rejectCodeParser
 
 messageParser MVersionType = do
-  version       <- anyWord32le
+  version       <- versionParser
   time          <- fromIntegral <$> anyWord64le
   nonce         <- anyWord64le
   currencies    <- anyWord32le
@@ -200,6 +219,45 @@ messageParser MIntroducePeerType = do
   pure $ MPeerIntroduce $ PeerIntroduce
     { peerIntroduceAddresses = addresses
     }
+
+messageParser MRatesRequestType = do
+  n <- fmap fromIntegral anyWord32le
+  cfs <- replicateM n cfParser
+  pure $ MRatesRequest $ RatesRequest $ M.fromList cfs
+
+messageParser MRatesResponseType = do
+  n <- fmap fromIntegral anyWord32le
+  cfds <- replicateM n cfdParser
+  pure $ MRatesResponse $ RatesResponse $ M.fromList cfds
+
+enumParser :: Enum a => Parser a
+enumParser = fmap (toEnum . fromIntegral) anyWord32le
+
+cfParser :: Parser (CurrencyCode, [Fiat])
+cfParser = do
+  c <- enumParser
+  n <- fmap fromIntegral anyWord32le
+  fmap (c, ) $ replicateM n enumParser
+
+cfdParser :: Parser (CurrencyCode, M.Map Fiat Double)
+cfdParser = do
+  c <- enumParser
+  n <- fmap fromIntegral anyWord32le
+  fmap ((c,) . M.fromList) $ replicateM n fdParser
+
+fdParser :: Parser (Fiat, Double)
+fdParser = (,) <$> enumParser <*> parseDouble
+
+parseDouble :: Parser Double
+parseDouble = do
+  c <- fromIntegral <$> anyWord64le
+  e <- fromIntegral <$> anyWord64le
+  pure $ toRealFloat $ scientific c e
+
+parseCurrencyPair :: Parser (CurrencyCode, Fiat)
+parseCurrencyPair = (,)
+  <$> (fmap (toEnum . fromIntegral) anyWord32le)
+  <*> (fmap (toEnum . fromIntegral) anyWord32le)
 
 parseFeeResp :: Parser FeeResp
 parseFeeResp = do

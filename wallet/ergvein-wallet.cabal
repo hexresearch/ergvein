@@ -153,6 +153,7 @@ library
         Ergvein.Wallet.Worker.Indexer
         Ergvein.Wallet.Worker.Node
         Ergvein.Wallet.Worker.PubKeysGenerator
+        Ergvein.Wallet.Worker.Rates
         Ergvein.Wallet.Wrapper
         Ergvein.Wallet.Yaml
     hs-source-dirs: src

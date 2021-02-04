@@ -16,6 +16,7 @@ ownPeerAddress           : null
 knownPeers               : []
 peerActualizationDelay   : 10000000
 peerActualizationTimeout : 86400
+ratesRefreshPeriod       : 300000000          # 5 minutes
 metrics:
   host: localhost
   port: 9667
