@@ -118,6 +118,7 @@ instance LocalizedPrint HistoryPageStrings where
 
 data BumpFeeWidgetStrings =
     BumpFeeTitle
+  | BumpFeeHeader
   | BumpFeeCurrentFee
   | BumpFeeCurrentFeeRate
   | BumpFeeNewFeeRate
@@ -127,11 +128,13 @@ instance LocalizedPrint BumpFeeWidgetStrings where
   localizedShow l v = case l of
     English -> case v of
       BumpFeeTitle               -> "Fee bumping"
+      BumpFeeHeader              -> "Enter new fee rate"
       BumpFeeCurrentFee          -> "Current fee"
       BumpFeeCurrentFeeRate      -> "Current fee rate"
       BumpFeeNewFeeRate          -> "New fee rate, sat/vbyte"
     Russian -> case v of
       BumpFeeTitle               -> "Увеличение комиссии"
+      BumpFeeHeader              -> "Укажите новый размер комиссии"
       BumpFeeCurrentFee          -> "Текущая комиссия"
       BumpFeeCurrentFeeRate      -> "Текущая комиссия за байт"
       BumpFeeNewFeeRate          -> "Новая комиссия за байт, sat/vbyte"

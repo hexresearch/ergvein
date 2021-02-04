@@ -84,10 +84,10 @@ btcFeeSelectionWidget lbl minit mPrevRate submitE = do
         feeModeDropdown <- dropdown initFeeMode feeModeOptionsD def
         pure $ _dropdown_value feeModeDropdown
       pure $ ffor2 feeRateD feeModeD (,)
-    divClass "fee-descr" $ widgetHoldDyn $ ffor selectedD $ \case
-      (Just feeRate, BFMManual) -> el "label" (localizedText $ FSFee                  ) >> pure (Just (BFMManual, feeRate))
-      (Just feeRate, BFMLow)    -> el "label" (localizedText $ FSRateDesc FeeCheap    ) >> pure (Just (BFMLow,    feeRate))
-      (Just feeRate, BFMMid)    -> el "label" (localizedText $ FSRateDesc FeeModerate ) >> pure (Just (BFMMid,    feeRate))
-      (Just feeRate, BFMHigh)   -> el "label" (localizedText $ FSRateDesc FeeFast     ) >> pure (Just (BFMHigh,   feeRate))
-      (Nothing, BFMManual)      ->                                                         pure Nothing
-      (Nothing, _)              -> el "label" (localizedText FSNoFees)                  >> pure Nothing
+    widgetHoldDyn $ ffor selectedD $ \case
+      (Just feeRate, BFMManual) -> parClass "mb-1" (localizedText $ FSFee                  ) >> pure (Just (BFMManual, feeRate))
+      (Just feeRate, BFMLow)    -> parClass "mb-1" (localizedText $ FSRateDesc FeeCheap    ) >> pure (Just (BFMLow,    feeRate))
+      (Just feeRate, BFMMid)    -> parClass "mb-1" (localizedText $ FSRateDesc FeeModerate ) >> pure (Just (BFMMid,    feeRate))
+      (Just feeRate, BFMHigh)   -> parClass "mb-1" (localizedText $ FSRateDesc FeeFast     ) >> pure (Just (BFMHigh,   feeRate))
+      (Nothing, BFMManual)      ->                                                  pure Nothing
+      (Nothing, _)              -> parClass "mb-1" (localizedText FSNoFees)                  >> pure Nothing

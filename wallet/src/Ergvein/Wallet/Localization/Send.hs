@@ -1,5 +1,4 @@
-module Ergvein.Wallet.Localization.Send
-  (
+module Ergvein.Wallet.Localization.Send(
     SendStrings(..)
   , ConfirmationErrorMessage(..)
   ) where

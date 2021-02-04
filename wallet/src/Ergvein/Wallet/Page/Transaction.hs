@@ -19,6 +19,7 @@ import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Fee
 import Ergvein.Wallet.Localization.History
+import Ergvein.Wallet.Localization.Send
 import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Platform
@@ -150,24 +151,31 @@ transTypeCol :: MonadFront t m => TransType -> m a -> m a
 transTypeCol txInOut ma = divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) ma
 
 bumpFeeWidget :: MonadFront t m => Currency -> TransactionView -> Maybe (BTCFeeMode, Word64) -> m ()
-bumpFeeWidget cur tr@TransactionView{..} mInit= do
+bumpFeeWidget cur tr@TransactionView{..} mInit = do
   title <- localized BumpFeeTitle
   let thisWidget = Just $ pure $ bumpFeeWidget cur tr mInit
-  wrapper False title thisWidget $ divClass "bump-fee-page" $ mdo
-    let feeRate = calcFeeRate (txFee txInfoView) (txRaw txInfoView)
-    moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
-    makeBlock BumpFeeCurrentFee $ maybe "unknown" (\a -> (showMoneyUnit a moneyUnits) <> " " <> symbolUnit cur moneyUnits) $ txFee txInfoView
-    makeBlock BumpFeeCurrentFeeRate $ maybe "unknown" (\a -> (showf 3 $ (realToFrac a :: Double)) <> " " <> symbolUnit cur smallestUnits <> "/vbyte") feeRate
-    feeD <- btcFeeSelectionWidget BumpFeeNewFeeRate Nothing feeRate submitE
-    submitE <- outlineButton CSSubmit
-    let goE = attachWithMaybe (\mFee _ -> ((,) (txRaw txInfoView)) <$> mFee) (current feeD) submitE
-    void $ nextWidget $ ffor goE $ \v@((tx, fee)) -> Retractable {
-      retractableNext = pure ()
-    , retractablePrev = Just $ pure $ bumpFeeWidget cur tr (Just fee)
-    }
+  void $ wrapper False title thisWidget $ divClass "bump-fee-page" $ mdo
+    elClass "h4" "mb-1" $ localizedText BumpFeeHeader
+    workflow $ setNewFeeRate cur tr mInit
+
+setNewFeeRate :: MonadFront t m => Currency -> TransactionView -> Maybe (BTCFeeMode, Word64) -> Workflow t m ()
+setNewFeeRate cur tr@TransactionView{..} mInit = Workflow $ mdo
+  let feeRate = calcFeeRate (txFee txInfoView) (txRaw txInfoView)
+  moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
+  makeBlock BumpFeeCurrentFee $ maybe "unknown" (\a -> (showMoneyUnit a moneyUnits) <> " " <> symbolUnit cur moneyUnits) $ txFee txInfoView
+  makeBlock BumpFeeCurrentFeeRate $ maybe "unknown" (\a -> (showf 3 $ (realToFrac a :: Double)) <> " " <> symbolUnit cur smallestUnits <> "/vbyte") feeRate
+  feeD <- btcFeeSelectionWidget BumpFeeNewFeeRate Nothing feeRate submitE
+  submitE <- outlineButton CSSubmit
+  let goE = attachWithMaybe (\mFee _ -> ((,) (txRaw txInfoView)) . snd <$> mFee) (current feeD) submitE
+  pure ((), (uncurry makeRbfTx) <$> goE)
+
+makeRbfTx :: MonadFront t m => EgvTx -> Word64 -> Workflow t m ()
+makeRbfTx txToReplace newFeeRate = Workflow $ do
+  -- buildAddrTxRbf btcNetwork (upPoint <$> pick) outs
+  pure ((), never)
 
 makeBlock :: (MonadFront t m, LocalizedPrint l) => l -> Text -> m ()
-makeBlock a t = el "div" $ do
+makeBlock a t = divClass "mb-1" $ do
   elClass "span" "font-bold" $ localizedText a
   br
   text t

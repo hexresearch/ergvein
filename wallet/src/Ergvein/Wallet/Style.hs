@@ -616,6 +616,7 @@ sendPageCss = do
   ".form-field-errors" ? do
     color red
     textAlign $ alignSide sideLeft
+    marginTop $ rem (-0.5)
     marginBottom $ rem 1
   ".send-page-buttons-wrapper" ? do
     display flex
