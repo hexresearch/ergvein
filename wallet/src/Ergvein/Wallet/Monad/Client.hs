@@ -51,7 +51,7 @@ data IndexerConnection t = IndexerConnection {
 , indexConOpensE :: !(Event t ())
 , indexConIsUp :: !(Dynamic t Bool)
 , indexConRespE :: !(Event t Message)
-, indexerConHeight :: !(Dynamic t (Map Currency BlockHeight))
+, indexConHeight :: !(Dynamic t (Map Currency BlockHeight))
 }
 
 data IndexerMsg = IndexerClose | IndexerRestart | IndexerMsg Message

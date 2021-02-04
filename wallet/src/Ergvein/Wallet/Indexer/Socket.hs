@@ -106,7 +106,7 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
     , indexConOpensE = openE
     , indexConIsUp = shakeD
     , indexConRespE = respE
-    , indexerConHeight = heightsD
+    , indexConHeight = heightsD
     }
   where
     serializeMessage :: Message -> B.ByteString
