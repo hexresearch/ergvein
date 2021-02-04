@@ -13,7 +13,7 @@ import Network.Socket (HostName, PortNumber)
 type ErgveinNodeAddr = Text
 
 defNodePort :: Bool -> PortNumber
-defNodePort isTestnet =  if isTestnet then 8667 else 18667
+defNodePort isTestnet =  if isTestnet then 18667 else 8667
 
 defNodes :: Bool -> [ErgveinNodeAddr]
 defNodes isTestnet = if isTestnet 
