@@ -1,11 +1,12 @@
 module Ergvein.Index.Protocol.Types where
 
 import Conversion
-import Data.Attoparsec.ByteString
 import Data.Attoparsec.Binary
+import Data.Attoparsec.ByteString
 import Data.ByteString (ByteString)
 import Data.ByteString.Short (ShortByteString)
 import Data.Either
+import Data.List (nub)
 import Data.Map.Strict (Map)
 import Data.Vector.Unboxed.Deriving
 import Data.Word
@@ -166,6 +167,9 @@ data Version = Version
  -- versionCurrencies :: uint32 Amount of currencies blocks following the field. For clients it is 0.
   , versionScanBlocks :: !(UV.Vector ScanBlock)
   } deriving (Show, Eq)
+
+versionCurrencies :: Version -> [CurrencyCode]
+versionCurrencies Version{..} = nub . fmap scanBlockCurrency . UV.toList $ versionScanBlocks
 
 versionHasCurr :: Version -> CurrencyCode -> Bool
 versionHasCurr Version{..} c = UV.any ((c ==) . scanBlockCurrency) versionScanBlocks
