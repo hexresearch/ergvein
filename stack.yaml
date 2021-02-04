@@ -46,6 +46,7 @@ packages:
 - wallet-desktop
 - wallet-native
 - wallet-types
+- node-discovery
 
 # Dependency packages to be pulled from upstream that are not in the resolver.
 # These entries can reference officially published versions as well as
