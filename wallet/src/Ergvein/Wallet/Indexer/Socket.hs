@@ -54,7 +54,7 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
   (versionMismatchE, versionMismatchFire) <- newTriggerEvent
   (currenciesMismatchE, currenciesMismatchFire) <- newTriggerEvent
   (currenciesNotSyncedE, currenciesNotSyncedFire) <- newTriggerEvent
-  versionMismatchDE <- delay 0.2 versionMismatchE
+  versionMismatchDE <- delay 0.2 $ void versionMismatchE
   currenciesMismatchDE <- delay 0.2 currenciesMismatchE
   currenciesNotSyncedDE <- delay 0.2 currenciesNotSyncedE
   (msname, msport) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True sa
@@ -82,13 +82,13 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
   hsRespE <- fmap (fmapMaybe id) $ performFork $ ffor respE $ \case
     MReject (Reject VersionNotSupported) -> do
       nodeLog sa $ "The remote version is not compatible with our version " <> showt protocolVersion
-      liftIO $ versionMismatchFire ()
+      liftIO $ versionMismatchFire Nothing
       pure Nothing
     MVersion v@Version{..} -> do
       nodeLog sa $ "Received version: " <> showt versionVersion
       if | not $ protocolVersion `isCompatible` versionVersion -> do
             nodeLog sa $ "The reported remote version " <> showt versionVersion <> " is not compatible with our version " <> showt protocolVersion
-            liftIO $ versionMismatchFire ()
+            liftIO $ versionMismatchFire (Just versionVersion)
             pure Nothing
          | not $ hasRequiredCurrs v -> do
             nodeLog sa $ "The indexer doesn't support required currencies " <> showt requiredCurrencies <> ", but got: " <> showt (versionCurrencies v)
@@ -123,7 +123,7 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
   heightsD <- foldDyn M.union M.empty setHE
 
   statusD <- holdDyn IndexerOk $ leftmost [
-      IndexerWrongVersion <$ versionMismatchE
+      IndexerWrongVersion <$> versionMismatchE
     , IndexerMissingCurrencies <$ currenciesMismatchE
     , IndexerNotSynced <$ currenciesNotSyncedE ]
   pure $ IndexerConnection {

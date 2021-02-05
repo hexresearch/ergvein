@@ -36,7 +36,7 @@ import Network.Socket (SockAddr)
 import Reflex
 import Reflex.ExternalRef
 
-import Ergvein.Index.Protocol.Types (Message(..))
+import Ergvein.Index.Protocol.Types (Message(..), ProtocolVersion)
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Monad.Async
@@ -58,7 +58,7 @@ data IndexerConnection t = IndexerConnection {
 , indexConStatus :: !(Dynamic t IndexerStatus)
 }
 
-data IndexerStatus = IndexerOk | IndexerNotSynced | IndexerWrongVersion | IndexerMissingCurrencies
+data IndexerStatus = IndexerOk | IndexerNotSynced | IndexerWrongVersion !(Maybe ProtocolVersion) | IndexerMissingCurrencies
   deriving (Eq, Ord, Show, Read, Generic)
 
 data IndexerMsg = IndexerClose | IndexerRestart | IndexerMsg Message
