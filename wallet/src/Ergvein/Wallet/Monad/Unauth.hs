@@ -50,6 +50,7 @@ data UnauthEnv t = UnauthEnv {
 , unauth'inactiveAddrs   :: !(ExternalRef t (S.Set NamedSockAddr))
 , unauth'activeAddrs     :: !(ExternalRef t (S.Set NamedSockAddr))
 , unauth'indexConmap     :: !(ExternalRef t (Map SockAddr (IndexerConnection t)))
+, unauth'indexStatus     :: !(ExternalRef t (Map SockAddr IndexerStatus))
 , unauth'reqUrlNum       :: !(ExternalRef t (Int, Int))
 , unauth'actUrlNum       :: !(ExternalRef t Int)
 , unauth'timeout         :: !(ExternalRef t NominalDiffTime)
@@ -130,6 +131,8 @@ instance MonadBaseConstr t m => MonadIndexClient t (UnauthM t m) where
   {-# INLINE getArchivedAddrsRef #-}
   getActiveConnsRef = asks unauth'indexConmap
   {-# INLINE getActiveConnsRef #-}
+  getStatusConnsRef = asks unauth'indexStatus
+  {-# INLINE getStatusConnsRef #-}
   getInactiveAddrsRef = asks unauth'inactiveAddrs
   {-# INLINE getInactiveAddrsRef #-}
   getActiveUrlsNumRef = asks unauth'actUrlNum
@@ -170,6 +173,7 @@ newEnv settings uiChan = do
   inactiveUrls    <- newExternalRef . S.fromList =<< parseSockAddrs rs (settingsDeactivatedAddrs settings)
   actvieAddrsRef  <- newExternalRef $ S.fromList socadrs
   indexConmapRef  <- newExternalRef $ M.empty
+  indexStatusRef  <- newExternalRef $ M.empty
   reqUrlNumRef    <- newExternalRef $ settingsReqUrlNum settings
   actUrlNumRef    <- newExternalRef $ settingsActUrlNum settings
   timeoutRef      <- newExternalRef $ settingsReqTimeout settings
@@ -195,6 +199,7 @@ newEnv settings uiChan = do
         , unauth'inactiveAddrs    = inactiveUrls
         , unauth'activeAddrs      = actvieAddrsRef
         , unauth'indexConmap      = indexConmapRef
+        , unauth'indexStatus      = indexStatusRef
         , unauth'reqUrlNum        = reqUrlNumRef
         , unauth'actUrlNum        = actUrlNumRef
         , unauth'timeout          = timeoutRef

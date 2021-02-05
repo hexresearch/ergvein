@@ -6,11 +6,12 @@ module Ergvein.Wallet.Localization.Settings(
   ) where
 
 import Data.Time
+import Ergvein.Index.Protocol.Types
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Ergvein.Wallet.Language
 import Ergvein.Wallet.Elements.Input.Class
+import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Input
 import Ergvein.Wallet.Localization.IP
 
@@ -144,6 +145,9 @@ data NetSetupStrings
   | NSSLatency NominalDiffTime
   | NSSIndexerHeight BlockHeight
   | NSSOffline
+  | NSSWrongVersion (Maybe ProtocolVersion)
+  | NSSMissingCurrencies
+  | NSSNotSynced
   | NSSRefresh
   | NSSPing
   | NSSPingAll
@@ -176,6 +180,9 @@ instance LocalizedPrint NetSetupStrings where
       NSSLatency lat  -> "Latency: " <> showt lat
       NSSIndexerHeight h -> "Height: " <> showt h
       NSSOffline      -> "Offline"
+      NSSWrongVersion v -> "Indexer has incompatible version " <> maybe "" showt v
+      NSSMissingCurrencies -> "Indexer doesn't support all currencies"
+      NSSNotSynced    -> "Indexer not fully synced"
       NSSRefresh      -> "Refresh"
       NSSPing         -> "Ping"
       NSSDisable      -> "Disable"
@@ -205,6 +212,9 @@ instance LocalizedPrint NetSetupStrings where
       NSSLatency lat  -> "Задержка: " <> showt lat
       NSSIndexerHeight h -> "Высота: " <> showt h
       NSSOffline      -> "Оффлайн"
+      NSSWrongVersion v -> "Индексатор несовместимой версии " <> maybe "" showt v
+      NSSMissingCurrencies -> "Индексатор не поддерживает все валюты"
+      NSSNotSynced    -> "Не полностью синхронизирован"
       NSSRefresh      -> "Обновить"
       NSSPing         -> "Запросить статус"
       NSSDisable      -> "Отключить"

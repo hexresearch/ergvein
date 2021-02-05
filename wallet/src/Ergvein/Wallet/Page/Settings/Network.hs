@@ -160,11 +160,16 @@ renderActive nsa refrE mconn = mdo
         elAttr "span" offclass $ elClass "i" "fas fa-circle" $ pure ()
         divClass "mt-a mb-a network-name-txt" $ text $ namedAddrName nsa
         editBtn
-      descrOption NSSOffline
+      stD <- indexerLastStatus $ namedAddrSock nsa
+      widgetHoldDyn $ ffor stD $ \case
+        Just (IndexerWrongVersion v) -> descrOption $ NSSWrongVersion v
+        Just IndexerMissingCurrencies -> descrOption NSSMissingCurrencies
+        Just IndexerNotSynced -> descrOption NSSNotSynced
+        _ -> descrOption NSSOffline
       pure tglE'
     Just conn -> do
       let clsUnauthD = ffor (indexConIsUp conn) $ \up -> if up then onclass else offclass
-      let heightD = fmap (M.lookup BTC) $ indexerConHeight conn
+      let heightD = fmap (M.lookup BTC) $ indexConHeight conn
       clsD <- fmap join $ liftAuth (pure clsUnauthD) $ do
         hD <- getCurrentHeight BTC
         pure $ do
