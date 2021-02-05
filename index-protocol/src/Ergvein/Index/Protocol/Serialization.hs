@@ -43,6 +43,7 @@ rejectTypeToWord32 = \case
   MessageParsing       -> 1
   InternalServerError  -> 2
   ZeroBytesReceived    -> 3
+  VersionNotSupported  -> 4
 
 feeLevelToWord8 :: FeeLevel -> Word8
 feeLevelToWord8 fl = case fl of
@@ -55,9 +56,9 @@ mkProtocolVersion (mj,mn,p)
   | mj > 1023 = error $ "Major version out of bounds: " <> show mj <> " should be < 1023"
   | mn > 1023 = error $ "Minor version out of bounds: " <> show mn <> " should be < 1023"
   | p  > 1023 = error $ "Patch version out of bounds: " <> show p  <> " should be < 1023"
-  | otherwise = S.toByteString $ reservedBits <> w16to10 mj <> w16to10 mn <> w16to10 p
+  | otherwise = S.toByteString $ w16to10 p <> w16to10 mn <> w16to10 mj <> reservedBits
   where
-    w16to10 :: Word16 -> S.Bitstream (S.Right)
+    w16to10 :: Word16 -> S.Bitstream S.Right
     w16to10 = S.fromNBits (10 :: Int)
     reservedBits :: S.Bitstream S.Right
     reservedBits = S.pack [False, False]
