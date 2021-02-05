@@ -21,10 +21,10 @@ currencyToCurrencyCode code = do
   isTestnet <- cfgBTCNodeIsTestnet <$> serverConfig
   pure $ currencyToCode isTestnet code
 
-instance Conversion BlockMetaRec BlockFilter where
-  convert BlockMetaRec {..} = BlockFilter
-    { blockFilterBlockId = blockMetaRecHeaderHash
-    , blockFilterFilter  = blockMetaRecAddressFilter
+instance Conversion BlockInfoRec BlockFilter where
+  convert BlockInfoRec {..} = BlockFilter
+    { blockFilterBlockId = blockInfoRecHeaderHash
+    , blockFilterFilter  = blockInfoRecAddressFilter
     }
 
 
