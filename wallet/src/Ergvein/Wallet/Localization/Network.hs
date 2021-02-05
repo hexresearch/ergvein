@@ -2,7 +2,7 @@ module Ergvein.Wallet.Localization.Network(
     NetworkPageStrings(..)
   ) where
 
-import Ergvein.Index.Protocol.Types (Version)
+import Ergvein.Index.Protocol.Types (ProtocolVersion)
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
@@ -38,7 +38,7 @@ data NetworkPageStrings
   | NPSNoActiveNodes
   | NPSNoCurrencies
   | NPSTitleCur Currency
-  | NPSIndexerVersion (Maybe Version)
+  | NPSIndexerVersion (Maybe ProtocolVersion)
 
 instance LocalizedPrint NetworkPageStrings where
   localizedShow l v = case l of
