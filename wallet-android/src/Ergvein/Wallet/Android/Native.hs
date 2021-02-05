@@ -38,6 +38,7 @@ foreign import ccall safe "android_open_url" androidOpenUrl :: HaskellActivity -
 foreign import ccall safe "android_camera_open" androidCameraOpen :: HaskellActivity -> CString -> IO ()
 foreign import ccall safe "android_camera_get_result" androidCameraGetResult :: HaskellActivity -> IO CString
 foreign import ccall safe "android_share_jpeg" androidShareJpeg :: HaskellActivity -> CString -> CString -> IO ()
+foreign import ccall safe "android_detectdns" androidDetectDnsImpl :: HaskellActivity -> IO CString
 
 decodeText :: CString -> IO Text
 decodeText cstr = do
@@ -192,6 +193,12 @@ instance PlatformNatives where
   nativeShareJpeg b64jpeg filename = liftIO $ encodeText b64jpeg $ \s -> encodeText filename $ \fs -> do
     a <- getHaskellActivity
     androidShareJpeg a s fs
+
+  androidDetectDns = liftIO $ do
+    a <- getHaskellActivity
+    r <- androidDetectDnsImpl a
+    t <- decodeText r
+    pure $ T.splitOn ";" t
 
 getFiles :: FilePath -> IO [FilePath]
 getFiles dir = do
