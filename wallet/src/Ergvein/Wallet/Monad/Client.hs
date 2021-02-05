@@ -18,6 +18,7 @@ module Ergvein.Wallet.Monad.Client (
   , indexersAverageLatNumWidget
   , requestIndexerWhenOpen
   , indexerStatusUpdater
+  , indexerLastStatus
   -- * Reexports
   , SockAddr
   ) where
@@ -316,3 +317,9 @@ indexerStatusUpdater IndexerConnection{..} = do
   r <- getStatusConnsRef
   performEvent_ $ ffor e $ \status -> do
     modifyExternalRef r $ \m -> (M.insert indexConAddr status m, ())
+
+-- | Get cached status of indexer even it is disconnected
+indexerLastStatus :: forall t m . MonadIndexClient t m => SockAddr -> m (Dynamic t (Maybe IndexerStatus))
+indexerLastStatus addr = do
+  md <- externalRefDynamic =<< getStatusConnsRef
+  pure $ M.lookup addr <$> md
