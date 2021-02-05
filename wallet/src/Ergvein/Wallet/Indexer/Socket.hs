@@ -54,6 +54,7 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
   (versionMismatchE, versionMismatchFire) <- newTriggerEvent
   (currenciesMismatchE, currenciesMismatchFire) <- newTriggerEvent
   (currenciesNotSyncedE, currenciesNotSyncedFire) <- newTriggerEvent
+  (versionE, versionFire) <- newTriggerEvent
   versionMismatchDE <- delay 0.2 $ void versionMismatchE
   currenciesMismatchDE <- delay 0.2 currenciesMismatchE
   currenciesNotSyncedDE <- delay 0.2 currenciesNotSyncedE
@@ -98,7 +99,9 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
            nodeLog sa $ "The indexer is not fully synced for currencies " <> showt requiredCurrencies
            liftIO $ currenciesNotSyncedFire ()
            pure Nothing
-         | otherwise -> pure $ Just (MVersionACK VersionACK)
+         | otherwise -> do
+            liftIO $ versionFire versionVersion
+            pure $ Just (MVersionACK VersionACK)
     MPing nonce -> pure $ Just $ MPong nonce
     _ -> pure Nothing
   let sendE = leftmost [handshakeE, hsRespE, gate (current shakeD) reqE]
@@ -111,6 +114,7 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
   let verAckE = fforMaybe respE $ \case
         MVersionACK _ -> Just True
         _ -> Nothing
+  versionD <- holdDyn Nothing $ Just <$> versionE
   shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
   let openE = fmapMaybe (\b -> if b then Just () else Nothing) $ updated shakeD
 
@@ -131,7 +135,7 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
   pure $ IndexerConnection {
       indexConAddr = sa
     , indexConName = sname
-    , indexConIndexerVersion = Nothing
+    , indexConIndexerVersion = versionD
     , indexConClosedE = () <$ _socketClosed s
     , indexConOpensE = openE
     , indexConIsUp = shakeD

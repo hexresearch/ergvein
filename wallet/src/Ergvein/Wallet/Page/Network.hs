@@ -134,7 +134,6 @@ serversInfoPage initCur = do
           Just conn -> do
             latD <- indexerConnPingerWidget conn refrE
             descrOptionDynNoBR $ NPSLatency <$> latD
-            descrOption $ NPSIndexerVersion $ indexConIndexerVersion conn
       pure ()
 
 lineOption :: MonadFront t m => m a -> m a

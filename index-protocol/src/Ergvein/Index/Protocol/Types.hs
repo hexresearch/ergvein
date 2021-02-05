@@ -4,10 +4,12 @@ import Conversion
 import Data.Attoparsec.Binary
 import Data.Attoparsec.ByteString
 import Data.ByteString (ByteString)
+import Ergvein.Text
 import Data.ByteString.Short (ShortByteString)
 import Data.Either
 import Data.List (nub)
 import Data.Map.Strict (Map)
+import Data.Text (Text)
 import Data.Vector.Unboxed.Deriving
 import Data.Word
 import Foreign.C.Types
@@ -30,6 +32,9 @@ type ProtocolVersion = (Word16, Word16, Word16)
 
 protocolVersion :: ProtocolVersion
 protocolVersion = (1,0,0)
+
+showProtocolVersion :: ProtocolVersion -> Text
+showProtocolVersion (a,b,c) = (showt a) <> "." <> (showt b) <> "." <> (showt c)
 
 -- | Compare own version with other version and check whether we support it
 isCompatible :: ProtocolVersion -> ProtocolVersion -> Bool
