@@ -108,8 +108,6 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
 
   performEvent_ $ ffor (_socketRecvEr s) $ nodeLog sa . showt
 
---  verD <- holdDyn Nothing $
-
   -- Track handshake status
   let verAckE = fforMaybe respE $ \case
         MVersionACK _ -> Just True

@@ -34,7 +34,7 @@ protocolVersion :: ProtocolVersion
 protocolVersion = (1,0,0)
 
 showProtocolVersion :: ProtocolVersion -> Text
-showProtocolVersion (a,b,c) = (showt a) <> "." <> (showt b) <> "." <> (showt c)
+showProtocolVersion (a,b,c) = showt a <> "." <> showt b <> "." <> showt c
 
 -- | Compare own version with other version and check whether we support it
 isCompatible :: ProtocolVersion -> ProtocolVersion -> Bool
