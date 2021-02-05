@@ -11,30 +11,15 @@ import Ergvein.Index.Server.Config
 
 import qualified Ergvein.Types.Currency as C
 
-
 currencyCodeToCurrency :: (Monad m, HasServerConfig m) => CurrencyCode -> m C.Currency
-currencyCodeToCurrency code = do
-  isTestnet <- cfgBTCNodeIsTestnet <$> serverConfig
-  pure $ (if isTestnet then testnet else mainnet) code
-  where
-    testnet = \case
-      TBTC   -> C.BTC
-      TERGO  -> C.ERGO
-    mainnet = \case
-      BTC   -> C.BTC
-      ERGO  -> C.ERGO
+currencyCodeToCurrency code = case codeToCurrency code of
+  Nothing -> fail $ "Unimplemented currency " <> show code
+  Just c -> pure c
 
 currencyToCurrencyCode :: (Monad m, HasServerConfig m) => C.Currency -> m CurrencyCode
 currencyToCurrencyCode code = do
   isTestnet <- cfgBTCNodeIsTestnet <$> serverConfig
-  pure $ (if isTestnet then testnet else mainnet) code
-  where
-    testnet = \case
-      C.BTC  -> TBTC
-      C.ERGO -> TERGO
-    mainnet = \case
-      C.BTC   -> BTC
-      C.ERGO  -> ERGO
+  pure $ currencyToCode isTestnet code
 
 instance Conversion BlockMetaRec BlockFilter where
   convert BlockMetaRec {..} = BlockFilter
