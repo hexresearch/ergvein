@@ -75,6 +75,8 @@ class MonadBaseConstr t m => MonadIndexClient t m | m -> t where
   getArchivedAddrsRef :: m (ExternalRef t (Set NamedSockAddr))
   -- | Internal method to get reference to indexers
   getActiveConnsRef :: m (ExternalRef t (Map SockAddr (IndexerConnection t)))
+  -- | Internal method to get last status of indexer
+  getStatusConnsRef :: m (ExternalRef t (Map SockAddr IndexerStatus))
   -- | Get deactivated urls' reference. Internal
   getInactiveAddrsRef :: m (ExternalRef t (Set NamedSockAddr))
   -- | Get reference to the minimal number of active urls. Internal
