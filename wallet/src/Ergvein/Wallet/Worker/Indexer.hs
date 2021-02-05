@@ -9,11 +9,12 @@ import Data.Time
 import Reflex.Dom
 import Reflex.ExternalRef
 
+import Ergvein.Node.Parsing
 import Ergvein.Text
+import Ergvein.Wallet.Indexer.Socket
 import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Native
-import Ergvein.Wallet.Indexer.Socket
 
 import qualified Data.Map.Strict as M
 

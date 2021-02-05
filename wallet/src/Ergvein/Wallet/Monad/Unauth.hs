@@ -15,6 +15,7 @@ import Network.Socket (SockAddr)
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 
+import Ergvein.Node.Parsing
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
@@ -168,9 +169,9 @@ newEnv settings uiChan = do
   -- MonadClient refs
   rs <- runReaderT mkResolvSeed settingsRef
 
-  socadrs         <- parseSockAddrs rs (settingsActiveAddrs settings)
-  urlsArchive     <- newExternalRef . S.fromList =<< parseSockAddrs rs (settingsArchivedAddrs settings)
-  inactiveUrls    <- newExternalRef . S.fromList =<< parseSockAddrs rs (settingsDeactivatedAddrs settings)
+  socadrs         <- parseSockAddrs rs defIndexerPort (settingsActiveAddrs settings)
+  urlsArchive     <- newExternalRef . S.fromList =<< parseSockAddrs rs defIndexerPort (settingsArchivedAddrs settings)
+  inactiveUrls    <- newExternalRef . S.fromList =<< parseSockAddrs rs defIndexerPort (settingsDeactivatedAddrs settings)
   actvieAddrsRef  <- newExternalRef $ S.fromList socadrs
   indexConmapRef  <- newExternalRef $ M.empty
   indexStatusRef  <- newExternalRef $ M.empty

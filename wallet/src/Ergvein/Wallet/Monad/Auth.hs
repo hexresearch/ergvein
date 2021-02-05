@@ -21,6 +21,7 @@ import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import System.Directory
 
+import Ergvein.Node.Parsing
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
@@ -39,8 +40,8 @@ import Ergvein.Wallet.Node
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Settings (Settings(..))
-import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Status.Types
+import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Version
 import Ergvein.Wallet.Worker.Fees
 import Ergvein.Wallet.Worker.Height
