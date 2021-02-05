@@ -57,7 +57,7 @@ data IndexerConnection t = IndexerConnection {
 , indexConStatus :: !(Dynamic t IndexerStatus)
 }
 
-data IndexerStatus = IndexerOk | IndexerNotSynced | IndexerWrongVersion | IndexerWrongNetwork
+data IndexerStatus = IndexerOk | IndexerNotSynced | IndexerWrongVersion | IndexerMissingCurrencies
   deriving (Eq, Ord, Show, Read, Generic)
 
 data IndexerMsg = IndexerClose | IndexerRestart | IndexerMsg Message
