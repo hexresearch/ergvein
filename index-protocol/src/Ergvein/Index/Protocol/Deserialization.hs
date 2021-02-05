@@ -71,8 +71,8 @@ versionParser = do
   let mj   = S.toBits $ S.append pad $ S.take i10 $ S.drop i20 bs
   pure (mj,mn,p)
   where
-    i2,i6,i10,i20 :: Int
-    i2 = 2; i6 = 6 ; i10 = 10 ; i20 = 20
+    i6,i10,i20 :: Int
+    i6 = 6 ; i10 = 10 ; i20 = 20
     pad = S.replicate i6 False
 
 messageHeaderParser ::  Parser MessageHeader

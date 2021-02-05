@@ -201,7 +201,7 @@ JNIEXPORT int JNICALL Java_systems_obsidian_HaskellActivity_haskellStartMain (JN
   }
 
   static int argc = 5;
-  static char *argv[] = {"jsaddle", "+RTS", "-N2", "-I0", "-RTS"};
+  static char *argv[] = {"jsaddle", "+RTS", "-N", "-qm", "-RTS"};
 
   RtsConfig rts_opts = defaultRtsConfig;
   rts_opts.rts_opts_enabled = RtsOptsAll;
