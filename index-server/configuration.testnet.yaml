@@ -1,5 +1,5 @@
 serverPort               : 8085
-serverTcpPort            : 8667
+serverTcpPort            : 18667
 filtersDbPath            : "./db_testnet_filters"
 indexerDbPath            : "./db_testnet_indexer"
 utxoDbPath               : "./db_testnet_utxo"
