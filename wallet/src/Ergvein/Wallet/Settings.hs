@@ -256,7 +256,7 @@ defaultActUrlNum :: Int
 defaultActUrlNum = 10
 
 defaultDns :: S.Set HostName
-defaultDns = S.fromList $ defDns isTestnet
+defaultDns = S.fromList $ defDns isAndroid
 
 defaultSettings :: FilePath -> Settings
 defaultSettings home =
