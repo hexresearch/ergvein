@@ -87,6 +87,7 @@ data Env t = Env {
 , env'inactiveAddrs   :: !(ExternalRef t (S.Set NamedSockAddr))
 , env'activeAddrs     :: !(ExternalRef t (S.Set NamedSockAddr))
 , env'indexConmap     :: !(ExternalRef t (Map SockAddr (IndexerConnection t)))
+, env'indexStatus     :: !(ExternalRef t (Map SockAddr IndexerStatus))
 , env'reqUrlNum       :: !(ExternalRef t (Int, Int))
 , env'actUrlNum       :: !(ExternalRef t Int)
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
@@ -183,6 +184,8 @@ instance MonadBaseConstr t m => MonadIndexClient t (ErgveinM t m) where
   {-# INLINE getArchivedAddrsRef #-}
   getActiveConnsRef = asks env'indexConmap
   {-# INLINE getActiveConnsRef #-}
+  getStatusConnsRef = asks env'indexStatus
+  {-# INLINE getStatusConnsRef #-}
   getInactiveAddrsRef = asks env'inactiveAddrs
   {-# INLINE getInactiveAddrsRef #-}
   getActiveUrlsNumRef = asks env'actUrlNum
@@ -331,6 +334,7 @@ liftAuth ma0 ma = mdo
         inactiveUrls    <- getInactiveAddrsRef
         actvieAddrsRef  <- getActiveAddrsRef
         indexConmapRef  <- getActiveConnsRef
+        indexStatusRef  <- getStatusConnsRef
         reqUrlNumRef    <- getRequiredUrlNumRef
         actUrlNumRef    <- getActiveUrlsNumRef
         timeoutRef      <- getRequestTimeoutRef
@@ -384,6 +388,7 @@ liftAuth ma0 ma = mdo
               , env'inactiveAddrs = inactiveUrls
               , env'activeAddrs = actvieAddrsRef
               , env'indexConmap = indexConmapRef
+              , env'indexStatus = indexStatusRef
               , env'reqUrlNum = reqUrlNumRef
               , env'actUrlNum = actUrlNumRef
               , env'timeout = timeoutRef

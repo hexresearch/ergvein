@@ -36,6 +36,7 @@ indexerNodeController initAddrs = mdo
     let reqE = select sel $ Const2 u
     conn <- initIndexerConnection nsa reqE
     modifyExternalRef connRef $ \cm -> (M.insert u conn cm, ())
+    indexerStatusUpdater conn
 
     -- Everything below thsi line is handling the closure of a connection
     -- the event the socket fires when it wants to be closed
