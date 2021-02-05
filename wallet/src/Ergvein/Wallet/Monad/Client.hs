@@ -17,6 +17,7 @@ module Ergvein.Wallet.Monad.Client (
   , indexersAverageLatencyWidget
   , indexersAverageLatNumWidget
   , requestIndexerWhenOpen
+  , indexerStatusUpdater
   -- * Reexports
   , SockAddr
   ) where
@@ -307,3 +308,11 @@ indexersAverageLatNumWidget refrE = do
     pongs = sum $ M.elems pongmap
     avg = if len == 0 then 0 else pongs / (fromIntegral $ len)
     in (len, avg)
+
+-- | Watch after status updates and save it to separate map in env to display it when connection id down
+indexerStatusUpdater :: forall t m . MonadIndexClient t m => IndexerConnection t -> m ()
+indexerStatusUpdater IndexerConnection{..} = do
+  e <- updatedWithInit =<< holdUniqDyn indexConStatus
+  r <- getStatusConnsRef
+  performEvent_ $ ffor e $ \status -> do
+    modifyExternalRef r $ \m -> (M.insert indexConAddr status m, ())
