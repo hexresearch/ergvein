@@ -1,7 +1,8 @@
 serverPort               : 8085
 serverTcpPort            : 8667
-filtersDbPath            : "./ergveinDb_mainnet"
-indexerDbPath            : "./indexerDb_mainnet"
+filtersDbPath            : "./db_mainnet_filters"
+indexerDbPath            : "./db_mainnet_indexer"
+utxoDbPath               : "./db_mainnet_utxo"
 BTCNodeIsTestnet         : false
 BTCNodeHost              : localhost
 BTCNodePort              : 8332
