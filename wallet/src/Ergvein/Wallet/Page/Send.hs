@@ -100,6 +100,7 @@ sendPage cur minit = mdo
         amountD <- sendAmountWidget amountInit $ () <$ validationE
         feeD <- btcFeeSelectionWidget feeInit submitE
         rbfEnabledD <- divClass "mb-1" $ toggler SSRbf (constDyn rbfInit')
+        showRawE <- outlineSubmitTextIconButtonClass "w-100" SendBtnRaw "fas fa-paper-plane fa-lg"
         submitE <- outlineSubmitTextIconButtonClass "w-100" SendBtnString "fas fa-paper-plane fa-lg"
         let validationE = poke submitE $ \_ -> do
               recipient <- sampleDyn recipientD
