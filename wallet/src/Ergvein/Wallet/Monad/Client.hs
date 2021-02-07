@@ -52,6 +52,7 @@ import qualified Data.Set as S
 data IndexerConnection t = IndexerConnection {
   indexConAddr :: !SockAddr
 , indexConName :: !Text
+, indexConIndexerVersion :: !(Dynamic t (Maybe ProtocolVersion))
 , indexConClosedE :: !(Event t ())
 , indexConOpensE :: !(Event t ())
 , indexConIsUp :: !(Dynamic t Bool)

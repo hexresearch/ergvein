@@ -177,7 +177,7 @@ renderActive nsa refrE mconn = mdo
           h <- heightD
           h' <- fmap (Just . fromIntegral) hD
           up <- indexConIsUp conn
-          let synced = h == h' || Just 1 == ((-) <$> h' <*> h)
+          let synced = h >= h' || Just 1 == ((-) <$> h' <*> h)
           pure $ if up
             then if synced then onclass else unsyncClass
             else offclass
@@ -188,6 +188,7 @@ renderActive nsa refrE mconn = mdo
       latD <- indexerConnPingerWidget conn refrE
       descrOptionDyn $ NSSLatency <$> latD
       descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> heightD
+      descrOptionDyn $ NPSIndexerVersion <$> indexConIndexerVersion conn
       pure tglE'
 
   void $ widgetHoldDyn $ ffor tglD $ \b -> if not b
