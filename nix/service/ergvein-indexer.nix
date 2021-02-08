@@ -64,7 +64,7 @@ in {
       };
       nodeTcpPort = mkOption {
         type = types.int;
-        default = 8667;
+        default = if cfg.testnet then 18667 else 8667;
         description = ''
           Which port the cryptonode listen to TCP protocol connections.
         '';
@@ -88,6 +88,13 @@ in {
         default = if cfg.testnet then "/var/lib/ergvein-testnet/indexer" else "/var/lib/ergvein/indexer";
         description = ''
           Path to indexer database on filesystem.
+        '';
+      };
+      utxoPath = mkOption {
+        type = types.str;
+        default = if cfg.testnet then "/var/lib/ergvein-testnet/utxo" else "/var/lib/ergvein/utxo";
+        description = ''
+          Path to utxo database on filesystem.
         '';
       };
       testnet = mkOption {
@@ -162,6 +169,7 @@ in {
           serverHostname           : ${cfg.nodeHostname}
           filtersDbPath            : ${cfg.filtersPath}
           indexerDbPath            : ${cfg.indexerPath}
+          utxoDbPath               : ${cfg.utxoPath}
           BTCNodeIsTestnet         : ${if cfg.testnet then "true" else "false"}
           BTCNodeHost              : ${cfg.btcHost}
           BTCNodePort              : ${toString cfg.btcPort}
@@ -225,6 +233,9 @@ in {
           fi
           if [ ! -d "${cfg.indexerPath}" ]; then
             mkdir -p ${cfg.indexerPath}
+          fi
+          if [ ! -d "${cfg.utxoPath}" ]; then
+            mkdir -p ${cfg.utxoPath}
           fi
         '';
         deps = [];

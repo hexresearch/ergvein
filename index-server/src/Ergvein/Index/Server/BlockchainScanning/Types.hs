@@ -37,3 +37,10 @@ data ScanProgressInfo = ScanProgressInfo
   , nfoScannedHeight :: !BlockHeight
   , nfoActualHeight  :: !BlockHeight
   }
+
+data TxIndexInfo = TxIndexInfo
+  { txIndexInfoHeight :: !BlockHeight
+  , txIndexInfoBlockHash  :: !ShortByteString
+  , txIndexInfoPrevBlockHash :: !ShortByteString
+  , txIndexInfoIds :: ![TxHash]
+  }

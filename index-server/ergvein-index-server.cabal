@@ -27,6 +27,7 @@ library
     Ergvein.Index.Server.DB.Queries
     Ergvein.Index.Server.DB.Schema.Filters
     Ergvein.Index.Server.DB.Schema.Indexer
+    Ergvein.Index.Server.DB.Schema.Utxo
     Ergvein.Index.Server.DB.Serialize
     Ergvein.Index.Server.DB.Serialize.Class
     Ergvein.Index.Server.DB.Utils
@@ -43,8 +44,11 @@ library
     Ergvein.Index.Server.TCPService.MessageHandler
     Ergvein.Index.Server.TCPService.Server
     Ergvein.Index.Server.TCPService.Socket
+    Ergvein.Index.Server.TxIndex
+    Ergvein.Index.Server.TxIndex.Monad
     Ergvein.Index.Server.Utils
-
+    Ergvein.Index.Server.Worker.Fees
+    Ergvein.Index.Server.Worker.Rates
   build-depends:
         base                     >= 4.7     &&  < 4.13
       , aeson                    >= 1.4     &&  < 1.5
@@ -115,6 +119,7 @@ library
       , wai-middleware-prometheus >= 1.0    &&  < 1.1
       , warp                     >= 3.2     &&  < 3.3
       , yaml                     >= 0.11    &&  < 0.12
+      , coinbase-client
       , ergo-api
       , ergvein-common
       , ergvein-crypto

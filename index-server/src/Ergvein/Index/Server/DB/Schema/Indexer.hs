@@ -43,15 +43,29 @@ import qualified Data.Serialize          as S
 import qualified Data.Sequence           as Seq
 import qualified Data.Text.Encoding      as TE
 
-data KeyPrefix = Peer | LastBlockHash | Rollback | SchemaVersion deriving Enum
-
-schemaVersion :: ByteString
-schemaVersion = hash $(embedFile "src/Ergvein/Index/Server/DB/Schema/Indexer.hs")
+data KeyPrefix
+  = SchemaVersion
+  | Peer
+  | LastBlockHash
+  | Rollback
+  deriving Enum
 
 keyString :: (Serialize k) => KeyPrefix -> k -> ByteString
 keyString keyPrefix key = (fromIntegral $ fromEnum keyPrefix) `BS.cons` S.encode key
 
---PeerDiscovery
+-- ===========================================================================
+--           Schema Version
+-- ===========================================================================
+
+schemaVersion :: ByteString
+schemaVersion = hash $(embedFile "src/Ergvein/Index/Server/DB/Schema/Indexer.hs")
+
+schemaVersionRecKey :: ByteString
+schemaVersionRecKey  = keyString SchemaVersion $ mempty @String
+
+-- ===========================================================================
+--           Known peers
+-- ===========================================================================
 
 knownPeersRecKey :: ByteString
 knownPeersRecKey  = keyString Peer $ mempty @String
@@ -65,7 +79,9 @@ data KnownPeerRecItem = KnownPeerRecItem
   , knownPeerRecLastValidatedAt  :: Text
   } deriving (Generic, Show, Eq, Ord)
 
---lastScannedBlockHeaderHash
+-- ===========================================================================
+--           Last scanned block header
+-- ===========================================================================
 
 lastScannedBlockHeaderHashRecKey :: Currency -> ByteString
 lastScannedBlockHeaderHashRecKey  = keyString LastBlockHash . LastScannedBlockHeaderHashRecKey
@@ -78,7 +94,9 @@ data LastScannedBlockHeaderHashRec = LastScannedBlockHeaderHashRec
   { lastScannedBlockHeaderHashRecHash :: !ShortByteString
   } deriving (Generic, Show, Eq, Ord)
 
--- Rollback
+-- ===========================================================================
+--           Rollback info
+-- ===========================================================================
 
 rollbackKey :: Currency -> ByteString
 rollbackKey = keyString Rollback . RollbackKey
@@ -94,14 +112,6 @@ data RollbackRecItem = RollbackRecItem
 
 data RollbackSequence = RollbackSequence { unRollbackSequence :: Seq.Seq RollbackRecItem}
   deriving (Generic, Show, Eq, Ord)
-
---SchemaVersion
-
-schemaVersionRecKey :: ByteString
-schemaVersionRecKey  = keyString SchemaVersion $ mempty @String
-
-data SchemaVersionRec = Text  deriving (Generic, Show, Eq, Ord)
-
 
 -- ===========================================================================
 --           Conversion instances
@@ -134,7 +144,6 @@ instance Conversion KnownPeerRecItem Address where
         , addressPort    = peerAddrPort knownPeerRecAddr
         , addressAddress = BL.toStrict $ toLazyByteString $ word32BE a <> word32BE b <> word32BE c <> word32BE d
         }
-
 
 -- ===========================================================================
 --           instance EgvSerialize KnownPeerRecItem, KnownPeersRec

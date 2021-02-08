@@ -21,6 +21,7 @@ module Ergvein.Types.Currency (
   , moneyFromRationalUnit
   , showMoney
   , showMoneyUnit
+  , showMoneyRated
   , UnitBTC(..)
   , defUnitBTC
   , allUnitsBTC
@@ -246,6 +247,9 @@ showMoney m = T.pack $ printf "%f" (realToFrac (moneyToRational m) :: Double)
 
 showMoneyUnit :: Money -> Units -> Text
 showMoneyUnit m units = T.pack $ printf "%f" (realToFrac (moneyToRationalUnit m units) :: Double)
+
+showMoneyRated :: Money -> Double -> Text
+showMoneyRated m r = T.pack $ printf "%.2f" $ r * (realToFrac $ moneyToRational m)
 
 curprefix :: Currency -> Text
 curprefix cur = case cur of

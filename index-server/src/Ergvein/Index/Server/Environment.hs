@@ -16,22 +16,22 @@ import Network.Socket
 import System.IO
 
 import Ergvein.Index.Protocol.Types (CurrencyCode, Message)
+import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB
 import Ergvein.Index.Server.DB.Monad
+import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema.Indexer (RollbackRecItem, RollbackSequence(..))
-import Ergvein.Index.Server.DB.Queries (loadRollbackSequence)
 import Ergvein.Index.Server.DB.Wrapper
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.TCPService.BTC
-import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import Ergvein.Text
-import Ergvein.Types.Fees
 import Ergvein.Types.Currency
+import Ergvein.Types.Fees
 
 import qualified Data.Map.Strict             as M
-import qualified Data.Set                    as Set
 import qualified Data.Sequence               as Seq
+import qualified Data.Set                    as Set
 import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 import qualified Network.Ergo.Api.Client     as ErgoApi
 import qualified Network.Haskoin.Constants   as HK
@@ -42,6 +42,7 @@ data ServerEnv = ServerEnv
     , envLogger                   :: !(Chan (Loc, LogSource, LogLevel, LogStr))
     , envFiltersDBContext         :: !LevelDB
     , envIndexerDBContext         :: !LevelDB
+    , envUtxoDBContext            :: !(MVar DB)
     , envBitcoinNodeNetwork       :: !HK.Network
     , envErgoNodeClient           :: !ErgoApi.Client
     , envClientManager            :: !HC.Manager
@@ -53,8 +54,10 @@ data ServerEnv = ServerEnv
     , envPeerDiscoveryRequisites  :: !PeerDiscoveryRequisites
     , envFeeEstimates             :: !(TVar (M.Map CurrencyCode FeeBundle))
     , envShutdownFlag             :: !(TVar Bool)
+    , envShutdownChannel          :: !(TChan Bool)
     , envOpenConnections          :: !(TVar (M.Map SockAddr (ThreadId, Socket)))
     , envBroadcastChannel         :: !(TChan Message)
+    , envExchangeRates            :: !(TVar (M.Map CurrencyCode (M.Map Fiat Double)))
     }
 
 sockAddress :: CfgPeer -> IO SockAddr
@@ -86,20 +89,24 @@ withNewServerEnv :: (MonadIO m, MonadLogger m, MonadMask m, MonadBaseControl IO 
   => Bool               -- ^ flag, def True: wait for node connections to be up before finalizing the env
   -> Bool               -- ^ flag, def False: do not drop Filters database
   -> Bool               -- ^ flag, def False: do not drop Indexer's database
+  -> Bool               -- ^ flag, def False: do not drop Utxo's database
   -> BitcoinApi.Client  -- ^ RPC connection to the bitcoin node
   -> Config             -- ^ Contents of the config file
   -> (ServerEnv -> m a)
   -> m a
-withNewServerEnv useTcp overrideFilters overridesIndexers btcClient cfg@Config{..} action = do
+withNewServerEnv useTcp overrideFilters overridesIndexers overridesUtxo btcClient cfg@Config{..} action = do
     logger <- liftIO newChan
     liftIO $ hSetBuffering stdout LineBuffering
     void $ liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
+    utxoDBCntx     <- openDb overridesUtxo DBUtxo cfgUtxoDbPath
+    utxoDbVar      <- liftIO $ newMVar utxoDBCntx
     ergoNodeClient <- liftIO $ ErgoApi.newClient cfgERGONodeHost cfgERGONodePort
     tlsManager     <- liftIO $ newTlsManager
     feeEstimates   <- liftIO $ newTVarIO M.empty
     shutdownVar    <- liftIO $ newTVarIO False
     openConns      <- liftIO $ newTVarIO M.empty
     broadChan      <- liftIO newBroadcastTChanIO
+    shutdownChan   <- liftIO newTChanIO
     btcRestartChan <- liftIO newTChanIO
     btcConnVar     <- liftIO $ newTVarIO $ if useTcp then BtcConTCP else BtcConRPC
     let bitcoinNodeNetwork = if cfgBTCNodeIsTestnet then HK.btcTest else HK.btc
@@ -123,11 +130,13 @@ withNewServerEnv useTcp overrideFilters overridesIndexers btcClient cfg@Config{.
       withDb overridesIndexers DBIndexer cfgIndexerDbPath $ \indexerDB -> do
         btcSeq    <- liftIO $ runStdoutLoggingT $ runReaderT (loadRollbackSequence BTC) indexerDB
         btcSeqVar <- liftIO $ newTVarIO $ unRollbackSequence btcSeq
+        exchangeRates <- liftIO $ newTVarIO mempty
         action ServerEnv
           { envServerConfig            = cfg
           , envLogger                  = logger
           , envFiltersDBContext        = filtersDB
           , envIndexerDBContext        = indexerDB
+      , envUtxoDBContext           = utxoDbVar
           , envBitcoinNodeNetwork      = bitcoinNodeNetwork
           , envErgoNodeClient          = ergoNodeClient
           , envClientManager           = tlsManager
@@ -139,8 +148,10 @@ withNewServerEnv useTcp overrideFilters overridesIndexers btcClient cfg@Config{.
           , envPeerDiscoveryRequisites = descDiscoveryRequisites
           , envFeeEstimates            = feeEstimates
           , envShutdownFlag            = shutdownVar
+      , envShutdownChannel         = shutdownChan
           , envOpenConnections         = openConns
           , envBroadcastChannel        = broadChan
+      , envExchangeRates           = exchangeRates
           }
 
 -- | Log exceptions at Error severity
@@ -148,6 +159,7 @@ logOnException :: (
     HasServerConfig m
   , HasFiltersDB m
   , HasIndexerDB m
+  , HasUtxoDB m
   , MonadIO m
   , MonadLogger m
   , MonadCatch m)
@@ -162,6 +174,7 @@ logOnException threadName = handle logE
         HasServerConfig m
       , HasFiltersDB m
       , HasIndexerDB m
+      , HasUtxoDB m
       , MonadIO m
       , MonadLogger m
       , MonadCatch m) => SomeException -> m b
@@ -183,6 +196,9 @@ logOnException threadName = handle logE
               idb' <- openDb False DBIndexer cfgIndexerDbPath
               moveLevelDbHandle fdb' fdb
               moveLevelDbHandle idb' idb
+              liftIO $ unsafeClose udb
+              utxoDBCntx    <- openDb False DBUtxo    cfgUtxoDbPath
+              liftIO $ putMVar udbVar utxoDBCntx
               logInfoN' "Reopened the db. Resume as usual"
             else
               logErrorN' $ "Killed by IOException. " <> showt ioe

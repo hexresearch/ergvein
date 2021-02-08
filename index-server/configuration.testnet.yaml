@@ -1,7 +1,8 @@
 serverPort               : 8085
-serverTcpPort            : 8667
-filtersDbPath            : "./ergveinDb_testnet"
-indexerDbPath            : "./indexerDb_testnet"
+serverTcpPort            : 18667
+filtersDbPath            : "./db_testnet_filters"
+indexerDbPath            : "./db_testnet_indexer"
+utxoDbPath               : "./db_testnet_utxo"
 BTCNodeIsTestnet         : true
 BTCNodeHost              : localhost
 BTCNodePort              : 18332
@@ -16,6 +17,7 @@ ownPeerAddress           : null
 knownPeers               : []
 peerActualizationDelay   : 10000000
 peerActualizationTimeout : 86400
+ratesRefreshPeriod       : 300000000          # 5 minutes
 metrics:
   host: localhost
   port: 9667

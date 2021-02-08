@@ -37,6 +37,7 @@ import System.Directory
 
 import Ergvein.Aeson
 import Ergvein.Lens
+import Ergvein.Node.Constants
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.IP
@@ -179,7 +180,8 @@ data Settings = Settings {
 , settingsReqUrlNum         :: (Int, Int) -- ^ First is minimum required answers. Second is sufficient amount of answers from indexers.
 , settingsActUrlNum         :: Int
 , settingsPortfolio         :: Bool
-, settingsFiatCurr          :: Fiat
+, settingsFiatCurr          :: Maybe Fiat
+, settingsRateFiat          :: Maybe Fiat
 , settingsDns               :: S.Set HostName
 , settingsSocksProxy        :: Maybe SocksConf
 , settingsCurrencySpecific  :: CurrencySpecificSettings
@@ -208,7 +210,8 @@ instance FromJSON Settings where
             (Just [], Just [], Just []) -> (defaultIndexers, [], [])
             _ -> (fromMaybe [] mActiveAddrs, fromMaybe [] mDeactivatedAddrs, fromMaybe [] mArchivedAddrs)
     settingsPortfolio         <- o .:? "portfolio" .!= False
-    settingsFiatCurr          <- o .:? "fiatCurr"  .!= USD
+    settingsFiatCurr          <- o .:? "fiatCurr"
+    settingsRateFiat          <- o .:? "rateFiat"
     mdns                      <- o .:? "dns"
     settingsSocksProxy        <- o .:? "socksProxy"
     let settingsDns = case fromMaybe [] mdns of
@@ -231,21 +234,17 @@ instance ToJSON Settings where
     , "actUrlNum"         .= toJSON settingsActUrlNum
     , "portfolio"         .= toJSON settingsPortfolio
     , "fiatCurr"          .= toJSON settingsFiatCurr
+    , "rateFiat"          .= toJSON settingsRateFiat
     , "dns"               .= toJSON settingsDns
     , "socksProxy"        .= toJSON settingsSocksProxy
     , "currencySpecific"  .= toJSON settingsCurrencySpecific
    ]
 
 defIndexerPort :: PortNumber
-defIndexerPort = 8667
+defIndexerPort = defNodePort isTestnet
 
 defaultIndexers :: [Text]
-defaultIndexers = [
-    "ergvein-indexermainnet1.hxr.team:8667"
-  , "ergvein-indexermainnet2.hxr.team:8667"
-  , "ergvein-indexermainnet3.hxr.team:8667"
-  , "indexer.ergvein.net"       -- OwO
-  ]
+defaultIndexers = defNodes isTestnet
 
 defaultIndexersNum :: (Int, Int)
 defaultIndexersNum = (2, 4)
@@ -257,9 +256,7 @@ defaultActUrlNum :: Int
 defaultActUrlNum = 10
 
 defaultDns :: S.Set HostName
-defaultDns = S.fromList $ if isAndroid
-  then ["8.8.8.8","8.8.4.4", "1.1.1.1"]
-  else [] -- use resolv.conf
+defaultDns = S.fromList $ defDns isAndroid
 
 defaultSettings :: FilePath -> Settings
 defaultSettings home =
@@ -274,7 +271,8 @@ defaultSettings home =
       , settingsReqUrlNum         = defaultIndexersNum
       , settingsActUrlNum         = defaultActUrlNum
       , settingsPortfolio         = False
-      , settingsFiatCurr          = USD
+      , settingsFiatCurr          = Nothing
+      , settingsRateFiat          = Nothing
       , settingsActiveAddrs       = defaultIndexers
       , settingsDeactivatedAddrs  = []
       , settingsArchivedAddrs     = []

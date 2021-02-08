@@ -10,6 +10,7 @@ let
    project = reflex-platform.project ({ pkgs, ... }: {
     packages = {
       cbitstream = ./cbitstream;
+      coinbase-client = ./coinbase-client;
       data-merkle-tree = ./data-merkle-tree;
       ergo-api = ./ergo-api;
       ergvein-checkpoint-generator = ./checkpoint-generator;
@@ -27,6 +28,7 @@ let
       ergvein-wallet-filters = ./wallet-filters;
       ergvein-wallet-native = ./wallet-native;
       ergvein-wallet-types = ./wallet-types;
+      ergvein-node-discovery = ./node-discovery;
       ergvein-wallet-version = ./wallet-version;
       ergvein-website = ./ergvein-website;
       golomb-rice = ./golomb-rice;
@@ -41,6 +43,7 @@ let
     shells = {
       ghc = [
         "cbitstream"
+        "coinbase-client"
         "data-merkle-tree"
         "ergo-api"
         "ergvein-checkpoint-generator"
@@ -56,6 +59,7 @@ let
         "ergvein-wallet-filters"
         "ergvein-wallet-native"
         "ergvein-wallet-types"
+        "ergvein-node-discovery"
         "ergvein-wallet-version"
         "ergvein-wallet"
         "ergvein-website"

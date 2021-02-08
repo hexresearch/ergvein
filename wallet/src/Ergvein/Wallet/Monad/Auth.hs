@@ -46,6 +46,7 @@ import Ergvein.Wallet.Worker.Fees
 import Ergvein.Wallet.Worker.Height
 import Ergvein.Wallet.Worker.Node
 import Ergvein.Wallet.Worker.PubKeysGenerator
+import Ergvein.Wallet.Worker.Rates
 
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
@@ -80,11 +81,13 @@ data Env t = Env {
 , env'feesStore       :: !(ExternalRef t (Map Currency FeeBundle))
 , env'storeMutex      :: !(MVar ())
 , env'storeChan       :: !(TChan (Text, AuthInfo))
+, env'ratesRef        :: !(ExternalRef t (Map Currency (Map Fiat Double)))
 -- Client context
 , env'addrsArchive    :: !(ExternalRef t (S.Set NamedSockAddr))
 , env'inactiveAddrs   :: !(ExternalRef t (S.Set NamedSockAddr))
 , env'activeAddrs     :: !(ExternalRef t (S.Set NamedSockAddr))
 , env'indexConmap     :: !(ExternalRef t (Map SockAddr (IndexerConnection t)))
+, env'indexStatus     :: !(ExternalRef t (Map SockAddr IndexerStatus))
 , env'reqUrlNum       :: !(ExternalRef t (Int, Int))
 , env'actUrlNum       :: !(ExternalRef t Int)
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
@@ -169,6 +172,8 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getNodeNodeReqSelector #-}
   getFeesRef = asks env'feesStore
   {-# INLINE getFeesRef #-}
+  getRatesRef = asks env'ratesRef
+  {-# INLINE getRatesRef #-}
   getNodeReqFire = asks env'nodeReqFire
   {-# INLINE getNodeReqFire #-}
 
@@ -179,6 +184,8 @@ instance MonadBaseConstr t m => MonadIndexClient t (ErgveinM t m) where
   {-# INLINE getArchivedAddrsRef #-}
   getActiveConnsRef = asks env'indexConmap
   {-# INLINE getActiveConnsRef #-}
+  getStatusConnsRef = asks env'indexStatus
+  {-# INLINE getStatusConnsRef #-}
   getInactiveAddrsRef = asks env'inactiveAddrs
   {-# INLINE getInactiveAddrsRef #-}
   getActiveUrlsNumRef = asks env'actUrlNum
@@ -327,6 +334,7 @@ liftAuth ma0 ma = mdo
         inactiveUrls    <- getInactiveAddrsRef
         actvieAddrsRef  <- getActiveAddrsRef
         indexConmapRef  <- getActiveConnsRef
+        indexStatusRef  <- getStatusConnsRef
         reqUrlNumRef    <- getRequiredUrlNumRef
         actUrlNumRef    <- getActiveUrlsNumRef
         timeoutRef      <- getRequestTimeoutRef
@@ -345,6 +353,7 @@ liftAuth ma0 ma = mdo
         fsyncRef        <- newExternalRef mempty
         consRef         <- newExternalRef mempty
         feesRef         <- newExternalRef mempty
+        ratesRef        <- newExternalRef mempty
         storeMutex      <- liftIO $ newMVar ()
         storeChan       <- liftIO newTChanIO
         let env = Env {
@@ -373,11 +382,13 @@ liftAuth ma0 ma = mdo
               , env'feesStore = feesRef
               , env'storeMutex = storeMutex
               , env'storeChan = storeChan
+              , env'ratesRef  = ratesRef
 
               , env'addrsArchive = urlsArchive
               , env'inactiveAddrs = inactiveUrls
               , env'activeAddrs = actvieAddrsRef
               , env'indexConmap = indexConmapRef
+              , env'indexStatus = indexStatusRef
               , env'reqUrlNum = reqUrlNumRef
               , env'actUrlNum = actUrlNumRef
               , env'timeout = timeoutRef
@@ -392,6 +403,7 @@ liftAuth ma0 ma = mdo
           -- initFiltersHeights filtersHeights
           scanner
           btcNodeController
+          ratesWorker
           heightAsking
           feesWorker
           pubKeysGenerator

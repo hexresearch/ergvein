@@ -18,6 +18,7 @@ import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Wrapper
 import qualified Ergvein.Index.Server.DB.Schema.Filters as DBF
 import qualified Ergvein.Index.Server.DB.Schema.Indexer as DBI
+import qualified Ergvein.Index.Server.DB.Schema.Utxo    as DBU
 
 data MyException = DbVersionMismatch
     deriving Show
@@ -42,6 +43,7 @@ openDb overwriteDbVerOnMismatch dbtag dbDirectory = do
         let (dbName, overrideFlag) = case dbtag of
               DBFilters -> ("Filters", "--override-ver-filters")
               DBIndexer -> ("Indexer", "--override-ver-indexer")
+              DBUtxo    -> ("UTXO", "--override-ver-utxo")
         putStrLn $ "[" <> dbName <> "]: Error! Database version mismatch!"
         putStrLn $ "[" <> dbName <> "]: If you are sure, that the new schema is compatible, run with " <> overrideFlag
         throwM DbVersionMismatch
@@ -50,7 +52,7 @@ openDb overwriteDbVerOnMismatch dbtag dbDirectory = do
     (schemaVersionRecKey, schemaVersion) = case dbtag of
       DBFilters -> (DBF.schemaVersionRecKey, DBF.schemaVersion)
       DBIndexer -> (DBI.schemaVersionRecKey, DBI.schemaVersion)
-
+      DBUtxo    -> (DBU.schemaVersionRecKey, DBU.schemaVersion)
 withDb
   :: (MonadLogger m, MonadIO m, MonadMask m)
   => Bool -> DBTag -> FilePath -> (LevelDB -> m a) -> m a

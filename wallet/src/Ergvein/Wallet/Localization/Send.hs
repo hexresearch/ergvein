@@ -85,6 +85,7 @@ data FeeStrings
   | FSFee Word64
   | FSInvalid
   | FSNoFees
+  | FSRbf Bool
 
 instance LocalizedPrint FeeStrings where
   localizedShow l v = case l of
@@ -95,6 +96,8 @@ instance LocalizedPrint FeeStrings where
       FSFee f -> "~" <> showt f <> " satoshi/vbyte"
       FSInvalid -> "Enter valid integer fee in satoshi/vbyte"
       FSNoFees -> "Fees not found in the cache. Please enter the fee manually."
+      FSRbf True -> "enabled"
+      FSRbf False -> "disabled"
     Russian -> case v of
       FSLevel -> "Уровень комиссии"
       FSSelect -> "Выберите уровень комиссии"
@@ -102,6 +105,8 @@ instance LocalizedPrint FeeStrings where
       FSFee f -> "~" <> showt f <> " satoshi/vbyte"
       FSInvalid -> "Введите комиссию. Целое число, satoshi/vbyte"
       FSNoFees -> "Уровень комиссий не найден в кэше. Пожалуйста, введите комиссию вручную."
+      FSRbf True -> "вкл."
+      FSRbf False -> "выкл."
 
 data ConfirmationErrorMessage
   = CEMEmptyUTXO

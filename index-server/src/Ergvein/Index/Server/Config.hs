@@ -36,6 +36,7 @@ data Config = Config
   , cfgServerHostname           :: !String
   , cfgFiltersDbPath            :: !String
   , cfgIndexerDbPath            :: !String
+  , cfgUtxoDbPath               :: !String
   , cfgBlockchainScanDelay      :: !Int
   , cfgBTCNodeIsTestnet         :: !Bool
   , cfgBTCNodeHost              :: !String
@@ -51,6 +52,7 @@ data Config = Config
   , cfgPeerActualizationDelay   :: !Int
   , cfgPeerActualizationTimeout :: !NominalDiffTime
   , cfgFeeEstimateDelay         :: !Int
+  , cfgRatesRefreshPeriod       :: !Int
   , cfgMetrics                  :: !(Maybe CfgMetrics)
   } deriving (Show, Generic)
 
@@ -71,21 +73,23 @@ instance FromJSON Config where
     cfgServerHostname           <- o .:? "serverHostname"   .!= "0.0.0.0"
     cfgFiltersDbPath            <- o .:? "filtersDbPath"    .!= "./ergveinDb"
     cfgIndexerDbPath            <- o .:? "indexerDbPath"    .!= "./indexerDb"
+    cfgUtxoDbPath               <- o .:? "utxoDbPath"       .!= "./utxoDb"
     cfgBTCNodeIsTestnet         <- o .:? "BTCNodeIsTestnet" .!= False
     cfgBTCNodeHost              <- o .:? "BTCNodeHost"      .!= "localhost"
-    cfgBTCNodePort              <- o .: "BTCNodePort"
-    cfgBTCNodeUser              <- o .: "BTCNodeUser"
-    cfgBTCNodePassword          <- o .: "BTCNodePassword"
+    cfgBTCNodePort              <- o .:  "BTCNodePort"
+    cfgBTCNodeUser              <- o .:  "BTCNodeUser"
+    cfgBTCNodePassword          <- o .:  "BTCNodePassword"
     cfgBTCNodeTCPHost           <- o .:? "BTCNodeTCPHost"   .!= "localhost"
     cfgBTCNodeTCPPort           <- o .:? "BTCNodeTCPPort"   .!= (if cfgBTCNodeIsTestnet then 18333 else 8333)
     cfgERGONodeHost             <- o .:? "ERGONodeHost"     .!= "localhost"
-    cfgERGONodePort             <- o .: "ERGONodePort"
+    cfgERGONodePort             <- o .:  "ERGONodePort"
     cfgOwnPeerAddress           <- o .:? "ownPeerAddress"
     cfgKnownPeers               <- o .:? "knownPeers"               .!= (filterOwnAddressFromDefault cfgOwnPeerAddress)
     cfgBlockchainScanDelay      <- o .:? "blockchainScanDelay"      .!= 1000000
     cfgPeerActualizationDelay   <- o .:? "peerActualizationDelay"   .!= 10000000
     cfgPeerActualizationTimeout <- o .:? "peerActualizationTimeout" .!= 86400
     cfgFeeEstimateDelay         <- o .:? "feeEstimateDelay"         .!= (300 * 1000000) -- 5 min
+    cfgRatesRefreshPeriod       <- o .:? "ratesRefreshPeriod"       .!= (300 * 1000000) -- 5 min
     cfgMetrics                  <- o .:? "metrics"
     pure Config{..}
 

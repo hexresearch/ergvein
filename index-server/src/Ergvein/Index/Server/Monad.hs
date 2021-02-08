@@ -45,6 +45,10 @@ instance HasIndexerDB ServerM where
   getIndexerDb = asks envIndexerDBContext
   {-# INLINE getIndexerDb #-}
 
+instance HasUtxoDB ServerM where
+  getUtxoDbVar = asks envUtxoDBContext
+  {-# INLINE getUtxoDbVar #-}
+
 instance HasBtcRollback ServerM where
   getBtcRollbackVar = asks envBtcRollback
   {-# INLINE getBtcRollbackVar #-}
@@ -110,6 +114,13 @@ stopThreadIfShutdown :: Thread -> ServerM ()
 stopThreadIfShutdown thread = do
   shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
   when shutdownFlag $ liftIO $ stop thread
+
+interruptThreadOnShutdown :: Thread -> ServerM ()
+interruptThreadOnShutdown thread = do
+  shutChan <- liftIO . atomically . cloneTChan =<< asks envShutdownChannel
+  liftIO $ fix $ \next -> do
+    shutdownFlag <- atomically $ readTChan shutChan
+    if shutdownFlag then stop thread else next
 
 broadcastSocketMessage :: Message -> ServerM ()
 broadcastSocketMessage msg = liftIO . atomically . flip writeTChan msg =<< asks envBroadcastChannel

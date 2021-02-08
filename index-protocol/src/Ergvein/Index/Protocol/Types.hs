@@ -1,11 +1,15 @@
 module Ergvein.Index.Protocol.Types where
 
 import Conversion
-import Data.Attoparsec.ByteString
 import Data.Attoparsec.Binary
-import Data.ByteString
+import Data.Attoparsec.ByteString
+import Data.ByteString (ByteString)
+import Ergvein.Text
 import Data.ByteString.Short (ShortByteString)
 import Data.Either
+import Data.List (nub)
+import Data.Map.Strict (Map)
+import Data.Text (Text)
 import Data.Vector.Unboxed.Deriving
 import Data.Word
 import Foreign.C.Types
@@ -13,12 +17,29 @@ import Foreign.Storable
 import Network.Socket (SockAddr(..))
 
 import Ergvein.Types.Fees
+import Ergvein.Types.Currency (Fiat)
 
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
+import qualified Ergvein.Types.Currency as E
 
-protocolVersion :: Word32
-protocolVersion = 1
+-- | Protocol version that follows semantic version (major, minor, patch),
+-- where minor adds backward compatible features and patch refers to bug fixes.
+--
+-- In memory it is encoded as LE word32: 2 bits reserved + 10 bits major + 10 bits minor + 10 bits patch
+-- LE order means that first byte in memory contains patch component.
+type ProtocolVersion = (Word16, Word16, Word16)
+
+protocolVersion :: ProtocolVersion
+protocolVersion = (1,0,0)
+
+showProtocolVersion :: ProtocolVersion -> Text
+showProtocolVersion (a,b,c) = showt a <> "." <> showt b <> "." <> showt c
+
+-- | Compare own version with other version and check whether we support it
+isCompatible :: ProtocolVersion -> ProtocolVersion -> Bool
+isCompatible (1,_, _) (0, 0, 4) = True -- Pre 1.0.0 versions encoded as simple LE number. Thus 1 => 0b00000001000000000000000000000000 => 0b100 patch version (10 bits patch version in LE)
+isCompatible (major1, _, _) (major2, _, _) = major1 == major2
 
 data MessageType = MVersionType
                  | MVersionACKType
@@ -33,9 +54,11 @@ data MessageType = MVersionType
                  | MRejectType
                  | MPingType
                  | MPongType
+                 | MRatesRequestType
+                 | MRatesResponseType
   deriving (Eq, Ord, Enum, Bounded, Show)
 
-data RejectCode = MessageHeaderParsing | MessageParsing | InternalServerError | ZeroBytesReceived
+data RejectCode = MessageHeaderParsing | MessageParsing | InternalServerError | ZeroBytesReceived | VersionNotSupported
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 data CurrencyCode = BTC   | TBTC
@@ -82,6 +105,36 @@ word32ToCurrencyCode = \case
   13 -> Just TDASH
   _  -> Nothing
 
+codeToCurrency :: CurrencyCode -> Maybe E.Currency
+codeToCurrency = \case
+  BTC    -> Just E.BTC
+  TBTC   -> Just E.BTC
+  ERGO   -> Just E.ERGO
+  TERGO  -> Just E.ERGO
+  _ -> Nothing
+
+currencyToCode :: Bool -> E.Currency -> CurrencyCode
+currencyToCode test = \case
+  E.BTC -> if test then TBTC else BTC
+  E.ERGO -> if test then TERGO else ERGO
+
+currencyCodeTestnet :: CurrencyCode -> Bool
+currencyCodeTestnet = \case
+  BTC    -> False
+  TBTC   -> True
+  ERGO   -> False
+  TERGO  -> True
+  USDTO  -> False
+  TUSDTO -> True
+  LTC    -> False
+  TLTC   -> True
+  ZEC    -> False
+  TZEC   -> True
+  CPR    -> False
+  TCPR   -> True
+  DASH   -> False
+  TDASH  -> True
+
 derivingUnbox "CurrencyCode"
   [t| CurrencyCode -> Word8  |]
   [| fromIntegral . fromEnum |]
@@ -113,12 +166,29 @@ derivingUnbox "ScanBlock"
   [| \(c, v, s, h) -> ScanBlock c v s h |]
 
 data Version = Version
-  { versionVersion    :: !Word32
+  { versionVersion    :: !ProtocolVersion
   , versionTime       :: !CTime
   , versionNonce      :: !Word64
  -- versionCurrencies :: uint32 Amount of currencies blocks following the field. For clients it is 0.
   , versionScanBlocks :: !(UV.Vector ScanBlock)
   } deriving (Show, Eq)
+
+versionCurrencies :: Version -> [CurrencyCode]
+versionCurrencies Version{..} = nub . fmap scanBlockCurrency . UV.toList $ versionScanBlocks
+
+versionHasCurr :: Version -> CurrencyCode -> Bool
+versionHasCurr Version{..} c = UV.any ((c ==) . scanBlockCurrency) versionScanBlocks
+
+versionHasCurrs :: Foldable t => Version -> t CurrencyCode -> Bool
+versionHasCurrs v = all (versionHasCurr v)
+
+versionCurrSynced :: Version -> CurrencyCode -> Bool
+versionCurrSynced Version{..} c = flip UV.any versionScanBlocks $ \ScanBlock{..} ->
+     scanBlockCurrency == c
+  && (scanBlockHeight - scanBlockScanHeight) <= 1
+
+versionCurrsSynced :: Foldable t => Version -> t CurrencyCode -> Bool
+versionCurrsSynced v = all (versionCurrSynced v)
 
 data VersionACK = VersionACK
   deriving (Show, Eq)
@@ -161,7 +231,6 @@ type FeeRequest = [CurrencyCode]
 data IPType = IPV4 | IPV6
   deriving (Eq, Ord, Enum, Bounded, Show)
 
-
 ipTypeToWord8 :: IPType -> Word8
 ipTypeToWord8 = \case
   IPV4 -> 0
@@ -190,6 +259,12 @@ data PeerIntroduce = PeerIntroduce
   { peerIntroduceAddresses :: !(V.Vector Address)
   } deriving (Show, Eq)
 
+newtype RatesRequest = RatesRequest { unRatesRequest :: Map CurrencyCode [Fiat] }
+  deriving (Show, Eq)
+
+newtype RatesResponse = RatesResponse { unRatesResponse :: Map CurrencyCode (Map Fiat Double)}
+  deriving (Show, Eq)
+
 data Message = MPing                       !Ping
              | MPong                       !Pong
              | MVersion                    !Version
@@ -203,11 +278,12 @@ data Message = MPing                       !Ping
              | MPeerRequest                !PeerRequest
              | MPeerResponse               !PeerResponse
              | MPeerIntroduce              !PeerIntroduce
+             | MRatesRequest               !RatesRequest
+             | MRatesResponse              !RatesResponse
   deriving (Show, Eq)
 
 genericSizeOf :: (Storable a, Integral b) => a -> b
 genericSizeOf = fromIntegral . sizeOf
-
 
 instance Conversion Address SockAddr where
   convert Address{..} = case addressType of
