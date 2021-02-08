@@ -86,7 +86,7 @@ startServer Options{..} = case optsCommand of
       cfg@Config{..} <- loadConfig cfgPath
       BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
         runStdoutLoggingT $ withNewServerEnv optsBtcTcpConn optsOverrideFilters optsOverrideIndexers optsOverrideUtxo client cfg $ \env -> do
-          app optsOnlyScan cfg env
+          app optsOnlyScan optsSkipBtcHack cfg env
     CleanKnownPeers cfgPath -> do
       cfg@Config{..} <- loadConfig cfgPath
       BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
