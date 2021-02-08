@@ -9,7 +9,6 @@ import Ergvein.Index.Server.DB.Schema.Indexer
 import Ergvein.Index.Server.DB.Wrapper
 
 import qualified Data.Sequence as Seq
-import qualified Database.LevelDB as LDB
 
 class  MonadIO m => HasFiltersDB m where
   getFiltersDb :: m LevelDB
