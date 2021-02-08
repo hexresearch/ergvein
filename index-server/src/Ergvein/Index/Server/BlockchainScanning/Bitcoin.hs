@@ -196,7 +196,7 @@ btcDbConsistencyCheck = do
         Just (BlockInfoRec hh _) -> if blockHeaderHash /= hh
           then pure False       -- Filter is for the wrong block (how??)
           else do
-            udb <- readUtxoDb
+            udb <- getUtxoDb
             checkTxs udb txIds  -- check that all transaction are stored
   where
     clearRollback = do

@@ -116,7 +116,7 @@ getScannedHeight currency = do
 setScannedHeight :: (HasFiltersDB m, MonadLogger m) => Currency -> BlockHeight -> m ()
 setScannedHeight currency height = do
   db <- getFiltersDb
-  write db def $ putItem currency (scannedHeightKey currency) $ ScannedHeightRec height
+  writeLDB db def $ putItem currency (scannedHeightKey currency) $ ScannedHeightRec height
 
 initIndexerDb :: DB -> IO ()
 initIndexerDb db = do
@@ -127,8 +127,8 @@ addBlockInfo :: (HasBtcRollback m, HasFiltersDB m, HasIndexerDB m, HasUtxoDB m, 
 addBlockInfo (BlockInfo meta spent txinfos) = do
   dbf <- getFiltersDb
   dbu <- getUtxoDb
-  write dbu def txInfosBatch
-  write dbf def $ metaInfosBatch <> heightWrite
+  writeLDB dbu def txInfosBatch
+  writeLDB dbf def $ metaInfosBatch <> heightWrite
   insertRollback cur $ RollbackRecItem txHashes prevHash (height -1)
   insertSpentTxUpdates cur spent
   setLastScannedBlock cur blkHash
@@ -146,8 +146,8 @@ setLastScannedBlock currency blockHash = do
 
 deleteLastScannedBlock :: (HasIndexerDB m, MonadLogger m) => Currency -> m ()
 deleteLastScannedBlock currency = do
-  db <- readIndexerDb
-  write db def $ [LDB.Del $ lastScannedBlockHeaderHashRecKey currency]
+  db <- getIndexerDb
+  writeLDB db def $ [LDB.Del $ lastScannedBlockHeaderHashRecKey currency]
 
 getLastScannedBlock :: (HasIndexerDB m, MonadLogger m) => Currency -> m (Maybe ShortByteString)
 getLastScannedBlock currency = do
@@ -241,10 +241,10 @@ addTxIndexInfo cur = case cur of
 
 addBtcTxIndexInfo :: (HasUtxoDB m, MonadLogger m) => TxIndexInfo -> m ()
 addBtcTxIndexInfo tinfo@TxIndexInfo{..} = do
-  dbu <- readUtxoDb
-  write dbu def $ putTxIndexInfoAsRec BTC tinfo
+  dbu <- getUtxoDb
+  writeLDB dbu def $ putTxIndexInfoAsRec BTC tinfo
 
 getBlockInfoRec :: (HasFiltersDB m, MonadLogger m) => Currency -> BlockHeight -> m (Maybe BlockInfoRec)
 getBlockInfoRec c h = do
-  fdb <- readFiltersDb
+  fdb <- getFiltersDb
   getParsed c "getBlockInfoRec" fdb $ blockInfoRecKey (c,h)

@@ -18,10 +18,10 @@ class MonadIO m => HasIndexerDB m where
   getIndexerDb :: m LevelDB
 
 class MonadIO m => HasUtxoDB m where
-  getUtxoDbVar :: m (MVar LDB.DB)
+  getUtxoDb :: m LevelDB
 
 class MonadIO m => HasLMDBs m where
-  getDb :: DBTag -> m LDB.DB
+  getDb :: DBTag -> m LevelDB
 
 data DBTag = DBFilters | DBIndexer | DBUtxo
   deriving (Eq, Show)
@@ -35,24 +35,20 @@ instance MonadIO m => HasIndexerDB (ReaderT LevelDB m) where
 instance MonadIO m => HasFiltersDB (ReaderT LevelDB m) where
   getFiltersDb  = ask
 
-instance MonadIO m => HasUtxoDB (ReaderT (MVar LDB.DB) m) where
-  getUtxoDbVar  = ask
+instance MonadIO m => HasUtxoDB (ReaderT LevelDB m) where
+  getUtxoDb = ask
 
 data AllDbVars = AllDbVars {
-  allDBFilters :: MVar LDB.DB
-, allDBIndexer :: MVar LDB.DB
-, allDBUtxo    :: MVar LDB.DB
+  allDBFilters :: LevelDB
+, allDBIndexer :: LevelDB
+, allDBUtxo    :: LevelDB
 }
 
 instance MonadIO m => HasIndexerDB (ReaderT AllDbVars m) where
-  getIndexerDbVar = asks allDBFilters
+  getIndexerDb = asks allDBFilters
 
 instance MonadIO m => HasFiltersDB (ReaderT AllDbVars m) where
-  getFiltersDbVar  = asks allDBIndexer
+  getFiltersDb  = asks allDBIndexer
 
 instance MonadIO m => HasUtxoDB (ReaderT AllDbVars m) where
-  getUtxoDbVar  = asks allDBUtxo
-
-
-readUtxoDb :: HasUtxoDB m => m LDB.DB
-readUtxoDb = liftIO . readMVar =<< getUtxoDbVar
+  getUtxoDb  = asks allDBUtxo

@@ -46,8 +46,8 @@ instance HasIndexerDB ServerM where
   {-# INLINE getIndexerDb #-}
 
 instance HasUtxoDB ServerM where
-  getUtxoDbVar = asks envUtxoDBContext
-  {-# INLINE getUtxoDbVar #-}
+  getUtxoDb = asks envUtxoDBContext
+  {-# INLINE getUtxoDb #-}
 
 instance HasBtcRollback ServerM where
   getBtcRollbackVar = asks envBtcRollback
