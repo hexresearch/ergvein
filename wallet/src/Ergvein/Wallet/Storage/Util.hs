@@ -23,6 +23,7 @@ module Ergvein.Wallet.Storage.Util(
   , generateMissingPrvKeysHelper
   , getMissingPubKeysCount
   , derivePubKeys
+  , getAllBtcAddrs
   ) where
 
 import Control.Lens
@@ -41,6 +42,7 @@ import Data.Serialize
 
 import Ergvein.Crypto
 import Ergvein.Text
+import Ergvein.Types.Address
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Derive
@@ -428,3 +430,8 @@ spareKeysCount :: KeyPurpose -> Int
 spareKeysCount keyPurpose = if keyPurpose == External
   then initialExternalAddressCount
   else initialInternalAddressCount
+
+getAllBtcAddrs :: PubStorage -> [BtcAddress]
+getAllBtcAddrs pubStorage = case M.lookup BTC $ _pubStorage'currencyPubStorages pubStorage of
+  Nothing -> []
+  Just CurrencyPubStorage{..} -> fmap getBtcAddr $ V.toList $ extractAddrs _currencyPubStorage'pubKeystore
