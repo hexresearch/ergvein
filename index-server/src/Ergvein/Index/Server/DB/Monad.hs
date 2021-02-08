@@ -17,10 +17,13 @@ class  MonadIO m => HasFiltersDB m where
 class MonadIO m => HasIndexerDB m where
   getIndexerDbVar :: m (MVar LDB.DB)
 
+class MonadIO m => HasUtxoDB m where
+  getUtxoDbVar :: m (MVar LDB.DB)
+
 class MonadIO m => HasLMDBs m where
   getDb :: DBTag -> m LDB.DB
 
-data DBTag = DBFilters | DBIndexer
+data DBTag = DBFilters | DBIndexer | DBUtxo
   deriving (Eq, Show)
 
 class HasBtcRollback m where
@@ -32,8 +35,29 @@ instance MonadIO m => HasIndexerDB (ReaderT (MVar LDB.DB) m) where
 instance MonadIO m => HasFiltersDB (ReaderT (MVar LDB.DB) m) where
   getFiltersDbVar  = ask
 
+instance MonadIO m => HasUtxoDB (ReaderT (MVar LDB.DB) m) where
+  getUtxoDbVar  = ask
+
+data AllDbVars = AllDbVars {
+  allDBFilters :: MVar LDB.DB
+, allDBIndexer :: MVar LDB.DB
+, allDBUtxo    :: MVar LDB.DB
+}
+
+instance MonadIO m => HasIndexerDB (ReaderT AllDbVars m) where
+  getIndexerDbVar = asks allDBFilters
+
+instance MonadIO m => HasFiltersDB (ReaderT AllDbVars m) where
+  getFiltersDbVar  = asks allDBIndexer
+
+instance MonadIO m => HasUtxoDB (ReaderT AllDbVars m) where
+  getUtxoDbVar  = asks allDBUtxo
+
 readFiltersDb :: HasFiltersDB m => m LDB.DB
 readFiltersDb = liftIO . readMVar =<< getFiltersDbVar
 
 readIndexerDb :: HasIndexerDB m => m LDB.DB
 readIndexerDb = liftIO . readMVar =<< getIndexerDbVar
+
+readUtxoDb :: HasUtxoDB m => m LDB.DB
+readUtxoDb = liftIO . readMVar =<< getUtxoDbVar

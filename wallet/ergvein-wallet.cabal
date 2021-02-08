@@ -191,6 +191,7 @@ library
         ergvein-wallet-native >=0.1 && <0.2,
         ergvein-wallet-types >=0.1 && <0.2,
         ergvein-wallet-version >= 0.1 && < 0.2,
+        ergvein-node-discovery,
         exceptions -any,
         file-embed >=0.0 && <0.1,
         filepath -any,

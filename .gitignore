@@ -14,5 +14,4 @@ ergvein.aux
 ergvein.ps
 *.prof
 TAGS
-index-server/ergveinDb/*
-index-server/indexerDb/*
+index-server/db_*/*

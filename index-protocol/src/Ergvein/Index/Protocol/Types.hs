@@ -1,12 +1,15 @@
 module Ergvein.Index.Protocol.Types where
 
 import Conversion
-import Data.Attoparsec.ByteString
 import Data.Attoparsec.Binary
-import Data.ByteString
+import Data.Attoparsec.ByteString
+import Data.ByteString (ByteString)
+import Ergvein.Text
 import Data.ByteString.Short (ShortByteString)
 import Data.Either
+import Data.List (nub)
 import Data.Map.Strict (Map)
+import Data.Text (Text)
 import Data.Vector.Unboxed.Deriving
 import Data.Word
 import Foreign.C.Types
@@ -18,6 +21,7 @@ import Ergvein.Types.Currency (Fiat)
 
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
+import qualified Ergvein.Types.Currency as E
 
 -- | Protocol version that follows semantic version (major, minor, patch),
 -- where minor adds backward compatible features and patch refers to bug fixes.
@@ -28,6 +32,9 @@ type ProtocolVersion = (Word16, Word16, Word16)
 
 protocolVersion :: ProtocolVersion
 protocolVersion = (1,0,0)
+
+showProtocolVersion :: ProtocolVersion -> Text
+showProtocolVersion (a,b,c) = showt a <> "." <> showt b <> "." <> showt c
 
 -- | Compare own version with other version and check whether we support it
 isCompatible :: ProtocolVersion -> ProtocolVersion -> Bool
@@ -98,6 +105,36 @@ word32ToCurrencyCode = \case
   13 -> Just TDASH
   _  -> Nothing
 
+codeToCurrency :: CurrencyCode -> Maybe E.Currency
+codeToCurrency = \case
+  BTC    -> Just E.BTC
+  TBTC   -> Just E.BTC
+  ERGO   -> Just E.ERGO
+  TERGO  -> Just E.ERGO
+  _ -> Nothing
+
+currencyToCode :: Bool -> E.Currency -> CurrencyCode
+currencyToCode test = \case
+  E.BTC -> if test then TBTC else BTC
+  E.ERGO -> if test then TERGO else ERGO
+
+currencyCodeTestnet :: CurrencyCode -> Bool
+currencyCodeTestnet = \case
+  BTC    -> False
+  TBTC   -> True
+  ERGO   -> False
+  TERGO  -> True
+  USDTO  -> False
+  TUSDTO -> True
+  LTC    -> False
+  TLTC   -> True
+  ZEC    -> False
+  TZEC   -> True
+  CPR    -> False
+  TCPR   -> True
+  DASH   -> False
+  TDASH  -> True
+
 derivingUnbox "CurrencyCode"
   [t| CurrencyCode -> Word8  |]
   [| fromIntegral . fromEnum |]
@@ -135,6 +172,23 @@ data Version = Version
  -- versionCurrencies :: uint32 Amount of currencies blocks following the field. For clients it is 0.
   , versionScanBlocks :: !(UV.Vector ScanBlock)
   } deriving (Show, Eq)
+
+versionCurrencies :: Version -> [CurrencyCode]
+versionCurrencies Version{..} = nub . fmap scanBlockCurrency . UV.toList $ versionScanBlocks
+
+versionHasCurr :: Version -> CurrencyCode -> Bool
+versionHasCurr Version{..} c = UV.any ((c ==) . scanBlockCurrency) versionScanBlocks
+
+versionHasCurrs :: Foldable t => Version -> t CurrencyCode -> Bool
+versionHasCurrs v = all (versionHasCurr v)
+
+versionCurrSynced :: Version -> CurrencyCode -> Bool
+versionCurrSynced Version{..} c = flip UV.any versionScanBlocks $ \ScanBlock{..} ->
+     scanBlockCurrency == c
+  && (scanBlockHeight - scanBlockScanHeight) <= 1
+
+versionCurrsSynced :: Foldable t => Version -> t CurrencyCode -> Bool
+versionCurrsSynced v = all (versionCurrSynced v)
 
 data VersionACK = VersionACK
   deriving (Show, Eq)
