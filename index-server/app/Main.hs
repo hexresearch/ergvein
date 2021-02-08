@@ -96,6 +96,6 @@ startServer Options{..} = case optsCommand of
     BuildBtcIndex cfgPath n -> do
       cfg@Config{..} <- loadConfig cfgPath
       BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
-        env <- runStdoutLoggingT $ newTxIndexEnv optsBtcTcpConn client cfg
-        runStdoutLoggingT $ txIndexApp optsBtcStartHeight n env
+        runStdoutLoggingT $ withTxIndexEnv optsBtcTcpConn client cfg $ \env -> do
+          txIndexApp optsBtcStartHeight n env
       T.putStrLn $ pack "Index builder done"
