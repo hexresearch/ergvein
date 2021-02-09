@@ -16,12 +16,12 @@ module Ergvein.Wallet.Monad.Prim
   , getSettingsD
   , updateSettings
   , modifySettings
-  , getDnsList
   , mkResolvSeed
   , getSocksConf
   , getProxyConf
   ) where
 
+import Control.Exception
 import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
@@ -46,6 +46,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
 
 import qualified Control.Monad.Fail as F
@@ -119,19 +120,30 @@ modifySettings setE = do
     storeSettings =<< modifyExternalRef settingsRef (\s -> let s' = f s in (s',s'))
 {-# INLINE modifySettings #-}
 
-getDnsList :: MonadHasSettings t m => m [HostName]
-getDnsList = fmap (S.toList . settingsDns) $ readExternalRef =<< getSettingsRef
-{-# INLINE getDnsList #-}
-
 mkResolvSeed :: MonadHasSettings t m => m ResolvSeed
 mkResolvSeed = do
-  dns <- getDnsList
+  defDns <- fmap (S.toList . settingsDns) $ readExternalRef =<< getSettingsRef
+  _ <- androidDetectDns
   liftIO $ makeResolvSeed defaultResolvConf {
-      resolvInfo = if null dns
-        then resolvInfo defaultResolvConf -- resolve via "/etc/resolv.conf" by default
-        else RCHostNames dns
+      resolvInfo = RCHostNames defDns
     , resolvConcurrent = True
     }
+  -- if isAndroid
+  --   then do
+  --     dns <- androidDetectDns
+      -- liftIO $ makeResolvSeed defaultResolvConf {
+      --     resolvInfo = RCHostNames $ case dns of
+      --       [] -> defDns
+      --       _ -> dns
+      --   , resolvConcurrent = True
+      --   }
+  -- else liftIO $ do
+  --   rs <- makeResolvSeed $ defaultResolvConf { resolvConcurrent = True}
+  --   res :: Either SomeException () <- try $ withResolver rs $ const $ pure ()
+  --   case res of
+  --     Right _ -> pure rs
+  --     Left _ ->  makeResolvSeed $ defaultResolvConf { resolvInfo = RCHostNames defDns, resolvConcurrent = True}
+
 {-# INLINE mkResolvSeed #-}
 
 getSocksConf :: MonadHasSettings t m => m (Dynamic t (Maybe S5.SocksConf))

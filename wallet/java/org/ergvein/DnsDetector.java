@@ -44,9 +44,9 @@ import systems.obsidian.HaskellActivity;
  * Created by Madalin Grigore-Enescu on 2/24/18.
  */
 
-public class DnsServersDetector {
+public class DnsDetector {
 
-    private static final String TAG = "DnsServersDetector";
+    private static final String TAG = "DnsDetector";
 
     /**
      * Holds some default DNS servers used in case all DNS servers detection methods fail.
@@ -117,7 +117,7 @@ public class DnsServersDetector {
      */
     private static String [] getServersMethodConnectivityManager(final HaskellActivity a) {
         Context context = a.getApplicationContext();
-        
+
         // This code only works on LOLLIPOP and higher
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
 

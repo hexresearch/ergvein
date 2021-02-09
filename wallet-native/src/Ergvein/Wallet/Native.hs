@@ -95,4 +95,4 @@ class PlatformNatives where
   nativeShareJpeg :: MonadIO m => Text -> Text -> m ()
 
   -- | Detect dns servers. Used for Android
-  androidDetectDns :: MonadIO m => m [Text]
+  androidDetectDns :: MonadIO m => m [String]

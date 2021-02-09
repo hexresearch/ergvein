@@ -198,7 +198,7 @@ instance PlatformNatives where
     a <- getHaskellActivity
     r <- androidDetectDnsImpl a
     t <- decodeText r
-    pure $ T.splitOn ";" t
+    pure $ fmap T.unpack $ T.splitOn ";" t
 
 getFiles :: FilePath -> IO [FilePath]
 getFiles dir = do

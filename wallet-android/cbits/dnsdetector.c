@@ -11,9 +11,9 @@ jstring android_detectdns(jobject activity) {
   assert(attachResult == JNI_OK);
   __android_log_write(ANDROID_LOG_DEBUG, "android_detectdns", "attached to jvm");
 
-  jclass detectorClass = (*env)->FindClass(env, "org/ergvein/DnsServersDetector");
+  jclass detectorClass = (*env)->FindClass(env, "org/ergvein/DnsDetector");
   assert(detectorClass);
-  __android_log_write(ANDROID_LOG_DEBUG, "android_detectdns", "got DnsServersDetector class");
+  __android_log_write(ANDROID_LOG_DEBUG, "android_detectdns", "got DnsDetector class");
 
   jmethodID getServers = (*env)->GetStaticMethodID(env, detectorClass, "getServers", "()Ljava/lang/String;");
   assert(getServers);
