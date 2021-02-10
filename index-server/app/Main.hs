@@ -1,6 +1,7 @@
 module Main where
 
 import Control.Monad.Logger
+import Control.Monad.IO.Class
 import Data.Text (Text, pack)
 import Data.Word
 import Options.Applicative
@@ -84,17 +85,17 @@ startServer Options{..} = case optsCommand of
       T.putStrLn $ pack "Server starting"
       cfg@Config{..} <- loadConfig cfgPath
       BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
-        env <- runStdoutLoggingT $ newServerEnv optsBtcTcpConn optsOverrideFilters optsOverrideIndexers optsOverrideUtxo client cfg
-        runStdoutLoggingT $ app optsOnlyScan optsSkipBtcHack cfg env
+        runStdoutLoggingT $ withNewServerEnv optsBtcTcpConn optsOverrideFilters optsOverrideIndexers optsOverrideUtxo client cfg $ \env -> do
+          app optsOnlyScan optsSkipBtcHack cfg env
     CleanKnownPeers cfgPath -> do
       cfg@Config{..} <- loadConfig cfgPath
       BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
-        env <- runStdoutLoggingT $ newServerEnv optsBtcTcpConn optsOverrideFilters optsOverrideIndexers optsOverrideUtxo client cfg
-        runServerMIO env emptyKnownPeers
+        runStdoutLoggingT $ withNewServerEnv optsBtcTcpConn optsOverrideFilters optsOverrideIndexers optsOverrideUtxo client cfg $ \env -> do
+          liftIO $ runServerMIO env emptyKnownPeers
       T.putStrLn $ pack "knownPeers cleared"
     BuildBtcIndex cfgPath n -> do
       cfg@Config{..} <- loadConfig cfgPath
       BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
-        env <- runStdoutLoggingT $ newTxIndexEnv optsBtcTcpConn client cfg
-        runStdoutLoggingT $ txIndexApp optsBtcStartHeight n env
+        runStdoutLoggingT $ withTxIndexEnv optsBtcTcpConn client cfg $ \env -> do
+          txIndexApp optsBtcStartHeight n env
       T.putStrLn $ pack "Index builder done"
