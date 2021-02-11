@@ -17,13 +17,15 @@ module Ergvein.Wallet.Monad.Util
   , worker
   , parseSockAddrs
   , parseSingleSockAddr
+  , mkResolvSeed
   ) where
 
 import Control.Concurrent
 import Control.Concurrent.Async
+import Control.Exception
+import Control.Immortal.Worker
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
-import Control.Immortal.Worker
 import Data.IP
 import Data.Maybe
 import Data.Time
@@ -37,10 +39,12 @@ import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
 
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Text as T
+import qualified Data.Set as S
 
 -- | Posting log message
 postLog :: MonadEgvLogger t m => Event t LogEntry -> m ()
@@ -113,7 +117,7 @@ runOnUiThread_ ema = do
 
 -- | Execute the action in main thread of UI. Very useful for android API actions
 -- that must be executed in the same thread where Looper was created.
-runOnUiThreadA :: MonadFrontBase t m => IO a -> m (Async a)
+runOnUiThreadA :: MonadHasUI m => IO a -> m (Async a)
 runOnUiThreadA ma = do
   ch <- getUiChan
   liftIO $ do
@@ -165,3 +169,23 @@ parseSingleSockAddr rs t = do
       case ips of
         [] -> pure Nothing
         ip:_ -> pure $ Just $ NamedSockAddr t $ SockAddrInet port (toHostAddress ip)
+
+mkResolvSeed :: (MonadHasUI m, MonadHasSettings t m) => m ResolvSeed
+mkResolvSeed = do
+  defDns <- fmap (S.toList . settingsDns) $ readExternalRef =<< getSettingsRef
+  if isAndroid
+    then do
+      dns <- liftIO . wait =<< runOnUiThreadA androidDetectDns
+      liftIO $ makeResolvSeed defaultResolvConf {
+          resolvInfo = RCHostNames $ case dns of
+            [] -> defDns
+            _ -> dns
+        , resolvConcurrent = True
+        }
+  else liftIO $ do
+    rs <- makeResolvSeed $ defaultResolvConf { resolvConcurrent = True}
+    res :: Either SomeException () <- try $ withResolver rs $ const $ pure ()
+    case res of
+      Right _ -> pure rs
+      Left _ ->  makeResolvSeed $ defaultResolvConf { resolvInfo = RCHostNames defDns, resolvConcurrent = True}
+{-# INLINE mkResolvSeed #-}

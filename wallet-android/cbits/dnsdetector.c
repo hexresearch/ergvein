@@ -5,7 +5,7 @@
 #include <HaskellActivity.h>
 #include "MainWidget.h"
 
-jstring android_detectdns(jobject activity) {
+const char* android_detectdns(jobject activity) {
   JNIEnv *env;
   jint attachResult = (*HaskellActivity_jvm)->AttachCurrentThread(HaskellActivity_jvm, (void **)&env, NULL);
   assert(attachResult == JNI_OK);
@@ -15,7 +15,7 @@ jstring android_detectdns(jobject activity) {
   assert(detectorClass);
   __android_log_write(ANDROID_LOG_DEBUG, "android_detectdns", "got DnsDetector class");
 
-  jmethodID getServers = (*env)->GetStaticMethodID(env, detectorClass, "getServers", "()Ljava/lang/String;");
+  jmethodID getServers = (*env)->GetStaticMethodID(env, detectorClass, "getServers", "(Lsystems/obsidian/HaskellActivity;)Ljava/lang/String;");
   assert(getServers);
   __android_log_write(ANDROID_LOG_DEBUG, "android_detectdns", "got method getServers");
 

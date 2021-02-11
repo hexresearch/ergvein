@@ -67,7 +67,7 @@ public class DnsDetector {
      * Returns android DNS servers used for current connected network
      * @return Dns servers array
      */
-    public static String getServers(final HaskellActivity a) {
+    private static String getServers(final HaskellActivity a) {
 
         // Will hold the consecutive result
         String[] result;
@@ -97,7 +97,6 @@ public class DnsDetector {
           return res;
 
         }
-
         // Fall back on factory DNS servers
         return FACTORY_DNS_SERVERS;
 
