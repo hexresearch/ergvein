@@ -52,6 +52,7 @@ tcpSrv thread = do
   unlift <- askUnliftIO
   liftIO $ withSocketsDo $ do
     addr <- resolve port host
+    putStrLn $ "Starting TCP server on " <> show addr
     sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
     bind sock (addrAddress addr)
     listen sock numberOfQueuedConnections

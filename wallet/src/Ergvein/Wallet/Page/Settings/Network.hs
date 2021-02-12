@@ -170,6 +170,7 @@ renderActive nsa refrE mconn = mdo
       pure tglE'
     Just conn -> do
       let clsUnauthD = ffor (indexConIsUp conn) $ \up -> if up then onclass else offclass
+      let isUpD = ffor (indexConIsUp conn) $ \up -> up
       let heightD = fmap (M.lookup BTC) $ indexConHeight conn
       clsD <- fmap join $ liftAuth (pure clsUnauthD) $ do
         hD <- getCurrentHeight BTC
@@ -186,9 +187,12 @@ renderActive nsa refrE mconn = mdo
         divClass "mt-a mb-a network-name-txt" $ text $ namedAddrName nsa
         editBtn
       latD <- indexerConnPingerWidget conn refrE
-      descrOptionDyn $ NSSLatency <$> latD
-      descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> heightD
-      descrOptionDyn $ NPSIndexerVersion <$> indexConIndexerVersion conn
+      widgetHoldDyn $ ffor isUpD $ \up -> if not up
+          then descrOption NSSOffline
+          else do
+            descrOptionDyn $ NSSLatency <$> latD
+            descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> heightD
+            descrOptionDyn $ NPSIndexerVersion <$> indexConIndexerVersion conn
       pure tglE'
 
   void $ widgetHoldDyn $ ffor tglD $ \b -> if not b

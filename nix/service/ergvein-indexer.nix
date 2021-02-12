@@ -64,7 +64,7 @@ in {
       };
       nodeTcpPort = mkOption {
         type = types.int;
-        default = 8667;
+        default = if cfg.testnet then 18667 else 8667;
         description = ''
           Which port the cryptonode listen to TCP protocol connections.
         '';
