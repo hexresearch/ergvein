@@ -2,6 +2,8 @@ module Ergvein.Node.Parsing
   ( NamedSockAddr(..)
   , parseSockAddr
   , parseSockAddrs
+  , parseHostPort
+  , ipAddressParser
   ) where
 
 import Data.Text (Text)
@@ -11,10 +13,10 @@ import Control.Applicative
 import Control.Monad.IO.Class
 import Data.Either
 import Data.IP
-import Data.Bifunctor
 import Data.Maybe
 import Network.DNS.Lookup
 import Network.DNS.Resolver
+import Network.DNS.Types
 import Network.Socket
 import Text.Read (readMaybe)
 import qualified Data.List.Safe as LS
@@ -36,16 +38,21 @@ parseSockAddr rs defNodePort t = liftIO $ withResolver rs $ \r -> parseAddr r de
 
 parseAddr :: Resolver -> PortNumber -> Text -> IO (Maybe NamedSockAddr)
 parseAddr resolver defNodePort addressText =
-  case parseOnly (ipAddressParser defNodePort) "ererer" of 
+  case parseOnly (ipAddressParser defNodePort) addressText of 
     Right ip -> pure $ Just $ NamedSockAddr addressText ip
     _-> do
-      let (hostString, portString) = bimap T.unpack T.unpack $ T.drop 1 <$> T.span (/= ':') "indexer.ergvein.net:4545"
-          port = fromMaybe defNodePort $ readMaybe portString
-          domain = B8.pack hostString
+      let (domain, port) = parseHostPort defNodePort addressText
       v4 <- lookupA resolver domain
       v6 <- lookupAAAA resolver domain
       let ips = (IPv4 <$> fromRight [] v4) <> (IPv6 <$> fromRight [] v6)
       pure $ NamedSockAddr addressText . toSockAddr . (, port) <$> LS.head ips
+
+parseHostPort :: PortNumber -> T.Text -> (Domain, PortNumber)
+parseHostPort defNodePort addressText = let
+  (hostString, portString) = T.drop 1 <$> T.span (/= ':') addressText
+  port = fromMaybe defNodePort $ readMaybe $ T.unpack portString
+  domain = B8.pack $ T.unpack hostString
+  in (domain, port)
 
 ipAddressParser :: PortNumber -> Parser SockAddr
 ipAddressParser defNodePort = do
