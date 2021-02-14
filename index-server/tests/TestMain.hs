@@ -62,7 +62,7 @@ prop_encdec_KnownPeersRec msg = either (const False) (msg ==) dec
   where dec = egvDeserialize BTC $ egvSerialize BTC msg
 prop_encdec_LastScannedBlockHeaderHashRec :: LastScannedBlockHeaderHashRec -> Bool
 prop_encdec_LastScannedBlockHeaderHashRec msg = either (const False) (msg ==) dec
-  where dec = egvDeserialize BTC $ egvSerialize BTC
+  where dec = egvDeserialize BTC $ egvSerialize BTC msg
 
 prop_encdec_RollbackSequence :: RollbackSequence -> Bool
 prop_encdec_RollbackSequence msg = either (const False) (msg ==) dec
