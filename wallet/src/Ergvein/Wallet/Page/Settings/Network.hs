@@ -12,14 +12,15 @@ import Reflex.Dom
 import Reflex.ExternalRef
 import Text.Read
 
+import Ergvein.Node.Resolve
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Indexer.Socket
 import Ergvein.Wallet.Elements.Input
+import Ergvein.Wallet.Indexer.Socket
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Localization.Network
+import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
@@ -118,7 +119,7 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
     rs <- mkResolvSeed
     performFork $ ffor goE $ const $ do
       t <- sampleDyn textD
-      parseSingleSockAddr rs t
+      resolveAddr rs defIndexerPort t
   void $ widgetHold (pure ()) $ ffor murlE $ \case
     Nothing -> divClass "form-field-errors" $ localizedText NPSParseError
     _ -> pure ()
@@ -137,7 +138,7 @@ activePageWidget = mdo
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
     restoreE <- buttonClass "button button-outline m-0" NSSRestoreUrls
     rs <- mkResolvSeed
-    void $ activateURLList =<< performFork (parseSockAddrs rs defaultIndexers <$ restoreE)
+    void $ activateURLList =<< performFork (resolveAddrs rs defIndexerPort defaultIndexers <$ restoreE)
     tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSClose else NSSAddUrl
     pure (refrE', tglE')

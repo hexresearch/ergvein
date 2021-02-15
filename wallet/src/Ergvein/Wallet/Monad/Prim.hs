@@ -11,7 +11,6 @@ module Ergvein.Wallet.Monad.Prim
   -- * Frontend-wide types
   , IndexerInfo(..)
   , PeerScanInfoMap
-  , NamedSockAddr(..)
   , getSettings
   , getSettingsD
   , updateSettings
@@ -206,11 +205,6 @@ data IndexerInfo = IndexerInfo {
   indInfoHeights :: PeerScanInfoMap
 , indInfoLatency :: NominalDiffTime
 } deriving (Show, Eq)
-
-data NamedSockAddr = NamedSockAddr {
-  namedAddrName :: Text
-, namedAddrSock :: SockAddr
-} deriving (Eq, Ord)
 
 
 -- ===========================================================================
