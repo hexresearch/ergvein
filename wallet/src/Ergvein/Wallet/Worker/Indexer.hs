@@ -9,7 +9,7 @@ import Data.Time
 import Reflex.Dom
 import Reflex.ExternalRef
 
-import Ergvein.Node.Parsing
+import Ergvein.Node.Resolve
 import Ergvein.Text
 import Ergvein.Wallet.Indexer.Socket
 import Ergvein.Wallet.Monad.Client

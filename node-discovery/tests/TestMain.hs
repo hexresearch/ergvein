@@ -13,7 +13,7 @@ import Test.Generators
 import Test.QuickCheck
 import Test.QuickCheck.Instances
 
-import Ergvein.Node.Parsing
+import Ergvein.Node.Resolve
 
 import qualified Data.ByteString.Char8 as B8
 import qualified  Data.Text as T

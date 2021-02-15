@@ -1,40 +1,42 @@
-module Ergvein.Node.Parsing
+module Ergvein.Node.Resolve
   ( NamedSockAddr(..)
-  , parseSockAddr
-  , parseSockAddrs
+  , resolveAddr
+  , resolveAddrs
   , parseHostPort
   , ipAddressParser
   ) where
 
-import Data.Text (Text)
-import Network.Socket (SockAddr)
-import Control.Monad
 import Control.Applicative
+import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.Trans.Maybe
+import Data.Attoparsec.Text
 import Data.Either
+import Data.Function
 import Data.IP
 import Data.Maybe
+import Data.Text (Text)
+import Data.Word
 import Network.DNS.Lookup
 import Network.DNS.Resolver
 import Network.DNS.Types
 import Network.Socket
 import Text.Read (readMaybe)
-import qualified Data.List.Safe as LS
-import qualified Data.Text as T
+
 import qualified Data.ByteString.Char8 as B8
-import Data.Attoparsec.Text
-import Data.Word
+import qualified Data.List.Safe        as LS
+import qualified Data.Text             as T
 
 data NamedSockAddr = NamedSockAddr {
   namedAddrName :: Text
 , namedAddrSock :: SockAddr
 } deriving (Eq, Ord)
 
-parseSockAddrs :: (MonadIO m) => ResolvSeed -> PortNumber -> [Text] -> m [NamedSockAddr]
-parseSockAddrs rs defNodePort urls = liftIO $ catMaybes <$> (withResolver rs $ \r -> forM urls $ parseAddr r defNodePort)
+resolveAddrs :: (MonadIO m) => ResolvSeed -> PortNumber -> [Text] -> m [NamedSockAddr]
+resolveAddrs rs defNodePort urls = liftIO $ catMaybes <$> (withResolver rs $ \r -> forM urls $ parseAddr r defNodePort)
 
-parseSockAddr :: (MonadIO m) => ResolvSeed -> PortNumber -> Text -> m (Maybe NamedSockAddr)
-parseSockAddr rs defNodePort t = liftIO $ withResolver rs $ \r -> parseAddr r defNodePort t 
+resolveAddr :: (MonadIO m) => ResolvSeed -> PortNumber -> Text -> m (Maybe NamedSockAddr)
+resolveAddr rs defNodePort t = liftIO $ withResolver rs $ \r -> parseAddr r defNodePort t 
 
 parseAddr :: Resolver -> PortNumber -> Text -> IO (Maybe NamedSockAddr)
 parseAddr resolver defNodePort addressText =
@@ -42,10 +44,10 @@ parseAddr resolver defNodePort addressText =
     Right ip -> pure $ Just $ NamedSockAddr addressText ip
     _-> do
       let (domain, port) = parseHostPort defNodePort addressText
-      v4 <- lookupA resolver domain
-      v6 <- lookupAAAA resolver domain
-      let ips = (IPv4 <$> fromRight [] v4) <> (IPv6 <$> fromRight [] v6)
-      pure $ NamedSockAddr addressText . toSockAddr . (, port) <$> LS.head ips
+          v4 = LS.head . fmap IPv4 . fromRight [] <$> lookupA resolver domain
+          v6 = LS.head . fmap IPv6 . fromRight [] <$> lookupAAAA resolver domain
+      maybeResolvedAddress <- runMaybeT $ ((<|>) `on` MaybeT) v4 v6
+      pure $ NamedSockAddr addressText . toSockAddr . (, port) <$> maybeResolvedAddress
 
 parseHostPort :: PortNumber -> T.Text -> (Domain, PortNumber)
 parseHostPort defNodePort addressText = let

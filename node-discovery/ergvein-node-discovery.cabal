@@ -16,7 +16,7 @@ library
   hs-source-dirs:      src
   exposed-modules:
     Ergvein.Node.Constants
-    Ergvein.Node.Parsing
+    Ergvein.Node.Resolve
 
   build-depends:
         base              >= 4.7   &&  < 4.13
@@ -29,6 +29,7 @@ library
       , text              >= 1.2   &&  < 1.3
       , attoparsec        >= 0.13  &&  < 0.14
       , attoparsec-binary >= 0.2   &&  < 0.3
+      , transformers      >= 0.5   &&  < 0.6
       , ergvein-common
 
   default-language:    Haskell2010

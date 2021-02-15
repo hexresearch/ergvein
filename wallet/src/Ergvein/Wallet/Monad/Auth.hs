@@ -21,7 +21,7 @@ import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import System.Directory
 
-import Ergvein.Node.Parsing
+import Ergvein.Node.Resolve
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees

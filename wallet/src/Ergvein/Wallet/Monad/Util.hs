@@ -30,7 +30,7 @@ import Network.Socket
 import Reflex.ExternalRef
 import Text.Read
 
-import Ergvein.Node.Parsing
+import Ergvein.Node.Resolve
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
