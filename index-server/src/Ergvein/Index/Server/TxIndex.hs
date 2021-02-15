@@ -1,7 +1,7 @@
 module Ergvein.Index.Server.TxIndex
   (
     txIndexApp
-  , newTxIndexEnv
+  , withTxIndexEnv
   ) where
 
 import Control.Concurrent.Async.Lifted

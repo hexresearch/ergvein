@@ -31,7 +31,7 @@ import qualified Data.Vector as V
 
 getBlockMetaSlice :: Currency -> BlockHeight -> BlockHeight -> ServerM [BlockInfoRec]
 getBlockMetaSlice currency startHeight amount = do
-  db <- readFiltersDb
+  db <- getFiltersDb
   let start = BlockInfoRecKey currency $ startHeight
       startBinary = blockInfoRecKey (currency, startHeight)
       end = BlockInfoRecKey currency $ startHeight + amount

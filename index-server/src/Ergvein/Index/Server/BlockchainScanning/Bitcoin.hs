@@ -88,7 +88,7 @@ actualHeight = fromIntegral <$> nodeRpcCall getBlockCount
 getTxFromCache :: (HasUtxoDB m, MonadLogger m)
   => TxHash -> m (Either String HK.Tx)
 getTxFromCache thash = do
-  db <- readUtxoDb
+  db <- getUtxoDb
   msrc <- getParsed BTC "getTxFromCache" db $ txBytesKey thash
   pure $ case msrc of
     Nothing -> Left $ "Tx not found. TxHash: " <> show thash
@@ -97,7 +97,7 @@ getTxFromCache thash = do
 getTxFromNode :: (HasShutdownFlag m, BitcoinApiMonad m, MonadLogger m, MonadBaseControl IO m, HasUtxoDB m)
   => HK.TxHash -> m HK.Tx
 getTxFromNode thash = do
-  db <- readUtxoDb
+  db <- getUtxoDb
   txHeight <- fmap unTxRecHeight $
     getParsedExact BTC "getTxFromNode" db $ txHeightKey $ hkTxHashToEgv thash
   blk <- getBtcBlockWithRepeat $ fromIntegral txHeight
@@ -196,7 +196,7 @@ btcDbConsistencyCheck = do
         Just (BlockInfoRec hh _) -> if blockHeaderHash /= hh
           then pure False       -- Filter is for the wrong block (how??)
           else do
-            udb <- readUtxoDb
+            udb <- getUtxoDb
             checkTxs udb txIds  -- check that all transaction are stored
   where
     clearRollback = do

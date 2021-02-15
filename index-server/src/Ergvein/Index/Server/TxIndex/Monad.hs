@@ -3,7 +3,7 @@ module Ergvein.Index.Server.TxIndex.Monad
   (
     TxIndexM(..)
   , TxIndexEnv(..)
-  , newTxIndexEnv
+  , withTxIndexEnv
   , runTxIndexMIO
   , logOnException
   ) where
@@ -19,7 +19,6 @@ import Control.Monad.Reader
 import Control.Monad.Trans.Control
 import Data.Text (Text)
 import Data.Typeable
-import Database.LevelDB.Base
 import Network.HTTP.Client.TLS
 import Prometheus (MonadMonitor(..))
 import System.IO
@@ -29,6 +28,7 @@ import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB
 import Ergvein.Index.Server.DB.Monad
+import Ergvein.Index.Server.DB.Wrapper
 import Ergvein.Index.Server.TCPService.BTC
 import Ergvein.Index.Server.Dependencies
 
@@ -39,7 +39,7 @@ import qualified Network.HTTP.Client         as HC
 data TxIndexEnv = TxIndexEnv
     { envServerConfig             :: !Config
     , envLogger                   :: !(Chan (Loc, LogSource, LogLevel, LogStr))
-    , envUtxoDBContext            :: !(MVar DB)
+    , envUtxoDBContext            :: !LevelDB
     , envBitcoinNodeNetwork       :: !HK.Network
     , envClientManager            :: !HC.Manager
     , envBitcoinClient            :: !BitcoinApi.Client
@@ -67,8 +67,8 @@ runTxIndexMIO :: TxIndexEnv -> TxIndexM a -> IO a
 runTxIndexMIO e = runChanLoggingT (envLogger e) . flip runReaderT e . unTxIndexM
 
 instance HasUtxoDB TxIndexM where
-  getUtxoDbVar = asks envUtxoDBContext
-  {-# INLINE getUtxoDbVar #-}
+  getUtxoDb = asks envUtxoDBContext
+  {-# INLINE getUtxoDb #-}
 
 instance HasBitcoinNodeNetwork TxIndexM where
   currentBitcoinNetwork = asks envBitcoinNodeNetwork
@@ -101,17 +101,16 @@ instance MonadUnliftIO TxIndexM where
   askUnliftIO = TxIndexM $ (\(UnliftIO run) -> UnliftIO $ run . unTxIndexM) <$> askUnliftIO
   withRunInIO go = TxIndexM $ withRunInIO (\k -> go $ k . unTxIndexM)
 
-newTxIndexEnv :: (MonadIO m, MonadLogger m, MonadMask m, MonadBaseControl IO m)
+withTxIndexEnv :: (MonadIO m, MonadLogger m, MonadMask m, MonadBaseControl IO m, MonadMask m)
   => Bool               -- ^ flag, def True: wait for node connections to be up before finalizing the env
   -> BitcoinApi.Client  -- ^ RPC connection to the bitcoin node
   -> Config             -- ^ Contents of the config file
-  -> m TxIndexEnv
-newTxIndexEnv useTcp btcClient cfg@Config{..} = do
+  -> (TxIndexEnv -> m a)
+  -> m a
+withTxIndexEnv useTcp btcClient cfg@Config{..} action = do
     logger <- liftIO newChan
     liftIO $ hSetBuffering stdout LineBuffering
     void $ liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
-    utxoDBCntx     <- openDb True DBUtxo cfgUtxoDbPath
-    utxoDbVar      <- liftIO $ newMVar utxoDBCntx
     tlsManager     <- liftIO $ newTlsManager
     shutdownVar    <- liftIO $ newTVarIO False
     shutdownChan   <- liftIO newTChanIO
@@ -133,10 +132,10 @@ newTxIndexEnv useTcp btcClient cfg@Config{..} = do
           unless b' next
       pure btcsock
       else dummyBtcSock bitcoinNodeNetwork
-    pure TxIndexEnv
+    withDb True DBUtxo cfgUtxoDbPath $ \utxoDBCntx -> action TxIndexEnv
       { envServerConfig            = cfg
       , envLogger                  = logger
-      , envUtxoDBContext           = utxoDbVar
+      , envUtxoDBContext           = utxoDBCntx
       , envBitcoinNodeNetwork      = bitcoinNodeNetwork
       , envClientManager           = tlsManager
       , envBitcoinClient           = btcClient
