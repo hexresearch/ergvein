@@ -2,6 +2,7 @@ module Ergvein.Types.Keys (
     ScanKeyBox(..)
   , getLastUnusedKey
   , getPublicKeys
+  , getInternalPublicKeys
   , egvXPubCurrency
   , getExternalPubKeyIndex
   , extractXPubKeyFromEgv
@@ -11,6 +12,7 @@ module Ergvein.Types.Keys (
   , xPubToBtcAddr
   , xPubToErgAddr
   , extractAddrs
+  , extractChangeAddrs
   -- * Reexport primary, non-versioned module
   , KeyPurpose(..)
   , EgvRootXPrvKey(..)
@@ -82,6 +84,10 @@ getPublicKeys PubKeystore{..} = ext <> int
     ext = V.imap (\i kb -> ScanKeyBox (pubKeyBox'key kb) External i) pubKeystore'external
     int = V.imap (\i kb -> ScanKeyBox (pubKeyBox'key kb) Internal i) pubKeystore'internal
 
+-- | Get internal public keys in storage.
+getInternalPublicKeys :: PubKeystore -> Vector ScanKeyBox
+getInternalPublicKeys PubKeystore{..} = V.imap (\i kb -> ScanKeyBox (pubKeyBox'key kb) Internal i) pubKeystore'internal
+
 getExternalPubKeyIndex :: PubKeystore -> Int
 getExternalPubKeyIndex = V.length . pubKeystore'external
 
@@ -112,3 +118,7 @@ egvXPubKeyToEgvAddress key = case key of
 -- | Extract addresses from keystore
 extractAddrs :: PubKeystore -> Vector EgvAddress
 extractAddrs pks = fmap (egvXPubKeyToEgvAddress . scanBox'key) $ getPublicKeys pks
+
+-- | Extract internal (change) addresses from keystore
+extractChangeAddrs :: PubKeystore -> Vector EgvAddress
+extractChangeAddrs pks = fmap (egvXPubKeyToEgvAddress . scanBox'key) $ getInternalPublicKeys pks
