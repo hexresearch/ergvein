@@ -52,7 +52,7 @@ public class DnsDetector {
      * Holds some default DNS servers used in case all DNS servers detection methods fail.
      * Can be set to null if you want caller to fail in this situation.
      */
-    private static final String FACTORY_DNS_SERVERS = "8.8.8.8;8.8.4.4";
+    private static final String FACTORY_DNS_SERVERS = "1.1.1.1;8.8.8.8;8.8.4.4";
 
     /**
      * Properties delimiter used in exec method of DNS servers detection
