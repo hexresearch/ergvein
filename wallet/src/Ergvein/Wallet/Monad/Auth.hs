@@ -103,6 +103,10 @@ instance Monad m => HasStoreDir (ErgveinM t m) where
   getStoreDir = asks env'storeDir
   {-# INLINE getStoreDir #-}
 
+instance MonadIO m => MonadHasUI (ErgveinM t m) where
+  getUiChan = asks env'uiChan
+  {-# INLINE getUiChan #-}
+
 instance MonadBaseConstr t m => MonadEgvLogger t (ErgveinM t m) where
   getLogsTrigger = asks env'logsTrigger
   {-# INLINE getLogsTrigger #-}
@@ -130,8 +134,6 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives, HasVersion) =>
   {-# INLINE getResumeEventFire #-}
   getBackEventFire = asks env'backEF
   {-# INLINE getBackEventFire #-}
-  getUiChan = asks env'uiChan
-  {-# INLINE getUiChan #-}
   getLangRef = asks env'langRef
   {-# INLINE getLangRef #-}
   getAuthInfoMaybeRef = fmapExternalRef Just =<< asks env'authRef

@@ -66,6 +66,10 @@ instance Monad m => HasStoreDir (UnauthM t m) where
   getStoreDir = asks unauth'storeDir
   {-# INLINE getStoreDir #-}
 
+instance MonadIO m => MonadHasUI (UnauthM t m) where
+  getUiChan = asks unauth'uiChan
+  {-# INLINE getUiChan #-}
+
 instance MonadBaseConstr t m => MonadEgvLogger t (UnauthM t m) where
   getLogsTrigger = asks unauth'logsTrigger
   {-# INLINE getLogsTrigger #-}
@@ -93,8 +97,6 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives, HasVersion) =>
   {-# INLINE getResumeEventFire #-}
   getBackEventFire = asks unauth'backEF
   {-# INLINE getBackEventFire #-}
-  getUiChan = asks unauth'uiChan
-  {-# INLINE getUiChan #-}
   getLangRef = asks unauth'langRef
   {-# INLINE getLangRef #-}
   getAuthInfoMaybeRef = asks unauth'authRef
@@ -167,7 +169,7 @@ newEnv settings uiChan = do
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
   -- MonadClient refs
-  rs <- runReaderT mkResolvSeed settingsRef
+  rs <- runReaderT mkResolvSeed (uiChan, settingsRef)
 
   socadrs         <- resolveAddrs rs defIndexerPort (settingsActiveAddrs settings)
   urlsArchive     <- newExternalRef . S.fromList =<< resolveAddrs rs defIndexerPort (settingsArchivedAddrs settings)
