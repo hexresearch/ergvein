@@ -12,14 +12,15 @@ import Reflex.Dom
 import Reflex.ExternalRef
 import Text.Read
 
+import Ergvein.Node.Resolve
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Indexer.Socket
 import Ergvein.Wallet.Elements.Input
+import Ergvein.Wallet.Indexer.Socket
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Localization.Network
+import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
@@ -118,7 +119,7 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
     rs <- mkResolvSeed
     performFork $ ffor goE $ const $ do
       t <- sampleDyn textD
-      parseSingleSockAddr rs t
+      resolveAddr rs defIndexerPort t
   void $ widgetHold (pure ()) $ ffor murlE $ \case
     Nothing -> divClass "form-field-errors" $ localizedText NPSParseError
     _ -> pure ()
@@ -137,7 +138,7 @@ activePageWidget = mdo
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
     restoreE <- buttonClass "button button-outline m-0" NSSRestoreUrls
     rs <- mkResolvSeed
-    void $ activateURLList =<< performFork (parseSockAddrs rs defaultIndexers <$ restoreE)
+    void $ activateURLList =<< performFork (resolveAddrs rs defIndexerPort defaultIndexers <$ restoreE)
     tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSClose else NSSAddUrl
     pure (refrE', tglE')
@@ -169,6 +170,7 @@ renderActive nsa refrE mconn = mdo
       pure tglE'
     Just conn -> do
       let clsUnauthD = ffor (indexConIsUp conn) $ \up -> if up then onclass else offclass
+      let isUpD = ffor (indexConIsUp conn) $ \up -> up
       let heightD = fmap (M.lookup BTC) $ indexConHeight conn
       clsD <- fmap join $ liftAuth (pure clsUnauthD) $ do
         hD <- getCurrentHeight BTC
@@ -176,7 +178,7 @@ renderActive nsa refrE mconn = mdo
           h <- heightD
           h' <- fmap (Just . fromIntegral) hD
           up <- indexConIsUp conn
-          let synced = h == h' || Just 1 == ((-) <$> h' <*> h)
+          let synced = h >= h' || Just 1 == ((-) <$> h' <*> h)
           pure $ if up
             then if synced then onclass else unsyncClass
             else offclass
@@ -185,8 +187,12 @@ renderActive nsa refrE mconn = mdo
         divClass "mt-a mb-a network-name-txt" $ text $ namedAddrName nsa
         editBtn
       latD <- indexerConnPingerWidget conn refrE
-      descrOptionDyn $ NSSLatency <$> latD
-      descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> heightD
+      widgetHoldDyn $ ffor isUpD $ \up -> if not up
+          then descrOption NSSOffline
+          else do
+            descrOptionDyn $ NSSLatency <$> latD
+            descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> heightD
+            descrOptionDyn $ NPSIndexerVersion <$> indexConIndexerVersion conn
       pure tglE'
 
   void $ widgetHoldDyn $ ffor tglD $ \b -> if not b

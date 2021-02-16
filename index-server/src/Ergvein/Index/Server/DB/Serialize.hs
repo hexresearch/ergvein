@@ -2,6 +2,7 @@ module Ergvein.Index.Server.DB.Serialize
   (
     EgvSerialize(..)
   , putTxInfosAsRecs
+  , putTxIndexInfoAsRec
   , serializeWord32
   , deserializeWord32
   ) where
@@ -15,7 +16,7 @@ import Data.ByteString.Builder as BB
 import Data.Word
 
 import Ergvein.Index.Server.BlockchainScanning.Types
-import Ergvein.Index.Server.DB.Schema.Filters
+import Ergvein.Index.Server.DB.Schema.Utxo
 import Ergvein.Index.Server.DB.Serialize.Class
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
@@ -44,3 +45,9 @@ putTxInfosAsRecs cur bheight infos = mconcat $ parMap rpar putI (force infos)
       , LDB.Put (txHeightKey txHash) $ egvSerialize cur $ TxRecHeight $ fromIntegral bheight
       , LDB.Put (txUnspentKey txHash) $ egvSerialize cur $ TxRecUnspent txOutputsCount
       ]
+
+putTxIndexInfoAsRec :: Currency -> TxIndexInfo -> LDB.WriteBatch
+putTxIndexInfoAsRec cur TxIndexInfo{..} = parMap rpar putI (force txIndexInfoIds)
+  where
+    val = egvSerialize cur $ TxRecHeight $ fromIntegral txIndexInfoHeight
+    putI th = LDB.Put (txHeightKey th) val

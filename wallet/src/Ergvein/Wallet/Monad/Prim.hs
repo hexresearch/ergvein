@@ -12,7 +12,6 @@ module Ergvein.Wallet.Monad.Prim
   -- * Frontend-wide types
   , IndexerInfo(..)
   , PeerScanInfoMap
-  , NamedSockAddr(..)
   , getSettings
   , getSettingsD
   , updateSettings

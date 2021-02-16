@@ -34,10 +34,11 @@ import Network.Socket
 import Reflex.ExternalRef
 import Text.Read
 
+import Ergvein.Node.Resolve
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Async
-import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Front
+import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
