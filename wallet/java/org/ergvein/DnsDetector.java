@@ -75,7 +75,7 @@ public class DnsDetector {
         // METHOD 1: old deprecated system properties
         result = getServersMethodSystemProperties();
         if (result != null && result.length > 0) {
-            String res = String.join(",", result);
+            String res = String.join(";", result);
             return res;
 
         }
@@ -83,7 +83,7 @@ public class DnsDetector {
         // METHOD 2 - use connectivity manager
         result = getServersMethodConnectivityManager(a);
         if (result != null && result.length > 0) {
-          String res = String.join(",", result);
+          String res = String.join(";", result);
           return res;
 
         }
@@ -93,7 +93,7 @@ public class DnsDetector {
         // so it's used only as a failsafe scenario
         result = getServersMethodExec();
         if (result != null && result.length > 0) {
-          String res = String.join(",", result);
+          String res = String.join(";", result);
           return res;
 
         }
