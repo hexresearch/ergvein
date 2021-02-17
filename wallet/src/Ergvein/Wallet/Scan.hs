@@ -197,14 +197,14 @@ getTxsToRemove confirmedTxIds possiblyReplacedTxs =
       where intersection = possiblyReplacedTxs' `S.intersection` confirmedTxIds -- This intersection must contain only one element, because possiblyReplacedTxs are conflicting and no more than one tx may be valid
 
 makeTxsMap :: M.Map HB.BlockHash HB.BlockHeight -> HB.Block -> Map TxHash EgvTx
-makeTxsMap heights block = M.fromList . fmap (\tx -> (mkTxId tx, TxBtc $ BtcTx tx mheha)) $ txs
+makeTxsMap heights block = M.fromList . fmap (\tx -> (mkTxId tx, TxBtc $ BtcTx tx meta)) $ txs
   where
     txs = HB.blockTxns block
     mkTxId = hkTxHashToEgv . HT.txHash
     blockTime = secToTimestamp . HB.blockTimestamp . HB.blockHeader $ block
     bhash = HB.headerHash . HB.blockHeader $ block
     mh = Just $ maybe 0 fromIntegral $ M.lookup bhash heights
-    mheha = (\h -> EgvTxMeta (Just h) (Just bhash) blockTime) <$> mh
+    meta = (\h -> EgvTxMeta (Just h) (Just bhash) blockTime) <$> mh
     secToTimestamp t = posixSecondsToUTCTime $ fromIntegral t
 
 -- | Gets transactions related to given address from given block.
