@@ -196,6 +196,17 @@ getTxsToRemove confirmedTxIds possiblyReplacedTxs =
       | otherwise = acc
       where intersection = possiblyReplacedTxs' `S.intersection` confirmedTxIds -- This intersection must contain only one element, because possiblyReplacedTxs are conflicting and no more than one tx may be valid
 
+makeTxsMap :: M.Map HB.BlockHash HB.BlockHeight -> HB.Block -> Map TxHash EgvTx
+makeTxsMap heights block = M.fromList . fmap (\tx -> (mkTxId tx, TxBtc $ BtcTx tx mheha)) $ txs
+  where
+    txs = HB.blockTxns block
+    mkTxId = hkTxHashToEgv . HT.txHash
+    blockTime = secToTimestamp . HB.blockTimestamp . HB.blockHeader $ block
+    bhash = HB.headerHash . HB.blockHeader $ block
+    mh = Just $ maybe 0 fromIntegral $ M.lookup bhash heights
+    mheha = (\h -> EgvTxMeta (Just h) (Just bhash) blockTime) <$> mh
+    secToTimestamp t = posixSecondsToUTCTime $ fromIntegral t
+
 -- | Gets transactions related to given address from given block.
 getAddrTxsFromBlocks :: (HasPubStorage m, PlatformNatives)
   => M.Map HB.BlockHash HB.BlockHeight
@@ -203,7 +214,8 @@ getAddrTxsFromBlocks :: (HasPubStorage m, PlatformNatives)
   -> ScanKeyBox
   -> m ((ScanKeyBox, M.Map TxId EgvTx), BtcUtxoUpdate)
 getAddrTxsFromBlocks heights blocks box = do
-  (txMaps, uts) <- fmap unzip $ traverse (getAddrTxsFromBlock box heights) blocks
+  let txsMap = foldl M.union mempty $ makeTxsMap heights <$> blocks
+  (txMaps, uts) <- fmap unzip $ traverse (getAddrTxsFromBlock box heights txsMap) blocks
   let (outs,ins) = unzip uts
   let upds = (M.unions outs, mconcat ins)
   pure $ ((box, M.unions txMaps), upds)
@@ -211,13 +223,14 @@ getAddrTxsFromBlocks heights blocks box = do
 getAddrTxsFromBlock :: (HasPubStorage m, PlatformNatives)
   => ScanKeyBox
   -> M.Map HB.BlockHash HB.BlockHeight
+  -> Map TxHash EgvTx -- transactions from other blocks in batch
   -> HB.Block
   -> m (M.Map TxId EgvTx, BtcUtxoUpdate)
-getAddrTxsFromBlock box heights block = do
+getAddrTxsFromBlock box heights others block = do
   ps <- askPubStorage
   let origtxMap = ps ^. btcPubStorage . currencyPubStorage'transactions
-      newtxmap = M.fromList $ (\tx -> (mkTxId tx, TxBtc $ BtcTx tx mheha)) <$> txs
-      txmap = M.union newtxmap origtxMap
+      newtxmap = makeTxsMap heights block
+      txmap = others `M.union` newtxmap `M.union` origtxMap
   liftIO $ flip runReaderT txmap $ do
     filteredTxs <- filterTxsForAddressBtc addr txs
     let filteredIds = S.fromList $ mkTxId <$> filteredTxs
@@ -225,14 +238,11 @@ getAddrTxsFromBlock box heights block = do
     utxo <- getUtxoUpdatesFromTxs mh box filteredTxs
     pure $ (filteredTxMap, utxo)
   where
-    mkTxId = hkTxHashToEgv . HT.txHash
     addr = xPubToBtcAddr $ extractXPubKeyFromEgv $ scanBox'key box
     txs = HB.blockTxns block
-    blockTime = secToTimestamp . HB.blockTimestamp $ HB.blockHeader $ block
+    mkTxId = hkTxHashToEgv . HT.txHash
     bhash = HB.headerHash . HB.blockHeader $ block
     mh = Just $ maybe 0 fromIntegral $ M.lookup bhash heights
-    mheha = (\h -> EgvTxMeta (Just h) (Just bhash) blockTime) <$> mh
-    secToTimestamp t = posixSecondsToUTCTime $ fromIntegral t
 
 -- | Check if the gap is not enough and new keys are needed
 -- generate new keys and return extra keys in an event to re-evaluate
