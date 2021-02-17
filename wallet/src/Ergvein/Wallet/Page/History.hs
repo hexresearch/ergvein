@@ -26,10 +26,13 @@ import Safe
 
 import qualified Data.List as L
 
+import Ergvein.Wallet.Debug
+
 historyPage :: MonadFront t m => Currency -> m ()
 historyPage cur = do
   walletName <- getWalletName
   title <- localized walletName
+  debugWidget
   let thisWidget = Just $ pure $ historyPage cur
       navbar = if isAndroid
         then navbarWidgetAndroid cur thisWidget

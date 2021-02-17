@@ -29,6 +29,7 @@ import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage
+import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Transaction.Builder
 import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Widget.Input.BTC.Amount
@@ -93,29 +94,6 @@ sendWidget cur minit title navbar thisWidget = wrapperNavbar False title thisWid
     holdDyn minit $ Just <$> goE
   pure retInfoD
 
-data UtxoPoint = UtxoPoint {
-  upPoint :: !HT.OutPoint
-, upMeta  :: !BtcUtxoMeta
-} deriving (Show)
-
-instance Eq UtxoPoint where
-  a == b = (btcUtxo'amount $ upMeta a) == (btcUtxo'amount $ upMeta b)
-
--- | We need to sort in desc order to reduce Tx size
-instance Ord UtxoPoint where
-  a `compare` b = (btcUtxo'amount $ upMeta b) `compare` (btcUtxo'amount $ upMeta a)
-
-scriptOutputToBtcAddressType :: HS.ScriptOutput -> BtcAddressType
-scriptOutputToBtcAddressType = \case
-  HS.PayPKHash _ -> P2PKH
-  HS.PayScriptHash _ -> P2SH
-  HS.PayWitnessPKHash _ -> P2WPKH
-  HS.PayWitnessScriptHash _ -> P2WSH
-
-instance Coin UtxoPoint where
-  coinValue = btcUtxo'amount . upMeta
-  coinType = scriptOutputToBtcAddressType . btcUtxo'script . upMeta
-
 -- | Main confirmation & sign & send widget
 btcSendConfirmationWidget :: MonadFront t m => ((UnitBTC, Word64), Word64, BtcAddress, RbfEnabled) -> m ()
 btcSendConfirmationWidget v = do
@@ -141,10 +119,10 @@ btcSendConfirmationWidget v = do
 
 btcAddrToBtcOutType :: BtcAddress -> BtcAddressType
 btcAddrToBtcOutType = \case
-  HA.PubKeyAddress _ -> P2PKH
-  HA.ScriptAddress _ -> P2SH
-  HA.WitnessPubKeyAddress _ -> P2WPKH
-  HA.WitnessScriptAddress _ -> P2WSH
+  HA.PubKeyAddress _ -> BtcP2PKH
+  HA.ScriptAddress _ -> BtcP2SH
+  HA.WitnessPubKeyAddress _ -> BtcP2WPKH
+  HA.WitnessScriptAddress _ -> BtcP2WSH
 
 makeTxWidget :: MonadFront t m =>
   ((UnitBTC, Word64), Word64, BtcAddress, RbfEnabled) ->
@@ -163,12 +141,13 @@ makeTxWidget ((unit, amount), fee, addr, rbfEnabled) = mdo
     Left (Nothing, _) -> confirmationErrorWidget CEMEmptyUTXO
     Left (_, Nothing) -> confirmationErrorWidget CEMNoChangeKey
     Left (Just utxomap, Just (_, changeKey)) -> do
+      ps <- sampleDyn psD
       let recepientOutputType = btcAddrToBtcOutType addr
-          changeOutputType = P2WPKH
+          changeOutputType = BtcP2WPKH
           outputTypes = [recepientOutputType, changeOutputType]
-          (confs, unconfs) = partition' $ M.toList utxomap
-          firstpick = chooseCoins amount fee outputTypes True $ L.sort confs
-          finalpick = either (const $ chooseCoins amount fee outputTypes True $ L.sort $ confs <> unconfs) Right firstpick
+          (confs, unconfs) = getBtcUtxoPointsParted ps
+          firstpick = chooseCoins amount fee outputTypes Nothing True $ L.sort confs
+          finalpick = either (const $ chooseCoins amount fee outputTypes Nothing True $ L.sort $ confs <> unconfs) Right firstpick
       either' finalpick (const $ confirmationErrorWidget CEMNoSolution) $ \(pick, change) ->
         txSignSendWidget addr unit amount fee changeKey change pick rbfEnabled
     Right (tx, unit', amount', estFee, addr') -> do
@@ -177,22 +156,12 @@ makeTxWidget ((unit, amount), fee, addr, rbfEnabled) = mdo
   pure stxE
   where
     either' e l r = either l r e
-    foo b f ta = L.foldl' f b ta
     -- Left -- utxo updates, Right -- stored tx
     mergeVals newval origval = case (newval, origval) of
       (Left a, Left _)    -> Just $ Left a
       (Left _, Right _)   -> Nothing
       (Right a, Left _)   -> Just $ Right a
       (Right _, Right _)  -> Nothing
-    -- | Split utxo set into confirmed and unconfirmed points
-    partition' :: [(HT.OutPoint, BtcUtxoMeta)] -> ([UtxoPoint], [UtxoPoint])
-    partition' = foo ([], []) $ \(cs, ucs) (opoint, meta@BtcUtxoMeta{..}) ->
-      let upoint = UtxoPoint opoint meta in
-      case btcUtxo'status of
-        EUtxoConfirmed -> (upoint:cs, ucs)
-        EUtxoSemiConfirmed _ -> (upoint:cs, ucs)
-        EUtxoSending _ -> (cs, ucs)
-        EUtxoReceiving _ -> (cs, upoint:ucs)
 
 -- | Simply displays the relevant information about a transaction
 -- TODO: modify to accomodate Ergo

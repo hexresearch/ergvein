@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wall #-}
+
 module Ergvein.Wallet.Transaction.Util(
   -- Generalized functions
     checkAddr
@@ -31,17 +33,19 @@ module Ergvein.Wallet.Transaction.Util(
   , buildAddrTxRbf
   , weightUnitsToVBytes
   , calcTxVsize
+  , getUtxoByInputs
   -- Ergo functions
   ) where
 
+import Control.Lens
 import Control.Monad (forM_)
 import Control.Monad.IO.Class
+import Control.Monad.Reader
 import Data.Maybe
 import Data.Ratio
 import Data.Serialize
 import Data.Text (Text)
 import Data.Traversable (for)
-import Data.Vector (Vector)
 import Data.Word
 import Network.Haskoin.Network (putVarInt)
 import Network.Haskoin.Transaction (Tx(..), TxIn(..), TxOut(..), OutPoint(..), txHash)
@@ -50,6 +54,7 @@ import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Keys
 import Ergvein.Types.Network (Network)
+import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
 import Ergvein.Types.Utxo.Btc
@@ -65,7 +70,6 @@ import qualified Data.Vector                        as V
 import qualified Network.Haskoin.Address            as HA
 import qualified Network.Haskoin.Script             as HS
 import qualified Network.Haskoin.Transaction        as HT
-import qualified Network.Haskoin.Util               as HU
 
 checkAddr :: (HasTxStorage m, PlatformNatives) => [EgvAddress] -> EgvTx -> m Bool
 checkAddr addrs tx = do
@@ -81,7 +85,7 @@ checkAddrTx _ _ = pure False
 checkAddrTxBtc :: (HasTxStorage m, PlatformNatives) => BtcTxRaw -> BtcAddress -> m Bool
 checkAddrTxBtc tx addr = do
   checkTxInputsResults <- traverse (checkTxInBtc addr) (HT.txIn tx)
-  checkTxOutputsResults <- traverse (checkTxOutBtc addr) (HT.txOut tx)
+  checkTxOutputsResults <- traverse (checkTxOutBtcLog addr) (HT.txOut tx)
   pure $ concatResults checkTxInputsResults || concatResults checkTxOutputsResults
   where concatResults = L.foldr (||) False
 
@@ -228,7 +232,7 @@ getSpentOutputsBtc c addr HT.Tx{..} = fmap catMaybes $ for txIn $ \ti -> do
   b <- checkTxInBtc addr ti
   pure $ if b then Just (prevOutput ti, c) else Nothing
 
--- | Calculates tx fee. If any of parent txs were are found in the wallet storage then it returns Nothing.
+-- | Calculates tx fee. If any of the parent txs was not found in the wallet storage then it returns Nothing.
 getTxFee :: (HasTxStorage m, PlatformNatives) => BtcTxRaw -> m (Maybe Word64)
 getTxFee tx = do
   let inputs = HT.txIn tx
@@ -389,3 +393,12 @@ putWitnessData = mapM_ putWitnessStack
     putWitnessStackItem bs = do
       putVarInt $ B.length bs
       putByteString bs
+
+getUtxoByInputs :: (MonadIO m, PlatformNatives) => PubStorage -> [HT.TxIn] -> m [UtxoPoint]
+getUtxoByInputs pubStorage inputs = liftIO $ flip runReaderT txStore $ do
+  mOutPoints <- getOutputsByOutPoints $ HT.prevOutput <$> inputs
+  let outPoints = fromMaybe (error "getUtxoByInputs: could not get utxo by input") <$> mOutPoints
+  pure $ (uncurry UtxoPoint) <$> outPoints
+  where
+    ps = pubStorage ^. btcPubStorage
+    txStore = ps ^. currencyPubStorage'transactions

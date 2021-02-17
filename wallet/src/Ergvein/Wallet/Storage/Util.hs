@@ -24,6 +24,10 @@ module Ergvein.Wallet.Storage.Util(
   , getMissingPubKeysCount
   , derivePubKeys
   , getAllBtcAddrs
+  , getChangeBtcAddrs
+  , getBtcUtxos
+  , getBtcUtxoPoints
+  , getBtcUtxoPointsParted
   ) where
 
 import Control.Lens
@@ -35,10 +39,10 @@ import Data.ByteString          (ByteString)
 import Data.List                (foldl')
 import Data.Maybe
 import Data.Proxy
-import Data.Text                (Text)
-import Data.Text.Encoding
 import Data.SafeCopy
 import Data.Serialize
+import Data.Text                (Text)
+import Data.Text.Encoding
 
 import Ergvein.Crypto
 import Ergvein.Text
@@ -48,20 +52,26 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
-import Ergvein.Types.Storage.Currency.Public.Btc (BtcPubStorage(..))
+import Ergvein.Types.Storage.Currency.Public.Btc (BtcPubStorage(..), btcPubStorage'utxos)
 import Ergvein.Types.Storage.Currency.Public.Ergo (ErgoPubStorage(..))
 import Ergvein.Types.Transaction as ETT
+import Ergvein.Types.Utxo.Btc
+import Ergvein.Types.Utxo.Status
 import Ergvein.Wallet.Localization.Native
 import Ergvein.Wallet.Localization.Storage
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Storage.Constants
 
 import qualified Data.ByteString as BS
+import qualified Data.List as L
 import qualified Data.Map.Merge.Strict as MM
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
+
+import qualified Network.Haskoin.Script as HS
+import qualified Network.Haskoin.Transaction as HT
 
 addXPrvKeyToKeystore :: KeyPurpose -> EgvXPrvKey -> PrvKeystore -> PrvKeystore
 addXPrvKeyToKeystore External key (PrvKeystore master external internal) =
@@ -435,3 +445,27 @@ getAllBtcAddrs :: PubStorage -> [BtcAddress]
 getAllBtcAddrs pubStorage = case M.lookup BTC $ _pubStorage'currencyPubStorages pubStorage of
   Nothing -> []
   Just CurrencyPubStorage{..} -> fmap getBtcAddr $ V.toList $ extractAddrs _currencyPubStorage'pubKeystore
+
+getChangeBtcAddrs :: PubStorage -> [BtcAddress]
+getChangeBtcAddrs pubStorage = case M.lookup BTC $ _pubStorage'currencyPubStorages pubStorage of
+  Nothing -> []
+  Just CurrencyPubStorage{..} -> fmap getBtcAddr $ V.toList $ extractChangeAddrs _currencyPubStorage'pubKeystore
+
+getBtcUtxos :: PubStorage -> M.Map HT.OutPoint BtcUtxoMeta
+getBtcUtxos pubStorage = pubStorage ^. btcPubStorage . currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'utxos
+
+getBtcUtxoPoints :: PubStorage -> [UtxoPoint]
+getBtcUtxoPoints pubStorage = (uncurry UtxoPoint) <$> (M.toList $ getBtcUtxos pubStorage)
+
+getBtcUtxoPointsParted :: PubStorage -> (ConfirmedUtxoPoints, UnconfirmedUtxoPoints)
+getBtcUtxoPointsParted pubStorage = partitionBtcUtxos $ M.toList $ getBtcUtxos pubStorage
+
+partitionBtcUtxos :: [(HT.OutPoint, BtcUtxoMeta)] -> ([UtxoPoint], [UtxoPoint])
+partitionBtcUtxos = foo ([], []) $ \(cs, ucs) (opoint, meta@BtcUtxoMeta{..}) ->
+  let upoint = UtxoPoint opoint meta in
+  case btcUtxo'status of
+    EUtxoConfirmed -> (upoint:cs, ucs)
+    EUtxoSemiConfirmed _ -> (upoint:cs, ucs)
+    EUtxoSending _ -> (cs, ucs)
+    EUtxoReceiving _ -> (cs, upoint:ucs)
+  where foo b f ta = L.foldl' f b ta

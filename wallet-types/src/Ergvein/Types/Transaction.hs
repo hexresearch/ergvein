@@ -39,8 +39,8 @@ module Ergvein.Types.Transaction (
     , egvTxHashFromStr
     , hkTxHashToEgv
     , egvTxId
-    , btcTxs
-    , ergTxs
+    , egvTxsToBtc
+    , egvTxsToErg
   ) where
 
 import Control.DeepSeq
@@ -328,8 +328,8 @@ egvTxId :: EgvTx -> TxId
 egvTxId (TxBtc (BtcTx tx _)) = hkTxHashToEgv $ HK.txHash tx
 egvTxId (TxErg (ErgTx _ _))  = error "egvTxId: implement for Ergo!"
 
-btcTxs :: Map TxId EgvTx -> Map BtcTxId BtcTxRaw
-btcTxs = M.mapKeys (fromMaybe (error "impossible: btcTxs") . toBtcTxHash) . M.mapMaybe (fmap getBtcTx . toTxBtc)
+egvTxsToBtc :: Map TxId EgvTx -> Map BtcTxId BtcTxRaw
+egvTxsToBtc = M.mapKeys (fromMaybe (error "impossible: btcTxs") . toBtcTxHash) . M.mapMaybe (fmap getBtcTx . toTxBtc)
 
-ergTxs :: Map TxId EgvTx -> Map ErgTxId ErgTxRaw
-ergTxs = M.mapKeys (fromMaybe (error "impossible: ergoTxs") . toErgTxHash) . M.mapMaybe (fmap getErgTx . toTxErg)
+egvTxsToErg :: Map TxId EgvTx -> Map ErgTxId ErgTxRaw
+egvTxsToErg = M.mapKeys (fromMaybe (error "impossible: ergoTxs") . toErgTxHash) . M.mapMaybe (fmap getErgTx . toTxErg)

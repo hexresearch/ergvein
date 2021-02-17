@@ -8,14 +8,16 @@ module Ergvein.Wallet.Page.Transaction(
   ) where
 
 import Control.Monad.Reader
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, catMaybes)
 import Data.Text as T
 import Data.Time
 import Data.Word
 
 import Ergvein.Text
+import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Fee
@@ -26,6 +28,7 @@ import Ergvein.Wallet.Native
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Util
+import Ergvein.Wallet.Transaction.Builder
 import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Transaction.View
 import Ergvein.Wallet.Widget.Input.BTC.Fee
@@ -182,21 +185,50 @@ makeRbfTx (TxBtc txToReplace) newFeeRate = Workflow $ do
   pure ((), never)
 makeRbfTx (TxErg txToReplace) newFeeRate = Workflow $ pure ((), never) -- TODO: implement for ERGO
 
--- method 1: keep all inputs, keep all not isMine outputs,
+-- method 1: keep all inputs, keep all not isOurs outputs,
 -- allow adding new inputs
 bumpFeeThroughCoinChooser :: MonadFront t m => [HT.TxIn] -> [HT.TxOut] -> Word64 -> m (Maybe BtcTx)
 bumpFeeThroughCoinChooser inputs outputs newFeeRate = do
   pubStorage <- getPubStorage
   let inputsToKeep = inputs
-      allOurBtcAddrs = getAllBtcAddrs pubStorage
+      ourBtcChangeAddrs = getChangeBtcAddrs pubStorage
+  -- Here we assume that a transaction can either have one change output or no change outputs at all.
+  -- Even if there are more than one change output, the change will be sent to the first of these addresses in a new transaction.
+  oldChangeOuts <- filterM (checkOutIsOursBtc ourBtcChangeAddrs) outputs
+  let mOldChangeOut = fst <$> L.uncons oldChangeOuts
+  outputsToKeep <- filterM ((fmap not) . checkOutIsOursBtc ourBtcChangeAddrs) outputs
+  mTx <- bumpFeeThroughCoinChooserHelper mOldChangeOut inputsToKeep outputsToKeep newFeeRate
+  pure mTx
 
-  -- which outputs to keep?
-  -- not our change addresses, TODO: check if output is pointing to change address
-  outputsToKeep <- filterM ((fmap not) . checkOutIsOursBtc allOurBtcAddrs) outputs
-  logWrite $ "inputst to keep" <> showt inputsToKeep
-  logWrite $ "outputs to keep" <> showt inputsToKeep
-  pure Nothing
+bumpFeeThroughCoinChooserHelper :: MonadFront t m =>
+  Maybe HT.TxOut -> -- change output of the old tx
+  [HT.TxIn] -> -- inputs to keep
+  [HT.TxOut] -> -- outputs to keep
+  Word64 -> -- new fee rate
+  m (Maybe BtcTx)
+bumpFeeThroughCoinChooserHelper mChangeOut inputsToKeep outputsToKeep newFeeRate = do
+  pubStorage <- getPubStorage
+  let mRecipientOutputTypes = getBtcOutputType <$> outputsToKeep
+  case allJust mRecipientOutputTypes of
+    Nothing -> pure Nothing
+    Just recipientOutputTypes -> do
+      fixedUtxo <- getUtxoByInputs pubStorage inputsToKeep
+      let amount = L.sum $ HT.outValue <$> outputsToKeep
+          changeOutputType = case mChangeOut of
+            Nothing -> BtcP2WPKH
+            Just changeOut -> fromMaybe (error "bumpFeeThroughCoinChooserHelper: could not get change output type") (getBtcOutputType changeOut)
+          outputTypes = changeOutputType : recipientOutputTypes
+          (confirmedUtxo, unconfirmedUtxo) = getBtcUtxoPointsParted pubStorage
+          firstpick = chooseCoins amount newFeeRate outputTypes (Just fixedUtxo) True $ L.sort confirmedUtxo
 
+      -- finalpick = either (const $ chooseCoins amount newFeeRate outputTypes True $ L.sort $ confirmedOuts <> unconfirmedOuts) Right firstpick
+      pure Nothing
+
+-- | If the list contains no elements equal to Nothing, then returns the entire list of elements
+-- Otherwise returns Nothing
+allJust :: [Maybe a] -> Maybe [a]
+allJust l = if L.length justs == L.length l then Just justs else Nothing
+  where justs = catMaybes l
 
 -- method 2: keep all inputs, no new inputs are added,
 -- allow decreasing and removing outputs (change is decreased first)
