@@ -35,6 +35,8 @@ module Ergvein.Wallet.Transaction.Util(
 import Control.Monad.IO.Class
 import Data.Maybe
 import Data.Text (Text)
+import Data.Traversable (for)
+import Data.Vector (Vector)
 import Data.Word
 import Network.Haskoin.Transaction (Tx(..), TxIn(..), TxOut(..), OutPoint(..), txHash)
 
@@ -73,7 +75,7 @@ checkAddrTx _ _ = pure False
 checkAddrTxBtc :: (HasTxStorage m, PlatformNatives) => BtcTxRaw -> BtcAddress -> m Bool
 checkAddrTxBtc tx addr = do
   checkTxInputsResults <- traverse (checkTxInBtc addr) (HK.txIn tx)
-  checkTxOutputsResults <- traverse (checkTxOutBtc addr) (HK.txOut tx)
+  checkTxOutputsResults <- traverse (checkTxOutBtcLog addr) (HK.txOut tx)
   pure $ concatResults checkTxInputsResults || concatResults checkTxOutputsResults
   where concatResults = L.foldr (||) False
 
@@ -84,26 +86,24 @@ checkAddrTxErg = undefined
 checkAddrTxInBtc :: (HasTxStorage m, PlatformNatives) => BtcAddress -> BtcTxRaw -> m Bool
 checkAddrTxInBtc addr tx = do
   checkTxInputsResults <- traverse (checkTxInBtc addr) (HK.txIn tx)
-  pure $ concatResults checkTxInputsResults
-  where concatResults = L.foldr (||) False
+  pure $ or checkTxInputsResults
 
 -- | Checks given tx if there are some outputs containing given address.
 checkAddrTxOutBtc :: (HasTxStorage m, PlatformNatives) => BtcAddress -> BtcTxRaw -> m Bool
 checkAddrTxOutBtc addr tx = do
-  checkTxOutputsResults <- traverse (checkTxOutBtc addr) (HK.txOut tx)
-  pure $ concatResults checkTxOutputsResults
-  where concatResults = L.foldr (||) False
+  checkTxOutputsResults <- traverse (checkTxOutBtcLog addr) (HK.txOut tx)
+  pure $ or checkTxOutputsResults
 
 checkOutIsOursBtc :: (MonadIO m, PlatformNatives) => [BtcAddress] -> HK.TxOut -> m Bool
 checkOutIsOursBtc addrs out = do
-  results <- traverse (flip checkTxOutBtc out) addrs
+  results <- traverse (flip checkTxOutBtcLog out) addrs
   pure $ L.any (== True) results
 
 checkOutSpent :: [[HK.TxIn]] -> HK.OutPoint -> Bool
 checkOutSpent inputs out = let results = (fmap . fmap) (inputSpendsOutPoint out) inputs in
-  (L.any (== True)) $ fmap (L.any (== True)) results
+  or $ fmap or results
 
--- | Checks given TxIn wheather it contains given address.
+-- | Checks given TxIn whether it contains given address.
 -- Native SegWit addresses are not presented in TxIns scriptSig.
 checkTxInBtc :: (HasTxStorage m, PlatformNatives) => BtcAddress -> TxIn -> m Bool
 checkTxInBtc addr txIn = do
@@ -114,36 +114,29 @@ checkTxInBtc addr txIn = do
   case mtx of
     Nothing -> pure False
     Just (TxErg _) -> pure False -- TODO: impl for Ergo
-    Just (TxBtc BtcTx{..}) -> checkTxOutBtc addr $ (HK.txOut getBtcTx) !! (fromIntegral spentOutputIndex)
+    Just (TxBtc BtcTx{..}) -> checkTxOutBtcLog addr $ HK.txOut getBtcTx !! fromIntegral spentOutputIndex
 
-decodeBtcOutHelper :: (MonadIO m, PlatformNatives) => TxOut -> m (Maybe HS.ScriptOutput)
+decodeBtcOutHelper :: TxOut -> Either Text HS.ScriptOutput
 decodeBtcOutHelper txOut = case HS.decodeOutputBS $ HK.scriptOutput txOut of
-  Left e -> do
-    logWrite $ "Could not decode transaction output: " <> (showt e)
-    pure Nothing
-  Right output -> pure $ Just output
+  Left e -> Left $ "Could not decode transaction output: " <> showt e
+  Right output -> pure output
+
+checkTxOutBtcLog :: (MonadIO m, PlatformNatives) => BtcAddress -> TxOut -> m Bool
+checkTxOutBtcLog addr txout = case checkTxOutBtc addr txout of
+  Left err -> do
+    logWrite err
+    pure False
+  Right res -> pure res
 
 -- | Checks given TxOut wheather it contains given address.
-checkTxOutBtc :: (MonadIO m, PlatformNatives) => BtcAddress -> TxOut -> m Bool
-checkTxOutBtc (HA.PubKeyAddress pkh) txOut = do
+checkTxOutBtc :: BtcAddress -> TxOut -> Either Text Bool
+checkTxOutBtc addr txOut = do
   decodedOutput <- decodeBtcOutHelper txOut
   case decodedOutput of
-    Just (HS.PayPKHash h) -> if h == pkh then pure True else pure False
-    _ -> pure False
-checkTxOutBtc (HA.ScriptAddress sh) txOut = do
-  decodedOutput <- decodeBtcOutHelper txOut
-  case decodedOutput of
-    Just (HS.PayScriptHash h) -> if h == sh then pure True else pure False
-    _ -> pure False
-checkTxOutBtc (HA.WitnessPubKeyAddress wpkh) txOut = do
-  decodedOutput <- decodeBtcOutHelper txOut
-  case decodedOutput of
-    Just (HS.PayWitnessPKHash h) -> if h == wpkh then pure True else pure False
-    _ -> pure False
-checkTxOutBtc (HA.WitnessScriptAddress wsh) txOut = do
-  decodedOutput <- decodeBtcOutHelper txOut
-  case decodedOutput of
-    Just (HS.PayWitnessScriptHash h) -> if h == wsh then pure True else pure False
+    HS.PayPKHash h | HA.PubKeyAddress pkh <- addr -> if h == pkh then pure True else pure False
+    HS.PayScriptHash h | HA.ScriptAddress sh <- addr -> if h == sh then pure True else pure False
+    HS.PayWitnessPKHash h | HA.WitnessPubKeyAddress wpkh <- addr -> if h == wpkh then pure True else pure False
+    HS.PayWitnessScriptHash h | HA.WitnessScriptAddress wsh <- addr -> if h == wsh then pure True else pure False
     _ -> pure False
 
 countConfirmations :: BlockHeight -> Maybe BlockHeight -> Word64
@@ -152,7 +145,7 @@ countConfirmations currentHeight (Just confirmationHeight) = currentHeight - con
 
 -- | Filter txs for ones, relevant to an address
 filterTxsForAddressBtc :: (HasTxStorage m, PlatformNatives) => BtcAddress -> [BtcTxRaw] -> m [BtcTxRaw]
-filterTxsForAddressBtc addr txs = fmap catMaybes $ flip traverse txs $ \tx -> do
+filterTxsForAddressBtc addr txs = fmap catMaybes $ for txs $ \tx -> do
   b <- checkAddrTxBtc tx addr
   pure $ if b then Just tx else Nothing
 
@@ -225,7 +218,7 @@ getOutputsByOutPoints outPoints = traverse getOutputByOutPoint outPoints
 -- | Gets spent output (they are inputs for a tx) for a given address from a transaction
 -- Bool specifies if the Tx was confirmed (True) or not
 getSpentOutputsBtc :: (HasTxStorage m, PlatformNatives) => Bool -> BtcAddress -> BtcTxRaw -> m ([(OutPoint, Bool)])
-getSpentOutputsBtc c addr HK.Tx{..} = fmap catMaybes $ flip traverse txIn $ \ti -> do
+getSpentOutputsBtc c addr HK.Tx{..} = fmap catMaybes $ for txIn $ \ti -> do
   b <- checkTxInBtc addr ti
   pure $ if b then Just (prevOutput ti, c) else Nothing
 
@@ -249,8 +242,8 @@ getTxOutputsAmount tx = L.sum $ HK.outValue <$> outputs
 -- Maybe BlockHeight: Nothing -- unconfirmed Tx. Just n -> confirmed at height n
 getUnspentOutputs :: (MonadIO m, PlatformNatives)
   => Maybe BlockHeight -> ScanKeyBox -> BtcTxRaw -> m [(OutPoint, BtcUtxoMeta)]
-getUnspentOutputs c ScanKeyBox{..} tx = fmap catMaybes $ flip traverse (L.zip [0..] $ txOut tx) $ \(i,o) -> do
-  b <- checkTxOutBtc addr o
+getUnspentOutputs c ScanKeyBox{..} tx = fmap catMaybes $ for (L.zip [0..] $ txOut tx) $ \(i,o) -> do
+  b <- checkTxOutBtcLog addr o
   let escript = HS.decodeOutputBS $ scriptOutput o
   either (\e -> logWrite $ "Failed to decode scriptOutput: " <> showt o <> ". Error: " <> showt e) (const $ pure ()) escript
   pure $ case (b, escript) of
@@ -266,8 +259,8 @@ getUnspentOutputs c ScanKeyBox{..} tx = fmap catMaybes $ flip traverse (L.zip [0
 getUtxoUpdates :: (HasTxStorage m, PlatformNatives)
   => Maybe BlockHeight -> V.Vector ScanKeyBox -> BtcTxRaw -> m BtcUtxoUpdate
 getUtxoUpdates mheight boxes tx = do
-  (unsps, sps) <- fmap V.unzip $ flip traverse boxes $ \box -> do
-    let addr = xPubToBtcAddr $ extractXPubKeyFromEgv $ scanBox'key box
+  (unsps, sps) <- fmap V.unzip $ for boxes $ \box -> do
+    let addr = xPubToBtcAddr . extractXPubKeyFromEgv . scanBox'key $ box
     unsp <- getUnspentOutputs mheight box tx
     sp   <- getSpentOutputsBtc isConfirmed addr tx
     pure (unsp, sp)
@@ -280,7 +273,7 @@ getUtxoUpdates mheight boxes tx = do
 getUtxoUpdatesFromTxs :: (HasTxStorage m, PlatformNatives)
   => Maybe BlockHeight -> ScanKeyBox -> [BtcTxRaw] -> m BtcUtxoUpdate
 getUtxoUpdatesFromTxs mheight box txs = do
-  (unsps, sps) <- fmap unzip $ flip traverse txs $ \tx -> do
+  (unsps, sps) <- fmap unzip $ for txs $ \tx -> do
     unsp <- getUnspentOutputs mheight box tx
     sp   <- getSpentOutputsBtc isConfirmed addr tx
     pure (unsp, sp)
@@ -288,7 +281,7 @@ getUtxoUpdatesFromTxs mheight box txs = do
   pure (unspentMap, mconcat sps)
   where
     isConfirmed = maybe False (const True) mheight
-    addr = xPubToBtcAddr $ extractXPubKeyFromEgv $ scanBox'key box
+    addr = xPubToBtcAddr . extractXPubKeyFromEgv . scanBox'key $ box
 
 haveCommonInputs :: BtcTxRaw -> BtcTxRaw -> Bool
 haveCommonInputs tx1 tx2 = (not . L.null) $ (prevOutput <$> txIn tx1) `L.intersect` (prevOutput <$> txIn tx2)
