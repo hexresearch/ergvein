@@ -21,6 +21,7 @@ import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import System.Directory
 
+import Ergvein.Node.Resolve
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
@@ -39,8 +40,8 @@ import Ergvein.Wallet.Node
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Settings (Settings(..))
-import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Status.Types
+import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Version
 import Ergvein.Wallet.Worker.Fees
 import Ergvein.Wallet.Worker.Height
@@ -102,6 +103,10 @@ instance Monad m => HasStoreDir (ErgveinM t m) where
   getStoreDir = asks env'storeDir
   {-# INLINE getStoreDir #-}
 
+instance MonadIO m => MonadHasUI (ErgveinM t m) where
+  getUiChan = asks env'uiChan
+  {-# INLINE getUiChan #-}
+
 instance MonadBaseConstr t m => MonadEgvLogger t (ErgveinM t m) where
   getLogsTrigger = asks env'logsTrigger
   {-# INLINE getLogsTrigger #-}
@@ -129,8 +134,6 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives, HasVersion) =>
   {-# INLINE getResumeEventFire #-}
   getBackEventFire = asks env'backEF
   {-# INLINE getBackEventFire #-}
-  getUiChan = asks env'uiChan
-  {-# INLINE getUiChan #-}
   getLangRef = asks env'langRef
   {-# INLINE getLangRef #-}
   getAuthInfoMaybeRef = fmapExternalRef Just =<< asks env'authRef

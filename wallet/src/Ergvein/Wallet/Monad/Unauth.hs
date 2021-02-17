@@ -15,6 +15,7 @@ import Network.Socket (SockAddr)
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 
+import Ergvein.Node.Resolve
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
@@ -65,6 +66,10 @@ instance Monad m => HasStoreDir (UnauthM t m) where
   getStoreDir = asks unauth'storeDir
   {-# INLINE getStoreDir #-}
 
+instance MonadIO m => MonadHasUI (UnauthM t m) where
+  getUiChan = asks unauth'uiChan
+  {-# INLINE getUiChan #-}
+
 instance MonadBaseConstr t m => MonadEgvLogger t (UnauthM t m) where
   getLogsTrigger = asks unauth'logsTrigger
   {-# INLINE getLogsTrigger #-}
@@ -92,8 +97,6 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives, HasVersion) =>
   {-# INLINE getResumeEventFire #-}
   getBackEventFire = asks unauth'backEF
   {-# INLINE getBackEventFire #-}
-  getUiChan = asks unauth'uiChan
-  {-# INLINE getUiChan #-}
   getLangRef = asks unauth'langRef
   {-# INLINE getLangRef #-}
   getAuthInfoMaybeRef = asks unauth'authRef
@@ -166,11 +169,11 @@ newEnv settings uiChan = do
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
   -- MonadClient refs
-  rs <- runReaderT mkResolvSeed settingsRef
+  rs <- runReaderT mkResolvSeed (uiChan, settingsRef)
 
-  socadrs         <- parseSockAddrs rs (settingsActiveAddrs settings)
-  urlsArchive     <- newExternalRef . S.fromList =<< parseSockAddrs rs (settingsArchivedAddrs settings)
-  inactiveUrls    <- newExternalRef . S.fromList =<< parseSockAddrs rs (settingsDeactivatedAddrs settings)
+  socadrs         <- resolveAddrs rs defIndexerPort (settingsActiveAddrs settings)
+  urlsArchive     <- newExternalRef . S.fromList =<< resolveAddrs rs defIndexerPort (settingsArchivedAddrs settings)
+  inactiveUrls    <- newExternalRef . S.fromList =<< resolveAddrs rs defIndexerPort (settingsDeactivatedAddrs settings)
   actvieAddrsRef  <- newExternalRef $ S.fromList socadrs
   indexConmapRef  <- newExternalRef $ M.empty
   indexStatusRef  <- newExternalRef $ M.empty

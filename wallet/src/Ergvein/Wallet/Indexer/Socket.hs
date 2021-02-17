@@ -21,6 +21,7 @@ import UnliftIO hiding (atomically)
 import Ergvein.Index.Protocol.Deserialization
 import Ergvein.Index.Protocol.Serialization
 import Ergvein.Index.Protocol.Types
+import Ergvein.Node.Resolve
 import Ergvein.Text
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Client

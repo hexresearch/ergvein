@@ -40,6 +40,7 @@ library
       cbits/clock.c
       cbits/open_url.c
       cbits/share.c
+      cbits/dnsdetector.c
     build-depends: android-activity, x509-android
     build-tools: hsc2hs
     exposed-modules:

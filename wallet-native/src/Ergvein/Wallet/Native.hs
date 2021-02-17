@@ -93,3 +93,6 @@ class PlatformNatives where
   -- | Share a jpeg image. Implement for android only
   -- MonadIO m => jpegInBase64 -> Filename (w/o .jpeg) -> m ()
   nativeShareJpeg :: MonadIO m => Text -> Text -> m ()
+
+  -- | Detect dns servers. Used for Android
+  androidDetectDns :: MonadIO m => m [String]

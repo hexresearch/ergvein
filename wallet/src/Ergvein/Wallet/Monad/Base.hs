@@ -31,6 +31,7 @@ import Ergvein.Wallet.Version
 type MonadFrontConstr t m = (PlatformNatives
   , HasStoreDir (Performable m)
   , HasStoreDir m
+  , MonadHasUI m
   , MonadAlertPoster t m
   , MonadBaseConstr t m
   , MonadEgvLogger t m
@@ -50,9 +51,6 @@ class MonadFrontConstr t m => MonadFrontBase t m | m -> t where
   getResumeEventFire :: m (Event t (), IO ())
   -- | System back button event
   getBackEventFire :: m (Event t (), IO ())
-  -- | Internal method of getting channel where you can post actions that must be
-  -- executed in main UI thread.
-  getUiChan :: m (Chan (IO ()))
   -- | Get langRef Internal
   getLangRef :: m (ExternalRef t Language)
   -- | Get event and trigger for pasword requesting modal. Int -- id of the request.

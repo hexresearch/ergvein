@@ -37,7 +37,8 @@ import Network.Socket (SockAddr)
 import Reflex
 import Reflex.ExternalRef
 
-import Ergvein.Index.Protocol.Types (Message(..),ProtocolVersion)
+import Ergvein.Index.Protocol.Types (Message(..), ProtocolVersion)
+import Ergvein.Node.Resolve
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Monad.Async

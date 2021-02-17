@@ -11,8 +11,6 @@ import Control.Monad.Logger
 import Control.Monad.Reader
 import Data.Text (Text, isInfixOf)
 import Data.Typeable
-import Database.LevelDB.Base
-import Database.LevelDB.Internal (unsafeClose)
 import Network.HTTP.Client.TLS
 import Network.Socket
 import System.IO
@@ -24,6 +22,7 @@ import Ergvein.Index.Server.DB
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema.Indexer (RollbackRecItem, RollbackSequence(..))
+import Ergvein.Index.Server.DB.Wrapper
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.TCPService.BTC
 import Ergvein.Text
@@ -41,9 +40,9 @@ import qualified Network.HTTP.Client         as HC
 data ServerEnv = ServerEnv
     { envServerConfig             :: !Config
     , envLogger                   :: !(Chan (Loc, LogSource, LogLevel, LogStr))
-    , envFiltersDBContext         :: !(MVar DB)
-    , envIndexerDBContext         :: !(MVar DB)
-    , envUtxoDBContext            :: !(MVar DB)
+    , envFiltersDBContext         :: !LevelDB
+    , envIndexerDBContext         :: !LevelDB
+    , envUtxoDBContext            :: !LevelDB
     , envBitcoinNodeNetwork       :: !HK.Network
     , envErgoNodeClient           :: !ErgoApi.Client
     , envClientManager            :: !HC.Manager
@@ -86,24 +85,19 @@ discoveryRequisites cfg = do
       (cfgPeerActualizationDelay cfg)
       (cfgPeerActualizationTimeout cfg)
 
-newServerEnv :: (MonadIO m, MonadLogger m, MonadMask m, MonadBaseControl IO m)
+withNewServerEnv :: (MonadIO m, MonadLogger m, MonadMask m, MonadBaseControl IO m)
   => Bool               -- ^ flag, def True: wait for node connections to be up before finalizing the env
   -> Bool               -- ^ flag, def False: do not drop Filters database
   -> Bool               -- ^ flag, def False: do not drop Indexer's database
   -> Bool               -- ^ flag, def False: do not drop Utxo's database
   -> BitcoinApi.Client  -- ^ RPC connection to the bitcoin node
   -> Config             -- ^ Contents of the config file
-  -> m ServerEnv
-newServerEnv useTcp overrideFilters overridesIndexers overridesUtxo btcClient cfg@Config{..} = do
+  -> (ServerEnv -> m a)
+  -> m a
+withNewServerEnv useTcp overrideFilters overridesIndexers overridesUtxo btcClient cfg@Config{..} action = do
     logger <- liftIO newChan
     liftIO $ hSetBuffering stdout LineBuffering
     void $ liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
-    filtersDBCntx  <- openDb overrideFilters DBFilters cfgFiltersDbPath
-    indexerDBCntx  <- openDb overridesIndexers DBIndexer cfgIndexerDbPath
-    utxoDBCntx     <- openDb overridesUtxo DBUtxo cfgUtxoDbPath
-    filtersDBVar   <- liftIO $ newMVar filtersDBCntx
-    indexerDBVar   <- liftIO $ newMVar indexerDBCntx
-    utxoDbVar      <- liftIO $ newMVar utxoDBCntx
     ergoNodeClient <- liftIO $ ErgoApi.newClient cfgERGONodeHost cfgERGONodePort
     tlsManager     <- liftIO $ newTlsManager
     feeEstimates   <- liftIO $ newTVarIO M.empty
@@ -130,31 +124,34 @@ newServerEnv useTcp overrideFilters overridesIndexers overridesUtxo btcClient cf
           unless b' next
       pure btcsock
       else dummyBtcSock bitcoinNodeNetwork
-    btcSeq <- liftIO $ runStdoutLoggingT $ runReaderT (loadRollbackSequence BTC) indexerDBVar
-    btcSeqVar <- liftIO $ newTVarIO $ unRollbackSequence btcSeq
-    exchangeRates <- liftIO $ newTVarIO mempty
-    pure ServerEnv
-      { envServerConfig            = cfg
-      , envLogger                  = logger
-      , envFiltersDBContext        = filtersDBVar
-      , envIndexerDBContext        = indexerDBVar
-      , envUtxoDBContext           = utxoDbVar
-      , envBitcoinNodeNetwork      = bitcoinNodeNetwork
-      , envErgoNodeClient          = ergoNodeClient
-      , envClientManager           = tlsManager
-      , envBitcoinClient           = btcClient
-      , envBitcoinSocket           = btcsock
-      , envBitcoinSocketReconnect  = liftIO (atomically $ writeTChan btcRestartChan ())
-      , envBtcConScheme            = btcConnVar
-      , envBtcRollback             = btcSeqVar
-      , envPeerDiscoveryRequisites = descDiscoveryRequisites
-      , envFeeEstimates            = feeEstimates
-      , envShutdownFlag            = shutdownVar
-      , envShutdownChannel         = shutdownChan
-      , envOpenConnections         = openConns
-      , envBroadcastChannel        = broadChan
-      , envExchangeRates           = exchangeRates
-      }
+    withDb overrideFilters DBFilters cfgFiltersDbPath $ \filtersDB -> do
+      withDb overridesIndexers DBIndexer cfgIndexerDbPath $ \indexerDB -> do
+        withDb overridesUtxo DBUtxo cfgUtxoDbPath $ \utxoDB -> do
+          btcSeq    <- liftIO $ runStdoutLoggingT $ runReaderT (loadRollbackSequence BTC) indexerDB
+          btcSeqVar <- liftIO $ newTVarIO $ unRollbackSequence btcSeq
+          exchangeRates <- liftIO $ newTVarIO mempty
+          action ServerEnv
+            { envServerConfig            = cfg
+            , envLogger                  = logger
+            , envFiltersDBContext        = filtersDB
+            , envIndexerDBContext        = indexerDB
+            , envUtxoDBContext           = utxoDB
+            , envBitcoinNodeNetwork      = bitcoinNodeNetwork
+            , envErgoNodeClient          = ergoNodeClient
+            , envClientManager           = tlsManager
+            , envBitcoinClient           = btcClient
+            , envBitcoinSocket           = btcsock
+            , envBitcoinSocketReconnect  = liftIO (atomically $ writeTChan btcRestartChan ())
+            , envBtcConScheme            = btcConnVar
+            , envBtcRollback             = btcSeqVar
+            , envPeerDiscoveryRequisites = descDiscoveryRequisites
+            , envFeeEstimates            = feeEstimates
+            , envShutdownFlag            = shutdownVar
+            , envShutdownChannel         = shutdownChan
+            , envOpenConnections         = openConns
+            , envBroadcastChannel        = broadChan
+            , envExchangeRates           = exchangeRates
+            }
 
 -- | Log exceptions at Error severity
 logOnException :: (
@@ -190,23 +187,18 @@ logOnException threadName = handle logE
             then do
               logInfoN' "Halted by \"not an sstable (bad magic nuber)\" error. Repairing the db."
               Config{..} <- serverConfig
-              fdbVar <- getFiltersDbVar
-              idbVar <- getIndexerDbVar
-              udbVar <- getUtxoDbVar
-              fdb <- liftIO $ takeMVar fdbVar
-              idb <- liftIO $ takeMVar idbVar
-              udb <- liftIO $ takeMVar udbVar
-              logInfoN' "Waiting 10s before closing, just in case"
-              liftIO $ threadDelay 10000000
-              liftIO $ unsafeClose fdb
-              liftIO $ unsafeClose idb
-              liftIO $ unsafeClose udb
-              filtersDBCntx <- openDb False DBFilters cfgFiltersDbPath
-              indexerDBCntx <- openDb False DBIndexer cfgIndexerDbPath
-              utxoDBCntx    <- openDb False DBUtxo    cfgUtxoDbPath
-              liftIO $ putMVar fdbVar filtersDBCntx
-              liftIO $ putMVar idbVar indexerDBCntx
-              liftIO $ putMVar udbVar utxoDBCntx
+              fdb <- getFiltersDb
+              idb <- getIndexerDb
+              udb <- getUtxoDb
+              closeLevelDB fdb
+              closeLevelDB idb
+              closeLevelDB udb
+              fdb' <- openDb False DBFilters cfgFiltersDbPath
+              idb' <- openDb False DBIndexer cfgIndexerDbPath
+              udb' <- openDb False DBUtxo    cfgUtxoDbPath
+              moveLevelDbHandle fdb' fdb
+              moveLevelDbHandle idb' idb
+              moveLevelDbHandle udb' udb
               logInfoN' "Reopened the db. Resume as usual"
             else
               logErrorN' $ "Killed by IOException. " <> showt ioe
