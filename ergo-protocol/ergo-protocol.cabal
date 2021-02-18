@@ -65,6 +65,7 @@ test-suite ergo-protocol-test
   other-modules:
       Data.Ergo.BigIntTest
       Data.Ergo.BlockTest
+      Data.Ergo.Block2Test
       Data.Ergo.DifficultyTest
       Data.Ergo.ProtocolTest
       Data.Ergo.VarIntTest

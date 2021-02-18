@@ -7,6 +7,7 @@ module Data.Ergo.Block(
   , BlockHeader(..)
   ) where
 
+import Control.Monad
 import Data.ByteString (ByteString)
 import Data.Ergo.Autolykos
 import Data.Ergo.Difficulty
@@ -20,12 +21,17 @@ import Data.Time.Clock.POSIX
 import Data.Word
 import GHC.Generics
 
+import qualified Data.ByteString.Base16 as B16
+
 -- | Protocol version, for now always 1
 type BlockVersion = Word8
 
 -- | Hash of something length of 32 bytes
 newtype Digest32 = Digest32 { unDigest32 :: ByteString }
-  deriving (Generic, Show, Read, Eq)
+  deriving (Generic, Read, Eq)
+
+instance Show Digest32 where
+  show = show . B16.encode . unDigest32
 
 instance Persist Digest32 where
   put = putByteString . unDigest32
@@ -83,24 +89,36 @@ instance Persist BlockHeader where
     put adProofsRoot
     put transactionsRoot
     put stateRoot
-    encodeVlq $ (floor . realToFrac . utcTimeToPOSIXSeconds $ timestamp :: Word64)
+    encodeVlq $ (floor . realToFrac . (* 1000) . utcTimeToPOSIXSeconds $ timestamp :: Word64)
     put nBits
     put extensionRoot
     encodeVlq height
     put votes
+    when (version >= 2) $
+      put (0 :: Word8)
     put powSolution
   {-# INLINE put #-}
 
-  get = BlockHeader
-    <$> get
-    <*> get
-    <*> get
-    <*> get
-    <*> get
-    <*> (posixSecondsToUTCTime . (/ 1000) . fromIntegral <$> (decodeVlq :: Get Word64))
-    <*> get
-    <*> get
-    <*> decodeVlq
-    <*> get
-    <*> get
+  get = do
+    version          <- get
+    parentId         <- get
+    adProofsRoot     <- get
+    transactionsRoot <- get
+    stateRoot        <- get
+    timestamp        <- (posixSecondsToUTCTime . (/ 1000) . fromIntegral <$> (decodeVlq :: Get Word64))
+    nBits            <- get
+    extensionRoot    <- get
+    height           <- decodeVlq
+    votes            <- get
+    case version of
+      1 -> pure ()
+      2 -> do
+          -- For block version >= 2, a new byte encodes length of possible new fields.
+          -- If this byte > 0, we read new fields but do nothing, as semantics of the fields is not known.
+          newFieldsSize :: Word8 <- get
+          when (newFieldsSize > 0) $ do
+            void $ getBytes (fromIntegral newFieldsSize)
+      _ -> fail ("Unsupported header version " <> show version)
+    powSolution      <- get
+    pure BlockHeader {..}
   {-# INLINE get #-}
