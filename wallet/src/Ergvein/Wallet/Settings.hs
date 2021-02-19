@@ -13,6 +13,7 @@ module Ergvein.Wallet.Settings (
   , defaultIndexers
   , defIndexerPort
   , defaultIndexersNum
+  , defaultSeedNodesSource
   , defaultIndexerTimeout
   , defaultActUrlNum
   , ExplorerUrls(..)
@@ -34,6 +35,7 @@ import Data.Time (NominalDiffTime)
 import Data.Yaml (encodeFile)
 import Network.Socket (HostName, PortNumber)
 import System.Directory
+import Network.DNS.Types
 
 import Ergvein.Aeson
 import Ergvein.Lens
@@ -194,29 +196,22 @@ $(deriveJSON defaultOptions ''SockAddr)
 
 instance FromJSON Settings where
   parseJSON = withObject "Settings" $ \o -> do
-    settingsLang              <- o .: "lang"
-    settingsStoreDir          <- o .: "storeDir"
-    settingsConfigPath        <- o .: "configPath"
-    settingsUnits             <- o .: "units"
-    settingsReqTimeout        <- o .: "reqTimeout"
-    mActiveAddrs              <- o .: "activeAddrs"
-    mDeactivatedAddrs         <- o .: "deactivatedAddrs"
-    mArchivedAddrs            <- o .: "archivedAddrs"
-    settingsReqUrlNum         <- o .:? "reqUrlNum"  .!= defaultIndexersNum
-    settingsActUrlNum         <- o .:? "actUrlNum"  .!= 10
-    let (settingsActiveAddrs, settingsDeactivatedAddrs, settingsArchivedAddrs) =
-          case (mActiveAddrs, mDeactivatedAddrs, mArchivedAddrs) of
-            (Nothing, Nothing, Nothing) -> (defaultIndexers, [], [])
-            (Just [], Just [], Just []) -> (defaultIndexers, [], [])
-            _ -> (fromMaybe [] mActiveAddrs, fromMaybe [] mDeactivatedAddrs, fromMaybe [] mArchivedAddrs)
-    settingsPortfolio         <- o .:? "portfolio" .!= False
+    settingsLang              <- o .:  "lang"
+    settingsStoreDir          <- o .:  "storeDir"
+    settingsConfigPath        <- o .:  "configPath"
+    settingsUnits             <- o .:  "units"
+    settingsReqTimeout        <- o .:  "reqTimeout"
+    settingsActiveAddrs       <- o .:  "activeAddrs"      .!= mempty
+    settingsDeactivatedAddrs  <- o .:  "deactivatedAddrs" .!= mempty
+    settingsArchivedAddrs     <- o .:  "archivedAddrs"    .!= mempty
+    settingsReqUrlNum         <- o .:? "reqUrlNum"        .!= defaultIndexersNum
+    settingsActUrlNum         <- o .:? "actUrlNum"        .!= 10
+    settingsPortfolio         <- o .:? "portfolio"        .!= False
     settingsFiatCurr          <- o .:? "fiatCurr"
     settingsRateFiat          <- o .:? "rateFiat"
     mdns                      <- o .:? "dns"
     settingsSocksProxy        <- o .:? "socksProxy"
-    let settingsDns = case fromMaybe [] mdns of
-          [] -> defaultDns
-          dns -> S.fromList dns
+    let settingsDns = maybe defaultDns S.fromList mdns
     settingsCurrencySpecific  <- o .:? "currencySpecific" .!= defaultCurrencySpecificSettings
     pure Settings{..}
 
@@ -246,6 +241,9 @@ defIndexerPort = defNodePort isTestnet
 defaultIndexers :: [Text]
 defaultIndexers = defNodes isTestnet
 
+defaultSeedNodesSource :: [Domain]
+defaultSeedNodesSource = defSeedNodesSource isTestnet
+
 defaultIndexersNum :: (Int, Int)
 defaultIndexersNum = (2, 4)
 
@@ -273,7 +271,7 @@ defaultSettings home =
       , settingsPortfolio         = False
       , settingsFiatCurr          = Nothing
       , settingsRateFiat          = Nothing
-      , settingsActiveAddrs       = defaultIndexers
+      , settingsActiveAddrs       = []
       , settingsDeactivatedAddrs  = []
       , settingsArchivedAddrs     = []
       , settingsDns               = defaultDns

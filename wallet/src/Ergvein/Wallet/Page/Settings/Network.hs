@@ -11,6 +11,7 @@ import Data.Functor.Misc (Const2(..))
 import Reflex.Dom
 import Reflex.ExternalRef
 import Text.Read
+import Control.Monad.IO.Class
 
 import Ergvein.Node.Resolve
 import Ergvein.Types.Currency
@@ -24,10 +25,12 @@ import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
+import Ergvein.Wallet.Worker.NodeDiscovery
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Set as S
+import qualified Data.List.NonEmpty as NE
 
 data NavbarItem = ActivePage | DisabledPage | ParametersPage
   deriving (Eq)
@@ -137,8 +140,7 @@ activePageWidget = mdo
   (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
     restoreE <- buttonClass "button button-outline m-0" NSSRestoreUrls
-    rs <- mkResolvSeed
-    void $ activateURLList =<< performFork (resolveAddrs rs defIndexerPort defaultIndexers <$ restoreE)
+    restoreNetwork restoreE
     tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSClose else NSSAddUrl
     pure (refrE', tglE')
