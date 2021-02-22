@@ -5,9 +5,11 @@ module Data.Ergo.Block(
   , Digest33(..)
   , ParamVotes(..)
   , BlockHeader(..)
+  , hashHeaderBytes
   ) where
 
 import Control.Monad
+import Crypto.Hash (hashWith, Blake2b_256(..))
 import Data.ByteString (ByteString)
 import Data.Ergo.Autolykos
 import Data.Ergo.Difficulty
@@ -21,6 +23,7 @@ import Data.Time.Clock.POSIX
 import Data.Word
 import GHC.Generics
 
+import qualified Data.ByteArray as BA
 import qualified Data.ByteString.Base16 as B16
 
 -- | Protocol version, for now always 1
@@ -28,10 +31,7 @@ type BlockVersion = Word8
 
 -- | Hash of something length of 32 bytes
 newtype Digest32 = Digest32 { unDigest32 :: ByteString }
-  deriving (Generic, Read, Eq)
-
-instance Show Digest32 where
-  show = show . B16.encode . unDigest32
+  deriving (Generic, Show, Read, Eq)
 
 instance Persist Digest32 where
   put = putByteString . unDigest32
@@ -82,6 +82,10 @@ data BlockHeader = BlockHeader {
 , powSolution      :: !AutolykosSolution -- ^ solution for the proof-of-work puzzle
 } deriving (Generic, Show, Read, Eq)
 
+-- Header id is blake2b256 of its bytes
+hashHeaderBytes :: ByteString -> ByteString
+hashHeaderBytes = B16.encode . BA.convert . hashWith Blake2b_256
+
 instance Persist BlockHeader where
   put BlockHeader{..} = do
     put version
@@ -95,6 +99,7 @@ instance Persist BlockHeader where
     encodeVlq height
     put votes
     when (version >= 2) $
+      -- Block version V2 specific field, contains length of additional data
       put (0 :: Word8)
     put powSolution
   {-# INLINE put #-}
@@ -111,14 +116,16 @@ instance Persist BlockHeader where
     height           <- decodeVlq
     votes            <- get
     case version of
-      1 -> pure ()
+      1 -> do
+          powSolution      <- get
+          pure BlockHeader {..}
       2 -> do
           -- For block version >= 2, a new byte encodes length of possible new fields.
           -- If this byte > 0, we read new fields but do nothing, as semantics of the fields is not known.
           newFieldsSize :: Word8 <- get
           when (newFieldsSize > 0) $ do
             void $ getBytes (fromIntegral newFieldsSize)
+          powSolution      <- unAutolykosV2 <$> get
+          pure BlockHeader {..}
       _ -> fail ("Unsupported header version " <> show version)
-    powSolution      <- get
-    pure BlockHeader {..}
   {-# INLINE get #-}

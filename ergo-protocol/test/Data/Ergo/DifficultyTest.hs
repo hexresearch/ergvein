@@ -33,3 +33,10 @@ unit_difficulty5 = testDifficulty 0x04923456 (-0x12345600)
 
 unit_difficulty6 :: IO ()
 unit_difficulty6 = testDifficulty 0x04123456 0x12345600
+
+-- FIXME test failed. Difficulty encoding/decoding should be rewritten
+-- unit_difficultyRoundtrip1 :: IO ()
+-- unit_difficultyRoundtrip1 = do
+--   (runGet get . runPut . put $ d) @?= Right d
+--   where
+--     d = Difficulty 107976917
