@@ -119,6 +119,9 @@ let
               android:resource="@xml/file_paths" />
       </provider>
       '';
+      permissions = ''
+      <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+      '';
     };
 
   });
