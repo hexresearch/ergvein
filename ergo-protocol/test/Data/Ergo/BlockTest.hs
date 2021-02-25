@@ -14,11 +14,9 @@ import Test.Tasty.HUnit
 
 import qualified Data.ByteString.Base16 as B16
 
-import Debug.Trace
-
 unit_blockHeaderParse :: IO ()
 unit_blockHeaderParse = do
-  let mh = traceShowId $ runGet (get :: Get BlockHeader) header1
+  let mh = runGet (get :: Get BlockHeader) header1
   assertBool "Block header 414474 parsed" $ isRight mh
   let Right h = mh
   let b16 = fst . B16.decode

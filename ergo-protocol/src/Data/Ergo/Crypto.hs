@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TupleSections #-}
 module Data.Ergo.Crypto(
     EcPointType(..)
   , decodeEcPointType
@@ -13,6 +15,7 @@ import Data.Text.Encoding
 import GHC.Generics
 
 import qualified Data.ByteString.Base16 as B16
+import qualified Data.Text as T
 
 -- | Public key for secp256k1 curve.
 -- Every point is encoded in compressed form (so only X coordinate and sign of Y are stored).
@@ -21,7 +24,13 @@ import qualified Data.ByteString.Base16 as B16
 -- Special case is infinity point, which is encoded by 33 zeroes.
 -- Thus elliptic curve point is always encoded with 33 bytes.
 newtype EcPointType = EcPointType { unEcPointType :: PubKey }
-  deriving (Eq, Generic, NFData, Read, Show, Hashable)
+  deriving (Eq, Generic, NFData, Hashable)
+
+instance Show EcPointType where
+  show = T.unpack . encodeEcPointType
+
+instance Read EcPointType where
+  readsPrec _ = (:[]) . (,"") . either error id . decodeEcPointType . T.pack
 
 instance Persist EcPointType where
   put = putByteString . exportPubKey True . unEcPointType

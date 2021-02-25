@@ -23,11 +23,14 @@ import GHC.Generics
 import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString as BS
 
+import Ergvein.Text
+
 type BlockId = ModifierId
 
 -- | 32 Byte hash of something (block, tx)
 newtype ModifierId = ModifierId { unModifierId :: ByteString }
-  deriving(Eq, Ord, Show, Read)
+  deriving(Eq, Ord, Generic)
+  deriving (Show, Read) via ShowHex ByteString
 
 instance Persist ModifierId where
   put = putByteString . unModifierId

@@ -26,12 +26,15 @@ import GHC.Generics
 import qualified Data.ByteArray as BA
 import qualified Data.ByteString.Base16 as B16
 
+import Ergvein.Text
+
 -- | Protocol version, for now always 1
 type BlockVersion = Word8
 
 -- | Hash of something length of 32 bytes
 newtype Digest32 = Digest32 { unDigest32 :: ByteString }
-  deriving (Generic, Show, Read, Eq)
+  deriving (Generic, Eq)
+  deriving (Show, Read) via ShowHex ByteString
 
 instance Persist Digest32 where
   put = putByteString . unDigest32
@@ -44,7 +47,8 @@ type ADDigest = Digest33
 
 -- | Hash of something length of 33 bytes
 newtype Digest33 = Digest33 { unDigest33 :: ByteString }
-  deriving (Generic, Show, Read, Eq)
+  deriving (Generic, Eq)
+  deriving (Show, Read) via ShowHex ByteString
 
 instance Persist Digest33 where
   put = putByteString . unDigest33
@@ -94,14 +98,17 @@ instance Persist BlockHeader where
     put transactionsRoot
     put stateRoot
     encodeVlq $ (floor . realToFrac . (* 1000) . utcTimeToPOSIXSeconds $ timestamp :: Word64)
-    put nBits
     put extensionRoot
+    put nBits
     encodeVlq height
     put votes
     when (version >= 2) $
       -- Block version V2 specific field, contains length of additional data
       put (0 :: Word8)
-    put powSolution
+    case version of
+      1 -> put powSolution
+      2 -> put (AutolykosV2 powSolution)
+      _ -> fail ("Not implemented serialization of header version " <> show version)
   {-# INLINE put #-}
 
   get = do
@@ -111,8 +118,8 @@ instance Persist BlockHeader where
     transactionsRoot <- get
     stateRoot        <- get
     timestamp        <- (posixSecondsToUTCTime . (/ 1000) . fromIntegral <$> (decodeVlq :: Get Word64))
-    nBits            <- get
     extensionRoot    <- get
+    nBits            <- get
     height           <- decodeVlq
     votes            <- get
     case version of
