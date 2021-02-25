@@ -1,9 +1,11 @@
 db/
 db.log
-ergveinDb_testnet/
-indexerDb_testnet/
-ergveinDb_mainnet/
-indexerDb_mainnet/
+db_testnet_filters/
+db_testnet_indexer/
+db_testnet_utxo/
+db_mainnet_filters/
+db_mainnet_indexer/
+db_mainnet_utxo/
 ergveincache/
 ncrashed-config.yaml
 runNC.sh

@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -Wno-all #-}
+{-# LANGUAGE MultiWayIf #-}
 module Ergvein.Wallet.Indexer.Socket
   (
     initIndexerConnection
@@ -21,11 +21,14 @@ import UnliftIO hiding (atomically)
 import Ergvein.Index.Protocol.Deserialization
 import Ergvein.Index.Protocol.Serialization
 import Ergvein.Index.Protocol.Types
+import Ergvein.Node.Resolve
 import Ergvein.Text
+import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node.Socket
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Util
 
@@ -36,8 +39,26 @@ import qualified Data.ByteString.Lazy       as BL
 import qualified Data.Map.Strict            as M
 import qualified Data.Vector.Unboxed        as VU
 
+requiredCurrencies :: [CurrencyCode]
+requiredCurrencies = if isTestnet
+  then [TBTC] -- TODO: add ERGO here
+  else [BTC]
+
+hasRequiredCurrs :: Version -> Bool
+hasRequiredCurrs = (`versionHasCurrs` requiredCurrencies)
+
+requiredCurrsSynced :: Version -> Bool
+requiredCurrsSynced = (`versionCurrsSynced` requiredCurrencies)
+
 initIndexerConnection :: (MonadBaseConstr t m, MonadHasSettings t m) => NamedSockAddr -> Event t IndexerMsg ->  m (IndexerConnection t)
 initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
+  (versionMismatchE, versionMismatchFire) <- newTriggerEvent
+  (currenciesMismatchE, currenciesMismatchFire) <- newTriggerEvent
+  (currenciesNotSyncedE, currenciesNotSyncedFire) <- newTriggerEvent
+  (versionE, versionFire) <- newTriggerEvent
+  versionMismatchDE <- delay 0.2 $ void versionMismatchE
+  currenciesMismatchDE <- delay 0.2 currenciesMismatchE
+  currenciesNotSyncedDE <- delay 0.2 currenciesNotSyncedE
   (msname, msport) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True sa
   let peer = fromJust $ Peer <$> msname <*> msport
   let restartE = fforMaybe msgE $ \case
@@ -54,18 +75,36 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
       _socketConfPeer   = peer
     , _socketConfSend   = fmap serializeMessage sendE
     , _socketConfPeeker = peekMessage sa
-    , _socketConfClose  = closeE
+    , _socketConfClose  = leftmost [closeE, versionMismatchDE, currenciesMismatchDE, currenciesNotSyncedDE]
     , _socketConfReopen = Just (1, 2) -- reconnect after 1 seconds 2 retries
     , _socketConfProxy  = proxyD
     }
   handshakeE <- performEvent $ ffor (socketConnected s) $ const $ mkVers
   let respE = _socketInbound s
-  hsRespE <- performEvent $ fforMaybe respE $ \case
-    MVersion Version{..} -> Just $ liftIO $ do
+  hsRespE <- fmap (fmapMaybe id) $ performFork $ ffor respE $ \case
+    MReject (Reject VersionNotSupported) -> do
+      nodeLog sa $ "The remote version is not compatible with our version " <> showt protocolVersion
+      liftIO $ versionMismatchFire Nothing
+      pure Nothing
+    MVersion v@Version{..} -> do
       nodeLog sa $ "Received version: " <> showt versionVersion
-      pure $ MVersionACK VersionACK
-    MPing nonce -> Just $ pure $ MPong nonce
-    _ -> Nothing
+      if | not $ protocolVersion `isCompatible` versionVersion -> do
+            nodeLog sa $ "The reported remote version " <> showt versionVersion <> " is not compatible with our version " <> showt protocolVersion
+            liftIO $ versionMismatchFire (Just versionVersion)
+            pure Nothing
+         | not $ hasRequiredCurrs v -> do
+            nodeLog sa $ "The indexer doesn't support required currencies " <> showt requiredCurrencies <> ", but got: " <> showt (versionCurrencies v)
+            liftIO $ currenciesMismatchFire ()
+            pure Nothing
+         | not $ requiredCurrsSynced v -> do
+           nodeLog sa $ "The indexer is not fully synced for currencies " <> showt requiredCurrencies
+           liftIO $ currenciesNotSyncedFire ()
+           pure Nothing
+         | otherwise -> do
+            liftIO $ versionFire versionVersion
+            pure $ Just (MVersionACK VersionACK)
+    MPing nonce -> pure $ Just $ MPong nonce
+    _ -> pure Nothing
   let sendE = leftmost [handshakeE, hsRespE, gate (current shakeD) reqE]
 
   performEvent_ $ ffor (_socketRecvEr s) $ nodeLog sa . showt
@@ -74,6 +113,7 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
   let verAckE = fforMaybe respE $ \case
         MVersionACK _ -> Just True
         _ -> Nothing
+  versionD <- holdDyn Nothing $ Just <$> versionE
   shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
   let openE = fmapMaybe (\b -> if b then Just () else Nothing) $ updated shakeD
 
@@ -87,14 +127,20 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
         _ -> Nothing
   heightsD <- foldDyn M.union M.empty setHE
 
+  statusD <- holdDyn IndexerOk $ leftmost [
+      IndexerWrongVersion <$> versionMismatchE
+    , IndexerMissingCurrencies <$ currenciesMismatchE
+    , IndexerNotSynced <$ currenciesNotSyncedE ]
   pure $ IndexerConnection {
       indexConAddr = sa
     , indexConName = sname
+    , indexConIndexerVersion = versionD
     , indexConClosedE = () <$ _socketClosed s
     , indexConOpensE = openE
     , indexConIsUp = shakeD
     , indexConRespE = respE
-    , indexerConHeight = heightsD
+    , indexConHeight = heightsD
+    , indexConStatus = statusD
     }
   where
     serializeMessage :: Message -> B.ByteString

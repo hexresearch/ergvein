@@ -53,6 +53,7 @@ word32toRejectType = \case
   1  -> Just MessageParsing
   2  -> Just InternalServerError
   3  -> Just ZeroBytesReceived
+  4  -> Just VersionNotSupported
   _  -> Nothing
 
 word8toFeeLevel :: Word8 -> Maybe FeeLevel
@@ -64,15 +65,14 @@ word8toFeeLevel = \case
 
 versionParser :: Parser ProtocolVersion
 versionParser = do
-  bs :: S.Bitstream (S.Right) <- S.fromBits <$> anyWord32be
-  let rst  = S.drop i2 bs
-  let mj   = S.toBits $ S.append pad $ S.take i10 rst
-  let mn   = S.toBits $ S.append pad $ S.take i10 $ S.drop i10 rst
-  let p    = S.toBits $ S.append pad $ S.take i10 $ S.drop i20 rst
+  bs :: S.Bitstream S.Right <- S.fromBits <$> anyWord32be
+  let p    = S.toBits $ S.append pad $ S.take i10 bs
+  let mn   = S.toBits $ S.append pad $ S.take i10 $ S.drop i10 bs
+  let mj   = S.toBits $ S.append pad $ S.take i10 $ S.drop i20 bs
   pure (mj,mn,p)
   where
-    i2,i6,i10,i20 :: Int
-    i2 = 2; i6 = 6 ; i10 = 10 ; i20 = 20
+    i6,i10,i20 :: Int
+    i6 = 6 ; i10 = 10 ; i20 = 20
     pad = S.replicate i6 False
 
 messageHeaderParser ::  Parser MessageHeader

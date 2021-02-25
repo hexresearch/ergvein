@@ -8,20 +8,21 @@ module Ergvein.Wallet.Monad.Prim
   , AlertInfo(..)
   , MonadEgvLogger(..)
   , MonadHasSettings(..)
+  , MonadHasUI(..)
   -- * Frontend-wide types
   , IndexerInfo(..)
   , PeerScanInfoMap
-  , NamedSockAddr(..)
   , getSettings
   , getSettingsD
   , updateSettings
   , modifySettings
-  , getDnsList
-  , mkResolvSeed
   , getSocksConf
   , getProxyConf
   ) where
 
+import Control.Concurrent
+import Control.Concurrent.STM
+import Control.Exception
 import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
@@ -46,6 +47,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
 
 import qualified Control.Monad.Fail as F
@@ -119,21 +121,6 @@ modifySettings setE = do
     storeSettings =<< modifyExternalRef settingsRef (\s -> let s' = f s in (s',s'))
 {-# INLINE modifySettings #-}
 
-getDnsList :: MonadHasSettings t m => m [HostName]
-getDnsList = fmap (S.toList . settingsDns) $ readExternalRef =<< getSettingsRef
-{-# INLINE getDnsList #-}
-
-mkResolvSeed :: MonadHasSettings t m => m ResolvSeed
-mkResolvSeed = do
-  dns <- getDnsList
-  liftIO $ makeResolvSeed defaultResolvConf {
-      resolvInfo = if null dns
-        then resolvInfo defaultResolvConf -- resolve via "/etc/resolv.conf" by default
-        else RCHostNames dns
-    , resolvConcurrent = True
-    }
-{-# INLINE mkResolvSeed #-}
-
 getSocksConf :: MonadHasSettings t m => m (Dynamic t (Maybe S5.SocksConf))
 getSocksConf = fmap (fmap toSocksProxy . settingsSocksProxy) <$> getSettingsD
 {-# INLINE getSocksConf #-}
@@ -195,6 +182,14 @@ class MonadBaseConstr t m => MonadAlertPoster t m | m -> t where
   -- | Get alert's event and trigger. Internal
   getAlertEventFire :: m (Event t AlertInfo, AlertInfo -> IO ())
 
+-- ===========================================================================
+--    MonadHasUI
+-- ===========================================================================
+
+class MonadIO m => MonadHasUI m where
+  -- | Internal method of getting channel where you can post actions that must be
+  -- executed in main UI thread.
+  getUiChan :: m (Chan (IO ()))
 
 -- ===========================================================================
 --    Frontend-wide types
@@ -212,10 +207,20 @@ data NamedSockAddr = NamedSockAddr {
 , namedAddrSock :: SockAddr
 } deriving (Eq, Ord)
 
-
 -- ===========================================================================
 --    Helper instances for base monad
 -- ===========================================================================
+
+-- | This env is used for seed resolvment
+type SeedResolvEnv t = (Chan (IO ()), ExternalRef t Settings)
+
+instance MonadIO m => MonadHasUI (ReaderT (SeedResolvEnv t) m) where
+  getUiChan = asks fst
+  {-# INLINE getUiChan #-}
+
+instance MonadBaseConstr t m => MonadHasSettings t (ReaderT (SeedResolvEnv t) m) where
+  getSettingsRef = asks snd
+  {-# INLINE getSettingsRef #-}
 
 instance MonadRandom m => MonadRandom (ReaderT e m) where
   getRandomBytes = lift . getRandomBytes

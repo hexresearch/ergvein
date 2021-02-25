@@ -1,6 +1,7 @@
 module Ergvein.Wallet.Monad.Client (
     MonadIndexClient(..)
   , IndexerConnection(..)
+  , IndexerStatus(..)
   , IndexerMsg(..)
   , IndexReqSelector
   , getArchivedUrlsD
@@ -16,6 +17,8 @@ module Ergvein.Wallet.Monad.Client (
   , indexersAverageLatencyWidget
   , indexersAverageLatNumWidget
   , requestIndexerWhenOpen
+  , indexerStatusUpdater
+  , indexerLastStatus
   -- * Reexports
   , SockAddr
   ) where
@@ -29,11 +32,13 @@ import Data.Map.Strict (Map)
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Time(NominalDiffTime, getCurrentTime, diffUTCTime)
+import GHC.Generics
 import Network.Socket (SockAddr)
 import Reflex
 import Reflex.ExternalRef
 
-import Ergvein.Index.Protocol.Types (Message(..))
+import Ergvein.Index.Protocol.Types (Message(..), ProtocolVersion)
+import Ergvein.Node.Resolve
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Monad.Async
@@ -47,12 +52,17 @@ import qualified Data.Set as S
 data IndexerConnection t = IndexerConnection {
   indexConAddr :: !SockAddr
 , indexConName :: !Text
+, indexConIndexerVersion :: !(Dynamic t (Maybe ProtocolVersion))
 , indexConClosedE :: !(Event t ())
 , indexConOpensE :: !(Event t ())
 , indexConIsUp :: !(Dynamic t Bool)
 , indexConRespE :: !(Event t Message)
-, indexerConHeight :: !(Dynamic t (Map Currency BlockHeight))
+, indexConHeight :: !(Dynamic t (Map Currency BlockHeight))
+, indexConStatus :: !(Dynamic t IndexerStatus)
 }
+
+data IndexerStatus = IndexerOk | IndexerNotSynced | IndexerWrongVersion !(Maybe ProtocolVersion) | IndexerMissingCurrencies
+  deriving (Eq, Ord, Show, Read, Generic)
 
 data IndexerMsg = IndexerClose | IndexerRestart | IndexerMsg Message
 
@@ -69,6 +79,8 @@ class MonadBaseConstr t m => MonadIndexClient t m | m -> t where
   getArchivedAddrsRef :: m (ExternalRef t (Set NamedSockAddr))
   -- | Internal method to get reference to indexers
   getActiveConnsRef :: m (ExternalRef t (Map SockAddr (IndexerConnection t)))
+  -- | Internal method to get last status of indexer
+  getStatusConnsRef :: m (ExternalRef t (Map SockAddr IndexerStatus))
   -- | Get deactivated urls' reference. Internal
   getInactiveAddrsRef :: m (ExternalRef t (Set NamedSockAddr))
   -- | Get reference to the minimal number of active urls. Internal
@@ -299,3 +311,17 @@ indexersAverageLatNumWidget refrE = do
     pongs = sum $ M.elems pongmap
     avg = if len == 0 then 0 else pongs / (fromIntegral $ len)
     in (len, avg)
+
+-- | Watch after status updates and save it to separate map in env to display it when connection id down
+indexerStatusUpdater :: forall t m . MonadIndexClient t m => IndexerConnection t -> m ()
+indexerStatusUpdater IndexerConnection{..} = do
+  e <- updatedWithInit =<< holdUniqDyn indexConStatus
+  r <- getStatusConnsRef
+  performEvent_ $ ffor e $ \status -> do
+    modifyExternalRef r $ \m -> (M.insert indexConAddr status m, ())
+
+-- | Get cached status of indexer even it is disconnected
+indexerLastStatus :: forall t m . MonadIndexClient t m => SockAddr -> m (Dynamic t (Maybe IndexerStatus))
+indexerLastStatus addr = do
+  md <- externalRefDynamic =<< getStatusConnsRef
+  pure $ M.lookup addr <$> md

@@ -38,12 +38,16 @@ runServerMIO :: ServerEnv -> ServerM a -> IO a
 runServerMIO e = runChanLoggingT (envLogger e) . flip runReaderT e . unServerM
 
 instance HasFiltersDB ServerM where
-  getFiltersDbVar = asks envFiltersDBContext
-  {-# INLINE getFiltersDbVar #-}
+  getFiltersDb = asks envFiltersDBContext
+  {-# INLINE getFiltersDb #-}
 
 instance HasIndexerDB ServerM where
-  getIndexerDbVar = asks envIndexerDBContext
-  {-# INLINE getIndexerDbVar #-}
+  getIndexerDb = asks envIndexerDBContext
+  {-# INLINE getIndexerDb #-}
+
+instance HasUtxoDB ServerM where
+  getUtxoDb = asks envUtxoDBContext
+  {-# INLINE getUtxoDb #-}
 
 instance HasBtcRollback ServerM where
   getBtcRollbackVar = asks envBtcRollback

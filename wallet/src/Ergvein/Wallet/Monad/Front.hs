@@ -312,7 +312,7 @@ getOpenSyncedConns cur = do
     logWrite $ "Connection " <> showt (indexConAddr con) <> " is up: " <> showt isUp
     walletHeight <- sampleDyn walletHeightD
     if not isUp then pure Nothing else do
-      indexerHeight <- fmap (M.lookup cur) $ sampleDyn $ indexerConHeight con
+      indexerHeight <- fmap (M.lookup cur) $ sampleDyn $ indexConHeight con
       logWrite $ "Wallet height " <> showt walletHeight
       logWrite $ "Indexer height " <> showt indexerHeight
       pure $ case (walletHeight, fromIntegral <$> indexerHeight) of

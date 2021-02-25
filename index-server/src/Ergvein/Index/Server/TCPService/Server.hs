@@ -52,6 +52,7 @@ tcpSrv thread = do
   unlift <- askUnliftIO
   liftIO $ withSocketsDo $ do
     addr <- resolve port host
+    putStrLn $ "Starting TCP server on " <> show addr
     sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
     bind sock (addrAddress addr)
     listen sock numberOfQueuedConnections
@@ -95,7 +96,7 @@ runConnection :: (Socket, SockAddr) -> ServerM ()
 runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
   evalResult <- runExceptT $ evalMsg
   case evalResult of
-    Right (msgs@(MVersionACK _ : _)) -> do --peer version match ours
+    Right (msgs@(MVersionACK _ : _), _) -> do --peer version match ours
       sendChan <- liftIO newTChanIO
       liftIO $ forM_ msgs $ writeMsg sendChan
       -- Spawn message sender thread
@@ -104,8 +105,25 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
       void $ fork $ broadcastLoop sendChan
       -- Start message listener
       listenLoop sendChan
-    _ -> closeConnection addr
+    Left err -> do
+      logErrorN $ "<" <> showt addr <> ">: Rejecting client on handshake phase with: " <> showt err
+      liftIO $ do
+        rawSendMsg $ MReject err
+        threadDelay 100000
+      closeConnection addr
+    Right (MReject r : _, _) -> do
+      logErrorN $ "<" <> showt addr <> ">: Rejecting client on handshake phase with: " <> showt r
+      liftIO $ do
+        rawSendMsg $ MReject r
+        threadDelay 100000
+      closeConnection addr
+    Right _ -> do
+      logErrorN $ "<" <> showt addr <> ">: Impossible! Tried to send something that is not MVersionACK or MReject to client at handshake."
+      closeConnection addr
   where
+    rawSendMsg :: Message -> IO ()
+    rawSendMsg = sendLazy sock . toLazyByteString . messageBuilder
+
     writeMsg :: TChan LBS.ByteString -> Message -> IO ()
     writeMsg destinationChan = atomically . writeTChan destinationChan . toLazyByteString . messageBuilder
 
@@ -128,17 +146,24 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
         listenLoop' = do
           evalResult <- runExceptT $ evalMsg
           case evalResult of
-            Right msgs -> do
+            Right (msgs, closeIt) -> do
               liftIO $ forM_ msgs $ writeMsg destinationChan
-              listenLoop'
+              if closeIt then do
+                logInfoN $ "<" <> showt addr <> ">: Closing connection on our side"
+                liftIO $ threadDelay 100000
+                closeConnection addr
+              else listenLoop'
             Left Reject {..} | rejectMsgCode == ZeroBytesReceived -> do
               logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
               closeConnection addr
             Left err -> do
-              logInfoN $ "failed to handle msg: " <> showt err
-              liftIO $ writeMsg destinationChan $ MReject err
+              logErrorN $ "<" <> showt addr <> ">: Rejecting client with: " <> showt err
+              liftIO $ do
+                writeMsg destinationChan $ MReject err
+                threadDelay 100000
+              closeConnection addr
 
-    evalMsg :: ExceptT Reject ServerM [Message]
+    evalMsg :: ExceptT Reject ServerM ([Message], Bool)
     evalMsg = response =<< request =<< messageHeader =<< messageHeaderBytes
       where
         messageHeaderBytesFetch = NS.recv sock 8
@@ -159,5 +184,7 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
           messageBytes <- liftIO $ NS.recv sock $ fromIntegral msgSize
           except $ mapLeft (\_-> Reject MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
 
-        response :: Message -> ExceptT Reject ServerM [Message]
-        response msg = (lift $ handleMsg addr msg) `catch` (\SomeException{} -> except $ Left $ Reject InternalServerError)
+        response :: Message -> ExceptT Reject ServerM ([Message], Bool)
+        response msg = (lift $ handleMsg addr msg) `catch` (\(e :: SomeException) -> do
+          logErrorN $ "<" <> showt addr <> ">: Rejecting peer as exception occured in while handling it message: " <> showt e
+          except $ Left $ Reject InternalServerError)

@@ -9,11 +9,12 @@ import Data.Time
 import Reflex.Dom
 import Reflex.ExternalRef
 
+import Ergvein.Node.Resolve
 import Ergvein.Text
+import Ergvein.Wallet.Indexer.Socket
 import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Native
-import Ergvein.Wallet.Indexer.Socket
 
 import qualified Data.Map.Strict as M
 
@@ -36,6 +37,7 @@ indexerNodeController initAddrs = mdo
     let reqE = select sel $ Const2 u
     conn <- initIndexerConnection nsa reqE
     modifyExternalRef connRef $ \cm -> (M.insert u conn cm, ())
+    indexerStatusUpdater conn
 
     -- Everything below thsi line is handling the closure of a connection
     -- the event the socket fires when it wants to be closed

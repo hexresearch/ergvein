@@ -152,6 +152,8 @@ instance PlatformNatives where
 
   nativeShareJpeg _ _ = pure ()
 
+  androidDetectDns = pure []
+
 getFiles :: FilePath -> IO [FilePath]
 getFiles dir = do
   _ :/ tree <- build dir

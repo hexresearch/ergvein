@@ -22,6 +22,8 @@ library
     , bytestring           >= 0.10 && < 0.11
     , conversion           >= 1.2  && < 1.3
     , containers           >= 0.6  && < 0.7
+    , ergvein-common       >= 1.0  && < 1.1
+    , text                 >= 1.2  && < 1.3
     , network              >= 2.8  && < 2.9
     , scientific           >= 0.3  && < 0.4
     , template-haskell     >= 2.14 && < 2.15
@@ -64,18 +66,27 @@ test-suite ergvein-index-protocol-test
   type: exitcode-stdio-1.0
   Default-language: Haskell2010
   hs-source-dirs: tests
-  main-is: ProtocolTest.hs
-  other-modules: ProtocolTest.Generators
+  main-is: Driver.hs
+  other-modules:
+    ProtocolTest
+    ProtocolTest.Generators
+    VersionTest
   build-depends:
       base
     , attoparsec
+    , attoparsec-binary
     , bytestring
     , containers           >= 0.6  && < 0.7
+    , ergvein-index-protocol
+    , ergvein-wallet-types
+    , tasty
+    , tasty-discover
+    , tasty-hspec
+    , tasty-hunit
+    , tasty-quickcheck
     , QuickCheck
     , quickcheck-instances
     , vector
-    , ergvein-index-protocol
-    , ergvein-wallet-types
   default-extensions:
     OverloadedStrings
     RecordWildCards

@@ -15,6 +15,7 @@ import Network.Socket (SockAddr)
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 
+import Ergvein.Node.Resolve
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
@@ -50,6 +51,7 @@ data UnauthEnv t = UnauthEnv {
 , unauth'inactiveAddrs   :: !(ExternalRef t (S.Set NamedSockAddr))
 , unauth'activeAddrs     :: !(ExternalRef t (S.Set NamedSockAddr))
 , unauth'indexConmap     :: !(ExternalRef t (Map SockAddr (IndexerConnection t)))
+, unauth'indexStatus     :: !(ExternalRef t (Map SockAddr IndexerStatus))
 , unauth'reqUrlNum       :: !(ExternalRef t (Int, Int))
 , unauth'actUrlNum       :: !(ExternalRef t Int)
 , unauth'timeout         :: !(ExternalRef t NominalDiffTime)
@@ -63,6 +65,10 @@ type UnauthM t m = ReaderT (UnauthEnv t) m
 instance Monad m => HasStoreDir (UnauthM t m) where
   getStoreDir = asks unauth'storeDir
   {-# INLINE getStoreDir #-}
+
+instance MonadIO m => MonadHasUI (UnauthM t m) where
+  getUiChan = asks unauth'uiChan
+  {-# INLINE getUiChan #-}
 
 instance MonadBaseConstr t m => MonadEgvLogger t (UnauthM t m) where
   getLogsTrigger = asks unauth'logsTrigger
@@ -91,8 +97,6 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives, HasVersion) =>
   {-# INLINE getResumeEventFire #-}
   getBackEventFire = asks unauth'backEF
   {-# INLINE getBackEventFire #-}
-  getUiChan = asks unauth'uiChan
-  {-# INLINE getUiChan #-}
   getLangRef = asks unauth'langRef
   {-# INLINE getLangRef #-}
   getAuthInfoMaybeRef = asks unauth'authRef
@@ -130,6 +134,8 @@ instance MonadBaseConstr t m => MonadIndexClient t (UnauthM t m) where
   {-# INLINE getArchivedAddrsRef #-}
   getActiveConnsRef = asks unauth'indexConmap
   {-# INLINE getActiveConnsRef #-}
+  getStatusConnsRef = asks unauth'indexStatus
+  {-# INLINE getStatusConnsRef #-}
   getInactiveAddrsRef = asks unauth'inactiveAddrs
   {-# INLINE getInactiveAddrsRef #-}
   getActiveUrlsNumRef = asks unauth'actUrlNum
@@ -163,13 +169,14 @@ newEnv settings uiChan = do
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
   -- MonadClient refs
-  rs <- runReaderT mkResolvSeed settingsRef
+  rs <- runReaderT mkResolvSeed (uiChan, settingsRef)
 
-  socadrs         <- parseSockAddrs rs (settingsActiveAddrs settings)
-  urlsArchive     <- newExternalRef . S.fromList =<< parseSockAddrs rs (settingsArchivedAddrs settings)
-  inactiveUrls    <- newExternalRef . S.fromList =<< parseSockAddrs rs (settingsDeactivatedAddrs settings)
+  socadrs         <- resolveAddrs rs defIndexerPort (settingsActiveAddrs settings)
+  urlsArchive     <- newExternalRef . S.fromList =<< resolveAddrs rs defIndexerPort (settingsArchivedAddrs settings)
+  inactiveUrls    <- newExternalRef . S.fromList =<< resolveAddrs rs defIndexerPort (settingsDeactivatedAddrs settings)
   actvieAddrsRef  <- newExternalRef $ S.fromList socadrs
   indexConmapRef  <- newExternalRef $ M.empty
+  indexStatusRef  <- newExternalRef $ M.empty
   reqUrlNumRef    <- newExternalRef $ settingsReqUrlNum settings
   actUrlNumRef    <- newExternalRef $ settingsActUrlNum settings
   timeoutRef      <- newExternalRef $ settingsReqTimeout settings
@@ -195,6 +202,7 @@ newEnv settings uiChan = do
         , unauth'inactiveAddrs    = inactiveUrls
         , unauth'activeAddrs      = actvieAddrsRef
         , unauth'indexConmap      = indexConmapRef
+        , unauth'indexStatus      = indexStatusRef
         , unauth'reqUrlNum        = reqUrlNumRef
         , unauth'actUrlNum        = actUrlNumRef
         , unauth'timeout          = timeoutRef

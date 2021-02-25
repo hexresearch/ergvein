@@ -21,6 +21,7 @@ import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import System.Directory
 
+import Ergvein.Node.Resolve
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
@@ -39,8 +40,8 @@ import Ergvein.Wallet.Node
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Settings (Settings(..))
-import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Status.Types
+import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Version
 import Ergvein.Wallet.Worker.Fees
 import Ergvein.Wallet.Worker.Height
@@ -87,6 +88,7 @@ data Env t = Env {
 , env'inactiveAddrs   :: !(ExternalRef t (S.Set NamedSockAddr))
 , env'activeAddrs     :: !(ExternalRef t (S.Set NamedSockAddr))
 , env'indexConmap     :: !(ExternalRef t (Map SockAddr (IndexerConnection t)))
+, env'indexStatus     :: !(ExternalRef t (Map SockAddr IndexerStatus))
 , env'reqUrlNum       :: !(ExternalRef t (Int, Int))
 , env'actUrlNum       :: !(ExternalRef t Int)
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
@@ -100,6 +102,10 @@ type ErgveinM t m = ReaderT (Env t) m
 instance Monad m => HasStoreDir (ErgveinM t m) where
   getStoreDir = asks env'storeDir
   {-# INLINE getStoreDir #-}
+
+instance MonadIO m => MonadHasUI (ErgveinM t m) where
+  getUiChan = asks env'uiChan
+  {-# INLINE getUiChan #-}
 
 instance MonadBaseConstr t m => MonadEgvLogger t (ErgveinM t m) where
   getLogsTrigger = asks env'logsTrigger
@@ -128,8 +134,6 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives, HasVersion) =>
   {-# INLINE getResumeEventFire #-}
   getBackEventFire = asks env'backEF
   {-# INLINE getBackEventFire #-}
-  getUiChan = asks env'uiChan
-  {-# INLINE getUiChan #-}
   getLangRef = asks env'langRef
   {-# INLINE getLangRef #-}
   getAuthInfoMaybeRef = fmapExternalRef Just =<< asks env'authRef
@@ -183,6 +187,8 @@ instance MonadBaseConstr t m => MonadIndexClient t (ErgveinM t m) where
   {-# INLINE getArchivedAddrsRef #-}
   getActiveConnsRef = asks env'indexConmap
   {-# INLINE getActiveConnsRef #-}
+  getStatusConnsRef = asks env'indexStatus
+  {-# INLINE getStatusConnsRef #-}
   getInactiveAddrsRef = asks env'inactiveAddrs
   {-# INLINE getInactiveAddrsRef #-}
   getActiveUrlsNumRef = asks env'actUrlNum
@@ -331,6 +337,7 @@ liftAuth ma0 ma = mdo
         inactiveUrls    <- getInactiveAddrsRef
         actvieAddrsRef  <- getActiveAddrsRef
         indexConmapRef  <- getActiveConnsRef
+        indexStatusRef  <- getStatusConnsRef
         reqUrlNumRef    <- getRequiredUrlNumRef
         actUrlNumRef    <- getActiveUrlsNumRef
         timeoutRef      <- getRequestTimeoutRef
@@ -384,6 +391,7 @@ liftAuth ma0 ma = mdo
               , env'inactiveAddrs = inactiveUrls
               , env'activeAddrs = actvieAddrsRef
               , env'indexConmap = indexConmapRef
+              , env'indexStatus = indexStatusRef
               , env'reqUrlNum = reqUrlNumRef
               , env'actUrlNum = actUrlNumRef
               , env'timeout = timeoutRef

@@ -60,6 +60,7 @@ in (self: super: let
     ergvein-wallet-filters = ingnoreGarbage super.ergvein-wallet-filters;
     ergvein-wallet-native = ingnoreGarbage super.ergvein-wallet-native;
     ergvein-wallet-types = ingnoreGarbage super.ergvein-wallet-types;
+    ergvein-node-discovery = ingnoreGarbage super.ergvein-node-discovery;
     ergvein-wallet-version = ingnoreGarbage super.ergvein-wallet-version;
     golomb-rice = ingnoreGarbage super.golomb-rice;
     reflex-dom-retractable = ingnoreGarbage super.reflex-dom-retractable;
