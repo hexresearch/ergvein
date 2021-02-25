@@ -126,7 +126,7 @@ in {
       enable = true;
       description = "ergo node";
       script = ''
-        ${ergo-cfg.package}/bin/ergo-node ${if ergo-cfg.testnet then "--testnet" else "--mainnet"} --config ${ergo-cfg.configPath}
+        ${ergo-cfg.package}/bin/ergo ${if ergo-cfg.testnet then "--testnet" else "--mainnet"} --config ${ergo-cfg.configPath}
       '';
       serviceConfig = {
           Restart = "always";

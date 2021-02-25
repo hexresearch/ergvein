@@ -5,10 +5,12 @@ let
   cfg = config.services.ergvein;
   addressType = import ../service/address-type.nix { inherit lib; };
 in {
+  disabledModules = [ "services/networking/ergo.nix" ];
   ##### Depedendant services
   imports = [
     ../service/bitcoin.nix
     ../service/ergvein-indexer.nix
+    ../service/ergo.nix
   ];
 
   ##### interface. here we define the options that users of our service can specify
