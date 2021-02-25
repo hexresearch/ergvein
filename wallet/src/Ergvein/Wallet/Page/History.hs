@@ -34,23 +34,35 @@ historyPage cur = do
       navbar = if isAndroid
         then navbarWidgetAndroid cur thisWidget
         else navbarWidget cur thisWidget NavbarHistory
-  goE <- wrapperNavbar False title thisWidget navbar $ historyTableWidget cur
+  goE <- wrapperGeneric False title thisWidget (Just navbar) "history-page" $ historyTableWidget cur
   void $ nextWidget $ ffor goE $ \tr -> Retractable {
       retractableNext = transactionInfoPage cur tr
     , retractablePrev = thisWidget
     }
 
+-- Dynamic t (m a) -> m (Dynamic t a)
+
 historyTableWidget :: MonadFront t m => Currency -> m (Event t TransactionView)
-historyTableWidget cur = divClass "history-table" $ case cur of
+historyTableWidget cur = case cur of
   BTC -> do
     (txsD, hghtD) <- transactionsGetting BTC
     let txMapD = Map.fromList . L.zip [(0 :: Int)..] <$> txsD
-    mapED <- listWithKey txMapD (\_ -> historyTableRowD BTC hghtD)
-    let txClickE = switchDyn $ mergeMap <$> mapED
-    pure $ fmapMaybe id $ headMay . Map.elems <$> txClickE
+    resD <- widgetHoldDyn $ ffor txMapD $ \txMap -> if Map.null txMap
+      then do
+        noTxsPlaceholder
+        pure never
+      else do
+        mapED <- divClass "history-table" $ listWithKey txMapD (\_ -> historyTableRowD BTC hghtD)
+        let txClickE = switchDyn $ mergeMap <$> mapED
+        pure $ fmapMaybe id $ headMay . Map.elems <$> txClickE
+    pure $ switchDyn resD
   ERGO -> do
-    txClickE <- traverse (historyTableRow ERGO) []
+    txClickE <- divClass "history-table" $ traverse (historyTableRow ERGO) []
     pure $ leftmost txClickE
+
+noTxsPlaceholder :: MonadFront t m => m ()
+noTxsPlaceholder = divClass "history-empty-placeholder" $ do
+  par $ localizedText HistoryNoTxs
 
 historyTableRow :: MonadFront t m => Currency -> TransactionView -> m (Event t TransactionView)
 historyTableRow cur tr@TransactionView{..} = divButton "history-table-row" $ do
