@@ -1,3 +1,10 @@
-* Restore more stable now #790
-* Autocomplete for restore #785
-* Migrations for wallet file #781
+* Bug fixes #840
+* DNS detector #861
+* Indexer page improvements #859 #851 #854
+* Don't use unsynced or misbehaving indexers #844
+* Reduce lags on CPU with multicores #839
+* New fee estimation #827
+* Display balance in fiat #828
+* Resend outgoing transactions periodically #826
+* Request mempool on startup #824
+* Sending RBF transactions #817
