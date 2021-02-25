@@ -33,3 +33,6 @@ unit_difficulty5 = testDifficulty 0x04923456 (-0x12345600)
 
 unit_difficulty6 :: IO ()
 unit_difficulty6 = testDifficulty 0x04123456 0x12345600
+
+unit_difficulty7 :: IO ()
+unit_difficulty7 = testDifficulty 107976917 122702199259136

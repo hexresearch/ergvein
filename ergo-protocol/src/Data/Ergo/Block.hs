@@ -5,8 +5,11 @@ module Data.Ergo.Block(
   , Digest33(..)
   , ParamVotes(..)
   , BlockHeader(..)
+  , hashHeaderBytes
   ) where
 
+import Control.Monad
+import Crypto.Hash (hashWith, Blake2b_256(..))
 import Data.ByteString (ByteString)
 import Data.Ergo.Autolykos
 import Data.Ergo.Difficulty
@@ -20,12 +23,18 @@ import Data.Time.Clock.POSIX
 import Data.Word
 import GHC.Generics
 
+import qualified Data.ByteArray as BA
+import qualified Data.ByteString.Base16 as B16
+
+import Ergvein.Text
+
 -- | Protocol version, for now always 1
 type BlockVersion = Word8
 
 -- | Hash of something length of 32 bytes
 newtype Digest32 = Digest32 { unDigest32 :: ByteString }
-  deriving (Generic, Show, Read, Eq)
+  deriving (Generic, Eq)
+  deriving (Show, Read) via ShowHex ByteString
 
 instance Persist Digest32 where
   put = putByteString . unDigest32
@@ -38,7 +47,8 @@ type ADDigest = Digest33
 
 -- | Hash of something length of 33 bytes
 newtype Digest33 = Digest33 { unDigest33 :: ByteString }
-  deriving (Generic, Show, Read, Eq)
+  deriving (Generic, Eq)
+  deriving (Show, Read) via ShowHex ByteString
 
 instance Persist Digest33 where
   put = putByteString . unDigest33
@@ -76,6 +86,10 @@ data BlockHeader = BlockHeader {
 , powSolution      :: !AutolykosSolution -- ^ solution for the proof-of-work puzzle
 } deriving (Generic, Show, Read, Eq)
 
+-- Header id is blake2b256 of its bytes
+hashHeaderBytes :: ByteString -> ByteString
+hashHeaderBytes = B16.encode . BA.convert . hashWith Blake2b_256
+
 instance Persist BlockHeader where
   put BlockHeader{..} = do
     put version
@@ -83,24 +97,42 @@ instance Persist BlockHeader where
     put adProofsRoot
     put transactionsRoot
     put stateRoot
-    encodeVlq $ (floor . realToFrac . utcTimeToPOSIXSeconds $ timestamp :: Word64)
-    put nBits
+    encodeVlq $ (floor . realToFrac . (* 1000) . utcTimeToPOSIXSeconds $ timestamp :: Word64)
     put extensionRoot
+    put nBits
     encodeVlq height
     put votes
-    put powSolution
+    when (version >= 2) $
+      -- Block version V2 specific field, contains length of additional data
+      put (0 :: Word8)
+    case version of
+      1 -> put powSolution
+      2 -> put (AutolykosV2 powSolution)
+      _ -> fail ("Not implemented serialization of header version " <> show version)
   {-# INLINE put #-}
 
-  get = BlockHeader
-    <$> get
-    <*> get
-    <*> get
-    <*> get
-    <*> get
-    <*> (posixSecondsToUTCTime . (/ 1000) . fromIntegral <$> (decodeVlq :: Get Word64))
-    <*> get
-    <*> get
-    <*> decodeVlq
-    <*> get
-    <*> get
+  get = do
+    version          <- get
+    parentId         <- get
+    adProofsRoot     <- get
+    transactionsRoot <- get
+    stateRoot        <- get
+    timestamp        <- (posixSecondsToUTCTime . (/ 1000) . fromIntegral <$> (decodeVlq :: Get Word64))
+    extensionRoot    <- get
+    nBits            <- get
+    height           <- decodeVlq
+    votes            <- get
+    case version of
+      1 -> do
+          powSolution      <- get
+          pure BlockHeader {..}
+      2 -> do
+          -- For block version >= 2, a new byte encodes length of possible new fields.
+          -- If this byte > 0, we read new fields but do nothing, as semantics of the fields is not known.
+          newFieldsSize :: Word8 <- get
+          when (newFieldsSize > 0) $ do
+            void $ getBytes (fromIntegral newFieldsSize)
+          powSolution      <- unAutolykosV2 <$> get
+          pure BlockHeader {..}
+      _ -> fail ("Unsupported header version " <> show version)
   {-# INLINE get #-}
