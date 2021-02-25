@@ -25,7 +25,7 @@ getNodeAddress :: Options -> String
 getNodeAddress Options{..} = fromMaybe "127.0.0.1" $ unHelpful nodeAddress
 
 getNodePort :: Options -> Int
-getNodePort Options{..} = fromMaybe (if unHelpful testnet then 19006 else 9006) $ unHelpful nodePort
+getNodePort Options{..} = fromMaybe (if unHelpful testnet then 19030 else 9030) $ unHelpful nodePort
 
 main :: IO ()
 main = do
