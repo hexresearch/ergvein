@@ -918,6 +918,15 @@ buttonsToggleCss = do
 
 historyPageCss :: Css
 historyPageCss = do
+  ".history-page" ? do
+    display flex
+  ".history-table" ? do
+    flexGrow 1
+  ".history-empty-placeholder" ? do
+    alignSelf center
+    flexGrow 1
+    textAlign center
+    color hoverColor
   ".history-table-header" ? do
     marginTop (px 0)
     borderTop solid (px 2) black
