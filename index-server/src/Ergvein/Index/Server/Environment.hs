@@ -1,3 +1,4 @@
+
 {-# OPTIONS_GHC -Wall #-}
 module Ergvein.Index.Server.Environment where
 
@@ -190,15 +191,9 @@ logOnException threadName = handle logE
               fdb <- getFiltersDb
               idb <- getIndexerDb
               udb <- getUtxoDb
-              closeLevelDB fdb
-              closeLevelDB idb
-              closeLevelDB udb
-              fdb' <- openDb False DBFilters cfgFiltersDbPath
-              idb' <- openDb False DBIndexer cfgIndexerDbPath
-              udb' <- openDb False DBUtxo    cfgUtxoDbPath
-              moveLevelDbHandle fdb' fdb
-              moveLevelDbHandle idb' idb
-              moveLevelDbHandle udb' udb
+              reopenLevelDB fdb
+              reopenLevelDB idb
+              reopenLevelDB udb
               logInfoN' "Reopened the db. Resume as usual"
             else
               logErrorN' $ "Killed by IOException. " <> showt ioe
