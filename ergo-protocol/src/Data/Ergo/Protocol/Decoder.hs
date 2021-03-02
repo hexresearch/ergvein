@@ -155,11 +155,12 @@ parseIP = parseIPN =<< anyWord8
 parseIPN :: Word8 -> Get IP
 parseIPN l
    | l == 4 = IPV4 <$> anyWord32le
+   | l == 8 = IPV4 <$> anyWord32le
    | l == 16 = IPV6 <$> anyWord32le <*> anyWord32le <*> anyWord32le <*> anyWord32le
    | otherwise = fail $ "Unknown network address with size " <> show l
 
 parseNetAddr :: Get NetAddr
-parseNetAddr = NetAddr <$> parseIP <*> anyWord32be
+parseNetAddr = NetAddr <$> parseIP <*> vlqWord32
 
 parseFlag :: Get Bool
 parseFlag = do
