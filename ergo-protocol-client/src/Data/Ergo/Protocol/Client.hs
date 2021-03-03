@@ -53,6 +53,7 @@ peekMessage net initRef = do
   isinit <- liftIO $ readIORef initRef
   if isinit then do
     bs <- C.peekAll
+    -- liftIO $ putStrLn $ "HANDSHAKE: " <> (show . B16.encode) bs
     h <- either fail pure $ decodeHandshake bs
     liftIO $ writeIORef initRef False
     pure $ MsgHandshake h

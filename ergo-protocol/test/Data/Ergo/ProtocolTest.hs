@@ -2,21 +2,23 @@ module Data.Ergo.ProtocolTest where
 
 import Control.Monad
 import Data.ByteString.Builder
+import Data.Either
+import Data.Ergo.Block
+import Data.Ergo.Modifier
 import Data.Ergo.Protocol
 import Data.Ergo.Protocol.Decoder
 import Data.Ergo.Protocol.Encoder
-import Data.Ergo.Block
-import Data.Ergo.Modifier
 import Data.Int
-import Data.Word
 import Data.Maybe
 import Data.Persist
 import Data.Text (Text)
 import Data.Text.Encoding
 import Data.Vector (Vector)
+import Data.Word
 import Test.QuickCheck.Instances.ByteString ()
 import Test.QuickCheck.Instances.Vector ()
 import Test.QuickCheck.Utf8
+import Test.Tasty.HUnit
 import Test.Tasty.Hspec
 import Test.Tasty.QuickCheck
 
@@ -32,9 +34,19 @@ import Debug.Trace
 traceShowIdHex :: BS.ByteString -> BS.ByteString
 traceShowIdHex a = traceShow (B16.encode a) a
 
--- prop_encodeDecodeHandshake :: Handshake -> Bool
--- prop_encodeDecodeHandshake msg = decode (encode msg) == Right msg
---
+unit_handshakeParse1 :: IO ()
+unit_handshakeParse1 = do
+    let mh = runGet handshakeParser handshakeBS
+    h <- either (assertFailure . ("Handshake parse: " <>)) pure mh
+    -- print h
+    pure ()
+  where
+    handshakeBS = fst $ B16.decode $ "e9f4839dff2e076572676f726566030306126572676f2d6d61696e6e65742d342e302e3001087f000001bc4603100400010001030d01000204fcb48fcdb2b3b4850c02067f000001c646"
+
+
+prop_encodeDecodeHandshake :: Handshake -> Bool
+prop_encodeDecodeHandshake msg = decode (encode msg) == Right msg
+
 -- prop_encodeDecodeSyncInfo :: SyncInfo -> Bool
 -- prop_encodeDecodeSyncInfo msg = decode (encode $ TestnetMessage $ MsgSyncInfo msg) == Right (TestnetMessage $ MsgSyncInfo msg)
 

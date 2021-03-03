@@ -110,7 +110,7 @@ encodeIP (IPV4 a) = word8 4 >> word32LE a
 encodeIP (IPV6 a b c d) = word8 16 >> word32LE a >> word32LE b >> word32LE c >> word32LE d
 
 encodeNetAddr :: NetAddr -> Put ()
-encodeNetAddr (NetAddr ip p) = encodeIP ip >> word32BE p
+encodeNetAddr (NetAddr ip p) = encodeIP ip >> word32Vlq p
 
 encodeVector :: (a -> Put ()) -> Vector a -> Put ()
 encodeVector f v = word64Vlq l >> traverse_ f (V.take (fromIntegral l) v)
