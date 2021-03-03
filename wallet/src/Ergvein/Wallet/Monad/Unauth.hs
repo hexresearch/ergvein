@@ -27,6 +27,7 @@ import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Version
 import Ergvein.Wallet.Worker.Indexer
+import Ergvein.Wallet.Worker.NodeDiscovery
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -211,6 +212,7 @@ newEnv settings uiChan = do
         , unauth'activateIndexEF  = indexEF
         }
   flip runReaderT env $ do
+    ensureErgveinNetwork
     indexerNodeController socadrs
   pure env
 
