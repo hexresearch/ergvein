@@ -166,7 +166,7 @@ executable ergvein-index-server
       app
   main-is:             Main.hs
   -- ghc-options:         -threaded -rtsopts -O2 "-with-rtsopts= -N -G1 -I0"
-  ghc-options:         -O2 -threaded -rtsopts "-with-rtsopts= -N -A64m -AL256m -I0 -T"
+  ghc-options:         -O2 -threaded -rtsopts "-with-rtsopts= -N -A64m -AL256m -M8192m -I0 -T"
   build-depends:
       base
     , bitcoin-api              == 0.13.*
