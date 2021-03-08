@@ -22,13 +22,13 @@ import Data.Typeable
 import Network.HTTP.Client.TLS
 import Prometheus (MonadMonitor(..))
 import System.IO
+import Text.InterpolatedString.Perl6 (qc)
 
 import Ergvein.Text
 import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import Ergvein.Index.Server.Config
-import Ergvein.Index.Server.DB
 import Ergvein.Index.Server.DB.Monad
-import Ergvein.Index.Server.DB.Wrapper
+import Ergvein.Index.Server.DB.Schema.Utxo (initTxHeightTable, initTxLastHeightTable)
 import Ergvein.Index.Server.TCPService.BTC
 import Ergvein.Index.Server.Dependencies
 
@@ -36,10 +36,11 @@ import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 import qualified Network.Haskoin.Constants   as HK
 import qualified Network.HTTP.Client         as HC
 
+import Database.SQLite.Simple
+
 data TxIndexEnv = TxIndexEnv
     { envServerConfig             :: !Config
     , envLogger                   :: !(Chan (Loc, LogSource, LogLevel, LogStr))
-    , envUtxoDBContext            :: !LevelDB
     , envBitcoinNodeNetwork       :: !HK.Network
     , envClientManager            :: !HC.Manager
     , envBitcoinClient            :: !BitcoinApi.Client
@@ -49,6 +50,7 @@ data TxIndexEnv = TxIndexEnv
     -- , envBtcRollback              :: !(TVar (Seq.Seq RollbackRecItem))
     , envShutdownFlag             :: !(TVar Bool)
     , envShutdownChannel          :: !(TChan Bool)
+    , envTxIndexConn              :: !Connection
     }
 
 newtype TxIndexM a = TxIndexM { unTxIndexM :: ReaderT TxIndexEnv (LoggingT IO) a }
@@ -66,9 +68,9 @@ instance MonadBaseControl IO TxIndexM where
 runTxIndexMIO :: TxIndexEnv -> TxIndexM a -> IO a
 runTxIndexMIO e = runChanLoggingT (envLogger e) . flip runReaderT e . unTxIndexM
 
-instance HasUtxoDB TxIndexM where
-  getUtxoDb = asks envUtxoDBContext
-  {-# INLINE getUtxoDb #-}
+instance HasTxIndexConn TxIndexM where
+  getTxIndexConn = asks envTxIndexConn
+  {-# INLINE getTxIndexConn #-}
 
 instance HasBitcoinNodeNetwork TxIndexM where
   currentBitcoinNetwork = asks envBitcoinNodeNetwork
@@ -132,10 +134,12 @@ withTxIndexEnv useTcp btcClient cfg@Config{..} action = do
           unless b' next
       pure btcsock
       else dummyBtcSock bitcoinNodeNetwork
-    withDb True DBUtxo cfgUtxoDbPath $ \utxoDBCntx -> action TxIndexEnv
+    conn <- initConn cfgUtxoDbPath
+    -- conn <- initConn "db/txs.db"
+
+    action TxIndexEnv
       { envServerConfig            = cfg
       , envLogger                  = logger
-      , envUtxoDBContext           = utxoDBCntx
       , envBitcoinNodeNetwork      = bitcoinNodeNetwork
       , envClientManager           = tlsManager
       , envBitcoinClient           = btcClient
@@ -145,7 +149,26 @@ withTxIndexEnv useTcp btcClient cfg@Config{..} action = do
       -- , envBtcRollback             = btcSeqVar
       , envShutdownFlag            = shutdownVar
       , envShutdownChannel         = shutdownChan
+      , envTxIndexConn             = conn
       }
+
+initConn :: MonadIO m => FilePath -> m Connection
+initConn utxoDbPath = liftIO $ do
+  conn <- open ":memory:"
+  initTxHeightTable conn
+  initTxLastHeightTable conn
+  execute_ conn "PRAGMA synchronous=OFF;"
+  execute_ conn "pragma journal_mode = WAL;"
+
+  connDisk <- open utxoDbPath
+  initTxHeightTable connDisk
+  initTxLastHeightTable connDisk
+  execute_ connDisk "PRAGMA synchronous=OFF;"
+  execute_ connDisk "pragma journal_mode = WAL;"
+
+  execute_ conn [qc|attach '{utxoDbPath}' as disk|]
+  pure conn
+
 
 -- | Log exceptions at Error severity
 logOnException :: (

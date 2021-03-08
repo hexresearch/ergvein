@@ -10,6 +10,7 @@ import Control.Monad.Catch
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Reader
+import Data.Maybe
 import Data.Time
 import System.DiskSpace
 import System.Posix.Signals
@@ -24,15 +25,23 @@ import Ergvein.Index.Server.TCPService.Conversions()
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import Text.InterpolatedString.Perl6 (qc)
+import Database.SQLite.Simple
 
 import qualified Data.Text.IO as T
 import Ergvein.Index.Server.BlockchainScanning.Bitcoin (buildTxIndex, actualHeight)
 
 txIndexApp :: (MonadUnliftIO m, MonadLogger m) => BlockHeight -> Int -> TxIndexEnv -> m ()
-txIndexApp btcStartHeight threadNum env = do
+txIndexApp defBtcStartHeight threadNum env = do
   logInfoN $ "Server started at:" <> (showt . cfgServerPort $ envServerConfig env)
   _ <- liftIO $ installHandler sigTERM (Catch onShutdown) Nothing
   _ <- liftIO $ installHandler sigINT  (Catch onShutdown) Nothing
+  let conn = envTxIndexConn env
+  mh <- liftIO $ fmap (fmap fromOnly . listToMaybe) $ query conn [qc|
+      select tlh_height from disk.tx_last_height
+      where tlh_cur = ? |] $ Only $ fromEnum BTC
+
+  let btcStartHeight = fromMaybe defBtcStartHeight mh
   liftIO $ runTxIndexMIO env $ if threadNum == 1
     then btcTxIndexBuilder btcStartHeight Nothing
     else do
@@ -66,16 +75,16 @@ btcTxIndexBuilder hbeg mhend = indexIteration hbeg
     indexIteration :: BlockHeight -> TxIndexM ()
     indexIteration current = do
       shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
-      unless shutdownFlag $ do
+      if shutdownFlag then dumpTxIndex else do
         headBlockHeight <- actualHeight
         let b = maybe True (current <=) mhend
-        when (current <= headBlockHeight && b) $ do
+        if (current <= headBlockHeight && b) then do
           tryBlockInfo <- try $ blockIteration headBlockHeight current
           enoughSpace <- isEnoughSpace
           flg <- liftIO . readTVarIO =<< getShutdownFlag
           case tryBlockInfo of
             Right (txIndex@TxIndexInfo {..})
-              | flg -> logInfoN $ "Told to shut down"
+              | flg -> logInfoN "Told to shut down" >> dumpTxIndex
               | enoughSpace && not flg -> do
                 addTxIndexInfo BTC txIndex
                 indexIteration (succ current)
@@ -84,12 +93,33 @@ btcTxIndexBuilder hbeg mhend = indexIteration hbeg
             Left (SomeException err) -> do
               logInfoN $ "Error scanning " <> showt current <> " BTC " <> showt err
               indexIteration (current - 1)
+          else dumpTxIndex
+
+dumpTxIndex :: TxIndexM ()
+dumpTxIndex = do
+  now <- liftIO $ getCurrentTime
+  logInfoN $ "["<> showt (formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S" now) <> "] Dumping tx index to disk"
+  conn <- asks envTxIndexConn
+  liftIO $ execute_ conn [qc|
+    insert or replace into disk.tx_height (th_hash, th_height)
+    select th_hash, th_height from tx_height;
+
+    |]
+  liftIO $ execute_ conn [qc|
+    insert or replace into disk.tx_last_height (tlh_cur, tlh_height)
+    select tlh_cur,tlh_height from tx_last_height;
+    |]
+  done <- liftIO getCurrentTime
+  logInfoN $ "["<> showt (formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S" done) <> "] Done. Closing"
 
 isEnoughSpace :: TxIndexM Bool
-isEnoughSpace = do
-  path <- cfgUtxoDbPath <$> serverConfig
-  availSpace <- liftIO $ getAvailSpace path
-  setGauge availableSpaceGauge $ fromIntegral (availSpace - requiredAvailSpace)
-  pure $ requiredAvailSpace <= availSpace
- where
-  requiredAvailSpace = 2^(30::Int) -- 1Gb
+isEnoughSpace = pure True
+
+-- isEnoughSpace :: TxIndexM Bool
+-- isEnoughSpace = do
+--   path <- cfgUtxoDbPath <$> serverConfig
+--   availSpace <- liftIO $ getAvailSpace path
+--   setGauge availableSpaceGauge $ fromIntegral (availSpace - requiredAvailSpace)
+--   pure $ requiredAvailSpace <= availSpace
+--  where
+--   requiredAvailSpace = 2^(30::Int) -- 1Gb

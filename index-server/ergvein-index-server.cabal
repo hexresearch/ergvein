@@ -29,9 +29,7 @@ library
     Ergvein.Index.Server.DB.Schema.Indexer
     Ergvein.Index.Server.DB.Schema.Utxo
     Ergvein.Index.Server.DB.Serialize
-    Ergvein.Index.Server.DB.Serialize.Class
     Ergvein.Index.Server.DB.Utils
-    Ergvein.Index.Server.DB.Wrapper
     Ergvein.Index.Server.Dependencies
     Ergvein.Index.Server.Environment
     Ergvein.Index.Server.Metrics
@@ -84,8 +82,8 @@ library
       , ilist                    >= 0.3     &&  < 0.4
       , immortal                 >= 0.3     &&  < 0.4
       , immortal-worker          >= 0.1     &&  < 0.2
+      , interpolatedstring-perl6 >= 1.0     &&  < 1.1
       , lens                     >= 4.17    &&  < 4.18
-      , leveldb-haskell          >= 0.6     &&  < 0.7
       , lifted-async             >= 0.10    &&  < 0.11
       , lifted-base              >= 0.2     &&  < 0.3
       , monad-control            >= 1.0     &&  < 1.1
@@ -119,6 +117,7 @@ library
       , wai-middleware-prometheus >= 1.0    &&  < 1.1
       , warp                     >= 3.2     &&  < 3.3
       , yaml                     >= 0.11    &&  < 0.12
+      , sqlite-simple
       , coinbase-client
       , ergo-api
       , ergvein-common
@@ -134,18 +133,22 @@ library
   default-language:    Haskell2010
   default-extensions:
     BangPatterns
+    ConstraintKinds
     DataKinds
-    DeriveFunctor
-    DeriveFoldable
-    DeriveTraversable
     DeriveDataTypeable
+    DeriveFoldable
+    DeriveFunctor
     DeriveGeneric
+    DeriveTraversable
+    DuplicateRecordFields
     FlexibleContexts
     FlexibleInstances
     FunctionalDependencies
     GADTs
     GeneralizedNewtypeDeriving
+    LambdaCase
     OverloadedStrings
+    QuantifiedConstraints
     QuasiQuotes
     RankNTypes
     RecordWildCards
@@ -156,10 +159,7 @@ library
     TypeApplications
     TypeFamilies
     TypeOperators
-    DuplicateRecordFields
-    QuantifiedConstraints
     UndecidableInstances
-    LambdaCase
 
 executable ergvein-index-server
   hs-source-dirs:
@@ -177,6 +177,32 @@ executable ergvein-index-server
     , text
     , time
 
+  default-language:    Haskell2010
+  default-extensions:
+    RankNTypes
+    RecordWildCards
+
+executable ergvein-index-foo
+  hs-source-dirs:
+      app
+  main-is:             Test.hs
+  -- ghc-options:         -threaded -rtsopts -O2 "-with-rtsopts= -N -G1 -I0"
+  ghc-options:         -O2 -threaded -rtsopts "-with-rtsopts= -N -A64m -AL256m -I0 -T"
+  build-depends:
+      base
+    , bitcoin-api              == 0.13.*
+    , ergvein-index-server
+    , immortal
+    , monad-logger
+    , optparse-applicative     >= 0.14 && <0.15
+    , text
+    , time
+    , sqlite-simple
+    , interpolatedstring-perl6
+    , bytestring
+    , ergvein-wallet-types
+    , cereal
+    , ergvein-common
   default-language:    Haskell2010
   default-extensions:
     RankNTypes

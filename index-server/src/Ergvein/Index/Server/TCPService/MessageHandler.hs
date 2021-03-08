@@ -9,10 +9,8 @@ import Data.List (foldl')
 import Network.Socket
 
 import Ergvein.Index.Protocol.Types as IPT
-import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.DB.Schema.Filters
-import Ergvein.Index.Server.DB.Utils
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
@@ -30,15 +28,16 @@ import qualified Data.Set as S
 import qualified Data.Vector as V
 
 getBlockMetaSlice :: Currency -> BlockHeight -> BlockHeight -> ServerM [BlockInfoRec]
-getBlockMetaSlice currency startHeight amount = do
-  db <- getFiltersDb
-  let start = BlockInfoRecKey currency $ startHeight
-      startBinary = blockInfoRecKey (currency, startHeight)
-      end = BlockInfoRecKey currency $ startHeight + amount
-
-  slice <- safeEntrySlice currency db startBinary start end
-
-  pure $ snd <$> slice
+getBlockMetaSlice _ _ _ = pure []
+-- getBlockMetaSlice currency startHeight amount = do
+  -- db <- getFiltersDb
+  -- let start = BlockInfoRecKey currency $ startHeight
+  --     startBinary = blockInfoRecKey (currency, startHeight)
+  --     end = BlockInfoRecKey currency $ startHeight + amount
+  --
+  -- slice <- safeEntrySlice currency db startBinary start end
+  --
+  -- pure $ snd <$> slice
 
 handleMsg :: SockAddr -> Message -> ServerM ([Message], Bool) -- bool is to close connection
 handleMsg _ (MPing msg) = pure ([MPong msg], False)

@@ -53,6 +53,8 @@ import Text.Printf
 import qualified Data.Text as T
 
 -- | Supported currencies
+-- Do not change the order of constructors
+-- the index (fromEnum) is used as and ID
 data Currency = BTC | ERGO
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Flat, Serialize)
 $(deriveJSON aesonOptions ''Currency)

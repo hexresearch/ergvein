@@ -37,18 +37,6 @@ instance MonadBaseControl IO ServerM where
 runServerMIO :: ServerEnv -> ServerM a -> IO a
 runServerMIO e = runChanLoggingT (envLogger e) . flip runReaderT e . unServerM
 
-instance HasFiltersDB ServerM where
-  getFiltersDb = asks envFiltersDBContext
-  {-# INLINE getFiltersDb #-}
-
-instance HasIndexerDB ServerM where
-  getIndexerDb = asks envIndexerDBContext
-  {-# INLINE getIndexerDb #-}
-
-instance HasUtxoDB ServerM where
-  getUtxoDb = asks envUtxoDBContext
-  {-# INLINE getUtxoDb #-}
-
 instance HasBtcRollback ServerM where
   getBtcRollbackVar = asks envBtcRollback
   {-# INLINE getBtcRollbackVar #-}
@@ -64,6 +52,18 @@ instance HasBitcoinNodeNetwork ServerM where
 instance HasServerConfig ServerM where
   serverConfig = asks envServerConfig
   {-# INLINE serverConfig #-}
+
+instance HasFiltersConn ServerM where
+  getFiltersConn = asks envFiltersConn
+  {-# INLINE getFiltersConn #-}
+
+instance HasUtxoConn ServerM where
+  getUtxoConn = asks envUtxoConn
+  {-# INLINE getUtxoConn #-}
+
+instance HasTxIndexConn ServerM where
+  getTxIndexConn = asks envTxIndexConn
+  {-# INLINE getTxIndexConn #-}
 
 instance BitcoinApiMonad ServerM where
   nodeRpcCall f = liftIO . f =<< asks envBitcoinClient

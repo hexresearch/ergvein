@@ -20,18 +20,10 @@ import qualified Network.Bitcoin.Api.Client  as BitcoinApi
 data Options = Options {
   -- | Which command to execute
   optsCommand           :: Command
-  -- |Def: False. Drop filters db when versions changed or not
-, optsOverrideFilters   :: Bool
-  -- |Def: False. Drop indexers db when versions changed or not
-, optsOverrideIndexers  :: Bool
-  -- |Def: False. Drop utxo db when versions changed or not
-, optsOverrideUtxo      :: Bool
   -- |Def: False. Use TCP connection to the node
 , optsBtcTcpConn        :: Bool
   -- |Def: False. Start only BC-scanning threads
 , optsOnlyScan          :: Bool
-  -- |Def: False. Whether to skip BTC hack or not
-, optsSkipBtcHack       :: Bool
   -- | Starting height for btc
 , optsBtcStartHeight    :: Word64
 }
@@ -54,12 +46,8 @@ options = Options
        command "listen" (info (listenCmd <**> helper) $ progDesc "Start server") <>
        command "clean-known-peers" (info (cleanKnownPeers <**> helper) $ progDesc "resetting peers") <>
        command "build-index" (info (indexCmd <**> helper) $ progDesc "Build btc index")
-  ) <*> flag False True (long "override-ver-filters" <> help "Override Filters db version" )
-    <*> flag False True (long "override-ver-indexer" <> help "Override Indexer's db version" )
-    <*> flag False True (long "override-ver-utxo" <> help "Override Utxo's db version" )
-    <*> flag False True (long "tcp-node" <> help "Use TCP connection to the node instead of RPC" )
+  ) <*> flag False True (long "tcp-node" <> help "Use TCP connection to the node instead of RPC" )
     <*> flag False True (long "only-scan" <> help "Start only BC-scanning threads" )
-    <*> flag False True (long "no-btc-hack" <> help "Skip BTC hack which starts the scan one block early each time" )
     <*> option wordReader (long "btc-start" <> help "BTC starting height" <> value 0)
   where
     cleanKnownPeers = CleanKnownPeers
@@ -85,12 +73,12 @@ startServer Options{..} = case optsCommand of
       T.putStrLn $ pack "Server starting"
       cfg@Config{..} <- loadConfig cfgPath
       BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
-        runStdoutLoggingT $ withNewServerEnv optsBtcTcpConn optsOverrideFilters optsOverrideIndexers optsOverrideUtxo client cfg $ \env -> do
-          app optsOnlyScan optsSkipBtcHack cfg env
+        runStdoutLoggingT $ withNewServerEnv optsBtcTcpConn client cfg $ \env -> do
+          app optsOnlyScan cfg env
     CleanKnownPeers cfgPath -> do
       cfg@Config{..} <- loadConfig cfgPath
       BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
-        runStdoutLoggingT $ withNewServerEnv optsBtcTcpConn optsOverrideFilters optsOverrideIndexers optsOverrideUtxo client cfg $ \env -> do
+        runStdoutLoggingT $ withNewServerEnv optsBtcTcpConn client cfg $ \env -> do
           liftIO $ runServerMIO env emptyKnownPeers
       T.putStrLn $ pack "knownPeers cleared"
     BuildBtcIndex cfgPath n -> do

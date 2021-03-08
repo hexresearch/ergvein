@@ -1,4 +1,4 @@
-module Ergvein.Index.Server.Dependencies 
+module Ergvein.Index.Server.Dependencies
  ( HasBitcoinNodeNetwork
  , HasDiscoveryRequisites
  , HasShutdownFlag

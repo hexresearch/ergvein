@@ -5,58 +5,26 @@ module Ergvein.Index.Server.DB.Schema.Filters
   , ScannedHeightRec(..)
   , BlockInfoRecKey(..)
   , BlockInfoRec(..)
-  , scannedHeightKey
-  , blockInfoRecKey
-  , unPrefixedKey
-  , schemaVersionRecKey
-  , schemaVersion
+  , initBlockInfoRecTable
+  , initScannedHeightTable
   ) where
 
-import Crypto.Hash.SHA256
-import Data.Attoparsec.Binary
-import Data.Attoparsec.ByteString as Parse
 import Data.ByteString (ByteString)
 import Data.ByteString.Short (ShortByteString)
-import Data.FileEmbed
 import GHC.Generics
 import Data.Serialize (Serialize)
 
-import Ergvein.Index.Server.DB.Utils
-import Ergvein.Index.Server.DB.Serialize.Class
+import Database.SQLite.Simple
+import Text.InterpolatedString.Perl6 (qc)
+
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
-import qualified Data.ByteString         as BS
-import qualified Data.ByteString.Lazy    as BL
 import qualified Data.ByteString.Short   as BSS
-import qualified Data.Serialize          as S
-import qualified Data.ByteString.Builder as BB
-
-data KeyPrefix
-  = SchemaVersion
-  | ScannedHeight
-  | BlockInfoTag
-  deriving Enum
-
-keyString :: (Serialize k) => KeyPrefix -> k -> ByteString
-keyString keyPrefix key = (fromIntegral $ fromEnum keyPrefix) `BS.cons` S.encode key
-
--- ===========================================================================
---           Schema Version
--- ===========================================================================
-
-schemaVersion :: ByteString
-schemaVersion = hash $(embedFile "src/Ergvein/Index/Server/DB/Schema/Filters.hs")
-
-schemaVersionRecKey :: ByteString
-schemaVersionRecKey  = keyString SchemaVersion $ mempty @String
 
 -- ===========================================================================
 --           Block Info record
 -- ===========================================================================
-
-blockInfoRecKey :: (Currency, BlockHeight) -> ByteString
-blockInfoRecKey = keyString BlockInfoTag . uncurry BlockInfoRecKey
 
 data BlockInfoRecKey = BlockInfoRecKey
   { blockInfoRecKeyCurrency     :: !Currency
@@ -68,12 +36,25 @@ data BlockInfoRec = BlockInfoRec
   , blockInfoRecAddressFilter  :: !ByteString
   } deriving (Generic, Show, Eq, Ord)
 
+initBlockInfoRecTable :: Connection -> IO ()
+initBlockInfoRecTable conn = execute_ conn [qc|
+    CREATE TABLE IF NOT EXISTS block_info (
+      bi_cur INTEGER NOT NULL,
+      bi_height INTEGER NOT NULL,
+      bi_hash BLOB NOT NULL,
+      bi_filt BLOB NOT NULL,
+      PRIMARY KEY (bi_cur, bi_height));
+  |]
+
+instance FromRow BlockInfoRec where
+  fromRow = do
+    bh <- field
+    filt <- field
+    pure $ BlockInfoRec (BSS.toShort bh) filt
+
 -- ===========================================================================
 --           Scanned height record
 -- ===========================================================================
-
-scannedHeightKey :: Currency -> ByteString
-scannedHeightKey = keyString ScannedHeight . ScannedHeightRecKey
 
 data ScannedHeightRecKey = ScannedHeightRecKey
   { scannedHeightRecKey      :: !Currency
@@ -83,20 +64,13 @@ data ScannedHeightRec = ScannedHeightRec
   { scannedHeightRecHeight   :: !BlockHeight
   } deriving (Generic, Show, Eq, Ord)
 
--- ===========================================================================
---           instances EgvSerialize
--- ===========================================================================
+initScannedHeightTable :: Connection -> IO ()
+initScannedHeightTable conn = execute_ conn [qc|
+  CREATE TABLE IF NOT EXISTS scanned_height (
+    sh_cur INTEGER PRIMARY KEY,
+    sh_height INTEGER NOT NULL);
+  |]
 
-instance EgvSerialize ScannedHeightRec where
-  egvSerialize _ (ScannedHeightRec sh) = BL.toStrict . BB.toLazyByteString $ BB.word64LE sh
-  egvDeserialize _ = parseOnly $ ScannedHeightRec <$> anyWord64le
-
-instance EgvSerialize BlockInfoRec where
-  egvSerialize _ (BlockInfoRec hd filt) = BL.toStrict . BB.toLazyByteString $ let
-    len = fromIntegral $ BS.length filt
-    in BB.shortByteString hd <> BB.word64LE len <> BB.byteString filt
-  egvDeserialize cur = parseOnly $ do
-    blockInfoRecHeaderHash <- fmap BSS.toShort $ Parse.take (getBlockHashLength cur)
-    len <- fromIntegral <$> anyWord64le
-    blockInfoRecAddressFilter <- Parse.take len
-    pure BlockInfoRec{..}
+-- ===========================================================================
+--           Queries
+-- ===========================================================================

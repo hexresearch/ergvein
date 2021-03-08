@@ -5,65 +5,23 @@ module Ergvein.Index.Server.DB.Schema.Utxo
   , TxRecHeight(..)
   , TxRecUnspent(..)
   , TxBytesKey(..)
-  , txBytesKey
-  , txHeightKey
-  , txUnspentKey
-  , schemaVersion
-  , schemaVersionRecKey
+  , initTxHeightTable
+  , initTxLastHeightTable
+  , initUtxoTable
   ) where
 
-import Crypto.Hash.SHA256
-import Data.Attoparsec.Binary
-import Data.Attoparsec.ByteString as Parse
 import Data.ByteString (ByteString)
-import Data.FileEmbed
 import GHC.Generics
 import Data.Serialize (Serialize)
 import Data.Word
+import Database.SQLite.Simple
+import Text.InterpolatedString.Perl6 (qc)
 
-import Ergvein.Index.Server.DB.Serialize.Class
 import Ergvein.Types.Transaction
-
-import qualified Data.ByteString         as BS
-import qualified Data.ByteString.Lazy    as BL
-import qualified Data.Serialize          as S
-import qualified Data.ByteString.Builder as BB
-
-data KeyPrefix
-  = SchemaVersion
-  | TxHeight
-  | TxBytes
-  | TxUnspent
-  deriving Enum
-
-keyString :: (Serialize k) => KeyPrefix -> k -> ByteString
-keyString keyPrefix key = (fromIntegral $ fromEnum keyPrefix) `BS.cons` S.encode key
-
--- ===========================================================================
---           Schema Version
--- ===========================================================================
-
-schemaVersion :: ByteString
-schemaVersion = hash $(embedFile "src/Ergvein/Index/Server/DB/Schema/Utxo.hs")
-
-schemaVersionRecKey :: ByteString
-schemaVersionRecKey  = keyString SchemaVersion $ mempty @String
 
 -- ===========================================================================
 --           Tx records
 -- ===========================================================================
-
-txBytesKey :: TxHash -> ByteString
-txBytesKey = keyString TxBytes . TxBytesKey
-{-# INLINE txBytesKey #-}
-
-txHeightKey :: TxHash -> ByteString
-txHeightKey = keyString TxHeight . TxBytesKey
-{-# INLINE txHeightKey #-}
-
-txUnspentKey :: TxHash -> ByteString
-txUnspentKey = keyString TxUnspent . TxBytesKey
-{-# INLINE txUnspentKey #-}
 
 data TxBytesKey = TxBytesKey {unTxBytesKey :: !TxHash }
   deriving (Generic, Show, Eq, Ord, Serialize)
@@ -77,18 +35,24 @@ data TxRecHeight = TxRecHeight { unTxRecHeight :: !Word32 }
 data TxRecUnspent = TxRecUnspent { unTxRecUnspent :: !Word32 }
   deriving (Generic, Show, Eq, Ord)
 
--- ===========================================================================
---           instances EgvSerialize
--- ===========================================================================
+initTxHeightTable :: Connection -> IO ()
+initTxHeightTable conn = execute_ conn [qc|
+    CREATE TABLE IF NOT EXISTS tx_height (
+      th_hash BLOB PRIMARY KEY,
+      th_height INTEGER NOT NULL);
+  |]
 
-instance EgvSerialize TxRecBytes where
-  egvSerialize _ = BL.toStrict . BB.toLazyByteString . buildBS . unTxRecBytes
-  egvDeserialize _ = fmap TxRecBytes . parseOnly parseBS
+initTxLastHeightTable :: Connection -> IO ()
+initTxLastHeightTable conn = execute_ conn [qc|
+  CREATE TABLE IF NOT EXISTS tx_last_height(
+    tlh_cur INTEGER PRIMARY KEY,
+    tlh_height INTEGER NOT NULL);
+|]
 
-instance EgvSerialize TxRecHeight where
-  egvSerialize _ = BL.toStrict . BB.toLazyByteString . BB.word32LE . unTxRecHeight
-  egvDeserialize _ = fmap TxRecHeight . parseOnly anyWord32le
-
-instance EgvSerialize TxRecUnspent where
-  egvSerialize _ = BL.toStrict . BB.toLazyByteString . BB.word32LE . unTxRecUnspent
-  egvDeserialize _ = fmap TxRecUnspent . parseOnly anyWord32le
+initUtxoTable :: Connection -> IO ()
+initUtxoTable conn = execute_ conn [qc|
+    CREATE TABLE IF NOT EXISTS utxo (
+      utxo_txhash BLOB PRIMARY KEY,
+      utxo_txraw BLOB NOT NULL,
+      utxo_txunspent INT NOT NULL);
+  |]

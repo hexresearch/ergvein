@@ -33,7 +33,7 @@ scanningInfo = catMaybes <$> mapM nfo allCurrencies
   where
     nfo :: Currency -> ServerM (Maybe ScanProgressInfo)
     nfo currency = do
-      maybeScanned <- getScannedHeight currency
+      maybeScanned <- selectScannedBlockHeight currency
       maybeActual <- (Just <$> actualHeight currency) `catch` (\(SomeException _) -> pure Nothing)
       pure $ ScanProgressInfo currency <$> maybeScanned <*> maybeActual
 
@@ -59,7 +59,7 @@ scannerThread currency scanInfo = create $ logOnException threadName . scanItera
     scanIteration :: Thread -> ServerM ()
     scanIteration thread = do
       cfg <- serverConfig
-      scanned <- getScannedHeight currency
+      scanned <- selectScannedBlockHeight currency
       let toScanFrom = maybe (currencyHeightStart currency) succ scanned
       go toScanFrom
       shutdownFlag <- getShutdownFlag
@@ -92,9 +92,10 @@ scannerThread currency scanInfo = create $ logOnException threadName . scanItera
                 -- FIXME: Are we swallowing ALL errors here???
                 Left (SomeException err) -> blockScanningError (show err) current
 
-        isPreviousBlockSame proposedPreviousBlockId = do
-          maybeLastScannedBlock <- getLastScannedBlock currency
-          pure $ flip all maybeLastScannedBlock (== proposedPreviousBlockId)
+        isPreviousBlockSame _ = pure True
+        -- isPreviousBlockSame proposedPreviousBlockId = do
+        --   maybeLastScannedBlock <- getLastScannedBlock currency
+        --   pure $ flip all maybeLastScannedBlock (== proposedPreviousBlockId)
 
         previousBlockChanged from = do
           revertedBlocksCount <- fromIntegral <$> performRollback currency
@@ -102,7 +103,7 @@ scannerThread currency scanInfo = create $ logOnException threadName . scanItera
                   <> showt from <> " " <> showt currency
                   <> ", performing rollback of " <> showt revertedBlocksCount <> " previous blocks"
           let restart = (from - revertedBlocksCount)
-          setScannedHeight currency restart
+          insertScannedBlockHeight currency restart
           go restart
 
         blockScanningError errorMessage from = do
