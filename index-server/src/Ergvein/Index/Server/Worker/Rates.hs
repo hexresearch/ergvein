@@ -10,11 +10,12 @@ import Control.Immortal
 import Control.Monad.Reader
 import Control.Monad.Logger
 
-import Ergvein.Text
-import Ergvein.Types.Currency
 import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
+import Ergvein.Text
+import Ergvein.Types.Currency
 
 import qualified Data.Map.Strict as M
 import qualified Ergvein.Index.Protocol.Types as IPT

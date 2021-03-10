@@ -2,7 +2,6 @@
 module Ergvein.Index.Server.Monad where
 
 import Control.Concurrent.STM
-import Control.Immortal
 import Control.Monad.Base
 import Control.Monad.Catch hiding (Handler)
 import Control.Monad.IO.Unlift
@@ -12,7 +11,6 @@ import Control.Monad.Trans.Control
 import Prometheus (MonadMonitor(..))
 
 import Ergvein.Index.Client
-import Ergvein.Index.Protocol.Types (Message)
 import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
@@ -53,17 +51,17 @@ instance HasServerConfig ServerM where
   serverConfig = asks envServerConfig
   {-# INLINE serverConfig #-}
 
-instance HasFiltersConn ServerM where
-  getFiltersConn = asks envFiltersConn
-  {-# INLINE getFiltersConn #-}
-
-instance HasUtxoConn ServerM where
-  getUtxoConn = asks envUtxoConn
-  {-# INLINE getUtxoConn #-}
-
-instance HasTxIndexConn ServerM where
-  getTxIndexConn = asks envTxIndexConn
-  {-# INLINE getTxIndexConn #-}
+instance HasDbs ServerM where
+  getFiltersDb = asks envFiltersDb
+  {-# INLINE getFiltersDb #-}
+  getUtxoDb = asks envUtxoDb
+  {-# INLINE getUtxoDb #-}
+  getRollDb = asks envRollbackDb
+  {-# INLINE getRollDb #-}
+  getDbCounter = asks envDBCounter
+  {-# INLINE getDbCounter #-}
+  getCommitChannel = asks envCommitChannel
+  {-# INLINE getCommitChannel #-}
 
 instance BitcoinApiMonad ServerM where
   nodeRpcCall f = liftIO . f =<< asks envBitcoinClient
@@ -84,9 +82,11 @@ instance HasDiscoveryRequisites ServerM where
   getDiscoveryRequisites = asks envPeerDiscoveryRequisites
   {-# INLINE getDiscoveryRequisites #-}
 
-instance HasShutdownFlag ServerM where
+instance HasShutdownSignal ServerM where
   getShutdownFlag = asks envShutdownFlag
   {-# INLINE getShutdownFlag #-}
+  getShutdownChannel = asks envShutdownChannel
+  {-# INLINE getShutdownChannel #-}
 
 instance MonadUnliftIO ServerM where
   askUnliftIO = ServerM $ (\(UnliftIO run) -> UnliftIO $ run . unServerM) <$> askUnliftIO
@@ -109,18 +109,3 @@ instance HasConnectionsManagement ServerM where
 instance HasBroadcastChannel ServerM where
   broadcastChannel = asks envBroadcastChannel
   {-# INLINE broadcastChannel #-}
-
-stopThreadIfShutdown :: Thread -> ServerM ()
-stopThreadIfShutdown thread = do
-  shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
-  when shutdownFlag $ liftIO $ stop thread
-
-interruptThreadOnShutdown :: Thread -> ServerM ()
-interruptThreadOnShutdown thread = do
-  shutChan <- liftIO . atomically . cloneTChan =<< asks envShutdownChannel
-  liftIO $ fix $ \next -> do
-    shutdownFlag <- atomically $ readTChan shutChan
-    if shutdownFlag then stop thread else next
-
-broadcastSocketMessage :: Message -> ServerM ()
-broadcastSocketMessage msg = liftIO . atomically . flip writeTChan msg =<< asks envBroadcastChannel

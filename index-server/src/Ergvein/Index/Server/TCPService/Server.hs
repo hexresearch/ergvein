@@ -21,7 +21,6 @@ import Ergvein.Index.Protocol.Serialization
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Dependencies
-import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.TCPService.MessageHandler

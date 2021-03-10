@@ -4,21 +4,20 @@ import Control.Concurrent.STM
 import Control.Immortal
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
+import Database.SQLite.Simple
 import System.Posix.Signals
 
 import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.Config
-import Ergvein.Index.Server.DB.Queries
-import Ergvein.Index.Server.DB.Schema.Indexer (RollbackSequence(..))
 import Ergvein.Index.Server.Environment
 -- import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.TCPService.Server
 import Ergvein.Index.Server.Utils
 import Ergvein.Index.Server.Worker.Fees
+import Ergvein.Index.Server.DB.Worker
 import Ergvein.Index.Server.Worker.Rates
 import Ergvein.Text
-import Ergvein.Types.Currency
 
 import qualified Data.Text.IO as T
 
@@ -26,6 +25,7 @@ import qualified Data.Text.IO as T
 onStartup :: Bool -> ServerEnv -> ServerM ([Thread], [Thread])
 onStartup onlyScan _ = do
   -- insertScannedBlockHeight BTC 369000
+  dbWorkerThread <- dbWorker
   scanningWorkers <- blockchainScanning
   if onlyScan then pure (scanningWorkers, []) else do
     --syncWithDefaultPeers
@@ -33,7 +33,7 @@ onStartup onlyScan _ = do
     -- kpaThread <- knownPeersActualization
     ratesThread <- ratesScanner
     tcpServerThread <- runTcpSrv
-    pure $ (scanningWorkers, tcpServerThread : ratesThread : feeWorkers)
+    pure $ (dbWorkerThread:scanningWorkers, tcpServerThread : ratesThread : feeWorkers)
 
 onShutdown :: ServerEnv -> IO ()
 onShutdown env = do
@@ -44,13 +44,17 @@ onShutdown env = do
 
 finalize :: (MonadIO m, MonadLogger m) => ServerEnv -> [Thread] -> [Thread] -> m ()
 finalize env scannerThreads workerTreads = do
-  logInfoN "Dumping rollback data"
-  rse <- fmap RollbackSequence $ liftIO $ readTVarIO (envBtcRollback env)
-  storeRollbackSequence BTC rse
   logInfoN "Waiting for scaner threads to close"
   liftIO $ mapM_ wait scannerThreads
   logInfoN "Waiting for other threads to close"
   liftIO $ mapM_ wait workerTreads
+  logInfoN "Dumping rollback data"
+  dumpRollbackDb $ envRollbackDb env
+  logInfoN "Closing db connections"
+  liftIO $ do
+    close $ envFiltersDb env
+    close $ envUtxoDb env
+    close $ envRollbackDb env
   logInfoN "service is stopped"
 
 app :: (MonadUnliftIO m, MonadLogger m) => Bool -> Config -> ServerEnv -> m ()

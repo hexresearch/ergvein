@@ -30,6 +30,7 @@ library
     Ergvein.Index.Server.DB.Schema.Utxo
     Ergvein.Index.Server.DB.Serialize
     Ergvein.Index.Server.DB.Utils
+    Ergvein.Index.Server.DB.Worker
     Ergvein.Index.Server.Dependencies
     Ergvein.Index.Server.Environment
     Ergvein.Index.Server.Metrics
@@ -42,8 +43,6 @@ library
     Ergvein.Index.Server.TCPService.MessageHandler
     Ergvein.Index.Server.TCPService.Server
     Ergvein.Index.Server.TCPService.Socket
-    Ergvein.Index.Server.TxIndex
-    Ergvein.Index.Server.TxIndex.Monad
     Ergvein.Index.Server.Utils
     Ergvein.Index.Server.Worker.Fees
     Ergvein.Index.Server.Worker.Rates

@@ -11,7 +11,6 @@ import Ergvein.Index.Server.App
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.Environment
-import Ergvein.Index.Server.TxIndex
 import Ergvein.Index.Server.Monad
 
 import qualified Data.Text.IO as T
@@ -24,8 +23,6 @@ data Options = Options {
 , optsBtcTcpConn        :: Bool
   -- |Def: False. Start only BC-scanning threads
 , optsOnlyScan          :: Bool
-  -- | Starting height for btc
-, optsBtcStartHeight    :: Word64
 }
 
 wordReader :: ReadM Word64
@@ -44,19 +41,14 @@ options :: Parser Options
 options = Options
   <$> subparser (
        command "listen" (info (listenCmd <**> helper) $ progDesc "Start server") <>
-       command "clean-known-peers" (info (cleanKnownPeers <**> helper) $ progDesc "resetting peers") <>
-       command "build-index" (info (indexCmd <**> helper) $ progDesc "Build btc index")
+       command "clean-known-peers" (info (cleanKnownPeers <**> helper) $ progDesc "resetting peers")
   ) <*> flag False True (long "tcp-node" <> help "Use TCP connection to the node instead of RPC" )
     <*> flag False True (long "only-scan" <> help "Start only BC-scanning threads" )
-    <*> option wordReader (long "btc-start" <> help "BTC starting height" <> value 0)
   where
     cleanKnownPeers = CleanKnownPeers
       <$> strArgument ( metavar "CONFIG_PATH" )
     listenCmd = CommandListen
       <$> strArgument ( metavar "CONFIG_PATH" )
-    indexCmd = BuildBtcIndex
-      <$> strArgument ( metavar "CONFIG_PATH" )
-      <*> option auto ( metavar "THREAD_COUNT" <> short 'n' <> long "thread-count" <> value 1)
 
 main :: IO ()
 main = do
@@ -81,9 +73,3 @@ startServer Options{..} = case optsCommand of
         runStdoutLoggingT $ withNewServerEnv optsBtcTcpConn client cfg $ \env -> do
           liftIO $ runServerMIO env emptyKnownPeers
       T.putStrLn $ pack "knownPeers cleared"
-    BuildBtcIndex cfgPath n -> do
-      cfg@Config{..} <- loadConfig cfgPath
-      BitcoinApi.withClient cfgBTCNodeHost cfgBTCNodePort cfgBTCNodeUser cfgBTCNodePassword $ \client -> do
-        runStdoutLoggingT $ withTxIndexEnv optsBtcTcpConn client cfg $ \env -> do
-          txIndexApp optsBtcStartHeight n env
-      T.putStrLn $ pack "Index builder done"

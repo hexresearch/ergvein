@@ -5,6 +5,7 @@ import Control.Concurrent.STM
 import Control.Monad.IO.Unlift
 
 import Ergvein.Index.Server.DB.Schema.Indexer
+import Ergvein.Index.Server.BlockchainScanning.Types
 import Database.SQLite.Simple
 
 import qualified Data.Sequence as Seq
@@ -15,11 +16,9 @@ data DBTag = DBFilters | DBIndexer | DBUtxo | DBTxIndex
 class HasBtcRollback m where
   getBtcRollbackVar :: m (TVar (Seq.Seq RollbackRecItem))
 
-class MonadIO m => HasFiltersConn m where
-  getFiltersConn :: m Connection
-
-class MonadIO m => HasUtxoConn m where
-  getUtxoConn :: m Connection
-
-class MonadIO m => HasTxIndexConn m where
-  getTxIndexConn :: m Connection
+class MonadIO m => HasDbs m where
+  getFiltersDb :: m Connection
+  getUtxoDb :: m Connection
+  getRollDb :: m Connection
+  getDbCounter :: m (TVar (Int, Int))
+  getCommitChannel :: m (TChan BlockInfo)

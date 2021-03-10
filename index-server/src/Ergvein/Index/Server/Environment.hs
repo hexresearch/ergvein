@@ -4,29 +4,23 @@ module Ergvein.Index.Server.Environment where
 
 import Control.Concurrent
 import Control.Concurrent.STM
-import Control.Exception hiding (handle)
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Control
 import Control.Monad.Logger
 import Control.Monad.Reader
-import Data.Text (Text)
-import Data.Typeable
 import Network.HTTP.Client.TLS
-import Network.Socket
+import Network.Socket hiding (close)
 import System.IO
 
 import Ergvein.Index.Protocol.Types (CurrencyCode, Message)
 import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
+import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.Config
-import Ergvein.Index.Server.DB
-import Ergvein.Index.Server.DB.Queries
-import Ergvein.Index.Server.DB.Schema.Indexer (RollbackRecItem, RollbackSequence(..))
-import Ergvein.Index.Server.DB.Schema.Filters (initBlockInfoRecTable, initScannedHeightTable)
-import Ergvein.Index.Server.DB.Schema.Utxo (initTxHeightTable, initUtxoTable)
+import Ergvein.Index.Server.DB.Schema.Indexer (RollbackRecItem)
+import Ergvein.Index.Server.DB.Worker
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.TCPService.BTC
-import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 
@@ -58,9 +52,12 @@ data ServerEnv = ServerEnv
     , envOpenConnections          :: !(TVar (M.Map SockAddr (ThreadId, Socket)))
     , envBroadcastChannel         :: !(TChan Message)
     , envExchangeRates            :: !(TVar (M.Map CurrencyCode (M.Map Fiat Double)))
-    , envFiltersConn              :: !Connection
-    , envUtxoConn                 :: !Connection
-    , envTxIndexConn              :: !Connection
+    -- DB
+    , envFiltersDb                :: !Connection
+    , envUtxoDb                   :: !Connection
+    , envRollbackDb               :: !Connection
+    , envDBCounter                :: !(TVar (Int,Int))
+    , envCommitChannel            :: !(TChan BlockInfo)
     }
 
 sockAddress :: CfgPeer -> IO SockAddr
@@ -87,22 +84,6 @@ discoveryRequisites cfg = do
       filteredKnownPeers
       (cfgPeerActualizationDelay cfg)
       (cfgPeerActualizationTimeout cfg)
-
-initConn :: MonadIO m => DBTag -> FilePath -> m Connection
-initConn tag fp = liftIO $ do
-  conn <- open fp
-  case tag of
-    DBFilters -> do
-      initBlockInfoRecTable conn
-      initScannedHeightTable conn
-    DBUtxo -> do
-      initUtxoTable conn
-    DBTxIndex -> do
-      initTxHeightTable conn
-    _ -> pure ()
-  execute_ conn "PRAGMA synchronous=OFF;"
-  execute_ conn "pragma journal_mode = WAL;"
-  pure conn
 
 withNewServerEnv :: (MonadIO m, MonadLogger m, MonadMask m, MonadBaseControl IO m)
   => Bool               -- ^ flag, def True: wait for node connections to be up before finalizing the env
@@ -143,13 +124,24 @@ withNewServerEnv useTcp btcClient cfg@Config{..} action = do
 
 
     -- DB ----------------------------
-    fcon <- initConn DBFilters "db/filters.db"
-    ucon <- initConn DBUtxo ":memory:"
-    tcon <- initConn DBTxIndex "db/txs.db"
-    
-    -- -------------------------------
-    btcSeq    <- liftIO $ runStdoutLoggingT $ loadRollbackSequence BTC
-    btcSeqVar <- liftIO $ newTVarIO $ unRollbackSequence btcSeq
+    -- fcon <- initConn DBFilters "db/filters.db"
+    -- ucon <- initConn DBUtxo ":memory:"
+    -- tcon <- initConn DBTxIndex "db/txs.db"
+
+
+    (flitDb, utxoDb, rollDb, cntRef) <- initDbs cfgFiltersDbPath cfgUtxoDbPath "db/rollback.db"
+
+    -- (conmem, con)   <- initUtxoConnection cfgUtxoDbPath
+    -- rcon    <- initRollbackConn "db/rollback.db"
+    -- filtsDb <- liftIO $ open cfgFiltersDbPath
+    -- liftIO $ initBlockInfoRecTable filtsDb
+    -- liftIO $ execute_ rcon [qc|attach '{cfgUtxoDbPath}' as udisk|]
+    --
+    -- cntRef <- liftIO $ newTVarIO (1,0)
+
+    commitChan <- liftIO newTChanIO
+
+    btcSeqVar <- liftIO $ newTVarIO mempty
     exchangeRates <- liftIO $ newTVarIO mempty
     action ServerEnv
       { envServerConfig            = cfg
@@ -169,38 +161,9 @@ withNewServerEnv useTcp btcClient cfg@Config{..} action = do
       , envOpenConnections         = openConns
       , envBroadcastChannel        = broadChan
       , envExchangeRates           = exchangeRates
-      , envFiltersConn             = fcon
-      , envUtxoConn                = ucon
-      , envTxIndexConn             = tcon
+      , envFiltersDb               = flitDb
+      , envUtxoDb                  = utxoDb
+      , envRollbackDb              = rollDb
+      , envCommitChannel           = commitChan
+      , envDBCounter               = cntRef
       }
-
--- | Log exceptions at Error severity
-logOnException :: (
-    HasServerConfig m
-  , MonadIO m
-  , MonadLogger m
-  , MonadCatch m)
-  => Text -> m a -> m a
-logOnException threadName = handle logE
-  where
-    logInfoN' :: MonadLogger m => Text -> m ()
-    logInfoN' t = logInfoN $ "[" <> threadName <> "]: " <> t
-    logErrorN' :: MonadLogger m => Text -> m ()
-    logErrorN' t = logErrorN $ "[" <> threadName <> "]: " <> t
-    logE :: (
-        HasServerConfig m
-      , MonadIO m
-      , MonadLogger m
-      , MonadCatch m) => SomeException -> m b
-    logE e
-        | Just ThreadKilled <- fromException e = do
-            logInfoN' "Killed normally by ThreadKilled"
-            throwM e
-        | Just (ioe :: IOException) <- fromException e = do
-            logErrorN' $ "Killed by IOException. " <> showt ioe
-            liftIO $ threadDelay 1000000
-            throwM e
-        | SomeException eTy <- e = do
-            logErrorN' $ "Killed by " <> showt (typeOf eTy) <> ". " <> showt eTy
-            liftIO $ threadDelay 1000000
-            throwM e

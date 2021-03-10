@@ -8,7 +8,7 @@ import           Control.Lens.Combinators
 import           Control.Monad.Logger
 import           Control.Monad.Reader
 import           Control.Monad.Trans.Control
-import           Control.Parallel.Strategies
+import           Data.ByteString(ByteString)
 import           Data.Either
 import           Data.Maybe
 import           Data.Serialize
@@ -32,6 +32,8 @@ import           Ergvein.Types.Transaction
 import qualified Data.ByteString                    as BS
 import qualified Data.HexString                     as HS
 import qualified Data.Map.Strict                    as Map
+import qualified Data.HashMap.Strict                as HM
+import qualified Data.Serialize                     as S
 import qualified Network.Haskoin.Block              as HK
 import qualified Network.Haskoin.Crypto             as HK
 import qualified Network.Haskoin.Script             as HK
@@ -41,9 +43,8 @@ type BlockInfoConstraints m = (
     BitcoinApiMonad m
   , MonadLogger m
   , MonadBaseControl IO m
-  , HasShutdownFlag m
-  , HasUtxoConn m
-  , HasTxIndexConn m)
+  , HasShutdownSignal m
+  , HasDbs m)
 
 blockInfo :: BlockInfoConstraints m => BlockHeight -> m BlockInfo
 blockInfo blockHeightToScan = blockTxInfos blockHeightToScan =<< getBtcBlockWithRepeat blockHeightToScan
@@ -52,65 +53,58 @@ blockTxInfos :: BlockInfoConstraints m => BlockHeight -> HK.Block -> m BlockInfo
 blockTxInfos txBlockHeight block = do
   let (txInfos , spentTxsIds) = fmap (uniqueWithCount . mconcat) $ unzip $ txInfo <$> HK.blockTxns block
   -- timeLog $ "spentTxsIds: " <> showt (length spentTxsIds)
-  uniqueSpentTxs <- fmap mconcat $ mapConcurrently (mapM spentTxSource) $ mkChunks 100 spentTxsIds
+  vals <- fmap mconcat $ mapConcurrently (mapM spentTxSource) $ mkChunks 100 spentTxsIds
+  let (spentUpds, uniqueSpentTxs) = unzip vals
   blockAddressFilter <- encodeBtcAddrFilter =<<
     withInputTxs uniqueSpentTxs (makeBtcFilter isErgveinIndexable block)
   let blockHeaderHash = HK.getHash256 $ HK.getBlockHash $ HK.headerHash $ HK.blockHeader block
       prevBlockHeaderHash = HK.getHash256 $ HK.getBlockHash $ HK.prevBlock $ HK.blockHeader block
       blockMeta = BlockMetaInfo BTC txBlockHeight blockHeaderHash prevBlockHeaderHash blockAddressFilter
-  let spentTxsIdsMap = Map.mapKeys hkTxHashToEgv $ Map.fromList spentTxsIds
+  let spentTxsIdsMap = HM.fromList spentUpds
   pure $ BlockInfo blockMeta spentTxsIdsMap txInfos
   where
     blockTxMap = mapBy (HK.txHash) $ HK.blockTxns block
-    spentTxSource :: (HasShutdownFlag m, MonadBaseControl IO m, BitcoinApiMonad m, MonadLogger m, HasUtxoConn m, HasTxIndexConn m) => (HK.TxHash, Word32) -> m HK.Tx
-    spentTxSource (txInId, _) = case Map.lookup txInId blockTxMap of
-      Just    sourceTx -> pure sourceTx
+    spentTxSource :: BlockInfoConstraints m => (HK.TxHash, Word32) -> m ((ByteString, Word32), HK.Tx)
+    spentTxSource (txInId, sp) = case Map.lookup txInId blockTxMap of
+      Just    sourceTx -> pure ((txIdBs, calcTxUnspent sourceTx), sourceTx)
       Nothing          -> do
-        etx <- getTxFromCache $ hkTxHashToEgv txInId
+        etx <- getTxFromCache txIdBs
         case etx of
-          Left _ -> do
-            logWarnN $ "[blockTxInfos]: Failed to get a Tx from DB. Trying the node. " <> showt txInId
-            getTxFromNode txInId
-          Right tx -> pure tx
+          Left _ -> error $ "[blockTxInfos]: Failed to get a Tx from DB: " <> show txInId
+          Right (tx, unsp) -> pure $ if sp >= unsp
+            then ((txIdBs, 0), tx) else ((txIdBs, unsp - sp), tx)
+      where txIdBs = S.encode $ hkTxHashToEgv txInId
 
     txInfo :: HK.Tx -> (TxInfo, [HK.TxHash])
     txInfo tx = let
-      withoutDataCarrier = none HK.isDataCarrier . HK.decodeOutputBS . HK.scriptOutput
-      info = TxInfo { txHash = hkTxHashToEgv $ HK.txHash tx
+      info = TxInfo { txHash = S.encode $ hkTxHashToEgv $ HK.txHash tx
                     , txBytes = serializeHkTx tx
-                    , txOutputsCount = fromIntegral $ length $ filter withoutDataCarrier $  HK.txOut tx
+                    , txOutputsCount = calcTxUnspent tx
                     }
       withoutCoinbaseTx = filter $ (/= HK.nullOutPoint)
       spentTxInfo = HK.outPointHash <$> (withoutCoinbaseTx $ HK.prevOutput <$> HK.txIn tx)
       in (info, spentTxInfo)
 
+withoutDataCarrier :: HK.TxOut -> Bool
+withoutDataCarrier = none HK.isDataCarrier . HK.decodeOutputBS . HK.scriptOutput
+{-# INLINE withoutDataCarrier #-}
+
+calcTxUnspent :: HK.Tx -> Word32
+calcTxUnspent = fromIntegral . length . filter withoutDataCarrier . HK.txOut
+{-# INLINE calcTxUnspent #-}
+
 actualHeight :: (Monad m, BitcoinApiMonad m) => m BlockHeight
 actualHeight = fromIntegral <$> nodeRpcCall getBlockCount
 
-getTxFromCache :: (HasUtxoConn m, MonadLogger m)
-  => TxHash -> m (Either String HK.Tx)
+getTxFromCache :: (HasDbs m, MonadLogger m)
+  => ByteString -> m (Either String (HK.Tx, Word32))
 getTxFromCache thash = do
-  msrc <- selectTxRaw thash
+  msrc <- selectTxWithUnspent thash
   pure $ case msrc of
     Nothing -> Left $ "Tx not found. TxHash: " <> show thash
-    Just src -> deserializeHkTx src
+    Just (src, v) -> fmap (, v) $ deserializeHkTx src
 
-getTxFromNode :: (HasShutdownFlag m, BitcoinApiMonad m, MonadLogger m, MonadBaseControl IO m, HasTxIndexConn m)
-  => HK.TxHash -> m HK.Tx
-getTxFromNode thash = do
-  mtxHeight <- selectTxHeight $ hkTxHashToEgv thash
-  let txHeight = fromMaybe (error "TxHeight is not present") mtxHeight
-  blk <- getBtcBlockWithRepeat $ fromIntegral txHeight
-  let txChunks = mkChunks 100 $ HK.blockTxns blk
-  txs <- fmap mconcat $ mapConcurrently (pure . catMaybes . parMap rpar comparator) txChunks
-  case txs of
-    [] -> txGettingError txHeight
-    tx:_ -> pure tx
-  where
-    comparator tx = if thash == HK.txHash tx then Just tx else Nothing
-    txGettingError h = error $ "Failed to get tx from block #" ++ show h ++ " TxHash: " ++ show thash
-
-getBtcBlockWithRepeat :: (BitcoinApiMonad m, MonadLogger m, MonadBaseControl IO m, MonadIO m, HasShutdownFlag m)
+getBtcBlockWithRepeat :: (BitcoinApiMonad m, MonadLogger m, MonadBaseControl IO m, MonadIO m, HasShutdownSignal m)
   => BlockHeight -> m HK.Block
 getBtcBlockWithRepeat blockHeightReq = do
   resChan <- liftIO newTChanIO
@@ -145,15 +139,6 @@ getBtcBlock blockHeightReq = do
     hashParsingError = error $ "Error parsing BTC BlockHash at height " ++ show blockHeightReq
     blockGettingError = error $ "Error getting BTC node at height " ++ show blockHeightReq
     blockParsingError = error $ "Error parsing BTC node at height " ++ show blockHeightReq
-
-buildTxIndex :: (BitcoinApiMonad m, MonadIO m, MonadLogger m, MonadBaseControl IO m, HasShutdownFlag m)
-  => BlockHeight -> m TxIndexInfo
-buildTxIndex blockHeightToScan = do
-  block <- getBtcBlockWithRepeat blockHeightToScan
-  let txIds = fmap (hkTxHashToEgv . HK.txHash) $ HK.blockTxns block
-      blockHeaderHash = HK.getHash256 $ HK.getBlockHash $ HK.headerHash $ HK.blockHeader block
-      prevBlockHeaderHash = HK.getHash256 $ HK.getBlockHash $ HK.prevBlock $ HK.blockHeader block
-  pure $ TxIndexInfo blockHeightToScan blockHeaderHash prevBlockHeaderHash txIds
 
 timeLog :: (MonadLogger m, MonadIO m) => Text -> m ()
 timeLog t = do

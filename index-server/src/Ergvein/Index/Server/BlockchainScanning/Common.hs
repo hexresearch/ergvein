@@ -14,7 +14,6 @@ import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.Dependencies
-import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.TCPService.Conversions
@@ -97,14 +96,15 @@ scannerThread currency scanInfo = create $ logOnException threadName . scanItera
         --   maybeLastScannedBlock <- getLastScannedBlock currency
         --   pure $ flip all maybeLastScannedBlock (== proposedPreviousBlockId)
 
-        previousBlockChanged from = do
-          revertedBlocksCount <- fromIntegral <$> performRollback currency
-          logInfoN $ "Fork detected at "
-                  <> showt from <> " " <> showt currency
-                  <> ", performing rollback of " <> showt revertedBlocksCount <> " previous blocks"
-          let restart = (from - revertedBlocksCount)
-          insertScannedBlockHeight currency restart
-          go restart
+        previousBlockChanged from = go from
+        -- previousBlockChanged from = do
+        --   revertedBlocksCount <- fromIntegral <$> performRollback currency
+        --   logInfoN $ "Fork detected at "
+        --           <> showt from <> " " <> showt currency
+        --           <> ", performing rollback of " <> showt revertedBlocksCount <> " previous blocks"
+        --   let restart = (from - revertedBlocksCount)
+        --   insertScannedBlockHeight currency restart
+        --   go restart
 
         blockScanningError errorMessage from = do
           logInfoN $ "Error scanning " <> showt from <> " " <> showt currency <> " " <> T.pack errorMessage

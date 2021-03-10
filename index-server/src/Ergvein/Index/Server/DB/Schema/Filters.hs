@@ -1,12 +1,9 @@
 {-# LANGUAGE DeriveAnyClass #-}
 module Ergvein.Index.Server.DB.Schema.Filters
   (
-    ScannedHeightRecKey(..)
-  , ScannedHeightRec(..)
-  , BlockInfoRecKey(..)
+    BlockInfoRecKey(..)
   , BlockInfoRec(..)
   , initBlockInfoRecTable
-  , initScannedHeightTable
   ) where
 
 import Data.ByteString (ByteString)
@@ -51,25 +48,6 @@ instance FromRow BlockInfoRec where
     bh <- field
     filt <- field
     pure $ BlockInfoRec (BSS.toShort bh) filt
-
--- ===========================================================================
---           Scanned height record
--- ===========================================================================
-
-data ScannedHeightRecKey = ScannedHeightRecKey
-  { scannedHeightRecKey      :: !Currency
-  } deriving (Generic, Show, Eq, Ord, Serialize)
-
-data ScannedHeightRec = ScannedHeightRec
-  { scannedHeightRecHeight   :: !BlockHeight
-  } deriving (Generic, Show, Eq, Ord)
-
-initScannedHeightTable :: Connection -> IO ()
-initScannedHeightTable conn = execute_ conn [qc|
-  CREATE TABLE IF NOT EXISTS scanned_height (
-    sh_cur INTEGER PRIMARY KEY,
-    sh_height INTEGER NOT NULL);
-  |]
 
 -- ===========================================================================
 --           Queries

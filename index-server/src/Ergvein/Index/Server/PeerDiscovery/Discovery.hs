@@ -22,7 +22,6 @@ import Ergvein.Index.Server.BlockchainScanning.Common
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.Dependencies
-import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.TCPService.Connections

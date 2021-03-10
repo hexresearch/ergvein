@@ -15,12 +15,12 @@ import           Network.Ergo.Api.Client
 import           Network.Ergo.Api.Info
 import qualified Network.Ergo.Api.Utxo    as UtxoApi
 import qualified Data.ByteString.Short as BSS
-import qualified Data.Map.Strict as M
-
+import qualified Data.HashMap.Strict as HM
+import qualified Data.Serialize as S
 
 txInfo :: ApiMonad m => ErgoTransaction -> m ([TxInfo], [TxHash])
 txInfo tx = do
-  let info = TxInfo { txHash =  ErgTxHash . ErgTxId $ BSS.toShort $ unTransactionId $ transactionId (tx :: ErgoTransaction)
+  let info = TxInfo { txHash =  S.encode $ ErgTxHash . ErgTxId $ BSS.toShort $ unTransactionId $ transactionId (tx :: ErgoTransaction)
                     , txBytes = mempty
                     , txOutputsCount = fromIntegral $ length $ dataInputs tx
                     }
@@ -36,7 +36,7 @@ blockTxInfos block txBlockHeight = do
   let blockHeaderHash = mempty --TODO
       prevBlockHeaderHash = mempty --TODO
       blockAddressFilter = mempty --TODO
-      spentMap = M.fromList $ (,0) <$> spentTxsIds --TODO
+      spentMap = HM.fromList $ ((,0) . S.encode) <$> spentTxsIds --TODO
       blockMeta = BlockMetaInfo ERGO (fromIntegral txBlockHeight) blockHeaderHash prevBlockHeaderHash blockAddressFilter
   pure $ BlockInfo blockMeta spentMap txInfos
 

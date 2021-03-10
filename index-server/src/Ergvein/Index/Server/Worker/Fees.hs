@@ -16,7 +16,6 @@ import Ergvein.Index.Server.BlockchainScanning.Bitcoin
 import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Dependencies
-import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.Utils
 import Ergvein.Text
