@@ -7,8 +7,6 @@ module Ergvein.Index.Server.DB.Schema.Utxo
   , TxBytesKey(..)
   , ScannedHeightRecKey(..)
   , ScannedHeightRec(..)
-  , initTxHeightTable
-  , initTxLastHeightTable
   , initUtxoTable
   , initScanProgresTable
   ) where
@@ -38,20 +36,6 @@ data TxRecHeight = TxRecHeight { unTxRecHeight :: !Word32 }
 
 data TxRecUnspent = TxRecUnspent { unTxRecUnspent :: !Word32 }
   deriving (Generic, Show, Eq, Ord)
-
-initTxHeightTable :: Connection -> IO ()
-initTxHeightTable conn = execute_ conn [qc|
-    CREATE TABLE IF NOT EXISTS tx_height (
-      th_hash BLOB PRIMARY KEY,
-      th_height INTEGER NOT NULL);
-  |]
-
-initTxLastHeightTable :: Connection -> IO ()
-initTxLastHeightTable conn = execute_ conn [qc|
-  CREATE TABLE IF NOT EXISTS tx_last_height(
-    tlh_cur INTEGER PRIMARY KEY,
-    tlh_height INTEGER NOT NULL);
-|]
 
 initUtxoTable :: Connection -> IO ()
 initUtxoTable conn = execute_ conn [qc|

@@ -25,7 +25,7 @@ import qualified Data.Text.IO as T
 onStartup :: Bool -> ServerEnv -> ServerM ([Thread], [Thread])
 onStartup onlyScan _ = do
   -- insertScannedBlockHeight BTC 369000
-  dbWorkerThread <- dbWorker
+  -- dbWorkerThread <- dbWorker
   scanningWorkers <- blockchainScanning
   if onlyScan then pure (scanningWorkers, []) else do
     --syncWithDefaultPeers
@@ -33,7 +33,8 @@ onStartup onlyScan _ = do
     -- kpaThread <- knownPeersActualization
     ratesThread <- ratesScanner
     tcpServerThread <- runTcpSrv
-    pure $ (dbWorkerThread:scanningWorkers, tcpServerThread : ratesThread : feeWorkers)
+    -- pure $ (dbWorkerThread:scanningWorkers, tcpServerThread : ratesThread : feeWorkers)
+    pure $ (scanningWorkers, tcpServerThread : ratesThread : feeWorkers)
 
 onShutdown :: ServerEnv -> IO ()
 onShutdown env = do
@@ -49,7 +50,7 @@ finalize env scannerThreads workerTreads = do
   logInfoN "Waiting for other threads to close"
   liftIO $ mapM_ wait workerTreads
   logInfoN "Dumping rollback data"
-  dumpRollbackDb $ envRollbackDb env
+  -- dumpRollbackDb $ envRollbackDb env
   logInfoN "Closing db connections"
   liftIO $ do
     close $ envFiltersDb env

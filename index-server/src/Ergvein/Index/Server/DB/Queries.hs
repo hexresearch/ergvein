@@ -35,6 +35,7 @@ import Ergvein.Types.Currency as Currency
 import Ergvein.Types.Transaction
 
 import qualified Data.HashMap.Strict  as HM
+import qualified Data.ByteString.Short  as BSS
 
 import Database.SQLite.Simple hiding (fold)
 import Text.InterpolatedString.Perl6 (qc)
@@ -90,6 +91,7 @@ emptyKnownPeers = setPeerRecList $ KnownPeersRec []
 addBlockInfo :: (HasBtcRollback m, HasDbs m, MonadLogger m, MonadBaseControl IO m)
   => BlockInfo -> m ()
 addBlockInfo bi@(BlockInfo meta spent txinfos) = do
+  -- void $ liftIO getChar
   let (dels, upds) = HM.foldlWithKey' foo ([],[]) spent
   conMem <- getUtxoDb
   commitChan <- getCommitChannel
@@ -99,16 +101,19 @@ addBlockInfo bi@(BlockInfo meta spent txinfos) = do
 
     executeMany conMem [qc| delete from utxo where utxo_txhash = ? |] dels
 
+    execute conMem [qc|
+      insert or replace into scan_progress values (?,?,?,?)
+    |] (fromEnum cur, height, BSS.fromShort blkHash, BSS.fromShort prevHash)
     executeMany conMem [qc|
       update utxo
       set utxo_txunspent = ?
       where utxo_txhash = ?
     |] upds
-    atomically $ writeTChan commitChan bi
+    -- atomically $ writeTChan commitChan bi
 
   pure ()
   where
-    BlockMetaInfo cur height blkHash _ filt = meta
+    BlockMetaInfo cur height blkHash prevHash filt = meta
     foo (del, upd) k v = if v == 0 then ((Only k):del, upd) else (del, (v, k):upd)
 
 ---

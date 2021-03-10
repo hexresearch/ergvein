@@ -41,10 +41,19 @@ initDbs filtersFile utxoFile rollFile = liftIO $ do
   execute_ filtsConn "PRAGMA synchronous=NORMAL;"
   execute_ filtsConn "pragma journal_mode = WAL;"
 
-  utxoFileConn <- open utxoFile
-  initScanProgresTable utxoFileConn
-  initUtxoTable utxoFileConn
-  close utxoFileConn
+  execute_ filtsConn [qc|
+      CREATE TABLE IF NOT EXISTS block_info (
+        bi_cur INTEGER NOT NULL,
+        bi_height INTEGER NOT NULL,
+        bi_hash BLOB NOT NULL,
+        bi_filt BLOB NOT NULL,
+        PRIMARY KEY (bi_cur, bi_height));
+    |]
+
+  -- utxoFileConn <- open utxoFile
+  -- initScanProgresTable utxoFileConn
+  -- initUtxoTable utxoFileConn
+  -- close utxoFileConn
 
   rollFileConn <- open rollFile
   initRollbackDb rollFileConn
@@ -52,28 +61,30 @@ initDbs filtersFile utxoFile rollFile = liftIO $ do
 
 
   -- Open and initialize utxo in-memory db
-  utxoConn <- open ":memory:"
+  -- utxoConn <- open ":memory:"
+  utxoConn <- open utxoFile
   initScanProgresTable utxoConn
   initUtxoTable utxoConn
-  execute_ utxoConn "PRAGMA synchronous=OFF;"
-  execute_ utxoConn "pragma journal_mode = WAL;"
+  execute_ utxoConn "PRAGMA synchronous=NORMAL;"
+  -- execute_ utxoConn "pragma journal_mode = WAL;"
 
-  execute_ utxoConn [qc|attach '{utxoFile}' as udisk|]
-  execute_ utxoConn [qc|attach '{rollFile}' as rdisk|]
+  -- execute_ utxoConn [qc|attach '{utxoFile}' as udisk|]
+  -- execute_ utxoConn [qc|attach '{rollFile}' as rdisk|]
 
-  loadUtxoDb utxoConn
+  -- loadUtxoDb utxoConn
 
-  execute_ utxoConn [qc|detach udisk|]
-  execute_ utxoConn [qc|detach rdisk|]
+  -- execute_ utxoConn [qc|detach udisk|]
+  -- execute_ utxoConn [qc|detach rdisk|]
 
   rollConn <- open ":memory:"
   -- initRollbackDb rollConn
-  execute_ rollConn "PRAGMA synchronous=OFF;"
+  execute_ rollConn "PRAGMA synchronous=NORMAL;"
   execute_ rollConn "pragma journal_mode = WAL;"
   execute_ rollConn [qc| attach '{rollFile}' as rdisk|]
   execute_ rollConn [qc| attach '{utxoFile}' as udisk|]
 
-  cntVar <- loadRollbackDb rollConn
+  -- cntVar <- loadRollbackDb rollConn
+  cntVar <- newTVarIO (0,0)
 
   pure (filtsConn, utxoConn, rollConn, cntVar)
 
