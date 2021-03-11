@@ -104,6 +104,7 @@ addBlockInfo bi@(BlockInfo meta spent txinfos) = do
     execute conMem [qc|
       insert or replace into scan_progress values (?,?,?,?)
     |] (fromEnum cur, height, BSS.fromShort blkHash, BSS.fromShort prevHash)
+
     executeMany conMem [qc|
       update utxo
       set utxo_txunspent = ?
@@ -146,11 +147,10 @@ selectScannedBlockHeight cur = do
     |] (Only $ fromEnum cur)
 
 insertUtxoBatch :: MonadIO m => Connection -> [TxInfo] -> m ()
-insertUtxoBatch conn vals = liftIO $ forM_ vals $ \(TxInfo thash txraw unsp) ->
-  execute conn [qc|
+insertUtxoBatch conn vals = liftIO $ executeMany conn [qc|
       insert or replace into utxo
       (utxo_txhash, utxo_txraw, utxo_txunspent) values (?,?,?);
-    |] (thash, txraw, unsp)
+    |] vals
 
 selectTxWithUnspent :: HasDbs m => ByteString -> m (Maybe (ByteString, Word32))
 selectTxWithUnspent th = do

@@ -66,7 +66,7 @@ initDbs filtersFile utxoFile rollFile = liftIO $ do
   initScanProgresTable utxoConn
   initUtxoTable utxoConn
   execute_ utxoConn "PRAGMA synchronous=NORMAL;"
-  -- execute_ utxoConn "pragma journal_mode = WAL;"
+  execute_ utxoConn "pragma journal_mode = WAL;"
 
   -- execute_ utxoConn [qc|attach '{utxoFile}' as udisk|]
   -- execute_ utxoConn [qc|attach '{rollFile}' as rdisk|]
