@@ -155,15 +155,15 @@ data Reject = Reject
 
 data ScanBlock = ScanBlock
   { scanBlockCurrency   :: !CurrencyCode
-  , scanBlockVersion    :: !Word32
+  , scanBlockVersion    :: !ProtocolVersion
   , scanBlockScanHeight :: !Word64
   , scanBlockHeight     :: !Word64
   } deriving (Show, Eq)
 
 derivingUnbox "ScanBlock"
-  [t| ScanBlock -> (CurrencyCode, Word32, Word64, Word64) |]
-  [| \(ScanBlock c v s h) -> (c, v, s, h) |]
-  [| \(c, v, s, h) -> ScanBlock c v s h |]
+  [t| ScanBlock -> (CurrencyCode, Word16, Word16, Word16, Word64, Word64) |]
+  [| \(ScanBlock c (v1, v2, v3) s h) -> (c, v1, v2, v3, s, h) |]
+  [| \(c, v1, v2, v3, s, h) -> ScanBlock c (v1, v2, v3) s h |]
 
 data Version = Version
   { versionVersion    :: !ProtocolVersion

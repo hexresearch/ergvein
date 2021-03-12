@@ -1,13 +1,15 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedLists #-}
 module ProtocolTest where
 
 --------------------------------------------------------------------------
 -- imports
 
 import Control.Monad (replicateM)
+import ProtocolTest.Generators
 import Test.QuickCheck
 import Test.QuickCheck.Instances
-import ProtocolTest.Generators
+import Test.Tasty.HUnit
 
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Protocol.Serialization
@@ -19,6 +21,7 @@ import qualified Data.ByteString.Lazy       as BL
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Builder    as BB
 import qualified Data.Attoparsec.ByteString as AP
+import qualified Data.ByteString.Base16     as B16
 
 --------------------------------------------------------------------------
 -- Serialize-deserialize helpers
@@ -84,3 +87,29 @@ prop_encdec_version v = either (const False) (v == ) decVer
   where
     encVer = mkProtocolVersion $ unPVT v
     decVer = fmap PVT $ AP.parseOnly versionParser encVer
+
+unit_versionMsg :: IO ()
+unit_versionMsg = do
+  let v = MVersion $ Version {
+          versionVersion = (1, 2, 4)
+        , versionTime = 1615562102
+        , versionNonce = 0x0706050403020100
+        , versionScanBlocks = [
+              ScanBlock {
+                scanBlockCurrency = BTC
+              , scanBlockVersion = (1, 2, 4)
+              , scanBlockScanHeight = 674299
+              , scanBlockHeight = 300000
+              }
+            , ScanBlock {
+                scanBlockCurrency = ERGO
+              , scanBlockVersion = (4, 1, 0)
+              , scanBlockScanHeight = 374299
+              , scanBlockHeight = 200000
+              }
+          ]
+        }
+      vbs = B16.encode $ BL.toStrict $ serializeMessage v
+      bytes = "00000000480000000100200476854b60000000000001020304050607020000000000000001002004fb490a0000000000e09304000000000002000000000010101bb6050000000000400d030000000000"
+  vbs @?= bytes
+  deserializeMessage (fst $ B16.decode bytes) @?= Right v

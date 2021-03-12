@@ -39,7 +39,7 @@ instance Arbitrary MessageHeader where
   arbitrary = MessageHeader <$> getRandBounded <*> arbitrary
 
 instance Arbitrary ScanBlock where
-  arbitrary = ScanBlock <$> getRandBounded <*> arbitrary <*> arbitrary <*> arbitrary
+  arbitrary = ScanBlock <$> getRandBounded <*> (fmap unPVT arbitrary) <*> arbitrary <*> arbitrary
 
 -- | Bounded protocol version (<= 1023)
 newtype PVT = PVT {unPVT :: ProtocolVersion}

@@ -84,13 +84,14 @@ scanBlockBuilder :: ScanBlock -> (Sum Word32, Builder)
 scanBlockBuilder ScanBlock {..} = (scanBlockSize, scanBlock)
   where
     currencyCode = currencyCodeToWord32 scanBlockCurrency
+    verbs = mkProtocolVersion scanBlockVersion
     scanBlockSize = Sum $ genericSizeOf currencyCode
-                        + genericSizeOf scanBlockVersion
+                        + (fromIntegral $ BS.length verbs)
                         + genericSizeOf scanBlockScanHeight
                         + genericSizeOf scanBlockHeight
 
     scanBlock = word32LE currencyCode
-             <> word32LE scanBlockVersion
+             <> byteString verbs
              <> word64LE scanBlockScanHeight
              <> word64LE scanBlockHeight
 

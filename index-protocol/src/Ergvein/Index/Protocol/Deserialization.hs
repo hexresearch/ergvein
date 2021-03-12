@@ -93,7 +93,7 @@ feeLevelParser = guardJust "out of feeLevel type bounds" . word8toFeeLevel =<< a
 versionBlockParser ::  Parser ScanBlock
 versionBlockParser = do
   currency   <- currencyCodeParser
-  version    <- anyWord32le
+  version    <- versionParser
   scanHeight <- anyWord64le
   height     <- anyWord64le
 

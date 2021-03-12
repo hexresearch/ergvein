@@ -75,17 +75,18 @@ test-suite ergvein-index-protocol-test
       base
     , attoparsec
     , attoparsec-binary
+    , base16-bytestring
     , bytestring
     , containers           >= 0.6  && < 0.7
     , ergvein-index-protocol
     , ergvein-wallet-types
+    , QuickCheck
+    , quickcheck-instances
     , tasty
     , tasty-discover
     , tasty-hspec
     , tasty-hunit
     , tasty-quickcheck
-    , QuickCheck
-    , quickcheck-instances
     , vector
   default-extensions:
     OverloadedStrings
