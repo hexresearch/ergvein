@@ -21,6 +21,7 @@ import UnliftIO hiding (atomically)
 import Ergvein.Index.Protocol.Deserialization
 import Ergvein.Index.Protocol.Serialization
 import Ergvein.Index.Protocol.Types
+import Ergvein.Node.Constants
 import Ergvein.Node.Resolve
 import Ergvein.Text
 import Ergvein.Wallet.Monad.Async
@@ -50,8 +51,8 @@ hasRequiredCurrs = (`versionHasCurrs` requiredCurrencies)
 requiredCurrsSynced :: Version -> Bool
 requiredCurrsSynced = (`versionCurrsSynced` requiredCurrencies)
 
-initIndexerConnection :: (MonadBaseConstr t m, MonadHasSettings t m) => NamedSockAddr -> Event t IndexerMsg ->  m (IndexerConnection t)
-initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
+initIndexerConnection :: (MonadBaseConstr t m, MonadHasSettings t m) => ErgveinNodeAddr -> SockAddr -> Event t IndexerMsg ->  m (IndexerConnection t)
+initIndexerConnection sname sa msgE = mdo
   (versionMismatchE, versionMismatchFire) <- newTriggerEvent
   (currenciesMismatchE, currenciesMismatchFire) <- newTriggerEvent
   (currenciesNotSyncedE, currenciesNotSyncedFire) <- newTriggerEvent

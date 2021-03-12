@@ -38,6 +38,7 @@ import Reflex
 import Reflex.ExternalRef
 
 import Ergvein.Index.Protocol.Types (Message(..), ProtocolVersion)
+import Ergvein.Node.Constants
 import Ergvein.Node.Resolve
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
@@ -66,7 +67,7 @@ data IndexerStatus = IndexerOk | IndexerNotSynced | IndexerWrongVersion !(Maybe 
 
 data IndexerMsg = IndexerClose | IndexerRestart | IndexerMsg Message
 
-type IndexReqSelector t = EventSelector t (Const2 SockAddr IndexerMsg)
+type IndexReqSelector t = EventSelector t (Const2 ErgveinNodeAddr IndexerMsg)
 
 -- ===========================================================================
 --    Monad Client. Implements all required things for client operations
@@ -74,15 +75,15 @@ type IndexReqSelector t = EventSelector t (Const2 SockAddr IndexerMsg)
 
 class MonadBaseConstr t m => MonadIndexClient t m | m -> t where
   -- | Get active addrs ref
-  getActiveAddrsRef :: m (ExternalRef t (Set NamedSockAddr))
+  getActiveAddrsRef :: m (ExternalRef t (Set ErgveinNodeAddr))
   -- | Get passive urls' reference. Internal
-  getArchivedAddrsRef :: m (ExternalRef t (Set NamedSockAddr))
+  getArchivedAddrsRef :: m (ExternalRef t (Set ErgveinNodeAddr))
   -- | Internal method to get reference to indexers
-  getActiveConnsRef :: m (ExternalRef t (Map SockAddr (IndexerConnection t)))
+  getActiveConnsRef :: m (ExternalRef t (Map ErgveinNodeAddr (IndexerConnection t)))
   -- | Internal method to get last status of indexer
-  getStatusConnsRef :: m (ExternalRef t (Map SockAddr IndexerStatus))
+  getStatusConnsRef :: m (ExternalRef t (Map ErgveinNodeAddr IndexerStatus))
   -- | Get deactivated urls' reference. Internal
-  getInactiveAddrsRef :: m (ExternalRef t (Set NamedSockAddr))
+  getInactiveAddrsRef :: m (ExternalRef t (Set ErgveinNodeAddr))
   -- | Get reference to the minimal number of active urls. Internal
   getActiveUrlsNumRef :: m (ExternalRef t Int)
   -- | Get num reference. Internal
@@ -92,19 +93,19 @@ class MonadBaseConstr t m => MonadIndexClient t m | m -> t where
   -- | Get indexer request event
   getIndexReqSelector :: m (IndexReqSelector t)
   -- | Get indexer request trigger
-  getIndexReqFire :: m (Map SockAddr IndexerMsg -> IO ())
+  getIndexReqFire :: m (Map ErgveinNodeAddr IndexerMsg -> IO ())
   -- | Get activation event and trigger
-  getActivationEF :: m (Event t [NamedSockAddr], [NamedSockAddr] -> IO ())
+  getActivationEF :: m (Event t [ErgveinNodeAddr], [ErgveinNodeAddr] -> IO ())
 
 -- | Get deactivated urls dynamic
-getArchivedUrlsD :: MonadIndexClient t m => m (Dynamic t (Set NamedSockAddr))
+getArchivedUrlsD :: MonadIndexClient t m => m (Dynamic t (Set ErgveinNodeAddr))
 getArchivedUrlsD = externalRefDynamic =<< getArchivedAddrsRef
 -- | Get deactivated urls dynamic
-getInactiveUrlsD :: MonadIndexClient t m => m (Dynamic t (Set NamedSockAddr))
+getInactiveUrlsD :: MonadIndexClient t m => m (Dynamic t (Set ErgveinNodeAddr))
 getInactiveUrlsD = externalRefDynamic =<< getInactiveAddrsRef
 
 -- | Activate an URL
-activateURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t NamedSockAddr -> m (Event t ())
+activateURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
 activateURL addrE = do
   (_, f)    <- getActivationEF
   iaRef     <- getInactiveAddrsRef
@@ -121,16 +122,16 @@ activateURL addrE = do
     f [url]
     s <- modifyExternalRef setRef $ \s -> let
       s' = s {
-          settingsActiveAddrs       = namedAddrName <$> acs
-        , settingsDeactivatedAddrs  = namedAddrName <$> ias
-        , settingsArchivedAddrs     = namedAddrName <$> ars
+          settingsActiveAddrs       = acs
+        , settingsDeactivatedAddrs  = ias
+        , settingsArchivedAddrs     = ars
         }
       in (s', s')
     storeSettings s
     fire ()
 
 -- | Activate an URL
-activateURLList :: (MonadIndexClient t m, MonadHasSettings t m) => Event t [NamedSockAddr] -> m (Event t ())
+activateURLList :: (MonadIndexClient t m, MonadHasSettings t m) => Event t [ErgveinNodeAddr] -> m (Event t ())
 activateURLList addrE = do
   (_, f)    <- getActivationEF
   iaRef     <- getInactiveAddrsRef
@@ -148,21 +149,21 @@ activateURLList addrE = do
     f urls
     s <- modifyExternalRef setRef $ \s -> let
       s' = s {
-          settingsActiveAddrs      = namedAddrName <$> acs
-        , settingsDeactivatedAddrs = namedAddrName <$> ias
-        , settingsArchivedAddrs    = namedAddrName <$> ars
+          settingsActiveAddrs      = acs
+        , settingsDeactivatedAddrs = ias
+        , settingsArchivedAddrs    = ars
         }
       in (s', s')
     storeSettings s
     fire ()
 
 -- | It is really important to wait until indexer performs deinitialization before deleting it from dynamic collections
-closeAndWait :: MonadIndexClient t m => Event t NamedSockAddr -> m (Event t NamedSockAddr)
+closeAndWait :: MonadIndexClient t m => Event t ErgveinNodeAddr -> m (Event t ErgveinNodeAddr)
 closeAndWait urlE = do
   req      <- getIndexReqFire
   connsRef <- getActiveConnsRef
   closedEE <- performEvent $ ffor urlE $ \url -> do
-    let sa = namedAddrSock url
+    let sa = url
     liftIO $ req $ M.singleton sa IndexerClose
     mconn <- fmap (M.lookup sa) $ readExternalRef connsRef
     pure $ case mconn of
@@ -171,7 +172,7 @@ closeAndWait urlE = do
   switchDyn <$> holdDyn never closedEE
 
 -- | Deactivate an URL
-deactivateURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t NamedSockAddr -> m (Event t ())
+deactivateURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
 deactivateURL addrE = do
   iaRef     <- getInactiveAddrsRef
   setRef    <- getSettingsRef
@@ -185,14 +186,14 @@ deactivateURL addrE = do
       let us' = S.insert url us in (us', S.toList us')
     s <- modifyExternalRef setRef $ \s -> let
       s' = s {
-          settingsActiveAddrs  = namedAddrName <$> acs
-        , settingsDeactivatedAddrs = namedAddrName <$> ias
+          settingsActiveAddrs  = acs
+        , settingsDeactivatedAddrs = ias
         }
       in (s', s')
     storeSettings s
 
 -- | Forget an url
-forgetURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t NamedSockAddr -> m (Event t ())
+forgetURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
 forgetURL addrE = do
   iaRef     <- getInactiveAddrsRef
   acrhRef   <- getArchivedAddrsRef
@@ -210,9 +211,9 @@ forgetURL addrE = do
 
     s <- modifyExternalRef setRef $ \s -> let
       s' = s {
-          settingsActiveAddrs  = namedAddrName <$> acs
-        , settingsDeactivatedAddrs = namedAddrName <$> ias
-        , settingsArchivedAddrs = namedAddrName <$> ars
+          settingsActiveAddrs  = acs
+        , settingsDeactivatedAddrs = ias
+        , settingsArchivedAddrs = ars
         }
       in (s', s')
     storeSettings s
@@ -231,9 +232,9 @@ requestIndexerWhenOpen IndexerConnection{..} msg = do
   initE <- fmap (gate (current indexConIsUp)) $ getPostBuild
   let reqE = leftmost [initE, indexConOpensE]
   performEvent $ ffor reqE $ const $
-    liftIO $ fire $ M.singleton indexConAddr $ IndexerMsg msg
+    liftIO $ fire $ M.singleton indexConName $ IndexerMsg msg
 
-requestSpecificIndexer :: MonadIndexClient t m => Event t (SockAddr, Message) -> m (Event t Message)
+requestSpecificIndexer :: MonadIndexClient t m => Event t (ErgveinNodeAddr, Message) -> m (Event t Message)
 requestSpecificIndexer saMsgE = do
   connsRef <- getActiveConnsRef
   fireReq  <- getIndexReqFire
@@ -247,7 +248,7 @@ requestSpecificIndexer saMsgE = do
   switchHold never $ fmapMaybe id mrespE
 
 indexerPingerWidget :: MonadIndexClient t m
-  => SockAddr                       -- Which indexer to ping
+  => ErgveinNodeAddr                       -- Which indexer to ping
   -> Event t ()                     -- Manual refresh event
   -> m (Dynamic t NominalDiffTime)  -- Dynamic with the latency. Starting value 0
 indexerPingerWidget addr refrE = do
@@ -269,7 +270,7 @@ indexerConnPingerWidget IndexerConnection{..} refrE = do
   pingE <- performFork $ ffor tickE $ const $ liftIO $ do
     p <- randomIO
     t <- getCurrentTime
-    fireReq $ M.singleton indexConAddr $ (IndexerMsg $ MPing p)
+    fireReq $ M.singleton indexConName $ (IndexerMsg $ MPing p)
     pure (p,t)
   pingD <- holdDyn Nothing $ Just <$> pingE
   pongE <- performFork $ ffor indexConRespE $ \case
@@ -318,10 +319,10 @@ indexerStatusUpdater IndexerConnection{..} = do
   e <- updatedWithInit =<< holdUniqDyn indexConStatus
   r <- getStatusConnsRef
   performEvent_ $ ffor e $ \status -> do
-    modifyExternalRef r $ \m -> (M.insert indexConAddr status m, ())
+    modifyExternalRef r $ \m -> (M.insert indexConName status m, ())
 
 -- | Get cached status of indexer even it is disconnected
-indexerLastStatus :: forall t m . MonadIndexClient t m => SockAddr -> m (Dynamic t (Maybe IndexerStatus))
+indexerLastStatus :: forall t m . MonadIndexClient t m => ErgveinNodeAddr -> m (Dynamic t (Maybe IndexerStatus))
 indexerLastStatus addr = do
   md <- externalRefDynamic =<< getStatusConnsRef
   pure $ M.lookup addr <$> md

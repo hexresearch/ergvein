@@ -53,6 +53,6 @@ restoreNetworkAmount notOperablePeerAmountE = do
       Just addrs -> pure $ NE.toList addrs
       _          -> resolveAddrs rs defIndexerPort defaultIndexers
      
-    let neededSet = take (targetNetworkSize - presentAmount) addresses
+    let neededSet = take (targetNetworkSize - presentAmount) $ namedAddrName <$> addresses
     pure neededSet
   void $ activateURLList reloadedFromSeedE
