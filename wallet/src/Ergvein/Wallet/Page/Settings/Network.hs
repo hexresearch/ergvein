@@ -13,6 +13,7 @@ import Reflex.ExternalRef
 import Text.Read
 import Control.Monad.IO.Class
 
+import Ergvein.Node.Constants
 import Ergvein.Node.Resolve
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Alert
@@ -24,8 +25,8 @@ import Ergvein.Wallet.Localization.Network
 import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Wrapper
 import Ergvein.Wallet.Worker.NodeDiscovery
+import Ergvein.Wallet.Wrapper
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
@@ -113,7 +114,7 @@ parametersPageWidget = mdo
   where
     fmap2 = fmap . fmap
 
-addUrlWidget :: forall t m . MonadFrontBase t m => Dynamic t Bool -> m (Event t NamedSockAddr)
+addUrlWidget :: forall t m . MonadFrontBase t m => Dynamic t Bool -> m (Event t ErgveinNodeAddr)
 addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not b then pure never else do
   murlE <- divClass "mt-3" $ do
     textD <- fmap _inputElement_value $ inputElement $ def
@@ -126,7 +127,7 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
   void $ widgetHold (pure ()) $ ffor murlE $ \case
     Nothing -> divClass "form-field-errors" $ localizedText NPSParseError
     _ -> pure ()
-  pure $ fmapMaybe id murlE
+  pure $ fmapMaybe (namedAddrName <$>) murlE
 
 activePageWidget :: forall t m . MonadFrontBase t m => m ()
 activePageWidget = mdo
@@ -135,7 +136,7 @@ activePageWidget = mdo
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   let valsD = (,) <$> connsD <*> addrsD
   void $ widgetHoldDyn $ ffor valsD $ \(conmap, urls) ->
-    flip traverse urls $ \sa -> renderActive sa refrE $ M.lookup (namedAddrSock sa) conmap
+    flip traverse urls $ \sa -> renderActive sa refrE $ M.lookup sa conmap
   hideE <- activateURL =<< addUrlWidget showD
   (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
@@ -147,7 +148,7 @@ activePageWidget = mdo
   pure ()
 
 renderActive :: MonadFrontBase t m
-  => NamedSockAddr
+  => ErgveinNodeAddr
   -> Event t ()
   -> (Maybe (IndexerConnection t))
   -> m ()
@@ -161,9 +162,9 @@ renderActive nsa refrE mconn = mdo
     Nothing -> do
       tglE' <- divClass "network-name" $ do
         elAttr "span" offclass $ elClass "i" "fas fa-circle" $ pure ()
-        divClass "mt-a mb-a network-name-txt" $ text $ namedAddrName nsa
+        divClass "mt-a mb-a network-name-txt" $ text nsa
         editBtn
-      stD <- indexerLastStatus $ namedAddrSock nsa
+      stD <- indexerLastStatus nsa
       widgetHoldDyn $ ffor stD $ \case
         Just (IndexerWrongVersion v) -> descrOption $ NSSWrongVersion v
         Just IndexerMissingCurrencies -> descrOption NSSMissingCurrencies
@@ -186,7 +187,7 @@ renderActive nsa refrE mconn = mdo
             else offclass
       tglE' <- divClass "network-name" $ do
         elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
-        divClass "mt-a mb-a network-name-txt" $ text $ namedAddrName nsa
+        divClass "mt-a mb-a network-name-txt" $ text nsa
         editBtn
       latD <- indexerConnPingerWidget conn refrE
       widgetHoldDyn $ ffor isUpD $ \up -> if not up
@@ -221,23 +222,28 @@ inactivePageWidget = mdo
     pure (pingAllE', tglE')
   pure ()
 
-renderInactive :: MonadFrontBase t m => Event t () -> NamedSockAddr -> m ()
+renderInactive :: MonadFrontBase t m => Event t () -> ErgveinNodeAddr -> m ()
 renderInactive initPingE nsa = mdo
+  seed <- mkResolvSeed
   sel <- getIndexReqSelector
   tglD <- holdDyn False tglE
   (fstPingE, refrE) <- headTailE $ leftmost [initPingE, pingE]
   tglE <- fmap switchDyn $ divClass "network-wrapper mt-1" $ widgetHold (startingWidget tglD) $ ffor fstPingE $ const $ do
-      let reqE = select sel $ Const2 (namedAddrSock nsa)
-      conn <- initIndexerConnection nsa reqE
-      pingD <- indexerConnPingerWidget conn refrE
-      fmap switchDyn $ widgetHoldDyn $ ffor pingD $ \p -> do
-        tglE' <- divClass "network-name" $ do
-          let cls = if p == 0 then "mt-a mb-a indexer-offline" else "mt-a mb-a indexer-online"
-          elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
-          divClass "mt-a mb-a network-name-txt" $ text $ namedAddrName nsa
-          tglBtn tglD
-        descrOption $ NSSLatency p
-        pure tglE'
+    mAddr <- fmap namedAddrSock <$> resolveAddr seed defIndexerPort nsa
+    case mAddr of
+      Just addr -> do
+        let reqE = select sel $ Const2 nsa
+        conn <- initIndexerConnection nsa addr reqE
+        pingD <- indexerConnPingerWidget conn refrE
+        fmap switchDyn $ widgetHoldDyn $ ffor pingD $ \p -> do
+          tglE' <- divClass "network-name" $ do
+            let cls = if p == 0 then "mt-a mb-a indexer-offline" else "mt-a mb-a indexer-online"
+            elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
+            divClass "mt-a mb-a network-name-txt" $ text nsa
+            tglBtn tglD
+          descrOption $ NSSLatency p
+          pure tglE'
+      _ -> pure never
   pingE <- fmap switchDyn $ widgetHoldDyn $ ffor tglD $ \b -> if not b
     then pure never
     else divClass "network-wrapper mt-1" $ divClass "net-btns-3" $ do
@@ -254,7 +260,7 @@ renderInactive initPingE nsa = mdo
 
     startingWidget tglD = do
       tglE <- divClass "network-name" $ do
-        divClass "mt-a mb-a network-name-txt" $ text $ namedAddrName nsa
+        divClass "mt-a mb-a network-name-txt" $ text nsa
         tglBtn tglD
       descrOption NSSOffline
       pure tglE
