@@ -88,6 +88,12 @@ prop_encdec_version v = either (const False) (v == ) decVer
     encVer = mkProtocolVersion $ unPVT v
     decVer = fmap PVT $ AP.parseOnly versionParser encVer
 
+testMessageHex :: Message -> BS.ByteString -> IO ()
+testMessageHex v bytes = do
+  let vbs = B16.encode $ BL.toStrict $ serializeMessage v
+  vbs @?= bytes
+  deserializeMessage (fst $ B16.decode bytes) @?= Right v
+
 unit_versionMsg :: IO ()
 unit_versionMsg = do
   let v = MVersion $ Version {
@@ -109,15 +115,33 @@ unit_versionMsg = do
               }
           ]
         }
-      vbs = B16.encode $ BL.toStrict $ serializeMessage v
       bytes = "00330100200476854b60000000000001020304050607020001002004fefb490a00fee09304000200001010fe1bb60500fe400d0300"
-  vbs @?= bytes
-  deserializeMessage (fst $ B16.decode bytes) @?= Right v
+  testMessageHex v bytes
 
 unit_versionAckMsg :: IO ()
 unit_versionAckMsg = do
   let v = MVersionACK VersionACK
-      vbs = B16.encode $ BL.toStrict $ serializeMessage v
       bytes = "01"
-  vbs @?= bytes
-  deserializeMessage (fst $ B16.decode bytes) @?= Right v
+  testMessageHex v bytes
+
+unit_pingMsg :: IO ()
+unit_pingMsg = do
+  let v = MPing 424143
+      bytes = "0b08cf78060000000000"
+  testMessageHex v bytes
+
+unit_pongMsg :: IO ()
+unit_pongMsg = do
+  let v = MPong 424143
+      bytes = "0c08cf78060000000000"
+  testMessageHex v bytes
+
+unit_rejectMsg :: IO ()
+unit_rejectMsg = do
+  let v = MReject Reject {
+          rejectId = MFiltersRequestType
+        , rejectMsgCode = InternalServerError
+        , rejectMsg = "Something went wrong"
+        }
+      bytes = "0a17020214536f6d657468696e672077656e742077726f6e67"
+  testMessageHex v bytes
