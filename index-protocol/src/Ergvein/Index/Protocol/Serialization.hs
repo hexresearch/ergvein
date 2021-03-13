@@ -210,6 +210,7 @@ messageBuilder (MFiltersEvent FilterEvent {..}) =
     filterEventBlockFilterLength = fromIntegral $ BS.length filterEventBlockFilter
 
     msgSize = varIntSize currency
+            + varIntSize filterEventHeight
             + filterEventBlockIdLength
             + varIntSize filterEventBlockFilterLength
             + filterEventBlockFilterLength
