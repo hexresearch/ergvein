@@ -1,17 +1,15 @@
 module Ergvein.Index.Protocol.Types where
 
 import Conversion
-import Data.Attoparsec.Binary
-import Data.Attoparsec.ByteString
 import Data.ByteString (ByteString)
-import Ergvein.Text
 import Data.ByteString.Short (ShortByteString)
-import Data.Either
+import Data.Fixed
 import Data.List (nub)
 import Data.Map.Strict (Map)
 import Data.Text (Text)
 import Data.Vector.Unboxed.Deriving
 import Data.Word
+import Ergvein.Text
 import Foreign.C.Types
 import Foreign.Storable
 import Network.Socket (SockAddr(..))
@@ -31,7 +29,7 @@ import qualified Ergvein.Types.Currency as E
 type ProtocolVersion = (Word16, Word16, Word16)
 
 protocolVersion :: ProtocolVersion
-protocolVersion = (1,0,0)
+protocolVersion = (2,0,0)
 
 showProtocolVersion :: ProtocolVersion -> Text
 showProtocolVersion (a,b,c) = showt a <> "." <> showt b <> "." <> showt c
@@ -150,7 +148,9 @@ type Ping = Word64
 type Pong = Word64
 
 data Reject = Reject
-  { rejectMsgCode :: !RejectCode
+  { rejectId      :: !MessageType
+  , rejectMsgCode :: !RejectCode
+  , rejectMsg     :: !Text
   } deriving (Show, Eq)
 
 data ScanBlock = ScanBlock
@@ -228,25 +228,51 @@ data FeeResp
 type FeeResponse = [FeeResp]
 type FeeRequest = [CurrencyCode]
 
-data IPType = IPV4 | IPV6
+data IPType = IPV4 | IPV6 | OnionV3
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 ipTypeToWord8 :: IPType -> Word8
 ipTypeToWord8 = \case
   IPV4 -> 0
   IPV6 -> 1
+  OnionV3 -> 2
 
 word8ToIPType :: Word8 -> Maybe IPType
 word8ToIPType = \case
   0 -> Just IPV4
   1 -> Just IPV6
+  2 -> Just OnionV3
   _ -> Nothing
 
-data Address = Address
-  { addressType    :: !IPType
-  , addressPort    :: !Word16
-  , addressAddress :: !ByteString
-  } deriving (Show, Eq)
+addressSize :: IPType -> Word32
+addressSize = \case
+  IPV4 -> 4
+  IPV6 -> 16
+  OnionV3 -> 56
+
+addressType :: Address -> IPType
+addressType = \case
+  AddressIpv4{} -> IPV4
+  AddressIpv6{} -> IPV6
+  AddressOnionV3{} -> OnionV3
+
+data IpV6 = IpV6 !Word32 !Word32 !Word32 !Word32
+  deriving (Show, Eq)
+
+data Address
+  = AddressIpv4 {
+      addressV4      :: !Word32
+    , addressPort    :: !Word16
+    }
+  | AddressIpv6 {
+      addressV6      :: !IpV6
+    , addressPort    :: !Word16
+    }
+  | AddressOnionV3 {
+      addressOnion   :: !ByteString
+    , addressPort    :: !Word16
+    }
+  deriving (Show, Eq)
 
 data PeerRequest = PeerRequest
   deriving (Show, Eq)
@@ -262,7 +288,7 @@ data PeerIntroduce = PeerIntroduce
 newtype RatesRequest = RatesRequest { unRatesRequest :: Map CurrencyCode [Fiat] }
   deriving (Show, Eq)
 
-newtype RatesResponse = RatesResponse { unRatesResponse :: Map CurrencyCode (Map Fiat Double)}
+newtype RatesResponse = RatesResponse { unRatesResponse :: Map CurrencyCode (Map Fiat Centi)}
   deriving (Show, Eq)
 
 data Message = MPing                       !Ping
@@ -286,12 +312,12 @@ genericSizeOf :: (Storable a, Integral b) => a -> b
 genericSizeOf = fromIntegral . sizeOf
 
 instance Conversion Address SockAddr where
-  convert Address{..} = case addressType of
-    IPV4 -> let
-      port = (fromInteger $ toInteger addressPort)
-      ip  =  fromRight (error "address") $ parseOnly anyWord32be addressAddress
-      in SockAddrInet port ip
-    IPV6 -> let
-      port = (fromInteger $ toInteger addressPort)
-      ip  =  fromRight (error "address") $ parseOnly ((,,,) <$> anyWord32be <*> anyWord32be <*> anyWord32be <*> anyWord32be) addressAddress
+  convert addr = case addr of
+    AddressIpv4 {..} -> let
+      port = fromInteger $ toInteger addressPort
+      in SockAddrInet port addressV4
+    AddressIpv6 (IpV6 a b c d) p -> let
+      port = fromInteger $ toInteger p
+      ip  =  (a, b, c, d)
       in SockAddrInet6 port 0 ip 0
+    AddressOnionV3{} -> error "Cannot convert onion address to socket address!"

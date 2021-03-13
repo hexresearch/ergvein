@@ -110,6 +110,14 @@ unit_versionMsg = do
           ]
         }
       vbs = B16.encode $ BL.toStrict $ serializeMessage v
-      bytes = "00000000480000000100200476854b60000000000001020304050607020000000000000001002004fb490a0000000000e09304000000000002000000000010101bb6050000000000400d030000000000"
+      bytes = "00330100200476854b60000000000001020304050607020001002004fefb490a00fee09304000200001010fe1bb60500fe400d0300"
+  vbs @?= bytes
+  deserializeMessage (fst $ B16.decode bytes) @?= Right v
+
+unit_versionAckMsg :: IO ()
+unit_versionAckMsg = do
+  let v = MVersionACK VersionACK
+      vbs = B16.encode $ BL.toStrict $ serializeMessage v
+      bytes = "01"
   vbs @?= bytes
   deserializeMessage (fst $ B16.decode bytes) @?= Right v

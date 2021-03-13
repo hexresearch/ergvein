@@ -1,10 +1,14 @@
+{-# LANGUAGE MultiWayIf #-}
 module Ergvein.Index.Protocol.Deserialization where
 
 import Codec.Compression.GZip
 import Control.Monad
 import Data.Attoparsec.Binary
 import Data.Attoparsec.ByteString
-import Data.Scientific
+import Data.Fixed
+import Data.Text (Text)
+import Data.Text.Encoding
+import Data.Text.Encoding.Error
 import Data.Word
 
 import Ergvein.Index.Protocol.Types
@@ -42,7 +46,7 @@ word32toMessageType = \case
 
 currencyCodeParser :: Parser CurrencyCode
 currencyCodeParser = do
-  w <- anyWord32le
+  w <- varInt
   case word32ToCurrencyCode w of
     Nothing -> fail "Invalid currency code"
     Just c  -> pure c
@@ -63,6 +67,14 @@ word8toFeeLevel = \case
   2 -> Just FeeCheap
   _ -> Nothing
 
+varInt :: Integral a => Parser a
+varInt = do
+  w <- anyWord8
+  if | w == 0xFF -> fmap fromIntegral anyWord64le
+     | w == 0xFE -> fmap fromIntegral anyWord32le
+     | w == 0xFD -> fmap fromIntegral anyWord16le
+     | otherwise -> pure $ fromIntegral w
+
 versionParser :: Parser ProtocolVersion
 versionParser = do
   bs :: S.Bitstream S.Right <- S.fromBits <$> anyWord32be
@@ -78,14 +90,18 @@ versionParser = do
 messageHeaderParser ::  Parser MessageHeader
 messageHeaderParser = do
     messageType <- messageTypeParser
-    messageSize <- anyWord32le
-    pure $ MessageHeader messageType messageSize
+    case messageType of
+      MVersionACKType -> pure $ MessageHeader messageType 0
+      MPeerRequestType -> pure $ MessageHeader messageType 0
+      _ -> do
+        messageSize <- varInt
+        pure $ MessageHeader messageType messageSize
 
 messageTypeParser :: Parser MessageType
-messageTypeParser = guardJust "out of message type bounds" . word32toMessageType =<< anyWord32le
+messageTypeParser = guardJust "out of message type bounds" . word32toMessageType =<< varInt
 
 rejectCodeParser :: Parser RejectCode
-rejectCodeParser = guardJust "out of reject type bounds" . word32toRejectType =<< anyWord32le
+rejectCodeParser = guardJust "out of reject type bounds" . word32toRejectType =<< varInt
 
 feeLevelParser :: Parser FeeLevel
 feeLevelParser = guardJust "out of feeLevel type bounds" . word8toFeeLevel =<< anyWord8
@@ -94,8 +110,8 @@ versionBlockParser ::  Parser ScanBlock
 versionBlockParser = do
   currency   <- currencyCodeParser
   version    <- versionParser
-  scanHeight <- anyWord64le
-  height     <- anyWord64le
+  scanHeight <- varInt
+  height     <- varInt
 
   pure $ ScanBlock
     { scanBlockCurrency   = currency
@@ -104,11 +120,16 @@ versionBlockParser = do
     , scanBlockHeight     = height
     }
 
-filterParser :: Parser BlockFilter
-filterParser = do
-  blockIdLength <- fromIntegral <$> anyWord32le
-  blockId <- Parse.take blockIdLength
-  blockFilterLength <- fromIntegral <$> anyWord32le
+blockIdLength :: CurrencyCode -> Int
+blockIdLength = \case
+  BTC -> 32
+  TBTC -> 32
+  _ -> 32 -- TODO: edit for other currencies if differ
+
+filterParser :: CurrencyCode -> Parser BlockFilter
+filterParser c = do
+  blockId <- Parse.take $ blockIdLength c
+  blockFilterLength <- fromIntegral <$> (varInt :: Parser Word32)
   blockFilter <- Parse.take blockFilterLength
 
   pure $ BlockFilter
@@ -121,26 +142,32 @@ addressParser = do
   addrType <-  maybe (fail "Invalid address type") pure
             .  word8ToIPType
            =<< anyWord8
-  addrPort <- anyWord16le
-  addr <- Parse.take (if addrType == IPV4 then 4 else 16)
-  pure $ Address
-    { addressType    = addrType
-    , addressPort    = addrPort
-    , addressAddress = addr
-    }
+  case addrType of
+    IPV4 -> AddressIpv4 <$> anyWord32be <*> anyWord16be
+    IPV6 -> AddressIpv6 <$> (IpV6 <$> anyWord32be <*> anyWord32be <*> anyWord32be <*> anyWord32be) <*> anyWord16be
+    OnionV3 -> AddressOnionV3 <$> Parse.take (fromIntegral $ addressSize OnionV3) <*> anyWord16be
+
+textParser :: Parser Text
+textParser = do
+  l :: Word32 <- varInt
+  bs <- Parse.take (fromIntegral l)
+  pure $ decodeUtf8With lenientDecode bs
 
 messageParser :: MessageType -> Parser Message
 messageParser MPingType = MPing <$> anyWord64le
 
 messageParser MPongType = MPong <$> anyWord64le
 
-messageParser MRejectType = MReject . Reject <$> rejectCodeParser
+messageParser MRejectType = fmap MReject $ Reject
+  <$> messageTypeParser
+  <*> rejectCodeParser
+  <*> textParser
 
 messageParser MVersionType = do
   version       <- versionParser
   time          <- fromIntegral <$> anyWord64le
   nonce         <- anyWord64le
-  currencies    <- anyWord32le
+  currencies    <- varInt :: Parser Word32
   versionBlocks <- UV.fromList <$> replicateM (fromIntegral currencies) versionBlockParser
 
   pure $ MVersion $ Version
@@ -150,12 +177,12 @@ messageParser MVersionType = do
     , versionScanBlocks = versionBlocks
     }
 
-messageParser MVersionACKType = MVersionACK VersionACK <$ word8 0
+messageParser MVersionACKType = pure $ MVersionACK VersionACK
 
 messageParser MFiltersRequestType = do
   currency <- currencyCodeParser
-  start    <- anyWord64le
-  amount   <- anyWord64le
+  start    <- varInt
+  amount   <- varInt
 
   pure $ MFiltersRequest $ FilterRequest
     { filterRequestMsgCurrency = currency
@@ -165,11 +192,11 @@ messageParser MFiltersRequestType = do
 
 messageParser MFiltersResponseType = do
   currency <- currencyCodeParser
-  amount <- anyWord32le
+  amount :: Word32 <- varInt
   filtersString <- takeLazyByteString
 
   let unzippedFilters = LBS.toStrict $ decompress filtersString
-      parser = V.fromList <$> replicateM (fromIntegral amount) filterParser
+      parser = V.fromList <$> replicateM (fromIntegral amount) (filterParser currency)
 
   case parseOnly parser unzippedFilters of
     Right parsedFilters -> pure $ MFiltersResponse $ FilterResponse
@@ -181,10 +208,9 @@ messageParser MFiltersResponseType = do
 
 messageParser MFilterEventType = do
   currency <- currencyCodeParser
-  height <- anyWord64le
-  blockIdLength <- fromIntegral <$> anyWord32le
-  blockId <- Parse.take blockIdLength
-  blockFilterLength <- fromIntegral <$> anyWord32le
+  height <- varInt
+  blockId <- Parse.take (blockIdLength currency)
+  blockFilterLength <- fromIntegral <$> (varInt :: Parser Word32)
   blockFilter <- Parse.take blockFilterLength
 
   pure $ MFiltersEvent $ FilterEvent
@@ -195,69 +221,68 @@ messageParser MFilterEventType = do
     }
 
 messageParser MFeeRequestType = do
-  amount <- anyWord32le
+  amount :: Word32 <- varInt
   curs <- replicateM (fromIntegral amount) currencyCodeParser
   pure $ MFeeRequest curs
 
 messageParser MFeeResponseType = do
-  amount <- anyWord32le
+  amount :: Word32 <- varInt
   resps <- replicateM (fromIntegral amount) parseFeeResp
   pure $ MFeeResponse resps
 
-messageParser MPeerRequestType = MPeerRequest PeerRequest <$ word8 0
+messageParser MPeerRequestType = pure $ MPeerRequest PeerRequest
 
 messageParser MPeerResponseType = do
-  amount <- anyWord32le
+  amount :: Word32 <- varInt
   addresses <- V.fromList <$> replicateM (fromIntegral amount) addressParser
   pure $ MPeerResponse $  PeerResponse
     { peerResponseAddresses = addresses
     }
 
 messageParser MIntroducePeerType = do
-  amount <- anyWord32le
+  amount :: Word32 <- varInt
   addresses <- V.fromList <$> replicateM (fromIntegral amount) addressParser
   pure $ MPeerIntroduce $ PeerIntroduce
     { peerIntroduceAddresses = addresses
     }
 
 messageParser MRatesRequestType = do
-  n <- fmap fromIntegral anyWord32le
+  n <- fmap fromIntegral (varInt :: Parser Word32)
   cfs <- replicateM n cfParser
   pure $ MRatesRequest $ RatesRequest $ M.fromList cfs
 
 messageParser MRatesResponseType = do
-  n <- fmap fromIntegral anyWord32le
+  n <- fmap fromIntegral (varInt :: Parser Word32)
   cfds <- replicateM n cfdParser
   pure $ MRatesResponse $ RatesResponse $ M.fromList cfds
 
 enumParser :: Enum a => Parser a
-enumParser = fmap (toEnum . fromIntegral) anyWord32le
+enumParser = fmap (toEnum . fromIntegral) (varInt :: Parser Word32)
 
 cfParser :: Parser (CurrencyCode, [Fiat])
 cfParser = do
   c <- enumParser
-  n <- fmap fromIntegral anyWord32le
+  n <- fmap fromIntegral (varInt :: Parser Word32)
   fmap (c, ) $ replicateM n enumParser
 
-cfdParser :: Parser (CurrencyCode, M.Map Fiat Double)
+cfdParser :: Parser (CurrencyCode, M.Map Fiat Centi)
 cfdParser = do
   c <- enumParser
-  n <- fmap fromIntegral anyWord32le
+  n <- fmap fromIntegral (varInt :: Parser Word32)
   fmap ((c,) . M.fromList) $ replicateM n fdParser
 
-fdParser :: Parser (Fiat, Double)
-fdParser = (,) <$> enumParser <*> parseDouble
+fdParser :: Parser (Fiat, Centi)
+fdParser = (,) <$> enumParser <*> parseCenti
 
-parseDouble :: Parser Double
-parseDouble = do
-  c <- fromIntegral <$> anyWord64le
-  e <- fromIntegral <$> anyWord64le
-  pure $ toRealFloat $ scientific c e
+parseCenti :: Parser Centi
+parseCenti = do
+  w <- anyWord64le
+  pure $ MkFixed $ fromIntegral w
 
 parseCurrencyPair :: Parser (CurrencyCode, Fiat)
 parseCurrencyPair = (,)
-  <$> (fmap (toEnum . fromIntegral) anyWord32le)
-  <*> (fmap (toEnum . fromIntegral) anyWord32le)
+  <$> (fmap (toEnum . fromIntegral) (varInt :: Parser Word32))
+  <*> (fmap (toEnum . fromIntegral) (varInt :: Parser Word32))
 
 parseFeeResp :: Parser FeeResp
 parseFeeResp = do
@@ -268,14 +293,14 @@ parseFeeResp = do
     _ -> genericParser currency
   where
     btcParser isTest = do
-      h <- (,) <$> anyWord64le <*> anyWord64le
-      m <- (,) <$> anyWord64le <*> anyWord64le
-      l <- (,) <$> anyWord64le <*> anyWord64le
+      h <- (,) <$> varInt <*> varInt
+      m <- (,) <$> varInt <*> varInt
+      l <- (,) <$> varInt <*> varInt
       pure $ FeeRespBTC isTest $ FeeBundle h m l
     genericParser cur = FeeRespGeneric cur
-      <$> anyWord64le
-      <*> anyWord64le
-      <*> anyWord64le
+      <$> varInt
+      <*> varInt
+      <*> varInt
 
 parseMessage :: MessageType -> BS.ByteString -> Either String (Message, BS.ByteString)
 parseMessage msgType source =
