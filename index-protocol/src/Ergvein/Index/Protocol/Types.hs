@@ -321,3 +321,21 @@ instance Conversion Address SockAddr where
       ip  =  (a, b, c, d)
       in SockAddrInet6 port 0 ip 0
     AddressOnionV3{} -> error "Cannot convert onion address to socket address!"
+
+messageType :: Message -> MessageType
+messageType = \case
+  MPing{} -> MPingType
+  MPong{} -> MPongType
+  MVersion{} -> MVersionType
+  MVersionACK{} -> MVersionACKType
+  MReject{} -> MRejectType
+  MFiltersRequest{} -> MFiltersRequestType
+  MFiltersResponse{} -> MFiltersResponseType
+  MFiltersEvent{} -> MFilterEventType
+  MFeeRequest{} -> MFeeRequestType
+  MFeeResponse{} -> MFeeResponseType
+  MPeerRequest{} -> MPeerRequestType
+  MPeerResponse{} -> MPeerResponseType
+  MPeerIntroduce{} -> MIntroducePeerType
+  MRatesRequest{} -> MRatesRequestType
+  MRatesResponse{} -> MRatesResponseType

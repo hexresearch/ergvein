@@ -32,7 +32,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Index.Server.DB.Serialize.Class
 import Ergvein.Index.Server.PeerDiscovery.Types (PeerAddr(..), PeerIP(..))
-import Ergvein.Index.Protocol.Types (Address(..),IPType(..))
+import Ergvein.Index.Protocol.Types (Address(..), IpV6(..))
 import qualified Ergvein.Index.Server.PeerDiscovery.Types as DiscoveryTypes
 
 import qualified Data.ByteString         as BS
@@ -134,15 +134,13 @@ instance Conversion KnownPeerRecItem DiscoveryTypes.Peer where
 instance Conversion KnownPeerRecItem Address where
   convert KnownPeerRecItem {..} = let
     in case peerAddrIP knownPeerRecAddr of
-      V4 ip -> Address
-        { addressType    = IPV4
-        , addressPort    = peerAddrPort knownPeerRecAddr
-        , addressAddress = BL.toStrict $ toLazyByteString $ word32BE ip
+      V4 ip -> AddressIpv4
+        { addressPort    = peerAddrPort knownPeerRecAddr
+        , addressV4      = ip
         }
-      V6 (a,b,c,d) -> Address
-        { addressType    = IPV6
-        , addressPort    = peerAddrPort knownPeerRecAddr
-        , addressAddress = BL.toStrict $ toLazyByteString $ word32BE a <> word32BE b <> word32BE c <> word32BE d
+      V6 (a,b,c,d) -> AddressIpv6
+        { addressPort    = peerAddrPort knownPeerRecAddr
+        , addressV6      = IpV6 a b c d
         }
 
 -- ===========================================================================

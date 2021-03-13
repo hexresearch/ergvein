@@ -12,6 +12,7 @@ import Control.Lens
 import Control.Monad.STM
 import Control.Monad.Reader
 import Data.Map.Strict (Map)
+import Data.Fixed
 import Data.Text as T
 import Data.Time (getCurrentTime, diffUTCTime, NominalDiffTime)
 import Network.Socket
@@ -82,7 +83,7 @@ data Env t = Env {
 , env'feesStore       :: !(ExternalRef t (Map Currency FeeBundle))
 , env'storeMutex      :: !(MVar ())
 , env'storeChan       :: !(TChan (Text, AuthInfo))
-, env'ratesRef        :: !(ExternalRef t (Map Currency (Map Fiat Double)))
+, env'ratesRef        :: !(ExternalRef t (Map Currency (Map Fiat Centi)))
 -- Client context
 , env'addrsArchive    :: !(ExternalRef t (S.Set NamedSockAddr))
 , env'inactiveAddrs   :: !(ExternalRef t (S.Set NamedSockAddr))

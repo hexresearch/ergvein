@@ -174,17 +174,18 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
           if not (BS.null fetchedBytes) then
             except $ Right fetchedBytes
           else
-            except $ Left $ Reject ZeroBytesReceived
+            except $ Left $ Reject MVersionType ZeroBytesReceived "Expected bytes for message header"
 
         messageHeader :: BS.ByteString -> ExceptT Reject ServerM MessageHeader
-        messageHeader = ExceptT . pure . mapLeft (\_-> Reject MessageHeaderParsing) . eitherResult . parse messageHeaderParser
+        messageHeader = ExceptT . pure . mapLeft (\_-> Reject MVersionType MessageHeaderParsing "Failed to parse header") . eitherResult . parse messageHeaderParser
 
         request :: MessageHeader -> ExceptT Reject ServerM Message
         request MessageHeader {..} = do
           messageBytes <- liftIO $ NS.recv sock $ fromIntegral msgSize
-          except $ mapLeft (\_-> Reject MessageParsing) $ eitherResult $ parse (messageParser msgType) messageBytes
+          except $ mapLeft (\_-> Reject msgType MessageParsing "Failed to parse message body") $ eitherResult $ parse (messageParser msgType) messageBytes
 
         response :: Message -> ExceptT Reject ServerM ([Message], Bool)
         response msg = (lift $ handleMsg addr msg) `catch` (\(e :: SomeException) -> do
           logErrorN $ "<" <> showt addr <> ">: Rejecting peer as exception occured in while handling it message: " <> showt e
-          except $ Left $ Reject InternalServerError)
+          except $ Left $ Reject (messageType msg) InternalServerError $ showt e
+          )

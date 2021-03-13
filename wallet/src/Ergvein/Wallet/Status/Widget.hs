@@ -53,7 +53,7 @@ balWidget cur bal = do
   widgetHoldDyn $ ffor rateFiatD $ \mf -> maybeW mf $ \f -> do
     rateD <- getRateByFiatD cur f
     void $ widgetHoldDyn $ ffor rateD $ \mr -> maybeW mr $ \r -> do
-      let r' = T.pack $ printf "%.2f" r
+      let r' = T.pack $ printf "%.2f" (realToFrac r :: Double)
       text $ " (" <> r' <> " " <> showt cur <> "/" <> showt f <> ")"
   pure never
   where

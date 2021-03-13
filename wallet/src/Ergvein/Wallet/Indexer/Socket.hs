@@ -82,7 +82,7 @@ initIndexerConnection (NamedSockAddr sname sa) msgE = mdo
   handshakeE <- performEvent $ ffor (socketConnected s) $ const $ mkVers
   let respE = _socketInbound s
   hsRespE <- fmap (fmapMaybe id) $ performFork $ ffor respE $ \case
-    MReject (Reject VersionNotSupported) -> do
+    MReject (Reject _ VersionNotSupported _) -> do
       nodeLog sa $ "The remote version is not compatible with our version " <> showt protocolVersion
       liftIO $ versionMismatchFire Nothing
       pure Nothing

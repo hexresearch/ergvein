@@ -31,7 +31,7 @@ instance Conversion BlockInfoRec BlockFilter where
 scanProgressInfoToScanBlock :: (Monad m, HasServerConfig m) => ScanProgressInfo -> m ScanBlock
 scanProgressInfoToScanBlock ScanProgressInfo {..} = do
   scanBlockCurrency <- currencyToCurrencyCode nfoCurrency
-  let scanBlockVersion    = 1
+  let scanBlockVersion    = (1, 0, 0)
       scanBlockScanHeight = nfoScannedHeight
       scanBlockHeight     = nfoActualHeight
   pure $ ScanBlock {..}

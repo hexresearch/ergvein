@@ -12,6 +12,7 @@ import Control.Monad.Logger
 import Control.Monad.Reader
 import Data.Text (Text, isInfixOf)
 import Data.Typeable
+import Data.Fixed
 import Network.HTTP.Client.TLS
 import Network.Socket
 import System.IO
@@ -58,7 +59,7 @@ data ServerEnv = ServerEnv
     , envShutdownChannel          :: !(TChan Bool)
     , envOpenConnections          :: !(TVar (M.Map SockAddr (ThreadId, Socket)))
     , envBroadcastChannel         :: !(TChan Message)
-    , envExchangeRates            :: !(TVar (M.Map CurrencyCode (M.Map Fiat Double)))
+    , envExchangeRates            :: !(TVar (M.Map CurrencyCode (M.Map Fiat Centi)))
     }
 
 sockAddress :: CfgPeer -> IO SockAddr
