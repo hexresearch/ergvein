@@ -119,8 +119,8 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
         rawSendMsg $ MReject r
         threadDelay 100000
       closeConnection addr
-    Right _ -> do
-      logErrorN $ "<" <> showt addr <> ">: Impossible! Tried to send something that is not MVersionACK or MReject to client at handshake."
+    Right msg -> do
+      logErrorN $ "<" <> showt addr <> ">: Impossible! Tried to send something that is not MVersionACK or MReject to client at handshake: " <> showt msg
       closeConnection addr
   where
     rawSendMsg :: Message -> IO ()
