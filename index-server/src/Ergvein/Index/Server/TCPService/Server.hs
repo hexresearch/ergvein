@@ -76,18 +76,13 @@ mainLoop thread sock = do
   mainLoopId <- fork $ forever $ do
     (newSock, newSockAddr) <- liftIO $ accept sock
     fork $ registerConnection (newSock, newSockAddr)
-  shutdownFlagRef <- getShutdownFlag
-  forever $ do
-    shutdownFlag <- liftIO $ readTVarIO shutdownFlagRef
-    when shutdownFlag $ performShutdown mainLoopId
-    liftIO $ threadDelay 1000000
-  where
-   performShutdown :: HasConnectionsManagement m => ThreadId -> m ()
-   performShutdown mainLoopId = do
-    closeAllConnections
-    liftIO $ do
-      killThread mainLoopId
-      stop thread
+  -- Wait until shutdown flag turns on then perform cleanup
+  do shutdownFlagRef <- getShutdownFlag
+     liftIO $ atomically $ check =<< readTVar shutdownFlagRef
+  closeAllConnections
+  liftIO $ do
+    killThread mainLoopId
+    stop thread
 
 registerConnection :: (Socket, SockAddr) -> ServerM ()
 registerConnection (sock, addr) = do
