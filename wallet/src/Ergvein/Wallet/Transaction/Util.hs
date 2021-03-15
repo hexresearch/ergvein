@@ -30,10 +30,14 @@ module Ergvein.Wallet.Transaction.Util(
   , inputSpendsOutPoint
   , markedReplaceable
   , replacesByFee
-  , buildAddrTxRbf
+  , buildAddrTx
   , weightUnitsToVBytes
   , calcTxVsize
+  , getUtxoByInput
   , getUtxoByInputs
+  , decodeBtcOutHelper
+  , unpackOut
+  , signTxWithWallet
   -- Ergo functions
   ) where
 
@@ -52,14 +56,17 @@ import Network.Haskoin.Transaction (Tx(..), TxIn(..), TxOut(..), OutPoint(..), t
 
 import Ergvein.Text
 import Ergvein.Types.Address
+import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Network (Network)
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
 import Ergvein.Types.Utxo.Btc
+import Ergvein.Util
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
+import Ergvein.Wallet.Platform
 
 import qualified Data.ByteString                    as B
 import qualified Data.List                          as L
@@ -336,26 +343,26 @@ replacesByFee tx1 tx2 = do
 
 -- | Build a transaction by providing a list of outpoints as inputs
 -- and a list of recipient addresses and amounts as outputs.
-buildAddrTxRbf :: Network -> [OutPoint] -> [(Text, Word64)] -> Either String Tx
-buildAddrTxRbf net xs ys = buildTxRbf xs =<< mapM f ys
+buildAddrTx :: Network -> RbfEnabled -> [OutPoint] -> [(Text, Word64)] -> Either String Tx
+buildAddrTx net rbfEnabled xs ys = buildTx rbfEnabled xs =<< mapM f ys
   where
     f (s, v) =
-        maybe (Left ("buildAddrTxRbf: Invalid address " <> T.unpack s)) Right $ do
-            a <- HA.stringToAddr net s
-            let o = HA.addressToOutput a
-            return (o, v)
+      maybe (Left ("buildAddrTx: Invalid address " <> T.unpack s)) Right $ do
+        a <- HA.stringToAddr net s
+        let o = HA.addressToOutput a
+        return (o, v)
 
 -- | Build a transaction by providing a list of outpoints as inputs
 -- and a list of 'ScriptOutput' and amounts as outputs.
-buildTxRbf :: [OutPoint] -> [(HS.ScriptOutput, Word64)] -> Either String Tx
-buildTxRbf xs ys =
-    mapM fo ys >>= \os -> return $ Tx 1 (map fi xs) os [] 0
+buildTx :: RbfEnabled -> [OutPoint] -> [(HS.ScriptOutput, Word64)] -> Either String Tx
+buildTx rbfEnabled xs ys =
+  mapM fo ys >>= \os -> return $ Tx 1 (map fi xs) os [] 0
   where
-    fi outPoint = TxIn outPoint B.empty (maxBound - 2)
+    fi outPoint = TxIn outPoint B.empty rbf
+    rbf = if rbfEnabled then (maxBound - 2) else maxBound
     fo (o, v)
-        | v <= 2100000000000000 = return $ TxOut v $ HS.encodeOutputBS o
-        | otherwise =
-            Left $ "buildTxRbf: Invalid amount " ++ show v
+      | v <= 2100000000000000 = return $ TxOut v $ HS.encodeOutputBS o
+      | otherwise = Left $ "buildTx: Invalid amount " ++ show v
 
 weightUnitsToVBytes :: Word64 -> Int
 weightUnitsToVBytes wu = ceiling $ wu % 4
@@ -394,11 +401,74 @@ putWitnessData = mapM_ putWitnessStack
       putVarInt $ B.length bs
       putByteString bs
 
-getUtxoByInputs :: (MonadIO m, PlatformNatives) => PubStorage -> [HT.TxIn] -> m [UtxoPoint]
-getUtxoByInputs pubStorage inputs = liftIO $ flip runReaderT txStore $ do
-  mOutPoints <- getOutputsByOutPoints $ HT.prevOutput <$> inputs
-  let outPoints = fromMaybe (error "getUtxoByInputs: could not get utxo by input") <$> mOutPoints
-  pure $ (uncurry UtxoPoint) <$> outPoints
+getUtxoByInputs :: (HasPubStorage m, PlatformNatives) => [TxIn] -> m (Either Text [UtxoPoint])
+getUtxoByInputs inputs = do
+  eResults <- traverse getUtxoByInput inputs
+  case allRight eResults of
+    Nothing -> pure $ Left "getUtxoByInputs: couldn't get some utxo by given inputs"
+    Just results -> pure $ Right results
+
+getUtxoByInput :: (HasPubStorage m, PlatformNatives) => TxIn -> m (Either Text UtxoPoint)
+getUtxoByInput input = do
+  ps <- askPubStorage
+  let btcPs = ps ^. btcPubStorage
+      txStore = btcPs ^. currencyPubStorage'transactions
+      outPoint = prevOutput input
+  mOutput <- liftIO $ flip runReaderT txStore $ getOutputByOutPoint outPoint
+  case mOutput of
+    Nothing -> pure $ Left "getUtxoByInput: couldn't get output"
+    Just output -> do
+      case HS.decodeOutputBS $ scriptOutput output of
+        Left e -> pure $ Left $ "getUtxoByInput: " <> T.pack e
+        Right script -> do
+          mKeyBox <- getKeyBoxByInput input
+          case mKeyBox of
+            Nothing -> pure $ Left $ "getUtxoByInput: couldn't get keybox"
+            Just keyBox -> do
+              let meta = BtcUtxoMeta {
+                      btcUtxo'index   = scanBox'index keyBox
+                    , btcUtxo'purpose = scanBox'purpose keyBox
+                    , btcUtxo'amount  = outValue output
+                    , btcUtxo'script  = script
+                    , btcUtxo'status  = EUtxoSending Nothing
+                  }
+              pure $ Right $ UtxoPoint outPoint meta
+
+getKeyBoxByInput :: (MonadIO m, HasPubStorage m, PlatformNatives) => TxIn -> m (Maybe ScanKeyBox)
+getKeyBoxByInput input = do
+  ps <- askPubStorage
+  let btcPs = ps ^. btcPubStorage
+      txStore = btcPs ^. currencyPubStorage'transactions
+      pubKeyStore = btcPs ^. currencyPubStorage'pubKeystore
+      externalKeys = getExternalPublicKeys pubKeyStore
+      internalKeys = getInternalPublicKeys pubKeyStore
+  matchedKeys <- liftIO $ flip runReaderT txStore $ V.filterM filterHelper $ externalKeys <> internalKeys
+  pure $ matchedKeys V.!? 0
   where
-    ps = pubStorage ^. btcPubStorage
-    txStore = ps ^. currencyPubStorage'transactions
+    filterHelper :: (HasTxStorage m, PlatformNatives) => ScanKeyBox -> m Bool
+    filterHelper keyBox =
+      let addr = xPubToBtcAddr $ extractXPubKeyFromEgv $ scanBox'key keyBox
+      in checkTxInBtc addr input
+
+unpackOut :: TxOut -> Maybe (Text, Word64)
+unpackOut txOut = (, amount) <$> mAddr
+   where
+    mDecodedOut = eitherToMaybe $ decodeBtcOutHelper txOut
+    mAddr = btcAddrToString <$> (HA.outputAddress =<< mDecodedOut)
+    amount = HT.outValue txOut
+
+-- | Sign function which has access to the private storage
+-- TODO: generate missing private keys
+signTxWithWallet :: (MonadIO m, PlatformNatives) => Tx -> [UtxoPoint] -> PrvStorage -> m (Maybe (Either String Tx))
+signTxWithWallet tx pick prv = do
+  let PrvKeystore _ ext int = prv ^. prvStorage'currencyPrvStorages
+        . at BTC . non (error "btcSendConfirmationWidget: not exsisting store!")
+        . currencyPrvStorage'prvKeystore
+  mvals <- fmap (fmap unzip . sequence) $ flip traverse pick $ \(UtxoPoint opoint BtcUtxoMeta{..}) -> do
+    let sig = HT.SigInput btcUtxo'script btcUtxo'amount opoint HS.sigHashAll Nothing
+    let errMsg = "Failed to get a corresponding secret key: " <> showt btcUtxo'purpose <> " #" <> showt btcUtxo'index
+    let msec = case btcUtxo'purpose of
+          Internal -> fmap (xPrvKey . unEgvXPrvKey) $ (V.!?) int btcUtxo'index
+          External -> fmap (xPrvKey . unEgvXPrvKey) $ (V.!?) ext btcUtxo'index
+    maybe (logWrite errMsg >> pure Nothing) (pure . Just . (sig,)) msec
+  pure $ (uncurry $ HT.signTx btcNetwork tx) <$> mvals

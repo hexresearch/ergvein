@@ -47,17 +47,15 @@ import qualified Network.Haskoin.Address as HA
 import qualified Network.Haskoin.Script as HS
 import qualified Network.Haskoin.Transaction as HT
 
-type RbfEnabled = Bool
-
 sendPage :: MonadFront t m => Currency -> Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), BtcAddress, RbfEnabled) -> m ()
-sendPage cur minit = mdo
+sendPage cur mInit = mdo
   walletName <- getWalletName
   title <- localized walletName
   let navbar = if isAndroid
         then blank
         else navbarWidget cur thisWidget NavbarSend
       thisWidget = Just $ sendPage cur <$> retInfoD
-  retInfoD <- sendWidget cur minit title navbar thisWidget
+  retInfoD <- sendWidget cur mInit title navbar thisWidget
   pure ()
 
 sendWidget :: MonadFront t m
@@ -67,12 +65,12 @@ sendWidget :: MonadFront t m
   -> m a
   -> Maybe (Dynamic t (m ()))
   -> m (Dynamic t (Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), BtcAddress, RbfEnabled)))
-sendWidget cur minit title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ mdo
+sendWidget cur mInit title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ mdo
   settings <- getSettings
-  let amountInit = (\(x, _, _, _) -> x) <$> minit
-      feeInit = (\(_, x, _, _) -> x) <$> minit
-      recipientInit = (\(_, _, x, _) -> x) <$> minit
-      rbfInit = (\(_, _, _, x) -> x) <$> minit
+  let amountInit = (\(x, _, _, _) -> x) <$> mInit
+      feeInit = (\(_, x, _, _) -> x) <$> mInit
+      recipientInit = (\(_, _, x, _) -> x) <$> mInit
+      rbfInit = (\(_, _, _, x) -> x) <$> mInit
       rbfFromSettings = btcSettings'sendRbfByDefault $ getBtcSettings settings
       rbfInit' = fromMaybe rbfFromSettings rbfInit
   retInfoD <- form $ mdo
@@ -91,7 +89,7 @@ sendWidget cur minit title navbar thisWidget = wrapperNavbar False title thisWid
         retractableNext = btcSendConfirmationWidget (uam, fee, addr, rbf)
       , retractablePrev = Just $ pure $ sendPage cur $ Just v
       }
-    holdDyn minit $ Just <$> goE
+    holdDyn mInit $ Just <$> goE
   pure retInfoD
 
 -- | Main confirmation & sign & send widget
@@ -218,9 +216,7 @@ txSignSendWidget :: MonadFront t m
 txSignSendWidget addr unit amount _ changeKey change pick rbfEnabled = mdo
   let keyTxt = btcAddrToString $ xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key changeKey
       outs = [(btcAddrToString addr, amount), (keyTxt, change)]
-      etx = if rbfEnabled
-        then buildAddrTxRbf btcNetwork (upPoint <$> pick) outs
-        else HT.buildAddrTx btcNetwork (upPoint <$> pick) outs
+      etx = buildAddrTx btcNetwork rbfEnabled (upPoint <$> pick) outs
       inputsAmount = sum $ (btcUtxo'amount . upMeta) <$> pick
       outputsAmount = amount + change
       estFee = inputsAmount - outputsAmount
@@ -236,19 +232,3 @@ txSignSendWidget addr unit amount _ changeKey change pick rbfEnabled = mdo
     sendE <- el "div" $ outlineButton SendBtnSend
     pure $ (tx, unit, amount, estFee, addr) <$ sendE
   where either' e l r = either l r e
-
--- | Sign function which has access to the private storage
--- TODO: generate missing private keys
-signTxWithWallet :: (MonadIO m, PlatformNatives) => HT.Tx -> [UtxoPoint] -> PrvStorage -> m (Maybe (Either String HT.Tx))
-signTxWithWallet tx pick prv = do
-  let PrvKeystore _ ext int = prv ^. prvStorage'currencyPrvStorages
-        . at BTC . non (error "btcSendConfirmationWidget: not exsisting store!")
-        . currencyPrvStorage'prvKeystore
-  mvals <- fmap (fmap unzip . sequence) $ flip traverse pick $ \(UtxoPoint opoint BtcUtxoMeta{..}) -> do
-    let sig = HT.SigInput btcUtxo'script btcUtxo'amount opoint HS.sigHashAll Nothing
-    let errMsg = "Failed to get a corresponding secret key: " <> showt btcUtxo'purpose <> " #" <> showt btcUtxo'index
-    let msec = case btcUtxo'purpose of
-          Internal -> fmap (xPrvKey . unEgvXPrvKey) $ (V.!?) int btcUtxo'index
-          External -> fmap (xPrvKey . unEgvXPrvKey) $ (V.!?) ext btcUtxo'index
-    maybe (logWrite errMsg >> pure Nothing) (pure . Just . (sig,)) msec
-  pure $ (uncurry $ HT.signTx btcNetwork tx) <$> mvals

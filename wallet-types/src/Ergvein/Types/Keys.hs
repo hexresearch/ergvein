@@ -2,6 +2,7 @@ module Ergvein.Types.Keys (
     ScanKeyBox(..)
   , getLastUnusedKey
   , getPublicKeys
+  , getExternalPublicKeys
   , getInternalPublicKeys
   , egvXPubCurrency
   , getExternalPubKeyIndex
@@ -12,6 +13,7 @@ module Ergvein.Types.Keys (
   , xPubToBtcAddr
   , xPubToErgAddr
   , extractAddrs
+  , extractExternalAddrs
   , extractChangeAddrs
   -- * Reexport primary, non-versioned module
   , KeyPurpose(..)
@@ -77,16 +79,20 @@ getLastUnusedKey kp PubKeystore{..} = go Nothing vector
         then mk
         else go (Just (V.length vec - 1, kb)) $ V.init vec
 
--- | Get all public keys in storage (external and internal) to scan for new transactions for them.
-getPublicKeys :: PubKeystore -> Vector ScanKeyBox
-getPublicKeys PubKeystore{..} = ext <> int
-  where
-    ext = V.imap (\i kb -> ScanKeyBox (pubKeyBox'key kb) External i) pubKeystore'external
-    int = V.imap (\i kb -> ScanKeyBox (pubKeyBox'key kb) Internal i) pubKeystore'internal
+-- | Get external public keys in storage.
+getExternalPublicKeys :: PubKeystore -> Vector ScanKeyBox
+getExternalPublicKeys PubKeystore{..} = V.imap (\i kb -> ScanKeyBox (pubKeyBox'key kb) External i) pubKeystore'external
 
 -- | Get internal public keys in storage.
 getInternalPublicKeys :: PubKeystore -> Vector ScanKeyBox
 getInternalPublicKeys PubKeystore{..} = V.imap (\i kb -> ScanKeyBox (pubKeyBox'key kb) Internal i) pubKeystore'internal
+
+-- | Get all public keys in storage (external and internal) to scan for new transactions for them.
+getPublicKeys :: PubKeystore -> Vector ScanKeyBox
+getPublicKeys pubKeyStore = ext <> int
+  where
+    ext = getExternalPublicKeys pubKeyStore
+    int = getInternalPublicKeys pubKeyStore
 
 getExternalPubKeyIndex :: PubKeystore -> Int
 getExternalPubKeyIndex = V.length . pubKeystore'external
@@ -118,6 +124,10 @@ egvXPubKeyToEgvAddress key = case key of
 -- | Extract addresses from keystore
 extractAddrs :: PubKeystore -> Vector EgvAddress
 extractAddrs pks = fmap (egvXPubKeyToEgvAddress . scanBox'key) $ getPublicKeys pks
+
+-- | Extract external addresses from keystore
+extractExternalAddrs :: PubKeystore -> Vector EgvAddress
+extractExternalAddrs pks = fmap (egvXPubKeyToEgvAddress . scanBox'key) $ getExternalPublicKeys pks
 
 -- | Extract internal (change) addresses from keystore
 extractChangeAddrs :: PubKeystore -> Vector EgvAddress

@@ -9,6 +9,7 @@ module Ergvein.Types.Transaction (
     , TxFee
     , PubKeyScriptHash
     , TxOutIndex
+    , RbfEnabled
     , currencyHeightStart
     , egvBlockHashToHk
     , btcTxToString
@@ -93,6 +94,8 @@ type TxFee = MoneyUnit
 -- | SHA256 hash of locking script with big-endian byte order, used to track transfers due inaccessibility
 -- of transaction addresses when indexer scans blockchain
 type PubKeyScriptHash = Text
+
+type RbfEnabled = Bool
 
 egvBlockHashToHk :: BlockHash -> HB.BlockHash
 egvBlockHashToHk bh = fromRight (error $ "Failed to convert bh: " <> show bh) $ runGet S.get (BSS.fromShort bh)

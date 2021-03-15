@@ -17,6 +17,7 @@ data CommonStrings =
   | CSShareQR
   | CSScanQR
   | CSSubmit
+  | CSBack
   deriving (Eq)
 
 instance LocalizedPrint CommonStrings where
@@ -33,6 +34,7 @@ instance LocalizedPrint CommonStrings where
       CSShareQR         -> "Share QR code"
       CSScanQR          -> "Scan QR code"
       CSSubmit          -> "Submit"
+      CSBack            -> "Back"
 
     Russian -> case v of
       CSCopy            -> "Скопировать"
@@ -46,3 +48,4 @@ instance LocalizedPrint CommonStrings where
       CSShareQR         -> "Поделиться QR-кодом"
       CSScanQR          -> "Сканировать QR-код"
       CSSubmit          -> "Подтвердить"
+      CSBack            -> "Назад"

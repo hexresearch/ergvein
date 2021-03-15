@@ -30,6 +30,7 @@ module Ergvein.Types.Currency (
   , allUnitsERGO
   , Units(..)
   , defUnits
+  , smallestUnits
   , getUnitBTC
   , getUnitERGO
   , Fiat(..)
@@ -158,6 +159,12 @@ defUnits :: Units
 defUnits = Units {
     unitBTC   = Just BtcWhole
   , unitERGO  = Just ErgWhole
+  }
+
+smallestUnits :: Units
+smallestUnits = Units {
+    unitBTC  = Just BtcSat
+  , unitERGO = Just ErgNano
   }
 
 getUnitBTC :: Units -> UnitBTC

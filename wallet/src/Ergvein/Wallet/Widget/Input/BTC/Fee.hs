@@ -89,5 +89,5 @@ btcFeeSelectionWidget lbl minit mPrevRate submitE = do
       (Just feeRate, BFMLow)    -> parClass "mb-1" (localizedText $ FSRateDesc FeeCheap    ) >> pure (Just (BFMLow,    feeRate))
       (Just feeRate, BFMMid)    -> parClass "mb-1" (localizedText $ FSRateDesc FeeModerate ) >> pure (Just (BFMMid,    feeRate))
       (Just feeRate, BFMHigh)   -> parClass "mb-1" (localizedText $ FSRateDesc FeeFast     ) >> pure (Just (BFMHigh,   feeRate))
-      (Nothing, BFMManual)      ->                                                  pure Nothing
+      (Nothing, BFMManual)      ->                                                              pure Nothing
       (Nothing, _)              -> parClass "mb-1" (localizedText FSNoFees)                  >> pure Nothing

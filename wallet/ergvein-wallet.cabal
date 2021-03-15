@@ -104,6 +104,7 @@ library
         Ergvein.Wallet.OpenUrl
         Ergvein.Wallet.Page.About
         Ergvein.Wallet.Page.Balances
+        Ergvein.Wallet.Page.BumpFee
         Ergvein.Wallet.Page.Canvas
         Ergvein.Wallet.Page.Currencies
         Ergvein.Wallet.Page.History

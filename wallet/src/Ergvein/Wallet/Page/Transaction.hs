@@ -1,4 +1,4 @@
--- {-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE OverloadedLists #-}
 
 module Ergvein.Wallet.Page.Transaction(
@@ -8,34 +8,24 @@ module Ergvein.Wallet.Page.Transaction(
   ) where
 
 import Control.Monad.Reader
-import Data.Maybe (fromMaybe, catMaybes)
+import Data.Maybe (fromMaybe)
 import Data.Text as T
 import Data.Time
-import Data.Word
 
 import Ergvein.Text
-import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Fee
 import Ergvein.Wallet.Localization.History
-import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
+import {-# SOURCE #-} Ergvein.Wallet.Page.BumpFee
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Storage.Util
-import Ergvein.Wallet.Transaction.Builder
-import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Transaction.View
-import Ergvein.Wallet.Widget.Input.BTC.Fee
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.List as L
-import qualified Network.Haskoin.Transaction as HT
 
 transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
 transactionInfoPage cur tr@TransactionView{..} = do
@@ -57,7 +47,7 @@ transactionInfoPage cur tr@TransactionView{..} = do
       when (bumpFeePossible) $ do
         bumpFeeE <- divClass "mt-1" $ outlineButton HistoryTIBumpFeeBtn
         void $ nextWidget $ ffor bumpFeeE $ \_ -> Retractable {
-          retractableNext = bumpFeeWidget cur tr Nothing
+          retractableNext = bumpFeePage cur tr Nothing
         , retractablePrev = thisWidget
         }
       pure ()
@@ -154,113 +144,3 @@ symbCol txInOut ma = divClass ("history-amount-" <> ((T.toLower . showt) txInOut
 
 transTypeCol :: MonadFront t m => TransType -> m a -> m a
 transTypeCol txInOut ma = divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) ma
-
-bumpFeeWidget :: MonadFront t m => Currency -> TransactionView -> Maybe (BTCFeeMode, Word64) -> m ()
-bumpFeeWidget cur tr@TransactionView{..} mInit = do
-  title <- localized BumpFeeTitle
-  let thisWidget = Just $ pure $ bumpFeeWidget cur tr mInit
-  void $ wrapper False title thisWidget $ divClass "bump-fee-page" $ mdo
-    elClass "h4" "mb-1" $ localizedText BumpFeeHeader
-    workflow $ setNewFeeRate cur tr mInit
-
-setNewFeeRate :: MonadFront t m => Currency -> TransactionView -> Maybe (BTCFeeMode, Word64) -> Workflow t m ()
-setNewFeeRate cur TransactionView{..} mInit = Workflow $ mdo
-  let feeRate = calcFeeRate (txFee txInfoView) (txRaw txInfoView)
-  moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
-  makeBlock BumpFeeCurrentFee $ maybe "unknown" (\a -> (showMoneyUnit a moneyUnits) <> " " <> symbolUnit cur moneyUnits) $ txFee txInfoView
-  makeBlock BumpFeeCurrentFeeRate $ maybe "unknown" (\a -> (showf 3 $ (realToFrac a :: Double)) <> " " <> symbolUnit cur smallestUnits <> "/vbyte") feeRate
-  feeD <- btcFeeSelectionWidget BumpFeeNewFeeRate mInit feeRate submitE
-  submitE <- outlineButton CSSubmit
-  let goE = attachWithMaybe (\mFee _ -> ((,) (txRaw txInfoView)) . snd <$> mFee) (current feeD) submitE
-  pure ((), (uncurry makeRbfTx) <$> goE)
-
-makeRbfTx :: MonadFront t m => EgvTx -> Word64 -> Workflow t m ()
-makeRbfTx (TxBtc txToReplace) newFeeRate = Workflow $ do
-  let inputs = HT.txIn $ getBtcTx txToReplace
-      outputs = HT.txOut $ getBtcTx txToReplace
-  mNewTx <- bumpFeeThroughCoinChooser inputs outputs newFeeRate
-  -- newTx <- case mNewTx of
-  --   Nothing -> bumpFeeThroughDecreasingOutputs
-  --   Just tx -> pure tx
-  pure ((), never)
-makeRbfTx (TxErg txToReplace) newFeeRate = Workflow $ pure ((), never) -- TODO: implement for ERGO
-
--- method 1: keep all inputs, keep all not isOurs outputs,
--- allow adding new inputs
-bumpFeeThroughCoinChooser :: MonadFront t m => [HT.TxIn] -> [HT.TxOut] -> Word64 -> m (Maybe BtcTx)
-bumpFeeThroughCoinChooser inputs outputs newFeeRate = do
-  pubStorage <- getPubStorage
-  let inputsToKeep = inputs
-      ourBtcChangeAddrs = getChangeBtcAddrs pubStorage
-  -- Here we assume that a transaction can either have one change output or no change outputs at all.
-  -- Even if there are more than one change output, the change will be sent to the first of these addresses in a new transaction.
-  oldChangeOuts <- filterM (checkOutIsOursBtc ourBtcChangeAddrs) outputs
-  let mOldChangeOut = fst <$> L.uncons oldChangeOuts
-  outputsToKeep <- filterM ((fmap not) . checkOutIsOursBtc ourBtcChangeAddrs) outputs
-  mTx <- bumpFeeThroughCoinChooserHelper mOldChangeOut inputsToKeep outputsToKeep newFeeRate
-  pure mTx
-
-bumpFeeThroughCoinChooserHelper :: MonadFront t m =>
-  Maybe HT.TxOut -> -- change output of the old tx
-  [HT.TxIn] -> -- inputs to keep
-  [HT.TxOut] -> -- outputs to keep
-  Word64 -> -- new fee rate
-  m (Maybe BtcTx)
-bumpFeeThroughCoinChooserHelper mChangeOut inputsToKeep outputsToKeep newFeeRate = do
-  pubStorage <- getPubStorage
-  let mRecipientOutputTypes = getBtcOutputType <$> outputsToKeep
-  case allJust mRecipientOutputTypes of
-    Nothing -> pure Nothing
-    Just recipientOutputTypes -> do
-      fixedUtxo <- getUtxoByInputs pubStorage inputsToKeep
-      let amount = L.sum $ HT.outValue <$> outputsToKeep
-          changeOutputType = case mChangeOut of
-            Nothing -> BtcP2WPKH
-            Just changeOut -> fromMaybe (error "bumpFeeThroughCoinChooserHelper: could not get change output type") (getBtcOutputType changeOut)
-          outputTypes = changeOutputType : recipientOutputTypes
-          (confirmedUtxo, unconfirmedUtxo) = getBtcUtxoPointsParted pubStorage
-          firstpick = chooseCoins amount newFeeRate outputTypes (Just fixedUtxo) True $ L.sort confirmedUtxo
-
-      -- finalpick = either (const $ chooseCoins amount newFeeRate outputTypes True $ L.sort $ confirmedOuts <> unconfirmedOuts) Right firstpick
-      pure Nothing
-
--- | If the list contains no elements equal to Nothing, then returns the entire list of elements
--- Otherwise returns Nothing
-allJust :: [Maybe a] -> Maybe [a]
-allJust l = if L.length justs == L.length l then Just justs else Nothing
-  where justs = catMaybes l
-
--- method 2: keep all inputs, no new inputs are added,
--- allow decreasing and removing outputs (change is decreased first)
--- This is less "safe" as it might end up decreasing e.g. a payment to a merchant;
--- but e.g. if the user has sent "Max" previously, this is the only way to RBF.
--- bumpFeeThroughDecreasingOutputs :: MonadFront t m => [HT.TxIn] -> [HT.TxOut] -> Word64 -> m BtcTx
--- bumpFeeThroughDecreasingOutputs inputs outputs newFeeRate = do
-
-makeBlock :: (MonadFront t m, LocalizedPrint l) => l -> Text -> m ()
-makeBlock a t = divClass "mb-1" $ do
-  elClass "span" "font-bold" $ localizedText a
-  br
-  text t
-
-smallestUnits :: Units
-smallestUnits = Units {
-    unitBTC  = Just BtcSat
-  , unitERGO = Just ErgNano
-  }
-
-calcFeeRate :: Maybe Money -> EgvTx -> Maybe Rational
-calcFeeRate (Just money) (TxBtc btcTx) =
-  let txVsize = calcTxVsize $ getBtcTx btcTx
-      fee = moneyToRationalUnit money smallestUnits
-  in Just $ fee / (fromIntegral txVsize)
-calcFeeRate (Just money) (TxErg ergTx) = Nothing -- TODO: implement for ERGO
-calcFeeRate _ _ = Nothing
-
--- bumpFeeConfirmationWidget :: MonadFront t m => EgvTx -> Word64 -> m ()
--- bumpFeeConfirmationWidget (TxBtc tx) feeRate = do
---   title <- localized BumpFeeConfirmation
---   let thisWidget = Just $ pure $ bumpFeeConfirmationWidget (TxBtc tx) feeRate
---   wrapper False title thisWidget $ divClass "send-confirm-box" $ do
---     pure ()
--- bumpFeeConfirmationWidget (TxErg tx) feeRate = pure ()

@@ -4,6 +4,8 @@ module Ergvein.Wallet.Transaction.Builder(
     guessTxFee
   , guessTxVsize
   , chooseCoins
+  , BtcOutputType
+  , BtcInputType
 ) where
 
 import Control.Monad.Identity (runIdentity)
@@ -56,7 +58,7 @@ chooseCoinsSink ::
   => Word64          -- ^ value to send
   -> Word64          -- ^ fee per vbyte
   -> [BtcOutputType] -- ^ list of output types (including change)
-  -> Maybe [c]       -- ^ coins that should persist in the solution
+  -> Maybe [c]       -- ^ fixed coins that should persist in the solution
   -> Bool            -- ^ try to find better solution
   -> ConduitT c Void m (Either String ([c], Word64))
   -- ^ coin selection and change
@@ -82,10 +84,12 @@ greedyAddSink :: (Monad m, Coin c)
               -> ConduitT c Void m (Maybe ([c], Word64))
               -- ^ coin selection and change
 greedyAddSink target guessFee mFixedCoins continue =
-    go initAcc initATot [] 0
+    go initAcc initATot initPS initPTot
   where
     initAcc = fromMaybe [] mFixedCoins
     initATot = sum $ coinValue <$> initAcc
+    initPS = if initATot >= goal initAcc then initAcc else []
+    initPTot = if initATot >= goal initAcc then initATot else 0
     -- The goal is the value we must reach (including the fee) for a certain
     -- amount of selected coins.
     goal c = target + guessFee c
