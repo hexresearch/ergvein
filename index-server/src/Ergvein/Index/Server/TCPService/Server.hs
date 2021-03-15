@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiWayIf #-}
 module Ergvein.Index.Server.TCPService.Server where
 
 import Control.Concurrent
@@ -13,6 +14,7 @@ import Control.Monad.Trans.Except
 import Data.Attoparsec.ByteString
 import Data.ByteString.Builder
 import Data.Either.Combinators
+import Data.Word
 import Network.Socket
 
 import Ergvein.Text
@@ -164,20 +166,33 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
               closeConnection addr
 
     evalMsg :: ExceptT Reject ServerM ([Message], Bool)
-    evalMsg = response =<< request =<< messageHeader =<< messageHeaderBytes
+    evalMsg = response =<< request =<< messageHeader
       where
-        messageHeaderBytesFetch = NS.recv sock 8
+        recvVarInt = liftIO $ do
+          hbs <- NS.recv sock 1
+          if BS.null hbs then pure hbs else do
+            let hb = BS.head hbs
+            if | hb == 0xFF -> (hbs <>) <$> NS.recv sock 8
+               | hb == 0XFE -> (hbs <>) <$> NS.recv sock 4
+               | hb == 0xFD -> (hbs <>) <$> NS.recv sock 2
+               | otherwise -> pure hbs
 
-        messageHeaderBytes :: ExceptT Reject ServerM BS.ByteString
-        messageHeaderBytes = do
-          fetchedBytes <- liftIO messageHeaderBytesFetch
-          if not (BS.null fetchedBytes) then
-            except $ Right fetchedBytes
-          else
-            except $ Left $ Reject MVersionType ZeroBytesReceived "Expected bytes for message header"
+        messageHeader :: ExceptT Reject ServerM MessageHeader
+        messageHeader = do
+          mid <- messageId =<< recvVarInt
+          if not $ messageHasPayload mid then pure (MessageHeader mid 0) else do
+            l <- messageLength =<< recvVarInt
+            pure $ MessageHeader mid l
 
-        messageHeader :: BS.ByteString -> ExceptT Reject ServerM MessageHeader
-        messageHeader = ExceptT . pure . mapLeft (\_-> Reject MVersionType MessageHeaderParsing "Failed to parse header") . eitherResult . parse messageHeaderParser
+        messageId :: BS.ByteString -> ExceptT Reject ServerM MessageType
+        messageId bs
+          | BS.null bs = except $ Left $ Reject MVersionType ZeroBytesReceived "Expected bytes for message header (id)"
+          | otherwise = ExceptT . pure . mapLeft (\_ -> Reject MVersionType MessageHeaderParsing "Failed to parse header message id") . eitherResult $ parse messageTypeParser bs
+
+        messageLength :: BS.ByteString -> ExceptT Reject ServerM Word32
+        messageLength bs
+          | BS.null bs = except $ Left $ Reject MVersionType ZeroBytesReceived "Expected bytes for message header (length)"
+          | otherwise = ExceptT . pure . mapLeft (\_ -> Reject MVersionType MessageHeaderParsing "Failed to parse header message length") . eitherResult $ parse messageLengthParser bs
 
         request :: MessageHeader -> ExceptT Reject ServerM Message
         request MessageHeader {..} = do

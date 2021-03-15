@@ -40,6 +40,8 @@ import qualified Data.ByteString.Lazy       as BL
 import qualified Data.Map.Strict            as M
 import qualified Data.Vector.Unboxed        as VU
 
+import Debug.Trace
+
 requiredCurrencies :: [CurrencyCode]
 requiredCurrencies = if isTestnet
   then [TBTC] -- TODO: add ERGO here
@@ -86,6 +88,9 @@ initIndexerConnection sname sa msgE = mdo
     MReject (Reject _ VersionNotSupported _) -> do
       nodeLog sa $ "The remote version is not compatible with our version " <> showt protocolVersion
       liftIO $ versionMismatchFire Nothing
+      pure Nothing
+    MReject (Reject i c msg) -> do
+      nodeLog sa $ "The remote server rejected for msg " <> showt i <> " with code " <> showt c <> " and message: " <> msg
       pure Nothing
     MVersion v@Version{..} -> do
       nodeLog sa $ "Received version: " <> showt versionVersion
@@ -151,33 +156,53 @@ initIndexerConnection sname sa msgE = mdo
 peekMessage :: (MonadPeeker m, MonadIO m, MonadThrow m, PlatformNatives)
   => SockAddr -> m Message
 peekMessage url = do
-  x <- peek 8
-  let ehead = AP.eitherResult $ AP.parse messageHeaderParser x
-  case ehead of
+  MessageHeader !msgType !len <- peekHeader url
+  nodeLog url $ showt (MessageHeader msgType len)
+  when (len > 32 * 2 ^ (20 :: Int)) $ do
+    nodeLog url "Payload too large"
+    throwM (PayloadTooLarge len)
+  y <- if len == 0 then pure mempty else  peek (fromIntegral len)
+  let emsg = AP.parseOnly (messageParser msgType) y
+  case emsg of
     Left e -> do
-      nodeLog url $ "Consumed " <> showt (B.length x)
-      nodeLog url $ "Could not decode incoming message header: " <> showt e
-      nodeLog url $ showt x
-      throwM DecodeHeaderError
-    Right (MessageHeader !msgType !len) -> do
-      -- nodeLog $ showt cmd
-      when (len > 32 * 2 ^ (20 :: Int)) $ do
-        nodeLog url "Payload too large"
-        throwM (PayloadTooLarge len)
-      y <- peek (fromIntegral len)
-      let emsg = AP.parseOnly (messageParser msgType) y
-      case emsg of
-        Left e -> do
-          nodeLog url $ "Cannot decode payload: " <> showt e
-          throwM CannotDecodePayload
-        Right !msg -> pure msg
+      nodeLog url $ "Cannot decode payload: " <> showt e
+      throwM CannotDecodePayload
+    Right !msg -> pure msg
+
+peekVarInt :: MonadPeeker m => m B.ByteString
+peekVarInt = do
+  hbs <- peek 1
+  if B.null hbs then pure hbs else do
+    let hb = B.head hbs
+    if | hb == 0xFF -> (hbs <>) <$> peek 8
+       | hb == 0XFE -> (hbs <>) <$> peek 4
+       | hb == 0xFD -> (hbs <>) <$> peek 2
+       | otherwise -> pure hbs
+
+peekHeader :: (MonadPeeker m, MonadIO m, MonadThrow m, PlatformNatives) => SockAddr -> m MessageHeader
+peekHeader url = do
+  mid <- parseType =<< peekVarInt
+  if not $ messageHasPayload mid then pure (MessageHeader mid 0) else do
+    l <- parseLength =<< peekVarInt
+    pure $ MessageHeader mid l
+  where
+    parseType bs = case AP.eitherResult . AP.parse messageTypeParser $ bs of
+      Left e -> do
+        nodeLog url $ "Could not decode incoming message header, type id: " <> showt e
+        throwM DecodeHeaderError
+      Right a -> pure a
+    parseLength bs = case AP.eitherResult . AP.parse messageLengthParser $ bs of
+      Left e -> do
+        nodeLog url $ "Could not decode incoming message header, message length: " <> showt e
+        throwM DecodeHeaderError
+      Right a -> pure a
 
 -- | Create version data message
 mkVers :: MonadIO m => m Message
 mkVers = liftIO $ do
   nonce <- randomIO
   t <- fmap (fromIntegral . floor) getPOSIXTime
-  pure $ MVersion $ Version {
+  pure $ traceShowId $ MVersion $ Version {
       versionVersion    = protocolVersion
     , versionTime       = t
     , versionNonce      = nonce

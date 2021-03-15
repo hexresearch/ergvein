@@ -94,9 +94,9 @@ varIntSize w
   | otherwise = 9
 
 messageBase :: MessageType -> Word32 -> Builder -> Builder
-messageBase MVersionACKType _ _ = varInt (messageTypeToWord32 MVersionACKType)
-messageBase MPeerRequestType _ _ = varInt (messageTypeToWord32 MPeerRequestType)
-messageBase msgType msgLength payload = varInt (messageTypeToWord32 msgType) <> varInt msgLength <> payload
+messageBase msgType msgLength payload
+  | messageHasPayload msgType = varInt (messageTypeToWord32 msgType) <> varInt msgLength <> payload
+  | otherwise = varInt (messageTypeToWord32 msgType)
 
 scanBlockBuilder :: ScanBlock -> (Sum Word32, Builder)
 scanBlockBuilder ScanBlock {..} = (scanBlockSize, scanBlock)

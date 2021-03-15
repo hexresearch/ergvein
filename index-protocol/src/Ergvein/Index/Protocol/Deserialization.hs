@@ -90,12 +90,12 @@ versionParser = do
 messageHeaderParser ::  Parser MessageHeader
 messageHeaderParser = do
     mt <- messageTypeParser
-    case mt of
-      MVersionACKType -> pure $ MessageHeader mt 0
-      MPeerRequestType -> pure $ MessageHeader mt 0
-      _ -> do
-        messageSize <- varInt
-        pure $ MessageHeader mt messageSize
+    if not $ messageHasPayload mt then  pure $ MessageHeader mt 0 else do
+      messageSize <- varInt
+      pure $ MessageHeader mt messageSize
+
+messageLengthParser :: Parser Word32
+messageLengthParser = varInt
 
 messageTypeParser :: Parser MessageType
 messageTypeParser = guardJust "out of message type bounds" . word32toMessageType =<< varInt

@@ -56,6 +56,12 @@ data MessageType = MVersionType
                  | MRatesResponseType
   deriving (Eq, Ord, Enum, Bounded, Show)
 
+messageHasPayload :: MessageType -> Bool 
+messageHasPayload = \case
+  MVersionACKType -> False
+  MPeerRequestType -> False
+  _ -> True
+
 data RejectCode = MessageHeaderParsing | MessageParsing | InternalServerError | ZeroBytesReceived | VersionNotSupported
   deriving (Eq, Ord, Enum, Bounded, Show)
 

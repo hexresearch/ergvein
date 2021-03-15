@@ -120,6 +120,17 @@ unit_versionMsg = do
       bytes = "00330100200476854b60000000000001020304050607020001002004fefb490a00fee09304000200001010fe1bb60500fe400d0300"
   testMessageHex v bytes
 
+unit_versionMsg2 :: IO ()
+unit_versionMsg2 = do
+  let v = MVersion $ Version {
+          versionVersion = (2, 0, 0)
+        , versionTime = 1615797606
+        , versionNonce = 12025291936665732026
+        , versionScanBlocks = []
+        }
+      bytes = "001500000008661d4f6000000000ba8354bd4d6be2a600"
+  testMessageHex v bytes
+
 unit_versionAckMsg :: IO ()
 unit_versionAckMsg = do
   let v = MVersionACK VersionACK
