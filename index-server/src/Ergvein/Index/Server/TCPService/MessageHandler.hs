@@ -1,4 +1,6 @@
-module Ergvein.Index.Server.TCPService.MessageHandler where
+module Ergvein.Index.Server.TCPService.MessageHandler
+  ( handleMsg
+  ) where
 
 import Control.Concurrent.STM
 import Control.Monad.IO.Class
