@@ -46,6 +46,7 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Random
+import Data.Fixed
 import Data.Foldable (traverse_, for_)
 import Data.Functor (void)
 import Data.Functor.Misc (Const2(..))
@@ -53,6 +54,7 @@ import Data.Map (Map)
 import Data.Maybe (fromMaybe, catMaybes)
 import Data.Text (Text)
 import Language.Javascript.JSaddle hiding ((!!))
+import Network.Socket (SockAddr)
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss, textInput)
 import Reflex.Dom.Retractable.Class
@@ -114,7 +116,7 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   -- | Get authed info
   getAuthInfoRef :: m (ExternalRef t AuthInfo)
   -- | Get rates (e.g. BTC/USDT) ref
-  getRatesRef :: m (ExternalRef t (Map Currency (Map Fiat Double)))
+  getRatesRef :: m (ExternalRef t (Map Currency (Map Fiat Centi)))
 
 -- | Get connections map
 getNodeConnectionsD :: MonadFrontAuth t m => m (Dynamic t (ConnMap t))
@@ -327,7 +329,7 @@ randomElem xs = case xs of
     i <- liftIO $ randomRIO (0, length xs - 1)
     pure $ Just $ xs!!i
 
-getRateByFiatD :: MonadFront t m => Currency -> Fiat -> m (Dynamic t (Maybe Double))
+getRateByFiatD :: MonadFront t m => Currency -> Fiat -> m (Dynamic t (Maybe Centi))
 getRateByFiatD c f = do
   ratesD <- externalRefDynamic =<< getRatesRef
   pure $ ffor ratesD $ join . fmap (M.lookup f ) . M.lookup c

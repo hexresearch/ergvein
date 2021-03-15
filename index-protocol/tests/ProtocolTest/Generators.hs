@@ -2,6 +2,7 @@ module ProtocolTest.Generators where
 
 import Control.Monad (replicateM)
 import Data.Bits
+import Data.Fixed
 import Test.QuickCheck
 import Test.QuickCheck.Instances
 
@@ -15,6 +16,7 @@ import qualified Data.Vector.Unboxed        as UV
 import qualified Data.Vector                as V
 import qualified Data.ByteString.Lazy       as BL
 import qualified Data.ByteString            as BS
+import qualified Data.ByteString.Short      as BSS
 import qualified Data.ByteString.Builder    as BB
 import qualified Data.Attoparsec.ByteString as AP
 import qualified Data.Map.Strict            as M
@@ -28,18 +30,26 @@ getRandBounded = oneof $ pure <$> [minBound .. maxBound]
 getRandBoundedExcluding :: (Eq a, Enum a, Bounded a) => [a] -> Gen a
 getRandBoundedExcluding exs = oneof $ fmap pure $ filter (\e -> not $ e `elem` exs) $ [minBound .. maxBound]
 
+arbitraryBSSLen :: Int -> Gen BSS.ShortByteString
+arbitraryBSSLen n = fmap BSS.pack $ replicateM n arbitrary
+
 arbitraryBSLen :: Int -> Gen BS.ByteString
 arbitraryBSLen n = do
   a <- arbitrary
   pure $ BS.pack $ if BS.length a < n
-    then [1..(fromIntegral n)]
+    then [1 .. fromIntegral n]
     else take n . BS.unpack $ a
 
 instance Arbitrary MessageHeader where
-  arbitrary = MessageHeader <$> getRandBounded <*> arbitrary
+  arbitrary = do
+    t <- getRandBounded
+    case t of
+      MVersionACKType -> pure $ MessageHeader MVersionACKType 0
+      MPeerRequestType -> pure $ MessageHeader MFeeRequestType 0
+      _ -> MessageHeader <$> pure t <*> arbitrary
 
 instance Arbitrary ScanBlock where
-  arbitrary = ScanBlock <$> getRandBounded <*> arbitrary <*> arbitrary <*> arbitrary
+  arbitrary = ScanBlock <$> getRandBounded <*> (fmap unPVT arbitrary) <*> arbitrary <*> arbitrary
 
 -- | Bounded protocol version (<= 1023)
 newtype PVT = PVT {unPVT :: ProtocolVersion}
@@ -55,17 +65,20 @@ instance Arbitrary Version where
   arbitrary = sized $ \n ->
     Version <$> (fmap unPVT arbitrary) <*> arbitrary <*> arbitrary <*> (UV.replicateM n arbitrary)
 
+instance Arbitrary Reject where
+  arbitrary = Reject <$> getRandBounded <*> getRandBounded <*> arbitrary
+
 instance Arbitrary FilterRequest where
   arbitrary = FilterRequest <$> getRandBounded <*> arbitrary <*> arbitrary
 
 instance Arbitrary BlockFilter where
-  arbitrary = BlockFilter <$> arbitrary <*> arbitrary
+  arbitrary = BlockFilter <$> arbitraryBSSLen 32 <*> arbitrary
 
 instance Arbitrary FilterResponse where
   arbitrary = sized $ \n -> FilterResponse <$> getRandBounded <*> (V.replicateM n arbitrary)
 
 instance Arbitrary FilterEvent where
-  arbitrary = sized $ \n -> FilterEvent <$> getRandBounded <*> arbitrary <*> arbitrary <*> arbitrary
+  arbitrary = sized $ \n -> FilterEvent <$> getRandBounded <*> arbitrary <*> arbitraryBSSLen 32 <*> arbitrary
 
 instance Arbitrary FeeResp where
   arbitrary = let
@@ -73,12 +86,16 @@ instance Arbitrary FeeResp where
     gen2 = FeeRespGeneric <$> getRandBoundedExcluding [BTC, TBTC] <*> arbitrary <*> arbitrary <*> arbitrary
     in oneof [gen1, gen2]
 
+instance Arbitrary IpV6 where
+  arbitrary = IpV6 <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+
 instance Arbitrary Address where
   arbitrary = do
     at <- arbitrary
     case at of
-      IPV4 -> Address at <$> arbitrary <*> arbitraryBSLen 4
-      IPV6 -> Address at <$> arbitrary <*> arbitraryBSLen 16
+      IPV4 -> AddressIpv4 <$> arbitrary <*> arbitrary
+      IPV6 -> AddressIpv6 <$> arbitrary <*> arbitrary
+      OnionV3 -> AddressOnionV3 <$> arbitraryBSLen 56 <*> arbitrary
 
 instance Arbitrary PeerResponse where
   arbitrary = sized $ \n -> PeerResponse <$> arbitrary
@@ -99,7 +116,7 @@ newtype Fiats = Fiats {unFiats :: [Fiat]}
 instance Arbitrary Fiats where
   arbitrary = fmap Fiats $ sized $ flip replicateM arbitrary
 
-newtype FDS = FDS {unFDS :: M.Map Fiat Double}
+newtype FDS = FDS {unFDS :: M.Map Fiat Centi}
 instance Arbitrary FDS where
   arbitrary = fmap (FDS . M.fromList) $ sized $
     flip replicateM $ (,) <$> getRandBounded <*> (fmap abs arbitrary)
@@ -143,7 +160,7 @@ instance Arbitrary Message where
       MVersionACKType       -> pure $ MVersionACK VersionACK
       MFiltersRequestType   -> MFiltersRequest <$> arbitrary
       MFiltersResponseType  -> MFiltersResponse <$> arbitrary
-      MRejectType           -> (MReject . Reject) <$> getRandBounded
+      MRejectType           -> MReject <$> arbitrary
       MPingType             -> MPing <$> arbitrary
       MPongType             -> MPong <$> arbitrary
       MFilterEventType      -> MFiltersEvent <$> arbitrary

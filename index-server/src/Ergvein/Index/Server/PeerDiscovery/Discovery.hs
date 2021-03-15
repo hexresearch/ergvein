@@ -13,7 +13,6 @@ import Data.Foldable
 import Data.Set (Set)
 import Data.Time.Clock
 import Data.Time.Clock.POSIX
-import Data.Word
 import Network.Socket (SockAddr)
 import Foreign.C.Types (CTime(..))
 
@@ -131,5 +130,5 @@ ownVersion = do
         , scanBlockHeight     = nfoActualHeight
         }
 
-    filterVersion :: Currency -> Word32
-    filterVersion = const 1
+    filterVersion :: Currency -> ProtocolVersion
+    filterVersion = const (1, 0, 0)
