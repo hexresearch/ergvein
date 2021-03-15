@@ -61,6 +61,7 @@ import Reflex.Dom.Retractable.Class
 import Reflex.ExternalRef
 
 import Ergvein.Index.Protocol.Types (Message(..))
+import Ergvein.Node.Constants
 import Ergvein.Text
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
@@ -79,6 +80,7 @@ import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Status.Types
 import Ergvein.Wallet.Util
+import Ergvein.Node.Resolve
 
 import qualified Data.Dependent.Map as DM
 import qualified Data.Map.Strict as M
@@ -268,7 +270,7 @@ setFiltersSync c v = do
   r <- getFiltersSyncRef
   modifyExternalRef r $ (, ()) . M.insert c v
 
-requestRandomIndexer :: MonadFront t m => Event t (Currency, Message) -> m (Event t (SockAddr, Message))
+requestRandomIndexer :: MonadFront t m => Event t (Currency, Message) -> m (Event t (ErgveinNodeAddr, Message))
 requestRandomIndexer reqE = mdo
   let actE = leftmost [Just <$> reqE, Nothing <$ sentE]
   sentE <- widgetHoldE (pure never) $ ffor actE $ \case
@@ -276,7 +278,7 @@ requestRandomIndexer reqE = mdo
     Just (cur, req) -> requester cur req
   pure sentE
 
-requester :: MonadFront t m => Currency -> Message -> m (Event t (SockAddr, Message))
+requester :: MonadFront t m => Currency -> Message -> m (Event t (ErgveinNodeAddr, Message))
 requester cur req = mdo
   buildE <- getPostBuild
   respD <- holdDyn True $ False <$ respE
@@ -297,7 +299,7 @@ requester cur req = mdo
       Just conn -> do
         logWrite $ "Selected indexer " <> showt (indexConAddr conn)
         void $ requestIndexerWhenOpen conn req
-        pure $ (indexConAddr conn,) <$> indexConRespE conn
+        pure $ (indexConName conn,) <$> indexConRespE conn
   pure respE
   where
     timeout = 5 -- NominalDiffTime, seconds
