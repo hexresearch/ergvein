@@ -184,7 +184,7 @@ peekHeader url = do
   mid <- parseType =<< peekVarInt
   if not $ messageHasPayload mid then pure (MessageHeader mid 0) else do
     l <- parseLength =<< peekVarInt
-    pure $ MessageHeader mid l
+    pure $  traceShowId $ MessageHeader mid l
   where
     parseType bs = case AP.eitherResult . AP.parse messageTypeParser $ bs of
       Left e -> do
