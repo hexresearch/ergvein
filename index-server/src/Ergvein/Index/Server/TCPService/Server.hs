@@ -196,7 +196,9 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
 
         request :: MessageHeader -> ExceptT Reject ServerM Message
         request MessageHeader {..} = do
-          messageBytes <- liftIO $ NS.recv sock $ fromIntegral msgSize
+          messageBytes <- if not $ messageHasPayload msgType
+            then pure mempty
+            else liftIO $ NS.recv sock $ fromIntegral msgSize
           except $ mapLeft (\_-> Reject msgType MessageParsing "Failed to parse message body") $ eitherResult $ parse (messageParser msgType) messageBytes
 
         response :: Message -> ExceptT Reject ServerM ([Message], Bool)
