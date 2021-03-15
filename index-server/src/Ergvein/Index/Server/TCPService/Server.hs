@@ -75,7 +75,7 @@ mainLoop :: Thread -> Socket -> ServerM ()
 mainLoop thread sock = do
   mainLoopId <- fork $ forever $ do
     (newSock, newSockAddr) <- liftIO $ accept sock
-    fork $ registerConnection (newSock, newSockAddr)
+    fork $ runConnection (newSock, newSockAddr)
   -- Wait until shutdown flag turns on then perform cleanup
   do shutdownFlagRef <- getShutdownFlag
      liftIO $ atomically $ check =<< readTVar shutdownFlagRef
@@ -84,13 +84,10 @@ mainLoop thread sock = do
     killThread mainLoopId
     stop thread
 
-registerConnection :: (Socket, SockAddr) -> ServerM ()
-registerConnection (sock, addr) = do
-  connectionThreadId <- fork $ runConnection (sock, addr)
-  openConnection connectionThreadId addr sock
-
 runConnection :: (Socket, SockAddr) -> ServerM ()
 runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
+  do tid <- liftIO myThreadId
+     openConnection tid addr sock
   evalResult <- runExceptT $ evalMsg
   case evalResult of
     Right (msgs@(MVersionACK _ : _), _) -> do --peer version match ours
