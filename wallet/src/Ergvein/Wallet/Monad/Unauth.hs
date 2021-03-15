@@ -15,6 +15,7 @@ import Network.Socket (SockAddr)
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 
+import Ergvein.Node.Constants
 import Ergvein.Node.Resolve
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Language
@@ -27,6 +28,7 @@ import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Version
 import Ergvein.Wallet.Worker.Indexer
+import Ergvein.Wallet.Worker.NodeDiscovery
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -47,17 +49,17 @@ data UnauthEnv t = UnauthEnv {
 , unauth'passModalEF     :: !(Event t (Int, Text), (Int, Text) -> IO ())
 , unauth'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
 -- Client context
-, unauth'addrsArchive    :: !(ExternalRef t (S.Set NamedSockAddr))
-, unauth'inactiveAddrs   :: !(ExternalRef t (S.Set NamedSockAddr))
-, unauth'activeAddrs     :: !(ExternalRef t (S.Set NamedSockAddr))
-, unauth'indexConmap     :: !(ExternalRef t (Map SockAddr (IndexerConnection t)))
-, unauth'indexStatus     :: !(ExternalRef t (Map SockAddr IndexerStatus))
+, unauth'addrsArchive    :: !(ExternalRef t (S.Set ErgveinNodeAddr))
+, unauth'inactiveAddrs   :: !(ExternalRef t (S.Set ErgveinNodeAddr))
+, unauth'activeAddrs     :: !(ExternalRef t (S.Set ErgveinNodeAddr))
+, unauth'indexConmap     :: !(ExternalRef t (Map ErgveinNodeAddr (IndexerConnection t)))
+, unauth'indexStatus     :: !(ExternalRef t (Map ErgveinNodeAddr IndexerStatus))
 , unauth'reqUrlNum       :: !(ExternalRef t (Int, Int))
 , unauth'actUrlNum       :: !(ExternalRef t Int)
 , unauth'timeout         :: !(ExternalRef t NominalDiffTime)
 , unauth'indexReqSel     :: !(IndexReqSelector t)
-, unauth'indexReqFire    :: !(Map SockAddr IndexerMsg -> IO ())
-, unauth'activateIndexEF :: !(Event t [NamedSockAddr], [NamedSockAddr] -> IO ())
+, unauth'indexReqFire    :: !(Map ErgveinNodeAddr IndexerMsg -> IO ())
+, unauth'activateIndexEF :: !(Event t [ErgveinNodeAddr], [ErgveinNodeAddr] -> IO ())
 }
 
 type UnauthM t m = ReaderT (UnauthEnv t) m
@@ -171,9 +173,9 @@ newEnv settings uiChan = do
   -- MonadClient refs
   rs <- runReaderT mkResolvSeed (uiChan, settingsRef)
 
-  socadrs         <- resolveAddrs rs defIndexerPort (settingsActiveAddrs settings)
-  urlsArchive     <- newExternalRef . S.fromList =<< resolveAddrs rs defIndexerPort (settingsArchivedAddrs settings)
-  inactiveUrls    <- newExternalRef . S.fromList =<< resolveAddrs rs defIndexerPort (settingsDeactivatedAddrs settings)
+  socadrs         <- fmap namedAddrName <$> resolveAddrs rs defIndexerPort (settingsActiveAddrs settings)
+  urlsArchive     <- newExternalRef . S.fromList . fmap namedAddrName =<< resolveAddrs rs defIndexerPort (settingsArchivedAddrs settings)
+  inactiveUrls    <- newExternalRef . S.fromList . fmap namedAddrName =<< resolveAddrs rs defIndexerPort (settingsDeactivatedAddrs settings)
   actvieAddrsRef  <- newExternalRef $ S.fromList socadrs
   indexConmapRef  <- newExternalRef $ M.empty
   indexStatusRef  <- newExternalRef $ M.empty
@@ -211,6 +213,7 @@ newEnv settings uiChan = do
         , unauth'activateIndexEF  = indexEF
         }
   flip runReaderT env $ do
+    ensureErgveinNetwork
     indexerNodeController socadrs
   pure env
 

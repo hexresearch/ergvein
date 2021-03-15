@@ -46,20 +46,22 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Random
+import Data.Fixed
 import Data.Foldable (traverse_, for_)
 import Data.Functor (void)
 import Data.Functor.Misc (Const2(..))
 import Data.Map (Map)
 import Data.Maybe (fromMaybe, catMaybes)
 import Data.Text (Text)
-import Network.Socket (SockAddr)
 import Language.Javascript.JSaddle hiding ((!!))
+import Network.Socket (SockAddr)
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss, textInput)
 import Reflex.Dom.Retractable.Class
 import Reflex.ExternalRef
 
 import Ergvein.Index.Protocol.Types (Message(..))
+import Ergvein.Node.Constants
 import Ergvein.Text
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
@@ -78,6 +80,7 @@ import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Status.Types
 import Ergvein.Wallet.Util
+import Ergvein.Node.Resolve
 
 import qualified Data.Dependent.Map as DM
 import qualified Data.Map.Strict as M
@@ -113,7 +116,7 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   -- | Get authed info
   getAuthInfoRef :: m (ExternalRef t AuthInfo)
   -- | Get rates (e.g. BTC/USDT) ref
-  getRatesRef :: m (ExternalRef t (Map Currency (Map Fiat Double)))
+  getRatesRef :: m (ExternalRef t (Map Currency (Map Fiat Centi)))
 
 -- | Get connections map
 getNodeConnectionsD :: MonadFrontAuth t m => m (Dynamic t (ConnMap t))
@@ -267,7 +270,7 @@ setFiltersSync c v = do
   r <- getFiltersSyncRef
   modifyExternalRef r $ (, ()) . M.insert c v
 
-requestRandomIndexer :: MonadFront t m => Event t (Currency, Message) -> m (Event t (SockAddr, Message))
+requestRandomIndexer :: MonadFront t m => Event t (Currency, Message) -> m (Event t (ErgveinNodeAddr, Message))
 requestRandomIndexer reqE = mdo
   let actE = leftmost [Just <$> reqE, Nothing <$ sentE]
   sentE <- widgetHoldE (pure never) $ ffor actE $ \case
@@ -275,7 +278,7 @@ requestRandomIndexer reqE = mdo
     Just (cur, req) -> requester cur req
   pure sentE
 
-requester :: MonadFront t m => Currency -> Message -> m (Event t (SockAddr, Message))
+requester :: MonadFront t m => Currency -> Message -> m (Event t (ErgveinNodeAddr, Message))
 requester cur req = mdo
   buildE <- getPostBuild
   respD <- holdDyn True $ False <$ respE
@@ -296,7 +299,7 @@ requester cur req = mdo
       Just conn -> do
         logWrite $ "Selected indexer " <> showt (indexConAddr conn)
         void $ requestIndexerWhenOpen conn req
-        pure $ (indexConAddr conn,) <$> indexConRespE conn
+        pure $ (indexConName conn,) <$> indexConRespE conn
   pure respE
   where
     timeout = 5 -- NominalDiffTime, seconds
@@ -326,7 +329,7 @@ randomElem xs = case xs of
     i <- liftIO $ randomRIO (0, length xs - 1)
     pure $ Just $ xs!!i
 
-getRateByFiatD :: MonadFront t m => Currency -> Fiat -> m (Dynamic t (Maybe Double))
+getRateByFiatD :: MonadFront t m => Currency -> Fiat -> m (Dynamic t (Maybe Centi))
 getRateByFiatD c f = do
   ratesD <- externalRefDynamic =<< getRatesRef
   pure $ ffor ratesD $ join . fmap (M.lookup f ) . M.lookup c

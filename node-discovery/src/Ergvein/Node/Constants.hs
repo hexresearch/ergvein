@@ -26,5 +26,6 @@ defNodes isTestnet = if isTestnet
 
 defDns :: Bool -> [HostName]
 defDns isAndroid = if isAndroid then ["8.8.8.8","8.8.4.4", "1.1.1.1"] else mempty  --use resolv.conf if not android
+
 defSeedNodesSource :: Bool -> [Domain]
 defSeedNodesSource isTestnet = if isTestnet then ["testseed.cypra.io"] else ["seed.cypra.io"]

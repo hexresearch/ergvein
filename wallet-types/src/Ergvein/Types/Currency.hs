@@ -39,6 +39,7 @@ module Ergvein.Types.Currency (
   ) where
 
 import Control.DeepSeq
+import Data.Fixed
 import Data.Flat
 import Data.Maybe (fromMaybe)
 import Data.Ratio
@@ -255,8 +256,8 @@ showMoney m = T.pack $ printf "%f" (realToFrac (moneyToRational m) :: Double)
 showMoneyUnit :: Money -> Units -> Text
 showMoneyUnit m units = T.pack $ printf "%f" (realToFrac (moneyToRationalUnit m units) :: Double)
 
-showMoneyRated :: Money -> Double -> Text
-showMoneyRated m r = T.pack $ printf "%.2f" $ r * (realToFrac $ moneyToRational m)
+showMoneyRated :: Money -> Centi -> Text
+showMoneyRated m r = T.pack $ printf "%.2f" $ (realToFrac r :: Double) * (realToFrac $ moneyToRational m)
 
 curprefix :: Currency -> Text
 curprefix cur = case cur of

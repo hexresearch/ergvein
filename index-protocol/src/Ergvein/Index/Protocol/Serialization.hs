@@ -2,9 +2,10 @@ module Ergvein.Index.Protocol.Serialization where
 
 import Codec.Compression.GZip
 import Data.ByteString.Builder
+import Data.Fixed
 import Data.Monoid
+import Data.Text.Encoding
 import Data.Word
-import Data.Scientific
 import Foreign.C.Types
 
 import Ergvein.Index.Protocol.Types
@@ -67,45 +68,62 @@ protocolVersionBS :: BS.ByteString
 protocolVersionBS = mkProtocolVersion protocolVersion
 
 addressBuilder :: Address -> (Sum Word32, Builder)
-addressBuilder Address {..} = (addrSize, addrBuilder)
+addressBuilder addr = case addr of
+  AddressIpv4 {..} -> (addrSize, word8 addrType <> word32BE addressV4 <> word16BE addressPort)
+  AddressIpv6 {..} -> (addrSize, word8 addrType <> encodeIpv6 addressV6 <> word16BE addressPort)
+  AddressOnionV3 {..} -> (addrSize, word8 addrType <> byteString addressOnion <> word16BE addressPort)
   where
-    addrType = ipTypeToWord8 addressType
+    encodeIpv6 (IpV6 a b c d) = foldMap word32BE [a, b, c, d]
+    addrType = ipTypeToWord8 $ addressType addr
     addrSize = Sum $ genericSizeOf addrType
-                   + genericSizeOf addressPort
-                   + (if addressType == IPV4 then 4 else 16)
-    addrBuilder = word8 addrType
-               <> word16LE addressPort
-               <> byteString addressAddress
+                   + addressSize (addressType addr)
+                   + genericSizeOf (addressPort addr)
+
+varInt :: Integral a => a -> Builder
+varInt w
+  | w < 0xFD = word8 $ fromIntegral w
+  | w <= 0xFFFF = word8 0xFD <> word16LE (fromIntegral w)
+  | w <= 0xFFFFFFFF = word8 0xFE <> word32LE (fromIntegral w)
+  | otherwise = word8 0xFF <> word64LE (fromIntegral w)
+
+varIntSize :: Integral a => a -> Word32
+varIntSize w
+  | w < 0xFD = 1
+  | w <= 0xFFFF = 3
+  | w <= 0xFFFFFFFF = 5
+  | otherwise = 9
 
 messageBase :: MessageType -> Word32 -> Builder -> Builder
-messageBase msgType msgLength payload = word32LE (messageTypeToWord32 msgType) <> word32LE msgLength <> payload
+messageBase msgType msgLength payload
+  | messageHasPayload msgType = varInt (messageTypeToWord32 msgType) <> varInt msgLength <> payload
+  | otherwise = varInt (messageTypeToWord32 msgType)
 
 scanBlockBuilder :: ScanBlock -> (Sum Word32, Builder)
 scanBlockBuilder ScanBlock {..} = (scanBlockSize, scanBlock)
   where
     currencyCode = currencyCodeToWord32 scanBlockCurrency
-    scanBlockSize = Sum $ genericSizeOf currencyCode
-                        + genericSizeOf scanBlockVersion
-                        + genericSizeOf scanBlockScanHeight
-                        + genericSizeOf scanBlockHeight
+    verbs = mkProtocolVersion scanBlockVersion
+    scanBlockSize = Sum $ varIntSize currencyCode
+                        + (fromIntegral $ BS.length verbs)
+                        + varIntSize scanBlockScanHeight
+                        + varIntSize scanBlockHeight
 
-    scanBlock = word32LE currencyCode
-             <> word32LE scanBlockVersion
-             <> word64LE scanBlockScanHeight
-             <> word64LE scanBlockHeight
+    scanBlock = varInt currencyCode
+             <> byteString verbs
+             <> varInt scanBlockScanHeight
+             <> varInt scanBlockHeight
 
 blockFilterBuilder :: BlockFilter -> (Sum Word32, Builder)
 blockFilterBuilder BlockFilter {..} = (filterSize, filterBuilder)
   where
+    idLength, filterLength :: Word32
     idLength = fromIntegral $ BSS.length blockFilterBlockId
     filterLength = fromIntegral $ BS.length blockFilterFilter
-    filterSize = Sum $ genericSizeOf idLength
-                     + idLength
-                     + genericSizeOf filterLength
+    filterSize = Sum $ idLength
+                     + varIntSize filterLength
                      + filterLength
-    filterBuilder = word32LE idLength
-                 <> byteString (BSS.fromShort blockFilterBlockId)
-                 <> word32LE filterLength
+    filterBuilder = byteString (BSS.fromShort blockFilterBlockId)
+                 <> varInt filterLength
                  <> byteString blockFilterFilter
 
 messageBuilder :: Message -> Builder
@@ -118,169 +136,173 @@ messageBuilder (MPong msg) = messageBase MPongType msgSize $ word64LE msg
   where
     msgSize = genericSizeOf msg
 
-messageBuilder (MReject msg) = messageBase MRejectType msgSize $ word32LE rejectType
+messageBuilder (MReject Reject{..}) = messageBase MRejectType msgSize $
+     varInt mid
+  <> varInt code
+  <> varInt msglen
+  <> byteString msgbs
   where
-    rejectType = rejectTypeToWord32 $ rejectMsgCode msg
-    msgSize = genericSizeOf rejectType
+    mid = messageTypeToWord32 rejectId
+    code = rejectTypeToWord32 rejectMsgCode
+    msgbs = encodeUtf8 rejectMsg
+    msglen = fromIntegral $ BS.length msgbs
+    msgSize = varIntSize mid
+            + varIntSize code
+            + varIntSize msglen
+            + msglen
 
-messageBuilder (MVersionACK VersionACK) = messageBase MVersionACKType msgSize $ word8 msg
-  where
-    msg = 0 :: Word8
-    msgSize = genericSizeOf msg
+messageBuilder (MVersionACK VersionACK) = messageBase MVersionACKType 0 mempty
 
 messageBuilder (MVersion Version {..}) =
   messageBase MVersionType msgSize
   $  byteString (mkProtocolVersion versionVersion)
   <> word64LE (fromIntegral time)
   <> word64LE versionNonce
-  <> word32LE scanBlocksCount
+  <> varInt scanBlocksCount
   <> scanBlocks
   where
     (scanBlocksSizeSum, scanBlocks) = mconcat $ scanBlockBuilder <$> UV.toList versionScanBlocks
-    scanBlocksCount = fromIntegral $ UV.length versionScanBlocks
+    scanBlocksCount = fromIntegral $ UV.length versionScanBlocks :: Word32
     scanBlocksSize = getSum scanBlocksSizeSum
     msgSize = 4 -- Version is 4-byte long byteString
             + genericSizeOf versionTime
             + genericSizeOf versionNonce
-            + genericSizeOf scanBlocksCount
+            + varIntSize scanBlocksCount
             + scanBlocksSize
     (CTime time) = versionTime
 
 messageBuilder (MFiltersRequest FilterRequest {..}) =
   messageBase MFiltersRequestType msgSize
-  $  word32LE currency
-  <> word64LE filterRequestMsgStart
-  <> word64LE filterRequestMsgAmount
+  $  varInt currency
+  <> varInt filterRequestMsgStart
+  <> varInt filterRequestMsgAmount
   where
     currency = currencyCodeToWord32 filterRequestMsgCurrency
 
-    msgSize = genericSizeOf currency
-            + genericSizeOf filterRequestMsgStart
-            + genericSizeOf filterRequestMsgAmount
+    msgSize = varIntSize currency
+            + varIntSize filterRequestMsgStart
+            + varIntSize filterRequestMsgAmount
 
 messageBuilder (MFiltersResponse FilterResponse {..}) =
   messageBase MFiltersResponseType msgSize
-  $  word32LE (currencyCodeToWord32 filterResponseCurrency)
-  <> word32LE filtersCount
+  $  varInt (currencyCodeToWord32 filterResponseCurrency)
+  <> varInt filtersCount
   <> lazyByteString zippedFilters
   where
-    (_filtersSizeSum, filters) = mconcat $ blockFilterBuilder <$> V.toList filterResponseFilters
-    filtersCount = fromIntegral $ V.length filterResponseFilters
+    (_filtersSizeSum, filters) = foldMap blockFilterBuilder filterResponseFilters
+    filtersCount = fromIntegral $ V.length filterResponseFilters :: Word32
     zippedFilters = compress $ toLazyByteString filters
 
-    msgSize = genericSizeOf (currencyCodeToWord32 filterResponseCurrency)
-            + genericSizeOf filtersCount
+    msgSize = varIntSize (currencyCodeToWord32 filterResponseCurrency)
+            + varIntSize filtersCount
             + fromIntegral (LBS.length zippedFilters)
 
 messageBuilder (MFiltersEvent FilterEvent {..}) =
   messageBase MFilterEventType msgSize
-  $  word32LE currency
-  <> word64LE filterEventHeight
-  <> word32LE filterEventBlockIdLength
+  $  varInt currency
+  <> varInt filterEventHeight
   <> byteString (BSS.fromShort filterEventBlockId)
-  <> word32LE filterEventBlockFilterLength
+  <> varInt filterEventBlockFilterLength
   <> byteString filterEventBlockFilter
   where
     currency = currencyCodeToWord32 filterEventCurrency
     filterEventBlockIdLength = fromIntegral $ BSS.length filterEventBlockId
     filterEventBlockFilterLength = fromIntegral $ BS.length filterEventBlockFilter
 
-    msgSize = genericSizeOf currency
-            + genericSizeOf filterEventHeight
-            + genericSizeOf filterEventBlockIdLength
+    msgSize = varIntSize currency
+            + varIntSize filterEventHeight
             + filterEventBlockIdLength
-            + genericSizeOf filterEventBlockFilterLength
+            + varIntSize filterEventBlockFilterLength
             + filterEventBlockFilterLength
 
 messageBuilder (MFeeRequest curs) = let
-  amount = fromIntegral $ length curs
-  msgSize = case curs of
-    [] -> genericSizeOf amount
-    c:_ -> genericSizeOf amount + amount * genericSizeOf (currencyCodeToWord32 c)
-  cursBS = mconcat $ (word32LE . currencyCodeToWord32) <$> curs
-  msg = word32LE amount <> cursBS
+  amount = fromIntegral $ length curs :: Word32
+  ids = fmap currencyCodeToWord32 curs
+  msgSize = varIntSize amount + sum (fmap varIntSize ids)
+  msg = varInt amount <> foldMap varInt ids
   in messageBase MFeeRequestType msgSize msg
 
 messageBuilder (MFeeResponse msgs) = let
-  amount = fromIntegral $ length msgs
+  amount = fromIntegral $ length msgs :: Word32
   (respSum, resps) = mconcat $ feeRespBuilder <$> msgs
-  msgSize = genericSizeOf amount + getSum respSum
-  msg = word32LE amount <> resps
+  msgSize = varIntSize amount + getSum respSum
+  msg = varInt amount <> resps
   in messageBase MFeeResponseType msgSize msg
 
-messageBuilder (MPeerRequest _) = messageBase MPeerRequestType msgSize $ word8 msg
-  where
-    msg = 0 :: Word8
-    msgSize = genericSizeOf msg
+messageBuilder (MPeerRequest _) = messageBase MPeerRequestType 0 mempty
 
 messageBuilder (MPeerResponse PeerResponse{..}) = let
   (addressesSize, addresses) = mconcat $ addressBuilder <$> V.toList peerResponseAddresses
-  addrAmount = fromIntegral $ V.length peerResponseAddresses
-  msgSize = genericSizeOf addrAmount
+  addrAmount = fromIntegral $ V.length peerResponseAddresses :: Word32
+  msgSize = varIntSize addrAmount
           + getSum addressesSize
   in messageBase MPeerResponseType msgSize
-  $  word32LE addrAmount
+  $  varInt addrAmount
   <> addresses
 
 messageBuilder (MPeerIntroduce PeerIntroduce{..}) = let
   (addressesSize, addresses) = mconcat $ addressBuilder <$> V.toList peerIntroduceAddresses
-  addrAmount = fromIntegral $ V.length peerIntroduceAddresses
-  msgSize = genericSizeOf addrAmount
+  addrAmount = fromIntegral $ V.length peerIntroduceAddresses :: Word32
+  msgSize = varIntSize addrAmount
           + getSum addressesSize
   in messageBase MIntroducePeerType msgSize
-  $  word32LE addrAmount
+  $  varInt addrAmount
   <> addresses
 
 messageBuilder (MRatesRequest (RatesRequest rs)) = let
-  rsNum = fromIntegral $ length rs
+  rsNum = fromIntegral $ length rs :: Word32
   (size, body) = mconcat $ fmap cfBuilder $ M.toList rs
-  msgSize = genericSizeOf rsNum + (getSum size)
-  in messageBase MRatesRequestType msgSize $ word32LE rsNum <> body
+  msgSize = varIntSize rsNum + (getSum size)
+  in messageBase MRatesRequestType msgSize $ varInt rsNum <> body
 --
 messageBuilder (MRatesResponse (RatesResponse rs)) = let
-  rsNum = fromIntegral $ length rs
+  rsNum = fromIntegral $ length rs :: Word32
   (size, body) = mconcat $ fmap cfdBuilder $ M.toList rs
-  msgSize = genericSizeOf rsNum + (getSum size)
-  in messageBase MRatesResponseType msgSize $ word32LE rsNum <> body
+  msgSize = varIntSize rsNum + getSum size
+  in messageBase MRatesResponseType msgSize $ varInt rsNum <> body
 
 enumBuilder :: Enum a => a -> Builder
-enumBuilder = word32LE . fromIntegral . fromEnum
+enumBuilder = varInt . (fromIntegral :: Int -> Word32) . fromEnum
+
+enumSize :: Enum a => a -> Word32
+enumSize = (varIntSize :: Word32 -> Word32) . fromIntegral . fromEnum
 
 cfBuilder :: (CurrencyCode, [Fiat]) -> (Sum Word32, Builder)
 cfBuilder (cc, fs) = let
-  fsNum = fromIntegral $ length fs
-  body = mconcat $ enumBuilder <$> fs
-  size = Sum $ (fsNum + 2) * (genericSizeOf fsNum)
-  in (size, ) $ enumBuilder cc <> word32LE fsNum <> body
+  fsNum = fromIntegral $ length fs :: Word32
+  ccid = currencyCodeToWord32 cc
+  size = Sum $ varIntSize ccid + varIntSize fsNum  + sum (fmap enumSize fs)
+  in (size, ) $ varInt ccid <> varInt fsNum <> foldMap enumBuilder fs
 
-cfdBuilder :: (CurrencyCode, M.Map Fiat Double) -> (Sum Word32, Builder)
+cfdBuilder :: (CurrencyCode, M.Map Fiat Centi) -> (Sum Word32, Builder)
 cfdBuilder (cc, fds) = let
-  fdsNum = fromIntegral $ length fds
-  body = mconcat $ fmap fdBuilder $ M.toList fds
-  size = Sum $ 8 + fdsNum * 20
-  in (size, ) $ enumBuilder cc <> word32LE fdsNum <> body
+  fdsNum = fromIntegral $ length fds :: Word32
+  ccid = currencyCodeToWord32 cc
+  body = foldMap fdBuilder $ M.toList fds
+  size = Sum $ varIntSize ccid + varIntSize fdsNum + sum (fmap fdSize $ M.toList fds)
+  in (size, ) $ varInt ccid <> varInt fdsNum <> body
 
--- | size 20
-fdBuilder :: (Fiat, Double) -> Builder
-fdBuilder (f, d) = enumBuilder f <> doubleBuilder d
+fdSize :: (Fiat, Centi) -> Word32
+fdSize (f, _) = enumSize f + 8
 
--- | Build Double as two Word64. size = 16
-doubleBuilder :: Double -> Builder
-doubleBuilder v = let
-  sci = normalize $ fromFloatDigits v
-  c = fromIntegral $ coefficient sci
-  e = fromIntegral $ base10Exponent sci
-  in word64LE c <> word64LE e
+fdBuilder :: (Fiat, Centi) -> Builder
+fdBuilder (f, d) = enumBuilder f <> centiBuilder d
+
+-- | Encode fixed point as 64 bit LE word
+centiBuilder :: Centi -> Builder
+centiBuilder (MkFixed v) = word64LE $ fromIntegral v
 
 feeRespBuilder :: FeeResp -> (Sum Word32, Builder)
 feeRespBuilder (FeeRespBTC isTest (FeeBundle (a,b) (c,d) (e,f))) = let
   cur = currencyCodeToWord32 $ if isTest then TBTC else BTC
-  msgSize = genericSizeOf cur + 6 * genericSizeOf a
-  msg = word32LE cur <> word64LE a <> word64LE b <> word64LE c <> word64LE d <> word64LE e <> word64LE f
+  vals = [a, b, c, d, e, f]
+  msgSize = varIntSize cur + sum (fmap varIntSize vals)
+  msg = varInt cur <> foldMap varInt vals
   in (Sum msgSize, msg)
 
 feeRespBuilder (FeeRespGeneric cur h m l) = let
   currency = currencyCodeToWord32 cur
-  msgSize = genericSizeOf currency + 3 * genericSizeOf h
-  msg = word32LE currency <> word64LE h <> word64LE m <> word64LE l
+  vals = [h, m, l]
+  msgSize = varIntSize currency +  sum (fmap varIntSize vals)
+  msg = varInt currency <> foldMap varInt vals
   in (Sum msgSize, msg)

@@ -1,3 +1,4 @@
+
 {-# OPTIONS_GHC -Wall #-}
 module Ergvein.Index.Server.Environment where
 
@@ -11,6 +12,7 @@ import Control.Monad.Logger
 import Control.Monad.Reader
 import Data.Text (Text, isInfixOf)
 import Data.Typeable
+import Data.Fixed
 import Network.HTTP.Client.TLS
 import Network.Socket
 import System.IO
@@ -57,7 +59,7 @@ data ServerEnv = ServerEnv
     , envShutdownChannel          :: !(TChan Bool)
     , envOpenConnections          :: !(TVar (M.Map SockAddr (ThreadId, Socket)))
     , envBroadcastChannel         :: !(TChan Message)
-    , envExchangeRates            :: !(TVar (M.Map CurrencyCode (M.Map Fiat Double)))
+    , envExchangeRates            :: !(TVar (M.Map CurrencyCode (M.Map Fiat Centi)))
     }
 
 sockAddress :: CfgPeer -> IO SockAddr
@@ -190,15 +192,9 @@ logOnException threadName = handle logE
               fdb <- getFiltersDb
               idb <- getIndexerDb
               udb <- getUtxoDb
-              closeLevelDB fdb
-              closeLevelDB idb
-              closeLevelDB udb
-              fdb' <- openDb False DBFilters cfgFiltersDbPath
-              idb' <- openDb False DBIndexer cfgIndexerDbPath
-              udb' <- openDb False DBUtxo    cfgUtxoDbPath
-              moveLevelDbHandle fdb' fdb
-              moveLevelDbHandle idb' idb
-              moveLevelDbHandle udb' udb
+              reopenLevelDB fdb
+              reopenLevelDB idb
+              reopenLevelDB udb
               logInfoN' "Reopened the db. Resume as usual"
             else
               logErrorN' $ "Killed by IOException. " <> showt ioe

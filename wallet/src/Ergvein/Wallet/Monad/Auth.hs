@@ -12,6 +12,7 @@ import Control.Lens
 import Control.Monad.STM
 import Control.Monad.Reader
 import Data.Map.Strict (Map)
+import Data.Fixed
 import Data.Text as T
 import Data.Time (getCurrentTime, diffUTCTime, NominalDiffTime)
 import Network.Socket
@@ -21,6 +22,7 @@ import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 import System.Directory
 
+import Ergvein.Node.Constants
 import Ergvein.Node.Resolve
 import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
@@ -82,19 +84,19 @@ data Env t = Env {
 , env'feesStore       :: !(ExternalRef t (Map Currency FeeBundle))
 , env'storeMutex      :: !(MVar ())
 , env'storeChan       :: !(TChan (Text, AuthInfo))
-, env'ratesRef        :: !(ExternalRef t (Map Currency (Map Fiat Double)))
+, env'ratesRef        :: !(ExternalRef t (Map Currency (Map Fiat Centi)))
 -- Client context
-, env'addrsArchive    :: !(ExternalRef t (S.Set NamedSockAddr))
-, env'inactiveAddrs   :: !(ExternalRef t (S.Set NamedSockAddr))
-, env'activeAddrs     :: !(ExternalRef t (S.Set NamedSockAddr))
-, env'indexConmap     :: !(ExternalRef t (Map SockAddr (IndexerConnection t)))
-, env'indexStatus     :: !(ExternalRef t (Map SockAddr IndexerStatus))
+, env'addrsArchive    :: !(ExternalRef t (S.Set ErgveinNodeAddr))
+, env'inactiveAddrs   :: !(ExternalRef t (S.Set ErgveinNodeAddr))
+, env'activeAddrs     :: !(ExternalRef t (S.Set ErgveinNodeAddr))
+, env'indexConmap     :: !(ExternalRef t (Map ErgveinNodeAddr (IndexerConnection t)))
+, env'indexStatus     :: !(ExternalRef t (Map ErgveinNodeAddr IndexerStatus))
 , env'reqUrlNum       :: !(ExternalRef t (Int, Int))
 , env'actUrlNum       :: !(ExternalRef t Int)
 , env'timeout         :: !(ExternalRef t NominalDiffTime)
 , env'indexReqSel     :: !(IndexReqSelector t)
-, env'indexReqFire    :: !(Map SockAddr IndexerMsg -> IO ())
-, env'activateIndexEF :: !(Event t [NamedSockAddr], [NamedSockAddr] -> IO ())
+, env'indexReqFire    :: !(Map ErgveinNodeAddr IndexerMsg -> IO ())
+, env'activateIndexEF :: !(Event t [ErgveinNodeAddr], [ErgveinNodeAddr] -> IO ())
 }
 
 type ErgveinM t m = ReaderT (Env t) m

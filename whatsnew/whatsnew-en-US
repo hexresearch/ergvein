@@ -1,10 +1,4 @@
-* Bug fixes #840
-* DNS detector #861
-* Indexer page improvements #859 #851 #854
-* Don't use unsynced or misbehaving indexers #844
-* Reduce lags on CPU with multicores #839
-* New fee estimation #827
-* Display balance in fiat #828
-* Resend outgoing transactions periodically #826
-* Request mempool on startup #824
-* Sending RBF transactions #817
+* Update to 2.0 protocol version for indexer. Breaking change. #882
+* Late resolution of indexer domains #880
+* Display placeholder in empty transaction history #873
+* Added ACCESS_NETWORK_STATE permission #872

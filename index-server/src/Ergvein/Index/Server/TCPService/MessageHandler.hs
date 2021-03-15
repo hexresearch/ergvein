@@ -57,7 +57,7 @@ handleMsg address (MVersion peerVersion) =
     considerPeer ownVer $ PeerCandidate address $ versionScanBlocks ownVer
     pure ([ MVersionACK VersionACK, MVersion ownVer ], False)
   else
-    pure ([ MReject $ Reject VersionNotSupported ], True)
+    pure ([ MReject $ Reject MVersionType VersionNotSupported $ "Given version is not compatible with " <> showProtocolVersion protocolVersion], True)
 
 handleMsg _ (MPeerRequest _) = do
   knownPeers <- getActualPeers
