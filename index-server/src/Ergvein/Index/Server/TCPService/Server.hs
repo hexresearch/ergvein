@@ -34,15 +34,6 @@ import Ergvein.Index.Server.TCPService.Connections
 import qualified Data.ByteString as BS
 import qualified Network.Socket.ByteString as NS
 
--- Pinger thread
-runPinger :: ServerM Thread
-runPinger = create $ const $ logOnException "runPinger" $ do
-  broadChan <- liftIO . atomically . dupTChan =<< broadcastChannel
-  forever $ liftIO $ do
-    threadDelay 5000000
-    msg <- MPing <$> randomIO
-    atomically $ writeTChan broadChan msg
-
 runTcpSrv :: ServerM Thread
 runTcpSrv = create $ logOnException "runTcpSrv" . tcpSrv
 
