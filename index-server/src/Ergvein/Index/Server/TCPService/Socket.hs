@@ -1,5 +1,6 @@
 module Ergvein.Index.Server.TCPService.Socket where
 
+import Control.Applicative
 import Control.Concurrent.STM
 import Control.Monad
 import Control.Monad.IO.Unlift
@@ -90,10 +91,10 @@ receiveExactly intVar sock n = go n mempty
 readAllTVar :: TChan a -> STM [a]
 readAllTVar chan = go []
   where
-    go !acc = do
-      a <- readTChan chan
-      empty <- isEmptyTChan chan
-      if empty then pure (a : acc) else go (a : acc)
+    go !acc = do a <- readTChan chan
+                 go (a : acc)
+           <|> pure acc
+
 
 -- * Note
 -- We need to copy some functions from network-simple due problems with
