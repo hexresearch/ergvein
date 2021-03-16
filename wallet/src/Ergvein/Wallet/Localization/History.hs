@@ -125,6 +125,7 @@ instance LocalizedPrint HistoryPageStrings where
 data BumpFeeWidgetStrings =
     BumpFeeTitle
   | BumpFeeConfirmTxHeader
+  | BumpFeeTxPostedHeader
   | BumpFeeCurrentFee
   | BumpFeeCurrentFeeRate
   | BumpFeeDecodeOutsError
@@ -154,6 +155,7 @@ instance LocalizedPrint BumpFeeWidgetStrings where
   localizedShow l v = case l of
     English -> case v of
       BumpFeeConfirmTxHeader             -> "Confirm the transaction"
+      BumpFeeTxPostedHeader              -> "Transaction posted"
       BumpFeeCurrentFee                  -> "Current fee"
       BumpFeeCurrentFeeRate              -> "Current fee rate"
       BumpFeeDecodeOutsError             -> "Couldn't decode outputs"
@@ -181,6 +183,7 @@ instance LocalizedPrint BumpFeeWidgetStrings where
 
     Russian -> case v of
       BumpFeeConfirmTxHeader             -> "Подтвердите транзакцию"
+      BumpFeeTxPostedHeader              -> "Транзакция отправлена"
       BumpFeeCurrentFee                  -> "Текущая комиссия"
       BumpFeeCurrentFeeRate              -> "Текущая комиссия за байт"
       BumpFeeDecodeOutsError             -> "Не удалось декодировать выходы"

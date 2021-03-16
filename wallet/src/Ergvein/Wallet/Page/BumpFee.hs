@@ -192,32 +192,34 @@ signSendWidget txData@RbfTxData{..} tx = do
   title <- localized BumpFeeTitle
   let thisWidget = Just $ pure $ signSendWidget txData tx
   wrapper False title thisWidget $ divClass "bump-fee-page" $ mdo
-    elClass "h4" "mb-1" $ localizedText BumpFeeConfirmTxHeader
+    let titleD = (\newTitle -> if newTitle then BumpFeeTxPostedHeader else BumpFeeConfirmTxHeader) <$> displayNewTitleD
+    elClass "h4" "mb-1" $ localizedDynText titleD
     let
       inputsAmount = sum $ (btcUtxo'amount . upMeta) <$> rbfTxData'coins
       outputsAmount = sum $ HT.outValue <$> HT.txOut tx
       fee = inputsAmount - outputsAmount
     makeBlock BumpFeeNewFee $ BumpFeeFeeAmount (Money BTC fee) smallestUnits BTC
     makeBlock BumpFeeNewFeeRate $ BumpFeeNewFeeRateAmount rbfTxData'feeRate BTC
-    void $ workflow $ signTx tx rbfTxData'coins
+    displayNewTitleD <- workflow $ signTx tx rbfTxData'coins
+    pure ()
 
-signTx :: MonadFront t m => HT.Tx -> [UtxoPoint] -> Workflow t m ()
+signTx :: MonadFront t m => HT.Tx -> [UtxoPoint] -> Workflow t m Bool
 signTx tx coins = Workflow $ do
   signE <- outlineButton BumpFeeSignTx
   eSignedTxE <- fmap (fmapMaybe id) $ withWallet $ (signTxWithWallet tx coins) <$ signE
   signedTxE <- handleDangerMsg $ first (const BumpFeeSignError) <$> eSignedTxE
-  pure ((), sendTx <$> signedTxE)
+  pure (False, sendTx <$> signedTxE)
 
-sendTx :: MonadFront t m =>  HT.Tx -> Workflow t m ()
+sendTx :: MonadFront t m =>  HT.Tx -> Workflow t m Bool
 sendTx signedTx = Workflow $ do
   sendE <- outlineButton BumpFeeSendTx
   addedE <- addOutgoingTx "signSendWidget" $ (TxBtc $ BtcTx signedTx Nothing) <$ sendE
   storedE <- btcMempoolTxInserter $ signedTx <$ addedE
   broadcastE <- requestBroadcast $ ffor storedE $ const $
     NodeReqBTC . MInv . Inv . pure . InvVector InvTx . HT.getTxHash . HT.txHash $ signedTx
-  pure ((), showTxId signedTx <$ broadcastE)
+  pure (False, showTxId signedTx <$ broadcastE)
 
-showTxId :: MonadFront t m => HT.Tx -> Workflow t m ()
+showTxId :: MonadFront t m => HT.Tx -> Workflow t m Bool
 showTxId tx = Workflow $ do
   divClass "mb-1" $ do
     elClass "span" "font-bold" $ localizedText BumpFeeTxId
@@ -228,7 +230,7 @@ showTxId tx = Workflow $ do
       retractableNext = balancesPage
     , retractablePrev = Nothing
   }
-  pure ((), never)
+  pure (True, never)
 
 makeTxIdLink :: MonadFront t m => Text -> m ()
 makeTxIdLink txIdText = do
