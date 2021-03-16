@@ -158,19 +158,20 @@ btcMempoolTxInserter txE = do
     liftIO $ flip runReaderT txStore $ do
       checkAddrTxResult <- checkAddrTx' keys tx
       utxoUpdates <- getUtxoUpdates Nothing keys tx
-      pure (checkAddrTxResult, utxoUpdates)
-  -- TODO: should matchedTxsE and txInsertedE be fired in sequence?
-  let matchedTxsE = helper <$> valsE
-      txInsertedE = fmapMaybe txInserted valsE
+      pure $ Just (checkAddrTxResult, utxoUpdates)
+  let txInsertedE = fmapMaybe txInserted valsE
+  removedE <- removeTxsReplacedByFee "btcMempoolTxInserter" txInsertedE
+  matchedTxsD <- holdDyn Nothing valsE
+  let matchedTxsE = attachPromptlyDynWithMaybe (\dynVal _ -> helper <$> dynVal) matchedTxsD removedE
   insertedE <- insertTxsUtxoInPubKeystore "btcMempoolTxInserter" BTC matchedTxsE
-  _ <- removeTxsReplacedByFee "btcMempoolTxInserter" txInsertedE
   pure insertedE
   where
     helper :: ((V.Vector ScanKeyBox, EgvTx), BtcUtxoUpdate) -> (V.Vector (ScanKeyBox, M.Map TxId EgvTx), BtcUtxoUpdate)
     helper ((vec, tx), utxoUpd) = ((\keyBox -> (keyBox, M.fromList [(egvTxId tx, tx)])) <$> vec, utxoUpd)
 
-    txInserted :: ((V.Vector ScanKeyBox, EgvTx), BtcUtxoUpdate) -> Maybe BtcTxRaw
-    txInserted ((vec, tx), (utxos, outPoints)) = if V.null vec && M.null utxos && null outPoints
+    txInserted :: Maybe ((V.Vector ScanKeyBox, EgvTx), BtcUtxoUpdate) -> Maybe BtcTxRaw
+    txInserted Nothing = Nothing
+    txInserted (Just ((vec, tx), (utxos, outPoints))) = if V.null vec && M.null utxos && null outPoints
       then Nothing
       else case tx of
         TxBtc (BtcTx btcTx _) -> Just btcTx
