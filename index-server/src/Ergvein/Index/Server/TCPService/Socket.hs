@@ -88,10 +88,10 @@ receiveExactly intVar sock n = go n mempty
           acc' = acc <> BB.byteString bs
           in if l < i then go (i - l) acc' else pure . BSL.toStrict . BB.toLazyByteString $ acc'
 
-readAllTVar :: TChan a -> STM [a]
-readAllTVar chan = go []
+readAllTVar :: STM a -> STM [a]
+readAllTVar readValue = go []
   where
-    go !acc = do a <- readTChan chan
+    go !acc = do a <- readValue
                  go (a : acc)
            <|> pure acc
 

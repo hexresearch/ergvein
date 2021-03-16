@@ -1,6 +1,7 @@
 {-# LANGUAGE MultiWayIf #-}
 module Ergvein.Index.Server.TCPService.Server where
 
+import Control.Applicative
 import Control.Concurrent
 import Control.Concurrent.Lifted (fork)
 import Control.Concurrent.STM
@@ -95,8 +96,6 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
       liftIO $ forM_ msgs $ writeMsg sendChan
       -- Spawn message sender thread
       void $ fork $ sendLoop sendChan
-      -- Spawn broadcaster loop
-      void $ fork $ broadcastLoop sendChan
       -- Start message listener
       listenLoop sendChan
     Left err -> do
@@ -121,18 +120,14 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
     writeMsg :: TChan LBS.ByteString -> Message -> IO ()
     writeMsg destinationChan = atomically . writeTChan destinationChan . toLazyByteString . messageBuilder
 
-    broadcastLoop :: HasBroadcastChannel m => TChan LBS.ByteString -> m ()
-    broadcastLoop destinationChan = do
-      channel <- broadcastChannel
-      broadChan <- liftIO $ atomically $ dupTChan channel
-      liftIO $ forever $ do
-        msg <- atomically $ readTChan broadChan
-        writeMsg destinationChan msg
-
     sendLoop :: TChan LBS.ByteString -> ServerM ()
-    sendLoop sendChan = liftIO $ forever $ do
-      msgs <- atomically $ readAllTVar sendChan
-      sendLazy sock $ mconcat msgs
+    sendLoop sendChan = do
+      broadChan <- liftIO . atomically . dupTChan
+               =<< broadcastChannel
+      liftIO $ forever $ do
+        msgs <- atomically $ readAllTVar $  readTChan sendChan
+                                        <|> toLazyByteString . messageBuilder <$> readTChan broadChan
+        sendLazy sock $ mconcat msgs
 
     listenLoop :: TChan LBS.ByteString -> ServerM ()
     listenLoop destinationChan = listenLoop'
