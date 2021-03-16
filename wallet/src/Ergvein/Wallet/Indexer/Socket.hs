@@ -40,8 +40,6 @@ import qualified Data.ByteString.Lazy       as BL
 import qualified Data.Map.Strict            as M
 import qualified Data.Vector.Unboxed        as VU
 
-import Debug.Trace
-
 requiredCurrencies :: [CurrencyCode]
 requiredCurrencies = if isTestnet
   then [TBTC] -- TODO: add ERGO here
@@ -202,7 +200,7 @@ mkVers :: MonadIO m => m Message
 mkVers = liftIO $ do
   nonce <- randomIO
   t <- fmap (fromIntegral . floor) getPOSIXTime
-  pure $ traceShowId $ MVersion $ Version {
+  pure $ MVersion $ Version {
       versionVersion    = protocolVersion
     , versionTime       = t
     , versionNonce      = nonce
