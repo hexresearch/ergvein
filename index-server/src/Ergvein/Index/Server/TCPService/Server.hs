@@ -31,7 +31,6 @@ import Ergvein.Index.Server.TCPService.MessageHandler
 import Ergvein.Index.Server.TCPService.Socket as S
 import Ergvein.Index.Server.TCPService.Connections
 
-import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString as BS
 import qualified Network.Socket.ByteString as NS
 
@@ -117,19 +116,19 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
     rawSendMsg :: Message -> IO ()
     rawSendMsg = sendLazy sock . toLazyByteString . messageBuilder
 
-    writeMsg :: TChan LBS.ByteString -> Message -> IO ()
-    writeMsg destinationChan = atomically . writeTChan destinationChan . toLazyByteString . messageBuilder
+    writeMsg :: TChan Builder -> Message -> IO ()
+    writeMsg destinationChan = atomically . writeTChan destinationChan . messageBuilder
 
-    sendLoop :: TChan LBS.ByteString -> ServerM ()
+    sendLoop :: TChan Builder -> ServerM ()
     sendLoop sendChan = do
       broadChan <- liftIO . atomically . dupTChan
                =<< broadcastChannel
       liftIO $ forever $ do
         msgs <- atomically $ readAllTVar $  readTChan sendChan
-                                        <|> toLazyByteString . messageBuilder <$> readTChan broadChan
-        sendLazy sock $ mconcat msgs
+                                        <|> messageBuilder <$> readTChan broadChan
+        sendLazy sock $ toLazyByteString $ mconcat msgs
 
-    listenLoop :: TChan LBS.ByteString -> ServerM ()
+    listenLoop :: TChan Builder -> ServerM ()
     listenLoop destinationChan = listenLoop'
       where
         listenLoop' = do
