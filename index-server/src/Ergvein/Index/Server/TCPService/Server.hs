@@ -90,15 +90,11 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
       listenLoop sendChan
     Left err -> do
       logErrorN $ "<" <> showt addr <> ">: Rejecting client on handshake phase with: " <> showt err
-      liftIO $ do
-        rawSendMsg $ MReject err
-        threadDelay 100000
+      liftIO $ rawSendMsg $ MReject err
       closeConnection addr
     Right (MReject r : _, _) -> do
       logErrorN $ "<" <> showt addr <> ">: Rejecting client on handshake phase with: " <> showt r
-      liftIO $ do
-        rawSendMsg $ MReject r
-        threadDelay 100000
+      liftIO $ rawSendMsg $ MReject r
       closeConnection addr
     Right msg -> do
       logErrorN $ "<" <> showt addr <> ">: Impossible! Tried to send something that is not MVersionACK or MReject to client at handshake: " <> showt msg
@@ -129,7 +125,6 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
               liftIO $ forM_ msgs $ writeMsg destinationChan
               if closeIt then do
                 logInfoN $ "<" <> showt addr <> ">: Closing connection on our side"
-                liftIO $ threadDelay 100000
                 closeConnection addr
               else listenLoop'
             Left Reject {..} | rejectMsgCode == ZeroBytesReceived -> do
@@ -139,7 +134,6 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
               logErrorN $ "<" <> showt addr <> ">: Rejecting client with: " <> showt err
               liftIO $ do
                 writeMsg destinationChan $ MReject err
-                threadDelay 100000
               closeConnection addr
 
 
