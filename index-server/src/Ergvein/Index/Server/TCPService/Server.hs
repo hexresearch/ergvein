@@ -90,18 +90,17 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
       listenLoop sendChan
     Left err -> do
       logErrorN $ "<" <> showt addr <> ">: Rejecting client on handshake phase with: " <> showt err
-      liftIO $ rawSendMsg $ MReject err
+      rawSendMsg $ MReject err
       closeConnection addr
     Right (MReject r : _, _) -> do
       logErrorN $ "<" <> showt addr <> ">: Rejecting client on handshake phase with: " <> showt r
-      liftIO $ rawSendMsg $ MReject r
+      rawSendMsg $ MReject r
       closeConnection addr
     Right msg -> do
       logErrorN $ "<" <> showt addr <> ">: Impossible! Tried to send something that is not MVersionACK or MReject to client at handshake: " <> showt msg
       closeConnection addr
   where
-    rawSendMsg :: Message -> IO ()
-    rawSendMsg = sendLazy sock . toLazyByteString . messageBuilder
+    rawSendMsg = liftIO . sendLazy sock . toLazyByteString . messageBuilder
 
     writeMsg :: TChan Builder -> Message -> IO ()
     writeMsg destinationChan = atomically . writeTChan destinationChan . messageBuilder
