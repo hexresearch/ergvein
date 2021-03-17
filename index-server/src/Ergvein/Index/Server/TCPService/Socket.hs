@@ -1,6 +1,5 @@
 module Ergvein.Index.Server.TCPService.Socket where
 
-import Control.Applicative
 import Control.Concurrent.STM
 import Control.Monad
 import Control.Monad.IO.Unlift
@@ -87,13 +86,6 @@ receiveExactly intVar sock n = go n mempty
           l = BS.length bs
           acc' = acc <> BB.byteString bs
           in if l < i then go (i - l) acc' else pure . BSL.toStrict . BB.toLazyByteString $ acc'
-
-readAllTVar :: STM a -> STM [a]
-readAllTVar readValue = go []
-  where
-    go !acc = do a <- readValue
-                 go (a : acc)
-           <|> pure acc
 
 
 -- * Note

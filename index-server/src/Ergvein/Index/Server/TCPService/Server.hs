@@ -83,7 +83,7 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
   case evalResult of
     Right (msgs@(MVersionACK _ : _), _) -> do --peer version match ours
       sendChan <- liftIO newTChanIO
-      liftIO $ forM_ msgs $ writeMsg sendChan
+      liftIO $ writeMsg sendChan msgs
       -- Spawn message sender thread
       void $ fork $ sendLoop sendChan
       -- Start message listener
@@ -102,26 +102,26 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
   where
     rawSendMsg = liftIO . sendLazy sock . toLazyByteString . messageBuilder
 
-    writeMsg :: TChan Builder -> Message -> IO ()
-    writeMsg destinationChan = atomically . writeTChan destinationChan . messageBuilder
+    writeMsg :: TChan [Message] -> [Message] -> IO ()
+    writeMsg destinationChan = atomically . writeTChan destinationChan
 
-    sendLoop :: TChan Builder -> ServerM ()
+    sendLoop :: TChan [Message] -> ServerM ()
     sendLoop sendChan = do
       broadChan <- liftIO . atomically . dupTChan
                =<< broadcastChannel
       liftIO $ forever $ do
-        msgs <- atomically $ readAllTVar $  readTChan sendChan
-                                        <|> messageBuilder <$> readTChan broadChan
-        sendLazy sock $ toLazyByteString $ mconcat msgs
+        msgs <- atomically $  foldMap messageBuilder <$> readTChan sendChan
+                          <|> messageBuilder         <$> readTChan broadChan
+        sendLazy sock $ toLazyByteString msgs
 
-    listenLoop :: TChan Builder -> ServerM ()
+    listenLoop :: TChan [Message] -> ServerM ()
     listenLoop destinationChan = listenLoop'
       where
         listenLoop' = do
           evalResult <- runExceptT $ evalMsg sock addr
           case evalResult of
             Right (msgs, closeIt) -> do
-              liftIO $ forM_ msgs $ writeMsg destinationChan
+              liftIO $ writeMsg destinationChan msgs
               if closeIt then do
                 logInfoN $ "<" <> showt addr <> ">: Closing connection on our side"
                 closeConnection addr
@@ -132,7 +132,7 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
             Left err -> do
               logErrorN $ "<" <> showt addr <> ">: Rejecting client with: " <> showt err
               liftIO $ do
-                writeMsg destinationChan $ MReject err
+                writeMsg destinationChan [MReject err]
               closeConnection addr
 
 
