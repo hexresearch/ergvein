@@ -68,13 +68,12 @@ feeRateWidget cur TransactionView{..} mInit = mdo
   pure goE
 
 data RbfTxData = RbfTxData {
-    rbfTxData'feeRate    :: !Word64           -- ^ Fee rate in sat/vbyte
-  , rbfTxData'feeMode    :: !BTCFeeMode       -- ^ Fee mode
-  , rbfTxData'changeKey  :: !EgvPubKeyBox     -- ^ Keybox to send the change to
-  , rbfTxData'change     :: !Word64           -- ^ Change
-  , rbfTxData'coins      :: ![UtxoPoint]      -- ^ List of utxo points used as inputs
-  , rbfTxData'outsToKeep :: ![(Text, Word64)] -- ^ Fixed tx outputs in tx
-  , rbfTxData'rbfEnabled :: !RbfEnabled       -- ^ Explicit opt-in RBF signalling
+    rbfTxData'feeRate    :: !Word64                         -- ^ Fee rate in sat/vbyte
+  , rbfTxData'feeMode    :: !BTCFeeMode                     -- ^ Fee mode
+  , rbfTxData'change     :: !(Maybe (Word64, EgvPubKeyBox)) -- ^ Change amount and keybox to send the change to
+  , rbfTxData'coins      :: ![UtxoPoint]                    -- ^ List of utxo points used as inputs
+  , rbfTxData'outsToKeep :: ![(Text, Word64)]               -- ^ Fixed tx outputs in tx
+  , rbfTxData'rbfEnabled :: !RbfEnabled                     -- ^ Explicit opt-in RBF signalling
 } deriving Show
 
 -- | Keep all inputs, keep all outputs that are not our change,
@@ -116,18 +115,19 @@ prepareTxData e = do
                     case chooseCoinsRbf amount newFeeRate outputTypes fixedUtxo confirmedUtxo unconfirmedUtxo of
                       Left _ -> pure $ Left BumpFeeInsufficientFundsError
                       Right (coins, change) -> do
-                        let mChangeKey = getLastUnusedKey Internal =<< pubStorageKeyStorage BTC pubStorage -- TODO: use change key from previous tx
+                        let lastUnusedKey =  snd <$> (getLastUnusedKey Internal =<< pubStorageKeyStorage BTC pubStorage)
+                            getOldChangeKey oldChangeOut = (flip getInternalKeyboxByOutput) oldChangeOut =<< pubStorageKeyStorage BTC pubStorage
+                            mChangeKey = maybe lastUnusedKey getOldChangeKey mOldChangeOut
                         case mChangeKey of
                           Nothing -> pure $ Left BumpFeeGetChangeKeyError
-                          Just (_, changeKey) -> do
+                          Just changeKey -> do
                             let mUnpackedOutsToKeep = unpackOut <$> outputsToKeep
                             case allJust mUnpackedOutsToKeep of
                               Nothing -> pure $ Left BumpFeeDecodeOutsError
                               Just decodedOutsToKeep -> pure $ Right RbfTxData {
                                   rbfTxData'feeRate = newFeeRate
                                 , rbfTxData'feeMode = newFeeMode
-                                , rbfTxData'changeKey = changeKey
-                                , rbfTxData'change = change
+                                , rbfTxData'change = Just (change, changeKey)
                                 , rbfTxData'coins = coins
                                 , rbfTxData'outsToKeep = decodedOutsToKeep
                                 , rbfTxData'rbfEnabled = True -- TODO: add checkbox for this in UI
@@ -179,9 +179,10 @@ makeBlock title content = divClass "mb-1" $ do
 makeRbfTx :: MonadFront t m => Event t RbfTxData -> m (Event t (RbfTxData, HT.Tx))
 makeRbfTx txDataE = do
   let eTxE = ffor txDataE $ \txData@RbfTxData{..} ->
-        let changeKeyTxt = btcAddrToString $ xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key rbfTxData'changeKey
-            outputToKeep = rbfTxData'outsToKeep
-            outs = outputToKeep ++ [(changeKeyTxt, rbfTxData'change)]
+        let keyToText = btcAddrToString . xPubToBtcAddr . extractXPubKeyFromEgv . pubKeyBox'key
+            changeOutputs = maybe [] (\(change, changeKey) -> [(keyToText changeKey, change)]) rbfTxData'change
+            outputsToKeep = rbfTxData'outsToKeep
+            outs = outputsToKeep ++ changeOutputs
             eTx = buildAddrTx btcNetwork rbfTxData'rbfEnabled (upPoint <$> rbfTxData'coins) outs
         in (txData, ) <$> first (const BumpFeeInvalidAddressError) eTx
   txE <- handleDangerMsg eTxE

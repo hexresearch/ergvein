@@ -38,6 +38,7 @@ module Ergvein.Wallet.Transaction.Util(
   , decodeBtcOutHelper
   , unpackOut
   , signTxWithWallet
+  , getInternalKeyboxByOutput
   -- Ergo functions
   ) where
 
@@ -449,6 +450,18 @@ getKeyBoxByInput input = do
     filterHelper keyBox =
       let addr = xPubToBtcAddr $ extractXPubKeyFromEgv $ scanBox'key keyBox
       in checkTxInBtc addr input
+
+getInternalKeyboxByOutput :: PubKeystore -> TxOut -> Maybe EgvPubKeyBox
+getInternalKeyboxByOutput PubKeystore{..} txOut = matchedKeys V.!? 0
+  where
+    mDecodedOut = eitherToMaybe $ decodeBtcOutHelper txOut
+    mAddr = HA.outputAddress =<< mDecodedOut
+    matchedKeys = V.filter filterHelper pubKeystore'internal
+
+    filterHelper :: EgvPubKeyBox -> Bool
+    filterHelper keyBox =
+      let addr = xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key keyBox
+      in Just addr == mAddr
 
 unpackOut :: TxOut -> Maybe (Text, Word64)
 unpackOut txOut = (, amount) <$> mAddr
