@@ -63,7 +63,8 @@ main = do
                       $ BS.singleton c
                      <> unModifierId requiredBlock
                      <> unModifierId "722f9306300d0d96fe8c10de830216d700131614f9e6ce2496e8dba1cbb45951"
-            ty = ModifierBlockTxs       
+            ty = ModifierBlockTxs
+        print $ merkleR 102
         atomically $ writeTChan inChan $ SockInSendEvent $ MsgOther $ MsgRequestModifier $ RequestModifierMsg ty
           -- [requiredBlock]
           $ V.fromList [merkleR c | c <- [102]]
@@ -87,7 +88,7 @@ main = do
           putStrLn "MsgModifier"
           print ty
           let bs = modifierBody $ m ! 0
-          print $ bs
+          print $ ModifierId $ BS.drop 32 $ bs
           print $ decode @BlockHeader bs
       _ -> print ev
 
