@@ -92,11 +92,9 @@ connectBtc net host port closeVar restartChan = do
   let readErFire = atomically . writeTChan actChan . BTCSockFail
   let inFire = atomically . writeTChan incChan
 
-  void $ fork $ liftIO $ fix $ \next -> do
-    b <- atomically $ readTVar closeVar
-    if b
-      then atomically $ writeTChan actChan BTCSockClose
-      else threadDelay 1000000 >> next
+  void $ fork $ liftIO $ atomically $ do
+    check =<< readTVar closeVar
+    writeTChan actChan BTCSockClose
 
   void $ fork $ liftIO $ fix $ \next -> do
     atomically $ do
