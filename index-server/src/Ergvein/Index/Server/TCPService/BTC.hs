@@ -7,6 +7,7 @@ module Ergvein.Index.Server.TCPService.BTC
   , dummyBtcSock
   ) where
 
+import Control.Applicative
 import Control.Concurrent.Lifted (fork, threadDelay, killThread)
 import Control.Concurrent.STM
 import Control.Monad.Catch (throwM, MonadThrow)
@@ -97,12 +98,6 @@ connectBtc net host port closeVar restartChan = do
     writeTChan actChan BTCSockClose
 
   void $ fork $ liftIO $ fix $ \next -> do
-    atomically $ do
-      void $ readTChan restartChan
-      writeTChan actChan BTCSockReconnect
-    next
-
-  void $ fork $ liftIO $ fix $ \next -> do
     connect host port $ \(sock, _sockaddr) -> do
       atomically $ writeTVar shakeVar False
       let env = PeekerEnv intVar sock
@@ -119,7 +114,8 @@ connectBtc net host port closeVar restartChan = do
           Right (Right a) -> inFire a >> nxt
       void $ fork $ performHandshake btcsock
       void $ fork $ btcPinger btcsock
-      act <- atomically $ readTChan actChan
+      act <- atomically $  readTChan actChan
+                       <|> BTCSockReconnect <$ readTChan restartChan
       case act of
         BTCSockReconnect ->
           N.close sock >> next
