@@ -7,7 +7,7 @@ import Control.Concurrent.Async.Lifted (Async,async)
 import Control.Concurrent.Lifted       (fork,myThreadId)
 import Control.Concurrent.STM
 import Control.Immortal
-import Control.Exception               (AsyncException(..))
+import Control.Exception               (AsyncException(..),throwIO)
 import Control.Monad
 import Control.Monad.Base
 import Control.Monad.Trans.Control
@@ -56,18 +56,16 @@ withLinkedWorker
   :: (MonadBaseControl IO m)
   => m a -> (Async () -> m b) -> m b
 withLinkedWorker action cont = restoreM =<< do
+  -- FIXME: test that we correctly deal with blocking calls with
+  --        throwTo. async use uninterruptibleCancel for example.
   liftBaseWith $ \runInIO -> do
     tid <- myThreadId
     mask $ \restore -> do
       -- Here we spawn worker thread which will throw unhandled exception to main thread.
       a <- Async.async $ restore (runInIO action) `catch` \e -> do
         unless (ignoreException e) $ throwTo tid (ExceptionInLinkedThread e)
-        throwM e
-      r <- restore (runInIO (cont (() <$ a))) `catch` \e -> do
-        Async.cancel a
-        throwM (e :: SomeException)
-      Async.cancel a
-      return r
+        throwIO e
+      restore (runInIO (cont (() <$ a))) `finally` Async.cancel a
 
 -- | Same as 'withLinkedWorker' for use in cases when
 withLinkedWorker_ :: (MonadBaseControl IO m) => m a -> m b -> m b
