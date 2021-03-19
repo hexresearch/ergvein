@@ -15,6 +15,12 @@ import Data.Time
 import Options.Generic
 import Data.Vector.Generic ((!))
 import qualified Data.Vector as V
+import Text.Groom
+
+import Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
+import qualified Data.ByteArray  as BA
+import Crypto.Hash
 
 data Options = Options {
   nodeAddress  :: Maybe String <?> "Address of node"
@@ -48,14 +54,23 @@ main = do
         t <- getCurrentTime
         atomically $ writeTChan inChan $ SockInSendEvent $ MsgHandshake $ makeHandshake 0 t
         threadDelay 1000000
-        let --requiredBlock = "8cf6dca6b9505243e36192fa107735024c0000cf4594b1daa2dc4e13ee86f26f"
-            -- requiredBlock = "b21a1c00412b84033185f3cf6cdd345c4276628f3dda1e63b8502a4923c8e2bc"
-            requiredBlock = "30075a8396918d62ba187d7e32cf3623e393f0ac1881e221bc5fb9515de633d0"
-            -- ty = ModifierBlockHeader
-            -- ty = ModifierBlockTxs
-            ty = UnknownModifier 1
-        atomically $ writeTChan inChan $ SockInSendEvent $ MsgOther $ MsgRequestModifier $ RequestModifierMsg ty [requiredBlock]
-        -- atomically $ writeTChan inChan $ SockInSendEvent $ MsgOther $ MsgSyncInfo $ SyncInfo [nullModifierId]
+        let requiredBlock = "8cf6dca6b9505243e36192fa107735024c0000cf4594b1daa2dc4e13ee86f26f" -- H=414474
+            -- requiredBlock = "2cc7c4f1f609694b83df093192e5bf3f4ad441a3c8f1959a28d51eb16fa94b19"
+            --
+            merkleR c = ModifierId
+                      $ BA.convert
+                      $ hash @_ @Blake2b_256
+                      $ BS.singleton c
+                     <> unModifierId requiredBlock
+                     <> unModifierId "722f9306300d0d96fe8c10de830216d700131614f9e6ce2496e8dba1cbb45951"
+            ty = ModifierBlockTxs       
+        atomically $ writeTChan inChan $ SockInSendEvent $ MsgOther $ MsgRequestModifier $ RequestModifierMsg ty
+          -- [requiredBlock]
+          $ V.fromList [merkleR c | c <- [102]]
+        -- atomically $ writeTChan inChan $ SockInSendEvent $ MsgOther $ MsgSyncInfo $ SyncInfo [
+          -- "efa4abde000dca13fd08220d48f70c3e64b49d91102af9d047fd6f35826352e9"
+          -- ]
+        pure ()
       SockOutInbound (MsgOther (MsgInv (InvMsg itype is))) -> do
         atomically $ writeTChan inChan $ SockInSendEvent $ MsgOther $ MsgRequestModifier $ RequestModifierMsg itype $ V.singleton $ V.head is
         pure ()
@@ -77,22 +92,22 @@ main = do
       _ -> print ev
 
 {- HEADER
-q = BlockHeader
+BlockHeader
   { version          = 1
-  , parentId         = cee668bdcb8d24cc25569e82d7500b2c56eefddfa4629834de1cf6c96b2bfc80
-  , adProofsRoot     = 47bfb6efa2ed041e51013e905f045ebf5af19e1a8510a98a516d355d31116908
-  , transactionsRoot = a191856a3fd7703a92b8f8c397b8a0100195e98f408654e419ed01d03fc5f959
-  , stateRoot        = d2ab2775e281381451e114c2c6fd84c6aa2acc9f349575387dbcfb79a8e57ffc13
-  , timestamp        = 2021-02-02 14:20:55.509 UTC
-  , extensionRoot    = 30075a8396918d62ba187d7e32cf3623e393f0ac1881e221bc5fb9515de633d0
-  , nBits            = Difficulty {unDifficulty = 3381663975342080}
-  , height           = 417791
+  , parentId         = 8bdd043dab20aa690afc9a18fc4797de4f02f049f5c16f9657646c753d69582e
+  , adProofsRoot     = 4527a2a7bcee7f77b5697f505e5effc5342750f58a52dddfe407a3ce3bd3abd0
+  , transactionsRoot = 722f9306300d0d96fe8c10de830216d700131614f9e6ce2496e8dba1cbb45951
+  , stateRoot        = 6c06d6277d40aeb958c5631515dc3ec3d11d8504e62de77df024d0ca67242fb512
+  , timestamp        = 2021-01-28 22:49:59.636 UTC
+  , extensionRoot    = a1a3933312467ce53d41fdc20e38c603e8fd89999371c60d7537c5d5760ef7c4
+  , nBits            = Difficulty {unDifficulty = 2572389057560576}
+  , height           = 414474
   , votes            = ParamVotes 4 3 0
   , powSolution = AutolykosSolution
-    { minerPubKey = 030e9662f3ed3448512424a273b3820ef83d3fee593cda88a115f344dc76ec4322
-    , oneTimePubKey = 038036568285bbb106e3c3fe5a9a333b3663a02c56021f1eeb7222a85808365578
-    , nonce = "\NUL\NUL\SO;\SOH\140\SO\201"
-    , distance = 2642678796460668869164530876036253368923823090434204406855695
+    { minerPubKey = 02bb8eb301ab3d5d14515e33760d0dfb4f7191312a640db64a3a1aeeac9703f2d3
+    , oneTimePubKey = 026d7b267c33120d15c267664081a6b77a6dcae6b35147db2c3e1195573119cb14
+    , nonce = "\NUL\b\161\209\ETX\136\SOH\ETB"
+    , distance = 35863003992655055679291741607273543535646500642591973829915050
     }
   }
 -}
