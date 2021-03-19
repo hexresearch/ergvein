@@ -1,4 +1,6 @@
-module Ergvein.Index.Server.TCPService.MessageHandler where
+module Ergvein.Index.Server.TCPService.MessageHandler
+  ( handleMsg
+  ) where
 
 import Control.Concurrent.STM
 import Control.Monad.IO.Class
@@ -18,7 +20,6 @@ import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.PeerDiscovery.Discovery
 import Ergvein.Index.Server.PeerDiscovery.Types
-import Ergvein.Index.Server.TCPService.Connections
 import Ergvein.Index.Server.TCPService.Conversions
 import Ergvein.Text
 import Ergvein.Types.Currency
@@ -78,10 +79,10 @@ handleMsg address (MFiltersEvent FilterEvent {..}) = do
   currency <- currencyCodeToCurrency filterEventCurrency
   slice <- getBlockMetaSlice currency filterEventHeight 1
   let filters = blockFilterFilter . convert <$> slice
-  when (any (/= filterEventBlockFilter) filters) $ do
-   closeConnection address
-   deletePeerBySockAddr $ convert address
-  pure (mempty, False)
+  case any (/= filterEventBlockFilter) filters of
+    True  -> do deletePeerBySockAddr $ convert address
+                pure ([], True)
+    False -> do pure ([], False)
 
 handleMsg _ (MFeeRequest curs) = do
   fees <- liftIO . readTVarIO =<< asks envFeeEstimates
