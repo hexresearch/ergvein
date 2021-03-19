@@ -73,6 +73,7 @@ withLinkedWorker action cont = restoreM =<< do
 withLinkedWorker_ :: (MonadBaseControl IO m) => m a -> m b -> m b
 withLinkedWorker_ action = withLinkedWorker action . const
 
+-- Exception to ignore for linked threads
 ignoreException :: SomeException -> Bool
 ignoreException e
   | Just Async.AsyncCancelled <- fromException e = True
@@ -80,9 +81,11 @@ ignoreException e
   | otherwise = False
 
 
-
+-- | Set of worker threads
 newtype WorkersUnion = WorkersUnion (TVar (Set ThreadId))
 
+-- | Create handler for set of worker threads which all will be
+-- limited once 'withWorkersUnion' terminates.
 withWorkersUnion
   :: (MonadIO m, MonadMask m)
   => (WorkersUnion -> m a) -> m a
@@ -93,6 +96,8 @@ withWorkersUnion = bracket ini fini
       tids <- readTVarIO tidsVar
       forM_ tids $ \tid -> forkIO $ throwTo tid Async.AsyncCancelled
 
+-- | Spawn worker thread which will be terminated when
+-- 'withWorkersUnion' exits.
 spawnWorker
   :: (MonadBaseControl IO m, MonadMask m)
   => WorkersUnion -> m a -> m ()
