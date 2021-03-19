@@ -159,10 +159,10 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
     Right (msgs@(MVersionACK _ : _), _) -> do --peer version match ours
       sendChan <- liftIO newTChanIO
       liftIO $ writeMsg sendChan msgs
-      -- Spawn message sender thread
-      void $ fork $ sendLoop sendChan
-      -- Start message listener
-      listenLoop sendChan
+      -- We run sending of messages in the separate thread
+      withLinkedWorker (sendLoop sendChan) $ \a -> do
+        listenLoop sendChan
+        wait a
     Left err -> do
       logErrorN $ "<" <> showt addr <> ">: Rejecting client on handshake phase with: " <> showt err
       rawSendMsg $ MReject err
