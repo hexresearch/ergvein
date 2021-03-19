@@ -2,11 +2,10 @@
 module Ergvein.Index.Server.TCPService.Server where
 
 import Control.Applicative
-import Control.Concurrent hiding (myThreadId)
+import Control.Concurrent
 import Control.Concurrent.Async.Lifted (Async,async)
-import Control.Concurrent.Lifted       (fork,myThreadId)
 import Control.Concurrent.STM
-import Control.Immortal
+import Control.Immortal                (Thread,create,stop)
 import Control.Exception               (AsyncException(..),throwIO)
 import Control.Monad
 import Control.Monad.Base
@@ -35,7 +34,6 @@ import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.TCPService.MessageHandler
 import Ergvein.Index.Server.TCPService.Socket as S
-import Ergvein.Index.Server.TCPService.Connections
 
 import qualified Data.ByteString as BS
 import qualified Data.Set        as Set
@@ -139,77 +137,81 @@ tcpSrv thread = do
 
 mainLoop :: Thread -> Socket -> ServerM ()
 mainLoop thread sock = do
-  mainLoopId <- fork $ forever $ do
-    (newSock, newSockAddr) <- liftIO $ accept sock
-    fork $ runConnection (newSock, newSockAddr)
-  -- Wait until shutdown flag turns on then perform cleanup
-  do shutdownFlagRef <- getShutdownFlag
-     liftIO $ atomically $ check =<< readTVar shutdownFlagRef
-  closeAllConnections
-  liftIO $ do
-    killThread mainLoopId
-    stop thread
+  -- In main thread we just wait until shutdown flag is enabled
+  withLinkedWorker_ acceptLoop $ do
+    shutdownFlagRef <- getShutdownFlag
+    liftIO $ atomically $ check =<< readTVar shutdownFlagRef
+    liftIO $ stop thread
+  where
+    -- We spawn worker threads for each accepted connection. Each
+    -- thread own socket and will close it whenever it finish
+    -- execution normally or abnormally
+    acceptLoop = withWorkersUnion $ \wrkUnion -> forever $ do
+      (newSock, newSockAddr) <- liftIO $ accept sock
+      spawnWorker wrkUnion $
+        runConnection (newSock, newSockAddr) `finally` liftIO (close newSock)
+
 
 runConnection :: (Socket, SockAddr) -> ServerM ()
 runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
-  do tid <- liftIO myThreadId
-     openConnection tid addr sock
   evalResult <- runExceptT $ evalMsg sock addr
   case evalResult of
     Right (msgs@(MVersionACK _ : _), _) -> do --peer version match ours
       sendChan <- liftIO newTChanIO
-      liftIO $ writeMsg sendChan msgs
+      writeMsg sendChan msgs
       -- We run sending of messages in the separate thread
-      withLinkedWorker (sendLoop sendChan) $ \a -> do
-        listenLoop sendChan
-        wait a
+      withLinkedWorker (sendLoop sock sendChan) $ \a -> do
+        listenLoop  sendChan
+        writingDone sendChan
+        liftIO $ Async.wait a
     Left err -> do
       logErrorN $ "<" <> showt addr <> ">: Rejecting client on handshake phase with: " <> showt err
       rawSendMsg $ MReject err
-      closeConnection addr
     Right (MReject r : _, _) -> do
       logErrorN $ "<" <> showt addr <> ">: Rejecting client on handshake phase with: " <> showt r
       rawSendMsg $ MReject r
-      closeConnection addr
     Right msg -> do
-      logErrorN $ "<" <> showt addr <> ">: Impossible! Tried to send something that is not MVersionACK or MReject to client at handshake: " <> showt msg
-      closeConnection addr
+      logErrorN $ "<" <> showt addr
+        <> ">: Impossible! Tried to send something that is not MVersionACK or MReject to client at handshake: "
+        <> showt msg
   where
     rawSendMsg = liftIO . sendLazy sock . toLazyByteString . messageBuilder
 
-    writeMsg :: TChan [Message] -> [Message] -> IO ()
-    writeMsg destinationChan = atomically . writeTChan destinationChan
+    writeMsg    ch = liftIO . atomically . writeTChan ch . Just
+    writingDone ch = liftIO $ atomically $ writeTChan ch $ Nothing
 
-    sendLoop :: TChan [Message] -> ServerM ()
-    sendLoop sendChan = do
-      broadChan <- liftIO . atomically . dupTChan
-               =<< broadcastChannel
-      liftIO $ forever $ do
-        msgs <- atomically $  foldMap messageBuilder <$> readTChan sendChan
-                          <|> messageBuilder         <$> readTChan broadChan
-        sendLazy sock $ toLazyByteString msgs
+    listenLoop :: TChan (Maybe [Message]) -> ServerM ()
+    listenLoop destinationChan = fix $ \loop -> do
+      evalResult <- runExceptT $ evalMsg sock addr
+      case evalResult of
+        Right (msgs, closeIt) -> do
+          writeMsg destinationChan msgs
+          case closeIt of
+            True  -> logInfoN $ "<" <> showt addr <> ">: Closing connection on our side"
+            False -> loop
+        Left Reject {..} | rejectMsgCode == ZeroBytesReceived -> do
+          logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
+        Left err -> do
+          logErrorN $ "<" <> showt addr <> ">: Rejecting client with: " <> showt err
+          writeMsg destinationChan [MReject err]
 
-    listenLoop :: TChan [Message] -> ServerM ()
-    listenLoop destinationChan = listenLoop'
-      where
-        listenLoop' = do
-          evalResult <- runExceptT $ evalMsg sock addr
-          case evalResult of
-            Right (msgs, closeIt) -> do
-              liftIO $ writeMsg destinationChan msgs
-              if closeIt then do
-                logInfoN $ "<" <> showt addr <> ">: Closing connection on our side"
-                closeConnection addr
-              else listenLoop'
-            Left Reject {..} | rejectMsgCode == ZeroBytesReceived -> do
-              logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
-              closeConnection addr
-            Left err -> do
-              logErrorN $ "<" <> showt addr <> ">: Rejecting client with: " <> showt err
-              liftIO $ do
-                writeMsg destinationChan [MReject err]
-              closeConnection addr
 
+-- | Send loop will send both messages generated by listen loop and
+--   broadcasted ones. Nothing sent over local channel means we should
+--   terminate.
+sendLoop :: Socket -> TChan (Maybe [Message]) -> ServerM ()
+sendLoop sock sendChan = do
+  broadChan <- liftIO . atomically . dupTChan
+           =<< broadcastChannel
+  liftIO $ fix $ \loop -> do
+    msgs <- atomically $  Left  <$> readTChan sendChan
+                      <|> Right <$> readTChan broadChan
+    case msgs of
+      Left (Just ms) -> sendMsg (foldMap messageBuilder ms) >> loop
+      Left Nothing   -> pure ()
+      Right m        -> sendMsg (messageBuilder m) >> loop
+  where
+    sendMsg = sendLazy sock . toLazyByteString
 
 evalMsg :: Socket -> SockAddr -> ExceptT Reject ServerM ([Message], Bool)
 evalMsg sock addr = response =<< request =<< messageHeader
