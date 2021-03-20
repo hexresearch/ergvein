@@ -106,5 +106,6 @@ in (self: super: let
     skylighting = self.callPackage ./derivations/skylighting.nix {};
     skylighting-core = self.callPackage ./derivations/skylighting-core.nix {};
     pandoc-citeproc = self.callPackage ./derivations/pandoc-citeproc.nix {};
+    rocksdb-haskell-jprupp = self.callPackage ./derivations/rocksdb-haskell-jprupp.nix {};
   }
 )

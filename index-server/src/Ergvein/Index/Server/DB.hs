@@ -1,9 +1,6 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module Ergvein.Index.Server.DB
   (
-    DBTag(..)
-  , openDb
-  , withDb
   ) where
 
 import Conduit
@@ -14,17 +11,12 @@ import Data.Default
 import Database.LevelDB.Base
 import System.Directory
 
-import Ergvein.Index.Server.DB.Monad
-import Ergvein.Index.Server.DB.Wrapper
-import qualified Ergvein.Index.Server.DB.Schema.Filters as DBF
-import qualified Ergvein.Index.Server.DB.Schema.Indexer as DBI
-import qualified Ergvein.Index.Server.DB.Schema.Utxo    as DBU
-
 data MyException = DbVersionMismatch
     deriving Show
 
 instance Exception MyException
 
+{-
 openDb :: (MonadLogger m, MonadIO m) => Bool -> DBTag -> FilePath -> m LevelDB
 openDb overwriteDbVerOnMismatch dbtag dbDirectory = do
   canonicalPathDirectory <- liftIO $ canonicalizePath dbDirectory
@@ -62,3 +54,4 @@ withDb overwriteDbVerOnMismatch dbtag dbDirectory =
   bracket
     (openDb overwriteDbVerOnMismatch dbtag dbDirectory)
     closeLevelDB
+-}

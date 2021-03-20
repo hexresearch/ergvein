@@ -26,7 +26,7 @@ import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
-import Ergvein.Index.Server.TCPService.MessageHandler
+-- import Ergvein.Index.Server.TCPService.MessageHandler
 import Ergvein.Index.Server.TCPService.Socket as S
 import Ergvein.Index.Server.TCPService.Connections
 

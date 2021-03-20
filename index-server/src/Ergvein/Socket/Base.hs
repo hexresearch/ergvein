@@ -1,4 +1,16 @@
-module Ergvein.Index.Server.TCPService.Socket where
+module Ergvein.Socket.Base
+  (
+    connect
+  , MonadPeeker(..)
+  , PeekerEnv(..)
+  , ReceiveException(..)
+  -- TODO: These are not used. Investigate
+  , InboundException
+  , ConnectException
+  , isCloseFinal
+  , readAllTVar
+  , sendLazy
+  ) where
 
 import Control.Concurrent.STM
 import Control.Monad

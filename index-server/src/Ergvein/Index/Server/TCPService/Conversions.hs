@@ -5,7 +5,6 @@ module Ergvein.Index.Server.TCPService.Conversions where
 import Conversion
 
 import Ergvein.Index.Protocol.Types
-import Ergvein.Index.Server.DB.Schema.Filters
 import Ergvein.Index.Server.BlockchainScanning.Types
 import Ergvein.Index.Server.Config
 
@@ -20,13 +19,6 @@ currencyToCurrencyCode :: (Monad m, HasServerConfig m) => C.Currency -> m Curren
 currencyToCurrencyCode code = do
   isTestnet <- cfgBTCNodeIsTestnet <$> serverConfig
   pure $ currencyToCode isTestnet code
-
-instance Conversion BlockInfoRec BlockFilter where
-  convert BlockInfoRec {..} = BlockFilter
-    { blockFilterBlockId = blockInfoRecHeaderHash
-    , blockFilterFilter  = blockInfoRecAddressFilter
-    }
-
 
 scanProgressInfoToScanBlock :: (Monad m, HasServerConfig m) => ScanProgressInfo -> m ScanBlock
 scanProgressInfoToScanBlock ScanProgressInfo {..} = do

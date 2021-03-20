@@ -1,4 +1,4 @@
-module Ergvein.Index.Server.TCPService.BTC
+module Ergvein.Socket.BTC
   (
     BtcSocket(..)
   , connectBtc
@@ -21,7 +21,7 @@ import Network.Haskoin.Constants
 import Network.Haskoin.Network
 import Network.Haskoin.Block
 
-import Ergvein.Index.Server.TCPService.Socket
+import Ergvein.Socket.Base
 import Ergvein.Text
 
 import qualified Control.Exception.Safe as Ex
