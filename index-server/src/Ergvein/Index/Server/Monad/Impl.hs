@@ -91,6 +91,10 @@ instance MonadFees ServerM where
     feeVar <- asks envFeeEstimates
     liftIO $ atomically $ modifyTVar feeVar $ M.insert cur fb
 
+instance MonadRates ServerM where
+  getRatesVar = asks envExchangeRates
+  {-# INLINE getRatesVar #-}
+
 instance HasThreadsManagement ServerM where
   registerThread parent child = do
     var <- asks envOpenThreads

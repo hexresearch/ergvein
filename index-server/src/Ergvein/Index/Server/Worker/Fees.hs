@@ -17,7 +17,6 @@ import Ergvein.Index.Server.Bitcoin.API
 import Ergvein.Index.Server.Config
 -- import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
-import Ergvein.Index.Server.Monad.Impl
 import Ergvein.Index.Server.Utils
 import Ergvein.Text
 import Ergvein.Types.Currency
@@ -26,20 +25,20 @@ import Ergvein.Types.Transaction
 
 import qualified Ergvein.Index.Protocol.Types as IPT
 
-feesScanner :: ServerM [Thread]
+feesScanner :: ServerMonad m => m [Thread]
 feesScanner = sequenceA
   [ feesThread btcFeeScaner
   ]
 
-feesThread :: ServerM () -> ServerM Thread
+feesThread :: ServerMonad m => m () -> m Thread
 feesThread feescan = create $ logOnException "feesThread" . \thread -> do
   feescan
   stopThreadIfShutdown thread
 
-btcFeeScaner :: ServerM ()
+btcFeeScaner :: ServerMonad m => m ()
 btcFeeScaner = feeScaner' 0
   where
-    feeScaner' :: BlockHeight -> ServerM ()
+    feeScaner' :: ServerMonad m => BlockHeight -> m ()
     feeScaner' h = do
       cfg <- serverConfig
       h'  <- fmap fromIntegral actualHeight

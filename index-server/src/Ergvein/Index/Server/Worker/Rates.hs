@@ -14,22 +14,21 @@ import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Monad
-import Ergvein.Index.Server.Monad.Impl
 
 import qualified Data.Map.Strict as M
 import qualified Ergvein.Index.Protocol.Types as IPT
 
-ratesScanner :: ServerM Thread
+ratesScanner :: ServerMonad m => m Thread
 ratesScanner = create $ logOnException "ratesScanner" . \thread -> do
   void $ fork $ interruptThreadOnShutdown thread
   ratesThread
 
-ratesThread :: ServerM ()
+ratesThread :: ServerMonad m => m ()
 ratesThread = do
-  isTestnet <- fmap cfgBTCNodeIsTestnet $ asks envServerConfig
+  isTestnet <- fmap cfgBTCNodeIsTestnet serverConfig
+  dt <- fmap cfgRatesRefreshPeriod serverConfig
+  xratesVar <- getRatesVar
   let btcCC = currencyToCurrencyCode isTestnet BTC
-  dt <- fmap cfgRatesRefreshPeriod $ asks envServerConfig
-  xratesVar <- asks envExchangeRates
   forever $ do
     ratesBtc <- coinbaseReqMultipleRates BTC [USD, RUB, EUR]
     liftIO $ atomically $ modifyTVar xratesVar $ M.insert btcCC (realToFrac <$> ratesBtc)
