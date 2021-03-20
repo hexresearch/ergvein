@@ -13,7 +13,9 @@ module Ergvein.Filters.Btc.Index(
   , preGenesisFilterHash
   -- * Outpoint quering context
   , HasTxIndex(..)
-  , withInputTxs
+  , buildTxIndexList
+  , buildTxIndexHashMap
+  , withTxIndex
   , foldInputs
   -- * Filtering elements of filter
   , isBip158Indexable
@@ -28,7 +30,7 @@ module Ergvein.Filters.Btc.Index(
 import Control.Monad.Reader
 import Data.ByteArray.Hash ( SipKey(..) )
 import Data.ByteString ( ByteString )
-import Data.Map.Strict (Map)
+import Data.HashMap.Strict (HashMap)
 import Data.Serialize ( encode )
 import Data.Text (Text)
 import Data.Word
@@ -38,7 +40,7 @@ import Network.Haskoin.Block
 import Network.Haskoin.Script
 import Network.Haskoin.Transaction
 
-import qualified Data.Map.Strict as M
+import qualified Data.HashMap.Strict as HM
 import qualified Data.ByteString as BS
 
 -- | Default value for P parameter (amount of bits in golomb rice encoding).
@@ -72,17 +74,23 @@ preGenesisFilterHash = filterHashFromText "0000000000000000000000000000000000000
 class Monad m => HasTxIndex m where
   queryOutPoint :: OutPoint -> m (Maybe ByteString)
 
-instance Monad m => HasTxIndex (ReaderT (Map OutPoint ByteString) m) where
-  queryOutPoint i = asks (M.lookup i)
+instance Monad m => HasTxIndex (ReaderT (HashMap OutPoint ByteString) m) where
+  queryOutPoint i = asks (HM.lookup i)
   {-# INLINE queryOutPoint #-}
+
+-- | Helper to convert txs into corresponding index
+buildTxIndexList :: [Tx] -> [(OutPoint, ByteString)]
+buildTxIndexList txs = concatMap (\tx -> fmap (\(out, i) -> (OutPoint (txHash tx) i, scriptOutput out)) $ txOut tx `zip` [0 ..]) txs
+
+-- | Helper to convert txs into corresponding index map
+buildTxIndexHashMap :: [Tx] -> HashMap OutPoint ByteString
+buildTxIndexHashMap = HM.fromList . buildTxIndexList
 
 -- | Execute context with given list of transactions as input. Used for testing
 -- filters with already known set of input transactions.
-withInputTxs :: [Tx] -> (ReaderT (Map OutPoint ByteString) m a) -> m a
-withInputTxs txs = flip runReaderT txmap
-  where
-    txmap :: Map OutPoint ByteString
-    txmap = M.fromList $ concatMap (\tx -> fmap (\(out, i) -> (OutPoint (txHash tx) i, scriptOutput out)) $ txOut tx `zip` [0 ..]) txs
+-- Basically flip runReaderT
+withTxIndex :: HashMap OutPoint ByteString -> (ReaderT (HashMap OutPoint ByteString) m a) -> m a
+withTxIndex = flip runReaderT
 
 -- | Iterate over all inputs and collect corresponding outputs
 foldInputs :: forall a m . HasTxIndex m => (a -> ByteString -> m a) -> a -> Block -> m a
