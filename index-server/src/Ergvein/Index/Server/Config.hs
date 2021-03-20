@@ -34,9 +34,7 @@ data Config = Config
   { cfgServerPort               :: !Int
   , cfgServerTcpPort            :: !Int
   , cfgServerHostname           :: !String
-  , cfgFiltersDbPath            :: !String
-  , cfgIndexerDbPath            :: !String
-  , cfgUtxoDbPath               :: !String
+  , cfgDbPath                   :: !String
   , cfgBlockchainScanDelay      :: !Int
   , cfgBTCNodeIsTestnet         :: !Bool
   , cfgBTCNodeHost              :: !String
@@ -71,9 +69,7 @@ instance FromJSON Config where
     cfgServerPort               <- o .:? "serverPort"       .!= 8085
     cfgServerTcpPort            <- o .:? "serverTcpPort"    .!= 8667
     cfgServerHostname           <- o .:? "serverHostname"   .!= "0.0.0.0"
-    cfgFiltersDbPath            <- o .:? "filtersDbPath"    .!= "./ergveinDb"
-    cfgIndexerDbPath            <- o .:? "indexerDbPath"    .!= "./indexerDb"
-    cfgUtxoDbPath               <- o .:? "utxoDbPath"       .!= "./utxoDb"
+    cfgDbPath                   <- o .:? "dbPath"           .!= "./ergveinDb"
     cfgBTCNodeIsTestnet         <- o .:? "BTCNodeIsTestnet" .!= False
     cfgBTCNodeHost              <- o .:? "BTCNodeHost"      .!= "localhost"
     cfgBTCNodePort              <- o .:  "BTCNodePort"

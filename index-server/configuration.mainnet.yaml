@@ -1,8 +1,6 @@
 serverPort               : 8085
 serverTcpPort            : 8667
-filtersDbPath            : "./db_mainnet_filters"
-indexerDbPath            : "./db_mainnet_indexer"
-utxoDbPath               : "./db_mainnet_utxo"
+dbPath                   : "./db"
 BTCNodeIsTestnet         : false
 BTCNodeHost              : localhost
 BTCNodePort              : 8332

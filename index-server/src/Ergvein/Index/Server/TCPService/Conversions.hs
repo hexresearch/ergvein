@@ -2,10 +2,8 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Index.Server.TCPService.Conversions where
 
-import Conversion
-
 import Ergvein.Index.Protocol.Types
-import Ergvein.Index.Server.BlockchainScanning.Types
+import Ergvein.Index.Server.Types
 import Ergvein.Index.Server.Config
 
 import qualified Ergvein.Types.Currency as C

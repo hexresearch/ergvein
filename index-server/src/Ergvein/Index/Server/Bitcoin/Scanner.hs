@@ -1,4 +1,4 @@
-module Ergvein.Index.Server.Bitcoin.Scan
+module Ergvein.Index.Server.Bitcoin.Scanner
   (
     scanBlock
   ) where
@@ -82,6 +82,7 @@ withoutCoinbaseTx = filter $ (/= nullOutPoint)
 removeDataCarriers :: [TxInfo] -> [TxInfo]
 removeDataCarriers = fmap $ \(th,vals) ->
   (th, filter (none isDataCarrier . decodeOutputBS . snd) vals)
+{-# INLINE removeDataCarriers #-}
 
 getBtcBlockWithRepeat :: ServerMonad m => BlockHeight -> m Block
 getBtcBlockWithRepeat blockHeightReq = do

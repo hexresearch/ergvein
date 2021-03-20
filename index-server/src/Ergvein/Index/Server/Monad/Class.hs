@@ -17,6 +17,7 @@ import Control.Monad.Logger
 import Control.Monad.Trans.Control
 import Data.Fixed
 import Data.Map.Strict (Map)
+import Prometheus (MonadMonitor(..))
 
 import Ergvein.Index.Protocol.Types (CurrencyCode, Message)
 import Ergvein.Index.Server.Bitcoin.API
@@ -35,6 +36,7 @@ type ServerMonad m = (
   , MonadBaseControl IO m
   , MonadCatch m
   , MonadLogger m
+  , MonadMonitor m
   , BitcoinApiMonad m
   , HasBitcoinNodeNetwork m
   , HasBroadcastChannel m

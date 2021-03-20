@@ -3,6 +3,7 @@ module Ergvein.Index.Server.Types
     BlockMeta(..)
   , BlockInfo (..)
   , TxInfo
+  , ScanProgressInfo(..)
   ) where
 
 import Data.ByteString (ByteString)
@@ -26,3 +27,9 @@ data BlockInfo = BlockInfo
   } deriving (Show)
 
 type TxInfo = (TxHash, [(Word32, ByteString)])
+
+data ScanProgressInfo = ScanProgressInfo
+  { nfoCurrency      :: !Currency
+  , nfoScannedHeight :: !BlockHeight
+  , nfoActualHeight  :: !BlockHeight
+  }

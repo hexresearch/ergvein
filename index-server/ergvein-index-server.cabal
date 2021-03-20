@@ -17,7 +17,7 @@ library
   exposed-modules:
     Ergvein.Index.Server.App
     Ergvein.Index.Server.Bitcoin.API
-    Ergvein.Index.Server.Bitcoin.Scan
+    Ergvein.Index.Server.Bitcoin.Scanner
     Ergvein.Index.Server.Config
     Ergvein.Index.Server.DB.Monad
     Ergvein.Index.Server.DB.Queries
@@ -29,6 +29,8 @@ library
     Ergvein.Index.Server.Monad.Impl
     Ergvein.Index.Server.Monad.Utils
     Ergvein.Index.Server.PeerDiscovery.Types
+    Ergvein.Index.Server.Scanner
+    Ergvein.Index.Server.TCPService.Conversions
     Ergvein.Index.Server.Types
     Ergvein.Index.Server.Utils
     Ergvein.Index.Server.Worker.Fees

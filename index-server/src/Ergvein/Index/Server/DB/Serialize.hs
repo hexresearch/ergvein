@@ -4,6 +4,7 @@ module Ergvein.Index.Server.DB.Serialize
   , deserializeVarInt
   , serializeOutPoint
   , deserializeOutPoint
+  , encodeTxHash
   ) where
 
 import Data.Attoparsec.Binary
@@ -13,6 +14,7 @@ import Data.ByteString.Builder
 import Data.Serialize as S
 import Data.Word
 import Network.Haskoin.Transaction (OutPoint(..))
+import Ergvein.Types.Transaction
 
 import qualified Data.ByteString.Lazy as BL
 
@@ -42,3 +44,9 @@ serializeOutPoint (OutPoint th i) = S.encode th <> S.encode i
 
 deserializeOutPoint :: ByteString -> Either String OutPoint
 deserializeOutPoint = S.decode
+
+-- | Encode txhash, ignoring the currency
+encodeTxHash :: TxHash -> ByteString
+encodeTxHash th = case th of
+  BtcTxHash bth -> S.encode bth
+  ErgTxHash eth -> S.encode eth

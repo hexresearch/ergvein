@@ -94,7 +94,7 @@ withNewServerEnv :: (MonadIO m, MonadUnliftIO m, MonadLogger m, MonadMask m, Mon
   -> (ServerEnv -> m a)
   -> m a
 withNewServerEnv useTcp btcClient cfg@Config{..} action =
-  withDBCF cfgFiltersDbPath dbConfig dbColumns $ \db -> do
+  withDBCF cfgDbPath dbConfig dbColumns $ \db -> do
     logger <- liftIO newChan
     liftIO $ hSetBuffering stdout LineBuffering
     void $ liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger

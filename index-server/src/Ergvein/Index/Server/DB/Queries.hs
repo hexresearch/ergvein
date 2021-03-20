@@ -10,8 +10,7 @@ module Ergvein.Index.Server.DB.Queries
   ) where
 
 import Control.Monad.IO.Class
-import Data.ByteString
-import Data.ByteString.Short as BSS
+import Data.ByteString (ByteString)
 import Database.RocksDB
 
 import Ergvein.Index.Server.DB.Monad
@@ -19,8 +18,10 @@ import Ergvein.Index.Server.DB.Serialize
 import Ergvein.Index.Server.Types
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Network.Haskoin.Transaction (OutPoint)
+import Network.Haskoin.Transaction (OutPoint(..))
 
+import           Data.ByteString.Short (ShortByteString)
+import qualified Data.ByteString.Short as BSS
 import qualified Data.Serialize as S
 
 -- TODO: parMap createdPuts and spentPuts
@@ -33,10 +34,10 @@ commitBlockInfo (BlockInfo meta spent created) = do
   let heightPut = PutCF mcf scannedHeightKey heightBs
       lastScannedPut = PutCF mcf lastScannedBlockHashKey $ BSS.fromShort blkHash
       filtPut = PutCF fcf heightBs filt
-      createdPuts = mconcat $ flip fmap created $ \(th, ibs) -> let thbs = S.encode th in
+      createdPuts = mconcat $ flip fmap created $ \(th, ibs) -> let thbs = encodeTxHash th in
         flip fmap ibs $ \(i,bs) -> PutCF ucf (thbs <> S.encode i) bs
       spentPuts = (DelCF ucf . serializeOutPoint) <$> (spent)
-  write db $  [heightPut, lastScannedPut, filtPut] <> createdPuts <> spentPuts
+  write db $ [heightPut, lastScannedPut, filtPut] <> createdPuts <> spentPuts
   where
     BlockMeta cur height blkHash _ filt = meta
     heightBs = serializeVarInt height
@@ -76,7 +77,7 @@ setScannedHeight currency height = do
 -- | This one is specific for BTC
 -- TODO: expand with ERGO later
 getOutPointScript :: (HasDbs m, MonadIO m) => OutPoint -> m (Maybe ByteString)
-getOutPointScript op = do
+getOutPointScript (OutPoint th i) = do
   db <- getDb
   cf <- getUtxoCF BTC
-  getCF db cf $ serializeOutPoint op
+  getCF db cf $ (S.encode th <> S.encode i)
