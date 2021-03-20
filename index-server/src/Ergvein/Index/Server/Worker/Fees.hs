@@ -12,12 +12,12 @@ import Data.Fixed
 import Data.Maybe
 import Network.Bitcoin.Api.Misc
 
-import Ergvein.Index.Server.BlockchainScanning.Bitcoin
-import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
+-- import Ergvein.Index.Server.BlockchainScanning.Bitcoin
+import Ergvein.Index.Server.Bitcoin.API
 import Ergvein.Index.Server.Config
-import Ergvein.Index.Server.Dependencies
-import Ergvein.Index.Server.Environment
+-- import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
+import Ergvein.Index.Server.Monad.Impl
 import Ergvein.Index.Server.Utils
 import Ergvein.Text
 import Ergvein.Types.Currency
@@ -42,7 +42,7 @@ btcFeeScaner = feeScaner' 0
     feeScaner' :: BlockHeight -> ServerM ()
     feeScaner' h = do
       cfg <- serverConfig
-      h'  <- actualHeight
+      h'  <- fmap fromIntegral actualHeight
       h'' <- if h' == h
         then pure h'
         else do

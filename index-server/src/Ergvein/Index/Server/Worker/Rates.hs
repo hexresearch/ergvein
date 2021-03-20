@@ -13,8 +13,8 @@ import Control.Monad.Logger
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Index.Server.Config
-import Ergvein.Index.Server.Environment
 import Ergvein.Index.Server.Monad
+import Ergvein.Index.Server.Monad.Impl
 
 import qualified Data.Map.Strict as M
 import qualified Ergvein.Index.Protocol.Types as IPT

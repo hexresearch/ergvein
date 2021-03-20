@@ -20,9 +20,9 @@ import Prometheus (MonadMonitor(..))
 import Ergvein.Index.Client
 import Ergvein.Index.Server.Bitcoin.API
 import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.Monad.Class
 import Ergvein.Index.Server.Monad.Env
-import Ergvein.Socket.Manager
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set        as S
@@ -76,7 +76,7 @@ instance HasDiscoveryRequisites ServerM where
 
 instance HasShutdownSignal ServerM where
   getShutdownFlag = asks envShutdownFlag
-  getShutdownChannel = asks envShutdownChannel
+  getShutdownChannel = liftIO . atomically . dupTChan =<< asks envShutdownChannel
   {-# INLINE getShutdownFlag #-}
 
 instance MonadUnliftIO ServerM where
@@ -125,3 +125,13 @@ instance HasSocketsManagement ServerM where
 instance HasBroadcastChannel ServerM where
   broadcastChannel = asks envBroadcastChannel
   {-# INLINE broadcastChannel #-}
+
+instance HasDbs ServerM where
+  getDb = asks envDb
+  {-# INLINE getDb #-}
+  getUtxoCF _ = asks envBtcUtxoCF
+  {-# INLINE getUtxoCF #-}
+  getFiltersCF _ = asks envBtcFiltersCF
+  {-# INLINE getFiltersCF #-}
+  getMetaCF _ = asks envBtcMetaCF
+  {-# INLINE getMetaCF #-}

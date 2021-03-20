@@ -8,12 +8,13 @@ import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
-import Control.Monad.Trans.Control
 import Control.Monad.Logger
 import Control.Monad.Reader
+import Control.Monad.Trans.Control
+import Data.Fixed
 import Data.Map.Strict (Map)
 import Data.Set (Set)
-import Data.Fixed
+import Database.RocksDB (withDBCF, DB(..), ColumnFamily)
 import Network.HTTP.Client.TLS
 import Network.Socket
 import System.IO
@@ -21,6 +22,7 @@ import System.IO
 import Ergvein.Index.Protocol.Types (CurrencyCode, Message)
 import Ergvein.Index.Server.Bitcoin.API
 import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Socket.BTC
 import Ergvein.Types.Currency
@@ -51,6 +53,13 @@ data ServerEnv = ServerEnv
     , envOpenThreads              :: !(TVar (Map ThreadId (Set ThreadId)))
     , envBroadcastChannel         :: !(TChan Message)
     , envExchangeRates            :: !(TVar (Map CurrencyCode (Map Fiat Centi)))
+    -- DB
+    -- Currency we store columnFamilies for BTC only
+    -- Thus they are explicitly enumerated here
+    , envDb                       :: !DB
+    , envBtcUtxoCF                :: !ColumnFamily
+    , envBtcFiltersCF             :: !ColumnFamily
+    , envBtcMetaCF                :: !ColumnFamily
     }
 
 sockAddress :: CfgPeer -> IO SockAddr
@@ -78,13 +87,14 @@ discoveryRequisites cfg = do
       (cfgPeerActualizationDelay cfg)
       (cfgPeerActualizationTimeout cfg)
 
-withNewServerEnv :: (MonadIO m, MonadLogger m, MonadMask m, MonadBaseControl IO m)
+withNewServerEnv :: (MonadIO m, MonadUnliftIO m, MonadLogger m, MonadMask m, MonadBaseControl IO m)
   => Bool               -- ^ flag, def True: wait for node connections to be up before finalizing the env
   -> BitcoinApi.Client  -- ^ RPC connection to the bitcoin node
   -> Config             -- ^ Contents of the config file
   -> (ServerEnv -> m a)
   -> m a
-withNewServerEnv useTcp btcClient cfg@Config{..} action = do
+withNewServerEnv useTcp btcClient cfg@Config{..} action =
+  withDBCF cfgFiltersDbPath dbConfig dbColumns $ \db -> do
     logger <- liftIO newChan
     liftIO $ hSetBuffering stdout LineBuffering
     void $ liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
@@ -116,6 +126,7 @@ withNewServerEnv useTcp btcClient cfg@Config{..} action = do
       pure btcsock
       else dummyBtcSock bitcoinNodeNetwork
     exchangeRates <- liftIO $ newTVarIO mempty
+    let [ucf, fcf, mcf] = columnFamilies db
     action ServerEnv
       { envServerConfig            = cfg
       , envLogger                  = logger
@@ -134,4 +145,8 @@ withNewServerEnv useTcp btcClient cfg@Config{..} action = do
       , envOpenThreads             = openThreads
       , envBroadcastChannel        = broadChan
       , envExchangeRates           = exchangeRates
+      , envDb                      = db
+      , envBtcUtxoCF               = ucf
+      , envBtcFiltersCF            = fcf
+      , envBtcMetaCF               = mcf
       }

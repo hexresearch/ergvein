@@ -1,53 +1,44 @@
 module Ergvein.Index.Server.DB.Serialize
   (
-    EgvSerialize(..)
-  , putTxInfosAsRecs
-  , putTxIndexInfoAsRec
-  , serializeWord32
-  , deserializeWord32
+    serializeVarInt
+  , deserializeVarInt
+  , serializeOutPoint
+  , deserializeOutPoint
   ) where
 
-import Control.DeepSeq
-import Control.Parallel.Strategies
 import Data.Attoparsec.Binary
-import Data.Attoparsec.ByteString
+import Data.Attoparsec.ByteString hiding (word8)
 import Data.ByteString (ByteString)
-import Data.ByteString.Builder as BB
+import Data.ByteString.Builder
+import Data.Serialize as S
 import Data.Word
-
-import Ergvein.Index.Server.BlockchainScanning.Types
-import Ergvein.Index.Server.DB.Schema.Utxo
-import Ergvein.Index.Server.DB.Serialize.Class
-import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
+import Network.Haskoin.Transaction (OutPoint(..))
 
 import qualified Data.ByteString.Lazy as BL
-import qualified Database.LevelDB as LDB
 
+serializeVarInt :: Word64 -> ByteString
+serializeVarInt = BL.toStrict . toLazyByteString . buildVarInt
 
--- ===========================================================================
---           Some utils
--- ===========================================================================
+buildVarInt :: Word64 -> Builder
+buildVarInt x
+  | x < 0xfd        = word8 $ fromIntegral x
+  | x <= 0xffff     = word8 0xfd <> (word16LE $ fromIntegral x)
+  | x <= 0xffffffff = word8 0xfe <> (word32LE $ fromIntegral x)
+  | otherwise       = word8 0xff <> (word64LE x)
 
-serializeWord32 :: Word32 -> ByteString
-serializeWord32 = BL.toStrict . toLazyByteString . word32LE
-{-# INLINE serializeWord32 #-}
+deserializeVarInt :: ByteString -> Either String Word64
+deserializeVarInt = parseOnly parseVarInt
 
-deserializeWord32 :: ByteString -> Either String Word32
-deserializeWord32 = parseOnly anyWord32le
-{-# INLINE deserializeWord32 #-}
-
-putTxInfosAsRecs :: Currency -> BlockHeight -> [TxInfo] -> LDB.WriteBatch
-putTxInfosAsRecs cur bheight infos = mconcat $ parMap rpar putI (force infos)
+parseVarInt :: Parser Word64
+parseVarInt = anyWord8 >>= go
   where
-    putI TxInfo{..} = [
-        LDB.Put (txBytesKey txHash) $ egvSerialize cur $ TxRecBytes txBytes
-      , LDB.Put (txHeightKey txHash) $ egvSerialize cur $ TxRecHeight $ fromIntegral bheight
-      , LDB.Put (txUnspentKey txHash) $ egvSerialize cur $ TxRecUnspent txOutputsCount
-      ]
+    go 0xff = anyWord64le
+    go 0xfe = fromIntegral <$> anyWord32le
+    go 0xfd = fromIntegral <$> anyWord16le
+    go x    = fromIntegral <$> return x
 
-putTxIndexInfoAsRec :: Currency -> TxIndexInfo -> LDB.WriteBatch
-putTxIndexInfoAsRec cur TxIndexInfo{..} = parMap rpar putI (force txIndexInfoIds)
-  where
-    val = egvSerialize cur $ TxRecHeight $ fromIntegral txIndexInfoHeight
-    putI th = LDB.Put (txHeightKey th) val
+serializeOutPoint :: OutPoint -> ByteString
+serializeOutPoint (OutPoint th i) = S.encode th <> S.encode i
+
+deserializeOutPoint :: ByteString -> Either String OutPoint
+deserializeOutPoint = S.decode

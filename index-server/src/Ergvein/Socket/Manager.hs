@@ -24,11 +24,12 @@ killRecursively tid = do
   mapM_ killRecursively tids
   liftIO $ killThread tid
 
-forkManaged :: (HasThreadsManagement m, MonadBaseControl IO m, MonadIO m) => m () -> m ()
+forkManaged :: (HasThreadsManagement m, MonadBaseControl IO m, MonadIO m) => m () -> m ThreadId
 forkManaged m = do
   myTid <- liftIO myThreadId
   childTid <- fork m
   registerThread myTid childTid
+  pure childTid
 
 class HasSocketsManagement m where
   registerSocket :: SockAddr -> Socket -> ThreadId -> m ()

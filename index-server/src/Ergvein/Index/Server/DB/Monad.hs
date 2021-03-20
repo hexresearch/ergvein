@@ -1,53 +1,51 @@
-{-# LANGUAGE DeriveAnyClass #-}
-module Ergvein.Index.Server.DB.Monad where
+module Ergvein.Index.Server.DB.Monad
+  (
+    HasDbs(..)
+  , dbConfig
+  , dbColumns
+  , scannedHeightKey
+  , lastScannedBlockHashKey
+  ) where
 
-import Control.Concurrent.STM
-import Control.Monad.IO.Unlift
-import Control.Monad.Reader
+import Data.ByteString
+import Data.Default
+import Database.RocksDB
 
-import Ergvein.Index.Server.DB.Schema.Indexer
-import Ergvein.Index.Server.DB.Wrapper
+import Ergvein.Types.Currency
 
-import qualified Data.Sequence as Seq
+class Monad m => HasDbs m where
+  getDb :: m DB
+  getUtxoCF :: Currency -> m ColumnFamily
+  getFiltersCF :: Currency -> m ColumnFamily
+  getMetaCF :: Currency -> m ColumnFamily
 
-class  MonadIO m => HasFiltersDB m where
-  getFiltersDb :: m LevelDB
+dbConfig :: Config
+dbConfig = def {createIfMissing = True}
 
-class MonadIO m => HasIndexerDB m where
-  getIndexerDb :: m LevelDB
+dbColumns :: [(String, Config)]
+dbColumns = [
+    ("btc_utxo", def {bloomFilter = True})
+  , ("btc_filters", def)
+  , ("btc_meta", def)
+  ]
 
-class MonadIO m => HasUtxoDB m where
-  getUtxoDb :: m LevelDB
 
-class MonadIO m => HasLMDBs m where
-  getDb :: DBTag -> m LevelDB
+-- BTC:
+--   UTXO:
+--     Key :: OutPoint              : ByteString + Word32
+--     Value :: ByteString
+--   Filters:
+--     Key :: BlockHeight           : VarInt
+--     Value :: HeaderHash + Filter : ByteString + ByteString
+--   Meta:
+--     Key :: Different keys for different fields
+--     Value :: Different values. See below
 
-data DBTag = DBFilters | DBIndexer | DBUtxo
-  deriving (Eq, Show)
 
-class HasBtcRollback m where
-  getBtcRollbackVar :: m (TVar (Seq.Seq RollbackRecItem))
+-- Value :: BlockHeight (VarInt)
+scannedHeightKey :: ByteString
+scannedHeightKey = "scannedHeightKey"
 
-instance MonadIO m => HasIndexerDB (ReaderT LevelDB m) where
-  getIndexerDb = ask
-
-instance MonadIO m => HasFiltersDB (ReaderT LevelDB m) where
-  getFiltersDb  = ask
-
-instance MonadIO m => HasUtxoDB (ReaderT LevelDB m) where
-  getUtxoDb = ask
-
-data AllDbVars = AllDbVars {
-  allDBFilters :: LevelDB
-, allDBIndexer :: LevelDB
-, allDBUtxo    :: LevelDB
-}
-
-instance MonadIO m => HasIndexerDB (ReaderT AllDbVars m) where
-  getIndexerDb = asks allDBFilters
-
-instance MonadIO m => HasFiltersDB (ReaderT AllDbVars m) where
-  getFiltersDb  = asks allDBIndexer
-
-instance MonadIO m => HasUtxoDB (ReaderT AllDbVars m) where
-  getUtxoDb  = asks allDBUtxo
+-- Value :: ByteString
+lastScannedBlockHashKey :: ByteString
+lastScannedBlockHashKey = "lastScannedBlockHashKey"

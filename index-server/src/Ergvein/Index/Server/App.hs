@@ -19,6 +19,13 @@ import Ergvein.Text
 
 import qualified Data.Text.IO as T
 
+import Ergvein.Index.Server.Bitcoin.Scan
+import Network.Haskoin.Block
+
+app :: (MonadUnliftIO m, MonadLogger m) => Bool -> Config -> ServerEnv -> m ()
+app onlyScan cfg env = do
+  liftIO $ runServerMIO env $ do
+    liftIO . print =<< scanBlock 0
 onStartup :: Bool -> ServerEnv -> ServerM ([Thread], [Thread])
 -- onStartup onlyScan _ = do
 onStartup _ _ = do
@@ -50,8 +57,8 @@ finalize _ scannerThreads workerTreads = do
   liftIO $ mapM_ wait workerTreads
   logInfoN "service is stopped"
 
-app :: (MonadUnliftIO m, MonadLogger m) => Bool -> Config -> ServerEnv -> m ()
-app onlyScan cfg env = do
+app' :: (MonadUnliftIO m, MonadLogger m) => Bool -> Config -> ServerEnv -> m ()
+app' onlyScan cfg env = do
   (scannerThreads, workerThreads) <- liftIO $ runServerMIO env $ onStartup onlyScan env
   runReaderT serveMetrics cfg
   logInfoN $ "Server started at:" <> (showt . cfgServerPort $ cfg)

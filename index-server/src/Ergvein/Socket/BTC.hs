@@ -161,9 +161,8 @@ btcPinger btcs@BtcSocket{..} = liftIO $ do
   forever $ do
     msg <- atomically $ readTChan ic
     case msg of
-      MVersion Version{..} -> do
-        print $ "Received version at height: " <> showt startHeight
-        btcSockSend MVerAck
+      MPing (Ping v) -> do
+        btcSockSend $ MPong $ Pong v
       _ -> pure ()
 
 requestBlock :: MonadIO m => BtcSocket -> BlockHash -> m Block
