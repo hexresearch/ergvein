@@ -47,7 +47,7 @@ processBlock height block = do
   let (created, spent') = unzip $ extractPoints <$> txs
   let spent = mconcat spent'
   let createdMap = HM.fromList created
-  lel <- fmap mconcat $ mapConcurrently (mapM (spentPointScript createdMap)) $ mkChunks 100 spent
+  lel <- fmap mconcat $ mapConcurrently (mapM (spentPointScript createdMap)) $ mkEquisizedChunks 5 spent
   let hm = HM.fromList lel
   filt <- encodeBtcAddrFilter =<< withTxIndex hm (makeBtcFilter isErgveinIndexable block)
   let blockMeta = BlockMeta BTC height blockHeaderHash prevBlockHeaderHash filt
@@ -86,20 +86,14 @@ removeDataCarriers = fmap $ \(th,vals) ->
 
 getBtcBlockWithRepeat :: ServerMonad m => BlockHeight -> m Block
 getBtcBlockWithRepeat blockHeightReq = do
-  myTid   <- liftIO $ myThreadId
-  shutdownFlag <- getShutdownFlag
-  shutdownChan <- getShutdownChannel
-  void $ forkManaged $ fix $ \next -> do
-    b <- liftIO $ atomically $ readTChan shutdownChan
-    if b then killRecursively myTid else next
   resChan <- liftIO newTChanIO
-  requester resChan shutdownFlag
+  requester resChan
   where
-    requester :: ServerMonad m => TChan (Maybe Block) -> TVar Bool -> m Block
-    requester resChan shutdownFlag = fix $ \next -> do
-      t1 <- forkManaged $    -- Request thread
+    requester :: ServerMonad m => TChan (Maybe Block) -> m Block
+    requester resChan = fix $ \next -> do
+      t1 <- fork $    -- Request thread
         liftIO . atomically . writeTChan resChan . Just =<< getBtcBlock blockHeightReq
-      t2 <- forkManaged $ do -- Timeout thread
+      t2 <- fork $ do -- Timeout thread
         threadDelay 30000000 -- 30s
         liftIO . atomically . writeTChan resChan $ Nothing
 
@@ -107,12 +101,38 @@ getBtcBlockWithRepeat blockHeightReq = do
       liftIO $ killThread t1
       liftIO $ killThread t2
       case res of
-        Nothing -> do
-          b <- liftIO . readTVarIO $ shutdownFlag
-          if b
-            then throw $ ErrorCallWithLocation "Everything is fine, just killing the thread" "getBtcBlockWithRepeat"
-            else next
+        Nothing -> next
         Just block -> pure block
+
+-- getBtcBlockWithRepeat :: ServerMonad m => BlockHeight -> m Block
+-- getBtcBlockWithRepeat blockHeightReq = do
+--   myTid   <- liftIO $ myThreadId
+--   shutdownFlag <- getShutdownFlag
+--   shutdownChan <- getShutdownChannel
+--   void $ forkManaged $ fix $ \next -> do
+--     b <- liftIO $ atomically $ readTChan shutdownChan
+--     if b then killRecursively myTid else next
+--   resChan <- liftIO newTChanIO
+--   requester resChan shutdownFlag
+--   where
+--     requester :: ServerMonad m => TChan (Maybe Block) -> TVar Bool -> m Block
+--     requester resChan shutdownFlag = fix $ \next -> do
+--       t1 <- forkManaged $    -- Request thread
+--         liftIO . atomically . writeTChan resChan . Just =<< getBtcBlock blockHeightReq
+--       t2 <- forkManaged $ do -- Timeout thread
+--         threadDelay 30000000 -- 30s
+--         liftIO . atomically . writeTChan resChan $ Nothing
+--
+--       res <- liftIO $ atomically $ readTChan resChan
+--       liftIO $ killThread t1
+--       liftIO $ killThread t2
+--       case res of
+--         Nothing -> do
+--           b <- liftIO . readTVarIO $ shutdownFlag
+--           if b
+--             then throw $ ErrorCallWithLocation "Everything is fine, just killing the thread" "getBtcBlockWithRepeat"
+--             else next
+--         Just block -> pure block
 
 getBtcBlock :: ServerMonad m => BlockHeight -> m Block
 getBtcBlock blockHeightReq = do

@@ -12,35 +12,20 @@ import Data.Serialize as S
 
 import Control.Monad.IO.Class
 
+mkChunks :: Int -> [a] -> [[a]]
+mkChunks n vals = mkChunks' [] vals
+  where
+     mkChunks' acc xs = case xs of
+       [] -> acc
+       _ -> let (a,b) = splitAt n xs in mkChunks' (acc ++ [a]) b
+
+mkEquisizedChunks :: Int -> [a] -> [[a]]
+mkEquisizedChunks n vals = let
+  l = length vals
+  (q,r) = quotRem l n
+  (v1,v2) = splitAt (q + r) vals
+  in [v1] ++ mkChunks q v2
+
 main :: IO ()
 main = do
-  let a :: IO () = print "a"
-  unLolM $ LolM $ foo a
-
-  -- putStrLn "Hello World"
-  -- let cfg = def {createIfMissing = True}
-  -- withDBCF "db" cfg [("One",def),("Two", def)]$ \db -> do
-  --   let [one, two] = columnFamilies db
-  --   let k = S.encode @Int 1
-  --   let v1 = S.encode @Int 1
-  --   let v2 = S.encode @Int 2
-  --
-  --   putCF db one k v1
-  --   putCF db one k v2
-  --   v <- getCF db one k
-  --   print $ (S.decode @Int) <$> v
-  --   v' <- getCF db two k
-  --   print $ (S.decode @Int) <$> v'
-  --   pure ()
-
-class MonadIO m => LolMonad m where
-  lolwut :: m ()
-
-foo :: LolMonad m => (forall n . MonadIO n => n ()) -> m ()
-foo m = m
-
-newtype LolM a = LolM {unLolM :: IO a}
-  deriving (Functor, Applicative, Monad, MonadIO)
-
-instance LolMonad LolM where
-  lolwut = pure ()
+  print $ fmap length $ mkEquisizedChunks 3 [1..15]

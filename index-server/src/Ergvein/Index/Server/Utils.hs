@@ -1,4 +1,14 @@
-module Ergvein.Index.Server.Utils where
+module Ergvein.Index.Server.Utils
+  (
+    cancelableDelay
+  , mkChunks
+  , mkEquisizedChunks
+  -- unused
+  , groupMapBy
+  , mapBy
+  , uniqueElements
+  , uniqueWithCount  
+  ) where
 
 import Control.Concurrent.STM
 import Control.Monad
@@ -31,3 +41,10 @@ mkChunks n vals = mkChunks' [] vals
      mkChunks' acc xs = case xs of
        [] -> acc
        _ -> let (a,b) = splitAt n xs in mkChunks' (acc ++ [a]) b
+
+mkEquisizedChunks :: Int -> [a] -> [[a]]
+mkEquisizedChunks n vals = let
+  l = length vals
+  (q,r) = quotRem l n
+  (v1,v2) = splitAt (q + r) vals
+  in [v1] ++ mkChunks q v2

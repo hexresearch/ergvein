@@ -9,7 +9,9 @@ module Ergvein.Index.Server.DB.Queries
   , getOutPointScript
   ) where
 
+import Control.DeepSeq
 import Control.Monad.IO.Class
+import Control.Parallel.Strategies
 import Data.ByteString (ByteString)
 import Database.RocksDB
 
@@ -22,7 +24,6 @@ import Network.Haskoin.Transaction (OutPoint(..))
 
 import           Data.ByteString.Short (ShortByteString)
 import qualified Data.ByteString.Short as BSS
-import qualified Data.Serialize as S
 
 -- TODO: parMap createdPuts and spentPuts
 commitBlockInfo :: (HasDbs m, MonadIO m) => BlockInfo -> m ()
@@ -34,13 +35,16 @@ commitBlockInfo (BlockInfo meta spent created) = do
   let heightPut = PutCF mcf scannedHeightKey heightBs
       lastScannedPut = PutCF mcf lastScannedBlockHashKey $ BSS.fromShort blkHash
       filtPut = PutCF fcf heightBs filt
-      createdPuts = mconcat $ flip fmap created $ \(th, ibs) -> let thbs = encodeTxHash th in
-        flip fmap ibs $ \(i,bs) -> PutCF ucf (thbs <> S.encode i) bs
-      spentPuts = (DelCF ucf . serializeOutPoint) <$> (spent)
+      createdPuts = mconcat $ parMap rpar (putTx ucf) (force created)
+      spentPuts = (DelCF ucf . encodeOutPoint) <$> (spent)
   write db $ [heightPut, lastScannedPut, filtPut] <> createdPuts <> spentPuts
   where
     BlockMeta cur height blkHash _ filt = meta
     heightBs = serializeVarInt height
+    putTx ucf (th, ibs) = let
+      th' = encodeTxHash th
+      putIbs (i, bs) = PutCF ucf (th' <> encodeWord32 i) bs
+      in parMap rpar putIbs (force ibs)
 
 setLastScannedBlock :: (HasDbs m, MonadIO m) => Currency -> ShortByteString -> m ()
 setLastScannedBlock currency blockHash = do
@@ -80,4 +84,4 @@ getOutPointScript :: (HasDbs m, MonadIO m) => OutPoint -> m (Maybe ByteString)
 getOutPointScript (OutPoint th i) = do
   db <- getDb
   cf <- getUtxoCF BTC
-  getCF db cf $ (S.encode th <> S.encode i)
+  getCF db cf $ (encodeBtcTxHash th <> encodeWord32 i)
