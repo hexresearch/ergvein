@@ -9,6 +9,7 @@ import Data.Fixed
 import Data.Text (Text)
 import Data.Text.Encoding
 import Data.Text.Encoding.Error
+import Data.Typeable
 import Data.Word
 
 import Ergvein.Index.Protocol.Types
@@ -256,10 +257,12 @@ messageParser MRatesResponseType = do
   cfds <- replicateM n cfdParser
   pure $ MRatesResponse $ RatesResponse $ M.fromList cfds
 
-enumParser :: forall a. (Bounded a, Enum a) => Parser a
+enumParser :: forall a. (Typeable a, Bounded a, Enum a) => Parser a
 enumParser = do
   n <- fromIntegral <$> varInt @Word32
-  when (n < lo || n > hi) $ fail "Enumeration out of bound"
+  when (n < lo || n > hi)
+    $ fail $ "Enumeration "++show (typeRep (Proxy @a))++" is out of bounds ["
+       ++ show lo ++ "," ++ show hi ++ "]: " ++ show n
   pure $! toEnum n
   where
     lo = fromEnum (minBound @a)
