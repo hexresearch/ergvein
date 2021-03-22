@@ -8,7 +8,7 @@ module Ergvein.Index.Server.TCPService.BTC
   ) where
 
 import Control.Applicative
-import Control.Concurrent.Lifted (fork, threadDelay, killThread)
+import Control.Concurrent.Lifted (fork, threadDelay)
 import Control.Concurrent.STM
 import Control.Monad.Catch (throwM, MonadThrow)
 import Control.Monad.IO.Unlift
@@ -24,6 +24,7 @@ import Network.Haskoin.Block
 
 import Ergvein.Index.Server.TCPService.Socket
 import Ergvein.Text
+import Ergvein.Index.Server.TCPService.Supervisor
 
 import qualified Control.Exception.Safe as Ex
 import qualified Data.ByteString as B
@@ -163,19 +164,15 @@ btcPinger btcs@BtcSocket{..} = liftIO $ do
 requestBlock :: MonadIO m => BtcSocket -> BlockHash -> m Block
 requestBlock btcs@BtcSocket{..} bh = liftIO $ do
   ic <- getIncChannel btcs
-  let req = MGetData $ GetData $ [InvVector InvBlock $ getBlockHash bh]
-  tid <- fork $ forever $ do
-    btcSockSend req
-    threadDelay 1000000
-  blk <- fix $ \next -> do
-    msg <- atomically $ readTChan ic
-    case msg of
-      MBlock blk -> if bh == headerHash (blockHeader blk)
-        then pure blk
-        else next
-      _ -> next
-  killThread tid
-  pure blk
+  withLinkedWorker_ requestLoop $ do
+    fix $ \next -> do
+      atomically (readTChan ic) >>= \case
+        MBlock blk | bh == headerHash (blockHeader blk) -> pure blk
+        _                                               -> next
+  where
+    request = MGetData $ GetData $ [InvVector InvBlock $ getBlockHash bh]
+    requestLoop = forever $ do btcSockSend request
+                               threadDelay 1000000
 
 -- | Create version data message
 mkVers :: MonadIO m => Network -> N.SockAddr -> m Message
