@@ -256,8 +256,14 @@ messageParser MRatesResponseType = do
   cfds <- replicateM n cfdParser
   pure $ MRatesResponse $ RatesResponse $ M.fromList cfds
 
-enumParser :: Enum a => Parser a
-enumParser = fmap (toEnum . fromIntegral) (varInt :: Parser Word32)
+enumParser :: forall a. (Bounded a, Enum a) => Parser a
+enumParser = do
+  n <- fromIntegral <$> varInt @Word32
+  when (n < lo || n > hi) $ fail "Enumeration out of bound"
+  pure $! toEnum n
+  where
+    lo = fromEnum (minBound @a)
+    hi = fromEnum (maxBound @a)
 
 cfParser :: Parser (CurrencyCode, [Fiat])
 cfParser = do
@@ -280,9 +286,7 @@ parseCenti = do
   pure $ MkFixed $ fromIntegral w
 
 parseCurrencyPair :: Parser (CurrencyCode, Fiat)
-parseCurrencyPair = (,)
-  <$> (fmap (toEnum . fromIntegral) (varInt :: Parser Word32))
-  <*> (fmap (toEnum . fromIntegral) (varInt :: Parser Word32))
+parseCurrencyPair = (,) <$> enumParser <*> enumParser
 
 parseFeeResp :: Parser FeeResp
 parseFeeResp = do
