@@ -94,10 +94,6 @@ connectBtc net host port closeVar restartChan = do
   let readErFire = atomically . writeTChan actChan . BTCSockFail
   let inFire = atomically . writeTChan incChan
 
-  void $ fork $ liftIO $ atomically $ do
-    check =<< readTVar closeVar
-    writeTChan actChan BTCSockClose
-
   void $ fork $ liftIO $ fix $ \next -> do
     connect host port $ \(sock, _sockaddr) -> do
       atomically $ writeTVar shakeVar False
@@ -117,6 +113,7 @@ connectBtc net host port closeVar restartChan = do
       void $ fork $ btcPinger btcsock
       act <- atomically $  readTChan actChan
                        <|> BTCSockReconnect <$ readTChan restartChan
+                       <|> BTCSockClose     <$ (check =<< readTVar closeVar)
       case act of
         BTCSockReconnect ->
           N.close sock >> next
