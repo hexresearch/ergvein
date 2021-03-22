@@ -8,9 +8,9 @@ module Ergvein.Index.Server.TCPService.BTC
   ) where
 
 import Control.Applicative
-import Control.Concurrent.Lifted (fork, threadDelay)
+import Control.Concurrent        (forkIO,threadDelay)
 import Control.Concurrent.STM
-import Control.Monad.Catch (throwM, MonadThrow)
+import Control.Monad.Catch       (throwM, MonadThrow)
 import Control.Monad.IO.Unlift
 import Control.Monad.Random (randomIO)
 import Control.Monad.Reader
@@ -94,7 +94,7 @@ connectBtc net host port closeVar restartChan = do
   let readErFire = atomically . writeTChan actChan . BTCSockFail
   let inFire = atomically . writeTChan incChan
 
-  void $ fork $ liftIO $ fix $ \next -> do
+  void $ liftIO $ forkIO $ fix $ \next -> do
     continue <- connect host port $ \(sock, _sockaddr) -> do
       withWorkersUnion $ \wrkUnion -> do
         atomically $ writeTVar shakeVar False
