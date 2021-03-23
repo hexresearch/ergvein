@@ -183,6 +183,36 @@ executable ergvein-index-server
     RankNTypes
     RecordWildCards
 
+executable ergvein-index-server-load-test
+  hs-source-dirs:
+      load-test-app
+  main-is:             Main.hs
+  -- ghc-options:         -threaded -rtsopts -O2 "-with-rtsopts= -N -G1 -I0"
+  ghc-options:         -O2 -threaded -rtsopts "-with-rtsopts= -N -A64m -AL256m -I0 -T"
+  build-depends:
+      base
+    , bitcoin-api              == 0.13.*
+    , ergvein-index-server
+    , immortal
+    , bytestring
+    , network
+    , vector
+    , monad-logger
+    , ergvein-index-protocol
+    , optparse-applicative     >= 0.14 && <0.15
+    , haskoin-core             >= 0.12.0  &&  < 0.12.1
+    , stm                      >= 2.5     &&  < 2.6
+    , text
+    , time
+    , random
+
+  default-language:    Haskell2010
+  default-extensions:
+    RankNTypes
+    RecordWildCards
+    OverloadedStrings
+    BlockArguments
+
 test-suite ergvein-index-server-test
   type: exitcode-stdio-1.0
   Default-language: Haskell2010
