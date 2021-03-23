@@ -52,16 +52,12 @@ data TxIndexEnv = TxIndexEnv
     }
 
 newtype TxIndexM a = TxIndexM { unTxIndexM :: ReaderT TxIndexEnv (LoggingT IO) a }
-  deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader TxIndexEnv, MonadThrow, MonadCatch, MonadMask, MonadBase IO)
+  deriving ( Functor, Applicative, Monad, MonadIO, MonadLogger
+           , MonadReader TxIndexEnv
+           , MonadThrow, MonadCatch, MonadMask
+           , MonadBase IO, MonadBaseControl IO)
   -- To avoid orphan we unwrap LoggingT as its reader representation
   deriving MonadMonitor via (ReaderT TxIndexEnv (ReaderT (Loc -> LogSource -> LogLevel -> LogStr -> IO ()) IO))
-
-newtype StMTxIndexM a = StMTxIndexM { unStMTxIndexM :: StM (ReaderT TxIndexEnv (LoggingT IO)) a }
-
-instance MonadBaseControl IO TxIndexM where
-  type StM TxIndexM a = StMTxIndexM a
-  liftBaseWith f = TxIndexM $ liftBaseWith $ \q -> f (fmap StMTxIndexM . q . unTxIndexM)
-  restoreM = TxIndexM . restoreM . unStMTxIndexM
 
 runTxIndexMIO :: TxIndexEnv -> TxIndexM a -> IO a
 runTxIndexMIO e = runChanLoggingT (envLogger e) . flip runReaderT e . unTxIndexM
