@@ -9,12 +9,10 @@ import Data.Either
 import Data.Maybe
 
 eitherToMaybe :: Either a b -> Maybe b
-eitherToMaybe (Right b) = Just b
-eitherToMaybe _         = Nothing
+eitherToMaybe = either (const Nothing) Just
 
 eitherToMaybe' :: Either a b -> Maybe a
-eitherToMaybe' (Left a) = Just a
-eitherToMaybe' _        = Nothing
+eitherToMaybe' = either Just (const Nothing)
 
 -- | If the list contains only Just elements returns the entire list
 -- Otherwise returns Nothing
