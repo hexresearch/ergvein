@@ -11,10 +11,11 @@ library
   hs-source-dirs:      src
   exposed-modules:
     Ergvein.Aeson
+    Ergvein.Either
     Ergvein.IO
     Ergvein.Lens
+    Ergvein.Maybe
     Ergvein.Text
-    Ergvein.Util
   build-depends:
       base
     , aeson
