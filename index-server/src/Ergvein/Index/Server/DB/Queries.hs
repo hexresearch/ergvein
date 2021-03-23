@@ -34,6 +34,7 @@ import Conversion
 import Data.ByteString.Short (ShortByteString)
 import Data.Default
 import Data.Foldable
+import Data.List.Split (chunksOf)
 import Data.Word
 import Data.Maybe
 import Data.Time.Clock
@@ -50,7 +51,6 @@ import Ergvein.Index.Server.DB.Utils
 import Ergvein.Index.Server.DB.Wrapper
 import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.PeerDiscovery.Types
-import Ergvein.Index.Server.Utils
 import Ergvein.Types.Currency as Currency
 import Ergvein.Types.Transaction
 
@@ -194,7 +194,7 @@ loadRollbackSequence cur = do
 insertSpentTxUpdates :: (HasUtxoDB m, MonadLogger m, MonadBaseControl IO m) => Currency -> Map.Map TxHash Word32 -> m ()
 insertSpentTxUpdates _ outs = do
   udb <- getUtxoDb
-  let outsl = mkChunks 100 $ Map.toList outs
+  let outsl = chunksOf 100 $ Map.toList outs
   upds <- fmap (mconcat . mconcat) $ mapConcurrently (traverse (mkupds udb)) outsl
   writeLDB udb def upds
   where

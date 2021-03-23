@@ -24,10 +24,3 @@ uniqueWithCount = Map.toList . L.foldl' (\m a -> Map.insertWith (+) a 1 m) Map.e
 
 cancelableDelay :: TVar Bool -> Int -> IO ()
 cancelableDelay cancellationToken delay = void $ timeout delay $ atomically $ readTVar cancellationToken >>= (`unless` retry)
-
-mkChunks :: Int -> [a] -> [[a]]
-mkChunks n vals = mkChunks' [] vals
-  where
-     mkChunks' acc xs = case xs of
-       [] -> acc
-       _ -> let (a,b) = splitAt n xs in mkChunks' (acc ++ [a]) b
