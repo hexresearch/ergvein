@@ -52,10 +52,10 @@ data TxIndexEnv = TxIndexEnv
     }
 
 newtype TxIndexM a = TxIndexM { unTxIndexM :: ReaderT TxIndexEnv (LoggingT IO) a }
-  deriving ( Functor, Applicative, Monad, MonadIO, MonadLogger
-           , MonadReader TxIndexEnv
-           , MonadThrow, MonadCatch, MonadMask
-           , MonadBase IO, MonadBaseControl IO)
+  deriving newtype ( Functor, Applicative, Monad, MonadIO, MonadLogger
+                   , MonadReader TxIndexEnv
+                   , MonadThrow, MonadCatch, MonadMask
+                   , MonadBase IO, MonadBaseControl IO, MonadUnliftIO)
   -- To avoid orphan we unwrap LoggingT as its reader representation
   deriving MonadMonitor via (ReaderT TxIndexEnv (ReaderT (Loc -> LogSource -> LogLevel -> LogStr -> IO ()) IO))
 
@@ -92,10 +92,6 @@ instance BitcoinApiMonad TxIndexM where
 instance HasShutdownFlag TxIndexM where
   getShutdownFlag = asks envShutdownFlag
   {-# INLINE getShutdownFlag #-}
-
-instance MonadUnliftIO TxIndexM where
-  askUnliftIO = TxIndexM $ (\(UnliftIO run) -> UnliftIO $ run . unTxIndexM) <$> askUnliftIO
-  withRunInIO go = TxIndexM $ withRunInIO (\k -> go $ k . unTxIndexM)
 
 withTxIndexEnv :: (MonadIO m, MonadLogger m, MonadMask m, MonadBaseControl IO m, MonadMask m)
   => Bool               -- ^ flag, def True: wait for node connections to be up before finalizing the env

@@ -23,9 +23,10 @@ import qualified Data.Map.Strict as M
 import qualified Network.Ergo.Api.Client     as ErgoApi
 
 newtype ServerM a = ServerM { unServerM :: ReaderT ServerEnv (LoggingT IO) a }
-  deriving ( Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader ServerEnv
-           , MonadThrow, MonadCatch, MonadMask
-           , MonadBase IO, MonadBaseControl IO)
+  deriving newtype ( Functor, Applicative, Monad, MonadIO, MonadLogger
+                   , MonadReader ServerEnv
+                   , MonadThrow, MonadCatch, MonadMask
+                   , MonadBase IO, MonadBaseControl IO, MonadUnliftIO)
   -- To avoid orphan we unwrap LoggingT as its reader representation
   deriving MonadMonitor via (ReaderT ServerEnv (ReaderT (Loc -> LogSource -> LogLevel -> LogStr -> IO ()) IO))
 
@@ -82,11 +83,6 @@ instance HasDiscoveryRequisites ServerM where
 instance HasShutdownFlag ServerM where
   getShutdownFlag = asks envShutdownFlag
   {-# INLINE getShutdownFlag #-}
-
-instance MonadUnliftIO ServerM where
-  askUnliftIO = ServerM $ (\(UnliftIO run) -> UnliftIO $ run . unServerM) <$> askUnliftIO
-  withRunInIO go = ServerM $ withRunInIO (\k -> go $ k . unServerM)
-
 
 instance MonadFees ServerM where
   getFees = do
