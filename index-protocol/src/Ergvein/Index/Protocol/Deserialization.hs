@@ -9,6 +9,7 @@ import Data.Fixed
 import Data.Text (Text)
 import Data.Text.Encoding
 import Data.Text.Encoding.Error
+import Data.Typeable
 import Data.Word
 
 import Ergvein.Index.Protocol.Types
@@ -256,8 +257,16 @@ messageParser MRatesResponseType = do
   cfds <- replicateM n cfdParser
   pure $ MRatesResponse $ RatesResponse $ M.fromList cfds
 
-enumParser :: Enum a => Parser a
-enumParser = fmap (toEnum . fromIntegral) (varInt :: Parser Word32)
+enumParser :: forall a. (Typeable a, Bounded a, Enum a) => Parser a
+enumParser = do
+  n <- fromIntegral <$> varInt @Word32
+  when (n < lo || n > hi)
+    $ fail $ "Enumeration "++show (typeRep (Proxy @a))++" is out of bounds ["
+       ++ show lo ++ "," ++ show hi ++ "]: " ++ show n
+  pure $! toEnum n
+  where
+    lo = fromEnum (minBound @a)
+    hi = fromEnum (maxBound @a)
 
 cfParser :: Parser (CurrencyCode, [Fiat])
 cfParser = do
@@ -280,9 +289,7 @@ parseCenti = do
   pure $ MkFixed $ fromIntegral w
 
 parseCurrencyPair :: Parser (CurrencyCode, Fiat)
-parseCurrencyPair = (,)
-  <$> (fmap (toEnum . fromIntegral) (varInt :: Parser Word32))
-  <*> (fmap (toEnum . fromIntegral) (varInt :: Parser Word32))
+parseCurrencyPair = (,) <$> enumParser <*> enumParser
 
 parseFeeResp :: Parser FeeResp
 parseFeeResp = do
