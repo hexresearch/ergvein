@@ -25,7 +25,6 @@ import Network.Haskoin.Transaction (OutPoint(..))
 import           Data.ByteString.Short (ShortByteString)
 import qualified Data.ByteString.Short as BSS
 
--- TODO: parMap createdPuts and spentPuts
 commitBlockInfo :: (HasDbs m, MonadIO m) => BlockInfo -> m ()
 commitBlockInfo (BlockInfo meta spent created) = do
   db <- getDb
@@ -35,15 +34,17 @@ commitBlockInfo (BlockInfo meta spent created) = do
   let heightPut = PutCF mcf scannedHeightKey heightBs
       lastScannedPut = PutCF mcf lastScannedBlockHashKey $ BSS.fromShort blkHash
       filtPut = PutCF fcf heightBs filt
+      -- Tried removing the parMap and creating BatchOps without sparks. Still leaks
+      -- createdPuts = mconcat $ flip fmap created $ \(th, ibs) ->
+      --   flip fmap ibs $ \(i,bs) -> PutCF ucf (th <> encodeWord32 i) bs
       createdPuts = mconcat $ parMap rpar (putTx ucf) (force created)
-      spentPuts = (DelCF ucf . encodeOutPoint) <$> (spent)
+      spentPuts = (DelCF ucf . encodeOutPoint) <$> spent
   write db $ [heightPut, lastScannedPut, filtPut] <> createdPuts <> spentPuts
   where
     BlockMeta cur height blkHash _ filt = meta
     heightBs = serializeVarInt height
     putTx ucf (th, ibs) = let
-      th' = encodeTxHash th
-      putIbs (i, bs) = PutCF ucf (th' <> encodeWord32 i) bs
+      putIbs (i, bs) = PutCF ucf (th <> encodeWord32 i) bs
       in parMap rpar putIbs (force ibs)
 
 setLastScannedBlock :: (HasDbs m, MonadIO m) => Currency -> ShortByteString -> m ()

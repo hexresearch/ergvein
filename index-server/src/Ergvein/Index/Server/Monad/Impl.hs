@@ -2,6 +2,7 @@
 module Ergvein.Index.Server.Monad.Impl
   (
     runServerMIO
+  , runServerM
   , ServerM(..)
   -- Ergvein.Index.Server.Monad.Env re-exports
   , ServerEnv(..)
@@ -42,6 +43,9 @@ instance MonadBaseControl IO ServerM where
 
 runServerMIO :: ServerEnv -> ServerM a -> IO a
 runServerMIO e = runChanLoggingT (envLogger e) . flip runReaderT e . unServerM
+
+runServerM :: ServerEnv -> ServerM a -> LoggingT IO a
+runServerM e = flip runReaderT e . unServerM
 
 instance ErgoApi.ApiMonad ServerM where
   getClient = asks envErgoNodeClient

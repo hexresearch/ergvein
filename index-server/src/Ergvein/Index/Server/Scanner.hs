@@ -2,6 +2,7 @@ module Ergvein.Index.Server.Scanner
   (
     scanningInfo
   , blockchainScanners
+  , btcBlockingScanner
   ) where
 
 import Control.Concurrent.STM
@@ -44,6 +45,36 @@ scanningInfo = catMaybes <$> mapM nfo allCurrencies
       maybeActual <- (Just <$> actualHeight currency) `catch` (\(SomeException _) -> pure Nothing)
       pure $ ScanProgressInfo currency <$> maybeScanned <*> maybeActual
 
+-- | New blocking scanner thread. Simpler. Less checks, no concurrency. Still leaks
+btcBlockingScanner :: forall m . ServerMonad m => ServerMonad m => m ()
+btcBlockingScanner = do
+  scanned <- getScannedHeight BTC
+  let toScanFrom = maybe (currencyHeightStart BTC) succ scanned
+  go toScanFrom
+  where
+    printInfo :: BlockHeight -> BlockHeight -> m ()
+    printInfo headBlockHeight blockHeight = do
+      now <- liftIO $ getCurrentTime
+      let percent = fromIntegral blockHeight / fromIntegral headBlockHeight :: Double
+      logInfoN $ "["<> showt (formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S" now) <> "] "
+        <> "Scanning height for BTC "
+        <> showt blockHeight <> " / " <> showt headBlockHeight <> " (" <> showf 2 (100*percent) <> "%)"
+
+    go :: BlockHeight -> m ()
+    go current = do
+      headBlockHeight <- actualHeight BTC
+      reportCurrentHeight BTC headBlockHeight
+      when (current <= headBlockHeight) $ do
+        printInfo headBlockHeight current
+        eBlockInfo <- try $ BTCScanner.scanBlock current
+        shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
+        unless shutdownFlag $ case eBlockInfo of
+          Right blockInfo -> do
+            commitBlockInfo blockInfo
+            go (succ current)
+          Left (SomeException err) ->
+            logInfoN $ "Error scanning BTC " <> showt current <> showt err
+
 scannerThread :: forall m . ServerMonad m
   => Currency -> (BlockHeight -> m BlockInfo) -> m Thread
 scannerThread currency scanInfo = create $ logOnException threadName . scanIteration
@@ -56,7 +87,6 @@ scannerThread currency scanInfo = create $ logOnException threadName . scanItera
       logInfoN $ "["<> showt (formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S" now) <> "] "
         <> "Scanning height for " <> showt currency <> " "
         <> showt blockHeight <> " / " <> showt headBlockHeight <> " (" <> showf 2 (100*percent) <> "%)"
-        -- <> showt (length $ spentTxsHash bi)
       scanInfo blockHeight
 
     scanIteration :: Thread -> m ()

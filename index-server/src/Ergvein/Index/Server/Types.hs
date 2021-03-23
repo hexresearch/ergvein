@@ -6,6 +6,8 @@ module Ergvein.Index.Server.Types
   , ScanProgressInfo(..)
   ) where
 
+import Control.DeepSeq
+import GHC.Generics
 import Data.ByteString (ByteString)
 import Data.ByteString.Short (ShortByteString)
 import Data.Word
@@ -18,15 +20,18 @@ data BlockMeta = BlockMeta
   , blockMetaHeaderHash    :: !ShortByteString
   , blockMetaPreviousHeaderBlockHash :: !ShortByteString
   , blockMetaAddressFilter :: !ByteString
-  } deriving (Show)
+  } deriving (Show, Generic)
+
+instance NFData BlockMeta
 
 data BlockInfo = BlockInfo
   { blockInfoMeta    :: !BlockMeta
   , spentTxOutputs   :: ![OutPoint]
   , createdTxOutputs :: ![TxInfo]
-  } deriving (Show)
+  } deriving (Show, Generic)
+instance NFData BlockInfo
 
-type TxInfo = (TxHash, [(Word32, ByteString)])
+type TxInfo = (ByteString, [(Word32, ByteString)])
 
 data ScanProgressInfo = ScanProgressInfo
   { nfoCurrency      :: !Currency

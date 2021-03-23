@@ -37,6 +37,7 @@ type ServerMonad m = (
   , MonadCatch m
   , MonadLogger m
   , MonadMonitor m
+  , MonadMask m
   , BitcoinApiMonad m
   , HasBitcoinNodeNetwork m
   , HasBroadcastChannel m
