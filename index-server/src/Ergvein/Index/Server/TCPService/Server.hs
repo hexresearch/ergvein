@@ -141,21 +141,20 @@ sendLoop sock sendChan = do
     sendMsg = sendLazy sock . toLazyByteString
 
 evalMsg :: Socket -> SockAddr -> ExceptT Reject ServerM ([Message], Bool)
-evalMsg sock addr = response =<< request =<< messageHeader sock
+evalMsg sock addr = response =<< request sock =<< messageHeader sock
   where
-    request :: MessageHeader -> ExceptT Reject ServerM Message
-    request MessageHeader {..} = do
-      messageBytes <- if not $ messageHasPayload msgType
-        then pure mempty
-        else liftIO $ NS.recv sock $ fromIntegral msgSize
-      except $ mapLeft (\_-> Reject msgType MessageParsing "Failed to parse message body") $ eitherResult $ parse (messageParser msgType) messageBytes
-
     response :: Message -> ExceptT Reject ServerM ([Message], Bool)
     response msg = (lift $ handleMsg addr msg) `catch` (\(e :: SomeException) -> do
       logErrorN $ "<" <> showt addr <> ">: Rejecting peer as exception occured in while handling it message: " <> showt e
       except $ Left $ Reject (messageType msg) InternalServerError $ showt e
       )
 
+request :: MonadIO m => Socket -> MessageHeader -> ExceptT Reject m Message
+request sock MessageHeader{..} = do
+  messageBytes <- if not $ messageHasPayload msgType
+    then pure mempty
+    else liftIO $ NS.recv sock $ fromIntegral msgSize
+  except $ mapLeft (\_-> Reject msgType MessageParsing "Failed to parse message body") $ eitherResult $ parse (messageParser msgType) messageBytes
 
 
 messageHeader :: MonadIO m => Socket -> ExceptT Reject m MessageHeader
