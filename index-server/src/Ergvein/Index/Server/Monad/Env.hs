@@ -11,9 +11,11 @@ import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Reader
 import Control.Monad.Trans.Control
+import Data.ByteString.Short (ShortByteString)
 import Data.Fixed
 import Data.Map.Strict (Map)
 import Data.Set (Set)
+import Data.Sequence (Seq)
 import Database.RocksDB (withDBCF, DB(..), ColumnFamily)
 import Network.HTTP.Client.TLS
 import Network.Socket
@@ -23,7 +25,9 @@ import Ergvein.Index.Protocol.Types (CurrencyCode, Message)
 import Ergvein.Index.Server.Bitcoin.API
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
+import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.PeerDiscovery.Types
+import Ergvein.Index.Server.Types
 import Ergvein.Socket.BTC
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
@@ -60,6 +64,8 @@ data ServerEnv = ServerEnv
     , envBtcUtxoCF                :: !ColumnFamily
     , envBtcFiltersCF             :: !ColumnFamily
     , envBtcMetaCF                :: !ColumnFamily
+    , envBtcCache                 :: !(TVar (Seq CacheEntry))
+    , envBtcPrevHeader            :: !(TVar (Maybe ShortByteString))
     }
 
 sockAddress :: CfgPeer -> IO SockAddr
@@ -127,6 +133,9 @@ withNewServerEnv useTcp btcClient cfg@Config{..} action =
       else dummyBtcSock bitcoinNodeNetwork
     exchangeRates <- liftIO $ newTVarIO mempty
     let [ucf, fcf, mcf] = columnFamilies db
+    let dbEnv = (db, ucf, fcf, mcf)
+    btcPrevHeader <- liftIO . newTVarIO =<< runReaderT (loadLastScannedBlock BTC) dbEnv
+    btcCache <- liftIO . newTVarIO $ mempty
     action ServerEnv
       { envServerConfig            = cfg
       , envLogger                  = logger
@@ -149,4 +158,6 @@ withNewServerEnv useTcp btcClient cfg@Config{..} action =
       , envBtcUtxoCF               = ucf
       , envBtcFiltersCF            = fcf
       , envBtcMetaCF               = mcf
+      , envBtcCache                = btcCache
+      , envBtcPrevHeader           = btcPrevHeader
       }

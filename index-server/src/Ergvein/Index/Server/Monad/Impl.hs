@@ -143,3 +143,14 @@ instance HasDbs ServerM where
   {-# INLINE getFiltersCF #-}
   getMetaCF _ = asks envBtcMetaCF
   {-# INLINE getMetaCF #-}
+
+instance HasBtcCache ServerM where
+  getBtcCacheVar = asks envBtcCache
+  {-# INLINE getBtcCacheVar #-}
+
+instance LastScannedBlockStore ServerM where
+  getLastScannedBlock _ = liftIO . readTVarIO =<< asks envBtcPrevHeader
+  setLastScannedBlock _ val = do
+    var <- asks envBtcPrevHeader
+    liftIO . atomically $ writeTVar var val
+  {-# INLINE getLastScannedBlock #-}

@@ -4,6 +4,7 @@ module Ergvein.Index.Server.Types
   , BlockInfo (..)
   , TxInfo
   , ScanProgressInfo(..)
+  , CacheEntry(..)
   ) where
 
 import Control.DeepSeq
@@ -33,8 +34,18 @@ instance NFData BlockInfo
 
 type TxInfo = (ByteString, [(Word32, ByteString)])
 
+type CreatedIds = (ByteString, Word32)
+
 data ScanProgressInfo = ScanProgressInfo
   { nfoCurrency      :: !Currency
   , nfoScannedHeight :: !BlockHeight
   , nfoActualHeight  :: !BlockHeight
   }
+
+data CacheEntry = CacheEntry {
+  cacheHeight   :: !BlockHeight
+, cacheHash     :: !ShortByteString
+, cacheSpent    :: ![OutPoint]
+, cacheCreated  :: ![CreatedIds]
+} deriving (Show, Generic)
+instance NFData CacheEntry

@@ -153,9 +153,7 @@ btcPinger btcs@BtcSocket{..} = liftIO $ do
   forever $ do
     msg <- atomically $ readTChan ic
     case msg of
-      MVersion Version{..} -> do
-        print $ "Received version at height: " <> showt startHeight
-        btcSockSend MVerAck
+      MPing (Ping p) -> btcSockSend $ MPong (Pong p)
       _ -> pure ()
 
 requestBlock :: MonadIO m => BtcSocket -> BlockHash -> m Block
@@ -201,7 +199,6 @@ peekMessage net = do
       nodeLog $ showt x
       throwM DecodeHeaderError
     Right (MessageHeader !_ !_ !len !_) -> do
-      -- nodeLog $ showt cmd
       when (len > 32 * 2 ^ (20 :: Int)) $ do
         nodeLog "Payload too large"
         throwM (PayloadTooLarge len)

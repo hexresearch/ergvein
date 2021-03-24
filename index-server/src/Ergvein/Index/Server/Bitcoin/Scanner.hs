@@ -47,13 +47,10 @@ processBlock height block = do
   let (created, spent') = unzip $ extractPoints <$> txs
   let spent = mconcat spent'
   let createdMap = HM.fromList created
-  -- lel <- mapM (spentPointScript createdMap) spent
-  -- Tried replacing 🠗 with 🠕 Still leaks
   lel <- fmap mconcat $ mapConcurrently (mapM (spentPointScript createdMap)) $ mkEquisizedChunks 5 spent
   let hm = HM.fromList lel
   filt <- encodeBtcAddrFilter =<< withTxIndex hm (makeBtcFilter isErgveinIndexable block)
   let blockMeta = BlockMeta BTC height blockHeaderHash prevBlockHeaderHash filt
-  -- tried forcing the whole line below. Still leaks
   pure $ BlockInfo blockMeta spent (removeDataCarriers created)
   where
     blockHeaderHash = getHash256 $ HK.getBlockHash $ headerHash $ blockHeader block
@@ -89,8 +86,6 @@ removeDataCarriers = fmap $ \(th,vals) ->
 
 data RequestStatus = RSResult Block | RSTimeout | RSTerminated
 
--- | This one was turned off and tested
--- I have left only getBtcBlock and it still leaked
 getBtcBlockWithRepeat :: ServerMonad m => BlockHeight -> m Block
 getBtcBlockWithRepeat blockHeightReq = do
   shutdownChan <- getShutdownChannel
@@ -99,8 +94,11 @@ getBtcBlockWithRepeat blockHeightReq = do
   fix $ \restart -> do
     res <- withWorkersUnion $ \wu -> do
       spawnWorker wu $ fix $ \next -> do
-        b <- liftIO $ atomically $ readTChan shutdownChan
-        if b then writeRes RSTerminated else next
+        b <- liftIO . readTVarIO =<< getShutdownFlag
+        if b then writeRes RSTerminated
+          else do
+            b' <- liftIO $ atomically $ readTChan shutdownChan
+            if b' then writeRes RSTerminated else next
       spawnWorker wu $    -- Request thread
         writeRes . RSResult =<< getBtcBlock blockHeightReq
       spawnWorker wu $ do -- Timeout thread
@@ -112,9 +110,6 @@ getBtcBlockWithRepeat blockHeightReq = do
       RSTimeout -> restart
       RSTerminated -> throw $ ErrorCallWithLocation "Everything is fine, just killing the thread" "getBtcBlockWithRepeat"
 
-
--- | I have once shortcutted this and was providing the same block
--- The leak persisted
 getBtcBlock :: ServerMonad m => BlockHeight -> m Block
 getBtcBlock blockHeightReq = do
   blockHash <- nodeRpcCall $ (`getBlockHash` fromIntegral blockHeightReq)

@@ -7,6 +7,7 @@ module Ergvein.Index.Server.DB.Monad
   , lastScannedBlockHashKey
   ) where
 
+import Control.Monad.Reader
 import Data.ByteString
 import Data.Default
 import Database.RocksDB
@@ -18,6 +19,14 @@ class Monad m => HasDbs m where
   getUtxoCF :: Currency -> m ColumnFamily
   getFiltersCF :: Currency -> m ColumnFamily
   getMetaCF :: Currency -> m ColumnFamily
+
+type DbEnv = (DB, ColumnFamily, ColumnFamily, ColumnFamily)
+
+instance MonadIO m => HasDbs (ReaderT DbEnv m) where
+  getDb = asks $ \(db,_,_,_) -> db
+  getUtxoCF _ = asks $ \(_,cf,_,_) -> cf
+  getFiltersCF _ = asks $ \(_,_,cf,_) -> cf
+  getMetaCF _ = asks $ \(_,_,_,cf) -> cf
 
 dbConfig :: Config
 dbConfig = def {createIfMissing = True}

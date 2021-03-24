@@ -49,16 +49,8 @@ finalize _ scannerThreads workerTreads = do
   liftIO $ mapM_ wait workerTreads
   logInfoN "service is stopped"
 
--- | This one uses blocking scanner. Simpler, w/o concurrency. Still leaks
 app :: (MonadUnliftIO m, MonadLogger m) => Bool -> Config -> ServerEnv -> m ()
-app _ cfg env = do
-  _ <- liftIO $ installHandler sigTERM (Catch $ onShutdown env) Nothing
-  _ <- liftIO $ installHandler sigINT  (Catch $ onShutdown env) Nothing
-  logInfoN $ "Server started at:" <> (showt . cfgServerPort $ cfg)
-  liftIO $ runServerMIO env $ btcBlockingScanner
-
-appOld :: (MonadUnliftIO m, MonadLogger m) => Bool -> Config -> ServerEnv -> m ()
-appOld onlyScan cfg env = do
+app onlyScan cfg env = do
   (scannerThreads, workerThreads) <- liftIO $ runServerMIO env $ onStartup onlyScan env
   runReaderT serveMetrics cfg
   logInfoN $ "Server started at:" <> (showt . cfgServerPort $ cfg)

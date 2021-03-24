@@ -2,9 +2,10 @@ module Ergvein.Index.Server.Scanner
   (
     scanningInfo
   , blockchainScanners
-  , btcBlockingScanner
   ) where
 
+import Control.Concurrent
+import Control.Concurrent.Async
 import Control.Concurrent.STM
 import Control.Immortal
 import Control.Monad.Catch
@@ -22,12 +23,10 @@ import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.TCPService.Conversions
 import Ergvein.Index.Server.TCPService.Conversions()
-import Ergvein.Index.Server.Utils
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
-import qualified Data.Text as T
 import qualified Ergvein.Index.Server.Bitcoin.API as BtcApi
 import qualified Ergvein.Index.Server.Bitcoin.Scanner as BTCScanner
 
@@ -45,103 +44,75 @@ scanningInfo = catMaybes <$> mapM nfo allCurrencies
       maybeActual <- (Just <$> actualHeight currency) `catch` (\(SomeException _) -> pure Nothing)
       pure $ ScanProgressInfo currency <$> maybeScanned <*> maybeActual
 
--- | New blocking scanner thread. Simpler. Less checks, no concurrency. Still leaks
-btcBlockingScanner :: forall m . ServerMonad m => ServerMonad m => m ()
-btcBlockingScanner = do
+runBtcScanner :: ServerMonad m => m Thread
+runBtcScanner = create btcScanner
+{-# INLINE runBtcScanner #-}
+
+btcScanner :: forall m . ServerMonad m => Thread -> m ()
+btcScanner thread = logOnException threadName $ do
   scanned <- getScannedHeight BTC
   let toScanFrom = maybe (currencyHeightStart BTC) succ scanned
   go toScanFrom
   where
+    threadName = "scannerThread<BTC>"
+    logInfoNamed t = logInfoN $ "[" <> threadName <> "]: " <> t
+    logAndShutdown t = logInfoNamed t >> (liftIO $ stop thread)
+
     printInfo :: BlockHeight -> BlockHeight -> m ()
     printInfo headBlockHeight blockHeight = do
       now <- liftIO $ getCurrentTime
       let percent = fromIntegral blockHeight / fromIntegral headBlockHeight :: Double
-      logInfoN $ "["<> showt (formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S" now) <> "] "
-        <> "Scanning height for BTC "
+      logInfoN $ "["<> showt (formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S" now)
+        <> "] Scanning height: "
         <> showt blockHeight <> " / " <> showt headBlockHeight <> " (" <> showf 2 (100*percent) <> "%)"
 
     go :: BlockHeight -> m ()
     go current = do
       headBlockHeight <- actualHeight BTC
       reportCurrentHeight BTC headBlockHeight
-      when (current <= headBlockHeight) $ do
+      shutdownChan <- getShutdownChannel
+      shutdownFlagVar <- getShutdownFlag
+      if (current <= headBlockHeight) then do
         printInfo headBlockHeight current
         eBlockInfo <- try $ BTCScanner.scanBlock current
-        shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
-        unless shutdownFlag $ case eBlockInfo of
+        case eBlockInfo of
           Right blockInfo -> do
-            commitBlockInfo blockInfo
-            go (succ current)
+            previousBlockSame <- isPreviousBlockSame $ blockMetaPreviousHeaderBlockHash $ blockInfoMeta blockInfo
+            shutdownFlag <- liftIO . readTVarIO $ shutdownFlagVar
+            if shutdownFlag then logAndShutdown "Shutdown"
+            else if previousBlockSame then do
+              es <- isEnoughSpace
+              if not es then logAndShutdown "Error! Not enough space"
+              else do
+                commitBlockInfo blockInfo
+                when (current == headBlockHeight) $ broadcastFilter $ blockInfoMeta blockInfo
+                reportScannedHeight BTC current
+                go (succ current)
+            else previousBlockChanged current
           Left (SomeException err) ->
-            logInfoN $ "Error scanning BTC " <> showt current <> showt err
+            logAndShutdown $ "Error scanning " <> showt current <> ": " <> showt err
+      else do
+        shutdownFlag <- liftIO . readTVarIO $ shutdownFlagVar
+        if shutdownFlag then logAndShutdown "Shutdown"
+        else do
+          evnt <- liftIO $ race (threadDelay 3000000) (atomically $ readTChan shutdownChan)
+          case evnt of
+            Left _ -> logAndShutdown "Received shutdown signal"
+            Right _ -> go current
 
-scannerThread :: forall m . ServerMonad m
-  => Currency -> (BlockHeight -> m BlockInfo) -> m Thread
-scannerThread currency scanInfo = create $ logOnException threadName . scanIteration
-  where
-    threadName = "scannerThread<" <> showt currency <> ">"
-    blockIteration :: BlockHeight -> BlockHeight -> m BlockInfo
-    blockIteration headBlockHeight blockHeight = do
-      now <- liftIO $ getCurrentTime
-      let percent = fromIntegral blockHeight / fromIntegral headBlockHeight :: Double
-      logInfoN $ "["<> showt (formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S" now) <> "] "
-        <> "Scanning height for " <> showt currency <> " "
-        <> showt blockHeight <> " / " <> showt headBlockHeight <> " (" <> showf 2 (100*percent) <> "%)"
-      scanInfo blockHeight
+    isPreviousBlockSame proposedPreviousBlockId = do
+      maybeLastScannedBlock <- getLastScannedBlock BTC
+      pure $ flip all maybeLastScannedBlock (== proposedPreviousBlockId)
 
-    scanIteration :: Thread -> m ()
-    scanIteration thread = do
-      cfg <- serverConfig
-      scanned <- getScannedHeight currency
-      let toScanFrom = maybe (currencyHeightStart currency) succ scanned
-      go toScanFrom
-      shutdownFlag <- getShutdownFlag
-      liftIO $ cancelableDelay shutdownFlag $ cfgBlockchainScanDelay cfg
-      stopThreadIfShutdown thread
-      where
-        go :: BlockHeight -> m ()
-        go current = do
-          shutdownFlag <- liftIO . readTVarIO =<< getShutdownFlag
-          unless shutdownFlag $ do
-            headBlockHeight <- actualHeight currency
-            reportCurrentHeight currency headBlockHeight
-            when (current <= headBlockHeight) $ do
-              tryBlockInfo <- try $ blockIteration headBlockHeight current
-              enoughSpace <- isEnoughSpace
-              flg <- liftIO . readTVarIO =<< getShutdownFlag
-              case tryBlockInfo of
-                Right (blockInfo@BlockInfo {..})
-                  | flg -> logInfoN $ "Told to shut down"
-                  | enoughSpace && not flg -> do
-                    previousBlockSame <- isPreviousBlockSame $ blockMetaPreviousHeaderBlockHash $ blockInfoMeta
-                    if previousBlockSame then do --fork detection
-                      commitBlockInfo blockInfo
-                      when (current == headBlockHeight) $ broadcastFilter $ blockInfoMeta
-                      reportScannedHeight currency current
-                      go (succ current)
-                    else previousBlockChanged current
-                  | otherwise ->
-                    logInfoN $ "Not enough available disc space to store block scan result"
-                -- FIXME: Are we swallowing ALL errors here???
-                Left (SomeException err) -> blockScanningError (show err) current
-
-        isPreviousBlockSame proposedPreviousBlockId = do
-          maybeLastScannedBlock <- getLastScannedBlock currency
-          pure $ flip all maybeLastScannedBlock (== proposedPreviousBlockId)
-
-        previousBlockChanged from = do
-          -- revertedBlocksCount <- fromIntegral <$> performRollback currency
-          let revertedBlocksCount = 0
-          logInfoN $ "Fork detected at "
-                  <> showt from <> " " <> showt currency
-                  <> ", performing rollback of " <> showt revertedBlocksCount <> " previous blocks"
-          let restart = (from - revertedBlocksCount)
-          setScannedHeight currency restart
-          go restart
-
-        blockScanningError errorMessage from = do
-          logInfoN $ "Error scanning " <> showt from <> " " <> showt currency <> " " <> T.pack errorMessage
-          previousBlockChanged from
+    previousBlockChanged from = do
+      revertedBlocksCount <- fromIntegral <$> performRollback BTC
+      logInfoNamed $ "Fork detected at "
+        <> showt from
+        <> ", performing rollback of "
+        <> showt revertedBlocksCount <> " previous blocks"
+      let restart = (from - revertedBlocksCount)
+      setScannedHeight BTC restart
+      go restart
 
 broadcastFilter :: ServerMonad m => BlockMeta -> m ()
 broadcastFilter BlockMeta{..} = do
@@ -154,9 +125,7 @@ broadcastFilter BlockMeta{..} = do
     }
 
 blockchainScanners :: ServerMonad m => m [Thread]
-blockchainScanners = sequenceA
-  [ scannerThread BTC BTCScanner.scanBlock
-  ]
+blockchainScanners = sequenceA [ runBtcScanner ]
 
 isEnoughSpace :: ServerMonad m => m Bool
 isEnoughSpace = do
