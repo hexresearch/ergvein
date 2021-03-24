@@ -9,7 +9,6 @@ module Ergvein.Index.Server.Monad.Class
   , ServerMonad
   , HasBtcCache(..)
   , LastScannedBlockStore(..)
-  , module Ergvein.Socket.Manager
   ) where
 
 import Control.Concurrent.STM
@@ -29,7 +28,6 @@ import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.Types
-import Ergvein.Socket.Manager
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 
@@ -50,8 +48,6 @@ type ServerMonad m = (
   , HasDiscoveryRequisites m
   , HasServerConfig m
   , HasShutdownSignal m
-  , HasSocketsManagement m
-  , HasThreadsManagement m
   , MonadFees m
   , MonadRates m
   , HasBtcCache m

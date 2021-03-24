@@ -37,7 +37,6 @@ library
     Ergvein.Index.Server.Worker.Rates
     Ergvein.Socket.Base
     Ergvein.Socket.BTC
-    Ergvein.Socket.Manager
     Ergvein.Socket.Supervisor
   build-depends:
         base                     >= 4.7     &&  < 4.13
@@ -161,7 +160,7 @@ executable ergvein-index-server
   hs-source-dirs:
       app
   main-is:             Main.hs
-  -- ghc-options:         -threaded -rtsopts -O2 "-with-rtsopts= -N -G1 -I0"
+  -- ghc-options:         -threaded -rtsopts -O2 "-with-rtsopts= -N"
   ghc-options:         -O2 -threaded -rtsopts "-with-rtsopts= -N -A64m -AL256m -I0 -T"
   build-depends:
       base

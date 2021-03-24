@@ -26,7 +26,6 @@ import Ergvein.Index.Server.Monad.Class
 import Ergvein.Index.Server.Monad.Env
 
 import qualified Data.Map.Strict as M
-import qualified Data.Set        as S
 import qualified Network.Ergo.Api.Client     as ErgoApi
 
 newtype ServerM a = ServerM { unServerM :: ReaderT ServerEnv (LoggingT IO) a }
@@ -98,37 +97,6 @@ instance MonadFees ServerM where
 instance MonadRates ServerM where
   getRatesVar = asks envExchangeRates
   {-# INLINE getRatesVar #-}
-
-instance HasThreadsManagement ServerM where
-  registerThread parent child = do
-    var <- asks envOpenThreads
-    liftIO $ atomically $ modifyTVar var $ \m -> M.insertWith S.union parent (S.singleton child) m
-  {-# INLINE registerThread #-}
-  getThreadChildren tid = do
-    var <- asks envOpenThreads
-    m <- liftIO $ readTVarIO var
-    pure $ maybe [] S.toList $ M.lookup tid m
-  {-# INLINE getThreadChildren #-}
-
-instance HasSocketsManagement ServerM where
-  registerSocket saddr sock tid = do
-    sockVar <- asks envOpenSockets
-    liftIO $ atomically $ modifyTVar sockVar (M.insert saddr (sock, tid))
-  {-# INLINE registerSocket #-}
-  deregisterSocket saddr = do
-    sockVar <- asks envOpenSockets
-    liftIO $ atomically $ modifyTVar sockVar (M.delete saddr)
-  {-# INLINE deregisterSocket #-}
-  getManagedSocket saddr = do
-    sockVar <- asks envOpenSockets
-    m <- liftIO $ readTVarIO sockVar
-    pure $ M.lookup saddr m
-  {-# INLINE getManagedSocket #-}
-  getAllManagedSockets = do
-    sockVar <- asks envOpenSockets
-    m <- liftIO $ readTVarIO sockVar
-    pure $ M.keys m
-  {-# INLINE getAllManagedSockets #-}
 
 instance HasBroadcastChannel ServerM where
   broadcastChannel = asks envBroadcastChannel
