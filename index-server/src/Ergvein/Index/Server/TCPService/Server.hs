@@ -141,34 +141,8 @@ sendLoop sock sendChan = do
     sendMsg = sendLazy sock . toLazyByteString
 
 evalMsg :: Socket -> SockAddr -> ExceptT Reject ServerM ([Message], Bool)
-evalMsg sock addr = response =<< request =<< messageHeader
+evalMsg sock addr = response =<< request =<< messageHeader sock
   where
-    recvVarInt = liftIO $ do
-      hbs <- NS.recv sock 1
-      if BS.null hbs then pure hbs else do
-        let hb = BS.head hbs
-        if | hb == 0xFF -> (hbs <>) <$> NS.recv sock 8
-           | hb == 0XFE -> (hbs <>) <$> NS.recv sock 4
-           | hb == 0xFD -> (hbs <>) <$> NS.recv sock 2
-           | otherwise -> pure hbs
-
-    messageHeader :: ExceptT Reject ServerM MessageHeader
-    messageHeader = do
-      mid <- messageId =<< recvVarInt
-      if not $ messageHasPayload mid then pure (MessageHeader mid 0) else do
-        l <- messageLength =<< recvVarInt
-        pure $ MessageHeader mid l
-
-    messageId :: BS.ByteString -> ExceptT Reject ServerM MessageType
-    messageId bs
-      | BS.null bs = except $ Left $ Reject MVersionType ZeroBytesReceived "Expected bytes for message header (id)"
-      | otherwise = ExceptT . pure . mapLeft (\_ -> Reject MVersionType MessageHeaderParsing "Failed to parse header message id") . eitherResult $ parse messageTypeParser bs
-
-    messageLength :: BS.ByteString -> ExceptT Reject ServerM Word32
-    messageLength bs
-      | BS.null bs = except $ Left $ Reject MVersionType ZeroBytesReceived "Expected bytes for message header (length)"
-      | otherwise = ExceptT . pure . mapLeft (\_ -> Reject MVersionType MessageHeaderParsing "Failed to parse header message length") . eitherResult $ parse messageLengthParser bs
-
     request :: MessageHeader -> ExceptT Reject ServerM Message
     request MessageHeader {..} = do
       messageBytes <- if not $ messageHasPayload msgType
@@ -181,3 +155,38 @@ evalMsg sock addr = response =<< request =<< messageHeader
       logErrorN $ "<" <> showt addr <> ">: Rejecting peer as exception occured in while handling it message: " <> showt e
       except $ Left $ Reject (messageType msg) InternalServerError $ showt e
       )
+
+
+
+messageHeader :: MonadIO m => Socket -> ExceptT Reject m MessageHeader
+messageHeader sock = do
+  mid <- messageId =<< recvVarInt sock
+  if not $ messageHasPayload mid then pure (MessageHeader mid 0) else do
+    l <- messageLength =<< recvVarInt sock
+    pure $ MessageHeader mid l
+
+messageId :: Monad m => BS.ByteString -> ExceptT Reject m MessageType
+messageId bs
+  | BS.null bs = except $ Left $ Reject MVersionType ZeroBytesReceived "Expected bytes for message header (id)"
+  | otherwise  = case eitherResult $ parse messageTypeParser bs of
+      Left  _ -> throwE $ Reject MVersionType MessageHeaderParsing "Failed to parse header message id"
+      Right m -> pure m
+
+
+messageLength :: Monad m => BS.ByteString -> ExceptT Reject m Word32
+messageLength bs
+  | BS.null bs = except $ Left $ Reject MVersionType ZeroBytesReceived "Expected bytes for message header (length)"
+  | otherwise  = case eitherResult $ parse messageLengthParser bs of
+      Left  _ -> throwE $ Reject MVersionType MessageHeaderParsing "Failed to parse header message length"
+      Right n -> pure n
+
+
+recvVarInt :: MonadIO m => Socket -> m BS.ByteString
+recvVarInt sock = liftIO $ do
+  hbs <- NS.recv sock 1
+  if BS.null hbs then pure hbs else do
+    let hb = BS.head hbs
+    if | hb == 0xFF -> (hbs <>) <$> NS.recv sock 8
+       | hb == 0XFE -> (hbs <>) <$> NS.recv sock 4
+       | hb == 0xFD -> (hbs <>) <$> NS.recv sock 2
+       | otherwise -> pure hbs
