@@ -48,16 +48,16 @@ wordReader = eitherReader $ \arg -> case readMaybe arg of
 type ServerUrl = Text
 
 data Command
-  = CommandLoad(Word32, String, String)
+  = CommandLoad Word32 String String
 
 options :: Parser Options
 options = Options
   <$> subparser (command "listen" $ info (loadCmd <**> helper) $ progDesc "Start server")
   where
-    loadCmd = CommandLoad <$> ((,,) 
+    loadCmd = CommandLoad
             <$> (read <$> strArgument ( metavar "CONFIG_N_CLIENTS" ))
             <*> strArgument ( metavar "CONFIG_ADDR" )
-            <*> strArgument ( metavar "CONFIG_PORT" ))
+            <*> strArgument ( metavar "CONFIG_PORT" )
 
 main :: IO ()
 main = do
@@ -70,7 +70,7 @@ main = do
 
 startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
-  CommandLoad (clnts, addr, port) -> do
+  CommandLoad clnts addr port -> do
     T.putStrLn $ pack "Server starting"
     sequence_  $ replicate (fromIntegral clnts) $ forkIO $ forever $ runTCPClient addr port $ \s -> do
       let tillEnd = do
