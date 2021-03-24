@@ -27,6 +27,7 @@ import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.TCPService.BTC
 import Ergvein.Index.Protocol.Types
+import Ergvein.Index.Server.TCPService.Supervisor
 
 import qualified Data.Text.IO                as T
 import qualified Network.Bitcoin.Api.Client  as BitcoinApi
@@ -72,20 +73,21 @@ startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
   CommandLoad clnts addr port -> do
     T.putStrLn $ pack "Server starting"
-    replicateM_ clnts $ forkIO $ forever $ runTCPClient addr port $ \s -> do
-      let tillEnd = do
-                r <- recv s 1024
-                if BS.null r then pure () else tillEnd
-      ver <- ownVersion
-      sendLazy s . toLazyByteString . messageBuilder . MVersion $ ver
-      recv s 2 -- skip VersionACK
-      sendLazy s . toLazyByteString . messageBuilder . MVersionACK $ VersionACK
-      --sendLazy s . toLazyByteString . messageBuilder . MFiltersRequest $ request 
-      -- we need to fetch actual filters size, because dumb reading till cause waiting and long timeout 
-      --tillEnd
-      print "done"
-    forever $ threadDelay maxBound
-    pure ()
+    withWorkersUnion $ \wrk -> do
+      replicateM_ clnts $ spawnWorker wrk $ forever $ runTCPClient addr port $ \s -> do
+        let tillEnd = do
+                  r <- recv s 1024
+                  if BS.null r then pure () else tillEnd
+        ver <- ownVersion
+        sendLazy s . toLazyByteString . messageBuilder . MVersion $ ver
+        recv s 2 -- skip VersionACK
+        sendLazy s . toLazyByteString . messageBuilder . MVersionACK $ VersionACK
+        --sendLazy s . toLazyByteString . messageBuilder . MFiltersRequest $ request 
+        -- we need to fetch actual filters size, because dumb reading till cause waiting and long timeout 
+        --tillEnd
+        print "done"
+      forever $ threadDelay maxBound
+
     
 
 ownVersion :: IO Version
