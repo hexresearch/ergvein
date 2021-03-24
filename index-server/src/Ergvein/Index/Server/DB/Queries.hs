@@ -33,7 +33,7 @@ import qualified Data.ByteString.Short as BSS
 import qualified Data.Sequence as Seq
 import qualified Data.Foldable as Foldable
 
-commitBlockInfo :: (HasDbs m, HasBtcCache m, LastScannedBlockStore m, MonadIO m) => BlockInfo -> m ()
+commitBlockInfo :: (HasDbs m, HasBtcCache m, LastScannedBlockStore m) => BlockInfo -> m ()
 commitBlockInfo (BlockInfo meta spent created) = do
   db <- getDb
   ucf <- getUtxoCF cur
@@ -57,33 +57,33 @@ commitBlockInfo (BlockInfo meta spent created) = do
       _ -> id
     {-# INLINE removeDataCarriers #-}
 
-storeLastScannedBlock :: (HasDbs m, MonadIO m) => Currency -> ShortByteString -> m ()
+storeLastScannedBlock :: HasDbs m => Currency -> ShortByteString -> m ()
 storeLastScannedBlock currency blockHash = do
   db <- getDb
   cf <- getMetaCF currency
   putCF db cf lastScannedBlockHashKey $ BSS.fromShort blockHash
 
-deleteLastScannedBlock :: (HasDbs m, MonadIO m) => Currency -> m ()
+deleteLastScannedBlock :: HasDbs m => Currency -> m ()
 deleteLastScannedBlock currency = do
   db <- getDb
   cf <- getMetaCF currency
   deleteCF db cf lastScannedBlockHashKey
 
-loadLastScannedBlock :: (HasDbs m, MonadIO m) => Currency -> m (Maybe ShortByteString)
+loadLastScannedBlock :: HasDbs m => Currency -> m (Maybe ShortByteString)
 loadLastScannedBlock currency = do
   db <- getDb
   cf <- getMetaCF currency
   mv <- getCF db cf lastScannedBlockHashKey
   pure $ BSS.toShort <$> mv
 
-getScannedHeight :: (HasDbs m, MonadIO m) => Currency -> m (Maybe BlockHeight)
+getScannedHeight :: HasDbs m => Currency -> m (Maybe BlockHeight)
 getScannedHeight currency = do
   db <- getDb
   cf <- getMetaCF currency
   mv <- getCF db cf scannedHeightKey
   pure $ maybe Nothing (either (const Nothing) Just . decodeWord64) mv
 
-setScannedHeight :: (HasDbs m, MonadIO m) => Currency -> BlockHeight -> m ()
+setScannedHeight :: HasDbs m => Currency -> BlockHeight -> m ()
 setScannedHeight currency height = do
   db <- getDb
   cf <- getMetaCF currency
@@ -91,7 +91,7 @@ setScannedHeight currency height = do
 
 -- | This one is specific for BTC
 -- TODO: expand with ERGO later
-getOutPointScript :: (HasDbs m, MonadIO m) => OutPoint -> m (Maybe ByteString)
+getOutPointScript :: HasDbs m => OutPoint -> m (Maybe ByteString)
 getOutPointScript (OutPoint th i) = do
   db <- getDb
   cf <- getUtxoCF BTC

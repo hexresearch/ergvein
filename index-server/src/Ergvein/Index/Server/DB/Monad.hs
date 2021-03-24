@@ -14,7 +14,7 @@ import Database.RocksDB
 
 import Ergvein.Types.Currency
 
-class Monad m => HasDbs m where
+class MonadIO m => HasDbs m where
   getDb :: m DB
   getUtxoCF :: Currency -> m ColumnFamily
   getFiltersCF :: Currency -> m ColumnFamily
