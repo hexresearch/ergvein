@@ -28,7 +28,7 @@ import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.TCPService.BTC
 import Ergvein.Index.Protocol.Types
-import Ergvein.Index.Server.TCPService.Server
+import Ergvein.Index.Server.TCPService.Server as Srv
 import Ergvein.Index.Server.TCPService.Supervisor
 
 import qualified Data.Text.IO                as T
@@ -80,10 +80,19 @@ startServer Options{..} = case optsCommand of
         let tillEnd = do
                   r <- recv s 1024
                   if BS.null r then pure () else tillEnd
+        let doSend = sendLazy s . toLazyByteString . messageBuilder
         ver <- ownVersion
-        sendLazy s . toLazyByteString . messageBuilder . MVersion $ ver
-        recv s 2 -- skip VersionACK
-        sendLazy s . toLazyByteString . messageBuilder . MVersionACK $ VersionACK
+        doSend $ MVersion ver
+        Right (MessageHeader MVersionACKType 0) <- runExceptT (messageHeader s)
+        doSend $ MVersionACK VersionACK
+        print =<< runExceptT (Srv.request s =<< messageHeader s)
+        -- Request filters
+        forM_ [400000, 400300 .. 550000] $ \h -> do
+          doSend $ MFiltersRequest $ FilterRequest BTC h 300
+          Right (MessageHeader MFiltersResponseType n) <- runExceptT (messageHeader s)
+          bs <- recv s (fromIntegral n)
+          when (BS.length bs /= fromIntegral n) $ error "OOPS"
+        -- print =<< runExceptT (messageHeader s)
         --sendLazy s . toLazyByteString . messageBuilder . MFiltersRequest $ request 
         -- we need to fetch actual filters size, because dumb reading till cause waiting and long timeout 
         --tillEnd
