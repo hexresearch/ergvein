@@ -26,7 +26,6 @@ import Ergvein.Index.Protocol.Types (CurrencyCode, Message)
 import Ergvein.Index.Server.Bitcoin.API
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
-import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.Types
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees

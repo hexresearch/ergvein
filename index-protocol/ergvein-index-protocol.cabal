@@ -93,3 +93,4 @@ test-suite ergvein-index-protocol-test
     RecordWildCards
     ScopedTypeVariables
     TupleSections
+    TypeApplications

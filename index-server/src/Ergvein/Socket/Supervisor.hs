@@ -77,8 +77,8 @@ spawnWorker
   :: (MonadBaseControl IO m, MonadMask m)
   => WorkersUnion -> m a -> m ()
 spawnWorker (WorkersUnion tidsVar) action = do
-  mask_ $ do
-    a <- async $ action `finally` do
+  mask $ \unmask -> do
+    a <- async $ unmask action `finally` do
       liftBase (do tid <- myThreadId
                    atomically $ modifyTVar' tidsVar $ Set.delete tid)
     liftBase $ atomically $ modifyTVar' tidsVar $ Set.insert (Async.asyncThreadId a)

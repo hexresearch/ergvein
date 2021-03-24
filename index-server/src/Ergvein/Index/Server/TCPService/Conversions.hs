@@ -1,6 +1,10 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
-module Ergvein.Index.Server.TCPService.Conversions where
+module Ergvein.Index.Server.TCPService.Conversions (
+    currencyCodeToCurrency
+  , currencyToCurrencyCode
+  , scanProgressInfoToScanBlock
+  ) where
 
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Server.Types

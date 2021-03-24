@@ -2,9 +2,7 @@
 module Ergvein.Index.Server.Monad.Impl
   (
     runServerMIO
-  , runServerM
   , ServerM(..)
-  -- Ergvein.Index.Server.Monad.Env re-exports
   , ServerEnv(..)
   , withNewServerEnv
   ) where
@@ -29,22 +27,15 @@ import qualified Data.Map.Strict as M
 import qualified Network.Ergo.Api.Client     as ErgoApi
 
 newtype ServerM a = ServerM { unServerM :: ReaderT ServerEnv (LoggingT IO) a }
-  deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader ServerEnv, MonadThrow, MonadCatch, MonadMask, MonadBase IO)
+  deriving newtype ( Functor, Applicative, Monad, MonadIO, MonadLogger
+                   , MonadReader ServerEnv
+                   , MonadThrow, MonadCatch, MonadMask
+                   , MonadBase IO, MonadBaseControl IO, MonadUnliftIO)
   -- To avoid orphan we unwrap LoggingT as its reader representation
   deriving MonadMonitor via (ReaderT ServerEnv (ReaderT (Loc -> LogSource -> LogLevel -> LogStr -> IO ()) IO))
 
-newtype StMServerM a = StMServerM { unStMServerM :: StM (ReaderT ServerEnv (LoggingT IO)) a }
-
-instance MonadBaseControl IO ServerM where
-  type StM ServerM a = StMServerM a
-  liftBaseWith f = ServerM $ liftBaseWith $ \q -> f (fmap StMServerM . q . unServerM)
-  restoreM = ServerM . restoreM . unStMServerM
-
 runServerMIO :: ServerEnv -> ServerM a -> IO a
 runServerMIO e = runChanLoggingT (envLogger e) . flip runReaderT e . unServerM
-
-runServerM :: ServerEnv -> ServerM a -> LoggingT IO a
-runServerM e = flip runReaderT e . unServerM
 
 instance ErgoApi.ApiMonad ServerM where
   getClient = asks envErgoNodeClient
@@ -81,10 +72,6 @@ instance HasShutdownSignal ServerM where
   getShutdownFlag = asks envShutdownFlag
   getShutdownChannel = liftIO . atomically . dupTChan =<< asks envShutdownChannel
   {-# INLINE getShutdownFlag #-}
-
-instance MonadUnliftIO ServerM where
-  askUnliftIO = ServerM $ (\(UnliftIO run) -> UnliftIO $ run . unServerM) <$> askUnliftIO
-  withRunInIO go = ServerM $ withRunInIO (\k -> go $ k . unServerM)
 
 instance MonadFees ServerM where
   getFees = do

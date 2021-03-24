@@ -26,7 +26,6 @@ import Ergvein.Index.Server.Bitcoin.API
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries
-import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Index.Server.Types
 import Ergvein.Socket.BTC
 import Ergvein.Types.Currency

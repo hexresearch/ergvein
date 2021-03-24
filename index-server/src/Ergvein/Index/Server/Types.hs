@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveAnyClass #-}
 module Ergvein.Index.Server.Types
   (
     BlockMeta(..)
@@ -5,14 +6,26 @@ module Ergvein.Index.Server.Types
   , TxInfo
   , ScanProgressInfo(..)
   , CacheEntry(..)
+  -- * Peer discovery types
+  , Peer (..)
+  , PeerCandidate (..)
+  , PeerDiscoveryRequisites (..)
   ) where
 
 import Control.DeepSeq
-import GHC.Generics
+import Control.Monad
 import Data.ByteString (ByteString)
 import Data.ByteString.Short (ShortByteString)
+import Data.Set (Set)
+import Data.Time
 import Data.Word
+import Data.Persist
+import GHC.Generics
 import Network.Haskoin.Transaction (OutPoint)
+import Network.Socket
+import qualified Data.Vector.Unboxed as UV
+
+import Ergvein.Index.Protocol.Types
 import Ergvein.Types
 
 data BlockMeta = BlockMeta
@@ -49,3 +62,58 @@ data CacheEntry = CacheEntry {
 , cacheCreated  :: ![CreatedIds]
 } deriving (Show, Generic)
 instance NFData CacheEntry
+
+-- Peer discovery types
+
+data Peer = Peer
+  { peerAddress          :: !SockAddr
+  , peerLastValidatedAt  :: !UTCTime
+  } deriving Show
+
+data PeerCandidate = PeerCandidate
+  { peerCandidateAddress    :: !SockAddr
+  , peerCandidateScanBlocks :: !(UV.Vector ScanBlock)
+  }
+
+data PeerDiscoveryRequisites = PeerDiscoveryRequisites
+  { descReqOwnAddress           :: !(Maybe SockAddr)
+  , descReqPredefinedPeers      :: !(Set SockAddr)
+  , descReqActualizationDelay   :: !Int
+  , descReqActualizationTimeout :: !NominalDiffTime
+  }
+
+
+putUtcTime :: UTCTime -> Put ()
+putUtcTime (UTCTime (ModifiedJulianDay d) dt)= put d >> put (diffTimeToPicoseconds dt)
+
+getUtcTime :: Get UTCTime
+getUtcTime = do
+  d <- get
+  dt <- get
+  pure $ (UTCTime (ModifiedJulianDay d) (picosecondsToDiffTime dt))
+
+putSockAddr :: SockAddr -> Put ()
+putSockAddr sa = let p8 = put @Word8 in case sa of
+  SockAddrInet port host ->
+    p8 0 >> put @Word64 (fromIntegral port) >> put host
+  SockAddrInet6 port fi (h1,h2,h3,h4) sid -> do
+    p8 1 >> put @Word64 (fromIntegral port) >> mapM_ put [fi,h1,h2,h3,h4,sid]
+  _ -> p8 2
+
+getSockAddr :: Get SockAddr
+getSockAddr = do
+  c <- get @Word8
+  case c of
+    0 -> do
+      p <- get @Word64
+      h <- get
+      pure $ SockAddrInet (fromIntegral p) h
+    1 -> do
+      p <- get @Word64
+      [fi,h1,h2,h3,h4,sid] <- replicateM 6 get
+      pure $ SockAddrInet6 (fromIntegral p) fi (h1,h2,h3,h4) sid
+    _ -> fail "Address type is not supported"
+
+instance Persist Peer where
+  put (Peer sa t) = putSockAddr sa >> putUtcTime t
+  get = Peer <$> getSockAddr <*> getUtcTime

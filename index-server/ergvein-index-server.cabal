@@ -21,6 +21,7 @@ library
     Ergvein.Index.Server.Config
     Ergvein.Index.Server.DB.Monad
     Ergvein.Index.Server.DB.Queries
+    Ergvein.Index.Server.DB.Queries.Peers
     Ergvein.Index.Server.DB.Serialize
     Ergvein.Index.Server.Metrics
     Ergvein.Index.Server.Monad
@@ -28,9 +29,11 @@ library
     Ergvein.Index.Server.Monad.Env
     Ergvein.Index.Server.Monad.Impl
     Ergvein.Index.Server.Monad.Utils
-    Ergvein.Index.Server.PeerDiscovery.Types
+    Ergvein.Index.Server.PeerDiscovery
     Ergvein.Index.Server.Scanner
     Ergvein.Index.Server.TCPService.Conversions
+    -- Ergvein.Index.Server.TCPService.MessageHandler
+    -- Ergvein.Index.Server.TCPService.Server
     Ergvein.Index.Server.Types
     Ergvein.Index.Server.Utils
     Ergvein.Index.Server.Worker.Fees

@@ -5,6 +5,7 @@ module Ergvein.Index.Server.DB.Monad
   , dbColumns
   , scannedHeightKey
   , lastScannedBlockHashKey
+  , knownPeersKey
   ) where
 
 import Control.Monad.Reader
@@ -58,3 +59,6 @@ scannedHeightKey = "scannedHeightKey"
 -- Value :: ByteString
 lastScannedBlockHashKey :: ByteString
 lastScannedBlockHashKey = "lastScannedBlockHashKey"
+
+knownPeersKey :: ByteString
+knownPeersKey = "knownPeersKey"

@@ -7,10 +7,11 @@ import Control.Monad.Logger
 import Control.Monad.Reader
 import System.Posix.Signals
 
+-- import Ergvein.Index.Server.TCPService.Server
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad.Impl
--- import Ergvein.Index.Server.TCPService.Server
+import Ergvein.Index.Server.PeerDiscovery
 import Ergvein.Index.Server.Utils
 import Ergvein.Index.Server.Worker.Fees
 import Ergvein.Index.Server.Worker.Rates
@@ -26,10 +27,10 @@ onStartup onlyScan _ = do
   if onlyScan then pure (scanningWorkers, []) else do
   --   --syncWithDefaultPeers
     feeWorkers <- feesScanner
-  --   -- kpaThread <- knownPeersActualization
+    kpaThread <- knownPeersActualization
     ratesThread <- ratesScanner
   --   tcpServerThread <- runTcpSrv
-    pure $ (scanningWorkers, ratesThread : feeWorkers)
+    pure $ (scanningWorkers, ratesThread : kpaThread : feeWorkers)
 
 onShutdown :: ServerEnv -> IO ()
 onShutdown env = do

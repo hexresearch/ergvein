@@ -1,30 +1,29 @@
-module Ergvein.Index.Server.PeerDiscovery.Discovery
+module Ergvein.Index.Server.PeerDiscovery
   ( considerPeer
   , knownPeersSet
   , knownPeersActualization
   , syncWithDefaultPeers
   , ownVersion
+  , newConnection
   )where
 
 import Control.Concurrent.STM
 import Control.Immortal
 import Control.Monad.Random
 import Data.Foldable
+import Data.Maybe
 import Data.Set (Set)
 import Data.Time.Clock
 import Data.Time.Clock.POSIX
-import Network.Socket (SockAddr)
+import Network.Socket (SockAddr, HostName, ServiceName, NameInfoFlag(..), getNameInfo)
 import Foreign.C.Types (CTime(..))
 
 import Ergvein.Index.Protocol.Types
-import Ergvein.Index.Server.BlockchainScanning.Common
-import Ergvein.Index.Server.BlockchainScanning.Types
-import Ergvein.Index.Server.DB.Queries
-import Ergvein.Index.Server.Dependencies
-import Ergvein.Index.Server.Environment
+import Ergvein.Index.Server.Types
+import Ergvein.Index.Server.DB.Queries.Peers
+import Ergvein.Index.Server.Scanner
 import Ergvein.Index.Server.Monad
-import Ergvein.Index.Server.PeerDiscovery.Types
-import Ergvein.Index.Server.TCPService.Connections
+import Ergvein.Index.Server.Monad.Impl
 import Ergvein.Index.Server.TCPService.Conversions
 import Ergvein.Index.Server.Utils
 import Ergvein.Types.Currency
@@ -40,7 +39,7 @@ considerPeer ownVer PeerCandidate {..} = do
   isScanActual <- isPeerScanActual (versionScanBlocks ownVer)
   when (Just peerCandidateAddress /= ownAddress && isScanActual) $ do
     currentTime <- liftIO getCurrentTime
-    upsertPeer $ Peer
+    insertPeer $ Peer
       { peerAddress          = peerCandidateAddress
       , peerLastValidatedAt  = currentTime
       }
@@ -51,29 +50,14 @@ knownPeersSet discoveredPeers = do
   pure $ Set.fromList $ (toList ownAddress) ++ (peerAddress <$> discoveredPeers)
 
 knownPeersActualization :: ServerM Thread
-knownPeersActualization  = do
-  create $ logOnException "knownPeersActualization" . scanIteration
+knownPeersActualization  = create $ logOnException threadName . threadBody
   where
-    scanIteration :: Thread -> ServerM ()
-    scanIteration thread = do
-     PeerDiscoveryRequisites {..} <- getDiscoveryRequisites
-     currentTime <- liftIO getCurrentTime
-     knownPeers <- getPeerList
-     let upToDatePeers = isUpToDatePeer descReqPredefinedPeers descReqActualizationTimeout currentTime `filter` knownPeers
-     setPeerList upToDatePeers
-     openedConnectionsRef <- openConnections
-     opened <- liftIO $ Map.keysSet <$> readTVarIO openedConnectionsRef
-     let peersToConnect = Set.toList $ opened Set.\\ (Set.fromList $ peerAddress <$> upToDatePeers)
-     liftIO $ forM_ peersToConnect newConnection
-     broadcastSocketMessage $ MPeerRequest PeerRequest
-     shutdownFlagVar <- getShutdownFlag
-     liftIO $ cancelableDelay shutdownFlagVar descReqActualizationDelay
-     shutdownFlag <- liftIO $ readTVarIO shutdownFlagVar
-     unless shutdownFlag $ scanIteration thread
-    isUpToDatePeer :: Set SockAddr -> NominalDiffTime -> UTCTime -> Peer -> Bool
-    isUpToDatePeer predefined retryTimeout currentTime peer =
-       let fromLastSuccess = currentTime `diffUTCTime` peerLastValidatedAt peer
-       in Set.member (peerAddress peer) predefined || retryTimeout >= fromLastSuccess
+    threadName = "knownPeersActualization"
+    threadBody :: Thread -> ServerM ()
+    threadBody thread = do
+      shutdownChan <- getShutdownChannel
+      b <- liftIO $ atomically $ readTChan shutdownChan
+      liftIO $ when b $ stop thread
 
 syncWithDefaultPeers :: ServerM ()
 syncWithDefaultPeers = do
@@ -106,6 +90,11 @@ isPeerScanActual localScanBlocks = do
     peerScanInfoMap :: Map.Map CurrencyCode ScanBlock
     peerScanInfoMap = mapBy scanBlockCurrency peerScanBlockList
 
+newConnection :: SockAddr -> IO (HostName, ServiceName)
+newConnection addr = do
+  (maybeHost, maybePort) <- getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True addr
+  pure (fromJust maybeHost , fromJust maybePort)
+
 ownVersion :: ServerM Version
 ownVersion = do
   nonce <- liftIO $ randomIO
@@ -132,8 +121,3 @@ ownVersion = do
 
     filterVersion :: Currency -> ProtocolVersion
     filterVersion = const (1, 0, 0)
-
-newConnection :: SockAddr -> IO (HostName, ServiceName)
-newConnection addr = do
-  (maybeHost, maybePort) <- getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True addr
-  pure (fromJust maybeHost , fromJust maybePort)
