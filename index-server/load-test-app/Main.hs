@@ -48,7 +48,7 @@ wordReader = eitherReader $ \arg -> case readMaybe arg of
 type ServerUrl = Text
 
 data Command
-  = CommandLoad Word32 String String
+  = CommandLoad Int String String
 
 options :: Parser Options
 options = Options
@@ -72,7 +72,7 @@ startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
   CommandLoad clnts addr port -> do
     T.putStrLn $ pack "Server starting"
-    sequence_  $ replicate (fromIntegral clnts) $ forkIO $ forever $ runTCPClient addr port $ \s -> do
+    replicateM_ clnts $ forkIO $ forever $ runTCPClient addr port $ \s -> do
       let tillEnd = do
                 r <- recv s 1024
                 if BS.null r then pure () else tillEnd
