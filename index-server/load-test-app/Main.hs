@@ -5,6 +5,7 @@ import Control.Concurrent.STM
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Logger
+import Control.Monad.Trans.Except
 import Data.Function
 import Data.Text (Text, pack)
 import Data.Word
@@ -27,6 +28,7 @@ import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.TCPService.BTC
 import Ergvein.Index.Protocol.Types
+import Ergvein.Index.Server.TCPService.Server
 import Ergvein.Index.Server.TCPService.Supervisor
 
 import qualified Data.Text.IO                as T
