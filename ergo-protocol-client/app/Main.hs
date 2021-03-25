@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes   #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedLists       #-}
 module Main where
@@ -7,11 +8,13 @@ import Control.Concurrent.STM
 import Control.Monad
 import Data.Ergo.Modifier
 import Data.Ergo.Protocol
+import Data.Ergo.Vlq
 import Data.Ergo.Protocol.Client
 import Data.Ergo.Block (BlockHeader)
 import Data.Maybe
 import Data.Persist
 import Data.Time
+import Data.Word
 import Options.Generic
 import Data.Vector.Generic ((!))
 import qualified Data.Vector as V
@@ -64,7 +67,9 @@ main = do
                      <> unModifierId requiredBlock
                      <> unModifierId "722f9306300d0d96fe8c10de830216d700131614f9e6ce2496e8dba1cbb45951"
             ty = ModifierBlockTxs
+        print requiredBlock
         print $ merkleR 102
+        putStrLn "----"
         atomically $ writeTChan inChan $ SockInSendEvent $ MsgOther $ MsgRequestModifier $ RequestModifierMsg ty
           -- [requiredBlock]
           $ V.fromList [merkleR c | c <- [102]]
@@ -88,9 +93,47 @@ main = do
           putStrLn "MsgModifier"
           print ty
           let bs = modifierBody $ m ! 0
-          print $ ModifierId $ BS.drop 32 $ bs
-          print $ decode @BlockHeader bs
+          print $ flip runGet bs $ do
+            modId <- ModifierId <$> getBytes 32
+            n     <- decodeVarInt @Word32
+            return (modId,n)
+          -- print $ ModifierId $ BS.drop 32 $ bs
+          -- print $ decode @BlockHeader bs
+          putStrLn "================"
       _ -> print ev
+
+
+parseTX = do
+  -- Inputs
+  ins <- parseListOf @Word16 $ do
+    bid   <- ModifierId <$> getBytes 32
+    n     <- decodeVarInt @Word16
+    proof <- getBytes (fromIntegral n)
+    pure (bid,proof)
+  -- Data inputs
+  dataIns  <- parseListOf @Word16 (ModifierId <$> getBytes 32)
+  -- tokensCount <- decodeVarInt @Word32
+  tokens <- parseListOf @Word32 (ModifierId <$> getBytes 32)
+  -- Outputs
+  outs <- parseListOf @Word16 $ do
+    value          <- decodeVarInt @Word32
+    tree           <- undefined
+    creationHeight <- decodeVarInt @Word32
+    nTokens        <- word8
+    tokensData     <- replicateM (fromIntegral nTokens) $ do
+      undefined
+      -- (ModifierId <$> getBytes 32)
+    -- tokenAmounts   <- replicateM (fromIntegral nTokens) 
+    undefined
+  pure (ins,dataIns,tokens,outs)
+  -- nOut <- decodeVarInt @Word16
+  -- outs <- replicateM tokensCount undefined
+  -- undefined
+
+parseListOf :: forall n a. (Integral n, VarInt n) => Get a -> Get [a]
+parseListOf getV = do
+  n <- decodeVarInt @n
+  replicateM (fromIntegral n) getV
 
 {- HEADER
 BlockHeader
