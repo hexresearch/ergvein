@@ -6,6 +6,7 @@ module Main where
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad
+import Data.Bits
 import Data.Ergo.Modifier
 import Data.Ergo.Protocol
 import Data.Ergo.Vlq
@@ -96,7 +97,8 @@ main = do
           print $ flip runGet bs $ do
             modId <- ModifierId <$> getBytes 32
             n     <- decodeVarInt @Word32
-            return (modId,n)
+            tx <- parseTX
+            return (tx)
           -- print $ ModifierId $ BS.drop 32 $ bs
           -- print $ decode @BlockHeader bs
           putStrLn "================"
@@ -110,29 +112,62 @@ parseTX = do
     n     <- decodeVarInt @Word16
     proof <- getBytes (fromIntegral n)
     pure (bid,proof)
-  -- Data inputs
-  dataIns  <- parseListOf @Word16 (ModifierId <$> getBytes 32)
-  -- tokensCount <- decodeVarInt @Word32
-  tokens <- parseListOf @Word32 (ModifierId <$> getBytes 32)
-  -- Outputs
-  outs <- parseListOf @Word16 $ do
-    value          <- decodeVarInt @Word32
-    tree           <- undefined
-    creationHeight <- decodeVarInt @Word32
-    nTokens        <- word8
-    tokensData     <- replicateM (fromIntegral nTokens) $ do
-      undefined
-      -- (ModifierId <$> getBytes 32)
-    -- tokenAmounts   <- replicateM (fromIntegral nTokens) 
-    undefined
-  pure (ins,dataIns,tokens,outs)
+  --
+  -- dataIns <- parseListOf @Word16 (ModifierId <$> getBytes 32)  -- Data inputs
+  -- tokens  <- parseListOf @Word32 (ModifierId <$> getBytes 32)  -- Tokens
+  --
+  0 <- decodeVarInt @Word32
+  0 <- decodeVarInt @Word32
+  0 <- decodeVarInt @Word32
+  -- -- -- Outputs
+  nOut <- decodeVarInt @Word16
+  -- Output
+  value <- decodeVarInt @Word64
+  
+  -- eth <- decodeErgoTreeHeader
+  tx <- ModifierId <$> getBytes 228
+    -- tree           <- undefined
+  --   creationHeight <- decodeVarInt @Word32
+  --   -- Tokens
+  --   tokensData     <- parseShortListOf $ do
+  --     (,) <$> (ModifierId <$> getBytes 32) <*> decodeVarInt @Word64
+  --   -- Registers
+  --   nRegs <- get @Word8
+  --   -- regs  <- replicateM (fromIntegral nRegs) $ do
+  --   --   undefined
+  --   pure (value,tree,creationHeight,tokensData,nRegs)
+  -- bbs   <- ModifierId <$> getBytes 16
+  pure (tx)
+   -- (ins,dataIns,tokens,v1,v2,v3)
   -- nOut <- decodeVarInt @Word16
   -- outs <- replicateM tokensCount undefined
   -- undefined
 
+data ErgoTreeHeader = ErgoTreeHeader
+  { ergoTreeVersion :: !Word8
+  , ergoTreeSize    :: Maybe Word32
+  }
+  deriving Show
+decodeErgoTreeHeader :: Get ErgoTreeHeader
+decodeErgoTreeHeader = do
+  w <- get @Word8
+  let ergoTreeVersion  = w .&. 0x07
+      sizeFlag         = (w .&. 0x08) /= 0
+  when (ergoTreeVersion > 0 && not sizeFlag) $
+    fail "Size flag must be set for ErgoTree version > 0"
+  ergoTreeSize <- case sizeFlag of
+    True  -> Just <$> decodeVarInt
+    False -> pure Nothing
+  pure ErgoTreeHeader{..}
+
 parseListOf :: forall n a. (Integral n, VarInt n) => Get a -> Get [a]
 parseListOf getV = do
   n <- decodeVarInt @n
+  replicateM (fromIntegral n) getV
+
+parseShortListOf :: Get a -> Get [a]
+parseShortListOf getV = do
+  n <- get @Word8
   replicateM (fromIntegral n) getV
 
 {- HEADER
