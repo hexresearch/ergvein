@@ -20,6 +20,7 @@ library
     Data.Ergo.Block
     Data.Ergo.Crypto
     Data.Ergo.Difficulty
+    Data.Ergo.MIR
     Data.Ergo.Modifier
     Data.Ergo.Protocol
     Data.Ergo.Protocol.Check
