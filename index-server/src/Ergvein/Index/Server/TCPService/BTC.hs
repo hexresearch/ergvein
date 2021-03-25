@@ -7,9 +7,10 @@ module Ergvein.Index.Server.TCPService.BTC
   , dummyBtcSock
   ) where
 
-import Control.Concurrent.Lifted (fork, threadDelay, killThread)
+import Control.Applicative
+import Control.Concurrent        (forkIO,threadDelay)
 import Control.Concurrent.STM
-import Control.Monad.Catch (throwM, MonadThrow)
+import Control.Monad.Catch       (throwM, MonadThrow)
 import Control.Monad.IO.Unlift
 import Control.Monad.Random (randomIO)
 import Control.Monad.Reader
@@ -23,6 +24,7 @@ import Network.Haskoin.Block
 
 import Ergvein.Index.Server.TCPService.Socket
 import Ergvein.Text
+import Ergvein.Index.Server.TCPService.Supervisor
 
 import qualified Control.Exception.Safe as Ex
 import qualified Data.ByteString as B
@@ -92,43 +94,33 @@ connectBtc net host port closeVar restartChan = do
   let readErFire = atomically . writeTChan actChan . BTCSockFail
   let inFire = atomically . writeTChan incChan
 
-  void $ fork $ liftIO $ fix $ \next -> do
-    b <- atomically $ readTVar closeVar
-    if b
-      then atomically $ writeTChan actChan BTCSockClose
-      else threadDelay 1000000 >> next
+  void $ liftIO $ forkIO $ fix $ \next -> do
+    continue <- connect host port $ \(sock, _sockaddr) -> do
+      withWorkersUnion $ \wrkUnion -> do
+        atomically $ writeTVar shakeVar False
+        let env = PeekerEnv intVar sock
 
-  void $ fork $ liftIO $ fix $ \next -> do
-    atomically $ do
-      void $ readTChan restartChan
-      writeTChan actChan BTCSockReconnect
-    next
+        spawnWorker wrkUnion $ forever $ do
+          msg <- atomically $ readTChan sendChan
+          NSB.send sock $ runPut . putMessage net $ msg
 
-  void $ fork $ liftIO $ fix $ \next -> do
-    connect host port $ \(sock, _sockaddr) -> do
-      atomically $ writeTVar shakeVar False
-      let env = PeekerEnv intVar sock
-
-      void $ fork $ forever $ do
-        msg <- atomically $ readTChan sendChan
-        NSB.send sock $ runPut . putMessage net $ msg
-
-      void $ fork $ fix $ \nxt -> do
-        mma <- Ex.tryAny $ Ex.try $ runReaderT (peekMessage net) env
-        case mma of
-          Left e -> readErFire e
-          Right (Left (e :: ReceiveException)) -> readErFire $ Ex.SomeException e
-          Right (Right a) -> inFire a >> nxt
-      void $ fork $ performHandshake btcsock
-      void $ fork $ btcPinger btcsock
-      act <- atomically $ readTChan actChan
-      case act of
-        BTCSockReconnect ->
-          N.close sock >> next
-        BTCSockClose -> do
-          putStrLn "Close connection to BTC node"
-          N.close sock
-        BTCSockFail _ -> N.close sock >> threadDelay 2000000 >> next
+        spawnWorker wrkUnion $ fix $ \nxt -> do
+          mma <- Ex.tryAny $ Ex.try $ runReaderT (peekMessage net) env
+          case mma of
+            Left e -> readErFire e
+            Right (Left (e :: ReceiveException)) -> readErFire $ Ex.SomeException e
+            Right (Right a) -> inFire a >> nxt
+        spawnWorker wrkUnion $ performHandshake btcsock
+        spawnWorker wrkUnion $ btcPinger btcsock
+        act <- atomically $  readTChan actChan
+                         <|> BTCSockReconnect <$ readTChan restartChan
+                         <|> BTCSockClose     <$ (check =<< readTVar closeVar)
+        case act of
+          BTCSockReconnect -> pure True
+          BTCSockClose     -> False <$ putStrLn "Close connection to BTC node"
+          BTCSockFail    _ -> True  <$ threadDelay 2000000
+    --
+    when continue next
   pure btcsock
   where
     hints :: N.AddrInfo
@@ -169,19 +161,15 @@ btcPinger btcs@BtcSocket{..} = liftIO $ do
 requestBlock :: MonadIO m => BtcSocket -> BlockHash -> m Block
 requestBlock btcs@BtcSocket{..} bh = liftIO $ do
   ic <- getIncChannel btcs
-  let req = MGetData $ GetData $ [InvVector InvBlock $ getBlockHash bh]
-  tid <- fork $ forever $ do
-    btcSockSend req
-    threadDelay 1000000
-  blk <- fix $ \next -> do
-    msg <- atomically $ readTChan ic
-    case msg of
-      MBlock blk -> if bh == headerHash (blockHeader blk)
-        then pure blk
-        else next
-      _ -> next
-  killThread tid
-  pure blk
+  withLinkedWorker_ requestLoop $ do
+    fix $ \next -> do
+      atomically (readTChan ic) >>= \case
+        MBlock blk | bh == headerHash (blockHeader blk) -> pure blk
+        _                                               -> next
+  where
+    request = MGetData $ GetData $ [InvVector InvBlock $ getBlockHash bh]
+    requestLoop = forever $ do btcSockSend request
+                               threadDelay 1000000
 
 -- | Create version data message
 mkVers :: MonadIO m => Network -> N.SockAddr -> m Message

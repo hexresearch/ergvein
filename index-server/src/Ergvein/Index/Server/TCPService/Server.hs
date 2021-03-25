@@ -1,16 +1,16 @@
 {-# LANGUAGE MultiWayIf #-}
 module Ergvein.Index.Server.TCPService.Server where
 
-import Control.Concurrent
-import Control.Concurrent.Lifted (fork)
+import Control.Applicative
 import Control.Concurrent.STM
-import Control.Immortal
+import Control.Immortal                (Thread,create,stop)
 import Control.Monad
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Random
 import Control.Monad.Trans.Except
+import qualified Control.Concurrent.Async as Async
 import Data.Attoparsec.ByteString
 import Data.ByteString.Builder
 import Data.Either.Combinators
@@ -28,20 +28,11 @@ import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.TCPService.MessageHandler
 import Ergvein.Index.Server.TCPService.Socket as S
-import Ergvein.Index.Server.TCPService.Connections
+import Ergvein.Index.Server.TCPService.Supervisor
 
-import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString as BS
 import qualified Network.Socket.ByteString as NS
 
--- Pinger thread
-runPinger :: ServerM Thread
-runPinger = create $ const $ logOnException "runPinger" $ do
-  broadChan <- liftIO . atomically . dupTChan =<< broadcastChannel
-  forever $ liftIO $ do
-    threadDelay 5000000
-    msg <- MPing <$> randomIO
-    atomically $ writeTChan broadChan msg
 
 runTcpSrv :: ServerM Thread
 runTcpSrv = create $ logOnException "runTcpSrv" . tcpSrv
@@ -73,136 +64,120 @@ tcpSrv thread = do
 
 mainLoop :: Thread -> Socket -> ServerM ()
 mainLoop thread sock = do
-  mainLoopId <- fork $ forever $ do
-    (newSock, newSockAddr) <- liftIO $ accept sock
-    fork $ registerConnection (newSock, newSockAddr)
-  shutdownFlagRef <- getShutdownFlag
-  forever $ do
-    shutdownFlag <- liftIO $ readTVarIO shutdownFlagRef
-    when shutdownFlag $ performShutdown mainLoopId
-    liftIO $ threadDelay 1000000
+  -- In main thread we just wait until shutdown flag is enabled
+  withLinkedWorker_ acceptLoop $ do
+    shutdownFlagRef <- getShutdownFlag
+    liftIO $ atomically $ check =<< readTVar shutdownFlagRef
+    liftIO $ stop thread
   where
-   performShutdown :: HasConnectionsManagement m => ThreadId -> m ()
-   performShutdown mainLoopId = do
-    closeAllConnections
-    liftIO $ do
-      killThread mainLoopId
-      stop thread
+    -- We spawn worker threads for each accepted connection. Each
+    -- thread own socket and will close it whenever it finish
+    -- execution normally or abnormally
+    acceptLoop = withWorkersUnion $ \wrkUnion -> forever $ do
+      (newSock, newSockAddr) <- liftIO $ accept sock
+      spawnWorker wrkUnion $
+        runConnection (newSock, newSockAddr) `finally` liftIO (close newSock)
 
-registerConnection :: (Socket, SockAddr) -> ServerM ()
-registerConnection (sock, addr) = do
-  connectionThreadId <- fork $ runConnection (sock, addr)
-  openConnection connectionThreadId addr sock
 
 runConnection :: (Socket, SockAddr) -> ServerM ()
 runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
-  evalResult <- runExceptT $ evalMsg
+  evalResult <- runExceptT $ evalMsg sock addr
   case evalResult of
     Right (msgs@(MVersionACK _ : _), _) -> do --peer version match ours
       sendChan <- liftIO newTChanIO
-      liftIO $ forM_ msgs $ writeMsg sendChan
-      -- Spawn message sender thread
-      void $ fork $ sendLoop sendChan
-      -- Spawn broadcaster loop
-      void $ fork $ broadcastLoop sendChan
-      -- Start message listener
-      listenLoop sendChan
+      writeMsg sendChan msgs
+      -- We run sending of messages in the separate thread
+      withLinkedWorker (sendLoop sock sendChan) $ \a -> do
+        listenLoop  sendChan
+        writingDone sendChan
+        liftIO $ Async.wait a
     Left err -> do
       logErrorN $ "<" <> showt addr <> ">: Rejecting client on handshake phase with: " <> showt err
-      liftIO $ do
-        rawSendMsg $ MReject err
-        threadDelay 100000
-      closeConnection addr
+      rawSendMsg $ MReject err
     Right (MReject r : _, _) -> do
       logErrorN $ "<" <> showt addr <> ">: Rejecting client on handshake phase with: " <> showt r
-      liftIO $ do
-        rawSendMsg $ MReject r
-        threadDelay 100000
-      closeConnection addr
+      rawSendMsg $ MReject r
     Right msg -> do
-      logErrorN $ "<" <> showt addr <> ">: Impossible! Tried to send something that is not MVersionACK or MReject to client at handshake: " <> showt msg
-      closeConnection addr
+      logErrorN $ "<" <> showt addr
+        <> ">: Impossible! Tried to send something that is not MVersionACK or MReject to client at handshake: "
+        <> showt msg
   where
-    rawSendMsg :: Message -> IO ()
-    rawSendMsg = sendLazy sock . toLazyByteString . messageBuilder
+    rawSendMsg = liftIO . sendLazy sock . toLazyByteString . messageBuilder
 
-    writeMsg :: TChan LBS.ByteString -> Message -> IO ()
-    writeMsg destinationChan = atomically . writeTChan destinationChan . toLazyByteString . messageBuilder
+    writeMsg    ch = liftIO . atomically . writeTChan ch . Just
+    writingDone ch = liftIO $ atomically $ writeTChan ch $ Nothing
 
-    broadcastLoop :: HasBroadcastChannel m => TChan LBS.ByteString -> m ()
-    broadcastLoop destinationChan = do
-      channel <- broadcastChannel
-      broadChan <- liftIO $ atomically $ dupTChan channel
-      liftIO $ forever $ do
-        msg <- atomically $ readTChan broadChan
-        writeMsg destinationChan msg
+    listenLoop :: TChan (Maybe [Message]) -> ServerM ()
+    listenLoop destinationChan = fix $ \loop -> do
+      evalResult <- runExceptT $ evalMsg sock addr
+      case evalResult of
+        Right (msgs, closeIt) -> do
+          writeMsg destinationChan msgs
+          case closeIt of
+            True  -> logInfoN $ "<" <> showt addr <> ">: Closing connection on our side"
+            False -> loop
+        Left Reject {..} | rejectMsgCode == ZeroBytesReceived -> do
+          logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
+        Left err -> do
+          logErrorN $ "<" <> showt addr <> ">: Rejecting client with: " <> showt err
+          writeMsg destinationChan [MReject err]
 
-    sendLoop :: TChan LBS.ByteString -> ServerM ()
-    sendLoop sendChan = liftIO $ forever $ do
-      msgs <- atomically $ readAllTVar sendChan
-      sendLazy sock $ mconcat msgs
 
-    listenLoop :: TChan LBS.ByteString -> ServerM ()
-    listenLoop destinationChan = listenLoop'
-      where
-        listenLoop' = do
-          evalResult <- runExceptT $ evalMsg
-          case evalResult of
-            Right (msgs, closeIt) -> do
-              liftIO $ forM_ msgs $ writeMsg destinationChan
-              if closeIt then do
-                logInfoN $ "<" <> showt addr <> ">: Closing connection on our side"
-                liftIO $ threadDelay 100000
-                closeConnection addr
-              else listenLoop'
-            Left Reject {..} | rejectMsgCode == ZeroBytesReceived -> do
-              logInfoN $ "<" <> showt addr <> ">: Client closed the connection"
-              closeConnection addr
-            Left err -> do
-              logErrorN $ "<" <> showt addr <> ">: Rejecting client with: " <> showt err
-              liftIO $ do
-                writeMsg destinationChan $ MReject err
-                threadDelay 100000
-              closeConnection addr
+-- | Send loop will send both messages generated by listen loop and
+--   broadcasted ones. Nothing sent over local channel means we should
+--   terminate.
+sendLoop :: Socket -> TChan (Maybe [Message]) -> ServerM ()
+sendLoop sock sendChan = do
+  broadChan <- liftIO . atomically . dupTChan
+           =<< broadcastChannel
+  liftIO $ fix $ \loop -> do
+    msgs <- atomically $  Left  <$> readTChan sendChan
+                      <|> Right <$> readTChan broadChan
+    case msgs of
+      Left (Just ms) -> sendMsg (foldMap messageBuilder ms) >> loop
+      Left Nothing   -> pure ()
+      Right m        -> sendMsg (messageBuilder m) >> loop
+  where
+    sendMsg = sendLazy sock . toLazyByteString
 
-    evalMsg :: ExceptT Reject ServerM ([Message], Bool)
-    evalMsg = response =<< request =<< messageHeader
-      where
-        recvVarInt = liftIO $ do
-          hbs <- NS.recv sock 1
-          if BS.null hbs then pure hbs else do
-            let hb = BS.head hbs
-            if | hb == 0xFF -> (hbs <>) <$> NS.recv sock 8
-               | hb == 0XFE -> (hbs <>) <$> NS.recv sock 4
-               | hb == 0xFD -> (hbs <>) <$> NS.recv sock 2
-               | otherwise -> pure hbs
+evalMsg :: Socket -> SockAddr -> ExceptT Reject ServerM ([Message], Bool)
+evalMsg sock addr = response =<< request =<< messageHeader
+  where
+    recvVarInt = liftIO $ do
+      hbs <- NS.recv sock 1
+      if BS.null hbs then pure hbs else do
+        let hb = BS.head hbs
+        if | hb == 0xFF -> (hbs <>) <$> NS.recv sock 8
+           | hb == 0XFE -> (hbs <>) <$> NS.recv sock 4
+           | hb == 0xFD -> (hbs <>) <$> NS.recv sock 2
+           | otherwise -> pure hbs
 
-        messageHeader :: ExceptT Reject ServerM MessageHeader
-        messageHeader = do
-          mid <- messageId =<< recvVarInt
-          if not $ messageHasPayload mid then pure (MessageHeader mid 0) else do
-            l <- messageLength =<< recvVarInt
-            pure $ MessageHeader mid l
+    messageHeader :: ExceptT Reject ServerM MessageHeader
+    messageHeader = do
+      mid <- messageId =<< recvVarInt
+      if not $ messageHasPayload mid then pure (MessageHeader mid 0) else do
+        l <- messageLength =<< recvVarInt
+        pure $ MessageHeader mid l
 
-        messageId :: BS.ByteString -> ExceptT Reject ServerM MessageType
-        messageId bs
-          | BS.null bs = except $ Left $ Reject MVersionType ZeroBytesReceived "Expected bytes for message header (id)"
-          | otherwise = ExceptT . pure . mapLeft (\_ -> Reject MVersionType MessageHeaderParsing "Failed to parse header message id") . eitherResult $ parse messageTypeParser bs
+    messageId :: BS.ByteString -> ExceptT Reject ServerM MessageType
+    messageId bs
+      | BS.null bs = except $ Left $ Reject MVersionType ZeroBytesReceived "Expected bytes for message header (id)"
+      | otherwise = ExceptT . pure . mapLeft (\_ -> Reject MVersionType MessageHeaderParsing "Failed to parse header message id") . eitherResult $ parse messageTypeParser bs
 
-        messageLength :: BS.ByteString -> ExceptT Reject ServerM Word32
-        messageLength bs
-          | BS.null bs = except $ Left $ Reject MVersionType ZeroBytesReceived "Expected bytes for message header (length)"
-          | otherwise = ExceptT . pure . mapLeft (\_ -> Reject MVersionType MessageHeaderParsing "Failed to parse header message length") . eitherResult $ parse messageLengthParser bs
+    messageLength :: BS.ByteString -> ExceptT Reject ServerM Word32
+    messageLength bs
+      | BS.null bs = except $ Left $ Reject MVersionType ZeroBytesReceived "Expected bytes for message header (length)"
+      | otherwise = ExceptT . pure . mapLeft (\_ -> Reject MVersionType MessageHeaderParsing "Failed to parse header message length") . eitherResult $ parse messageLengthParser bs
 
-        request :: MessageHeader -> ExceptT Reject ServerM Message
-        request MessageHeader {..} = do
-          messageBytes <- if not $ messageHasPayload msgType
-            then pure mempty
-            else liftIO $ NS.recv sock $ fromIntegral msgSize
-          except $ mapLeft (\_-> Reject msgType MessageParsing "Failed to parse message body") $ eitherResult $ parse (messageParser msgType) messageBytes
+    request :: MessageHeader -> ExceptT Reject ServerM Message
+    request MessageHeader {..} = do
+      messageBytes <- if not $ messageHasPayload msgType
+        then pure mempty
+        else liftIO $ NS.recv sock $ fromIntegral msgSize
+      except $ mapLeft (\_-> Reject msgType MessageParsing "Failed to parse message body") $ eitherResult $ parse (messageParser msgType) messageBytes
 
-        response :: Message -> ExceptT Reject ServerM ([Message], Bool)
-        response msg = (lift $ handleMsg addr msg) `catch` (\(e :: SomeException) -> do
-          logErrorN $ "<" <> showt addr <> ">: Rejecting peer as exception occured in while handling it message: " <> showt e
-          except $ Left $ Reject (messageType msg) InternalServerError $ showt e
-          )
+    response :: Message -> ExceptT Reject ServerM ([Message], Bool)
+    response msg = (lift $ handleMsg addr msg) `catch` (\(e :: SomeException) -> do
+      logErrorN $ "<" <> showt addr <> ">: Rejecting peer as exception occured in while handling it message: " <> showt e
+      except $ Left $ Reject (messageType msg) InternalServerError $ showt e
+      )
