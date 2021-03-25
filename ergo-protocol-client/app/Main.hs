@@ -14,6 +14,7 @@ import Data.Ergo.Protocol.Client
 import Data.Ergo.Block (BlockHeader)
 import Data.Maybe
 import Data.Persist
+import Data.Persist.Internal (Get(..),(:!:)(..))
 import Data.Time
 import Data.Word
 import Options.Generic
@@ -24,6 +25,7 @@ import Text.Groom
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteArray  as BA
+import qualified Foreign.Storable as Foreign
 import Crypto.Hash
 
 data Options = Options {
@@ -123,7 +125,6 @@ parseTX = do
   nOut <- decodeVarInt @Word16
   -- Output
   value <- decodeVarInt @Word64
-  
   -- eth <- decodeErgoTreeHeader
   tx <- ModifierId <$> getBytes 228
     -- tree           <- undefined
@@ -190,3 +191,10 @@ BlockHeader
     }
   }
 -}
+
+
+peek :: Get Word8
+peek = do
+  ensure 1
+  Get $ \_ ptr -> do w <- Foreign.peek ptr
+                     pure (ptr :!: w)
