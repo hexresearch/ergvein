@@ -29,16 +29,17 @@ import Ergvein.Index.Server.Types
 import qualified Data.ByteArray as BA
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as BSS
--- import qualified Data.Persist as P
 import qualified Data.Serialize as S
 import qualified Data.Sequence as Seq
 import qualified Network.Haskoin.Transaction as HK
 
 serializeVarInt :: Word64 -> ByteString
 serializeVarInt = runPut . putVarInt
+{-# INLINE serializeVarInt #-}
 
 deserializeVarInt :: ByteString -> Either String Word64
 deserializeVarInt = runGet parseVarInt
+{-# INLINE deserializeVarInt #-}
 
 encodeOutPoint :: OutPoint -> ByteString
 encodeOutPoint (OutPoint th i) = encodeBtcTxHash th <> encodeWord32 i

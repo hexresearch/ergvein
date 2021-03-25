@@ -6,36 +6,27 @@ import Control.Concurrent.STM
 import Control.Monad.IO.Class
 import Control.Monad.Logger
 import Control.Monad.Reader
-import Conversion
+import Data.ByteString.Short (toShort)
 import Data.List (foldl')
 import Network.Socket
 
 import Ergvein.Index.Protocol.Types as IPT
+import Ergvein.Index.Server.DB.Queries
+import Ergvein.Index.Server.DB.Queries.Peers
 import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
--- import Ergvein.Index.Server.PeerDiscovery
+import Ergvein.Index.Server.PeerDiscovery
 import Ergvein.Index.Server.TCPService.Conversions
+import Ergvein.Index.Server.Types
 import Ergvein.Text
-import Ergvein.Types.Currency
 import Ergvein.Types.Fees
-import Ergvein.Types.Transaction
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
 
--- getBlockMetaSlice :: Currency -> BlockHeight -> BlockHeight -> ServerM [BlockInfoRec]
--- getBlockMetaSlice currency startHeight amount = do
---   db <- getFiltersDb
---   let start = BlockInfoRecKey currency $ startHeight
---       startBinary = blockInfoRecKey (currency, startHeight)
---       end = BlockInfoRecKey currency $ startHeight + amount
---
---   slice <- safeEntrySlice currency db startBinary start end
---
---   pure $ snd <$> slice
-
-handleMsg :: SockAddr -> Message -> ServerM ([Message], Bool) -- bool is to close connection
+handleMsg :: ServerMonad m
+  => SockAddr -> Message -> m ([Message], Bool) -- bool is to close connection
 handleMsg _ (MPing msg) = pure ([MPong msg], False)
 
 handleMsg _ (MPong _) = pure (mempty, False)
@@ -60,8 +51,8 @@ handleMsg _ (MPeerRequest _) = do
 
 handleMsg _ (MFiltersRequest FilterRequest {..}) = do
   currency <- currencyCodeToCurrency filterRequestMsgCurrency
-  slice <- getBlockMetaSlice currency filterRequestMsgStart filterRequestMsgAmount
-  let filters = V.fromList $ convert <$> slice
+  slice <- getFiltersSlice currency (\s f -> BlockFilter (toShort s) f) filterRequestMsgStart filterRequestMsgAmount
+  let filters = V.fromList slice
   void $ addCounter filtersServedCounter $ fromIntegral $ V.length filters
 
   pure ([MFiltersResponse $ FilterResponse
@@ -71,15 +62,13 @@ handleMsg _ (MFiltersRequest FilterRequest {..}) = do
 
 handleMsg address (MFiltersEvent FilterEvent {..}) = do
   currency <- currencyCodeToCurrency filterEventCurrency
-  slice <- getBlockMetaSlice currency filterEventHeight 1
-  let filters = blockFilterFilter . convert <$> slice
-  case any (/= filterEventBlockFilter) filters of
-    True  -> do deletePeerBySockAddr $ convert address
-                pure ([], True)
-    False -> do pure ([], False)
+  mfilt <- getSingleFilter currency filterEventHeight
+  if any ((/=) filterEventBlockFilter . snd) mfilt
+    then deletePeerBySockAddr address >> pure ([], True)
+    else pure ([], False)
 
 handleMsg _ (MFeeRequest curs) = do
-  fees <- liftIO . readTVarIO =<< asks envFeeEstimates
+  fees <- getFees
   let selCurs = M.restrictKeys fees $ S.fromList curs
   let resps =  (`M.mapWithKey` selCurs) $ \cur fb -> case cur of
         IPT.BTC -> FeeRespBTC False fb
@@ -89,7 +78,7 @@ handleMsg _ (MFeeRequest curs) = do
   pure $ ([MFeeResponse $ M.elems resps], False)
 
 handleMsg _ (MRatesRequest (RatesRequest rs)) = do
-  rates <- liftIO . readTVarIO =<< asks envExchangeRates
+  rates <- liftIO . readTVarIO =<< getRatesVar
   let boo fs m = let m' = M.restrictKeys m $ S.fromList fs
         in if M.null m' then Nothing else Just m'
   let foo m (c,fs) = M.update (boo fs) c m

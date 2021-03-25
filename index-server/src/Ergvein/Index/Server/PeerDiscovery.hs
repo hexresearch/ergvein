@@ -23,7 +23,6 @@ import Ergvein.Index.Server.Types
 import Ergvein.Index.Server.DB.Queries.Peers
 import Ergvein.Index.Server.Scanner
 import Ergvein.Index.Server.Monad
-import Ergvein.Index.Server.Monad.Impl
 import Ergvein.Index.Server.TCPService.Conversions
 import Ergvein.Index.Server.Utils
 import Ergvein.Types.Currency
@@ -33,7 +32,7 @@ import qualified Data.Map.Strict      as Map
 import qualified Data.Set             as Set
 import qualified Data.Vector.Unboxed  as UV
 
-considerPeer :: Version -> PeerCandidate -> ServerM ()
+considerPeer :: ServerMonad m => Version -> PeerCandidate -> m ()
 considerPeer ownVer PeerCandidate {..} = do
   ownAddress <- descReqOwnAddress <$> getDiscoveryRequisites
   isScanActual <- isPeerScanActual (versionScanBlocks ownVer)
@@ -44,22 +43,22 @@ considerPeer ownVer PeerCandidate {..} = do
       , peerLastValidatedAt  = currentTime
       }
 
-knownPeersSet :: [Peer] -> ServerM (Set SockAddr)
+knownPeersSet :: ServerMonad m => [Peer] -> m (Set SockAddr)
 knownPeersSet discoveredPeers = do
   ownAddress <- descReqOwnAddress <$> getDiscoveryRequisites
   pure $ Set.fromList $ (toList ownAddress) ++ (peerAddress <$> discoveredPeers)
 
-knownPeersActualization :: ServerM Thread
+knownPeersActualization :: ServerMonad m => m Thread
 knownPeersActualization  = create $ logOnException threadName . threadBody
   where
     threadName = "knownPeersActualization"
-    threadBody :: Thread -> ServerM ()
+    threadBody :: ServerMonad m => Thread -> m ()
     threadBody thread = do
       shutdownChan <- getShutdownChannel
       b <- liftIO $ atomically $ readTChan shutdownChan
       liftIO $ when b $ stop thread
 
-syncWithDefaultPeers :: ServerM ()
+syncWithDefaultPeers :: ServerMonad m => m ()
 syncWithDefaultPeers = do
   discoveredPeers <- getPeerList
   predefinedPeers <- descReqPredefinedPeers <$> getDiscoveryRequisites
@@ -68,7 +67,7 @@ syncWithDefaultPeers = do
       toAdd = (\x -> Peer x currentTime) <$> (Set.toList $ predefinedPeers Set.\\ discoveredPeersSet)
   setPeerList toAdd
 
-isPeerScanActual :: UV.Vector ScanBlock -> ServerM Bool
+isPeerScanActual :: ServerMonad m => UV.Vector ScanBlock -> m Bool
 isPeerScanActual localScanBlocks = do
   pure $ all matchLocalCurrencyScan peerScanBlockList
   where
@@ -95,7 +94,7 @@ newConnection addr = do
   (maybeHost, maybePort) <- getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True addr
   pure (fromJust maybeHost , fromJust maybePort)
 
-ownVersion :: ServerM Version
+ownVersion :: ServerMonad m => m Version
 ownVersion = do
   nonce <- liftIO $ randomIO
   time  <- liftIO $ CTime . floor <$> getPOSIXTime
@@ -109,7 +108,7 @@ ownVersion = do
     , versionScanBlocks = scanNfo
     }
   where
-    verBlock :: ScanProgressInfo -> ServerM ScanBlock
+    verBlock :: ServerMonad m => ScanProgressInfo -> m ScanBlock
     verBlock ScanProgressInfo {..} = do
       currencyCode <- currencyToCurrencyCode nfoCurrency
       pure $ ScanBlock

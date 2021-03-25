@@ -97,8 +97,8 @@ btcScanner thread = logOnException threadName $ do
         else do
           evnt <- liftIO $ race (threadDelay 3000000) (atomically $ readTChan shutdownChan)
           case evnt of
-            Left _ -> logAndShutdown "Received shutdown signal"
-            Right _ -> go current
+            Left _  -> go current
+            Right _ -> logAndShutdown "Received shutdown signal"
 
     isPreviousBlockSame proposedPreviousBlockId = do
       maybeLastScannedBlock <- getLastScannedBlock BTC

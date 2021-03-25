@@ -8,14 +8,19 @@ module Ergvein.Index.Server.DB.Queries
   , commitBlockInfo
   , getOutPointScript
   , performRollback
+  , getFiltersSlice
+  , getSingleFilter
   ) where
 
 import Control.Concurrent.STM
 import Control.DeepSeq
 import Control.Lens.Combinators (none)
+import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.IO.Unlift
 import Control.Parallel.Strategies
 import Data.ByteString (ByteString)
+import Data.Maybe
 import Data.Word
 import Database.RocksDB
 import Network.Haskoin.Script (isDataCarrier, decodeOutputBS)
@@ -30,15 +35,41 @@ import Network.Haskoin.Transaction (OutPoint(..))
 
 import           Data.ByteString.Short (ShortByteString)
 import qualified Data.ByteString.Short as BSS
+import qualified Data.ByteString as BS
 import qualified Data.Sequence as Seq
 import qualified Data.Foldable as Foldable
+
+getFiltersSlice :: (HasDbs m, MonadUnliftIO m)
+  => Currency -> (ByteString -> ByteString -> a) -> BlockHeight -> Word64 -> m [a]
+getFiltersSlice cur f start amount = do
+  db <- getDb
+  fcf <- getFiltersCF cur
+  fmap catMaybes $ withIterCF db fcf $ \iter -> do
+    iterSeek iter startKey
+    replicateM n $ do
+      mbs <- iterValue iter
+      iterNext iter
+      pure $ fmap (uncurry f . BS.splitAt 32) mbs
+      
+  where
+    startKey = encodeWord64 start
+    n = fromIntegral amount
+
+getSingleFilter :: HasDbs m => Currency -> BlockHeight -> m (Maybe (ShortByteString, ByteString))
+getSingleFilter cur height = do
+  db <- getDb
+  fcf <- getFiltersCF cur
+  mbs <- getCF db fcf $ encodeWord64 height
+  pure $ flip fmap mbs $ \bs ->
+    let (h,f) = BS.splitAt 32 bs
+    in (BSS.toShort h, f)
 
 commitBlockInfo :: (HasDbs m, HasBtcCache m, LastScannedBlockStore m) => BlockInfo -> m ()
 commitBlockInfo (BlockInfo meta spent created) = do
   db <- getDb
   ucf <- getUtxoCF cur
   fcf <- getFiltersCF cur
-  let filtPut = PutCF fcf heightBs filt
+  let filtPut = PutCF fcf heightBs filterEntry
       (createdIds, createdPuts) = fmap mconcat $ unzip $ parMap rpar (putTx ucf) (force created)
   write db $ [filtPut] <> createdPuts
   setLastScannedBlock cur $ Just blkHash
@@ -46,11 +77,11 @@ commitBlockInfo (BlockInfo meta spent created) = do
   where
     BlockMeta cur height blkHash _ filt = meta
     heightBs = encodeWord64 height
+    filterEntry = (BSS.fromShort blkHash) <> filt
     putTx ucf (th, ibs) = let
       ibsl :: Word32 = fromIntegral $ length ibs
       putIbs (i, bs) = PutCF ucf (th <> encodeWord32 i) bs
       in ((th, ibsl), ) $ parMap rpar putIbs (removeDataCarriers $ force ibs)
-
     removeDataCarriers :: [(Word32, ByteString)] -> [(Word32, ByteString)]
     removeDataCarriers = case cur of
       BTC -> filter (none isDataCarrier . decodeOutputBS . snd)

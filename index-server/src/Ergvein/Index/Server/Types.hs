@@ -10,6 +10,7 @@ module Ergvein.Index.Server.Types
   , Peer (..)
   , PeerCandidate (..)
   , PeerDiscoveryRequisites (..)
+  , sockAddressToEgvAddress
   ) where
 
 import Control.DeepSeq
@@ -117,3 +118,9 @@ getSockAddr = do
 instance Persist Peer where
   put (Peer sa t) = putSockAddr sa >> putUtcTime t
   get = Peer <$> getSockAddr <*> getUtcTime
+
+sockAddressToEgvAddress :: SockAddr -> Maybe Address
+sockAddressToEgvAddress sa = case sa of
+  SockAddrInet port host -> Just $ AddressIpv4 host (fromIntegral port)
+  SockAddrInet6 port _ (h1,h2,h3,h4) _ -> Just $ AddressIpv6 (IpV6 h1 h2 h3 h4) (fromIntegral port)
+  _ -> Nothing

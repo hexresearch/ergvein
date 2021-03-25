@@ -7,7 +7,7 @@ import Control.Monad.Logger
 import Control.Monad.Reader
 import System.Posix.Signals
 
--- import Ergvein.Index.Server.TCPService.Server
+import Ergvein.Index.Server.TCPService.Server
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad.Impl
@@ -29,8 +29,8 @@ onStartup onlyScan _ = do
     feeWorkers <- feesScanner
     kpaThread <- knownPeersActualization
     ratesThread <- ratesScanner
-  --   tcpServerThread <- runTcpSrv
-    pure $ (scanningWorkers, ratesThread : kpaThread : feeWorkers)
+    tcpServerThread <- runTcpSrv
+    pure $ (scanningWorkers, tcpServerThread : ratesThread : kpaThread : feeWorkers)
 
 onShutdown :: ServerEnv -> IO ()
 onShutdown env = do
@@ -41,9 +41,6 @@ onShutdown env = do
 
 finalize :: (MonadIO m, MonadLogger m) => ServerEnv -> [Thread] -> [Thread] -> m ()
 finalize _ scannerThreads workerTreads = do
-  logInfoN "Dumping rollback data"
-  -- rse <- fmap RollbackSequence $ liftIO $ readTVarIO (envBtcRollback env)
-  -- runReaderT (storeRollbackSequence BTC rse) (envIndexerDBContext env)
   logInfoN "Waiting for scaner threads to close"
   liftIO $ mapM_ wait scannerThreads
   logInfoN "Waiting for other threads to close"

@@ -11,9 +11,11 @@ module Ergvein.Index.Server.DB.Queries.Peers
 import Control.Monad.IO.Class
 import Data.Either
 import Data.Time
+import Data.Maybe
 import Database.RocksDB as RDB
 import Network.Socket
 
+import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.Monad.Class
 import Ergvein.Index.Server.Types
@@ -26,13 +28,15 @@ getPeerList = do
   mv <- RDB.get db knownPeersKey
   pure $ maybe [] (fromRight [] . P.decode) mv
 
-getActualPeers :: (HasDbs m, HasDiscoveryRequisites m) => m [Peer]
+getActualPeers :: (HasDbs m, HasDiscoveryRequisites m) => m [Address]
 getActualPeers = do
   currentTime <- liftIO getCurrentTime
   actualizationDelay <- (/1000000) . fromIntegral . descReqActualizationDelay <$> getDiscoveryRequisites
   knownPeers <- getPeerList
   let validDate = (-actualizationDelay) `addUTCTime` currentTime
-  pure $ filter ((validDate <=) . peerLastValidatedAt) knownPeers
+  pure $ catMaybes $ flip fmap knownPeers $ \(Peer sa lastValid) ->
+    if validDate > lastValid then Nothing
+    else sockAddressToEgvAddress sa
 
 setPeerList :: HasDbs m => [Peer] -> m ()
 setPeerList peers = do
