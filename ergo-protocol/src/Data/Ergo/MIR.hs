@@ -1,3 +1,4 @@
+{-# LANGUAGE EmptyDataDeriving #-}
 -- |
 -- Middle intermediate representation (MIR) which is used in the
 -- interpreter and serialization.
@@ -9,11 +10,14 @@ import Data.ByteString.Short (ShortByteString)
 import Data.Text (Text)
 
 newtype STypeVar = STypeVar Text
+  deriving Show
+
 data STypeParam = STypeParam
   { tyParamIdent      :: STypeVar
   , tyParamUpperBound :: Maybe SType
   , tyParamLowerBound :: Maybe SType
   }
+  deriving Show
 
 data SType
   = TyVar STypeVar -- ^ Type variable (generic)
@@ -33,6 +37,7 @@ data SType
   | STuple (TupleItems SType) -- ^ Tuple (elements can have different types)
   | SFunc  SFunc   -- ^ Function (signature)
   | SContext       -- ^ Context object ("CONTEXT" in ErgoScript)
+  deriving Show
 
 
 data SFunc = MkSFunc
@@ -40,33 +45,41 @@ data SFunc = MkSFunc
   , sfuncCodom   :: SType
   , sfuncTyParam :: [STypeParam]
   }
+  deriving (Show)
 
 data SMethod -- FIXME
-
+  deriving Show
 
 -- | Box ID
 newtype IrBoxId = IrBoxId ShortByteString
+  deriving Show
 
 -- | Element in the tuple
 newtype TupleIdx = TupleIdx Word8
+  deriving Show
 
 -- | Index in constants array
 newtype ConstIdx = ConstIdx Word32
+  deriving Show
 
 -- | Variable ID
 newtype ValId = ValId Word32
+  deriving Show
 
 -- | Tuple items with bounds check (2..=255)
 newtype TupleItems a = TupleItems [a]
+  deriving Show
 
 -- | Function argument
 data FuncArg = FuncArg !ValId !SType
+  deriving Show
 
 data FuncValue = MkFuncValue
   { funcValArgs :: [FuncArg]
   , funcValBody :: Expr
   , funcValType :: SType
   }
+  deriving Show
 
 data Value
   = Boolean      !Bool               -- ^ Boolean
@@ -84,7 +97,7 @@ data Value
   | ValCtx {-FIXME-}                 -- ^ Transaction(and blockchain) context info
   | Opt          !(Maybe Value)      -- ^ Optional value
   | FuncVal      !FuncValue          -- ^ lambda
-
+  deriving Show
 
 
 data Expr
@@ -118,26 +131,26 @@ data Expr
   | ExtractAmount      Expr              -- ^ Box monetary value
   | BoolToSigmaProp    Expr              -- ^ Bool to Sigma Prop
   | Upcast             Expr SType        -- ^ Upcast numeric value to given type
-
+  deriving Show
 
 data GlobalVars
   = Inputs  -- ^ Tx inputs
   | Outputs -- ^ Tx outputs
   | Height  -- ^ Current blockchain height
   | SelfBox -- ^ ErgoBox instance, which script is being evaluated
-
+  deriving Show
 
 data MethodCall = MkMethodCall
   { methodObj    :: Expr
   , methodMethod :: SMethod
   , methodArgs   :: [Expr]
   }
-
+  deriving Show
 data BlockValue = MksBlockValue
   { blkValStmts :: [Expr]
   , blkExpr     :: Expr
   }
-
+  deriving Show
 -- | IR node for let-bound expressions `let x = rhs` which is ValDef.
 -- These nodes are used to represent ErgoTrees after common sub-expression elimination.
 -- This representation is more compact in serialized form.
@@ -146,43 +159,49 @@ data ValDef = MkValDef
   { valDefId  :: ValId
   , valDefRhs :: Expr
   }
-
+  deriving Show
 -- | Special node which represents a reference to ValDef in was
 --   introduced as result of CSE.
 data ValUse = MkValUse
   { valUseId :: ValId
   , valUseTy :: SType
   }
-
+  deriving Show
 data ExtractRegisterAs = MkExtractRegisterAs
   { extractRegBox  :: Expr -- ^ Box to extract from
   , extractRegId   :: Int8 -- ^ Register ID
   , extractRegType :: SType -- ^ Type of register content
   }
+  deriving Show
 data ByIndex = MkByIndex
   { byIdxColl    :: Expr       -- ^ Collection to index
   , byIdxIndex   :: Expr       -- ^ Index
   , byIdxDefault :: Maybe Expr -- ^ Default value if out of range
   }
+  deriving Show
 data Fold = MkFold
   { foldInput :: Expr
   , foldBase  :: Expr
   , foldStep  :: Expr
   }
+  deriving Show
 data Map = MkMap
   { mapInput  :: Expr
   , mapMapper :: Expr
   , mapType   :: SFunc
   }
+  deriving Show
 data Filter = MkFilter
   { filterInput :: Expr
   , filterCond  :: Expr
   , filterType  :: SType
   }
+  deriving Show
 
 data ECPoint             -- FIXME
+  deriving Show
 data SigmaProp           -- FIXME
-
+  deriving Show
 
 data ArithOp 
   = OpPlus     -- ^ Addition
@@ -191,7 +210,8 @@ data ArithOp
   | OpDivide   -- ^ Division
   | OpMax      -- ^ Max of two values
   | OpMin      -- ^ Min of two values
-   
+  deriving Show
+
 data RelationOp 
   = OpEq  -- ^ Equality
   | OpNEq -- ^ Non-equality
@@ -201,7 +221,9 @@ data RelationOp
   | OpLT  -- ^ Less then
   | OpAnd -- ^ Logical AND
   | OpOr  -- ^ Logical OR
+  deriving Show
 
 data BinOp
   = ArithOp ArithOp
   | RelationOp RelationOp
+  deriving Show

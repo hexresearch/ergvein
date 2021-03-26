@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedLists       #-}
 module Main where
 
+import Debug.Trace
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad
@@ -10,6 +11,7 @@ import Data.Bits
 import Data.Ergo.Modifier
 import Data.Ergo.Protocol
 import Data.Ergo.Vlq
+import Data.Ergo.MIR
 import Data.Ergo.Protocol.Client
 import Data.Ergo.Block (BlockHeader)
 import Data.Maybe
@@ -17,6 +19,7 @@ import Data.Persist
 import Data.Persist.Internal (Get(..),(:!:)(..))
 import Data.Time
 import Data.Word
+import Data.Int
 import Options.Generic
 import Data.Vector.Generic ((!))
 import qualified Data.Vector as V
@@ -96,14 +99,15 @@ main = do
           putStrLn "MsgModifier"
           print ty
           let bs = modifierBody $ m ! 0
-          print $ flip runGet bs $ do
+          either print putStrLn $ flip runGet bs $ do
             modId <- ModifierId <$> getBytes 32
             n     <- decodeVarInt @Word32
             tx <- parseTX
             return (tx)
           -- print $ ModifierId $ BS.drop 32 $ bs
           -- print $ decode @BlockHeader bs
-          putStrLn "================"
+          error "ABORT"
+          -- putStrLn "================"
       _ -> print ev
 
 
@@ -123,10 +127,25 @@ parseTX = do
   0 <- decodeVarInt @Word32
   -- -- -- Outputs
   nOut <- decodeVarInt @Word16
+  ----- Start decoding ouput --
+  --
+  remBefore <- remaining
   -- Output
   value <- decodeVarInt @Word64
-  -- eth <- decodeErgoTreeHeader
-  tx <- ModifierId <$> getBytes 228
+  eth   <- decodeErgoTreeHeader
+  --
+  remAfter <- remaining
+  --
+  -- case ergoConstantSegreation eth of
+  --   False -> pure []
+  --   True  -> do
+  nC <- decodeVarInt @Word32
+  let getCC = do ty <- getSType
+                 c  <- getConstant ty
+                 pure (ty,c)
+  c1 <- replicateM 16 getCC
+  -- t  <- getSType
+  -- l  <- decodeVarInt @Int32
     -- tree           <- undefined
   --   creationHeight <- decodeVarInt @Word32
   --   -- Tokens
@@ -138,17 +157,83 @@ parseTX = do
   --   --   undefined
   --   pure (value,tree,creationHeight,tokensData,nRegs)
   -- bbs   <- ModifierId <$> getBytes 16
-  pure (tx)
+  tx    <- ModifierId <$> getBytes (228-(remBefore - remAfter))
+  pure $ unlines
+    [ show value
+    , show eth
+    , show nC
+    , unlines $ "-- CONSTANTS --" : map show c1
+    -- , show t
+    -- , show l
+    , show tx
+    ]
    -- (ins,dataIns,tokens,v1,v2,v3)
   -- nOut <- decodeVarInt @Word16
   -- outs <- replicateM tokensCount undefined
   -- undefined
 
+
+getSType = do
+  get @Word8 >>= \case
+    c | traceShow ("CC",c) False -> undefined
+      | c <= 0 -> fail "Invalid type prefix"
+        -- Not a tuple we need to drill down
+      | c < c_TupleTypeCode
+      , (conId,primId) <- c `divMod` c_PrimRange -> case conId of
+          -- Primitive
+          0 -> getEmbeddableType primId
+          --
+          1 -> SColl <$> getArgType primId
+          _ -> fail "AA"
+        -- Tuple
+      | otherwise -> fail "TupleTypeCode"
+
+getArgType = \case
+  0      -> getSType
+  primId -> getEmbeddableType primId
+
+getEmbeddableType = \case
+  0 -> error "NULL?"
+  1 -> pure SBoolean
+  2 -> pure SByte
+  3 -> pure SShort
+  4 -> pure SInt
+  5 -> pure SLong
+  6 -> pure SBigInt
+  7 -> pure SGroupElement
+  8 -> pure SSigmaProp
+  _ -> fail "Invalid primitive type"
+
+getConstant = \case
+  SBoolean -> Boolean . (/=0) <$> get @Word8
+  SByte    -> Byte  <$> get @Int8
+  SShort   -> Short <$> decodeVarInt
+  SInt     -> Int   <$> decodeVarInt
+  SLong    -> Long  <$> decodeVarInt
+  SColl ty -> deserializeColl ty
+
+deserializeColl ty = do
+  len <- fromIntegral <$> decodeVarInt @Word16
+  traceShowM ty
+  Coll ty <$> case ty of    
+    SBoolean -> error "SColl SBoolean"
+    SByte    -> replicateM len (Byte <$> get @Int8)
+    _        -> replicateM len (getConstant ty)
+
+c_MaxPrimTypeCode, c_PrimRange, c_TupleTypeCode :: Word8
+c_MaxPrimTypeCode = 11
+c_PrimRange       = c_MaxPrimTypeCode + 1
+c_TupleTypeCode   = (c_MaxPrimTypeCode + 1) * 8
+
+tyCode_SAny = 97 :: Word8
+
 data ErgoTreeHeader = ErgoTreeHeader
-  { ergoTreeVersion :: !Word8
-  , ergoTreeSize    :: Maybe Word32
+  { ergoTreeVersion        :: !Word8
+  , ergoTreeSize           :: Maybe Word32
+  , ergoConstantSegreation :: Bool
   }
   deriving Show
+
 decodeErgoTreeHeader :: Get ErgoTreeHeader
 decodeErgoTreeHeader = do
   w <- get @Word8
@@ -159,7 +244,9 @@ decodeErgoTreeHeader = do
   ergoTreeSize <- case sizeFlag of
     True  -> Just <$> decodeVarInt
     False -> pure Nothing
-  pure ErgoTreeHeader{..}
+  pure ErgoTreeHeader{ ergoConstantSegreation = (w .&. 0x10) /= 0
+                     , ..
+                     }
 
 parseListOf :: forall n a. (Integral n, VarInt n) => Get a -> Get [a]
 parseListOf getV = do
