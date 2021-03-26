@@ -135,15 +135,12 @@ parseTX = do
   eth   <- decodeErgoTreeHeader
   --
   remAfter <- remaining
-  --
-  -- case ergoConstantSegreation eth of
-  --   False -> pure []
-  --   True  -> do
-  nC <- decodeVarInt @Word32
-  let getCC = do ty <- getSType
-                 c  <- getConstant ty
-                 pure (ty,c)
-  c1 <- replicateM 16 getCC
+  -- Parse list of constants
+  constants <- case ergoConstantSegreation eth of
+    False -> pure []
+    True  -> parseListOf @Word32 parseConstant
+  -- Parse transaction body
+  -- opcode <- peek
   -- t  <- getSType
   -- l  <- decodeVarInt @Int32
     -- tree           <- undefined
@@ -161,16 +158,27 @@ parseTX = do
   pure $ unlines
     [ show value
     , show eth
-    , show nC
-    , unlines $ "-- CONSTANTS --" : map show c1
+    , unlines $ "-- CONSTANTS --" : map show constants
     -- , show t
     -- , show l
+    -- , show opcode
     , show tx
     ]
    -- (ins,dataIns,tokens,v1,v2,v3)
   -- nOut <- decodeVarInt @Word16
   -- outs <- replicateM tokensCount undefined
   -- undefined
+
+parseConstant = getConstant =<< getSType
+
+parseValue = do
+  peek >>= \case
+    b | b < c_LastConstantCode -> parseConstant
+      | otherwise              -> parseValueWithOpCode
+
+parseValueWithOpCode = do
+  get @Word8 >>= \case
+
 
 
 getSType = do
@@ -215,7 +223,7 @@ getConstant = \case
 deserializeColl ty = do
   len <- fromIntegral <$> decodeVarInt @Word16
   traceShowM ty
-  Coll ty <$> case ty of    
+  Coll ty <$> case ty of
     SBoolean -> error "SColl SBoolean"
     SByte    -> replicateM len (Byte <$> get @Int8)
     _        -> replicateM len (getConstant ty)
@@ -224,6 +232,10 @@ c_MaxPrimTypeCode, c_PrimRange, c_TupleTypeCode :: Word8
 c_MaxPrimTypeCode = 11
 c_PrimRange       = c_MaxPrimTypeCode + 1
 c_TupleTypeCode   = (c_MaxPrimTypeCode + 1) * 8
+
+c_LastConstantCode,c_LastDataType :: Word8
+c_LastConstantCode = c_LastDataType + 1
+c_LastDataType     = 111
 
 tyCode_SAny = 97 :: Word8
 
