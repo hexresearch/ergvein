@@ -6,15 +6,16 @@ module ProtocolTest where
 -- imports
 
 import Control.Monad (replicateM)
+import Data.Word
 import ProtocolTest.Generators
 import Test.QuickCheck
 import Test.QuickCheck.Instances
 import Test.Tasty.HUnit
 
-import Ergvein.Index.Protocol.Deserialization
-import Ergvein.Index.Protocol.Serialization
+import Ergvein.Index.Protocol.Deserialization  as Des
+import Ergvein.Index.Protocol.Serialization    as Ser
 import Ergvein.Index.Protocol.Types
-import Ergvein.Types.Currency (Fiat(..))
+import Ergvein.Types.Currency (Fiat(..),Currency)
 import Ergvein.Types.Fees
 
 import qualified Data.Vector.Unboxed        as UV
@@ -244,3 +245,20 @@ unit_ratesRespMsg = do
         , (DASH, [(EUR, 0.12), (RUB, 0.01)]) ]
       bytes = "0e2902000200e32f63000000000002ea0e1602000000000c02010c00000000000000020100000000000000"
   testMessageHex v bytes
+
+unit_enumRountrip :: IO ()
+unit_enumRountrip = do
+  Right currencies @=? currencies'
+  where
+    currencies  = [minBound .. maxBound] :: [Currency]
+    currencies' = traverse roundtrip currencies
+    roundtrip :: Currency -> Either String Currency
+    roundtrip = AP.parseOnly enumParser . BL.toStrict . BB.toLazyByteString . enumBuilder
+
+unit_enumOutOfRange :: IO ()
+unit_enumOutOfRange = do
+  case badEnum of Left  _ -> pure ()
+                  Right _ -> assertFailure "Out of range value shouldn't parse"
+  where
+    badEnum = AP.parseOnly (enumParser @Currency)
+            $ BL.toStrict $ BB.toLazyByteString $ Ser.varInt (10000 :: Word32)
