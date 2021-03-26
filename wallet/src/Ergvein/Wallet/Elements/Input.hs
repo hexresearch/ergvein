@@ -25,8 +25,8 @@ import Control.Lens
 import Control.Monad.IO.Class
 import Data.Proxy
 import Data.Text (Text)
+import Ergvein.Either
 import Ergvein.Text
-import Ergvein.Util
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Elements.Input.Class
 import Ergvein.Wallet.Id

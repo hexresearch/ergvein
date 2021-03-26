@@ -9,11 +9,11 @@ import Data.Maybe
 import Network.Haskoin.Block
 import Network.Haskoin.Network
 
+import Ergvein.Either
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
 import Ergvein.Types.Storage.Currency.Public.Btc
-import Ergvein.Util
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native

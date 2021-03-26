@@ -25,8 +25,8 @@ module Ergvein.Wallet.Util(
 import Control.Monad.Except
 import Reflex.Dom
 
+import Ergvein.Either
 import Ergvein.Index.Protocol.Types
-import Ergvein.Util
 import Ergvein.Wallet.Platform
 
 import qualified Ergvein.Types.Currency as ETC

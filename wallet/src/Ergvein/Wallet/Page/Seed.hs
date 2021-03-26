@@ -18,9 +18,9 @@ import Data.Text.Encoding.Error (lenientDecode)
 import Reflex.Localize.Dom
 
 import Ergvein.Crypto
+import Ergvein.Either
 import Ergvein.Text
 import Ergvein.Types.Restore
-import Ergvein.Util
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Clipboard

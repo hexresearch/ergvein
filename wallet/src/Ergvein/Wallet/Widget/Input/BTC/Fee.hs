@@ -10,10 +10,10 @@ import Data.Map.Strict (Map)
 import Data.Text
 import Data.Word
 
+import Ergvein.Either
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
-import Ergvein.Util
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Language

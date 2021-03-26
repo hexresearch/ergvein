@@ -8,8 +8,8 @@ import Control.Monad.Except
 import Data.Maybe
 import Data.Word
 
+import Ergvein.Either
 import Ergvein.Types
-import Ergvein.Util
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Language

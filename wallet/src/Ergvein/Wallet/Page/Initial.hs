@@ -3,8 +3,8 @@ module Ergvein.Wallet.Page.Initial(
     initialPage
   ) where
 
+import Ergvein.Either
 import Ergvein.Types.Storage
-import Ergvein.Util
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language

@@ -16,10 +16,10 @@ import Data.Validation hiding (validate)
 import Data.Word
 import Text.Parsec
 
+import Ergvein.Either
 import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
-import Ergvein.Util
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
 

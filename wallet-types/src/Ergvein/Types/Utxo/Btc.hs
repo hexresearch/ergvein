@@ -21,11 +21,11 @@ import Network.Haskoin.Script
 import Network.Haskoin.Transaction hiding (Coin)
 
 import Ergvein.Aeson
+import Ergvein.Either
 import Ergvein.Types.Address
 import Ergvein.Types.Keys
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo.Status
-import Ergvein.Util
 
 import qualified Data.Map.Strict as M
 

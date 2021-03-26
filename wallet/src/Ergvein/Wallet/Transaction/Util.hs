@@ -55,6 +55,7 @@ import Data.Word
 import Network.Haskoin.Network (putVarInt)
 import Network.Haskoin.Transaction (Tx(..), TxIn(..), TxOut(..), OutPoint(..), txHash)
 
+import Ergvein.Either
 import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
@@ -64,7 +65,6 @@ import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
 import Ergvein.Types.Utxo.Btc
-import Ergvein.Util
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Platform

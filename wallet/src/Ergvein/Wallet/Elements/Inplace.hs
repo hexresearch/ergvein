@@ -11,7 +11,7 @@ import Data.Text (Text)
 import Reflex.Dom
 import Data.Default
 
-import Ergvein.Util
+import Ergvein.Either
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Inplace

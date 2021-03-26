@@ -9,13 +9,13 @@ import Data.Bifunctor (first)
 import Data.Maybe (fromMaybe)
 import Data.Word
 
+import Ergvein.Maybe
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo.Btc
-import Ergvein.Util
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language

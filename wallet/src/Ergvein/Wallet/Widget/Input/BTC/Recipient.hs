@@ -7,8 +7,8 @@ module Ergvein.Wallet.Widget.Input.BTC.Recipient(
 
 import Data.Maybe
 
+import Ergvein.Either
 import Ergvein.Types
-import Ergvein.Util
 import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements

@@ -26,7 +26,7 @@ import GHC.Generics
 import Ergvein.Aeson
 import Ergvein.Crypto.Keys
 import Ergvein.Crypto.Util
-import Ergvein.Util
+import Ergvein.Either
 import Ergvein.Types.Currency
 import Ergvein.Types.Network
 import Ergvein.Types.Orphanage()

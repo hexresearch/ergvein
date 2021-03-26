@@ -47,7 +47,7 @@ module Ergvein.Wallet.Alert
 
 import Control.Monad.IO.Class
 import Data.Time (getCurrentTime)
-import Ergvein.Util
+import Ergvein.Either
 import Ergvein.Wallet.Alert.Type
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
