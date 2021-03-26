@@ -15,11 +15,12 @@ let
       ergo-api = ./ergo-api;
       ergvein-checkpoint-generator = ./checkpoint-generator;
       ergvein-common = ./common;
+      ergvein-concurrent = ./concurrent;
       ergvein-crypto = ./crypto;
       ergvein-index-api = ./index-api;
+      ergvein-index-client = ./index-client;
       ergvein-index-protocol = ./index-protocol;
       ergvein-index-protocol-client = ./index-protocol-client;
-      ergvein-index-client = ./index-client;
       ergvein-index-server = ./index-server;
       ergvein-interface-ergo = ./interfaces/ergo;
       ergvein-wallet = ./wallet;
@@ -48,6 +49,7 @@ let
         "ergo-api"
         "ergvein-checkpoint-generator"
         "ergvein-common"
+        "ergvein-concurrent"
         "ergvein-crypto"
         "ergvein-index-api"
         "ergvein-index-protocol"

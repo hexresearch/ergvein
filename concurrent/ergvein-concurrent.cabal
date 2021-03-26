@@ -1,0 +1,27 @@
+name:                ergvein-concurrent
+version:             0.1.0.0
+synopsis:            Concurrent utilities
+description:         See README.md
+category:            Concurrency
+build-type:          Simple
+cabal-version:       >=1.10
+copyright:           2021 ATUM SOLUTIONS AG
+
+library
+  ghc-options:         -Wall
+  hs-source-dirs:      src
+  exposed-modules:
+    Ergvein.Concurrent
+  build-depends:
+      base                    >= 4.7    && < 4.13
+    , async                   >= 2.2    && < 2.3
+    , containers              >= 0.6    && < 0.7
+    , exceptions              >= 0.10   && < 0.11
+    , lifted-async            >= 0.10   && < 0.11
+    , monad-control           >= 1.0    && < 1.1
+    , stm                     >= 2.5    && < 2.6
+    , transformers-base       >= 0.4    && < 0.5
+    , unliftio-core           >= 0.1    && < 0.2
+  default-language:    Haskell2010
+  default-extensions:
+    FlexibleContexts

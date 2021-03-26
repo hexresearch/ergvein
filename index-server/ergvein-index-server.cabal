@@ -40,7 +40,6 @@ library
     Ergvein.Index.Server.PeerDiscovery.Types
     Ergvein.Index.Server.TCPService.BTC
     Ergvein.Index.Server.TCPService.Connections
-    Ergvein.Index.Server.TCPService.Supervisor
     Ergvein.Index.Server.TCPService.Conversions
     Ergvein.Index.Server.TCPService.MessageHandler
     Ergvein.Index.Server.TCPService.Server
@@ -124,6 +123,7 @@ library
       , coinbase-client
       , ergo-api
       , ergvein-common
+      , ergvein-concurrent
       , ergvein-crypto
       , ergvein-index-api
       , ergvein-index-client

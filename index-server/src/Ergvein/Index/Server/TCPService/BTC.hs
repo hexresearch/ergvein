@@ -22,9 +22,9 @@ import Network.Haskoin.Constants
 import Network.Haskoin.Network
 import Network.Haskoin.Block
 
+import Ergvein.Concurrent
 import Ergvein.Index.Server.TCPService.Socket
 import Ergvein.Text
-import Ergvein.Index.Server.TCPService.Supervisor
 
 import qualified Control.Exception.Safe as Ex
 import qualified Data.ByteString as B

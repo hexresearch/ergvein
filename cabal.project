@@ -3,6 +3,7 @@ packages:
   ./checkpoint-generator
   ./coinbase-client
   ./common
+  ./concurrent
   ./crypto
   ./data-merkle-tree
   ./ergo-api

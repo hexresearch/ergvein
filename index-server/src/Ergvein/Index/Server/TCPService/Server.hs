@@ -17,7 +17,7 @@ import Data.Either.Combinators
 import Data.Word
 import Network.Socket
 
-import Ergvein.Text
+import Ergvein.Concurrent
 import Ergvein.Index.Protocol.Deserialization
 import Ergvein.Index.Protocol.Serialization
 import Ergvein.Index.Protocol.Types
@@ -28,7 +28,7 @@ import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
 import Ergvein.Index.Server.TCPService.MessageHandler
 import Ergvein.Index.Server.TCPService.Socket as S
-import Ergvein.Index.Server.TCPService.Supervisor
+import Ergvein.Text
 
 import qualified Data.ByteString as BS
 import qualified Network.Socket.ByteString as NS

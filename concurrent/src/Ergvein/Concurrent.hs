@@ -1,5 +1,5 @@
 -- |
-module Ergvein.Index.Server.TCPService.Supervisor
+module Ergvein.Concurrent
   ( -- * Linked worker threads
     withLinkedWorker
   , withLinkedWorker_

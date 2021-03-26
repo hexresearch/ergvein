@@ -44,6 +44,7 @@ in (self: super: let
     data-merkle-tree = ingnoreGarbage super.data-merkle-tree;
     ergvein-checkpoint-generator = ingnoreGarbage super.ergvein-checkpoint-generator;
     ergvein-common = ingnoreGarbage super.ergvein-common;
+    ergvein-concurrent = ingnoreGarbage super.ergvein-concurrent;
     ergvein-crypto = ingnoreGarbage super.ergvein-crypto;
     ergvein-index-api = ingnoreGarbage super.ergvein-index-api;
     ergvein-index-protocol = ingnoreGarbage super.ergvein-index-protocol;
