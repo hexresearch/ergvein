@@ -76,25 +76,11 @@ in {
           Which hostname is binded to the node.
         '';
       };
-      filtersPath = mkOption {
+      dbPath = mkOption {
         type = types.str;
-        default = if cfg.testnet then "/var/lib/ergvein-testnet/filters" else "/var/lib/ergvein/filters";
+        default = if cfg.testnet then "/var/lib/ergvein-testnet" else "/var/lib/ergvein";
         description = ''
           Path to filters database on filesystem.
-        '';
-      };
-      indexerPath = mkOption {
-        type = types.str;
-        default = if cfg.testnet then "/var/lib/ergvein-testnet/indexer" else "/var/lib/ergvein/indexer";
-        description = ''
-          Path to indexer database on filesystem.
-        '';
-      };
-      utxoPath = mkOption {
-        type = types.str;
-        default = if cfg.testnet then "/var/lib/ergvein-testnet/utxo" else "/var/lib/ergvein/utxo";
-        description = ''
-          Path to utxo database on filesystem.
         '';
       };
       testnet = mkOption {
@@ -167,9 +153,7 @@ in {
           serverPort               : ${toString cfg.nodePort}
           serverTcpPort            : ${toString cfg.nodeTcpPort}
           serverHostname           : ${cfg.nodeHostname}
-          filtersDbPath            : ${cfg.filtersPath}
-          indexerDbPath            : ${cfg.indexerPath}
-          utxoDbPath               : ${cfg.utxoPath}
+          dbPath                   : ${cfg.dbPath}
           BTCNodeIsTestnet         : ${if cfg.testnet then "true" else "false"}
           BTCNodeHost              : ${cfg.btcHost}
           BTCNodePort              : ${toString cfg.btcPort}
@@ -228,14 +212,8 @@ in {
     system.activationScripts = {
       int-ergvein-indexer = {
         text = ''
-          if [ ! -d "${cfg.filtersPath}" ]; then
-            mkdir -p ${cfg.filtersPath}
-          fi
-          if [ ! -d "${cfg.indexerPath}" ]; then
-            mkdir -p ${cfg.indexerPath}
-          fi
-          if [ ! -d "${cfg.utxoPath}" ]; then
-            mkdir -p ${cfg.utxoPath}
+          if [ ! -d "${cfg.dbPath}" ]; then
+            mkdir -p ${cfg.dbPath}
           fi
         '';
         deps = [];
