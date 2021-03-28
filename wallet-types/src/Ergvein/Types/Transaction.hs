@@ -9,6 +9,7 @@ module Ergvein.Types.Transaction (
     , TxFee
     , PubKeyScriptHash
     , TxOutIndex
+    , RbfEnabled
     , currencyHeightStart
     , egvBlockHashToHk
     , btcTxToString
@@ -39,8 +40,8 @@ module Ergvein.Types.Transaction (
     , egvTxHashFromStr
     , hkTxHashToEgv
     , egvTxId
-    , btcTxs
-    , ergTxs
+    , egvTxsToBtc
+    , egvTxsToErg
   ) where
 
 import Control.DeepSeq
@@ -63,6 +64,7 @@ import GHC.Generics (Generic)
 
 import Ergvein.Aeson
 import Ergvein.Crypto.Util
+import Ergvein.Either
 import Ergvein.Types.Currency
 import Ergvein.Types.Orphanage ()
 
@@ -92,6 +94,8 @@ type TxFee = MoneyUnit
 -- | SHA256 hash of locking script with big-endian byte order, used to track transfers due inaccessibility
 -- of transaction addresses when indexer scans blockchain
 type PubKeyScriptHash = Text
+
+type RbfEnabled = Bool
 
 egvBlockHashToHk :: BlockHash -> HB.BlockHash
 egvBlockHashToHk bh = fromRight (error $ "Failed to convert bh: " <> show bh) $ runGet S.get (BSS.fromShort bh)
@@ -327,8 +331,8 @@ egvTxId :: EgvTx -> TxId
 egvTxId (TxBtc (BtcTx tx _)) = hkTxHashToEgv $ HK.txHash tx
 egvTxId (TxErg (ErgTx _ _))  = error "egvTxId: implement for Ergo!"
 
-btcTxs :: Map TxId EgvTx -> Map BtcTxId BtcTxRaw
-btcTxs = M.mapKeys (fromMaybe (error "impossible: btcTxs") . toBtcTxHash) . M.mapMaybe (fmap getBtcTx . toTxBtc)
+egvTxsToBtc :: Map TxId EgvTx -> Map BtcTxId BtcTxRaw
+egvTxsToBtc = M.mapKeys (fromMaybe (error "impossible: btcTxs") . toBtcTxHash) . M.mapMaybe (fmap getBtcTx . toTxBtc)
 
-ergTxs :: Map TxId EgvTx -> Map ErgTxId ErgTxRaw
-ergTxs = M.mapKeys (fromMaybe (error "impossible: ergoTxs") . toErgTxHash) . M.mapMaybe (fmap getErgTx . toTxErg)
+egvTxsToErg :: Map TxId EgvTx -> Map ErgTxId ErgTxRaw
+egvTxsToErg = M.mapKeys (fromMaybe (error "impossible: ergoTxs") . toErgTxHash) . M.mapMaybe (fmap getErgTx . toTxErg)

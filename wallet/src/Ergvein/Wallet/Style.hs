@@ -89,6 +89,7 @@ frontendCss r = do
   headerCss
   historyPageCss
   txInfoPageCss
+  bumpFeePageCss
   infoPageCss
   initialPageCss
   inputCss
@@ -116,6 +117,9 @@ textColor = rgb 0 0 0
 
 hoverColor :: Color
 hoverColor = rgb 112 112 112
+
+disabledColor :: Color
+disabledColor = rgb 233 236 239
 
 textSuccess :: Color
 textSuccess = rgb 40 167 69
@@ -354,10 +358,12 @@ buttonCss = do
 inputCss :: Css
 inputCss = do
   let simpleBorder = border solid (rem 0.1) black
+      disableBackground = backgroundColor disabledColor
   let passInput = input # ("type" @= "password")
   (passInput # hover) <> (passInput # focus) ? simpleBorder
   let textInput = input # ("type" @= "text")
-  (textInput # hover) <> (textInput # focus) ? simpleBorder
+  (textInput # hover # enabled) <> (textInput # focus # enabled) ? simpleBorder
+  (textInput # disabled) ? disableBackground
 
 fontFamilies :: Resources -> Css
 fontFamilies Resources{..} = do
@@ -610,6 +616,7 @@ sendPageCss = do
   ".form-field-errors" ? do
     color red
     textAlign $ alignSide sideLeft
+    marginTop $ rem (-0.5)
     marginBottom $ rem 1
   ".send-page-buttons-wrapper" ? do
     display flex
@@ -892,14 +899,19 @@ selectCss = do
     margin auto auto auto auto
     width $ px 200
   "select" ? do
+    color textColor
     borderColor textColor
-    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" height=\\\"14\\\" viewBox=\\\"0 0 24 8\\\" width=\\\"24\\\"><path fill=\\\"#000000\\\" d=\\\"M0,0l6,8l6-8\\\"/></svg>"
+    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 8' width='30'><path fill='%23000000' d='M7,0l6,8l6-8'/></svg>"
+    backgroundPosition $ placed sideCenter sideRight
+    backgroundRepeat noRepeat
   "select:hover" ? do
     cursor pointer
   "select:hover, select:focus" ? do
     color hoverColor
     borderColor hoverColor
-    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" height=\\\"14\\\" viewBox=\\\"0 0 24 8\\\" width=\\\"24\\\"><path fill=\\\"#707070\\\" d=\\\"M0,0l6,8l6-8\\\"/></svg>"
+    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 8' width='30'><path fill='%23707070' d='M7,0l6,8l6-8'/></svg>"
+    backgroundPosition $ placed sideCenter sideRight
+    backgroundRepeat noRepeat
 
 buttonsToggleCss :: Css
 buttonsToggleCss = do
@@ -1013,6 +1025,11 @@ txInfoPageCss = do
     cursor pointer
   ".tx-info-our-address" ? do
     fontWeight bold
+
+bumpFeePageCss :: Css
+bumpFeePageCss = do
+  ".bump-fee-page" ? do
+    textAlign $ alignSide sideLeft
 
 legoStyles :: Css
 legoStyles = do

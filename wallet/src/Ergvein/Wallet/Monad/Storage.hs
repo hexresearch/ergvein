@@ -164,7 +164,7 @@ insertTxsUtxoInPubKeystore caller cur reqE = modifyPubStorage clr $ ffor reqE $ 
 -- Note: that this process has two stages. This is the first stage.
 -- At first stage we remove those RBF transactions for which
 -- a transaction with the highest fee (a.k.a. replacing transaction) was found succesfully.
--- This stage is performed when we receive tx form mempool.
+-- This stage is performed when we receive tx from mempool or when we bump tx fee form this wallet.
 -- The second stage is performed when one of txs stored in currencyPubStorage'possiblyReplacedTxs is confirmed.
 -- Information about which transactions were repaced is stored in currencyPubStorage'replacedTxs.
 -- Since we are not always able to identify the transactions with the highest fee in a sequence of RBF transactions,

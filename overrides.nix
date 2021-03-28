@@ -65,7 +65,7 @@ in (self: super: let
     reflex-external-ref = ingnoreGarbage super.reflex-external-ref;
     reflex-localize = ingnoreGarbage super.reflex-localize;
     reflex-localize-dom = ingnoreGarbage super.reflex-localize-dom;
-    # Overridess
+    # Overrides
     android-activity = self.callPackage ./derivations/android-activity.nix {
       inherit (pkgs.buildPackages) jdk;
     };
