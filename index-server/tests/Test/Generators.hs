@@ -8,10 +8,7 @@ import Test.QuickCheck
 import Test.QuickCheck.Instances
 
 
-import Ergvein.Index.Server.BlockchainScanning.Types
-import Ergvein.Index.Server.DB.Schema.Filters
-import Ergvein.Index.Server.DB.Schema.Indexer
-import Ergvein.Index.Server.DB.Schema.Utxo
+import Ergvein.Index.Server.Types
 import Ergvein.Index.Server.PeerDiscovery.Types
 import Ergvein.Types.Transaction
 
@@ -33,11 +30,7 @@ getRandBounded = oneof $ pure <$> [minBound .. maxBound]
 getRandBoundedExcluding :: (Eq a, Enum a, Bounded a) => [a] -> Gen a
 getRandBoundedExcluding exs = oneof $ fmap pure $ filter (\e -> not $ e `elem` exs) $ [minBound .. maxBound]
 
-arbitraryBS32 = do
-  a <- arbitrary
-  pure $ BS.pack $ if BS.length a < 32
-    then [0..31]
-    else take 32 . BS.unpack $ a
+arbitraryBS32 = fmap BS.pack $ replicateM 32 arbitrary
 
 arbitraryBSS32 = do
   a <- arbitrary
@@ -45,33 +38,11 @@ arbitraryBSS32 = do
     then [0..31]
     else take 32 . BSS.unpack $ a
 
-instance Arbitrary TxHash where
-  arbitrary = oneof [
-      BtcTxHash <$> arbitrary
-    -- , ErgTxHash . ErgTxId <$> arbitraryBSS32 -- We do not support ERGO at the moment
-    ]
-instance Arbitrary ScannedHeightRec where
-  arbitrary = ScannedHeightRec <$> arbitrary
-instance Arbitrary TxRecBytes where
-  arbitrary = TxRecBytes <$> arbitrary
-instance Arbitrary TxRecHeight where
-  arbitrary = TxRecHeight <$> arbitrary
-instance Arbitrary TxRecUnspent where
-  arbitrary = TxRecUnspent <$> arbitrary
-instance Arbitrary TxInfo where
-  arbitrary = TxInfo <$> arbitrary <*> arbitrary <*> arbitrary
-instance Arbitrary BlockInfoRec where
-  arbitrary = BlockInfoRec <$> arbitraryBSS32 <*> arbitrary
-instance Arbitrary KnownPeerRecItem where
-  arbitrary = KnownPeerRecItem <$> arbitrary <*> arbitrary
-instance Arbitrary KnownPeersRec where
-  arbitrary = KnownPeersRec <$> arbitrary
-instance Arbitrary LastScannedBlockHeaderHashRec where
-  arbitrary = LastScannedBlockHeaderHashRec <$> arbitraryBSS32
-instance Arbitrary RollbackRecItem where
-  arbitrary = RollbackRecItem <$> arbitrary <*> arbitrary <*> arbitrary
-instance Arbitrary RollbackSequence where
-  arbitrary = RollbackSequence <$> arbitrary
+-- instance Arbitrary TxHash where
+--   arbitrary = oneof [
+--       BtcTxHash <$> arbitrary
+--     -- , ErgTxHash . ErgTxId <$> arbitraryBSS32 -- We do not support ERGO at the moment
+--     ]
 
 instance Arbitrary HK.TxHash where
   arbitrary = do

@@ -12,26 +12,28 @@ module Ergvein.Index.Server.DB.Queries
   , getSingleFilter
   ) where
 
+import Control.Concurrent.Async.Lifted
 import Control.Concurrent.STM
 import Control.DeepSeq
 import Control.Lens.Combinators (none)
-import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
+import Control.Monad.Trans.Control
 import Control.Parallel.Strategies
 import Data.ByteString (ByteString)
 import Data.Maybe
 import Data.Word
 import Database.RocksDB
 import Network.Haskoin.Script (isDataCarrier, decodeOutputBS)
+import Network.Haskoin.Transaction (OutPoint(..))
 
 import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Serialize
-import Ergvein.Index.Server.Types
 import Ergvein.Index.Server.Monad.Class
+import Ergvein.Index.Server.Types
+import Ergvein.Index.Server.Utils
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Network.Haskoin.Transaction (OutPoint(..))
 
 import           Data.ByteString.Short (ShortByteString)
 import qualified Data.ByteString.Short as BSS
@@ -39,21 +41,24 @@ import qualified Data.ByteString as BS
 import qualified Data.Sequence as Seq
 import qualified Data.Foldable as Foldable
 
-getFiltersSlice :: (HasDbs m, MonadUnliftIO m)
+getFiltersSlice :: (HasDbs m, MonadUnliftIO m, MonadBaseControl IO m)
   => Currency -> (ByteString -> ByteString -> a) -> BlockHeight -> Word64 -> m [a]
 getFiltersSlice cur f start amount = do
   db <- getDb
   fcf <- getFiltersCF cur
-  fmap catMaybes $ withIterCF db fcf $ \iter -> do
-    iterSeek iter startKey
-    replicateM n $ do
-      mbs <- iterValue iter
-      iterNext iter
-      pure $ fmap (uncurry f . BS.splitAt 32) mbs
-      
-  where
-    startKey = encodeWord64 start
-    n = fromIntegral amount
+  let ids = mkEquisizedChunks 5 [start .. start + amount - 1]
+  fmap (catMaybes . mconcat) $ flip mapConcurrently ids $ mapM $ \h -> do
+     mbs <- getCF db fcf $ encodeWord64 h
+     pure $ fmap (uncurry f . BS.splitAt 32) mbs
+
+
+  -- fmap catMaybes $ withIterCF db fcf $ \iter -> do
+  --   iterSeek iter startKey
+  --   replicateM n $ do
+  --     mbs <- iterValue iter
+  --     iterNext iter
+  --     pure $ fmap (uncurry f . BS.splitAt 32) mbs
+
 
 getSingleFilter :: HasDbs m => Currency -> BlockHeight -> m (Maybe (ShortByteString, ByteString))
 getSingleFilter cur height = do

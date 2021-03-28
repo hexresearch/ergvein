@@ -18,6 +18,7 @@ import System.DiskSpace
 import Ergvein.Index.Protocol.Types (Message(..), FilterEvent(..))
 import Ergvein.Index.Server.Types
 import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.DB.Monad
 import Ergvein.Index.Server.DB.Queries
 import Ergvein.Index.Server.Metrics
 import Ergvein.Index.Server.Monad
@@ -30,15 +31,15 @@ import Ergvein.Types.Transaction
 import qualified Ergvein.Index.Server.Bitcoin.API as BtcApi
 import qualified Ergvein.Index.Server.Bitcoin.Scanner as BTCScanner
 
-actualHeight :: ServerMonad m => Currency -> m BlockHeight
+actualHeight :: (BtcApi.BitcoinApiMonad m, Monad m) => Currency -> m BlockHeight
 actualHeight currency = case currency of
   BTC -> fromIntegral <$> BtcApi.actualHeight
   ERGO -> pure 0
 
-scanningInfo :: ServerMonad m => m [ScanProgressInfo]
+scanningInfo :: (HasDbs m, MonadCatch m, BtcApi.BitcoinApiMonad m) => m [ScanProgressInfo]
 scanningInfo = catMaybes <$> mapM nfo allCurrencies
   where
-    nfo :: ServerMonad m => Currency -> m (Maybe ScanProgressInfo)
+    nfo :: (HasDbs m, MonadCatch m, BtcApi.BitcoinApiMonad m) => Currency -> m (Maybe ScanProgressInfo)
     nfo currency = do
       maybeScanned <- getScannedHeight currency
       maybeActual <- (Just <$> actualHeight currency) `catch` (\(SomeException _) -> pure Nothing)

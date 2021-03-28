@@ -100,10 +100,10 @@ initIndexerConnection sname sa msgE = mdo
             nodeLog sa $ "The indexer doesn't support required currencies " <> showt requiredCurrencies <> ", but got: " <> showt (versionCurrencies v)
             liftIO $ currenciesMismatchFire ()
             pure Nothing
-         | not $ requiredCurrsSynced v -> do
-           nodeLog sa $ "The indexer is not fully synced for currencies " <> showt requiredCurrencies
-           liftIO $ currenciesNotSyncedFire ()
-           pure Nothing
+         -- | not $ requiredCurrsSynced v -> do
+         --   nodeLog sa $ "The indexer is not fully synced for currencies " <> showt requiredCurrencies
+         --   liftIO $ currenciesNotSyncedFire ()
+         --   pure Nothing
          | otherwise -> do
             liftIO $ versionFire versionVersion
             pure $ Just (MVersionACK VersionACK)

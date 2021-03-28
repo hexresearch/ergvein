@@ -143,6 +143,7 @@ sendLoop sock sendChan = do
     sendMsg b = do
       let bs = toLazyByteString b
       liftIO $ print $ "Sending " <> (show $ BSL.length bs) <> " bytes"
+      -- liftIO $ print $ BSL.unpack bs
       sendLazy sock bs
 
 evalMsg :: ServerMonad m => Socket -> SockAddr -> ExceptT Reject m ([Message], Bool)

@@ -9,6 +9,7 @@ module Ergvein.Index.Server.PeerDiscovery
 
 import Control.Concurrent.STM
 import Control.Immortal
+import Control.Monad.Catch
 import Control.Monad.Random
 import Data.Foldable
 import Data.Maybe
@@ -31,6 +32,9 @@ import Ergvein.Types.Transaction
 import qualified Data.Map.Strict      as Map
 import qualified Data.Set             as Set
 import qualified Data.Vector.Unboxed  as UV
+import Ergvein.Index.Server.DB.Monad
+import Ergvein.Index.Server.Config
+import Ergvein.Index.Server.Bitcoin.API
 
 considerPeer :: ServerMonad m => Version -> PeerCandidate -> m ()
 considerPeer ownVer PeerCandidate {..} = do
@@ -94,7 +98,7 @@ newConnection addr = do
   (maybeHost, maybePort) <- getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True addr
   pure (fromJust maybeHost , fromJust maybePort)
 
-ownVersion :: ServerMonad m => m Version
+ownVersion :: (MonadIO m, HasDbs m, BitcoinApiMonad m, HasServerConfig m, MonadCatch m) => m Version
 ownVersion = do
   nonce <- liftIO $ randomIO
   time  <- liftIO $ CTime . floor <$> getPOSIXTime
@@ -108,7 +112,7 @@ ownVersion = do
     , versionScanBlocks = scanNfo
     }
   where
-    verBlock :: ServerMonad m => ScanProgressInfo -> m ScanBlock
+    verBlock :: (MonadIO m, HasServerConfig m) => ScanProgressInfo -> m ScanBlock
     verBlock ScanProgressInfo {..} = do
       currencyCode <- currencyToCurrencyCode nfoCurrency
       pure $ ScanBlock

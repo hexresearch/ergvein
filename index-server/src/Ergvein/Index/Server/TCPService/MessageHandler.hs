@@ -6,7 +6,7 @@ import Control.Concurrent.STM
 import Control.Monad.IO.Class
 import Control.Monad.Logger
 import Control.Monad.Reader
-import Data.ByteString.Short (toShort)
+import Data.ByteString.Short (toShort, fromShort)
 import Data.List (foldl')
 import Network.Socket
 
@@ -53,7 +53,11 @@ handleMsg _ (MFiltersRequest FilterRequest {..}) = do
   currency <- currencyCodeToCurrency filterRequestMsgCurrency
   slice <- getFiltersSlice currency (\s f -> BlockFilter (toShort s) f) filterRequestMsgStart filterRequestMsgAmount
   let filters = V.fromList slice
+  let ff = flip fmap slice $ \(BlockFilter s f) -> (bs2Hex $ fromShort s, bs2Hex f)
   void $ addCounter filtersServedCounter $ fromIntegral $ V.length filters
+
+  liftIO $ print filterRequestMsgCurrency
+  liftIO $ print ff
 
   pure ([MFiltersResponse $ FilterResponse
     { filterResponseCurrency = filterRequestMsgCurrency
