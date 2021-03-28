@@ -10,6 +10,7 @@ module Ergvein.Wallet.Elements.Input(
   , validatedTextField
   , validatedTextFieldSetVal
   , validatedTextFieldSetValNoLabel
+  , validatedTextFieldAttrSetValNoLabel
   , textFieldSetValValidated
   , textFieldValidated
   , passField
@@ -24,6 +25,7 @@ import Control.Lens
 import Control.Monad.IO.Class
 import Data.Proxy
 import Data.Text (Text)
+import Ergvein.Either
 import Ergvein.Text
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Elements.Input.Class
@@ -61,7 +63,7 @@ textInputValidated :: (MonadFrontBase t m, LocalizedPrint l)
   -> (Text -> Either [l] a) -- ^ Validator
   -> m (InputElement EventResult (DomBuilderSpace m) t) -- ^ Only valid values get through
 textInputValidated cfg f = mdo
-  mErrsD <- holdDyn Nothing $ fmap (either Just (const Nothing)) rawE
+  mErrsD <- holdDyn Nothing $ fmap eitherToMaybe' rawE
   ti <- validatedTextInput cfg mErrsD
   let txtD = _inputElement_value ti
       rawE = updated $ f <$> txtD
@@ -103,13 +105,18 @@ textFieldNoLabel v0 = fmap _inputElement_value $ inputElement $ def
     %~ (\as -> "type" =: "text" <> as)
 
 textFieldAttrNoLabel :: (MonadFrontBase t m)
-  => M.Map AttributeName Text
+  => M.Map AttributeName Text -- ^ Initial attributes
+  -> Event t (M.Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
+  -> Event t Text
   -> Text -- ^ Initial value
   -> m (Dynamic t Text)
-textFieldAttrNoLabel attrs v0 = fmap _inputElement_value $ inputElement $ def
+textFieldAttrNoLabel attrs modifyAttrsE setValE v0 = fmap _inputElement_value $ inputElement $ def
   & inputElementConfig_initialValue .~ v0
   & inputElementConfig_elementConfig . elementConfig_initialAttributes
-    %~ (\as -> attrs <> "type" =: "text" <> as)
+    %~ (\as -> "type" =: "text" <> attrs <> as)
+  & inputElementConfig_elementConfig . elementConfig_modifyAttributes
+    .~ modifyAttrsE
+  & inputElementConfig_setValue .~ setValE
 
 validatedTextField :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPrint l1)
   => l0 -- ^ Label
@@ -158,6 +165,26 @@ validatedTextFieldSetValNoLabel v0 mErrsD setValE = do
       & inputElementConfig_initialValue .~ v0
       & inputElementConfig_setValue .~ setValE
 
+validatedTextFieldAttrSetValNoLabel :: (MonadFrontBase t m, LocalizedPrint l1)
+  => Text -- ^ Initial value
+  -> M.Map AttributeName Text -- ^ Initial attributes
+  -> Event t Text -- ^ Event that changes value
+  -> Event t (M.Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
+  -> Dynamic t (Maybe [l1]) -- ^ List of errors
+  -> m (Dynamic t Text)
+validatedTextFieldAttrSetValNoLabel initValue initAttrs setValE modifyAttrsE mErrsD = do
+  textInputValueD <- inputField
+  void $ divClass "form-field-errors" $ simpleList errsD displayError
+  pure textInputValueD
+  where
+    errsD = fmap (maybe [] id) mErrsD
+    isInvalidD = fmap (maybe "" (const "is-invalid")) mErrsD
+    inputField = divClassDyn isInvalidD $ fmap _inputElement_value $ textInput $ def
+      & inputElementConfig_initialValue .~ initValue
+      & inputElementConfig_elementConfig . elementConfig_initialAttributes %~ (\as -> "type" =: "text" <> initAttrs <> as)
+      & inputElementConfig_setValue .~ setValE
+      & inputElementConfig_elementConfig . elementConfig_modifyAttributes .~ modifyAttrsE
+
 textFieldSetValValidated :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPrint l1, Show a)
   => l0 -- ^ Label
   -> a -- ^ Initial value
@@ -165,10 +192,10 @@ textFieldSetValValidated :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPri
   -> (Text -> Either [l1] a) -- ^ Validatior
   -> m (Dynamic t a) -- ^ Only valid values get through
 textFieldSetValValidated lbl v0 setValE f = mdo
-  mErrsD <- holdDyn Nothing $ fmap (either Just (const Nothing)) rawE
+  mErrsD <- holdDyn Nothing $ fmap eitherToMaybe' rawE
   txtD <- validatedTextFieldSetVal lbl (showt v0) mErrsD (showt <$> setValE)
   let rawE = updated $ f <$> txtD
-  holdDyn v0 $ fmapMaybe (either (const Nothing) Just) rawE
+  holdDyn v0 $ fmapMaybe eitherToMaybe rawE
 
 textFieldValidated :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPrint l1, Show a)
   => l0 -- ^ Label
@@ -176,10 +203,10 @@ textFieldValidated :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPrint l1,
   -> (Text -> Either [l1] a) -- ^ Validatior
   -> m (Dynamic t a) -- ^ Only valid values get through
 textFieldValidated lbl v0 f = mdo
-  mErrsD <- holdDyn Nothing $ fmap (either Just (const Nothing)) rawE
+  mErrsD <- holdDyn Nothing $ fmap eitherToMaybe' rawE
   txtD <- validatedTextField lbl (showt v0) mErrsD
   let rawE = updated $ f <$> txtD
-  holdDyn v0 $ fmapMaybe (either (const Nothing) Just) rawE
+  holdDyn v0 $ fmapMaybe eitherToMaybe rawE
 
 displayError :: (MonadFrontBase t m, LocalizedPrint l) => Dynamic t l -> m ()
 displayError errD = do

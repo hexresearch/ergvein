@@ -1,9 +1,15 @@
+{-# OPTIONS_GHC -Wall #-}
+
 module Ergvein.Wallet.Localization.History
   (
     HistoryPageStrings(..)
   , HistoryTitle(..)
+  , BumpFeeWidgetStrings(..)
   ) where
 
+import Data.Word
+
+import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
 
@@ -33,6 +39,7 @@ data HistoryPageStrings =
   | HistoryTIURL
   | HistoryTIFee
   | HistoryTIRbf
+  | HistoryTIBumpFeeBtn
   | HistoryTIConflictingTxs
   | HistoryTIReplacedTxs
   | HistoryTIPossiblyReplacedTxs
@@ -68,6 +75,7 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTIURL                 -> "Block Explorer"
       HistoryTIFee                 -> "Fee"
       HistoryTIRbf                 -> "Replace by fee"
+      HistoryTIBumpFeeBtn          -> "Bump fee"
       HistoryTIConflictingTxs      -> "Conflicting transactions"
       HistoryTIReplacedTxs         -> "Replaced transactions"
       HistoryTIPossiblyReplacedTxs -> "The transaction may have replaced these transactions or was replaced by one of them"
@@ -80,6 +88,7 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTIOutputsOurAddress   -> "Our address"
       HistoryTIOutputsValue        -> "Value"
       HistoryTIOutputsStatus       -> "Status"
+
     Russian -> case v of
       HistoryBalance               -> "Баланс"
       HistoryNoTxs                 -> "Транзакций нет"
@@ -99,6 +108,7 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTIURL                 -> "Block Explorer"
       HistoryTIFee                 -> "Комиссия"
       HistoryTIRbf                 -> "Replace by fee"
+      HistoryTIBumpFeeBtn          -> "Увеличить комиссию"
       HistoryTIConflictingTxs      -> "Конфликтующие транзакции"
       HistoryTIReplacedTxs         -> "Замененные транзакции"
       HistoryTIPossiblyReplacedTxs -> "Эта транзакция заменила следующие транзакции или была заменена одной из них"
@@ -111,3 +121,90 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTIOutputsOurAddress   -> "Наш адрес"
       HistoryTIOutputsValue        -> "Объем"
       HistoryTIOutputsStatus       -> "Статус"
+
+data BumpFeeWidgetStrings =
+    BumpFeeTitle
+  | BumpFeeConfirmTxHeader
+  | BumpFeeTxPostedHeader
+  | BumpFeeCurrentFee
+  | BumpFeeCurrentFeeRate
+  | BumpFeeDecodeOutsError
+  | BumpFeeErgoError
+  | BumpFeeFeeAmount !Money !Units !Currency
+  | BumpFeeFeeRateAmount !Rational !Currency
+  | BumpFeeFeeRateUnknown
+  | BumpFeeFeeUnknown
+  | BumpFeeGetChangeKeyError
+  | BumpFeeGetChangeOutTypeError
+  | BumpFeeGetOutTypeError
+  | BumpFeeGetUtxoError
+  | BumpFeeHeader
+  | BumpFeeInsufficientFundsError
+  | BumpFeeInvalidAddressError
+  | BumpFeeNewFee
+  | BumpFeeNewFeeRate
+  | BumpFeeNewFeeRateAmount !Word64 !Currency
+  | BumpFeeNewFeeRateUnits
+  | BumpFeeSendTx
+  | BumpFeeSignError
+  | BumpFeeSignTx
+  | BumpFeeTxId
+  deriving (Eq)
+
+instance LocalizedPrint BumpFeeWidgetStrings where
+  localizedShow l v = case l of
+    English -> case v of
+      BumpFeeConfirmTxHeader             -> "Confirm the transaction"
+      BumpFeeTxPostedHeader              -> "Transaction posted"
+      BumpFeeCurrentFee                  -> "Current fee"
+      BumpFeeCurrentFeeRate              -> "Current fee rate"
+      BumpFeeDecodeOutsError             -> "Couldn't decode outputs"
+      BumpFeeErgoError                   -> "Ergo is not supported yet"
+      BumpFeeFeeAmount amount units cur  -> showMoneyUnit amount units <> " " <> symbolUnit cur units
+      BumpFeeFeeRateAmount amount cur    -> (showf 3 $ (realToFrac amount :: Double)) <> " " <> symbolUnit cur smallestUnits <> "/vbyte"
+      BumpFeeFeeRateUnknown              -> "unknown"
+      BumpFeeFeeUnknown                  -> "unknown"
+      BumpFeeGetChangeKeyError           -> "Couldn't get change key"
+      BumpFeeGetChangeOutTypeError       -> "Couldn't get change output type"
+      BumpFeeGetOutTypeError             -> "Couldn't get output type"
+      BumpFeeGetUtxoError                -> "Couldn't get UTXO"
+      BumpFeeHeader                      -> "Enter new fee rate"
+      BumpFeeInsufficientFundsError      -> "Insufficient funds"
+      BumpFeeInvalidAddressError         -> "Invalid address"
+      BumpFeeNewFee                      -> "New fee"
+      BumpFeeNewFeeRate                  -> "New fee rate"
+      BumpFeeNewFeeRateAmount amount cur -> showt amount <> " " <> symbolUnit cur smallestUnits <> "/vbyte"
+      BumpFeeNewFeeRateUnits             -> "New fee rate, sat/vbyte"
+      BumpFeeSendTx                      -> "Send tx"
+      BumpFeeSignError                   -> "Failed to sign the transaction"
+      BumpFeeSignTx                      -> "Sign tx"
+      BumpFeeTitle                       -> "Fee bumping"
+      BumpFeeTxId                        -> "Transaction ID"
+
+    Russian -> case v of
+      BumpFeeConfirmTxHeader             -> "Подтвердите транзакцию"
+      BumpFeeTxPostedHeader              -> "Транзакция отправлена"
+      BumpFeeCurrentFee                  -> "Текущая комиссия"
+      BumpFeeCurrentFeeRate              -> "Текущая комиссия за байт"
+      BumpFeeDecodeOutsError             -> "Не удалось декодировать выходы"
+      BumpFeeErgoError                   -> "Ergo пока не поддерживается"
+      BumpFeeFeeAmount amount units cur  -> showMoneyUnit amount units <> " " <> symbolUnit cur units
+      BumpFeeFeeRateAmount amount cur    -> (showf 3 $ (realToFrac amount :: Double)) <> " " <> symbolUnit cur smallestUnits <> "/vbyte"
+      BumpFeeFeeRateUnknown              -> "неизвестно"
+      BumpFeeFeeUnknown                  -> "неизвестно"
+      BumpFeeGetChangeKeyError           -> "Не удалось получить ключ для сдачи"
+      BumpFeeGetChangeOutTypeError       -> "Не удалось получить тип выхода для сдачи"
+      BumpFeeGetOutTypeError             -> "Не удалось получить тип выхода"
+      BumpFeeGetUtxoError                -> "Не удалось получить UTXO"
+      BumpFeeHeader                      -> "Укажите новый размер комиссии"
+      BumpFeeInsufficientFundsError      -> "Недостаточно средств"
+      BumpFeeInvalidAddressError         -> "Неверный адрес"
+      BumpFeeNewFee                      -> "Новая комиссия"
+      BumpFeeNewFeeRate                  -> "Новая комиссия за байт"
+      BumpFeeNewFeeRateAmount amount cur -> showt amount <> " " <> symbolUnit cur smallestUnits <> "/vbyte"
+      BumpFeeNewFeeRateUnits             -> "Новая комиссия за байт, sat/vbyte"
+      BumpFeeSendTx                      -> "Отправить транзакцию"
+      BumpFeeSignError                   -> "Не удалось подписать транзакцию"
+      BumpFeeSignTx                      -> "Подписать транзакцию"
+      BumpFeeTitle                       -> "Увеличение комиссии"
+      BumpFeeTxId                        -> "ID транзакции"

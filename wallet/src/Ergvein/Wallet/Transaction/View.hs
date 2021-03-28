@@ -90,6 +90,7 @@ data TransactionView = TransactionView {
 
 data TransactionViewInfo = TransactionViewInfo {
     txId                  :: Text
+  , txRaw                 :: EgvTx
   , txLabel               :: Maybe Text
   , txUrl                 :: Text
   , txFee                 :: Maybe Money
@@ -153,6 +154,7 @@ prepareTransactionView addrs hght tz sblUrl (mTT, TxRawInfo{..}) = case txr of
       where
         txInf = TransactionViewInfo {
             txId                  = txHex
+          , txRaw                 = txr
           , txLabel               = Nothing
           , txUrl                 = blUrl <> "/tx/" <> txHex
           , txFee                 = txFeeCalc

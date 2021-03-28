@@ -9,6 +9,7 @@ module Ergvein.Types.Address (
     , btcAddrToString'
     , btcAddrToString
     , btcAddrFromString
+    , BtcAddressType(..)
   ) where
 
 import Data.Aeson
@@ -22,6 +23,7 @@ import Data.String             (IsString, fromString)
 import Data.String.Conversions (cs)
 import Data.Text               (Text)
 import Ergvein.Crypto
+import Ergvein.Either
 import Ergvein.Types.Currency
 import Ergvein.Types.Network
 import GHC.Generics            (Generic)
@@ -154,3 +156,13 @@ instance FromJSON EgvAddress where
   parseJSON = withObject "EgvAddress" $ \o -> do
     cur  <- o .: "currency"
     egvAddrFromJSON cur =<< (o .: "address")
+
+data BtcAddressType =
+    BtcP2PK
+  | BtcP2PKH
+  | BtcP2MS
+  | BtcP2SH
+  | BtcP2WPKH
+  | BtcP2WSH
+  | BtcDataCarrier
+  deriving (Read, Show, Eq)

@@ -6,4 +6,5 @@ in rec {
   zlibSys = self.callPackage ../derivations/zlibSys.nix {};
   lmdbSys = self.callPackage ../derivations/lmdbSys.nix {};
   leveldb = self.callPackage ../derivations/leveldb.nix {};
+  p11-kit = self.callPackage ../derivations/p11-kit.nix {};
 }

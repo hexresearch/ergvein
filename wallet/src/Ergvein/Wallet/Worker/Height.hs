@@ -9,7 +9,7 @@ import Data.Maybe
 import Network.Haskoin.Block
 import Network.Haskoin.Network
 
-import Ergvein.Wallet.Platform
+import Ergvein.Either
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
@@ -18,6 +18,7 @@ import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Node
+import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Status.Types
 import Ergvein.Wallet.Util
 
@@ -127,8 +128,8 @@ btcListenFlow h0 ts0 he0 = Workflow $ mdo
           else if blockTimestamp hd > ts
             then Just $ Left ()
             else Nothing
-      restartE = fmapMaybe (either Just (const Nothing)) actE
-      setE = fmapMaybe (either (const Nothing) Just) actE
+      restartE = fmapMaybe eitherToMaybe' actE
+      setE = fmapMaybe eitherToMaybe actE
       storeE = leftmost [(he0, ts0, h0) <$ buildE, updated htD]
   void $ attachNewBtcHeader "btcListenFlow" True storeE
   void $ publishStatusUpdate $ ffor storeE $ const $ CurrencyStatus BTC Synced
