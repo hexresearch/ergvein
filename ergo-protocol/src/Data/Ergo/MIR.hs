@@ -6,8 +6,10 @@ module Data.Ergo.MIR where
 
 import Data.Int
 import Data.Word
+import Data.Persist
 import Data.ByteString.Short (ShortByteString)
 import Data.Text (Text)
+import Data.Ergo.Vlq
 
 newtype STypeVar = STypeVar Text
   deriving Show
@@ -56,11 +58,16 @@ newtype IrBoxId = IrBoxId ShortByteString
 
 -- | Element in the tuple
 newtype TupleIdx = TupleIdx Word8
-  deriving Show
+  deriving stock Show
+  deriving newtype Persist
 
 -- | Index in constants array
 newtype ConstIdx = ConstIdx Word32
   deriving Show
+
+instance Persist ConstIdx where
+  get = ConstIdx <$> decodeVarInt
+  put (ConstIdx i) = encodeVarInt i
 
 -- | Variable ID
 newtype ValId = ValId Word32
@@ -102,7 +109,11 @@ data Value
 
 data Expr
   = Const            SType Value     -- ^ Constant value
-  | ConstPlaceholder SType !ConstIdx -- ^ Placeholder for a constant
+  | ConstPlaceholder {-SType-} !ConstIdx -- ^ Placeholder for a constant
+  | SubstConstant
+    Expr {- script bytes     -}
+    Expr {- positions  [Int] -}
+    Expr {- new values -}
   | Collection       SType [Expr]    -- ^ Collection declaration (array of expressions of the same type)
   | CalcBlake2b256   Expr            -- ^ Blake2b256 hash calculation
   | Context {- FIXME -}              -- ^ Context variables (external)
@@ -115,7 +126,7 @@ data Expr
   | ValDef           ValDef          -- ^ let-bound expression
   | ValUse           ValUse          -- ^ Reference to ValDef
   | If    !Expr !Expr !Expr             -- ^ If, non-lazy - evaluate both branches
-  | BinOp !Expr !BinOp !Expr    -- ^ Binary operation
+  | BinOp !BinOp !Expr !Expr    -- ^ Binary operation
   | And        !Expr    -- ^ Logical AND
   | Or         !Expr    -- ^ Logical OR
   | LogicalNot !Expr    -- ^ Logical not
@@ -131,6 +142,10 @@ data Expr
   | ExtractAmount      Expr              -- ^ Box monetary value
   | BoolToSigmaProp    Expr              -- ^ Bool to Sigma Prop
   | Upcast             Expr SType        -- ^ Upcast numeric value to given type
+
+  | ExtractCreationInfo Expr
+  | ProveDLog Expr
+  | DecodePoint Expr
   deriving Show
 
 data GlobalVars
@@ -138,6 +153,7 @@ data GlobalVars
   | Outputs -- ^ Tx outputs
   | Height  -- ^ Current blockchain height
   | SelfBox -- ^ ErgoBox instance, which script is being evaluated
+  | MinerPubKey
   deriving Show
 
 data MethodCall = MkMethodCall

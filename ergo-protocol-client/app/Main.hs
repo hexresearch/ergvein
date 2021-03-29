@@ -12,6 +12,8 @@ import Data.Ergo.Modifier
 import Data.Ergo.Protocol
 import Data.Ergo.Vlq
 import Data.Ergo.MIR
+import Data.Ergo.MIR.OpCode
+import Data.Ergo.MIR.Constants
 import Data.Ergo.Protocol.Client
 import Data.Ergo.Block (BlockHeader)
 import Data.Maybe
@@ -134,13 +136,12 @@ parseTX = do
   value <- decodeVarInt @Word64
   eth   <- decodeErgoTreeHeader
   --
-  remAfter <- remaining
   -- Parse list of constants
   constants <- case ergoConstantSegreation eth of
     False -> pure []
     True  -> parseListOf @Word32 parseConstant
   -- Parse transaction body
-  -- opcode <- peek
+  tree <- parseValue
   -- t  <- getSType
   -- l  <- decodeVarInt @Int32
     -- tree           <- undefined
@@ -154,30 +155,33 @@ parseTX = do
   --   --   undefined
   --   pure (value,tree,creationHeight,tokensData,nRegs)
   -- bbs   <- ModifierId <$> getBytes 16
-  tx    <- ModifierId <$> getBytes (228-(remBefore - remAfter))
+  -- xx <- decodeVarInt @Word16
+  -- remAfter <- remaining
+  -- tx       <- ModifierId <$> getBytes (228-(remBefore - remAfter))
   pure $ unlines
     [ show value
     , show eth
     , unlines $ "-- CONSTANTS --" : map show constants
-    -- , show t
+    , show tree
     -- , show l
     -- , show opcode
-    , show tx
+    -- , show xx
+    -- , show tx
     ]
    -- (ins,dataIns,tokens,v1,v2,v3)
   -- nOut <- decodeVarInt @Word16
   -- outs <- replicateM tokensCount undefined
   -- undefined
 
-parseConstant = getConstant =<< getSType
+parseConstant = do ty <- getSType
+                   c  <- getConstant ty
+                   pure (ty,c)
 
+parseValue :: Get Expr
 parseValue = do
   peek >>= \case
-    b | b < c_LastConstantCode -> parseConstant
-      | otherwise              -> parseValueWithOpCode
-
-parseValueWithOpCode = do
-  get @Word8 >>= \case
+    b | b < c_LastConstantCode -> uncurry Const <$> parseConstant
+      | otherwise              -> parseAST
 
 
 
@@ -228,16 +232,7 @@ deserializeColl ty = do
     SByte    -> replicateM len (Byte <$> get @Int8)
     _        -> replicateM len (getConstant ty)
 
-c_MaxPrimTypeCode, c_PrimRange, c_TupleTypeCode :: Word8
-c_MaxPrimTypeCode = 11
-c_PrimRange       = c_MaxPrimTypeCode + 1
-c_TupleTypeCode   = (c_MaxPrimTypeCode + 1) * 8
-
-c_LastConstantCode,c_LastDataType :: Word8
-c_LastConstantCode = c_LastDataType + 1
-c_LastDataType     = 111
-
-tyCode_SAny = 97 :: Word8
+-- tyCode_SAny = 97 :: Word8
 
 data ErgoTreeHeader = ErgoTreeHeader
   { ergoTreeVersion        :: !Word8
@@ -270,6 +265,141 @@ parseShortListOf getV = do
   n <- get @Word8
   replicateM (fromIntegral n) getV
 
+----------------------------------------------------------------
+-- AST
+----------------------------------------------------------------
+
+parseAST :: Get Expr 
+parseAST = do
+  op <- get
+  if | op == opTaggedVariableCode                    -> error "OPCODE: opTaggedVariableCode"
+     | op == opValUseCode                            -> error "OPCODE: opValUseCode"
+     -- FIXME: We need access to constant store here
+     | op == opConstantPlaceholderCode               -> ConstPlaceholder <$> get
+     | op == opSubstConstantsCode                    -> SubstConstant <$> parseValue <*> parseValue <*> parseValue
+     | op == opLongToByteArrayCode                   -> error "OPCODE: opLongToByteArrayCode"
+     | op == opByteArrayToBigIntCode                 -> error "OPCODE: opByteArrayToBigIntCode"
+     | op == opByteArrayToLongCode                   -> error "OPCODE: opByteArrayToLongCode"
+     | op == opDowncastCode                          -> error "OPCODE: opDowncastCode"
+     | op == opUpcastCode                            -> Upcast <$> parseValue <*> getSType
+     | op == opTrueCode                              -> error "OPCODE: opTrueCode"
+     | op == opFalseCode                             -> error "OPCODE: opFalseCode"
+     | op == opUnitConstantCode                      -> error "OPCODE: opUnitConstantCode"
+     | op == opGroupGeneratorCode                    -> error "OPCODE: opGroupGeneratorCode"
+     | op == opConcreteCollectionCode                -> do
+         size <- decodeVarInt @Word16
+         ty   <- getSType
+         xs   <- replicateM (fromIntegral size) parseValue
+         pure $ Collection ty xs
+     | op == opConcreteCollectionBooleanConstantCode -> error "OPCODE: opConcreteCollectionBooleanConstantCode"
+     | op == opTupleCode                             -> error "OPCODE: opTupleCode"
+     | op == opSelect1Code                           -> error "OPCODE: opSelect1Code"
+     | op == opSelect2Code                           -> error "OPCODE: opSelect2Code"
+     | op == opSelect3Code                           -> error "OPCODE: opSelect3Code"
+     | op == opSelect4Code                           -> error "OPCODE: opSelect4Code"
+     | op == opSelect5Code                           -> error "OPCODE: opSelect5Code"
+     | op == opSelectFieldCode                       -> SelectField <$> parseValue <*> get
+     | op == opLtCode                                -> relationOp OpLT
+     | op == opLeCode                                -> relationOp OpLE
+     | op == opGtCode                                -> relationOp OpGT
+     | op == opGeCode                                -> relationOp OpGE
+     | op == opEqCode                                -> relationOp OpEq
+     | op == opNeqCode                               -> relationOp OpNEq
+     | op == opIfCode                                -> If <$> parseValue <*> parseValue <*> parseValue
+     | op == opAndCode                               -> And <$> parseValue
+     | op == opOrCode                                -> Or  <$> parseValue
+     | op == opAtLeastCode                           -> error "OPCODE: opAtLeastCode"
+     | op == opMinusCode                             -> arithOp OpMinus
+     | op == opPlusCode                              -> arithOp OpPlus
+     | op == opXorCode                               -> error "OPCODE: opXorCode"
+     | op == opMultiplyCode                          -> arithOp OpMultiply
+     | op == opDivisionCode                          -> arithOp OpDivide
+     | op == opModuloCode                            -> error "OPCODE: opModuloCode"
+     | op == opExponentiateCode                      -> error "OPCODE: opExponentiateCode"
+     | op == opMultiplyGroupCode                     -> error "OPCODE: opMultiplyGroupCode"
+     | op == opMinCode                               -> error "OPCODE: opMinCode"
+     | op == opMaxCode                               -> error "OPCODE: opMaxCode"
+     | op == opHeightCode                            -> pure $ GlobalVars Height
+     | op == opInputsCode                            -> error "OPCODE: opInputsCode"
+     | op == opOutputsCode                           -> pure $ GlobalVars Outputs
+     | op == opLastBlockUtxoRootHashCode             -> error "OPCODE: opLastBlockUtxoRootHashCode"
+     | op == opSelfCode                              -> pure $ GlobalVars SelfBox
+     | op == opMinerPubkeyCode                       -> pure $ GlobalVars MinerPubKey
+     | op == opMapCollectionCode                     -> error "OPCODE: opMapCollectionCode"
+     | op == opExistsCode                            -> error "OPCODE: opExistsCode"
+     | op == opForAllCode                            -> error "OPCODE: opForAllCode"
+     | op == opFoldCode                              -> error "OPCODE: opFoldCode"
+     | op == opSizeOfCode                            -> SizeOf <$> parseValue
+     | op == opByIndexCode                           ->
+         ByIndex <$> (MkByIndex <$> parseValue <*> parseValue <*> getOptional parseValue)
+     | op == opAppendCode                            -> error "OPCODE: opAppendCode"
+     | op == opSliceCode                             -> error "OPCODE: opSliceCode"
+     | op == opFilterCode                            -> error "OPCODE: opFilterCode"
+     | op == opAvlTreeCode                           -> error "OPCODE: opAvlTreeCode"
+     | op == opAvlTreeGetCode                        -> error "OPCODE: opAvlTreeGetCode"
+     | op == opFlatMapCollectionCode                 -> error "OPCODE: opFlatMapCollectionCode"
+     | op == opExtractAmountCode                     -> ExtractAmount      <$> parseValue
+     | op == opExtractScriptBytesCode                -> ExtractScriptBytes <$> parseValue
+     | op == opExtractBytesCode                      -> error "OPCODE: opExtractBytesCode"
+     | op == opExtractBytesWithNoRefCode             -> error "OPCODE: opExtractBytesWithNoRefCode"
+     | op == opExtractIdCode                         -> error "OPCODE: opExtractIdCode"
+     | op == opExtractRegisterAs                     -> error "OPCODE: opExtractRegisterAs"
+     | op == opExtractCreationInfoCode               -> ExtractCreationInfo <$> parseValue
+     | op == opCalcBlake2b256Code                    -> error "OPCODE: opCalcBlake2b256Code"
+     | op == opCalcSha256Code                        -> error "OPCODE: opCalcSha256Code"
+     | op == opProveDlogCode                         -> ProveDLog <$> parseValue
+     | op == opProveDiffieHellmanTupleCode           -> error "OPCODE: opProveDiffieHellmanTupleCode"
+     | op == opSigmaPropIsProvenCode                 -> error "OPCODE: opSigmaPropIsProvenCode"
+     | op == opSigmaPropBytesCode                    -> error "OPCODE: opSigmaPropBytesCode"
+     | op == opBoolToSigmaPropCode                   -> BoolToSigmaProp <$> parseValue
+     | op == opTrivialPropFalseCode                  -> error "OPCODE: opTrivialPropFalseCode"
+     | op == opTrivialPropTrueCode                   -> error "OPCODE: opTrivialPropTrueCode"
+     | op == opDeserializeContextCode                -> error "OPCODE: opDeserializeContextCode"
+     | op == opDeserializeRegisterCode               -> error "OPCODE: opDeserializeRegisterCode"
+     | op == opValDefCode                            -> error "OPCODE: opValDefCode"
+     | op == opFunDefCode                            -> error "OPCODE: opFunDefCode"
+     | op == opBlockValueCode                        -> error "OPCODE: opBlockValueCode"
+     | op == opFuncValueCode                         -> error "OPCODE: opFuncValueCode"
+     | op == opFuncApplyCode                         -> error "OPCODE: opFuncApplyCode"
+     | op == opPropertyCallCode                      -> error "OPCODE: opPropertyCallCode"
+     | op == opMethodCallCode                        -> error "OPCODE: opMethodCallCode"
+     | op == opGlobalCode                            -> error "OPCODE: opGlobalCode"
+     | op == opSomeValueCode                         -> error "OPCODE: opSomeValueCode"
+     | op == opNoneValueCode                         -> error "OPCODE: opNoneValueCode"
+     | op == opGetVarCode                            -> error "OPCODE: opGetVarCode"
+     | op == opOptionGetCode                         -> error "OPCODE: opOptionGetCode"
+     | op == opOptionGetOrElseCode                   -> error "OPCODE: opOptionGetOrElseCode"
+     | op == opOptionIsDefinedCode                   -> error "OPCODE: opOptionIsDefinedCode"
+     | op == opModQCode                              -> error "OPCODE: opModQCode"
+     | op == opPlusModQCode                          -> error "OPCODE: opPlusModQCode"
+     | op == opMinusModQCode                         -> error "OPCODE: opMinusModQCode"
+     | op == opSigmaAndCode                          -> error "OPCODE: opSigmaAndCode"
+     | op == opSigmaOrCode                           -> error "OPCODE: opSigmaOrCode"
+     | op == opBinOrCode                             -> error "OPCODE: opBinOrCode"
+     | op == opBinAndCode                            -> error "OPCODE: opBinAndCode"
+     | op == opDecodePointCode                       -> DecodePoint <$> parseValue
+     | op == opLogicalNotCode                        -> error "OPCODE: opLogicalNotCode"
+     | op == opNegationCode                          -> error "OPCODE: opNegationCode"
+     | op == opBitInversionCode                      -> error "OPCODE: opBitInversionCode"
+     | op == opBitOrCode                             -> error "OPCODE: opBitOrCode"
+     | op == opBitAndCode                            -> error "OPCODE: opBitAndCode"
+     | op == opBinXorCode                            -> error "OPCODE: opBinXorCode"
+     | op == opBitXorCode                            -> error "OPCODE: opBitXorCode"
+     | op == opBitShiftRightCode                     -> error "OPCODE: opBitShiftRightCode"
+     | op == opBitShiftLeftCode                      -> error "OPCODE: opBitShiftLeftCode"
+     | op == opBitShiftRightZeroedCode               -> error "OPCODE: opBitShiftRightZeroedCode"
+     | op == opCollShiftRightCode                    -> error "OPCODE: opCollShiftRightCode"
+     | op == opCollShiftLeftCode                     -> error "OPCODE: opCollShiftLeftCode"
+     | op == opCollShiftRightZeroedCode              -> error "OPCODE: opCollShiftRightZeroedCode"
+     | op == opCollRotateLeftCode                    -> error "OPCODE: opCollRotateLeftCode"
+     | op == opCollRotateRightCode                   -> error "OPCODE: opCollRotateRightCode"
+     | op == opContextCode                           -> error "OPCODE: opContextCode"
+     | op == opXorOfCode                             -> error "OPCODE: opXorOfCode"
+     | otherwise -> error "Unhandled opcode: op"
+  where
+    relationOp op = BinOp (RelationOp op) <$> parseValue <*> parseValue
+    arithOp    op = BinOp (ArithOp    op) <$> parseValue <*> parseValue
+
 {- HEADER
 BlockHeader
   { version          = 1
@@ -297,3 +427,8 @@ peek = do
   ensure 1
   Get $ \_ ptr -> do w <- Foreign.peek ptr
                      pure (ptr :!: w)
+
+getOptional :: Get a -> Get (Maybe a)
+getOptional getVal = get @Word8 >>= \case
+  0 -> pure Nothing
+  _ -> Just <$> getVal

@@ -21,6 +21,8 @@ library
     Data.Ergo.Crypto
     Data.Ergo.Difficulty
     Data.Ergo.MIR
+    Data.Ergo.MIR.OpCode
+    Data.Ergo.MIR.Constants
     Data.Ergo.Modifier
     Data.Ergo.Protocol
     Data.Ergo.Protocol.Check
