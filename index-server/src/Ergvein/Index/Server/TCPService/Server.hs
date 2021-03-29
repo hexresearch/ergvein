@@ -115,8 +115,7 @@ runConnection (sock, addr) = incGaugeWhile activeConnsGauge $ do
 --   terminate.
 sendLoop :: Socket -> TChan (Maybe Message) -> ServerM ()
 sendLoop sock sendChan = do
-  broadChan <- liftIO . atomically . dupTChan
-           =<< broadcastChannel
+  broadChan <- liftIO . atomically . dupTChan =<< broadcastChannel
   liftIO $ fix $ \loop -> do
     msgs <- atomically $  Left  <$> readTChan sendChan
                       <|> Right <$> readTChan broadChan
@@ -128,41 +127,8 @@ sendLoop sock sendChan = do
     sendMsg = sendLazy sock . toLazyByteString
 
 evalMsg :: Socket -> SockAddr -> ExceptT Reject ServerM (Maybe Message, Bool)
-evalMsg sock addr = response =<< request =<< messageHeader
+evalMsg sock addr = response =<< request sock =<< messageHeader sock
   where
-    recvVarInt = liftIO $ do
-      hbs <- NS.recv sock 1
-      if BS.null hbs then pure hbs else do
-        let hb = BS.head hbs
-        if | hb == 0xFF -> (hbs <>) <$> NS.recv sock 8
-           | hb == 0XFE -> (hbs <>) <$> NS.recv sock 4
-           | hb == 0xFD -> (hbs <>) <$> NS.recv sock 2
-           | otherwise -> pure hbs
-
-    messageHeader :: ExceptT Reject ServerM MessageHeader
-    messageHeader = do
-      mid <- messageId =<< recvVarInt
-      if not $ messageHasPayload mid then pure (MessageHeader mid 0) else do
-        l <- messageLength =<< recvVarInt
-        pure $ MessageHeader mid l
-
-    messageId :: BS.ByteString -> ExceptT Reject ServerM MessageType
-    messageId bs
-      | BS.null bs = except $ Left $ Reject MVersionType ZeroBytesReceived "Expected bytes for message header (id)"
-      | otherwise = ExceptT . pure . mapLeft (\_ -> Reject MVersionType MessageHeaderParsing "Failed to parse header message id") . eitherResult $ parse messageTypeParser bs
-
-    messageLength :: BS.ByteString -> ExceptT Reject ServerM Word32
-    messageLength bs
-      | BS.null bs = except $ Left $ Reject MVersionType ZeroBytesReceived "Expected bytes for message header (length)"
-      | otherwise = ExceptT . pure . mapLeft (\_ -> Reject MVersionType MessageHeaderParsing "Failed to parse header message length") . eitherResult $ parse messageLengthParser bs
-
-    request :: MessageHeader -> ExceptT Reject ServerM Message
-    request MessageHeader {..} = do
-      messageBytes <- if not $ messageHasPayload msgType
-        then pure mempty
-        else liftIO $ NS.recv sock $ fromIntegral msgSize
-      except $ mapLeft (\_-> Reject msgType MessageParsing "Failed to parse message body") $ eitherResult $ parse (messageParser msgType) messageBytes
-
     response :: Message -> ExceptT Reject ServerM (Maybe Message, Bool)
     response msg = (lift $ handleMsg addr msg) `catch` (\(e :: SomeException) -> do
       logErrorN $ "<" <> showt addr <> ">: Rejecting peer as exception occured in while handling it message: " <> showt e
