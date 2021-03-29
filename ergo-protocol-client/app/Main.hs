@@ -13,6 +13,7 @@ import Data.Ergo.Protocol
 import Data.Ergo.Vlq
 import Data.Ergo.MIR
 import Data.Ergo.MIR.OpCode
+import Data.Ergo.MIR.Parser
 import Data.Ergo.MIR.Constants
 import Data.Ergo.Protocol.Client
 import Data.Ergo.Block (BlockHeader)
@@ -115,33 +116,16 @@ main = do
 
 parseTX = do
   -- Inputs
-  ins <- parseListOf @Word16 $ do
-    bid   <- ModifierId <$> getBytes 32
-    n     <- decodeVarInt @Word16
-    proof <- getBytes (fromIntegral n)
-    pure (bid,proof)
-  --
-  -- dataIns <- parseListOf @Word16 (ModifierId <$> getBytes 32)  -- Data inputs
-  -- tokens  <- parseListOf @Word32 (ModifierId <$> getBytes 32)  -- Tokens
-  --
-  0 <- decodeVarInt @Word32
-  0 <- decodeVarInt @Word32
-  0 <- decodeVarInt @Word32
+  ins      <- parseListOf @Word16 $ getErgo @ErgoInput
+  dataIns  <- parseListOf @Word16 $ getErgo @ErgoDataInput
+  tokenIds <- parseShortListOf $ getErgo @TokenId
   -- -- -- Outputs
   nOut <- decodeVarInt @Word16
   ----- Start decoding ouput --
   --
-  remBefore <- remaining
-  -- Output
-  value <- decodeVarInt @Word64
-  eth   <- decodeErgoTreeHeader
-  --
   -- Parse list of constants
-  constants <- case ergoConstantSegreation eth of
-    False -> pure []
-    True  -> parseListOf @Word32 parseConstant
-  -- Parse transaction body
-  tree <- parseValue
+  box1 <- getErgo @ErgoBox
+  box2 <- getErgo @ErgoBox
   -- t  <- getSType
   -- l  <- decodeVarInt @Int32
     -- tree           <- undefined
@@ -159,10 +143,11 @@ parseTX = do
   -- remAfter <- remaining
   -- tx       <- ModifierId <$> getBytes (228-(remBefore - remAfter))
   pure $ unlines
-    [ show value
-    , show eth
-    , unlines $ "-- CONSTANTS --" : map show constants
-    , show tree
+    [ "----------------"
+    , show ins
+    , show dataIns
+    , show nOut
+    , groom box2
     -- , show l
     -- , show opcode
     -- , show xx
@@ -172,6 +157,77 @@ parseTX = do
   -- nOut <- decodeVarInt @Word16
   -- outs <- replicateM tokensCount undefined
   -- undefined
+
+----------------------------------------------------------------
+-- Transactions
+----------------------------------------------------------------
+
+data ErgoInput = ErgoInput ModifierId ByteString
+  deriving Show
+
+newtype ErgoDataInput = ErgoDataInput ModifierId
+  deriving stock   Show
+  deriving newtype ErgoParser
+
+newtype TokenId = TokenId ModifierId
+  deriving stock   Show
+  deriving newtype ErgoParser
+
+data ErgoBox = ErgoBox
+  { eboxValue       :: !Word64
+  , eboxConstants   :: [(SType,Value)]
+  , eboxSpendScript :: !Expr
+  , eboxHeight      :: !Word32
+  , eboxTokens      :: [(ModifierId, Word32)]
+  }
+  deriving stock (Show)
+
+data ErgoTx = ErgoTx
+  { txInputs  :: [ErgoInput]
+  , txDataIn  :: [ErgoDataInput]
+  , txTokens  :: [TokenId]
+  , txOutputs :: [ErgoBox]
+  }
+  deriving stock (Show)
+
+instance ErgoParser ErgoInput where
+  getErgo = do
+    bid   <- ModifierId <$> getBytes 32
+    n     <- decodeVarInt @Word16
+    proof <- getBytes (fromIntegral n)
+    -- We don't parse context extension here
+    get @Word8 >>= \case
+      0 -> pure ()
+      _ -> error "FIXME: ErgoInput: we don't parse ContextExtension"
+    pure $ ErgoInput bid proof
+
+instance ErgoParser ErgoBox where
+  getErgo = do
+    eboxValue     <- decodeVarInt @Word64
+    eth           <- decodeErgoTreeHeader
+    eboxConstants <- case ergoConstantSegreation eth of
+      False -> pure []
+      True  -> parseListOf @Word32 parseConstant
+    -- Parse transaction body
+    eboxSpendScript <- parseValue
+    eboxHeight      <- decodeVarInt @Word32
+    eboxTokens      <- parseShortListOf $ (,) <$> getErgo <*> decodeVarInt @Word32
+    --
+    get @Word8 >>= \case
+      0 -> pure ()
+      _ -> error "FIXME: ErgoBox: registers aren't parsed"
+    pure ErgoBox{..}
+
+instance ErgoParser ErgoTx where
+  getErgo = do
+    txInputs  <- parseListOf @Word16 $ getErgo @ErgoInput
+    txDataIn  <- parseListOf @Word16 $ getErgo @ErgoDataInput
+    txTokens  <- parseShortListOf $ getErgo @TokenId
+    txOutputs <- parseShortListOf getErgo
+    pure ErgoTx{..}
+
+instance ErgoParser ModifierId where
+  getErgo = ModifierId <$> getBytes 32
 
 parseConstant = do ty <- getSType
                    c  <- getConstant ty
@@ -187,8 +243,7 @@ parseValue = do
 
 getSType = do
   get @Word8 >>= \case
-    c | traceShow ("CC",c) False -> undefined
-      | c <= 0 -> fail "Invalid type prefix"
+    c | c <= 0 -> fail "Invalid type prefix"
         -- Not a tuple we need to drill down
       | c < c_TupleTypeCode
       , (conId,primId) <- c `divMod` c_PrimRange -> case conId of
@@ -223,6 +278,7 @@ getConstant = \case
   SInt     -> Int   <$> decodeVarInt
   SLong    -> Long  <$> decodeVarInt
   SColl ty -> deserializeColl ty
+  s -> error ("getConstant: " ++ show s)
 
 deserializeColl ty = do
   len <- fromIntegral <$> decodeVarInt @Word16
@@ -275,7 +331,7 @@ parseAST = do
   if | op == opTaggedVariableCode                    -> error "OPCODE: opTaggedVariableCode"
      | op == opValUseCode                            -> error "OPCODE: opValUseCode"
      -- FIXME: We need access to constant store here
-     | op == opConstantPlaceholderCode               -> ConstPlaceholder <$> get
+     | op == opConstantPlaceholderCode               -> ConstPlaceholder <$> getErgo
      | op == opSubstConstantsCode                    -> SubstConstant <$> parseValue <*> parseValue <*> parseValue
      | op == opLongToByteArrayCode                   -> error "OPCODE: opLongToByteArrayCode"
      | op == opByteArrayToBigIntCode                 -> error "OPCODE: opByteArrayToBigIntCode"

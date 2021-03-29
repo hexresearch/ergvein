@@ -10,6 +10,7 @@ import Data.Persist
 import Data.ByteString.Short (ShortByteString)
 import Data.Text (Text)
 import Data.Ergo.Vlq
+import Data.Ergo.MIR.Parser
 
 newtype STypeVar = STypeVar Text
   deriving Show
@@ -64,10 +65,8 @@ newtype TupleIdx = TupleIdx Word8
 -- | Index in constants array
 newtype ConstIdx = ConstIdx Word32
   deriving Show
+  deriving ErgoParser via AsVarInt Word32
 
-instance Persist ConstIdx where
-  get = ConstIdx <$> decodeVarInt
-  put (ConstIdx i) = encodeVarInt i
 
 -- | Variable ID
 newtype ValId = ValId Word32
