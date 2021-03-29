@@ -50,6 +50,7 @@ library
         Ergvein.Wallet.Localization.Client
         Ergvein.Wallet.Localization.Currencies
         Ergvein.Wallet.Localization.Currency
+        Ergvein.Wallet.Localization.Fee
         Ergvein.Wallet.Localization.History
         Ergvein.Wallet.Localization.Info
         Ergvein.Wallet.Localization.Initial
@@ -103,6 +104,7 @@ library
         Ergvein.Wallet.OpenUrl
         Ergvein.Wallet.Page.About
         Ergvein.Wallet.Page.Balances
+        Ergvein.Wallet.Page.BumpFee
         Ergvein.Wallet.Page.Canvas
         Ergvein.Wallet.Page.Currencies
         Ergvein.Wallet.Page.History
@@ -144,6 +146,9 @@ library
         Ergvein.Wallet.Validate
         Ergvein.Wallet.Widget.Balance
         Ergvein.Wallet.Widget.GraphPinCode
+        Ergvein.Wallet.Widget.Input.BTC.Amount
+        Ergvein.Wallet.Widget.Input.BTC.Fee
+        Ergvein.Wallet.Widget.Input.BTC.Recipient
         Ergvein.Wallet.Worker.Fees
         Ergvein.Wallet.Worker.Height
         Ergvein.Wallet.Worker.Indexer

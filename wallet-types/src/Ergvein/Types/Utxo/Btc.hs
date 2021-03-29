@@ -6,6 +6,11 @@ module Ergvein.Types.Utxo.Btc
   , updateBtcUtxoSetPure
   , reconfirmBtcUtxoSetPure
   , confirmationGap
+  , getBtcOutputType
+  , UtxoPoint(..)
+  , ConfirmedUtxoPoints
+  , UnconfirmedUtxoPoints
+  , Coin(..)
   ) where
 
 import Data.List (foldl')
@@ -13,9 +18,11 @@ import Data.SafeCopy
 import Data.Serialize
 import Data.Word
 import Network.Haskoin.Script
-import Network.Haskoin.Transaction
+import Network.Haskoin.Transaction hiding (Coin)
 
 import Ergvein.Aeson
+import Ergvein.Either
+import Ergvein.Types.Address
 import Ergvein.Types.Keys
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo.Status
@@ -78,3 +85,43 @@ reconfirmBtcUtxoSetPure bh bs = flip M.mapMaybe bs $ \meta -> case btcUtxo'statu
   EUtxoReceiving mh -> case mh of
     Nothing -> Just $ meta {btcUtxo'status = EUtxoReceiving $ Just bh}
     Just bh0 -> if bh - bh0 >= staleGap - 1 then Nothing else Just meta
+
+btcScriptOutputToAddressType :: ScriptOutput -> BtcAddressType
+btcScriptOutputToAddressType = \case
+  PayPK _ -> BtcP2PK
+  PayPKHash _ -> BtcP2PKH
+  PayMulSig _ _ -> BtcP2MS
+  PayScriptHash _ -> BtcP2SH
+  PayWitnessPKHash _ -> BtcP2WPKH
+  PayWitnessScriptHash _ -> BtcP2WSH
+  DataCarrier _ -> BtcDataCarrier
+
+decodeBtcOut :: TxOut -> Maybe ScriptOutput
+decodeBtcOut = eitherToMaybe . decodeOutputBS . scriptOutput
+
+getBtcOutputType :: TxOut -> Maybe BtcAddressType
+getBtcOutputType txOut = btcScriptOutputToAddressType <$> decodeBtcOut txOut
+
+data UtxoPoint = UtxoPoint {
+  upPoint :: !OutPoint
+, upMeta  :: !BtcUtxoMeta
+} deriving (Show)
+
+instance Eq UtxoPoint where
+  a == b = (btcUtxo'amount $ upMeta a) == (btcUtxo'amount $ upMeta b)
+
+-- | We need to sort in desc order to reduce Tx size
+instance Ord UtxoPoint where
+  a `compare` b = (btcUtxo'amount $ upMeta b) `compare` (btcUtxo'amount $ upMeta a)
+
+type ConfirmedUtxoPoints = [UtxoPoint]
+
+type UnconfirmedUtxoPoints = [UtxoPoint]
+
+class Coin c where
+  coinValue :: c -> Word64
+  coinType  :: c -> BtcAddressType
+
+instance Coin UtxoPoint where
+  coinValue = btcUtxo'amount . upMeta
+  coinType = btcScriptOutputToAddressType . btcUtxo'script . upMeta

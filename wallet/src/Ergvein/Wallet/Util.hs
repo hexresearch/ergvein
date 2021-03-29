@@ -25,6 +25,7 @@ module Ergvein.Wallet.Util(
 import Control.Monad.Except
 import Reflex.Dom
 
+import Ergvein.Either
 import Ergvein.Index.Protocol.Types
 import Ergvein.Wallet.Platform
 
@@ -113,8 +114,8 @@ currencyCodeToCurrency c = case c of
 splitEither :: Reflex t => Event t (Either a b) -> (Event t a, Event t b)
 splitEither e = (ae, be)
   where
-    ae = fmapMaybe (either Just (const Nothing)) e
-    be = fmapMaybe (either (const Nothing) Just) e
+    ae = fmapMaybe eitherToMaybe' e
+    be = fmapMaybe eitherToMaybe e
 
 switchDyn2 :: Reflex t => Dynamic t (Event t a, Event t b) -> (Event t a, Event t b)
 switchDyn2 = (\(a,b) -> (switchDyn a, switchDyn b)) . splitDynPure

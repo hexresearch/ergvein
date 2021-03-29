@@ -13,7 +13,6 @@ module Ergvein.Crypto.Util (
   , encodeBase58CheckErg
   , decodeBase58CheckBtc
   , decodeBase58CheckErg
-  , eitherToMaybe
 ) where
 
 import Control.Monad (guard)
@@ -26,7 +25,7 @@ import Data.Serialize (encode, decode)
 import Network.Haskoin.Address.Base58
 import Network.Haskoin.Crypto (CheckSum32, checkSum32)
 import Network.Haskoin.Keys (Entropy)
-import Network.Haskoin.Util (eitherToMaybe, encodeHex, decodeHex)
+import Network.Haskoin.Util (encodeHex, decodeHex)
 
 import qualified Data.ByteArray        as BA
 import qualified Data.ByteString       as BS

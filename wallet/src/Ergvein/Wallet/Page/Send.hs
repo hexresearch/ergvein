@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedLists #-}
 
 module Ergvein.Wallet.Page.Send (
@@ -9,23 +8,18 @@ import Control.Lens
 import Control.Monad.Except
 import Data.Maybe
 import Data.Word
-import Text.Read
 
 import Ergvein.Text
 import Ergvein.Types
-import Ergvein.Types.Derive
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Camera
-import Ergvein.Wallet.Clipboard
 import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Elements.Toggle
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Localization.Fee
 import Ergvein.Wallet.Localization.Send
 import Ergvein.Wallet.Localization.Settings()
-import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Native
 import Ergvein.Wallet.Navbar
@@ -35,13 +29,14 @@ import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage
+import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Transaction.Builder
 import Ergvein.Wallet.Transaction.Util
-import Ergvein.Wallet.Validate
-import Ergvein.Wallet.Widget.Balance
+import Ergvein.Wallet.Widget.Input.BTC.Amount
+import Ergvein.Wallet.Widget.Input.BTC.Fee
+import Ergvein.Wallet.Widget.Input.BTC.Recipient
 import Ergvein.Wallet.Wrapper
 
-import Data.Validation (toEither)
 import Network.Haskoin.Network (Inv(..), InvVector(..), InvType(..), Message(..))
 
 import qualified Data.List as L
@@ -52,99 +47,54 @@ import qualified Network.Haskoin.Address as HA
 import qualified Network.Haskoin.Script as HS
 import qualified Network.Haskoin.Transaction as HT
 
-#ifdef ANDROID
-import Ergvein.Wallet.Camera
-#endif
-
-type RbfEnabled = Bool
-
 sendPage :: MonadFront t m => Currency -> Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), BtcAddress, RbfEnabled) -> m ()
-sendPage cur minit = mdo
+sendPage cur mInit = mdo
   walletName <- getWalletName
   title <- localized walletName
   let navbar = if isAndroid
         then blank
         else navbarWidget cur thisWidget NavbarSend
       thisWidget = Just $ sendPage cur <$> retInfoD
-  retInfoD <- sendWidget title navbar thisWidget
+  retInfoD <- sendWidget cur mInit title navbar thisWidget
   pure ()
-  where
-    stripCurPrefix t = T.dropWhile (== '/') $ fromMaybe t $ T.stripPrefix (curprefix cur) t
-    -- TODO: write type annotation here
-    sendWidget title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ mdo
-      settings <- getSettings
-      let recipientInit = maybe "" (\(_, _, a, _) -> btcAddrToString a) minit
-          amountInit = (\(am, _, _, _) -> am) <$> minit
-          feeInit = (\(_, f, _, _) -> f) <$> minit
-          rbfInit = (\(_, _, _, r) -> r) <$> minit
-          rbfFromSettings = btcSettings'sendRbfByDefault $ getBtcSettings settings
-          rbfInit' = fromMaybe rbfFromSettings rbfInit
-      retInfoD <- form $ mdo
-        recipientErrsD <- holdDyn Nothing $ ffor validationE (either Just (const Nothing))
-        recipientD <- if isAndroid
-          then mdo
-            recipD <- validatedTextFieldSetVal RecipientString recipientInit recipientErrsD (leftmost [resQRcodeE, pasteE])
-            (pasteE, resQRcodeE) <- divClass "send-page-buttons-wrapper" $ do
-              qrE <- outlineTextIconButtonTypeButton CSScanQR "fas fa-qrcode fa-lg"
-              openE <- delay 1.0 =<< openCamara qrE
-              resQRcodeE' <- (fmap . fmap) stripCurPrefix $ waiterResultCamera openE
-              pasteBtnE <- outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
-              pasteE' <- clipboardPaste pasteBtnE
-              pure (pasteE', resQRcodeE')
-            pure recipD
-          else mdo
-            recipD <- validatedTextFieldSetVal RecipientString recipientInit recipientErrsD pasteE
-            pasteE <- divClass "send-page-buttons-wrapper" $ do
-              clipboardPaste =<< outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
-            pure recipD
-        amountD <- sendAmountWidget amountInit $ () <$ validationE
-        feeD <- btcFeeSelectionWidget feeInit submitE
-        rbfEnabledD <- divClass "mb-1" $ toggler SSRbf (constDyn rbfInit')
-        submitE <- outlineSubmitTextIconButtonClass "w-100" SendBtnString "fas fa-paper-plane fa-lg"
-        let validationE = poke submitE $ \_ -> do
-              recipient <- sampleDyn recipientD
-              pure (toEither $ validateBtcRecipient (T.unpack $ stripCurPrefix recipient))
-            goE = flip push validationE $ \erecipient -> do
-              mfee <- sampleDyn feeD
-              mamount <- sampleDyn amountD
-              rbfEnabled <- sampleDyn rbfEnabledD
-              let mrecipient = either (const Nothing) Just erecipient
-              pure $ (,,,) <$> mamount <*> mfee <*> mrecipient <*> (Just rbfEnabled)
-        void $ nextWidget $ ffor goE $ \v@(uam, (_, fee), addr, rbf) -> Retractable {
-            retractableNext = btcSendConfirmationWidget (uam, fee, addr, rbf)
-          , retractablePrev = Just $ pure $ sendPage cur $ Just v
-          }
-        holdDyn minit $ Just <$> goE
-      pure retInfoD
 
-data FeeSelectorStatus = FSSNoEntry | FSSNoCache | FSSNoManual | FSSManual Word64 | FSSLvl (FeeLevel, Word64)
-
-data UtxoPoint = UtxoPoint {
-  upPoint :: !HT.OutPoint
-, upMeta  :: !BtcUtxoMeta
-} deriving (Show)
-
-instance Eq UtxoPoint where
-  a == b = (btcUtxo'amount $ upMeta a) == (btcUtxo'amount $ upMeta b)
-
--- | We need to sort in desc order to reduce Tx size
-instance Ord UtxoPoint where
-  a `compare` b = (btcUtxo'amount $ upMeta b) `compare` (btcUtxo'amount $ upMeta a)
-
-scriptOutputToBtcAddressType :: HS.ScriptOutput -> BtcAddressType
-scriptOutputToBtcAddressType = \case
-  HS.PayPKHash _ -> P2PKH
-  HS.PayScriptHash _ -> P2SH
-  HS.PayWitnessPKHash _ -> P2WPKH
-  HS.PayWitnessScriptHash _ -> P2WSH
-
-instance Coin UtxoPoint where
-  coinValue = btcUtxo'amount . upMeta
-  coinType = scriptOutputToBtcAddressType . btcUtxo'script . upMeta
+sendWidget :: MonadFront t m
+  => Currency
+  -> Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), BtcAddress, RbfEnabled)
+  -> Dynamic t Text
+  -> m a
+  -> Maybe (Dynamic t (m ()))
+  -> m (Dynamic t (Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), BtcAddress, RbfEnabled)))
+sendWidget cur mInit title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ mdo
+  settings <- getSettings
+  let amountInit = (\(x, _, _, _) -> x) <$> mInit
+      feeInit = (\(_, x, _, _) -> x) <$> mInit
+      recipientInit = (\(_, _, x, _) -> x) <$> mInit
+      rbfInit = (\(_, _, _, x) -> x) <$> mInit
+      rbfFromSettings = btcSettings'sendRbfByDefault $ getBtcSettings settings
+      rbfInit' = fromMaybe rbfFromSettings rbfInit
+  retInfoD <- form $ mdo
+    recipientD <- recipientWidget recipientInit submitE
+    amountD <- sendAmountWidget amountInit submitE
+    feeD <- btcFeeSelectionWidget FSRate feeInit Nothing submitE
+    rbfEnabledD <- divClass "mb-1" $ toggler SSRbf (constDyn rbfInit')
+    submitE <- outlineSubmitTextIconButtonClass "w-100" SendBtnString "fas fa-paper-plane fa-lg"
+    let goE = flip push submitE $ \_ -> do
+          mrecipient <- sampleDyn recipientD
+          mamount <- sampleDyn amountD
+          mfee <- sampleDyn feeD
+          rbfEnabled <- sampleDyn rbfEnabledD
+          pure $ (,,,) <$> mamount <*> mfee <*> mrecipient <*> (Just rbfEnabled)
+    void $ nextWidget $ ffor goE $ \v@(uam, (_, fee), addr, rbf) -> Retractable {
+        retractableNext = btcSendConfirmationWidget (uam, fee, addr, rbf)
+      , retractablePrev = Just $ pure $ sendPage cur $ Just v
+      }
+    holdDyn mInit $ Just <$> goE
+  pure retInfoD
 
 -- | Main confirmation & sign & send widget
 btcSendConfirmationWidget :: MonadFront t m => ((UnitBTC, Word64), Word64, BtcAddress, RbfEnabled) -> m ()
-btcSendConfirmationWidget v@((unit, amount), fee, addr, rbfEnabled) = do
+btcSendConfirmationWidget v = do
   walletName <- getWalletName
   title <- localized walletName
   let thisWidget = Just $ pure $ btcSendConfirmationWidget v
@@ -167,15 +117,15 @@ btcSendConfirmationWidget v@((unit, amount), fee, addr, rbfEnabled) = do
 
 btcAddrToBtcOutType :: BtcAddress -> BtcAddressType
 btcAddrToBtcOutType = \case
-  HA.PubKeyAddress _ -> P2PKH
-  HA.ScriptAddress _ -> P2SH
-  HA.WitnessPubKeyAddress _ -> P2WPKH
-  HA.WitnessScriptAddress _ -> P2WSH
+  HA.PubKeyAddress _ -> BtcP2PKH
+  HA.ScriptAddress _ -> BtcP2SH
+  HA.WitnessPubKeyAddress _ -> BtcP2WPKH
+  HA.WitnessScriptAddress _ -> BtcP2WSH
 
 makeTxWidget :: MonadFront t m =>
   ((UnitBTC, Word64), Word64, BtcAddress, RbfEnabled) ->
   m (Event t (HT.Tx, UnitBTC, Word64, Word64, BtcAddress))
-makeTxWidget v@((unit, amount), fee, addr, rbfEnabled) = mdo
+makeTxWidget ((unit, amount), fee, addr, rbfEnabled) = mdo
   psD <- getPubStorageD
   utxoKeyD <- holdUniqDyn $ do
     ps <- psD
@@ -189,12 +139,13 @@ makeTxWidget v@((unit, amount), fee, addr, rbfEnabled) = mdo
     Left (Nothing, _) -> confirmationErrorWidget CEMEmptyUTXO
     Left (_, Nothing) -> confirmationErrorWidget CEMNoChangeKey
     Left (Just utxomap, Just (_, changeKey)) -> do
+      ps <- sampleDyn psD
       let recepientOutputType = btcAddrToBtcOutType addr
-          changeOutputType = P2WPKH
+          changeOutputType = BtcP2WPKH
           outputTypes = [recepientOutputType, changeOutputType]
-          (confs, unconfs) = partition' $ M.toList utxomap
-          firstpick = chooseCoins amount fee outputTypes True $ L.sort confs
-          finalpick = either (const $ chooseCoins amount fee outputTypes True $ L.sort $ confs <> unconfs) Right firstpick
+          (confs, unconfs) = getBtcUtxoPointsParted ps
+          firstpick = chooseCoins amount fee outputTypes Nothing True $ L.sort confs
+          finalpick = either (const $ chooseCoins amount fee outputTypes Nothing True $ L.sort $ confs <> unconfs) Right firstpick
       either' finalpick (const $ confirmationErrorWidget CEMNoSolution) $ \(pick, change) ->
         txSignSendWidget addr unit amount fee changeKey change pick rbfEnabled
     Right (tx, unit', amount', estFee, addr') -> do
@@ -203,22 +154,12 @@ makeTxWidget v@((unit, amount), fee, addr, rbfEnabled) = mdo
   pure stxE
   where
     either' e l r = either l r e
-    foo b f ta = L.foldl' f b ta
     -- Left -- utxo updates, Right -- stored tx
     mergeVals newval origval = case (newval, origval) of
       (Left a, Left _)    -> Just $ Left a
       (Left _, Right _)   -> Nothing
       (Right a, Left _)   -> Just $ Right a
       (Right _, Right _)  -> Nothing
-    -- | Split utxo set into confirmed and unconfirmed points
-    partition' :: [(HT.OutPoint, BtcUtxoMeta)] -> ([UtxoPoint], [UtxoPoint])
-    partition' = foo ([], []) $ \(cs, ucs) (opoint, meta@BtcUtxoMeta{..}) ->
-      let upoint = UtxoPoint opoint meta in
-      case btcUtxo'status of
-        EUtxoConfirmed -> (upoint:cs, ucs)
-        EUtxoSemiConfirmed _ -> (upoint:cs, ucs)
-        EUtxoSending _ -> (cs, ucs)
-        EUtxoReceiving _ -> (cs, upoint:ucs)
 
 -- | Simply displays the relevant information about a transaction
 -- TODO: modify to accomodate Ergo
@@ -272,12 +213,10 @@ txSignSendWidget :: MonadFront t m
   -> [UtxoPoint]    -- ^ List of utxo points used as inputs
   -> RbfEnabled     -- ^ Explicit opt-in RBF signalling
   -> m (Event t (HT.Tx, UnitBTC, Word64, Word64, BtcAddress)) -- ^ Return the Tx + all relevant information for display
-txSignSendWidget addr unit amount fee changeKey change pick rbfEnabled = mdo
+txSignSendWidget addr unit amount _ changeKey change pick rbfEnabled = mdo
   let keyTxt = btcAddrToString $ xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key changeKey
       outs = [(btcAddrToString addr, amount), (keyTxt, change)]
-      etx = if rbfEnabled
-        then buildAddrTxRbf btcNetwork (upPoint <$> pick) outs
-        else HT.buildAddrTx btcNetwork (upPoint <$> pick) outs
+      etx = buildAddrTx btcNetwork rbfEnabled (upPoint <$> pick) outs
       inputsAmount = sum $ (btcUtxo'amount . upMeta) <$> pick
       outputsAmount = amount + change
       estFee = inputsAmount - outputsAmount
@@ -293,105 +232,3 @@ txSignSendWidget addr unit amount fee changeKey change pick rbfEnabled = mdo
     sendE <- el "div" $ outlineButton SendBtnSend
     pure $ (tx, unit, amount, estFee, addr) <$ sendE
   where either' e l r = either l r e
-
--- | Sign function which has access to the private storage
--- TODO: generate missing private keys
-signTxWithWallet :: (MonadIO m, PlatformNatives) => HT.Tx -> [UtxoPoint] -> PrvStorage -> m (Maybe (Either String HT.Tx))
-signTxWithWallet tx pick prv = do
-  let PrvKeystore _ ext int = prv ^. prvStorage'currencyPrvStorages
-        . at BTC . non (error "btcSendConfirmationWidget: not exsisting store!")
-        . currencyPrvStorage'prvKeystore
-  mvals <- fmap (fmap unzip . sequence) $ flip traverse pick $ \(UtxoPoint opoint BtcUtxoMeta{..}) -> do
-    let sig = HT.SigInput btcUtxo'script btcUtxo'amount opoint HS.sigHashAll Nothing
-    let errMsg = "Failed to get a corresponding secret key: " <> showt btcUtxo'purpose <> " #" <> showt btcUtxo'index
-    let msec = case btcUtxo'purpose of
-          Internal -> fmap (xPrvKey . unEgvXPrvKey) $ (V.!?) int btcUtxo'index
-          External -> fmap (xPrvKey . unEgvXPrvKey) $ (V.!?) ext btcUtxo'index
-    maybe (logWrite errMsg >> pure Nothing) (pure . Just . (sig,)) msec
-  pure $ (uncurry $ HT.signTx btcNetwork tx) <$> mvals
-
--- | Btc fee selector
-btcFeeSelectionWidget :: forall t m . MonadFront t m
-  => Maybe (BTCFeeMode, Word64)                 -- ^ Inital mode and value
-  -> Event t ()                                 -- ^ Send event. Triggers fileds validation
-  -> m (Dynamic t (Maybe (BTCFeeMode, Word64)))
-btcFeeSelectionWidget minit sendE = do
-  feesD <- getFeesD
-  divClass "fee-widget" $ do
-    el "label" $ localizedText FSLevel
-    statD <- el "div" $ mdo
-      let lvlE = leftmost [lowE, midE, highE, manE]
-      lvlD <- holdDyn (fst <$> minit) lvlE
-      mmanD <- holdDyn (maybe "" (showt . snd) minit) $ "" <$ lvlE
-      let attrD m = ffor lvlD $ \m' -> if m' == Just m
-            then "button button-outline btn-fee btn-fee-on"
-            else "button button-outline btn-fee"
-      lowE  <- fmap (Just BFMLow <$)    $ buttonClass (attrD BFMLow)    BFMLow
-      midE  <- fmap (Just BFMMid <$)    $ buttonClass (attrD BFMMid)    BFMMid
-      highE <- fmap (Just BFMHigh <$)   $ buttonClass (attrD BFMHigh)   BFMHigh
-      manE  <- fmap (Just BFMManual <$) $ buttonClass (attrD BFMManual) BFMManual
-      fmap join $ widgetHoldDyn $ ffor lvlD $ \case
-        Nothing         -> pure (pure FSSNoEntry)
-        Just BFMManual  -> manualFeeSelector =<< sampleDyn mmanD
-        Just BFMLow     -> pure $ extractFeeD feesD FeeCheap
-        Just BFMMid     -> pure $ extractFeeD feesD FeeModerate
-        Just BFMHigh    -> pure $ extractFeeD feesD FeeFast
-    attrD <- holdDyn [] $ leftmost [[("class", "lbl-red")] <$ sendE, [] <$ updated statD]
-    divClass "fee-descr" $ el "label" $ widgetHoldDyn $ ffor statD $ \case
-      FSSNoEntry    -> elDynAttr "label" attrD (localizedText FSSelect)   >> pure Nothing
-      FSSNoCache    -> elDynAttr "label" attrD (localizedText FSNoFees)   >> pure Nothing
-      FSSNoManual   -> elDynAttr "label" attrD (localizedText FSInvalid)  >> pure Nothing
-      FSSManual f   -> el "label" (localizedText $ FSFee f)               >> pure (Just (BFMManual, f))
-      FSSLvl (l, f) -> el "label" (localizedText $ FSLevelDesc l f)       >> pure (Just $ (feeLvlToMode l, f))
-  where
-    extractFeeD feesD lvl = ffor feesD $
-      maybe FSSNoCache (FSSLvl . (lvl,) . fromIntegral . fst . extractFee lvl) . M.lookup BTC
-    feeLvlToMode lvl = case lvl of
-      FeeCheap    -> BFMLow
-      FeeModerate -> BFMMid
-      FeeFast     -> BFMHigh
-
-manualFeeSelector :: MonadFront t m => Text -> m (Dynamic t FeeSelectorStatus)
-manualFeeSelector = (fmap . fmap) (maybe FSSNoManual FSSManual . readMaybe . T.unpack) . el "div" . textFieldNoLabel
-
--- | Input field with units. Converts everything to satoshis and returns the unit
-sendAmountWidget :: MonadFront t m => Maybe (UnitBTC, Word64) -> Event t () -> m (Dynamic t (Maybe (UnitBTC, Word64)))
-sendAmountWidget minit validateE = mdo
-  setUs <- fmap (fromMaybe defUnits . settingsUnits) getSettings
-  let (unitInit, txtInit) = maybe (setUs, "") (\(u, a) -> let us = Units (Just u) Nothing
-        in (us, showMoneyUnit (Money BTC a) us)) minit
-  let errsD = fmap (maybe [] id) amountErrsD
-  let isInvalidD = fmap (maybe "" (const "is-invalid")) amountErrsD
-  amountValD <- el "div" $ mdo
-    textInputValueD <- (fmap . fmap) T.unpack $ divClassDyn isInvalidD $ textField AmountString txtInit
-    when isAndroid (availableBalanceWidget unitD)
-    unitD <- unitsDropdown (getUnitBTC unitInit) allUnitsBTC
-    pure $ zipDynWith (\u v -> fmap (u,) $ toEither $ validateBtcWithUnits u v) unitD textInputValueD
-  void $ divClass "form-field-errors" $ simpleList errsD displayError
-  amountErrsD <- holdDyn Nothing $ ffor (current amountValD `tag` validateE) (either Just (const Nothing))
-  pure $ (either (const Nothing) Just) <$> amountValD
-  where
-    availableBalanceWidget uD = do
-      balanceValue <- balancesWidget BTC
-      balanceText <- localized SendAvailableBalance
-      let balanceVal = zipDynWith (\x y -> showMoneyUnit x (Units (Just y) Nothing) <> " " <> btcSymbolUnit y) balanceValue uD
-          balanceTxt = zipDynWith (\x y -> x <> ": " <> y) balanceText balanceVal
-      divClass "send-page-available-balance" $ dynText balanceTxt
-    unitsDropdown val allUnits = do
-      langD <- getLanguage
-      let unitD = constDyn val
-      initKey <- sample . current $ unitD
-      let listUnitsD = ffor langD $ \l -> M.fromList $ fmap (\v -> (v, localizedShow l v)) allUnits
-          ddnCfg = DropdownConfig {
-                _dropdownConfig_setValue   = updated unitD
-              , _dropdownConfig_attributes = constDyn ("class" =: "select-lang")
-              }
-      dp <- dropdown initKey listUnitsD ddnCfg
-      let selD = _dropdown_value dp
-      holdUniqDyn selD
-    displayError :: (MonadFrontBase t m, LocalizedPrint l) => Dynamic t l -> m ()
-    displayError errD = do
-      langD <- getLanguage
-      let localizedErrD = zipDynWith localizedShow langD errD
-      dynText localizedErrD
-      br
