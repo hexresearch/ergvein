@@ -3,6 +3,8 @@ module Ergvein.Concurrent
   ( -- * Linked worker threads
     withLinkedWorker
   , withLinkedWorker_
+  , withLinkedWorkerOn
+  , withLinkedWorkerOn_
   , ExceptionInLinkedThread(..)
     -- * Worker unions
   , WorkersUnion
@@ -44,9 +46,30 @@ withLinkedWorker action cont = restoreM =<< do
         throwIO e
       restore (runInIO (cont (() <$ a))) `finally` Async.cancel a
 
--- | Same as 'withLinkedWorker' for use in cases when
+-- | Same as 'withLinkedWorker' for use in cases when we don't need 'Async'
 withLinkedWorker_ :: (MonadBaseControl IO m) => m a -> m b -> m b
 withLinkedWorker_ action = withLinkedWorker action . const
+
+-- | Create worker thread on given capability
+withLinkedWorkerOn
+  :: (MonadBaseControl IO m)
+  => Int -> m a -> (Async () -> m b) -> m b
+withLinkedWorkerOn i action cont = restoreM =<< do
+  -- FIXME: test that we correctly deal with blocking calls with
+  --        throwTo. async use uninterruptibleCancel for example.
+  liftBaseWith $ \runInIO -> do
+    tid <- myThreadId
+    mask $ \restore -> do
+      -- Here we spawn worker thread which will throw unhandled exception to main thread.
+      a <- Async.asyncOn i $ restore (runInIO action) `catch` \e -> do
+        unless (ignoreException e) $ throwTo tid (ExceptionInLinkedThread e)
+        throwIO e
+      restore (runInIO (cont (() <$ a))) `finally` Async.cancel a
+
+-- | Same as 'withLinkedWorkerOn' for use in cases when we don't need 'Async'
+withLinkedWorkerOn_ :: (MonadBaseControl IO m) => Int -> m a -> m b -> m b
+withLinkedWorkerOn_ i action = withLinkedWorkerOn i action . const
+
 
 -- Exception to ignore for linked threads
 ignoreException :: SomeException -> Bool
