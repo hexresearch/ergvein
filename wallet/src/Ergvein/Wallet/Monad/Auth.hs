@@ -412,8 +412,7 @@ liftAuth ma0 ma = mdo
           heightAsking
           feesWorker
           pubKeysGenerator
-          pure ()
-        runReaderT (wrapped "liftAuth" ma) env
+          wrapped "liftAuth" ma
   let
     ma0' = maybe ma0 runAuthed mauth0
     newAuthInfoE = ffilter isMauthUpdate $ updated mauthD
