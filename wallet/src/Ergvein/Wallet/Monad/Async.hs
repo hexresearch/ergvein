@@ -33,11 +33,11 @@ bindSelf io = do
 forkOnOther :: IO () -> IO ThreadId
 forkOnOther m = do
   (cap, _) <- threadCapability =<< myThreadId
-  n <- getNumCapabilities
-  if n == 1 then forkIO m else do
-    i <- uniform [i | i <- [0 .. n-1], i /= cap]
-    -- putStrLn $ "Our cap is " ++ show cap ++ ", forking on " ++ show i
-    forkOn i m
+  getNumCapabilities >>= \case
+    1 -> forkIO m
+    n -> do i <- uniform [i | i <- [0 .. n-1], i /= cap]
+            -- putStrLn $ "Our cap is " ++ show cap ++ ", forking on " ++ show i
+            forkOn i m
 
 -- | Helper that runs action in event in new thread with respect for logging of errors.
 performFork :: forall t m a . (PerformEvent t m, TriggerEvent t m, MonadUnliftIO (Performable m), PlatformNatives) => Event t (Performable m a) -> m (Event t a)
