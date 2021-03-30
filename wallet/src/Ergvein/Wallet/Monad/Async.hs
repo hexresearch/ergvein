@@ -40,7 +40,9 @@ forkOnOther m = do
             forkOn i m
 
 -- | Helper that runs action in event in new thread with respect for logging of errors.
-performFork :: forall t m a . (PerformEvent t m, TriggerEvent t m, MonadUnliftIO (Performable m), PlatformNatives) => Event t (Performable m a) -> m (Event t a)
+performFork
+  :: forall t m a . (PerformEvent t m, TriggerEvent t m, MonadUnliftIO (Performable m), PlatformNatives)
+  => Event t (Performable m a) -> m (Event t a)
 performFork em = performEventAsync $ ffor em $ \ma fire -> do
   unlift <- askUnliftIO
   void . liftIO . forkOnOther $ do
@@ -48,7 +50,9 @@ performFork em = performEventAsync $ ffor em $ \ma fire -> do
     either (logWrite . ("Forked event failed: " <>) . showt) fire ea
 
 -- | Helper that runs action in event in new thread with respect for logging of errors.
-performFork_ :: forall t m . (PerformEvent t m, TriggerEvent t m, MonadUnliftIO (Performable m), PlatformNatives) => Event t (Performable m ()) -> m ()
+performFork_
+  :: forall t m . (PerformEvent t m, TriggerEvent t m, MonadUnliftIO (Performable m), PlatformNatives)
+  => Event t (Performable m ()) -> m ()
 performFork_ em = performEvent_ $ ffor em $ \ma -> do
   unlift <- askUnliftIO
   void . liftIO . forkOnOther $ do
