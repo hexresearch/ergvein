@@ -4,10 +4,12 @@ module Data.Ergo.MIR.OpCode where
 import Data.Word
 import Data.Persist
 import Data.Ergo.MIR.Constants
+import Data.Ergo.MIR.Parser
 
 newtype OpCode = OpCode Word8
-  deriving stock (Show,Eq)
+  deriving stock   (Show,Eq)
   deriving newtype (Persist)
+
 
 newOpCode :: Word8 -> OpCode
 newOpCode shift = OpCode (c_LastConstantCode + shift)

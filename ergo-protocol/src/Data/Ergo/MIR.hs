@@ -4,13 +4,16 @@
 -- interpreter and serialization.
 module Data.Ergo.MIR where
 
+import Data.ByteString (ByteString)
 import Data.Int
 import Data.Word
 import Data.Persist
 import Data.ByteString.Short (ShortByteString)
 import Data.Text (Text)
 import Data.Ergo.Vlq
+import Data.Ergo.Modifier
 import Data.Ergo.MIR.Parser
+import Data.Ergo.MIR.OpCode
 
 newtype STypeVar = STypeVar Text
   deriving Show
@@ -50,7 +53,8 @@ data SFunc = MkSFunc
   }
   deriving (Show)
 
-data SMethod -- FIXME
+-- FIXME: this is basically as parse structure of 
+data SMethod = SMethod Word8 Word8 
   deriving Show
 
 -- | Box ID
@@ -71,6 +75,7 @@ newtype ConstIdx = ConstIdx Word32
 -- | Variable ID
 newtype ValId = ValId Word32
   deriving Show
+  deriving ErgoParser via AsVarInt Word32
 
 -- | Tuple items with bounds check (2..=255)
 newtype TupleItems a = TupleItems [a]
@@ -110,9 +115,9 @@ data Expr
   = Const            SType Value     -- ^ Constant value
   | ConstPlaceholder {-SType-} !ConstIdx -- ^ Placeholder for a constant
   | SubstConstant
-    Expr {- script bytes     -}
-    Expr {- positions  [Int] -}
-    Expr {- new values -}
+      Expr {- script bytes     -}
+      Expr {- positions  [Int] -}
+      Expr {- new values -}
   | Collection       SType [Expr]    -- ^ Collection declaration (array of expressions of the same type)
   | CalcBlake2b256   Expr            -- ^ Blake2b256 hash calculation
   | Context {- FIXME -}              -- ^ Context variables (external)
@@ -145,6 +150,9 @@ data Expr
   | ExtractCreationInfo Expr
   | ProveDLog Expr
   | DecodePoint Expr
+  | SigmaAndExpr [Expr]
+  | SigmaOrExpr  [Expr]
+  
   deriving Show
 
 data GlobalVars
@@ -161,7 +169,7 @@ data MethodCall = MkMethodCall
   , methodArgs   :: [Expr]
   }
   deriving Show
-data BlockValue = MksBlockValue
+data BlockValue = MkBlockValue
   { blkValStmts :: [Expr]
   , blkExpr     :: Expr
   }
@@ -179,7 +187,7 @@ data ValDef = MkValDef
 --   introduced as result of CSE.
 data ValUse = MkValUse
   { valUseId :: ValId
-  , valUseTy :: SType
+{-  , valUseTy :: SType -} -- Obtained from type store
   }
   deriving Show
 data ExtractRegisterAs = MkExtractRegisterAs
@@ -213,10 +221,34 @@ data Filter = MkFilter
   }
   deriving Show
 
-data ECPoint             -- FIXME
+newtype ECPoint = ECPoint ByteString
+  deriving Show via ModifierId
+
+data SigmaProp
+  = SigmaFalse
+  | SigmaTrue
+  | SigmaDLog    !ECPoint
+  | SigmaDHTuple
+  | SigmaAND            [SigmaProp]
+  | SigmaOR             [SigmaProp]
+  | SigmaThreshold !Int [SigmaProp]
   deriving Show
-data SigmaProp           -- FIXME
-  deriving Show
+
+instance ErgoParser ECPoint where
+  getErgo = ECPoint <$> getBytes 33
+
+instance ErgoParser SigmaProp where
+  getErgo = do
+    op <- get
+    if | op == opTrivialPropFalseCode -> pure SigmaFalse
+       | op == opTrivialPropTrueCode  -> pure SigmaTrue
+       | op == opProveDlogCode        -> SigmaDLog <$> getErgo
+       | op == opProveDiffieHellmanTupleCode -> error "SigmaProp: parsing of DH tuple is not implemented"
+       -- | op == opAndCode     -> SigmaAND <$> parseListOf getErgo
+       -- | op == opOrCode      -> SigmaOR  <$> parseListOf getErgo
+       | op == opAtLeastCode -> error "SigmaProp: THRESHOLD not implemented"
+       | otherwise           -> fail $ "SigmaProp: unknown opcode " ++ show op
+
 
 data ArithOp 
   = OpPlus     -- ^ Addition

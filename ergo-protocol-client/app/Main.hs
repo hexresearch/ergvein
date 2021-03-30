@@ -102,61 +102,22 @@ main = do
           putStrLn "MsgModifier"
           print ty
           let bs = modifierBody $ m ! 0
-          either print putStrLn $ flip runGet bs $ do
+          putStrLn "================================================================"
+          either print putStrLn $ flip runGet bs $ do            
             modId <- ModifierId <$> getBytes 32
-            n     <- decodeVarInt @Word32
-            tx <- parseTX
-            return (tx)
+            n   <- decodeVarInt @Word32
+            txs <- replicateM 2 (getErgo @ErgoTx)
+              -- parseLongListOf (getErgo @ErgoTx)
+            return $ unlines
+              [ show n
+              , unlines $ map groom txs
+              ]
           -- print $ ModifierId $ BS.drop 32 $ bs
           -- print $ decode @BlockHeader bs
           error "ABORT"
           -- putStrLn "================"
       _ -> print ev
 
-
-parseTX = do
-  -- Inputs
-  ins      <- parseListOf @Word16 $ getErgo @ErgoInput
-  dataIns  <- parseListOf @Word16 $ getErgo @ErgoDataInput
-  tokenIds <- parseShortListOf $ getErgo @TokenId
-  -- -- -- Outputs
-  nOut <- decodeVarInt @Word16
-  ----- Start decoding ouput --
-  --
-  -- Parse list of constants
-  box1 <- getErgo @ErgoBox
-  box2 <- getErgo @ErgoBox
-  -- t  <- getSType
-  -- l  <- decodeVarInt @Int32
-    -- tree           <- undefined
-  --   creationHeight <- decodeVarInt @Word32
-  --   -- Tokens
-  --   tokensData     <- parseShortListOf $ do
-  --     (,) <$> (ModifierId <$> getBytes 32) <*> decodeVarInt @Word64
-  --   -- Registers
-  --   nRegs <- get @Word8
-  --   -- regs  <- replicateM (fromIntegral nRegs) $ do
-  --   --   undefined
-  --   pure (value,tree,creationHeight,tokensData,nRegs)
-  -- bbs   <- ModifierId <$> getBytes 16
-  -- xx <- decodeVarInt @Word16
-  -- remAfter <- remaining
-  -- tx       <- ModifierId <$> getBytes (228-(remBefore - remAfter))
-  pure $ unlines
-    [ "----------------"
-    , show ins
-    , show dataIns
-    , show nOut
-    , groom box2
-    -- , show l
-    -- , show opcode
-    -- , show xx
-    -- , show tx
-    ]
-   -- (ins,dataIns,tokens,v1,v2,v3)
-  -- nOut <- decodeVarInt @Word16
-  -- outs <- replicateM tokensCount undefined
-  -- undefined
 
 ----------------------------------------------------------------
 -- Transactions
@@ -198,7 +159,7 @@ instance ErgoParser ErgoInput where
     -- We don't parse context extension here
     get @Word8 >>= \case
       0 -> pure ()
-      _ -> error "FIXME: ErgoInput: we don't parse ContextExtension"
+      n -> error $ "FIXME: ErgoInput: we don't parse ContextExtension " ++ show n
     pure $ ErgoInput bid proof
 
 instance ErgoParser ErgoBox where
@@ -207,7 +168,7 @@ instance ErgoParser ErgoBox where
     eth           <- decodeErgoTreeHeader
     eboxConstants <- case ergoConstantSegreation eth of
       False -> pure []
-      True  -> parseListOf @Word32 parseConstant
+      True  -> parseLongListOf parseConstant
     -- Parse transaction body
     eboxSpendScript <- parseValue
     eboxHeight      <- decodeVarInt @Word32
@@ -220,8 +181,8 @@ instance ErgoParser ErgoBox where
 
 instance ErgoParser ErgoTx where
   getErgo = do
-    txInputs  <- parseListOf @Word16 $ getErgo @ErgoInput
-    txDataIn  <- parseListOf @Word16 $ getErgo @ErgoDataInput
+    txInputs  <- parseListOf $ getErgo @ErgoInput
+    txDataIn  <- parseListOf $ getErgo @ErgoDataInput
     txTokens  <- parseShortListOf $ getErgo @TokenId
     txOutputs <- parseShortListOf getErgo
     pure ErgoTx{..}
@@ -250,10 +211,13 @@ getSType = do
           -- Primitive
           0 -> getEmbeddableType primId
           --
-          1 -> SColl <$> getArgType primId
+          1 -> SColl         <$> getArgType primId
+          2 -> SColl . SColl <$> getArgType primId
+          3 -> SOption       <$> getArgType primId
           _ -> fail "AA"
         -- Tuple
-      | otherwise -> fail "TupleTypeCode"
+      | c == c_TupleTypeCode -> error $ "cant handle TupleTypeCode"      
+      | otherwise -> fail $ "Unknown type code " ++ show c
 
 getArgType = \case
   0      -> getSType
@@ -278,11 +242,11 @@ getConstant = \case
   SInt     -> Int   <$> decodeVarInt
   SLong    -> Long  <$> decodeVarInt
   SColl ty -> deserializeColl ty
+  SSigmaProp -> SigmaProp <$> getErgo
   s -> error ("getConstant: " ++ show s)
 
 deserializeColl ty = do
   len <- fromIntegral <$> decodeVarInt @Word16
-  traceShowM ty
   Coll ty <$> case ty of
     SBoolean -> error "SColl SBoolean"
     SByte    -> replicateM len (Byte <$> get @Int8)
@@ -311,15 +275,7 @@ decodeErgoTreeHeader = do
                      , ..
                      }
 
-parseListOf :: forall n a. (Integral n, VarInt n) => Get a -> Get [a]
-parseListOf getV = do
-  n <- decodeVarInt @n
-  replicateM (fromIntegral n) getV
 
-parseShortListOf :: Get a -> Get [a]
-parseShortListOf getV = do
-  n <- get @Word8
-  replicateM (fromIntegral n) getV
 
 ----------------------------------------------------------------
 -- AST
@@ -329,7 +285,8 @@ parseAST :: Get Expr
 parseAST = do
   op <- get
   if | op == opTaggedVariableCode                    -> error "OPCODE: opTaggedVariableCode"
-     | op == opValUseCode                            -> error "OPCODE: opValUseCode"
+     | op == opValUseCode                            -> do
+         ValUse <$> (MkValUse <$> getErgo)
      -- FIXME: We need access to constant store here
      | op == opConstantPlaceholderCode               -> ConstPlaceholder <$> getErgo
      | op == opSubstConstantsCode                    -> SubstConstant <$> parseValue <*> parseValue <*> parseValue
@@ -399,7 +356,8 @@ parseAST = do
      | op == opExtractBytesCode                      -> error "OPCODE: opExtractBytesCode"
      | op == opExtractBytesWithNoRefCode             -> error "OPCODE: opExtractBytesWithNoRefCode"
      | op == opExtractIdCode                         -> error "OPCODE: opExtractIdCode"
-     | op == opExtractRegisterAs                     -> error "OPCODE: opExtractRegisterAs"
+     | op == opExtractRegisterAs                     ->
+         ExtractRegisterAs <$> (MkExtractRegisterAs <$> parseValue <*> get <*> getSType)
      | op == opExtractCreationInfoCode               -> ExtractCreationInfo <$> parseValue
      | op == opCalcBlake2b256Code                    -> error "OPCODE: opCalcBlake2b256Code"
      | op == opCalcSha256Code                        -> error "OPCODE: opCalcSha256Code"
@@ -412,25 +370,31 @@ parseAST = do
      | op == opTrivialPropTrueCode                   -> error "OPCODE: opTrivialPropTrueCode"
      | op == opDeserializeContextCode                -> error "OPCODE: opDeserializeContextCode"
      | op == opDeserializeRegisterCode               -> error "OPCODE: opDeserializeRegisterCode"
-     | op == opValDefCode                            -> error "OPCODE: opValDefCode"
+     | op == opValDefCode                            -> do
+         ValDef <$> (MkValDef <$> getErgo <*> parseValue)
      | op == opFunDefCode                            -> error "OPCODE: opFunDefCode"
-     | op == opBlockValueCode                        -> error "OPCODE: opBlockValueCode"
+     | op == opBlockValueCode                        -> do
+         BlockValue <$> (MkBlockValue <$> parseLongListOf parseValue <*> parseValue)
      | op == opFuncValueCode                         -> error "OPCODE: opFuncValueCode"
      | op == opFuncApplyCode                         -> error "OPCODE: opFuncApplyCode"
-     | op == opPropertyCallCode                      -> error "OPCODE: opPropertyCallCode"
+     | op == opPropertyCallCode                      -> do
+         typeId   <- get @Word8
+         methodId <- get @Word8
+         obj      <- parseValue
+         pure $ ProperyCall obj (SMethod typeId methodId)
      | op == opMethodCallCode                        -> error "OPCODE: opMethodCallCode"
      | op == opGlobalCode                            -> error "OPCODE: opGlobalCode"
      | op == opSomeValueCode                         -> error "OPCODE: opSomeValueCode"
      | op == opNoneValueCode                         -> error "OPCODE: opNoneValueCode"
      | op == opGetVarCode                            -> error "OPCODE: opGetVarCode"
-     | op == opOptionGetCode                         -> error "OPCODE: opOptionGetCode"
+     | op == opOptionGetCode                         -> OptionGet <$> parseValue
      | op == opOptionGetOrElseCode                   -> error "OPCODE: opOptionGetOrElseCode"
      | op == opOptionIsDefinedCode                   -> error "OPCODE: opOptionIsDefinedCode"
      | op == opModQCode                              -> error "OPCODE: opModQCode"
      | op == opPlusModQCode                          -> error "OPCODE: opPlusModQCode"
      | op == opMinusModQCode                         -> error "OPCODE: opMinusModQCode"
-     | op == opSigmaAndCode                          -> error "OPCODE: opSigmaAndCode"
-     | op == opSigmaOrCode                           -> error "OPCODE: opSigmaOrCode"
+     | op == opSigmaAndCode                          -> SigmaAndExpr <$> parseLongListOf parseValue
+     | op == opSigmaOrCode                           -> SigmaOrExpr  <$> parseLongListOf parseValue
      | op == opBinOrCode                             -> error "OPCODE: opBinOrCode"
      | op == opBinAndCode                            -> error "OPCODE: opBinAndCode"
      | op == opDecodePointCode                       -> DecodePoint <$> parseValue
