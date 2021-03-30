@@ -6,6 +6,7 @@ module Ergvein.Concurrent
   , withLinkedWorkerOn
   , withLinkedWorkerOn_
   , ExceptionInLinkedThread(..)
+  , defaultIgnoredExceptions
     -- * Worker unions
   , WorkersUnion
   , withWorkersUnion
@@ -42,7 +43,7 @@ withLinkedWorker action cont = restoreM =<< do
     mask $ \restore -> do
       -- Here we spawn worker thread which will throw unhandled exception to main thread.
       a <- Async.async $ restore (runInIO action) `catch` \e -> do
-        unless (ignoreException e) $ throwTo tid (ExceptionInLinkedThread e)
+        unless (defaultIgnoredExceptions e) $ throwTo tid (ExceptionInLinkedThread e)
         throwIO e
       restore (runInIO (cont (() <$ a))) `finally` Async.cancel a
 
@@ -62,7 +63,7 @@ withLinkedWorkerOn i action cont = restoreM =<< do
     mask $ \restore -> do
       -- Here we spawn worker thread which will throw unhandled exception to main thread.
       a <- Async.asyncOn i $ restore (runInIO action) `catch` \e -> do
-        unless (ignoreException e) $ throwTo tid (ExceptionInLinkedThread e)
+        unless (defaultIgnoredExceptions e) $ throwTo tid (ExceptionInLinkedThread e)
         throwIO e
       restore (runInIO (cont (() <$ a))) `finally` Async.cancel a
 
@@ -72,8 +73,8 @@ withLinkedWorkerOn_ i action = withLinkedWorkerOn i action . const
 
 
 -- Exception to ignore for linked threads
-ignoreException :: SomeException -> Bool
-ignoreException e
+defaultIgnoredExceptions :: SomeException -> Bool
+defaultIgnoredExceptions e
   | Just Async.AsyncCancelled <- fromException e = True
   | Just ThreadKilled         <- fromException e = True
   | otherwise = False
