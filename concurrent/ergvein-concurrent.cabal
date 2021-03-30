@@ -1,7 +1,10 @@
 name:                ergvein-concurrent
 version:             0.1.0.0
-synopsis:            Concurrent utilities
-description:         See README.md
+synopsis:            Utils for thread management.
+description:
+  Library allows to create linked threads and groups of threads in
+  bracket-like pattern
+                     
 category:            Concurrency
 build-type:          Simple
 cabal-version:       >=1.10
