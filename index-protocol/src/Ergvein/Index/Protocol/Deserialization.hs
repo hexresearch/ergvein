@@ -19,7 +19,6 @@ import Ergvein.Types.Currency (Fiat)
 
 import qualified Data.Attoparsec.ByteString as Parse
 import qualified Data.Bitstream as S
-import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Short as BSS
 import qualified Data.Map.Strict as M
@@ -308,10 +307,3 @@ parseFeeResp = do
       <$> varInt
       <*> varInt
       <*> varInt
-
-parseMessage :: MessageType -> BS.ByteString -> Either String (Message, BS.ByteString)
-parseMessage msgType source =
-  case parse (messageParser msgType) source of
-    Done rest message -> Right (message, rest)
-    Partial _ -> Left "source too short"
-    Fail _ _ err -> Left err

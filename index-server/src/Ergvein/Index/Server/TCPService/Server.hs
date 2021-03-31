@@ -149,19 +149,19 @@ evalMsg sock addr = response =<< request =<< messageHeader
     messageId :: BS.ByteString -> ExceptT Reject ServerM MessageType
     messageId bs
       | BS.null bs = except $ Left $ Reject MVersionType ZeroBytesReceived "Expected bytes for message header (id)"
-      | otherwise = ExceptT . pure . mapLeft (\_ -> Reject MVersionType MessageHeaderParsing "Failed to parse header message id") . eitherResult $ parse messageTypeParser bs
+      | otherwise = ExceptT . pure . mapLeft (\_ -> Reject MVersionType MessageHeaderParsing "Failed to parse header message id") . parseOnly messageTypeParser $ bs
 
     messageLength :: BS.ByteString -> ExceptT Reject ServerM Word32
     messageLength bs
       | BS.null bs = except $ Left $ Reject MVersionType ZeroBytesReceived "Expected bytes for message header (length)"
-      | otherwise = ExceptT . pure . mapLeft (\_ -> Reject MVersionType MessageHeaderParsing "Failed to parse header message length") . eitherResult $ parse messageLengthParser bs
+      | otherwise = ExceptT . pure . mapLeft (\_ -> Reject MVersionType MessageHeaderParsing "Failed to parse header message length") . parseOnly messageLengthParser $ bs
 
     request :: MessageHeader -> ExceptT Reject ServerM Message
     request MessageHeader {..} = do
       messageBytes <- if not $ messageHasPayload msgType
         then pure mempty
         else liftIO $ NS.recv sock $ fromIntegral msgSize
-      except $ mapLeft (\_-> Reject msgType MessageParsing "Failed to parse message body") $ eitherResult $ parse (messageParser msgType) messageBytes
+      except $ mapLeft (\_-> Reject msgType MessageParsing "Failed to parse message body") $ parseOnly (messageParser msgType) messageBytes
 
     response :: Message -> ExceptT Reject ServerM (Maybe Message, Bool)
     response msg = (lift $ handleMsg addr msg) `catch` (\(e :: SomeException) -> do
