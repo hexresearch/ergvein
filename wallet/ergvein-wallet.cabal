@@ -149,6 +149,7 @@ library
         Ergvein.Wallet.Widget.Input.BTC.Amount
         Ergvein.Wallet.Widget.Input.BTC.Fee
         Ergvein.Wallet.Widget.Input.BTC.Recipient
+        Ergvein.Wallet.Worker
         Ergvein.Wallet.Worker.Fees
         Ergvein.Wallet.Worker.Height
         Ergvein.Wallet.Worker.Indexer
