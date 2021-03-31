@@ -273,7 +273,7 @@ walletStoreThread storeDir mutex updChan = void $ forkOnOther $ do
   lastStoreRef <- newTVarIO Nothing
   -- Thread that updates reference with time to compare it with value in lastUpdTimeRef in getTimedWrite
   void $ forkIO $ fix $ \next -> do
-    threadDelay $ ceiling storeTimeBetweenWrites
+    threadDelay $ 1000000 * ceiling storeTimeBetweenWrites
     currTime <- getCurrentTime
     atomically $ writeTVar timeRef currTime
     next
