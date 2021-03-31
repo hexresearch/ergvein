@@ -4,6 +4,7 @@
 -- interpreter and serialization.
 module Data.Ergo.MIR where
 
+import Debug.Trace
 import Data.ByteString (ByteString)
 import Data.Int
 import Data.Word
@@ -14,6 +15,7 @@ import Data.Ergo.Vlq
 import Data.Ergo.Modifier
 import Data.Ergo.MIR.Parser
 import Data.Ergo.MIR.OpCode
+import Data.Ergo.MIR.Constants
 
 newtype STypeVar = STypeVar Text
   deriving Show
@@ -85,10 +87,12 @@ newtype TupleItems a = TupleItems [a]
 data FuncArg = FuncArg !ValId !SType
   deriving Show
 
+ 
 data FuncValue = MkFuncValue
   { funcValArgs :: [FuncArg]
   , funcValBody :: Expr
-  , funcValType :: SType
+-- FIXME: 
+--  , funcValType :: SType
   }
   deriving Show
 
@@ -135,6 +139,9 @@ data Expr
   | Or         !Expr    -- ^ Logical OR
   | LogicalNot !Expr    -- ^ Logical not
   | OptionGet  !Expr    -- ^ Returns the Option's value or error if no value
+  | OptionIsDefined !Expr
+  | ForAll Expr Expr
+  | Exists Expr Expr
   | ExtractRegisterAs  ExtractRegisterAs -- ^ Extract register's value (box.RX properties)
   | ExtractScriptBytes Expr              -- ^ Extract box's guarding script serialized to bytes
   | ByIndex            ByIndex           -- ^ Collection, get element by index
@@ -161,6 +168,7 @@ data GlobalVars
   | Height  -- ^ Current blockchain height
   | SelfBox -- ^ ErgoBox instance, which script is being evaluated
   | MinerPubKey
+  | Global
   deriving Show
 
 data MethodCall = MkMethodCall
@@ -270,7 +278,86 @@ data RelationOp
   | OpOr  -- ^ Logical OR
   deriving Show
 
-data BinOp
-  = ArithOp ArithOp
-  | RelationOp RelationOp
+data BitOp 
+  = OpBinOr
+  | OpBinAnd
+  | OpBinXor
   deriving Show
+
+data BinOp
+  = ArithOp    ArithOp
+  | RelationOp RelationOp
+  | BitOp      BitOp
+  deriving Show
+
+
+----------------------------------------------------------------
+-- Parsing
+----------------------------------------------------------------
+
+instance ErgoParser FuncArg where
+  getErgo = FuncArg <$> getErgo <*> getErgo
+
+instance ErgoParser SType where
+  getErgo = getSType
+
+getSType :: Get SType
+getSType = do
+  c <- get @Word8
+  traceShowM ("getSType",c)
+  if  | c <= 0 -> fail "Invalid type prefix"
+        -- Not a tuple we need to drill down
+      | c < c_TupleTypeCode
+      , (conId,primId) <- c `divMod` c_PrimRange -> case conId of
+          -- Primitive
+          0 -> getEmbeddableType primId
+          --
+          1 -> SColl           <$> getArgType primId
+          2 -> SColl   . SColl <$> getArgType primId
+          3 -> SOption         <$> getArgType primId
+          4 -> SOption . SColl <$> getArgType primId
+          -- 5 -> case primId of
+          --   0 -> STuple . TupleItems <$> sequence [getSType, getSType]
+          --   -- Pair of types where first is primitive (`(_, Int)`)
+          --   _ -> do t1 <- getEmbeddableType primId
+          --           t2 <- getSType
+          --           pure $ STuple $ TupleItems [t1,t2]
+          6 -> case primId of
+            0 -> STuple . TupleItems <$> sequence [getSType, getSType, getSType]
+            -- Pair of types where second is primitive (`(Int, _)`)
+            _ -> do t2 <- getEmbeddableType primId
+                    t1 <- getSType
+                    traceShowM [t1,t2]
+                    pure $ STuple $ TupleItems [t1,t2]
+          _ -> error $ "Unhandled conId " ++ show conId ++ " primId " ++ show primId
+        -- Tuple
+      | c == c_TupleTypeCode      -> error "Cant handle TupleTypeCode"
+      | c == c_SAnyTypeCode       -> pure SAny
+      | c == c_SUnitTypeCode      -> error "Can't handle SUnit"
+      | c == c_SBoxTypeCode       -> pure SBox
+      | c == c_SAvlTreeTypeCode   -> pure SAvlTree
+      | c == c_SContextTypeCode   -> pure SContext
+      | c == c_SStringTypeCode    -> error "Can't handle SString"
+      | c == c_STypeVarTypeCode   -> error "Can't handle STypeVarHeader"
+      | c == c_SHeaderTypeCode    -> error "Can't handle SHeader"
+      | c == c_SPreHeaderTypeCode -> error "Can't handle SPreHeader"
+      | c == c_SGlobalTypeCode    -> error "Can't handle SGlobal"
+      | otherwise -> fail $ "Unknown type code " ++ show c
+
+getArgType :: Word8 -> Get SType
+getArgType = \case
+  0      -> getSType
+  primId -> getEmbeddableType primId
+
+getEmbeddableType :: Word8 -> Get SType
+getEmbeddableType = \case
+  0 -> error "NULL?"
+  1 -> pure SBoolean
+  2 -> pure SByte
+  3 -> pure SShort
+  4 -> pure SInt
+  5 -> pure SLong
+  6 -> pure SBigInt
+  7 -> pure SGroupElement
+  8 -> pure SSigmaProp
+  _ -> fail "Invalid primitive type"
