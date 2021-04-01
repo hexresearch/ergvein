@@ -17,18 +17,18 @@ let
       ergvein-common = ./common;
       ergvein-crypto = ./crypto;
       ergvein-index-api = ./index-api;
+      ergvein-index-client = ./index-client;
       ergvein-index-protocol = ./index-protocol;
       ergvein-index-protocol-client = ./index-protocol-client;
-      ergvein-index-client = ./index-client;
       ergvein-index-server = ./index-server;
       ergvein-interface-ergo = ./interfaces/ergo;
+      ergvein-node-discovery = ./node-discovery;
       ergvein-wallet = ./wallet;
       ergvein-wallet-android = ./wallet-android;
       ergvein-wallet-desktop = ./wallet-desktop;
       ergvein-wallet-filters = ./wallet-filters;
       ergvein-wallet-native = ./wallet-native;
       ergvein-wallet-types = ./wallet-types;
-      ergvein-node-discovery = ./node-discovery;
       ergvein-wallet-version = ./wallet-version;
       ergvein-website = ./ergvein-website;
       golomb-rice = ./golomb-rice;
@@ -37,6 +37,7 @@ let
       reflex-external-ref = ./reflex-external-ref;
       reflex-localize = ./reflex-localize;
       reflex-localize-dom = ./reflex-localize-dom;
+      sepulcas = ./sepulcas;
       ui-playground = ./ui-playground;
       x509-android = ./x509-android;
     };
@@ -50,16 +51,16 @@ let
         "ergvein-common"
         "ergvein-crypto"
         "ergvein-index-api"
-        "ergvein-index-protocol"
-        "ergvein-index-protocol-client"
         "ergvein-index-client"
+        "ergvein-index-protocol-client"
+        "ergvein-index-protocol"
         "ergvein-index-server"
         "ergvein-interface-ergo"
+        "ergvein-node-discovery"
         "ergvein-wallet-desktop"
         "ergvein-wallet-filters"
         "ergvein-wallet-native"
         "ergvein-wallet-types"
-        "ergvein-node-discovery"
         "ergvein-wallet-version"
         "ergvein-wallet"
         "ergvein-website"
@@ -67,6 +68,7 @@ let
         "reflex-dom-retractable"
         "reflex-external-ref"
         "reflex-localize"
+        "sepulcas"
         "ui-playground"
       ];
     };

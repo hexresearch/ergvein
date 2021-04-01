@@ -44,27 +44,28 @@ in (self: super: let
     data-merkle-tree = ingnoreGarbage super.data-merkle-tree;
     ergvein-checkpoint-generator = ingnoreGarbage super.ergvein-checkpoint-generator;
     ergvein-common = ingnoreGarbage super.ergvein-common;
+    ergo-api = lib.dontCheck (ingnoreGarbage super.ergo-api);
     ergvein-crypto = ingnoreGarbage super.ergvein-crypto;
     ergvein-index-api = ingnoreGarbage super.ergvein-index-api;
+    ergvein-index-client = ingnoreGarbage super.ergvein-index-client;
     ergvein-index-protocol = ingnoreGarbage super.ergvein-index-protocol;
     ergvein-index-protocol-client = ingnoreGarbage super.ergvein-index-protocol-client;
-    ergvein-index-client = ingnoreGarbage super.ergvein-index-client;
     ergvein-index-server = ingnoreGarbage super.ergvein-index-server;
     ergvein-interface-ergo = ingnoreGarbage super.ergvein-interface-ergo;
+    ergvein-node-discovery = ingnoreGarbage super.ergvein-node-discovery;
     ergvein-wallet = addVersions (ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-wallet" ./wallet walletOpts {}));
     ergvein-wallet-android = ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-wallet-android" ./wallet-android walletOpts {});
     ergvein-wallet-desktop = ingnoreGarbage super.ergvein-wallet-desktop;
     ergvein-wallet-filters = ingnoreGarbage super.ergvein-wallet-filters;
     ergvein-wallet-native = ingnoreGarbage super.ergvein-wallet-native;
     ergvein-wallet-types = ingnoreGarbage super.ergvein-wallet-types;
-    ergvein-node-discovery = ingnoreGarbage super.ergvein-node-discovery;
     ergvein-wallet-version = ingnoreGarbage super.ergvein-wallet-version;
-    ergo-api = lib.dontCheck (ingnoreGarbage super.ergo-api);
     golomb-rice = ingnoreGarbage super.golomb-rice;
     reflex-dom-retractable = ingnoreGarbage super.reflex-dom-retractable;
     reflex-external-ref = ingnoreGarbage super.reflex-external-ref;
     reflex-localize = ingnoreGarbage super.reflex-localize;
     reflex-localize-dom = ingnoreGarbage super.reflex-localize-dom;
+    sepulcas = ingnoreGarbage super.sepulcas;
     # Overrides
     android-activity = self.callPackage ./derivations/android-activity.nix {
       inherit (pkgs.buildPackages) jdk;

@@ -14,10 +14,12 @@ packages:
   ./index-protocol-client
   ./index-server
   ./interfaces/ergo
+  ./node-discovery
   ./reflex-external-ref
   ./reflex-localize
   ./reflex-localize-dom
   ./retractable
+  ./sepulcas
   ./ui-playground
   ./wallet
   ./wallet-android
@@ -25,6 +27,5 @@ packages:
   ./wallet-filters
   ./wallet-native
   ./wallet-types
-  ./node-discovery
   ./wallet-version
   ./x509-android
