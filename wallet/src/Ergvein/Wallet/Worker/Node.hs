@@ -26,7 +26,7 @@ import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Monad.Util
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Node
 import Ergvein.Wallet.Node.BTC
 import Ergvein.Wallet.Node.BTC.Mempool

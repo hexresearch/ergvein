@@ -39,7 +39,7 @@ import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Prim
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
 

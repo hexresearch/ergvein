@@ -22,6 +22,7 @@ library
     default-extensions:
       BangPatterns
       ConstraintKinds
+      CPP
       DataKinds
       DeriveDataTypeable
       DeriveGeneric
@@ -72,8 +73,7 @@ library
 
   if flag(android)
       cpp-options: -DANDROID
-      build-depends:
-          android-activity
+      build-depends: android-activity
 
 executable sepulcas-demo
   hs-source-dirs:
@@ -91,6 +91,7 @@ executable sepulcas-demo
 
   default-language:    Haskell2010
   default-extensions:
+    CPP
     BangPatterns
     ConstraintKinds
     DataKinds
@@ -112,3 +113,9 @@ executable sepulcas-demo
     TypeApplications
     TypeFamilies
     TypeOperators
+
+  if flag(android)
+      cpp-options: -DANDROID
+      build-depends: sepulcas-desktop
+  else
+      build-depends: sepulcas-desktop

@@ -10,7 +10,7 @@ import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Initial
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Page.Seed
 import Ergvein.Wallet.Page.Settings.Unauth

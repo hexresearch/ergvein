@@ -191,7 +191,7 @@ library
         ergvein-crypto >=0.1 && <0.2,
         ergvein-index-protocol >= 0.1 && < 0.2,
         ergvein-wallet-filters >= 0.2 && < 0.3,
-        ergvein-wallet-native >=0.1 && <0.2,
+        sepulcas-native >=0.1 && <0.2,
         ergvein-wallet-types >=0.1 && <0.2,
         ergvein-wallet-version >= 0.1 && < 0.2,
         ergvein-node-discovery,
@@ -250,7 +250,7 @@ library
             ergvein-wallet-android -any
     else
         build-depends:
-            ergvein-wallet-desktop -any
+            sepulcas-desktop -any
 
     if flag(testnet)
         cpp-options: -DTESTNET
@@ -265,7 +265,7 @@ executable ergvein
     , data-default
     , directory
     , ergvein-wallet
-    , ergvein-wallet-native
+    , sepulcas-native
     , ergvein-wallet-version
     , optparse-generic  >= 1.3      && < 1.4
     , reflex
@@ -275,7 +275,7 @@ executable ergvein
     build-depends: ergvein-wallet-android
     cpp-options: -DANDROID
   else
-    build-depends: ergvein-wallet-desktop
+    build-depends: sepulcas-desktop
   default-language:    Haskell2010
   default-extensions:
     BangPatterns

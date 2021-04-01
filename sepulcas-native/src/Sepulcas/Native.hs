@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
-module Ergvein.Wallet.Native
+module Sepulcas.Native
   ( PlatformNatives(..)
   , HasStoreDir(..)
   , NativeAlerts(..)

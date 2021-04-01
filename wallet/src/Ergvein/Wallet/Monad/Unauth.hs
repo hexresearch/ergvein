@@ -22,8 +22,8 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Util
-import Ergvein.Wallet.Native
-import Ergvein.Wallet.Run.Callbacks
+import Sepulcas.Native
+import Sepulcas.Run.Callbacks
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Version

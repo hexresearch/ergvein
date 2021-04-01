@@ -29,7 +29,7 @@ import Ergvein.Wallet.Log.Event
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Node.BTC.Blocks
 import Ergvein.Wallet.Status.Types
 import Ergvein.Wallet.Storage.Constants

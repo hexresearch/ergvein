@@ -1,4 +1,4 @@
-module Ergvein.Wallet.Android.Native.Certs(
+module Sepulcas.Android.Native.Certs(
     additionalCertificates
   ) where
 

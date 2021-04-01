@@ -1,4 +1,4 @@
-module Ergvein.Wallet.Android.Run(
+module Sepulcas.Android.Run(
 
   ) where
 
@@ -8,10 +8,10 @@ import Control.Monad
 import Data.Default
 import Data.IORef
 import Data.String
-import Ergvein.Wallet.Android.Native.MainWidget
-import Ergvein.Wallet.Run
-import Ergvein.Wallet.Run.Callbacks
 import Language.Javascript.JSaddle (JSM)
+import Sepulcas.Android.Native.MainWidget
+import Sepulcas.Run
+import Sepulcas.Run.Callbacks
 import System.IO
 
 instance PlatformRun where

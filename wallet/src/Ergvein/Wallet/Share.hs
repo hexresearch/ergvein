@@ -5,7 +5,7 @@ module Ergvein.Wallet.Share(
 
 import Data.Text (Text)
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 
 shareShareUrl :: MonadFrontBase t m => Event t Text -> m (Event t Text)
 shareShareUrl e = runOnUiThread $ ffor e $ \str -> do

@@ -1,12 +1,12 @@
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
-module Ergvein.Wallet.Desktop.Run(
+module Sepulcas.Desktop.Run(
 
   ) where
 
-import Ergvein.Wallet.Run
-import Ergvein.Wallet.Run.Callbacks
+import Sepulcas.Run
+import Sepulcas.Run.Callbacks
 import Control.Monad
 import Control.Concurrent
 import Data.Function

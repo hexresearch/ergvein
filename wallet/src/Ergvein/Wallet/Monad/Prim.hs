@@ -46,7 +46,7 @@ import Ergvein.Crypto
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Log.Types
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
 

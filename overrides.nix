@@ -54,10 +54,7 @@ in (self: super: let
     ergvein-interface-ergo = ingnoreGarbage super.ergvein-interface-ergo;
     ergvein-node-discovery = ingnoreGarbage super.ergvein-node-discovery;
     ergvein-wallet = addVersions (ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-wallet" ./wallet walletOpts {}));
-    ergvein-wallet-android = ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-wallet-android" ./wallet-android walletOpts {});
-    ergvein-wallet-desktop = ingnoreGarbage super.ergvein-wallet-desktop;
     ergvein-wallet-filters = ingnoreGarbage super.ergvein-wallet-filters;
-    ergvein-wallet-native = ingnoreGarbage super.ergvein-wallet-native;
     ergvein-wallet-types = ingnoreGarbage super.ergvein-wallet-types;
     ergvein-wallet-version = ingnoreGarbage super.ergvein-wallet-version;
     golomb-rice = ingnoreGarbage super.golomb-rice;
@@ -66,6 +63,9 @@ in (self: super: let
     reflex-localize = ingnoreGarbage super.reflex-localize;
     reflex-localize-dom = ingnoreGarbage super.reflex-localize-dom;
     sepulcas = ingnoreGarbage super.sepulcas;
+    sepulcas-android = ingnoreGarbage (super.callCabal2nixWithOptions "sepulcas-android" ./sepulcas-android walletOpts {});
+    sepulcas-desktop = ingnoreGarbage super.sepulcas-desktop;
+    sepulcas-native = ingnoreGarbage super.sepulcas-native;
     # Overrides
     android-activity = self.callPackage ./derivations/android-activity.nix {
       inherit (pkgs.buildPackages) jdk;

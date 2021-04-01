@@ -23,7 +23,7 @@ import Ergvein.Types.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Client
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Version
 
 -- Context for unauthed widgets

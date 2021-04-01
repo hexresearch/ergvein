@@ -24,7 +24,7 @@ import Ergvein.Types.Network
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Transaction.Util

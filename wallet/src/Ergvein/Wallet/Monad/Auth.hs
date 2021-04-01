@@ -35,7 +35,7 @@ import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Node
 import Ergvein.Wallet.Settings (Settings(..))
 import Ergvein.Wallet.Status.Types

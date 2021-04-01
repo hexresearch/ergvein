@@ -1,4 +1,4 @@
-module Ergvein.Wallet.Android.Native(
+module Sepulcas.Android.Native(
 
   ) where
 
@@ -9,10 +9,10 @@ import Control.Monad.IO.Class
 import Data.Text (Text)
 import Data.Time (TimeZone(..))
 import Ergvein.Aeson
-import Ergvein.Wallet.Android.Native.Certs
-import Ergvein.Wallet.Native
 import Foreign
 import Foreign.C
+import Sepulcas.Android.Native.Certs
+import Sepulcas.Native
 import System.Directory
 import System.Directory.Tree
 import System.FilePath.Posix

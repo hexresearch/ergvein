@@ -4,7 +4,7 @@ module Ergvein.Wallet.OpenUrl(
 
 import Data.Text (Text)
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 
 openOpenUrl :: MonadFrontBase t m => Event t Text -> m (Event t ())
 openOpenUrl e = runOnUiThread $ ffor e $ \url -> do

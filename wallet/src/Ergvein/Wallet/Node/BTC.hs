@@ -31,7 +31,7 @@ import qualified Data.Text.Encoding as TE
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Prim
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Node.Prim
 import Ergvein.Wallet.Node.Socket
 import Ergvein.Wallet.Platform

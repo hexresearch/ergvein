@@ -28,7 +28,7 @@ import Ergvein.Wallet.Localization.Network
 import Ergvein.Wallet.Localization.Settings
 import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Node
 import Ergvein.Wallet.Page.Currencies

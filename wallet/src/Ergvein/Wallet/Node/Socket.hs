@@ -31,7 +31,7 @@ import Reflex.ExternalRef
 import System.Timeout (timeout)
 
 import Ergvein.Wallet.Monad.Async
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Util
 
 import qualified Control.Exception.Safe as Ex

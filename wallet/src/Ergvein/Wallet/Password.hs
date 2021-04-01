@@ -24,7 +24,7 @@ import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Localization.Password
 import Ergvein.Wallet.Localization.PatternKey
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Validate

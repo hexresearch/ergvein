@@ -1,10 +1,10 @@
 -- | The module overrides standart reflex-dom widget to get access to low level
 -- Android callbacks.
-module Ergvein.Wallet.Run(
+module Sepulcas.Run(
     PlatformRun(..)
   ) where
 
-import Ergvein.Wallet.Run.Callbacks
+import Sepulcas.Run.Callbacks
 import Language.Javascript.JSaddle.Types
 
 class PlatformRun where

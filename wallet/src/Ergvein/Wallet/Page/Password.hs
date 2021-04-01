@@ -26,7 +26,7 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Password
 import Ergvein.Wallet.Localization.Restore
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Password
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Storage.AuthInfo

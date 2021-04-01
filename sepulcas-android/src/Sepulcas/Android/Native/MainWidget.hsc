@@ -1,6 +1,6 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Ergvein.Wallet.Android.Native.MainWidget
+module Sepulcas.Android.Native.MainWidget
   ( startMainWidget
   ) where
 
@@ -27,7 +27,7 @@ import Language.Javascript.JSaddle.Run.Files (initState, runBatch, ghcjsHelpers)
 
 #include "MainWidget.h"
 
-import Ergvein.Wallet.Android.Native
+import Sepulcas.Android.Native
 
 startMainWidget :: HaskellActivity -> Chan (IO ()) -> ByteString -> JSM () -> IO ()
 startMainWidget a cbChan url jsm = do

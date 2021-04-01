@@ -1,4 +1,4 @@
-name:                ergvein-wallet-desktop
+name:                sepulcas-desktop
 version:             0.1.0.0
 synopsis:            Implementation for Ergvein wallet natives for desktop platform.
 description:         See README.md
@@ -9,8 +9,8 @@ cabal-version:       >=2.0
 library
   hs-source-dirs:      src
   exposed-modules:
-    Ergvein.Wallet.Desktop.Native
-    Ergvein.Wallet.Desktop.Run
+    Sepulcas.Desktop.Native
+    Sepulcas.Desktop.Run
   build-depends:
       aeson
     , base
@@ -19,7 +19,7 @@ library
     , directory-tree
     , dns
     , ergvein-common
-    , ergvein-wallet-native
+    , sepulcas-native
     , filepath
     , Hclip
     , jsaddle

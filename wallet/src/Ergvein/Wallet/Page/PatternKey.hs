@@ -22,7 +22,7 @@ import Ergvein.Text
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.PatternKey
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Page.Canvas
 import Ergvein.Wallet.Util
 

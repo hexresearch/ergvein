@@ -20,7 +20,7 @@ import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Filters.Loader
 import Ergvein.Wallet.Localization.Restore
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.Initial

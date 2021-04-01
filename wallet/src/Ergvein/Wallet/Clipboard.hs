@@ -9,7 +9,7 @@ import Data.Text (Text)
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 
 -- | Clipboard control widget that allows to put text into clipboard. Returns
 -- event when the text is copied with the same text.

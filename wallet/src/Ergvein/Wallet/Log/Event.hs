@@ -6,7 +6,7 @@ module Ergvein.Wallet.Log.Event(
 import Data.Text (Text)
 import Ergvein.Text
 import Ergvein.Wallet.Monad.Prim
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Reflex
 
 logEvent :: (MonadBaseConstr t m, PlatformNatives, Show a) => Text -> Event t a -> m (Event t a)

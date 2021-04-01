@@ -7,7 +7,7 @@ import Control.Monad.Random
 import Network.Haskoin.Network
 
 import Ergvein.Wallet.Monad.Front
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Util
 import Ergvein.Text
 import Ergvein.Wallet.Node.Types

@@ -1,4 +1,4 @@
-name:                ergvein-wallet-android
+name:                sepulcas-android
 version:             0.1.0.0
 synopsis:            Implementation for Ergvein wallet natives for android platform.
 description:         See README.md
@@ -22,7 +22,7 @@ library
     , directory-tree
     , dns
     , ergvein-common
-    , ergvein-wallet-native
+    , sepulcas-native
     , filepath
     , jsaddle
     , reflex-dom

@@ -24,10 +24,7 @@ let
       ergvein-interface-ergo = ./interfaces/ergo;
       ergvein-node-discovery = ./node-discovery;
       ergvein-wallet = ./wallet;
-      ergvein-wallet-android = ./wallet-android;
-      ergvein-wallet-desktop = ./wallet-desktop;
       ergvein-wallet-filters = ./wallet-filters;
-      ergvein-wallet-native = ./wallet-native;
       ergvein-wallet-types = ./wallet-types;
       ergvein-wallet-version = ./wallet-version;
       ergvein-website = ./ergvein-website;
@@ -38,6 +35,9 @@ let
       reflex-localize = ./reflex-localize;
       reflex-localize-dom = ./reflex-localize-dom;
       sepulcas = ./sepulcas;
+      sepulcas-android = ./sepulcas-android;
+      sepulcas-desktop = ./sepulcas-desktop;
+      sepulcas-native = ./sepulcas-native;
       ui-playground = ./ui-playground;
       x509-android = ./x509-android;
     };
@@ -57,9 +57,7 @@ let
         "ergvein-index-server"
         "ergvein-interface-ergo"
         "ergvein-node-discovery"
-        "ergvein-wallet-desktop"
         "ergvein-wallet-filters"
-        "ergvein-wallet-native"
         "ergvein-wallet-types"
         "ergvein-wallet-version"
         "ergvein-wallet"
@@ -68,6 +66,8 @@ let
         "reflex-dom-retractable"
         "reflex-external-ref"
         "reflex-localize"
+        "sepulcas-desktop"
+        "sepulcas-native"
         "sepulcas"
         "ui-playground"
       ];
@@ -97,7 +97,7 @@ let
 
       ''; */
       javaSources = [
-        ./wallet/java
+        "${project.ghc.sepulcas-android.src}/java"
         "${project.ghc.x509-android.src}/java"
       ];
       version = version;

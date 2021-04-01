@@ -12,7 +12,7 @@ import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Control.Monad.Random.Strict
 import Ergvein.Text
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Foreign.JavaScript.TH (WithJSContextSingleton(..))
 import Reflex.Spider.Internal (SpiderHostFrame(..), EventM(..))
 import Reflex

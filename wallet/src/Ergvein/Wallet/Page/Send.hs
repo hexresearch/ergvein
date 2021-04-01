@@ -21,7 +21,7 @@ import Ergvein.Wallet.Localization.Fee
 import Ergvein.Wallet.Localization.Send
 import Ergvein.Wallet.Localization.Settings()
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Node

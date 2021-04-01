@@ -1,4 +1,4 @@
-name:                ergvein-wallet-native
+name:                sepulcas-native
 version:             0.1.0.0
 synopsis:            Abstracted interface for interaction with platform for Ergvein wallet.
 description:         See README.md
@@ -9,9 +9,9 @@ cabal-version:       >=2.0
 library
   hs-source-dirs:      src
   exposed-modules:
-    Ergvein.Wallet.Native
-    Ergvein.Wallet.Run
-    Ergvein.Wallet.Run.Callbacks
+    Sepulcas.Native
+    Sepulcas.Run
+    Sepulcas.Run.Callbacks
   default-language:    Haskell2010
   build-depends:
       base

@@ -9,7 +9,7 @@ import Data.Text (Text)
 import Data.Text as T
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 
 openCamara :: MonadFrontBase t m => Event t () -> m (Event t ())
 openCamara e = runOnUiThread $ ffor e $ \_ -> do

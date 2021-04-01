@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
-module Ergvein.Wallet.Desktop.Native(
+module Sepulcas.Desktop.Native(
 
   ) where
 
@@ -9,7 +9,7 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.Time.LocalTime (getCurrentTimeZone)
 import Ergvein.Aeson
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import System.Directory
 import System.Directory.Tree
 import System.FilePath.Posix

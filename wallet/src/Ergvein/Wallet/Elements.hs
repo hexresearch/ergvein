@@ -68,7 +68,7 @@ import Language.Javascript.JSaddle hiding ((!!))
 import Reflex.Localize
 
 import Ergvein.Wallet.Monad.Front
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.OpenUrl
 import Ergvein.Wallet.Util
 

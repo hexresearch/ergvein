@@ -23,7 +23,7 @@ import Ergvein.Wallet.Localization.Fee
 import Ergvein.Wallet.Localization.History
 import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Node
 import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Platform

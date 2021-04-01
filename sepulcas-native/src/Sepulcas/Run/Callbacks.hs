@@ -1,4 +1,4 @@
-module Ergvein.Wallet.Run.Callbacks(
+module Sepulcas.Run.Callbacks(
     RunCallbacks(..)
   , noOpRunCallbacks
   ) where

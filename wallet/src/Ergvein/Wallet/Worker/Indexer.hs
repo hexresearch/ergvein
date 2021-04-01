@@ -17,7 +17,7 @@ import Ergvein.Wallet.Indexer.Socket
 import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Util
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Settings
 
 import qualified Data.Map.Strict as M

@@ -27,7 +27,7 @@ import Ergvein.Text
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Prim
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Node.Socket
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings

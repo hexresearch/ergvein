@@ -12,7 +12,7 @@ import Ergvein.Types.Storage
 import Ergvein.Wallet.Loading
 import Ergvein.Wallet.Log.Writer
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.Initial
 import Ergvein.Wallet.Page.Restore

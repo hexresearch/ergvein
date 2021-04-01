@@ -74,7 +74,7 @@ import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Storage
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Node.Prim
 import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Settings
