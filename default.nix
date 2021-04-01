@@ -32,6 +32,7 @@ let
       reflex-dom-canvas = ./reflex-dom-canvas;
       reflex-dom-retractable = ./retractable;
       reflex-external-ref = ./reflex-external-ref;
+      reflex-fork = ./reflex-fork;
       reflex-localize = ./reflex-localize;
       reflex-localize-dom = ./reflex-localize-dom;
       sepulcas = ./sepulcas;
@@ -65,7 +66,9 @@ let
         "golomb-rice"
         "reflex-dom-retractable"
         "reflex-external-ref"
+        "reflex-fork"
         "reflex-localize"
+        "reflex-localize-dom"
         "sepulcas-desktop"
         "sepulcas-native"
         "sepulcas"
