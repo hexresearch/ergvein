@@ -44,7 +44,7 @@ library
     build-depends: android-activity, x509-android
     build-tools: hsc2hs
     exposed-modules:
-      Ergvein.Wallet.Android.Native
-      Ergvein.Wallet.Android.Native.Certs
-      Ergvein.Wallet.Android.Native.MainWidget
-      Ergvein.Wallet.Android.Run
+      Sepulcas.Android.Native
+      Sepulcas.Android.Native.Certs
+      Sepulcas.Android.Native.MainWidget
+      Sepulcas.Android.Run

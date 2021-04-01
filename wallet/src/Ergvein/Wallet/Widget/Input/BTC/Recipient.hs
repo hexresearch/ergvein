@@ -20,10 +20,6 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Validate
 
-#ifdef ANDROID
-import Ergvein.Wallet.Camera
-#endif
-
 import qualified Data.Text as T
 
 recipientWidget :: MonadFront t m

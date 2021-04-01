@@ -247,7 +247,7 @@ library
         cpp-options: -DANDROID
         build-depends:
             android-activity -any,
-            ergvein-wallet-android -any
+            sepulcas-android -any
     else
         build-depends:
             sepulcas-desktop -any
@@ -272,7 +272,7 @@ executable ergvein
     , reflex-dom
     , text
   if flag(android)
-    build-depends: ergvein-wallet-android
+    build-depends: sepulcas-android
     cpp-options: -DANDROID
   else
     build-depends: sepulcas-desktop
