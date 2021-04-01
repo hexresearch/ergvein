@@ -1,0 +1,129 @@
+cabal-version: >=2.0
+name: sepulcas
+version: 0.1.0.0
+synopsis: Reflex based GUI framework to make sepulian Android applications.
+description:
+    See README.md
+category: GUI
+build-type: Simple
+
+flag android
+    description:
+        Enable android specific features.
+    default: False
+    manual: True
+
+library
+    exposed-modules:
+        Sepulcas.Monad
+
+    hs-source-dirs: src
+    default-language: Haskell2010
+    default-extensions:
+      BangPatterns
+      ConstraintKinds
+      DataKinds
+      DeriveDataTypeable
+      DeriveGeneric
+      FlexibleContexts
+      FlexibleInstances
+      FunctionalDependencies
+      GADTs
+      GeneralizedNewtypeDeriving
+      LambdaCase
+      OverloadedStrings
+      RankNTypes
+      RecordWildCards
+      RecursiveDo
+      ScopedTypeVariables
+      StandaloneDeriving
+      TemplateHaskell
+      TupleSections
+      TypeApplications
+      TypeFamilies
+      TypeOperators
+      UndecidableInstances
+
+   build-depends:
+        base >=4.5 && <4.16,
+        bytestring >=0.10 && <0.11,
+        clay >=0.14 && <0.15,
+        containers >=0.6 && <0.7,
+        data-default -any,
+        -- dependent-map >= 0.3,
+        -- dependent-sum >= 0.6,
+        -- directory -any,
+        file-embed >=0.0 && <0.1,
+        -- filepath -any,
+        -- ghcjs-dom -any,
+        -- http-client >=0.5 && <0.7,
+        jsaddle -any,
+        lens >=4.16 && <4.18,
+        mtl >=2.2 && <2.3,
+        qrcode-core,
+        -- random-shuffle,
+        ref-tf >=0.4 && <0.5,
+        reflex >=0.4 && <0.9,
+        reflex-dom >=0.4 && <0.9,
+        reflex-dom-core -any,
+        reflex-dom-retractable -any,
+        reflex-external-ref -any,
+        reflex-localize -any,
+        reflex-localize-dom -any,
+        safe -any,
+        safe-exceptions -any,
+        -- semialign -any,
+        -- split >=0.2.3.3 && <0.3,
+        template-haskell -any,
+        text >=1.2 && <1.3,
+        -- these -any,
+        time -any,
+        -- unliftio >= 0.2 && < 0.3,
+        -- unliftio-core >= 0.1 && < 0.2,
+        -- validation >=1 && < 1.2,
+        vector -any,
+        -- vector-algorithms,
+
+
+    if flag(android)
+        cpp-options: -DANDROID
+        build-depends:
+            android-activity -any,
+
+executable sepulcas-demo
+  hs-source-dirs:
+      app
+  main-is:             Main.hs
+  ghc-options: -O3 -threaded -rtsopts "-with-rtsopts=-N -qm"
+  build-depends:
+      base
+    , data-default
+    , sepulcas
+    , optparse-generic  >= 1.3      && < 1.4
+    , reflex
+    , reflex-dom
+    , text
+
+  default-language:    Haskell2010
+  default-extensions:
+    BangPatterns
+    ConstraintKinds
+    DataKinds
+    DeriveDataTypeable
+    DeriveGeneric
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    LambdaCase
+    OverloadedStrings
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    StandaloneDeriving
+    TemplateHaskell
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeOperators
