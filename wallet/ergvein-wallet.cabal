@@ -223,6 +223,7 @@ library
         reflex-external-ref -any,
         reflex-localize -any,
         reflex-localize-dom -any,
+        reflex-fork,
         safe -any,
         safe-exceptions -any,
         safecopy  >= 0.9 && < 0.10,
