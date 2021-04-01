@@ -24,6 +24,8 @@ import qualified Data.Text.IO as T
 import qualified Turtle
 
 instance PlatformNatives where
+  getHomeDir = liftIO $ T.pack <$> getHomeDirectory
+
   resUrl = id
 
   storeBS fname bs atomicMode = do

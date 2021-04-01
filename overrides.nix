@@ -66,6 +66,7 @@ in (self: super: let
     sepulcas = ingnoreGarbage super.sepulcas;
     sepulcas-android = ingnoreGarbage (super.callCabal2nixWithOptions "sepulcas-android" ./sepulcas-android walletOpts {});
     sepulcas-desktop = ingnoreGarbage super.sepulcas-desktop;
+    sepulcas-log = ingnoreGarbage super.sepulcas-log;
     sepulcas-native = ingnoreGarbage super.sepulcas-native;
     # Overrides
     android-activity = self.callPackage ./derivations/android-activity.nix {

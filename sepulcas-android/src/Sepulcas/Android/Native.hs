@@ -50,6 +50,8 @@ encodeText text cont =
   BS.useAsCString (T.encodeUtf8 text) cont
 
 instance PlatformNatives where
+  getHomeDir = getFilesDir =<< getHaskellActivity
+
   resUrl = (<>) "file:///android_res/"
 
   storeBS fname bs _ = do

@@ -23,6 +23,7 @@ packages:
   ./sepulcas
   ./sepulcas-android
   ./sepulcas-desktop
+  ./sepulcas-log
   ./sepulcas-native
   ./ui-playground
   ./wallet

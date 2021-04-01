@@ -38,6 +38,7 @@ let
       sepulcas = ./sepulcas;
       sepulcas-android = ./sepulcas-android;
       sepulcas-desktop = ./sepulcas-desktop;
+      sepulcas-log = ./sepulcas-log;
       sepulcas-native = ./sepulcas-native;
       ui-playground = ./ui-playground;
       x509-android = ./x509-android;
@@ -70,6 +71,7 @@ let
         "reflex-localize"
         "reflex-localize-dom"
         "sepulcas-desktop"
+        "sepulcas-log"
         "sepulcas-native"
         "sepulcas"
         "ui-playground"

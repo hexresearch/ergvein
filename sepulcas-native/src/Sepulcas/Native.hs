@@ -30,6 +30,9 @@ data NativeAlerts
 type AtomicMode = Bool
 
 class PlatformNatives where
+  -- | Get where application can store it files
+  getHomeDir :: MonadIO m => m Text
+
   -- | Make platform specific URL to given resource.
   resUrl :: Text -> Text
 
