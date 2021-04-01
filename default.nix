@@ -131,5 +131,33 @@ let
       '';
     };
 
+    android.sepulcas = {
+      executableName = "sepulcas-demo";
+      applicationId = "org.sepulcas.demo";
+      displayName = "Sepulcas demo";
+      resources = ./sepulcas/static/res;
+      assets = ./sepulcas/static/assets;
+      iconPath = "@drawable/ic_launcher";
+      javaSources = [
+        "${project.ghc.sepulcas-android.src}/java"
+        "${project.ghc.x509-android.src}/java"
+      ];
+      version = {code = "1"; name="demo"; };
+
+      services = ''
+      <provider
+          android:name="androidx.core.content.FileProvider"
+          android:authorities="org.sepulcas.demo.fileprovider"
+          android:exported="false"
+          android:grantUriPermissions="true">
+          <meta-data
+              android:name="android.support.FILE_PROVIDER_PATHS"
+              android:resource="@xml/file_paths" />
+      </provider>
+      '';
+      permissions = ''
+      <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+      '';
+    };
   });
   in project

@@ -50,7 +50,9 @@ encodeText text cont =
   BS.useAsCString (T.encodeUtf8 text) cont
 
 instance PlatformNatives where
-  getHomeDir = getFilesDir =<< getHaskellActivity
+  getHomeDir = do
+    mdir <- liftIO $ getFilesDir =<< getHaskellActivity
+    maybe (error "No home dir detected!") (pure . T.pack) mdir
 
   resUrl = (<>) "file:///android_res/"
 

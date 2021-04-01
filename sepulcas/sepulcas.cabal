@@ -135,6 +135,6 @@ executable sepulcas-demo
 
   if flag(android)
       cpp-options: -DANDROID
-      build-depends: sepulcas-desktop
+      build-depends: sepulcas-android
   else
       build-depends: sepulcas-desktop

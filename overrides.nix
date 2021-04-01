@@ -63,7 +63,7 @@ in (self: super: let
     reflex-fork = ingnoreGarbage super.reflex-fork;
     reflex-localize = ingnoreGarbage super.reflex-localize;
     reflex-localize-dom = ingnoreGarbage super.reflex-localize-dom;
-    sepulcas = ingnoreGarbage super.sepulcas;
+    sepulcas = ingnoreGarbage (super.callCabal2nixWithOptions "sepulcas" ./sepulcas walletOpts {});
     sepulcas-android = ingnoreGarbage (super.callCabal2nixWithOptions "sepulcas-android" ./sepulcas-android walletOpts {});
     sepulcas-desktop = ingnoreGarbage super.sepulcas-desktop;
     sepulcas-log = ingnoreGarbage super.sepulcas-log;
