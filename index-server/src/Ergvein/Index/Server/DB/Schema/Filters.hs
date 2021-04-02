@@ -25,6 +25,7 @@ import Ergvein.Index.Server.DB.Utils
 import Ergvein.Index.Server.DB.Serialize.Class
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import Ergvein.Index.Protocol.Utils
 
 import qualified Data.ByteString         as BS
 import qualified Data.ByteString.Lazy    as BL
@@ -89,13 +90,13 @@ data ScannedHeightRec = ScannedHeightRec
 
 instance EgvSerialize ScannedHeightRec where
   egvSerialize _ (ScannedHeightRec sh) = BL.toStrict . BB.toLazyByteString $ BB.word64LE sh
-  egvDeserialize _ = parseOnly $ ScannedHeightRec <$> anyWord64le
+  egvDeserialize _ = parseTillEndOfInput $ ScannedHeightRec <$> anyWord64le
 
 instance EgvSerialize BlockInfoRec where
   egvSerialize _ (BlockInfoRec hd filt) = BL.toStrict . BB.toLazyByteString $ let
     len = fromIntegral $ BS.length filt
     in BB.shortByteString hd <> BB.word64LE len <> BB.byteString filt
-  egvDeserialize cur = parseOnly $ do
+  egvDeserialize cur = parseTillEndOfInput $ do
     blockInfoRecHeaderHash <- fmap BSS.toShort $ Parse.take (getBlockHashLength cur)
     len <- fromIntegral <$> anyWord64le
     blockInfoRecAddressFilter <- Parse.take len

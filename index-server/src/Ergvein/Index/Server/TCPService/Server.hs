@@ -10,7 +10,6 @@ import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Random
 import Control.Monad.Trans.Except
-import Data.Attoparsec.ByteString
 import Data.ByteString.Builder
 import Data.Either.Combinators
 import Data.Foldable
@@ -20,6 +19,7 @@ import Network.Socket
 import Ergvein.Index.Protocol.Deserialization
 import Ergvein.Index.Protocol.Serialization
 import Ergvein.Index.Protocol.Types
+import Ergvein.Index.Protocol.Utils
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
@@ -149,19 +149,19 @@ evalMsg sock addr = response =<< request =<< messageHeader
     messageId :: BS.ByteString -> ExceptT Reject ServerM MessageType
     messageId bs
       | BS.null bs = except $ Left $ Reject MVersionType ZeroBytesReceived "Expected bytes for message header (id)"
-      | otherwise = ExceptT . pure . mapLeft (\_ -> Reject MVersionType MessageHeaderParsing "Failed to parse header message id") . eitherResult $ parse messageTypeParser bs
+      | otherwise = ExceptT . pure . mapLeft (\_ -> Reject MVersionType MessageHeaderParsing "Failed to parse header message id") . parseTillEndOfInput messageTypeParser $ bs
 
     messageLength :: BS.ByteString -> ExceptT Reject ServerM Word32
     messageLength bs
       | BS.null bs = except $ Left $ Reject MVersionType ZeroBytesReceived "Expected bytes for message header (length)"
-      | otherwise = ExceptT . pure . mapLeft (\_ -> Reject MVersionType MessageHeaderParsing "Failed to parse header message length") . eitherResult $ parse messageLengthParser bs
+      | otherwise = ExceptT . pure . mapLeft (\_ -> Reject MVersionType MessageHeaderParsing "Failed to parse header message length") . parseTillEndOfInput messageLengthParser $ bs
 
     request :: MessageHeader -> ExceptT Reject ServerM Message
     request MessageHeader {..} = do
       messageBytes <- if not $ messageHasPayload msgType
         then pure mempty
         else liftIO $ NS.recv sock $ fromIntegral msgSize
-      except $ mapLeft (\_-> Reject msgType MessageParsing "Failed to parse message body") $ eitherResult $ parse (messageParser msgType) messageBytes
+      except $ mapLeft (\_-> Reject msgType MessageParsing "Failed to parse message body") $ parseTillEndOfInput (messageParser msgType) messageBytes
 
     response :: Message -> ExceptT Reject ServerM (Maybe Message, Bool)
     response msg = (lift $ handleMsg addr msg) `catch` (\(e :: SomeException) -> do

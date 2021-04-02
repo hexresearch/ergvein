@@ -14,17 +14,16 @@ import Data.Word
 
 import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Protocol.Utils
-import Ergvein.Types.Fees
 import Ergvein.Types.Currency (Fiat)
+import Ergvein.Types.Fees
 
 import qualified Data.Attoparsec.ByteString as Parse
-import qualified Data.Bitstream as S
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as LBS
-import qualified Data.ByteString.Short as BSS
-import qualified Data.Map.Strict as M
-import qualified Data.Vector as V
-import qualified Data.Vector.Unboxed as UV
+import qualified Data.Bitstream             as S
+import qualified Data.ByteString.Lazy       as LBS
+import qualified Data.ByteString.Short      as BSS
+import qualified Data.Map.Strict            as M
+import qualified Data.Vector                as V
+import qualified Data.Vector.Unboxed        as UV
 
 word32toMessageType :: Word32 -> Maybe MessageType
 word32toMessageType = \case
@@ -199,7 +198,7 @@ messageParser MFiltersResponseType = do
   let unzippedFilters = LBS.toStrict $ decompress filtersString
       parser = V.fromList <$> replicateM (fromIntegral amount) (filterParser currency)
 
-  case parseOnly parser unzippedFilters of
+  case parseTillEndOfInput parser unzippedFilters of
     Right parsedFilters -> pure $ MFiltersResponse $ FilterResponse
       { filterResponseCurrency = currency
       , filterResponseFilters  = parsedFilters
@@ -308,10 +307,3 @@ parseFeeResp = do
       <$> varInt
       <*> varInt
       <*> varInt
-
-parseMessage :: MessageType -> BS.ByteString -> Either String (Message, BS.ByteString)
-parseMessage msgType source =
-  case parse (messageParser msgType) source of
-    Done rest message -> Right (message, rest)
-    Partial _ -> Left "source too short"
-    Fail _ _ err -> Left err

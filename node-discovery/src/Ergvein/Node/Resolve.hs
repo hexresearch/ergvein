@@ -15,18 +15,19 @@ import Data.Attoparsec.Text
 import Data.Function
 import Data.IP
 import Data.Maybe
+import Data.Monoid
 import Data.Text (Text)
 import Data.Word
 import Network.DNS.Lookup
 import Network.DNS.Resolver
 import Network.DNS.Types
-import Data.Monoid
 import Network.Socket
 import Text.Read (readMaybe)
-import qualified Data.List.NonEmpty as NE
 
 import qualified Data.ByteString.Char8 as B8
+import qualified Data.List.NonEmpty    as NE
 import qualified Data.Text             as T
+
 
 data NamedSockAddr = NamedSockAddr {
   namedAddrName :: Text
@@ -103,7 +104,7 @@ resolveAddr rs defNodePort t = liftIO $ withResolver rs $ \r -> parseAddr r defN
 
 parseAddr :: Resolver -> PortNumber -> Text -> IO (Maybe NamedSockAddr)
 parseAddr resolver defNodePort addressText =
-  case parseOnly (ipAddressParser defNodePort) addressText of 
+  case parseOnly (ipAddressParser defNodePort <* endOfInput) addressText of 
     Right ip -> pure $ Just $ NamedSockAddr addressText ip
     _-> do
       let (domain, port) = parseHostPort defNodePort addressText
