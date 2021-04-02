@@ -1,4 +1,6 @@
+{-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE CPP #-}
+
 module Ergvein.Wallet.Main(
     frontend
   , mainWidgetWithCss
@@ -15,6 +17,7 @@ import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.Initial
 import Ergvein.Wallet.Page.Restore
 import Ergvein.Wallet.Password
+import Ergvein.Wallet.Worker
 #ifdef TESTNET
 import Ergvein.Wallet.Elements
 import Ergvein.Wallet.Language
@@ -48,9 +51,9 @@ mainpageDispatcher = void $ workflow testnetDisclaimer
       closeE <- outlineButton TestnetDisclaimerClose
       pure ((), startWallet <$ closeE)
     startWallet = Workflow $ do
-      void $ retractStack (initialPage True) `liftAuth` retractStack startPage
+      void $ retractStack (initialPage True) `liftAuth` (spawnWorkers >> retractStack startPage)
       pure ((), never)
 #else
 mainpageDispatcher :: MonadFrontBase t m => m ()
-mainpageDispatcher = void $ retractStack (initialPage True) `liftAuth` retractStack startPage
+mainpageDispatcher = void $ retractStack (initialPage True) `liftAuth` (spawnWorkers >> retractStack startPage)
 #endif
