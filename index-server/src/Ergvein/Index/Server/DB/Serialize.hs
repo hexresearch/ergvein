@@ -10,7 +10,6 @@ module Ergvein.Index.Server.DB.Serialize
 import Control.DeepSeq
 import Control.Parallel.Strategies
 import Data.Attoparsec.Binary
-import Data.Attoparsec.ByteString
 import Data.ByteString (ByteString)
 import Data.ByteString.Builder as BB
 import Data.Word
@@ -20,6 +19,7 @@ import Ergvein.Index.Server.DB.Schema.Utxo
 import Ergvein.Index.Server.DB.Serialize.Class
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
+import Ergvein.Index.Protocol.Utils
 
 import qualified Data.ByteString.Lazy as BL
 import qualified Database.LevelDB as LDB
@@ -34,7 +34,7 @@ serializeWord32 = BL.toStrict . toLazyByteString . word32LE
 {-# INLINE serializeWord32 #-}
 
 deserializeWord32 :: ByteString -> Either String Word32
-deserializeWord32 = parseOnly anyWord32le
+deserializeWord32 = parseTillEndOfInput anyWord32le
 {-# INLINE deserializeWord32 #-}
 
 putTxInfosAsRecs :: Currency -> BlockHeight -> [TxInfo] -> LDB.WriteBatch

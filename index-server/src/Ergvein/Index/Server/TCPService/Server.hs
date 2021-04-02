@@ -10,7 +10,6 @@ import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Random
 import Control.Monad.Trans.Except
-import Data.Attoparsec.ByteString
 import Data.ByteString.Builder
 import Data.Either.Combinators
 import Data.Foldable
@@ -20,6 +19,7 @@ import Network.Socket
 import Ergvein.Index.Protocol.Deserialization
 import Ergvein.Index.Protocol.Serialization
 import Ergvein.Index.Protocol.Types
+import Ergvein.Index.Protocol.Utils
 import Ergvein.Index.Server.Config
 import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
@@ -140,7 +140,7 @@ request sock MessageHeader{..} = do
   messageBytes <- if not $ messageHasPayload msgType
     then pure mempty
     else liftIO $ NS.recv sock $ fromIntegral msgSize
-  except $ mapLeft (\_-> Reject msgType MessageParsing "Failed to parse message body") $ eitherResult $ parse (messageParser msgType) messageBytes
+  except $ mapLeft (\_-> Reject msgType MessageParsing "Failed to parse message body") $ parseTillEndOfInput (messageParser msgType) messageBytes
 
 
 messageHeader :: MonadIO m => Socket -> ExceptT Reject m MessageHeader
@@ -153,7 +153,7 @@ messageHeader sock = do
 messageId :: Monad m => BS.ByteString -> ExceptT Reject m MessageType
 messageId bs
   | BS.null bs = except $ Left $ Reject MVersionType ZeroBytesReceived "Expected bytes for message header (id)"
-  | otherwise  = case eitherResult $ parse messageTypeParser bs of
+  | otherwise  = case parseTillEndOfInput messageTypeParser bs of
       Left  _ -> throwE $ Reject MVersionType MessageHeaderParsing "Failed to parse header message id"
       Right m -> pure m
 
@@ -161,7 +161,7 @@ messageId bs
 messageLength :: Monad m => BS.ByteString -> ExceptT Reject m Word32
 messageLength bs
   | BS.null bs = except $ Left $ Reject MVersionType ZeroBytesReceived "Expected bytes for message header (length)"
-  | otherwise  = case eitherResult $ parse messageLengthParser bs of
+  | otherwise  = case parseTillEndOfInput messageLengthParser bs of
       Left  _ -> throwE $ Reject MVersionType MessageHeaderParsing "Failed to parse header message length"
       Right n -> pure n
 
