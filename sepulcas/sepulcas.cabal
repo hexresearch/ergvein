@@ -37,6 +37,7 @@ library
       Sepulcas.Monad
       Sepulcas.Monad.Class
       Sepulcas.Monad.Env
+      Sepulcas.Monad.Password
       Sepulcas.Monad.Reflex
       Sepulcas.Monad.UI
       Sepulcas.OpenUrl
@@ -92,6 +93,7 @@ library
         ghcjs-dom,
         jsaddle,
         lens >=4.16 && <4.18,
+        MonadRandom,
         mtl >=2.2 && <2.3,
         parsec,
         qrcode-core,

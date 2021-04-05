@@ -18,6 +18,7 @@ import Reflex.Localize.Language
 import Sepulcas.Alert.Types
 import Sepulcas.Log
 import Sepulcas.Monad.Class
+import Sepulcas.Monad.Password
 import Sepulcas.Run.Callbacks
 
 data Sepulca t = Sepulca {
@@ -31,6 +32,8 @@ data Sepulca t = Sepulca {
 , sepulca'logsNameSpaces  :: !(ExternalRef t [Text])
 , sepulca'langRef         :: !(ExternalRef t Language)
 , sepulca'alertsEF        :: !(Event t AlertInfo, AlertInfo -> IO ())
+, sepulca'passModalEF     :: !(Event t (Int, Text), (Int, Text) -> IO ())
+, sepulca'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
 }
 
 type SepulcaM t m = ReaderT (Sepulca t) m
@@ -48,6 +51,12 @@ instance MonadReflex t m => MonadNativeLogger t (SepulcaM t m) where
   {-# INLINE getLogsTrigger #-}
   getLogsNameSpacesRef = asks sepulca'logsNameSpaces
   {-# INLINE getLogsNameSpacesRef #-}
+
+instance MonadIO m => HasPassModal t (SepulcaM t m) where
+  getPasswordModalEF = asks sepulca'passModalEF
+  {-# INLINE getPasswordModalEF #-}
+  getPasswordSetEF = asks sepulca'passSetEF
+  {-# INLINE getPasswordSetEF #-}
 
 instance MonadReflex t m => MonadLocalized t (SepulcaM t m) where
   setLanguage lang = do
@@ -98,6 +107,8 @@ newSepulca mstoreDir defLang uiChan = do
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
   storeDir <- maybe getHomeDir pure mstoreDir
+  passSetEF <- newTriggerEvent
+  passModalEF <- newTriggerEvent
   let env = Sepulca {
           sepulca'storeDir        = storeDir
         , sepulca'pauseEF         = (pauseE, pauseFire ())
@@ -109,6 +120,8 @@ newSepulca mstoreDir defLang uiChan = do
         , sepulca'logsTrigger     = logsTrigger
         , sepulca'logsNameSpaces  = nameSpaces
         , sepulca'uiChan          = uiChan
+        , sepulca'passModalEF     = passModalEF
+        , sepulca'passSetEF       = passSetEF
         }
   pure env
 

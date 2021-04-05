@@ -22,6 +22,7 @@ import Reflex.Localize
 import Reflex.Localize.Language
 import Sepulcas.Alert.Monad
 import Sepulcas.Log
+import Sepulcas.Monad.Password
 import Sepulcas.Monad.Reflex
 import Sepulcas.Monad.UI
 import Sepulcas.Native
@@ -29,6 +30,7 @@ import Sepulcas.Native
 type Prepulcable t m = (
     HasStoreDir (Performable m)
   , HasStoreDir m
+  , HasPassModal t m
   , MonadAlertPoster t m
   , MonadReflex t m
   , MonadHasUI m
