@@ -39,11 +39,12 @@ filtersRetryTimeout :: NominalDiffTime
 filtersRetryTimeout = 10
 
 restorePage :: forall t m . MonadFront t m =>  m ()
-restorePage = wrapperSimple True $ do
-  void $ wipeRetract . (Nothing <$) =<< getPostBuild
-  retractE <- retractEvent
-  void $ nextWidget $ ffor retractE $ const $ Retractable (initialPage False) Nothing
-  void $ workflow nodeConnection
+restorePage = do
+  buildE <- getPostBuild
+  void $ nextWidget $ ffor buildE $ const $ Retractable {
+      retractableNext = wrapperSimple True $ void $ workflow nodeConnection
+    , retractablePrev = Just $ pure $ initialPage False
+  }
   where
     restoreProgressWidget :: BlockHeight -> BlockHeight -> BlockHeight -> m ()
     restoreProgressWidget from to curr = do
