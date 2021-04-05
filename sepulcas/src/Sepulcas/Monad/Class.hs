@@ -28,8 +28,7 @@ import Sepulcas.Monad.UI
 import Sepulcas.Native
 
 type Prepulcable t m = (
-    HasStoreDir (Performable m)
-  , HasStoreDir m
+    HasStoreDir m
   , HasPassModal t m
   , MonadAlertPoster t m
   , MonadReflex t m

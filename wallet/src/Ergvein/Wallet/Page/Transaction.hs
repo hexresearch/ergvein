@@ -15,7 +15,7 @@ import Data.Time
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Ergvein.Wallet.Elements
+import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.History
 import Ergvein.Wallet.Monad

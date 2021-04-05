@@ -10,8 +10,7 @@ import Data.Word
 
 import Ergvein.Either
 import Ergvein.Types
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Elements.Input
+import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Send
 import Ergvein.Wallet.Localization.Settings()

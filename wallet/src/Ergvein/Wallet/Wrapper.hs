@@ -9,6 +9,7 @@ import Ergvein.Wallet.Alert.Handler
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Platform
+import Ergvein.Wallet.Language
 
 import qualified Data.Text as T
 
@@ -38,7 +39,7 @@ contentContainer isCentered classes ma = do
   a <- if isCentered
     then divClass "centered-container" $ divClass ("centered-content container p-1" <> padClasses classes) ma
     else divClass ("container p-1" <> padClasses classes) ma
-  alertHandlerWidget
+  alertHandlerWidget English
   pure a
   where
     padClasses :: Text -> Text
@@ -51,5 +52,5 @@ wrapperSimple isCentered ma = divClass "wrapper" $ do
   a <- if isCentered
     then divClass "centered-container" $ divClass "centered-content container p-1" ma
     else divClass "container p-1" ma
-  alertHandlerWidget
+  alertHandlerWidget English
   pure a

@@ -19,8 +19,8 @@ import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Elements.Toggle
+import Sepulcas.Elements
+import Sepulcas.Elements.Toggle
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.AuthInfo
 import Ergvein.Wallet.Localization.Currency
@@ -127,7 +127,7 @@ btcNodesPage = do
   title <- localized STPSButNodes
   wrapper False title (Just $ pure $ btcNodesPage) $ do
     conmapD <- getNodeConnectionsD
-    void $ lineOption $ widgetHoldDyn $ ffor conmapD $ \cm -> do
+    void $ lineOption $ networkHoldDyn $ ffor conmapD $ \cm -> do
       let btcNodes = maybe [] Map.elems $ DM.lookup BTCTag cm
       btcNetworkWidget btcNodes
       void $ flip traverse btcNodes $ \node -> do
@@ -180,7 +180,7 @@ currenciesPage = do
       activeCursD <- getActiveCursD
       ps <- getPubStorage
       authD <- getAuthInfo
-      currListE <- fmap switchDyn $ widgetHoldDyn $ ffor activeCursD $ \currs ->
+      currListE <- fmap switchDyn $ networkHoldDyn $ ffor activeCursD $ \currs ->
         selectCurrenciesWidget $ S.toList currs
       void $ uac currListE
       updateAE <- withWallet $ ffor currListE $ \curs prvStr -> do
@@ -257,7 +257,7 @@ unitsPage = do
         fiatE <- navbarBtn YesFiat initSel
         pure $ leftmost [noFiatE, fiatE]
       selD <- holdDyn initSel selE
-      symbE <- widgetHoldDynE $ ffor selD $ \case
+      symbE <- networkHoldDynE $ ffor selD $ \case
         NoFiat -> pure never
         YesFiat -> unitsDropdown initFiat allFiats
       let detSymbE = ffor selE $ \case
@@ -276,7 +276,7 @@ unitsPage = do
         fiatE <- navbarBtn YesRate initSel
         pure $ leftmost [noFiatE, fiatE]
       selD <- holdDyn initSel selE
-      symbE <- widgetHoldDynE $ ffor selD $ \case
+      symbE <- networkHoldDynE $ ffor selD $ \case
         NoRate -> pure never
         YesRate -> unitsDropdown initFiat allFiats
       let detSymbE = ffor selE $ \case
@@ -317,7 +317,7 @@ portfolioPage = do
       portD <- holdDyn (settingsPortfolio settings) $ poke pbtnE $ \_ -> do
         portS <- sampleDyn portD
         pure $ not portS
-      pbtnE <- divButton (fmap toggled portD) $ widgetHoldDyn $ ffor portD $ \pS ->
+      pbtnE <- divButton (fmap toggled portD) $ networkHoldDyn $ ffor portD $ \pS ->
         if pS
           then localizedText CSOn
           else localizedText CSOff

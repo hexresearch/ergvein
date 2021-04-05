@@ -12,29 +12,14 @@ module Ergvein.Wallet.Platform(
   , avgTimePerBlock
   ) where
 
-import GHC.Generics (Generic)
-import Network.Haskoin.Constants
-import Network.Haskoin.Block as HB
 import Ergvein.Types.Currency
+import GHC.Generics (Generic)
+import Network.Haskoin.Block as HB
+import Network.Haskoin.Constants
+import Sepulcas.Platform
+
 import qualified Ergvein.Types.Transaction as ETT
 import qualified Data.Vector as V
-
--- | Platform the wallet is compiled for.
-data Platform = DesktopLinux | Android
-  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic)
-
--- | Get current platform of wallet
-currentPlatform :: Platform
-#ifdef ANDROID
-currentPlatform = Android
-#else
-currentPlatform = DesktopLinux
-#endif
-
--- | Helpers to test current platform
-isDesktop, isAndroid :: Bool
-isDesktop = currentPlatform == DesktopLinux
-isAndroid = currentPlatform == Android
 
 -- | Global flag that indicates that we need to compile for testnet.
 -- The value of the function is controlled by `testnet` cabal flag.

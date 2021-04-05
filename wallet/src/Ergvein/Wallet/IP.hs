@@ -9,7 +9,7 @@ module Ergvein.Wallet.IP(
 
 import Data.IP (IP, toSockAddr)
 import Data.Text (Text, unpack)
-import Ergvein.Wallet.Elements.Input.Class
+import Sepulcas.Elements.Input.Class
 import Network.Socket (SockAddr)
 import Text.Read (readMaybe)
 import Ergvein.Text

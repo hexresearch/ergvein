@@ -22,6 +22,7 @@ import Network.Haskoin.Network
 import Network.Socket (getNameInfo, NameInfoFlag(..), SockAddr(..))
 import Reflex
 import Reflex.Dom
+import Reflex.Network
 import Reflex.ExternalRef
 import UnliftIO hiding (atomically)
 
@@ -81,7 +82,7 @@ initBTCNode doLog sa msgE = do
   proxyD <- getSocksConf
   rec
     -- Start the connection
-    s <- fmap switchSocket $ widgetHold (pure noSocket) $ ffor peerE $ \peer -> do
+    s <- fmap switchSocket $ networkHold (pure noSocket) $ ffor peerE $ \peer -> do
       socket SocketConf {
           _socketConfPeer   = peer
         , _socketConfSend   = fmap (runPut . putMessage net) $ leftmost [reqE, handshakeE, hsRespE]

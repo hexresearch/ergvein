@@ -25,7 +25,7 @@ loadingWidget = do
   backE <- fmap fst getBackEventFire
   let toggleE = leftmost [(False, "") <$ backE, (False, "") <$ errE, triggerE]
   tglD <- holdUniqDyn =<< holdDyn (False, "") toggleE
-  void $ widgetHold (pure ()) $ ffor (updated tglD) $ \(b, t) -> if not b
+  void $ networkHold (pure ()) $ ffor (updated tglD) $ \(b, t) -> if not b
     then pure ()
     else divClass "loading-page" $ divClass "loading-box" $ do
       el "h5" $ text t

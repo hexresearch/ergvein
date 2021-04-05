@@ -7,7 +7,7 @@ module Ergvein.Wallet.Camera(
 
 import Data.Text (Text)
 import Data.Text as T
-import Ergvein.Wallet.Elements
+import Sepulcas.Elements
 import Ergvein.Wallet.Monad
 import Sepulcas.Native
 

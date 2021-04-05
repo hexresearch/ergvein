@@ -11,8 +11,7 @@ import Ergvein.Either
 import Ergvein.Types
 import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Clipboard
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Elements.Input
+import Sepulcas.Elements
 import Ergvein.Wallet.Localization.Send
 import Ergvein.Wallet.Localization.Settings()
 import Ergvein.Wallet.Localization.Util

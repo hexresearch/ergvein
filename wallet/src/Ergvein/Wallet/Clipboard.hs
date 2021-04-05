@@ -6,7 +6,7 @@ module Ergvein.Wallet.Clipboard(
   ) where
 
 import Data.Text (Text)
-import Ergvein.Wallet.Elements
+import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
 import Sepulcas.Native

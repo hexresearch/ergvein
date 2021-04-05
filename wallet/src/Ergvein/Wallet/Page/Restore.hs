@@ -16,11 +16,10 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
-import Ergvein.Wallet.Elements
+import Sepulcas.Elements
 import Ergvein.Wallet.Filters.Loader
 import Ergvein.Wallet.Localization.Restore
 import Ergvein.Wallet.Monad
-import Sepulcas.Native
 import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.Initial
@@ -133,7 +132,7 @@ restorePage = wrapperSimple True $ do
             h3 $ localizedText RPSBlocksTitle
             h4 $ localizedText $ RPSBlocskAmount (length hashes)
           refreshWalletTitles = h3 $ localizedText RPSKeysTitle
-      widgetHold_ scanTitles $ leftmost [
+      networkHold_ scanTitles $ leftmost [
           blockRetrieveTitles <$> hashesE
         , refreshWalletTitles <$ scanE
         ]

@@ -227,12 +227,12 @@ mkUrlBatcher sel remE = mdo
   buildE <- getPostBuild
   remCntD <- count remE
   let goE = leftmost [Just saStorageSize <$ buildE, actE]
-  hostAddrsE <- fmap switchDyn $ widgetHold (pure never) $ ffor goE $ \case
+  hostAddrsE <- fmap switchDyn $ networkHold (pure never) $ ffor goE $ \case
     Nothing -> pure never
     Just n -> do
       btcLog $ "Getting a new batch: " <> showt n
       initNodesE <- getRandomBTCNodesFromDNS sel firstTierNodeNum
-      fmap switchDyn $ widgetHold (pure never) $ ffor initNodesE $ \initNodes -> do
+      fmap switchDyn $ networkHold (pure never) $ ffor initNodesE $ \initNodes -> do
         es <- flip traverse initNodes $ \node -> do
           reqE <- fmap (NodeReqBTC MGetAddr <$) getPostBuild
           requestNodeWait node reqE
@@ -274,7 +274,7 @@ getRandomBTCNodesFromDNS sel n = do
   rs <- mkResolvSeed
   urlsE <- performFork $ (requestNodesFromBTCDNS rs (dnsUrls!!i) n) <$ buildE
   void $ publishStatusUpdate $ (CurrencyStatus BTC StatConnectingToPeers) <$ urlsE
-  nodesD <- widgetHold (pure []) $ ffor urlsE $ \urls -> flip traverse urls $ \u -> let
+  nodesD <- networkHold (pure []) $ ffor urlsE $ \urls -> flip traverse urls $ \u -> let
     reqE = extractReq sel BTC u
     in initBTCNode False u reqE
   pure $ fforMaybe (updated nodesD) $ \case

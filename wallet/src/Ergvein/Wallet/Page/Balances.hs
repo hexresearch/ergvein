@@ -7,7 +7,7 @@ import Data.Maybe (fromMaybe)
 
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Elements
+import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.History

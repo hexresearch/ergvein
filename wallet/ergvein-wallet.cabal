@@ -26,17 +26,11 @@ library
         Ergvein.Wallet
         Ergvein.Wallet.Alert
         Ergvein.Wallet.Alert.Handler
-        Ergvein.Wallet.Alert.Type
         Ergvein.Wallet.Camera
         Ergvein.Wallet.Clipboard
         Ergvein.Wallet.Codec
         Ergvein.Wallet.Currencies
         Ergvein.Wallet.Debug
-        Ergvein.Wallet.Elements
-        Ergvein.Wallet.Elements.Inplace
-        Ergvein.Wallet.Elements.Input
-        Ergvein.Wallet.Elements.Input.Class
-        Ergvein.Wallet.Elements.Toggle
         Ergvein.Wallet.Embed
         Ergvein.Wallet.Embed.TH
         Ergvein.Wallet.Filters.Loader
@@ -71,11 +65,7 @@ library
         Ergvein.Wallet.Localization.TestnetDisclaimer
         Ergvein.Wallet.Localization.Util
         Ergvein.Wallet.Log
-        Ergvein.Wallet.Log.Event
         Ergvein.Wallet.Log.Page
-        Ergvein.Wallet.Log.Reader
-        Ergvein.Wallet.Log.Types
-        Ergvein.Wallet.Log.Writer
         Ergvein.Wallet.Main
         Ergvein.Wallet.Menu
         Ergvein.Wallet.Menu.Switcher
@@ -182,6 +172,7 @@ library
         clay >=0.14 && <0.15,
         conduit >= 1.3 && < 1.4,
         containers >=0.6 && <0.7,
+        cryptonite,
         data-default -any,
         dependent-map >= 0.3,
         dependent-sum >= 0.6,
@@ -221,13 +212,16 @@ library
         reflex-dom-core -any,
         reflex-dom-retractable -any,
         reflex-external-ref -any,
+        reflex-flunky,
+        reflex-fork,
         reflex-localize -any,
         reflex-localize-dom -any,
-        reflex-fork,
         safe -any,
         safe-exceptions -any,
         safecopy  >= 0.9 && < 0.10,
         semialign -any,
+        sepulcas,
+        sepulcas-log,
         serialise >= 0.2 && < 0.3,
         socks >= 0.5 && < 0.7,
         split >=0.2.3.3 && <0.3,

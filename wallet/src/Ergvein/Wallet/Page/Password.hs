@@ -20,8 +20,8 @@ import Ergvein.Types.Restore
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Elements.Input
+import Sepulcas.Elements
+import Sepulcas.Elements.Input
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Password
 import Ergvein.Wallet.Localization.Restore
@@ -45,7 +45,7 @@ setupBtcStartingHeight = do
           Just h -> if h < 0 then Left SHSNonNegError else Right h
     let hE = fmapMaybe (either (const Nothing) Just ) parseE
     unless isTestnet $
-      void $ widgetHold (pure ()) $ ffor parseE $
+      void $ networkHold (pure ()) $ ffor parseE $
         divClass "validate-error" . localizedText . either id SHSEstimate
     holdDyn defHeight hE
 
@@ -217,7 +217,7 @@ changePasswordWidget =
 changePasswordDescWidget :: MonadFront t m => m (Event t (Password, Bool))
 changePasswordDescWidget = wrapperSimple True $ mdo
   tglD <- holdDyn False tglE
-  (passE, tglE) <- fmap switchDyn2 $ widgetHoldDyn $ ffor tglD $ \case
+  (passE, tglE) <- fmap switchDyn2 $ networkHoldDyn $ ffor tglD $ \case
     True  -> (fmap . fmap) (False <$) confirmEmptyWidget
     False -> mdo
       changePasswordDescr True
@@ -250,7 +250,7 @@ changePasswordMobileWidget = wrapperSimple True $ mdo
   let name = T.replace " " "_" login
   stage0 <- fmap eitherToStage $ retrieveValue ("meta_wallet_" <> name) False
   stageD <- holdDyn stage0 nextE
-  (patE, nextE) <- fmap switchDyn2 $ widgetHoldDyn $ ffor stageD $ \case
+  (patE, nextE) <- fmap switchDyn2 $ networkHoldDyn $ ffor stageD $ \case
     CPMEmpty b -> do
       (passE, backE) <- confirmEmptyWidget
       pure ((,b) <$> passE, boolToStage b <$ backE)

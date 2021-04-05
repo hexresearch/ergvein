@@ -11,8 +11,8 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Clipboard
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Elements.Input
+import Sepulcas.Elements
+import Sepulcas.Elements.Input
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Receive
 import Ergvein.Wallet.Localization.Util
@@ -34,7 +34,7 @@ receivePage cur = do
   pubStoreD <- getPubStorageD
   let lastUnusedKeyD = ffor pubStoreD $ \ps ->
         (getLastUnusedKey External . _currencyPubStorage'pubKeystore) =<< (ps ^. pubStorage'currencyPubStorages . at cur)
-  void $ widgetHoldDyn $ ffor lastUnusedKeyD $ \case
+  void $ networkHoldDyn $ ffor lastUnusedKeyD $ \case
     Nothing -> exceededGapLimit cur
     Just (i, key) -> receivePageWidget cur i key
   pure ()

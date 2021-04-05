@@ -25,17 +25,17 @@ import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Filters.Loader
-import Ergvein.Wallet.Log.Event
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
-import Sepulcas.Native
 import Ergvein.Wallet.Node.BTC.Blocks
 import Ergvein.Wallet.Status.Types
 import Ergvein.Wallet.Storage.Constants
 import Ergvein.Wallet.Storage.Util (addXPubKeyToKeystore)
 import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Util
+import Sepulcas.Log
+import Sepulcas.Native
 
 import qualified Data.Map.Strict                    as M
 import qualified Data.Set                           as S
@@ -49,7 +49,7 @@ import qualified Network.Haskoin.Transaction        as HT
 scanner :: MonadFront t m => m ()
 scanner = do
   cursD <- getActiveCursD
-  void $ widgetHoldDyn $ ffor cursD $ traverse_ $ \case
+  void $ networkHoldDyn $ ffor cursD $ traverse_ $ \case
     BTC -> scannerBtc
     _ -> pure ()
 
@@ -75,7 +75,7 @@ scannerBtc = void $ workflow checkRestored
       heightD <- getCurrentHeight BTC
       filterD <- getScannedHeightD BTC
       fhE <- updatedWithInit $ ((,) . fromIntegral) <$> heightD <*> filterD
-      reqE <- widgetHoldE (pure never) $ ffor fhE $ \(h,f) -> if h >= f
+      reqE <- networkHoldE (pure never) $ ffor fhE $ \(h,f) -> if h >= f
         then do
           buildE <- getPostBuild
           te <- tickLossyFromPostBuildTime filterReqDelay

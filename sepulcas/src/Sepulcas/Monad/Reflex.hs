@@ -21,7 +21,9 @@ import qualified Control.Monad.Fail as F
 import qualified Reflex.Profiled as RP
 
 -- | Type classes that we need from reflex-dom itself.
-type MonadReflex t m = (MonadHold t m
+type MonadReflex t m =
+  ( Reflex t
+  , MonadHold t m
   , PostBuild t m
   , DomBuilder t m
   , MonadFix m

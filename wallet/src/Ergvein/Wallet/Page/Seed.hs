@@ -24,8 +24,8 @@ import Ergvein.Types.Restore
 import Ergvein.Wallet.Alert
 import Ergvein.Wallet.Camera
 import Ergvein.Wallet.Clipboard
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Elements.Input
+import Sepulcas.Elements
+import Sepulcas.Elements.Input
 import Ergvein.Wallet.Localization.Password
 import Ergvein.Wallet.Localization.Seed
 import Ergvein.Wallet.Localization.Util
@@ -119,7 +119,7 @@ mnemonicCheckWidget mnemonic = mdo
 
 guessButtons :: forall t m . MonadFrontBase t m => [Text] -> Dynamic t Int -> m (Event t Int)
 guessButtons ws idyn = do
-  resD <- widgetHoldDyn $ ffor idyn $ \i -> if i >= length ws
+  resD <- networkHoldDyn $ ffor idyn $ \i -> if i >= length ws
     then pure never else divClass "guess-buttons grid3" $ do
       let correctWord = ws !! i
       fakeWord1 <- randomPick [correctWord]
@@ -169,7 +169,7 @@ seedRestoreWidget = mdo
     localizedShow <$> langD <*> (SPSEnterWord <$> ixD)
   suggestionsD <- holdDyn Nothing $ ffor (updated inputD) $ \t -> if t == ""
     then Nothing else Just $ take 6 $ getWordsWithPrefix $ T.toLower t
-  btnE <- fmap switchDyn $ widgetHoldDyn $ ffor suggestionsD $ \case
+  btnE <- fmap switchDyn $ networkHoldDyn $ ffor suggestionsD $ \case
     Nothing -> waiting
     Just ws -> divClass "restore-seed-buttons-wrapper" $ fmap leftmost $ flip traverse ws $ \w -> do
       btnClickE <- buttonClass (pure "button button-outline") w
@@ -296,7 +296,7 @@ plainRestorePage mnemLength = wrapperSimple True $ mdo
   let setValE = leftmost [pasteE, fillE, resetE]
   let tiEl = _element_raw $ _inputElement_element ti
   performEvent_ $ ffor setValE $ const $ selElementFocus tiEl
-  fillE <- widgetHoldE (pure never) $ ffor (updated stateD) $ \case
+  fillE <- networkHoldE (pure never) $ ffor (updated stateD) $ \case
     PSWaiting         -> waiting
     PSWordError _     -> wordError
     PSDone _          -> doneText
@@ -316,7 +316,7 @@ plainRestorePage mnemLength = wrapperSimple True $ mdo
           pure $ w <$ btnClickE
         pure $ recombine ts <$> wE
   pasteE <- pasteBtnsWidget
-  void $ widgetHold (pure ()) $ ffor (updated stateD ) $ \case
+  void $ networkHold (pure ()) $ ffor (updated stateD ) $ \case
     PSDone mnem -> do
       submitE <- outlineButton CSForward
       void $ nextWidget $ ffor submitE $ const $ Retractable {
@@ -344,7 +344,7 @@ base58RestorePage = wrapperSimple True $ mdo
   encodedEncryptedMnemonicErrsD <- holdDyn Nothing $ ffor validationE eitherToMaybe'
   encodedEncryptedMnemonicD <- validatedTextFieldSetValNoLabel "" encodedEncryptedMnemonicErrsD inputE
   inputE <- pasteBtnsWidget
-  submitE <- widgetHoldDynE $ ffor encodedEncryptedMnemonicD $ \v -> if v == ""
+  submitE <- networkHoldDynE $ ffor encodedEncryptedMnemonicD $ \v -> if v == ""
     then pure never
     else outlineButton CSForward
   let validationE = poke submitE $ \_ -> do

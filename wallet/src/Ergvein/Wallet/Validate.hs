@@ -130,7 +130,7 @@ errorWidget = divClass "validate-error" . localizedText
 -- | Print in place error message when value is `Left`
 validate :: (MonadFrontBase t m, LocalizedPrint l) => Event t (Either l a) -> m (Event t a)
 validate e = do
-  widgetHold_ (pure ()) $ ffor e $ \case
+  networkHold_ (pure ()) $ ffor e $ \case
     Left err -> errorWidget err
     _ -> pure ()
   pure $ fmapMaybe eitherToMaybe e

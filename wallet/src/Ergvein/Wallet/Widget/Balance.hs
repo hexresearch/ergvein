@@ -71,7 +71,7 @@ balancesRatedWidget cur = do
 balanceRatedOnlyWidget :: MonadFront t m => Currency -> m (Dynamic t (Maybe Text))
 balanceRatedOnlyWidget cur = if cur /= BTC then pure (pure Nothing) else do
   mRateSymbolD <- (fmap . fmap) settingsFiatCurr getSettingsD
-  fmap join $ widgetHoldDyn $ ffor mRateSymbolD $ \case
+  fmap join $ networkHoldDyn $ ffor mRateSymbolD $ \case
     Nothing -> pure $ pure Nothing
     Just rs -> do
       balD <- balancesWidget cur

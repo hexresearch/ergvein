@@ -3,7 +3,7 @@ module Ergvein.Wallet.Page.About(
     aboutPage
   ) where
 
-import Ergvein.Wallet.Elements
+import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.About
 import Ergvein.Wallet.Monad

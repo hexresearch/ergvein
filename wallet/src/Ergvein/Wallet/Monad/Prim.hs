@@ -5,8 +5,7 @@ module Ergvein.Wallet.Monad.Prim
   , MonadAlertPoster(..)
   , AlertType(..)
   , alertTypeToSeverity
-  , AlertInfo(..)
-  , MonadEgvLogger(..)
+  , MonadNativeLogger(..)
   , MonadHasSettings(..)
   , MonadHasUI(..)
   -- * Frontend-wide types
@@ -45,7 +44,8 @@ import Reflex.Spider.Internal (SpiderHostFrame, Global)
 import Ergvein.Crypto
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Ergvein.Wallet.Log.Types
+import Sepulcas.Alert
+import Sepulcas.Monad
 import Sepulcas.Native
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Settings
@@ -56,31 +56,7 @@ import qualified Reflex.Profiled as RP
 import qualified Data.Set as S
 
 -- | Type classes that we need from reflex-dom itself.
-type MonadBaseConstr t m = (MonadHold t m
-  , PostBuild t m
-  , DomBuilder t m
-  , MonadFix m
-  , PerformEvent t m
-  , MonadIO (Performable m)
-  , MonadUnliftIO (Performable m)
-  , MonadSample t (Performable m)
-  , MonadJSM (Performable m)
-  , F.MonadFail (Performable m)
-  , MonadIO m
-  , TriggerEvent t m
-  , MonadJSM m
-  , DomBuilderSpace m ~ GhcjsDomSpace
-  , HasJSContext m
-  , HasJSContext (Performable m)
-  , HasDocument m
-  , MonadRef m
-  , Ref m ~ Ref IO
-  , MonadRef (Performable m)
-  , Ref (Performable m) ~ Ref IO
-  , MonadRandom (Performable m)
-  , PlatformNatives
-  , MonadReflexCreateTrigger t m
-  )
+type MonadBaseConstr t m = (MonadReflex t m, MonadRandom (Performable m))
 
 -- ===========================================================================
 --           Monad HasSettings. Gives access to Settings
@@ -130,68 +106,6 @@ getProxyConf = fmap settingsSocksProxy <$> getSettingsD
 {-# INLINE getProxyConf #-}
 
 -- ===========================================================================
---           Monad EgvLogger. Implements Ervgein's logging
--- ===========================================================================
-
-class MonadBaseConstr t m => MonadEgvLogger t m where
-  -- | Internal getting of logs event and trigger
-  getLogsTrigger :: m (Event t LogEntry, LogEntry -> IO ())
-  -- | Get internal ref fo namespaces
-  getLogsNameSpacesRef :: m (ExternalRef t [Text])
-
--- ===========================================================================
---           Monad Alert Poster. Implements rendering of alerts
--- ===========================================================================
-
--- | Different styles of alerts (including success or info messages)
-data AlertType =
-    AlertTypeInfo
-  | AlertTypePrimary
-  | AlertTypeSecondary
-  | AlertTypeWarn
-  | AlertTypeSuccess
-  | AlertTypeFail
-  deriving (Eq, Ord, Show, Read, Enum, Bounded)
-
--- | Transformation from alert types to log entry types
-alertTypeToSeverity :: AlertType -> LogSeverity
-alertTypeToSeverity et = case et of
-  AlertTypeInfo       -> LogInfo
-  AlertTypePrimary    -> LogInfo
-  AlertTypeSecondary  -> LogInfo
-  AlertTypeWarn       -> LogWarning
-  AlertTypeSuccess    -> LogInfo
-  AlertTypeFail       -> LogError
-
--- | All info that is required to draw alert message to user
-data AlertInfo = forall a . (LocalizedPrint a, Eq a) =>  AlertInfo {
-  alertType       :: !AlertType -- ^ Style of message
-, alertTimeout    :: !Double    -- ^ Amount of seconds the message should be shown
-, alertNameSpace  :: ![Text]    -- ^ Optional name space for logs
-, alertTime       :: !UTCTime   -- ^ Time of alert
-, alertDoLog      :: !Bool      -- ^ Whether to log the alert or not
-, alertMessage    :: !a         -- ^ Message to display
-}
-
--- | Allows to delegate alert displaying to another widget without coupling with it
-class MonadBaseConstr t m => MonadAlertPoster t m | m -> t where
-  -- | Add timed alert to queue of alerts to be displayed with special widget
-  postAlert :: Event t AlertInfo -> m ()
-  -- | Fires when new alert arrives from 'postAlert'
-  newAlertEvent :: m (Event t AlertInfo)
-  -- | Get alert's event and trigger. Internal
-  getAlertEventFire :: m (Event t AlertInfo, AlertInfo -> IO ())
-
--- ===========================================================================
---    MonadHasUI
--- ===========================================================================
-
-class MonadIO m => MonadHasUI m where
-  -- | Internal method of getting channel where you can post actions that must be
-  -- executed in main UI thread.
-  getUiChan :: m (Chan (IO ()))
-
--- ===========================================================================
 --    Frontend-wide types
 -- ===========================================================================
 
@@ -214,10 +128,6 @@ data NamedSockAddr = NamedSockAddr {
 -- | This env is used for seed resolvment
 type SeedResolvEnv t = (Chan (IO ()), ExternalRef t Settings)
 
-instance MonadIO m => MonadHasUI (ReaderT (SeedResolvEnv t) m) where
-  getUiChan = asks fst
-  {-# INLINE getUiChan #-}
-
 instance MonadBaseConstr t m => MonadHasSettings t (ReaderT (SeedResolvEnv t) m) where
   getSettingsRef = asks snd
   {-# INLINE getSettingsRef #-}
@@ -231,9 +141,3 @@ instance MonadRandom (WithJSContextSingleton x (SpiderHostFrame Global)) where
 
 instance MonadRandom (WithJSContextSingleton x (RP.ProfiledM (SpiderHostFrame Global))) where
   getRandomBytes = liftIO . getRandomBytes
-
-instance F.MonadFail (WithJSContextSingleton x (SpiderHostFrame Global)) where
-  fail = liftIO . F.fail
-
-instance F.MonadFail (WithJSContextSingleton x (RP.ProfiledM (SpiderHostFrame Global))) where
-  fail = liftIO . F.fail

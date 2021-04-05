@@ -1,6 +1,5 @@
-module Ergvein.Wallet.Elements.Input(
-    Password
-  , textInput
+module Sepulcas.Elements.Input(
+    textInput
   , validatedTextInput
   , textInputValidated
   , textField
@@ -25,18 +24,23 @@ import Control.Lens
 import Control.Monad.IO.Class
 import Data.Proxy
 import Data.Text (Text)
-import Ergvein.Either
-import Ergvein.Text
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Elements.Input.Class
-import Ergvein.Wallet.Id
-import Ergvein.Wallet.Monad
+import Data.Functor (void)
+import Sepulcas.Either
+import Sepulcas.Text
+import Sepulcas.Elements.Button
+import Sepulcas.Elements.Form
+import Sepulcas.Elements.Input.Class
+import Sepulcas.Elements.Markup
+import Sepulcas.Id
+import Sepulcas.Monad
+import Reflex.Dom hiding (textInput)
+import Reflex.Flunky
 import Reflex.Localize
 import Reflex.Localize.Dom
 
 import qualified Data.Map.Strict as M
 
-textInput :: MonadFrontBase t m
+textInput :: MonadReflex t m
   => InputElementConfig EventResult t (DomBuilderSpace m)
   -> m (InputElement EventResult (DomBuilderSpace m) t)
 textInput cfg = do
@@ -45,7 +49,7 @@ textInput cfg = do
     & inputElementConfig_elementConfig . elementConfig_initialAttributes
       %~ (\as -> "id" =: i <> "type" =: "text" <> as)
 
-validatedTextInput :: (MonadFrontBase t m, LocalizedPrint l)
+validatedTextInput :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m)
   => InputElementConfig EventResult t (DomBuilderSpace m)
   -> Dynamic t (Maybe [l]) -- ^ List of errors
   -> m (InputElement EventResult (DomBuilderSpace m) t)
@@ -58,18 +62,18 @@ validatedTextInput cfg mErrsD = do
     isInvalidD = fmap (maybe "" (const "is-invalid")) mErrsD
     inputField = divClassDyn isInvalidD $ textInput cfg
 
-textInputValidated :: (MonadFrontBase t m, LocalizedPrint l)
+textInputValidated :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m)
   => InputElementConfig EventResult t (DomBuilderSpace m)
   -> (Text -> Either [l] a) -- ^ Validator
   -> m (InputElement EventResult (DomBuilderSpace m) t) -- ^ Only valid values get through
 textInputValidated cfg f = mdo
-  mErrsD <- holdDyn Nothing $ fmap eitherToMaybe' rawE
+  mErrsD <- holdDyn Nothing $ fmap justLeft rawE
   ti <- validatedTextInput cfg mErrsD
   let txtD = _inputElement_value ti
       rawE = updated $ f <$> txtD
   pure ti
 
-labeledTextInput :: (MonadFrontBase t m, LocalizedPrint l)
+labeledTextInput :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m)
   => l -- ^ Label
   -> M.Map AttributeName Text
   -> InputElementConfig EventResult t (DomBuilderSpace m)
@@ -81,14 +85,14 @@ labeledTextInput lbl attrs cfg = do
     & inputElementConfig_elementConfig . elementConfig_initialAttributes
       %~ \as -> "id" =: i <> "type" =: "text" <> attrs <> as
 
-textField :: (MonadFrontBase t m, LocalizedPrint l)
+textField :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m)
   => l -- ^ Label
   -> Text -- ^ Initial value
   -> m (Dynamic t Text)
 textField lbl v0 = fmap _inputElement_value $ labeledTextInput lbl M.empty $ def
   & inputElementConfig_initialValue .~ v0
 
-textFieldAttr :: (MonadFrontBase t m, LocalizedPrint l)
+textFieldAttr :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m)
   => l -- ^ Label
   -> M.Map AttributeName Text
   -> Text -- ^ Initial value
@@ -96,7 +100,7 @@ textFieldAttr :: (MonadFrontBase t m, LocalizedPrint l)
 textFieldAttr lbl attrs v0 = fmap _inputElement_value $ labeledTextInput lbl attrs $ def
   & inputElementConfig_initialValue .~ v0
 
-textFieldNoLabel :: (MonadFrontBase t m)
+textFieldNoLabel :: (MonadReflex t m)
   => Text -- ^ Initial value
   -> m (Dynamic t Text)
 textFieldNoLabel v0 = fmap _inputElement_value $ inputElement $ def
@@ -104,7 +108,7 @@ textFieldNoLabel v0 = fmap _inputElement_value $ inputElement $ def
   & inputElementConfig_elementConfig . elementConfig_initialAttributes
     %~ (\as -> "type" =: "text" <> as)
 
-textFieldAttrNoLabel :: (MonadFrontBase t m)
+textFieldAttrNoLabel :: (MonadReflex t m)
   => M.Map AttributeName Text -- ^ Initial attributes
   -> Event t (M.Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
   -> Event t Text
@@ -118,7 +122,7 @@ textFieldAttrNoLabel attrs modifyAttrsE setValE v0 = fmap _inputElement_value $ 
     .~ modifyAttrsE
   & inputElementConfig_setValue .~ setValE
 
-validatedTextField :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPrint l1)
+validatedTextField :: (MonadReflex t m, LocalizedPrint l0, LocalizedPrint l1, MonadLocalized t m)
   => l0 -- ^ Label
   -> Text -- ^ Initial value
   -> Dynamic t (Maybe [l1]) -- ^ List of errors
@@ -132,7 +136,7 @@ validatedTextField lbl v0 mErrsD = do
     isInvalidD = fmap (maybe "" (const "is-invalid")) mErrsD
     inputField = divClassDyn isInvalidD $ textField lbl v0
 
-validatedTextFieldSetVal :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPrint l1)
+validatedTextFieldSetVal :: (MonadReflex t m, LocalizedPrint l0, LocalizedPrint l1, MonadLocalized t m)
   => l0 -- ^ Label
   -> Text -- ^ Initial value
   -> Dynamic t (Maybe [l1]) -- ^ List of errors
@@ -149,7 +153,7 @@ validatedTextFieldSetVal lbl v0 mErrsD setValE = do
       & inputElementConfig_initialValue .~ v0
       & inputElementConfig_setValue .~ setValE
 
-validatedTextFieldSetValNoLabel :: (MonadFrontBase t m, LocalizedPrint l1)
+validatedTextFieldSetValNoLabel :: (MonadReflex t m, LocalizedPrint l1, MonadLocalized t m)
   => Text -- ^ Initial value
   -> Dynamic t (Maybe [l1]) -- ^ List of errors
   -> Event t Text
@@ -165,7 +169,7 @@ validatedTextFieldSetValNoLabel v0 mErrsD setValE = do
       & inputElementConfig_initialValue .~ v0
       & inputElementConfig_setValue .~ setValE
 
-validatedTextFieldAttrSetValNoLabel :: (MonadFrontBase t m, LocalizedPrint l1)
+validatedTextFieldAttrSetValNoLabel :: (MonadReflex t m, LocalizedPrint l1, MonadLocalized t m)
   => Text -- ^ Initial value
   -> M.Map AttributeName Text -- ^ Initial attributes
   -> Event t Text -- ^ Event that changes value
@@ -185,43 +189,43 @@ validatedTextFieldAttrSetValNoLabel initValue initAttrs setValE modifyAttrsE mEr
       & inputElementConfig_setValue .~ setValE
       & inputElementConfig_elementConfig . elementConfig_modifyAttributes .~ modifyAttrsE
 
-textFieldSetValValidated :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPrint l1, Show a)
+textFieldSetValValidated :: (MonadReflex t m, LocalizedPrint l0, LocalizedPrint l1, Show a, MonadLocalized t m)
   => l0 -- ^ Label
   -> a -- ^ Initial value
   -> Event t a -- ^ Set value event
   -> (Text -> Either [l1] a) -- ^ Validatior
   -> m (Dynamic t a) -- ^ Only valid values get through
 textFieldSetValValidated lbl v0 setValE f = mdo
-  mErrsD <- holdDyn Nothing $ fmap eitherToMaybe' rawE
+  mErrsD <- holdDyn Nothing $ fmap justLeft rawE
   txtD <- validatedTextFieldSetVal lbl (showt v0) mErrsD (showt <$> setValE)
   let rawE = updated $ f <$> txtD
-  holdDyn v0 $ fmapMaybe eitherToMaybe rawE
+  holdDyn v0 $ fmapMaybe justRight rawE
 
-textFieldValidated :: (MonadFrontBase t m, LocalizedPrint l0, LocalizedPrint l1, Show a)
+textFieldValidated :: (MonadReflex t m, LocalizedPrint l0, LocalizedPrint l1, Show a, MonadLocalized t m)
   => l0 -- ^ Label
   -> a -- ^ Initial value
   -> (Text -> Either [l1] a) -- ^ Validatior
   -> m (Dynamic t a) -- ^ Only valid values get through
 textFieldValidated lbl v0 f = mdo
-  mErrsD <- holdDyn Nothing $ fmap eitherToMaybe' rawE
+  mErrsD <- holdDyn Nothing $ fmap justLeft rawE
   txtD <- validatedTextField lbl (showt v0) mErrsD
   let rawE = updated $ f <$> txtD
-  holdDyn v0 $ fmapMaybe eitherToMaybe rawE
+  holdDyn v0 $ fmapMaybe justRight rawE
 
-displayError :: (MonadFrontBase t m, LocalizedPrint l) => Dynamic t l -> m ()
+displayError :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m) => Dynamic t l -> m ()
 displayError errD = do
   langD <- getLanguage
   let localizedErrD = zipDynWith localizedShow langD errD
   dynText localizedErrD
   br
 
-passField :: (MonadFrontBase t m, LocalizedPrint l)
+passField :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m)
   => l -- ^ Label
   -> m (Dynamic t Text)
 passField lbl = fmap _inputElement_value $ labeledTextInput lbl ("type" =: "password") def
 
 -- | Password field with toggleable visibility
-passFieldWithEye :: (MonadFrontBase t m, LocalizedPrint l) => l -> m (Dynamic t Password)
+passFieldWithEye :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m) => l -> m (Dynamic t Text)
 passFieldWithEye lbl = mdo
   i <- genId
   label i $ localizedText lbl
@@ -245,7 +249,7 @@ passFieldWithEye lbl = mdo
   pure valD
 
 -- | Labeled text input that parses text into given type
-valueField :: forall a t m l .(MonadFrontBase t m, Inputable l a, Eq a, Show l, Show a)
+valueField :: forall a t m l .(MonadReflex t m, Inputable l a, MonadLocalized t m, Eq a, Show l, Show a)
   => l -- ^ Label
   -> Dynamic t a -- ^ Initial value and updates
   -> m (Dynamic t a)
@@ -260,7 +264,7 @@ valueField lbl av0D = mdo
         _inputElementConfig_setValue = Just $ disp <$> updated avD
       , _inputElementConfig_initialValue = disp av0
       }
-  void $ widgetHoldDyn $ ffor errorD $ \case
+  void $ networkHoldDyn $ ffor errorD $ \case
     Nothing -> pure ()
     Just e -> divClass "form-field-errors" $ displayError $ pure e
   let resD = parseInput <$> _inputElement_value tInput
@@ -273,7 +277,7 @@ eyeButtonIconClass True = "far fa-eye-slash fa-fw"
 eyeButtonIconClass _ = "far fa-eye fa-fw"
 
 -- | Form submit button
-submitClass :: (MonadFrontBase t m, LocalizedPrint l) => Dynamic t Text -> l -> m (Event t ())
+submitClass :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m) => Dynamic t Text -> l -> m (Event t ())
 submitClass classD lbl = do
   lblD <- localized lbl
   let classesD = do
@@ -288,6 +292,6 @@ submitClass classD lbl = do
 
 -- | Wrapper around text field that allows to switch its type dynamically with
 -- saving of previous value.
-textInputTypeDyn :: forall t m . MonadFrontBase t m => Event t Text -> InputElementConfig EventResult t (DomBuilderSpace m) -> m (Dynamic t Text)
+textInputTypeDyn :: forall t m . MonadReflex t m => Event t Text -> InputElementConfig EventResult t (DomBuilderSpace m) -> m (Dynamic t Text)
 textInputTypeDyn typeE cfg = fmap _inputElement_value $ inputElement $ cfg
   & inputElementConfig_elementConfig . elementConfig_modifyAttributes .~ fmap ((=:) "type" . Just) typeE

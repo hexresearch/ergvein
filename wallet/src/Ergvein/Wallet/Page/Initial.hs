@@ -6,7 +6,7 @@ module Ergvein.Wallet.Page.Initial(
 import Ergvein.Either
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Elements
+import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Initial
 import Ergvein.Wallet.Monad
@@ -91,7 +91,7 @@ loadWalletPage name = do
   buildE <- getPostBuild
   mPlainE <- performEvent $ (loadAuthInfo name "") <$ buildE
   let oldAuthE' = fmapMaybe eitherToMaybe mPlainE
-  oldAuthE'' <- fmap switchDyn $ widgetHold (pure never) $ ffor mPlainE $ \case
+  oldAuthE'' <- fmap switchDyn $ networkHold (pure never) $ ffor mPlainE $ \case
     Right _ -> pure never
     Left _ -> do
       passE <- askPasswordPage name

@@ -253,7 +253,7 @@ indexerPingerWidget :: MonadIndexClient t m
   -> m (Dynamic t NominalDiffTime)  -- Dynamic with the latency. Starting value 0
 indexerPingerWidget addr refrE = do
   connmD  <- holdUniqDynBy eq =<< pure . fmap (M.lookup addr) =<< externalRefDynamic =<< getActiveConnsRef
-  fmap join $ widgetHoldDyn $ ffor connmD $ \case
+  fmap join $ networkHoldDyn $ ffor connmD $ \case
     Nothing -> pure $ pure 0
     Just conn -> indexerConnPingerWidget conn refrE
   where

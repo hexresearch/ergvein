@@ -1,5 +1,6 @@
 module Sepulcas.Monad.Env(
     Sepulca(..)
+  , HasSepulca(..)
   , SepulcaM
   , newSepulca
   , runSepulca
@@ -33,61 +34,68 @@ data Sepulca t = Sepulca {
 , sepulca'langRef         :: !(ExternalRef t Language)
 , sepulca'alertsEF        :: !(Event t AlertInfo, AlertInfo -> IO ())
 , sepulca'passModalEF     :: !(Event t (Int, Text), (Int, Text) -> IO ())
-, sepulca'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
+, sepulca'passSetEF       :: !(Event t (Int, Maybe Text), (Int, Maybe Text) -> IO ())
 }
+
+class Monad m => HasSepulca t m | m -> t where
+  getSepulca :: m (Sepulca t)
 
 type SepulcaM t m = ReaderT (Sepulca t) m
 
-instance Monad m => HasStoreDir (SepulcaM t m) where
-  getStoreDir = asks sepulca'storeDir
+instance Monad m => HasSepulca t (SepulcaM t m) where
+  getSepulca = ask
+  {-# INLINE getSepulca #-}
+
+instance {-# OVERLAPPABLE #-} HasSepulca t m => HasStoreDir m where
+  getStoreDir = sepulca'storeDir <$> getSepulca
   {-# INLINE getStoreDir #-}
 
-instance MonadIO m => MonadHasUI (SepulcaM t m) where
-  getUiChan = asks sepulca'uiChan
+instance {-# OVERLAPPABLE #-} (HasSepulca t m, MonadIO m) => MonadHasUI m where
+  getUiChan = sepulca'uiChan <$> getSepulca
   {-# INLINE getUiChan #-}
 
-instance MonadReflex t m => MonadNativeLogger t (SepulcaM t m) where
-  getLogsTrigger = asks sepulca'logsTrigger
+instance {-# OVERLAPPABLE #-} (HasSepulca t m, MonadReflex t m) => MonadNativeLogger t m where
+  getLogsTrigger = sepulca'logsTrigger  <$> getSepulca
   {-# INLINE getLogsTrigger #-}
-  getLogsNameSpacesRef = asks sepulca'logsNameSpaces
+  getLogsNameSpacesRef = sepulca'logsNameSpaces <$> getSepulca
   {-# INLINE getLogsNameSpacesRef #-}
 
-instance MonadIO m => HasPassModal t (SepulcaM t m) where
-  getPasswordModalEF = asks sepulca'passModalEF
+instance {-# OVERLAPPABLE #-} (HasSepulca t m, MonadIO m) => HasPassModal t m where
+  getPasswordModalEF = sepulca'passModalEF <$> getSepulca
   {-# INLINE getPasswordModalEF #-}
-  getPasswordSetEF = asks sepulca'passSetEF
+  getPasswordSetEF = sepulca'passSetEF <$> getSepulca
   {-# INLINE getPasswordSetEF #-}
 
-instance MonadReflex t m => MonadLocalized t (SepulcaM t m) where
+instance {-# OVERLAPPABLE #-} (HasSepulca t m, MonadReflex t m, Reflex t) => MonadLocalized t m where
   setLanguage lang = do
-    langRef <- asks sepulca'langRef
+    langRef <- sepulca'langRef <$> getSepulca
     writeExternalRef langRef lang
   {-# INLINE setLanguage #-}
   setLanguageE langE = do
-    langRef <- asks sepulca'langRef
+    langRef <- sepulca'langRef <$> getSepulca
     performEvent_ $ fmap (writeExternalRef langRef) langE
   {-# INLINE setLanguageE #-}
-  getLanguage = externalRefDynamic =<< asks sepulca'langRef
+  getLanguage = externalRefDynamic =<< (sepulca'langRef <$> getSepulca)
   {-# INLINE getLanguage #-}
 
-instance (MonadReflex t m, MonadRetract t m, PlatformNatives) => Sepulcable t (SepulcaM t m) where
-  getLoadingWidgetTF = asks sepulca'loading
+instance {-# OVERLAPPABLE #-} (HasSepulca t m, MonadReflex t m, MonadRetract t m, PlatformNatives) => Sepulcable t m where
+  getLoadingWidgetTF = sepulca'loading <$> getSepulca
   {-# INLINE getLoadingWidgetTF #-}
-  getPauseEventFire = asks sepulca'pauseEF
+  getPauseEventFire = sepulca'pauseEF <$> getSepulca
   {-# INLINE getPauseEventFire #-}
-  getResumeEventFire = asks sepulca'resumeEF
+  getResumeEventFire = sepulca'resumeEF <$> getSepulca
   {-# INLINE getResumeEventFire #-}
-  getBackEventFire = asks sepulca'backEF
+  getBackEventFire = sepulca'backEF <$> getSepulca
   {-# INLINE getBackEventFire #-}
-  getLangRef = asks sepulca'langRef
+  getLangRef = sepulca'langRef <$> getSepulca
   {-# INLINE getLangRef #-}
 
-instance MonadReflex t m => MonadAlertPoster t (SepulcaM t m) where
+instance {-# OVERLAPPABLE #-} (HasSepulca t m, MonadReflex t m) => MonadAlertPoster t m where
   postAlert e = do
-    (_, fire) <- asks sepulca'alertsEF
+    (_, fire) <- sepulca'alertsEF <$> getSepulca
     performEvent_ $ liftIO . fire <$> e
-  newAlertEvent = asks (fst . sepulca'alertsEF)
-  getAlertEventFire = asks sepulca'alertsEF
+  newAlertEvent = (fst . sepulca'alertsEF) <$> getSepulca
+  getAlertEventFire = sepulca'alertsEF <$> getSepulca
   {-# INLINE postAlert #-}
   {-# INLINE newAlertEvent #-}
   {-# INLINE getAlertEventFire #-}

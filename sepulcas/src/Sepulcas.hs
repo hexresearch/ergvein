@@ -4,6 +4,7 @@ module Sepulcas(
   , module Sepulcas.Elements
   , module Sepulcas.Id
   , module Sepulcas.Loading
+  , module Sepulcas.Log
   , module Sepulcas.Monad
   , module Sepulcas.Platform
   , module Sepulcas.Resize
@@ -32,6 +33,7 @@ import Sepulcas.Clipboard
 import Sepulcas.Elements
 import Sepulcas.Id
 import Sepulcas.Loading
+import Sepulcas.Log
 import Sepulcas.Monad
 import Sepulcas.Platform
 import Sepulcas.Resize

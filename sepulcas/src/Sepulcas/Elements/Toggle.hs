@@ -1,4 +1,4 @@
-module Ergvein.Wallet.Elements.Toggle(
+module Sepulcas.Elements.Toggle(
     toggleButton
   , toggler
   ) where
@@ -7,10 +7,13 @@ import Control.Lens
 import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Reflex.Dom
-
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Id
-import Ergvein.Wallet.Language
+import Reflex.Flunky
+import Reflex.Localize
+import Reflex.Localize.Dom
+import Sepulcas.Elements.Button
+import Sepulcas.Elements.Form
+import Sepulcas.Elements.Markup
+import Sepulcas.Id
 
 -- | Create toggle button with pressed and unpressed states
 toggleButton :: forall t m lbl . (DomBuilder t m, PostBuild t m, MonadHold t m, MonadLocalized t m, MonadFix m, LocalizedPrint lbl)
@@ -23,7 +26,7 @@ toggleButton lblOff lblOn val0D = mdo
     val <- sample . current $ valD
     pure $ not val
   valD' <- holdUniqDyn valD
-  clickE <- fmap switchDyn $ widgetHoldDyn $ ffor valD' $ \v -> if v
+  clickE <- fmap switchDyn $ networkHoldDyn $ ffor valD' $ \v -> if v
     then buttonClass "button button-outline button-on" lblOn
     else buttonClass "button button-outline button-off" lblOff
   pure valD'

@@ -5,7 +5,7 @@ module Ergvein.Wallet.Page.History(
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Utxo.Btc
-import Ergvein.Wallet.Elements
+import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.History
 import Ergvein.Wallet.Monad
@@ -47,7 +47,7 @@ historyTableWidget cur = case cur of
   BTC -> do
     (txsD, hghtD) <- transactionsGetting BTC
     let txMapD = Map.fromList . L.zip [(0 :: Int)..] <$> txsD
-    resD <- widgetHoldDyn $ ffor txMapD $ \txMap -> if Map.null txMap
+    resD <- networkHoldDyn $ ffor txMapD $ \txMap -> if Map.null txMap
       then do
         noTxsPlaceholder
         pure never
@@ -88,7 +88,7 @@ historyTableRow cur tr@TransactionView{..} = divButton "history-table-row" $ do
           else spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" $ blank
 
 historyTableRowD :: MonadFront t m => Currency -> Dynamic t Word64 -> Dynamic t TransactionView -> m (Event t TransactionView)
-historyTableRowD cur _ trD = fmap switchDyn $ widgetHoldDyn $ ffor trD $ \tr@TransactionView{..} -> divButton "history-table-row" $ do
+historyTableRowD cur _ trD = fmap switchDyn $ networkHoldDyn $ ffor trD $ \tr@TransactionView{..} -> divButton "history-table-row" $ do
     moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
     let txAmountPlusFee = moneyFromRational cur (moneyToRational txAmount + fromMaybe 0 (moneyToRational <$> txFee txInfoView))
         fullAmount = case txInOut of

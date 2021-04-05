@@ -14,8 +14,7 @@ import Ergvein.Either
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Elements.Input
+import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Fee
 import Ergvein.Wallet.Monad
@@ -84,7 +83,7 @@ btcFeeSelectionWidget lbl minit mPrevRate submitE = do
         feeModeDropdown <- dropdown initFeeMode feeModeOptionsD def
         pure $ _dropdown_value feeModeDropdown
       pure $ ffor2 feeRateD feeModeD (,)
-    widgetHoldDyn $ ffor selectedD $ \case
+    networkHoldDyn $ ffor selectedD $ \case
       (Just feeRate, BFMManual) -> parClass "mb-1" (localizedText $ FSFee                  ) >> pure (Just (BFMManual, feeRate))
       (Just feeRate, BFMLow)    -> parClass "mb-1" (localizedText $ FSRateDesc FeeCheap    ) >> pure (Just (BFMLow,    feeRate))
       (Just feeRate, BFMMid)    -> parClass "mb-1" (localizedText $ FSRateDesc FeeModerate ) >> pure (Just (BFMMid,    feeRate))

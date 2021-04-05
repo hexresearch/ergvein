@@ -10,16 +10,15 @@ import Reflex.Dom.Main (mainWidgetWithCss)
 
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Loading
-import Ergvein.Wallet.Log.Writer
 import Ergvein.Wallet.Monad
-import Sepulcas.Native
 import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.Initial
 import Ergvein.Wallet.Page.Restore
 import Ergvein.Wallet.Password
 import Ergvein.Wallet.Worker
+import Sepulcas.Log.Writer
 #ifdef TESTNET
-import Ergvein.Wallet.Elements
+import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.TestnetDisclaimer
 import Ergvein.Wallet.Wrapper

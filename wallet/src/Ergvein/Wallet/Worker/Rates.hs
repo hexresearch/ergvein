@@ -32,7 +32,7 @@ ratesWorker = do
   mRateD <- holdUniqDyn $ fmap settingsRateFiat settingsD
   let fiatsD = (\a b -> nub $ catMaybes [a,b]) <$> mFiatD <*> mRateD
   let btcCC = currencyToCurrencyCode BTC
-  void $ widgetHoldDyn $ ffor fiatsD $ \case
+  void $ networkHoldDyn $ ffor fiatsD $ \case
     [] -> pure ()
     fs -> do
       buildE  <- getPostBuild

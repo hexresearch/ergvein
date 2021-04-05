@@ -29,9 +29,11 @@ library
       Sepulcas.Elements.Focus
       Sepulcas.Elements.Form
       Sepulcas.Elements.Inplace
+      Sepulcas.Elements.Input
       Sepulcas.Elements.Input.Class
       Sepulcas.Elements.Markup
       Sepulcas.Elements.Table
+      Sepulcas.Elements.Toggle
       Sepulcas.Embed
       Sepulcas.Id
       Sepulcas.Loading
