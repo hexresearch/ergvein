@@ -16,6 +16,7 @@ packages:
   ./interfaces/ergo
   ./node-discovery
   ./reflex-external-ref
+  ./reflex-flunky
   ./reflex-fork
   ./reflex-localize
   ./reflex-localize-dom

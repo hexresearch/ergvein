@@ -19,13 +19,22 @@ library
       Sepulcas.Alert
       Sepulcas.Alert.Monad
       Sepulcas.Alert.Types
+      Sepulcas.Either
+      Sepulcas.Elements
+      Sepulcas.Elements.Button
+      Sepulcas.Elements.Focus
+      Sepulcas.Elements.Form
+      Sepulcas.Elements.Inplace
       Sepulcas.Elements.Input.Class
+      Sepulcas.Elements.Markup
+      Sepulcas.Elements.Table
       Sepulcas.Embed
       Sepulcas.Monad
       Sepulcas.Monad.Class
       Sepulcas.Monad.Env
       Sepulcas.Monad.Reflex
       Sepulcas.Monad.UI
+      Sepulcas.OpenUrl
       Sepulcas.Style
       Sepulcas.Style.Embed
       Sepulcas.Style.Fonts
@@ -62,6 +71,7 @@ library
    build-depends:
         base >=4.5 && <4.16,
         aeson,
+        async,
         base16-bytestring,
         base64-bytestring,
         bytestring >=0.10 && <0.11,
@@ -83,6 +93,7 @@ library
         reflex-fork,
         reflex-localize-dom,
         reflex-localize,
+        reflex-flunky,
         safe-exceptions,
         safe,
         sepulcas-native,

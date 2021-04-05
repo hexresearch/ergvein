@@ -60,6 +60,7 @@ in (self: super: let
     golomb-rice = ingnoreGarbage super.golomb-rice;
     reflex-dom-retractable = ingnoreGarbage super.reflex-dom-retractable;
     reflex-external-ref = ingnoreGarbage super.reflex-external-ref;
+    reflex-flunky = ingnoreGarbage super.reflex-flunky;
     reflex-fork = ingnoreGarbage super.reflex-fork;
     reflex-localize = ingnoreGarbage super.reflex-localize;
     reflex-localize-dom = ingnoreGarbage super.reflex-localize-dom;
