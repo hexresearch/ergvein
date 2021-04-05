@@ -67,10 +67,8 @@ hasWalletsPage :: MonadFrontBase t m => Bool -> [WalletName] -> m ()
 hasWalletsPage redir ss = do
   buildE <- getPostBuild
   mnameE <- performEvent $ getLastStorage <$ buildE
-  void $ nextWidget $ ffor mnameE $ \mname -> Retractable {
-      retractableNext = maybe (selectWalletsPage ss) selectNext mname
-    , retractablePrev = Just $ pure $ initialPage False
-    }
+  void $ widgetHold (pure ()) $ ffor mnameE $ \walletName ->
+    maybe (selectWalletsPage ss) selectNext walletName
   where
     selectNext = if redir then loadWalletPage else const (selectWalletsPage ss)
 
