@@ -5,6 +5,7 @@ module Sepulcas(
   , module Sepulcas.Id
   , module Sepulcas.Loading
   , module Sepulcas.Monad
+  , module Sepulcas.Platform
   , module Sepulcas.Run
   , module Sepulcas.Run.Callbacks
   , module Sepulcas.Style
@@ -28,6 +29,7 @@ import Sepulcas.Elements
 import Sepulcas.Id
 import Sepulcas.Loading
 import Sepulcas.Monad
+import Sepulcas.Platform
 import Sepulcas.Run
 import Sepulcas.Run.Callbacks
 import Sepulcas.Style

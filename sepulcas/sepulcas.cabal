@@ -39,6 +39,7 @@ library
       Sepulcas.Monad.Reflex
       Sepulcas.Monad.UI
       Sepulcas.OpenUrl
+      Sepulcas.Platform
       Sepulcas.Style
       Sepulcas.Style.Embed
       Sepulcas.Style.Fonts
