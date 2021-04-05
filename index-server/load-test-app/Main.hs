@@ -32,17 +32,6 @@ filterBatchSize   = 300
 filterStartHeight = 400000
 filterEndHeight   = 550000
 
-data Options = Options {
-  -- | Which command to execute
-    optsCommand           :: Command
-  -- |Def: False. Start only BC-scanning threads
-}
-
-wordReader :: ReadM Word64
-wordReader = eitherReader $ \arg -> case readMaybe arg of
-  Nothing -> Left ("Cannot parse word: " ++ arg)
-  Just w  -> Right w
-
 data Command = CommandLoad Int String String
 
 options :: Parser Command
@@ -58,11 +47,11 @@ startServer cmd = case cmd of
   CommandLoad clientsNumber addr port -> do
     T.putStrLn "Server starting"
     withWorkersUnion $ \wrk -> do
-      replicateM_ clientsNumber $ spawnWorker wrk $ forever $ runTCPClient addr port $ onException . receiveFilters 
+      replicateM_ clientsNumber $ spawnWorker wrk $ forever $ runTCPClient addr port $ reportOccurringException . receiveFilters 
       forever $ threadDelay maxBound
   where
-    onException :: IO () -> IO ()
-    onException = (`E.catch` (print . show :: E.SomeException -> IO ()))
+    reportOccurringException :: IO () -> IO ()
+    reportOccurringException = (`E.catch` (print . show :: E.SomeException -> IO ()))
 
 receiveFilters s = do
   handshake
