@@ -21,9 +21,11 @@ instance MonadIO m => MonadHasUI (ReaderT (Chan (IO ()), a) m) where
   getUiChan = asks fst
   {-# INLINE getUiChan #-}
 
+type PerformUI t m = (PerformEvent t m, TriggerEvent t m, MonadUnliftIO (Performable m), MonadHasUI m)
+
 -- | Execute the action in main thread of UI. Very useful for android API actions
 -- that must be executed in the same thread where Looper was created.
-runOnUiThread :: (PerformEvent t m, TriggerEvent t m, MonadUnliftIO (Performable m), MonadHasUI m) => Event t (Performable m a) -> m (Event t a)
+runOnUiThread :: PerformUI t m => Event t (Performable m a) -> m (Event t a)
 runOnUiThread ema = do
   ch <- getUiChan
   performEventAsync $ ffor ema $ \ma fire -> do
@@ -32,7 +34,7 @@ runOnUiThread ema = do
 
 -- | Execute the action in main thread of UI. Very useful for android API actions
 -- that must be executed in the same thread where Looper was created.
-runOnUiThread_ :: (PerformEvent t m, TriggerEvent t m, MonadUnliftIO (Performable m), MonadHasUI m) => Event t (Performable m ()) -> m ()
+runOnUiThread_ :: PerformUI t m => Event t (Performable m ()) -> m ()
 runOnUiThread_ ema = do
   ch <- getUiChan
   performEvent_ $ ffor ema $ \ma -> do

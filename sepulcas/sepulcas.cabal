@@ -19,6 +19,7 @@ library
       Sepulcas.Alert
       Sepulcas.Alert.Monad
       Sepulcas.Alert.Types
+      Sepulcas.Camera
       Sepulcas.Either
       Sepulcas.Elements
       Sepulcas.Elements.Button
