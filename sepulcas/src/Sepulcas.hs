@@ -3,6 +3,7 @@ module Sepulcas(
   , module Sepulcas.Clipboard
   , module Sepulcas.Elements
   , module Sepulcas.Id
+  , module Sepulcas.Loading
   , module Sepulcas.Monad
   , module Sepulcas.Run
   , module Sepulcas.Run.Callbacks
@@ -25,6 +26,7 @@ import Sepulcas.Camera
 import Sepulcas.Clipboard
 import Sepulcas.Elements
 import Sepulcas.Id
+import Sepulcas.Loading
 import Sepulcas.Monad
 import Sepulcas.Run
 import Sepulcas.Run.Callbacks
