@@ -4,7 +4,6 @@ import Control.Concurrent
 import Control.Monad
 import Control.Monad.Trans.Except
 import Data.ByteString.Builder
-import Data.Text (Text, pack)
 import Data.Time.Clock.POSIX
 import Data.Word
 import Ergvein.Index.Protocol.Serialization
@@ -44,34 +43,31 @@ wordReader = eitherReader $ \arg -> case readMaybe arg of
   Nothing -> Left ("Cannot parse word: " ++ arg)
   Just w  -> Right w
 
-type ServerUrl = Text
+data Command = CommandLoad Int String String
 
-data Command
-  = CommandLoad Int String String
-
-options :: Parser Options
-options = Options
-  <$> subparser (command "listen" $ info (loadCmd <**> helper) $ progDesc "Start server")
+options :: Parser Command
+options = subparser (command "listen" $ info (loadCmd <**> helper) $ progDesc "Start server")
   where
     loadCmd = CommandLoad
             <$> (read <$> strArgument ( metavar "CONFIG_N_CLIENTS" ))
             <*> strArgument ( metavar "CONFIG_ADDR" )
             <*> strArgument ( metavar "CONFIG_PORT" )
 
-startServer :: Options -> IO ()
-startServer Options{..} = case optsCommand of
+startServer :: Command -> IO ()
+startServer cmd = case cmd of
   CommandLoad clientsNumber addr port -> do
-    T.putStrLn $ pack "Server starting"
+    T.putStrLn "Server starting"
     withWorkersUnion $ \wrk -> do
       replicateM_ clientsNumber $ spawnWorker wrk $ forever $ runTCPClient addr port $ onException . receiveFilters 
       forever $ threadDelay maxBound
   where
+    onException :: IO () -> IO ()
     onException = (`E.catch` (print . show :: E.SomeException -> IO ()))
 
 receiveFilters s = do
   handshake
-  forM_ [filterStartHeight, (filterStartHeight + filterBatchSize) .. filterEndHeight] receiveFilters
-  print "Done full range filters receiving"
+  forM_ [filterStartHeight, filterStartHeight + filterBatchSize .. filterEndHeight] receiveFilters
+  T.putStrLn "Done full range filters receiving"
   where
     doSend = sendLazy s . toLazyByteString . messageBuilder
     recvExact n = do
