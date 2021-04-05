@@ -1,5 +1,6 @@
 module Reflex.Flunky(
-    networkHoldDyn
+    networkHold_
+  , networkHoldDyn
   , networkHoldE
   , networkHoldDynE
   , updatedWithInit
@@ -18,12 +19,13 @@ module Reflex.Flunky(
   , mkChunks
   ) where
 
--- import Control.Monad.Except
+import Control.Monad.IO.Class
+import Data.Functor (void)
 import Reflex
 import Reflex.Network
-import Control.Monad.IO.Class
 
--- import Ergvein.Either
+networkHold_ :: forall t m a . (Reflex t, Adjustable t m, MonadHold t m) => m a -> Event t (m a) -> m ()
+networkHold_ a0 = void . networkHold a0
 
 -- | Same as 'widgetHold' but for dynamic
 networkHoldDyn :: forall t m a . (Reflex t, Adjustable t m, MonadHold t m) => Dynamic t (m a) -> m (Dynamic t a)

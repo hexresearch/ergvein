@@ -12,6 +12,7 @@ module Sepulcas(
   , module Sepulcas.Share
   , module Sepulcas.Style
   , module Sepulcas.TimeZone
+  , module Sepulcas.Validate
   , bindSelf
   , Language
   , mainWidgetWithCss
@@ -39,3 +40,4 @@ import Sepulcas.Run.Callbacks
 import Sepulcas.Share
 import Sepulcas.Style
 import Sepulcas.TimeZone
+import Sepulcas.Validate
