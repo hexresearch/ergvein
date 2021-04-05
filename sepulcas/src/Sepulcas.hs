@@ -9,6 +9,7 @@ module Sepulcas(
   , module Sepulcas.Resize
   , module Sepulcas.Run
   , module Sepulcas.Run.Callbacks
+  , module Sepulcas.Share
   , module Sepulcas.Style
   , bindSelf
   , Language
@@ -34,4 +35,5 @@ import Sepulcas.Platform
 import Sepulcas.Resize
 import Sepulcas.Run
 import Sepulcas.Run.Callbacks
+import Sepulcas.Share
 import Sepulcas.Style

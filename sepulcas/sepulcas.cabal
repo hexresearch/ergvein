@@ -41,6 +41,7 @@ library
       Sepulcas.OpenUrl
       Sepulcas.Platform
       Sepulcas.Resize
+      Sepulcas.Share
       Sepulcas.Style
       Sepulcas.Style.Embed
       Sepulcas.Style.Fonts
