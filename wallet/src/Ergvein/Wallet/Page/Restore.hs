@@ -46,10 +46,11 @@ restorePage = wrapperSimple True $ do
   void $ workflow nodeConnection
   where
     restoreProgressWidget :: BlockHeight -> BlockHeight -> BlockHeight -> m ()
-    restoreProgressWidget f0' fh' hh' = h2 $ localizedText $ RPSProgress p
+    restoreProgressWidget from to curr = do
+      h2 $ localizedText $ RPSProgress p
       where
-        [f0, fh, hh] = fromIntegral <$> [f0',fh',hh']
-        p = 100 * (fh - f0) / (hh - f0)
+        [from', to', curr'] = fromIntegral <$> [from, to, curr]
+        p = 100 * (curr' - from') / (to' - from')
 
     filtersBatchSize :: Int
     filtersBatchSize = 300
@@ -79,23 +80,23 @@ restorePage = wrapperSimple True $ do
     -- if filters height >= btc height - 1, goto stage 5
     getFiltersBatch = Workflow $ do
       heightD <- getCurrentHeight BTC
-      fh <- getScannedHeight BTC
-      hh <- fmap fromIntegral $ sampleDyn heightD
-      let batchTipHeight = fh + fromIntegral filtersBatchSize
-      restoreProgressWidget (filterStartingHeight BTC) fh hh
+      scannedHeight <- getScannedHeight BTC
+      fullHeight <- fmap fromIntegral $ sampleDyn heightD
+      let batchTipHeight = scannedHeight + fromIntegral filtersBatchSize
+      restoreProgressWidget (filterStartingHeight BTC) fullHeight scannedHeight
       h3 $ localizedText RPSGetFiltsTitle
-      h4 $ localizedText $ RPSGetFiltsFromTo fh $ if batchTipHeight > hh then hh else batchTipHeight
+      h4 $ localizedText $ RPSGetFiltsFromTo scannedHeight $ if batchTipHeight > fullHeight then fullHeight else batchTipHeight
       psD <- getPubStorageD
       buildE <- delay 0.1 =<< getPostBuild
       tickE <- tickLossyFromPostBuildTime filtersRetryTimeout
       let checkE = leftmost [buildE, void tickE]
       let boolE = poke checkE $ const $ do
             h <- sampleDyn heightD
-            pure $ fromIntegral fh >= (h - 1)
+            pure $ fromIntegral scannedHeight >= (h - 1)
           (doneE, notDoneE) = splitFilter id boolE
-      filtersE <- getFilters BTC $ (fh, filtersBatchSize) <$ notDoneE
+      filtersE <- getFilters BTC $ (scannedHeight, filtersBatchSize) <$ notDoneE
       scanE <- performFork $ ffor filtersE $ \fs -> do
-        let filts = zip [fh, fh+1 ..] fs
+        let filts = zip [scannedHeight, scannedHeight+1 ..] fs
         batch <- fmap catMaybes $ flip traverse filts $ \(h, (bh, bs)) -> do
           efilt <- decodeBtcAddrFilter bs
           case efilt of
@@ -107,8 +108,8 @@ restorePage = wrapperSimple True $ do
         let ext = repackKeys External $ pubStorageKeys BTC External ps
             int = repackKeys Internal $ pubStorageKeys BTC Internal ps
             keys = (V.++) ext int
-            nextHeight = fh + fromIntegral (length batch)
-        pure $ scanBatchKeys (fh, nextHeight) batch keys
+            nextHeight = scannedHeight + fromIntegral (length batch)
+        pure $ scanBatchKeys (scannedHeight, nextHeight) batch keys
       finE <- delay 0.1 doneE
       let nextE = leftmost [finishScanning <$ finE, scanE]
       pure ((), nextE)
@@ -124,8 +125,8 @@ restorePage = wrapperSimple True $ do
     scanBatchKeys (curHeight, nextHeight) batch keys = Workflow $ mdo
       (hE, cb) <- newTriggerEvent
       hD <- holdDyn curHeight hE
-      hh <- sampleDyn . fmap fromIntegral =<< getCurrentHeight BTC
-      restoreProgressWidget (filterStartingHeight BTC) curHeight hh
+      fh <- sampleDyn . fmap fromIntegral =<< getCurrentHeight BTC
+      restoreProgressWidget (filterStartingHeight BTC) fh curHeight
       let scanTitles = do
             h3 $ localizedText RPSScanTitle
             h4 $ localizedDynText $ RPSScanProgress <$> hD
