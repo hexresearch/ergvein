@@ -2,6 +2,7 @@ module Sepulcas(
     module Sepulcas.Camera
   , module Sepulcas.Clipboard
   , module Sepulcas.Elements
+  , module Sepulcas.Id
   , module Sepulcas.Monad
   , module Sepulcas.Run
   , module Sepulcas.Run.Callbacks
@@ -23,6 +24,7 @@ import Reflex.Localize.Language
 import Sepulcas.Camera
 import Sepulcas.Clipboard
 import Sepulcas.Elements
+import Sepulcas.Id
 import Sepulcas.Monad
 import Sepulcas.Run
 import Sepulcas.Run.Callbacks

@@ -31,6 +31,7 @@ library
       Sepulcas.Elements.Markup
       Sepulcas.Elements.Table
       Sepulcas.Embed
+      Sepulcas.Id
       Sepulcas.Monad
       Sepulcas.Monad.Class
       Sepulcas.Monad.Env
