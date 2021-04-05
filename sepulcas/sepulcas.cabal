@@ -40,6 +40,7 @@ library
       Sepulcas.Monad.UI
       Sepulcas.OpenUrl
       Sepulcas.Platform
+      Sepulcas.Resize
       Sepulcas.Style
       Sepulcas.Style.Embed
       Sepulcas.Style.Fonts
