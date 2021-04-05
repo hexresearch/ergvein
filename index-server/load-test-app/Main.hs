@@ -1,41 +1,37 @@
 module Main where
 
 import Control.Concurrent
-import Control.Concurrent.STM
 import Control.Monad
-import Control.Monad.IO.Class
-import Control.Monad.Logger
 import Control.Monad.Trans.Except
-import Data.Function
+import Data.ByteString.Builder
 import Data.Text (Text, pack)
-import Data.Word
-import Options.Applicative
-import System.IO
-import Text.Read
-import System.Random
 import Data.Time.Clock.POSIX
+import Data.Word
+import Ergvein.Index.Protocol.Serialization
+import Ergvein.Index.Protocol.Utils
+import Ergvein.Index.Server.TCPService.Socket (sendLazy)
 import Foreign.C.Types
-import qualified Control.Exception as E
-import qualified Data.ByteString.Char8 as C
 import Network.Socket hiding (recv)
 import Network.Socket.ByteString  (recv, sendAll)
-import Ergvein.Index.Protocol.Serialization
-import Data.ByteString.Builder
-import Ergvein.Index.Server.TCPService.Socket (sendLazy)
+import Options.Applicative
+import System.Random
+import Text.Read
 
-import Ergvein.Index.Server.BlockchainScanning.Bitcoin
-import Ergvein.Index.Server.BlockchainScanning.BitcoinApiMonad
-import Ergvein.Index.Server.Config
-import Ergvein.Index.Server.TCPService.BTC
+import Ergvein.Index.Protocol.Deserialization
 import Ergvein.Index.Protocol.Types
-import Ergvein.Index.Server.TCPService.Server as Srv
+import Ergvein.Index.Server.TCPService.Server
 import Ergvein.Index.Server.TCPService.Supervisor
+import Ergvein.Text
 
+import qualified Control.Exception           as E
+import qualified Data.ByteString             as BS
 import qualified Data.Text.IO                as T
-import qualified Network.Bitcoin.Api.Client  as BitcoinApi
-import qualified Network.Haskoin.Constants   as HK
-import qualified Data.Vector.Unboxed  as UV
-import qualified Data.ByteString as BS
+import qualified Data.Vector.Unboxed         as UV
+
+filterBatchSize, filterStartHeight, filterEndHeight :: Word64
+filterBatchSize   = 300
+filterStartHeight = 400000
+filterEndHeight   = 550000
 
 data Options = Options {
   -- | Which command to execute
@@ -62,44 +58,40 @@ options = Options
             <*> strArgument ( metavar "CONFIG_ADDR" )
             <*> strArgument ( metavar "CONFIG_PORT" )
 
-main :: IO ()
-main = do
-    startServer =<< execParser opts
-    where
-      opts = info (options <**> helper)
-        ( fullDesc
-       <> progDesc "Starts index server load test"
-       <> header "ergvein-index-load-test")
-
 startServer :: Options -> IO ()
 startServer Options{..} = case optsCommand of
-  CommandLoad clnts addr port -> do
+  CommandLoad clientsNumber addr port -> do
     T.putStrLn $ pack "Server starting"
     withWorkersUnion $ \wrk -> do
-      replicateM_ clnts $ spawnWorker wrk $ forever $ runTCPClient addr port $ \s -> do
-        print $ show "reeeee"
-        let doSend = sendLazy s . toLazyByteString . messageBuilder
-        ver <- ownVersion
-        doSend $ MVersion ver
-        Right (MessageHeader MVersionType verMsgSize) <- runExceptT (messageHeader s)
-        recv s $ fromIntegral verMsgSize
-        Right (MessageHeader MVersionACKType 0) <- runExceptT (messageHeader s)
-        doSend $ MVersionACK VersionACK
-        -- Request filters
-        forM_ [400000, 400300 .. 550000] $ \h -> do
-          doSend $ MFiltersRequest $ FilterRequest BTC h 300
-          Right (MessageHeader MFiltersResponseType n) <- runExceptT (messageHeader s)
-          bs <- recv s (fromIntegral n)
-          when (BS.length bs /= fromIntegral n) $ (print $ show $ BS.length bs) <> (print $ show n) <> error "FAIL"
-          print "OK"
-        -- print =<< runExceptT (messageHeader s)
-        --sendLazy s . toLazyByteString . messageBuilder . MFiltersRequest $ request 
-        -- we need to fetch actual filters size, because dumb reading till cause waiting and long timeout 
-        --tillEnd
-        print "done"
+      replicateM_ clientsNumber $ spawnWorker wrk $ forever $ runTCPClient addr port $ onException . receiveFilters 
       forever $ threadDelay maxBound
+  where
+    onException = (`E.catch` (print . show :: E.SomeException -> IO ()))
 
-    
+receiveFilters s = do
+  handshake
+  forM_ [filterStartHeight, (filterStartHeight + filterBatchSize) .. filterEndHeight] receiveFilters
+  print "Done full range filters receiving"
+  where
+    doSend = sendLazy s . toLazyByteString . messageBuilder
+    recvExact n = do
+      bs <- recv s n
+      let bsL = BS.length bs
+      if bsL == n then pure bs else (bs <>) <$> recvExact (n - bsL)
+    handshake = do
+      ver <- ownVersion
+      doSend $ MVersion ver
+      doSend $ MVersionACK VersionACK
+      Right versionHeader@(MessageHeader MVersionType _) <- runExceptT $ messageHeader s
+      Right (MVersion _) <- runExceptT $ request s versionHeader
+      Right (MessageHeader MVersionACKType 0) <- runExceptT $ messageHeader s
+      pure ()
+    receiveFilters height = do
+      doSend $ MFiltersRequest $ FilterRequest BTC height filterBatchSize
+      Right (MessageHeader MFiltersResponseType filtersResponseLength) <- runExceptT $ messageHeader s
+      filtersResponseBytes <- recvExact $ fromIntegral filtersResponseLength
+      let Right (MFiltersResponse !_) = parseTillEndOfInput (messageParser MFiltersResponseType) filtersResponseBytes
+      pure ()
 
 ownVersion :: IO Version
 ownVersion = do
@@ -112,12 +104,6 @@ ownVersion = do
     , versionNonce      = nonce
     , versionScanBlocks = scanNfo
     }
-
-request = FilterRequest {
-          filterRequestMsgCurrency = BTC
-        , filterRequestMsgStart = 445123
-        , filterRequestMsgAmount = 2000
-        }
 
 -- from the "network-run" package.
 runTCPClient :: HostName -> ServiceName -> (Socket -> IO a) -> IO a
@@ -132,3 +118,12 @@ runTCPClient host port client = withSocketsDo $ do
         connect sock $ addrAddress addr
         return sock
     openSocket addr = socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+
+main :: IO ()
+main = do
+    startServer =<< execParser opts
+    where
+      opts = info (options <**> helper)
+        ( fullDesc
+       <> progDesc "Starts index server load test"
+       <> header "ergvein-index-load-test")
