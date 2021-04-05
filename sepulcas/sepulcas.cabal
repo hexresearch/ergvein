@@ -20,6 +20,7 @@ library
       Sepulcas.Alert.Handler
       Sepulcas.Alert.Monad
       Sepulcas.Alert.Types
+      Sepulcas.Alert.Poster
       Sepulcas.Camera
       Sepulcas.Clipboard
       Sepulcas.Either
