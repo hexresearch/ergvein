@@ -17,6 +17,7 @@ library
     exposed-modules:
       Sepulcas
       Sepulcas.Alert
+      Sepulcas.Alert.Handler
       Sepulcas.Alert.Monad
       Sepulcas.Alert.Types
       Sepulcas.Camera
@@ -106,10 +107,12 @@ library
         reflex-localize,
         safe-exceptions,
         safe,
+        semialign,
         sepulcas-log,
         sepulcas-native,
         template-haskell,
         text >=1.2 && <1.3,
+        these,
         time,
         unliftio-core,
         validation,
