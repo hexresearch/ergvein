@@ -1,3 +1,7 @@
+# 1.1.0.0
+
+* Added instance for `LocalizedPrint ()`
+
 # 1.0.4.0
 
 * Remove warnings

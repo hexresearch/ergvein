@@ -1,3 +1,7 @@
+# 1.0.3.0
+
+* Allow `reflex-localize-1.1`
+
 # 1.0.2.0
 
 * Remove warnings

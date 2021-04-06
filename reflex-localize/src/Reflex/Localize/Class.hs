@@ -53,6 +53,12 @@ instance (LocalizedPrint a, LocalizedPrint b) => LocalizedPrint (Either a b) whe
   localized = either localized localized
   {-# INLINE localized #-}
 
+instance LocalizedPrint () where
+  localizedShow _ _ = "()"
+  {-# INLINE localizedShow #-}
+  localized _ = pure (pure "()")
+  {-# INLINE localized #-}
+
 -- | Default implementation
 defaultLocPrintDyn :: MonadLocalized t m => (Language -> a -> Text) -> a -> m (Dynamic t Text)
 defaultLocPrintDyn f v = fmap (fmap (flip f v)) getLanguage
