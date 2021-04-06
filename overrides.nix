@@ -42,9 +42,10 @@ in (self: super: let
     # Internal
     cbitstream = ingnoreGarbage super.cbitstream;
     data-merkle-tree = ingnoreGarbage super.data-merkle-tree;
+    ergo-api = lib.dontCheck (ingnoreGarbage super.ergo-api);
     ergvein-checkpoint-generator = ingnoreGarbage super.ergvein-checkpoint-generator;
     ergvein-common = ingnoreGarbage super.ergvein-common;
-    ergo-api = lib.dontCheck (ingnoreGarbage super.ergo-api);
+    ergvein-core = ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-core" ./ergvein-core walletOpts {});
     ergvein-crypto = ingnoreGarbage super.ergvein-crypto;
     ergvein-index-api = ingnoreGarbage super.ergvein-index-api;
     ergvein-index-client = ingnoreGarbage super.ergvein-index-client;

@@ -21,6 +21,7 @@ let
       ergvein-index-protocol = ./index-protocol;
       ergvein-index-protocol-client = ./index-protocol-client;
       ergvein-index-server = ./index-server;
+      ergvein-core = ./ergvein-core;
       ergvein-interface-ergo = ./interfaces/ergo;
       ergvein-node-discovery = ./node-discovery;
       ergvein-wallet = ./wallet;
@@ -52,6 +53,7 @@ let
         "ergo-api"
         "ergvein-checkpoint-generator"
         "ergvein-common"
+        "ergvein-core"
         "ergvein-crypto"
         "ergvein-index-api"
         "ergvein-index-client"

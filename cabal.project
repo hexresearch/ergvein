@@ -6,6 +6,7 @@ packages:
   ./crypto
   ./data-merkle-tree
   ./ergo-api
+  ./ergvein-core
   ./ergvein-website
   ./golomb-rice
   ./index-api
