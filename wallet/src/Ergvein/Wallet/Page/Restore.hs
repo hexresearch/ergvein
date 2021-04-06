@@ -22,7 +22,6 @@ import Ergvein.Wallet.Localization.Restore
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Page.Balances
-import Ergvein.Wallet.Page.Initial
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Status.Types
@@ -38,10 +37,7 @@ filtersRetryTimeout :: NominalDiffTime
 filtersRetryTimeout = 10
 
 restorePage :: forall t m . MonadFront t m =>  m ()
-restorePage = wrapperSimple True $ do
-  void $ wipeRetract . (Nothing <$) =<< getPostBuild
-  retractE <- retractEvent
-  void $ nextWidget $ ffor retractE $ const $ Retractable (initialPage False) Nothing
+restorePage = wrapperSimpleLogout True $ do
   void $ workflow nodeConnection
   where
     restoreProgressWidget :: BlockHeight -> BlockHeight -> BlockHeight -> m ()
