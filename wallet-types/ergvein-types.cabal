@@ -1,4 +1,4 @@
-name:                ergvein-wallet-types
+name:                ergvein-types
 version:             0.1.0.0
 synopsis:            Domain types that shared across Ergvein cryptowallet packages.
 description:         See README.md

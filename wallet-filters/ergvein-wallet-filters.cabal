@@ -38,7 +38,7 @@ library
     , deepseq           >= 1.4
     , dependent-sum     >= 0.6
     , ergvein-common
-    , ergvein-wallet-types >= 0.1 && < 0.2
+    , ergvein-types >= 0.1 && < 0.2
     , golomb-rice       >= 0.1    && < 0.25
     , haskoin-core      >= 0.12.0 && < 0.12.1
     , memory            >= 0.11
@@ -85,7 +85,7 @@ test-suite ergvein-wallet-filters-test
     , either
     , ergvein-common
     , ergvein-wallet-filters
-    , ergvein-wallet-types
+    , ergvein-types
     , haskoin-core
     , mtl
     , tasty

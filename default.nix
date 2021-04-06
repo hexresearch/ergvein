@@ -26,7 +26,7 @@ let
       ergvein-node-discovery = ./node-discovery;
       ergvein-wallet = ./wallet;
       ergvein-wallet-filters = ./wallet-filters;
-      ergvein-wallet-types = ./wallet-types;
+      ergvein-types = ./wallet-types;
       ergvein-wallet-version = ./wallet-version;
       ergvein-website = ./ergvein-website;
       golomb-rice = ./golomb-rice;
@@ -63,7 +63,7 @@ let
         "ergvein-interface-ergo"
         "ergvein-node-discovery"
         "ergvein-wallet-filters"
-        "ergvein-wallet-types"
+        "ergvein-types"
         "ergvein-wallet-version"
         "ergvein-wallet"
         "ergvein-website"
