@@ -24,21 +24,13 @@ flag testnet
 library
     exposed-modules:
         Ergvein.Wallet
-        Ergvein.Wallet.Alert
-        Ergvein.Wallet.Alert.Handler
-        Ergvein.Wallet.Camera
-        Ergvein.Wallet.Clipboard
         Ergvein.Wallet.Codec
         Ergvein.Wallet.Currencies
         Ergvein.Wallet.Debug
-        Ergvein.Wallet.Embed
-        Ergvein.Wallet.Embed.TH
         Ergvein.Wallet.Filters.Loader
-        Ergvein.Wallet.Id
         Ergvein.Wallet.Indexer.Socket
         Ergvein.Wallet.IP
         Ergvein.Wallet.Language
-        Ergvein.Wallet.Loading
         Ergvein.Wallet.Localization.About
         Ergvein.Wallet.Localization.AuthInfo
         Ergvein.Wallet.Localization.Client
@@ -64,6 +56,7 @@ library
         Ergvein.Wallet.Localization.Storage
         Ergvein.Wallet.Localization.TestnetDisclaimer
         Ergvein.Wallet.Localization.Util
+        Ergvein.Wallet.Localization.Validate
         Ergvein.Wallet.Log
         Ergvein.Wallet.Log.Page
         Ergvein.Wallet.Main
@@ -91,7 +84,6 @@ library
         Ergvein.Wallet.Node.Prim
         Ergvein.Wallet.Node.Socket
         Ergvein.Wallet.Node.Types
-        Ergvein.Wallet.OpenUrl
         Ergvein.Wallet.Page.About
         Ergvein.Wallet.Page.Balances
         Ergvein.Wallet.Page.BumpFee
@@ -115,10 +107,8 @@ library
         Ergvein.Wallet.Page.Transaction
         Ergvein.Wallet.Password
         Ergvein.Wallet.Platform
-        Ergvein.Wallet.Resize
         Ergvein.Wallet.Scan
         Ergvein.Wallet.Settings
-        Ergvein.Wallet.Share
         Ergvein.Wallet.Status.Types
         Ergvein.Wallet.Status.Widget
         Ergvein.Wallet.Storage
@@ -126,7 +116,6 @@ library
         Ergvein.Wallet.Storage.Constants
         Ergvein.Wallet.Storage.Util
         Ergvein.Wallet.Style
-        Ergvein.Wallet.TimeZone
         Ergvein.Wallet.Transaction
         Ergvein.Wallet.Transaction.Builder
         Ergvein.Wallet.Transaction.Get
@@ -144,11 +133,11 @@ library
         Ergvein.Wallet.Worker.Height
         Ergvein.Wallet.Worker.Indexer
         Ergvein.Wallet.Worker.Node
+        Ergvein.Wallet.Worker.NodeDiscovery
         Ergvein.Wallet.Worker.PubKeysGenerator
         Ergvein.Wallet.Worker.Rates
         Ergvein.Wallet.Wrapper
         Ergvein.Wallet.Yaml
-        Ergvein.Wallet.Worker.NodeDiscovery
     hs-source-dirs: src
     default-language: Haskell2010
     default-extensions: BangPatterns ConstraintKinds DataKinds

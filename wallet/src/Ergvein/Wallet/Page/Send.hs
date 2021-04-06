@@ -13,7 +13,7 @@ import Ergvein.Text
 import Ergvein.Types
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo.Btc
-import Ergvein.Wallet.Alert
+import Sepulcas.Alert
 import Sepulcas.Elements
 import Sepulcas.Elements.Toggle
 import Ergvein.Wallet.Language

@@ -71,7 +71,7 @@ import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Alert
+import Sepulcas.Alert
 import Ergvein.Wallet.Localization.Client
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Base

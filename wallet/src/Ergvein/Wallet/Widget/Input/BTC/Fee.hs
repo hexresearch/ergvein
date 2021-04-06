@@ -72,7 +72,7 @@ btcFeeSelectionWidget lbl minit mPrevRate submitE = do
         feeModeE <- updated <$> holdUniqDyn feeModeD
         let modifyAttrsE = feeModeToAttr <$> feeModeE
             setValE = attachPromptlyDynWithMaybe feeModeToRateText feesD feeModeE
-        feeRateErrsD <- holdDyn Nothing $ ffor (current validatedRateD `tag` submitE) eitherToMaybe'
+        feeRateErrsD :: Dynamic t (Maybe [VError ()]) <- holdDyn Nothing $ ffor (current validatedRateD `tag` submitE) eitherToMaybe'
         selectedRateD <- manualFeeSelector initFeeRateText initInputIsDisabled setValE modifyAttrsE feeRateErrsD
         let validatedRateD = toEither . (validateBtcFeeRate mPrevRate) . T.unpack <$> selectedRateD
         pure $ eitherToMaybe <$> validatedRateD

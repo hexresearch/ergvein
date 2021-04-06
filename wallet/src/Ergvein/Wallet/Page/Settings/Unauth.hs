@@ -13,7 +13,7 @@ import Network.Socket
 import Reflex.Dom
 import Reflex.Dom.Retractable
 
-import Ergvein.Wallet.Alert
+import Sepulcas.Alert
 import Sepulcas.Elements
 import Sepulcas.Elements.Inplace
 import Sepulcas.Elements.Input

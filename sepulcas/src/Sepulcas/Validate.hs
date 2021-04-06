@@ -35,34 +35,36 @@ newtype NonEmptyString = NonEmptyString String deriving (Show)
 newtype PositiveRational = PositiveRational Rational deriving (Show)
 newtype GreaterThanRational = GreaterThanRational Word64 deriving (Show)
 
-data VError = MustNotBeEmpty
-            | MustBeRational
-            | MustBePositive
-            | MustBeNonNegativeIntegral
-            | MustBeGreaterThan Rational
+data VError ext
+  = MustNotBeEmpty
+  | MustBeRational
+  | MustBePositive
+  | MustBeNonNegativeIntegral
+  | MustBeGreaterThan Rational
+  | VErrorOther ext
   deriving (Show)
 
-validateNonEmptyString :: String -> Validation [VError] NonEmptyString
+validateNonEmptyString :: String -> Validation [VError e] NonEmptyString
 validateNonEmptyString x = if x /= []
   then _Success # NonEmptyString x
   else _Failure # [MustNotBeEmpty]
 
-validateRational :: String -> Validation [VError] Rational
+validateRational :: String -> Validation [VError e] Rational
 validateRational x = case parse rational "" x of
   Left _ -> _Failure # [MustBeRational]
   Right result -> _Success # result
 
-validatePositiveRational :: Rational -> Validation [VError] PositiveRational
+validatePositiveRational :: Rational -> Validation [VError e] PositiveRational
 validatePositiveRational x = if x > 0
   then _Success # PositiveRational x
   else _Failure # [MustBePositive]
 
-validateWord64 :: String -> Validation [VError] Word64
+validateWord64 :: String -> Validation [VError e] Word64
 validateWord64 x = case parse word64 "" x of
   Left _ -> _Failure # [MustBeNonNegativeIntegral]
   Right res -> _Success # res
 
-validateAmount :: String -> Validation [VError] Rational
+validateAmount :: String -> Validation [VError e] Rational
 validateAmount x = case validateNonEmptyString x of
   Failure errs -> _Failure # errs
   Success (NonEmptyString result) -> case validateRational result of
@@ -71,7 +73,7 @@ validateAmount x = case validateNonEmptyString x of
       Failure errs'' -> _Failure # errs''
       Success (PositiveRational result'') -> _Success # result''
 
-validateGreaterThan :: Maybe Rational -> Word64 -> Validation [VError] GreaterThanRational
+validateGreaterThan :: Maybe Rational -> Word64 -> Validation [VError e] GreaterThanRational
 validateGreaterThan Nothing x = _Success # GreaterThanRational x
 validateGreaterThan (Just y) x = if (fromIntegral x) > y
   then _Success # GreaterThanRational x

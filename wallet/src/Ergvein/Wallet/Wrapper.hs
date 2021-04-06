@@ -5,11 +5,11 @@ module Ergvein.Wallet.Wrapper(
   , wrapperSimple
   ) where
 
-import Ergvein.Wallet.Alert.Handler
+import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Language
+import Sepulcas.Alert.Handler
 
 import qualified Data.Text as T
 

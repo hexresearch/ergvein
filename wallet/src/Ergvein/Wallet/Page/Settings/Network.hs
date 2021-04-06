@@ -16,7 +16,7 @@ import Control.Monad.IO.Class
 import Ergvein.Node.Constants
 import Ergvein.Node.Resolve
 import Ergvein.Types.Currency
-import Ergvein.Wallet.Alert
+import Sepulcas.Alert
 import Sepulcas.Elements
 import Sepulcas.Elements.Input
 import Ergvein.Wallet.Indexer.Socket

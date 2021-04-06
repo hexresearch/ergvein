@@ -9,13 +9,13 @@ module Ergvein.Wallet.Main(
 import Reflex.Dom.Main (mainWidgetWithCss)
 
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Loading
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.Initial
 import Ergvein.Wallet.Page.Restore
 import Ergvein.Wallet.Password
 import Ergvein.Wallet.Worker
+import Sepulcas.Loading
 import Sepulcas.Log.Writer
 #ifdef TESTNET
 import Sepulcas.Elements

@@ -8,7 +8,7 @@ import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Clipboard (clipboardCopy)
+import Sepulcas.Clipboard (clipboardCopy)
 import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Share
@@ -21,7 +21,7 @@ import qualified Data.Text as T
 import Network.Haskoin.Address.Base58
 
 #ifdef ANDROID
-import Ergvein.Wallet.Share
+import Sepulcas.Share
 #endif
 
 sharePage :: MonadFront t m => Currency -> m ()

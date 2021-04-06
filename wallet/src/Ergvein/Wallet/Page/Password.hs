@@ -19,7 +19,7 @@ import Ergvein.Types.Derive
 import Ergvein.Types.Restore
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
-import Ergvein.Wallet.Alert
+import Sepulcas.Alert
 import Sepulcas.Elements
 import Sepulcas.Elements.Input
 import Ergvein.Wallet.Language

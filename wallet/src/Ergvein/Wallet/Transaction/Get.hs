@@ -21,7 +21,7 @@ import Sepulcas.Elements
 import Ergvein.Wallet.Monad
 import Sepulcas.Native
 import Ergvein.Wallet.Settings
-import Ergvein.Wallet.TimeZone
+import Sepulcas.TimeZone
 import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Transaction.View
 

@@ -10,7 +10,7 @@ import Data.Text.Encoding (encodeUtf8)
 
 import Ergvein.Crypto
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Clipboard
+import Sepulcas.Clipboard
 import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Password
@@ -20,7 +20,7 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.QRCode
 import Ergvein.Wallet.Password
 import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Share
+import Sepulcas.Share
 import Ergvein.Wallet.Storage
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Wrapper

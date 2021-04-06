@@ -16,7 +16,7 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo.Btc
-import Ergvein.Wallet.Alert
+import Sepulcas.Alert
 import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Fee

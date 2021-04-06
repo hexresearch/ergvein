@@ -21,11 +21,6 @@ import Ergvein.Crypto
 import Ergvein.Either
 import Ergvein.Text
 import Ergvein.Types.Restore
-import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Camera
-import Ergvein.Wallet.Clipboard
-import Sepulcas.Elements
-import Sepulcas.Elements.Input
 import Ergvein.Wallet.Localization.Password
 import Ergvein.Wallet.Localization.Seed
 import Ergvein.Wallet.Localization.Util
@@ -33,10 +28,15 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Resize
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
+import Sepulcas.Alert
+import Sepulcas.Camera
+import Sepulcas.Clipboard
+import Sepulcas.Elements
+import Sepulcas.Elements.Input
+import Sepulcas.Resize
 
 import qualified Data.List      as L
 import qualified Data.Serialize as S

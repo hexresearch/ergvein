@@ -10,7 +10,7 @@ import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Clipboard
+import Sepulcas.Clipboard
 import Sepulcas.Elements
 import Sepulcas.Elements.Input
 import Ergvein.Wallet.Language
@@ -26,7 +26,7 @@ import qualified Data.Text as T
 import qualified Data.List as L
 
 #ifdef ANDROID
-import Ergvein.Wallet.Share
+import Sepulcas.Share
 #endif
 
 receivePage :: MonadFront t m => Currency -> m ()

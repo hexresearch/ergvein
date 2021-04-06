@@ -5,7 +5,7 @@ module Ergvein.Wallet.Page.Initial(
 
 import Ergvein.Either
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Alert
+import Sepulcas.Alert
 import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Initial

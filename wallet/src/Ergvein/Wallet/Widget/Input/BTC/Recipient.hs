@@ -9,8 +9,8 @@ import Data.Maybe
 
 import Ergvein.Either
 import Ergvein.Types
-import Ergvein.Wallet.Camera
-import Ergvein.Wallet.Clipboard
+import Sepulcas.Camera
+import Sepulcas.Clipboard
 import Sepulcas.Elements
 import Ergvein.Wallet.Localization.Send
 import Ergvein.Wallet.Localization.Settings()

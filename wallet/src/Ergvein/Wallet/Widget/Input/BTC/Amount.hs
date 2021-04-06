@@ -37,7 +37,7 @@ sendAmountWidget minit submitE = mdo
     unitD <- unitsDropdown (getUnitBTC unitInit) allUnitsBTC
     pure $ zipDynWith (\u v -> fmap (u,) $ toEither $ validateBtcWithUnits u v) unitD textInputValueD
   void $ divClass "form-field-errors" $ simpleList errsD displayError
-  amountErrsD <- holdDyn Nothing $ ffor (current amountValD `tag` submitE) eitherToMaybe'
+  amountErrsD :: Dynamic t (Maybe [VError ()]) <- holdDyn Nothing $ ffor (current amountValD `tag` submitE) eitherToMaybe'
   pure $ eitherToMaybe <$> amountValD
   where
     availableBalanceWidget uD = do
