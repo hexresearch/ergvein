@@ -54,7 +54,7 @@ import qualified Data.Set as S
 
 #ifdef ANDROID
 import Android.HaskellActivity
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 #endif
 
 data ExplorerUrls = ExplorerUrls {

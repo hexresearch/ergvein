@@ -8,7 +8,7 @@ import {-# SOURCE #-} Ergvein.Wallet.Menu.Switcher
 import Data.Text (Text)
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Elements
+import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu.Types
 import Ergvein.Wallet.Monad

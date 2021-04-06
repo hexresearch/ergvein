@@ -6,11 +6,12 @@ module Ergvein.Wallet.Log.Page(
 import Data.Foldable (traverse_)
 import Data.Text (pack)
 import Data.Time
-import Ergvein.Text
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Log.Reader
-import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad
+import Reflex.Flunky
+import Sepulcas.Elements
+import Sepulcas.Log.Reader
+import Sepulcas.Log.Types
+import Sepulcas.Text
 
 import qualified Data.Text as T
 
@@ -27,7 +28,7 @@ logsPage = divClass "logs-page" $ mdo
 logsWidget :: forall t m . MonadFrontBase t m => m (Dynamic t [LogEntry])
 logsWidget = elClass "table" "log-content" $ do
   entriesD <- logReader
-  void $ widgetHoldDyn $ ffor entriesD $ traverse_ (uncurry renderItem) . zip [(1 :: Int) ..] . take 100 -- TODO: make dynamic loading on scrolling
+  void $ networkHoldDyn $ ffor entriesD $ traverse_ (uncurry renderItem) . zip [(1 :: Int) ..] . take 100 -- TODO: make dynamic loading on scrolling
   pure entriesD
   where
     renderItem i LogEntry{..} = elClass "tr" "log-item-line" $ do

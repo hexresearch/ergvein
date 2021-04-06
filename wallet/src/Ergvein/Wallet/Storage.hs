@@ -13,7 +13,7 @@ import Reflex.ExternalRef
 
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Alert
+import Sepulcas.Alert
 import Ergvein.Wallet.Localization.Storage
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Storage.Util

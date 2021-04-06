@@ -3,9 +3,7 @@ module Ergvein.Wallet.Localization.Inplace(
   ) where
 
 import Ergvein.Wallet.Language
-
--- | Default localization labels for `inplaceEditField`
-data InplaceEditLbl er = InplaceEdit | InplaceSave | InplaceDelete | InplaceCancel | InplaceError er
+import Sepulcas.Elements.Inplace
 
 instance LocalizedPrint er => LocalizedPrint (InplaceEditLbl er) where
   localizedShow l v = case l of

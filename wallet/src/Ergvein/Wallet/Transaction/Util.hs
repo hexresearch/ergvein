@@ -66,7 +66,7 @@ import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Monad.Storage
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Platform
 
 import qualified Data.ByteString                    as B

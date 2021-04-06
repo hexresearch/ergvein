@@ -7,18 +7,18 @@ module Ergvein.Wallet.Monad.Auth(
   ) where
 
 import Control.Concurrent
-import Control.Concurrent.Chan (Chan)
 import Control.Concurrent.STM.TChan
 import Control.Lens
-import Control.Monad.STM
 import Control.Monad.Reader
-import Data.Map.Strict (Map)
+import Control.Monad.STM
+import Crypto.Random.Types
 import Data.Fixed
+import Data.Map.Strict (Map)
 import Data.Text as T
 import Data.Time (NominalDiffTime)
 import Network.Socket
 import Reflex
-import Reflex.Dom
+import Reflex.Network
 import Reflex.Dom.Retractable
 import Reflex.ExternalRef
 
@@ -30,12 +30,11 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Network
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction (BlockHeight)
-import Ergvein.Wallet.Language
-import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
-import Ergvein.Wallet.Native
+import Sepulcas.Native
+import Sepulcas.Monad
 import Ergvein.Wallet.Node
 import Ergvein.Wallet.Settings (Settings(..))
 import Ergvein.Wallet.Status.Types
@@ -49,18 +48,7 @@ import qualified Data.Vector as V
 data Env t = Env {
   -- Unauth context's fields
   env'settings        :: !(ExternalRef t Settings)
-, env'pauseEF         :: !(Event t (), IO ())
-, env'resumeEF        :: !(Event t (), IO ())
-, env'backEF          :: !(Event t (), IO ())
-, env'loading         :: !(Event t (Bool, Text), (Bool, Text) -> IO ())
-, env'langRef         :: !(ExternalRef t Language)
-, env'storeDir        :: !Text
-, env'alertsEF        :: (Event t AlertInfo, AlertInfo -> IO ()) -- ^ Holds alert event and trigger
-, env'logsTrigger     :: (Event t LogEntry, LogEntry -> IO ())
-, env'logsNameSpaces  :: !(ExternalRef t [Text])
-, env'uiChan          :: !(Chan (IO ()))
-, env'passModalEF     :: !(Event t (Int, Text), (Int, Text) -> IO ())
-, env'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
+, env'sepulca         :: !(Sepulca t)
 -- Auth context
 , env'authRef         :: !(ExternalRef t AuthInfo)
 , env'logoutFire      :: !(IO ())
@@ -91,49 +79,14 @@ data Env t = Env {
 
 type ErgveinM t m = ReaderT (Env t) m
 
-instance Monad m => HasStoreDir (ErgveinM t m) where
-  getStoreDir = asks env'storeDir
-  {-# INLINE getStoreDir #-}
+instance Monad m => HasSepulca t (ErgveinM t m) where
+  getSepulca = asks env'sepulca
+  {-# INLINE getSepulca #-}
 
-instance MonadIO m => MonadHasUI (ErgveinM t m) where
-  getUiChan = asks env'uiChan
-  {-# INLINE getUiChan #-}
-
-instance MonadBaseConstr t m => MonadEgvLogger t (ErgveinM t m) where
-  getLogsTrigger = asks env'logsTrigger
-  {-# INLINE getLogsTrigger #-}
-  getLogsNameSpacesRef = asks env'logsNameSpaces
-  {-# INLINE getLogsNameSpacesRef #-}
-
-instance MonadBaseConstr t m => MonadLocalized t (ErgveinM t m) where
-  setLanguage lang = do
-    langRef <- asks env'langRef
-    writeExternalRef langRef lang
-  {-# INLINE setLanguage #-}
-  setLanguageE langE = do
-    langRef <- asks env'langRef
-    performEvent_ $ fmap (writeExternalRef langRef) langE
-  {-# INLINE setLanguageE #-}
-  getLanguage = externalRefDynamic =<< asks env'langRef
-  {-# INLINE getLanguage #-}
-
-instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives, HasVersion) => MonadFrontBase t (ErgveinM t m) where
-  getLoadingWidgetTF = asks env'loading
-  {-# INLINE getLoadingWidgetTF #-}
-  getPauseEventFire = asks env'pauseEF
-  {-# INLINE getPauseEventFire #-}
-  getResumeEventFire = asks env'resumeEF
-  {-# INLINE getResumeEventFire #-}
-  getBackEventFire = asks env'backEF
-  {-# INLINE getBackEventFire #-}
-  getLangRef = asks env'langRef
-  {-# INLINE getLangRef #-}
+instance (MonadFrontConstr t m, MonadRetract t m, PlatformNatives, HasVersion) => MonadFrontBase t (ErgveinM t m) where
   getAuthInfoMaybeRef = fmapExternalRef Just =<< asks env'authRef
   {-# INLINE getAuthInfoMaybeRef #-}
-  getPasswordModalEF = asks env'passModalEF
-  {-# INLINE getPasswordModalEF #-}
-  getPasswordSetEF = asks env'passSetEF
-  {-# INLINE getPasswordSetEF #-}
+
   setAuthInfo e = do
     authRef <- asks env'authRef
     fire <- asks env'logoutFire
@@ -198,15 +151,15 @@ instance MonadBaseConstr t m => MonadIndexClient t (ErgveinM t m) where
 
 instance MonadBaseConstr t m => MonadAlertPoster t (ErgveinM t m) where
   postAlert e = do
-    (_, fire) <- asks env'alertsEF
+    (_, fire) <- asks (sepulca'alertsEF . env'sepulca)
     performEvent_ $ liftIO . fire <$> e
-  newAlertEvent = asks (fst . env'alertsEF)
-  getAlertEventFire = asks env'alertsEF
+  newAlertEvent = asks (fst . sepulca'alertsEF .  env'sepulca)
+  getAlertEventFire = asks (sepulca'alertsEF . env'sepulca)
   {-# INLINE postAlert #-}
   {-# INLINE newAlertEvent #-}
   {-# INLINE getAlertEventFire #-}
 
-instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) where
+instance (MonadBaseConstr t m, HasStoreDir m, MonadRandom (Performable m)) => MonadStorage t (ErgveinM t m) where
   getEncryptedPrvStorage = fmap (_storage'encryptedPrvStorage . _authInfo'storage) $ readExternalRef =<< asks env'authRef
   {-# INLINE getEncryptedPrvStorage #-}
   getAddressByCurIx cur i = do
@@ -254,27 +207,16 @@ instance (MonadBaseConstr t m, HasStoreDir m) => MonadStorage t (ErgveinM t m) w
 -- | Execute action under authorized context or return the given value as result
 -- if user is not authorized. Each time the login info changes and authInfo'isUpdate flag is set to 'False'
 -- (user logs out or logs in) the widget is updated.
-liftAuth :: MonadFrontBase t m => m a -> ErgveinM t m a -> m (Dynamic t a)
+liftAuth :: forall t m a . (MonadFrontBase t m, HasSepulca t m, PlatformNatives) => m a -> ErgveinM t m a -> m (Dynamic t a)
 liftAuth ma0 ma = mdo
   mauthD <- getAuthInfoMaybe
   mauth0 <- sample . current $ mauthD
   (logoutE, logoutFire) <- newTriggerEvent
-  let runAuthed auth = do
+  let runAuthed :: AuthInfo -> m a
+      runAuthed auth = do
         -- Get refs from Unauth context
-        pauseEF         <- getPauseEventFire
-        resumeEF        <- getResumeEventFire
-        backEF          <- getBackEventFire
-        loading         <- getLoadingWidgetTF
-        langRef         <- getLangRef
-        storeDir        <- getStoreDir
-        alertsEF        <- getAlertEventFire
-        logsTrigger     <- getLogsTrigger
-        logsNameSpaces  <- getLogsNameSpacesRef
-        uiChan          <- getUiChan
-        passModalEF     <- getPasswordModalEF
-        passSetEF       <- getPasswordSetEF
+        sepulca <- getSepulca
         settingsRef     <- getSettingsRef
-
         authRef         <- newExternalRef auth
 
         -- MonadClient refs
@@ -306,18 +248,8 @@ liftAuth ma0 ma = mdo
         storeChan       <- liftIO newTChanIO
         let env = Env {
                 env'settings = settingsRef
-              , env'pauseEF = pauseEF
-              , env'resumeEF = resumeEF
-              , env'backEF = backEF
-              , env'loading = loading
-              , env'langRef = langRef
-              , env'storeDir = storeDir
-              , env'alertsEF = alertsEF
-              , env'logsTrigger = logsTrigger
-              , env'logsNameSpaces = logsNameSpaces
-              , env'uiChan = uiChan
-              , env'passModalEF = passModalEF
-              , env'passSetEF = passSetEF
+              , env'sepulca = sepulca
+
               , env'authRef = authRef
               , env'logoutFire = logoutFire ()
               , env'activeCursRef = activeCursRef
@@ -349,7 +281,7 @@ liftAuth ma0 ma = mdo
     ma0' = maybe ma0 runAuthed mauth0
     newAuthInfoE = ffilter isMauthUpdate $ updated mauthD
     redrawE = leftmost [newAuthInfoE, Nothing <$ logoutE]
-  widgetHold ma0' $ ffor redrawE $ maybe ma0 runAuthed
+  networkHold ma0' $ ffor redrawE $ maybe ma0 runAuthed
 
 isMauthUpdate :: Maybe AuthInfo -> Bool
 isMauthUpdate mauth = case mauth of

@@ -13,15 +13,15 @@ import Ergvein.Text
 import Ergvein.Types
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo.Btc
-import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Elements.Toggle
+import Sepulcas.Alert
+import Sepulcas.Elements
+import Sepulcas.Elements.Toggle
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Fee
 import Ergvein.Wallet.Localization.Send
 import Ergvein.Wallet.Localization.Settings()
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Node
@@ -103,7 +103,7 @@ btcSendConfirmationWidget v = do
         else navbarWidget BTC thisWidget NavbarSend
   wrapperNavbar False title thisWidget navbar $ divClass "send-confirm-box" $ mdo
     stxE <- makeTxWidget v
-    void $ widgetHold (pure ()) $ ffor stxE $ \(tx, _, _, _, _) -> do
+    void $ networkHold (pure ()) $ ffor stxE $ \(tx, _, _, _, _) -> do
       sendE <- getPostBuild
       addedE <- addOutgoingTx "btcSendConfirmationWidget" $ (TxBtc $ BtcTx tx Nothing) <$ sendE
       storedE <- btcMempoolTxInserter $ tx <$ addedE
@@ -135,7 +135,7 @@ makeTxWidget ((unit, amount), fee, addr, rbfEnabled) = mdo
   utxoKey0 <- fmap Left $ sampleDyn utxoKeyD -- Why we need this
   stxE' <- eventToNextFrame stxE -- And this
   valD <- foldDynMaybe mergeVals utxoKey0 $ leftmost [Left <$> (updated utxoKeyD), Right <$> stxE']
-  stxE <- fmap switchDyn $ widgetHoldDyn $ ffor valD $ \case
+  stxE <- fmap switchDyn $ networkHoldDyn $ ffor valD $ \case
     Left (Nothing, _) -> confirmationErrorWidget CEMEmptyUTXO
     Left (_, Nothing) -> confirmationErrorWidget CEMNoChangeKey
     Left (Just utxomap, Just (_, changeKey)) -> do
@@ -223,12 +223,12 @@ txSignSendWidget addr unit amount _ changeKey change pick rbfEnabled = mdo
   confirmationInfoWidget (unit, amount) estFee rbfEnabled addr Nothing
   showSignD <- holdDyn True . (False <$) =<< eventToNextFrame etxE
   etxE <- either' etx (const $ confirmationErrorWidget CEMTxBuildFail >> pure never) $ \tx -> do
-    fmap switchDyn $ widgetHoldDyn $ ffor showSignD $ \b -> if not b then pure never else do
+    fmap switchDyn $ networkHoldDyn $ ffor showSignD $ \b -> if not b then pure never else do
       signE <- outlineButton SendBtnSign
       etxE' <- fmap (fmapMaybe id) $ withWallet $ (signTxWithWallet tx pick) <$ signE
-      void $ widgetHold (pure ()) $ ffor etxE' $ either (const $ void $ confirmationErrorWidget CEMSignFail) (const $ pure ())
+      void $ networkHold (pure ()) $ ffor etxE' $ either (const $ void $ confirmationErrorWidget CEMSignFail) (const $ pure ())
       handleDangerMsg $ (either (Left . T.pack) Right) <$> etxE'
-  fmap switchDyn $ widgetHold (pure never) $ ffor etxE $ \tx -> do
+  fmap switchDyn $ networkHold (pure never) $ ffor etxE $ \tx -> do
     sendE <- el "div" $ outlineButton SendBtnSend
     pure $ (tx, unit, amount, estFee, addr) <$ sendE
   where either' e l r = either l r e

@@ -10,8 +10,8 @@ import Data.Text.Encoding (encodeUtf8)
 
 import Ergvein.Crypto
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Clipboard
-import Ergvein.Wallet.Elements
+import Sepulcas.Clipboard
+import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Password
 import Ergvein.Wallet.Localization.Settings
@@ -20,7 +20,7 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.QRCode
 import Ergvein.Wallet.Password
 import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Share
+import Sepulcas.Share
 import Ergvein.Wallet.Storage
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Wrapper
@@ -46,7 +46,7 @@ mnemonicExportResutlPage pass = do
   buildE <- getPostBuild
   encMnemE <- withWallet $ ffor buildE $ \_ prvStorage -> do
     liftIO $ encryptMnemonic (_prvStorage'mnemonic prvStorage) pass
-  void $ widgetHold (pure ()) $ ffor encMnemE $ \encryptedMnemonic ->
+  void $ networkHold (pure ()) $ ffor encMnemE $ \encryptedMnemonic ->
     wrapper True title thisWidget $ divClass "mnemonic-export-page" $ do
       h4 $ localizedText STPSMnemonicExportMsg
       base64D <- divClass "receive-qr" $ qrCodeWidgetWithData qrSizeXL encryptedMnemonic

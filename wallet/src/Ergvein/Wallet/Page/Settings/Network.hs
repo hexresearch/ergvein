@@ -16,9 +16,9 @@ import Control.Monad.IO.Class
 import Ergvein.Node.Constants
 import Ergvein.Node.Resolve
 import Ergvein.Types.Currency
-import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Elements.Input
+import Sepulcas.Alert
+import Sepulcas.Elements
+import Sepulcas.Elements.Input
 import Ergvein.Wallet.Indexer.Socket
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Network
@@ -63,7 +63,7 @@ networkSettingsPage = do
   title <- localized NSSTitle
   wrapper False title (Just $ pure networkSettingsPage ) $ do
     navD <- navbarWidget ActivePage
-    void $ widgetHoldDyn $ ffor navD $ \case
+    void $ networkHoldDyn $ ffor navD $ \case
       ActivePage      -> activePageWidget
       DisabledPage    -> inactivePageWidget
       ParametersPage  -> parametersPageWidget
@@ -71,7 +71,7 @@ networkSettingsPage = do
 networkSettingsPageUnauth :: MonadFrontBase t m => m ()
 networkSettingsPageUnauth = wrapperSimple False $ do
   navD <- navbarWidget ActivePage
-  void $ widgetHoldDyn $ ffor navD $ \case
+  void $ networkHoldDyn $ ffor navD $ \case
     ActivePage      -> activePageWidget
     DisabledPage    -> inactivePageWidget
     ParametersPage  -> parametersPageWidget
@@ -80,7 +80,7 @@ parametersPageWidget :: MonadFrontBase t m => m ()
 parametersPageWidget = mdo
   setD <- getSettingsD
   valsD <- fmap join $
-    widgetHoldDyn $ ffor setD $ \Settings{..} -> do
+    networkHoldDyn $ ffor setD $ \Settings{..} -> do
       let dt0 :: Double = realToFrac settingsReqTimeout
       dtD <- fmap2 realToFrac $ textFieldValidated NSSReqTimeout dt0 $
         maybe (Left [PPENDT]) Right . readMaybe . T.unpack
@@ -115,7 +115,7 @@ parametersPageWidget = mdo
     fmap2 = fmap . fmap
 
 addUrlWidget :: forall t m . MonadFrontBase t m => Dynamic t Bool -> m (Event t ErgveinNodeAddr)
-addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not b then pure never else do
+addUrlWidget showD = fmap switchDyn $ networkHoldDyn $ ffor showD $ \b -> if not b then pure never else do
   murlE <- divClass "mt-3" $ do
     textD <- fmap _inputElement_value $ inputElement $ def
       & inputElementConfig_elementConfig . elementConfig_initialAttributes .~ ("type" =: "text")
@@ -124,7 +124,7 @@ addUrlWidget showD = fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b -> if not 
     performFork $ ffor goE $ const $ do
       t <- sampleDyn textD
       resolveAddr rs defIndexerPort t
-  void $ widgetHold (pure ()) $ ffor murlE $ \case
+  void $ networkHold (pure ()) $ ffor murlE $ \case
     Nothing -> divClass "form-field-errors" $ localizedText NPSParseError
     _ -> pure ()
   pure $ fmapMaybe (namedAddrName <$>) murlE
@@ -135,14 +135,14 @@ activePageWidget = mdo
   addrsD  <- (fmap . fmap) S.toList $ externalRefDynamic =<< getActiveAddrsRef
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   let valsD = (,) <$> connsD <*> addrsD
-  void $ widgetHoldDyn $ ffor valsD $ \(conmap, urls) ->
+  void $ networkHoldDyn $ ffor valsD $ \(conmap, urls) ->
     flip traverse urls $ \sa -> renderActive sa refrE $ M.lookup sa conmap
   hideE <- activateURL =<< addUrlWidget showD
   (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
     restoreE <- buttonClass "button button-outline m-0" NSSRestoreUrls
     restoreNetwork restoreE
-    tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
+    tglE' <- fmap switchDyn $ networkHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSClose else NSSAddUrl
     pure (refrE', tglE')
   pure ()
@@ -154,7 +154,7 @@ renderActive :: MonadFrontBase t m
   -> m ()
 renderActive nsa refrE mconn = mdo
   tglD <- holdDyn False tglE
-  let editBtn = fmap switchDyn $ widgetHoldDyn $ ffor tglD $ \b -> fmap (not b <$)
+  let editBtn = fmap switchDyn $ networkHoldDyn $ ffor tglD $ \b -> fmap (not b <$)
         $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a"
           $ if b then NSSClose else NSSEdit
 
@@ -165,7 +165,7 @@ renderActive nsa refrE mconn = mdo
         divClass "mt-a mb-a network-name-txt" $ text nsa
         editBtn
       stD <- indexerLastStatus nsa
-      widgetHoldDyn $ ffor stD $ \case
+      networkHoldDyn $ ffor stD $ \case
         Just (IndexerWrongVersion v) -> descrOption $ NSSWrongVersion v
         Just IndexerMissingCurrencies -> descrOption NSSMissingCurrencies
         Just IndexerNotSynced -> descrOption NSSNotSynced
@@ -190,7 +190,7 @@ renderActive nsa refrE mconn = mdo
         divClass "mt-a mb-a network-name-txt" $ text nsa
         editBtn
       latD <- indexerConnPingerWidget conn refrE
-      widgetHoldDyn $ ffor isUpD $ \up -> if not up
+      networkHoldDyn $ ffor isUpD $ \up -> if not up
           then descrOption NSSOffline
           else do
             descrOptionDyn $ NSSLatency <$> latD
@@ -198,7 +198,7 @@ renderActive nsa refrE mconn = mdo
             descrOptionDyn $ NPSIndexerVersion <$> indexConIndexerVersion conn
       pure tglE'
 
-  void $ widgetHoldDyn $ ffor tglD $ \b -> if not b
+  void $ networkHoldDyn $ ffor tglD $ \b -> if not b
     then pure ()
     else divClass "network-wrapper mt-2" $ do
       void $ deactivateURL . (nsa <$) =<< buttonClass "button button-outline mt-1 ml-1" NSSDisable
@@ -217,7 +217,7 @@ inactivePageWidget = mdo
   void $ listWithKey addrsMapD $ \addr _ -> renderInactive pingAllE addr
   (pingAllE, tglE) <- divClass "network-wrapper mt-1" $ divClass "net-btns-2" $ do
     pingAllE' <- buttonClass "button button-outline m-0" NSSPingAll
-    tglE' <- fmap switchDyn $ widgetHoldDyn $ ffor showD $ \b ->
+    tglE' <- fmap switchDyn $ networkHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "m-0 button button-outline" $ if b then NSSClose else NSSAddUrl
     pure (pingAllE', tglE')
   pure ()
@@ -228,14 +228,14 @@ renderInactive initPingE nsa = mdo
   sel <- getIndexReqSelector
   tglD <- holdDyn False tglE
   (fstPingE, refrE) <- headTailE $ leftmost [initPingE, pingE]
-  tglE <- fmap switchDyn $ divClass "network-wrapper mt-1" $ widgetHold (startingWidget tglD) $ ffor fstPingE $ const $ do
+  tglE <- fmap switchDyn $ divClass "network-wrapper mt-1" $ networkHold (startingWidget tglD) $ ffor fstPingE $ const $ do
     mAddr <- fmap namedAddrSock <$> resolveAddr seed defIndexerPort nsa
     case mAddr of
       Just addr -> do
         let reqE = select sel $ Const2 nsa
         conn <- initIndexerConnection nsa addr reqE
         pingD <- indexerConnPingerWidget conn refrE
-        fmap switchDyn $ widgetHoldDyn $ ffor pingD $ \p -> do
+        fmap switchDyn $ networkHoldDyn $ ffor pingD $ \p -> do
           tglE' <- divClass "network-name" $ do
             let cls = if p == 0 then "mt-a mb-a indexer-offline" else "mt-a mb-a indexer-online"
             elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
@@ -244,7 +244,7 @@ renderInactive initPingE nsa = mdo
           descrOption $ NSSLatency p
           pure tglE'
       _ -> pure never
-  pingE <- fmap switchDyn $ widgetHoldDyn $ ffor tglD $ \b -> if not b
+  pingE <- fmap switchDyn $ networkHoldDyn $ ffor tglD $ \b -> if not b
     then pure never
     else divClass "network-wrapper mt-1" $ divClass "net-btns-3" $ do
       void $ activateURL . (nsa <$) =<< outlineButton NSSEnable
@@ -254,7 +254,7 @@ renderInactive initPingE nsa = mdo
   pure ()
   where
     tglBtn :: MonadFrontBase t m => Dynamic t Bool -> m (Event t Bool)
-    tglBtn tglD = fmap switchDyn $ widgetHoldDyn $ ffor tglD $ \b ->
+    tglBtn tglD = fmap switchDyn $ networkHoldDyn $ ffor tglD $ \b ->
       fmap (not b <$) $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a" $
         if b then NSSClose else NSSEdit
 

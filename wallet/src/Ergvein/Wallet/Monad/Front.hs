@@ -35,10 +35,12 @@ module Ergvein.Wallet.Monad.Front(
   , traverse_
   , for_
   , module Ergvein.Wallet.Monad.Prim
+  , module Control.Monad
   , module Ergvein.Wallet.Monad.Base
   , module Reflex.Dom
   , module Reflex.Dom.Retractable.Class
-  , module Control.Monad
+  , module Reflex.Flunky
+  , module Reflex.Network
   , module Ergvein.Wallet.Monad.Client
   ) where
 
@@ -56,7 +58,9 @@ import Data.Text (Text)
 import Language.Javascript.JSaddle hiding ((!!))
 import Network.Socket (SockAddr)
 import Reflex
-import Reflex.Dom hiding (run, mainWidgetWithCss, textInput)
+import Reflex.Flunky
+import Reflex.Network
+import Reflex.Dom hiding (run, mainWidgetWithCss, textInput, askEvents)
 import Reflex.Dom.Retractable.Class
 import Reflex.ExternalRef
 
@@ -67,14 +71,14 @@ import Ergvein.Types.AuthInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Alert
+import Sepulcas.Alert
 import Ergvein.Wallet.Localization.Client
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Storage
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Node.Prim
 import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Settings
@@ -211,7 +215,7 @@ updateActiveCurs :: MonadFrontAuth t m => Event t (S.Set Currency -> S.Set Curre
 updateActiveCurs updE = do
   curRef      <- getActiveCursRef
   settingsRef <- getSettingsRef
-  fmap updated $ widgetHold (pure ()) $ ffor updE $ \f -> do
+  fmap updated $ networkHold (pure ()) $ ffor updE $ \f -> do
     (_, _) <- modifyExternalRef curRef $ \cs -> let
       cs' = f cs
       offUrls = S.map (, False) $ S.difference cs cs'
@@ -273,7 +277,7 @@ setFiltersSync c v = do
 requestRandomIndexer :: MonadFront t m => Event t (Currency, Message) -> m (Event t (ErgveinNodeAddr, Message))
 requestRandomIndexer reqE = mdo
   let actE = leftmost [Just <$> reqE, Nothing <$ sentE]
-  sentE <- widgetHoldE (pure never) $ ffor actE $ \case
+  sentE <- networkHoldE (pure never) $ ffor actE $ \case
     Nothing -> pure never
     Just (cur, req) -> requester cur req
   pure sentE
@@ -282,11 +286,11 @@ requester :: MonadFront t m => Currency -> Message -> m (Event t (ErgveinNodeAdd
 requester cur req = mdo
   buildE <- getPostBuild
   respD <- holdDyn True $ False <$ respE
-  te <- widgetHoldDynE $ ffor respD $ \b -> if b
+  te <- networkHoldDynE $ ffor respD $ \b -> if b
     then tickLossyFromPostBuildTime timeout
     else pure never
   let goE = leftmost [buildE, () <$ te]
-  respE <- widgetHoldE (pure never) $ ffor goE $ const $ do
+  respE <- networkHoldE (pure never) $ ffor goE $ const $ do
     conns <- getOpenSyncedConns cur
     logWrite $ "Has " <> showt (length conns) <> " synced connections to indexers"
     mconn <- randomElem conns
@@ -304,7 +308,7 @@ requester cur req = mdo
   where
     timeout = 5 -- NominalDiffTime, seconds
 
--- | Designed to be used inside a widgetHold, samples dynamics
+-- | Designed to be used inside a networkHold, samples dynamics
 getOpenSyncedConns :: MonadFront t m => Currency -> m [IndexerConnection t]
 getOpenSyncedConns cur = do
   conns <- readExternalRef =<< getActiveConnsRef

@@ -7,6 +7,7 @@ module Ergvein.Wallet.Monad.Unauth
 
 import Control.Concurrent.Chan
 import Control.Monad.Reader
+import Crypto.Random.Types
 import Data.IORef
 import Data.Map.Strict (Map)
 import Data.Text (Text)
@@ -19,11 +20,11 @@ import Ergvein.Node.Constants
 import Ergvein.Node.Resolve
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Log.Types
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Util
-import Ergvein.Wallet.Native
-import Ergvein.Wallet.Run.Callbacks
+import Sepulcas.Native
+import Sepulcas.Monad
+import Sepulcas.Run.Callbacks
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Version
@@ -35,19 +36,8 @@ import qualified Data.Set as S
 
 data UnauthEnv t = UnauthEnv {
   unauth'settings        :: !(ExternalRef t Settings)
-, unauth'pauseEF         :: !(Event t (), IO ())
-, unauth'resumeEF        :: !(Event t (), IO ())
-, unauth'backEF          :: !(Event t (), IO ())
-, unauth'loading         :: !(Event t (Bool, Text), (Bool, Text) -> IO ())
-, unauth'langRef         :: !(ExternalRef t Language)
-, unauth'storeDir        :: !Text
-, unauth'alertsEF        :: !(Event t AlertInfo, AlertInfo -> IO ()) -- ^ Holds alerts event and trigger
-, unauth'logsTrigger     :: !(Event t LogEntry, LogEntry -> IO ())
-, unauth'logsNameSpaces  :: !(ExternalRef t [Text])
-, unauth'uiChan          :: !(Chan (IO ()))
+, unauth'sepulca         :: !(Sepulca t)
 , unauth'authRef         :: !(ExternalRef t (Maybe AuthInfo))
-, unauth'passModalEF     :: !(Event t (Int, Text), (Int, Text) -> IO ())
-, unauth'passSetEF       :: !(Event t (Int, Maybe Password), (Int, Maybe Password) -> IO ())
 -- Client context
 , unauth'addrsArchive    :: !(ExternalRef t (S.Set ErgveinNodeAddr))
 , unauth'inactiveAddrs   :: !(ExternalRef t (S.Set ErgveinNodeAddr))
@@ -64,43 +54,11 @@ data UnauthEnv t = UnauthEnv {
 
 type UnauthM t m = ReaderT (UnauthEnv t) m
 
-instance Monad m => HasStoreDir (UnauthM t m) where
-  getStoreDir = asks unauth'storeDir
-  {-# INLINE getStoreDir #-}
-
-instance MonadIO m => MonadHasUI (UnauthM t m) where
-  getUiChan = asks unauth'uiChan
-  {-# INLINE getUiChan #-}
-
-instance MonadBaseConstr t m => MonadEgvLogger t (UnauthM t m) where
-  getLogsTrigger = asks unauth'logsTrigger
-  {-# INLINE getLogsTrigger #-}
-  getLogsNameSpacesRef = asks unauth'logsNameSpaces
-  {-# INLINE getLogsNameSpacesRef #-}
-
-instance MonadBaseConstr t m => MonadLocalized t (UnauthM t m) where
-  setLanguage lang = do
-    langRef <- asks unauth'langRef
-    writeExternalRef langRef lang
-  {-# INLINE setLanguage #-}
-  setLanguageE langE = do
-    langRef <- asks unauth'langRef
-    performEvent_ $ fmap (writeExternalRef langRef) langE
-  {-# INLINE setLanguageE #-}
-  getLanguage = externalRefDynamic =<< asks unauth'langRef
-  {-# INLINE getLanguage #-}
+instance Monad m => HasSepulca t (UnauthM t m) where
+  getSepulca = asks unauth'sepulca
+  {-# INLINE getSepulca #-}
 
 instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives, HasVersion) => MonadFrontBase t (UnauthM t m) where
-  getLoadingWidgetTF = asks unauth'loading
-  {-# INLINE getLoadingWidgetTF #-}
-  getPauseEventFire = asks unauth'pauseEF
-  {-# INLINE getPauseEventFire #-}
-  getResumeEventFire = asks unauth'resumeEF
-  {-# INLINE getResumeEventFire #-}
-  getBackEventFire = asks unauth'backEF
-  {-# INLINE getBackEventFire #-}
-  getLangRef = asks unauth'langRef
-  {-# INLINE getLangRef #-}
   getAuthInfoMaybeRef = asks unauth'authRef
   {-# INLINE getAuthInfoMaybeRef #-}
   setAuthInfo e = do
@@ -110,10 +68,6 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives, HasVersion) =>
       setLastStorage $ _storage'walletName . _authInfo'storage <$> v
       writeExternalRef authRef v
   {-# INLINE setAuthInfo #-}
-  getPasswordModalEF = asks unauth'passModalEF
-  {-# INLINE getPasswordModalEF #-}
-  getPasswordSetEF = asks unauth'passSetEF
-  {-# INLINE getPasswordSetEF #-}
 
 instance MonadBaseConstr t m => MonadHasSettings t (UnauthM t m) where
   getSettingsRef = asks unauth'settings
@@ -121,10 +75,10 @@ instance MonadBaseConstr t m => MonadHasSettings t (UnauthM t m) where
 
 instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
   postAlert e = do
-    (_, fire) <- asks unauth'alertsEF
+    (_, fire) <- asks (sepulca'alertsEF . unauth'sepulca)
     performEvent_ $ liftIO . fire <$> e
-  newAlertEvent = asks (fst . unauth'alertsEF)
-  getAlertEventFire = asks unauth'alertsEF
+  newAlertEvent = asks (fst . sepulca'alertsEF . unauth'sepulca)
+  getAlertEventFire = asks (sepulca'alertsEF . unauth'sepulca)
   {-# INLINE postAlert #-}
   {-# INLINE newAlertEvent #-}
   {-# INLINE getAlertEventFire #-}
@@ -159,17 +113,9 @@ newEnv :: MonadBaseConstr t m
   -> m (UnauthEnv t)
 newEnv settings uiChan = do
   settingsRef <- newExternalRef settings
-  (pauseE, pauseFire) <- newTriggerEvent
-  (resumeE, resumeFire) <- newTriggerEvent
-  (backE, backFire) <- newTriggerEvent
-  loadingEF <- newTriggerEvent
-  alertsEF <- newTriggerEvent
-  passSetEF <- newTriggerEvent
-  passModalEF <- newTriggerEvent
+  sepulca <- newSepulca (Just $ settingsStoreDir settings) (settingsLang settings) uiChan
   authRef <- newExternalRef Nothing
-  langRef <- newExternalRef $ settingsLang settings
-  logsTrigger <- newTriggerEvent
-  nameSpaces <- newExternalRef []
+
   -- MonadClient refs
   rs <- runReaderT mkResolvSeed (uiChan, settingsRef)
 
@@ -187,19 +133,8 @@ newEnv settings uiChan = do
   indexEF <- newTriggerEvent
   let env = UnauthEnv {
           unauth'settings         = settingsRef
-        , unauth'pauseEF          = (pauseE, pauseFire ())
-        , unauth'resumeEF         = (resumeE, resumeFire ())
-        , unauth'backEF           = (backE, backFire ())
-        , unauth'loading          = loadingEF
-        , unauth'langRef          = langRef
-        , unauth'storeDir         = settingsStoreDir settings
-        , unauth'alertsEF         = alertsEF
-        , unauth'logsTrigger      = logsTrigger
-        , unauth'logsNameSpaces   = nameSpaces
-        , unauth'uiChan           = uiChan
+        , unauth'sepulca          = sepulca
         , unauth'authRef          = authRef
-        , unauth'passModalEF      = passModalEF
-        , unauth'passSetEF        = passSetEF
         , unauth'addrsArchive     = urlsArchive
         , unauth'inactiveAddrs    = inactiveUrls
         , unauth'activeAddrs      = actvieAddrsRef
@@ -218,12 +153,5 @@ newEnv settings uiChan = do
   pure env
 
 runEnv :: (MonadBaseConstr t m, PlatformNatives, HasVersion)
-  => RunCallbacks -> UnauthEnv t -> ReaderT (UnauthEnv t) (RetractT t m) a -> m a
-runEnv cbs e ma = do
-  liftIO $ writeIORef (runBackCallback cbs) $ (snd . unauth'backEF) e
-  liftIO $ writeIORef (runPauseCallback cbs) $ (snd . unauth'pauseEF) e
-  liftIO $ writeIORef (runResumeCallback cbs) $ (snd . unauth'resumeEF) e
-  re <- newRetractEnv
-  runRetractT (runReaderT ma' e) re
-  where
-    ma' = void (retract . fst =<< getBackEventFire) >> ma
+  => RunCallbacks -> UnauthEnv t -> UnauthM t (SepulcaM t (RetractT t m)) a -> m a
+runEnv cbs e ma = runSepulca cbs (unauth'sepulca e) (runReaderT ma e)

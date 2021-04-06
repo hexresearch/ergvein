@@ -36,7 +36,7 @@ requestBTCBlocks reqE = mdo
   let timeHE = tag (current blksD) timeE
   let goE =  attach (current conMapD) $ leftmost [reqE, noNodeE, nodeCloseE, timeHE]
   let goE' = leftmost [Just <$> goE, Nothing <$ resE]
-  actE <- fmap switchDyn $ widgetHold (pure never) $ ffor goE' $ \case
+  actE <- fmap switchDyn $ networkHold (pure never) $ ffor goE' $ \case
     Nothing -> pure never
     Just (cm, req) -> do
       buildE <- eventToNextFrame =<< getPostBuild

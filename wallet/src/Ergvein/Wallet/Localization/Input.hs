@@ -4,11 +4,7 @@ module Ergvein.Wallet.Localization.Input
   ) where
 
 import Ergvein.Wallet.Language
-
-data InputStrings =
-    IntParseError
-  | WordParseError
-  deriving (Eq, Show)
+import Sepulcas.Elements.Input.Class
 
 instance LocalizedPrint InputStrings where
   localizedShow l v = case l of

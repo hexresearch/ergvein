@@ -22,7 +22,7 @@ import Ergvein.Text
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.PatternKey
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Page.Canvas
 import Ergvein.Wallet.Util
 
@@ -203,7 +203,7 @@ patternSave tryD = divClass "pattern-container" $ mdo
           dLineS <- sampleDyn dLineT
           rawJSCall (_element_raw canvasEl) dLineS
 
-  widgetHold (drawKeyCreation) $ ffor (updated tryD) $ \a -> case a of
+  networkHold (drawKeyCreation) $ ffor (updated tryD) $ \a -> case a of
     Done -> do
       dLineS <- sampleDyn dLineT
       rawJSCall (_element_raw canvasEl) dLineS
@@ -227,7 +227,7 @@ patternAskWidget = mdo
 
 patternSaveWidget :: MonadFrontBase t m => m (Dynamic t Password)
 patternSaveWidget = mdo
-  widgetHold (localizedText PKSFirstTry) $ ffor (updated tryD) $ \a -> case a of
+  networkHold (localizedText PKSFirstTry) $ ffor (updated tryD) $ \a -> case a of
     FirstTry -> localizedText PKSFirstTry
     SecondTry -> localizedText PKSSecondTry
     ErrorTry -> localizedText PKSErrorTry

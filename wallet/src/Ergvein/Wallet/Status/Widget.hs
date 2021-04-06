@@ -26,12 +26,12 @@ statusBarWidget isVerbose cur = divClass "sync-widget-wrapper" $ do
   statD <- getStatusUpdates cur
   balD  <- balanceRatedOnlyWidget cur
   langD <- getLanguage
-  void $ widgetHoldDyn $ ffor balD $ \case
-    Nothing -> void $ widgetHoldDyn $ renderStatus <$> statD
+  void $ networkHoldDyn $ ffor balD $ \case
+    Nothing -> void $ networkHoldDyn $ renderStatus <$> statD
     Just bal -> mdo
       let updE = updated statD
       let renderE = leftmost [Just <$> updE, Nothing <$ tE]
-      tE <- widgetHoldE (balWidget cur bal) $ ffor renderE $ \case
+      tE <- networkHoldE (balWidget cur bal) $ ffor renderE $ \case
         Nothing -> balWidget cur bal
         Just sp -> do
           renderStatus sp
@@ -50,9 +50,9 @@ balWidget :: MonadFront t m => Currency -> T.Text -> m (Event t ())
 balWidget cur bal = do
   text bal
   rateFiatD <- (fmap . fmap) settingsRateFiat getSettingsD
-  widgetHoldDyn $ ffor rateFiatD $ \mf -> maybeW mf $ \f -> do
+  networkHoldDyn $ ffor rateFiatD $ \mf -> maybeW mf $ \f -> do
     rateD <- getRateByFiatD cur f
-    void $ widgetHoldDyn $ ffor rateD $ \mr -> maybeW mr $ \r -> do
+    void $ networkHoldDyn $ ffor rateD $ \mr -> maybeW mr $ \r -> do
       let r' = T.pack $ printf "%.2f" (realToFrac r :: Double)
       text $ " (" <> r' <> " " <> showt cur <> "/" <> showt f <> ")"
   pure never

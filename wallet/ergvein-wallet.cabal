@@ -24,27 +24,13 @@ flag testnet
 library
     exposed-modules:
         Ergvein.Wallet
-        Ergvein.Wallet.Alert
-        Ergvein.Wallet.Alert.Handler
-        Ergvein.Wallet.Alert.Type
-        Ergvein.Wallet.Camera
-        Ergvein.Wallet.Clipboard
         Ergvein.Wallet.Codec
         Ergvein.Wallet.Currencies
         Ergvein.Wallet.Debug
-        Ergvein.Wallet.Elements
-        Ergvein.Wallet.Elements.Inplace
-        Ergvein.Wallet.Elements.Input
-        Ergvein.Wallet.Elements.Input.Class
-        Ergvein.Wallet.Elements.Toggle
-        Ergvein.Wallet.Embed
-        Ergvein.Wallet.Embed.TH
         Ergvein.Wallet.Filters.Loader
-        Ergvein.Wallet.Id
         Ergvein.Wallet.Indexer.Socket
         Ergvein.Wallet.IP
         Ergvein.Wallet.Language
-        Ergvein.Wallet.Loading
         Ergvein.Wallet.Localization.About
         Ergvein.Wallet.Localization.AuthInfo
         Ergvein.Wallet.Localization.Client
@@ -70,12 +56,9 @@ library
         Ergvein.Wallet.Localization.Storage
         Ergvein.Wallet.Localization.TestnetDisclaimer
         Ergvein.Wallet.Localization.Util
+        Ergvein.Wallet.Localization.Validate
         Ergvein.Wallet.Log
-        Ergvein.Wallet.Log.Event
         Ergvein.Wallet.Log.Page
-        Ergvein.Wallet.Log.Reader
-        Ergvein.Wallet.Log.Types
-        Ergvein.Wallet.Log.Writer
         Ergvein.Wallet.Main
         Ergvein.Wallet.Menu
         Ergvein.Wallet.Menu.Switcher
@@ -101,7 +84,6 @@ library
         Ergvein.Wallet.Node.Prim
         Ergvein.Wallet.Node.Socket
         Ergvein.Wallet.Node.Types
-        Ergvein.Wallet.OpenUrl
         Ergvein.Wallet.Page.About
         Ergvein.Wallet.Page.Balances
         Ergvein.Wallet.Page.BumpFee
@@ -125,10 +107,8 @@ library
         Ergvein.Wallet.Page.Transaction
         Ergvein.Wallet.Password
         Ergvein.Wallet.Platform
-        Ergvein.Wallet.Resize
         Ergvein.Wallet.Scan
         Ergvein.Wallet.Settings
-        Ergvein.Wallet.Share
         Ergvein.Wallet.Status.Types
         Ergvein.Wallet.Status.Widget
         Ergvein.Wallet.Storage
@@ -136,7 +116,6 @@ library
         Ergvein.Wallet.Storage.Constants
         Ergvein.Wallet.Storage.Util
         Ergvein.Wallet.Style
-        Ergvein.Wallet.TimeZone
         Ergvein.Wallet.Transaction
         Ergvein.Wallet.Transaction.Builder
         Ergvein.Wallet.Transaction.Get
@@ -154,11 +133,11 @@ library
         Ergvein.Wallet.Worker.Height
         Ergvein.Wallet.Worker.Indexer
         Ergvein.Wallet.Worker.Node
+        Ergvein.Wallet.Worker.NodeDiscovery
         Ergvein.Wallet.Worker.PubKeysGenerator
         Ergvein.Wallet.Worker.Rates
         Ergvein.Wallet.Wrapper
         Ergvein.Wallet.Yaml
-        Ergvein.Wallet.Worker.NodeDiscovery
     hs-source-dirs: src
     default-language: Haskell2010
     default-extensions: BangPatterns ConstraintKinds DataKinds
@@ -182,6 +161,7 @@ library
         clay >=0.14 && <0.15,
         conduit >= 1.3 && < 1.4,
         containers >=0.6 && <0.7,
+        cryptonite,
         data-default -any,
         dependent-map >= 0.3,
         dependent-sum >= 0.6,
@@ -191,7 +171,7 @@ library
         ergvein-crypto >=0.1 && <0.2,
         ergvein-index-protocol >= 0.1 && < 0.2,
         ergvein-wallet-filters >= 0.2 && < 0.3,
-        ergvein-wallet-native >=0.1 && <0.2,
+        sepulcas-native >=0.1 && <0.2,
         ergvein-wallet-types >=0.1 && <0.2,
         ergvein-wallet-version >= 0.1 && < 0.2,
         ergvein-node-discovery,
@@ -221,12 +201,16 @@ library
         reflex-dom-core -any,
         reflex-dom-retractable -any,
         reflex-external-ref -any,
+        reflex-flunky,
+        reflex-fork,
         reflex-localize -any,
         reflex-localize-dom -any,
         safe -any,
         safe-exceptions -any,
         safecopy  >= 0.9 && < 0.10,
         semialign -any,
+        sepulcas,
+        sepulcas-log,
         serialise >= 0.2 && < 0.3,
         socks >= 0.5 && < 0.7,
         split >=0.2.3.3 && <0.3,
@@ -247,10 +231,10 @@ library
         cpp-options: -DANDROID
         build-depends:
             android-activity -any,
-            ergvein-wallet-android -any
+            sepulcas-android -any
     else
         build-depends:
-            ergvein-wallet-desktop -any
+            sepulcas-desktop -any
 
     if flag(testnet)
         cpp-options: -DTESTNET
@@ -265,17 +249,17 @@ executable ergvein
     , data-default
     , directory
     , ergvein-wallet
-    , ergvein-wallet-native
+    , sepulcas-native
     , ergvein-wallet-version
     , optparse-generic  >= 1.3      && < 1.4
     , reflex
     , reflex-dom
     , text
   if flag(android)
-    build-depends: ergvein-wallet-android
+    build-depends: sepulcas-android
     cpp-options: -DANDROID
   else
-    build-depends: ergvein-wallet-desktop
+    build-depends: sepulcas-desktop
   default-language:    Haskell2010
   default-extensions:
     BangPatterns

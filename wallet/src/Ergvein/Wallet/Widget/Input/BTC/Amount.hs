@@ -10,8 +10,7 @@ import Data.Word
 
 import Ergvein.Either
 import Ergvein.Types
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Elements.Input
+import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Send
 import Ergvein.Wallet.Localization.Settings()
@@ -38,7 +37,7 @@ sendAmountWidget minit submitE = mdo
     unitD <- unitsDropdown (getUnitBTC unitInit) allUnitsBTC
     pure $ zipDynWith (\u v -> fmap (u,) $ toEither $ validateBtcWithUnits u v) unitD textInputValueD
   void $ divClass "form-field-errors" $ simpleList errsD displayError
-  amountErrsD <- holdDyn Nothing $ ffor (current amountValD `tag` submitE) eitherToMaybe'
+  amountErrsD :: Dynamic t (Maybe [VError ()]) <- holdDyn Nothing $ ffor (current amountValD `tag` submitE) eitherToMaybe'
   pure $ eitherToMaybe <$> amountValD
   where
     availableBalanceWidget uD = do

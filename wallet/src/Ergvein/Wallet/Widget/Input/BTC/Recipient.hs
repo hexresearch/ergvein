@@ -9,20 +9,15 @@ import Data.Maybe
 
 import Ergvein.Either
 import Ergvein.Types
-import Ergvein.Wallet.Camera
-import Ergvein.Wallet.Clipboard
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Elements.Input
+import Sepulcas.Camera
+import Sepulcas.Clipboard
+import Sepulcas.Elements
 import Ergvein.Wallet.Localization.Send
 import Ergvein.Wallet.Localization.Settings()
 import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Validate
-
-#ifdef ANDROID
-import Ergvein.Wallet.Camera
-#endif
 
 import qualified Data.Text as T
 

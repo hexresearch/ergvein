@@ -22,6 +22,7 @@ import Network.Haskoin.Network
 import Network.Socket (getNameInfo, NameInfoFlag(..), SockAddr(..))
 import Reflex
 import Reflex.Dom
+import Reflex.Network
 import Reflex.ExternalRef
 import UnliftIO hiding (atomically)
 
@@ -31,7 +32,7 @@ import qualified Data.Text.Encoding as TE
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Prim
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Node.Prim
 import Ergvein.Wallet.Node.Socket
 import Ergvein.Wallet.Platform
@@ -81,7 +82,7 @@ initBTCNode doLog sa msgE = do
   proxyD <- getSocksConf
   rec
     -- Start the connection
-    s <- fmap switchSocket $ widgetHold (pure noSocket) $ ffor peerE $ \peer -> do
+    s <- fmap switchSocket $ networkHold (pure noSocket) $ ffor peerE $ \peer -> do
       socket SocketConf {
           _socketConfPeer   = peer
         , _socketConfSend   = fmap (runPut . putMessage net) $ leftmost [reqE, handshakeE, hsRespE]

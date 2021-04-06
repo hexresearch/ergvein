@@ -8,3 +8,4 @@ import Ergvein.Wallet.Monad.Front   as X
 import Ergvein.Wallet.Monad.Storage as X
 import Ergvein.Wallet.Monad.Unauth  as X
 import Ergvein.Wallet.Monad.Util    as X
+import Sepulcas.Monad               as X

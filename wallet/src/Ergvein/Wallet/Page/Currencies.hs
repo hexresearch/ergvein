@@ -12,7 +12,7 @@ import Ergvein.Crypto.Keys
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Restore
-import Ergvein.Wallet.Elements
+import Sepulcas.Elements
 import Ergvein.Wallet.Localization.Currencies
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password

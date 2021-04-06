@@ -13,7 +13,7 @@ import Ergvein.Text
 import Ergvein.Types.Fees
 import Ergvein.Wallet.Monad.Async
 import Ergvein.Wallet.Monad.Front
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Util
 
@@ -32,7 +32,7 @@ ratesWorker = do
   mRateD <- holdUniqDyn $ fmap settingsRateFiat settingsD
   let fiatsD = (\a b -> nub $ catMaybes [a,b]) <$> mFiatD <*> mRateD
   let btcCC = currencyToCurrencyCode BTC
-  void $ widgetHoldDyn $ ffor fiatsD $ \case
+  void $ networkHoldDyn $ ffor fiatsD $ \case
     [] -> pure ()
     fs -> do
       buildE  <- getPostBuild

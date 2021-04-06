@@ -10,7 +10,7 @@ import Ergvein.Index.Protocol.Types
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Ergvein.Wallet.Elements.Input.Class
+import Sepulcas.Elements.Input.Class
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Input
 import Ergvein.Wallet.Localization.IP

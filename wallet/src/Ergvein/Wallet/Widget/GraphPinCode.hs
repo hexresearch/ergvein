@@ -56,7 +56,7 @@ graphPinCode actionE = mdo
   (e, itemE) <- elDynAttr' "div" (canvasAttrsDyn actionD) $ do
     resE <- fmap leftmost $ mapM (\(n,x,y) -> elItem n x y) itemsGeom
     chResE <- fmap switchDyn $ divClass "graph-pin-code-glass" $
-      widgetHold (pure never) $ ffor (updated pinProcessD) $ \pp -> do
+      networkHold (pure never) $ ffor (updated pinProcessD) $ \pp -> do
         let pvs = unPinCode . pinProcess'pin $ pp
         chActE <- fmap leftmost $ mapM (\(n,x,y) -> elItemCheck pvs n x y) itemsGeom
         drawLines pvs

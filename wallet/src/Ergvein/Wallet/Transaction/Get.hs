@@ -17,11 +17,11 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Transaction
-import Ergvein.Wallet.Elements
+import Sepulcas.Elements
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Settings
-import Ergvein.Wallet.TimeZone
+import Sepulcas.TimeZone
 import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Transaction.View
 

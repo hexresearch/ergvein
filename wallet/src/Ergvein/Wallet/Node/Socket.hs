@@ -31,7 +31,7 @@ import Reflex.ExternalRef
 import System.Timeout (timeout)
 
 import Ergvein.Wallet.Monad.Async
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Util
 
 import qualified Control.Exception.Safe as Ex
@@ -151,7 +151,7 @@ switchSocket dsock = Socket {
 -- | Widget that starts TCP socket internally and reconnects if needed.
 socket :: (Show a, TriggerEvent t m, Adjustable t m, PerformEvent t m, MonadHold t m, PostBuild t m, MonadIO (Performable m), MonadIO m, MonadUnliftIO (Performable m), PlatformNatives)
   => SocketConf t a -> m (Socket t a)
-socket SocketConf{..} = fmap switchSocket $ widgetHoldDyn $ ffor _socketConfProxy $ \mproxy -> do
+socket SocketConf{..} = fmap switchSocket $ networkHoldDyn $ ffor _socketConfProxy $ \mproxy -> do
   buildE <- delay 0.01 =<< getPostBuild
   reconnTriesRef <- newExternalRef 0
   triesD <- externalRefDynamic reconnTriesRef

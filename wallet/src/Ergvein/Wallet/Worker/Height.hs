@@ -16,7 +16,7 @@ import Ergvein.Types.Storage
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
-import Ergvein.Wallet.Native
+import Sepulcas.Native
 import Ergvein.Wallet.Node
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Status.Types
@@ -34,7 +34,7 @@ heightReqTimeout :: NominalDiffTime
 heightReqTimeout = 5
 
 heightAsking :: (MonadFront t m) => m ()
-heightAsking = void . widgetHoldDyn . fmap (traverse_ heightAsker) =<< getActiveCursD
+heightAsking = void . networkHoldDyn . fmap (traverse_ heightAsker) =<< getActiveCursD
 
 heightAsker :: (MonadFront t m) => Currency -> m ()
 heightAsker cur = case cur of
