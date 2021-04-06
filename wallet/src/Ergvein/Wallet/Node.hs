@@ -28,7 +28,7 @@ import Network.Socket (SockAddr)
 import Ergvein.Types
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo.Btc
-import Ergvein.Wallet.Monad.Async
+import Reflex.Fork
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Sepulcas.Native

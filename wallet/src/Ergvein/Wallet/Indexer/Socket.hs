@@ -24,7 +24,7 @@ import Ergvein.Index.Protocol.Types
 import Ergvein.Node.Constants
 import Ergvein.Node.Resolve
 import Ergvein.Text
-import Ergvein.Wallet.Monad.Async
+import Reflex.Fork
 import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Prim
 import Sepulcas.Native

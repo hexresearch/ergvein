@@ -15,7 +15,7 @@ import System.Directory
 
 import Ergvein.Text
 import Ergvein.Types.AuthInfo
-import Ergvein.Wallet.Monad.Async
+import Reflex.Fork
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Sepulcas.Native

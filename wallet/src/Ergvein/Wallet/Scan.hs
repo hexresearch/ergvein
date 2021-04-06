@@ -25,7 +25,7 @@ import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Filters.Loader
-import Ergvein.Wallet.Monad.Async
+import Reflex.Fork
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Node.BTC.Blocks

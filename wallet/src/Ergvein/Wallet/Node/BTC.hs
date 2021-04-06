@@ -30,7 +30,7 @@ import qualified Data.ByteString as B
 import qualified Data.Text.Encoding as TE
 
 import Ergvein.Types.Currency
-import Ergvein.Wallet.Monad.Async
+import Reflex.Fork
 import Ergvein.Wallet.Monad.Prim
 import Sepulcas.Native
 import Ergvein.Wallet.Node.Prim

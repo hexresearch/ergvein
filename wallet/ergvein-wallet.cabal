@@ -64,7 +64,6 @@ library
         Ergvein.Wallet.Menu.Switcher
         Ergvein.Wallet.Menu.Types
         Ergvein.Wallet.Monad
-        Ergvein.Wallet.Monad.Async
         Ergvein.Wallet.Monad.Auth
         Ergvein.Wallet.Monad.Base
         Ergvein.Wallet.Monad.Client

@@ -8,7 +8,7 @@ import Reflex.ExternalRef
 
 import Ergvein.Index.Protocol.Types
 import Ergvein.Types.Fees
-import Ergvein.Wallet.Monad.Async
+import Reflex.Fork
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Util
 

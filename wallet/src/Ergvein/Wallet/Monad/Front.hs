@@ -73,7 +73,7 @@ import Ergvein.Types.Fees
 import Ergvein.Types.Storage
 import Sepulcas.Alert
 import Ergvein.Wallet.Localization.Client
-import Ergvein.Wallet.Monad.Async
+import Reflex.Fork
 import Ergvein.Wallet.Monad.Base
 import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Prim

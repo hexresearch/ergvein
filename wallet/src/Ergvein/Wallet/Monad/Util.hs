@@ -35,7 +35,7 @@ import Reflex.ExternalRef
 import Text.Read
 
 import Ergvein.Node.Resolve
-import Ergvein.Wallet.Monad.Async
+import Reflex.Fork
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Prim
 import Sepulcas

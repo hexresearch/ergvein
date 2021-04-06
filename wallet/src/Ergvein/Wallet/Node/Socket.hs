@@ -30,7 +30,7 @@ import Reflex
 import Reflex.ExternalRef
 import System.Timeout (timeout)
 
-import Ergvein.Wallet.Monad.Async
+import Reflex.Fork
 import Sepulcas.Native
 import Ergvein.Wallet.Util
 

@@ -42,7 +42,7 @@ import Ergvein.Node.Constants
 import Ergvein.Node.Resolve
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Ergvein.Wallet.Monad.Async
+import Reflex.Fork
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Util

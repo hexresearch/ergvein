@@ -22,7 +22,7 @@ import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction as ETT
-import Ergvein.Wallet.Monad.Async
+import Reflex.Fork
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Ergvein.Wallet.Monad.Util

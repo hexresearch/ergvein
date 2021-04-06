@@ -11,7 +11,7 @@ import Reflex.ExternalRef
 import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
 import Ergvein.Text
 import Ergvein.Types.Fees
-import Ergvein.Wallet.Monad.Async
+import Reflex.Fork
 import Ergvein.Wallet.Monad.Front
 import Sepulcas.Native
 import Ergvein.Wallet.Settings
