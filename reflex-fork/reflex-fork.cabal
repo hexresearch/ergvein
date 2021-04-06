@@ -54,4 +54,4 @@ library
 source-repository head
   type: git
   location: https://github.com/hexresearch/ergvein
-  subdir: reflex-localize
+  subdir: reflex-fork
