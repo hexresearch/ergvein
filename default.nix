@@ -25,7 +25,7 @@ let
       ergvein-interface-ergo = ./interfaces/ergo;
       ergvein-node-discovery = ./node-discovery;
       ergvein-wallet = ./wallet;
-      ergvein-wallet-filters = ./wallet-filters;
+      ergvein-filters = ./wallet-filters;
       ergvein-types = ./wallet-types;
       ergvein-wallet-version = ./wallet-version;
       ergvein-website = ./ergvein-website;
@@ -62,7 +62,7 @@ let
         "ergvein-index-server"
         "ergvein-interface-ergo"
         "ergvein-node-discovery"
-        "ergvein-wallet-filters"
+        "ergvein-filters"
         "ergvein-types"
         "ergvein-wallet-version"
         "ergvein-wallet"

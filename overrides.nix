@@ -55,7 +55,7 @@ in (self: super: let
     ergvein-interface-ergo = ingnoreGarbage super.ergvein-interface-ergo;
     ergvein-node-discovery = ingnoreGarbage super.ergvein-node-discovery;
     ergvein-wallet = addVersions (ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-wallet" ./wallet walletOpts {}));
-    ergvein-wallet-filters = ingnoreGarbage super.ergvein-wallet-filters;
+    ergvein-filters = ingnoreGarbage super.ergvein-filters;
     ergvein-types = ingnoreGarbage super.ergvein-types;
     ergvein-wallet-version = ingnoreGarbage super.ergvein-wallet-version;
     golomb-rice = ingnoreGarbage super.golomb-rice;

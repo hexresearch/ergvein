@@ -1,4 +1,4 @@
-name:                ergvein-wallet-filters
+name:                ergvein-filters
 version:             0.2.0.0
 synopsis:            Tools to generate and use BIP 158 filters for ergvein wallet.
 description:         See README.md
@@ -38,7 +38,7 @@ library
     , deepseq           >= 1.4
     , dependent-sum     >= 0.6
     , ergvein-common
-    , ergvein-types >= 0.1 && < 0.2
+    , ergvein-types     >= 0.1 && < 0.2
     , golomb-rice       >= 0.1    && < 0.25
     , haskoin-core      >= 0.12.0 && < 0.12.1
     , memory            >= 0.11
@@ -56,7 +56,7 @@ library
     ScopedTypeVariables
     TemplateHaskell
 
-test-suite ergvein-wallet-filters-test
+test-suite ergvein-filters-test
   default-language:    Haskell2010
   type:                exitcode-stdio-1.0
   main-is:             Driver.hs
@@ -84,7 +84,7 @@ test-suite ergvein-wallet-filters-test
     , containers
     , either
     , ergvein-common
-    , ergvein-wallet-filters
+    , ergvein-filters
     , ergvein-types
     , haskoin-core
     , mtl
@@ -102,7 +102,7 @@ benchmark bench-btc-filters
   ghc-options:       -threaded -O3
   -- ghc-options:         -threaded -O3 -rtsopts "-with-rtsopts=-N8 -qn1"
   build-depends:
-     ergvein-wallet-filters
+     ergvein-filters
    , base
    , bytestring
    , cereal
@@ -126,7 +126,7 @@ executable ergvein-filters-tx-fetcher
    , data-default
    , directory
    , ergvein-common
-   , ergvein-wallet-filters
+   , ergvein-filters
    , haskoin-core
    , hexstring
    , optparse-generic  >= 1.3      && < 1.4
