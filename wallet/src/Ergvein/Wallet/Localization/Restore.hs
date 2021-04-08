@@ -30,8 +30,8 @@ data RestorePageStrings
 instance LocalizedPrint RestorePageStrings where
   localizedShow l v = case l of
     English -> case v of
-      RPSProgress p         -> "Restore progress: " <> (pack $ showFFloat (Just 2) p "") <> "%"
-      RPSConnecting         -> "Connecting to BTC nodes"
+      RPSProgress p         -> "Restoration progress: " <> (pack $ showFFloat (Just 2) p "") <> "%"
+      RPSConnecting         -> "Connecting to Bitcoin nodes"
       RPSGetHeight          -> "Calculating the current height"
       RPSGetFiltsTitle      -> "Getting the next batch of filters"
       RPSGetFiltsFromTo f t -> "From " <> showt f <> " to " <> showt t
@@ -48,7 +48,7 @@ instance LocalizedPrint RestorePageStrings where
       RPSTrafficAccept      -> "Continue"
     Russian -> case v of
       RPSProgress p         -> "Восстановление: " <> (pack $ showFFloat (Just 2) p "") <> "%"
-      RPSConnecting         -> "Соединяемся с узлами BTC"
+      RPSConnecting         -> "Соединяемся с узлами Bitcoin"
       RPSGetHeight          -> "Вычисляем текущую высоту"
       RPSGetFiltsTitle      -> "Запрашиваем следующую пачку фильтров"
       RPSGetFiltsFromTo f t -> "От " <> showt f <> " до " <> showt t
