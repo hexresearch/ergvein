@@ -54,7 +54,7 @@ data Env t = Env {
 , env'logoutFire      :: !(IO ())
 , env'activeCursRef   :: !(ExternalRef t (S.Set Currency))
 , env'filtersHeights  :: !(ExternalRef t (Map Currency BlockHeight))
-, env'statusUpdates    :: !(ExternalRef t (Map Currency StatusUpdate))
+, env'walletStatus    :: !(ExternalRef t (Map Currency WalletStatus))
 , env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
 , env'nodeConsRef     :: !(ExternalRef t (ConnMap t))
 , env'nodeReqSelector :: !(NodeReqSelector t)
@@ -106,8 +106,8 @@ instance MonadBaseConstr t m => MonadHasSettings t (ErgveinM t m) where
   {-# INLINE getSettingsRef #-}
 
 instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
-  getStatusUpdRef = asks env'statusUpdates
-  {-# INLINE getStatusUpdRef #-}
+  getWalletStatusRef = asks env'walletStatus
+  {-# INLINE getWalletStatusRef #-}
   getFiltersSyncRef = asks env'filtersSyncRef
   {-# INLINE getFiltersSyncRef #-}
   getActiveCursRef = asks env'activeCursRef
@@ -254,7 +254,7 @@ liftAuth ma0 ma = mdo
               , env'logoutFire = logoutFire ()
               , env'activeCursRef = activeCursRef
               , env'filtersHeights = filtersHeights
-              , env'statusUpdates = statRef
+              , env'walletStatus = statRef
               , env'filtersSyncRef = fsyncRef
               , env'nodeConsRef = consRef
               , env'nodeReqSelector = nodeSel

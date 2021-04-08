@@ -17,7 +17,7 @@ module Ergvein.Wallet.Monad.Front(
   , getNodesByCurrencyD
   , getBtcNodesD
   , getErgoNodesD
-  , getStatusUpdates
+  , getWalletStatus
   , requestBroadcast
   , sendRandomNode
   , requestFromNode
@@ -25,7 +25,8 @@ module Ergvein.Wallet.Monad.Front(
   , broadcastNodeMessage
   , requestManyFromNode
   , setFiltersSync
-  , publishStatusUpdate
+  , updateWalletStatusNormal
+  , updateWalletStatusRestore
   , updateActiveCurs
   , requestRandomIndexer
   , getRateByFiatD
@@ -104,7 +105,7 @@ type MonadFront t m = (
 
 class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   -- | Internal method.
-  getStatusUpdRef :: m (ExternalRef t (Map Currency StatusUpdate))
+  getWalletStatusRef :: m (ExternalRef t (Map Currency WalletStatus))
   -- | Internal method to get flag if we has fully synced filters at the moment.
   getFiltersSyncRef :: m (ExternalRef t (Map Currency Bool))
   -- | Get activeCursRef Internal
@@ -186,20 +187,29 @@ requestManyFromNode reqE = do
     in liftIO . nodeReqFire $ M.singleton cur $ M.singleton u $ NodeMsgReq req
 {-# INLINE requestManyFromNode #-}
 
--- | Get global status value
-getStatusUpdates :: MonadFrontAuth t m => Currency -> m (Dynamic t StatusUpdate)
-getStatusUpdates cur = do
-  statMapD <- externalRefDynamic =<< getStatusUpdRef
-  pure $ fmap (fromMaybe NotActive . M.lookup cur) statMapD
-{-# INLINE getStatusUpdates #-}
+-- | Get global wallet status value
+getWalletStatus :: MonadFrontAuth t m => Currency -> m (Dynamic t WalletStatus)
+getWalletStatus cur = do
+  statMapD <- externalRefDynamic =<< getWalletStatusRef
+  pure $ fmap (fromMaybe emptyWalletStatus . M.lookup cur) statMapD
+{-# INLINE getWalletStatus #-}
 
--- | Set global sync process value each time the event is fired
-publishStatusUpdate :: MonadFrontAuth t m => Event t CurrencyStatus -> m (Event t ())
-publishStatusUpdate spE = do
-  statusUpdRef <- getStatusUpdRef
-  performEvent $ ffor spE $ \(CurrencyStatus cur sp) -> do
-    modifyExternalRef_ statusUpdRef $ M.insert cur sp
-{-# INLINE publishStatusUpdate #-}
+-- | Updates normal wallet status each time the event is fired
+updateWalletStatusNormal :: MonadFrontAuth t m => Currency -> Event t (WalletStatusNormal -> WalletStatusNormal) -> m (Event t ())
+updateWalletStatusNormal cur updateE = do
+  walletStatusRef <- getWalletStatusRef
+  performEvent $ ffor updateE $ \f -> do
+    modifyExternalRef_ walletStatusRef $ M.insertWith (\_ old -> updateStatus f old) cur (updateStatus f emptyWalletStatus)
+  where
+    updateStatus g s@WalletStatus{..} = s {walletStatus'normal = g walletStatus'normal}
+
+updateWalletStatusRestore :: MonadFrontAuth t m => Currency -> Event t (WalletStatusRestore -> WalletStatusRestore) -> m (Event t ())
+updateWalletStatusRestore cur updateE = do
+  walletStatusRef <- getWalletStatusRef
+  performEvent $ ffor updateE $ \f -> do
+    modifyExternalRef_ walletStatusRef $ M.insertWith (\_ old -> updateStatus f old) cur (updateStatus f emptyWalletStatus)
+  where
+    updateStatus g s@WalletStatus{..} = s {walletStatus'restore = g walletStatus'restore}
 
 -- | Get auth info. Not a Maybe since this is authorized context
 getAuthInfo :: MonadFrontAuth t m => m (Dynamic t AuthInfo)

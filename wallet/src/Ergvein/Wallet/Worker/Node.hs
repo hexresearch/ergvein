@@ -270,10 +270,10 @@ getRandomBTCNodesFromDNS sel n = do
   buildE <- getPostBuild
   let dnsUrls = getSeeds btcNetwork
   i <- liftIO $ randomRIO (0, length dnsUrls - 1)
-  void $ publishStatusUpdate $ (CurrencyStatus BTC StatGettingNodeAddresses) <$ buildE
+  void $ updateWalletStatusNormal BTC $ (const $ WalletStatusNormal'gettingNodeAddresses) <$ buildE
   rs <- mkResolvSeed
   urlsE <- performFork $ (requestNodesFromBTCDNS rs (dnsUrls!!i) n) <$ buildE
-  void $ publishStatusUpdate $ (CurrencyStatus BTC StatConnectingToPeers) <$ urlsE
+  void $ updateWalletStatusNormal BTC $ (const $ WalletStatusNormal'connectingToPeers) <$ urlsE
   nodesD <- networkHold (pure []) $ ffor urlsE $ \urls -> flip traverse urls $ \u -> let
     reqE = extractReq sel BTC u
     in initBTCNode False u reqE
