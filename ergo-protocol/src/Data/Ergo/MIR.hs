@@ -1,4 +1,6 @@
 {-# LANGUAGE EmptyDataDeriving #-}
+{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE TypeApplications  #-}
 -- |
 -- Middle intermediate representation (MIR) which is used in the
 -- interpreter and serialization.
@@ -156,10 +158,12 @@ data Expr
 
   | ExtractCreationInfo Expr
   | ProveDLog Expr
+  | ProveDHTuple Expr Expr Expr Expr
   | DecodePoint Expr
   | SigmaAndExpr [Expr]
   | SigmaOrExpr  [Expr]
-  
+  | NoneValue
+  | SomeValue Expr
   deriving Show
 
 data GlobalVars
@@ -236,7 +240,7 @@ data SigmaProp
   = SigmaFalse
   | SigmaTrue
   | SigmaDLog    !ECPoint
-  | SigmaDHTuple
+  | SigmaDHTuple !ECPoint !ECPoint !ECPoint !ECPoint
   | SigmaAND            [SigmaProp]
   | SigmaOR             [SigmaProp]
   | SigmaThreshold !Int [SigmaProp]
@@ -251,7 +255,9 @@ instance ErgoParser SigmaProp where
     if | op == opTrivialPropFalseCode -> pure SigmaFalse
        | op == opTrivialPropTrueCode  -> pure SigmaTrue
        | op == opProveDlogCode        -> SigmaDLog <$> getErgo
-       | op == opProveDiffieHellmanTupleCode -> error "SigmaProp: parsing of DH tuple is not implemented"
+       | op == opProveDiffieHellmanTupleCode ->
+           -- SigmaD
+         error "SigmaProp: parsing of DH tuple is not implemented"
        -- | op == opAndCode     -> SigmaAND <$> parseListOf getErgo
        -- | op == opOrCode      -> SigmaOR  <$> parseListOf getErgo
        | op == opAtLeastCode -> error "SigmaProp: THRESHOLD not implemented"
@@ -304,7 +310,7 @@ instance ErgoParser SType where
 getSType :: Get SType
 getSType = do
   c <- get @Word8
-  traceShowM ("getSType",c)
+  -- traceShowM ("getSType",c)
   if  | c <= 0 -> fail "Invalid type prefix"
         -- Not a tuple we need to drill down
       | c < c_TupleTypeCode
@@ -316,12 +322,12 @@ getSType = do
           2 -> SColl   . SColl <$> getArgType primId
           3 -> SOption         <$> getArgType primId
           4 -> SOption . SColl <$> getArgType primId
-          -- 5 -> case primId of
-          --   0 -> STuple . TupleItems <$> sequence [getSType, getSType]
-          --   -- Pair of types where first is primitive (`(_, Int)`)
-          --   _ -> do t1 <- getEmbeddableType primId
-          --           t2 <- getSType
-          --           pure $ STuple $ TupleItems [t1,t2]
+          5 -> case primId of
+            0 -> STuple . TupleItems <$> sequence [getSType, getSType]
+            -- Pair of types where first is primitive (`(_, Int)`)
+            _ -> do t1 <- getEmbeddableType primId
+                    t2 <- getSType
+                    pure $ STuple $ TupleItems [t1,t2]
           6 -> case primId of
             0 -> STuple . TupleItems <$> sequence [getSType, getSType, getSType]
             -- Pair of types where second is primitive (`(Int, _)`)

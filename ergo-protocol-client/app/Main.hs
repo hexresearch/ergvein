@@ -67,13 +67,13 @@ main = do
         atomically $ writeTChan inChan $ SockInSendEvent $ MsgHandshake $ makeHandshake 0 t
         threadDelay 1000000
         let requiredBlock = "8cf6dca6b9505243e36192fa107735024c0000cf4594b1daa2dc4e13ee86f26f" -- H=414474
-            -- requiredBlock = "2cc7c4f1f609694b83df093192e5bf3f4ad441a3c8f1959a28d51eb16fa94b19"
-            --
+        -- let requiredBlock = "eac5edd4b7d602acae0842b03af3724b76a72bbc608a4bbea2fcf2391f4dacaa" -- H=414477
             merkleR c = ModifierId
                       $ BA.convert
                       $ hash @_ @Blake2b_256
                       $ BS.singleton c
                      <> unModifierId requiredBlock
+                     -- <> unModifierId "01caff0fb8e66f459f6a1f8878972145f31ad11533705d6da901803bd8d71efe"
                      <> unModifierId "722f9306300d0d96fe8c10de830216d700131614f9e6ce2496e8dba1cbb45951"
             ty = ModifierBlockTxs
         print requiredBlock
@@ -102,6 +102,8 @@ main = do
           putStrLn "MsgModifier"
           print ty
           let bs = modifierBody $ m ! 0
+          print $ BS.take 32 bs
+          BS.writeFile "../H_414474" $ BS.drop 32 bs
           putStrLn "================================================================"
           either print putStrLn $ flip runGet bs $ do            
             modId <- ModifierId <$> getBytes 32
@@ -140,6 +142,7 @@ data ErgoBox = ErgoBox
   , eboxSpendScript :: !Expr
   , eboxHeight      :: !Word32
   , eboxTokens      :: [(ModifierId, Word32)]
+  , eboxRegisters   :: [Expr]
   }
   deriving stock (Show)
 
@@ -174,9 +177,12 @@ instance ErgoParser ErgoBox where
     eboxHeight      <- decodeVarInt @Word32
     eboxTokens      <- parseShortListOf $ (,) <$> getErgo <*> decodeVarInt @Word32
     --
-    get @Word8 >>= \case
-      0 -> pure ()
-      _ -> error "FIXME: ErgoBox: registers aren't parsed"
+    eboxRegisters <- get @Word8 >>= \case
+      0 -> pure []
+      -- FIXME: Do we read full registesr
+      n -> do
+        traceM $ "-- REGISTERS -- " ++ show n
+        replicateM (fromIntegral n) parseValue
     pure ErgoBox{..}
 
 instance ErgoParser ErgoTx where
@@ -242,6 +248,7 @@ decodeErgoTreeHeader = do
 -- AST
 ----------------------------------------------------------------
 
+lvlStr lvl = concat (replicate lvl "| ")
 
 parseValue :: Get Expr
 parseValue = parseValueW 0
@@ -250,18 +257,20 @@ parseValueW :: Int -> Get Expr
 parseValueW lvl = do
   peek >>= \case
     b | b < c_LastConstantCode -> do
-          traceM $ replicate (2*lvl) ' ' ++ "parseConstant: " ++ show b
-          uncurry Const <$> parseConstant
+          traceM $ lvlStr lvl ++ "parseConstant: " ++ show b
+          r <- uncurry Const <$> parseConstant
+          traceM $ lvlStr lvl ++ "parseConstant: " ++ show r
+          pure r
       | otherwise              -> parseAST lvl
 
 parseAST :: Int -> Get Expr 
 parseAST lvl = do
   op <- get
-  traceM $ replicate (2*lvl) ' ' ++ "parseAST " ++ show op
+  traceM $ lvlStr lvl ++ "parseAST " ++ show op
   r <- if | op == opTaggedVariableCode                    -> error "OPCODE: opTaggedVariableCode"
           | op == opValUseCode                            -> do
               e <- getErgo
-              -- traceShowM ("opValUseCode",e)
+              traceM $ lvlStr lvl ++ "  " ++ show e
               pure $ ValUse $ (MkValUse e)
           -- FIXME: We need access to constant store here
           | op == opConstantPlaceholderCode               -> ConstPlaceholder <$> getErgo
@@ -339,7 +348,7 @@ parseAST lvl = do
           | op == opCalcBlake2b256Code                    -> CalcBlake2b256 <$> goRec
           | op == opCalcSha256Code                        -> error "OPCODE: opCalcSha256Code"
           | op == opProveDlogCode                         -> ProveDLog <$> goRec
-          | op == opProveDiffieHellmanTupleCode           -> error "OPCODE: opProveDiffieHellmanTupleCode"
+          | op == opProveDiffieHellmanTupleCode           -> ProveDHTuple <$> goRec <*> goRec <*> goRec <*> goRec
           | op == opSigmaPropIsProvenCode                 -> error "OPCODE: opSigmaPropIsProvenCode"
           | op == opSigmaPropBytesCode                    -> error "OPCODE: opSigmaPropBytesCode"
           | op == opBoolToSigmaPropCode                   -> BoolToSigmaProp <$> goRec
@@ -348,12 +357,15 @@ parseAST lvl = do
           | op == opDeserializeContextCode                -> error "OPCODE: opDeserializeContextCode"
           | op == opDeserializeRegisterCode               -> error "OPCODE: opDeserializeRegisterCode"
           | op == opValDefCode                            -> do
-              ValDef <$> (MkValDef <$> getErgo <*> goRec)
+              e <- getErgo
+              traceM $ lvlStr lvl ++ "  " ++ show e
+              ValDef <$> (MkValDef <$> pure e <*> goRec)
           | op == opFunDefCode                            -> error "OPCODE: opFunDefCode"
           | op == opBlockValueCode                        -> do
               BlockValue <$> (MkBlockValue <$> parseLongListOf goRec <*> goRec)
           | op == opFuncValueCode                         -> do
               funcValArgs <- parseLongListOf $ getErgo @FuncArg
+              traceM $ lvlStr lvl ++ "  " ++ show funcValArgs
               funcValBody <- goRec
               pure $ FuncValue MkFuncValue{..}
           | op == opFuncApplyCode                         -> Apply <$> goRec <*> goRec
@@ -365,7 +377,7 @@ parseAST lvl = do
           | op == opMethodCallCode                        -> error "OPCODE: opMethodCallCode"
           | op == opGlobalCode                            -> pure $ GlobalVars Global
           | op == opSomeValueCode                         -> error "OPCODE: opSomeValueCode"
-          | op == opNoneValueCode                         -> error "OPCODE: opNoneValueCode"
+          | op == opNoneValueCode                         -> pure $ NoneValue
           | op == opGetVarCode                            -> error "OPCODE: opGetVarCode"
           | op == opOptionGetCode                         -> OptionGet <$> goRec
           | op == opOptionGetOrElseCode                   -> error "OPCODE: opOptionGetOrElseCode"
@@ -396,7 +408,7 @@ parseAST lvl = do
           | op == opContextCode                           -> error "OPCODE: opContextCode"
           | op == opXorOfCode                             -> error "OPCODE: opXorOfCode"
           | otherwise -> error "Unhandled opcode: op"
-  traceM $ replicate (2*lvl) ' ' ++ ")"
+  traceM $ lvlStr lvl ++ ")"
   pure r
   where
     relationOp op = BinOp (RelationOp op) <$> goRec <*> goRec

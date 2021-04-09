@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeApplications #-}
 -- |
 -- Type class API for parsing ergo transactions.
 module Data.Ergo.MIR.Parser where
