@@ -69,7 +69,7 @@ menuAndroid menuOpenE thisWidget = mdo
 backButton :: MonadFrontBase t m => Text -> Dynamic t Bool -> (Event t () -> m (Event t ())) -> m ()
 backButton classes isHiddenD handler = do
   let backButtonClassesD = visibilityClass classes <$> isHiddenD
-  e <- divButton backButtonClassesD $ elClass "i" "fas fa-arrow-left fa-fw" blank
+  e <- divButton backButtonClassesD $ elClass "i" "fas fa-chevron-left fa-fw" blank
   void $ handler e
 
 -- | Button for going back on widget history
