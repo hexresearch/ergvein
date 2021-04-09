@@ -23,6 +23,7 @@ library
     Data.Ergo.MIR
     Data.Ergo.MIR.OpCode
     Data.Ergo.MIR.Constants
+    Data.Ergo.MIR.Parser
     Data.Ergo.Modifier
     Data.Ergo.Protocol
     Data.Ergo.Protocol.Check

@@ -1,5 +1,8 @@
 {-# LANGUAGE AllowAmbiguousTypes   #-}
+{-# LANGUAGE DerivingStrategies    #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE MultiWayIf            #-}
+{-# LANGUAGE NumDecimals           #-}
 {-# LANGUAGE OverloadedLists       #-}
 module Main where
 
@@ -16,7 +19,7 @@ import Data.Ergo.MIR.OpCode
 import Data.Ergo.MIR.Parser
 import Data.Ergo.MIR.Constants
 import Data.Ergo.Protocol.Client
-import Data.Ergo.Block (BlockHeader)
+import Data.Ergo.Block (BlockHeader(..),Digest32(..))
 import Data.Maybe
 import Data.Persist
 import Data.Persist.Internal (Get(..),(:!:)(..))
@@ -27,6 +30,7 @@ import Options.Generic
 import Data.Vector.Generic ((!))
 import qualified Data.Vector as V
 import Text.Groom
+import Text.Printf
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
@@ -48,77 +52,155 @@ getNodeAddress Options{..} = fromMaybe "127.0.0.1" $ unHelpful nodeAddress
 getNodePort :: Options -> Int
 getNodePort Options{..} = fromMaybe (if unHelpful testnet then 19030 else 9030) $ unHelpful nodePort
 
+data WaitingFor
+  = OnlyStarted
+  | AskedHeader !ModifierId
+  | AskedBlock  !BlockHeader !ModifierId
+
+mainLoop outChan inChan = go 
+  where
+    handleMsg expecting msg f = case msg of
+      MsgInv             _ -> putStrLn "MsgInv" >> go expecting      
+      MsgSyncInfo        _ -> putStrLn "MsgSyncInfo" >> go expecting
+      MsgRequestModifier _ -> putStrLn "MsgRequestModifier" >> go expecting
+      MsgModifier (ModifierMsg _ [m]) -> f m
+      MsgModifier _ -> putStrLn "MsgModifier (other)" >> go expecting
+    --
+    go expecting = case expecting of
+      OnlyStarted -> do
+        let requiredBlock = "eac5edd4b7d602acae0842b03af3724b76a72bbc608a4bbea2fcf2391f4dacaa" -- H=414477
+        send requiredBlock
+        go $ AskedHeader requiredBlock
+      --
+      AskedHeader modId -> atomically (readTChan outChan) >>= \case
+        SockOutInbound (MsgOther msg) -> handleMsg expecting msg $ \m -> do
+          let blk = decode @BlockHeader $ modifierBody m
+          case blk of
+            Right b | bid <- blockId b
+                    , bid == modId -> do
+                        let mid = ModifierId . BA.convert . hash @_ @Blake2b_256
+                                $ BS.singleton 102
+                               <> unModifierId bid
+                               <> unDigest32 (transactionsRoot b)
+                        printf "H=%6i: bid= %s\n" (height b) (show bid)
+                        send mid
+                        go $ AskedBlock b mid
+            _ -> do putStrLn "MsgModifier (unsettling)"
+                    go expecting              
+      --
+      AskedBlock blk modId -> atomically (readTChan outChan) >>= \case
+        SockOutInbound (MsgOther msg) -> handleMsg expecting msg $ \m -> case () of
+          _| ModifierId (BS.take 32 bs) == blockId blk -> do
+               -- BS.writeFile (printf "../BLK/H_%06i" (height blk)) $ BS.drop 32 bs
+               let bid = parentId blk
+               send bid
+               printf "Sending bid = %s\n" (show bid)
+               go $ AskedHeader bid
+           | otherwise -> do
+               putStrLn "MsgModifier (worrying)"
+               go $ AskedBlock blk modId 
+           where
+             bs = modifierBody m
+    --
+    send modId = atomically $ writeTChan inChan
+               $ SockInSendEvent $ MsgOther $ MsgRequestModifier $ RequestModifierMsg ModifierBlockTxs [modId]
+
+
+blockId :: BlockHeader -> ModifierId
+blockId = ModifierId . BA.convert . hash @_ @Blake2b_256 . encode
+
+handshakeLoop outChan inChan = go
+  where
+    go = atomically (readTChan outChan) >>= \case
+      SockOutInbound (MsgHandshake h) -> do
+        putStrLn "HANDSHAKE"
+        t <- getCurrentTime
+        atomically $ writeTChan inChan $ SockInSendEvent $ MsgHandshake $ makeHandshake 0 t
+        threadDelay 0.5e6
+      _ -> go
+
+  
+
 main :: IO ()
 main = do
   opts@Options{..} <- getRecord "Ergo protocol client example"
   let net = if unHelpful testnet then Testnet else Mainnet
   inChan <- newTChanIO
-  let conf = SocketConf {
-          _socketConfPeer = Peer (getNodeAddress opts) (show $ getNodePort opts)
-        , _socketConfSocks = Nothing
+  let conf = SocketConf
+        { _socketConfPeer   = Peer (getNodeAddress opts) (show $ getNodePort opts)
+        , _socketConfSocks  = Nothing
         , _socketConfReopen = Just (3.0, 5)
         }
   outChan <- ergoSocket net inChan conf
-  forever $ do
-    ev <- atomically $ readTChan outChan
-    case ev of
-      SockOutInbound (MsgHandshake h) -> do
-        t <- getCurrentTime
-        atomically $ writeTChan inChan $ SockInSendEvent $ MsgHandshake $ makeHandshake 0 t
-        threadDelay 1000000
-        let requiredBlock = "8cf6dca6b9505243e36192fa107735024c0000cf4594b1daa2dc4e13ee86f26f" -- H=414474
-        -- let requiredBlock = "eac5edd4b7d602acae0842b03af3724b76a72bbc608a4bbea2fcf2391f4dacaa" -- H=414477
-            merkleR c = ModifierId
-                      $ BA.convert
-                      $ hash @_ @Blake2b_256
-                      $ BS.singleton c
-                     <> unModifierId requiredBlock
-                     -- <> unModifierId "01caff0fb8e66f459f6a1f8878972145f31ad11533705d6da901803bd8d71efe"
-                     <> unModifierId "722f9306300d0d96fe8c10de830216d700131614f9e6ce2496e8dba1cbb45951"
-            ty = ModifierBlockTxs
-        print requiredBlock
-        print $ merkleR 102
-        putStrLn "----"
-        atomically $ writeTChan inChan $ SockInSendEvent $ MsgOther $ MsgRequestModifier $ RequestModifierMsg ty
-          -- [requiredBlock]
-          $ V.fromList [merkleR c | c <- [102]]
-        -- atomically $ writeTChan inChan $ SockInSendEvent $ MsgOther $ MsgSyncInfo $ SyncInfo [
-          -- "efa4abde000dca13fd08220d48f70c3e64b49d91102af9d047fd6f35826352e9"
-          -- ]
-        pure ()
-      SockOutInbound (MsgOther (MsgInv (InvMsg itype is))) -> do
-        atomically $ writeTChan inChan $ SockInSendEvent $ MsgOther $ MsgRequestModifier $ RequestModifierMsg itype $ V.singleton $ V.head is
-        pure ()
-      _ -> pure ()
-    case ev of
-      SockOutInbound (MsgHandshake h) -> putStrLn "HANDSHAKE" >> print h
-      SockOutInbound (MsgOther msg) -> case msg of
-        MsgInv      _ -> putStrLn "MsgInv"
-        MsgSyncInfo (SyncInfo bids) -> do
-          putStrLn "MsgSyncInfo"
-          -- mapM_ print bids
-        MsgRequestModifier _ -> putStrLn "MsgRequestModifier"
-        MsgModifier (ModifierMsg ty m) -> do
-          putStrLn "MsgModifier"
-          print ty
-          let bs = modifierBody $ m ! 0
-          print $ BS.take 32 bs
-          BS.writeFile "../H_414474" $ BS.drop 32 bs
-          putStrLn "================================================================"
-          either print putStrLn $ flip runGet bs $ do            
-            modId <- ModifierId <$> getBytes 32
-            n   <- decodeVarInt @Word32
-            txs <- replicateM 2 (getErgo @ErgoTx)
-              -- parseLongListOf (getErgo @ErgoTx)
-            return $ unlines
-              [ show n
-              , unlines $ map groom txs
-              ]
-          -- print $ ModifierId $ BS.drop 32 $ bs
-          -- print $ decode @BlockHeader bs
-          error "ABORT"
-          -- putStrLn "================"
-      _ -> print ev
+  --
+  handshakeLoop outChan inChan
+  mainLoop outChan inChan OnlyStarted
+  
+  -- let loop mod = do
+  --        >>= \case
+  --         SockOutInbound (MsgHandshake h)
+  --       case ev of
+        
+  -- forever $ do
+  --   ev <- atomically $ readTChan outChan
+  --   case ev of
+  --     SockOutInbound (MsgHandshake h) -> do
+  --       t <- getCurrentTime
+  --       atomically $ writeTChan inChan $ SockInSendEvent $ MsgHandshake $ makeHandshake 0 t
+  --       threadDelay 1000000
+  --       let requiredBlock = "8cf6dca6b9505243e36192fa107735024c0000cf4594b1daa2dc4e13ee86f26f" -- H=414474
+  --       -- let requiredBlock = "eac5edd4b7d602acae0842b03af3724b76a72bbc608a4bbea2fcf2391f4dacaa" -- H=414477
+  --           merkleR c = ModifierId
+  --                     $ BA.convert
+  --                     $ hash @_ @Blake2b_256
+  --                     $ BS.singleton c
+  --                    <> unModifierId requiredBlock
+  --                    -- <> unModifierId "01caff0fb8e66f459f6a1f8878972145f31ad11533705d6da901803bd8d71efe"
+  --                    <> unModifierId "722f9306300d0d96fe8c10de830216d700131614f9e6ce2496e8dba1cbb45951"
+  --           ty = ModifierBlockTxs
+  --       print requiredBlock
+  --       print $ merkleR 102
+  --       putStrLn "----"
+  --       atomically $ writeTChan inChan $ SockInSendEvent $ MsgOther $ MsgRequestModifier $ RequestModifierMsg ty
+  --         -- [requiredBlock]
+  --         $ V.fromList [merkleR c | c <- [102]]
+  --       -- atomically $ writeTChan inChan $ SockInSendEvent $ MsgOther $ MsgSyncInfo $ SyncInfo [
+  --         -- "efa4abde000dca13fd08220d48f70c3e64b49d91102af9d047fd6f35826352e9"
+  --         -- ]
+  --       pure ()
+  --     SockOutInbound (MsgOther (MsgInv (InvMsg itype is))) -> do
+  --       atomically $ writeTChan inChan $ SockInSendEvent $ MsgOther $ MsgRequestModifier $ RequestModifierMsg itype $ V.singleton $ V.head is
+  --       pure ()
+  --     _ -> pure ()
+  --   case ev of
+  --     SockOutInbound (MsgHandshake h) -> putStrLn "HANDSHAKE" >> print h
+  --     SockOutInbound (MsgOther msg) -> case msg of
+  --       MsgInv      _ -> putStrLn "MsgInv"
+  --       MsgSyncInfo (SyncInfo bids) -> do
+  --         putStrLn "MsgSyncInfo"
+  --         -- mapM_ print bids
+  --       MsgRequestModifier _ -> putStrLn "MsgRequestModifier"
+  --       MsgModifier (ModifierMsg ty m) -> do
+  --         putStrLn "MsgModifier"
+  --         print ty
+  --         let bs = modifierBody $ m ! 0
+  --         print $ BS.take 32 bs
+  --         BS.writeFile "../H_414474" $ BS.drop 32 bs
+  --         putStrLn "================================================================"
+  --         either print putStrLn $ flip runGet bs $ do            
+  --           modId <- ModifierId <$> getBytes 32
+  --           n   <- decodeVarInt @Word32
+  --           txs <- replicateM 2 (getErgo @ErgoTx)
+  --             -- parseLongListOf (getErgo @ErgoTx)
+  --           return $ unlines
+  --             [ show n
+  --             , unlines $ map groom txs
+  --             ]
+  --         -- print $ ModifierId $ BS.drop 32 $ bs
+  --         -- print $ decode @BlockHeader bs
+  --         error "ABORT"
+  --         -- putStrLn "================"
+  --     _ -> print ev
 
 
 ----------------------------------------------------------------
