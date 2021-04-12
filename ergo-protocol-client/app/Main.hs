@@ -57,14 +57,15 @@ data WaitingFor
   | AskedHeader !ModifierId
   | AskedBlock  !BlockHeader !ModifierId
 
-mainLoop outChan inChan = go 
+mainLoop outChan inChan = go
   where
-    handleMsg expecting msg f = case msg of
-      MsgInv             _ -> putStrLn "MsgInv" >> go expecting      
-      MsgSyncInfo        _ -> putStrLn "MsgSyncInfo" >> go expecting
-      MsgRequestModifier _ -> putStrLn "MsgRequestModifier" >> go expecting
-      MsgModifier (ModifierMsg _ [m]) -> f m
-      MsgModifier _ -> putStrLn "MsgModifier (other)" >> go expecting
+    handleMsg expecting f = atomically (readTChan outChan) >>= \case
+      SockOutInbound (MsgOther msg) -> case msg of
+        MsgInv             _ -> putStrLn "MsgInv" >> go expecting
+        MsgSyncInfo        _ -> putStrLn "MsgSyncInfo" >> go expecting
+        MsgRequestModifier _ -> putStrLn "MsgRequestModifier" >> go expecting
+        MsgModifier (ModifierMsg _ [m]) -> f m
+        MsgModifier _ -> putStrLn "MsgModifier (other)" >> go expecting
     --
     go expecting = case expecting of
       OnlyStarted -> do
@@ -72,35 +73,33 @@ mainLoop outChan inChan = go
         send requiredBlock
         go $ AskedHeader requiredBlock
       --
-      AskedHeader modId -> atomically (readTChan outChan) >>= \case
-        SockOutInbound (MsgOther msg) -> handleMsg expecting msg $ \m -> do
-          let blk = decode @BlockHeader $ modifierBody m
-          case blk of
-            Right b | bid <- blockId b
-                    , bid == modId -> do
-                        let mid = ModifierId . BA.convert . hash @_ @Blake2b_256
-                                $ BS.singleton 102
-                               <> unModifierId bid
-                               <> unDigest32 (transactionsRoot b)
-                        printf "H=%6i: bid= %s\n" (height b) (show bid)
-                        send mid
-                        go $ AskedBlock b mid
-            _ -> do putStrLn "MsgModifier (unsettling)"
-                    go expecting              
+      AskedHeader modId -> handleMsg expecting $ \m -> do
+        let blk = decode @BlockHeader $ modifierBody m
+        case blk of
+          Right b | bid <- blockId b
+                  , bid == modId -> do
+                      let mid = ModifierId . BA.convert . hash @_ @Blake2b_256
+                              $ BS.singleton 102
+                             <> unModifierId bid
+                             <> unDigest32 (transactionsRoot b)
+                      printf "H=%6i: bid= %s\n" (height b) (show bid)
+                      send mid
+                      go $ AskedBlock b mid
+          _ -> do putStrLn "MsgModifier (unsettling)"
+                  go expecting
       --
-      AskedBlock blk modId -> atomically (readTChan outChan) >>= \case
-        SockOutInbound (MsgOther msg) -> handleMsg expecting msg $ \m -> case () of
-          _| ModifierId (BS.take 32 bs) == blockId blk -> do
-               -- BS.writeFile (printf "../BLK/H_%06i" (height blk)) $ BS.drop 32 bs
-               let bid = parentId blk
-               send bid
-               printf "Sending bid = %s\n" (show bid)
-               go $ AskedHeader bid
-           | otherwise -> do
-               putStrLn "MsgModifier (worrying)"
-               go $ AskedBlock blk modId 
-           where
-             bs = modifierBody m
+      AskedBlock blk modId -> handleMsg expecting $ \m -> case () of
+        _| ModifierId (BS.take 32 bs) == blockId blk -> do
+             BS.writeFile (printf "../BLK/H_%06i" (height blk)) $ BS.drop 32 bs
+             let bid = parentId blk
+             threadDelay 0.1e6
+             send bid
+             go $ AskedHeader bid
+         | otherwise -> do
+             putStrLn "MsgModifier (worrying)"
+             go $ AskedBlock blk modId
+         where
+           bs = modifierBody m
     --
     send modId = atomically $ writeTChan inChan
                $ SockInSendEvent $ MsgOther $ MsgRequestModifier $ RequestModifierMsg ModifierBlockTxs [modId]
@@ -119,7 +118,7 @@ handshakeLoop outChan inChan = go
         threadDelay 0.5e6
       _ -> go
 
-  
+
 
 main :: IO ()
 main = do
@@ -135,12 +134,12 @@ main = do
   --
   handshakeLoop outChan inChan
   mainLoop outChan inChan OnlyStarted
-  
+
   -- let loop mod = do
   --        >>= \case
   --         SockOutInbound (MsgHandshake h)
   --       case ev of
-        
+
   -- forever $ do
   --   ev <- atomically $ readTChan outChan
   --   case ev of
@@ -187,7 +186,7 @@ main = do
   --         print $ BS.take 32 bs
   --         BS.writeFile "../H_414474" $ BS.drop 32 bs
   --         putStrLn "================================================================"
-  --         either print putStrLn $ flip runGet bs $ do            
+  --         either print putStrLn $ flip runGet bs $ do
   --           modId <- ModifierId <$> getBytes 32
   --           n   <- decodeVarInt @Word32
   --           txs <- replicateM 2 (getErgo @ErgoTx)
@@ -345,7 +344,7 @@ parseValueW lvl = do
           pure r
       | otherwise              -> parseAST lvl
 
-parseAST :: Int -> Get Expr 
+parseAST :: Int -> Get Expr
 parseAST lvl = do
   op <- get
   traceM $ lvlStr lvl ++ "parseAST " ++ show op
