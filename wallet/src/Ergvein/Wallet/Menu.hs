@@ -93,12 +93,10 @@ visibilityClass classes True = classes <> " hidden"
 visibilityClass classes False = classes
 
 headerWidgetOnlyBackBtn :: MonadFrontBase t m => m ()
-headerWidgetOnlyBackBtn = divClass "header" $ do
-  backButtonRetract
+headerWidgetOnlyBackBtn = divClass "header" backButtonRetract
 
 headerWidgetOnlyLogoutBtn :: MonadFrontBase t m => m ()
-headerWidgetOnlyLogoutBtn = divClass "header" $ do
-  backButtonLogout
+headerWidgetOnlyLogoutBtn = divClass "header" backButtonLogout
 
 menuButtonsDesktop :: MonadFront t m => Maybe (Dynamic t (m ())) -> Maybe Currency -> m ()
 menuButtonsDesktop thisWidget mCur = do
