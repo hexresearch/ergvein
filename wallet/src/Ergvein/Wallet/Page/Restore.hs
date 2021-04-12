@@ -43,7 +43,7 @@ blockScanningProgressBounds = (5, 100)
 restorePage :: forall t m . MonadFront t m =>  m ()
 restorePage = wrapperSimpleLogout True $ do
   restoreStatusWidget BTC
-  restoreStatusDebugWidget BTC
+  -- restoreStatusDebugWidget BTC
   void $ workflow nodeConnection
   where
 
