@@ -131,12 +131,18 @@ mainLoop
 mainLoop conn outChan inChan = goback
   where
     handleMsg expecting f = atomically (readTChan outChan) >>= \case
+      SockOutInbound (MsgHandshake _) -> putStrLn "Unexpected handshake"
       SockOutInbound (MsgOther msg) -> case msg of
         MsgInv             _ -> putStrLn "MsgInv" >> go expecting
         MsgSyncInfo        _ -> putStrLn "MsgSyncInfo" >> go expecting
         MsgRequestModifier _ -> putStrLn "MsgRequestModifier" >> go expecting
         MsgModifier (ModifierMsg _ [m]) -> f m
         MsgModifier _ -> putStrLn "MsgModifier (other)" >> go expecting
+      SockOutClosed _ -> putStrLn "SOCKET CLOSED"
+      SockOutStatus _ -> putStrLn "SockOutStatus" >> go expecting
+      SockOutRecvEr _ -> putStrLn "SockOutRecvEr" >> go expecting
+      SockOutTries  _ -> putStrLn "SockOutTries"  >> go expecting
+
     --
     goback = go OnlyStarted
     go expecting = case expecting of
