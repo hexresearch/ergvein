@@ -3,6 +3,9 @@ module Sepulcas.Native
   ( PlatformNatives(..)
   , HasStoreDir(..)
   , NativeAlerts(..)
+  , Platform(..)
+  , isDesktop
+  , isAndroid
   ) where
 
 import Control.Monad.IO.Class
@@ -12,6 +15,7 @@ import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Data.Time.LocalTime (TimeZone)
 import Data.X509.CertificateStore (CertificateStore)
+import GHC.Generics (Generic)
 
 class HasStoreDir m where
   getStoreDir :: m Text
@@ -29,7 +33,19 @@ data NativeAlerts
 
 type AtomicMode = Bool
 
+-- | Platform the wallet is compiled for.
+data Platform = DesktopLinux | Android
+  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic)
+
+-- | Helpers to test current platform
+isDesktop, isAndroid :: PlatformNatives => Bool
+isDesktop = currentPlatform == DesktopLinux
+isAndroid = currentPlatform == Android
+
 class PlatformNatives where
+  -- | Get current platform of wallet
+  currentPlatform :: Platform
+
   -- | Get where application can store it files
   getHomeDir :: MonadIO m => m Text
 
