@@ -46,7 +46,7 @@ indexerNodeController initAddrs = mdo
         conn <- initIndexerConnection u (namedAddrSock addr) reqE
         modifyExternalRef connRef $ \cm -> (M.insert u conn cm, ())
         indexerStatusUpdater conn
-        -- Everything below thsi line is handling the closure of a connection
+        -- Everything below this line is handling the closure of a connection
         -- the event the socket fires when it wants to be closed
         let closedE' = indexConClosedE conn
         failedToConnectE <- connectionWidget conn
