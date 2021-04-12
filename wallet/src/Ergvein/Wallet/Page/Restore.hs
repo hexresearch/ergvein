@@ -53,10 +53,9 @@ restorePage = wrapperSimpleLogout True $ do
     -- | Stage 1: connect to BTC nodes
     nodeConnection = Workflow $ do
       buildE <- getPostBuild
-      let status = WalletStatusRestore {
-              walletStatusRestore'stage = RestoreStage'connectingToBtcNodes
-            , walletStatusRestore'progress = Nothing
-          }
+      let status = def
+            & walletStatusRestore'stage .~ RestoreStage'connectingToBtcNodes
+            & walletStatusRestore'progress .~ Nothing
       void $ updateWalletStatusRestore BTC $ (const status) <$ buildE
       conmapD <- getNodesByCurrencyD BTC
       let upsD = fmap or $ join $ ffor conmapD $ \cm -> sequence $ ffor (M.elems cm) $ \case
@@ -120,10 +119,9 @@ restorePage = wrapperSimpleLogout True $ do
       -> Workflow t m ()
     scanBatchKeys startHeight (curHeight, nextHeight) batch keys = Workflow $ mdo
       buildE <- getPostBuild
-      let status from to curr = WalletStatusRestore {
-              walletStatusRestore'stage = RestoreStage'scanning
-            , walletStatusRestore'progress = Just $ mapPercentage blockScanningProgressBounds $ calcPercentage from to curr
-          }
+      let status from to curr = def
+            & walletStatusRestore'stage .~ RestoreStage'scanning
+            & walletStatusRestore'progress .~ Just (mapPercentage blockScanningProgressBounds $ calcPercentage from to curr)
       void $ updateWalletStatusRestore BTC $ (const $ status startHeight fullHeight curHeight) <$ buildE
       (_, cb) <- newTriggerEvent
       fullHeight <- sampleDyn . fmap fromIntegral =<< getCurrentHeight BTC

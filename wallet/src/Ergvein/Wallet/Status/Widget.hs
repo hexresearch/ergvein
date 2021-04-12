@@ -32,10 +32,10 @@ statusBarWidget isVerbose cur = divClass "sync-widget-wrapper" $ do
   statD <- getWalletStatus cur
   balD <- balanceRatedOnlyWidget cur
   void $ networkHoldDyn $ ffor balD $ \case
-    Nothing -> void $ networkHoldDyn $ (renderStatus . walletStatus'normal) <$> statD
+    Nothing -> void $ networkHoldDyn $ (renderStatus . _walletStatus'normal) <$> statD
     Just bal -> mdo
       let updE = updated statD
-      let renderE = leftmost [(Just . walletStatus'normal) <$> updE, Nothing <$ tE]
+      let renderE = leftmost [(Just . _walletStatus'normal) <$> updE, Nothing <$ tE]
       tE <- networkHoldE (balWidget cur bal) $ ffor renderE $ \case
         Nothing -> balWidget cur bal
         Just sp -> do
@@ -69,8 +69,8 @@ balWidget cur bal = do
 restoreStatusWidget :: MonadFront t m => Currency -> m ()
 restoreStatusWidget cur = do
   statD <- getWalletStatus cur
-  let restoreStageD = walletStatusRestore'stage . walletStatus'restore <$> statD
-      restoreProgressD = walletStatusRestore'progress . walletStatus'restore <$> statD
+  let restoreStageD = _walletStatusRestore'stage . _walletStatus'restore <$> statD
+      restoreProgressD = _walletStatusRestore'progress . _walletStatus'restore <$> statD
   h3 $ localizedText RPSInProgress
   par $ localizedDynText restoreStageD
   h3 $ localizedDynText $ showPercents <$> restoreProgressD

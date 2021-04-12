@@ -79,10 +79,9 @@ btcCatchUpFlow startHeight (ts, bl) = Workflow $ do
   storedE <- attachNewBtcHeader "btcCatchUpFlow" False $ (h0, ts, lasthash) <$ buildE
   void $ updateWalletStatusNormal BTC $ (const $ WalletStatusNormal'gettingHeight $ fromIntegral h0) <$ storedE
   fullHeigtD <- getStartHeightBTC
-  let restoreStatus progress = WalletStatusRestore {
-          walletStatusRestore'stage = RestoreStage'askingHeight
-        , walletStatusRestore'progress = progress
-      }
+  let restoreStatus progress = def
+        & walletStatusRestore'stage .~ RestoreStage'askingHeight
+        & walletStatusRestore'progress .~ progress
       mFullHeightE = tagPromptlyDyn fullHeigtD buildE
       makeRestoreStatus :: Maybe Word32 -> (WalletStatusRestore -> WalletStatusRestore)
       makeRestoreStatus mFullHeight = maybe (const $ restoreStatus Nothing) (\fullHeight -> const $ restoreStatus $ Just $ mapPercentage heightAskingProgressBounds (calcPercentage startHeight (fromIntegral fullHeight) (fromIntegral h0))) mFullHeight

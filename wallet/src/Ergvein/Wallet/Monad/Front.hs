@@ -198,18 +198,14 @@ getWalletStatus cur = do
 updateWalletStatusNormal :: MonadFrontAuth t m => Currency -> Event t (WalletStatusNormal -> WalletStatusNormal) -> m (Event t ())
 updateWalletStatusNormal cur updateE = do
   walletStatusRef <- getWalletStatusRef
-  performEvent $ ffor updateE $ \f -> do
-    modifyExternalRef_ walletStatusRef $ M.insertWith (\_ old -> updateStatus f old) cur (updateStatus f emptyWalletStatus)
-  where
-    updateStatus g s@WalletStatus{..} = s {walletStatus'normal = g walletStatus'normal}
+  performEvent $ ffor updateE $ \f ->
+    modifyExternalRef_ walletStatusRef $ M.insertWith (\_ -> walletStatus'normal %~ f) cur (emptyWalletStatus & walletStatus'normal %~ f)
 
 updateWalletStatusRestore :: MonadFrontAuth t m => Currency -> Event t (WalletStatusRestore -> WalletStatusRestore) -> m (Event t ())
 updateWalletStatusRestore cur updateE = do
   walletStatusRef <- getWalletStatusRef
-  performEvent $ ffor updateE $ \f -> do
-    modifyExternalRef_ walletStatusRef $ M.insertWith (\_ old -> updateStatus f old) cur (updateStatus f emptyWalletStatus)
-  where
-    updateStatus g s@WalletStatus{..} = s {walletStatus'restore = g walletStatus'restore}
+  performEvent $ ffor updateE $ \f ->
+    modifyExternalRef_ walletStatusRef $ M.insertWith (\_ -> walletStatus'restore %~ f) cur (emptyWalletStatus & walletStatus'restore %~ f)
 
 -- | Get auth info. Not a Maybe since this is authorized context
 getAuthInfo :: MonadFrontAuth t m => m (Dynamic t AuthInfo)

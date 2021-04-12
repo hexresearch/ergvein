@@ -9,9 +9,16 @@ module Ergvein.Wallet.Status.Types(
     -- SyncBehind(..)
   , CurrencyStatus(..)
   , nominalToBehind
+  -- * Lens
+  , walletStatus'normal
+  , walletStatus'restore
+  , walletStatusRestore'stage
+  , walletStatusRestore'progress
   ) where
 
+import Data.Default
 import Data.Time
+import Ergvein.Lens
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
@@ -55,9 +62,12 @@ nominalToBehind t
   | otherwise = SyncDays $ ceiling $ t / (24 * 3600)
 
 data WalletStatus = WalletStatus {
-    walletStatus'normal :: WalletStatusNormal
-  , walletStatus'restore :: WalletStatusRestore
+    _walletStatus'normal :: WalletStatusNormal
+  , _walletStatus'restore :: WalletStatusRestore
 } deriving (Show, Eq)
+
+instance Default WalletStatus where
+  def = emptyWalletStatus
 
 data WalletStatusNormal =
     WalletStatusNormal'gettingNodeAddresses
@@ -114,18 +124,24 @@ instance LocalizedPrint RestoreStage where
       RestoreStage'empty                -> "Загрузка..."
 
 data WalletStatusRestore = WalletStatusRestore {
-    walletStatusRestore'stage :: RestoreStage
-  , walletStatusRestore'progress :: Maybe Double
+    _walletStatusRestore'stage :: RestoreStage
+  , _walletStatusRestore'progress :: Maybe Double
 } deriving (Show, Eq)
+
+instance Default WalletStatusRestore where
+  def = emptyRestoreStatus
 
 emptyRestoreStatus :: WalletStatusRestore
 emptyRestoreStatus = WalletStatusRestore {
-      walletStatusRestore'stage = RestoreStage'empty
-    , walletStatusRestore'progress = Nothing
+      _walletStatusRestore'stage = RestoreStage'empty
+    , _walletStatusRestore'progress = Nothing
   }
 
 emptyWalletStatus :: WalletStatus
 emptyWalletStatus = WalletStatus {
-      walletStatus'normal = WalletStatusNormal'empty
-    , walletStatus'restore = emptyRestoreStatus
+      _walletStatus'normal = WalletStatusNormal'empty
+    , _walletStatus'restore = emptyRestoreStatus
   }
+
+makeLenses ''WalletStatus
+makeLenses ''WalletStatusRestore
