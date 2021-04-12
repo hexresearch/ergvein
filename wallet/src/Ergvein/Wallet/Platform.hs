@@ -16,7 +16,7 @@ import Ergvein.Types.Currency
 import GHC.Generics (Generic)
 import Network.Haskoin.Block as HB
 import Network.Haskoin.Constants
-import Sepulcas.Platform
+import Sepulcas.Native
 
 import qualified Ergvein.Types.Transaction as ETT
 import qualified Data.Vector as V

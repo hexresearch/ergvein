@@ -2,13 +2,13 @@ module Ergvein.Wallet.Monad.Front(
     MonadFront
   , MonadFrontBase(..)
   , MonadFrontAuth(..)
-  , AuthInfo(..)
+  , WalletInfo(..)
   , Password
   , NodeReqSelector
   -- * Helpers
   , extractReq
   , getActiveCursD
-  , getAuthInfo
+  , getWalletInfo
   , getCurrentHeight
   , getFeesD
   , getFiltersSync
@@ -67,7 +67,7 @@ import Reflex.ExternalRef
 import Ergvein.Index.Protocol.Types (Message(..))
 import Ergvein.Node.Constants
 import Ergvein.Text
-import Ergvein.Types.AuthInfo
+import Ergvein.Types.WalletInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
 import Ergvein.Types.Storage
@@ -118,7 +118,7 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   -- | Get node request trigger
   getNodeReqFire :: m (Map Currency (Map SockAddr NodeMessage) -> IO ())
   -- | Get authed info
-  getAuthInfoRef :: m (ExternalRef t AuthInfo)
+  getWalletInfoRef :: m (ExternalRef t WalletInfo)
   -- | Get rates (e.g. BTC/USDT) ref
   getRatesRef :: m (ExternalRef t (Map Currency (Map Fiat Centi)))
 
@@ -129,7 +129,7 @@ getNodeConnectionsD = externalRefDynamic =<< getNodeConnRef
 
 -- | Get the login. Convenience function
 getLoginD :: MonadFrontAuth t m => m (Dynamic t Text)
-getLoginD = (fmap . fmap) _authInfo'login . externalRefDynamic =<< getAuthInfoRef
+getLoginD = (fmap . fmap) _walletInfo'login . externalRefDynamic =<< getWalletInfoRef
 {-# INLINE getLoginD #-}
 
 -- | Get nodes by currency. Basically useless, but who knows
@@ -202,8 +202,8 @@ publishStatusUpdate spE = do
 {-# INLINE publishStatusUpdate #-}
 
 -- | Get auth info. Not a Maybe since this is authorized context
-getAuthInfo :: MonadFrontAuth t m => m (Dynamic t AuthInfo)
-getAuthInfo = externalRefDynamic =<< getAuthInfoRef
+getWalletInfo :: MonadFrontAuth t m => m (Dynamic t WalletInfo)
+getWalletInfo = externalRefDynamic =<< getWalletInfoRef
 
 -- | Get activeCursRef Internal
 getActiveCursD :: MonadFrontAuth t m => m (Dynamic t (S.Set Currency))

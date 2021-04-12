@@ -24,7 +24,7 @@ import qualified Data.Text.IO as T
 import qualified Turtle
 
 instance PlatformNatives where
-  currentPlatform = Desktop
+  currentPlatform = DesktopLinux
 
   getHomeDir = liftIO $ T.pack <$> getHomeDirectory
 

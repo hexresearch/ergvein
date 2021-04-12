@@ -47,7 +47,7 @@ import Data.Text.Encoding
 import Ergvein.Crypto
 import Ergvein.Text
 import Ergvein.Types.Address
-import Ergvein.Types.AuthInfo
+import Ergvein.Types.WalletInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Derive
 import Ergvein.Types.Keys
@@ -360,9 +360,9 @@ setLastStorage mname = do
   storeValue lastWalletFile mname False
 
 -- | Generates new private keys until their number is equal to the number of public keys.
-generateMissingPrvKeys :: MonadIO m => (AuthInfo, Password) -> m (Either StorageAlert AuthInfo)
-generateMissingPrvKeys (authInfo, pass) = do
-  let encryptedPrvStorage = view (authInfo'storage . storage'encryptedPrvStorage) authInfo
+generateMissingPrvKeys :: MonadIO m => (WalletInfo, Password) -> m (Either StorageAlert WalletInfo)
+generateMissingPrvKeys (walletInfo, pass) = do
+  let encryptedPrvStorage = view (walletInfo'storage . storage'encryptedPrvStorage) walletInfo
   case decryptPrvStorage encryptedPrvStorage pass of
     Left err -> pure $ Left err
     Right decryptedPrvStorage -> do
@@ -370,10 +370,10 @@ generateMissingPrvKeys (authInfo, pass) = do
       encryptPrvStorageResult <- encryptPrvStorage updatedPrvStorage pass
       case encryptPrvStorageResult of
         Left err -> pure $ Left err
-        Right encryptedUpdatedPrvStorage -> pure $ Right $ set (authInfo'storage . storage'encryptedPrvStorage) encryptedUpdatedPrvStorage authInfo
+        Right encryptedUpdatedPrvStorage -> pure $ Right $ set (walletInfo'storage . storage'encryptedPrvStorage) encryptedUpdatedPrvStorage walletInfo
       where
         currencyPrvStorages = view prvStorage'currencyPrvStorages decryptedPrvStorage
-        currencyPubStorages = view (authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages) authInfo
+        currencyPubStorages = view (walletInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages) walletInfo
         pubKeysNumber = M.map (\currencyPubStorage -> (
             V.length $ pubKeystore'external (view currencyPubStorage'pubKeystore currencyPubStorage),
             V.length $ pubKeystore'internal (view currencyPubStorage'pubKeystore currencyPubStorage)

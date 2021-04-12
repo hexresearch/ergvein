@@ -1,6 +1,6 @@
-module Ergvein.Wallet.Storage.AuthInfo (
-    initAuthInfo
-  , loadAuthInfo
+module Ergvein.Wallet.Storage.WalletInfo (
+    initWalletInfo
+  , loadWalletInfo
   ) where
 
 import Control.Monad.Except
@@ -12,7 +12,7 @@ import Ergvein.Types.Restore
 import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.AuthInfo
+import Ergvein.Wallet.Localization.WalletInfo
 import Ergvein.Wallet.Monad
 import Sepulcas.Native
 import Ergvein.Wallet.Platform
@@ -20,7 +20,7 @@ import Ergvein.Wallet.Storage.Util
 
 import qualified Data.Text as T
 
-initAuthInfo :: (MonadIO m, PlatformNatives, HasStoreDir m)
+initWalletInfo :: (MonadIO m, PlatformNatives, HasStoreDir m)
   => WalletSource
   -> Maybe DerivPrefix
   -> Mnemonic
@@ -29,8 +29,8 @@ initAuthInfo :: (MonadIO m, PlatformNatives, HasStoreDir m)
   -> Password
   -> BlockHeight
   -> Bool
-  -> m (Either AuthInfoAlert AuthInfo)
-initAuthInfo wt mpath mnemonic curs login pass startingHeight isPass = do
+  -> m (Either WalletInfoAlert WalletInfo)
+initWalletInfo wt mpath mnemonic curs login pass startingHeight isPass = do
   let fname = "meta_wallet_" <> (T.replace " " "_" login)
   when (isAndroid && isPass) $ storeValue fname True True
   mstorage <- createStorage (wt == WalletRestored) mpath mnemonic (login, pass) startingHeight curs
@@ -40,31 +40,31 @@ initAuthInfo wt mpath mnemonic curs login pass startingHeight isPass = do
       pure $ Left $ CreateStorageAlert err
     Right s -> case passwordToECIESPrvKey pass of
       Left _ -> pure $ Left GenerateECIESKeyAlert
-      Right k -> pure $ Right AuthInfo {
-          _authInfo'storage = s
-        , _authInfo'eciesPubKey = toPublic k
-        , _authInfo'login = login
-        , _authInfo'isUpdate = False
-        , _authInfo'isPlain = pass == ""
+      Right k -> pure $ Right WalletInfo {
+          _walletInfo'storage = s
+        , _walletInfo'eciesPubKey = toPublic k
+        , _walletInfo'login = login
+        , _walletInfo'isUpdate = False
+        , _walletInfo'isPlain = pass == ""
         }
 
-loadAuthInfo :: (MonadIO m, HasStoreDir m, PlatformNatives)
+loadWalletInfo :: (MonadIO m, HasStoreDir m, PlatformNatives)
   => WalletName
   -> Password
-  -> m (Either AuthInfoAlert (AuthInfo, Password))
-loadAuthInfo login pass = do
+  -> m (Either WalletInfoAlert (WalletInfo, Password))
+loadWalletInfo login pass = do
   mstorage <- loadStorageFromFile login pass
   case mstorage of
     Left err -> pure $ Left $ LoadStorageAlert err
     Right s -> case passwordToECIESPrvKey pass of
       Left _ -> pure $ Left GenerateECIESKeyAlert
       Right k -> pure $ Right (
-          AuthInfo {
-            _authInfo'storage = s
-          , _authInfo'eciesPubKey = toPublic k
-          , _authInfo'login = login
-          , _authInfo'isUpdate = False
-          , _authInfo'isPlain = pass == ""
+          WalletInfo {
+            _walletInfo'storage = s
+          , _walletInfo'eciesPubKey = toPublic k
+          , _walletInfo'login = login
+          , _walletInfo'isUpdate = False
+          , _walletInfo'isPlain = pass == ""
           }
         , pass
         )

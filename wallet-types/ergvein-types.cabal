@@ -17,7 +17,7 @@ library
   exposed-modules:
     Ergvein.Types
     Ergvein.Types.Address
-    Ergvein.Types.AuthInfo
+    Ergvein.Types.WalletInfo
     Ergvein.Types.Currency
     Ergvein.Types.Derive
     Ergvein.Types.Fees

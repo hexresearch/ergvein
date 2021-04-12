@@ -14,12 +14,11 @@ import Data.Time (getCurrentTime, diffUTCTime, NominalDiffTime)
 import System.Directory
 
 import Ergvein.Text
-import Ergvein.Types.AuthInfo
+import Ergvein.Types.WalletInfo
 import Reflex.Fork
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
 import Sepulcas.Native
-import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Scan
 import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Worker.Fees
@@ -59,7 +58,7 @@ storeTimeBetweenWrites :: NominalDiffTime
 storeTimeBetweenWrites = 20
 
 -- | Thread that writes down updates of wallet storages and checks that write down doesn't occur too frequent.
-walletStoreThread :: PlatformNatives => Text -> MVar () -> TChan (Text, AuthInfo) -> IO ()
+walletStoreThread :: PlatformNatives => Text -> MVar () -> TChan (Text, WalletInfo) -> IO ()
 walletStoreThread storeDir mutex updChan = void $ forkOnOther $ do
   timeRef <- newTVarIO =<< getCurrentTime
   lastUpdTimeRef <- newTVarIO =<< getCurrentTime
@@ -95,12 +94,12 @@ walletStoreThread storeDir mutex updChan = void $ forkOnOther $ do
             pure val
   -- Thread that indefinetely queries if we need to write down new state
   fix $ \next -> do
-    (caller, authInfo) <- atomically getTimedWrite
-    storeWalletIO caller storeDir mutex authInfo
+    (caller, walletInfo) <- atomically getTimedWrite
+    storeWalletIO caller storeDir mutex walletInfo
     next
 
-storeWalletIO :: PlatformNatives => Text -> Text -> MVar () -> AuthInfo -> IO ()
+storeWalletIO :: PlatformNatives => Text -> Text -> MVar () -> WalletInfo -> IO ()
 storeWalletIO caller storeDir mutex ai = do
-  let storage = _authInfo'storage ai
-  let eciesPubKey = _authInfo'eciesPubKey ai
+  let storage = _walletInfo'storage ai
+  let eciesPubKey = _walletInfo'eciesPubKey ai
   withMVar mutex $ const $ flip runReaderT storeDir $ saveStorageToFile caller eciesPubKey storage

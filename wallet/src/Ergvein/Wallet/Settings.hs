@@ -33,9 +33,10 @@ import Data.Maybe
 import Data.Text(Text, pack, unpack)
 import Data.Time (NominalDiffTime)
 import Data.Yaml (encodeFile)
-import Network.Socket (HostName, PortNumber)
-import System.Directory
 import Network.DNS.Types
+import Network.Socket (HostName, PortNumber)
+import Sepulcas.Native
+import System.Directory
 
 import Ergvein.Aeson
 import Ergvein.Lens
@@ -194,7 +195,7 @@ makeLensesWith humbleFields ''Settings
 $(deriveJSON defaultOptions ''PortNumber)
 $(deriveJSON defaultOptions ''SockAddr)
 
-instance FromJSON Settings where
+instance PlatformNatives => FromJSON Settings where
   parseJSON = withObject "Settings" $ \o -> do
     settingsLang              <- o .:  "lang"
     settingsStoreDir          <- o .:  "storeDir"
@@ -253,10 +254,10 @@ defaultIndexerTimeout = 20
 defaultActUrlNum :: Int
 defaultActUrlNum = 10
 
-defaultDns :: S.Set HostName
+defaultDns :: PlatformNatives => S.Set HostName
 defaultDns = S.fromList $ defDns isAndroid
 
-defaultSettings :: FilePath -> Settings
+defaultSettings :: PlatformNatives => FilePath -> Settings
 defaultSettings home =
   let storePath   = home <> "/store"
       configPath  = home <> "/config.yaml"
@@ -303,7 +304,7 @@ loadSettings = const $ liftIO $ do
       pure cfg
 
 #else
-mkDefSettings :: MonadIO m => m Settings
+mkDefSettings :: (MonadIO m, PlatformNatives) => m Settings
 mkDefSettings = liftIO $ do
   home <- getHomeDirectory
   putStrLn   "[ WARNING ]: Failed to load config. Reverting to default values: "
@@ -312,7 +313,7 @@ mkDefSettings = liftIO $ do
   putStrLn $ "Language   : English"
   pure $ defaultSettings (home <> "/.ergvein")
 
-loadSettings :: MonadIO m => Maybe FilePath -> m Settings
+loadSettings :: (MonadIO m, PlatformNatives) => Maybe FilePath -> m Settings
 loadSettings mpath = liftIO $ case mpath of
   Nothing -> do
     home <- getHomeDirectory

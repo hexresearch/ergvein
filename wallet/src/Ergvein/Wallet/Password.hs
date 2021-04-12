@@ -27,7 +27,6 @@ import Sepulcas.Elements
 import Sepulcas.Elements.Input
 import Sepulcas.Monad
 import Sepulcas.Native
-import Sepulcas.Platform
 import Sepulcas.Text
 import Sepulcas.Validate
 

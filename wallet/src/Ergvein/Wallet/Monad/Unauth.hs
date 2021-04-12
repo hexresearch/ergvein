@@ -37,7 +37,7 @@ import qualified Data.Set as S
 data UnauthEnv t = UnauthEnv {
   unauth'settings        :: !(ExternalRef t Settings)
 , unauth'sepulca         :: !(Sepulca t)
-, unauth'authRef         :: !(ExternalRef t (Maybe AuthInfo))
+, unauth'authRef         :: !(ExternalRef t (Maybe WalletInfo))
 -- Client context
 , unauth'addrsArchive    :: !(ExternalRef t (S.Set ErgveinNodeAddr))
 , unauth'inactiveAddrs   :: !(ExternalRef t (S.Set ErgveinNodeAddr))
@@ -59,15 +59,15 @@ instance Monad m => HasSepulca t (UnauthM t m) where
   {-# INLINE getSepulca #-}
 
 instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives, HasVersion) => MonadFrontBase t (UnauthM t m) where
-  getAuthInfoMaybeRef = asks unauth'authRef
-  {-# INLINE getAuthInfoMaybeRef #-}
-  setAuthInfo e = do
+  getWalletInfoMaybeRef = asks unauth'authRef
+  {-# INLINE getWalletInfoMaybeRef #-}
+  setWalletInfo e = do
     authRef <- asks unauth'authRef
     performEvent $ ffor e $ \v -> do
-      logWrite "unauthed setAuthInfo: setting info"
-      setLastStorage $ _storage'walletName . _authInfo'storage <$> v
+      logWrite "unauthed setWalletInfo: setting info"
+      setLastStorage $ _storage'walletName . _walletInfo'storage <$> v
       writeExternalRef authRef v
-  {-# INLINE setAuthInfo #-}
+  {-# INLINE setWalletInfo #-}
 
 instance MonadBaseConstr t m => MonadHasSettings t (UnauthM t m) where
   getSettingsRef = asks unauth'settings

@@ -15,14 +15,14 @@ import Reflex.ExternalRef
 
 import Ergvein.Crypto
 import Ergvein.Text
-import Ergvein.Types.AuthInfo
+import Ergvein.Types.WalletInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
 import Sepulcas.Alert
 import Sepulcas.Elements
 import Sepulcas.Elements.Toggle
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.AuthInfo
+import Ergvein.Wallet.Localization.WalletInfo
 import Ergvein.Wallet.Localization.Currency
 import Ergvein.Wallet.Localization.Network
 import Ergvein.Wallet.Localization.Settings
@@ -99,23 +99,23 @@ settingsPage = do
 passwordChangePage :: MonadFront t m => m ()
 passwordChangePage = do
   passE <- changePasswordWidget
-  authInfoD <- getAuthInfo
+  walletInfoD <- getWalletInfo
   eaibE <- withWallet $ ffor passE $ \(pass, b) prv -> do
-    ai <- sampleDyn authInfoD
+    ai <- sampleDyn walletInfoD
     encryptPrvStorageResult <- encryptPrvStorage prv pass
     case encryptPrvStorageResult of
       Left err -> pure $ Left $ CreateStorageAlert err
       Right prve -> case passwordToECIESPrvKey pass of
         Left _ -> pure $ Left GenerateECIESKeyAlert
         Right k -> pure $ Right $ (,b) $ ai
-          & authInfo'storage . storage'encryptedPrvStorage .~ prve
-          & authInfo'eciesPubKey .~ toPublic k
-          & authInfo'isPlain .~ (pass == "")
+          & walletInfo'storage . storage'encryptedPrvStorage .~ prve
+          & walletInfo'eciesPubKey .~ toPublic k
+          & walletInfo'isPlain .~ (pass == "")
   aibE <- handleDangerMsg eaibE
   when isAndroid $ performEvent_ $ ffor aibE $ \(ai,b) -> do
-    let fpath = "meta_wallet_" <> T.replace " " "_" (_authInfo'login ai)
+    let fpath = "meta_wallet_" <> T.replace " " "_" (_walletInfo'login ai)
     storeValue fpath b True
-  doneE <- storeWallet "passwordChangePage" =<< setAuthInfo (fmap (Just . fst) aibE)
+  doneE <- storeWallet "passwordChangePage" =<< setWalletInfo (fmap (Just . fst) aibE)
   void $ nextWidget $ ffor doneE $ const $ Retractable{
       retractableNext = settingsPage
     , retractablePrev = Nothing
@@ -179,21 +179,21 @@ currenciesPage = do
     divClass "initial-options" $ mdo
       activeCursD <- getActiveCursD
       ps <- getPubStorage
-      authD <- getAuthInfo
+      authD <- getWalletInfo
       currListE <- fmap switchDyn $ networkHoldDyn $ ffor activeCursD $ \currs ->
         selectCurrenciesWidget $ S.toList currs
       void $ uac currListE
       updateAE <- withWallet $ ffor currListE $ \curs prvStr -> do
           auth <- sample . current $ authD
-          let authNew = auth & authInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
+          let authNew = auth & walletInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
               difC = curs \\ (_pubStorage'activeCurrencies ps)
-              mpath = auth ^. authInfo'storage . storage'pubStorage . pubStorage'pathPrefix
+              mpath = auth ^. walletInfo'storage . storage'pubStorage . pubStorage'pathPrefix
               mL = Map.fromList [(currency, mkStore mpath prvStr currency) | currency <- difC ]
-              authN2 = authNew & authInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages %~ (Map.union mL)
+              authN2 = authNew & walletInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages %~ (Map.union mL)
           pure $ Just $ authN2
-      setAuthInfoE <- setAuthInfo updateAE
+      setWalletInfoE <- setWalletInfo updateAE
       void $ storeWallet "currenciesPage" (void $ updated authD)
-      showSuccessMsg $ STPSSuccess <$ setAuthInfoE
+      showSuccessMsg $ STPSSuccess <$ setWalletInfoE
       pure ()
   where
     uac cE =  updateActiveCurs $ fmap (\cl -> const (S.fromList cl)) $ cE
@@ -371,14 +371,14 @@ deleteWalletPage = do
     stageFour = Workflow $ do
       h4 $ localizedText DWSFinStage
       delE <- buttonsRow DWSBtnYes
-      login <- fmap _authInfo'login . readExternalRef =<< getAuthInfoRef
+      login <- fmap _walletInfo'login . readExternalRef =<< getWalletInfoRef
       let walletName = "wallet_" <> T.replace " " "_" login
           backupName = "backup_" <> walletName
       doneE <- performEvent $ ffor delE $ const $ do
         deleteStoredFile walletName
         deleteStoredFile backupName
         deleteStoredFile ".last-wallet"
-      void $ setAuthInfo $ Nothing <$ doneE
+      void $ setWalletInfo $ Nothing <$ doneE
       pure ((), never)
 
 rbfPage :: MonadFront t m => m ()

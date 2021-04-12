@@ -47,7 +47,7 @@ import Network.Haskoin.Block (Timestamp)
 import Reflex
 
 import Ergvein.Crypto
-import Ergvein.Types.AuthInfo
+import Ergvein.Types.WalletInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
@@ -77,7 +77,7 @@ class (MonadHold t m, Reflex t, HasStoreDir m) => MonadStorage t m | m -> t wher
   -- | Get mutex that guards writing or reading from storage file
   getStoreMutex          :: m (MVar ())
   -- | Channel that writes down given storage to disk in separate thread. First element in tuple is tracing info (caller).
-  getStoreChan           :: m (TChan (Text, AuthInfo))
+  getStoreChan           :: m (TChan (Text, WalletInfo))
 
 class MonadIO m => HasPubStorage m where
   askPubStorage :: m PubStorage

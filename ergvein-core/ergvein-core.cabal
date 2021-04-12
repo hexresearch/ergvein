@@ -48,6 +48,8 @@ library
     Ergvein.Core.Settings.Types
     Ergvein.Core.Store
     Ergvein.Core.Store.Monad
+    Ergvein.Core.Wallet
+    Ergvein.Core.Wallet.Monad
     Ergvein.Core.Yaml
   build-depends:
       base                      >= 4.5      && < 4.15

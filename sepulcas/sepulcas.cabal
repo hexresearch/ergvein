@@ -44,7 +44,6 @@ library
       Sepulcas.Monad.Reflex
       Sepulcas.Monad.UI
       Sepulcas.OpenUrl
-      Sepulcas.Platform
       Sepulcas.Resize
       Sepulcas.Share
       Sepulcas.Style
