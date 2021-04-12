@@ -39,6 +39,8 @@ library
   hs-source-dirs:      src
   exposed-modules:
     Ergvein.Core
+    Ergvein.Core.Client
+    Ergvein.Core.Client.Monad
     Ergvein.Core.IP
     Ergvein.Core.Platform
     Ergvein.Core.Settings
@@ -64,6 +66,7 @@ library
     , haskoin-core              >= 0.12.0   && < 0.12.1
     , iproute
     , lens
+    , MonadRandom
     , mtl
     , network
     , reflex                    >= 0.4      && < 0.9
@@ -77,6 +80,7 @@ library
     , stm
     , text
     , time
+    , unliftio-core
     , vector
     , yaml
   default-language:    Haskell2010
