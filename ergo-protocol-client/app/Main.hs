@@ -29,6 +29,7 @@ import Data.Int
 import Options.Generic
 import Data.Vector.Generic ((!))
 import qualified Data.Vector as V
+import qualified Database.SQLite.Simple as SQL
 import Text.Groom
 import Text.Printf
 
@@ -52,12 +53,82 @@ getNodeAddress Options{..} = fromMaybe "127.0.0.1" $ unHelpful nodeAddress
 getNodePort :: Options -> Int
 getNodePort Options{..} = fromMaybe (if unHelpful testnet then 19030 else 9030) $ unHelpful nodePort
 
+----------------------------------------------------------------
+-- Database
+----------------------------------------------------------------
+
+initDB :: SQL.Connection -> IO ()
+initDB c = SQL.execute_ c
+  "CREATE TABLE IF NOT EXISTS blocks \
+  \  ( height INTEGER NOT NULL UNIQUE \
+  \  , bid    BLOB NOT NULL UNIQUE \
+  \  , txRoot BLOB \
+  \  , txs    BLOB \
+  \  , CHECK (height >= 0))"
+
+storeBID :: SQL.Connection -> Word32 -> ModifierId -> IO ()
+storeBID c h (ModifierId bid) = SQL.execute c
+  "INSERT OR IGNORE INTO blocks VALUES (?, ?, NULL, NULL)"
+  (h, bid)
+
+storeTxRoot :: SQL.Connection -> Word32 -> Digest32 -> IO ()
+storeTxRoot c h (Digest32 root) = SQL.execute c
+  "UPDATE blocks SET txRoot = ? WHERE height = ?"
+  (root, h)
+
+storeBlock :: SQL.Connection -> Word32 -> ByteString -> IO ()
+storeBlock c h blk = SQL.execute c
+  "UPDATE blocks SET txs = ? WHERE height = ?"
+  (blk, h)
+
+
+----------------------------------------------------------------
+-- Fetching of headers
+----------------------------------------------------------------
+
+headersToFetch :: SQL.Connection -> IO [ModifierId]
+headersToFetch c
+  = (fmap . fmap) (ModifierId . SQL.fromOnly)
+  $ SQL.query_ c
+    "SELECT bid FROM blocks WHERE txRoot IS NULL LIMIT 1"
+
+blocksToFetch :: SQL.Connection -> IO [(Word32,ModifierId,ModifierId)]
+blocksToFetch c = do
+  (fmap . fmap) toDigest $ SQL.query_ c
+    "SELECT height, bid, txRoot FROM blocks \
+    \ WHERE txRoot IS NOT NULL AND txs IS NULL \
+    \ LIMIT 1"
+  where
+    toDigest (h, bid, txRoot) =
+      ( h
+      , ModifierId bid
+      , ModifierId . BA.convert . hash @_ @Blake2b_256
+      $ BS.singleton 102 <> bid <> txRoot
+      )
+                          
+
+saveHeader :: SQL.Connection -> BlockHeader -> IO ()
+saveHeader c h = SQL.withTransaction c $ do
+  storeTxRoot c (height h)   (transactionsRoot h)
+  storeBID c    (height h-1) (parentId h)
+
+
+----------------------------------------------------------------
+-- Main loop
+----------------------------------------------------------------
+
 data WaitingFor
   = OnlyStarted
   | AskedHeader !ModifierId
-  | AskedBlock  !BlockHeader !ModifierId
+  | AskedBlock  !Word32 !ModifierId !ModifierId
 
-mainLoop outChan inChan = go
+
+mainLoop
+  :: SQL.Connection
+  -> TChan (SocketOutEvent ErgoMessage)
+  -> TChan (SocketInEvent ErgoMessage)
+  -> IO ()
+mainLoop conn outChan inChan = goback
   where
     handleMsg expecting f = atomically (readTChan outChan) >>= \case
       SockOutInbound (MsgOther msg) -> case msg of
@@ -67,41 +138,42 @@ mainLoop outChan inChan = go
         MsgModifier (ModifierMsg _ [m]) -> f m
         MsgModifier _ -> putStrLn "MsgModifier (other)" >> go expecting
     --
+    goback = go OnlyStarted
     go expecting = case expecting of
       OnlyStarted -> do
-        let requiredBlock = "eac5edd4b7d602acae0842b03af3724b76a72bbc608a4bbea2fcf2391f4dacaa" -- H=414477
-        send requiredBlock
-        go $ AskedHeader requiredBlock
+        blocksToFetch conn >>= \case
+          (h,bid,mid):_ -> do send mid
+                              go $ AskedBlock h bid mid
+          [] -> headersToFetch conn >>= \case
+            []      -> pure ()
+            (bid:_) -> do send bid
+                          go $ AskedHeader bid
       --
       AskedHeader modId -> handleMsg expecting $ \m -> do
         let blk = decode @BlockHeader $ modifierBody m
         case blk of
           Right b | bid <- blockId b
-                  , bid == modId -> do
-                      let mid = ModifierId . BA.convert . hash @_ @Blake2b_256
-                              $ BS.singleton 102
-                             <> unModifierId bid
-                             <> unDigest32 (transactionsRoot b)
-                      printf "H=%6i: bid= %s\n" (height b) (show bid)
-                      send mid
-                      go $ AskedBlock b mid
+                  , bid == modId -> do printf "H=%6i: bid= %s\n" (height b) (show bid)
+                                       saveHeader conn b
+                                       goback
           _ -> do putStrLn "MsgModifier (unsettling)"
-                  go expecting
+                  goback
       --
-      AskedBlock blk modId -> handleMsg expecting $ \m -> case () of
-        _| ModifierId (BS.take 32 bs) == blockId blk -> do
-             BS.writeFile (printf "../BLK/H_%06i" (height blk)) $ BS.drop 32 bs
-             let bid = parentId blk
+      AskedBlock h bid modId -> handleMsg expecting $ \m -> case () of
+        _| ModifierId (BS.take 32 bs) == bid -> do
+             printf "H=%6i: bid= %s BLOCK\n" h (show bid)
+             storeBlock conn h $ BS.drop 32 bs
              threadDelay 0.1e6
-             send bid
-             go $ AskedHeader bid
+             go OnlyStarted
          | otherwise -> do
              putStrLn "MsgModifier (worrying)"
-             go $ AskedBlock blk modId
+             goback
          where
            bs = modifierBody m
     --
-    send modId = atomically $ writeTChan inChan
+    send modId = do
+      printf "SENDING %s\n" (show modId)
+      atomically $ writeTChan inChan
                $ SockInSendEvent $ MsgOther $ MsgRequestModifier $ RequestModifierMsg ModifierBlockTxs [modId]
 
 
@@ -133,7 +205,12 @@ main = do
   outChan <- ergoSocket net inChan conf
   --
   handshakeLoop outChan inChan
-  mainLoop outChan inChan OnlyStarted
+  SQL.withConnection "../blocks.sqlite" $ \c -> do
+    initDB c
+    SQL.execute_ c
+      "INSERT OR IGNORE INTO blocks VALUES \
+      \ (414474, X'8cf6dca6b9505243e36192fa107735024c0000cf4594b1daa2dc4e13ee86f26f', NULL, NULL)"
+    mainLoop c outChan inChan
 
   -- let loop mod = do
   --        >>= \case
