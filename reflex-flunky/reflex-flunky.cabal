@@ -1,5 +1,5 @@
 name:                reflex-flunky
-version:             1.0.0.0
+version:             1.0.1.0
 synopsis:            Generic helpers for reflex that is always needed but missing in library
 description:         Library provides helpers for reflex (dynamic mergin, concise form of common expressions)
 stability:           Experimental

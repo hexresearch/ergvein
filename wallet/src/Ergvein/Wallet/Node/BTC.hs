@@ -22,8 +22,9 @@ import Network.Haskoin.Network
 import Network.Socket (getNameInfo, NameInfoFlag(..), SockAddr(..))
 import Reflex
 import Reflex.Dom
-import Reflex.Network
 import Reflex.ExternalRef
+import Reflex.Flunky
+import Reflex.Network
 import UnliftIO hiding (atomically)
 
 import qualified Data.ByteString as B
@@ -104,9 +105,9 @@ initBTCNode doLog sa msgE = do
       MPing (Ping v) -> Just $ pure $ MPong (Pong v)
       _ -> Nothing
     let heightE = fforMaybe respE $ \case
-          MVersion Version{..} -> Just $ Just startHeight
+          MVersion Version{..} -> Just startHeight
           _ -> Nothing
-    heightD <- holdDyn Nothing heightE
+    heightD <- holdJust heightE
     -- End rec
 
   performEvent_ $ ffor (_socketRecvEr s) $ nodeLog . showt
