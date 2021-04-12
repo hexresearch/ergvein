@@ -3,6 +3,7 @@
 module Ergvein.Wallet.Status.Types(
     WalletStatus(..)
   , WalletStatusNormal(..)
+  , RestoreStage(..)
   , WalletStatusRestore(..)
   , emptyWalletStatus
     -- SyncBehind(..)
@@ -96,9 +97,21 @@ data RestoreStage =
     RestoreStage'connectingToBtcNodes
   | RestoreStage'askingHeight
   | RestoreStage'scanning
-  | RestoreStage'restoreFinished
   | RestoreStage'empty
   deriving (Show, Eq)
+
+instance LocalizedPrint RestoreStage where
+  localizedShow l v = case l of
+    English -> case v of
+      RestoreStage'connectingToBtcNodes -> "Connecting to Bitcoin nodes"
+      RestoreStage'askingHeight         -> "Calculating the current height"
+      RestoreStage'scanning             -> "Scanning blocks"
+      RestoreStage'empty                -> "Loading..."
+    Russian -> case v of
+      RestoreStage'connectingToBtcNodes -> "Соединяемся с узлами Bitcoin"
+      RestoreStage'askingHeight         -> "Вычисляем текущую высоту"
+      RestoreStage'scanning             -> "Сканируем блоки"
+      RestoreStage'empty                -> "Загрузка..."
 
 data WalletStatusRestore = WalletStatusRestore {
     walletStatusRestore'stage :: RestoreStage

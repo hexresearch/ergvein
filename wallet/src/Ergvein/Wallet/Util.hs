@@ -20,9 +20,12 @@ module Ergvein.Wallet.Util(
   , splitFilter
   , switchDyn2
   , mkChunks
+  , calcPercentage
+  , mapPercentage
   ) where
 
 import Control.Monad.Except
+import Data.Word
 import Reflex.Dom
 import Reflex.Flunky
 
@@ -49,3 +52,14 @@ currencyCodeToCurrency c = case c of
   ERGO -> ETC.ERGO
   TERGO -> ETC.ERGO
   _ -> error "Currency code not implemented"
+
+calcPercentage :: Word64 -> Word64 -> Word64 -> Double
+calcPercentage from to now = 100 * (fromIntegral now - fromIntegral from) / (fromIntegral to - fromIntegral from)
+
+-- | Scales and shifts a segment [0, 100] to a segment [from, to]
+-- Example :
+--
+-- >>> mapPercentage (10, 20) 50
+-- 15
+mapPercentage :: (Double, Double) -> Double -> Double
+mapPercentage (from, to) percentage = from + ((to - from) / 100) * percentage

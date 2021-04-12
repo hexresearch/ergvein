@@ -103,6 +103,10 @@ initBTCNode doLog sa msgE = do
         pure MVerAck
       MPing (Ping v) -> Just $ pure $ MPong (Pong v)
       _ -> Nothing
+    let heightE = fforMaybe respE $ \case
+          MVersion Version{..} -> Just $ Just startHeight
+          _ -> Nothing
+    heightD <- holdDyn Nothing heightE
     -- End rec
 
   performEvent_ $ ffor (_socketRecvEr s) $ nodeLog . showt
@@ -125,6 +129,7 @@ initBTCNode doLog sa msgE = do
   , nodeconExtra      = ()
   , nodeconIsUp       = shakeD
   , nodecondoLog      = doLog
+  , nodeconHeight     = heightD
   }
 
 -- | Internal peeker to parse messages coming from peer.

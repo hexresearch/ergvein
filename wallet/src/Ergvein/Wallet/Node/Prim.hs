@@ -28,6 +28,7 @@ module Ergvein.Wallet.Node.Prim
 import Data.Aeson
 import Data.Text (Text)
 import Data.Time (NominalDiffTime)
+import Data.Word
 import Network.Socket (SockAddr)
 import Reflex
 import Reflex.ExternalRef
@@ -58,6 +59,7 @@ data NodeConnection t cur = NodeConnection {
 , nodeconExtra      :: !(NodeSpecific cur)
 , nodeconIsUp       :: !(Dynamic t Bool)
 , nodecondoLog      :: !Bool
+, nodeconHeight     :: !(Dynamic t (Maybe Word32)) -- Note: This field is used to track the progress of the height search. It is only updated once during node initialization.
 }
 
 data NodeStatus = NodeStatus {

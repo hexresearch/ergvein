@@ -1,19 +1,26 @@
 {-# LANGUAGE OverloadedLists #-}
+-- {-# OPTIONS_GHC -Wall #-}
+
 module Ergvein.Wallet.Status.Widget(
     statusBarWidget
+  , restoreStatusWidget
+  , restoreStatusDebugWidget
   ) where
 
-import Data.Time
-import Text.Printf
 import Control.Monad.IO.Class
+import Data.Time
+import Numeric
+import Text.Printf
 
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Localization.Restore
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Status.Types
 import Ergvein.Wallet.Widget.Balance
+import Sepulcas.Elements.Markup
 
 import qualified Data.Text as T
 
@@ -58,3 +65,22 @@ balWidget cur bal = do
     maybeW mv f = case mv of
       Nothing -> pure ()
       Just v -> f v
+
+restoreStatusWidget :: MonadFront t m => Currency -> m ()
+restoreStatusWidget cur = do
+  statD <- getWalletStatus cur
+  let restoreStageD = walletStatusRestore'stage . walletStatus'restore <$> statD
+      restoreProgressD = walletStatusRestore'progress . walletStatus'restore <$> statD
+  h3 $ localizedText RPSInProgress
+  par $ localizedDynText restoreStageD
+  h3 $ localizedDynText $ showPercents <$> restoreProgressD
+
+showPercents :: Maybe Double -> Text
+showPercents mPercents = maybe "0.00%" (\p -> (T.pack $ showFFloat (Just 2) p "") <> "%") mPercents
+
+-- TODO: add some more useful info
+restoreStatusDebugWidget :: MonadFront t m => Currency -> m ()
+restoreStatusDebugWidget cur = do
+  balanceD <- balanceTitleWidgetSimple cur
+  par $ dynText balanceD
+  pure ()
