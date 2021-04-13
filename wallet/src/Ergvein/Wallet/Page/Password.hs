@@ -109,6 +109,7 @@ performAuth wt mnemonic curs login pass mpath startingHeight isPass = do
       h3 $ localizedText RPSTrafficTitle
       elClass "h5" "overflow-wrap-bw" $ localizedText RPSTrafficWarn
       elClass "h5" "overflow-wrap-bw" $ localizedText RPSTrafficWifi
+      elClass "h5" "overflow-wrap-bw" $ localizedText RPSTrafficTime
       outlineButton RPSTrafficAccept
   storageE <- performEvent $ ffor goE $ const $
     initAuthInfo wt mpath mnemonic curs login pass startingHeight isPass

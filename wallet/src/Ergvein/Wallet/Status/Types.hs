@@ -1,11 +1,24 @@
+{-# OPTIONS_GHC -Wall #-}
+
 module Ergvein.Wallet.Status.Types(
-    SyncBehind(..)
-  , StatusUpdate(..)
+    WalletStatus(..)
+  , WalletStatusNormal(..)
+  , RestoreStage(..)
+  , WalletStatusRestore(..)
+  , emptyWalletStatus
+    -- SyncBehind(..)
   , CurrencyStatus(..)
   , nominalToBehind
+  -- * Lens
+  , walletStatus'normal
+  , walletStatus'restore
+  , walletStatusRestore'stage
+  , walletStatusRestore'progress
   ) where
 
+import Data.Default
 import Data.Time
+import Ergvein.Lens
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
@@ -48,35 +61,87 @@ nominalToBehind t
   | t < 24 * 3600 = SyncHours $ ceiling $ t / 3600
   | otherwise = SyncDays $ ceiling $ t / (24 * 3600)
 
-data StatusUpdate = StatGettingNodeAddresses
-               | StatConnectingToPeers
-               | StatGettingHeight !Int             -- Current height for catch up
-               | StatNewFilters !Int
-               | Synced
-               | NotActive
+data WalletStatus = WalletStatus {
+    _walletStatus'normal :: WalletStatusNormal
+  , _walletStatus'restore :: WalletStatusRestore
+} deriving (Show, Eq)
+
+instance Default WalletStatus where
+  def = emptyWalletStatus
+
+data WalletStatusNormal =
+    WalletStatusNormal'gettingNodeAddresses
+  | WalletStatusNormal'connectingToPeers
+  | WalletStatusNormal'gettingHeight !Int             -- Current height for catch up
+  | WalletStatusNormal'newFilters !Int
+  | WalletStatusNormal'synced
+  | WalletStatusNormal'empty
   deriving (Show, Eq, Ord)
 
-instance LocalizedPrint StatusUpdate where
+instance LocalizedPrint WalletStatusNormal where
   localizedShow l v = case l of
     English -> case v of
-      StatGettingNodeAddresses -> "Getting node addresses"
-      StatConnectingToPeers -> "Connecting to peers"
-      StatGettingHeight h -> "Getting height. Catching up at: " <> showt h
-      StatNewFilters n -> showt n <> " new filters"
-      Synced -> "Fully synchronized"
-      NotActive -> "Not active"
+      WalletStatusNormal'gettingNodeAddresses -> "Getting node addresses"
+      WalletStatusNormal'connectingToPeers -> "Connecting to peers"
+      WalletStatusNormal'gettingHeight h -> "Getting height. Catching up at: " <> showt h
+      WalletStatusNormal'newFilters n -> showt n <> " new filters"
+      WalletStatusNormal'synced -> "Fully synchronized"
+      WalletStatusNormal'empty -> "Not active"
     Russian -> case v of
-      StatGettingNodeAddresses -> "Получение адреса ноды"
-      StatConnectingToPeers -> "Подключение к узлу"
-      StatGettingHeight h -> "Вычисление высоты. Сейчас на " <> showt h
-      StatNewFilters n -> showt n <> " новых фильтров"
-      Synced -> "Синхронизировано"
-      NotActive -> "Отключена"
+      WalletStatusNormal'gettingNodeAddresses -> "Получение адреса ноды"
+      WalletStatusNormal'connectingToPeers -> "Подключение к узлу"
+      WalletStatusNormal'gettingHeight h -> "Вычисление высоты. Сейчас на " <> showt h
+      WalletStatusNormal'newFilters n -> showt n <> " новых фильтров"
+      WalletStatusNormal'synced -> "Синхронизировано"
+      WalletStatusNormal'empty -> "Отключена"
 
-data CurrencyStatus = CurrencyStatus !Currency !StatusUpdate
+data CurrencyStatus = CurrencyStatus !Currency !WalletStatusNormal
   deriving (Show, Eq)
 
 instance LocalizedPrint CurrencyStatus where
-  localizedShow l (CurrencyStatus cur stage) = case l of
-    English -> "[" <> showt cur <> "]: " <> localizedShow l stage
-    Russian -> "[" <> showt cur <> "]: " <> localizedShow l stage
+  localizedShow l (CurrencyStatus cur status) = case l of
+    English -> "[" <> showt cur <> "]: " <> showt status
+    Russian -> "[" <> showt cur <> "]: " <> showt status
+
+data RestoreStage =
+    RestoreStage'connectingToBtcNodes
+  | RestoreStage'askingHeight
+  | RestoreStage'scanning
+  | RestoreStage'empty
+  deriving (Show, Eq)
+
+instance LocalizedPrint RestoreStage where
+  localizedShow l v = case l of
+    English -> case v of
+      RestoreStage'connectingToBtcNodes -> "Connecting to Bitcoin nodes"
+      RestoreStage'askingHeight         -> "Calculating the current height"
+      RestoreStage'scanning             -> "Scanning blocks"
+      RestoreStage'empty                -> "Loading..."
+    Russian -> case v of
+      RestoreStage'connectingToBtcNodes -> "Соединяемся с узлами Bitcoin"
+      RestoreStage'askingHeight         -> "Вычисляем текущую высоту"
+      RestoreStage'scanning             -> "Сканируем блоки"
+      RestoreStage'empty                -> "Загрузка..."
+
+data WalletStatusRestore = WalletStatusRestore {
+    _walletStatusRestore'stage :: RestoreStage
+  , _walletStatusRestore'progress :: Maybe Double
+} deriving (Show, Eq)
+
+instance Default WalletStatusRestore where
+  def = emptyRestoreStatus
+
+emptyRestoreStatus :: WalletStatusRestore
+emptyRestoreStatus = WalletStatusRestore {
+      _walletStatusRestore'stage = RestoreStage'empty
+    , _walletStatusRestore'progress = Nothing
+  }
+
+emptyWalletStatus :: WalletStatus
+emptyWalletStatus = WalletStatus {
+      _walletStatus'normal = WalletStatusNormal'empty
+    , _walletStatus'restore = emptyRestoreStatus
+  }
+
+makeLenses ''WalletStatus
+makeLenses ''WalletStatusRestore

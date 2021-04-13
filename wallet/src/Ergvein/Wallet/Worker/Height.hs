@@ -4,8 +4,9 @@ module Ergvein.Wallet.Worker.Height
   ) where
 
 import Control.Lens
-import Data.Time
 import Data.Maybe
+import Data.Time
+import Data.Word
 import Network.Haskoin.Block
 import Network.Haskoin.Network
 
@@ -16,11 +17,13 @@ import Ergvein.Types.Storage
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Wallet.Monad.Front
 import Ergvein.Wallet.Monad.Storage
-import Sepulcas.Native
 import Ergvein.Wallet.Node
+import Ergvein.Wallet.Node.BTC.Blocks
+import Ergvein.Wallet.Page.Restore
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Status.Types
 import Ergvein.Wallet.Util
+import Sepulcas.Native
 
 import qualified Data.Dependent.Map as DM
 import qualified Data.Map.Strict as M
@@ -64,17 +67,25 @@ startBTCFlow = Workflow $ do
         . at BTC . _Just . currencyPubStorage'meta
         . _PubStorageBtc . btcPubStorage'headerSeq
       bl = fmap V.toList $ if V.null $ snd bl0 then btcCheckpoints else bl0
-  pure ((), btcCatchUpFlow bl <$ buildE)
+  pure ((), btcCatchUpFlow (fromIntegral $ fst $ head $ snd bl) bl <$ buildE)
 
 -- | Requests block headers exhaustively until it catches up with the chain head
 -- once it catches up -- it switches the flow to btcListenFlow
-btcCatchUpFlow :: MonadFront t m => (Timestamp, [(BlockHeight, BlockHash)]) -> Workflow t m ()
-btcCatchUpFlow (ts, bl) = Workflow $ do
+btcCatchUpFlow :: MonadFront t m => Word64 -> (Timestamp, [(BlockHeight, BlockHash)]) -> Workflow t m ()
+btcCatchUpFlow startHeight (ts, bl) = Workflow $ do
   let (h0, lasthash) = head bl
   logWrite $ "btcCatchUpFlow: " <> showt h0
   buildE <- getPostBuild
-  storedE <-  attachNewBtcHeader "btcCatchUpFlow" False $ (h0, ts, lasthash) <$ buildE
-  void $ publishStatusUpdate $ CurrencyStatus BTC (StatGettingHeight $ fromIntegral h0) <$ storedE
+  storedE <- attachNewBtcHeader "btcCatchUpFlow" False $ (h0, ts, lasthash) <$ buildE
+  void $ updateWalletStatusNormal BTC $ (const $ WalletStatusNormal'gettingHeight $ fromIntegral h0) <$ storedE
+  fullHeigtD <- getStartHeightBTC
+  let restoreStatus progress = def
+        & walletStatusRestore'stage .~ RestoreStage'askingHeight
+        & walletStatusRestore'progress .~ progress
+      mFullHeightE = tagPromptlyDyn fullHeigtD buildE
+      makeRestoreStatus :: Maybe Word32 -> (WalletStatusRestore -> WalletStatusRestore)
+      makeRestoreStatus mFullHeight = maybe (const $ restoreStatus Nothing) (\fullHeight -> const $ restoreStatus $ Just $ mapPercentage heightAskingProgressBounds (calcPercentage startHeight (fromIntegral fullHeight) (fromIntegral h0))) mFullHeight
+  void $ updateWalletStatusRestore BTC $ makeRestoreStatus <$> mFullHeightE
   let req = MGetHeaders $ GetHeaders 70012 (snd <$> bl) emptyHash
   respE <- requestRandomNode $ (NodeReqBTC req) <$ storedE
   let hlE = fforMaybe respE $ \case
@@ -88,9 +99,9 @@ btcCatchUpFlow (ts, bl) = Workflow $ do
           hhash = headerHash hd
           in if hhash == lasthash
             then btcListenFlow lasthash ts h'
-            else btcCatchUpFlow (blockTimestamp hd, (h', hhash):bl)
+            else btcCatchUpFlow startHeight (blockTimestamp hd, (h', hhash):bl)
   timeoutE <- delay heightReqTimeout buildE
-  nextE <- delay 1 $ leftmost [btcCatchUpFlow (ts, bl) <$ timeoutE, succE]
+  nextE <- delay 1 $ leftmost [btcCatchUpFlow startHeight (ts, bl) <$ timeoutE, succE]
   pure ((), nextE)
 
 
@@ -132,7 +143,7 @@ btcListenFlow h0 ts0 he0 = Workflow $ mdo
       setE = fmapMaybe eitherToMaybe actE
       storeE = leftmost [(he0, ts0, h0) <$ buildE, updated htD]
   void $ attachNewBtcHeader "btcListenFlow" True storeE
-  void $ publishStatusUpdate $ ffor storeE $ const $ CurrencyStatus BTC Synced
+  void $ updateWalletStatusNormal BTC $ ffor storeE $ const $ const $ WalletStatusNormal'synced
   pure ((), startBTCFlow <$ restartE)
 
 pickFirstBlockInv :: [InvVector] -> Maybe BlockHash

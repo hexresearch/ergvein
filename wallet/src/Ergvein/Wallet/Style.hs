@@ -40,6 +40,7 @@ frontendCss = do
   initialPageCss
   inputCss
   legoStyles
+  textCss
   linkCss
   loadingWidgetCss
   mnemonicWidgetCss
@@ -840,7 +841,6 @@ historyPageCss = do
     alignSelf center
     flexGrow 1
     textAlign center
-    color hoverColor
   ".history-table-header" ? do
     marginTop (px 0)
     borderTop solid (px 2) black
@@ -1102,6 +1102,11 @@ graphPinCodeCanvasCss = do
     borderTop solid (px 2) $ rgb 90 90 90
     height $ px 2
     zIndex 10
+
+textCss :: Css
+textCss = do
+  ".text-muted" ? do
+    color hoverColor
 
 linkCss :: Css
 linkCss = do
