@@ -61,7 +61,7 @@ historyTableWidget cur = case cur of
     pure $ leftmost txClickE
 
 noTxsPlaceholder :: MonadFront t m => m ()
-noTxsPlaceholder = divClass "history-empty-placeholder" $ do
+noTxsPlaceholder = divClass "history-empty-placeholder text-muted" $ do
   par $ localizedText HistoryNoTxs
 
 historyTableRow :: MonadFront t m => Currency -> TransactionView -> m (Event t TransactionView)

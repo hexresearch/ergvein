@@ -6,6 +6,7 @@ module Reflex.Flunky(
   , updatedWithInit
   , poke
   , sampleDyn
+  , holdJust
   , nothingIf
   , dbgPrintE
   , eventToNextFrame
@@ -57,6 +58,10 @@ poke = flip pushAlways
 -- | Sample dynamic instead of `Behavior`
 sampleDyn :: (MonadSample t m, Reflex t) => Dynamic t a -> m a
 sampleDyn = sample . current
+
+-- | Convert event to dynamic that nothing on startup and just when value arrives
+holdJust :: (MonadHold t m, Reflex t) => Event t a -> m (Dynamic t (Maybe a))
+holdJust = holdDyn Nothing . fmap Just
 
 nothingIf :: (a -> Bool) -> a -> Maybe a
 nothingIf p x = if p x then Nothing else Just x

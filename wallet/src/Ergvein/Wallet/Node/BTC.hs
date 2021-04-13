@@ -22,8 +22,9 @@ import Network.Haskoin.Network
 import Network.Socket (getNameInfo, NameInfoFlag(..), SockAddr(..))
 import Reflex
 import Reflex.Dom
-import Reflex.Network
 import Reflex.ExternalRef
+import Reflex.Flunky
+import Reflex.Network
 import UnliftIO hiding (atomically)
 
 import qualified Data.ByteString as B
@@ -103,6 +104,10 @@ initBTCNode doLog sa msgE = do
         pure MVerAck
       MPing (Ping v) -> Just $ pure $ MPong (Pong v)
       _ -> Nothing
+    let heightE = fforMaybe respE $ \case
+          MVersion Version{..} -> Just startHeight
+          _ -> Nothing
+    heightD <- holdJust heightE
     -- End rec
 
   performEvent_ $ ffor (_socketRecvEr s) $ nodeLog . showt
@@ -125,6 +130,7 @@ initBTCNode doLog sa msgE = do
   , nodeconExtra      = ()
   , nodeconIsUp       = shakeD
   , nodecondoLog      = doLog
+  , nodeconHeight     = heightD
   }
 
 -- | Internal peeker to parse messages coming from peer.

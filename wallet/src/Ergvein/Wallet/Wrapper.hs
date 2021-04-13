@@ -3,6 +3,7 @@ module Ergvein.Wallet.Wrapper(
   , wrapper
   , wrapperNavbar
   , wrapperSimple
+  , wrapperSimpleLogout
   ) where
 
 import Ergvein.Wallet.Language
@@ -45,12 +46,19 @@ contentContainer isCentered classes ma = do
     padClasses :: Text -> Text
     padClasses classes = if T.null classes then classes else " " <> classes
 
--- | Simplified page wrapper. Contains header with back button only.
-wrapperSimple :: MonadFrontBase t m => Bool -> m a -> m a
-wrapperSimple isCentered ma = divClass "wrapper" $ do
-  headerWidgetOnlyBackBtn
+wrapperSimpleGeneric :: MonadFrontBase t m => m () -> Bool -> m a -> m a
+wrapperSimpleGeneric header isCentered ma = divClass "wrapper" $ do
+  header
   a <- if isCentered
     then divClass "centered-container" $ divClass "centered-content container p-1" ma
     else divClass "container p-1" ma
   alertHandlerWidget English
   pure a
+
+-- | Simplified page wrapper. Contains header with back button only.
+wrapperSimple :: MonadFrontBase t m => Bool -> m a -> m a
+wrapperSimple = wrapperSimpleGeneric headerWidgetOnlyBackBtn
+
+-- | Same as 'wrapperSimple' but "back" buttons performs logout and redirects to the wallet selection page
+wrapperSimpleLogout :: MonadFrontBase t m => Bool -> m a -> m a
+wrapperSimpleLogout = wrapperSimpleGeneric headerWidgetOnlyLogoutBtn

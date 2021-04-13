@@ -19,7 +19,6 @@ import Sepulcas.Loading
 import Sepulcas.Log.Writer
 #ifdef TESTNET
 import Sepulcas.Elements
-import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.TestnetDisclaimer
 import Ergvein.Wallet.Wrapper
 #endif

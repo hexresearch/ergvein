@@ -101,7 +101,7 @@ scannerBtc = void $ workflow checkRestored
           Right filt -> pure $ Just (h, bh, filt)
       psD <- getPubStorageD
       buildE <- getPostBuild
-      void $ publishStatusUpdate $ CurrencyStatus BTC (StatNewFilters $ length fs) <$ buildE
+      void $ updateWalletStatusNormal BTC $ (const $ WalletStatusNormal'newFilters $ length fs) <$ buildE
       nextE <- delay 0.1 $ ffor (current psD `tag` buildE) $ \ps -> let
         ext = repackKeys External $ pubStorageKeys BTC External ps
         int = repackKeys Internal $ pubStorageKeys BTC Internal ps

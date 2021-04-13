@@ -2,6 +2,7 @@ module Ergvein.Wallet.Menu(
     headerWidgetDesktop
   , headerWidgetAndroid
   , headerWidgetOnlyBackBtn
+  , headerWidgetOnlyLogoutBtn
   ) where
 
 import {-# SOURCE #-} Ergvein.Wallet.Menu.Switcher
@@ -13,10 +14,6 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu.Types
 import Ergvein.Wallet.Monad
 
-headerWidgetOnlyBackBtn :: MonadFrontBase t m => m ()
-headerWidgetOnlyBackBtn = divClass "header" $ do
-  stD <- getRetractStack
-  void $ backButton "header-button" $ null <$> stD
 
 headerWidgetDesktop :: MonadFront t m => Dynamic t Text -> Maybe (Dynamic t (m ())) -> m ()
 headerWidgetDesktop titleD thisWidget = divClass "header-wrapper" $ do
@@ -30,8 +27,7 @@ headerWidgetAndroid titleD thisWidget = do
 
 headerDesktop :: MonadFront t m => Dynamic t Text -> m (Dynamic t Bool)
 headerDesktop titleD = divClass "header header-black" $ mdo
-  stD <- getRetractStack
-  backButton "header-button" $ null <$> stD
+  backButtonRetract
   divClass "header-wallet-text" $ dynText titleD
   menuBtnE <- divButton "header-button" $ elClassDyn "i" menuButtonIconClassD blank
   let menuButtonIconClassD = menuButtonIconClass <$> menuIsHiddenD
@@ -40,8 +36,7 @@ headerDesktop titleD = divClass "header header-black" $ mdo
 
 headerAndroid :: MonadFront t m => Dynamic t Text -> m (Event t ())
 headerAndroid titleD = divClass "header header-black" $ mdo
-  stD <- getRetractStack
-  backButton "header-button" $ null <$> stD
+  backButtonRetract
   divClass "header-wallet-text" $ dynText titleD
   divButton "header-button" $ elClass "i" "fas fa-bars fa-fw" blank
 
@@ -70,12 +65,23 @@ menuAndroid menuOpenE thisWidget = mdo
     pure menuBtnE
   pure ()
 
--- | Button for going back on widget history
-backButton :: MonadFrontBase t m => Text -> Dynamic t Bool -> m ()
-backButton classes isHiddenD = do
+-- | Creates button that looks like left arrow
+backButton :: MonadFrontBase t m => Text -> Dynamic t Bool -> (Event t () -> m (Event t ())) -> m ()
+backButton classes isHiddenD handler = do
   let backButtonClassesD = visibilityClass classes <$> isHiddenD
-  e <- divButton backButtonClassesD $ elClass "i" "fas fa-arrow-left fa-fw" blank
-  void $ retract e
+  e <- divButton backButtonClassesD $ elClass "i" "fas fa-chevron-left fa-fw" blank
+  void $ handler e
+
+-- | Button for going back on widget history
+backButtonRetract :: MonadFrontBase t m => m ()
+backButtonRetract = do
+  stD <- getRetractStack
+  backButton "header-button" (null <$> stD) retract
+
+-- | Button for logging out (used on restore page)
+backButtonLogout :: MonadFrontBase t m => m ()
+backButtonLogout = do
+  backButton "header-button" (constDyn False) (\e -> setAuthInfo $ Nothing <$ e)
 
 menuButtonIconClass :: Bool -> Text
 menuButtonIconClass True = "fas fa-bars fa-fw"
@@ -85,6 +91,12 @@ menuButtonIconClass False = "fas fa-times fa-fw"
 visibilityClass :: Text -> Bool -> Text
 visibilityClass classes True = classes <> " hidden"
 visibilityClass classes False = classes
+
+headerWidgetOnlyBackBtn :: MonadFrontBase t m => m ()
+headerWidgetOnlyBackBtn = divClass "header" backButtonRetract
+
+headerWidgetOnlyLogoutBtn :: MonadFrontBase t m => m ()
+headerWidgetOnlyLogoutBtn = divClass "header" backButtonLogout
 
 menuButtonsDesktop :: MonadFront t m => Maybe (Dynamic t (m ())) -> Maybe Currency -> m ()
 menuButtonsDesktop thisWidget mCur = do
