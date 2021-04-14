@@ -109,6 +109,7 @@ library
 
   if flag(android)
       cpp-options: -DANDROID
+      build-depends: android-activity
 
   if flag(testnet)
       cpp-options: -DTESTNET
