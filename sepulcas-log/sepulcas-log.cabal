@@ -27,6 +27,10 @@ extra-source-files:
 library
   hs-source-dirs:      src
   exposed-modules:
+    Sepulcas.Alert
+    Sepulcas.Alert.Monad
+    Sepulcas.Alert.Poster
+    Sepulcas.Alert.Types
     Sepulcas.Log
     Sepulcas.Log.Event
     Sepulcas.Log.Monad
@@ -41,6 +45,7 @@ library
     , reflex                    >= 0.4      && < 0.9
     , reflex-dom-core
     , reflex-external-ref
+    , reflex-localize
     , sepulcas-native
     , text
     , time
@@ -54,6 +59,7 @@ library
     FlexibleContexts
     FlexibleInstances
     FunctionalDependencies
+    GADTs
     GeneralizedNewtypeDeriving
     LambdaCase
     MultiParamTypeClasses

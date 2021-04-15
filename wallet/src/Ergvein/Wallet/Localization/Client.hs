@@ -6,17 +6,7 @@ module Ergvein.Wallet.Localization.Client
 
 import Ergvein.Text
 import Ergvein.Wallet.Language
-
-data ClientMessage
-  = CMSLoading Int Int Int
-  | CMSError
-  | CMSEmpty
-  | CMSValidationError
-  | CMSDone
-  | CMSTimeout
-  | CMSRestarting
-  | CMSAllOutOfSync
-  deriving (Eq)
+import Ergvein.Core.Client
 
 instance LocalizedPrint ClientMessage where
   localizedShow l v = case l of

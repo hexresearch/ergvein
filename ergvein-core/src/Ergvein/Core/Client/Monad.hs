@@ -1,5 +1,6 @@
 module Ergvein.Core.Client.Monad(
-    MonadIndexClientConstr
+    ClientMessage(..)
+  , MonadIndexClientConstr
   , MonadIndexClient(..)
   , IndexerConnection(..)
   , IndexerStatus(..)
@@ -50,6 +51,17 @@ import Reflex.Fork
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+
+data ClientMessage
+  = CMSLoading Int Int Int
+  | CMSError
+  | CMSEmpty
+  | CMSValidationError
+  | CMSDone
+  | CMSTimeout
+  | CMSRestarting
+  | CMSAllOutOfSync
+  deriving (Eq)
 
 data IndexerConnection t = IndexerConnection {
   indexConAddr :: !SockAddr

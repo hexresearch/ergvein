@@ -49,17 +49,25 @@ import Reflex
 import Reflex.ExternalRef (readExternalRef)
 import Reflex.Localize
 import Reflex.Localize.Language
+import Sepulcas.Alert.Monad
 import Sepulcas.Alert.Types
 import Sepulcas.Either
 import Sepulcas.Log.Types
-import Sepulcas.Monad
+import Sepulcas.Log.Monad
 
 -- | Amount of seconds to show messages by default
 defaultMsgTimeout :: Double
 defaultMsgTimeout = 10
 
 -- | Just an abbreviation
-type AlertHandler t m l = (Prepulcable t m, MonadLocalized t m, MonadAlertPoster t m, MonadNativeLogger t m, LocalizedPrint l, Eq l)
+type AlertHandler t m l = (
+    PerformEvent t m
+  , MonadIO (Performable m)
+  , MonadLocalized t m
+  , MonadAlertPoster t m
+  , MonadNativeLogger t m
+  , LocalizedPrint l
+  , Eq l)
 
 -- | Display localized value as error messages
 showDangerMsg :: AlertHandler t m l => Event t l -> m ()
@@ -131,7 +139,13 @@ handleAlertWith et e = do
   pure $ fmapMaybe justRight e
 
 -- | Just an abbreviation
-type AlertLogger t m l = (Prepulcable t m, MonadLocalized t m, MonadNativeLogger t m, LocalizedPrint l, Eq l)
+type AlertLogger t m l = (
+    PerformEvent t m
+  , MonadIO (Performable m)
+  , MonadLocalized t m
+  , MonadNativeLogger t m
+  , LocalizedPrint l
+  , Eq l)
 
 -- | Write to log 'Left' occurences as error messages
 logDangerMsg :: AlertLogger t m l => Language -> Event t (Either l a) -> m (Event t a)

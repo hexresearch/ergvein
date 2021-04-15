@@ -7,23 +7,34 @@ module Ergvein.Core.Settings.Monad(
   , modifySettings
   , getSocksConf
   , getProxyConf
+  , module Ergvein.Core.Settings.Types
   ) where
 
 import Control.Monad.Reader
+import Control.Monad.IO.Unlift
+import Control.Monad.Fail
 import Data.Aeson.Types
 import Ergvein.Core.Settings.Types
 import Reflex
 import Reflex.ExternalRef
 import Reflex.Localize.Language
+import Sepulcas.Native
 
 import qualified Network.Socks5 as S5
 
 type MonadHasSettingsConstr t m = (
-    PerformEvent t m
+    Adjustable t m
+  , MonadFail (Performable m)
+  , MonadFix m
   , MonadHold t m
-  , MonadIO m
   , MonadIO (Performable m)
+  , MonadIO m
+  , MonadUnliftIO (Performable m)
+  , PerformEvent t m
+  , PlatformNatives
+  , PostBuild t m
   , ToJSON Language
+  , TriggerEvent t m
   )
 
 class MonadHasSettingsConstr t m => MonadHasSettings t m where

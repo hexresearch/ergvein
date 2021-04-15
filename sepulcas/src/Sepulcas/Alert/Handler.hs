@@ -12,6 +12,7 @@ module Sepulcas.Alert.Handler(
   ) where
 
 import Control.Monad
+import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Data.Align
 import Reflex.Dom
@@ -44,7 +45,7 @@ findAmongMap f = find (f . snd) . M.toList
 
 -- | Widget to spam alerts in popups. Call it anywhere in page to start displaying
 -- alerts in popups.
-alertHandlerWidget :: forall t m . (MonadLocalized t m, MonadAlertPoster t m, DomBuilder t m, MonadNativeLogger t m, PerformEvent t m) => Language -> m ()
+alertHandlerWidget :: forall t m . (MonadFix m, PostBuild t m, MonadIO (Performable m), TriggerEvent t m, MonadLocalized t m, MonadAlertPoster t m, DomBuilder t m, MonadNativeLogger t m, PerformEvent t m) => Language -> m ()
 alertHandlerWidget l = elAttr "div" [("class","alert-overlay"),("style","position: -webkit-sticky;")] $ mdo
   langD <- getLanguage
   errE <- newAlertEvent

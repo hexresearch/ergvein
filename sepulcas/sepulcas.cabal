@@ -16,14 +16,9 @@ flag android
 library
     exposed-modules:
       Sepulcas
-      Sepulcas.Alert
       Sepulcas.Alert.Handler
-      Sepulcas.Alert.Monad
-      Sepulcas.Alert.Types
-      Sepulcas.Alert.Poster
       Sepulcas.Camera
       Sepulcas.Clipboard
-      Sepulcas.Either
       Sepulcas.Elements
       Sepulcas.Elements.Button
       Sepulcas.Elements.Focus

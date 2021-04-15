@@ -41,11 +41,24 @@ library
     Ergvein.Core
     Ergvein.Core.Client
     Ergvein.Core.Client.Monad
+    Ergvein.Core.Currency
+    Ergvein.Core.Filters
     Ergvein.Core.IP
+    Ergvein.Core.Node
+    Ergvein.Core.Node.Btc
+    Ergvein.Core.Node.Btc.Blocks
+    Ergvein.Core.Node.Btc.Mempool
+    Ergvein.Core.Node.Ergo
+    Ergvein.Core.Node.Monad
+    Ergvein.Core.Node.Socket
+    Ergvein.Core.Node.Types
     Ergvein.Core.Platform
     Ergvein.Core.Settings
     Ergvein.Core.Settings.Monad
     Ergvein.Core.Settings.Types
+    Ergvein.Core.Status
+    Ergvein.Core.Status.Monad
+    Ergvein.Core.Status.Types
     Ergvein.Core.Store
     Ergvein.Core.Store.Monad
     Ergvein.Core.Wallet
@@ -55,7 +68,9 @@ library
       base                      >= 4.5      && < 4.15
     , aeson
     , bytestring
+    , cereal
     , containers
+    , dependent-map
     , directory
     , dns
     , ergvein-common
@@ -65,6 +80,7 @@ library
     , ergvein-node-discovery
     , ergvein-types
     , ergvein-types
+    , exceptions
     , haskoin-core              >= 0.12.0   && < 0.12.1
     , iproute
     , lens
@@ -76,9 +92,11 @@ library
     , reflex-flunky
     , reflex-fork
     , reflex-localize
+    , safe-exceptions
     , sepulcas-log
     , sepulcas-native
     , socks
+    , some
     , stm
     , text
     , time
@@ -95,12 +113,14 @@ library
     FlexibleContexts
     FlexibleInstances
     FunctionalDependencies
+    GADTs
     GeneralizedNewtypeDeriving
     LambdaCase
     MultiParamTypeClasses
     OverloadedStrings
     RankNTypes
     RecordWildCards
+    RecursiveDo
     ScopedTypeVariables
     StandaloneDeriving
     TupleSections
