@@ -5,7 +5,7 @@ module Ergvein.Wallet.Localization.Storage
 
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Native
-import Ergvein.Core.Storage
+import Ergvein.Core.Store
 
 import Data.Text
 
