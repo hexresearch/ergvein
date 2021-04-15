@@ -5,18 +5,9 @@ module Ergvein.Wallet.Localization.Storage
 
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Native
+import Ergvein.Core.Storage
 
 import Data.Text
-
--- Alerts regarding secure storage system
-data StorageAlert
-  = SADecodeError Text
-  | SALoadedSucc
-  | SANativeAlert NativeAlerts
-  | SAMnemonicFail Text
-  | SACryptoError Text
-  | SADecryptError Text
-  deriving (Eq, Show)
 
 instance LocalizedPrint StorageAlert where
   localizedShow l v = case l of

@@ -5,9 +5,7 @@ module Ergvein.Wallet.Localization.WalletInfo
 
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localization.Storage
-
-data WalletInfoAlert = CreateStorageAlert !StorageAlert | GenerateECIESKeyAlert | LoadStorageAlert !StorageAlert
-    deriving Eq
+import Ergvein.Core.Store
 
 instance LocalizedPrint WalletInfoAlert where
   localizedShow l v = case l of
