@@ -441,7 +441,7 @@ passwordCss = do
     position absolute
     display flex
     alignItems center
-    right $ rem 0.8
+    right $ rem 1.2
     fontSize $ pt 16
     color hoverColor
     backgroundColor white
@@ -513,8 +513,35 @@ balancesPageCss = do
 
 sendPageCss :: Css
 sendPageCss = do
-  ".send-page input" ? do
+  ".send-page" ? do
+    textAlign $ alignSide sideLeft
+  ".text-input-with-btns-wrapper" ? do
+    display flex
+    alignItems center
+    position relative
     marginBottom $ rem 1
+  ".text-input-with-btns-android" ? do
+    width $ pct 100
+    marginBottom $ rem 0
+    important $ paddingRight $ rem 10
+  ".text-input-with-btns-desktop" ? do
+    width $ pct 100
+    marginBottom $ rem 0
+    important $ paddingRight $ rem 5
+  ".text-input-btns" ? do
+    position absolute
+    display flex
+    alignItems center
+    right $ rem 0
+    fontSize $ pt 16
+    marginRight $ rem 1
+  ".text-input-btn" ? do
+    paddingLeft $ rem 1
+    paddingRight $ rem 1
+    zIndex 1
+  ".text-input-btn:hover" ? do
+    cursor pointer
+    color hoverColor
   ".form-field-errors" ? do
     color red
     textAlign $ alignSide sideLeft

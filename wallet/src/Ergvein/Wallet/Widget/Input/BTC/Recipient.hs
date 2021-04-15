@@ -14,7 +14,6 @@ import Sepulcas.Clipboard
 import Sepulcas.Elements
 import Ergvein.Wallet.Localization.Send
 import Ergvein.Wallet.Localization.Settings()
-import Ergvein.Wallet.Localization.Util
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Platform
 import Ergvein.Wallet.Validate
@@ -30,20 +29,18 @@ recipientWidget mInitRecipient submitE = mdo
   recipientErrsD <- holdDyn Nothing $ ffor (current validatedRecipientD `tag` submitE) eitherToMaybe'
   recipientD <- if isAndroid
     then mdo
-      recipD <- validatedTextFieldSetVal RecipientString initRecipient recipientErrsD (leftmost [resQRcodeE, pasteE])
-      (pasteE, resQRcodeE) <- divClass "send-page-buttons-wrapper" $ do
-        qrE <- outlineTextIconButtonTypeButton CSScanQR "fas fa-qrcode fa-lg"
-        openE <- delay 1.0 =<< openCamara qrE
-        let stripCurPrefix t = T.dropWhile (== '/') $ fromMaybe t $ T.stripPrefix (curprefix BTC) t
-        resQRcodeE' <- (fmap . fmap) stripCurPrefix $ waiterResultCamera openE
-        pasteBtnE <- outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
-        pasteE' <- clipboardPaste pasteBtnE
-        pure (pasteE', resQRcodeE')
+      (recipD, events) <- validatedTextFieldWithSetValBtns RecipientString initRecipient recipientErrsD ["fas fa-paste", "fas fa-qrcode"] (leftmost [resQRcodeE, pasteE])
+      let pasteBtnE = head events
+          qrBtnE = events !! 1
+          stripCurPrefix t = T.dropWhile (== '/') $ fromMaybe t $ T.stripPrefix (curprefix BTC) t
+      openE <- delay 1.0 =<< openCamara qrBtnE
+      resQRcodeE <- (fmap . fmap) stripCurPrefix $ waiterResultCamera openE
+      pasteE <- clipboardPaste pasteBtnE
       pure recipD
     else mdo
-      recipD <- validatedTextFieldSetVal RecipientString initRecipient recipientErrsD pasteE
-      pasteE <- divClass "send-page-buttons-wrapper" $ do
-        clipboardPaste =<< outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
+      (recipD, events) <- validatedTextFieldWithSetValBtns RecipientString initRecipient recipientErrsD ["fas fa-paste"] pasteE
+      let pasteBtnE = head events
+      pasteE <- clipboardPaste pasteBtnE
       pure recipD
   let validatedRecipientD = toEither . validateBtcRecipient . T.unpack <$> recipientD
   pure $ eitherToMaybe <$> validatedRecipientD

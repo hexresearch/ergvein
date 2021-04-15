@@ -65,7 +65,7 @@ sendWidget :: MonadFront t m
   -> m a
   -> Maybe (Dynamic t (m ()))
   -> m (Dynamic t (Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), BtcAddress, RbfEnabled)))
-sendWidget cur mInit title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ mdo
+sendWidget cur mInit title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ divClass "send-page" $ mdo
   settings <- getSettings
   let amountInit = (\(x, _, _, _) -> x) <$> mInit
       feeInit = (\(_, x, _, _) -> x) <$> mInit
