@@ -32,10 +32,15 @@ sendAmountWidget minit submitE = mdo
   let errsD = fmap (maybe [] id) amountErrsD
   let isInvalidD = fmap (maybe "" (const "is-invalid")) amountErrsD
   amountValD <- el "div" $ mdo
-    textInputValueD <- (fmap . fmap) T.unpack $ divClassDyn isInvalidD $ textField AmountString txtInit
-    when isAndroid (availableBalanceWidget unitD)
-    unitD <- unitsDropdown (getUnitBTC unitInit) allUnitsBTC
-    pure $ zipDynWith (\u v -> fmap (u,) $ toEither $ validateBtcWithUnits u v) unitD textInputValueD
+    el "label" $ localizedText AmountString
+    divClass "row" $ mdo
+      textInputValueD <- divClass "column column-67" $ do
+        textInputValueD' <- (fmap . fmap) T.unpack $ divClassDyn isInvalidD $ textFieldNoLabel txtInit
+        when isAndroid (availableBalanceWidget unitD)
+        pure textInputValueD'
+      unitD <- divClass "column column-33" $ do
+        unitsDropdown (getUnitBTC unitInit) allUnitsBTC
+      pure $ zipDynWith (\u v -> fmap (u,) $ toEither $ validateBtcWithUnits u v) unitD textInputValueD
   void $ divClass "form-field-errors" $ simpleList errsD displayError
   amountErrsD :: Dynamic t (Maybe [VError ()]) <- holdDyn Nothing $ ffor (current amountValD `tag` submitE) eitherToMaybe'
   pure $ eitherToMaybe <$> amountValD
