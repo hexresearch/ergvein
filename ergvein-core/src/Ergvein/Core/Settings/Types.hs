@@ -41,13 +41,14 @@ import Sepulcas.Native
 import System.Directory
 
 import Ergvein.Aeson
+import Ergvein.Core.IP
+import Ergvein.Core.Platform
+import Ergvein.Core.Settings.Constants
+import Ergvein.Core.Yaml (readYamlEither')
 import Ergvein.Lens
 import Ergvein.Node.Constants
 import Ergvein.Text
 import Ergvein.Types.Currency
-import Ergvein.Core.IP
-import Ergvein.Core.Platform
-import Ergvein.Core.Yaml(readYamlEither')
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
@@ -238,27 +239,6 @@ instance ToJSON Language => ToJSON Settings where
     , "socksProxy"        .= toJSON settingsSocksProxy
     , "currencySpecific"  .= toJSON settingsCurrencySpecific
    ]
-
-defIndexerPort :: PortNumber
-defIndexerPort = defNodePort isTestnet
-
-defaultIndexers :: [Text]
-defaultIndexers = defNodes isTestnet
-
-defaultSeedNodesSource :: [Domain]
-defaultSeedNodesSource = defSeedNodesSource isTestnet
-
-defaultIndexersNum :: (Int, Int)
-defaultIndexersNum = (2, 4)
-
-defaultIndexerTimeout :: NominalDiffTime
-defaultIndexerTimeout = 20
-
-defaultActUrlNum :: Int
-defaultActUrlNum = 10
-
-defaultDns :: PlatformNatives => S.Set HostName
-defaultDns = S.fromList $ defDns isAndroid
 
 defaultSettings :: PlatformNatives => Language -> FilePath -> Settings
 defaultSettings deflang home =
