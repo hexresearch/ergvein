@@ -41,6 +41,7 @@ library
     Ergvein.Core
     Ergvein.Core.Client
     Ergvein.Core.Client.Monad
+    Ergvein.Core.Client.Socket
     Ergvein.Core.Currency
     Ergvein.Core.Filters
     Ergvein.Core.IP
@@ -67,6 +68,7 @@ library
   build-depends:
       base                      >= 4.5      && < 4.15
     , aeson
+    , attoparsec
     , bytestring
     , cereal
     , containers
@@ -117,6 +119,7 @@ library
     GeneralizedNewtypeDeriving
     LambdaCase
     MultiParamTypeClasses
+    MultiWayIf
     OverloadedStrings
     RankNTypes
     RecordWildCards
