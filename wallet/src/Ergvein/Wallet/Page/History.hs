@@ -40,8 +40,6 @@ historyPage cur = do
     , retractablePrev = thisWidget
     }
 
--- Dynamic t (m a) -> m (Dynamic t a)
-
 historyTableWidget :: MonadFront t m => Currency -> m (Event t TransactionView)
 historyTableWidget cur = case cur of
   BTC -> do
