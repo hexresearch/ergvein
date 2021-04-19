@@ -24,12 +24,12 @@ recipientWidget :: MonadFront t m
   => Maybe BtcAddress -- ^ Initial input value
   -> Event t () -- ^ Send event. Triggers fileds validation
   -> m (Dynamic t (Maybe BtcAddress))
-recipientWidget mInitRecipient submitE = mdo
+recipientWidget mInitRecipient submitE = divClass "recipient-input" $ mdo
   let initRecipient = maybe "" btcAddrToString mInitRecipient
   recipientErrsD <- holdDyn Nothing $ ffor (current validatedRecipientD `tag` submitE) eitherToMaybe'
   recipientD <- if isAndroid
     then mdo
-      (recipD, events) <- validatedTextFieldWithSetValBtns RecipientString initRecipient recipientErrsD ["fas fa-paste", "fas fa-qrcode"] (leftmost [resQRcodeE, pasteE])
+      (recipD, events) <- validatedTextFieldWithSetValBtns RecipientString initRecipient recipientErrsD ["fas fa-paste", "fas fa-qrcode"] (leftmost [pasteE, resQRcodeE])
       let pasteBtnE = head events
           qrBtnE = events !! 1
           stripCurPrefix t = T.dropWhile (== '/') $ fromMaybe t $ T.stripPrefix (curprefix BTC) t

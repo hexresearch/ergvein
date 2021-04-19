@@ -6,6 +6,7 @@ module Ergvein.Wallet.Style(
 
 import Clay
 import Clay.Selector
+import Clay.Stylesheet
 import Control.Monad
 import Data.ByteString (ByteString)
 import Data.ByteString.Lazy (toStrict)
@@ -97,11 +98,20 @@ tabletBreakpoint = rem 80
 desktopBreakpoint :: Size LengthUnit
 desktopBreakpoint = rem 120
 
+appearanceNone :: Css
+appearanceNone = prefixed (browsers <> "appearance") noneValue
+
+margin0 :: Css
+margin0 = margin (px 0) (px 0) (px 0) (px 0)
+
+padding0 :: Css
+padding0 = padding (px 0) (px 0) (px 0) (px 0)
+
 htmlCss :: Css
 htmlCss = do
   html ? do
-    margin (px 0) (px 0) (px 0) (px 0)
-    padding (px 0) (px 0) (px 0) (px 0)
+    margin0
+    padding0
     textAlign center
   "input, textarea, select" ? do
     fontFamily ["Roboto"] [sansSerif, monospace]
@@ -109,8 +119,8 @@ htmlCss = do
 
 bodyCss :: Css
 bodyCss = body ? do
-  margin (px 0) (px 0) (px 0) (px 0)
-  padding (px 0) (px 0) (px 0) (px 0)
+  margin0
+  padding0
   color textColor
   backgroundColor majorBackground
   fontFamily ["Roboto"] [sansSerif, monospace]
@@ -385,47 +395,75 @@ validateCss = do
   ".validate-error" ? do
     fontSize $ pt 14
 
-
 toggleSwitchCss :: Css
-toggleSwitchCss = do
-  ".switch" ? do
-    position relative
-    display inlineBlock
-    width  $ px 60
-    height $ px 34
-  input # ".switch" ? do
-    opacity 0.0
-    width $ px 0
-    height $ px 0
-    verticalAlign vAlignBottom
-  ".slider" ? do
-    position absolute
-    cursor pointer
-    top $ px 0
-    left $ px 0
-    right $ px 0
-    bottom $ px 0
-    backgroundColor white
-    borderStyle solid
-    borderWidth $ px 1
-    borderColor black
+toggleSwitchCss =
+  let
+    toggleSwitchHeight = rem 3.8 -- change this to scale switch
+    toggleSwitchFontSize = pt 11
+    toggleSwitchWidth = 2 *@ toggleSwitchHeight
+    toggleSwitchBorderRadius = 0.5 *@ toggleSwitchHeight
+    knobSize = 0.72 *@ toggleSwitchHeight
+    knobBorderRadius = 0.5 *@ knobSize
+    knobMargin = 0.5 *@ (toggleSwitchHeight @-@ knobSize)
+    textMargin = 0.3 *@ toggleSwitchHeight
+  in do
+    ".toggle-switch" ? do
+      display inlineBlock
+      position relative
+      width toggleSwitchWidth
+      height toggleSwitchHeight
+      borderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius
+      borderStyle solid
+      borderWidth $ px 1
+      borderColor black
+      margin0
+      boxSizing contentBox
 
-  ".slider" # before ? do
-    position absolute
-    content $ stringContent mempty
-    height $ px 26
-    width $ px 26
-    left $ px  4
-    bottom $ px  3
-    backgroundColor black
-    verticalAlign middle
-  input # checked |+ ".slider" ? do
-    backgroundColor grey
-    verticalAlign middle
-  input # focus |+ ".slider" ? do
-    boxShadow $ pure $ bsColor grey $ shadowWithBlur (px 0) (px 0) (px 1)
-  input # checked |+ ".slider" # before ? do
-    transform $ translateX $ px 26
+    ".toggle-switch input" ? do
+      appearanceNone
+      display flex
+      alignItems center
+      justifyContent spaceBetween
+      width toggleSwitchWidth
+      height toggleSwitchHeight
+      borderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius
+      outline none (px 0) black -- outline: none
+      margin0
+
+    ".toggle-switch input::before, .toggle-switch input::after" ? do
+      zIndex 1
+      textTransform uppercase
+      transition "opacity" (sec 0.3) linear (sec 0)
+      fontSize $ toggleSwitchFontSize
+
+    ".toggle-switch input::before" ? do
+      content $ stringContent "On"
+      marginLeft textMargin
+
+    ".toggle-switch input::after" ? do
+      content $ stringContent "Off"
+      marginRight textMargin
+
+    ".toggle-switch label" ? do
+      position absolute
+      zIndex 2
+      width knobSize
+      height knobSize
+      top knobMargin
+      left knobMargin
+      borderRadius knobBorderRadius knobBorderRadius knobBorderRadius knobBorderRadius
+      backgroundColor black
+      margin0
+      transitions [("left", (sec 0.3), linear, (sec 0)), ("right", (sec 0.3), linear, (sec 0))]
+
+    ".toggle-switch input:checked::before" ? do
+      opacity 0
+
+    ".toggle-switch input:not(:checked)::after" ? do
+      opacity 0
+
+    ".toggle-switch input:not(:checked) + label" ? do
+      left $ toggleSwitchWidth @-@ (knobMargin @+@ knobSize)
 
 passwordCss :: Css
 passwordCss = do
@@ -519,7 +557,6 @@ sendPageCss = do
     display flex
     alignItems center
     position relative
-    marginBottom $ rem 1
   ".text-input-with-btns-android" ? do
     width $ pct 100
     marginBottom $ rem 0
@@ -545,8 +582,7 @@ sendPageCss = do
   ".form-field-errors" ? do
     color red
     textAlign $ alignSide sideLeft
-    marginTop $ rem (-0.5)
-    marginBottom $ rem 1
+    marginTop $ rem 0.5
   ".send-page-buttons-wrapper" ? do
     display flex
     flexWrap F.wrap
@@ -556,9 +592,6 @@ sendPageCss = do
     flexGrow 1
     marginLeft $ rem 1
     marginRight $ rem 1
-  ".send-page-available-balance" ? do
-    paddingBottom $ rem 1
-    textAlign $ alignSide sideLeft
   ".button-icon-wrapper" ? do
     paddingLeft $ rem 1
   ".is-invalid input" ? border solid (rem 0.1) red
@@ -1076,7 +1109,7 @@ graphPinCodeCanvasCss = do
     backgroundColor $ rgb 240 240 240
     border solid (px 1) black
     borderRadius (px 5) (px 5) (px 5) (px 5)
-    padding (px 0) (px 0) (px 0) (px 0)
+    padding0
     marginLeft auto
     marginRight auto
     userSelect none
