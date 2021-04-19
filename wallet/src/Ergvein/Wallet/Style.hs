@@ -583,6 +583,8 @@ sendPageCss = do
     color red
     textAlign $ alignSide sideLeft
     marginTop $ rem 0.5
+  ".amount-available-balance" ? do
+    marginTop $ rem 0.5
   ".send-page-buttons-wrapper" ? do
     display flex
     flexWrap F.wrap
@@ -913,7 +915,7 @@ historyPageCss = do
   ".history-date-header" ? do
     borderRight solid (px 2) black
     display block
-  "history-date" ? do
+  ".history-date" ? do
     marginLeft auto
     marginRight auto
   ".history-status-header" ? do

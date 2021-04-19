@@ -50,7 +50,7 @@ sendAmountWidget minit submitE = divClass "amoun-input" $ mdo
       balanceText <- localized SendAvailableBalance
       let balanceVal = zipDynWith (\x y -> showMoneyUnit x (Units (Just y) Nothing) <> " " <> btcSymbolUnit y) balanceValue uD
           balanceTxt = zipDynWith (\x y -> x <> ": " <> y) balanceText balanceVal
-      divClass "mt-1" $ dynText balanceTxt
+      divClass "amount-available-balance" $ dynText balanceTxt
     unitsDropdown val allUnits = do
       langD <- getLanguage
       let unitD = constDyn val
