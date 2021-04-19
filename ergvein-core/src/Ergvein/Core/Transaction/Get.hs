@@ -1,29 +1,30 @@
-module Ergvein.Wallet.Transaction.Get(
+module Ergvein.Core.Transaction.Get(
     transactionsGetting
   ) where
 
 import Control.Lens
 import Control.Monad.IO.Class
 import Control.Monad.Reader
-
 import Data.Maybe (fromMaybe, fromJust)
 import Data.Time
 import Data.Word
 import Network.Haskoin.Address
+import Reflex.Flunky
+import Reflex.Fork
+import Reflex.Main.Thread
 
+import Ergvein.Core.Settings
+import Ergvein.Core.TimeZone
+import Ergvein.Core.Transaction.Util
+import Ergvein.Core.Transaction.View
+import Ergvein.Core.Wallet.Monad
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Transaction
-import Sepulcas.Elements
-import Ergvein.Wallet.Monad
 import Sepulcas.Native
-import Ergvein.Wallet.Settings
-import Ergvein.Core.TimeZone
-import Ergvein.Wallet.Transaction.Util
-import Ergvein.Wallet.Transaction.View
 
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
@@ -46,7 +47,7 @@ txListRaw ::
 txListRaw (a:as) (b:bs) (c:cs) (d:ds) (e:es) (f:fs) (g:gs) (h:hs) (i:is) (j:js) = (TxRawInfo a b c d e f g h i j) : txListRaw as bs cs ds es fs gs hs is js
 txListRaw _ _ _ _ _ _ _ _ _ _ = []
 
-transactionsGetting :: MonadFront t m => Currency -> m (Dynamic t [TransactionView], Dynamic t Word64)
+transactionsGetting :: (MonadWallet t m, MonadHasSettings t m, PerformMain t m) => Currency -> m (Dynamic t [TransactionView], Dynamic t Word64)
 transactionsGetting cur = do
   buildE <- delay 0.2 =<< getPostBuild
   settings <- getSettings

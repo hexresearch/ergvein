@@ -37,6 +37,7 @@ let
       reflex-fork = ./reflex-fork;
       reflex-localize = ./reflex-localize;
       reflex-localize-dom = ./reflex-localize-dom;
+      reflex-main-thread = ./reflex-main-thread;
       sepulcas = ./sepulcas;
       sepulcas-android = ./sepulcas-android;
       sepulcas-desktop = ./sepulcas-desktop;
@@ -72,8 +73,9 @@ let
         "reflex-external-ref"
         "reflex-flunky"
         "reflex-fork"
-        "reflex-localize"
         "reflex-localize-dom"
+        "reflex-localize"
+        "reflex-main-thread"
         "sepulcas-desktop"
         "sepulcas-log"
         "sepulcas-native"

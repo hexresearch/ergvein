@@ -2,7 +2,7 @@ module Sepulcas.Monad.Class(
     MonadReflex
   , HasStoreDir(..)
   , MonadAlertPoster(..)
-  , MonadHasUI(..)
+  , MonadHasMain(..)
   , MonadLocalized(..)
   , MonadNativeLogger(..)
   , MonadRetract(..)
@@ -24,7 +24,7 @@ import Sepulcas.Alert.Monad
 import Sepulcas.Log
 import Sepulcas.Monad.Password
 import Sepulcas.Monad.Reflex
-import Sepulcas.Monad.UI
+import Reflex.Main.Thread
 import Sepulcas.Native
 
 type Prepulcable t m = (
@@ -32,7 +32,7 @@ type Prepulcable t m = (
   , HasPassModal t m
   , MonadAlertPoster t m
   , MonadReflex t m
-  , MonadHasUI m
+  , MonadHasMain m
   , MonadLocalized t m
   , MonadNativeLogger t m
   , MonadRetract t m

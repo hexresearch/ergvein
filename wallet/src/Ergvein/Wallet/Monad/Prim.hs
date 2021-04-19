@@ -7,7 +7,7 @@ module Ergvein.Wallet.Monad.Prim
   , alertTypeToSeverity
   , MonadNativeLogger(..)
   , MonadHasSettings(..)
-  , MonadHasUI(..)
+  , MonadHasMain(..)
   -- * Frontend-wide types
   , IndexerInfo(..)
   , PeerScanInfoMap

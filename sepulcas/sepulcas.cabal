@@ -37,7 +37,6 @@ library
       Sepulcas.Monad.Env
       Sepulcas.Monad.Password
       Sepulcas.Monad.Reflex
-      Sepulcas.Monad.UI
       Sepulcas.OpenUrl
       Sepulcas.Resize
       Sepulcas.Share
@@ -45,7 +44,6 @@ library
       Sepulcas.Style.Embed
       Sepulcas.Style.Fonts
       Sepulcas.Text
-      Sepulcas.TimeZone
       Sepulcas.Validate
 
     hs-source-dirs: src
@@ -104,6 +102,7 @@ library
         reflex-fork,
         reflex-localize-dom,
         reflex-localize,
+        reflex-main-thread,
         safe-exceptions,
         safe,
         semialign,

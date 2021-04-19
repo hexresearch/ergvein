@@ -55,6 +55,7 @@ library
         Ergvein.Wallet.Localization.Share
         Ergvein.Wallet.Localization.Storage
         Ergvein.Wallet.Localization.TestnetDisclaimer
+        Ergvein.Wallet.Localization.Transaction
         Ergvein.Wallet.Localization.Util
         Ergvein.Wallet.Localization.Validate
         Ergvein.Wallet.Log
@@ -205,6 +206,7 @@ library
         reflex-fork,
         reflex-localize -any,
         reflex-localize-dom -any,
+        reflex-main-thread,
         safe -any,
         safe-exceptions -any,
         safecopy  >= 0.9 && < 0.10,

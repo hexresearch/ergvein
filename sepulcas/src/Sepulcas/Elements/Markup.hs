@@ -103,7 +103,7 @@ linedText :: (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m) => Dynam
 linedText textD = void $ simpleList (T.lines <$> textD) (\t -> dynText t >> br)
 
 -- | Link with custom click handler which opens link in external browser
-hyperlink :: (DomBuilder t m, PostBuild t m, PerformEvent t m, TriggerEvent t m, MonadHasUI m, MonadUnliftIO (Performable m), PlatformNatives, MonadLocalized t m)
+hyperlink :: (DomBuilder t m, PostBuild t m, PerformEvent t m, TriggerEvent t m, MonadHasMain m, MonadUnliftIO (Performable m), PlatformNatives, MonadLocalized t m)
   => Dynamic t Text -> Text -> Text -> m ()
 hyperlink classValD lbl url = do
   clickeE <- spanButton classValD lbl

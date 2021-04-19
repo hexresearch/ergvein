@@ -11,7 +11,6 @@ module Sepulcas(
   , module Sepulcas.Run.Callbacks
   , module Sepulcas.Share
   , module Sepulcas.Style
-  , module Sepulcas.TimeZone
   , module Sepulcas.Validate
   , bindSelf
   , Language
@@ -39,5 +38,4 @@ import Sepulcas.Run
 import Sepulcas.Run.Callbacks
 import Sepulcas.Share
 import Sepulcas.Style
-import Sepulcas.TimeZone
 import Sepulcas.Validate

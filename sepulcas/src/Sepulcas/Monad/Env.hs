@@ -50,9 +50,9 @@ instance {-# OVERLAPPABLE #-} HasSepulca t m => HasStoreDir m where
   getStoreDir = sepulca'storeDir <$> getSepulca
   {-# INLINE getStoreDir #-}
 
-instance {-# OVERLAPPABLE #-} (HasSepulca t m, MonadIO m) => MonadHasUI m where
-  getUiChan = sepulca'uiChan <$> getSepulca
-  {-# INLINE getUiChan #-}
+instance {-# OVERLAPPABLE #-} (HasSepulca t m, MonadIO m) => MonadHasMain m where
+  getMainThreadChan = sepulca'uiChan <$> getSepulca
+  {-# INLINE getMainThreadChan #-}
 
 instance {-# OVERLAPPABLE #-} (HasSepulca t m, MonadReflex t m) => MonadNativeLogger t m where
   getLogsTrigger = sepulca'logsTrigger  <$> getSepulca

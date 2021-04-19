@@ -66,6 +66,12 @@ library
     Ergvein.Core.Store.Monad
     Ergvein.Core.Store.Util
     Ergvein.Core.Store.WalletInfo
+    Ergvein.Core.TimeZone
+    Ergvein.Core.Transaction
+    Ergvein.Core.Transaction.Builder
+    Ergvein.Core.Transaction.Get
+    Ergvein.Core.Transaction.Util
+    Ergvein.Core.Transaction.View
     Ergvein.Core.Wallet
     Ergvein.Core.Wallet.Monad
     Ergvein.Core.Yaml
@@ -75,6 +81,7 @@ library
     , attoparsec
     , bytestring
     , cereal
+    , conduit
     , containers
     , dependent-map
     , directory
@@ -99,6 +106,7 @@ library
     , reflex-flunky
     , reflex-fork
     , reflex-localize
+    , reflex-main-thread
     , safe-exceptions
     , safecopy
     , sepulcas-log

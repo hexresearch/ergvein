@@ -1,4 +1,4 @@
-module Sepulcas.Monad.UI where
+module Reflex.Main.Thread where
 
 import Control.Concurrent
 import Control.Concurrent.Async
@@ -8,44 +8,44 @@ import Control.Monad.Reader
 import Reflex
 import Reflex.Fork
 
-class MonadIO m => MonadHasUI m where
+class MonadIO m => MonadHasMain m where
   -- | Internal method of getting channel where you can post actions that must be
   -- executed in main UI thread.
-  getUiChan :: m (Chan (IO ()))
+  getMainThreadChan :: m (Chan (IO ()))
 
-instance MonadIO m => MonadHasUI (ReaderT (Chan (IO ())) m) where
-  getUiChan = ask
-  {-# INLINE getUiChan #-}
+instance MonadIO m => MonadHasMain (ReaderT (Chan (IO ())) m) where
+  getMainThreadChan = ask
+  {-# INLINE getMainThreadChan #-}
 
-instance MonadIO m => MonadHasUI (ReaderT (Chan (IO ()), a) m) where
-  getUiChan = asks fst
-  {-# INLINE getUiChan #-}
+instance MonadIO m => MonadHasMain (ReaderT (Chan (IO ()), a) m) where
+  getMainThreadChan = asks fst
+  {-# INLINE getMainThreadChan #-}
 
-type PerformUI t m = (PerformEvent t m, TriggerEvent t m, MonadUnliftIO (Performable m), MonadHasUI m)
+type PerformMain t m = (PerformEvent t m, TriggerEvent t m, MonadUnliftIO (Performable m), MonadHasMain m)
 
 -- | Execute the action in main thread of UI. Very useful for android API actions
 -- that must be executed in the same thread where Looper was created.
-runOnUiThread :: PerformUI t m => Event t (Performable m a) -> m (Event t a)
-runOnUiThread ema = do
-  ch <- getUiChan
+runOnMainThread :: PerformMain t m => Event t (Performable m a) -> m (Event t a)
+runOnMainThread ema = do
+  ch <- getMainThreadChan
   performEventAsync $ ffor ema $ \ma fire -> do
     unlift <- askUnliftIO
     liftIO $ writeChan ch $ fire =<< unliftIO unlift ma
 
 -- | Execute the action in main thread of UI. Very useful for android API actions
 -- that must be executed in the same thread where Looper was created.
-runOnUiThread_ :: PerformUI t m => Event t (Performable m ()) -> m ()
-runOnUiThread_ ema = do
-  ch <- getUiChan
+runOnMainThread_ :: PerformMain t m => Event t (Performable m ()) -> m ()
+runOnMainThread_ ema = do
+  ch <- getMainThreadChan
   performEvent_ $ ffor ema $ \ma -> do
     unlift <- askUnliftIO
     liftIO $ writeChan ch (unliftIO unlift ma)
 
 -- | Execute the action in main thread of UI. Very useful for android API actions
 -- that must be executed in the same thread where Looper was created.
-runOnUiThreadA :: MonadHasUI m => IO a -> m (Async a)
-runOnUiThreadA ma = do
-  ch <- getUiChan
+runOnMainThreadA :: MonadHasMain m => IO a -> m (Async a)
+runOnMainThreadA ma = do
+  ch <- getMainThreadChan
   liftIO $ do
     resVar <- newEmptyMVar
     writeChan ch $ putMVar resVar =<< ma
@@ -53,7 +53,7 @@ runOnUiThreadA ma = do
 
 -- | Execute the action in main thread of UI. Very useful for android API actions
 -- that must be executed in the same thread where Looper was created.
-runOnUiThreadM :: MonadHasUI m => IO () -> m ()
-runOnUiThreadM ma = do
-  ch <- getUiChan
+runOnMainThreadM :: MonadHasMain m => IO () -> m ()
+runOnMainThreadM ma = do
+  ch <- getMainThreadChan
   liftIO $ writeChan ch ma

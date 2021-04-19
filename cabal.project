@@ -21,6 +21,7 @@ packages:
   ./reflex-fork
   ./reflex-localize
   ./reflex-localize-dom
+  ./reflex-main-thread
   ./retractable
   ./sepulcas
   ./sepulcas-android

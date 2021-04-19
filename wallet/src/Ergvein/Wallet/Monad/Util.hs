@@ -1,9 +1,9 @@
 module Ergvein.Wallet.Monad.Util
   (
-    runOnUiThread
-  , runOnUiThread_
-  , runOnUiThreadA
-  , runOnUiThreadM
+    runOnMainThread
+  , runOnMainThread_
+  , runOnMainThreadA
+  , runOnMainThreadM
   , nameSpace
   , getLogNameSpace
   , postSeverity
@@ -85,12 +85,12 @@ parseSingleSockAddr rs t = do
         [] -> pure Nothing
         ip:_ -> pure $ Just $ NamedSockAddr t $ SockAddrInet port (toHostAddress ip)
 
-mkResolvSeed :: (MonadHasUI m, MonadHasSettings t m) => m ResolvSeed
+mkResolvSeed :: (MonadHasMain m, MonadHasSettings t m) => m ResolvSeed
 mkResolvSeed = do
   defDns <- fmap (S.toList . settingsDns) $ readExternalRef =<< getSettingsRef
   if isAndroid
     then do
-      dns <- liftIO . wait =<< runOnUiThreadA androidDetectDns
+      dns <- liftIO . wait =<< runOnMainThreadA androidDetectDns
       liftIO $ makeResolvSeed defaultResolvConf {
           resolvInfo = RCHostNames $ case dns of
             [] -> defDns
