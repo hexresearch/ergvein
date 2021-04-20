@@ -56,7 +56,9 @@ setupPasswordPage wt mpath mnemonic curs mlogin = wrapperSimple True $ do
   rec
     logPassE <- setupLoginPassword mlogin btnE
     pathD <- setupDerivPrefix curs mpath
-    heightD <- setupBtcStartingHeight
+    heightD <- case wt of
+      WalletGenerated -> pure 0
+      WalletRestored -> setupBtcStartingHeight
     btnE <- submitSetBtn
   let goE = poke logPassE $ \(l, pass) -> do
         p <- sampleDyn pathD
@@ -123,7 +125,9 @@ setupLoginPage wt mpath mnemonic curs = wrapperSimple True $ do
   rec
     loginE <- setupLogin btnE
     pathD <- setupDerivPrefix curs mpath
-    heightD <- setupBtcStartingHeight
+    heightD <- case wt of
+      WalletGenerated -> pure 0
+      WalletRestored -> setupBtcStartingHeight
     btnE <- submitSetBtn
   let goE = poke loginE $ \l -> do
         p <- sampleDyn pathD
