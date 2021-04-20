@@ -9,6 +9,7 @@ module Ergvein.Wallet.Monad.Client (
   , activateURL
   , activateURLList
   , deactivateURL
+  , reopenAndWait
   , forgetURL
   , broadcastIndexerMessage
   , requestSpecificIndexer
@@ -65,7 +66,7 @@ data IndexerConnection t = IndexerConnection {
 data IndexerStatus = IndexerOk | IndexerNotSynced | IndexerWrongVersion !(Maybe ProtocolVersion) | IndexerMissingCurrencies
   deriving (Eq, Ord, Show, Read, Generic)
 
-data IndexerMsg = IndexerClose | IndexerRestart | IndexerMsg Message
+data IndexerMsg = IndexerClose | IndexerReopen | IndexerMsg Message
 
 type IndexReqSelector t = EventSelector t (Const2 ErgveinNodeAddr IndexerMsg)
 
@@ -165,6 +166,19 @@ closeAndWait urlE = do
   closedEE <- performEvent $ ffor urlE $ \url -> do
     let sa = url
     liftIO $ req $ M.singleton sa IndexerClose
+    mconn <- fmap (M.lookup sa) $ readExternalRef connsRef
+    pure $ case mconn of
+      Nothing -> never
+      Just conn -> url <$ indexConClosedE conn
+  switchDyn <$> holdDyn never closedEE
+
+reopenAndWait :: MonadIndexClient t m => Event t ErgveinNodeAddr -> m (Event t ErgveinNodeAddr)
+reopenAndWait urlE = do
+  req      <- getIndexReqFire
+  connsRef <- getActiveConnsRef
+  closedEE <- performEvent $ ffor urlE $ \url -> do
+    let sa = url
+    liftIO $ req $ M.singleton sa IndexerReopen
     mconn <- fmap (M.lookup sa) $ readExternalRef connsRef
     pure $ case mconn of
       Nothing -> never

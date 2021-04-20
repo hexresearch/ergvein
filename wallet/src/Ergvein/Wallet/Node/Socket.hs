@@ -80,9 +80,11 @@ data SocketConf t a = SocketConf {
 , _socketConfPeeker :: !(ReaderT PeekerEnv IO a)
 -- | Event that externaly closes the connection
 , _socketConfClose  :: !(Event t ())
+-- | Event that externaly reopen the connection
+, _socketConfReopen  :: !(Event t ())
 -- | Timeout after which we try to reconnect. `Nothing` means to not reconnect.
 -- Second number means amount of tries of reconnection after which close event is fired.
-, _socketConfReopen :: !(Maybe (NominalDiffTime, Int))
+, _socketConfReopenParams :: !(Maybe (NominalDiffTime, Int))
 -- | Configuration of SOCKS proxy. If the value changes, connection is reopened.
 , _socketConfProxy  :: !(Dynamic t (Maybe SocksConf))
 } deriving (Generic)
@@ -98,6 +100,7 @@ data SocketStatus =
 -- | Information why socket was closed
 data CloseReason =
     CloseGracefull -- ^ Socket was closed gracefully and not going to be reopened
+  | CloseReconnect
   | CloseError !Bool !CloseException -- ^ Socket was closed by exception. Boolean marks is the connection restarting.
   deriving (Show, Generic)
 
@@ -105,6 +108,7 @@ data CloseReason =
 isCloseFinal :: CloseReason -> Bool
 isCloseFinal r = case r of
   CloseGracefull -> True
+  CloseReconnect -> False
   CloseError b _ -> not b
 
 -- | Widget that is created with `socket` and allows to get results from
@@ -160,7 +164,7 @@ socket SocketConf{..} = fmap switchSocket $ networkHoldDyn $ ffor _socketConfPro
   (readErE, readErFire) <- newTriggerEvent
   (inE, inFire) <- newTriggerEvent
   statusD <- holdDyn SocketInitial statusE
-  reconnectE <- case _socketConfReopen of
+  reconnectE <- case _socketConfReopenParams of
     Just (dt, _) -> do
       let notFinalE = fforMaybe closeE $ \cr -> if isCloseFinal cr then Nothing else Just ()
       performEvent_ $ ffor notFinalE $ const $ modifyExternalRef reconnTriesRef $ \i -> (i+1, ())
@@ -175,16 +179,21 @@ socket SocketConf{..} = fmap switchSocket $ networkHoldDyn $ ffor _socketConfPro
         -- logWrite $ showt e
         statusFire SocketClosed
         i <- readExternalRef reconnTriesRef
-        let doReconnecting = case _socketConfReopen of
+        let doReconnecting = case _socketConfReopenParams of
               Nothing -> False
               Just (_, n) -> i < n
         closeFire $ maybe CloseGracefull (CloseError doReconnecting) e
+      reopenCb :: IO ()
+      reopenCb = do
+        statusFire SocketClosed
+        closeFire CloseReconnect
   intVar <- liftIO $ newTVarIO False
   sendChan <- liftIO newTChanIO
   performEvent_ $ ffor closeE $ const $ liftIO $ atomically $ writeTVar intVar True
   performEvent_ $ ffor reconnectE $ const $ liftIO $ atomically $ writeTVar intVar False
   performEvent_ $ ffor _socketConfSend $ liftIO . atomically . writeTChan sendChan
   performEvent_ $ ffor _socketConfClose $ const $ liftIO $ closeCb Nothing
+  performEvent_ $ ffor _socketConfReopen $ const $ liftIO reopenCb
   performFork_  $ ffor connectE $ const $ liftIO $ do
     let sendThread sock = forever $ do
           msgs <- atomically $ readAllTVar sendChan
