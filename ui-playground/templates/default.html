@@ -1,74 +1,64 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="x-ua-compatible" content="ie=edge">
-        <title>Ergvein</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1,shrink-to-fit=no">
 
-        <!-- Google Fonts -->
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Playfair+Display:400,600%7CFira+Sans:300,400,400i,600">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <title>Ergvein</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1,shrink-to-fit=no">
 
-        <!-- Material icons -->
-        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <!-- Google Fonts -->
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css?family=Playfair+Display:400,600%7CFira+Sans:300,400,400i,600">
 
-        <!-- CSS (including Bootstrap) -->
-        <link rel="stylesheet" href="/css/fontawesome.min.css">
-        <link rel="stylesheet" href="/css/milligram.min.css">
-        <link rel="stylesheet" href="/css/tooltip.css">
-        <link rel="stylesheet" href="/css/style.css">
-        <link rel="stylesheet" href="/css/extra.css">
+  <!-- Material icons -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
 
-        <!-- JS (including Bootstrap & plugins) -->
-        <script src="/js/theme.js" defer></script>
-    </head>
-    <body>
-      <div class="content">
-        <div class="wrapper">
-          <div class="header">
-            <div class="header-button header-back"><i class="fas fa-arrow-left fa-fw"></i></div>
-            <div class="header-wallet-text">Balance: 0.00108348 BTC</div>
-            <div class="header-button header-sliding-menu-open"><i class="fas fa-bars fa-fw"></i></div>
-          </div>
-          $body$
-        </div>
-        <div class="sliding-menu hidden">
-          <div class="sliding-menu-header">
-            <div class="sliding-menu-header"></div>
-            <div class="sliding-menu-header-text">Menu</div>
-            <div class="sliding-menu-close"><i class="fas fa-times fa-fw"></i></div>
-          </div>
-          <div class="sliding-menu-buttons">
-            <div class="sliding-menu-button"><i class="fas fa-network-wired"></i>Network</div>
-            <div class="sliding-menu-button"><i class="fas fa-cog"></i>Settings</div>
-            <div class="sliding-menu-button"><i class="fas fa-info-circle"></i>About</div>
-            <div class="sliding-menu-button"><i class="far fa-file-alt"></i>Logs</div>
-            <div class="sliding-menu-button"><i class="fas fa-sign-out-alt"></i>Switch Wallet</div>
-          </div>
-        </div>
-        <div class="dark-overlay hidden"></div>
+  <!-- CSS (including Bootstrap) -->
+  <link rel="stylesheet" href="/css/fontawesome.min.css">
+  <link rel="stylesheet" href="/css/milligram.min.css">
+  <link rel="stylesheet" href="/css/tooltip.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/extra.css">
+
+  <!-- JS (including Bootstrap & plugins) -->
+  <script src="/js/theme.js" defer></script>
+</head>
+
+<body>
+  <div class="wrapper">
+    <div class="header-wrapper">
+      <div class="header header-black">
+        <div class="header-button"><i class="fas fa-chevron-left fa-fw"></i></div>
+        <div class="header-wallet-text">Testnet Oragne 2</div>
+        <div class="header-button"><i class="fas fa-bars fa-fw"></i></div>
       </div>
-      <script>
-        document.querySelector('.header-sliding-menu-open').addEventListener('click', function() {
-          document.querySelector('.sliding-menu').classList.toggle('hidden');
-        });
-        document.querySelector('.header-sliding-menu-open').addEventListener('click', function() {
-          document.querySelector('.dark-overlay').classList.toggle('hidden');
-        });
+      <div class="menu hidden"><button class="button button-clear" onclick="return false;">BTC balance</button><button
+          class="button button-clear" onclick="return false;">Settings</button><button class="button button-clear"
+          onclick="return false;">About</button><button class="button button-clear" onclick="return false;">Switch
+          wallet</button></div>
+    </div>
+    <div class="navbar-black">
+      <div class="navbar-balance">0.07836 mBTC</div>
+      <div class="navbar-status">
+        <div class="sync-widget-wrapper">Connecting to peers</div>
+      </div>
+    </div>
+    <div class="navbar-3-cols">
+      <span class="navbar-item active">Send</span>
+      <span class="navbar-item">History</span>
+      <span class="navbar-item">Receive</span>
+    </div>
+    $body$
+    <!-- <div class="alert-overlay" style="position: -webkit-sticky;">
+      <div
+        class="alert-popup alert alert-handler col-md-offset-3 col-md-6 col-lg-offset-3 col-lg-6 col-sm-12 alert-warning"
+        role="alert"
+        style="margin: 0px; border-radius: 0px; background-color: #ff931e; font-weight: normal; color: #ffffff;">
+        <span class="badge badge-primary">58</span>All indexers are out of sync!
+      </div>
+    </div> -->
+  </div>
+</body>
 
-        document.querySelector('.sliding-menu-close').addEventListener('click', function() {
-          document.querySelector('.sliding-menu').classList.toggle('hidden');
-        });
-        document.querySelector('.sliding-menu-close').addEventListener('click', function() {
-          document.querySelector('.dark-overlay').classList.toggle('hidden');
-        });
-
-        document.querySelector('.dark-overlay').addEventListener('click', function() {
-          document.querySelector('.dark-overlay').classList.toggle('hidden');
-        });
-        document.querySelector('.dark-overlay').addEventListener('click', function() {
-          document.querySelector('.sliding-menu').classList.toggle('hidden');
-        });
-      </script>
-    </body>
 </html>
