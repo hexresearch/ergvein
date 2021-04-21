@@ -55,6 +55,7 @@ import Ergvein.Types.Storage.Currency.Public.Ergo (ErgoPubStorage(..))
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Types.WalletInfo
+import Crypto.Random.Types (MonadRandom)
 import Network.Haskoin.Block (Timestamp)
 import Reflex
 import Sepulcas.Native
@@ -74,6 +75,8 @@ type MonadStorageConstr t m =
   , HasStoreDir m
   , MonadUnliftIO m
   , MonadUnliftIO (Performable m)
+  , MonadRandom (Performable m)
+  , HasStoreDir (Performable m)
   , PlatformNatives
   )
 

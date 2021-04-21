@@ -54,6 +54,7 @@ library
     Ergvein.Core.Node.Monad
     Ergvein.Core.Node.Socket
     Ergvein.Core.Node.Types
+    Ergvein.Core.Password
     Ergvein.Core.Platform
     Ergvein.Core.Resolve
     Ergvein.Core.Scan
@@ -66,6 +67,7 @@ library
     Ergvein.Core.Status.Types
     Ergvein.Core.Store
     Ergvein.Core.Store.Constants
+    Ergvein.Core.Store.Crypto
     Ergvein.Core.Store.Monad
     Ergvein.Core.Store.Util
     Ergvein.Core.Store.WalletInfo
@@ -95,6 +97,7 @@ library
     , cereal
     , conduit
     , containers
+    , cryptonite
     , dependent-map
     , directory
     , dns
