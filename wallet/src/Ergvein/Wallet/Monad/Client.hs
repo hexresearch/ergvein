@@ -176,14 +176,14 @@ reopenAndWait :: MonadIndexClient t m => Event t ErgveinNodeAddr -> m (Event t E
 reopenAndWait urlE = do
   req      <- getIndexReqFire
   connsRef <- getActiveConnsRef
-  closedEE <- performEvent $ ffor urlE $ \url -> do
+  reopenedEE <- performEvent $ ffor urlE $ \url -> do
     let sa = url
     liftIO $ req $ M.singleton sa IndexerReopen
     mconn <- fmap (M.lookup sa) $ readExternalRef connsRef
     pure $ case mconn of
       Nothing -> never
-      Just conn -> url <$ indexConClosedE conn
-  switchDyn <$> holdDyn never closedEE
+      Just conn -> url <$ indexConOpensE conn
+  switchDyn <$> holdDyn never reopenedEE
 
 -- | Deactivate an URL
 deactivateURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
