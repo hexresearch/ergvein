@@ -21,6 +21,10 @@ instance MonadIO m => MonadHasMain (ReaderT (Chan (IO ()), a) m) where
   getMainThreadChan = asks fst
   {-# INLINE getMainThreadChan #-}
 
+instance MonadHasMain m => MonadHasMain (ReaderT e m) where
+  getMainThreadChan = lift getMainThreadChan
+  {-# INLINE getMainThreadChan #-}
+
 type PerformMain t m = (PerformEvent t m, TriggerEvent t m, MonadUnliftIO (Performable m), MonadHasMain m)
 
 -- | Execute the action in main thread of UI. Very useful for android API actions
