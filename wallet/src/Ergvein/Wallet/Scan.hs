@@ -54,9 +54,26 @@ scanner = do
     _ -> pure ()
 
 scannerBtc :: forall t m . MonadFront t m => m ()
-scannerBtc = void $ workflow checkRestored
+scannerBtc = void $ workflow checkScannedHeight
   where
     filterReqDelay = 10
+
+    -- | If the wallet was created from scratch and scanned height is set to 0
+    -- then we need to set scannedHeight to the current blockchain height.
+    checkScannedHeight :: Workflow t m ()
+    checkScannedHeight = Workflow $ do
+      isRestored <- fmap _pubStorage'restoring $ getPubStorage
+      scannedHeight <- getScannedHeight BTC
+      buildE <- getPostBuild
+      scannedHeightE <- do
+        mStartHeightD <- getStartHeightBTC
+        let gotHeightE = fmapMaybe (\mH -> maybe Nothing (Just . fromIntegral) mH) $ updated mStartHeightD
+        setScannedHeightE BTC gotHeightE
+      let goE = if (not isRestored && scannedHeight == 0)
+            then scannedHeightE
+            else buildE
+      pure ((), checkRestored <$ goE)
+
     -- | Before actually starting up check if the wallet is currently being restored
     -- if it is then wait until restore is done.
     checkRestored :: Workflow t m ()
