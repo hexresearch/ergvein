@@ -78,6 +78,7 @@ library
     Ergvein.Core.Transaction.Util
     Ergvein.Core.Transaction.View
     Ergvein.Core.Wallet
+    Ergvein.Core.Wallet.Env
     Ergvein.Core.Wallet.Monad
     Ergvein.Core.Worker
     Ergvein.Core.Worker.Discovery

@@ -1,7 +1,9 @@
 module Ergvein.Core.Wallet.Monad(
-    MonadPreWallet(..)
+    MonadPreWalletConstr
+  , MonadPreWallet(..)
   , getWalletInfoMaybe
   , isInsideWallet
+  , MonadWalletConstr
   , MonadWallet(..)
   , getLoginD
   , getWalletInfo
@@ -58,6 +60,11 @@ type MonadPreWalletConstr t (m :: * -> *) = (
     MonadHold t m
   , MonadIO m
   , Reflex t
+  , TriggerEvent t m
+  , PerformEvent t m
+  , MonadIO (Performable m)
+  , Adjustable t m
+  , PlatformNatives
   )
 
 -- | Context where we can check whether we opened a wallet or not.
