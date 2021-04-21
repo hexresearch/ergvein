@@ -68,6 +68,7 @@ library
     Ergvein.Core.Store
     Ergvein.Core.Store.Constants
     Ergvein.Core.Store.Crypto
+    Ergvein.Core.Store.Env
     Ergvein.Core.Store.Monad
     Ergvein.Core.Store.Util
     Ergvein.Core.Store.WalletInfo
