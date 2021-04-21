@@ -35,7 +35,7 @@ type MonadFrontConstr t m = (
     PlatformNatives
   , HasVersion
   , MonadSettings t m
-  , MonadIndexClient t m
+  , MonadClient t m
   , Sepulcable t m
   , CR.MonadRandom (Performable m)
   , HasStoreDir (Performable m)

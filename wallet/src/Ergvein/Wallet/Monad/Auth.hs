@@ -125,7 +125,7 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   getNodeReqFire = asks env'nodeReqFire
   {-# INLINE getNodeReqFire #-}
 
-instance MonadBaseConstr t m => MonadIndexClient t (ErgveinM t m) where
+instance MonadBaseConstr t m => MonadClient t (ErgveinM t m) where
   getActiveAddrsRef = asks env'activeAddrs
   {-# INLINE getActiveAddrsRef #-}
   getArchivedAddrsRef = asks env'addrsArchive

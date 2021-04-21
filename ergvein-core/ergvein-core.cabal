@@ -40,6 +40,7 @@ library
   exposed-modules:
     Ergvein.Core
     Ergvein.Core.Client
+    Ergvein.Core.Client.Env
     Ergvein.Core.Client.Monad
     Ergvein.Core.Client.Socket
     Ergvein.Core.Currency
@@ -67,7 +68,7 @@ library
     Ergvein.Core.Status
     Ergvein.Core.Status.Env
     Ergvein.Core.Status.Monad
-    Ergvein.Core.Status.Typess
+    Ergvein.Core.Status.Types
     Ergvein.Core.Store
     Ergvein.Core.Store.Constants
     Ergvein.Core.Store.Crypto

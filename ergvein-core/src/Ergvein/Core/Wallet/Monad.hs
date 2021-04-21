@@ -105,7 +105,7 @@ type MonadWalletConstr t (m :: * -> *) = (
   , MonadAlertPoster t m
   , MonadNativeLogger t m
   , LocalizedPrint ClientMessage
-  , MonadIndexClient t m
+  , MonadClient t m
   , MonadStorage t m
   )
 

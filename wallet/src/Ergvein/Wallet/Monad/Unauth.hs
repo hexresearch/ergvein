@@ -83,7 +83,7 @@ instance MonadBaseConstr t m => MonadAlertPoster t (UnauthM t m) where
   {-# INLINE newAlertEvent #-}
   {-# INLINE getAlertEventFire #-}
 
-instance MonadBaseConstr t m => MonadIndexClient t (UnauthM t m) where
+instance MonadBaseConstr t m => MonadClient t (UnauthM t m) where
   getActiveAddrsRef = asks unauth'activeAddrs
   {-# INLINE getActiveAddrsRef #-}
   getArchivedAddrsRef = asks unauth'addrsArchive

@@ -22,7 +22,7 @@ import qualified Data.Map.Strict as M
 connectionTimeout :: NominalDiffTime
 connectionTimeout = 60
 
-indexerNodeController :: (PlatformNatives, MonadHasMain m, MonadIndexClient t m, MonadSettings t m)
+indexerNodeController :: (PlatformNatives, MonadHasMain m, MonadClient t m, MonadSettings t m)
   => [ErgveinNodeAddr] -> m ()
 indexerNodeController initAddrs = mdo
   nodeLog "Starting"
@@ -59,7 +59,7 @@ indexerNodeController initAddrs = mdo
   where
     nodeLog t = logWrite $ "[indexerNodeController]: " <> t
 
-connectionWidget :: (PlatformNatives, MonadIndexClient t m) => IndexerConnection t -> m (Event t ())
+connectionWidget :: (PlatformNatives, MonadClient t m) => IndexerConnection t -> m (Event t ())
 connectionWidget IndexerConnection{..} = do
   performEvent_ $ (nodeLog "Connected") <$ indexConOpensE
   timeoutE <- void <$> tickLossyFromPostBuildTime connectionTimeout
