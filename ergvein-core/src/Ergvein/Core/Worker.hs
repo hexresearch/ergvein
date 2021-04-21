@@ -1,5 +1,6 @@
 module Ergvein.Core.Worker(
     spawnWorkers
+  , spawnPreWorkers
   , module Ergvein.Core.Worker.Discovery
   , module Ergvein.Core.Worker.Fees
   , module Ergvein.Core.Worker.Height
@@ -25,8 +26,11 @@ import Ergvein.Core.Status
 import Ergvein.Core.Store
 import Ergvein.Core.Wallet
 import Reflex.Main.Thread
+import Reflex.ExternalRef
 
--- Workers and other routines go here
+import qualified Data.Set as S
+
+-- | Workers that spawns when user opens wallet
 spawnWorkers :: (MonadStorage t m
   , MonadWallet t m
   , MonadNode t m
@@ -43,3 +47,10 @@ spawnWorkers = do
   feesWorker
   pubKeysGenerator
   pure ()
+
+-- | Workers that spawns when user opens application but hasn't yet opened a wallet.
+spawnPreWorkers :: (MonadClient t m, MonadHasMain m, MonadSettings t m)
+  => m ()
+spawnPreWorkers = do
+  ensureErgveinNetwork
+  indexerNodeController . S.toList =<< readExternalRef =<< getArchivedAddrsRef
