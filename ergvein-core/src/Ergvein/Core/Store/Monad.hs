@@ -1,5 +1,6 @@
 module Ergvein.Core.Store.Monad(
-    MonadStorage(..)
+    MonadStorageConstr
+  , MonadStorage(..)
   , HasPubStorage(..)
   , HasTxStorage(..)
   , getPubStorageCurD
@@ -37,17 +38,14 @@ import Control.Concurrent.STM.TChan
 import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.IO.Unlift
 import Control.Monad.Reader
 import Data.Functor (void)
 import Data.Map (Map)
 import Data.Maybe (fromMaybe, isJust, isNothing)
 import Data.Set (Set)
 import Data.Text (Text)
-import Network.Haskoin.Block (Timestamp)
-import Reflex
-
 import Ergvein.Crypto
-import Ergvein.Types.WalletInfo
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
@@ -56,7 +54,9 @@ import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Storage.Currency.Public.Ergo (ErgoPubStorage(..))
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo.Btc
--- import Ergvein.Wallet.Monad.Prim
+import Ergvein.Types.WalletInfo
+import Network.Haskoin.Block (Timestamp)
+import Reflex
 import Sepulcas.Native
 
 import qualified Data.List as L
@@ -66,7 +66,18 @@ import qualified Data.Vector as V
 import qualified Network.Haskoin.Block as HB
 import qualified Network.Haskoin.Transaction as HT
 
-class (MonadHold t m, Reflex t, HasStoreDir m) => MonadStorage t m | m -> t where
+type MonadStorageConstr t m =
+  ( PerformEvent t m
+  , TriggerEvent t m
+  , MonadHold t m
+  , Reflex t
+  , HasStoreDir m
+  , MonadUnliftIO m
+  , MonadUnliftIO (Performable m)
+  , PlatformNatives
+  )
+
+class MonadStorageConstr t m  => MonadStorage t m | m -> t where
   getAddressByCurIx      :: Currency -> Int -> m Base58
   getEncryptedPrvStorage :: m EncryptedPrvStorage
   getWalletName          :: m Text

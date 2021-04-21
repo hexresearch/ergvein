@@ -50,10 +50,12 @@ library
     Ergvein.Core.Node.Btc.Blocks
     Ergvein.Core.Node.Btc.Mempool
     Ergvein.Core.Node.Ergo
+    Ergvein.Core.Node.Manage
     Ergvein.Core.Node.Monad
     Ergvein.Core.Node.Socket
     Ergvein.Core.Node.Types
     Ergvein.Core.Platform
+    Ergvein.Core.Resolve
     Ergvein.Core.Settings
     Ergvein.Core.Settings.Constants
     Ergvein.Core.Settings.Monad
@@ -74,10 +76,19 @@ library
     Ergvein.Core.Transaction.View
     Ergvein.Core.Wallet
     Ergvein.Core.Wallet.Monad
+    Ergvein.Core.Worker
+    Ergvein.Core.Worker.Discovery
+    Ergvein.Core.Worker.Fees
+    Ergvein.Core.Worker.Height
+    Ergvein.Core.Worker.Indexer
+    Ergvein.Core.Worker.Keys
+    Ergvein.Core.Worker.Node
+    Ergvein.Core.Worker.Rates
     Ergvein.Core.Yaml
   build-depends:
       base                      >= 4.5      && < 4.15
     , aeson
+    , async
     , attoparsec
     , bytestring
     , cereal
@@ -101,6 +112,7 @@ library
     , MonadRandom
     , mtl
     , network
+    , random-shuffle
     , reflex                    >= 0.4      && < 0.9
     , reflex-external-ref
     , reflex-flunky

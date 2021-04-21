@@ -1,5 +1,7 @@
 module Ergvein.Core.Node.Monad(
     MonadNodeConstr
+  , NodeReqSelector
+  , extractReq
   , MonadNode(..)
   , getNodeConnectionsD
   , getNodesByCurrencyD
@@ -43,9 +45,13 @@ type MonadNodeConstr t (m :: * -> *) = (
   , TriggerEvent t m
   , PlatformNatives
   , MonadUnliftIO (Performable m)
+  , MonadSample t (Performable m)
   )
 
 type NodeReqSelector t = EventSelector t (Const2 Currency (Map SockAddr NodeMessage))
+
+extractReq :: Reflex t => NodeReqSelector t -> Currency -> SockAddr -> Event t NodeMessage
+extractReq sel c u = select (fanMap (select sel $ Const2 c)) $ Const2 u
 
 class MonadNodeConstr t m => MonadNode t m | m -> t where
   -- | Internal method to get connection map ref
