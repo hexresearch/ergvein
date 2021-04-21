@@ -19,6 +19,7 @@ module Reflex.Flunky(
   , mkChunks
   , EventTrigger(..)
   , newTriggerEvent'
+  , triggerPair
   ) where
 
 import Control.Monad.IO.Class
@@ -120,3 +121,7 @@ data EventTrigger t a = EventTrigger {
 -- | Helper to wrap result of `newTriggerEvent` into strict tuple
 newTriggerEvent' :: TriggerEvent t m => m (EventTrigger t a)
 newTriggerEvent' = fmap (uncurry EventTrigger) newTriggerEvent
+
+-- | Convert strict pair into tuple back
+triggerPair :: EventTrigger t a -> (Event t a, a -> IO ())
+triggerPair (EventTrigger e f) = (e, f)
