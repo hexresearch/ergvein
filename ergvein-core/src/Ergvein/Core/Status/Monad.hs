@@ -1,5 +1,6 @@
 module Ergvein.Core.Status.Monad(
-    MonadStatus(..)
+    MonadStatusConstr
+  , MonadStatus(..)
   , getStatusUpdates
   , publishStatusUpdate
   ) where

@@ -63,8 +63,9 @@ library
     Ergvein.Core.Settings.Monad
     Ergvein.Core.Settings.Types
     Ergvein.Core.Status
+    Ergvein.Core.Status.Env
     Ergvein.Core.Status.Monad
-    Ergvein.Core.Status.Types
+    Ergvein.Core.Status.Typess
     Ergvein.Core.Store
     Ergvein.Core.Store.Constants
     Ergvein.Core.Store.Crypto
