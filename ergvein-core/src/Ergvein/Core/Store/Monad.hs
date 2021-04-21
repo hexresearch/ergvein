@@ -419,3 +419,9 @@ getUnconfirmedTxs :: HasTxStorage m => m (Map TxId EgvTx)
 getUnconfirmedTxs = do
   txs <- askTxStorage
   pure $ M.filter (isNothing . getTxHeight) txs
+
+-- Orphans
+
+instance MonadRandom m => MonadRandom (ReaderT e m) where
+  getRandomBytes = lift . getRandomBytes
+  {-# INLINE getRandomBytes #-}
