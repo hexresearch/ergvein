@@ -1,5 +1,6 @@
 module Ergvein.Core.Node(
     module Ergvein.Core.Node.Btc
+  , module Ergvein.Core.Node.Env
   , module Ergvein.Core.Node.Ergo
   , module Ergvein.Core.Node.Manage
   , module Ergvein.Core.Node.Monad
@@ -8,6 +9,7 @@ module Ergvein.Core.Node(
   ) where
 
 import Ergvein.Core.Node.Btc
+import Ergvein.Core.Node.Env
 import Ergvein.Core.Node.Ergo
 import Ergvein.Core.Node.Manage
 import Ergvein.Core.Node.Monad

@@ -49,6 +49,7 @@ library
     Ergvein.Core.Node.Btc
     Ergvein.Core.Node.Btc.Blocks
     Ergvein.Core.Node.Btc.Mempool
+    Ergvein.Core.Node.Env
     Ergvein.Core.Node.Ergo
     Ergvein.Core.Node.Manage
     Ergvein.Core.Node.Monad
