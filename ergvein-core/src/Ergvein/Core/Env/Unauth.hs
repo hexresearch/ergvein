@@ -10,6 +10,7 @@ import Ergvein.Core.Client
 import Ergvein.Core.Settings
 import Ergvein.Core.Wallet
 import Reflex.Main.Thread
+import Sepulcas.Native
 
 data UnauthEnv t = UnauthEnv {
   unauth'settings :: !(SettingsEnv t)
@@ -30,6 +31,13 @@ instance Monad m => HasPreWalletEnv t (UnauthM t m) where
 instance Monad m => HasClientEnv t (UnauthM t m) where
   getClientEnv = asks unauth'client
   {-# INLINE getClientEnv #-}
+
+instance {-# OVERLAPPABLE #-} (MonadPreWalletConstr t m, HasStoreDir (Performable m)) => MonadPreWallet t (UnauthM t m) where
+  getWalletInfoMaybeRef = runReaderT getWalletInfoMaybeRef =<< asks unauth'wallet
+  {-# INLINE getWalletInfoMaybeRef #-}
+
+  setWalletInfo e = runReaderT (setWalletInfo e) =<< asks unauth'wallet
+  {-# INLINE setWalletInfo #-}
 
 newUnauthEnv :: (MonadIO m, TriggerEvent t m, MonadHasMain m, MonadSettingsConstr t m) => Settings -> m (UnauthEnv t)
 newUnauthEnv settings = do

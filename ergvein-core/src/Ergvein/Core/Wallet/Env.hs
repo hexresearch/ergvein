@@ -120,16 +120,16 @@ runWallet = flip runReaderT
 -- | Execute action under authorized context or return the given value as result
 -- if user is not authorized. Each time the login info changes and walletInfo'isUpdate flag is set to 'False'
 -- (user logs out or logs in) the widget is updated.
-liftWallet :: forall t m a . MonadPreWallet t m => m a -> WalletM t m a -> m (Dynamic t a)
-liftWallet ma0 ma = do
+liftWallet :: forall t m n a . MonadPreWallet t m
+  => (forall x. WalletInfo -> EventTrigger t () -> n x -> m x) -- ^ Way to execute authed monad with given wallet info and logout trigger
+  -> m a -> n a -> m (Dynamic t a)
+liftWallet hoister ma0 ma = do
   mauthD <- getWalletInfoMaybe
   mauth0 <- sample . current $ mauthD
   logoutTrigger <- newTriggerEvent'
   let
     run :: WalletInfo -> m a
-    run winfo = do
-      e <- newWalletEnv winfo logoutTrigger
-      runWallet e ma
+    run winfo = hoister winfo logoutTrigger ma
     ma0' = maybe ma0 run mauth0
     newWalletInfoE = ffilter isMauthUpdate $ updated mauthD
     redrawE = leftmost [newWalletInfoE, Nothing <$ triggerEvent logoutTrigger]
