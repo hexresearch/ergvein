@@ -44,6 +44,9 @@ library
     Ergvein.Core.Client.Monad
     Ergvein.Core.Client.Socket
     Ergvein.Core.Currency
+    Ergvein.Core.Env
+    Ergvein.Core.Env.Auth
+    Ergvein.Core.Env.Unauth
     Ergvein.Core.Filters
     Ergvein.Core.IP
     Ergvein.Core.Node
