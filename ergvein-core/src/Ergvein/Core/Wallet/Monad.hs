@@ -136,7 +136,7 @@ getActiveCursD = externalRefDynamic =<< getActiveCursRef
 
 -- | Update active currencies
 -- TODO: This one clearly does nothing. Fix it sometime
-updateActiveCurs :: (MonadWallet t m, MonadHasSettings t m) => Event t (S.Set Currency -> S.Set Currency) -> m (Event t ())
+updateActiveCurs :: (MonadWallet t m, MonadSettings t m) => Event t (S.Set Currency -> S.Set Currency) -> m (Event t ())
 updateActiveCurs updE = do
   curRef      <- getActiveCursRef
   settingsRef <- getSettingsRef

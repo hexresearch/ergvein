@@ -61,7 +61,7 @@ getNodeConn t url cm = M.lookup url =<< DM.lookup t cm
 removeNodeConn :: forall t a . CurrencyTag t a -> SockAddr -> ConnMap t -> ConnMap t
 removeNodeConn curtag url cm = DM.adjust (M.delete url) curtag cm
 
-initNode :: (MonadHasSettings t m)
+initNode :: (MonadSettings t m)
   => Currency
   -> NodeReqSelector t
   -> SockAddr -> m (NodeConn t)
@@ -71,7 +71,7 @@ initNode cur sel url = case cur of
   where
     reqE = extractReq sel cur url
 
-initializeNodes :: (MonadHasSettings t m)
+initializeNodes :: (MonadSettings t m)
   => NodeReqSelector t
   -> M.Map Currency [SockAddr] -> m (ConnMap t)
 initializeNodes sel urlmap = do
@@ -79,7 +79,7 @@ initializeNodes sel urlmap = do
   conns <- fmap join $ flip traverse ks $ \k -> traverse (initNode k sel) $ fromMaybe [] $ M.lookup k urlmap
   pure $ addMultipleConns DM.empty conns
 
-reinitNodes :: forall t m . (MonadHasSettings t m)
+reinitNodes :: forall t m . (MonadSettings t m)
   => M.Map Currency [SockAddr]  -- Map with all urls
   -> M.Map Currency Bool        -- True -- initialize or keep existing conns. False -- remove conns
   -> NodeReqSelector t          -- Request selector

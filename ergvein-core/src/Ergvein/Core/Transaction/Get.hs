@@ -47,7 +47,7 @@ txListRaw ::
 txListRaw (a:as) (b:bs) (c:cs) (d:ds) (e:es) (f:fs) (g:gs) (h:hs) (i:is) (j:js) = (TxRawInfo a b c d e f g h i j) : txListRaw as bs cs ds es fs gs hs is js
 txListRaw _ _ _ _ _ _ _ _ _ _ = []
 
-transactionsGetting :: (MonadWallet t m, MonadHasSettings t m, PerformMain t m) => Currency -> m (Dynamic t [TransactionView], Dynamic t Word64)
+transactionsGetting :: (MonadWallet t m, MonadSettings t m, PerformMain t m) => Currency -> m (Dynamic t [TransactionView], Dynamic t Word64)
 transactionsGetting cur = do
   buildE <- delay 0.2 =<< getPostBuild
   settings <- getSettings

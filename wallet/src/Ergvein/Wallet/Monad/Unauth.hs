@@ -69,7 +69,7 @@ instance (MonadBaseConstr t m, MonadRetract t m, PlatformNatives, HasVersion) =>
       writeExternalRef authRef v
   {-# INLINE setWalletInfo #-}
 
-instance MonadBaseConstr t m => MonadHasSettings t (UnauthM t m) where
+instance MonadBaseConstr t m => MonadSettings t (UnauthM t m) where
   getSettingsRef = asks unauth'settings
   {-# INLINE getSettingsRef #-}
 

@@ -85,7 +85,7 @@ parseSingleSockAddr rs t = do
         [] -> pure Nothing
         ip:_ -> pure $ Just $ NamedSockAddr t $ SockAddrInet port (toHostAddress ip)
 
-mkResolvSeed :: (MonadHasMain m, MonadHasSettings t m) => m ResolvSeed
+mkResolvSeed :: (MonadHasMain m, MonadSettings t m) => m ResolvSeed
 mkResolvSeed = do
   defDns <- fmap (S.toList . settingsDns) $ readExternalRef =<< getSettingsRef
   if isAndroid

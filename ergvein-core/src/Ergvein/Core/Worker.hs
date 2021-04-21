@@ -32,7 +32,7 @@ spawnWorkers :: (MonadStorage t m
   , MonadNode t m
   , MonadStatus t m
   , MonadHasMain m
-  , MonadHasSettings t m)
+  , MonadSettings t m)
   => m ()
 spawnWorkers = do
   storeWorker

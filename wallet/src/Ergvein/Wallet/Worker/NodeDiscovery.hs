@@ -24,7 +24,7 @@ operableNetworkSize | isTestnet = 1
                     | otherwise = 2
 targetNetworkSize = 16
 
-ensureErgveinNetwork :: (MonadHasMain m, MonadIndexClient t m, MonadHasSettings t m) => m ()
+ensureErgveinNetwork :: (MonadHasMain m, MonadIndexClient t m, MonadSettings t m) => m ()
 ensureErgveinNetwork = do
   iaRef     <- getInactiveAddrsRef
   acrhRef   <- getArchivedAddrsRef
@@ -38,13 +38,13 @@ ensureErgveinNetwork = do
   let noAddressesE = ffilter (== 0) addressesAmountE
   restoreNetworkAmount noAddressesE
 
-restoreNetwork :: (MonadHasMain m, MonadIndexClient t m, MonadHasSettings t m) => Event t () -> m ()
+restoreNetwork :: (MonadHasMain m, MonadIndexClient t m, MonadSettings t m) => Event t () -> m ()
 restoreNetwork e = do
   activsRef <- getActiveAddrsRef
   activeAddressesAmountE <- performEvent $ ffor e $ const $ length <$> readExternalRef activsRef
   restoreNetworkAmount activeAddressesAmountE
 
-restoreNetworkAmount :: (MonadHasMain m, MonadIndexClient t m, MonadHasSettings t m) => Event t Int -> m ()
+restoreNetworkAmount :: (MonadHasMain m, MonadIndexClient t m, MonadSettings t m) => Event t Int -> m ()
 restoreNetworkAmount notOperablePeerAmountE = do
   rs <- mkResolvSeed
   reloadedFromSeedE <- performFork $ ffor notOperablePeerAmountE $ \presentAmount -> do

@@ -6,7 +6,7 @@ module Ergvein.Wallet.Monad.Prim
   , AlertType(..)
   , alertTypeToSeverity
   , MonadNativeLogger(..)
-  , MonadHasSettings(..)
+  , MonadSettings(..)
   , MonadHasMain(..)
   -- * Frontend-wide types
   , IndexerInfo(..)
@@ -62,26 +62,26 @@ type MonadBaseConstr t m = (MonadReflex t m, MonadRandom (Performable m))
 --           Monad HasSettings. Gives access to Settings
 -- ===========================================================================
 
-class MonadBaseConstr t m => MonadHasSettings t m where
+class MonadBaseConstr t m => MonadSettings t m where
   -- | Get settings ref
   getSettingsRef :: m (ExternalRef t Settings)
 
-instance MonadBaseConstr t m => MonadHasSettings t (ReaderT (ExternalRef t Settings) m) where
+instance MonadBaseConstr t m => MonadSettings t (ReaderT (ExternalRef t Settings) m) where
   getSettingsRef = ask
   {-# INLINE getSettingsRef #-}
 
 -- | Get current settings
-getSettings :: MonadHasSettings t m => m Settings
+getSettings :: MonadSettings t m => m Settings
 getSettings = readExternalRef =<< getSettingsRef
 {-# INLINE getSettings #-}
 
 -- | Get current settings dynamic
-getSettingsD :: MonadHasSettings t m => m (Dynamic t Settings)
+getSettingsD :: MonadSettings t m => m (Dynamic t Settings)
 getSettingsD = externalRefDynamic =<< getSettingsRef
 {-# INLINE getSettingsD #-}
 
 -- | Update app's settings. Sets settings to provided value and stores them
-updateSettings :: MonadHasSettings t m => Event t Settings -> m (Event t ())
+updateSettings :: MonadSettings t m => Event t Settings -> m (Event t ())
 updateSettings setE = do
   settingsRef <- getSettingsRef
   performEvent $ ffor setE $ \s -> do
@@ -90,18 +90,18 @@ updateSettings setE = do
 {-# INLINE updateSettings #-}
 
 -- | Update app's settings. Sets settings to provided value and stores them
-modifySettings :: MonadHasSettings t m => Event t (Settings -> Settings) -> m (Event t ())
+modifySettings :: MonadSettings t m => Event t (Settings -> Settings) -> m (Event t ())
 modifySettings setE = do
   settingsRef <- getSettingsRef
   performEvent $ ffor setE $ \f -> do
     storeSettings =<< modifyExternalRef settingsRef (\s -> let s' = f s in (s',s'))
 {-# INLINE modifySettings #-}
 
-getSocksConf :: MonadHasSettings t m => m (Dynamic t (Maybe S5.SocksConf))
+getSocksConf :: MonadSettings t m => m (Dynamic t (Maybe S5.SocksConf))
 getSocksConf = fmap (fmap toSocksProxy . settingsSocksProxy) <$> getSettingsD
 {-# INLINE getSocksConf #-}
 
-getProxyConf :: MonadHasSettings t m => m (Dynamic t (Maybe SocksConf))
+getProxyConf :: MonadSettings t m => m (Dynamic t (Maybe SocksConf))
 getProxyConf = fmap settingsSocksProxy <$> getSettingsD
 {-# INLINE getProxyConf #-}
 
@@ -128,7 +128,7 @@ data NamedSockAddr = NamedSockAddr {
 -- | This env is used for seed resolvment
 type SeedResolvEnv t = (Chan (IO ()), ExternalRef t Settings)
 
-instance MonadBaseConstr t m => MonadHasSettings t (ReaderT (SeedResolvEnv t) m) where
+instance MonadBaseConstr t m => MonadSettings t (ReaderT (SeedResolvEnv t) m) where
   getSettingsRef = asks snd
   {-# INLINE getSettingsRef #-}
 

@@ -34,7 +34,7 @@ import qualified Crypto.Random.Types as CR
 type MonadFrontConstr t m = (
     PlatformNatives
   , HasVersion
-  , MonadHasSettings t m
+  , MonadSettings t m
   , MonadIndexClient t m
   , Sepulcable t m
   , CR.MonadRandom (Performable m)

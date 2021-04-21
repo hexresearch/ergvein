@@ -60,7 +60,7 @@ btcLog v = logWrite $ "[nodeController][" <> showt BTC <> "]: " <> v
 btcRefrTimeout :: NominalDiffTime
 btcRefrTimeout = 5
 
-btcNodeController :: (MonadNode t m, MonadStorage t m, MonadHasSettings t m
+btcNodeController :: (MonadNode t m, MonadStorage t m, MonadSettings t m
   , MonadWallet t m, MonadStatus t m, MonadHasMain m) => m ()
 btcNodeController = mdo
   btcLog "Starting"
@@ -225,7 +225,7 @@ handleSAStore sact acc = case sact of
 -- If storage is empty, requests another batch of urls of size saStorageSize
 -- Returns the storage and an event which fires first minNodeNum times
 -- That event allows the controller to connect to nodes immediately once there is at least 1 connection
-mkUrlBatcher :: (MonadNode t m, MonadStatus t m, MonadHasMain m, MonadHasSettings t m)
+mkUrlBatcher :: (MonadNode t m, MonadStatus t m, MonadHasMain m, MonadSettings t m)
   => NodeReqSelector t -> Event t SockAddr -> m (Dynamic t [SockAddr], Event t ())
 mkUrlBatcher sel remE = mdo
   buildE <- getPostBuild
@@ -269,7 +269,7 @@ mkUrlBatcher sel remE = mdo
   pure $ (S.toList <$> urlsD, fstRunE)
 
 -- | Connects to DNS servers, gets n urls and initializes connection to those nodes
-getRandomBTCNodesFromDNS :: (MonadNode t m, MonadStatus t m, MonadHasMain m, MonadHasSettings t m)
+getRandomBTCNodesFromDNS :: (MonadNode t m, MonadStatus t m, MonadHasMain m, MonadSettings t m)
   => NodeReqSelector t -> Int -> m (Event t [NodeBtc t])
 getRandomBTCNodesFromDNS sel n = do
   buildE <- getPostBuild

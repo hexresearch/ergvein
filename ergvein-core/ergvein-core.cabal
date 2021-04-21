@@ -60,6 +60,7 @@ library
     Ergvein.Core.Scan
     Ergvein.Core.Settings
     Ergvein.Core.Settings.Constants
+    Ergvein.Core.Settings.Env
     Ergvein.Core.Settings.Monad
     Ergvein.Core.Settings.Types
     Ergvein.Core.Status

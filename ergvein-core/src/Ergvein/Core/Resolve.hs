@@ -14,7 +14,7 @@ import Sepulcas.Native
 
 import qualified Data.Set as S
 
-mkResolvSeed :: (MonadHasMain m, MonadHasSettings t m) => m ResolvSeed
+mkResolvSeed :: (MonadHasMain m, MonadSettings t m) => m ResolvSeed
 mkResolvSeed = do
   defDns <- fmap (S.toList . settingsDns) $ readExternalRef =<< getSettingsRef
   if isAndroid

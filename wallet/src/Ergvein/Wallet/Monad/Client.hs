@@ -105,7 +105,7 @@ getInactiveUrlsD :: MonadIndexClient t m => m (Dynamic t (Set ErgveinNodeAddr))
 getInactiveUrlsD = externalRefDynamic =<< getInactiveAddrsRef
 
 -- | Activate an URL
-activateURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
+activateURL :: (MonadIndexClient t m, MonadSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
 activateURL addrE = do
   (_, f)    <- getActivationEF
   iaRef     <- getInactiveAddrsRef
@@ -131,7 +131,7 @@ activateURL addrE = do
     fire ()
 
 -- | Activate an URL
-activateURLList :: (MonadIndexClient t m, MonadHasSettings t m) => Event t [ErgveinNodeAddr] -> m (Event t ())
+activateURLList :: (MonadIndexClient t m, MonadSettings t m) => Event t [ErgveinNodeAddr] -> m (Event t ())
 activateURLList addrE = do
   (_, f)    <- getActivationEF
   iaRef     <- getInactiveAddrsRef
@@ -172,7 +172,7 @@ closeAndWait urlE = do
   switchDyn <$> holdDyn never closedEE
 
 -- | Deactivate an URL
-deactivateURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
+deactivateURL :: (MonadIndexClient t m, MonadSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
 deactivateURL addrE = do
   iaRef     <- getInactiveAddrsRef
   setRef    <- getSettingsRef
@@ -193,7 +193,7 @@ deactivateURL addrE = do
     storeSettings s
 
 -- | Forget an url
-forgetURL :: (MonadIndexClient t m, MonadHasSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
+forgetURL :: (MonadIndexClient t m, MonadSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
 forgetURL addrE = do
   iaRef     <- getInactiveAddrsRef
   acrhRef   <- getArchivedAddrsRef

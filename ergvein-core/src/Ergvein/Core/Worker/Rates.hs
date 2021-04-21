@@ -25,7 +25,7 @@ import qualified Data.Map.Strict as M
 ratesTimeout :: NominalDiffTime
 ratesTimeout = 600
 
-ratesWorker :: (MonadHasSettings t m, MonadWallet t m) => m ()
+ratesWorker :: (MonadSettings t m, MonadWallet t m) => m ()
 ratesWorker = do
   ratesRef  <- getRatesRef
   settingsD <- getSettingsD

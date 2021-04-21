@@ -48,7 +48,7 @@ instance HasNode BtcType where
   type NodeResp BtcType = Message
   type NodeSpecific BtcType = ()
 
-initBtcNode :: (MonadHasSettings t m) => Bool -> SockAddr -> Event t NodeMessage -> m (NodeBtc t)
+initBtcNode :: (MonadSettings t m) => Bool -> SockAddr -> Event t NodeMessage -> m (NodeBtc t)
 initBtcNode doLog sa msgE = do
   -- Dummy status TODO: Make status real later
   b  <- liftIO randomIO

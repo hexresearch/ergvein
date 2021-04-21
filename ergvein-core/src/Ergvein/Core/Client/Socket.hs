@@ -60,7 +60,7 @@ hasRequiredCurrs = (`versionHasCurrs` requiredCurrencies)
 requiredCurrsSynced :: Version -> Bool
 requiredCurrsSynced = (`versionCurrsSynced` requiredCurrencies)
 
-initIndexerConnection :: (MonadHasSettings t m) => ErgveinNodeAddr -> SockAddr -> Event t IndexerMsg ->  m (IndexerConnection t)
+initIndexerConnection :: (MonadSettings t m) => ErgveinNodeAddr -> SockAddr -> Event t IndexerMsg ->  m (IndexerConnection t)
 initIndexerConnection sname sa msgE = mdo
   (versionMismatchE, versionMismatchFire) <- newTriggerEvent
   (currenciesMismatchE, currenciesMismatchFire) <- newTriggerEvent

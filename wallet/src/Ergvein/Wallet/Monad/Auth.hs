@@ -101,7 +101,7 @@ instance (MonadFrontConstr t m, MonadRetract t m, PlatformNatives, HasVersion) =
         writeExternalRef authRef v
   {-# INLINE setWalletInfo #-}
 
-instance MonadBaseConstr t m => MonadHasSettings t (ErgveinM t m) where
+instance MonadBaseConstr t m => MonadSettings t (ErgveinM t m) where
   getSettingsRef = asks env'settings
   {-# INLINE getSettingsRef #-}
 
