@@ -20,11 +20,11 @@ import GHC.Generics (Generic)
 class HasStoreDir m where
   getStoreDir :: m Text
 
-instance {-# OVERLAPPING #-} Monad m => HasStoreDir (ReaderT Text m) where
+instance {-# OVERLAPS #-} Monad m => HasStoreDir (ReaderT Text m) where
   getStoreDir = ask
   {-# INLINE getStoreDir #-}
 
-instance {-# OVERLAPPABLE #-} (Monad m, HasStoreDir m) => HasStoreDir (ReaderT e m) where
+instance (Monad m, HasStoreDir m) => HasStoreDir (ReaderT e m) where
   getStoreDir = lift getStoreDir
   {-# INLINE getStoreDir #-}
 

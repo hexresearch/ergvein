@@ -18,12 +18,11 @@ import Sepulcas.Elements
 import Sepulcas.Elements.Inplace
 import Sepulcas.Elements.Input
 import Sepulcas.Elements.Toggle
+import Ergvein.Wallet.IP
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Inplace
-import Ergvein.Wallet.Localization.Settings
+import Ergvein.Wallet.Localization
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Settings.Network
-import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Map.Strict as Map
@@ -37,7 +36,7 @@ data SubPageSettings
   | GoDns
   | GoTor
 
-settingsPageUnauth :: MonadFrontBase t m => m ()
+settingsPageUnauth :: (MonadFrontBase t m, HasBaseEnv t m) => m ()
 settingsPageUnauth = wrapperSimple True $ do
   divClass "initial-options grid1" $ do
     goLangE            <- fmap (GoLanguage   <$) $ outlineButton STPSButLanguage

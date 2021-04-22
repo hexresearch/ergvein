@@ -21,7 +21,7 @@ instance MonadIO m => MonadHasMain (ReaderT (Chan (IO ()), a) m) where
   getMainThreadChan = asks fst
   {-# INLINE getMainThreadChan #-}
 
-instance MonadHasMain m => MonadHasMain (ReaderT e m) where
+instance {-# OVERLAPPABLE #-} MonadHasMain m => MonadHasMain (ReaderT e m) where
   getMainThreadChan = lift getMainThreadChan
   {-# INLINE getMainThreadChan #-}
 

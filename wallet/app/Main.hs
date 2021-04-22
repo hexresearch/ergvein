@@ -37,6 +37,6 @@ main = do
   bindSelf $ run $ \cbs -> do
     css <- compileFrontendCss
     mainWidgetWithCss css $ do
-      settings :: Settings <- loadSettings $ unHelpful $ config opts
-      env <- newEnv settings (runUiCallbacks cbs)
-      runEnv cbs env frontend
+      settings :: Settings <- loadSettings English $ unHelpful $ config opts
+      env <- newBaseEnv settings (runUiCallbacks cbs)
+      runBase cbs env frontend

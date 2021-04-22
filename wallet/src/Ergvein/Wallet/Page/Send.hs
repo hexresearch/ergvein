@@ -17,21 +17,12 @@ import Sepulcas.Alert
 import Sepulcas.Elements
 import Sepulcas.Elements.Toggle
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Fee
-import Ergvein.Wallet.Localization.Send
-import Ergvein.Wallet.Localization.Settings()
+import Ergvein.Wallet.Localization
 import Ergvein.Wallet.Monad
 import Sepulcas.Native
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
-import Ergvein.Wallet.Node
 import Ergvein.Wallet.Page.Balances
-import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Storage
-import Ergvein.Wallet.Storage.Util
-import Ergvein.Wallet.Transaction.Builder
-import Ergvein.Wallet.Transaction.Util
 import Ergvein.Wallet.Widget.Input.BTC.Amount
 import Ergvein.Wallet.Widget.Input.BTC.Fee
 import Ergvein.Wallet.Widget.Input.BTC.Recipient
@@ -108,7 +99,7 @@ btcSendConfirmationWidget v = do
       addedE <- addOutgoingTx "btcSendConfirmationWidget" $ (TxBtc $ BtcTx tx Nothing) <$ sendE
       storedE <- btcMempoolTxInserter $ tx <$ addedE
       void $ requestBroadcast $ ffor storedE $ const $
-        NodeReqBTC . MInv . Inv . pure . InvVector InvTx . HT.getTxHash . HT.txHash $ tx
+        NodeReqBtc . MInv . Inv . pure . InvVector InvTx . HT.getTxHash . HT.txHash $ tx
       goE <- delay 1 =<< outlineButton SendBtnBack
       void $ nextWidget $ ffor goE $ const $ Retractable {
             retractableNext = balancesPage

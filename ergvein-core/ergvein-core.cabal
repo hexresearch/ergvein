@@ -108,6 +108,7 @@ library
     , conduit
     , containers
     , cryptonite
+    , data-default
     , dependent-map
     , directory
     , dns

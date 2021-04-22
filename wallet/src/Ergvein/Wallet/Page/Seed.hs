@@ -21,14 +21,10 @@ import Ergvein.Crypto
 import Ergvein.Either
 import Ergvein.Text
 import Ergvein.Types.Restore
-import Ergvein.Wallet.Localization.Password
-import Ergvein.Wallet.Localization.Seed
-import Ergvein.Wallet.Localization.Util
+import Ergvein.Wallet.Localization
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Password
-import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
 import Sepulcas.Alert

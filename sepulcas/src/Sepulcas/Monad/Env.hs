@@ -19,7 +19,6 @@ import Reflex.Localize.Language
 import Sepulcas.Alert.Types
 import Sepulcas.Log
 import Sepulcas.Monad.Class
-import Sepulcas.Monad.Password
 import Sepulcas.Run.Callbacks
 
 data Sepulca t = Sepulca {
@@ -33,8 +32,6 @@ data Sepulca t = Sepulca {
 , sepulca'logsNameSpaces  :: !(ExternalRef t [Text])
 , sepulca'langRef         :: !(ExternalRef t Language)
 , sepulca'alertsEF        :: !(Event t AlertInfo, AlertInfo -> IO ())
-, sepulca'passModalEF     :: !(Event t (Int, Text), (Int, Text) -> IO ())
-, sepulca'passSetEF       :: !(Event t (Int, Maybe Text), (Int, Maybe Text) -> IO ())
 }
 
 class Monad m => HasSepulca t m | m -> t where
@@ -59,12 +56,6 @@ instance {-# OVERLAPPABLE #-} (HasSepulca t m, MonadReflex t m) => MonadNativeLo
   {-# INLINE getLogsTrigger #-}
   getLogsNameSpacesRef = sepulca'logsNameSpaces <$> getSepulca
   {-# INLINE getLogsNameSpacesRef #-}
-
-instance {-# OVERLAPPABLE #-} (HasSepulca t m, MonadIO m) => HasPassModal t m where
-  getPasswordModalEF = sepulca'passModalEF <$> getSepulca
-  {-# INLINE getPasswordModalEF #-}
-  getPasswordSetEF = sepulca'passSetEF <$> getSepulca
-  {-# INLINE getPasswordSetEF #-}
 
 instance {-# OVERLAPPABLE #-} (HasSepulca t m, MonadReflex t m, Reflex t) => MonadLocalized t m where
   setLanguage lang = do
@@ -115,8 +106,6 @@ newSepulca mstoreDir defLang uiChan = do
   logsTrigger <- newTriggerEvent
   nameSpaces <- newExternalRef []
   storeDir <- maybe getHomeDir pure mstoreDir
-  passSetEF <- newTriggerEvent
-  passModalEF <- newTriggerEvent
   let env = Sepulca {
           sepulca'storeDir        = storeDir
         , sepulca'pauseEF         = (pauseE, pauseFire ())
@@ -128,8 +117,6 @@ newSepulca mstoreDir defLang uiChan = do
         , sepulca'logsTrigger     = logsTrigger
         , sepulca'logsNameSpaces  = nameSpaces
         , sepulca'uiChan          = uiChan
-        , sepulca'passModalEF     = passModalEF
-        , sepulca'passSetEF       = passSetEF
         }
   pure env
 

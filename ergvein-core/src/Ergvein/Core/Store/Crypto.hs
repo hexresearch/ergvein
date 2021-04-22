@@ -15,6 +15,7 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.WalletInfo
 import Reflex.ExternalRef
+import Reflex.Flunky
 import Reflex.Localize.Class
 import Sepulcas.Alert
 
@@ -30,28 +31,28 @@ withWallet :: forall t m a . (MonadWallet t m, PasswordAsk t m, LocalizedPrint S
   -> m (Event t a)                              -- ^ results of applying the callback to the wallet
 withWallet reqE = do
   walletName  <- getWalletName
-  walletInfoRef <- getWalletInfoRef
+  walletInfoD <- getWalletInfo
   widgD <- holdDyn Nothing $ Just <$> reqE
-  isPlainE <- performEvent $ ffor reqE $ const $ fmap _walletInfo'isPlain $ readExternalRef walletInfoRef
+  isPlainE <- performEvent $ ffor reqE $ const $ fmap _walletInfo'isPlain $ sampleDyn walletInfoD
   let passE' = ("" <$) $ ffilter id isPlainE
   passE'' <- requestPasssword $ walletName <$ (ffilter not isPlainE)
   let passE = leftmost [passE', passE'']
   mutex <- getStoreMutex
   let goE = attachWithMaybe (\mwid pass -> (pass, ) <$> mwid) (current widgD) passE
   eresE <- performEvent $ ffor goE $ \(pass, f) -> do
-    eprv <- decryptAndValidatePrvStorage (Proxy :: Proxy m) mutex pass walletInfoRef
+    eprv <- decryptAndValidatePrvStorage (Proxy :: Proxy m) mutex pass walletInfoD
     either (pure . Left) (fmap Right . f) eprv
   handleDangerMsg eresE
 
 -- | More specialized version. Provide an update function to manually update the private storage
-modifyPrvStorage :: (MonadWallet t m, PasswordAsk t m, LocalizedPrint StorageAlert)
+modifyPrvStorage :: forall t m . (MonadWallet t m, PasswordAsk t m, LocalizedPrint StorageAlert)
   => Event t (PrvStorage -> Performable m (Maybe PrvStorage)) -- ^ updater. Nothing == no update
   -> m (Event t ())
 modifyPrvStorage updE = do
   walletName <- getWalletName
-  walletInfoRef <- getWalletInfoRef
+  walletInfoD <- getWalletInfo
   updD <- holdDyn Nothing $ Just <$> updE
-  isPlainE <- performEvent $ ffor updE $ const $ fmap _walletInfo'isPlain $ readExternalRef walletInfoRef
+  isPlainE <- performEvent $ ffor updE $ const $ fmap _walletInfo'isPlain $ sampleDyn walletInfoD
   let passE' = ("" <$) $ ffilter id isPlainE
   passE'' <- requestPasssword $ walletName <$ (ffilter not isPlainE)
   let passE = leftmost [passE', passE'']
@@ -60,7 +61,7 @@ modifyPrvStorage updE = do
   errE <- performEvent $ ffor goE $ \(pass, upd) -> do
     liftIO $ takeMVar mutex                                       -- We want the next part to not interfere with any store changes
     let withMutexRelease a = liftIO $ putMVar mutex () >> pure a  -- release the mutex and return the value
-    ai <- readExternalRef walletInfoRef
+    ai <- sampleDyn walletInfoD
     let WalletStorage eps pub _ = _walletInfo'storage ai
     let eciesPubKey = _walletInfo'eciesPubKey ai
     either' (decryptPrvStorage eps pass) (withMutexRelease . Left) $ \prv -> do
@@ -71,7 +72,7 @@ modifyPrvStorage updE = do
           let wallet = WalletStorage eps' pub walletName
           err <- saveStorageSafelyToFile "modifyPrvStorage" eciesPubKey wallet
           either' err (withMutexRelease . Left) $ const $ do
-            writeExternalRef walletInfoRef $ ai {_walletInfo'storage = wallet}
+            setWalletInfoNow (Proxy :: Proxy m) $ Just $ ai {_walletInfo'storage = wallet}
             withMutexRelease $ Right ()
   handleDangerMsg errE
   where
@@ -81,14 +82,14 @@ modifyPrvStorage updE = do
 -- | Decrypt the private storage and run validation routines before returning it
 -- This is important because this is the only point the app has access to the private storage
 -- and thus this is the only place we can update seamlessly. E.g. generate missing keys
-decryptAndValidatePrvStorage :: MonadWallet t m
+decryptAndValidatePrvStorage :: forall t m . MonadWallet t m
   => Proxy m                  -- ^ A proxy, to bind the m
   -> MVar ()                  -- ^ Storage writing mutex
   -> Password                 -- ^ User's password
-  -> ExternalRef t WalletInfo   -- ^ A ref to WalletInfo. We have to be able to update WalletInfo if the validation stage changed the PrvStorage
+  -> Dynamic t WalletInfo   -- ^ A ref to WalletInfo. We update WalletInfo if the validation stage changed the PrvStorage
   -> Performable m (Either StorageAlert PrvStorage) -- ^ Decoded PrvStorage. Use in withWallet only
-decryptAndValidatePrvStorage _ mutex pass walletInfoRef = do
-  ai <- readExternalRef walletInfoRef
+decryptAndValidatePrvStorage proxy mutex pass walletInfoD = do
+  ai <- sampleDyn walletInfoD
   let WalletStorage eps pub walletName = _walletInfo'storage ai
   let eciesPubKey = _walletInfo'eciesPubKey ai
   let pubKeysNumber = M.map (\currencyPubStorage -> (
@@ -117,7 +118,7 @@ decryptAndValidatePrvStorage _ mutex pass walletInfoRef = do
         let wallet = WalletStorage eps' pub walletName
         err <- saveStorageSafelyToFile "decryptAndValidatePrvStorage" eciesPubKey wallet
         either' err (withMutexRelease . Left) $ const $ do
-          writeExternalRef walletInfoRef $ ai {_walletInfo'storage = wallet}
+          setWalletInfoNow proxy $ Just ai {_walletInfo'storage = wallet}
           withMutexRelease $ Right updatedPrvStorage
   where
     withMutexRelease a = liftIO $ putMVar mutex () >> pure a  -- release the mutex and return the value

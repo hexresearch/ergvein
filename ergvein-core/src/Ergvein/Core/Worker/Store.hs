@@ -51,10 +51,6 @@ walletStoreThread storeDir mutex updChan = void $ forkOnOther $ do
     threadDelay $ 1000000 * ceiling storeTimeBetweenWrites
     currTime <- getCurrentTime
     atomically $ writeTVar timeRef currTime
-    tid <- myThreadId
-    logWrite "--------------"
-    logWrite $ "LogWriter: " <> showt tid
-    logWrite "--------------"
     next
   -- Thread that reads from chan and stores last storage to reference which next thread will check and validate
   -- against timeout.

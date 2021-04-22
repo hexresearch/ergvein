@@ -35,7 +35,6 @@ library
       Sepulcas.Monad
       Sepulcas.Monad.Class
       Sepulcas.Monad.Env
-      Sepulcas.Monad.Password
       Sepulcas.Monad.Reflex
       Sepulcas.OpenUrl
       Sepulcas.Resize

@@ -21,9 +21,9 @@ import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
+import Ergvein.Wallet.Localization
 import Ergvein.Wallet.Monad
 import Sepulcas.Validate
-import Ergvein.Wallet.Localization.Validate
 
 import qualified Data.Text as T
 

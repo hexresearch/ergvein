@@ -3,15 +3,12 @@ module Ergvein.Wallet.Log.Page(
     logsPage
   ) where
 
-import Data.Foldable (traverse_)
 import Data.Text (pack)
 import Data.Time
 import Ergvein.Wallet.Monad
-import Reflex.Flunky
 import Sepulcas.Elements
 import Sepulcas.Log.Reader
 import Sepulcas.Log.Types
-import Sepulcas.Text
 
 import qualified Data.Text as T
 

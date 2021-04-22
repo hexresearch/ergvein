@@ -15,17 +15,12 @@ import Control.Monad.IO.Class
 
 import Ergvein.Node.Constants
 import Ergvein.Node.Resolve
-import Ergvein.Types.Currency
 import Sepulcas.Alert
 import Sepulcas.Elements
 import Sepulcas.Elements.Input
-import Ergvein.Wallet.Indexer.Socket
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Network
-import Ergvein.Wallet.Localization.Settings
+import Ergvein.Wallet.Localization
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Worker.NodeDiscovery
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Map.Strict as M
@@ -68,7 +63,7 @@ networkSettingsPage = do
       DisabledPage    -> inactivePageWidget
       ParametersPage  -> parametersPageWidget
 
-networkSettingsPageUnauth :: MonadFrontBase t m => m ()
+networkSettingsPageUnauth :: (MonadFrontBase t m, HasBaseEnv t m) => m ()
 networkSettingsPageUnauth = wrapperSimple False $ do
   navD <- navbarWidget ActivePage
   void $ networkHoldDyn $ ffor navD $ \case
@@ -129,7 +124,7 @@ addUrlWidget showD = fmap switchDyn $ networkHoldDyn $ ffor showD $ \b -> if not
     _ -> pure ()
   pure $ fmapMaybe (namedAddrName <$>) murlE
 
-activePageWidget :: forall t m . MonadFrontBase t m => m ()
+activePageWidget :: forall t m . (MonadFrontBase t m, HasBaseEnv t m) => m ()
 activePageWidget = mdo
   connsD  <- externalRefDynamic =<< getActiveConnsRef
   addrsD  <- (fmap . fmap) S.toList $ externalRefDynamic =<< getActiveAddrsRef
@@ -147,7 +142,7 @@ activePageWidget = mdo
     pure (refrE', tglE')
   pure ()
 
-renderActive :: MonadFrontBase t m
+renderActive :: (MonadFrontBase t m, HasBaseEnv t m)
   => ErgveinNodeAddr
   -> Event t ()
   -> (Maybe (IndexerConnection t))

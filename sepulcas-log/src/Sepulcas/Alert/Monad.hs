@@ -1,6 +1,6 @@
 module Sepulcas.Alert.Monad where
 
-import Reflex 
+import Reflex
 import Sepulcas.Alert.Types
 
 type MonadAlertPosterConstr t m = (

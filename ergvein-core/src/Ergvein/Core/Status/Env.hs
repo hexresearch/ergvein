@@ -18,7 +18,7 @@ import qualified Data.Vector as V
 import qualified Data.Map.Strict as M
 
 newtype StatusEnv t = StatusEnv {
-  stenv'statusUpdates  :: ExternalRef t (Map Currency StatusUpdate)
+  stenv'walletStatus  :: ExternalRef t (Map Currency WalletStatus)
 }
 
 type StatusM t m = ReaderT (StatusEnv t) m
@@ -31,8 +31,8 @@ instance Monad m => HasStatusEnv t (StatusM t m) where
   {-# INLINE getStatusEnv #-}
 
 instance (HasStatusEnv t m, MonadStatusConstr t m) => MonadStatus t m where
-  getStatusUpdRef = fmap stenv'statusUpdates getStatusEnv
-  {-# INLINE getStatusUpdRef #-}
+  getWalletStatusRef = fmap stenv'walletStatus getStatusEnv
+  {-# INLINE getWalletStatusRef #-}
 
 newStatusEnv :: (MonadIO m, TriggerEvent t m) => m (StatusEnv t)
 newStatusEnv = StatusEnv

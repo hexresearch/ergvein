@@ -41,4 +41,5 @@ initErgoNode url _ = do
     , nodeconExtra      = ()
     , nodeconIsUp       = pure False
     , nodecondoLog      = False
+    , nodeconHeight     = pure Nothing
     }

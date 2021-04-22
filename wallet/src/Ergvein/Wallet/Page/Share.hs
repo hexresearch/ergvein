@@ -4,14 +4,10 @@ module Ergvein.Wallet.Page.Share(
     sharePage
   ) where
 
-import Ergvein.Types.Address
-import Ergvein.Types.Currency
-import Ergvein.Types.Keys
-import Ergvein.Types.Storage
 import Sepulcas.Clipboard (clipboardCopy)
 import Sepulcas.Elements
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Share
+import Ergvein.Wallet.Localization
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.QRCode
 import Ergvein.Wallet.Wrapper

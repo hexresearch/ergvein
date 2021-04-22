@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 module Ergvein.Core.Wallet.Env(
     PreWalletEnv(..)
   , PreWalletM
@@ -5,16 +6,19 @@ module Ergvein.Core.Wallet.Env(
   , newPreWalletEnv
   , runPreWallet
   , WalletEnv(..)
+  , toPreWalletEnv
   , WalletM
   , HasWalletEnv(..)
   , newWalletEnv
   , runWallet
+  , LiftWallet(..)
   , liftWallet
   ) where
 
 import Control.Monad.Reader
 import Data.Fixed
 import Data.Map (Map)
+import Data.Proxy
 import Ergvein.Core.Store.Util
 import Ergvein.Core.Wallet.Monad
 import Ergvein.Types
@@ -42,13 +46,15 @@ instance Monad m => HasPreWalletEnv t (PreWalletM t m) where
 instance {-# OVERLAPPABLE #-} (MonadPreWalletConstr t m, HasStoreDir (Performable m)) => MonadPreWallet t (PreWalletM t m) where
   getWalletInfoMaybeRef = fmap pre'authRef getPreWalletEnv
   {-# INLINE getWalletInfoMaybeRef #-}
-  setWalletInfo e = do
-    authRef <- fmap pre'authRef getPreWalletEnv
-    performEvent $ ffor e $ \v -> do
-      logWrite "unauthed setWalletInfo: setting info"
-      lift $ setLastStorage $ _storage'walletName . _walletInfo'storage <$> v
-      writeExternalRef authRef v
+  setWalletInfo :: Event t (Maybe WalletInfo) -> PreWalletM t m (Event t ())
+  setWalletInfo e = performEvent $ setWalletInfoNow (Proxy :: Proxy (PreWalletM t m)) <$> e
   {-# INLINE setWalletInfo #-}
+  setWalletInfoNow _ v = do
+    logWrite "unauthed setWalletInfo: setting info"
+    authRef <- asks pre'authRef
+    lift $ setLastStorage $ _storage'walletName . _walletInfo'storage <$> v
+    writeExternalRef authRef v
+  {-# INLINE setWalletInfoNow #-}
 
 newPreWalletEnv :: (MonadIO m, TriggerEvent t m) => m (PreWalletEnv t)
 newPreWalletEnv = PreWalletEnv
@@ -58,13 +64,16 @@ runPreWallet :: PreWalletEnv t -> PreWalletM t m a -> m a
 runPreWallet = flip runReaderT
 
 data WalletEnv t = WalletEnv {
-  env'authRef         :: !(ExternalRef t WalletInfo)
+  env'authRef         :: !(ExternalRef t (Maybe WalletInfo))
 , env'logout          :: !(EventTrigger t ())
 , env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
 , env'activeCursRef   :: !(ExternalRef t (S.Set Currency))
 , env'feesStore       :: !(ExternalRef t (Map Currency FeeBundle))
 , env'ratesRef        :: !(ExternalRef t (Map Currency (Map Fiat Centi)))
 }
+
+toPreWalletEnv :: WalletEnv t -> PreWalletEnv t
+toPreWalletEnv WalletEnv{..} = PreWalletEnv env'authRef
 
 type WalletM t m = ReaderT (WalletEnv t) m
 
@@ -76,29 +85,35 @@ instance Monad m => HasWalletEnv t (WalletM t m) where
   {-# INLINE getWalletEnv #-}
 
 instance {-# OVERLAPPING #-} (MonadPreWalletConstr t m, HasStoreDir (Performable m)) => MonadPreWallet t (WalletM t m) where
-  getWalletInfoMaybeRef = fmapExternalRef Just =<< fmap env'authRef getWalletEnv
+  getWalletInfoMaybeRef = fmap env'authRef getWalletEnv
   {-# INLINE getWalletInfoMaybeRef #-}
 
-  setWalletInfo e = do
-    WalletEnv{..} <- getWalletEnv
-    performEvent $ ffor e $ \case
-      Nothing -> do
-        logWrite "authed setWalletInfo: logout"
-        lift $ setLastStorage Nothing
-        liftIO $ triggerFire env'logout ()
-      Just v -> do
-        logWrite "authed setWalletInfo: changing auth info"
-        lift $ setLastStorage $ Just . _storage'walletName . _walletInfo'storage $ v
-        writeExternalRef env'authRef v
+  setWalletInfo :: Event t (Maybe WalletInfo) -> WalletM t m (Event t ())
+  setWalletInfo e = performEvent $ setWalletInfoNow (Proxy :: Proxy (WalletM t m)) <$> e
   {-# INLINE setWalletInfo #-}
+
+  setWalletInfoNow _ = \case
+    Nothing -> do
+      logWrite "authed setWalletInfo: logout"
+      WalletEnv{..} <- ask
+      lift $ setLastStorage Nothing
+      liftIO $ triggerFire env'logout ()
+    Just v -> do
+      logWrite "authed setWalletInfo: changing auth info"
+      WalletEnv{..} <- ask
+      lift $ setLastStorage $ Just . _storage'walletName . _walletInfo'storage $ v
+      writeExternalRef env'authRef (Just v)
+  {-# INLINE setWalletInfoNow #-}
 
 instance {-# OVERLAPPABLE #-} (HasWalletEnv t m, MonadWalletConstr t m) => MonadWallet t m where
   getFiltersSyncRef = fmap env'filtersSyncRef getWalletEnv
   {-# INLINE getFiltersSyncRef #-}
   getActiveCursRef = fmap env'activeCursRef getWalletEnv
   {-# INLINE getActiveCursRef #-}
-  getWalletInfoRef = fmap env'authRef getWalletEnv
-  {-# INLINE getWalletInfoRef #-}
+  getWalletInfo = do
+    minfo <- externalRefDynamic =<< fmap env'authRef getWalletEnv
+    pure $ maybe (error "Impossible: Nothing in wallet info in MonadWallet!") id <$> minfo
+  {-# INLINE getWalletInfo #-}
   getFeesRef = fmap env'feesStore getWalletEnv
   {-# INLINE getFeesRef #-}
   getRatesRef = fmap env'ratesRef getWalletEnv
@@ -107,7 +122,7 @@ instance {-# OVERLAPPABLE #-} (HasWalletEnv t m, MonadWalletConstr t m) => Monad
 newWalletEnv :: (MonadIO m, TriggerEvent t m) => WalletInfo -> EventTrigger t () -> m (WalletEnv t)
 newWalletEnv winfo logoutTrigger = do
   WalletEnv
-    <$> newExternalRef winfo
+    <$> newExternalRef (Just winfo)
     <*> pure logoutTrigger
     <*> newExternalRef mempty
     <*> newExternalRef mempty
@@ -117,19 +132,22 @@ newWalletEnv winfo logoutTrigger = do
 runWallet :: WalletEnv t -> WalletM t m a -> m a
 runWallet = flip runReaderT
 
+class LiftWallet t n m | m -> t where
+  -- | Way to execute authed monad with given wallet info and logout trigger
+  hoistWallet :: WalletInfo -> EventTrigger t () -> n a -> m a
+
 -- | Execute action under authorized context or return the given value as result
 -- if user is not authorized. Each time the login info changes and walletInfo'isUpdate flag is set to 'False'
 -- (user logs out or logs in) the widget is updated.
-liftWallet :: forall t m n a . MonadPreWallet t m
-  => (forall x. WalletInfo -> EventTrigger t () -> n x -> m x) -- ^ Way to execute authed monad with given wallet info and logout trigger
-  -> m a -> n a -> m (Dynamic t a)
-liftWallet hoister ma0 ma = do
+liftWallet :: forall t m n a . (MonadPreWallet t m, LiftWallet t n m)
+  => m a -> n a -> m (Dynamic t a)
+liftWallet ma0 ma = do
   mauthD <- getWalletInfoMaybe
   mauth0 <- sample . current $ mauthD
   logoutTrigger <- newTriggerEvent'
   let
     run :: WalletInfo -> m a
-    run winfo = hoister winfo logoutTrigger ma
+    run winfo = hoistWallet winfo logoutTrigger ma
     ma0' = maybe ma0 run mauth0
     newWalletInfoE = ffilter isMauthUpdate $ updated mauthD
     redrawE = leftmost [newWalletInfoE, Nothing <$ triggerEvent logoutTrigger]

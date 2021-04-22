@@ -1,11 +1,12 @@
 module Ergvein.Core.Node.Btc.Blocks
-  (
-    requestBTCBlocks
+  ( getStartHeightBTC
+  , requestBTCBlocks
   ) where
 
 import Control.Monad.Random
 import Data.Maybe (catMaybes)
 import Data.Time
+import Data.Word
 import Network.Haskoin.Block
 import Network.Haskoin.Network
 import Reflex
@@ -21,6 +22,13 @@ import qualified Data.Map.Strict as M
 import qualified Data.List as L
 
 data RBTCBlksAct = RASucc [Block] | RANoNode [BlockHash] | RANodeClosed [BlockHash]
+
+getStartHeightBTC :: MonadNode t m => m (Dynamic t (Maybe Word32))
+getStartHeightBTC = do
+  conMapD <- getBtcNodesD
+  let heightD = join $ ffor conMapD $ \connMap ->
+        L.foldl' (\d1 d2 -> ffor2 d1 d2 max) (constDyn Nothing) (nodeconHeight <$> M.elems connMap)
+  pure heightD
 
 -- | Amount of seconds we give a node to send us blocks either retry.
 blockTimeout :: NominalDiffTime

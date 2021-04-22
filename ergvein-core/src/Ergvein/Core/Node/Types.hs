@@ -32,6 +32,7 @@ import Data.Map.Strict (Map)
 import Data.Text (Text)
 import Data.Time (NominalDiffTime)
 import Data.Type.Equality
+import Data.Word
 import Ergvein.Text (showt)
 import Ergvein.Types
 import Network.Socket (SockAddr)
@@ -62,6 +63,7 @@ data NodeConnection t cur = NodeConnection {
 , nodeconExtra      :: !(NodeSpecific cur)
 , nodeconIsUp       :: !(Dynamic t Bool)
 , nodecondoLog      :: !Bool
+, nodeconHeight     :: !(Dynamic t (Maybe Word32)) -- ^ Note: This field is used to track the progress of the height search. It is only updated once during node initialization.
 }
 
 data NodeStatus = NodeStatus {

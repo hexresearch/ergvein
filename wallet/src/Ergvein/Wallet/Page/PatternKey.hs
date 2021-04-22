@@ -20,11 +20,10 @@ import Data.Either (fromRight)
 import Ergvein.Aeson
 import Ergvein.Text
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.PatternKey
+import Ergvein.Wallet.Localization
 import Ergvein.Wallet.Monad
-import Sepulcas.Native
 import Ergvein.Wallet.Page.Canvas
-import Ergvein.Wallet.Util
+import Sepulcas.Native
 
 import qualified Data.Map.Strict as Map
 

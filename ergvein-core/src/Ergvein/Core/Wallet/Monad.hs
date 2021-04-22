@@ -6,7 +6,6 @@ module Ergvein.Core.Wallet.Monad(
   , MonadWalletConstr
   , MonadWallet(..)
   , getLoginD
-  , getWalletInfo
   , getActiveCursD
   , updateActiveCurs
   , requestRandomIndexer
@@ -34,6 +33,7 @@ import Data.Functor (void)
 import Data.Functor.Misc (Const2(..))
 import Data.Map (Map)
 import Data.Maybe
+import Data.Proxy
 import Data.Text (Text)
 import Ergvein.Core.Client.Monad
 import Ergvein.Core.Settings.Monad
@@ -79,6 +79,10 @@ class MonadPreWalletConstr t m => MonadPreWallet t (m :: * -> *) | m -> t where
   -- implement actual login/logout. Some implementations may ingore 'Nothing'
   -- values if their semantic require persistent authorisation.
   setWalletInfo :: Event t (Maybe WalletInfo) -> m (Event t ())
+  -- | Manually set authorisation information for context. Used by widgets that
+  -- implement actual login/logout. Some implementations may ingore 'Nothing'
+  -- values if their semantic require persistent authorisation.
+  setWalletInfoNow :: Proxy m -> Maybe WalletInfo -> Performable m ()
 
 -- | Return flag that comes 'True' as soon as user opens wallet
 isInsideWallet :: MonadPreWallet t m => m (Dynamic t Bool)
@@ -107,6 +111,7 @@ type MonadWalletConstr t (m :: * -> *) = (
   , LocalizedPrint ClientMessage
   , MonadClient t m
   , MonadStorage t m
+  , MonadPreWallet t m
   )
 
 class MonadWalletConstr t m => MonadWallet t m | m -> t where
@@ -116,19 +121,15 @@ class MonadWalletConstr t m => MonadWallet t m | m -> t where
   getActiveCursRef :: m (ExternalRef t (S.Set Currency))
   -- | Get fees ref. Internal
   getFeesRef :: m (ExternalRef t (Map Currency FeeBundle))
-  -- | Get authed info
-  getWalletInfoRef :: m (ExternalRef t WalletInfo)
+  -- | Get auth info. Not a Maybe since this is authorized context
+  getWalletInfo :: m (Dynamic t WalletInfo)
   -- | Get rates (e.g. BTC/USDT) ref
   getRatesRef :: m (ExternalRef t (Map Currency (Map Fiat Centi)))
 
 -- | Get the login. Convenience function
 getLoginD :: MonadWallet t m => m (Dynamic t Text)
-getLoginD = (fmap . fmap) _walletInfo'login . externalRefDynamic =<< getWalletInfoRef
+getLoginD = (fmap . fmap) _walletInfo'login getWalletInfo
 {-# INLINE getLoginD #-}
-
--- | Get auth info. Not a Maybe since this is authorized context
-getWalletInfo :: MonadWallet t m => m (Dynamic t WalletInfo)
-getWalletInfo = externalRefDynamic =<< getWalletInfoRef
 
 -- | Get activeCursRef Internal
 getActiveCursD :: MonadWallet t m => m (Dynamic t (S.Set Currency))

@@ -14,23 +14,15 @@ import Text.Read
 
 import Ergvein.Crypto.Keys     (Mnemonic)
 import Ergvein.Text
-import Ergvein.Types.Currency
-import Ergvein.Types.Derive
-import Ergvein.Types.Restore
-import Ergvein.Types.Storage
-import Ergvein.Types.Transaction
+import Ergvein.Wallet.Language
+import Ergvein.Wallet.Localization
+import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Password
+import Ergvein.Wallet.Wrapper
 import Sepulcas.Alert
 import Sepulcas.Elements
 import Sepulcas.Elements.Input
-import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Password
-import Ergvein.Wallet.Localization.Restore
-import Ergvein.Wallet.Monad
 import Sepulcas.Native
-import Ergvein.Wallet.Password
-import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Storage.WalletInfo
-import Ergvein.Wallet.Wrapper
 
 import qualified Data.Text as T
 
@@ -109,9 +101,10 @@ performAuth wt mnemonic curs login pass mpath startingHeight isPass = do
       h3 $ localizedText RPSTrafficTitle
       elClass "h5" "overflow-wrap-bw" $ localizedText RPSTrafficWarn
       elClass "h5" "overflow-wrap-bw" $ localizedText RPSTrafficWifi
+      elClass "h5" "overflow-wrap-bw" $ localizedText RPSTrafficTime
       outlineButton RPSTrafficAccept
   storageE <- performEvent $ ffor goE $ const $
-    initWalletInfo wt mpath mnemonic curs login pass startingHeight isPass
+    initWalletInfo English wt mpath mnemonic curs login pass startingHeight isPass
   walletInfoE <- handleDangerMsg storageE
   void $ setWalletInfo $ Just <$> walletInfoE
 
@@ -246,7 +239,7 @@ data CPMStage = CPMPattern | CPMPassword | CPMEmpty Bool
 
 changePasswordMobileWidget :: MonadFront t m => m (Event t (Password, Bool))
 changePasswordMobileWidget = wrapperSimple True $ mdo
-  login <- fmap (_walletInfo'login) $ readExternalRef =<< getWalletInfoRef
+  login <- fmap (_walletInfo'login) $ sampleDyn =<< getWalletInfo
   let name = T.replace " " "_" login
   stage0 <- fmap eitherToStage $ retrieveValue ("meta_wallet_" <> name) False
   stageD <- holdDyn stage0 nextE

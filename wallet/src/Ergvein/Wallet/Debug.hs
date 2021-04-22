@@ -9,17 +9,12 @@ import Control.Monad.IO.Class
 import Data.Maybe (fromMaybe, listToMaybe)
 import Network.Haskoin.Transaction
 
-import Ergvein.Text
-import Ergvein.Types.Address
-import Ergvein.Types.Currency
-import Ergvein.Types.Keys
-import Ergvein.Types.Storage
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo.Btc
 import Sepulcas.Elements
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Storage
 import Ergvein.Wallet.Wrapper
+import Ergvein.Wallet.Localization
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S

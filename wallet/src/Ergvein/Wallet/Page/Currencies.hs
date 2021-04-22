@@ -13,7 +13,7 @@ import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Restore
 import Sepulcas.Elements
-import Ergvein.Wallet.Localization.Currencies
+import Ergvein.Wallet.Localization
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Wrapper

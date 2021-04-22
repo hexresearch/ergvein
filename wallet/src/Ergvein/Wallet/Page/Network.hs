@@ -10,10 +10,8 @@ import Ergvein.Node.Resolve
 import Ergvein.Types.Currency
 import Sepulcas.Elements
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Currency()
-import Ergvein.Wallet.Localization.Network
+import Ergvein.Wallet.Localization
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Node
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Dependent.Map as DM
@@ -48,15 +46,15 @@ networkPageWidget cur refrE = do
     pure listE
   -- lineOption $ lineOptionNoEdit NPSSyncStatus servCurInfoD NPSSyncDescr
   void $ lineOption $ networkHoldDyn $ ffor conmapD $ \cm -> case cur of
-    BTC  -> btcNetworkWidget $ maybe [] M.elems $ DM.lookup BTCTag cm
-    ERGO -> ergNetworkWidget $ maybe [] M.elems $ DM.lookup ERGOTag cm
+    BTC  -> btcNetworkWidget $ maybe [] M.elems $ DM.lookup BtcTag cm
+    ERGO -> ergNetworkWidget $ maybe [] M.elems $ DM.lookup ErgoTag cm
   void $ nextWidget $ ffor listE $ \с -> Retractable {
       retractableNext = serversInfoPage с
     , retractablePrev = Just (pure $ networkPage (Just с))
     }
   pure ()
 
-btcNetworkWidget :: MonadFront t m => [NodeBTC t] -> m ()
+btcNetworkWidget :: MonadFront t m => [NodeBtc t] -> m ()
 btcNetworkWidget nodes = do
   infosD <- fmap sequence $ traverse externalRefDynamic $ nodeconStatus <$> nodes
   let activeND = fmap (length . filter id) $ sequence $ nodeconIsUp <$> nodes
@@ -67,7 +65,7 @@ btcNetworkWidget nodes = do
   descrOptionDyn avgLatD
   labelHorSep
 
-ergNetworkWidget :: MonadFront t m => [NodeERG t] -> m ()
+ergNetworkWidget :: MonadFront t m => [NodeErgo t] -> m ()
 ergNetworkWidget nodes = do
   infosD <- fmap sequence $ traverse externalRefDynamic $ nodeconStatus <$> nodes
   let activeND = fmap (length . filter id) $ sequence $ nodeconIsUp <$> nodes

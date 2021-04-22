@@ -15,31 +15,19 @@ import Reflex.ExternalRef
 
 import Ergvein.Crypto
 import Ergvein.Text
-import Ergvein.Types.WalletInfo
-import Ergvein.Types.Currency
-import Ergvein.Types.Storage
 import Sepulcas.Alert
 import Sepulcas.Elements
 import Sepulcas.Elements.Toggle
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.WalletInfo
-import Ergvein.Wallet.Localization.Currency
-import Ergvein.Wallet.Localization.Network
-import Ergvein.Wallet.Localization.Settings
-import Ergvein.Wallet.Localization.Util
+import Ergvein.Wallet.Localization
 import Ergvein.Wallet.Monad
 import Sepulcas.Native
 import Ergvein.Wallet.Navbar
-import Ergvein.Wallet.Node
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Page.Settings.MnemonicExport
 import Ergvein.Wallet.Page.Settings.Network
 import Ergvein.Wallet.Page.Settings.Unauth
-import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Storage
-import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Map.Strict as Map
@@ -128,7 +116,7 @@ btcNodesPage = do
   wrapper False title (Just $ pure $ btcNodesPage) $ do
     conmapD <- getNodeConnectionsD
     void $ lineOption $ networkHoldDyn $ ffor conmapD $ \cm -> do
-      let btcNodes = maybe [] Map.elems $ DM.lookup BTCTag cm
+      let btcNodes = maybe [] Map.elems $ DM.lookup BtcTag cm
       btcNetworkWidget btcNodes
       void $ flip traverse btcNodes $ \node -> do
         let offclass = [("class", "mt-a mb-a indexer-offline")]
@@ -144,7 +132,7 @@ btcNodesPage = do
         pure ()
   pure ()
 
-btcNetworkWidget :: MonadFront t m => [NodeBTC t] -> m ()
+btcNetworkWidget :: MonadFront t m => [NodeBtc t] -> m ()
 btcNetworkWidget nodes = do
   infosD <- fmap sequence $ traverse externalRefDynamic $ nodeconStatus <$> nodes
   let activeND = fmap (length . filter id) $ sequence $ nodeconIsUp <$> nodes
@@ -371,7 +359,7 @@ deleteWalletPage = do
     stageFour = Workflow $ do
       h4 $ localizedText DWSFinStage
       delE <- buttonsRow DWSBtnYes
-      login <- fmap _walletInfo'login . readExternalRef =<< getWalletInfoRef
+      login <- fmap _walletInfo'login . sampleDyn =<< getWalletInfo
       let walletName = "wallet_" <> T.replace " " "_" login
           backupName = "backup_" <> walletName
       doneE <- performEvent $ ffor delE $ const $ do
