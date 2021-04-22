@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedLists #-}
+
 module Sepulcas.Elements.Toggle(
     toggleButton
   , toggler
@@ -39,13 +41,14 @@ toggler :: (DomBuilder t m, PostBuild t m, MonadSample t m, MonadIO m, MonadLoca
 toggler lbl initialChecked = do
   let initE = updated initialChecked
   initVal <- sample $ current initialChecked
-  i <- genId
-  label i $ localizedText lbl
-  input <- elClass "label" "switch" $ do
+  i1 <- genId
+  label i1 $ localizedText lbl
+  input <- elAttr "span" [("class", "toggle-switch"), ("id", i1)] $ do
+    i2 <- genId
     input <- inputElement $ def
-      & inputElementConfig_elementConfig . elementConfig_initialAttributes %~ (\as -> "id" =: i <> "type" =: "checkbox" <> as)
+      & inputElementConfig_elementConfig . elementConfig_initialAttributes %~ (\as -> "id" =: i2 <> "type" =: "checkbox" <> as)
       & inputElementConfig_initialChecked .~ initVal
       & inputElementConfig_setChecked .~ initE
-    spanClass "slider" $ pure ()
+    label i2 $ blank
     pure input
   pure $ _inputElement_checked input

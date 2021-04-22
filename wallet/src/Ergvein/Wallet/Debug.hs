@@ -57,7 +57,9 @@ debugWidget = el "div" $ do
   h5 . dynText $ do
     p <- avgD
     pure $ "Avg.indexer ping: " <> showt p
-  h5 . dynText . fmap showt =<< getCurrentHeight BTC
+  h5 . dynText . (\s -> "Current height: " <> s) . fmap showt =<< getCurrentHeight BTC
+  h5 . dynText . (\s -> "Scanned height: " <> s) . fmap showt =<< getScannedHeightD BTC
+
   let goE = leftmost [utxoE, pubIntE, pubExtE, prvIntE, prvExtE, mnemonicE]
   void $ nextWidget $ ffor goE $ \sel -> Retractable {
       retractableNext = case sel of

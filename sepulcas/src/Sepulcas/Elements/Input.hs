@@ -18,25 +18,27 @@ module Sepulcas.Elements.Input(
   , valueField
   , submitClass
   , textInputTypeDyn
+  , validatedTextFieldWithSetValBtns
   ) where
 
 import Control.Lens
 import Control.Monad.IO.Class
+import Data.Functor (void)
 import Data.Proxy
 import Data.Text (Text)
-import Data.Functor (void)
+import Reflex.Dom hiding (textInput)
+import Reflex.Flunky
+import Reflex.Localize
+import Reflex.Localize.Dom
 import Sepulcas.Either
-import Sepulcas.Text
 import Sepulcas.Elements.Button
 import Sepulcas.Elements.Form
 import Sepulcas.Elements.Input.Class
 import Sepulcas.Elements.Markup
 import Sepulcas.Id
 import Sepulcas.Monad
-import Reflex.Dom hiding (textInput)
-import Reflex.Flunky
-import Reflex.Localize
-import Reflex.Localize.Dom
+import Sepulcas.Platform
+import Sepulcas.Text
 
 import qualified Data.Map.Strict as M
 
@@ -295,3 +297,29 @@ submitClass classD lbl = do
 textInputTypeDyn :: forall t m . MonadReflex t m => Event t Text -> InputElementConfig EventResult t (DomBuilderSpace m) -> m (Dynamic t Text)
 textInputTypeDyn typeE cfg = fmap _inputElement_value $ inputElement $ cfg
   & inputElementConfig_elementConfig . elementConfig_modifyAttributes .~ fmap ((=:) "type" . Just) typeE
+
+validatedTextFieldWithSetValBtns :: (MonadReflex t m, LocalizedPrint l0, LocalizedPrint l1, MonadLocalized t m)
+  => l0 -- ^ Label
+  -> Text -- ^ Initial value
+  -> Dynamic t (Maybe [l1]) -- ^ List of errors
+  -> [Text] -- ^ Classes of icon-buttons
+  -> Event t Text -- ^ Event that may change the input field value
+  -> m (Dynamic t Text, [Event t ()])
+validatedTextFieldWithSetValBtns lbl v0 mErrsD btns setValE = mdo
+  i <- genId
+  label i $ localizedText lbl
+  (iD, bE) <- divClassDyn isInvalidD $ do
+    textInputValueD <- inputField
+    btnEvents <- divClass "text-input-btns" $ traverse mkBtn btns
+    pure (textInputValueD, btnEvents)
+  void $ divClass "form-field-errors" $ simpleList errsD displayError
+  pure (iD, bE)
+  where
+    errsD = fmap (maybe [] id) mErrsD
+    inputClass = "text-input-with-btns" <> if isAndroid then "-android" else "-desktop"
+    isInvalidD = fmap (maybe "text-input-with-btns-wrapper" (const "text-input-with-btns-wrapper is-invalid")) mErrsD
+    mkBtn iconClass = divButton "text-input-btn" $ elClass "i" iconClass blank
+    inputField = fmap _inputElement_value $ textInput $ def
+      & inputElementConfig_initialValue .~ v0
+      & inputElementConfig_setValue .~ setValE
+      & inputElementConfig_elementConfig . elementConfig_initialAttributes %~ (\as -> "class" =: inputClass <> as)
