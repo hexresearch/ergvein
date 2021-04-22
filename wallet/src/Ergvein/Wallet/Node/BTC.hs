@@ -88,6 +88,7 @@ initBTCNode doLog sa msgE = do
           _socketConfPeer   = peer
         , _socketConfSend   = fmap (runPut . putMessage net) $ leftmost [reqE, handshakeE, hsRespE]
         , _socketConfPeeker = peekMessage net sa
+        , _socketConfReopen = restartE
         , _socketConfClose  = closeE
         , _socketConfProxy  = proxyD
         }

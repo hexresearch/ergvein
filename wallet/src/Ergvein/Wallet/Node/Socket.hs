@@ -83,6 +83,8 @@ data SocketConf t a = SocketConf {
 , _socketConfPeeker :: !(ReaderT PeekerEnv IO a)
 -- | Event that externaly closes the connection
 , _socketConfClose  :: !(Event t ())
+-- | Event that externaly reopen the connection
+, _socketConfReopen  :: !(Event t ())
 -- | Configuration of SOCKS proxy. If the value changes, connection is reopened.
 , _socketConfProxy  :: !(Dynamic t (Maybe SocksConf))
 } deriving (Generic)
@@ -98,6 +100,7 @@ data SocketStatus =
 -- | Information why socket was closed
 data CloseReason =
     CloseGracefull -- ^ Socket was closed gracefully and not going to be reopened
+  | CloseReconnect
   | CloseError !CloseException -- ^ Socket was closed by exception. Boolean marks is the connection restarting.
   deriving (Show, Generic)
 
@@ -105,7 +108,8 @@ data CloseReason =
 isCloseFinal :: CloseReason -> Bool
 isCloseFinal r = case r of
   CloseGracefull -> True
-  CloseError _ -> False
+  CloseReconnect -> False
+  CloseError _   -> False
 
 -- | Widget that is created with `socket` and allows to get results from
 -- the socket.
@@ -175,12 +179,17 @@ socket SocketConf{..} = fmap switchSocket $ networkHoldDyn $ ffor _socketConfPro
         logWrite $ showt e
         statusFire SocketClosed
         closeFire $ maybe CloseGracefull CloseError e
+      reopenCb :: IO ()
+      reopenCb = do
+        statusFire SocketClosed
+        closeFire CloseReconnect
   intVar <- liftIO $ newTVarIO False
   sendChan <- liftIO newTChanIO
   performEvent_ $ ffor closeE $ const $ liftIO $ atomically $ writeTVar intVar True
   performEvent_ $ ffor reconnectE $ const $ liftIO $ atomically $ writeTVar intVar False
   performEvent_ $ ffor _socketConfSend $ liftIO . atomically . writeTChan sendChan
   performEvent_ $ ffor _socketConfClose $ const $ liftIO $ closeCb Nothing
+  performEvent_ $ ffor _socketConfReopen $ const $ liftIO reopenCb
   performFork_  $ ffor connectE $ const $ liftIO $ do
     let sendThread sock = forever $ do
           msgs <- atomically $ readAllTVar sendChan

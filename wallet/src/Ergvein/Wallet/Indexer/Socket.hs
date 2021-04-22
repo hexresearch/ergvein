@@ -63,7 +63,7 @@ initIndexerConnection sname sa msgE = mdo
   (msname, msport) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True sa
   let peer = fromJust $ Peer <$> msname <*> msport
   let restartE = fforMaybe msgE $ \case
-        IndexerRestart -> Just ()
+        IndexerReopen -> Just ()
         _ -> Nothing
       closeE = fforMaybe msgE $ \case
         IndexerClose -> Just ()
@@ -77,6 +77,7 @@ initIndexerConnection sname sa msgE = mdo
     , _socketConfSend   = fmap serializeMessage sendE
     , _socketConfPeeker = peekMessage sa
     , _socketConfClose  = leftmost [closeE, versionMismatchDE, currenciesMismatchDE, currenciesNotSyncedDE]
+    , _socketConfReopen = restartE
     , _socketConfProxy  = proxyD
     }
   handshakeE <- performEvent $ ffor (socketConnected s) $ const $ mkVers
