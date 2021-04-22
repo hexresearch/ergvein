@@ -4,11 +4,15 @@ module Ergvein.Wallet.Worker.Indexer
   ) where
 
 import Control.Monad
+import Control.Monad.Random
 import Data.Functor.Misc (Const2(..))
 import Data.Time
 import Reflex.Dom
 import Reflex.ExternalRef
+import Reflex.Flunky
+import Sepulcas.Native
 
+import Ergvein.Index.Protocol.Types
 import Ergvein.Node.Constants
 import Ergvein.Node.Resolve
 import Ergvein.Node.Resolve
@@ -17,13 +21,15 @@ import Ergvein.Wallet.Indexer.Socket
 import Ergvein.Wallet.Monad.Client
 import Ergvein.Wallet.Monad.Prim
 import Ergvein.Wallet.Monad.Util
-import Sepulcas.Native
 import Ergvein.Wallet.Settings
 
 import qualified Data.Map.Strict as M
 
 connectionTimeout :: NominalDiffTime
 connectionTimeout = 60
+
+latencyCheckInterval :: NominalDiffTime
+latencyCheckInterval = 4
 
 indexerNodeController :: (MonadHasUI m, MonadIndexClient t m, MonadHasSettings t m) => [ErgveinNodeAddr] -> m ()
 indexerNodeController initAddrs = mdo
@@ -42,7 +48,7 @@ indexerNodeController initAddrs = mdo
     case mAddr of
       Just addr -> do
         nodeLog $ "<" <> showt u <> ">: Connect"
-        let reqE = select sel $ Const2 u
+        let reqE = select sel $ Const2 u 
         conn <- initIndexerConnection u (namedAddrSock addr) reqE
         modifyExternalRef connRef $ \cm -> (M.insert u conn cm, ())
         indexerStatusUpdater conn
@@ -54,12 +60,37 @@ indexerNodeController initAddrs = mdo
         let closedE'' = leftmost [closedE', failedToConnectE]
         -- remove the connection from the connection map
         closedE''' <- performEvent $ ffor closedE'' $ const $ modifyExternalRef connRef $ \cm -> (M.delete u cm, ())
+        -- reopen on latency check failure
+        timeoutE <- connectionLatencyWidget conn
+        reopenAndWait $ (namedAddrName addr) <$ timeoutE
         -- send out the event to delete this widget
         pure $ u <$ closedE'''
       _ -> pure never
   pure ()
   where
     nodeLog t = logWrite $ "[indexerNodeController]: " <> t
+
+connectionLatencyWidget :: forall t m . MonadIndexClient t m => IndexerConnection t -> m (Event t ())
+connectionLatencyWidget connection = mdo
+  startE <- getPostBuild
+  pongE <- pingNode =<< delay latencyCheckInterval (leftmost [pingE, startE])
+  (pingE, timeoutE) <- switchDyn2 <$> workflow (body pongE)
+  pure timeoutE
+  where
+    body :: Event t () -> Workflow t m (Event t (), Event t ())
+    body pongE =  Workflow $ do 
+      timeoutE <- delay (latencyCheckInterval * 2) =<< getPostBuild
+      let nextE = body pongE <$ pongE
+      pure ((pongE,  timeoutE), nextE)
+    pingNode :: Event t () -> m (Event t ()) 
+    pingNode e = do
+      fireReq  <- getIndexReqFire
+      performFork_ $ ffor e $ const $ liftIO $ do
+        pingPayload <- randomIO
+        fireReq $ M.singleton (indexConName connection) $ (IndexerMsg $ MPing pingPayload)
+      pure $ fforMaybe (indexConRespE connection) $ \case
+                      MPong pingPayload ->  Just ()
+                      _                 ->  Nothing
 
 connectionWidget :: MonadIndexClient t m => IndexerConnection t -> m (Event t ())
 connectionWidget IndexerConnection{..} = do
