@@ -14,7 +14,7 @@ import Ergvein.Types.Utxo.Btc
 import Sepulcas.Elements
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Wrapper
-import Ergvein.Wallet.Localization
+import Ergvein.Wallet.Localize
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S

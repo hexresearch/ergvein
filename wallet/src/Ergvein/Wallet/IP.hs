@@ -8,7 +8,7 @@ import Sepulcas.Elements.Input.Class
 import Network.Socket (SockAddr)
 import Ergvein.Text
 import Ergvein.Core.IP
-import Ergvein.Wallet.Localization
+import Ergvein.Wallet.Localize
 
 instance (LocalizedPrint l, Wrappable IPStrings l) => Inputable l IP where
   displayInput _ = showt

@@ -13,7 +13,7 @@ import Ergvein.Text
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 
 import qualified Data.List as L

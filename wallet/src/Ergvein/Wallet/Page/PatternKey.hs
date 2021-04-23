@@ -20,7 +20,7 @@ import Data.Either (fromRight)
 import Ergvein.Aeson
 import Ergvein.Text
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Canvas
 import Sepulcas.Native

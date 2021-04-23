@@ -1,0 +1,103 @@
+name:                ergvein-localize
+version:             1.0.0.0
+synopsis:            Localization strings for ergvein wallet
+description:         Library that provides languages and string ids alongside with translation for them.
+stability:           Experimental
+category:            Reflex, FRP, Web, GUI, HTML, Javascript, Reactive, Reactivity, User Interfaces, User-interface
+build-type:          Simple
+cabal-version:       >=1.10
+license:             MIT
+license-file:        LICENSE
+copyright:           2019-2021 ATUM SOLUTIONS AG
+author:
+                     - Anton Gushcha
+                     - Aminion
+                     - Vladimir Krutkin
+                     - Levon Oganyan
+maintainer:          - Anton Gushcha <ncrashed@gmail.com>
+                     - Aminion <>
+                     - Vladimir Krutkin <krutkinvs@gmail.com>
+                     - Levon Oganyan <lemarwin42@protonmail.com>
+bug-reports:         https://github.com/hexresearch/ergvein/issues
+homepage:            https://github.com/hexresearch/ergvein
+extra-source-files:
+  README.md
+  CHANGELOG.md
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+    Ergvein.Wallet.Language
+    Ergvein.Wallet.Localize
+    Ergvein.Wallet.Localize.About
+    Ergvein.Wallet.Localize.Balance
+    Ergvein.Wallet.Localize.WalletInfo
+    Ergvein.Wallet.Localize.Client
+    Ergvein.Wallet.Localize.Currencies
+    Ergvein.Wallet.Localize.Currency
+    Ergvein.Wallet.Localize.Fee
+    Ergvein.Wallet.Localize.History
+    Ergvein.Wallet.Localize.Info
+    Ergvein.Wallet.Localize.Initial
+    Ergvein.Wallet.Localize.Inplace
+    Ergvein.Wallet.Localize.Input
+    Ergvein.Wallet.Localize.IP
+    Ergvein.Wallet.Localize.Native
+    Ergvein.Wallet.Localize.Network
+    Ergvein.Wallet.Localize.Password
+    Ergvein.Wallet.Localize.PatternKey
+    Ergvein.Wallet.Localize.Receive
+    Ergvein.Wallet.Localize.Restore
+    Ergvein.Wallet.Localize.Seed
+    Ergvein.Wallet.Localize.Send
+    Ergvein.Wallet.Localize.Settings
+    Ergvein.Wallet.Localize.Share
+    Ergvein.Wallet.Localize.Storage
+    Ergvein.Wallet.Localize.TestnetDisclaimer
+    Ergvein.Wallet.Localize.Transaction
+    Ergvein.Wallet.Localize.Util
+    Ergvein.Wallet.Localize.Validate
+    Ergvein.Wallet.Localize.Status
+
+  build-depends:
+      base                      >= 4.5      && < 4.15
+    , ergvein-common
+    , ergvein-core
+    , ergvein-types
+    , ergvein-index-protocol
+    , reflex                    >= 0.4      && < 0.9
+    , reflex-localize
+    , reflex-localize-dom
+    , sepulcas
+    , sepulcas-native
+    , text
+    , time
+  default-language:    Haskell2010
+  default-extensions:
+    BangPatterns
+    ConstraintKinds
+    DataKinds
+    DeriveDataTypeable
+    DeriveGeneric
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    LambdaCase
+    MultiParamTypeClasses
+    MultiWayIf
+    OverloadedStrings
+    RankNTypes
+    RecordWildCards
+    RecursiveDo
+    ScopedTypeVariables
+    StandaloneDeriving
+    TupleSections
+    TypeFamilies
+    UndecidableInstances
+
+source-repository head
+  type: git
+  location: https://github.com/hexresearch/ergvein
+  subdir: ergvein-localize

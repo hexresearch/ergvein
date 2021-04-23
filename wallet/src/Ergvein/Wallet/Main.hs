@@ -18,7 +18,7 @@ import Sepulcas.Loading
 import Sepulcas.Log
 #ifdef TESTNET
 import Sepulcas.Elements
-import Ergvein.Wallet.Localization
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Wrapper
 #endif
 

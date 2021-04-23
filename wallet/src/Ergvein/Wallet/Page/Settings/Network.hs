@@ -19,7 +19,7 @@ import Sepulcas.Alert
 import Sepulcas.Elements
 import Sepulcas.Elements.Input
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Wrapper
 

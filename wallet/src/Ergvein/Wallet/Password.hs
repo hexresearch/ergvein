@@ -18,7 +18,7 @@ import Data.Maybe
 import Data.Time (getCurrentTime)
 import Reflex.Localize.Dom
 
-import Ergvein.Wallet.Localization
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.PatternKey
 import Sepulcas.Elements

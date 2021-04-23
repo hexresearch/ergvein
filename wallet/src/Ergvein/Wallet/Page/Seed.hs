@@ -21,7 +21,7 @@ import Ergvein.Crypto
 import Ergvein.Either
 import Ergvein.Text
 import Ergvein.Types.Restore
-import Ergvein.Wallet.Localization
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Password

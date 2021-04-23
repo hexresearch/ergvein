@@ -20,7 +20,7 @@ import Sepulcas.Elements.Input
 import Sepulcas.Elements.Toggle
 import Ergvein.Wallet.IP
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Settings.Network
 import Ergvein.Wallet.Wrapper
