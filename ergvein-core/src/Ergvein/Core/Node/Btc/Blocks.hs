@@ -99,10 +99,3 @@ blocksRequester bhs NodeConnection{..} = do
       InvBlock -> let bh = BlockHash ivh
         in if bh `L.elem` bhs then Just (bh, Nothing) else Nothing
       _ -> Nothing
-
-getStartHeightBTC :: MonadFront t m => m (Dynamic t (Maybe Word32))
-getStartHeightBTC = do
-  conMapD <- getBtcNodesD
-  let heightD = join $ ffor conMapD $ \connMap ->
-        L.foldl' (\d1 d2 -> ffor2 d1 d2 max) (constDyn Nothing) (nodeconHeight <$> M.elems connMap)
-  pure heightD
