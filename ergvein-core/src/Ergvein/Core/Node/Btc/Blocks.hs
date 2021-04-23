@@ -87,7 +87,7 @@ blocksRequester bhs NodeConnection{..} = do
           vals -> Just vals
         _ -> Nothing
 
-  requestFromNode reqE
+  _ <-requestFromNode reqE
   responsesD <- foldDyn (\vals m0 -> L.foldl' (\m (u,mv) -> M.insert u mv m) m0 vals) M.empty updE
   let resE = fforMaybe (updated responsesD) $ \respMap -> if M.size respMap /= length bhs
         then Nothing

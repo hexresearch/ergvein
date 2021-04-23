@@ -13,7 +13,6 @@ module Ergvein.Core.Platform(
   ) where
 
 import Ergvein.Types.Currency
-import GHC.Generics (Generic)
 import Network.Haskoin.Block as HB
 import Network.Haskoin.Constants
 import Sepulcas.Native

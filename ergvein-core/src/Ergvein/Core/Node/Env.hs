@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Core.Node.Env(
     NodeEnv(..)
   , NodeM
@@ -14,7 +15,6 @@ import Data.Map (Map)
 import Network.Socket (SockAddr)
 import Reflex
 import Reflex.ExternalRef
-import Sepulcas.Native
 
 data NodeEnv t = NodeEnv {
   nenv'nodeConsRef     :: !(ExternalRef t (ConnMap t))

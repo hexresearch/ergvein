@@ -5,9 +5,7 @@ module Ergvein.Core.Worker.Discovery
 
 import Control.Monad.IO.Class
 import Data.Functor
-import Data.Maybe
 import Ergvein.Core.Client
-import Ergvein.Core.Platform
 import Ergvein.Core.Resolve
 import Ergvein.Core.Settings
 import Ergvein.Core.Wallet.Monad
@@ -15,14 +13,11 @@ import Ergvein.Node.Resolve
 import Reflex.ExternalRef
 import Reflex.Fork
 import Reflex.Main.Thread
-import System.Random.Shuffle
 
 import qualified Data.Set as S
 import qualified Data.List.NonEmpty as NE
 
-operableNetworkSize, targetNetworkSize :: Int
-operableNetworkSize | isTestnet = 1
-                    | otherwise = 2
+targetNetworkSize :: Int
 targetNetworkSize = 16
 
 ensureErgveinNetwork :: (MonadHasMain m, MonadClient t m, MonadSettings t m) => m ()

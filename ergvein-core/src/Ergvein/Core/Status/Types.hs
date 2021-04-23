@@ -18,10 +18,8 @@ module Ergvein.Core.Status.Types(
   ) where
 
 import Data.Default
-import Data.Time
 import Data.Word
 import Ergvein.Lens
-import Ergvein.Text
 import Ergvein.Types.Currency
 
 heightAskingProgressBounds :: (Double, Double)

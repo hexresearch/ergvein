@@ -10,7 +10,6 @@ import Data.Functor
 import Data.Maybe
 import Data.Time
 import Data.Word
-import Ergvein.Core.Currency
 import Ergvein.Core.Node
 import Ergvein.Core.Node.Btc.Blocks
 import Ergvein.Core.Platform
@@ -25,7 +24,6 @@ import Ergvein.Types.Storage.Currency.Public.Btc
 import Network.Haskoin.Block
 import Network.Haskoin.Network
 import Reflex.Flunky
-import Reflex.Network
 import Reflex.Workflow
 import Sepulcas.Native
 

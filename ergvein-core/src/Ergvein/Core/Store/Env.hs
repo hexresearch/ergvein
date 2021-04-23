@@ -1,4 +1,5 @@
 {-# LANGUAGE InstanceSigs #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Core.Store.Env(
     StoreEnv(..)
   , StoreM
@@ -19,8 +20,6 @@ import Ergvein.Core.Store.Monad
 import Ergvein.Core.Store.Util
 import Ergvein.Core.Wallet
 import Ergvein.Types
-import Reflex
-import Reflex.ExternalRef
 import Reflex.Flunky
 import Sepulcas.Native
 

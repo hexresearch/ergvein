@@ -7,7 +7,6 @@ module Ergvein.Core.Store.WalletInfo (
 import Control.Monad.Except
 import Ergvein.Core.Platform
 import Ergvein.Core.Store.Constants
-import Ergvein.Core.Store.Monad
 import Ergvein.Core.Store.Util
 import Ergvein.Crypto
 import Ergvein.Types.Currency

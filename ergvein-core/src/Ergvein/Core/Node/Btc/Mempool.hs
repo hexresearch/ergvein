@@ -6,7 +6,7 @@ module Ergvein.Core.Node.Btc.Mempool
 import Control.Monad.Random
 import Ergvein.Core.Node.Monad
 import Ergvein.Core.Node.Types
-import Ergvein.Core.Node.Btc
+import Ergvein.Core.Node.Btc ()
 import Ergvein.Text
 import Network.Haskoin.Network
 import Network.Socket (SockAddr)
@@ -15,7 +15,6 @@ import Reflex.Workflow
 import Reflex.Flunky
 import Sepulcas.Native
 
-import qualified Data.Dependent.Map as DM
 import qualified Data.Map.Strict as M
 
 -- | Request a mempool from a random node

@@ -10,12 +10,13 @@ import Control.Monad.IO.Class
 import Control.Monad.Random
 import Data.Maybe
 import Data.Text
-import Data.Time.Clock.POSIX (getPOSIXTime)
+import Data.Time.Clock.POSIX (getPOSIXTime, POSIXTime)
 import Data.Word
 import Network.Socket hiding (socket)
 import Reflex
 
 import Ergvein.Core.Client.Monad
+import Ergvein.Core.Currency
 import Ergvein.Core.Node.Socket
 import Ergvein.Core.Platform
 import Ergvein.Core.Settings
@@ -23,7 +24,6 @@ import Ergvein.Index.Protocol.Deserialization
 import Ergvein.Index.Protocol.Serialization
 import Ergvein.Index.Protocol.Types
 import Ergvein.Node.Constants
-import Ergvein.Node.Resolve
 import Ergvein.Text
 import Reflex.Fork
 import Sepulcas.Native
@@ -34,20 +34,6 @@ import qualified Data.ByteString.Builder    as BB
 import qualified Data.ByteString.Lazy       as BL
 import qualified Data.Map.Strict            as M
 import qualified Data.Vector.Unboxed        as VU
-import qualified Ergvein.Types.Currency     as ETC
-
-currencyToCurrencyCode :: ETC.Currency -> CurrencyCode
-currencyToCurrencyCode c = case c of
-  ETC.BTC -> if isTestnet then TBTC else BTC
-  ETC.ERGO -> if isTestnet then TERGO else ERGO
-
-currencyCodeToCurrency :: CurrencyCode -> ETC.Currency
-currencyCodeToCurrency c = case c of
-  BTC -> ETC.BTC
-  TBTC -> ETC.BTC
-  ERGO -> ETC.ERGO
-  TERGO -> ETC.ERGO
-  _ -> error "Currency code not implemented"
 
 requiredCurrencies :: [CurrencyCode]
 requiredCurrencies = if isTestnet
@@ -71,10 +57,7 @@ initIndexerConnection sname sa msgE = mdo
   currenciesNotSyncedDE <- delay 0.2 currenciesNotSyncedE
   (msname, msport) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True sa
   let peer = fromJust $ Peer <$> msname <*> msport
-  let restartE = fforMaybe msgE $ \case
-        IndexerRestart -> Just ()
-        _ -> Nothing
-      closeE = fforMaybe msgE $ \case
+  let closeE = fforMaybe msgE $ \case
         IndexerClose -> Just ()
         _ -> Nothing
       reqE = fforMaybe msgE $ \case
@@ -208,7 +191,7 @@ peekHeader url = do
 mkVers :: MonadIO m => m Message
 mkVers = liftIO $ do
   nonce <- randomIO
-  t <- fmap (fromIntegral . floor) getPOSIXTime
+  t <- fmap (fromIntegral . (floor :: POSIXTime -> Int)) getPOSIXTime
   pure $ MVersion $ Version {
       versionVersion    = protocolVersion
     , versionTime       = t

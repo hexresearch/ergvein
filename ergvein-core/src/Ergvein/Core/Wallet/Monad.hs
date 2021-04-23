@@ -28,9 +28,7 @@ import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Control.Monad.Random
 import Data.Fixed
-import Data.Foldable (traverse_, for_)
 import Data.Functor (void)
-import Data.Functor.Misc (Const2(..))
 import Data.Map (Map)
 import Data.Maybe
 import Data.Proxy
@@ -38,7 +36,7 @@ import Data.Text (Text)
 import Ergvein.Core.Client.Monad
 import Ergvein.Core.Settings.Monad
 import Ergvein.Core.Store.Monad
-import Ergvein.Index.Protocol.Types (Message(..), ProtocolVersion)
+import Ergvein.Index.Protocol.Types (Message(..))
 import Ergvein.Node.Constants
 import Ergvein.Text
 import Ergvein.Types
@@ -52,7 +50,6 @@ import Sepulcas.Alert
 import Sepulcas.Log.Monad
 import Sepulcas.Native
 
-import qualified Data.Dependent.Map as DM
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 

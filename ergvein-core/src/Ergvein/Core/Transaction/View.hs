@@ -12,14 +12,12 @@ module Ergvein.Core.Transaction.View(
   , prepareTransactionView
 ) where
 
-import Data.Maybe (fromJust, fromMaybe, catMaybes)
+import Data.Maybe (fromMaybe)
 import Data.Text as T
 import Data.Time
 import Data.Word
 import Network.Haskoin.Address
 import Reflex
-import Reflex.Localize
-import Reflex.Localize.Language
 
 import Ergvein.Core.Platform
 import Ergvein.Core.Settings

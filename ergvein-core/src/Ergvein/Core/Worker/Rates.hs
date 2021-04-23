@@ -13,13 +13,11 @@ import Ergvein.Core.Wallet.Monad
 import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
 import Ergvein.Text
 import Ergvein.Types.Currency
-import Ergvein.Types.Fees
 import Reflex.ExternalRef
 import Reflex.Fork
 import Reflex.Flunky
 import Sepulcas.Native
 
-import qualified Data.Set as S
 import qualified Data.Map.Strict as M
 
 ratesTimeout :: NominalDiffTime

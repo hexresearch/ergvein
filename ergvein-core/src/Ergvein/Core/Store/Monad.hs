@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Core.Store.Monad(
     MonadStorageConstr
   , MonadStorage(..)

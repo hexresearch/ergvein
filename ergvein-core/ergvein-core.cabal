@@ -132,7 +132,6 @@ library
     , MonadRandom
     , mtl
     , network
-    , random-shuffle
     , reflex                    >= 0.4      && < 0.9
     , reflex-external-ref
     , reflex-flunky

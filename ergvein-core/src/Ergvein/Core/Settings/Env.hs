@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Core.Settings.Env(
     SettingsEnv(..)
   , SettingsM
@@ -8,10 +9,8 @@ module Ergvein.Core.Settings.Env(
 
 import Control.Monad.Reader
 import Ergvein.Core.Settings.Monad
-import Ergvein.Core.Settings.Types
 import Reflex
 import Reflex.ExternalRef
-import Sepulcas.Native
 
 newtype SettingsEnv t = SettingsEnv {
   envSettings :: ExternalRef t Settings

@@ -26,13 +26,11 @@ import Ergvein.Core.Node.Types
 import Ergvein.Core.Settings
 import Ergvein.Core.Store
 import Ergvein.Core.Transaction
-import Ergvein.Core.Transaction.Btc.Common
 import Ergvein.Core.Wallet
 import Ergvein.Types
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo.Btc
 import Network.Socket (SockAddr)
-import Reflex
 import Reflex.Flunky
 import Reflex.Fork
 import Sepulcas.Native
@@ -135,7 +133,7 @@ requestRandomNode reqE = do
         mn <- randomOne nodes
         pure $ fmap (\n -> ((nodeconUrl n, req), fmap NodeRespErgo $ nodeconRespE n)) mn
   let reqE' = fmapMaybe id mreqE
-  requestFromNode $ fmap fst reqE'
+  _ <- requestFromNode $ fmap fst reqE'
   switchHold never $ fmap snd reqE'
 
 randomOne :: MonadIO m => [a] -> m (Maybe a)

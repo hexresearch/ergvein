@@ -43,7 +43,6 @@ import Reflex.ExternalRef
 import Ergvein.Index.Protocol.Types (Message(..), ProtocolVersion)
 import Ergvein.Core.Settings
 import Ergvein.Node.Constants
-import Ergvein.Node.Resolve
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Reflex.Flunky

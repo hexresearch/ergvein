@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Core.Node.Monad(
     MonadNodeConstr
   , NodeReqSelector
@@ -18,17 +19,16 @@ module Ergvein.Core.Node.Monad(
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Control.Monad.Random
-import Data.Foldable (traverse_, for_)
+import Data.Foldable (for_)
 import Data.Functor.Misc (Const2(..))
 import Data.Map (Map)
-import Data.Maybe (isJust, fromMaybe)
+import Data.Maybe (fromMaybe)
 import Ergvein.Core.Node.Types
 import Ergvein.Types
 import Network.Socket (SockAddr)
 import Reflex
 import Reflex.ExternalRef
 import Reflex.Fork
-import Sepulcas.Alert
 import Sepulcas.Native
 
 import qualified Data.Map.Strict as M

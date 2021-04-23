@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Core.Status.Env(
     StatusEnv(..)
   , HasStatusEnv(..)
@@ -12,10 +13,6 @@ import Data.Map (Map)
 import Ergvein.Types
 import Reflex
 import Reflex.ExternalRef
-import Sepulcas.Native
-
-import qualified Data.Vector as V
-import qualified Data.Map.Strict as M
 
 newtype StatusEnv t = StatusEnv {
   stenv'walletStatus  :: ExternalRef t (Map Currency WalletStatus)

@@ -14,7 +14,6 @@ import Ergvein.Core.Wallet.Monad
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.WalletInfo
-import Reflex.ExternalRef
 import Reflex.Flunky
 import Reflex.Localize.Class
 import Sepulcas.Alert

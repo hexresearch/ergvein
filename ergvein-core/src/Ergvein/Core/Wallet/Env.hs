@@ -1,4 +1,5 @@
 {-# LANGUAGE InstanceSigs #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Core.Wallet.Env(
     PreWalletEnv(..)
   , PreWalletM
@@ -27,7 +28,6 @@ import Reflex.Flunky
 import Reflex.Network
 import Sepulcas.Native
 
-import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
 data PreWalletEnv t = PreWalletEnv {

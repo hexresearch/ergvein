@@ -30,11 +30,9 @@ module Ergvein.Core.Settings.Types(
 import Control.Lens hiding ((.=))
 import Control.Monad.IO.Class
 import Data.Aeson hiding (encodeFile)
-import Data.Maybe
 import Data.Text(Text, pack, unpack)
 import Data.Time (NominalDiffTime)
 import Data.Yaml (encodeFile)
-import Network.DNS.Types
 import Network.Socket (HostName, PortNumber)
 import Reflex.Localize.Language
 import Sepulcas.Native
@@ -42,11 +40,9 @@ import System.Directory
 
 import Ergvein.Aeson
 import Ergvein.Core.IP
-import Ergvein.Core.Platform
 import Ergvein.Core.Settings.Constants
 import Ergvein.Core.Yaml (readYamlEither')
 import Ergvein.Lens
-import Ergvein.Node.Constants
 import Ergvein.Text
 import Ergvein.Types.Currency
 

@@ -175,7 +175,7 @@ logInfoMsg l = logAlertWith l AlertTypeInfo
 logAlertWith :: AlertLogger t m l => Language -> AlertType -> Event t (Either l a) -> m (Event t a)
 logAlertWith l et e = do
   ns <- readExternalRef =<< getLogsNameSpacesRef
-  postLog <- fmap snd getLogsTrigger
+  fireLog <- fmap snd getLogsTrigger
   logE <- performEvent $ fforMaybe e $ \case
     Left ge -> Just $ do
       t <- liftIO getCurrentTime
@@ -186,7 +186,7 @@ logAlertWith l et e = do
         , logNameSpace = ns
         }
     Right _ -> Nothing
-  performEvent_ $ (liftIO . postLog) <$> logE
+  performEvent_ $ (liftIO . fireLog) <$> logE
   pure $ fmapMaybe justRight e
 
 -- | Display and log localized value as error message
@@ -217,10 +217,10 @@ logShowInfoMsg l = logShowWith l AlertTypeInfo
 logShowWith :: (MonadAlertPoster t m, AlertLogger t m l) => Language -> AlertType -> Event t l -> m ()
 logShowWith l et e = do
     ns <- readExternalRef =<< getLogsNameSpacesRef
-    postLog <- fmap snd getLogsTrigger
+    fireLog <- fmap snd getLogsTrigger
     e' <- performEvent $ ffor e $ \v -> do
       t <- liftIO getCurrentTime
-      liftIO $ postLog $ LogEntry {
+      liftIO $ fireLog $ LogEntry {
           logTime = t
         , logSeverity = alertTypeToSeverity et
         , logMessage = localizedShow l v

@@ -9,7 +9,6 @@ import Ergvein.Core.Currency
 import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
-import Reflex.Flunky
 
 import qualified Data.Vector as V
 

@@ -68,7 +68,6 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
 
-import qualified Network.Haskoin.Script as HS
 import qualified Network.Haskoin.Transaction as HT
 
 addXPrvKeyToKeystore :: KeyPurpose -> EgvXPrvKey -> PrvKeystore -> PrvKeystore

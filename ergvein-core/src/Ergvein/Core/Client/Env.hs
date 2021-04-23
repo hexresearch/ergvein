@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Core.Client.Env(
     ClientEnv(..)
   , ClientM
@@ -14,13 +15,10 @@ import Ergvein.Core.Resolve
 import Ergvein.Core.Settings
 import Ergvein.Node.Constants
 import Ergvein.Node.Resolve
-import Ergvein.Types
-import Network.Socket (SockAddr)
 import Reflex
 import Reflex.ExternalRef
 import Reflex.Flunky
 import Reflex.Main.Thread
-import Sepulcas.Native
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S

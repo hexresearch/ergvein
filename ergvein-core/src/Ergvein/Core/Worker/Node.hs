@@ -13,7 +13,6 @@ import Data.Maybe (fromMaybe, catMaybes, listToMaybe)
 import Data.Text (Text)
 import Data.Time
 import Ergvein.Core.Node
-import Ergvein.Core.Node.Btc
 import Ergvein.Core.Node.Btc.Mempool
 import Ergvein.Core.Platform
 import Ergvein.Core.Resolve
@@ -29,7 +28,6 @@ import Network.Haskoin.Constants
 import Network.Haskoin.Network
 import Network.Haskoin.Transaction
 import Network.Socket
-import Reflex
 import Reflex.ExternalRef
 import Reflex.Flunky
 import Reflex.Fork
@@ -108,7 +106,7 @@ btcNodeController = mdo
             pure $ filterTxInvs txids inv
           _ -> pure Nothing
         reqTxE = fmap ((u,) . NodeReqBtc . MGetData . GetData) $ txInvsE
-    requestFromNode reqTxE
+    _ <- requestFromNode reqTxE
     let newTxE = fforMaybe respE $ \case
           MTx tx -> Just tx
           _ -> Nothing
@@ -161,12 +159,12 @@ randomTimer minT maxT = do
 
 -- | Peek a fraction from 0 to 1 from list
 randomPeekPart :: MonadIO m => Float -> [a] -> m [a]
-randomPeekPart k [] = pure []
-randomPeekPart k as = do
-  let n = ceiling $ k * fromIntegral (length as)
-  go n 0 [] as
+randomPeekPart _ [] = pure []
+randomPeekPart k as0 = do
+  let n = ceiling $ k * fromIntegral (length as0) :: Int
+  go n 0 [] as0
   where
-    go n i acc [] = pure acc
+    go _ _ acc [] = pure acc
     go n i acc as
       | i >= n = pure acc
       | otherwise = do
@@ -239,7 +237,7 @@ mkUrlBatcher sel remE = mdo
       fmap switchDyn $ networkHold (pure never) $ ffor initNodesE $ \initNodes -> do
         es <- flip traverse initNodes $ \node -> do
           reqE <- fmap (NodeReqBtc MGetAddr <$) getPostBuild
-          requestNodeWait node reqE
+          _ <- requestNodeWait node reqE
           pure $ fforMaybe (nodeconRespE node) $ \case
             MAddr (Addr nats) -> let
               addrs = snd $ unzip nats

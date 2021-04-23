@@ -12,10 +12,8 @@ import Control.Monad.IO.Class
 import Data.IP (IP, toSockAddr, toHostAddress)
 import Data.Maybe
 import Data.Text (Text, unpack)
-import Data.Text (Text)
 import Ergvein.Core.Settings.Constants
 import Ergvein.Node.Resolve
-import Ergvein.Text
 import Network.DNS
 import Network.Socket
 import Sepulcas.Native

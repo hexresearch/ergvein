@@ -11,8 +11,6 @@ import Data.Foldable (traverse_)
 import Data.Text (Text)
 import Data.Time
 import Ergvein.Core.Store
-import Ergvein.Core.Wallet.Monad
-import Ergvein.Text
 import Ergvein.Types.WalletInfo
 import Reflex.Fork
 import Sepulcas.Native

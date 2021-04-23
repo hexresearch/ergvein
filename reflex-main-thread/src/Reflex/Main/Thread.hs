@@ -6,7 +6,6 @@ import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Control.Monad.Reader
 import Reflex
-import Reflex.Fork
 
 class MonadIO m => MonadHasMain m where
   -- | Internal method of getting channel where you can post actions that must be
