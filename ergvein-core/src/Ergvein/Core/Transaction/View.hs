@@ -10,7 +10,7 @@ module Ergvein.Core.Transaction.View(
   , checkAddrInOut
   , addWalletState
   , prepareTransactionView
-  ) where
+) where
 
 import Data.Maybe (fromJust, fromMaybe, catMaybes)
 import Data.Text as T
@@ -21,11 +21,11 @@ import Reflex
 import Reflex.Localize
 import Reflex.Localize.Language
 
-import Ergvein.Types.Address
 import Ergvein.Core.Platform
 import Ergvein.Core.Settings
 import Ergvein.Core.Store.Monad
-import Ergvein.Core.Transaction.Util
+import Ergvein.Core.Transaction.Btc
+import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Types.Network
 import Ergvein.Types.Transaction

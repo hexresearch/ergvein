@@ -21,7 +21,7 @@ import Ergvein.Core.Node.Btc.Blocks
 import Ergvein.Core.Status
 import Ergvein.Core.Store
 import Ergvein.Core.Store
-import Ergvein.Core.Transaction
+import Ergvein.Core.Transaction.Btc
 import Ergvein.Core.Wallet
 import Ergvein.Filters.Btc.Mutable
 import Ergvein.Text

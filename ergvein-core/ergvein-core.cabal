@@ -81,7 +81,13 @@ library
     Ergvein.Core.Store.WalletInfo
     Ergvein.Core.TimeZone
     Ergvein.Core.Transaction
+    Ergvein.Core.Transaction.Btc
+    Ergvein.Core.Transaction.Btc.Builder
+    Ergvein.Core.Transaction.Btc.Common
+    Ergvein.Core.Transaction.Btc.Fee
     Ergvein.Core.Transaction.Builder
+    Ergvein.Core.Transaction.Ergo
+    Ergvein.Core.Transaction.Ergo.Common
     Ergvein.Core.Transaction.Get
     Ergvein.Core.Transaction.Util
     Ergvein.Core.Transaction.View

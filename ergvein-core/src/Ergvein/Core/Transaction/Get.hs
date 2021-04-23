@@ -1,6 +1,8 @@
+{-# OPTIONS_GHC -Wall #-}
+
 module Ergvein.Core.Transaction.Get(
     transactionsGetting
-  ) where
+) where
 
 import Control.Lens
 import Control.Monad.IO.Class
@@ -17,6 +19,7 @@ import Ergvein.Core.Settings
 import Ergvein.Core.TimeZone
 import Ergvein.Core.Transaction.Util
 import Ergvein.Core.Transaction.View
+import Ergvein.Core.Transaction.Btc
 import Ergvein.Core.Wallet.Monad
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
