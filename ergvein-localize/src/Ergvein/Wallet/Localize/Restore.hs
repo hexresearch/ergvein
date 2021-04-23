@@ -6,12 +6,9 @@ module Ergvein.Wallet.Localize.Restore
 import Ergvein.Text
 import Ergvein.Types.Transaction
 import Ergvein.Wallet.Language
-import Numeric
-import Data.Text (pack)
 
 data RestorePageStrings
-  = RPSProgress Double
-  | RPSConnecting
+  = RPSConnecting
   | RPSGetHeight
   | RPSGetFiltsTitle
   | RPSGetFiltsFromTo BlockHeight BlockHeight

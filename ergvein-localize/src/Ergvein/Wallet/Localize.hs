@@ -4,7 +4,6 @@ module Ergvein.Wallet.Localize(
   , module Ergvein.Wallet.Localize.WalletInfo
   , module Ergvein.Wallet.Localize.Client
   , module Ergvein.Wallet.Localize.Currencies
-  , module Ergvein.Wallet.Localize.Currency
   , module Ergvein.Wallet.Localize.Fee
   , module Ergvein.Wallet.Localize.History
   , module Ergvein.Wallet.Localize.Info
@@ -35,7 +34,7 @@ import Ergvein.Wallet.Localize.Balance
 import Ergvein.Wallet.Localize.WalletInfo
 import Ergvein.Wallet.Localize.Client
 import Ergvein.Wallet.Localize.Currencies
-import Ergvein.Wallet.Localize.Currency
+import Ergvein.Wallet.Localize.Currency ()
 import Ergvein.Wallet.Localize.Fee
 import Ergvein.Wallet.Localize.History
 import Ergvein.Wallet.Localize.Info

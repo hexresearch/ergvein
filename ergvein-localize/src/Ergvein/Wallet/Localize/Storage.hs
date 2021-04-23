@@ -1,13 +1,12 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Wallet.Localize.Storage
   (
     StorageAlert(..)
   ) where
 
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localize.Native
+import Ergvein.Wallet.Localize.Native ()
 import Ergvein.Core.Store
-
-import Data.Text
 
 instance LocalizedPrint StorageAlert where
   localizedShow l v = case l of

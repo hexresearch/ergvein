@@ -12,7 +12,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 import Sepulcas.Elements.Input.Class
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localize.Input
+import Ergvein.Wallet.Localize.Input ()
 import Ergvein.Wallet.Localize.IP
 
 data SettingsPageStrings =
@@ -180,7 +180,7 @@ instance LocalizedPrint NetSetupStrings where
       NSSLatency lat  -> "Latency: " <> showt lat
       NSSIndexerHeight h -> "Height: " <> showt h
       NSSOffline      -> "Offline"
-      NSSWrongVersion v -> "Indexer has incompatible version " <> maybe "" showt v
+      NSSWrongVersion ver -> "Indexer has incompatible version " <> maybe "" showt ver
       NSSMissingCurrencies -> "Indexer doesn't support all currencies"
       NSSNotSynced    -> "Indexer not fully synced"
       NSSRefresh      -> "Refresh"
@@ -212,7 +212,7 @@ instance LocalizedPrint NetSetupStrings where
       NSSLatency lat  -> "Задержка: " <> showt lat
       NSSIndexerHeight h -> "Высота: " <> showt h
       NSSOffline      -> "Оффлайн"
-      NSSWrongVersion v -> "Индексатор несовместимой версии " <> maybe "" showt v
+      NSSWrongVersion ver -> "Индексатор несовместимой версии " <> maybe "" showt ver
       NSSMissingCurrencies -> "Индексатор не поддерживает все валюты"
       NSSNotSynced    -> "Не полностью синхронизирован"
       NSSRefresh      -> "Обновить"

@@ -74,7 +74,7 @@ instance LocalizedPrint NetworkPageStrings where
       NPSNoActiveNodes      -> "No active nodes"
       NPSNoCurrencies       -> "No active currencies"
       NPSTitleCur c         -> "Network " <> showt c
-      NPSIndexerVersion v   -> "Indexer version: " <> (showProtocolVersion $ fromMaybe (0,0,0) v)
+      NPSIndexerVersion ver -> "Indexer version: " <> (showProtocolVersion $ fromMaybe (0,0,0) ver)
     Russian -> case v of
       NPSTitle              -> "Сеть"
       NPSServer             -> "Сервера: "
@@ -112,4 +112,4 @@ instance LocalizedPrint NetworkPageStrings where
       NPSNoActiveNodes      -> "Нет активных узлов"
       NPSNoCurrencies       -> "Нет активных валют"
       NPSTitleCur c         -> "Сеть " <> showt c
-      NPSIndexerVersion v   -> "Версия индексера: " <> (showProtocolVersion $ fromMaybe (0,0,0) v)
+      NPSIndexerVersion ver -> "Версия индексера: " <> (showProtocolVersion $ fromMaybe (0,0,0) ver)

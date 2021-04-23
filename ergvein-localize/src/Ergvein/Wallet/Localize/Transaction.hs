@@ -1,10 +1,10 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Wallet.Localize.Transaction(
     TransOutputType(..)
   ) where
 
 import Ergvein.Core.Transaction
 import Ergvein.Wallet.Language
-import Reflex.Localize
 
 instance LocalizedPrint TransOutputType where
   localizedShow l v = case l of

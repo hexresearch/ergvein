@@ -4,8 +4,6 @@ module Ergvein.Wallet.Localize.Fee
   , BTCFeeMode(..)
   ) where
 
-import Data.Word
-
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Fees
