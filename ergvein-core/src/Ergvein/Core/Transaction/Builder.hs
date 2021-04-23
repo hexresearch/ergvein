@@ -1,34 +1,23 @@
--- {-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wall #-}
 
 module Ergvein.Core.Transaction.Builder(
-    guessTxFee
-  , guessTxVsize
+    buildTx
+  , buildAddrTx
   , chooseCoins
-  , BtcOutputType
-  , BtcInputType
 ) where
 
 import Control.Monad.Identity (runIdentity)
 import Data.Conduit (ConduitT, Void, runConduit, (.|), await)
 import Data.Conduit.List (sourceList)
 import Data.Maybe (fromMaybe)
-import Data.Serialize (encode)
 import Data.Word
-import Network.Haskoin.Network
 import Network.Haskoin.Util
 
-import Ergvein.Types.Address
+import Ergvein.Core.Transaction.Btc
 import Ergvein.Types.Utxo.Btc
-import Ergvein.Core.Transaction.Util
-
-import qualified Data.ByteString as B
-
-type BtcOutputType = BtcAddressType
-
-type BtcInputType = BtcAddressType
 
 {-
-  This module contains modificated functions from Network.Haskoin.Transaction.Builder module.
+  Functions listed below are modificated functions from Network.Haskoin.Transaction.Builder module.
   https://hackage.haskell.org/package/haskoin-core-0.12.0/src/src/Network/Haskoin/Transaction/Builder.hs
   These functions have been modified to support the fee rate specified in satoshi per virtual byte.
 -}
@@ -122,48 +111,3 @@ greedyAddSink target guessFee mFixedCoins continue =
                 then Nothing
                 -- If we have a solution, return it
                 else Just (ps, pTot - goal ps)
-
--- | Estimate tranasction fee to pay based on transaction virtual size estimation.
-guessTxFee :: Word64 -> [BtcOutputType] -> [BtcInputType] -> Word64
-guessTxFee vbyteFee outTypes inTypes =
-  vbyteFee * fromIntegral (guessTxVsize inTypes outTypes)
-
--- | Returns input size in weight units including witness data
--- for P2SH, P2WSHInP2SH and P2WSH inputs we assume 1 pubkey and 1 signature
--- TODO: fix for more complex inputs
-getInputWeight :: BtcInputType -> Word64
-getInputWeight = \case
-  BtcP2PKH -> 592
-  BtcP2SH -> 612
-  BtcP2WPKH -> 271
-  BtcP2WSH -> 272
-  -- BtcP2WPKHInP2SH -> 364
-  -- BtcP2WSHInP2SH -> 412
-  -- BtcP2TR -> 229
-  _ -> error "getInputWeight: failed to calculate input weight"
-
--- | Returns putput size in weight units
-getOutputWeight :: BtcOutputType -> Word64
-getOutputWeight = \case
-  BtcP2PKH -> 136
-  BtcP2SH -> 128
-  BtcP2WPKH -> 124
-  BtcP2WSH -> 172
-  -- BtcP2WPKHInP2SH -> 128
-  -- BtcP2WSHInP2SH -> 128
-  -- BtcP2TR -> 172
-  _ -> error "getOutputWeight: failed to calculate output weight"
-
--- | Computes an upper bound on the virtual size of a transaction based on
--- inputs and outputs sets of the transaction.
-guessTxVsize ::
-     [BtcInputType]
-  -> [BtcOutputType]
-  -> Int
-guessTxVsize inputs outputs =
-  weightUnitsToVBytes $ sum (getInputWeight <$> inputs) + sum (getOutputWeight <$> outputs) + overhead
-  where
-    varIntSize = B.length . encode . VarInt . fromIntegral
-    segWitInputs = filter (\x -> x /= BtcP2PKH && x /= BtcP2SH) inputs
-    witnessOverheadWeight = if null segWitInputs then 0 else 2 + varIntSize (length segWitInputs)
-    overhead = fromIntegral $ (4 * (8 + varIntSize (length inputs) +  varIntSize (length outputs))) + witnessOverheadWeight
