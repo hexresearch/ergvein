@@ -43,7 +43,6 @@ type MonadFrontBase t m = (
   , HasPreWalletEnv t m
   , HasClientEnv t m
   , HasPassEnv t m
-  , MonadUnliftIO m
   , HasBaseEnv t m
   )
 

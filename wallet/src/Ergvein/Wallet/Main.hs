@@ -22,7 +22,7 @@ import Ergvein.Wallet.Localization
 import Ergvein.Wallet.Wrapper
 #endif
 
-frontend :: (MonadFrontBase t m, HasBaseEnv t m) => m ()
+frontend :: MonadFrontBase t m => m ()
 frontend = do
   logWrite "Frontend started"
   loadingWidget
@@ -40,7 +40,7 @@ startPage = do
     else balancesPage
 
 #ifdef TESTNET
-mainpageDispatcher :: (MonadFrontBase t m, HasBaseEnv t m) => m ()
+mainpageDispatcher :: MonadFrontBase t m => m ()
 mainpageDispatcher = void $ workflow testnetDisclaimer
   where
     testnetDisclaimer = Workflow $ wrapperSimple True $ do
@@ -52,6 +52,6 @@ mainpageDispatcher = void $ workflow testnetDisclaimer
       void $ retractStack (initialPage True) `liftAuth` (spawnWorkers >> retractStack startPage)
       pure ((), never)
 #else
-mainpageDispatcher :: (MonadFrontBase t m, HasBaseEnv t m) => m ()
+mainpageDispatcher :: MonadFrontBase t m => m ()
 mainpageDispatcher = void $ retractStack (initialPage True) `liftAuth` (spawnWorkers >> retractStack startPage)
 #endif

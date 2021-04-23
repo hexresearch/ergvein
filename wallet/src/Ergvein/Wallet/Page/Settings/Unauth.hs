@@ -36,7 +36,7 @@ data SubPageSettings
   | GoDns
   | GoTor
 
-settingsPageUnauth :: (MonadFrontBase t m, HasBaseEnv t m) => m ()
+settingsPageUnauth :: MonadFrontBase t m => m ()
 settingsPageUnauth = wrapperSimple True $ do
   divClass "initial-options grid1" $ do
     goLangE            <- fmap (GoLanguage   <$) $ outlineButton STPSButLanguage

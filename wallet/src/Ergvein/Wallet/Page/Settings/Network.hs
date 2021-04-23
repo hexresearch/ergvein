@@ -63,7 +63,7 @@ networkSettingsPage = do
       DisabledPage    -> inactivePageWidget
       ParametersPage  -> parametersPageWidget
 
-networkSettingsPageUnauth :: (MonadFrontBase t m, HasBaseEnv t m) => m ()
+networkSettingsPageUnauth :: MonadFrontBase t m => m ()
 networkSettingsPageUnauth = wrapperSimple False $ do
   navD <- navbarWidget ActivePage
   void $ networkHoldDyn $ ffor navD $ \case
@@ -124,7 +124,7 @@ addUrlWidget showD = fmap switchDyn $ networkHoldDyn $ ffor showD $ \b -> if not
     _ -> pure ()
   pure $ fmapMaybe (namedAddrName <$>) murlE
 
-activePageWidget :: forall t m . (MonadFrontBase t m, HasBaseEnv t m) => m ()
+activePageWidget :: forall t m . MonadFrontBase t m => m ()
 activePageWidget = mdo
   connsD  <- externalRefDynamic =<< getActiveConnsRef
   addrsD  <- (fmap . fmap) S.toList $ externalRefDynamic =<< getActiveAddrsRef
@@ -142,7 +142,7 @@ activePageWidget = mdo
     pure (refrE', tglE')
   pure ()
 
-renderActive :: (MonadFrontBase t m, HasBaseEnv t m)
+renderActive :: MonadFrontBase t m
   => ErgveinNodeAddr
   -> Event t ()
   -> (Maybe (IndexerConnection t))

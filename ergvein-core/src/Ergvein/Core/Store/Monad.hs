@@ -73,7 +73,7 @@ type MonadStorageConstr t m =
   , MonadHold t m
   , Reflex t
   , HasStoreDir m
-  , MonadUnliftIO m
+  , MonadIO m
   , MonadUnliftIO (Performable m)
   , MonadRandom (Performable m)
   , HasStoreDir (Performable m)

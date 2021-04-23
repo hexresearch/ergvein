@@ -20,12 +20,8 @@ import GHC.Generics (Generic)
 class HasStoreDir m where
   getStoreDir :: m Text
 
-instance {-# OVERLAPS #-} Monad m => HasStoreDir (ReaderT Text m) where
+instance {-# OVERLAPPABLE #-} Monad m => HasStoreDir (ReaderT Text m) where
   getStoreDir = ask
-  {-# INLINE getStoreDir #-}
-
-instance (Monad m, HasStoreDir m) => HasStoreDir (ReaderT e m) where
-  getStoreDir = lift getStoreDir
   {-# INLINE getStoreDir #-}
 
 data NativeAlerts

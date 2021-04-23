@@ -37,6 +37,10 @@ type AuthM t m = ReaderT (AuthEnv t) m
 class Monad m => HasAuthEnv t m | m -> t where
   getAuthEnv :: m (AuthEnv t)
 
+instance (Monad m, HasStoreDir m) => HasStoreDir (AuthM t m) where
+  getStoreDir = lift getStoreDir
+  {-# INLINE getStoreDir #-}
+
 instance Monad m => HasAuthEnv t (AuthM t m) where
   getAuthEnv = ask
   {-# INLINE getAuthEnv #-}

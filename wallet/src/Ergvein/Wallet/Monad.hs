@@ -20,6 +20,7 @@ module Ergvein.Wallet.Monad(
   , module Reflex.Network
   , module Reflex.Workflow
   , module Sepulcas.Native
+  , module Sepulcas.Monad
   ) where
 
 import Control.Monad
@@ -42,3 +43,4 @@ import Reflex.Main.Thread
 import Reflex.Network
 import Reflex.Workflow
 import Sepulcas.Native
+import Sepulcas.Monad

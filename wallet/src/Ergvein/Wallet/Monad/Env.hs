@@ -1,5 +1,6 @@
 module Ergvein.Wallet.Monad.Env(
     BaseEnv(..)
+  , BaseM
   , HasBaseEnv(..)
   , newBaseEnv
   , runBase
@@ -76,7 +77,15 @@ instance Monad m => HasPassEnv t (BaseM t m) where
   getPassEnv = asks (unauth'pass . benv'unauth)
   {-# INLINE getPassEnv #-}
 
-instance {-# OVERLAPPABLE #-} (MonadPreWalletConstr t m, HasStoreDir (Performable m)) => MonadPreWallet t (BaseM t m) where
+instance Monad m => HasStoreDir (BaseM t m) where
+  getStoreDir = sepulca'storeDir <$> getSepulca
+  {-# INLINE getStoreDir #-}
+
+-- instance MonadIO m => MonadHasMain (BaseM t m) where
+--   getMainThreadChan = sepulca'uiChan <$> getSepulca
+--   {-# INLINE getMainThreadChan #-}
+
+instance (MonadPreWalletConstr t m, HasStoreDir (Performable m)) => MonadPreWallet t (BaseM t m) where
   getWalletInfoMaybeRef = runReaderT getWalletInfoMaybeRef =<< getPreWalletEnv
   {-# INLINE getWalletInfoMaybeRef #-}
 

@@ -21,17 +21,17 @@ import qualified Data.Map.Strict as M
 
 data GoPage = GoSeed | GoRestore | GoSettings
 
-initialPage :: (MonadFrontBase t m, HasBaseEnv t m) => Bool -> m ()
+initialPage :: MonadFrontBase t m => Bool -> m ()
 initialPage redir = do
   logWrite "Initial page rendering"
   ss <- listStorages
   if null ss then noWalletsPage else hasWalletsPage redir ss
   logWrite "Finished initial page rendering"
 
-noWalletsPage :: (MonadFrontBase t m, HasBaseEnv t m) => m ()
+noWalletsPage :: MonadFrontBase t m => m ()
 noWalletsPage = wrapperSimple True $ divClass "initial-page-options" $ createRestore
 
-createRestore :: (MonadFrontBase t m, HasBaseEnv t m) => m ()
+createRestore :: MonadFrontBase t m => m ()
 createRestore = do
   let items = [(GoSeed, IPSCreate), (GoRestore, IPSRestore), (GoSettings, IPSSettings)]
   goE <- fmap leftmost $ flip traverse items $ \(act, lbl) ->
@@ -44,7 +44,7 @@ createRestore = do
     , retractablePrev = Just $ pure $ initialPage False
     }
 
-hasWalletsPage :: (MonadFrontBase t m, HasBaseEnv t m) => Bool -> [WalletName] -> m ()
+hasWalletsPage :: MonadFrontBase t m => Bool -> [WalletName] -> m ()
 hasWalletsPage redir ss = do
   buildE <- getPostBuild
   mnameE <- performEvent $ getLastStorage <$ buildE
@@ -55,7 +55,7 @@ hasWalletsPage redir ss = do
   where
     selectNext = if redir then loadWalletPage else const (selectWalletsPage ss)
 
-selectWalletsPage :: (MonadFrontBase t m, HasBaseEnv t m) => [WalletName] -> m ()
+selectWalletsPage :: MonadFrontBase t m => [WalletName] -> m ()
 selectWalletsPage ss = wrapperSimple True $ divClass "initial-page-options" $ do
   h4 $ localizedText IPSSelectWallet
   flip traverse_ ss $ \name -> do

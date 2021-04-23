@@ -31,6 +31,10 @@ instance Monad m => HasUnauthEnv t (UnauthM t m) where
   getUnauthEnv = ask
   {-# INLINE getUnauthEnv #-}
 
+instance (Monad m, HasStoreDir m) => HasStoreDir (UnauthM t m) where
+  getStoreDir = lift getStoreDir
+  {-# INLINE getStoreDir #-}
+
 instance Monad m => HasSettingsEnv t (UnauthM t m) where
   getSettingsEnv = asks unauth'settings
   {-# INLINE getSettingsEnv #-}
