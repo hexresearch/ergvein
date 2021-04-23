@@ -12,7 +12,6 @@ import Reflex.Dom
 import Reflex.Localize
 import Sepulcas.Elements
 import Sepulcas.Monad
-import Sepulcas.Native
 
 -- | Clipboard control widget that allows to put text into clipboard. Returns
 -- event when the text is copied with the same text.

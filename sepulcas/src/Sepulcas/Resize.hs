@@ -10,9 +10,6 @@ import Control.Monad.Fix
 import Data.Text (Text)
 import Language.Javascript.JSaddle
 import Reflex.Dom
-import Reflex.Dom.Widget.Resize
-import Reflex.Workflow
-import Sepulcas.Monad
 
 -- | Critical width when we should change
 -- mobile-desktop widgets between each other

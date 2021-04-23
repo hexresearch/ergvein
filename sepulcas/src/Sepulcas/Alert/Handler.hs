@@ -53,14 +53,14 @@ alertHandlerWidget l = elAttr "div" [("class","alert-overlay"),("style","positio
   let
     accumAlerts :: T.These AlertInfo [Int] -> PushM t (Map Int (Maybe (AlertInfo, Int)))
     accumAlerts v = do
-      n <- sample . current $ countD
+      n <- sampleDyn countD
       let
         handleNewErr :: AlertInfo -> PushM t (Map Int (Maybe (AlertInfo, Int)))
         handleNewErr newErr@(AlertInfo _ _ _ _ _ msg1) = do
           let mkNew = M.singleton n (Just (newErr, 1))
-          es <- sample . current $ infosD
-          l <- sample . current $ langD
-          let filt = (\(AlertInfo _ _ _ _ _ msg2,_) -> (localizedShow l msg1 == localizedShow l msg2))
+          es <- sampleDyn infosD
+          lang <- sampleDyn langD
+          let filt = (\(AlertInfo _ _ _ _ _ msg2,_) -> (localizedShow lang msg1 == localizedShow lang msg2))
           pure $ case findAmongMap filt es of
             Nothing -> mkNew
             Just (i, (ei, c)) -> M.singleton i (Just (ei, c+1))

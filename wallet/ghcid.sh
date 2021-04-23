@@ -1,1 +1,1 @@
-ghcid -c "cabal new-repl --enable-shared ergvein-wallet"
+ghcid -c "cabal new-repl ergvein-wallet \"$@\""

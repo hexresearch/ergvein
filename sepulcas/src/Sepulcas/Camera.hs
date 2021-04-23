@@ -10,7 +10,6 @@ import Data.Text (Text)
 import Data.Text as T
 import Sepulcas.Elements
 import Sepulcas.Monad
-import Sepulcas.Native
 import Reflex.Dom
 
 openCamara :: (PerformMain t m, PlatformNatives) => Event t () -> m (Event t ())

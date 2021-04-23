@@ -6,7 +6,6 @@ import Data.Functor
 import Data.Text (Text)
 import Language.Javascript.JSaddle hiding ((!!))
 import Reflex.Dom
-import Sepulcas.OpenUrl
 
 selElementFocus :: MonadJSM m => RawElement GhcjsDomSpace -> m ()
 selElementFocus rawEl = liftJSM $ do
