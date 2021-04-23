@@ -34,6 +34,7 @@ frontend = do
 
 startPage :: MonadFront t m => m ()
 startPage = do
+  _ <- storeWallet "start-page" =<< delay 0.1 =<< getPostBuild
   ps <- getPubStorage
   if _pubStorage'restoring ps
     then restorePage
