@@ -19,7 +19,6 @@ import Sepulcas.Elements.Toggle
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
-import Sepulcas.Native
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Page.Balances
@@ -31,11 +30,8 @@ import Ergvein.Wallet.Wrapper
 import Network.Haskoin.Network (Inv(..), InvVector(..), InvType(..), Message(..))
 
 import qualified Data.List as L
-import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import qualified Data.Vector as V
 import qualified Network.Haskoin.Address as HA
-import qualified Network.Haskoin.Script as HS
 import qualified Network.Haskoin.Transaction as HT
 
 sendPage :: MonadFront t m => Currency -> Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), BtcAddress, RbfEnabled) -> m ()
@@ -129,7 +125,7 @@ makeTxWidget ((unit, amount), fee, addr, rbfEnabled) = mdo
   stxE <- fmap switchDyn $ networkHoldDyn $ ffor valD $ \case
     Left (Nothing, _) -> confirmationErrorWidget CEMEmptyUTXO
     Left (_, Nothing) -> confirmationErrorWidget CEMNoChangeKey
-    Left (Just utxomap, Just (_, changeKey)) -> do
+    Left (Just _, Just (_, changeKey)) -> do
       ps <- sampleDyn psD
       let recepientOutputType = btcAddrToBtcOutType addr
           changeOutputType = BtcP2WPKH

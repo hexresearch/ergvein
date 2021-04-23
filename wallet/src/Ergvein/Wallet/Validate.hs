@@ -11,18 +11,12 @@ module Ergvein.Wallet.Validate (
   ) where
 
 import Control.Lens
-import Data.Ratio
 import Data.Validation hiding (validate)
 import Data.Word
-import Text.Parsec
 
-import Ergvein.Either
-import Ergvein.Text
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
-import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
-import Ergvein.Wallet.Monad
 import Sepulcas.Validate
 
 import qualified Data.Text as T

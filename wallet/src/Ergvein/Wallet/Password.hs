@@ -12,7 +12,6 @@ module Ergvein.Wallet.Password(
   ) where
 
 import Control.Monad.Except
-import Control.Monad.Fail
 import Data.Either (fromRight)
 import Data.Maybe
 import Data.Time (getCurrentTime)
@@ -22,9 +21,6 @@ import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.PatternKey
 import Sepulcas.Elements
-import Sepulcas.Elements.Input
-import Sepulcas.Monad
-import Sepulcas.Native
 import Sepulcas.Validate
 
 import qualified Data.Map.Strict as Map

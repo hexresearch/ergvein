@@ -10,34 +10,16 @@ module Ergvein.Wallet.Monad.Env(
   ) where
 
 import Control.Concurrent
-import Control.Concurrent.STM.TChan
-import Control.Lens
 import Control.Monad.Reader
-import Control.Monad.STM
-import Crypto.Random.Types
-import Data.Fixed
-import Data.Map.Strict (Map)
 import Data.Proxy
-import Data.Text as T
-import Data.Time (NominalDiffTime)
-import Network.Socket
-import Reflex
-import Reflex.Dom.Retractable
-import Reflex.ExternalRef
-import Reflex.Flunky
-import Reflex.Network
-
-import Ergvein.Types
 import Ergvein.Core
-import Ergvein.Wallet.Language
+import Ergvein.Types
+import Ergvein.Wallet.Language ()
 import Ergvein.Wallet.Version
+import Reflex.Dom.Retractable
+import Reflex.Flunky
 import Sepulcas.Monad
-import Sepulcas.Native
 import Sepulcas.Run.Callbacks
-
-import qualified Data.Map.Strict as M
-import qualified Data.Set as S
-import qualified Data.Vector as V
 
 data BaseEnv t = BaseEnv {
   benv'sepulca :: !(Sepulca t)
@@ -184,7 +166,7 @@ instance (MonadReflex t m, MonadHasMain m) => LiftWallet t (ErgveinM t m) (BaseM
     lift $ runReaderT mx aenv
   {-# INLINE hoistWallet #-}
 
-liftAuth :: forall t m n a . (MonadReflex t m, MonadPreWallet t m, HasBaseEnv t m, MonadHasMain m, HasStoreDir (Performable m))
+liftAuth :: forall t m a . (MonadReflex t m, MonadPreWallet t m, HasBaseEnv t m, MonadHasMain m, HasStoreDir (Performable m))
   => m a -> ErgveinM t m a -> m (Dynamic t a)
 liftAuth ma0 ma = do
   benv <- getBaseEnv

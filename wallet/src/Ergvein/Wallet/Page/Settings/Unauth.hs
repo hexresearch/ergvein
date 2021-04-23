@@ -15,8 +15,6 @@ import Reflex.Dom.Retractable
 
 import Sepulcas.Alert
 import Sepulcas.Elements
-import Sepulcas.Elements.Inplace
-import Sepulcas.Elements.Input
 import Sepulcas.Elements.Toggle
 import Ergvein.Wallet.IP
 import Ergvein.Wallet.Language

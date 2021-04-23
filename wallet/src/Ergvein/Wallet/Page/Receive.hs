@@ -15,7 +15,6 @@ import Ergvein.Wallet.Page.QRCode
 import Ergvein.Wallet.Wrapper
 import Sepulcas.Clipboard
 import Sepulcas.Elements
-import Sepulcas.Elements.Input
 
 import qualified Data.Text as T
 import qualified Data.List as L

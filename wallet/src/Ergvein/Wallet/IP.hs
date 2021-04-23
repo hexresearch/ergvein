@@ -3,7 +3,6 @@ module Ergvein.Wallet.IP(
     module Ergvein.Core.IP
   ) where
 
-import Data.Text (Text, unpack)
 import Sepulcas.Elements.Input.Class
 import Network.Socket (SockAddr)
 import Ergvein.Text

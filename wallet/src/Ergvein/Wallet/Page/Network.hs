@@ -6,7 +6,6 @@ module Ergvein.Wallet.Page.Network(
 import Data.Maybe (catMaybes)
 import Reflex.ExternalRef
 
-import Ergvein.Node.Resolve
 import Ergvein.Types.Currency
 import Sepulcas.Elements
 import Ergvein.Wallet.Language

@@ -8,7 +8,6 @@ module Ergvein.Wallet.Page.Password(
   , changePasswordWidget
   ) where
 
-import Reflex.ExternalRef
 import Reflex.Localize
 import Text.Read
 
@@ -21,8 +20,6 @@ import Ergvein.Wallet.Password
 import Ergvein.Wallet.Wrapper
 import Sepulcas.Alert
 import Sepulcas.Elements
-import Sepulcas.Elements.Input
-import Sepulcas.Native
 
 import qualified Data.Text as T
 

@@ -10,7 +10,6 @@ module Ergvein.Wallet.Page.Seed(
 
 import Control.Monad.Random.Strict
 import Data.Bifunctor
-import Data.Either (either)
 import Data.List (permutations)
 import Data.Maybe
 import Data.Text.Encoding (decodeUtf8With)
@@ -31,7 +30,6 @@ import Sepulcas.Alert
 import Sepulcas.Camera
 import Sepulcas.Clipboard
 import Sepulcas.Elements
-import Sepulcas.Elements.Input
 import Sepulcas.Resize
 
 import qualified Data.List      as L

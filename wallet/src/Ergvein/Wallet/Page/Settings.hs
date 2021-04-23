@@ -21,8 +21,6 @@ import Sepulcas.Elements.Toggle
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
-import Sepulcas.Native
-import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Page.Settings.MnemonicExport

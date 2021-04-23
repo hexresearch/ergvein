@@ -1,29 +1,19 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Wallet.Monad.Class(
     MonadFrontBase
   , MonadFront
   ) where
 
-import Control.Concurrent.Chan
 import Control.Monad.IO.Class
-import Control.Monad.IO.Unlift
-import Control.Monad.Random.Class
-import Data.Maybe (isJust)
-import Data.Text (Text)
 import Reflex
-import Reflex.Dom.Retractable
-import Reflex.ExternalRef
-import Reflex.Host.Class
 import Reflex.Spider.Internal (SpiderHostFrame, Global)
 import Foreign.JavaScript.TH (WithJSContextSingleton)
 
-import Ergvein.Types.WalletInfo
-import Ergvein.Types.Storage
-import Ergvein.Wallet.Language
 import Ergvein.Core
 import Ergvein.Wallet.Version
 import Ergvein.Wallet.Monad.Env
 import Sepulcas.Monad
-import Sepulcas.Native
+
 
 import qualified Crypto.Random.Types as CR
 import qualified Reflex.Profiled as RP

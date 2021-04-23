@@ -9,9 +9,6 @@ import Clay.Selector
 import Clay.Stylesheet
 import Control.Monad
 import Data.ByteString (ByteString)
-import Data.ByteString.Lazy (toStrict)
-import Data.Text (Text)
-import Data.Text.Lazy.Encoding (encodeUtf8)
 import Ergvein.Core
 import Language.Javascript.JSaddle hiding ((#))
 import Prelude hiding ((**), rem)
