@@ -5,10 +5,9 @@ module Ergvein.Core.Worker.Store(
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad
-import Data.Foldable (traverse_)
-import System.Directory
 import Control.Monad.Fix
 import Control.Monad.Reader
+import Data.Foldable (traverse_)
 import Data.Text (Text)
 import Data.Time
 import Ergvein.Core.Store
@@ -17,6 +16,7 @@ import Ergvein.Text
 import Ergvein.Types.WalletInfo
 import Reflex.Fork
 import Sepulcas.Native
+import System.Directory
 
 import qualified Data.List as L
 import qualified Data.Text as T

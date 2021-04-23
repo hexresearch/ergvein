@@ -26,10 +26,10 @@ manualFeeSelector :: (MonadFront t m, LocalizedPrint l)
   -> Event t (Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
   -> Dynamic t (Maybe [l]) -- ^ List of errors
   -> m (Dynamic t Text)
-manualFeeSelector initVal isDisabled setValE attrsE errsD = divClass "fee-widget-input" $
+manualFeeSelector initVal isDisabled setValE attrsE errsD = divClass "fee-input-input" $
   validatedTextFieldAttrSetValNoLabel initVal attrs setValE attrsE errsD
   where
-    attrs = if isDisabled then "disabled" =: "disabled" else M.empty
+    attrs = if isDisabled then [("disabled", "disabled"), ("class", "mb-0")] else M.singleton "class" "mb-0"
 
 feeModeToAttr :: BTCFeeMode -> Map AttributeName (Maybe Text)
 feeModeToAttr = \case
@@ -61,7 +61,7 @@ btcFeeSelectionWidget lbl minit mPrevRate submitE = do
       (initFeeMode, mInitFeeRate) = maybe (BFMMid, getInitFeeRateByLvl FeeModerate) (second Just) minit
       initFeeRateText = maybe "" showt mInitFeeRate
       initInputIsDisabled = if initFeeMode == BFMManual then False else True
-  divClass "fee-widget ta-l" $ do
+  divClass "fee-input" $ do
     el "label" $ localizedText lbl
     selectedD <- row $ mdo
       feeRateD <- column67 $ mdo
@@ -76,13 +76,17 @@ btcFeeSelectionWidget lbl minit mPrevRate submitE = do
         langD <- getLanguage
         l <- sampleDyn langD
         let feeModeOptionsD = constDyn $ M.fromList $ (\feeLevel -> (feeLevel, localizedShow l feeLevel)) <$> [minBound .. maxBound]
-        feeModeDropdown <- dropdown initFeeMode feeModeOptionsD def
+            ddnCfg = DropdownConfig {
+                _dropdownConfig_setValue   = never
+              , _dropdownConfig_attributes = constDyn ("class" =: "mb-0")
+              }
+        feeModeDropdown <- dropdown initFeeMode feeModeOptionsD ddnCfg
         pure $ _dropdown_value feeModeDropdown
       pure $ ffor2 feeRateD feeModeD (,)
     networkHoldDyn $ ffor selectedD $ \case
-      (Just feeRate, BFMManual) -> parClass "mb-1" (localizedText $ FSFee                  ) >> pure (Just (BFMManual, feeRate))
-      (Just feeRate, BFMLow)    -> parClass "mb-1" (localizedText $ FSRateDesc FeeCheap    ) >> pure (Just (BFMLow,    feeRate))
-      (Just feeRate, BFMMid)    -> parClass "mb-1" (localizedText $ FSRateDesc FeeModerate ) >> pure (Just (BFMMid,    feeRate))
-      (Just feeRate, BFMHigh)   -> parClass "mb-1" (localizedText $ FSRateDesc FeeFast     ) >> pure (Just (BFMHigh,   feeRate))
+      (Just feeRate, BFMManual) -> parClass "mb-0" (localizedText $ FSFee                  ) >> pure (Just (BFMManual, feeRate))
+      (Just feeRate, BFMLow)    -> parClass "mb-0" (localizedText $ FSRateDesc FeeCheap    ) >> pure (Just (BFMLow,    feeRate))
+      (Just feeRate, BFMMid)    -> parClass "mb-0" (localizedText $ FSRateDesc FeeModerate ) >> pure (Just (BFMMid,    feeRate))
+      (Just feeRate, BFMHigh)   -> parClass "mb-0" (localizedText $ FSRateDesc FeeFast     ) >> pure (Just (BFMHigh,   feeRate))
       (Nothing, BFMManual)      ->                                                              pure Nothing
-      (Nothing, _)              -> parClass "mb-1" (localizedText FSNoFees)                  >> pure Nothing
+      (Nothing, _)              -> parClass "mb-0" (localizedText FSNoFees)                  >> pure Nothing

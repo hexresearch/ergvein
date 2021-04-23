@@ -56,7 +56,7 @@ sendWidget :: MonadFront t m
   -> m a
   -> Maybe (Dynamic t (m ()))
   -> m (Dynamic t (Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), BtcAddress, RbfEnabled)))
-sendWidget cur mInit title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ mdo
+sendWidget cur mInit title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ divClass "send-page" $ mdo
   settings <- getSettings
   let amountInit = (\(x, _, _, _) -> x) <$> mInit
       feeInit = (\(_, x, _, _) -> x) <$> mInit
@@ -64,12 +64,12 @@ sendWidget cur mInit title navbar thisWidget = wrapperNavbar False title thisWid
       rbfInit = (\(_, _, _, x) -> x) <$> mInit
       rbfFromSettings = btcSettings'sendRbfByDefault $ getBtcSettings settings
       rbfInit' = fromMaybe rbfFromSettings rbfInit
-  retInfoD <- form $ mdo
-    recipientD <- recipientWidget recipientInit submitE
-    amountD <- sendAmountWidget amountInit submitE
-    feeD <- btcFeeSelectionWidget FSRate feeInit Nothing submitE
-    rbfEnabledD <- divClass "mb-1" $ toggler SSRbf (constDyn rbfInit')
-    submitE <- outlineSubmitTextIconButtonClass "w-100" SendBtnString "fas fa-paper-plane fa-lg"
+  retInfoD <- formClass "mb-0" $ mdo
+    recipientD <- divClass "mb-1" $ recipientWidget recipientInit submitE
+    amountD <- divClass "mb-1" $ sendAmountWidget amountInit submitE
+    feeD <- divClass "mb-1" $ btcFeeSelectionWidget FSRate feeInit Nothing submitE
+    rbfEnabledD <- divClass "mb-2" $ toggler SSRbf (constDyn rbfInit')
+    submitE <- outlineSubmitTextIconButtonClass "w-100 mb-0" SendBtnString "fas fa-paper-plane fa-lg"
     let goE = flip push submitE $ \_ -> do
           mrecipient <- sampleDyn recipientD
           mamount <- sampleDyn amountD

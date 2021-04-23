@@ -4,12 +4,12 @@ module Ergvein.Core.Worker.Height
   ) where
 
 import Control.Lens
+import Data.Default
 import Data.Foldable (traverse_)
 import Data.Functor
 import Data.Maybe
 import Data.Time
 import Data.Word
-import Data.Default
 import Ergvein.Core.Currency
 import Ergvein.Core.Node
 import Ergvein.Core.Node.Btc.Blocks

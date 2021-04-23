@@ -1,4 +1,6 @@
 {-# LANGUAGE OverloadedLists #-}
+-- {-# OPTIONS_GHC -Wall #-}
+
 module Ergvein.Wallet.Status.Widget(
     statusBarWidget
   , restoreStatusWidget

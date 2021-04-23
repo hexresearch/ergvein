@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 module Ergvein.Wallet.Page.Restore(
     restorePage
+  , heightAskingProgressBounds
   ) where
 
 import Control.Concurrent.Async
@@ -14,6 +15,7 @@ import Ergvein.Filters.Mutable hiding (BlockHeight)
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Status.Widget
+import Ergvein.Wallet.Util
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Map.Strict as M
@@ -23,6 +25,12 @@ import qualified Data.Vector as V
 -- | Timeout for trying to request filters again at 'getting filters batch' stage
 filtersRetryTimeout :: NominalDiffTime
 filtersRetryTimeout = 10
+
+heightAskingProgressBounds :: (Double, Double)
+heightAskingProgressBounds = (0, 5)
+
+blockScanningProgressBounds :: (Double, Double)
+blockScanningProgressBounds = (5, 100)
 
 restorePage :: forall t m . MonadFront t m =>  m ()
 restorePage = wrapperSimpleLogout True $ do
