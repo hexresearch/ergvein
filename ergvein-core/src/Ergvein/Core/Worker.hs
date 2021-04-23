@@ -53,4 +53,4 @@ spawnPreWorkers :: (MonadClient t m, MonadHasMain m, MonadSettings t m)
   => m ()
 spawnPreWorkers = do
   ensureErgveinNetwork
-  indexerNodeController . S.toList =<< readExternalRef =<< getArchivedAddrsRef
+  indexerNodeController . S.toList =<< readExternalRef =<< getActiveAddrsRef

@@ -30,6 +30,7 @@ indexerNodeController initAddrs = mdo
   (addrE, _) <- getActivationEF
   connRef <- getActiveConnsRef
   seed <- mkResolvSeed
+  nodeLog $ "Initial indexers: " <> showt initAddrs
   let initMap = M.fromList $ ((, ())) <$> initAddrs
       closedE = switchDyn $ ffor valD $ leftmost . M.elems
       delE = (\u -> M.singleton u Nothing) <$> closedE
