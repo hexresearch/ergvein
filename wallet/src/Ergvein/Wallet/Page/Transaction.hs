@@ -15,7 +15,7 @@ import Data.Time
 import Ergvein.Text
 import Sepulcas.Elements
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import {-# SOURCE #-} Ergvein.Wallet.Page.BumpFee
 import Ergvein.Wallet.Wrapper

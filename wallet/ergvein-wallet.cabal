@@ -1,11 +1,10 @@
-cabal-version: >=2.0
 name: ergvein-wallet
-version: 0.1.0.0
 synopsis: Cryptocurrency wallet with atomic swaps for desktop and Android.
-description:
-    See README.md
+description: See README.md
+version: 1.0.0.0
 category: Cryptocurrency
 build-type: Simple
+cabal-version: >=2.0
 extra-source-files:
     static/img/*
     static/assets/font/*
@@ -27,37 +26,6 @@ library
         Ergvein.Wallet.Codec
         Ergvein.Wallet.Debug
         Ergvein.Wallet.IP
-        Ergvein.Wallet.Language
-        Ergvein.Wallet.Localization
-        Ergvein.Wallet.Localization.About
-        Ergvein.Wallet.Localization.Balance
-        Ergvein.Wallet.Localization.WalletInfo
-        Ergvein.Wallet.Localization.Client
-        Ergvein.Wallet.Localization.Currencies
-        Ergvein.Wallet.Localization.Currency
-        Ergvein.Wallet.Localization.Fee
-        Ergvein.Wallet.Localization.History
-        Ergvein.Wallet.Localization.Info
-        Ergvein.Wallet.Localization.Initial
-        Ergvein.Wallet.Localization.Inplace
-        Ergvein.Wallet.Localization.Input
-        Ergvein.Wallet.Localization.IP
-        Ergvein.Wallet.Localization.Native
-        Ergvein.Wallet.Localization.Network
-        Ergvein.Wallet.Localization.Password
-        Ergvein.Wallet.Localization.PatternKey
-        Ergvein.Wallet.Localization.Receive
-        Ergvein.Wallet.Localization.Restore
-        Ergvein.Wallet.Localization.Seed
-        Ergvein.Wallet.Localization.Send
-        Ergvein.Wallet.Localization.Settings
-        Ergvein.Wallet.Localization.Share
-        Ergvein.Wallet.Localization.Storage
-        Ergvein.Wallet.Localization.TestnetDisclaimer
-        Ergvein.Wallet.Localization.Transaction
-        Ergvein.Wallet.Localization.Util
-        Ergvein.Wallet.Localization.Validate
-        Ergvein.Wallet.Localization.Status
         Ergvein.Wallet.Log
         Ergvein.Wallet.Log.Page
         Ergvein.Wallet.Main
@@ -103,103 +71,121 @@ library
         Ergvein.Wallet.Wrapper
     hs-source-dirs: src
     default-language: Haskell2010
-    default-extensions: BangPatterns ConstraintKinds DataKinds
-                        DeriveDataTypeable DeriveGeneric FlexibleContexts FlexibleInstances
-                        FunctionalDependencies GADTs GeneralizedNewtypeDeriving LambdaCase
-                        OverloadedStrings RankNTypes RecordWildCards RecursiveDo
-                        ScopedTypeVariables StandaloneDeriving TemplateHaskell
-                        TupleSections TypeApplications TypeFamilies TypeOperators
-                        UndecidableInstances
+    default-extensions:
+      BangPatterns
+      ConstraintKinds
+      DataKinds
+      DeriveDataTypeable
+      DeriveGeneric
+      FlexibleContexts
+      FlexibleInstances
+      FunctionalDependencies
+      GADTs
+      GeneralizedNewtypeDeriving
+      LambdaCase
+      OverloadedStrings
+      RankNTypes
+      RecordWildCards
+      RecursiveDo
+      ScopedTypeVariables
+      StandaloneDeriving
+      TemplateHaskell
+      TupleSections
+      TypeApplications
+      TypeFamilies
+      TypeOperators
+      UndecidableInstances
     build-depends:
-        aeson -any,
-        aeson-lens -any,
-        async -any,
-        attoparsec >= 0.13 && < 0.14,
-        base -any,
-        base64-bytestring >=1 && <1.0.0.3,
-        binary >=0.8 && <0.9,
-        bitcoin-api >= 0.13 && < 0.14,
-        bytestring >=0.10 && <0.11,
-        cereal >=0.5 && <0.6,
-        clay >=0.14 && <0.15,
-        conduit >= 1.3 && < 1.4,
-        containers >=0.6 && <0.7,
-        cryptonite,
-        data-default -any,
-        dependent-map >= 0.3,
-        dependent-sum >= 0.6,
-        directory -any,
-        dns >= 4.0 && < 5.0,
-        ergvein-common >=1.0 && <1.1,
-        ergvein-core,
-        ergvein-crypto >=0.1 && <0.2,
-        ergvein-index-protocol >= 0.1 && < 0.2,
-        ergvein-node-discovery,
-        ergvein-filters >= 0.2 && < 0.3,
-        ergvein-types >=0.1 && <0.2,
-        ergvein-wallet-version >= 0.1 && < 0.2,
-        sepulcas-native >=0.1 && <0.2,
-        exceptions -any,
-        file-embed >=0.0 && <0.1,
-        filepath -any,
-        ghcjs-dom -any,
-        haskoin-core >= 0.12.0 && < 0.12.1,
-        http-client >=0.5 && <0.7,
-        immortal >= 0.3 && < 0.4,
-        immortal-worker >= 0.1 && < 0.2,
-        iproute >= 1.7.8 && < 1.8,
-        jsaddle -any,
-        lens >=4.16 && <4.18,
-        lifted-base >=0.2 && <0.3,
-        lmdb-simple >= 0.4 && < 0.5,
-        memory >=0.14.16 && <0.15.1,
-        MonadRandom -any,
-        mtl >=2.2 && <2.3,
-        network >= 2.8 && < 3.0,
-        parsec -any,
-        qrcode-core,
-        random-shuffle,
-        ref-tf >=0.4 && <0.5,
-        reflex >=0.4 && <0.9,
-        reflex-dom >=0.4 && <0.9,
-        reflex-dom-core -any,
-        reflex-dom-retractable -any,
-        reflex-external-ref -any,
-        reflex-flunky,
-        reflex-fork,
-        reflex-localize -any,
-        reflex-localize-dom -any,
-        reflex-main-thread,
-        safe -any,
-        safe-exceptions -any,
-        safecopy  >= 0.9 && < 0.10,
-        semialign -any,
-        sepulcas,
-        sepulcas-log,
-        serialise >= 0.2 && < 0.3,
-        socks >= 0.5 && < 0.7,
-        split >=0.2.3.3 && <0.3,
-        stm >=2.4 && <2.6,
-        template-haskell -any,
-        text >=1.2 && <1.3,
-        these -any,
-        time -any,
-        unliftio >= 0.2 && < 0.3,
-        unliftio-core >= 0.1 && < 0.2,
-        validation >=1 && < 1.2,
-        vector -any,
-        vector-algorithms,
-        wreq -any,
-        yaml -any
+          aeson
+        , aeson-lens
+        , async
+        , attoparsec              >= 0.13       && < 0.14
+        , base
+        , base64-bytestring       >= 1          && < 1.0.0.3
+        , binary                  >= 0.8        && < 0.9
+        , bitcoin-api             >= 0.13       && < 0.14
+        , bytestring              >= 0.10       && < 0.11
+        , cereal                  >= 0.5        && < 0.6
+        , clay                    >= 0.14       && < 0.15
+        , conduit                 >= 1.3        && < 1.4
+        , containers              >= 0.6        && < 0.7
+        , cryptonite
+        , data-default
+        , dependent-map           >= 0.3
+        , dependent-sum           >= 0.6
+        , directory
+        , dns                     >= 4.0        && < 5.0
+        , ergvein-common          >= 1.0        && < 1.1
+        , ergvein-core
+        , ergvein-crypto          >= 0.1        && < 0.2
+        , ergvein-filters         >= 0.2        && < 0.3
+        , ergvein-index-protocol  >= 0.1        && < 0.2
+        , ergvein-localize
+        , ergvein-node-discovery
+        , ergvein-types           >= 0.1        && < 0.2
+        , ergvein-wallet-version  >= 0.1        && < 0.2
+        , sepulcas-native         >= 0.1        && < 0.2
+        , exceptions
+        , file-embed              >= 0.0        && < 0.1
+        , filepath
+        , ghcjs-dom
+        , haskoin-core            >= 0.12.0     && < 0.12.1
+        , http-client             >= 0.5        && < 0.7
+        , immortal                >= 0.3        && < 0.4
+        , immortal-worker         >= 0.1        && < 0.2
+        , iproute                 >= 1.7.8      && < 1.8
+        , jsaddle
+        , lens                    >= 4.16       && < 4.18
+        , lifted-base             >= 0.2        && < 0.3
+        , lmdb-simple             >= 0.4        && < 0.5
+        , memory                  >= 0.14.16    && < 0.15.1
+        , MonadRandom
+        , mtl                     >= 2.2        && < 2.3
+        , network                 >= 2.8        && < 3.0
+        , parsec
+        , qrcode-core
+        , random-shuffle
+        , ref-tf                  >= 0.4        && < 0.5
+        , reflex                  >= 0.4        && < 0.9
+        , reflex-dom              >= 0.4        && < 0.9
+        , reflex-dom-core
+        , reflex-dom-retractable
+        , reflex-external-ref
+        , reflex-flunky
+        , reflex-fork
+        , reflex-localize
+        , reflex-localize-dom
+        , reflex-main-thread
+        , safe
+        , safe-exceptions
+        , safecopy                >= 0.9        && < 0.10
+        , semialign
+        , sepulcas
+        , sepulcas-log
+        , serialise               >= 0.2        && < 0.3
+        , socks                   >= 0.5        && < 0.7
+        , split                   >= 0.2.3.3    && < 0.3
+        , stm                     >= 2.4        && < 2.6
+        , template-haskell
+        , text                    >= 1.2        && < 1.3
+        , these
+        , time
+        , unliftio                >= 0.2        && < 0.3
+        , unliftio-core           >= 0.1        && < 0.2
+        , validation              >= 1          && < 1.2
+        , vector
+        , vector-algorithms
+        , wreq
+        , yaml
 
     if flag(android)
         cpp-options: -DANDROID
         build-depends:
-            android-activity -any,
-            sepulcas-android -any
+              android-activity
+            , sepulcas-android
     else
         build-depends:
-            sepulcas-desktop -any
+            sepulcas-desktop
 
     if flag(testnet)
         cpp-options: -DTESTNET
@@ -216,7 +202,7 @@ executable ergvein
     , ergvein-wallet
     , sepulcas-native
     , ergvein-wallet-version
-    , optparse-generic  >= 1.3      && < 1.4
+    , optparse-generic            >= 1.3      && < 1.4
     , reflex
     , reflex-fork
     , reflex-dom

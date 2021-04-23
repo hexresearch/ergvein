@@ -10,7 +10,7 @@ import Data.Text.Encoding (encodeUtf8)
 
 import Ergvein.Crypto
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.QRCode
 import Ergvein.Wallet.Password

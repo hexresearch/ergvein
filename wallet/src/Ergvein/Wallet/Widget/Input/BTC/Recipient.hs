@@ -10,7 +10,7 @@ import Data.Maybe
 import Sepulcas.Camera
 import Sepulcas.Clipboard
 import Sepulcas.Elements
-import Ergvein.Wallet.Localization
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Validate
 
