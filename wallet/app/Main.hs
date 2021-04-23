@@ -4,7 +4,6 @@ module Main where
 
 import Data.Text (unpack)
 import Ergvein.Wallet
-import Reflex.Fork
 import Ergvein.Wallet.Style
 import Ergvein.Wallet.Version
 import GHC.Generics
