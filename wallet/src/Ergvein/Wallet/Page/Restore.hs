@@ -36,6 +36,7 @@ restorePage = wrapperSimpleLogout True $ do
 
     -- | Stage 1: connect to BTC nodes
     nodeConnection = Workflow $ do
+      logWrite "Stage 1. Waiting connection to at least one bitcoin node"
       buildE <- getPostBuild
       let status = def
             & walletStatusRestore'stage .~ RestoreStage'connectingToBtcNodes
@@ -50,6 +51,7 @@ restorePage = wrapperSimpleLogout True $ do
 
     -- | Stage 2: calculate the current height
     heightAskingStage = Workflow $ do
+      logWrite "Stage 2. Calculation of current height"
       heightD <- getCurrentHeight BTC
       scannedHeight <- getScannedHeight BTC
       height0E <- tag (current heightD) <$> getPostBuild
@@ -61,6 +63,7 @@ restorePage = wrapperSimpleLogout True $ do
     -- if filters height >= btc height - 1, goto stage 5
     getFiltersBatch :: BlockHeight -> Workflow t m ()
     getFiltersBatch startHeight = Workflow $ do
+      logWrite "Stage 3. Download filters"
       fullHeightD <- getCurrentHeight BTC
       scannedHeight <- getScannedHeight BTC
       psD <- getPubStorageD
@@ -102,6 +105,7 @@ restorePage = wrapperSimpleLogout True $ do
       -> V.Vector ScanKeyBox
       -> Workflow t m ()
     scanBatchKeys startHeight (curHeight, nextHeight) batch keys = Workflow $ mdo
+      logWrite "Stage 4. Scan keys"
       buildE <- getPostBuild
       let status from to curr = def
             & walletStatusRestore'stage .~ RestoreStage'scanning
@@ -133,6 +137,7 @@ restorePage = wrapperSimpleLogout True $ do
 
     -- Stage 5: finalize the restore and exit to the balances page
     finishScanning = Workflow $ do
+      logWrite "Stage 5. Finalize restore"
       buildE <- getPostBuild
       setE <- updateWalletStatusNormal BTC $ (const WalletStatusNormal'synced) <$ buildE
       doneE <- modifyPubStorage "finishScanning" $ ffor setE $ const $ \ps -> Just $ ps {
