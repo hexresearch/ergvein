@@ -9,6 +9,7 @@ import Data.Time
 import Data.Functor
 import Ergvein.Core.Currency
 import Ergvein.Core.Settings
+import Ergvein.Core.Node.Monad
 import Ergvein.Core.Wallet.Monad
 import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
 import Ergvein.Text
@@ -23,7 +24,7 @@ import qualified Data.Map.Strict as M
 ratesTimeout :: NominalDiffTime
 ratesTimeout = 600
 
-ratesWorker :: (MonadSettings t m, MonadWallet t m) => m ()
+ratesWorker :: (MonadSettings t m, MonadWallet t m, MonadNode t m) => m ()
 ratesWorker = do
   ratesRef  <- getRatesRef
   settingsD <- getSettingsD

@@ -34,6 +34,8 @@ import Data.Maybe
 import Data.Proxy
 import Data.Text (Text)
 import Ergvein.Core.Client.Monad
+import Ergvein.Core.Node.Monad
+import Ergvein.Core.Node.Btc.Blocks
 import Ergvein.Core.Settings.Monad
 import Ergvein.Core.Store.Monad
 import Ergvein.Index.Protocol.Types (Message(..))
@@ -158,11 +160,18 @@ getFeesD :: MonadWallet t m => m (Dynamic t (Map Currency FeeBundle))
 getFeesD = externalRefDynamic =<< getFeesRef
 
 -- | Get current value of longest chain height for given currency.
-getCurrentHeight :: (MonadWallet t m, MonadStorage t m) => Currency -> m (Dynamic t Integer)
+getCurrentHeight :: (MonadWallet t m, MonadStorage t m, MonadNode t m) => Currency -> m (Dynamic t BlockHeight)
 getCurrentHeight c = do
   psD <- getPubStorageD
-  pure $ ffor psD $ \ps -> fromIntegral $ fromMaybe 0 $ ps ^. pubStorage'currencyPubStorages . at c
-    & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'chainHeight
+  startHeightD :: Dynamic t BlockHeight <- case c of
+    BTC -> fmap (maybe 0 fromIntegral) <$> getStartHeightBTC
+    _ -> pure 0
+  pure $ do
+    ps <- psD
+    h0 <- startHeightD
+    let psHeight :: BlockHeight = fromMaybe 0 $ ps ^. pubStorage'currencyPubStorages . at c
+          & \mcps -> ffor mcps $ \cps -> cps ^. currencyPubStorage'chainHeight
+    pure $ fromIntegral $ max h0 psHeight
 
 -- | Get current value that tells you whether filters are fully in sync now or not
 getFiltersSync :: MonadWallet t m => Currency -> m (Dynamic t Bool)
@@ -176,7 +185,7 @@ setFiltersSync c v = do
   r <- getFiltersSyncRef
   modifyExternalRef r $ (, ()) . M.insert c v
 
-requestRandomIndexer :: MonadWallet t m => Event t (Currency, Message) -> m (Event t (ErgveinNodeAddr, Message))
+requestRandomIndexer :: (MonadWallet t m, MonadNode t m) => Event t (Currency, Message) -> m (Event t (ErgveinNodeAddr, Message))
 requestRandomIndexer reqE = mdo
   let actE = leftmost [Just <$> reqE, Nothing <$ sentE]
   sentE <- networkHoldE (pure never) $ ffor actE $ \case
@@ -184,7 +193,7 @@ requestRandomIndexer reqE = mdo
     Just (cur, req) -> requester cur req
   pure sentE
 
-requester :: MonadWallet t m => Currency -> Message -> m (Event t (ErgveinNodeAddr, Message))
+requester :: (MonadWallet t m, MonadNode t m) => Currency -> Message -> m (Event t (ErgveinNodeAddr, Message))
 requester cur req = mdo
   buildE <- getPostBuild
   respD <- holdDyn True $ False <$ respE
@@ -211,7 +220,7 @@ requester cur req = mdo
     timeout = 5 -- NominalDiffTime, seconds
 
 -- | Designed to be used inside a networkHold, samples dynamics
-getOpenSyncedConns :: MonadWallet t m => Currency -> m [IndexerConnection t]
+getOpenSyncedConns :: (MonadWallet t m, MonadNode t m) => Currency -> m [IndexerConnection t]
 getOpenSyncedConns cur = do
   conns <- readExternalRef =<< getActiveConnsRef
   logWrite $ "Has " <> showt (length conns) <> " active connections to indexers"

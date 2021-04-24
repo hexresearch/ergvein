@@ -6,6 +6,7 @@ module Ergvein.Core.Worker.Fees
 import Data.Functor
 import Data.Time
 import Ergvein.Core.Currency
+import Ergvein.Core.Node.Monad
 import Ergvein.Core.Wallet.Monad
 import Ergvein.Index.Protocol.Types
 import Ergvein.Types.Fees
@@ -19,7 +20,7 @@ import qualified Data.Map.Strict as M
 feesTimeout :: NominalDiffTime
 feesTimeout = 60
 
-feesWorker :: MonadWallet t m => m ()
+feesWorker :: (MonadWallet t m, MonadNode t m) => m ()
 feesWorker = do
   feeRef  <- getFeesRef
   cursD   <- getActiveCursD

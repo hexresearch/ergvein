@@ -4,15 +4,16 @@ module Ergvein.Core.Filters(
 
 import Data.ByteString (ByteString)
 
-import Ergvein.Core.Wallet
 import Ergvein.Core.Currency
+import Ergvein.Core.Node.Monad
+import Ergvein.Core.Wallet
 import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
 
 import qualified Data.Vector as V
 
-getFilters :: MonadWallet t m => Currency -> Event t (BlockHeight, Int) -> m (Event t [(BlockHash, ByteString)])
+getFilters :: (MonadWallet t m, MonadNode t m) => Currency -> Event t (BlockHeight, Int) -> m (Event t [(BlockHash, ByteString)])
 getFilters cur e = do
   respE <- requestRandomIndexer $ ffor e $ \(h, n) -> (cur, ) $
     MFiltersRequest $ FilterRequest curcode (fromIntegral h) (fromIntegral n)

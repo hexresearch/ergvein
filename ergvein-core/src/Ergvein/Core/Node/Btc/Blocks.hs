@@ -27,7 +27,7 @@ getStartHeightBTC :: MonadNode t m => m (Dynamic t (Maybe Word32))
 getStartHeightBTC = do
   conMapD <- getBtcNodesD
   let heightD = join $ ffor conMapD $ \connMap ->
-        L.foldl' (\d1 d2 -> ffor2 d1 d2 max) (constDyn Nothing) (nodeconHeight <$> M.elems connMap)
+        L.foldl' (\d1 d2 -> ffor2 d1 d2 max) (pure Nothing) (nodeconHeight <$> M.elems connMap)
   pure heightD
 
 -- | Amount of seconds we give a node to send us blocks either retry.
