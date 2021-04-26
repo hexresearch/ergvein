@@ -26,7 +26,6 @@ module Ergvein.Core.Store.Monad(
   , getTxById
   , getBlockHeaderByHash
   , storeBlockHeadersE
-  , attachNewBtcHeader
   , setScannedHeightE
   , getScannedHeightD
   , getScannedHeight
@@ -311,28 +310,6 @@ reconfirmBtxUtxoSet :: MonadStorage t m => Text -> Event t BlockHeight -> m ()
 reconfirmBtxUtxoSet caller reqE = void . modifyPubStorage clr $ ffor reqE $ \bh ps ->
   Just $ modifyCurrStorageBtc (btcPubStorage'utxos %~ reconfirmBtcUtxoSetPure bh) ps
   where clr = caller <> ":" <> "reconfirmBtxUtxoSet"
-
-attachNewBtcHeader :: MonadStorage t m => Text -> Bool -> Event t (HB.BlockHeight, Timestamp, HB.BlockHash) -> m (Event t ())
-attachNewBtcHeader caller updHeight reqE = modifyPubStorage clr $ ffor reqE $ \(he, ts, ha) -> modifyCurrStorageMay BTC $ \ps -> let
-  heha = (he, ha)
-  mhead = ps ^? currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'headerSeq
-  mvec = consifNEq heha . snd =<< mhead
-  mseq = ffor mvec $ \v -> (ts, ) $ if V.length v > 8 then V.init v else v
-  in ffor mseq $ \s -> ps
-      & currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'headerSeq .~ s
-      & if updHeight
-        then currencyPubStorage'chainHeight .~ fromIntegral he
-        else id
-  where
-    clr = caller <> ":" <> "attachNewBtcHeader"
-    consifNEq (he, ha) vs = if V.null vs
-      then Just $ V.singleton (he, ha)
-      else let (vhe, _) = V.head vs in
-        if vhe > he
-          then Nothing
-          else if vhe == he
-            then Just vs
-            else Just $ V.cons (he, ha) vs
 
 getBtcUtxoD :: MonadStorage t m => m (Dynamic t BtcUtxoSet)
 getBtcUtxoD = do

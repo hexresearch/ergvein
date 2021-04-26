@@ -43,7 +43,7 @@ spawnWorkers = do
   scanner
   btcNodeController
   ratesWorker
-  heightAsking
+  heightWorker
   feesWorker
   pubKeysGenerator
   pure ()

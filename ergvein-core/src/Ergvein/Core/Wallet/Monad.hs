@@ -164,7 +164,7 @@ getCurrentHeight :: (MonadWallet t m, MonadStorage t m, MonadNode t m) => Curren
 getCurrentHeight c = do
   psD <- getPubStorageD
   startHeightD :: Dynamic t BlockHeight <- case c of
-    BTC -> fmap (maybe 0 fromIntegral) <$> getStartHeightBTC
+    BTC -> fmap (maybe 0 fromIntegral) <$> getNodeHeightBtc
     _ -> pure 0
   pure $ do
     ps <- psD

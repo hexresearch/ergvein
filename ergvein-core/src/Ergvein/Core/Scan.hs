@@ -66,7 +66,7 @@ scannerBtc = void $ workflow checkScannedHeight
       scannedHeight <- getScannedHeight BTC
       buildE <- getPostBuild
       scannedHeightE <- do
-        mStartHeightD <- getStartHeightBTC
+        mStartHeightD <- getNodeHeightBtc
         let gotHeightE = fmapMaybe (\mH -> maybe Nothing (Just . fromIntegral) mH) $ updated mStartHeightD
         setScannedHeightE BTC gotHeightE
       let goE = if (not isRestored && scannedHeight == 0)
@@ -162,7 +162,7 @@ scanBtcBlocks keys hashesE = do
   heightMapD <- holdDyn M.empty $ M.fromList <$> hashesE
   let rhashesE = fmap (nub . fst . unzip) $ hashesE
   _ <- logEvent "Blocks requested: " rhashesE
-  blocksE <- requestBTCBlocks rhashesE
+  blocksE <- requestBlocksBtc rhashesE
   storedBlocksE <- storeBlockHeadersE "scanBtcBlocks" BTC blocksE
   let blkHeightE = current heightMapD `attach` storedBlocksE
   txsUpdsE <- logEvent "Transactions got: " =<< getAddressesTxs ((\(height, blocks) -> (keys, height, blocks)) <$> blkHeightE)

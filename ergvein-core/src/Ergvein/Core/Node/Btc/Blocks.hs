@@ -1,6 +1,5 @@
 module Ergvein.Core.Node.Btc.Blocks
-  ( getStartHeightBTC
-  , requestBTCBlocks
+  ( requestBlocksBtc
   ) where
 
 import Control.Monad.Random
@@ -23,13 +22,6 @@ import qualified Data.List as L
 
 data RBTCBlksAct = RASucc [Block] | RANoNode [BlockHash] | RANodeClosed [BlockHash]
 
-getStartHeightBTC :: MonadNode t m => m (Dynamic t (Maybe Word32))
-getStartHeightBTC = do
-  conMapD <- getBtcNodesD
-  let heightD = join $ ffor conMapD $ \connMap ->
-        L.foldl' (\d1 d2 -> ffor2 d1 d2 max) (pure Nothing) (nodeconHeight <$> M.elems connMap)
-  pure heightD
-
 -- | Amount of seconds we give a node to send us blocks either retry.
 blockTimeout :: NominalDiffTime
 blockTimeout = 20
@@ -39,8 +31,8 @@ blockTimeout = 20
 -- Retries after a second if there are no active nodes
 -- Retries after 0.05s if the node disconnected (picks another one)
 -- Once the result is returned, close the blocksRequester widget and stop paying attention to the node
-requestBTCBlocks :: MonadNode t m => Event t [BlockHash] -> m (Event t [Block])
-requestBTCBlocks reqE = mdo
+requestBlocksBtc :: MonadNode t m => Event t [BlockHash] -> m (Event t [Block])
+requestBlocksBtc reqE = mdo
   conMapD <- getNodeConnectionsD
   timeE <- tickLossyFromPostBuildTime blockTimeout
   blksD <- holdDyn [] reqE
@@ -69,7 +61,7 @@ requestBTCBlocks reqE = mdo
         _ -> Nothing
   pure resE
 
--- | Requester for requestBTCBlocks
+-- | Requester for requestBlocksBtc
 blocksRequester :: MonadNode t m => [BlockHash] -> NodeBtc t -> m (Event t RBTCBlksAct)
 blocksRequester bhs NodeConnection{..} = do
   buildE      <- getPostBuild

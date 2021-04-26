@@ -14,6 +14,7 @@ module Ergvein.Core.Node.Monad(
   , requestManyFromNode
   , requestBroadcast
   , sendRandomNode
+  , getNodeHeightBtc
   ) where
 
 import Control.Monad.IO.Class
@@ -23,6 +24,7 @@ import Data.Foldable (for_)
 import Data.Functor.Misc (Const2(..))
 import Data.Map (Map)
 import Data.Maybe (fromMaybe)
+import Data.Word
 import Ergvein.Core.Node.Types
 import Ergvein.Types
 import Network.Socket (SockAddr)
@@ -31,8 +33,9 @@ import Reflex.ExternalRef
 import Reflex.Fork
 import Sepulcas.Native
 
-import qualified Data.Map.Strict as M
 import qualified Data.Dependent.Map as DM
+import qualified Data.List as L
+import qualified Data.Map.Strict as M
 
 type MonadNodeConstr t (m :: * -> *) = (
     MonadHold t m
@@ -148,3 +151,10 @@ randomElem xs = case xs of
   _ -> do
     i <- liftIO $ randomRIO (0, length xs - 1)
     pure $ Just $ xs!!i
+
+getNodeHeightBtc :: MonadNode t m => m (Dynamic t (Maybe Word32))
+getNodeHeightBtc = do
+  conMapD <- getBtcNodesD
+  let heightD = join $ ffor conMapD $ \connMap ->
+        L.foldl' (\d1 d2 -> ffor2 d1 d2 max) (pure Nothing) (nodeconHeight <$> M.elems connMap)
+  pure heightD
