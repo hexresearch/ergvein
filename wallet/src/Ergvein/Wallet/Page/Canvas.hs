@@ -49,7 +49,12 @@ import Ergvein.Wallet.Monad
 
 import qualified Data.Text as T
 
-type Square  = (Double, Double, Double, Double)
+type Square  = (
+    Double -- The x-axis coordinate of the rectangle's starting point.
+  , Double -- The y-axis coordinate of the rectangle's starting point.
+  , Double -- The rectangle's width. Positive values are to the right, and negative to the left.
+  , Double -- The rectangle's height. Positive values are down, and negative are up.
+  )
 type Position = (Double, Double)
 
 data DrawCommand = AddSquare | Clear deriving (Show, Eq)
@@ -83,31 +88,25 @@ createCanvas CanvasOptions{..} = do
       ]
 
 drawGridT :: Int -> Int -> [(Maybe Int, Square)] -> Text
-drawGridT cWOld cHOld r = (clearCanvasT cW cH)
+drawGridT cW cH r = (clearCanvasT cW cH)
                     <> beginPathT
-                    <> " ctx.fillStyle = \"#FFFFFF\";"
+                    <> " ctx.fillStyle = \"#FFFFFF\"; "
                     <> " ctx.fillRect(0,0," <> (showt cW) <> "," <> (showt cH) <> "); "
                     <> beginPathT
-                    <> " ctx.fillStyle = \"#000000\";"
-                    <> (T.concat  (fmap fillRects r))
-                    <> strokeStyleT
+                    <> " ctx.fillStyle = \"#000000\"; "
+                    <> (T.concat (fmap fillRects r))
+                    <> strokeStyleCT "\"#FFFFFF\""
                     <> strokeT
   where
-    cW = cWOld+10
-    cH = cHOld+10
-    fillRects (mN, (a1,b1,c1,d1)) = case mN of
+    fillRects (mN, (a,b,c,d)) = case mN of
       Just _ -> fillRectT a b c d
       Nothing -> rectT a b c d
-      where
-        a = a1 + 10
-        b = b1 + 10
-        c = c1
-        d = d1
+
 drawGridBorderT :: Int -> Int -> [(Maybe Int, Square)] -> Text
 drawGridBorderT cW cH r = (clearCanvasT cW cH)
                     <> beginPathT
                     <> (rectZeroT cW cH)
-                    <> (T.concat  (fmap fillRects r))
+                    <> (T.concat (fmap fillRects r))
                     <> strokeStyleT
                     <> strokeT
   where
