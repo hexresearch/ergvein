@@ -20,7 +20,6 @@ module Ergvein.Wallet.Localize(
   , module Ergvein.Wallet.Localize.Seed
   , module Ergvein.Wallet.Localize.Send
   , module Ergvein.Wallet.Localize.Settings
-  , module Ergvein.Wallet.Localize.Share
   , module Ergvein.Wallet.Localize.Storage
   , module Ergvein.Wallet.Localize.TestnetDisclaimer
   , module Ergvein.Wallet.Localize.Transaction
@@ -51,7 +50,6 @@ import Ergvein.Wallet.Localize.Restore
 import Ergvein.Wallet.Localize.Seed
 import Ergvein.Wallet.Localize.Send
 import Ergvein.Wallet.Localize.Settings
-import Ergvein.Wallet.Localize.Share
 import Ergvein.Wallet.Localize.Storage
 import Ergvein.Wallet.Localize.TestnetDisclaimer
 import Ergvein.Wallet.Localize.Transaction

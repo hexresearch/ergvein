@@ -57,7 +57,6 @@ library
         Ergvein.Wallet.Page.Settings.MnemonicExport
         Ergvein.Wallet.Page.Settings.Network
         Ergvein.Wallet.Page.Settings.Unauth
-        Ergvein.Wallet.Page.Share
         Ergvein.Wallet.Page.Transaction
         Ergvein.Wallet.Password
         Ergvein.Wallet.Status.Widget
