@@ -40,11 +40,12 @@ indexerNodeController initAddrs = mdo
   seed <- mkResolvSeed
   let initMap = M.fromList $ ((, ())) <$> initAddrs
       closedE = switchDyn $ ffor valD $ leftmost . M.elems
-      delE = (\u -> M.singleton u Nothing) <$> closedE
+      delE = (\u -> M.singleton u (Just ())) <$> closedE
       addE = (\us -> M.fromList $ (, Just ()) <$> us) <$> addrE
       actE = leftmost [delE, addE]
   valD <- listWithKeyShallowDiff initMap actE $ \u _ _ -> do
     mAddr <- resolveAddr seed defIndexerPort u
+    liftIO $ print  $ ()<$ mAddr
     case mAddr of
       Just addr -> do
         nodeLog $ "<" <> showt u <> ">: Connect"
@@ -57,15 +58,16 @@ indexerNodeController initAddrs = mdo
         let closedE' = indexConClosedE conn
         failedToConnectE <- connectionWidget conn
         -- closedE'' -- init closure procedure here
-        let closedE'' = leftmost [closedE', failedToConnectE]
+        timeoutE <- (\x ->switchDyn $ ffor (indexConIsUp conn) ( \up -> if up then x else never )) <$> connectionLatencyWidget conn
+        --timeoutE <- connectionLatencyWidget conn
+        let closedE'' = leftmost [closedE', failedToConnectE, timeoutE]
         -- remove the connection from the connection map
         closedE''' <- performEvent $ ffor closedE'' $ const $ modifyExternalRef connRef $ \cm -> (M.delete u cm, ())
         -- reopen on latency check failure
-        timeoutE <- connectionLatencyWidget conn
-        reopenAndWait $ (namedAddrName addr) <$ timeoutE
+        --reopenAndWait $ (namedAddrName addr) <$ timeoutE
         -- send out the event to delete this widget
-        pure $ u <$ closedE'''
-      _ -> pure never
+        pure $ traceEvent "________________closedE'''" $ u <$ closedE'''
+      _ -> (\z-> traceEvent "________________mAddr" $ u <$ z) <$> getPostBuild 
   pure ()
   where
     nodeLog t = logWrite $ "[indexerNodeController]: " <> t

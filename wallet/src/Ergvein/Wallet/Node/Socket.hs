@@ -160,20 +160,12 @@ socket SocketConf{..} = fmap switchSocket $ networkHoldDyn $ ffor _socketConfPro
   (readErE, readErFire) <- newTriggerEvent
   (inE, inFire) <- newTriggerEvent
   statusD <- holdDyn SocketInitial statusE
-  let maxDelayExp = 7
-      delay' dt e = performFork $ ffor e $ const $ do
-        x <- readExternalRef dt
-        liftIO $ threadDelay x
-
-  let reconnectDelayE = void $ ffilter (not . isCloseFinal) closeE
-  delayE <- performEvent $ ffor reconnectDelayE $ const $ do 
-        modifyExternalRef reconnTriesRef $ \x -> (((min `on` (2 ^)) x maxDelayExp) * 1000000, ()) 
-  reconnectE <- delay' reconnTriesRef delayE
 
   -- performEvent_ $ ffor closeE $ logWrite . showt
   -- performEvent_ $ ffor reconnectE $ logWrite . showt
   -- performEvent_ $ ffor (updated triesD) $ logWrite . showt
-  let connectE = leftmost [reconnectE, buildE]
+  reconnectDelayE <- reconnectWidget reconnTriesRef closeE
+  let connectE =  leftmost [ reconnectDelayE, buildE]
   let closeCb :: Maybe CloseException -> IO ()
       closeCb e = do
         logWrite $ showt e
@@ -185,8 +177,10 @@ socket SocketConf{..} = fmap switchSocket $ networkHoldDyn $ ffor _socketConfPro
         closeFire CloseReconnect
   intVar <- liftIO $ newTVarIO False
   sendChan <- liftIO newTChanIO
+  performEvent_ $ ffor _socketConfReopen $ const $ liftIO $ print "--------------_socketConfReopen"
+  performEvent_ $ ffor reconnectDelayE $ const $ liftIO $ print "----------------reconnectDelayE"
   performEvent_ $ ffor closeE $ const $ liftIO $ atomically $ writeTVar intVar True
-  performEvent_ $ ffor reconnectE $ const $ liftIO $ atomically $ writeTVar intVar False
+  performEvent_ $ ffor reconnectDelayE $ const $ liftIO $ atomically $ writeTVar intVar False
   performEvent_ $ ffor _socketConfSend $ liftIO . atomically . writeTChan sendChan
   performEvent_ $ ffor _socketConfClose $ const $ liftIO $ closeCb Nothing
   performEvent_ $ ffor _socketConfReopen $ const $ liftIO reopenCb
@@ -219,6 +213,18 @@ socket SocketConf{..} = fmap switchSocket $ networkHoldDyn $ ffor _socketConfPro
     , _socketStatus  = statusD
     , _socketRecvEr  = readErE
     }
+
+reconnectWidget :: (TriggerEvent t m, MonadIO (Performable m), PerformEvent t m, MonadIO m,  MonadUnliftIO (Performable m)) =>
+  ExternalRef t Int -> Event t CloseReason -> m (Event t ())
+reconnectWidget reconnTriesRef closeE = do
+  let reconnectE  = void $ ffilter (not . isCloseFinal) closeE
+  reconnectDelayUpdateE <- performEvent $ ffor reconnectE $ const $
+        modifyExternalRef reconnTriesRef $ (, ()) . succ
+  performFork . ffor reconnectDelayUpdateE . const . liftIO . threadDelay  . appliedDelay =<< readExternalRef reconnTriesRef
+  where
+    maxDelayExp = 7
+    appliedDelay triesCount = 2 ^ (min triesCount maxDelayExp) * 1000000
+
 
 -- | Exception occured when receiving bytes from socket fails.
 data ReceiveException =
