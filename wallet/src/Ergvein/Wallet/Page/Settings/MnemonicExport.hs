@@ -43,7 +43,7 @@ mnemonicExportResutlPage pass = do
   void $ networkHold (pure ()) $ ffor encMnemE $ \encryptedMnemonic ->
     wrapper True title thisWidget $ divClass "mnemonic-export-page" $ do
       h4 $ localizedText STPSMnemonicExportMsg
-      base64D <- divClass "receive-qr" $ qrCodeWidgetWithData qrSizeXL encryptedMnemonic
+      base64D <- divClass "mb-2" $ qrCodeWidgetWithData qrSizeXL encryptedMnemonic
       let mnemonicClass = if T.null pass then "" else "word-break-all"
       parClass mnemonicClass $ text encryptedMnemonic
       void $ divClass "mnemonic-export-buttons-wrapper" $ do

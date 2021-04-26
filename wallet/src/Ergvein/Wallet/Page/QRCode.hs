@@ -22,16 +22,11 @@ qrSizeXL :: (Int, Int)
 qrSizeXL = (504, 504)
 
 qrCodeWidget :: MonadFrontBase t m => (Int, Int) -> Text -> m (Element EventResult GhcjsDomSpace t, CanvasOptions)
-qrCodeWidget (canvasH, canvasW) txt = elAttr "div" attrs $ mdo
-    --divClass "test" $ txt $ drawGridT canvasW canvasH (qrcPerCanvas qrData canvasW)
+qrCodeWidget (canvasH, canvasW) txt = divClass "qrcode-container" $ mdo
     canvasEl <- createCanvas cOpts
     rawJSCall (_element_raw canvasEl) $ drawGridT canvasW canvasH (qrcPerCanvas qrData canvasW)
     pure (canvasEl, cOpts)
     where
-      attrs = [
-          ("class", "qrcode-container")
-        , ("style", "height:" <> showt (canvasH + 4) <> "px;width:" <> showt (canvasW + 4) <> "px;padding:2px;")
-        ]
       cOpts = CanvasOptions canvasW canvasH "qrcode" "qrcode"
       qrData = qrGen txt
 

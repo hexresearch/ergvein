@@ -753,9 +753,6 @@ sharePageCss :: Css
 sharePageCss = do
   ".share-v-spacer" ? do
     height $ px 20
-  ".qrcode-container" ? do
-    justifyContent center
-    margin auto auto auto auto
   ".share-qrcode-container" ? do
     width $ px 252
     height $ px 252
@@ -1070,10 +1067,6 @@ badgeCss = do
 
 receiveCss :: Css
 receiveCss = do
-  ".receive-qr" ? do
-    margin (rem 2) auto (rem 2) auto
-  ".receive-qr-andr" ? do
-    margin (rem 2) auto (rem 2) auto
   ".receive-adr" ? do
     margin (rem 2) auto (rem 2) auto
     fontSize $ px 16
@@ -1083,7 +1076,8 @@ receiveCss = do
     gridTemplateColumns [fr 1, fr 1]
     gridGap $ rem 1
   ".qrcode" ? do
-    margin (px 0) auto (px 0) auto
+    width $ pct 100
+    maxWidth $ rem 30
   ".receive-buttons-wrapper" ? do
     display flex
     flexWrap F.wrap
