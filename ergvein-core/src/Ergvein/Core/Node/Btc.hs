@@ -127,7 +127,7 @@ initBtcNode doLog sa msgE = do
   , nodeconRespE      = respE
   , nodeconExtra      = ()
   , nodeconIsUp       = shakeD
-  , nodecondoLog      = doLog
+  , nodeconDoLog      = doLog
   , nodeconHeight     = heightD
   }
 

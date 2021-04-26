@@ -40,6 +40,6 @@ initErgoNode url _ = do
     , nodeconRespE      = never
     , nodeconExtra      = ()
     , nodeconIsUp       = pure False
-    , nodecondoLog      = False
+    , nodeconDoLog      = False
     , nodeconHeight     = pure Nothing
     }

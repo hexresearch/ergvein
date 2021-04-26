@@ -52,6 +52,7 @@ library
     Ergvein.Core.Node
     Ergvein.Core.Node.Btc
     Ergvein.Core.Node.Btc.Blocks
+    Ergvein.Core.Node.Btc.Headers
     Ergvein.Core.Node.Btc.Mempool
     Ergvein.Core.Node.Env
     Ergvein.Core.Node.Ergo
@@ -181,6 +182,40 @@ library
 
   if flag(testnet)
       cpp-options: -DTESTNET
+
+test-suite ergvein-core-test
+  default-language:    Haskell2010
+  type:                exitcode-stdio-1.0
+  main-is:             Driver.hs
+  hs-source-dirs:      test
+  other-modules:
+      Ergvein.Core.Node.Btc.HeadersTest
+  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
+  default-extensions:
+    NumDecimals
+    OverloadedStrings
+    QuasiQuotes
+    RecordWildCards
+    ScopedTypeVariables
+    TupleSections
+    TypeApplications
+  build-depends:
+      base
+    , base16-bytestring
+    , bytestring
+    , cereal
+    , containers
+    , ergvein-common
+    , ergvein-core
+    , ergvein-types
+    , haskoin-core
+    , mtl
+    , tasty
+    , tasty-discover
+    , tasty-hspec
+    , tasty-hunit
+    , text
+    , time
 
 source-repository head
   type: git

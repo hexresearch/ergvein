@@ -111,7 +111,7 @@ requestNodeWait NodeConnection{..} reqE = do
   let passValE = updated $ (,) <$> reqD <*> nodeconIsUp
   reqE' <- fmap (fmapMaybe id) $ performEvent $ ffor passValE $ \case
     (Just _, False) -> do
-      when nodecondoLog $
+      when nodeconDoLog $
         logWrite $ (nodeString nodeconCurrency nodeconUrl) <> "Connection is not active. Waiting."
       pure Nothing
     (Just v, True) -> pure $ Just (nodeconUrl, v)

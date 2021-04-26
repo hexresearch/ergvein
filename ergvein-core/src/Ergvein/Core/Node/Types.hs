@@ -62,7 +62,7 @@ data NodeConnection t cur = NodeConnection {
 , nodeconRespE      :: !(Event t (NodeResp cur))
 , nodeconExtra      :: !(NodeSpecific cur)
 , nodeconIsUp       :: !(Dynamic t Bool)
-, nodecondoLog      :: !Bool
+, nodeconDoLog      :: !Bool
 , nodeconHeight     :: !(Dynamic t (Maybe Word32)) -- ^ Note: This field is used to track the progress of the height search. It is only updated once during node initialization.
 }
 
