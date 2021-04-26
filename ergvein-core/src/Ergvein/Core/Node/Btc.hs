@@ -14,27 +14,28 @@ import Control.Monad.Catch (throwM, MonadThrow, Exception(..))
 import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.Serialize (decode, runGet, runPut)
-import Data.Text (Text)
+import Data.Text (Text, pack)
 import Data.Time.Clock.POSIX
 import Data.Word
+import Ergvein.Core.Node.Btc.Headers
+import Ergvein.Core.Node.Socket
+import Ergvein.Core.Node.Types
+import Ergvein.Core.Platform
+import Ergvein.Core.Settings
+import Ergvein.Types.Currency
 import Network.Haskoin.Constants
+import Network.Haskoin.Block
 import Network.Haskoin.Network
 import Network.Socket (getNameInfo, NameInfoFlag(..), SockAddr(..))
 import Reflex
 import Reflex.ExternalRef
 import Reflex.Flunky
+import Reflex.Fork
 import Reflex.Network
+import Sepulcas.Native
 
 import qualified Data.ByteString as B
 import qualified Data.Text.Encoding as TE
-
-import Ergvein.Core.Node.Types
-import Ergvein.Core.Node.Socket
-import Ergvein.Core.Settings
-import Ergvein.Core.Platform
-import Ergvein.Types.Currency
-import Reflex.Fork
-import Sepulcas.Native
 
 -- These two are for dummy stats
 import Control.Monad.Random
@@ -101,14 +102,37 @@ initBtcNode doLog sa msgE = do
         nodeLog $ "Received version at height: " <> showt startHeight
         pure MVerAck
       MPing (Ping v) -> Just $ pure $ MPong (Pong v)
+      MInv invs | not . null . filter isBlockInv . invList $ invs -> Just $ do
+        let binvs = filter isBlockInv $ invList invs
+        nodeLog $ "Got notification about new blocks: " <> showt (invHash <$> binvs)
+        pure $ MGetData $ GetData binvs
       _ -> Nothing
-    let heightE = fforMaybe respE $ \case
-          MVersion Version{..} -> Just startHeight
-          _ -> Nothing
-    heightD <- holdJust heightE
     -- End rec
 
   performEvent_ $ ffor (_socketRecvEr s) $ nodeLog . showt
+
+  let startHeightE = fforMaybe respE $ \case
+        MVersion Version{..} -> Just startHeight
+        _ -> Nothing
+      newBlockE = fforMaybe respE $ \case
+        MBlock Block{..} -> Just blockHeader
+        MMerkleBlock MerkleBlock{..} -> Just merkleHeader
+        _ -> Nothing
+  treeRef <- newExternalRef Nothing
+  performEvent_ $ ffor startHeightE $ writeExternalRef treeRef . Just . newHeadersTree
+  performEvent_ $ ffor newBlockE $ \h -> do
+    nodeLog $ "Adding new block header to store: " <> showt h
+    mtree <- readExternalRef treeRef
+    case mtree of
+      Nothing -> nodeLog "Impossible: not handshaked while getting new block!"
+      Just tree -> do
+        t <- liftIO getCurrentTime
+        case addHeader t h tree of
+          Left er -> nodeLog $ "Invalid block: " <> pack er
+          Right tree' -> writeExternalRef treeRef $ Just tree'
+  treeD <- externalRefDynamic treeRef
+  treeHeightD <- holdDyn Nothing $ fmap getBestHeight <$> updated treeD
+  heightD <- holdJust $ leftmost [startHeightE, fmapMaybe id $ updated treeHeightD]
 
   -- Track handshake status
   let verAckE = fforMaybe respE $ \case
@@ -211,3 +235,6 @@ instance Exception PeerException
 
 commandToText :: MessageCommand -> Text
 commandToText = either (const "unknown") id . TE.decodeUtf8' . commandToString
+
+isBlockInv :: InvVector -> Bool
+isBlockInv = (\t -> InvBlock == t || InvWitnessBlock == t) . invType
