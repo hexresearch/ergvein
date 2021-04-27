@@ -16,6 +16,7 @@ module Ergvein.Core.Wallet.Env(
   , liftWallet
   ) where
 
+import Control.Concurrent
 import Control.Monad.Reader
 import Data.Fixed
 import Data.Map (Map)
@@ -32,6 +33,7 @@ import qualified Data.Set as S
 
 data PreWalletEnv t = PreWalletEnv {
   pre'authRef         :: !(ExternalRef t (Maybe WalletInfo))
+, pre'authMutex       :: !(MVar ())
 }
 
 type PreWalletM t m = ReaderT (PreWalletEnv t) m
@@ -55,16 +57,20 @@ instance {-# OVERLAPPABLE #-} (MonadPreWalletConstr t m, HasStoreDir (Performabl
     lift $ setLastStorage $ _storage'walletName . _walletInfo'storage <$> v
     writeExternalRef authRef v
   {-# INLINE setWalletInfoNow #-}
+  getWalletInfoMutex = fmap pre'authMutex getPreWalletEnv
+  {-# INLINE getWalletInfoMutex #-}
 
 newPreWalletEnv :: (MonadIO m, TriggerEvent t m) => m (PreWalletEnv t)
 newPreWalletEnv = PreWalletEnv
   <$> newExternalRef Nothing
+  <*> liftIO (newMVar ())
 
 runPreWallet :: PreWalletEnv t -> PreWalletM t m a -> m a
 runPreWallet = flip runReaderT
 
 data WalletEnv t = WalletEnv {
   env'authRef         :: !(ExternalRef t (Maybe WalletInfo))
+, env'authMutex       :: !(MVar ())
 , env'logout          :: !(EventTrigger t ())
 , env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
 , env'activeCursRef   :: !(ExternalRef t (S.Set Currency))
@@ -73,7 +79,7 @@ data WalletEnv t = WalletEnv {
 }
 
 toPreWalletEnv :: WalletEnv t -> PreWalletEnv t
-toPreWalletEnv WalletEnv{..} = PreWalletEnv env'authRef
+toPreWalletEnv WalletEnv{..} = PreWalletEnv env'authRef env'authMutex
 
 type WalletM t m = ReaderT (WalletEnv t) m
 
@@ -105,6 +111,9 @@ instance {-# OVERLAPPING #-} (MonadPreWalletConstr t m, HasStoreDir (Performable
       writeExternalRef env'authRef (Just v)
   {-# INLINE setWalletInfoNow #-}
 
+  getWalletInfoMutex = fmap env'authMutex getWalletEnv
+  {-# INLINE getWalletInfoMutex #-}
+
 instance {-# OVERLAPPABLE #-} (HasWalletEnv t m, MonadWalletConstr t m) => MonadWallet t m where
   getFiltersSyncRef = fmap env'filtersSyncRef getWalletEnv
   {-# INLINE getFiltersSyncRef #-}
@@ -123,6 +132,7 @@ newWalletEnv :: (MonadIO m, TriggerEvent t m) => WalletInfo -> EventTrigger t ()
 newWalletEnv winfo logoutTrigger = do
   WalletEnv
     <$> newExternalRef (Just winfo)
+    <*> liftIO (newMVar ())
     <*> pure logoutTrigger
     <*> newExternalRef mempty
     <*> newExternalRef mempty

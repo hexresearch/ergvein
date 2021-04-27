@@ -157,4 +157,4 @@ getNodeHeightBtc = do
   conMapD <- getBtcNodesD
   let heightD = join $ ffor conMapD $ \connMap ->
         L.foldl' (\d1 d2 -> ffor2 d1 d2 max) (pure Nothing) (nodeconHeight <$> M.elems connMap)
-  pure heightD
+  holdUniqDyn heightD

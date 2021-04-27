@@ -160,7 +160,7 @@ btcMempoolTxInserter txE = do
   matchedTxsD <- holdDyn Nothing valsE
   let matchedTxsE = attachPromptlyDynWithMaybe (\dynVal _ -> helper <$> dynVal) matchedTxsD removedE
   insertedE <- insertTxsUtxoInPubKeystore "btcMempoolTxInserter" BTC matchedTxsE
-  pure insertedE
+  pure $ void insertedE
   where
     helper :: ((V.Vector ScanKeyBox, EgvTx), BtcUtxoUpdate) -> (V.Vector (ScanKeyBox, M.Map TxId EgvTx), BtcUtxoUpdate)
     helper ((vec, tx), utxoUpd) = ((\keyBox -> (keyBox, M.fromList [(egvTxId tx, tx)])) <$> vec, utxoUpd)

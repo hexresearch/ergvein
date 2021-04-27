@@ -157,20 +157,23 @@ setFlagToExtPubKey caller reqE = void . modifyPubStorage clr $ ffor reqE $ \(cur
 insertTxsUtxoInPubKeystore :: MonadStorage t m
   => Text -> Currency
   -> Event t (V.Vector (ScanKeyBox, Map TxId EgvTx), BtcUtxoUpdate)
-  -> m (Event t ())
-insertTxsUtxoInPubKeystore caller cur reqE = modifyPubStorage clr $ ffor reqE $ \(vec, (o,i)) ps ->
-  if (V.null vec && M.null o && null i) then Nothing else let
-    txmap = M.unions $ V.toList $ snd $ V.unzip vec
-    ps1 = modifyCurrStorage cur (currencyPubStorage'transactions %~ M.union txmap) ps
-    ps2 = case cur of
-      BTC -> updateBtcUtxoSet (o,i) ps1
-      _ -> ps1
-    upd (ScanKeyBox{..}, txm) ps' = let txs = M.elems txm in updateKeyBoxWith cur scanBox'purpose scanBox'index
-      (\kb -> kb {pubKeyBox'txs = S.union (pubKeyBox'txs kb) $ S.fromList (fmap egvTxId txs)}) ps'
-    go !macc val = case macc of
-      Nothing -> upd val ps1
-      Just acc -> maybe (Just acc) Just $ upd val acc
-    in V.foldl' go (Just ps2) vec
+  -> m (Event t (V.Vector (ScanKeyBox, Map TxId EgvTx), BtcUtxoUpdate))
+insertTxsUtxoInPubKeystore caller cur reqE = do
+  valD <- holdDyn (error "insertTxsUtxoInPubKeystore: impossible") reqE
+  updE <- modifyPubStorage clr $ ffor reqE $ \(vec, (o,i)) ps ->
+    if (V.null vec && M.null o && null i) then Nothing else let
+      txmap = M.unions $ V.toList $ snd $ V.unzip vec
+      ps1 = modifyCurrStorage cur (currencyPubStorage'transactions %~ M.union txmap) ps
+      ps2 = case cur of
+        BTC -> updateBtcUtxoSet (o,i) ps1
+        _ -> ps1
+      upd ps' (ScanKeyBox{..}, txm) = fromMaybe ps' $
+        let txs = M.elems txm
+        in updateKeyBoxWith cur scanBox'purpose scanBox'index
+              (\kb -> kb {pubKeyBox'txs = S.union (pubKeyBox'txs kb) $ S.fromList (fmap egvTxId txs)}) ps'
+      ps3 = V.foldl' upd ps2 vec
+      in Just ps3
+  pure $ tag (current valD) updE
   where clr = caller <> ":" <> "insertTxsUtxoInPubKeystore"
 
 -- | Removes RBF transactions from storage and updates transaction replacements info.
@@ -322,8 +325,8 @@ addOutgoingTx caller reqE =  modifyPubStorage clr $ ffor reqE $ \etx ->
   Just . modifyCurrStorage (egvTxCurrency etx) (currencyPubStorage'outgoing %~ S.insert (egvTxId etx))
   where clr = caller <> ":" <> "addOutgoingTx"
 
-removeOutgoingTxs :: MonadStorage t m => Text -> Currency -> Event t [EgvTx] -> m ()
-removeOutgoingTxs caller cur reqE = void . modifyPubStorage clr $ ffor reqE $ \etxs ps -> let
+removeOutgoingTxs :: MonadStorage t m => Text -> Currency -> Event t [EgvTx] -> m (Event t ())
+removeOutgoingTxs caller cur reqE = modifyPubStorage clr $ ffor reqE $ \etxs ps -> let
   remset = S.fromList $ egvTxId <$> etxs
   outs = ps ^. pubStorage'currencyPubStorages . at cur . non (error "removeOutgoingTxs: not exsisting store!") . currencyPubStorage'outgoing
   uni = S.intersection outs remset

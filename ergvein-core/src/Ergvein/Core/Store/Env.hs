@@ -21,6 +21,7 @@ import Ergvein.Core.Store.Util
 import Ergvein.Core.Wallet
 import Ergvein.Types
 import Reflex.Flunky
+import Reflex.Fork
 import Sepulcas.Native
 
 import qualified Data.Vector as V
@@ -74,13 +75,17 @@ instance {-# OVERLAPPABLE #-} (HasStoreEnv t m, MonadStorageConstr t m, HasStore
   modifyPubStorage :: Text -> Event t (PubStorage -> Maybe PubStorage) -> m (Event t ())
   modifyPubStorage caller fe = do
     walletInfoD <- getWalletInfo
+    walletMutex <- getWalletInfoMutex
     chan      <- fmap senv'storeChan getStoreEnv
-    performEvent $ ffor fe $ \f -> do
+    performFork $ ffor fe $ \f -> do
+      _ <- liftIO $ takeMVar walletMutex
       ai <- sampleDyn walletInfoD
       let mps' = f (ai ^. walletInfo'storage . storage'pubStorage)
           mai = (\ps' -> ai & walletInfo'storage . storage'pubStorage .~ ps') <$> mps'
       traverse_ (setWalletInfoNow (Proxy :: Proxy m) . Just) mai
-      liftIO $ atomically $ traverse_ (writeTChan chan . (caller, )) mai
+      liftIO $ do
+        atomically $ traverse_ (writeTChan chan . (caller, )) mai
+        putMVar walletMutex ()
   {-# INLINE modifyPubStorage #-}
 
   getStoreMutex = fmap senv'storeMutex getStoreEnv
