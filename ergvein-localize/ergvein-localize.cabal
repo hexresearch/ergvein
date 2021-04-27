@@ -51,7 +51,6 @@ library
     Ergvein.Wallet.Localize.Seed
     Ergvein.Wallet.Localize.Send
     Ergvein.Wallet.Localize.Settings
-    Ergvein.Wallet.Localize.Share
     Ergvein.Wallet.Localize.Storage
     Ergvein.Wallet.Localize.TestnetDisclaimer
     Ergvein.Wallet.Localize.Transaction

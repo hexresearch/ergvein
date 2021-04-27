@@ -61,7 +61,7 @@ patternAsk = divClass "pattern-container" $ mdo
     sd <- sampleDyn moveD
     pure (AddSquare,(x,y),hitOrMiss (x,y) coords sd)
   -- Grid dynamic
-  dGrid <- holdDyn (drawGridT canvasW canvasH emptySq) $ never
+  dGrid <- holdDyn (drawGridT canvasW canvasH 0 emptySq GridStrokeBlack) $ never
   -- Dynamic with squares list
   squaresD <- holdDyn (Clear,(0,0),emptySq) $ poke predrawE $ \(dc,cur,sqs) -> do
     touchS <- sampleDyn touchD
@@ -143,7 +143,7 @@ patternSave tryD = divClass "pattern-container" $ mdo
     sd <- sampleDyn moveD
     pure (AddSquare,(x,y),hitOrMiss (x,y) coords sd)
   -- Grid dynamic
-  dGrid <- holdDyn (drawGridT canvasW canvasH emptySq) $ never
+  dGrid <- holdDyn (drawGridT canvasW canvasH 0 emptySq GridStrokeBlack) $ never
   -- Dynamic with squares list
   squaresD <- holdDyn (Clear,(0,0),emptySq) $ poke predrawE $ \(dc,cur,sqs) -> do
     tryS<- sampleDyn tryD
