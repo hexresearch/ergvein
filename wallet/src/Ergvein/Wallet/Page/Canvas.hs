@@ -31,6 +31,7 @@ module Ergvein.Wallet.Page.Canvas(
   , TouchState(..)
   , HoverState(..)
   , PatternTry(..)
+  , GridStrokeColor(..)
   -- Canvas Type
   , CanvasOptions(..)
   , defCanvasOptions
@@ -65,6 +66,8 @@ data HoverState = Hovered | Unhovered deriving (Show, Eq)
 
 data PatternTry = FirstTry | SecondTry | ErrorTry | Done deriving (Show, Eq)
 
+data GridStrokeColor = GridStrokeWhite | GridStrokeBlack deriving (Show, Eq)
+
 data CanvasOptions = CanvasOptions {
   coWidth   :: !Int
 , coHeight  :: !Int
@@ -87,17 +90,18 @@ createCanvas CanvasOptions{..} = do
       , ("class" , coClass)
       ]
 
-drawGridT :: Int -> Int -> [(Maybe Int, Square)] -> Text
-drawGridT cW cH r = (clearCanvasT cW cH)
+drawGridT :: Int -> Int -> [(Maybe Int, Square)] -> GridStrokeColor -> Text
+drawGridT cW cH r strokeColor = (clearCanvasT cW cH)
                     <> beginPathT
                     <> " ctx.fillStyle = \"#FFFFFF\"; "
                     <> " ctx.fillRect(0,0," <> (showt cW) <> "," <> (showt cH) <> "); "
                     <> beginPathT
                     <> " ctx.fillStyle = \"#000000\"; "
                     <> (T.concat (fmap fillRects r))
-                    <> strokeStyleCT "\"#FFFFFF\""
+                    <> strokeStyleCT strokeColorStr
                     <> strokeT
   where
+    strokeColorStr = if strokeColor == GridStrokeWhite then "\"#FFFFFF\"" else "\"#000000\""
     fillRects (mN, (a,b,c,d)) = case mN of
       Just _ -> fillRectT a b c d
       Nothing -> rectT a b c d
@@ -218,8 +222,8 @@ drawRndT w h lst = drawRoundLstT w h lst
 
 drawLineT :: Int -> Int -> Double -> Double -> Double -> Double -> (DrawCommand,(Double,Double)) -> [(Maybe Int, Square)] -> Text
 drawLineT canvasW canvasH coordX coordY _ _ (a,(cntX,cntY)) r = case a of
-  Clear ->  drawGridT canvasW canvasH r
-  AddSquare -> (drawGridT canvasW canvasH r)
+  Clear ->  drawGridT canvasW canvasH r GridStrokeBlack
+  AddSquare -> (drawGridT canvasW canvasH r GridStrokeBlack)
             <> (moveToT cntX cntY)
             <> (lineToT coordX coordY)
             <> strokeT

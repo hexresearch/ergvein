@@ -19,7 +19,7 @@ qrCodeWidget txt = divClass "qrcode-container" $ mdo
       cOpts = CanvasOptions qrCodeSize qrCodeSize "qrcode" "qrcode"
       qrData = qrGen txt
   canvasEl <- createCanvas cOpts
-  rawJSCall (_element_raw canvasEl) $ drawGridT qrCodeSize qrCodeSize qrCodeData
+  rawJSCall (_element_raw canvasEl) $ drawGridT qrCodeSize qrCodeSize qrCodeData GridStrokeWhite
   pure (canvasEl, cOpts)
 
 qrCodeWidgetWithData :: MonadFrontBase t m => Text -> m (Dynamic t (Maybe Text))
