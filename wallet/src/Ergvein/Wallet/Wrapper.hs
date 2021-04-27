@@ -9,7 +9,6 @@ module Ergvein.Wallet.Wrapper(
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Platform
 import Sepulcas.Alert.Handler
 
 import qualified Data.Text as T
@@ -44,7 +43,7 @@ contentContainer isCentered classes ma = do
   pure a
   where
     padClasses :: Text -> Text
-    padClasses classes = if T.null classes then classes else " " <> classes
+    padClasses c = if T.null c then c else " " <> c
 
 wrapperSimpleGeneric :: MonadFrontBase t m => m () -> Bool -> m a -> m a
 wrapperSimpleGeneric header isCentered ma = divClass "wrapper" $ do

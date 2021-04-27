@@ -2,21 +2,15 @@ module Ergvein.Wallet.Page.History(
     historyPage
   ) where
 
-import Ergvein.Text
-import Ergvein.Types.Currency
 import Ergvein.Types.Utxo.Btc
-import Sepulcas.Elements
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.History
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Page.Transaction
-import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Transaction.Get
-import Ergvein.Wallet.Transaction.View
 import Ergvein.Wallet.Wrapper
+import Sepulcas.Elements
 
 import Data.Map.Strict as Map
 import Data.Maybe

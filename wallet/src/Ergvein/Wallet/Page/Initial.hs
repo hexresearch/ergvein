@@ -8,15 +8,11 @@ import Ergvein.Types.Storage
 import Sepulcas.Alert
 import Sepulcas.Elements
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Initial
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
-import Sepulcas.Native
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Page.Seed
 import Ergvein.Wallet.Page.Settings.Unauth
-import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Storage.AuthInfo
-import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Wrapper
 
 import Ergvein.Wallet.Page.PatternKey
@@ -47,22 +43,6 @@ createRestore = do
     , retractablePrev = Just $ pure $ initialPage False
     }
 
-{-
-data GoRestoreMethodPage = GoRestoreMnemonic
-
-selectRestoreMethodPage :: MonadFrontBase t m => m ()
-selectRestoreMethodPage = do
-  wrapperSimple True $ do
-    h4 $ localizedText IPSChooseRestorationMethod
-    divClass "initial-options grid1" $ do
-      goRestoreMnemonicE  <- fmap (GoRestoreMnemonic  <$) $ outlineButton IPSRestoreFromMnemonic
-      void $ nextWidget $ ffor goRestoreMnemonicE $ \page -> Retractable {
-          retractableNext = case page of
-            GoRestoreMnemonic -> seedRestorePage
-        , retractablePrev = Just $ pure selectRestoreMethodPage
-        }
--}
-
 hasWalletsPage :: MonadFrontBase t m => Bool -> [WalletName] -> m ()
 hasWalletsPage redir ss = do
   buildE <- getPostBuild
@@ -89,13 +69,13 @@ selectWalletsPage ss = wrapperSimple True $ divClass "initial-page-options" $ do
 loadWalletPage :: MonadFrontBase t m => WalletName -> m ()
 loadWalletPage name = do
   buildE <- getPostBuild
-  mPlainE <- performEvent $ (loadAuthInfo name "") <$ buildE
+  mPlainE <- performEvent $ (loadWalletInfo name "") <$ buildE
   let oldAuthE' = fmapMaybe eitherToMaybe mPlainE
   oldAuthE'' <- fmap switchDyn $ networkHold (pure never) $ ffor mPlainE $ \case
     Right _ -> pure never
     Left _ -> do
       passE <- askPasswordPage name
-      mOldAuthE <- performEvent $ loadAuthInfo name <$> passE
+      mOldAuthE <- performEvent $ loadWalletInfo name <$> passE
       handleDangerMsg mOldAuthE
   let oldAuthE = leftmost [oldAuthE', oldAuthE'']
   mAuthE <- performEvent $ generateMissingPrvKeys <$> oldAuthE
@@ -103,4 +83,4 @@ loadWalletPage name = do
   when isAndroid $ performEvent_ $ ffor authE $ const $ do
     c <- loadCounter
     saveCounter $ PatternTries $ M.insert name 0 (patterntriesCount c)
-  void $ setAuthInfo $ Just <$> authE
+  void $ setWalletInfo $ Just <$> authE

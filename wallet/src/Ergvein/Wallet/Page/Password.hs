@@ -8,29 +8,18 @@ module Ergvein.Wallet.Page.Password(
   , changePasswordWidget
   ) where
 
-import Reflex.ExternalRef
 import Reflex.Localize
 import Text.Read
 
 import Ergvein.Crypto.Keys     (Mnemonic)
 import Ergvein.Text
-import Ergvein.Types.Currency
-import Ergvein.Types.Derive
-import Ergvein.Types.Restore
-import Ergvein.Types.Storage
-import Ergvein.Types.Transaction
+import Ergvein.Wallet.Language
+import Ergvein.Wallet.Localize
+import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Password
+import Ergvein.Wallet.Wrapper
 import Sepulcas.Alert
 import Sepulcas.Elements
-import Sepulcas.Elements.Input
-import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Password
-import Ergvein.Wallet.Localization.Restore
-import Ergvein.Wallet.Monad
-import Sepulcas.Native
-import Ergvein.Wallet.Password
-import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Storage.AuthInfo
-import Ergvein.Wallet.Wrapper
 
 import qualified Data.Text as T
 
@@ -114,9 +103,9 @@ performAuth wt mnemonic curs login pass mpath startingHeight isPass = do
       elClass "h5" "overflow-wrap-bw" $ localizedText RPSTrafficTime
       outlineButton RPSTrafficAccept
   storageE <- performEvent $ ffor goE $ const $
-    initAuthInfo wt mpath mnemonic curs login pass startingHeight isPass
-  authInfoE <- handleDangerMsg storageE
-  void $ setAuthInfo $ Just <$> authInfoE
+    initWalletInfo English wt mpath mnemonic curs login pass startingHeight isPass
+  walletInfoE <- handleDangerMsg storageE
+  void $ setWalletInfo $ Just <$> walletInfoE
 
 setupLoginPage :: MonadFrontBase t m => WalletSource -> Maybe DerivPrefix -> Mnemonic -> [Currency] -> m ()
 setupLoginPage wt mpath mnemonic curs = wrapperSimple True $ do
@@ -251,7 +240,7 @@ data CPMStage = CPMPattern | CPMPassword | CPMEmpty Bool
 
 changePasswordMobileWidget :: MonadFront t m => m (Event t (Password, Bool))
 changePasswordMobileWidget = wrapperSimple True $ mdo
-  login <- fmap (_authInfo'login) $ readExternalRef =<< getAuthInfoRef
+  login <- fmap (_walletInfo'login) $ sampleDyn =<< getWalletInfo
   let name = T.replace " " "_" login
   stage0 <- fmap eitherToStage $ retrieveValue ("meta_wallet_" <> name) False
   stageD <- holdDyn stage0 nextE

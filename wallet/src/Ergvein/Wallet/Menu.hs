@@ -6,14 +6,10 @@ module Ergvein.Wallet.Menu(
   ) where
 
 import {-# SOURCE #-} Ergvein.Wallet.Menu.Switcher
-import Data.Text (Text)
-import Ergvein.Types.Currency
-import Ergvein.Types.Storage
 import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Menu.Types
 import Ergvein.Wallet.Monad
-
 
 headerWidgetDesktop :: MonadFront t m => Dynamic t Text -> Maybe (Dynamic t (m ())) -> m ()
 headerWidgetDesktop titleD thisWidget = divClass "header-wrapper" $ do
@@ -81,7 +77,7 @@ backButtonRetract = do
 -- | Button for logging out (used on restore page)
 backButtonLogout :: MonadFrontBase t m => m ()
 backButtonLogout = do
-  backButton "header-button" (constDyn False) (\e -> setAuthInfo $ Nothing <$ e)
+  backButton "header-button" (constDyn False) (\e -> setWalletInfo $ Nothing <$ e)
 
 menuButtonIconClass :: Bool -> Text
 menuButtonIconClass True = "fas fa-bars fa-fw"

@@ -130,8 +130,8 @@ library
       , ergvein-index-protocol
       , ergvein-index-protocol-client
       , ergvein-interface-ergo
-      , ergvein-wallet-filters
-      , ergvein-wallet-types
+      , ergvein-filters
+      , ergvein-types
 
   default-language:    Haskell2010
   default-extensions:
@@ -230,7 +230,7 @@ test-suite ergvein-index-server-test
     , quickcheck-instances
     , vector
     , ergvein-index-server
-    , ergvein-wallet-types
+    , ergvein-types
     , deepseq                  >= 1.4     &&  < 1.5
     , parallel                 >= 3.2     &&  < 3.3
     , haskoin-core             >= 0.12.0  &&  < 0.12.1

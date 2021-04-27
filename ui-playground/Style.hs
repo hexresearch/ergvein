@@ -8,7 +8,6 @@ module Style (
 
 import Clay
 import Clay.Selector
-import Clay.Stylesheet (prefixed)
 import Control.Monad
 import Data.Text (Text)
 import Data.Text.Lazy (toStrict)

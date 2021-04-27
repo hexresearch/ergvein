@@ -10,15 +10,11 @@ import Control.Lens
 import Data.Maybe (fromMaybe)
 
 import Ergvein.Text
-import Ergvein.Types.Currency
-import Ergvein.Types.Utxo.Btc
-import Ergvein.Types.Utxo.Status
 import Ergvein.Types.Storage.Currency.Public.Btc
+import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.History
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Util
 
 import qualified Data.List as L
 import qualified Data.Map.Strict as M

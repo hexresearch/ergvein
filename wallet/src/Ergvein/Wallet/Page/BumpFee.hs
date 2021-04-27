@@ -10,28 +10,13 @@ import Data.Maybe (fromMaybe)
 import Data.Word
 
 import Ergvein.Maybe
-import Ergvein.Types.Address
-import Ergvein.Types.Currency
-import Ergvein.Types.Keys
-import Ergvein.Types.Storage
-import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo.Btc
 import Sepulcas.Alert
 import Sepulcas.Elements
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Fee
-import Ergvein.Wallet.Localization.History
-import Ergvein.Wallet.Localization.Util
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Node
 import Ergvein.Wallet.Page.Balances
-import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Storage
-import Ergvein.Wallet.Storage.Util
-import Ergvein.Wallet.Transaction.Builder
-import Ergvein.Wallet.Transaction.Util
-import Ergvein.Wallet.Transaction.View
 import Ergvein.Wallet.Widget.Input.BTC.Fee
 import Ergvein.Wallet.Wrapper
 
@@ -216,7 +201,7 @@ sendTx signedTx = Workflow $ do
   addedE <- addOutgoingTx "signSendWidget" $ (TxBtc $ BtcTx signedTx Nothing) <$ sendE
   storedE <- btcMempoolTxInserter $ signedTx <$ addedE
   broadcastE <- requestBroadcast $ ffor storedE $ const $
-    NodeReqBTC . MInv . Inv . pure . InvVector InvTx . HT.getTxHash . HT.txHash $ signedTx
+    NodeReqBtc . MInv . Inv . pure . InvVector InvTx . HT.getTxHash . HT.txHash $ signedTx
   pure (False, showTxId signedTx <$ broadcastE)
 
 showTxId :: MonadFront t m => HT.Tx -> Workflow t m Bool

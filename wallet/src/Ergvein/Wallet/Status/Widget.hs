@@ -1,24 +1,17 @@
 {-# LANGUAGE OverloadedLists #-}
--- {-# OPTIONS_GHC -Wall #-}
-
 module Ergvein.Wallet.Status.Widget(
     statusBarWidget
   , restoreStatusWidget
   , restoreStatusDebugWidget
   ) where
 
-import Control.Monad.IO.Class
 import Data.Time
 import Numeric
 import Text.Printf
 
-import Ergvein.Text
-import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Restore
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Status.Types
 import Ergvein.Wallet.Widget.Balance
 import Sepulcas.Elements.Markup
 
@@ -42,7 +35,6 @@ statusBarWidget isVerbose cur = divClass "sync-widget-wrapper" $ do
           renderStatus sp
           (e,_) <- elAttr' "span" [("class", "ml-1")] $ elClass "i" "fas fa-times" $ pure ()
           let closeE = domEvent Click e
-          performFork_ $ ffor closeE $ const $ liftIO $ print "closeE"
           timeoutE <- delay statusDisplayTime =<< getPostBuild
           pure $ leftmost [closeE, timeoutE]
       pure ()
@@ -55,7 +47,7 @@ balWidget :: MonadFront t m => Currency -> T.Text -> m (Event t ())
 balWidget cur bal = do
   text bal
   rateFiatD <- (fmap . fmap) settingsRateFiat getSettingsD
-  networkHoldDyn $ ffor rateFiatD $ \mf -> maybeW mf $ \f -> do
+  _ <- networkHoldDyn $ ffor rateFiatD $ \mf -> maybeW mf $ \f -> do
     rateD <- getRateByFiatD cur f
     void $ networkHoldDyn $ ffor rateD $ \mr -> maybeW mr $ \r -> do
       let r' = T.pack $ printf "%.2f" (realToFrac r :: Double)

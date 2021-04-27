@@ -5,7 +5,7 @@ module Ergvein.Wallet.Page.About(
 
 import Sepulcas.Elements
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.About
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Version
 import Ergvein.Wallet.Wrapper

@@ -16,14 +16,9 @@ flag android
 library
     exposed-modules:
       Sepulcas
-      Sepulcas.Alert
       Sepulcas.Alert.Handler
-      Sepulcas.Alert.Monad
-      Sepulcas.Alert.Types
-      Sepulcas.Alert.Poster
       Sepulcas.Camera
       Sepulcas.Clipboard
-      Sepulcas.Either
       Sepulcas.Elements
       Sepulcas.Elements.Button
       Sepulcas.Elements.Focus
@@ -40,18 +35,14 @@ library
       Sepulcas.Monad
       Sepulcas.Monad.Class
       Sepulcas.Monad.Env
-      Sepulcas.Monad.Password
       Sepulcas.Monad.Reflex
-      Sepulcas.Monad.UI
       Sepulcas.OpenUrl
-      Sepulcas.Platform
       Sepulcas.Resize
       Sepulcas.Share
       Sepulcas.Style
       Sepulcas.Style.Embed
       Sepulcas.Style.Fonts
       Sepulcas.Text
-      Sepulcas.TimeZone
       Sepulcas.Validate
 
     hs-source-dirs: src
@@ -110,6 +101,7 @@ library
         reflex-fork,
         reflex-localize-dom,
         reflex-localize,
+        reflex-main-thread,
         safe-exceptions,
         safe,
         semialign,

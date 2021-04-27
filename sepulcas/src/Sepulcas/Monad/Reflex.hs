@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Sepulcas.Monad.Reflex(
     module Sepulcas.Monad.Reflex
   , module Reflex
@@ -6,14 +7,11 @@ module Sepulcas.Monad.Reflex(
 import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
-import Control.Monad.Reader
 import Control.Monad.Ref
 import Language.Javascript.JSaddle
 import Reflex
 import Reflex.Dom hiding (run, mainWidgetWithCss)
-import Reflex.ExternalRef
 import Reflex.Host.Class
-import Reflex.Localize
 import Reflex.Spider.Internal (SpiderHostFrame, Global)
 import Sepulcas.Native
 

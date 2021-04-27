@@ -42,20 +42,22 @@ in (self: super: let
     # Internal
     cbitstream = ingnoreGarbage super.cbitstream;
     data-merkle-tree = ingnoreGarbage super.data-merkle-tree;
+    ergo-api = lib.dontCheck (ingnoreGarbage super.ergo-api);
     ergvein-checkpoint-generator = ingnoreGarbage super.ergvein-checkpoint-generator;
     ergvein-common = ingnoreGarbage super.ergvein-common;
-    ergo-api = lib.dontCheck (ingnoreGarbage super.ergo-api);
+    ergvein-core = ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-core" ./ergvein-core walletOpts {});
     ergvein-crypto = ingnoreGarbage super.ergvein-crypto;
+    ergvein-filters = ingnoreGarbage super.ergvein-filters;
     ergvein-index-api = ingnoreGarbage super.ergvein-index-api;
     ergvein-index-client = ingnoreGarbage super.ergvein-index-client;
     ergvein-index-protocol = ingnoreGarbage super.ergvein-index-protocol;
     ergvein-index-protocol-client = ingnoreGarbage super.ergvein-index-protocol-client;
     ergvein-index-server = ingnoreGarbage super.ergvein-index-server;
     ergvein-interface-ergo = ingnoreGarbage super.ergvein-interface-ergo;
+    ergvein-localize = ingnoreGarbage super.ergvein-localize;
     ergvein-node-discovery = ingnoreGarbage super.ergvein-node-discovery;
+    ergvein-types = ingnoreGarbage super.ergvein-types;
     ergvein-wallet = addVersions (ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-wallet" ./wallet walletOpts {}));
-    ergvein-wallet-filters = ingnoreGarbage super.ergvein-wallet-filters;
-    ergvein-wallet-types = ingnoreGarbage super.ergvein-wallet-types;
     ergvein-wallet-version = ingnoreGarbage super.ergvein-wallet-version;
     golomb-rice = ingnoreGarbage super.golomb-rice;
     reflex-dom-retractable = ingnoreGarbage super.reflex-dom-retractable;
@@ -64,6 +66,7 @@ in (self: super: let
     reflex-fork = ingnoreGarbage super.reflex-fork;
     reflex-localize = ingnoreGarbage super.reflex-localize;
     reflex-localize-dom = ingnoreGarbage super.reflex-localize-dom;
+    reflex-main-thread = ingnoreGarbage super.reflex-main-thread;
     sepulcas = ingnoreGarbage (super.callCabal2nixWithOptions "sepulcas" ./sepulcas walletOpts {});
     sepulcas-android = ingnoreGarbage (super.callCabal2nixWithOptions "sepulcas-android" ./sepulcas-android walletOpts {});
     sepulcas-desktop = ingnoreGarbage super.sepulcas-desktop;

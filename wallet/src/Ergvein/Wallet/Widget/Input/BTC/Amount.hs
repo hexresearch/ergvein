@@ -9,14 +9,10 @@ import Data.Maybe
 import Data.Word
 
 import Ergvein.Either
-import Ergvein.Types
 import Sepulcas.Elements
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Send
-import Ergvein.Wallet.Localization.Settings()
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Widget.Balance
 

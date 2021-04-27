@@ -1,0 +1,223 @@
+name:                ergvein-core
+version:             1.0.0.0
+synopsis:            Multi crypto currency wallet
+description:         Multi crypto currency wallet as a library without GUI based on reflex library
+stability:           Experimental
+category:            Reflex, FRP, Web, GUI, HTML, Javascript, Reactive, Reactivity, User Interfaces, User-interface
+build-type:          Simple
+cabal-version:       >=1.10
+license:             MIT
+license-file:        LICENSE
+copyright:           2019-2021 ATUM SOLUTIONS AG
+author:
+                     - Anton Gushcha
+                     - Aminion
+                     - Vladimir Krutkin
+                     - Levon Oganyan
+maintainer:          - Anton Gushcha <ncrashed@gmail.com>
+                     - Aminion <>
+                     - Vladimir Krutkin <krutkinvs@gmail.com>
+                     - Levon Oganyan <lemarwin42@protonmail.com>
+bug-reports:         https://github.com/hexresearch/ergvein/issues
+homepage:            https://github.com/hexresearch/ergvein
+extra-source-files:
+  README.md
+  CHANGELOG.md
+
+flag android
+    description:
+        Enable android specific features.
+    default: False
+    manual: True
+
+flag testnet
+  description: Build the testnet version
+  default: False
+  manual: True
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+    Ergvein.Core
+    Ergvein.Core.Client
+    Ergvein.Core.Client.Env
+    Ergvein.Core.Client.Monad
+    Ergvein.Core.Client.Socket
+    Ergvein.Core.Currency
+    Ergvein.Core.Env
+    Ergvein.Core.Env.Auth
+    Ergvein.Core.Env.Unauth
+    Ergvein.Core.Filters
+    Ergvein.Core.IP
+    Ergvein.Core.Node
+    Ergvein.Core.Node.Btc
+    Ergvein.Core.Node.Btc.Blocks
+    Ergvein.Core.Node.Btc.Headers
+    Ergvein.Core.Node.Btc.Mempool
+    Ergvein.Core.Node.Env
+    Ergvein.Core.Node.Ergo
+    Ergvein.Core.Node.Manage
+    Ergvein.Core.Node.Monad
+    Ergvein.Core.Node.Socket
+    Ergvein.Core.Node.Types
+    Ergvein.Core.Password
+    Ergvein.Core.Platform
+    Ergvein.Core.Resolve
+    Ergvein.Core.Scan
+    Ergvein.Core.Settings
+    Ergvein.Core.Settings.Constants
+    Ergvein.Core.Settings.Env
+    Ergvein.Core.Settings.Monad
+    Ergvein.Core.Settings.Types
+    Ergvein.Core.Status
+    Ergvein.Core.Status.Env
+    Ergvein.Core.Status.Monad
+    Ergvein.Core.Status.Types
+    Ergvein.Core.Store
+    Ergvein.Core.Store.Constants
+    Ergvein.Core.Store.Crypto
+    Ergvein.Core.Store.Env
+    Ergvein.Core.Store.Monad
+    Ergvein.Core.Store.Util
+    Ergvein.Core.Store.WalletInfo
+    Ergvein.Core.TimeZone
+    Ergvein.Core.Transaction
+    Ergvein.Core.Transaction.Btc
+    Ergvein.Core.Transaction.Btc.Builder
+    Ergvein.Core.Transaction.Btc.Common
+    Ergvein.Core.Transaction.Btc.Fee
+    Ergvein.Core.Transaction.Builder
+    Ergvein.Core.Transaction.Ergo
+    Ergvein.Core.Transaction.Ergo.Common
+    Ergvein.Core.Transaction.Get
+    Ergvein.Core.Transaction.Util
+    Ergvein.Core.Transaction.View
+    Ergvein.Core.Wallet
+    Ergvein.Core.Wallet.Env
+    Ergvein.Core.Wallet.Monad
+    Ergvein.Core.Worker
+    Ergvein.Core.Worker.Discovery
+    Ergvein.Core.Worker.Fees
+    Ergvein.Core.Worker.Height
+    Ergvein.Core.Worker.Indexer
+    Ergvein.Core.Worker.Keys
+    Ergvein.Core.Worker.Node
+    Ergvein.Core.Worker.Rates
+    Ergvein.Core.Worker.Store
+    Ergvein.Core.Yaml
+  build-depends:
+      base                      >= 4.5      && < 4.15
+    , aeson
+    , async
+    , attoparsec
+    , bytestring
+    , cereal
+    , conduit
+    , containers
+    , cryptonite
+    , data-default
+    , dependent-map
+    , directory
+    , dns
+    , ergvein-common
+    , ergvein-crypto
+    , ergvein-filters
+    , ergvein-index-protocol
+    , ergvein-node-discovery
+    , ergvein-types
+    , exceptions
+    , haskoin-core              >= 0.12.0   && < 0.12.1
+    , iproute
+    , lens
+    , memory
+    , MonadRandom
+    , mtl
+    , network
+    , reflex                    >= 0.4      && < 0.9
+    , reflex-external-ref
+    , reflex-flunky
+    , reflex-fork
+    , reflex-localize
+    , reflex-main-thread
+    , safe-exceptions
+    , safecopy
+    , sepulcas-log
+    , sepulcas-native
+    , socks
+    , some
+    , stm
+    , text
+    , time
+    , unliftio-core
+    , vector
+    , yaml
+  default-language:    Haskell2010
+  default-extensions:
+    BangPatterns
+    ConstraintKinds
+    DataKinds
+    DeriveDataTypeable
+    DeriveGeneric
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    LambdaCase
+    MultiParamTypeClasses
+    MultiWayIf
+    OverloadedStrings
+    RankNTypes
+    RecordWildCards
+    RecursiveDo
+    ScopedTypeVariables
+    StandaloneDeriving
+    TupleSections
+    TypeFamilies
+    UndecidableInstances
+
+  if flag(android)
+      cpp-options: -DANDROID
+      build-depends: android-activity
+
+  if flag(testnet)
+      cpp-options: -DTESTNET
+
+test-suite ergvein-core-test
+  default-language:    Haskell2010
+  type:                exitcode-stdio-1.0
+  main-is:             Driver.hs
+  hs-source-dirs:      test
+  other-modules:
+      Ergvein.Core.Node.Btc.HeadersTest
+  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
+  default-extensions:
+    NumDecimals
+    OverloadedStrings
+    QuasiQuotes
+    RecordWildCards
+    ScopedTypeVariables
+    TupleSections
+    TypeApplications
+  build-depends:
+      base
+    , base16-bytestring
+    , bytestring
+    , cereal
+    , containers
+    , ergvein-common
+    , ergvein-core
+    , ergvein-types
+    , haskoin-core
+    , mtl
+    , tasty
+    , tasty-discover
+    , tasty-hspec
+    , tasty-hunit
+    , text
+    , time
+
+source-repository head
+  type: git
+  location: https://github.com/hexresearch/ergvein
+  subdir: ergvein-core

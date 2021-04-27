@@ -14,12 +14,11 @@ import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.Initial
 import Ergvein.Wallet.Page.Restore
 import Ergvein.Wallet.Password
-import Ergvein.Wallet.Worker
 import Sepulcas.Loading
-import Sepulcas.Log.Writer
+import Sepulcas.Log
 #ifdef TESTNET
 import Sepulcas.Elements
-import Ergvein.Wallet.Localization.TestnetDisclaimer
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Wrapper
 #endif
 
@@ -30,10 +29,12 @@ frontend = do
   askPasswordModal
   logWriter =<< fmap fst getLogsTrigger
   logWrite "Entering initial page"
+  spawnPreWorkers
   mainpageDispatcher
 
 startPage :: MonadFront t m => m ()
 startPage = do
+  _ <- storeWallet "start-page" =<< delay 0.1 =<< getPostBuild
   ps <- getPubStorage
   if _pubStorage'restoring ps
     then restorePage

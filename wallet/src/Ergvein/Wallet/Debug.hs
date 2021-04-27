@@ -9,17 +9,12 @@ import Control.Monad.IO.Class
 import Data.Maybe (fromMaybe, listToMaybe)
 import Network.Haskoin.Transaction
 
-import Ergvein.Text
-import Ergvein.Types.Address
-import Ergvein.Types.Currency
-import Ergvein.Types.Keys
-import Ergvein.Types.Storage
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo.Btc
 import Sepulcas.Elements
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Storage
 import Ergvein.Wallet.Wrapper
+import Ergvein.Wallet.Localize ()
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -37,6 +32,7 @@ data DebugBtns
   | DbgPrvInt
   | DbgPrvExt
   | DbgMnemonic
+  | DbgTxs
 
 mkTxt :: Text -> Text
 mkTxt = id
@@ -51,6 +47,7 @@ debugWidget = el "div" $ do
   pubExtE <- fmap (DbgPubExt <$) $ outlineButton $ mkTxt "Pub Externals"
   prvIntE <- fmap (DbgPrvInt <$) $ outlineButton $ mkTxt "Priv Internals"
   prvExtE <- fmap (DbgPrvExt <$) $ outlineButton $ mkTxt "Priv Externals"
+  txsE <- fmap (DbgTxs <$) $ outlineButton $ mkTxt "Txs"
   mnemonicE <- fmap (DbgMnemonic <$) $ outlineButton ("Mnemonic" :: Text)
   pingE <- outlineButton $ mkTxt "Ping"
   avgD <- indexersAverageLatencyWidget =<< delay 1 pingE
@@ -60,7 +57,7 @@ debugWidget = el "div" $ do
   h5 . dynText . (\s -> "Current height: " <> s) . fmap showt =<< getCurrentHeight BTC
   h5 . dynText . (\s -> "Scanned height: " <> s) . fmap showt =<< getScannedHeightD BTC
 
-  let goE = leftmost [utxoE, pubIntE, pubExtE, prvIntE, prvExtE, mnemonicE]
+  let goE = leftmost [utxoE, pubIntE, pubExtE, prvIntE, prvExtE, txsE, mnemonicE]
   void $ nextWidget $ ffor goE $ \sel -> Retractable {
       retractableNext = case sel of
         DbgUtxo     -> dbgUtxoPage
@@ -69,6 +66,7 @@ debugWidget = el "div" $ do
         DbgPrvInt   -> dbgPrivInternalsPage
         DbgPrvExt   -> dbgPrivExternalsPage
         DbgMnemonic -> dbgMnemonicPage
+        DbgTxs      -> dbgTxsPage
     , retractablePrev = Nothing
     }
 
@@ -164,3 +162,12 @@ dbgMnemonicPage = wrapper False "Mnemonic" (Just $ pure dbgMnemonicPage) $ divCl
     pure $ prv ^. prvStorage'mnemonic
   mnemonicD <- holdDyn "" mnemonicE
   dynText mnemonicD
+
+dbgTxsPage :: MonadFront t m => m ()
+dbgTxsPage = wrapper False "Transactions" (Just $ pure dbgTxsPage) $ divClass "currency-content" $ do
+  psD <- getPubStorageD
+  void $ networkHoldDyn $ ffor psD $ \ps -> do
+    let txs = ps ^. btcPubStorage . currencyPubStorage'transactions
+    for_ txs $ \tx -> do
+      el "div" $ text $ showt tx
+      el "div" $ text "------------------------------------------------------"

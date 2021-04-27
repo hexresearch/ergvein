@@ -1,7 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 module Ergvein.Wallet.Page.Restore(
     restorePage
-  , heightAskingProgressBounds
   ) where
 
 import Control.Concurrent.Async
@@ -9,21 +8,12 @@ import Control.Monad.IO.Class
 import Data.Maybe (catMaybes)
 import Data.Time
 
+import Ergvein.Core.Status.Types
 import Ergvein.Filters.Btc.Index
 import Ergvein.Filters.Mutable hiding (BlockHeight)
-import Ergvein.Text
-import Ergvein.Types.Currency
-import Ergvein.Types.Keys
-import Ergvein.Types.Storage
-import Ergvein.Types.Transaction
-import Ergvein.Wallet.Filters.Loader
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Node.Types
 import Ergvein.Wallet.Page.Balances
-import Ergvein.Wallet.Scan
-import Ergvein.Wallet.Status.Types
 import Ergvein.Wallet.Status.Widget
-import Ergvein.Wallet.Util
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Map.Strict as M
@@ -33,12 +23,6 @@ import qualified Data.Vector as V
 -- | Timeout for trying to request filters again at 'getting filters batch' stage
 filtersRetryTimeout :: NominalDiffTime
 filtersRetryTimeout = 10
-
-heightAskingProgressBounds :: (Double, Double)
-heightAskingProgressBounds = (0, 5)
-
-blockScanningProgressBounds :: (Double, Double)
-blockScanningProgressBounds = (5, 100)
 
 restorePage :: forall t m . MonadFront t m =>  m ()
 restorePage = wrapperSimpleLogout True $ do
@@ -52,6 +36,7 @@ restorePage = wrapperSimpleLogout True $ do
 
     -- | Stage 1: connect to BTC nodes
     nodeConnection = Workflow $ do
+      logWrite "Stage 1. Waiting connection to at least one bitcoin node"
       buildE <- getPostBuild
       let status = def
             & walletStatusRestore'stage .~ RestoreStage'connectingToBtcNodes
@@ -59,13 +44,14 @@ restorePage = wrapperSimpleLogout True $ do
       void $ updateWalletStatusRestore BTC $ (const status) <$ buildE
       conmapD <- getNodesByCurrencyD BTC
       let upsD = fmap or $ join $ ffor conmapD $ \cm -> sequence $ ffor (M.elems cm) $ \case
-            NodeConnBTC con -> nodeconIsUp con
+            NodeConnBtc con -> nodeconIsUp con
             _ -> pure False
       let nextE = ffilter id $ updated upsD
-      pure ((), heightAsking <$ nextE)
+      pure ((), heightAskingStage <$ nextE)
 
     -- | Stage 2: calculate the current height
-    heightAsking = Workflow $ do
+    heightAskingStage = Workflow $ do
+      logWrite "Stage 2. Calculation of current height"
       heightD <- getCurrentHeight BTC
       scannedHeight <- getScannedHeight BTC
       height0E <- tag (current heightD) <$> getPostBuild
@@ -77,6 +63,7 @@ restorePage = wrapperSimpleLogout True $ do
     -- if filters height >= btc height - 1, goto stage 5
     getFiltersBatch :: BlockHeight -> Workflow t m ()
     getFiltersBatch startHeight = Workflow $ do
+      logWrite "Stage 3. Download filters"
       fullHeightD <- getCurrentHeight BTC
       scannedHeight <- getScannedHeight BTC
       psD <- getPubStorageD
@@ -118,6 +105,7 @@ restorePage = wrapperSimpleLogout True $ do
       -> V.Vector ScanKeyBox
       -> Workflow t m ()
     scanBatchKeys startHeight (curHeight, nextHeight) batch keys = Workflow $ mdo
+      logWrite "Stage 4. Scan keys"
       buildE <- getPostBuild
       let status from to curr = def
             & walletStatusRestore'stage .~ RestoreStage'scanning
@@ -149,6 +137,7 @@ restorePage = wrapperSimpleLogout True $ do
 
     -- Stage 5: finalize the restore and exit to the balances page
     finishScanning = Workflow $ do
+      logWrite "Stage 5. Finalize restore"
       buildE <- getPostBuild
       setE <- updateWalletStatusNormal BTC $ (const WalletStatusNormal'synced) <$ buildE
       doneE <- modifyPubStorage "finishScanning" $ ffor setE $ const $ \ps -> Just $ ps {

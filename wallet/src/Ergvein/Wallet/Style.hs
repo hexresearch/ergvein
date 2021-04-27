@@ -9,21 +9,19 @@ import Clay.Selector
 import Clay.Stylesheet
 import Control.Monad
 import Data.ByteString (ByteString)
-import Data.ByteString.Lazy (toStrict)
-import Data.Text (Text)
-import Data.Text.Lazy.Encoding (encodeUtf8)
-import Ergvein.Wallet.Platform
+import Ergvein.Core
 import Language.Javascript.JSaddle hiding ((#))
 import Prelude hiding ((**), rem)
+import Sepulcas.Native
 import Sepulcas.Style
 
 import qualified Clay.Media as M
 import qualified Clay.Flexbox as F
 
-compileFrontendCss :: MonadJSM m => m ByteString
+compileFrontendCss :: (MonadJSM m, PlatformNatives) => m ByteString
 compileFrontendCss = compileStyles $ frontendCss
 
-frontendCss :: Css
+frontendCss :: PlatformNatives => Css
 frontendCss = do
   htmlCss
   bodyCss
@@ -522,7 +520,7 @@ initialPageCss = do
   ".text-pin-code-error" ? do
     color textDanger
 
-balancesPageCss :: Css
+balancesPageCss :: PlatformNatives => Css
 balancesPageCss = do
   ".sync-progress" ? do
     fontSize $ pt 14
@@ -616,7 +614,7 @@ sendPageCss = do
   ".send-confirm-box" ? do
     pure ()
 
-aboutPageCss :: Css
+aboutPageCss :: PlatformNatives => Css
 aboutPageCss = do
   ".about-wrapper" ? do
     textAlign center
@@ -641,7 +639,7 @@ aboutPageCss = do
     paddingTop $ px 45
     fontSize $ pt (if isAndroid then 12 else 18)
 
-networkPageCss :: Css
+networkPageCss :: PlatformNatives => Css
 networkPageCss = do
   ".network-wrapper" ? do
     textAlign center

@@ -37,7 +37,7 @@ import Sepulcas.Elements.Input.Class
 import Sepulcas.Elements.Markup
 import Sepulcas.Id
 import Sepulcas.Monad
-import Sepulcas.Platform
+import Sepulcas.Native
 import Sepulcas.Text
 
 import qualified Data.Map.Strict as M

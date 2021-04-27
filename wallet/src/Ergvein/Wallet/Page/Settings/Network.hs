@@ -11,27 +11,19 @@ import Data.Functor.Misc (Const2(..))
 import Reflex.Dom
 import Reflex.ExternalRef
 import Text.Read
-import Control.Monad.IO.Class
 
 import Ergvein.Node.Constants
 import Ergvein.Node.Resolve
-import Ergvein.Types.Currency
 import Sepulcas.Alert
 import Sepulcas.Elements
-import Sepulcas.Elements.Input
-import Ergvein.Wallet.Indexer.Socket
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Network
-import Ergvein.Wallet.Localization.Settings
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Worker.NodeDiscovery
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Set as S
-import qualified Data.List.NonEmpty as NE
 
 data NavbarItem = ActivePage | DisabledPage | ParametersPage
   deriving (Eq)
@@ -165,7 +157,7 @@ renderActive nsa refrE mconn = mdo
         divClass "mt-a mb-a network-name-txt" $ text nsa
         editBtn
       stD <- indexerLastStatus nsa
-      networkHoldDyn $ ffor stD $ \case
+      _ <- networkHoldDyn $ ffor stD $ \case
         Just (IndexerWrongVersion v) -> descrOption $ NSSWrongVersion v
         Just IndexerMissingCurrencies -> descrOption NSSMissingCurrencies
         Just IndexerNotSynced -> descrOption NSSNotSynced
@@ -190,7 +182,7 @@ renderActive nsa refrE mconn = mdo
         divClass "mt-a mb-a network-name-txt" $ text nsa
         editBtn
       latD <- indexerConnPingerWidget conn refrE
-      networkHoldDyn $ ffor isUpD $ \up -> if not up
+      _ <- networkHoldDyn $ ffor isUpD $ \up -> if not up
           then descrOption NSSOffline
           else do
             descrOptionDyn $ NSSLatency <$> latD

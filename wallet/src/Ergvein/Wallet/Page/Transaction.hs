@@ -13,16 +13,11 @@ import Data.Text as T
 import Data.Time
 
 import Ergvein.Text
-import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
 import Sepulcas.Elements
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.History
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import {-# SOURCE #-} Ergvein.Wallet.Page.BumpFee
-import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Transaction.View
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.List as L

@@ -18,6 +18,9 @@ module Reflex.Flunky(
   , splitFilter
   , switchDyn2
   , mkChunks
+  , EventTrigger(..)
+  , newTriggerEvent'
+  , triggerPair
   ) where
 
 import Control.Monad.IO.Class
@@ -113,3 +116,17 @@ mkChunks n vals = mkChunks' [] vals
      mkChunks' acc xs = case xs of
        [] -> acc
        _ -> let (a,b) = splitAt n xs in mkChunks' (acc ++ [a]) b
+
+-- | Helper to store strict pair of event and fire returned from `newTriggerEvent`
+data EventTrigger t a = EventTrigger {
+  triggerEvent :: !(Event t a)
+, triggerFire :: !(a -> IO ())
+}
+
+-- | Helper to wrap result of `newTriggerEvent` into strict tuple
+newTriggerEvent' :: TriggerEvent t m => m (EventTrigger t a)
+newTriggerEvent' = fmap (uncurry EventTrigger) newTriggerEvent
+
+-- | Convert strict pair into tuple back
+triggerPair :: EventTrigger t a -> (Event t a, a -> IO ())
+triggerPair (EventTrigger e f) = (e, f)

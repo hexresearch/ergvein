@@ -10,13 +10,9 @@ import Data.Map.Strict (Map)
 import Data.Text
 import Data.Word
 
-import Ergvein.Either
-import Ergvein.Text
-import Ergvein.Types.Currency
-import Ergvein.Types.Fees
 import Sepulcas.Elements
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Fee
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Validate
 

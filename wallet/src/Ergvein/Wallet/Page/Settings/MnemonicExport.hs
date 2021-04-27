@@ -9,21 +9,15 @@ import Control.Monad.IO.Class
 import Data.Text.Encoding (encodeUtf8)
 
 import Ergvein.Crypto
-import Ergvein.Types.Storage
-import Sepulcas.Clipboard
-import Sepulcas.Elements
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Password
-import Ergvein.Wallet.Localization.Settings
-import Ergvein.Wallet.Localization.Util
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.QRCode
 import Ergvein.Wallet.Password
-import Ergvein.Wallet.Platform
-import Sepulcas.Share
-import Ergvein.Wallet.Storage
-import Ergvein.Wallet.Storage.Util
 import Ergvein.Wallet.Wrapper
+import Sepulcas.Clipboard
+import Sepulcas.Elements
+import Sepulcas.Share
 
 import qualified Data.Serialize as S
 import qualified Data.Text as T

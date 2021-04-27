@@ -1,7 +1,9 @@
 module Ergvein.Wallet(
-    module X
+    module Ergvein.Wallet.Language 
+  , module Ergvein.Wallet.Main
+  , module Ergvein.Wallet.Monad
   ) where
 
-import Ergvein.Wallet.Main as X
-import Ergvein.Wallet.Monad.Unauth as X
-import Ergvein.Wallet.Settings as X
+import Ergvein.Wallet.Language
+import Ergvein.Wallet.Main
+import Ergvein.Wallet.Monad

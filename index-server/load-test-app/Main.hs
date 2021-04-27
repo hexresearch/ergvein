@@ -6,21 +6,18 @@ import Control.Monad.Trans.Except
 import Data.ByteString.Builder
 import Data.Time.Clock.POSIX
 import Data.Word
+import Ergvein.Index.Protocol.Deserialization
 import Ergvein.Index.Protocol.Serialization
+import Ergvein.Index.Protocol.Types
 import Ergvein.Index.Protocol.Utils
+import Ergvein.Index.Server.TCPService.Server
 import Ergvein.Index.Server.TCPService.Socket (sendLazy)
+import Ergvein.Index.Server.TCPService.Supervisor
 import Foreign.C.Types
 import Network.Socket hiding (recv)
-import Network.Socket.ByteString  (recv, sendAll)
+import Network.Socket.ByteString  (recv)
 import Options.Applicative
 import System.Random
-import Text.Read
-
-import Ergvein.Index.Protocol.Deserialization
-import Ergvein.Index.Protocol.Types
-import Ergvein.Index.Server.TCPService.Server
-import Ergvein.Index.Server.TCPService.Supervisor
-import Ergvein.Text
 
 import qualified Control.Exception           as E
 import qualified Data.ByteString             as BS
@@ -47,15 +44,16 @@ startServer cmd = case cmd of
   CommandLoad clientsNumber addr port -> do
     T.putStrLn "Server starting"
     withWorkersUnion $ \wrk -> do
-      replicateM_ clientsNumber $ spawnWorker wrk $ forever $ runTCPClient addr port $ reportOccurringException . receiveFilters 
+      replicateM_ clientsNumber $ spawnWorker wrk $ forever $ runTCPClient addr port $ reportOccurringException . receiveFilters
       forever $ threadDelay maxBound
   where
     reportOccurringException :: IO () -> IO ()
     reportOccurringException = (`E.catch` (print . show :: E.SomeException -> IO ()))
 
+receiveFilters :: Socket -> IO ()
 receiveFilters s = do
   handshake
-  forM_ [filterStartHeight, filterStartHeight + filterBatchSize .. filterEndHeight] receiveFilters
+  forM_ [filterStartHeight, filterStartHeight + filterBatchSize .. filterEndHeight] recvByHeight
   T.putStrLn "Done full range filters receiving"
   where
     doSend = sendLazy s . toLazyByteString . messageBuilder
@@ -71,11 +69,11 @@ receiveFilters s = do
       Right (MVersion _) <- runExceptT $ request s versionHeader
       Right (MessageHeader MVersionACKType 0) <- runExceptT $ messageHeader s
       pure ()
-    receiveFilters height = do
+    recvByHeight height = do
       doSend $ MFiltersRequest $ FilterRequest BTC height filterBatchSize
       Right (MessageHeader MFiltersResponseType filtersResponseLength) <- runExceptT $ messageHeader s
       filtersResponseBytes <- recvExact $ fromIntegral filtersResponseLength
-      let Right (MFiltersResponse !_) = parseTillEndOfInput (messageParser MFiltersResponseType) filtersResponseBytes
+      let Right (MFiltersResponse !_r) = parseTillEndOfInput (messageParser MFiltersResponseType) filtersResponseBytes
       pure ()
 
 ownVersion :: IO Version

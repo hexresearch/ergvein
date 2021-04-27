@@ -17,22 +17,19 @@ import Data.Maybe
 import Data.Time (getCurrentTime)
 import Reflex.Localize.Dom
 
-import Ergvein.Types
-import Ergvein.Wallet.Localization.Password
-import Ergvein.Wallet.Localization.PatternKey
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.PatternKey
-import Ergvein.Wallet.Util
 import Sepulcas.Elements
-import Sepulcas.Elements.Input
-import Sepulcas.Monad
-import Sepulcas.Native
-import Sepulcas.Platform
-import Sepulcas.Text
 import Sepulcas.Validate
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
+
+-- | Helper to throw error when predicate is not 'True'
+check :: MonadError a m => a -> Bool -> m ()
+check a False = throwError a
+check _ True = pure ()
 
 submitSetBtn :: MonadFrontBase t m => m (Event t ())
 submitSetBtn = submitClass "button button-outline" PWSSet

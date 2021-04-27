@@ -6,21 +6,15 @@ module Ergvein.Wallet.Page.Receive (
 import Control.Lens
 
 import Ergvein.Text
-import Ergvein.Types.Address
-import Ergvein.Types.Currency
-import Ergvein.Types.Keys
-import Ergvein.Types.Storage
-import Sepulcas.Clipboard
-import Sepulcas.Elements
-import Sepulcas.Elements.Input
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Receive
-import Ergvein.Wallet.Localization.Util
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Page.QRCode
 import Ergvein.Wallet.Wrapper
+import Sepulcas.Clipboard
+import Sepulcas.Elements
 
 import qualified Data.Text as T
 import qualified Data.List as L

@@ -15,15 +15,12 @@ import Reflex.Dom.Retractable
 
 import Sepulcas.Alert
 import Sepulcas.Elements
-import Sepulcas.Elements.Inplace
-import Sepulcas.Elements.Input
 import Sepulcas.Elements.Toggle
+import Ergvein.Wallet.IP
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Inplace
-import Ergvein.Wallet.Localization.Settings
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Settings.Network
-import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Map.Strict as Map

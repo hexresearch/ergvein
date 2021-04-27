@@ -12,6 +12,7 @@ module Sepulcas.Alert.Handler(
   ) where
 
 import Control.Monad
+import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Data.Align
 import Reflex.Dom
@@ -44,7 +45,7 @@ findAmongMap f = find (f . snd) . M.toList
 
 -- | Widget to spam alerts in popups. Call it anywhere in page to start displaying
 -- alerts in popups.
-alertHandlerWidget :: forall t m . (MonadLocalized t m, MonadAlertPoster t m, DomBuilder t m, MonadNativeLogger t m, PerformEvent t m) => Language -> m ()
+alertHandlerWidget :: forall t m . (MonadFix m, PostBuild t m, MonadIO (Performable m), TriggerEvent t m, MonadLocalized t m, MonadAlertPoster t m, DomBuilder t m, MonadNativeLogger t m, PerformEvent t m) => Language -> m ()
 alertHandlerWidget l = elAttr "div" [("class","alert-overlay"),("style","position: -webkit-sticky;")] $ mdo
   langD <- getLanguage
   errE <- newAlertEvent
@@ -52,14 +53,14 @@ alertHandlerWidget l = elAttr "div" [("class","alert-overlay"),("style","positio
   let
     accumAlerts :: T.These AlertInfo [Int] -> PushM t (Map Int (Maybe (AlertInfo, Int)))
     accumAlerts v = do
-      n <- sample . current $ countD
+      n <- sampleDyn countD
       let
         handleNewErr :: AlertInfo -> PushM t (Map Int (Maybe (AlertInfo, Int)))
         handleNewErr newErr@(AlertInfo _ _ _ _ _ msg1) = do
           let mkNew = M.singleton n (Just (newErr, 1))
-          es <- sample . current $ infosD
-          l <- sample . current $ langD
-          let filt = (\(AlertInfo _ _ _ _ _ msg2,_) -> (localizedShow l msg1 == localizedShow l msg2))
+          es <- sampleDyn infosD
+          lang <- sampleDyn langD
+          let filt = (\(AlertInfo _ _ _ _ _ msg2,_) -> (localizedShow lang msg1 == localizedShow lang msg2))
           pure $ case findAmongMap filt es of
             Nothing -> mkNew
             Just (i, (ei, c)) -> M.singleton i (Just (ei, c+1))

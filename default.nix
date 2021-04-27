@@ -15,17 +15,19 @@ let
       ergo-api = ./ergo-api;
       ergvein-checkpoint-generator = ./checkpoint-generator;
       ergvein-common = ./common;
+      ergvein-core = ./ergvein-core;
       ergvein-crypto = ./crypto;
+      ergvein-filters = ./wallet-filters;
       ergvein-index-api = ./index-api;
       ergvein-index-client = ./index-client;
       ergvein-index-protocol = ./index-protocol;
       ergvein-index-protocol-client = ./index-protocol-client;
       ergvein-index-server = ./index-server;
       ergvein-interface-ergo = ./interfaces/ergo;
+      ergvein-localize = ./ergvein-localize;
       ergvein-node-discovery = ./node-discovery;
+      ergvein-types = ./wallet-types;
       ergvein-wallet = ./wallet;
-      ergvein-wallet-filters = ./wallet-filters;
-      ergvein-wallet-types = ./wallet-types;
       ergvein-wallet-version = ./wallet-version;
       ergvein-website = ./ergvein-website;
       golomb-rice = ./golomb-rice;
@@ -36,6 +38,7 @@ let
       reflex-fork = ./reflex-fork;
       reflex-localize = ./reflex-localize;
       reflex-localize-dom = ./reflex-localize-dom;
+      reflex-main-thread = ./reflex-main-thread;
       sepulcas = ./sepulcas;
       sepulcas-android = ./sepulcas-android;
       sepulcas-desktop = ./sepulcas-desktop;
@@ -52,16 +55,18 @@ let
         "ergo-api"
         "ergvein-checkpoint-generator"
         "ergvein-common"
+        "ergvein-core"
         "ergvein-crypto"
+        "ergvein-filters"
         "ergvein-index-api"
         "ergvein-index-client"
         "ergvein-index-protocol-client"
         "ergvein-index-protocol"
         "ergvein-index-server"
         "ergvein-interface-ergo"
+        "ergvein-localize"
         "ergvein-node-discovery"
-        "ergvein-wallet-filters"
-        "ergvein-wallet-types"
+        "ergvein-types"
         "ergvein-wallet-version"
         "ergvein-wallet"
         "ergvein-website"
@@ -70,8 +75,9 @@ let
         "reflex-external-ref"
         "reflex-flunky"
         "reflex-fork"
-        "reflex-localize"
         "reflex-localize-dom"
+        "reflex-localize"
+        "reflex-main-thread"
         "sepulcas-desktop"
         "sepulcas-log"
         "sepulcas-native"

@@ -12,23 +12,22 @@ import Reflex.Dom
 import Reflex.Localize
 import Sepulcas.Elements
 import Sepulcas.Monad
-import Sepulcas.Native
 
 -- | Clipboard control widget that allows to put text into clipboard. Returns
 -- event when the text is copied with the same text.
-clipboardCopy :: (PerformUI t m, PlatformNatives) => Event t Text -> m (Event t Text)
-clipboardCopy e = runOnUiThread $ ffor e $ \str -> do
+clipboardCopy :: (PerformMain t m, PlatformNatives) => Event t Text -> m (Event t Text)
+clipboardCopy e = runOnMainThread $ ffor e $ \str -> do
   copyStr str
   pure str
 
 -- | Clipboard control widget that allows to copy text from clipboard.
-clipboardPaste :: (PerformUI t m, PlatformNatives) => Event t () -> m (Event t Text)
-clipboardPaste e = runOnUiThread $ ffor e $ const pasteStr
+clipboardPaste :: (PerformMain t m, PlatformNatives) => Event t () -> m (Event t Text)
+clipboardPaste e = runOnMainThread $ ffor e $ const pasteStr
 
 data CopyStr = StrCopy | StrPaste
 
 -- | Debug widgete for clipboard
-clipboardDebug :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, PerformUI t m, LocalizedPrint CopyStr, PlatformNatives, MonadFix m) => m ()
+clipboardDebug :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, PerformMain t m, LocalizedPrint CopyStr, PlatformNatives, MonadFix m) => m ()
 clipboardDebug = mdo
   tinput <- inputElement $ def & inputElementConfig_setValue .~ pastedE
   copyE <- buttonClass (pure "form__btn confirm-button") StrCopy
@@ -39,7 +38,7 @@ clipboardDebug = mdo
   pure ()
 
 -- | Helper to make copying button
-copyButton :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, PerformUI t m, LocalizedPrint CopyStr, PlatformNatives) => Dynamic t Text -> m (Event t Text)
+copyButton :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, PerformMain t m, LocalizedPrint CopyStr, PlatformNatives) => Dynamic t Text -> m (Event t Text)
 copyButton textD = do
   butE <- buttonClass (pure "form__btn confirm-button") StrCopy
   clipboardCopy $ current textD `tag` butE

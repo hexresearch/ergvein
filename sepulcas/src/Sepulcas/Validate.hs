@@ -20,16 +20,11 @@ import Data.Ratio
 import Data.Validation hiding (validate)
 import Data.Word
 import Reflex.Dom
-import Reflex.Network
 import Reflex.Flunky
 import Reflex.Localize
 import Reflex.Localize.Dom
-import Text.Parsec
-
 import Sepulcas.Either
-import Sepulcas.Text
-
-import qualified Data.Text as T
+import Text.Parsec
 
 newtype NonEmptyString = NonEmptyString String deriving (Show)
 newtype PositiveRational = PositiveRational Rational deriving (Show)

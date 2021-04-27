@@ -7,16 +7,12 @@ module Ergvein.Wallet.Widget.Input.BTC.Recipient(
 
 import Data.Maybe
 
-import Ergvein.Either
-import Ergvein.Types
+import Ergvein.Wallet.Localize
+import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Validate
 import Sepulcas.Camera
 import Sepulcas.Clipboard
 import Sepulcas.Elements
-import Ergvein.Wallet.Localization.Send
-import Ergvein.Wallet.Localization.Settings()
-import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Validate
 
 import qualified Data.Text as T
 
