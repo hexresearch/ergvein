@@ -61,6 +61,9 @@ instance {-# OVERLAPPABLE #-} (MonadPreWalletConstr t m, HasStoreDir (Performabl
   setWalletInfoNow _ v = lift . runReaderT (setWalletInfoNow (Proxy :: Proxy (PreWalletM t m)) v) =<< asks unauth'wallet
   {-# INLINE setWalletInfoNow #-}
 
+  getWalletInfoMutex = runReaderT getWalletInfoMutex =<< asks unauth'wallet
+  {-# INLINE getWalletInfoMutex #-}
+
 newUnauthEnv :: (MonadIO m, TriggerEvent t m, MonadHasMain m, MonadSettingsConstr t m) => Settings -> m (UnauthEnv t)
 newUnauthEnv settings = do
   senv <- newSettingsEnv settings

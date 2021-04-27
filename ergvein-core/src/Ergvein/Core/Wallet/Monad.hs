@@ -22,6 +22,7 @@ module Ergvein.Core.Wallet.Monad(
   , module Ergvein.Core.Store.Monad
   ) where
 
+import Control.Concurrent
 import Control.Lens
 import Control.Monad (join)
 import Control.Monad.Fix
@@ -82,6 +83,8 @@ class MonadPreWalletConstr t m => MonadPreWallet t (m :: * -> *) | m -> t where
   -- implement actual login/logout. Some implementations may ingore 'Nothing'
   -- values if their semantic require persistent authorisation.
   setWalletInfoNow :: Proxy m -> Maybe WalletInfo -> Performable m ()
+  -- | Get mutex that must be taken for synchronize write access to wallet info.
+  getWalletInfoMutex :: m (MVar ())
 
 -- | Return flag that comes 'True' as soon as user opens wallet
 isInsideWallet :: MonadPreWallet t m => m (Dynamic t Bool)
@@ -164,7 +167,7 @@ getCurrentHeight :: (MonadWallet t m, MonadStorage t m, MonadNode t m) => Curren
 getCurrentHeight c = do
   psD <- getPubStorageD
   startHeightD :: Dynamic t BlockHeight <- case c of
-    BTC -> fmap (maybe 0 fromIntegral) <$> getStartHeightBTC
+    BTC -> fmap (maybe 0 fromIntegral) <$> getNodeHeightBtc
     _ -> pure 0
   pure $ do
     ps <- psD

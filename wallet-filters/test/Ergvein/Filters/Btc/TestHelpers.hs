@@ -24,6 +24,11 @@ loadAddress t =
   fromMaybe (error "Failed to parse address")
     $ stringToAddr btcTest t
 
+loadAddressMainnet :: Text -> Address
+loadAddressMainnet t =
+  fromMaybe (error "Failed to parse address")
+    $ stringToAddr btc t
+
 loadScript :: Text -> ByteString
 loadScript = hex2bs
 

@@ -77,6 +77,9 @@ instance (MonadPreWalletConstr t m, HasStoreDir (Performable m)) => MonadPreWall
   setWalletInfoNow _ v = lift . runReaderT (setWalletInfoNow (Proxy :: Proxy (PreWalletM t m)) v) =<< getPreWalletEnv
   {-# INLINE setWalletInfoNow #-}
 
+  getWalletInfoMutex = runReaderT getWalletInfoMutex =<< getPreWalletEnv
+  {-# INLINE getWalletInfoMutex #-}
+
 newBaseEnv :: MonadReflex t m
   => Settings
   -> Chan (IO ()) -- ^ UI callbacks channel
@@ -152,6 +155,9 @@ instance {-# OVERLAPPABLE #-} (MonadPreWalletConstr t m, HasStoreDir (Performabl
 
   setWalletInfoNow _ v = lift . runReaderT (setWalletInfoNow (Proxy :: Proxy (WalletM t m)) v) =<< getWalletEnv
   {-# INLINE setWalletInfoNow #-}
+
+  getWalletInfoMutex = runReaderT getWalletInfoMutex =<< getPreWalletEnv
+  {-# INLINE getWalletInfoMutex #-}
 
 instance Monad m => HasPreWalletEnv t (ErgveinM t m) where
   getPreWalletEnv = do

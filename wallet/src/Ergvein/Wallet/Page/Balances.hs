@@ -12,11 +12,13 @@ import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Status.Widget
 import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
+import Ergvein.Wallet.Debug
 
 import qualified Data.List as L
 
 balancesPage :: MonadFront t m=> m ()
 balancesPage = do
+  -- debugWidget
   walletName <- getWalletName
   title <- localized walletName
   wrapper False title (Just $ pure balancesPage) $ do

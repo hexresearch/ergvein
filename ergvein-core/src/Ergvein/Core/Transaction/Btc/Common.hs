@@ -114,7 +114,7 @@ checkTxOutBtcLog addr txout = case checkTxOutBtc addr txout of
     pure False
   Right res -> pure res
 
--- | Checks given TxOut wheather it contains given address.
+-- | Checks given TxOut whether it contains given address.
 checkTxOutBtc :: BtcAddress -> TxOut -> Either Text Bool
 checkTxOutBtc addr txOut = do
   decodedOutput <- decodeBtcOutHelper txOut
