@@ -53,7 +53,6 @@ frontendCss = do
   sendPageCss
   settingsCss
   mnemonicExportCss
-  sharePageCss
   validateCss
   wrapperCss
   testnetDisclaimerCss
@@ -748,33 +747,6 @@ infoPageCss = do
         in padding px3 px10 px3 px10
     border solid (px 1) $ rgb 140 140 140
     let px4 = px 4 in borderRadius px4 px4 px4 px4
-
-sharePageCss :: Css
-sharePageCss = do
-  ".share-v-spacer" ? do
-    height $ px 20
-  ".share-qrcode-container" ? do
-    width $ px 252
-    height $ px 252
-    justifyContent center
-    let px0 = px 0 in padding px0 px0 px0 $ px 8
-    margin (px 0) auto (px 0) auto
-  ".share-buttons-wrapper" ? do
-    display grid
-    gridTemplateColumns [fr 1, fr 1]
-    gridGap $ rem 1
-  ".share-block-value" ? do
-    --textAlign $ alignSide sideLeft
-    textAlign center
-    let px3  = px 5
-        px10 = px 10
-        in padding px3 px10 px3 px10
-    border solid (px 1) $ rgb 140 140 140
-    let px4 = px 4 in borderRadius px4 px4 px4 px4
-    marginBottom $ px 15
-  ".share-image-qrcode" ? do
-    width $ px 256
-    height $ px 256
 
 loadingWidgetCss :: Css
 loadingWidgetCss = do
