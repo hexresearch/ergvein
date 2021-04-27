@@ -1,4 +1,3 @@
-* Update to 2.0 protocol version for indexer. Breaking change. #882
-* Late resolution of indexer domains #880
-* Display placeholder in empty transaction history #873
-* Added ACCESS_NETWORK_STATE permission #872
+* Reduce lags on getting current height 
+* Send page redesign
+* RBF is fully functional on send and receive
