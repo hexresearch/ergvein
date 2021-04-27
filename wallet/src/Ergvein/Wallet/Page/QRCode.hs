@@ -13,13 +13,19 @@ import Ergvein.Wallet.Page.Canvas
 
 import qualified Data.Vector.Unboxed as UV
 
+-- Size of one pixel of QR code
+resolutionRate :: Int
+resolutionRate = 10
+
 qrCodeWidget :: MonadFrontBase t m => Text -> m (Element EventResult GhcjsDomSpace t, CanvasOptions)
 qrCodeWidget txt = divClass "qrcode-container" $ mdo
   let (qrCodeData, qrCodeSize) = qrcPerCanvas qrData
-      cOpts = CanvasOptions qrCodeSize qrCodeSize "qrcode" "qrcode"
+      padding = 4 * resolutionRate -- Padding is equal to 4 pixels of QR code
+      canvasSize = qrCodeSize + 2 * padding
+      cOpts = CanvasOptions canvasSize canvasSize "qrcode" "qrcode"
       qrData = qrGen txt
   canvasEl <- createCanvas cOpts
-  rawJSCall (_element_raw canvasEl) $ drawGridT qrCodeSize qrCodeSize qrCodeData GridStrokeWhite
+  rawJSCall (_element_raw canvasEl) $ drawGridT qrCodeSize qrCodeSize padding qrCodeData GridStrokeWhite
   pure (canvasEl, cOpts)
 
 qrCodeWidgetWithData :: MonadFrontBase t m => Text -> m (Dynamic t (Maybe Text))
@@ -37,7 +43,7 @@ qrcPerCanvas mqrI = case mqrI of
   Nothing -> ([], 0)
   Just qrI -> (zip qrFillList $ colList qrSize qrCount, qrCount * resolutionRate)
     where
-      resolutionRate = 10
+      
       qrFillList = fmap boolfill $ UV.toList $ qrImageData qrI
       qrLen = (UV.length . qrImageData) $ qrI
       qrCount = floor $ sqrt $ ((fromIntegral qrLen) :: Double)

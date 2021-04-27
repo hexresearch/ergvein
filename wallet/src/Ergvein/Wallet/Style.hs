@@ -1076,7 +1076,6 @@ receiveCss = do
     gridTemplateColumns [fr 1, fr 1]
     gridGap $ rem 1
   ".qrcode" ? do
-    padding (rem 2) (rem 2) (rem 2) (rem 2)
     width $ pct 100
     maxWidth $ rem 30
   ".receive-buttons-wrapper" ? do

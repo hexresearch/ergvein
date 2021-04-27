@@ -90,11 +90,11 @@ createCanvas CanvasOptions{..} = do
       , ("class" , coClass)
       ]
 
-drawGridT :: Int -> Int -> [(Maybe Int, Square)] -> GridStrokeColor -> Text
-drawGridT cW cH r strokeColor = (clearCanvasT cW cH)
+drawGridT :: Int -> Int -> Int -> [(Maybe Int, Square)] -> GridStrokeColor -> Text
+drawGridT cW cH padding r strokeColor = (clearCanvasT fullW fullH)
                     <> beginPathT
                     <> " ctx.fillStyle = \"#FFFFFF\"; "
-                    <> " ctx.fillRect(0,0," <> (showt cW) <> "," <> (showt cH) <> "); "
+                    <> " ctx.fillRect(0,0," <> (showt fullW) <> "," <> (showt fullH) <> "); "
                     <> beginPathT
                     <> " ctx.fillStyle = \"#000000\"; "
                     <> (T.concat (fmap fillRects r))
@@ -103,8 +103,11 @@ drawGridT cW cH r strokeColor = (clearCanvasT cW cH)
   where
     strokeColorStr = if strokeColor == GridStrokeWhite then "\"#FFFFFF\"" else "\"#000000\""
     fillRects (mN, (a,b,c,d)) = case mN of
-      Just _ -> fillRectT a b c d
-      Nothing -> rectT a b c d
+      Just _ -> fillRectT (a + padding') (b + padding') c d
+      Nothing -> rectT (a + padding') (b + padding') c d
+    fullW = cW + 2 * padding
+    fullH = cH + 2 * padding
+    padding' = fromIntegral padding
 
 drawGridBorderT :: Int -> Int -> [(Maybe Int, Square)] -> Text
 drawGridBorderT cW cH r = (clearCanvasT cW cH)
@@ -222,8 +225,8 @@ drawRndT w h lst = drawRoundLstT w h lst
 
 drawLineT :: Int -> Int -> Double -> Double -> Double -> Double -> (DrawCommand,(Double,Double)) -> [(Maybe Int, Square)] -> Text
 drawLineT canvasW canvasH coordX coordY _ _ (a,(cntX,cntY)) r = case a of
-  Clear ->  drawGridT canvasW canvasH r GridStrokeBlack
-  AddSquare -> (drawGridT canvasW canvasH r GridStrokeBlack)
+  Clear ->  drawGridT canvasW canvasH 0 r GridStrokeBlack
+  AddSquare -> (drawGridT canvasW canvasH 0 r GridStrokeBlack)
             <> (moveToT cntX cntY)
             <> (lineToT coordX coordY)
             <> strokeT
