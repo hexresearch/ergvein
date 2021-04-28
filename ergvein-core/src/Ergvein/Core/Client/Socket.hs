@@ -69,7 +69,6 @@ initIndexerConnection sname sa msgE = mdo
     , _socketConfSend   = fmap serializeMessage sendE
     , _socketConfPeeker = peekMessage sa
     , _socketConfClose  = leftmost [closeE, versionMismatchDE, currenciesMismatchDE, currenciesNotSyncedDE]
-    , _socketConfReopen = Just (1, 2) -- reconnect after 1 seconds 2 retries
     , _socketConfProxy  = proxyD
     }
   handshakeE <- performEvent $ ffor (socketConnected s) $ const $ mkVers
@@ -131,7 +130,7 @@ initIndexerConnection sname sa msgE = mdo
       indexConAddr = sa
     , indexConName = sname
     , indexConIndexerVersion = versionD
-    , indexConClosedE = () <$ _socketClosed s
+    , indexConClosedE = _socketClosed s
     , indexConOpensE = openE
     , indexConIsUp = shakeD
     , indexConRespE = respE
