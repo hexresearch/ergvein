@@ -63,6 +63,7 @@ library
     Ergvein.Core.Password
     Ergvein.Core.Platform
     Ergvein.Core.Resolve
+    Ergvein.Core.Restore
     Ergvein.Core.Scan
     Ergvein.Core.Settings
     Ergvein.Core.Settings.Constants
