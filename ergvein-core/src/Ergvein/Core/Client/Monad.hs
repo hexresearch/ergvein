@@ -40,8 +40,9 @@ import Network.Socket (SockAddr)
 import Reflex
 import Reflex.ExternalRef
 
-import Ergvein.Index.Protocol.Types (Message(..), ProtocolVersion)
+import Ergvein.Core.Node.Socket
 import Ergvein.Core.Settings
+import Ergvein.Index.Protocol.Types (Message(..), ProtocolVersion)
 import Ergvein.Node.Constants
 import Ergvein.Types.Currency
 import Ergvein.Types.Transaction
@@ -66,7 +67,7 @@ data IndexerConnection t = IndexerConnection {
   indexConAddr :: !SockAddr
 , indexConName :: !Text
 , indexConIndexerVersion :: !(Dynamic t (Maybe ProtocolVersion))
-, indexConClosedE :: !(Event t ())
+, indexConClosedE :: !(Event t CloseReason)
 , indexConOpensE :: !(Event t ())
 , indexConIsUp :: !(Dynamic t Bool)
 , indexConRespE :: !(Event t Message)

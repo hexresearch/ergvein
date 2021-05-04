@@ -79,9 +79,6 @@ data SocketConf t a = SocketConf {
 , _socketConfPeeker :: !(ReaderT PeekerEnv IO a)
 -- | Event that externaly closes the connection
 , _socketConfClose  :: !(Event t ())
--- | Timeout after which we try to reconnect. `Nothing` means to not reconnect.
--- Second number means amount of tries of reconnection after which close event is fired.
-, _socketConfReopen :: !(Maybe (NominalDiffTime, Int))
 -- | Configuration of SOCKS proxy. If the value changes, connection is reopened.
 , _socketConfProxy  :: !(Dynamic t (Maybe SocksConf))
 } deriving (Generic)
@@ -97,14 +94,14 @@ data SocketStatus =
 -- | Information why socket was closed
 data CloseReason =
     CloseGracefull -- ^ Socket was closed gracefully and not going to be reopened
-  | CloseError !Bool !CloseException -- ^ Socket was closed by exception. Boolean marks is the connection restarting.
+  | CloseError !CloseException -- ^ Socket was closed by exception.
   deriving (Show, Generic)
 
 -- | Check whether the closing of socket is not recoverable
 isCloseFinal :: CloseReason -> Bool
 isCloseFinal r = case r of
   CloseGracefull -> True
-  CloseError b _ -> not b
+  _ -> False
 
 -- | Widget that is created with `socket` and allows to get results from
 -- the socket.
@@ -159,29 +156,18 @@ socket SocketConf{..} = fmap switchSocket $ networkHoldDyn $ ffor _socketConfPro
   (readErE, readErFire) <- newTriggerEvent
   (inE, inFire) <- newTriggerEvent
   statusD <- holdDyn SocketInitial statusE
-  reconnectE <- case _socketConfReopen of
-    Just (dt, _) -> do
-      let notFinalE = fforMaybe closeE $ \cr -> if isCloseFinal cr then Nothing else Just ()
-      performEvent_ $ ffor notFinalE $ const $ modifyExternalRef reconnTriesRef $ \i -> (i+1, ())
-      delay dt notFinalE
-    _ -> pure never
   -- performEvent_ $ ffor closeE $ logWrite . showt
   -- performEvent_ $ ffor reconnectE $ logWrite . showt
   -- performEvent_ $ ffor (updated triesD) $ logWrite . showt
-  let connectE = leftmost [reconnectE, buildE]
+  let connectE = buildE
   let closeCb :: Maybe CloseException -> IO ()
       closeCb e = do
         -- logWrite $ showt e
         statusFire SocketClosed
-        i <- readExternalRef reconnTriesRef
-        let doReconnecting = case _socketConfReopen of
-              Nothing -> False
-              Just (_, n) -> i < n
-        closeFire $ maybe CloseGracefull (CloseError doReconnecting) e
+        closeFire $ maybe CloseGracefull CloseError e
   intVar <- liftIO $ newTVarIO False
   sendChan <- liftIO newTChanIO
   performEvent_ $ ffor closeE $ const $ liftIO $ atomically $ writeTVar intVar True
-  performEvent_ $ ffor reconnectE $ const $ liftIO $ atomically $ writeTVar intVar False
   performEvent_ $ ffor _socketConfSend $ liftIO . atomically . writeTChan sendChan
   performEvent_ $ ffor _socketConfClose $ const $ liftIO $ closeCb Nothing
   performFork_  $ ffor connectE $ const $ liftIO $ do
