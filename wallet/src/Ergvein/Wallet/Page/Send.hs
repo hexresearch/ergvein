@@ -64,7 +64,7 @@ sendWidget cur mInit title navbar thisWidget = wrapperNavbar False title thisWid
     recipientD <- divClass "mb-1" $ recipientWidget recipientInit submitE
     amountD <- divClass "mb-1" $ sendAmountWidget amountInit submitE
     feeD <- divClass "mb-1" $ btcFeeSelectionWidget FSRate feeInit Nothing submitE
-    rbfEnabledD <- divClass "mb-2" $ toggler SSRbf (constDyn rbfInit')
+    rbfEnabledD <- divClass "mb-2" $ fmap not <$> toggler SSRbf (constDyn rbfInit')
     submitE <- outlineSubmitTextIconButtonClass "w-100 mb-0" SendBtnString "fas fa-paper-plane fa-lg"
     let goE = flip push submitE $ \_ -> do
           mrecipient <- sampleDyn recipientD
@@ -173,7 +173,7 @@ confirmationInfoWidget (unit, amount) estFee rbfEnabled addr mTx = divClass "sen
         localizedText a
         text ": "
       let wordBreakClass = if wordBreak then "word-break-all" else ""
-      void $ elClass "span" wordBreakClass $ mb
+      void $ elClass "span" wordBreakClass mb
 
     makeTxIdLink :: MonadFront t m => Text -> m ()
     makeTxIdLink txIdText = do
@@ -204,7 +204,7 @@ txSignSendWidget addr unit amount _ changeKey change pick rbfEnabled = mdo
   let keyTxt = btcAddrToString $ xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key changeKey
       outs = [(btcAddrToString addr, amount), (keyTxt, change)]
       etx = buildAddrTx btcNetwork rbfEnabled (upPoint <$> pick) outs
-      inputsAmount = sum $ (btcUtxo'amount . upMeta) <$> pick
+      inputsAmount = sum $ btcUtxo'amount . upMeta <$> pick
       outputsAmount = amount + change
       estFee = inputsAmount - outputsAmount
   confirmationInfoWidget (unit, amount) estFee rbfEnabled addr Nothing
@@ -212,9 +212,9 @@ txSignSendWidget addr unit amount _ changeKey change pick rbfEnabled = mdo
   etxE <- either' etx (const $ confirmationErrorWidget CEMTxBuildFail >> pure never) $ \tx -> do
     fmap switchDyn $ networkHoldDyn $ ffor showSignD $ \b -> if not b then pure never else do
       signE <- outlineButton SendBtnSign
-      etxE' <- fmap (fmapMaybe id) $ withWallet $ (signTxWithWallet tx pick) <$ signE
+      etxE' <- fmap (fmapMaybe id) $ withWallet $ signTxWithWallet tx pick <$ signE
       void $ networkHold (pure ()) $ ffor etxE' $ either (const $ void $ confirmationErrorWidget CEMSignFail) (const $ pure ())
-      handleDangerMsg $ (either (Left . T.pack) Right) <$> etxE'
+      handleDangerMsg $ either (Left . T.pack) Right <$> etxE'
   fmap switchDyn $ networkHold (pure never) $ ffor etxE $ \tx -> do
     sendE <- el "div" $ outlineButton SendBtnSend
     pure $ (tx, unit, amount, estFee, addr) <$ sendE
