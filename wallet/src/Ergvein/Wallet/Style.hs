@@ -452,15 +452,15 @@ toggleSwitchCss =
       borderRadius knobBorderRadius knobBorderRadius knobBorderRadius knobBorderRadius
       backgroundColor black
       margin0
-      transitions [("left", (sec 0.3), linear, (sec 0)), ("right", (sec 0.3), linear, (sec 0))]
+      transitions [("left", sec 0.3, linear, sec 0), ("right", sec 0.3, linear, sec 0)]
 
-    ".toggle-switch input:checked::before" ? do
+    ".toggle-switch input:not(:checked)::before" ? do
       opacity 0
 
-    ".toggle-switch input:not(:checked)::after" ? do
+    ".toggle-switch input:checked::after" ? do
       opacity 0
 
-    ".toggle-switch input:not(:checked) + label" ? do
+    ".toggle-switch input:checked + label" ? do
       left $ toggleSwitchWidth @-@ (knobMargin @+@ knobSize)
 
 passwordCss :: Css

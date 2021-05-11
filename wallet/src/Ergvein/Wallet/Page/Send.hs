@@ -64,7 +64,7 @@ sendWidget cur mInit title navbar thisWidget = wrapperNavbar False title thisWid
     recipientD <- divClass "mb-1" $ recipientWidget recipientInit submitE
     amountD <- divClass "mb-1" $ sendAmountWidget amountInit submitE
     feeD <- divClass "mb-1" $ btcFeeSelectionWidget FSRate feeInit Nothing submitE
-    rbfEnabledD <- divClass "mb-2" $ fmap not <$> toggler SSRbf (constDyn rbfInit')
+    rbfEnabledD <- divClass "mb-2" $ toggler SSRbf (constDyn rbfInit')
     submitE <- outlineSubmitTextIconButtonClass "w-100 mb-0" SendBtnString "fas fa-paper-plane fa-lg"
     let goE = flip push submitE $ \_ -> do
           mrecipient <- sampleDyn recipientD
