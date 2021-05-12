@@ -225,6 +225,7 @@ hasServices addr = hasNetwork && hasWitness
     hasNetwork = BI.testBit (naServices addr) 0
     hasWitness = BI.testBit (naServices addr) 3
 
+
 -- | Creates a dynamic storage for BTC nodes urls
 -- Collects saStorageSize urls
 -- Takes an event to remove an address from the storage
