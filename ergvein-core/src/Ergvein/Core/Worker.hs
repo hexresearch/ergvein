@@ -11,6 +11,8 @@ module Ergvein.Core.Worker(
   , module Ergvein.Core.Worker.Store
   ) where
 
+import Control.Monad (void)
+
 import Ergvein.Core.Worker.Discovery
 import Ergvein.Core.Worker.Fees
 import Ergvein.Core.Worker.Height
@@ -25,8 +27,9 @@ import Ergvein.Core.Scan
 import Ergvein.Core.Status
 import Ergvein.Core.Store
 import Ergvein.Core.Wallet
-import Reflex.Main.Thread
+import Ergvein.Types.Storage
 import Reflex.ExternalRef
+import Reflex.Main.Thread
 
 import qualified Data.Set as S
 
@@ -39,6 +42,7 @@ spawnWorkers :: (MonadStorage t m
   , MonadSettings t m)
   => m ()
 spawnWorkers = do
+  setActiveCurrencies
   storeWorker
   scanner
   btcNodeController
@@ -47,6 +51,15 @@ spawnWorkers = do
   feesWorker
   pubKeysGenerator
   pure ()
+
+setActiveCurrencies :: (MonadStorage t m
+  , MonadSettings t m
+  , MonadWallet t m)
+  => m ()
+setActiveCurrencies = do
+  buildE <- getPostBuild
+  activeCurrencies <- _pubStorage'activeCurrencies <$> getPubStorage
+  void . updateActiveCurs $ fmap (const . S.fromList) $ activeCurrencies <$ buildE
 
 -- | Workers that spawns when user opens application but hasn't yet opened a wallet.
 spawnPreWorkers :: (MonadClient t m, MonadHasMain m, MonadSettings t m)

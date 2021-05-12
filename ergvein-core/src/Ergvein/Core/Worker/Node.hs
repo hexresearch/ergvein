@@ -219,15 +219,12 @@ handleSAStore sact acc = case sact of
 -- We only want to connect to nodes that support these services:
 -- NODE_NETWORK: this node can be asked for full blocks instead of just headers and mempool.
 -- NODE_WITNESS: see BIP 0144
---
--- Also we do not want to connect to pruned peers:
--- NODE_NETWORK_LIMITED: see BIP 0159
 hasServices :: NetworkAddress -> Bool
-hasServices addr = hasNetwork && hasWitness && hasNoNetworkLimited
+hasServices addr = hasNetwork && hasWitness
   where
     hasNetwork = BI.testBit (naServices addr) 0
     hasWitness = BI.testBit (naServices addr) 3
-    hasNoNetworkLimited = not $ BI.testBit (naServices addr) 10
+
 
 -- | Creates a dynamic storage for BTC nodes urls
 -- Collects saStorageSize urls
