@@ -216,6 +216,18 @@ handleSAStore sact acc = case sact of
         else take (ltotal - saStorageSize) sas
   SARemove sa -> Just $ S.delete sa acc
 
+-- We only want to connect to nodes that support these services:
+-- NODE_NETWORK: this node can be asked for full blocks instead of just headers and mempool.
+-- NODE_WITNESS: see BIP 0144
+--
+-- Also we do not want to connect to pruned peers:
+-- NODE_NETWORK_LIMITED: see BIP 0159
+hasServices :: NetworkAddress -> Bool
+hasServices addr = hasNetwork && hasWitness && hasNoNetworkLimited
+  where
+    hasNetwork = BI.testBit (naServices addr) 0
+    hasWitness = BI.testBit (naServices addr) 3
+    hasNoNetworkLimited = not $ BI.testBit (naServices addr) 10
 
 -- | Creates a dynamic storage for BTC nodes urls
 -- Collects saStorageSize urls
@@ -241,8 +253,8 @@ mkUrlBatcher sel remE = mdo
           pure $ fforMaybe (nodeconRespE node) $ \case
             MAddr (Addr nats) -> let
               addrs = snd $ unzip nats
-              segwits = filter (\u -> BI.testBit (naServices u) 3) addrs
-              in Just $ fmap naAddress segwits
+              verifiedAddrs = filter hasServices addrs
+              in Just $ fmap naAddress verifiedAddrs
             _ -> Nothing
         pure $ leftmost es
   sasE <- performFork $ ffor hostAddrsE $ \hs ->
