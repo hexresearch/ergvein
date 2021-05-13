@@ -143,6 +143,7 @@ scannerBtc = void $ workflow checkScannedHeight
       scanE <- scanBtcBlocks keys hashesE
       removedReplacedE <- removeTxsReplacedByFee =<< delay 1 (void scanE)
       keysE <- refreshBtcKeys removedReplacedE
+      void $ updateWalletStatusNormal BTC $ const WalletStatusNormal'synced <$ keysE
       performEvent_ $ ffor keysE $ \ks ->
         logWrite $ "[scannerBtc][scanBatchKeys]: Scan done. Got " <> showt (V.length ks) <> " extra keys"
       let (nullE, extraE) = splitFilter V.null keysE
