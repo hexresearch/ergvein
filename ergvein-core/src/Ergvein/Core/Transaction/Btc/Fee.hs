@@ -11,27 +11,61 @@ module Ergvein.Core.Transaction.Btc.Fee(
   , markedReplaceable
   , replacesByFee
   , haveHigherFee
+  , isDust
 ) where
 
 import Control.Monad (forM_)
-import Data.Maybe
-import Data.Ratio
+import Data.Maybe (catMaybes, isNothing)
+import Data.Ratio ((%))
 import Data.Serialize
-import Data.Word
-
-import Network.Haskoin.Network
-import Network.Haskoin.Transaction (Tx(..), TxIn(..), TxOut(..), WitnessData)
-
+  ( Put,
+    Serialize (put),
+    encode,
+    putByteString,
+    runPut,
+  )
+import Data.Word (Word32, Word64)
 import Ergvein.Core.Store.Monad
 import Ergvein.Core.Transaction.Btc.Common
 import Ergvein.Types.Address
+import Ergvein.Types.Utxo.Btc
+import Network.Haskoin.Network (VarInt (VarInt), putVarInt)
+import Network.Haskoin.Transaction (Tx (..), TxIn (..), TxOut (..), WitnessData)
 import Sepulcas.Native
 
 import qualified Data.ByteString                    as B
 import qualified Data.List                          as L
 
-weightUnitsToVBytes :: Word64 -> Int
-weightUnitsToVBytes wu = ceiling $ wu % 4
+-- Min feerate for defining dust. Has units of Sat/vbyte.
+dustRelayFee :: Int
+dustRelayFee = 3
+
+-- 4 weight units equals to one virtual byte
+witnessScaleFactor :: Int
+witnessScaleFactor = 4
+
+isSegwit :: TxOut -> Bool
+isSegwit txOut = case getBtcOutputType txOut of
+  Just BtcP2WPKH -> True
+  Just BtcP2WSH -> True
+  _ -> False
+
+getDustThreshold :: TxOut -> Int
+getDustThreshold txOut = dustRelayFee * inOutSize
+  where
+    inOutSize :: Int
+    inOutSize = if isSegwit txOut
+      then getSerializedSize txOut + (32 + 4 + 1 + (107 `div` witnessScaleFactor) + 4)
+      else getSerializedSize txOut + (32 + 4 + 1 + 107 + 4)
+
+isDust :: TxOut -> Bool
+isDust txOut = fromIntegral (outValue txOut) < getDustThreshold txOut
+
+weightUnitsToVBytes :: Int -> Int
+weightUnitsToVBytes wu = ceiling $ wu % witnessScaleFactor
+
+getSerializedSize :: Serialize a => a -> Int
+getSerializedSize = B.length . encode
 
 calcTxVsize :: Tx -> Int
 calcTxVsize tx
@@ -39,7 +73,7 @@ calcTxVsize tx
   | otherwise = calcWitnessTxVsize tx
 
 calcLegacyTxVsize :: Tx -> Int
-calcLegacyTxVsize = B.length . encode
+calcLegacyTxVsize = getSerializedSize
 
 -- From haskoin-core
 putInOut :: Tx -> Put
@@ -64,7 +98,7 @@ calcWitnessTxVsize :: Tx -> Int
 calcWitnessTxVsize tx = weightUnitsToVBytes $ overhead + inOut + witnessData
   where
     overhead = 34 -- version 16 WU + marker 1 WU + flag 1 WU + locktime 16 WU
-    inOut = (* 4) $ fromIntegral $ B.length $ runPut $ putInOut tx
+    inOut = (* witnessScaleFactor) $ fromIntegral $ B.length $ runPut $ putInOut tx
     witnessData = fromIntegral $ B.length $ runPut $ putWitnessData $ txWitness tx
 
 type BtcOutputType = BtcAddressType
@@ -109,12 +143,12 @@ guessTxVsize ::
   -> [BtcOutputType]
   -> Int
 guessTxVsize inputs outputs =
-  weightUnitsToVBytes $ sum (getInputWeight <$> inputs) + sum (getOutputWeight <$> outputs) + overhead
+  weightUnitsToVBytes $ fromIntegral $ sum (getInputWeight <$> inputs) + sum (getOutputWeight <$> outputs) + overhead
   where
     varIntSize = B.length . encode . VarInt . fromIntegral
     segWitInputs = filter (\x -> x /= BtcP2PKH && x /= BtcP2SH) inputs
     witnessOverheadWeight = if null segWitInputs then 0 else 2 + varIntSize (length segWitInputs)
-    overhead = fromIntegral $ (4 * (8 + varIntSize (length inputs) +  varIntSize (length outputs))) + witnessOverheadWeight
+    overhead = fromIntegral $ (witnessScaleFactor * (8 + varIntSize (length inputs) +  varIntSize (length outputs))) + witnessOverheadWeight
 
 -- | Calculates tx fee. If any of the parent txs was not found in the wallet storage then it returns Nothing.
 getTxFee :: (HasTxStorage m, PlatformNatives) => Tx -> m (Maybe Word64)
@@ -153,7 +187,7 @@ replacesByFee tx1 tx2 = do
     (False, _, _) -> pure $ Just False
     (_, False, _) -> pure $ Just False
     (True, True, Just False) -> pure $ Just False
-    (True, True, Nothing) -> pure $ Nothing
+    (True, True, Nothing) -> pure Nothing
     (True, True, Just True) -> pure $ Just True
   where
     shareInputs = haveCommonInputs tx1 tx2
