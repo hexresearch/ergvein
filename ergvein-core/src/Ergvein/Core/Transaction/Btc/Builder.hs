@@ -5,14 +5,14 @@ module Ergvein.Core.Transaction.Btc.Builder(
   , buildAddrTx
 ) where
 
-import Data.Word
 import Data.Text (Text)
-import Network.Haskoin.Transaction (Tx(..), TxIn(..), TxOut(..), OutPoint(..))
-import Network.Haskoin.Script (ScriptOutput(..), encodeOutputBS)
-import Network.Haskoin.Address (stringToAddr, addressToOutput)
+import Data.Word (Word64)
+import Network.Haskoin.Address (addressToOutput, stringToAddr)
+import Network.Haskoin.Script (ScriptOutput (..), encodeOutputBS)
+import Network.Haskoin.Transaction (OutPoint (..), Tx (..), TxIn (..), TxOut (..))
 
-import Ergvein.Types.Transaction
 import Ergvein.Types.Network (Network)
+import Ergvein.Types.Transaction (RbfEnabled)
 
 import qualified Data.Text                          as T
 import qualified Data.ByteString                    as B
@@ -24,7 +24,7 @@ buildTx rbfEnabled xs ys =
   mapM fo ys >>= \os -> return $ Tx 1 (map fi xs) os [] 0
   where
     fi outPoint = TxIn outPoint B.empty rbf
-    rbf = if rbfEnabled then (maxBound - 2) else maxBound
+    rbf = if rbfEnabled then maxBound - 2 else maxBound
     fo (o, v)
       | v <= 2100000000000000 = return $ TxOut v $ encodeOutputBS o
       | otherwise = Left $ "buildTx: Invalid amount " ++ show v
