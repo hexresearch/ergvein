@@ -57,10 +57,10 @@ btcFeeSelectionWidget :: forall t m l . (MonadFront t m, LocalizedPrint l)
 btcFeeSelectionWidget lbl minit mPrevRate submitE = do
   feesD <- getFeesD
   initFees <- sampleDyn feesD
-  let getInitFeeRateByLvl lvl = maybe Nothing (Just . fst . extractFee lvl) (M.lookup BTC initFees)
+  let getInitFeeRateByLvl lvl = fmap (fst . extractFee lvl) (M.lookup BTC initFees)
       (initFeeMode, mInitFeeRate) = maybe (BFMMid, getInitFeeRateByLvl FeeModerate) (second Just) minit
       initFeeRateText = maybe "" showt mInitFeeRate
-      initInputIsDisabled = if initFeeMode == BFMManual then False else True
+      initInputIsDisabled = initFeeMode /= BFMManual
   divClass "fee-input" $ do
     el "label" $ localizedText lbl
     selectedD <- row $ mdo
@@ -70,7 +70,7 @@ btcFeeSelectionWidget lbl minit mPrevRate submitE = do
             setValE = attachPromptlyDynWithMaybe feeModeToRateText feesD feeModeE
         feeRateErrsD :: Dynamic t (Maybe [VError ()]) <- holdDyn Nothing $ ffor (current validatedRateD `tag` submitE) eitherToMaybe'
         selectedRateD <- manualFeeSelector initFeeRateText initInputIsDisabled setValE modifyAttrsE feeRateErrsD
-        let validatedRateD = toEither . (validateBtcFeeRate mPrevRate) . T.unpack <$> selectedRateD
+        let validatedRateD = toEither . validateBtcFeeRate (floor <$> mPrevRate) . T.unpack <$> selectedRateD
         pure $ eitherToMaybe <$> validatedRateD
       feeModeD <- column33 $ do
         langD <- getLanguage

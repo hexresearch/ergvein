@@ -64,7 +64,7 @@ sendWidget cur mInit title navbar thisWidget = wrapperNavbar False title thisWid
       rbfInit' = fromMaybe rbfFromSettings rbfInit
   retInfoD <- formClass "mb-0" $ mdo
     recipientD <- divClass "mb-1" $ recipientWidget recipientInit submitE
-    amountD <- divClass "mb-1" $ sendAmountWidget amountInit submitE
+    amountD <- divClass "mb-1" $ sendAmountWidget recipientD amountInit submitE
     feeD <- divClass "mb-1" $ btcFeeSelectionWidget FSRate feeInit Nothing submitE
     rbfEnabledD <- divClass "mb-2" $ toggler SSRbf (constDyn rbfInit')
     submitE <- outlineSubmitTextIconButtonClass "w-100 mb-0" SendBtnString "fas fa-paper-plane fa-lg"
@@ -204,11 +204,11 @@ txSignSendWidget :: MonadFront t m
   -> m (Event t (HT.Tx, UnitBTC, Word64, Word64, BtcAddress)) -- ^ Return the Tx + all relevant information for display
 txSignSendWidget addr unit amount _ changeKey change pick rbfEnabled = mdo
   let changeAddress = xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key changeKey
-      changeKeyStr = btcAddrToString changeAddress
+      changeAddrStr = btcAddrToString changeAddress
       changeOut = HT.TxOut change (HS.encodeOutputBS $ HA.addressToOutput changeAddress)
       outs = if isDust changeOut
         then [(btcAddrToString addr, amount)]
-        else [(btcAddrToString addr, amount), (changeKeyStr, change)]
+        else [(btcAddrToString addr, amount), (changeAddrStr, change)]
       changeAmount = if isDust changeOut
         then 0
         else change

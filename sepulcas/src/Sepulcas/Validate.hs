@@ -4,21 +4,18 @@ module Sepulcas.Validate (
     toEither
   , validate
   , validateNow
-  , validateAmount
   , validateNonEmptyString
   , validateRational
-  , validatePositiveRational
   , validateWord64
   , validateGreaterThan
   , NonEmptyString(..)
-  , PositiveRational(..)
-  , GreaterThanRational(..)
+  , GreaterThan(..)
   , VError(..)
   , Validation(..)
   ) where
 
 import Control.Lens ((#))
-import Data.Ratio ()
+import Data.Text (Text)
 import Data.Text.Read (rational)
 import Data.Validation
   ( Validation (..),
@@ -46,15 +43,13 @@ import Text.Read (readMaybe)
 import qualified Data.Text as T
 
 newtype NonEmptyString = NonEmptyString String deriving (Show)
-newtype PositiveRational = PositiveRational Rational deriving (Show)
-newtype GreaterThanRational = GreaterThanRational Word64 deriving (Show)
+newtype GreaterThan a = GreaterThan a deriving (Show)
 
 data VError ext
   = MustNotBeEmpty
   | MustBeRational
-  | MustBePositive
   | MustBeNatural
-  | MustBeGreaterThan Rational
+  | MustBeGreaterThan Text
   | VErrorOther ext
   deriving (Show)
 
@@ -68,30 +63,16 @@ validateRational x = case rational $ T.pack x of
   Right (result, "") -> _Success # result
   _ -> _Failure # [MustBeRational]
 
-validatePositiveRational :: Rational -> Validation [VError e] PositiveRational
-validatePositiveRational x = if x > 0
-  then _Success # PositiveRational x
-  else _Failure # [MustBePositive]
-
 validateWord64 :: String -> Validation [VError e] Word64
 validateWord64 x = case readMaybe x :: Maybe Natural of
   Nothing -> _Failure # [MustBeNatural]
   Just res -> _Success # fromIntegral res
 
-validateAmount :: String -> Validation [VError e] Rational
-validateAmount x = case validateNonEmptyString x of
-  Failure errs -> _Failure # errs
-  Success (NonEmptyString result) -> case validateRational result of
-    Failure errs' -> _Failure # errs'
-    Success result' -> case validatePositiveRational result' of
-      Failure errs'' -> _Failure # errs''
-      Success (PositiveRational result'') -> _Success # result''
-
-validateGreaterThan :: Maybe Rational -> Word64 -> Validation [VError e] GreaterThanRational
-validateGreaterThan Nothing x = _Success # GreaterThanRational x
-validateGreaterThan (Just y) x = if fromIntegral x > y
-  then _Success # GreaterThanRational x
-  else _Failure # [MustBeGreaterThan y]
+validateGreaterThan :: Ord a => a -> Maybe a -> (a -> Text) -> Validation [VError e] (GreaterThan a)
+validateGreaterThan x Nothing _ = _Success # GreaterThan x
+validateGreaterThan x (Just y) printer = if x > y
+  then _Success # GreaterThan x
+  else _Failure # [MustBeGreaterThan $ printer y]
 
 -- | Helper for widget that displays error
 errorWidget :: (DomBuilder t m, MonadLocalized t m, PostBuild t m, LocalizedPrint l) => l -> m ()

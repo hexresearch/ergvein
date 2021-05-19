@@ -2,37 +2,45 @@ module Ergvein.Wallet.Validate (
     toEither
   , validate
   , validateNow
-  , validateAmount
   , validateBtcRecipient
-  , validateBtcWithUnits
+  , validateBtcAmount
   , validateBtcFeeRate
   , VError(..)
   , Validation(..)
   ) where
 
 import Control.Lens
+import Data.Ratio ((%))
 import Data.Validation hiding (validate)
 import Data.Word
 
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Localize
+import Sepulcas.Text
 import Sepulcas.Validate
 
 import qualified Data.Text as T
 
-validateBtcWithUnits :: UnitBTC -> String -> Validation [VError e] Word64
-validateBtcWithUnits unit x = case validateNonEmptyString x of
+validateBtcAmount :: Word64 -> UnitBTC -> String -> Validation [VError e] Word64
+validateBtcAmount threshold unit x = case validateNonEmptyString x of
   Failure errs -> _Failure # errs
-  Success (NonEmptyString result) -> case unit of
-    BtcSat -> case validateWord64 result of
-      Failure errs' -> _Failure # errs'
-      Success result' -> _Success # result'
-    _ -> case validateRational result of
-      Failure errs' -> _Failure # errs'
-      Success result' -> case validatePositiveRational result' of
+  Success (NonEmptyString result) ->
+    let result' = case unit of
+          BtcSat -> case validateWord64 result of
+            Failure errs' -> _Failure # errs'
+            Success res -> _Success # res
+          _ -> case validateRational result of
+            Failure errs' -> _Failure # errs'
+            Success res -> _Success # unitsToSat res
+        satToUnits x = fromRational $ fromIntegral x % (10 ^ btcResolution unit)
+        unitsToSat x = round $ x * (10 ^ btcResolution unit)
+    in
+      case result' of
         Failure errs'' -> _Failure # errs''
-        Success (PositiveRational result'') -> _Success # (floor $ result'' * 10 ^ btcResolution unit)
+        Success result'' -> case validateGreaterThan (satToUnits result'') (Just $ satToUnits threshold) (\x -> showFullPrecision x <> " " <> btcSymbolUnit unit) of -- we convert numbers here to show error in specified units instead of satoshi
+          Failure errs''' -> _Failure # errs'''
+          Success (GreaterThan _) -> _Success # result''
 
 validateBtcAddr :: String -> Validation [VError InvalidAddress] BtcAddress
 validateBtcAddr addrStr = case btcAddrFromString (T.pack addrStr) of
@@ -46,11 +54,11 @@ validateBtcRecipient addrStr = case validateNonEmptyString addrStr of
     Failure errs' -> _Failure # errs'
     Success addr -> _Success # addr
 
-validateBtcFeeRate :: Maybe Rational -> String -> Validation [VError e] Word64
+validateBtcFeeRate :: Maybe Word64 -> String -> Validation [VError e] Word64
 validateBtcFeeRate mPrevFeeRate feeRateStr = case validateNonEmptyString feeRateStr of
   Failure errs -> _Failure # errs
   Success (NonEmptyString result) -> case validateWord64 result of
     Failure errs' -> _Failure # errs'
-    Success result' -> case validateGreaterThan mPrevFeeRate result' of
+    Success result' -> case validateGreaterThan result' mPrevFeeRate (\x -> showt x <> " " <> btcSymbolUnit BtcSat) of
         Failure errs'' -> _Failure # errs''
-        Success (GreaterThanRational result'') -> _Success # result''
+        Success (GreaterThan result'') -> _Success # result''

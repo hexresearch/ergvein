@@ -12,6 +12,7 @@ module Ergvein.Core.Transaction.Btc.Fee(
   , replacesByFee
   , haveHigherFee
   , isDust
+  , getDustThreshold
 ) where
 
 import Control.Monad (forM_)

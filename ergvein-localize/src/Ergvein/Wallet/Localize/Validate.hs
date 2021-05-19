@@ -23,13 +23,11 @@ instance LocalizedPrint ext => LocalizedPrint (VError ext) where
       MustNotBeEmpty            -> "This field is required"
       MustBeRational            -> "Enter a valid amount (example: 1.23)"
       MustBeNatural             -> "Enter a valid natural number"
-      MustBePositive            -> "Value must be positive"
-      MustBeGreaterThan x       -> "Value must be greater than " <> showf 3 (realToFrac x :: Double)
+      MustBeGreaterThan s       -> "Value must be greater than " <> s
       VErrorOther x             -> localizedShow English x
     Russian -> case v of
       MustNotBeEmpty            -> "Заполните это поле"
       MustBeRational            -> "Введите корректное значение (пример: 1.23)"
       MustBeNatural             -> "Введите корректное натуральное число"
-      MustBePositive            -> "Значение должно быть положительным"
-      MustBeGreaterThan x       -> "Значение должно быть больше " <> showf 3 (realToFrac x :: Double)
+      MustBeGreaterThan s       -> "Значение должно быть больше " <> s
       VErrorOther x             -> localizedShow Russian x
