@@ -38,7 +38,7 @@ validateBtcAmount threshold unit x = case validateNonEmptyString x of
     in
       case result' of
         Failure errs'' -> _Failure # errs''
-        Success result'' -> case validateGreaterThan (satToUnits result'') (Just $ satToUnits threshold) (\x -> showFullPrecision x <> " " <> btcSymbolUnit unit) of -- we convert numbers here to show error in specified units instead of satoshi
+        Success result'' -> case validateGreaterThan result'' (Just threshold) (\x -> showFullPrecision (satToUnits x) <> " " <> btcSymbolUnit unit) of
           Failure errs''' -> _Failure # errs'''
           Success (GreaterThan _) -> _Success # result''
 
