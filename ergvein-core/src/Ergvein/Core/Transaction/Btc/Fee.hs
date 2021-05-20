@@ -55,9 +55,19 @@ getDustThreshold :: TxOut -> Int
 getDustThreshold txOut = dustRelayFee * inOutSize
   where
     inOutSize :: Int
-    inOutSize = if isSegwit txOut
-      then getSerializedSize txOut + (32 + 4 + 1 + (107 `div` witnessScaleFactor) + 4)
-      else getSerializedSize txOut + (32 + 4 + 1 + 107 + 4)
+    inOutSize = getSerializedSize txOut + txInSize
+      where txInSize = if isSegwit txOut
+            {-
+              sum the sizes of the parts of a transaction input
+              with 75% segwit discount applied to the script size
+              32 vbytes: previous output hash
+              4 vbytes: previous output index
+              1 vbyte: the length of the scriptSig field
+              107 vbytes: scriptSig (P2PKH or P2WPkH)
+              4 vbytes: nSequence
+            -}
+            then 32 + 4 + 1 + (107 `div` witnessScaleFactor) + 4
+            else 32 + 4 + 1 + 107 + 4
 
 isDust :: TxOut -> Bool
 isDust txOut = fromIntegral (outValue txOut) < getDustThreshold txOut
@@ -137,7 +147,7 @@ getOutputWeight = \case
   -- BtcP2TR -> 172
   _ -> error "getOutputWeight: failed to calculate output weight"
 
--- | Computes an upper bound on the virtual size of a transaction based on
+-- | Computes an upper bound on the virtual size of a transaction in vbytes based on
 -- inputs and outputs sets of the transaction.
 guessTxVsize ::
      [BtcInputType]
@@ -147,8 +157,13 @@ guessTxVsize inputs outputs =
   weightUnitsToVBytes $ fromIntegral $ sum (getInputWeight <$> inputs) + sum (getOutputWeight <$> outputs) + overhead
   where
     varIntSize = B.length . encode . VarInt . fromIntegral
-    segWitInputs = filter (\x -> x /= BtcP2PKH && x /= BtcP2SH) inputs
-    witnessOverheadWeight = if null segWitInputs then 0 else 2 + varIntSize (length segWitInputs)
+    segwitInputs = filter (\x -> x /= BtcP2PKH && x /= BtcP2SH) inputs
+    witnessOverheadWeight = if null segwitInputs
+      -- If there are no segwit inputs the transaction is serialized in legacy format
+      then 0
+      -- 2 weight units here is the SegWit marker 0x00 (1 WU) plus the SegWit flag 0x01 (1 WU)
+      else 2 + varIntSize (length segwitInputs)
+    -- 8 raw bytes here is the Version (4 raw bytes) plus the Locktime (4 raw bytes)
     overhead = fromIntegral $ (witnessScaleFactor * (8 + varIntSize (length inputs) +  varIntSize (length outputs))) + witnessOverheadWeight
 
 -- | Calculates tx fee. If any of the parent txs was not found in the wallet storage then it returns Nothing.
