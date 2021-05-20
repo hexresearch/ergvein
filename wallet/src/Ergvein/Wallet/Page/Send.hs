@@ -203,19 +203,7 @@ txSignSendWidget :: MonadFront t m
   -> RbfEnabled     -- ^ Explicit opt-in RBF signalling
   -> m (Event t (HT.Tx, UnitBTC, Word64, Word64, BtcAddress)) -- ^ Return the Tx + all relevant information for display
 txSignSendWidget addr unit amount _ changeKey change pick rbfEnabled = mdo
-  let changeAddress = xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key changeKey
-      changeAddrStr = btcAddrToString changeAddress
-      changeOut = HT.TxOut change (HS.encodeOutputBS $ HA.addressToOutput changeAddress)
-      outs = if isDust changeOut
-        then [(btcAddrToString addr, amount)]
-        else [(btcAddrToString addr, amount), (changeAddrStr, change)]
-      changeAmount = if isDust changeOut
-        then 0
-        else change
-      etx = buildAddrTx btcNetwork rbfEnabled (upPoint <$> pick) outs
-      inputsAmount = sum $ btcUtxo'amount . upMeta <$> pick
-      outputsAmount = amount + changeAmount
-      estFee = inputsAmount - outputsAmount
+  let (etx, estFee) = prepareData changeKey change addr amount rbfEnabled pick
   confirmationInfoWidget (unit, amount) estFee rbfEnabled addr Nothing
   showSignD <- holdDyn True . (False <$) =<< eventToNextFrame etxE
   etxE <- either' etx (const $ confirmationErrorWidget CEMTxBuildFail >> pure never) $ \tx -> do
@@ -228,3 +216,17 @@ txSignSendWidget addr unit amount _ changeKey change pick rbfEnabled = mdo
     sendE <- el "div" $ outlineButton SendBtnSend
     pure $ (tx, unit, amount, estFee, addr) <$ sendE
   where either' e l r = either l r e
+
+prepareData :: EgvPubKeyBox -> Word64 -> BtcAddress -> Word64 -> RbfEnabled -> [UtxoPoint] -> (Either String HT.Tx, Word64)
+prepareData changeKey change addr amount rbfEnabled pick = (etx, estFee)
+  where
+    changeAddress = xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key changeKey
+    changeAddrStr = btcAddrToString changeAddress
+    changeOut = HT.TxOut change (HS.encodeOutputBS $ HA.addressToOutput changeAddress)
+    (outs, changeAmount) = if isDust changeOut
+      then ([(btcAddrToString addr, amount)], 0)
+      else ([(btcAddrToString addr, amount), (changeAddrStr, change)], change)
+    etx = buildAddrTx btcNetwork rbfEnabled (upPoint <$> pick) outs
+    inputsAmount = sum $ btcUtxo'amount . upMeta <$> pick
+    outputsAmount = amount + changeAmount
+    estFee = inputsAmount - outputsAmount
