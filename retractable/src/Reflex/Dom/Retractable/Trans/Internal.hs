@@ -11,6 +11,7 @@
 {-# LANGUAGE CPP #-}
 module Reflex.Dom.Retractable.Trans.Internal where
 
+import Control.Monad.IO.Unlift
 import Control.Monad.Reader
 import Control.Monad.Ref
 import Control.Monad.State.Strict
@@ -110,6 +111,12 @@ instance Adjustable t m => Adjustable t (RetractT t m) where
     r <- RetractT ask
     lift $ traverseDMapWithKeyWithAdjustWithMove (\k v -> runRetractT (f k v) r) dm0 dm'
   {-# INLINABLE traverseDMapWithKeyWithAdjustWithMove #-}
+
+instance MonadUnliftIO m => MonadUnliftIO (RetractT t m) where
+  withRunInIO cb = do
+    env <- RetractT ask
+    wrappedWithRunInIO lift (flip runRetractT env) cb
+  {-# INLINE withRunInIO #-}
 
 -- | Execute retractable widget with given environment.
 runRetractT :: RetractT t m a -> RetractEnv t m -> m a

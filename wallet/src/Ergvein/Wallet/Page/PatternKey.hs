@@ -20,11 +20,10 @@ import Data.Either (fromRight)
 import Ergvein.Aeson
 import Ergvein.Text
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.PatternKey
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.Canvas
-import Ergvein.Wallet.Util
+import Sepulcas.Native
 
 import qualified Data.Map.Strict as Map
 
@@ -62,7 +61,7 @@ patternAsk = divClass "pattern-container" $ mdo
     sd <- sampleDyn moveD
     pure (AddSquare,(x,y),hitOrMiss (x,y) coords sd)
   -- Grid dynamic
-  dGrid <- holdDyn (drawGridT canvasW canvasH emptySq) $ never
+  dGrid <- holdDyn (drawGridT canvasW canvasH 0 emptySq GridStrokeBlack) $ never
   -- Dynamic with squares list
   squaresD <- holdDyn (Clear,(0,0),emptySq) $ poke predrawE $ \(dc,cur,sqs) -> do
     touchS <- sampleDyn touchD
@@ -144,7 +143,7 @@ patternSave tryD = divClass "pattern-container" $ mdo
     sd <- sampleDyn moveD
     pure (AddSquare,(x,y),hitOrMiss (x,y) coords sd)
   -- Grid dynamic
-  dGrid <- holdDyn (drawGridT canvasW canvasH emptySq) $ never
+  dGrid <- holdDyn (drawGridT canvasW canvasH 0 emptySq GridStrokeBlack) $ never
   -- Dynamic with squares list
   squaresD <- holdDyn (Clear,(0,0),emptySq) $ poke predrawE $ \(dc,cur,sqs) -> do
     tryS<- sampleDyn tryD
@@ -203,7 +202,7 @@ patternSave tryD = divClass "pattern-container" $ mdo
           dLineS <- sampleDyn dLineT
           rawJSCall (_element_raw canvasEl) dLineS
 
-  widgetHold (drawKeyCreation) $ ffor (updated tryD) $ \a -> case a of
+  networkHold (drawKeyCreation) $ ffor (updated tryD) $ \a -> case a of
     Done -> do
       dLineS <- sampleDyn dLineT
       rawJSCall (_element_raw canvasEl) dLineS
@@ -227,7 +226,7 @@ patternAskWidget = mdo
 
 patternSaveWidget :: MonadFrontBase t m => m (Dynamic t Password)
 patternSaveWidget = mdo
-  widgetHold (localizedText PKSFirstTry) $ ffor (updated tryD) $ \a -> case a of
+  networkHold (localizedText PKSFirstTry) $ ffor (updated tryD) $ \a -> case a of
     FirstTry -> localizedText PKSFirstTry
     SecondTry -> localizedText PKSSecondTry
     ErrorTry -> localizedText PKSErrorTry

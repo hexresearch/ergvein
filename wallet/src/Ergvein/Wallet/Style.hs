@@ -6,78 +6,23 @@ module Ergvein.Wallet.Style(
 
 import Clay
 import Clay.Selector
+import Clay.Stylesheet
 import Control.Monad
 import Data.ByteString (ByteString)
-import Data.ByteString.Lazy (toStrict)
-import Data.Text (Text)
-import Data.Text.Lazy.Encoding (encodeUtf8)
-import Ergvein.Wallet.Embed
-import Ergvein.Wallet.Embed.TH
-import Ergvein.Wallet.Platform
+import Ergvein.Core
 import Language.Javascript.JSaddle hiding ((#))
 import Prelude hiding ((**), rem)
+import Sepulcas.Native
+import Sepulcas.Style
 
 import qualified Clay.Media as M
 import qualified Clay.Flexbox as F
 
-data Resources = Resources {
-  robotoBlackUrl       :: !Text
-, robotoBoldUrl        :: !Text
-, robotoMediumUrl      :: !Text
-, robotoRegularUrl     :: !Text
-, fabrands400eotUrl    :: !Text
-, fabrands400svgUrl    :: !Text
-, fabrands400ttfUrl    :: !Text
-, fabrands400woffUrl   :: !Text
-, fabrands400woff2Url  :: !Text
-, faregular400eotUrl   :: !Text
-, faregular400svgUrl   :: !Text
-, faregular400ttfUrl   :: !Text
-, faregular400woffUrl  :: !Text
-, faregular400woff2Url :: !Text
-, fasolid900eotUrl     :: !Text
-, fasolid900svgUrl     :: !Text
-, fasolid900ttfUrl     :: !Text
-, fasolid900woffUrl    :: !Text
-, fasolid900woff2Url   :: !Text
-}
+compileFrontendCss :: (MonadJSM m, PlatformNatives) => m ByteString
+compileFrontendCss = compileStyles $ frontendCss
 
-embedResources :: MonadJSM m => m Resources
-embedResources = Resources
-  <$> createObjectURL robotBlack
-  <*> createObjectURL robotoBold
-  <*> createObjectURL robotoMedium
-  <*> createObjectURL robotoRegular
-  <*> createObjectURL fabrands400eot
-  <*> createObjectURL fabrands400svg
-  <*> createObjectURL fabrands400ttf
-  <*> createObjectURL fabrands400woff
-  <*> createObjectURL fabrands400woff2
-  <*> createObjectURL faregular400eot
-  <*> createObjectURL faregular400svg
-  <*> createObjectURL faregular400ttf
-  <*> createObjectURL faregular400woff
-  <*> createObjectURL faregular400woff2
-  <*> createObjectURL fasolid900eot
-  <*> createObjectURL fasolid900svg
-  <*> createObjectURL fasolid900ttf
-  <*> createObjectURL fasolid900woff
-  <*> createObjectURL fasolid900woff2
-
-compileFrontendCss :: MonadJSM m => m ByteString
-compileFrontendCss = do
-  r <- embedResources
-  pure $ frontendCssBS r
-
-frontendCssBS :: Resources -> ByteString
-frontendCssBS r = let
-  selfcss = toStrict . encodeUtf8 . renderWith compact [] $ frontendCss r
-  in milligramCss <> tooltipCss <> fontawesomeCss <> selfcss
-
-frontendCss :: Resources -> Css
-frontendCss r = do
-  fontFamilies r
-  faFontFamilies r
+frontendCss :: PlatformNatives => Css
+frontendCss = do
   htmlCss
   bodyCss
   aboutPageCss
@@ -89,10 +34,12 @@ frontendCss r = do
   headerCss
   historyPageCss
   txInfoPageCss
+  bumpFeePageCss
   infoPageCss
   initialPageCss
   inputCss
   legoStyles
+  textCss
   linkCss
   loadingWidgetCss
   mnemonicWidgetCss
@@ -106,7 +53,6 @@ frontendCss r = do
   sendPageCss
   settingsCss
   mnemonicExportCss
-  sharePageCss
   validateCss
   wrapperCss
   testnetDisclaimerCss
@@ -116,6 +62,9 @@ textColor = rgb 0 0 0
 
 hoverColor :: Color
 hoverColor = rgb 112 112 112
+
+disabledColor :: Color
+disabledColor = rgb 233 236 239
 
 textSuccess :: Color
 textSuccess = rgb 40 167 69
@@ -147,11 +96,20 @@ tabletBreakpoint = rem 80
 desktopBreakpoint :: Size LengthUnit
 desktopBreakpoint = rem 120
 
+appearanceNone :: Css
+appearanceNone = prefixed (browsers <> "appearance") noneValue
+
+margin0 :: Css
+margin0 = margin (px 0) (px 0) (px 0) (px 0)
+
+padding0 :: Css
+padding0 = padding (px 0) (px 0) (px 0) (px 0)
+
 htmlCss :: Css
 htmlCss = do
   html ? do
-    margin (px 0) (px 0) (px 0) (px 0)
-    padding (px 0) (px 0) (px 0) (px 0)
+    margin0
+    padding0
     textAlign center
   "input, textarea, select" ? do
     fontFamily ["Roboto"] [sansSerif, monospace]
@@ -159,8 +117,8 @@ htmlCss = do
 
 bodyCss :: Css
 bodyCss = body ? do
-  margin (px 0) (px 0) (px 0) (px 0)
-  padding (px 0) (px 0) (px 0) (px 0)
+  margin0
+  padding0
   color textColor
   backgroundColor majorBackground
   fontFamily ["Roboto"] [sansSerif, monospace]
@@ -354,54 +312,12 @@ buttonCss = do
 inputCss :: Css
 inputCss = do
   let simpleBorder = border solid (rem 0.1) black
+      disableBackground = backgroundColor disabledColor
   let passInput = input # ("type" @= "password")
   (passInput # hover) <> (passInput # focus) ? simpleBorder
   let textInput = input # ("type" @= "text")
-  (textInput # hover) <> (textInput # focus) ? simpleBorder
-
-fontFamilies :: Resources -> Css
-fontFamilies Resources{..} = do
-  makeFontFace "Roboto" robotoRegularUrl
-  makeFontFace "Roboto-Bold" robotoBoldUrl
-  makeFontFace "Roboto-Black" robotoBlackUrl
-  makeFontFace "Roboto-Medium" robotoMediumUrl
-  where
-    makeFontFace fontName fontUrl = fontFace $ do
-      fontFamily [fontName] []
-      fontFaceSrc [FontFaceSrcUrl fontUrl (Just TrueType)]
-      fontWeight $ weight 400
-
-faFontFamilies :: Resources -> Css
-faFontFamilies Resources{..} = do
-  makeFontFace "Font Awesome 5 Brands" 400 [
-      fabrands400eotUrl
-    , fabrands400svgUrl
-    , fabrands400ttfUrl
-    , fabrands400woffUrl
-    , fabrands400woff2Url
-    ]
-  makeFontFace "Font Awesome 5 Free" 400 [
-      faregular400eotUrl
-    , faregular400svgUrl
-    , faregular400ttfUrl
-    , faregular400woffUrl
-    , faregular400woff2Url
-    ]
-  makeFontFace "Font Awesome 5 Free" 900 [
-      fasolid900eotUrl
-    , fasolid900svgUrl
-    , fasolid900ttfUrl
-    , fasolid900woffUrl
-    , fasolid900woff2Url
-    ]
-  where
-    makeFontFace ffName w urls = fontFace $ do
-      fontFamily [ffName] []
-      fontStyle normal
-      fontFaceSrc [FontFaceSrcUrl ffUrl (Just format)
-        | ffUrl    <- urls,
-          format <- [EmbeddedOpenType, SVG, TrueType, WOFF, WOFF2]]
-      fontWeight $ weight w
+  (textInput # hover # enabled) <> (textInput # focus # enabled) ? simpleBorder
+  (textInput # disabled) ? disableBackground
 
 mnemonicWidgetCss :: Css
 mnemonicWidgetCss = do
@@ -477,47 +393,75 @@ validateCss = do
   ".validate-error" ? do
     fontSize $ pt 14
 
-
 toggleSwitchCss :: Css
-toggleSwitchCss = do
-  ".switch" ? do
-    position relative
-    display inlineBlock
-    width  $ px 60
-    height $ px 34
-  input # ".switch" ? do
-    opacity 0.0
-    width $ px 0
-    height $ px 0
-    verticalAlign vAlignBottom
-  ".slider" ? do
-    position absolute
-    cursor pointer
-    top $ px 0
-    left $ px 0
-    right $ px 0
-    bottom $ px 0
-    backgroundColor white
-    borderStyle solid
-    borderWidth $ px 1
-    borderColor black
+toggleSwitchCss =
+  let
+    toggleSwitchHeight = rem 3.8 -- change this to scale switch
+    toggleSwitchFontSize = pt 11
+    toggleSwitchWidth = 2 *@ toggleSwitchHeight
+    toggleSwitchBorderRadius = 0.5 *@ toggleSwitchHeight
+    knobSize = 0.72 *@ toggleSwitchHeight
+    knobBorderRadius = 0.5 *@ knobSize
+    knobMargin = 0.5 *@ (toggleSwitchHeight @-@ knobSize)
+    textMargin = 0.3 *@ toggleSwitchHeight
+  in do
+    ".toggle-switch" ? do
+      display inlineBlock
+      position relative
+      width toggleSwitchWidth
+      height toggleSwitchHeight
+      borderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius
+      borderStyle solid
+      borderWidth $ px 1
+      borderColor black
+      margin0
+      boxSizing contentBox
 
-  ".slider" # before ? do
-    position absolute
-    content $ stringContent mempty
-    height $ px 26
-    width $ px 26
-    left $ px  4
-    bottom $ px  3
-    backgroundColor black
-    verticalAlign middle
-  input # checked |+ ".slider" ? do
-    backgroundColor grey
-    verticalAlign middle
-  input # focus |+ ".slider" ? do
-    boxShadow $ pure $ bsColor grey $ shadowWithBlur (px 0) (px 0) (px 1)
-  input # checked |+ ".slider" # before ? do
-    transform $ translateX $ px 26
+    ".toggle-switch input" ? do
+      appearanceNone
+      display flex
+      alignItems center
+      justifyContent spaceBetween
+      width toggleSwitchWidth
+      height toggleSwitchHeight
+      borderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius
+      outline none (px 0) black -- outline: none
+      margin0
+
+    ".toggle-switch input::before, .toggle-switch input::after" ? do
+      zIndex 1
+      textTransform uppercase
+      transition "opacity" (sec 0.3) linear (sec 0)
+      fontSize $ toggleSwitchFontSize
+
+    ".toggle-switch input::before" ? do
+      content $ stringContent "On"
+      marginLeft textMargin
+
+    ".toggle-switch input::after" ? do
+      content $ stringContent "Off"
+      marginRight textMargin
+
+    ".toggle-switch label" ? do
+      position absolute
+      zIndex 2
+      width knobSize
+      height knobSize
+      top knobMargin
+      left knobMargin
+      borderRadius knobBorderRadius knobBorderRadius knobBorderRadius knobBorderRadius
+      backgroundColor black
+      margin0
+      transitions [("left", sec 0.3, linear, sec 0), ("right", sec 0.3, linear, sec 0)]
+
+    ".toggle-switch input:not(:checked)::before" ? do
+      opacity 0
+
+    ".toggle-switch input:checked::after" ? do
+      opacity 0
+
+    ".toggle-switch input:checked + label" ? do
+      left $ toggleSwitchWidth @-@ (knobMargin @+@ knobSize)
 
 passwordCss :: Css
 passwordCss = do
@@ -533,7 +477,7 @@ passwordCss = do
     position absolute
     display flex
     alignItems center
-    right $ rem 0.8
+    right $ rem 1.2
     fontSize $ pt 16
     color hoverColor
     backgroundColor white
@@ -575,7 +519,7 @@ initialPageCss = do
   ".text-pin-code-error" ? do
     color textDanger
 
-balancesPageCss :: Css
+balancesPageCss :: PlatformNatives => Css
 balancesPageCss = do
   ".sync-progress" ? do
     fontSize $ pt 14
@@ -605,12 +549,40 @@ balancesPageCss = do
 
 sendPageCss :: Css
 sendPageCss = do
-  ".send-page input" ? do
-    marginBottom $ rem 1
+  ".send-page" ? do
+    textAlign $ alignSide sideLeft
+  ".text-input-with-btns-wrapper" ? do
+    display flex
+    alignItems center
+    position relative
+  ".text-input-with-btns-android" ? do
+    width $ pct 100
+    marginBottom $ rem 0
+    important $ paddingRight $ rem 10
+  ".text-input-with-btns-desktop" ? do
+    width $ pct 100
+    marginBottom $ rem 0
+    important $ paddingRight $ rem 5
+  ".text-input-btns" ? do
+    position absolute
+    display flex
+    alignItems center
+    right $ rem 0
+    fontSize $ pt 16
+    marginRight $ rem 1
+  ".text-input-btn" ? do
+    paddingLeft $ rem 1
+    paddingRight $ rem 1
+    zIndex 1
+  ".text-input-btn:hover" ? do
+    cursor pointer
+    color hoverColor
   ".form-field-errors" ? do
     color red
     textAlign $ alignSide sideLeft
-    marginBottom $ rem 1
+    marginTop $ rem 0.5
+  ".amount-available-balance" ? do
+    marginTop $ rem 0.5
   ".send-page-buttons-wrapper" ? do
     display flex
     flexWrap F.wrap
@@ -620,9 +592,6 @@ sendPageCss = do
     flexGrow 1
     marginLeft $ rem 1
     marginRight $ rem 1
-  ".send-page-available-balance" ? do
-    paddingBottom $ rem 1
-    textAlign $ alignSide sideLeft
   ".button-icon-wrapper" ? do
     paddingLeft $ rem 1
   ".is-invalid input" ? border solid (rem 0.1) red
@@ -644,7 +613,7 @@ sendPageCss = do
   ".send-confirm-box" ? do
     pure ()
 
-aboutPageCss :: Css
+aboutPageCss :: PlatformNatives => Css
 aboutPageCss = do
   ".about-wrapper" ? do
     textAlign center
@@ -669,7 +638,7 @@ aboutPageCss = do
     paddingTop $ px 45
     fontSize $ pt (if isAndroid then 12 else 18)
 
-networkPageCss :: Css
+networkPageCss :: PlatformNatives => Css
 networkPageCss = do
   ".network-wrapper" ? do
     textAlign center
@@ -779,36 +748,6 @@ infoPageCss = do
     border solid (px 1) $ rgb 140 140 140
     let px4 = px 4 in borderRadius px4 px4 px4 px4
 
-sharePageCss :: Css
-sharePageCss = do
-  ".share-v-spacer" ? do
-    height $ px 20
-  ".qrcode-container" ? do
-    justifyContent center
-    margin auto auto auto auto
-  ".share-qrcode-container" ? do
-    width $ px 252
-    height $ px 252
-    justifyContent center
-    let px0 = px 0 in padding px0 px0 px0 $ px 8
-    margin (px 0) auto (px 0) auto
-  ".share-buttons-wrapper" ? do
-    display grid
-    gridTemplateColumns [fr 1, fr 1]
-    gridGap $ rem 1
-  ".share-block-value" ? do
-    --textAlign $ alignSide sideLeft
-    textAlign center
-    let px3  = px 5
-        px10 = px 10
-        in padding px3 px10 px3 px10
-    border solid (px 1) $ rgb 140 140 140
-    let px4 = px 4 in borderRadius px4 px4 px4 px4
-    marginBottom $ px 15
-  ".share-image-qrcode" ? do
-    width $ px 256
-    height $ px 256
-
 loadingWidgetCss :: Css
 loadingWidgetCss = do
   ".loading-page" ? do
@@ -892,14 +831,19 @@ selectCss = do
     margin auto auto auto auto
     width $ px 200
   "select" ? do
+    color textColor
     borderColor textColor
-    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" height=\\\"14\\\" viewBox=\\\"0 0 24 8\\\" width=\\\"24\\\"><path fill=\\\"#000000\\\" d=\\\"M0,0l6,8l6-8\\\"/></svg>"
+    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 8' width='30'><path fill='%23000000' d='M7,0l6,8l6-8'/></svg>"
+    backgroundPosition $ placed sideCenter sideRight
+    backgroundRepeat noRepeat
   "select:hover" ? do
     cursor pointer
   "select:hover, select:focus" ? do
     color hoverColor
     borderColor hoverColor
-    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" height=\\\"14\\\" viewBox=\\\"0 0 24 8\\\" width=\\\"24\\\"><path fill=\\\"#707070\\\" d=\\\"M0,0l6,8l6-8\\\"/></svg>"
+    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 8' width='30'><path fill='%23707070' d='M7,0l6,8l6-8'/></svg>"
+    backgroundPosition $ placed sideCenter sideRight
+    backgroundRepeat noRepeat
 
 buttonsToggleCss :: Css
 buttonsToggleCss = do
@@ -918,6 +862,14 @@ buttonsToggleCss = do
 
 historyPageCss :: Css
 historyPageCss = do
+  ".history-page" ? do
+    display flex
+  ".history-table" ? do
+    flexGrow 1
+  ".history-empty-placeholder" ? do
+    alignSelf center
+    flexGrow 1
+    textAlign center
   ".history-table-header" ? do
     marginTop (px 0)
     borderTop solid (px 2) black
@@ -930,7 +882,7 @@ historyPageCss = do
   ".history-date-header" ? do
     borderRight solid (px 2) black
     display block
-  "history-date" ? do
+  ".history-date" ? do
     marginLeft auto
     marginRight auto
   ".history-status-header" ? do
@@ -1004,6 +956,11 @@ txInfoPageCss = do
     cursor pointer
   ".tx-info-our-address" ? do
     fontWeight bold
+
+bumpFeePageCss :: Css
+bumpFeePageCss = do
+  ".bump-fee-page" ? do
+    textAlign $ alignSide sideLeft
 
 legoStyles :: Css
 legoStyles = do
@@ -1082,10 +1039,6 @@ badgeCss = do
 
 receiveCss :: Css
 receiveCss = do
-  ".receive-qr" ? do
-    margin (rem 2) auto (rem 2) auto
-  ".receive-qr-andr" ? do
-    margin (rem 2) auto (rem 2) auto
   ".receive-adr" ? do
     margin (rem 2) auto (rem 2) auto
     fontSize $ px 16
@@ -1095,7 +1048,8 @@ receiveCss = do
     gridTemplateColumns [fr 1, fr 1]
     gridGap $ rem 1
   ".qrcode" ? do
-    margin (px 0) auto (px 0) auto
+    width $ pct 100
+    maxWidth $ rem 30
   ".receive-buttons-wrapper" ? do
     display flex
     flexWrap F.wrap
@@ -1121,7 +1075,7 @@ graphPinCodeCanvasCss = do
     backgroundColor $ rgb 240 240 240
     border solid (px 1) black
     borderRadius (px 5) (px 5) (px 5) (px 5)
-    padding (px 0) (px 0) (px 0) (px 0)
+    padding0
     marginLeft auto
     marginRight auto
     userSelect none
@@ -1174,6 +1128,11 @@ graphPinCodeCanvasCss = do
     borderTop solid (px 2) $ rgb 90 90 90
     height $ px 2
     zIndex 10
+
+textCss :: Css
+textCss = do
+  ".text-muted" ? do
+    color hoverColor
 
 linkCss :: Css
 linkCss = do

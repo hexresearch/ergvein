@@ -28,13 +28,14 @@ import GHC.Generics
 import Data.Serialize (Serialize)
 import Data.Text (Text,pack,unpack)
 
-import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
+import Ergvein.Index.Protocol.Types (Address(..), IpV6(..))
+import Ergvein.Index.Protocol.Utils
 import Ergvein.Index.Server.DB.Serialize.Class
 import Ergvein.Index.Server.PeerDiscovery.Types (PeerAddr(..), PeerIP(..))
-import Ergvein.Index.Protocol.Types (Address(..),IPType(..))
+import Ergvein.Types.Currency
+import Ergvein.Types.Transaction
 import qualified Ergvein.Index.Server.PeerDiscovery.Types as DiscoveryTypes
-
+ 
 import qualified Data.ByteString         as BS
 import qualified Data.ByteString.Lazy    as BL
 import qualified Data.ByteString.Short   as BSS
@@ -134,15 +135,13 @@ instance Conversion KnownPeerRecItem DiscoveryTypes.Peer where
 instance Conversion KnownPeerRecItem Address where
   convert KnownPeerRecItem {..} = let
     in case peerAddrIP knownPeerRecAddr of
-      V4 ip -> Address
-        { addressType    = IPV4
-        , addressPort    = peerAddrPort knownPeerRecAddr
-        , addressAddress = BL.toStrict $ toLazyByteString $ word32BE ip
+      V4 ip -> AddressIpv4
+        { addressPort    = peerAddrPort knownPeerRecAddr
+        , addressV4      = ip
         }
-      V6 (a,b,c,d) -> Address
-        { addressType    = IPV6
-        , addressPort    = peerAddrPort knownPeerRecAddr
-        , addressAddress = BL.toStrict $ toLazyByteString $ word32BE a <> word32BE b <> word32BE c <> word32BE d
+      V6 (a,b,c,d) -> AddressIpv6
+        { addressPort    = peerAddrPort knownPeerRecAddr
+        , addressV6      = IpV6 a b c d
         }
 
 -- ===========================================================================
@@ -151,7 +150,7 @@ instance Conversion KnownPeerRecItem Address where
 
 instance EgvSerialize KnownPeerRecItem where
   egvSerialize _ = BL.toStrict . toLazyByteString . knownPeerRecItemBuilder
-  egvDeserialize _ = parseOnly knownPeerRecItemParser
+  egvDeserialize _ = parseTillEndOfInput knownPeerRecItemParser
 
 peerAddrBuilder :: PeerAddr -> Builder
 peerAddrBuilder PeerAddr{..} = let
@@ -193,7 +192,7 @@ instance EgvSerialize KnownPeersRec where
     num = fromIntegral $ length els
     in word32LE num <> mconcat els
 
-  egvDeserialize _ = parseOnly $ do
+  egvDeserialize _ = parseTillEndOfInput $ do
     num <- fmap fromIntegral anyWord32le
     fmap KnownPeersRec $ replicateM num knownPeerRecItemParser
 
@@ -201,7 +200,7 @@ instance EgvSerialize KnownPeersRec where
 
 instance EgvSerialize LastScannedBlockHeaderHashRec where
   egvSerialize _ (LastScannedBlockHeaderHashRec hs) = BL.toStrict . toLazyByteString $ shortByteString hs
-  egvDeserialize cur = parseOnly $ do
+  egvDeserialize cur = parseTillEndOfInput $ do
     fmap (LastScannedBlockHeaderHashRec . BSS.toShort) $ Parse.take (getTxHashLength cur)
 
 
@@ -213,7 +212,7 @@ instance EgvSerialize RollbackSequence where
   egvSerialize _ (RollbackSequence items) = BL.toStrict . toLazyByteString $
        word32LE (fromIntegral $ Seq.length items)
     <> fold (rollbackItemBuilder <$> items)
-  egvDeserialize cur = parseOnly $ do
+  egvDeserialize cur = parseTillEndOfInput $ do
     len <- fromIntegral <$> anyWord32le
     fmap (RollbackSequence . Seq.fromList) $ replicateM len (rollbackItemParser cur)
 

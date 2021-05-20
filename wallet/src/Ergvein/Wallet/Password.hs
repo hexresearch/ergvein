@@ -17,20 +17,19 @@ import Data.Maybe
 import Data.Time (getCurrentTime)
 import Reflex.Localize.Dom
 
-import Ergvein.Text
-import Ergvein.Types
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Elements.Input
-import Ergvein.Wallet.Localization.Password
-import Ergvein.Wallet.Localization.PatternKey
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.PatternKey
-import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Validate
+import Sepulcas.Elements
+import Sepulcas.Validate
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
+
+-- | Helper to throw error when predicate is not 'True'
+check :: MonadError a m => a -> Bool -> m ()
+check a False = throwError a
+check _ True = pure ()
 
 submitSetBtn :: MonadFrontBase t m => m (Event t ())
 submitSetBtn = submitClass "button button-outline" PWSSet
@@ -114,7 +113,7 @@ askPasswordAndroid name writeMeta = mdo
   let fpath = "meta_wallet_" <> (T.replace " " "_" name)
   isPass0 <- fmap (fromRight False) $ retrieveValue fpath False
   isPassD <- holdDyn isPass0 tglE
-  valD <- widgetHoldDyn $ ffor isPassD $ \isPass -> if isPass
+  valD <- networkHoldDyn $ ffor isPassD $ \isPass -> if isPass
     then askPasswordImpl name writeMeta
     else askPatternImpl name writeMeta
   let (passE, tglE) = (\(a,b) -> (switchDyn a, switchDyn b)) $ splitDynPure valD
@@ -145,7 +144,7 @@ askPatternImpl name writeMeta = do
           Nothing -> 0
     now <- liftIO $ getCurrentTime
     a <- (clockLossy 1 now)
-    freezeD <- widgetHold (pure False) $ ffor (updated a) $ \TickInfo{..} -> do
+    freezeD <- networkHold (pure False) $ ffor (updated a) $ \TickInfo{..} -> do
       cS <- sampleDyn counterD
       let cdTime = if cS < 5
             then 0
@@ -179,7 +178,7 @@ askPasswordModalAndroid = mdo
   goE  <- fmap fst getPasswordModalEF
   fire <- fmap snd getPasswordSetEF
   let redrawE = leftmost [Just <$> goE, Nothing <$ passE, Nothing <$ closeE]
-  valD <- widgetHold (pure (never, never)) $ ffor redrawE $ \case
+  valD <- networkHold (pure (never, never)) $ ffor redrawE $ \case
     Just (i, name) -> divClass "ask-pattern-modal" $ do
       closeE' <- passwordHeader
       passE' <- divClass "mt-1 ml-1 mr-1" $ do
@@ -196,7 +195,7 @@ askPasswordModalDesc = mdo
   goE  <- fmap fst getPasswordModalEF
   fire <- fmap snd getPasswordSetEF
   let redrawE = leftmost [Just <$> goE, Nothing <$ passE, Nothing <$ closeE]
-  valD <- widgetHold (pure (never, never)) $ ffor redrawE $ \case
+  valD <- networkHold (pure (never, never)) $ ffor redrawE $ \case
     Just (i, name) -> divClass "ask-password-modal" $ do
       closeE' <- passwordHeader
       passE' <- (fmap . fmap) ((i,) . Just) $ divClass "ask-password-modal-content" $ askPassword name False

@@ -23,7 +23,7 @@ library
       , vector
       , bytestring
       , ergvein-common
-      , ergvein-wallet-types
+      , ergvein-types
 
   default-language:    Haskell2010
   default-extensions:

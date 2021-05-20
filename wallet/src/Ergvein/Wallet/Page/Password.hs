@@ -8,29 +8,18 @@ module Ergvein.Wallet.Page.Password(
   , changePasswordWidget
   ) where
 
-import Reflex.ExternalRef
 import Reflex.Localize
 import Text.Read
 
 import Ergvein.Crypto.Keys     (Mnemonic)
 import Ergvein.Text
-import Ergvein.Types.Currency
-import Ergvein.Types.Derive
-import Ergvein.Types.Restore
-import Ergvein.Types.Storage
-import Ergvein.Types.Transaction
-import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Password
-import Ergvein.Wallet.Localization.Restore
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
 import Ergvein.Wallet.Password
-import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Storage.AuthInfo
 import Ergvein.Wallet.Wrapper
+import Sepulcas.Alert
+import Sepulcas.Elements
 
 import qualified Data.Text as T
 
@@ -45,7 +34,7 @@ setupBtcStartingHeight = do
           Just h -> if h < 0 then Left SHSNonNegError else Right h
     let hE = fmapMaybe (either (const Nothing) Just ) parseE
     unless isTestnet $
-      void $ widgetHold (pure ()) $ ffor parseE $
+      void $ networkHold (pure ()) $ ffor parseE $
         divClass "validate-error" . localizedText . either id SHSEstimate
     holdDyn defHeight hE
 
@@ -56,7 +45,9 @@ setupPasswordPage wt mpath mnemonic curs mlogin = wrapperSimple True $ do
   rec
     logPassE <- setupLoginPassword mlogin btnE
     pathD <- setupDerivPrefix curs mpath
-    heightD <- setupBtcStartingHeight
+    heightD <- case wt of
+      WalletGenerated -> pure 0
+      WalletRestored -> setupBtcStartingHeight
     btnE <- submitSetBtn
   let goE = poke logPassE $ \(l, pass) -> do
         p <- sampleDyn pathD
@@ -109,11 +100,12 @@ performAuth wt mnemonic curs login pass mpath startingHeight isPass = do
       h3 $ localizedText RPSTrafficTitle
       elClass "h5" "overflow-wrap-bw" $ localizedText RPSTrafficWarn
       elClass "h5" "overflow-wrap-bw" $ localizedText RPSTrafficWifi
+      elClass "h5" "overflow-wrap-bw" $ localizedText RPSTrafficTime
       outlineButton RPSTrafficAccept
   storageE <- performEvent $ ffor goE $ const $
-    initAuthInfo wt mpath mnemonic curs login pass startingHeight isPass
-  authInfoE <- handleDangerMsg storageE
-  void $ setAuthInfo $ Just <$> authInfoE
+    initWalletInfo English wt mpath mnemonic curs login pass startingHeight isPass
+  walletInfoE <- handleDangerMsg storageE
+  void $ setWalletInfo $ Just <$> walletInfoE
 
 setupLoginPage :: MonadFrontBase t m => WalletSource -> Maybe DerivPrefix -> Mnemonic -> [Currency] -> m ()
 setupLoginPage wt mpath mnemonic curs = wrapperSimple True $ do
@@ -122,7 +114,9 @@ setupLoginPage wt mpath mnemonic curs = wrapperSimple True $ do
   rec
     loginE <- setupLogin btnE
     pathD <- setupDerivPrefix curs mpath
-    heightD <- setupBtcStartingHeight
+    heightD <- case wt of
+      WalletGenerated -> pure 0
+      WalletRestored -> setupBtcStartingHeight
     btnE <- submitSetBtn
   let goE = poke loginE $ \l -> do
         p <- sampleDyn pathD
@@ -217,7 +211,7 @@ changePasswordWidget =
 changePasswordDescWidget :: MonadFront t m => m (Event t (Password, Bool))
 changePasswordDescWidget = wrapperSimple True $ mdo
   tglD <- holdDyn False tglE
-  (passE, tglE) <- fmap switchDyn2 $ widgetHoldDyn $ ffor tglD $ \case
+  (passE, tglE) <- fmap switchDyn2 $ networkHoldDyn $ ffor tglD $ \case
     True  -> (fmap . fmap) (False <$) confirmEmptyWidget
     False -> mdo
       changePasswordDescr True
@@ -246,11 +240,11 @@ data CPMStage = CPMPattern | CPMPassword | CPMEmpty Bool
 
 changePasswordMobileWidget :: MonadFront t m => m (Event t (Password, Bool))
 changePasswordMobileWidget = wrapperSimple True $ mdo
-  login <- fmap (_authInfo'login) $ readExternalRef =<< getAuthInfoRef
+  login <- fmap (_walletInfo'login) $ sampleDyn =<< getWalletInfo
   let name = T.replace " " "_" login
   stage0 <- fmap eitherToStage $ retrieveValue ("meta_wallet_" <> name) False
   stageD <- holdDyn stage0 nextE
-  (patE, nextE) <- fmap switchDyn2 $ widgetHoldDyn $ ffor stageD $ \case
+  (patE, nextE) <- fmap switchDyn2 $ networkHoldDyn $ ffor stageD $ \case
     CPMEmpty b -> do
       (passE, backE) <- confirmEmptyWidget
       pure ((,b) <$> passE, boolToStage b <$ backE)

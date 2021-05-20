@@ -6,14 +6,11 @@ module Ergvein.Wallet.Page.Network(
 import Data.Maybe (catMaybes)
 import Reflex.ExternalRef
 
-import Ergvein.Node.Resolve
 import Ergvein.Types.Currency
-import Ergvein.Wallet.Elements
+import Sepulcas.Elements
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Currency()
-import Ergvein.Wallet.Localization.Network
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Node
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Dependent.Map as DM
@@ -25,7 +22,7 @@ networkPage curMb = do
   title <- localized NPSTitle
   wrapper False title (Just $ pure $ networkPage curMb) $ do
     valD <- networkPageHeader curMb
-    void $ widgetHoldDyn $ ffor valD $ \case
+    void $ networkHoldDyn $ ffor valD $ \case
       Nothing -> pure ()
       Just (cur, refrE) -> networkPageWidget cur refrE
 
@@ -47,16 +44,16 @@ networkPageWidget cur refrE = do
     labelHorSep
     pure listE
   -- lineOption $ lineOptionNoEdit NPSSyncStatus servCurInfoD NPSSyncDescr
-  void $ lineOption $ widgetHoldDyn $ ffor conmapD $ \cm -> case cur of
-    BTC  -> btcNetworkWidget $ maybe [] M.elems $ DM.lookup BTCTag cm
-    ERGO -> ergNetworkWidget $ maybe [] M.elems $ DM.lookup ERGOTag cm
+  void $ lineOption $ networkHoldDyn $ ffor conmapD $ \cm -> case cur of
+    BTC  -> btcNetworkWidget $ maybe [] M.elems $ DM.lookup BtcTag cm
+    ERGO -> ergNetworkWidget $ maybe [] M.elems $ DM.lookup ErgoTag cm
   void $ nextWidget $ ffor listE $ \с -> Retractable {
       retractableNext = serversInfoPage с
     , retractablePrev = Just (pure $ networkPage (Just с))
     }
   pure ()
 
-btcNetworkWidget :: MonadFront t m => [NodeBTC t] -> m ()
+btcNetworkWidget :: MonadFront t m => [NodeBtc t] -> m ()
 btcNetworkWidget nodes = do
   infosD <- fmap sequence $ traverse externalRefDynamic $ nodeconStatus <$> nodes
   let activeND = fmap (length . filter id) $ sequence $ nodeconIsUp <$> nodes
@@ -67,7 +64,7 @@ btcNetworkWidget nodes = do
   descrOptionDyn avgLatD
   labelHorSep
 
-ergNetworkWidget :: MonadFront t m => [NodeERG t] -> m ()
+ergNetworkWidget :: MonadFront t m => [NodeErgo t] -> m ()
 ergNetworkWidget nodes = do
   infosD <- fmap sequence $ traverse externalRefDynamic $ nodeconStatus <$> nodes
   let activeND = fmap (length . filter id) $ sequence $ nodeconIsUp <$> nodes
@@ -81,7 +78,7 @@ ergNetworkWidget nodes = do
 networkPageHeader :: MonadFront t m => Maybe Currency -> m (Dynamic t (Maybe (Currency, Event t ())))
 networkPageHeader minitCur = do
   activeCursD <- getActiveCursD
-  resD <- fmap join $ titleWrap $ widgetHoldDyn $ ffor activeCursD $ \curSet -> case S.toList curSet of
+  resD <- fmap join $ titleWrap $ networkHoldDyn $ ffor activeCursD $ \curSet -> case S.toList curSet of
     [] -> do
       divClass "network-title-name" $ h3 $ localizedText NPSNoCurrencies
       pure $ pure $ Nothing
@@ -117,19 +114,19 @@ serversInfoPage initCur = do
   title <- localized NPSTitle
   wrapper False title (Just $ pure $ serversInfoPage initCur) $ mdo
     curD <- networkPageHeader $ Just initCur
-    void $ widgetHoldDyn $ ffor curD $ maybe (pure ()) $ \(_, refrE) -> do
+    void $ networkHoldDyn $ ffor curD $ maybe (pure ()) $ \(_, refrE) -> do
       connsD  <- externalRefDynamic =<< getActiveConnsRef
       setsD  <- (fmap . fmap) S.toList $ externalRefDynamic =<< getActiveAddrsRef
       let valD = (,) <$> connsD <*> setsD
-      void $ widgetHoldDyn $ ffor valD $ \(conmap, urls) -> flip traverse urls $ \nsa -> do
-        let mconn = M.lookup (namedAddrSock nsa) conmap
+      void $ networkHoldDyn $ ffor valD $ \(conmap, urls) -> flip traverse urls $ \nsa -> do
+        let mconn = M.lookup nsa conmap
         divClass "network-name" $ do
           let offclass = [("class", "mt-a mb-a indexer-offline")]
           let onclass = [("class", "mt-a mb-a indexer-online")]
           let maybe' m n j = maybe n j m
           let clsD = maybe' mconn (pure offclass) $ \con -> ffor (indexConIsUp con) $ \up -> if up then onclass else offclass
           elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
-          divClass "mt-a mb-a network-name-txt" $ text $ namedAddrName nsa
+          divClass "mt-a mb-a network-name-txt" $ text nsa
         case mconn of
           Nothing -> pure ()
           Just conn -> do

@@ -13,17 +13,14 @@ import Network.Socket
 import Reflex.Dom
 import Reflex.Dom.Retractable
 
-import Ergvein.Wallet.Alert
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Elements.Inplace
-import Ergvein.Wallet.Elements.Input
-import Ergvein.Wallet.Elements.Toggle
+import Sepulcas.Alert
+import Sepulcas.Elements
+import Sepulcas.Elements.Toggle
+import Ergvein.Wallet.IP
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Settings
-import Ergvein.Wallet.Monad.Base
-import Ergvein.Wallet.Monad.Prim
+import Ergvein.Wallet.Localize
+import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Settings.Network
-import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.Map.Strict as Map
@@ -65,7 +62,7 @@ dnsPageWidget = do
   h3 $ localizedText STPSButDns
   setsD <- getSettingsD
   actE <- divClass "p-1 fit-content ml-a mr-a" $ do
-    editD <- widgetHoldDyn $ ffor setsD $ \s -> do
+    editD <- networkHoldDyn $ ffor setsD $ \s -> do
       when (S.null $ settingsDns s) $ h4 $ localizedText NSSResolveConfDefault
       traverse dnsWidget $ S.toList $ settingsDns s
     addE <- addDnsWidget
@@ -84,7 +81,7 @@ dnsPageWidget = do
     addDnsWidget = divClass "mt-3" $ mdo
       elClass "hr" "network-hr-sep-lb m-0 mt-1 mb-1" $ pure ()
       tglD <- toggle False tglE
-      valD <- widgetHoldDyn $ ffor tglD $ \case
+      valD <- networkHoldDyn $ ffor tglD $ \case
         False -> fmap (, never) $ buttonClass "button button-outline ml-a mr-a w-100" NSSAddDns
         True -> do
           textD <- fmap _inputElement_value $ inputElement $ def
@@ -113,7 +110,7 @@ dnsWidget url = divClass "network-name mt-1 pl-2" $ do
 -- | Validate ip and show an error if something is not ok
 validateDNSIp :: MonadFrontBase t m => Event t Text -> m (Event t HostName)
 validateDNSIp txtE = do
-  void $ widgetHold (pure ()) $ ffor murlE $ \case
+  void $ networkHold (pure ()) $ ffor murlE $ \case
     Nothing -> divClass "form-field-errors ta-c-imp" $ localizedText NSSFailedDns
     _ -> pure ()
   pure $ fmapMaybe id murlE
@@ -138,7 +135,7 @@ languagePageWidget = do
     dp <- dropdown initKey listLangsD ddnCfg
     let selD = _dropdown_value dp
     selE <- fmap updated $ holdUniqDyn selD
-    void $ widgetHold (pure ()) $ setLanguage <$> selE
+    void $ networkHold (pure ()) $ setLanguage <$> selE
     settings <- getSettings
     updE <- updateSettings $ ffor selE (\lng -> settings {settingsLang = lng})
     showSuccessMsg $ STPSSuccess <$ updE

@@ -23,6 +23,7 @@ import Data.Word
 import Network.Haskoin.Crypto
 import Network.Haskoin.Transaction hiding (buildTx)
 
+import Ergvein.Index.Protocol.Utils
 import Ergvein.Types.Currency
 
 import qualified Data.Attoparsec.ByteString as A
@@ -85,12 +86,12 @@ parseBSS = BSS.toShort <$> parseBS
 
 instance EgvSerialize Word32 where
   egvSerialize _ = BL.toStrict . toLazyByteString . word32LE
-  egvDeserialize _ = parseOnly anyWord32le
+  egvDeserialize _ = parseTillEndOfInput anyWord32le
 
 instance EgvSerialize ByteString where
   egvSerialize _ bs = BL.toStrict . toLazyByteString $
     word16LE (fromIntegral $ BS.length bs) <> byteString bs
-  egvDeserialize _ = parseOnly $ A.take . fromIntegral =<< anyWord16le
+  egvDeserialize _ = parseTillEndOfInput $ A.take . fromIntegral =<< anyWord16le
 
 
 -- ===========================================================================
@@ -99,15 +100,15 @@ instance EgvSerialize ByteString where
 
 instance EgvSerialize Tx where
   egvSerialize _ = BL.toStrict . toLazyByteString . buildTx
-  egvDeserialize _ = parseOnly parseTx
+  egvDeserialize _ = parseTillEndOfInput parseTx
 
 instance EgvSerialize TxIn where
   egvSerialize _ = BL.toStrict . toLazyByteString . buildTxIn
-  egvDeserialize _ = parseOnly parseTxIn
+  egvDeserialize _ = parseTillEndOfInput parseTxIn
 
 instance EgvSerialize TxOut where
   egvSerialize _ = BL.toStrict . toLazyByteString . buildTxOut
-  egvDeserialize _ = parseOnly parseTxOut
+  egvDeserialize _ = parseTillEndOfInput parseTxOut
 
 buildTxOut :: TxOut -> Builder
 buildTxOut (TxOut o s) = word64LE o <> buildBS s

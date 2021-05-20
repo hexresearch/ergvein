@@ -35,7 +35,7 @@ prop_parseHostPort port = parseHostPort defPort addr == (domain, fromMaybe defPo
     domain = B8.pack $ T.unpack testDomain
 
 prop_parse_ip :: IP -> Maybe PortNumber -> Bool
-prop_parse_ip ip port = elem sourceAddr $ parseOnly (ipAddressParser sourcePort) $ T.pack $ show sourceAddr
+prop_parse_ip ip port = elem sourceAddr $ parseOnly (ipAddressParser sourcePort <* endOfInput) $ T.pack $ show sourceAddr
   where
     sourcePort = fromMaybe defPort port
     sourceAddr = toSockAddr (ip, sourcePort)

@@ -8,7 +8,6 @@ module Style (
 
 import Clay
 import Clay.Selector
-import Clay.Stylesheet (prefixed)
 import Control.Monad
 import Data.Text (Text)
 import Data.Text.Lazy (toStrict)
@@ -67,185 +66,6 @@ embedResources = Resources
 compileFrontendText :: Text
 compileFrontendText = toStrict . render . frontendCss $ embedResources
 
-frontendCss :: Resources -> Css
-frontendCss r = do
-  fontFamilies r
-  faFontFamilies r
-  html ? do
-    margin (px 0) (px 0) (px 0) (px 0)
-    padding (px 0) (px 0) (px 0) (px 0)
-    textAlign center
-  body ? do
-    margin (px 0) (px 0) (px 0) (px 0)
-    padding (px 0) (px 0) (px 0) (px 0)
-    color textColor
-    backgroundColor majorBackground
-    fontFamily ["Roboto"] []
-    overflowY auto
-  aboutPageCss
-  alertsCss
-  balancesPageCss
-  buttonCss
-  buttonsToggleCss
-  graphPinCodeCanvasCss
-  headerCss
-  historyPageCss
-  txInfoPageCss
-  infoPageCss
-  initialPageCss
-  inputCss
-  legoStyles
-  linkCss
-  loadingWidgetCss
-  mnemonicWidgetCss
-  navbarCss
-  networkPageCss
-  passwordCss
-  receiveCss
-  selectCss
-  sendPageCss
-  settingsCss
-  sharePageCss
-  validateCss
-  wrapperCss
-  testnetDisclaimerCss
-  inplaceEditCss
-
-textColor :: Color
-textColor = rgb 0 0 0
-
-hoverColor :: Color
-hoverColor = rgb 112 112 112
-
-textSuccess :: Color
-textSuccess = rgb 40 167 69
-
-textWarning :: Color
-textWarning = rgb 255 193 7
-
-textDanger :: Color
-textDanger = rgb 220 53 69
-
-majorBackground :: Color
-majorBackground = rgb 255 255 255
-
-minorBackground :: Color
-minorBackground = rgb 59 78 122
-
-mobileBreakpoint :: Size LengthUnit
-mobileBreakpoint = rem 40
-
-tabletBreakpoint :: Size LengthUnit
-tabletBreakpoint = rem 80
-
-desktopBreakpoint :: Size LengthUnit
-desktopBreakpoint = rem 120
-
-wrapperCss :: Css
-wrapperCss = do
-  ".wrapper" ? do
-    height $ pct 100
-    display flex
-    flexDirection column
-  ".wrapper .container" ? do
-    maxWidth tabletBreakpoint
-  ".centered-container" ? do
-    display flex
-    flexGrow 1
-  ".centered-content" ? do
-    margin auto auto auto auto
-
-translatePctX :: Size Percentage -> Css
-translatePctX x = prefixed (browsers <> "transform") $ "translateX(" <> value x <> ")"
-
-translatePctY :: Size Percentage -> Css
-translatePctY y = prefixed (browsers <> "transform") $ "translateY(" <> value y <> ")"
-
-translatePctXY :: Size Percentage -> Size Percentage -> Css
-translatePctXY x y = prefixed (browsers <> "transform") $ "translate(" <> value x <> ", " <> value y <> ")"
-
-headerCss :: Css
-headerCss = do
-  ".header-wrapper" ? do
-    position relative
-  ".header" ? do
-    display flex
-    alignItems stretch
-    backgroundColor black
-    color white
-    fontSize $ pt 14
-  ".header-only-back-btn" ? do
-    display flex
-    alignItems stretch
-    fontSize $ pt 14
-  ".header-wallet-text" ? do
-    width $ pct 100
-    padding (rem 1) (rem 0) (rem 1) (rem 0)
-  ".header-button" ? do
-    fontSize $ pt 20
-    padding (rem 1) (rem 1) (rem 1) (rem 1)
-    display flex
-    alignItems stretch
-  ".header-button:hover" ? do
-    cursor pointer
-    color hoverColor
-  ".header-menu-dropdown" ? do
-    position absolute
-    right $ px 0
-    backgroundColor black
-    zIndex 1
-    minWidth $ px 160
-    boxShadow [bsColor (rgba 0 0 0 0.2) $ shadowWithSpread (px 0) (px 8) (px 16) (px 0)]
-  ".header-menu-dropdown .button.button-clear" ? do
-    color white
-    fontSize $ pt 14
-    display block
-    border solid (rem 0.1) white
-    width $ pct 100
-    borderRadius (px 0) (px 0) (px 0) (px 0)
-    marginBottom $ px 0
-  ".header-back-button.hidden" ? do
-    visibility hidden
-  ".header-menu-dropdown.hidden" ? do
-    display displayNone
-
-navbarCss :: Css
-navbarCss = do
-  ".navbar" ? do
-    display grid
-    gridTemplateColumns [fr 1, fr 1, fr 1]
-    padding (rem 0) (rem 1) (rem 0) (rem 1)
-  ".navbar-item" ? do
-    padding (rem 1) (rem 1) (rem 1) (rem 1)
-    cursor pointer
-  ".navbar-item:hover" ? do
-    color hoverColor
-  ".navbar-item.active" ? do
-    borderBottom solid (px 4) textColor
-  ".navbar-item.active:hover" ? do
-    borderColor hoverColor
-
-buttonCss :: Css
-buttonCss = do
-  let submit = input # ("type" @= "submit")
-      submitOutline = submit # byClass "button-outline"
-      submitClear = submit # byClass "button-clear"
-  ".button.button-outline" <> submitOutline ? color black
-  ".button.button-clear" <> submitClear ? color black
-  ".button" <> submit ? border solid (rem 0.1) black
-  ".back-button" ? do
-    textAlign $ alignSide sideLeft
-  ".back-button" ** button ? do
-    fontSize $ pt 12
-
-inputCss :: Css
-inputCss = do
-  let simpleBorder = border solid (rem 0.1) black
-  let passInput = input # ("type" @= "password")
-  (passInput # hover) <> (passInput # focus) ? simpleBorder
-  let textInput = input # ("type" @= "text")
-  (textInput # hover) <> (textInput # focus) ? simpleBorder
-
 fontFamilies :: Resources -> Css
 fontFamilies Resources{..} = do
   makeFontFace "Roboto" robotoRegularUrl
@@ -289,6 +109,297 @@ faFontFamilies Resources{..} = do
         | ffUrl    <- urls,
           format <- [EmbeddedOpenType, SVG, TrueType, WOFF, WOFF2]]
       fontWeight $ weight w
+
+frontendCss :: Resources -> Css
+frontendCss r = do
+  fontFamilies r
+  faFontFamilies r
+  htmlCss
+  bodyCss
+  aboutPageCss
+  alertsCss
+  balancesPageCss
+  buttonCss
+  buttonsToggleCss
+  graphPinCodeCanvasCss
+  headerCss
+  historyPageCss
+  txInfoPageCss
+  bumpFeePageCss
+  infoPageCss
+  initialPageCss
+  inputCss
+  legoStyles
+  linkCss
+  loadingWidgetCss
+  mnemonicWidgetCss
+  navbarCss
+  networkPageCss
+  toggleSwitchCss
+  passwordCss
+  badgeCss
+  receiveCss
+  selectCss
+  sendPageCss
+  settingsCss
+  mnemonicExportCss
+  sharePageCss
+  validateCss
+  wrapperCss
+  testnetDisclaimerCss
+
+textColor :: Color
+textColor = rgb 0 0 0
+
+hoverColor :: Color
+hoverColor = rgb 112 112 112
+
+disabledColor :: Color
+disabledColor = rgb 233 236 239
+
+textSuccess :: Color
+textSuccess = rgb 40 167 69
+
+textWarning :: Color
+textWarning = rgb 255 193 7
+
+textDanger :: Color
+textDanger = rgb 220 53 69
+
+textInfo :: Color
+textInfo = rgb 23 162 184
+
+textInfo2 :: Color
+textInfo2 = rgb 220 220 215
+
+majorBackground :: Color
+majorBackground = rgb 255 255 255
+
+minorBackground :: Color
+minorBackground = rgb 59 78 122
+
+mobileBreakpoint :: Size LengthUnit
+mobileBreakpoint = rem 40
+
+tabletBreakpoint :: Size LengthUnit
+tabletBreakpoint = rem 80
+
+desktopBreakpoint :: Size LengthUnit
+desktopBreakpoint = rem 120
+
+htmlCss :: Css
+htmlCss = do
+  html ? do
+    margin (px 0) (px 0) (px 0) (px 0)
+    padding (px 0) (px 0) (px 0) (px 0)
+    textAlign center
+  "input, textarea, select" ? do
+    fontFamily ["Roboto"] [sansSerif, monospace]
+    fontSize $ pt 14
+
+bodyCss :: Css
+bodyCss = body ? do
+  margin (px 0) (px 0) (px 0) (px 0)
+  padding (px 0) (px 0) (px 0) (px 0)
+  color textColor
+  backgroundColor majorBackground
+  fontFamily ["Roboto"] [sansSerif, monospace]
+
+wrapperCss :: Css
+wrapperCss = do
+  ".wrapper" ? do
+    minHeight $ vh 100
+    display flex
+    flexDirection column
+  ".wrapper .container" ? do
+    maxWidth tabletBreakpoint
+    flexGrow 1
+  ".centered-container" ? do
+    display flex
+    flexGrow 1
+  ".centered-content" ? do
+    margin auto auto auto auto
+
+headerCss :: Css
+headerCss = do
+  ".header-wrapper" ? do
+    position sticky
+    top $ rem 0
+    zIndex 1
+  ".header" ? do
+    display flex
+    fontSize $ pt 14
+  ".header-black" ? do
+    backgroundColor black
+    color white
+  ".header-wallet-text" ? do
+    width $ pct 100
+    padding (rem 1) (rem 1) (rem 1) (rem 1)
+  ".header-button" ? do
+    fontSize $ pt 20
+    padding (rem 1) (rem 1) (rem 1) (rem 1)
+  ".header-button:hover" ? do
+    cursor pointer
+    color hoverColor
+  ".header-button.hidden" ? do
+    visibility hidden
+  ".menu" ? do
+    position absolute
+    right $ rem 0
+    backgroundColor black
+    color white
+    boxShadow [bsColor (rgba 0 0 0 0.2) $ shadowWithSpread (px 0) (px 8) (px 16) (px 0)]
+  ".menu .button.button-clear" ? do
+    color white
+    fontSize $ pt 14
+    display block
+    border solid (rem 0.1) white
+    width $ pct 100
+    borderRadius (px 0) (px 0) (px 0) (px 0)
+    marginBottom $ px 0
+  ".menu.hidden" ? do
+    display displayNone
+  ".menu-android-wrapper" ? do
+    position fixed
+    top $ rem 0
+    left $ rem 0
+    width $ pct 100
+    height $ pct 100
+    zIndex 1
+    overflowY auto
+    overflowX hidden
+    backgroundColor $ rgba 0 0 0 0.5
+    transition "" (sec 0.3) easeOut (sec 0)
+  ".menu-android-wrapper.hidden" ? do
+    zIndex (-1)
+    backgroundColor $ rgba 0 0 0 0
+  ".menu-android" ? do
+    position absolute
+    top $ rem 0
+    left $ pct 20
+    width $ pct 80
+    height $ pct 100
+    backgroundColor black
+    color white
+    transition "" (sec 0.3) easeOut (sec 0)
+    zIndex 2
+    display flex
+    flexDirection column
+  ".menu-android.hidden" ? do
+    left $ pct 100
+    width $ pct 0
+  ".menu-android-buttons-wrapper" ? do
+    display flex
+    flexDirection column
+    alignItems flexStart
+    padding (rem 0) (rem 1) (rem 0) (rem 4)
+  ".menu-android-header" ? do
+    display flex
+  ".menu-android-close-button" ? do
+    marginLeft auto
+  ".menu-android-button" ? do
+    marginBottom $ rem 2
+    fontSize $ pt 16
+    paddingBottom $ rem 0.3
+    borderBottom solid (rem 0.1) hoverColor
+    whiteSpace nowrap
+  ".menu-android-button-icon" ? do
+    marginRight $ rem 0.7
+  ".menu-android-button:hover" ? do
+    cursor pointer
+    color hoverColor
+
+navbarCss :: Css
+navbarCss = do
+  ".navbar-2-cols" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1]
+    padding (rem 0) (rem 1) (rem 0) (rem 1)
+  ".navbar-3-cols" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1, fr 1]
+    padding (rem 0) (rem 1) (rem 0) (rem 1)
+  ".navbar-5-cols" ? do
+    display grid
+    gridTemplateColumns [fr 1, fr 1, fr 1, fr 1, fr 1]
+    padding (rem 0) (rem 1) (rem 0) (rem 1)
+  ".navbar-item" ? do
+    padding (rem 1) (rem 1) (rem 1) (rem 1)
+    cursor pointer
+  ".navbar-item:hover" ? do
+    color hoverColor
+  ".navbar-item.active" ? do
+    borderBottom solid (px 4) textColor
+  ".navbar-item.active:hover" ? do
+    borderColor hoverColor
+  ".navbar-black" ? do
+    backgroundColor black
+    color white
+  ".navbar-balance" ? do
+    display flex
+    justifyContent center
+    fontSize $ pt 20
+    marginBottom $ rem 1
+  ".navbar-status" ? do
+    display flex
+    justifyContent center
+    fontSize $ pt 12
+    marginBottom $ rem 1
+    color silver
+  ".navbar-android-controls-wrapper" ? do
+    display flex
+    justifyContent center
+    paddingBottom $ rem 2
+    maxWidth $ rem 22
+    width $ pct 100
+    margin (px 0) auto (px 0) auto
+  ".navbar-android-controls" ? do
+    display flex
+    justifyContent spaceBetween
+    paddingBottom $ rem 2
+    maxWidth $ rem 22
+    width $ pct 100
+  ".navbar-android-controls-button" ? do
+    display flex
+    flexDirection column
+    justifyContent center
+    alignItems center
+    fontSize $ pt 14
+    cursor pointer
+  ".navbar-android-controls-button:hover" ? do
+    opacity 0.7
+  ".navbar-android-controls-button-icon" ? do
+    display inlineFlex
+    justifyContent center
+    alignItems center
+    borderRadius (pct 50) (pct 50) (pct 50) (pct 50)
+    backgroundColor $ rgb 50 50 50
+    width $ rem 6
+    height $ rem 6
+    fontSize $ pt 16
+
+buttonCss :: Css
+buttonCss = do
+  let submit = input # ("type" @= "submit")
+      submitOutline = submit # byClass "button-outline"
+      submitClear = submit # byClass "button-clear"
+  ".button.button-outline" <> submitOutline ? color black
+  ".button.button-clear" <> submitClear ? color black
+  ".button" <> submit ? border solid (rem 0.1) black
+  ".back-button" ? do
+    textAlign $ alignSide sideLeft
+  ".back-button" ** button ? do
+    fontSize $ pt 12
+
+inputCss :: Css
+inputCss = do
+  let simpleBorder = border solid (rem 0.1) black
+      disableBackground = backgroundColor disabledColor
+  let passInput = input # ("type" @= "password")
+  (passInput # hover) <> (passInput # focus) ? simpleBorder
+  let textInput = input # ("type" @= "text")
+  (textInput # hover # enabled) <> (textInput # focus # enabled) ? simpleBorder
+  (textInput # disabled) ? disableBackground
 
 mnemonicWidgetCss :: Css
 mnemonicWidgetCss = do
@@ -345,10 +456,66 @@ settingsCss = do
   ".initial-options" ? do
     margin (rem 0) auto (rem 0) auto
 
+mnemonicExportCss :: Css
+mnemonicExportCss = do
+  ".mnemonic-export-text" ? do
+    wordBreak breakAll
+  ".mnemonic-export-buttons-wrapper" ? do
+    display flex
+    flexWrap F.wrap
+    marginLeft $ rem (-1)
+    marginRight $ rem (-1)
+    justifyContent center
+  ".mnemonic-export-btn-wrapper" ? do
+    paddingLeft $ rem 0.5
+    paddingRight $ rem 0.5
+
 validateCss :: Css
 validateCss = do
   ".validate-error" ? do
     fontSize $ pt 14
+
+
+toggleSwitchCss :: Css
+toggleSwitchCss = do
+  ".switch" ? do
+    position relative
+    display inlineBlock
+    width  $ px 60
+    height $ px 34
+  input # ".switch" ? do
+    opacity 0.0
+    width $ px 0
+    height $ px 0
+    verticalAlign vAlignBottom
+  ".slider" ? do
+    position absolute
+    cursor pointer
+    top $ px 0
+    left $ px 0
+    right $ px 0
+    bottom $ px 0
+    backgroundColor white
+    borderStyle solid
+    borderWidth $ px 1
+    borderColor black
+
+  ".slider" # before ? do
+    position absolute
+    content $ stringContent mempty
+    height $ px 26
+    width $ px 26
+    left $ px  4
+    bottom $ px  3
+    backgroundColor black
+    verticalAlign middle
+  input # checked |+ ".slider" ? do
+    backgroundColor grey
+    verticalAlign middle
+  input # focus |+ ".slider" ? do
+    boxShadow $ pure $ bsColor grey $ shadowWithBlur (px 0) (px 0) (px 1)
+  input # checked |+ ".slider" # before ? do
+    transform $ translateX $ px 26
 
 passwordCss :: Css
 passwordCss = do
@@ -364,7 +531,7 @@ passwordCss = do
     position absolute
     display flex
     alignItems center
-    right $ rem 0.8
+    right $ rem 1.2
     fontSize $ pt 16
     color hoverColor
     backgroundColor white
@@ -376,8 +543,10 @@ passwordCss = do
     left $ px 0
     width $ vw 100
     height $ vh 100
-    zIndex 1
+    zIndex 2
     backgroundColor white
+  ".ask-password-modal-content" ? do
+    height $ pct 100
     display flex
     flexDirection column
     justifyContent center
@@ -389,7 +558,7 @@ passwordCss = do
     left $ px 0
     width $ vw 100
     height $ vh 100
-    zIndex 1
+    zIndex 2
     backgroundColor white
     justifyContent center
 
@@ -434,11 +603,35 @@ balancesPageCss = do
 
 sendPageCss :: Css
 sendPageCss = do
+  ".send-page" ? do
+    textAlign $ alignSide sideLeft
   ".send-page input" ? do
     marginBottom $ rem 1
+  ".text-input-with-btns-wrapper" ? do
+    display flex
+    alignItems center
+    position relative
+  ".text-input-with-btns-wrapper input" ? do
+    marginBottom $ rem 0
+    width $ pct 100
+  ".text-input-btns" ? do
+    position absolute
+    display flex
+    alignItems center
+    right $ rem 0
+    fontSize $ pt 16
+    marginRight $ rem 1
+  ".text-input-btn" ? do
+    paddingLeft $ rem 1
+    paddingRight $ rem 1
+    zIndex 1
+  ".text-input-btn:hover" ? do
+    cursor pointer
+    color hoverColor
   ".form-field-errors" ? do
     color red
     textAlign $ alignSide sideLeft
+    marginTop $ rem (-0.5)
     marginBottom $ rem 1
   ".send-page-buttons-wrapper" ? do
     display flex
@@ -449,6 +642,9 @@ sendPageCss = do
     flexGrow 1
     marginLeft $ rem 1
     marginRight $ rem 1
+  ".send-page-available-balance" ? do
+    paddingBottom $ rem 1
+    textAlign $ alignSide sideLeft
   ".button-icon-wrapper" ? do
     paddingLeft $ rem 1
   ".is-invalid input" ? border solid (rem 0.1) red
@@ -564,6 +760,9 @@ networkPageCss = do
   ".indexer-offline" ? do
     marginRight $ em 0.5
     color red
+  ".indexer-unsync" ? do
+    marginRight $ em 0.5
+    color orange
   ".net-refresh-btn" ? do
     height $ em 3.8
     verticalAlign vAlignTop
@@ -607,13 +806,11 @@ sharePageCss = do
   ".share-v-spacer" ? do
     height $ px 20
   ".qrcode-container" ? do
-    width $ px 232
-    height $ px 232
     justifyContent center
     margin auto auto auto auto
   ".share-qrcode-container" ? do
-    width $ px 232
-    height $ px 232
+    width $ px 252
+    height $ px 252
     justifyContent center
     let px0 = px 0 in padding px0 px0 px0 $ px 8
     margin (px 0) auto (px 0) auto
@@ -717,14 +914,19 @@ selectCss = do
     margin auto auto auto auto
     width $ px 200
   "select" ? do
+    color textColor
     borderColor textColor
-    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" height=\\\"14\\\" viewBox=\\\"0 0 24 8\\\" width=\\\"24\\\"><path fill=\\\"#000000\\\" d=\\\"M0,0l6,8l6-8\\\"/></svg>"
+    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 8' width='30'><path fill='%23000000' d='M7,0l6,8l6-8'/></svg>"
+    backgroundPosition $ placed sideCenter sideRight
+    backgroundRepeat noRepeat
   "select:hover" ? do
     cursor pointer
   "select:hover, select:focus" ? do
     color hoverColor
     borderColor hoverColor
-    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" height=\\\"14\\\" viewBox=\\\"0 0 24 8\\\" width=\\\"24\\\"><path fill=\\\"#707070\\\" d=\\\"M0,0l6,8l6-8\\\"/></svg>"
+    backgroundImage $ url "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 8' width='30'><path fill='%23707070' d='M7,0l6,8l6-8'/></svg>"
+    backgroundPosition $ placed sideCenter sideRight
+    backgroundRepeat noRepeat
 
 buttonsToggleCss :: Css
 buttonsToggleCss = do
@@ -743,18 +945,30 @@ buttonsToggleCss = do
 
 historyPageCss :: Css
 historyPageCss = do
+  ".history-page" ? do
+    display flex
+  ".history-table" ? do
+    flexGrow 1
+  ".history-empty-placeholder" ? do
+    alignSelf center
+    flexGrow 1
+    textAlign center
+    color hoverColor
   ".history-table-header" ? do
     marginTop (px 0)
     borderTop solid (px 2) black
     borderBottom solid (px 2) black
     display grid
-    gridTemplateColumns [fr 3, fr 3, fr 1]
+    gridTemplateColumns [fr 2, fr 3, fr 1]
   ".history-amount-header" ? do
     borderRight solid (px 2) black
     display block
   ".history-date-header" ? do
     borderRight solid (px 2) black
     display block
+  "history-date" ? do
+    marginLeft auto
+    marginRight auto
   ".history-status-header" ? do
     display block
   ".history-status-transrefill" ? do
@@ -775,9 +989,11 @@ historyPageCss = do
     fontSize $ px 16
     padding (rem 1.5) (rem 1) (rem 1.5) (rem 1)
     display grid
-    gridTemplateColumns [fr 3, fr 3, fr 1]
+    gridTemplateColumns [fr 2, fr 3, fr 1]
   ".history-table-row:hover" ? do
-    backgroundColor $ rgb 220 220 220
+    backgroundColor $ rgb 215 215 219
+  ".history-table-row:not(:last-child)" ? do
+    borderBottom solid (rem 0.1) (rgb 215 215 219)
   ".history-amount-transrefill" ? do
     display flex
     alignItems center
@@ -793,6 +1009,9 @@ historyPageCss = do
     paddingRight $ rem 0.3
   ".history-page-status-icon" ? do
     fontSize $ pt 9
+  ".history-page-status-text-icon" ? do
+    fontSize $ pt 9
+    paddingLeft $ rem 0.5
 
 txInfoPageCss :: Css
 txInfoPageCss = do
@@ -819,6 +1038,13 @@ txInfoPageCss = do
     paddingRight $ rem 0.5
   ".tx-info-page-copy" ? do
     cursor pointer
+  ".tx-info-our-address" ? do
+    fontWeight bold
+
+bumpFeePageCss :: Css
+bumpFeePageCss = do
+  ".bump-fee-page" ? do
+    textAlign $ alignSide sideLeft
 
 legoStyles :: Css
 legoStyles = do
@@ -831,8 +1057,18 @@ legoStyles = do
   ".ml-1" ? (marginLeft   $ rem 1)
   ".mr-1" ? (marginRight  $ rem 1)
   ".mt-1" ? (marginTop    $ rem 1)
+  ".m-1" ? margin (rem 1) (rem 1) (rem 1) (rem 1)
+  ".mlr-1" ? margin (rem 0) (rem 1) (rem 0) (rem 1)
+  ".mlr-a" ? do
+    marginLeft auto
+    marginRight auto
+  ".mb-2" ? (marginBottom $ rem 2)
+  ".ml-2" ? (marginLeft   $ rem 2)
+  ".mr-2" ? (marginRight  $ rem 2)
   ".mt-2" ? (marginTop    $ rem 2)
+  ".m-2" ? margin (rem 2) (rem 2) (rem 2) (rem 2)
   ".mt-3" ? (marginTop    $ rem 3)
+  ".mr-6" ? (marginRight  $ rem 6)
   ".mb-a" ? marginBottom  auto
   ".ml-a" ? marginLeft    auto
   ".mr-a" ? marginRight   auto
@@ -854,8 +1090,36 @@ legoStyles = do
   ".ta-l" ? textAlign (alignSide sideLeft)
   ".ta-r" ? textAlign (alignSide sideRight)
   ".ta-c" ? textAlign center
+  ".ta-l-imp" ? important (textAlign (alignSide sideLeft))
+  ".ta-r-imp" ? important (textAlign (alignSide sideRight))
+  ".ta-c-imp" ? important (textAlign center)
   ".word-break-all" ? wordBreak breakAll
   ".font-bold" ? fontWeight bold
+  ".fit-content" ? width fitContent
+  ".disp-block" ? display block
+  ".overflow-wrap-bw" ? overflowWrap breakWord
+  let fillBtnColor cl backCol fontCol = do
+        let colorSet = do
+              important (backgroundColor backCol)
+              important (color fontCol)
+        cl ? colorSet
+        cl `with` hover ? colorSet
+        cl `with` focus ? colorSet
+  fillBtnColor ".btn-color-green" green white
+  fillBtnColor ".btn-color-red" red white
+
+badgeCss :: Css
+badgeCss = do
+  ".badge-warning" ? do
+    backgroundColor textWarning
+  ".badge-danger" ? do
+    backgroundColor textDanger
+    color white
+  ".badge-info" ? do
+    backgroundColor textInfo
+    color white
+  ".badge-info-2" ? do
+    backgroundColor textInfo2
 
 receiveCss :: Css
 receiveCss = do
@@ -867,7 +1131,6 @@ receiveCss = do
     margin (rem 2) auto (rem 2) auto
     fontSize $ px 16
     fontWeight $ weight 600
-    wordBreak breakAll
   ".label-block" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1]
@@ -887,7 +1150,6 @@ receiveCss = do
     margin (px 20) (px 5) (px 40) (px 5)
     fontSize $ px 16
     fontWeight $ weight 600
-    wordBreak breakAll
   ".button-receive" ? do
     width $ pct 75
     marginLeft auto
@@ -969,12 +1231,3 @@ testnetDisclaimerCss = do
     marginBottom $ rem 1
   ".testnet-disclaimer-text" ? do
     marginBottom $ rem 1
-
-inplaceEditCss :: Css
-inplaceEditCss = do
-  ".inplace-label-txt" ? do
-    textAlign $ alignSide sideLeft
-    wordBreak breakAll
-    paddingRight $ em 0.5
-  ".inplace-separator" ? do
-    border solid (px 1) black

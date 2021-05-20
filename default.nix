@@ -17,29 +17,36 @@ let
       ergo-protocol-client = ./ergo-protocol-client;
       ergvein-checkpoint-generator = ./checkpoint-generator;
       ergvein-common = ./common;
+      ergvein-core = ./ergvein-core;
       ergvein-crypto = ./crypto;
+      ergvein-filters = ./wallet-filters;
       ergvein-index-api = ./index-api;
       ergvein-index-client = ./index-client;
       ergvein-index-protocol = ./index-protocol;
       ergvein-index-protocol-client = ./index-protocol-client;
       ergvein-index-server = ./index-server;
       ergvein-interface-ergo = ./interfaces/ergo;
-      ergvein-wallet = ./wallet;
-      ergvein-wallet-android = ./wallet-android;
-      ergvein-wallet-desktop = ./wallet-desktop;
-      ergvein-wallet-filters = ./wallet-filters;
-      ergvein-wallet-native = ./wallet-native;
-      ergvein-wallet-types = ./wallet-types;
+      ergvein-localize = ./ergvein-localize;
       ergvein-node-discovery = ./node-discovery;
+      ergvein-types = ./wallet-types;
+      ergvein-wallet = ./wallet;
       ergvein-wallet-version = ./wallet-version;
       ergvein-website = ./ergvein-website;
       golomb-rice = ./golomb-rice;
       reflex-dom-canvas = ./reflex-dom-canvas;
       reflex-dom-retractable = ./retractable;
       reflex-external-ref = ./reflex-external-ref;
+      reflex-flunky = ./reflex-flunky;
+      reflex-fork = ./reflex-fork;
       reflex-localize = ./reflex-localize;
       reflex-localize-dom = ./reflex-localize-dom;
       socket-manager = ./socket-manager;
+      reflex-main-thread = ./reflex-main-thread;
+      sepulcas = ./sepulcas;
+      sepulcas-android = ./sepulcas-android;
+      sepulcas-desktop = ./sepulcas-desktop;
+      sepulcas-log = ./sepulcas-log;
+      sepulcas-native = ./sepulcas-native;
       ui-playground = ./ui-playground;
       x509-android = ./x509-android;
     };
@@ -53,26 +60,34 @@ let
         "ergo-protocol"
         "ergvein-checkpoint-generator"
         "ergvein-common"
+        "ergvein-core"
         "ergvein-crypto"
+        "ergvein-filters"
         "ergvein-index-api"
         "ergvein-index-client"
         "ergvein-index-protocol-client"
         "ergvein-index-protocol"
         "ergvein-index-server"
         "ergvein-interface-ergo"
-        "ergvein-wallet-desktop"
-        "ergvein-wallet-filters"
-        "ergvein-wallet-native"
-        "ergvein-wallet-types"
+        "ergvein-localize"
         "ergvein-node-discovery"
+        "ergvein-types"
         "ergvein-wallet-version"
         "ergvein-wallet"
         "ergvein-website"
         "golomb-rice"
         "reflex-dom-retractable"
         "reflex-external-ref"
+        "reflex-flunky"
+        "reflex-fork"
+        "reflex-localize-dom"
         "reflex-localize"
         "socket-manager"
+        "reflex-main-thread"
+        "sepulcas-desktop"
+        "sepulcas-log"
+        "sepulcas-native"
+        "sepulcas"
         "ui-playground"
       ];
     };
@@ -101,7 +116,7 @@ let
 
       ''; */
       javaSources = [
-        ./wallet/java
+        "${project.ghc.sepulcas-android.src}/java"
         "${project.ghc.x509-android.src}/java"
       ];
       version = version;
@@ -130,5 +145,33 @@ let
       '';
     };
 
+    android.sepulcas = {
+      executableName = "sepulcas-demo";
+      applicationId = "org.sepulcas.demo";
+      displayName = "Sepulcas demo";
+      resources = ./sepulcas/static/res;
+      assets = ./sepulcas/static/assets;
+      iconPath = "@drawable/ic_launcher";
+      javaSources = [
+        "${project.ghc.sepulcas-android.src}/java"
+        "${project.ghc.x509-android.src}/java"
+      ];
+      version = {code = "1"; name="demo"; };
+
+      services = ''
+      <provider
+          android:name="androidx.core.content.FileProvider"
+          android:authorities="org.sepulcas.demo.fileprovider"
+          android:exported="false"
+          android:grantUriPermissions="true">
+          <meta-data
+              android:name="android.support.FILE_PROVIDER_PATHS"
+              android:resource="@xml/file_paths" />
+      </provider>
+      '';
+      permissions = ''
+      <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+      '';
+    };
   });
   in project

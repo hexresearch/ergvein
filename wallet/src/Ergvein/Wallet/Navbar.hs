@@ -5,9 +5,9 @@ module Ergvein.Wallet.Navbar (
 
 import {-# SOURCE #-} Ergvein.Wallet.Navbar.Switcher
 import Ergvein.Types.Currency
-import Ergvein.Wallet.Elements
+import Sepulcas.Elements
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.History
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Status.Widget

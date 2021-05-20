@@ -26,8 +26,8 @@ library
       , mtl                     >= 2.1    && < 2.3
       , ergvein-common
       , ergvein-index-api
-      , ergvein-wallet-types
-      , ergvein-wallet-native
+      , ergvein-types
+      , sepulcas-native
   default-language:    Haskell2010
   default-extensions:
     ConstraintKinds

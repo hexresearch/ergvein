@@ -31,6 +31,7 @@ module Ergvein.Wallet.Page.Canvas(
   , TouchState(..)
   , HoverState(..)
   , PatternTry(..)
+  , GridStrokeColor(..)
   -- Canvas Type
   , CanvasOptions(..)
   , defCanvasOptions
@@ -49,7 +50,12 @@ import Ergvein.Wallet.Monad
 
 import qualified Data.Text as T
 
-type Square  = (Double, Double, Double, Double)
+type Square  = (
+    Double -- The x-axis coordinate of the rectangle's starting point.
+  , Double -- The y-axis coordinate of the rectangle's starting point.
+  , Double -- The rectangle's width. Positive values are to the right, and negative to the left.
+  , Double -- The rectangle's height. Positive values are down, and negative are up.
+  )
 type Position = (Double, Double)
 
 data DrawCommand = AddSquare | Clear deriving (Show, Eq)
@@ -59,6 +65,8 @@ data TouchState = Pressed | Unpressed deriving (Show, Eq)
 data HoverState = Hovered | Unhovered deriving (Show, Eq)
 
 data PatternTry = FirstTry | SecondTry | ErrorTry | Done deriving (Show, Eq)
+
+data GridStrokeColor = GridStrokeWhite | GridStrokeBlack deriving (Show, Eq)
 
 data CanvasOptions = CanvasOptions {
   coWidth   :: !Int
@@ -82,32 +90,30 @@ createCanvas CanvasOptions{..} = do
       , ("class" , coClass)
       ]
 
-drawGridT :: Int -> Int -> [(Maybe Int, Square)] -> Text
-drawGridT cWOld cHOld r = (clearCanvasT cW cH)
+drawGridT :: Int -> Int -> Int -> [(Maybe Int, Square)] -> GridStrokeColor -> Text
+drawGridT cW cH padding r strokeColor = (clearCanvasT fullW fullH)
                     <> beginPathT
-                    <> " ctx.fillStyle = \"#FFFFFF\";"
-                    <> " ctx.fillRect(0,0," <> (showt cW) <> "," <> (showt cH) <> "); "
+                    <> " ctx.fillStyle = \"#FFFFFF\"; "
+                    <> " ctx.fillRect(0,0," <> (showt fullW) <> "," <> (showt fullH) <> "); "
                     <> beginPathT
-                    <> " ctx.fillStyle = \"#000000\";"
-                    <> (T.concat  (fmap fillRects r))
-                    <> strokeStyleT
+                    <> " ctx.fillStyle = \"#000000\"; "
+                    <> (T.concat (fmap fillRects r))
+                    <> strokeStyleCT strokeColorStr
                     <> strokeT
   where
-    cW = cWOld+10
-    cH = cHOld+10
-    fillRects (mN, (a1,b1,c1,d1)) = case mN of
-      Just _ -> fillRectT a b c d
-      Nothing -> rectT a b c d
-      where
-        a = a1 + 10
-        b = b1 + 10
-        c = c1
-        d = d1
+    strokeColorStr = if strokeColor == GridStrokeWhite then "\"#FFFFFF\"" else "\"#000000\""
+    fillRects (mN, (a,b,c,d)) = case mN of
+      Just _ -> fillRectT (a + padding') (b + padding') c d
+      Nothing -> rectT (a + padding') (b + padding') c d
+    fullW = cW + 2 * padding
+    fullH = cH + 2 * padding
+    padding' = fromIntegral padding
+
 drawGridBorderT :: Int -> Int -> [(Maybe Int, Square)] -> Text
 drawGridBorderT cW cH r = (clearCanvasT cW cH)
                     <> beginPathT
                     <> (rectZeroT cW cH)
-                    <> (T.concat  (fmap fillRects r))
+                    <> (T.concat (fmap fillRects r))
                     <> strokeStyleT
                     <> strokeT
   where
@@ -219,8 +225,8 @@ drawRndT w h lst = drawRoundLstT w h lst
 
 drawLineT :: Int -> Int -> Double -> Double -> Double -> Double -> (DrawCommand,(Double,Double)) -> [(Maybe Int, Square)] -> Text
 drawLineT canvasW canvasH coordX coordY _ _ (a,(cntX,cntY)) r = case a of
-  Clear ->  drawGridT canvasW canvasH r
-  AddSquare -> (drawGridT canvasW canvasH r)
+  Clear ->  drawGridT canvasW canvasH 0 r GridStrokeBlack
+  AddSquare -> (drawGridT canvasW canvasH 0 r GridStrokeBlack)
             <> (moveToT cntX cntY)
             <> (lineToT coordX coordY)
             <> strokeT

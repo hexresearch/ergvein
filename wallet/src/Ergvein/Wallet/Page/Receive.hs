@@ -6,27 +6,21 @@ module Ergvein.Wallet.Page.Receive (
 import Control.Lens
 
 import Ergvein.Text
-import Ergvein.Types.Address
-import Ergvein.Types.Currency
-import Ergvein.Types.Keys
-import Ergvein.Types.Storage
-import Ergvein.Wallet.Clipboard
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Elements.Input
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.Receive
-import Ergvein.Wallet.Localization.Util
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Page.QRCode
 import Ergvein.Wallet.Wrapper
+import Sepulcas.Clipboard
+import Sepulcas.Elements
 
 import qualified Data.Text as T
 import qualified Data.List as L
 
 #ifdef ANDROID
-import Ergvein.Wallet.Share
+import Sepulcas.Share
 #endif
 
 receivePage :: MonadFront t m => Currency -> m ()
@@ -34,7 +28,7 @@ receivePage cur = do
   pubStoreD <- getPubStorageD
   let lastUnusedKeyD = ffor pubStoreD $ \ps ->
         (getLastUnusedKey External . _currencyPubStorage'pubKeystore) =<< (ps ^. pubStorage'currencyPubStorages . at cur)
-  void $ widgetHoldDyn $ ffor lastUnusedKeyD $ \case
+  void $ networkHoldDyn $ ffor lastUnusedKeyD $ \case
     Nothing -> exceededGapLimit cur
     Just (i, key) -> receivePageWidget cur i key
   pure ()
@@ -54,7 +48,7 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
   let thisWidget = Just $ pure $ receivePage cur
       navbar = blank
   wrapperNavbar False title thisWidget navbar $ void $ divClass "receive-page" $ do
-    base64D <- divClass "receive-qr" $ qrCodeWidgetWithData qrSizeMedium prefixedKeyText
+    base64D <- divClass "mb-2" $ qrCodeWidgetWithData prefixedKeyText
     (newE, copyE, shareE) <- divClass "receive-buttons-wrapper" $ do
       nE  <- newAddrBtn
       cE <- copyAddrBtn
@@ -88,7 +82,7 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
   let thisWidget = Just $ pure $ receivePage cur
       navbar = navbarWidget cur thisWidget NavbarReceive
   wrapperNavbar False title thisWidget navbar $ void $ divClass "receive-page" $ do
-    void $ divClass "receive-qr" $ qrCodeWidget qrSizeMedium (curprefix cur <> keyTxt)
+    void $ divClass "mb-2" $ qrCodeWidget $ curprefix cur <> keyTxt
     void $ divClass "receive-buttons-wrapper" $ do
       newE  <- newAddrBtn
       copyE <- copyAddrBtn

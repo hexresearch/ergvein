@@ -11,6 +11,7 @@ import           Control.Monad.Trans.Control
 import           Control.Parallel.Strategies
 import           Data.Either
 import           Data.Maybe
+import           Data.List.Split (chunksOf)
 import           Data.Serialize
 import           Data.Text(Text)
 import           Data.Time
@@ -50,7 +51,7 @@ blockTxInfos :: (HasShutdownFlag m, BitcoinApiMonad m, MonadBaseControl IO m, Ha
 blockTxInfos txBlockHeight block = do
   let (txInfos , spentTxsIds) = fmap (uniqueWithCount . mconcat) $ unzip $ txInfo <$> HK.blockTxns block
   -- timeLog $ "spentTxsIds: " <> showt (length spentTxsIds)
-  uniqueSpentTxs <- fmap mconcat $ mapConcurrently (mapM spentTxSource) $ mkChunks 100 spentTxsIds
+  uniqueSpentTxs <- fmap mconcat $ mapConcurrently (mapM spentTxSource) $ chunksOf 100 spentTxsIds
   blockAddressFilter <- encodeBtcAddrFilter =<<
     withInputTxs uniqueSpentTxs (makeBtcFilter isErgveinIndexable block)
   let blockHeaderHash = HK.getHash256 $ HK.getBlockHash $ HK.headerHash $ HK.blockHeader block
@@ -101,7 +102,7 @@ getTxFromNode thash = do
   txHeight <- fmap unTxRecHeight $
     getParsedExact BTC "getTxFromNode" db $ txHeightKey $ hkTxHashToEgv thash
   blk <- getBtcBlockWithRepeat $ fromIntegral txHeight
-  let txChunks = mkChunks 100 $ HK.blockTxns blk
+  let txChunks = chunksOf 100 $ HK.blockTxns blk
   txs <- fmap mconcat $ mapConcurrently (pure . catMaybes . parMap rpar comparator) txChunks
   case txs of
     [] -> txGettingError txHeight

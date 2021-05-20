@@ -1,4 +1,6 @@
+{-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE OverloadedLists #-}
+
 module Ergvein.Wallet.Page.Transaction(
     transactionInfoPage
   , showTime
@@ -6,22 +8,16 @@ module Ergvein.Wallet.Page.Transaction(
   ) where
 
 import Control.Monad.Reader
-import Data.Map.Strict as Map
 import Data.Maybe (fromMaybe)
 import Data.Text as T
 import Data.Time
 
 import Ergvein.Text
-import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
-import Ergvein.Wallet.Elements
+import Sepulcas.Elements
 import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.History
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Platform
-import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Transaction.Get
-import Ergvein.Wallet.Transaction.View
+import {-# SOURCE #-} Ergvein.Wallet.Page.BumpFee
 import Ergvein.Wallet.Wrapper
 
 import qualified Data.List as L
@@ -40,7 +36,16 @@ transactionInfoPage cur tr@TransactionView{..} = do
     case txInOut of
       TransRefill -> pure ()
       TransWithdraw -> infoPageElement HistoryTIFee $ maybe "unknown" (\a -> (showMoneyUnit a moneyUnits) <> " " <> symbolUnit cur moneyUnits) $ txFee txInfoView
-    infoPageElement HistoryTIRbf $ showt $ txRbfEnabled txInfoView
+    infoPageElementEl HistoryTIRbf $ do
+      text $ showt $ txRbfEnabled txInfoView
+      let bumpFeePossible = txInOut == TransWithdraw && txRbfEnabled txInfoView && txConfirmations txInfoView == 0
+      when (bumpFeePossible) $ do
+        bumpFeeE <- divClass "mt-1" $ outlineButton HistoryTIBumpFeeBtn
+        void $ nextWidget $ ffor bumpFeeE $ \_ -> Retractable {
+          retractableNext = bumpFeePage cur tr Nothing
+        , retractablePrev = thisWidget
+        }
+      pure ()
     case txConflictingTxs txInfoView of
       [] -> pure ()
       conflictingTxs -> infoPageElementExpEl HistoryTIConflictingTxs $ do
@@ -84,7 +89,7 @@ transactionInfoPage cur tr@TransactionView{..} = do
         oBld txt isOur = if isOur then (txt <> " tx-info-our-address") else txt
 
 makeNumberedTxIdLink :: MonadFront t m => Currency -> (Int, TxId) -> m ()
-makeNumberedTxIdLink cur (num, txId) = do
+makeNumberedTxIdLink _ (num, txId) = do
   settings <- getSettings
   let txIdText = egvTxHashToStr txId
       urlPrefixes = btcSettings'explorerUrls $ getBtcSettings settings

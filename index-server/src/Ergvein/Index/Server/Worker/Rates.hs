@@ -32,7 +32,7 @@ ratesThread = do
   xratesVar <- asks envExchangeRates
   forever $ do
     ratesBtc <- coinbaseReqMultipleRates BTC [USD, RUB, EUR]
-    liftIO $ atomically $ modifyTVar xratesVar $ M.insert btcCC ratesBtc
+    liftIO $ atomically $ modifyTVar xratesVar $ M.insert btcCC (realToFrac <$> ratesBtc)
     logInfoN $ "Rates: " <> showt ratesBtc
     liftIO $ threadDelay dt
 

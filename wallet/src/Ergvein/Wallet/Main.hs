@@ -1,4 +1,6 @@
+{-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE CPP #-}
+
 module Ergvein.Wallet.Main(
     frontend
   , mainWidgetWithCss
@@ -7,18 +9,16 @@ module Ergvein.Wallet.Main(
 import Reflex.Dom.Main (mainWidgetWithCss)
 
 import Ergvein.Types.Storage
-import Ergvein.Wallet.Loading
-import Ergvein.Wallet.Log.Writer
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Native
 import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.Initial
 import Ergvein.Wallet.Page.Restore
 import Ergvein.Wallet.Password
+import Sepulcas.Loading
+import Sepulcas.Log
 #ifdef TESTNET
-import Ergvein.Wallet.Elements
-import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localization.TestnetDisclaimer
+import Sepulcas.Elements
+import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Wrapper
 #endif
 
@@ -29,10 +29,12 @@ frontend = do
   askPasswordModal
   logWriter =<< fmap fst getLogsTrigger
   logWrite "Entering initial page"
+  spawnPreWorkers
   mainpageDispatcher
 
 startPage :: MonadFront t m => m ()
 startPage = do
+  _ <- storeWallet "start-page" =<< delay 0.1 =<< getPostBuild
   ps <- getPubStorage
   if _pubStorage'restoring ps
     then restorePage
@@ -48,9 +50,9 @@ mainpageDispatcher = void $ workflow testnetDisclaimer
       closeE <- outlineButton TestnetDisclaimerClose
       pure ((), startWallet <$ closeE)
     startWallet = Workflow $ do
-      void $ retractStack (initialPage True) `liftAuth` retractStack startPage
+      void $ retractStack (initialPage True) `liftAuth` (spawnWorkers >> retractStack startPage)
       pure ((), never)
 #else
 mainpageDispatcher :: MonadFrontBase t m => m ()
-mainpageDispatcher = void $ retractStack (initialPage True) `liftAuth` retractStack startPage
+mainpageDispatcher = void $ retractStack (initialPage True) `liftAuth` (spawnWorkers >> retractStack startPage)
 #endif

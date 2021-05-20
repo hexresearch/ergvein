@@ -4,20 +4,19 @@ module Main where
 
 import Data.Text (unpack)
 import Ergvein.Wallet
-import Ergvein.Wallet.Monad.Async
-import Ergvein.Wallet.Run
-import Ergvein.Wallet.Run.Callbacks
 import Ergvein.Wallet.Style
 import Ergvein.Wallet.Version
 import GHC.Generics
 import Options.Generic
+import Sepulcas.Run
+import Sepulcas.Run.Callbacks
 
 #ifdef ANDROID
-import Ergvein.Wallet.Android.Run()
-import Ergvein.Wallet.Android.Native()
+import Sepulcas.Android.Run()
+import Sepulcas.Android.Native()
 #else
-import Ergvein.Wallet.Desktop.Run()
-import Ergvein.Wallet.Desktop.Native()
+import Sepulcas.Desktop.Run()
+import Sepulcas.Desktop.Native()
 #endif
 
 data Options = Options {
@@ -37,6 +36,6 @@ main = do
   bindSelf $ run $ \cbs -> do
     css <- compileFrontendCss
     mainWidgetWithCss css $ do
-      settings :: Settings <- loadSettings $ unHelpful $ config opts
-      env <- newEnv settings (runUiCallbacks cbs)
-      runEnv cbs env frontend
+      settings :: Settings <- loadSettings English $ unHelpful $ config opts
+      env <- newBaseEnv settings (runUiCallbacks cbs)
+      runBase cbs env frontend

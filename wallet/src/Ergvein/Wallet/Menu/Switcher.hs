@@ -25,4 +25,4 @@ switchMenu prevWidget e = void $ nextWidget $ fforMaybe e $ \go -> let
       MenuLogs     -> Nothing
       MenuSwitch   -> Just $ mkNext $ do
         buildE <- delay 0.1 =<< getPostBuild
-        void $ setAuthInfo $ Nothing <$ buildE
+        void $ setWalletInfo $ Nothing <$ buildE
