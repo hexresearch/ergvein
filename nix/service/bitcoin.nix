@@ -16,7 +16,7 @@ in {
     services.bitcoin = {
       enable = mkOption {
         type = types.bool;
-        default = true;
+        default = false;
         description = ''
           Whether to enable bitcoin node by default.
         '';
@@ -75,7 +75,7 @@ in {
         type = types.bool;
         default = false;
         description = ''
-          Start with -reindex flag. 
+          Start with -reindex flag.
         '';
       };
 

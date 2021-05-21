@@ -6,6 +6,8 @@ packages:
   ./crypto
   ./data-merkle-tree
   ./ergo-api
+  ./ergo-protocol
+  ./ergo-protocol-client
   ./ergvein-core
   ./ergvein-localize
   ./ergvein-website
@@ -24,6 +26,7 @@ packages:
   ./reflex-localize-dom
   ./reflex-main-thread
   ./retractable
+  ./socket-manager
   ./sepulcas
   ./sepulcas-android
   ./sepulcas-desktop

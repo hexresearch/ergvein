@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TupleSections #-}
 module Ergvein.Text(
     showt
   , text2bs
@@ -10,12 +12,13 @@ module Ergvein.Text(
   , hex2bsE
   , base64Text2bs
   , bs2Base64Text
+  , ShowHex(..)
   ) where
 
 import Data.Aeson
 import Data.Bifunctor
 import Data.ByteString (ByteString)
-import Data.Text (Text, pack)
+import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Text.Printf
 import qualified Data.ByteString           as BS
@@ -73,3 +76,11 @@ hex2bsE bs =
   in  if BS.null b
         then Right a
         else Left ("Not a valid hex string: " <> show bs)
+
+newtype ShowHex a = ShowHex { unShowHex :: a }
+
+instance Show (ShowHex ByteString) where
+  show = unpack . bs2Hex . unShowHex
+
+instance Read (ShowHex ByteString) where
+  readsPrec _ = (:[]) . (,"") . ShowHex . hex2bs . pack

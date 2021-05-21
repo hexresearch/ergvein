@@ -5,10 +5,12 @@ let
   cfg = config.services.ergvein;
   addressType = import ../service/address-type.nix { inherit lib; };
 in {
+  disabledModules = [ "services/networking/ergo.nix" ];
   ##### Depedendant services
   imports = [
     ../service/bitcoin.nix
     ../service/ergvein-indexer.nix
+    ../service/ergo.nix
   ];
 
   ##### interface. here we define the options that users of our service can specify
@@ -46,19 +48,27 @@ in {
   };
 
   ##### implementation
-  config = mkIf cfg.enable { # only apply the following settings if enabled
+  config = {
     nixpkgs.overlays = [
       (import ../overlay.nix)
     ];
+    nixpkgs.config.packageOverrides = pkgs: with pkgs; {
+      ergo = pkgs.callPackage ../pkgs/ergo-node.nix {};
+    };
     services = {
       bitcoin = {
-        enable = true;
+        enable = cfg.enable;
         testnet = cfg.testnet;
         nodePort = 8332;
         package = with pkgs; pkgs.callPackage ../pkgs/bitcoin-node.nix { withGui = false; };
       };
-      ergvein-indexer = {
+      ergo = {
         enable = true;
+        /* enable = cfg.enable; */
+        testnet = cfg.testnet;
+      };
+      ergvein-indexer = {
+        enable = cfg.enable;
         package = pkgs.ergvein-index-server;
         nodeExternalAddress = cfg.externalAddress;
         testnet = cfg.testnet;

@@ -43,6 +43,8 @@ in (self: super: let
     cbitstream = ingnoreGarbage super.cbitstream;
     data-merkle-tree = ingnoreGarbage super.data-merkle-tree;
     ergo-api = lib.dontCheck (ingnoreGarbage super.ergo-api);
+    ergo-protocol = lib.dontCheck (ingnoreGarbage super.ergo-protocol);
+    ergo-protocol-client = lib.dontCheck (ingnoreGarbage super.ergo-protocol-client);
     ergvein-checkpoint-generator = ingnoreGarbage super.ergvein-checkpoint-generator;
     ergvein-common = ingnoreGarbage super.ergvein-common;
     ergvein-core = ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-core" ./ergvein-core walletOpts {});
@@ -66,6 +68,7 @@ in (self: super: let
     reflex-fork = ingnoreGarbage super.reflex-fork;
     reflex-localize = ingnoreGarbage super.reflex-localize;
     reflex-localize-dom = ingnoreGarbage super.reflex-localize-dom;
+    socket-manager = lib.dontCheck (ingnoreGarbage super.socket-manager);
     reflex-main-thread = ingnoreGarbage super.reflex-main-thread;
     sepulcas = ingnoreGarbage (super.callCabal2nixWithOptions "sepulcas" ./sepulcas walletOpts {});
     sepulcas-android = ingnoreGarbage (super.callCabal2nixWithOptions "sepulcas-android" ./sepulcas-android walletOpts {});

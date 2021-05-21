@@ -13,6 +13,8 @@ let
       coinbase-client = ./coinbase-client;
       data-merkle-tree = ./data-merkle-tree;
       ergo-api = ./ergo-api;
+      ergo-protocol = ./ergo-protocol;
+      ergo-protocol-client = ./ergo-protocol-client;
       ergvein-checkpoint-generator = ./checkpoint-generator;
       ergvein-common = ./common;
       ergvein-core = ./ergvein-core;
@@ -38,6 +40,7 @@ let
       reflex-fork = ./reflex-fork;
       reflex-localize = ./reflex-localize;
       reflex-localize-dom = ./reflex-localize-dom;
+      socket-manager = ./socket-manager;
       reflex-main-thread = ./reflex-main-thread;
       sepulcas = ./sepulcas;
       sepulcas-android = ./sepulcas-android;
@@ -53,6 +56,8 @@ let
         "coinbase-client"
         "data-merkle-tree"
         "ergo-api"
+        "ergo-protocol-client"
+        "ergo-protocol"
         "ergvein-checkpoint-generator"
         "ergvein-common"
         "ergvein-core"
@@ -77,6 +82,7 @@ let
         "reflex-fork"
         "reflex-localize-dom"
         "reflex-localize"
+        "socket-manager"
         "reflex-main-thread"
         "sepulcas-desktop"
         "sepulcas-log"
