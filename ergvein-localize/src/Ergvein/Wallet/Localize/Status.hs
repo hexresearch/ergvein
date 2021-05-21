@@ -41,6 +41,5 @@ instance LocalizedPrint RestoreStage where
       RestoreStage'empty                -> "Загрузка..."
 
 instance LocalizedPrint CurrencyStatus where
-  localizedShow l (CurrencyStatus cur status) = case l of
-    English -> "[" <> showt cur <> "]: " <> showt status
-    Russian -> "[" <> showt cur <> "]: " <> showt status
+  localizedShow l (CurrencyStatus cur status) =
+      "[" <> showt cur <> "]: " <> localizedShow l status

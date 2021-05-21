@@ -20,18 +20,14 @@ import Ergvein.Wallet.Wrapper
 
 selectCurrenciesPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> m ()
 selectCurrenciesPage wt mnemonic = wrapperSimple True $ do
-  -- TODO: remove this when ERGO is ready
-  e <- fmap ([BTC] <$) getPostBuild
-  -- uncomment this when ERGO is ready
-  -- e <- selectCurrenciesWidget []
+  e <- selectCurrenciesWidget []
   void $ nextWidget $ ffor e $ \ac -> Retractable {
 #ifdef ANDROID
       retractableNext = setupLoginPage wt Nothing mnemonic ac
 #else
       retractableNext = setupPasswordPage wt Nothing mnemonic ac Nothing
 #endif
-    -- , retractablePrev = Just $ pure $ selectCurrenciesPage wt mnemonic -- TODO: uncomment this when ERGO is ready
-    , retractablePrev = Nothing -- TODO: remove this when ERGO is ready
+    , retractablePrev = Just $ pure $ selectCurrenciesPage wt mnemonic -- TODO: uncomment this when ERGO is ready
     }
 
 selectCurrenciesWidget :: MonadFrontBase t m => [Currency] -> m (Event t [Currency])

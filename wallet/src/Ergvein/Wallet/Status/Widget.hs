@@ -3,22 +3,42 @@ module Ergvein.Wallet.Status.Widget(
     statusBarWidget
   , restoreStatusWidget
   , restoreStatusDebugWidget
+  , multiCurrenctyStatusBarWidget
   ) where
 
 import Data.Time
 import Numeric
 import Text.Printf
+import Data.Map.Strict (Map)
+import Data.Maybe (listToMaybe)
 
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Widget.Balance
 import Sepulcas.Elements.Markup
+import Reflex.ExternalRef
 
 import qualified Data.Text as T
+import qualified Data.Map.Strict as M
 
 statusDisplayTime :: NominalDiffTime
 statusDisplayTime = 5
+
+multiCurrenctyStatusBarWidget :: MonadFront t m => m ()
+multiCurrenctyStatusBarWidget = divClass "sync-widget-wrapper" $ do
+  statRef <- getWalletStatusRef
+  let statE = externalEvent statRef
+  statD <- foldDyn mrg Nothing statE
+  networkHoldDyn $ ffor statD $ \case
+    Nothing -> localizedText $ _walletStatus'normal emptyWalletStatus
+    Just (cur,status) -> localizedText $ CurrencyStatus cur $ _walletStatus'normal status
+  pure ()
+  where
+    mrg :: Map Currency WalletStatus -> Maybe (Currency, WalletStatus) -> Maybe (Currency, WalletStatus)
+    mrg a b = listToMaybe $ M.toList $ case b of
+      Nothing -> a
+      Just (cur,st) -> M.differenceWith (\x y -> if x == y then Nothing else Just x) a $ M.singleton cur st
 
 statusBarWidget :: MonadFront t m => Bool -> Currency -> m ()
 statusBarWidget isVerbose cur = divClass "sync-widget-wrapper" $ do

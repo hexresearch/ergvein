@@ -36,7 +36,7 @@ import qualified Data.Dependent.Map as DM
 -- TODO: uncomment commented lines when ERGO is ready
 data SubPageSettings
   = GoLanguage
-  -- | GoCurrencies
+  | GoCurrencies
   | GoUnits
   | GoNetwork
   | GoPortfolio
@@ -57,7 +57,7 @@ settingsPage = do
               (GoLanguage, STPSButLanguage)
             , (GoNetwork, STPSButNetwork)
             , (GoUnits, STPSButUnits)
-            -- , (GoPortfolio, STPSButPortfolio)
+            , (GoCurrencies, STPSButActiveCurrs)
             , (GoDns, STPSButDns)
             , (GoNodes, STPSButNodes)
             , (GoPassword, STPSButSetPass)
@@ -69,7 +69,7 @@ settingsPage = do
       void $ nextWidget $ ffor goE $ \spg -> Retractable {
           retractableNext = case spg of
             GoLanguage        -> languagePage
-            -- GoCurrencies   -> currenciesPage
+            GoCurrencies      -> currenciesPage
             GoNetwork         -> networkSettingsPage
             GoUnits           -> unitsPage
             GoPortfolio       -> portfolioPage
