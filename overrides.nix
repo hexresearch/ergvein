@@ -31,6 +31,11 @@ let
       export VERSION_TAG=${versionTag}
     '';
   });
+  addRust = drv: pkgs.haskell.lib.overrideCabal drv (drv: {
+    buildTools = (drv.buildTools or []) ++ [
+      pkgs.rustc-nightly pkgs.cargo-nightly
+    ];
+  });
 in (self: super: let
   # Internal packages (depends on production or dev environment)
   callInternal = name: path: args: (
@@ -43,7 +48,7 @@ in (self: super: let
     cbitstream = ingnoreGarbage super.cbitstream;
     data-merkle-tree = ingnoreGarbage super.data-merkle-tree;
     ergo-api = lib.dontCheck (ingnoreGarbage super.ergo-api);
-    ergo-protocol = lib.dontCheck (ingnoreGarbage super.ergo-protocol);
+    ergo-protocol = lib.dontCheck (addRust (ingnoreGarbage super.ergo-protocol));
     ergo-protocol-client = lib.dontCheck (ingnoreGarbage super.ergo-protocol-client);
     ergvein-checkpoint-generator = ingnoreGarbage super.ergvein-checkpoint-generator;
     ergvein-common = ingnoreGarbage super.ergvein-common;
@@ -117,5 +122,6 @@ in (self: super: let
     skylighting-core = self.callPackage ./derivations/skylighting-core.nix {};
     pandoc-citeproc = self.callPackage ./derivations/pandoc-citeproc.nix {};
     inline-rust = self.callPackage ./derivations/inline-rust.nix {};
+    language-rust = lib.dontCheck super.language-rust;
   }
 )

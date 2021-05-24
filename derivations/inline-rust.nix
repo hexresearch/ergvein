@@ -1,16 +1,21 @@
 { mkDerivation, array, base, bytestring, directory, fetchgit
 , filepath, ghc-prim, hspec, json, language-rust, prettyprinter
 , process, random, stdenv, template-haskell, transformers
+, rustc-nightly, cargo-nightly
 }:
 mkDerivation {
   pname = "inline-rust";
   version = "0.1.0.0";
   src = fetchgit {
-    url = "https://github.com/harpocrates/inline-rust";
-    sha256 = "1ni3bhlj2wv6i17lzihrfj2fqjh6k8ppicrqwmvk6r3r1cjc8gav";
-    rev = "5ecff8c92526000e5fc358a2dfede9b60ef59a1a";
+    url = "https://github.com/hexresearch/inline-rust";
+    sha256 = "16y2visyyy0vfr9v9pl71822g7v3hav3b83nfk0imp2x7dvabgwm";
+    rev = "4eae45cf1786a23fdb9460dbd2dbb4847e273d3e";
     fetchSubmodules = true;
   };
+  /* src = ../../inline-rust; */
+  buildTools = [ rustc-nightly cargo-nightly ];
+  doCheck = false;
+  doHaddock = false;
   libraryHaskellDepends = [
     array base bytestring directory filepath json language-rust
     prettyprinter process random template-haskell transformers
