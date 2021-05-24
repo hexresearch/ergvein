@@ -8,10 +8,12 @@ import Control.Exception
 import Control.Lens
 import Control.Monad.IO.Unlift (MonadUnliftIO)
 import Control.Monad.Random
+import Data.Either (fromRight)
 import Data.IP
-import Data.Maybe (fromMaybe, catMaybes, listToMaybe)
+import Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import Data.Text (Text)
 import Data.Time
+import Data.Traversable (for)
 import Ergvein.Core.Node
 import Ergvein.Core.Node.Btc.Mempool
 import Ergvein.Core.Platform
@@ -65,16 +67,16 @@ btcNodeController = mdo
   sel       <- getNodeNodeReqSelector
   conMapD   <- getNodeConnectionsD
   nodeRef   <- getNodeConnRef
-  te        <- fmap void $ tickLossyFromPostBuildTime btcRefrTimeout
+  te        <- void <$> tickLossyFromPostBuildTime btcRefrTimeout
 
   pubStorageD <- getPubStorageD
 
   let txidsD = ffor pubStorageD $ \ps -> S.fromList $ M.keys $ ps ^. btcPubStorage . currencyPubStorage'transactions
 
-  let btcLenD = ffor conMapD $ fromMaybe 0 . fmap M.size . DM.lookup BtcTag
+  let btcLenD = ffor conMapD $ maybe 0 M.size . DM.lookup BtcTag
   let te' = poke te $ const $ do
         cm <- sample . current $ conMapD
-        let nodes = fromMaybe [] $ fmap M.elems $ DM.lookup BtcTag cm
+        let nodes = maybe [] M.elems (DM.lookup BtcTag cm)
         stats <- traverse (sampleDyn . nodeconIsUp) nodes
         pure $ length $ filter id stats
   -- Get an url to connect if:
@@ -84,7 +86,7 @@ btcNodeController = mdo
   let tickE = leftmost [updated btcLenD, 0 <$ fstRunE, te']
   let urlE = flip push tickE $ \l -> if l >= minNodeNum
         then pure Nothing
-        else fmap listToMaybe $ sampleDyn urlStoreD
+        else listToMaybe <$> sampleDyn urlStoreD
   (urlStoreD, fstRunE) <- mkUrlBatcher sel urlE
 
   let (remNodeUrlE, txE) = switchTuple $ splitDynPure $ fmap (unzip . M.elems) tmpD
@@ -105,13 +107,13 @@ btcNodeController = mdo
             txids <- sampleDyn txidsD
             pure $ filterTxInvs txids inv
           _ -> pure Nothing
-        reqTxE = fmap ((u,) . NodeReqBtc . MGetData . GetData) $ txInvsE
+        reqTxE = (u,) . NodeReqBtc . MGetData . GetData <$> txInvsE
     _ <- requestFromNode reqTxE
     let newTxE = fforMaybe respE $ \case
           MTx tx -> Just tx
           _ -> Nothing
     myTxSender u respE
-    pure $ (u <$ closeE, newTxE)
+    pure (u <$ closeE, newTxE)
 
   requestBTCMempool
   void $ btcMempoolTxInserter txE
@@ -139,7 +141,7 @@ myTxSender addr msgE = do
     NodeReqBtc . MInv . Inv $ fmap (InvVector InvTx . HT.getTxHash . fromMaybe (error "myTxSender: non BTC outgoing tx") . ETT.toBtcTxHash) is
   -- Answer about known transactions to nodes (also about own outgoing txs that we announce)
   requestManyFromNode $ flip push msgE $ \case
-    MGetData (GetData invs) -> fmap (Just . (addr,) . uncurry (mkTxMessages invs)) $ sampleDyn txsD
+    MGetData (GetData invs) -> Just . (addr,) . uncurry (mkTxMessages invs) <$> sampleDyn txsD
     _ -> pure Nothing
   pure ()
 
@@ -183,7 +185,7 @@ mkTxMessages invs txids txmap = foo invs [] $ \acc iv -> case invType iv of
     mbtctx  = join $ ffor metx $ \case
       TxBtc (BtcTx tx _) -> Just $ NodeReqBtc $ MTx tx
       _ -> Nothing
-    in maybe acc (\t -> t:acc) mbtctx
+    in maybe acc (: acc) mbtctx
   _ -> acc
   where
     foo ta b f = L.foldl' f b ta
@@ -208,7 +210,7 @@ handleSAStore sact acc = case sact of
   SAClear -> Just S.empty
   SAAdd sas -> let
     l = S.size acc
-    ltotal = l + (length sas)
+    ltotal = l + length sas
     in if l >= saStorageSize
       then Nothing
       else Just $ S.union acc $ S.fromList $ if ltotal <= saStorageSize
@@ -244,18 +246,18 @@ mkUrlBatcher sel remE = mdo
       btcLog $ "Getting a new batch: " <> showt n
       initNodesE <- getRandomBTCNodesFromDNS sel firstTierNodeNum
       fmap switchDyn $ networkHold (pure never) $ ffor initNodesE $ \initNodes -> do
-        es <- flip traverse initNodes $ \node -> do
+        es <- for initNodes $ \node -> do
           reqE <- fmap (NodeReqBtc MGetAddr <$) getPostBuild
           _ <- requestNodeWait node reqE
           pure $ fforMaybe (nodeconRespE node) $ \case
             MAddr (Addr nats) -> let
-              addrs = snd $ unzip nats
+              addrs = map snd nats
               verifiedAddrs = filter hasServices addrs
               in Just $ fmap naAddress verifiedAddrs
             _ -> Nothing
         pure $ leftmost es
   sasE <- performFork $ ffor hostAddrsE $ \hs ->
-    liftIO $ fmap (SAAdd . catMaybes) $ flip traverse hs $ \h ->
+    liftIO $ fmap (SAAdd . catMaybes) $ for hs $ \h ->
       catch (fmap Just $ evaluate $ hostToSockAddr h) (\(_ :: SomeException) -> pure Nothing)
   urlsD <- foldDynMaybe handleSAStore S.empty $ leftmost [sasE, SARemove <$> remE]
   -- let addr = SockAddrInet 8333 $ tupleToHostAddress (127,0,0,1)
@@ -273,7 +275,7 @@ mkUrlBatcher sel remE = mdo
   let nonNullE = fforMaybe (updated urlsD) (\urls -> if S.null urls then Nothing else Just ())
   cntD <- count nonNullE
   fstRunE <- eventToNextFrame $ fforMaybe (updated cntD) $ \c -> if c <= minNodeNum then Just () else Nothing
-  pure $ (S.toList <$> urlsD, fstRunE)
+  pure (S.toList <$> urlsD, fstRunE)
 
 -- | Connects to DNS servers, gets n urls and initializes connection to those nodes
 getRandomBTCNodesFromDNS :: (MonadNode t m, MonadStatus t m, MonadHasMain m, MonadSettings t m)
@@ -282,21 +284,23 @@ getRandomBTCNodesFromDNS sel n = do
   buildE <- getPostBuild
   let dnsUrls = getSeeds btcNetwork
   i <- liftIO $ randomRIO (0, length dnsUrls - 1)
-  void $ updateWalletStatusNormal BTC $ (const $ WalletStatusNormal'gettingNodeAddresses) <$ buildE
+  void $ updateWalletStatusNormal BTC $ const WalletStatusNormal'gettingNodeAddresses <$ buildE
   rs <- mkResolvSeed
-  urlsE <- performFork $ (requestNodesFromBTCDNS rs (dnsUrls!!i) n) <$ buildE
-  void $ updateWalletStatusNormal BTC $ (const $ WalletStatusNormal'connectingToPeers) <$ urlsE
-  nodesD <- networkHold (pure []) $ ffor urlsE $ \urls -> flip traverse urls $ \u -> let
+  urlsE <- performFork $ requestNodesFromBTCDNS rs (dnsUrls!!i) n <$ buildE
+  void $ updateWalletStatusNormal BTC $ const (WalletStatusNormal'connectingToPeers BTC) <$ urlsE
+  nodesD <- networkHold (pure []) $ ffor urlsE $ \urls -> for urls $ \u -> let
     reqE = extractReq sel BTC u
     in initBtcNode False u reqE
-  pure $ fforMaybe (updated nodesD) $ \case
-    [] -> Nothing
-    ns -> Just ns
+  let connectedE = fforMaybe (updated nodesD) $ \case
+        [] -> Nothing
+        ns -> Just ns
+  void $ updateWalletStatusNormal BTC $ const WalletStatusNormal'synced <$ connectedE
+  pure connectedE
 
 -- | Connects to DNS servers and collects n BTC node addresses
 requestNodesFromBTCDNS :: (MonadIO m, PlatformNatives) => ResolvSeed -> String -> Int -> m [SockAddr]
 requestNodesFromBTCDNS rs dnsurl n = liftIO $ do
-  res <- fmap (either (const []) id) $ withResolver rs $ \resolver -> lookupA resolver $ B8.pack dnsurl
+  res <- fmap (fromRight []) $ withResolver rs $ \resolver -> lookupA resolver $ B8.pack dnsurl
   urls <- randomVals n res
   pure $ ffor urls $ \u -> let
     h = toHostAddress u
@@ -307,7 +311,7 @@ requestNodesFromBTCDNS rs dnsurl n = liftIO $ do
 randomVals :: MonadIO m => Int -> [a] -> m [a]
 randomVals l urls = if l >= n
   then pure urls
-  else (fmap . fmap) (\i -> urls!!i) $ mkIndexes []
+  else fmap (urls !!) <$> mkIndexes []
   where
     n = length urls
     mkIndexes :: MonadIO m => [Int] -> m [Int]
