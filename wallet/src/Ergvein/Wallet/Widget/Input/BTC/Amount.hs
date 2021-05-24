@@ -4,29 +4,41 @@ module Ergvein.Wallet.Widget.Input.BTC.Amount(
     sendAmountWidget
   ) where
 
-import Control.Monad.Except
-import Data.Maybe
-import Data.Word
+import Control.Monad.Except (when, void)
+import Data.Maybe (fromMaybe)
+import Data.Word (Word64)
 
+import Ergvein.Core.Transaction.Btc.Fee
 import Ergvein.Either
-import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Validate
-import Ergvein.Wallet.Widget.Balance
+import Ergvein.Wallet.Widget.Balance (balancesWidget)
+import Sepulcas.Elements
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 
+import qualified Network.Haskoin.Address as HA
+import qualified Network.Haskoin.Script as HS
+import qualified Network.Haskoin.Transaction as HT
+
 -- | Input field with units. Converts everything to satoshis and returns the unit
-sendAmountWidget :: MonadFront t m => Maybe (UnitBTC, Word64) -> Event t () -> m (Dynamic t (Maybe (UnitBTC, Word64)))
-sendAmountWidget minit submitE = divClass "amoun-input" $ mdo
+sendAmountWidget ::
+  MonadFront t m =>
+  Dynamic t (Maybe BtcAddress) ->
+  Maybe (UnitBTC, Word64) ->
+  Event t () ->
+  m (Dynamic t (Maybe (UnitBTC, Word64)))
+sendAmountWidget mRecipientD minit submitE = divClass "amoun-input" $ mdo
   setUs <- fmap (fromMaybe defUnits . settingsUnits) getSettings
   let (unitInit, txtInit) = maybe (setUs, "") (\(u, a) -> let us = Units (Just u) Nothing
         in (us, showMoneyUnit (Money BTC a) us)) minit
-  let errsD = fmap (maybe [] id) amountErrsD
-  let isInvalidD = fmap (maybe "" (const "is-invalid")) amountErrsD
+      errsD = fmap (fromMaybe []) amountErrsD
+      isInvalidD = fmap (maybe "" (const "is-invalid")) amountErrsD
+      addressToDustTreshold address = fromIntegral $ getDustThreshold $ HT.TxOut 0 $ HS.encodeOutputBS $ HA.addressToOutput address
+      dustThresholdD = fmap (maybe 0 addressToDustTreshold) mRecipientD
   amountValD <- do
     el "label" $ localizedText AmountString
     divClass "row" $ mdo
@@ -36,7 +48,8 @@ sendAmountWidget minit submitE = divClass "amoun-input" $ mdo
         pure textInputValueD'
       unitD <- divClass "column column-33" $ do
         unitsDropdown (getUnitBTC unitInit) allUnitsBTC
-      pure $ zipDynWith (\u v -> fmap (u,) $ toEither $ validateBtcWithUnits u v) unitD textInputValueD
+      let dataDyn = zipDyn3 dustThresholdD unitD textInputValueD
+      pure $ (\(dustThreshold, units, val) -> fmap (units,) $ toEither $ validateBtcAmount dustThreshold units val) <$> dataDyn
   void $ divClass "form-field-errors" $ simpleList errsD displayError
   amountErrsD :: Dynamic t (Maybe [VError ()]) <- holdDyn Nothing $ ffor (current amountValD `tag` submitE) eitherToMaybe'
   pure $ eitherToMaybe <$> amountValD

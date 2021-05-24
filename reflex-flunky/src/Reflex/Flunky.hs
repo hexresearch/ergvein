@@ -17,6 +17,7 @@ module Reflex.Flunky(
   , splitEither
   , splitFilter
   , switchDyn2
+  , zipDyn3
   , mkChunks
   , EventTrigger(..)
   , newTriggerEvent'
@@ -105,6 +106,10 @@ splitEither e = (ae, be)
 
 switchDyn2 :: Reflex t => Dynamic t (Event t a, Event t b) -> (Event t a, Event t b)
 switchDyn2 = (\(a,b) -> (switchDyn a, switchDyn b)) . splitDynPure
+
+zipDyn3 :: Reflex t => Dynamic t a -> Dynamic t b -> Dynamic t c -> Dynamic t (a, b, c)
+zipDyn3 aD bD cD = let abD = zipDyn aD bD
+  in zipDynWith (\(a, b) c -> (a, b, c)) abD cD
 
 splitFilter :: Reflex t => (a -> Bool) -> Event t a -> (Event t a, Event t a)
 splitFilter f e = (ffilter f e, ffilter (not . f) e)

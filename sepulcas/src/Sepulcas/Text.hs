@@ -4,6 +4,7 @@ module Sepulcas.Text(
   , text2json
   , json2text
   , showf
+  , showFullPrecision
   , bs2Hex
   , hex2bs
   , hex2bsTE
@@ -17,6 +18,7 @@ import Data.Bifunctor
 import Data.ByteString (ByteString)
 import Data.Text (Text, pack)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
+import Numeric
 import Text.Printf
 import qualified Data.ByteString           as BS
 import qualified Data.ByteString.Base16    as BS16
@@ -48,6 +50,9 @@ json2text = decodeUtf8 . BSL.toStrict . encode
 -- | Print floating point number with fixed precision
 showf :: (Floating a, PrintfArg a) => Int -> a -> Text
 showf n = pack . printf ("%." <> show n <> "f")
+
+showFullPrecision :: RealFloat a => a -> Text
+showFullPrecision x = pack $ showFFloat Nothing x ""
 
 -- | Convert Base64 encoded text to ByteString
 base64Text2bs :: Text -> ByteString
