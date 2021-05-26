@@ -8,6 +8,7 @@ import Control.Monad
 import Data.Ergo.Modifier
 import Data.Ergo.Protocol
 import Data.Ergo.Protocol.Client
+import Data.Ergo.FFI
 import Data.Maybe
 import Data.Time
 import Options.Generic
@@ -30,6 +31,7 @@ getNodePort Options{..} = fromMaybe (if unHelpful testnet then 19030 else 9030) 
 
 main :: IO ()
 main = do
+  testFunc
   opts@Options{..} <- getRecord "Ergo protocol client example"
   let net = if unHelpful testnet then Testnet else Mainnet
   inChan <- newTChanIO
