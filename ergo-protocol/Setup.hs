@@ -31,7 +31,8 @@ import qualified Distribution.Compat.Graph as Gr
 import Debug.Trace
 
 main = defaultMainWithHooks simpleUserHooks {
-    postBuild = rustPostBuild
+    preBuild = rustPreBuild
+  , postBuild = rustPostBuild
   }
 
 getHaskStaticLibrary :: LocalBuildInfo -> Maybe String
@@ -41,10 +42,24 @@ getHaskStaticLibrary LocalBuildInfo{..} = fmap fst . uncons $ catMaybes $ fmap i
       LibComponentLocalBuildInfo{..} -> Just $ unComponentId componentComponentId
       _ -> Nothing
 
-rustPostBuild :: Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ()
-rustPostBuild _ _ _ lbi = do
+rustPathRef :: IORef FilePath
+rustPathRef = unsafePerformIO $ newIORef ""
+{-# NOINLINE rustPathRef #-}
+
+rustPreBuild :: Args -> BuildFlags -> IO HookedBuildInfo
+rustPreBuild _ _ = do
   putStrLn "Building rust library..."
   rustLibPath <- buildRustLib
+  let libName = drop 3 $ dropExtension $ takeFileName rustLibPath
+  writeIORef rustPathRef rustLibPath
+  pure (Just emptyBuildInfo {
+    extraLibs = [ libName ]
+  , extraLibDirs = [ takeDirectory rustLibPath ]
+  }, [])
+
+rustPostBuild :: Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ()
+rustPostBuild _ _ _ lbi = do
+  rustLibPath <- readIORef rustPathRef
   putStrLn "Repacking archive..."
   haskLib <- maybe (fail "Cannot find library component of package") pure $ getHaskStaticLibrary lbi
   let haskLibPath = buildDir lbi </> ("libHS" <> haskLib <> ".a")
