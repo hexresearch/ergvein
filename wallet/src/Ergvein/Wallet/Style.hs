@@ -527,18 +527,17 @@ balancesPageCss = do
     display displayTable
     width $ pct 100
   ".currency-row" ? do
-    display tableRow
+    display flex
+    justifyContent spaceBetween
     fontSize $ pt (if isAndroid then 18 else 24)
     cursor pointer
   ".currency-row:hover" ? do
     color hoverColor
+  ".currency-row:not(:last-child)" ? do
+    borderBottom solid (rem 0.1) (rgb 215 215 219)
   ".currency-name" ? do
-    textAlign $ alignSide sideLeft
-    display tableCell
     paddingRight $ rem 1
-  ".currency-balance" ? do
-    display tableCell
-    textAlign $ alignSide sideRight
+  -- ".currency-balance" ? do
   ".currency-value" ? do
     paddingRight $ rem 0.5
   ".currency-unit" ? do

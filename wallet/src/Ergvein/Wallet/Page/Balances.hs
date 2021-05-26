@@ -56,6 +56,5 @@ currenciesList _ = divClass "currency-content" $ do
         divClass "currency-balance" $ do
           elClass "span" "currency-value" $ dynText $ (\v -> showMoneyUnit v setUs) <$> bal
           elClass "span" "currency-unit"  $ text $ symbolUnit cur setUs
-          elClass "span" "currency-arrow" $ text "〉"
       pure $ cur <$ domEvent Click e
     getSettingsUnits = fromMaybe defUnits . settingsUnits
