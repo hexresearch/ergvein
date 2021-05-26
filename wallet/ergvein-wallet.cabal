@@ -114,6 +114,7 @@ library
         , dependent-sum           >= 0.6
         , directory
         , dns                     >= 4.0        && < 5.0
+        , ergo-protocol
         , ergvein-common          >= 1.0        && < 1.1
         , ergvein-core
         , ergvein-crypto          >= 0.1        && < 0.2

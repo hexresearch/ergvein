@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell, QuasiQuotes #-}
+{-# OPTIONS_GHC -ddump-splices #-}
 module Data.Ergo.Inline(
     testFunc
   ) where

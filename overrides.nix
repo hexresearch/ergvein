@@ -31,6 +31,7 @@ let
       export VERSION_TAG=${versionTag}
     '';
   });
+
   addRust = drv: pkgs.haskell.lib.overrideCabal drv (drv: {
     buildTools = (drv.buildTools or []) ++ [
       pkgs.rustc-nightly pkgs.cargo-nightly
