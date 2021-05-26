@@ -20,7 +20,7 @@ library
     Data.Ergo.Block
     Data.Ergo.Crypto
     Data.Ergo.Difficulty
-    Data.Ergo.Inline
+    Data.Ergo.FFI
     Data.Ergo.Modifier
     Data.Ergo.Protocol
     Data.Ergo.Protocol.Check
@@ -42,7 +42,6 @@ library
     , deepseq           >= 1.4
     , ergvein-common
     , hashable          >= 1.2
-    , inline-rust
     , memory            >= 0.14
     , persist           >= 0.1
     , secp256k1-haskell >= 0.2

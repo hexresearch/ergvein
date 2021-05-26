@@ -54,7 +54,6 @@ executable ergo-protocol-client
     , time
     , vector
     , base16-bytestring
-    , inline-rust
   default-language:    Haskell2010
   default-extensions:
     BangPatterns

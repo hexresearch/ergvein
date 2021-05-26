@@ -122,7 +122,5 @@ in (self: super: let
     skylighting = self.callPackage ./derivations/skylighting.nix {};
     skylighting-core = self.callPackage ./derivations/skylighting-core.nix {};
     pandoc-citeproc = self.callPackage ./derivations/pandoc-citeproc.nix {};
-    inline-rust = self.callPackage ./derivations/inline-rust.nix {};
-    language-rust = lib.dontCheck super.language-rust;
   }
 )
