@@ -22,7 +22,6 @@ balancesPage = do
   walletName <- getWalletName
   title <- localized walletName
   wrapper False title (Just $ pure balancesPage) $ do
-    multiCurrenctyStatusBarWidget
     currenciesList walletName
 
 currenciesList :: MonadFront t m => Text -> m ()
@@ -52,9 +51,12 @@ currenciesList _ = divClass "currency-content" $ do
       (e, _) <- divClass' "currency-row" $ do
         bal <- balancesWidget cur
         let setUs = getSettingsUnits settings
-        divClass "currency-name"    $ text $ currencyName cur
-        divClass "currency-balance" $ do
-          elClass "span" "currency-value" $ dynText $ (\v -> showMoneyUnit v setUs) <$> bal
-          elClass "span" "currency-unit"  $ text $ symbolUnit cur setUs
+        divClass "currency-details" $ do
+          divClass "currency-name" $ text $ currencyName cur
+          divClass "currency-balance" $ do
+            elClass "span" "currency-value" $ dynText $ (\v -> showMoneyUnit v setUs) <$> bal
+            elClass "span" "currency-unit" $ text $ symbolUnit cur setUs
+        divClass "currency-status" $ do
+          currencyStatusWidget cur
       pure $ cur <$ domEvent Click e
     getSettingsUnits = fromMaybe defUnits . settingsUnits

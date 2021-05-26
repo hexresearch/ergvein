@@ -521,30 +521,28 @@ initialPageCss = do
 
 balancesPageCss :: PlatformNatives => Css
 balancesPageCss = do
-  ".sync-progress" ? do
-    fontSize $ pt 14
   ".currency-content" ? do
-    display displayTable
     width $ pct 100
   ".currency-row" ? do
-    display flex
-    justifyContent spaceBetween
-    fontSize $ pt (if isAndroid then 18 else 24)
     cursor pointer
+    paddingBottom $ rem 1
   ".currency-row:hover" ? do
     color hoverColor
   ".currency-row:not(:last-child)" ? do
     borderBottom solid (rem 0.1) (rgb 215 215 219)
+  ".currency-details" ? do
+    display flex
+    justifyContent spaceBetween
+    fontSize $ pt (if isAndroid then 18 else 24)
   ".currency-name" ? do
     paddingRight $ rem 1
-  -- ".currency-balance" ? do
   ".currency-value" ? do
-    paddingRight $ rem 0.5
-  ".currency-unit" ? do
     paddingRight $ rem 0.5
   ".canvas-container" ? do
     marginLeft $ px 120
     marginTop $ px 50
+  ".currency-status" ? do
+    textAlign $ alignSide sideLeft
 
 sendPageCss :: Css
 sendPageCss = do

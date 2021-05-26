@@ -1,54 +1,42 @@
 {-# LANGUAGE OverloadedLists #-}
+{-# OPTIONS_GHC -Wall #-}
+
 module Ergvein.Wallet.Status.Widget(
     statusBarWidget
   , restoreStatusWidget
   , restoreStatusDebugWidget
-  , multiCurrenctyStatusBarWidget
+  , currencyStatusWidget
   ) where
 
 import Data.Time
 import Numeric
 import Text.Printf
-import Data.Map.Strict (Map)
-import Data.Maybe (listToMaybe)
 
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Widget.Balance
 import Sepulcas.Elements.Markup
-import Reflex.ExternalRef
 
 import qualified Data.Text as T
-import qualified Data.Map.Strict as M
 
 statusDisplayTime :: NominalDiffTime
 statusDisplayTime = 5
 
-multiCurrenctyStatusBarWidget :: MonadFront t m => m ()
-multiCurrenctyStatusBarWidget = divClass "sync-widget-wrapper" $ do
-  statRef <- getWalletStatusRef
-  let statE = externalEvent statRef
-  statD <- foldDyn mrg Nothing statE
-  networkHoldDyn $ ffor statD $ \case
-    Nothing -> localizedText $ _walletStatus'normal emptyWalletStatus
-    Just (cur,status) -> localizedText $ CurrencyStatus cur $ _walletStatus'normal status
-  pure ()
-  where
-    mrg :: Map Currency WalletStatus -> Maybe (Currency, WalletStatus) -> Maybe (Currency, WalletStatus)
-    mrg a b = listToMaybe $ M.toList $ case b of
-      Nothing -> a
-      Just (cur,st) -> M.differenceWith (\x y -> if x == y then Nothing else Just x) a $ M.singleton cur st
+currencyStatusWidget :: MonadFront t m => Currency -> m ()
+currencyStatusWidget cur = divClass "sync-widget-wrapper" $ do
+  statD <- fmap _walletStatus'normal <$> getWalletStatus cur
+  localizedDynText statD
 
 statusBarWidget :: MonadFront t m => Bool -> Currency -> m ()
 statusBarWidget isVerbose cur = divClass "sync-widget-wrapper" $ do
   statD <- getWalletStatus cur
   balD <- balanceRatedOnlyWidget cur
   void $ networkHoldDyn $ ffor balD $ \case
-    Nothing -> void $ networkHoldDyn $ (renderStatus . _walletStatus'normal) <$> statD
+    Nothing -> void $ networkHoldDyn $ renderStatus . _walletStatus'normal <$> statD
     Just bal -> mdo
       let updE = updated statD
-      let renderE = leftmost [(Just . _walletStatus'normal) <$> updE, Nothing <$ tE]
+      let renderE = leftmost [Just . _walletStatus'normal <$> updE, Nothing <$ tE]
       tE <- networkHoldE (balWidget cur bal) $ ffor renderE $ \case
         Nothing -> balWidget cur bal
         Just sp -> do
@@ -88,7 +76,7 @@ restoreStatusWidget cur = do
   h3 $ localizedDynText $ showPercents <$> restoreProgressD
 
 showPercents :: Maybe Double -> Text
-showPercents mPercents = maybe "0.00%" (\p -> (T.pack $ showFFloat (Just 2) p "") <> "%") mPercents
+showPercents = maybe "0.00%" (\p -> T.pack (showFFloat (Just 2) p "") <> "%")
 
 -- TODO: add some more useful info
 restoreStatusDebugWidget :: MonadFront t m => Currency -> m ()
