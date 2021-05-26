@@ -337,7 +337,7 @@ unpackOut txOut = (, amount) <$> mAddr
 signTxWithWallet :: (MonadIO m, PlatformNatives) => Tx -> [UtxoPoint] -> PrvStorage -> m (Maybe (Either String Tx))
 signTxWithWallet tx pick prv = do
   let PrvKeystore _ ext int = prv ^. prvStorage'currencyPrvStorages
-        . at BTC . non (error "btcSendConfirmationWidget: not exsisting store!")
+        . at BTC . non (error "signTxWithWallet: not exsisting store!")
         . currencyPrvStorage'prvKeystore
   mvals <- fmap (fmap unzip . sequence) $ flip traverse pick $ \(UtxoPoint opoint BtcUtxoMeta{..}) -> do
     let sig = HT.SigInput btcUtxo'script btcUtxo'amount opoint HS.sigHashAll Nothing

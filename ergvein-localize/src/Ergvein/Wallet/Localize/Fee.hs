@@ -1,7 +1,7 @@
 module Ergvein.Wallet.Localize.Fee
   (
     FeeStrings(..)
-  , BTCFeeMode(..)
+  , FeeMode(..)
   ) where
 
 import Ergvein.Text
@@ -36,18 +36,18 @@ instance LocalizedPrint FeeStrings where
       FSRbf True -> "вкл."
       FSRbf False -> "выкл."
 
-data BTCFeeMode = BFMLow | BFMMid | BFMHigh | BFMManual
+data FeeMode = FeeModeLow | FeeModeMid | FeeModeHigh | FeeModeManual
   deriving (Eq, Ord, Enum, Bounded, Show)
 
-instance LocalizedPrint BTCFeeMode where
+instance LocalizedPrint FeeMode where
   localizedShow l v = case l of
     English -> case v of
-      BFMLow    -> "Low"
-      BFMMid    -> "Mid"
-      BFMHigh   -> "High"
-      BFMManual -> "Manual"
+      FeeModeLow    -> "Low"
+      FeeModeMid    -> "Mid"
+      FeeModeHigh   -> "High"
+      FeeModeManual -> "Manual"
     Russian -> case v of
-      BFMLow    -> "Низкий"
-      BFMMid    -> "Средний"
-      BFMHigh   -> "Высокий"
-      BFMManual -> "Вручную"
+      FeeModeLow    -> "Низкий"
+      FeeModeMid    -> "Средний"
+      FeeModeHigh   -> "Высокий"
+      FeeModeManual -> "Вручную"

@@ -33,16 +33,18 @@ library
         Ergvein.Wallet.Menu.Switcher
         Ergvein.Wallet.Menu.Types
         Ergvein.Wallet.Monad
-        Ergvein.Wallet.Monad.Env
         Ergvein.Wallet.Monad.Class
+        Ergvein.Wallet.Monad.Env
         Ergvein.Wallet.Navbar
         Ergvein.Wallet.Navbar.Switcher
         Ergvein.Wallet.Navbar.Types
         Ergvein.Wallet.Page.About
         Ergvein.Wallet.Page.Balances
+        Ergvein.Wallet.Page.Btc.Send
         Ergvein.Wallet.Page.BumpFee
         Ergvein.Wallet.Page.Canvas
         Ergvein.Wallet.Page.Currencies
+        Ergvein.Wallet.Page.Ergo.Send
         Ergvein.Wallet.Page.History
         Ergvein.Wallet.Page.Initial
         Ergvein.Wallet.Page.Network
@@ -52,7 +54,6 @@ library
         Ergvein.Wallet.Page.Receive
         Ergvein.Wallet.Page.Restore
         Ergvein.Wallet.Page.Seed
-        Ergvein.Wallet.Page.Send
         Ergvein.Wallet.Page.Settings
         Ergvein.Wallet.Page.Settings.MnemonicExport
         Ergvein.Wallet.Page.Settings.Network

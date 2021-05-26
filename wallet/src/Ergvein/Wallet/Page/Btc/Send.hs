@@ -1,7 +1,8 @@
+{-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE OverloadedLists #-}
 
-module Ergvein.Wallet.Page.Send (
-    sendPage
+module Ergvein.Wallet.Page.Btc.Send (
+    sendPageBtc
   ) where
 
 import Control.Lens
@@ -34,25 +35,24 @@ import qualified Data.Text as T
 import qualified Network.Haskoin.Address as HA
 import qualified Network.Haskoin.Transaction as HT
 
-sendPage :: MonadFront t m => Currency -> Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), BtcAddress, RbfEnabled) -> m ()
-sendPage cur mInit = mdo
+sendPageBtc :: MonadFront t m => Maybe ((UnitBTC, Word64), (FeeMode, Word64), BtcAddress, RbfEnabled) -> m ()
+sendPageBtc mInit = mdo
   walletName <- getWalletName
   title <- localized walletName
   let navbar = if isAndroid
         then blank
-        else navbarWidget cur thisWidget NavbarSend
-      thisWidget = Just $ sendPage cur <$> retInfoD
-  retInfoD <- sendWidget cur mInit title navbar thisWidget
+        else navbarWidget BTC thisWidget NavbarSend
+      thisWidget = Just $ sendPageBtc <$> retInfoD
+  retInfoD <- sendWidget mInit title navbar thisWidget
   pure ()
 
 sendWidget :: MonadFront t m
-  => Currency
-  -> Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), BtcAddress, RbfEnabled)
+  => Maybe ((UnitBTC, Word64), (FeeMode, Word64), BtcAddress, RbfEnabled)
   -> Dynamic t Text
   -> m a
   -> Maybe (Dynamic t (m ()))
-  -> m (Dynamic t (Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), BtcAddress, RbfEnabled)))
-sendWidget cur mInit title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ divClass "send-page" $ mdo
+  -> m (Dynamic t (Maybe ((UnitBTC, Word64), (FeeMode, Word64), BtcAddress, RbfEnabled)))
+sendWidget mInit title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ divClass "send-page" $ mdo
   settings <- getSettings
   let amountInit = (\(x, _, _, _) -> x) <$> mInit
       feeInit = (\(_, x, _, _) -> x) <$> mInit
@@ -71,20 +71,20 @@ sendWidget cur mInit title navbar thisWidget = wrapperNavbar False title thisWid
           mamount <- sampleDyn amountD
           mfee <- sampleDyn feeD
           rbfEnabled <- sampleDyn rbfEnabledD
-          pure $ (,,,) <$> mamount <*> mfee <*> mrecipient <*> (Just rbfEnabled)
+          pure $ (,,,) <$> mamount <*> mfee <*> mrecipient <*> Just rbfEnabled
     void $ nextWidget $ ffor goE $ \v@(uam, (_, fee), addr, rbf) -> Retractable {
-        retractableNext = btcSendConfirmationWidget (uam, fee, addr, rbf)
-      , retractablePrev = Just $ pure $ sendPage cur $ Just v
+        retractableNext = sendConfirmationWidget (uam, fee, addr, rbf)
+      , retractablePrev = Just $ pure $ sendPageBtc $ Just v
       }
     holdDyn mInit $ Just <$> goE
   pure retInfoD
 
 -- | Main confirmation & sign & send widget
-btcSendConfirmationWidget :: MonadFront t m => ((UnitBTC, Word64), Word64, BtcAddress, RbfEnabled) -> m ()
-btcSendConfirmationWidget v = do
+sendConfirmationWidget :: MonadFront t m => ((UnitBTC, Word64), Word64, BtcAddress, RbfEnabled) -> m ()
+sendConfirmationWidget v = do
   walletName <- getWalletName
   title <- localized walletName
-  let thisWidget = Just $ pure $ btcSendConfirmationWidget v
+  let thisWidget = Just $ pure $ sendConfirmationWidget v
       navbar = if isAndroid
         then blank
         else navbarWidget BTC thisWidget NavbarSend
@@ -92,7 +92,7 @@ btcSendConfirmationWidget v = do
     stxE <- makeTxWidget v
     void $ networkHold (pure ()) $ ffor stxE $ \(tx, _, _, _, _) -> do
       sendE <- getPostBuild
-      addedE <- addOutgoingTx "btcSendConfirmationWidget" $ (TxBtc $ BtcTx tx Nothing) <$ sendE
+      addedE <- addOutgoingTx "sendConfirmationWidget" $ TxBtc (BtcTx tx Nothing) <$ sendE
       storedE <- btcMempoolTxInserter $ tx <$ addedE
       void $ requestBroadcast $ ffor storedE $ const $
         NodeReqBtc . MInv . Inv . pure . InvVector InvTx . HT.getTxHash . HT.txHash $ tx
@@ -118,10 +118,10 @@ makeTxWidget ((unit, amount), fee, addr, rbfEnabled) = mdo
     ps <- psD
     let utxo = ps ^? pubStorage'currencyPubStorages . at BTC . _Just . currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'utxos
         mkey = getLastUnusedKey Internal =<< pubStorageKeyStorage BTC ps
-    pure $ (utxo, mkey)
-  utxoKey0 <- fmap Left $ sampleDyn utxoKeyD -- Why we need this
+    pure (utxo, mkey)
+  utxoKey0 <- Left <$> sampleDyn utxoKeyD -- Why we need this
   stxE' <- eventToNextFrame stxE -- And this
-  valD <- foldDynMaybe mergeVals utxoKey0 $ leftmost [Left <$> (updated utxoKeyD), Right <$> stxE']
+  valD <- foldDynMaybe mergeVals utxoKey0 $ leftmost [Left <$> updated utxoKeyD, Right <$> stxE']
   stxE <- fmap switchDyn $ networkHoldDyn $ ffor valD $ \case
     Left (Nothing, _) -> confirmationErrorWidget CEMEmptyUTXO
     Left (_, Nothing) -> confirmationErrorWidget CEMNoChangeKey

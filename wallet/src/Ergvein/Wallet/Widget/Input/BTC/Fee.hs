@@ -31,36 +31,36 @@ manualFeeSelector initVal isDisabled setValE attrsE errsD = divClass "fee-input-
   where
     attrs = if isDisabled then [("disabled", "disabled"), ("class", "mb-0")] else M.singleton "class" "mb-0"
 
-feeModeToAttr :: BTCFeeMode -> Map AttributeName (Maybe Text)
+feeModeToAttr :: FeeMode -> Map AttributeName (Maybe Text)
 feeModeToAttr = \case
-  BFMLow -> "disabled" =: (Just "disabled")
-  BFMMid -> "disabled" =: (Just "disabled")
-  BFMHigh -> "disabled" =: (Just "disabled")
-  BFMManual -> "disabled" =: Nothing
+  FeeModeLow -> "disabled" =: (Just "disabled")
+  FeeModeMid -> "disabled" =: (Just "disabled")
+  FeeModeHigh -> "disabled" =: (Just "disabled")
+  FeeModeManual -> "disabled" =: Nothing
 
-feeModeToRateText :: Map Currency FeeBundle -> BTCFeeMode -> Maybe Text
+feeModeToRateText :: Map Currency FeeBundle -> FeeMode -> Maybe Text
 feeModeToRateText fees mode = case mode of
-  BFMLow -> showt <$> getFeeRateByLvl FeeCheap
-  BFMMid -> showt <$> getFeeRateByLvl FeeModerate
-  BFMHigh -> showt <$> getFeeRateByLvl FeeFast
-  BFMManual -> Nothing
+  FeeModeLow -> showt <$> getFeeRateByLvl FeeCheap
+  FeeModeMid -> showt <$> getFeeRateByLvl FeeModerate
+  FeeModeHigh -> showt <$> getFeeRateByLvl FeeFast
+  FeeModeManual -> Nothing
   where
     getFeeRateByLvl lvl = maybe Nothing (Just . fst . extractFee lvl) (M.lookup BTC fees)
 
 -- | Btc fee selector
 btcFeeSelectionWidget :: forall t m l . (MonadFront t m, LocalizedPrint l)
   => l                                          -- ^ Label
-  -> Maybe (BTCFeeMode, Word64)                 -- ^ Inital mode and value
+  -> Maybe (FeeMode, Word64)                 -- ^ Inital mode and value
   -> Maybe Rational                             -- ^ Previous value (used for RBF)
   -> Event t ()                                 -- ^ Send event. Triggers fileds validation
-  -> m (Dynamic t (Maybe (BTCFeeMode, Word64)))
+  -> m (Dynamic t (Maybe (FeeMode, Word64)))
 btcFeeSelectionWidget lbl minit mPrevRate submitE = do
   feesD <- getFeesD
   initFees <- sampleDyn feesD
   let getInitFeeRateByLvl lvl = maybe Nothing (Just . fst . extractFee lvl) (M.lookup BTC initFees)
-      (initFeeMode, mInitFeeRate) = maybe (BFMMid, getInitFeeRateByLvl FeeModerate) (second Just) minit
+      (initFeeMode, mInitFeeRate) = maybe (FeeModeMid, getInitFeeRateByLvl FeeModerate) (second Just) minit
       initFeeRateText = maybe "" showt mInitFeeRate
-      initInputIsDisabled = if initFeeMode == BFMManual then False else True
+      initInputIsDisabled = if initFeeMode == FeeModeManual then False else True
   divClass "fee-input" $ do
     el "label" $ localizedText lbl
     selectedD <- row $ mdo
@@ -84,9 +84,9 @@ btcFeeSelectionWidget lbl minit mPrevRate submitE = do
         pure $ _dropdown_value feeModeDropdown
       pure $ ffor2 feeRateD feeModeD (,)
     networkHoldDyn $ ffor selectedD $ \case
-      (Just feeRate, BFMManual) -> parClass "mb-0" (localizedText $ FSFee                  ) >> pure (Just (BFMManual, feeRate))
-      (Just feeRate, BFMLow)    -> parClass "mb-0" (localizedText $ FSRateDesc FeeCheap    ) >> pure (Just (BFMLow,    feeRate))
-      (Just feeRate, BFMMid)    -> parClass "mb-0" (localizedText $ FSRateDesc FeeModerate ) >> pure (Just (BFMMid,    feeRate))
-      (Just feeRate, BFMHigh)   -> parClass "mb-0" (localizedText $ FSRateDesc FeeFast     ) >> pure (Just (BFMHigh,   feeRate))
-      (Nothing, BFMManual)      ->                                                              pure Nothing
+      (Just feeRate, FeeModeManual) -> parClass "mb-0" (localizedText $ FSFee                  ) >> pure (Just (FeeModeManual, feeRate))
+      (Just feeRate, FeeModeLow)    -> parClass "mb-0" (localizedText $ FSRateDesc FeeCheap    ) >> pure (Just (FeeModeLow,    feeRate))
+      (Just feeRate, FeeModeMid)    -> parClass "mb-0" (localizedText $ FSRateDesc FeeModerate ) >> pure (Just (FeeModeMid,    feeRate))
+      (Just feeRate, FeeModeHigh)   -> parClass "mb-0" (localizedText $ FSRateDesc FeeFast     ) >> pure (Just (FeeModeHigh,   feeRate))
+      (Nothing, FeeModeManual)      ->                                                              pure Nothing
       (Nothing, _)              -> parClass "mb-0" (localizedText FSNoFees)                  >> pure Nothing

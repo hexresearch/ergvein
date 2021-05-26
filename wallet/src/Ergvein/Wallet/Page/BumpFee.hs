@@ -26,7 +26,7 @@ import qualified Data.List as L
 import qualified Data.Text as T
 import qualified Network.Haskoin.Transaction as HT
 
-bumpFeePage :: MonadFront t m => Currency -> TransactionView -> Maybe (BTCFeeMode, Word64) -> m ()
+bumpFeePage :: MonadFront t m => Currency -> TransactionView -> Maybe (FeeMode, Word64) -> m ()
 bumpFeePage cur  tr@TransactionView{..} mInit = do
   title <- localized BumpFeeTitle
   let thisWidget = Just $ pure $ bumpFeePage cur tr mInit
@@ -40,7 +40,7 @@ bumpFeePage cur  tr@TransactionView{..} mInit = do
       , retractablePrev = Just $ pure $ bumpFeePage cur tr $ Just (rbfTxData'feeMode txData, rbfTxData'feeRate txData)
       }
 
-feeRateWidget :: MonadFront t m => Currency -> TransactionView -> Maybe (BTCFeeMode, Word64) -> m (Event t (BTCFeeMode, Word64))
+feeRateWidget :: MonadFront t m => Currency -> TransactionView -> Maybe (FeeMode, Word64) -> m (Event t (FeeMode, Word64))
 feeRateWidget cur TransactionView{..} mInit = mdo
   let feeRate = calcFeeRate (txFee txInfoView) (txRaw txInfoView)
   moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
@@ -53,7 +53,7 @@ feeRateWidget cur TransactionView{..} mInit = mdo
 
 data RbfTxData = RbfTxData {
     rbfTxData'feeRate    :: !Word64                         -- ^ Fee rate in sat/vbyte
-  , rbfTxData'feeMode    :: !BTCFeeMode                     -- ^ Fee mode
+  , rbfTxData'feeMode    :: !FeeMode                     -- ^ Fee mode
   , rbfTxData'change     :: !(Maybe (Word64, EgvPubKeyBox)) -- ^ Change amount and keybox to send the change to
   , rbfTxData'coins      :: ![UtxoPoint]                    -- ^ List of utxo points used as inputs
   , rbfTxData'outsToKeep :: ![(Text, Word64)]               -- ^ Fixed tx outputs in tx
@@ -63,7 +63,7 @@ data RbfTxData = RbfTxData {
 -- | Keep all inputs, keep all outputs that are not our change,
 -- allow adding new inputs.
 -- FIXME: localize errors
-prepareTxData :: MonadFront t m => Event t (EgvTx, (BTCFeeMode, Word64)) -> m (Event t RbfTxData)
+prepareTxData :: MonadFront t m => Event t (EgvTx, (FeeMode, Word64)) -> m (Event t RbfTxData)
 prepareTxData e = do
   pubStorage <- getPubStorage
   eDataE <- performEvent $ ffor e $ \(tx, (newFeeMode, newFeeRate)) -> do

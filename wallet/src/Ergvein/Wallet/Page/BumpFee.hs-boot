@@ -8,4 +8,4 @@ import Ergvein.Types.Currency (Currency)
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 
-bumpFeePage :: MonadFront t m => Currency -> TransactionView -> Maybe (BTCFeeMode, Word64) -> m ()
+bumpFeePage :: MonadFront t m => Currency -> TransactionView -> Maybe (FeeMode, Word64) -> m ()
