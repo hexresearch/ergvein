@@ -14,19 +14,19 @@ import Ergvein.Text
 import Ergvein.Types
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo.Btc
-import Sepulcas.Alert
-import Sepulcas.Elements
-import Sepulcas.Elements.Toggle
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Page.Balances
-import Ergvein.Wallet.Widget.Input.BTC.Amount
-import Ergvein.Wallet.Widget.Input.BTC.Fee
-import Ergvein.Wallet.Widget.Input.BTC.Recipient
+import Ergvein.Wallet.Widget.Input.Amount
+import Ergvein.Wallet.Widget.Input.Btc.Fee
+import Ergvein.Wallet.Widget.Input.Recipient
 import Ergvein.Wallet.Wrapper
+import Sepulcas.Alert
+import Sepulcas.Elements
+import Sepulcas.Elements.Toggle
 
 import Network.Haskoin.Network (Inv(..), InvVector(..), InvType(..), Message(..))
 

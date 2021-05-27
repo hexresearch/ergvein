@@ -17,7 +17,7 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Balances
-import Ergvein.Wallet.Widget.Input.BTC.Fee
+import Ergvein.Wallet.Widget.Input.Btc.Fee
 import Ergvein.Wallet.Wrapper
 
 import Network.Haskoin.Network (Inv(..), InvVector(..), InvType(..), Message(..))

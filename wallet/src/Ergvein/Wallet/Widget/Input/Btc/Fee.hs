@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE OverloadedLists #-}
 
-module Ergvein.Wallet.Widget.Input.BTC.Fee(
+module Ergvein.Wallet.Widget.Input.Btc.Fee(
     btcFeeSelectionWidget
   ) where
 
@@ -70,7 +70,7 @@ btcFeeSelectionWidget lbl minit mPrevRate submitE = do
             setValE = attachPromptlyDynWithMaybe feeModeToRateText feesD feeModeE
         feeRateErrsD :: Dynamic t (Maybe [VError ()]) <- holdDyn Nothing $ ffor (current validatedRateD `tag` submitE) eitherToMaybe'
         selectedRateD <- manualFeeSelector initFeeRateText initInputIsDisabled setValE modifyAttrsE feeRateErrsD
-        let validatedRateD = toEither . (validateBtcFeeRate mPrevRate) . T.unpack <$> selectedRateD
+        let validatedRateD = toEither . (validateFeeRate mPrevRate) . T.unpack <$> selectedRateD
         pure $ eitherToMaybe <$> validatedRateD
       feeModeD <- column33 $ do
         langD <- getLanguage

@@ -5,7 +5,7 @@ module Ergvein.Wallet.Validate (
   , validateAmount
   , validateBtcRecipient
   , validateBtcWithUnits
-  , validateBtcFeeRate
+  , validateFeeRate
   , VError(..)
   , Validation(..)
   ) where
@@ -46,11 +46,11 @@ validateBtcRecipient addrStr = case validateNonEmptyString addrStr of
     Failure errs' -> _Failure # errs'
     Success addr -> _Success # addr
 
-validateBtcFeeRate :: Maybe Rational -> String -> Validation [VError e] Word64
-validateBtcFeeRate mPrevFeeRate feeRateStr = case validateNonEmptyString feeRateStr of
+validateFeeRate :: Maybe Rational -> String -> Validation [VError e] Word64
+validateFeeRate mFeeRateThreshold feeRateStr = case validateNonEmptyString feeRateStr of
   Failure errs -> _Failure # errs
   Success (NonEmptyString result) -> case validateWord64 result of
     Failure errs' -> _Failure # errs'
-    Success result' -> case validateGreaterThan mPrevFeeRate result' of
+    Success result' -> case validateGreaterThan mFeeRateThreshold result' of
         Failure errs'' -> _Failure # errs''
         Success (GreaterThanRational result'') -> _Success # result''
