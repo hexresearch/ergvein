@@ -1,0 +1,9 @@
+[package]
+name = "ergo_protocol_ffi"
+version = "0.1.0"
+
+[dependencies]
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["staticlib"]
