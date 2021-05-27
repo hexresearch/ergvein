@@ -8,24 +8,25 @@ module Ergvein.Wallet.Localize.Status
 
 import Ergvein.Core.Status.Types
 import Ergvein.Text
+import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
 
 instance LocalizedPrint WalletStatusNormal where
   localizedShow l v = case l of
     English -> case v of
       WalletStatusNormal'gettingNodeAddresses -> "Getting node addresses"
-      WalletStatusNormal'connectingToPeers -> "Connecting to peers"
-      WalletStatusNormal'gettingHeight h -> "Getting height. Catching up at: " <> showt h
-      WalletStatusNormal'newFilters n -> showt n <> " new filters"
-      WalletStatusNormal'synced -> "Fully synchronized"
-      WalletStatusNormal'empty -> "Not active"
+      WalletStatusNormal'connectingToPeers c -> "Connecting to " <> currencyName c <> " nodes"
+      WalletStatusNormal'gettingHeight h -> "Getting height, current value: " <> showt h
+      WalletStatusNormal'newFilters n -> "Scanning " <> showt n <> " new blocks"
+      WalletStatusNormal'synced -> "Synced"
+      WalletStatusNormal'empty -> ""
     Russian -> case v of
       WalletStatusNormal'gettingNodeAddresses -> "Получение адреса ноды"
-      WalletStatusNormal'connectingToPeers -> "Подключение к узлу"
-      WalletStatusNormal'gettingHeight h -> "Вычисление высоты. Сейчас на " <> showt h
-      WalletStatusNormal'newFilters n -> showt n <> " новых фильтров"
+      WalletStatusNormal'connectingToPeers c -> "Подключение к узлам" <> currencyName c
+      WalletStatusNormal'gettingHeight h -> "Вычисление высоты, текущее значение: " <> showt h
+      WalletStatusNormal'newFilters n -> "Сканируются " <> showt n <> " новых блоков"
       WalletStatusNormal'synced -> "Синхронизировано"
-      WalletStatusNormal'empty -> "Отключена"
+      WalletStatusNormal'empty -> ""
 
 instance LocalizedPrint RestoreStage where
   localizedShow l v = case l of

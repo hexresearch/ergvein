@@ -1,41 +1,55 @@
+{-# OPTIONS_GHC -Wall #-}
+
 module Sepulcas.Validate (
     toEither
   , validate
   , validateNow
-  , validateAmount
   , validateNonEmptyString
   , validateRational
-  , validatePositiveRational
   , validateWord64
   , validateGreaterThan
   , NonEmptyString(..)
-  , PositiveRational(..)
-  , GreaterThanRational(..)
+  , GreaterThan(..)
   , VError(..)
   , Validation(..)
   ) where
 
-import Control.Lens
-import Data.Ratio
-import Data.Validation hiding (validate)
-import Data.Word
+import Control.Lens ((#))
+import Data.Text (Text)
+import Data.Text.Read (rational)
+import Data.Validation
+  ( Validation (..),
+    toEither,
+    _Failure,
+    _Success,
+  )
+import Data.Word (Word64)
+import GHC.Natural (Natural)
 import Reflex.Dom
-import Reflex.Flunky
-import Reflex.Localize
-import Reflex.Localize.Dom
-import Sepulcas.Either
-import Text.Parsec
+  ( DomBuilder,
+    MonadHold,
+    PostBuild,
+    Reflex (Event),
+    divClass,
+    ffor,
+    fmapMaybe,
+  )
+import Reflex.Flunky (networkHold_)
+import Reflex.Localize (LocalizedPrint, MonadLocalized)
+import Reflex.Localize.Dom (localizedText)
+import Sepulcas.Either (justRight)
+import Text.Read (readMaybe)
+
+import qualified Data.Text as T
 
 newtype NonEmptyString = NonEmptyString String deriving (Show)
-newtype PositiveRational = PositiveRational Rational deriving (Show)
-newtype GreaterThanRational = GreaterThanRational Word64 deriving (Show)
+newtype GreaterThan a = GreaterThan a deriving (Show)
 
 data VError ext
   = MustNotBeEmpty
   | MustBeRational
-  | MustBePositive
-  | MustBeNonNegativeIntegral
-  | MustBeGreaterThan Rational
+  | MustBeNatural
+  | MustBeGreaterThan Text
   | VErrorOther ext
   deriving (Show)
 
@@ -45,34 +59,20 @@ validateNonEmptyString x = if x /= []
   else _Failure # [MustNotBeEmpty]
 
 validateRational :: String -> Validation [VError e] Rational
-validateRational x = case parse rational "" x of
-  Left _ -> _Failure # [MustBeRational]
-  Right result -> _Success # result
-
-validatePositiveRational :: Rational -> Validation [VError e] PositiveRational
-validatePositiveRational x = if x > 0
-  then _Success # PositiveRational x
-  else _Failure # [MustBePositive]
+validateRational x = case rational $ T.pack x of
+  Right (result, "") -> _Success # result
+  _ -> _Failure # [MustBeRational]
 
 validateWord64 :: String -> Validation [VError e] Word64
-validateWord64 x = case parse word64 "" x of
-  Left _ -> _Failure # [MustBeNonNegativeIntegral]
-  Right res -> _Success # res
+validateWord64 x = case readMaybe x :: Maybe Natural of
+  Nothing -> _Failure # [MustBeNatural]
+  Just res -> _Success # fromIntegral res
 
-validateAmount :: String -> Validation [VError e] Rational
-validateAmount x = case validateNonEmptyString x of
-  Failure errs -> _Failure # errs
-  Success (NonEmptyString result) -> case validateRational result of
-    Failure errs' -> _Failure # errs'
-    Success result' -> case validatePositiveRational result' of
-      Failure errs'' -> _Failure # errs''
-      Success (PositiveRational result'') -> _Success # result''
-
-validateGreaterThan :: Maybe Rational -> Word64 -> Validation [VError e] GreaterThanRational
-validateGreaterThan Nothing x = _Success # GreaterThanRational x
-validateGreaterThan (Just y) x = if (fromIntegral x) > y
-  then _Success # GreaterThanRational x
-  else _Failure # [MustBeGreaterThan y]
+validateGreaterThan :: Ord a => a -> Maybe a -> (a -> Text) -> Validation [VError e] (GreaterThan a)
+validateGreaterThan x Nothing _ = _Success # GreaterThan x
+validateGreaterThan x (Just y) printer = if x > y
+  then _Success # GreaterThan x
+  else _Failure # [MustBeGreaterThan $ printer y]
 
 -- | Helper for widget that displays error
 errorWidget :: (DomBuilder t m, MonadLocalized t m, PostBuild t m, LocalizedPrint l) => l -> m ()
@@ -94,44 +94,3 @@ validateNow ma = case ma of
     errorWidget err
     pure Nothing
   Right a -> pure $ Just a
-
--- (<++>) a b = (++) <$> a <*> b
-(<:>) :: Applicative f => f a -> f [a] -> f [a]
-(<:>) a b = (:) <$> a <*> b
-
-readInt :: String -> Integer
-readInt = read
-
-number :: Stream s m Char => ParsecT s u m String
-number = many1 digit
-
-plus :: Stream s m Char => ParsecT s u m String
-plus = char '+' *> number
-
-minus :: Stream s m Char => ParsecT s u m String
-minus = char '-' <:> number
-
-integerStr :: Stream s m Char => ParsecT s u m String
-integerStr = plus <|> minus <|> number
-
-nonNegativeIntegerStr :: Stream s m Char => ParsecT s u m String
-nonNegativeIntegerStr = plus <|> number
-
-word64 :: Stream s m Char => ParsecT s u m Word64
-word64 = fmap read (nonNegativeIntegerStr <* eof)
-
-fractionalStr :: Stream s m Char => ParsecT s u m String
-fractionalStr = option "" $ char '.' *> number
-
-intFracToRational :: String -> String -> Rational
-intFracToRational intStr fracStr = if null fracStr
-  then int % 1
-  else (int * expon + frac * sign int) % expon
-  where expon = 10 ^ length fracStr
-        int = readInt intStr
-        frac = readInt fracStr
-        sign x = if x == 0 then signum 1 else signum x
-
-rational :: Stream s m Char => ParsecT s u m Rational
-rational = fmap (uncurry intFracToRational) intFrac
-  where intFrac = (,) <$> integerStr <*> fractionalStr <* eof

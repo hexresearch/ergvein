@@ -24,6 +24,8 @@ import Network.Haskoin.Network (Inv(..), InvVector(..), InvType(..), Message(..)
 
 import qualified Data.List as L
 import qualified Data.Text as T
+import qualified Network.Haskoin.Address as HA
+import qualified Network.Haskoin.Script as HS
 import qualified Network.Haskoin.Transaction as HT
 
 bumpFeePage :: MonadFront t m => Currency -> TransactionView -> Maybe (FeeMode, Word64) -> m ()
@@ -48,13 +50,13 @@ feeRateWidget cur TransactionView{..} mInit = mdo
   makeBlock BumpFeeCurrentFeeRate $ maybe BumpFeeFeeRateUnknown (\fRate -> BumpFeeFeeRateAmount fRate cur) feeRate
   feeD <- btcFeeSelectionWidget BumpFeeNewFeeRateUnits mInit feeRate submitE
   submitE <- outlineButton CSSubmit
-  let goE = attachWithMaybe (\mFeeRate _ -> mFeeRate) (current feeD) submitE
+  let goE = attachWithMaybe const (current feeD) submitE
   pure goE
 
 data RbfTxData = RbfTxData {
     rbfTxData'feeRate    :: !Word64                         -- ^ Fee rate in sat/vbyte
   , rbfTxData'feeMode    :: !FeeMode                     -- ^ Fee mode
-  , rbfTxData'change     :: !(Maybe (Word64, EgvPubKeyBox)) -- ^ Change amount and keybox to send the change to
+  , rbfTxData'change     :: !(Word64, EgvPubKeyBox)         -- ^ Change amount and keybox to send the change to
   , rbfTxData'coins      :: ![UtxoPoint]                    -- ^ List of utxo points used as inputs
   , rbfTxData'outsToKeep :: ![(Text, Word64)]               -- ^ Fixed tx outputs in tx
   , rbfTxData'rbfEnabled :: !RbfEnabled                     -- ^ Explicit opt-in RBF signalling
@@ -94,13 +96,13 @@ prepareTxData e = do
                         (confirmedUtxo', unconfirmedUtxo') = getBtcUtxoPointsParted pubStorage
                         -- here we remove outputs that was created in replaced transaction
                         -- from our set of available outputs
-                        removeBadOutputs outs = filter (\out -> not $ L.elem (upPoint out) replacedOutPoints) outs
+                        removeBadOutputs outs = filter (\out -> upPoint out `notElem` replacedOutPoints) outs
                         (confirmedUtxo, unconfirmedUtxo) = (removeBadOutputs confirmedUtxo', removeBadOutputs unconfirmedUtxo')
                     case chooseCoinsRbf amount newFeeRate outputTypes fixedUtxo confirmedUtxo unconfirmedUtxo of
                       Left _ -> pure $ Left BumpFeeInsufficientFundsError
                       Right (coins, change) -> do
                         let lastUnusedKey =  snd <$> (getLastUnusedKey Internal =<< pubStorageKeyStorage BTC pubStorage)
-                            getOldChangeKey oldChangeOut = (flip getInternalKeyboxByOutput) oldChangeOut =<< pubStorageKeyStorage BTC pubStorage
+                            getOldChangeKey oldChangeOut = flip getInternalKeyboxByOutput oldChangeOut =<< pubStorageKeyStorage BTC pubStorage
                             mChangeKey = maybe lastUnusedKey getOldChangeKey mOldChangeOut
                         case mChangeKey of
                           Nothing -> pure $ Left BumpFeeGetChangeKeyError
@@ -111,13 +113,12 @@ prepareTxData e = do
                               Just decodedOutsToKeep -> pure $ Right RbfTxData {
                                   rbfTxData'feeRate = newFeeRate
                                 , rbfTxData'feeMode = newFeeMode
-                                , rbfTxData'change = Just (change, changeKey)
+                                , rbfTxData'change = (change, changeKey)
                                 , rbfTxData'coins = coins
                                 , rbfTxData'outsToKeep = decodedOutsToKeep
                                 , rbfTxData'rbfEnabled = True -- TODO: add checkbox for this in UI
                                 }
-  dataE <- handleDangerMsg eDataE
-  pure dataE
+  handleDangerMsg eDataE
 
 chooseCoinsRbf :: Word64 -> Word64 -> [BtcAddressType] -> [UtxoPoint] -> [UtxoPoint] -> [UtxoPoint] -> Either Text ([UtxoPoint], Word64)
 chooseCoinsRbf amount newFeeRate outputTypes fixedUtxo confirmedUtxo unconfirmedUtxo =
@@ -134,8 +135,7 @@ extractOutputToKeep :: (HasPubStorage m, PlatformNatives) => [HT.TxOut] -> m [HT
 extractOutputToKeep outputs = do
   pubStorage <- askPubStorage
   let ourBtcChangeAddrs = getChangeBtcAddrs pubStorage
-  outputsToKeep <- filterM ((fmap not) . checkOutIsOursBtc ourBtcChangeAddrs) outputs
-  pure outputsToKeep
+  filterM (fmap not . checkOutIsOursBtc ourBtcChangeAddrs) outputs
 
 -- Here we extract change output from the tx that we want to replace.
 -- Even if there are more than one change output, the change will be sent to the first of these outputs in a new transaction.
@@ -150,7 +150,7 @@ calcFeeRate :: Maybe Money -> EgvTx -> Maybe Rational
 calcFeeRate (Just money) (TxBtc btcTx) =
   let txVsize = calcTxVsize $ getBtcTx btcTx
       fee = moneyToRationalUnit money smallestUnits
-  in Just $ fee / (fromIntegral txVsize)
+  in Just $ fee / fromIntegral txVsize
 calcFeeRate (Just _) (TxErg _) = Nothing -- TODO: implement for ERGO
 calcFeeRate _ _ = Nothing
 
@@ -163,14 +163,16 @@ makeBlock title content = divClass "mb-1" $ do
 makeRbfTx :: MonadFront t m => Event t RbfTxData -> m (Event t (RbfTxData, HT.Tx))
 makeRbfTx txDataE = do
   let eTxE = ffor txDataE $ \txData@RbfTxData{..} ->
-        let keyToText = btcAddrToString . xPubToBtcAddr . extractXPubKeyFromEgv . pubKeyBox'key
-            changeOutputs = maybe [] (\(change, changeKey) -> [(keyToText changeKey, change)]) rbfTxData'change
-            outputsToKeep = rbfTxData'outsToKeep
-            outs = outputsToKeep ++ changeOutputs
+        let (change, changeKey) = rbfTxData'change
+            changeAddr = xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key changeKey
+            changeAddrStr = btcAddrToString changeAddr
+            changeOut = HT.TxOut change (HS.encodeOutputBS $ HA.addressToOutput changeAddr)
+            outs = if isDust changeOut
+              then rbfTxData'outsToKeep
+              else rbfTxData'outsToKeep ++ [(changeAddrStr, change)]
             eTx = buildAddrTx btcNetwork rbfTxData'rbfEnabled (upPoint <$> rbfTxData'coins) outs
         in (txData, ) <$> first (const BumpFeeInvalidAddressError) eTx
-  txE <- handleDangerMsg eTxE
-  pure txE
+  handleDangerMsg eTxE
 
 signSendWidget :: MonadFront t m => RbfTxData -> HT.Tx -> m ()
 signSendWidget txData@RbfTxData{..} tx = do
@@ -180,7 +182,7 @@ signSendWidget txData@RbfTxData{..} tx = do
     let titleD = (\newTitle -> if newTitle then BumpFeeTxPostedHeader else BumpFeeConfirmTxHeader) <$> displayNewTitleD
     elClass "h4" "mb-1" $ localizedDynText titleD
     let
-      inputsAmount = sum $ (btcUtxo'amount . upMeta) <$> rbfTxData'coins
+      inputsAmount = sum $ btcUtxo'amount . upMeta <$> rbfTxData'coins
       outputsAmount = sum $ HT.outValue <$> HT.txOut tx
       fee = inputsAmount - outputsAmount
     makeBlock BumpFeeNewFee $ BumpFeeFeeAmount (Money BTC fee) smallestUnits BTC
@@ -191,14 +193,14 @@ signSendWidget txData@RbfTxData{..} tx = do
 signTx :: MonadFront t m => HT.Tx -> [UtxoPoint] -> Workflow t m Bool
 signTx tx coins = Workflow $ do
   signE <- outlineButton BumpFeeSignTx
-  eSignedTxE <- fmap (fmapMaybe id) $ withWallet $ (signTxWithWallet tx coins) <$ signE
+  eSignedTxE <- fmap (fmapMaybe id) $ withWallet $ signTxWithWallet tx coins <$ signE
   signedTxE <- handleDangerMsg $ first (const BumpFeeSignError) <$> eSignedTxE
   pure (False, sendTx <$> signedTxE)
 
 sendTx :: MonadFront t m =>  HT.Tx -> Workflow t m Bool
 sendTx signedTx = Workflow $ do
   sendE <- outlineButton BumpFeeSendTx
-  addedE <- addOutgoingTx "signSendWidget" $ (TxBtc $ BtcTx signedTx Nothing) <$ sendE
+  addedE <- addOutgoingTx "signSendWidget" $ TxBtc (BtcTx signedTx Nothing) <$ sendE
   storedE <- btcMempoolTxInserter $ signedTx <$ addedE
   broadcastE <- requestBroadcast $ ffor storedE $ const $
     NodeReqBtc . MInv . Inv . pure . InvVector InvTx . HT.getTxHash . HT.txHash $ signedTx

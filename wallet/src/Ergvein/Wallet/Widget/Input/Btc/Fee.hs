@@ -33,9 +33,9 @@ manualFeeSelector initVal isDisabled setValE attrsE errsD = divClass "fee-input-
 
 feeModeToAttr :: FeeMode -> Map AttributeName (Maybe Text)
 feeModeToAttr = \case
-  FeeModeLow -> "disabled" =: (Just "disabled")
-  FeeModeMid -> "disabled" =: (Just "disabled")
-  FeeModeHigh -> "disabled" =: (Just "disabled")
+  FeeModeLow -> "disabled" =: Just "disabled"
+  FeeModeMid -> "disabled" =: Just "disabled"
+  FeeModeHigh -> "disabled" =: Just "disabled"
   FeeModeManual -> "disabled" =: Nothing
 
 feeModeToRateText :: Map Currency FeeBundle -> FeeMode -> Maybe Text
@@ -45,7 +45,7 @@ feeModeToRateText fees mode = case mode of
   FeeModeHigh -> showt <$> getFeeRateByLvl FeeFast
   FeeModeManual -> Nothing
   where
-    getFeeRateByLvl lvl = maybe Nothing (Just . fst . extractFee lvl) (M.lookup BTC fees)
+    getFeeRateByLvl lvl = fmap (fst . extractFee lvl) (M.lookup BTC fees)
 
 -- | Btc fee selector
 btcFeeSelectionWidget :: forall t m l . (MonadFront t m, LocalizedPrint l)
@@ -57,10 +57,10 @@ btcFeeSelectionWidget :: forall t m l . (MonadFront t m, LocalizedPrint l)
 btcFeeSelectionWidget lbl minit mPrevRate submitE = do
   feesD <- getFeesD
   initFees <- sampleDyn feesD
-  let getInitFeeRateByLvl lvl = maybe Nothing (Just . fst . extractFee lvl) (M.lookup BTC initFees)
+  let getInitFeeRateByLvl lvl = fmap (fst . extractFee lvl) (M.lookup BTC initFees)
       (initFeeMode, mInitFeeRate) = maybe (FeeModeMid, getInitFeeRateByLvl FeeModerate) (second Just) minit
       initFeeRateText = maybe "" showt mInitFeeRate
-      initInputIsDisabled = if initFeeMode == FeeModeManual then False else True
+      initInputIsDisabled = initFeeMode /= FeeModeManual
   divClass "fee-input" $ do
     el "label" $ localizedText lbl
     selectedD <- row $ mdo
@@ -70,7 +70,7 @@ btcFeeSelectionWidget lbl minit mPrevRate submitE = do
             setValE = attachPromptlyDynWithMaybe feeModeToRateText feesD feeModeE
         feeRateErrsD :: Dynamic t (Maybe [VError ()]) <- holdDyn Nothing $ ffor (current validatedRateD `tag` submitE) eitherToMaybe'
         selectedRateD <- manualFeeSelector initFeeRateText initInputIsDisabled setValE modifyAttrsE feeRateErrsD
-        let validatedRateD = toEither . (validateFeeRate mPrevRate) . T.unpack <$> selectedRateD
+        let validatedRateD = toEither . validateFeeRate (floor <$> mPrevRate) . T.unpack <$> selectedRateD
         pure $ eitherToMaybe <$> validatedRateD
       feeModeD <- column33 $ do
         langD <- getLanguage
@@ -84,7 +84,7 @@ btcFeeSelectionWidget lbl minit mPrevRate submitE = do
         pure $ _dropdown_value feeModeDropdown
       pure $ ffor2 feeRateD feeModeD (,)
     networkHoldDyn $ ffor selectedD $ \case
-      (Just feeRate, FeeModeManual) -> parClass "mb-0" (localizedText $ FSFee                  ) >> pure (Just (FeeModeManual, feeRate))
+      (Just feeRate, FeeModeManual) -> parClass "mb-0" (localizedText   FSFee                  ) >> pure (Just (FeeModeManual, feeRate))
       (Just feeRate, FeeModeLow)    -> parClass "mb-0" (localizedText $ FSRateDesc FeeCheap    ) >> pure (Just (FeeModeLow,    feeRate))
       (Just feeRate, FeeModeMid)    -> parClass "mb-0" (localizedText $ FSRateDesc FeeModerate ) >> pure (Just (FeeModeMid,    feeRate))
       (Just feeRate, FeeModeHigh)   -> parClass "mb-0" (localizedText $ FSRateDesc FeeFast     ) >> pure (Just (FeeModeHigh,   feeRate))

@@ -49,7 +49,7 @@ instance Default WalletStatus where
 
 data WalletStatusNormal =
     WalletStatusNormal'gettingNodeAddresses
-  | WalletStatusNormal'connectingToPeers
+  | WalletStatusNormal'connectingToPeers !Currency
   | WalletStatusNormal'gettingHeight !Int             -- Current height for catch up
   | WalletStatusNormal'newFilters !Int
   | WalletStatusNormal'synced

@@ -7,14 +7,14 @@ module Ergvein.Core.Transaction.Builder(
 ) where
 
 import Control.Monad.Identity (runIdentity)
-import Data.Conduit (ConduitT, Void, runConduit, (.|), await)
+import Data.Conduit (ConduitT, Void, await, runConduit, (.|))
 import Data.Conduit.List (sourceList)
 import Data.Maybe (fromMaybe)
-import Data.Word
-import Network.Haskoin.Util
+import Data.Word (Word64)
+import Network.Haskoin.Util (maybeToEither)
 
-import Ergvein.Core.Transaction.Btc
-import Ergvein.Types.Utxo.Btc
+import Ergvein.Core.Transaction.Btc (BtcOutputType, buildAddrTx, buildTx, guessTxFee)
+import Ergvein.Types.Utxo.Btc (Coin (..))
 
 {-
   Functions listed below are modificated functions from Network.Haskoin.Transaction.Builder module.
@@ -54,7 +54,7 @@ chooseCoinsSink ::
 chooseCoinsSink target fee outTypes mFixedCoins continue
   | target > 0 =
     maybeToEither err <$>
-      greedyAddSink target ((guessTxFee fee outTypes) . (map coinType)) mFixedCoins continue
+      greedyAddSink target (guessTxFee fee outTypes . map coinType) mFixedCoins continue
   | otherwise = return $ Left "chooseCoins: Target must be > 0"
   where
   err = "chooseCoins: No solution found"
