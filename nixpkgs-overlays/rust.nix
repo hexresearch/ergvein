@@ -1,11 +1,2 @@
-/* self: super:
-let chan = self.rustChannelOf { date = "2021-03-01"; channel = "nightly"; };
-in {
-  rustc-nightly = chan.rust;
-  cargo-nightly = chan.rust;
-} */
-self: super:
-{
-  rustc-nightly = self.fenix.complete.rustc;
-  cargo-nightly = self.fenix.complete.cargo;
-}
+(import (fetchTarball
+      "https://github.com/nix-community/fenix/archive/b7fd78ca0973bf19966ffe1ec8f7f69cce337853.tar.gz"))

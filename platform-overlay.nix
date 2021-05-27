@@ -1,7 +1,6 @@
 { profile ? false }: (import ./reflex-platform.nix) {
     nixpkgsOverlays = [
       (import ./nixpkgs-overlays/default.nix)
-      (import ./nixpkgs-overlays/mozilla.nix)
       (import ./nixpkgs-overlays/rust.nix)
     ];
     config = {
