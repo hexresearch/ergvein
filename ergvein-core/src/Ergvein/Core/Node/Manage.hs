@@ -19,6 +19,9 @@ import Data.Foldable
 import Data.Maybe
 import Data.Text (Text)
 import Data.Time.Clock.System
+import Data.Traversable (for)
+import Network.Socket (SockAddr)
+
 import Ergvein.Core.Node.Btc
 import Ergvein.Core.Node.Ergo
 import Ergvein.Core.Node.Monad
@@ -30,7 +33,6 @@ import Ergvein.Core.Wallet
 import Ergvein.Types
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo.Btc
-import Network.Socket (SockAddr)
 import Reflex.Flunky
 import Reflex.Fork
 import Sepulcas.Native
@@ -65,8 +67,8 @@ initNode :: (MonadSettings t m)
   -> NodeReqSelector t
   -> SockAddr -> m (NodeConn t)
 initNode cur sel url = case cur of
-  BTC   -> fmap NodeConnBtc $ initBtcNode True url  reqE
-  ERGO  -> fmap NodeConnErgo $ initErgoNode url reqE
+  BTC  -> NodeConnBtc <$> initBtcNode True url reqE
+  ERGO -> NodeConnErgo <$> initErgoNode url reqE
   where
     reqE = extractReq sel cur url
 
@@ -75,7 +77,7 @@ initializeNodes :: (MonadSettings t m)
   -> M.Map Currency [SockAddr] -> m (ConnMap t)
 initializeNodes sel urlmap = do
   let ks = M.keys urlmap
-  conns <- fmap join $ flip traverse ks $ \k -> traverse (initNode k sel) $ fromMaybe [] $ M.lookup k urlmap
+  conns <- fmap join $ for ks $ \k -> traverse (initNode k sel) $ fromMaybe [] $ M.lookup k urlmap
   pure $ addMultipleConns DM.empty conns
 
 reinitNodes :: forall t m . (MonadSettings t m)
@@ -91,14 +93,14 @@ reinitNodes urls cs sel conMap = foldlM updCurr conMap $ M.toList cs
       BTC -> case (DM.lookup BtcTag cm, b) of
         (Nothing, True) -> do
           let conns0 = fromMaybe [] $ M.lookup BTC urls
-          conns <- flip traverse conns0 $ \u -> fmap NodeConnBtc $ initBtcNode True u $ extractReq sel BTC u
+          conns <- for conns0 $ \u -> fmap NodeConnBtc $ initBtcNode True u $ extractReq sel BTC u
           pure $ addMultipleConns cm conns
         (Just _, False) -> pure $ DM.delete BtcTag cm
         _ -> pure cm
       ERGO -> case (DM.lookup ErgoTag cm, b) of
         (Nothing, True) -> do
           let conns0 = fromMaybe [] $ M.lookup ERGO urls
-          conns <- flip traverse conns0 $ \u -> fmap NodeConnErgo $ initErgoNode u $ extractReq sel ERGO u
+          conns <- for conns0 $ \u -> fmap NodeConnErgo $ initErgoNode u $ extractReq sel ERGO u
           pure $ addMultipleConns cm conns
         (Just _, False) -> pure $ DM.delete ErgoTag cm
         _ -> pure cm
@@ -112,7 +114,7 @@ requestNodeWait NodeConnection{..} reqE = do
   reqE' <- fmap (fmapMaybe id) $ performEvent $ ffor passValE $ \case
     (Just _, False) -> do
       when nodeconDoLog $
-        logWrite $ (nodeString nodeconCurrency nodeconUrl) <> "Connection is not active. Waiting."
+        logWrite $ nodeString nodeconCurrency nodeconUrl <> "Connection is not active. Waiting."
       pure Nothing
     (Just v, True) -> pure $ Just (nodeconUrl, v)
     _ -> pure Nothing
@@ -127,11 +129,11 @@ requestRandomNode reqE = do
       NodeReqBtc{} -> do
         let nodes = M.elems $ fromMaybe M.empty $ DM.lookup BtcTag cm
         mn <- randomOne nodes
-        pure $ fmap (\n -> ((nodeconUrl n, req), fmap NodeRespBtc $ nodeconRespE n)) mn
+        pure $ fmap (\n -> ((nodeconUrl n, req), NodeRespBtc <$> nodeconRespE n)) mn
       NodeReqErgo{} -> do
         let nodes = M.elems $ fromMaybe M.empty $ DM.lookup ErgoTag cm
         mn <- randomOne nodes
-        pure $ fmap (\n -> ((nodeconUrl n, req), fmap NodeRespErgo $ nodeconRespE n)) mn
+        pure $ fmap (\n -> ((nodeconUrl n, req), NodeRespErgo <$> nodeconRespE n)) mn
   let reqE' = fmapMaybe id mreqE
   _ <- requestFromNode $ fmap fst reqE'
   switchHold never $ fmap snd reqE'
@@ -182,19 +184,19 @@ removeTxsReplacedByFee caller replacingTxE = do
           replacingBtcTxId = HT.txHash replacingTx
           replacingTxId = BtcTxHash replacingBtcTxId
           otherUnconfirmedTxs = M.elems $ M.delete replacingTxId unconfirmedBtcTxs
-      directlyReplacedTxs <- filterM ((fmap (== Just True)) . replacesByFee replacingTx) otherUnconfirmedTxs
+      directlyReplacedTxs <- filterM (fmap (== Just True) . replacesByFee replacingTx) otherUnconfirmedTxs
       directlyReplacedTxsChilds <- L.concat <$> traverse getChildTxs directlyReplacedTxs
-      possiblyReplacedTxs <- filterM ((fmap (== Nothing)) . replacesByFee replacingTx) otherUnconfirmedTxs
+      possiblyReplacedTxs <- filterM (fmap (== Nothing) . replacesByFee replacingTx) otherUnconfirmedTxs
       possiblyReplacedTxsChilds <- L.concat <$> traverse getChildTxs possiblyReplacedTxs
       -- Also remove all txs that are in the same group in btcPubStorage'possiblyReplacedTxs
       -- with replaced txs.
-      let possiblyReplacedTxsGroups = (\(k, v) -> S.insert k v) <$> M.toList possiblyReplacedTxStore
+      let possiblyReplacedTxsGroups = uncurry S.insert <$> M.toList possiblyReplacedTxStore
 
           -- Gets txs that should be replaced form btcPubStorage'possiblyReplacedTxs if provided tx has been replaced
           getTxsFromGroups :: [S.Set BtcTxId] -> BtcTxId -> S.Set BtcTxId
           getTxsFromGroups txGroups tx = S.unions $ (\txGroup -> if S.member tx txGroup then S.delete tx txGroup else S.empty) <$> txGroups
 
-          indirectlyReplacedTxs = S.toList $ S.unions $ (getTxsFromGroups possiblyReplacedTxsGroups) <$> (HT.txHash <$> directlyReplacedTxs)
+          indirectlyReplacedTxs = S.toList $ S.unions $ getTxsFromGroups possiblyReplacedTxsGroups <$> (HT.txHash <$> directlyReplacedTxs)
           replacedTxIds = S.fromList $ (HT.txHash <$> (directlyReplacedTxs ++ directlyReplacedTxsChilds)) ++ indirectlyReplacedTxs
           possiblyReplacedTxIds = S.fromList $ HT.txHash <$> (possiblyReplacedTxs ++ possiblyReplacedTxsChilds)
       pure (replacingBtcTxId, replacedTxIds, possiblyReplacedTxIds)
@@ -203,11 +205,11 @@ removeTxsReplacedByFee caller replacingTxE = do
   where clr = caller <> ":" <> "removeTxsReplacedByFee"
 
 -- | Checks tx with checkAddrTx against provided keys and returns that tx in EgvTx format with matched keys vector.
-checkAddrTx' :: (HasTxStorage m, PlatformNatives) => V.Vector ScanKeyBox -> HT.Tx -> m ((V.Vector (ScanKeyBox), EgvTx))
+checkAddrTx' :: (HasTxStorage m, PlatformNatives) => V.Vector ScanKeyBox -> HT.Tx -> m (V.Vector ScanKeyBox, EgvTx)
 checkAddrTx' vec tx = do
   st <- liftIO $ systemToUTCTime <$> getSystemTime
-  let meta = (Just (EgvTxMeta Nothing Nothing st))
-  vec' <- flip traverse vec $ \kb -> do
+  let meta = Just $ EgvTxMeta Nothing Nothing st
+  vec' <- for vec $ \kb -> do
     b <- checkAddrTx (TxBtc $ BtcTx tx meta) (egvXPubKeyToEgvAddress . scanBox'key $ kb)
     pure $ if b then Just kb else Nothing
   let resultVec = V.mapMaybe id vec'
