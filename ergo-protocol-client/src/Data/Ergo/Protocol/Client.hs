@@ -12,6 +12,7 @@ module Data.Ergo.Protocol.Client(
   , C.SocketOutEvent(..)
   , ergoSocket
   , makeHandshake
+  , peekMessage
   ) where
 
 import Control.Concurrent

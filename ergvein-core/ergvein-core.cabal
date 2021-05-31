@@ -126,6 +126,8 @@ library
     , ergvein-index-protocol
     , ergvein-node-discovery
     , ergvein-types
+    , ergo-protocol
+    , ergo-protocol-client
     , exceptions
     , haskoin-core              >= 0.12.0   && < 0.12.1
     , iproute
