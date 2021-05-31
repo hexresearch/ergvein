@@ -42,6 +42,7 @@ library
     Data.Ergo.Protocol.Types
     Data.Ergo.Shift
     Data.Ergo.Transaction
+    Data.Ergo.Transaction.Decoder
     Data.Ergo.Transaction.Types
     Data.Ergo.Vlq
     Data.Ergo.ZigZag
