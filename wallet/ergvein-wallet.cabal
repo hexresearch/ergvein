@@ -38,6 +38,7 @@ library
         Ergvein.Wallet.Navbar
         Ergvein.Wallet.Navbar.Switcher
         Ergvein.Wallet.Navbar.Types
+        Ergvein.Wallet.Orphanage
         Ergvein.Wallet.Page.About
         Ergvein.Wallet.Page.Balances
         Ergvein.Wallet.Page.Btc.Send
@@ -66,8 +67,7 @@ library
         Ergvein.Wallet.Widget.Balance
         Ergvein.Wallet.Widget.GraphPinCode
         Ergvein.Wallet.Widget.Input.Amount
-        Ergvein.Wallet.Widget.Input.Btc.Fee
-        Ergvein.Wallet.Widget.Input.Ergo.Fee
+        Ergvein.Wallet.Widget.Input.Fee
         Ergvein.Wallet.Widget.Input.Recipient
         Ergvein.Wallet.Wrapper
     hs-source-dirs: src

@@ -19,9 +19,10 @@ import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
+import Ergvein.Wallet.Orphanage ()
 import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Widget.Input.Amount
-import Ergvein.Wallet.Widget.Input.Btc.Fee
+import Ergvein.Wallet.Widget.Input.Fee
 import Ergvein.Wallet.Widget.Input.Recipient
 import Ergvein.Wallet.Wrapper
 import Sepulcas.Alert
@@ -61,9 +62,9 @@ sendWidget mInit title navbar thisWidget = wrapperNavbar False title thisWidget 
       rbfFromSettings = btcSettings'sendRbfByDefault $ getBtcSettings settings
       rbfInit' = fromMaybe rbfFromSettings rbfInit
   retInfoD <- formClass "mb-0" $ mdo
-    recipientD <- divClass "mb-1" $ recipientWidget recipientInit submitE
-    amountD <- divClass "mb-1" $ sendAmountWidget amountInit submitE
-    feeD <- divClass "mb-1" $ btcFeeSelectionWidget FSRate feeInit Nothing submitE
+    recipientD <- divClass "mb-1" $ recipientWidget BTC recipientInit submitE
+    amountD <- divClass "mb-1" $ sendAmountWidgetBtc amountInit submitE
+    feeD <- divClass "mb-1" $ feeSelectionWidgetBtc FSRate feeInit Nothing submitE
     rbfEnabledD <- divClass "mb-2" $ toggler SSRbf (constDyn rbfInit')
     submitE <- outlineSubmitTextIconButtonClass "w-100 mb-0" SendBtnString "fas fa-paper-plane fa-lg"
     let goE = flip push submitE $ \_ -> do

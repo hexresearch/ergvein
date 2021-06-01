@@ -12,32 +12,32 @@ import Ergvein.Wallet.Validate
 import Sepulcas.Camera
 import Sepulcas.Clipboard
 import Sepulcas.Elements
+import Sepulcas.Validate
 
 import qualified Data.Text as T
 
-recipientWidget :: MonadFront t m
-  => Maybe a -- ^ Initial input value
-  -- -> (String -> Validation [VError InvalidAddress] a) -- ^ Address validator
+recipientWidget :: (MonadFront t m, Display a, Validate a)
+  => Currency
+  -> Maybe a -- ^ Initial input value (recipient address)
   -> Event t () -- ^ Send event. Triggers fileds validation
   -> m (Dynamic t (Maybe a))
-recipientWidget = undefined 
--- recipientWidget mInitRecipient submitE = divClass "recipient-input" $ mdo
---   let initRecipient = maybe "" btcAddrToString mInitRecipient
---   recipientErrsD <- holdDyn Nothing $ ffor (current validatedRecipientD `tag` submitE) eitherToMaybe'
---   recipientD <- if isAndroid
---     then mdo
---       (recipD, events) <- validatedTextFieldWithSetValBtns RecipientString initRecipient recipientErrsD ["fas fa-paste", "fas fa-qrcode"] (leftmost [pasteE, resQRcodeE])
---       let pasteBtnE = head events
---           qrBtnE = events !! 1
---           stripCurPrefix t = T.dropWhile (== '/') $ fromMaybe t $ T.stripPrefix (curprefix BTC) t
---       openE <- delay 1.0 =<< openCamara qrBtnE
---       resQRcodeE <- (fmap . fmap) stripCurPrefix $ waiterResultCamera openE
---       pasteE <- clipboardPaste pasteBtnE
---       pure recipD
---     else mdo
---       (recipD, events) <- validatedTextFieldWithSetValBtns RecipientString initRecipient recipientErrsD ["fas fa-paste"] pasteE
---       let pasteBtnE = head events
---       pasteE <- clipboardPaste pasteBtnE
---       pure recipD
---   let validatedRecipientD = toEither . validateBtcRecipient . T.unpack <$> recipientD
---   pure $ eitherToMaybe <$> validatedRecipientD
+recipientWidget cur mInitRecipient submitE = divClass "recipient-input" $ mdo
+  let initRecipient = maybe "" display mInitRecipient
+  recipientErrsD <- holdDyn Nothing $ ffor (current validatedRecipientD `tag` submitE) eitherToMaybe'
+  recipientD <- if isAndroid
+    then mdo
+      (recipD, events) <- validatedTextFieldWithSetValBtns RecipientString initRecipient recipientErrsD ["fas fa-paste", "fas fa-qrcode"] (leftmost [pasteE, resQRcodeE])
+      let pasteBtnE = head events
+          qrBtnE = events !! 1
+          stripCurPrefix t = T.dropWhile (== '/') $ fromMaybe t $ T.stripPrefix (curprefix cur) t
+      openE <- delay 1.0 =<< openCamara qrBtnE
+      resQRcodeE <- fmap stripCurPrefix <$> waiterResultCamera openE
+      pasteE <- clipboardPaste pasteBtnE
+      pure recipD
+    else mdo
+      (recipD, events) <- validatedTextFieldWithSetValBtns RecipientString initRecipient recipientErrsD ["fas fa-paste"] pasteE
+      let pasteBtnE = head events
+      pasteE <- clipboardPaste pasteBtnE
+      pure recipD
+  let validatedRecipientD = toEither . validate <$> recipientD
+  pure $ eitherToMaybe <$> validatedRecipientD
