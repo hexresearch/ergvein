@@ -1,17 +1,21 @@
 module Ergvein.Wallet.Validate (
     toEither
-  , validate
+  , validateEvent
   , validateNow
-  , validateBtcRecipient
   , validateBtcAmount
+  , validateErgAmount
   , validateFeeRate
-  , VError(..)
+  , validateBtcAddr
+  , validateErgAddr
+  , validateBtcRecipient
+  , validateErgRecipient
+  , ValidationError(..)
   , Validation(..)
   ) where
 
 import Control.Lens
 import Data.Ratio ((%))
-import Data.Validation hiding (validate)
+import Data.Text (Text)
 import Data.Word
 
 import Ergvein.Types.Address
@@ -22,10 +26,10 @@ import Sepulcas.Validate
 
 import qualified Data.Text as T
 
-validateBtcAmount :: Word64 -> UnitBTC -> String -> Validation [VError e] Word64
-validateBtcAmount threshold unit x = case validateNonEmptyString x of
+validateBtcAmount :: Word64 -> UnitBTC -> Text -> Validation [ValidationError] Word64
+validateBtcAmount threshold unit x = case validateNonEmptyText x of
   Failure errs -> _Failure # errs
-  Success (NonEmptyString result) ->
+  Success (NonEmptyText result) ->
     let result' = case unit of
           BtcSat -> case validateWord64 result of
             Failure errs' -> _Failure # errs'
@@ -38,27 +42,63 @@ validateBtcAmount threshold unit x = case validateNonEmptyString x of
     in
       case result' of
         Failure errs'' -> _Failure # errs''
-        Success result'' -> case validateGreaterThan result'' (Just threshold) (\x -> showFullPrecision (satToUnits x) <> " " <> btcSymbolUnit unit) of
+        Success result'' -> case validateGreaterThan result'' threshold (\x -> showFullPrecision (satToUnits x) <> " " <> btcSymbolUnit unit) of
           Failure errs''' -> _Failure # errs'''
-          Success (GreaterThan _) -> _Success # result''
+          Success (LargeEnoughValue _) -> _Success # result''
 
-validateBtcAddr :: String -> Validation [VError InvalidAddress] BtcAddress
-validateBtcAddr addrStr = case btcAddrFromString (T.pack addrStr) of
-  Nothing   -> _Failure # [VErrorOther InvalidAddress]
+validateErgAmount :: Word64 -> UnitERGO -> Text -> Validation [ValidationError] Word64
+validateErgAmount threshold unit x = case validateNonEmptyText x of
+  Failure errs -> _Failure # errs
+  Success (NonEmptyText result) ->
+    let result' = case unit of
+          ErgNano -> case validateWord64 result of
+            Failure errs' -> _Failure # errs'
+            Success res -> _Success # res
+          _ -> case validateRational result of
+            Failure errs' -> _Failure # errs'
+            Success res -> _Success # unitsToNanoErgs res
+        nanoErgsToUnits x = fromRational $ fromIntegral x % (10 ^ ergoResolution unit)
+        unitsToNanoErgs x = round $ x * (10 ^ ergoResolution unit)
+    in
+      case result' of
+        Failure errs'' -> _Failure # errs''
+        Success result'' -> case validateGreaterThan result'' threshold (\x -> showFullPrecision (nanoErgsToUnits x) <> " " <> ergoSymbolUnit unit) of
+          Failure errs''' -> _Failure # errs'''
+          Success (LargeEnoughValue _) -> _Success # result''
+
+validateFeeRate :: Currency -> Maybe Word64 -> Text -> Validation [ValidationError] Word64
+validateFeeRate cur mPrevFeeRate feeRateText = case validateNonEmptyText feeRateText of
+  Failure errs -> _Failure # errs
+  Success (NonEmptyText result) -> case validateWord64 result of
+    Failure errs' -> _Failure # errs'
+    Success result' -> case mPrevFeeRate of
+      Nothing -> _Success # result'
+      Just prevFeeRate -> case validateGreaterThan result' prevFeeRate printer of
+        Failure errs'' -> _Failure # errs''
+        Success (LargeEnoughValue result'') -> _Success # result''
+  where
+    printer x = showt x <> " " <> symbolUnit cur smallestUnits
+
+validateBtcAddr :: Text -> Validation [ValidationError] BtcAddress
+validateBtcAddr addrText = case btcAddrFromText addrText of
+  Nothing   -> _Failure # [InvalidAddress]
   Just addr -> _Success # addr
 
-validateBtcRecipient :: String -> Validation [VError InvalidAddress] BtcAddress
-validateBtcRecipient addrStr = case validateNonEmptyString addrStr of
+validateErgAddr :: Text -> Validation [ValidationError] ErgAddress
+validateErgAddr addrText = case ergAddrFromText addrText of
+  Nothing   -> _Failure # [InvalidAddress]
+  Just addr -> _Success # addr
+
+validateBtcRecipient :: Text -> Validation [ValidationError] BtcAddress
+validateBtcRecipient addrText = case validateNonEmptyText addrText of
   Failure errs -> _Failure # errs
-  Success (NonEmptyString nonEmptyAddrStr) -> case validateBtcAddr nonEmptyAddrStr of
+  Success (NonEmptyText nonEmptyAddrText) -> case validateBtcAddr nonEmptyAddrText of
     Failure errs' -> _Failure # errs'
     Success addr -> _Success # addr
 
-validateFeeRate :: Maybe Word64 -> String -> Validation [VError e] Word64
-validateFeeRate mPrevFeeRate feeRateStr = case validateNonEmptyString feeRateStr of
+validateErgRecipient :: Text -> Validation [ValidationError] ErgAddress
+validateErgRecipient addrText = case validateNonEmptyText addrText of
   Failure errs -> _Failure # errs
-  Success (NonEmptyString result) -> case validateWord64 result of
+  Success (NonEmptyText nonEmptyAddrText) -> case validateErgAddr nonEmptyAddrText of
     Failure errs' -> _Failure # errs'
-    Success result' -> case validateGreaterThan result' mPrevFeeRate (\x -> showt x <> " " <> btcSymbolUnit BtcSat) of
-        Failure errs'' -> _Failure # errs''
-        Success (GreaterThan result'') -> _Success # result''
+    Success addr -> _Success # addr
