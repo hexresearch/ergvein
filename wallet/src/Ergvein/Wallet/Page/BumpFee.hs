@@ -165,11 +165,11 @@ makeRbfTx txDataE = do
   let eTxE = ffor txDataE $ \txData@RbfTxData{..} ->
         let (change, changeKey) = rbfTxData'change
             changeAddr = xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key changeKey
-            changeAddrStr = btcAddrToString changeAddr
+            changeAddrText = btcAddrToText changeAddr
             changeOut = HT.TxOut change (HS.encodeOutputBS $ HA.addressToOutput changeAddr)
             outs = if isDust changeOut
               then rbfTxData'outsToKeep
-              else rbfTxData'outsToKeep ++ [(changeAddrStr, change)]
+              else rbfTxData'outsToKeep ++ [(changeAddrText, change)]
             eTx = buildAddrTx btcNetwork rbfTxData'rbfEnabled (upPoint <$> rbfTxData'coins) outs
         in (txData, ) <$> first (const BumpFeeInvalidAddressError) eTx
   handleDangerMsg eTxE

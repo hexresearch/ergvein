@@ -155,7 +155,7 @@ confirmationInfoWidget (unit, amount) estFee rbfEnabled addr mTx = divClass "sen
   elClass "h4" "ta-c mb-1" $ localizedText $
     if isJust mTx then SSPosted else SSConfirm
   mkrow AmountString (text $ showMoneyUnit (mkMoney amount) us <> " " <> symbolUnit cur us) False
-  mkrow RecipientString (text $ btcAddrToString addr) True
+  mkrow RecipientString (text $ btcAddrToText addr) True
   mkrow SSFee (text $ showt estFee <> " " <> symbolUnit cur (Units (Just BtcSat) Nothing)) False
   mkrow SSRbf (localizedText $ FSRbf rbfEnabled) False
   mkrow SSTotal (text $ showMoneyUnit (mkMoney $ amount + estFee) us <> " " <> symbolUnit cur us) False
@@ -201,8 +201,8 @@ txSignSendWidget :: MonadFront t m
   -> RbfEnabled     -- ^ Explicit opt-in RBF signalling
   -> m (Event t (HT.Tx, UnitBTC, Word64, Word64, BtcAddress)) -- ^ Return the Tx + all relevant information for display
 txSignSendWidget addr unit amount _ changeKey change pick rbfEnabled = mdo
-  let keyTxt = btcAddrToString $ xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key changeKey
-      outs = [(btcAddrToString addr, amount), (keyTxt, change)]
+  let keyTxt = btcAddrToText $ xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key changeKey
+      outs = [(btcAddrToText addr, amount), (keyTxt, change)]
       etx = buildAddrTx btcNetwork rbfEnabled (upPoint <$> pick) outs
       inputsAmount = sum $ btcUtxo'amount . upMeta <$> pick
       outputsAmount = amount + change

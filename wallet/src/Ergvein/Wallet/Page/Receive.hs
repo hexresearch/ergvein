@@ -64,7 +64,7 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
     btnE <- labelAddrBtn
     setLabelToExtPubKey "receivePageWidget:2" $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
   where
-    keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress pubKeyBox'key
+    keyTxt = egvAddrToText $ egvXPubKeyToEgvAddress pubKeyBox'key
     keyView = T.pack $ L.intercalate " " $ mkChunks 4 $ T.unpack keyTxt
     prefixedKeyText = curprefix cur <> keyTxt
 
@@ -95,7 +95,7 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
       setLabelToExtPubKey "receivePageWidget:2" $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
       pure ()
   where
-    keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress pubKeyBox'key
+    keyTxt = egvAddrToText $ egvXPubKeyToEgvAddress pubKeyBox'key
     keyView = T.pack $ L.intercalate " " $ mkChunks 4 $ T.unpack keyTxt
 #endif
 

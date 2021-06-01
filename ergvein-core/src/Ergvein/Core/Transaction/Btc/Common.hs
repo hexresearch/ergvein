@@ -329,7 +329,7 @@ unpackOut :: TxOut -> Maybe (Text, Word64)
 unpackOut txOut = (, amount) <$> mAddr
    where
     mDecodedOut = eitherToMaybe $ decodeBtcOutHelper txOut
-    mAddr = btcAddrToString <$> (HA.outputAddress =<< mDecodedOut)
+    mAddr = btcAddrToText <$> (HA.outputAddress =<< mDecodedOut)
     amount = HT.outValue txOut
 
 -- | Sign function which has access to the private storage
