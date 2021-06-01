@@ -35,7 +35,7 @@ import Ergvein.Types
 import Ergvein.Wallet.Monad.Class
 import Ergvein.Wallet.Monad.Env
 import Reflex
-import Reflex.Dom hiding (askEvents, Key, textInput, mainWidgetWithCss, run)
+import Reflex.Dom hiding (askEvents, Key, textInput, mainWidgetWithCss, run, display)
 import Reflex.Dom.Retractable
 import Reflex.Flunky
 import Reflex.Fork

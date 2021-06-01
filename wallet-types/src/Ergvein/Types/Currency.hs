@@ -49,8 +49,10 @@ import Data.Text (Text)
 import Data.Time
 import Data.Time.Clock.POSIX
 import Data.Word
-import Ergvein.Aeson
 import Text.Printf
+
+import Ergvein.Aeson
+import Ergvein.Text
 
 import qualified Data.Text as T
 
@@ -95,6 +97,9 @@ $(deriveJSON aesonOptions ''UnitBTC)
 instance ToJSONKey UnitBTC where
 instance FromJSONKey UnitBTC where
 
+instance Display UnitBTC where
+  display = btcSymbolUnit
+
 defUnitBTC :: UnitBTC
 defUnitBTC = BtcWhole
 
@@ -125,6 +130,9 @@ data UnitERGO
 $(deriveJSON aesonOptions ''UnitERGO)
 instance ToJSONKey UnitERGO where
 instance FromJSONKey UnitERGO where
+
+instance Display UnitERGO where
+  display = ergoSymbolUnit
 
 defUnitERGO :: UnitERGO
 defUnitERGO = ErgWhole

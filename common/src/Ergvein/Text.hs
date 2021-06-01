@@ -13,6 +13,7 @@ module Ergvein.Text(
   , base64Text2bs
   , bs2Base64Text
   , ShowHex(..)
+  , Display(..)
   ) where
 
 import Data.Aeson
@@ -84,3 +85,7 @@ instance Show (ShowHex ByteString) where
 
 instance Read (ShowHex ByteString) where
   readsPrec _ = (:[]) . (,"") . ShowHex . hex2bs . pack
+
+-- Type class for text representation
+class Display a where
+  display :: a -> Text

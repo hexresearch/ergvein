@@ -18,6 +18,7 @@ import Network.Haskoin.Block (BlockHash)
 import Network.Haskoin.Transaction (OutPoint(..), TxHash)
 
 import Ergvein.Text
+import Ergvein.Types.Address
 
 import qualified Data.ByteString.Short as BSS
 import qualified Data.Vector as V
@@ -71,4 +72,10 @@ instance Serialize UTCTime where
 
 instance Serialize Text where
   put = put . T.unpack
-  get = fmap T.pack $ get
+  get = T.pack <$> get
+
+instance Display BtcAddress where
+  display = btcAddrToText
+
+instance Display ErgAddress where
+  display = ergAddrToText
