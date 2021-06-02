@@ -61,6 +61,7 @@ library
         Ergvein.Wallet.Page.Settings.Unauth
         Ergvein.Wallet.Page.Transaction
         Ergvein.Wallet.Password
+        Ergvein.Wallet.Settings
         Ergvein.Wallet.Status.Widget
         Ergvein.Wallet.Style
         Ergvein.Wallet.Validate

@@ -8,74 +8,73 @@ module Ergvein.Wallet.Page.Transaction(
   ) where
 
 import Control.Monad.Reader
-import Data.Maybe (fromMaybe)
 import Data.Text as T
 import Data.Time
 
 import Ergvein.Text
-import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import {-# SOURCE #-} Ergvein.Wallet.Page.BumpFee
+import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
+import Sepulcas.Elements
+import Sepulcas.Text (Display(..))
 
 import qualified Data.List as L
 
 transactionInfoPage :: MonadFront t m => Currency -> TransactionView -> m ()
 transactionInfoPage cur tr@TransactionView{..} = do
   title <- localized HistoryTITitle
-  moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
+  moneyUnits <- getSettingsUnitBtc
   let thisWidget = Just $ pure $ transactionInfoPage cur tr
   wrapper False title thisWidget $ divClass "tx-info-page" $ do
     infoPageElementExpEl HistoryTITransactionId $ hyperlink "link" (txId txInfoView) (txUrl txInfoView)
-    infoPageElementEl HistoryTIAmount $ (symbCol txInOut) $ text $ showMoneyUnit txAmount moneyUnits <> " " <> symbolUnit cur moneyUnits
-    infoPageElementEl HistoryTIWalletChanges $ (transTypeCol txInOut) $ text $ case txInOut of
-      TransRefill -> (showMoneyUnit (Money BTC (maybe 0 moneyAmount txPrevAm)) moneyUnits) <> " -> " <> (showMoneyUnit (Money BTC ((maybe 0 moneyAmount txPrevAm) + (moneyAmount txAmount))) moneyUnits) <> " " <> symbolUnit cur moneyUnits
-      TransWithdraw -> (showMoneyUnit (Money BTC (maybe 0 moneyAmount txPrevAm)) moneyUnits) <> " -> " <> (showMoneyUnit (Money BTC ((maybe 0 moneyAmount txPrevAm) - (moneyAmount txAmount) - (maybe 0 moneyAmount (txFee txInfoView)))) moneyUnits) <> " " <> symbolUnit cur moneyUnits
+    infoPageElementEl HistoryTIAmount $ symbCol txInOut $ text $ showMoneyUnit txAmount moneyUnits <> " " <> display moneyUnits
+    infoPageElementEl HistoryTIWalletChanges $ transTypeCol txInOut $ text $ case txInOut of
+      TransRefill -> showMoneyUnit (Money BTC (maybe 0 moneyAmount txPrevAm)) moneyUnits <> " -> " <> showMoneyUnit (Money BTC (maybe 0 moneyAmount txPrevAm + moneyAmount txAmount)) moneyUnits <> " " <> display moneyUnits
+      TransWithdraw -> showMoneyUnit (Money BTC (maybe 0 moneyAmount txPrevAm)) moneyUnits <> " -> " <> showMoneyUnit (Money BTC (maybe 0 moneyAmount txPrevAm - moneyAmount txAmount - maybe 0 moneyAmount (txFee txInfoView))) moneyUnits <> " " <> display moneyUnits
     case txInOut of
       TransRefill -> pure ()
-      TransWithdraw -> infoPageElement HistoryTIFee $ maybe "unknown" (\a -> (showMoneyUnit a moneyUnits) <> " " <> symbolUnit cur moneyUnits) $ txFee txInfoView
+      TransWithdraw -> infoPageElement HistoryTIFee $ maybe "unknown" (\a -> showMoneyUnit a moneyUnits <> " " <> display moneyUnits) $ txFee txInfoView
     infoPageElementEl HistoryTIRbf $ do
       text $ showt $ txRbfEnabled txInfoView
       let bumpFeePossible = txInOut == TransWithdraw && txRbfEnabled txInfoView && txConfirmations txInfoView == 0
-      when (bumpFeePossible) $ do
+      when bumpFeePossible $ do
         bumpFeeE <- divClass "mt-1" $ outlineButton HistoryTIBumpFeeBtn
-        void $ nextWidget $ ffor bumpFeeE $ \_ -> Retractable {
-          retractableNext = bumpFeePage cur tr Nothing
-        , retractablePrev = thisWidget
-        }
-      pure ()
+        void $ nextWidget $ ffor bumpFeeE $ const
+          Retractable
+            {retractableNext = bumpFeePage cur tr Nothing,
+             retractablePrev = thisWidget}
     case txConflictingTxs txInfoView of
       [] -> pure ()
       conflictingTxs -> infoPageElementExpEl HistoryTIConflictingTxs $ do
-        void $ traverse (makeNumberedTxIdLink cur) (L.zip [1..] conflictingTxs)
+        traverse_ (makeNumberedTxIdLink cur) (L.zip [1..] conflictingTxs)
     case txReplacedTxs txInfoView of
       [] -> pure ()
       replacedTxs -> infoPageElementExpEl HistoryTIReplacedTxs $ do
-        void $ traverse (makeNumberedTxIdLink cur) (L.zip [1..] replacedTxs)
+        traverse_ (makeNumberedTxIdLink cur) (L.zip [1..] replacedTxs)
     case txPossiblyReplacedTxs txInfoView of
       (_, []) -> pure ()
       (_, possiblyReplacedTxs) -> infoPageElementExpEl HistoryTIPossiblyReplacedTxs $ do
-        void $ traverse (makeNumberedTxIdLink cur) (L.zip [1..] possiblyReplacedTxs)
+        traverse_ (makeNumberedTxIdLink cur) (L.zip [1..] possiblyReplacedTxs)
     infoPageElementEl HistoryTITime $ showTime tr
     infoPageElement HistoryTIConfirmations $ showt $ txConfirmations txInfoView
     infoPageElementExpEl HistoryTIBlock $ maybe (text "unknown") (\(bllink,bl) -> hyperlink "link" bl bllink) $ txBlock txInfoView
     case txInOut of
       TransRefill -> pure ()
       TransWithdraw -> infoPageElementEl HistoryTIInputs $ divClass "tx-info-page-outputs-inputs" $ do
-        void $ flip traverse (txInputs txInfoView) $ \(oAddress, oValue) -> do
+        for_ (txInputs txInfoView) $ \(oAddress, oValue) -> do
           divClass "pr-1" $ localizedText HistoryTIOutputsValue
-          divClass "" $ text $ showMoneyUnit oValue moneyUnits <> " " <> symbolUnit cur moneyUnits
+          divClass "" $ text $ showMoneyUnit oValue moneyUnits <> " " <> display moneyUnits
           divClass "pr-1 mb-1" $ localizedText HistoryTIOutputsAddress
           divClass "tx-info-page-expanded mb-1" $ case oAddress of
             Nothing -> localizedText HistoryTIAddressUndefined
             Just address -> text address
-        pure ()
     infoPageElementEl HistoryTIOutputs $ divClass "tx-info-page-outputs-inputs" $ do
-      void $ flip traverse (txOutputs txInfoView) $ \(oAddress, oValue, oStatus, isOur) -> do
+      for_ (txOutputs txInfoView) $ \(oAddress, oValue, oStatus, isOur) -> do
         divClass (oBld "pr-1" isOur) $ localizedText HistoryTIOutputsValue
-        divClass (oBld "" isOur) $ text $ showMoneyUnit oValue moneyUnits <> " " <> symbolUnit cur moneyUnits
+        divClass (oBld "" isOur) $ text $ showMoneyUnit oValue moneyUnits <> " " <> display moneyUnits
         if isOur
           then divClass (oBld "pr-1" isOur) $ localizedText HistoryTIOutputsOurAddress
           else divClass (oBld "pr-1" isOur) $ localizedText HistoryTIOutputsAddress
@@ -84,9 +83,8 @@ transactionInfoPage cur tr@TransactionView{..} = do
           Just address -> text address
         divClass (oBld "mb-1 pr-1" isOur) $ localizedText HistoryTIOutputsStatus
         divClass (oBld "mb-1" isOur) $ localizedText oStatus
-      pure ()
       where
-        oBld txt isOur = if isOur then (txt <> " tx-info-our-address") else txt
+        oBld txt isOur = if isOur then txt <> " tx-info-our-address" else txt
 
 makeNumberedTxIdLink :: MonadFront t m => Currency -> (Int, TxId) -> m ()
 makeNumberedTxIdLink _ (num, txId) = do
@@ -101,7 +99,7 @@ makeNumberedTxIdLink _ (num, txId) = do
 showTime :: MonadFront t m => TransactionView -> m ()
 showTime TransactionView{..} = case txDate of
   TxTime Nothing -> localizedText $ if txStatus == TransUncofirmedParents then HistoryUnconfirmedParents else HistoryUnconfirmed
-  TxTime (Just date) -> text $ T.pack $ formatTime defaultTimeLocale "%H:%M:%S %d/%m/%Y" $ date
+  TxTime (Just date) -> text $ T.pack $ formatTime defaultTimeLocale "%H:%M:%S %d/%m/%Y" date
 
 infoPageElement :: MonadFront t m => HistoryPageStrings -> Text -> m ()
 infoPageElement hps txt = divClass "tx-info-page-element" $ do
@@ -128,7 +126,7 @@ symb txInOut ma = case txInOut of
     ma
 
 symbCol :: MonadFront t m => TransType -> m a -> m a
-symbCol txInOut ma = divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) $ do
+symbCol txInOut ma = divClass ("history-amount-" <> (T.toLower . showt) txInOut) $ do
   case txInOut of
     TransRefill -> do
       spanClass "history-page-sign-icon" $ elClass "i" "fas fa-plus fa-fw" blank
@@ -138,4 +136,4 @@ symbCol txInOut ma = divClass ("history-amount-" <> ((T.toLower . showt) txInOut
       ma
 
 transTypeCol :: MonadFront t m => TransType -> m a -> m a
-transTypeCol txInOut ma = divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) ma
+transTypeCol txInOut = divClass ("history-amount-" <> (T.toLower . showt) txInOut)

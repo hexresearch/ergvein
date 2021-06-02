@@ -28,6 +28,7 @@ import Ergvein.Wallet.Wrapper
 import Sepulcas.Alert
 import Sepulcas.Elements
 import Sepulcas.Elements.Toggle
+import Sepulcas.Text (Display(..))
 
 import Network.Haskoin.Network (Inv(..), InvVector(..), InvType(..), Message(..))
 
@@ -155,18 +156,17 @@ confirmationInfoWidget :: MonadFront t m => (UnitBTC, Word64) -> Word64 -> RbfEn
 confirmationInfoWidget (unit, amount) estFee rbfEnabled addr mTx = divClass "send-confirm-info ta-l mb-1" $ do
   elClass "h4" "ta-c mb-1" $ localizedText $
     if isJust mTx then SSPosted else SSConfirm
-  mkrow AmountString (text $ showMoneyUnit (mkMoney amount) us <> " " <> symbolUnit cur us) False
+  mkrow AmountString (text $ showMoneyUnit (mkMoney amount) unit <> " " <> display unit) False
   mkrow RecipientString (text $ btcAddrToText addr) True
-  mkrow SSFee (text $ showt estFee <> " " <> symbolUnit cur (Units (Just BtcSat) Nothing)) False
+  mkrow SSFee (text $ showt estFee <> " " <> display BtcSat) False
   mkrow SSRbf (localizedText $ FSRbf rbfEnabled) False
-  mkrow SSTotal (text $ showMoneyUnit (mkMoney $ amount + estFee) us <> " " <> symbolUnit cur us) False
+  mkrow SSTotal (text $ showMoneyUnit (mkMoney $ amount + estFee) unit <> " " <> display unit) False
   case mTx of
     Nothing -> pure ()
     Just tx -> mkrow SSTxId (makeTxIdLink $ HT.txHashToHex . HT.txHash $ tx) True
   where
     cur = BTC
     mkMoney = Money cur
-    us = Units (Just unit) Nothing
 
     mkrow :: (MonadFront t m, LocalizedPrint l) => l -> m b -> Bool -> m ()
     mkrow a mb wordBreak = divClass "" $ do

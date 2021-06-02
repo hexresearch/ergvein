@@ -10,11 +10,12 @@ module Ergvein.Core.Settings.Monad(
   , module Ergvein.Core.Settings.Types
   ) where
 
-import Control.Monad.Reader
-import Control.Monad.IO.Unlift
 import Control.Monad.Fail
+import Control.Monad.IO.Unlift
+import Control.Monad.Reader
 import Data.Aeson.Types
 import Ergvein.Core.Settings.Types
+import Ergvein.Types.Currency
 import Reflex
 import Reflex.ExternalRef
 import Reflex.Localize.Language

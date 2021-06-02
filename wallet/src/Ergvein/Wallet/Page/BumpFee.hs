@@ -6,19 +6,19 @@ module Ergvein.Wallet.Page.BumpFee(
 
 import Control.Monad.Reader
 import Data.Bifunctor (first)
-import Data.Maybe (fromMaybe)
 import Data.Word
 
 import Ergvein.Maybe
 import Ergvein.Types.Utxo.Btc
-import Sepulcas.Alert
-import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Balances
-import Ergvein.Wallet.Widget.Input.Btc.Fee
+import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Widget.Input.Fee
 import Ergvein.Wallet.Wrapper
+import Sepulcas.Alert
+import Sepulcas.Elements
 
 import Network.Haskoin.Network (Inv(..), InvVector(..), InvType(..), Message(..))
 
@@ -43,12 +43,12 @@ bumpFeePage cur  tr@TransactionView{..} mInit = do
       }
 
 feeRateWidget :: MonadFront t m => Currency -> TransactionView -> Maybe (FeeMode, Word64) -> m (Event t (FeeMode, Word64))
-feeRateWidget cur TransactionView{..} mInit = mdo
+feeRateWidget _ TransactionView{..} mInit = mdo
   let feeRate = calcFeeRate (txFee txInfoView) (txRaw txInfoView)
-  moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
-  makeBlock BumpFeeCurrentFee $ maybe BumpFeeFeeUnknown (\fee -> BumpFeeFeeAmount fee moneyUnits cur) $ txFee txInfoView
-  makeBlock BumpFeeCurrentFeeRate $ maybe BumpFeeFeeRateUnknown (\fRate -> BumpFeeFeeRateAmount fRate cur) feeRate
-  feeD <- btcFeeSelectionWidget BumpFeeNewFeeRateUnits mInit feeRate submitE
+  moneyUnits <- getSettingsUnitBtc
+  makeBlock BumpFeeCurrentFee $ maybe BumpFeeFeeUnknown (`BumpFeeFeeAmount` moneyUnits) $ txFee txInfoView
+  makeBlock BumpFeeCurrentFeeRate $ maybe BumpFeeFeeRateUnknown BumpFeeFeeRateAmount feeRate
+  feeD <- feeSelectionWidgetBtc BumpFeeNewFeeRateUnits mInit feeRate submitE
   submitE <- outlineButton CSSubmit
   let goE = attachWithMaybe const (current feeD) submitE
   pure goE
@@ -149,7 +149,7 @@ extractChangeOutput outputs = do
 calcFeeRate :: Maybe Money -> EgvTx -> Maybe Rational
 calcFeeRate (Just money) (TxBtc btcTx) =
   let txVsize = calcTxVsize $ getBtcTx btcTx
-      fee = moneyToRationalUnit money smallestUnits
+      fee = moneyToRationalUnit money smallestUnitBTC
   in Just $ fee / fromIntegral txVsize
 calcFeeRate (Just _) (TxErg _) = Nothing -- TODO: implement for ERGO
 calcFeeRate _ _ = Nothing
@@ -185,8 +185,8 @@ signSendWidget txData@RbfTxData{..} tx = do
       inputsAmount = sum $ btcUtxo'amount . upMeta <$> rbfTxData'coins
       outputsAmount = sum $ HT.outValue <$> HT.txOut tx
       fee = inputsAmount - outputsAmount
-    makeBlock BumpFeeNewFee $ BumpFeeFeeAmount (Money BTC fee) smallestUnits BTC
-    makeBlock BumpFeeNewFeeRate $ BumpFeeNewFeeRateAmount rbfTxData'feeRate BTC
+    makeBlock BumpFeeNewFee $ BumpFeeFeeAmount (Money BTC fee) smallestUnitBTC
+    makeBlock BumpFeeNewFeeRate $ BumpFeeNewFeeRateAmount rbfTxData'feeRate
     displayNewTitleD <- workflow $ signTx tx rbfTxData'coins
     pure ()
 

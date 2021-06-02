@@ -2,8 +2,7 @@ module Ergvein.Wallet.Validate (
     toEither
   , validateEvent
   , validateNow
-  , validateBtcAmount
-  , validateErgAmount
+  , validateAmount
   , validateFeeRate
   , validateBtcAddr
   , validateErgAddr
@@ -26,43 +25,25 @@ import Sepulcas.Validate
 
 import qualified Data.Text as T
 
-validateBtcAmount :: Word64 -> UnitBTC -> Text -> Validation [ValidationError] Word64
-validateBtcAmount threshold unit x = case validateNonEmptyText x of
+validateAmount :: (IsMoneyUnit a, Display a) => Word64 -> a -> Text -> Validation [ValidationError] Word64
+validateAmount threshold unit x = case validateNonEmptyText x of
   Failure errs -> _Failure # errs
   Success (NonEmptyText result) ->
-    let result' = case unit of
-          BtcSat -> case validateWord64 result of
-            Failure errs' -> _Failure # errs'
-            Success res -> _Success # res
-          _ -> case validateRational result of
-            Failure errs' -> _Failure # errs'
-            Success res -> _Success # unitsToSat res
-        satToUnits x = fromRational $ fromIntegral x % (10 ^ btcResolution unit)
-        unitsToSat x = round $ x * (10 ^ btcResolution unit)
+    let result' = if unitIsSmallest unit
+          then
+            case validateWord64 result of
+              Failure errs' -> _Failure # errs'
+              Success res -> _Success # res
+          else
+            case validateRational result of
+              Failure errs' -> _Failure # errs'
+              Success res -> _Success # toSmallestUnits res
+        fromSmallestUnits x = fromRational $ fromIntegral x % (10 ^ unitResolution unit)
+        toSmallestUnits x = round $ x * (10 ^ unitResolution unit)
     in
       case result' of
         Failure errs'' -> _Failure # errs''
-        Success result'' -> case validateGreaterThan result'' threshold (\x -> showFullPrecision (satToUnits x) <> " " <> btcSymbolUnit unit) of
-          Failure errs''' -> _Failure # errs'''
-          Success (LargeEnoughValue _) -> _Success # result''
-
-validateErgAmount :: Word64 -> UnitERGO -> Text -> Validation [ValidationError] Word64
-validateErgAmount threshold unit x = case validateNonEmptyText x of
-  Failure errs -> _Failure # errs
-  Success (NonEmptyText result) ->
-    let result' = case unit of
-          ErgNano -> case validateWord64 result of
-            Failure errs' -> _Failure # errs'
-            Success res -> _Success # res
-          _ -> case validateRational result of
-            Failure errs' -> _Failure # errs'
-            Success res -> _Success # unitsToNanoErgs res
-        nanoErgsToUnits x = fromRational $ fromIntegral x % (10 ^ ergoResolution unit)
-        unitsToNanoErgs x = round $ x * (10 ^ ergoResolution unit)
-    in
-      case result' of
-        Failure errs'' -> _Failure # errs''
-        Success result'' -> case validateGreaterThan result'' threshold (\x -> showFullPrecision (nanoErgsToUnits x) <> " " <> ergoSymbolUnit unit) of
+        Success result'' -> case validateGreaterThan result'' threshold (\x -> showFullPrecision (fromSmallestUnits x) <> " " <> display unit) of
           Failure errs''' -> _Failure # errs'''
           Success (LargeEnoughValue _) -> _Success # result''
 
@@ -77,7 +58,10 @@ validateFeeRate cur mPrevFeeRate feeRateText = case validateNonEmptyText feeRate
         Failure errs'' -> _Failure # errs''
         Success (LargeEnoughValue result'') -> _Success # result''
   where
-    printer x = showt x <> " " <> symbolUnit cur smallestUnits
+    units = case cur of
+      BTC -> display smallestUnitBTC
+      ERGO -> display smallestUnitERGO
+    printer x = showt x <> " " <> units
 
 validateBtcAddr :: Text -> Validation [ValidationError] BtcAddress
 validateBtcAddr addrText = case btcAddrFromText addrText of

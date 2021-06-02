@@ -5,14 +5,16 @@ module Ergvein.Wallet.Page.Balances(
 
 import Data.Maybe (fromMaybe)
 
-import Sepulcas.Elements
+import Ergvein.Wallet.Debug
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.History
 import Ergvein.Wallet.Page.PatternKey
+import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Status.Widget
 import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
-import Ergvein.Wallet.Debug
+import Sepulcas.Elements
+import Sepulcas.Text (Display(..))
 
 import qualified Data.List as L
 
@@ -33,13 +35,13 @@ currenciesList _ = divClass "currency-content" $ do
   if L.length currencies == 1
     then do
       buildE <- getPostBuild
-      void $ nextWidget $ ffor buildE $ \_ -> Retractable {
-        retractableNext = historyPage $ L.head currencies
-      , retractablePrev = Nothing
-      }
+      void $ nextWidget $ ffor buildE $ const
+        Retractable
+          {retractableNext = historyPage $ L.head currencies,
+           retractablePrev = Nothing}
     else do
       historyE <- leftmost <$> traverse (currencyLine s) currencies
-      if (settingsPortfolio s)
+      if settingsPortfolio s
         then portfolioWidget
         else pure ()
       void $ nextWidget $ ffor historyE $ \cur -> Retractable {
@@ -50,13 +52,12 @@ currenciesList _ = divClass "currency-content" $ do
     currencyLine settings cur = do
       (e, _) <- divClass' "currency-row" $ do
         bal <- balancesWidget cur
-        let setUs = getSettingsUnits settings
+        moneyUnits <- getSettingsUnitBtc
         divClass "currency-details" $ do
           divClass "currency-name" $ text $ currencyName cur
           divClass "currency-balance" $ do
-            elClass "span" "currency-value" $ dynText $ (\v -> showMoneyUnit v setUs) <$> bal
-            elClass "span" "currency-unit" $ text $ symbolUnit cur setUs
+            elClass "span" "currency-value" $ dynText $ (`showMoneyUnit` moneyUnits) <$> bal
+            elClass "span" "currency-unit" $ text $ display moneyUnits
         divClass "currency-status" $ do
           currencyStatusWidget cur
       pure $ cur <$ domEvent Click e
-    getSettingsUnits = fromMaybe defUnits . settingsUnits

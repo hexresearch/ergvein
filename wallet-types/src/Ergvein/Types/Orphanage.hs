@@ -17,8 +17,8 @@ import Data.Vector (Vector)
 import Network.Haskoin.Block (BlockHash)
 import Network.Haskoin.Transaction (OutPoint(..), TxHash)
 
-import Ergvein.Text
 import Ergvein.Types.Address
+import Sepulcas.Text
 
 import qualified Data.ByteString.Short as BSS
 import qualified Data.Vector as V

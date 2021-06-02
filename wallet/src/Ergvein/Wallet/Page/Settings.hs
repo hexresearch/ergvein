@@ -15,9 +15,6 @@ import Reflex.ExternalRef
 
 import Ergvein.Crypto
 import Ergvein.Text
-import Sepulcas.Alert
-import Sepulcas.Elements
-import Sepulcas.Elements.Toggle
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
@@ -26,7 +23,11 @@ import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Page.Settings.MnemonicExport
 import Ergvein.Wallet.Page.Settings.Network
 import Ergvein.Wallet.Page.Settings.Unauth
+import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
+import Sepulcas.Alert
+import Sepulcas.Elements
+import Sepulcas.Elements.Toggle
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as S
@@ -229,9 +230,14 @@ unitsPage = do
     unitsSelectionWidget :: MonadFront t m => m (Event t ())
     unitsSelectionWidget = do
       settings <- getSettings
-      let setUs = fromMaybe defUnits . settingsUnits $ settings
-      unitBtcE <- unitsDropdown (getUnitBTC setUs) allUnitsBTC
-      updateSettings $ ffor unitBtcE (\ubtc -> settings {settingsUnits = Just $ setUs {unitBTC = Just ubtc}})
+      unitsBtc <- getSettingsUnitBtc
+      unitBtcE <- unitsDropdown unitsBtc allUnitsBTC
+      updateSettings $ ffor unitBtcE $ setUnitSetting settings
+    setUnitSetting :: Settings -> UnitBTC -> Settings
+    setUnitSetting s val =
+      let oldSettings = settingsCurrencySpecific s
+          oldBtcSettings = getBtcSettings s
+      in s {settingsCurrencySpecific = Map.insert BTC (SettingsBtc $ oldBtcSettings {btcSettings'units = val}) oldSettings}
 
     fiatSelectionWidget :: MonadFront t m => m (Event t ())
     fiatSelectionWidget = do

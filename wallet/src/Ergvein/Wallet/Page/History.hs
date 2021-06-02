@@ -9,6 +9,7 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Page.Transaction
+import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
 import Sepulcas.Elements
 
@@ -58,57 +59,52 @@ noTxsPlaceholder = divClass "history-empty-placeholder text-muted" $ do
 
 historyTableRow :: MonadFront t m => Currency -> TransactionView -> m (Event t TransactionView)
 historyTableRow cur tr@TransactionView{..} = divButton "history-table-row" $ do
-  moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
-  let txAmountPlusFee = moneyFromRational cur (moneyToRational txAmount + fromMaybe 0 (moneyToRational <$> txFee txInfoView))
+  moneyUnits <- getSettingsUnitBtc
+  let txAmountPlusFee = moneyFromRational cur (moneyToRational txAmount + maybe 0 moneyToRational (txFee txInfoView))
       fullAmount = case txInOut of
         TransWithdraw -> symb TransWithdraw $ text $ showMoneyUnit txAmountPlusFee moneyUnits
         TransRefill -> symb TransRefill $ text $ showMoneyUnit txAmount moneyUnits
-  divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) (fullAmount)
+  divClass ("history-amount-" <> (T.toLower . showt) txInOut) fullAmount
   divClass "history-date" $ showTxStatus tr
-  divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> confsClass) confsText
+  divClass ("history-status-" <> (T.toLower . showt) txInOut <> " history-" <> confsClass) confsText
   pure tr
   where
     confs = txConfirmations txInfoView
-    confsClass =
-      if (confs == 0)
-        then "unconfirmed"
-      else if (confs > 0 && confs < confirmationGap)
-        then "partially-confirmed"
-      else "confirmed"
+    confsClass
+      | confs == 0 = "unconfirmed"
+      | confs > 0 && confs < confirmationGap = "partially-confirmed"
+      | otherwise = "confirmed"
     confsText = if confs < confirmationGap
           then text $ showt confs <> "/" <> showt confirmationGap
           else spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" $ blank
 
 historyTableRowD :: MonadFront t m => Currency -> Dynamic t Word64 -> Dynamic t TransactionView -> m (Event t TransactionView)
 historyTableRowD cur _ trD = fmap switchDyn $ networkHoldDyn $ ffor trD $ \tr@TransactionView{..} -> divButton "history-table-row" $ do
-    moneyUnits <- fmap (fromMaybe defUnits . settingsUnits) getSettings
-    let txAmountPlusFee = moneyFromRational cur (moneyToRational txAmount + fromMaybe 0 (moneyToRational <$> txFee txInfoView))
-        fullAmount = case txInOut of
-          TransWithdraw -> symb TransWithdraw $ text $ showMoneyUnit txAmountPlusFee moneyUnits
-          TransRefill -> symb TransRefill $ text $ showMoneyUnit txAmount moneyUnits
-    divClass ("history-amount-" <> ((T.toLower . showt) txInOut)) fullAmount
-    divClass "history-date" $ showTxStatus tr
-    divClass ("history-status-" <> ((T.toLower . showt) txInOut) <> " history-" <> (confsClass tr)) $ confsText tr
-    pure tr
+  moneyUnits <- getSettingsUnitBtc
+  let txAmountPlusFee = moneyFromRational cur (moneyToRational txAmount + maybe 0 moneyToRational (txFee txInfoView))
+      fullAmount = case txInOut of
+        TransWithdraw -> symb TransWithdraw $ text $ showMoneyUnit txAmountPlusFee moneyUnits
+        TransRefill -> symb TransRefill $ text $ showMoneyUnit txAmount moneyUnits
+  divClass ("history-amount-" <> (T.toLower . showt) txInOut) fullAmount
+  divClass "history-date" $ showTxStatus tr
+  divClass ("history-status-" <> (T.toLower . showt) txInOut <> " history-" <> confsClass tr) $ confsText tr
+  pure tr
   where
     confs tr = txConfirmations $ txInfoView tr
     unconfirmedParents tr = case txStatus tr of
       TransUncofirmedParents -> True
       _ -> False
-    confsClass tr =
-      if ((confs tr) == 0)
-        then "unconfirmed"
-      else if ((confs tr) > 0 && (confs tr) < confirmationGap)
-        then "partially-confirmed"
-      else "confirmed"
-    confsText tr =
-      if (confs tr)  >= confirmationGap
-        then spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" $ blank
-      else if unconfirmedParents tr
-        then do
+    confsClass tr
+      | confs tr == 0 = "unconfirmed"
+      | confs tr > 0 && confs tr < confirmationGap = "partially-confirmed"
+      | otherwise = "confirmed"
+
+    confsText tr
+      | confs tr  >= confirmationGap = spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" $ blank
+      | unconfirmedParents tr = do
           text $ showt (confs tr) <> "/" <> showt confirmationGap
           spanClass "history-page-status-text-icon" $ elClass "i" "fas fa-exclamation-triangle fa-fw" $ blank
-      else text $ showt (confs tr) <> "/" <> showt confirmationGap
+      | otherwise = text $ showt (confs tr) <> "/" <> showt confirmationGap
 
 showTxStatus :: MonadFront t m => TransactionView -> m ()
 showTxStatus tr@TransactionView{..} = case txStatus of

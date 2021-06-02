@@ -12,6 +12,7 @@ import Ergvein.Wallet.Validate
 import Sepulcas.Camera
 import Sepulcas.Clipboard
 import Sepulcas.Elements
+import Sepulcas.Text
 import Sepulcas.Validate
 
 import qualified Data.Text as T
