@@ -110,7 +110,7 @@ smallestUnitBTC :: UnitBTC
 smallestUnitBTC = BtcSat
 
 isSmallestUnitBTC :: UnitBTC -> Bool
-isSmallestUnitBTC smallestUnitBTC = True
+isSmallestUnitBTC BtcSat = True
 isSmallestUnitBTC _ = False
 
 allUnitsBTC :: [UnitBTC]
@@ -147,6 +147,7 @@ instance Display UnitERGO where
 instance IsMoneyUnit UnitERGO where
   unitResolution = ergoResolution
   unitCurrency _ = ERGO
+  unitIsSmallest = isSmallestUnitERGO
 
 defUnitERGO :: UnitERGO
 defUnitERGO = ErgWhole
@@ -155,7 +156,7 @@ smallestUnitERGO :: UnitERGO
 smallestUnitERGO = ErgNano
 
 isSmallestUnitERGO :: UnitERGO -> Bool
-isSmallestUnitERGO smallestUnitERGO = True
+isSmallestUnitERGO ErgNano = True
 isSmallestUnitERGO _ = False
 
 allUnitsERGO :: [UnitERGO]
