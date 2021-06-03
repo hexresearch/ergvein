@@ -16,6 +16,7 @@ import Ergvein.Wallet.Page.Restore
 import Ergvein.Wallet.Password
 import Sepulcas.Loading
 import Sepulcas.Log
+import Network.Socket
 #ifdef TESTNET
 import Sepulcas.Elements
 import Ergvein.Wallet.Localize
@@ -54,5 +55,9 @@ mainpageDispatcher = void $ workflow testnetDisclaimer
       pure ((), never)
 #else
 mainpageDispatcher :: MonadFrontBase t m => m ()
-mainpageDispatcher = void $ retractStack (initialPage True) `liftAuth` (spawnWorkers >> retractStack startPage)
+mainpageDispatcher = do
+  let addr = SockAddrInet 9053 $ tupleToHostAddress (127,0,0,1)
+  initErgoNode addr never
+  undefined
+  void $ retractStack (initialPage True) `liftAuth` (spawnWorkers >> retractStack startPage)
 #endif
