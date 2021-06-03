@@ -92,7 +92,7 @@ sendConfirmationWidget v = do
         else navbarWidget BTC thisWidget NavbarSend
   wrapperNavbar False title thisWidget navbar $ divClass "send-confirm-box" $ mdo
     stxE <- makeTxWidget v
-    void $ networkHold (pure ()) $ ffor stxE $ \(tx, _, _, _, _) -> do
+    void $ networkHold (pure ()) $ ffor stxE $ \tx -> do
       sendE <- getPostBuild
       addedE <- addOutgoingTx "sendConfirmationWidget" $ TxBtc (BtcTx tx Nothing) <$ sendE
       storedE <- btcMempoolTxInserter $ tx <$ addedE
@@ -113,7 +113,7 @@ btcAddrToBtcOutType = \case
 
 makeTxWidget :: MonadFront t m =>
   ((UnitBTC, Word64), Word64, BtcAddress, RbfEnabled) ->
-  m (Event t (HT.Tx, UnitBTC, Word64, Word64, BtcAddress))
+  m (Event t HT.Tx)
 makeTxWidget ((unit, amount), fee, addr, rbfEnabled) = mdo
   psD <- getPubStorageD
   utxoKeyD <- holdUniqDyn $ do
@@ -140,7 +140,7 @@ makeTxWidget ((unit, amount), fee, addr, rbfEnabled) = mdo
     Right (tx, unit', amount', estFee, addr') -> do
       confirmationInfoWidget (unit', amount') estFee rbfEnabled addr' (Just tx)
       pure never
-  pure stxE
+  pure $ (\(tx, _, _, _, _) -> tx) <$> stxE
   where
     either' e l r = either l r e
     -- Left -- utxo updates, Right -- stored tx
