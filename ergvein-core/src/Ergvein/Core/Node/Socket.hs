@@ -145,7 +145,7 @@ switchSocket dsock = Socket {
   }
 
 -- | Widget that starts TCP socket internally and reconnects if needed.
-socket :: (Show a, TriggerEvent t m, Adjustable t m, PerformEvent t m, MonadHold t m, PostBuild t m, MonadIO (Performable m), MonadIO m, MonadUnliftIO (Performable m), PlatformNatives)
+socket :: (TriggerEvent t m, Adjustable t m, PerformEvent t m, MonadHold t m, PostBuild t m, MonadIO (Performable m), MonadIO m, MonadUnliftIO (Performable m), PlatformNatives)
   => SocketConf t a -> m (Socket t a)
 socket SocketConf{..} = fmap switchSocket $ networkHoldDyn $ ffor _socketConfProxy $ \mproxy -> do
   buildE <- delay 0.01 =<< getPostBuild
