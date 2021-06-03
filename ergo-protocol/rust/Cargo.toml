@@ -2,8 +2,20 @@
 name = "ergo_protocol_ffi"
 version = "0.1.0"
 
-[dependencies]
-
 [lib]
 path = "src/lib.rs"
 crate-type = ["staticlib"]
+
+[dependencies]
+# ergo-lib = "0.13.1"
+# ergotree-ir = "0.13.1"
+# sigma-ser = "0.2.1"
+[dependencies.ergotree-ir]
+git = "https://github.com/hexresearch/sigma-rust.git"
+rev = "1a69a89a0b00eb9b58ab87ef6b95e5607e1a1e1f"
+[dependencies.sigma-ser]
+git = "https://github.com/hexresearch/sigma-rust.git"
+rev = "1a69a89a0b00eb9b58ab87ef6b95e5607e1a1e1f"
+[dependencies.ergo-lib]
+git = "https://github.com/hexresearch/sigma-rust.git"
+rev = "1a69a89a0b00eb9b58ab87ef6b95e5607e1a1e1f"
