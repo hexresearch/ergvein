@@ -1,4 +1,4 @@
--- {-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wall #-}
 
 module Ergvein.Wallet.Page.Ergo.Send (
     sendPageErg
@@ -18,8 +18,6 @@ import Ergvein.Wallet.Widget.Input.Fee
 import Ergvein.Wallet.Widget.Input.Recipient
 import Ergvein.Wallet.Wrapper
 import Sepulcas.Elements
-
-import qualified Data.ByteString as B
 
 sendPageErg :: MonadFront t m => Maybe ((UnitERGO, Word64), (FeeMode, Word64), ErgAddress) -> m ()
 sendPageErg mInit = mdo
@@ -72,11 +70,11 @@ sendConfirmationWidget v = do
     stxE <- makeTxWidget v
     void $ networkHold (pure ()) $ ffor stxE $ \tx -> do
       sendE <- getPostBuild
-      addedE <- addOutgoingTx "sendConfirmationWidget" $ TxErg (ErgTx tx Nothing) <$ sendE
-      -- save tx in storage
+      _ <- addOutgoingTx "sendConfirmationWidget" $ TxErg (ErgTx tx Nothing) <$ sendE
+      -- TODO: save tx in storage
       -- storedE <- btcMempoolTxInserter $ tx <$ addedE
 
-      -- broadcast tx
+      -- TODO: implement tx broadcast
       -- void $ requestBroadcast $ ffor storedE $ const $
       --   NodeReqBtc . MInv . Inv . pure . InvVector InvTx . HT.getTxHash . HT.txHash $ tx
       goE <- delay 1 =<< outlineButton SendBtnBack
@@ -85,12 +83,9 @@ sendConfirmationWidget v = do
           , retractablePrev = Nothing
         }
 
-mockErgoTx :: ErgTxRaw
-mockErgoTx = ErgTransaction B.empty
-
 makeTxWidget :: MonadFront t m =>
   ((UnitERGO, Word64), Word64, ErgAddress) ->
   m (Event t ErgTxRaw)
-makeTxWidget ((unit, amount), fee, addr) = do
+makeTxWidget _ = do
   buildE <- getPostBuild
   pure $ mockErgoTx <$ buildE
