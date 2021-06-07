@@ -49,23 +49,22 @@ instance HasNode ErgoType where
 initErgoNode :: (MonadSettings t m) => SockAddr -> Event t NodeMessage -> m (NodeErgo t)
 initErgoNode url msgE = do
   buildE <- getPostBuild
+  proxyE <- fmap SockInSocksConf . updated <$> getSocksConf
   let restartE = fforMaybe msgE $ \case
         NodeMsgRestart -> Just ()
         _ -> Nothing
       closeE = fforMaybe msgE $ \case
-        NodeMsgClose -> Just ()
+        NodeMsgClose -> Just SockInCloseEvent
         _ -> Nothing
       reqE = fforMaybe msgE $ \case
         NodeMsgReq (NodeReqErgo req) -> Just $ SockInSendEvent req
         _ -> Nothing
-  
-  let startE = leftmost [buildE, restartE]
-  let net = ergoNetwork
-  buildE                    <- getPostBuild
-  peerE <- performFork $ ffor buildE $ const $ do
+      socketInE = leftmost [reqE, proxyE , closeE]
+      startE = leftmost [buildE, restartE]
+      net = ergoNetwork
+  peerE <- performFork $ ffor startE $ const $ do
     (Just sname, Just sport) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True url
     pure $  Peer sname sport
-  proxyD <- getSocksConf
   
   rec
     socket <- fmap switchSocket $ networkHold (pure noSocket) $ ffor peerE $ \peer -> do
@@ -92,7 +91,7 @@ initErgoNode url msgE = do
           SockOutTries   tries       -> triesFire   tries
       
       performEvent $ ffor closedE $ const $ liftIO $ killThread inputThread
-      performEvent_ $ ffor reqE $ liftIO . atomically . writeTChan inChan
+      performEvent_ $ ffor socketInE $ liftIO . atomically . writeTChan inChan
       
       statusD <-  holdDyn SocketInitial statusE
       triesD <-  holdDyn 0 triesE
@@ -104,10 +103,9 @@ initErgoNode url msgE = do
              , _socketRecvEr = errorE
              , _socketTries = triesD
              }
-    
-    handshakeE <- performEvent $ ffor (socketConnected socket) $ const $ do
-        currentTime <- liftIO getCurrentTime
-        pure $ MsgHandshake $ makeHandshake 0 currentTime
+  performEvent $ ffor (socketConnected socket) $ const $ do
+    currentTime <- liftIO getCurrentTime
+    pure $ MsgHandshake $ makeHandshake 0 currentTime
   statRef <- newExternalRef Nothing
   let respE   = _socketInbound socket
       verAckE = fforMaybe respE $ \case
