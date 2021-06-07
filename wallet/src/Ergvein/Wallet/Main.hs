@@ -58,6 +58,5 @@ mainpageDispatcher :: MonadFrontBase t m => m ()
 mainpageDispatcher = do
   let addr = SockAddrInet 9053 $ tupleToHostAddress (127,0,0,1)
   initErgoNode addr never
-  undefined
   void $ retractStack (initialPage True) `liftAuth` (spawnWorkers >> retractStack startPage)
 #endif

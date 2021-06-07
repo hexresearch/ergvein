@@ -42,7 +42,7 @@ import qualified Network.Socket as N
 import qualified Network.Socket.ByteString as NSB
 import qualified Network.Socket.ByteString.Lazy as NSBL
 
-import  Network.Socket.Manager.TCP.Client (PeekerIO)
+import  Network.Socket.Manager.TCP.Client (PeekerIO, CloseReason (..), SocketStatus (..))
 import  Network.Socket.Manager.Peeker 
 
 -- | Possible exceptions when read from socket
@@ -69,20 +69,6 @@ data SocketConf t a = SocketConf {
 -- | Configuration of SOCKS proxy. If the value changes, connection is reopened.
 , _socketConfProxy  :: !(Dynamic t (Maybe SocksConf))
 } deriving (Generic)
-
--- | Different socket states
-data SocketStatus =
-    SocketInitial -- ^ Initial state of socket after creation
-  | SocketConnecting -- ^ Connection process in progress including reconnecting.
-  | SocketOperational -- ^ Work state of socket
-  | SocketClosed -- ^ Final state of socket
-  deriving (Eq, Ord, Show, Read, Generic)
-
--- | Information why socket was closed
-data CloseReason =
-    CloseGracefull -- ^ Socket was closed gracefully and not going to be reopened
-  | CloseError !CloseException -- ^ Socket was closed by exception.
-  deriving (Show, Generic)
 
 -- | Check whether the closing of socket is not recoverable
 isCloseFinal :: CloseReason -> Bool

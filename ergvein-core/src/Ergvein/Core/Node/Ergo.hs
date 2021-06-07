@@ -11,6 +11,7 @@ module Ergvein.Core.Node.Ergo
 
 import Control.Monad.IO.Class
 import Data.Ergo.Protocol.Client hiding (SocketConf, Peer, PeekerEnv)
+import qualified Data.Ergo.Protocol.Client as EEE
 import Data.Ergo.Protocol.Decoder
 import Data.Ergo.Protocol.Encoder
 import Data.Ergo.Protocol.Types
@@ -26,6 +27,8 @@ import Reflex.Network
 import Sepulcas.Log
 import Sepulcas.Native
 import Data.IORef
+import Control.Concurrent
+import Control.Concurrent.STM
 
 import Ergvein.Core.Node.Socket
 import Ergvein.Core.Node.Types
@@ -33,6 +36,8 @@ import Ergvein.Core.Platform
 import Ergvein.Core.Settings
 import Ergvein.Text
 import Ergvein.Types.Currency
+import Control.Monad
+import  Control.Monad.Fix
 
 instance CurrencyRep ErgoType where
   curRep _ = ERGO
@@ -61,19 +66,54 @@ initErgoNode url msgE = do
       nodeLog =  logWrite . (nodeString ERGO url <>)
   peerE <- performFork $ ffor never $ const $ do
     (Just sname, Just sport) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True url
-    pure $  Peer sname sport
+    pure $  EEE.Peer sname sport
   proxyD <- getSocksConf
   
   rec
     isInit <- liftIO $ newIORef True
+    
     s <- fmap switchSocket $ networkHold (pure noSocket) $ ffor peerE $ \peer -> do
-        socket SocketConf {
-          _socketConfPeer   = peer
-        , _socketConfSend   = encodeErgoMessage net <$> leftmost [reqE, handshakeE]
-        , _socketConfPeeker = peekMessage net isInit
-        , _socketConfClose  = closeE
-        , _socketConfProxy  = proxyD
-        }
+        inChan <- liftIO newTChanIO
+        outChan <- ergoSocket net inChan $ EEE.SocketConf {
+              _socketConfPeer = peer
+              , _socketConfSocks = Nothing
+              , _socketConfReopen = Just (3.0, 5)
+          }
+        (e, cb) <- newTriggerEvent
+        inputThread <- liftIO $  forkIO $ forever $ cb =<< (atomically $ readTChan outChan)
+        
+        let cE = fforMaybe e $ \case
+                  SockOutClosed r -> Just r
+                  _ -> Nothing
+
+        let iE = fforMaybe e $ \case
+                  SockOutInbound r -> Just r
+                  _ -> Nothing
+        
+        let sE = fforMaybe e $ \case
+                  SockOutStatus r -> Just r
+                  _ -> Nothing
+
+        let errE = fforMaybe e $ \case
+                  SockOutRecvEr r -> Just r
+                  _ -> Nothing
+        let triesE = fforMaybe e $ \case
+                  SockOutTries r -> Just r
+                  _ -> Nothing
+
+        performEvent_ $ ffor cE $ const $ liftIO $ killThread inputThread
+
+        statD <-  holdDyn SocketInitial sE
+
+        triesD <-  holdDyn 0 triesE
+
+        pure $ Socket {
+                 _socketInbound = iE
+               , _socketClosed = cE
+               , _socketStatus = statD
+               , _socketRecvEr = errE
+               , _socketTries = triesD
+               }
     let respE = _socketInbound s
     handshakeE <- performEvent $ ffor (socketConnected s) $ const $ do
         ct <- liftIO getCurrentTime
