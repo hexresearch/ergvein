@@ -9,7 +9,7 @@ import           Network.Haskoin.Block
 import           Network.Haskoin.Constants
 import           Network.Haskoin.Transaction
 import           Control.Monad
-import           Data.Text                      ( Text, unpack )
+import           Data.Text                      ( Text, unpack, pack )
 import qualified Data.Text                     as T
 import qualified Data.Text.IO                  as T
 import           Data.ByteString                ( ByteString )
@@ -76,6 +76,14 @@ spec_mutableSpecificFilter1 = do
       fstr <- bs2Hex <$> encodeBtcAddrFilter bfilter
       fstr' <- fmap bs2Hex $ encodeBtcAddrFilter =<< loadFilterMut block686131Filter
       fstr `shouldBe` fstr'
+    let
+      addrstr = "bc1qkl8pv75qqptmtwm3tfyfv3ee890xgdqc2y6ntr"
+      addr = loadAddressMainnet $ pack addrstr
+      bhash = "00000000000000000007fc62780dee62d79ba02e7d325d7503e80c4da8b16b72"
+    it ("has address " <> addrstr) $ void $ do
+      bfilter <- loadFilterMut block686131Filter
+      res <- applyBtcFilter bhash bfilter $ addressToScriptBS addr
+      res `shouldBe` True
   describe "block 000000000000017c36b1c7c70f467244009c552e1732604a0f779fc6ff2d6112 filter tests" $ do
     let bhash = "000000000000017c36b1c7c70f467244009c552e1732604a0f779fc6ff2d6112"
         addrs :: [Address]
