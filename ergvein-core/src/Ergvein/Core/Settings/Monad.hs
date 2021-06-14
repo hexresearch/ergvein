@@ -30,6 +30,7 @@ type MonadSettingsConstr t m = (
   , MonadIO (Performable m)
   , MonadIO m
   , MonadUnliftIO (Performable m)
+  , MonadSample t (Performable m)
   , PerformEvent t m
   , PlatformNatives
   , PostBuild t m
