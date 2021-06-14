@@ -1,8 +1,6 @@
 {-
   Implementation of Ergo connector
 -}
-{-# OPTIONS_GHC -Wno-orphans #-}
-{-# LANGUAGE OverloadedLists #-}
 module Ergvein.Core.Node.Ergo
   (
     ErgoType(..)
@@ -10,34 +8,26 @@ module Ergvein.Core.Node.Ergo
   , initErgoNode
   ) where
 
-import Control.Monad.IO.Class
-import Data.Ergo.Protocol.Client
-import Data.Ergo.Protocol.Decoder
-import Data.Ergo.Protocol.Encoder
-import Data.Ergo.Protocol.Types
-import Data.Serialize (decode, runGet, runPut)
-import Data.Text
-import Data.Function
-import Data.Time.Clock
-import Network.Socket (SockAddr)
-import Network.Socket (getNameInfo, NameInfoFlag(..), SockAddr(..))
-import Reflex
-import Reflex.ExternalRef
-import Reflex.Fork
-import Reflex.Network
-import Sepulcas.Log
-import Sepulcas.Native
-import Data.IORef
 import Control.Concurrent
 import Control.Concurrent.STM
+import Control.Monad
+import Control.Monad.IO.Class
+import Data.Ergo.Protocol.Client
+import Data.Ergo.Protocol.Types
+import Data.Function
+import Data.Text
+import Data.Time.Clock
 import Ergvein.Core.Node.Socket hiding (Peer, SocketConf)
 import Ergvein.Core.Node.Types
 import Ergvein.Core.Platform
 import Ergvein.Core.Settings
-import Ergvein.Text
 import Ergvein.Types.Currency
-import Control.Monad
-import Data.Ergo.Modifier
+import Network.Socket (getNameInfo, NameInfoFlag(..), SockAddr(..))
+import Reflex
+import Reflex.ExternalRef
+import Reflex.Flunky
+import Reflex.Fork
+import Reflex.Network
 
 instance CurrencyRep ErgoType where
   curRep _ = ERGO
@@ -63,6 +53,7 @@ initErgoNode url msgE = mdo
       socketInSystemE = leftmost [proxyE, closeE]
       startE = leftmost [buildE, restartE]
       net = ergoNetwork
+
   peerE <- performFork $ ffor startE $ const $ do
     (Just sname, Just sport) <- liftIO $ getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True url
     pure $  Peer sname sport
@@ -73,25 +64,47 @@ initErgoNode url msgE = mdo
   -- Messages that reconnects socket or closes it we send without waiting for handshake
   performEvent_ $ ffor socketInSystemE $ liftIO . atomically . writeTChan inChan
   -- Messages that can sand user of the widget is sent only when socket finally has been handshaked
-  performFork_ $ ffor socketInUserE $ \ m -> do
+  performFork_ $ ffor socketInUserE $ \ msg -> do
     -- TODO: Note that order of messages can be broken here. That shouldn't be an issue as these are initial
     -- messages and protocol itself asynchronous.
     isShaked <- sample . current $ shakeD
     unless isShaked $ fix $ \next -> do
       liftIO $ threadDelay 1000
-      shaked <- sample . current $ shakeD
+      shaked <- sampleDyn shakeD
       unless shaked next
+    liftIO $ atomically $ writeTChan inChan msg
 
-    liftIO $ print "TEEEEEEEEEEEEEEEEE"
-    liftIO . atomically . writeTChan inChan $ m
-    liftIO $ print $ "REEEEEEEEEEEEEE"
+  socket <- switchSocket <$> (networkHold (pure noSocket) $ ffor peerE $ newSocket net inChan)
 
-  socket <- fmap switchSocket $ networkHold (pure noSocket) $ ffor peerE $ \peer -> do
+  let respE   = _socketInbound socket
+      verAckE = fforMaybe respE $ \case
+        MsgHandshake _ -> Just True
+        _ -> Nothing
+      closedE = void $ _socketClosed socket
 
-    liftIO $ print "performFork"
+  shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
+
+  let openE = void $ ffilter id $ updated shakeD
+
+  statRef <- newExternalRef Nothing
+
+  pure $ NodeConnection {
+      nodeconCurrency   = ERGO
+    , nodeconUrl        = url
+    , nodeconStatus     = statRef
+    , nodeconOpensE     = openE
+    , nodeconCloseE     = closedE
+    , nodeconRespE      = respE
+    , nodeconExtra      = ()
+    , nodeconIsUp       = shakeD
+    , nodeconDoLog      = False
+    , nodeconHeight     = pure Nothing
+    }
+
+newSocket :: (MonadSettings t m) => Network -> TChan (SocketInEvent ErgoMessage) -> Peer -> m (Socket t ErgoMessage)
+newSocket net inChan peer = do
     currentTime <- liftIO getCurrentTime
     liftIO . atomically . writeTChan inChan $ SockInSendEvent $ MsgHandshake $ makeHandshake 0 currentTime
-
     outChan <- ergoSocket net inChan $ SocketConf {
             _socketConfPeer = peer
           , _socketConfSocks = Nothing
@@ -124,27 +137,3 @@ initErgoNode url msgE = mdo
                   , _socketRecvEr = errorE
                   , _socketTries = triesD
                   }
-
-  statRef <- newExternalRef Nothing
-  let respE   = _socketInbound socket
-      verAckE = fforMaybe respE $ \case
-        MsgHandshake _ -> Just True
-        _ -> Nothing
-      closedE = void $ _socketClosed socket
-
-  shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
-
-  let openE = void $ ffilter id $ updated shakeD
-
-  pure $ NodeConnection {
-      nodeconCurrency   = ERGO
-    , nodeconUrl        = url
-    , nodeconStatus     = statRef
-    , nodeconOpensE     = openE
-    , nodeconCloseE     = closedE
-    , nodeconRespE      = respE
-    , nodeconExtra      = ()
-    , nodeconIsUp       = shakeD
-    , nodeconDoLog      = False
-    , nodeconHeight     = pure Nothing
-    }
