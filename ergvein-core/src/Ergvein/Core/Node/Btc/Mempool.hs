@@ -24,9 +24,7 @@ requestBTCMempool :: (MonadNode t m, MonadStorage t m) => m ()
 requestBTCMempool = void $ workflow waitRestore
   where
     waitRestore = Workflow $ do
-      isRestoredD <- (fmap . fmap) _pubStorage'restoring $ getPubStorageD
-      buildE <- getPostBuild
-      let nextE = ffilter not $ leftmost $ [current isRestoredD `tag` buildE, updated isRestoredD]
+      nextE <- updatedWithInit =<< (fmap . fmap) _pubStorage'restoring getPubStorageD
       pure ((), waitNode <$ nextE)
     waitNode = Workflow $ do
       conMapE <- updatedWithInit =<< getBtcNodesD
