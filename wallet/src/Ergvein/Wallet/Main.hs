@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE OverloadedLists #-}
 
 module Ergvein.Wallet.Main(
     frontend
@@ -14,9 +15,13 @@ import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.Initial
 import Ergvein.Wallet.Page.Restore
 import Ergvein.Wallet.Password
+import Data.Ergo.Modifier
 import Sepulcas.Loading
 import Sepulcas.Log
 import Network.Socket
+import Data.Ergo.Protocol
+import Data.Ergo.Protocol.Client
+import Control.Concurrent
 #ifdef TESTNET
 import Sepulcas.Elements
 import Ergvein.Wallet.Localize
@@ -57,6 +62,10 @@ mainpageDispatcher = void $ workflow testnetDisclaimer
 mainpageDispatcher :: MonadFrontBase t m => m ()
 mainpageDispatcher = do
   let addr = SockAddrInet 9030 $ tupleToHostAddress (127,0,0,1)
-  initErgoNode addr never
+  let requiredBlock = "81a93bb7eb27bfb84b7afc6b64c75ee54023bb21224125214af218ddc41d60ec"
+  e <- getPostBuild
+  let msg = NodeMsgReq (NodeReqErgo (MsgOther $ MsgRequestModifier $ RequestModifierMsg ModifierBlockHeader [requiredBlock]))
+  initErgoNode addr $ msg <$ e 
+  liftIO $ threadDelay 1000000 
   void $ retractStack (initialPage True) `liftAuth` (spawnWorkers >> retractStack startPage)
 #endif

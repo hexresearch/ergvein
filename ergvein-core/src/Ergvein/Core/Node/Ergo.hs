@@ -68,13 +68,22 @@ initErgoNode url msgE = do
   
   rec
     socket <- fmap switchSocket $ networkHold (pure noSocket) $ ffor peerE $ \peer -> do
+      
+      liftIO $ print "performFork"
       inChan <- liftIO newTChanIO
+      currentTime <- liftIO getCurrentTime
+      liftIO . atomically . writeTChan inChan $ SockInSendEvent $ MsgHandshake $ makeHandshake 0 currentTime
+      performEvent_ $ ffor socketInE $ \ m -> do
+        liftIO $ print "TEEEEEEEEEEEEEEEEE"
+        liftIO . atomically . writeTChan inChan $ m
+        msg <- liftIO $ atomically $ readTChan inChan
+        liftIO $ print $ "REEEEEEEEEEEEEE"
+      
       outChan <- ergoSocket net inChan $ SocketConf {
-            _socketConfPeer = peer
+              _socketConfPeer = peer
             , _socketConfSocks = Nothing
             , _socketConfReopen = Just (3.0, 5)
         }
-      
       (closedE,  closedFire)   <- newTriggerEvent
       (messageE, messageFire)  <- newTriggerEvent
       (statusE,  statusFire)   <- newTriggerEvent
@@ -83,6 +92,7 @@ initErgoNode url msgE = do
       
       inputThread <- liftIO $ forkIO $ forever $ do
         msg <- atomically $ readTChan outChan
+        print $ show msg
         case msg of
           SockOutInbound message     -> messageFire message
           SockOutClosed  closeReason -> closedFire  closeReason
@@ -91,21 +101,17 @@ initErgoNode url msgE = do
           SockOutTries   tries       -> triesFire   tries
       
       performEvent $ ffor closedE $ const $ liftIO $ killThread inputThread
-      performEvent_ $ ffor socketInE $ liftIO . atomically . writeTChan inChan
-      
+
       statusD <-  holdDyn SocketInitial statusE
       triesD <-  holdDyn 0 triesE
       
-      pure $ Socket {
-               _socketInbound = messageE
-             , _socketClosed = closedE
-             , _socketStatus = statusD
-             , _socketRecvEr = errorE
-             , _socketTries = triesD
-             }
-  performEvent $ ffor (socketConnected socket) $ const $ do
-    currentTime <- liftIO getCurrentTime
-    pure $ MsgHandshake $ makeHandshake 0 currentTime
+      pure $ Socket {  _socketInbound = messageE
+                    , _socketClosed = closedE
+                    , _socketStatus = statusD
+                    , _socketRecvEr = errorE
+                    , _socketTries = triesD
+                    }
+  
   statRef <- newExternalRef Nothing
   let respE   = _socketInbound socket
       verAckE = fforMaybe respE $ \case
