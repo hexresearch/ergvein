@@ -2,6 +2,8 @@
 , profile ? false
 , gitHash ? null
 , releaseBundle ? true
+, releasePasswordFile ? ./release/password
+, releaseKeyStore ? ./release/release.keystore
  }:
 let
    reflex-platform = import ./platform-overlay.nix { inherit profile; };
@@ -124,10 +126,10 @@ let
       releaseKey = let
         readPassword = file: builtins.replaceStrings ["\n"] [""] (builtins.readFile file);
       in if release then {
-        storeFile = ./release/release.keystore;
-        storePassword = readPassword ./release/password;
+        storeFile = releaseKeyStore;
+        storePassword = readPassword releasePasswordFile;
         keyAlias = "ergvein_releasekey";
-        keyPassword = readPassword ./release/password;
+        keyPassword = readPassword releasePasswordFile;
       } else null;
       services = ''
       <provider
