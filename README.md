@@ -39,6 +39,25 @@ nix.binaryCaches = [ "https://cache.nixos.org/" "https://nixcache.reflex-frp.org
 nix.binaryCachePublicKeys = [ "ryantrinkle.com-1:JJiAKaRv9mWgpVAz8dwewnZe0AzzEAzPkagE9SP5NWI=" ];
 ```
 
+# How to build release
+
+There are two files that are related to APK signing of release bundle: `./release/password` and `./release/release.keystore`.
+First is encrypted by git-crypt and only our team can access it. That protects Google Play releases from tampering.
+
+But, if you want to build your own release version with own signatures, you can create your own keys and sign with them. Here
+how to perform this:
+```
+cd release && ./create_keystore.sh my_store.keystore
+```
+Fill password and answer questions for certificate, next put password in a file, for instance: `./release/my-password`.
+
+Next, you can build release with:
+```
+./release-android --arg releasePasswordFile ./release/my-password --arg releaseKeyStore ./release/my_store.keystore
+```
+Results will be symlinked in folders `android-release` for bundle and `android-release-apk` for APK version, we provide both
+as bundles are not easy for manual installation.
+
 # How to use cachix
 
 We provide binary cache for builds via cachix.org. To start using it to speed up your builds:
@@ -49,7 +68,7 @@ cachix use ergvein
 
 # Deploy index server with docker-compose
 
-This docker-compose uses official docker image [ergvein/ergvein-index-server](https://hub.docker.com/r/ergvein/ergvein-index-server) 
+This docker-compose uses official docker image [ergvein/ergvein-index-server](https://hub.docker.com/r/ergvein/ergvein-index-server)
 
 ``` sh
 cd index-server/docker-compose-example
