@@ -12,6 +12,12 @@ author:              Anton Gushcha, Aminion, Vladimir Krutkin, Levon Oganyan, Se
 maintainer:          Anton Gushcha <ncrashed@protonmail.com>
 extra-source-files:  CHANGELOG.md
 
+flag client-tool
+  description: Build executable for connecting to Ergo node
+  -- See #968, don't build on ARM to prevent linker errors
+  default: False
+  manual: True
+
 library
   hs-source-dirs:      src
   exposed-modules:
@@ -40,6 +46,10 @@ library
     TemplateHaskell
 
 executable ergo-protocol-client
+  if flag(client-tool)
+    buildable: True
+  else
+    buildable: False
   hs-source-dirs:      app
   main-is:             Main.hs
   ghc-options:         -threaded -O3
