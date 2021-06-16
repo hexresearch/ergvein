@@ -49,6 +49,8 @@ makeHandshake blocks t = Handshake {
     ]
   }
 
+-- | Utility to fetch messages from socket. Given reference tracks whether we
+-- got handshake message or not. Network parameter affects magic bytes parsing.
 peekMessage :: Network -> IORef Bool -> C.PeekerIO ErgoMessage
 peekMessage net initRef = do
   isinit <- liftIO $ readIORef initRef
