@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 
-module Ergvein.Wallet.Page.Ergo.Send (
+module Ergvein.Wallet.Page.Send.Erg (
     sendPageErg
   ) where
 

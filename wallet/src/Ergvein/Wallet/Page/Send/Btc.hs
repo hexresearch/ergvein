@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE OverloadedLists #-}
 
-module Ergvein.Wallet.Page.Btc.Send (
+module Ergvein.Wallet.Page.Send.Btc (
     sendPageBtc
   ) where
 

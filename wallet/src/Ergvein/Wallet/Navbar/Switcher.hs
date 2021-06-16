@@ -6,8 +6,8 @@ import Ergvein.Types.Currency
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar.Types
 
-import Ergvein.Wallet.Page.Btc.Send
-import Ergvein.Wallet.Page.Ergo.Send
+import Ergvein.Wallet.Page.Send.Btc
+import Ergvein.Wallet.Page.Send.Erg
 import Ergvein.Wallet.Page.History
 import Ergvein.Wallet.Page.Receive
 

@@ -41,11 +41,9 @@ library
         Ergvein.Wallet.Orphanage
         Ergvein.Wallet.Page.About
         Ergvein.Wallet.Page.Balances
-        Ergvein.Wallet.Page.Btc.Send
         Ergvein.Wallet.Page.BumpFee
         Ergvein.Wallet.Page.Canvas
         Ergvein.Wallet.Page.Currencies
-        Ergvein.Wallet.Page.Ergo.Send
         Ergvein.Wallet.Page.History
         Ergvein.Wallet.Page.Initial
         Ergvein.Wallet.Page.Network
@@ -55,6 +53,8 @@ library
         Ergvein.Wallet.Page.Receive
         Ergvein.Wallet.Page.Restore
         Ergvein.Wallet.Page.Seed
+        Ergvein.Wallet.Page.Send.Btc
+        Ergvein.Wallet.Page.Send.Erg
         Ergvein.Wallet.Page.Settings
         Ergvein.Wallet.Page.Settings.MnemonicExport
         Ergvein.Wallet.Page.Settings.Network
