@@ -2,6 +2,7 @@
 
 module Ergvein.Core.Transaction.Get(
     transactionsGetting
+  , transactionsGettingErgMock
 ) where
 
 import Control.Lens
@@ -70,6 +71,37 @@ transactionsGetting cur = do
     getAndFilterBlocks cur heightD allBtcAddrsD timeZone txs pubStorage' settings
   filteredTxListD <- holdDyn [] filteredTxListE
   pure (filteredTxListD, heightD)
+
+mockErgTxVeiw :: TransactionView
+mockErgTxVeiw = TransactionView {
+    txAmount = Money ERGO 1000000
+  , txPrevAm = Just $ Money ERGO 0
+  , txDate = TxTime $ Just $ parseTimeOrError True defaultTimeLocale "%Y-%-m-%-d" "2021-6-02"
+  , txInOut = TransRefill
+  , txInfoView = mockErgTxInfoView
+  , txStatus = TransConfirmed
+}
+
+mockErgTxInfoView :: TransactionViewInfo
+mockErgTxInfoView = TransactionViewInfo {
+    txId = "7b6668423e5f1fa9a7c37006f43c0e82af5cc78bd5bad7a8e3e897787de246c3"
+  , txRaw = TxErg $ ErgTx mockErgoTx Nothing
+  , txLabel = Nothing
+  , txUrl = "https://testnet.ergoplatform.com/en/transactions/7b6668423e5f1fa9a7c37006f43c0e82af5cc78bd5bad7a8e3e897787de246c3"
+  , txFee = Just $ Money ERGO 0
+  , txRbfEnabled = True
+  , txConflictingTxs = []
+  , txReplacedTxs = []
+  , txPossiblyReplacedTxs = (False, [])
+  , txConfirmations = 8393
+  , txBlock = Just ("https://testnet.ergoplatform.com/en/blocks/e6d1244e2629719638a6409d0233fe376bf5afc3f553475517239ac6776e08aa", "e6d1244e2629719638a6409d0233fe376bf5afc3f553475517239ac6776e08aa")
+  , txOutputs = []
+  , txInputs = []
+} 
+
+transactionsGettingErgMock :: MonadWallet t m => m (Dynamic t [TransactionView], Dynamic t Word64)
+transactionsGettingErgMock = do
+  pure $ (constDyn [], constDyn 612345)
 
 getAndFilterBlocks :: (HasPubStorage (ReaderT r IO), MonadIO m, Reflex t, PlatformNatives, MonadSample t m) =>
   Currency ->

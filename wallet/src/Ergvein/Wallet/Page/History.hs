@@ -37,21 +37,36 @@ historyPage cur = do
 
 historyTableWidget :: MonadFront t m => Currency -> m (Event t TransactionView)
 historyTableWidget cur = case cur of
-  BTC -> do
-    (txsD, hghtD) <- transactionsGetting BTC
-    let txMapD = Map.fromList . L.zip [(0 :: Int)..] <$> txsD
-    resD <- networkHoldDyn $ ffor txMapD $ \txMap -> if Map.null txMap
-      then do
-        noTxsPlaceholder
-        pure never
-      else do
-        mapED <- divClass "history-table" $ listWithKey txMapD (\_ -> historyTableRowD BTC hghtD)
-        let txClickE = switchDyn $ mergeMap <$> mapED
-        pure $ fmapMaybe id $ headMay . Map.elems <$> txClickE
-    pure $ switchDyn resD
-  ERGO -> do
-    txClickE <- divClass "history-table" $ traverse (historyTableRow ERGO) []
-    pure $ leftmost txClickE
+  BTC -> historyTableWidgetBtc
+  ERGO -> historyTableWidgetErg
+
+historyTableWidgetBtc :: MonadFront t m => m (Event t TransactionView)
+historyTableWidgetBtc = do
+  (txsD, hghtD) <- transactionsGetting BTC
+  let txMapD = Map.fromList . L.zip [(0 :: Int)..] <$> txsD
+  resD <- networkHoldDyn $ ffor txMapD $ \txMap -> if Map.null txMap
+    then do
+      noTxsPlaceholder
+      pure never
+    else do
+      mapED <- divClass "history-table" $ listWithKey txMapD (\_ -> historyTableRowD BTC hghtD)
+      let txClickE = switchDyn $ mergeMap <$> mapED
+      pure $ fmapMaybe id $ headMay . Map.elems <$> txClickE
+  pure $ switchDyn resD
+
+historyTableWidgetErg :: MonadFront t m => m (Event t TransactionView)
+historyTableWidgetErg = do
+  (txsD, hghtD) <- transactionsGettingErgMock
+  let txMapD = Map.fromList . L.zip [(0 :: Int)..] <$> txsD
+  resD <- networkHoldDyn $ ffor txMapD $ \txMap -> if Map.null txMap
+    then do
+      noTxsPlaceholder
+      pure never
+    else do
+      mapED <- divClass "history-table" $ listWithKey txMapD (\_ -> historyTableRowD ERGO hghtD)
+      let txClickE = switchDyn $ mergeMap <$> mapED
+      pure $ fmapMaybe id $ headMay . Map.elems <$> txClickE
+  pure $ switchDyn resD
 
 noTxsPlaceholder :: MonadFront t m => m ()
 noTxsPlaceholder = divClass "history-empty-placeholder text-muted" $ do
