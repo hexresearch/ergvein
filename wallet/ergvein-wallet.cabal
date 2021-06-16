@@ -110,7 +110,6 @@ library
         , containers              >= 0.6        && < 0.7
         , cryptonite
         , data-default
-        , ergo-protocol-client
         , dependent-map           >= 0.3
         , dependent-sum           >= 0.6
         , directory
@@ -126,7 +125,6 @@ library
         , ergvein-node-discovery
         , ergvein-types           >= 0.1        && < 0.2
         , ergvein-wallet-version  >= 0.1        && < 0.2
-        , sepulcas-native         >= 0.1        && < 0.2
         , exceptions
         , file-embed              >= 0.0        && < 0.1
         , filepath
@@ -164,6 +162,7 @@ library
         , semialign
         , sepulcas
         , sepulcas-log
+        , sepulcas-native         >= 0.1        && < 0.2
         , serialise               >= 0.2        && < 0.3
         , socks                   >= 0.5        && < 0.7
         , split                   >= 0.2.3.3    && < 0.3
