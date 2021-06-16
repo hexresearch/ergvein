@@ -17,17 +17,18 @@ import Data.Ergo.Protocol.Types
 import Data.Function
 import Data.Text
 import Data.Time.Clock
-import Ergvein.Core.Node.Socket hiding (Peer, SocketConf)
-import Ergvein.Core.Node.Types
-import Ergvein.Core.Platform
-import Ergvein.Core.Settings
-import Ergvein.Types.Currency
 import Network.Socket (getNameInfo, NameInfoFlag(..), SockAddr(..))
 import Reflex
 import Reflex.ExternalRef
 import Reflex.Flunky
 import Reflex.Fork
 import Reflex.Network
+
+import Ergvein.Core.Node.Socket hiding (Peer, SocketConf)
+import Ergvein.Core.Node.Types
+import Ergvein.Core.Platform
+import Ergvein.Core.Settings
+import Ergvein.Types.Currency
 
 instance CurrencyRep ErgoType where
   curRep _ = ERGO
@@ -131,7 +132,7 @@ newSocket net inChan peer = do
     statusD <-  holdDyn SocketInitial statusE
     triesD <-  holdDyn 0 triesE
 
-    pure $ Socket {  _socketInbound = messageE
+    pure $ Socket { _socketInbound = messageE
                   , _socketClosed = closedE
                   , _socketStatus = statusD
                   , _socketRecvEr = errorE
