@@ -64,7 +64,7 @@ initErgoNode url msgE = mdo
   inChan <- liftIO newTChanIO
   -- Messages that reconnects socket or closes it we send without waiting for handshake
   performEvent_ $ ffor socketInSystemE $ liftIO . atomically . writeTChan inChan
-  -- Messages that can sand user of the widget is sent only when socket finally has been handshaked
+  -- Messages that can send user of the widget is sent only when socket finally has been handshaked
   performFork_ $ ffor socketInUserE $ \ msg -> do
     -- TODO: Note that order of messages can be broken here. That shouldn't be an issue as these are initial
     -- messages and protocol itself asynchronous.
