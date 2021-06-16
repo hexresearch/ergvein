@@ -14,13 +14,13 @@ module Ergvein.Core.Platform(
   ) where
 
 import Ergvein.Types.Currency
-import Network.Haskoin.Block as HB
-import qualified Network.Haskoin.Constants as HK
 import Sepulcas.Native
-import qualified Data.Ergo.Protocol.Types as Erg
 
+import Network.Haskoin.Block               as HB
+import qualified Data.Ergo.Protocol.Types  as Erg
+import qualified Data.Vector               as V
 import qualified Ergvein.Types.Transaction as ETT
-import qualified Data.Vector as V
+import qualified Network.Haskoin.Constants as HK
 
 -- | Global flag that indicates that we need to compile for testnet.
 -- The value of the function is controlled by `testnet` cabal flag.
