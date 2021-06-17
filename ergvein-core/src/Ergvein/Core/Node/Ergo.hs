@@ -6,6 +6,7 @@ module Ergvein.Core.Node.Ergo
     ErgoType(..)
   , NodeErgo
   , initErgoNode
+  , newSocket
   ) where
 
 import Control.Concurrent
@@ -110,30 +111,34 @@ newSocket net inChan peer = do
           , _socketConfSocks = Nothing
           , _socketConfReopen = Just (3.0, 5)
       }
-    (closedE,  closedFire)   <- newTriggerEvent
-    (messageE, messageFire)  <- newTriggerEvent
-    (statusE,  statusFire)   <- newTriggerEvent
-    (errorE,   errorFire)    <- newTriggerEvent
-    (triesE,   triesFire)    <- newTriggerEvent
+    outChanToSocket outChan
 
-    inputThread <- liftIO $ forkIO $ forever $ do
-      msg <- atomically $ readTChan outChan
-      print $ show msg
-      case msg of
-        SockOutInbound message     -> messageFire message
-        SockOutClosed  closeReason -> closedFire  closeReason
-        SockOutStatus  status      -> statusFire  status
-        SockOutRecvEr  err         -> errorFire   err
-        SockOutTries   tries       -> triesFire   tries
-
-    performEvent $ ffor closedE $ const $ liftIO $ killThread inputThread
-
-    statusD <-  holdDyn SocketInitial statusE
-    triesD <-  holdDyn 0 triesE
-
-    pure $ Socket { _socketInbound = messageE
-                  , _socketClosed = closedE
-                  , _socketStatus = statusD
-                  , _socketRecvEr = errorE
-                  , _socketTries = triesD
-                  }
+outChanToSocket :: (TriggerEvent t m, PerformEvent t m, MonadHold t m, MonadIO m, MonadUnliftIO (Performable m)) => 
+  TChan (SocketOutEvent a) -> m (Socket t a)
+outChanToSocket outChan = do
+  (closedE,  closedFire)   <- newTriggerEvent
+  (messageE, messageFire)  <- newTriggerEvent
+  (statusE,  statusFire)   <- newTriggerEvent
+  (errorE,   errorFire)    <- newTriggerEvent
+  (triesE,   triesFire)    <- newTriggerEvent
+  
+  inputThread <- liftIO $ forkIO $ forever $ do
+    msg <- atomically $ readTChan outChan
+    case msg of
+      SockOutInbound message     -> messageFire message
+      SockOutClosed  closeReason -> closedFire  closeReason
+      SockOutStatus  status      -> statusFire  status
+      SockOutRecvEr  err         -> errorFire   err
+      SockOutTries   tries       -> triesFire   tries
+  
+  performEvent $ ffor closedE $ const $ liftIO $ killThread inputThread
+  
+  statusD <-  holdDyn SocketInitial statusE
+  triesD <-  holdDyn 0 triesE
+  
+  pure $ Socket { _socketInbound = messageE
+                , _socketClosed = closedE
+                , _socketStatus = statusD
+                , _socketRecvEr = errorE
+                , _socketTries = triesD
+                }
