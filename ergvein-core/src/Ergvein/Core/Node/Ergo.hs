@@ -88,12 +88,9 @@ initErgoNode url msgE = mdo
 
   let openE = void $ ffilter id $ updated shakeD
 
-  statRef <- newExternalRef Nothing
-
   pure $ NodeConnection {
       nodeconCurrency   = ERGO
     , nodeconUrl        = url
-    , nodeconStatus     = statRef
     , nodeconOpensE     = openE
     , nodeconCloseE     = closedE
     , nodeconRespE      = respE
