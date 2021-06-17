@@ -12,6 +12,7 @@ import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.IO.Unlift
 import Data.Ergo.Protocol.Client
 import Data.Ergo.Protocol.Types
 import Data.Function
@@ -102,7 +103,8 @@ initErgoNode url msgE = mdo
     , nodeconHeight     = pure Nothing
     }
 
-newSocket :: (MonadSettings t m) => Network -> TChan (SocketInEvent ErgoMessage) -> Peer -> m (Socket t ErgoMessage)
+newSocket :: (TriggerEvent t m, PerformEvent t m, MonadHold t m, MonadIO m, MonadUnliftIO (Performable m)) => 
+  Network -> TChan (SocketInEvent ErgoMessage) -> Peer -> m (Socket t ErgoMessage)
 newSocket net inChan peer = do
     currentTime <- liftIO getCurrentTime
     liftIO . atomically . writeTChan inChan $ SockInSendEvent $ MsgHandshake $ makeHandshake 0 currentTime
