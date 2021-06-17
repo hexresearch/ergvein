@@ -75,9 +75,8 @@ initErgoNode url msgE = mdo
       liftIO $ threadDelay 1000
       shaked <- sampleDyn shakeD
       unless shaked next
-    liftIO $ atomically $ writeTChan inChan msg
-
-  socket <- switchSocket <$> (networkHold (pure noSocket) $ ffor peerE $ newSocket net inChan)
+    liftIO $ atomically $ writeTChan inChan msg 
+  socket <- switchSocket <$> (networkHold (pure noSocket) $ ffor peerE $ outChanToSocket <=< newSocket net inChan)
 
   let respE   = _socketInbound socket
       verAckE = fforMaybe respE $ \case
@@ -101,17 +100,15 @@ initErgoNode url msgE = mdo
     , nodeconHeight     = pure Nothing
     }
 
-newSocket :: (TriggerEvent t m, PerformEvent t m, MonadHold t m, MonadIO m, MonadUnliftIO (Performable m)) => 
-  Network -> TChan (SocketInEvent ErgoMessage) -> Peer -> m (Socket t ErgoMessage)
+newSocket :: (MonadIO m) => Network -> TChan (SocketInEvent ErgoMessage) -> Peer -> m (TChan (SocketOutEvent ErgoMessage))
 newSocket net inChan peer = do
     currentTime <- liftIO getCurrentTime
     liftIO . atomically . writeTChan inChan $ SockInSendEvent $ MsgHandshake $ makeHandshake 0 currentTime
-    outChan <- ergoSocket net inChan $ SocketConf {
+    ergoSocket net inChan $ SocketConf {
             _socketConfPeer = peer
           , _socketConfSocks = Nothing
           , _socketConfReopen = Just (3.0, 5)
       }
-    outChanToSocket outChan
 
 outChanToSocket :: (TriggerEvent t m, PerformEvent t m, MonadHold t m, MonadIO m, MonadUnliftIO (Performable m)) => 
   TChan (SocketOutEvent a) -> m (Socket t a)
