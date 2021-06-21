@@ -84,15 +84,19 @@ library
     Ergvein.Core.TimeZone
     Ergvein.Core.Transaction
     Ergvein.Core.Transaction.Btc
-    Ergvein.Core.Transaction.Btc.Builder
-    Ergvein.Core.Transaction.Btc.Common
-    Ergvein.Core.Transaction.Btc.Fee
-    Ergvein.Core.Transaction.Builder
-    Ergvein.Core.Transaction.Ergo
-    Ergvein.Core.Transaction.Ergo.Common
-    Ergvein.Core.Transaction.Get
-    Ergvein.Core.Transaction.Util
-    Ergvein.Core.Transaction.View
+    Ergvein.Core.Transaction.Builder.Btc
+    Ergvein.Core.Transaction.Builder.Erg
+    Ergvein.Core.Transaction.Erg
+    Ergvein.Core.Transaction.Fee.Btc
+    Ergvein.Core.Transaction.Fee.Erg
+    Ergvein.Core.Transaction.Get.Btc
+    Ergvein.Core.Transaction.Get.Erg
+    Ergvein.Core.Transaction.Util.Btc
+    Ergvein.Core.Transaction.Util.Common
+    Ergvein.Core.Transaction.Util.Erg
+    Ergvein.Core.Transaction.View.Btc
+    Ergvein.Core.Transaction.View.Common
+    Ergvein.Core.Transaction.View.Erg
     Ergvein.Core.Wallet
     Ergvein.Core.Wallet.Env
     Ergvein.Core.Wallet.Monad

@@ -8,7 +8,7 @@ import Ergvein.Interfaces.Ergo.Api
 import Ergvein.Interfaces.Ergo.It.Api.NodeApi
 import Ergvein.Interfaces.Ergo.Scorex.Core.Block
 import Ergvein.Types.Currency
-import Ergvein.Types.Transaction
+import Ergvein.Types.Transaction hiding (dataInputs)
 
 import           Network.Ergo.Api.Blocks
 import           Network.Ergo.Api.Client

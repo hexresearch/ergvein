@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 
-module Ergvein.Core.Transaction.Ergo.Common(
+module Ergvein.Core.Transaction.Util.Erg(
     checkAddrTxErg
 ) where
 
