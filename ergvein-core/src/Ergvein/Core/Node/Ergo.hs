@@ -80,7 +80,7 @@ initErgoNode url msgE = mdo
       liftIO $ threadDelay 1000
       shaked <- sampleDyn shakeD
       unless shaked next
-    liftIO $ atomically $ writeTChan inChan msg 
+    liftIO $ atomically $ writeTChan inChan msg
   socket <- switchSocket <$> (networkHold (pure noSocket) $ ffor peerE $ outChanToSocket <=< newSocket net inChan)
 
   let respE   = _socketInbound socket
@@ -150,7 +150,7 @@ f  url msgE dyn = mdo
       liftIO $ threadDelay 1000
       shaked <- sampleDyn shakeD
       unless shaked next
-    liftIO $ atomically $ writeTChan inChan msg 
+    liftIO $ atomically $ writeTChan inChan msg
   socket <- switchSocket <$> (networkHold (pure noSocket) $ ffor peerE $ outChanToSocket <=< newSocket net inChan)
 
   let respE   = _socketInbound socket
@@ -185,7 +185,7 @@ newSocket net inChan peer = do
           , _socketConfReopen = Just (3.0, 5)
       }
 
-outChanToSocket :: (TriggerEvent t m, PerformEvent t m, MonadHold t m, MonadIO m, MonadUnliftIO (Performable m)) => 
+outChanToSocket :: (TriggerEvent t m, PerformEvent t m, MonadHold t m, MonadIO m, MonadUnliftIO (Performable m)) =>
   TChan (SocketOutEvent a) -> m (Socket t a)
 outChanToSocket outChan = do
   (closedE,  closedFire)   <- newTriggerEvent
@@ -193,7 +193,7 @@ outChanToSocket outChan = do
   (statusE,  statusFire)   <- newTriggerEvent
   (errorE,   errorFire)    <- newTriggerEvent
   (triesE,   triesFire)    <- newTriggerEvent
-  
+
   inputThread <- liftIO $ forkIO $ forever $ do
     msg <- atomically $ readTChan outChan
     case msg of
@@ -202,12 +202,12 @@ outChanToSocket outChan = do
       SockOutStatus  status      -> statusFire  status
       SockOutRecvEr  err         -> errorFire   err
       SockOutTries   tries       -> triesFire   tries
-  
+
   performEvent $ ffor closedE $ const $ liftIO $ killThread inputThread
-  
+
   statusD <-  holdDyn SocketInitial statusE
   triesD <-  holdDyn 0 triesE
-  
+
   pure $ Socket { _socketInbound = messageE
                 , _socketClosed  = closedE
                 , _socketStatus  = statusD

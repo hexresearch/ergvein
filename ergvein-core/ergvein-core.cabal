@@ -243,18 +243,21 @@ executable ergvein-core-t
   -- ghc-options:         -threaded -rtsopts "-with-rtsopts=-N -A64m -AL256m -qn4"
   build-depends:
       base
+    , base16-bytestring
+    , dependent-sum
     , ergo-protocol
     , ergo-protocol-client
+    , ergvein-core
     , optparse-generic  >= 1.3      && < 1.4
+    , ref-tf
+    , reflex
+    , reflex-fork
+    , reflex-vty
     , stm
     , text
     , time
-    , vector
-    , base16-bytestring
-    , ergvein-core
-    , reflex
-    , reflex-vty
     , unliftio-core
+    , vector
   default-language:    Haskell2010
   default-extensions:
     BangPatterns
