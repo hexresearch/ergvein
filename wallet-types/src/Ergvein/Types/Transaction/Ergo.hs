@@ -12,7 +12,7 @@ module Ergvein.Types.Transaction.Ergo (
 
 import Control.DeepSeq
 -- import Data.Aeson as A
-import Data.ByteString (ByteString)
+-- import Data.ByteString (ByteString)
 import Data.ByteString.Short (ShortByteString)
 import Data.Hashable (Hashable)
 import Data.SafeCopy
@@ -82,9 +82,9 @@ mockTxIn = TxInput {
 
 mockErgoBoxCandidate :: ErgoBoxCandidate
 mockErgoBoxCandidate = ErgoBoxCandidate {
-    boxValue = 1000000
-  , ergoTree = fromMaybe BS.empty $ decodeHex "100204900108cd02c968d8d8c6eafb8f4682c6959a7b2073ae2dfae02eb20a3be82e4b497d5e6c53ea02d192a39a8cc7a70173007301"
-  , tokens = []
-  , additionalRegisters = BS.empty
-  , creationHeight = 7588
+    ergoBoxCandidate'boxValue = 1000000
+  , ergoBoxCandidate'ergoTree = fromMaybe BS.empty $ decodeHex "100204900108cd02c968d8d8c6eafb8f4682c6959a7b2073ae2dfae02eb20a3be82e4b497d5e6c53ea02d192a39a8cc7a70173007301"
+  , ergoBoxCandidate'tokens = []
+  , ergoBoxCandidate'additionalRegisters = BS.empty
+  , ergoBoxCandidate'creationHeight = 7588
 }

@@ -45,6 +45,9 @@ library
         Ergvein.Wallet.Page.Canvas
         Ergvein.Wallet.Page.Currencies
         Ergvein.Wallet.Page.History
+        Ergvein.Wallet.Page.History.Btc
+        Ergvein.Wallet.Page.History.Common
+        Ergvein.Wallet.Page.History.Erg
         Ergvein.Wallet.Page.Initial
         Ergvein.Wallet.Page.Network
         Ergvein.Wallet.Page.Password
@@ -59,7 +62,9 @@ library
         Ergvein.Wallet.Page.Settings.MnemonicExport
         Ergvein.Wallet.Page.Settings.Network
         Ergvein.Wallet.Page.Settings.Unauth
-        Ergvein.Wallet.Page.Transaction
+        Ergvein.Wallet.Page.TxInfo.Btc
+        Ergvein.Wallet.Page.TxInfo.Common
+        Ergvein.Wallet.Page.TxInfo.Erg
         Ergvein.Wallet.Password
         Ergvein.Wallet.Settings
         Ergvein.Wallet.Status.Widget

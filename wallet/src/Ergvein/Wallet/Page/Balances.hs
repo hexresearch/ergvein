@@ -52,12 +52,22 @@ currenciesList _ = divClass "currency-content" $ do
     currencyLine settings cur = do
       (e, _) <- divClass' "currency-row" $ do
         bal <- balancesWidget cur
-        moneyUnits <- getSettingsUnitBtc
+        (balance, units) <- case cur of
+          BTC -> do
+            moneyUnits <- getSettingsUnitBtc
+            let balanceText = dynText $ (`showMoneyUnit` moneyUnits) <$> bal
+                unitsText = text $ display moneyUnits
+            pure (balanceText, unitsText)
+          ERGO -> do
+            moneyUnits <- getSettingsUnitErg
+            let balanceText = dynText $ (`showMoneyUnit` moneyUnits) <$> bal
+                unitsText = text $ display moneyUnits
+            pure (balanceText, unitsText)
         divClass "currency-details" $ do
           divClass "currency-name" $ text $ currencyName cur
           divClass "currency-balance" $ do
-            elClass "span" "currency-value" $ dynText $ (`showMoneyUnit` moneyUnits) <$> bal
-            elClass "span" "currency-unit" $ text $ display moneyUnits
+            elClass "span" "currency-value" balance
+            elClass "span" "currency-unit" units
         divClass "currency-status" $ do
           currencyStatusWidget cur
       pure $ cur <$ domEvent Click e
