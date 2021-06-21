@@ -49,7 +49,7 @@ executable ergo-protocol-client
   if flag(client-tool)
     buildable: True
   else
-    buildable: False
+    buildable: True
   hs-source-dirs:      app
   main-is:             Main.hs
   ghc-options:         -threaded -O3
