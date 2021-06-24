@@ -258,6 +258,7 @@ executable ergvein-core-t
     , time
     , unliftio-core
     , vector
+    , network
   default-language:    Haskell2010
   default-extensions:
     BangPatterns
