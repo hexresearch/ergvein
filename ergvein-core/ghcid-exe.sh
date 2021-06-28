@@ -1,1 +1,1 @@
-ghcid -c "cabal new-repl ergvein-core-t"
+ghcid -c "cabal new-repl ergvein-core-node-test"

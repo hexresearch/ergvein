@@ -6,8 +6,8 @@ module Ergvein.Core.Node.Ergo
     ErgoType(..)
   , NodeErgo
   , initErgoNode
+  , ergoNode
   , newSocket
-  , f
   ) where
 
 import Control.Concurrent
@@ -104,19 +104,10 @@ initErgoNode url msgE = mdo
     , nodeconDoLog      = False
     , nodeconHeight     = pure Nothing
     }
-f :: (Adjustable t m,
-      MonadFail (Performable m),
-      MonadFix m,
-      MonadHold t m,
-      MonadIO m,
-      MonadUnliftIO (Performable m),
-      MonadSample t (Performable m),
-      PerformEvent t m,
-      PostBuild t m,
-      TriggerEvent t m
-      ) =>
-   SockAddr -> Event t NodeMessage -> Event t (Maybe S5.SocksConf) ->  m (NodeErgo t)
-f  url msgE dyn = mdo
+ergoNode :: (Adjustable t m, MonadFail (Performable m), MonadFix m, MonadHold t m, MonadIO m, MonadUnliftIO (Performable m),
+             MonadSample t (Performable m), PerformEvent t m, PostBuild t m, TriggerEvent t m) =>
+  SockAddr -> Event t NodeMessage -> Event t (Maybe S5.SocksConf) ->  m (NodeErgo t)
+ergoNode url msgE dyn = mdo
   buildE <- getPostBuild
   let proxyE = SockInSocksConf <$> dyn
   let restartE = fforMaybe msgE $ \case

@@ -12,8 +12,11 @@ import Data.Ergo.Protocol
 import Data.Functor.Identity
 import Data.IORef
 import Data.Maybe
+import Data.Text
 import Ergvein.Core.Node.Ergo
 import Ergvein.Core.Node.Types
+import Ergvein.Node.Resolve
+import Network.DNS.Resolver
 import Network.Socket
 import Options.Generic
 import Reflex
@@ -26,24 +29,40 @@ import qualified Reflex.Profiled     as RP
 
 type EventChannel = Chan [DSum (EventTriggerRef Spider) TriggerInvocation]
 
-addr = SockAddrInet 9030 $ tupleToHostAddress (127,0,0,1)
+data Options = Options {
+  nodeAddress  :: Maybe String <?> "Address of node"
+, nodePort     :: Maybe Int <?> "Port of node"
+} deriving (Generic)
+
+instance ParseRecord Options
+
+getNodeAddress :: Options -> String
+getNodeAddress Options{..} = fromMaybe "127.0.0.1" $ unHelpful nodeAddress
+
+getNodePort :: Options -> PortNumber
+getNodePort Options{..} = fromIntegral $ fromMaybe 9030 $ unHelpful nodePort
 
 main :: IO ()
-main = (runSpiderHost :: SpiderHost Global a -> IO a) $ do
-  events <- liftIO newChan
-  ((result, postBuildTriggerRef), fc@(FireCommand fire)) <- hostPerformEventT $ do
-    (postBuild, postBuildTriggerRef) <- newEventWithTriggerRef
-    result <- runPostBuildT (runTriggerEventT test events) postBuild
-    pure (result, postBuildTriggerRef)
-  mPostBuildTrigger <- readRef postBuildTriggerRef
-  forM_ mPostBuildTrigger $ \postBuildTrigger -> fire [postBuildTrigger :=> Identity ()] $ pure ()
-  liftIO $ do
-    processAsyncEvents events fc
-    forever $ threadDelay maxBound
+main = do
+  opts@Options{..} <- getRecord "Ergo protocol client example"
+  rs <- makeResolvSeed defaultResolvConf
+  Just addr <- resolveAddr rs (getNodePort opts) (pack $ getNodeAddress opts) 
+   
+  (runSpiderHost :: SpiderHost Global a -> IO a) $ do
+    events <- liftIO newChan
+    ((result, postBuildTriggerRef), fc@(FireCommand fire)) <- hostPerformEventT $ do
+      (postBuild, postBuildTriggerRef) <- newEventWithTriggerRef
+      result <- runPostBuildT (runTriggerEventT (test $ namedAddrSock addr) events) postBuild
+      pure (result, postBuildTriggerRef)
+    mPostBuildTrigger <- readRef postBuildTriggerRef
+    forM_ mPostBuildTrigger $ \postBuildTrigger -> fire [postBuildTrigger :=> Identity ()] $ pure ()
+    liftIO $ do
+      processAsyncEvents events fc
+      forever $ threadDelay maxBound
   where 
-    test = do
+    test addr = do
       (msgE, msgFire) <- newTriggerEvent
-      ergoNode <- f addr msgE never
+      ergoNode <- ergoNode addr msgE never
 
       --handshake
       let handshakeE = fforMaybe (nodeconRespE ergoNode) $ \case
