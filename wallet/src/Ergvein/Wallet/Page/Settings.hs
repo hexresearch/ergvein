@@ -133,13 +133,9 @@ btcNodesPage = do
 
 btcNetworkWidget :: MonadFront t m => [NodeBtc t] -> m ()
 btcNetworkWidget nodes = do
-  infosD <- fmap sequence $ traverse externalRefDynamic $ nodeconStatus <$> nodes
   let activeND = fmap (length . filter id) $ sequence $ nodeconIsUp <$> nodes
-      sumLatD  = fmap (sum . fmap nodestatLat . catMaybes) infosD
-      avgLatD  = (\a b -> if b == 0 then NPSNoActiveNodes else NPSAvgLat $ a / fromIntegral b) <$> sumLatD <*> activeND
   valueOptionDyn $ NPSActiveNum <$> activeND
   descrOption $ NPSNodesNum $ length nodes
-  descrOptionDyn avgLatD
   labelHorSep
 
 -- TODO: use dyn settings instead of simple settings <- getSettings
