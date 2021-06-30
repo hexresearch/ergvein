@@ -11,3 +11,11 @@ Here goes:
 * Settings
 * Transaction creation
 * Height catchup 
+
+# test suite
+
+ To run test against Ergo node (including handshake and retrieveing sample of block head) use command:
+ 
+    cabal new-run ergvein-core-node-test --flag client-tool -- --nodeAddress 127.0.0.1:9030
+ 
+ Where nodeAddress is node to test and client-tool flag needed for correct compilation of rustlang lib links.
