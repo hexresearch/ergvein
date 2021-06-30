@@ -1,77 +1,68 @@
 {-# OPTIONS_GHC -Wall #-}
 
 module Sepulcas.Validate (
-    toEither
-  , validate
+    validateEvent
   , validateNow
-  , validateNonEmptyString
+  , validateNonEmptyText
   , validateRational
   , validateWord64
   , validateGreaterThan
-  , NonEmptyString(..)
-  , GreaterThan(..)
-  , VError(..)
+  , NonEmptyText(..)
+  , LargeEnoughValue(..)
+  , ValidationError(..)
   , Validation(..)
+  , Validate(..)
+  , module Data.Validation
   ) where
 
 import Control.Lens ((#))
 import Data.Text (Text)
 import Data.Text.Read (rational)
-import Data.Validation
-  ( Validation (..),
-    toEither,
-    _Failure,
-    _Success,
-  )
+import Data.Validation hiding (Validate(..), validate)
 import Data.Word (Word64)
 import GHC.Natural (Natural)
 import Reflex.Dom
-  ( DomBuilder,
-    MonadHold,
-    PostBuild,
-    Reflex (Event),
-    divClass,
-    ffor,
-    fmapMaybe,
-  )
-import Reflex.Flunky (networkHold_)
-import Reflex.Localize (LocalizedPrint, MonadLocalized)
-import Reflex.Localize.Dom (localizedText)
-import Sepulcas.Either (justRight)
+import Reflex.Localize
+import Reflex.Localize.Dom
 import Text.Read (readMaybe)
+
+import Reflex.Flunky (networkHold_)
+import Sepulcas.Either (justRight)
 
 import qualified Data.Text as T
 
-newtype NonEmptyString = NonEmptyString String deriving (Show)
-newtype GreaterThan a = GreaterThan a deriving (Show)
+class Validate a where
+  validate :: Text -> Validation [ValidationError] a
 
-data VError ext
+newtype NonEmptyText = NonEmptyText Text deriving (Show)
+newtype LargeEnoughValue a = LargeEnoughValue a deriving (Show)
+
+data ValidationError
   = MustNotBeEmpty
   | MustBeRational
   | MustBeNatural
   | MustBeGreaterThan Text
-  | VErrorOther ext
+  | InvalidAddress
   deriving (Show)
 
-validateNonEmptyString :: String -> Validation [VError e] NonEmptyString
-validateNonEmptyString x = if x /= []
-  then _Success # NonEmptyString x
+validateNonEmptyText :: Text -> Validation [ValidationError] NonEmptyText
+validateNonEmptyText x = if not $ T.null x
+  then _Success # NonEmptyText x
   else _Failure # [MustNotBeEmpty]
 
-validateRational :: String -> Validation [VError e] Rational
-validateRational x = case rational $ T.pack x of
+validateRational :: Text -> Validation [ValidationError] Rational
+validateRational x = case rational x of
   Right (result, "") -> _Success # result
   _ -> _Failure # [MustBeRational]
 
-validateWord64 :: String -> Validation [VError e] Word64
-validateWord64 x = case readMaybe x :: Maybe Natural of
+validateWord64 :: Text -> Validation [ValidationError] Word64
+validateWord64 x = case readMaybe (T.unpack x) :: Maybe Natural of
   Nothing -> _Failure # [MustBeNatural]
   Just res -> _Success # fromIntegral res
 
-validateGreaterThan :: Ord a => a -> Maybe a -> (a -> Text) -> Validation [VError e] (GreaterThan a)
-validateGreaterThan x Nothing _ = _Success # GreaterThan x
-validateGreaterThan x (Just y) printer = if x > y
-  then _Success # GreaterThan x
+validateGreaterThan :: Ord a => a -> a -> (a -> Text) -> Validation [ValidationError] (LargeEnoughValue a)
+validateGreaterThan x y printer = if x > y
+  then _Success # LargeEnoughValue x
   else _Failure # [MustBeGreaterThan $ printer y]
 
 -- | Helper for widget that displays error
@@ -79,8 +70,8 @@ errorWidget :: (DomBuilder t m, MonadLocalized t m, PostBuild t m, LocalizedPrin
 errorWidget = divClass "validate-error" . localizedText
 
 -- | Print in place error message when value is `Left`
-validate :: (DomBuilder t m, MonadLocalized t m, PostBuild t m, MonadHold t m, LocalizedPrint l) => Event t (Either l a) -> m (Event t a)
-validate e = do
+validateEvent :: (DomBuilder t m, MonadLocalized t m, PostBuild t m, MonadHold t m, LocalizedPrint l) => Event t (Either l a) -> m (Event t a)
+validateEvent e = do
   networkHold_ (pure ()) $ ffor e $ \case
     Left err -> errorWidget err
     _ -> pure ()

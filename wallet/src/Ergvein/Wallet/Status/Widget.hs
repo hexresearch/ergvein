@@ -1,8 +1,11 @@
 {-# LANGUAGE OverloadedLists #-}
+{-# OPTIONS_GHC -Wall #-}
+
 module Ergvein.Wallet.Status.Widget(
     statusBarWidget
   , restoreStatusWidget
   , restoreStatusDebugWidget
+  , currencyStatusWidget
   ) where
 
 import Data.Time
@@ -20,15 +23,20 @@ import qualified Data.Text as T
 statusDisplayTime :: NominalDiffTime
 statusDisplayTime = 5
 
+currencyStatusWidget :: MonadFront t m => Currency -> m ()
+currencyStatusWidget cur = divClass "sync-widget-wrapper" $ do
+  statD <- fmap _walletStatus'normal <$> getWalletStatus cur
+  localizedDynText statD
+
 statusBarWidget :: MonadFront t m => Bool -> Currency -> m ()
 statusBarWidget isVerbose cur = divClass "sync-widget-wrapper" $ do
   statD <- getWalletStatus cur
   balD <- balanceRatedOnlyWidget cur
   void $ networkHoldDyn $ ffor balD $ \case
-    Nothing -> void $ networkHoldDyn $ (renderStatus . _walletStatus'normal) <$> statD
+    Nothing -> void $ networkHoldDyn $ renderStatus . _walletStatus'normal <$> statD
     Just bal -> mdo
       let updE = updated statD
-      let renderE = leftmost [(Just . _walletStatus'normal) <$> updE, Nothing <$ tE]
+      let renderE = leftmost [Just . _walletStatus'normal <$> updE, Nothing <$ tE]
       tE <- networkHoldE (balWidget cur bal) $ ffor renderE $ \case
         Nothing -> balWidget cur bal
         Just sp -> do
@@ -68,7 +76,7 @@ restoreStatusWidget cur = do
   h3 $ localizedDynText $ showPercents <$> restoreProgressD
 
 showPercents :: Maybe Double -> Text
-showPercents mPercents = maybe "0.00%" (\p -> (T.pack $ showFFloat (Just 2) p "") <> "%") mPercents
+showPercents = maybe "0.00%" (\p -> T.pack (showFFloat (Just 2) p "") <> "%")
 
 -- TODO: add some more useful info
 restoreStatusDebugWidget :: MonadFront t m => Currency -> m ()

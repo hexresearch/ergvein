@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 
-module Ergvein.Core.Transaction.Btc.Common(
+module Ergvein.Core.Transaction.Util.Btc(
     checkAddrTxInBtc
   , checkAddrTxOutBtc
   , checkAddrTxBtc
@@ -77,13 +77,12 @@ checkAddrTxBtc :: (HasTxStorage m, PlatformNatives) => BtcTxRaw -> BtcAddress ->
 checkAddrTxBtc tx addr = do
   checkTxInputsResults <- traverse (checkTxInBtc addr) (HT.txIn tx)
   checkTxOutputsResults <- traverse (checkTxOutBtcLog addr) (HT.txOut tx)
-  pure $ concatResults checkTxInputsResults || concatResults checkTxOutputsResults
-  where concatResults = L.foldr (||) False
+  pure $ or checkTxInputsResults || or checkTxOutputsResults
 
 checkOutIsOursBtc :: (MonadIO m, PlatformNatives) => [BtcAddress] -> HT.TxOut -> m Bool
 checkOutIsOursBtc addrs out = do
-  results <- traverse (flip checkTxOutBtcLog out) addrs
-  pure $ L.any (== True) results
+  results <- traverse (`checkTxOutBtcLog` out) addrs
+  pure $ or results
 
 checkOutSpent :: [[HT.TxIn]] -> HT.OutPoint -> Bool
 checkOutSpent inputs out = let results = (fmap . fmap) (inputSpendsOutPoint out) inputs in
@@ -132,22 +131,20 @@ filterTxsForAddressBtc addr txs = fmap catMaybes $ for txs $ \tx -> do
   pure $ if b then Just tx else Nothing
 
 -- | Gets a list of groups of conflicting txs. Txs in the same list have at least one common input.
-getConflictingTxs :: [(Bool, [BtcTxId])] -> [EgvTx] -> [[BtcTxId]]
-getConflictingTxs possiblyReplacedTxs txs = L.zipWith removePossiblyReplacedTxs possiblyReplacedTxs (getConflicts <$> btcTxs)
+getConflictingTxs :: [(Bool, [BtcTxId])] -> [BtcTxRaw] -> [[BtcTxId]]
+getConflictingTxs possiblyReplacedTxs txs = L.zipWith removePossiblyReplacedTxs possiblyReplacedTxs (getConflicts <$> txs)
   where
-    btcTxs = catMaybes $ fmap getBtcTx . toTxBtc <$> txs
-
     removePossiblyReplacedTxs :: (Bool, [BtcTxId]) -> [BtcTxId] -> [BtcTxId]
     removePossiblyReplacedTxs (_, prTxs) cTxs = L.filter (`L.notElem` prTxs) cTxs
 
     getConflicts :: BtcTxRaw -> [BtcTxId]
-    getConflicts tx = HT.txHash <$> (L.filter (haveCommonInputs tx) (L.delete tx btcTxs))
+    getConflicts tx = HT.txHash <$> L.filter (haveCommonInputs tx) (L.delete tx txs)
 
 isDirectChildTxOf :: BtcTxRaw -> BtcTxRaw -> Bool
 isDirectChildTxOf childTx parentTx = parentTxId `L.elem` childTxInputsTxIds
   where
     parentTxId = txHash parentTx
-    childTxInputsTxIds = (HT.outPointHash . HT.prevOutput) <$> HT.txIn childTx
+    childTxInputsTxIds = HT.outPointHash . HT.prevOutput <$> HT.txIn childTx
 
 -- | Returns the list of child txs found in transaction storage.
 --           parentTx
@@ -165,25 +162,23 @@ getChildTxs tx = do
       pure $ childTxs ++ grandChildTxs
 
 -- | Gets a list of ids of replaced transactions for every transaction in provided list.
-getReplacedTxs :: M.Map BtcTxId (S.Set BtcTxId) -> [EgvTx] -> [[BtcTxId]]
+getReplacedTxs :: M.Map BtcTxId (S.Set BtcTxId) -> [BtcTx] -> [[BtcTxId]]
 getReplacedTxs replacedTxs txs = getReplaced replacedTxs <$> txs
   where
-    getReplaced :: M.Map BtcTxId (S.Set BtcTxId) -> EgvTx -> [BtcTxId]
-    getReplaced rTxs tx = case M.lookup (fromJust . toBtcTxHash . egvTxId $ tx) rTxs of
-      Nothing -> []
-      Just txSet -> S.toList txSet
+    getReplaced :: M.Map BtcTxId (S.Set BtcTxId) -> BtcTx -> [BtcTxId]
+    getReplaced rTxs tx = maybe [] S.toList (M.lookup (HT.txHash $ getBtcTx tx) rTxs)
 
 -- | Gets a list of ids of possibly replaced transactions for every transaction in provided list.
-getPossiblyReplacedTxs :: M.Map BtcTxId (S.Set BtcTxId) -> [EgvTx] -> [(Bool, [BtcTxId])]
+getPossiblyReplacedTxs :: M.Map BtcTxId (S.Set BtcTxId) -> [BtcTx] -> [(Bool, [BtcTxId])]
 getPossiblyReplacedTxs possiblyReplacedTxs txs = getPossiblyReplaced possiblyReplacedTxs <$> txs
   where
-    getPossiblyReplaced :: M.Map BtcTxId (S.Set BtcTxId) -> EgvTx -> (Bool, [BtcTxId])
-    getPossiblyReplaced rTxs tx = M.foldrWithKey' (helper $ fromJust . toBtcTxHash . egvTxId $ tx) (False, []) rTxs
+    getPossiblyReplaced :: M.Map BtcTxId (S.Set BtcTxId) -> BtcTx -> (Bool, [BtcTxId])
+    getPossiblyReplaced rTxs tx = M.foldrWithKey' (helper $ HT.txHash $ getBtcTx tx) (False, []) rTxs
 
     helper :: BtcTxId -> BtcTxId -> S.Set BtcTxId -> (Bool, [BtcTxId]) -> (Bool, [BtcTxId])
     helper txId possiblyReplacingTxId possiblyReplacedTxIds acc
       | txId == possiblyReplacingTxId = (True, S.toList possiblyReplacedTxIds)
-      | S.member txId possiblyReplacedTxIds = (False, possiblyReplacingTxId : (S.toList $ S.delete txId possiblyReplacedTxIds))
+      | S.member txId possiblyReplacedTxIds = (False, possiblyReplacingTxId : S.toList (S.delete txId possiblyReplacedTxIds))
       | otherwise = acc
 
 getOutputByOutPoint :: (HasTxStorage m, PlatformNatives) => HT.OutPoint -> m (Maybe HT.TxOut)
@@ -192,14 +187,14 @@ getOutputByOutPoint HT.OutPoint{..} = do
   case mtx of
     Nothing -> pure Nothing
     Just (TxErg _) -> pure Nothing -- TODO: impl for Ergo
-    Just (TxBtc BtcTx{..}) -> pure $ Just $ (HT.txOut getBtcTx) !! (fromIntegral outPointIndex)
+    Just (TxBtc BtcTx{..}) -> pure $ Just $ HT.txOut getBtcTx !! fromIntegral outPointIndex
 
 getOutputsByOutPoints :: (HasTxStorage m, PlatformNatives) => [HT.OutPoint] -> m [Maybe HT.TxOut]
-getOutputsByOutPoints outPoints = traverse getOutputByOutPoint outPoints
+getOutputsByOutPoints = traverse getOutputByOutPoint
 
 -- | Gets spent output (they are inputs for a tx) for a given address from a transaction
 -- Bool specifies if the Tx was confirmed (True) or not
-getSpentOutputsBtc :: (HasTxStorage m, PlatformNatives) => Bool -> BtcAddress -> BtcTxRaw -> m ([(OutPoint, Bool)])
+getSpentOutputsBtc :: (HasTxStorage m, PlatformNatives) => Bool -> BtcAddress -> BtcTxRaw -> m [(OutPoint, Bool)]
 getSpentOutputsBtc c addr HT.Tx{..} = fmap catMaybes $ for txIn $ \ti -> do
   b <- checkTxInBtc addr ti
   pure $ if b then Just (prevOutput ti, c) else Nothing
@@ -236,8 +231,8 @@ getUtxoUpdates mheight boxes tx = do
     sp   <- getSpentOutputsBtc isConfirmed addr tx
     pure (unsp, sp)
   let unspentMap = M.fromList $ mconcat $ V.toList unsps
-  pure (unspentMap, mconcat $ V.toList $ sps)
-  where isConfirmed = maybe False (const True) mheight
+  pure (unspentMap, mconcat $ V.toList sps)
+  where isConfirmed = isJust mheight
 
 -- | Construct UTXO update for an address and a batch of transactions
 -- Maybe BlockHeight: Nothing -- unconfirmed Tx. Just n -> confirmed at height n
@@ -251,7 +246,7 @@ getUtxoUpdatesFromTxs mheight box txs = do
   let unspentMap = M.fromList $ mconcat unsps
   pure (unspentMap, mconcat sps)
   where
-    isConfirmed = maybe False (const True) mheight
+    isConfirmed = isJust mheight
     addr = xPubToBtcAddr . extractXPubKeyFromEgv . scanBox'key $ box
 
 haveCommonInputs :: BtcTxRaw -> BtcTxRaw -> Bool
@@ -286,7 +281,7 @@ getUtxoByInput input = do
         Right script -> do
           mKeyBox <- getKeyBoxByInput input
           case mKeyBox of
-            Nothing -> pure $ Left $ "getUtxoByInput: couldn't get keybox"
+            Nothing -> pure $ Left "getUtxoByInput: couldn't get keybox"
             Just keyBox -> do
               let meta = BtcUtxoMeta {
                       btcUtxo'index   = scanBox'index keyBox
@@ -329,7 +324,7 @@ unpackOut :: TxOut -> Maybe (Text, Word64)
 unpackOut txOut = (, amount) <$> mAddr
    where
     mDecodedOut = eitherToMaybe $ decodeBtcOutHelper txOut
-    mAddr = btcAddrToString <$> (HA.outputAddress =<< mDecodedOut)
+    mAddr = btcAddrToText <$> (HA.outputAddress =<< mDecodedOut)
     amount = HT.outValue txOut
 
 -- | Sign function which has access to the private storage
@@ -337,13 +332,13 @@ unpackOut txOut = (, amount) <$> mAddr
 signTxWithWallet :: (MonadIO m, PlatformNatives) => Tx -> [UtxoPoint] -> PrvStorage -> m (Maybe (Either String Tx))
 signTxWithWallet tx pick prv = do
   let PrvKeystore _ ext int = prv ^. prvStorage'currencyPrvStorages
-        . at BTC . non (error "btcSendConfirmationWidget: not exsisting store!")
+        . at BTC . non (error "signTxWithWallet: not exsisting store!")
         . currencyPrvStorage'prvKeystore
-  mvals <- fmap (fmap unzip . sequence) $ flip traverse pick $ \(UtxoPoint opoint BtcUtxoMeta{..}) -> do
+  mvals <- fmap (fmap unzip . sequence) $ for pick $ \(UtxoPoint opoint BtcUtxoMeta{..}) -> do
     let sig = HT.SigInput btcUtxo'script btcUtxo'amount opoint HS.sigHashAll Nothing
     let errMsg = "Failed to get a corresponding secret key: " <> showt btcUtxo'purpose <> " #" <> showt btcUtxo'index
     let msec = case btcUtxo'purpose of
-          Internal -> fmap (xPrvKey . unEgvXPrvKey) $ (V.!?) int btcUtxo'index
-          External -> fmap (xPrvKey . unEgvXPrvKey) $ (V.!?) ext btcUtxo'index
+          Internal -> (xPrvKey . unEgvXPrvKey) <$> (V.!?) int btcUtxo'index
+          External -> (xPrvKey . unEgvXPrvKey) <$> (V.!?) ext btcUtxo'index
     maybe (logWrite errMsg >> pure Nothing) (pure . Just . (sig,)) msec
-  pure $ (uncurry $ HT.signTx btcNetwork tx) <$> mvals
+  pure $ uncurry (HT.signTx btcNetwork tx) <$> mvals

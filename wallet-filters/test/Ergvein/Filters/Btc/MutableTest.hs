@@ -17,7 +17,7 @@ import           Ergvein.Filters.Btc.Mutable
 import           Ergvein.Text
 import           Ergvein.Filters.Btc.TestHelpers
 import           Ergvein.Filters.Btc.TestVectors
-import           Ergvein.Types.Address          (btcAddrToString')
+import           Ergvein.Types.Address          (btcAddrToText')
 import           System.IO.Unsafe (unsafePerformIO)
 
 
@@ -33,7 +33,7 @@ spec_mutableFilterPositive = forM_ samples $ \(block, txs, as) -> do
       hx2 <- bs2Hex <$> encodeBtcAddrFilter bfilter2
       hx1 `shouldBe` hx2
     forM_ as $ \(a, ascript) -> do
-      let at    = unpack $ btcAddrToString' btcTest a
+      let at    = unpack $ btcAddrToText' btcTest a
       it ("block filter contains address " ++ at) $ do
         bfilter <- withInputTxs txs $ makeBtcFilter isErgveinIndexable block
         res <- applyBtcFilter bhash bfilter ascript
@@ -44,7 +44,7 @@ spec_mutableFilterNegative :: Spec
 spec_mutableFilterNegative = forM_ samples $ \(block, txs) -> do
   let bhash   = headerHash . blockHeader $ block
       bid     = blockHashToHex bhash
-      at      = unpack $ btcAddrToString' btcTest testAddress
+      at      = unpack $ btcAddrToText' btcTest testAddress
   describe ("block " ++ show bid) $ it ("block filter should not contain address " ++ at) $ do
     bfilter <- withInputTxs txs $ makeBtcFilter isErgveinIndexable block
     res <- applyBtcFilter bhash bfilter $ addressToScriptBS testAddress
@@ -104,7 +104,7 @@ spec_mutableSpecificFilter1 = do
         filterHex = "13461a23a8ce05d6ce6a435b1d11d65707a3c6fce967152b8ae09f851d42505b3c41dd87b705d5f4cc2c3062ddcdfebe7a1e80"
 
     forM_ addrs $ \addr -> do
-      let addrstr = unpack $ btcAddrToString' btcTest addr
+      let addrstr = unpack $ btcAddrToText' btcTest addr
       it ("has address " <> addrstr) $ void $ replicateM 1000 $ do
         bfilter <- loadFilterMut filterHex
         res <- applyBtcFilter bhash bfilter $ addressToScriptBS addr

@@ -70,7 +70,7 @@ type MerkleSum = Text
 type TxMerkleProof = [MerkleSum]
 
 -- | Fee included with transaction as price for processing transaction by miner
-type TxFee = MoneyUnit
+type TxFee = MoneyAmount
 
 -- | SHA256 hash of locking script with big-endian byte order, used to track transfers due inaccessibility
 -- of transaction addresses when indexer scans blockchain
