@@ -14,6 +14,7 @@ import Reflex.Localize
 import Reflex.Localize.Dom
 import Sepulcas.Elements.Button
 import Sepulcas.Elements.Form
+import Sepulcas.Elements.Markup
 import Sepulcas.Id
 
 -- | Create toggle button with pressed and unpressed states
@@ -32,22 +33,19 @@ toggleButton lblOff lblOn val0D = mdo
     else buttonClass "button button-outline button-off" lblOff
   pure valD'
 
--- | Toggler switch with alya materlized looking
-toggler :: (DomBuilder t m, PostBuild t m, MonadSample t m, MonadIO m, MonadLocalized t m, LocalizedPrint l)
-  => l
-  -> (Dynamic t Bool)
-  -> m  (Dynamic t Bool)
-toggler lbl initialChecked = do
+-- | Toggler switch
+toggler :: (DomBuilder t m, PostBuild t m, MonadSample t m, MonadIO m)
+  => Dynamic t Bool
+  -> m (Dynamic t Bool)
+toggler initialChecked = do
   let initE = updated initialChecked
   initVal <- sample $ current initialChecked
-  i1 <- genId
-  label i1 $ localizedText lbl
-  input <- elAttr "span" [("class", "toggle-switch"), ("id", i1)] $ do
-    i2 <- genId
+  input <- divClass "toggle-switch" $ do
+    i <- genId
     input <- inputElement $ def
-      & inputElementConfig_elementConfig . elementConfig_initialAttributes %~ (\as -> "id" =: i2 <> "type" =: "checkbox" <> as)
+      & inputElementConfig_elementConfig . elementConfig_initialAttributes %~ (\as -> "id" =: i <> "type" =: "checkbox" <> as)
       & inputElementConfig_initialChecked .~ initVal
       & inputElementConfig_setChecked .~ initE
-    label i2 $ blank
+    label i blank
     pure input
   pure $ _inputElement_checked input

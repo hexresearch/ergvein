@@ -397,54 +397,51 @@ toggleSwitchCss :: Css
 toggleSwitchCss =
   let
     toggleSwitchHeight = rem 3.8 -- change this to scale switch
-    toggleSwitchFontSize = pt 11
-    toggleSwitchWidth = 2 *@ toggleSwitchHeight
+    toggleSwitchBorderWidth = px 1
+    toggleSwitchFontSize = pt 10
+    toggleSwitchWidth = 1.6 *@ toggleSwitchHeight
     toggleSwitchBorderRadius = 0.5 *@ toggleSwitchHeight
-    knobSize = 0.72 *@ toggleSwitchHeight
+    knobSize = 0.75 *@ toggleSwitchHeight
     knobBorderRadius = 0.5 *@ knobSize
-    knobMargin = 0.5 *@ (toggleSwitchHeight @-@ knobSize)
-    textMargin = 0.3 *@ toggleSwitchHeight
+    knobMargin = 0.5 *@ (toggleSwitchHeight @-@ knobSize @-@ (2 *@ toggleSwitchBorderWidth))
   in do
     ".toggle-switch" ? do
       display inlineBlock
       position relative
       width toggleSwitchWidth
       height toggleSwitchHeight
-      borderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius
+      minWidth toggleSwitchWidth
       borderStyle solid
-      borderWidth $ px 1
+      borderWidth toggleSwitchBorderWidth
       borderColor black
-      margin0
-      boxSizing contentBox
+      borderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius
+      margin (rem 0) (rem 0) (rem 1.5) (rem 0)
+
+    ".toggle-switch:hover" ? do
+      borderColor hoverColor
+      cursor pointer
 
     ".toggle-switch input" ? do
       appearanceNone
-      display flex
-      alignItems center
-      justifyContent spaceBetween
-      width toggleSwitchWidth
-      height toggleSwitchHeight
-      borderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius
-      outline none (px 0) black -- outline: none
+      outline none (px 0) black -- same as outline: none
+      display inlineBlock
+      width $ pct 100
+      height $ pct 100
+      padding0
       margin0
 
-    ".toggle-switch input::before, .toggle-switch input::after" ? do
-      zIndex 1
-      textTransform uppercase
-      transition "opacity" (sec 0.3) linear (sec 0)
-      fontSize $ toggleSwitchFontSize
+    ".toggle-switch input:hover" ? do
+      cursor pointer
 
-    ".toggle-switch input::before" ? do
-      content $ stringContent "On"
-      marginLeft textMargin
-
-    ".toggle-switch input::after" ? do
-      content $ stringContent "Off"
-      marginRight textMargin
+    ".toggle-switch input:hover label, .toggle-switch:hover label" ? do
+      cursor pointer
+      backgroundColor hoverColor
 
     ".toggle-switch label" ? do
+      display flex
+      alignItems center
+      justifyContent center
       position absolute
-      zIndex 2
       width knobSize
       height knobSize
       top knobMargin
@@ -452,16 +449,23 @@ toggleSwitchCss =
       borderRadius knobBorderRadius knobBorderRadius knobBorderRadius knobBorderRadius
       backgroundColor black
       margin0
-      transitions [("left", sec 0.3, linear, sec 0), ("right", sec 0.3, linear, sec 0)]
+      transition "left" (sec 0.3) easeOut (sec 0)
 
-    ".toggle-switch input:not(:checked)::before" ? do
-      opacity 0
+    ".toggle-switch label::before" ? do
+      fontFamily ["Font Awesome 5 Free"] []
+      fontWeight $ weight 900
+      color white
+    
+    ".toggle-switch input:not(:checked) + label::before" ? do
+      content $ stringContent "\\f00d"
+      fontSize $ 1.1 *@ toggleSwitchFontSize
 
-    ".toggle-switch input:checked::after" ? do
-      opacity 0
+    ".toggle-switch input:checked + label::before" ? do
+      content $ stringContent "\\f00c"
+      fontSize toggleSwitchFontSize
 
     ".toggle-switch input:checked + label" ? do
-      left $ toggleSwitchWidth @-@ (knobMargin @+@ knobSize)
+      left $ toggleSwitchWidth @-@ (knobMargin @+@ knobSize @+@ 2 *@ toggleSwitchBorderWidth)
 
 passwordCss :: Css
 passwordCss = do
@@ -570,7 +574,6 @@ sendPageCss = do
   ".text-input-btn" ? do
     paddingLeft $ rem 1
     paddingRight $ rem 1
-    zIndex 1
   ".text-input-btn:hover" ? do
     cursor pointer
     color hoverColor
@@ -609,6 +612,8 @@ sendPageCss = do
     textAlign $ alignSide sideLeft
   ".send-confirm-box" ? do
     pure ()
+  ".send-page .toggle-switch" ? do
+    marginBottom $ rem 0
 
 aboutPageCss :: PlatformNatives => Css
 aboutPageCss = do
@@ -1117,7 +1122,7 @@ graphPinCodeCanvasCss = do
     zIndex 10
   ".graph-pin-code-line-check" ? do
     position absolute
-    backgroundColor $ none
+    backgroundColor none
     let px' = px 0 in padding px' px' px' px'
     let px' = px 0 in margin px' px' px' px'
     userSelect none
