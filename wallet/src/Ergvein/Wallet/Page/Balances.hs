@@ -51,7 +51,7 @@ currenciesList _ = divClass "currency-content" $ do
   where
     currencyLine settings cur = do
       (e, _) <- divClass' "currency-row" $ do
-        bal <- balancesWidget cur
+        bal <- balanceWidget cur
         (balance, units) <- case cur of
           BTC -> do
             moneyUnits <- getSettingsUnitBtc

@@ -20,7 +20,7 @@ data SettingsPageStrings =
   | STPSButLanguage
   | STPSButActiveCurrs
   | STPSButNetwork
-  | STPSButUnits
+  | STPSButFiat
   | STPSButPortfolio
   | STPSButMnemonicExport
   | STPSButDns
@@ -40,6 +40,8 @@ data SettingsPageStrings =
   | STPSSetsPortfolio
   | STPSSetsPortfolioEnable
   | STPSSetsFiatSelect
+  | STPSSetsShowFiatBalance
+  | STPSSetsShowFiatRate
   | STPSSelectUnitsFor Currency
   | STPSSetsPinOn
   | STPSSetsPinOff
@@ -68,7 +70,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButTor              -> "Tor and proxy"
       STPSButNodes            -> "BTC nodes"
       STPSButSetPass          -> "Change password"
-      STPSButUnits            -> "Display units & fiat"
+      STPSButFiat             -> "Fiat"
       STPSButPortfolio        -> "Portfolio"
       STPSButMnemonicExport   -> "Export mnemonic phrase"
       STPSButDeleteWallet     -> "Delete wallet"
@@ -83,8 +85,10 @@ instance LocalizedPrint SettingsPageStrings where
       STPSSetsActiveCurrs     -> "Settings for active currencies"
       STPSSetsPortfolio       -> "Settings for fiat and ticks"
       STPSSetsPortfolioEnable -> "Display portfolio"
-      STPSSetsFiatSelect      -> "Select fiat"
-      STPSSelectUnitsFor cur  -> "Settings display units for " <> showt cur <> ":"
+      STPSSetsFiatSelect      -> "Fiat currency"
+      STPSSetsShowFiatBalance -> "Show fiat balance"
+      STPSSetsShowFiatRate    -> "Show rate"
+      STPSSelectUnitsFor cur  -> "Units to show amounts in:"
       STPSSetsPinOn           -> "Switch on PIN code"
       STPSSetsPinOff          -> "Switch off PIN code"
       STPSSetsPinInput        -> "Enter PIN code:"
@@ -102,7 +106,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButTor              -> "Tor и прокси"
       STPSButNodes            -> "Ноды BTC"
       STPSButSetPass          -> "Изменить пароль"
-      STPSButUnits            -> "Единицы отображения и выбор фиата"
+      STPSButFiat             -> "Фиат"
       STPSButPortfolio        -> "Портфель"
       STPSButMnemonicExport   -> "Экспортировать мнемоническую фразу"
       STPSButDeleteWallet     -> "Удалить кошелёк"
@@ -117,7 +121,9 @@ instance LocalizedPrint SettingsPageStrings where
       STPSSetsActiveCurrs     -> "Настройки активных валют"
       STPSSetsPortfolio       -> "Настройки отображения фиата и тиков"
       STPSSetsPortfolioEnable -> "Отображение портфеля"
-      STPSSetsFiatSelect      -> "Выберите фиат"
+      STPSSetsFiatSelect      -> "Фиатная валюта"
+      STPSSetsShowFiatBalance -> "Отображать фиатный баланс"
+      STPSSetsShowFiatRate    -> "Отображать курс"
       STPSSelectUnitsFor cur  -> "Выберите единиц отображения для " <> showt cur <> ":"
       STPSSetsPinOn           -> "Включить ПИН код"
       STPSSetsPinOff          -> "Выключить ПИН код"

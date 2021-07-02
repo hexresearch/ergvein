@@ -39,7 +39,7 @@ toggler :: (DomBuilder t m, PostBuild t m, MonadSample t m, MonadIO m)
   -> m (Dynamic t Bool)
 toggler initialChecked = do
   let initE = updated initialChecked
-  initVal <- sample $ current initialChecked
+  initVal <- sampleDyn initialChecked
   input <- divClass "toggle-switch" $ do
     i <- genId
     input <- inputElement $ def

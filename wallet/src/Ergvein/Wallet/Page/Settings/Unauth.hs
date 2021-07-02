@@ -154,7 +154,8 @@ torPageWidget = do
   where
     torToggleButton = void $ do
       torUsedD <- fmap (maybe False (torSocks ==)) <$> getProxyConf
-      torD <- toggler STPSUseTor torUsedD
+      label "" $ localizedText STPSUseTor
+      torD <- toggler torUsedD
       let updateE = flip push (updated torD) $ \useTor -> do
             torUsed <- sample . current $ torUsedD
             pure $ if useTor == torUsed then Nothing else Just useTor

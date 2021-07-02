@@ -19,7 +19,7 @@ import qualified Clay.Media as M
 import qualified Clay.Flexbox as F
 
 compileFrontendCss :: (MonadJSM m, PlatformNatives) => m ByteString
-compileFrontendCss = compileStyles $ frontendCss
+compileFrontendCss = compileStyles frontendCss
 
 frontendCss :: PlatformNatives => Css
 frontendCss = do
@@ -373,6 +373,18 @@ settingsCss :: Css
 settingsCss = do
   ".initial-options" ? do
     margin (rem 0) auto (rem 0) auto
+  ".fiat-settings" ? do
+    display flex
+    justifyContent spaceBetween
+    alignItems center
+    marginBottom $ rem 1
+  ".fiat-settings select, .fiat-settings .toggle-switch" ? do
+    marginBottom $ rem 0
+  ".fiat-settings select" ? do
+    width $ rem 10
+  ".fiat-settings-label" ? do
+    textAlign $ alignSide sideLeft
+    fontSize $ pt 14
 
 mnemonicExportCss :: Css
 mnemonicExportCss = do
@@ -997,6 +1009,11 @@ legoStyles = do
   ".pr-1" ? (paddingRight  $ rem 1)
   ".pt-1" ? (paddingTop    $ rem 1)
   ".p-1" ? padding (rem 1) (rem 1) (rem 1) (rem 1)
+  ".pb-2" ? (paddingBottom $ rem 2)
+  ".pl-2" ? (paddingLeft   $ rem 2)
+  ".pr-2" ? (paddingRight  $ rem 2)
+  ".pt-2" ? (paddingTop    $ rem 2)
+  ".p-2" ? padding (rem 2) (rem 2) (rem 2) (rem 2)
   ".pb-a" ? paddingBottom  auto
   ".pl-a" ? paddingLeft    auto
   ".pr-a" ? paddingRight   auto

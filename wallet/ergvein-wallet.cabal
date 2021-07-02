@@ -59,6 +59,8 @@ library
         Ergvein.Wallet.Page.Send.Btc
         Ergvein.Wallet.Page.Send.Erg
         Ergvein.Wallet.Page.Settings
+        Ergvein.Wallet.Page.Settings.Btc
+        Ergvein.Wallet.Page.Settings.Erg
         Ergvein.Wallet.Page.Settings.MnemonicExport
         Ergvein.Wallet.Page.Settings.Network
         Ergvein.Wallet.Page.Settings.Unauth

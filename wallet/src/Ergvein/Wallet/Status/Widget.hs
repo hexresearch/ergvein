@@ -8,9 +8,9 @@ module Ergvein.Wallet.Status.Widget(
   , currencyStatusWidget
   ) where
 
+import Data.Maybe (fromMaybe)
 import Data.Time
 import Numeric
-import Text.Printf
 
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
@@ -31,14 +31,15 @@ currencyStatusWidget cur = divClass "sync-widget-wrapper" $ do
 statusBarWidget :: MonadFront t m => Bool -> Currency -> m ()
 statusBarWidget isVerbose cur = divClass "sync-widget-wrapper" $ do
   statD <- getWalletStatus cur
-  balD <- balanceRatedOnlyWidget cur
-  void $ networkHoldDyn $ ffor balD $ \case
-    Nothing -> void $ networkHoldDyn $ renderStatus . _walletStatus'normal <$> statD
-    Just bal -> mdo
+  balD <- fiatBalanceWidget cur
+  rateD <- fiatRateWidget cur
+  void $ networkHoldDyn $ ffor (zipDynWith (,) balD rateD) $ \case
+    (Right Nothing, Right Nothing) -> void $ networkHoldDyn $ renderStatus . _walletStatus'normal <$> statD
+    (eFiatBalance, eFiatRate) -> mdo
       let updE = updated statD
       let renderE = leftmost [Just . _walletStatus'normal <$> updE, Nothing <$ tE]
-      tE <- networkHoldE (balWidget cur bal) $ ffor renderE $ \case
-        Nothing -> balWidget cur bal
+      tE <- networkHoldE (fiatWidget eFiatBalance eFiatRate) $ ffor renderE $ \case
+        Nothing -> fiatWidget eFiatBalance eFiatRate
         Just sp -> do
           renderStatus sp
           (e,_) <- elAttr' "span" [("class", "ml-1")] $ elClass "i" "fas fa-times" $ pure ()
@@ -51,20 +52,21 @@ statusBarWidget isVerbose cur = divClass "sync-widget-wrapper" $ do
       then localizedText $ CurrencyStatus cur status
       else localizedText status
 
-balWidget :: MonadFront t m => Currency -> T.Text -> m (Event t ())
-balWidget cur bal = do
-  text bal
-  rateFiatD <- (fmap . fmap) settingsRateFiat getSettingsD
-  _ <- networkHoldDyn $ ffor rateFiatD $ \mf -> maybeW mf $ \f -> do
-    rateD <- getRateByFiatD cur f
-    void $ networkHoldDyn $ ffor rateD $ \mr -> maybeW mr $ \r -> do
-      let r' = T.pack $ printf "%.2f" (realToFrac r :: Double)
-      text $ " (" <> r' <> " " <> showt cur <> "/" <> showt f <> ")"
+fiatWidget :: MonadFront t m => Either ExchangeRatesError (Maybe Text) -> Either ExchangeRatesError (Maybe Text) -> m (Event t ())
+fiatWidget (Left _) (Left _) = do
+  localizedText ExchangeRatesUnavailable
   pure never
-  where
-    maybeW mv f = case mv of
-      Nothing -> pure ()
-      Just v -> f v
+fiatWidget eBal eRate = do
+  let balanceText = case eBal of
+        Left e -> localizedText e
+        Right mBal -> text $ fromMaybe "" mBal
+      rateText = case eRate of
+        Left e -> localizedText e
+        Right mRate -> text $ fromMaybe "" mRate
+  balanceText
+  text " "
+  rateText
+  pure never
 
 restoreStatusWidget :: MonadFront t m => Currency -> m ()
 restoreStatusWidget cur = do
@@ -81,6 +83,6 @@ showPercents = maybe "0.00%" (\p -> T.pack (showFFloat (Just 2) p "") <> "%")
 -- TODO: add some more useful info
 restoreStatusDebugWidget :: MonadFront t m => Currency -> m ()
 restoreStatusDebugWidget cur = do
-  balanceD <- balanceTitleWidgetSimple cur
+  balanceD <- balanceTitleWidget cur
   par $ dynText balanceD
   pure ()

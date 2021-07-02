@@ -1,0 +1,167 @@
+module Ergvein.Wallet.Page.Settings.Btc where
+
+--             , (GoNodes, STPSButNodes)
+--             , (GoRbf, STPSButRbf)
+
+
+-- btcNodesPage :: MonadFront t m => m ()
+-- btcNodesPage = do
+--   title <- localized STPSButNodes
+--   wrapper False title (Just $ pure $ btcNodesPage) $ do
+--     conmapD <- getNodeConnectionsD
+--     void $ lineOption $ networkHoldDyn $ ffor conmapD $ \cm -> do
+--       let btcNodes = maybe [] Map.elems $ DM.lookup BtcTag cm
+--       btcNetworkWidget btcNodes
+--       void $ flip traverse btcNodes $ \node -> do
+--         let offclass = [("class", "mt-a mb-a indexer-offline")]
+--         let onclass = [("class", "mt-a mb-a indexer-online")]
+--         let clsD = fmap (\b -> if b then onclass else offclass) $ nodeconIsUp node
+--         divClass "network-name" $ do
+--           let addr = nodeconUrl node
+--           (e,_) <- elAttr' "span" [("class", "mt-a mb-a mr-1")] $ elClass "i" "fas fa-times" $ pure ()
+--           let closeE = (addr, NodeMsgClose) <$ domEvent Click e
+--           postNodeMessage BTC closeE
+--           elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
+--           divClass "mt-a mb-a network-name-txt" $ text $ showt addr
+--         pure ()
+--   pure ()
+
+-- btcNetworkWidget :: MonadFront t m => [NodeBtc t] -> m ()
+-- btcNetworkWidget nodes = do
+--   infosD <- fmap sequence $ traverse externalRefDynamic $ nodeconStatus <$> nodes
+--   let activeND = fmap (length . filter id) $ sequence $ nodeconIsUp <$> nodes
+--       sumLatD  = fmap (sum . fmap nodestatLat . catMaybes) infosD
+--       avgLatD  = (\a b -> if b == 0 then NPSNoActiveNodes else NPSAvgLat $ a / fromIntegral b) <$> sumLatD <*> activeND
+--   valueOptionDyn $ NPSActiveNum <$> activeND
+--   descrOption $ NPSNodesNum $ length nodes
+--   descrOptionDyn avgLatD
+--   labelHorSep
+
+-- rbfPage :: MonadFront t m => m ()
+-- rbfPage = do
+--   title <- localized STPSButRbf
+--   wrapper True title (Just $ pure rbfPage) $ do
+--     settings <- getSettings
+--     let initVal = btcSettings'sendRbfByDefault $ getBtcSettings settings
+--     initValD <- holdDyn initVal never
+--     valD <- toggler STPSEnableRbfByDefault initValD
+--     selE <- fmap updated $ holdUniqDyn valD
+--     updE <- updateSettings $ ffor selE (\rbfSetting -> setRbfSetting settings rbfSetting)
+--     showSuccessMsg $ STPSSuccess <$ updE
+--     pure ()
+--   where
+--     setRbfSetting :: Settings -> Bool -> Settings
+--     setRbfSetting s val =
+--       let oldSettings = settingsCurrencySpecific s
+--           oldBtcSettings = getBtcSettings s
+--       in s {settingsCurrencySpecific = Map.insert BTC (SettingsBtc $ oldBtcSettings {btcSettings'sendRbfByDefault = val}) oldSettings}
+
+-- data FiatSelection = NoFiat | YesFiat
+--   deriving (Eq)
+
+-- instance LocalizedPrint FiatSelection where
+--   localizedShow l v = case l of
+--     English -> case v of
+--       NoFiat -> "Hide fiat balance"
+--       YesFiat -> "Show balance in fiat"
+--     Russian -> case v of
+--       NoFiat -> "Не отображать фиатный баланс"
+--       YesFiat -> "Фиатный баланс в"
+
+-- data RateSelection = NoRate | YesRate
+--   deriving (Eq)
+
+-- instance LocalizedPrint RateSelection where
+--   localizedShow l v = case l of
+--     English -> case v of
+--       NoRate -> "Hide fiat rate"
+--       YesRate -> "Show rate for"
+--     Russian -> case v of
+--       NoRate -> "Не отображать курс"
+--       YesRate -> "Показывать курс к"
+
+-- unitsPage :: MonadFront t m => m ()
+-- unitsPage = do
+--   title <- localized STPSTitle
+--   wrapper True title (Just $ pure unitsPage) $ void $ workflow content
+--   where
+--     content = Workflow $ do
+--       h4 $ localizedText $ STPSSelectUnitsFor BTC
+--       nextE <- divClass "initial-options grid1" $ do
+--         setUnitE <- unitsSelectionWidget
+--         labelHorSep
+--         setFiatE <- fiatSelectionWidget
+--         labelHorSep
+--         setRateE <- rateSelectionWidget
+--         delay 0.1 $ leftmost [setUnitE, setFiatE, setRateE]
+--       pure ((), content <$ nextE)
+
+--     unitsSelectionWidget :: MonadFront t m => m (Event t ())
+--     unitsSelectionWidget = do
+--       settings <- getSettings
+--       unitsBtc <- getSettingsUnitBtc
+--       unitBtcE <- unitsDropdown unitsBtc allUnitsBTC
+--       updateSettings $ ffor unitBtcE $ setUnitSetting settings
+--     setUnitSetting :: Settings -> UnitBTC -> Settings
+--     setUnitSetting s val =
+--       let oldSettings = settingsCurrencySpecific s
+--           oldBtcSettings = getBtcSettings s
+--       in s {settingsCurrencySpecific = Map.insert BTC (SettingsBtc $ oldBtcSettings {btcSettings'units = val}) oldSettings}
+
+--     fiatSelectionWidget :: MonadFront t m => m (Event t ())
+--     fiatSelectionWidget = do
+--       settings <- getSettings
+--       let initSel = maybe NoFiat (const YesFiat) $ settingsFiatCurr settings
+--           initFiat = fromMaybe USD $ settingsFiatCurr settings
+--       selE <- divClass "navbar-2-cols mb-2" $ do
+--         noFiatE <- navbarBtn NoFiat initSel
+--         fiatE <- navbarBtn YesFiat initSel
+--         pure $ leftmost [noFiatE, fiatE]
+--       selD <- holdDyn initSel selE
+--       symbE <- networkHoldDynE $ ffor selD $ \case
+--         NoFiat -> pure never
+--         YesFiat -> unitsDropdown initFiat allFiats
+--       let detSymbE = ffor selE $ \case
+--             NoFiat -> Nothing
+--             YesFiat -> Just initFiat
+--       let setE = leftmost [Just <$> symbE, detSymbE]
+--       updateSettings $ ffor setE $ \ms -> settings {settingsFiatCurr = ms}
+
+--     rateSelectionWidget :: MonadFront t m => m (Event t ())
+--     rateSelectionWidget = do
+--       settings <- getSettings
+--       let initSel = maybe NoRate (const YesRate) $ settingsRateFiat settings
+--           initFiat = fromMaybe USD $ settingsRateFiat settings
+--       selE <- divClass "navbar-2-cols mb-2" $ do
+--         noFiatE <- navbarBtn NoRate initSel
+--         fiatE <- navbarBtn YesRate initSel
+--         pure $ leftmost [noFiatE, fiatE]
+--       selD <- holdDyn initSel selE
+--       symbE <- networkHoldDynE $ ffor selD $ \case
+--         NoRate -> pure never
+--         YesRate -> unitsDropdown initFiat allFiats
+--       let detSymbE = ffor selE $ \case
+--             NoRate -> Nothing
+--             YesRate -> Just initFiat
+--       let setE = leftmost [Just <$> symbE, detSymbE]
+--       updateSettings $ ffor setE $ \ms -> settings {settingsRateFiat = ms}
+
+--     unitsDropdown val allUnits = do
+--       langD <- getLanguage
+--       let unitD = constDyn val
+--       initKey <- sample . current $ unitD
+--       let listUnitsD = ffor langD $ \l -> Map.fromList $ fmap (\v -> (v, localizedShow l v)) allUnits
+--           ddnCfg = DropdownConfig {
+--                 _dropdownConfig_setValue   = updated unitD
+--               , _dropdownConfig_attributes = constDyn ("class" =: "select-lang")
+--               }
+--       dp <- dropdown initKey listUnitsD ddnCfg
+--       let selD = _dropdown_value dp
+--       updated <$> holdUniqDyn selD
+
+--     navbarBtn :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint l, Eq l)
+--       => l -> l -> m (Event t l)
+--     navbarBtn item activeItem
+--       | item == activeItem = spanButton "navbar-item active" item >> pure never
+--       | item /= activeItem = (item <$) <$> spanButton "navbar-item" item
+--     navbarBtn _ _ = pure never

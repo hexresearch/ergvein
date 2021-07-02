@@ -7,6 +7,8 @@ module Ergvein.Core.Settings.Monad(
   , modifySettings
   , getSocksConf
   , getProxyConf
+  , getFiatBalanceSettings
+  , getFiatRateSettings
   , module Ergvein.Core.Settings.Types
   ) where
 
@@ -80,3 +82,19 @@ getSocksConf = fmap (fmap toSocksProxy . settingsSocksProxy) <$> getSettingsD
 getProxyConf :: MonadSettings t m => m (Dynamic t (Maybe SocksConf))
 getProxyConf = fmap settingsSocksProxy <$> getSettingsD
 {-# INLINE getProxyConf #-}
+
+getFiatBalanceSettings :: MonadSettings t m => m (Dynamic t (Maybe Fiat))
+getFiatBalanceSettings = do
+  settingsD <- getSettingsD
+  mFiatD <- holdUniqDyn $ fmap settingsFiatCurr settingsD
+  mBalanceD <- holdUniqDyn $ fmap settingsShowFiatBalance settingsD
+  pure $ ffor2 mFiatD mBalanceD (\fiatCurrency showBalance -> if showBalance then Just fiatCurrency else Nothing)
+{-# INLINE getFiatBalanceSettings #-}
+
+getFiatRateSettings :: MonadSettings t m => m (Dynamic t (Maybe Fiat))
+getFiatRateSettings = do
+  settingsD <- getSettingsD
+  mFiatD <- holdUniqDyn $ fmap settingsFiatCurr settingsD
+  mRateD <- holdUniqDyn $ fmap settingsShowFiatRate settingsD
+  pure $ ffor2 mFiatD mRateD (\fiatCurrency showRate -> if showRate then Just fiatCurrency else Nothing)
+{-# INLINE getFiatRateSettings #-}
