@@ -2,17 +2,14 @@
 
 ![Build all](https://github.com/hexresearch/ergvein/workflows/Build%20all/badge.svg)
 
-Ergvein is MVP implementation for [Cypra](https://cypra.io) ecosystem. It is cryptocurrency [SPV](https://bitcoin.org/en/operating-modes-guide#simplified-payment-verification-spv) wallet that is focused on privacy, decentralized exchange and heavy usage of smart contracts. The wallet supports several currencies and provides means to perform atomic swaps between them. The project encourages users to host their own backend node. That allows node owner to get part of fees from atomic swaps and promotes privacy.
+Ergvein is MVP implementation for [Cypra](https://cypra.io) ecosystem. It is cryptocurrency [SPV](https://bitcoin.org/en/operating-modes-guide#simplified-payment-verification-spv) wallet that is focused on privacy, decentralized exchange and heavy usage of smart contracts. The wallet is Bitcoin only at the moment. The project encourages users to host their own backend node.
 
 **Wallet is not finished yet! Consider the product as alpha quality and subject for changes.**
 
 Features:
-* Supported currencies: [Bitcoin](https://bitcoin.org/en/), [Ergo](https://ergoplatform.org/en/), [ZCash](https://z.cash/), [USDT](https://tether.to/) (Liquid network protocol).
 * We use [SPV](https://bitcoin.org/en/operating-modes-guide#simplified-payment-verification-spv) design. Wallet doesn't trust nodes. All data is double checked: the wallet samples multiple nodes and checks results for consistency.
 * Private keys are stored in encrypted storage and never leave your device. All wallet data is encrypted and protected by your password.
-* Built-in atomic swaps, exchange your crypto in one click.
-* Built-in decentralized coin mixing: non interactive [SNICKER](https://joinmarket.me/blog/blog/snicker/) for BTC and [ErgoMix](https://ergoplatform.org/docs/AdvancedErgoScriptTutorial.pdf) for Ergo.
-* Mobile and desktop applications
+* Android platform
 * Decentralized public network of indexing nodes that allows users to make money when they run them.
 
 # How to build project
