@@ -58,6 +58,13 @@ in {
           User to run ergo node with.
         '';
       };
+      preEip3Derivation = mkOption {
+        type = types.bool;
+        default = false;
+        description = ''
+          Use old key derivation befor 3.3.4 version.
+        '';
+      };
       config = mkOption {
         type = types.str;
         default = ''
@@ -67,6 +74,7 @@ in {
               mining = false
             }
             wallet.secretStorage.secretDir = ${ergo-cfg.datadir}/wallet/keystore
+            wallet.usePreEip3Derivation = ${if ergo-cfg.preEip3Derivation then "true" else "false"}
           }
           scorex {
             network {
