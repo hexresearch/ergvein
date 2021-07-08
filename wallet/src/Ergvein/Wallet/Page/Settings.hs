@@ -9,9 +9,11 @@ module Ergvein.Wallet.Page.Settings(
   ) where
 
 import Control.Lens
+import Data.Maybe (catMaybes)
 import Data.List
 import Data.Traversable (for)
 import Reflex.Dom
+import Reflex.ExternalRef
 
 import Ergvein.Crypto
 import Ergvein.Wallet.Language
@@ -22,13 +24,13 @@ import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Page.Settings.MnemonicExport
 import Ergvein.Wallet.Page.Settings.Network
 import Ergvein.Wallet.Page.Settings.Unauth
-import Ergvein.Wallet.Page.Settings.Btc
-import Ergvein.Wallet.Page.Settings.Erg
+import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
 import Sepulcas.Alert
 import Sepulcas.Elements
 import Sepulcas.Elements.Toggle
 
+import qualified Data.Dependent.Map as DM
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as S
 import qualified Data.Text as T
@@ -41,6 +43,8 @@ data SubPageSettings
   | GoPortfolio
   | GoMnemonicExport
   | GoDns
+  | GoNodes
+  | GoRbf
   | GoPassword
   | GoDelete
 
@@ -52,9 +56,11 @@ settingsPage = do
       let btns = [
               (GoLanguage, STPSButLanguage)
             , (GoNetwork, STPSButNetwork)
-            , (GoUnits, STPSButFiat)
+            , (GoUnits, STPSButDisplay)
             , (GoCurrencies, STPSButActiveCurrs)
             , (GoDns, STPSButDns)
+            , (GoNodes, STPSButNodes)
+            , (GoRbf, STPSButRbf)
             , (GoPassword, STPSButSetPass)
             , (GoDelete, STPSButDeleteWallet)
             , (GoMnemonicExport, STPSButMnemonicExport)
@@ -67,6 +73,8 @@ settingsPage = do
             GoNetwork         -> networkSettingsPage
             GoUnits           -> unitsPage
             GoMnemonicExport  -> mnemonicExportPage
+            GoNodes           -> btcNodesPage
+            GoRbf             -> rbfPage
             GoDns             -> dnsPage
             GoPassword        -> passwordChangePage
             GoDelete          -> deleteWalletPage
@@ -146,12 +154,30 @@ unitsPage = do
   title <- localized STPSTitle
   wrapper False title (Just $ pure unitsPage) $ do
     divClass "" $ do
+      btcUnitsSettingsWidget
       fiatUnitsSettingsWidget
       fiatBalanceSettingsWidget
       fiatRateSettingsWidget
     pure ()
 
   where
+
+    btcUnitsSettingsWidget :: MonadFront t m => m ()
+    btcUnitsSettingsWidget = do
+      settingsD <- getSettingsD
+      initUnit <- getSettingsUnitBtc
+      unitBtcE <- divClass "fiat-settings" $ do
+        spanClass "fiat-settings-label pr-2" $ localizedText $ STPSSelectUnitsFor BTC
+        unitsDropdown initUnit allUnitsBTC
+      void $ updateSettings $ poke unitBtcE $ \unit -> do
+        settings <- sampleDyn settingsD
+        pure $ setUnitSetting settings unit
+
+    setUnitSetting :: Settings -> UnitBTC -> Settings
+    setUnitSetting s val =
+      let oldSettings = settingsCurrencySpecific s
+          oldBtcSettings = getBtcSettings s
+      in s {settingsCurrencySpecific = Map.insert BTC (SettingsBtc $ oldBtcSettings {btcSettings'units = val}) oldSettings}
 
     fiatUnitsSettingsWidget :: MonadFront t m => m ()
     fiatUnitsSettingsWidget = do
@@ -238,6 +264,60 @@ unitsPage = do
 --       dp <- divClass "select-fiat" $ dropdown initKey listFiatsD ddnCfg
 --       let selD = _dropdown_value dp
 --       updated <$> holdUniqDyn selD
+
+btcNodesPage :: MonadFront t m => m ()
+btcNodesPage = do
+  title <- localized STPSButNodes
+  wrapper False title (Just $ pure btcNodesPage) $ do
+    conmapD <- getNodeConnectionsD
+    void $ lineOption $ networkHoldDyn $ ffor conmapD $ \cm -> do
+      let btcNodes = maybe [] Map.elems $ DM.lookup BtcTag cm
+      btcNetworkWidget btcNodes
+      for_ btcNodes $ \node -> do
+        let offclass = [("class", "mt-a mb-a indexer-offline")]
+        let onclass = [("class", "mt-a mb-a indexer-online")]
+        let clsD = (\b -> if b then onclass else offclass) <$> nodeconIsUp node
+        divClass "network-name" $ do
+          let addr = nodeconUrl node
+          (e,_) <- elAttr' "span" [("class", "mt-a mb-a mr-1")] $ elClass "i" "fas fa-times" $ pure ()
+          let closeE = (addr, NodeMsgClose) <$ domEvent Click e
+          postNodeMessage BTC closeE
+          elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
+          divClass "mt-a mb-a network-name-txt" $ text $ showt addr
+        pure ()
+  pure ()
+
+btcNetworkWidget :: MonadFront t m => [NodeBtc t] -> m ()
+btcNetworkWidget nodes = do
+  infosD <- fmap sequence $ traverse externalRefDynamic $ nodeconStatus <$> nodes
+  let activeND = fmap (length . filter id) $ sequence $ nodeconIsUp <$> nodes
+      sumLatD  = fmap (sum . fmap nodestatLat . catMaybes) infosD
+      avgLatD  = (\a b -> if b == 0 then NPSNoActiveNodes else NPSAvgLat $ a / fromIntegral b) <$> sumLatD <*> activeND
+  valueOptionDyn $ NPSActiveNum <$> activeND
+  descrOption $ NPSNodesNum $ length nodes
+  descrOptionDyn avgLatD
+  labelHorSep
+
+rbfPage :: MonadFront t m => m ()
+rbfPage = do
+  title <- localized STPSButRbf
+  wrapper False title (Just $ pure rbfPage) $ do
+    settings <- getSettings
+    let initVal = btcSettings'sendRbfByDefault $ getBtcSettings settings
+    initValD <- holdDyn initVal never
+    valD <- divClass "fiat-settings" $ do
+      spanClass "fiat-settings-label pr-2" $ localizedText STPSEnableRbfByDefault
+      toggler initValD
+    selE <- updated <$> holdUniqDyn valD
+    updE <- updateSettings $ ffor selE (setRbfSetting settings)
+    showSuccessMsg $ STPSSuccess <$ updE
+    pure ()
+  where
+    setRbfSetting :: Settings -> Bool -> Settings
+    setRbfSetting s val =
+      let oldSettings = settingsCurrencySpecific s
+          oldBtcSettings = getBtcSettings s
+      in s {settingsCurrencySpecific = Map.insert BTC (SettingsBtc $ oldBtcSettings {btcSettings'sendRbfByDefault = val}) oldSettings}
 
 deleteWalletPage :: MonadFront t m => m ()
 deleteWalletPage = do

@@ -20,7 +20,7 @@ data SettingsPageStrings =
   | STPSButLanguage
   | STPSButActiveCurrs
   | STPSButNetwork
-  | STPSButFiat
+  | STPSButDisplay
   | STPSButPortfolio
   | STPSButMnemonicExport
   | STPSButDns
@@ -70,12 +70,12 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButTor              -> "Tor and proxy"
       STPSButNodes            -> "BTC nodes"
       STPSButSetPass          -> "Change password"
-      STPSButFiat             -> "Fiat"
+      STPSButDisplay          -> "Display"
       STPSButPortfolio        -> "Portfolio"
       STPSButMnemonicExport   -> "Export mnemonic phrase"
       STPSButDeleteWallet     -> "Delete wallet"
       STPSButRbf              -> "Replace by fee"
-      STPSEnableRbfByDefault  -> "Send RBF enabled transactions by default"
+      STPSEnableRbfByDefault  -> "Send RBF enabled transactions by default:"
       STPSSelectLanguage      -> "Select language:"
       STPSSetsTor             -> "Tor configuration"
       STPSUseTor              -> "Use Tor"
@@ -85,10 +85,10 @@ instance LocalizedPrint SettingsPageStrings where
       STPSSetsActiveCurrs     -> "Settings for active currencies"
       STPSSetsPortfolio       -> "Settings for fiat and ticks"
       STPSSetsPortfolioEnable -> "Display portfolio"
-      STPSSetsFiatSelect      -> "Fiat currency"
-      STPSSetsShowFiatBalance -> "Show fiat balance"
-      STPSSetsShowFiatRate    -> "Show rate"
-      STPSSelectUnitsFor cur  -> "Units to show amounts in:"
+      STPSSetsFiatSelect      -> "Fiat currency:"
+      STPSSetsShowFiatBalance -> "Show fiat balance:"
+      STPSSetsShowFiatRate    -> "Show rate:"
+      STPSSelectUnitsFor cur  -> "Units to show " <> showt cur <> " amounts in:"
       STPSSetsPinOn           -> "Switch on PIN code"
       STPSSetsPinOff          -> "Switch off PIN code"
       STPSSetsPinInput        -> "Enter PIN code:"
@@ -106,12 +106,12 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButTor              -> "Tor и прокси"
       STPSButNodes            -> "Ноды BTC"
       STPSButSetPass          -> "Изменить пароль"
-      STPSButFiat             -> "Фиат"
+      STPSButDisplay          -> "Отображение"
       STPSButPortfolio        -> "Портфель"
       STPSButMnemonicExport   -> "Экспортировать мнемоническую фразу"
       STPSButDeleteWallet     -> "Удалить кошелёк"
       STPSButRbf              -> "Replace by fee"
-      STPSEnableRbfByDefault  -> "Отправлять RBF транзакции по умолчанию"
+      STPSEnableRbfByDefault  -> "Отправлять RBF транзакции по умолчанию:"
       STPSSelectLanguage      -> "Выберите язык:"
       STPSSetsTor             -> "Настройки Tor"
       STPSUseTor              -> "Проксировать через Tor"
@@ -121,10 +121,10 @@ instance LocalizedPrint SettingsPageStrings where
       STPSSetsActiveCurrs     -> "Настройки активных валют"
       STPSSetsPortfolio       -> "Настройки отображения фиата и тиков"
       STPSSetsPortfolioEnable -> "Отображение портфеля"
-      STPSSetsFiatSelect      -> "Фиатная валюта"
-      STPSSetsShowFiatBalance -> "Отображать фиатный баланс"
-      STPSSetsShowFiatRate    -> "Отображать курс"
-      STPSSelectUnitsFor cur  -> "Выберите единиц отображения для " <> showt cur <> ":"
+      STPSSetsFiatSelect      -> "Фиатная валюта:"
+      STPSSetsShowFiatBalance -> "Отображать фиатный баланс:"
+      STPSSetsShowFiatRate    -> "Отображать курс:"
+      STPSSelectUnitsFor cur  -> "Выберите единицы отображения " <> showt cur <> ":"
       STPSSetsPinOn           -> "Включить ПИН код"
       STPSSetsPinOff          -> "Выключить ПИН код"
       STPSSetsPinInput        -> "Введите ПИН код:"
