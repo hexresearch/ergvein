@@ -15,6 +15,7 @@ import Data.Maybe
 import Data.Text.Encoding (decodeUtf8With)
 import Data.Text.Encoding.Error (lenientDecode)
 import Reflex.Localize.Dom
+import Data.Traversable (for)
 
 import Ergvein.Crypto
 import Ergvein.Either
@@ -80,7 +81,7 @@ mnemonicWidget mnemonic = do
       elClass "span" "mnemonic-word-ix" $ text $ showt i
       text w
 
-    smallMnemonic phrase = flip traverse_ (zip [(1 :: Int)..] . T.words $ phrase) $ uncurry (wordColumn "mnemonic-word-mb")
+    smallMnemonic phrase = for_ (zip [(1 :: Int)..] . T.words $ phrase) $ uncurry (wordColumn "mnemonic-word-mb")
     mediumMnemonic phrase =  void $ colonize 2 (prepareMnemonic 2 phrase) $ uncurry (wordColumn "mnemonic-word-md")
     desktopMnemonic phrase = void $ colonize 4 (prepareMnemonic 4 phrase) $ uncurry (wordColumn "mnemonic-word-dx")
 
@@ -119,7 +120,7 @@ guessButtons ws idyn = do
       fakeWord1 <- randomPick [correctWord]
       fakeWord2 <- randomPick [correctWord, fakeWord1]
       wordsList <- shuffle [correctWord, fakeWord1, fakeWord2]
-      fmap leftmost $ traverse (guessButton i (correctWord)) wordsList
+      leftmost <$> traverse (guessButton i correctWord) wordsList
   pure $ switch . current $ resD
   where
     fact i = product [1 .. i]
@@ -134,7 +135,7 @@ guessButtons ws idyn = do
     guessButton i correctWord buttonWord = mdo
       classeD <- holdDyn "button button-outline guess-button" $ ffor btnE $ const $
         "button guess-button " <> if buttonWord == correctWord then "guess-true" else "guess-false"
-      btnE <- buttonClass classeD $ buttonWord
+      btnE <- buttonClass classeD buttonWord
       delay 1 $ fforMaybe btnE $ const $ if buttonWord == correctWord then Just (i + 1) else Nothing
 
 pasteBtn :: MonadFrontBase t m => m (Event t ())
@@ -146,7 +147,7 @@ scanQRBtn = outlineTextIconButtonTypeButton CSScanQR "fas fa-qrcode fa-lg"
 askSeedPasswordPage :: MonadFrontBase t m => EncryptedByteString -> m ()
 askSeedPasswordPage encryptedMnemonic = do
   passE <- askTextPasswordPage PPSMnemonicUnlock ("" :: Text)
-  let mnemonicBSE = (decryptBSWithAEAD encryptedMnemonic) <$> passE
+  let mnemonicBSE = decryptBSWithAEAD encryptedMnemonic <$> passE
   verifiedMnemonicE <- handleDangerMsg mnemonicBSE
   void $ nextWidget $ ffor (decodeUtf8With lenientDecode <$> verifiedMnemonicE) $ \mnem -> Retractable {
       retractableNext = selectCurrenciesPage WalletRestored mnem
@@ -165,7 +166,7 @@ seedRestoreWidget = mdo
     then Nothing else Just $ take 6 $ getWordsWithPrefix $ T.toLower t
   btnE <- fmap switchDyn $ networkHoldDyn $ ffor suggestionsD $ \case
     Nothing -> waiting
-    Just ws -> divClass "restore-seed-buttons-wrapper" $ fmap leftmost $ flip traverse ws $ \w -> do
+    Just ws -> divClass "restore-seed-buttons-wrapper" $ fmap leftmost $ for ws $ \w -> do
       btnClickE <- buttonClass (pure "button button-outline") w
       pure $ w <$ btnClickE
   let enterPressedE = keypress Enter txtInput
@@ -173,16 +174,16 @@ seedRestoreWidget = mdo
       enterE = flip push enterPressedE $ const $ do
         sugs <- sampleDyn suggestionsD
         pure $ case sugs of
-          Just (w:[]) -> Just w
+          Just [w] -> Just w
           _ -> Nothing
       wordE = leftmost [btnE, enterE]
   txtInput <- textInput $ def & inputElementConfig_setValue .~ fmap (const "") wordE
-  mnemD <- foldDyn (\w m -> let p = if m == "" then "" else " " in m <> p <> (T.toLower w)) "" wordE
+  mnemD <- foldDyn (\w m -> let p = if m == "" then "" else " " in m <> p <> T.toLower w) "" wordE
   goE <- delay 0.1 (updated ixD)
   pure $ attachWithMaybe (\mnem i -> if i == 25 then Just mnem else Nothing) (current mnemD) goE
   where
     waiting :: m (Event t Text)
-    waiting = (h4 $ localizedText SPSWaiting) >> pure never
+    waiting = h4 (localizedText SPSWaiting) >> pure never
 
 seedRestorePage :: MonadFrontBase t m => m ()
 seedRestorePage = wrapperSimple True $ do
@@ -191,8 +192,8 @@ seedRestorePage = wrapperSimple True $ do
       btnCls = "button button-outline" <>
         if isAndroid then " disp-block w-100" else ""
   goE <- divClass cls $ do
-    e1 <- fmap (True <$)  $ buttonClass btnCls SPSPlain
-    e2 <- fmap (False <$) $ buttonClass btnCls SPSBase58
+    e1 <-(True <$) <$> buttonClass btnCls SPSPlain
+    e2 <- (False <$) <$> buttonClass btnCls SPSBase58
     pure $ leftmost [e1, e2]
   void $ nextWidget $ ffor goE $ \b -> Retractable {
       retractableNext = if b
@@ -206,7 +207,7 @@ lengthSelectPage = wrapperSimple True $ do
   h2 $ localizedText SPSLengthTitle
   let cls = "ml-a mr-a mb-2 w-80" <> if isAndroid then "" else " navbar-5-cols"
   goE <- divClass cls $ mdo
-    fmap leftmost $ traverse mkBtn [24,21,18,15,12]
+    leftmost <$> traverse mkBtn [24,21,18,15,12]
   void $ nextWidget $ ffor goE $ \i -> Retractable {
       retractableNext = plainRestorePage i
     , retractablePrev = Just $ pure lengthSelectPage
@@ -299,13 +300,13 @@ plainRestorePage mnemLength = wrapperSimple True $ mdo
     PSSuggs _ []      -> waiting
     PSSuggs ts ws -> case ws of
       [] -> wordError
-      w:[] -> divClass "restore-seed-buttons-wrapper" $ do
+      [w] -> divClass "restore-seed-buttons-wrapper" $ do
         let res = recombine ts w
         clickE <- buttonClass (pure "button button-outline") w
         pure $ res <$ leftmost [clickE, enterKeyE]
       _ -> do
         let ws' = take 6 ws
-        wE <- divClass "restore-seed-buttons-wrapper" $ fmap leftmost $ flip traverse ws' $ \w -> do
+        wE <- divClass "restore-seed-buttons-wrapper" $ fmap leftmost $ for ws' $ \w -> do
           btnClickE <- buttonClass (pure "button button-outline") w
           pure $ w <$ btnClickE
         pure $ recombine ts <$> wE
@@ -328,13 +329,13 @@ plainRestorePage mnemLength = wrapperSimple True $ mdo
     extraErr  = h4 (localizedText SPSExtraWords)  >> pure never
     fullErr errs = do
       h4 $ localizedText SPSMisspelled
-      void $ divClass "mb-1" $ flip traverse errs $
+      void $ divClass "mb-1" $ for errs $
         divClass "" . localizedText . SPSMisspelledWord
       pure never
 
 base58RestorePage :: MonadFrontBase t m => m ()
 base58RestorePage = wrapperSimple True $ mdo
-  h4 $ localizedText $ SPSBase58Title
+  h4 $ localizedText SPSBase58Title
   encodedEncryptedMnemonicErrsD <- holdDyn Nothing $ ffor validationE eitherToMaybe'
   encodedEncryptedMnemonicD <- validatedTextFieldSetValNoLabel "" encodedEncryptedMnemonicErrsD inputE
   inputE <- pasteBtnsWidget
