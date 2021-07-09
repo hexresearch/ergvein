@@ -140,7 +140,7 @@ initBtcNode doLog sa msgE = do
         _ -> Nothing
 
   shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
-  let openE = fmapMaybe (\o -> if o then Just () else Nothing) $ updated shakeD
+  let openE   = () <$ ffilter id (updated shakeD)
       closedE = () <$ _socketClosed s
   pure $ NodeConnection {
     nodeconCurrency   = BTC
