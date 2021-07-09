@@ -12,8 +12,6 @@ import Control.Lens
 import Data.Fixed (Centi)
 import Text.Printf
 
--- import Ergvein.Wallet.Language
--- import Ergvein.Wallet.Localize
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Localize.Status
@@ -118,15 +116,6 @@ btcBalanceTitleWidget = do
 ergBalanceTitleWidget :: MonadFront t m => m (Dynamic t Text)
 ergBalanceTitleWidget = do
   bal <- balanceWidget ERGO
-  units <- getSettingsUnitErg
-  let titleVal = ffor bal (`showMoneyUnit` units)
-      curSymbol = display units
-      title = (\x -> x <> " " <> curSymbol) <$> titleVal
-  pure title
-
-ergBalanceTitleWidgetSimple :: MonadFront t m => m (Dynamic t Text)
-ergBalanceTitleWidgetSimple = do
-  bal <- balancesWidget ERGO
   units <- getSettingsUnitErg
   let titleVal = ffor bal (`showMoneyUnit` units)
       curSymbol = display units
