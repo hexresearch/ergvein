@@ -97,7 +97,7 @@ initBtcNode doLog sa msgE = do
     -- Finalize the handshake by sending "verack" message as a response
     -- Also, respond to ping messages by corrseponding pongs
     hsRespE <- performEvent $ fforMaybe respE $ \case
-      MVersion Version{..} -> Just $ liftIO $ do
+      MVersion Version{..} -> Just $ do
         nodeLog $ "Received version at height: " <> showt startHeight
         pure MVerAck
       MPing (Ping v) -> Just $ pure $ MPong (Pong v)
