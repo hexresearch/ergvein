@@ -9,6 +9,7 @@ module Ergvein.Filters.Btc.Mutable
   , decodeBtcAddrFilter
   , btcAddrFilterHash
   , makeBtcFilter
+  , matchBtcTx
   , applyBtcFilter
   , applyBtcFilterMany
   -- * Reexports
@@ -89,6 +90,23 @@ makeBtcFilter check block = do
   makeGcsSet = concatMap (filter check . fmap scriptOutput . txOut)
   outputSet = makeGcsSet $ blockTxns block
   sipkey    = blockSipHash . headerHash . blockHeader $ block
+
+-- | Check that given transaction is located in the filter. Note that filter is destroyed after the opeeration.
+--
+-- Nothing is returned if we cannot find corresponding tx input in the context.
+matchBtcTx :: forall m . (MonadIO m, HasTxIndex m) => BlockHash -> BtcAddrFilter -> Tx -> m (Maybe Bool)
+matchBtcTx bhash bfilter tx = do
+  minputs <- queryInputs
+  case minputs of
+    Nothing -> pure Nothing
+    Just inputs -> do
+      let outputs = fmap scriptOutput . txOut $! tx
+      fmap Just $ applyBtcFilterMany bhash bfilter $ inputs ++ outputs
+  where
+    queryInputs = do
+      mouts <- traverse queryOutPoint $ fmap prevOutput . txIn $! tx
+      let mouts' :: Maybe [ByteString] = sequence mouts
+      pure mouts'
 
 -- | Check that given address is located in the filter. Note that filter is destroyed after the opeeration.
 applyBtcFilter :: MonadIO m => BlockHash -> BtcAddrFilter -> ByteString -> m Bool

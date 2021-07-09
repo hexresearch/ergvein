@@ -4,10 +4,12 @@ module Ergvein.Core.Node.Btc.Mempool
   ) where
 
 import Control.Monad.Random
+import Ergvein.Core.Node.Btc ()
 import Ergvein.Core.Node.Monad
 import Ergvein.Core.Node.Types
-import Ergvein.Core.Node.Btc ()
+import Ergvein.Core.Store.Monad
 import Ergvein.Text
+import Ergvein.Types.Storage
 import Network.Haskoin.Network
 import Network.Socket (SockAddr)
 import Reflex
@@ -18,9 +20,12 @@ import Sepulcas.Native
 import qualified Data.Map.Strict as M
 
 -- | Request a mempool from a random node
-requestBTCMempool :: MonadNode t m => m ()
-requestBTCMempool = void $ workflow waitNode
+requestBTCMempool :: (MonadNode t m, MonadStorage t m) => m ()
+requestBTCMempool = void $ workflow waitRestore
   where
+    waitRestore = Workflow $ do
+      nextE <- updatedWithInit =<< (fmap . fmap) _pubStorage'restoring getPubStorageD
+      pure ((), waitNode <$ nextE)
     waitNode = Workflow $ do
       conMapE <- updatedWithInit =<< getBtcNodesD
       nodeE <- performEvent $ ffor conMapE $ \cm ->

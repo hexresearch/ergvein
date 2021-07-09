@@ -123,3 +123,12 @@ ergBalanceTitleWidget = do
       curSymbol = display units
       title = (\x -> x <> " " <> curSymbol) <$> titleVal
   pure title
+
+ergBalanceTitleWidgetSimple :: MonadFront t m => m (Dynamic t Text)
+ergBalanceTitleWidgetSimple = do
+  bal <- balancesWidget ERGO
+  units <- getSettingsUnitErg
+  let titleVal = ffor bal (`showMoneyUnit` units)
+      curSymbol = display units
+      title = (\x -> x <> " " <> curSymbol) <$> titleVal
+  pure title

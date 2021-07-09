@@ -1,1 +1,2 @@
-release/** filter=git-crypt diff=git-crypt
+release/password filter=git-crypt diff=git-crypt
+release/release.keystore filter=git-crypt diff=git-crypt
