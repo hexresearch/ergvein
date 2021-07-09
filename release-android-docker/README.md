@@ -1,5 +1,5 @@
 # Container based wallet build
-Builds release apk inside container. This reproducible isolated build can be used for independent app distribution system like FDroid.
+The script builds release APK inside a container. One can use the reproducible isolated build for independent app distribution systems like FDroid.
 
 Build command:
 
