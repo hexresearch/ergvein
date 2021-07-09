@@ -101,10 +101,11 @@ initBtcNode doLog sa msgE = do
         nodeLog $ "Received version at height: " <> showt startHeight
         pure MVerAck
       MPing (Ping v) -> Just $ pure $ MPong (Pong v)
-      MInv invs | not . null . filter isBlockInv . invList $ invs -> Just $ do
-        let binvs = filter isBlockInv $ invList invs
-        nodeLog $ "Got notification about new blocks: " <> showt (invHash <$> binvs)
-        pure $ MGetData $ GetData binvs
+      MInv invs
+        | binvs@(_:_) <- filter isBlockInv . invList $ invs
+        -> Just $ do
+            nodeLog $ "Got notification about new blocks: " <> showt (invHash <$> binvs)
+            pure $ MGetData $ GetData binvs
       _ -> Nothing
     -- End rec
 
