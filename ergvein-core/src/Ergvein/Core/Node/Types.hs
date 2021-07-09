@@ -92,10 +92,17 @@ type Port = Int
 nodeString :: Currency -> SockAddr -> Text
 nodeString cur url = "[" <> showt cur <> "]<" <> showt url <> ">: "
 
-data NodeReqG = NodeReqBtc (NodeReq BtcType) | NodeReqErgo (NodeReq ErgoType)
-data NodeRespG = NodeRespBtc (NodeResp BtcType) | NodeRespErgo (NodeResp ErgoType)
+data NodeReqG
+  = NodeReqBtc  (NodeReq BtcType)
+  | NodeReqErgo (NodeReq ErgoType)
+data NodeRespG
+  = NodeRespBtc  (NodeResp BtcType)
+  | NodeRespErgo (NodeResp ErgoType)
 
-data NodeMessage = NodeMsgRestart | NodeMsgClose | NodeMsgReq NodeReqG
+data NodeMessage
+  = NodeMsgRestart
+  | NodeMsgClose
+  | NodeMsgReq NodeReqG
 
 getNodeReqCurrency :: NodeReqG -> Currency
 getNodeReqCurrency req = case req of
