@@ -38,7 +38,7 @@ createRestore = do
   void $ nextWidget $ ffor goE $ \go -> Retractable {
       retractableNext = case go of
         GoSeed -> mnemonicPage
-        GoRestore -> seedRestorePage
+        GoRestore -> simpleSeedRestorePage
         GoSettings -> settingsPageUnauth
     , retractablePrev = Just $ pure $ initialPage False
     }
