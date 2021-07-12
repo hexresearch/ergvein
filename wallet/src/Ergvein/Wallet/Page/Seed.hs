@@ -4,6 +4,7 @@
 module Ergvein.Wallet.Page.Seed(
     mnemonicPage
   , mnemonicWidget
+  , simpleSeedRestorePage
   , seedRestorePage
   , seedRestoreWidget
   ) where
@@ -185,6 +186,10 @@ seedRestoreWidget = mdo
     waiting :: m (Event t Text)
     waiting = h4 (localizedText SPSWaiting) >> pure never
 
+
+simpleSeedRestorePage :: MonadFrontBase t m => m ()
+simpleSeedRestorePage = plainRestorePage 12
+
 seedRestorePage :: MonadFrontBase t m => m ()
 seedRestorePage = wrapperSimple True $ do
   h2 $ localizedText SPSTypeTitle
@@ -310,7 +315,12 @@ plainRestorePage mnemLength = wrapperSimple True $ mdo
           btnClickE <- buttonClass (pure "button button-outline") w
           pure $ w <$ btnClickE
         pure $ recombine ts <$> wE
-  pasteE <- pasteBtnsWidget
+  pasteE <- pasteBtnsWidget 
+  advancedE <- divClass "restore-seed-buttons-wrapper" $ outlineButton CSAdvanced
+  void $ nextWidget $ ffor advancedE $ const $ Retractable {
+      retractableNext = seedRestorePage
+    , retractablePrev = Just $ pure simpleSeedRestorePage
+  }
   void $ networkHold (pure ()) $ ffor (updated stateD ) $ \case
     PSDone mnem -> do
       submitE <- outlineButton CSForward
@@ -319,6 +329,7 @@ plainRestorePage mnemLength = wrapperSimple True $ mdo
         , retractablePrev = Just $ pure seedRestorePage
         }
     _ -> pure ()
+
   pure ()
   where
     recombine ts w = T.intercalate " " (ts <> [w]) <> " "
