@@ -60,6 +60,9 @@ frontendCss = do
 textColor :: Color
 textColor = rgb 0 0 0
 
+lightGrey :: Color
+lightGrey = rgb 248 249 250
+
 hoverColor :: Color
 hoverColor = rgb 112 112 112
 
@@ -304,10 +307,17 @@ buttonCss = do
   ".button.button-outline" <> submitOutline ? color black
   ".button.button-clear" <> submitClear ? color black
   ".button" <> submit ? border solid (rem 0.1) black
+  ".button.button-outline" # disabled # hover ? color black
+  ".button.button-clear" # disabled # hover ? color black
   ".back-button" ? do
     textAlign $ alignSide sideLeft
   ".back-button" ** button ? do
     fontSize $ pt 12
+  ".button-small" ? do
+    fontSize $ rem 0.8
+    height $ rem 2.8
+    lineHeight $ rem 2.8
+    padding (rem 0) (rem 1.5) (rem 0) (rem 1.5)
 
 inputCss :: Css
 inputCss = do
@@ -338,10 +348,32 @@ mnemonicWidgetCss = do
     marginRight $ em 0.25
   ".mnemonic-warn" ? do
     marginTop $ px 30
-  ".guess-buttons" ? do
-    margin (px 0) auto (px 0) auto
-  ".guess-button" ? do
-    width $ pct 100
+  ".mnemonic-verification-container" ? do
+    display flex
+    flexDirection column
+    justifyContent spaceBetween
+    borderRadius (px 10) (px 10) (px 10) (px 10)
+    borderStyle solid
+    borderWidth $ px 1
+    borderColor hoverColor
+    minHeight $ px 200
+    padding (rem 0.5) (rem 1) (rem 0.5) (rem 1)
+  ".mnemonic-verification-btn-container" ? do
+    display flex
+    flexWrap F.wrap
+    justifyContent center
+    marginLeft $ rem (-0.5)
+    marginRight $ rem (-0.5)
+  ".mnemonic-verification-btn-container button" ? do
+    margin (rem 0.5) (rem 0.5) (rem 0.5) (rem 0.5)
+    color black
+    textTransform none
+  ".mnemonic-word-disabled" ? do
+    borderStyle dashed
+    important $ color transparent
+  ".mnemonic-verification-error" ? do
+    color textDanger
+    margin (rem 0) (rem 0.5) (rem 0) (rem 0.5)
   ".restore-seed-buttons-wrapper" ? do
     display flex
     flexWrap F.wrap
@@ -360,14 +392,7 @@ mnemonicWidgetCss = do
   ".grid1" ? do
     display grid
     width maxContent
-  ".grid3" ? do
-    display grid
-    width maxContent
-  query M.screen [M.minWidth mobileBreakpoint] $ ".grid3" ? do
-    display grid
-    gridTemplateColumns [fr 1, fr 1, fr 1]
-    gridGap $ rem 1
-    width maxContent
+
 
 settingsCss :: Css
 settingsCss = do

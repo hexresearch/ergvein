@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedLists #-}
 module Sepulcas.Elements.Button(
-    buttonClass
+    mkButtonDynAttr
+  , mkButton 
+  , buttonClass
   , buttonClassDynLabel
   , outlineButton
   , clearButton
@@ -18,21 +20,26 @@ import Data.Text (Text)
 import Reflex.Dom
 import Reflex.Localize
 
+-- | Button with dynamic attributes
+mkButtonDynAttr :: (DomBuilder t m, PostBuild t m) => Text -> Dynamic t (Map Text Text) -> m a -> m (Event t a)
+mkButtonDynAttr eltp attrsD ma = do
+  (e, a) <- elDynAttr' eltp attrsD ma
+  return $ a <$ domEvent Click e
+
 -- | Button with CSS classes
 mkButton :: (DomBuilder t m, PostBuild t m) => Text -> Map Text Text -> Dynamic t Text -> m a -> m (Event t a)
 mkButton eltp attrs classValD ma = do
-  let classesD = do
+  let attrsD = do
         classVal <- classValD
         pure $ attrs <> [("class", classVal)]
-  (e, a) <- elDynAttr' eltp classesD ma
-  return $ a <$ domEvent Click e
+  mkButtonDynAttr eltp attrsD ma
 
 -- | Button with CSS classes
 buttonClass :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
   => Dynamic t Text -> lbl -> m (Event t ())
 buttonClass classValD lbl = mkButton "button" [("onclick", "return false;")] classValD . dynText =<< localized lbl
 
--- | Button with CSS classes
+-- | Button with CSS classes and dynamic label
 buttonClassDynLabel :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
   => Dynamic t Text -> Dynamic t lbl -> m (Event t ())
 buttonClassDynLabel classValD lblD = do
@@ -52,7 +59,7 @@ clearButton :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrin
   => lbl -> m (Event t ())
 clearButton = buttonClass "button button-clear"
 
- -- | Span that acts like a button with CSS classes
+-- | Span that acts like a button with CSS classes
 spanButton :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
   => Dynamic t Text -> lbl -> m (Event t ())
 spanButton classValD lbl = mkButton "span" [] classValD . dynText =<< localized lbl
