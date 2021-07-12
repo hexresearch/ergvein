@@ -187,8 +187,9 @@ data Settings = Settings {
 , settingsReqUrlNum         :: (Int, Int) -- ^ First is minimum required answers. Second is sufficient amount of answers from indexers.
 , settingsActUrlNum         :: Int
 , settingsPortfolio         :: Bool
-, settingsFiatCurr          :: Maybe Fiat
-, settingsRateFiat          :: Maybe Fiat
+, settingsFiatCurr          :: Fiat
+, settingsShowFiatBalance   :: Bool
+, settingsShowFiatRate      :: Bool
 , settingsDns               :: S.Set HostName
 , settingsSocksProxy        :: Maybe SocksConf
 , settingsCurrencySpecific  :: CurrencySpecificSettings
@@ -214,8 +215,9 @@ instance (PlatformNatives, FromJSON Language) => FromJSON Settings where
     settingsReqUrlNum         <- o .:? "reqUrlNum"        .!= defaultIndexersNum
     settingsActUrlNum         <- o .:? "actUrlNum"        .!= 10
     settingsPortfolio         <- o .:? "portfolio"        .!= False
-    settingsFiatCurr          <- o .:? "fiatCurr"
-    settingsRateFiat          <- o .:? "rateFiat"
+    settingsFiatCurr          <- o .:? "fiatCurr"         .!= USD
+    settingsShowFiatBalance   <- o .:? "showFiatBalance"  .!= False
+    settingsShowFiatRate      <- o .:? "showFiatRate"     .!= False
     mdns                      <- o .:? "dns"
     settingsSocksProxy        <- o .:? "socksProxy"
     let settingsDns = maybe defaultDns S.fromList mdns
@@ -235,7 +237,8 @@ instance ToJSON Language => ToJSON Settings where
     , "actUrlNum"         .= toJSON settingsActUrlNum
     , "portfolio"         .= toJSON settingsPortfolio
     , "fiatCurr"          .= toJSON settingsFiatCurr
-    , "rateFiat"          .= toJSON settingsRateFiat
+    , "showFiatBalance"   .= toJSON settingsShowFiatBalance
+    , "showFiatRate"      .= toJSON settingsShowFiatRate
     , "dns"               .= toJSON settingsDns
     , "socksProxy"        .= toJSON settingsSocksProxy
     , "currencySpecific"  .= toJSON settingsCurrencySpecific
@@ -253,8 +256,9 @@ defaultSettings deflang home =
       , settingsReqUrlNum         = defaultIndexersNum
       , settingsActUrlNum         = defaultActUrlNum
       , settingsPortfolio         = False
-      , settingsFiatCurr          = Nothing
-      , settingsRateFiat          = Nothing
+      , settingsFiatCurr          = USD
+      , settingsShowFiatBalance   = False
+      , settingsShowFiatRate      = False
       , settingsActiveAddrs       = []
       , settingsDeactivatedAddrs  = []
       , settingsArchivedAddrs     = []

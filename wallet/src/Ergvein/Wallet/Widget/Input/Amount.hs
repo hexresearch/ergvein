@@ -23,7 +23,7 @@ import qualified Data.Map.Strict as M
 
 availableBalanceWidget :: (MonadFront t m, IsMoneyUnit a, Display a) => Currency -> Dynamic t a -> m ()
 availableBalanceWidget cur uD = do
-  balanceValue <- balancesWidget cur
+  balanceValue <- balanceWidget cur
   balanceTitle <- localized SendAvailableBalance
   let balanceVal = zipDynWith (\x y -> showMoneyUnit x y <> " " <> display y) balanceValue uD
       balanceText = zipDynWith (\x y -> x <> ": " <> y) balanceTitle balanceVal
