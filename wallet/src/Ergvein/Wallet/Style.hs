@@ -368,6 +368,8 @@ mnemonicWidgetCss = do
     margin (rem 0.5) (rem 0.5) (rem 0.5) (rem 0.5)
     color black
     textTransform none
+    fontSize $ rem 1.6
+    fontWeight normal
   ".mnemonic-word-disabled" ? do
     borderStyle dashed
     important $ color transparent

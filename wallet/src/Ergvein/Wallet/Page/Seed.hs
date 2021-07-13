@@ -138,7 +138,7 @@ mnemonicCheckWidget mnemonic = mdo
     unselectedE <- divClass "mnemonic-verification-btn-container" $ do
       pressedEventsD <- networkHoldDyn $ ffor selectedWordsD $ \words -> do
         unselectBtnEvents <- for (zip [1..] words) $ \(i, iw@(index, word)) -> do
-          pressedE <- numberedButton "button button-outline button-small" i word
+          pressedE <- numberedButton "button button-outline" i word
           pure $ (False, iw) <$ pressedE -- False means that we unselected this word and we need to remove it from selectedWordsD
         pure $ leftmost unselectBtnEvents
       pure $ switchDyn pressedEventsD
@@ -154,7 +154,7 @@ mnemonicCheckWidget mnemonic = mdo
     pure unselectedE
   wordSelectedE <- divClass "mnemonic-verification-btn-container mb-2" $ do
     selectBtnEvents <- for shuffledWords $ \iw@(index, word) -> do
-      pressedE <- switchableButton "button button-outline button-small" ((iw `elem`) <$> selectedWordsD) "mnemonic-word-disabled" word
+      pressedE <- switchableButton "button button-outline" ((iw `elem`) <$> selectedWordsD) "mnemonic-word-disabled" word
       pure $ (True, iw) <$ pressedE -- Ture means that we selected this word and we need to append it to selectedWordsD
     pure $ leftmost selectBtnEvents
   let okD = ffor (zipDynWith (,) selectedWordsD isCorrectOrderD) $ \(selectedWords, isCorrectOrder) ->
