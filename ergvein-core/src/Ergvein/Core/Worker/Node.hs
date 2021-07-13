@@ -71,7 +71,7 @@ btcNodeController = mdo
 
   pubStorageD <- getPubStorageD
 
-  let txidsD = ffor pubStorageD $ \ps -> S.fromList $ M.keys $ ps ^. btcPubStorage . currencyPubStorage'transactions
+  let txidsD = ffor pubStorageD $ \ps -> M.keysSet $ ps ^. btcPubStorage . currencyPubStorage'transactions
 
   let btcLenD = ffor conMapD $ maybe 0 M.size . DM.lookup BtcTag
   let te' = poke te $ const $ do
