@@ -196,11 +196,9 @@ filterTxInvs txids (Inv invs) = case txs of
   [] -> Nothing
   _ -> Just txs
   where
-    txs = catMaybes $ ffor invs $ \iv -> case invType iv of
-      InvTx -> let
-        txh = ETT.BtcTxHash $ TxHash $ invHash iv
-        b = S.member txh txids
-        in if b then Nothing else Just iv
+    txs = flip mapMaybe invs $ \case
+      iv@(InvVector InvTx hash)
+        | S.notMember (ETT.BtcTxHash $ TxHash hash) txids -> Just iv
       _ -> Nothing
 
 data SAStorageAct = SAAdd [SockAddr] | SARemove SockAddr | SAClear
