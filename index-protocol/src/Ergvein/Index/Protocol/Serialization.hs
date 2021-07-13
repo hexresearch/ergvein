@@ -13,6 +13,7 @@ import Ergvein.Types.Fees
 import Ergvein.Types.Currency (Fiat)
 
 import qualified Data.Bitstream as S
+import qualified Data.Foldable as F
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Short as BSS
@@ -37,6 +38,13 @@ messageTypeToWord32 = \case
   MPongType            -> 12
   MRatesRequestType    -> 13
   MRatesResponseType   -> 14
+  MFullFilterInvType   -> 15
+  MGetFullFilterType   -> 16
+  MFullFilterType      -> 17
+  MGetMemFiltersType   -> 18
+  MMemFiltersType      -> 19
+  MGetMempoolType      -> 20
+  MMempoolChunkType    -> 21
 
 rejectTypeToWord32 :: RejectCode -> Word32
 rejectTypeToWord32 = \case
@@ -261,6 +269,27 @@ messageBuilder (MRatesResponse (RatesResponse rs)) = let
   msgSize = varIntSize rsNum + getSum size
   in messageBase MRatesResponseType msgSize $ varInt rsNum <> body
 
+messageBuilder (MFullFilterInv FullFilterInv) = messageBase MFullFilterInvType 0 mempty
+messageBuilder (MGetFullFilter GetFullFilter) = messageBase MGetFullFilterType 0 mempty
+messageBuilder (MGetMemFilters GetMemFilters) = messageBase MGetMemFiltersType 0 mempty
+messageBuilder (MFullFilter (MempoolFilter filt)) = let
+  (size, body) = compressedBsBuilder filt
+  in messageBase MFullFilterType (getSum size) body
+messageBuilder (MMemFilters msg) = let
+  (size, body) = filterTreeBuilder msg
+  in messageBase MMemFiltersType (getSum size) body
+messageBuilder (MGetMempool (GetMempool ps)) = let
+  n = fromIntegral $ length $ ps
+  msgSize = varIntSize n + (2 * n)
+  msg = varInt n <> foldMap (\(a,b) -> word8 a <> word8 b) ps
+  in messageBase MGetMempoolType msgSize msg
+messageBuilder (MMempoolChunk (MempoolChunk (p1,p2) txs)) = let
+  (mSize, txsMsg) = F.foldMap compressedBsBuilder txs
+  len = V.length txs
+  msg = word8 p1 <> word8 p2 <> varInt len <> txsMsg
+  msgSize = 2 + varIntSize len + (getSum mSize)
+  in messageBase MMempoolChunkType msgSize msg
+
 enumBuilder :: Enum a => a -> Builder
 enumBuilder = varInt . (fromIntegral :: Int -> Word32) . fromEnum
 
@@ -305,4 +334,26 @@ feeRespBuilder (FeeRespGeneric cur h m l) = let
   vals = [h, m, l]
   msgSize = varIntSize currency +  sum (fmap varIntSize vals)
   msg = varInt currency <> foldMap varInt vals
+  in (Sum msgSize, msg)
+
+filterTreeBuilder :: FilterTree -> (Sum Word32, Builder)
+filterTreeBuilder (FilterTree ft) = let
+  amount = M.size ft
+  (s, ftMsg) = M.foldMapWithKey subBuilder ft
+  msg = varInt amount <> ftMsg
+  msgSize = s + Sum (varIntSize amount)
+  in (msgSize, msg)
+  where
+    subBuilder :: TxPrefix -> MempoolFilter -> (Sum Word32, Builder)
+    subBuilder (a,b) mf = let
+      (s, mfMsg) = compressedBsBuilder $ unMempoolFilter mf
+      msg = word8 a <> word8 b <> mfMsg
+      in (s + 2, msg)
+
+compressedBsBuilder :: BS.ByteString -> (Sum Word32, Builder)
+compressedBsBuilder bs = let
+  zippedBs = compress $ LBS.fromStrict bs
+  len = fromIntegral $ LBS.length zippedBs
+  msg = varInt len <> lazyByteString zippedBs
+  msgSize = varIntSize len + len
   in (Sum msgSize, msg)

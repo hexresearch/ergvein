@@ -19,6 +19,7 @@ import Ergvein.Types.Fees
 
 import qualified Data.Attoparsec.ByteString as Parse
 import qualified Data.Bitstream             as S
+import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy       as LBS
 import qualified Data.ByteString.Short      as BSS
 import qualified Data.Map.Strict            as M
@@ -42,6 +43,13 @@ word32toMessageType = \case
   12 -> Just MPongType
   13 -> Just MRatesRequestType
   14 -> Just MRatesResponseType
+  15 -> Just MFullFilterInvType
+  16 -> Just MGetFullFilterType
+  17 -> Just MFullFilterType
+  18 -> Just MGetMemFiltersType
+  19 -> Just MMemFiltersType
+  20 -> Just MGetMempoolType
+  21 -> Just MMempoolChunkType
   _  -> Nothing
 
 currencyCodeParser :: Parser CurrencyCode
@@ -256,6 +264,30 @@ messageParser MRatesResponseType = do
   cfds <- replicateM n cfdParser
   pure $ MRatesResponse $ RatesResponse $ M.fromList cfds
 
+messageParser MFullFilterInvType = pure $ MFullFilterInv FullFilterInv
+messageParser MGetFullFilterType = pure $ MGetFullFilter GetFullFilter
+messageParser MGetMemFiltersType = pure $ MGetMemFilters GetMemFilters
+
+messageParser MFullFilterType = (MFullFilter . MempoolFilter) <$> parseCompressedLenBs
+
+messageParser MMemFiltersType = do
+  n <- varInt
+  fmap (MMemFilters . FilterTree . M.fromList) $ replicateM n $ do
+    pref <- (,) <$> anyWord8 <*> anyWord8
+    filt <- fmap MempoolFilter parseCompressedLenBs
+    pure (pref, filt)
+
+messageParser MGetMempoolType = do
+  n <- varInt
+  fmap (MGetMempool . GetMempool . V.fromList) $ replicateM n $
+    (,) <$> anyWord8 <*> anyWord8
+
+messageParser MMempoolChunkType = do
+  pref <- (,) <$> anyWord8 <*> anyWord8
+  n <- varInt
+  txs <- fmap V.fromList $ replicateM n $ parseCompressedLenBs
+  pure $ MMempoolChunk $ MempoolChunk pref txs
+
 enumParser :: forall a. (Typeable a, Bounded a, Enum a) => Parser a
 enumParser = do
   n <- fromIntegral <$> varInt @Word32
@@ -307,3 +339,9 @@ parseFeeResp = do
       <$> varInt
       <*> varInt
       <*> varInt
+
+parseCompressedLenBs :: Parser BS.ByteString
+parseCompressedLenBs = do
+  l <- varInt
+  bs <- Parse.take l
+  pure $ LBS.toStrict $ decompress $ LBS.fromStrict bs

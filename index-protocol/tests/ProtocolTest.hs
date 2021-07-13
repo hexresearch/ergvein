@@ -53,6 +53,12 @@ deserializeMessageHeader = AP.parseOnly messageHeaderParser
 --------------------------------------------------------------------------
 -- Serialize-deserialize
 
+prop_compress_test :: BS.ByteString -> Bool
+prop_compress_test bs = either (const False) (bs ==) decomp
+  where
+    comp = BB.toLazyByteString $ snd $ compressedBsBuilder bs
+    decomp = AP.parseOnly parseCompressedLenBs $ BL.toStrict comp
+
 prop_encdec_MsgHeader_Eq mh = either (const False) (mh ==) decMsg
   where
     encMsg = serializeMessageHeader mh
