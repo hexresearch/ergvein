@@ -90,7 +90,7 @@ btcNodeController = mdo
   (urlStoreD, fstRunE) <- mkUrlBatcher sel urlE
 
   let (remNodeUrlE, txE) = switchTuple $ splitDynPure $ fmap (unzip . M.elems) tmpD
-  let remNodeE = (`M.singleton`Nothing) <$> remNodeUrlE
+  let remNodeE = (`M.singleton` Nothing) <$> remNodeUrlE
   let addNodeE = (`M.singleton` Just ()) <$> urlE
   let listActionE = leftmost [addNodeE, remNodeE]
 
