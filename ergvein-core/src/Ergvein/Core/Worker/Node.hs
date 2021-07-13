@@ -263,15 +263,17 @@ mkUrlBatcher sel remE = mdo
   -- let addr = SockAddrInet 8333 $ tupleToHostAddress (127,0,0,1)
   -- let urlsD' = S.insert addr <$> urlsD
   -- performEvent_ $ ffor (updated urlsD') $ liftIO . print
-  let actE = flip push (updated urlsD) $ \acc -> if S.size acc >= saStorageSize
-        then pure $ Just Nothing          -- If the storage is full, stop connections
-        else if S.size acc /= 0
-          then pure Nothing               -- If it's in between, do nothing
-          else do                         -- If the storage is empty, request saStorageSize more
-            remCnt <- sampleDyn remCntD
-            if remCnt <= minNodeNum
-              then pure Nothing           -- Do not fire for first minNodeNum updates
-              else pure $ Just (Just saStorageSize)
+  let actE = flip push (updated urlsD) $ \acc ->
+           -- If the storage is full, stop connections
+        if | S.size acc >= saStorageSize -> pure $ Just Nothing
+           -- If it's in between, do nothing
+           | S.size acc /= 0             -> pure Nothing
+           -- If the storage is empty, request saStorageSize more
+           | otherwise -> do
+               remCnt <- sampleDyn remCntD
+               if remCnt <= minNodeNum
+                 then pure Nothing           -- Do not fire for first minNodeNum updates
+                 else pure $ Just (Just saStorageSize)
   let nonNullE = ffilter (not . null) (updated urlsD)
   cntD <- count nonNullE
   fstRunE <- eventToNextFrame $ () <$ ffilter (<= minNodeNum) (updated cntD)
