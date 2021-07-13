@@ -373,6 +373,12 @@ mnemonicWidgetCss = do
   ".mnemonic-word-disabled" ? do
     borderStyle dashed
     important $ color transparent
+
+  -- These rules fixes bug on Android when disabled button with focus has no visible border
+  ".mnemonic-word-disabled:focus, .mnemonic-word-disabled:hover" ? do
+    important $ borderColor black
+    borderStyle dashed
+
   ".mnemonic-verification-error" ? do
     color textDanger
     margin (rem 0) (rem 0.5) (rem 0) (rem 0.5)
