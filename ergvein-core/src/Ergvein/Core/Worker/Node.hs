@@ -272,9 +272,9 @@ mkUrlBatcher sel remE = mdo
             if remCnt <= minNodeNum
               then pure Nothing           -- Do not fire for first minNodeNum updates
               else pure $ Just (Just saStorageSize)
-  let nonNullE = fforMaybe (updated urlsD) (\urls -> if S.null urls then Nothing else Just ())
+  let nonNullE = ffilter (not . null) (updated urlsD)
   cntD <- count nonNullE
-  fstRunE <- eventToNextFrame $ fforMaybe (updated cntD) $ \c -> if c <= minNodeNum then Just () else Nothing
+  fstRunE <- eventToNextFrame $ () <$ ffilter (<= minNodeNum) (updated cntD)
   pure (S.toList <$> urlsD, fstRunE)
 
 -- | Connects to DNS servers, gets n urls and initializes connection to those nodes
