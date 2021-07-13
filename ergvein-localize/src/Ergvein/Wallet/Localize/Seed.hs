@@ -13,6 +13,8 @@ data SeedPageStrings =
   | SPSWarn
   | SPSWrote
   | SPSVerifyTitle
+  | SPSVerifyDescr
+  | SPSVerifyError
   | SPSSelectWord Int
   | SPSScanQR
   | SPSMnemonicDecodeError
@@ -44,7 +46,9 @@ instance LocalizedPrint SeedPageStrings where
       SPSTitle                -> "These words are your mnemonic phrase"
       SPSWarn                 -> "It is the ONLY way to restore access to your wallet. Write it down or you will lost your money forever."
       SPSWrote                -> "I wrote them"
-      SPSVerifyTitle          -> "Double check the mnemonic phrase"
+      SPSVerifyTitle          -> "Verify mnemonic phrase"
+      SPSVerifyDescr          -> "Tap the words to put them next to each other in the correct order."
+      SPSVerifyError          -> "Invalid order. Try again!"
       SPSSelectWord n         -> "Select the " <> showt n <> numSuffix n <> " word"
       SPSScanQR               -> "Scan QR code"
       SPSMnemonicDecodeError  -> "Failed to decode mnemonic"
@@ -67,6 +71,8 @@ instance LocalizedPrint SeedPageStrings where
       SPSWarn                 -> "Эта мнемоническая фраза — единственный способ восстановить ваш кошелёк. Запишите их, иначе вы можете потерять свои деньги. Навсегда."
       SPSWrote                -> "Я записал мнемоническую фразу"
       SPSVerifyTitle          -> "Перепроверьте мнемоническую фразу"
+      SPSVerifyDescr          -> "Нажмите на слова, чтобы поместить их рядом друг с другом в правильном порядке."
+      SPSVerifyError          -> "Неверный порядок. Попробуйте ещё раз!"
       SPSSelectWord n         -> "Выберите " <> showt n <> "-е слово"
       SPSScanQR               -> "Cканировать QR-код"
       SPSMnemonicDecodeError  -> "Не удалось декодировать мнемоническую фразу"
