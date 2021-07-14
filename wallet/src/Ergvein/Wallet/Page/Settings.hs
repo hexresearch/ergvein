@@ -37,7 +37,7 @@ import qualified Data.Text as T
 
 data SubPageSettings
   = GoLanguage
-  | GoCurrencies
+  -- | GoCurrencies
   | GoUnits
   | GoNetwork
   | GoPortfolio
@@ -57,7 +57,7 @@ settingsPage = do
               (GoLanguage, STPSButLanguage)
             , (GoNetwork, STPSButNetwork)
             , (GoUnits, STPSButDisplay)
-            , (GoCurrencies, STPSButActiveCurrs)
+            -- , (GoCurrencies, STPSButActiveCurrs)
             , (GoDns, STPSButDns)
             , (GoNodes, STPSButNodes)
             , (GoRbf, STPSButRbf)
@@ -69,7 +69,7 @@ settingsPage = do
       void $ nextWidget $ ffor goE $ \spg -> Retractable {
           retractableNext = case spg of
             GoLanguage        -> languagePage
-            GoCurrencies      -> currenciesPage
+            -- GoCurrencies      -> currenciesPage
             GoNetwork         -> networkSettingsPage
             GoUnits           -> unitsPage
             GoMnemonicExport  -> mnemonicExportPage
