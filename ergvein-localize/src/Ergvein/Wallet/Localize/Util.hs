@@ -13,6 +13,7 @@ data CommonStrings =
   | CSOn
   | CSOff
   | CSForward
+  | CSAdvanced
   | CSShare
   | CSShareQR
   | CSScanQR
@@ -30,6 +31,7 @@ instance LocalizedPrint CommonStrings where
       CSOn              -> "On"
       CSOff             -> "Off"
       CSForward         -> "Forward"
+      CSAdvanced        -> "Other options"
       CSShare           -> "Share"
       CSShareQR         -> "Share QR code"
       CSScanQR          -> "Scan QR code"
@@ -44,6 +46,7 @@ instance LocalizedPrint CommonStrings where
       CSOn              -> "Вкл"
       CSOff             -> "Выкл"
       CSForward         -> "Далее"
+      CSAdvanced        -> "Другие варианты"
       CSShare           -> "Поделиться"
       CSShareQR         -> "Поделиться QR-кодом"
       CSScanQR          -> "Сканировать QR-код"
