@@ -182,17 +182,6 @@ currencyResolution BTC = btcResolution defUnitBTC
 currencyResolution ERGO = ergoResolution defUnitERGO
 {-# INLINE currencyResolution #-}
 
--- currencyResolutionUnit :: Currency -> Units -> Int
--- currencyResolutionUnit c Units{..} = case c of
---   BTC  -> btcResolution $ fromMaybe defUnitBTC unitBTC
---   ERGO -> ergoResolution $ fromMaybe defUnitERGO unitERGO
--- {-# INLINE currencyResolutionUnit #-}
-
--- symbolUnit :: Currency -> Units -> Text
--- symbolUnit cur Units{..} = case cur of
---   BTC  -> btcSymbolUnit $ fromMaybe defUnitBTC unitBTC
---   ERGO -> ergoSymbolUnit $ fromMaybe defUnitERGO unitERGO
-
 currencyName :: Currency -> Text
 currencyName c = case c of
   BTC -> "Bitcoin"
