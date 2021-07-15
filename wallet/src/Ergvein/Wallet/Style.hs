@@ -46,6 +46,7 @@ frontendCss = do
   navbarCss
   networkPageCss
   toggleSwitchCss
+  dropdownContainer
   passwordCss
   badgeCss
   receiveCss
@@ -495,6 +496,11 @@ toggleSwitchCss =
 
     ".toggle-switch input:checked + label" ? do
       left $ toggleSwitchWidth @-@ (knobMargin @+@ knobSize)
+
+dropdownContainer :: Css
+dropdownContainer = do
+  ".dropdown-header" ? do
+    float floatRight
 
 passwordCss :: Css
 passwordCss = do
