@@ -255,9 +255,7 @@ mkUrlBatcher sel remE = mdo
               in Just $ fmap naAddress verifiedAddrs
             _ -> Nothing
         pure $ leftmost es
-  sasE <- performFork $ ffor hostAddrsE $ \hs ->
-    liftIO $ fmap (SAAdd . catMaybes) $ for hs $ \h ->
-      catch (fmap Just $ evaluate $ hostToSockAddr h) (\(_ :: SomeException) -> pure Nothing)
+  let sasE = ffor hostAddrsE $ SAAdd . mapMaybe tryHostToSockAddr
   urlsD <- foldDynMaybe handleSAStore S.empty $ leftmost [sasE, SARemove <$> remE]
   -- let addr = SockAddrInet 8333 $ tupleToHostAddress (127,0,0,1)
   -- let urlsD' = S.insert addr <$> urlsD
