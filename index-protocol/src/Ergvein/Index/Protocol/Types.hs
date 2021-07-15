@@ -68,6 +68,9 @@ messageHasPayload :: MessageType -> Bool
 messageHasPayload = \case
   MVersionACKType -> False
   MPeerRequestType -> False
+  MFullFilterInvType -> False
+  MGetFullFilterType -> False
+  MGetMemFiltersType -> False
   _ -> True
 
 data RejectCode = MessageHeaderParsing | MessageParsing | InternalServerError | ZeroBytesReceived | VersionNotSupported
@@ -327,7 +330,7 @@ newtype FilterTree = FilterTree { unFilterTree :: Map TxPrefix MempoolFilter }
 
 data MempoolChunk = MempoolChunk {
   mcPrefix :: TxPrefix
-, txBytes :: V.Vector ByteString
+, mcBytes  :: V.Vector ByteString
 } deriving (Show, Eq)
 
 data Message = MPing                       !Ping

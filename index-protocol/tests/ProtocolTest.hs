@@ -5,6 +5,7 @@ module ProtocolTest where
 --------------------------------------------------------------------------
 -- imports
 
+import Codec.Compression.GZip
 import Control.Monad (replicateM)
 import Data.Word
 import ProtocolTest.Generators
@@ -17,14 +18,17 @@ import Ergvein.Index.Protocol.Serialization    as Ser
 import Ergvein.Index.Protocol.Types
 import Ergvein.Types.Currency (Fiat(..),Currency)
 import Ergvein.Types.Fees
+import Ergvein.Text(hex2bs, bs2Hex)
 
-import qualified Data.Vector.Unboxed        as UV
-import qualified Data.Vector                as V
-import qualified Data.ByteString.Lazy       as BL
-import qualified Data.ByteString            as BS
-import qualified Data.ByteString.Builder    as BB
 import qualified Data.Attoparsec.ByteString as AP
+import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Base16     as B16
+import qualified Data.ByteString.Builder    as BB
+import qualified Data.ByteString.Lazy       as BL
+import qualified Data.List as L
+import qualified Data.Map.Strict            as M
+import qualified Data.Vector                as V
+import qualified Data.Vector.Unboxed        as UV
 
 --------------------------------------------------------------------------
 -- Serialize-deserialize helpers
@@ -53,11 +57,11 @@ deserializeMessageHeader = AP.parseOnly messageHeaderParser
 --------------------------------------------------------------------------
 -- Serialize-deserialize
 
-prop_compress_test :: BS.ByteString -> Bool
-prop_compress_test bs = either (const False) (bs ==) decomp
+prop_lenbs_builder :: BS.ByteString -> Bool
+prop_lenbs_builder bs = either (const False) (bs ==) decomp
   where
-    comp = BB.toLazyByteString $ snd $ compressedBsBuilder bs
-    decomp = AP.parseOnly parseCompressedLenBs $ BL.toStrict comp
+    comp = BB.toLazyByteString $ snd $ lenBsBuilder bs
+    decomp = AP.parseOnly parseLenBs $ BL.toStrict comp
 
 prop_encdec_MsgHeader_Eq mh = either (const False) (mh ==) decMsg
   where
@@ -251,6 +255,106 @@ unit_ratesRespMsg = do
         , (DASH, [(EUR, 0.12), (RUB, 0.01)]) ]
       bytes = "0e2902000200e32f63000000000002ea0e1602000000000c02010c00000000000000020100000000000000"
   testMessageHex v bytes
+
+unit_full_filter_inv :: IO ()
+unit_full_filter_inv = do
+  let v = MFullFilterInv FullFilterInv
+      bytes = "0f"
+  testMessageHex v bytes
+
+unit_get_full_filter :: IO ()
+unit_get_full_filter = do
+  let v = MGetFullFilter GetFullFilter
+      bytes = "10"
+  testMessageHex v bytes
+
+unit_get_mempool_filters :: IO ()
+unit_get_mempool_filters = do
+  let v = MGetMemFilters GetMemFilters
+      bytes = "12"
+  testMessageHex v bytes
+
+unit_get_mempool :: IO ()
+unit_get_mempool = do
+  let v = MGetMempool $ GetMempool $ V.fromList [(72,12)]
+      bytes = "140301480c"
+  testMessageHex v bytes
+
+unit_full_filter :: IO ()
+unit_full_filter = do
+  let mf = MempoolFilter $ hex2bs "13ef4d423ac40d6e5e287611d82f69b1d75b22e30f3a78a9fe0985f45c45757a2efc71f20f491be782c84926941d40499d3238"
+  let v = MFullFilter mf
+      bytes = "11343313ef4d423ac40d6e5e287611d82f69b1d75b22e30f3a78a9fe0985f45c45757a2efc71f20f491be782c84926941d40499d3238"
+  testMessageHex v bytes
+
+unit_mempool_filters :: IO ()
+unit_mempool_filters = do
+  let ft = FilterTree $ M.fromList $ [
+          ((8, 192), MempoolFilter $ hex2bs "00"),
+          ((18, 192), MempoolFilter $ hex2bs "00"),
+          ((54, 192), MempoolFilter $ hex2bs "00"),
+          ((195, 192), MempoolFilter $ hex2bs "00"),
+          ((9, 128), MempoolFilter $ hex2bs "022d7f2b50e000"),
+          ((248, 0), MempoolFilter $ hex2bs "00"),
+          ((72, 64), MempoolFilter $ hex2bs "00"),
+          ((136, 64), MempoolFilter $ hex2bs "00"),
+          ((10, 0), MempoolFilter $ hex2bs "00"),
+          ((110, 64), MempoolFilter $ hex2bs "031b48714c5a3d93d0"),
+          ((209, 192), MempoolFilter $ hex2bs "02a49bfc5e31c0"),
+          ((121, 64), MempoolFilter $ hex2bs "0189ece0"),
+          ((231, 64), MempoolFilter $ hex2bs "00"),
+          ((13, 0), MempoolFilter $ hex2bs "00"),
+          ((39, 0), MempoolFilter $ hex2bs "00"),
+          ((213, 192), MempoolFilter $ hex2bs "039776c95c592b27d0"),
+          ((98, 128), MempoolFilter $ hex2bs "01982900"),
+          ((171, 128), MempoolFilter $ hex2bs "014f0dd0"),
+          ((247, 0), MempoolFilter $ hex2bs "00"),
+          ((39, 128), MempoolFilter $ hex2bs "00"),
+          ((113, 64), MempoolFilter $ hex2bs "00"),
+          ((150, 192), MempoolFilter $ hex2bs "030a2d1d7494236508"),
+          ((95, 0), MempoolFilter $ hex2bs "032704d4082c545300"),
+          ((181, 128), MempoolFilter $ hex2bs "031ddc812f62d786d8"),
+          ((202, 0), MempoolFilter $ hex2bs "00"),
+          ((104, 192), MempoolFilter $ hex2bs "00"),
+          ((201, 64), MempoolFilter $ hex2bs "00"),
+          ((31, 128), MempoolFilter $ hex2bs "00"),
+          ((29, 0), MempoolFilter $ hex2bs "00"),
+          ((114, 192), MempoolFilter $ hex2bs "0240f91b4f8b80"),
+          ((162, 64), MempoolFilter $ hex2bs "0253954696ad")
+        ]
+
+  let v = MMemFilters ft
+      bytes = "13c51f08c00100098007022d7f2b50e0000a0001000d00010012c001001d0001001f800100270001002780010036c00100484001005f0009032704d4082c5453006280040198290068c001006e4009031b48714c5a3d93d07140010072c0070240f91b4f8b807940040189ece08840010096c009030a2d1d7494236508a240060253954696adab8004014f0dd0b58009031ddc812f62d786d8c3c00100c9400100ca000100d1c00702a49bfc5e31c0d5c009039776c95c592b27d0e7400100f7000100f8000100"
+  testMessageHex v bytes
+
+unit_compression_test :: IO ()
+unit_compression_test = do
+  let v = "123aef32f21a2e7d9c"
+      bytes = hex2bs "1f8b08000000000000ff13b27a6ff4494aaf760e004c46c39009000000"
+      v2 = bs2Hex $ BL.toStrict $ decompress $ BL.fromStrict bytes
+  v @=? v2
+
+unit_test_mempool_chunk_decompress :: IO ()
+unit_test_mempool_chunk_decompress = do
+  let tx = hex2bs "02000000000101261560a27330e73b46351ac349ff35136f614d4dfdfb3a108fa85c140a1c61a901000000171600149fd77bca5b9369478c80dc5c5cc4101f7baf5a95feffffff0254c410000000000017a914ba906b3da20467de78552d0c089e3754f49f62688740420f000000000017a9140f912a6fc7ba91305934dba0ef566cbfc62fd2218702473044022045d75032c9f3806939ff10ffd79a040bdcbece2f90cb1dc95e3a3b7cf109da1e022012a37cc4fee1ff9ae19c6adf7d0bc84a122b5ce33d5c43bebff52a6796d512340121025609c093b93e3d4a003ebb0ec8e58700d12e6f05c0c1096f18ba3ef8ff931fca260d1b00"
+  let msg = MMempoolChunk $ MempoolChunk (9, 128) $ V.fromList [tx,tx,tx,tx,tx,tx]
+  let bytesText =  "15fd42010980061f8b08000000000000ffedcfcd4bc2600006f0772f062d2bc75a197da9170f46394289948de84b12840e265423b28b59c10e5d020dbced12a48c3a4864d8254f9d5ba046a3d4202888414921111d232a0c22dfecd03f217baecfc303bf3204d56098b97521b946bf3827ec1d6793c8dec2fb3d9e9f6f07b175c8510d5dfe14565de9db00955042853931e8da8c14394e260ca1a3d9ed0a42087a65e2ef09e85394145d61929ac0c3fa745f63fddea0f723b1b8240c8fe8fe7b5dccc25f48317ac676bfffea5bcd9c5b6f4c0274d163d038ae4c0de4df23c121442025aed116d357d6e865777edee10cbfe1773dd0481e84e54a09c54bbbcb8f1bda9c9bece59e186e349df9b404766e491b66823e3c2b1eb38c1bb027cdb967015cf7f375d9539c6f97d82f241a0ae6a64e5056ddaa5b75abee1a73ff025b13a09cd0050000"
+  let msg' = deserializeMessage $ hex2bs bytesText
+  Right msg @=? msg'
+
+unit_test_mempool_chunk :: IO ()
+unit_test_mempool_chunk = do
+  let tx = hex2bs "02000000000101261560a27330e73b46351ac349ff35136f614d4dfdfb3a108fa85c140a1c61a901000000171600149fd77bca5b9369478c80dc5c5cc4101f7baf5a95feffffff0254c410000000000017a914ba906b3da20467de78552d0c089e3754f49f62688740420f000000000017a9140f912a6fc7ba91305934dba0ef566cbfc62fd2218702473044022045d75032c9f3806939ff10ffd79a040bdcbece2f90cb1dc95e3a3b7cf109da1e022012a37cc4fee1ff9ae19c6adf7d0bc84a122b5ce33d5c43bebff52a6796d512340121025609c093b93e3d4a003ebb0ec8e58700d12e6f05c0c1096f18ba3ef8ff931fca260d1b00"
+  let msg = MMempoolChunk $ MempoolChunk (9, 128) $ V.fromList [tx,tx,tx,tx,tx,tx]
+  let bytes =  "15fd42010980061f8b08000000000000ffedcfcd4bc2600006f0772f062d2bc75a197da9170f46394289948de84b12840e265423b28b59c10e5d020dbced12a48c3a4864d8254f9d5ba046a3d4202888414921111d232a0c22dfecd03f217baecfc303bf3204d56098b97521b946bf3827ec1d6793c8dec2fb3d9e9f6f07b175c8510d5dfe14565de9db00955042853931e8da8c14394e260ca1a3d9ed0a42087a65e2ef09e85394145d61929ac0c3fa745f63fddea0f723b1b8240c8fe8fe7b5dccc25f48317ac676bfffea5bcd9c5b6f4c0274d163d038ae4c0de4df23c121442025aed116d357d6e865777edee10cbfe1773dd0481e84e54a09c54bbbcb8f1bda9c9bece59e186e349df9b404766e491b66823e3c2b1eb38c1bb027cdb967015cf7f375d9539c6f97d82f241a0ae6a64e5056ddaa5b75abee1a73ff025b13a09cd0050000"
+  testMessageHex msg bytes
+
+unit_enc_dec_mempool_chunk :: IO ()
+unit_enc_dec_mempool_chunk = do
+  let tx = hex2bs "02000000000101261560a27330e73b46351ac349ff35136f614d4dfdfb3a108fa85c140a1c61a901000000171600149fd77bca5b9369478c80dc5c5cc4101f7baf5a95feffffff0254c410000000000017a914ba906b3da20467de78552d0c089e3754f49f62688740420f000000000017a9140f912a6fc7ba91305934dba0ef566cbfc62fd2218702473044022045d75032c9f3806939ff10ffd79a040bdcbece2f90cb1dc95e3a3b7cf109da1e022012a37cc4fee1ff9ae19c6adf7d0bc84a122b5ce33d5c43bebff52a6796d512340121025609c093b93e3d4a003ebb0ec8e58700d12e6f05c0c1096f18ba3ef8ff931fca260d1b00"
+  let msg = MMempoolChunk $ MempoolChunk (9, 128) $ V.fromList [tx,tx,tx,tx,tx,tx]
+  let msgDec = deserializeMessage $ BL.toStrict $ serializeMessage msg
+  Right msg @=? msgDec
 
 unit_enumRountrip :: IO ()
 unit_enumRountrip = do

@@ -26,6 +26,8 @@ import qualified Data.Map.Strict            as M
 import qualified Data.Vector                as V
 import qualified Data.Vector.Unboxed        as UV
 
+import Debug.Trace
+
 word32toMessageType :: Word32 -> Maybe MessageType
 word32toMessageType = \case
   0  -> Just MVersionType
@@ -106,7 +108,10 @@ messageLengthParser :: Parser Word32
 messageLengthParser = varInt
 
 messageTypeParser :: Parser MessageType
-messageTypeParser = guardJust "out of message type bounds" . word32toMessageType =<< varInt
+messageTypeParser = do
+  v <- varInt
+  guardJust (show v) . word32toMessageType $ v
+  -- guardJust "out of message type bounds" . word32toMessageType =<<
 
 rejectCodeParser :: Parser RejectCode
 rejectCodeParser = guardJust "out of reject type bounds" . word32toRejectType =<< varInt
@@ -268,13 +273,13 @@ messageParser MFullFilterInvType = pure $ MFullFilterInv FullFilterInv
 messageParser MGetFullFilterType = pure $ MGetFullFilter GetFullFilter
 messageParser MGetMemFiltersType = pure $ MGetMemFilters GetMemFilters
 
-messageParser MFullFilterType = (MFullFilter . MempoolFilter) <$> parseCompressedLenBs
+messageParser MFullFilterType = (MFullFilter . MempoolFilter) <$> parseLenBs
 
 messageParser MMemFiltersType = do
   n <- varInt
   fmap (MMemFilters . FilterTree . M.fromList) $ replicateM n $ do
     pref <- (,) <$> anyWord8 <*> anyWord8
-    filt <- fmap MempoolFilter parseCompressedLenBs
+    filt <- fmap MempoolFilter parseLenBs
     pure (pref, filt)
 
 messageParser MGetMempoolType = do
@@ -285,8 +290,12 @@ messageParser MGetMempoolType = do
 messageParser MMempoolChunkType = do
   pref <- (,) <$> anyWord8 <*> anyWord8
   n <- varInt
-  txs <- fmap V.fromList $ replicateM n $ parseCompressedLenBs
-  pure $ MMempoolChunk $ MempoolChunk pref txs
+  compressedBs <- takeLazyByteString
+  let unzippedTxs = LBS.toStrict $ decompress compressedBs
+      parser = V.fromList <$> replicateM n parseLenBs
+  case parseOnly parser unzippedTxs of
+    Right txs -> pure $ MMempoolChunk $ MempoolChunk pref txs
+    _ -> error "Failed to parse Txs for mempool chunk"
 
 enumParser :: forall a. (Typeable a, Bounded a, Enum a) => Parser a
 enumParser = do
@@ -340,8 +349,5 @@ parseFeeResp = do
       <*> varInt
       <*> varInt
 
-parseCompressedLenBs :: Parser BS.ByteString
-parseCompressedLenBs = do
-  l <- varInt
-  bs <- Parse.take l
-  pure $ LBS.toStrict $ decompress $ LBS.fromStrict bs
+parseLenBs :: Parser BS.ByteString
+parseLenBs = Parse.take =<< varInt

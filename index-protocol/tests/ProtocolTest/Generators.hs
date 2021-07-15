@@ -43,10 +43,9 @@ arbitraryBSLen n = do
 instance Arbitrary MessageHeader where
   arbitrary = do
     t <- getRandBounded
-    case t of
-      MVersionACKType -> pure $ MessageHeader MVersionACKType 0
-      MPeerRequestType -> pure $ MessageHeader MFeeRequestType 0
-      _ -> MessageHeader <$> pure t <*> arbitrary
+    if messageHasPayload t
+      then MessageHeader <$> pure t <*> arbitrary
+      else pure $ MessageHeader t 0
 
 instance Arbitrary ScanBlock where
   arbitrary = ScanBlock <$> getRandBounded <*> (fmap unPVT arbitrary) <*> arbitrary <*> arbitrary

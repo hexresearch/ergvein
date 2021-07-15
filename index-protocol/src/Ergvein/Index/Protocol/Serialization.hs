@@ -272,9 +272,11 @@ messageBuilder (MRatesResponse (RatesResponse rs)) = let
 messageBuilder (MFullFilterInv FullFilterInv) = messageBase MFullFilterInvType 0 mempty
 messageBuilder (MGetFullFilter GetFullFilter) = messageBase MGetFullFilterType 0 mempty
 messageBuilder (MGetMemFilters GetMemFilters) = messageBase MGetMemFiltersType 0 mempty
+
 messageBuilder (MFullFilter (MempoolFilter filt)) = let
-  (size, body) = compressedBsBuilder filt
+  (size, body) = lenBsBuilder filt
   in messageBase MFullFilterType (getSum size) body
+
 messageBuilder (MMemFilters msg) = let
   (size, body) = filterTreeBuilder msg
   in messageBase MMemFiltersType (getSum size) body
@@ -283,11 +285,12 @@ messageBuilder (MGetMempool (GetMempool ps)) = let
   msgSize = varIntSize n + (2 * n)
   msg = varInt n <> foldMap (\(a,b) -> word8 a <> word8 b) ps
   in messageBase MGetMempoolType msgSize msg
-messageBuilder (MMempoolChunk (MempoolChunk (p1,p2) txs)) = let
-  (mSize, txsMsg) = F.foldMap compressedBsBuilder txs
+messageBuilder (MMempoolChunk (MempoolChunk (p1, p2) txs)) = let
+  txsBs = compress $ toLazyByteString $ snd $ F.foldMap lenBsBuilder txs
   len = V.length txs
-  msg = word8 p1 <> word8 p2 <> varInt len <> txsMsg
-  msgSize = 2 + varIntSize len + (getSum mSize)
+  lenBs = fromIntegral $ LBS.length txsBs
+  msg = word8 p1 <> word8 p2 <> varInt len <> lazyByteString txsBs
+  msgSize = lenBs + 2 + varIntSize len
   in messageBase MMempoolChunkType msgSize msg
 
 enumBuilder :: Enum a => a -> Builder
@@ -346,14 +349,13 @@ filterTreeBuilder (FilterTree ft) = let
   where
     subBuilder :: TxPrefix -> MempoolFilter -> (Sum Word32, Builder)
     subBuilder (a,b) mf = let
-      (s, mfMsg) = compressedBsBuilder $ unMempoolFilter mf
+      (s, mfMsg) = lenBsBuilder $ unMempoolFilter mf
       msg = word8 a <> word8 b <> mfMsg
       in (s + 2, msg)
 
-compressedBsBuilder :: BS.ByteString -> (Sum Word32, Builder)
-compressedBsBuilder bs = let
-  zippedBs = compress $ LBS.fromStrict bs
-  len = fromIntegral $ LBS.length zippedBs
-  msg = varInt len <> lazyByteString zippedBs
+lenBsBuilder :: BS.ByteString -> (Sum Word32, Builder)
+lenBsBuilder bs = let
+  len = fromIntegral $ BS.length bs
+  msg = varInt len <> byteString bs
   msgSize = varIntSize len + len
   in (Sum msgSize, msg)
