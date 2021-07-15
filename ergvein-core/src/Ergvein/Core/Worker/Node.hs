@@ -322,3 +322,10 @@ randomVals l urls = if l >= n
         else let acc' = i:acc in if length acc' == l
           then pure acc'
           else mkIndexes acc'
+
+-- | Only take first N event from stream
+takeE :: (Reflex t, MonadHold t m, MonadFix m)
+      => Int -> Event t a -> m (Event t a)
+takeE n
+  =  takeWhileJustE (\(i,a) -> a <$ guard (i < n))
+ <=< zipListWithEvent (,) [0..]
