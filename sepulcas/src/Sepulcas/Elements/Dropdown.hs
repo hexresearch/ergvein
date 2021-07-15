@@ -18,18 +18,18 @@ dropdownContainer :: forall t m lbl a . ( MonadIO m, DomBuilder t m, PostBuild t
   -> m (Dynamic t (Maybe a))
 dropdownContainer lClosed lOpened tglD innerContent = mdo
   valD <- mergeDyn tglD $ poke clickE $ const $ do
-    val <- sample . current $ valD
+    val <- sampleDyn valD
     pure $ not val
   valD' <- holdUniqDyn valD
   clickE <- fmap switchDyn $ networkHoldDyn $ ffor valD' $ \v -> if v
     then divButton "dropdown-header" $ do
         localizedText lClosed
         text " "
-        spanClass "fa fa-fw fa-chevron-up" $ blank
+        elClass "i" "fa fa-fw fa-chevron-up" $ blank
     else divButton "dropdown-header" $ do
         localizedText lOpened
         text " "
-        spanClass "fa fa-fw fa-chevron-down" $ blank
+        elClass "i" "fa fa-fw fa-chevron-down" $ blank
   networkHoldDyn $ ffor valD' $ \v -> if v
     then do
       Just <$> innerContent
