@@ -36,6 +36,7 @@ import Reflex.Fork
 import Reflex.Main.Thread
 import Reflex.Network
 import Sepulcas.Native
+import System.IO.Unsafe
 
 import qualified Data.Bits as BI
 import qualified Data.ByteString.Char8 as B8
@@ -329,3 +330,9 @@ takeE :: (Reflex t, MonadHold t m, MonadFix m)
 takeE n
   =  takeWhileJustE (\(i,a) -> a <$ guard (i < n))
  <=< zipListWithEvent (,) [0..]
+
+
+tryHostToSockAddr :: Network.Haskoin.Network.HostAddress -> Maybe SockAddr
+tryHostToSockAddr h = unsafePerformIO $ do
+  (Just <$> evaluate (hostToSockAddr h)) `catch` (\ErrorCall{} -> pure Nothing)
+
