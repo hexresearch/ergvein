@@ -11,7 +11,7 @@ module Ergvein.Core.Worker(
   , module Ergvein.Core.Worker.Store
   ) where
 
-import Control.Monad (void)
+import Control.Monad (void, when)
 
 import Ergvein.Core.Worker.Discovery
 import Ergvein.Core.Worker.Fees
@@ -28,7 +28,9 @@ import Ergvein.Core.Status
 import Ergvein.Core.Store
 import Ergvein.Core.Wallet
 import Ergvein.Types.Storage
+import Ergvein.Types.Currency
 import Reflex.ExternalRef
+import Reflex.Flunky
 import Reflex.Main.Thread
 
 import qualified Data.Set as S
@@ -42,14 +44,27 @@ spawnWorkers :: (MonadStorage t m
   , MonadSettings t m)
   => m ()
 spawnWorkers = do
+  cursD <- getActiveCursD
+  btcD <- holdUniqDyn $ S.member BTC <$> cursD
+  ergoD <- holdUniqDyn $ S.member ERGO <$> cursD
+
+  -- Common workers
   setActiveCurrencies
   storeWorker
-  scanner
-  btcNodeController
   ratesWorker
-  heightWorker
-  feesWorker
-  pubKeysGenerator
+
+  -- BTC only workers
+  networkHoldDyn $ ffor btcD $ \b -> when b $ do
+    feesWorker
+    pubKeysGeneratorBtc
+    scanner
+    btcNodeController
+    updateWalletHeightBtc
+    
+  -- Ergo only workers
+  networkHoldDyn $ ffor ergoD $ \e -> when e $ do
+    pure ()
+
   pure ()
 
 setActiveCurrencies :: (MonadStorage t m

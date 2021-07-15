@@ -11,6 +11,7 @@ module Sepulcas.Text(
   , hex2bsE
   , base64Text2bs
   , bs2Base64Text
+  , Display(..)
   ) where
 
 import Data.Aeson
@@ -78,3 +79,7 @@ hex2bsE bs =
   in  if BS.null b
         then Right a
         else Left ("Not a valid hex string: " <> show bs)
+
+-- Type class for text representation
+class Display a where
+  display :: a -> Text

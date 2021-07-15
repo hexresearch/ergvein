@@ -87,15 +87,15 @@ parametersPageWidget = mdo
     saveE <- buttonClass "button button-outline" NSSSave
     defE <- buttonClass "button button-outline" NSSRestoreDef
     updE <- updateSettings $ flip pushAlways defE $ const $ do
-      stngs <- sample $ current setD
+      stngs <- sampleDyn setD
       pure $ stngs {
             settingsReqTimeout = defaultIndexerTimeout
           , settingsReqUrlNum  = defaultIndexersNum
           , settingsActUrlNum  = defaultActUrlNum
         }
     updE' <- updateSettings $ flip pushAlways saveE $ const $ do
-      stngs <- sample $ current setD
-      (dt, actNum, rmin, rmax) <- sample $ current valsD
+      stngs <- sampleDyn setD
+      (dt, actNum, rmin, rmax) <- sampleDyn valsD
       pure $ stngs {
             settingsReqTimeout = dt
           , settingsReqUrlNum  = (rmin, rmax)

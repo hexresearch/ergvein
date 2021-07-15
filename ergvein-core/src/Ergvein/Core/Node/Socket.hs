@@ -42,28 +42,15 @@ import qualified Network.Socket as N
 import qualified Network.Socket.ByteString as NSB
 import qualified Network.Socket.ByteString.Lazy as NSBL
 
+import  Network.Socket.Manager.TCP.Client (PeekerIO, CloseReason (..), SocketStatus (..))
+import  Network.Socket.Manager.Peeker 
+
 -- | Possible exceptions when read from socket
 type InboundException = Ex.SomeException
 -- | Possible exceptions when establishing connection to remote host
 type ConnectException = Ex.SomeException
 -- | Possible exceptions when connection is closed ungracefully
 type CloseException = Ex.SomeException
-
--- | Interface monad for `socket` widget that allows to peek exact amount of
--- bytes from socket to parse next portion of data.
-class Monad m => MonadPeeker m where
-  -- | Peek exact amount of bytes. Can throw `ReceiveException` when connection
-  -- is closed from other side or broken.
-  peek :: Int -> m ByteString
-
--- | Environment for `MonadPeeker` implementation
-data PeekerEnv = PeekerEnv !(TVar Bool) !N.Socket
-
-instance MonadIO m => MonadPeeker (ReaderT PeekerEnv m) where
-  peek n = do
-    PeekerEnv ivar sock <- ask
-    liftIO $ receiveExactly ivar sock n
-  {-# INLINE peek #-}
 
 -- | Address of peer, service name is either port or port name
 data Peer = Peer !N.HostName !N.ServiceName deriving (Show, Eq, Generic)
@@ -76,26 +63,12 @@ data SocketConf t a = SocketConf {
 -- | Event that socket will listen to payloads to send
 , _socketConfSend   :: !(Event t ByteString)
 -- | Function that peeks bytes from socket and parses them into user side messages
-, _socketConfPeeker :: !(ReaderT PeekerEnv IO a)
+, _socketConfPeeker :: !(PeekerIO a)
 -- | Event that externaly closes the connection
 , _socketConfClose  :: !(Event t ())
 -- | Configuration of SOCKS proxy. If the value changes, connection is reopened.
 , _socketConfProxy  :: !(Dynamic t (Maybe SocksConf))
 } deriving (Generic)
-
--- | Different socket states
-data SocketStatus =
-    SocketInitial -- ^ Initial state of socket after creation
-  | SocketConnecting -- ^ Connection process in progress including reconnecting.
-  | SocketOperational -- ^ Work state of socket
-  | SocketClosed -- ^ Final state of socket
-  deriving (Eq, Ord, Show, Read, Generic)
-
--- | Information why socket was closed
-data CloseReason =
-    CloseGracefull -- ^ Socket was closed gracefully and not going to be reopened
-  | CloseError !CloseException -- ^ Socket was closed by exception.
-  deriving (Show, Generic)
 
 -- | Check whether the closing of socket is not recoverable
 isCloseFinal :: CloseReason -> Bool
@@ -145,7 +118,7 @@ switchSocket dsock = Socket {
   }
 
 -- | Widget that starts TCP socket internally and reconnects if needed.
-socket :: (Show a, TriggerEvent t m, Adjustable t m, PerformEvent t m, MonadHold t m, PostBuild t m, MonadIO (Performable m), MonadIO m, MonadUnliftIO (Performable m), PlatformNatives)
+socket :: (TriggerEvent t m, Adjustable t m, PerformEvent t m, MonadHold t m, PostBuild t m, MonadIO (Performable m), MonadIO m, MonadUnliftIO (Performable m), PlatformNatives)
   => SocketConf t a -> m (Socket t a)
 socket SocketConf{..} = fmap switchSocket $ networkHoldDyn $ ffor _socketConfProxy $ \mproxy -> do
   buildE <- delay 0.01 =<< getPostBuild
@@ -200,28 +173,6 @@ socket SocketConf{..} = fmap switchSocket $ networkHoldDyn $ ffor _socketConfPro
     , _socketTries   = triesD
     }
 
--- | Exception occured when receiving bytes from socket fails.
-data ReceiveException =
-    ReceiveEndOfInput -- ^ Connection was closed from other side
-  | ReceiveInterrupted -- ^ Receiving was interrupted by our side
-  deriving (Eq, Show, Generic)
-
-instance Ex.Exception ReceiveException
-
--- | Helper to read excact amount of bytes from socket with possible interruption.
-receiveExactly :: TVar Bool -> N.Socket -> Int -> IO ByteString
-receiveExactly intVar sock n = go n mempty
-  where
-    go i acc = do
-      needExit <- liftIO . atomically $ readTVar intVar
-      when needExit $ Ex.throw ReceiveInterrupted
-      mbs <- recv sock i
-      case mbs of
-        Nothing -> Ex.throw ReceiveEndOfInput
-        Just bs -> let
-          l = BS.length bs
-          acc' = acc <> BB.byteString bs
-          in if l < i then go (i - l) acc' else pure . BSL.toStrict . BB.toLazyByteString $ acc'
 
 readAllTVar :: TChan a -> STM [a]
 readAllTVar chan = go []

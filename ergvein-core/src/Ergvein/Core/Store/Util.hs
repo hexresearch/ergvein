@@ -28,6 +28,7 @@ module Ergvein.Core.Store.Util(
   , getBtcUtxos
   , getBtcUtxoPoints
   , getBtcUtxoPointsParted
+  , getBtcTxs
   ) where
 
 import Control.Lens
@@ -52,7 +53,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
-import Ergvein.Types.Storage.Currency.Public.Btc (BtcPubStorage(..), btcPubStorage'utxos)
+import Ergvein.Types.Storage.Currency.Public.Btc (BtcPubStorage(..), btcPubStorage'utxos, btcPubStorage'transactions)
 import Ergvein.Types.Storage.Currency.Public.Ergo (ErgoPubStorage(..))
 import Ergvein.Types.Transaction as ETT
 import Ergvein.Types.Utxo.Btc
@@ -456,6 +457,9 @@ getBtcUtxoPoints pubStorage = (uncurry UtxoPoint) <$> (M.toList $ getBtcUtxos pu
 
 getBtcUtxoPointsParted :: PubStorage -> (ConfirmedUtxoPoints, UnconfirmedUtxoPoints)
 getBtcUtxoPointsParted pubStorage = partitionBtcUtxos $ M.toList $ getBtcUtxos pubStorage
+
+getBtcTxs :: PubStorage -> [BtcTx]
+getBtcTxs pubStorage = M.elems $ pubStorage ^. btcPubStorage . currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'transactions
 
 partitionBtcUtxos :: [(HT.OutPoint, BtcUtxoMeta)] -> ([UtxoPoint], [UtxoPoint])
 partitionBtcUtxos = foo ([], []) $ \(cs, ucs) (opoint, meta@BtcUtxoMeta{..}) ->
