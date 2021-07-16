@@ -76,8 +76,10 @@ initializeNodes :: (MonadSettings t m)
   => NodeReqSelector t
   -> M.Map Currency [SockAddr] -> m (ConnMap t)
 initializeNodes sel urlmap = do
-  let ks = M.keys urlmap
-  conns <- fmap join $ for ks $ \k -> traverse (initNode k sel) $ fromMaybe [] $ M.lookup k urlmap
+  conns <- sequenceA [ initNode cur sel addr
+                     | (cur, addrs) <- M.toList urlmap
+                     , addr         <- addrs
+                     ]
   pure $ addMultipleConns DM.empty conns
 
 reinitNodes :: forall t m . (MonadSettings t m)
