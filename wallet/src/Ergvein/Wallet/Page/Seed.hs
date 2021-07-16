@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE OverloadedLists #-}
 
 -- | Page for mnemonic phrase generation
 module Ergvein.Wallet.Page.Seed(
@@ -11,11 +12,13 @@ module Ergvein.Wallet.Page.Seed(
 
 import Control.Monad.Random.Strict
 import Data.Bifunctor
-import Data.List (permutations)
+import Data.List (permutations, (\\))
 import Data.Maybe
 import Data.Text.Encoding (decodeUtf8With)
 import Data.Text.Encoding.Error (lenientDecode)
+import Data.Traversable (for)
 import Reflex.Localize.Dom
+import System.Random.Shuffle
 
 import Ergvein.Crypto
 import Ergvein.Either
@@ -81,7 +84,7 @@ mnemonicWidget mnemonic = do
       elClass "span" "mnemonic-word-ix" $ text $ showt i
       text w
 
-    smallMnemonic phrase = flip traverse_ (zip [(1 :: Int)..] . T.words $ phrase) $ uncurry (wordColumn "mnemonic-word-mb")
+    smallMnemonic phrase = for_ (zip [(1 :: Int)..] . T.words $ phrase) $ uncurry (wordColumn "mnemonic-word-mb")
     mediumMnemonic phrase =  void $ colonize 2 (prepareMnemonic 2 phrase) $ uncurry (wordColumn "mnemonic-word-md")
     desktopMnemonic phrase = void $ colonize 4 (prepareMnemonic 4 phrase) $ uncurry (wordColumn "mnemonic-word-dx")
 
@@ -96,47 +99,69 @@ mkCols n vals = mkCols' [] vals
       [] -> acc
       _ -> let (r, rest) = L.splitAt n' xs in mkCols' (acc ++ [r]) rest
 
+-- | Creates button with number and text. Number has muted color.
+numberedButton :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
+  => Dynamic t Text -> Int -> lbl -> m (Event t ())
+numberedButton classValD number lbl = mkButton "button" [("onclick", "return false;")] classValD $ do
+  spanClass "text-muted" $ text $ showt number <> " "
+  localizedText lbl
+
+-- | Creates button that can be disabled or enabled by dynamic.
+switchableButton :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
+  => Text -> Dynamic t Bool -> Text -> lbl -> m (Event t ())
+switchableButton classVal isDisabledD disabledClass lbl =
+  let attrsD = ffor isDisabledD $ \isDisabled ->
+        let classes = if isDisabled && not (T.null disabledClass)
+              then classVal <> " " <> disabledClass
+              else classVal
+            attrs = if isDisabled
+             then [("onclick", "return false;"), ("class", classes), ("disabled", "disabled")]
+             else [("onclick", "return false;"), ("class", classes)]
+        in attrs
+  in mkButtonDynAttr "button" attrsD $ localizedText lbl
+
 -- | Interactive check of mnemonic phrase
+-- Takes correct mnemonic as a parameter
+-- Returns an event with the correct mnemonic when the user has successfully passed the verification process
 mnemonicCheckWidget :: MonadFrontBase t m => Mnemonic -> m (Event t Mnemonic)
 mnemonicCheckWidget mnemonic = mdo
   let ws = T.words mnemonic
+      indexedWords = zip [0..] ws -- We need to deal with indices because there might be repetitions in mnemonic
+  randGen <- liftIO newStdGen
+  let shuffledWords = shuffle' indexedWords (length indexedWords) randGen
   langD <- getLanguage
-  divClass "mnemonic-verify-title" $ h4 $ localizedText SPSVerifyTitle
-  idyn <- holdDyn 0 ie
-  h4 $ dynText $ do
-    l <- langD
-    i <- idyn
-    pure $ localizedShow l $ SPSSelectWord (i+1)
-  ie <- guessButtons ws idyn
-  pure $ fforMaybe (updated idyn) $ \i -> if i >= length ws
-    then Just mnemonic
-    else Nothing
-
-guessButtons :: forall t m . MonadFrontBase t m => [Text] -> Dynamic t Int -> m (Event t Int)
-guessButtons ws idyn = do
-  resD <- networkHoldDyn $ ffor idyn $ \i -> if i >= length ws
-    then pure never else divClass "guess-buttons grid3" $ do
-      let correctWord = ws !! i
-      fakeWord1 <- randomPick [correctWord]
-      fakeWord2 <- randomPick [correctWord, fakeWord1]
-      wordsList <- shuffle [correctWord, fakeWord1, fakeWord2]
-      fmap leftmost $ traverse (guessButton i (correctWord)) wordsList
-  pure $ switch . current $ resD
-  where
-    fact i = product [1 .. i]
-    randomPick bs = do
-      i <- liftIO $ getRandomR (0, length wordListEnglish - 1)
-      let word = wordListEnglish V.! i
-      if word `elem` bs then randomPick bs else pure word
-    shuffle is = liftIO $ do
-      i <- getRandomR (0, fact (length is) - 1)
-      pure $ permutations is !! i
-    guessButton :: Int -> Text -> Text -> m (Event t Int)
-    guessButton i correctWord buttonWord = mdo
-      classeD <- holdDyn "button button-outline guess-button" $ ffor btnE $ const $
-        "button guess-button " <> if buttonWord == correctWord then "guess-true" else "guess-false"
-      btnE <- buttonClass classeD $ buttonWord
-      delay 1 $ fforMaybe btnE $ const $ if buttonWord == correctWord then Just (i + 1) else Nothing
+  h4 $ localizedText SPSVerifyTitle
+  h5 $ spanClass "text-muted" $ localizedText SPSVerifyDescr
+  selectedWordsD <- foldDyn (\(append, x) xs -> if append then xs <> [x] else L.delete x xs) [] $ leftmost [wordSelectedE, wordUnselectedE] -- Contains a list of selected words
+  let isCorrectOrderD = ffor selectedWordsD (\selectedWords -> (snd <$> selectedWords) `L.isPrefixOf` ws) -- Contains True if the order of selected words is correct, False otherwise
+  wordUnselectedE <- divClass "mnemonic-verification-container mb-2" $ do
+    unselectedE <- divClass "mnemonic-verification-btn-container" $ do
+      pressedEventsD <- networkHoldDyn $ ffor selectedWordsD $ \words -> do
+        unselectBtnEvents <- for (zip [1..] words) $ \(i, iw@(index, word)) -> do
+          pressedE <- numberedButton "button button-outline" i word
+          pure $ (False, iw) <$ pressedE -- False means that we unselected this word and we need to remove it from selectedWordsD
+        pure $ leftmost unselectBtnEvents
+      pure $ switchDyn pressedEventsD
+    void $ networkHoldDyn $ ffor isCorrectOrderD $ \isCorrectOrder -> do
+      if isCorrectOrder
+        then
+          pure ()
+        else
+          spanClass "mnemonic-verification-error" $ do
+            elClass "i" "fas fa-exclamation-circle" blank
+            text " "
+            localizedText SPSVerifyError
+    pure unselectedE
+  wordSelectedE <- divClass "mnemonic-verification-btn-container mb-2" $ do
+    selectBtnEvents <- for shuffledWords $ \iw@(index, word) -> do
+      pressedE <- switchableButton "button button-outline" ((iw `elem`) <$> selectedWordsD) "mnemonic-word-disabled" word
+      pure $ (True, iw) <$ pressedE -- Ture means that we selected this word and we need to append it to selectedWordsD
+    pure $ leftmost selectBtnEvents
+  let okD = ffor (zipDynWith (,) selectedWordsD isCorrectOrderD) $ \(selectedWords, isCorrectOrder) ->
+        (length selectedWords == length ws) && isCorrectOrder
+  submitE <- switchableButton "button button-outline" (not <$> okD) "" CSForward
+  let goE = tagPromptlyDyn okD submitE
+  pure $ fforMaybe goE $ \ok -> if ok then Just mnemonic else Nothing
 
 pasteBtn :: MonadFrontBase t m => m (Event t ())
 pasteBtn = outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
@@ -147,7 +172,7 @@ scanQRBtn = outlineTextIconButtonTypeButton CSScanQR "fas fa-qrcode fa-lg"
 askSeedPasswordPage :: MonadFrontBase t m => EncryptedByteString -> m ()
 askSeedPasswordPage encryptedMnemonic = do
   passE <- askTextPasswordPage PPSMnemonicUnlock ("" :: Text)
-  let mnemonicBSE = (decryptBSWithAEAD encryptedMnemonic) <$> passE
+  let mnemonicBSE = decryptBSWithAEAD encryptedMnemonic <$> passE
   verifiedMnemonicE <- handleDangerMsg mnemonicBSE
   void $ nextWidget $ ffor (decodeUtf8With lenientDecode <$> verifiedMnemonicE) $ \mnem -> Retractable {
       retractableNext = selectCurrenciesPage WalletRestored mnem
@@ -166,7 +191,7 @@ seedRestoreWidget = mdo
     then Nothing else Just $ take 6 $ getWordsWithPrefix $ T.toLower t
   btnE <- fmap switchDyn $ networkHoldDyn $ ffor suggestionsD $ \case
     Nothing -> waiting
-    Just ws -> divClass "restore-seed-buttons-wrapper" $ fmap leftmost $ flip traverse ws $ \w -> do
+    Just ws -> divClass "restore-seed-buttons-wrapper" $ fmap leftmost $ for ws $ \w -> do
       btnClickE <- buttonClass (pure "button button-outline") w
       pure $ w <$ btnClickE
   let enterPressedE = keypress Enter txtInput
@@ -174,16 +199,16 @@ seedRestoreWidget = mdo
       enterE = flip push enterPressedE $ const $ do
         sugs <- sampleDyn suggestionsD
         pure $ case sugs of
-          Just (w:[]) -> Just w
+          Just [w] -> Just w
           _ -> Nothing
       wordE = leftmost [btnE, enterE]
   txtInput <- textInput $ def & inputElementConfig_setValue .~ fmap (const "") wordE
-  mnemD <- foldDyn (\w m -> let p = if m == "" then "" else " " in m <> p <> (T.toLower w)) "" wordE
+  mnemD <- foldDyn (\w m -> let p = if m == "" then "" else " " in m <> p <> T.toLower w) "" wordE
   goE <- delay 0.1 (updated ixD)
   pure $ attachWithMaybe (\mnem i -> if i == 25 then Just mnem else Nothing) (current mnemD) goE
   where
     waiting :: m (Event t Text)
-    waiting = (h4 $ localizedText SPSWaiting) >> pure never
+    waiting = h4 (localizedText SPSWaiting) >> pure never
 
 
 simpleSeedRestorePage :: MonadFrontBase t m => m ()
@@ -196,8 +221,8 @@ seedRestorePage = wrapperSimple True $ do
       btnCls = "button button-outline" <>
         if isAndroid then " disp-block w-100" else ""
   goE <- divClass cls $ do
-    e1 <- fmap (True <$)  $ buttonClass btnCls SPSPlain
-    e2 <- fmap (False <$) $ buttonClass btnCls SPSBase58
+    e1 <-(True <$) <$> buttonClass btnCls SPSPlain
+    e2 <- (False <$) <$> buttonClass btnCls SPSBase58
     pure $ leftmost [e1, e2]
   void $ nextWidget $ ffor goE $ \b -> Retractable {
       retractableNext = if b
@@ -211,7 +236,7 @@ lengthSelectPage = wrapperSimple True $ do
   h2 $ localizedText SPSLengthTitle
   let cls = "ml-a mr-a mb-2 w-80" <> if isAndroid then "" else " navbar-5-cols"
   goE <- divClass cls $ mdo
-    fmap leftmost $ traverse mkBtn [24,21,18,15,12]
+    leftmost <$> traverse mkBtn [24,21,18,15,12]
   void $ nextWidget $ ffor goE $ \i -> Retractable {
       retractableNext = plainRestorePage i
     , retractablePrev = Just $ pure lengthSelectPage
@@ -304,13 +329,13 @@ plainRestorePage mnemLength = wrapperSimple True $ mdo
     PSSuggs _ []      -> waiting
     PSSuggs ts ws -> case ws of
       [] -> wordError
-      w:[] -> divClass "restore-seed-buttons-wrapper" $ do
+      [w] -> divClass "restore-seed-buttons-wrapper" $ do
         let res = recombine ts w
         clickE <- buttonClass (pure "button button-outline") w
         pure $ res <$ leftmost [clickE, enterKeyE]
       _ -> do
         let ws' = take 6 ws
-        wE <- divClass "restore-seed-buttons-wrapper" $ fmap leftmost $ flip traverse ws' $ \w -> do
+        wE <- divClass "restore-seed-buttons-wrapper" $ fmap leftmost $ for ws' $ \w -> do
           btnClickE <- buttonClass (pure "button button-outline") w
           pure $ w <$ btnClickE
         pure $ recombine ts <$> wE
@@ -339,13 +364,13 @@ plainRestorePage mnemLength = wrapperSimple True $ mdo
     extraErr  = h4 (localizedText SPSExtraWords)  >> pure never
     fullErr errs = do
       h4 $ localizedText SPSMisspelled
-      void $ divClass "mb-1" $ flip traverse errs $
+      void $ divClass "mb-1" $ for errs $
         divClass "" . localizedText . SPSMisspelledWord
       pure never
 
 base58RestorePage :: MonadFrontBase t m => m ()
 base58RestorePage = wrapperSimple True $ mdo
-  h4 $ localizedText $ SPSBase58Title
+  h4 $ localizedText SPSBase58Title
   encodedEncryptedMnemonicErrsD <- holdDyn Nothing $ ffor validationE eitherToMaybe'
   encodedEncryptedMnemonicD <- validatedTextFieldSetValNoLabel "" encodedEncryptedMnemonicErrsD inputE
   inputE <- pasteBtnsWidget

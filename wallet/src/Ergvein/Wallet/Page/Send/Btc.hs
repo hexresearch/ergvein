@@ -1,12 +1,12 @@
+{-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE OverloadedLists #-}
 
-module Ergvein.Wallet.Page.Send (
-    sendPage
+module Ergvein.Wallet.Page.Send.Btc (
+    sendPageBtc
   ) where
 
 import Control.Lens
 import Control.Monad.Except
-import Data.Bifunctor (first)
 import Data.Maybe
 import Data.Word
 
@@ -14,47 +14,47 @@ import Ergvein.Text
 import Ergvein.Types
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo.Btc
-import Sepulcas.Alert
-import Sepulcas.Elements
-import Sepulcas.Elements.Toggle
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
+import Ergvein.Wallet.Orphanage ()
 import Ergvein.Wallet.Page.Balances
-import Ergvein.Wallet.Widget.Input.BTC.Amount
-import Ergvein.Wallet.Widget.Input.BTC.Fee
-import Ergvein.Wallet.Widget.Input.BTC.Recipient
+import Ergvein.Wallet.Widget.Input.Amount
+import Ergvein.Wallet.Widget.Input.Fee
+import Ergvein.Wallet.Widget.Input.Recipient
 import Ergvein.Wallet.Wrapper
+import Sepulcas.Alert
+import Sepulcas.Elements
+import Sepulcas.Elements.Toggle
+import Sepulcas.Text (Display(..))
 
 import Network.Haskoin.Network (Inv(..), InvVector(..), InvType(..), Message(..))
 
 import qualified Data.List as L
 import qualified Data.Text as T
 import qualified Network.Haskoin.Address as HA
-import qualified Network.Haskoin.Script as HS
 import qualified Network.Haskoin.Transaction as HT
 
-sendPage :: MonadFront t m => Currency -> Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), BtcAddress, RbfEnabled) -> m ()
-sendPage cur mInit = mdo
+sendPageBtc :: MonadFront t m => Maybe ((UnitBTC, Word64), (FeeMode, Word64), BtcAddress, RbfEnabled) -> m ()
+sendPageBtc mInit = mdo
   walletName <- getWalletName
   title <- localized walletName
   let navbar = if isAndroid
         then blank
-        else navbarWidget cur thisWidget NavbarSend
-      thisWidget = Just $ sendPage cur <$> retInfoD
-  retInfoD <- sendWidget cur mInit title navbar thisWidget
+        else navbarWidget BTC thisWidget NavbarSend
+      thisWidget = Just $ sendPageBtc <$> retInfoD
+  retInfoD <- sendWidget mInit title navbar thisWidget
   pure ()
 
 sendWidget :: MonadFront t m
-  => Currency
-  -> Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), BtcAddress, RbfEnabled)
+  => Maybe ((UnitBTC, Word64), (FeeMode, Word64), BtcAddress, RbfEnabled)
   -> Dynamic t Text
   -> m a
   -> Maybe (Dynamic t (m ()))
-  -> m (Dynamic t (Maybe ((UnitBTC, Word64), (BTCFeeMode, Word64), BtcAddress, RbfEnabled)))
-sendWidget cur mInit title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ divClass "send-page" $ mdo
+  -> m (Dynamic t (Maybe ((UnitBTC, Word64), (FeeMode, Word64), BtcAddress, RbfEnabled)))
+sendWidget mInit title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ divClass "send-page" $ mdo
   settings <- getSettings
   let amountInit = (\(x, _, _, _) -> x) <$> mInit
       feeInit = (\(_, x, _, _) -> x) <$> mInit
@@ -63,10 +63,12 @@ sendWidget cur mInit title navbar thisWidget = wrapperNavbar False title thisWid
       rbfFromSettings = btcSettings'sendRbfByDefault $ getBtcSettings settings
       rbfInit' = fromMaybe rbfFromSettings rbfInit
   retInfoD <- formClass "mb-0" $ mdo
-    recipientD <- divClass "mb-1" $ recipientWidget recipientInit submitE
-    amountD <- divClass "mb-1" $ sendAmountWidget recipientD amountInit submitE
-    feeD <- divClass "mb-1" $ btcFeeSelectionWidget FSRate feeInit Nothing submitE
-    rbfEnabledD <- divClass "mb-2" $ toggler SSRbf (constDyn rbfInit')
+    recipientD <- divClass "mb-1" $ recipientWidget BTC recipientInit submitE
+    amountD <- divClass "mb-1" $ sendAmountWidgetBtc amountInit submitE
+    feeD <- divClass "mb-1" $ feeSelectionWidgetBtc (FSRate BTC) feeInit Nothing submitE
+    rbfEnabledD <- divClass "mb-2" $ do
+      label "" $ localizedText SSRbf
+      toggler $ pure rbfInit'
     submitE <- outlineSubmitTextIconButtonClass "w-100 mb-0" SendBtnString "fas fa-paper-plane fa-lg"
     let goE = flip push submitE $ \_ -> do
           mrecipient <- sampleDyn recipientD
@@ -75,26 +77,26 @@ sendWidget cur mInit title navbar thisWidget = wrapperNavbar False title thisWid
           rbfEnabled <- sampleDyn rbfEnabledD
           pure $ (,,,) <$> mamount <*> mfee <*> mrecipient <*> Just rbfEnabled
     void $ nextWidget $ ffor goE $ \v@(uam, (_, fee), addr, rbf) -> Retractable {
-        retractableNext = btcSendConfirmationWidget (uam, fee, addr, rbf)
-      , retractablePrev = Just $ pure $ sendPage cur $ Just v
+        retractableNext = sendConfirmationWidget (uam, fee, addr, rbf)
+      , retractablePrev = Just $ pure $ sendPageBtc $ Just v
       }
     holdDyn mInit $ Just <$> goE
   pure retInfoD
 
 -- | Main confirmation & sign & send widget
-btcSendConfirmationWidget :: MonadFront t m => ((UnitBTC, Word64), Word64, BtcAddress, RbfEnabled) -> m ()
-btcSendConfirmationWidget v = do
+sendConfirmationWidget :: MonadFront t m => ((UnitBTC, Word64), Word64, BtcAddress, RbfEnabled) -> m ()
+sendConfirmationWidget v = do
   walletName <- getWalletName
   title <- localized walletName
-  let thisWidget = Just $ pure $ btcSendConfirmationWidget v
+  let thisWidget = Just $ pure $ sendConfirmationWidget v
       navbar = if isAndroid
         then blank
         else navbarWidget BTC thisWidget NavbarSend
   wrapperNavbar False title thisWidget navbar $ divClass "send-confirm-box" $ mdo
     stxE <- makeTxWidget v
-    void $ networkHold (pure ()) $ ffor stxE $ \(tx, _, _, _, _) -> do
+    void $ networkHold (pure ()) $ ffor stxE $ \tx -> do
       sendE <- getPostBuild
-      addedE <- addOutgoingTx "btcSendConfirmationWidget" $ TxBtc (BtcTx tx Nothing) <$ sendE
+      addedE <- addOutgoingTx "sendConfirmationWidget" $ TxBtc (BtcTx tx Nothing) <$ sendE
       storedE <- btcMempoolTxInserter $ tx <$ addedE
       void $ requestBroadcast $ ffor storedE $ const $
         NodeReqBtc . MInv . Inv . pure . InvVector InvTx . HT.getTxHash . HT.txHash $ tx
@@ -113,7 +115,7 @@ btcAddrToBtcOutType = \case
 
 makeTxWidget :: MonadFront t m =>
   ((UnitBTC, Word64), Word64, BtcAddress, RbfEnabled) ->
-  m (Event t (HT.Tx, UnitBTC, Word64, Word64, BtcAddress))
+  m (Event t HT.Tx)
 makeTxWidget ((unit, amount), fee, addr, rbfEnabled) = mdo
   psD <- getPubStorageD
   utxoKeyD <- holdUniqDyn $ do
@@ -121,8 +123,8 @@ makeTxWidget ((unit, amount), fee, addr, rbfEnabled) = mdo
     let utxo = ps ^? pubStorage'currencyPubStorages . at BTC . _Just . currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'utxos
         mkey = getLastUnusedKey Internal =<< pubStorageKeyStorage BTC ps
     pure (utxo, mkey)
-  utxoKey0 <- Left <$> sampleDyn utxoKeyD
-  stxE' <- eventToNextFrame stxE
+  utxoKey0 <- Left <$> sampleDyn utxoKeyD -- Why we need this
+  stxE' <- eventToNextFrame stxE -- And this
   valD <- foldDynMaybe mergeVals utxoKey0 $ leftmost [Left <$> updated utxoKeyD, Right <$> stxE']
   stxE <- fmap switchDyn $ networkHoldDyn $ ffor valD $ \case
     Left (Nothing, _) -> confirmationErrorWidget CEMEmptyUTXO
@@ -140,7 +142,7 @@ makeTxWidget ((unit, amount), fee, addr, rbfEnabled) = mdo
     Right (tx, unit', amount', estFee, addr') -> do
       confirmationInfoWidget (unit', amount') estFee rbfEnabled addr' (Just tx)
       pure never
-  pure stxE
+  pure $ (\(tx, _, _, _, _) -> tx) <$> stxE
   where
     either' e l r = either l r e
     -- Left -- utxo updates, Right -- stored tx
@@ -156,18 +158,17 @@ confirmationInfoWidget :: MonadFront t m => (UnitBTC, Word64) -> Word64 -> RbfEn
 confirmationInfoWidget (unit, amount) estFee rbfEnabled addr mTx = divClass "send-confirm-info ta-l mb-1" $ do
   elClass "h4" "ta-c mb-1" $ localizedText $
     if isJust mTx then SSPosted else SSConfirm
-  mkrow AmountString (text $ showMoneyUnit (mkMoney amount) us <> " " <> symbolUnit cur us) False
-  mkrow RecipientString (text $ btcAddrToString addr) True
-  mkrow SSFee (text $ showt estFee <> " " <> symbolUnit cur (Units (Just BtcSat) Nothing)) False
+  mkrow AmountString (text $ showMoneyUnit (mkMoney amount) unit <> " " <> display unit) False
+  mkrow RecipientString (text $ btcAddrToText addr) True
+  mkrow SSFee (text $ showt estFee <> " " <> display BtcSat) False
   mkrow SSRbf (localizedText $ FSRbf rbfEnabled) False
-  mkrow SSTotal (text $ showMoneyUnit (mkMoney $ amount + estFee) us <> " " <> symbolUnit cur us) False
+  mkrow SSTotal (text $ showMoneyUnit (mkMoney $ amount + estFee) unit <> " " <> display unit) False
   case mTx of
     Nothing -> pure ()
     Just tx -> mkrow SSTxId (makeTxIdLink $ HT.txHashToHex . HT.txHash $ tx) True
   where
     cur = BTC
     mkMoney = Money cur
-    us = Units (Just unit) Nothing
 
     mkrow :: (MonadFront t m, LocalizedPrint l) => l -> m b -> Bool -> m ()
     mkrow a mb wordBreak = divClass "" $ do
@@ -203,7 +204,12 @@ txSignSendWidget :: MonadFront t m
   -> RbfEnabled     -- ^ Explicit opt-in RBF signalling
   -> m (Event t (HT.Tx, UnitBTC, Word64, Word64, BtcAddress)) -- ^ Return the Tx + all relevant information for display
 txSignSendWidget addr unit amount _ changeKey change pick rbfEnabled = mdo
-  let (etx, estFee) = prepareData changeKey change addr amount rbfEnabled pick
+  let keyTxt = btcAddrToText $ xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key changeKey
+      outs = [(btcAddrToText addr, amount), (keyTxt, change)]
+      etx = buildAddrTx btcNetwork rbfEnabled (upPoint <$> pick) outs
+      inputsAmount = sum $ btcUtxo'amount . upMeta <$> pick
+      outputsAmount = amount + change
+      estFee = inputsAmount - outputsAmount
   confirmationInfoWidget (unit, amount) estFee rbfEnabled addr Nothing
   showSignD <- holdDyn True . (False <$) =<< eventToNextFrame etxE
   etxE <- either' etx (const $ confirmationErrorWidget CEMTxBuildFail >> pure never) $ \tx -> do
@@ -216,17 +222,3 @@ txSignSendWidget addr unit amount _ changeKey change pick rbfEnabled = mdo
     sendE <- el "div" $ outlineButton SendBtnSend
     pure $ (tx, unit, amount, estFee, addr) <$ sendE
   where either' e l r = either l r e
-
-prepareData :: EgvPubKeyBox -> Word64 -> BtcAddress -> Word64 -> RbfEnabled -> [UtxoPoint] -> (Either String HT.Tx, Word64)
-prepareData changeKey change addr amount rbfEnabled pick = (etx, estFee)
-  where
-    changeAddress = xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key changeKey
-    changeAddrStr = btcAddrToString changeAddress
-    changeOut = HT.TxOut change (HS.encodeOutputBS $ HA.addressToOutput changeAddress)
-    (outs, changeAmount) = if isDust changeOut
-      then ([(btcAddrToString addr, amount)], 0)
-      else ([(btcAddrToString addr, amount), (changeAddrStr, change)], change)
-    etx = buildAddrTx btcNetwork rbfEnabled (upPoint <$> pick) outs
-    inputsAmount = sum $ btcUtxo'amount . upMeta <$> pick
-    outputsAmount = amount + changeAmount
-    estFee = inputsAmount - outputsAmount

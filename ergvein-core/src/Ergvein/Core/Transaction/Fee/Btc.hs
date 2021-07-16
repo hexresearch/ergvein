@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 
-module Ergvein.Core.Transaction.Btc.Fee(
+module Ergvein.Core.Transaction.Fee.Btc(
     weightUnitsToVBytes
   , calcTxVsize
   , guessTxFee
@@ -27,7 +27,7 @@ import Data.Serialize
   )
 import Data.Word (Word32, Word64)
 import Ergvein.Core.Store.Monad
-import Ergvein.Core.Transaction.Btc.Common
+import Ergvein.Core.Transaction.Util.Btc
 import Ergvein.Types.Address
 import Ergvein.Types.Utxo.Btc
 import Network.Haskoin.Network (VarInt (VarInt), putVarInt)

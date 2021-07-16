@@ -9,9 +9,9 @@ module Ergvein.Wallet.Localize.History
 
 import Data.Word
 
-import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Wallet.Language
+import Sepulcas.Text
 
 newtype HistoryTitle = HistoryTitle Currency
 
@@ -130,8 +130,8 @@ data BumpFeeWidgetStrings =
   | BumpFeeCurrentFeeRate
   | BumpFeeDecodeOutsError
   | BumpFeeErgoError
-  | BumpFeeFeeAmount !Money !Units !Currency
-  | BumpFeeFeeRateAmount !Rational !Currency
+  | BumpFeeFeeAmount !Money !UnitBTC
+  | BumpFeeFeeRateAmount !Rational
   | BumpFeeFeeRateUnknown
   | BumpFeeFeeUnknown
   | BumpFeeGetChangeKeyError
@@ -143,7 +143,7 @@ data BumpFeeWidgetStrings =
   | BumpFeeInvalidAddressError
   | BumpFeeNewFee
   | BumpFeeNewFeeRate
-  | BumpFeeNewFeeRateAmount !Word64 !Currency
+  | BumpFeeNewFeeRateAmount !Word64
   | BumpFeeNewFeeRateUnits
   | BumpFeeSendTx
   | BumpFeeSignError
@@ -160,8 +160,8 @@ instance LocalizedPrint BumpFeeWidgetStrings where
       BumpFeeCurrentFeeRate              -> "Current fee rate"
       BumpFeeDecodeOutsError             -> "Couldn't decode outputs"
       BumpFeeErgoError                   -> "Ergo is not supported yet"
-      BumpFeeFeeAmount amount units cur  -> showMoneyUnit amount units <> " " <> symbolUnit cur units
-      BumpFeeFeeRateAmount amount cur    -> (showf 3 $ (realToFrac amount :: Double)) <> " " <> symbolUnit cur smallestUnits <> "/vbyte"
+      BumpFeeFeeAmount amount units      -> showMoneyUnit amount units <> " " <> display units
+      BumpFeeFeeRateAmount amount        -> (showf 3 $ (realToFrac amount :: Double)) <> " " <> display smallestUnitBTC <> "/vbyte"
       BumpFeeFeeRateUnknown              -> "unknown"
       BumpFeeFeeUnknown                  -> "unknown"
       BumpFeeGetChangeKeyError           -> "Couldn't get change key"
@@ -173,7 +173,7 @@ instance LocalizedPrint BumpFeeWidgetStrings where
       BumpFeeInvalidAddressError         -> "Invalid address"
       BumpFeeNewFee                      -> "New fee"
       BumpFeeNewFeeRate                  -> "New fee rate"
-      BumpFeeNewFeeRateAmount amount cur -> showt amount <> " " <> symbolUnit cur smallestUnits <> "/vbyte"
+      BumpFeeNewFeeRateAmount amount     -> showt amount <> " " <> display smallestUnitBTC <> "/vbyte"
       BumpFeeNewFeeRateUnits             -> "New fee rate, sat/vbyte"
       BumpFeeSendTx                      -> "Send tx"
       BumpFeeSignError                   -> "Failed to sign the transaction"
@@ -188,8 +188,8 @@ instance LocalizedPrint BumpFeeWidgetStrings where
       BumpFeeCurrentFeeRate              -> "Текущая комиссия за байт"
       BumpFeeDecodeOutsError             -> "Не удалось декодировать выходы"
       BumpFeeErgoError                   -> "Ergo пока не поддерживается"
-      BumpFeeFeeAmount amount units cur  -> showMoneyUnit amount units <> " " <> symbolUnit cur units
-      BumpFeeFeeRateAmount amount cur    -> (showf 3 $ (realToFrac amount :: Double)) <> " " <> symbolUnit cur smallestUnits <> "/vbyte"
+      BumpFeeFeeAmount amount units      -> showMoneyUnit amount units <> " " <> display units
+      BumpFeeFeeRateAmount amount        -> (showf 3 $ (realToFrac amount :: Double)) <> " " <> display smallestUnitBTC <> "/vbyte"
       BumpFeeFeeRateUnknown              -> "неизвестно"
       BumpFeeFeeUnknown                  -> "неизвестно"
       BumpFeeGetChangeKeyError           -> "Не удалось получить ключ для сдачи"
@@ -201,7 +201,7 @@ instance LocalizedPrint BumpFeeWidgetStrings where
       BumpFeeInvalidAddressError         -> "Неверный адрес"
       BumpFeeNewFee                      -> "Новая комиссия"
       BumpFeeNewFeeRate                  -> "Новая комиссия за байт"
-      BumpFeeNewFeeRateAmount amount cur -> showt amount <> " " <> symbolUnit cur smallestUnits <> "/vbyte"
+      BumpFeeNewFeeRateAmount amount     -> showt amount <> " " <> display smallestUnitBTC <> "/vbyte"
       BumpFeeNewFeeRateUnits             -> "Новая комиссия за байт, sat/vbyte"
       BumpFeeSendTx                      -> "Отправить транзакцию"
       BumpFeeSignError                   -> "Не удалось подписать транзакцию"

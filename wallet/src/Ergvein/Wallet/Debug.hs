@@ -108,7 +108,7 @@ dbgPubInternalsPage = wrapper False "Public internal keys" (Just $ pure dbgPubIn
   let intsD = ffor pubSD $ \ps -> V.indexed $ fromMaybe V.empty $ ps ^. pubStorage'currencyPubStorages . at BTC & fmap (\a -> a ^. currencyPubStorage'pubKeystore & pubKeystore'internal)
   void $ networkHoldDyn $ ffor intsD $ \ints -> divClass "" $ do
     flip traverse ints $ \(i, EgvPubKeyBox{..}) -> do
-      let keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress pubKeyBox'key
+      let keyTxt = egvAddrToText $ egvXPubKeyToEgvAddress pubKeyBox'key
       el "div" $ text $ showt i <> ": " <> keyTxt <> "; Txs: " <> showt (S.size pubKeyBox'txs) <> " Man: " <> showt pubKeyBox'manual
 
 dbgPubExternalsPage :: MonadFront t m => m ()
@@ -118,7 +118,7 @@ dbgPubExternalsPage = wrapper False "Public external keys" (Just $ pure dbgPubEx
   let intsD = ffor pubSD $ \ps -> V.indexed $ fromMaybe V.empty $ ps ^. pubStorage'currencyPubStorages . at BTC & fmap (\a -> a ^. currencyPubStorage'pubKeystore & pubKeystore'external)
   void $ networkHoldDyn $ ffor intsD $ \ints -> divClass "" $ do
     flip traverse ints $ \(i, EgvPubKeyBox{..}) -> do
-      let keyTxt = egvAddrToString $ egvXPubKeyToEgvAddress pubKeyBox'key
+      let keyTxt = egvAddrToText $ egvXPubKeyToEgvAddress pubKeyBox'key
       el "div" $ text $ showt i <> ": " <> keyTxt <> "; Txs: " <> showt (S.size pubKeyBox'txs) <> " Man: " <> showt pubKeyBox'manual
 
 dbgPrivInternalsPage :: MonadFront t m => m ()
@@ -133,7 +133,7 @@ dbgPrivInternalsPage = wrapper False "Private internal keys" (Just $ pure dbgPri
   void $ networkHold (pure ()) $ ffor intE $ \ints -> divClass "" $ do
     void $ flip traverse ints $ \(i, k) -> do
       let k' = unEgvXPrvKey k
-      let p = egvAddrToString $ egvXPubKeyToEgvAddress $ flip BtcXPubKey "" $ HK.deriveXPubKey k'
+      let p = egvAddrToText $ egvXPubKeyToEgvAddress $ flip BtcXPubKey "" $ HK.deriveXPubKey k'
       el "div" $ text $ showt i <> " ------------------------------------------"
       el "div" $ text $ showt $ k'
       el "div" $ text $ p
@@ -150,7 +150,7 @@ dbgPrivExternalsPage = wrapper False "Private external keys" (Just $ pure dbgPri
   void $ networkHold (pure ()) $ ffor extE $ \exts -> divClass "" $ do
     void $ flip traverse exts $ \(i, k) -> do
       let k' = unEgvXPrvKey k
-      let p = egvAddrToString $ egvXPubKeyToEgvAddress $ flip BtcXPubKey "" $ HK.deriveXPubKey k'
+      let p = egvAddrToText $ egvXPubKeyToEgvAddress $ flip BtcXPubKey "" $ HK.deriveXPubKey k'
       el "div" $ text $ showt i <> " ------------------------------------------"
       el "div" $ text $ showt $ k'
       el "div" $ text $ p

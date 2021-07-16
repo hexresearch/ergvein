@@ -56,7 +56,6 @@ class (CurrencyRep cur) => HasNode cur where
 data NodeConnection t cur = NodeConnection {
   nodeconCurrency   :: !Currency
 , nodeconUrl        :: !SockAddr
-, nodeconStatus     :: !(ExternalRef t (Maybe NodeStatus))
 , nodeconOpensE     :: !(Event t ())
 , nodeconCloseE     :: !(Event t ())
 , nodeconRespE      :: !(Event t (NodeResp cur))

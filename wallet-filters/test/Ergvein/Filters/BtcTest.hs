@@ -15,7 +15,7 @@ import           Ergvein.Filters.Btc
 import           Ergvein.Filters.Btc.TestHelpers
 import           Ergvein.Filters.Btc.TestVectors
 import           Ergvein.Text
-import           Ergvein.Types.Address          (btcAddrToString')
+import           Ergvein.Types.Address          (btcAddrToText')
 import           Data.Foldable
 
 spec_immutableFilterPositive :: Spec
@@ -30,7 +30,7 @@ spec_immutableFilterPositive = forM_ samples $ \(block, txs, as) -> do
       let hx2 = bs2Hex $ encodeBtcAddrFilter bfilter2
       hx1 `shouldBe` hx2
     forM_ as $ \(a, ascript) -> do
-      let at = unpack $ btcAddrToString' btcTest a
+      let at = unpack $ btcAddrToText' btcTest a
       it ("block filter contains address " ++ at)
         $          applyBtcFilter bhash bfilter ascript
         `shouldBe` True
@@ -41,7 +41,7 @@ spec_immutableFilterNegative = forM_ samples $ \(block, txs) -> do
   let bfilter = runIdentity $ withInputTxs txs $ makeBtcFilter isErgveinIndexable block
       bhash   = headerHash . blockHeader $ block
       bid     = blockHashToHex bhash
-      at      = unpack $ btcAddrToString' btcTest testAddress
+      at      = unpack $ btcAddrToText' btcTest testAddress
   describe ("block " ++ show bid)
     $          it ("block filter should not contain address " ++ at)
     $          applyBtcFilter bhash bfilter (addressToScriptBS testAddress)

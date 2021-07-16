@@ -106,43 +106,51 @@ toSocksProxy (SocksConf a p) = S5.defaultSocksConfFromSockAddr $ makeSockAddr a 
 data BtcSettings = BtcSettings {
     btcSettings'explorerUrls     :: !ExplorerUrls
   , btcSettings'sendRbfByDefault :: !Bool
+  , btcSettings'units            :: !UnitBTC
   } deriving (Eq, Show, Read)
 
 instance ToJSON BtcSettings where
   toJSON BtcSettings{..} = object [
       "explorerUrls" .= toJSON btcSettings'explorerUrls
     , "sendRbfByDefault" .= toJSON btcSettings'sendRbfByDefault
+    , "units" .= toJSON btcSettings'units
     ]
 
 instance FromJSON BtcSettings where
   parseJSON = withObject "BtcSettings" $ \o -> do
     btcSettings'explorerUrls <- o .: "explorerUrls"
     btcSettings'sendRbfByDefault <- o .: "sendRbfByDefault"
+    btcSettings'units <- o .: "units"
     pure BtcSettings{..}
 
 defaultBtcSettings :: BtcSettings
 defaultBtcSettings = BtcSettings {
     btcSettings'explorerUrls = btcDefaultExplorerUrls
   , btcSettings'sendRbfByDefault = True
+  , btcSettings'units = defUnitBTC
 }
 
 data ErgoSettings = ErgoSettings {
     ergSettings'explorerUrls :: !ExplorerUrls
+  , ergSettings'units        :: !UnitERGO
 } deriving (Eq, Show, Read)
 
 instance ToJSON ErgoSettings where
   toJSON ErgoSettings{..} = object [
       "explorerUrls" .= toJSON ergSettings'explorerUrls
+    , "units" .= toJSON ergSettings'units
     ]
 
 instance FromJSON ErgoSettings where
   parseJSON = withObject "ErgoSettings" $ \o -> do
     ergSettings'explorerUrls <- o .: "explorerUrls"
+    ergSettings'units <- o .: "units"
     pure ErgoSettings{..}
 
 defaultErgSettings :: ErgoSettings
 defaultErgSettings = ErgoSettings {
     ergSettings'explorerUrls = ergDefaultExplorerUrls
+  , ergSettings'units = defUnitERGO
 }
 
 data CurrencySettings = SettingsBtc !BtcSettings | SettingsErgo !ErgoSettings
@@ -172,7 +180,6 @@ data Settings = Settings {
   settingsLang              :: Language
 , settingsStoreDir          :: Text
 , settingsConfigPath        :: Text
-, settingsUnits             :: Maybe Units
 , settingsReqTimeout        :: NominalDiffTime
 , settingsActiveAddrs       :: [Text]
 , settingsDeactivatedAddrs  :: [Text]
@@ -180,8 +187,9 @@ data Settings = Settings {
 , settingsReqUrlNum         :: (Int, Int) -- ^ First is minimum required answers. Second is sufficient amount of answers from indexers.
 , settingsActUrlNum         :: Int
 , settingsPortfolio         :: Bool
-, settingsFiatCurr          :: Maybe Fiat
-, settingsRateFiat          :: Maybe Fiat
+, settingsFiatCurr          :: Fiat
+, settingsShowFiatBalance   :: Bool
+, settingsShowFiatRate      :: Bool
 , settingsDns               :: S.Set HostName
 , settingsSocksProxy        :: Maybe SocksConf
 , settingsCurrencySpecific  :: CurrencySpecificSettings
@@ -200,7 +208,6 @@ instance (PlatformNatives, FromJSON Language) => FromJSON Settings where
     settingsLang              <- o .:  "lang"
     settingsStoreDir          <- o .:  "storeDir"
     settingsConfigPath        <- o .:  "configPath"
-    settingsUnits             <- o .:  "units"
     settingsReqTimeout        <- o .:  "reqTimeout"
     settingsActiveAddrs       <- o .:  "activeAddrs"      .!= mempty
     settingsDeactivatedAddrs  <- o .:  "deactivatedAddrs" .!= mempty
@@ -208,8 +215,9 @@ instance (PlatformNatives, FromJSON Language) => FromJSON Settings where
     settingsReqUrlNum         <- o .:? "reqUrlNum"        .!= defaultIndexersNum
     settingsActUrlNum         <- o .:? "actUrlNum"        .!= 10
     settingsPortfolio         <- o .:? "portfolio"        .!= False
-    settingsFiatCurr          <- o .:? "fiatCurr"
-    settingsRateFiat          <- o .:? "rateFiat"
+    settingsFiatCurr          <- o .:? "fiatCurr"         .!= USD
+    settingsShowFiatBalance   <- o .:? "showFiatBalance"  .!= False
+    settingsShowFiatRate      <- o .:? "showFiatRate"     .!= False
     mdns                      <- o .:? "dns"
     settingsSocksProxy        <- o .:? "socksProxy"
     let settingsDns = maybe defaultDns S.fromList mdns
@@ -221,7 +229,6 @@ instance ToJSON Language => ToJSON Settings where
       "lang"              .= toJSON settingsLang
     , "storeDir"          .= toJSON settingsStoreDir
     , "configPath"        .= toJSON settingsConfigPath
-    , "units"             .= toJSON settingsUnits
     , "reqTimeout"        .= toJSON settingsReqTimeout
     , "activeAddrs"       .= toJSON settingsActiveAddrs
     , "deactivatedAddrs"  .= toJSON settingsDeactivatedAddrs
@@ -230,7 +237,8 @@ instance ToJSON Language => ToJSON Settings where
     , "actUrlNum"         .= toJSON settingsActUrlNum
     , "portfolio"         .= toJSON settingsPortfolio
     , "fiatCurr"          .= toJSON settingsFiatCurr
-    , "rateFiat"          .= toJSON settingsRateFiat
+    , "showFiatBalance"   .= toJSON settingsShowFiatBalance
+    , "showFiatRate"      .= toJSON settingsShowFiatRate
     , "dns"               .= toJSON settingsDns
     , "socksProxy"        .= toJSON settingsSocksProxy
     , "currencySpecific"  .= toJSON settingsCurrencySpecific
@@ -244,13 +252,13 @@ defaultSettings deflang home =
         settingsLang              = deflang
       , settingsStoreDir          = pack storePath
       , settingsConfigPath        = pack configPath
-      , settingsUnits             = Just defUnits
       , settingsReqTimeout        = defaultIndexerTimeout
       , settingsReqUrlNum         = defaultIndexersNum
       , settingsActUrlNum         = defaultActUrlNum
       , settingsPortfolio         = False
-      , settingsFiatCurr          = Nothing
-      , settingsRateFiat          = Nothing
+      , settingsFiatCurr          = USD
+      , settingsShowFiatBalance   = False
+      , settingsShowFiatRate      = False
       , settingsActiveAddrs       = []
       , settingsDeactivatedAddrs  = []
       , settingsArchivedAddrs     = []
