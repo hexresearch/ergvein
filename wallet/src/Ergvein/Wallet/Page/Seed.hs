@@ -7,7 +7,6 @@ module Ergvein.Wallet.Page.Seed(
   , mnemonicWidget
   , simpleSeedRestorePage
   , seedRestorePage
-  , seedRestoreWidget
   ) where
 
 import Control.Monad.Random.Strict
