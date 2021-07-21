@@ -3,25 +3,27 @@ module Ergvein.Wallet.Page.Initial(
     initialPage
   ) where
 
+import Data.Bifunctor (first)
 import Data.Foldable (for_)
 import Data.Traversable (for)
 
 import Ergvein.Either
 import Ergvein.Types.Storage
-import Sepulcas.Alert
-import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
+import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Page.Seed
 import Ergvein.Wallet.Page.Settings.Unauth
 import Ergvein.Wallet.Wrapper
+import Sepulcas.Alert
+import Sepulcas.Elements
 
-import Ergvein.Wallet.Page.PatternKey
 import qualified Data.Map.Strict as M
+import qualified Data.Text       as T
 
-data GoPage = GoSeed | GoRestore | GoSettings
+data GoPage = GoCreate Mnemonic | GoRestore | GoSettings
 
 initialPage :: MonadFrontBase t m => Bool -> m ()
 initialPage redir = do
@@ -35,12 +37,17 @@ noWalletsPage = wrapperSimple True $ divClass "initial-page-options" createResto
 
 createRestore :: MonadFrontBase t m => m ()
 createRestore = do
-  let items = [(GoSeed, IPSCreate), (GoRestore, IPSRestore), (GoSettings, IPSSettings)]
-  goE <- fmap leftmost $ for items $ \(act, lbl) ->
-    (act <$) <$> outlineButton lbl
+  createE <- outlineButton IPSCreate
+  eMnemonicE <- performFork $ ffor createE $ const $ do
+    entropy <- liftIO getEntropy
+    pure $ first T.pack $ toMnemonic entropy
+  mnemonicE <- (fmap . fmap) GoCreate (handleDangerMsg eMnemonicE)
+  restoreE <- (GoRestore <$) <$> outlineButton IPSRestore
+  settingsE <- (GoSettings <$) <$> outlineButton IPSSettings
+  let goE = leftmost [mnemonicE, restoreE, settingsE]
   void $ nextWidget $ ffor goE $ \go -> Retractable {
       retractableNext = case go of
-        GoSeed -> mnemonicPage
+        GoCreate mnemonic -> setLoginPasswordPage WalletGenerated mnemonic
         GoRestore -> simpleSeedRestorePage
         GoSettings -> settingsPageUnauth
     , retractablePrev = Just $ pure $ initialPage False

@@ -4,6 +4,7 @@
 -- | Page for mnemonic phrase generation
 module Ergvein.Wallet.Page.Seed(
     mnemonicPage
+  , setLoginPasswordPage
   , mnemonicWidget
   , simpleSeedRestorePage
   , seedRestorePage
@@ -50,8 +51,8 @@ mnemonicPage = go Nothing
         , retractablePrev = Just $ go <$> mnemonicD
         }
 
-passwordPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> m ()
-passwordPage walletSource mnemonic = if isAndroid
+setLoginPasswordPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> m ()
+setLoginPasswordPage walletSource mnemonic = if isAndroid
   then setupLoginPage walletSource Nothing mnemonic activeCurrencies
   else setupPasswordPage walletSource Nothing mnemonic activeCurrencies Nothing
   where activeCurrencies = [BTC]
@@ -60,7 +61,7 @@ checkPage :: MonadFrontBase t m => Mnemonic -> m ()
 checkPage mnemonic = wrapperSimple True $ do
   mnemonicE <- mnemonicCheckWidget mnemonic
   void $ nextWidget $ ffor mnemonicE $ \mnemonic' -> Retractable {
-      retractableNext = passwordPage WalletGenerated mnemonic'
+      retractableNext = setLoginPasswordPage WalletGenerated mnemonic'
     , retractablePrev = Just $ pure $ checkPage mnemonic'
     }
 
@@ -180,7 +181,7 @@ askSeedPasswordPage encryptedMnemonic = do
   let mnemonicBSE = decryptBSWithAEAD encryptedMnemonic <$> passE
   verifiedMnemonicE <- handleDangerMsg mnemonicBSE
   void $ nextWidget $ ffor (decodeUtf8With lenientDecode <$> verifiedMnemonicE) $ \mnem -> Retractable {
-      retractableNext = passwordPage WalletRestored mnem
+      retractableNext = setLoginPasswordPage WalletRestored mnem
     , retractablePrev = Just $ pure $ askSeedPasswordPage encryptedMnemonic
     }
 
@@ -326,7 +327,7 @@ plainRestorePage mnemLength = wrapperSimple True $ mdo
     PSDone mnem -> do
       submitE <- outlineButton CSForward
       void $ nextWidget $ ffor submitE $ const $ Retractable {
-          retractableNext = passwordPage WalletRestored mnem
+          retractableNext = setLoginPasswordPage WalletRestored mnem
         , retractablePrev = Just $ pure seedRestorePage
         }
     _ -> pure ()
