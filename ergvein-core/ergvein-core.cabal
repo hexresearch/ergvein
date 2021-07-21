@@ -41,6 +41,7 @@ library
     Ergvein.Core
     Ergvein.Core.Client
     Ergvein.Core.Client.Env
+    Ergvein.Core.Client.Mempool
     Ergvein.Core.Client.Monad
     Ergvein.Core.Client.Socket
     Ergvein.Core.Currency
