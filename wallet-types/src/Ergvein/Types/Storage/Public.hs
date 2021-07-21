@@ -43,6 +43,7 @@ instance SafeCopy PubStorage where
     put _pubStorage'seedBackupRequired
     put _pubStorage'pathPrefix
   getCopy = contain $ PubStorage <$> get <*> safeGet <*> safeGet <*> get <*> get <*> get
+  kind = extension
 
 data PubStorage_V1 = PubStorage_V1 {
     _pubStorageV1'rootPubKey          :: !EgvRootXPubKey

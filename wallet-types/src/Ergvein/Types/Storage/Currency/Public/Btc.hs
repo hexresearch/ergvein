@@ -75,6 +75,7 @@ instance SafeCopy BtcPubStorage where
     put _btcPubStorage'replacedTxs
     put _btcPubStorage'possiblyReplacedTxs
   getCopy = contain $ BtcPubStorage <$> safeGet <*> safeGet <*> get <*> get <*> get <*> get <*> get
+  kind = extension
 
 instance Migrate BtcPubStorage where
   type MigrateFrom BtcPubStorage = BtcPubStorage_V1
