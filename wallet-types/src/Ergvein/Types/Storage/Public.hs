@@ -9,6 +9,7 @@ module Ergvein.Types.Storage.Public
   , pubStorage'currencyPubStorages
   , pubStorage'activeCurrencies
   , pubStorage'restoring
+  , pubStorage'seedBackupRequired
   , pubStorage'pathPrefix
   , btcPubStorage
   , ergoPubStorage
@@ -28,18 +29,42 @@ data PubStorage = PubStorage {
   , _pubStorage'currencyPubStorages :: !CurrencyPubStorages
   , _pubStorage'activeCurrencies    :: [Currency]
   , _pubStorage'restoring           :: !Bool -- ^ Flag to track unfinished process of restoration
+  , _pubStorage'seedBackupRequired  :: !Bool -- ^ Flag to track unfinished process of seed backup
   , _pubStorage'pathPrefix          :: !(Maybe DerivPrefix)
   } deriving (Eq, Show, Read)
 
 instance SafeCopy PubStorage where
-  version = 1
+  version = 2
   putCopy PubStorage{..} = contain $ do
     put _pubStorage'rootPubKey
     safePut _pubStorage'currencyPubStorages
     safePut _pubStorage'activeCurrencies
     put _pubStorage'restoring
+    put _pubStorage'seedBackupRequired
     put _pubStorage'pathPrefix
-  getCopy = contain $ PubStorage <$> get <*> safeGet <*> safeGet <*> get <*> get
+  getCopy = contain $ PubStorage <$> get <*> safeGet <*> safeGet <*> get <*> get <*> get
+
+data PubStorage_V1 = PubStorage_V1 {
+    _pubStorageV1'rootPubKey          :: !EgvRootXPubKey
+  , _pubStorageV1'currencyPubStorages :: !CurrencyPubStorages
+  , _pubStorageV1'activeCurrencies    :: [Currency]
+  , _pubStorageV1'restoring           :: !Bool -- ^ Flag to track unfinished process of restoration
+  , _pubStorageV1'pathPrefix          :: !(Maybe DerivPrefix)
+  } deriving (Eq, Show, Read)
+
+instance SafeCopy PubStorage_V1 where
+  version = 1
+  putCopy PubStorage_V1{..} = contain $ do
+    put _pubStorageV1'rootPubKey
+    safePut _pubStorageV1'currencyPubStorages
+    safePut _pubStorageV1'activeCurrencies
+    put _pubStorageV1'restoring
+    put _pubStorageV1'pathPrefix
+  getCopy = contain $ PubStorage_V1 <$> get <*> safeGet <*> safeGet <*> get <*> get
+
+instance Migrate PubStorage where
+  type MigrateFrom PubStorage = PubStorage_V1
+  migrate (PubStorage_V1 a b c d e) = PubStorage a b c d False e
 
 -- This instances is required only for the current version
 makeLenses ''PubStorage
