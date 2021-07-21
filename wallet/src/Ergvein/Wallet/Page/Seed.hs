@@ -43,18 +43,24 @@ import qualified Data.Vector    as V
 mnemonicPage :: MonadFrontBase t m => m ()
 mnemonicPage = go Nothing
   where
-    go mnemonic = wrapperSimple True $ do
-      (e, mnemonicD) <- mnemonicWidget mnemonic
+    go mMnemonic = wrapperSimple True $ do
+      (e, mnemonicD) <- mnemonicWidget mMnemonic
       void $ nextWidget $ ffor e $ \mn -> Retractable {
           retractableNext = checkPage mn
         , retractablePrev = Just $ go <$> mnemonicD
         }
 
+passwordPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> m ()
+passwordPage walletSource mnemonic = if isAndroid
+  then setupLoginPage walletSource Nothing mnemonic activeCurrencies
+  else setupPasswordPage walletSource Nothing mnemonic activeCurrencies Nothing
+  where activeCurrencies = [BTC]
+
 checkPage :: MonadFrontBase t m => Mnemonic -> m ()
 checkPage mnemonic = wrapperSimple True $ do
   mnemonicE <- mnemonicCheckWidget mnemonic
   void $ nextWidget $ ffor mnemonicE $ \mnemonic' -> Retractable {
-      retractableNext = selectCurrenciesPage WalletGenerated mnemonic'
+      retractableNext = passwordPage WalletGenerated mnemonic'
     , retractablePrev = Just $ pure $ checkPage mnemonic'
     }
 
@@ -174,7 +180,7 @@ askSeedPasswordPage encryptedMnemonic = do
   let mnemonicBSE = decryptBSWithAEAD encryptedMnemonic <$> passE
   verifiedMnemonicE <- handleDangerMsg mnemonicBSE
   void $ nextWidget $ ffor (decodeUtf8With lenientDecode <$> verifiedMnemonicE) $ \mnem -> Retractable {
-      retractableNext = selectCurrenciesPage WalletRestored mnem
+      retractableNext = passwordPage WalletRestored mnem
     , retractablePrev = Just $ pure $ askSeedPasswordPage encryptedMnemonic
     }
 
@@ -320,7 +326,7 @@ plainRestorePage mnemLength = wrapperSimple True $ mdo
     PSDone mnem -> do
       submitE <- outlineButton CSForward
       void $ nextWidget $ ffor submitE $ const $ Retractable {
-          retractableNext = selectCurrenciesPage WalletRestored mnem
+          retractableNext = passwordPage WalletRestored mnem
         , retractablePrev = Just $ pure seedRestorePage
         }
     _ -> pure ()

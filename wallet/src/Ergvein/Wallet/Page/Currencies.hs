@@ -18,10 +18,10 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Wrapper
 
+-- As long as we only have one active currency, this widget is not needed
 selectCurrenciesPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> m ()
-selectCurrenciesPage wt mnemonic = do
-  buildE <- getPostBuild
-  let e = [BTC] <$ buildE
+selectCurrenciesPage wt mnemonic = wrapperSimple True $ do
+  e <- selectCurrenciesWidget []
   void $ nextWidget $ ffor e $ \ac -> Retractable {
 #ifdef ANDROID
       retractableNext = setupLoginPage wt Nothing mnemonic ac
@@ -30,20 +30,6 @@ selectCurrenciesPage wt mnemonic = do
 #endif
     , retractablePrev = Just $ pure $ selectCurrenciesPage wt mnemonic
     }
-
--- As long as we only have one active currency, this widget is not needed
-
--- selectCurrenciesPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> m ()
--- selectCurrenciesPage wt mnemonic = wrapperSimple True $ do
---   e <- selectCurrenciesWidget []
---   void $ nextWidget $ ffor e $ \ac -> Retractable {
--- #ifdef ANDROID
---       retractableNext = setupLoginPage wt Nothing mnemonic ac
--- #else
---       retractableNext = setupPasswordPage wt Nothing mnemonic ac Nothing
--- #endif
---     , retractablePrev = Just $ pure $ selectCurrenciesPage wt mnemonic
---     }
 
 selectCurrenciesWidget :: MonadFrontBase t m => [Currency] -> m (Event t [Currency])
 selectCurrenciesWidget currs = mdo
