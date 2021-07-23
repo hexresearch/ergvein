@@ -9,6 +9,8 @@ module Ergvein.Wallet.Password(
   , setupLogin
   , setupPattern
   , setupDerivPrefix
+  , nameProposal
+  , check
   ) where
 
 import Control.Monad.Except
@@ -67,7 +69,6 @@ nameProposal s = let
   where
    firstName = "main"
    subsequentNamePrefix = "wallet_"
-
 
 passwordHeader :: MonadFrontBase t m => m (Event t ())
 passwordHeader =
