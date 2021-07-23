@@ -12,6 +12,7 @@ module Ergvein.Filters.Btc.Mutable
   , matchBtcTx
   , applyBtcFilter
   , applyBtcFilterMany
+  , applyBtcPrefixFilterMany
   -- * Reexports
   , module Ergvein.Filters.Btc.Index
   )
@@ -127,3 +128,13 @@ applyBtcFilterMany bhash BtcAddrFilter {..} items = matchGcsMany sipkey
                                                                  items
  where
   sipkey = blockSipHash bhash
+
+-- | Check that given address is located in the filter. Note that filter is destroyed after the operation.
+applyBtcPrefixFilterMany :: MonadIO m => (Word8, Word8) -> BtcAddrFilter -> [ByteString] -> m Bool
+applyBtcPrefixFilterMany pref BtcAddrFilter {..} items = matchGcsMany sipkey
+                                                                 btcDefM
+                                                                 btcAddrFilterN
+                                                                 btcAddrFilterGcs
+                                                                 items
+ where
+  sipkey = prefSipHash pref

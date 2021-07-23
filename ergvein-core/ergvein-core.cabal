@@ -41,7 +41,6 @@ library
     Ergvein.Core
     Ergvein.Core.Client
     Ergvein.Core.Client.Env
-    Ergvein.Core.Client.Mempool
     Ergvein.Core.Client.Monad
     Ergvein.Core.Client.Socket
     Ergvein.Core.Currency
@@ -103,6 +102,7 @@ library
     Ergvein.Core.Worker.Height
     Ergvein.Core.Worker.Indexer
     Ergvein.Core.Worker.Keys
+    Ergvein.Core.Worker.Mempool
     Ergvein.Core.Worker.Node
     Ergvein.Core.Worker.Rates
     Ergvein.Core.Worker.Store

@@ -18,6 +18,7 @@ import Ergvein.Core.Worker.Fees
 import Ergvein.Core.Worker.Height
 import Ergvein.Core.Worker.Indexer
 import Ergvein.Core.Worker.Keys
+import Ergvein.Core.Worker.Mempool
 import Ergvein.Core.Worker.Node
 import Ergvein.Core.Worker.Rates
 import Ergvein.Core.Worker.Store
@@ -44,12 +45,13 @@ spawnWorkers :: (MonadStorage t m
 spawnWorkers = do
   setActiveCurrencies
   storeWorker
-  scanner
+  -- scanner
   btcNodeController
-  ratesWorker
-  heightWorker
-  feesWorker
-  pubKeysGenerator
+  -- ratesWorker
+  -- heightWorker
+  -- feesWorker
+  -- pubKeysGenerator
+  btcMempoolWorker
   pure ()
 
 setActiveCurrencies :: (MonadStorage t m

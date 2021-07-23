@@ -15,7 +15,6 @@ import Data.Text (Text)
 import Data.Time
 import Data.Traversable (for)
 import Ergvein.Core.Node
-import Ergvein.Core.Node.Btc.Mempool
 import Ergvein.Core.Platform
 import Ergvein.Core.Resolve
 import Ergvein.Core.Status
@@ -115,7 +114,6 @@ btcNodeController = mdo
     myTxSender u respE
     pure (u <$ closeE, newTxE)
 
-  requestBTCMempool
   void $ btcMempoolTxInserter txE
   where
     switchTuple (a, b) = (switchDyn . fmap leftmost $ a, switchDyn . fmap leftmost $ b)

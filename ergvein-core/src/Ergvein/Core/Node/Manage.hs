@@ -9,6 +9,7 @@ module Ergvein.Core.Node.Manage(
   , requestNodeWait
   , requestRandomNode
   , btcMempoolTxInserter
+  , checkAddrMempoolTx
   ) where
 
 import Control.Lens
@@ -155,7 +156,7 @@ btcMempoolTxInserter txE = do
         keys = getPublicKeys $ btcps ^. currencyPubStorage'pubKeystore
         txStore = btcps ^. currencyPubStorage'transactions
     liftIO $ flip runReaderT txStore $ do
-      checkAddrTxResult <- checkAddrTx' keys tx
+      checkAddrTxResult <- checkAddrMempoolTx keys tx
       utxoUpdates <- getUtxoUpdates Nothing keys tx
       pure (checkAddrTxResult, utxoUpdates)
   insertedE <- insertTxsUtxoInPubKeystore "btcMempoolTxInserter" BTC $ helper <$> valsE
@@ -205,8 +206,8 @@ removeTxsReplacedByFee caller replacingTxE = do
   where clr = caller <> ":" <> "removeTxsReplacedByFee"
 
 -- | Checks tx with checkAddrTx against provided keys and returns that tx in EgvTx format with matched keys vector.
-checkAddrTx' :: (HasTxStorage m, PlatformNatives) => V.Vector ScanKeyBox -> HT.Tx -> m (V.Vector ScanKeyBox, EgvTx)
-checkAddrTx' vec tx = do
+checkAddrMempoolTx :: (HasTxStorage m, PlatformNatives) => V.Vector ScanKeyBox -> HT.Tx -> m (V.Vector ScanKeyBox, EgvTx)
+checkAddrMempoolTx vec tx = do
   st <- liftIO $ systemToUTCTime <$> getSystemTime
   let meta = Just $ EgvTxMeta Nothing Nothing st
   vec' <- for vec $ \kb -> do
