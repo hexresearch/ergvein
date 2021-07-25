@@ -520,7 +520,9 @@ toggleSwitchCss =
 dropdownContainer :: Css
 dropdownContainer = do
   ".dropdown-header" ? do
-    float floatRight
+    marginBottom $ rem 1.5
+  ".dropdownContainerHidden" ? do
+    display displayNone
 
 passwordCss :: Css
 passwordCss = do

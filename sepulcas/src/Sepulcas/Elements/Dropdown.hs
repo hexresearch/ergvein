@@ -9,29 +9,26 @@ import Reflex.Flunky
 import Reflex.Localize.Dom
 import Sepulcas.Elements.Button
 import Sepulcas.Elements.Markup
+import Data.Text
+
+visibilityClass :: Text -> Bool -> Text
+visibilityClass classes True = classes <> " dropdownContainerHidden"
+visibilityClass classes False = classes
 
 dropdownContainer :: forall t m lbl a . ( MonadIO m, DomBuilder t m, PostBuild t m, MonadHold t m, MonadLocalized t m, MonadFix m, LocalizedPrint lbl)
   => lbl
   -> lbl 
   -> Dynamic t Bool 
   -> m a
-  -> m (Dynamic t (Maybe a))
+  -> m a
 dropdownContainer lClosed lOpened tglD innerContent = mdo
-  valD <- mergeDyn tglD $ poke clickE $ const $ do
-    val <- sampleDyn valD
-    pure $ not val
+  valD <- mergeDyn tglD $ poke clickE $ const $ not <$> sampleDyn valD
   valD' <- holdUniqDyn valD
-  clickE <- fmap switchDyn $ networkHoldDyn $ ffor valD' $ \v -> if v
-    then divButton "dropdown-header" $ do
-        localizedText lClosed
+  clickE <- fmap switchDyn $ networkHoldDyn $ ffor valD' $ \v ->
+    h5 $ el "div" $ divButton "dropdown-header" $ do
+        let (lbl, chevronTypeClass) = if v then (lClosed, "up") else (lOpened, "down")
+        localizedText lbl
         text " "
-        elClass "i" "fa fa-fw fa-chevron-up" $ blank
-    else divButton "dropdown-header" $ do
-        localizedText lOpened
-        text " "
-        elClass "i" "fa fa-fw fa-chevron-down" $ blank
-  networkHoldDyn $ ffor valD' $ \v -> if v
-    then do
-      Just <$> innerContent
-    else do
-      pure Nothing
+        elClass "i" ("fa fa-fw fa-chevron-" <> chevronTypeClass) $ blank
+  let backButtonClassesD = visibilityClass "" <$> valD'
+  elClassDyn "div" backButtonClassesD innerContent
