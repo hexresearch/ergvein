@@ -88,8 +88,8 @@ instance LocalizedPrint PasswordWidgetStrings where
       PWSDeriv         -> "Derivation path"
       PWSDerivDescr    -> "You can override suggested derivation path. Leave it untouched if not sure what it is."
       PWSInvalidPath   -> "Derivation path is invalid! Format m/0'/0'/0'"
-      PWSMoreOptions   -> "More options"
-      PWSLessOptions   -> "Less options"
+      PWSMoreOptions   -> "Advanced settings"
+      PWSLessOptions   -> "Advanced settings"
     Russian -> case v of
       PWSPassword      -> "Пароль"
       PWSPassNamed n   -> "Пароль от " <> n
@@ -104,8 +104,8 @@ instance LocalizedPrint PasswordWidgetStrings where
       PWSDeriv         -> "Префикс BIP48 для вывода ключей"
       PWSDerivDescr    -> "Вы можете переназначить префикс дерева для вывода ключей. Оставьте как есть, если не знаете, что это такое."
       PWSInvalidPath   -> "Путь вывода неверен! Формат поля m/0'/0'/0'"
-      PWSMoreOptions   -> "Больше опций"
-      PWSLessOptions   -> "Меньше опций"
+      PWSMoreOptions   -> "Продвинутые опции"
+      PWSLessOptions   -> "Продвинутые опции"
 
 data ConfirmEmptyPage = CEPBack | CEPSkip | CEPAttention | CEPConsequences
 

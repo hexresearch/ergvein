@@ -88,7 +88,8 @@ setupPattern = divClass "setup-password" $ form $ fieldset $ mdo
 
 setupLogin :: MonadFrontBase t m => Event t () -> m (Event t Text)
 setupLogin e = divClass "setup-password" $ form $ fieldset $ mdo
-  loginD <- textField PWSLogin ""
+  existingWalletNames <- listStorages
+  loginD <- textField PWSLogin (nameProposal existingWalletNames)
   validateEvent $ poke e $ const $ runExceptT $ do
     l <- sampleDyn loginD
     check PWSEmptyLogin $ not $ T.null l
