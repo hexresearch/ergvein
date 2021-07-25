@@ -329,6 +329,8 @@ inputCss = do
   let textInput = input # ("type" @= "text")
   (textInput # hover # enabled) <> (textInput # focus # enabled) ? simpleBorder
   (textInput # disabled) ? disableBackground
+  ("textarea" # hover # enabled) <> ("textarea" # focus # enabled) ? simpleBorder
+  ("textarea" # disabled) ? disableBackground
 
 mnemonicWidgetCss :: Css
 mnemonicWidgetCss = do
@@ -383,6 +385,8 @@ mnemonicWidgetCss = do
   ".mnemonic-verification-error" ? do
     color textDanger
     margin (rem 0) (rem 0.5) (rem 0) (rem 0.5)
+  ".restore-seed-input" ? do
+    minHeight $ rem 10
   ".restore-seed-buttons-wrapper" ? do
     display flex
     flexWrap F.wrap
