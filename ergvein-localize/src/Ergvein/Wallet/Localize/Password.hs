@@ -104,8 +104,8 @@ instance LocalizedPrint PasswordWidgetStrings where
       PWSDeriv         -> "Префикс BIP48 для вывода ключей"
       PWSDerivDescr    -> "Вы можете переназначить префикс дерева для вывода ключей. Оставьте как есть, если не знаете, что это такое."
       PWSInvalidPath   -> "Путь вывода неверен! Формат поля m/0'/0'/0'"
-      PWSMoreOptions   -> "Продвинутые опции"
-      PWSLessOptions   -> "Продвинутые опции"
+      PWSMoreOptions   -> "Дополнительные настройки"
+      PWSLessOptions   -> "Дополнительные настройки"
 
 data ConfirmEmptyPage = CEPBack | CEPSkip | CEPAttention | CEPConsequences
 

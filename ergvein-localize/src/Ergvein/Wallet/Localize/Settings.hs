@@ -124,7 +124,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSSetsFiatSelect      -> "Фиатная валюта:"
       STPSSetsShowFiatBalance -> "Отображать фиатный баланс:"
       STPSSetsShowFiatRate    -> "Отображать курс:"
-      STPSSelectUnitsFor cur  -> "Выберите единицы отображения " <> showt cur <> ":"
+      STPSSelectUnitsFor cur  -> "Единицы отображения " <> showt cur <> ":"
       STPSSetsPinOn           -> "Включить ПИН код"
       STPSSetsPinOff          -> "Выключить ПИН код"
       STPSSetsPinInput        -> "Введите ПИН код:"
