@@ -9,11 +9,14 @@ module Ergvein.Wallet.Password(
   , setupLogin
   , setupPattern
   , setupDerivPrefix
+  , nameProposal
+  , check
   ) where
 
 import Control.Monad.Except
 import Data.Either (fromRight)
 import Data.Maybe
+import Data.List
 import Data.Time (getCurrentTime)
 import Reflex.Localize.Dom
 
@@ -25,6 +28,7 @@ import Sepulcas.Validate
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
+import qualified Data.Set as S
 
 -- | Helper to throw error when predicate is not 'True'
 check :: MonadError a m => a -> Bool -> m ()
@@ -46,7 +50,8 @@ setupPassword e = divClass "setup-password" $ form $ fieldset $ mdo
 
 setupLoginPassword :: MonadFrontBase t m => Maybe Text -> Event t () -> m (Event t (Text, Password))
 setupLoginPassword mlogin e = divClass "setup-password" $ form $ fieldset $ mdo
-  loginD <- textFieldAttr PWSLogin ("placeholder" =: "my wallet name") $ fromMaybe "" mlogin
+  existingWalletNames <- listStorages
+  loginD <- textFieldAttr PWSLogin ("placeholder" =: "my wallet name") $ fromMaybe (nameProposal existingWalletNames) mlogin
   p1D <- passFieldWithEye PWSPassword
   p2D <- passFieldWithEye PWSRepeat
   validateEvent $ poke e $ const $ runExceptT $ do
@@ -56,6 +61,14 @@ setupLoginPassword mlogin e = divClass "setup-password" $ form $ fieldset $ mdo
     check PWSEmptyLogin $ not $ T.null l
     check PWSNoMatch $ p1 == p2
     pure (l,p1)
+
+nameProposal :: [WalletName] -> WalletName
+nameProposal s = let
+  ss = S.fromList s
+  in fromJust $ find (not . flip S.member ss) $ firstName : ((subsequentNamePrefix <>) . showt <$> [2..])
+  where
+   firstName = "main"
+   subsequentNamePrefix = "wallet_"
 
 passwordHeader :: MonadFrontBase t m => m (Event t ())
 passwordHeader =
@@ -75,7 +88,8 @@ setupPattern = divClass "setup-password" $ form $ fieldset $ mdo
 
 setupLogin :: MonadFrontBase t m => Event t () -> m (Event t Text)
 setupLogin e = divClass "setup-password" $ form $ fieldset $ mdo
-  loginD <- textField PWSLogin ""
+  existingWalletNames <- listStorages
+  loginD <- textField PWSLogin (nameProposal existingWalletNames)
   validateEvent $ poke e $ const $ runExceptT $ do
     l <- sampleDyn loginD
     check PWSEmptyLogin $ not $ T.null l

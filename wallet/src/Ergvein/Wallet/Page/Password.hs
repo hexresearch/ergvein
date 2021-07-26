@@ -20,6 +20,10 @@ import Ergvein.Wallet.Password
 import Ergvein.Wallet.Wrapper
 import Sepulcas.Alert
 import Sepulcas.Elements
+import Sepulcas.Validate
+import Data.Maybe
+import Control.Monad.Except
+import Sepulcas.Elements.Dropdown 
 
 import qualified Data.Text as T
 
@@ -43,12 +47,26 @@ setupPasswordPage wt mpath mnemonic curs mlogin = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText PPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText PPSDescr
   rec
-    logPassE <- setupLoginPassword mlogin btnE
-    pathD <- setupDerivPrefix curs mpath
-    heightD <- case wt of
-      WalletGenerated -> pure 0
-      WalletRestored -> setupBtcStartingHeight
-    btnE <- submitSetBtn
+    existingWalletNames <- listStorages
+    (loginD, pathD, heightD, logPassE) <- divClass "setup-password" $ form $ fieldset $ mdo
+      p1D <- passFieldWithEye PWSPassword
+      p2D <- passFieldWithEye PWSRepeat
+      lpE <- validateEvent $ poke btnE $ const $ runExceptT $ do
+        p1 <- sampleDyn p1D
+        p2 <- sampleDyn p2D
+        l  <- sampleDyn loginD
+        check PWSEmptyLogin $ not $ T.null l
+        check PWSNoMatch $ p1 == p2
+        pure (l,p1)
+      (loginD, pathD, heightD) <- dropdownContainer PWSMoreOptions PWSLessOptions (constDyn True) $ do
+        loginD <- textFieldAttr PWSLogin ("placeholder" =: "my wallet name") $ fromMaybe (nameProposal existingWalletNames) mlogin
+        pathD <- setupDerivPrefix curs mpath
+        heightD <- case wt of
+          WalletGenerated -> pure 0
+          WalletRestored -> setupBtcStartingHeight
+        pure (loginD, pathD, heightD)
+      btnE <- submitSetBtn
+      pure (loginD, pathD, heightD, lpE)
   let goE = poke logPassE $ \(l, pass) -> do
         p <- sampleDyn pathD
         h <- sampleDyn heightD
@@ -113,10 +131,11 @@ setupLoginPage wt mpath mnemonic curs = wrapperSimple True $ do
   divClass "password-setup-descr" $ h5 $ localizedText LPSDescr
   rec
     loginE <- setupLogin btnE
-    pathD <- setupDerivPrefix curs mpath
     heightD <- case wt of
       WalletGenerated -> pure 0
       WalletRestored -> setupBtcStartingHeight
+    pathD <- dropdownContainer PWSMoreOptions PWSLessOptions (constDyn True) $ do
+      setupDerivPrefix curs mpath
     btnE <- submitSetBtn
   let goE = poke loginE $ \l -> do
         p <- sampleDyn pathD
