@@ -987,6 +987,12 @@ historyPageCss = do
   ".history-page-status-text-icon" ? do
     fontSize $ pt 9
     paddingLeft $ rem 0.5
+  ".seed-backup-btn" ? do
+    position absolute
+    right $ rem 2
+    bottom $ rem 1
+    backgroundColor $ rgb 255 147 30
+    borderColor $ rgb 255 147 30
 
 txInfoPageCss :: Css
 txInfoPageCss = do

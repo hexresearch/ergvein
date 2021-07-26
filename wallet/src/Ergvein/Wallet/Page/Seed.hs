@@ -20,6 +20,7 @@ import Data.Traversable (for)
 import Reflex.Localize.Dom
 import System.Random.Shuffle
 
+import {-# SOURCE #-} Ergvein.Wallet.Page.History.Btc
 import Ergvein.Crypto
 import Ergvein.Either
 import Ergvein.Text
@@ -41,15 +42,13 @@ import qualified Data.Serialize as S
 import qualified Data.Text      as T
 import qualified Data.Vector    as V
 
-mnemonicPage :: MonadFrontBase t m => m ()
-mnemonicPage = go Nothing
-  where
-    go mMnemonic = wrapperSimple True $ do
-      (e, mnemonicD) <- mnemonicWidget mMnemonic
-      void $ nextWidget $ ffor e $ \mn -> Retractable {
-          retractableNext = checkPage mn
-        , retractablePrev = Just $ go <$> mnemonicD
-        }
+mnemonicPage :: MonadFront t m => Maybe Mnemonic -> m ()
+mnemonicPage mMnemonic = wrapperSimple True $ do
+  (e, mnemonicD) <- mnemonicWidget mMnemonic
+  void $ nextWidget $ ffor e $ \mn -> Retractable {
+      retractableNext = checkPage mn
+    , retractablePrev = Just $ mnemonicPage <$> mnemonicD
+    }
 
 setLoginPasswordPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> m ()
 setLoginPasswordPage walletSource mnemonic = if isAndroid
@@ -57,11 +56,12 @@ setLoginPasswordPage walletSource mnemonic = if isAndroid
   else setupPasswordPage walletSource Nothing mnemonic activeCurrencies Nothing
   where activeCurrencies = [BTC]
 
-checkPage :: MonadFrontBase t m => Mnemonic -> m ()
+checkPage :: MonadFront t m => Mnemonic -> m ()
 checkPage mnemonic = wrapperSimple True $ do
   mnemonicE <- mnemonicCheckWidget mnemonic
+  _ <- setSeedBackupRequired $ False <$ mnemonicE
   void $ nextWidget $ ffor mnemonicE $ \mnemonic' -> Retractable {
-      retractableNext = setLoginPasswordPage WalletGenerated mnemonic'
+      retractableNext = historyPage
     , retractablePrev = Just $ pure $ checkPage mnemonic'
     }
 
@@ -71,7 +71,7 @@ generateMnemonic = do
   validateNow $ first T.pack $ toMnemonic e
 
 -- | Generate and show mnemonic phrase to user. Returned dynamic is state of widget.
-mnemonicWidget :: MonadFrontBase t m => Maybe Mnemonic -> m (Event t Mnemonic, Dynamic t (Maybe Mnemonic))
+mnemonicWidget :: MonadFront t m => Maybe Mnemonic -> m (Event t Mnemonic, Dynamic t (Maybe Mnemonic))
 mnemonicWidget mnemonic = do
   mphrase <- maybe generateMnemonic (pure . Just) mnemonic
   case mphrase of
@@ -129,7 +129,7 @@ switchableButton classVal isDisabledD disabledClass lbl =
 -- | Interactive check of mnemonic phrase
 -- Takes correct mnemonic as a parameter
 -- Returns an event with the correct mnemonic when the user has successfully passed the verification process
-mnemonicCheckWidget :: MonadFrontBase t m => Mnemonic -> m (Event t Mnemonic)
+mnemonicCheckWidget :: MonadFront t m => Mnemonic -> m (Event t Mnemonic)
 mnemonicCheckWidget mnemonic = mdo
   let ws = T.words mnemonic
       indexedWords = zip [0..] ws -- We need to deal with indices because there might be repetitions in mnemonic

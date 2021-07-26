@@ -13,6 +13,7 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Page.History.Common ( noTxsPlaceholder )
+import Ergvein.Wallet.Page.Seed
 import Ergvein.Wallet.Page.TxInfo.Btc
 import Ergvein.Wallet.Page.TxInfo.Common
 import Ergvein.Wallet.Settings
@@ -42,6 +43,7 @@ historyPage = do
 
 historyTableWidget :: MonadFront t m => m (Event t TxView)
 historyTableWidget = do
+  backupButton
   (txsD, hghtD) <- getTransactionsBtc
   let txMapD = Map.fromList . L.zip [(0 :: Int)..] <$> txsD
   resD <- networkHoldDyn $ ffor txMapD $ \txMap -> if Map.null txMap
@@ -53,6 +55,19 @@ historyTableWidget = do
       let txClickE = switchDyn $ mergeMap <$> mapED
       pure $ fmapMaybe id $ headMay . Map.elems <$> txClickE
   pure $ switchDyn resD
+
+backupButton :: MonadFront t m => m ()
+backupButton = do
+  seedBackupRequiredD <- (holdUniqDyn . fmap _pubStorage'seedBackupRequired) =<< getPubStorageD
+  void $ networkHoldDyn $ ffor seedBackupRequiredD $ \case
+    False -> pure ()
+    True -> do
+      backupE <- buttonClass "seed-backup-btn" HistorySeedBackupRequired
+      mnemonicE <- withWallet $ ffor backupE $ \_ prvStorage -> pure $ _prvStorage'mnemonic prvStorage
+      void $ nextWidget $ ffor mnemonicE $ \mnemonic -> Retractable {
+          retractableNext = mnemonicPage $ Just mnemonic
+        , retractablePrev = Just $ pure historyPage
+        }
 
 historyTableRowD :: MonadFront t m => Dynamic t Word64 -> Dynamic t TxView -> m (Event t TxView)
 historyTableRowD _ trD = fmap switchDyn $ networkHoldDyn $ ffor trD $ \tr@TxView{..} -> divButton "history-table-row" $ do
