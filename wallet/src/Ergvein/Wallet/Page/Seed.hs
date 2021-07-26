@@ -87,7 +87,7 @@ mnemonicWidget mnemonic = do
     prepareMnemonic cols = L.concat . L.transpose . mkCols cols . zip [1..] . T.words
 
     wordColumn cs i w = divClass ("column " <> cs) $ do
-      elClass "span" "mnemonic-word-ix" $ text $ showt i
+      elClass "span" "text-muted" $ text $ showt i <> " "
       text w
 
     smallMnemonic phrase = for_ (zip [(1 :: Int)..] . T.words $ phrase) $ uncurry (wordColumn "mnemonic-word-mb")
