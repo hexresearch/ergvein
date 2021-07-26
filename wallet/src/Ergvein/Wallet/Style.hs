@@ -516,8 +516,13 @@ toggleSwitchCss =
 
 dropdownContainer :: Css
 dropdownContainer = do
-  ".dropdown-header" ? do
+  ".dropdown-header-containter" ? do
     marginBottom $ rem 1.5
+  ".dropdown-header" ? do
+    display inlineBlock
+  ".dropdown-header:hover" ? do
+    cursor pointer
+    color hoverColor
   ".dropdownContainerHidden" ? do
     display displayNone
 
