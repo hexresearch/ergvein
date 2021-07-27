@@ -15,6 +15,7 @@ in rec {
         overrides = (self: super: {
           fourmolu = self.callPackage ../derivations/fourmolu.nix { }; 
           dependent-sum = self.callPackage ../derivations/dependent-sum.nix { }; 
+          dependent-map = self.callPackage ../derivations/dependent-map.nix { }; 
           hashable = self.callPackage ../derivations/hashable.nix { };
           path = self.callPackage ../derivations/path.nix { };
           hiedb = self.callPackage ../derivations/hiedb.nix { };
