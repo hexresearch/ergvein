@@ -183,7 +183,9 @@ insertManyTxsUtxoInPubKeystore :: MonadStorage t m
   -> m (Event t [(V.Vector (ScanKeyBox, Map TxId EgvTx), BtcUtxoUpdate)])
 insertManyTxsUtxoInPubKeystore caller cur reqE = do
   valD <- holdDyn (error "insertTxsUtxoInPubKeystore: impossible") reqE
-  updE <- modifyPubStorage clr $ ffor reqE $ \vals ps -> Just $ L.foldl' inserter ps vals
+  updE <- modifyPubStorage clr $ ffor reqE $ \vals ps -> if null vals
+    then Nothing
+    else Just $ L.foldl' inserter ps vals
   pure $ tag (current valD) updE
   where
     clr = caller <> ":" <> "insertManyTxsUtxoInPubKeystore"

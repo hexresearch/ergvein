@@ -30,6 +30,7 @@ import Ergvein.Filters.Btc.Mutable
 import Ergvein.Core.Node.Manage (checkAddrMempoolTx)
 import Ergvein.Core.Transaction
 import Ergvein.Types.Utxo.Btc
+import Ergvein.Node.Constants
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
@@ -38,33 +39,62 @@ import qualified Data.Vector as V
 maxFiltersRepeat :: Int
 maxFiltersRepeat = 3
 
+data IndexerConnState t = ICSAdded (IndexerConnection t) | ICSDel
+
+type IndexerMap t = M.Map ErgveinNodeAddr (IndexerConnection t)
+type IndexerMMap t = M.Map ErgveinNodeAddr (Maybe (IndexerConnection t))
+
 btcMempoolWorker :: forall t m . (MonadWallet t m, MonadNode t m) => m ()
 btcMempoolWorker = do
   initConns <- getOpenSyncedConns BTC
-  let initmap = M.fromList $ ffor initConns $ \c -> (indexConAddr c, c)
+  let initmap = M.fromList $ ffor initConns $ \c -> (indexConName c, c)
   let keys = M.keys initmap
   connsD <- externalRefDynamic =<< getActiveConnsRef
+  cmD <- foldDyn mergeConns (initmap, mempty) (updated connsD)
+  let updE = updated $ snd $ splitDynPure cmD
+  listWithKeyShallowDiff initmap updE $ \_ ic _ ->
+    btcMempoolWorkerConn ic
   pure ()
+  where
+    mergeConns :: IndexerMap t -> (IndexerMap t, IndexerMMap t) -> (IndexerMap t, IndexerMMap t)
+    mergeConns new (old, _) = let
+      add = fmap Just $ new M.\\ old
+      del = fmap (const Nothing) $ old M.\\ new
+      in (new, add `M.union` del)
 
 -- | Request a mempool from a random node
 btcMempoolWorkerConn :: forall t m . (MonadWallet t m, MonadNode t m) => IndexerConnection t -> m ()
 btcMempoolWorkerConn IndexerConnection{..} = void $ workflow waitRestore
   where
+    workLog :: Text -> m ()
+    workLog v = logWrite $ "[btcMempoolWorker]<" <> indexConName <> ">: " <> v
+
+    waitRestore :: Workflow t m ()
     waitRestore = Workflow $ do
-      workLog "started"
+      workLog "Started"
       nextE <- updatedWithInit =<< (fmap . fmap) _pubStorage'restoring getPubStorageD
+      pure ((), waitIndexerUp <$ nextE)
+    waitIndexerUp :: Workflow t m ()
+    waitIndexerUp = Workflow $ do
+      workLog "Waiting for indexer to be up"
+      nextE <- fmap (ffilter id) $ updatedWithInit indexConIsUp
       pure ((), requestMempool 0 <$ nextE)
+
+    requestMempool :: Int -> Workflow t m ()
     requestMempool n = Workflow $ do
+      workLog "Indexer is up. Requesting mempool filters"
       buildE <- delay 5 =<< getPostBuild
-      respE <- requestRandomIndexer $ (BTC, MGetMemFilters GetMemFilters) <$ buildE
-      let memfiltersE = fforMaybe respE $ \(_, msg) -> case msg of
+      fire <- getIndexReqFire
+      performEvent $ ffor buildE $ const $
+        liftIO $ fire $ M.singleton indexConName (IndexerMsg $ MGetMemFilters GetMemFilters)
+      let memfiltersE = fforMaybe indexConRespE $ \case
             MMemFilters (FilterTree ft) -> Just ft
             _ -> Nothing
-      -- pure ((), scanFilters n <$> memfiltersE)
-      pure ((), waitNextInv n <$ memfiltersE)
+      pure ((), scanFilters n <$> memfiltersE)
+
     scanFilters :: Int -> M.Map TxPrefix MempoolFilter -> Workflow t m ()
     scanFilters n filtTree = Workflow $ do
-      workLog $ "fee tree size: " <> showt (M.size filtTree)
+      workLog $ "Got fee tree of size: " <> showt (M.size filtTree)
       ps <- getPubStorage
       let keys = getPublicKeys $ ps ^. btcPubStorage . currencyPubStorage'pubKeystore
       let mkAddr k = addressToScriptBS . xPubToBtcAddr . extractXPubKeyFromEgv $ scanBox'key k
@@ -77,29 +107,34 @@ btcMempoolWorkerConn IndexerConnection{..} = void $ workflow waitRestore
             pure Nothing
           Right filt -> do
             match <- applyBtcPrefixFilterMany pref filt addrs
-            pure $ if match then Just pref else Nothing
-      buildE <- getPostBuild
+            -- pure $ if match then Just pref else Nothing
+            pure $ Just pref
+      buildE <- eventToNextFrame =<< getPostBuild
       workLog $ showt $ length prefixes
-      pure $ ((), waitNextInv n <$ buildE)
-      -- pure $ if 0 == length prefixes
-      --   then ((), waitNextInv n <$ buildE)
-      --   else ((), processChunks n prefixes <$ buildE)
+      pure $ if null prefixes
+        then ((), waitNextInv n <$ buildE)
+        else ((), processChunks n prefixes <$ buildE)
 
+    processChunks :: Int -> [TxPrefix] -> Workflow t m ()
     processChunks n prefixes = Workflow $ do
-      workLog $ "Process prefixes: " <> showt prefixes
+      workLog $ "Process " <> showt (length prefixes) <> " prefixes"
       ps <- getPubStorage
       let btcps = ps ^. btcPubStorage
           keys = getPublicKeys $ btcps ^. currencyPubStorage'pubKeystore
           txStore = btcps ^. currencyPubStorage'transactions
 
       buildE <- getPostBuild
-      respE <- requestRandomIndexer $ (BTC, MGetMempool (GetMempool $ V.fromList prefixes)) <$ buildE
-      let mempE = fforMaybe respE $ \(_, msg) -> case msg of
+      fire <- getIndexReqFire
+      performEvent $ ffor buildE $ const $
+        liftIO $ fire $ M.singleton indexConName (IndexerMsg $ MGetMempool (GetMempool $ V.fromList prefixes))
+      let mempE = fforMaybe indexConRespE $ \case
             MMempoolChunk (MempoolChunk pref txs) -> Just (pref, txs)
             _ -> Nothing
       valsE <- performFork $ ffor mempE $ \(pref, txs) -> do
         val <- fmap catMaybes $ flip traverse (V.toList txs) $ \txbs -> case decode txbs of
-          Left err -> workLog "Error decoding tx" >> pure Nothing
+          Left err -> do
+            logWrite $ "[btcMempoolWorker]<" <> indexConName <> ">: " <> "Error decoding tx"
+            pure Nothing
           Right tx -> do
             -- This vvv reqires an Event. Rewrite in a non-reflexive manner
             -- removeTxsReplacedByFee tx
@@ -117,16 +152,11 @@ btcMempoolWorkerConn IndexerConnection{..} = void $ workflow waitRestore
     waitNextInv :: Int ->  Workflow t m ()
     waitNextInv n = Workflow $ do
       workLog $ "waitNextInv: " <> showt n
-      if n > maxFiltersRepeat then pure ((), never) else do
-        buildE <- getPostBuild
-        respE <- requestRandomIndexer $ (BTC, MPing 0) <$ buildE
-        let filtInvE = fforMaybe respE $ \(_, msg) -> case msg of
+      if n >= maxFiltersRepeat then pure ((), never) else do
+        let filtInvE = fforMaybe indexConRespE $ \case
               MFullFilterInv _ -> Just ()
               _ -> Nothing
         pure ((), requestMempool (n+1) <$ filtInvE)
-
-workLog :: (PlatformNatives, MonadIO m) => Text -> m ()
-workLog v = logWrite $ "[btcMempoolWorker]: " <> v
 
 repackKeys :: KeyPurpose -> V.Vector EgvXPubKey -> V.Vector ScanKeyBox
 repackKeys kp = V.imap $ \i k -> ScanKeyBox k kp i
