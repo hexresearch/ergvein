@@ -42,8 +42,8 @@ setupBtcStartingHeight = do
         divClass "validate-error" . localizedText . either id SHSEstimate
     holdDyn defHeight hE
 
-setupPasswordPage :: MonadFrontBase t m => WalletSource -> Maybe DerivPrefix -> Mnemonic -> [Currency] -> Maybe Text -> m ()
-setupPasswordPage wt mpath mnemonic curs mlogin = wrapperSimple True $ do
+setupPasswordPage :: MonadFrontBase t m => WalletSource -> Bool -> Maybe DerivPrefix -> Mnemonic -> [Currency] -> Maybe Text -> m ()
+setupPasswordPage wt seedBackupRequired mpath mnemonic curs mlogin = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText PPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText PPSDescr
   rec
@@ -73,15 +73,16 @@ setupPasswordPage wt mpath mnemonic curs mlogin = wrapperSimple True $ do
         pure (l,pass,p,h)
   void $ nextWidget $ ffor goE $ \(login, pass, path, height) -> Retractable {
       retractableNext = if pass == ""
-        then confirmEmptyPage wt mnemonic curs login pass (Just path) height True
-        else performAuth wt mnemonic curs login pass (Just path) height True
+        then confirmEmptyPage wt seedBackupRequired mnemonic curs login pass (Just path) height True
+        else performAuth wt seedBackupRequired mnemonic curs login pass (Just path) height True
     , retractablePrev = if pass == ""
-        then Just $ pure $ setupPasswordPage wt (Just path) mnemonic curs (Just login)
+        then Just $ pure $ setupPasswordPage wt seedBackupRequired (Just path) mnemonic curs (Just login)
         else Nothing
     }
 
 confirmEmptyPage :: MonadFrontBase t m
   => WalletSource
+  -> Bool
   -> Mnemonic
   -> [Currency]
   -> Text
@@ -90,19 +91,20 @@ confirmEmptyPage :: MonadFrontBase t m
   -> BlockHeight
   -> Bool
   -> m ()
-confirmEmptyPage wt mnemonic curs login pass mpath startingHeight isPass = wrapperSimple True $ do
+confirmEmptyPage wt seedBackupRequired mnemonic curs login pass mpath startingHeight isPass = wrapperSimple True $ do
   h4 $ localizedText CEPAttention
   h5 $ localizedText CEPConsequences
   divClass "fit-content ml-a mr-a" $ do
     setE <- divClass "" (submitClass "button button-outline w-100" PWSSet)
     void $ retract =<< divClass "" (submitClass "button button-outline w-100" CEPBack)
     void $ nextWidget $ ffor setE $ const $ Retractable {
-        retractableNext = performAuth wt mnemonic curs login pass mpath startingHeight isPass
+        retractableNext = performAuth wt seedBackupRequired mnemonic curs login pass mpath startingHeight isPass
       , retractablePrev = Nothing
       }
 
 performAuth :: MonadFrontBase t m
   => WalletSource
+  -> Bool
   -> Mnemonic
   -> [Currency]
   -> Text
@@ -111,7 +113,7 @@ performAuth :: MonadFrontBase t m
   -> BlockHeight
   -> Bool
   -> m ()
-performAuth wt mnemonic curs login pass mpath startingHeight isPass = do
+performAuth wt seedBackupRequired mnemonic curs login pass mpath startingHeight isPass = do
   goE <- case wt of
     WalletGenerated -> getPostBuild
     WalletRestored -> wrapperSimple True $ do
@@ -121,12 +123,12 @@ performAuth wt mnemonic curs login pass mpath startingHeight isPass = do
       elClass "h5" "overflow-wrap-bw" $ localizedText RPSTrafficTime
       outlineButton RPSTrafficAccept
   storageE <- performEvent $ ffor goE $ const $
-    initWalletInfo English wt mpath mnemonic curs login pass startingHeight isPass
+    initWalletInfo English wt seedBackupRequired mpath mnemonic curs login pass startingHeight isPass
   walletInfoE <- handleDangerMsg storageE
   void $ setWalletInfo $ Just <$> walletInfoE
 
-setupLoginPage :: MonadFrontBase t m => WalletSource -> Maybe DerivPrefix -> Mnemonic -> [Currency] -> m ()
-setupLoginPage wt mpath mnemonic curs = wrapperSimple True $ do
+setupLoginPage :: MonadFrontBase t m => WalletSource -> Bool -> Maybe DerivPrefix -> Mnemonic -> [Currency] -> m ()
+setupLoginPage wt seedBackupRequired mpath mnemonic curs = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText LPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText LPSDescr
   rec
@@ -142,20 +144,21 @@ setupLoginPage wt mpath mnemonic curs = wrapperSimple True $ do
         h <- sampleDyn heightD
         pure (l,p,h)
   void $ nextWidget $ ffor goE $ \(l,p,h) -> Retractable {
-      retractableNext = setupPatternPage wt (Just p) mnemonic l curs h
-    , retractablePrev = Just $ pure $ setupLoginPage wt (Just p) mnemonic curs
+      retractableNext = setupPatternPage wt seedBackupRequired (Just p) mnemonic l curs h
+    , retractablePrev = Just $ pure $ setupLoginPage wt seedBackupRequired (Just p) mnemonic curs
     }
 
 setupPatternPage :: MonadFrontBase t m
   => WalletSource
+  -> Bool
   -> Maybe DerivPrefix
   -> Mnemonic
   -> Text
   -> [Currency]
   -> BlockHeight
   -> m ()
-setupPatternPage wt mpath mnemonic l curs startingHeight = wrapperSimple True $ do
-  let this = Just $ pure $ setupPatternPage wt mpath mnemonic l curs startingHeight
+setupPatternPage wt seedBackupRequired mpath mnemonic l curs startingHeight = wrapperSimple True $ do
+  let this = Just $ pure $ setupPatternPage wt seedBackupRequired mpath mnemonic l curs startingHeight
   divClass "password-setup-title" $ h4 $ localizedText PatPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText PatPSDescr
   patE <- setupPattern
@@ -166,39 +169,40 @@ setupPatternPage wt mpath mnemonic l curs startingHeight = wrapperSimple True $ 
   let passE = leftmost ["" <$ skipE, patE]
   void $ nextWidget $ ffor passE $ \pass -> Retractable {
       retractableNext = if pass == ""
-        then confirmEmptyPage wt mnemonic curs l pass mpath startingHeight False
-        else performAuth wt mnemonic curs l pass mpath startingHeight False
+        then confirmEmptyPage wt seedBackupRequired mnemonic curs l pass mpath startingHeight False
+        else performAuth wt seedBackupRequired mnemonic curs l pass mpath startingHeight False
     , retractablePrev = if pass == "" then this else Nothing
     }
   void $ nextWidget $ ffor setPassE $ const $ Retractable {
-      retractableNext = setupMobilePasswordPage wt mpath mnemonic l curs startingHeight
+      retractableNext = setupMobilePasswordPage wt seedBackupRequired mpath mnemonic l curs startingHeight
     , retractablePrev = this
     }
 
 setupMobilePasswordPage :: MonadFrontBase t m
   => WalletSource
+  -> Bool
   -> Maybe DerivPrefix
   -> Mnemonic
   -> Text
   -> [Currency]
   -> BlockHeight
   -> m ()
-setupMobilePasswordPage wt mpath mnemonic l curs startingHeight = wrapperSimple True $ do
+setupMobilePasswordPage wt seedBackupRequired mpath mnemonic l curs startingHeight = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText PPSPassTitle
   divClass "password-setup-descr" $ h5 $ localizedText PPSDescr
   rec
     passE <- setupPassword btnE
     btnE <- divClass "fit-content ml-a mr-a" $ do
-      btnE' <- divClass "" $ (submitClass "button button-outline w-100" PWSSet)
+      btnE' <- divClass "" $ submitClass "button button-outline w-100" PWSSet
       setPattE <- divClass "" $ submitClass "button button-outline w-100" PatPSPatt
       void $ retract setPattE
       pure btnE'
   void $ nextWidget $ ffor passE $ \pass -> Retractable {
       retractableNext = if pass == ""
-        then confirmEmptyPage wt mnemonic curs l pass mpath startingHeight True
-        else performAuth wt mnemonic curs l pass mpath startingHeight True
+        then confirmEmptyPage wt seedBackupRequired mnemonic curs l pass mpath startingHeight True
+        else performAuth wt seedBackupRequired mnemonic curs l pass mpath startingHeight True
     , retractablePrev = if pass == ""
-        then Just $ pure $ setupMobilePasswordPage wt mpath mnemonic l curs startingHeight
+        then Just $ pure $ setupMobilePasswordPage wt seedBackupRequired mpath mnemonic l curs startingHeight
         else Nothing
     }
 

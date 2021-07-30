@@ -23,7 +23,7 @@ import Sepulcas.Elements
 import qualified Data.Map.Strict as M
 import qualified Data.Text       as T
 
-data GoPage = GoCreate Mnemonic | GoRestore | GoSettings
+data GoPage = GoCreate | GoRestore | GoSettings
 
 initialPage :: MonadFrontBase t m => Bool -> m ()
 initialPage redir = do
@@ -37,17 +37,12 @@ noWalletsPage = wrapperSimple True $ divClass "initial-page-options" createResto
 
 createRestore :: MonadFrontBase t m => m ()
 createRestore = do
-  createE <- outlineButton IPSCreate
-  eMnemonicE <- performFork $ ffor createE $ const $ do
-    entropy <- liftIO getEntropy
-    pure $ first T.pack $ toMnemonic entropy
-  mnemonicE <- (fmap . fmap) GoCreate (handleDangerMsg eMnemonicE)
-  restoreE <- (GoRestore <$) <$> outlineButton IPSRestore
-  settingsE <- (GoSettings <$) <$> outlineButton IPSSettings
-  let goE = leftmost [mnemonicE, restoreE, settingsE]
+  let items = [(GoCreate, IPSCreate), (GoRestore, IPSRestore), (GoSettings, IPSSettings)]
+  goE <- fmap leftmost $ for items $ \(act, lbl) ->
+    (act <$) <$> outlineButton lbl
   void $ nextWidget $ ffor goE $ \go -> Retractable {
       retractableNext = case go of
-        GoCreate mnemonic -> setLoginPasswordPage WalletGenerated mnemonic
+        GoCreate -> backupPage
         GoRestore -> simpleSeedRestorePage
         GoSettings -> settingsPageUnauth
     , retractablePrev = Just $ pure $ initialPage False

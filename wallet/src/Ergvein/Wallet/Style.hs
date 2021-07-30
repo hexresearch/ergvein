@@ -46,7 +46,7 @@ frontendCss = do
   navbarCss
   networkPageCss
   toggleSwitchCss
-  dropdownContainer
+  dropdownContainerCss
   passwordCss
   badgeCss
   receiveCss
@@ -57,6 +57,7 @@ frontendCss = do
   validateCss
   wrapperCss
   testnetDisclaimerCss
+  backupPageCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -514,8 +515,8 @@ toggleSwitchCss =
     ".toggle-switch input:checked + label" ? do
       left $ toggleSwitchWidth @-@ (knobMargin @+@ knobSize @+@ 2 *@ toggleSwitchBorderWidth)
 
-dropdownContainer :: Css
-dropdownContainer = do
+dropdownContainerCss :: Css
+dropdownContainerCss = do
   ".dropdown-header-containter" ? do
     marginBottom $ rem 1.5
   ".dropdown-header" ? do
@@ -1221,3 +1222,8 @@ testnetDisclaimerCss = do
     marginBottom $ rem 1
   ".testnet-disclaimer-text" ? do
     marginBottom $ rem 1
+
+backupPageCss :: Css
+backupPageCss = do
+  ".backup-page-icon" ? do
+    fontSize $ pt 45

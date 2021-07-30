@@ -143,18 +143,18 @@ createCurrencyPubStorage mpath rootPrvKey startingHeight c = CurrencyPubStorage 
 
 createStorage :: MonadIO m
   => Bool -- ^ Flag that set to True if wallet was restored, not fresh generation
+  -> Bool -- ^ Flag that set to True if the mnemonic verification procedure was skipped
   -> Maybe DerivPrefix -- ^ Override Bip44 derivation path in keys
   -> Mnemonic -- ^ Mnemonic to generate keys
   -> (WalletName, Password) -- ^ Wallet file name and encryption password
   -> BlockHeight -- ^ Starting height for the restore process
   -> [Currency] -- ^ Default currencies
   -> m (Either StorageAlert WalletStorage)
-createStorage isRestored mpath mnemonic (login, pass) startingHeight cs = case mnemonicToSeed "" mnemonic of
+createStorage isRestored seedBackupRequired mpath mnemonic (login, pass) startingHeight cs = case mnemonicToSeed "" mnemonic of
    Left err -> pure $ Left $ SAMnemonicFail $ showt err
    Right seed -> do
     let rootPrvKey = EgvRootXPrvKey $ makeXPrvKey seed
         prvStorage = createPrvStorage mpath mnemonic rootPrvKey
-        seedBackupRequired = not isRestored
         pubStorage = createPubStorage isRestored seedBackupRequired mpath rootPrvKey cs startingHeight
     encryptPrvStorageResult <- encryptPrvStorage prvStorage pass
     case encryptPrvStorageResult of

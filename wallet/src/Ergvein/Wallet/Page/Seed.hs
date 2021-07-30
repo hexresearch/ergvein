@@ -3,7 +3,8 @@
 
 -- | Page for mnemonic phrase generation
 module Ergvein.Wallet.Page.Seed(
-    mnemonicPage
+    backupPage
+  , mnemonicPage
   , setLoginPasswordPage
   , mnemonicWidget
   , simpleSeedRestorePage
@@ -42,6 +43,37 @@ import qualified Data.Serialize as S
 import qualified Data.Text      as T
 import qualified Data.Vector    as V
 
+data GoPage = GoBackupNow | GoBackupLater
+
+backupPage :: MonadFrontBase t m => m ()
+backupPage = wrapperSimple True $ do
+  divClass "backup-page-icon mb-2" $ elClass "i" "fas fa-exclamation-triangle" blank
+  h4 $ localizedText SPSBackupTitle
+  parClass "ta-l" $ localizedText SPSBackupText1
+  parClass "ta-l" $ localizedText SPSBackupText2
+  btnE <- divClass "initial-options grid1" $ do
+    backupNowBtnE <- (GoBackupNow <$) <$> outlineButton SPSBackupNow
+    backupLaterBtnE <- (GoBackupLater <$) <$> buttonClass "button button-clear" SPSBackupLater
+    pure $ leftmost [backupNowBtnE, backupLaterBtnE]
+  goE <- performFork $ ffor btnE $ \act -> do
+    entropy <- liftIO getEntropy
+    pure $ fmap (act,) <$> first T.pack $ toMnemonic entropy
+  goE' <- handleDangerMsg goE
+  void $ nextWidget $ ffor goE' $ \(act, mnemonic) -> Retractable {
+      retractableNext = case act of
+        GoBackupNow -> mnemonicPageUnauth $ Just mnemonic
+        GoBackupLater -> setLoginPasswordPage WalletGenerated True mnemonic
+    , retractablePrev = Just $ pure backupPage
+    }
+
+mnemonicPageUnauth :: MonadFrontBase t m => Maybe Mnemonic -> m ()
+mnemonicPageUnauth mMnemonic = wrapperSimple True $ do
+  (e, mnemonicD) <- mnemonicWidget mMnemonic
+  void $ nextWidget $ ffor e $ \mn -> Retractable {
+      retractableNext = checkPageUnauth mn
+    , retractablePrev = Just $ mnemonicPageUnauth <$> mnemonicD
+    }
+
 mnemonicPage :: MonadFront t m => Maybe Mnemonic -> m ()
 mnemonicPage mMnemonic = wrapperSimple True $ do
   (e, mnemonicD) <- mnemonicWidget mMnemonic
@@ -50,11 +82,19 @@ mnemonicPage mMnemonic = wrapperSimple True $ do
     , retractablePrev = Just $ mnemonicPage <$> mnemonicD
     }
 
-setLoginPasswordPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> m ()
-setLoginPasswordPage walletSource mnemonic = if isAndroid
-  then setupLoginPage walletSource Nothing mnemonic activeCurrencies
-  else setupPasswordPage walletSource Nothing mnemonic activeCurrencies Nothing
+setLoginPasswordPage :: MonadFrontBase t m => WalletSource -> Bool -> Mnemonic -> m ()
+setLoginPasswordPage walletSource seedBackupRequired mnemonic = if isAndroid
+  then setupLoginPage walletSource seedBackupRequired Nothing mnemonic activeCurrencies
+  else setupPasswordPage walletSource seedBackupRequired Nothing mnemonic activeCurrencies Nothing
   where activeCurrencies = [BTC]
+
+checkPageUnauth :: MonadFrontBase t m => Mnemonic -> m ()
+checkPageUnauth mnemonic = wrapperSimple True $ do
+  mnemonicE <- mnemonicCheckWidget mnemonic
+  void $ nextWidget $ ffor mnemonicE $ \mnemonic' -> Retractable {
+      retractableNext = setLoginPasswordPage WalletGenerated False mnemonic'
+    , retractablePrev = Just $ pure $ checkPageUnauth mnemonic'
+    }
 
 checkPage :: MonadFront t m => Mnemonic -> m ()
 checkPage mnemonic = wrapperSimple True $ do
@@ -71,7 +111,7 @@ generateMnemonic = do
   validateNow $ first T.pack $ toMnemonic e
 
 -- | Generate and show mnemonic phrase to user. Returned dynamic is state of widget.
-mnemonicWidget :: MonadFront t m => Maybe Mnemonic -> m (Event t Mnemonic, Dynamic t (Maybe Mnemonic))
+mnemonicWidget :: MonadFrontBase t m => Maybe Mnemonic -> m (Event t Mnemonic, Dynamic t (Maybe Mnemonic))
 mnemonicWidget mnemonic = do
   mphrase <- maybe generateMnemonic (pure . Just) mnemonic
   case mphrase of
@@ -129,7 +169,7 @@ switchableButton classVal isDisabledD disabledClass lbl =
 -- | Interactive check of mnemonic phrase
 -- Takes correct mnemonic as a parameter
 -- Returns an event with the correct mnemonic when the user has successfully passed the verification process
-mnemonicCheckWidget :: MonadFront t m => Mnemonic -> m (Event t Mnemonic)
+mnemonicCheckWidget :: MonadFrontBase t m => Mnemonic -> m (Event t Mnemonic)
 mnemonicCheckWidget mnemonic = mdo
   let ws = T.words mnemonic
       indexedWords = zip [0..] ws -- We need to deal with indices because there might be repetitions in mnemonic
@@ -181,7 +221,7 @@ askSeedPasswordPage encryptedMnemonic = do
   let mnemonicBSE = decryptBSWithAEAD encryptedMnemonic <$> passE
   verifiedMnemonicE <- handleDangerMsg mnemonicBSE
   void $ nextWidget $ ffor (decodeUtf8With lenientDecode <$> verifiedMnemonicE) $ \mnem -> Retractable {
-      retractableNext = setLoginPasswordPage WalletRestored mnem
+      retractableNext = setLoginPasswordPage WalletRestored False mnem
     , retractablePrev = Just $ pure $ askSeedPasswordPage encryptedMnemonic
     }
 
@@ -327,7 +367,7 @@ plainRestorePage mnemLength = wrapperSimple True $ mdo
     PSDone mnem -> do
       submitE <- outlineButton CSForward
       void $ nextWidget $ ffor submitE $ const $ Retractable {
-          retractableNext = setLoginPasswordPage WalletRestored mnem
+          retractableNext = setLoginPasswordPage WalletRestored False mnem
         , retractablePrev = Just $ pure seedRestorePage
         }
     _ -> pure ()
