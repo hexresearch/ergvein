@@ -189,7 +189,7 @@ setupMobilePasswordPage wt mpath mnemonic l curs startingHeight = wrapperSimple 
   rec
     passE <- setupPassword btnE
     btnE <- divClass "fit-content ml-a mr-a" $ do
-      btnE' <- divClass "" $ (submitClass "button button-outline w-100" PWSSet)
+      btnE' <- divClass "" $ submitClass "button button-outline w-100" PWSSet
       setPattE <- divClass "" $ submitClass "button button-outline w-100" PatPSPatt
       void $ retract setPattE
       pure btnE'
@@ -259,9 +259,9 @@ data CPMStage = CPMPattern | CPMPassword | CPMEmpty Bool
 
 changePasswordMobileWidget :: MonadFront t m => m (Event t (Password, Bool))
 changePasswordMobileWidget = wrapperSimple True $ mdo
-  login <- fmap (_walletInfo'login) $ sampleDyn =<< getWalletInfo
+  login <- fmap _walletInfo'login $ sampleDyn =<< getWalletInfo
   let name = T.replace " " "_" login
-  stage0 <- fmap eitherToStage $ retrieveValue ("meta_wallet_" <> name) False
+  stage0 <- eitherToStage <$> retrieveValue ("meta_wallet_" <> name) False
   stageD <- holdDyn stage0 nextE
   (patE, nextE) <- fmap switchDyn2 $ networkHoldDyn $ ffor stageD $ \case
     CPMEmpty b -> do
@@ -271,7 +271,7 @@ changePasswordMobileWidget = wrapperSimple True $ mdo
       changePasswordDescr True
       passE' <- setupPassword btnE
       (btnE, setPattE) <- divClass "fit-content ml-a mr-a" $ do
-        btnE' <- divClass "" $ (submitClass "button button-outline w-100" PWSSet)
+        btnE' <- divClass "" $ submitClass "button button-outline w-100" PWSSet
         setPattE' <- divClass "" $ submitClass "button button-outline w-100" PatPSPatt
         pure (btnE', setPattE')
       let (emptyE, passE) = splitFilter (== "") passE'

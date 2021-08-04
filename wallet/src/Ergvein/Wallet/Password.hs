@@ -14,9 +14,10 @@ module Ergvein.Wallet.Password(
   ) where
 
 import Control.Monad.Except
+import Data.Bifunctor (bimap)
 import Data.Either (fromRight)
-import Data.Maybe
 import Data.List
+import Data.Maybe
 import Data.Time (getCurrentTime)
 import Reflex.Localize.Dom
 
@@ -124,18 +125,18 @@ askTextPassword title description = do
 
 askPasswordAndroid :: MonadFrontBase t m => Text -> Bool -> m (Event t Password)
 askPasswordAndroid name writeMeta = mdo
-  let fpath = "meta_wallet_" <> (T.replace " " "_" name)
-  isPass0 <- fmap (fromRight False) $ retrieveValue fpath False
+  let fpath = "meta_wallet_" <> T.replace " " "_" name
+  isPass0 <- fromRight False <$> retrieveValue fpath False
   isPassD <- holdDyn isPass0 tglE
   valD <- networkHoldDyn $ ffor isPassD $ \isPass -> if isPass
     then askPasswordImpl name writeMeta
     else askPatternImpl name writeMeta
-  let (passE, tglE) = (\(a,b) -> (switchDyn a, switchDyn b)) $ splitDynPure valD
+  let (passE, tglE) = bimap switchDyn switchDyn $ splitDynPure valD
   pure passE
 
 askPasswordImpl :: MonadFrontBase t m => Text -> Bool -> m (Event t Password, Event t Bool)
 askPasswordImpl name writeMeta = do
-  let fpath = "meta_wallet_" <> (T.replace " " "_" name)
+  let fpath = "meta_wallet_" <> T.replace " " "_" name
   when writeMeta $ storeValue fpath True True
   divClass "password-ask-title" $ h4 $ localizedText PPSUnlock
   divClass "ask-password" $ form $ fieldset $ do
@@ -143,21 +144,19 @@ askPasswordImpl name writeMeta = do
     divClass "fit-content ml-a mr-a" $ do
       e <- divClass "" $ submitClass "button button-outline w-100" PWSGo
       patE <- divClass "" $ submitClass "button button-outline w-100" PatPSUsePattern
-      pure $ (tag (current pD) e, False <$ patE)
+      pure (tag (current pD) e, False <$ patE)
 
 askPatternImpl :: MonadFrontBase t m => Text -> Bool -> m (Event t Password, Event t Bool)
 askPatternImpl name writeMeta = do
-  let fpath = "meta_wallet_" <> (T.replace " " "_" name)
+  let fpath = "meta_wallet_" <> T.replace " " "_" name
   when writeMeta $ storeValue fpath False True
   divClass "password-ask-title" $ h5 $ localizedText PKSUnlock
   divClass "password-ask-title" $ h5 $ localizedText $ PKSFor name
   patE <- divClass "ask-pattern" $ form $ fieldset $ mdo
     c <- loadCounter
-    let cInt = case (Map.lookup name (patterntriesCount c)) of
-          Just p -> p
-          Nothing -> 0
-    now <- liftIO $ getCurrentTime
-    a <- (clockLossy 1 now)
+    let cInt = fromMaybe 0 $ Map.lookup name (patterntriesCount c)
+    now <- liftIO getCurrentTime
+    a <- clockLossy 1 now
     freezeD <- networkHold (pure False) $ ffor (updated a) $ \TickInfo{..} -> do
       cS <- sampleDyn counterD
       let cdTime = if cS < 5
@@ -165,7 +164,7 @@ askPatternImpl name writeMeta = do
             else 30 * (2 ^ (cS - 5))
       if (cdTime - _tickInfo_n) > 0
       then do
-        divClass "backcounter" $ text $ "You should wait " <> (showt $ cdTime - _tickInfo_n) <> " sec"
+        divClass "backcounter" $ text $ "You should wait " <> showt (cdTime - _tickInfo_n) <> " sec"
         pure True
       else
         pure False
@@ -202,7 +201,7 @@ askPasswordModalAndroid = mdo
   let (passD, closeD) = splitDynPure valD
   let passE = switchDyn passD
   let closeE = switchDyn closeD
-  performEvent_ $ (liftIO . fire) <$> passE
+  performEvent_ $ liftIO . fire <$> passE
 
 askPasswordModalDesc :: MonadFrontBase t m => m ()
 askPasswordModalDesc = mdo
@@ -218,4 +217,4 @@ askPasswordModalDesc = mdo
   let (passD, closeD) = splitDynPure valD
   let passE = switchDyn passD
   let closeE = switchDyn closeD
-  performEvent_ $ (liftIO . fire) <$> passE
+  performEvent_ $ liftIO . fire <$> passE
