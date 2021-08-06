@@ -33,12 +33,9 @@ import Sepulcas.Native
 import System.Timeout (timeout)
 
 import qualified Control.Exception.Safe as Ex
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Builder as BB
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.List as List
 import qualified Network.Socket as N
-import qualified Network.Socket.ByteString as NSB
 import qualified Network.Socket.ByteString.Lazy as NSBL
 
 import  Network.Socket.Manager.TCP.Client (PeekerIO, CloseReason (..), SocketStatus (..))
@@ -281,18 +278,6 @@ sendLazy :: MonadIO m => N.Socket -> BSL.ByteString -> m ()
 {-# INLINABLE sendLazy #-}
 sendLazy sock = \lbs -> liftIO (NSBL.sendAll sock lbs)
 
--- | Read up to a limited number of bytes from a socket.
---
--- Returns `Nothing` if the remote end closed the connection or end-of-input was
--- reached. The number of returned bytes might be less than the specified limit,
--- but it will never 'BS.null'.
-recv :: MonadIO m => N.Socket -> Int -> m (Maybe BS.ByteString)
-recv sock nbytes = liftIO $ do
-  bs <- liftIO (NSB.recv sock nbytes)
-  if BS.null bs
-     then pure Nothing
-     else pure (Just bs)
-{-# INLINABLE recv #-}
 
 -- | Given a list of 'N.AddrInfo's, reorder it so that ipv6 and ipv4 addresses,
 -- when available, are intercalated, with a ipv6 address first.

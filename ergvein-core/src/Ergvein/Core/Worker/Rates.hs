@@ -3,7 +3,6 @@ module Ergvein.Core.Worker.Rates
     ratesWorker
   ) where
 
-import Data.List (nub)
 import Data.Maybe
 import Data.Time
 import Data.Functor

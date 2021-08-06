@@ -48,7 +48,7 @@ setupPasswordPage wt mpath mnemonic curs mlogin = wrapperSimple True $ do
   divClass "password-setup-descr" $ h5 $ localizedText PPSDescr
   rec
     existingWalletNames <- listStorages
-    (loginD, pathD, heightD, logPassE) <- divClass "setup-password" $ form $ fieldset $ mdo
+    (_, pathD, heightD, logPassE) <- divClass "setup-password" $ form $ fieldset $ mdo
       p1D <- passFieldWithEye PWSPassword
       p2D <- passFieldWithEye PWSRepeat
       lpE <- validateEvent $ poke btnE $ const $ runExceptT $ do
@@ -59,12 +59,12 @@ setupPasswordPage wt mpath mnemonic curs mlogin = wrapperSimple True $ do
         check PWSNoMatch $ p1 == p2
         pure (l,p1)
       (loginD, pathD, heightD) <- dropdownContainer PWSMoreOptions PWSLessOptions (constDyn True) $ do
-        loginD <- textFieldAttr PWSLogin ("placeholder" =: "my wallet name") $ fromMaybe (nameProposal existingWalletNames) mlogin
-        pathD <- setupDerivPrefix curs mpath
-        heightD <- case wt of
+        loginD_ <- textFieldAttr PWSLogin ("placeholder" =: "my wallet name") $ fromMaybe (nameProposal existingWalletNames) mlogin
+        pathD_ <- setupDerivPrefix curs mpath
+        heightD_ <- case wt of
           WalletGenerated -> pure 0
           WalletRestored -> setupBtcStartingHeight
-        pure (loginD, pathD, heightD)
+        pure (loginD_, pathD_, heightD_)
       btnE <- submitSetBtn
       pure (loginD, pathD, heightD, lpE)
   let goE = poke logPassE $ \(l, pass) -> do

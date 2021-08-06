@@ -9,7 +9,7 @@ import Data.ByteString (ByteString)
 import Data.Ergo.BigInt
 import Data.Ergo.Crypto
 import Data.Persist
-import Data.Text (Text, unpack)
+import Data.Text (unpack)
 import GHC.Generics
 
 data AutolykosSolution = AutolykosSolution

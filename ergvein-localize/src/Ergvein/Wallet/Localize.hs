@@ -24,7 +24,6 @@ module Ergvein.Wallet.Localize(
   , module Ergvein.Wallet.Localize.TestnetDisclaimer
   , module Ergvein.Wallet.Localize.Transaction
   , module Ergvein.Wallet.Localize.Util
-  , module Ergvein.Wallet.Localize.Validate
   , module Ergvein.Wallet.Localize.Status
   ) where
 
@@ -54,5 +53,5 @@ import Ergvein.Wallet.Localize.Storage
 import Ergvein.Wallet.Localize.TestnetDisclaimer
 import Ergvein.Wallet.Localize.Transaction
 import Ergvein.Wallet.Localize.Util
-import Ergvein.Wallet.Localize.Validate
+import Ergvein.Wallet.Localize.Validate()
 import Ergvein.Wallet.Localize.Status

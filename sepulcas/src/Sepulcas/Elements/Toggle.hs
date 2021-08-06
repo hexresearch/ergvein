@@ -11,10 +11,8 @@ import Control.Monad.IO.Class
 import Reflex.Dom
 import Reflex.Flunky
 import Reflex.Localize
-import Reflex.Localize.Dom
 import Sepulcas.Elements.Button
 import Sepulcas.Elements.Form
-import Sepulcas.Elements.Markup
 import Sepulcas.Id
 
 -- | Create toggle button with pressed and unpressed states

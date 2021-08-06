@@ -37,7 +37,6 @@ import Ergvein.Text (showt)
 import Ergvein.Types
 import Network.Socket (SockAddr)
 import Reflex
-import Reflex.ExternalRef
 
 import qualified Data.Dependent.Map as DM
 
