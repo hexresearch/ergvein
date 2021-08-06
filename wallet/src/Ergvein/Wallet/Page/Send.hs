@@ -6,7 +6,6 @@ module Ergvein.Wallet.Page.Send (
 
 import Control.Lens
 import Control.Monad.Except
-import Data.Bifunctor (first)
 import Data.Maybe
 import Data.Word
 

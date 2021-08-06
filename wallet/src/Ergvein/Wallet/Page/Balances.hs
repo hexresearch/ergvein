@@ -12,7 +12,7 @@ import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Status.Widget
 import Ergvein.Wallet.Widget.Balance
 import Ergvein.Wallet.Wrapper
-import Ergvein.Wallet.Debug
+-- import Ergvein.Wallet.Debug
 
 import qualified Data.List as L
 

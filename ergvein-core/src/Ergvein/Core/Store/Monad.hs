@@ -56,7 +56,6 @@ import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Types.WalletInfo
 import Crypto.Random.Types (MonadRandom)
-import Network.Haskoin.Block (Timestamp)
 import Reflex
 import Sepulcas.Native
 

@@ -23,7 +23,6 @@ import Control.Concurrent.STM
 import Control.Monad.IO.Unlift
 import Control.Monad.Reader
 import Data.ByteString (ByteString)
-import Data.Time
 import GHC.Generics
 import Network.Socks5 (SocksConf(..), socksConnect, SocksAddress(..), SocksHostAddress(..))
 import Reflex

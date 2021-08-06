@@ -33,12 +33,12 @@ validateBtcAmount threshold unit x = case validateNonEmptyString x of
           _ -> case validateRational result of
             Failure errs' -> _Failure # errs'
             Success res -> _Success # unitsToSat res
-        satToUnits x = fromRational $ fromIntegral x % (10 ^ btcResolution unit)
-        unitsToSat x = round $ x * (10 ^ btcResolution unit)
+        satToUnits a = fromRational $ fromIntegral a % (10 ^ btcResolution unit) :: Double
+        unitsToSat a = round $ a * (10 ^ btcResolution unit)
     in
       case result' of
         Failure errs'' -> _Failure # errs''
-        Success result'' -> case validateGreaterThan result'' (Just threshold) (\x -> showFullPrecision (satToUnits x) <> " " <> btcSymbolUnit unit) of
+        Success result'' -> case validateGreaterThan result'' (Just threshold) (\a -> showFullPrecision (satToUnits a) <> " " <> btcSymbolUnit unit) of
           Failure errs''' -> _Failure # errs'''
           Success (GreaterThan _) -> _Success # result''
 

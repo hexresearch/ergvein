@@ -23,11 +23,8 @@ import Data.Ergo.Protocol.Decoder
 import Data.IORef
 import Data.Time
 import Data.Time.Clock.POSIX
-import GHC.Generics
 
-import Debug.Trace
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Base16 as B16
 
 import qualified Network.Socket.Manager.TCP.Client as C
 
@@ -75,8 +72,7 @@ ergoSocket :: MonadIO m
   -> m (TChan (C.SocketOutEvent ErgoMessage))
 ergoSocket net inChan conf = do
   initRef <- liftIO $ newIORef True
-  let encoder net msg = encodeErgoMessage net msg
-  out <- C.socket (encoder net) (peekMessage net initRef) inChan conf
+  out <- C.socket (encodeErgoMessage net) (peekMessage net initRef) inChan conf
   liftIO $ do
     outInt <- atomically $ dupTChan out
     void $ forkIO $ forever $ do

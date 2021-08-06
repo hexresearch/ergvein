@@ -10,7 +10,7 @@ import Control.Monad.IO.Unlift (MonadUnliftIO)
 import Control.Monad.Random
 import Data.Either (fromRight)
 import Data.IP
-import Data.Maybe (catMaybes, fromMaybe, listToMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Text (Text)
 import Data.Time
 import Data.Traversable (for)
@@ -322,14 +322,6 @@ randomVals l urls = if l >= n
         else let acc' = i:acc in if length acc' == l
           then pure acc'
           else mkIndexes acc'
-
--- | Only take first N event from stream
-takeE :: (Reflex t, MonadHold t m, MonadFix m)
-      => Int -> Event t a -> m (Event t a)
-takeE n
-  =  takeWhileJustE (\(i,a) -> a <$ guard (i < n))
- <=< zipListWithEvent (,) [0..]
-
 
 tryHostToSockAddr :: Network.Haskoin.Network.HostAddress -> Maybe SockAddr
 tryHostToSockAddr h = unsafePerformIO $ do

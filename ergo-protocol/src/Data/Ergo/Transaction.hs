@@ -9,7 +9,6 @@ where
 
 import Data.ByteString (ByteString)
 import Data.Ergo.Block (Digest32 (Digest32))
-import Data.Map (Map)
 import Data.Word (Word32, Word64)
 
 data Input = Input
