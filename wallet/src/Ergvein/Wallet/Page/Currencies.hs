@@ -19,28 +19,39 @@ import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Wrapper
 
 selectCurrenciesPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> m ()
-selectCurrenciesPage wt mnemonic = wrapperSimple True $ do
-  -- TODO: remove this when ERGO is ready
-  e <- fmap ([BTC] <$) getPostBuild
-  -- uncomment this when ERGO is ready
-  -- e <- selectCurrenciesWidget []
+selectCurrenciesPage wt mnemonic = do
+  buildE <- getPostBuild
+  let e = [BTC] <$ buildE
   void $ nextWidget $ ffor e $ \ac -> Retractable {
 #ifdef ANDROID
       retractableNext = setupLoginPage wt Nothing mnemonic ac
 #else
       retractableNext = setupPasswordPage wt Nothing mnemonic ac Nothing
 #endif
-    -- , retractablePrev = Just $ pure $ selectCurrenciesPage wt mnemonic -- TODO: uncomment this when ERGO is ready
-    , retractablePrev = Nothing -- TODO: remove this when ERGO is ready
+    , retractablePrev = Just $ pure $ selectCurrenciesPage wt mnemonic
     }
+
+-- As long as we only have one active currency, this widget is not needed
+
+-- selectCurrenciesPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> m ()
+-- selectCurrenciesPage wt mnemonic = wrapperSimple True $ do
+--   e <- selectCurrenciesWidget []
+--   void $ nextWidget $ ffor e $ \ac -> Retractable {
+-- #ifdef ANDROID
+--       retractableNext = setupLoginPage wt Nothing mnemonic ac
+-- #else
+--       retractableNext = setupPasswordPage wt Nothing mnemonic ac Nothing
+-- #endif
+--     , retractablePrev = Just $ pure $ selectCurrenciesPage wt mnemonic
+--     }
 
 selectCurrenciesWidget :: MonadFrontBase t m => [Currency] -> m (Event t [Currency])
 selectCurrenciesWidget currs = mdo
   divClass "select-currencies-title" $ h4 $ localizedText CurTitle
   eL <- traverse (\(cur,_) -> divClass "currency-toggle" $ do
-    let curD = fmap (toggled . snd .  (fromMaybe (cur, False)) . (find (\(c,_) -> c == cur))) curListD
+    let curD = fmap (toggled . snd .  fromMaybe (cur, False) . find (\(c,_) -> c == cur)) curListD
     e <- divButton curD (text $ showt cur)
-    pure (cur <$ e) ) $ startList
+    pure (cur <$ e)) startList
   curListD <- holdDyn startList $ poke (leftmost eL) $ \cur -> do
     curListS <- sampleDyn curListD
     pure $ fmap (invert cur) curListS
@@ -48,10 +59,10 @@ selectCurrenciesWidget currs = mdo
   btnE <- divButton curButtonD $ localizedText CurOk
   curListE <- performEvent $ ffor btnE $ \_ -> do
     curList <- sampleDyn curListD
-    pure $ fst . unzip $ filter (\(_,b) -> b == True) curList
+    pure $ map fst $ filter snd curList
   pure $ gate (current (fmap (enabledGate . checkTrue) curListD)) curListE
   where
-    checkTrue = (find (\(_,b) -> b == True))
+    checkTrue = find snd
 
     invert a (b,c) = if b == a
       then (b, not c)
@@ -69,6 +80,6 @@ selectCurrenciesWidget currs = mdo
       Just _ -> True
       Nothing -> False
 
-    startList = ffor allCurrencies $ \cur -> if (elem cur currs)
+    startList = ffor allCurrencies $ \cur -> if cur `elem` currs
       then (cur,True)
       else (cur,False)

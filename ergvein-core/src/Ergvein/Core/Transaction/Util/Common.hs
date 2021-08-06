@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 
-module Ergvein.Core.Transaction.Util(
+module Ergvein.Core.Transaction.Util.Common(
     checkAddr
   , checkAddrTx
   , countConfirmations
@@ -10,7 +10,7 @@ import Data.Word
 
 import Ergvein.Core.Store.Monad
 import Ergvein.Core.Transaction.Btc
-import Ergvein.Core.Transaction.Ergo
+import Ergvein.Core.Transaction.Erg
 import Ergvein.Types.Address
 import Ergvein.Types.Transaction
 import Sepulcas.Native

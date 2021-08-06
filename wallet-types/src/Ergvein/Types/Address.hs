@@ -3,13 +3,15 @@ module Ergvein.Types.Address (
     , ErgAddress(..)
     , EgvAddress(..)
     , VLAddr(..)
-    , egvAddrToString
-    , egvAddrFromString
-    , egvAddrCurrency
-    , btcAddrToString'
-    , btcAddrToString
-    , btcAddrFromString
+    , btcAddrToText'
+    , btcAddrToText
+    , btcAddrFromText
     , BtcAddressType(..)
+    , ergAddrToText
+    , ergAddrFromText
+    , egvAddrToText
+    , egvAddrFromText
+    , egvAddrCurrency
   ) where
 
 import Data.Aeson
@@ -94,17 +96,17 @@ base58GetErg net = do
       | x == getErgScriptPrefix     net = ErgScriptAddress     <$> S.get
       | otherwise = fail "Does not recognize address prefix"
 
-btcAddrToString' :: BtcNetwork -> BtcAddress -> Text
-btcAddrToString' net addr = case HA.addrToString net addr of
+btcAddrToText' :: BtcNetwork -> BtcAddress -> Text
+btcAddrToText' net addr = case HA.addrToString net addr of
   Nothing -> undefined -- FIXME
   Just s -> s
 
-btcAddrToString :: BtcAddress -> Text
-btcAddrToString = btcAddrToString' net
+btcAddrToText :: BtcAddress -> Text
+btcAddrToText = btcAddrToText' net
   where net = getBtcNetwork $ getCurrencyNetwork BTC
 
-ergAddrToString :: ErgAddress -> Text
-ergAddrToString = encodeBase58CheckErg . runPut . base58PutErg net
+ergAddrToText :: ErgAddress -> Text
+ergAddrToText = encodeBase58CheckErg . runPut . base58PutErg net
   where net = getErgNetwork $ getCurrencyNetwork ERGO
 
 egvAddrCurrency :: EgvAddress -> Currency
@@ -112,33 +114,33 @@ egvAddrCurrency addr = case addr of
   BtcAddress{} -> BTC
   ErgAddress{} -> ERGO
 
-egvAddrToString :: EgvAddress -> Text
-egvAddrToString (BtcAddress addr) = btcAddrToString addr
-egvAddrToString (ErgAddress addr) = ergAddrToString addr
+egvAddrToText :: EgvAddress -> Text
+egvAddrToText (BtcAddress addr) = btcAddrToText addr
+egvAddrToText (ErgAddress addr) = ergAddrToText addr
 
-btcAddrFromString :: Text -> Maybe BtcAddress
-btcAddrFromString = HA.stringToAddr net
+btcAddrFromText :: Text -> Maybe BtcAddress
+btcAddrFromText = HA.stringToAddr net
   where net = getBtcNetwork $ getCurrencyNetwork BTC
 
-ergAddrFromString :: Text -> Maybe ErgAddress
-ergAddrFromString t = eitherToMaybe . runGet (base58GetErg net) =<< decodeBase58CheckErg t
+ergAddrFromText :: Text -> Maybe ErgAddress
+ergAddrFromText t = eitherToMaybe . runGet (base58GetErg net) =<< decodeBase58CheckErg t
   where net = getErgNetwork $ getCurrencyNetwork ERGO
 
-egvAddrFromString :: Currency -> Text -> Maybe EgvAddress
-egvAddrFromString BTC  addr = BtcAddress <$> btcAddrFromString addr
-egvAddrFromString ERGO addr = ErgAddress <$> ergAddrFromString addr
+egvAddrFromText :: Currency -> Text -> Maybe EgvAddress
+egvAddrFromText BTC  addr = BtcAddress <$> btcAddrFromText addr
+egvAddrFromText ERGO addr = ErgAddress <$> ergAddrFromText addr
 
 egvAddrToJSON :: EgvAddress -> Value
-egvAddrToJSON = String . egvAddrToString
+egvAddrToJSON = String . egvAddrToText
 
 egvAddrFromJSON :: Currency -> Value -> Parser EgvAddress
 egvAddrFromJSON = \case
   BTC -> withText "address" $ \t ->
-    case btcAddrFromString t of
+    case btcAddrFromText t of
       Nothing -> fail "could not decode address"
       Just x  -> return $ BtcAddress x
   ERGO -> withText "address" $ \t ->
-    case ergAddrFromString t of
+    case ergAddrFromText t of
       Nothing -> fail "could not decode address"
       Just x  -> return $ ErgAddress x
 

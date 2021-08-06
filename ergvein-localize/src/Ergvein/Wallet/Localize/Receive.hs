@@ -23,13 +23,13 @@ data ReceivePageStrings =
 instance LocalizedPrint ReceivePageStrings where
   localizedShow l v = case l of
     English -> case v of
-      RPSAddLabel -> "Add label"
+      RPSAddLabel -> "Set label"
       RPSGap      -> "Exceeded gap limit"
       RPSGenNew   -> "Generate new"
       RPSNewLabel -> "New label"
       RPSTitle    -> "Receive"
     Russian -> case v of
-      RPSAddLabel -> "Добавить название"
+      RPSAddLabel -> "Задать метку"
       RPSGap      -> "Вышли за \"Gap limit\""
       RPSGenNew   -> "Создать новый"
       RPSNewLabel -> "Изменить название"

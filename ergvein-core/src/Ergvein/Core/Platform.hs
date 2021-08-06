@@ -6,6 +6,7 @@ module Ergvein.Core.Platform(
   , isAndroid
   , isTestnet
   , btcNetwork
+  , ergoNetwork
   , btcCheckpoints
   , ergoCheckpoints
   , filterStartingHeight
@@ -13,12 +14,13 @@ module Ergvein.Core.Platform(
   ) where
 
 import Ergvein.Types.Currency
-import Network.Haskoin.Block as HB
-import Network.Haskoin.Constants
 import Sepulcas.Native
 
+import Network.Haskoin.Block               as HB
+import qualified Data.Ergo.Protocol.Types  as Erg
+import qualified Data.Vector               as V
 import qualified Ergvein.Types.Transaction as ETT
-import qualified Data.Vector as V
+import qualified Network.Haskoin.Constants as HK
 
 -- | Global flag that indicates that we need to compile for testnet.
 -- The value of the function is controlled by `testnet` cabal flag.
@@ -30,9 +32,14 @@ isTestnet = False
 #endif
 
 -- | Network parameters for BTC blockchain. Depends on `isTestnet` flag.
-btcNetwork :: Network
-btcNetwork = if isTestnet then btcTest else btc
+btcNetwork :: HK.Network
+btcNetwork = if isTestnet then HK.btcTest else HK.btc
 {-# INLINE btcNetwork #-}
+
+-- | Network parameters for ERGO blockchain. Depends on `isTestnet` flag.
+ergoNetwork :: Erg.Network
+ergoNetwork = if isTestnet then Erg.Testnet else Erg.Mainnet
+{-# INLINE ergoNetwork #-}
 
 -- | The starting height for filters downloader. Start from SegWit adoption
 filterStartingHeight :: Currency -> ETT.BlockHeight

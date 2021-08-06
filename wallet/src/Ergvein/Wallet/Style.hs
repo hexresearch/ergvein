@@ -19,7 +19,7 @@ import qualified Clay.Media as M
 import qualified Clay.Flexbox as F
 
 compileFrontendCss :: (MonadJSM m, PlatformNatives) => m ByteString
-compileFrontendCss = compileStyles $ frontendCss
+compileFrontendCss = compileStyles frontendCss
 
 frontendCss :: PlatformNatives => Css
 frontendCss = do
@@ -46,6 +46,7 @@ frontendCss = do
   navbarCss
   networkPageCss
   toggleSwitchCss
+  dropdownContainer
   passwordCss
   badgeCss
   receiveCss
@@ -328,6 +329,8 @@ inputCss = do
   let textInput = input # ("type" @= "text")
   (textInput # hover # enabled) <> (textInput # focus # enabled) ? simpleBorder
   (textInput # disabled) ? disableBackground
+  ("textarea" # hover # enabled) <> ("textarea" # focus # enabled) ? simpleBorder
+  ("textarea" # disabled) ? disableBackground
 
 mnemonicWidgetCss :: Css
 mnemonicWidgetCss = do
@@ -382,6 +385,8 @@ mnemonicWidgetCss = do
   ".mnemonic-verification-error" ? do
     color textDanger
     margin (rem 0) (rem 0.5) (rem 0) (rem 0.5)
+  ".restore-seed-input" ? do
+    minHeight $ rem 10
   ".restore-seed-buttons-wrapper" ? do
     display flex
     flexWrap F.wrap
@@ -406,6 +411,18 @@ settingsCss :: Css
 settingsCss = do
   ".initial-options" ? do
     margin (rem 0) auto (rem 0) auto
+  ".fiat-settings" ? do
+    display flex
+    justifyContent spaceBetween
+    alignItems center
+    marginBottom $ rem 1
+  ".fiat-settings select, .fiat-settings .toggle-switch" ? do
+    marginBottom $ rem 0
+  ".fiat-settings select" ? do
+    width $ rem 10
+  ".fiat-settings-label" ? do
+    textAlign $ alignSide sideLeft
+    fontSize $ pt 14
 
 mnemonicExportCss :: Css
 mnemonicExportCss = do
@@ -430,54 +447,51 @@ toggleSwitchCss :: Css
 toggleSwitchCss =
   let
     toggleSwitchHeight = rem 3.8 -- change this to scale switch
-    toggleSwitchFontSize = pt 11
-    toggleSwitchWidth = 2 *@ toggleSwitchHeight
+    toggleSwitchBorderWidth = px 1
+    toggleSwitchFontSize = pt 10
+    toggleSwitchWidth = 1.6 *@ toggleSwitchHeight
     toggleSwitchBorderRadius = 0.5 *@ toggleSwitchHeight
-    knobSize = 0.72 *@ toggleSwitchHeight
+    knobSize = 0.75 *@ toggleSwitchHeight
     knobBorderRadius = 0.5 *@ knobSize
-    knobMargin = 0.5 *@ (toggleSwitchHeight @-@ knobSize)
-    textMargin = 0.3 *@ toggleSwitchHeight
+    knobMargin = 0.5 *@ (toggleSwitchHeight @-@ knobSize @-@ (2 *@ toggleSwitchBorderWidth))
   in do
     ".toggle-switch" ? do
       display inlineBlock
       position relative
       width toggleSwitchWidth
       height toggleSwitchHeight
-      borderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius
+      minWidth toggleSwitchWidth
       borderStyle solid
-      borderWidth $ px 1
+      borderWidth toggleSwitchBorderWidth
       borderColor black
-      margin0
-      boxSizing contentBox
+      borderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius
+      margin (rem 0) (rem 0) (rem 1.5) (rem 0)
+
+    ".toggle-switch:hover" ? do
+      borderColor hoverColor
+      cursor pointer
 
     ".toggle-switch input" ? do
       appearanceNone
-      display flex
-      alignItems center
-      justifyContent spaceBetween
-      width toggleSwitchWidth
-      height toggleSwitchHeight
-      borderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius toggleSwitchBorderRadius
-      outline none (px 0) black -- outline: none
+      outline none (px 0) black -- same as outline: none
+      display inlineBlock
+      width $ pct 100
+      height $ pct 100
+      padding0
       margin0
 
-    ".toggle-switch input::before, .toggle-switch input::after" ? do
-      zIndex 1
-      textTransform uppercase
-      transition "opacity" (sec 0.3) linear (sec 0)
-      fontSize $ toggleSwitchFontSize
+    ".toggle-switch input:hover" ? do
+      cursor pointer
 
-    ".toggle-switch input::before" ? do
-      content $ stringContent "On"
-      marginLeft textMargin
-
-    ".toggle-switch input::after" ? do
-      content $ stringContent "Off"
-      marginRight textMargin
+    ".toggle-switch input:hover label, .toggle-switch:hover label" ? do
+      cursor pointer
+      backgroundColor hoverColor
 
     ".toggle-switch label" ? do
+      display flex
+      alignItems center
+      justifyContent center
       position absolute
-      zIndex 2
       width knobSize
       height knobSize
       top knobMargin
@@ -485,16 +499,30 @@ toggleSwitchCss =
       borderRadius knobBorderRadius knobBorderRadius knobBorderRadius knobBorderRadius
       backgroundColor black
       margin0
-      transitions [("left", sec 0.3, linear, sec 0), ("right", sec 0.3, linear, sec 0)]
+      transition "left" (sec 0.3) easeOut (sec 0)
 
-    ".toggle-switch input:not(:checked)::before" ? do
-      opacity 0
+    ".toggle-switch label::before" ? do
+      fontFamily ["Font Awesome 5 Free"] []
+      fontWeight $ weight 900
+      color white
+    
+    ".toggle-switch input:not(:checked) + label::before" ? do
+      content $ stringContent "\\f00d"
+      fontSize $ 1.1 *@ toggleSwitchFontSize
 
-    ".toggle-switch input:checked::after" ? do
-      opacity 0
+    ".toggle-switch input:checked + label::before" ? do
+      content $ stringContent "\\f00c"
+      fontSize toggleSwitchFontSize
 
     ".toggle-switch input:checked + label" ? do
-      left $ toggleSwitchWidth @-@ (knobMargin @+@ knobSize)
+      left $ toggleSwitchWidth @-@ (knobMargin @+@ knobSize @+@ 2 *@ toggleSwitchBorderWidth)
+
+dropdownContainer :: Css
+dropdownContainer = do
+  ".dropdown-header" ? do
+    marginBottom $ rem 1.5
+  ".dropdownContainerHidden" ? do
+    display displayNone
 
 passwordCss :: Css
 passwordCss = do
@@ -554,31 +582,28 @@ initialPageCss = do
 
 balancesPageCss :: PlatformNatives => Css
 balancesPageCss = do
-  ".sync-progress" ? do
-    fontSize $ pt 14
   ".currency-content" ? do
-    display displayTable
     width $ pct 100
   ".currency-row" ? do
-    display tableRow
-    fontSize $ pt (if isAndroid then 18 else 24)
     cursor pointer
+    paddingBottom $ rem 1
   ".currency-row:hover" ? do
     color hoverColor
+  ".currency-row:not(:last-child)" ? do
+    borderBottom solid (rem 0.1) (rgb 215 215 219)
+  ".currency-details" ? do
+    display flex
+    justifyContent spaceBetween
+    fontSize $ pt (if isAndroid then 18 else 24)
   ".currency-name" ? do
-    textAlign $ alignSide sideLeft
-    display tableCell
     paddingRight $ rem 1
-  ".currency-balance" ? do
-    display tableCell
-    textAlign $ alignSide sideRight
   ".currency-value" ? do
-    paddingRight $ rem 0.5
-  ".currency-unit" ? do
     paddingRight $ rem 0.5
   ".canvas-container" ? do
     marginLeft $ px 120
     marginTop $ px 50
+  ".currency-status" ? do
+    textAlign $ alignSide sideLeft
 
 sendPageCss :: Css
 sendPageCss = do
@@ -606,7 +631,6 @@ sendPageCss = do
   ".text-input-btn" ? do
     paddingLeft $ rem 1
     paddingRight $ rem 1
-    zIndex 1
   ".text-input-btn:hover" ? do
     cursor pointer
     color hoverColor
@@ -645,6 +669,8 @@ sendPageCss = do
     textAlign $ alignSide sideLeft
   ".send-confirm-box" ? do
     pure ()
+  ".send-page .toggle-switch" ? do
+    marginBottom $ rem 0
 
 aboutPageCss :: PlatformNatives => Css
 aboutPageCss = do
@@ -1028,6 +1054,11 @@ legoStyles = do
   ".pr-1" ? (paddingRight  $ rem 1)
   ".pt-1" ? (paddingTop    $ rem 1)
   ".p-1" ? padding (rem 1) (rem 1) (rem 1) (rem 1)
+  ".pb-2" ? (paddingBottom $ rem 2)
+  ".pl-2" ? (paddingLeft   $ rem 2)
+  ".pr-2" ? (paddingRight  $ rem 2)
+  ".pt-2" ? (paddingTop    $ rem 2)
+  ".p-2" ? padding (rem 2) (rem 2) (rem 2) (rem 2)
   ".pb-a" ? paddingBottom  auto
   ".pl-a" ? paddingLeft    auto
   ".pr-a" ? paddingRight   auto
@@ -1153,7 +1184,7 @@ graphPinCodeCanvasCss = do
     zIndex 10
   ".graph-pin-code-line-check" ? do
     position absolute
-    backgroundColor $ none
+    backgroundColor none
     let px' = px 0 in padding px' px' px' px'
     let px' = px 0 in margin px' px' px' px'
     userSelect none

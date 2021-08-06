@@ -7,7 +7,6 @@ module Ergvein.Wallet.Page.Seed(
   , mnemonicWidget
   , simpleSeedRestorePage
   , seedRestorePage
-  , seedRestoreWidget
   ) where
 
 import Control.Monad.Random.Strict
@@ -176,38 +175,6 @@ askSeedPasswordPage encryptedMnemonic = do
     , retractablePrev = Just $ pure $ askSeedPasswordPage encryptedMnemonic
     }
 
--- | Word by word seed restore.
--- This is not used now. Keep just in case we decide to enable it again
-seedRestoreWidget :: forall t m . MonadFrontBase t m => m (Event t Mnemonic)
-seedRestoreWidget = mdo
-  langD <- getLanguage
-  ixD <- foldDyn (\_ i -> i + 1) 1 wordE
-  h4 $ dynText $
-    localizedShow <$> langD <*> (SPSEnterWord <$> ixD)
-  suggestionsD <- holdDyn Nothing $ ffor (updated inputD) $ \t -> if t == ""
-    then Nothing else Just $ take 6 $ getWordsWithPrefix $ T.toLower t
-  btnE <- fmap switchDyn $ networkHoldDyn $ ffor suggestionsD $ \case
-    Nothing -> waiting
-    Just ws -> divClass "restore-seed-buttons-wrapper" $ fmap leftmost $ for ws $ \w -> do
-      btnClickE <- buttonClass (pure "button button-outline") w
-      pure $ w <$ btnClickE
-  let enterPressedE = keypress Enter txtInput
-      inputD = _inputElement_value txtInput
-      enterE = flip push enterPressedE $ const $ do
-        sugs <- sampleDyn suggestionsD
-        pure $ case sugs of
-          Just [w] -> Just w
-          _ -> Nothing
-      wordE = leftmost [btnE, enterE]
-  txtInput <- textInput $ def & inputElementConfig_setValue .~ fmap (const "") wordE
-  mnemD <- foldDyn (\w m -> let p = if m == "" then "" else " " in m <> p <> T.toLower w) "" wordE
-  goE <- delay 0.1 (updated ixD)
-  pure $ attachWithMaybe (\mnem i -> if i == 25 then Just mnem else Nothing) (current mnemD) goE
-  where
-    waiting :: m (Event t Text)
-    waiting = h4 (localizedText SPSWaiting) >> pure never
-
-
 simpleSeedRestorePage :: MonadFrontBase t m => m ()
 simpleSeedRestorePage = plainRestorePage 12
 
@@ -274,7 +241,7 @@ data ParseState
 parseMnem :: Int -> Text -> ParseState
 parseMnem l mnem = case ws of
   [] -> PSWaiting
-  _ -> if length ws == l
+  _ -> if length ws == l && wordTrieElem w
     then case filter (not . wordTrieElem . snd) iws of
       [] -> PSDone (T.intercalate " " ws)
       errs -> PSFullError errs
@@ -295,7 +262,7 @@ plainRestorePage mnemLength = wrapperSimple True $ mdo
   h4 $ localizedText $ SPSPlainTitle mnemLength
   buildE <- getPostBuild
 
-  let parsedD = parseMnem mnemLength <$> _inputElement_value ti
+  let parsedD = parseMnem mnemLength <$> _textAreaElement_value ti
       enterKeyE = keypress Enter ti
       anyKeyE = domEvent Keypress ti
       -- resetE: overwrite all new writes if there was an unfixed error
@@ -313,9 +280,13 @@ plainRestorePage mnemLength = wrapperSimple True $ mdo
     , updated $ Just <$> parsedD
     , Just PSWaiting <$ buildE
     ]
-  ti <- textInput $ def & inputElementConfig_setValue .~ setValE
+
+  ti <- textAreaElement $ def & textAreaElementConfig_setValue .~ setValE
+                              & (textAreaElementConfig_elementConfig . elementConfig_initialAttributes) .~
+                                [("style", "resize:none"), ("class", "restore-seed-input")]
+
   let setValE = leftmost [pasteE, fillE, resetE]
-  let tiEl = _element_raw $ _inputElement_element ti
+  let tiEl = _element_raw $ _textAreaElement_element ti
   performEvent_ $ ffor setValE $ const $ selElementFocus tiEl
   fillE <- networkHoldE (pure never) $ ffor (updated stateD) $ \case
     PSWaiting         -> waiting
@@ -336,7 +307,7 @@ plainRestorePage mnemLength = wrapperSimple True $ mdo
           btnClickE <- buttonClass (pure "button button-outline") w
           pure $ w <$ btnClickE
         pure $ recombine ts <$> wE
-  pasteE <- pasteBtnsWidget 
+  pasteE <- pasteBtnsWidget
   advancedE <- divClass "restore-seed-buttons-wrapper" $ outlineButton CSAdvanced
   void $ nextWidget $ ffor advancedE $ const $ Retractable {
       retractableNext = seedRestorePage

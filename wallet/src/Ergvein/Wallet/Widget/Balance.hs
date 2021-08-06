@@ -1,29 +1,30 @@
+{-# OPTIONS_GHC -Wall #-}
+{-# LANGUAGE LambdaCase #-}
+
 module Ergvein.Wallet.Widget.Balance(
-    balancesWidget
-  , balancesRatedWidget
-  , balanceRatedOnlyWidget
+    balanceWidget
+  , fiatBalanceWidget
+  , fiatRateWidget
   , balanceTitleWidget
-  , balanceTitleWidgetSimple
   ) where
 
 import Control.Lens
-import Data.Maybe (fromMaybe)
+import Data.Fixed (Centi)
+import Text.Printf
 
-import Ergvein.Text
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo.Btc
-import Ergvein.Wallet.Language
-import Ergvein.Wallet.Localize
+import Ergvein.Wallet.Localize.Status
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Settings
+import Sepulcas.Text (Display(..))
 
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
+import qualified Data.Text as T
 
-ergoBalances :: MonadFront t m => m (Dynamic t Money)
-ergoBalances = pure $ pure $ Money ERGO 0
-
-btcBalances :: MonadFront t m => m (Dynamic t Money)
-btcBalances = do
+btcBalance :: MonadFront t m => m (Dynamic t Money)
+btcBalance = do
   pubStorageD <- getPubStorageBtcD
   pure $ ffor pubStorageD $ \case
     Nothing -> Money BTC 0
@@ -31,73 +32,92 @@ btcBalances = do
       utxos = M.elems $ pubStorage ^. btcPubStorage'utxos
       in Money BTC $ L.foldl' helper 0 utxos
   where
-    helper :: MoneyUnit -> BtcUtxoMeta -> MoneyUnit
+    helper :: MoneyAmount -> BtcUtxoMeta -> MoneyAmount
     helper balance BtcUtxoMeta{btcUtxo'status = EUtxoSending _} = balance
     helper balance BtcUtxoMeta{..} = balance + btcUtxo'amount
 
-balancesWidget :: MonadFront t m => Currency -> m (Dynamic t Money)
-balancesWidget cur = case cur of
-  ERGO -> ergoBalances
-  BTC  -> btcBalances
+ergoBalance :: MonadFront t m => m (Dynamic t Money)
+ergoBalance = pure $ pure $ Money ERGO 0
 
-balancesRatedWidget :: MonadFront t m => Currency -> m (Dynamic t Text, Dynamic t Text)
-balancesRatedWidget cur = do
-  settings <- getSettings
-  balD <- balancesWidget cur
-  let setUs = getSettingsUnits settings
-  let mFiat = settingsFiatCurr settings
-  case mFiat of
-    Nothing -> pure $ splitDynPure $ ffor balD $ \bal ->
-      let u = symbolUnit cur setUs
-          b = showMoneyUnit bal setUs
-      in (b, u)
-    Just f -> do
-      rateD <- getRateByFiatD cur f
-      pure $ splitDynPure $ do
-        bal <- balD
-        rate <- rateD
-        let unrated = (showMoneyUnit bal setUs, symbolUnit cur setUs)
-        pure $ case rate of
-          Nothing -> unrated
-          Just r -> if cur == BTC
-            then (showMoneyRated bal r, showt f)
-            else unrated
-  where getSettingsUnits = fromMaybe defUnits . settingsUnits
+balanceWidget :: MonadFront t m => Currency -> m (Dynamic t Money)
+balanceWidget cur = case cur of
+  BTC  -> btcBalance
+  ERGO -> ergoBalance
 
-balanceRatedOnlyWidget :: MonadFront t m => Currency -> m (Dynamic t (Maybe Text))
-balanceRatedOnlyWidget cur = if cur /= BTC then pure (pure Nothing) else do
-  mRateSymbolD <- (fmap . fmap) settingsFiatCurr getSettingsD
-  fmap join $ networkHoldDyn $ ffor mRateSymbolD $ \case
-    Nothing -> pure $ pure Nothing
-    Just rs -> do
-      balD <- balancesWidget cur
-      rateD <- getRateByFiatD cur rs
-      pure $ do
-        bal <- balD
-        mRate <- rateD
-        pure $ case mRate of
-          Nothing -> Nothing
-          Just r -> Just $ showMoneyRated bal r <> " " <> showt rs
+-- Returns text with fiat balance
+-- Left values indicate an error in obtaining the exchange rate
+-- Nothing values indicate that the fiat balance display is disabled in the settings
+fiatBalanceWidget :: MonadFront t m => Currency -> m (Dynamic t (Either ExchangeRatesError (Maybe Text)))
+fiatBalanceWidget cur = case cur of
+  BTC  -> btcFiatBalanceWidget
+  ERGO -> ergFiatBalanceWidget
+
+btcFiatBalanceWidget :: MonadFront t m => m (Dynamic t (Either ExchangeRatesError (Maybe Text)))
+btcFiatBalanceWidget = do
+  showFiatBalanceD <- getFiatBalanceSettings
+  fmap join $ networkHoldDyn $ ffor showFiatBalanceD $ \case
+    Nothing -> pure $ constDyn $ Right Nothing
+    Just fiat -> do
+      balD <- balanceWidget BTC
+      mRateD <- getRateByFiatD BTC fiat
+      let fiatBalD = ffor2 balD mRateD (showFiatBalance fiat)
+      pure fiatBalD
+
+showFiatBalance :: Fiat -> Money -> Maybe Centi -> Either ExchangeRatesError (Maybe Text)
+showFiatBalance _ _ Nothing = Left ExchangeRatesUnavailable
+showFiatBalance fiat balance (Just rate) = Right $ Just $ showMoneyRated balance rate <> " " <> showt fiat
+
+ergFiatBalanceWidget :: MonadFront t m => m (Dynamic t (Either ExchangeRatesError (Maybe Text)))
+ergFiatBalanceWidget = pure $ pure $ Left ExchangeRatesUnavailable
+
+-- Returns text with fiat rate
+-- Left values indicate an error in obtaining the exchange rate
+-- Nothing values indicate that the exchange rate display is disabled in the settings
+fiatRateWidget :: MonadFront t m => Currency -> m (Dynamic t (Either ExchangeRatesError (Maybe Text)))
+fiatRateWidget cur = case cur of
+  BTC  -> btcFiatRateWidget
+  ERGO -> ergFiatRateWidget
+
+btcFiatRateWidget :: MonadFront t m => m (Dynamic t (Either ExchangeRatesError (Maybe Text)))
+btcFiatRateWidget = do
+  showFiatRateD <- getFiatRateSettings
+  fmap join $ networkHoldDyn $ ffor showFiatRateD $ \case
+    Nothing -> pure $ constDyn $ Right Nothing
+    Just fiat -> do
+      mRateD <- getRateByFiatD BTC fiat
+      let fiatBalD = ffor mRateD (showFiatRate BTC fiat)
+      pure fiatBalD
+
+showFiatRate :: Currency -> Fiat -> Maybe Centi -> Either ExchangeRatesError (Maybe Text)
+showFiatRate _ _ Nothing = Left ExchangeRatesUnavailable
+showFiatRate cur fiat (Just rate) =
+  let rateText = T.pack $ printf "%.2f" (realToFrac rate :: Double)
+  in Right $ Just $ "(1 " <> showt cur <> " = " <> rateText <> " " <> showt fiat <> ")"
+
+ergFiatRateWidget :: MonadFront t m => m (Dynamic t (Either ExchangeRatesError (Maybe Text)))
+ergFiatRateWidget = pure $ pure $ Left ExchangeRatesUnavailable
 
 balanceTitleWidget :: MonadFront t m => Currency -> m (Dynamic t Text)
-balanceTitleWidget cur = do
-  bal <- balancesWidget cur
-  settings <- getSettings
-  titleText <- localized $ HistoryBalance
-  let getSettingsUnits = fromMaybe defUnits . settingsUnits
-      setUs = getSettingsUnits settings
-      titleVal = ffor bal (\v -> showMoneyUnit v setUs)
-      curSymbol = symbolUnit cur setUs
-      title = zipDynWith (\x y -> x <> ": " <> y <> " " <> curSymbol) titleText titleVal
+balanceTitleWidget cur = case cur of
+  BTC  -> btcBalanceTitleWidget
+  ERGO -> ergBalanceTitleWidget
+
+-- Creates balance string in units specified in settings.
+-- Example: "12.2 BTC".
+btcBalanceTitleWidget :: MonadFront t m => m (Dynamic t Text)
+btcBalanceTitleWidget = do
+  bal <- balanceWidget BTC
+  units <- getSettingsUnitBtc
+  let titleVal = ffor bal (`showMoneyUnit` units)
+      curSymbol = display units
+      title = (\x -> x <> " " <> curSymbol) <$> titleVal
   pure title
 
-balanceTitleWidgetSimple :: MonadFront t m => Currency -> m (Dynamic t Text)
-balanceTitleWidgetSimple cur = do
-  bal <- balancesWidget cur
-  settings <- getSettings
-  let getSettingsUnits = fromMaybe defUnits . settingsUnits
-      setUs = getSettingsUnits settings
-      titleVal = ffor bal (\v -> showMoneyUnit v setUs)
-      curSymbol = symbolUnit cur setUs
+ergBalanceTitleWidget :: MonadFront t m => m (Dynamic t Text)
+ergBalanceTitleWidget = do
+  bal <- balanceWidget ERGO
+  units <- getSettingsUnitErg
+  let titleVal = ffor bal (`showMoneyUnit` units)
+      curSymbol = display units
       title = (\x -> x <> " " <> curSymbol) <$> titleVal
   pure title

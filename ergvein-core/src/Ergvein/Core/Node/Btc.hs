@@ -51,11 +51,6 @@ instance HasNode BtcType where
 
 initBtcNode :: (MonadSettings t m) => Bool -> SockAddr -> Event t NodeMessage -> m (NodeBtc t)
 initBtcNode doLog sa msgE = do
-  -- Dummy status TODO: Make status real later
-  b  <- liftIO randomIO
-  d :: Double <- liftIO $ randomRIO (0, 1.5)
-  bh <- liftIO randomIO
-  let nstat = if b then Nothing else Just $ NodeStatus bh (realToFrac d)
 
   let net = btcNetwork
       nodeLog :: MonadIO m => Text -> m ()
@@ -71,7 +66,6 @@ initBtcNode doLog sa msgE = do
         NodeMsgReq (NodeReqBtc req) -> Just req
         _ -> Nothing
   buildE                    <- getPostBuild
-  statRef                   <- newExternalRef nstat
   let startE = leftmost [buildE, restartE]
 
   -- Resolve address
@@ -145,7 +139,6 @@ initBtcNode doLog sa msgE = do
   pure $ NodeConnection {
     nodeconCurrency   = BTC
   , nodeconUrl        = sa
-  , nodeconStatus     = statRef
   , nodeconOpensE     = openE
   , nodeconCloseE     = closedE
   , nodeconRespE      = respE

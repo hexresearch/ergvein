@@ -27,16 +27,14 @@ ratesTimeout = 600
 ratesWorker :: (MonadSettings t m, MonadWallet t m, MonadNode t m) => m ()
 ratesWorker = do
   ratesRef  <- getRatesRef
-  settingsD <- getSettingsD
-  mFiatD <- holdUniqDyn $ fmap settingsFiatCurr settingsD
-  mRateD <- holdUniqDyn $ fmap settingsRateFiat settingsD
-  let fiatsD = (\a b -> nub $ catMaybes [a,b]) <$> mFiatD <*> mRateD
+  mRateD <- getFiatRateSettings
+  let fiatsD = ffor mRateD maybeToList
   let btcCC = currencyToCurrencyCode BTC
   void $ networkHoldDyn $ ffor fiatsD $ \case
     [] -> pure ()
     fs -> do
       buildE  <- getPostBuild
-      te      <- fmap void $ tickLossyFromPostBuildTime ratesTimeout
+      te      <- void <$> tickLossyFromPostBuildTime ratesTimeout
       tickE   <- delay 2 $ leftmost [te, buildE]
       let reqE = (BTC, MRatesRequest $ RatesRequest $ M.singleton btcCC fs) <$ tickE
       respE <- requestRandomIndexer reqE
