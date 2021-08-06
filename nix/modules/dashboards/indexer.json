@@ -23,6 +23,9 @@
       "description": "",
       "fieldConfig": {
         "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
           "custom": {},
           "decimals": 2,
           "displayName": "",
@@ -71,9 +74,10 @@
           "values": false
         },
         "showThresholdLabels": false,
-        "showThresholdMarkers": true
+        "showThresholdMarkers": true,
+        "text": {}
       },
-      "pluginVersion": "7.2.0",
+      "pluginVersion": "7.4.1",
       "targets": [
         {
           "expr": "btc_scanned_height/btc_current_height",
@@ -91,6 +95,9 @@
       "datasource": null,
       "fieldConfig": {
         "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
           "custom": {},
           "mappings": [],
           "max": 10,
@@ -132,9 +139,10 @@
           "fields": "",
           "values": false
         },
-        "showUnfilled": true
+        "showUnfilled": true,
+        "text": {}
       },
-      "pluginVersion": "7.2.0",
+      "pluginVersion": "7.4.1",
       "targets": [
         {
           "expr": "btc_current_height - btc_scanned_height",
@@ -165,7 +173,7 @@
       "fillGradient": 0,
       "gridPos": {
         "h": 8,
-        "w": 9,
+        "w": 15,
         "x": 9,
         "y": 0
       },
@@ -187,7 +195,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.2.0",
+      "pluginVersion": "7.4.1",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -253,6 +261,219 @@
       }
     },
     {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {},
+          "mappings": [],
+          "max": 10,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 2
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 2,
+        "x": 0,
+        "y": 8
+      },
+      "id": 24,
+      "options": {
+        "displayMode": "lcd",
+        "orientation": "vertical",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "text": {}
+      },
+      "pluginVersion": "7.4.1",
+      "targets": [
+        {
+          "expr": "btc_current_height - btc_block_explorer_height",
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "BTC Desync",
+      "type": "bargauge"
+    },
+    {
+      "alert": {
+        "alertRuleTags": {},
+        "conditions": [
+          {
+            "evaluator": {
+              "params": [
+                2
+              ],
+              "type": "gt"
+            },
+            "operator": {
+              "type": "and"
+            },
+            "query": {
+              "params": [
+                "A",
+                "10s",
+                "now"
+              ]
+            },
+            "reducer": {
+              "params": [],
+              "type": "avg"
+            },
+            "type": "query"
+          }
+        ],
+        "executionErrorState": "alerting",
+        "for": "5m",
+        "frequency": "1m",
+        "handler": 1,
+        "message": "BTC node is out of sync with the blockchain!",
+        "name": "Desync alert",
+        "noDataState": "no_data",
+        "notifications": [
+          {
+            "uid": "nFWplX5Gz"
+          }
+        ]
+      },
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          }
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 9,
+        "w": 5,
+        "x": 2,
+        "y": 8
+      },
+      "hiddenSeries": false,
+      "id": 25,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.4.1",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "btc_current_height - btc_block_explorer_height",
+          "interval": "",
+          "legendFormat": "Desycned blocks",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [
+        {
+          "colorMode": "critical",
+          "fill": true,
+          "line": true,
+          "op": "gt",
+          "value": 2,
+          "visible": true
+        }
+      ],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "BTC Desync",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
       "aliasColors": {},
       "bars": false,
       "dashLength": 10,
@@ -268,10 +489,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 18,
-        "y": 0
+        "h": 9,
+        "w": 8,
+        "x": 7,
+        "y": 8
       },
       "hiddenSeries": false,
       "id": 6,
@@ -291,7 +512,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.2.0",
+      "pluginVersion": "7.4.1",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -343,6 +564,105 @@
         },
         {
           "$$hashKey": "object:236",
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 9,
+        "w": 9,
+        "x": 15,
+        "y": 8
+      },
+      "hiddenSeries": false,
+      "id": 23,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.4.1",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "btc_block_explorer_height",
+          "interval": "",
+          "legendFormat": "BTC",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Block Explorer Height",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "$$hashKey": "object:424",
+          "decimals": null,
+          "format": "none",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "$$hashKey": "object:425",
           "format": "short",
           "label": null,
           "logBase": 1,
@@ -415,7 +735,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 8
+        "y": 17
       },
       "hiddenSeries": false,
       "id": 18,
@@ -435,7 +755,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.2.0",
+      "pluginVersion": "7.4.1",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -457,7 +777,8 @@
           "fill": true,
           "line": true,
           "op": "lt",
-          "value": 2000000000
+          "value": 2000000000,
+          "visible": true
         }
       ],
       "timeFrom": null,
@@ -521,7 +842,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 8
+        "y": 17
       },
       "hiddenSeries": false,
       "id": 10,
@@ -541,7 +862,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.2.0",
+      "pluginVersion": "7.4.1",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -625,7 +946,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 17
+        "y": 26
       },
       "hiddenSeries": false,
       "id": 14,
@@ -645,7 +966,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.2.0",
+      "pluginVersion": "7.4.1",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -723,7 +1044,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 17
+        "y": 26
       },
       "hiddenSeries": false,
       "id": 16,
@@ -743,7 +1064,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.2.0",
+      "pluginVersion": "7.4.1",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -821,7 +1142,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 25
+        "y": 34
       },
       "hiddenSeries": false,
       "id": 2,
@@ -841,7 +1162,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.2.0",
+      "pluginVersion": "7.4.1",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -851,7 +1172,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "ghc_max_live_bytes",
+          "expr": "process_resident_memory_bytes",
           "instant": false,
           "interval": "",
           "intervalFactor": 1,
@@ -919,7 +1240,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 25
+        "y": 34
       },
       "hiddenSeries": false,
       "id": 4,
@@ -939,7 +1260,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.2.0",
+      "pluginVersion": "7.4.1",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -949,9 +1270,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(ghc_gc_elapsed_seconds_total[1m]) ",
+          "expr": "process_open_fds",
+          "format": "time_series",
           "interval": "",
-          "legendFormat": "GC seconds per min",
+          "legendFormat": "File descriptors opened",
           "refId": "A"
         }
       ],
@@ -959,7 +1281,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "GC rate",
+      "title": "Open fds",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -976,7 +1298,8 @@
       "yaxes": [
         {
           "$$hashKey": "object:112",
-          "format": "s",
+          "decimals": 0,
+          "format": "fds",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -1047,25 +1370,9 @@
       "fieldConfig": {
         "defaults": {
           "custom": {},
-          "mappings": [],
-          "max": 10,
-          "min": 0,
           "thresholds": {
             "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "#EAB839",
-                "value": 1
-              },
-              {
-                "color": "red",
-                "value": 2
-              }
-            ]
+            "steps": []
           }
         },
         "overrides": []
@@ -1076,7 +1383,7 @@
         "h": 10,
         "w": 5,
         "x": 0,
-        "y": 34
+        "y": 43
       },
       "hiddenSeries": false,
       "id": 21,
@@ -1096,7 +1403,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.2.0",
+      "pluginVersion": "7.4.1",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -1118,7 +1425,8 @@
           "fill": true,
           "line": true,
           "op": "gt",
-          "value": 2
+          "value": 2,
+          "visible": true
         }
       ],
       "timeFrom": null,
@@ -1162,16 +1470,16 @@
       }
     }
   ],
-  "refresh": "10s",
-  "schemaVersion": 26,
+  "refresh": false,
+  "schemaVersion": 27,
   "style": "dark",
   "tags": [],
   "templating": {
     "list": []
   },
   "time": {
-    "from": "now-30m",
-    "to": "now"
+    "from": "2021-08-02T19:54:07.564Z",
+    "to": "2021-08-02T20:05:58.800Z"
   },
   "timepicker": {
     "refresh_intervals": [
@@ -1190,5 +1498,5 @@
   "timezone": "",
   "title": "Indexer",
   "uid": "WBjArycMk",
-  "version": 1
+  "version": 6
 }
