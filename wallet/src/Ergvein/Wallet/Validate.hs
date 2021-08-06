@@ -19,11 +19,8 @@ import Data.Word
 
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
-import Ergvein.Wallet.Localize
 import Sepulcas.Text
 import Sepulcas.Validate
-
-import qualified Data.Text as T
 
 validateAmount :: (IsMoneyUnit a, Display a) => Word64 -> a -> Text -> Validation [ValidationError] Word64
 validateAmount threshold unit x = case validateNonEmptyText x of
@@ -38,12 +35,12 @@ validateAmount threshold unit x = case validateNonEmptyText x of
             case validateRational result of
               Failure errs' -> _Failure # errs'
               Success res -> _Success # toSmallestUnits res
-        fromSmallestUnits x = fromRational $ fromIntegral x % (10 ^ unitResolution unit)
-        toSmallestUnits x = round $ x * (10 ^ unitResolution unit)
+        fromSmallestUnits a = fromRational $ fromIntegral a % (10 ^ unitResolution unit) :: Double
+        toSmallestUnits a = round $ a * (10 ^ unitResolution unit)
     in
       case result' of
         Failure errs'' -> _Failure # errs''
-        Success result'' -> case validateGreaterThan result'' threshold (\x -> showFullPrecision (fromSmallestUnits x) <> " " <> display unit) of
+        Success result'' -> case validateGreaterThan result'' threshold (\a -> showFullPrecision (fromSmallestUnits a) <> " " <> display unit) of
           Failure errs''' -> _Failure # errs'''
           Success (LargeEnoughValue _) -> _Success # result''
 

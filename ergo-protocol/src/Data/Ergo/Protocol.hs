@@ -12,6 +12,7 @@ for network messages in peer to peer protocol that is used in Ergo cryptocurrenc
 
 Types are kept close to binary representation for fast processing.
 -}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Data.Ergo.Protocol(
     Network(..)
   , TestnetMessage(..)

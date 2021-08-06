@@ -8,7 +8,6 @@ module Ergvein.Core.Node.Btc.Headers(
 import Data.Map (Map)
 import Data.Maybe
 import Data.Time
-import Data.Time.Clock
 import Data.Time.Clock.POSIX
 import Ergvein.Core.Platform
 import Network.Haskoin.Block

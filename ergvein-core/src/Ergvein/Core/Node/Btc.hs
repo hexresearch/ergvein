@@ -91,14 +91,15 @@ initBtcNode doLog sa msgE = do
     -- Finalize the handshake by sending "verack" message as a response
     -- Also, respond to ping messages by corrseponding pongs
     hsRespE <- performEvent $ fforMaybe respE $ \case
-      MVersion Version{..} -> Just $ liftIO $ do
+      MVersion Version{..} -> Just $ do
         nodeLog $ "Received version at height: " <> showt startHeight
         pure MVerAck
       MPing (Ping v) -> Just $ pure $ MPong (Pong v)
-      MInv invs | not . null . filter isBlockInv . invList $ invs -> Just $ do
-        let binvs = filter isBlockInv $ invList invs
-        nodeLog $ "Got notification about new blocks: " <> showt (invHash <$> binvs)
-        pure $ MGetData $ GetData binvs
+      MInv invs
+        | binvs@(_:_) <- filter isBlockInv . invList $ invs
+        -> Just $ do
+            nodeLog $ "Got notification about new blocks: " <> showt (invHash <$> binvs)
+            pure $ MGetData $ GetData binvs
       _ -> Nothing
     -- End rec
 
@@ -133,7 +134,7 @@ initBtcNode doLog sa msgE = do
         _ -> Nothing
 
   shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
-  let openE = fmapMaybe (\o -> if o then Just () else Nothing) $ updated shakeD
+  let openE   = () <$ ffilter id (updated shakeD)
       closedE = () <$ _socketClosed s
   pure $ NodeConnection {
     nodeconCurrency   = BTC

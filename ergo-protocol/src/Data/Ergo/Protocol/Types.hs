@@ -47,13 +47,9 @@ import Data.ByteString (ByteString)
 import Data.Ergo.Modifier
 import Data.Int
 import Data.Text (Text)
-import Data.Text.Encoding
 import Data.Vector (Vector)
 import Data.Word
 import GHC.Generics
-
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Base16 as B16
 
 -- | Blockchain network tag. Testing or production.
 data Network = Mainnet | Testnet

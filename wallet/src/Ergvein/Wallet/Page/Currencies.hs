@@ -16,7 +16,6 @@ import Sepulcas.Elements
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
-import Ergvein.Wallet.Wrapper
 
 selectCurrenciesPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> m ()
 selectCurrenciesPage wt mnemonic = do

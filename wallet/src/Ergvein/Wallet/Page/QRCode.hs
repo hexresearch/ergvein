@@ -7,7 +7,6 @@ module Ergvein.Wallet.Page.QRCode(
 
 import Codec.QRCode
 
-import Ergvein.Text
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Canvas
 

@@ -1,6 +1,7 @@
 {-
   Implementation of Ergo connector
 -}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Ergvein.Core.Node.Ergo
   (
     ErgoType(..)
@@ -18,11 +19,9 @@ import Control.Monad.IO.Unlift
 import Data.Ergo.Protocol.Client
 import Data.Ergo.Protocol.Types
 import Data.Function
-import Data.Text
 import Data.Time.Clock
 import Network.Socket (getNameInfo, NameInfoFlag(..), SockAddr(..))
 import Reflex
-import Reflex.ExternalRef
 import Reflex.Flunky
 import Reflex.Fork
 import Reflex.Network
@@ -194,7 +193,7 @@ outChanToSocket outChan = do
       SockOutRecvEr  err         -> errorFire   err
       SockOutTries   tries       -> triesFire   tries
 
-  performEvent $ ffor closedE $ const $ liftIO $ killThread inputThread
+  performEvent_ $ ffor closedE $ const $ liftIO $ killThread inputThread
 
   statusD <-  holdDyn SocketInitial statusE
   triesD <-  holdDyn 0 triesE

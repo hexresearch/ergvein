@@ -54,7 +54,7 @@ spawnWorkers = do
   ratesWorker
 
   -- BTC only workers
-  networkHoldDyn $ ffor btcD $ \b -> when b $ do
+  _ <- networkHoldDyn $ ffor btcD $ \b -> when b $ do
     feesWorker
     pubKeysGeneratorBtc
     scanner
@@ -62,7 +62,7 @@ spawnWorkers = do
     updateWalletHeightBtc
     
   -- Ergo only workers
-  networkHoldDyn $ ffor ergoD $ \e -> when e $ do
+  _ <- networkHoldDyn $ ffor ergoD $ \e -> when e $ do
     pure ()
 
   pure ()

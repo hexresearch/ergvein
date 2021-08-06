@@ -4,7 +4,6 @@ module Ergvein.Wallet.Localize.Validate(
   ) where
 
 import Reflex.Localize
-import Sepulcas.Text
 import Sepulcas.Validate
 import Ergvein.Wallet.Language
 

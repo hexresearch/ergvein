@@ -9,11 +9,9 @@ module Ergvein.Wallet.Page.Settings(
   ) where
 
 import Control.Lens
-import Data.Maybe (catMaybes)
 import Data.List
 import Data.Traversable (for)
 import Reflex.Dom
-import Reflex.ExternalRef
 
 import Ergvein.Crypto
 import Ergvein.Wallet.Language
@@ -40,7 +38,6 @@ data SubPageSettings
   -- | GoCurrencies
   | GoUnits
   | GoNetwork
-  | GoPortfolio
   | GoMnemonicExport
   | GoDns
   | GoNodes
@@ -360,9 +357,8 @@ lineOption = divClass "network-wrapper"
 descrOption :: (MonadFront t m, LocalizedPrint a) => a -> m ()
 descrOption = (>>) elBR . divClass "network-descr" . localizedText
 
-valueOptionDyn, descrOptionDyn :: (MonadFront t m, LocalizedPrint a) => Dynamic t a -> m ()
+valueOptionDyn :: (MonadFront t m, LocalizedPrint a) => Dynamic t a -> m ()
 valueOptionDyn v = getLanguage >>= \langD -> divClass "network-value" $ dynText $ ffor2 langD v localizedShow
-descrOptionDyn v = getLanguage >>= \langD -> (>>) elBR (divClass "network-descr" $ dynText $ ffor2 langD v localizedShow)
 
 labelHorSep, elBR :: MonadFront t m => m ()
 labelHorSep = elAttr "hr" [("class","network-hr-sep-lb")] blank

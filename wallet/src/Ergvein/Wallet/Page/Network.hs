@@ -3,7 +3,6 @@ module Ergvein.Wallet.Page.Network(
     networkPage
   ) where
 
-import Data.Maybe (catMaybes)
 import Reflex.ExternalRef
 
 import Ergvein.Types.Currency
