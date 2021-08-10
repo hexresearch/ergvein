@@ -357,7 +357,7 @@ mnemonicWidgetCss = do
     borderStyle solid
     borderWidth $ px 1
     borderColor hoverColor
-    minHeight $ px 200
+    minHeight $ px 100
     padding (rem 0.5) (rem 1) (rem 0.5) (rem 1)
   ".mnemonic-verification-btn-container" ? do
     display flex
