@@ -12,10 +12,11 @@ import Ergvein.Crypto.Keys
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Restore
-import Sepulcas.Elements
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
+import Ergvein.Wallet.Wrapper
+import Sepulcas.Elements
 
 -- As long as we only have one active currency, this widget is not needed
 selectCurrenciesPage :: MonadFrontBase t m => WalletSource -> Bool -> Mnemonic -> m ()
