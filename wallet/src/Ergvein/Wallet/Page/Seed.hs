@@ -13,7 +13,6 @@ module Ergvein.Wallet.Page.Seed(
 
 import Control.Monad.Random.Strict
 import Data.Bifunctor
-import Data.List (permutations, (\\))
 import Data.Maybe
 import Data.Text.Encoding (decodeUtf8With)
 import Data.Text.Encoding.Error (lenientDecode)
@@ -41,7 +40,6 @@ import Sepulcas.Resize
 import qualified Data.List      as L
 import qualified Data.Serialize as S
 import qualified Data.Text      as T
-import qualified Data.Vector    as V
 
 data GoPage = GoBackupNow | GoBackupLater
 
@@ -175,15 +173,14 @@ mnemonicCheckWidget mnemonic = mdo
       indexedWords = zip [0..] ws -- We need to deal with indices because there might be repetitions in mnemonic
   randGen <- liftIO newStdGen
   let shuffledWords = shuffle' indexedWords (length indexedWords) randGen
-  langD <- getLanguage
   h4 $ localizedText SPSVerifyTitle
   h5 $ spanClass "text-muted" $ localizedText SPSVerifyDescr
-  selectedWordsD <- foldDyn (\(append, x) xs -> if append then xs <> [x] else L.delete x xs) [] $ leftmost [wordSelectedE, wordUnselectedE] -- Contains a list of selected words
+  selectedWordsD <- foldDyn (\(doAppend, x :: (Int, Text)) xs -> if doAppend then xs <> [x] else L.delete x xs) [] $ leftmost [wordSelectedE, wordUnselectedE] -- Contains a list of selected words
   let isCorrectOrderD = ffor selectedWordsD (\selectedWords -> (snd <$> selectedWords) `L.isPrefixOf` ws) -- Contains True if the order of selected words is correct, False otherwise
   wordUnselectedE <- divClass "mnemonic-verification-container mb-2" $ do
     unselectedE <- divClass "mnemonic-verification-btn-container" $ do
-      pressedEventsD <- networkHoldDyn $ ffor selectedWordsD $ \words -> do
-        unselectBtnEvents <- for (zip [1..] words) $ \(i, iw@(index, word)) -> do
+      pressedEventsD <- networkHoldDyn $ ffor selectedWordsD $ \sws -> do
+        unselectBtnEvents <- for (zip [1..] sws) $ \(i, iw@(_, word)) -> do
           pressedE <- numberedButton "button button-outline" i word
           pure $ (False, iw) <$ pressedE -- False means that we unselected this word and we need to remove it from selectedWordsD
         pure $ leftmost unselectBtnEvents
@@ -199,7 +196,7 @@ mnemonicCheckWidget mnemonic = mdo
             localizedText SPSVerifyError
     pure unselectedE
   wordSelectedE <- divClass "mnemonic-verification-btn-container mb-2" $ do
-    selectBtnEvents <- for shuffledWords $ \iw@(index, word) -> do
+    selectBtnEvents <- for shuffledWords $ \iw@(_, word) -> do
       pressedE <- switchableButton "button button-outline" ((iw `elem`) <$> selectedWordsD) "mnemonic-word-disabled" word
       pure $ (True, iw) <$ pressedE -- Ture means that we selected this word and we need to append it to selectedWordsD
     pure $ leftmost selectBtnEvents

@@ -65,7 +65,7 @@ setupLoginPassword mlogin e = divClass "setup-password" $ form $ fieldset $ mdo
 nameProposal :: [WalletName] -> WalletName
 nameProposal s = let
   ss = S.fromList s
-  in fromJust $ find (not . flip S.member ss) $ firstName : ((subsequentNamePrefix <>) . showt <$> [2..])
+  in fromJust $ find (not . flip S.member ss) $ firstName : ((subsequentNamePrefix <>) . showt <$> [2 ::Int ..])
   where
    firstName = "main"
    subsequentNamePrefix = "wallet_"

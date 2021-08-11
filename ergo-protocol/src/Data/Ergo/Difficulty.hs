@@ -9,8 +9,6 @@ import Data.Persist
 import Data.Word
 import GHC.Generics
 
-import qualified Data.ByteString as BS
-
 -- | Difficulty is special encoded signed value that is used for target difficulty
 --
 -- See: https://bitco.in/en/developer-reference#target-nbits

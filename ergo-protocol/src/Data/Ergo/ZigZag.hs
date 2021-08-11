@@ -22,18 +22,18 @@ instance ZigZag Int16 Word16 where
   decodeZigZag n = let
     x = fromIntegral $ n `unsafeShiftR` 1
     s = fromIntegral (n .&. 1)
-    in if s == 0 then x else negate x
+    in if s == (0 :: Int) then x else negate x
 
 instance ZigZag Int32 Word32 where
   encodeZigZag n = (fromIntegral (abs n) `unsafeShiftL` 1) `xor` (fromIntegral n `unsafeShiftR` 31)
   decodeZigZag n = let
     x = fromIntegral $ n `unsafeShiftR` 1
     s = fromIntegral (n .&. 1)
-    in if s == 0 then x else negate x
+    in if s == (0 :: Int) then x else negate x
 
 instance ZigZag Int64 Word64 where
   encodeZigZag n = (fromIntegral (abs n) `unsafeShiftL` 1) `xor` (fromIntegral n `unsafeShiftR` 63)
   decodeZigZag n = let
     x = fromIntegral $ n `unsafeShiftR` 1
     s = fromIntegral (n .&. 1)
-    in if s == 0 then x else negate x
+    in if s == (0 :: Int) then x else negate x
